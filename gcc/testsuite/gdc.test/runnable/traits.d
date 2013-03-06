@@ -443,11 +443,11 @@ void test15()
     D15 d = new D15();
 
     foreach (t; __traits(getVirtualFunctions, D15, "foo"))
-	writeln(typeid(typeof(t)));
+        writeln(typeid(typeof(t)));
 
     alias typeof(__traits(getVirtualFunctions, D15, "foo")) b;
     foreach (t; b)
-	writeln(typeid(t));
+        writeln(typeid(t));
 
     auto i = __traits(getVirtualFunctions, d, "foo")[1](1);
     assert(i == 2);
@@ -515,12 +515,12 @@ void test18()
 
 class C19
 {
-        void mutating_method(){}
+    void mutating_method(){}
 
-        const void const_method(){}
+    const void const_method(){}
 
-        void bastard_method(){}
-        const void bastard_method(int){}
+    void bastard_method(){}
+    const void bastard_method(int){}
 }
 
 
@@ -531,7 +531,7 @@ void test19()
     assert(a.length == 9);
 
     foreach( m; __traits(allMembers, C19) )
-	writeln(m);
+        writeln(m);
 }
 
 
@@ -541,23 +541,23 @@ void test20()
 {
     void fooref(ref int x)
     {
-	static assert(__traits(isRef, x));
-	static assert(!__traits(isOut, x));
-	static assert(!__traits(isLazy, x));
+        static assert(__traits(isRef, x));
+        static assert(!__traits(isOut, x));
+        static assert(!__traits(isLazy, x));
     }
 
     void fooout(out int x)
     {
-	static assert(!__traits(isRef, x));
-	static assert(__traits(isOut, x));
-	static assert(!__traits(isLazy, x));
+        static assert(!__traits(isRef, x));
+        static assert(__traits(isOut, x));
+        static assert(!__traits(isLazy, x));
     }
 
     void foolazy(lazy int x)
     {
-	static assert(!__traits(isRef, x));
-	static assert(!__traits(isOut, x));
-	static assert(__traits(isLazy, x));
+        static assert(!__traits(isRef, x));
+        static assert(!__traits(isOut, x));
+        static assert(__traits(isLazy, x));
     }
 }
 
@@ -585,11 +585,11 @@ void test22()
     D22 d = new D22();
 
     foreach (t; __traits(getOverloads, D22, "foo"))
-	writeln(typeid(typeof(t)));
+        writeln(typeid(typeof(t)));
 
     alias typeof(__traits(getOverloads, D22, "foo")) b;
     foreach (t; b)
-	writeln(typeid(t));
+        writeln(typeid(t));
 
     auto i = __traits(getOverloads, d, "foo")[1](1);
     assert(i == 2);
@@ -604,7 +604,7 @@ string toString23(E)(E value) if (is(E == enum)) {
    return null;
 }
 
-enum OddWord { acini, alembicated, prolegomena, aprosexia } 
+enum OddWord { acini, alembicated, prolegomena, aprosexia }
 
 void test23()
 {
@@ -660,11 +660,16 @@ alias T6073!(__traits(parent, S6073)) U6073;    // error
 static assert(__traits(isSame, V6073, U6073));  // same instantiation == same arguemnts
 
 /********************************************************/
+// 7027
 
-struct Foo7027 {
-  int a;
-}
+struct Foo7027 { int a; }
 static assert(!__traits(compiles, { return Foo7027.a; }));
+
+/********************************************************/
+// 9213
+
+class Foo9213 { int a; }
+static assert(!__traits(compiles, { return Foo9213.a; }));
 
 /********************************************************/
 
@@ -696,7 +701,7 @@ class EE
 
 class FF : EE
 {
-    final int YYY() { return 4; }
+    final override int YYY() { return 4; }
 }
 
 static assert(__traits(isVirtualMethod, FF.YYY));
@@ -765,6 +770,214 @@ void test7858()
 }
 
 /********************************************************/
+// 8971
+
+template Tuple8971(TL...){ alias TL Tuple8971; }
+
+class A8971
+{
+    void bar() {}
+
+    void connect()
+    {
+        alias Tuple8971!(__traits(getOverloads, typeof(this), "bar")) overloads;
+        static assert(__traits(isSame, overloads[0], bar));
+    }
+}
+
+/********************************************************/
+// 8972
+
+struct A8972
+{
+    void foo() {}
+
+    void connect()
+    {
+        alias Tuple8971!(__traits(getOverloads, typeof(this), "foo")) overloads;
+        static assert(__traits(isSame, overloads[0], foo));
+    }
+}
+
+/********************************************************/
+
+private   struct TestProt1 {}
+package   struct TestProt2 {}
+protected struct TestProt3 {}
+public    struct TestProt4 {}
+export    struct TestProt5 {}
+
+void getProtection()
+{
+    class Test
+    {
+        private   { int va; void fa(){} }
+        package   { int vb; void fb(){} }
+        protected { int vc; void fc(){} }
+        public    { int vd; void fd(){} }
+        export    { int ve; void fe(){} }
+    }
+    Test t;
+
+    // TOKvar and VarDeclaration
+    static assert(__traits(getProtection, Test.va) == "private");
+    static assert(__traits(getProtection, Test.vb) == "package");
+    static assert(__traits(getProtection, Test.vc) == "protected");
+    static assert(__traits(getProtection, Test.vd) == "public");
+    static assert(__traits(getProtection, Test.ve) == "export");
+
+    // TOKdotvar and VarDeclaration
+    static assert(__traits(getProtection, t.va) == "private");
+    static assert(__traits(getProtection, t.vb) == "package");
+    static assert(__traits(getProtection, t.vc) == "protected");
+    static assert(__traits(getProtection, t.vd) == "public");
+    static assert(__traits(getProtection, t.ve) == "export");
+
+    // TOKvar and FuncDeclaration
+    static assert(__traits(getProtection, Test.fa) == "private");
+    static assert(__traits(getProtection, Test.fb) == "package");
+    static assert(__traits(getProtection, Test.fc) == "protected");
+    static assert(__traits(getProtection, Test.fd) == "public");
+    static assert(__traits(getProtection, Test.fe) == "export");
+
+    // TOKdotvar and FuncDeclaration
+    static assert(__traits(getProtection, t.fa) == "private");
+    static assert(__traits(getProtection, t.fb) == "package");
+    static assert(__traits(getProtection, t.fc) == "protected");
+    static assert(__traits(getProtection, t.fd) == "public");
+    static assert(__traits(getProtection, t.fe) == "export");
+
+    // TOKtype
+    static assert(__traits(getProtection, TestProt1) == "private");
+    static assert(__traits(getProtection, TestProt2) == "package");
+    static assert(__traits(getProtection, TestProt3) == "protected");
+    static assert(__traits(getProtection, TestProt4) == "public");
+    static assert(__traits(getProtection, TestProt5) == "export");
+
+    // This specific pattern is important to ensure it always works
+    // through reflection, however that becomes implemented
+    static assert(__traits(getProtection, __traits(getMember, t, "va")) == "private");
+    static assert(__traits(getProtection, __traits(getMember, t, "vb")) == "package");
+    static assert(__traits(getProtection, __traits(getMember, t, "vc")) == "protected");
+    static assert(__traits(getProtection, __traits(getMember, t, "vd")) == "public");
+    static assert(__traits(getProtection, __traits(getMember, t, "ve")) == "export");
+    static assert(__traits(getProtection, __traits(getMember, t, "fa")) == "private");
+    static assert(__traits(getProtection, __traits(getMember, t, "fb")) == "package");
+    static assert(__traits(getProtection, __traits(getMember, t, "fc")) == "protected");
+    static assert(__traits(getProtection, __traits(getMember, t, "fd")) == "public");
+    static assert(__traits(getProtection, __traits(getMember, t, "fe")) == "export");
+}
+
+/********************************************************/
+// 9091
+
+template isVariable9091(X...) if (X.length == 1)
+{
+    enum isVariable9091 = true;
+}
+class C9091
+{
+    void func()
+    {
+        enum is_x = isVariable9091!(__traits(getMember, C9091, "x"));
+    }
+    int x;  // some class members
+}
+struct S9091
+{
+    void func()
+    {
+        enum is_x = isVariable9091!(__traits(getMember, S9091, "x"));
+    }
+    int x;  // some struct members
+}
+
+/********************************************************/
+
+struct CtorS_9237 { this(int x) { } }
+struct DtorS_9237 { ~this() { } }
+struct PostblitS_9237 { this(this) { } }
+
+struct NonPOD1_9237
+{
+    CtorS_9237 field;  // nonPOD -> ng
+}
+
+struct NonPOD2_9237
+{
+    CtorS_9237[2] field;  // static array of nonPOD -> ng
+}
+
+struct POD1_9237
+{
+    CtorS_9237* field;  // pointer to nonPOD -> ok
+}
+
+struct POD2_9237
+{
+    CtorS_9237[] field;  // dynamic array of nonPOD -> ok
+}
+
+struct POD3_9237
+{
+    int x = 123;
+}
+
+class C_9273 { }
+
+void test9237()
+{
+    int x;
+    struct NS_9237  // acceses .outer -> nested
+    {
+        void foo() { x++; }
+    }
+
+    struct NonNS_9237 { }  // doesn't access .outer -> non-nested
+    static struct StatNS_9237 { }  // can't access .outer -> non-nested
+
+    static assert(!__traits(isPOD, NS_9237));
+    static assert(__traits(isPOD, NonNS_9237));
+    static assert(__traits(isPOD, StatNS_9237));
+    static assert(!__traits(isPOD, CtorS_9237));
+    static assert(!__traits(isPOD, DtorS_9237));
+    static assert(!__traits(isPOD, PostblitS_9237));
+    static assert(!__traits(isPOD, NonPOD1_9237));
+    static assert(!__traits(isPOD, NonPOD2_9237));
+    static assert(__traits(isPOD, POD1_9237));
+    static assert(__traits(isPOD, POD2_9237));
+    static assert(__traits(isPOD, POD3_9237));
+
+    // non-structs are POD types
+    static assert(__traits(isPOD, C_9273));
+    static assert(__traits(isPOD, int));
+    static assert(__traits(isPOD, int*));
+    static assert(__traits(isPOD, int[]));
+    static assert(!__traits(compiles, __traits(isPOD, 123) ));
+}
+
+/*************************************************************/
+
+void test5978() {
+    () {
+        int x;
+        pragma(msg, __traits(parent, x));
+    } ();
+}
+
+/*************************************************************/
+
+template T7408() { }
+
+void test7408()
+{
+    auto x = T7408!().stringof;
+    auto y = T7408!().mangleof;
+    static assert(__traits(compiles, T7408!().stringof));
+    static assert(__traits(compiles, T7408!().mangleof));
+    static assert(!__traits(compiles, T7408!().init));
+    static assert(!__traits(compiles, T7408!().offsetof));
+}
 
 int main()
 {
@@ -794,6 +1007,8 @@ int main()
     test23();
     test7608();
     test7858();
+    test5978();
+    test7408();
 
     writeln("Success");
     return 0;

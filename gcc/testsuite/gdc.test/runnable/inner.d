@@ -764,11 +764,7 @@ class C24  {
         };
 	printf("bar.this = %p\n", this);
 	printf("  i.this = %p\n", (cast(void**)i)[2]);
-      // GDC creates closure here.
-      version (GNU) {} else
-      {
 	assert(*cast(void**)&c24 == (cast(void**)i)[2]);
-      }
         return i;
     }
 }

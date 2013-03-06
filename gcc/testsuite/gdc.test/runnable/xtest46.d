@@ -53,6 +53,15 @@ void test3()
     {
         printf("no unittest!\n");
     }
+
+    version (assert)
+    {
+        printf("assert!\n");
+    }
+    else
+    {
+        printf("no assert!\n");
+    }
 }
 
 
@@ -934,6 +943,39 @@ sort!(delegate bool(string a, string b) { return freqs[a] > freqs[b]; })(words);
 void test48()
 {
 }
+
+/***************************************************/
+// 6408
+
+static assert(!is(typeof(string[0..1].init)));
+static assert(is(typeof(string[].init) == string[]));
+static assert(is(typeof(string[][].init) == string[][]));
+static assert(is(typeof(string[][][].init) == string[][][]));
+
+static assert(is(typeof(string[1].init) == string[1]));
+static assert(is(typeof(string[1][1].init) == string[1][1]));
+static assert(is(typeof(string[1][1][1].init) == string[1][1][1]));
+
+static assert(is(typeof(string[string].init) == string[string]));
+static assert(is(typeof(string[string][string].init) == string[string][string]));
+static assert(is(typeof(string[string][string][string].init) == string[string][string][string]));
+
+template TT6408(T...) { alias T TT6408; }
+static assert(is(typeof(TT6408!(int, int)[].init) == TT6408!(int, int)));
+static assert(is(typeof(TT6408!(int, int)[0..$].init) == TT6408!(int, int)));
+static assert(is(typeof(TT6408!(int, int)[$-1].init) == int));
+
+/***************************************************/
+// 9409
+
+template TT9409(T...) { alias T TT9409; }
+
+template idxTypes9409(Prefix...)
+{
+    TT9409!((Prefix[$-1])) idxTypes9409;
+}
+
+alias idxTypes9409!(int) Types9409;
 
 /***************************************************/
 
@@ -1954,21 +1996,36 @@ void test99()
 }
 
 /***************************************************/
+// 5081
 
 void test5081()
 {
-    static pure immutable(int[]) x()
+    static pure immutable(int[]) x1()
+    {
+        int[] a = new int[](10);
+        return a;
+    }
+    static pure immutable(int[]) x2(int len)
+    {
+        int[] a = new int[](len);
+        return a;
+    }
+    static pure immutable(int[]) x3(immutable(int[]) org)
+    {
+        int[] a = new int[](org.length);
+        return a;
+    }
+
+    immutable a1 = x1();
+    immutable a2 = x2(10);
+    immutable a3 = x3([1,2]);
+
+    static pure int[] y1()
     {
         return new int[](10);
     }
 
-    static pure int[] y()
-    {
-        return new int[](10);
-    }
-
-    immutable a = x();
-    immutable b = y();
+    immutable b1 = y1();
 }
 
 /***************************************************/
@@ -2820,6 +2877,12 @@ int test137(){
 
 /***************************************************/
 
+// 9366
+static assert(!is(typeof((void[]).init ~ cast(void)0)));
+static assert(!is(typeof(cast(void)0 ~ (void[]).init)));
+
+/***************************************************/
+
 struct Size138
 {
     union
@@ -2886,7 +2949,7 @@ void test139()
     T a = void;
     auto b = map!"a"(x);
     auto c = [map!"a"(x)];
-    T[3] d;
+    T[3] d = void;
 }
 
 
@@ -3099,11 +3162,11 @@ void test3559()
 
     static class B : A
     {
-        int foo(float a) { return 2; }
+        override int foo(float a) { return 2; }
         alias A.foo foo;
 
         alias A.bar bar;
-        int bar(float a) { return 2; }
+        override int bar(float a) { return 2; }
     }
 
     {
@@ -3470,7 +3533,7 @@ void test5554()
     interface I { MB foo(); }
     class B : A
     {
-        MC foo() { return null; }
+        override MC foo() { return null; }
     }
     class C : B, I
     {
@@ -3493,6 +3556,14 @@ void test156()
     assert(ms.g() == 1);
     auto cs = const(S156)();
     assert(cs.g() == 2);
+}
+
+/***************************************************/
+
+void test6708(const ref int y)
+{
+    immutable int x;
+    test6708(x);
 }
 
 /***************************************************/
@@ -3596,6 +3667,26 @@ void test1471()
 
 deprecated @disable int bug6389;
 static assert(!is(typeof(bug6389 = bug6389)));
+
+/***************************************************/
+// 4596
+
+class NoGo4596
+{
+    void fun()
+    {
+        static assert(!__traits(compiles, this = new NoGo4596));
+        static assert(!__traits(compiles, (1?this:this) = new NoGo4596));
+        static assert(!__traits(compiles, super = new Object));
+        static assert(!__traits(compiles, (1?super:super) = new Object));
+    }
+}
+
+void test4596()
+{
+    auto n = new NoGo4596;
+    n.fun();
+}
 
 /***************************************************/
 
@@ -3893,6 +3984,38 @@ void test2774()
 }
 
 /***************************************************/
+// 3733
+
+class C3733
+{
+    int foo()        { return 1; }
+    int foo() shared { return 2; }
+
+    int bar()        { return foo(); }
+}
+void test3733()
+{
+    auto c = new C3733();
+    assert(c.bar() == 1);
+}
+
+/***************************************************/
+// 4392
+
+class C4392
+{
+    int foo() const { return 1; }
+    int foo()       { return 2; }
+
+    int bar() const { return foo(); }
+}
+void test4392()
+{
+    auto c = new C4392();
+    assert(c.bar() == 1);
+}
+
+/***************************************************/
 // 6220
 
 void test6220() {
@@ -4158,6 +4281,37 @@ void test5696()
 }
 
 /***************************************************/
+// 5933
+
+int dummyfunc5933();
+alias typeof(dummyfunc5933) FuncType5933;
+
+struct S5933a { auto x() { return 0; } }
+static assert(is(typeof(&S5933a.init.x) == int delegate()));
+
+struct S5933b { auto x() { return 0; } }
+static assert(is(typeof(S5933b.init.x) == FuncType5933));
+
+struct S5933c { auto x() { return 0; } }
+static assert(is(typeof(&S5933c.x) == int function()));
+
+struct S5933d { auto x() { return 0; } }
+static assert(is(typeof(S5933d.x) == FuncType5933));
+
+
+class C5933a { auto x() { return 0; } }
+static assert(is(typeof(&(new C5933b()).x) == int delegate()));
+
+class C5933b { auto x() { return 0; } }
+static assert(is(typeof((new C5933b()).x) == FuncType5933));
+
+class C5933c { auto x() { return 0; } }
+static assert(is(typeof(&C5933c.x) == int function()));
+
+class C5933d { auto x() { return 0; } }
+static assert(is(typeof(C5933d.x) == FuncType5933));
+
+/***************************************************/
 // 6084
 
 template TypeTuple6084(T...){ alias T TypeTuple6084; }
@@ -4288,6 +4442,17 @@ class Bar6848 : Foo6848
 }
 
 /***************************************************/
+
+version(none)
+{
+    cent issue785;
+    ucent issue785;
+}
+
+static assert(!is(cent) && !is(ucent));
+static assert(!__traits(compiles, { cent x; }));
+
+/***************************************************/
 // 6847
 
 template True6847(T)
@@ -4349,6 +4514,14 @@ template map6836(fun...) if (fun.length >= 1)
 void test6836()
 {
     [1].map6836!"a"();
+}
+
+/***************************************************/
+
+void test5448()
+{
+    int[int][] aaa = [[1: 2]];
+    int[string][] a2 = [["cc":0], ["DD":10]];
 }
 
 /***************************************************/
@@ -4630,6 +4803,40 @@ void test2856()
 }
 
 /***************************************************/
+// 3091
+
+void test3091(inout int = 0)
+{
+    struct Foo {}
+
+    auto  pm = new Foo;                 static assert(is( typeof( pm) ==              Foo  * ));
+    auto  pc = new const Foo;           static assert(is( typeof( pc) ==        const(Foo) * ));
+    auto  pw = new inout Foo;           static assert(is( typeof( pw) ==        inout(Foo) * ));
+    auto psm = new shared Foo;          static assert(is( typeof(psm) ==       shared(Foo) * ));
+    auto psc = new shared const Foo;    static assert(is( typeof(psc) == shared(const(Foo))* ));
+    auto psw = new shared inout Foo;    static assert(is( typeof(psw) == shared(inout(Foo))* ));
+    auto  pi = new immutable Foo;       static assert(is( typeof( pi) ==    immutable(Foo) * ));
+
+    auto  m = Foo();                    static assert(is( typeof( m) ==              Foo   ));
+    auto  c = const Foo();              static assert(is( typeof( c) ==        const(Foo)  ));
+    auto  w = inout Foo();              static assert(is( typeof( w) ==        inout(Foo)  ));
+    auto sm = shared Foo();             static assert(is( typeof(sm) ==       shared(Foo)  ));
+    auto sc = shared const Foo();       static assert(is( typeof(sc) == shared(const(Foo)) ));
+    auto sw = shared inout Foo();       static assert(is( typeof(sw) == shared(inout(Foo)) ));
+    auto  i = immutable Foo();          static assert(is( typeof( i) ==    immutable(Foo)  ));
+}
+
+/***************************************************/
+// 6837
+
+template Id6837(T)
+{
+    alias T Id6837;
+}
+static assert(is(Id6837!(shared const int) == shared const int));
+static assert(is(Id6837!(shared inout int) == shared inout int));
+
+/***************************************************/
 // 6056 fixup
 
 template ParameterTypeTuple6056(func)
@@ -4653,6 +4860,26 @@ extern(C) void foo6056() { }
 void test6056()
 {
     bar6056(&foo6056);
+}
+
+/***************************************************/
+// 6356
+
+int f6356()(int a)
+{
+    return a*a;
+}
+
+alias f6356!() g6356;     // comment this out to eliminate the errors
+
+pure nothrow @safe int i6356()
+{
+    return f6356(1);
+}
+
+void test6356()
+{
+    assert(i6356() == 1);
 }
 
 /***************************************************/
@@ -4694,6 +4921,18 @@ void test7150()
 {
     auto a = A7150(5, 5); // Error: template instance constructtest.A.__ctor!(int) error instantiating
     assert(A7150.cnt == 2);
+}
+
+/***************************************************/
+// 7159
+
+class HomeController7159 {
+    void* foo() {
+        return cast(void*)&HomeController7159.displayDefault;
+    }
+    auto displayDefault() {
+        return 1;
+    }
 }
 
 /***************************************************/
@@ -4812,11 +5051,11 @@ class Base3282
 }
 class Derived3282 : Base3282
 {
-    string f()
+    override string f()
     {
         return "Derived.f()";
     }
-    string f() const
+  /*override*/ string f() const
     {
         return "Derived.f() const";
     }
@@ -4842,7 +5081,7 @@ class C7534
 class D7534 : C7534
 {
     override int foo(){ return 2; }
-    int foo() const { return 3; }
+  /*override*/ int foo() const { return 3; }
     // Error: D.foo multiple overrides of same function
 }
 void test7534()
@@ -4876,8 +5115,8 @@ class V7534
 }
 class W7534 : V7534
 {
-    Y7534 foo(){ return new Y7534(1); }
-    Y7534 foo() const { return new Y7534(2); }
+    override Y7534 foo(){ return new Y7534(1); }
+  /*override*/ Y7534 foo() const { return new Y7534(2); }
 }
 
 void test7534cov()
@@ -5319,6 +5558,249 @@ class Cgi8437
 }
 
 /***************************************************/
+// 8665
+
+auto foo8665a(bool val)
+{
+    if (val)
+        return 42;
+    else
+        return 1.5;
+}
+auto foo8665b(bool val)
+{
+    if (!val)
+        return 1.5;
+    else
+        return 42;
+}
+
+void test8665()
+{
+    static assert(is(typeof(foo8665a(true))  == double));
+    static assert(is(typeof(foo8665b(false)) == double));
+    assert(foo8665a(true) == 42); // assertion failure
+    assert(foo8665b(true) == 42); // assertion failure
+    assert(foo8665a(false) == 1.5);
+    assert(foo8665b(false) == 1.5);
+
+    static assert(foo8665a(true) == 42);
+    static assert(foo8665b(true) == 42);
+    static assert(foo8665a(false) == 1.5);
+    static assert(foo8665b(false) == 1.5);
+}
+
+/***************************************************/
+
+int foo8108(int, int);
+
+int foo8108(int a, int b)
+{
+    return a + b;
+}
+
+void test8108()
+{
+    foo8108(1,2);
+}
+
+/***************************************************/
+// 6141 + 8526
+
+void test6141()
+{
+    static void takeADelegate(void delegate()) {}
+    auto items = new int[1];
+    items[0] = 17;
+    foreach (ref item; items)
+    {
+        // both asserts fail
+        assert(item == 17);
+        assert(&item == items.ptr);
+
+        takeADelegate({ auto x = &item; });
+    }
+
+    foreach(ref val; [3])
+    {
+        auto dg = { int j = val; };
+        assert(&val != null); // Assertion failure
+        assert(val == 3);
+    }
+
+    static void f(lazy int) {}
+    int i = 0;
+    auto dg = { int j = i; };
+    foreach(ref val; [3])
+    {
+        f(val);
+        assert(&val != null); // Assertion failure
+        assert(val == 3);
+    }
+}
+
+void test8526()
+{
+    static void call(void delegate() dg) { dg(); }
+
+    foreach (i, j; [0])
+    {
+        call({
+            assert(i == 0); // fails, i is corrupted
+        });
+    }
+
+    foreach (n; 0..1)
+    {
+        call({
+            assert(n == 0); // fails, n is corrupted
+        });
+    }
+}
+
+/***************************************************/
+
+template ParameterTuple(alias func)
+{
+    static if(is(typeof(func) P == __parameters))
+        alias P ParameterTuple;
+    else
+        static assert(0);
+}
+
+int foo161(ref float y);
+
+void test161()
+{
+    alias PT = ParameterTuple!foo161;
+    auto x = __traits(identifier, PT);
+    assert(x == "y");
+}
+
+/***************************************************/
+// 8897
+
+class C8897
+{
+    static mixin M8897!(int);
+    static class causesAnError  {}
+}
+
+template M8897 ( E ) { }
+
+/***************************************************/
+// 8917
+
+void test8917()
+{
+    int[3] a;
+    int[3] a2;
+    int[3] b = a[] + a2[];
+}
+
+/***************************************************/
+
+struct S162
+{
+    static int generateMethodStubs( Class )()
+    {
+        int text;
+
+        foreach( m; __traits( allMembers, Class ) )
+        {
+            static if( is( typeof( mixin( m ) ) ) && is( typeof( mixin( m ) ) == function ) )
+            {
+                pragma(msg, __traits( getOverloads, Class, m ));
+            }
+        }
+
+        return text;
+    }
+
+    enum int ttt = generateMethodStubs!( S162 )();
+
+    float height();
+    int get( int );
+    int get( long );
+    void clear();
+
+    void draw( int );
+    void draw( long );
+}
+
+/***************************************************/
+
+void test163() {
+    static class C { int x; int y; }
+
+    immutable C c = new C();
+    shared C c2 = new C();
+    shared const C c3 = new C();
+
+    class D { int x; int y; }
+    immutable D d;
+    assert(!__traits(compiles, d = new D()));
+
+    static struct S { int x; int y; }
+
+    immutable S* s = new S();
+    shared S* s2 = new S();
+    shared const S* s3 = new S();
+
+    shared S* s4;
+    assert(!__traits(compiles, s4 = new immutable(S)()));
+
+    struct T { int x; int y; }
+    immutable T* t;
+    assert(!__traits(compiles, t = new T()));
+
+    immutable int* pi = new int();
+    immutable void* pv = new int();
+
+    immutable int[] ai = new int[1];
+    immutable void[] av = new int[2];
+}
+
+/***************************************************/
+struct S9000
+{ ubyte i = ubyte.max; }
+
+enum E9000 = S9000.init;
+
+/***************************************************/
+
+mixin template DefineCoreType(string type)
+{
+    struct Faulty
+    {
+        static int x;
+
+        static void instance()
+        {
+            x = 3;
+        }
+
+        X164!() xxx;
+    }
+}
+
+mixin DefineCoreType!("");
+
+
+mixin template A164()
+{
+    static this()
+    {
+    }
+}
+
+struct X164()
+{
+    mixin A164!();
+}
+
+
+/***************************************************/
 
 int main()
 {
@@ -5499,6 +5981,7 @@ int main()
     test156();
     test4258();
     test4539();
+    test4596();
     test4963();
     test4031();
     test5437();
@@ -5512,6 +5995,8 @@ int main()
     test6335();
     test6228();
     test2774();
+    test3733();
+    test4392();
     test6220();
     test5799();
     test157();
@@ -5535,7 +6020,9 @@ int main()
     test6330();
     test6868();
     test2856();
+    test3091();
     test6056();
+    test6356();
     test7073();
     test7150();
     test7160();
@@ -5562,6 +6049,13 @@ int main()
     test8283();
     test8395();
     test160();
+    test8665();
+    test8108();
+    test6141();
+    test8526();
+    test161();
+    test8917();
+    test163();
 
     printf("Success\n");
     return 0;

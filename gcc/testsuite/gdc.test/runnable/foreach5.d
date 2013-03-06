@@ -187,6 +187,50 @@ void test3187()
 }
 
 /***************************************/
+// 4090
+
+void test4090a()
+{
+    double[10] arr = 1;
+    double tot = 0;
+
+  static assert(!__traits(compiles, {
+    foreach (immutable ref x; arr) {}
+  }));
+    foreach (const ref x; arr)
+    {
+        static assert(is(typeof(x) == const double));
+        tot += x;
+    }
+    foreach (immutable x; arr)
+    {
+        static assert(is(typeof(x) == immutable double));
+        tot += x;
+    }
+    assert(tot == 1*10 + 1*10);
+}
+
+void test4090b()
+{
+    int tot = 0;
+
+  static assert(!__traits(compiles, {
+    foreach (immutable ref x; 1..11) {}
+  }));
+    foreach (const ref x; 1..11)
+    {
+        static assert(is(typeof(x) == const int));
+        tot += x;
+    }
+    foreach (immutable x; 1..11)
+    {
+        static assert(is(typeof(x) == immutable int));
+        tot += x;
+    }
+    assert(tot == 55 + 55);
+}
+
+/***************************************/
 // 5605
 
 struct MyRange
@@ -388,6 +432,26 @@ void test7814()
 }
 
 /***************************************/
+// 8595
+
+struct OpApply8595
+{
+    int opApply(int delegate(ref int) dg)
+    {
+        assert(0);
+    }
+}
+
+string test8595()
+{
+    foreach (elem; OpApply8595.init)
+    {
+        static assert(is(typeof(return) == string));
+    }
+    assert(0);
+}
+
+/***************************************/
 
 int main()
 {
@@ -396,6 +460,8 @@ int main()
     test2442();
     test2443();
     test3187();
+    test4090a();
+    test4090b();
     test5605();
     test7004();
     test7406();

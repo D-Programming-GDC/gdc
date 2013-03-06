@@ -1,4 +1,3 @@
-// REQUIRED_ARGS: -fassert
 
 // compile with -inline
 

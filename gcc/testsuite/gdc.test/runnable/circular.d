@@ -1,4 +1,5 @@
 // REQUIRED_ARGS: -d
+// PERMUTE_ARGS: -dw
 // EXTRA_SOURCES: imports/circularA.d
 // This bug is typedef-specific.
 

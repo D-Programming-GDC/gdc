@@ -668,7 +668,7 @@ int foo45(int i)
 
 void test45()
 {
-   version (Windows)  // this test fails in -release because asserts will be removed
+   version (Win32)  // this test fails in -release because asserts will be removed
    {
    assert(foo45(0)==2);
    try{
@@ -5217,6 +5217,490 @@ void test8423()
 }
 
 /***************************************************/
+class Foo8496
+{
+public:
+    void foo(uint value)
+    {
+        ubyte size = value < (0x7fU << 0 ) ? 1 :
+                     value < (0x7fU << 14) ? 2 :
+                                             3;
+        import std.stdio;
+        writeln(size);
+	assert(size == 2);
+    }
+}
+
+void test8496()
+{
+    Foo8496 f = new Foo8496();
+    f.foo(1000000);
+}
+
+/***************************************************/
+
+long foo8840() { return 4; }
+
+int bar8840(long g) { assert(g == 4); return printf("%llx\n", g); }
+
+void test8840()
+{
+    long f1 = foo8840();
+    long f2 = foo8840();
+
+    long f = (f1 < f2 ? f1 : f2);
+    int len = (f == 0 ? 0 : bar8840(f));
+}
+
+/***************************************************/
+
+struct S8889
+{
+    real f;
+    int i;
+}
+
+void test8889()
+{
+}
+
+/***************************************************/
+
+struct S8870
+{
+    float x = 0;
+    float y = 0;
+    float z = 0;
+    float w = 0;
+}
+
+void test8870()
+{
+    S8870 r1 = S8870(1,2,3,4);
+    S8870 r2 = S8870(5,6,7,8);
+
+    foo8870(r1, r2, false, 1);
+    bar8870(r1, r2, false, 1);
+}
+
+//extern (C)
+void foo8870(S8870 t1, S8870 t2, bool someBool, float finalFloat)
+{
+    printf("t1: %g %g %g %g\n", t1.x, t1.y, t1.z, t1.w);
+    printf("t2: %g %g %g %g\n", t2.x, t2.y, t2.z, t2.w);
+    printf("someBool: %d\n", someBool);
+    printf("finalFloat: %g\n", finalFloat);
+
+    assert(t1.x == 1 && t1.y == 2 && t1.z == 3 && t1.w == 4);
+    assert(t2.x == 5 && t2.y == 6 && t2.z == 7 && t2.w == 8);
+    assert(someBool == false);
+    assert(finalFloat == 1);
+}
+
+extern (C)
+void bar8870(S8870 t1, S8870 t2, bool someBool, float finalFloat)
+{
+    printf("t1: %g %g %g %g\n", t1.x, t1.y, t1.z, t1.w);
+    printf("t2: %g %g %g %g\n", t2.x, t2.y, t2.z, t2.w);
+    printf("someBool: %d\n", someBool);
+    printf("finalFloat: %g\n", finalFloat);
+
+    assert(t1.x == 1 && t1.y == 2 && t1.z == 3 && t1.w == 4);
+    assert(t2.x == 5 && t2.y == 6 && t2.z == 7 && t2.w == 8);
+    assert(someBool == false);
+    assert(finalFloat == 1);
+}
+
+/***************************************************/
+
+struct S247 { size_t length; size_t ptr; }
+
+S247 foo247()
+{
+    S247 f;
+    f.length = 7;
+    f.ptr = 8;
+    return f;
+}
+
+void test247()
+{
+    S247 f;
+    f = foo247();
+    assert(f.length == 7);
+    assert(f.ptr == 8);
+}
+
+/***************************************************/
+// 8340
+
+void test8340(){
+    byte[] ba = [1,2,3,4,5];
+    short[] sa = [1,2,3,4,5];
+    int[] ia = [1,2,3,4,5];
+    long[] la = [1,2,3,4,5];
+
+    ba[2] *= -1;
+    sa[2] *= -1;
+    ia[2] *= -1;
+    la[2] *= -1;
+
+    assert(ba == [1,2,-3,4,5]);
+    assert(sa == [1,2,-3,4,5]);
+    assert(ia == [1,2,-3,4,5]);
+    assert(la == [1,2,-3,4,5]);
+}
+
+/***************************************************/
+// 8376
+
+void test8376() {
+    int i = 0;
+    int[2] a;
+    a[1]=1;
+    while(!a[0]){
+        if(a[i]) continue;
+        a[i] = 1;
+    }
+}
+
+/***************************************************/
+
+// Don't call, compile only
+void test8987(){
+    int last = 0;
+    int count = 0;
+    int d;
+
+    for (int x = 0; count < 100; x++){
+        d = 3;
+
+        while (x / d)
+	    d += 2;
+
+        if (x & d) {
+            last = x;
+            count++;
+        }
+    }
+
+    printf("Last: %d\n", last);
+}
+
+/***************************************************/
+// 8796
+
+int* wrong8796(int* p)
+{
+    *p++ = 1;
+    return p;
+}
+
+void test8796()
+{
+    int[3] arr;
+    int* q = arr.ptr;
+    q = wrong8796(q);
+    assert(q != arr.ptr);
+}
+
+/***************************************************/
+// 9171
+
+ulong bitcomb9171(ulong v)
+{
+    if(v)
+    {
+        ulong result;
+        if(v & 1)
+        {
+            auto r = bitcomb9171(v >> 1);
+	    printf("r=%016llx\n", r);
+
+            auto z = ((r & (r-1) ^ r));
+	    check9171("str", z>>1);
+//	    printf("z=%016llx\n", z>>1);
+            return r;
+        }
+        else
+        {
+            auto fb = v & (v-1) ^ v;
+            result = (fb >> 1) | (v ^ fb);
+        }
+        return result;
+    }
+    return 0;
+}
+
+void check9171(const char *s, ulong v)
+{
+    assert(v == 0x80000000);
+}
+
+void test9171()
+{
+    bitcomb9171(0b1110000000000000010000000000000000000000000000000001);
+}
+
+/***************************************************/
+
+void test9248()
+{
+    void*[] a = [cast(void*)1];
+    void*[] b = [cast(void*)2];
+    auto c = a ~ b;
+    assert(c == [cast(void*)1, cast(void*)2]);
+}
+
+/***************************************************/
+// 6057
+void test6057()
+{
+    enum Foo { A=1, B=2 }
+    Foo[] bar = [cast(Foo)1];
+}
+
+/***************************************************/
+
+ulong d2ulong(double u)
+{
+    return cast(ulong)u;
+}
+
+void testdbl_to_ulong()
+{
+    auto u = d2ulong(12345.6);
+    //writeln(u);
+    assert(u == 12345);
+
+    real adjust = 1.0L/real.epsilon;
+    u = d2ulong(adjust);
+    //writefln("%s %s", adjust, u);
+    assert(u == 9223372036854775808UL);
+
+    auto v = d2ulong(adjust * 1.1);
+    //writefln("%s %s %s", adjust, v, u + u/10);
+
+    // The following can vary in the last bits with different optimization settings,
+    // i.e. the conversion from real to double may not happen.
+    //assert(v == 10145709240540254208UL);
+}
+
+/***************************************************/
+
+
+
+uint d2uint(double u)
+{
+    return cast(uint)u;
+}
+
+void testdbl_to_uint()
+{
+    auto u = d2uint(12345.6);
+    //writeln(u);
+    assert(u == 12345);
+}
+
+/***************************************************/
+
+ulong r2ulong(real u)
+{
+    return cast(ulong)u;
+}
+
+void testreal_to_ulong()
+{
+    auto u = r2ulong(12345.6L);
+    //writeln(u);
+    assert(u == 12345);
+
+    real adjust = 1.0L/real.epsilon;
+    u = r2ulong(adjust);
+    //writefln("%s %s", adjust, u);
+    assert(u == 9223372036854775808UL);
+
+    auto v = r2ulong(adjust * 1.1);
+    writefln("%s %s %s", adjust, v, u + u/10);
+
+    //assert(v == 10145709240540253389UL);
+}
+
+/***************************************************/
+
+long testbt1(long a, long b, int c)
+{
+    return a + ((b >> c) & 1);
+//    return a + ((b & (1L << c)) != 0);
+}
+
+
+long testbt2(long a, long b, int c)
+{
+//    return a + ((b >> c) & 1);
+    return a + ((b & (1L << c)) != 0);
+}
+
+int testbt3(int a, int b, int c)
+{
+    return a + ((b >> c) & 1);
+//    return a + ((b & (1 << c)) != 0);
+}
+
+int testbt4(int a, int b, int c)
+{
+//    return a + ((b >> c) & 1);
+    return a + ((b & (1 << c)) != 0);
+}
+
+
+void test248()
+{
+    auto a1 = testbt1(3, 4, 2);
+    assert(a1 == 4);
+    a1 = testbt2(3, 4, 2);
+    assert(a1 == 4);
+    a1 = testbt3(3, 4, 2);
+    assert(a1 == 4);
+    a1 = testbt4(3, 4, 2);
+    assert(a1 == 4);
+
+    a1 = testbt1(3, 8, 2);
+    assert(a1 == 3);
+    a1 = testbt2(3, 8, 2);
+    assert(a1 == 3);
+    a1 = testbt3(3, 8, 2);
+    assert(a1 == 3);
+    a1 = testbt4(3, 8, 2);
+    assert(a1 == 3);
+}
+
+/***************************************************/
+
+int foo249(int a, int b)
+{
+    return a + ((b & 0x80) != 0);
+}
+
+long bar249(long a, int b)
+{
+    return a + ((b & 0x80) != 0);
+}
+
+void test249()
+{
+  {
+    auto i = foo249(3, 6);
+    assert(i == 3);
+    i = foo249(3, 0x88);
+    assert(i == 4);
+  }
+  {
+    auto i = bar249(3, 6);
+    assert(i == 3);
+    i = bar249(3, 0x88);
+    assert(i == 4);
+  }
+}
+
+/***************************************************/
+
+// These should all compile to a BT instruction when -O, for -m32 and -m64
+
+int bt32(uint *p, uint b) { return ((p[b >> 5] & (1 << (b & 0x1F)))) != 0; }
+
+int bt64a(ulong *p, uint b) { return ((p[b >> 6] & (1L << (b & 63)))) != 0; }
+
+int bt64b(ulong *p, size_t b) { return ((p[b >> 6] & (1L << (b & 63)))) != 0; }
+
+void test250()
+{
+    static uint[2]  a1 = [0x1001_1100, 0x0220_0012];
+
+    if ( bt32(a1,30)) assert(0);
+    if (!bt32(a1,8))  assert(0);
+    if ( bt32(a1,30+32)) assert(0);
+    if (!bt32(a1,1+32))  assert(0);
+
+    static ulong[2] a2 = [0x1001_1100_12345678, 0x0220_0012_12345678];
+
+    if ( bt64a(a2,30+32)) assert(0);
+    if (!bt64a(a2,8+32))  assert(0);
+    if ( bt64a(a2,30+32+64)) assert(0);
+    if (!bt64a(a2,1+32+64))  assert(0);
+
+    if ( bt64b(a2,30+32)) assert(0);
+    if (!bt64b(a2,8+32))  assert(0);
+    if ( bt64b(a2,30+32+64)) assert(0);
+    if (!bt64b(a2,1+32+64))  assert(0);
+}
+
+/***************************************************/
+
+struct S251 { int a,b,c,d; }
+
+S251 foo251(S251 s)
+{
+    S251 a = s;
+    S251 b = a;	// copy propagation
+    S251 c = b;
+    S251 d = c;
+    S251 e = d;	// dead assignment
+    return d;
+}
+
+void test251()
+{
+    S251 a;
+    a.a = 1;
+    a.b = 2;
+    a.c = 3;
+    a.d = 4;
+    a = foo251(a);
+    assert(a.a == 1);
+    assert(a.b == 2);
+    assert(a.c == 3);
+    assert(a.d == 4);
+}
+
+/***************************************************/
+// 9387
+
+void bug9387a(double x) { }
+
+void ice9387()
+{
+    double x = 0.3;
+    double r = x*0.1;
+    double q = x*0.1 + r;
+    double p = x*0.1 + r*0.2;
+    if ( q )
+        p = -p;
+    bug9387a(p);
+}
+
+/***************************************************/
+
+void bug6962(string value)
+{
+    string v = value;
+    try
+    {
+        v = v[0LU..0LU];
+        return;
+    }
+    finally
+    {
+        assert(!v.length);
+    }
+}
+
+void test6962()
+{
+    bug6962("42");
+}
+
+/***************************************************/
 
 int main()
 {
@@ -5480,6 +5964,25 @@ int main()
     test246();
     test8454();
     test8423();
+    test8496();
+    test8840();
+    test8889();
+    test8870();
+    test247();
+    test8340();
+    test8376();
+    test8796();
+    test9171();
+    test9248();
+    testdbl_to_ulong();
+    testdbl_to_uint();
+    testreal_to_ulong();
+    test248();
+    test249();
+    test250();
+    test6057();
+    test251();
+    test6962();
 
     writefln("Success");
     return 0;

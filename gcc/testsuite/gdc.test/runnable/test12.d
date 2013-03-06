@@ -665,8 +665,10 @@ void test31()
     string foo = "hello";
 
     printf("%s\n", foo.ptr);
-    printf("%.*s\n", typeid(typeof(foo.ptr)).toString());
-    printf("%.*s\n", typeid(char*).toString());
+    auto s = typeid(typeof(foo.ptr)).toString();
+    printf("%.*s\n", s.length, s.ptr);
+    s = typeid(char*).toString();
+    printf("%.*s\n", s.length, s.ptr);
     assert(typeid(typeof(foo.ptr)) == typeid(immutable(char)*));
 }
 
@@ -683,18 +685,16 @@ class Qwert32
     void foo()
     {
         printf("yuiop = %d, asdfg = %d\n", Qwert32.yuiop.offsetof, Qwert32.asdfg.offsetof);
-        version(X86)
-        {
-            assert(Qwert32.yuiop.offsetof == 8);
-            assert(Qwert32.asdfg.offsetof == 12);
-        }
-        else version (X86_64)
+        version(D_LP64)
         {
             assert(Qwert32.yuiop.offsetof == 16);
             assert(Qwert32.asdfg.offsetof == 20);
         }
         else
-            assert(0);
+        {
+            assert(Qwert32.yuiop.offsetof == 8);
+            assert(Qwert32.asdfg.offsetof == 12);
+        }
     }
 }
 
@@ -780,12 +780,10 @@ void test36()
     printf("%d\n", a.c);
     printf("%d\n", a.d);
 
-    version(X86)
-        assert(a.classinfo.init.length == 28);
-    else version(X86_64)
+    version(D_LP64)
         assert(a.classinfo.init.length == 36);
     else
-        assert(0);
+        assert(a.classinfo.init.length == 28);
     assert(a.s == 1);
     assert(a.a == 2);
     assert(a.b == 3);
@@ -942,7 +940,7 @@ void test44()
 
 /**************************************/
 
-import std.string;
+import std.algorithm;
 
 struct Shell
 {
@@ -950,7 +948,7 @@ struct Shell
 
     const int opCmp(ref const Shell s)
     {
-	return std.string.cmp(this.str, s.str);
+	return std.algorithm.cmp(this.str, s.str);
     }
 }
 

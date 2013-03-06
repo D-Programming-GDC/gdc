@@ -573,15 +573,11 @@ int main()
     test5();
     test6();
     test7();
-
-  // GDC does not implement exception chaining...
-  version (GNU) {} else
-  {
+    
     bug1513();
     doublecollide();
     collideMixed();
     multicollide();
-  }
 
     printf("finish\n");
     return 0;

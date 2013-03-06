@@ -27,16 +27,24 @@ proc gdc-convert-args { args } {
         lappend out "-c"
     }
     if [regexp -- "-d" $args] {
-        lappend out "-fdeprecated"
+        lappend out "-Wno-deprecated"
+    }
+    if [regexp -- "-de" $args] {
+        lappend out "-Wdeprecated"
+        lappend out "-Werror"
     }
     if [regexp -- "-inline" $args] {
         lappend out "-finline-functions"
+    }
+    if [regexp -- "-property" $args] {
+        lappend out "-fproperty"
     }
     if [regexp -- "-unittest" $args] {
         lappend out "-funittest"
     }
     if [regexp -- "-w" $args] {
-        lappend out "-Wall -Werror"
+        lappend out "-Wall"
+        lappend out "-Werror"
     }
 
     set i 0

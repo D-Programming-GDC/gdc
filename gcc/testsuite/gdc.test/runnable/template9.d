@@ -243,6 +243,29 @@ template _ElemType(T) {
 }
 
 /**********************************/
+// 5893
+
+class C5893
+{
+    int concatAssign(C5893 other) { return 1; }
+    int concatAssign(int other) { return 2; } // to demonstrate overloading
+
+    template opOpAssign(string op) if (op == "~")
+    { alias concatAssign opOpAssign; }
+
+    int opOpAssign(string op)(int other) if (op == "+") { return 3; }
+}
+
+void test5893()
+{
+    auto c = new C5893;
+    assert(c.opOpAssign!"~"(c) == 1); // works
+    assert(c.opOpAssign!"~"(1) == 2); // works
+    assert((c ~= 1) == 2);
+    assert((c += 1) == 3);  // overload
+}
+
+/**********************************/
 // 6404
 
 // receive only rvalue
@@ -304,6 +327,15 @@ void test2246(){
     f2246!(A2246!(int,long))();
     f2246!(B2246!(2))();
     f2246!(C2246!(int,2))();
+}
+
+/**********************************/
+// 2296
+
+void foo2296(uint D)(int[D] i...){}
+void test2296()
+{
+    foo2296(1, 2, 3);
 }
 
 /**********************************/
@@ -744,6 +776,26 @@ void test6994()
 }
 
 /**********************************/
+// 6764
+
+enum N6764 = 1; //use const for D1
+
+alias size_t[N6764] T6764; //workaround
+void f6764()(T6764 arr...) { }
+
+void g6764()(size_t[1] arr...) { }
+
+void h6764()(size_t[N6764] arr...) { }
+
+void test6764()
+{
+    f6764(0);    //good
+    g6764(0);    //good
+    h6764!()(0); //good
+    h6764(0);    //Error: template main.f() does not match any function template declaration
+}
+
+/**********************************/
 // 3467 & 6806
 
 struct Foo3467( uint n )
@@ -838,6 +890,36 @@ void test5801()
 }
 
 /**********************************/
+// 5832
+
+struct Bar5832(alias v) {}
+
+template isBar5832a(T)
+{
+    static if (is(T _ : Bar5832!(v), alias v))
+        enum isBar5832a = true;
+    else
+        enum isBar5832a = false;
+}
+template isBar5832b(T)
+{
+    static if (is(T _ : Bar5832!(v), alias int v))
+        enum isBar5832b = true;
+    else
+        enum isBar5832b = false;
+}
+template isBar5832c(T)
+{
+    static if (is(T _ : Bar5832!(v), alias string v))
+        enum isBar5832c = true;
+    else
+        enum isBar5832c = false;
+}
+static assert( isBar5832a!(Bar5832!1234));
+static assert( isBar5832b!(Bar5832!1234));
+static assert(!isBar5832c!(Bar5832!1234));
+
+/**********************************/
 // 2550
 
 template pow10_2550(long n)
@@ -855,45 +937,44 @@ template pow10_2550(long n:0)
 static assert(pow10_2550!(0) == 1);
 
 /**********************************/
+// [2.057] Remove top const in IFTI, 9198
 
-void foo10(T)(T prm)
-{
-    pragma(msg, T);
-    static assert(is(T == const(int)[]));
-}
-void boo10(T)(ref T val)        // ref paramter doesn't remove top const
-{
-    pragma(msg, T);
-    static assert(is(T == const(int[])));
-}
-void goo10(T)(auto ref T val)   // auto ref with lvalue doesn't
-{
-    pragma(msg, T);
-    static assert(is(T == const(int[])));
-}
-void hoo10(T)(auto ref T val)   // auto ref with rvalue does
-{
-    pragma(msg, T);
-    static assert(is(T == const(int)[]));
-}
-void bar10(T)(T prm)
-{
-    pragma(msg, T);
-    static assert(is(T == const(int)*));
-}
+void foo10a(T   )(T)            { static assert(is(T    == const(int)[])); }
+void foo10b(T...)(T)            { static assert(is(T[0] == const(int)[])); }
+
+// ref paramter doesn't remove top const
+void boo10a(T   )(ref T)        { static assert(is(T    == const(int[]))); }
+void boo10b(T...)(ref T)        { static assert(is(T[0] == const(int[]))); }
+
+// auto ref with lvalue doesn't
+void goo10a(T   )(auto ref T)   { static assert(is(T    == const(int[]))); }
+void goo10b(T...)(auto ref T)   { static assert(is(T[0] == const(int[]))); }
+
+// auto ref with rvalue does
+void hoo10a(T   )(auto ref T)   { static assert(is(T    == const(int)[])); }
+void hoo10b(T...)(auto ref T)   { static assert(is(T[0] == const(int)[])); }
+
+void bar10a(T   )(T)            { static assert(is(T    == const(int)*)); }
+void bar10b(T...)(T)            { static assert(is(T[0] == const(int)*)); }
+
 void test10()
 {
     const a = [1,2,3];
     static assert(is(typeof(a) == const(int[])));
-    foo10(a);
-    boo10(a);
-    goo10(a);
-    hoo10(cast(const(int[]))[1,2,3]);
+    foo10a(a);
+    foo10b(a);
+    boo10a(a);
+    boo10b(a);
+    goo10a(a);
+    goo10b(a);
+    hoo10a(cast(const)[1,2,3]);
+    hoo10b(cast(const)[1,2,3]);
 
     int n;
     const p = &n;
     static assert(is(typeof(p) == const(int*)));
-    bar10(p);
+    bar10a(p);
+    bar10b(p);
 }
 
 /**********************************/
@@ -1466,6 +1547,419 @@ void test8129()
 }
 
 /**********************************/
+// 8976
+
+void f8976(ref int) { }
+
+void g8976()()
+{
+    f8976(0); // line 5
+}
+
+
+void h8976()()
+{
+    g8976!()();
+}
+
+static assert(! __traits(compiles, h8976!()() ) ); // causes error
+static assert(!is(typeof(          h8976!()() )));
+
+void test8976()
+{
+    static assert(! __traits(compiles, h8976!()() ) );
+    static assert(!is(typeof(          h8976!()() )));
+}
+
+/****************************************/
+// 8940
+
+const int n8940; // or `immutable`
+static this() { n8940 = 3; }
+
+void f8940(T)(ref int val)
+{
+    assert(val == 3);
+    ++val;
+}
+
+static assert(!__traits(compiles,  f8940!void(n8940))); // fails
+void test8940()
+{
+    assert(n8940 == 3);
+    static assert(!__traits(compiles, f8940!void(n8940)));
+    //assert(n8940 == 3); // may pass as compiler caches comparison result
+    //assert(n8940 != 4); // may pass but likely will fail
+}
+
+/**********************************/
+// 6969 + 8990
+
+class A6969() { alias C6969!() C1; }
+class B6969   { alias A6969!() A1; }
+class C6969() : B6969 {}
+
+struct A8990(T) { T t; }
+struct B8990(T) { A8990!T* a; }
+struct C8990    { B8990!C8990* b; }
+
+/**********************************/
+// 9018
+
+template Inst9018(alias Template, T)
+{
+    alias Template!T Inst;
+}
+
+template Template9018(T)
+{
+    enum Template9018 = T;
+}
+
+static assert(!__traits(compiles, Inst9018!(Template9018, int))); // Assert passes
+static assert(!__traits(compiles, Inst9018!(Template9018, int))); // Assert fails
+
+/**********************************/
+// 9026
+
+mixin template node9026()
+{
+    static if (is(this == struct))
+        alias typeof(this)* E;
+    else
+        alias typeof(this) E;
+    E prev, next;
+}
+
+struct list9026(alias N)
+{
+    N.E head;
+    N.E tail;
+}
+
+class A9026
+{
+    mixin node9026 L1;
+    mixin node9026 L2;
+}
+
+list9026!(A9026.L1) g9026_l1;
+list9026!(A9026.L2) g9026_l2;
+
+void test9026()
+{
+    list9026!(A9026.L1) l9026_l1;
+    list9026!(A9026.L2) l9026_l2;
+}
+
+/**********************************/
+// 9038
+
+mixin template Foo9038()
+{
+    string data = "default";
+}
+
+class Bar9038
+{
+    string data;
+    mixin Foo9038 f;
+}
+
+void check_data9038(alias M, T)(T obj)
+{
+    //writeln(M.stringof);
+    assert(obj.data == "Bar");
+    assert(obj.f.data == "F");
+}
+
+void test9038()
+{
+    auto bar = new Bar9038;
+    bar.data = "Bar";
+    bar.f.data = "F";
+
+    assert(bar.data == "Bar");
+    assert(bar.f.data == "F");
+
+    check_data9038!(Bar9038)(bar);
+    check_data9038!(Bar9038.f)(bar);
+    check_data9038!(bar.f)(bar);
+}
+
+/**********************************/
+// 9076
+
+template forward9076(args...)
+{
+    @property forward9076()(){ return args[0]; }
+}
+
+void test9076()
+{
+    int a = 1;
+    int b = 1;
+    assert(a == forward9076!b);
+}
+
+/**********************************/
+// 9083
+
+template isFunction9083(X...) if (X.length == 1)
+{
+    enum isFunction9083 = true;
+}
+
+struct S9083
+{
+    static string func(alias Class)()
+    {
+        foreach (m; __traits(allMembers, Class))
+        {
+            pragma(msg, m);  // prints "func"
+            enum x1 = isFunction9083!(mixin(m));  //NG
+            enum x2 = isFunction9083!(func);      //OK
+        }
+        return "";
+    }
+}
+enum nothing9083 = S9083.func!S9083();
+
+class C9083
+{
+    int x;  // some class members
+
+    void func()
+    {
+        void templateFunc(T)(ref const T obj)
+        {
+            enum x1 = isFunction9083!(mixin("x"));  // NG
+            enum x2 = isFunction9083!(x);           // NG
+        }
+        templateFunc(this);
+    }
+}
+
+/**********************************/
+// 9100
+
+template Id(alias A) { alias Id = A; }
+template ErrId(alias A) { static assert(0); }
+template TypeTuple9100(TL...) { alias TypeTuple9100 = TL; }
+
+class C9100
+{
+    int value;
+
+    int fun() { return value; }
+    int tfun(T)() { return value; }
+    TypeTuple9100!(int, long) field;
+
+    void test()
+    {
+        this.value = 1;
+        auto c = new C9100();
+        c.value = 2;
+
+        alias t1a = Id!(c.fun);             // OK
+        alias t1b = Id!(this.fun);          // Prints weird error, bad
+        // -> internally given TOKdotvar
+        assert(t1a() == this.value);
+        assert(t1b() == this.value);
+
+        alias t2a = Id!(c.tfun);            // OK
+        static assert(!__traits(compiles, ErrId!(this.tfun)));
+        alias t2b = Id!(this.tfun);         // No error occurs, why?
+        // -> internally given TOKdottd
+        assert(t2a!int() == this.value);
+        assert(t2b!int() == this.value);
+
+        alias t3a = Id!(foo9100);           // OK
+        alias t3b = Id!(mixin("foo9100"));  // Prints weird error, bad
+        // -> internally given TOKtemplate
+        assert(t3a() == 10);
+        assert(t3b() == 10);
+
+        assert(field[0] == 0);
+        alias t4a = TypeTuple9100!(field);              // NG
+        alias t4b = TypeTuple9100!(GetField9100!());    // NG
+        t4a[0] = 1; assert(field[0] == 1);
+        t4b[0] = 2; assert(field[0] == 2);
+    }
+}
+
+int foo9100()() { return 10; }
+template GetField9100() { alias GetField9100 = C9100.field[0]; }
+
+void test9100()
+{
+    (new C9100()).test();
+}
+
+/**********************************/
+// 9101
+
+class Node9101
+{
+    template ForwardCtorNoId()
+    {
+        this() {} // default constructor
+        void foo() { 0 = 1; }    // wrong code
+    }
+}
+enum x9101 = __traits(compiles, Node9101.ForwardCtorNoId!());
+
+/**********************************/
+// 9124
+
+struct Foo9124a(N...)
+{
+    enum SIZE = N[0];
+    private int _val;
+
+    public void opAssign (T) (T other)
+    if (is(T unused == Foo9124a!(_N), _N...))
+    {
+        _val = other._val;          // compile error
+        this._val = other._val;     // explicit this make it work
+    }
+
+    public auto opUnary (string op) () if (op == "~") {
+        Foo9124a!(SIZE) result = this;
+        return result;
+    }
+}
+void test9124a()
+{
+    Foo9124a!(28) a;
+    Foo9124a!(28) b = ~a;
+}
+
+// --------
+
+template Foo9124b(T, U, string OP)
+{
+    enum N = T.SIZE;
+    alias Foo9124b = Foo9124b!(false, true, N);
+}
+struct Foo9124b(bool S, bool L, N...)
+{
+    enum SIZE = 5;
+    long[1] _a = 0;
+    void someFunction() const {
+        auto data1 = _a;        // Does not compile
+        auto data2 = this._a;   // <--- Compiles
+    }
+    auto opBinary(string op, T)(T) {
+        Foo9124b!(typeof(this), T, op) test;
+    }
+}
+void test9124b()
+{
+    auto p = Foo9124b!(false, false, 5)();
+    auto q = Foo9124b!(false, false, 5)();
+    p|q;
+    p&q;
+}
+
+/**********************************/
+// 9143
+
+struct Foo9143a(bool S, bool L)
+{
+    auto noCall() {
+        Foo9143a!(S, false) x1;         // compiles if this line commented
+        static if(S) Foo9143a!(true,  false) x2;
+        else         Foo9143a!(false, false) x2;
+    }
+    this(T)(T other)        // constructor
+    if (is(T unused == Foo9143a!(P, Q), bool P, bool Q)) { }
+}
+
+struct Foo9143b(bool L, size_t N)
+{
+    void baaz0() {
+        bar!(Foo9143b!(false, N))();    // line 7
+        // -> move to before the baaz semantic
+    }
+    void baaz() {
+        bar!(Foo9143b!(false, 2LU))();  // line 3
+        bar!(Foo9143b!(true, 2LU))();   // line 4
+        bar!(Foo9143b!(L, N))();        // line 5
+        bar!(Foo9143b!(true, N))();     // line 6
+        bar!(Foo9143b!(false, N))();    // line 7
+    }
+    void bar(T)()
+    if (is(T unused == Foo9143b!(_L, _N), bool _L, size_t _N))
+    {}
+}
+
+void test9143()
+{
+    Foo9143a!(false, true) k = Foo9143a!(false, false)();
+
+    auto p = Foo9143b!(true, 2LU)();
+}
+
+/**********************************/
+// 9266
+
+template Foo9266(T...)
+{
+    T Foo9266;
+}
+struct Bar9266()
+{
+    alias Foo9266!int f;
+}
+void test9266()
+{
+    Bar9266!() a, b;
+}
+
+/**********************************/
+// 9361
+
+struct Unit9361(A)
+{
+    void butPleaseDontUseMe()()
+    if (is(unitType9361!((this))))  // !
+    {}
+
+}
+template isUnit9361(alias T) if ( is(T)) {}
+template isUnit9361(alias T) if (!is(T)) {}
+
+template unitType9361(alias T) if (isUnit9361!T) {}
+
+void test9361()
+{
+    Unit9361!int u;
+    static assert(!__traits(compiles, u.butPleaseDontUseMe())); // crashes
+}
+
+/**********************************/
+// 9536
+
+struct S9536
+{
+    static A foo(A)(A a)
+    {
+        return a * 2;
+    }
+    int bar() const
+    {
+        return foo(42);
+    }
+}
+
+void test9536()
+{
+    S9536 s;
+    assert(s.bar() == 84);
+}
+
+/**********************************/
 
 int main()
 {
@@ -1480,8 +1974,10 @@ int main()
     test9();
     test1780();
     test3608();
+    test5893();
     test6404();
     test2246();
+    test2296();
     bug4984();
     test2579();
     test5886();
@@ -1499,6 +1995,7 @@ int main()
     test6780();
     test6891();
     test6994();
+    test6764();
     test3467();
     test4413();
     test5525();
@@ -1525,6 +2022,17 @@ int main()
     test13();
     test14();
     test8129();
+    test8976();
+    test8940();
+    test9026();
+    test9038();
+    test9076();
+    test9100();
+    test9124a();
+    test9124b();
+    test9143();
+    test9266();
+    test9536();
 
     printf("Success\n");
     return 0;

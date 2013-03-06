@@ -389,11 +389,8 @@ void test2()
     int i = cast(int) f;
     writeln(i);
     writeln(cast(int)float.max);
-  version (GNU) {} else
-  {
     assert(i == cast(int)float.max);
     assert(i == 0x80000000);
-  }
 }
 
 /************************************/
@@ -476,8 +473,8 @@ static assert(is(typeof(C8.x) == int));
 int foo9() {
    int u = cast(int)(0x1_0000_0000L);
    while (u) {
-      if (u) { 
-         assert(u!=0); 
+      if (u) {
+         assert(u!=0);
         }
       assert(u!=0);
    }
@@ -567,6 +564,76 @@ void test8400()
 }
 
 /************************************/
+// 8939
+
+void foo8939(T)(ref T) { } // same for `auto ref`
+void bar8939(ref const int) { }
+void bar8939(ref const S8939) { }
+
+static struct S8939 { int n; }
+
+const gn8939 = 1; // or `immutable`
+const gs8939 = S8939(3);
+static assert(__traits(compiles, foo8939(gn8939), bar8939(gn8939)));
+static assert(__traits(compiles, foo8939(gs8939), bar8939(gs8939)));
+
+void test8939()
+{
+    foo8939(gn8939), bar8939(gn8939);
+    foo8939(gs8939), bar8939(gs8939);
+
+    const ln8939 = 1;
+    const ls8939 = S8939(3);
+    foo8939(ln8939), bar8939(ln8939);
+    foo8939(ls8939), bar8939(ls8939);
+}
+
+class C8939regression
+{
+    const int n1 = 0;
+    const int n2 = 0;
+    const int n3 = 0;
+    const int n4 = 1;
+
+    int refValue(V)(ref V var)
+    {
+        return 0;
+    }
+
+    void foo()
+    {
+        string[2] str;
+        refValue(str[n1]);
+
+        int[] da;
+        refValue(da[n2]);
+
+        int n; int* p = &n;
+        refValue(*cast(int*)(p + n3));
+
+        refValue([1,2,n4].ptr[0]);
+    }
+}
+
+/************************************/
+// 9058
+
+template TypeTuple9058(TL...) { alias TypeTuple9058 = TL; }
+template EnumMembers9058(T)
+{
+    alias EnumMembers9058 = TypeTuple9058!(Foo9058.A, Foo9058.B);
+}
+enum Foo9058 { A, B }
+size_t bar9058(size_t n)
+{
+    return 0;
+}
+void test9058()
+{
+    Foo9058 x = [EnumMembers9058!Foo9058][bar9058($)];
+}
+
+/************************************/
 
 int main()
 {
@@ -575,6 +642,8 @@ int main()
     test3();
     test6077();
     test8400();
+    test8939();
+    test9058();
 
     printf("Success\n");
     return 0;

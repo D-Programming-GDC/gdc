@@ -318,13 +318,13 @@ int waz14(S)(ref S s) { return 2; }
 
 void test14()
 {
-    // can bind rvalue-sl with ref
-    foo14(S14a(0));
-    foo14(S14b(0));
-    hoo14(S14a(0));
-    hoo14(S14b(0));
-    poo14(S14a(0));
-    poo14(S14b(0));
+    // can not bind rvalue-sl with ref
+    static assert(!__traits(compiles, foo14(S14a(0))));
+    static assert(!__traits(compiles, foo14(S14b(0))));
+    static assert(!__traits(compiles, hoo14(S14a(0))));
+    static assert(!__traits(compiles, hoo14(S14b(0))));
+    static assert(!__traits(compiles, poo14(S14a(0))));
+    static assert(!__traits(compiles, poo14(S14b(0))));
 
     // still can bind rvalue-sl with non-ref
     bar14(S14a(0));
@@ -480,6 +480,62 @@ void test5889()
 }
 
 /********************************************/
+// 6937
+
+void test6937()
+{
+    static struct S
+    {
+        int x, y;
+    }
+
+    auto s1 = S(1, 2);
+    auto ps1 = new S(1, 2);
+    assert(ps1.x == 1);
+    assert(ps1.y == 2);
+    assert(*ps1 == s1);
+
+    auto ps2 = new S(1);
+    assert(ps2.x == 1);
+    assert(ps2.y == 0);
+    assert(*ps2 == S(1, 0));
+
+    static assert(!__traits(compiles, new S(1,2,3)));
+
+    int v = 0;
+    struct NS
+    {
+        int x;
+        void foo() { v = x; }
+    }
+    auto ns = NS(1);
+    ns.foo();
+    assert(ns.x == 1);
+    assert(v == 1);
+    auto pns = new NS(2);
+    assert(pns.x == 2);
+    pns.foo();
+    assert(v == 2);
+    pns.x = 1;
+    assert(*pns == ns);
+
+    static struct X {
+        int v;
+        this(this) { ++v; }
+    }
+    static struct Y {
+        X x;
+    }
+    Y y = Y(X(1));
+    assert(y.x.v == 1);
+    auto py1 = new Y(X(1));
+    assert(py1.x.v == 1);
+    assert(*py1 == y);
+    auto py2 = new Y(y.x);
+    assert(py2.x.v == 2);
+}
+
+/********************************************/
 // 7929
 
 void test7929()
@@ -495,6 +551,80 @@ void test7929()
 
     const S se = const(S)(numbers);
     // OK
+}
+
+/********************************************/
+// 7021
+
+struct S7021
+{
+    @disable this();
+}
+
+void test7021()
+{
+  static assert(!is(typeof({
+    auto s = S7021();
+  })));
+}
+
+/********************************************/
+// 9116
+
+void test9116()
+{
+    static struct X
+    {
+        int v;
+        this(this) { ++v; }
+    }
+    static struct Y
+    {
+        X x;
+    }
+    X x = X(1);
+    assert(x.v == 1);
+    Y y = Y(X(1));
+    //printf("y.x.v = %d\n", y.x.v);  // print 2, but should 1
+    assert(y.x.v == 1); // fails
+}
+
+/********************************************/
+// 9293
+
+void test9293()
+{
+    static struct A
+    {
+    //  enum A zero = A(); // This works as expected
+        enum A zero = {};  // Note the difference here
+
+        int opCmp(const ref A a) const
+        {
+            assert(0);
+        }
+
+        int opCmp(const A a) const
+        {
+            return 0;
+        }
+    }
+
+    A a;
+    auto b = a >= A.zero;  // Error: A() is not an lvalue
+}
+
+/********************************************/
+// 9566
+
+void test9566()
+{
+    static struct ExpandData
+    {
+        ubyte[4096] window = 0;
+    }
+    ExpandData a;
+    auto b = ExpandData.init;   // bug
 }
 
 /********************************************/
@@ -518,7 +648,12 @@ int main()
     test3198and1914();
     test5885();
     test5889();
+    test6937();
     test7929();
+    test7021();
+    test9116();
+    test9293();
+    test9566();
 
     printf("Success\n");
     return 0;
