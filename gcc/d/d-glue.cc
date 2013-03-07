@@ -33,18 +33,6 @@ d_genericize (tree fndecl)
   FILE *dump_file;
   int local_dump_flags;
 
-  // Fix up the types of parms passed by invisible reference.
-  for (tree t = DECL_ARGUMENTS (fndecl); t; t = TREE_CHAIN (t))
-    {
-      if (D_TYPE_ADDRESSABLE (TREE_TYPE (t)))
-	{
-	  gcc_assert (!DECL_BY_REFERENCE (t));
-	  DECL_BY_REFERENCE (t) = 1;
-	  TREE_ADDRESSABLE (t) = 0;
-	  relayout_decl (t);
-	}
-    }
-
   // Build cgraph for function.
   cgraph_get_create_node (fndecl);
 

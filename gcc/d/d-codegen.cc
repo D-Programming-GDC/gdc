@@ -784,7 +784,7 @@ bool
 IRState::isDeclarationReferenceType (Declaration *decl)
 {
   Type *base_type = decl->type->toBasetype();
-  // D doesn't do this now...
+
   if (base_type->ty == Treference)
     return true;
 
@@ -803,11 +803,7 @@ IRState::trueDeclarationType (Declaration *decl)
 {
   tree decl_type = decl->type->toCtype();
   if (isDeclarationReferenceType (decl))
-    {
-      decl_type = build_reference_type (decl_type);
-      if (decl->isParameter())
-	D_TYPE_ADDRESSABLE (decl_type) = 1;
-    }
+    decl_type = build_reference_type (decl_type);
   else if (decl->storage_class & STClazy)
     {
       TypeFunction *tf = new TypeFunction (NULL, decl->type, false, LINKd);
@@ -1473,19 +1469,15 @@ IRState::twoFieldCtor (tree f1, tree f2, int storage_class)
 }
 
 tree
-IRState::makeTemp (tree t)
-{
-  if (TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
-    return save_expr (t);
-  else
-    return stabilize_reference (t);
-}
-
-tree
 IRState::maybeMakeTemp (tree t)
 {
   if (!isFreeOfSideEffects (t))
-    return makeTemp (t);
+    {
+      if (TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
+	return save_expr (t);
+      else
+	return stabilize_reference (t);
+    }
 
   return t;
 }

@@ -1,6 +1,12 @@
 2013-03-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-ir.cc(ReturnStatement::toIR): Don't call postblit on return.
+	* d-codegen.cc(IRState::trueDeclarationType): Don't set
+	D_TYPE_ADDRESSABLE.
+	(IRState::makeTemp): Remove.
+	(IRState::maybeMakeTemp): Copy makeTemp into function.
+	* d-glue.cc(d_genericize): Remove D_TYPE_ADDRESSABLE handling.
+	* d-lang.h(D_TYPE_ADDRESSABLE): Remove macro.
 
 2013-03-04  Johannes Pfau  <johannespfau@gmail.com>
 
