@@ -35,7 +35,7 @@ IRState gen;
 bool
 d_gcc_force_templates (void)
 {
-  return gen.emitTemplates == TEprivate || gen.emitTemplates == TEall;
+  return gen.emitTemplates == TEprivate;
 }
 
 // Public routine called from D frontend to hide from glue interface.

@@ -36,9 +36,7 @@ enum TemplateEmission
 {
   TEnone,
   TEnormal,
-  TEall,
-  TEprivate,
-  TEauto
+  TEprivate
 };
 
 struct DeferredThunk

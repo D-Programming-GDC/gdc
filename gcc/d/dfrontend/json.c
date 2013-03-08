@@ -29,8 +29,6 @@
 #include "import.h"
 #include "id.h"
 
-const char* Pprotectionnames[] = {NULL, "none", "private", "package", "protected", "public", "export"};
-
 struct JsonOut
 {
     OutBuffer *buf;

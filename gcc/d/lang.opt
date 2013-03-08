@@ -83,10 +83,6 @@ femit-templates
 D
 -femit-templates Emit templates code and data even if the linker cannot merge multiple copies
 
-femit-templates=
-D Joined RejectNegative
--femit-templates=[normal|private|all|none|auto]	Control template emission
-
 fignore-unknown-pragmas
 D
 Ignore unsupported pragmas

@@ -401,24 +401,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      gen.emitTemplates = value ? TEauto : TEnone;
-      break;
-
-    case OPT_femit_templates_:
-      if (!arg || !arg[0])
-	gen.emitTemplates = value ? TEauto : TEnone;
-      else if (!strcmp (arg, "normal"))
-	gen.emitTemplates = TEnormal;
-      else if (!strcmp (arg, "all"))
-	gen.emitTemplates = TEall;
-      else if (!strcmp (arg, "private"))
-	gen.emitTemplates = TEprivate;
-      else if (!strcmp (arg, "none"))
-	gen.emitTemplates = TEnone;
-      else if (!strcmp (arg, "auto"))
-	gen.emitTemplates = TEauto;
-      else
-	error ("bad argument for -femit-templates");
+      gen.emitTemplates = value ? TEprivate : TEnone;
       break;
 
     case OPT_fignore_unknown_pragmas:
@@ -793,10 +776,6 @@ d_parse_file (void)
   if (global.params.useUnitTests)
     global.params.useAssert = 1;
 
-  if (gen.emitTemplates == TEauto)
-    {
-      gen.emitTemplates = (supports_one_only()) ? TEall : TEprivate;
-    }
   global.params.symdebug = write_symbols != NO_DEBUG;
   //global.params.useInline = flag_inline_functions;
   global.params.obj = !flag_syntax_only;
@@ -893,7 +872,7 @@ d_parse_file (void)
   // current_module shouldn't have any implications before genobjfile..
   // ... but it does.  We need to know what module in which to insert
   // TemplateInstances during the semantic pass.  In order for
-  // -femit-templates=private to work, template instances must be emitted
+  // -femit-templates to work, template instances must be emitted
   // in every translation unit.  To do this, the TemplateInstaceS have to
   // have toObjFile called in the module being compiled.
   // TemplateInstance puts itself somwhere during ::semantic, thus it has

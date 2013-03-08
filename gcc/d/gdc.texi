@@ -208,30 +208,19 @@ Ignore unsupported pragmas.
 @cindex @option{-fsplit-dynamic-arrays}
 Split dynamic arrays into length and pointer when passing to functions.
 
-@item -femit-templates=@var{opt}
+@item -femit-templates
 @cindex @option{-femit-templates}
-Control template emission.
+Control template emission behaviour.
 
-These are the supported options:
+Turning on this option will emit all templates, but make them private
+to the translation unit. The executable will have multiple copies
+of code and data.
 
-@table @samp
-@item all
-Emit templates, expecting multiple copies to be merged by the linker.
+Turning off this option will tell the compiler to not emit templates
+at all.
 
-@item normal
-Emits templates, but only if the compiler determines that it needs to.
-
-@item private
-Emit templates, but make them private to the translation unit.
-The executable will have multiple copies of code and data.
-
-@item none
-Do not emit templates at all.
-
-@item auto
-For targets that support templates, the "all" mode is used.
-Otherwise, the "private" mode is used.
-@end table
+The default behaviour is to emit templates, but only if the compiler
+determines that it needs to.
 
 @item -fdebug=@var{opt}
 @cindex @option{-fdebug}
