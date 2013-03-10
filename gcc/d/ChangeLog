@@ -1,3 +1,8 @@
+2013-03-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(FuncDeclaration::toSymbol): Delay setting TREE_TYPE as
+	function type could from a nested function not yet built.
+
 2013-03-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_gcc_force_templates): Only check for emitting

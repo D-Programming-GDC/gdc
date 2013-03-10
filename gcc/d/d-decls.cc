@@ -326,86 +326,24 @@ FuncDeclaration::toSymbol (void)
 	{
 	  tree id;
 	  TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
-	  tree fndecl;
+	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
+				    NULL_TREE, NULL_TREE);
+	  tree fntype = NULL_TREE;
+	  tree vindex = NULL_TREE;
+
+	  csym->Stree = fndecl;
 
 	  if (ident)
 	    id = get_identifier (ident->string);
 	  else
 	    {
-	      // This happens for assoc array foreach bodies
-
-	      // Not sure if idents are strictly necc., but announce_function
-	      //  dies without them.
-
-	      // %% better: use parent name
-
 	      static unsigned unamed_seq = 0;
 	      char buf[64];
 	      snprintf (buf, sizeof(buf), "___unamed_%u", ++unamed_seq);
 	      id = get_identifier (buf);
 	    }
-
-	  tree fn_type = ftype->toCtype();
-	  tree new_fn_type = NULL_TREE;
-
-	  tree vindex = NULL_TREE;
-	  if (isNested())
-	    {
-	      /* Even if DMD-style nested functions are not implemented, add an
-		 extra argument to be compatible with delegates. */
-	      new_fn_type = build_method_type (void_type_node, fn_type);
-	    }
-	  else if (isThis())
-	    {
-	      // Do this even if there is no debug info.  It is needed to make
-	      // sure member functions are not called statically
-	      AggregateDeclaration *agg_decl = isMember2();
-	      gcc_assert (agg_decl != NULL);
-
-	      tree handle = agg_decl->handle->toCtype();
-	      if (agg_decl->isStructDeclaration())
-		{
-		  // Handle not a pointer type
-		  new_fn_type = build_method_type (handle, fn_type);
-		}
-	      else
-		new_fn_type = build_method_type (TREE_TYPE (handle), fn_type);
-
-	      if (isVirtual())
-		vindex = size_int (vtblIndex);
-	    }
-	  else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
-	    {
-	      new_fn_type = build_function_type (integer_type_node, TYPE_ARG_TYPES (fn_type));
-	    }
-
-	  if (new_fn_type != NULL_TREE)
-	    {
-	      TYPE_ATTRIBUTES (new_fn_type) = TYPE_ATTRIBUTES (fn_type);
-	      TYPE_LANG_SPECIFIC (new_fn_type) = TYPE_LANG_SPECIFIC (fn_type);
-	      d_keep (new_fn_type);
-	    }
-
-	  // %%CHECK: is it okay for static nested functions to have a FUNC_DECL context?
-	  // seems okay so far...
-	  fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
-			       id, new_fn_type ? new_fn_type : fn_type);
-	  d_keep (fndecl);
-	  if (ident)
-	    {
-	      csym->Sident = mangle(); // save for making thunks
-	      csym->prettyIdent = toPrettyChars();
-	      tree id = get_identifier (csym->Sident);
-	      id = targetm.mangle_decl_assembler_name (fndecl, id);
-	      SET_DECL_ASSEMBLER_NAME (fndecl, id);
-	    }
-	  // %% What about DECL_SECTION_NAME ?
-	  DECL_CONTEXT (fndecl) = gen.declContext (this); //context;
-	  if (vindex)
-	    {
-	      DECL_VINDEX (fndecl) = vindex;
-	      DECL_VIRTUAL_P (fndecl) = 1;
-	    }
+	  DECL_NAME (fndecl) = id;
+	  DECL_CONTEXT (fndecl) = gen.declContext (this);
 
 	  if (gen.functionNeedsChain (this))
 	    {
@@ -439,6 +377,62 @@ FuncDeclaration::toSymbol (void)
 	      // Save context and set decl_function_context for cgraph.
 	      csym->ScontextDecl = DECL_CONTEXT (fndecl);
 	      DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
+	    }
+
+	  TREE_TYPE (fndecl) = ftype->toCtype();
+	  d_keep (fndecl);
+
+	  if (isNested())
+	    {
+	      /* Even if DMD-style nested functions are not implemented, add an
+		 extra argument to be compatible with delegates. */
+	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
+	    }
+	  else if (isThis())
+	    {
+	      // Do this even if there is no debug info.  It is needed to make
+	      // sure member functions are not called statically
+	      AggregateDeclaration *agg_decl = isMember2();
+	      gcc_assert (agg_decl != NULL);
+
+	      tree handle = agg_decl->handle->toCtype();
+	      if (agg_decl->isStructDeclaration())
+		{
+		  // Handle not a pointer type
+		  fntype = build_method_type (handle, TREE_TYPE (fndecl));
+		}
+	      else
+		fntype = build_method_type (TREE_TYPE (handle), TREE_TYPE (fndecl));
+
+	      if (isVirtual())
+		vindex = size_int (vtblIndex);
+	    }
+	  else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
+	    {
+	      fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
+	    }
+
+	  if (fntype != NULL_TREE)
+	    {
+	      TYPE_ATTRIBUTES (fntype) = TYPE_ATTRIBUTES (TREE_TYPE (fndecl));
+	      TYPE_LANG_SPECIFIC (fntype) = TYPE_LANG_SPECIFIC (TREE_TYPE (fndecl));
+	      TREE_TYPE (fndecl) = fntype;
+	      d_keep (fntype);
+	    }
+
+	  if (ident)
+	    {
+	      csym->Sident = mangle(); // save for making thunks
+	      csym->prettyIdent = toPrettyChars();
+	      tree id = get_identifier (csym->Sident);
+	      id = targetm.mangle_decl_assembler_name (fndecl, id);
+	      SET_DECL_ASSEMBLER_NAME (fndecl, id);
+	    }
+
+	  if (vindex)
+	    {
+	      DECL_VINDEX (fndecl) = vindex;
+	      DECL_VIRTUAL_P (fndecl) = 1;
 	    }
 
 	  if (isMember2() || isFuncLiteralDeclaration())
@@ -504,7 +498,6 @@ FuncDeclaration::toSymbol (void)
 	    TREE_PUBLIC (fndecl) = 0;
 
 	  TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
-	  csym->Stree = fndecl;
 
 	  gen.maybeSetLibCallDecl (this);
 	  gen.maybeSetUpBuiltin (this);
