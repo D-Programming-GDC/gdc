@@ -1,7 +1,18 @@
 2013-03-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Delay setting TREE_TYPE as
-	function type could from a nested function not yet built.
+	function type could be hidden in a nested function not yet built.
+	* d-codegen.cc(IRState::findThis): Don't get 'this' from outer
+	function if it's a closure type.  This has already been handled by
+	IRState::getFrameForSymbol.
+	(IRState::buildChain): Give frame decl debug name '__frame'.
+	Always set '__chain' link field.
+	(IRState::getFrameInfo): Don't build a frame for all nested functions.
+	Search through nested aggregates for static chain in outer functions.
+	* d-codegen.h(IRState::useParentChain): Remove.
+	* d-glue.cc(FuncDeclaration::toObjFile): Don't call useParentChain.
+	Don't create a local var for the chain link for a function.
+	(FuncDeclaration::buildClosure): Always set '__chain' link field.
 
 2013-03-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 

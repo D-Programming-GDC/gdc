@@ -3643,27 +3643,25 @@ IRState::findThis (ClassDeclaration *ocd)
 tree
 IRState::getVThis (Dsymbol *decl, Expression *e)
 {
-  tree vthis_value = NULL_TREE;
+  ClassDeclaration *cd = decl->isClassDeclaration();
+  StructDeclaration *sd = decl->isStructDeclaration();
 
-  ClassDeclaration *class_decl;
-  StructDeclaration *struct_decl;
+  tree vthis_value = d_null_pointer;
 
-  if ((class_decl = decl->isClassDeclaration()))
+  if (cd)
     {
-      Dsymbol *outer = class_decl->toParent2();
-      ClassDeclaration *cd_outer = outer->isClassDeclaration();
-      FuncDeclaration *fd_outer = outer->isFuncDeclaration();
+      Dsymbol *outer = cd->toParent2();
+      ClassDeclaration *cdo = outer->isClassDeclaration();
+      FuncDeclaration *fdo = outer->isFuncDeclaration();
 
-      if (cd_outer)
+      if (cdo)
 	{
-	  vthis_value = findThis (cd_outer);
+	  vthis_value = findThis (cdo);
 	  if (vthis_value == NULL_TREE)
-	    {
-	      e->error ("outer class %s 'this' needed to 'new' nested class %s",
-			cd_outer->toChars(), class_decl->toChars());
-	    }
+	    e->error ("outer class %s 'this' needed to 'new' nested class %s",
+		      cdo->toChars(), cd->toChars());
 	}
-      else if (fd_outer)
+      else if (fdo)
 	{
 	  /* If a class nested in a function has no methods
 	     and there are no other nested functions,
@@ -3671,48 +3669,39 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	     STATIC_CHAIN_EXPR created here will never be
 	     translated. Use a null pointer for the link in
 	     this case. */
-	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
+	  FuncFrameInfo *ffo = getFrameInfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
-	      || fd_outer->hasNestedFrameRefs())
-	    {
-	      // %% V2: rec_type->class_type
-	      vthis_value = getFrameForNestedClass (class_decl);
-	    }
-	  else if (fd_outer->vthis)
-	    vthis_value = var (fd_outer->vthis);
+	      || fdo->hasNestedFrameRefs())
+	    vthis_value = getFrameForNestedClass (cd);
+	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
+	    vthis_value = var (fdo->vthis);
 	  else
 	    vthis_value = d_null_pointer;
 	}
       else
 	gcc_unreachable();
     }
-  else if ((struct_decl = decl->isStructDeclaration()))
+  else if (sd)
     {
-      Dsymbol *outer = struct_decl->toParent2();
-      ClassDeclaration *cd_outer = outer->isClassDeclaration();
-      FuncDeclaration *fd_outer = outer->isFuncDeclaration();
+      Dsymbol *outer = sd->toParent2();
+      ClassDeclaration *cdo = outer->isClassDeclaration();
+      FuncDeclaration *fdo = outer->isFuncDeclaration();
 
-      if (cd_outer)
+      if (cdo)
 	{
-	  vthis_value = findThis (cd_outer);
+	  vthis_value = findThis (cdo);
 	  if (vthis_value == NULL_TREE)
-	    {
-	      e->error ("outer class %s 'this' needed to create nested struct %s",
-			cd_outer->toChars(), struct_decl->toChars());
-	    }
+	    e->error ("outer class %s 'this' needed to create nested struct %s",
+		      cdo->toChars(), sd->toChars());
 	}
-      else if (fd_outer)
+      else if (fdo)
 	{
-	  // Assuming this is kept as trivial as possible.
-	  // NOTE: what about structs nested in structs nested in functions?
-	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
+	  FuncFrameInfo *ffo = getFrameInfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
-	      || fd_outer->hasNestedFrameRefs())
-	    {
-	      vthis_value = getFrameForNestedStruct (struct_decl);
-	    }
-	  else if (fd_outer->vthis)
-	    vthis_value = var (fd_outer->vthis);
+	      || fdo->hasNestedFrameRefs())
+	    vthis_value = getFrameForNestedStruct (sd);
+	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
+	    vthis_value = var (fdo->vthis);
 	  else
 	    vthis_value = d_null_pointer;
 	}
@@ -3787,19 +3776,17 @@ IRState::buildChain (FuncDeclaration *func)
 
   tree frame_decl = localVar (frame_rec_type);
   tree frame_ptr = addressOf (frame_decl);
+  DECL_NAME (frame_decl) = get_identifier ("__frame");
   DECL_IGNORED_P (frame_decl) = 0;
   expandDecl (frame_decl);
 
   // set the first entry to the parent frame, if any
   tree chain_link = chainLink();
-
-  if (chain_link != NULL_TREE)
-    {
-      tree chain_field = component (indirect (frame_ptr),
-				    TYPE_FIELDS (frame_rec_type));
-      tree chain_expr = vmodify (chain_field, chain_link);
-      doExp (chain_expr);
-    }
+  tree chain_field = component (indirect (frame_ptr),
+				TYPE_FIELDS (frame_rec_type));
+  tree chain_expr = vmodify (chain_field,
+			     chain_link ? chain_link : d_null_pointer);
+  doExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
   for (size_t i = 0; i < func->closureVars.dim; i++)
@@ -3884,7 +3871,7 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
     {
       VarDeclaration *v = func->closureVars[i];
       Symbol *s = v->toSymbol();
-      tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+      tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
 			       gen.trueDeclarationType (v));
       s->SframeField = field;
@@ -3924,7 +3911,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->vthis || fd->closureVars.dim != 0)
+  if (fd->closureVars.dim != 0)
     ffi->creates_frame = true;
 
   // Functions with In/Out contracts pass parameters to nested frame.
@@ -3947,6 +3934,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
       while (ff)
 	{
 	  FuncFrameInfo *ffo = getFrameInfo (ff);
+	  AggregateDeclaration *ad;
 
 	  if (ff != fd && ffo->creates_frame)
 	    {
@@ -3963,7 +3951,21 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 	  if (ff->vthis == NULL)
 	    break;
 
-	  ff = ff->toParent2()->isFuncDeclaration();
+	  ad = ff->isThis();
+	  if (ad && ad->isNested())
+	    {
+	      while (ad->isNested())
+		{
+		  Dsymbol *d = ad->toParent2();
+		  ad = d->isAggregateDeclaration();
+		  ff = d->isFuncDeclaration();
+
+		  if (ad == NULL)
+		    break;
+		}
+	    }
+	  else
+	    ff = ff->toParent2()->isFuncDeclaration();
 	}
     }
 
@@ -4070,7 +4072,6 @@ bool
 IRState::functionNeedsChain (FuncDeclaration *f)
 {
   Dsymbol *s;
-  AggregateDeclaration *a;
   FuncDeclaration *pf = NULL;
   TemplateInstance *ti = NULL;
 
@@ -4085,21 +4086,26 @@ IRState::functionNeedsChain (FuncDeclaration *f)
       if (pf && !getFrameInfo (pf)->is_closure)
 	return true;
     }
+
   if (f->isStatic())
-    {
-      return false;
-    }
+    return false;
 
   s = f->toParent2();
 
-  while (s && (((a = s->isAggregateDeclaration()) && a->isNested()) || s->isTemplateInstance()))
+  while (s)
     {
+      AggregateDeclaration *ad = s->isAggregateDeclaration();
+      if (!ad || !ad->isNested())
+	break;
+
+      if (!s->isTemplateInstance())
+	break;
+
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
-	  && !getFrameInfo (pf)->is_closure && !functionDegenerateClosure(pf))
-	{
-	  return true;
-	}
+	  && !getFrameInfo (pf)->is_closure
+	  && !functionDegenerateClosure(pf))
+	return true;
     }
 
   return false;

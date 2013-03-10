@@ -414,15 +414,6 @@ struct IRState : IRBase
     this->chainFunc_ = f;
   }
 
-  void useParentChain (void)
-  {
-    if (this->parent)
-      {
-	this->chainLink_ = ((IRState *)this->parent)->chainLink_;
-	this->chainFunc_ = ((IRState *)this->parent)->chainFunc_;
-      }
-  }
-
   tree chainLink (void)
   { return this->chainLink_; }
 
