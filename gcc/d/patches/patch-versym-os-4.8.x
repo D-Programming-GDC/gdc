@@ -1,7 +1,7 @@
-From ca4e858708b1f7d6700e40e51c1fe3075f145cbd Mon Sep 17 00:00:00 2001
+From 332fc99de95ad3d5335e3783a008b8ad7464465a Mon Sep 17 00:00:00 2001
 From: Johannes Pfau <johannespfau@gmail.com>
 Date: Sat, 2 Feb 2013 22:53:21 +0100
-Subject: [PATCH] Implement D predefined OS versions
+Subject: [PATCH 2/2] Implement D predefined OS versions
 
 This implements the following official versions:
 * Windows
@@ -181,7 +181,7 @@ index 633009b..ef95b9a 100644
 +      builtin_define ("GNU_MinGW64");				\
 +    } while (0)
 diff --git a/config/i386/mingw32.h b/config/i386/mingw32.h
-index 1ac5544..f693210 100644
+index 1ac5544..0a88457 100644
 --- a/config/i386/mingw32.h
 +++ b/config/i386/mingw32.h
 @@ -53,6 +53,18 @@ along with GCC; see the file COPYING3.  If not see
@@ -197,7 +197,7 @@ index 1ac5544..f693210 100644
 +      if (TARGET_64BIT && ix86_abi == MS_ABI)			\
 +	  builtin_define ("Win64");				\
 +      else if (!TARGET_64BIT)					\
-+        builtin_define_std ("Win32");				\
++        builtin_define ("Win32");				\
 +    } while (0)
 +
  #ifndef TARGET_USE_PTHREAD_BY_DEFAULT
