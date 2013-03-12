@@ -1,3 +1,9 @@
+2013-03-12  Johannes Pfau  <johannespfau@gmail.com>
+
+	* patch-versym-os-4.8.x(mingw32.h): Fix typo
+	* patch-versym-cpu-4.8.x(mips.h): Fix typo
+	Update version symbols to latest dlang specification.
+
 2013-03-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Delay setting TREE_TYPE as
