@@ -46,6 +46,8 @@ static tree handle_type_generic_attribute (tree *, tree, tree, int, bool *);
 static tree handle_transaction_pure_attribute (tree *, tree, tree, int, bool *);
 static tree handle_returns_twice_attribute (tree *, tree, tree, int, bool *);
 static tree handle_fnspec_attribute (tree *, tree, tree, int, bool *);
+static tree handle_alias_attribute (tree *, tree, tree, int, bool *);
+static tree handle_weakref_attribute (tree *, tree, tree, int, bool *);
 static tree ignore_attribute (tree *, tree, tree, int, bool *);
 
 /* Array of d type/decl nodes. */
@@ -1348,6 +1350,10 @@ const struct attribute_spec d_builtins_attribute_table[] =
      source code and signals that it may be overridden by machine tables.  */
   { "*tm regparm",            0, 0, false, true, true,
 			      ignore_attribute, false },
+  { "alias",                  1, 1, true,  false, false,
+			      handle_alias_attribute, false },
+  { "weakref",                0, 1, true,  false, false,
+			      handle_weakref_attribute, false },
   { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1638,6 +1644,48 @@ handle_fnspec_attribute (tree *node ATTRIBUTE_UNUSED, tree ARG_UNUSED (name),
   gcc_assert (args
 	      && TREE_CODE (TREE_VALUE (args)) == STRING_CST
 	      && !TREE_CHAIN (args));
+  return NULL_TREE;
+}
+
+/* Handle an "alias" or "ifunc" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
+			tree args, int ARG_UNUSED (flags),
+			bool *no_add_attrs ATTRIBUTE_UNUSED)
+{
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
+  gcc_assert (!DECL_INITIAL (*node));
+  gcc_assert (!decl_function_context (*node));
+
+  tree id = TREE_VALUE (args);
+  gcc_assert (TREE_CODE (id) == STRING_CST);
+
+  id = get_identifier (TREE_STRING_POINTER (id));
+  /* This counts as a use of the object pointed to.  */
+  TREE_USED (id) = 1;
+  DECL_INITIAL (*node) = error_mark_node;
+
+  return NULL_TREE;
+}
+
+/* Handle a "weakref" attribute; arguments as in struct
+   attribute_spec.handler.  */
+
+static tree
+handle_weakref_attribute (tree *node, tree ARG_UNUSED (name),
+			  tree ARG_UNUSED (args), int ARG_UNUSED (flags),
+			  bool *no_add_attrs ATTRIBUTE_UNUSED)
+{
+  gcc_assert (!decl_function_context (*node));
+  gcc_assert (!lookup_attribute ("alias", DECL_ATTRIBUTES (*node)));
+
+  /* Can't call declare_weak because it wants this to be TREE_PUBLIC,
+     and that isn't supported; and because it wants to add it to
+     the list of weak decls, which isn't helpful.  */
+  DECL_WEAK (*node) = 1;
+
   return NULL_TREE;
 }
 

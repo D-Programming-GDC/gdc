@@ -1,3 +1,12 @@
+2013-03-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(handle_alias_attribute): New function to handle
+	internal 'alias' attribute.
+	(handle_weakref_attribute): New function to handle internal 'weakref'
+	attribute.
+	* d-objfile.cc(ObjectFile::outputThunk): Define thunks to external
+	symbols as weakref, alias
+
 2013-03-12  Johannes Pfau  <johannespfau@gmail.com>
 
 	* patch-versym-os-4.8.x(mingw32.h): Fix typo

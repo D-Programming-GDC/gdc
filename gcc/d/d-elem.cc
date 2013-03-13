@@ -2212,11 +2212,9 @@ elem *
 StructLiteralExp::toElem (IRState *irs)
 {
   CtorEltMaker ce;
-  StructDeclaration *sdecl;
   Type *tb = type->toBasetype();
 
   gcc_assert (tb->ty == Tstruct);
-  sdecl = ((TypeStruct *) tb)->sym;
 
   if (elements)
     {
@@ -2295,10 +2293,11 @@ StructLiteralExp::toElem (IRState *irs)
 	  ce.cons (fld->toSymbol()->Stree, exp_tree);
 
 	  // Unions only have one field that gets assigned.
-	  if (sdecl->isUnionDeclaration())
+	  if (sd->isUnionDeclaration())
 	    break;
 	}
     }
+
   if (sd->isNested())
     {
       // Maybe setup hidden pointer to outer scope context.
@@ -2306,6 +2305,7 @@ StructLiteralExp::toElem (IRState *irs)
       tree vthis_value = irs->getVThis (sd, this);
       ce.cons (vthis_field, vthis_value);
     }
+
   tree ctor = build_constructor (type->toCtype(), ce.head);
   return ctor;
 }
