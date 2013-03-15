@@ -3182,8 +3182,9 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	case INTRINSIC_C_VA_ARG:
 	  op1 = ce.nextArg();
 	  STRIP_NOPS (op1);
-	  gcc_assert (TREE_CODE (op1) == ADDR_EXPR);
-	  op1 = TREE_OPERAND (op1, 0);
+
+	  if (TREE_CODE (op1) == ADDR_EXPR)
+	    op1 = TREE_OPERAND (op1, 0);
 
 	  if (intrinsic == INTRINSIC_C_VA_ARG)
 	    type = TREE_TYPE (TREE_TYPE (callee));

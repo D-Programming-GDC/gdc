@@ -1,3 +1,8 @@
+2013-03-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::maybeExpandSpecialCall): Handle ref argptr
+	arguments.
+
 2013-03-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c(handle_alias_attribute): New function to handle
