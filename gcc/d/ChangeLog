@@ -1,3 +1,8 @@
+2013-03-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-ir.cc(SynchronizedStatement::toIR): Remove implementation as is
+	now handled by the frontend.
+
 2013-03-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::maybeExpandSpecialCall): Handle ref argptr

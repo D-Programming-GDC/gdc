@@ -142,14 +142,12 @@ TryFinallyStatement::toIR (IRState *irs)
   irs->doLineNote (loc);
   irs->startTry (this);
   if (body)
-    {
-      body->toIR (irs);
-    }
+    body->toIR (irs);
+
   irs->startFinally();
   if (finalbody)
-    {
-      finalbody->toIR (irs);
-    }
+    finalbody->toIR (irs);
+
   irs->endFinally();
 }
 
@@ -159,9 +157,8 @@ TryCatchStatement::toIR (IRState *irs)
   irs->doLineNote (loc);
   irs->startTry (this);
   if (body)
-    {
-      body->toIR (irs);
-    }
+    body->toIR (irs);
+
   irs->startCatches();
   if (catches)
     {
@@ -196,7 +193,6 @@ TryCatchStatement::toIR (IRState *irs)
 void
 OnScopeStatement::toIR (IRState *)
 {
-  // nothing (?)
 }
 
 void
@@ -204,98 +200,19 @@ WithStatement::toIR (IRState *irs)
 {
   irs->startScope();
   if (wthis)
-    {
-      irs->emitLocalVar (wthis);
-    }
+    irs->emitLocalVar (wthis);
+
   if (body)
-    {
-      body->toIR (irs);
-    }
+    body->toIR (irs);
+
   irs->endScope();
 }
 
 void
-SynchronizedStatement::toIR (IRState *irs)
+SynchronizedStatement::toIR (IRState *)
 {
-  if (exp)
-    {
-      InterfaceDeclaration *iface;
-
-      irs->startBindings();
-      tree decl = irs->localVar (IRState::getObjectType());
-
-      DECL_IGNORED_P (decl) = 1;
-      // assuming no conversions needed
-      tree init_exp;
-
-      gcc_assert (exp->type->toBasetype()->ty == Tclass);
-      iface = ((TypeClass *) exp->type->toBasetype())->sym->isInterfaceDeclaration();
-      if (iface)
-	{
-	  if (!iface->isCOMclass())
-	    {
-	      init_exp = irs->convertTo (exp, irs->getObjectType());
-	    }
-	  else
-	    {
-	      error ("cannot synchronize on a COM interface");
-	      init_exp = error_mark_node;
-	    }
-	}
-      else
-	{
-	  init_exp = exp->toElem (irs);
-	}
-      DECL_INITIAL (decl) = init_exp;
-      irs->doLineNote (loc);
-
-      irs->expandDecl (decl);
-      irs->doExp (irs->libCall (LIBCALL_MONITORENTER, 1, &decl));
-      irs->startTry (this);
-      if (body)
-	{
-	  body->toIR (irs);
-	}
-      irs->startFinally();
-      irs->doExp (irs->libCall (LIBCALL_MONITOREXIT, 1, &decl));
-      irs->endFinally();
-      irs->endBindings();
-    }
-  else
-    {
-#ifndef D_CRITSEC_SIZE
-#define D_CRITSEC_SIZE 64
-#endif
-      static tree critsec_type = 0;
-
-      if (!critsec_type)
-	{
-	  critsec_type = irs->arrayType (Type::tuns8, D_CRITSEC_SIZE);
-	}
-      tree critsec_decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-				      NULL_TREE, critsec_type);
-      // name is only used to prevent ICEs
-      g.ofile->giveDeclUniqueName (critsec_decl, "__critsec");
-      tree critsec_ref = irs->addressOf (critsec_decl); // %% okay to use twice?
-      d_keep (critsec_decl);
-
-      TREE_STATIC (critsec_decl) = 1;
-      TREE_PRIVATE (critsec_decl) = 1;
-      DECL_ARTIFICIAL (critsec_decl) = 1;
-      DECL_IGNORED_P (critsec_decl) = 1;
-
-      rest_of_decl_compilation (critsec_decl, 1, 0);
-
-      irs->startTry (this);
-      irs->doExp (irs->libCall (LIBCALL_CRITICALENTER, 1, &critsec_ref));
-      if (body)
-	{
-	  body->toIR (irs);
-	}
-      irs->startFinally();
-      irs->doExp (irs->libCall (LIBCALL_CRITICALEXIT, 1, &critsec_ref));
-      irs->endFinally();
-    }
+  ::error ("SynchronizedStatement::toIR: we shouldn't emit this (%s)", toChars());
+  gcc_unreachable();
 }
 
 void
@@ -491,7 +408,6 @@ IfStatement::toIR (IRState *irs)
 void
 ForeachStatement::toIR (IRState *)
 {
-  // Frontend rewrites this to ForStatement
   ::error ("ForeachStatement::toIR: we shouldn't emit this (%s)", toChars());
   gcc_unreachable();
 }
@@ -499,7 +415,6 @@ ForeachStatement::toIR (IRState *)
 void
 ForeachRangeStatement::toIR (IRState *)
 {
-  // Frontend rewrites this to ForStatement
   ::error ("ForeachRangeStatement::toIR: we shouldn't emit this (%s)", toChars());
   gcc_unreachable();
 }
@@ -544,7 +459,6 @@ DoStatement::toIR (IRState *irs)
 void
 WhileStatement::toIR (IRState *)
 {
-  // Frontend rewrites this to ForStatement
   ::error ("WhileStatement::toIR: we shouldn't emit this (%s)", toChars());
   gcc_unreachable();
 }
