@@ -49,7 +49,7 @@ AsmStatement::toIR (IRState *)
 ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insn,
 				  Expressions *args, Identifiers *names,
 				  Expressions *constraints, int outputargs,
-				  Expressions *clobbers)
+				  Expressions *clobbers, Dsymbols * labels)
     : Statement (loc)
 {
   this->insn = insn;
@@ -58,6 +58,7 @@ ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insn,
   this->constraints = constraints;
   this->outputargs = outputargs;
   this->clobbers = clobbers;
+  this->labels = labels;
 }
 
 // Create a copy of ExtAsmStatement.
@@ -66,12 +67,40 @@ Statement *
 ExtAsmStatement::syntaxCopy (void)
 {
   Expression *insn = this->insn->syntaxCopy();
-  Expressions *args = Expression::arraySyntaxCopy (this->args);
-  Expressions *constraints = Expression::arraySyntaxCopy (this->constraints);
-  Expressions *clobbers = Expression::arraySyntaxCopy (this->clobbers);
+  Expressions *args = new Expressions();
+  Expressions *constraints = new Expressions();
+  Expressions *clobbers = new Expressions();
 
-  return new ExtAsmStatement (this->loc, insn, args, this->names,
-			      constraints, this->outputargs, clobbers);
+  args->setDim(this->args->dim);
+  constraints->setDim(this->constraints->dim);
+  clobbers->setDim(this->clobbers->dim);
+
+  for (size_t i = 0; i < this->args->dim; i++)
+    {
+      Expression *e = (*this->args)[i];
+      if (e)
+	e = e->syntaxCopy();
+      (*args)[i] = e;
+    }
+
+  for (size_t i = 0; i < this->constraints->dim; i++)
+    {
+      Expression *e = (*this->constraints)[i];
+      if (e)
+	e = e->syntaxCopy();
+      (*constraints)[i] = e;
+    }
+
+  for (size_t i = 0; i < this->clobbers->dim; i++)
+    {
+      Expression *e = (*this->clobbers)[i];
+      if (e)
+	e = e->syntaxCopy();
+      (*clobbers)[i] = e;
+    }
+
+  return new ExtAsmStatement (this->loc, insn, args, this->names, constraints,
+			      this->outputargs, clobbers, this->labels);
 }
 
 // Semantically analyze ExtAsmStatement where SC is the scope of the statment.
@@ -90,8 +119,7 @@ ExtAsmStatement::semantic (Scope *sc)
 	       sc->func->toChars());
     }
 
-  if (this->insn->op != TOKstring
-      || ((StringExp *)this->insn)->sz != 1)
+  if (this->insn->op != TOKstring || ((StringExp *) this->insn)->sz != 1)
     error ("instruction template must be a constant char string");
 
   if (this->args)
@@ -109,7 +137,7 @@ ExtAsmStatement::semantic (Scope *sc)
 	  e = (*this->constraints)[i];
 	  e = e->semantic (sc);
 	  e = e->optimize (WANTvalue);
-	  if (e->op != TOKstring || ((StringExp *)e)->sz != 1)
+	  if (e->op != TOKstring || ((StringExp *) e)->sz != 1)
 	    error ("constraint must be a constant char string");
 	  (*this->constraints)[i] = e;
 	}
@@ -122,7 +150,7 @@ ExtAsmStatement::semantic (Scope *sc)
 	  Expression *e = (*this->clobbers)[i];
 	  e = e->semantic (sc);
 	  e = e->optimize (WANTvalue);
-	  if (e->op != TOKstring || ((StringExp *)e)->sz != 1)
+	  if (e->op != TOKstring || ((StringExp *) e)->sz != 1)
 	    error ("clobber specification must be a constant char string");
 	  (*this->clobbers)[i] = e;
 	}

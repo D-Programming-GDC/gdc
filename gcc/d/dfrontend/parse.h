@@ -116,7 +116,7 @@ struct Parser : Lexer
     void checkDanglingElse(Loc elseloc);
     Statement *parseStatement(int flags);
 #ifdef IN_GCC
-    Statement *parseExtAsm(int expect_rparen);
+    Statement *parseExtAsm();
 #endif
     Initializer *parseInitializer();
     Expression *parseDefaultInitExp();

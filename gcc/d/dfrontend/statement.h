@@ -924,8 +924,8 @@ struct ExtAsmStatement : Statement
     Expressions *clobbers;      // of StringExp*
     Dsymbols *labels;           // of LabelDsymbol*
 
-    ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Identifiers *argNames,
-                    Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
+    ExtAsmStatement(Loc loc, Expression *insn, Expressions *args, Identifiers *names,
+                    Expressions *constraints, int outputargs, Expressions *clobbers, Dsymbols *labels);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     int blockExit(bool mustNotThrow);

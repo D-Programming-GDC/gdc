@@ -4659,7 +4659,7 @@ Statement *Parser::parseStatement(int flags)
                         // If the first token is a string or '(', parse as extended asm.
                         if (! toklist)
                         {
-                            s = parseExtAsm(0);
+                            s = parseExtAsm();
                             statements->push(s);
                             continue;
                         }
@@ -4715,72 +4715,79 @@ Statement *Parser::parseStatement(int flags)
 }
 
 #ifdef IN_GCC
-Statement *Parser::parseExtAsm(int expect_rparen)
+Statement *Parser::parseExtAsm()
 {
-    Expression * insnTemplate;
-    Expressions * args = NULL;
-    Identifiers * argNames = NULL;
-    Expressions * argConstraints = NULL;
-    int nOutputArgs = 0;
-    Expressions * clobbers = NULL;
+    Expression *insn;
+    Expressions *args = NULL;
+    Identifiers *names = NULL;
+    Expressions *constraints = NULL;
+    int outputargs = 0;
+    Expressions *clobbers = NULL;
+    Dsymbols *labels = NULL;
     bool isInputPhase = false; // Output operands first, then input.
 
-    insnTemplate = parseExpression();
+    insn = parseExpression();
     if (token.value == TOKrparen || token.value == TOKsemicolon)
         goto Ldone;
+
     check(TOKcolon);
-    while (1) {
-        Expression * arg = NULL;
-        Identifier * name = NULL;
-        Expression * constraint = NULL;
+
+    while (1)
+    {
+        Expression *arg = NULL;
+        Identifier *name = NULL;
+        Expression *constraint = NULL;
 
         switch (token.value)
         {
-        case TOKsemicolon:
-        case TOKrparen:
-            goto Ldone;
+            case TOKsemicolon:
+            case TOKrparen:
+                goto Ldone;
 
-        case TOKcolon:
-            nextToken();
-            goto LnextPhase;
-
-        case TOKeof:
-            error("unterminated statement");
-
-        case TOKlbracket:
-            nextToken();
-            if (token.value == TOKidentifier)
-            {
-                name = token.ident;
+            case TOKcolon:
                 nextToken();
-            }
-            else
-                error("expected identifier after '['");
-            check(TOKrbracket);
-            // drop through
-        default:
-            constraint = parsePrimaryExp();
-            if (constraint->op != TOKstring)
-                error("expected constant string constraint for operand");
-            arg = parseAssignExp();
-            if (! args)
-            {
-                args = new Expressions;
-                argConstraints = new Expressions;
-                argNames = new Identifiers;
-            }
-            args->push(arg);
-            argNames->push(name);
-            argConstraints->push(constraint);
-            if (! isInputPhase)
-                nOutputArgs++;
+                goto LnextPhase;
 
-            if (token.value == TOKcomma)
+            case TOKeof:
+                error("unterminated statement");
+                goto Ldone;
+
+            case TOKlbracket:
                 nextToken();
-            break;
+                if (token.value == TOKidentifier)
+                {
+                    name = token.ident;
+                    nextToken();
+                }
+                else
+                    error("expected identifier after '['");
+                check(TOKrbracket);
+                // drop through
+
+            default:
+                constraint = parsePrimaryExp();
+                if (constraint->op != TOKstring)
+                    error("expected constant string constraint for operand");
+                arg = parseAssignExp();
+                if (! args)
+                {
+                    args = new Expressions;
+                    constraints = new Expressions;
+                    names = new Identifiers;
+                }
+                args->push(arg);
+                names->push(name);
+                constraints->push(constraint);
+                if (! isInputPhase)
+                    outputargs++;
+
+                if (token.value == TOKcomma)
+                    nextToken();
+                break;
         }
         continue;
-    LnextPhase:
+
+      LnextPhase:
         if (! isInputPhase)
             isInputPhase = true;
         else
@@ -4789,38 +4796,36 @@ Statement *Parser::parseExtAsm(int expect_rparen)
 
     while (1)
     {
-        Expression * clobber;
-        
+        Expression *clobber;
+
         switch (token.value)
         {
-        case TOKsemicolon:
-        case TOKrparen:
-            goto Ldone;
+            case TOKsemicolon:
+            case TOKrparen:
+                goto Ldone;
 
-        case TOKeof:
-            error("unterminated statement");
+            case TOKeof:
+                error("unterminated statement");
+                goto Ldone;
 
-        default:
-            clobber = parseAssignExp();
-            if (clobber->op != TOKstring)
-                error("expected constant string constraint for clobber name");
-            if (! clobbers)
-                clobbers = new Expressions;
-            clobbers->push(clobber);
+            default:
+                clobber = parseAssignExp();
+                if (clobber->op != TOKstring)
+                    error("expected constant string constraint for clobber name");
+                if (! clobbers)
+                    clobbers = new Expressions;
+                clobbers->push(clobber);
 
-            if (token.value == TOKcomma)
-                nextToken();
-            break;
+                if (token.value == TOKcomma)
+                    nextToken();
+                break;
         }
     }
- Ldone:
-    if (expect_rparen)
-        check(TOKrparen);
-    else
-        check(TOKsemicolon);
+  Ldone:
+    check(TOKsemicolon);
 
-    return new ExtAsmStatement(loc, insnTemplate, args, argNames,
-        argConstraints, nOutputArgs, clobbers);
+    return new ExtAsmStatement(loc, insn, args, names, constraints,
+                               outputargs, clobbers, labels);
 }
 #endif
 

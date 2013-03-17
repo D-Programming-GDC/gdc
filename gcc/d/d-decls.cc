@@ -450,7 +450,6 @@ FuncDeclaration::toSymbol (void)
 
 	  if (naked)
 	    {
-	      gen.addDeclAttribute (fndecl, "naked");
 	      DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl) = 1;
 	      DECL_UNINLINABLE (fndecl) = 1;
 	    }
