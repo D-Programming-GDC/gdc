@@ -4402,16 +4402,6 @@ IRState::doExp (Expression *e)
   addExp (e->toElem (this));
 }
 
-// Emit assembler statement INSN_TMPL into current body.
-
-void
-IRState::doAsm (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
-{
-  tree t = d_build_asm_stmt (insn_tmpl, outputs, inputs, clobbers);
-  ASM_VOLATILE_P (t) = 1;
-  addExp (t);
-}
-
 // Routines for checking goto statements don't jump to invalid locations.
 // In particular, it is illegal for a goto to be used to skip initializations.
 // Saves the block label L is declared in for analysis later.

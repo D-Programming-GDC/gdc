@@ -465,7 +465,6 @@ struct IRState : IRBase
 
   void doExp (tree t);
   void doExp (Expression *e);
-  void doAsm (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
 
   // ** Goto/Label statement evaluation
   void pushLabel (LabelDsymbol *l);

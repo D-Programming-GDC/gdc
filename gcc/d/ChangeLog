@@ -1,3 +1,16 @@
+2013-03-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-asmstmt.cc(d_build_asm_stmt): Remove.
+	(ExtAsmStatement::ExtAsmStatement): Update to match renamed members.
+	(ExtAsmStatement::syntaxCopy): Likewise.
+	(ExtAsmStatement::semantic): Likewise.
+	(ExtAsmStatement::toCBuffer): Likewise.
+	(ExtAsmStatement::comeFrom): New.
+	(ExtAsmStatement::blockExit): Don't error if must not throw.
+	(naturalString): Remove.
+	(ExtAsmStatement::toIR): Inline IRState::doAsm implementation.
+	* d-codegen.cc(IRState::doAsm): Remove.
+
 2013-03-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-ir.cc(SynchronizedStatement::toIR): Remove implementation as is
