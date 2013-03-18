@@ -179,7 +179,7 @@ dt2node (dt_t *dt)
     {
     case DT_azeros:
     case DT_common:
-      type = gen.arrayType (Type::tuns8, dt->DTint);
+      type = d_array_type (Type::tuns8, dt->DTint);
       t = build_constructor (type, 0);
       TREE_READONLY (t) = 1;
       TREE_CONSTANT (t) = 1;
@@ -187,12 +187,12 @@ dt2node (dt_t *dt)
 
     case DT_nbytes:
       t = build_string (dt->DTint, (const char *) dt->DTpointer);
-      TREE_TYPE (t) = gen.arrayType (Type::tuns8, dt->DTint);
+      TREE_TYPE (t) = d_array_type (Type::tuns8, dt->DTint);
       return t;
 
     case DT_abytes:
       t = build_string (dt->DTint, (const char *) dt->DTpointer);
-      TREE_TYPE (t) = gen.arrayType (Type::tuns8, dt->DTint);
+      TREE_TYPE (t) = d_array_type (Type::tuns8, dt->DTint);
       TREE_STATIC (t) = 1;
       return build_address (t);
 
@@ -201,8 +201,8 @@ dt2node (dt_t *dt)
       return build_integer_cst (dt->DTint, Type::tsize_t->toCtype());
 
     case DT_xoff:
-      return gen.pointerOffset (build_address (check_static_sym (dt->DTsym)),
-				build_integer_cst (dt->DTint, Type::tsize_t->toCtype()));
+      return build_offset (build_address (check_static_sym (dt->DTsym)),
+			   build_integer_cst (dt->DTint, Type::tsize_t->toCtype()));
 
     case DT_tree:
       return dt->DTtree;

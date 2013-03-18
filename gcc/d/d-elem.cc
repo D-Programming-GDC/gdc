@@ -50,10 +50,10 @@ IdentityExp::toElem (IRState *irs)
   if (tb1->ty == Tstruct || tb1->isfloating())
     {
       // Do bit compare.
-      tree t_memcmp = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-				      build_address (e1->toElem (irs)),
-				      build_address (e2->toElem (irs)),
-				      build_integer_cst (e1->type->size()));
+      tree t_memcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
+					 build_address (e1->toElem (irs)),
+					 build_address (e2->toElem (irs)),
+					 build_integer_cst (e1->type->size()));
 
       return build_boolop (code, t_memcmp, integer_zero_node);
     }
@@ -78,8 +78,8 @@ IdentityExp::toElem (IRState *irs)
 
       if (type->iscomplex())
 	{
-	  t1 = irs->maybeMakeTemp (t1);
-	  t2 = irs->maybeMakeTemp (t2);
+	  t1 = maybe_make_temp (t1);
+	  t2 = maybe_make_temp (t2);
 	}
 
       tree t_cmp = build_boolop (code, t1, t2);
@@ -98,10 +98,10 @@ EqualExp::toElem (IRState *irs)
   if (tb1->ty == Tstruct)
     {
       // Do bit compare of struct's
-      tree t_memcmp = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-				      build_address (e1->toElem (irs)),
-				      build_address (e2->toElem (irs)),
-				      build_integer_cst (e1->type->size()));
+      tree t_memcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
+					 build_address (e1->toElem (irs)),
+					 build_address (e2->toElem (irs)),
+					 build_integer_cst (e1->type->size()));
 
       return build2 (code, type->toCtype(), t_memcmp, integer_zero_node);
     }
@@ -110,11 +110,10 @@ EqualExp::toElem (IRState *irs)
     {
       // _adEq2 compares each element.
       Type *telem = tb1->nextOf()->toBasetype();
-      tree args[3] = {
-	  irs->toDArray (e1),
-	  irs->toDArray (e2),
-	  irs->typeinfoReference (telem->arrayOf())
-      };
+      tree args[3];
+      args[0] = irs->toDArray (e1);
+      args[1] = irs->toDArray (e2);
+      args[2] = irs->typeinfoReference (telem->arrayOf());
 
       tree result = irs->libCall (LIBCALL_ADEQ2, 3, args);
       result = irs->convertTo (type->toCtype(), result);
@@ -126,11 +125,10 @@ EqualExp::toElem (IRState *irs)
   else if (tb1->ty == Taarray && tb2->ty == Taarray)
     {
       TypeAArray *taa1 = (TypeAArray *) tb1;
-      tree args[3] = {
-	  irs->typeinfoReference (taa1),
-	  e1->toElem (irs),
-	  e2->toElem (irs)
-      };
+      tree args[3];
+      args[0] = irs->typeinfoReference (taa1);
+      args[1] = e1->toElem (irs);
+      args[2] = e2->toElem (irs);
 
       tree result = irs->libCall (LIBCALL_AAEQUAL, 3, args);
       result = irs->convertTo (type->toCtype(), result);
@@ -146,8 +144,8 @@ EqualExp::toElem (IRState *irs)
 
       if (type->iscomplex())
 	{
-	  t1 = irs->maybeMakeTemp (t1);
-	  t2 = irs->maybeMakeTemp (t2);
+	  t1 = maybe_make_temp (t1);
+	  t2 = maybe_make_temp (t2);
 	}
 
       tree t_cmp = build_boolop (code, t1, t2);
@@ -163,11 +161,11 @@ InExp::toElem (IRState *irs)
   gcc_assert (e2_base_type->ty == Taarray);
 
   Type *key_type = ((TypeAArray *) e2_base_type)->index->toBasetype();
-  tree args[3] = {
-      e2->toElem (irs),
-      irs->typeinfoReference (key_type),
-      aoe.set (irs, irs->convertTo (e1, key_type))
-  };
+  tree args[3];
+  args[0] = e2->toElem (irs);
+  args[1] = irs->typeinfoReference (key_type);
+  args[2] = aoe.set (irs, irs->convertTo (e1, key_type));
+
   return convert (type->toCtype(),
 		  aoe.finish (irs, irs->libCall (LIBCALL_AAINX, 3, args)));
 }
@@ -245,11 +243,10 @@ CmpExp::toElem (IRState *irs)
       && (tb2->ty == Tsarray || tb2->ty == Tarray))
     {
       Type *telem = tb1->nextOf()->toBasetype();
-      tree args[3] = {
-	  irs->toDArray (e1),
-	  irs->toDArray (e2),
-	  irs->typeinfoReference (telem->arrayOf())
-      };
+      tree args[3];
+      args[0] = irs->toDArray (e1);
+      args[1] = irs->toDArray (e2);
+      args[2] = irs->typeinfoReference (telem->arrayOf());
 
       result = irs->libCall (LIBCALL_ADCMP2, 3, args);
 
@@ -294,8 +291,8 @@ AndAndExp::toElem (IRState *irs)
 
       if (type->iscomplex())
 	{
-	  t1 = irs->maybeMakeTemp (t1);
-	  t2 = irs->maybeMakeTemp (t2);
+	  t1 = maybe_make_temp (t1);
+	  t2 = maybe_make_temp (t2);
 	}
 
       tree t = build_boolop (TRUTH_ANDIF_EXPR, t1, t2);
@@ -319,8 +316,8 @@ OrOrExp::toElem (IRState *irs)
 
       if (type->iscomplex())
 	{
-	  t1 = irs->maybeMakeTemp (t1);
-	  t2 = irs->maybeMakeTemp (t2);
+	  t1 = maybe_make_temp (t1);
+	  t2 = maybe_make_temp (t2);
 	}
 
       tree t = build_boolop (TRUTH_ORIF_EXPR, t1, t2);
@@ -459,7 +456,7 @@ PowExp::toElem (IRState *irs)
   e1_t = irs->convertTo (powtype, e1->toElem (irs));
   e2_t = irs->convertTo (powtype, e2->toElem (irs));
 
-  return irs->convertTo (type->toCtype(), irs->buildCall (powfn, 2, e1_t, e2_t));
+  return irs->convertTo (type->toCtype(), d_build_call_nary (powfn, 2, e1_t, e2_t));
 }
 
 elem *
@@ -473,12 +470,12 @@ CatExp::toElem (IRState *irs)
   Type *tb2 = e2->type->toBasetype();
 
   if ((tb1->ty == Tsarray || tb1->ty == Tarray)
-      && irs->typesCompatible (e2->type, tb1->nextOf()))
+      && d_types_compatible (e2->type, tb1->nextOf()))
     {
       elem_type = tb1->nextOf();
     }
   else if ((tb2->ty == Tsarray || tb2->ty == Tarray)
-	   && irs->typesCompatible (e1->type, tb2->nextOf()))
+	   && d_types_compatible (e1->type, tb2->nextOf()))
     {
       elem_type = tb2->nextOf();
     }
@@ -521,7 +518,7 @@ CatExp::toElem (IRState *irs)
       while (1)
 	{
 	  tree array_exp;
-	  if (irs->typesCompatible (oe->type->toBasetype(), elem_type->toBasetype()))
+	  if (d_types_compatible (oe->type->toBasetype(), elem_type->toBasetype()))
 	    {
 	      tree elem_var = NULL_TREE;
 	      tree expr = irs->maybeExprVar (oe->toElem (irs), &elem_var);
@@ -535,7 +532,7 @@ CatExp::toElem (IRState *irs)
 
 	  if (n_operands > 2 && flag_split_darrays)
 	    {
-	      array_exp = irs->maybeMakeTemp (array_exp);
+	      array_exp = maybe_make_temp (array_exp);
 	      args[ai--] = irs->darrayPtrRef (array_exp); // note: filling array
 	      args[ai--] = irs->darrayLenRef (array_exp); // backwards, so ptr 1st
 	    }
@@ -733,10 +730,9 @@ CatAssignExp::toElem (IRState *irs)
       && (elem_type->ty == Tchar || elem_type->ty == Twchar))
     {
       // append a dchar to a char[] or wchar[]
-      tree args[2] = {
-	  aoe.set (irs, e1->toElem (irs)),
-	  irs->toElemLvalue (e2)
-      };
+      tree args[2];
+      args[0] = aoe.set (irs, e1->toElem (irs));
+      args[1] = irs->toElemLvalue (e2);
 
       LibCall libcall = elem_type->ty == Tchar ?
 	LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
@@ -748,25 +744,22 @@ CatAssignExp::toElem (IRState *irs)
       gcc_assert (dest_type->ty == Tarray || value_type->ty == Tsarray);
 
       if ((value_type->ty == Tarray || value_type->ty == Tsarray)
-	  && irs->typesCompatible (elem_type, value_type->nextOf()->toBasetype()))
+	  && d_types_compatible (elem_type, value_type->nextOf()->toBasetype()))
 	{
 	  // append an array
-	  tree args[3] = {
-	      irs->typeinfoReference (type),
-	      build_address (irs->toElemLvalue (e1)),
-	      irs->toDArray (e2)
-	  };
-
+	  tree args[3];
+	  args[0] = irs->typeinfoReference (type);
+	  args[1] = build_address (irs->toElemLvalue (e1));
+	  args[2] = irs->toDArray (e2);
 	  result = irs->libCall (LIBCALL_ARRAYAPPENDT, 3, args, type->toCtype());
 	}
       else
 	{
 	  // append an element
-	  tree args[3] = {
-	      irs->typeinfoReference (type),
-	      build_address (irs->toElemLvalue (e1)),
-	      size_one_node
-	  };
+	  tree args[3];
+	  args[0] = irs->typeinfoReference (type);
+	  args[1] = build_address (irs->toElemLvalue (e1));
+	  args[2] = size_one_node;
 
 	  result = irs->libCall (LIBCALL_ARRAYAPPENDCTX, 3, args, type->toCtype());
 	  result = save_expr (result);
@@ -774,7 +767,7 @@ CatAssignExp::toElem (IRState *irs)
 	  // assign e2 to last element
 	  tree off_exp = irs->darrayLenRef (result);
 	  off_exp = build2 (MINUS_EXPR, TREE_TYPE (off_exp), off_exp, size_one_node);
-	  off_exp = irs->maybeMakeTemp (off_exp);
+	  off_exp = maybe_make_temp (off_exp);
 
 	  tree ptr_exp = irs->darrayPtrRef (result);
 	  ptr_exp = void_okay_p (ptr_exp);
@@ -837,11 +830,10 @@ AssignExp::toElem (IRState *irs)
       ArrayLengthExp *ale = (ArrayLengthExp *) e1;
       // Don't want ->toBasetype() for the element type.
       Type *elem_type = ale->e1->type->toBasetype()->nextOf();
-      tree args[3] = {
-	  irs->typeinfoReference (ale->e1->type),
-	  irs->convertTo (e2, Type::tsize_t),
-	  build_address (ale->e1->toElem (irs))
-      };
+      tree args[3];
+      args[0] = irs->typeinfoReference (ale->e1->type);
+      args[1] = irs->convertTo (e2, Type::tsize_t);
+      args[2] = build_address (ale->e1->toElem (irs));
 
       LibCall libcall = elem_type->isZeroInit() ?
 	LIBCALL_ARRAYSETLENGTHT : LIBCALL_ARRAYSETLENGTHIT;
@@ -853,25 +845,26 @@ AssignExp::toElem (IRState *irs)
     {
       Type *elem_type = e1->type->toBasetype()->nextOf()->toBasetype();
 
-      if (irs->typesCompatible (elem_type, e2->type->toBasetype()))
+      if (d_types_compatible (elem_type, e2->type->toBasetype()))
 	{
 	  // Set a range of elements to one value.
-	  tree t1 = irs->maybeMakeTemp (e1->toElem (irs));
+	  tree t1 = maybe_make_temp (e1->toElem (irs));
 
 	  if (op != TOKblit)
 	    {
 	      if (needsPostblit (elem_type) != NULL)
 		{
 		  AddrOfExpr aoe;
-		  tree args[4] = {
-		      irs->darrayPtrRef (t1),
-		      aoe.set (irs, e2->toElem (irs)),
-		      irs->darrayLenRef (t1),
-		      irs->typeinfoReference (elem_type),
-		  };
-		  tree t = irs->libCall (op == TOKconstruct ?
-					 LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN,
-					 4, args);
+		  tree args[4];
+		  LibCall libcall = op == TOKconstruct ?
+		    LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
+
+		  args[0] = irs->darrayPtrRef (t1);
+		  args[1] = aoe.set (irs, e2->toElem (irs));
+		  args[2] = irs->darrayLenRef (t1);
+		  args[3] = irs->typeinfoReference (elem_type);
+
+		  tree t = irs->libCall (libcall, 4, args);
 		  return compound_expr (aoe.finish (irs, t), t1);
 		}
 	    }
@@ -884,43 +877,37 @@ AssignExp::toElem (IRState *irs)
 	{
 	  if (op != TOKblit && needsPostblit (elem_type) != NULL)
 	    {
-	      tree args[3] = {
-		  irs->typeinfoReference (elem_type),
-		  irs->toDArray (e1),
-		  irs->toDArray (e2)
-	      };
-	      return irs->libCall (op == TOKconstruct ?
-				   LIBCALL_ARRAYCTOR : LIBCALL_ARRAYASSIGN,
-				   3, args, type->toCtype());
+	      tree args[3];
+	      LibCall libcall = op == TOKconstruct ?
+		LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
+
+	      args[0] = irs->typeinfoReference (elem_type);
+	      args[1] = irs->toDArray (e1);
+	      args[2] = irs->toDArray (e2);
+
+	      return irs->libCall (libcall, 3, args, type->toCtype());
 	    }
 	  else
 	    if (irs->arrayBoundsCheck())
 	      {
-		tree args[3] = {
-		    build_integer_cst (elem_type->size(), Type::tsize_t->toCtype()),
-		    irs->toDArray (e2),
-		    irs->toDArray (e1)
-		};
+		tree args[3];
+		args[0] = build_integer_cst (elem_type->size(), Type::tsize_t->toCtype());
+		args[1] = irs->toDArray (e2);
+		args[2] = irs->toDArray (e1);
 		return irs->libCall (LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
 	      }
 	    else
 	      {
-		tree array[2] = {
-		    irs->maybeMakeTemp (irs->toDArray (e1)),
-		    irs->toDArray (e2)
-		};
-		tree t_memcpy = builtin_decl_explicit (BUILT_IN_MEMCPY);
-		tree result;
-		tree size;
+		tree t1 = maybe_make_temp (irs->toDArray (e1));
+		tree t2 = irs->toDArray (e2);
+		tree size = fold_build2 (MULT_EXPR, size_type_node,
+					 irs->convertTo (size_type_node, irs->darrayLenRef (t1)),
+					 size_int (elem_type->size()));
 
-		size = fold_build2 (MULT_EXPR, size_type_node,
-				    irs->convertTo (size_type_node, irs->darrayLenRef (array[0])),
-				    size_int (elem_type->size()));
-
-		result = irs->buildCall (t_memcpy, 3, irs->darrayPtrRef (array[0]),
-					 irs->darrayPtrRef (array[1]), size);
-
-		return compound_expr (result, array[0]);
+		tree result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCPY),
+						 3, irs->darrayPtrRef (t1),
+						 irs->darrayPtrRef (t2), size);
+		return compound_expr (result, t1);
 	      }
 	}
     }
@@ -953,8 +940,8 @@ AssignExp::toElem (IRState *irs)
 	      if (sle->fillHoles)
 		{
 		  unsigned sz = sle->type->size();
-		  tree init = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
-					      build_address (lhs), size_zero_node, size_int (sz));
+		  tree init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
+						 build_address (lhs), size_zero_node, size_int (sz));
 		  result = maybe_compound_expr (init, result);
 		}
 	    }
@@ -1021,23 +1008,24 @@ IndexExp::toElem (IRState *irs)
     {
       Type *key_type = ((TypeAArray *) array_type)->index->toBasetype();
       AddrOfExpr aoe;
-      tree args[4] = {
-	  e1->toElem (irs),
-	  irs->typeinfoReference (key_type),
-	  build_integer_cst (array_type->nextOf()->size(), Type::tsize_t->toCtype()),
-	  aoe.set (irs, irs->convertTo (e2, key_type))
-      };
+      tree args[4];
       LibCall libcall = modifiable ? LIBCALL_AAGETX : LIBCALL_AAGETRVALUEX;
-      tree t = irs->libCall (libcall, 4, args, type->pointerTo()->toCtype());
-      t = aoe.finish (irs, t);
+      tree index;
+
+      args[0] = e1->toElem (irs);
+      args[1] = irs->typeinfoReference (key_type);
+      args[2] = build_integer_cst (array_type->nextOf()->size(), Type::tsize_t->toCtype());
+      args[3] = aoe.set (irs, irs->convertTo (e2, key_type));
+
+      index = aoe.finish (irs, irs->libCall (libcall, 4, args, type->pointerTo()->toCtype()));
 
       if (irs->arrayBoundsCheck())
 	{
-	  t = save_expr (t);
-	  t = build3 (COND_EXPR, TREE_TYPE (t), d_truthvalue_conversion (t), t,
-		      irs->assertCall (loc, LIBCALL_ARRAY_BOUNDS));
+	  index = save_expr (index);
+	  index = build3 (COND_EXPR, TREE_TYPE (index), d_truthvalue_conversion (index),
+			  index, irs->assertCall (loc, LIBCALL_ARRAY_BOUNDS));
 	}
-      return indirect_ref (type->toCtype(), t);
+      return indirect_ref (type->toCtype(), index);
     }
 }
 
@@ -1087,7 +1075,7 @@ SliceExp::toElem (IRState *irs)
   ArrayScope aryscp (irs, lengthVar, loc);
 
   orig_array_expr = aryscp.setArrayExp (irs, e1->toElem (irs), e1->type);
-  orig_array_expr = irs->maybeMakeTemp (orig_array_expr);
+  orig_array_expr = maybe_make_temp (orig_array_expr);
   // specs don't say bounds if are checked for error or clipped to current size
 
   // Get the data pointer for static and dynamic arrays
@@ -1118,7 +1106,7 @@ SliceExp::toElem (IRState *irs)
 
       if (!integer_zerop (lwr_tree))
 	{
-	  lwr_tree = irs->maybeMakeTemp (lwr_tree);
+	  lwr_tree = maybe_make_temp (lwr_tree);
 	  // Adjust .ptr offset
 	  final_ptr_expr = irs->pointerIntSum (void_okay_p (final_ptr_expr), lwr_tree);
 	  final_ptr_expr = build_nop (TREE_TYPE (orig_pointer_expr), final_ptr_expr);
@@ -1130,7 +1118,7 @@ SliceExp::toElem (IRState *irs)
   if (upr)
     {
       upr_tree = upr->toElem (irs);
-      upr_tree = irs->maybeMakeTemp (upr_tree);
+      upr_tree = maybe_make_temp (upr_tree);
 
       if (irs->arrayBoundsCheck())
 	{
@@ -1245,10 +1233,9 @@ DeleteExp::toElem (IRState *irs)
 	    ti = tb1->nextOf()->getTypeInfo (NULL)->toElem (irs);
 	}
       // call _delarray_t (&t1, ti);
-      tree args[2] = {
-	  build_address (t1),
-	  ti
-      };
+      tree args[2];
+      args[0] = build_address (t1);
+      args[1] = ti;
       return irs->libCall (LIBCALL_DELARRAYT, 2, args);
     }
   else if (tb1->ty == Tpointer)
@@ -1274,12 +1261,11 @@ RemoveExp::toElem (IRState *irs)
       Type *a_type = e_array->type->toBasetype();
       Type *key_type = ((TypeAArray *) a_type)->index->toBasetype();
       AddrOfExpr aoe;
+      tree args[3];
+      args[0] = e_array->toElem (irs);
+      args[1] = irs->typeinfoReference (key_type);
+      args[2] = aoe.set (irs, irs->convertTo (e_index, key_type));
 
-      tree args[3] = {
-	  e_array->toElem (irs),
-	  irs->typeinfoReference (key_type),
-	  aoe.set (irs, irs->convertTo (e_index, key_type)),
-      };
       return aoe.finish (irs, irs->libCall (LIBCALL_AADELX, 3, args));
     }
   else
@@ -1358,7 +1344,7 @@ PtrExp::toElem (IRState *irs)
   else if (e1->op == TOKsymoff)
     {
       SymOffExp *sym_exp = (SymOffExp *) e1;
-      if (!irs->isDeclarationReferenceType (sym_exp->var))
+      if (!decl_reference_p (sym_exp->var))
 	{
 	  rec_type = sym_exp->var->type->toBasetype();
 	  rec_tree = irs->var (sym_exp->var);
@@ -1373,7 +1359,7 @@ PtrExp::toElem (IRState *irs)
 	{
 	  VarDeclaration *field = sd->fields[i];
 	  if (field->offset == the_offset
-	      && irs->typesSame (field->type, this->type))
+	      && d_types_same (field->type, this->type))
 	    {
 	      if (error_mark_p (rec_tree))
 		return rec_tree; // backend will ICE otherwise
@@ -1576,7 +1562,7 @@ AssertExp::toElem (IRState *irs)
 	    }
 	  else if (cd->isInterfaceDeclaration())
 	    {
-	      arg = irs->convertTo (arg, tb1, irs->getObjectType());
+	      arg = irs->convertTo (arg, tb1, build_object_type());
 	    }
 	  // this does a null pointer check before calling _d_invariant
 	  return build3 (COND_EXPR, void_type_node,
@@ -1600,7 +1586,7 @@ AssertExp::toElem (IRState *irs)
 		  if (agg_decl->inv)
 		    {
 		      Expressions args;
-		      e1_t = irs->maybeMakeTemp (e1_t);
+		      e1_t = maybe_make_temp (e1_t);
 		      invc = irs->call (agg_decl->inv, e1_t, &args);
 		    }
 		}
@@ -1682,11 +1668,10 @@ FuncExp::toElem (IRState *irs)
 }
 
 elem *
-HaltExp::toElem (IRState *irs)
+HaltExp::toElem (IRState *)
 {
   // Needs improvement.  Avoid library calls if possible..
-  tree t_abort = builtin_decl_explicit (BUILT_IN_ABORT);
-  return irs->buildCall (t_abort, 0);
+  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_ABORT), 0);
 }
 
 elem *
@@ -1711,7 +1696,7 @@ SymbolExp::toElem (IRState *irs)
 
       // For variables that are references (currently only out/inout arguments;
       // objects don't count), evaluating the variable means we want what it refers to.
-      if (irs->isDeclarationReferenceType (var))
+      if (decl_reference_p (var))
 	{
 	  exp = indirect_ref (var->type->toCtype(), exp);
 	  if (irs->inVolatile())
@@ -1736,7 +1721,7 @@ SymbolExp::toElem (IRState *irs)
       exp = irs->var (var);
       TREE_USED (exp) = 1;
 
-      if (irs->isDeclarationReferenceType (var))
+      if (decl_reference_p (var))
 	gcc_assert (POINTER_TYPE_P (TREE_TYPE (exp)));
       else
 	exp = build_address (exp);
@@ -1745,7 +1730,7 @@ SymbolExp::toElem (IRState *irs)
 	return irs->convertTo (type->toCtype(), exp);
 
       tree b = build_integer_cst (offset, Type::tsize_t->toCtype());
-      return build_nop (type->toCtype(), irs->pointerOffset (exp, b));
+      return build_nop (type->toCtype(), build_offset (exp, b));
     }
 
   gcc_assert (op == TOKvar || op == TOKsymoff);
@@ -1787,7 +1772,7 @@ NewExp::toElem (IRState *irs)
       else if (allocator)
 	{
 	  new_call = irs->call (allocator, newargs);
-	  new_call = irs->maybeMakeTemp (new_call);
+	  new_call = maybe_make_temp (new_call);
 	  // copy memory...
 	  setup_exp = modify_expr (indirect_ref (rec_type, new_call),
 				   class_decl->toInitializer()->Stree);
@@ -1826,7 +1811,7 @@ NewExp::toElem (IRState *irs)
 
 	  if (vthis_value)
 	    {
-	      new_call = irs->maybeMakeTemp (new_call);
+	      new_call = maybe_make_temp (new_call);
 	      vthis_field = component_ref (indirect_ref (rec_type, new_call), vthis_field);
 	      setup_exp = maybe_compound_expr (setup_exp, modify_expr (vthis_field, vthis_value));
 	    }
@@ -1864,7 +1849,7 @@ NewExp::toElem (IRState *irs)
       new_call = build_nop (tb->toCtype(), new_call);
 
       // Save the result allocation call.
-      new_call = irs->maybeMakeTemp (new_call);
+      new_call = maybe_make_temp (new_call);
       setup_exp = build_deref (new_call);
       setup_exp = modify_expr (setup_exp, irs->convertForAssignment (init, struct_type));
       new_call = compound_expr (setup_exp, new_call);
@@ -1874,7 +1859,7 @@ NewExp::toElem (IRState *irs)
 	{
 	  tree vthis_value = irs->getVThis (sd, this);
 	  tree vthis_field;
-	  new_call = irs->maybeMakeTemp (new_call);
+	  new_call = maybe_make_temp (new_call);
 	  vthis_field = component_ref (indirect_ref (struct_type->toCtype(), new_call),
 				       sd->vthis->toSymbol()->Stree);
 	  new_call = compound_expr (modify_expr (vthis_field, vthis_value), new_call);
@@ -1900,21 +1885,21 @@ NewExp::toElem (IRState *irs)
 	  // Single dimension array allocations.
 	  Expression *arg = (*arguments)[0];
 	  libcall = array_type->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-	  tree args[2] = {
-	      type->getTypeInfo(NULL)->toElem (irs),
-	      arg->toElem (irs)
-	  };
+	  tree args[2];
+	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
+	  args[1] = arg->toElem (irs);
 	  result = irs->libCall (libcall, 2, args, tb->toCtype());
 	}
       else
 	{
 	  // Multidimensional array allocations.
 
-	  tree dims_var = irs->exprVar (irs->arrayType (size_type_node, arguments->dim));
+	  tree dims_var = irs->exprVar (d_array_type (Type::tsize_t, arguments->dim));
 	  tree dims_init;
 	  CtorEltMaker elms;
-
+	  tree args[3];
 	  Type *telem = newtype->toBasetype();
+
 	  for (size_t i = 0; i < arguments->dim; i++)
 	    {
 	      Expression *arg = (*arguments)[i];
@@ -1928,11 +1913,9 @@ NewExp::toElem (IRState *irs)
 	    }
 
 	  libcall = telem->isZeroInit() ? LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
-	  tree args[3] = {
-	      type->getTypeInfo(NULL)->toElem (irs),
-	      build_integer_cst (arguments->dim, Type::tint32->toCtype()),
-	      build_address (dims_var)
-	  };
+	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
+	  args[1] = build_integer_cst (arguments->dim, Type::tint32->toCtype());
+	  args[2] = build_address (dims_var);
 	  result = irs->libCall (libcall, 3, args, tb->toCtype());
 	  result = irs->binding (dims_var, result);
 	}
@@ -2035,7 +2018,7 @@ StringExp::toElem (IRState *irs)
   TREE_READONLY (value) = 1;
   // %% array type doesn't match string length if null term'd...
   Type *elem_type = base_ty != Tvoid ? tb->nextOf() : Type::tchar;
-  TREE_TYPE (value) = irs->arrayType (elem_type, len);
+  TREE_TYPE (value) = d_array_type (elem_type, len);
 
   switch (base_ty)
     {
@@ -2080,7 +2063,7 @@ ArrayLiteralExp::toElem (IRState *irs)
   Type *typeb = type->toBasetype();
   gcc_assert (typeb->ty == Tarray || typeb->ty == Tsarray || typeb->ty == Tpointer);
   Type *etype = typeb->nextOf();
-  tree sa_type = irs->arrayType (etype->toCtype(), elements->dim);
+  tree sa_type = d_array_type (etype, elements->dim);
   tree result = NULL_TREE;
 
   /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
@@ -2101,20 +2084,20 @@ ArrayLiteralExp::toElem (IRState *irs)
     }
   else
     {
-      tree args[2] = {
-	  irs->typeinfoReference (etype->arrayOf()),
-	  build_integer_cst (elements->dim, size_type_node)
-      };
+      tree args[2];
+      args[0] = irs->typeinfoReference (etype->arrayOf());
+      args[1] = build_integer_cst (elements->dim, size_type_node);
+
       // Call _d_arrayliteralTX (ti, dim);
       tree mem = irs->libCall (LIBCALL_ARRAYLITERALTX, 2, args, etype->pointerTo()->toCtype());
-      mem = irs->maybeMakeTemp (mem);
+      mem = maybe_make_temp (mem);
 
       // memcpy (mem, &ctor, size)
       tree size = fold_build2 (MULT_EXPR, size_type_node,
 			       size_int (elements->dim), size_int (typeb->nextOf()->size()));
 
-      result = irs->buildCall (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
-			       mem, build_address (ctor), size);
+      result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
+				  mem, build_address (ctor), size);
 
       // Returns array pointed to by MEM.
       result = maybe_compound_expr (result, mem);
@@ -2152,8 +2135,8 @@ AssocArrayLiteralExp::toElem (IRState *irs)
   gcc_assert (keys != NULL);
   gcc_assert (values != NULL);
 
-  tree keys_var = irs->exprVar (irs->arrayType (index, keys->dim)); //?
-  tree vals_var = irs->exprVar (irs->arrayType (next, keys->dim));
+  tree keys_var = irs->exprVar (d_array_type (index, keys->dim)); //?
+  tree vals_var = irs->exprVar (d_array_type (next, keys->dim));
   tree keys_ptr = build_nop (index->pointerTo()->toCtype(),
  			     build_address (keys_var));
   tree vals_ptr = build_nop (next->pointerTo()->toCtype(),
@@ -2170,23 +2153,23 @@ AssocArrayLiteralExp::toElem (IRState *irs)
       tree elemp_e, assgn_e;
 
       e = (*keys)[i];
-      elemp_e = irs->pointerOffset (keys_ptr, keys_offset);
+      elemp_e = build_offset (keys_ptr, keys_offset);
       assgn_e = vmodify_expr (build_deref (elemp_e), e->toElem (irs));
       keys_offset = size_binop (PLUS_EXPR, keys_offset, keys_size);
       result = maybe_compound_expr (result, assgn_e);
 
       e = (*values)[i];
-      elemp_e = irs->pointerOffset (vals_ptr, vals_offset);
+      elemp_e = build_offset (vals_ptr, vals_offset);
       assgn_e = vmodify_expr (build_deref (elemp_e), e->toElem (irs));
       vals_offset = size_binop (PLUS_EXPR, vals_offset, vals_size);
       result = maybe_compound_expr (result, assgn_e);
     }
 
-  tree args[3] = {
-      irs->typeinfoReference (aa_type),
-      irs->darrayVal (index->arrayOf(), keys->dim, keys_ptr),
-      irs->darrayVal (next->arrayOf(), keys->dim, vals_ptr)
-  };
+  tree args[3];
+  args[0] = irs->typeinfoReference (aa_type);
+  args[1] = irs->darrayVal (index->arrayOf(), keys->dim, keys_ptr);
+  args[2] = irs->darrayVal (next->arrayOf(), keys->dim, vals_ptr);
+
   result = maybe_compound_expr (result, irs->libCall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
 
   CtorEltMaker ce;
@@ -2226,19 +2209,19 @@ StructLiteralExp::toElem (IRState *irs)
 
 	  if (fld_type->ty == Tsarray)
 	    {
-	      if (irs->typesCompatible (exp_type, fld_type))
+	      if (d_types_compatible (exp_type, fld_type))
 		{
 		  StructDeclaration *sd = needsPostblit (fld_type);
 		  if (sd != NULL)
 		    {
 		      // Generate _d_arrayctor (ti, from = exp, to = exp_tree)
 		      Type *ti = fld_type->nextOf();
+		      tree args[3];
+
 		      exp_tree = irs->localVar (exp_type);
-		      tree args[3] = {
-			  irs->typeinfoReference (ti),
-			  irs->toDArray (exp),
-			  irs->convertTo (exp_tree, exp_type, ti->arrayOf())
-		      };
+		      args[0] = irs->typeinfoReference (ti);
+		      args[1] = irs->toDArray (exp);
+		      args[2] = irs->convertTo (exp_tree, exp_type, ti->arrayOf());
 		      call_exp = irs->libCall (LIBCALL_ARRAYCTOR, 3, args);
 		    }
 		  else

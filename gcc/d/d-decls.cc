@@ -146,7 +146,7 @@ VarDeclaration::toSymbol (void)
 	decl_kind = VAR_DECL;
 
       var_decl = build_decl (UNKNOWN_LOCATION, decl_kind, get_identifier (csym->Sident),
-			     gen.trueDeclarationType (this));
+			     declaration_type (this));
 
       csym->Stree = var_decl;
 
@@ -198,7 +198,7 @@ VarDeclaration::toSymbol (void)
       // called from a varaible in an imported module
       // %% (out const X x) doesn't mean the reference is const...
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
-	  && !gen.isDeclarationReferenceType (this))
+	  && !decl_reference_p (this))
 	{
 	  // %% CONST_DECLS don't have storage, so we can't use those,
 	  // but it would be nice to get the benefit of them (could handle in
@@ -384,7 +384,7 @@ FuncDeclaration::toSymbol (void)
 
 	  if (isNested())
 	    {
-	      /* Even if DMD-style nested functions are not implemented, add an
+	      /* Even if D-style nested functions are not implemented, add an
 		 extra argument to be compatible with delegates. */
 	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
 	    }
@@ -610,7 +610,7 @@ ClassDeclaration::toSymbol (void)
       g.ofile->setupStaticStorage (this, decl);
       g.ofile->setDeclLoc (decl, this);
 
-      TREE_CONSTANT (decl) = 0; // DMD puts this into .data, not .rodata...
+      TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
     }
   return csym;

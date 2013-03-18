@@ -25,6 +25,25 @@
 	(IRState::voidCompound): Replace with vcompound_expr.
 	(IRState::component): Replace with component_ref.
 	(IRState::errorMark): Replace with error_mark.
+	(IRState::typesSame): Replace with d_types_same.
+	(IRState::typesCompatible): Replace with d_types_compatible.
+	(IRState::getDType): Replace with build_dtype.
+	(IRState::getObjectType): Replace with build_object_type.
+	(IRState::isDeclarationReferenceType): Replace with decl_reference_p.
+	(IRState::trueDeclarationType): Replace with declaration_type.
+	(IRState::isArgumentReferenceType): Replace with arg_reference_p.
+	(IRState::trueArgumentType): Replace with type_passed_as.
+	(IRState::arrayType): Replace with d_array_type.
+	(IRState::addTypeAttribute): Replace with insert_type_attributes.
+	(IRState::addDeclAttribute): Replace with insert_decl_attributes.
+	(IRState::attributes): Replace with build_attributes.
+	(IRState::addTypeModifiers): Replace with insert_type_modifiers.
+	(IRState::maybeMakeTemp): Replace with maybe_make_temp.
+	(IRState::isFreeOfSideEffects): Replace with d_has_side_effects.
+	(IRState::pointerOffsetOp): Replace with build_offset_op.
+	(IRState::pointerOffset): Replace with build_offset.
+	(IRState::buildCall): Replace with d_build_call.
+	(IRState::exceptionObject): Replace with build_exception_object.
 
 2013-03-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 

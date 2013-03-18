@@ -30,7 +30,7 @@ Type::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -184,7 +184,7 @@ TypeTypedef::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -197,7 +197,7 @@ TypeTypedef::toCtype (void)
 	  TYPE_NAME (type_node) = type_decl;
 
 	  if (sym->userAttributes)
-	    decl_attributes (&type_node, gen.attributes (sym->userAttributes), 0);
+	    decl_attributes (&type_node, build_attributes (sym->userAttributes), 0);
 
 	  ctype = type_node;
 	}
@@ -239,7 +239,7 @@ TypeEnum::toCtype (void)
 	  TYPE_MAIN_VARIANT (ctype) = TYPE_MAIN_VARIANT (cmemtype);
 
 	  if (sym->userAttributes)
-	    decl_attributes (&ctype, gen.attributes (sym->userAttributes),
+	    decl_attributes (&ctype, build_attributes (sym->userAttributes),
 			     ATTR_FLAG_TYPE_IN_PLACE);
 
 	  TYPE_MIN_VALUE (ctype) = TYPE_MIN_VALUE (cmemtype);
@@ -288,7 +288,7 @@ TypeStruct::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -308,7 +308,7 @@ TypeStruct::toCtype (void)
 	  TYPE_PACKED (ctype) = TYPE_PACKED (ctype); // %% todo
 
 	  if (sym->userAttributes)
-	    decl_attributes (&ctype, gen.attributes (sym->userAttributes),
+	    decl_attributes (&ctype, build_attributes (sym->userAttributes),
 			     ATTR_FLAG_TYPE_IN_PLACE);
 
 	  compute_record_mode (ctype);
@@ -342,7 +342,7 @@ TypeFunction::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -362,7 +362,7 @@ TypeFunction::toCtype (void)
 	      for (size_t i = 0; i < n_args; i++)
 		{
 		  Parameter *arg = Parameter::getNth (parameters, i);
-		  type_list.cons (IRState::trueArgumentType (arg));
+		  type_list.cons (type_passed_as (arg));
 		}
 	    }
 
@@ -385,10 +385,9 @@ TypeFunction::toCtype (void)
 	  switch (linkage)
 	    {
 	    case LINKpascal:
-	      // stdcall and reverse params?
 	    case LINKwindows:
 	      if (!global.params.is64bit)
-		ctype = gen.addTypeAttribute (ctype, "stdcall");
+		ctype = insert_type_attribute (ctype, "stdcall");
 	      break;
 
 	    case LINKc:
@@ -427,7 +426,7 @@ TypeVector::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -460,15 +459,15 @@ TypeSArray::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else if (dim->isConst() && dim->type->isintegral())
 	{
 	  uinteger_t size = dim->toUInteger();
 	  if (next->toBasetype()->ty == Tvoid)
-	    ctype = gen.arrayType (Type::tuns8, size);
+	    ctype = d_array_type (Type::tuns8, size);
 	  else
-	    ctype = gen.arrayType (next, size);
+	    ctype = d_array_type (next, size);
 	}
       else
 	{
@@ -494,7 +493,7 @@ TypeDArray::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else
 	{
@@ -516,7 +515,7 @@ TypeAArray::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -546,7 +545,7 @@ TypePointer::toCtype (void)
     if (!isNaked())
       {
 	ctype = castMod(0)->toCtype();
-	ctype = gen.addTypeModifiers (ctype, mod);
+	ctype = insert_type_modifiers (ctype, mod);
       }
     else 
       {
@@ -565,7 +564,7 @@ TypeDelegate::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -588,7 +587,7 @@ TypeClass::toCtype (void)
       if (!isNaked())
 	{
 	  ctype = castMod(0)->toCtype();
-	  ctype = gen.addTypeModifiers (ctype, mod);
+	  ctype = insert_type_modifiers (ctype, mod);
 	}
       else 
 	{
@@ -605,7 +604,7 @@ TypeClass::toCtype (void)
 	  d_keep (ctype); // because BINFO moved out to toDebug
 	  g.ofile->initTypeDecl (rec_type, sym);
 
-	  obj_rec_type = TREE_TYPE (gen.getObjectType()->toCtype());
+	  obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
 
 	  // Note that this is set on the reference type, not the record type.
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);

@@ -127,7 +127,7 @@ ThrowStatement::toIR (IRState *irs)
   if (intfc_decl)
     {
       if (!intfc_decl->isCOMclass())
-	arg = irs->convertTo (arg, exp->type, irs->getObjectType());
+	arg = irs->convertTo (arg, exp->type, build_object_type());
       else
 	error ("cannot throw COM interfaces");
     }
@@ -172,8 +172,8 @@ TryCatchStatement::toIR (IRState *irs)
 
 	  if (a_catch->var)
 	    {
-	      tree exc_obj = irs->convertTo (irs->exceptionObject(),
-					     irs->getObjectType(), a_catch->type);
+	      tree exc_obj = irs->convertTo (build_exception_object(),
+					     build_object_type(), a_catch->type);
 	      tree catch_var = a_catch->var->toSymbol()->Stree;
 	      // need to override initializer...
 	      // set DECL_INITIAL now and emitLocalVar will know not to change it
@@ -324,13 +324,15 @@ SwitchStatement::toIR (IRState *irs)
 	  gcc_unreachable();
 	}
 
-      // Apparently the backend is supposed to sort and set the indexes
-      // on the case array, have to change them to be useable.
-      cases->sort(); // %%!!
-
+      tree args[2];
       Symbol *s = static_sym();
       dt_t **  pdt = &s->Sdt;
       s->Sseg = CDATA;
+
+      // Apparently the backend is supposed to sort and set the indexes
+      // on the case array, have to change them to be useable.
+      cases->sort();
+
       for (size_t i = 0; i < cases->dim; i++)
 	{
 	  CaseStatement *case_stmt = (*cases)[i];
@@ -340,10 +342,8 @@ SwitchStatement::toIR (IRState *irs)
       outdata (s);
       tree p_table = build_address (s->Stree);
 
-      tree args[2] = {
-	  irs->darrayVal (cond_type->arrayOf()->toCtype(), cases->dim, p_table),
-	  cond_tree
-      };
+      args[0] = irs->darrayVal (cond_type->arrayOf()->toCtype(), cases->dim, p_table);
+      args[1] = cond_tree;
 
       cond_tree = irs->libCall (libcall, 2, args);
     }
@@ -528,25 +528,21 @@ DtorExpStatement::toIR (IRState *irs)
 {
   FuncDeclaration *fd = irs->func;
 
-  /* As per DMD, do not call destructor if var is returned as the
+  /* Do not call destructor if var is returned as the
      nrvo variable.  */
   bool noDtor = (fd->nrvo_can && fd->nrvo_var == var);
 
   if (!noDtor)
-    {
-      ExpStatement::toIR (irs);
-    }
+    ExpStatement::toIR (irs);
 }
 
 void
 PragmaStatement::toIR (IRState *)
 {
-  // nothing
 }
 
 void
 ImportStatement::toIR (IRState *)
 {
-  // nothing
 }
 

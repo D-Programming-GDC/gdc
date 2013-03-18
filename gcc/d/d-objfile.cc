@@ -101,9 +101,8 @@ FuncDeclaration::toObjFile (int)
       parm_decl = vthis->toSymbol()->Stree;
       if (!isThis() && isNested())
 	{
-	  /* DMD still generates a vthis, but it should not be
-	     referenced in any expression.
-	   */
+	  // D still generates a vthis, but it should not be
+	  // referenced in any expression.
 	  FuncDeclaration *fd = toParent2()->isFuncDeclaration();
 	  gcc_assert (fd != NULL);
 	  DECL_ARTIFICIAL (parm_decl) = 1;
@@ -194,12 +193,12 @@ FuncDeclaration::toObjFile (int)
       tree var = irs->var (v_argptr);
       var = build_address (var);
 
-      tree init_exp = irs->buildCall (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
+      tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
       v_argptr->init = NULL; // VoidInitializer?
       irs->emitLocalVar (v_argptr, true);
       irs->addExp (init_exp);
 
-      tree cleanup = irs->buildCall (builtin_decl_explicit (BUILT_IN_VA_END), 1, var);
+      tree cleanup = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_END), 1, var);
       irs->addExp (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 
@@ -687,7 +686,7 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
     }
 
   if (real_decl && real_decl->userAttributes)
-    decl_attributes (&decl_tree, gen.attributes (real_decl->userAttributes), 0);
+    decl_attributes (&decl_tree, build_attributes (real_decl->userAttributes), 0);
   else if (DECL_ATTRIBUTES (decl_tree) != NULL)
     decl_attributes (&decl_tree, DECL_ATTRIBUTES (decl_tree), 0);
 }
@@ -934,7 +933,7 @@ ObjectFile::stripVarDecl (tree value)
     return DECL_INITIAL (value);
   else
     {
-      Type *d_type = gen.getDType (TREE_TYPE (value));
+      Type *d_type = build_dtype (TREE_TYPE (value));
       gcc_assert (d_type);
 
       d_type = d_type->toBasetype();
@@ -1173,7 +1172,7 @@ ObjectFile::doFunctionToCallFunctions (const char *name, FuncDeclarations *funct
       for (size_t i = 0; i < functions->dim; i++)
 	{
 	  tree fndecl = ((*functions)[i])->toSymbol()->Stree;
-	  tree call_expr = gen.buildCall (void_type_node, build_address (fndecl), NULL_TREE);
+	  tree call_expr = d_build_call (void_type_node, build_address (fndecl), NULL_TREE);
 	  expr_list = maybe_vcompound_expr (expr_list, call_expr);
 	}
     }
@@ -1212,7 +1211,7 @@ ObjectFile::doCtorFunction (const char *name, FuncDeclarations *functions, VarDe
       for (size_t i = 0; i < functions->dim; i++)
 	{
 	  tree fndecl = ((*functions)[i])->toSymbol()->Stree;
-	  tree call_expr = gen.buildCall (void_type_node, build_address (fndecl), NULL_TREE);
+	  tree call_expr = d_build_call (void_type_node, build_address (fndecl), NULL_TREE);
 	  expr_list = maybe_vcompound_expr (expr_list, call_expr);
 	}
     }
@@ -1240,7 +1239,7 @@ ObjectFile::doDtorFunction (const char *name, FuncDeclarations *functions)
       for (int i = functions->dim - 1; i >= 0; i--)
 	{
 	  tree fndecl = ((*functions)[i])->toSymbol()->Stree;
-	  tree call_expr = gen.buildCall (void_type_node, build_address (fndecl), NULL_TREE);
+	  tree call_expr = d_build_call (void_type_node, build_address (fndecl), NULL_TREE);
 	  expr_list = maybe_vcompound_expr (expr_list, call_expr);
 	}
     }
@@ -1406,7 +1405,7 @@ Obj::moduleinfo (Symbol *sym)
   //   }
 
   // struct ModuleReference in moduleinit.d
-  tree modref_type_node = gen.twoFieldType (Type::tvoidptr, gen.getObjectType(),
+  tree modref_type_node = gen.twoFieldType (Type::tvoidptr, build_object_type(),
 					    NULL, "next", "mod");
   tree fld_next = TYPE_FIELDS (modref_type_node);
   tree fld_mod = TREE_CHAIN (fld_next);

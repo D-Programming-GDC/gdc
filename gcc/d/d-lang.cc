@@ -1091,7 +1091,7 @@ d_parse_file (void)
   // better to use input_location.xxx ?
   (*debug_hooks->end_source_file) (input_line);
  had_errors:
-  // Add DMD error count to GCC error count to to exit with error status
+  // Add D frontend error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);
 
   g.ofile->finish();
@@ -1624,7 +1624,7 @@ d_eh_personality (void)
 static tree
 d_build_eh_type_type (tree type)
 {
-  TypeClass *d_type = (TypeClass *) gen.getDType (type);
+  TypeClass *d_type = (TypeClass *) build_dtype (type);
   gcc_assert (d_type);
   d_type = (TypeClass *) d_type->toBasetype();
   gcc_assert (d_type->ty == Tclass);
