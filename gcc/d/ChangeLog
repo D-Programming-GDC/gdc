@@ -1,3 +1,31 @@
+2013-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::realPart): Replace with real_part.
+	(IRState::imagPart): Replace with imaginary_part.
+	(IRState::integerConstant): Replace with build_integer_cst.
+	(IRState::floatConstant): Replace with build_float_cst.
+	(IRState::hwi2toli): Replace with cst_to_hwi.
+	(IRState::addressOf): Replace with build_address.
+	(IRState::markAddressable): Replace with d_mark_addressable.
+	(IRState::markUsed): Replace with d_mark_used.
+	(IRState::markRead): Replace with d_mark_read.
+	(IRState::indirect): Replace with indirect_ref.
+	(IRState::pvoidOkay): Replace with void_okay_p.
+	(IRState::maybeCompound): Replace with maybe_compound_expr.
+	(IRState::maybeVoidCompound): Replace with maybe_vcompound_expr.
+	(IRState::isErrorMark): Replace with error_mark_p.
+	(IRState::getTargetSizeConst): Replace with tree_to_hwi.
+	(IRState::modify): Replace with modify_expr.
+	(IRState::vmodify): Replace with vmodify_expr.
+	(IRState::vinit): Replace with build_vinit.
+	(IRState::nop): Replace with build_nop.
+	(IRState::vconvert): Replace with build_vconvert.
+	(IRState::boolOp): Replace with build_boolop.
+	(IRState::compound): Replace with compound_expr.
+	(IRState::voidCompound): Replace with vcompound_expr.
+	(IRState::component): Replace with component_ref.
+	(IRState::errorMark): Replace with error_mark.
+
 2013-03-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-asmstmt.cc(d_build_asm_stmt): Remove.

@@ -264,7 +264,7 @@ TypeEnum::toCtype (void)
 				    member->ident->string, NULL);
 
 		  enum_values.cons (get_identifier (ident ? ident : member->ident->string),
-				    gen.integerConstant (member->value->toInteger(), ctype));
+				    build_integer_cst (member->value->toInteger(), ctype));
 
 		  if (sym->ident)
 		    free (ident);
@@ -297,9 +297,6 @@ TypeStruct::toCtype (void)
 
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
-
-	  /* %% copied from AggLayout::finish -- also have to set the size
-	     for (indirect) self-references. */
 
 	  /* Must set up the overall size, etc. before determining the
 	     context or laying out fields as those types may make references

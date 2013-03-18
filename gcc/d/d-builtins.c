@@ -165,7 +165,7 @@ gcc_type_to_d_type (tree t)
 	  length = size_binop (PLUS_EXPR, size_one_node,
 			       convert (sizetype, length));
 
-	  e = new IntegerExp (0, gen.getTargetSizeConst (length),
+	  e = new IntegerExp (0, tree_to_hwi (length),
 			      Type::tindex);
 	  d = new TypeSArray (d, e);
 	  d = d->semantic (0, NULL);
@@ -732,7 +732,7 @@ gcc_cst_to_d_expr (tree cst)
 	}
       else if (code == INTEGER_CST)
 	{
-	  dinteger_t value = IRState::hwi2toli (TREE_INT_CST (cst));
+	  dinteger_t value = cst_to_hwi (TREE_INT_CST (cst));
 	  return new IntegerExp (0, value, type);
 	}
       else if (code == REAL_CST)
@@ -903,9 +903,9 @@ d_gcc_paint_type (Expression *expr, Type *type)
   tree cst;
 
   if (type->isintegral())
-    cst = IRState::floatConstant (expr->toReal(), expr->type);
+    cst = build_float_cst (expr->toReal(), expr->type);
   else
-    cst = IRState::integerConstant (expr->toInteger(), expr->type);
+    cst = build_integer_cst (expr->toInteger(), expr->type->toCtype());
 
   len = native_encode_expr (cst, buffer, sizeof (buffer));
   cst = native_interpret_expr (type->toCtype(), buffer, len);

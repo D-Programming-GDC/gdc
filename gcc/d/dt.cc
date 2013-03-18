@@ -97,11 +97,11 @@ dtawords (dt_t **pdt, size_t word_count, void *pwords, unsigned word_size)
 dt_t **
 dti32 (dt_t **pdt, unsigned val, int pad_to_word)
 {
-  dt_t **result = dttree (pdt, gen.integerConstant (val, Type::tuns32));
+  dt_t **result = dttree (pdt, build_integer_cst (val, Type::tuns32->toCtype()));
   if (!pad_to_word || PTRSIZE == 4)
     return result;
   else if (PTRSIZE == 8)
-    return dttree (result, gen.integerConstant (0, Type::tuns32));
+    return dttree (result, build_integer_cst (0, Type::tuns32->toCtype()));
   else
     gcc_unreachable ();
 }
@@ -140,10 +140,10 @@ dt_size (dt_t *dt)
 	  break;
 
 	case DT_tree:
-	  if (!gen.isErrorMark (dt->DTtree))
+	  if (!error_mark_p (dt->DTtree))
 	    {
 	      tree t_size = TYPE_SIZE_UNIT (TREE_TYPE (dt->DTtree));
-	      size += gen.getTargetSizeConst (t_size);
+	      size += tree_to_hwi (t_size);
 	    }
 	  break;
 
@@ -194,15 +194,15 @@ dt2node (dt_t *dt)
       t = build_string (dt->DTint, (const char *) dt->DTpointer);
       TREE_TYPE (t) = gen.arrayType (Type::tuns8, dt->DTint);
       TREE_STATIC (t) = 1;
-      return gen.addressOf (t);
+      return build_address (t);
 
     case DT_ibytes:
       // %% make sure this is the target word type
-      return gen.integerConstant (dt->DTint, Type::tsize_t);
+      return build_integer_cst (dt->DTint, Type::tsize_t->toCtype());
 
     case DT_xoff:
-      return gen.pointerOffset (gen.addressOf (check_static_sym (dt->DTsym)),
-				gen.integerConstant (dt->DTint, Type::tsize_t));
+      return gen.pointerOffset (build_address (check_static_sym (dt->DTsym)),
+				build_integer_cst (dt->DTint, Type::tsize_t->toCtype()));
 
     case DT_tree:
       return dt->DTtree;
@@ -227,7 +227,7 @@ dt2node (dt_t *dt)
 	  ctor_elts.reserve (tsa->dim->toInteger ());
 	  while (dte)
 	    {
-	      ctor_elts.cons (gen.integerConstant (i++, size_type_node),
+	      ctor_elts.cons (build_integer_cst (i++, size_type_node),
 			      dt2node (dte));
 	      dte = dte->DTnext;
 	    }

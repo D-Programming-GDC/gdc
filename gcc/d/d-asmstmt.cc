@@ -230,7 +230,7 @@ int ExtAsmStatement::comeFrom()
 // Return how an ExtAsmStatement exits.
 
 int
-ExtAsmStatement::blockExit (bool mustNotThrow)
+ExtAsmStatement::blockExit (bool)
 {
   // Assume the worst
   return BEany;

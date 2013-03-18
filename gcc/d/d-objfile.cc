@@ -155,7 +155,7 @@ FuncDeclaration::toObjFile (int)
 	{
 	  Dsymbol *d = ad->toParent2();
 	  tree vthis_field = ad->vthis->toSymbol()->Stree;
-	  this_tree = irs->component (irs->indirect (this_tree), vthis_field);
+	  this_tree = component_ref (build_deref (this_tree), vthis_field);
 
 	  FuncDeclaration *fd = d->isFuncDeclaration();
 	  ad = d->isAggregateDeclaration();
@@ -192,7 +192,7 @@ FuncDeclaration::toObjFile (int)
     {
       tree body = irs->popStatementList();
       tree var = irs->var (v_argptr);
-      var = irs->addressOf (var);
+      var = build_address (var);
 
       tree init_exp = irs->buildCall (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
       v_argptr->init = NULL; // VoidInitializer?
@@ -315,15 +315,15 @@ FuncDeclaration::buildClosure (IRState *irs)
 		      TYPE_SIZE_UNIT (closure_rec_type));
 
   DECL_INITIAL (closure_ptr) =
-    irs->nop (TREE_TYPE (closure_ptr),
-	      irs->libCall (LIBCALL_ALLOCMEMORY, 1, &arg));
+    build_nop (TREE_TYPE (closure_ptr),
+	       irs->libCall (LIBCALL_ALLOCMEMORY, 1, &arg));
   irs->expandDecl (closure_ptr);
 
   // set the first entry to the parent closure, if any
   tree chain_link = irs->chainLink();
-  tree chain_field = irs->component (irs->indirect (closure_ptr),
-				     TYPE_FIELDS (closure_rec_type));
-  tree chain_expr = irs->vmodify (chain_field,
+  tree chain_field = component_ref (build_deref (closure_ptr),
+				    TYPE_FIELDS (closure_rec_type));
+  tree chain_expr = vmodify_expr (chain_field,
 				  chain_link ? chain_link : d_null_pointer);
   irs->doExp (chain_expr);
 
@@ -336,8 +336,8 @@ FuncDeclaration::buildClosure (IRState *irs)
 
       Symbol *vsym = v->toSymbol();
 
-      tree closure_field = irs->component (irs->indirect (closure_ptr), vsym->SframeField);
-      tree closure_expr = irs->vmodify (closure_field, vsym->Stree);
+      tree closure_field = component_ref (build_deref (closure_ptr), vsym->SframeField);
+      tree closure_expr = vmodify_expr (closure_field, vsym->Stree);
       irs->doExp (closure_expr);
     }
 
@@ -1172,9 +1172,9 @@ ObjectFile::doFunctionToCallFunctions (const char *name, FuncDeclarations *funct
       // %% shouldn't front end build these?
       for (size_t i = 0; i < functions->dim; i++)
 	{
-	  FuncDeclaration *fn_decl = (*functions)[i];
-	  tree call_expr = gen.buildCall (void_type_node, gen.addressOf (fn_decl), NULL_TREE);
-	  expr_list = g.irs->maybeVoidCompound (expr_list, call_expr);
+	  tree fndecl = ((*functions)[i])->toSymbol()->Stree;
+	  tree call_expr = gen.buildCall (void_type_node, build_address (fndecl), NULL_TREE);
+	  expr_list = maybe_vcompound_expr (expr_list, call_expr);
 	}
     }
   if (expr_list)
@@ -1206,14 +1206,14 @@ ObjectFile::doCtorFunction (const char *name, FuncDeclarations *functions, VarDe
 	  tree var_decl = var->toSymbol()->Stree;
 	  tree var_expr = build2 (MODIFY_EXPR, void_type_node, var_decl,
 				  build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node));
-	  expr_list = g.irs->maybeVoidCompound (expr_list, var_expr);
+	  expr_list = maybe_vcompound_expr (expr_list, var_expr);
 	}
       // Call Ctor Functions
       for (size_t i = 0; i < functions->dim; i++)
 	{
-	  FuncDeclaration *fn_decl = (*functions)[i];
-	  tree call_expr = gen.buildCall (void_type_node, gen.addressOf (fn_decl), NULL_TREE);
-	  expr_list = g.irs->maybeVoidCompound (expr_list, call_expr);
+	  tree fndecl = ((*functions)[i])->toSymbol()->Stree;
+	  tree call_expr = gen.buildCall (void_type_node, build_address (fndecl), NULL_TREE);
+	  expr_list = maybe_vcompound_expr (expr_list, call_expr);
 	}
     }
   if (expr_list)
@@ -1239,9 +1239,9 @@ ObjectFile::doDtorFunction (const char *name, FuncDeclarations *functions)
     {
       for (int i = functions->dim - 1; i >= 0; i--)
 	{
-	  FuncDeclaration *fn_decl = (*functions)[i];
-	  tree call_expr = gen.buildCall (void_type_node, gen.addressOf (fn_decl), NULL_TREE);
-	  expr_list = g.irs->maybeVoidCompound (expr_list, call_expr);
+	  tree fndecl = ((*functions)[i])->toSymbol()->Stree;
+	  tree call_expr = gen.buildCall (void_type_node, build_address (fndecl), NULL_TREE);
+	  expr_list = maybe_vcompound_expr (expr_list, call_expr);
 	}
     }
   if (expr_list)
@@ -1304,7 +1304,7 @@ outdata (Symbol *sym)
 	DECL_INITIAL (t) = dt2tree (sym->Sdt);
     }
 
-  gcc_assert (!g.irs->isErrorMark (t));
+  gcc_assert (!error_mark_p (t));
 
   if (DECL_INITIAL (t) != NULL_TREE)
     {
@@ -1432,7 +1432,7 @@ Obj::moduleinfo (Symbol *sym)
 
   CtorEltMaker ce;
   ce.cons (fld_next, d_null_pointer);
-  ce.cons (fld_mod, gen.addressOf (sym->Stree));
+  ce.cons (fld_mod, build_address (sym->Stree));
 
   DECL_INITIAL (our_mod_ref) = build_constructor (modref_type_node, ce.head);
   TREE_STATIC (DECL_INITIAL (our_mod_ref)) = 1;
@@ -1443,10 +1443,10 @@ Obj::moduleinfo (Symbol *sym)
   //   our_mod_ref.next = _Dmodule_ref;
   //   _Dmodule_ref = &our_mod_ref;
   // }
-  tree m1 = gen.vmodify (gen.component (our_mod_ref, fld_next), module_ref);
-  tree m2 = gen.vmodify (module_ref, gen.addressOf (our_mod_ref));
+  tree m1 = vmodify_expr (component_ref (our_mod_ref, fld_next), module_ref);
+  tree m2 = vmodify_expr (module_ref, build_address (our_mod_ref));
 
-  g.ofile->doSimpleFunction ("*__modinit", gen.voidCompound (m1, m2), true);
+  g.ofile->doSimpleFunction ("*__modinit", vcompound_expr (m1, m2), true);
 }
 
 void

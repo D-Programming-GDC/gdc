@@ -251,7 +251,7 @@ ReturnStatement::toIR (IRState *irs)
       // %% convert for init -- if we were returning a reference,
       // would want to take the address...
       if (tf->isref)
-	result_value = irs->addressOf (result_value);
+	result_value = build_address (result_value);
 
       tree result_assign = build2 (INIT_EXPR, TREE_TYPE (result_decl),
 				   result_decl, result_value);
@@ -283,7 +283,7 @@ CaseStatement::toIR (IRState *irs)
   if (exp->type->isscalar())
     case_value = exp->toElem (irs);
   else
-    case_value = irs->integerConstant (index, Type::tint32);
+    case_value = build_integer_cst (index, Type::tint32->toCtype());
 
   irs->checkSwitchCase (this);
   irs->doCase (case_value, cblock);
@@ -338,7 +338,7 @@ SwitchStatement::toIR (IRState *irs)
 	  case_stmt->index = i;
 	}
       outdata (s);
-      tree p_table = irs->addressOf (s->Stree);
+      tree p_table = build_address (s->Stree);
 
       tree args[2] = {
 	  irs->darrayVal (cond_type->arrayOf()->toCtype(), cases->dim, p_table),
