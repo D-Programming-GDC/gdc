@@ -2,6 +2,8 @@
 
 	* d-codegen.cc(IRState::objectInstanceMethod): Recursively check
 	for TOKsuper / TOKdottype. Do not ignore CastExp.
+	* d-elem.cc(IdentityExp::toElem): Ignore padding in bitwise floating
+	point comparisons.
 
 2013-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
