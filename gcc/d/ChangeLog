@@ -1,3 +1,13 @@
+2013-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::objectInstanceMethod): Get function pointer
+	off function TREE_TYPE.
+	(build_deref): Handle cases where expression to dereference is an
+	address expression.
+	(modify_expr): New function overload to set return type directly.
+	* d-elem.cc(CatAssignExp::toElem): Use new modify_expr.
+	(AssignExp::toElem): Likewise.
+
 2013-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::realPart): Replace with real_part.

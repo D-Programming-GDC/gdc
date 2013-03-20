@@ -230,7 +230,13 @@ component_ref (tree v, tree f)
 inline tree
 modify_expr (tree dst, tree src)
 {
-  return build2_loc (input_location, MODIFY_EXPR, TREE_TYPE (src), dst, src);
+  return build2_loc (input_location, MODIFY_EXPR, TREE_TYPE (dst), dst, src);
+}
+
+inline tree
+modify_expr (tree type, tree dst, tree src)
+{
+  return build2_loc (input_location, MODIFY_EXPR, type, dst, src);
 }
 
 inline tree

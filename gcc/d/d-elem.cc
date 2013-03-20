@@ -777,7 +777,7 @@ CatAssignExp::toElem (IRState *irs)
 	  tree e2e = e2->toElem (irs);
 	  e2e = save_expr (e2e);
 
-	  result = modify_expr (build_deref (ptr_exp), e2e);
+	  result = modify_expr (elem_type->toCtype(), build_deref (ptr_exp), e2e);
 	  result = compound_expr (e2e, result);
 	}
     }
@@ -929,7 +929,7 @@ AssignExp::toElem (IRState *irs)
 	      rhs = build_address (rhs);
 	    }
 	}
-      result = modify_expr (lhs, rhs);
+      result = modify_expr (type->toCtype(), lhs, rhs);
 
       if (tb1->ty == Tstruct)
 	{
@@ -965,7 +965,8 @@ AssignExp::toElem (IRState *irs)
     {
       // Simple assignment
       tree lhs = irs->toElemLvalue (e1);
-      return modify_expr (lhs, irs->convertForAssignment (e2, e1->type));
+      return modify_expr (type->toCtype(), lhs,
+			  irs->convertForAssignment (e2, e1->type));
     }
 }
 

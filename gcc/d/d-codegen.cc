@@ -995,6 +995,8 @@ insert_type_modifiers (tree type, unsigned mod)
   return build_qualified_type (type, quals);
 }
 
+// Build INTEGER_CST of type TYPE with the value VALUE.
+
 tree
 build_integer_cst (dinteger_t value, tree type)
 {
@@ -1330,6 +1332,7 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 	{
 	  if (obj_type->ty == Tstruct)
 	    this_expr = build_address (this_expr);
+
 	  return methodCallExpr (build_address (func->toSymbol()->Stree),
 				 this_expr, d_type);
 	}
@@ -1338,23 +1341,14 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 	  // Interface methods are also in the class's vtable, so we don't
 	  // need to convert from a class pointer to an interface pointer.
 	  this_expr = maybe_make_temp (this_expr);
+	  tree vtbl_ref = build_deref (this_expr);
+	  // The vtable is the first field.
+	  tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref));
+	  tree fntype = TREE_TYPE (func->toSymbol()->Stree);
 
-	  tree vtbl_ref;
-	  /* Folding of *&<static var> fails because of the type of the
-	     address expression is 'Object' while the type of the static
-	     var is a particular class (why?). This prevents gimplification
-	     of the expression.
-	   */
-	  if (TREE_CODE (this_expr) == ADDR_EXPR)
-	    vtbl_ref = TREE_OPERAND (this_expr, 0);
-	  else
-	    vtbl_ref = build_deref (this_expr);
-
-	  tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref)); // the vtbl is the first field
-	  vtbl_ref = component_ref (vtbl_ref, field); // vtbl field (a pointer)
-	  // %% better to do with array ref?
+	  vtbl_ref = component_ref (vtbl_ref, field);
 	  vtbl_ref = build_offset (vtbl_ref, size_int (PTRSIZE * func->vtblIndex));
-	  vtbl_ref = indirect_ref (func->type->pointerTo()->toCtype(), vtbl_ref);
+	  vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
 
 	  return methodCallExpr (vtbl_ref, this_expr, d_type);
 	}
@@ -1521,9 +1515,7 @@ build_address (tree exp)
       /* Just convert string literals (char[]) to C-style strings (char *), otherwise
 	 the latter method (char[]*) causes conversion problems during gimplification. */
       if (TREE_CODE (exp) == STRING_CST)
-	{
-	  ptrtype = build_pointer_type (TREE_TYPE (exp_type));
-	}
+	ptrtype = build_pointer_type (TREE_TYPE (exp_type));
       /* Special case for va_list. The backends will be expecting a pointer to vatype,
        * but some targets use an array. So fix it.  */
       else if (TYPE_MAIN_VARIANT (exp_type) == TYPE_MAIN_VARIANT (va_list_type_node))
@@ -1538,6 +1530,7 @@ build_address (tree exp)
 
       t = build1 (ADDR_EXPR, ptrtype, exp);
     }
+
   if (TREE_CODE (exp) == FUNCTION_DECL)
     TREE_NO_TRAMPOLINE (t) = 1;
 
@@ -1698,6 +1691,9 @@ build_deref (tree exp)
 {
   tree type = TREE_TYPE (exp);
   gcc_assert (POINTER_TYPE_P (type));
+
+  if (TREE_CODE (exp) == ADDR_EXPR)
+    return TREE_OPERAND (exp, 0);
 
   return build1 (INDIRECT_REF, TREE_TYPE (type), exp);
 }
