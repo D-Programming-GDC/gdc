@@ -25,8 +25,12 @@
 #include "dt.h"
 #include "id.h"
 
-GlobalValues g;
 IRState gen;
+
+Module *current_module;
+IRState *current_irs;
+ObjectFile *object_file;
+
 
 // Public routine called from D frontend to hide from glue interface.
 // Returns TRUE if all templates are being emitted, either publicly
@@ -44,7 +48,7 @@ d_gcc_force_templates (void)
 void
 d_gcc_emit_local_variable (VarDeclaration *v)
 {
-  g.irs->emitLocalVar (v);
+  current_irs->emitLocalVar (v);
 }
 
 // Return the DECL_CONTEXT for symbol D_SYM.
@@ -147,7 +151,7 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
 
   if (!no_init)
     {
-      g.ofile->doLineNote (v->loc);
+      object_file->doLineNote (v->loc);
 
       if (!init_val)
 	{
@@ -233,7 +237,7 @@ IRState::expandDecl (tree t_decl)
   if (DECL_INITIAL (t_decl))
     {
       tree exp = build_vinit (t_decl, DECL_INITIAL (t_decl));
-      doExp (exp);
+      addExp (exp);
       DECL_INITIAL (t_decl) = NULL_TREE;
     }
 }
@@ -578,7 +582,7 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 	      CtorEltMaker ce;
 	      ce.cons (build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
 			       integer_zero_node, build_integer_cst (count - 1)),
-		       g.ofile->stripVarDecl (convertForAssignment (expr, sa_type->next)));
+		       object_file->stripVarDecl (convertForAssignment (expr, sa_type->next)));
 	      CONSTRUCTOR_ELTS (ctor) = ce.head;
 	    }
 	  TREE_READONLY (ctor) = 1;
@@ -2047,10 +2051,10 @@ IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
   exitIfFalse (build2 (NE_EXPR, boolean_type_node,
 		       convertTo (TREE_TYPE (count), integer_zero_node), count));
 
-  doExp (vmodify_expr (build_deref (ptr), value));
-  doExp (vmodify_expr (ptr, build_offset (ptr, TYPE_SIZE_UNIT (TREE_TYPE (ptr_type)))));
-  doExp (vmodify_expr (count, build2 (MINUS_EXPR, count_type, count,
-				      convertTo (count_type, integer_one_node))));
+  addExp (vmodify_expr (build_deref (ptr), value));
+  addExp (vmodify_expr (ptr, build_offset (ptr, TYPE_SIZE_UNIT (TREE_TYPE (ptr_type)))));
+  addExp (vmodify_expr (count, build2 (MINUS_EXPR, count_type, count,
+				       convertTo (count_type, integer_one_node))));
 
   endLoop();
   endBindings();
@@ -2124,7 +2128,7 @@ error_mark_p (tree t)
 // Assumes T is already ->toBasetype()
 
 TypeFunction *
-IRState::getFuncType (Type *t)
+get_function_type (Type *t)
 {
   TypeFunction *tf = NULL;
   if (t->ty == Tpointer)
@@ -2140,7 +2144,7 @@ IRState::getFuncType (Type *t)
 // In which case, CALLEE is being called through an alias that was passed to CALLER.
 
 bool
-IRState::isCallByAlias (FuncDeclaration *caller, FuncDeclaration *callee)
+call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee)
 {
   if (!callee->isNested())
     return false;
@@ -2191,10 +2195,10 @@ IRState::call (Expression *expr, Expressions *arguments)
 	{
 	  /* This gets the true function type, the latter way can sometimes
 	     be incorrect. Example: ref functions in D2. */
-	  tf = getFuncType (((DotVarExp *)expr)->var->type);
+	  tf = get_function_type (((DotVarExp *)expr)->var->type);
 	}
       else
-	tf = getFuncType (t);
+	tf = get_function_type (t);
 
       extractMethodCallExpr (callee, callee, object);
     }
@@ -2212,10 +2216,10 @@ IRState::call (Expression *expr, Expressions *arguments)
       tf = (TypeFunction *) fd->type;
       if (fd->isNested())
 	{
-	  if (isCallByAlias (func, fd))
+	  if (call_by_alias_p (func, fd))
 	    {
 	      // Re-evaluate symbol storage treating 'fd' as public.
-	      g.ofile->setupSymbolStorage (fd, callee, true);
+	      object_file->setupSymbolStorage (fd, callee, true);
 	    }
 	  object = getFrameForFunction (fd);
 	}
@@ -2227,7 +2231,7 @@ IRState::call (Expression *expr, Expressions *arguments)
     }
   else
     {
-      tf = getFuncType (t);
+      tf = get_function_type (t);
     }
   return call (tf, callee, object, arguments);
 }
@@ -2241,7 +2245,8 @@ IRState::call (FuncDeclaration *func_decl, Expressions *args)
   // Otherwise need to copy code from above
   gcc_assert (!func_decl->isNested());
 
-  return call (getFuncType (func_decl->type), func_decl->toSymbol()->Stree, NULL_TREE, args);
+  return call (get_function_type (func_decl->type),
+	       func_decl->toSymbol()->Stree, NULL_TREE, args);
 }
 
 // Like above, but FUNC_DECL is a nested function, method, delegate or lambda.
@@ -2250,7 +2255,7 @@ IRState::call (FuncDeclaration *func_decl, Expressions *args)
 tree
 IRState::call (FuncDeclaration *func_decl, tree object, Expressions *args)
 {
-  return call (getFuncType (func_decl->type),
+  return call (get_function_type (func_decl->type),
 	       build_address (func_decl->toSymbol()->Stree), object, args);
 }
 
@@ -2272,7 +2277,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   else
     actual_callee = build_address (callable);
 
-  gcc_assert (isFuncType (func_type_node));
+  gcc_assert (function_type_p (func_type_node));
   gcc_assert (func_type != NULL);
   gcc_assert (func_type->ty == Tfunction);
 
@@ -3381,7 +3386,7 @@ IRState::label (Loc loc, Identifier *ident)
   DECL_CONTEXT (t_label) = current_function_decl;
   DECL_MODE (t_label) = VOIDmode;
   if (loc.filename)
-    g.ofile->setDeclLoc (t_label, loc);
+    object_file->setDeclLoc (t_label, loc);
   return t_label;
 }
 
@@ -3724,7 +3729,7 @@ IRState::buildChain (FuncDeclaration *func)
     chain_link = d_null_pointer;
 
   tree chain_expr = vmodify_expr (chain_field, chain_link);
-  doExp (chain_expr);
+  addExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
   for (size_t i = 0; i < func->closureVars.dim; i++)
@@ -3737,7 +3742,7 @@ IRState::buildChain (FuncDeclaration *func)
 
       tree frame_field = component_ref (build_deref (frame_ptr), vsym->SframeField);
       tree frame_expr = vmodify_expr (frame_field, vsym->Stree);
-      doExp (frame_expr);
+      addExp (frame_expr);
     }
 
   useChain (this->func, frame_ptr);
@@ -3813,7 +3818,7 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
 			       declaration_type (v));
       s->SframeField = field;
-      g.ofile->setDeclLoc (field, v);
+      object_file->setDeclLoc (field, v);
       DECL_CONTEXT (field) = frame_rec_type;
       fields.chain (field);
       TREE_USED (s->Stree) = 1;
@@ -4090,7 +4095,7 @@ IRState::endCond (void)
   else
     t_false_brnch = t_brnch;
 
-  g.ofile->doLineNote (f->statement->loc);
+  object_file->doLineNote (f->statement->loc);
   tree t_stmt = build3 (COND_EXPR, void_type_node,
 			f->condition, f->trueBranch, t_false_brnch);
   endFlow();
@@ -4267,8 +4272,8 @@ IRState::endCatch (void)
   tree t_body = popStatementList();
   // % Wrong loc... can set pass statement to startCatch, set
   // The loc on t_type and then use it here...
-  doExp (build2 (CATCH_EXPR, void_type_node,
-		 currentFlow()->catchType, t_body));
+  addExp (build2 (CATCH_EXPR, void_type_node,
+		  currentFlow()->catchType, t_body));
 }
 
 // Wrap up try/catch into a TRY_CATCH_EXPR.
@@ -4277,9 +4282,9 @@ void
 IRState::endCatches (void)
 {
   tree t_catches = popStatementList();
-  g.ofile->doLineNote (currentFlow()->statement->loc);
-  doExp (build2 (TRY_CATCH_EXPR, void_type_node,
-		 currentFlow()->tryBody, t_catches));
+  object_file->doLineNote (currentFlow()->statement->loc);
+  addExp (build2 (TRY_CATCH_EXPR, void_type_node,
+		  currentFlow()->tryBody, t_catches));
   endFlow();
 }
 
@@ -4299,9 +4304,9 @@ void
 IRState::endFinally (void)
 {
   tree t_finally = popStatementList();
-  g.ofile->doLineNote (currentFlow()->statement->loc);
-  doExp (build2 (TRY_FINALLY_EXPR, void_type_node,
-		 currentFlow()->tryBody, t_finally));
+  object_file->doLineNote (currentFlow()->statement->loc);
+  addExp (build2 (TRY_FINALLY_EXPR, void_type_node,
+		  currentFlow()->tryBody, t_finally));
   endFlow();
 }
 
@@ -4319,24 +4324,9 @@ void
 IRState::doJump (Statement *stmt, tree t_label)
 {
   if (stmt)
-    g.ofile->doLineNote (stmt->loc);
+    object_file->doLineNote (stmt->loc);
   addExp (build1 (GOTO_EXPR, void_type_node, t_label));
   TREE_USED (t_label) = 1;
-}
-
-// Emit statement T to function body.
-
-void
-IRState::doExp (tree t)
-{
-  addExp (t);
-}
-
-void
-IRState::doExp (Expression *e)
-{
-  // %% should handle volatile...?
-  addExp (e->toElem (this));
 }
 
 // Routines for checking goto statements don't jump to invalid locations.
@@ -4519,7 +4509,7 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
       tree ident = var_decl->ident ? get_identifier (var_decl->ident->string) : NULL_TREE;
       tree field_decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
 				    declaration_type (var_decl));
-      g.ofile->setDeclLoc (field_decl, var_decl);
+      object_file->setDeclLoc (field_decl, var_decl);
       var_decl->csym = new Symbol;
       var_decl->csym->Stree = field_decl;
 
@@ -4570,7 +4560,7 @@ AggLayout::addField (tree field_decl, size_t offset)
   DECL_FIELD_OFFSET (field_decl) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
   Loc l (this->aggDecl_->getModule(), 1); // Must set this or we crash with DWARF debugging
-  g.ofile->setDeclLoc (field_decl, l);
+  object_file->setDeclLoc (field_decl, l);
 
   TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
 

@@ -1390,7 +1390,7 @@ CallExp::toElem (IRState *irs)
 {
   tree call_exp = irs->call (e1, arguments);
 
-  TypeFunction *tf = irs->getFuncType (e1->type->toBasetype());
+  TypeFunction *tf = get_function_type (e1->type->toBasetype());
   if (tf->isref)
     call_exp = build_deref (call_exp);
 
@@ -1618,7 +1618,7 @@ DeclarationExp::toElem (IRState *irs)
     }
 
   // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
-  // if needed.  This assumes irs == g.irs
+  // if needed.  This assumes irs == current_irs
   irs->pushStatementList();
   declaration->toObjFile (false);
   tree t = irs->popStatementList();

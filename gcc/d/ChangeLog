@@ -11,6 +11,13 @@
 	nested functions / delegates.  Just add on the hidden 'this' pointer
 	containing the custom static chain/closure object.
 
+	* d-codegen.cc(GlobalValues): Replace with current_module,
+	current_irs, object_file.
+	(IRState::getFuncType): Replace with get_function_type.
+	(IRState::isCallByAlias): Replace with call_by_alias_p.
+	(IRState::isFuncType): Replace with function_type_p.
+	(IRState::doExp): Remove.
+
 2013-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::realPart): Replace with real_part.

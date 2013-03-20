@@ -59,8 +59,8 @@ GotoStatement::toIR (IRState *irs)
 {
   tree t_label;
 
-  g.ofile->setLoc (loc); /* This makes the 'undefined label' error show up on the correct line...
-			    The extra doLineNote in doJump shouldn't cause a problem. */
+  object_file->setLoc (loc); /* This makes the 'undefined label' error show up on the correct line...
+				The extra doLineNote in doJump shouldn't cause a problem. */
   if (!label->statement)
     error ("label %s is undefined", label->toChars());
   else if (tf != label->statement->tf)
@@ -92,7 +92,7 @@ void
 SwitchErrorStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
-  irs->doExp (irs->assertCall (loc, LIBCALL_SWITCH_ERROR));
+  irs->addExp (irs->assertCall (loc, LIBCALL_SWITCH_ERROR));
 }
 
 void
@@ -132,8 +132,7 @@ ThrowStatement::toIR (IRState *irs)
 	error ("cannot throw COM interfaces");
     }
   irs->doLineNote (loc);
-  irs->doExp (irs->libCall (LIBCALL_THROW, 1, &arg));
-  // %%TODO: somehow indicate flow stops here? -- set attribute noreturn on _d_throw
+  irs->addExp (irs->libCall (LIBCALL_THROW, 1, &arg));
 }
 
 void
@@ -438,7 +437,7 @@ ForStatement::toIR (IRState *irs)
     {
       // force side effects?
       irs->doLineNote (increment->loc);
-      irs->doExp (increment->toElemDtor (irs));
+      irs->addExp (increment->toElemDtor (irs));
     }
   irs->endLoop();
 }
@@ -519,7 +518,7 @@ ExpStatement::toIR (IRState *irs)
     {
       gen.doLineNote (loc);
       tree exp_tree = exp->toElemDtor (irs);
-      irs->doExp (exp_tree);
+      irs->addExp (exp_tree);
     }
 }
 

@@ -110,7 +110,6 @@ gcc_type_to_d_type (tree t)
     case BOOLEAN_TYPE:
       // Should be no need for size checking.
       return Type::tbool;
-      break;
 
     case INTEGER_TYPE:
       type_size = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
@@ -132,9 +131,7 @@ gcc_type_to_d_type (tree t)
 	{
 	  d = Type::basic[i];
 	  if (d && d->isreal() && d->size() == type_size)
-	    {
-	      return d;
-	    }
+	    return d;
 	}
       break;
 
@@ -144,9 +141,7 @@ gcc_type_to_d_type (tree t)
 	{
 	  d = Type::basic[i];
 	  if (d && d->iscomplex() && d->size() == type_size)
-	    {
-	      return d;
-	    }
+	    return d;
 	}
       break;
 
@@ -279,7 +274,6 @@ gcc_type_to_d_type (tree t)
 
     default:
       break;
-
     }
 
   return NULL;
@@ -746,7 +740,6 @@ gcc_cst_to_d_expr (tree cst)
 	  size_t len = TREE_STRING_LENGTH (cst);
 	  return new StringExp (0, CONST_CAST (void *, string), len);
 	}
-      // TODO: VECTOR... ?
     }
   return NULL;
 }
@@ -831,7 +824,6 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
     case BUILTINyl2xp1:
       return NULL;
 
-
     default:
       gcc_unreachable();
     }
@@ -876,18 +868,16 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       TypeFunction *tf = (TypeFunction *) fd->type;
       tree callee = NULL_TREE;
 
-      // g.irs is not available.
-      static IRState irs;
+      // current_irs is not available.
+      IRState irs;
       irs.doLineNote (loc);
       tree result = irs.call (tf, callee, NULL, arguments);
       result = fold (result);
 
+      // Builtin should be successfully evaluated.
+      // Will only return NULL if we can't convert it.
       if (TREE_CONSTANT (result) && TREE_CODE (result) != CALL_EXPR)
-	{
-	  // Builtin should be successfully evaluated.
-	  // Will only return NULL if we can't convert it.
-	  e = gcc_cst_to_d_expr (result);
-	}
+	e = gcc_cst_to_d_expr (result);
 
       return e;
     }

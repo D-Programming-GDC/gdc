@@ -161,9 +161,9 @@ VarDeclaration::toSymbol (void)
 	    }
 	}
       d_keep (var_decl);
-      g.ofile->setDeclLoc (var_decl, this);
+      object_file->setDeclLoc (var_decl, this);
       if (decl_kind == VAR_DECL)
-	g.ofile->setupSymbolStorage (this, var_decl);
+	object_file->setupSymbolStorage (this, var_decl);
       else if (decl_kind == PARM_DECL)
 	{
 	  /* from gcc code: Some languages have different nominal and real types.  */
@@ -191,7 +191,7 @@ VarDeclaration::toSymbol (void)
 	    e = type->defaultInit();
 
 	  if (e)
-	    DECL_INITIAL (var_decl) = e->toElem (g.irs);
+	    DECL_INITIAL (var_decl) = e->toElem (current_irs);
 	}
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
@@ -289,7 +289,7 @@ TypeInfoDeclaration::toSymbol (void)
 	 in TypeInfoDeclaration::toObjFile.  The difference is that,
 	 in gdc, built-in typeinfo will be referenced as one-only.  */
       D_DECL_ONE_ONLY (csym->Stree) = 1;
-      g.ofile->makeDeclOneOnly (csym->Stree);
+      object_file->makeDeclOneOnly (csym->Stree);
     }
   return csym;
 }
@@ -494,8 +494,8 @@ FuncDeclaration::toSymbol (void)
 	      gen.addDeclAttribute (fndecl, "dllexport");
 	    }
 #endif
-	  g.ofile->setDeclLoc (fndecl, this);
-	  g.ofile->setupSymbolStorage (this, fndecl);
+	  object_file->setDeclLoc (fndecl, this);
+	  object_file->setupSymbolStorage (this, fndecl);
 	  if (!ident)
 	    TREE_PUBLIC (fndecl) = 0;
 
@@ -588,7 +588,7 @@ FuncDeclaration::toThunkSymbol (int offset)
       d_keep (thunk_decl);
       sthunk->Stree = thunk_decl;
 
-      g.ofile->doThunk (thunk_decl, target_func_decl, offset);
+      object_file->doThunk (thunk_decl, target_func_decl, offset);
 
       thunk->symbol = sthunk;
     }
@@ -610,8 +610,8 @@ ClassDeclaration::toSymbol (void)
       csym->Stree = decl;
       d_keep (decl);
 
-      g.ofile->setupStaticStorage (this, decl);
-      g.ofile->setDeclLoc (decl, this);
+      object_file->setupStaticStorage (this, decl);
+      object_file->setDeclLoc (decl, this);
 
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
@@ -649,12 +649,12 @@ Module::toSymbol (void)
 
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
 			      make_node (RECORD_TYPE));
-      g.ofile->setDeclLoc (decl, this);
+      object_file->setDeclLoc (decl, this);
       csym->Stree = decl;
 
       d_keep (decl);
 
-      g.ofile->setupStaticStorage (this, decl);
+      object_file->setupStaticStorage (this, decl);
 
       TREE_CONSTANT (decl) = 0; // *not* readonly, moduleinit depends on this
       TREE_READONLY (decl) = 0; // Not an lvalue, tho
@@ -685,8 +685,8 @@ ClassDeclaration::toVtblSymbol (void)
       vtblsym->Stree = decl;
       d_keep (decl);
 
-      g.ofile->setupStaticStorage (this, decl);
-      g.ofile->setDeclLoc (decl, this);
+      object_file->setupStaticStorage (this, decl);
+      object_file->setDeclLoc (decl, this);
 
       TREE_READONLY (decl) = 1;
       TREE_CONSTANT (decl) = 1;
@@ -722,7 +722,7 @@ AggregateDeclaration::toInitializer (void)
       if (sd)
 	sinit->Salignment = sd->alignment;
     }
-  if (!sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && object_file != NULL)
     {
       tree struct_type = type->toCtype();
       if (POINTER_TYPE_P (struct_type))
@@ -732,8 +732,8 @@ AggregateDeclaration::toInitializer (void)
       sinit->Stree = t;
       d_keep (t);
 
-      g.ofile->setupStaticStorage (this, t);
-      g.ofile->setDeclLoc (t, this);
+      object_file->setupStaticStorage (this, t);
+      object_file->setDeclLoc (t, this);
 
       // %% what's the diff between setting this stuff on the DECL and the
       // CONSTRUCTOR itself?
@@ -761,15 +761,15 @@ TypedefDeclaration::toInitializer (void)
       sinit = s;
       sinit->Sdt = ((TypeTypedef *)type)->sym->init->toDt();
     }
-  if (!sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && object_file != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			   get_identifier (sinit->Sident), type->toCtype());
       sinit->Stree = t;
       d_keep (t);
 
-      g.ofile->setupStaticStorage (this, t);
-      g.ofile->setDeclLoc (t, this);
+      object_file->setupStaticStorage (this, t);
+      object_file->setDeclLoc (t, this);
       TREE_CONSTANT (t) = 1;
       TREE_READONLY (t) = 1;
       DECL_CONTEXT (t) = 0;
@@ -799,15 +799,15 @@ EnumDeclaration::toInitializer (void)
       s->Sflags |= SFLnodebug;
       sinit = s;
     }
-  if (!sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && object_file != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			   get_identifier (sinit->Sident), type->toCtype());
       sinit->Stree = t;
       d_keep (t);
 
-      g.ofile->setupStaticStorage (this, t);
-      g.ofile->setDeclLoc (t, this);
+      object_file->setupStaticStorage (this, t);
+      object_file->setDeclLoc (t, this);
       TREE_CONSTANT (t) = 1;
       TREE_READONLY (t) = 1;
       DECL_CONTEXT (t) = 0;
@@ -872,7 +872,7 @@ ClassDeclaration::toDebug (void)
       TYPE_BINFO (rec_type) = intfc_binfo_for (NULL_TREE, this, offset);
     }
 
-  g.ofile->declareType (rec_type, this);
+  object_file->declareType (rec_type, this);
 }
 
 void
@@ -899,7 +899,7 @@ void
 StructDeclaration::toDebug (void)
 {
   tree ctype = type->toCtype();
-  g.ofile->declareType (ctype, this);
+  object_file->declareType (ctype, this);
   rest_of_type_compilation (ctype, 1);
 }
 

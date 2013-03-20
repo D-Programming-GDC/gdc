@@ -1024,12 +1024,13 @@ d_parse_file (void)
   if (global.errors || global.warnings)
     goto had_errors;
 
-  g.ofile = new ObjectFile();
+  object_file = new ObjectFile();
   if (fonly_arg)
-    g.ofile->modules.push (output_module);
+    object_file->modules.push (output_module);
   else
-    g.ofile->modules.append (&modules);
-  g.irs = &gen; // needed for FuncDeclaration::toObjFile
+    object_file->modules.append (&modules);
+
+  current_irs = &gen;
 
   // Generate output files
   if (global.params.doXGeneration)
@@ -1094,7 +1095,7 @@ d_parse_file (void)
   // Add D frontend error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);
 
-  g.ofile->finish();
+  object_file->finish();
   output_module = NULL;
 
   gcc_d_backend_term();

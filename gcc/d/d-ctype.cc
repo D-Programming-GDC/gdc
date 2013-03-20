@@ -272,8 +272,8 @@ TypeEnum::toCtype (void)
 	    }
 	  TYPE_VALUES (ctype) = enum_values.head;
 
-	  g.ofile->initTypeDecl (ctype, sym);
-	  g.ofile->declareType (ctype, sym);
+	  object_file->initTypeDecl (ctype, sym);
+	  object_file->declareType (ctype, sym);
 	}
     }
 
@@ -316,7 +316,7 @@ TypeStruct::toCtype (void)
 	  // %%  stor-layout.c:finalize_type_size ... it's private to that file
 
 	  TYPE_CONTEXT (ctype) = gen.declContext (sym);
-	  g.ofile->initTypeDecl (ctype, sym);
+	  object_file->initTypeDecl (ctype, sym);
 
 
 	  AggLayout agg_layout (sym, ctype);
@@ -602,7 +602,7 @@ TypeClass::toCtype (void)
 	  rec_type = make_node (RECORD_TYPE);
 	  ctype = build_reference_type (rec_type);
 	  d_keep (ctype); // because BINFO moved out to toDebug
-	  g.ofile->initTypeDecl (rec_type, sym);
+	  object_file->initTypeDecl (rec_type, sym);
 
 	  obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
 

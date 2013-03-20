@@ -32,7 +32,7 @@ FuncDeclaration::toObjFile (int)
   if (!global.params.useUnitTests && isUnitTestDeclaration())
     return;
 
-  if (!g.ofile->shouldEmit (this))
+  if (!object_file->shouldEmit (this))
     return;
 
   Symbol *this_sym = toSymbol();
@@ -58,7 +58,7 @@ FuncDeclaration::toObjFile (int)
   if (global.params.verbose)
     fprintf (stdmsg, "function  %s\n", this->toPrettyChars());
 
-  IRState *irs = g.irs->startFunction (this);
+  IRState *irs = current_irs->startFunction (this);
 
   irs->useChain (NULL, NULL_TREE);
 
@@ -69,14 +69,14 @@ FuncDeclaration::toObjFile (int)
   tree return_type = TREE_TYPE (TREE_TYPE (fndecl));
   tree result_decl = build_decl (UNKNOWN_LOCATION, RESULT_DECL,
 				 NULL_TREE, return_type);
-  g.ofile->setDeclLoc (result_decl, this);
+  object_file->setDeclLoc (result_decl, this);
   DECL_RESULT (fndecl) = result_decl;
   DECL_CONTEXT (result_decl) = fndecl;
   DECL_ARTIFICIAL (result_decl) = 1;
   DECL_IGNORED_P (result_decl) = 1;
 
   allocate_struct_function (fndecl, false);
-  g.ofile->setCfunEndLoc (endloc);
+  object_file->setCfunEndLoc (endloc);
 
   // Add method to record for debug information.
   if (isThis())
@@ -87,7 +87,7 @@ FuncDeclaration::toObjFile (int)
       if (ad->isClassDeclaration())
 	rec = TREE_TYPE (rec);
 
-      g.ofile->addAggMethod (rec, this);
+      object_file->addAggMethod (rec, this);
     }
 
   tree parm_decl = NULL_TREE;
@@ -108,7 +108,7 @@ FuncDeclaration::toObjFile (int)
 	  DECL_ARTIFICIAL (parm_decl) = 1;
 	  irs->useChain (fd, parm_decl);
 	}
-      g.ofile->setDeclLoc (parm_decl, vthis);
+      object_file->setDeclLoc (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
     }
 
@@ -116,7 +116,7 @@ FuncDeclaration::toObjFile (int)
   if (v_arguments)
     {
       parm_decl = v_arguments->toSymbol()->Stree;
-      g.ofile->setDeclLoc (parm_decl, v_arguments);
+      object_file->setDeclLoc (parm_decl, v_arguments);
       param_list = chainon (param_list, parm_decl);
     }
 
@@ -127,7 +127,7 @@ FuncDeclaration::toObjFile (int)
     {
       VarDeclaration *param = (*parameters)[i];
       parm_decl = param->toSymbol()->Stree;
-      g.ofile->setDeclLoc (parm_decl, (Dsymbol *) param);
+      object_file->setDeclLoc (parm_decl, (Dsymbol *) param);
       // chain them in the correct order
       param_list = chainon (param_list, parm_decl);
     }
@@ -279,7 +279,7 @@ FuncDeclaration::toObjFile (int)
   this_sym->outputStage = Finished;
 
   if (!errorcount && !global.errors)
-    g.ofile->outputFunction (this);
+    object_file->outputFunction (this);
 
   current_function_decl = old_current_function_decl;
   set_cfun (old_cfun);
@@ -324,7 +324,7 @@ FuncDeclaration::buildClosure (IRState *irs)
 				    TYPE_FIELDS (closure_rec_type));
   tree chain_expr = vmodify_expr (chain_field,
 				  chain_link ? chain_link : d_null_pointer);
-  irs->doExp (chain_expr);
+  irs->addExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
   for (size_t i = 0; i < closureVars.dim; i++)
@@ -337,7 +337,7 @@ FuncDeclaration::buildClosure (IRState *irs)
 
       tree closure_field = component_ref (build_deref (closure_ptr), vsym->SframeField);
       tree closure_expr = vmodify_expr (closure_field, vsym->Stree);
-      irs->doExp (closure_expr);
+      irs->addExp (closure_expr);
     }
 
   irs->useChain (this, closure_ptr);
@@ -348,10 +348,10 @@ Module::genobjfile (int multiobj)
 {
   /* Normally would create an ObjFile here, but gcc is limited to one obj file
      per pass and there may be more than one module per obj file. */
-  gcc_assert (g.ofile);
+  gcc_assert (object_file);
 
-  g.ofile->beginModule (this);
-  g.ofile->setupStaticStorage (this, toSymbol()->Stree);
+  object_file->beginModule (this);
+  object_file->setupStaticStorage (this, toSymbol()->Stree);
 
   if (members)
     {
@@ -365,23 +365,23 @@ Module::genobjfile (int multiobj)
   // Always generate module info.
   if (1 || needModuleInfo())
     {
-      ModuleInfo& mi = *g.ofile->moduleInfo;
+      ModuleInfo& mi = *object_file->moduleInfo;
       if (mi.ctors.dim || mi.ctorgates.dim)
-	sctor = g.ofile->doCtorFunction ("*__modctor", &mi.ctors, &mi.ctorgates)->toSymbol();
+	sctor = object_file->doCtorFunction ("*__modctor", &mi.ctors, &mi.ctorgates)->toSymbol();
       if (mi.dtors.dim)
-	sdtor = g.ofile->doDtorFunction ("*__moddtor", &mi.dtors)->toSymbol();
+	sdtor = object_file->doDtorFunction ("*__moddtor", &mi.dtors)->toSymbol();
       if (mi.sharedctors.dim || mi.sharedctorgates.dim)
-	ssharedctor = g.ofile->doCtorFunction ("*__modsharedctor",
+	ssharedctor = object_file->doCtorFunction ("*__modsharedctor",
 					       &mi.sharedctors, &mi.sharedctorgates)->toSymbol();
       if (mi.shareddtors.dim)
-	sshareddtor = g.ofile->doDtorFunction ("*__modshareddtor", &mi.shareddtors)->toSymbol();
+	sshareddtor = object_file->doDtorFunction ("*__modshareddtor", &mi.shareddtors)->toSymbol();
       if (mi.unitTests.dim)
-	stest = g.ofile->doUnittestFunction ("*__modtest", &mi.unitTests)->toSymbol();
+	stest = object_file->doUnittestFunction ("*__modtest", &mi.unitTests)->toSymbol();
 
       genmoduleinfo();
     }
 
-  g.ofile->endModule();
+  object_file->endModule();
 }
 
 
@@ -396,7 +396,7 @@ void
 ObjectFile::beginModule (Module *m)
 {
   moduleInfo = new ModuleInfo;
-  g.mod = m;
+  current_module = m;
 }
 
 void
@@ -409,7 +409,7 @@ ObjectFile::endModule (void)
     }
   deferredThunks.setDim (0);
   moduleInfo = NULL;
-  g.mod = NULL;
+  current_module = NULL;
 }
 
 bool
@@ -898,21 +898,14 @@ ObjectFile::initTypeDecl (tree t, tree decl)
 
   TYPE_CONTEXT (t) = DECL_CONTEXT (decl);
   TYPE_NAME (t) = decl;
-  switch (TREE_CODE (t))
+
+  if (TREE_CODE (t) == ENUMERAL_TYPE ||
+      TREE_CODE (t) == RECORD_TYPE || TREE_CODE (t) == UNION_TYPE)
     {
-    case ENUMERAL_TYPE:
-    case RECORD_TYPE:
-    case UNION_TYPE:
       /* Not sure if there is a need for separate TYPE_DECLs in
 	 TYPE_NAME and TYPE_STUB_DECL. */
       TYPE_STUB_DECL (t) = decl;
-      // g++ does this and the debugging code assumes it:
       DECL_ARTIFICIAL (decl) = 1;
-      break;
-
-    default:
-      // nothing
-      break;
     }
 }
 
@@ -929,28 +922,11 @@ ObjectFile::stripVarDecl (tree value)
 {
   if (TREE_CODE (value) != VAR_DECL)
     return value;
-  else if (DECL_INITIAL (value))
+
+  if (DECL_INITIAL (value))
     return DECL_INITIAL (value);
-  else
-    {
-      Type *d_type = build_dtype (TREE_TYPE (value));
-      gcc_assert (d_type);
 
-      d_type = d_type->toBasetype();
-
-      if (d_type->ty == Tstruct)
-	{
-	  // %% maker sure this is doing the right thing...
-	  // %% better do get rid of it..
-	  dt_t *dt = NULL;
-	  d_type->toDt (&dt);
-	  tree t = dt2tree (dt);
-	  TREE_CONSTANT (t) = 1;
-	  return t;
-	}
-      else
-	gcc_unreachable();
-    }
+  gcc_unreachable ();
 }
 
 void
@@ -1118,21 +1094,21 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
 FuncDeclaration *
 ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, bool public_fn)
 {
-  if (!g.mod)
-    g.mod = d_gcc_get_output_module();
+  if (!current_module)
+    current_module = d_gcc_get_output_module();
 
   if (name[0] == '*')
     {
-      Symbol *s = g.mod->toSymbolX (name + 1, 0, 0, "FZv");
+      Symbol *s = current_module->toSymbolX (name + 1, 0, 0, "FZv");
       name = s->Sident;
     }
 
   TypeFunction *func_type = new TypeFunction (0, Type::tvoid, 0, LINKc);
-  FuncDeclaration *func = new FuncDeclaration (g.mod->loc, g.mod->loc, // %% locs may be wrong
-					       Lexer::idPool (name), STCstatic, func_type); // name is only to prevent crashes
-  func->loc = Loc (g.mod, 1); // to prevent debug info crash // maybe not needed if DECL_ARTIFICIAL?
+  FuncDeclaration *func = new FuncDeclaration (current_module->loc, current_module->loc,
+					       Lexer::idPool (name), STCstatic, func_type);
+  func->loc = Loc (current_module, 1);
   func->linkage = func_type->linkage;
-  func->parent = g.mod;
+  func->parent = current_module;
   func->protection = public_fn ? PROTpublic : PROTprivate;
 
   tree func_decl = func->toSymbol()->Stree;
@@ -1145,9 +1121,8 @@ ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, boo
   TREE_USED (func_decl) = 1;
 
   // %% maybe remove the identifier
-  func->fbody = new ExpStatement (g.mod->loc,
-				  new WrappedExp (g.mod->loc, TOKcomma, expr, Type::tvoid));
-
+  WrappedExp *body = new WrappedExp (current_module->loc, TOKcomma, expr, Type::tvoid);
+  func->fbody = new ExpStatement (current_module->loc, body);
   func->toObjFile (false);
 
   return func;
@@ -1266,7 +1241,7 @@ check_static_sym (Symbol *sym)
       gcc_assert (!sym->Sident);
       tree t_ini = dt2tree (sym->Sdt); // %% recursion problems?
       tree t_var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (t_ini));
-      g.ofile->giveDeclUniqueName (t_var);
+      object_file->giveDeclUniqueName (t_var);
       DECL_INITIAL (t_var) = t_ini;
       TREE_STATIC (t_var) = 1;
       if (sym->Sseg == CDATA)
@@ -1319,7 +1294,7 @@ outdata (Symbol *sym)
   // to have context pointing to nested function, not record.
   DECL_CONTEXT (t) = decl_function_context (t);
 
-  if (!g.ofile->shouldEmit (sym))
+  if (!object_file->shouldEmit (sym))
     return;
 
   // This was for typeinfo decls ... shouldn't happen now.
@@ -1340,7 +1315,7 @@ outdata (Symbol *sym)
 	}
     }
 
-  g.ofile->outputStaticSymbol (sym);
+  object_file->outputStaticSymbol (sym);
 }
 
 // Interface to object file format.
@@ -1421,8 +1396,8 @@ Obj::moduleinfo (Symbol *sym)
   // private ModuleReference our_mod_ref = { next: null, mod: _ModuleInfo_xxx };
   tree our_mod_ref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, modref_type_node);
   d_keep (our_mod_ref);
-  g.ofile->giveDeclUniqueName (our_mod_ref, "__mod_ref");
-  g.ofile->setDeclLoc (our_mod_ref, g.mod);
+  object_file->giveDeclUniqueName (our_mod_ref, "__mod_ref");
+  object_file->setDeclLoc (our_mod_ref, current_module);
 
   DECL_ARTIFICIAL (our_mod_ref) = 1;
   DECL_IGNORED_P (our_mod_ref) = 1;
@@ -1445,7 +1420,7 @@ Obj::moduleinfo (Symbol *sym)
   tree m1 = vmodify_expr (component_ref (our_mod_ref, fld_next), module_ref);
   tree m2 = vmodify_expr (module_ref, build_address (our_mod_ref));
 
-  g.ofile->doSimpleFunction ("*__modinit", vcompound_expr (m1, m2), true);
+  object_file->doSimpleFunction ("*__modinit", vcompound_expr (m1, m2), true);
 }
 
 void
@@ -1492,7 +1467,7 @@ obj_tlssections (void)
   // DECL_INITIAL so the symbol goes in .tdata
   DECL_INITIAL (tlsstart) = build_int_cst (integer_type_node, 3);
   DECL_TLS_MODEL (tlsstart) = decl_default_tls_model (tlsstart);
-  g.ofile->setDeclLoc (tlsstart, g.mod);
+  object_file->setDeclLoc (tlsstart, current_module);
   rest_of_decl_compilation (tlsstart, 1, 0);
 
   tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
@@ -1503,7 +1478,7 @@ obj_tlssections (void)
   // DECL_COMMON so the symbol goes in .tcommon
   DECL_COMMON (tlsend) = 1;
   DECL_TLS_MODEL (tlsend) = decl_default_tls_model (tlsend);
-  g.ofile->setDeclLoc (tlsend, g.mod);
+  object_file->setDeclLoc (tlsend, current_module);
   rest_of_decl_compilation (tlsend, 1, 0);
 }
 

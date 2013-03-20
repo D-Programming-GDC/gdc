@@ -302,6 +302,17 @@ imaginary_part (tree c)
   return build1_loc (input_location, IMAGPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c);
 }
 
+// Helpers for call
+inline bool
+function_type_p (tree t)
+{
+  return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE);
+}
+
+extern TypeFunction *get_function_type (Type *t);
+extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
+
+
 // Code generation routines should be in a separate namespace, but so many
 // routines need a reference to an IRState to expand Expressions.  Solution
 // is to make IRState the code generation namespace with the actual IR state
@@ -414,14 +425,6 @@ struct IRState : IRBase
 
   static tree binding (tree var_chain, tree body);
 
-  // ** Helpers for call
-  static TypeFunction *getFuncType (Type *t);
-
-  static bool isFuncType (tree t)
-  { return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE); }
-
-  static bool isCallByAlias (FuncDeclaration *caller, FuncDeclaration *callee);
-
   // ** Function calls
   tree call (Expression *expr, Expressions *arguments);
   tree call (FuncDeclaration *func_decl, Expressions *args);
@@ -516,9 +519,6 @@ struct IRState : IRBase
   void doReturn (tree t_value);
   void doJump (Statement *stmt, tree t_label);
 
-  void doExp (tree t);
-  void doExp (Expression *e);
-
   // ** Goto/Label statement evaluation
   void pushLabel (LabelDsymbol *l);
   void checkSwitchCase (Statement *stmt, int default_flag = 0);
@@ -534,14 +534,10 @@ struct IRState : IRBase
   tree chainLink_;
 };
 
-struct GlobalValues
-{
-  ObjectFile *ofile;
-  IRState *irs;
-  Module *mod;
-};
-
-extern GlobalValues g;
+// 
+extern Module *current_module;
+extern IRState *current_irs;
+extern ObjectFile *object_file;
 
 extern IRState gen;
 
