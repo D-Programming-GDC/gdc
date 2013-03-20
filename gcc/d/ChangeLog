@@ -21,6 +21,9 @@
 	* d-asmstmt.cc(ExtAsmStatement::syntaxCopy): Use arraySyntaxCopy to
 	copy front end expressions.
 
+	* d-codegen.cc(AssignExp::toElem): Call _d_arrayassign / _d_arrayctor
+	when assigning arrays of structs.
+
 2013-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::realPart): Replace with real_part.

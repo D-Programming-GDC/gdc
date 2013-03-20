@@ -879,7 +879,7 @@ AssignExp::toElem (IRState *irs)
 	    {
 	      tree args[3];
 	      LibCall libcall = op == TOKconstruct ?
-		LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
+		LIBCALL_ARRAYCTOR : LIBCALL_ARRAYASSIGN;
 
 	      args[0] = irs->typeinfoReference (elem_type);
 	      args[1] = irs->toDArray (e1);
@@ -887,28 +887,28 @@ AssignExp::toElem (IRState *irs)
 
 	      return irs->libCall (libcall, 3, args, type->toCtype());
 	    }
-	  else
-	    if (irs->arrayBoundsCheck())
-	      {
-		tree args[3];
-		args[0] = build_integer_cst (elem_type->size(), Type::tsize_t->toCtype());
-		args[1] = irs->toDArray (e2);
-		args[2] = irs->toDArray (e1);
-		return irs->libCall (LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
-	      }
-	    else
-	      {
-		tree t1 = maybe_make_temp (irs->toDArray (e1));
-		tree t2 = irs->toDArray (e2);
-		tree size = fold_build2 (MULT_EXPR, size_type_node,
-					 irs->convertTo (size_type_node, irs->darrayLenRef (t1)),
-					 size_int (elem_type->size()));
 
-		tree result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCPY),
-						 3, irs->darrayPtrRef (t1),
-						 irs->darrayPtrRef (t2), size);
-		return compound_expr (result, t1);
-	      }
+	  if (irs->arrayBoundsCheck())
+	    {
+	      tree args[3];
+	      args[0] = build_integer_cst (elem_type->size(), Type::tsize_t->toCtype());
+	      args[1] = irs->toDArray (e2);
+	      args[2] = irs->toDArray (e1);
+	      return irs->libCall (LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
+	    }
+	  else
+	    {
+	      tree t1 = maybe_make_temp (irs->toDArray (e1));
+	      tree t2 = irs->toDArray (e2);
+	      tree size = fold_build2 (MULT_EXPR, size_type_node,
+				       irs->convertTo (size_type_node, irs->darrayLenRef (t1)),
+				       size_int (elem_type->size()));
+
+	      tree result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
+					       irs->darrayPtrRef (t1),
+					       irs->darrayPtrRef (t2), size);
+	      return compound_expr (result, t1);
+	    }
 	}
     }
   else if (op == TOKconstruct)
