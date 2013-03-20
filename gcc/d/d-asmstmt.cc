@@ -67,40 +67,18 @@ Statement *
 ExtAsmStatement::syntaxCopy (void)
 {
   Expression *insn = this->insn->syntaxCopy();
-  Expressions *args = new Expressions();
-  Expressions *constraints = new Expressions();
-  Expressions *clobbers = new Expressions();
+  Expressions *args = NULL;
+  Expressions *constraints = NULL;
+  Expressions *clobbers = NULL;
+  Dsymbols *labels = NULL;
 
-  args->setDim(this->args->dim);
-  constraints->setDim(this->constraints->dim);
-  clobbers->setDim(this->clobbers->dim);
-
-  for (size_t i = 0; i < this->args->dim; i++)
-    {
-      Expression *e = (*this->args)[i];
-      if (e)
-	e = e->syntaxCopy();
-      (*args)[i] = e;
-    }
-
-  for (size_t i = 0; i < this->constraints->dim; i++)
-    {
-      Expression *e = (*this->constraints)[i];
-      if (e)
-	e = e->syntaxCopy();
-      (*constraints)[i] = e;
-    }
-
-  for (size_t i = 0; i < this->clobbers->dim; i++)
-    {
-      Expression *e = (*this->clobbers)[i];
-      if (e)
-	e = e->syntaxCopy();
-      (*clobbers)[i] = e;
-    }
+  args = Expression::arraySyntaxCopy (this->args);
+  constraints = Expression::arraySyntaxCopy (this->constraints);
+  clobbers = Expression::arraySyntaxCopy (this->clobbers);
+  labels = Dsymbol::arraySyntaxCopy (this->labels);
 
   return new ExtAsmStatement (this->loc, insn, args, this->names, constraints,
-			      this->outputargs, clobbers, this->labels);
+			      this->outputargs, clobbers, labels);
 }
 
 // Semantically analyze ExtAsmStatement where SC is the scope of the statment.

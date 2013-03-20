@@ -18,6 +18,9 @@
 	(IRState::isFuncType): Replace with function_type_p.
 	(IRState::doExp): Remove.
 
+	* d-asmstmt.cc(ExtAsmStatement::syntaxCopy): Use arraySyntaxCopy to
+	copy front end expressions.
+
 2013-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::realPart): Replace with real_part.
