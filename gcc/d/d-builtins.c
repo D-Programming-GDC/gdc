@@ -561,6 +561,9 @@ d_gcc_magic_builtins_module (Module *m)
   m->members->push (new LinkDeclaration (LINKc, funcs));
 }
 
+// Map extern(C) declarations in member M to GCC library
+// builtins by overriding the backend internal symbol.
+
 static void
 d_gcc_magic_libbuiltins_check (Dsymbol *m)
 {

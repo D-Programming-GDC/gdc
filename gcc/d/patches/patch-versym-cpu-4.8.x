@@ -1,8 +1,3 @@
-From e38b1f8792fa024835a8add238dbc7da587d0864 Mon Sep 17 00:00:00 2001
-From: Johannes Pfau <johannespfau@gmail.com>
-Date: Fri, 1 Feb 2013 19:13:51 +0100
-Subject: [PATCH 1/2] Implement D predefined CPU versions
-
 This implements the following versions:
 * D_HardFloat
 * D_SoftFloat
@@ -46,23 +41,9 @@ for all supported architectures. And these where appropriate:
 ** SPARC_HardFloat
 ** SPARC_SoftFloat
 ---
- aarch64/aarch64.h |  8 ++++++++
- alpha/alpha.h     | 17 +++++++++++++++++
- arm/arm.h         | 25 +++++++++++++++++++++++++
- i386/i386.h       | 18 ++++++++++++++++++
- ia64/ia64.h       |  7 +++++++
- mips/mips.h       | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
- pa/pa.h           | 14 ++++++++++++++
- rs6000/rs6000.h   | 22 ++++++++++++++++++++++
- s390/s390.h       | 15 +++++++++++++++
- sh/sh.h           | 16 ++++++++++++++++
- sparc/sparc.h     | 25 +++++++++++++++++++++++++
- 11 files changed, 215 insertions(+)
 
-diff --git a/config/aarch64/aarch64.h b/config/aarch64/aarch64.h
-index c3efd2a..9b88e38 100644
---- a/config/aarch64/aarch64.h
-+++ b/config/aarch64/aarch64.h
+--- gcc/config/aarch64/aarch64.h	2013-01-10 20:38:27.000000000 +0000
++++ gcc/config/aarch64/aarch64.h	2013-03-20 16:26:18.726235723 +0000
 @@ -51,6 +51,14 @@
  							\
      } while (0)
@@ -78,11 +59,9 @@ index c3efd2a..9b88e38 100644
  
  
  /* Target machine storage layout.  */
-diff --git a/config/alpha/alpha.h b/config/alpha/alpha.h
-index 2e7c078..4bbf3a2 100644
---- a/config/alpha/alpha.h
-+++ b/config/alpha/alpha.h
-@@ -72,6 +72,23 @@ along with GCC; see the file COPYING3.  If not see
+--- gcc/config/alpha/alpha.h	2013-01-10 20:38:27.000000000 +0000
++++ gcc/config/alpha/alpha.h	2013-03-20 16:26:18.734235722 +0000
+@@ -72,6 +72,23 @@ along with GCC; see the file COPYING3.
  	SUBTARGET_LANGUAGE_CPP_BUILTINS();		\
  } while (0)
  
@@ -106,10 +85,8 @@ index 2e7c078..4bbf3a2 100644
  #ifndef SUBTARGET_LANGUAGE_CPP_BUILTINS
  #define SUBTARGET_LANGUAGE_CPP_BUILTINS()		\
    do							\
-diff --git a/config/arm/arm.h b/config/arm/arm.h
-index 6d336e8..ac47238 100644
---- a/config/arm/arm.h
-+++ b/config/arm/arm.h
+--- gcc/config/arm/arm.h	2013-01-15 16:17:28.000000000 +0000
++++ gcc/config/arm/arm.h	2013-03-20 16:26:18.746235724 +0000
 @@ -158,6 +158,31 @@ extern char arm_arch_name[];
  	  builtin_define ("__ARM_ARCH_EXT_IDIV__");	\
      } while (0)
@@ -142,11 +119,9 @@ index 6d336e8..ac47238 100644
  #include "config/arm/arm-opts.h"
  
  enum target_cpus
-diff --git a/config/i386/i386.h b/config/i386/i386.h
-index af293b4..4f28197 100644
---- a/config/i386/i386.h
-+++ b/config/i386/i386.h
-@@ -585,6 +585,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+--- gcc/config/i386/i386.h	2013-01-28 20:42:55.000000000 +0000
++++ gcc/config/i386/i386.h	2013-03-20 16:26:18.754235724 +0000
+@@ -588,6 +588,24 @@ extern const char *host_detect_local_cpu
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -171,10 +146,8 @@ index af293b4..4f28197 100644
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
-diff --git a/config/ia64/ia64.h b/config/ia64/ia64.h
-index ae9027c..f29406a 100644
---- a/config/ia64/ia64.h
-+++ b/config/ia64/ia64.h
+--- gcc/config/ia64/ia64.h	2013-01-10 20:38:27.000000000 +0000
++++ gcc/config/ia64/ia64.h	2013-03-20 16:26:18.766235724 +0000
 @@ -40,6 +40,13 @@ do {						\
  	  builtin_define("__BIG_ENDIAN__");	\
  } while (0)
@@ -189,10 +162,8 @@ index ae9027c..f29406a 100644
  #ifndef SUBTARGET_EXTRA_SPECS
  #define SUBTARGET_EXTRA_SPECS
  #endif
-diff --git a/config/mips/mips.h b/config/mips/mips.h
-index 0acce14..b28f2ec 100644
---- a/config/mips/mips.h
-+++ b/config/mips/mips.h
+--- gcc/config/mips/mips.h	2013-02-25 13:53:16.000000000 +0000
++++ gcc/config/mips/mips.h	2013-03-20 16:26:18.778235723 +0000
 @@ -551,6 +551,54 @@ struct mips_cpu_info {
      }									\
    while (0)
@@ -248,10 +219,8 @@ index 0acce14..b28f2ec 100644
  /* Default target_flags if no switches are specified  */
  
  #ifndef TARGET_DEFAULT
-diff --git a/config/pa/pa.h b/config/pa/pa.h
-index 216f737..0133a27 100644
---- a/config/pa/pa.h
-+++ b/config/pa/pa.h
+--- gcc/config/pa/pa.h	2013-02-03 19:52:37.000000000 +0000
++++ gcc/config/pa/pa.h	2013-03-20 16:26:18.870235724 +0000
 @@ -185,6 +185,20 @@ do {								\
         builtin_define("_PA_RISC1_0");				\
  } while (0)
@@ -273,11 +242,9 @@ index 216f737..0133a27 100644
  /* An old set of OS defines for various BSD-like systems.  */
  #define TARGET_OS_CPP_BUILTINS()				\
    do								\
-diff --git a/config/rs6000/rs6000.h b/config/rs6000/rs6000.h
-index b015652..24e5c10 100644
---- a/config/rs6000/rs6000.h
-+++ b/config/rs6000/rs6000.h
-@@ -607,6 +607,28 @@ extern unsigned char rs6000_recip_bits[];
+--- gcc/config/rs6000/rs6000.h	2013-02-09 09:30:45.000000000 +0000
++++ gcc/config/rs6000/rs6000.h	2013-03-20 16:26:19.058235728 +0000
+@@ -613,6 +613,28 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -306,10 +273,8 @@ index b015652..24e5c10 100644
  /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
     we're compiling for.  Some configurations may need to override it.  */
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
-diff --git a/config/s390/s390.h b/config/s390/s390.h
-index a9b7f5c..fcaf4b1 100644
---- a/config/s390/s390.h
-+++ b/config/s390/s390.h
+--- gcc/config/s390/s390.h	2013-03-05 12:02:06.000000000 +0000
++++ gcc/config/s390/s390.h	2013-03-20 16:26:19.094235727 +0000
 @@ -108,6 +108,21 @@ enum processor_flags
      }							\
    while (0)
@@ -332,11 +297,9 @@ index a9b7f5c..fcaf4b1 100644
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT             (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP)
  #else
-diff --git a/config/sh/sh.h b/config/sh/sh.h
-index 89e6626..e7737fc 100644
---- a/config/sh/sh.h
-+++ b/config/sh/sh.h
-@@ -31,6 +31,22 @@ extern int code_for_indirect_jump_scratch;
+--- gcc/config/sh/sh.h	2013-03-13 18:09:10.000000000 +0000
++++ gcc/config/sh/sh.h	2013-03-20 16:26:19.102235728 +0000
+@@ -31,6 +31,22 @@ extern int code_for_indirect_jump_scratc
  
  #define TARGET_CPU_CPP_BUILTINS() sh_cpu_cpp_builtins (pfile)
  
@@ -359,11 +322,9 @@ index 89e6626..e7737fc 100644
  /* Value should be nonzero if functions must have frame pointers.
     Zero means the frame pointer need not be set up (and parms may be accessed
     via the stack pointer) in functions that seem suitable.  */
-diff --git a/config/sparc/sparc.h b/config/sparc/sparc.h
-index 6b02b45..33285a4 100644
---- a/config/sparc/sparc.h
-+++ b/config/sparc/sparc.h
-@@ -27,6 +27,31 @@ along with GCC; see the file COPYING3.  If not see
+--- gcc/config/sparc/sparc.h	2013-01-10 20:38:27.000000000 +0000
++++ gcc/config/sparc/sparc.h	2013-03-20 16:26:19.110235727 +0000
+@@ -27,6 +27,31 @@ along with GCC; see the file COPYING3.
  
  #define TARGET_CPU_CPP_BUILTINS() sparc_target_macros ()
  
@@ -395,6 +356,3 @@ index 6b02b45..33285a4 100644
  /* Specify this in a cover file to provide bi-architecture (32/64) support.  */
  /* #define SPARC_BI_ARCH */
  
--- 
-1.7.11.7
-

@@ -1,5 +1,8 @@
---- gcc-4.8/configure	2012-12-16 07:24:29.000000000 +0000
-+++ gcc-4.8/configure	2013-01-04 11:16:52.652144654 +0000
+This implements building of libphobos library in GCC.
+---
+
+--- gcc/configure	2013-02-15 17:45:54.000000000 +0000
++++ gcc/configure	2013-03-20 16:26:18.442235719 +0000
 @@ -2781,7 +2781,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
  		target-libobjc \
@@ -10,8 +13,8 @@
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
---- gcc-4.8/configure.ac	2012-12-16 07:24:29.000000000 +0000
-+++ gcc-4.8/configure.ac	2013-01-04 11:16:52.692144654 +0000
+--- gcc/configure.ac	2013-02-15 17:45:54.000000000 +0000
++++ gcc/configure.ac	2013-03-20 16:26:18.462235720 +0000
 @@ -168,7 +168,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
  		target-libobjc \
@@ -22,8 +25,8 @@
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
---- gcc-4.8/Makefile.def	2012-12-20 19:17:53.000000000 +0000
-+++ gcc-4.8/Makefile.def	2013-01-04 11:18:51.516147966 +0000
+--- gcc/Makefile.def	2013-01-14 16:15:21.000000000 +0000
++++ gcc/Makefile.def	2013-03-20 16:26:18.466235720 +0000
 @@ -131,6 +131,7 @@ target_modules = { module= libquadmath;
  target_modules = { module= libgfortran; };
  target_modules = { module= libobjc; };
@@ -32,7 +35,7 @@
  target_modules = { module= libtermcap; no_check=true;
                     missing=mostlyclean;
                     missing=clean;
-@@ -498,6 +499,8 @@ dependencies = { module=configure-target
+@@ -505,6 +506,8 @@ dependencies = { module=configure-target
  dependencies = { module=all-target-libgo; on=all-target-libbacktrace; };
  dependencies = { module=all-target-libgo; on=all-target-libffi; };
  dependencies = { module=all-target-libgo; on=all-target-libatomic; };
@@ -41,7 +44,7 @@
  dependencies = { module=configure-target-libjava; on=configure-target-zlib; };
  dependencies = { module=configure-target-libjava; on=configure-target-boehm-gc; };
  dependencies = { module=configure-target-libjava; on=configure-target-libffi; };
-@@ -552,6 +555,8 @@ languages = { language=objc;	gcc-check-t
+@@ -560,6 +563,8 @@ languages = { language=objc;	gcc-check-t
  languages = { language=obj-c++;	gcc-check-target=check-obj-c++; };
  languages = { language=go;	gcc-check-target=check-go;
  				lib-check-target=check-target-libgo; };
@@ -50,8 +53,8 @@
  
  // Toplevel bootstrap
  bootstrap_stage = { id=1 ; };
---- gcc-4.8/Makefile.in	2012-12-20 19:17:53.000000000 +0000
-+++ gcc-4.8/Makefile.in	2013-01-04 11:19:30.340149050 +0000
+--- gcc/Makefile.in	2013-01-14 16:15:21.000000000 +0000
++++ gcc/Makefile.in	2013-03-20 16:26:18.514235720 +0000
 @@ -933,6 +933,7 @@ configure-target:  \
      maybe-configure-target-libgfortran \
      maybe-configure-target-libobjc \
@@ -691,7 +694,7 @@
  configure-target-libtermcap: maybe-all-gcc
  configure-target-winsup: maybe-all-gcc
  configure-target-libgloss: maybe-all-gcc
-@@ -46155,6 +46640,8 @@ configure-target-libgo: maybe-all-target
+@@ -46180,6 +46665,8 @@ configure-target-libgo: maybe-all-target
  all-target-libgo: maybe-all-target-libbacktrace
  all-target-libgo: maybe-all-target-libffi
  all-target-libgo: maybe-all-target-libatomic
@@ -700,7 +703,7 @@
  configure-target-libjava: maybe-configure-target-zlib
  configure-target-libjava: maybe-configure-target-boehm-gc
  configure-target-libjava: maybe-configure-target-libffi
-@@ -46240,6 +46727,7 @@ configure-target-libquadmath: maybe-all-
+@@ -46266,6 +46753,7 @@ configure-target-libquadmath: maybe-all-
  configure-target-libgfortran: maybe-all-target-libgcc
  configure-target-libobjc: maybe-all-target-libgcc
  configure-target-libgo: maybe-all-target-libgcc
@@ -708,7 +711,7 @@
  configure-target-libtermcap: maybe-all-target-libgcc
  configure-target-winsup: maybe-all-target-libgcc
  configure-target-libgloss: maybe-all-target-libgcc
-@@ -46275,6 +46763,8 @@ configure-target-libobjc: maybe-all-targ
+@@ -46301,6 +46789,8 @@ configure-target-libobjc: maybe-all-targ
  
  configure-target-libgo: maybe-all-target-newlib maybe-all-target-libgloss
  
