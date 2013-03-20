@@ -1305,25 +1305,29 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
   Type *obj_type = obj_exp->type->toBasetype();
   if (func->isThis())
     {
-      bool is_dottype;
+      bool is_dottype = false;
       tree this_expr;
 
-      if (obj_exp->op == TOKdottype)
+      Expression *ex = obj_exp;
+      while (1)
 	{
-	  is_dottype = true;
-	  this_expr = obj_exp->toElem (this);
+	  switch (ex->op)
+	    {
+	      case TOKsuper:          // super.member() calls directly
+	      case TOKdottype:        // type.member() calls directly
+		is_dottype = true;
+		break;
+
+	      case TOKcast:
+		ex = ((CastExp *)ex)->e1;
+		continue;
+
+	      default:
+		break;
+	    }
+	  break;
 	}
-      else if (obj_exp->op == TOKcast
-	       && ((CastExp *) obj_exp)->e1->op == TOKdottype)
-	{
-	  is_dottype = true;
-	  this_expr = ((CastExp *) obj_exp)->e1->toElem (this);
-	}
-      else
-	{
-	  is_dottype = false;
-	  this_expr = obj_exp->toElem (this);
-	}
+      this_expr = obj_exp->toElem (this);
 
       // Calls to super are static (func is the super's method)
       // Structs don't have vtables.
