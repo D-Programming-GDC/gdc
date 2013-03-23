@@ -65,11 +65,14 @@ lang_tree_node
 extern GTY(()) tree d_eh_personality_decl;
 
 /* True if the Tdelegate typed expression is not really a variable,
-   but a literal function / method reference */
-#define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0 (NODE))
+   but a literal function / method reference.  */
+#define D_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0 (NODE))
 
 /* True if the type is an imaginary float type.  */
 #define D_TYPE_IMAGINARY_FLOAT(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
+
+/* True if the type is a delegate or nested function type.  */
+#define D_TYPE_HIDDEN_THIS(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), FUNCTION_TYPE)))
 
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */

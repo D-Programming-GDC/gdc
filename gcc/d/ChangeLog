@@ -1,3 +1,14 @@
+2013-03-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.h(D_TYPE_HIDDEN_THIS): New macro to mark converted nested
+	function / delegate types.
+	(D_IS_METHOD_CALL_EXPR): Rename to D_METHOD_CALL_EXPR.
+	* d-decls.cc(FuncDeclaration::toSymbol): Mark nested function /
+	delegate types as D_TYPE_HIDDEN_THIS.
+	* d-codegen.cc(IRState::call): Don't build a method type for calls
+	found to be to delegates that haven't had 'this' added to its
+	TYPE_ARG_TYPES list.
+
 2013-03-20  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-codegen.cc(IRState::objectInstanceMethod): Recursively check

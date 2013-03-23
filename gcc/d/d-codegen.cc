@@ -693,7 +693,7 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
     case Tdelegate:
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
-      if (D_IS_METHOD_CALL_EXPR (exp_tree))
+      if (D_METHOD_CALL_EXPR (exp_tree))
 	extractMethodCallExpr (exp_tree, obj, func);
       else
 	{
@@ -1242,17 +1242,13 @@ tree
 IRState::delegateVal (tree method_exp, tree object_exp, Type *d_type)
 {
   Type *base_type = d_type->toBasetype();
+
+  // Called from DotVarExp.  These are just used to make function calls
+  // and not to make Tdelegate variables.  Clearing the type makes sure of this.
   if (base_type->ty == Tfunction)
-    {
-      // Called from DotVarExp.  These are just used to
-      // make function calls and not to make Tdelegate variables.
-      // Clearing the type makes sure of this.
-      base_type = 0;
-    }
+    base_type = NULL;
   else
-    {
-      gcc_assert (base_type->ty == Tdelegate);
-    }
+    gcc_assert (base_type->ty == Tdelegate);
 
   tree type = base_type ? base_type->toCtype() : NULL_TREE;
   tree ctor = make_node (CONSTRUCTOR);
@@ -1280,7 +1276,7 @@ tree
 IRState::methodCallExpr (tree callee, tree object, Type *d_type)
 {
   tree t = delegateVal (callee, object, d_type);
-  D_IS_METHOD_CALL_EXPR (t) = 1;
+  D_METHOD_CALL_EXPR (t) = 1;
   return t;
 }
 
@@ -1289,7 +1285,7 @@ IRState::methodCallExpr (tree callee, tree object, Type *d_type)
 void
 IRState::extractMethodCallExpr (tree mcr, tree& callee_out, tree& object_out)
 {
-  gcc_assert (D_IS_METHOD_CALL_EXPR (mcr));
+  gcc_assert (D_METHOD_CALL_EXPR (mcr));
 
   vec<constructor_elt, va_gc>* elts = CONSTRUCTOR_ELTS (mcr);
   object_out = (*elts)[0].value;
@@ -2190,7 +2186,7 @@ IRState::call (Expression *expr, Expressions *arguments)
   tree callee = expr->toElem (this);
   tree object = NULL_TREE;
 
-  if (D_IS_METHOD_CALL_EXPR (callee))
+  if (D_METHOD_CALL_EXPR (callee))
     {
       /* This could be a delegate expression (TY == Tdelegate), but not
 	 actually a delegate variable. */
@@ -2269,7 +2265,6 @@ IRState::call (FuncDeclaration *func_decl, tree object, Expressions *args)
 tree
 IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions *arguments)
 {
-  // Using TREE_TYPE (callable) instead of func_type->toCtype can save a build_method_type
   tree func_type_node = TREE_TYPE (callable);
   tree actual_callee = callable;
   tree saved_args = NULL_TREE;
@@ -2295,34 +2290,28 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   bool is_d_vararg = func_type->varargs == 1 && func_type->linkage == LINKd;
 
   // Account for the hidden object/frame pointer argument
-
   if (TREE_CODE (func_type_node) == FUNCTION_TYPE)
     {
-      if (object != NULL_TREE)
+      if (object != NULL_TREE && !D_TYPE_HIDDEN_THIS (func_type_node))
 	{
 	  // Happens when a delegate value is called
-	  tree method_type = build_method_type (TREE_TYPE (object), func_type_node);
-	  TYPE_ATTRIBUTES (method_type) = TYPE_ATTRIBUTES (func_type_node);
-	  func_type_node = method_type;
+	  tree argtypes = TYPE_ARG_TYPES (func_type_node);
+	  argtypes = tree_cons (NULL_TREE, TREE_TYPE (object), argtypes);
+	  TYPE_ARG_TYPES (func_type_node) = argtypes;
+	  D_TYPE_HIDDEN_THIS (func_type_node) = 1;
 	}
     }
-  else
+  else if (object == NULL)
     {
-      /* METHOD_TYPE */
-      if (!object)
+      // Front-end apparently doesn't check this.
+      if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
-	  // Front-end apparently doesn't check this.
-	  if (TREE_CODE (callable) == FUNCTION_DECL)
-	    {
-	      error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
-	      return error_mark_node;
-	    }
-	  else
-	    {
-	      // Probably an internal error
-	      gcc_unreachable();
-	    }
+	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
+	  return error_mark_node;
 	}
+
+      // Probably an internal error
+      gcc_unreachable();
     }
   /* If this is a delegate call or a nested function being called as
      a delegate, the object should not be NULL. */
