@@ -497,8 +497,11 @@ TypeDArray::toCtype (void)
 	}
       else
 	{
-	  ctype = gen.twoFieldType (Type::tsize_t, next->pointerTo(), this,
-				    "length", "ptr");
+	  tree lentype = Type::tsize_t->toCtype();
+	  tree ptrtype = next->toCtype();
+
+	  ctype = build_two_field_type (lentype, build_pointer_type (ptrtype),
+					this, "length", "ptr");
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
 	}
@@ -569,7 +572,16 @@ TypeDelegate::toCtype (void)
       else 
 	{
 	  gcc_assert (next->toBasetype()->ty == Tfunction);
-	  ctype = gen.twoFieldType (Type::tvoidptr, next->pointerTo(),
+	  tree nexttype = next->toCtype();
+	  tree objtype = Type::tvoidptr->toCtype();
+	  // Delegate function types are like method types, in that
+	  // they pass around a hidden internal state.
+	  tree funtype = build_method_type (void_type_node, nexttype);
+
+	  TYPE_ATTRIBUTES (funtype) = TYPE_ATTRIBUTES (nexttype);
+	  TYPE_LANG_SPECIFIC (funtype) = TYPE_LANG_SPECIFIC (nexttype);
+
+	  ctype = build_two_field_type (objtype, build_pointer_type (funtype),
 					this, "object", "func");
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);

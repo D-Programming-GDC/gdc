@@ -71,9 +71,6 @@ extern GTY(()) tree d_eh_personality_decl;
 /* True if the type is an imaginary float type.  */
 #define D_TYPE_IMAGINARY_FLOAT(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
 
-/* True if the type is a delegate or nested function type.  */
-#define D_TYPE_HIDDEN_THIS(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), FUNCTION_TYPE)))
-
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared. */
 #define D_DECL_ONE_ONLY(NODE) (DECL_LANG_FLAG_0 (NODE))

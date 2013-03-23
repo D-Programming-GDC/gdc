@@ -1365,61 +1365,36 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 }
 
 
-// Builds a record type from field types FT1 and FT2.
-// D_TYPE is the D frontend type we are building.
+// Builds a record type from field types T1 and T2.
+// TYPE is the D frontend type we are building.
 // N1 and N2 are the names of the two fields.
 
 tree
-IRState::twoFieldType (tree ft1, tree ft2, Type *d_type, const char *n1, const char *n2)
+build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2)
 {
   tree rec_type = make_node (RECORD_TYPE);
-  tree f0 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n1), ft1);
-  tree f1 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n2), ft2);
+  tree f0 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n1), t1);
+  tree f1 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n2), t2);
   DECL_CONTEXT (f0) = rec_type;
   DECL_CONTEXT (f1) = rec_type;
   TYPE_FIELDS (rec_type) = chainon (f0, f1);
   layout_type (rec_type);
-  if (d_type)
+  if (type)
     {
       /* This is needed so that maybeExpandSpecialCall knows to
 	 split dynamic array varargs. */
-      TYPE_LANG_SPECIFIC (rec_type) = build_d_type_lang_specific (d_type);
+      TYPE_LANG_SPECIFIC (rec_type) = build_d_type_lang_specific (type);
 
       /* ObjectFile::declareType will try to declare it as top-level type
 	 which can break debugging info for element types. */
       tree stub_decl = build_decl (BUILTINS_LOCATION, TYPE_DECL,
-				   get_identifier (d_type->toChars()), rec_type);
+				   get_identifier (type->toChars()), rec_type);
       TYPE_STUB_DECL (rec_type) = stub_decl;
       TYPE_NAME (rec_type) = stub_decl;
       DECL_ARTIFICIAL (stub_decl) = 1;
       rest_of_decl_compilation (stub_decl, 0, 0);
     }
   return rec_type;
-}
-
-tree
-IRState::twoFieldType (Type *ft1, Type *ft2, Type *d_type, const char *n1, const char *n2)
-{
-  return twoFieldType (ft1->toCtype(), ft2->toCtype(), d_type, n1, n2);
-}
-
-// Builds a record constructor from two field types F1 and F2.
-// STORAGE_CLASS tells us whether constructor is static / manifest.
-
-tree
-IRState::twoFieldCtor (tree f1, tree f2, int storage_class)
-{
-  tree rec_type = make_node (RECORD_TYPE);
-  CtorEltMaker ce;
-  ce.cons (TYPE_FIELDS (rec_type), f1);
-  ce.cons (TREE_CHAIN (TYPE_FIELDS (rec_type)), f2);
-
-  tree ctor = build_constructor (rec_type, ce.head);
-  TREE_STATIC (ctor) = (storage_class & STCstatic) != 0;
-  TREE_CONSTANT (ctor) = (storage_class & STCconst) != 0;
-  TREE_READONLY (ctor) = (storage_class & STCconst) != 0;
-
-  return ctor;
 }
 
 // Create a SAVE_EXPR if T might have unwanted side effects if referenced
@@ -2289,19 +2264,12 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 
   bool is_d_vararg = func_type->varargs == 1 && func_type->linkage == LINKd;
 
-  // Account for the hidden object/frame pointer argument
   if (TREE_CODE (func_type_node) == FUNCTION_TYPE)
     {
-      if (object != NULL_TREE && !D_TYPE_HIDDEN_THIS (func_type_node))
-	{
-	  // Happens when a delegate value is called
-	  tree argtypes = TYPE_ARG_TYPES (func_type_node);
-	  argtypes = tree_cons (NULL_TREE, TREE_TYPE (object), argtypes);
-	  TYPE_ARG_TYPES (func_type_node) = argtypes;
-	  D_TYPE_HIDDEN_THIS (func_type_node) = 1;
-	}
+      if (object != NULL_TREE)
+	gcc_unreachable();
     }
-  else if (object == NULL)
+  else if (object == NULL_TREE)
     {
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)

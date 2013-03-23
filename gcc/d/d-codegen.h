@@ -154,6 +154,8 @@ extern void insert_decl_attribute (tree type, const char *attrname, tree value =
 extern tree build_attributes (Expressions *in_attrs);
 extern tree insert_type_modifiers (tree type, unsigned mod);
 
+extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);
+
 extern tree build_exception_object (void);
 
 extern tree indirect_ref (tree type, tree exp);
@@ -400,10 +402,6 @@ struct IRState : IRBase
   tree methodCallExpr (tree callee, tree object, Type *d_type);
   void extractMethodCallExpr (tree mcr, tree& callee_out, tree& object_out);
   tree objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type *d_type);
-
-  static tree twoFieldType (tree ft1, tree ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
-  static tree twoFieldType (Type *ft1, Type *ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
-  static tree twoFieldCtor (tree f1, tree f2, int storage_class = 0);
 
   // ** Various expressions
   tree toElemLvalue (Expression *e);

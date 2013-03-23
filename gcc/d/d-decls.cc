@@ -386,11 +386,7 @@ FuncDeclaration::toSymbol (void)
 	    {
 	      /* Even if D-style nested functions are not implemented, add an
 		 extra argument to be compatible with delegates. */
-	      tree argtypes;
-	      fntype = TREE_TYPE (fndecl);
-	      argtypes = tree_cons (NULL_TREE, ptr_type_node, TYPE_ARG_TYPES (fntype));
-	      TYPE_ARG_TYPES (fntype) = argtypes;
-	      D_TYPE_HIDDEN_THIS (fntype) = 1;
+	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
 	    }
 	  else if (isThis())
 	    {
