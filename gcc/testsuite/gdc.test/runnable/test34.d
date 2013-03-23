@@ -707,7 +707,20 @@ void foo35()
         c = 3;
 
         xxx = cast(typeof(xxx))(a + b);
-        asm { int 3; }
+        version(GNU)
+        {
+            version(X86) asm
+            {
+                "int $3;" : : : ;
+            }
+            else version(X86_64) asm
+            {
+                "int $3;" : : : ;
+            }
+            else static assert(false, "ASM code not implemented for this architecture");
+        }
+        else
+            asm { int 3; }
         xxx( 4, 5, 6 );
 }
 

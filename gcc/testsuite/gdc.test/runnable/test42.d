@@ -2380,8 +2380,24 @@ bool foo150()
 
 void crash(int x)
 {
-  if (x==200) return;
-   asm { int 3; }
+    if (x==200) return;
+
+    version(GNU)
+    {
+        version(X86) asm
+        {
+            "int $3;" : :  :;
+        }
+        else version(X86_64) asm
+        {
+            "int $3;" : : :;
+        }
+        else static assert(false, "ASM code not implemented for this architecture");
+    }
+    else
+    {
+        asm { int 3; }
+    }
 }
 
 void test151()
@@ -4129,7 +4145,26 @@ void oddity4001()
 
 /***************************************************/
 
-int bug3809() { asm { nop; } return 0; }
+int bug3809()
+{
+    version(GNU)
+    {
+        version(X86) asm
+        {
+            "nop;" : :  :;
+        }
+        else version(X86_64) asm
+        {
+            "nop;" : : :;
+        }
+        else static assert(false, "ASM code not implemented for this architecture");
+    }
+    else
+    {
+        asm { nop; }
+    }
+    return 0;
+}
 struct BUG3809 { int xx; }
 void bug3809b() {
 }
@@ -4572,36 +4607,75 @@ int foo7290a(alias dg)()
 {
     assert(dg(5) == 7);
 
+    void* p;
     version (ASM_X86)
     {
-        void* p;
         mixin(`asm { mov p, ` ~ GP_BP ~ `; }`);
-        assert(p < dg.ptr);
     }
+    else version(GNU)
+    {
+        version(X86) asm
+        {
+            "mov %%EBP, %0" : "=r" p : :;
+        }
+        else version(X86_64) asm
+        {
+            "mov %%RBP, %0" : "=r" p : :;
+        }
+        else static assert(false, "ASM code not implemented for this architecture");
+    }
+    assert(p < dg.ptr);
+    return 0;
 }
 
 int foo7290b(scope int delegate(int a) dg)
 {
     assert(dg(5) == 7);
-
+    
+    void* p;
     version (ASM_X86)
     {
-        void* p;
         mixin(`asm { mov p, ` ~ GP_BP ~ `; }`);
-        assert(p < dg.ptr);
     }
+    else version(GNU)
+    {
+        version(X86) asm
+        {
+            "mov %%EBP, %0" : "=r" p : :;
+        }
+        else version(X86_64) asm
+        {
+            "mov %%RBP, %0" : "=r" p : :;
+        }
+        else static assert(false, "ASM code not implemented for this architecture");
+    }
+    assert(p < dg.ptr);
+    return 0;
 }
 
 int foo7290c(int delegate(int a) dg)
 {
     assert(dg(5) == 7);
 
+    void* p;
     version (ASM_X86)
     {
-        void* p;
         mixin(`asm { mov p, ` ~ GP_BP ~ `; }`);
-        assert(p < dg.ptr);
     }
+    else version(GNU)
+    {
+        version(X86) asm
+        {
+            "mov %%EBP, %0" : "=r" p : :;
+        }
+        else version(X86_64) asm
+        {
+            "mov %%RBP, %0" : "=r" p : :;
+        }
+        else static assert(false, "ASM code not implemented for this architecture");
+    }
+    assert(p < dg.ptr);
+    return 0;
 }
 
 void test7290()
@@ -4609,12 +4683,24 @@ void test7290()
     int add = 2;
     scope dg = (int a) => a + add;
 
+    void* p;
     version (ASM_X86)
     {
-        void* p;
         mixin(`asm { mov p, ` ~ GP_BP ~ `; }`);
-        assert(dg.ptr <= p);
     }
+    else version(GNU)
+    {
+        version(X86) asm
+        {
+            "mov %%EBP, %0" : "=r" p : :;
+        }
+        else version(X86_64) asm
+        {
+            "mov %%RBP, %0" : "=r" p : :;
+        }
+        else static assert(false, "ASM code not implemented for this architecture");
+    }
+    assert(p < dg.ptr);
 
     foo7290a!dg();
     foo7290b(dg);
