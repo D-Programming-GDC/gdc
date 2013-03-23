@@ -315,14 +315,14 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
       if (tbtype->ty == Tdelegate)
 	{
 	  exp = maybe_make_temp (exp);
-	  return delegateVal (delegateMethodRef (exp), delegateObjectRef (exp),
-			      target_type);
+	  return build_delegate_cst (delegate_method (exp), delegate_object (exp),
+				     target_type);
 	}
       else if (tbtype->ty == Tpointer)
 	{
 	  // The front-end converts <delegate>.ptr to cast (void *)<delegate>.
 	  // Maybe should only allow void* ?
-	  exp = delegateObjectRef (exp);
+	  exp = delegate_object (exp);
 	}
       else
 	{
@@ -674,8 +674,8 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
     case Tarray:
       // Checks (length || ptr) (i.e ary !is null)
       tmp = maybe_make_temp (exp_tree);
-      obj = delegateObjectRef (tmp);
-      func = delegateMethodRef (tmp);
+      obj = delegate_object (tmp);
+      func = delegate_method (tmp);
       if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
 	{
 	  result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj,
@@ -694,12 +694,12 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
       if (D_METHOD_CALL_EXPR (exp_tree))
-	extractMethodCallExpr (exp_tree, obj, func);
+	extract_from_method_call (exp_tree, obj, func);
       else
 	{
 	  tmp = maybe_make_temp (exp_tree);
-	  obj = delegateObjectRef (tmp);
-	  func = delegateMethodRef (tmp);
+	  obj = delegate_object (tmp);
+	  func = delegate_method (tmp);
 	}
       obj = d_truthvalue_conversion (obj);
       func = d_truthvalue_conversion (func);
@@ -1199,8 +1199,11 @@ IRState::arrayLength (tree exp, Type *exp_type)
     }
 }
 
+// Return TRUE if binary expression EXP is an unhandled array operation,
+// in which case we error that it is not implemented.
+
 bool
-IRState::arrayOpNotImplemented (BinExp *exp)
+unhandled_arrayop_p (BinExp *exp)
 {
   TY ty1 = exp->e1->type->toBasetype()->ty;
   TY ty2 = exp->e2->type->toBasetype()->ty;
@@ -1217,7 +1220,7 @@ IRState::arrayOpNotImplemented (BinExp *exp)
 // Returns the .funcptr component from the D delegate EXP.
 
 tree
-IRState::delegateMethodRef (tree exp)
+delegate_method (tree exp)
 {
   // Get the backend type for the array and pick out the array length
   // field (assumed to be the second field.)
@@ -1225,10 +1228,10 @@ IRState::delegateMethodRef (tree exp)
   return component_ref (exp, method_field);
 }
 
-// Returns the .object component from the D delegate EXP.
+// Returns the .object component from the delegate EXP.
 
 tree
-IRState::delegateObjectRef (tree exp)
+delegate_object (tree exp)
 {
   // Get the backend type for the array and pick out the array data
   // pointer field (assumed to be the first field.)
@@ -1236,12 +1239,13 @@ IRState::delegateObjectRef (tree exp)
   return component_ref (exp, obj_field);
 }
 
-// Converts pointer types of METHOD_EXP and OBJECT_EXP to match D_TYPE.
+// Build a delegate literal of type TYPE whose pointer function is
+// METHOD, and hidden object is OBJECT.  
 
 tree
-IRState::delegateVal (tree method_exp, tree object_exp, Type *d_type)
+build_delegate_cst (tree method, tree object, Type *type)
 {
-  Type *base_type = d_type->toBasetype();
+  Type *base_type = type->toBasetype();
 
   // Called from DotVarExp.  These are just used to make function calls
   // and not to make Tdelegate variables.  Clearing the type makes sure of this.
@@ -1250,61 +1254,61 @@ IRState::delegateVal (tree method_exp, tree object_exp, Type *d_type)
   else
     gcc_assert (base_type->ty == Tdelegate);
 
-  tree type = base_type ? base_type->toCtype() : NULL_TREE;
+  tree ctype = base_type ? base_type->toCtype() : NULL_TREE;
   tree ctor = make_node (CONSTRUCTOR);
   tree obj_field = NULL_TREE;
   tree func_field = NULL_TREE;
   CtorEltMaker ce;
 
-  if (type)
+  if (ctype)
     {
-      TREE_TYPE (ctor) = type;
-      obj_field = TYPE_FIELDS (type);
+      TREE_TYPE (ctor) = ctype;
+      obj_field = TYPE_FIELDS (ctype);
       func_field = TREE_CHAIN (obj_field);
     }
-  ce.cons (obj_field, object_exp);
-  ce.cons (func_field, method_exp);
+  ce.cons (obj_field, object);
+  ce.cons (func_field, method);
 
   CONSTRUCTOR_ELTS (ctor) = ce.head;
   return ctor;
 }
 
 // Builds a temporary tree to store the CALLEE and OBJECT
-// of a method call expression of type D_TYPE.
+// of a method call expression of type TYPE.
 
 tree
-IRState::methodCallExpr (tree callee, tree object, Type *d_type)
+build_method_call (tree callee, tree object, Type *type)
 {
-  tree t = delegateVal (callee, object, d_type);
+  tree t = build_delegate_cst (callee, object, type);
   D_METHOD_CALL_EXPR (t) = 1;
   return t;
 }
 
-// Extract callee and object from MCR and return in to CALLEE_OUT and OBJECT_OUT.
+// Extract callee and object from T and return in to CALLEE and OBJECT.
 
 void
-IRState::extractMethodCallExpr (tree mcr, tree& callee_out, tree& object_out)
+extract_from_method_call (tree t, tree& callee, tree& object)
 {
-  gcc_assert (D_METHOD_CALL_EXPR (mcr));
-
-  vec<constructor_elt, va_gc>* elts = CONSTRUCTOR_ELTS (mcr);
-  object_out = (*elts)[0].value;
-  callee_out = (*elts)[1].value;
+  gcc_assert (D_METHOD_CALL_EXPR (t));
+  vec<constructor_elt, va_gc>* elts = CONSTRUCTOR_ELTS (t);
+  object = (*elts)[0].value;
+  callee = (*elts)[1].value;
 }
 
 // Return correct callee for method FUNC, which is dereferenced from
-// the 'this' pointer OBJ_EXP.  D_TYPE is the return type for the method.
+// the 'this' pointer OBJEXP.  TYPE is the return type for the method.
 
 tree
-IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type *d_type)
+get_object_method (IRState *irs, Expression *objexp, FuncDeclaration *func, Type *type)
 {
-  Type *obj_type = obj_exp->type->toBasetype();
+  Type *objtype = objexp->type->toBasetype();
+
   if (func->isThis())
     {
       bool is_dottype = false;
       tree this_expr;
 
-      Expression *ex = obj_exp;
+      Expression *ex = objexp;
       while (1)
 	{
 	  switch (ex->op)
@@ -1323,22 +1327,22 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 	    }
 	  break;
 	}
-      this_expr = obj_exp->toElem (this);
+      this_expr = objexp->toElem (irs);
 
       // Calls to super are static (func is the super's method)
       // Structs don't have vtables.
       // Final and non-virtual methods can be called directly.
       // DotTypeExp means non-virtual
 
-      if (obj_exp->op == TOKsuper
-	  || obj_type->ty == Tstruct || obj_type->ty == Tpointer
+      if (objexp->op == TOKsuper
+	  || objtype->ty == Tstruct || objtype->ty == Tpointer
 	  || func->isFinal() || !func->isVirtual() || is_dottype)
 	{
-	  if (obj_type->ty == Tstruct)
+	  if (objtype->ty == Tstruct)
 	    this_expr = build_address (this_expr);
 
-	  return methodCallExpr (build_address (func->toSymbol()->Stree),
-				 this_expr, d_type);
+	  return build_method_call (build_address (func->toSymbol()->Stree),
+				    this_expr, type);
 	}
       else
 	{
@@ -1354,7 +1358,7 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 	  vtbl_ref = build_offset (vtbl_ref, size_int (PTRSIZE * func->vtblIndex));
 	  vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
 
-	  return methodCallExpr (vtbl_ref, this_expr, d_type);
+	  return build_method_call (vtbl_ref, this_expr, type);
 	}
     }
   else
@@ -1365,9 +1369,8 @@ IRState::objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type 
 }
 
 
-// Builds a record type from field types T1 and T2.
-// TYPE is the D frontend type we are building.
-// N1 and N2 are the names of the two fields.
+// Builds a record type from field types T1 and T2.  TYPE is the D frontend
+// type we are building. N1 and N2 are the names of the two fields.
 
 tree
 build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2)
@@ -2175,14 +2178,14 @@ IRState::call (Expression *expr, Expressions *arguments)
       else
 	tf = get_function_type (t);
 
-      extractMethodCallExpr (callee, callee, object);
+      extract_from_method_call (callee, callee, object);
     }
   else if (t->ty == Tdelegate)
     {
       tf = (TypeFunction *) ((TypeDelegate *) t)->next;
       callee = maybe_make_temp (callee);
-      object = delegateObjectRef (callee);
-      callee = delegateMethodRef (callee);
+      object = delegate_object (callee);
+      callee = delegate_method (callee);
     }
   else if (expr->op == TOKvar)
     {

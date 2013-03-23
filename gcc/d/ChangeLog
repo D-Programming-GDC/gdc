@@ -2,7 +2,16 @@
 
 	* d-builtins.c(d_bi_init): Set REALPAD to be TYPE_PRECISION of
 	long_double_type_node.
-	* d-codegen.cc(IRState::twoFieldType): Rename to build_two_field_type.
+	* d-codegen.cc(IRState::twoFieldType): Replace with
+	build_two_field_type.
+	(IRState::arrayOpNotImplemented): Replace with unhandled_arrayop_p.
+	(IRState::delegateMethodRef): Replace with delegate_method.
+	(IRState::delegateObjectRef): Replace with delegate_object.
+	(IRState::delegateVal): Replace with build_delegate_cst.
+	(IRState::methodCallExpr): Replace with build_method_call.
+	(IRState::extractMethodCallExpr): Replace with
+	extract_from_method_call.
+	(IRState::objectInstanceMethod): Replace with get_object_method.
 	(IRState::twoFieldCtor): Remove.
 	(IRState::call): Assert that if calling a normal FUNCTION_TYPE,
 	'object' is not set.

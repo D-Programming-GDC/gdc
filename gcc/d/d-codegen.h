@@ -188,6 +188,18 @@ extern tree d_build_call_nary (tree callee, int n_args, ...);
 extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
+extern bool unhandled_arrayop_p (BinExp *exp);
+
+// Delegates
+extern tree delegate_method (tree exp);
+extern tree delegate_object (tree exp);
+extern tree build_delegate_cst (tree method, tree object, Type *type);
+
+// These are for references to nested functions/methods as opposed to a delegate var.
+extern tree build_method_call (tree callee, tree object, Type *type);
+extern void extract_from_method_call (tree t, tree& callee, tree& object);
+extern tree get_object_method (IRState *irs, Expression *exp, FuncDeclaration *func, Type *type);
+
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.
 inline bool
@@ -390,18 +402,6 @@ struct IRState : IRBase
   // Length of either a static or dynamic array
   tree arrayLength (Expression *exp);
   static tree arrayLength (tree exp, Type *exp_type);
-
-  static bool arrayOpNotImplemented (BinExp *exp);
-
-  // Delegates
-  static tree delegateMethodRef (tree exp);
-  static tree delegateObjectRef (tree exp);
-  static tree delegateVal (tree method_exp, tree object_exp, Type *d_type);
-  // These are for references to nested functions/methods as opposed to a variable of
-  // type Tdelegate
-  tree methodCallExpr (tree callee, tree object, Type *d_type);
-  void extractMethodCallExpr (tree mcr, tree& callee_out, tree& object_out);
-  tree objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type *d_type);
 
   // ** Various expressions
   tree toElemLvalue (Expression *e);

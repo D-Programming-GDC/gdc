@@ -344,7 +344,7 @@ OrOrExp::toElem (IRState *irs)
 elem *
 XorExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (BIT_XOR_EXPR, type->toCtype(),
@@ -354,7 +354,7 @@ XorExp::toElem (IRState *irs)
 elem *
 OrExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (BIT_IOR_EXPR, type->toCtype(),
@@ -364,7 +364,7 @@ OrExp::toElem (IRState *irs)
 elem *
 AndExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (BIT_AND_EXPR, type->toCtype(),
@@ -374,7 +374,7 @@ AndExp::toElem (IRState *irs)
 elem *
 UshrExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (UNSIGNED_RSHIFT_EXPR, type->toCtype(),
@@ -384,7 +384,7 @@ UshrExp::toElem (IRState *irs)
 elem *
 ShrExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (RSHIFT_EXPR, type->toCtype(),
@@ -394,7 +394,7 @@ ShrExp::toElem (IRState *irs)
 elem *
 ShlExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (LSHIFT_EXPR, type->toCtype(),
@@ -404,7 +404,7 @@ ShlExp::toElem (IRState *irs)
 elem *
 ModExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR,
@@ -414,7 +414,7 @@ ModExp::toElem (IRState *irs)
 elem *
 DivExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR,
@@ -424,7 +424,7 @@ DivExp::toElem (IRState *irs)
 elem *
 MulExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildOp (MULT_EXPR, type->toCtype(),
@@ -583,7 +583,7 @@ CatExp::toElem (IRState *irs)
 elem *
 MinExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   // %% faster: check if result is complex
@@ -610,7 +610,7 @@ MinExp::toElem (IRState *irs)
 elem *
 AddExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   // %% faster: check if result is complex
@@ -635,7 +635,7 @@ AddExp::toElem (IRState *irs)
 elem *
 XorAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (BIT_XOR_EXPR, type, e1, e2);
@@ -644,7 +644,7 @@ XorAssignExp::toElem (IRState *irs)
 elem *
 OrAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (BIT_IOR_EXPR, type, e1, e2);
@@ -653,7 +653,7 @@ OrAssignExp::toElem (IRState *irs)
 elem *
 AndAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (BIT_AND_EXPR, type, e1, e2);
@@ -662,7 +662,7 @@ AndAssignExp::toElem (IRState *irs)
 elem *
 UshrAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (UNSIGNED_RSHIFT_EXPR, type, e1, e2);
@@ -671,7 +671,7 @@ UshrAssignExp::toElem (IRState *irs)
 elem *
 ShrAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (RSHIFT_EXPR, type, e1, e2);
@@ -680,7 +680,7 @@ ShrAssignExp::toElem (IRState *irs)
 elem *
 ShlAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (LSHIFT_EXPR, type, e1, e2);
@@ -689,7 +689,7 @@ ShlAssignExp::toElem (IRState *irs)
 elem *
 ModAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (e1->type->isfloating() ?
@@ -700,7 +700,7 @@ ModAssignExp::toElem (IRState *irs)
 elem *
 DivAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (e1->type->isintegral() ?
@@ -711,7 +711,7 @@ DivAssignExp::toElem (IRState *irs)
 elem *
 MulAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (MULT_EXPR, type, e1, e2);
@@ -720,7 +720,7 @@ MulAssignExp::toElem (IRState *irs)
 elem *
 PowAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   gcc_unreachable();
@@ -797,7 +797,7 @@ CatAssignExp::toElem (IRState *irs)
 elem *
 MinAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (MINUS_EXPR, type, e1, e2);
@@ -806,7 +806,7 @@ MinAssignExp::toElem (IRState *irs)
 elem *
 AddAssignExp::toElem (IRState *irs)
 {
-  if (irs->arrayOpNotImplemented (this))
+  if (unhandled_arrayop_p (this))
     return error_mark (type);
 
   return irs->buildAssignOp (PLUS_EXPR, type, e1, e2);
@@ -1473,13 +1473,10 @@ DelegateExp::toElem (IRState *irs)
 
   if (t->ty == Tclass || t->ty == Tstruct)
     {
-      // %% Need to see if DotVarExp ever has legitimate
-      // <aggregate>.<static method>.  If not, move this test
-      // to objectInstanceMethod.
       if (!func->isThis())
 	error ("delegates are only for non-static functions");
 
-      return irs->objectInstanceMethod (e1, func, type);
+      return get_object_method (irs, e1, func, type);
     }
   else
     {
@@ -1497,8 +1494,8 @@ DelegateExp::toElem (IRState *irs)
 	  this_tree = e1->toElem (irs);
 	}
 
-      return irs->methodCallExpr (build_address (func->toSymbol()->Stree),
-				  this_tree, type);
+      return build_method_call (build_address (func->toSymbol()->Stree),
+				this_tree, type);
     }
 }
 
@@ -1523,7 +1520,7 @@ DotVarExp::toElem (IRState *irs)
       if (func_decl)
       {
 	// if Tstruct, objInstanceMethod will use the address of e1
-	return irs->objectInstanceMethod (e1, func_decl, type);
+	return get_object_method (irs, e1, func_decl, type);
       }
       else if (var_decl)
 	{
@@ -1668,8 +1665,8 @@ FuncExp::toElem (IRState *irs)
       return build_nop (type->toCtype(), build_address (fd->toSymbol()->Stree));
 
     case Tdelegate:
-      return irs->methodCallExpr (build_address (fd->toSymbol()->Stree),
-				  irs->getFrameForFunction (fd), type);
+      return build_method_call (build_address (fd->toSymbol()->Stree),
+				irs->getFrameForFunction (fd), type);
 
     default:
       ::error ("Unexpected FuncExp type");
@@ -2298,18 +2295,18 @@ NullExp::toElem (IRState *irs)
 {
   TY base_ty = type->toBasetype()->ty;
   tree null_exp;
+  CtorEltMaker ce;
+
   // 0 -> dynamic array.  This is a special case conversion.
   // Move to convert for convertTo if it shows up elsewhere.
   switch (base_ty)
     {
     case Tarray:
-	{
 	  null_exp = irs->darrayVal (type, 0, NULL);
 	  break;
-	}
+
     case Taarray:
 	{
-	  CtorEltMaker ce;
 	  tree ttype = type->toCtype();
 	  tree fa = TYPE_FIELDS (ttype);
 
@@ -2317,17 +2314,14 @@ NullExp::toElem (IRState *irs)
 	  null_exp = build_constructor (ttype, ce.head);
 	  break;
 	}
+
     case Tdelegate:
-	{
-	  // makeDelegateExpression ?
-	  null_exp = irs->delegateVal (d_null_pointer, d_null_pointer, type);
+	  null_exp = build_delegate_cst (d_null_pointer, d_null_pointer, type);
 	  break;
-	}
+
     default:
-	{
 	  null_exp = irs->convertTo (type->toCtype(), integer_zero_node);
 	  break;
-	}
     }
 
   return null_exp;
