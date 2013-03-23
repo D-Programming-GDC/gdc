@@ -362,12 +362,28 @@ void test17()
     }
     else
     {
-        const f = 1.2f;
-	float g = void;
-
-        asm{
+        /*const*/ float f = 1.2f;
+        float g = void;
+        
+        version(GNU)
+        {
+            version(X86) asm
+            {
+                "flds %1; fstps %0;" : "=m" (g) : "m" (f) : ;
+            }
+            else version(X86_64) asm
+            {
+                "flds %1; fstps %0;" : "=m" (g) : "m" (f) : ;
+            }
+            else static assert(false, "ASM code not implemented for this architecture");
+        }
+        else
+        {
+            asm
+            {
                 fld f;	// doesn't work with PIC
-		fstp g;
+                fstp g;
+            }
         }
 	assert(g == 1.2f);
     }

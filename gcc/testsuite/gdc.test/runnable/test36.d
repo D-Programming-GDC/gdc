@@ -28,7 +28,20 @@ extern (Windows):
         override void func()
         {
         int esp;
-        asm{
+        version(GNU)
+        {
+            version(X86) asm
+            {
+                "mov %%ESP,%0" : "=r" esp : : ;
+            }
+            else version(X86_64) asm
+            {
+                "mov %%ESP,%0" : "=r" esp : : ;
+            }
+            else static assert(false, "ASM code not implemented for this architecture");
+        }
+        else asm
+        {
                 mov esp,ESP;
         }
         printf("\n%d",esp);
@@ -43,13 +56,39 @@ int main()
 {
         auto inst= new invarianttest;
         int esp;
-        asm{
+        version(GNU)
+        {
+            version(X86) asm
+            {
+                "mov %%ESP,%0" : "=r" esp : : ;
+            }
+            else version(X86_64) asm
+            {
+                "mov %%ESP,%0" : "=r" esp : : ;
+            }
+            else static assert(false, "ASM code not implemented for this architecture");
+        }
+        else asm
+        {
                 mov esp,ESP;
         }
         inst.func();
         inst.method();
         writefln("\n%d",esp);
-        asm{
+        version(GNU)
+        {
+            version(X86) asm
+            {
+                "mov %%ESP,%0" : "=r" esp : : ;
+            }
+            else version(X86_64) asm
+            {
+                "mov %%ESP,%0" : "=r" esp : : ;
+            }
+            else static assert(false, "ASM code not implemented for this architecture");
+        }
+        else asm
+        {
                 mov esp,ESP;
         }
         writefln("\n%d",esp);
