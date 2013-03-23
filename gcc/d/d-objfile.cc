@@ -104,7 +104,6 @@ FuncDeclaration::toObjFile (int)
 	  // D still generates a vthis, but it should not be
 	  // referenced in any expression.
 	  FuncDeclaration *fd = toParent2()->isFuncDeclaration();
-	  gcc_assert (fd != NULL);
 	  DECL_ARTIFICIAL (parm_decl) = 1;
 	  irs->useChain (fd, parm_decl);
 	}
@@ -183,9 +182,7 @@ FuncDeclaration::toObjFile (int)
 
   // Process all deferred nested functions.
   for (size_t i = 0; i < this_sym->deferredNestedFuncs.dim; ++i)
-    {
-      (this_sym->deferredNestedFuncs[i])->toObjFile (false);
-    }
+    (this_sym->deferredNestedFuncs[i])->toObjFile (false);
 
   if (v_argptr)
     {

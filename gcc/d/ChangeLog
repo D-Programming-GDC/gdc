@@ -10,6 +10,8 @@
 	TYPE_ARG_TYPES list.
 	* d-builtins.c(d_bi_init): Set REALPAD to be TYPE_PRECISION of
 	long_double_type_node.
+	* d-objfile.cc(FuncDeclaration::toObjFile): Remove assert for chain
+	function.
 
 2013-03-20  Johannes Pfau  <johannespfau@gmail.com>
 
