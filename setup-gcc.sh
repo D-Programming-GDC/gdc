@@ -50,6 +50,8 @@ elif grep -q -E '^4\.7([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
     gcc_ver=4.7
 elif grep -q -E '^4\.8([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
     gcc_ver=4.8
+elif grep -q -E '^4\.9([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+    gcc_ver=4.9
 fi
 
 gcc_patch_key=${gcc_ver}.x
