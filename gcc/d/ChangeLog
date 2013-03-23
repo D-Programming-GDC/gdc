@@ -8,6 +8,8 @@
 	* d-codegen.cc(IRState::call): Don't build a method type for calls
 	found to be to delegates that haven't had 'this' added to its
 	TYPE_ARG_TYPES list.
+	* d-builtins.c(d_bi_init): Set REALPAD to be TYPE_PRECISION of
+	long_double_type_node.
 
 2013-03-20  Johannes Pfau  <johannespfau@gmail.com>
 

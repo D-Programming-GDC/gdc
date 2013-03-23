@@ -301,7 +301,7 @@ d_bi_init (void)
     build_d_type_lang_specific (Type::tvalist);
 
   REALSIZE = int_size_in_bytes (long_double_type_node);
-  REALPAD = 0;
+  REALPAD = TYPE_PRECISION (long_double_type_node) / BITS_PER_UNIT;
   REALALIGNSIZE = TYPE_ALIGN_UNIT (long_double_type_node);
 
   /* Define what type to use for size_t.  */

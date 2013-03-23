@@ -52,9 +52,8 @@ IdentityExp::toElem (IRState *irs)
       tree size;
       if (tb1->isfloating())
 	{
-	  gcc_assert(TYPE_PRECISION (e1->type->toCtype()) % 8 == 0);
-	  //Assume all padding is at the end of the type
-	  size = build_integer_cst (TYPE_PRECISION (e1->type->toCtype()) / 8);
+	  // Assume all padding is at the end of the type.
+	  size = build_integer_cst (TYPE_PRECISION (e1->type->toCtype()) / BITS_PER_UNIT);
 	}
       else
 	size = build_integer_cst (e1->type->size());
