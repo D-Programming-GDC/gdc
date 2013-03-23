@@ -49,11 +49,21 @@ IdentityExp::toElem (IRState *irs)
 
   if (tb1->ty == Tstruct || tb1->isfloating())
     {
+      tree size;
+      if (tb1->isfloating())
+	{
+	  gcc_assert(TYPE_PRECISION (e1->type->toCtype()) % 8 == 0);
+	  //Assume all padding is at the end of the type
+	  size = build_integer_cst (TYPE_PRECISION (e1->type->toCtype()) / 8);
+	}
+      else
+	size = build_integer_cst (e1->type->size());
+
       // Do bit compare.
       tree t_memcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
 					 build_address (e1->toElem (irs)),
 					 build_address (e2->toElem (irs)),
-					 build_integer_cst (e1->type->size()));
+					 size);
 
       return build_boolop (code, t_memcmp, integer_zero_node);
     }
