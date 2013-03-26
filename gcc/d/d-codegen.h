@@ -122,17 +122,196 @@ enum LibCall
 
 struct FuncFrameInfo
 {
-  bool creates_frame;     // Function creates nested frame.
-  bool static_chain;      // Function has static chain passed via PARM_DECL
-  bool is_closure;        // Frame is a closure (initialised on the heap).
+  bool creates_frame;	    // Function creates nested frame.
+  bool static_chain;	    // Function has static chain passed via PARM_DECL
+  bool is_closure;	    // Frame is a closure (initialised on the heap).
   union
   {
-    tree closure_rec;   // Frame type for static chain
+    tree closure_rec;	    // Frame type for static chain
     tree frame_rec;
   };
 };
 
 class ArrayScope;
+
+// Code generation routines.
+
+extern tree d_mark_addressable (tree exp);
+extern tree d_mark_used (tree exp);
+extern tree d_mark_read (tree exp);
+extern tree build_address (tree exp);
+
+// Routines to handle variables that are references.
+extern bool decl_reference_p (Declaration *decl);
+extern tree declaration_type (Declaration *decl);
+extern bool arg_reference_p (Parameter *arg);
+extern tree type_passed_as (Parameter *arg);
+
+extern tree d_array_type (Type *d_type, uinteger_t size);
+
+extern tree insert_type_attribute (tree type, const char *attrname, tree value = NULL_TREE);
+extern void insert_decl_attribute (tree type, const char *attrname, tree value = NULL_TREE);
+extern tree build_attributes (Expressions *in_attrs);
+extern tree insert_type_modifiers (tree type, unsigned mod);
+
+extern tree build_exception_object (void);
+
+extern tree indirect_ref (tree type, tree exp);
+extern tree build_deref (tree exp);
+
+extern tree maybe_compound_expr (tree arg0, tree arg1);
+extern tree maybe_vcompound_expr (tree arg0, tree arg1);
+
+extern bool error_mark_p (tree t);
+
+// Simple constants
+extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
+extern tree build_float_cst (const real_t& value, Type *target_type);
+
+extern dinteger_t cst_to_hwi (double_int cst);
+extern dinteger_t tree_to_hwi (tree t);
+
+// D allows { void[] a; &a[3]; }
+extern tree void_okay_p (tree t);
+
+// Various expressions
+extern tree build_offset_op (enum tree_code op, tree ptr, tree idx);
+extern tree build_offset (tree ptr_node, tree byte_offset);
+
+// ** Function calls
+extern tree d_build_call (tree type, tree callee, tree args);
+extern tree d_build_call_nary (tree callee, int n_args, ...);
+
+// Temporaries (currently just SAVE_EXPRs)
+extern tree maybe_make_temp (tree t);
+extern bool d_has_side_effects (tree t);
+
+// Type management for D frontend types.
+// Returns TRUE if T1 and T2 are mutably the same type.
+inline bool
+d_types_same (Type *t1, Type *t2)
+{
+  return t1->mutableOf()->equals (t2->mutableOf());
+}
+
+// Returns TRUE if T1 and T2 don't require special conversions.
+inline bool
+d_types_compatible (Type *t1, Type *t2)
+{
+  return t1->implicitConvTo (t2) >= MATCHconst;
+}
+
+// Returns D Frontend type for GCC type T.
+inline Type *
+build_dtype (tree t)
+{
+  gcc_assert (TYPE_P (t));
+  struct lang_type *l = TYPE_LANG_SPECIFIC (t);
+  return l ? l->d_type : NULL;
+}
+
+// Returns D frontend type 'Object' which all classes are derived from.
+inline Type *
+build_object_type (void)
+{
+  if (ClassDeclaration::object)
+    return ClassDeclaration::object->type;
+
+  ::error ("missing or corrupt object.d");
+  return Type::terror;
+}
+
+inline tree
+component_ref (tree v, tree f)
+{
+  return build3_loc (input_location, COMPONENT_REF, TREE_TYPE (f), v, f, NULL_TREE);
+}
+
+inline tree
+modify_expr (tree dst, tree src)
+{
+  return build2_loc (input_location, MODIFY_EXPR, TREE_TYPE (dst), dst, src);
+}
+
+inline tree
+modify_expr (tree type, tree dst, tree src)
+{
+  return build2_loc (input_location, MODIFY_EXPR, type, dst, src);
+}
+
+inline tree
+vmodify_expr (tree dst, tree src)
+{
+  return build2_loc (input_location, MODIFY_EXPR, void_type_node, dst, src);
+}
+
+inline tree
+build_vinit (tree dst, tree src)
+{
+  return build2_loc (input_location, INIT_EXPR, void_type_node, dst, src);
+}
+
+inline tree
+build_nop (tree t, tree e)
+{
+  return build1_loc (input_location, NOP_EXPR, t, e);
+}
+
+inline tree
+build_vconvert (tree t, tree e)
+{
+  return indirect_ref (t, build_address (e));
+}
+
+inline tree
+build_boolop (enum tree_code code, tree arg0, tree arg1)
+{
+  return fold_build2_loc (input_location, code, boolean_type_node, arg0, arg1);
+}
+
+inline tree
+compound_expr (tree arg0, tree arg1)
+{
+  return build2_loc (input_location, COMPOUND_EXPR, TREE_TYPE (arg1), arg0, arg1);
+}
+
+inline tree
+vcompound_expr (tree arg0, tree arg1)
+{
+  return build2_loc (input_location, COMPOUND_EXPR, void_type_node, arg0, arg1);
+}
+
+// Giving error_mark_node a type allows for some assumptions about
+// the type of an arbitrary expression.
+inline tree
+error_mark (Type *t)
+{
+  return build1_loc (input_location, NOP_EXPR, t->toCtype(), error_mark_node);
+}
+
+// Routines for built in structured types
+inline tree
+real_part (tree c)
+{
+  return build1_loc (input_location, REALPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c);
+}
+
+inline tree
+imaginary_part (tree c)
+{
+  return build1_loc (input_location, IMAGPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c);
+}
+
+// Helpers for call
+inline bool
+function_type_p (tree t)
+{
+  return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE);
+}
+
+extern TypeFunction *get_function_type (Type *t);
+extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
+
 
 // Code generation routines should be in a separate namespace, but so many
 // routines need a reference to an IRState to expand Expressions.  Solution
@@ -195,43 +374,6 @@ struct IRState : IRBase
   tree convertForCondition (tree exp_tree, Type *exp_type);
   tree toDArray (Expression *exp);
 
-  // ** Type management
-  static bool typesSame (Type *t1, Type *t2);
-  static bool typesCompatible (Type *t1, Type *t2);
-  static Type *getDType (tree t);
-  static Type *getObjectType (void);
-
-  // Routines to handle variables that are references.
-  static bool isDeclarationReferenceType (Declaration *decl);
-  static tree trueDeclarationType (Declaration *decl);
-  static bool isArgumentReferenceType (Parameter *arg);
-  static tree trueArgumentType (Parameter *arg);
-
-  static tree arrayType (Type *d_type, uinteger_t size); // %% use of dinteger_t
-  static tree arrayType (tree type_node, uinteger_t size);
-
-  static tree addTypeAttribute (tree type, const char *attrname, tree value = NULL_TREE);
-  static void addDeclAttribute (tree type, const char *attrname, tree value = NULL_TREE);
-  static tree attributes (Expressions *in_attrs);
-  static tree addTypeModifiers (tree type, unsigned mod);
-
-  // ** Simple constants
-  static tree integerConstant (dinteger_t value, Type *type);
-  static tree integerConstant (dinteger_t value, tree type = integer_type_node);
-  static tree floatConstant (const real_t& value, Type *target_type);
-
-  static dinteger_t hwi2toli (HOST_WIDE_INT low, HOST_WIDE_INT high);
-
-  static dinteger_t hwi2toli (double_int cst)
-  { return hwi2toli (cst.low, cst.high); }
-
-  // ** Routines for built in structured types
-  static tree realPart (tree c)
-  { return build1_loc (input_location, REALPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c); }
-
-  static tree imagPart (tree c)
-  { return build1_loc (input_location, IMAGPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c); }
-
   // ** Dynamic arrays
   static tree darrayLenRef (tree exp);
   static tree darrayPtrRef (tree exp);
@@ -263,60 +405,11 @@ struct IRState : IRBase
   static tree twoFieldType (Type *ft1, Type *ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
   static tree twoFieldCtor (tree f1, tree f2, int storage_class = 0);
 
-  // ** Temporaries (currently just SAVE_EXPRs)
-
-  // Create a SAVE_EXPR if 't' might have unwanted side effects if referenced
-  // more than once in an expression.
-  static tree maybeMakeTemp (tree t);
-
-  // Return true if t can be evaluated multiple times (i.e., in a loop body)
-  // without unwanted side effects.  This is a stronger test than
-  // the one used for maybeMakeTemp.
-  static bool isFreeOfSideEffects (tree t);
-
   // ** Various expressions
   tree toElemLvalue (Expression *e);
 
-  static tree addressOf (Dsymbol *d);
-  static tree addressOf (tree exp);
-
-  static tree markAddressable (tree exp);
-  static tree markUsed (tree exp);
-  static tree markRead (tree exp);
-
-  /* Cast exp (which should be a pointer) to TYPE *and then indirect.  The
-     back-end requires this cast in many cases. */
-  static tree indirect (tree type, tree exp);
-  static tree indirect (tree exp);
-
-  static tree modify (tree dst, tree src)
-  { return modify (TREE_TYPE (dst), dst, src); }
-
-  static tree modify (tree type, tree dst, tree src)
-  { return build2_loc (input_location, MODIFY_EXPR, type, dst, src); }
-
-  static tree vmodify (tree dst, tree src)
-  { return build2_loc (input_location, MODIFY_EXPR, void_type_node, dst, src); }
-
-  static tree vinit (tree dst, tree src)
-  { return build2_loc (input_location, INIT_EXPR, void_type_node, dst, src); }
-
   tree pointerIntSum (Expression *ptr_exp, Expression *idx_exp);
   tree pointerIntSum (tree ptr_node, tree idx_exp);
-  static tree pointerOffsetOp (enum tree_code op, tree ptr, tree idx);
-  static tree pointerOffset (tree ptr_node, tree byte_offset);
-
-  static tree nop (tree t, tree e)
-  { return build1_loc (input_location, NOP_EXPR, t, e); }
-
-  static tree vconvert (tree t, tree e)
-  { return indirect (t, addressOf (e)); }
-
-  // DMD allows { void[] a; &a[3]; }
-  static tree pvoidOkay (tree t);
-
-  static tree boolOp (enum tree_code code, tree arg0, tree arg1)
-  { return fold_build2_loc (input_location, code, boolean_type_node, arg0, arg1); }
 
   static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
   tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
@@ -331,36 +424,6 @@ struct IRState : IRBase
   tree arraySetExpr (tree ptr, tree value, tree count);
 
   static tree binding (tree var_chain, tree body);
-
-  static tree compound (tree arg0, tree arg1)
-  { return build2_loc (input_location, COMPOUND_EXPR, TREE_TYPE (arg1), arg0, arg1); }
-
-  static tree compound (tree type, tree arg0, tree arg1)
-  { return build2_loc (input_location, COMPOUND_EXPR, type, arg0, arg1); }
-
-  static tree voidCompound (tree arg0, tree arg1)
-  { return build2_loc (input_location, COMPOUND_EXPR, void_type_node, arg0, arg1); }
-
-  static tree maybeCompound (tree arg0, tree arg1);
-  static tree maybeVoidCompound (tree arg0, tree arg1);
-
-  static tree component (tree v, tree f)
-  { return build3_loc (input_location, COMPONENT_REF, TREE_TYPE (f), v, f, NULL_TREE); }
-
-  // Giving error_mark_node a type allows for some assumptions about
-  // the type of an arbitrary expression.
-  static tree errorMark (Type *t)
-  { return build1_loc (input_location, NOP_EXPR, t->toCtype(), error_mark_node); }
-
-  static bool isErrorMark (tree t);
-
-  // ** Helpers for call
-  static TypeFunction *getFuncType (Type *t);
-
-  static bool isFuncType (tree t)
-  { return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE); }
-
-  static bool isCallByAlias (FuncDeclaration *caller, FuncDeclaration *callee);
 
   // ** Function calls
   tree call (Expression *expr, Expressions *arguments);
@@ -377,8 +440,6 @@ struct IRState : IRBase
   // usual conversions.
   static void maybeSetLibCallDecl (FuncDeclaration *decl);
   static tree libCall (LibCall libcall, unsigned n_args, tree *args, tree force_result_type = NULL_TREE);
-  static tree buildCall (tree type, tree callee, tree args);
-  static tree buildCall (tree callee, int n_args, ...);
 
   TemplateEmission emitTemplates;
   bool stdInc;
@@ -390,8 +451,6 @@ struct IRState : IRBase
 
   tree typeinfoReference (Type *t);
 
-  dinteger_t getTargetSizeConst (tree t);
-
   // Built-in symbols that require special handling.
   Module *intrinsicModule;
   Module *mathModule;
@@ -401,9 +460,6 @@ struct IRState : IRBase
   TemplateDeclaration *cstdargStartTemplateDecl;
 
   static bool maybeSetUpBuiltin (Declaration *decl);
-
-  // Returns the D object that was thrown.  Different from the generic exception pointer
-  static tree exceptionObject (void);
 
   static tree label (Loc loc, Identifier *ident = 0);
 
@@ -463,10 +519,6 @@ struct IRState : IRBase
   void doReturn (tree t_value);
   void doJump (Statement *stmt, tree t_label);
 
-  void doExp (tree t);
-  void doExp (Expression *e);
-  void doAsm (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
-
   // ** Goto/Label statement evaluation
   void pushLabel (LabelDsymbol *l);
   void checkSwitchCase (Statement *stmt, int default_flag = 0);
@@ -482,14 +534,10 @@ struct IRState : IRBase
   tree chainLink_;
 };
 
-struct GlobalValues
-{
-  ObjectFile *ofile;
-  IRState *irs;
-  Module *mod;
-};
-
-extern GlobalValues g;
+// 
+extern Module *current_module;
+extern IRState *current_irs;
+extern ObjectFile *object_file;
 
 extern IRState gen;
 
@@ -605,7 +653,7 @@ class AddrOfExpr
   { this->var_ = NULL_TREE; }
 
   tree set (IRState *irs, tree exp)
-  { return irs->addressOf (irs->maybeExprVar (exp, &this->var_)); }
+  { return build_address (irs->maybeExprVar (exp, &this->var_)); }
 
   tree finish (IRState *irs, tree e2)
   { return this->var_ ? irs->binding (this->var_, e2) : e2; }

@@ -5017,11 +5017,12 @@ void TemplateInstance::semantic(Scope *sc, Expressions *fargs)
 #endif
 
 #ifdef IN_GCC
-        /* For "all" and "private" template modes, templates are always
-           emitted.  Problem:  This picks up templates that aren't even
+        /* For -femit-templates, templates are always emitted.
+           Problem:  This picks up templates that aren't even
            needed in the current module. */
-        if (d_gcc_force_templates())
-        {   //fprintf(stderr, "\t0: adding to %s %s\n", sc->scopesym->kind(), sc->scopesym->toChars());
+        if (d_gcc_force_templates() && scx && scx->scopesym)
+        {
+            //fprintf(stderr, "\t0: adding to %s %s\n", sc->scopesym->kind(), sc->scopesym->toChars());
             objFileModule = d_gcc_get_output_module();
             a = objFileModule->members;
         }

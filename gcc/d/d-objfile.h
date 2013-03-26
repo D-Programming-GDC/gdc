@@ -67,7 +67,7 @@ struct ObjectFile
   // ** Declaration maninpulation
   static void setDeclLoc (tree t, const Loc& loc);
 
-  // Some DMD Declarations don't have the loc set, this searches decl's parents
+  // Some D Declarations don't have the loc set, this searches decl's parents
   // until a valid loc is found.
   static void setDeclLoc (tree t, Dsymbol *decl);
   static void setCfunEndLoc (const Loc& loc);

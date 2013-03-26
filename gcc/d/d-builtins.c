@@ -46,6 +46,8 @@ static tree handle_type_generic_attribute (tree *, tree, tree, int, bool *);
 static tree handle_transaction_pure_attribute (tree *, tree, tree, int, bool *);
 static tree handle_returns_twice_attribute (tree *, tree, tree, int, bool *);
 static tree handle_fnspec_attribute (tree *, tree, tree, int, bool *);
+static tree handle_alias_attribute (tree *, tree, tree, int, bool *);
+static tree handle_weakref_attribute (tree *, tree, tree, int, bool *);
 static tree ignore_attribute (tree *, tree, tree, int, bool *);
 
 /* Array of d type/decl nodes. */
@@ -108,7 +110,6 @@ gcc_type_to_d_type (tree t)
     case BOOLEAN_TYPE:
       // Should be no need for size checking.
       return Type::tbool;
-      break;
 
     case INTEGER_TYPE:
       type_size = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
@@ -130,9 +131,7 @@ gcc_type_to_d_type (tree t)
 	{
 	  d = Type::basic[i];
 	  if (d && d->isreal() && d->size() == type_size)
-	    {
-	      return d;
-	    }
+	    return d;
 	}
       break;
 
@@ -142,9 +141,7 @@ gcc_type_to_d_type (tree t)
 	{
 	  d = Type::basic[i];
 	  if (d && d->iscomplex() && d->size() == type_size)
-	    {
-	      return d;
-	    }
+	    return d;
 	}
       break;
 
@@ -163,7 +160,7 @@ gcc_type_to_d_type (tree t)
 	  length = size_binop (PLUS_EXPR, size_one_node,
 			       convert (sizetype, length));
 
-	  e = new IntegerExp (0, gen.getTargetSizeConst (length),
+	  e = new IntegerExp (0, tree_to_hwi (length),
 			      Type::tindex);
 	  d = new TypeSArray (d, e);
 	  d = d->semantic (0, NULL);
@@ -277,7 +274,6 @@ gcc_type_to_d_type (tree t)
 
     default:
       break;
-
     }
 
   return NULL;
@@ -730,7 +726,7 @@ gcc_cst_to_d_expr (tree cst)
 	}
       else if (code == INTEGER_CST)
 	{
-	  dinteger_t value = IRState::hwi2toli (TREE_INT_CST (cst));
+	  dinteger_t value = cst_to_hwi (TREE_INT_CST (cst));
 	  return new IntegerExp (0, value, type);
 	}
       else if (code == REAL_CST)
@@ -744,7 +740,6 @@ gcc_cst_to_d_expr (tree cst)
 	  size_t len = TREE_STRING_LENGTH (cst);
 	  return new StringExp (0, CONST_CAST (void *, string), len);
 	}
-      // TODO: VECTOR... ?
     }
   return NULL;
 }
@@ -829,7 +824,6 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
     case BUILTINyl2xp1:
       return NULL;
 
-
     default:
       gcc_unreachable();
     }
@@ -874,18 +868,16 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       TypeFunction *tf = (TypeFunction *) fd->type;
       tree callee = NULL_TREE;
 
-      // g.irs is not available.
-      static IRState irs;
+      // current_irs is not available.
+      IRState irs;
       irs.doLineNote (loc);
       tree result = irs.call (tf, callee, NULL, arguments);
       result = fold (result);
 
+      // Builtin should be successfully evaluated.
+      // Will only return NULL if we can't convert it.
       if (TREE_CONSTANT (result) && TREE_CODE (result) != CALL_EXPR)
-	{
-	  // Builtin should be successfully evaluated.
-	  // Will only return NULL if we can't convert it.
-	  e = gcc_cst_to_d_expr (result);
-	}
+	e = gcc_cst_to_d_expr (result);
 
       return e;
     }
@@ -901,9 +893,9 @@ d_gcc_paint_type (Expression *expr, Type *type)
   tree cst;
 
   if (type->isintegral())
-    cst = IRState::floatConstant (expr->toReal(), expr->type);
+    cst = build_float_cst (expr->toReal(), expr->type);
   else
-    cst = IRState::integerConstant (expr->toInteger(), expr->type);
+    cst = build_integer_cst (expr->toInteger(), expr->type->toCtype());
 
   len = native_encode_expr (cst, buffer, sizeof (buffer));
   cst = native_interpret_expr (type->toCtype(), buffer, len);
@@ -1348,6 +1340,10 @@ const struct attribute_spec d_builtins_attribute_table[] =
      source code and signals that it may be overridden by machine tables.  */
   { "*tm regparm",            0, 0, false, true, true,
 			      ignore_attribute, false },
+  { "alias",                  1, 1, true,  false, false,
+			      handle_alias_attribute, false },
+  { "weakref",                0, 1, true,  false, false,
+			      handle_weakref_attribute, false },
   { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1638,6 +1634,48 @@ handle_fnspec_attribute (tree *node ATTRIBUTE_UNUSED, tree ARG_UNUSED (name),
   gcc_assert (args
 	      && TREE_CODE (TREE_VALUE (args)) == STRING_CST
 	      && !TREE_CHAIN (args));
+  return NULL_TREE;
+}
+
+/* Handle an "alias" or "ifunc" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
+			tree args, int ARG_UNUSED (flags),
+			bool *no_add_attrs ATTRIBUTE_UNUSED)
+{
+  gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
+  gcc_assert (!DECL_INITIAL (*node));
+  gcc_assert (!decl_function_context (*node));
+
+  tree id = TREE_VALUE (args);
+  gcc_assert (TREE_CODE (id) == STRING_CST);
+
+  id = get_identifier (TREE_STRING_POINTER (id));
+  /* This counts as a use of the object pointed to.  */
+  TREE_USED (id) = 1;
+  DECL_INITIAL (*node) = error_mark_node;
+
+  return NULL_TREE;
+}
+
+/* Handle a "weakref" attribute; arguments as in struct
+   attribute_spec.handler.  */
+
+static tree
+handle_weakref_attribute (tree *node, tree ARG_UNUSED (name),
+			  tree ARG_UNUSED (args), int ARG_UNUSED (flags),
+			  bool *no_add_attrs ATTRIBUTE_UNUSED)
+{
+  gcc_assert (!decl_function_context (*node));
+  gcc_assert (!lookup_attribute ("alias", DECL_ATTRIBUTES (*node)));
+
+  /* Can't call declare_weak because it wants this to be TREE_PUBLIC,
+     and that isn't supported; and because it wants to add it to
+     the list of weak decls, which isn't helpful.  */
+  DECL_WEAK (*node) = 1;
+
   return NULL_TREE;
 }
 

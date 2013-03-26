@@ -916,18 +916,21 @@ struct ImportStatement : Statement
 // Assembler instructions with D expression operands
 struct ExtAsmStatement : Statement
 {
-    Expression *insnTemplate;
+    Expression *insn;
     Expressions *args;            
-    Identifiers *argNames;        // of NULL or Identifier*
-    Expressions *argConstraints;  // of StringExp*
-    unsigned nOutputArgs;
-    Expressions *clobbers;        // of StringExp*
+    Identifiers *names;         // of NULL or Identifier*
+    Expressions *constraints;   // of StringExp*
+    unsigned outputargs;
+    Expressions *clobbers;      // of StringExp*
+    Dsymbols *labels;           // of LabelDsymbol*
 
-    ExtAsmStatement(Loc loc, Expression *insnTemplate, Expressions *args, Identifiers *argNames,
-                    Expressions *argConstraints, int nOutputArgs, Expressions *clobbers);
+    ExtAsmStatement(Loc loc, Expression *insn, Expressions *args, Identifiers *names,
+                    Expressions *constraints, int outputargs, Expressions *clobbers, Dsymbols *labels);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     int blockExit(bool mustNotThrow);
+    int comeFrom();
+
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
     void toIR(IRState *irs);

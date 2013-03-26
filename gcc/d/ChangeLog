@@ -1,3 +1,120 @@
+2013-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::objectInstanceMethod): Get function pointer
+	off function TREE_TYPE.
+	(build_deref): Handle cases where expression to dereference is an
+	address expression.
+	(modify_expr): New function overload to set return type directly.
+	* d-elem.cc(CatAssignExp::toElem): Use new modify_expr.
+	(AssignExp::toElem): Likewise.
+	* d-decls.cc(FuncDeclaration::toSymbol): Don't build a method type for
+	nested functions / delegates.  Just add on the hidden 'this' pointer
+	containing the custom static chain/closure object.
+
+	* d-codegen.cc(GlobalValues): Replace with current_module,
+	current_irs, object_file.
+	(IRState::getFuncType): Replace with get_function_type.
+	(IRState::isCallByAlias): Replace with call_by_alias_p.
+	(IRState::isFuncType): Replace with function_type_p.
+	(IRState::doExp): Remove.
+
+2013-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::realPart): Replace with real_part.
+	(IRState::imagPart): Replace with imaginary_part.
+	(IRState::integerConstant): Replace with build_integer_cst.
+	(IRState::floatConstant): Replace with build_float_cst.
+	(IRState::hwi2toli): Replace with cst_to_hwi.
+	(IRState::addressOf): Replace with build_address.
+	(IRState::markAddressable): Replace with d_mark_addressable.
+	(IRState::markUsed): Replace with d_mark_used.
+	(IRState::markRead): Replace with d_mark_read.
+	(IRState::indirect): Replace with indirect_ref.
+	(IRState::pvoidOkay): Replace with void_okay_p.
+	(IRState::maybeCompound): Replace with maybe_compound_expr.
+	(IRState::maybeVoidCompound): Replace with maybe_vcompound_expr.
+	(IRState::isErrorMark): Replace with error_mark_p.
+	(IRState::getTargetSizeConst): Replace with tree_to_hwi.
+	(IRState::modify): Replace with modify_expr.
+	(IRState::vmodify): Replace with vmodify_expr.
+	(IRState::vinit): Replace with build_vinit.
+	(IRState::nop): Replace with build_nop.
+	(IRState::vconvert): Replace with build_vconvert.
+	(IRState::boolOp): Replace with build_boolop.
+	(IRState::compound): Replace with compound_expr.
+	(IRState::voidCompound): Replace with vcompound_expr.
+	(IRState::component): Replace with component_ref.
+	(IRState::errorMark): Replace with error_mark.
+	(IRState::typesSame): Replace with d_types_same.
+	(IRState::typesCompatible): Replace with d_types_compatible.
+	(IRState::getDType): Replace with build_dtype.
+	(IRState::getObjectType): Replace with build_object_type.
+	(IRState::isDeclarationReferenceType): Replace with decl_reference_p.
+	(IRState::trueDeclarationType): Replace with declaration_type.
+	(IRState::isArgumentReferenceType): Replace with arg_reference_p.
+	(IRState::trueArgumentType): Replace with type_passed_as.
+	(IRState::arrayType): Replace with d_array_type.
+	(IRState::addTypeAttribute): Replace with insert_type_attributes.
+	(IRState::addDeclAttribute): Replace with insert_decl_attributes.
+	(IRState::attributes): Replace with build_attributes.
+	(IRState::addTypeModifiers): Replace with insert_type_modifiers.
+	(IRState::maybeMakeTemp): Replace with maybe_make_temp.
+	(IRState::isFreeOfSideEffects): Replace with d_has_side_effects.
+	(IRState::pointerOffsetOp): Replace with build_offset_op.
+	(IRState::pointerOffset): Replace with build_offset.
+	(IRState::buildCall): Replace with d_build_call.
+	(IRState::exceptionObject): Replace with build_exception_object.
+
+2013-03-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-asmstmt.cc(d_build_asm_stmt): Remove.
+	(ExtAsmStatement::ExtAsmStatement): Update to match renamed members.
+	(ExtAsmStatement::syntaxCopy): Likewise.
+	(ExtAsmStatement::semantic): Likewise.
+	(ExtAsmStatement::toCBuffer): Likewise.
+	(ExtAsmStatement::comeFrom): New.
+	(ExtAsmStatement::blockExit): Don't error if must not throw.
+	(naturalString): Remove.
+	(ExtAsmStatement::toIR): Inline IRState::doAsm implementation.
+	* d-codegen.cc(IRState::doAsm): Remove.
+	* d-decls.cc(FuncDeclaration::toSymbol): Don't generate 'naked'
+	attribute.
+	(binfo_for): Move into d-decls.cc.
+	(intfc_binfo_for): Likewise.
+	(ClassDeclaration::toDebug): Likewise.
+	(EnumDeclaration::toDebug): Likewise.
+	(TypedefDeclaration::toDebug): Likewise.
+	(StructDeclaration::toDebug): Likewise.
+	* d-objfile.cc(FuncDeclaration::toObjFile): Move into d-objfile.cc.
+	(FuncDeclaration::buildClosure): Likewise.
+	(Module::genobjfile): Likewise.
+	* d-glue.cc: Remove file.
+
+2013-03-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-ir.cc(SynchronizedStatement::toIR): Remove implementation as is
+	now handled by the frontend.
+
+2013-03-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::maybeExpandSpecialCall): Handle ref argptr
+	arguments.
+
+2013-03-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(handle_alias_attribute): New function to handle
+	internal 'alias' attribute.
+	(handle_weakref_attribute): New function to handle internal 'weakref'
+	attribute.
+	* d-objfile.cc(ObjectFile::outputThunk): Define thunks to external
+	symbols as weakref, alias
+
+2013-03-12  Johannes Pfau  <johannespfau@gmail.com>
+
+	* patch-versym-os-4.8.x(mingw32.h): Fix typo
+	* patch-versym-cpu-4.8.x(mips.h): Fix typo
+	Update version symbols to latest dlang specification.
+
 2013-03-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Delay setting TREE_TYPE as

@@ -37,7 +37,7 @@ IRState *
 IRBase::startFunction (FuncDeclaration *decl)
 {
   IRState *new_irs = new IRState();
-  new_irs->parent = g.irs;
+  new_irs->parent = current_irs;
   new_irs->func = decl;
   new_irs->varsInScope = NULL;
 
@@ -50,8 +50,8 @@ IRBase::startFunction (FuncDeclaration *decl)
 	}
     }
 
-  g.irs = (IRState *) new_irs;
-  ModuleInfo & mi = *g.ofile->moduleInfo;
+  current_irs = (IRState *) new_irs;
+  ModuleInfo & mi = *object_file->moduleInfo;
 
   if (decl->isSharedStaticCtorDeclaration())
     mi.sharedctors.push (decl);
@@ -81,10 +81,11 @@ void
 IRBase::endFunction (void)
 {
   gcc_assert (this->scopes.dim == 0);
-
-  g.irs = (IRState *) this->parent;
+  current_irs = (IRState *) this->parent;
 }
 
+
+// Emit statement E into function body.
 
 void
 IRBase::addExp (tree e)
@@ -125,8 +126,6 @@ IRBase::popStatementList (void)
 {
   tree t = (tree) this->statementList.pop();
 
-  // %% should gdc bother doing this?
-
   /* If the statement list is completely empty, just return it.  This is
      just as good small as build_empty_stmt, with the advantage that
      statement lists are merged when they appended to one another.  So
@@ -162,11 +161,11 @@ IRBase::getLabelTree (LabelDsymbol *label)
 				    get_identifier (label->ident->string), void_type_node);
       gcc_assert (this->func != 0);
       DECL_CONTEXT (label_decl) = getLocalContext();
-      DECL_MODE (label_decl) = VOIDmode; // Not sure why or if this is needed
+      DECL_MODE (label_decl) = VOIDmode;
       TREE_USED (label_decl) = 1;
       // Not setting this doesn't seem to cause problems (unlike VAR_DECLs)
       if (label->statement->loc.filename)
-	g.ofile->setDeclLoc (label_decl, label->statement->loc); // %% label->loc okay?
+	object_file->setDeclLoc (label_decl, label->statement->loc);
       label->statement->lblock = label_decl;
     }
   return label->statement->lblock;
@@ -279,23 +278,17 @@ IRBase::startScope (void)
   unsigned *p_count = new unsigned;
   *p_count = 0;
   this->scopes.push (p_count);
-
-  //printf ("%*sstartScope\n", this->scopes.dim, "");
   startBindings();
 }
 
 void
 IRBase::endScope (void)
 {
-  unsigned *p_count;
-
-  p_count = currentScope();
-
-  //printf ("%*s  ending scope with %d left \n", this->scopes.dim, "", *p_count);
+  unsigned *p_count = currentScope();
   while (*p_count)
     endBindings();
+
   this->scopes.pop();
-  //printf ("%*sendScope\n", this->scopes.dim, "");
 }
 
 
@@ -309,14 +302,11 @@ IRBase::startBindings (void)
   pushStatementList();
 
   ++(*currentScope());
-  //printf ("%*s  start -> %d\n", this->scopes.dim, "", *currentScope());
-
 }
 
 void
 IRBase::endBindings (void)
 {
-  // %%TODO: reversing list causes problems with inf loops in unshare_all_decls
   tree block = poplevel (1,0,0);
 
   tree t_body = popStatementList();
@@ -328,7 +318,5 @@ IRBase::endBindings (void)
 
   --(*currentScope());
   gcc_assert (*(int *) currentScope() >= 0);
-  //printf ("%*s  end -> %d\n", this->scopes.dim, "", *currentScope());
-
 }
 

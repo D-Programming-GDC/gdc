@@ -615,7 +615,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	  tree op0 = TREE_OPERAND (*expr_p, 0);
 	  tree op1 = TREE_OPERAND (*expr_p, 1);
 
-	  if (!gen.isErrorMark (op0) && !gen.isErrorMark (op1)
+	  if (!error_mark_p (op0) && !error_mark_p (op1)
 	      && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
 		  || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
 	      && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))
@@ -1025,12 +1025,13 @@ d_parse_file (void)
   if (global.errors || global.warnings)
     goto had_errors;
 
-  g.ofile = new ObjectFile();
+  object_file = new ObjectFile();
   if (fonly_arg)
-    g.ofile->modules.push (output_module);
+    object_file->modules.push (output_module);
   else
-    g.ofile->modules.append (&modules);
-  g.irs = &gen; // needed for FuncDeclaration::toObjFile
+    object_file->modules.append (&modules);
+
+  current_irs = &gen;
 
   // Generate output files
   if (global.params.doXGeneration)
@@ -1092,10 +1093,10 @@ d_parse_file (void)
   // better to use input_location.xxx ?
   (*debug_hooks->end_source_file) (input_line);
  had_errors:
-  // Add DMD error count to GCC error count to to exit with error status
+  // Add D frontend error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);
 
-  g.ofile->finish();
+  object_file->finish();
   output_module = NULL;
 
   gcc_d_backend_term();
@@ -1625,11 +1626,11 @@ d_eh_personality (void)
 static tree
 d_build_eh_type_type (tree type)
 {
-  TypeClass *d_type = (TypeClass *) gen.getDType (type);
+  TypeClass *d_type = (TypeClass *) build_dtype (type);
   gcc_assert (d_type);
   d_type = (TypeClass *) d_type->toBasetype();
   gcc_assert (d_type->ty == Tclass);
-  return gen.addressOf (d_type->sym->toSymbol()->Stree);
+  return build_address (d_type->sym->toSymbol()->Stree);
 }
 
 void

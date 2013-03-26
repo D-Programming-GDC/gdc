@@ -136,10 +136,10 @@ D_DMD_OBJS := \
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
 D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
-              d/d-objfile.glue.o d/d-irstate.glue.o d/d-glue.glue.o \
+              d/d-objfile.glue.o d/d-irstate.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
               d/d-gt.cglue.o d/d-builtins.cglue.o \
-              d/symbol.glue.o d/asmstmt.glue.o d/dt.glue.o \
+              d/symbol.glue.o d/d-asmstmt.glue.o d/dt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
               d/d-ir.glue.o
 
@@ -193,14 +193,13 @@ d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) d/d-confdefs.h options.h
 d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
 d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
 d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
-d/d-glue.glue.o: d/d-glue.cc $(D_TREE_H)
 d/d-ctype.glue.o: d/d-ctype.cc $(D_TREE_H)
 d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
 d/d-ir.glue.o: d/d-ir.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
 d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
 d/d-gcc-real.glue.o: d/d-gcc-real.cc $(D_TREE_H)
-d/asmstmt.glue.o: d/asmstmt.cc $(D_TREE_H)
+d/d-asmstmt.glue.o: d/d-asmstmt.cc $(D_TREE_H)
 d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
 d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)

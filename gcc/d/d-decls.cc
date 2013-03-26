@@ -146,7 +146,7 @@ VarDeclaration::toSymbol (void)
 	decl_kind = VAR_DECL;
 
       var_decl = build_decl (UNKNOWN_LOCATION, decl_kind, get_identifier (csym->Sident),
-			     gen.trueDeclarationType (this));
+			     declaration_type (this));
 
       csym->Stree = var_decl;
 
@@ -161,9 +161,9 @@ VarDeclaration::toSymbol (void)
 	    }
 	}
       d_keep (var_decl);
-      g.ofile->setDeclLoc (var_decl, this);
+      object_file->setDeclLoc (var_decl, this);
       if (decl_kind == VAR_DECL)
-	g.ofile->setupSymbolStorage (this, var_decl);
+	object_file->setupSymbolStorage (this, var_decl);
       else if (decl_kind == PARM_DECL)
 	{
 	  /* from gcc code: Some languages have different nominal and real types.  */
@@ -191,14 +191,14 @@ VarDeclaration::toSymbol (void)
 	    e = type->defaultInit();
 
 	  if (e)
-	    DECL_INITIAL (var_decl) = e->toElem (g.irs);
+	    DECL_INITIAL (var_decl) = e->toElem (current_irs);
 	}
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a varaible in an imported module
       // %% (out const X x) doesn't mean the reference is const...
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
-	  && !gen.isDeclarationReferenceType (this))
+	  && !decl_reference_p (this))
 	{
 	  // %% CONST_DECLS don't have storage, so we can't use those,
 	  // but it would be nice to get the benefit of them (could handle in
@@ -289,7 +289,7 @@ TypeInfoDeclaration::toSymbol (void)
 	 in TypeInfoDeclaration::toObjFile.  The difference is that,
 	 in gdc, built-in typeinfo will be referenced as one-only.  */
       D_DECL_ONE_ONLY (csym->Stree) = 1;
-      g.ofile->makeDeclOneOnly (csym->Stree);
+      object_file->makeDeclOneOnly (csym->Stree);
     }
   return csym;
 }
@@ -384,9 +384,12 @@ FuncDeclaration::toSymbol (void)
 
 	  if (isNested())
 	    {
-	      /* Even if DMD-style nested functions are not implemented, add an
+	      /* Even if D-style nested functions are not implemented, add an
 		 extra argument to be compatible with delegates. */
-	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
+	      tree argtypes;
+	      fntype = TREE_TYPE (fndecl);
+	      argtypes = tree_cons (NULL_TREE, ptr_type_node, TYPE_ARG_TYPES (fntype));
+	      TYPE_ARG_TYPES (fntype) = argtypes;
 	    }
 	  else if (isThis())
 	    {
@@ -450,7 +453,6 @@ FuncDeclaration::toSymbol (void)
 
 	  if (naked)
 	    {
-	      gen.addDeclAttribute (fndecl, "naked");
 	      DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl) = 1;
 	      DECL_UNINLINABLE (fndecl) = 1;
 	    }
@@ -492,8 +494,8 @@ FuncDeclaration::toSymbol (void)
 	      gen.addDeclAttribute (fndecl, "dllexport");
 	    }
 #endif
-	  g.ofile->setDeclLoc (fndecl, this);
-	  g.ofile->setupSymbolStorage (this, fndecl);
+	  object_file->setDeclLoc (fndecl, this);
+	  object_file->setupSymbolStorage (this, fndecl);
 	  if (!ident)
 	    TREE_PUBLIC (fndecl) = 0;
 
@@ -586,7 +588,7 @@ FuncDeclaration::toThunkSymbol (int offset)
       d_keep (thunk_decl);
       sthunk->Stree = thunk_decl;
 
-      g.ofile->doThunk (thunk_decl, target_func_decl, offset);
+      object_file->doThunk (thunk_decl, target_func_decl, offset);
 
       thunk->symbol = sthunk;
     }
@@ -608,10 +610,10 @@ ClassDeclaration::toSymbol (void)
       csym->Stree = decl;
       d_keep (decl);
 
-      g.ofile->setupStaticStorage (this, decl);
-      g.ofile->setDeclLoc (decl, this);
+      object_file->setupStaticStorage (this, decl);
+      object_file->setDeclLoc (decl, this);
 
-      TREE_CONSTANT (decl) = 0; // DMD puts this into .data, not .rodata...
+      TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
     }
   return csym;
@@ -647,12 +649,12 @@ Module::toSymbol (void)
 
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
 			      make_node (RECORD_TYPE));
-      g.ofile->setDeclLoc (decl, this);
+      object_file->setDeclLoc (decl, this);
       csym->Stree = decl;
 
       d_keep (decl);
 
-      g.ofile->setupStaticStorage (this, decl);
+      object_file->setupStaticStorage (this, decl);
 
       TREE_CONSTANT (decl) = 0; // *not* readonly, moduleinit depends on this
       TREE_READONLY (decl) = 0; // Not an lvalue, tho
@@ -683,8 +685,8 @@ ClassDeclaration::toVtblSymbol (void)
       vtblsym->Stree = decl;
       d_keep (decl);
 
-      g.ofile->setupStaticStorage (this, decl);
-      g.ofile->setDeclLoc (decl, this);
+      object_file->setupStaticStorage (this, decl);
+      object_file->setDeclLoc (decl, this);
 
       TREE_READONLY (decl) = 1;
       TREE_CONSTANT (decl) = 1;
@@ -720,7 +722,7 @@ AggregateDeclaration::toInitializer (void)
       if (sd)
 	sinit->Salignment = sd->alignment;
     }
-  if (!sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && object_file != NULL)
     {
       tree struct_type = type->toCtype();
       if (POINTER_TYPE_P (struct_type))
@@ -730,8 +732,8 @@ AggregateDeclaration::toInitializer (void)
       sinit->Stree = t;
       d_keep (t);
 
-      g.ofile->setupStaticStorage (this, t);
-      g.ofile->setDeclLoc (t, this);
+      object_file->setupStaticStorage (this, t);
+      object_file->setDeclLoc (t, this);
 
       // %% what's the diff between setting this stuff on the DECL and the
       // CONSTRUCTOR itself?
@@ -759,15 +761,15 @@ TypedefDeclaration::toInitializer (void)
       sinit = s;
       sinit->Sdt = ((TypeTypedef *)type)->sym->init->toDt();
     }
-  if (!sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && object_file != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			   get_identifier (sinit->Sident), type->toCtype());
       sinit->Stree = t;
       d_keep (t);
 
-      g.ofile->setupStaticStorage (this, t);
-      g.ofile->setDeclLoc (t, this);
+      object_file->setupStaticStorage (this, t);
+      object_file->setDeclLoc (t, this);
       TREE_CONSTANT (t) = 1;
       TREE_READONLY (t) = 1;
       DECL_CONTEXT (t) = 0;
@@ -797,15 +799,15 @@ EnumDeclaration::toInitializer (void)
       s->Sflags |= SFLnodebug;
       sinit = s;
     }
-  if (!sinit->Stree && g.ofile != NULL)
+  if (!sinit->Stree && object_file != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			   get_identifier (sinit->Sident), type->toCtype());
       sinit->Stree = t;
       d_keep (t);
 
-      g.ofile->setupStaticStorage (this, t);
-      g.ofile->setDeclLoc (t, this);
+      object_file->setupStaticStorage (this, t);
+      object_file->setDeclLoc (t, this);
       TREE_CONSTANT (t) = 1;
       TREE_READONLY (t) = 1;
       DECL_CONTEXT (t) = 0;
@@ -814,31 +816,147 @@ EnumDeclaration::toInitializer (void)
 }
 
 
+/* Create debug information for a ClassDeclaration's inheritance tree.
+   Interfaces are not included. */
+static tree
+binfo_for (tree tgt_binfo, ClassDeclaration *cls)
+{
+  tree binfo = make_tree_binfo (1);
+  // Want RECORD_TYPE, not REFERENCE_TYPE
+  TREE_TYPE (binfo) = TREE_TYPE (cls->type->toCtype());
+  BINFO_INHERITANCE_CHAIN (binfo) = tgt_binfo;
+  BINFO_OFFSET (binfo) = integer_zero_node;
+
+  if (cls->baseClass)
+    BINFO_BASE_APPEND (binfo, binfo_for (binfo, cls->baseClass));
+
+  return binfo;
+}
+
+/* Create debug information for an InterfaceDeclaration's inheritance
+   tree.  In order to access all inherited methods in the debugger,
+   the entire tree must be described.
+
+   This function makes assumptions about inherface layout. */
+static tree
+intfc_binfo_for (tree tgt_binfo, ClassDeclaration *iface, unsigned& inout_offset)
+{
+  tree binfo = make_tree_binfo (iface->baseclasses->dim);
+
+  // Want RECORD_TYPE, not REFERENCE_TYPE
+  TREE_TYPE (binfo) = TREE_TYPE (iface->type->toCtype());
+  BINFO_INHERITANCE_CHAIN (binfo) = tgt_binfo;
+  BINFO_OFFSET (binfo) = size_int (inout_offset * PTRSIZE);
+
+  for (size_t i = 0; i < iface->baseclasses->dim; i++, inout_offset++)
+    {
+      BaseClass *bc = iface->baseclasses->tdata()[i];
+      BINFO_BASE_APPEND (binfo, intfc_binfo_for (binfo, bc->base, inout_offset));
+    }
+
+  return binfo;
+}
+
+void
+ClassDeclaration::toDebug (void)
+{
+  /* Used to create BINFO even if debugging was off.  This was needed to keep
+     references to inherited types. */
+  tree rec_type = TREE_TYPE (type->toCtype());
+
+  if (!isInterfaceDeclaration())
+    TYPE_BINFO (rec_type) = binfo_for (NULL_TREE, this);
+  else
+    {
+      unsigned offset = 0;
+      TYPE_BINFO (rec_type) = intfc_binfo_for (NULL_TREE, this, offset);
+    }
+
+  object_file->declareType (rec_type, this);
+}
+
+void
+EnumDeclaration::toDebug (void)
+{
+  TypeEnum *tc = (TypeEnum *)type;
+  if (!tc->sym->defaultval || type->isZeroInit())
+    return;
+
+  tree ctype = type->toCtype();
+
+  // The ctype is not necessarily enum, which doesn't sit well with
+  // rest_of_type_compilation.  Can call this on structs though.
+  if (AGGREGATE_TYPE_P (ctype) || TREE_CODE (ctype) == ENUMERAL_TYPE)
+    rest_of_type_compilation (ctype, 1);
+}
+
+void
+TypedefDeclaration::toDebug (void)
+{
+}
+
+void
+StructDeclaration::toDebug (void)
+{
+  tree ctype = type->toCtype();
+  object_file->declareType (ctype, this);
+  rest_of_type_compilation (ctype, 1);
+}
+
+
+// Stubs unused in GDC, but required for D front-end.
+
 Symbol *
 Module::toModuleAssert (void)
 {
-  // Not used in GDC
   return NULL;
 }
 
 Symbol *
 Module::toModuleUnittest (void)
 {
-  // Not used in GDC
   return NULL;
 }
 
 Symbol *
 Module::toModuleArray (void)
 {
-  // Not used in GDC (all array bounds checks are inlined)
   return NULL;
 }
 
 Symbol *
 TypeAArray::aaGetSymbol (const char *, int)
 {
-  // This is not used in GDC (yet?)
+  return 0;
+}
+
+int
+Dsymbol::cvMember (unsigned char *)
+{
+  return 0;
+}
+
+int
+EnumDeclaration::cvMember (unsigned char *)
+{
+  return 0;
+}
+
+int
+FuncDeclaration::cvMember (unsigned char *)
+{
+  return 0;
+}
+
+int
+VarDeclaration::cvMember (unsigned char *)
+{
+  return 0;
+}
+
+int
+TypedefDeclaration::cvMember (unsigned char *)
+{
   return 0;
 }
 

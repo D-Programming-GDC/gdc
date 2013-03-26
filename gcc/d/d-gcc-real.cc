@@ -351,7 +351,7 @@ real_t::toInt (void) const
   else
     REAL_VALUE_TO_INT (&low, &high, r);
 
-  return gen.hwi2toli (low, high);
+  return cst_to_hwi (double_int::from_pair (high, low));
 }
 
 // Return conversion of real_t value to d_uns64.
@@ -370,11 +370,11 @@ real_t::toInt (Type *real_type, Type *int_type) const
   else
     {
       t = fold_build1 (FIX_TRUNC_EXPR, int_type->toCtype(),
-		       gen.floatConstant (r, real_type->toBasetype()));
+		       build_float_cst (r, real_type->toBasetype()));
       // can't use tree_low_cst as it asserts !TREE_OVERFLOW
       cst = TREE_INT_CST (t);
     }
-  return gen.hwi2toli (cst);
+  return cst_to_hwi (cst);
 }
 
 // Return value of real_t rounded to fit in mode.

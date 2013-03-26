@@ -32,7 +32,7 @@ struct GTY(()) language_function
   int unused;
 };
 
-/* The DMD front end types have not been integrated into the GCC garbage
+/* The D front end types have not been integrated into the GCC garbage
    collection system.  Handle this by using the "skip" attribute. */
 struct Declaration;
 typedef struct Declaration *DeclarationGTYP;
