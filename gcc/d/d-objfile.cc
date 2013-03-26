@@ -189,6 +189,9 @@ ObjectFile::giveDeclUniqueName (tree decl, const char *prefix)
   char *label;
   ASM_FORMAT_PRIVATE_NAME (label, name, DECL_UID (decl));
   SET_DECL_ASSEMBLER_NAME (decl, get_identifier (label));
+
+  if (!DECL_NAME (decl))
+    DECL_NAME (decl) = DECL_ASSEMBLER_NAME (decl);
 }
 
 /* For 4.5.x, return the COMDAT group into which DECL should be placed. */
@@ -214,20 +217,19 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
 	return;
     }
 
-  /* First method: Use one-only.
-     If user has specified -femit-templates=private, honor that
-     even if the target supports one-only. */
+  /* First method: Use one-only.  If user has specified -femit-templates,
+     honor that even if the target supports one-only. */
   if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
     {
       // Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined
       if (TREE_CODE (decl_tree) == FUNCTION_DECL)
 	DECL_DECLARED_INLINE_P (decl_tree) = 1;
 
-      /* The following makes assumptions about the behavior
-	 of make_decl_one_only */
+      // The following makes assumptions about the behavior of make_decl_one_only.
       if (SUPPORTS_ONE_ONLY)
 	{
 	  make_decl_one_only (decl_tree, d_comdat_group (decl_tree));
+	  return;
 	}
       else if (SUPPORTS_WEAK)
 	{
@@ -235,23 +237,22 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
 	  DECL_INITIAL (decl_tree) = integer_zero_node;
 	  make_decl_one_only (decl_tree, d_comdat_group (decl_tree));
 	  DECL_INITIAL (decl_tree) = decl_init;
+	  return;
 	}
     }
-  /* Second method: Make a private copy.
-     For RTTI, we can always make a private copy.  For templates, only do
-     this if the user specified -femit-templates=private. */
-  else if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates == TEprivate)
+  /* Second method: Make a private copy.  For RTTI, we can always make
+     a private copy.  For templates, only do this if the user specified
+     -femit-templates. */
+  else if (gen.emitTemplates == TEprivate)
     {
       TREE_PRIVATE (decl_tree) = 1;
       TREE_PUBLIC (decl_tree) = 0;
     }
-  else
-    {
-      /* Fallback for templates, cannot have multiple copies. */
-      if (DECL_INITIAL (decl_tree) == NULL_TREE
-	  || DECL_INITIAL (decl_tree) == error_mark_node)
-	DECL_COMMON (decl_tree) = 1;
-    }
+
+  /* Fallback, cannot have multiple copies. */
+  if (DECL_INITIAL (decl_tree) == NULL_TREE
+      || DECL_INITIAL (decl_tree) == error_mark_node)
+    DECL_COMMON (decl_tree) = 1;
 }
 
 void
@@ -325,8 +326,8 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
       TREE_PUBLIC (decl_tree) = 0;
     }
 
-  if (real_decl && real_decl->attributes)
-    decl_attributes (&decl_tree, gen.attributes (real_decl->attributes), 0);
+  if (real_decl && real_decl->userAttributes)
+    decl_attributes (&decl_tree, gen.attributes (real_decl->userAttributes), 0);
   else if (DECL_ATTRIBUTES (decl_tree) != NULL)
     decl_attributes (&decl_tree, DECL_ATTRIBUTES (decl_tree), 0);
 }

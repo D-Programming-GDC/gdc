@@ -43,6 +43,11 @@ extern "C" {
 
 static char lang_name[6] = "GNU D";
 
+const struct attribute_spec d_attribute_table[] = 
+{ 
+  { NULL,                     0, 0, false, false, false, NULL, false }
+};
+
 /* Lang Hooks */
 #undef LANG_HOOKS_NAME
 #undef LANG_HOOKS_INIT
@@ -54,6 +59,7 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
 #undef LANG_HOOKS_PARSE_FILE
+#undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
@@ -75,7 +81,8 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_HANDLE_OPTION		d_handle_option
 #define LANG_HOOKS_POST_OPTIONS			d_post_options
 #define LANG_HOOKS_PARSE_FILE			d_parse_file
-#define LANG_HOOKS_ATTRIBUTE_TABLE		d_attribute_table
+#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE       d_builtins_attribute_table
+#define LANG_HOOKS_ATTRIBUTE_TABLE              d_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_format_attribute_table
 #define LANG_HOOKS_TYPES_COMPATIBLE_P		d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION		d_builtin_function
@@ -357,10 +364,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 	}
       break;
 
-    case OPT_fdeprecated:
-      global.params.useDeprecated = value;
-      break;
-
     case OPT_fdeps_:
       global.params.moduleDepsFile = xstrdup (arg);
       if (!global.params.moduleDepsFile[0])
@@ -399,24 +402,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      gen.emitTemplates = value ? TEauto : TEnone;
-      break;
-
-    case OPT_femit_templates_:
-      if (!arg || !arg[0])
-	gen.emitTemplates = value ? TEauto : TEnone;
-      else if (!strcmp (arg, "normal"))
-	gen.emitTemplates = TEnormal;
-      else if (!strcmp (arg, "all"))
-	gen.emitTemplates = TEall;
-      else if (!strcmp (arg, "private"))
-	gen.emitTemplates = TEprivate;
-      else if (!strcmp (arg, "none"))
-	gen.emitTemplates = TEnone;
-      else if (!strcmp (arg, "auto"))
-	gen.emitTemplates = TEauto;
-      else
-	error ("bad argument for -femit-templates");
+      gen.emitTemplates = value ? TEprivate : TEnone;
       break;
 
     case OPT_fignore_unknown_pragmas:
@@ -534,12 +520,13 @@ d_handle_option (size_t scode, const char *arg, int value,
 	global.params.warnings = 2;
       break;
 
+    case OPT_Wdeprecated:
+      global.params.useDeprecated = value ? 2 : 1;
+      break;
+
     case OPT_Werror:
       if (value)
 	global.params.warnings = 1;
-      break;
-
-    case OPT_Wsign_compare:
       break;
 
     default:
@@ -561,9 +548,13 @@ d_post_options (const char ** fn)
   if (num_in_fnames > 1)
     flag_unit_at_a_time = 1;
 
-  /* array bounds checking */
+  /* Array bounds checking. */
   if (global.params.noboundscheck)
     flag_bounds_check = global.params.useArrayBounds = 0;
+
+  /* Error about use of deprecated features. */
+  if (global.params.useDeprecated == 2 && global.params.warnings == 1)
+    global.params.useDeprecated = 0;
 
   /* Excess precision other than "fast" requires front-end
      support that we don't offer. */
@@ -786,10 +777,6 @@ d_parse_file (void)
   if (global.params.useUnitTests)
     global.params.useAssert = 1;
 
-  if (gen.emitTemplates == TEauto)
-    {
-      gen.emitTemplates = (supports_one_only()) ? TEall : TEprivate;
-    }
   global.params.symdebug = write_symbols != NO_DEBUG;
   //global.params.useInline = flag_inline_functions;
   global.params.obj = !flag_syntax_only;
@@ -886,7 +873,7 @@ d_parse_file (void)
   // current_module shouldn't have any implications before genobjfile..
   // ... but it does.  We need to know what module in which to insert
   // TemplateInstances during the semantic pass.  In order for
-  // -femit-templates=private to work, template instances must be emitted
+  // -femit-templates to work, template instances must be emitted
   // in every translation unit.  To do this, the TemplateInstaceS have to
   // have toObjFile called in the module being compiled.
   // TemplateInstance puts itself somwhere during ::semantic, thus it has

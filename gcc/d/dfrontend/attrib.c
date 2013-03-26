@@ -958,7 +958,6 @@ void PragmaDeclaration::setScope(Scope *sc)
 
 void PragmaDeclaration::semantic(Scope *sc)
 {   // Should be merged with PragmaStatement
-    Scope sc_save;
 
     //printf("\tPragmaDeclaration::semantic '%s'\n",toChars());
     if (ident == Id::msg)
@@ -1017,166 +1016,6 @@ void PragmaDeclaration::semantic(Scope *sc)
         }
         goto Lnodecl;
     }
-#ifdef IN_GCC
-    else if (ident == Id::GNU_asm)
-    {
-        if (! args || args->dim != 2)
-            error("identifier and string expected for asm name");
-        else
-        {
-            Expression *e;
-            Declaration *d = NULL;
-            StringExp *s = NULL;
-
-            e = (*args)[0];
-            e = e->semantic(sc);
-            if (e->op == TOKvar)
-            {
-                d = ((VarExp *)e)->var;
-                if (! d->isFuncDeclaration() && ! d->isVarDeclaration())
-                    d = NULL;
-            }
-            if (!d)
-                error("first argument of GNU_asm must be a function or variable declaration");
-
-            e = (*args)[1];
-            e = e->semantic(sc);
-            e = resolveProperties(sc, e);
-            e = e->ctfeInterpret();
-            e = e->toString();
-            if (e && ((StringExp *)e)->sz == 1)
-                s = ((StringExp *)e);
-            else
-                error("second argument of GNU_asm must be a character string");
-
-            if (d && s)
-                d->c_ident = Lexer::idPool((char*) s->string);
-        }
-        goto Lnodecl;
-    }
-    else if (ident == Id::GNU_attribute)
-    {
-        sc_save = *sc;
-        
-        // An empty list is allowed.
-        if (args && args->dim)
-        {
-            Expressions * a;
-
-            if (sc->attributes)
-                a = (Expressions *) sc->attributes->copy();
-            else
-                a = new Expressions;
-            sc->attributes = a;
-
-            for (unsigned i = 0; i < args->dim; i++)
-            {
-                Expression * e = (*args)[i];
-                //e = e->semantic(sc);
-                
-                if (e->op == TOKidentifier)
-                    ; // ok
-                else if (e->op == TOKcall)
-                {
-                    CallExp * c = (CallExp *) e;
-                    if (c->e1->op != TOKidentifier)
-                        error("identifier or call expression expected for attribute");
-                    if (c->arguments)
-                        for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
-                        {
-                            Expression * ea = c->arguments->tdata()[ai];
-                            ea = ea->semantic(sc);
-                            ea = ea->optimize(WANTvalue | WANTinterpret);
-                            c->arguments->tdata()[ai] = ea;
-                        }
-                }
-                else
-                {
-                    error("identifier or call expression expected for attribute");
-                    continue;
-                }
-                a->push(e);
-            }
-        }
-    }
-    else if (ident == Id::GNU_set_attribute)
-    {
-        if (!args || args->dim < 1)
-            error("declaration expected for setting attributes");
-        else
-        {
-            Expressions ** p_attributes = NULL;     // list of existing attributes
-            {
-                Expression * e = (*args)[0];
-                
-                e = e->semantic(sc);
-                if (e->op == TOKvar)
-                {
-                    Declaration * d = ((VarExp *)e)->var;
-                    if (d->isFuncDeclaration() || d->isVarDeclaration())
-                        p_attributes = & d->attributes;
-                }
-                else if (e->op == TOKtype)
-                {
-                    Type * t = ((TypeExp *)e)->type;
-                    if (t->ty == Ttypedef)
-                        p_attributes = & ((TypeTypedef *) t)->sym->attributes;
-                    else if (t->ty == Tenum)
-                        p_attributes = & ((TypeEnum *) t)->sym->attributes;
-                    else if (t->ty == Tstruct)
-                        p_attributes = & ((TypeStruct *) t)->sym->attributes;
-                    else if (t->ty == Tclass)
-                        p_attributes = & ((TypeClass *) t)->sym->attributes;
-                }
-
-                if (p_attributes == NULL)
-                    error("first argument must be a function, variable, or type declaration");
-            }
-
-            Expressions * new_attrs = new Expressions;
-            for (unsigned i = 1; i < args->dim; i++)
-            {
-                Expression * e = (*args)[i];
-                //e = e->semantic(sc);
-                
-                if (e->op == TOKidentifier)
-                    ; // ok
-                else if (e->op == TOKcall)
-                {
-                    CallExp * c = (CallExp *) e;
-                    if (c->e1->op != TOKidentifier)
-                        error("identifier or call expression expected for attribute");
-                    if (c->arguments)
-                        for (int unsigned ai = 0; ai < c->arguments->dim; ai++)
-                        {
-                            Expression * ea = c->arguments->tdata()[ai];
-                            ea = ea->semantic(sc);
-                            ea = ea->optimize(WANTvalue | WANTinterpret);
-                            c->arguments->tdata()[ai] = ea;
-                        }
-                }
-                else
-                {
-                    error("identifier or call expression expected for attribute");
-                    continue;
-                }
-                new_attrs->push(e);
-            }
-            
-            if (p_attributes)
-            {
-                if (*p_attributes)
-                {
-                    *p_attributes = (Expressions *) (*p_attributes)->copy();
-                    (*p_attributes)->append(new_attrs);
-                }
-                else
-                    *p_attributes = new_attrs;
-            }
-        }
-        goto Lnodecl;
-    }
-#endif
 #if DMDV2
     else if (ident == Id::startaddress)
     {
@@ -1237,13 +1076,6 @@ Ldecl:
             s->semantic(sc);
         }
     }
-#ifdef IN_GCC
-    if (decl)
-    {
-        if (ident == Id::GNU_attribute)
-            *sc = sc_save;
-    }
-#endif
     return;
 
 Lnodecl:

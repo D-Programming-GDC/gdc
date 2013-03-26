@@ -35,7 +35,7 @@ IRState gen;
 bool
 d_gcc_force_templates (void)
 {
-  return gen.emitTemplates == TEprivate || gen.emitTemplates == TEall;
+  return gen.emitTemplates == TEprivate;
 }
 
 // Public routine called from D frontend to hide from glue interface.
@@ -114,7 +114,8 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
   DECL_CONTEXT (var_decl) = getLocalContext();
 
   // Compiler generated symbols
-  if (v == this->func->vresult || v == this->func->v_argptr || v == this->func->v_arguments_var)
+  if (v == this->func->vresult || v == this->func->v_argptr
+      || v == this->func->v_arguments_var)
     DECL_ARTIFICIAL (var_decl) = 1;
 
   tree var_exp;
@@ -139,10 +140,10 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
 	  init_exp = ie->toElem (this);
 	}
       else
-	{
-	  no_init = true;
-	}
+	no_init = true;
     }
+  else
+    gcc_assert (v->init == NULL);
 
   if (!no_init)
     {
@@ -783,7 +784,7 @@ bool
 IRState::isDeclarationReferenceType (Declaration *decl)
 {
   Type *base_type = decl->type->toBasetype();
-  // D doesn't do this now...
+
   if (base_type->ty == Treference)
     return true;
 
@@ -802,11 +803,7 @@ IRState::trueDeclarationType (Declaration *decl)
 {
   tree decl_type = decl->type->toCtype();
   if (isDeclarationReferenceType (decl))
-    {
-      decl_type = build_reference_type (decl_type);
-      if (decl->isParameter())
-	D_TYPE_ADDRESSABLE (decl_type) = 1;
-    }
+    decl_type = build_reference_type (decl_type);
   else if (decl->storage_class & STClazy)
     {
       TypeFunction *tf = new TypeFunction (NULL, decl->type, false, LINKd);
@@ -919,6 +916,29 @@ IRState::addDeclAttribute (tree decl, const char *attrname, tree value)
   DECL_ATTRIBUTES (decl) = tree_cons (ident, value, DECL_ATTRIBUTES (decl));
 }
 
+bool d_attribute_p(const char* name)
+{
+  static StringTable* table;
+
+  if(!table)
+    {
+      size_t n = 0;
+      for (const attribute_spec *p = d_attribute_table; p->name; p++)
+        n++;
+      
+      if(n == 0)
+        return false;
+
+      table = new StringTable();
+      table->init(n);
+    
+      for (const attribute_spec *p = d_attribute_table; p->name; p++)
+        table->insert(p->name, strlen(p->name));
+    }
+
+  return table->lookup(name, strlen(name)) != NULL;
+}
+
 // Return chain of all GCC attributes found in list IN_ATTRS.
 
 tree
@@ -926,47 +946,63 @@ IRState::attributes (Expressions *in_attrs)
 {
   if (!in_attrs)
     return NULL_TREE;
-
+  
+  expandTuples(in_attrs);
+  
   ListMaker out_attrs;
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
-      Expression *e = in_attrs->tdata()[i];
-      IdentifierExp *ident_e = NULL;
+      Expression *attr = (*in_attrs)[i]->ctfeInterpret();
+      Dsymbol *sym = attr->type->toDsymbol (0);
+
+      if (!sym)
+	continue;
+
+      Dsymbol *mod = (Dsymbol*) sym->getModule();  
+      if (!(strcmp(mod->toChars(), "attribute") == 0
+          && mod->parent 
+          && strcmp(mod->parent->toChars(), "gcc") == 0
+          && !mod->parent->parent))
+        continue;
+
+      gcc_assert(attr->op == TOKstructliteral);
+      Expressions *elem = ((StructLiteralExp*) attr)->elements;
+
+      if ((*elem)[0]->op == TOKnull)
+	{
+	  error ("expected string attribute, not null");
+	  return error_mark_node;
+	}
+
+      gcc_assert((*elem)[0]->op == TOKstring);
+      StringExp *nameExp = (StringExp*) (*elem)[0];
+      gcc_assert(nameExp->sz == 1);
+      const char* name = (const char*) nameExp->string;
+
+      if (!d_attribute_p (name))
+      {
+        error ("unknown attribute %s", name);
+        return error_mark_node;
+      }
 
       ListMaker args;
-
-      if (e->op == TOKidentifier)
-	ident_e = (IdentifierExp *) e;
-      else if (e->op == TOKcall)
-	{
-	  CallExp *c = (CallExp *) e;
-	  gcc_assert (c->e1->op == TOKidentifier);
-	  ident_e = (IdentifierExp *) c->e1;
-
-	  if (c->arguments)
+      
+      for (size_t j = 1; j < elem->dim; j++)
+        {
+	  Expression *ae = (*elem)[j];
+	  tree aet;
+	  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
 	    {
-	      for (size_t ai = 0; ai < c->arguments->dim; ai++)
-		{
-		  Expression *ae = c->arguments->tdata()[ai];
-		  tree aet;
-		  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
-		    {
-		      StringExp *s = (StringExp *) ae;
-		      aet = build_string (s->len, (const char *) s->string);
-		    }
-		  else
-		    aet = ae->toElem (&gen);
-		  args.cons (aet);
-		}
+	      StringExp *s = (StringExp *) ae;
+	      aet = build_string (s->len, (const char *) s->string);
 	    }
-	}
-      else
-	{
-	  gcc_unreachable();
-	  continue;
-	}
-      out_attrs.cons (get_identifier (ident_e->ident->string), args.head);
+	  else
+	    aet = ae->toElem (&gen);
+	  args.cons (aet);
+        }
+
+      out_attrs.cons (get_identifier (name), args.head);
     }
 
   return out_attrs.head;
@@ -1433,19 +1469,15 @@ IRState::twoFieldCtor (tree f1, tree f2, int storage_class)
 }
 
 tree
-IRState::makeTemp (tree t)
-{
-  if (TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
-    return save_expr (t);
-  else
-    return stabilize_reference (t);
-}
-
-tree
 IRState::maybeMakeTemp (tree t)
 {
   if (!isFreeOfSideEffects (t))
-    return makeTemp (t);
+    {
+      if (TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
+	return save_expr (t);
+      else
+	return stabilize_reference (t);
+    }
 
   return t;
 }
@@ -2348,7 +2380,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   for (size_t ai = 0; ai < n_actual_args; ++ai)
     {
       tree actual_arg_tree;
-      Expression *actual_arg_exp = arguments->tdata()[ai];
+      Expression *actual_arg_exp = (*arguments)[ai];
 
       if (ai == 0 && is_d_vararg)
 	{
@@ -2908,6 +2940,12 @@ IRState::getLibCallDecl (LibCall libcall)
 
       tf->parameters = args;
       libcall_decls[libcall] = decl;
+
+      // These functions do not return except through catching a thrown exception.
+      if (libcall == LIBCALL_ASSERT || libcall == LIBCALL_ASSERT_MSG
+	  || libcall == LIBCALL_UNITTEST || libcall == LIBCALL_UNITTEST_MSG
+	  || libcall == LIBCALL_ARRAY_BOUNDS || libcall == LIBCALL_SWITCH_ERROR)
+	TREE_THIS_VOLATILE (decl->toSymbol()->Stree) = 1;
     }
 
   return decl;
@@ -3605,27 +3643,25 @@ IRState::findThis (ClassDeclaration *ocd)
 tree
 IRState::getVThis (Dsymbol *decl, Expression *e)
 {
-  tree vthis_value = NULL_TREE;
+  ClassDeclaration *cd = decl->isClassDeclaration();
+  StructDeclaration *sd = decl->isStructDeclaration();
 
-  ClassDeclaration *class_decl;
-  StructDeclaration *struct_decl;
+  tree vthis_value = d_null_pointer;
 
-  if ((class_decl = decl->isClassDeclaration()))
+  if (cd)
     {
-      Dsymbol *outer = class_decl->toParent2();
-      ClassDeclaration *cd_outer = outer->isClassDeclaration();
-      FuncDeclaration *fd_outer = outer->isFuncDeclaration();
+      Dsymbol *outer = cd->toParent2();
+      ClassDeclaration *cdo = outer->isClassDeclaration();
+      FuncDeclaration *fdo = outer->isFuncDeclaration();
 
-      if (cd_outer)
+      if (cdo)
 	{
-	  vthis_value = findThis (cd_outer);
+	  vthis_value = findThis (cdo);
 	  if (vthis_value == NULL_TREE)
-	    {
-	      e->error ("outer class %s 'this' needed to 'new' nested class %s",
-			cd_outer->toChars(), class_decl->toChars());
-	    }
+	    e->error ("outer class %s 'this' needed to 'new' nested class %s",
+		      cdo->toChars(), cd->toChars());
 	}
-      else if (fd_outer)
+      else if (fdo)
 	{
 	  /* If a class nested in a function has no methods
 	     and there are no other nested functions,
@@ -3633,48 +3669,39 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	     STATIC_CHAIN_EXPR created here will never be
 	     translated. Use a null pointer for the link in
 	     this case. */
-	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
+	  FuncFrameInfo *ffo = getFrameInfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
-	      || fd_outer->hasNestedFrameRefs())
-	    {
-	      // %% V2: rec_type->class_type
-	      vthis_value = getFrameForNestedClass (class_decl);
-	    }
-	  else if (fd_outer->vthis)
-	    vthis_value = var (fd_outer->vthis);
+	      || fdo->hasNestedFrameRefs())
+	    vthis_value = getFrameForNestedClass (cd);
+	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
+	    vthis_value = var (fdo->vthis);
 	  else
 	    vthis_value = d_null_pointer;
 	}
       else
 	gcc_unreachable();
     }
-  else if ((struct_decl = decl->isStructDeclaration()))
+  else if (sd)
     {
-      Dsymbol *outer = struct_decl->toParent2();
-      ClassDeclaration *cd_outer = outer->isClassDeclaration();
-      FuncDeclaration *fd_outer = outer->isFuncDeclaration();
+      Dsymbol *outer = sd->toParent2();
+      ClassDeclaration *cdo = outer->isClassDeclaration();
+      FuncDeclaration *fdo = outer->isFuncDeclaration();
 
-      if (cd_outer)
+      if (cdo)
 	{
-	  vthis_value = findThis (cd_outer);
+	  vthis_value = findThis (cdo);
 	  if (vthis_value == NULL_TREE)
-	    {
-	      e->error ("outer class %s 'this' needed to create nested struct %s",
-			cd_outer->toChars(), struct_decl->toChars());
-	    }
+	    e->error ("outer class %s 'this' needed to create nested struct %s",
+		      cdo->toChars(), sd->toChars());
 	}
-      else if (fd_outer)
+      else if (fdo)
 	{
-	  // Assuming this is kept as trivial as possible.
-	  // NOTE: what about structs nested in structs nested in functions?
-	  FuncFrameInfo *ffo = getFrameInfo (fd_outer);
+	  FuncFrameInfo *ffo = getFrameInfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
-	      || fd_outer->hasNestedFrameRefs())
-	    {
-	      vthis_value = getFrameForNestedStruct (struct_decl);
-	    }
-	  else if (fd_outer->vthis)
-	    vthis_value = var (fd_outer->vthis);
+	      || fdo->hasNestedFrameRefs())
+	    vthis_value = getFrameForNestedStruct (sd);
+	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
+	    vthis_value = var (fdo->vthis);
 	  else
 	    vthis_value = d_null_pointer;
 	}
@@ -3749,19 +3776,17 @@ IRState::buildChain (FuncDeclaration *func)
 
   tree frame_decl = localVar (frame_rec_type);
   tree frame_ptr = addressOf (frame_decl);
+  DECL_NAME (frame_decl) = get_identifier ("__frame");
   DECL_IGNORED_P (frame_decl) = 0;
   expandDecl (frame_decl);
 
   // set the first entry to the parent frame, if any
   tree chain_link = chainLink();
-
-  if (chain_link != NULL_TREE)
-    {
-      tree chain_field = component (indirect (frame_ptr),
-				    TYPE_FIELDS (frame_rec_type));
-      tree chain_expr = vmodify (chain_field, chain_link);
-      doExp (chain_expr);
-    }
+  tree chain_field = component (indirect (frame_ptr),
+				TYPE_FIELDS (frame_rec_type));
+  tree chain_expr = vmodify (chain_field,
+			     chain_link ? chain_link : d_null_pointer);
+  doExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
   for (size_t i = 0; i < func->closureVars.dim; i++)
@@ -3846,7 +3871,7 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
     {
       VarDeclaration *v = func->closureVars[i];
       Symbol *s = v->toSymbol();
-      tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+      tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
 			       gen.trueDeclarationType (v));
       s->SframeField = field;
@@ -3886,7 +3911,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->vthis || fd->closureVars.dim != 0)
+  if (fd->closureVars.dim != 0)
     ffi->creates_frame = true;
 
   // Functions with In/Out contracts pass parameters to nested frame.
@@ -3909,6 +3934,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
       while (ff)
 	{
 	  FuncFrameInfo *ffo = getFrameInfo (ff);
+	  AggregateDeclaration *ad;
 
 	  if (ff != fd && ffo->creates_frame)
 	    {
@@ -3925,7 +3951,21 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 	  if (ff->vthis == NULL)
 	    break;
 
-	  ff = ff->toParent2()->isFuncDeclaration();
+	  ad = ff->isThis();
+	  if (ad && ad->isNested())
+	    {
+	      while (ad->isNested())
+		{
+		  Dsymbol *d = ad->toParent2();
+		  ad = d->isAggregateDeclaration();
+		  ff = d->isFuncDeclaration();
+
+		  if (ad == NULL)
+		    break;
+		}
+	    }
+	  else
+	    ff = ff->toParent2()->isFuncDeclaration();
 	}
     }
 
@@ -4032,7 +4072,6 @@ bool
 IRState::functionNeedsChain (FuncDeclaration *f)
 {
   Dsymbol *s;
-  AggregateDeclaration *a;
   FuncDeclaration *pf = NULL;
   TemplateInstance *ti = NULL;
 
@@ -4047,21 +4086,26 @@ IRState::functionNeedsChain (FuncDeclaration *f)
       if (pf && !getFrameInfo (pf)->is_closure)
 	return true;
     }
+
   if (f->isStatic())
-    {
-      return false;
-    }
+    return false;
 
   s = f->toParent2();
 
-  while (s && (((a = s->isAggregateDeclaration()) && a->isNested()) || s->isTemplateInstance()))
+  while (s)
     {
+      AggregateDeclaration *ad = s->isAggregateDeclaration();
+      if (!ad || !ad->isNested())
+	break;
+
+      if (!s->isTemplateInstance())
+	break;
+
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
-	  && !getFrameInfo (pf)->is_closure && !functionDegenerateClosure(pf))
-	{
-	  return true;
-	}
+	  && !getFrameInfo (pf)->is_closure
+	  && !functionDegenerateClosure(pf))
+	return true;
     }
 
   return false;
@@ -4541,7 +4585,7 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
     {
       // %% D anonymous unions just put the fields into the outer struct...
       // does this cause problems?
-      VarDeclaration *var_decl = fields->tdata()[i];
+      VarDeclaration *var_decl = (*fields)[i];
       gcc_assert (var_decl && var_decl->storage_class & STCfield);
 
       tree ident = var_decl->ident ? get_identifier (var_decl->ident->string) : NULL_TREE;
@@ -4581,7 +4625,7 @@ AggLayout::doInterfaces (BaseClasses *bases)
 {
   for (size_t i = 0; i < bases->dim; i++)
     {
-      BaseClass *bc = bases->tdata()[i];
+      BaseClass *bc = (*bases)[i];
       tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
 			      Type::tvoidptr->pointerTo()->toCtype());
       DECL_ARTIFICIAL (decl) = 1;
@@ -4647,7 +4691,8 @@ AggLayout::finish (Expressions *attrs)
 ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
   var_(ini_v)
 {
-  if (this->var_)
+  /* If STCconst, the temp var is not required.  */
+  if (this->var_ && !(this->var_->storage_class & STCconst))
     {
       /* Need to set the location or the expand_decl in the BIND_EXPR will
 	 cause the line numbering for the statement to be incorrect. */
@@ -4657,6 +4702,8 @@ ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
       tree decl = s->Stree;
       DECL_CONTEXT (decl) = irs->getLocalContext();
     }
+  else
+    this->var_ = NULL;
 }
 
 // Set index expression E of type T as the initialiser for
@@ -4665,9 +4712,7 @@ ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
 tree
 ArrayScope::setArrayExp (IRState *irs, tree e, Type *t)
 {
-  /* If STCconst, the value will be assigned in d-decls.cc
-     of the runtime length of the array expression. */
-  if (this->var_ && !(this->var_->storage_class & STCconst))
+  if (this->var_)
     {
       tree v = this->var_->toSymbol()->Stree;
       if (t->toBasetype()->ty != Tsarray)

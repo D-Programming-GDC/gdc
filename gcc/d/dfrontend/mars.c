@@ -274,10 +274,6 @@ void vwarning(Loc loc, const char *format, va_list ap)
 {
     if (global.params.warnings && !global.gag)
     {
-#ifdef IN_GCC
-        if (global.params.warnings == 1 && !global.warnings)
-            fprintf(stdmsg, "cc1d: all warnings being treated as errors\n");
-#endif
         verrorPrint(loc, "Warning: ", format, ap);
 //halt();
         if (global.params.warnings == 1)

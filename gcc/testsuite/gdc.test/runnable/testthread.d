@@ -3,10 +3,13 @@
 import std.c.stdio;
 import core.thread;
 
-extern (C)
+version (Win32)
 {
-    extern __thread int _tlsstart;
-    extern __thread int _tlsend;
+    extern (C)
+    {
+        extern __thread int _tlsstart;
+        extern __thread int _tlsend;
+    }
 }
 
 int tlsx;
@@ -18,15 +21,12 @@ class Foo
     void bar()
     {
         printf("bar()\n");
-	assert(tlsx == 0);
-	tlsx = 5;
+        assert(tlsx == 0);
+        tlsx = 5;
         Thread t = Thread.getThis();
 
-	version (OSX)
-	{
-	}
-	else
-	    printf("thread ptr=%p, %p &tlsx = %p %p\n", t, &_tlsstart, &tlsx, &_tlsend);
+        version (Win32)
+            printf("thread ptr=%p, %p &tlsx = %p %p\n", t, &_tlsstart, &tlsx, &_tlsend);
         x = 3;
         printf("-bar()\n");
     }

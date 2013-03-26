@@ -44,9 +44,6 @@ AggregateDeclaration::AggregateDeclaration(Loc loc, Identifier *id)
     aggNew = NULL;
     aggDelete = NULL;
 
-#ifdef IN_GCC
-    attributes = NULL;
-#endif
     stag = NULL;
     sinit = NULL;
     isnested = false;
@@ -447,9 +444,6 @@ void StructDeclaration::semantic(Scope *sc)
     sizeok = SIZEOKnone;
     sc2 = sc->push(this);
     sc2->stc &= STCsafe | STCtrusted | STCsystem;
-#ifdef IN_GCC
-    sc2->attributes = NULL;
-#endif
     sc2->parent = this;
     if (isUnionDeclaration())
         sc2->inunion = 1;

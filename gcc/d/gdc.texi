@@ -188,10 +188,6 @@ Turns off array bounds checking for all functions.
 Don't recognize built-in functions that do not begin with
 @samp{__builtin_} as prefix.
 
-@item -fdeprecated
-@cindex @option{-fdeprecated}
-Allow use of deprecated features.
-
 @item -fd-verbose
 @cindex @option{-fd-verbose}
 Print information about D language processing to stdout.
@@ -212,30 +208,19 @@ Ignore unsupported pragmas.
 @cindex @option{-fsplit-dynamic-arrays}
 Split dynamic arrays into length and pointer when passing to functions.
 
-@item -femit-templates=@var{opt}
+@item -femit-templates
 @cindex @option{-femit-templates}
-Control template emission.
+Control template emission behaviour.
 
-These are the supported options:
+Turning on this option will emit all templates, but make them private
+to the translation unit. The executable will have multiple copies
+of code and data.
 
-@table @samp
-@item all
-Emit templates, expecting multiple copies to be merged by the linker.
+Turning off this option will tell the compiler to not emit templates
+at all.
 
-@item normal
-Emits templates, but only if the compiler determines that it needs to.
-
-@item private
-Emit templates, but make them private to the translation unit.
-The executable will have multiple copies of code and data.
-
-@item none
-Do not emit templates at all.
-
-@item auto
-For targets that support templates, the "all" mode is used.
-Otherwise, the "private" mode is used.
-@end table
+The default behaviour is to emit templates, but only if the compiler
+determines that it needs to.
 
 @item -fdebug=@var{opt}
 @cindex @option{-fdebug}
@@ -317,6 +302,22 @@ Write JSON file to filename.
 @item -fdump-source
 @cindex @option{fdump-source}
 Dump decoded UTF-8 text from source.
+
+@item -Wcast-result
+@cindex @option{Wcast-result}
+Warn about casts that will produce a null or nil result.
+
+@item -Werror
+@cindex @option{Werror}
+Make all warnings into errors.
+
+@item -Wno-deprecated
+@cindex @option{Wno-deprecated}
+Do not warn about usage of deprecated features.
+
+@item -Wunknown-pragmas
+@cindex @option{Wunknown-pragmas}
+Warn when a pragma is encountered that is not understood by GDC.
 @end table
 
 @c man end

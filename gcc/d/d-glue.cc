@@ -33,18 +33,6 @@ d_genericize (tree fndecl)
   FILE *dump_file;
   int local_dump_flags;
 
-  // Fix up the types of parms passed by invisible reference.
-  for (tree t = DECL_ARGUMENTS (fndecl); t; t = TREE_CHAIN (t))
-    {
-      if (D_TYPE_ADDRESSABLE (TREE_TYPE (t)))
-	{
-	  gcc_assert (!DECL_BY_REFERENCE (t));
-	  DECL_BY_REFERENCE (t) = 1;
-	  TREE_ADDRESSABLE (t) = 0;
-	  relayout_decl (t);
-	}
-    }
-
   // Build cgraph for function.
   cgraph_get_create_node (fndecl);
 
@@ -114,8 +102,6 @@ FuncDeclaration::toObjFile (int)
   IRState *irs = g.irs->startFunction (this);
 
   irs->useChain (NULL, NULL_TREE);
-  tree chain_expr = NULL;
-  FuncDeclaration *chain_func = NULL;
 
   // in 4.0, doesn't use push_function_context
   tree old_current_function_decl = current_function_decl;
@@ -161,9 +147,10 @@ FuncDeclaration::toObjFile (int)
 	  /* DMD still generates a vthis, but it should not be
 	     referenced in any expression.
 	   */
+	  FuncDeclaration *fd = toParent2()->isFuncDeclaration();
+	  gcc_assert (fd != NULL);
 	  DECL_ARTIFICIAL (parm_decl) = 1;
-	  chain_func = toParent2()->isFuncDeclaration();
-	  chain_expr = parm_decl;
+	  irs->useChain (fd, parm_decl);
 	}
       g.ofile->setDeclLoc (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
@@ -192,23 +179,17 @@ FuncDeclaration::toObjFile (int)
   for (tree t = param_list; t; t = DECL_CHAIN (t))
     DECL_CONTEXT (t) = fn_decl;
 
-  // http://www.tldp.org/HOWTO/GCC-Frontend-HOWTO-7.html
-  rest_of_decl_compilation (fn_decl, /*toplevel*/1, /*atend*/0);
-
+  rest_of_decl_compilation (fn_decl, 1, 0);
   DECL_INITIAL (fn_decl) = error_mark_node;
-
   pushlevel (0);
-  irs->pushStatementList();
 
+  irs->pushStatementList();
   irs->startScope();
   irs->doLineNote (loc);
 
-  /* If this is a member function that nested (possibly indirectly) in another
-     function, construct an expession for this member function's static chain
-     by going through parent link of nested classes.
-     */
-  /* D 2.0 Closures: this->vthis is passed as a normal parameter and
-     is valid to access as Stree before the closure frame is created. */
+  // If this is a member function that nested (possibly indirectly) in another
+  // function, construct an expession for this member function's static chain
+  // by going through parent link of nested classes.
   if (isThis())
     {
       AggregateDeclaration *ad = isThis();
@@ -224,38 +205,23 @@ FuncDeclaration::toObjFile (int)
 	  if (ad == NULL)
 	    {
 	      gcc_assert (fd != NULL);
-	      chain_expr = this_tree;
-	      chain_func = fd;
+	      irs->useChain (fd, this_tree);
 	      break;
 	    }
 	}
     }
 
-  if (isNested() || chain_expr)
-    irs->useParentChain();
-
-  if (chain_expr)
-    {
-      if (!DECL_P (chain_expr))
-	{
-	  tree c = irs->localVar (ptr_type_node);
-	  DECL_INITIAL (c) = chain_expr;
-	  irs->expandDecl (c);
-	  chain_expr = c;
-	}
-      irs->useChain (chain_func, chain_expr);
-    }
-
-  irs->buildChain (this); // may change irs->chainLink and irs->chainFunc
+  // May chain irs->chainLink and irs->chainFunc.
+  irs->buildChain (this);
   DECL_LANG_SPECIFIC (fn_decl) = build_d_decl_lang_specific (this);
 
   if (vresult)
-    irs->emitLocalVar (vresult);
+    irs->emitLocalVar (vresult, true);
 
   if (v_argptr)
     irs->pushStatementList();
   if (v_arguments_var)
-    irs->emitLocalVar (v_arguments_var, true);
+    irs->emitLocalVar (v_arguments_var);
 
   fbody->toIR (irs);
 
@@ -363,14 +329,11 @@ FuncDeclaration::buildClosure (IRState *irs)
 
   // set the first entry to the parent closure, if any
   tree chain_link = irs->chainLink();
-
-  if (chain_link != NULL_TREE)
-    {
-      tree chain_field = irs->component (irs->indirect (closure_ptr),
-					 TYPE_FIELDS (closure_rec_type));
-      tree chain_expr = irs->vmodify (chain_field, chain_link);
-      irs->doExp (chain_expr);
-    }
+  tree chain_field = irs->component (irs->indirect (closure_ptr),
+				     TYPE_FIELDS (closure_rec_type));
+  tree chain_expr = irs->vmodify (chain_field,
+				  chain_link ? chain_link : d_null_pointer);
+  irs->doExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
   for (size_t i = 0; i < closureVars.dim; i++)

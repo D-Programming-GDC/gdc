@@ -267,7 +267,6 @@ struct IRState : IRBase
 
   // Create a SAVE_EXPR if 't' might have unwanted side effects if referenced
   // more than once in an expression.
-  static tree makeTemp (tree t);
   static tree maybeMakeTemp (tree t);
 
   // Return true if t can be evaluated multiple times (i.e., in a loop body)
@@ -413,15 +412,6 @@ struct IRState : IRBase
   {
     this->chainLink_ = l;
     this->chainFunc_ = f;
-  }
-
-  void useParentChain (void)
-  {
-    if (this->parent)
-      {
-	this->chainLink_ = ((IRState *)this->parent)->chainLink_;
-	this->chainFunc_ = ((IRState *)this->parent)->chainFunc_;
-      }
   }
 
   tree chainLink (void)

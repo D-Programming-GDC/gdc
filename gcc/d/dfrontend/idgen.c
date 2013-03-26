@@ -260,13 +260,9 @@ Msgtable msgtable[] =
     { "_ArrayEq" },
 
     // For pragma's
-    { "GNU_asm" },
     { "lib" },
     { "msg" },
     { "startaddress" },
-    // GDC specific
-    { "GNU_attribute", "attribute" },
-    { "GNU_set_attribute", "set_attribute" },
 
     // For special functions
     { "tohash", "toHash" },

@@ -22,7 +22,7 @@ ACLOCAL_AMFLAGS = -I . -I ..
 SUBDIRS = libdruntime
 
 OUR_CFLAGS=@DEFS@ -I . -I $(srcdir)/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS=-nostdinc -pipe -fdeprecated -fproperty -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
+D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -fproperty -I $(srcdir) -I $(srcdir)/libdruntime -I ./libdruntime/$(host_alias)
 ALL_DFLAGS=$(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
@@ -62,7 +62,7 @@ std/xml.o : std/xml.d $(D_PREREQ_SRCS)
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
 unittest: unittest.o libgphobos2_t.a libgphobos2.a
-	$(GDC) -o $@ $(CFLAGS) -fdeprecated unittest.o -L./ -L./libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L./libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
 
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o \
@@ -118,7 +118,7 @@ WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 
 std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fdeprecated -c $<
+	$(GDC) -o $@ $(ALL_DFLAGS) -Wno-deprecated -c $<
 
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
 
@@ -142,6 +142,7 @@ install-data-local: libgphobos2.a
 		std std/c std/c/freebsd \
 		std/c/linux std/c/osx std/c/windows \
 		std/internal std/internal/math std/internal/windows \
+		std/digest std/internal/digest \
 		std/net std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \

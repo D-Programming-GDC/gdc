@@ -1,4 +1,5 @@
 // REQUIRED_ARGS: -d
+// PERMUTE_ARGS: -dw
 
 // Test cases using deprecated features
 module deprecate1;
@@ -53,17 +54,6 @@ void test10()
     b = 0_1_2_3_4_;
     printf("b = %d\n", b);
     assert(b == 668);
-}
-
-/**************************************
-        backslash literals
-**************************************/
-
-// from lexer.d
-void lexerTest7()
-{
-    auto str = \xDB;
-    assert(str.length == 1);
 }
 
 /**************************************
@@ -1263,12 +1253,31 @@ void test18()
 }
 
 /******************************************/
+// 6652
+
+void test6652()
+{
+    size_t[] res1;
+    foreach (i; 0..2)
+    {
+        res1 ~= ++i;
+    }
+    assert(res1 == [1]);
+
+    size_t[] res2;
+    foreach (i, e; [0,1])
+    {
+        res2 ~= ++i;
+    }
+    assert(res2 == [1]);
+}
+
+/******************************************/
 
 int main()
 {
     test2();
     test5();
-    lexerTest7();
     test10();
     test19();
     test33();
@@ -1323,6 +1332,7 @@ int main()
     test6289();
     test4237();
     test18();
+    test6652();
 
     return 0;
 }

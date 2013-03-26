@@ -176,7 +176,7 @@ d/id.c: d/idgen
 d/id.h: d/id.c
 
 d/verstr.h: d/VERSION
-	$(ECHO) -n \"`cat $^`\" > $@
+	cat $^ > $@
 
 d/d-confdefs.h: d/Make-lang.in
 	#echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@

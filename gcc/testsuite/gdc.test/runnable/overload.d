@@ -80,11 +80,41 @@ void test7552()
 }
 
 /***************************************************/
+// 8943
+
+void test8943()
+{
+    struct S
+    {
+        void foo();
+    }
+
+    alias TypeTuple!(__traits(getOverloads, S, "foo")) Overloads;
+    alias TypeTuple!(__traits(parent, Overloads[0])) P; // fail
+    static assert(is(P[0] == S));
+}
+
+/***************************************************/
+// 9410
+
+struct S {}
+int foo(float f, ref S s) { return 1; }
+int foo(float f,     S s) { return 2; }
+void test9410()
+{
+    S s;
+    assert(foo(1, s  ) == 1); // works fine. Print: ref
+    assert(foo(1, S()) == 2); // Fails with: Error: S() is not an lvalue
+}
+
+/***************************************************/
 
 int main()
 {
     test7418();
     test7552();
+    test8943();
+    test9410();
 
     printf("Success\n");
     return 0;

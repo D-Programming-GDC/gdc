@@ -327,6 +327,17 @@ void test8453()
 }
 
 /*******************************************/
+// 8503
+
+void α8503(int i) {}
+
+void test8503()
+{
+    0.α8503();  // Error
+    1.α8503();  // Error
+}
+
+/*******************************************/
 
 template Signal4()
 {
@@ -340,6 +351,21 @@ void test4()
 {
     S4 s;
     s.s.connect();  // s.s is TOKdotexp, so never match UFCS
+}
+
+/*******************************************/
+// 9014
+
+@property ref int foo9014(int[] a)
+{
+    return a[0];
+}
+void test9014()
+{
+    int[] bar;
+  static assert(!__traits(compiles, {
+    bar.foo9014 = missing.foo9014;
+  }));
 }
 
 /*******************************************/
@@ -358,7 +384,9 @@ int main()
     test8180();
     test8252();
     test8453();
+    test8503();
     test4();
+    test9014();
 
     printf("Success\n");
     return 0;

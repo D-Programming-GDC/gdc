@@ -230,36 +230,45 @@ void test11()
 
 /*************************************/
 
+void assertEqual(real* a, real* b, string file = __FILE__, size_t line = __LINE__)
+{
+    auto x = cast(ubyte*)a;
+    auto y = cast(ubyte*)b;
+
+    // Only compare the 10 value bytes, the padding bytes are of undefined
+    // value.
+    version (X86) enum count = 10;
+    else version (X86_64) enum count = 10;
+    else enum count = real.sizeof;
+    for (size_t i = 0; i < count; i++)
+    {
+        if (x[i] != y[i])
+        {
+            printf("%02d: %02x %02x\n", i, x[i], y[i]);
+            import core.exception;
+            throw new AssertError(file, line);
+        }
+    }
+}
+
+void assertEqual(creal* a, creal* b, string file = __FILE__, size_t line = __LINE__)
+{
+    assertEqual(cast(real*)a, cast(real*)b, file, line);
+    assertEqual(cast(real*)a + 1, cast(real*)b + 1, file, line);
+}
+
 void test12()
 {
     creal a = creal.nan;
-    creal b;
-    ubyte* X = cast(ubyte*)(cast(void*)&a);
-
-    b = real.nan + ireal.nan;
-    ubyte* Y = cast(ubyte*)(cast(void*)&b);
-
-    for(int i=0; i<a.sizeof; i++)
-    {
-	printf("%d: %02x %02x\n", i, X[i], Y[i]);
-	assert(X[i] == Y[i]);
-    }
+    creal b = real.nan + ireal.nan;
+    assertEqual(&a, &b);
 
     real c= real.nan;
     real d=a.re;
-    X = cast(ubyte*)(cast(void*)&c);
-    Y = cast(ubyte*)(cast(void*)&d);
-
-    for(int i=0; i<c.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    assertEqual(&c, &d);
 
     d=a.im;
-    X = cast(ubyte*)(cast(void*)&c);
-    Y = cast(ubyte*)(cast(void*)&d);
-    for(int i=0; i<c.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    assertEqual(&c, &d);
 }
 
 /*************************************/
@@ -267,31 +276,15 @@ void test12()
 void test13()
 {
     creal a = creal.infinity;
-    creal b;
-    byte* X = cast(byte*)(cast(void*)&a);
-
-    b = real.infinity + ireal.infinity;
-    byte* Y = cast(byte*)(cast(void*)&b);
-
-    for(int i=0; i<a.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    creal b = real.infinity + ireal.infinity;
+    assertEqual(&a, &b);
 
     real c = real.infinity;
     real d=a.re;
-    X = cast(byte*)(cast(void*)&c);
-    Y = cast(byte*)(cast(void*)&d);
-
-    for(int i=0; i<c.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    assertEqual(&c, &d);
 
     d=a.im;
-    X = cast(byte*)(cast(void*)&c);
-    Y = cast(byte*)(cast(void*)&d);
-    for(int i=0; i<c.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    assertEqual(&c, &d);
 }
 
 /*************************************/
@@ -300,30 +293,15 @@ void test14()
 {
     creal a = creal.nan;
     creal b = creal.nan;
-    byte* X = cast(byte*)(cast(void*)&a);
-
     b = real.nan + ireal.nan;
-    byte* Y = cast(byte*)(cast(void*)&b);
-
-    for(int i=0; i<a.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    assertEqual(&a, &b);
 
     real c = real.nan;
     real d=a.re;
-    X = cast(byte*)(cast(void*)&c);
-    Y = cast(byte*)(cast(void*)&d);
-
-    for(int i=0; i<c.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    assertEqual(&c, &d);
 
     d=a.im;
-    X = cast(byte*)(cast(void*)&c);
-    Y = cast(byte*)(cast(void*)&d);
-    for(int i=0; i<c.sizeof; i++){
-	    assert(X[i]==Y[i]);
-    }
+    assertEqual(&c, &d);
 }
 
 /*************************************/
@@ -1203,7 +1181,8 @@ void myfunc(int a1, ...) {
 	writefln("%d variable arguments", _arguments.length);
 	writefln("argument types %s", _arguments);
 	version(X86) va_start(argument_list, a1);
-	version(X86_64) va_start(argument_list, __va_argsave);
+	else version(Win64) va_start(argument_list, a1);
+	else version(X86_64) va_start(argument_list, __va_argsave);
 	for (int i = 0; i < _arguments.length; ) {
 		if ((argument_type=_arguments[i++]) == typeid(string)) {
 			va_arg(argument_list, sa);
@@ -1244,12 +1223,9 @@ int main()
     test9();
     test10();
     test11();
-  version (GNU) {} else
-  {
     test12();
     test13();
     test14();
-  }
     test15();
     test16();
     test17();

@@ -2717,6 +2717,19 @@ void test8099()
 }
 
 /************************************/
+// 8201
+
+void test8201()
+{
+    uint[2] msa;
+    immutable uint[2] isa = msa;
+
+    ubyte[] buffer = [0, 1, 2, 3, 4, 5];
+    immutable ubyte[4] iArr = buffer[0 .. 4];
+}
+
+/************************************/
+// 8212
 
 struct S8212 { int x; }
 
@@ -2728,6 +2741,146 @@ void test8212()
 {
    int y = x8212;
    S8212 s2 = s8212;
+}
+
+/************************************/
+// 8408
+
+template hasMutableIndirection8408(T)
+{
+    template Unqual(T)
+    {
+             static if (is(T U == shared(const U))) alias U Unqual;
+        else static if (is(T U ==        const U )) alias U Unqual;
+        else static if (is(T U ==    immutable U )) alias U Unqual;
+        else static if (is(T U ==        inout U )) alias U Unqual;
+        else static if (is(T U ==       shared U )) alias U Unqual;
+        else                                        alias T Unqual;
+    }
+
+    enum hasMutableIndirection8408 = !is(typeof({ Unqual!T t = void; immutable T u = t; }));
+}
+static assert(!hasMutableIndirection8408!(int));
+static assert(!hasMutableIndirection8408!(int[3]));
+static assert( hasMutableIndirection8408!(Object));
+
+auto dup8408(E)(inout(E)[] arr) pure @trusted
+{
+    static if (hasMutableIndirection8408!E)
+    {
+        auto copy = new E[](arr.length);
+        copy[] = cast(E[])arr[];        // assume constant
+        return cast(inout(E)[])copy;    // assume constant
+    }
+    else
+    {
+        auto copy = new E[](arr.length);
+        copy[] = arr[];
+        return copy;
+    }
+}
+
+void test8408()
+{
+    void test(E, bool constConv)()
+    {
+                  E[] marr = [E.init, E.init, E.init];
+        immutable E[] iarr = [E.init, E.init, E.init];
+
+                  E[] m2m = marr.dup8408();    assert(m2m == marr);
+        immutable E[] i2i = iarr.dup8408();    assert(i2i == iarr);
+
+      static if (constConv)
+      { // If dup() hss strong purity, implicit conversion is allowed
+        immutable E[] m2i = marr.dup8408();    assert(m2i == marr);
+                  E[] i2m = iarr.dup8408();    assert(i2m == iarr);
+      }
+      else
+      {
+        static assert(!is(typeof({ immutable E[] m2i = marr.dup8408(); })));
+        static assert(!is(typeof({           E[] i2m = iarr.dup8408(); })));
+      }
+    }
+
+    class C {}
+    struct S1 { long n; }
+    struct S2 { int* p; }
+    struct T1 { S1 s; }
+    struct T2 { S2 s; }
+    struct T3 { S1 s1;  S2 s2; }
+
+    test!(int   , true )();
+    test!(int[3], true )();
+    test!(C     , false)();
+    test!(S1    , true )();
+    test!(S2    , false)();
+    test!(T1    , true )();
+    test!(T2    , false)();
+    test!(T3    , false)();
+}
+
+/************************************/
+// 8688
+
+void test8688()
+{
+    alias TypeTuple!(int) T;
+    foreach (i; TypeTuple!(0))
+    {
+        alias const(T[i]) X;
+        static assert(!is(X == int));           // fails
+        static assert( is(X == const(int)));    // fails
+    }
+}
+
+/************************************/
+// 9046
+
+void test9046()
+{
+    foreach (T; TypeTuple!(byte, ubyte, short, ushort, int, uint, long, ulong, char, wchar, dchar,
+                           float, double, real, ifloat, idouble, ireal, cfloat, cdouble, creal))
+    foreach (U; TypeTuple!(T, const T, immutable T, shared T, shared const T, inout T, shared inout T))
+    {
+        static assert(is(typeof(U.init) == U));
+    }
+
+    foreach (T; TypeTuple!(int[], const(char)[], immutable(string[]), shared(const(int)[])[],
+                           int[1], const(char)[1], immutable(string[1]), shared(const(int)[1])[],
+                           int[int], const(char)[long], immutable(string[string]), shared(const(int)[double])[]))
+    foreach (U; TypeTuple!(T, const T, immutable T, shared T, shared const T, inout T, shared inout T))
+    {
+        static assert(is(typeof(U.init) == U));
+    }
+
+    int i;
+    enum E { x, y }
+    static struct S {}
+    static class  C {}
+    struct NS { void f(){ i++; } }
+    class  NC { void f(){ i++; } }
+    foreach (T; TypeTuple!(E, S, C, NS, NC))
+    foreach (U; TypeTuple!(T, const T, immutable T, shared T, shared const T, inout T, shared inout T))
+    {
+        static assert(is(typeof(U.init) == U));
+    }
+
+    alias TL = TypeTuple!(int, string, int[int]);
+    foreach (U; TypeTuple!(TL, const TL, immutable TL, shared TL, shared const TL, inout TL, shared inout TL))
+    {
+        static assert(is(typeof(U.init) == U));
+    }
+}
+
+/************************************/
+// 9090
+
+void test9090()
+{
+    void test1(T)(auto ref const T[] val) {}
+
+    string a;
+    test1(a);
 }
 
 /************************************/
@@ -2846,7 +2999,12 @@ int main()
     test7757();
     test8098();
     test8099();
+    test8201();
     test8212();
+    test8408();
+    test8688();
+    test9046();
+    test9090();
 
     printf("Success\n");
     return 0;

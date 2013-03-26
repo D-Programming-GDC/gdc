@@ -13,7 +13,6 @@
 
 #include "d-gcc-includes.h"
 
-// from DMD
 #include "id.h"
 #include "enum.h"
 #include "module.h"
@@ -22,21 +21,6 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-
-// Determine if type is an array of structs that need a postblit.
-static StructDeclaration *
-needsPostblit (Type *t)
-{
-  t = t->toBasetype();
-  while (t->ty == Tsarray)
-    t = t->nextOf()->toBasetype();
-  if (t->ty == Tstruct)
-    {   StructDeclaration *sd = ((TypeStruct *)t)->sym;
-      if (sd->postblit)
-	return sd;
-    }
-  return NULL;
-}
 
 void
 Statement::toIR (IRState *)
@@ -350,34 +334,7 @@ ReturnStatement::toIR (IRState *irs)
       // %% convert for init -- if we were returning a reference,
       // would want to take the address...
       if (tf->isref)
-	{
-	  result_value = irs->addressOf (result_value);
-	}
-      else if (exp->type->toBasetype()->ty == Tstruct
-	       && (exp->op == TOKstructliteral || (func->nrvo_can && func->nrvo_var)))
-	{
-	  /* Named value return optimisation.
-	     Marking the function type as addressable should be enough for
-	     the backend to perform the optimisation in tree-nrv.c - but this
-	     only works when compiling with optimisations turned on.
-	     Should really implement in the frontend proper.  */
-	}
-      else if (exp->isLvalue() && exp->type->toBasetype()->ty == Tstruct)
-	{
-	  // Maybe call postblit on result_value
-	  StructDeclaration *sd = needsPostblit (exp->type);
-	  if (sd != NULL)
-	    {
-	      Expressions args;
-	      FuncDeclaration *fd = sd->postblit;
-	      if (fd->storage_class & STCdisable)
-		{
-		  fd->toParent()->error (loc, "is not copyable because it is annotated with @disable");
-		}
-	      tree call_exp = irs->call (sd->postblit, irs->addressOf (result_value), &args);
-	      irs->addExp (call_exp);
-	    }
-	}
+	result_value = irs->addressOf (result_value);
 
       tree result_assign = build2 (INIT_EXPR, TREE_TYPE (result_decl),
 				   result_decl, result_value);

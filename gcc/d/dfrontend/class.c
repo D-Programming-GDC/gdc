@@ -296,12 +296,6 @@ void ClassDeclaration::semantic(Scope *sc)
         scope = NULL;
     }
     unsigned dprogress_save = Module::dprogress;
-#ifdef IN_GCC
-    if (attributes)
-        attributes->append(sc->attributes);
-    else
-        attributes = sc->attributes;
-#endif
 
     int errors = global.gaggedErrors;
 
@@ -607,9 +601,6 @@ void ClassDeclaration::semantic(Scope *sc)
     //sc->stc &= ~(STCfinal | STCauto | STCscope | STCstatic | STCabstract | STCdeprecated | STC_TYPECTOR | STCtls | STCgshared);
     //sc->stc |= storage_class & STC_TYPECTOR;
     sc->stc &= STCsafe | STCtrusted | STCsystem;
-#ifdef IN_GCC
-    sc->attributes = NULL;
-#endif
     sc->parent = this;
     sc->inunion = 0;
 
@@ -1284,13 +1275,6 @@ void InterfaceDeclaration::semantic(Scope *sc)
         scope = NULL;
     }
 
-#ifdef IN_GCC
-    if (attributes)
-        attributes->append(sc->attributes);
-    else
-        attributes = sc->attributes;
-#endif
-
     int errors = global.gaggedErrors;
 
     if (sc->stc & STCdeprecated)
@@ -1431,9 +1415,6 @@ void InterfaceDeclaration::semantic(Scope *sc)
 
     sc = sc->push(this);
     sc->stc &= STCsafe | STCtrusted | STCsystem;
-#ifdef IN_GCC
-    sc->attributes = NULL;
-#endif
     sc->parent = this;
     if (isCOMinterface())
         sc->linkage = LINKwindows;

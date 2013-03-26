@@ -1,4 +1,4 @@
-// REQUIRED_ARGS: -d
+// PERMUTE_ARGS: -d -dw
 // 249
 
 module test1;

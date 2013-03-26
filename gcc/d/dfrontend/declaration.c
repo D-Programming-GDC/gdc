@@ -86,9 +86,6 @@ Declaration::Declaration(Identifier *id)
     linkage = LINKdefault;
     inuse = 0;
     sem = SemanticStart;
-#ifdef IN_GCC
-    attributes = NULL;
-#endif
 }
 
 void Declaration::semantic(Scope *sc)
@@ -345,12 +342,6 @@ void TypedefDeclaration::semantic(Scope *sc)
 #endif
         Type *savedtype = type;
         type = type->semantic(loc, sc);
-#ifdef IN_GCC
-        if (attributes)
-            attributes->append(sc->attributes);
-        else
-            attributes = sc->attributes;
-#endif
         if (sc->parent->isFuncDeclaration() && init)
             semantic2(sc);
         if (errors != global.errors)
@@ -910,12 +901,6 @@ void VarDeclaration::semantic(Scope *sc)
 
     //printf("sc->stc = %x\n", sc->stc);
     //printf("storage_class = x%x\n", storage_class);
-#ifdef IN_GCC
-    if (attributes)
-        attributes->append(sc->attributes);
-    else
-        attributes = sc->attributes;
-#endif
 
 #if DMDV2
     // Safety checks

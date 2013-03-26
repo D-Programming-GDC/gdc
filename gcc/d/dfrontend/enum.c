@@ -31,9 +31,6 @@ EnumDeclaration::EnumDeclaration(Loc loc, Identifier *id, Type *memtype)
     minval = NULL;
     defaultval = NULL;
     sinit = NULL;
-#ifdef IN_GCC
-    attributes = NULL;
-#endif
     isdeprecated = 0;
     isdone = 0;
     objFileDone = 0;
@@ -128,12 +125,6 @@ void EnumDeclaration::semantic(Scope *sc)
 
     parent = sc->parent;
     protection = sc->protection;
-#ifdef IN_GCC
-    if (attributes)
-        attributes->append(sc->attributes);
-    else
-        attributes = sc->attributes;
-#endif
 
     /* The separate, and distinct, cases are:
      *  1. enum { ... }

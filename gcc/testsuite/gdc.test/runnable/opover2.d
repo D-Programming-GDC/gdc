@@ -1,3 +1,4 @@
+// PERMUTE_ARGS: -inline -O -property
 
 // Test operator overloading
 
@@ -510,12 +511,12 @@ void test12()
     static int opeq;
 
     // xopEquals OK
-    struct S1a { const bool opEquals(    const typeof(this) rhs) { ++opeq; return false; } }
-    struct S1b { const bool opEquals(ref const typeof(this) rhs) { ++opeq; return false; } }
-    struct S1c { const bool opEquals(          typeof(this) rhs) { ++opeq; return false; } }
+    static struct S1a { const bool opEquals(    const typeof(this) rhs) { ++opeq; return false; } }
+    static struct S1b { const bool opEquals(ref const typeof(this) rhs) { ++opeq; return false; } }
+    static struct S1c { const bool opEquals(          typeof(this) rhs) { ++opeq; return false; } }
 
     // xopEquals NG
-    struct S2a {       bool opEquals(          typeof(this) rhs) { ++opeq; return false; } }
+    static struct S2a {       bool opEquals(          typeof(this) rhs) { ++opeq; return false; } }
 
     foreach (S; Seq!(S1a, S1b, S1c))
     {
@@ -721,6 +722,262 @@ void test8434()
 
 /**************************************/
 
+void test18()
+{
+    // one dimensional indexing
+    static struct IndexExp
+    {
+        int[] opIndex(int a)
+        {
+            return [a];
+        }
+
+        int[] opIndexUnary(string op)(int a)
+        {
+            return [a];
+        }
+
+        int[] opIndexAssign(int val, int a)
+        {
+            return [val, a];
+        }
+
+        int[] opIndexOpAssign(string op)(int val, int a)
+        {
+            return [val, a];
+        }
+
+        int opDollar()
+        {
+            return 8;
+        }
+    }
+
+    IndexExp index;
+    // opIndex
+    assert(index[8]     == [8]);
+    assert(index[$]     == [8]);
+    assert(index[$-1]   == [7]);
+    assert(index[$-$/2] == [4]);
+    // opIndexUnary
+    assert(-index[8]     == [8]);
+    assert(-index[$]     == [8]);
+    assert(-index[$-1]   == [7]);
+    assert(-index[$-$/2] == [4]);
+    // opIndexAssign
+    assert((index[8]     = 2) == [2, 8]);
+    assert((index[$]     = 2) == [2, 8]);
+    assert((index[$-1]   = 2) == [2, 7]);
+    assert((index[$-$/2] = 2) == [2, 4]);
+    // opIndexOpAssign
+    assert((index[8]     += 2) == [2, 8]);
+    assert((index[$]     += 2) == [2, 8]);
+    assert((index[$-1]   += 2) == [2, 7]);
+    assert((index[$-$/2] += 2) == [2, 4]);
+
+    // opDollar is only one-dimensional
+    static assert(!is(typeof(index[$, $])));
+    static assert(!is(typeof(-index[$, $])));
+    static assert(!is(typeof(index[$, $] = 2)));
+    static assert(!is(typeof(index[$, $] += 2)));
+
+    // multi dimensional indexing
+    static struct ArrayExp
+    {
+        int[] opIndex(int a, int b)
+        {
+            return [a, b];
+        }
+
+        int[] opIndexUnary(string op)(int a, int b)
+        {
+            return [a, b];
+        }
+
+        int[] opIndexAssign(int val, int a, int b)
+        {
+            return [val, a, b];
+        }
+
+        int[] opIndexOpAssign(string op)(int val, int a, int b)
+        {
+            return [val, a, b];
+        }
+
+        int opDollar(int dim)()
+        {
+            return dim;
+        }
+    }
+
+    ArrayExp array;
+    // opIndex
+    assert(array[8, 8]     == [8, 8]);
+    assert(array[$, $]     == [0, 1]);
+    assert(array[$, $-1]   == [0, 0]);
+    assert(array[2, $-$/2] == [2, 1]);
+    // opIndexUnary
+    assert(-array[8, 8]     == [8, 8]);
+    assert(-array[$, $]     == [0, 1]);
+    assert(-array[$, $-1]   == [0, 0]);
+    assert(-array[2, $-$/2] == [2, 1]);
+    // opIndexAssign
+    assert((array[8, 8]      = 2) == [2, 8, 8]);
+    assert((array[$, $]      = 2) == [2, 0, 1]);
+    assert((array[$, $-1]    = 2) == [2, 0, 0]);
+    assert((array[2, $-$/2]  = 2) == [2, 2, 1]);
+    // opIndexOpAssign
+    assert((array[8, 8]      += 2) == [2, 8, 8]);
+    assert((array[$, $]      += 2) == [2, 0, 1]);
+    assert((array[$, $-1]    += 2) == [2, 0, 0]);
+    assert((array[2, $-$/2]  += 2) == [2, 2, 1]);
+
+    // one dimensional slicing
+    static struct SliceExp
+    {
+        int[] opSlice(int a, int b)
+        {
+            return [a, b];
+        }
+
+        int[] opSliceUnary(string op)(int a, int b)
+        {
+            return [a, b];
+        }
+
+        int[] opSliceAssign(int val, int a, int b)
+        {
+            return [val, a, b];
+        }
+
+        int[] opSliceOpAssign(string op)(int val, int a, int b)
+        {
+            return [val, a, b];
+        }
+
+        int opDollar()
+        {
+            return 8;
+        }
+    }
+
+    SliceExp slice;
+    // opSlice
+    assert(slice[0 .. 8]     == [0, 8]);
+    assert(slice[0 .. $]     == [0, 8]);
+    assert(slice[0 .. $-1]   == [0, 7]);
+    assert(slice[$-3 .. $-1] == [5, 7]);
+    // opSliceUnary
+    assert(-slice[0 .. 8]     == [0, 8]);
+    assert(-slice[0 .. $]     == [0, 8]);
+    assert(-slice[0 .. $-1]   == [0, 7]);
+    assert(-slice[$-3 .. $-1] == [5, 7]);
+    // opSliceAssign
+    assert((slice[0 .. 8]     = 2) == [2, 0, 8]);
+    assert((slice[0 .. $]     = 2) == [2, 0, 8]);
+    assert((slice[0 .. $-1]   = 2) == [2, 0, 7]);
+    assert((slice[$-3 .. $-1] = 2) == [2, 5, 7]);
+    // opSliceOpAssign
+    assert((slice[0 .. 8]     += 2) == [2, 0, 8]);
+    assert((slice[0 .. $]     += 2) == [2, 0, 8]);
+    assert((slice[0 .. $-1]   += 2) == [2, 0, 7]);
+    assert((slice[$-3 .. $-1] += 2) == [2, 5, 7]);
+
+    // test different kinds of opDollar
+    auto dollar(string opDollar)()
+    {
+        static struct Dollar
+        {
+            size_t opIndex(size_t a) { return a; }
+            mixin(opDollar);
+        }
+        Dollar d;
+        return d[$];
+    }
+    assert(dollar!q{@property size_t opDollar() { return 8; }}() == 8);
+    assert(dollar!q{template opDollar(size_t dim) { enum opDollar = dim; }}() == 0);
+    assert(dollar!q{const size_t opDollar = 8;}() == 8);
+    assert(dollar!q{enum opDollar = 8;}() == 8);
+    assert(dollar!q{size_t length() { return 8; } alias length opDollar;}() == 8);
+}
+
+/**************************************/
+
+void test19()
+{
+    static struct Foo
+    {
+        int[] opSlice(int a, int b)
+        {
+            return [a, b];
+        }
+
+        int opDollar(int dim)()
+        {
+            return dim;
+        }
+    }
+
+    Foo foo;
+    assert(foo[0 .. $] == [0, 0]);
+}
+
+/**************************************/
+// 9453
+
+struct Foo9453
+{
+    static int ctor = 0;
+
+    this(string bar) { ++ctor; }
+
+    void opIndex(size_t i) const {}
+    void opSlice(size_t s, size_t e) const {}
+
+    size_t opDollar(int dim)() const if (dim == 0) { return 1; }
+}
+
+void test9453()
+{
+    assert(Foo9453.ctor == 0);  Foo9453("bar")[$-1];
+    assert(Foo9453.ctor == 1);  Foo9453("bar")[0..$];
+    assert(Foo9453.ctor == 2);
+}
+
+/**************************************/
+// 9496
+
+struct S9496
+{
+	static S9496* ptr;
+
+    size_t opDollar()
+    {
+        assert(ptr is &this);
+        return 10;
+    }
+    void opSlice(size_t , size_t)
+    {
+        assert(ptr is &this);
+    }
+    void getSlice()
+    {
+        assert(ptr is &this);
+        this[1 .. opDollar()];
+        this[1 .. $];
+    }
+}
+
+void test9496()
+{
+    S9496 s;
+    S9496.ptr = &s;
+    s.getSlice();
+    s[1 .. $];
+}
+
+/**************************************/
+
 int main()
 {
     test1();
@@ -743,6 +1000,10 @@ int main()
     test17();
     test7641();
     test8434();
+    test18();
+    test19();
+    test9453();
+    test9496();
 
     printf("Success\n");
     return 0;

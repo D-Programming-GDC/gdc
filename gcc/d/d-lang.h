@@ -68,10 +68,6 @@ extern GTY(()) tree d_eh_personality_decl;
    but a literal function / method reference */
 #define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0 (NODE))
 
-/* True if the type is a reference type and it's decl should be marked
-   in the backend as DECL_BY_REFERENCE.  For function types is for NRVO.  */
-#define D_TYPE_ADDRESSABLE(NODE) (TYPE_LANG_FLAG_0 (NODE))
-
 /* True if the type is an imaginary float type.  */
 #define D_TYPE_IMAGINARY_FLOAT(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
 
@@ -209,6 +205,7 @@ void set_block (tree);
 tree getdecls (void);
 
 /* In d-builtins.c */
+extern const struct attribute_spec d_builtins_attribute_table[];
 extern const struct attribute_spec d_attribute_table[];
 extern const struct attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);

@@ -271,12 +271,6 @@ void FuncDeclaration::semantic(Scope *sc)
     }
     f = (TypeFunction *)(type);
     size_t nparams = Parameter::dim(f->parameters);
-#ifdef IN_GCC
-    if (attributes)
-        attributes->append(sc->attributes);
-    else
-        attributes = sc->attributes;
-#endif
 
     /* Purity and safety can be inferred for some functions by examining
      * the function body.
@@ -905,9 +899,6 @@ void FuncDeclaration::semantic3(Scope *sc)
                         STCdeprecated | STCoverride |
                         STC_TYPECTOR | STCfinal | STCtls | STCgshared | STCref |
                         STCproperty | STCsafe | STCtrusted | STCsystem);
-#ifdef IN_GCC
-        sc2->attributes = NULL;
-#endif
         sc2->protection = PROTpublic;
         sc2->explicitProtection = 0;
         sc2->structalign = STRUCTALIGN_DEFAULT;
