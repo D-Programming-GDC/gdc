@@ -104,7 +104,6 @@ FuncDeclaration::toObjFile (int)
 	  // D still generates a vthis, but it should not be
 	  // referenced in any expression.
 	  FuncDeclaration *fd = toParent2()->isFuncDeclaration();
-	  gcc_assert (fd != NULL);
 	  DECL_ARTIFICIAL (parm_decl) = 1;
 	  irs->useChain (fd, parm_decl);
 	}
@@ -183,9 +182,7 @@ FuncDeclaration::toObjFile (int)
 
   // Process all deferred nested functions.
   for (size_t i = 0; i < this_sym->deferredNestedFuncs.dim; ++i)
-    {
-      (this_sym->deferredNestedFuncs[i])->toObjFile (false);
-    }
+    (this_sym->deferredNestedFuncs[i])->toObjFile (false);
 
   if (v_argptr)
     {
@@ -1379,15 +1376,16 @@ Obj::moduleinfo (Symbol *sym)
   //   }
 
   // struct ModuleReference in moduleinit.d
-  tree modref_type_node = gen.twoFieldType (Type::tvoidptr, build_object_type(),
-					    NULL, "next", "mod");
+  Type *obj_type = build_object_type();
+  tree modref_type_node = build_two_field_type (ptr_type_node, obj_type->toCtype(),
+						NULL, "next", "mod");
   tree fld_next = TYPE_FIELDS (modref_type_node);
   tree fld_mod = TREE_CHAIN (fld_next);
 
   // extern (C) ModuleReference *_Dmodule_ref;
   tree module_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			     get_identifier ("_Dmodule_ref"),
-			     build_pointer_type (modref_type_node));
+				get_identifier ("_Dmodule_ref"),
+				build_pointer_type (modref_type_node));
   d_keep (module_ref);
   DECL_EXTERNAL (module_ref) = 1;
   TREE_PUBLIC (module_ref) = 1;

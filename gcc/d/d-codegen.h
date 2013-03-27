@@ -154,6 +154,8 @@ extern void insert_decl_attribute (tree type, const char *attrname, tree value =
 extern tree build_attributes (Expressions *in_attrs);
 extern tree insert_type_modifiers (tree type, unsigned mod);
 
+extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);
+
 extern tree build_exception_object (void);
 
 extern tree indirect_ref (tree type, tree exp);
@@ -169,6 +171,7 @@ extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
 extern tree build_float_cst (const real_t& value, Type *target_type);
 
 extern dinteger_t cst_to_hwi (double_int cst);
+extern dinteger_t cst_to_hwi (HOST_WIDE_INT high, unsigned HOST_WIDE_INT low);
 extern dinteger_t tree_to_hwi (tree t);
 
 // D allows { void[] a; &a[3]; }
@@ -185,6 +188,18 @@ extern tree d_build_call_nary (tree callee, int n_args, ...);
 // Temporaries (currently just SAVE_EXPRs)
 extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
+
+extern bool unhandled_arrayop_p (BinExp *exp);
+
+// Delegates
+extern tree delegate_method (tree exp);
+extern tree delegate_object (tree exp);
+extern tree build_delegate_cst (tree method, tree object, Type *type);
+
+// These are for references to nested functions/methods as opposed to a delegate var.
+extern tree build_method_call (tree callee, tree object, Type *type);
+extern void extract_from_method_call (tree t, tree& callee, tree& object);
+extern tree get_object_method (IRState *irs, Expression *exp, FuncDeclaration *func, Type *type);
 
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.
@@ -388,22 +403,6 @@ struct IRState : IRBase
   // Length of either a static or dynamic array
   tree arrayLength (Expression *exp);
   static tree arrayLength (tree exp, Type *exp_type);
-
-  static bool arrayOpNotImplemented (BinExp *exp);
-
-  // Delegates
-  static tree delegateMethodRef (tree exp);
-  static tree delegateObjectRef (tree exp);
-  static tree delegateVal (tree method_exp, tree object_exp, Type *d_type);
-  // These are for references to nested functions/methods as opposed to a variable of
-  // type Tdelegate
-  tree methodCallExpr (tree callee, tree object, Type *d_type);
-  void extractMethodCallExpr (tree mcr, tree& callee_out, tree& object_out);
-  tree objectInstanceMethod (Expression *obj_exp, FuncDeclaration *func, Type *d_type);
-
-  static tree twoFieldType (tree ft1, tree ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
-  static tree twoFieldType (Type *ft1, Type *ft2, Type *d_type = 0, const char *n1 = "_a", const char *n2 = "_b");
-  static tree twoFieldCtor (tree f1, tree f2, int storage_class = 0);
 
   // ** Various expressions
   tree toElemLvalue (Expression *e);

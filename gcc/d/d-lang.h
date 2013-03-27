@@ -65,8 +65,8 @@ lang_tree_node
 extern GTY(()) tree d_eh_personality_decl;
 
 /* True if the Tdelegate typed expression is not really a variable,
-   but a literal function / method reference */
-#define D_IS_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0 (NODE))
+   but a literal function / method reference.  */
+#define D_METHOD_CALL_EXPR(NODE) (TREE_LANG_FLAG_0 (NODE))
 
 /* True if the type is an imaginary float type.  */
 #define D_TYPE_IMAGINARY_FLOAT(NODE) (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))

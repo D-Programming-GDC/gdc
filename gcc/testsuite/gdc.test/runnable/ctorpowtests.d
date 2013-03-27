@@ -5,7 +5,17 @@ int magicVariable()
   if (__ctfe) 
    return 3;
   
-  asm { nop; }
+  version(GNU)
+  {
+    version(X86)
+      asm { "nop;" ::: ;}
+    else version(X86_64)
+      asm { "nop;" ::: ;}
+    else
+      static assert("");
+  }
+  else
+      asm { nop; }
   return 2;
 }
 
@@ -113,7 +123,17 @@ struct StructWithCtor
 }
 
 int containsAsm() {
-       asm { nop; }
+       version(GNU)
+       {
+         version(X86)
+           asm { "nop;" ::: ;}
+         else version(X86_64)
+           asm { "nop;" ::: ;}
+         else
+           static assert("");
+       }
+       else
+          asm { nop; }
        return 0;
     }
 

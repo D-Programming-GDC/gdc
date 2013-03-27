@@ -351,7 +351,7 @@ real_t::toInt (void) const
   else
     REAL_VALUE_TO_INT (&low, &high, r);
 
-  return cst_to_hwi (double_int::from_pair (high, low));
+  return cst_to_hwi (high, low);
 }
 
 // Return conversion of real_t value to d_uns64.

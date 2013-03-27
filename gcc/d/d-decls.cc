@@ -386,34 +386,26 @@ FuncDeclaration::toSymbol (void)
 	    {
 	      /* Even if D-style nested functions are not implemented, add an
 		 extra argument to be compatible with delegates. */
-	      tree argtypes;
-	      fntype = TREE_TYPE (fndecl);
-	      argtypes = tree_cons (NULL_TREE, ptr_type_node, TYPE_ARG_TYPES (fntype));
-	      TYPE_ARG_TYPES (fntype) = argtypes;
+	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
 	    }
 	  else if (isThis())
 	    {
 	      // Do this even if there is no debug info.  It is needed to make
 	      // sure member functions are not called statically
 	      AggregateDeclaration *agg_decl = isMember2();
-	      gcc_assert (agg_decl != NULL);
-
 	      tree handle = agg_decl->handle->toCtype();
-	      if (agg_decl->isStructDeclaration())
-		{
-		  // Handle not a pointer type
-		  fntype = build_method_type (handle, TREE_TYPE (fndecl));
-		}
-	      else
-		fntype = build_method_type (TREE_TYPE (handle), TREE_TYPE (fndecl));
+
+	      // If handle is a pointer type, get record type.
+	      if (!agg_decl->isStructDeclaration())
+		handle = TREE_TYPE (handle);
+
+	      fntype = build_method_type (handle, TREE_TYPE (fndecl));
 
 	      if (isVirtual())
 		vindex = size_int (vtblIndex);
 	    }
 	  else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
-	    {
-	      fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
-	    }
+	    fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
 
 	  if (fntype != NULL_TREE)
 	    {

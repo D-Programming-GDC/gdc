@@ -21,11 +21,7 @@ target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
 
 # Actual names to use when installing a native compiler.
 D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
-DMD_INSTALL_NAME = $(shell echo dmd|sed '$(program_transform_name)')
-GDMD_INSTALL_NAME = $(shell echo gdmd|sed '$(program_transform_name)')
 D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdc|sed '$(program_transform_name)')
-DMD_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo dmd|sed '$(program_transform_name)')
-GDMD_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdmd|sed '$(program_transform_name)')
 
 # This should be configured
 ifeq ($(host), $(target))
@@ -76,8 +72,6 @@ PHOBOS_DIRS += -DD_PHOBOS_TARGET_DIR=\"$(gcc_d_target_include_dir)\"
 
 # Actual names to use when installing a cross-compiler.
 D_CROSS_NAME = $(D_INSTALL_NAME)
-DMD_CROSS_NAME = $(DMD_INSTALL_NAME)
-GDMD_CROSS_NAME = $(GDMD_INSTALL_NAME)
 
 D d: cc1d$(exeext) d/pkgvars
 
@@ -283,26 +277,18 @@ d.install-normal:
 d.install-plugin:
 d.install-common: installdirs
 	-rm -f $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-rm -f $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
 	$(INSTALL_PROGRAM) gdc$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
 	-chmod a+x $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-chmod a+x $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)
 	-if [ -f cc1d$(exeext) ] ; then \
 	  if [ -f gdc-cross$(exeext) ] ; then \
 	    if [ -d $(DESTDIR)$(gcc_tooldir)/bin/. ] ; then \
 	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/gdc$(exeext); \
-	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/gdmd$(exeext); \
 	      $(INSTALL_PROGRAM) gdc-cross$(exeext) $(DESTDIR)$(gcc_tooldir)/bin/gdc$(exeext); \
-	      perl -e 'exit 0;' && $(INSTALL_SCRIPT) $(srcdir)/d/dmd-script $(DESTDIR)$(gcc_tooldir)/bin/gdmd; \
 	    else true; fi; \
 	  else \
 	    rm -f $(DESTDIR)$(bindir)/$(D_TARGET_INSTALL_NAME)$(exeext); \
-	    rm -f $(DESTDIR)$(bindir)/$(GDMD_TARGET_INSTALL_NAME); \
 	    ( cd $(DESTDIR)$(bindir) && \
 	      $(LN) $(D_INSTALL_NAME)$(exeext) $(D_TARGET_INSTALL_NAME)$(exeext) ); \
-	    ( cd $(DESTDIR)$(bindir) && \
-	      $(LN) $(GDMD_INSTALL_NAME) $(GDMD_TARGET_INSTALL_NAME) ); \
 	  fi ; \
 	fi
 
@@ -335,23 +321,16 @@ d.install-html: $(build_htmldir)/d
 	    fi; \
         done
 
-d.install-man: $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext) $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext)
+d.install-man: $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext)
 
 $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext): doc/gdc.1 installdirs
 	-rm -f $@
 	-$(INSTALL_DATA) $< $@
 	-chmod a-x $@
 
-$(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext): $(srcdir)/d/dmd-script.1
-	-rm -f $@
-	-$(INSTALL_DATA) $< $@
-	-chmod a-x $@
-
 d.uninstall:
 	-rm -rf $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-rm -rf $(DESTDIR)$(bindir)/$(GDMD_INSTALL_NAME)$(exeext)
 	-rm -rf $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext)
-	-rm -rf $(DESTDIR)$(man1dir)/$(GDMD_INSTALL_NAME)$(man1ext)
 
 d.mostlyclean:
 	-rm -f d/*$(objext)

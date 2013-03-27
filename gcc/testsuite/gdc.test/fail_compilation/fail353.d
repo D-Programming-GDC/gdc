@@ -2,7 +2,27 @@ void foo()
 {
     enum NOP = 0x9090_9090_9090_9090;
 
-    asm
+    version(GNU)
+    {
+        version(X86) asm {
+            "L1:"
+            "dq %0,%0,%0,%0;"
+            "dq %0,%0,%0,%0;"
+            "dq %0,%0,%0,%0;"
+            "dq %0,%0,%0,%0;"
+            "loop L1;" : "n" (NOP) : : ;
+        }
+        else version(X86_64) asm {
+            "L1:"
+            "dq %0,%0,%0,%0;"
+            "dq %0,%0,%0,%0;"
+            "dq %0,%0,%0,%0;"
+            "dq %0,%0,%0,%0;"
+            "loop L1;" : "n" (NOP) : : ;
+        }
+        else static assert(false, "ASM code not implemented for this architecture");
+    }
+    else asm
     {
     L1:
         dq NOP,NOP,NOP,NOP;    //  32

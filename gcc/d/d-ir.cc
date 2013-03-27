@@ -269,9 +269,7 @@ DefaultStatement::toIR (IRState *irs)
   irs->checkSwitchCase (this, 1);
   irs->doCase (NULL_TREE, cblock);
   if (statement)
-    {
-      statement->toIR (irs);
-    }
+    statement->toIR (irs);
 }
 
 void
@@ -351,6 +349,7 @@ SwitchStatement::toIR (IRState *irs)
       ::error ("cannot handle switch condition of type %s", cond_type->toChars());
       gcc_unreachable();
     }
+
   if (cases)
     {
       // Build LABEL_DECLs now so they can be refered to by goto case
@@ -365,6 +364,7 @@ SwitchStatement::toIR (IRState *irs)
 	}
     }
   cond_tree = fold (cond_tree);
+
   if (hasVars)
     {
       // Write cases as a series of if-then-else blocks.
@@ -483,9 +483,7 @@ CompoundStatement::toIR (IRState *irs)
     {
       Statement *statement = (*statements)[i];
       if (statement)
-	{
-	  statement->toIR (irs);
-	}
+	statement->toIR (irs);
     }
 }
 
