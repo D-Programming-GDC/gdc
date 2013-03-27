@@ -1,42 +1,35 @@
-From 35e899a91ac206ce45d46844e4fda202ece95909 Mon Sep 17 00:00:00 2001
-From: Johannes Pfau <johannespfau@gmail.com>
-Date: Sat, 23 Feb 2013 18:53:38 +0100
-Subject: [PATCH] Implement D predefined CPU versions
-
 This implements the following versions:
 * D_HardFloat
 * D_SoftFloat
 
 for all supported architectures. And these where appropriate:
-* Alpha
-** Alpha_SoftFP
-** Alpha_HardFP
 * ARM
 ** ARM_Thumb
-** ARM_HardFP
+** ARM_HardFloat
+** ARM_SoftFloat
 ** ARM_SoftFP
-** ARM_Soft
+* Alpha
+** Alpha_SoftFloat
+** Alpha_HardFloat
 * X86
 * X86_64
 ** D_X32
 * IA64
-* MIPS
-** MIPS64
-** MIPS32
+* MIPS32
+* MIPS64
 ** MIPS_O32
 ** MIPS_O64
 ** MIPS_N32
 ** MIPS_N64
 ** MIPS_EABI
-** MIPS_NoFloat
 ** MIPS_HardFloat
 ** MIPS_SoftFloat
 * HPPA
 * HPPA64
 * PPC
 * PPC64
-** PPC_HardFP
-** PPC_SoftFP
+** PPC_HardFloat
+** PPC_SoftFloat
 * S390
 * S390X
 * SH
@@ -44,29 +37,13 @@ for all supported architectures. And these where appropriate:
 * SPARC
 * SPARC64
 * SPARC_V8Plus
-** SPARC_HardFP
-** SPARC_SoftFP
-
-Note: AArch64 (ARM64) is not support in gdc-4.7.
-Use gdc-4.8 for that.
+** SPARC_HardFloat
+** SPARC_SoftFloat
 ---
- alpha/alpha.h   | 17 +++++++++++++++++
- arm/arm.h       | 25 +++++++++++++++++++++++++
- i386/i386.h     | 18 ++++++++++++++++++
- ia64/ia64.h     |  7 +++++++
- mips/mips.h     | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
- pa/pa.h         | 14 ++++++++++++++
- rs6000/rs6000.h | 22 ++++++++++++++++++++++
- s390/s390.h     | 15 +++++++++++++++
- sh/sh.h         | 16 ++++++++++++++++
- sparc/sparc.h   | 25 +++++++++++++++++++++++++
- 10 files changed, 210 insertions(+)
 
-diff --git a/config/alpha/alpha.h b/config/alpha/alpha.h
-index 07ffa9f..5fd62bb 100644
---- a/config/alpha/alpha.h
-+++ b/config/alpha/alpha.h
-@@ -74,6 +74,23 @@ along with GCC; see the file COPYING3.  If not see
+--- gcc.orig/config/alpha/alpha.h	2013-03-27 14:22:29.790732704 +0100
++++ gcc/config/alpha/alpha.h	2013-03-27 14:17:20.346873301 +0100
+@@ -74,6 +74,23 @@ along with GCC; see the file COPYING3.
  	SUBTARGET_LANGUAGE_CPP_BUILTINS();		\
  } while (0)
  
@@ -78,22 +55,21 @@ index 07ffa9f..5fd62bb 100644
 +	if (TARGET_SOFT_FP)				\
 +	  {						\
 +	    builtin_define ("D_SoftFloat");		\
-+	    builtin_define ("Alpha_SoftFP");		\
++	    builtin_define ("Alpha_SoftFloat");		\
 +	  }						\
 +	else						\
 +	  {						\
 +	    builtin_define ("D_HardFloat");		\
-+	    builtin_define ("Alpha_HardFP");		\
++	    builtin_define ("Alpha_HardFloat");		\
 +	  }						\
 +} while (0)
 +
  #ifndef SUBTARGET_LANGUAGE_CPP_BUILTINS
  #define SUBTARGET_LANGUAGE_CPP_BUILTINS()		\
    do							\
-diff --git a/config/arm/arm.h b/config/arm/arm.h
-index 443d2ed..f3147d4 100644
---- a/config/arm/arm.h
-+++ b/config/arm/arm.h
+diff -urp gcc.orig/config/arm/arm.h gcc/config/arm/arm.h
+--- gcc.orig/config/arm/arm.h	2013-03-27 14:22:29.751731966 +0100
++++ gcc/config/arm/arm.h	2013-03-27 14:18:38.374353590 +0100
 @@ -109,6 +109,31 @@ extern char arm_arch_name[];
  	  builtin_define ("__ARM_ARCH_EXT_IDIV__");	\
      } while (0)
@@ -104,15 +80,15 @@ index 443d2ed..f3147d4 100644
 +    {							\
 +	builtin_define ("ARM");				\
 +							\
-+	if (TARGET_THUMB)				\
++	if (TARGET_THUMB || TARGET_THUMB2)		\
 +	  builtin_define ("ARM_Thumb");			\
 +							\
 +	if (TARGET_HARD_FLOAT_ABI)			\
-+	  builtin_define ("ARM_HardFP");		\
++	  builtin_define ("ARM_HardFloat");		\
 +	else						\
 +	  {						\
 +	    if(TARGET_SOFT_FLOAT)			\
-+	      builtin_define ("ARM_Soft");		\
++	      builtin_define ("ARM_SoftFloat");		\
 +	    else if(TARGET_HARD_FLOAT)			\
 +	      builtin_define ("ARM_SoftFP");		\
 +	  }						\
@@ -126,11 +102,10 @@ index 443d2ed..f3147d4 100644
  #include "config/arm/arm-opts.h"
  
  enum target_cpus
-diff --git a/config/i386/i386.h b/config/i386/i386.h
-index 3a49803..a605d5e 100644
---- a/config/i386/i386.h
-+++ b/config/i386/i386.h
-@@ -572,6 +572,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+diff -urp gcc.orig/config/i386/i386.h gcc/config/i386/i386.h
+--- gcc.orig/config/i386/i386.h	2013-03-27 14:22:29.725731475 +0100
++++ gcc/config/i386/i386.h	2013-03-27 12:54:56.518631277 +0100
+@@ -572,6 +572,24 @@ extern const char *host_detect_local_cpu
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -155,10 +130,9 @@ index 3a49803..a605d5e 100644
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
-diff --git a/config/ia64/ia64.h b/config/ia64/ia64.h
-index a3ccd6f..6dbcfea 100644
---- a/config/ia64/ia64.h
-+++ b/config/ia64/ia64.h
+diff -urp gcc.orig/config/ia64/ia64.h gcc/config/ia64/ia64.h
+--- gcc.orig/config/ia64/ia64.h	2013-03-27 14:22:29.719731361 +0100
++++ gcc/config/ia64/ia64.h	2013-03-27 12:54:56.520631314 +0100
 @@ -41,6 +41,13 @@ do {						\
  	  builtin_define("__BIG_ENDIAN__");	\
  } while (0)
@@ -173,11 +147,10 @@ index a3ccd6f..6dbcfea 100644
  #ifndef SUBTARGET_EXTRA_SPECS
  #define SUBTARGET_EXTRA_SPECS
  #endif
-diff --git a/config/mips/mips.h b/config/mips/mips.h
-index 1c19f8b..890d317 100644
---- a/config/mips/mips.h
-+++ b/config/mips/mips.h
-@@ -561,6 +561,57 @@ struct mips_cpu_info {
+diff -urp gcc.orig/config/mips/mips.h gcc/config/mips/mips.h
+--- gcc.orig/config/mips/mips.h	2013-03-27 14:22:29.756732061 +0100
++++ gcc/config/mips/mips.h	2013-03-27 14:20:50.537856311 +0100
+@@ -561,6 +561,54 @@ struct mips_cpu_info {
      }									\
    while (0)
  
@@ -185,7 +158,6 @@ index 1c19f8b..890d317 100644
 +#define TARGET_CPU_D_BUILTINS()						\
 +  do									\
 +  {									\
-+    builtin_define("MIPS");						\
 +    if (TARGET_64BIT)							\
 +      builtin_define("MIPS64");						\
 +    else								\
@@ -217,28 +189,25 @@ index 1c19f8b..890d317 100644
 +	gcc_unreachable();						\
 +    }									\
 +									\
-+    if (TARGET_NO_FLOAT)						\
-+      builtin_define("MIPS_NoFloat");					\
-+    else if (TARGET_HARD_FLOAT_ABI)					\
-+    {
++    if (TARGET_HARD_FLOAT_ABI)						\
++    {									\
 +      builtin_define("MIPS_HardFloat");					\
 +      builtin_define("D_HardFloat");					\
-+    }
-+    else								\
-+    {
++    }									\
++    else if(TARGET_SOFT_FLOAT_ABI)					\
++    {									\
 +      builtin_define("MIPS_SoftFloat");					\
 +      builtin_define("D_SoftFloat");					\
-+    }
++    }									\
 +  }									\
-+  while (0)								\
++  while (0)
 +
  /* Default target_flags if no switches are specified  */
  
  #ifndef TARGET_DEFAULT
-diff --git a/config/pa/pa.h b/config/pa/pa.h
-index d977c64..2c6863f 100644
---- a/config/pa/pa.h
-+++ b/config/pa/pa.h
+diff -urp gcc.orig/config/pa/pa.h gcc/config/pa/pa.h
+--- gcc.orig/config/pa/pa.h	2013-03-27 14:22:29.792732741 +0100
++++ gcc/config/pa/pa.h	2013-03-27 12:54:56.525631405 +0100
 @@ -187,6 +187,20 @@ do {								\
         builtin_define("_PA_RISC1_0");				\
  } while (0)
@@ -260,11 +229,10 @@ index d977c64..2c6863f 100644
  /* An old set of OS defines for various BSD-like systems.  */
  #define TARGET_OS_CPP_BUILTINS()				\
    do								\
-diff --git a/config/rs6000/rs6000.h b/config/rs6000/rs6000.h
-index 63cbdc8..5587841 100644
---- a/config/rs6000/rs6000.h
-+++ b/config/rs6000/rs6000.h
-@@ -560,6 +560,28 @@ extern unsigned char rs6000_recip_bits[];
+diff -urp gcc.orig/config/rs6000/rs6000.h gcc/config/rs6000/rs6000.h
+--- gcc.orig/config/rs6000/rs6000.h	2013-03-27 14:22:29.764732213 +0100
++++ gcc/config/rs6000/rs6000.h	2013-03-27 14:21:30.601614010 +0100
+@@ -560,6 +560,28 @@ extern unsigned char rs6000_recip_bits[]
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -279,12 +247,12 @@ index 63cbdc8..5587841 100644
 +						\
 +      if (TARGET_HARD_FLOAT)			\
 +	{					\
-+	  builtin_define ("PPC_HardFP");	\
++	  builtin_define ("PPC_HardFloat");	\
 +	  builtin_define ("D_HardFloat");	\
 +	}					\
 +      else if (TARGET_SOFT_FLOAT)		\
 +	{					\
-+	  builtin_define ("PPC_SoftFP");	\
++	  builtin_define ("PPC_SoftFloat");	\
 +	  builtin_define ("D_SoftFloat");	\
 +	}					\
 +    }						\
@@ -293,10 +261,9 @@ index 63cbdc8..5587841 100644
  /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
     we're compiling for.  Some configurations may need to override it.  */
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
-diff --git a/config/s390/s390.h b/config/s390/s390.h
-index edc6399..49d0b45 100644
---- a/config/s390/s390.h
-+++ b/config/s390/s390.h
+diff -urp gcc.orig/config/s390/s390.h gcc/config/s390/s390.h
+--- gcc.orig/config/s390/s390.h	2013-03-27 14:22:29.744731834 +0100
++++ gcc/config/s390/s390.h	2013-03-27 12:54:56.527631442 +0100
 @@ -104,6 +104,21 @@ enum processor_flags
      }							\
    while (0)
@@ -319,10 +286,9 @@ index edc6399..49d0b45 100644
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT             (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP)
  #else
-diff --git a/config/sh/sh.h b/config/sh/sh.h
-index 10e87f8..3db6341 100644
---- a/config/sh/sh.h
-+++ b/config/sh/sh.h
+diff -urp gcc.orig/config/sh/sh.h gcc/config/sh/sh.h
+--- gcc.orig/config/sh/sh.h	2013-03-27 14:22:29.727731512 +0100
++++ gcc/config/sh/sh.h	2013-03-27 12:54:56.528631460 +0100
 @@ -95,6 +95,22 @@ do { \
  		  ? "__LITTLE_ENDIAN__" : "__BIG_ENDIAN__"); \
  } while (0)
@@ -346,11 +312,10 @@ index 10e87f8..3db6341 100644
  /* Value should be nonzero if functions must have frame pointers.
     Zero means the frame pointer need not be set up (and parms may be accessed
     via the stack pointer) in functions that seem suitable.  */
-diff --git a/config/sparc/sparc.h b/config/sparc/sparc.h
-index a1919b4..8d15778 100644
---- a/config/sparc/sparc.h
-+++ b/config/sparc/sparc.h
-@@ -29,6 +29,31 @@ along with GCC; see the file COPYING3.  If not see
+diff -urp gcc.orig/config/sparc/sparc.h gcc/config/sparc/sparc.h
+--- gcc.orig/config/sparc/sparc.h	2013-03-27 14:22:29.794732778 +0100
++++ gcc/config/sparc/sparc.h	2013-03-27 14:22:06.164286252 +0100
+@@ -29,6 +29,31 @@ along with GCC; see the file COPYING3.
  
  #define TARGET_CPU_CPP_BUILTINS() sparc_target_macros ()
  
@@ -369,12 +334,12 @@ index a1919b4..8d15778 100644
 +      if(TARGET_FPU)				\
 +	{					\
 +	  builtin_define ("D_HardFloat");	\
-+	  builtin_define ("SPARC_HardFP");	\
++	  builtin_define ("SPARC_HardFloat");	\
 +	}					\
 +      else					\
 +	{					\
 +	  builtin_define ("D_SoftFloat");	\
-+	  builtin_define ("SPARC_SoftFP");	\
++	  builtin_define ("SPARC_SoftFloat");	\
 +	}					\
 +    }						\
 +  while (0)
@@ -382,6 +347,3 @@ index a1919b4..8d15778 100644
  /* Specify this in a cover file to provide bi-architecture (32/64) support.  */
  /* #define SPARC_BI_ARCH */
  
--- 
-1.7.11.7
-

@@ -1,8 +1,3 @@
-From 2bbf6c81e3f4c9048356bbe67d7a469b7463b7c4 Mon Sep 17 00:00:00 2001
-From: Johannes Pfau <johannespfau@gmail.com>
-Date: Sat, 23 Feb 2013 19:09:51 +0100
-Subject: [PATCH] Implement D predefined OS versions
-
 This implements the following official versions:
 * Windows
 ** Win32
@@ -36,28 +31,8 @@ These official OS versions are not implemented:
 * SysV3
 
 gdc-4.7 does not support Android on MIPS or i386.
-Use gdc-4.8 for that.
+Use gdc-4.8+ for that.
 ---
- arm/linux-eabi.h   |  9 +++++++++
- darwin.h           |  6 ++++++
- freebsd.h          |  7 +++++++
- gnu.h              |  8 ++++++++
- i386/cygwin.h      |  7 +++++++
- i386/mingw-w64.h   |  7 +++++++
- i386/mingw32.h     | 12 ++++++++++++
- i386/sysv4.h       |  7 +++++++
- ia64/sysv4.h       |  7 +++++++
- kfreebsd-gnu.h     |  8 ++++++++
- knetbsd-gnu.h      | 10 ++++++++++
- kopensolaris-gnu.h | 10 ++++++++++
- linux-android.h    |  6 ++++++
- linux.h            | 14 ++++++++++++++
- netbsd.h           |  8 ++++++++
- openbsd.h          |  8 ++++++++
- rs6000/aix.h       |  7 +++++++
- rs6000/sysv4.h     |  7 +++++++
- sparc/sysv4.h      |  7 +++++++
- 19 files changed, 155 insertions(+)
 
 diff --git a/config/arm/linux-eabi.h b/config/arm/linux-eabi.h
 index 80bd825..5167c8c 100644

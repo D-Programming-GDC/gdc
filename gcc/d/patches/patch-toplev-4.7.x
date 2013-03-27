@@ -1,3 +1,6 @@
+This implements building of libphobos library in GCC.
+---
+
 --- gcc-4.7-20120128~/configure	2012-01-30 03:26:43.863382449 +0000
 +++ gcc-4.7-20120128/configure	2012-01-30 03:28:21.303380699 +0000
 @@ -2698,7 +2698,8 @@ target_libraries="target-libgcc \
