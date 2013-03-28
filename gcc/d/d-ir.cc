@@ -11,7 +11,7 @@
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 
 #include "id.h"
 #include "enum.h"

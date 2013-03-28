@@ -16,7 +16,7 @@
    <http://www.gnu.org/licenses/>.
 */
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 
 #include "d-lang.h"
 #include "attrib.h"

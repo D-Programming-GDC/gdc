@@ -1,6 +1,8 @@
 2013-03-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* Create a custom static chain for all nested functions.
+	* d-codegen.cc(IRState::getFrameInfo) Create a custom static chain for
+	all nested functions.
+	* d-gcc-includes.h: Rename to d-system.h
 
 2013-03-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 

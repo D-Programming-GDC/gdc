@@ -19,7 +19,7 @@
   d-lang.cc: implementation of back-end callbacks and data structures
 */
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 #include "options.h"
 #include "cppdefault.h"
 #include "debug.h"

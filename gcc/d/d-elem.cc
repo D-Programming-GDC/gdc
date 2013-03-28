@@ -15,7 +15,7 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 
 #include "id.h"
 #include "module.h"
