@@ -1,3 +1,10 @@
+2013-03-29  Johannes Pfau  <johannespfau@gmail.com>
+
+	* mtype.c(TypeClass::dotExp) Backport fix for final methods in
+	interfaces from dmd
+	aggregate.h: Likewise
+	class.c: Likewise
+
 2013-03-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::getFrameInfo) Create a custom static chain for
