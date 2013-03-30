@@ -435,7 +435,6 @@ struct IRState : IRBase
   static tree libCall (LibCall libcall, unsigned n_args, tree *args, tree force_result_type = NULL_TREE);
 
   TemplateEmission emitTemplates;
-  bool stdInc;
 
   // Variables that are in scope that will need destruction later
   VarDeclarations *varsInScope;

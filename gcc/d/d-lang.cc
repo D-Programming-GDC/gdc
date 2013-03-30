@@ -107,6 +107,9 @@ const struct attribute_spec d_attribute_table[] =
 
 static const char *fonly_arg;
 
+/* Zero disables all standard directories for headers.  */
+static bool std_inc = true;
+
 /* Common initialization before calling option handlers.  */
 static void
 d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
@@ -137,7 +140,6 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
 
   // extra D-specific options
   gen.emitTemplates = TEnormal;
-  gen.stdInc = true;
 
   gen.intrinsicModule = NULL;
   gen.mathModule = NULL;
@@ -275,7 +277,7 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_import_paths(gen.stdInc);
+  add_import_paths(std_inc);
   add_phobos_versyms();
 
   return 1;
@@ -511,7 +513,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_nostdinc:
-      gen.stdInc = false;
+      std_inc = false;
       break;
 
     case OPT_Wall:
@@ -538,6 +540,15 @@ d_handle_option (size_t scode, const char *arg, int value,
 bool
 d_post_options (const char ** fn)
 {
+  // Canonicalize the input filename.
+  if (in_fnames == NULL)
+    {
+      in_fnames = XNEWVEC (const char *, 1);
+      in_fnames[0] = "";
+    }
+  else if (strcmp (in_fnames[0], "-") == 0)
+    in_fnames[0] = "";
+
   // The front end considers the first input file to be the main one.
   if (num_in_fnames)
     *fn = in_fnames[0];
@@ -784,11 +795,6 @@ d_parse_file (void)
   // better to use input_location.xxx ?
   (*debug_hooks->start_source_file) (input_line, main_input_filename);
 
-  /*
-     printf ("input_filename = '%s'\n", input_filename);
-     printf ("main_input_filename = '%s'\n", main_input_filename);
-     */
-
   for (TY ty = (TY) 0; ty < TMAX; ty = (TY) (ty + 1))
     {
       if (Type::basic[ty] && ty != Terror)
@@ -800,10 +806,8 @@ d_parse_file (void)
   modules.reserve (num_in_fnames);
   AsyncRead *aw = NULL;
   Module *m = NULL;
-  output_module = NULL;
 
-  // %% FIX
-  if (!main_input_filename)
+  if (!main_input_filename || !main_input_filename[0])
     {
       ::error ("input file name required; cannot use stdin");
       goto had_errors;

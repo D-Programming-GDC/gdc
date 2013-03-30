@@ -6,6 +6,10 @@
 	(IRState::darrayString): Replace with d_array_string.
 	(IRState::arrayLength): Replace with get_array_length.
 	(get_object_method): Remove dependancy on irs parameter.
+	* d-lang.cc(d_init): Use static bool std_inc to determine whether to
+	include standard module paths.
+	(d_post_options): Canonicalize the input filename.
+	(d_parse_file): Correctly catch cases where input file is stdin.
 
 2013-03-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
