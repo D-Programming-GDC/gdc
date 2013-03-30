@@ -531,7 +531,8 @@ CatExp::toElem (IRState *irs)
 	    {
 	      tree elem_var = NULL_TREE;
 	      tree expr = irs->maybeExprVar (oe->toElem (irs), &elem_var);
-	      array_exp = irs->darrayVal (oe->type->arrayOf(), 1, build_address (expr));
+	      array_exp = d_array_value (oe->type->arrayOf()->toCtype(),
+					 size_int (1), build_address (expr));
 
 	      if (elem_var)
 		elem_vars.push (elem_var);
@@ -542,8 +543,8 @@ CatExp::toElem (IRState *irs)
 	  if (n_operands > 2 && flag_split_darrays)
 	    {
 	      array_exp = maybe_make_temp (array_exp);
-	      args[ai--] = irs->darrayPtrRef (array_exp); // note: filling array
-	      args[ai--] = irs->darrayLenRef (array_exp); // backwards, so ptr 1st
+	      args[ai--] = d_array_ptr (array_exp);	// note: filling array
+	      args[ai--] = d_array_length (array_exp);	// backwards, so ptr 1st
 	    }
 	  else
 	    args[ai--] = array_exp;
@@ -718,7 +719,7 @@ MulAssignExp::toElem (IRState *irs)
 }
 
 elem *
-PowAssignExp::toElem (IRState *irs)
+PowAssignExp::toElem (IRState *)
 {
   if (unhandled_arrayop_p (this))
     return error_mark (type);
@@ -774,11 +775,11 @@ CatAssignExp::toElem (IRState *irs)
 	  result = save_expr (result);
 
 	  // assign e2 to last element
-	  tree off_exp = irs->darrayLenRef (result);
+	  tree off_exp = d_array_length (result);
 	  off_exp = build2 (MINUS_EXPR, TREE_TYPE (off_exp), off_exp, size_one_node);
 	  off_exp = maybe_make_temp (off_exp);
 
-	  tree ptr_exp = irs->darrayPtrRef (result);
+	  tree ptr_exp = d_array_ptr (result);
 	  ptr_exp = void_okay_p (ptr_exp);
 	  ptr_exp = irs->pointerIntSum (ptr_exp, off_exp);
 
@@ -848,7 +849,7 @@ AssignExp::toElem (IRState *irs)
 	LIBCALL_ARRAYSETLENGTHT : LIBCALL_ARRAYSETLENGTHIT;
 
       tree result = irs->libCall (libcall, 3, args);
-      return irs->darrayLenRef (result);
+      return d_array_length (result);
     }
   else if (e1->op == TOKslice)
     {
@@ -868,9 +869,9 @@ AssignExp::toElem (IRState *irs)
 		  LibCall libcall = op == TOKconstruct ?
 		    LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
 
-		  args[0] = irs->darrayPtrRef (t1);
+		  args[0] = d_array_ptr (t1);
 		  args[1] = aoe.set (irs, e2->toElem (irs));
-		  args[2] = irs->darrayLenRef (t1);
+		  args[2] = d_array_length (t1);
 		  args[3] = irs->typeinfoReference (elem_type);
 
 		  tree t = irs->libCall (libcall, 4, args);
@@ -878,8 +879,8 @@ AssignExp::toElem (IRState *irs)
 		}
 	    }
 
-	  tree set_exp = irs->arraySetExpr (irs->darrayPtrRef (t1),
-					    e2->toElem (irs), irs->darrayLenRef (t1));
+	  tree set_exp = irs->arraySetExpr (d_array_ptr (t1),
+					    e2->toElem (irs), d_array_length (t1));
 	  return compound_expr (set_exp, t1);
 	}
       else
@@ -910,12 +911,12 @@ AssignExp::toElem (IRState *irs)
 	      tree t1 = maybe_make_temp (irs->toDArray (e1));
 	      tree t2 = irs->toDArray (e2);
 	      tree size = fold_build2 (MULT_EXPR, size_type_node,
-				       irs->convertTo (size_type_node, irs->darrayLenRef (t1)),
+				       irs->convertTo (size_type_node, d_array_length (t1)),
 				       size_int (elem_type->size()));
 
 	      tree result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
-					       irs->darrayPtrRef (t1),
-					       irs->darrayPtrRef (t2), size);
+					       d_array_ptr (t1),
+					       d_array_ptr (t2), size);
 	      return compound_expr (result, t1);
 	    }
 	}
@@ -1053,9 +1054,7 @@ elem *
 ArrayLengthExp::toElem (IRState *irs)
 {
   if (e1->type->toBasetype()->ty == Tarray)
-    {
-      return irs->darrayLenRef (e1->toElem (irs));
-    }
+    return d_array_length (e1->toElem (irs));
   else
     {
       // Tsarray case seems to be handled by front-end
@@ -1084,7 +1083,7 @@ SliceExp::toElem (IRState *irs)
 
   ArrayScope aryscp (irs, lengthVar, loc);
 
-  orig_array_expr = aryscp.setArrayExp (irs, e1->toElem (irs), e1->type);
+  orig_array_expr = aryscp.setArrayExp (e1->toElem (irs), e1->type);
   orig_array_expr = maybe_make_temp (orig_array_expr);
   // specs don't say bounds if are checked for error or clipped to current size
 
@@ -1098,17 +1097,9 @@ SliceExp::toElem (IRState *irs)
   // we don't make array_len_expr a save_expr which is, at most,
   // a COMPONENT_REF on top of orig_array_expr.
   if (orig_array_type->ty == Tarray)
-    {
-      array_len_expr = irs->darrayLenRef (orig_array_expr);
-    }
+    array_len_expr = d_array_length (orig_array_expr);
   else if (orig_array_type->ty == Tsarray)
-    {
-      array_len_expr = ((TypeSArray *) orig_array_type)->dim->toElem (irs);
-    }
-  else
-    {
-      // array_len_expr == NULL indicates no bounds check is possible
-    }
+    array_len_expr = ((TypeSArray *) orig_array_type)->dim->toElem (irs);
 
   if (lwr)
     {
@@ -1171,18 +1162,20 @@ SliceExp::toElem (IRState *irs)
       switch (orig_array_type->ty)
 	{
 	case Tarray:
-	  final_len_expr = irs->darrayLenRef (orig_array_expr);
+	  final_len_expr = d_array_length (orig_array_expr);
 	  break;
+
 	case Tsarray:
 	  final_len_expr = ((TypeSArray *) orig_array_type)->dim->toElem (irs);
 	  break;
+
 	default:
 	  ::error ("Attempt to take length of something that was not an array");
 	  return error_mark (type);
 	}
     }
 
-  tree result = irs->darrayVal (type->toCtype(), final_len_expr, final_ptr_expr);
+  tree result = d_array_value (type->toCtype(), final_len_expr, final_ptr_expr);
   return aryscp.finish (irs, result);
 }
 
@@ -1472,7 +1465,7 @@ DelegateExp::toElem (IRState *irs)
       if (!func->isThis())
 	error ("delegates are only for non-static functions");
 
-      return get_object_method (irs, e1, func, type);
+      return get_object_method (e1, func, type);
     }
   else
     {
@@ -1516,7 +1509,7 @@ DotVarExp::toElem (IRState *irs)
       if (func_decl)
       {
 	// if Tstruct, objInstanceMethod will use the address of e1
-	return get_object_method (irs, e1, func_decl, type);
+	return get_object_method (e1, func_decl, type);
       }
       else if (var_decl)
 	{
@@ -1980,7 +1973,7 @@ ComplexExp::toElem (IRState *)
 }
 
 elem *
-StringExp::toElem (IRState *irs)
+StringExp::toElem (IRState *)
 {
   Type *tb = type->toBasetype();
   TY base_ty = type ? tb->ty : (TY) Tvoid;
@@ -2013,17 +2006,18 @@ StringExp::toElem (IRState *irs)
   switch (base_ty)
     {
     case Tarray:
-      value = irs->darrayVal (type, len, build_address (value));
+      value = d_array_value (type->toCtype(), size_int (len), build_address (value));
       break;
+
     case Tpointer:
       value = build_address (value);
       break;
+
     case Tsarray:
-      // %% needed?
       TREE_TYPE (value) = type->toCtype();
       break;
+
     default:
-      // nothing
       break;
     }
   return value;
@@ -2094,7 +2088,7 @@ ArrayLiteralExp::toElem (IRState *irs)
     }
 
   if (typeb->ty == Tarray)
-    result = irs->darrayVal (type, elements->dim, result);
+    result = d_array_value (type->toCtype(), size_int (elements->dim), result);
   else if (typeb->ty == Tsarray)
     result = indirect_ref (sa_type, result);
 
@@ -2157,8 +2151,8 @@ AssocArrayLiteralExp::toElem (IRState *irs)
 
   tree args[3];
   args[0] = irs->typeinfoReference (aa_type);
-  args[1] = irs->darrayVal (index->arrayOf(), keys->dim, keys_ptr);
-  args[2] = irs->darrayVal (next->arrayOf(), keys->dim, vals_ptr);
+  args[1] = d_array_value (index->arrayOf()->toCtype(), size_int (keys->dim), keys_ptr);
+  args[2] = d_array_value (next->arrayOf()->toCtype(), size_int (keys->dim), vals_ptr);
 
   result = maybe_compound_expr (result, irs->libCall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
 
@@ -2285,7 +2279,7 @@ NullExp::toElem (IRState *irs)
   switch (base_ty)
     {
     case Tarray:
-	  null_exp = irs->darrayVal (type, 0, NULL);
+	  null_exp = d_array_value (type->toCtype(), size_int (0), d_null_pointer);
 	  break;
 
     case Taarray:

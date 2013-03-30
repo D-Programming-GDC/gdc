@@ -328,7 +328,8 @@ SwitchStatement::toIR (IRState *irs)
       outdata (s);
       tree p_table = build_address (s->Stree);
 
-      args[0] = irs->darrayVal (cond_type->arrayOf()->toCtype(), cases->dim, p_table);
+      args[0] = d_array_value (cond_type->arrayOf()->toCtype(),
+			       size_int (cases->dim), p_table);
       args[1] = cond_tree;
 
       cond_tree = irs->libCall (libcall, 2, args);

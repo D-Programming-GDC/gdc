@@ -173,6 +173,16 @@ extern tree build_float_cst (const real_t& value, Type *target_type);
 extern dinteger_t cst_to_hwi (double_int cst);
 extern dinteger_t tree_to_hwi (tree t);
 
+// Dynamic arrays
+extern tree d_array_length (tree exp);
+extern tree d_array_ptr (tree exp);
+
+extern tree d_array_value (tree type, tree len, tree data);
+extern tree d_array_string (const char *str);
+
+// Length of either a static or dynamic array
+extern tree get_array_length (tree exp, Type *exp_type);
+
 // D allows { void[] a; &a[3]; }
 extern tree void_okay_p (tree t);
 
@@ -198,7 +208,7 @@ extern tree build_delegate_cst (tree method, tree object, Type *type);
 // These are for references to nested functions/methods as opposed to a delegate var.
 extern tree build_method_call (tree callee, tree object, Type *type);
 extern void extract_from_method_call (tree t, tree& callee, tree& object);
-extern tree get_object_method (IRState *irs, Expression *exp, FuncDeclaration *func, Type *type);
+extern tree get_object_method (Expression *exp, FuncDeclaration *func, Type *type);
 
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.
@@ -387,21 +397,6 @@ struct IRState : IRBase
   tree convertForCondition (Expression *exp);
   tree convertForCondition (tree exp_tree, Type *exp_type);
   tree toDArray (Expression *exp);
-
-  // ** Dynamic arrays
-  static tree darrayLenRef (tree exp);
-  static tree darrayPtrRef (tree exp);
-  tree darrayPtrRef (Expression *e);
-
-  static tree darrayVal (tree type, tree len, tree data);
-  // data may be NULL for a null pointer value
-  static tree darrayVal (Type *type, uinteger_t len, tree data);
-  static tree darrayVal (tree type, uinteger_t len, tree data);
-  static tree darrayString (const char *str);
-
-  // Length of either a static or dynamic array
-  tree arrayLength (Expression *exp);
-  static tree arrayLength (tree exp, Type *exp_type);
 
   // ** Various expressions
   tree toElemLvalue (Expression *e);
@@ -635,7 +630,7 @@ class ArrayScope
 {
  public:
   ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc);
-  tree setArrayExp (IRState *irs, tree e, Type *t);
+  tree setArrayExp (tree e, Type *t);
   tree finish (IRState *irs, tree e);
 
  private:

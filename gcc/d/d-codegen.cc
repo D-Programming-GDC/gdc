@@ -421,23 +421,23 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	}
       else if (tbtype->ty == Tarray)
 	{
-	  TypeSArray *a_type = (TypeSArray *) ebtype;
+	  dinteger_t dim = ((TypeSArray *) ebtype)->dim->toInteger();
+	  dinteger_t esize = ebtype->nextOf()->size();
+	  dinteger_t tsize = tbtype->nextOf()->size();
 
-	  uinteger_t array_len = a_type->dim->toUInteger();
-	  d_uns64 sz_a = a_type->next->size();
-	  d_uns64 sz_b = tbtype->nextOf()->size();
+	  tree ptrtype = tbtype->nextOf()->pointerTo()->toCtype();
 
-	  // conversions to different sizes
-	  // Assumes tvoid->size() == 1
-	  // %% TODO: handle misalign like _d_arraycast_xxx ?
-	  if (sz_a != sz_b)
-	    array_len = array_len * sz_a / sz_b;
-
-	  tree pointer_value = build_nop (tbtype->nextOf()->pointerTo()->toCtype(),
-					  build_address (exp));
+	  if ((dim * esize) % tsize != 0)
+	    {
+	      ::error ("cannot cast %s to %s since sizes don't line up",
+		       exp_type->toChars(), target_type->toChars());
+	      return error_mark_node;
+	    }
+	  dim = (dim * esize) / tsize;
 
 	  // Assumes casting to dynamic array of same type or void
-	  return darrayVal (target_type, array_len, pointer_value);
+	  return d_array_value (target_type->toCtype(),
+				size_int (dim), build_nop (ptrtype, build_address (exp)));
 	}
       else if (tbtype->ty == Tsarray)
 	{
@@ -462,7 +462,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
-	  return convertTo (target_type->toCtype(), darrayPtrRef (exp));
+	  return convertTo (target_type->toCtype(), d_array_ptr (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -491,7 +491,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	{
 	  // %% Strings are treated as dynamic arrays D2.
 	  if (ebtype->isString() && tbtype->isString())
-	    return indirect_ref (target_type->toCtype(), darrayPtrRef (exp));
+	    return indirect_ref (target_type->toCtype(), d_array_ptr (exp));
 	}
       else
 	{
@@ -524,8 +524,9 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
     case Tnull:
       if (tbtype->ty == Tarray)
 	{
-	  Type *pointer_type = tbtype->nextOf()->pointerTo();
-	  return darrayVal (target_type, 0, build_nop (pointer_type->toCtype(), exp));
+	  tree ptrtype = tbtype->nextOf()->pointerTo()->toCtype();
+	  return d_array_value (target_type->toCtype(),
+				size_int (0), build_nop (ptrtype, exp));
 	}
       break;
 
@@ -1061,7 +1062,7 @@ tree_to_hwi (tree t)
 // Returns the .length component from the D dynamic array EXP.
 
 tree
-IRState::darrayLenRef (tree exp)
+d_array_length (tree exp)
 {
   // backend will ICE otherwise
   if (error_mark_p (exp))
@@ -1076,7 +1077,7 @@ IRState::darrayLenRef (tree exp)
 // Returns the .ptr component from the D dynamic array EXP.
 
 tree
-IRState::darrayPtrRef (tree exp)
+d_array_ptr (tree exp)
 {
   // backend will ICE otherwise
   if (error_mark_p (exp))
@@ -1088,19 +1089,11 @@ IRState::darrayPtrRef (tree exp)
   return component_ref (exp, ptr_field);
 }
 
-// Builds D dynamic array expression E and returns the .ptr component.
-
-tree
-IRState::darrayPtrRef (Expression *e)
-{
-  return darrayPtrRef (e->toElem (this));
-}
-
 // Returns a constructor for D dynamic array type TYPE of .length LEN
 // and .ptr pointing to DATA.
 
 tree
-IRState::darrayVal (tree type, tree len, tree data)
+d_array_value (tree type, tree len, tree data)
 {
   // %% assert type is a darray
   tree len_field, ptr_field;
@@ -1109,45 +1102,11 @@ IRState::darrayVal (tree type, tree len, tree data)
   len_field = TYPE_FIELDS (type);
   ptr_field = TREE_CHAIN (len_field);
 
+  len = convert (TREE_TYPE (len_field), len);
+  data = convert (TREE_TYPE (ptr_field), data);
+
   ce.cons (len_field, len);
-  ce.cons (ptr_field, data); // shouldn't need to convert the pointer...
-
-  tree ctor = build_constructor (type, ce.head);
-  TREE_STATIC (ctor) = 0;   // can be set by caller if needed
-  TREE_CONSTANT (ctor) = 0; // "
-
-  return ctor;
-}
-
-tree
-IRState::darrayVal (Type *type, uinteger_t len, tree data)
-{
-  return darrayVal (type->toCtype(), len, data);
-}
-
-tree
-IRState::darrayVal (tree type, uinteger_t len, tree data)
-{
-  // %% assert type is a darray
-  tree len_value, ptr_value, len_field, ptr_field;
-  CtorEltMaker ce;
-
-  len_field = TYPE_FIELDS (type);
-  ptr_field = TREE_CHAIN (len_field);
-
-  if (data)
-    {
-      gcc_assert (POINTER_TYPE_P (TREE_TYPE (data)));
-      ptr_value = data;
-    }
-  else
-    {
-      ptr_value = convertTo (TREE_TYPE (ptr_field), d_null_pointer);
-    }
-
-  len_value = build_integer_cst (len, TREE_TYPE (len_field));
-  ce.cons (len_field, len_value);
-  ce.cons (ptr_field, ptr_value); // shouldn't need to convert the pointer...
+  ce.cons (ptr_field, data);
 
   tree ctor = build_constructor (type, ce.head);
   // TREE_STATIC and TREE_CONSTANT can be set by caller if needed
@@ -1160,41 +1119,36 @@ IRState::darrayVal (tree type, uinteger_t len, tree data)
 // Builds a D string value from the C string STR.
 
 tree
-IRState::darrayString (const char *str)
+d_array_string (const char *str)
 {
   unsigned len = strlen (str);
-  // %% assumes str is null-terminated
+  // Assumes str is null-terminated.
   tree str_tree = build_string (len + 1, str);
 
   TREE_TYPE (str_tree) = d_array_type (Type::tchar, len);
 
-  return darrayVal (Type::tchar->arrayOf()->toCtype(),
-		    len, build_address (str_tree));
-}
-
-// Returns array length of expression EXP.
-
-tree
-IRState::arrayLength (Expression *exp)
-{
-  return arrayLength (exp->toElem (this), exp->type);
+  return d_array_value (Type::tchar->arrayOf()->toCtype(),
+			size_int (len), build_address (str_tree));
 }
 
 // Returns value representing the array length of expression EXP.
-// EXP_TYPE could be a dynamic or static array.
+// TYPE could be a dynamic or static array.
 
 tree
-IRState::arrayLength (tree exp, Type *exp_type)
+get_array_length (tree exp, Type *type)
 {
-  Type *base_type = exp_type->toBasetype();
-  switch (base_type->ty)
+  Type *tb = type->toBasetype();
+
+  switch (tb->ty)
     {
     case Tsarray:
-      return size_int (((TypeSArray *) base_type)->dim->toUInteger());
+      return size_int (((TypeSArray *) tb)->dim->toUInteger());
+
     case Tarray:
-      return darrayLenRef (exp);
+      return d_array_length (exp);
+
     default:
-      ::error ("can't determine the length of a %s", exp_type->toChars());
+      ::error ("can't determine the length of a %s", type->toChars());
       return error_mark_node;
     }
 }
@@ -1299,7 +1253,7 @@ extract_from_method_call (tree t, tree& callee, tree& object)
 // the 'this' pointer OBJEXP.  TYPE is the return type for the method.
 
 tree
-get_object_method (IRState *irs, Expression *objexp, FuncDeclaration *func, Type *type)
+get_object_method (Expression *objexp, FuncDeclaration *func, Type *type)
 {
   Type *objtype = objexp->type->toBasetype();
 
@@ -1327,7 +1281,7 @@ get_object_method (IRState *irs, Expression *objexp, FuncDeclaration *func, Type
 	    }
 	  break;
 	}
-      this_expr = objexp->toElem (irs);
+      this_expr = objexp->toElem (current_irs);
 
       // Calls to super are static (func is the super's method)
       // Structs don't have vtables.
@@ -1943,7 +1897,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
     {
     case Tarray:
     case Tsarray:
-      array_expr = asc->setArrayExp (this, array_expr, e1->type);
+      array_expr = asc->setArrayExp (array_expr, e1->type);
 
       // If it's a static array and the index is constant,
       // the front end has already checked the bounds.
@@ -1960,7 +1914,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 	  if (base_type_ty == Tarray)
 	    {
 	      array_expr = maybe_make_temp (array_expr);
-	      array_len_expr = darrayLenRef (array_expr);
+	      array_len_expr = d_array_length (array_expr);
 	    }
 	  else
 	    array_len_expr = ((TypeSArray *) base_type)->dim->toElem (this);
@@ -1970,7 +1924,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 	}
 
       if (base_type_ty == Tarray)
-	ptr_exp = darrayPtrRef (array_expr);
+	ptr_exp = d_array_ptr (array_expr);
       else
 	ptr_exp = build_address (array_expr);
 
@@ -2317,8 +2271,8 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	  if (flag_split_darrays && actual_arg_exp->type->toBasetype()->ty == Tarray)
 	    {
 	      tree da_exp = maybe_make_temp (actual_arg_exp->toElem (this));
-	      actual_arg_list.cons (darrayLenRef (da_exp));
-	      actual_arg_list.cons (darrayPtrRef (da_exp));
+	      actual_arg_list.cons (d_array_length (da_exp));
+	      actual_arg_list.cons (d_array_ptr (da_exp));
 	      continue;
 	    }
 	  else
@@ -2354,7 +2308,8 @@ tree
 IRState::assertCall (Loc loc, LibCall libcall)
 {
   tree args[2];
-  args[0] = darrayString (loc.filename ? loc.filename : "");
+
+  args[0] = d_array_string (loc.filename ? loc.filename : "");
   args[1] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
 
   if (libcall == LIBCALL_ASSERT && this->func->isUnitTestDeclaration())
@@ -2369,8 +2324,9 @@ tree
 IRState::assertCall (Loc loc, Expression *msg)
 {
   tree args[3];
+
   args[0] = msg->toElem (this);
-  args[1] = darrayString (loc.filename ? loc.filename : "");
+  args[1] = d_array_string (loc.filename ? loc.filename : "");
   args[2] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
 
   LibCall libcall = this->func->isUnitTestDeclaration() ?
@@ -3127,7 +3083,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	      tree e1 = vmodify_expr (lvar, build1 (VA_ARG_EXPR, ltype, op1));
 	      tree e2 = vmodify_expr (pvar, build1 (VA_ARG_EXPR, ptype, op1));
-	      tree val = darrayVal (type, lvar, pvar);
+	      tree val = d_array_value (type, lvar, pvar);
 
 	      exp = compound_expr (compound_expr (e1, e2), val);
 	      exp = binding (lvar, binding (pvar, exp));
@@ -4590,14 +4546,14 @@ ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
 // the temp var decl to be used.
 
 tree
-ArrayScope::setArrayExp (IRState *irs, tree e, Type *t)
+ArrayScope::setArrayExp (tree e, Type *t)
 {
   if (this->var_)
     {
       tree v = this->var_->toSymbol()->Stree;
       if (t->toBasetype()->ty != Tsarray)
 	e = maybe_make_temp (e);
-      DECL_INITIAL (v) = irs->arrayLength (e, t);
+      DECL_INITIAL (v) = get_array_length (e, t);
     }
   return e;
 }
