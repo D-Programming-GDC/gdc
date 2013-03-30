@@ -4605,9 +4605,8 @@ Statement *TryCatchStatement::syntaxCopy()
     Catches *a = new Catches();
     a->setDim(catches->dim);
     for (size_t i = 0; i < a->dim; i++)
-    {   Catch *c;
-
-        c = (*catches)[i];
+    {
+        Catch *c = (*catches)[i];
         c = c->syntaxCopy();
         (*a)[i] = c;
     }
@@ -4636,16 +4635,57 @@ Statement *TryCatchStatement::semantic(Scope *sc)
         }
     }
 
+#ifdef IN_GCC
+    if (!body || body->isEmpty())
+    {
+        for (size_t i = 0; i < catches->dim; i++)
+        {
+            Catch *c = (*catches)[i];
+            if (!c->handler || !c->handler->comeFrom())
+            {
+                catches->remove(i);
+                --i;
+            }
+        }
+        if (catches->dim == 0)
+            return NULL;
+    }
+#else
     if (!body || body->isEmpty())
     {
         return NULL;
     }
+#endif
+
+    /* If the try body never throws, we can eliminate any catches
+     * of recoverable exceptions.
+     */
+
+    if (!(body->blockExit(false) & BEthrow) && ClassDeclaration::exception)
+    {
+        for (size_t i = 0; i < catches->dim; i++)
+        {   Catch *c = (*catches)[i];
+
+            /* If catch exception type is derived from Exception
+             */
+            if (c->type->toBasetype()->implicitConvTo(ClassDeclaration::exception->type) &&
+                (!c->handler || !c->handler->comeFrom()))
+            {   // Remove c from the array of catches
+                catches->remove(i);
+                --i;
+            }
+        }
+    }
+
+    if (catches->dim == 0)
+        return body;
+
     return this;
 }
 
 bool TryCatchStatement::hasBreak()
 {
-    return FALSE; //TRUE;
+    return FALSE;
 }
 
 bool TryCatchStatement::usesEH()
