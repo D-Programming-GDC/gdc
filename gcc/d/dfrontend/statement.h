@@ -790,22 +790,6 @@ struct ThrowStatement : Statement
     void toIR(IRState *irs);
 };
 
-struct VolatileStatement : Statement
-{
-    Statement *statement;
-
-    VolatileStatement(Loc loc, Statement *statement);
-    Statement *syntaxCopy();
-    Statement *semantic(Scope *sc);
-    Statements *flatten(Scope *sc);
-    int blockExit(bool mustNotThrow);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-
-    Statement *inlineScan(InlineScanState *iss);
-
-    void toIR(IRState *irs);
-};
-
 struct DebugStatement : Statement
 {
     Statement *statement;

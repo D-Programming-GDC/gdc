@@ -185,19 +185,6 @@ struct IRBase : Object
 
   void startBindings (void);
   void endBindings (void);
-
-  // ** Volatile state
-
-  unsigned volatileDepth;
-
-  bool inVolatile (void)
-  { return this->volatileDepth != 0; }
-
-  void pushVolatile (void)
-  { this->volatileDepth++; }
-
-  void popVolatile (void)
-  { this->volatileDepth--; }
 };
 
 

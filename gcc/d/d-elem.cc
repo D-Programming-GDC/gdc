@@ -1380,11 +1380,7 @@ PtrExp::toElem (IRState *irs)
 	}
     }
 
-  tree e = indirect_ref (type->toCtype(), e1->toElem (irs));
-  if (irs->inVolatile())
-    TREE_THIS_VOLATILE (e) = 1;
-
-  return e;
+  return indirect_ref (type->toCtype(), e1->toElem (irs));
 }
 
 elem *
@@ -1704,21 +1700,8 @@ SymbolExp::toElem (IRState *irs)
       // For variables that are references (currently only out/inout arguments;
       // objects don't count), evaluating the variable means we want what it refers to.
       if (decl_reference_p (var))
-	{
-	  exp = indirect_ref (var->type->toCtype(), exp);
-	  if (irs->inVolatile())
-	    TREE_THIS_VOLATILE (exp) = 1;
-	}
-      else
-	{
-	  if (irs->inVolatile())
-	    {
-	      exp = build_address (exp);
-	      TREE_THIS_VOLATILE (exp) = 1;
-	      exp = build_deref (exp);
-	      TREE_THIS_VOLATILE (exp) = 1;
-	    }
-	}
+	exp = indirect_ref (var->type->toCtype(), exp);
+
       return exp;
     }
   else if (op == TOKsymoff)

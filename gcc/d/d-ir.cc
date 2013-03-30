@@ -96,17 +96,6 @@ SwitchErrorStatement::toIR (IRState *irs)
 }
 
 void
-VolatileStatement::toIR (IRState *irs)
-{
-  if (statement)
-    {
-      irs->pushVolatile();
-      statement->toIR (irs);
-      irs->popVolatile();
-    }
-}
-
-void
 ThrowStatement::toIR (IRState *irs)
 {
   ClassDeclaration *class_decl = exp->type->toBasetype()->isClassHandle();
