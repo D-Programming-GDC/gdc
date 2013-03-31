@@ -396,8 +396,8 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    tree args[2];
 	    args[0] = exp;
 	    args[1] = build_address (target_class_decl->toSymbol()->Stree);
-	    return libCall (obj_class_decl->isInterfaceDeclaration()
-			    ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
+	    return build_libcall (obj_class_decl->isInterfaceDeclaration()
+				  ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
 	  }
 	else
 	  {
@@ -484,7 +484,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	      args[0] = build_integer_cst (sz_dst, Type::tsize_t->toCtype());
 	      args[1] = build_integer_cst (sz_src * mult, Type::tsize_t->toCtype());
 	      args[2] = exp;
-	      return libCall (LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
+	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
 	    }
 	}
       else if (tbtype->ty == Tsarray)
@@ -668,7 +668,7 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
     {
     case Taarray:
       // Shouldn't this be...
-      //  result = libCall (LIBCALL_AALEN, 1, &exp_tree);
+      //  result = build_libcall (LIBCALL_AALEN, 1, &exp_tree);
       result = component_ref (exp_tree, TYPE_FIELDS (TREE_TYPE (exp_tree)));
       break;
 
@@ -1422,7 +1422,8 @@ IRState::toElemLvalue (Expression *e)
 	  args[2] = build_integer_cst (array_type->nextOf()->size(), Type::tsize_t->toCtype());
 	  args[3] = aoe.set (this, convertTo (e2, key_type));
 
-	  result = aoe.finish (this, libCall (LIBCALL_AAGETX, 4, args, type->pointerTo()->toCtype()));
+	  result = aoe.finish (build_libcall (LIBCALL_AAGETX, 4, args,
+					      type->pointerTo()->toCtype()));
 	  return build1 (INDIRECT_REF, type->toCtype(), result);
 	}
     }
@@ -1943,7 +1944,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
     }
 
   ptr_exp = void_okay_p (ptr_exp);
-  subscript_expr = asc->finish (this, subscript_expr);
+  subscript_expr = asc->finish (subscript_expr);
   elem_ref = indirect_ref (TREE_TYPE (TREE_TYPE (ptr_exp)),
 			   pointerIntSum (ptr_exp, subscript_expr));
 
@@ -2004,7 +2005,7 @@ IRState::arraySetExpr (tree ptr, tree value, tree count)
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.
 
 tree
-IRState::binding (tree var_chain, tree body)
+bind_expr (tree var_chain, tree body)
 {
   // TODO: only handles one var
   gcc_assert (TREE_CHAIN (var_chain) == NULL_TREE);
@@ -2315,7 +2316,7 @@ IRState::assertCall (Loc loc, LibCall libcall)
   if (libcall == LIBCALL_ASSERT && this->func->isUnitTestDeclaration())
     libcall = LIBCALL_UNITTEST;
 
-  return libCall (libcall, 2, args);
+  return build_libcall (libcall, 2, args);
 }
 
 // Builds a call to AssertErrorMsg.
@@ -2332,7 +2333,7 @@ IRState::assertCall (Loc loc, Expression *msg)
   LibCall libcall = this->func->isUnitTestDeclaration() ?
     LIBCALL_UNITTEST_MSG : LIBCALL_ASSERT_MSG;
 
-  return libCall (libcall, 3, args);
+  return build_libcall (libcall, 3, args);
 }
 
 
@@ -2388,7 +2389,7 @@ static FuncDeclaration *libcall_decls[LIBCALL_count];
 // more like GCC builtin trees.
 
 FuncDeclaration *
-IRState::getLibCallDecl (LibCall libcall)
+get_libcall (LibCall libcall)
 {
   FuncDeclaration *decl = libcall_decls[libcall];
 
@@ -2824,7 +2825,7 @@ IRState::getLibCallDecl (LibCall libcall)
 }
 
 void
-IRState::maybeSetLibCallDecl (FuncDeclaration *decl)
+maybe_set_libcall (FuncDeclaration *decl)
 {
   if (!decl->ident)
     return;
@@ -2839,7 +2840,7 @@ IRState::maybeSetLibCallDecl (FuncDeclaration *decl)
   TypeFunction *tf = (TypeFunction *) decl->type;
   if (tf->parameters == NULL)
     {
-      FuncDeclaration *new_decl = getLibCallDecl (libcall);
+      FuncDeclaration *new_decl = get_libcall (libcall);
       new_decl->toSymbol();
 
       decl->type = new_decl->type;
@@ -2849,15 +2850,14 @@ IRState::maybeSetLibCallDecl (FuncDeclaration *decl)
   libcall_decls[libcall] = decl;
 }
 
-// Build call to LIBCALL. N_ARGS is the number of call arguments
-// which are specified in as a tree array ARGS.  The caller can
-// force the return type of the call to FORCE_RESULT_TYPE if the
-// library call returns a generic value.
+// Build call to LIBCALL. N_ARGS is the number of call arguments which are
+// specified in as a tree array ARGS.  The caller can force the return type
+// of the call to FORCE_TYPE if the library call returns a generic value.
 
 tree
-IRState::libCall (LibCall libcall, unsigned n_args, tree *args, tree force_result_type)
+build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
 {
-  FuncDeclaration *lib_decl = getLibCallDecl (libcall);
+  FuncDeclaration *lib_decl = get_libcall (libcall);
   Type *type = lib_decl->type->nextOf();
   tree callee = build_address (lib_decl->toSymbol()->Stree);
   tree arg_list = NULL_TREE;
@@ -2867,9 +2867,9 @@ IRState::libCall (LibCall libcall, unsigned n_args, tree *args, tree force_resul
 
   tree result = d_build_call (type->toCtype(), callee, arg_list);
 
-  // for force_result_type, assumes caller knows what it is doing %%
-  if (force_result_type != NULL_TREE)
-    return convert (force_result_type, result);
+  // for TYPE, assumes caller knows what it is doing %%
+  if (force_type != NULL_TREE)
+    return convert (force_type, result);
 
   return result;
 }
@@ -3086,7 +3086,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	      tree val = d_array_value (type, lvar, pvar);
 
 	      exp = compound_expr (compound_expr (e1, e2), val);
-	      exp = binding (lvar, binding (pvar, exp));
+	      exp = bind_expr (lvar, bind_expr (pvar, exp));
 	    }
 	  else
 	    {
@@ -3102,7 +3102,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	  return exp;
 
-	case INTRINSIC_C_VA_START:
+	case INTRINSIC_VA_START:
 	  /* The va_list argument should already have its
 	     address taken.  The second argument, however, is
 	     inout and that needs to be fixed to prevent a warning.  */
@@ -3181,18 +3181,19 @@ IRState::typeinfoReference (Type *t)
 // as BUILT_IN_FRONTEND so can be identified later.
 
 bool
-IRState::maybeSetUpBuiltin (Declaration *decl)
+maybe_set_builtin (Declaration *decl)
 {
-  Dsymbol *dsym;
-  TemplateInstance *ti;
-
   // Don't use toParent2.  We are looking for a template below.
-  dsym = decl->toParent();
+  Dsymbol *dsym = decl->toParent();
+  Module *mod;
+  TemplateInstance *ti;
 
   if (!dsym)
     return false;
 
-  if ((gen.intrinsicModule && dsym->getModule() == gen.intrinsicModule))
+  mod = dsym->getModule();
+
+  if (is_intrinsic_module_p (mod))
     {
       // Matches order of Intrinsic enum
       static const char *intrinsic_names[] = {
@@ -3212,8 +3213,7 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       DECL_FUNCTION_CODE (t) = (built_in_function) i;
       return true;
     }
-  else if ((gen.mathModule && dsym->getModule() == gen.mathModule)
-	   || (gen.mathCoreModule && dsym->getModule() == gen.mathCoreModule))
+  else if (is_math_module_p (mod))
     {
       // Matches order of Intrinsic enum
       static const char *math_names[] = {
@@ -3231,8 +3231,8 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
       tree t = decl->toSymbol()->Stree;
 
-      // rndtol returns a long, sqrt any real value,
-      // every other math builtin returns an 80bit float.
+      // rndtol returns a long type, sqrt any float type,
+      // every other math builtin returns a real type.
       Type *tf = decl->type->nextOf();
       if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
 	  || (i == INTRINSIC_SQRT && tf->isreal())
@@ -3250,22 +3250,22 @@ IRState::maybeSetUpBuiltin (Declaration *decl)
       if (ti)
 	{
 	  tree t = decl->toSymbol()->Stree;
-	  if (ti->tempdecl == gen.stdargTemplateDecl)
+	  if (is_builtin_va_arg_p (ti->tempdecl, false))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_ARG;
 	      return true;
 	    }
-	  if (ti->tempdecl == gen.cstdargTemplateDecl)
+	  if (is_builtin_va_arg_p (ti->tempdecl, true))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_ARG;
 	      return true;
 	    }
-	  else if (ti->tempdecl == gen.cstdargStartTemplateDecl)
+	  else if (is_builtin_va_start_p (ti->tempdecl))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_START;
+	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_START;
 	      return true;
 	    }
 	}
@@ -4561,7 +4561,7 @@ ArrayScope::setArrayExp (tree e, Type *t)
 // Wrap-up temp var into a BIND_EXPR.
 
 tree
-ArrayScope::finish (IRState *irs, tree e)
+ArrayScope::finish (tree e)
 {
   if (this->var_)
     {
@@ -4570,7 +4570,7 @@ ArrayScope::finish (IRState *irs, tree e)
       if (TREE_CODE (t) == VAR_DECL)
 	{
 	  gcc_assert (!s->SframeField);
-	  return irs->binding (t, e);
+	  return bind_expr (t, e);
 	}
       else
 	gcc_unreachable();

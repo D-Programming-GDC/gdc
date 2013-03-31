@@ -214,10 +214,16 @@ void d_register_builtin_type (tree, const char *);
 void gcc_d_backend_init (void);
 void gcc_d_backend_term (void);
 
-/* In d-builtins2.cc */
 void d_bi_init (void);
 void d_bi_builtin_func (tree);
 void d_bi_builtin_type (tree);
+
+bool is_intrinsic_module_p (Module *);
+bool is_math_module_p (Module *);
+
+struct Dsymbol;
+bool is_builtin_va_arg_p (Dsymbol *, bool);
+bool is_builtin_va_start_p (Dsymbol *);
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;

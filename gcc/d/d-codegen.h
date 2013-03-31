@@ -21,98 +21,103 @@
 #include "d-irstate.h"
 #include "d-objfile.h"
 
+
+// Intrinsic bitop, intrinsic math, and internally recognised runtime library functions
+// are listed in alphabetical order for use of bsearch.
+enum Intrinsic
+{
+  INTRINSIC_BSF, INTRINSIC_BSR,
+  INTRINSIC_BSWAP,
+  INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
+
+  INTRINSIC_COS, INTRINSIC_FABS,
+  INTRINSIC_LDEXP, INTRINSIC_RINT,
+  INTRINSIC_RNDTOL, INTRINSIC_SIN,
+  INTRINSIC_SQRT,
+
+  INTRINSIC_VA_START,
+  INTRINSIC_VA_ARG,
+  INTRINSIC_C_VA_ARG,
+  INTRINSIC_count,
+};
+
 enum LibCall
 {
   LIBCALL_NONE = -1,
   LIBCALL_INVARIANT,
-  LIBCALL_AAPPLYRCD1,
-  LIBCALL_AAPPLYRCD2,
-  LIBCALL_AAPPLYRCW1,
-  LIBCALL_AAPPLYRCW2,
-  LIBCALL_AAPPLYRDC1,
-  LIBCALL_AAPPLYRDC2,
-  LIBCALL_AAPPLYRDW1,
-  LIBCALL_AAPPLYRDW2,
-  LIBCALL_AAPPLYRWC1,
-  LIBCALL_AAPPLYRWC2,
-  LIBCALL_AAPPLYRWD1,
-  LIBCALL_AAPPLYRWD2,
-  LIBCALL_AAPPLYCD1,
-  LIBCALL_AAPPLYCD2,
-  LIBCALL_AAPPLYCW1,
-  LIBCALL_AAPPLYCW2,
-  LIBCALL_AAPPLYDC1,
-  LIBCALL_AAPPLYDC2,
-  LIBCALL_AAPPLYDW1,
-  LIBCALL_AAPPLYDW2,
-  LIBCALL_AAPPLYWC1,
-  LIBCALL_AAPPLYWC2,
-  LIBCALL_AAPPLYWD1,
-  LIBCALL_AAPPLYWD2,
-  LIBCALL_AAAPPLY,
-  LIBCALL_AAAPPLY2,
-  LIBCALL_AADELX,
-  LIBCALL_AAEQUAL,
-  LIBCALL_AAGETRVALUEX,
-  LIBCALL_AAGETX,
+  LIBCALL_AAPPLYRCD1, LIBCALL_AAPPLYRCD2,
+  LIBCALL_AAPPLYRCW1, LIBCALL_AAPPLYRCW2,
+  LIBCALL_AAPPLYRDC1, LIBCALL_AAPPLYRDC2,
+  LIBCALL_AAPPLYRDW1, LIBCALL_AAPPLYRDW2,
+  LIBCALL_AAPPLYRWC1, LIBCALL_AAPPLYRWC2,
+  LIBCALL_AAPPLYRWD1, LIBCALL_AAPPLYRWD2,
+  LIBCALL_AAPPLYCD1, LIBCALL_AAPPLYCD2,
+  LIBCALL_AAPPLYCW1, LIBCALL_AAPPLYCW2,
+  LIBCALL_AAPPLYDC1, LIBCALL_AAPPLYDC2,
+  LIBCALL_AAPPLYDW1, LIBCALL_AAPPLYDW2,
+  LIBCALL_AAPPLYWC1, LIBCALL_AAPPLYWC2,
+  LIBCALL_AAPPLYWD1, LIBCALL_AAPPLYWD2,
+  LIBCALL_AAAPPLY, LIBCALL_AAAPPLY2,
+
+  LIBCALL_AADELX, LIBCALL_AAEQUAL,
+  LIBCALL_AAGETRVALUEX, LIBCALL_AAGETX,
   LIBCALL_AAINX,
   LIBCALL_AALEN,
-  LIBCALL_ADCMP,
-  LIBCALL_ADCMP2,
+
+  LIBCALL_ADCMP, LIBCALL_ADCMP2,
   LIBCALL_ADDUPT,
-  LIBCALL_ADEQ,
-  LIBCALL_ADEQ2,
+  LIBCALL_ADEQ, LIBCALL_ADEQ2,
   LIBCALL_ADREVERSE,
   LIBCALL_ADREVERSECHAR,
   LIBCALL_ADREVERSEWCHAR,
   LIBCALL_ADSORT,
   LIBCALL_ADSORTCHAR,
   LIBCALL_ADSORTWCHAR,
+
   LIBCALL_ALLOCMEMORY,
   LIBCALL_ARRAY_BOUNDS,
-  LIBCALL_ARRAYAPPENDT,
-  LIBCALL_ARRAYAPPENDCTX,
-  LIBCALL_ARRAYAPPENDCD,
-  LIBCALL_ARRAYAPPENDWD,
+
+  LIBCALL_ARRAYAPPENDT, LIBCALL_ARRAYAPPENDCTX,
+  LIBCALL_ARRAYAPPENDCD, LIBCALL_ARRAYAPPENDWD,
   LIBCALL_ARRAYASSIGN,
   LIBCALL_ARRAYCAST,
-  LIBCALL_ARRAYCATT,
-  LIBCALL_ARRAYCATNT,
+  LIBCALL_ARRAYCATT, LIBCALL_ARRAYCATNT,
   LIBCALL_ARRAYCOPY,
   LIBCALL_ARRAYCTOR,
   LIBCALL_ARRAYLITERALTX,
-  LIBCALL_ARRAYSETASSIGN,
-  LIBCALL_ARRAYSETCTOR,
-  LIBCALL_ARRAYSETLENGTHT,
-  LIBCALL_ARRAYSETLENGTHIT,
+  LIBCALL_ARRAYSETASSIGN, LIBCALL_ARRAYSETCTOR,
+  LIBCALL_ARRAYSETLENGTHT, LIBCALL_ARRAYSETLENGTHIT,
+
   LIBCALL_ASSERT,
   LIBCALL_ASSERT_MSG,
+
   LIBCALL_ASSOCARRAYLITERALTX,
+
   LIBCALL_CALLFINALIZER,
   LIBCALL_CALLINTERFACEFINALIZER,
+
   LIBCALL_CRITICALENTER,
   LIBCALL_CRITICALEXIT,
-  LIBCALL_DELARRAY,
-  LIBCALL_DELARRAYT,
-  LIBCALL_DELCLASS,
-  LIBCALL_DELINTERFACE,
+
+  LIBCALL_DELARRAY, LIBCALL_DELARRAYT,
+  LIBCALL_DELCLASS, LIBCALL_DELINTERFACE,
   LIBCALL_DELMEMORY,
+
   LIBCALL_DYNAMIC_CAST,
   LIBCALL_HIDDEN_FUNC,
   LIBCALL_INTERFACE_CAST,
+
   LIBCALL_MONITORENTER,
   LIBCALL_MONITOREXIT,
-  LIBCALL_NEWARRAYT,
-  LIBCALL_NEWARRAYIT,
-  LIBCALL_NEWARRAYMTX,
-  LIBCALL_NEWARRAYMITX,
-  LIBCALL_NEWCLASS,
-  LIBCALL_NEWITEMT,
+
+  LIBCALL_NEWARRAYT, LIBCALL_NEWARRAYIT,
+  LIBCALL_NEWARRAYMTX, LIBCALL_NEWARRAYMITX,
+  LIBCALL_NEWCLASS, LIBCALL_NEWITEMT,
   LIBCALL_NEWITEMIT,
-  LIBCALL_SWITCH_DSTRING,
-  LIBCALL_SWITCH_ERROR,
-  LIBCALL_SWITCH_STRING,
-  LIBCALL_SWITCH_USTRING,
+
+  LIBCALL_SWITCH_DSTRING, LIBCALL_SWITCH_ERROR,
+  LIBCALL_SWITCH_STRING, LIBCALL_SWITCH_USTRING,
+
   LIBCALL_THROW,
   LIBCALL_UNITTEST,
   LIBCALL_UNITTEST_MSG,
@@ -164,6 +169,8 @@ extern tree build_deref (tree exp);
 extern tree maybe_compound_expr (tree arg0, tree arg1);
 extern tree maybe_vcompound_expr (tree arg0, tree arg1);
 
+extern tree bind_expr (tree var_chain, tree body);
+
 extern bool error_mark_p (tree t);
 
 // Simple constants
@@ -209,6 +216,16 @@ extern tree build_delegate_cst (tree method, tree object, Type *type);
 extern tree build_method_call (tree callee, tree object, Type *type);
 extern void extract_from_method_call (tree t, tree& callee, tree& object);
 extern tree get_object_method (Expression *exp, FuncDeclaration *func, Type *type);
+
+// Built-in and Library functions.
+extern FuncDeclaration *get_libcall (LibCall libcall);
+// This does not perform conversions on the arguments.  This allows arbitrary data
+// to be passed through varargs without going through the usual conversions.
+extern void maybe_set_libcall (FuncDeclaration *decl);
+extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type = NULL_TREE);
+
+extern bool maybe_set_builtin (Declaration *decl);
+extern tree maybe_expand_builtin (tree call_exp);
 
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.
@@ -352,24 +369,6 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 struct IRState : IRBase
 {
  public:
-  // %% intrinsic and math functions in alphabetical order for bsearch
-  enum Intrinsic
-  {
-    INTRINSIC_BSF, INTRINSIC_BSR,
-    INTRINSIC_BSWAP,
-    INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
-
-    INTRINSIC_COS, INTRINSIC_FABS,
-    INTRINSIC_LDEXP, INTRINSIC_RINT,
-    INTRINSIC_RNDTOL, INTRINSIC_SIN,
-    INTRINSIC_SQRT,
-
-    INTRINSIC_VA_ARG,
-    INTRINSIC_C_VA_ARG,
-    INTRINSIC_C_VA_START,
-    INTRINSIC_count,
-  };
-
   static tree declContext (Dsymbol *d_sym);
   static void doLineNote (const Loc& loc);
 
@@ -416,8 +415,6 @@ struct IRState : IRBase
   void doArraySet (tree in_ptr, tree in_value, tree in_count);
   tree arraySetExpr (tree ptr, tree value, tree count);
 
-  static tree binding (tree var_chain, tree body);
-
   // ** Function calls
   tree call (Expression *expr, Expressions *arguments);
   tree call (FuncDeclaration *func_decl, Expressions *args);
@@ -427,13 +424,6 @@ struct IRState : IRBase
   tree assertCall (Loc loc, LibCall libcall = LIBCALL_ASSERT);
   tree assertCall (Loc loc, Expression *msg);
 
-  static FuncDeclaration *getLibCallDecl (LibCall libcall);
-  // This does not perform conversions on the arguments.  This allows
-  // arbitrary data to be passed through varargs without going through the
-  // usual conversions.
-  static void maybeSetLibCallDecl (FuncDeclaration *decl);
-  static tree libCall (LibCall libcall, unsigned n_args, tree *args, tree force_result_type = NULL_TREE);
-
   TemplateEmission emitTemplates;
 
   // Variables that are in scope that will need destruction later
@@ -442,16 +432,6 @@ struct IRState : IRBase
   static tree floatMod (tree type, tree arg0, tree arg1);
 
   tree typeinfoReference (Type *t);
-
-  // Built-in symbols that require special handling.
-  Module *intrinsicModule;
-  Module *mathModule;
-  Module *mathCoreModule;
-  TemplateDeclaration *stdargTemplateDecl;
-  TemplateDeclaration *cstdargTemplateDecl;
-  TemplateDeclaration *cstdargStartTemplateDecl;
-
-  static bool maybeSetUpBuiltin (Declaration *decl);
 
   static tree label (Loc loc, Identifier *ident = 0);
 
@@ -630,7 +610,7 @@ class ArrayScope
  public:
   ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc);
   tree setArrayExp (tree e, Type *t);
-  tree finish (IRState *irs, tree e);
+  tree finish (tree e);
 
  private:
   VarDeclaration *var_;
@@ -645,8 +625,8 @@ class AddrOfExpr
   tree set (IRState *irs, tree exp)
   { return build_address (irs->maybeExprVar (exp, &this->var_)); }
 
-  tree finish (IRState *irs, tree e2)
-  { return this->var_ ? irs->binding (this->var_, e2) : e2; }
+  tree finish (tree e2)
+  { return this->var_ ? bind_expr (this->var_, e2) : e2; }
 
  private:
   tree var_;

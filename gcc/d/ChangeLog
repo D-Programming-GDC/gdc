@@ -4,6 +4,26 @@
 	(d_handle_option): New femit-moduleinfo switch.
 	* d-objfile.cc(Module::genobjfile): Don't emit module if disabled
 	explicitly.
+	* d-builtins(is_intrinsic_module_p): New function to test whether
+	module is core.bitops.
+	(is_math_module_p): New function to test whether module is std.math or
+	core.stdc.math.
+	(is_builtin_va_arg_p): New function to test whether symbol is
+	specially handled va_arg template.
+	(is_builtin_va_start_p): New function to test whether symbol is
+	specially handled va_start template.
+	* d-codegen.cc(IRState::binding): Replace with bind_expr.
+	(IRState::mathModule): Replace with std_math_module.
+	(IRState::mathCoreModule): Replace with core_math_module.
+	(IRState::intrinsicModule): Replace with std_intrinsic_module.
+	(IRState::cstdargTemplateDecl): Replace with va_arg_template.
+	(IRState::stdargTemplateDecl): Replace with va_arg2_template.
+	(IRState::cstdargStartTemplateDecl): Replace with va_start_template.
+	(IRState::getLibCallDecl): Replace with get_libcall.
+	(IRState::maybeSetLibCallDecl): Replace with maybe_set_libcall.
+	(IRState::libCall): Replace with build_libcall.
+	(IRState::maybeSetUpBuiltin): Replace with maybe_set_builtin.
+	(IRState::Intrinsic): Move enum out of IRState.
 
 2013-03-30  Iain Buclaw  <ibuclaw@gdcproject.org>
 

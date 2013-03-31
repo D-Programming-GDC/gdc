@@ -121,7 +121,7 @@ ThrowStatement::toIR (IRState *irs)
 	error ("cannot throw COM interfaces");
     }
   irs->doLineNote (loc);
-  irs->addExp (irs->libCall (LIBCALL_THROW, 1, &arg));
+  irs->addExp (build_libcall (LIBCALL_THROW, 1, &arg));
 }
 
 void
@@ -332,7 +332,7 @@ SwitchStatement::toIR (IRState *irs)
 			       size_int (cases->dim), p_table);
       args[1] = cond_tree;
 
-      cond_tree = irs->libCall (libcall, 2, args);
+      cond_tree = build_libcall (libcall, 2, args);
     }
   else if (!cond_type->isscalar())
     {

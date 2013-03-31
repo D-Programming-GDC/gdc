@@ -312,7 +312,7 @@ FuncDeclaration::buildClosure (IRState *irs)
 
   DECL_INITIAL (closure_ptr) =
     build_nop (TREE_TYPE (closure_ptr),
-	       irs->libCall (LIBCALL_ALLOCMEMORY, 1, &arg));
+	       build_libcall (LIBCALL_ALLOCMEMORY, 1, &arg));
   irs->expandDecl (closure_ptr);
 
   // set the first entry to the parent closure, if any

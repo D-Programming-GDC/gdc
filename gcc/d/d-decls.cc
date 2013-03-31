@@ -493,8 +493,8 @@ FuncDeclaration::toSymbol (void)
 
 	  TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
 
-	  gen.maybeSetLibCallDecl (this);
-	  gen.maybeSetUpBuiltin (this);
+	  maybe_set_libcall (this);
+	  maybe_set_builtin (this);
 	}
       else
 	{

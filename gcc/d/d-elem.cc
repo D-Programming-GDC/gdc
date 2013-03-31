@@ -124,7 +124,7 @@ EqualExp::toElem (IRState *irs)
       args[1] = irs->toDArray (e2);
       args[2] = irs->typeinfoReference (telem->arrayOf());
 
-      tree result = irs->libCall (LIBCALL_ADEQ2, 3, args);
+      tree result = build_libcall (LIBCALL_ADEQ2, 3, args);
       result = irs->convertTo (type->toCtype(), result);
       if (op == TOKnotequal)
 	result = build1 (TRUTH_NOT_EXPR, type->toCtype(), result);
@@ -139,7 +139,7 @@ EqualExp::toElem (IRState *irs)
       args[1] = e1->toElem (irs);
       args[2] = e2->toElem (irs);
 
-      tree result = irs->libCall (LIBCALL_AAEQUAL, 3, args);
+      tree result = build_libcall (LIBCALL_AAEQUAL, 3, args);
       result = irs->convertTo (type->toCtype(), result);
       if (op == TOKnotequal)
 	result = build1 (TRUTH_NOT_EXPR, type->toCtype(), result);
@@ -176,7 +176,7 @@ InExp::toElem (IRState *irs)
   args[2] = aoe.set (irs, irs->convertTo (e1, key_type));
 
   return convert (type->toCtype(),
-		  aoe.finish (irs, irs->libCall (LIBCALL_AAINX, 3, args)));
+		  aoe.finish (build_libcall (LIBCALL_AAINX, 3, args)));
 }
 
 elem *
@@ -257,7 +257,7 @@ CmpExp::toElem (IRState *irs)
       args[1] = irs->toDArray (e2);
       args[2] = irs->typeinfoReference (telem->arrayOf());
 
-      result = irs->libCall (LIBCALL_ADCMP2, 3, args);
+      result = build_libcall (LIBCALL_ADCMP2, 3, args);
 
       // %% For float element types, warn that NaN is not taken into account?
 
@@ -569,13 +569,13 @@ CatExp::toElem (IRState *irs)
     }
  all_done:
 
-  result = irs->libCall (n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
-			 n_args, args, type->toCtype());
+  result = build_libcall (n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
+			  n_args, args, type->toCtype());
 
   for (size_t i = 0; i < elem_vars.dim; ++i)
     {
       tree elem_var = (tree) elem_vars.data[i];
-      result = irs->binding (elem_var, result);
+      result = bind_expr (elem_var, result);
     }
 
   return result;
@@ -747,7 +747,7 @@ CatAssignExp::toElem (IRState *irs)
       LibCall libcall = elem_type->ty == Tchar ?
 	LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
 
-      result = irs->libCall (libcall, 2, args, type->toCtype());
+      result = build_libcall (libcall, 2, args, type->toCtype());
     }
   else
     {
@@ -761,7 +761,7 @@ CatAssignExp::toElem (IRState *irs)
 	  args[0] = irs->typeinfoReference (type);
 	  args[1] = build_address (irs->toElemLvalue (e1));
 	  args[2] = irs->toDArray (e2);
-	  result = irs->libCall (LIBCALL_ARRAYAPPENDT, 3, args, type->toCtype());
+	  result = build_libcall (LIBCALL_ARRAYAPPENDT, 3, args, type->toCtype());
 	}
       else
 	{
@@ -771,7 +771,7 @@ CatAssignExp::toElem (IRState *irs)
 	  args[1] = build_address (irs->toElemLvalue (e1));
 	  args[2] = size_one_node;
 
-	  result = irs->libCall (LIBCALL_ARRAYAPPENDCTX, 3, args, type->toCtype());
+	  result = build_libcall (LIBCALL_ARRAYAPPENDCTX, 3, args, type->toCtype());
 	  result = save_expr (result);
 
 	  // assign e2 to last element
@@ -792,7 +792,7 @@ CatAssignExp::toElem (IRState *irs)
 	}
     }
 
-  return aoe.finish (irs, result);
+  return aoe.finish (result);
 }
 
 elem *
@@ -848,7 +848,7 @@ AssignExp::toElem (IRState *irs)
       LibCall libcall = elem_type->isZeroInit() ?
 	LIBCALL_ARRAYSETLENGTHT : LIBCALL_ARRAYSETLENGTHIT;
 
-      tree result = irs->libCall (libcall, 3, args);
+      tree result = build_libcall (libcall, 3, args);
       return d_array_length (result);
     }
   else if (e1->op == TOKslice)
@@ -874,8 +874,8 @@ AssignExp::toElem (IRState *irs)
 		  args[2] = d_array_length (t1);
 		  args[3] = irs->typeinfoReference (elem_type);
 
-		  tree t = irs->libCall (libcall, 4, args);
-		  return compound_expr (aoe.finish (irs, t), t1);
+		  tree t = build_libcall (libcall, 4, args);
+		  return compound_expr (aoe.finish (t), t1);
 		}
 	    }
 
@@ -895,7 +895,7 @@ AssignExp::toElem (IRState *irs)
 	      args[1] = irs->toDArray (e1);
 	      args[2] = irs->toDArray (e2);
 
-	      return irs->libCall (libcall, 3, args, type->toCtype());
+	      return build_libcall (libcall, 3, args, type->toCtype());
 	    }
 
 	  if (irs->arrayBoundsCheck())
@@ -904,7 +904,7 @@ AssignExp::toElem (IRState *irs)
 	      args[0] = build_integer_cst (elem_type->size(), Type::tsize_t->toCtype());
 	      args[1] = irs->toDArray (e2);
 	      args[2] = irs->toDArray (e1);
-	      return irs->libCall (LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
+	      return build_libcall (LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
 	    }
 	  else
 	    {
@@ -1028,7 +1028,7 @@ IndexExp::toElem (IRState *irs)
       args[2] = build_integer_cst (array_type->nextOf()->size(), Type::tsize_t->toCtype());
       args[3] = aoe.set (irs, irs->convertTo (e2, key_type));
 
-      index = aoe.finish (irs, irs->libCall (libcall, 4, args, type->pointerTo()->toCtype()));
+      index = aoe.finish (build_libcall (libcall, 4, args, type->pointerTo()->toCtype()));
 
       if (irs->arrayBoundsCheck())
 	{
@@ -1176,7 +1176,7 @@ SliceExp::toElem (IRState *irs)
     }
 
   tree result = d_array_value (type->toCtype(), final_len_expr, final_ptr_expr);
-  return aryscp.finish (irs, result);
+  return aryscp.finish (result);
 }
 
 elem *
@@ -1212,14 +1212,14 @@ DeleteExp::toElem (IRState *irs)
 	    {
 	      libcall = tb1->isClassHandle()->isInterfaceDeclaration() ?
 		LIBCALL_CALLINTERFACEFINALIZER : LIBCALL_CALLFINALIZER;
-	      return irs->libCall (libcall, 1, &t1);
+	      return build_libcall (libcall, 1, &t1);
 	    }
 	}
       libcall = tb1->isClassHandle()->isInterfaceDeclaration() ?
 	LIBCALL_DELINTERFACE : LIBCALL_DELCLASS;
 
       t1 = build_address (t1);
-      return irs->libCall (libcall, 1, &t1);
+      return build_libcall (libcall, 1, &t1);
     }
   else if (tb1->ty == Tarray)
     {
@@ -1239,12 +1239,12 @@ DeleteExp::toElem (IRState *irs)
       tree args[2];
       args[0] = build_address (t1);
       args[1] = ti;
-      return irs->libCall (LIBCALL_DELARRAYT, 2, args);
+      return build_libcall (LIBCALL_DELARRAYT, 2, args);
     }
   else if (tb1->ty == Tpointer)
     {
       t1 = build_address (t1);
-      return irs->libCall (LIBCALL_DELMEMORY, 1, &t1);
+      return build_libcall (LIBCALL_DELMEMORY, 1, &t1);
     }
   else
     {
@@ -1269,7 +1269,7 @@ RemoveExp::toElem (IRState *irs)
       args[1] = irs->typeinfoReference (key_type);
       args[2] = aoe.set (irs, irs->convertTo (e_index, key_type));
 
-      return aoe.finish (irs, irs->libCall (LIBCALL_AADELX, 3, args));
+      return aoe.finish (build_libcall (LIBCALL_AADELX, 3, args));
     }
   else
     {
@@ -1563,7 +1563,7 @@ AssertExp::toElem (IRState *irs)
 	  // this does a null pointer check before calling _d_invariant
 	  return build3 (COND_EXPR, void_type_node,
 			 build_boolop (NE_EXPR, arg, d_null_pointer),
-			 irs->libCall (LIBCALL_INVARIANT, 1, &arg), assert_call);
+			 build_libcall (LIBCALL_INVARIANT, 1, &arg), assert_call);
 	}
       else
 	{
@@ -1763,7 +1763,7 @@ NewExp::toElem (IRState *irs)
       else
 	{
 	  tree arg = build_address (class_decl->toSymbol()->Stree);
-	  new_call = irs->libCall (LIBCALL_NEWCLASS, 1, &arg);
+	  new_call = build_libcall (LIBCALL_NEWCLASS, 1, &arg);
 	}
       new_call = build_nop (tb->toCtype(), new_call);
 
@@ -1827,7 +1827,7 @@ NewExp::toElem (IRState *irs)
 	{
 	  libcall = struct_type->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
 	  tree arg = type->getTypeInfo(NULL)->toElem (irs);
-	  new_call = irs->libCall (libcall, 1, &arg);
+	  new_call = build_libcall (libcall, 1, &arg);
 	}
       new_call = build_nop (tb->toCtype(), new_call);
 
@@ -1871,7 +1871,7 @@ NewExp::toElem (IRState *irs)
 	  tree args[2];
 	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
 	  args[1] = arg->toElem (irs);
-	  result = irs->libCall (libcall, 2, args, tb->toCtype());
+	  result = build_libcall (libcall, 2, args, tb->toCtype());
 	}
       else
 	{
@@ -1899,8 +1899,8 @@ NewExp::toElem (IRState *irs)
 	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
 	  args[1] = build_integer_cst (arguments->dim, Type::tint32->toCtype());
 	  args[2] = build_address (dims_var);
-	  result = irs->libCall (libcall, 3, args, tb->toCtype());
-	  result = irs->binding (dims_var, result);
+	  result = build_libcall (libcall, 3, args, tb->toCtype());
+	  result = bind_expr (dims_var, result);
 	}
     }
   // New'ing a pointer
@@ -1910,7 +1910,7 @@ NewExp::toElem (IRState *irs)
 
       libcall = pointer_type->next->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
       tree arg = type->getTypeInfo(NULL)->toElem (irs);
-      result = irs->libCall (libcall, 1, &arg, tb->toCtype());
+      result = build_libcall (libcall, 1, &arg, tb->toCtype());
     }
   else
     gcc_unreachable();
@@ -2073,7 +2073,7 @@ ArrayLiteralExp::toElem (IRState *irs)
       args[1] = build_integer_cst (elements->dim, size_type_node);
 
       // Call _d_arrayliteralTX (ti, dim);
-      tree mem = irs->libCall (LIBCALL_ARRAYLITERALTX, 2, args, etype->pointerTo()->toCtype());
+      tree mem = build_libcall (LIBCALL_ARRAYLITERALTX, 2, args, etype->pointerTo()->toCtype());
       mem = maybe_make_temp (mem);
 
       // memcpy (mem, &ctor, size)
@@ -2154,14 +2154,14 @@ AssocArrayLiteralExp::toElem (IRState *irs)
   args[1] = d_array_value (index->arrayOf()->toCtype(), size_int (keys->dim), keys_ptr);
   args[2] = d_array_value (next->arrayOf()->toCtype(), size_int (keys->dim), vals_ptr);
 
-  result = maybe_compound_expr (result, irs->libCall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
+  result = maybe_compound_expr (result, build_libcall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
 
   CtorEltMaker ce;
   tree aat_type = aa_type->toCtype();
   ce.cons (TYPE_FIELDS (aat_type), result);
   tree ctor = build_constructor (aat_type, ce.head);
 
-  result = irs->binding (keys_var, irs->binding (vals_var, ctor));
+  result = bind_expr (keys_var, bind_expr (vals_var, ctor));
   return build_nop (type->toCtype(), result);
 }
 
@@ -2206,7 +2206,7 @@ StructLiteralExp::toElem (IRState *irs)
 		      args[0] = irs->typeinfoReference (ti);
 		      args[1] = irs->toDArray (exp);
 		      args[2] = irs->convertTo (exp_tree, exp_type, ti->arrayOf());
-		      call_exp = irs->libCall (LIBCALL_ARRAYCTOR, 3, args);
+		      call_exp = build_libcall (LIBCALL_ARRAYCTOR, 3, args);
 		    }
 		  else
 		    {

@@ -141,13 +141,6 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
 
   // extra D-specific options
   gen.emitTemplates = TEnormal;
-
-  gen.intrinsicModule = NULL;
-  gen.mathModule = NULL;
-  gen.mathCoreModule = NULL;
-  gen.stdargTemplateDecl = NULL;
-  gen.cstdargTemplateDecl = NULL;
-  gen.cstdargStartTemplateDecl = NULL;
 }
 
 /* Initialize options structure OPTS.  */
@@ -875,8 +868,7 @@ d_parse_file (void)
     }
 
   // There is only one of these so far...
-  rtlsym[RTLSYM_DHIDDENFUNC] =
-    gen.getLibCallDecl (LIBCALL_HIDDEN_FUNC)->toSymbol();
+  rtlsym[RTLSYM_DHIDDENFUNC] = get_libcall (LIBCALL_HIDDEN_FUNC)->toSymbol();
 
   // current_module shouldn't have any implications before genobjfile..
   // ... but it does.  We need to know what module in which to insert
