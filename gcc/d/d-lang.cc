@@ -129,6 +129,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.Dversion = 2;
   global.params.quiet = 1;
   global.params.useDeprecated = 2;
+  global.params.betterC = 0;
 
   global.params.linkswitches = new Strings();
   global.params.libfiles = new Strings();
@@ -404,6 +405,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_femit_templates:
       gen.emitTemplates = value ? TEprivate : TEnone;
+      break;
+
+    case OPT_femit_moduleinfo:
+      global.params.betterC = !value;
       break;
 
     case OPT_fignore_unknown_pragmas:

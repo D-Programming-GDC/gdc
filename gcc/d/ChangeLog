@@ -1,3 +1,10 @@
+2013-03-31  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_init_options): Default module info emission to on.
+	(d_handle_option): New femit-moduleinfo switch.
+	* d-objfile.cc(Module::genobjfile): Don't emit module if disabled
+	explicitly.
+
 2013-03-30  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::darrayPtrRef): Replace with d_array_ptr.

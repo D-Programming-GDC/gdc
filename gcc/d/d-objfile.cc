@@ -359,8 +359,9 @@ Module::genobjfile (int multiobj)
 	}
     }
 
-  // Always generate module info.
-  if (1 || needModuleInfo())
+  // Default behaviour is to always generate module info because of templates.
+  // Can be switched off for not compiling against runtime library.
+  if (!global.params.betterC)
     {
       ModuleInfo& mi = *object_file->moduleInfo;
       if (mi.ctors.dim || mi.ctorgates.dim)
@@ -369,7 +370,7 @@ Module::genobjfile (int multiobj)
 	sdtor = object_file->doDtorFunction ("*__moddtor", &mi.dtors)->toSymbol();
       if (mi.sharedctors.dim || mi.sharedctorgates.dim)
 	ssharedctor = object_file->doCtorFunction ("*__modsharedctor",
-					       &mi.sharedctors, &mi.sharedctorgates)->toSymbol();
+						   &mi.sharedctors, &mi.sharedctorgates)->toSymbol();
       if (mi.shareddtors.dim)
 	sshareddtor = object_file->doDtorFunction ("*__modshareddtor", &mi.shareddtors)->toSymbol();
       if (mi.unitTests.dim)
