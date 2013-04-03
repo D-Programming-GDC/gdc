@@ -221,11 +221,10 @@ extern tree get_object_method (Expression *exp, FuncDeclaration *func, Type *typ
 extern FuncDeclaration *get_libcall (LibCall libcall);
 // This does not perform conversions on the arguments.  This allows arbitrary data
 // to be passed through varargs without going through the usual conversions.
-extern void maybe_set_libcall (FuncDeclaration *decl);
 extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type = NULL_TREE);
-
-extern bool maybe_set_builtin (Declaration *decl);
 extern tree maybe_expand_builtin (tree call_exp);
+
+extern void maybe_set_builtin_frontend (FuncDeclaration *decl);
 
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.

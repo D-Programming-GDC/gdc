@@ -2824,32 +2824,6 @@ get_libcall (LibCall libcall)
   return decl;
 }
 
-void
-maybe_set_libcall (FuncDeclaration *decl)
-{
-  if (!decl->ident)
-    return;
-
-  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
-  if (libcall == LIBCALL_NONE)
-    return;
-
-  if (libcall_decls[libcall] == decl)
-    return;
-
-  TypeFunction *tf = (TypeFunction *) decl->type;
-  if (tf->parameters == NULL)
-    {
-      FuncDeclaration *new_decl = get_libcall (libcall);
-      new_decl->toSymbol();
-
-      decl->type = new_decl->type;
-      decl->csym = new_decl->csym;
-    }
-
-  libcall_decls[libcall] = decl;
-}
-
 // Build call to LIBCALL. N_ARGS is the number of call arguments which are
 // specified in as a tree array ARGS.  The caller can force the return type
 // of the call to FORCE_TYPE if the library call returns a generic value.
@@ -3176,101 +3150,120 @@ IRState::typeinfoReference (Type *t)
   return ti_ref;
 }
 
-// Returns TRUE if DECL is an intrinsic function that requires
-// special processing.  Marks the generated trees for DECL
+// Checks if DECL is an intrinsic or runtime library function that
+// requires special processing.  Marks the generated trees for DECL
 // as BUILT_IN_FRONTEND so can be identified later.
 
-bool
-maybe_set_builtin (Declaration *decl)
+void
+maybe_set_builtin_frontend (FuncDeclaration *decl)
 {
-  // Don't use toParent2.  We are looking for a template below.
-  Dsymbol *dsym = decl->toParent();
-  Module *mod;
-  TemplateInstance *ti;
+  if (!decl->ident)
+    return;
 
-  if (!dsym)
-    return false;
+  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
 
-  mod = dsym->getModule();
-
-  if (is_intrinsic_module_p (mod))
+  if (libcall != LIBCALL_NONE)
     {
-      // Matches order of Intrinsic enum
-      static const char *intrinsic_names[] = {
-	  "bsf", "bsr", "bswap",
-	  "btc", "btr", "bts",
-      };
-      const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
-      int i = binary (decl->ident->string, intrinsic_names, sz);
-      if (i == -1)
-	return false;
+      // It's a runtime library function, add to libcall_decls.
+      if (libcall_decls[libcall] == decl)
+	return;
 
-      // Make sure 'i' is within the range we require.
-      gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
-      tree t = decl->toSymbol()->Stree;
-
-      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-      DECL_FUNCTION_CODE (t) = (built_in_function) i;
-      return true;
-    }
-  else if (is_math_module_p (mod))
-    {
-      // Matches order of Intrinsic enum
-      static const char *math_names[] = {
-	  "cos", "fabs", "ldexp",
-	  "rint", "rndtol", "sin",
-	  "sqrt",
-      };
-      const size_t sz = sizeof (math_names) / sizeof (char *);
-      int i = binary (decl->ident->string, math_names, sz);
-      if (i == -1)
-	return false;
-
-      // Adjust 'i' for this range of enums
-      i += INTRINSIC_COS;
-      gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
-      tree t = decl->toSymbol()->Stree;
-
-      // rndtol returns a long type, sqrt any float type,
-      // every other math builtin returns a real type.
-      Type *tf = decl->type->nextOf();
-      if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
-	  || (i == INTRINSIC_SQRT && tf->isreal())
-	  || (i != INTRINSIC_RNDTOL && tf->ty == Tfloat80))
+      TypeFunction *tf = (TypeFunction *) decl->type;
+      if (tf->parameters == NULL)
 	{
-	  DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	  DECL_FUNCTION_CODE (t) = (built_in_function) i;
-	  return true;
+	  FuncDeclaration *new_decl = get_libcall (libcall);
+	  new_decl->toSymbol();
+
+	  decl->type = new_decl->type;
+	  decl->csym = new_decl->csym;
 	}
-      return false;
+
+      libcall_decls[libcall] = decl;
     }
   else
     {
-      ti = dsym->isTemplateInstance();
-      if (ti)
+      // Check if it's a front-end builtin.
+      Dsymbol *dsym = decl->toParent();
+      Module *mod;
+
+      mod = dsym->getModule();
+
+      if (is_intrinsic_module_p (mod))
 	{
+	  // Matches order of Intrinsic enum
+	  static const char *intrinsic_names[] = {
+	      "bsf", "bsr", "bswap",
+	      "btc", "btr", "bts",
+	  };
+	  const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
+	  int i = binary (decl->ident->string, intrinsic_names, sz);
+
+	  if (i == -1)
+	    return;
+
+	  // Make sure 'i' is within the range we require.
+	  gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
 	  tree t = decl->toSymbol()->Stree;
+
+	  DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
+	  DECL_FUNCTION_CODE (t) = (built_in_function) i;
+	}
+      else if (is_math_module_p (mod))
+	{
+	  // Matches order of Intrinsic enum
+	  static const char *math_names[] = {
+	      "cos", "fabs", "ldexp",
+	      "rint", "rndtol", "sin",
+	      "sqrt",
+	  };
+	  const size_t sz = sizeof (math_names) / sizeof (char *);
+	  int i = binary (decl->ident->string, math_names, sz);
+
+	  if (i == -1)
+	    return;
+
+	  // Adjust 'i' for this range of enums
+	  i += INTRINSIC_COS;
+	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
+	  tree t = decl->toSymbol()->Stree;
+
+	  // rndtol returns a long type, sqrt any float type,
+	  // every other math builtin returns a real type.
+	  Type *tf = decl->type->nextOf();
+	  if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
+	      || (i == INTRINSIC_SQRT && tf->isreal())
+	      || (i != INTRINSIC_RNDTOL && tf->ty == Tfloat80))
+	    {
+	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
+	      DECL_FUNCTION_CODE (t) = (built_in_function) i;
+	    }
+	}
+      else
+	{
+	  TemplateInstance *ti = dsym->isTemplateInstance();
+
+	  if (ti == NULL)
+	    return;
+
+	  tree t = decl->toSymbol()->Stree;
+
 	  if (is_builtin_va_arg_p (ti->tempdecl, false))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_ARG;
-	      return true;
 	    }
-	  if (is_builtin_va_arg_p (ti->tempdecl, true))
+	  else if (is_builtin_va_arg_p (ti->tempdecl, true))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_ARG;
-	      return true;
 	    }
 	  else if (is_builtin_va_start_p (ti->tempdecl))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_START;
-	      return true;
 	    }
 	}
     }
-  return false;
 }
 
 // Build and return D's internal exception Object.
