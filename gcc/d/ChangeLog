@@ -1,3 +1,14 @@
+2013-04-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::buildChain): Use __frame decl directly when
+	setting up the function frame.
+	* d-decls.cc(FuncDeclaration::toSymbol): Defer all nested functions,
+	not just templated instances.
+	* d-objfile.cc(FuncDeclaration::toObjFile): Delay processed deferred
+	nested functions until function has finished being generated.
+	(ObjectFile::shouldEmit): Don't emit nested functions if the parent
+	function hasn't finished processing.
+
 2013-04-03  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(maybe_set_builtin_frontend): Merged from

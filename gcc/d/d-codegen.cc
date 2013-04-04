@@ -3628,15 +3628,13 @@ IRState::buildChain (FuncDeclaration *func)
   gcc_assert(COMPLETE_TYPE_P (frame_rec_type));
 
   tree frame_decl = localVar (frame_rec_type);
-  tree frame_ptr = build_address (frame_decl);
   DECL_NAME (frame_decl) = get_identifier ("__frame");
   DECL_IGNORED_P (frame_decl) = 0;
   expandDecl (frame_decl);
 
   // set the first entry to the parent frame, if any
   tree chain_link = chainLink();
-  tree chain_field = component_ref (build_deref (frame_ptr),
-				    TYPE_FIELDS (frame_rec_type));
+  tree chain_field = component_ref (frame_decl, TYPE_FIELDS (frame_rec_type));
 
   if (chain_link == NULL_TREE)
     chain_link = d_null_pointer;
@@ -3653,12 +3651,12 @@ IRState::buildChain (FuncDeclaration *func)
 
       Symbol *vsym = v->toSymbol();
 
-      tree frame_field = component_ref (build_deref (frame_ptr), vsym->SframeField);
+      tree frame_field = component_ref (frame_decl, vsym->SframeField);
       tree frame_expr = vmodify_expr (frame_field, vsym->Stree);
       addExp (frame_expr);
     }
 
-  useChain (this->func, frame_ptr);
+  useChain (this->func, build_address (frame_decl));
 }
 
 tree

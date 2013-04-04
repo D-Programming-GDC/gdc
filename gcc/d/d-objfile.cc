@@ -180,10 +180,6 @@ FuncDeclaration::toObjFile (int)
 
   fbody->toIR (irs);
 
-  // Process all deferred nested functions.
-  for (size_t i = 0; i < this_sym->deferredNestedFuncs.dim; ++i)
-    (this_sym->deferredNestedFuncs[i])->toObjFile (false);
-
   if (v_argptr)
     {
       tree body = irs->popStatementList();
@@ -277,6 +273,10 @@ FuncDeclaration::toObjFile (int)
 
   if (!errorcount && !global.errors)
     object_file->outputFunction (this);
+
+  // Process all deferred nested functions.
+  for (size_t i = 0; i < this_sym->deferredNestedFuncs.dim; ++i)
+    (this_sym->deferredNestedFuncs[i])->toObjFile (false);
 
   current_function_decl = old_current_function_decl;
   set_cfun (old_cfun);
@@ -789,13 +789,17 @@ ObjectFile::shouldEmit (Declaration *d_sym)
 	  gcc_assert (global.errors);
 	  return false;
 	}
+    }
 
-      // Defer emitting nested functions whose parent isn't started yet.
-      // If the parent never gets emitted, then neither will fd.
-      FuncDeclaration *outerfd = fd->toParent2()->isFuncDeclaration();
-      if (outerfd && outerfd->toSymbol()->outputStage == NotStarted)
+  // Defer emitting nested functions whose parent isn't started yet.
+  // If the parent never gets emitted, then neither will fd.
+  Dsymbol *outer = fd->toParent2();
+  if (outer && outer->isFuncDeclaration())
+    {
+      Symbol *osym = outer->toSymbol();
+      if (osym->outputStage != Finished)
 	{
-	  outerfd->toSymbol()->deferredNestedFuncs.push (fd);
+	  osym->deferredNestedFuncs.push (fd);
 	  return false;
 	}
     }
