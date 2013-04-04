@@ -2,6 +2,7 @@
 
 	* d-codegen.cc(IRState::buildChain): Use __frame decl directly when
 	setting up the function frame.
+	(maybe_set_builtin_frontend): Exit early if symbol has no parent.
 	* d-decls.cc(FuncDeclaration::toSymbol): Defer all nested functions,
 	not just templated instances.
 	* d-objfile.cc(FuncDeclaration::toObjFile): Delay processed deferred

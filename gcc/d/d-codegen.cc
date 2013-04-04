@@ -3186,6 +3186,9 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
       Dsymbol *dsym = decl->toParent();
       Module *mod;
 
+      if (dsym == NULL)
+	return;
+
       mod = dsym->getModule();
 
       if (is_intrinsic_module_p (mod))
