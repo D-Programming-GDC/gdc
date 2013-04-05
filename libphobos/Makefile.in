@@ -69,12 +69,10 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 subdir = .
-DIST_COMMON = $(am__configure_deps) $(srcdir)/../config.guess \
-	$(srcdir)/../config.sub $(srcdir)/../install-sh \
-	$(srcdir)/../missing $(srcdir)/../mkinstalldirs \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(srcdir)/config.h.in $(srcdir)/phobos-ver-syms.in \
-	$(top_srcdir)/configure
+DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
+	$(srcdir)/phobos-ver-syms.in $(top_srcdir)/configure \
+	config.guess config.sub install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -82,7 +80,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
-mkinstalldirs = $(SHELL) $(top_srcdir)/../mkinstalldirs
+mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = phobos-ver-syms
 CONFIG_CLEAN_VPATH_FILES =
@@ -182,11 +180,11 @@ DCFG_SEMAPHORE_IMPL = @DCFG_SEMAPHORE_IMPL@
 DCFG_UNIX = @DCFG_UNIX@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
+DFLAGSX = @DFLAGSX@
 DRUNTIME_OBJS = @DRUNTIME_OBJS@
 D_EXTRA_OBJS = @D_EXTRA_OBJS@
 D_GC_FLAGS = @D_GC_FLAGS@
 D_GC_MODULES = @D_GC_MODULES@
-D_PREREQ_SRCS = @D_PREREQ_SRCS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -778,6 +776,7 @@ distcleancheck: distclean
 	       $(distcleancheck_listfiles) ; \
 	       exit 1; } >&2
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-recursive
 all-am: Makefile all-multi config.h all-local
 installdirs: installdirs-recursive
@@ -882,13 +881,13 @@ ps-am:
 uninstall-am:
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) all all-multi \
-	clean-multi ctags-recursive distclean-multi install-am \
-	install-multi install-strip maintainer-clean-multi \
+	check-am clean-multi ctags-recursive distclean-multi \
+	install-am install-multi install-strip maintainer-clean-multi \
 	mostlyclean-multi tags-recursive
 
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am all-local all-multi am--refresh check check-am \
-	clean clean-generic clean-local clean-multi ctags \
+	check-local clean clean-generic clean-local clean-multi ctags \
 	ctags-recursive dist dist-all dist-bzip2 dist-gzip dist-lzip \
 	dist-lzma dist-shar dist-tarZ dist-xz dist-zip distcheck \
 	distclean distclean-generic distclean-hdr distclean-multi \
@@ -922,8 +921,8 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 .S.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
-%.t.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -c $<
+%.t.o : %.d
+	$(GDC) -o $@ $(DFLAGSX) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
 	cp $< $@
@@ -932,14 +931,11 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 # GDC LibPhobos
 
 # Special-case for std.xml, need to emit templates.
-std/xml.o : std/xml.d $(D_PREREQ_SRCS)
+std/xml.o : std/xml.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
-unittest: unittest.o libgphobos2_t.a libgphobos2.a
+unittest: libgphobos2.a libgphobos2_t.a unittest.o
 	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L./libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
-
-std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -Wno-deprecated -c $<
 
 libgphobos2.a : $(ALL_PHOBOS_OBJS) libdruntime/libgdruntime.a
 	cp libdruntime/libgdruntime.a libgphobos2.a
@@ -949,6 +945,9 @@ libgphobos2.a : $(ALL_PHOBOS_OBJS) libdruntime/libgdruntime.a
 libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
+
+check-local: unittest
+	./unittest
 
 install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)

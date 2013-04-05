@@ -1632,6 +1632,7 @@ elem *
 FuncExp::toElem (IRState *irs)
 {
   Type *func_type = type->toBasetype();
+  Symbol *s = irs->func->toSymbol();
 
   if (func_type->ty == Tpointer)
     {
@@ -1645,7 +1646,7 @@ FuncExp::toElem (IRState *irs)
       func_type = func_type->nextOf()->toBasetype();
     }
 
-  fd->toObjFile (false);
+  s->deferredNestedFuncs.push (fd);
 
   // If nested, this will be a trampoline...
   switch (func_type->ty)

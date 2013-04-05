@@ -271,9 +271,6 @@ AC_SUBST(D_EXTRA_OBJS)
 DRUNTIME_OBJS=
 AC_SUBST(DRUNTIME_OBJS)
 
-D_PREREQ_SRCS='$(config_d_src)'
-AC_SUBST(D_PREREQ_SRCS)
-
 if test "$with_newlib" = no; then
 
 AC_CHECK_LIB(m,cos)
@@ -430,6 +427,10 @@ if test -z "$DFLAGS"; then
 fi
 AC_SUBST(DFLAGS)
 
+if test -z "$DFLAGSX"; then
+    DFLAGSX="-Wall -g -fno-release -funittest"
+fi
+AC_SUBST(DFLAGSX)
 
 dnl TODO: change this to using pthreads? if so, define usepthreads
 dnl and configure semaphore

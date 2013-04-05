@@ -629,6 +629,7 @@ ZLIB_OBJS
 D_GC_MODULES
 D_GC_FLAGS
 srcdir
+DFLAGSX
 DFLAGS
 DCFG_POSIX
 DCFG_UNIX
@@ -637,7 +638,6 @@ DCFG_MMAP
 DCFG_SEMAPHORE_IMPL
 DCFG_CBRIDGE_STDIO
 DCFG_ARM_EABI_UNWINDER
-D_PREREQ_SRCS
 DRUNTIME_OBJS
 D_EXTRA_OBJS
 EGREP
@@ -4759,9 +4759,6 @@ D_EXTRA_OBJS=
 DRUNTIME_OBJS=
 
 
-D_PREREQ_SRCS='$(config_d_src)'
-
-
 if test "$with_newlib" = no; then
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for cos in -lm" >&5
@@ -5340,6 +5337,10 @@ if test -z "$DFLAGS"; then
     DFLAGS="-Wall -g -frelease -O2"
 fi
 
+
+if test -z "$DFLAGSX"; then
+    DFLAGSX="-Wall -g -fno-release -funittest"
+fi
 
 
 

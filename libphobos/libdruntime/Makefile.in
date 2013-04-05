@@ -76,7 +76,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(SHELL) $(top_srcdir)/../mkinstalldirs
+mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES = phobos-ver-syms
 CONFIG_CLEAN_VPATH_FILES =
@@ -116,12 +116,12 @@ DCFG_SEMAPHORE_IMPL = @DCFG_SEMAPHORE_IMPL@
 DCFG_UNIX = @DCFG_UNIX@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
+DFLAGSX = @DFLAGSX@
 DRUNTIME_OBJS = @DRUNTIME_OBJS@ $(BASE_OBJS) $(RUNTIME_OBJS) \
 	$(UTIL_OBJS) $(subst ti_,rt/typeinfo/ti_,$(TI))
 D_EXTRA_OBJS = @D_EXTRA_OBJS@
 D_GC_FLAGS = @D_GC_FLAGS@
 D_GC_MODULES = @D_GC_MODULES@
-D_PREREQ_SRCS = @D_PREREQ_SRCS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -566,12 +566,12 @@ uninstall-am:
 
 all-local: libgdruntime.a
 
-%.o : %.d $(D_PREREQ_SRCS)
+%.o : %.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
-$(IMPORT): $(D_PREREQ_SRCS)
+$(IMPORT):
 	mkdir -p $(IMPORT)
 # For core objects, generate .di headers
-$(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
+$(IMPORT)/%.di: %.d $(IMPORT)
 	$(GDC) $(ALL_DFLAGS) -fintfc-file=$@ -fsyntax-only $<
 
 # %.o : %.c
@@ -581,6 +581,9 @@ $(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
 
 .S.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
+%.t.o : %.d
+	$(GDC) -o $@ $(DFLAGSX) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 #--------------------------------------#
 # GDC Runtime
@@ -595,12 +598,12 @@ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core
 #--------------------------------------#
 # Install, doc, etc targets
 
-install-exec-local: $(D_PREREQ_SRCS) libgdruntime.a
+install-exec-local: libgdruntime.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
 	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
-install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
+install-data-local: libgdruntime.a
 	for i in core; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.di; do \
@@ -629,9 +632,9 @@ install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
 clean-local:
 	rm -f $(CMAIN_OBJS)
 	rm -f $(ALL_DRUNTIME_OBJS)
+	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
 	rm -f $(CORE_IMPORTS)
 	rm -rf $(IMPORT)
-	rm -f testgc$(EXEEXT)
 	rm -f libgdruntime.a
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

@@ -47,8 +47,8 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 .S.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
-%.t.o : %.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -fno-release -funittest -fversion=Unittest -c $<
+%.t.o : %.d
+	$(GDC) -o $@ $(DFLAGSX) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
 	cp $< $@
@@ -58,10 +58,10 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 # GDC LibPhobos
 
 # Special-case for std.xml, need to emit templates.
-std/xml.o : std/xml.d $(D_PREREQ_SRCS)
+std/xml.o : std/xml.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
-unittest: unittest.o libgphobos2_t.a libgphobos2.a
+unittest: libgphobos2.a libgphobos2_t.a unittest.o
 	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L./libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
 
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
@@ -118,9 +118,6 @@ WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
 
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 
-std/stream.t.o: std/stream.d $(D_PREREQ_SRCS)
-	$(GDC) -o $@ $(ALL_DFLAGS) -Wno-deprecated -c $<
-
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
 
 
@@ -132,6 +129,9 @@ libgphobos2.a : $(ALL_PHOBOS_OBJS) libdruntime/libgdruntime.a
 libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
+
+check-local: unittest
+	./unittest
 
 install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
