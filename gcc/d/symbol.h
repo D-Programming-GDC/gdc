@@ -93,7 +93,6 @@ struct Symbol : Object
 
   // For FuncDeclarations:
   Thunks thunks;
-  FuncDeclarations deferredNestedFuncs;
   OutputStage outputStage;
   FuncFrameInfo *frameInfo;
 };

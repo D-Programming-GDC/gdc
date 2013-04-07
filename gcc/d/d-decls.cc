@@ -363,7 +363,7 @@ FuncDeclaration::toSymbol (void)
 	      Symbol *osym = outer->toSymbol();
 
 	      if (osym->outputStage != Finished)
-		  osym->deferredNestedFuncs.push (this);
+		((FuncDeclaration *) outer)->deferred.push (this);
 	    }
 
 	  TREE_TYPE (fndecl) = ftype->toCtype();

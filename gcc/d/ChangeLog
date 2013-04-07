@@ -1,3 +1,14 @@
+2013-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(FuncDeclaration::toSymbol): Push deferred functions to
+	FuncDeclaration::deferred.
+	* d-elem.cc(DelegateExp::toElem): Likewise.
+	(FuncExp::toElem): Likewise.
+	* d-objfile.cc(ObjectFile::shouldEmit): Likewise.
+	(FuncDeclaration::toObjFile): Process all deferred functions in
+	FuncDeclaration::deferred.
+	* symbol.cc(Symbol::deferredNestedFuncs): Remove.
+
 2013-04-05  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(FuncExp::toElem): Defer function literals and lambdas

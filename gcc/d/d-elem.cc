@@ -1454,10 +1454,7 @@ DelegateExp::toElem (IRState *irs)
       while (!owner->isTemplateInstance() && owner->toParent())
 	owner = owner->toParent();
       if (owner->isTemplateInstance() || owner == irs->mod)
-	{
-	  Symbol *s = irs->func->toSymbol();
-	  s->deferredNestedFuncs.push (func);
-	}
+	irs->func->deferred.push (func);
     }
 
   if (t->ty == Tclass || t->ty == Tstruct)
@@ -1615,7 +1612,7 @@ DeclarationExp::toElem (IRState *irs)
   // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
   // if needed.  This assumes irs == current_irs
   irs->pushStatementList();
-  declaration->toObjFile (false);
+  declaration->toObjFile (0);
   tree t = irs->popStatementList();
 
   /* Construction of an array for typesafe-variadic function arguments
@@ -1632,7 +1629,6 @@ elem *
 FuncExp::toElem (IRState *irs)
 {
   Type *func_type = type->toBasetype();
-  Symbol *s = irs->func->toSymbol();
 
   if (func_type->ty == Tpointer)
     {
@@ -1646,7 +1642,8 @@ FuncExp::toElem (IRState *irs)
       func_type = func_type->nextOf()->toBasetype();
     }
 
-  s->deferredNestedFuncs.push (fd);
+  // Emit after current function body has finished.
+  irs->func->deferred.push (fd);
 
   // If nested, this will be a trampoline...
   switch (func_type->ty)
