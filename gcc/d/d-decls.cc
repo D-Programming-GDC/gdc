@@ -456,9 +456,15 @@ FuncDeclaration::toSymbol (void)
 	  // cause wrong codegen if pure/nothrow is thrown in the equation.
 	  if (!global.params.useAssert)
 	    {
-	      // Pure functions don't imply nothrow
-	      DECL_PURE_P (fndecl) = (isPure() == PUREstrong && ftype->isnothrow);
-	      TREE_NOTHROW (fndecl) = ftype->isnothrow;
+	      // Cannot mark as pure as in 'no side effects' if the function either
+	      // returns by ref, or has an internal state 'this'.
+	      // Note, pure D functions don't imply nothrow.
+	      if (isPure() == PUREstrong && vthis == NULL &&
+		  ftype->isnothrow && ftype->retStyle() == RETstack)
+		DECL_PURE_P (fndecl) = 1;
+
+	      if (ftype->isnothrow)
+		TREE_NOTHROW (fndecl) = 1;
 	    }
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES

@@ -408,8 +408,8 @@ TypeFunction::toCtype (void)
 enum RET
 TypeFunction::retStyle (void)
 {
-  /* Return by reference. Needed? */
-  if (isref)
+  /* Return by reference or pointer. */
+  if (isref || next->ty == Tclass || next->ty == Tpointer)
     return RETregs;
 
   /* Need the ctype to determine this, but this is called from
