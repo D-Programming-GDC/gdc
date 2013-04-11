@@ -2964,8 +2964,6 @@ Lagain:
 
     //printf("DsymbolExp:: %p '%s' is a symbol\n", this, toChars());
     //printf("s = '%s', s->kind = '%s'\n", s->toChars(), s->kind());
-    if (type && !s->needThis())
-        return this;
     if (!s->isFuncDeclaration())        // functions are checked after overloading
         checkDeprecated(sc, s);
     Dsymbol *olds = s;
@@ -3102,24 +3100,6 @@ Lagain:
     TupleDeclaration *tup = s->isTupleDeclaration();
     if (tup)
     {
-        for (size_t i = 0; i < tup->objects->dim; i++)
-        {
-            Dsymbol *sa = getDsymbol((*tup->objects)[i]);
-            if (sa && sa->needThis())
-            {
-                if (hasThis(sc)
-#if DMDV2
-                        && !sa->isFuncDeclaration()
-#endif
-                    )
-                {
-                    // Supply an implicit 'this', as in
-                    //    this.ident
-                    (*tup->objects)[i] = new DotVarExp(loc, new ThisExp(loc), sa->isDeclaration());
-                }
-            }
-        }
-
         e = new TupleExp(loc, tup);
         e = e->semantic(sc);
         return e;
@@ -5197,17 +5177,17 @@ TupleExp::TupleExp(Loc loc, TupleDeclaration *tup)
     exps->reserve(tup->objects->dim);
     for (size_t i = 0; i < tup->objects->dim; i++)
     {   Object *o = (*tup->objects)[i];
-        if (o->dyncast() == DYNCAST_EXPRESSION)
+        if (Dsymbol *s = getDsymbol(o))
         {
-            Expression *e = (Expression *)o;
-            if (e->op == TOKdsymbol)
-                e = e->syntaxCopy();
+            /* If tuple element represents a symbol, translate to DsymbolExp
+             * to supply implicit 'this' if needed later.
+             */
+            Expression *e = new DsymbolExp(loc, s);
             exps->push(e);
         }
-        else if (o->dyncast() == DYNCAST_DSYMBOL)
+        else if (o->dyncast() == DYNCAST_EXPRESSION)
         {
-            Dsymbol *s = (Dsymbol *)o;
-            Expression *e = new DsymbolExp(loc, s);
+            Expression *e = (Expression *)o;
             exps->push(e);
         }
         else if (o->dyncast() == DYNCAST_TYPE)
