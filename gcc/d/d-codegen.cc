@@ -1362,8 +1362,8 @@ maybe_make_temp (tree t)
 {
   if (d_has_side_effects (t))
     {
-      if (TREE_CODE (t) == CALL_EXPR ||
-	  TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
+      if (TREE_CODE (t) == CALL_EXPR
+	  || TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
 	return save_expr (t);
       else
 	return stabilize_reference (t);

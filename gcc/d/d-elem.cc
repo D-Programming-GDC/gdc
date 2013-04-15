@@ -72,16 +72,9 @@ IdentityExp::toElem (IRState *irs)
       return build2 (code, type->toCtype(),
 		     irs->toDArray (e1), irs->toDArray (e2));
     }
-  else if (tb1->ty == Treference || tb1->ty == Tclass || tb1->ty == Tarray)
-    {
-      // Assuming types are the same from typeCombine
-      return build2 (code, type->toCtype(),
-		     e1->toElem (irs), e2->toElem (irs));
-    }
   else
     {
-      // For operand types other than class objects, static or dynamic
-      // arrays, identity is defined as being the same as equality.
+      // For operands of other types, identity is defined as being the same as equality.
       tree t1 = e1->toElem (irs);
       tree t2 = e2->toElem (irs);
 

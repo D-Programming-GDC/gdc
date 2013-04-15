@@ -1,3 +1,8 @@
+2013-04-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(IdentityExp::toElem): Remove special handling of class,
+	reference and array types.
+
 2013-04-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(maybe_make_temp): Save call expressions so aren't

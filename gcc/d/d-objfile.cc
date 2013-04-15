@@ -904,8 +904,9 @@ ObjectFile::initTypeDecl (tree t, tree decl)
   TYPE_CONTEXT (t) = DECL_CONTEXT (decl);
   TYPE_NAME (t) = decl;
 
-  if (TREE_CODE (t) == ENUMERAL_TYPE ||
-      TREE_CODE (t) == RECORD_TYPE || TREE_CODE (t) == UNION_TYPE)
+  if (TREE_CODE (t) == ENUMERAL_TYPE
+      || TREE_CODE (t) == RECORD_TYPE
+      || TREE_CODE (t) == UNION_TYPE)
     {
       /* Not sure if there is a need for separate TYPE_DECLs in
 	 TYPE_NAME and TYPE_STUB_DECL. */

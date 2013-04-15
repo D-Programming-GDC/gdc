@@ -459,8 +459,8 @@ FuncDeclaration::toSymbol (void)
 	      // Cannot mark as pure as in 'no side effects' if the function either
 	      // returns by ref, or has an internal state 'this'.
 	      // Note, pure D functions don't imply nothrow.
-	      if (isPure() == PUREstrong && vthis == NULL &&
-		  ftype->isnothrow && ftype->retStyle() == RETstack)
+	      if (isPure() == PUREstrong && vthis == NULL
+		  && ftype->isnothrow && ftype->retStyle() == RETstack)
 		DECL_PURE_P (fndecl) = 1;
 
 	      if (ftype->isnothrow)
