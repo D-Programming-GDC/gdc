@@ -5558,11 +5558,11 @@ fi
 # append it here.  Only modify Makefiles that have just been created.
 #
 # Also, get rid of this simulated-VPATH thing that automake does.
-ac_config_files="$ac_config_files libdruntime/Makefile"
+ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile"
 
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile phobos-ver-syms libdruntime/phobos-ver-syms"
+ac_config_files="$ac_config_files Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6285,9 +6285,10 @@ do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
     "default-1") CONFIG_COMMANDS="$CONFIG_COMMANDS default-1" ;;
+    "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "libdruntime/Makefile") CONFIG_FILES="$CONFIG_FILES libdruntime/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES phobos-ver-syms" ;;
+    "src/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES src/phobos-ver-syms" ;;
     "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
@@ -6892,6 +6893,17 @@ case " $CONFIG_FILES " in
    ac_file=Makefile . ${multi_basedir}/config-ml.in
    ;;
 esac ;;
+    "src/Makefile":F) cat > vpsed$$ << \_EOF
+s!`test -f '$<' || echo '$(srcdir)/'`!!
+_EOF
+   sed -f vpsed$$ $ac_file > tmp$$
+   mv tmp$$ $ac_file
+   rm vpsed$$
+   echo 'MULTISUBDIR =' >> $ac_file
+   ml_norecursion=yes
+   . ${multi_basedir}/config-ml.in
+   { ml_norecursion=; unset ml_norecursion;}
+ ;;
     "libdruntime/Makefile":F) cat > vpsed$$ << \_EOF
 s!`test -f '$<' || echo '$(srcdir)/'`!!
 _EOF

@@ -487,7 +487,7 @@ AC_SUBST(ZLIB_OBJS)
 # append it here.  Only modify Makefiles that have just been created.
 #
 # Also, get rid of this simulated-VPATH thing that automake does.
-AC_CONFIG_FILES(AC_FOREACH([DIR], libdruntime, [DIR/Makefile ]),
+AC_CONFIG_FILES(AC_FOREACH([DIR], src libdruntime, [DIR/Makefile ]),
   [cat > vpsed$$ << \_EOF
 s!`test -f '$<' || echo '$(srcdir)/'`!!
 _EOF
@@ -501,4 +501,4 @@ _EOF
 ])
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile phobos-ver-syms libdruntime/phobos-ver-syms])
+AC_OUTPUT([Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms])

@@ -25,7 +25,8 @@ D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdc|sed '$(program_transfor
 
 # This should be configured
 ifeq ($(host), $(target))
-  gcc_d_include_dir = $(prefix)/include/d/$(version)
+  D_include_dir = `echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include/d/$(version)
+  gcc_d_include_dir = $(libsubdir)/$(unlibsubdir)/..$(D_include_dir)
 else
   gcc_d_include_dir = $(libsubdir)/include/d
 endif
