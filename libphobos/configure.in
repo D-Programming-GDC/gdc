@@ -340,19 +340,6 @@ AC_TRY_COMPILE([#include <unwind.h>],[
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
-AC_MSG_CHECKING([if std.boxer will work])
-cat > conftest.d <<END
-void test(...) { _argptr += 4; }
-END
-$GDC -c -I . -I $srcdir conftest.d >/dev/null 2>&1
-if test $? = 0; then
-    AC_MSG_RESULT([yes])
-    D_EXTRA_OBJS="$D_EXTRA_OBJS std/boxer.o"
-else
-    AC_MSG_RESULT([no])
-fi
-rm -f conftest.d conftest.$ac_objext
-
 case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
 esac
