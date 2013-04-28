@@ -34,6 +34,14 @@ AH_TEMPLATE(VERSION, [Version number of package])
 
 AM_ENABLE_MULTILIB(, ..)
 
+AC_MSG_CHECKING([if compiling out of gcc tree])
+if test -d "$srcdir/../gcc/c"; then
+  AC_MSG_RESULT([no])
+else
+  AC_MSG_RESULT([yes])
+  out_of_tree="yes"
+fi
+
 # libphobos is usually a symlink to gcc/d/phobos, so libphobos/..
 # is not the toplevel GCC directory.  gcc/d may also be a symlink.
 # Find the correct top-level directory by removing "/libphobos"
@@ -46,10 +54,17 @@ if test ! -r "$multi_basedir/config-ml.in"; then
     fi
 fi
 
+# For out of tree builds use local config-ml.in
+if test "$out_of_tree" = yes; then
+    multi_basedir=$srcdir
+fi
+
 if test "$build" != "$host"; then
   # We are being configured with some form of cross compiler.
   #GLIBCXX_IS_NATIVE=false
-  GCC_NO_EXECUTABLES
+  if test "$out_of_tree" != yes; then
+    GCC_NO_EXECUTABLES
+  fi
   d_cross_comp=yes
 else
   d_cross_comp=
@@ -99,8 +114,16 @@ dnl -- End of copy from libstdc++-v3/acinclude.m4
 
 dnl These should be inherited in the recursive make, but ensure they are
 dnl defined:
-test "$AR" || AR=ar
-AC_SUBST(AR)
+if test "$AR"; then :
+  AC_SUBST(AR)
+else
+  AN_MAKEVAR([AR], [AC_PROG_AR])
+  AN_PROGRAM([ar], [AC_PROG_AR])
+  AC_DEFUN([AC_PROG_AR], [AC_CHECK_TOOL([AR], [ar], [ar])])
+  AC_PROG_AR
+  AC_SUBST(AR)
+fi
+
 if test "$RANLIB"; then :
   AC_SUBST(RANLIB)
 else
@@ -168,7 +191,7 @@ esac
 GDC=$CC
 GDC=`echo $CC | sed s/xgcc/gdc/`
 
-AC_MSG_CHECKING([If $GDC can compile D sources])
+AC_MSG_CHECKING([if $GDC can compile D sources])
 echo "int function(int) test;" > actest.d
 $GDC -c -x d -I "$srcdir/libdruntime" actest.d
 r=$?
@@ -193,36 +216,6 @@ export CFLAGS_FOR_BUILD
 AC_SUBST(CC_FOR_BUILD)
 AC_SUBST(CFLAGS_FOR_BUILD)
 
-# Find build libiberty which is needed by x3
-# Should not have to go up too many directories
-
-d_libiberty_dir=../..
-while test "$d_count" != 'xxx'; do
-    BUILD_LIBIBERTY=$d_libiberty_dir/build-${build_alias}/libiberty/libiberty.a
-    if test -f $BUILD_LIBIBERTY; then
-	break
-    fi
-    # GCC 3.x does not use the 'build-' dir, so we have so search
-    # for plain 'libiberty' with some kind of check it is not a target dir
-    BUILD_LIBIBERTY=$d_libiberty_dir/libiberty/libiberty.a
-    if test -f $BUILD_LIBIBERTY && test -d $d_libiberty_dir/gcc; then
-	break
-    fi
-
-    d_libiberty_dir=../$d_libiberty_dir
-    d_count="x$d_count"
-done
-
-if test ! -f "$BUILD_LIBIBERTY"; then
-    AC_MSG_ERROR([cannot find libiberty.a for build])
-fi
-
-#used in druntime, so srcdir is 'libphobos/libdruntime'
-LIBIBERTY_H_PATH='$(srcdir)/../../include'
-BUILD_LIBIBERTY="../$BUILD_LIBIBERTY"
-
-AC_SUBST(BUILD_LIBIBERTY)
-AC_SUBST(LIBIBERTY_H_PATH)
 
 
 dnl Eventually need to include everything from libstdc++-v3/acinclude.m4
@@ -471,8 +464,8 @@ AC_SUBST(D_GC_MODULES)
 
 
 ZLIB_OBJS=
-if test "$system_zlib" = yes; then
-    AC_CHECK_LIB(z, deflate, ZLIB_OBJS=, ZLIB_OBJS="\$(Z_OBJS)")
+if test "x$system_zlib" != xno -o "$out_of_tree" = yes; then
+    AC_CHECK_LIB(z, deflate, ZLIB_OBJS=, AC_MSG_ERROR([zlib not found!]))
 else
     ZLIB_OBJS="\$(Z_OBJS)"
 fi
