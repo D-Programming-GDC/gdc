@@ -2164,6 +2164,13 @@ StructLiteralExp::toElem (IRState *irs)
 
   gcc_assert (tb->ty == Tstruct);
 
+  if (sinit)
+    {
+      tree svar = irs->localVar (type);
+      DECL_INITIAL (svar) = sinit->Stree;
+      return svar;
+    }
+
   if (elements)
     {
       size_t dim = elements->dim;
