@@ -2,6 +2,8 @@
 
 	* d-elem.cc(StructLiteralExp::toElem): Return the default initialiser
 	symbol if one exists.
+	* d-builtins.c(d_gcc_magic_libbuiltins_check): Override the function
+	type with the correct built-in function type as defined in backend.
 
 2013-04-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 

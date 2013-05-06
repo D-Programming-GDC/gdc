@@ -651,6 +651,17 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
 	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
 	  if (fd->ident == Lexer::idPool (name))
 	    {
+	      if (Type::tvalist->ty == Tsarray)
+		{
+		  // As per gcc.builtins module, va_list is passed by reference.
+		  TypeFunction *dtf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
+		  TypeFunction *tf = (TypeFunction *) fd->type;
+		  for (size_t i = 0; i < dtf->parameters->dim; i++)
+		    {
+		      if ((*dtf->parameters)[i]->type == Type::tvalist)
+			(*tf->parameters)[i]->storageClass |= STCref;
+		    }
+		}
 	      fd->isym = new Symbol;
 	      fd->isym->Stree = decl;
 	      return;
