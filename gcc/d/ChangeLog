@@ -1,3 +1,13 @@
+2013-05-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::getFrameInfo): Don't create a frame/closure
+	for member functions, only required for nested.
+	* d-elem.cc(Expression::toElemDtor): Call dtors in the correct order.
+	(DeclarationExp::toElem): Don't call dtor on static, manifest, or
+	extern symbols upon declaration.
+	(AssignExp::toElem): Only call postblit on lvalues in assignment.
+	(ArrayLiteralExp::toElem): Always generate literals on heap.
+
 2013-05-06  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(StructLiteralExp::toElem): Return the default initialiser

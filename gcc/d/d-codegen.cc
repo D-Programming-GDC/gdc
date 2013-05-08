@@ -3768,7 +3768,10 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->vthis || fd->closureVars.dim != 0)
+  if (fd->closureVars.dim != 0)
+    ffi->creates_frame = true;
+
+  if (fd->vthis && fd->vthis->type == Type::tvoidptr)
     ffi->creates_frame = true;
 
   // Functions with In/Out contracts pass parameters to nested frame.
