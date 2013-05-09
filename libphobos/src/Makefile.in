@@ -534,7 +534,7 @@ std/xml.o : std/xml.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
 unittest: libgphobos2.a libgphobos2_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L./libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
 
 libgphobos2.a : $(ALL_PHOBOS_OBJS) ../libdruntime/libgdruntime.a
 	cp ../libdruntime/libgdruntime.a libgphobos2.a

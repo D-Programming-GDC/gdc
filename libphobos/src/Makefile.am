@@ -60,7 +60,7 @@ std/xml.o : std/xml.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
 unittest: libgphobos2.a libgphobos2_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L./libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
 
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o \
