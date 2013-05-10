@@ -47,8 +47,9 @@
 	Interface, and ModuleInfo types that are of a variable size determined
 	at compile time.
 
-	* symbol.cc(symbol_calloc): Remove function.
-	(static_sym): Remove function.
+	* d-elem.cc(StringExp::toElem): Clean up for new dt_t format.
+
+	* symbol.cc: Remove file.
 
 2013-05-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 

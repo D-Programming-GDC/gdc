@@ -1990,34 +1990,17 @@ elem *
 StringExp::toElem (IRState *)
 {
   Type *tb = type->toBasetype();
-  TY base_ty = type ? tb->ty : (TY) Tvoid;
-  tree value;
+  // Assuming this->string is null terminated
+  dinteger_t dim = len + (tb->ty == Tpointer);
 
-  switch (base_ty)
-    {
-    case Tpointer:
-      // Assuming this->string is null terminated
-      // .. need to terminate with more nulls for wchar and dchar?
-      value = build_string ((len + 1) * sz, (char *) string);
-      break;
+  tree value = build_string (dim * sz, (char *) string);
 
-    case Tsarray:
-    case Tarray:
-      value = build_string (len * sz, (char *) string);
-      break;
-
-    default:
-      error ("Invalid type for string constant: %s", type->toChars());
-      return error_mark (type);
-    }
-
+  // Array type doesn't match string length if null terminated.
+  TREE_TYPE (value) = d_array_type (tb->nextOf(), len);
   TREE_CONSTANT (value) = 1;
   TREE_READONLY (value) = 1;
-  // %% array type doesn't match string length if null term'd...
-  Type *elem_type = base_ty != Tvoid ? tb->nextOf() : Type::tchar;
-  TREE_TYPE (value) = d_array_type (elem_type, len);
 
-  switch (base_ty)
+  switch (tb->ty)
     {
     case Tarray:
       value = d_array_value (type->toCtype(), size_int (len), build_address (value));
@@ -2032,8 +2015,10 @@ StringExp::toElem (IRState *)
       break;
 
     default:
-      break;
+      error ("Invalid type for string constant: %s", type->toChars());
+      return error_mark (type);
     }
+
   return value;
 }
 
