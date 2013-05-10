@@ -131,7 +131,7 @@ StructDeclaration::toObjFile (int)
   toDt (&sinit->Sdt);
 
   sinit->Sreadonly = true;
-  d_finalize_symbol (sinit);
+  d_finish_symbol (sinit);
 
   // Put out the members
   for (size_t i = 0; i < members->dim; i++)
@@ -173,7 +173,7 @@ ClassDeclaration::toObjFile (int)
   // Generate static initialiser
   toDt (&sinit->Sdt);
   sinit->Sreadonly = true;
-  d_finalize_symbol (sinit);
+  d_finish_symbol (sinit);
 
   // Put out the TypeInfo
   type->getTypeInfo (NULL);
@@ -393,7 +393,7 @@ Lhaspointers:
     }
 
   csym->Sdt = dt;
-  d_finalize_symbol (csym);
+  d_finish_symbol (csym);
 
   // Put out the vtbl[]
   dt = NULL_TREE;
@@ -451,7 +451,7 @@ Lhaspointers:
 
   vtblsym->Sdt = dt;
   vtblsym->Sreadonly = true;
-  d_finalize_symbol (vtblsym);
+  d_finish_symbol (vtblsym);
 }
 
 // Get offset of base class's vtbl[] initialiser from start of csym.
@@ -610,7 +610,7 @@ InterfaceDeclaration::toObjFile (int)
 
   csym->Sdt = dt;
   csym->Sreadonly = true;
-  d_finalize_symbol (csym);
+  d_finish_symbol (csym);
 }
 
 void
@@ -640,7 +640,7 @@ EnumDeclaration::toObjFile (int)
       // Generate static initialiser
       toInitializer();
       tc->sym->defaultval->toDt (&sinit->Sdt);
-      d_finalize_symbol (sinit);
+      d_finish_symbol (sinit);
     }
 
   objFileDone = true;
@@ -691,7 +691,7 @@ VarDeclaration::toObjFile (int)
 
       // Frontend should have already caught this.
       gcc_assert (sz || type->toBasetype()->ty == Tsarray);
-      d_finalize_symbol (s);
+      d_finish_symbol (s);
     }
   else
     {
@@ -725,7 +725,7 @@ TypedefDeclaration::toObjFile (int)
       toInitializer();
       sinit->Sdt = tc->sym->init->toDt();
       sinit->Sreadonly = true;
-      d_finalize_symbol (sinit);
+      d_finish_symbol (sinit);
     }
 }
 
@@ -753,7 +753,7 @@ TypeInfoDeclaration::toObjFile (int)
 {
   Symbol *s = toSymbol();
   toDt (&s->Sdt);
-  d_finalize_symbol (s);
+  d_finish_symbol (s);
 }
 
 
@@ -871,7 +871,7 @@ Module::genmoduleinfo()
   dt_cons (&dt, d_array_string (toPrettyChars()));
 
   csym->Sdt = dt;
-  d_finalize_symbol (csym);
+  d_finish_symbol (csym);
 
   build_moduleinfo (msym);
 }
@@ -2082,46 +2082,46 @@ ObjectFile::doUnittestFunction (const char *name, FuncDeclarations *functions)
   return doFunctionToCallFunctions (name, functions);
 }
 
+// Finish up a symbol declaration and compile it all the way to
+// the assembler language output.
 
-tree
-check_static_sym (Symbol *sym)
+void
+d_finish_symbol (Symbol *sym)
 {
   if (!sym->Stree)
     {
       gcc_assert (!sym->Sident);
-      tree t_ini = dt2tree (sym->Sdt); // %% recursion problems?
-      tree t_var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (t_ini));
-      object_file->giveDeclUniqueName (t_var);
 
-      DECL_INITIAL (t_var) = t_ini;
-      TREE_STATIC (t_var) = 1;
-      TREE_USED (t_var) = 1;
-      TREE_PRIVATE (t_var) = 1;
-      DECL_IGNORED_P (t_var) = 1;
-      DECL_ARTIFICIAL (t_var) = 1;
+      tree init = dtlist_to_tree (sym->Sdt);
+      tree var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (init));
+      object_file->giveDeclUniqueName (var);
 
-      sym->Stree = t_var;
+      DECL_INITIAL (var) = init;
+      TREE_STATIC (var) = 1;
+      TREE_USED (var) = 1;
+      TREE_PRIVATE (var) = 1;
+      DECL_IGNORED_P (var) = 1;
+      DECL_ARTIFICIAL (var) = 1;
+
+      sym->Stree = var;
     }
-  return sym->Stree;
-}
 
-void
-outdata (Symbol *sym)
-{
-  tree t = check_static_sym (sym);
-  gcc_assert (t);
+  tree t = sym->Stree;
 
   if (sym->Sdt)
     {
-      if (!COMPLETE_TYPE_P (TREE_TYPE (t)))
-	{
-	  size_t fsize = dt_size (sym->Sdt);
-	  TYPE_SIZE (TREE_TYPE (t)) = bitsize_int (fsize * BITS_PER_UNIT);
-	  TYPE_SIZE_UNIT (TREE_TYPE (t)) = size_int (fsize);
-	}
-
       if (DECL_INITIAL (t) == NULL_TREE)
-	DECL_INITIAL (t) = dt2tree (sym->Sdt);
+	{
+	  tree sinit = dtlist_to_tree (sym->Sdt);
+	  if (TREE_TYPE (t) == d_unknown_type_node)
+	    {
+	      TREE_TYPE (t) = TREE_TYPE (sinit);
+	      TYPE_NAME (TREE_TYPE (t)) = get_identifier (sym->Sident);
+	    }
+
+	  DECL_INITIAL (t) = sinit;
+	}
+      gcc_assert (COMPLETE_TYPE_P (TREE_TYPE (t)));
     }
 
   gcc_assert (!error_mark_p (t));
@@ -2136,8 +2136,6 @@ outdata (Symbol *sym)
   if (sym->Sreadonly)
     TREE_READONLY (t) = 1;
 
-  // see dwarf2out.c:dwarf2out_decl gcc expects local statics
-  // to have context pointing to nested function, not record.
   DECL_CONTEXT (t) = decl_function_context (t);
 
   if (!object_file->shouldEmit (sym))
@@ -2148,18 +2146,17 @@ outdata (Symbol *sym)
   gcc_assert (!DECL_EXTERNAL (t));
   relayout_decl (t);
 
-  if (DECL_INITIAL (t) != NULL_TREE)
+#ifdef ENABLE_TREE_CHECKING
+  if (DECL_INITIAL (t) != NULL_TREE) 
     {
-      //Initializer must never be bigger than symbol size
-      if (int_size_in_bytes (TREE_TYPE (t))
-	  < int_size_in_bytes (TREE_TYPE (DECL_INITIAL (t))))
-	{
-	  internal_error ("Mismatch between declaration '%s' size (%wd) and it's initializer size (%wd).",
-			  sym->prettyIdent ? sym->prettyIdent : sym->Sident,
-			  int_size_in_bytes (TREE_TYPE (t)),
-			  int_size_in_bytes (TREE_TYPE (DECL_INITIAL (t))));
-	}
+      // Initialiser must never be bigger than symbol size.
+      dinteger_t tsize = int_size_in_bytes (TREE_TYPE (t));
+      dinteger_t dtsize = int_size_in_bytes (TREE_TYPE (DECL_INITIAL (t)));
+      if (tsize != dtsize)
+	internal_error ("Mismatch between declaration '%s' size (%wd) and it's initializer size (%wd).",
+			sym->prettyIdent ? sym->prettyIdent : sym->Sident, tsize, dtsize);
     }
+#endif
 
   object_file->outputStaticSymbol (sym);
 }

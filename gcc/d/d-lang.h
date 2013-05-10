@@ -126,7 +126,7 @@ enum d_tree_index
   DTI_IDOUBLE_TYPE,
   DTI_IREAL_TYPE,
 
-  DTI_VA_LIST_TYPE,
+  DTI_UNKNOWN_TYPE,
 
   /* unused except for gcc builtins. */
   DTI_INTMAX_TYPE,
@@ -141,23 +141,25 @@ enum d_tree_index
 
 extern GTY(()) tree d_global_trees[DTI_MAX];
 
-#define d_null_pointer                  d_global_trees[DTI_NULL_PTR]
-#define d_void_zero_node                d_global_trees[DTI_VOID_ZERO]
-#define d_vtbl_ptr_type_node            d_global_trees[DTI_VTBL_PTR_TYPE]
-#define d_boolean_type_node             d_global_trees[DTI_BOOL_TYPE]
-#define d_char_type_node                d_global_trees[DTI_CHAR_TYPE]
-#define d_dchar_type_node               d_global_trees[DTI_DCHAR_TYPE]
-#define d_wchar_type_node               d_global_trees[DTI_WCHAR_TYPE]
-#define d_ifloat_type_node              d_global_trees[DTI_IFLOAT_TYPE]
-#define d_idouble_type_node             d_global_trees[DTI_IDOUBLE_TYPE]
-#define d_ireal_type_node               d_global_trees[DTI_IREAL_TYPE]
+#define d_null_pointer			d_global_trees[DTI_NULL_PTR]
+#define d_void_zero_node		d_global_trees[DTI_VOID_ZERO]
+#define d_vtbl_ptr_type_node		d_global_trees[DTI_VTBL_PTR_TYPE]
+#define d_boolean_type_node		d_global_trees[DTI_BOOL_TYPE]
+#define d_char_type_node		d_global_trees[DTI_CHAR_TYPE]
+#define d_dchar_type_node		d_global_trees[DTI_DCHAR_TYPE]
+#define d_wchar_type_node		d_global_trees[DTI_WCHAR_TYPE]
+#define d_ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
+#define d_idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
+#define d_ireal_type_node		d_global_trees[DTI_IREAL_TYPE]
 
-#define intmax_type_node                d_global_trees[DTI_INTMAX_TYPE]
-#define uintmax_type_node               d_global_trees[DTI_UINTMAX_TYPE]
-#define signed_size_type_node           d_global_trees[DTI_SIGNED_SIZE_TYPE]
-#define string_type_node                d_global_trees[DTI_STRING_TYPE]
-#define const_string_type_node          d_global_trees[DTI_CONST_STRING_TYPE]
-#define null_node                       d_global_trees[DTI_NULL]
+#define d_unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+
+#define intmax_type_node		d_global_trees[DTI_INTMAX_TYPE]
+#define uintmax_type_node		d_global_trees[DTI_UINTMAX_TYPE]
+#define signed_size_type_node		d_global_trees[DTI_SIGNED_SIZE_TYPE]
+#define string_type_node		d_global_trees[DTI_STRING_TYPE]
+#define const_string_type_node		d_global_trees[DTI_CONST_STRING_TYPE]
+#define null_node			d_global_trees[DTI_NULL]
 
 
 /* In d-lang.cc.  These are called through function pointers

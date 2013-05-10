@@ -406,7 +406,7 @@ ArrayInitializer::toDt (void)
       // Create symbol, and then refer to it
       Symbol *s = new Symbol();
       s->Sdt = dt;
-      d_finalize_symbol (s);
+      d_finish_symbol (s);
       dt = NULL_TREE;
 
       if (tb->ty == Tarray)
@@ -497,7 +497,7 @@ ArrayLiteralExp::toDt (dt_t **pdt)
       // Create symbol, and then refer to it
       Symbol *s = new Symbol();
       s->Sdt = dt;
-      d_finalize_symbol (s);
+      d_finish_symbol (s);
       dt = NULL_TREE;
 
       if (tb->ty == Tarray)
@@ -1578,7 +1578,7 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
 
   Symbol *s = new Symbol();
   s->Sdt = dt;
-  d_finalize_symbol (s);
+  d_finish_symbol (s);
 
   // TypeInfo[] elements;
   dt_cons (pdt, size_int (tu->arguments->dim));

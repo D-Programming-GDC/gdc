@@ -329,7 +329,7 @@ SwitchStatement::toIR (IRState *irs)
 	}
 
       s->Sreadonly = true;
-      d_finalize_symbol (s);
+      d_finish_symbol (s);
 
       args[0] = d_array_value (cond_type->arrayOf()->toCtype(),
 			       size_int (cases->dim),

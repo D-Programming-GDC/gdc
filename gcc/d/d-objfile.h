@@ -44,6 +44,7 @@ extern tree dtlist_to_tree (dt_t *dt);
 
 extern void build_moduleinfo (Symbol *sym);
 extern void build_tlssections (void);
+extern void d_finish_symbol (Symbol *sym);
 
 
 struct ModuleInfo
