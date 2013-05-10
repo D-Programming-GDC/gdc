@@ -196,33 +196,6 @@ build_dt_vtable (dt_t **pdt, ClassDeclaration *cd)
 
 /* ================================================================ */
 
-// Create constructor for ComplexExp to be written to data segment.
-
-dt_t **
-ComplexExp::toDt (dt_t **pdt)
-{
-  return dttree (pdt, toElem (&gen));
-}
-
-// Create constructor for IntegerExp to be written to data segment.
-
-dt_t **
-IntegerExp::toDt (dt_t **pdt)
-{
-  return dttree (pdt, toElem (&gen));
-}
-
-// Create constructor for RealExp to be written to data segment.
-
-dt_t **
-RealExp::toDt (dt_t **pdt)
-{
-  return dttree (pdt, toElem (&gen));
-}
-
-
-/* ================================================================ */
-
 // Build constructors for front-end Initialisers to be written to data segment.
 
 dt_t *
@@ -454,6 +427,294 @@ ExpInitializer::toDt (void)
   exp = exp->optimize (WANTvalue);
   exp->toDt (&dt);
   return dt;
+}
+
+/* ================================================================ */
+
+// Build constructors for front-end Expressions to be written to data segment.
+
+dt_t **
+Expression::toDt (dt_t **pdt)
+{
+  error ("non-constant expression %s", toChars());
+  return pdt;
+}
+
+dt_t **
+IntegerExp::toDt (dt_t **pdt)
+{
+  tree dt = toElem (NULL);
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+RealExp::toDt (dt_t **pdt)
+{
+  tree dt = toElem (NULL);
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+ComplexExp::toDt (dt_t **pdt)
+{
+  tree dt = toElem (NULL);
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+NullExp::toDt (dt_t **pdt)
+{
+  gcc_assert (type);
+
+  tree dt = build_constructor (type->toCtype(), NULL);
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+StringExp::toDt (dt_t **pdt)
+{
+  tree dt = toElem (NULL);
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+ArrayLiteralExp::toDt (dt_t **pdt)
+{
+  tree dt = NULL_TREE;
+
+  for (size_t i = 0; i < elements->dim; i++)
+    {
+      Expression *e = (*elements)[i];
+      e->toDt (&dt);
+    }
+
+  Type *tb = type->toBasetype();
+
+  if (tb->ty != Tsarray)
+    {
+      gcc_assert (tb->ty == Tarray || tb->ty == Tpointer);
+
+      // Create symbol, and then refer to it
+      Symbol *s = new Symbol();
+      s->Sdt = dt;
+      d_finalize_symbol (s);
+      dt = NULL_TREE;
+
+      if (tb->ty == Tarray)
+	dt_cons (&dt, size_int (elements->dim));
+
+      dt_cons (&dt, build_address (s->Stree));
+    }
+
+  dt_container (pdt, type, dt);
+  return pdt;
+}
+
+dt_t **
+StructLiteralExp::toDt (dt_t **pdt)
+{
+  // For elements[], construct a corresponding array dts[] the elements
+  // of which are the initializers.
+  // Nulls in elements[] become nulls in dts[].
+  Dts dts;
+  dts.setDim (sd->fields.dim);
+  dts.zero();
+
+  gcc_assert (elements->dim <= sd->fields.dim);
+
+  for (size_t i = 0; i < elements->dim; i++)
+    {
+      Expression *e = (*elements)[i];
+      if (!e)
+	continue;
+      tree dt = NULL_TREE;
+      e->toDt (&dt);
+      dts[i] = dt;
+    }
+
+  size_t offset = 0;
+  tree sdt = NULL_TREE;
+
+  for (size_t i = 0; i < dts.dim; i++)
+    {
+      VarDeclaration *v = sd->fields[i];
+      tree fdt = dts[i];
+
+      if (fdt == NULL_TREE)
+	{
+	  // An instance specific initialiser was not provided.
+	  // If there is no overlap with any explicit initialiser in dts[],
+	  // supply a default initialiser.
+	  if (v->offset >= offset)
+	    {
+	      size_t offset2 = v->offset + v->type->size();
+
+	      for (size_t j = i + 1; 1; j++)
+		{
+		  // Didn't find any overlap
+		  if (j == dts.dim)
+		    {
+		      // Set fdt to be the default initialiser
+		      if (v->init)
+			fdt = v->init->toDt();
+		      else
+			v->type->toDt (&fdt);
+		      break;
+		    }
+
+		  VarDeclaration *v2 = sd->fields[j];
+
+		  // Overlap
+		  if (v2->offset < offset2 && dts[j])
+		    break;
+		}
+	    }
+	}
+
+      if (fdt != NULL_TREE)
+	{
+	  if (v->offset < offset)
+	    error ("duplicate union initialization for %s", v->toChars());
+	  else
+	    {
+	      size_t sz = int_size_in_bytes (TREE_TYPE (TREE_VALUE (fdt)));
+	      size_t vsz = v->type->size();
+	      size_t voffset = v->offset;
+	      size_t dim = 1;
+
+	      if (sz > vsz)
+		{
+		  gcc_assert (v->type->ty == Tsarray && vsz == 0);
+		  error ("zero length array %s has non-zero length initializer", v->toChars());
+		}
+
+	      for (Type *vt = v->type->toBasetype();
+		   vt->ty == Tsarray; vt = vt->nextOf()->toBasetype())
+		{
+		  TypeSArray *tsa = (TypeSArray *) vt;
+		  dim *= tsa->dim->toInteger();
+		}
+
+	      gcc_assert (sz == vsz || sz * dim <= vsz);
+
+	      for (size_t i = 0; i < dim; i++)
+		{
+		  if (offset < voffset)
+		    dt_zeropad (&sdt, voffset - offset);
+
+		  if (fdt == NULL_TREE)
+		    {
+		      if (v->init)
+			fdt = v->init->toDt();
+		      else
+			v->type->toDt (&fdt);
+		    }
+
+		  dt_chainon (&sdt, fdt);
+		  fdt = NULL_TREE;
+
+		  offset = voffset + sz;
+		  voffset += vsz / dim;
+		  if (sz == vsz)
+		    break;
+		}
+	    }
+	}
+    }
+
+  if (offset < sd->structsize)
+    dt_zeropad (&sdt, sd->structsize - offset);
+
+  dt_container (pdt, type, sdt);
+  return pdt;
+}
+
+dt_t **
+SymOffExp::toDt (dt_t **pdt)
+{
+  gcc_assert (var);
+
+  if (!(var->isDataseg() || var->isCodeseg())
+      || var->needThis() || var->isThreadlocal())
+    {
+      error ("non-constant expression %s", toChars());
+      return pdt;
+    }
+
+  Symbol *s = var->toSymbol();
+  tree dt = build_offset (build_address (s->Stree), size_int (offset));
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+VarExp::toDt (dt_t **pdt)
+{
+  VarDeclaration *v = var->isVarDeclaration();
+  SymbolDeclaration *sd = var->isSymbolDeclaration();
+
+  if (v && (v->isConst() || v->isImmutable())
+      && type->toBasetype()->ty != Tsarray && v->init)
+    {
+      if (v->inuse)
+	{
+	  error ("recursive reference %s", toChars());
+	  return pdt;
+	}
+      v->inuse++;
+      dt_chainon (pdt, v->init->toDt());
+      v->inuse--;
+    }
+  else if (sd && sd->dsym)
+    sd->dsym->toDt (pdt);
+  else
+    error ("non-constant expression %s", toChars());
+
+  return pdt;
+}
+
+dt_t **
+FuncExp::toDt (dt_t **pdt)
+{
+  if (fd->tok == TOKreserved && type->ty == Tpointer)
+    {
+      // Change to non-nested.
+      fd->tok = TOKfunction;
+      fd->vthis = NULL;
+    }
+
+  if (fd->isNested())
+    {
+      error ("non-constant nested delegate literal expression %s", toChars());
+      return pdt;
+    }
+
+  tree dt = build_address (fd->toSymbol()->Stree);
+  fd->toObjFile (0);
+
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+VectorExp::toDt (dt_t **pdt)
+{
+  tree dt = NULL_TREE;
+
+  for (unsigned i = 0; i < dim; i++)
+    {
+      Expression *elem;
+      if (e1->op == TOKarrayliteral)
+	{
+	  ArrayLiteralExp *ea = (ArrayLiteralExp *) e1;
+	  elem = (*ea->elements)[i];
+	}
+      else
+	elem = e1;
+
+      elem->toDt (&dt);
+    }
+
+  dt_container (pdt, type, dt);
+  return pdt;
 }
 
 /* ================================================================ */

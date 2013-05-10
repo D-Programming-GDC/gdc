@@ -17,6 +17,8 @@
 	in new dt_t format.
 	(Initializer::toDt): Implement routines emitting initialiser data in
 	new dt_t format.
+	(Expression::toDt): Implement routines emitting const expression data
+	in new dt_t format.
 
 2013-05-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
