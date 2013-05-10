@@ -2,6 +2,15 @@
 
 	* d-typinf.cc: New file containing type info routines originally in
 	the D Front End.
+	* d-todt.cc(dt_last): New helper function to retrieve last node in a
+	dt_t tree list.
+	(dt_cons): New helper function to append nodes to the end of a list.
+	(dt_chainon): New helper function to concatenate two lists together.
+	(dt_container): New helper function to build a ctor from a list.
+	(build_dt_vtable): New helper function to emit the vtable and monitor
+	symbol default values in a class declaration.
+	(dtlist_to_tree): New helper function to convert a dt_t list into a
+	constructor tree.
 
 2013-05-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
