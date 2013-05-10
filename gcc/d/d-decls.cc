@@ -67,12 +67,13 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 {
   char *n = mangle();
   unsigned nlen = strlen (n);
-
   size_t sz = (2 + nlen + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
-  char *id = (char *) alloca (sz);
+  Symbol *s = new Symbol();
 
-  snprintf (id, sz, "_D%s%zu%s%s", n, strlen (prefix), prefix, suffix);
-  return symbol_calloc (id);
+  s->Sident = XNEWVEC (const char, sz);
+  snprintf (CONST_CAST (char *, s->Sident), sz, "_D%s%zu%s%s",
+	    n, strlen (prefix), prefix, suffix);
+  return s;
 }
 
 
@@ -207,11 +208,7 @@ VarDeclaration::toSymbol (void)
 	  if (!TREE_STATIC (var_decl))
 	    TREE_READONLY (var_decl) = 1;
 	  else
-	    {
-	      // Can't set "readonly" unless DECL_INITIAL is set, which
-	      // doesn't happen until outdata is called for the symbol.
-	      D_DECL_READONLY_STATIC (var_decl) = 1;
-	    }
+	    csym->Sreadonly = true;
 
 	  // can at least do this...
 	  //  const doesn't seem to matter for aggregates, so prevent problems..
@@ -533,9 +530,10 @@ FuncDeclaration::toThunkSymbol (int offset)
   if (!thunk->symbol)
     {
       unsigned sz = strlen (csym->Sident) + 14;
-      char *id = (char *) alloca (sz);
-      snprintf (id, sz, "_DT%u%s", offset, csym->Sident);
-      sthunk = symbol_calloc (id);
+      sthunk = new Symbol();
+      sthunk->Sident = XNEWVEC (const char, sz);
+      snprintf (CONST_CAST (char *, sthunk->Sident), sz, "_DT%u%s",
+		offset, csym->Sident);
 
       tree target_func_decl = csym->Stree;
       tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (target_func_decl),
@@ -566,7 +564,7 @@ FuncDeclaration::toThunkSymbol (int offset)
       DECL_COMDAT_GROUP (thunk_decl) = DECL_COMDAT_GROUP (target_func_decl);
       DECL_WEAK (thunk_decl) = DECL_WEAK (target_func_decl);
 
-      DECL_NAME (thunk_decl) = get_identifier (id);
+      DECL_NAME (thunk_decl) = get_identifier (sthunk->Sident);
       SET_DECL_ASSEMBLER_NAME (thunk_decl, DECL_NAME (thunk_decl));
 
       d_keep (thunk_decl);
@@ -587,18 +585,18 @@ ClassDeclaration::toSymbol (void)
 {
   if (!csym)
     {
-      tree decl;
-      csym = toSymbolX ("__Class", SCextern, 0, "Z");
-      decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
-			 make_node (RECORD_TYPE));
+      csym = toSymbolX ("__Class", 0, 0, "Z");
+
+      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			      get_identifier (csym->Sident), make_node (RECORD_TYPE));
       csym->Stree = decl;
       d_keep (decl);
 
       object_file->setupStaticStorage (this, decl);
       object_file->setDeclLoc (decl, this);
 
+      // ClassInfo cannot be const data, because we use the monitor on it.
       TREE_CONSTANT (decl) = 0;
-      TREE_READONLY (decl) = 0;
     }
   return csym;
 }
@@ -610,14 +608,17 @@ InterfaceDeclaration::toSymbol (void)
 {
   if (!csym)
     {
-      csym = ClassDeclaration::toSymbol();
-      tree decl = csym->Stree;
+      csym = toSymbolX ("__Interface", 0, 0, "Z");
 
-      Symbol *temp_sym = toSymbolX ("__Interface", SCextern, 0, "Z");
-      DECL_NAME (decl) = get_identifier (temp_sym->Sident);
-      delete temp_sym;
+      tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			      get_identifier (csym->Sident), make_node (RECORD_TYPE));
+      csym->Stree = decl;
+      d_keep (decl);
 
-      TREE_CONSTANT (decl) = 1; // Interface ClassInfo images are in .rodata, but classes arent..?
+      object_file->setupStaticStorage (this, decl);
+      object_file->setDeclLoc (decl, this);
+
+      TREE_CONSTANT (decl) = 1;
     }
   return csym;
 }
@@ -629,19 +630,19 @@ Module::toSymbol (void)
 {
   if (!csym)
     {
-      csym = toSymbolX ("__ModuleInfo", SCextern, 0, "Z");
+      csym = toSymbolX ("__ModuleInfo", 0, 0, "Z");
 
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (csym->Sident),
-			      make_node (RECORD_TYPE));
-      object_file->setDeclLoc (decl, this);
+      tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			      get_identifier (csym->Sident), make_node (RECORD_TYPE));
       csym->Stree = decl;
-
       d_keep (decl);
 
       object_file->setupStaticStorage (this, decl);
+      object_file->setDeclLoc (decl, this);
 
-      TREE_CONSTANT (decl) = 0; // *not* readonly, moduleinit depends on this
-      TREE_READONLY (decl) = 0; // Not an lvalue, tho
+      // Not readonly, moduleinit depends on this.
+      TREE_CONSTANT (decl) = 0;
+      TREE_READONLY (decl) = 0;
     }
   return csym;
 }
@@ -657,7 +658,7 @@ ClassDeclaration::toVtblSymbol (void)
     {
       tree decl;
 
-      vtblsym = toSymbolX ("__vtbl", SCextern, 0, "Z");
+      vtblsym = toSymbolX ("__vtbl", 0, 0, "Z");
 
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
@@ -700,12 +701,13 @@ AggregateDeclaration::toInitializer (void)
 {
   if (!sinit)
     {
-      sinit = toSymbolX ("__init", SCextern, 0, "Z");
+      sinit = toSymbolX ("__init", 0, 0, "Z");
 
       StructDeclaration *sd = isStructDeclaration();
       if (sd)
 	sinit->Salignment = sd->alignment;
     }
+
   if (!sinit->Stree && object_file != NULL)
     {
       tree struct_type = type->toCtype();
@@ -739,12 +741,11 @@ TypedefDeclaration::toInitializer (void)
 
   if (!sinit)
     {
-      s = toSymbolX ("__init", SCextern, 0, "Z");
-      s->Sfl = FLextern;
-      s->Sflags |= SFLnodebug;
+      s = toSymbolX ("__init", 0, 0, "Z");
       sinit = s;
-      sinit->Sdt = ((TypeTypedef *)type)->sym->init->toDt();
+      sinit->Sdt = ((TypeTypedef *) type)->sym->init->toDt();
     }
+
   if (!sinit->Stree && object_file != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,
@@ -772,17 +773,12 @@ EnumDeclaration::toInitializer (void)
     {
       Identifier *ident_save = ident;
       if (!ident)
-	{   static int num;
-	  char name[6 + sizeof (num) * 3 + 1];
-	  snprintf (name, sizeof (name), "__enum%d", ++num);
-	  ident = Lexer::idPool (name);
-	}
-      s = toSymbolX ("__init", SCextern, 0, "Z");
+	ident = Lexer::uniqueId("__enum");
+      s = toSymbolX ("__init", 0, 0, "Z");
       ident = ident_save;
-      s->Sfl = FLextern;
-      s->Sflags |= SFLnodebug;
       sinit = s;
     }
+
   if (!sinit->Stree && object_file != NULL)
     {
       tree t = build_decl (UNKNOWN_LOCATION, VAR_DECL,

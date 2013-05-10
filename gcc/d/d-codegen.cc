@@ -42,15 +42,6 @@ d_gcc_force_templates (void)
   return gen.emitTemplates == TEprivate;
 }
 
-// Public routine called from D frontend to hide from glue interface.
-// Add local variable V into the current body.
-
-void
-d_gcc_emit_local_variable (VarDeclaration *v)
-{
-  current_irs->emitLocalVar (v);
-}
-
 // Return the DECL_CONTEXT for symbol D_SYM.
 
 tree

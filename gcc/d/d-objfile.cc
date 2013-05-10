@@ -36,6 +36,25 @@ DeferredThunks ObjectFile::deferredThunks;
 FuncDeclarations ObjectFile::staticCtorList;
 FuncDeclarations ObjectFile::staticDtorList;
 
+// Construct a new Symbol.
+
+Symbol::Symbol (void)
+{
+  this->Sident = NULL;
+  this->prettyIdent = NULL;
+
+  this->Sdt = NULL_TREE;
+  this->Salignment = 0;
+  this->Sreadonly = false;
+
+  this->Stree = NULL_TREE;
+  this->ScontextDecl = NULL_TREE;
+  this->SframeField = NULL_TREE;
+
+  this->outputStage = NotStarted;
+  this->frameInfo = NULL;
+}
+
 
 void
 Dsymbol::toObjFile (int)
@@ -2073,18 +2092,14 @@ check_static_sym (Symbol *sym)
       tree t_ini = dt2tree (sym->Sdt); // %% recursion problems?
       tree t_var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (t_ini));
       object_file->giveDeclUniqueName (t_var);
+
       DECL_INITIAL (t_var) = t_ini;
       TREE_STATIC (t_var) = 1;
-      if (sym->Sseg == CDATA)
-	{
-	  TREE_CONSTANT (t_var) = TREE_CONSTANT (t_ini) = 1;
-	  TREE_READONLY (t_var) = TREE_READONLY (t_ini) = 1;
-	}
-      // %% need to check SCcomdat?
       TREE_USED (t_var) = 1;
       TREE_PRIVATE (t_var) = 1;
       DECL_IGNORED_P (t_var) = 1;
       DECL_ARTIFICIAL (t_var) = 1;
+
       sym->Stree = t_var;
     }
   return sym->Stree;
@@ -2118,7 +2133,7 @@ outdata (Symbol *sym)
     }
 
   /* If the symbol was marked as readonly in the frontend, set TREE_READONLY.  */
-  if (D_DECL_READONLY_STATIC (t))
+  if (sym->Sreadonly)
     TREE_READONLY (t) = 1;
 
   // see dwarf2out.c:dwarf2out_decl gcc expects local statics

@@ -80,9 +80,6 @@ extern GTY(()) tree d_eh_personality_decl;
    is not affected by -femit-templates. */
 #define D_DECL_IS_TEMPLATE(NODE) (DECL_LANG_FLAG_1 (NODE))
 
-/* True if the symbol has been marked "static const".  */
-#define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_2 (NODE))
-
 /* True if a custom static chain has been set-up for function.  */
 #define D_DECL_STATIC_CHAIN(NODE) (DECL_LANG_FLAG_3 (FUNCTION_DECL_CHECK (NODE)))
 

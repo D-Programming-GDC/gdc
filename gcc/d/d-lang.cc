@@ -750,8 +750,6 @@ deps_write (Module *m)
   ob->writestring ("\n");
 }
 
-Symbol *rtlsym[N_RTLSYM];
-
 
 // Binary search for P in TAB between the range 0 to HIGH.
 
@@ -867,17 +865,14 @@ d_parse_file (void)
 	output_module = m;
     }
 
-  // There is only one of these so far...
-  rtlsym[RTLSYM_DHIDDENFUNC] = get_libcall (LIBCALL_HIDDEN_FUNC)->toSymbol();
-
-  // current_module shouldn't have any implications before genobjfile..
-  // ... but it does.  We need to know what module in which to insert
+  // Current_module shouldn't have any implications before genobjfile...
+  // but it does.  We need to know what module in which to insert
   // TemplateInstances during the semantic pass.  In order for
   // -femit-templates to work, template instances must be emitted
   // in every translation unit.  To do this, the TemplateInstaceS have to
   // have toObjFile called in the module being compiled.
   // TemplateInstance puts itself somwhere during ::semantic, thus it has
-  // to know the current module...
+  // to know the current module.
 
   gcc_assert (output_module);
 

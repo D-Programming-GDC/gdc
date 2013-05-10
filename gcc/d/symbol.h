@@ -24,44 +24,6 @@
 #include "root.h"
 #include "mtype.h"
 
-enum SymbolStorageClass
-{
-  SC_INVALID,
-  SCextern,
-  SCstatic,
-  SCauto,
-  SCglobal,
-  SCstruct,
-  SCcomdat
-};
-
-typedef enum SymbolStorageClass enum_SC;
-
-enum SymbolFL
-{
-  FL_INVALID,
-  FLextern = 0x01,
-  FLdata   = 0x02,
-};
-
-enum SymbolFlag
-{
-  SFLnodebug = 0x01,
-  SFLweak    = 0x02
-};
-
-enum SymbolSegment
-{
-  INVALID,
-  DATA,
-  CDATA,
-  UDATA
-};
-
-// not sure if this needs to inherit object..
-// union tree_node; typedef union tree_node dt_t;
-struct dt_t;
-
 enum OutputStage
 {
   NotStarted,
@@ -78,10 +40,6 @@ struct Symbol : Object
 
   const char *Sident;
   const char *prettyIdent;
-  SymbolStorageClass Sclass;
-  SymbolFL Sfl;
-  SymbolSegment Sseg;
-  int Sflags;
   int Salignment;
   bool Sreadonly;
 
@@ -121,14 +79,9 @@ struct Obj
 
 extern Obj *objmod;
 
-Symbol *symbol_calloc (const char *string);
 tree check_static_sym (Symbol *sym);
 void outdata (Symbol *sym);
-inline void out_readonly (Symbol *s) { s->Sseg = CDATA; }
 void obj_moduleinfo (Symbol *sym);
 void obj_tlssections (void);
-
-Symbol *symbol_tree (tree);
-Symbol *static_sym (void);
 
 #endif

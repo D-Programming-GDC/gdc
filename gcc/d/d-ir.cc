@@ -280,13 +280,12 @@ CaseStatement::toIR (IRState *irs)
 void
 SwitchStatement::toIR (IRState *irs)
 {
-  tree cond_tree;
-  // %% also what about c-semantics doing emit_nop() ?
   irs->doLineNote (loc);
-  cond_tree = condition->toElemDtor (irs);
 
+  tree cond_tree = condition->toElemDtor (irs);
   Type *cond_type = condition->type->toBasetype();
-  if (cond_type->ty == Tarray)
+
+  if (condition->type->isString())
     {
       Type *elem_type = cond_type->nextOf()->toBasetype();
       LibCall libcall;
@@ -310,26 +309,31 @@ SwitchStatement::toIR (IRState *irs)
 	  gcc_unreachable();
 	}
 
-      tree args[2];
-      Symbol *s = static_sym();
-      dt_t **  pdt = &s->Sdt;
-      s->Sseg = CDATA;
-
       // Apparently the backend is supposed to sort and set the indexes
       // on the case array, have to change them to be useable.
       cases->sort();
 
+      tree args[2];
+      Symbol *s = new Symbol();
+      dt_t **pdt = &s->Sdt;
+
       for (size_t i = 0; i < cases->dim; i++)
 	{
-	  CaseStatement *case_stmt = (*cases)[i];
-	  pdt = case_stmt->exp->toDt (pdt);
-	  case_stmt->index = i;
+	  CaseStatement *cs = (*cases)[i];
+	  cs->index = i;
+
+	  if (cs->exp->op != TOKstring)
+	    error("case '%s' is not a string", cs->exp->toChars());
+	  else
+	    pdt = cs->exp->toDt (pdt);
 	}
-      outdata (s);
-      tree p_table = build_address (s->Stree);
+
+      s->Sreadonly = true;
+      d_finalize_symbol (s);
 
       args[0] = d_array_value (cond_type->arrayOf()->toCtype(),
-			       size_int (cases->dim), p_table);
+			       size_int (cases->dim),
+			       build_address (s->Stree));
       args[1] = cond_tree;
 
       cond_tree = build_libcall (libcall, 2, args);
@@ -349,9 +353,7 @@ SwitchStatement::toIR (IRState *irs)
 	  case_stmt->cblock = irs->label (case_stmt->loc);
 	}
       if (sdefault)
-	{
-	  sdefault->cblock = irs->label (sdefault->loc);
-	}
+	sdefault->cblock = irs->label (sdefault->loc);
     }
   cond_tree = fold (cond_tree);
 
@@ -370,6 +372,8 @@ SwitchStatement::toIR (IRState *irs)
       if (sdefault)
 	irs->doJump (NULL, sdefault->cblock);
     }
+
+  // Emit body.
   irs->startCase (this, cond_tree, hasVars);
   if (body)
     body->toIR (irs);
