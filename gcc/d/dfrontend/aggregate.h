@@ -32,7 +32,12 @@ struct DeleteDeclaration;
 struct InterfaceDeclaration;
 struct TypeInfoClassDeclaration;
 struct VarDeclaration;
+
+#ifdef IN_GCC
+typedef union tree_node dt_t;
+#else
 struct dt_t;
+#endif
 
 enum Sizeok
 {
