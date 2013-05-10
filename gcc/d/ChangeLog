@@ -11,6 +11,8 @@
 	symbol default values in a class declaration.
 	(dtlist_to_tree): New helper function to convert a dt_t list into a
 	constructor tree.
+	(TypeInfoDeclaration::toDt): Implement routines emitting TypeInfo data
+	in for new dt_t format.
 
 2013-05-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 

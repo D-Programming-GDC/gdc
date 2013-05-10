@@ -18,7 +18,11 @@
 #include "d-system.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-#include "dt.h"
+
+#include "scope.h"
+#include "enum.h"
+#include "id.h"
+#include "init.h"
 
 
 // Return a pointer to the last empty node in PDT, which is a chain
@@ -213,3 +217,630 @@ RealExp::toDt (dt_t **pdt)
 {
   return dttree (pdt, toElem (&gen));
 }
+
+/* ================================================================ */
+
+// Verify the runtime TypeInfo sizes.
+
+static void
+verify_structsize (ClassDeclaration *typeclass, size_t expected)
+{
+  if (typeclass->structsize != expected)
+    {
+       error (typeclass->loc, "mismatch between compiler and object.d or object.di found.");
+       gcc_unreachable();
+    }
+}
+
+// Generate the TypeInfo data layouts.
+
+void
+TypeInfoDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfo, 2 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   */
+  build_dt_vtable (pdt, Type::typeinfo);
+}
+
+void
+TypeInfoConstDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfoconst, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo next;
+   */
+  Type *tm = tinfo->mutableOf();
+  tm = tm->merge();
+  tm->getTypeInfo (NULL);
+
+  // vtbl and monitor for TypeInfo_Const
+  build_dt_vtable (pdt, Type::typeinfoconst);
+
+  // TypeInfo for mutable type.
+  dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
+}
+
+void
+TypeInfoInvariantDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfoinvariant, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo next;
+   */
+  Type *tm = tinfo->mutableOf();
+  tm = tm->merge();
+  tm->getTypeInfo (NULL);
+
+  // vtbl and monitor for TypeInfo_Invariant
+  build_dt_vtable (pdt, Type::typeinfoinvariant);
+
+  // TypeInfo for mutable type.
+  dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
+}
+
+void
+TypeInfoSharedDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfoshared, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo next;
+   */
+  Type *tm = tinfo->unSharedOf();
+  tm = tm->merge();
+  tm->getTypeInfo (NULL);
+
+  // vtbl and monitor for TypeInfo_Shared
+  build_dt_vtable (pdt, Type::typeinfoshared);
+
+  // TypeInfo for unshared type.
+  dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
+}
+
+void
+TypeInfoWildDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfowild, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo next;
+   */
+  Type *tm = tinfo->mutableOf();
+  tm = tm->merge();
+  tm->getTypeInfo (NULL);
+
+  // vtbl and monitor for TypeInfo_Wild
+  build_dt_vtable (pdt, Type::typeinfowild);
+
+  // TypeInfo for mutable type.
+  dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
+}
+
+
+void
+TypeInfoTypedefDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfotypedef, 7 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo base;
+   *  char[] name;
+   *  void[] m_init;
+   */
+  gcc_assert (tinfo->ty == Ttypedef);
+
+  TypedefDeclaration *sd = ((TypeTypedef *) tinfo)->sym;
+  sd->basetype = sd->basetype->merge();
+  // Generate vtinfo.
+  sd->basetype->getTypeInfo (NULL);
+  gcc_assert (sd->basetype->vtinfo);
+
+  // vtbl and monitor for TypeInfo_Typedef
+  build_dt_vtable (pdt, Type::typeinfotypedef);
+
+  // Typeinfo for basetype.
+  dt_cons (pdt, build_address (sd->basetype->vtinfo->toSymbol()->Stree));
+
+  // Name of the typedef declaration.
+  dt_cons (pdt, d_array_string (sd->toPrettyChars()));
+
+  // Default initialiser for typedef.
+  tree tarray = Type::tvoid->arrayOf()->toCtype();
+  if (tinfo->isZeroInit() || !sd->init)
+    dt_cons (pdt, d_array_value (tarray, size_int (0), d_null_pointer));
+  else
+    {
+      tree sinit = build_address (sd->toInitializer()->Stree);
+      dt_cons (pdt, d_array_value (tarray, size_int (sd->type->size()), sinit));
+    }
+}
+
+void
+TypeInfoEnumDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfoenum, 7 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo base;
+   *  char[] name;
+   *  void[] m_init;
+   */
+  gcc_assert (tinfo->ty == Tenum);
+
+  TypeEnum *tc = (TypeEnum *) tinfo;
+  EnumDeclaration *sd = tc->sym;
+
+  // vtbl and monitor for TypeInfo_Enum
+  build_dt_vtable (pdt, Type::typeinfoenum);
+
+  // TypeInfo for enum members.
+  if (sd->memtype)
+    {
+      sd->memtype->getTypeInfo(NULL);
+      dt_cons (pdt, build_address (sd->memtype->vtinfo->toSymbol()->Stree));
+    }
+  else
+    dt_cons (pdt, d_null_pointer);
+
+  // Name of the enum declaration.
+  dt_cons (pdt, d_array_string (sd->toPrettyChars()));
+
+  // Default initialiser for enum.
+  tree tarray = Type::tvoid->arrayOf()->toCtype();
+  if (!sd->defaultval || tinfo->isZeroInit())
+    {
+      // zero initialiser, or the same as the base type.
+      dt_cons (pdt, d_array_value (tarray, size_int (0), d_null_pointer));
+    }
+  else
+    {
+      tree dt = build_address (sd->toInitializer()->Stree);
+      dt_cons (pdt, d_array_value (tarray, size_int (sd->type->size()), dt));
+    }
+}
+
+void
+TypeInfoPointerDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfopointer, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo m_next;
+   */
+  gcc_assert (tinfo->ty == Tpointer);
+
+  TypePointer *tc = (TypePointer *) tinfo;
+  tc->next->getTypeInfo(NULL);
+
+  // vtbl and monitor for TypeInfo_Pointer
+  build_dt_vtable (pdt, Type::typeinfopointer);
+
+  // TypeInfo for pointer-to type.
+  dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
+}
+
+void
+TypeInfoArrayDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfoarray, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo value;
+   */
+  gcc_assert (tinfo->ty == Tarray);
+
+  TypeDArray *tc = (TypeDArray *) tinfo;
+  tc->next->getTypeInfo(NULL);
+
+  // vtbl and monitor for TypeInfo_Array
+  build_dt_vtable (pdt, Type::typeinfoarray);
+
+  // TypeInfo for array of type.
+  dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
+}
+
+void
+TypeInfoStaticArrayDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfostaticarray, 4 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo value;
+   *  size_t len;
+   */
+  gcc_assert (tinfo->ty == Tsarray);
+
+  TypeSArray *tc = (TypeSArray *) tinfo;
+  tc->next->getTypeInfo(NULL);
+
+  // vtbl and monitor for TypeInfo_StaticArray
+  build_dt_vtable (pdt, Type::typeinfostaticarray);
+
+  // TypeInfo for array of type.
+  dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
+
+  // Static array length.
+  dt_cons (pdt, size_int (tc->dim->toInteger()));
+}
+
+void
+TypeInfoVectorDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfovector, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo base;
+   */
+  gcc_assert (tinfo->ty == Tvector);
+
+  TypeVector *tc = (TypeVector *) tinfo;
+  tc->basetype->getTypeInfo(NULL);
+
+  // vtbl and monitor for TypeInfo_Vector
+  build_dt_vtable (pdt, Type::typeinfovector);
+
+  // TypeInfo for equivalent static array.
+  dt_cons (pdt, build_address (tc->basetype->vtinfo->toSymbol()->Stree));
+}
+
+void
+TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
+{
+  verify_structsize (Type::typeinfoassociativearray, 5 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo value;
+   *  TypeInfo key;
+   *  TypeInfo impl;
+   */
+  gcc_assert (tinfo->ty == Taarray);
+
+  TypeAArray *tc = (TypeAArray *) tinfo;
+  tc->next->getTypeInfo(NULL);
+  tc->index->getTypeInfo(NULL);
+  tc->getImpl()->type->getTypeInfo(NULL);
+
+  // vtbl and monitor for TypeInfo_AssociativeArray
+  build_dt_vtable (pdt, Type::typeinfoassociativearray);
+
+  // TypeInfo for value of type.
+  dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
+
+  // TypeInfo for index of type.
+  dt_cons (pdt, build_address (tc->index->vtinfo->toSymbol()->Stree));
+
+  // TypeInfo impl;
+  dt_cons (pdt, build_address (tc->getImpl()->type->vtinfo->toSymbol()->Stree));
+}
+
+void
+TypeInfoFunctionDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfofunction, 5 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo next;
+   *  string deco;
+   */
+  gcc_assert (tinfo->ty == Tfunction);
+  gcc_assert (tinfo->deco);
+
+  TypeFunction *tc = (TypeFunction *) tinfo;
+  tc->next->getTypeInfo(NULL);
+
+  // vtbl and monitor for TypeInfo_Function
+  build_dt_vtable (pdt, Type::typeinfofunction);
+
+  // TypeInfo for function return value.
+  dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
+
+  // Mangled name of function declaration.
+  dt_cons (pdt, d_array_string (tinfo->deco));
+}
+
+void
+TypeInfoDelegateDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfodelegate, 5 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo next;
+   *  string deco;
+   */
+  gcc_assert (tinfo->ty == Tdelegate);
+  gcc_assert (tinfo->deco);
+
+  TypeDelegate *tc = (TypeDelegate *) tinfo;
+  tc->next->nextOf()->getTypeInfo(NULL);
+
+  // vtbl and monitor for TypeInfo_Delegate
+  build_dt_vtable (pdt, Type::typeinfodelegate);
+
+  // TypeInfo for delegate return value.
+  dt_cons (pdt, build_address (tc->next->nextOf()->vtinfo->toSymbol()->Stree));
+
+  // Mangled name of delegate declaration.
+  dt_cons (pdt, d_array_string (tinfo->deco));
+}
+
+void
+TypeInfoStructDeclaration::toDt (dt_t **pdt)
+{
+  if (global.params.is64bit)
+    verify_structsize (Type::typeinfostruct, 17 * PTRSIZE);
+  else
+    verify_structsize (Type::typeinfostruct, 15 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  char[] name;
+   *  void[] init;
+   *  hash_t function(in void*) xtoHash;
+   *  bool function(in void*, in void*) xopEquals;
+   *  int function(in void*, in void*) xopCmp;
+   *  string function(const(void)*) xtoString;
+   *  uint m_flags;
+   *  xdtor;
+   *  xpostblit;
+   *  uint m_align;
+   *  version (X86_64)
+   *      TypeInfo m_arg1;
+   *      TypeInfo m_arg2;
+   *  xgetRTInfo
+   */
+  gcc_assert (tinfo->ty == Tstruct);
+
+  TypeStruct *tc = (TypeStruct *) tinfo;
+  StructDeclaration *sd = tc->sym;
+
+  // vtbl and monitor for TypeInfo_Struct
+  build_dt_vtable (pdt, Type::typeinfostruct);
+
+  // Name of the struct declaration.
+  dt_cons (pdt, d_array_string (sd->toPrettyChars()));
+
+  // Default initialiser for struct.
+  dt_cons (pdt, size_int (sd->structsize));
+  if (sd->zeroInit)
+    dt_cons (pdt, d_null_pointer);
+  else
+    dt_cons (pdt, build_address (sd->toInitializer()->Stree));
+
+  // hash_t function(in void*) xtoHash;
+  Dsymbol *s = search_function(sd, Id::tohash);
+  FuncDeclaration *fdx = s ? s->isFuncDeclaration() : NULL;
+  if (fdx)
+    {
+      static TypeFunction *tftohash;
+      if (!tftohash)
+	{
+	  Scope sc;
+	  // const hash_t toHash();
+	  tftohash = new TypeFunction (NULL, Type::thash_t, 0, LINKd);
+	  tftohash->mod = MODconst;
+	  tftohash = (TypeFunction *) tftohash->semantic (0, &sc);
+	}
+
+      FuncDeclaration *fd = fdx->overloadExactMatch(tftohash);
+      if (fd)
+	{
+	  dt_cons (pdt, build_address (fd->toSymbol()->Stree));
+	  TypeFunction *tf = (TypeFunction *) fd->type;
+	  gcc_assert(tf->ty == Tfunction);
+
+	  if (!tf->isnothrow || tf->trust == TRUSTsystem)
+	    warning(fd->loc, "toHash() must be declared as extern (D) size_t toHash() const nothrow @safe, not %s", tf->toChars());
+	}
+      else
+	dt_cons (pdt, d_null_pointer);
+    }
+  else
+    dt_cons (pdt, d_null_pointer);
+
+  // bool function(in void*, in void*) xopEquals;
+  if (sd->xeq)
+    dt_cons (pdt, build_address (sd->xeq->toSymbol()->Stree));
+  else
+    dt_cons (pdt, d_null_pointer);
+
+  // int function(in void*, in void*) xopCmp;
+  s = search_function(sd, Id::cmp);
+  fdx = s ? s->isFuncDeclaration() : NULL;
+  if (fdx)
+    {
+      Scope sc;
+
+      // const int opCmp(ref const KeyType s);
+      Parameters *arguments = new Parameters;
+
+      // arg type is ref const T
+      Parameter *arg = new Parameter(STCref, tc->constOf(), NULL, NULL);
+      arguments->push(arg);
+
+      TypeFunction *tfcmpptr = new TypeFunction(arguments, Type::tint32, 0, LINKd);
+      tfcmpptr->mod = MODconst;
+      tfcmpptr = (TypeFunction *) tfcmpptr->semantic(0, &sc);
+
+      FuncDeclaration *fd = fdx->overloadExactMatch(tfcmpptr);
+      if (fd)
+	dt_cons (pdt, build_address (fd->toSymbol()->Stree));
+      else
+	dt_cons (pdt, d_null_pointer);
+    }
+  else
+    dt_cons (pdt, d_null_pointer);
+
+  // string function(const(void)*) xtoString;
+  s = search_function(sd, Id::tostring);
+  fdx = s ? s->isFuncDeclaration() : NULL;
+  if (fdx)
+    {
+      static TypeFunction *tftostring;
+      if (!tftostring)
+	{
+	  Scope sc;
+	  // string toString()
+	  tftostring = new TypeFunction (NULL, Type::tchar->invariantOf()->arrayOf(), 0, LINKd);
+	  tftostring = (TypeFunction *) tftostring->semantic (0, &sc);
+	}
+
+      FuncDeclaration *fd = fdx->overloadExactMatch(tftostring);
+      if (fd)
+	dt_cons (pdt, build_address (fd->toSymbol()->Stree));
+      else
+	dt_cons (pdt, d_null_pointer);
+    }
+  else
+    dt_cons (pdt, d_null_pointer);
+
+  // uint m_flags;
+  dt_cons (pdt, size_int (tc->hasPointers()));
+
+  // xdtor
+  if (sd->dtor)
+    dt_cons (pdt, build_address (sd->dtor->toSymbol()->Stree));
+  else
+    dt_cons (pdt, d_null_pointer);
+
+  // xpostblit
+  if (sd->postblit && !(sd->postblit->storage_class & STCdisable))
+    dt_cons (pdt, build_address (sd->postblit->toSymbol()->Stree));
+  else
+    dt_cons (pdt, d_null_pointer);
+
+  // uint m_align;
+  dt_cons (pdt, size_int (tc->alignsize()));
+
+  // %% FIXME: is64bit does not mean X86_64.
+  if (global.params.is64bit)
+    {
+      // TypeInfo m_arg1;
+      if (sd->arg1type)
+	{
+	  sd->arg1type->getTypeInfo (NULL);
+	  dt_cons (pdt, build_address (sd->arg1type->vtinfo->toSymbol()->Stree));
+	}
+      else
+	dt_cons (pdt, d_null_pointer);
+
+      // TypeInfo m_arg2;
+      if (sd->arg2type)
+	{
+	  sd->arg2type->getTypeInfo (NULL);
+	  dt_cons (pdt, build_address (sd->arg2type->vtinfo->toSymbol()->Stree));
+	}
+      else
+	dt_cons (pdt, d_null_pointer);
+    }
+
+  // xgetRTInfo
+  if (sd->getRTInfo)
+    sd->getRTInfo->toDt (pdt);
+  else
+    {
+      // If struct has pointers.
+      if (tc->hasPointers())
+	dt_cons (pdt, size_int (1));
+      else
+	dt_cons (pdt, size_int (0));
+    }
+}
+
+void
+TypeInfoClassDeclaration::toDt (dt_t **)
+{
+  internal_error ("TypeInfoClassDeclaration::toDt called.");
+  gcc_unreachable();
+}
+
+void
+TypeInfoInterfaceDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfointerface, 3 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  ClassInfo info;
+   */
+  gcc_assert (tinfo->ty == Tclass);
+
+  // vtbl and monitor for TypeInfo_Interface
+  build_dt_vtable (pdt, Type::typeinfointerface);
+
+  TypeClass *tc = (TypeClass *) tinfo;
+  if (!tc->sym->vclassinfo)
+    tc->sym->vclassinfo = new TypeInfoClassDeclaration (tc);
+
+  Symbol *s = tc->sym->vclassinfo->toSymbol();
+  dt_cons (pdt, build_address (s->Stree));
+}
+
+void
+TypeInfoTupleDeclaration::toDt (dt_t **pdt)
+{
+  verify_structsize (Type::typeinfotypelist, 4 * PTRSIZE);
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   *  TypeInfo[] elements;
+   */
+  gcc_assert (tinfo->ty == Ttuple);
+
+  // vtbl and monitor for TypeInfo_Tuple
+  build_dt_vtable (pdt, Type::typeinfotypelist);
+
+  TypeTuple *tu = (TypeTuple *) tinfo;
+  tree dt = NULL_TREE;
+
+  for (size_t i = 0; i < tu->arguments->dim; i++)
+    {
+      Parameter *arg = (*tu->arguments)[i];
+      Expression *e = arg->type->getTypeInfo (NULL);
+      e = e->optimize (WANTvalue);
+      e->toDt (&dt);
+    }
+
+  Symbol *s = new Symbol();
+  s->Sdt = dt;
+  d_finalize_symbol (s);
+
+  // TypeInfo[] elements;
+  dt_cons (pdt, size_int (tu->arguments->dim));
+  dt_cons (pdt, build_address (s->Stree));
+}
+
