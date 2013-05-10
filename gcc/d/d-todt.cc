@@ -220,6 +220,95 @@ RealExp::toDt (dt_t **pdt)
 
 /* ================================================================ */
 
+// Generate the data for the default initialiser of the type.
+
+dt_t **
+Type::toDt (dt_t **pdt)
+{
+  Expression *e = defaultInit();
+  return e->toDt (pdt);
+}
+
+dt_t **
+TypeSArray::toDt (dt_t **pdt)
+{
+  return toDtElem (pdt, NULL);
+}
+
+dt_t **
+TypeSArray::toDtElem (dt_t **pdt, Expression *e)
+{
+  dinteger_t len = dim->toInteger();
+
+  if (len)
+    {
+      Type *tnext = next;
+      Type *tbn = tnext->toBasetype();
+      tree dt = NULL_TREE;
+
+      if (e && (e->op == TOKstring || e->op == TOKarrayliteral))
+	{
+	  while (tbn->ty == Tsarray && (!e || tbn != e->type->nextOf()))
+	    {
+	      TypeSArray *tsa = (TypeSArray *) tbn;
+	      len *= tsa->dim->toInteger();
+	      tnext = tbn->nextOf();
+	      tbn = tnext->toBasetype();
+	    }
+
+	  if (e->op == TOKstring)
+	    len /= ((StringExp *) e)->len;
+	  else if (e->op == TOKarrayliteral)
+	    len /= ((ArrayLiteralExp *) e)->elements->dim;
+
+	  for (size_t i = 0; i < len; i++)
+	    e->toDt (&dt);
+
+	  // Single initialiser already constructed, just chain onto pdt.
+	  if (len == 1)
+	    return dt_chainon (pdt, dt);
+	}
+      else
+	{
+	  // If not already supplied use default initialiser.
+	  if (!e)
+	    e = tnext->defaultInit();
+
+	  for (size_t i = 0; i < len; i++)
+	    {
+	      if (tbn->ty == Tsarray)
+		((TypeSArray *) tbn)->toDtElem (&dt, e);
+	      else
+    		e->toDt (&dt);
+	    }
+	}
+
+      return dt_container (pdt, this, dt);
+    }
+
+  return pdt;
+}
+
+dt_t **
+TypeStruct::toDt (dt_t **pdt)
+{
+  sym->toDt (pdt);
+  return pdt;
+}
+
+dt_t **
+TypeTypedef::toDt (dt_t **pdt)
+{
+  if (sym->init)
+    dt_chainon (pdt, sym->init->toDt());
+  else
+    sym->basetype->toDt (pdt);
+
+  return pdt;
+}
+
+/* ================================================================ */
+
 // Verify the runtime TypeInfo sizes.
 
 static void
