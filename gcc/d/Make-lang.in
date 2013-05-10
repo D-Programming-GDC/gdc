@@ -53,7 +53,7 @@ D_DMD_H := \
 
 D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-codegen.h \
         d/d-objfile.h d/d-irstate.h d/d-dmd-gcc.h d/d-system.h \
-        d/d-gcc-real.h d/symbol.h d/dt.h \
+        d/d-gcc-real.h d/symbol.h \
         coretypes.h function.h $(VARRAY_H) \
 	$(SYSTEM_H) $(CONFIG_H) $(TARGET_H) \
 	$(GGC_H) \
@@ -127,8 +127,7 @@ D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-objfile.glue.o d/d-irstate.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
-              d/d-gt.cglue.o d/d-builtins.cglue.o \
-              d/d-asmstmt.glue.o d/dt.glue.o \
+              d/d-gt.cglue.o d/d-builtins.cglue.o d/d-asmstmt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
               d/d-ir.glue.o d/d-typinf.glue.o
 
@@ -190,7 +189,6 @@ d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
 d/d-typinf.glue.o: d/d-typinf.cc $(D_TREE_H)
 d/d-gcc-real.glue.o: d/d-gcc-real.cc $(D_TREE_H)
 d/d-asmstmt.glue.o: d/d-asmstmt.cc $(D_TREE_H)
-d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)
 d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H)
 
