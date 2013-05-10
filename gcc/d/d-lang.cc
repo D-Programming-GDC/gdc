@@ -1073,11 +1073,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (stdmsg, "code      %s\n", m->toChars());
       if (!flag_syntax_only)
-	{
-	  Obj::init ();
-	  m->genobjfile (false);
-	  Obj::term ();
-	}
+	m->genobjfile (false);
       if (!global.errors && !errorcount)
 	{
 	  if (global.params.doDocComments)

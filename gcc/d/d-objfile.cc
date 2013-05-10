@@ -2164,59 +2164,10 @@ outdata (Symbol *sym)
   object_file->outputStaticSymbol (sym);
 }
 
-// Interface to object file format.
-
-Obj *objmod = NULL;
-
-// Perform initialisation that applies to all output files.
-
-void
-Obj::init (void)
-{
-  gcc_assert (objmod == NULL);
-  objmod = new Obj;
-}
-
-// Terminate package.
-
-void
-Obj::term (void)
-{
-  delete objmod;
-  objmod = NULL;
-}
-
-// Output library name.
-
-bool
-Obj::includelib (const char *name ATTRIBUTE_UNUSED)
-{
-  if (!global.params.ignoreUnsupportedPragmas)
-    warning (OPT_Wunknown_pragmas, "pragma(lib) not implemented");
-  return false;
-}
-
-// Set start address.
-
-void
-Obj::startaddress (Symbol *s ATTRIBUTE_UNUSED)
-{
-  if (!global.params.ignoreUnsupportedPragmas)
-    warning (OPT_Wunknown_pragmas, "pragma(startaddress) not implemented");
-}
-
-// Do we allow zero sized objects?
-
-bool
-Obj::allowZeroSize (void)
-{
-  return true;
-}
-
 // Generate our module reference and append to _Dmodule_ref.
 
 void
-Obj::moduleinfo (Symbol *sym)
+build_moduleinfo (Symbol *sym)
 {
   // Generate:
   //   struct ModuleReference
@@ -2270,35 +2221,11 @@ Obj::moduleinfo (Symbol *sym)
   object_file->doSimpleFunction ("*__modinit", vcompound_expr (m1, m2), true);
 }
 
-void
-Obj::export_symbol (Symbol *, unsigned)
-{
-}
-
-bool
-obj_includelib (const char *name)
-{
-  return objmod->includelib (name);
-}
-
-void
-obj_startaddress (Symbol *s)
-{
-  return objmod->startaddress (s);
-}
-
-void
-obj_append (Dsymbol *s)
-{
-  // GDC does not do multi-obj, so just write it out now.
-  s->toObjFile (0);
-}
-
 // Put out symbols that define the beginning and end
 // of the thread local storage sections.
 
 void
-obj_tlssections (void)
+build_tlssections (void)
 {
   /* Generate:
 	__thread int _tlsstart = 3;

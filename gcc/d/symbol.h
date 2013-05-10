@@ -65,23 +65,7 @@ struct Thunk
   Symbol *symbol;
 };
 
-struct Obj
-{
-  static void init ();
-  static void term ();
-
-  static void startaddress(Symbol *);
-  static bool includelib(const char *);
-  static bool allowZeroSize();
-  static void moduleinfo(Symbol *);
-  static void export_symbol (Symbol *, unsigned);
-};
-
-extern Obj *objmod;
-
 tree check_static_sym (Symbol *sym);
 void outdata (Symbol *sym);
-void obj_moduleinfo (Symbol *sym);
-void obj_tlssections (void);
 
 #endif

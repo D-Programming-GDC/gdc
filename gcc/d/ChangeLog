@@ -2,6 +2,7 @@
 
 	* d-typinf.cc: New file containing type info routines originally in
 	the D Front End.
+
 	* d-todt.cc(dt_last): New helper function to retrieve last node in a
 	dt_t tree list.
 	(dt_cons): New helper function to append nodes to the end of a list.
@@ -16,10 +17,16 @@
 	(Initializer::toDt): Likewise.
 	(Expression::toDt): Likewise.
 	(Declaration::toDt): Likewise.
+
 	* d-objfile.cc(Dsymbol::toObjFile): Likewise.
 	(Module::genmoduleinfo): Likewise.
 	(Symbol::Symbol): Moved from symbol.cc
+	(Obj::objmod): Remove abstraction layer.
+	(Obj::moduleinfo): Renamed to build_moduleinfo.
+	(obj_tlssections): Renamed to build_tlssections.
+
 	* d-codegen.cc(d_gcc_emit_local_variable): Remove.
+
 	* d-decls.cc(Dsymbol::toSymbolX): Update to not call symbol_calloc.
 	(FuncDeclaration::toThunkSymbol): Likewise.
 	(ClassDeclaration::toSymbol): Update call to toSymbolX.
@@ -29,7 +36,9 @@
 	(AggregateDeclaration::toInitializer): Likewise.
 	(TypedefDeclaration::toInitializer): Likewise.
 	(EnumDeclaration::toInitializer): Likewise.
+
 	* d-ir.cc(CaseStatement::toIR): Don't call static_sym.
+
 	* d-lang.cc(rtlsym): Remove symbol.
 	(D_DECL_READONLY_STATIC): Remove macro.
 	* symbol.cc(symbol_calloc): Remove function.
