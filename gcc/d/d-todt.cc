@@ -719,6 +719,159 @@ VectorExp::toDt (dt_t **pdt)
 
 /* ================================================================ */
 
+// Generate the data for the static initialiser.
+
+void
+ClassDeclaration::toDt (dt_t **pdt)
+{
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   */
+  build_dt_vtable (pdt, this);
+
+  // Put out rest of class fields.
+  toDt2 (pdt, this);
+}
+
+void
+ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
+{
+  size_t offset;
+
+  if (baseClass)
+    {
+      baseClass->toDt2 (pdt, cd);
+      offset = baseClass->structsize;
+    }
+  else
+    offset = PTRSIZE * 2;
+
+  // Note equivalence of this loop to struct's
+  for (size_t i = 0; i < fields.dim; i++)
+    {
+      VarDeclaration *v = fields[i];
+      Initializer *init = v->init;
+      tree dt = NULL_TREE;
+
+      if (init)
+	{
+	  ExpInitializer *ei = init->isExpInitializer();
+	  Type *tb = v->type->toBasetype();
+	  if (!init->isVoidInitializer())
+	    {
+	      if (ei && tb->ty == Tsarray)
+		((TypeSArray *) tb)->toDtElem (&dt, ei->exp);
+	      else
+		dt = init->toDt();
+	    }
+	}
+      else if (v->offset >= offset)
+	v->type->toDt (&dt);
+
+      if (dt != NULL_TREE)
+	{
+	  if (v->offset < offset)
+	    error ("duplicated union initialization for %s", v->toChars());
+	  else
+	    {
+	      if (offset < v->offset)
+		dt_zeropad (pdt, v->offset - offset);
+	      dt_chainon (pdt, dt);
+	      offset = v->offset + v->type->size();
+	    }
+	}
+    }
+
+  // Interface vptr initializations
+  toSymbol();
+
+  for (size_t i = 0; i < vtblInterfaces->dim; i++)
+    {
+      BaseClass *b = (*vtblInterfaces)[i];
+
+      for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
+	{
+	  gcc_assert (cd2);
+	  unsigned csymoffset = cd2->baseVtblOffset (b);
+	  if (csymoffset != (unsigned) ~0)
+	    {
+	      tree dt = build_address (cd2->toSymbol()->Stree);
+	      if (offset < (size_t) b->offset)
+		dt_zeropad (pdt, b->offset - offset);
+	      dt_cons (pdt, build_offset (dt, size_int (csymoffset)));
+	      break;
+	    }
+	}
+
+      offset = b->offset + PTRSIZE;
+    }
+
+  if (offset < structsize)
+    dt_zeropad (pdt, structsize - offset);
+}
+
+void
+StructDeclaration::toDt (dt_t **pdt)
+{
+  size_t offset = 0;
+  tree sdt = NULL_TREE;
+
+  // Note equivalence of this loop to class's
+  for (size_t i = 0; i < fields.dim; i++)
+    {
+      size_t vsize;
+      VarDeclaration *v = fields[i];
+      tree dt = NULL_TREE;
+
+      if (v->storage_class & STCref)
+	{
+	  vsize = PTRSIZE;
+	  if (v->offset >= offset)
+	    dt_zeropad (&dt, vsize);
+	}
+      else
+	{
+	  vsize = v->type->size();
+	  Initializer *init = v->init;
+	  if (init)
+	    {
+	      ExpInitializer *ei = init->isExpInitializer();
+	      Type *tb = v->type->toBasetype();
+	      if (!init->isVoidInitializer())
+		{
+		  if (ei && tb->ty == Tsarray)
+		    ((TypeSArray *) tb)->toDtElem (&dt, ei->exp);
+		  else
+		    dt = init->toDt();
+		}
+	    }
+	  else if (v->offset >= offset)
+	    v->type->toDt (&dt);
+	}
+
+      if (dt != NULL_TREE)
+	{
+	  if (v->offset < offset)
+	    error("overlapping initialization for struct %s.%s", toChars(), v->toChars());
+	  else
+	    {
+	      if (offset < v->offset)
+		dt_zeropad (&sdt, v->offset - offset);
+	      dt_chainon (&sdt, dt);
+	      offset = v->offset + vsize;
+	    }
+	}
+    }
+
+  if (offset < structsize)
+    dt_zeropad (&sdt, structsize - offset);
+
+  dt_container (pdt, type, sdt);
+}
+
+/* ================================================================ */
+
 // Generate the data for the default initialiser of the type.
 
 dt_t **
