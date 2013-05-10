@@ -22,7 +22,6 @@
 #include "module.h"
 #include "template.h"
 #include "init.h"
-#include "symbol.h"
 #include "attrib.h"
 #include "enum.h"
 #include "id.h"

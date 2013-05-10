@@ -18,11 +18,9 @@
 #include "d-system.h"
 #include "d-lang.h"
 #include "d-irstate.h"
+#include "d-codegen.h"
 
 #include "init.h"
-#include "symbol.h"
-
-#include "d-codegen.h"
 
 IRBase::IRBase (void)
 {

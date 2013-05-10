@@ -17,7 +17,6 @@
 #include "enum.h"
 #include "module.h"
 #include "init.h"
-#include "symbol.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 

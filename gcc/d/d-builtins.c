@@ -22,7 +22,6 @@
 #include "attrib.h"
 #include "module.h"
 #include "template.h"
-#include "symbol.h"
 #include "d-codegen.h"
 
 static ListMaker bi_fn_list;

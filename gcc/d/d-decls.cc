@@ -27,7 +27,6 @@
 #include "module.h"
 #include "id.h"
 
-#include "symbol.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 

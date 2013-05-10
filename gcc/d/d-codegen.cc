@@ -21,7 +21,6 @@
 
 #include "template.h"
 #include "init.h"
-#include "symbol.h"
 #include "id.h"
 
 IRState gen;

@@ -29,7 +29,8 @@
 #include "statement.h"
 #include "expression.h"
 #include "aggregate.h"
-#include "symbol.h"
+
+#include "d-objfile.h"
 
 // The kinds of levels we recognize.
 enum LevelKind
