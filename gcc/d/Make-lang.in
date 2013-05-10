@@ -131,7 +131,7 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-gt.cglue.o d/d-builtins.cglue.o \
               d/symbol.glue.o d/d-asmstmt.glue.o d/dt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
-              d/d-ir.glue.o
+              d/d-ir.glue.o d/d-typinf.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
@@ -188,6 +188,7 @@ d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
 d/d-ir.glue.o: d/d-ir.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
 d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
+d/d-typinf.glue.o: d/d-typinf.cc $(D_TREE_H)
 d/d-gcc-real.glue.o: d/d-gcc-real.cc $(D_TREE_H)
 d/d-asmstmt.glue.o: d/d-asmstmt.cc $(D_TREE_H)
 d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
