@@ -24,6 +24,8 @@
 #include "id.h"
 #include "init.h"
 
+typedef ArrayBase<dt_t> Dts;
+
 
 // Return a pointer to the last empty node in PDT, which is a chain
 // of dt_t nodes (chained through TREE_CHAIN).
@@ -216,6 +218,242 @@ dt_t **
 RealExp::toDt (dt_t **pdt)
 {
   return dttree (pdt, toElem (&gen));
+}
+
+
+/* ================================================================ */
+
+// Build constructors for front-end Initialisers to be written to data segment.
+
+dt_t *
+Initializer::toDt (void)
+{
+  gcc_unreachable();
+  return NULL_TREE;
+}
+
+dt_t *
+VoidInitializer::toDt (void)
+{
+  // void initialisers are set to 0, just because we need something
+  // to set them to in the static data segment.
+  tree dt = NULL_TREE;
+  dt_cons (&dt, build_constructor (type->toCtype(), NULL));
+  return dt;
+}
+
+dt_t *
+StructInitializer::toDt (void)
+{
+  Dts dts;
+  dts.setDim (ad->fields.dim);
+  dts.zero();
+
+  for (size_t i = 0; i < vars.dim; i++)
+    {
+      VarDeclaration *v = vars[i];
+      Initializer *val = value[i];
+
+      for (size_t j = 0; true; j++)
+	{
+	  gcc_assert (j < dts.dim);
+
+	  if (ad->fields[j] == v)
+	    {
+	      if (dts[j])
+		error (loc, "field %s of %s already initialized", v->toChars(), ad->toChars());
+	      dts[j] = val->toDt();
+	      break;
+	    }
+	}
+    }
+
+  size_t offset = 0;
+  tree sdt = NULL_TREE;
+
+  for (size_t i = 0; i < dts.dim; i++)
+    {
+      VarDeclaration *v = ad->fields[i];
+      tree fdt = dts[i];
+
+      if (fdt == NULL_TREE)
+	{
+	  // An instance specific initialiser was not provided.
+	  // Look to see if there's a default initialiser from the
+	  // struct definition
+	  if (v->init)
+	    {
+	      if (!v->init->isVoidInitializer())
+		fdt = v->init->toDt();
+	    }
+	  else if (v->offset >= offset)
+	    {
+	      size_t offset2 = v->offset + v->type->size();
+
+	      // Make sure this field does not overlap any explicitly
+	      // initialized field.
+	      for (size_t j = i + 1; true; j++)
+		{
+		  // Didn't find any overlap.
+		  if (j == dts.dim)
+		    {
+		      v->type->toDt (&fdt);
+		      break;
+		    }
+
+		  VarDeclaration *v2 = ad->fields[j];
+
+		  // Overlap.
+		  if (v2->offset < offset2 && dts[j])
+		    break;
+		}
+	    }
+	}
+
+      if (fdt != NULL_TREE)
+	{
+	  if (v->offset < offset)
+	    error (loc, "duplicate union initialization for %s", v->toChars());
+	  else
+	    {
+	      size_t sz = int_size_in_bytes (TREE_TYPE (TREE_VALUE (fdt)));
+	      size_t vsz = v->type->size();
+	      size_t voffset = v->offset;
+	      size_t dim = 1;
+
+	      if (sz > vsz)
+		{
+		  gcc_assert (v->type->ty == Tsarray && vsz == 0);
+		  error (loc, "zero length array %s has non-zero length initializer", v->toChars());
+		}
+
+	      for (Type *vt = v->type->toBasetype();
+		   vt->ty == Tsarray; vt = vt->nextOf()->toBasetype())
+		{
+		  TypeSArray *tsa = (TypeSArray *) vt;
+		  dim *= tsa->dim->toInteger();
+		}
+
+	      gcc_assert (sz == vsz || sz * dim <= vsz);
+
+	      for (size_t i = 0; i < dim; i++)
+		{
+		  if (offset < voffset)
+		    dt_zeropad (&sdt, voffset - offset);
+
+		  if (fdt == NULL_TREE)
+		    {
+		      if (v->init)
+			fdt = v->init->toDt();
+		      else
+			v->type->toDt (&fdt);
+		    }
+
+		  dt_chainon (&sdt, fdt);
+		  fdt = NULL_TREE;
+
+		  offset = voffset + sz;
+		  voffset += vsz / dim;
+		  if (sz == vsz)
+		    break;
+		}
+	    }
+	}
+    }
+
+  if (offset < ad->structsize)
+    dt_zeropad (&sdt, ad->structsize - offset);
+
+  tree cdt = NULL_TREE;
+  dt_container (&cdt, ad->type, sdt);
+  return cdt;
+}
+
+dt_t *
+ArrayInitializer::toDt (void)
+{
+  Type *tb = type->toBasetype();
+  if (tb->ty == Tvector)
+    tb = ((TypeVector *) tb)->basetype;
+
+  Type *tn = tb->nextOf()->toBasetype();
+
+  Dts dts;
+  dts.setDim (dim);
+  dts.zero();
+
+  size_t length = 0;
+  for (size_t i = 0; i < index.dim; i++)
+    {
+      Expression *idx = index[i];
+      if (idx)
+	length = idx->toInteger();
+
+      gcc_assert (length < dim);
+      Initializer *val = value[i];
+      tree dt = val->toDt();
+
+      if (dts[length])
+	error(loc, "duplicate initializations for index %d", length);
+      dts[length] = dt;
+      length++;
+    }
+
+  tree sadefault = NULL_TREE;
+  if (tn->ty == Tsarray)
+    tn->toDt (&sadefault);
+  else
+    {
+      Expression *edefault = tb->nextOf()->defaultInit();
+      edefault->toDt (&sadefault);
+    }
+
+  tree dt = NULL_TREE;
+  for (size_t i = 0; i < dim; i++)
+    dt_chainon (&dt, dts[i] ? dts[i] : sadefault);
+
+  if (tb->ty == Tsarray)
+    {
+      TypeSArray *ta = (TypeSArray *) tb;
+      size_t tadim = ta->dim->toInteger();
+
+      if (dim < tadim)
+	{
+	  // Pad out the rest of the array.
+	  for (size_t i = dim; i < tadim; i++)
+	    dt_chainon (&dt, sadefault);
+	}
+      else if (dim > tadim)
+	error (loc, "too many initializers, %d, for array[%d]", dim, tadim);
+    }
+  else
+    {
+      gcc_assert (tb->ty == Tarray || tb->ty == Tpointer);
+
+      // Create symbol, and then refer to it
+      Symbol *s = new Symbol();
+      s->Sdt = dt;
+      d_finalize_symbol (s);
+      dt = NULL_TREE;
+
+      if (tb->ty == Tarray)
+	dt_cons (&dt, size_int (dim));
+
+      dt_cons (&dt, build_address (s->Stree));
+    }
+
+  tree cdt = NULL_TREE;
+  dt_container (&cdt, type, dt);
+  return cdt;
+}
+
+dt_t *
+ExpInitializer::toDt (void)
+{
+  tree dt = NULL_TREE;
+  exp = exp->optimize (WANTvalue);
+  exp->toDt (&dt);
+  return dt;
 }
 
 /* ================================================================ */
