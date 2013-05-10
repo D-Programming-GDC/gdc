@@ -198,7 +198,7 @@ d_add_builtin_version(const char* ident)
     global.params.isOpenBSD = 1;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = 1;
-  
+
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
 
@@ -228,7 +228,7 @@ d_init (void)
 
   TARGET_CPU_D_BUILTINS();
   TARGET_OS_D_BUILTINS();
-  
+
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
 
@@ -992,7 +992,7 @@ d_parse_file (void)
 
       File deps (global.params.moduleDepsFile);
       OutBuffer *ob = global.params.moduleDeps;
-      deps.setbuffer ((void *)ob->data, ob->offset);
+      deps.setbuffer ((void *) ob->data, ob->offset);
       deps.writev();
     }
 
@@ -1007,11 +1007,11 @@ d_parse_file (void)
 
       OutBuffer *ob = global.params.makeDeps;
       if (global.params.makeDepsFile == NULL)
-	printf ("%s", (char *)ob->data);
+	printf ("%s", (char *) ob->data);
       else
 	{
 	  File deps (global.params.makeDepsFile);
-	  deps.setbuffer ((void *)ob->data, ob->offset);
+	  deps.setbuffer ((void *) ob->data, ob->offset);
 	  deps.writev();
 	}
     }

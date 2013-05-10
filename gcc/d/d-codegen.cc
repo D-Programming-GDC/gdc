@@ -330,7 +330,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	  }
 	else if (tbtype->ty == Taarray)
 	  {
-	    tbtype = ((TypeAArray *)tbtype)->getImpl()->type;
+	    tbtype = ((TypeAArray *) tbtype)->getImpl()->type;
 	    return convertTo (exp, exp_type, tbtype);
 	  }
 	else
@@ -495,7 +495,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	return build_vconvert (target_type->toCtype(), exp);
       else if (tbtype->ty == Tstruct)
 	{
-	  ebtype = ((TypeAArray *)ebtype)->getImpl()->type;
+	  ebtype = ((TypeAArray *) ebtype)->getImpl()->type;
 	  return convertTo (exp, ebtype, target_type);
 	}
       // Can convert associative arrays to void pointers.
@@ -870,13 +870,13 @@ bool d_attribute_p (const char* name)
       size_t n = 0;
       for (const attribute_spec *p = d_attribute_table; p->name; p++)
         n++;
-      
+
       if(n == 0)
         return false;
 
       table = new StringTable();
       table->init(n);
-    
+
       for (const attribute_spec *p = d_attribute_table; p->name; p++)
         table->insert(p->name, strlen(p->name));
     }
@@ -891,9 +891,9 @@ build_attributes (Expressions *in_attrs)
 {
   if (!in_attrs)
     return NULL_TREE;
-  
+
   expandTuples(in_attrs);
-  
+
   ListMaker out_attrs;
 
   for (size_t i = 0; i < in_attrs->dim; i++)
@@ -932,7 +932,7 @@ build_attributes (Expressions *in_attrs)
       }
 
       ListMaker args;
-      
+
       for (size_t j = 1; j < elem->dim; j++)
         {
 	  Expression *ae = (*elem)[j];
@@ -1262,7 +1262,7 @@ get_object_method (Expression *objexp, FuncDeclaration *func, Type *type)
 		break;
 
 	      case TOKcast:
-		ex = ((CastExp *)ex)->e1;
+		ex = ((CastExp *) ex)->e1;
 		continue;
 
 	      default:
@@ -1854,7 +1854,7 @@ IRState::arrayBoundsCheck (void)
       result = 0;
       if (func && func->type->ty == Tfunction)
 	{
-	  TypeFunction *tf = (TypeFunction *)func->type;
+	  TypeFunction *tf = (TypeFunction *) func->type;
 	  if (tf->trust == TRUSTsafe)
 	    result = 1;
 	}
@@ -2117,7 +2117,7 @@ IRState::call (Expression *expr, Expressions *arguments)
 	{
 	  /* This gets the true function type, the latter way can sometimes
 	     be incorrect. Example: ref functions in D2. */
-	  tf = get_function_type (((DotVarExp *)expr)->var->type);
+	  tf = get_function_type (((DotVarExp *) expr)->var->type);
 	}
       else
 	tf = get_function_type (t);
@@ -2940,7 +2940,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  // cond ? -1 : 0;
 	  exp = build3 (COND_EXPR, TREE_TYPE (call_exp), d_truthvalue_conversion (exp),
 			integer_minus_one_node, integer_zero_node);
-	  
+
 	  // Update the bit as needed.
 	  code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
 	    (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
@@ -3897,7 +3897,7 @@ functionDegenerateClosure (FuncDeclaration *f)
 {
   if (!f->needsClosure() && f->closureVars.dim == 0)
   {
-    Type *tret = ((TypeFunction *)f->type)->next;
+    Type *tret = ((TypeFunction *) f->type)->next;
     gcc_assert(tret);
     tret = tret->toBasetype();
     if (tret->ty == Tclass || tret->ty == Tstruct)
@@ -4461,11 +4461,14 @@ AggLayout::doInterfaces (BaseClasses *bases)
 void
 AggLayout::addField (tree field_decl, size_t offset)
 {
+  Loc l (this->aggDecl_->getModule(), 1);
+
   DECL_CONTEXT (field_decl) = this->aggType_;
   SET_DECL_OFFSET_ALIGN (field_decl, TYPE_ALIGN (TREE_TYPE (field_decl)));
   DECL_FIELD_OFFSET (field_decl) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
-  Loc l (this->aggDecl_->getModule(), 1); // Must set this or we crash with DWARF debugging
+
+  // Must set this or we crash with DWARF debugging.
   object_file->setDeclLoc (field_decl, l);
 
   TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
@@ -4489,10 +4492,8 @@ AggLayout::finish (Expressions *attrs)
   TYPE_PACKED (this->aggType_) = TYPE_PACKED (this->aggType_); // %% todo
 
   if (attrs)
-    {
-      decl_attributes (&this->aggType_, build_attributes (attrs),
-		       ATTR_FLAG_TYPE_IN_PLACE);
-    }
+    decl_attributes (&this->aggType_, build_attributes (attrs),
+		     ATTR_FLAG_TYPE_IN_PLACE);
 
   compute_record_mode (this->aggType_);
 

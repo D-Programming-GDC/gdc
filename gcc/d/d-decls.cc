@@ -281,9 +281,7 @@ TypeInfoDeclaration::toSymbol (void)
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
       TREE_USED (csym->Stree) = 1;
 
-      /* DMD makes typeinfo decls one-only by doing: s->Sclass = SCcomdat;
-	 in TypeInfoDeclaration::toObjFile.  The difference is that,
-	 in gdc, built-in typeinfo will be referenced as one-only.  */
+      // In gdc, built-in typeinfo will be referenced as one-only.
       D_DECL_ONE_ONLY (csym->Stree) = 1;
       object_file->makeDeclOneOnly (csym->Stree);
     }
@@ -296,7 +294,7 @@ Symbol *
 TypeInfoClassDeclaration::toSymbol (void)
 {
   gcc_assert (tinfo->ty == Tclass);
-  TypeClass *tc = (TypeClass *)tinfo;
+  TypeClass *tc = (TypeClass *) tinfo;
   return tc->sym->toSymbol();
 }
 
@@ -521,7 +519,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   if (!found)
     {
-      thunk = new Thunk;
+      thunk = new Thunk();
       thunk->offset = offset;
       csym->thunks.push (thunk);
     }
@@ -720,9 +718,6 @@ AggregateDeclaration::toInitializer (void)
       object_file->setupStaticStorage (this, t);
       object_file->setDeclLoc (t, this);
 
-      // %% what's the diff between setting this stuff on the DECL and the
-      // CONSTRUCTOR itself?
-
       TREE_ADDRESSABLE (t) = 1;
       TREE_READONLY (t) = 1;
       TREE_CONSTANT (t) = 1;
@@ -857,7 +852,7 @@ ClassDeclaration::toDebug (void)
 void
 EnumDeclaration::toDebug (void)
 {
-  TypeEnum *tc = (TypeEnum *)type;
+  TypeEnum *tc = (TypeEnum *) type;
   if (!tc->sym->defaultval || type->isZeroInit())
     return;
 

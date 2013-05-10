@@ -408,7 +408,7 @@ real_t::convert (Type *type) const
       return convert (real_t::LongDouble);
 
     case Tvector:
-      tb = ((TypeVector *)tb)->elementType();
+      tb = ((TypeVector *) tb)->elementType();
       gcc_assert (tb->ty != Tvector);
       return convert (tb);
 

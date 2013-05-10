@@ -1583,7 +1583,7 @@ ObjectFile::outputFunction (FuncDeclaration *f)
 
   // Write out _tlsstart/_tlsend.
   if (f->isMain() || f->isWinMain() || f->isDllMain())
-    obj_tlssections();
+    build_tlssections();
 
   if (s->prettyIdent)
     DECL_NAME (t) = get_identifier (s->prettyIdent);
@@ -1622,7 +1622,7 @@ bool
 ObjectFile::shouldEmit (Declaration *d_sym)
 {
   // If errors occurred compiling it.
-  if (d_sym->type->ty == Tfunction && ((TypeFunction *)d_sym->type)->next->ty == Terror)
+  if (d_sym->type->ty == Tfunction && ((TypeFunction *) d_sym->type)->next->ty == Terror)
     return false;
 
   FuncDeclaration *fd = d_sym->isFuncDeclaration();
@@ -1914,7 +1914,7 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
 	 symbols for the methods they interface with.  */
       tree id = DECL_ASSEMBLER_NAME (target_decl);
       tree attrs;
-      
+
       id = build_string (IDENTIFIER_LENGTH (id), IDENTIFIER_POINTER (id));
       id = tree_cons (NULL_TREE, id, NULL_TREE);
 

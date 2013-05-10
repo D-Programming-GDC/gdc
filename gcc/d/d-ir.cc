@@ -225,7 +225,7 @@ ReturnStatement::toIR (IRState *irs)
     {
       // %% == Type::tvoid ?
       FuncDeclaration *func = irs->func;
-      TypeFunction *tf = (TypeFunction *)func->type;
+      TypeFunction *tf = (TypeFunction *) func->type;
       Type *ret_type = func->tintro ?
 	func->tintro->nextOf() : tf->nextOf();
 

@@ -126,7 +126,7 @@ struct DeferredThunk
 typedef ArrayBase<DeferredThunk> DeferredThunks;
 
 
-/* nearly everything is static for effeciency since there is
+/* Nearly everything is static for effeciency since there is
    only one object per run of the backend */
 struct ObjectFile
 {
