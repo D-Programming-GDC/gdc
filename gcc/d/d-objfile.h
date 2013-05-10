@@ -18,6 +18,22 @@
 #ifndef GCC_DCMPLR_OBFILE_H
 #define GCC_DCMPLR_OBFILE_H
 
+// These must match the values in object_.d
+enum ModuleInfoFlags
+{
+  MIstandalone	    = 4,
+  MItlsctor	    = 8,
+  MItlsdtor	    = 0x10,
+  MIctor	    = 0x20,
+  MIdtor	    = 0x40,
+  MIxgetMembers	    = 0x80,
+  MIictor	    = 0x100,
+  MIunitTest	    = 0x200,
+  MIimportedModules = 0x400,
+  MIlocalClasses    = 0x800,
+  MInew		    = 0x80000000
+};
+
 extern dt_t **dt_last (dt_t **pdt);
 extern dt_t **dt_cons (dt_t **pdt, dt_t *val);
 extern dt_t **dt_chainon (dt_t **pdt, dt_t *val);

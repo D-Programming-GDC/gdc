@@ -83,6 +83,7 @@ struct Symbol : Object
   SymbolSegment Sseg;
   int Sflags;
   int Salignment;
+  bool Sreadonly;
 
   dt_t *Sdt;
 

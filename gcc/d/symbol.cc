@@ -31,6 +31,7 @@ Symbol::Symbol (void)
 
   this->Sdt = 0;
   this->Salignment = 0;
+  this->Sreadonly = false;
 
   this->Stree = NULL_TREE;
   this->ScontextDecl = NULL_TREE;

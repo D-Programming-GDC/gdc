@@ -11,16 +11,13 @@
 	symbol default values in a class declaration.
 	(dtlist_to_tree): New helper function to convert a dt_t list into a
 	constructor tree.
-	(Type::toDt): Implement routines emitting Type default initialiser data
-	in new dt_t format.
-	(TypeInfoDeclaration::toDt): Implement routines emitting TypeInfo data
-	in new dt_t format.
-	(Initializer::toDt): Implement routines emitting initialiser data in
-	new dt_t format.
-	(Expression::toDt): Implement routines emitting const expression data
-	in new dt_t format.
-	(Declaration::toDt): Implement routines emitting class and struct decl
-	initialisers in new dt_t format.
+	(Type::toDt): Implement routines for new dt_t format.
+	(TypeInfoDeclaration::toDt): Likewise.
+	(Initializer::toDt): Likewise.
+	(Expression::toDt): Likewise.
+	(Declaration::toDt): Likewise.
+	* d-objfile.cc(Dsymbol::toObjFile): Likewise.
+	(Module::genmoduleinfo): Likewise.
 
 2013-05-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
