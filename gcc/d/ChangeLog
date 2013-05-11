@@ -8,7 +8,8 @@
 	(dt_cons): New helper function to append nodes to the end of a list.
 	(dt_chainon): New helper function to concatenate two lists together.
 	(dt_container): New helper function to build a ctor from a list.
-	(build_dt_vtable): New helper function to emit the vtable and monitor
+	(build_vptr_monitor): New helper function to generate the class
+	vtable, and put out __vptr and __monitor.
 	symbol default values in a class declaration.
 	(dtlist_to_tree): New helper function to convert a dt_t list into a
 	constructor tree.

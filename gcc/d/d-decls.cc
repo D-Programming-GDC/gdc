@@ -584,7 +584,7 @@ ClassDeclaration::toSymbol (void)
     {
       csym = toSymbolX ("__Class", 0, 0, "Z");
 
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+      tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
 			      get_identifier (csym->Sident), d_unknown_type_node);
       csym->Stree = decl;
       d_keep (decl);

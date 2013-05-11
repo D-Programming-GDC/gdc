@@ -204,7 +204,7 @@ ClassDeclaration::toObjFile (int)
    */
   tree dt = NULL_TREE;
 
-  build_dt_vtable (&dt, classinfo);
+  build_vptr_monitor (&dt, classinfo);
 
   // initializer[]
   gcc_assert (structsize >= 8);
@@ -534,7 +534,7 @@ InterfaceDeclaration::toObjFile (int)
    */
   tree dt = NULL_TREE;
 
-  build_dt_vtable (&dt, classinfo);
+  build_vptr_monitor (&dt, classinfo);
 
   // initializer[]
   dt_cons (&dt, d_array_value (Type::tint8->arrayOf()->toCtype(),

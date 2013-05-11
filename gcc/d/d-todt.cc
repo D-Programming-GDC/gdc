@@ -182,10 +182,10 @@ dtlist_to_tree (dt_t *dt)
   return dt_container2 (dt);
 }
 
-// Put out vptr and monitor of class CD into PDT.
+// Put out __vptr and __monitor of class CD into PDT.
 
 dt_t **
-build_dt_vtable (dt_t **pdt, ClassDeclaration *cd)
+build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd)
 {
   gcc_assert (cd != NULL);
   Symbol *s = cd->toVtblSymbol();
@@ -728,7 +728,7 @@ ClassDeclaration::toDt (dt_t **pdt)
    *  void **vptr;
    *  monitor_t monitor;
    */
-  build_dt_vtable (pdt, this);
+  build_vptr_monitor (pdt, this);
 
   // Put out rest of class fields.
   toDt2 (pdt, this);
@@ -984,7 +984,7 @@ TypeInfoDeclaration::toDt (dt_t **pdt)
    *  void **vptr;
    *  monitor_t monitor;
    */
-  build_dt_vtable (pdt, Type::typeinfo);
+  build_vptr_monitor (pdt, Type::typeinfo);
 }
 
 void
@@ -1002,7 +1002,7 @@ TypeInfoConstDeclaration::toDt (dt_t **pdt)
   tm->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Const
-  build_dt_vtable (pdt, Type::typeinfoconst);
+  build_vptr_monitor (pdt, Type::typeinfoconst);
 
   // TypeInfo for mutable type.
   dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
@@ -1023,7 +1023,7 @@ TypeInfoInvariantDeclaration::toDt (dt_t **pdt)
   tm->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Invariant
-  build_dt_vtable (pdt, Type::typeinfoinvariant);
+  build_vptr_monitor (pdt, Type::typeinfoinvariant);
 
   // TypeInfo for mutable type.
   dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
@@ -1044,7 +1044,7 @@ TypeInfoSharedDeclaration::toDt (dt_t **pdt)
   tm->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Shared
-  build_dt_vtable (pdt, Type::typeinfoshared);
+  build_vptr_monitor (pdt, Type::typeinfoshared);
 
   // TypeInfo for unshared type.
   dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
@@ -1065,7 +1065,7 @@ TypeInfoWildDeclaration::toDt (dt_t **pdt)
   tm->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Wild
-  build_dt_vtable (pdt, Type::typeinfowild);
+  build_vptr_monitor (pdt, Type::typeinfowild);
 
   // TypeInfo for mutable type.
   dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
@@ -1093,7 +1093,7 @@ TypeInfoTypedefDeclaration::toDt (dt_t **pdt)
   gcc_assert (sd->basetype->vtinfo);
 
   // vtbl and monitor for TypeInfo_Typedef
-  build_dt_vtable (pdt, Type::typeinfotypedef);
+  build_vptr_monitor (pdt, Type::typeinfotypedef);
 
   // Typeinfo for basetype.
   dt_cons (pdt, build_address (sd->basetype->vtinfo->toSymbol()->Stree));
@@ -1130,7 +1130,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
   EnumDeclaration *sd = tc->sym;
 
   // vtbl and monitor for TypeInfo_Enum
-  build_dt_vtable (pdt, Type::typeinfoenum);
+  build_vptr_monitor (pdt, Type::typeinfoenum);
 
   // TypeInfo for enum members.
   if (sd->memtype)
@@ -1174,7 +1174,7 @@ TypeInfoPointerDeclaration::toDt (dt_t **pdt)
   tc->next->getTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Pointer
-  build_dt_vtable (pdt, Type::typeinfopointer);
+  build_vptr_monitor (pdt, Type::typeinfopointer);
 
   // TypeInfo for pointer-to type.
   dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
@@ -1196,7 +1196,7 @@ TypeInfoArrayDeclaration::toDt (dt_t **pdt)
   tc->next->getTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Array
-  build_dt_vtable (pdt, Type::typeinfoarray);
+  build_vptr_monitor (pdt, Type::typeinfoarray);
 
   // TypeInfo for array of type.
   dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
@@ -1219,7 +1219,7 @@ TypeInfoStaticArrayDeclaration::toDt (dt_t **pdt)
   tc->next->getTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_StaticArray
-  build_dt_vtable (pdt, Type::typeinfostaticarray);
+  build_vptr_monitor (pdt, Type::typeinfostaticarray);
 
   // TypeInfo for array of type.
   dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
@@ -1244,7 +1244,7 @@ TypeInfoVectorDeclaration::toDt (dt_t **pdt)
   tc->basetype->getTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Vector
-  build_dt_vtable (pdt, Type::typeinfovector);
+  build_vptr_monitor (pdt, Type::typeinfovector);
 
   // TypeInfo for equivalent static array.
   dt_cons (pdt, build_address (tc->basetype->vtinfo->toSymbol()->Stree));
@@ -1270,7 +1270,7 @@ TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
   tc->getImpl()->type->getTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_AssociativeArray
-  build_dt_vtable (pdt, Type::typeinfoassociativearray);
+  build_vptr_monitor (pdt, Type::typeinfoassociativearray);
 
   // TypeInfo for value of type.
   dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
@@ -1300,7 +1300,7 @@ TypeInfoFunctionDeclaration::toDt (dt_t **pdt)
   tc->next->getTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Function
-  build_dt_vtable (pdt, Type::typeinfofunction);
+  build_vptr_monitor (pdt, Type::typeinfofunction);
 
   // TypeInfo for function return value.
   dt_cons (pdt, build_address (tc->next->vtinfo->toSymbol()->Stree));
@@ -1327,7 +1327,7 @@ TypeInfoDelegateDeclaration::toDt (dt_t **pdt)
   tc->next->nextOf()->getTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Delegate
-  build_dt_vtable (pdt, Type::typeinfodelegate);
+  build_vptr_monitor (pdt, Type::typeinfodelegate);
 
   // TypeInfo for delegate return value.
   dt_cons (pdt, build_address (tc->next->nextOf()->vtinfo->toSymbol()->Stree));
@@ -1368,7 +1368,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
   StructDeclaration *sd = tc->sym;
 
   // vtbl and monitor for TypeInfo_Struct
-  build_dt_vtable (pdt, Type::typeinfostruct);
+  build_vptr_monitor (pdt, Type::typeinfostruct);
 
   // Name of the struct declaration.
   dt_cons (pdt, d_array_string (sd->toPrettyChars()));
@@ -1540,7 +1540,7 @@ TypeInfoInterfaceDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tclass);
 
   // vtbl and monitor for TypeInfo_Interface
-  build_dt_vtable (pdt, Type::typeinfointerface);
+  build_vptr_monitor (pdt, Type::typeinfointerface);
 
   TypeClass *tc = (TypeClass *) tinfo;
   if (!tc->sym->vclassinfo)
@@ -1563,7 +1563,7 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Ttuple);
 
   // vtbl and monitor for TypeInfo_Tuple
-  build_dt_vtable (pdt, Type::typeinfotypelist);
+  build_vptr_monitor (pdt, Type::typeinfotypelist);
 
   TypeTuple *tu = (TypeTuple *) tinfo;
   tree dt = NULL_TREE;

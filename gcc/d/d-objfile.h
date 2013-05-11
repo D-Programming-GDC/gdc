@@ -86,7 +86,7 @@ extern dt_t **dt_last (dt_t **pdt);
 extern dt_t **dt_cons (dt_t **pdt, dt_t *val);
 extern dt_t **dt_chainon (dt_t **pdt, dt_t *val);
 extern dt_t **dt_container (dt_t **pdt, Type *type, dt_t *dt);
-extern dt_t **build_dt_vtable (dt_t **pdt, ClassDeclaration *cd);
+extern dt_t **build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd);
 
 extern tree dtlist_to_tree (dt_t *dt);
 
