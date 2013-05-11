@@ -74,7 +74,6 @@ struct OverloadSet;
 struct AA;
 struct JsonOut;
 #ifdef IN_GCC
-union tree_node;
 typedef union tree_node TYPE;
 #else
 struct TYPE;

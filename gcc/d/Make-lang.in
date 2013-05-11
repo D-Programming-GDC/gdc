@@ -53,7 +53,7 @@ D_DMD_H := \
 
 D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-codegen.h \
         d/d-objfile.h d/d-irstate.h d/d-dmd-gcc.h d/d-system.h \
-        d/d-gcc-real.h d/symbol.h d/dt.h \
+        d/d-gcc-real.h \
         coretypes.h function.h $(VARRAY_H) \
 	$(SYSTEM_H) $(CONFIG_H) $(TARGET_H) \
 	$(GGC_H) \
@@ -117,8 +117,7 @@ D_DMD_OBJS := \
     d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mtype.dmd.o d/module.dmd.o \
     d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o d/rmem.dmd.o d/root.dmd.o \
     d/scope.dmd.o d/speller.dmd.o d/statement.dmd.o d/staticassert.dmd.o \
-    d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o d/todt.dmd.o \
-    d/toobj.dmd.o d/typinf.dmd.o d/utf.dmd.o \
+    d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o d/utf.dmd.o \
     d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o \
     d/cppmangle.dmd.o d/apply.dmd.o d/canthrow.dmd.o d/sideeffect.dmd.o \
     d/unittests.dmd.o d/version.dmd.o
@@ -128,10 +127,9 @@ D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-objfile.glue.o d/d-irstate.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-gcc-real.glue.o \
-              d/d-gt.cglue.o d/d-builtins.cglue.o \
-              d/symbol.glue.o d/d-asmstmt.glue.o d/dt.glue.o \
+              d/d-gt.cglue.o d/d-builtins.cglue.o d/d-asmstmt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
-              d/d-ir.glue.o
+              d/d-ir.glue.o d/d-typinf.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
@@ -188,15 +186,11 @@ d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
 d/d-ir.glue.o: d/d-ir.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
 d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
+d/d-typinf.glue.o: d/d-typinf.cc $(D_TREE_H)
 d/d-gcc-real.glue.o: d/d-gcc-real.cc $(D_TREE_H)
 d/d-asmstmt.glue.o: d/d-asmstmt.cc $(D_TREE_H)
-d/symbol.glue.o: d/symbol.cc $(D_TREE_H)
-d/dt.glue.o: d/symbol.cc $(D_TREE_H)
 d/d-gt.cglue.o: d/d-gt.c $(D_TREE_H)
 d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H)
-d/todt.dmd.o: $(D_DMD_H)
-d/toobj.dmd.o: $(D_DMD_H)
-d/typinf.dmd.o: $(D_DMD_H)
 
 
 d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \

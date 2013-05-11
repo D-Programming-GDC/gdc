@@ -198,7 +198,7 @@ d_add_builtin_version(const char* ident)
     global.params.isOpenBSD = 1;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = 1;
-  
+
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
 
@@ -228,7 +228,7 @@ d_init (void)
 
   TARGET_CPU_D_BUILTINS();
   TARGET_OS_D_BUILTINS();
-  
+
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
 
@@ -750,8 +750,6 @@ deps_write (Module *m)
   ob->writestring ("\n");
 }
 
-Symbol *rtlsym[N_RTLSYM];
-
 
 // Binary search for P in TAB between the range 0 to HIGH.
 
@@ -867,17 +865,14 @@ d_parse_file (void)
 	output_module = m;
     }
 
-  // There is only one of these so far...
-  rtlsym[RTLSYM_DHIDDENFUNC] = get_libcall (LIBCALL_HIDDEN_FUNC)->toSymbol();
-
-  // current_module shouldn't have any implications before genobjfile..
-  // ... but it does.  We need to know what module in which to insert
+  // Current_module shouldn't have any implications before genobjfile...
+  // but it does.  We need to know what module in which to insert
   // TemplateInstances during the semantic pass.  In order for
   // -femit-templates to work, template instances must be emitted
   // in every translation unit.  To do this, the TemplateInstaceS have to
   // have toObjFile called in the module being compiled.
   // TemplateInstance puts itself somwhere during ::semantic, thus it has
-  // to know the current module...
+  // to know the current module.
 
   gcc_assert (output_module);
 
@@ -997,7 +992,7 @@ d_parse_file (void)
 
       File deps (global.params.moduleDepsFile);
       OutBuffer *ob = global.params.moduleDeps;
-      deps.setbuffer ((void *)ob->data, ob->offset);
+      deps.setbuffer ((void *) ob->data, ob->offset);
       deps.writev();
     }
 
@@ -1012,11 +1007,11 @@ d_parse_file (void)
 
       OutBuffer *ob = global.params.makeDeps;
       if (global.params.makeDepsFile == NULL)
-	printf ("%s", (char *)ob->data);
+	printf ("%s", (char *) ob->data);
       else
 	{
 	  File deps (global.params.makeDepsFile);
-	  deps.setbuffer ((void *)ob->data, ob->offset);
+	  deps.setbuffer ((void *) ob->data, ob->offset);
 	  deps.writev();
 	}
     }
@@ -1078,11 +1073,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (stdmsg, "code      %s\n", m->toChars());
       if (!flag_syntax_only)
-	{
-	  Obj::init ();
-	  m->genobjfile (false);
-	  Obj::term ();
-	}
+	m->genobjfile (false);
       if (!global.errors && !errorcount)
 	{
 	  if (global.params.doDocComments)

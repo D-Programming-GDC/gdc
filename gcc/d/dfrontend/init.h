@@ -20,7 +20,13 @@ struct Identifier;
 struct Expression;
 struct Scope;
 struct Type;
+
+#ifdef IN_GCC
+typedef union tree_node dt_t;
+#else
 struct dt_t;
+#endif
+
 struct AggregateDeclaration;
 struct VoidInitializer;
 struct StructInitializer;

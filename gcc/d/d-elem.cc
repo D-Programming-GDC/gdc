@@ -815,7 +815,7 @@ needsPostblit (Type *t)
   while (t->ty == Tsarray)
     t = t->nextOf()->toBasetype();
   if (t->ty == Tstruct)
-    {   StructDeclaration *sd = ((TypeStruct *)t)->sym;
+    {   StructDeclaration *sd = ((TypeStruct *) t)->sym;
       if (sd->postblit)
 	return sd;
     }
@@ -896,14 +896,14 @@ AssignExp::toElem (IRState *irs)
 	  tree args[3];
 	  LibCall libcall = op == TOKconstruct ?
 	    LIBCALL_ARRAYCTOR : LIBCALL_ARRAYASSIGN;
-	  
+
 	  args[0] = irs->typeinfoReference (elem_type);
 	  args[1] = irs->toDArray (e1);
 	  args[2] = irs->toDArray (e2);
-	  
+
 	  return build_libcall (libcall, 3, args, type->toCtype());
 	}
-      
+
       if (irs->arrayBoundsCheck())
 	{
 	  tree args[3];
@@ -919,7 +919,7 @@ AssignExp::toElem (IRState *irs)
 	  tree size = fold_build2 (MULT_EXPR, size_type_node,
 				   irs->convertTo (size_type_node, d_array_length (t1)),
 				   size_int (elem_type->size()));
-	  
+
 	  tree result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
 					   d_array_ptr (t1),
 					   d_array_ptr (t2), size);
@@ -937,7 +937,7 @@ AssignExp::toElem (IRState *irs)
 
       if (e1->op == TOKvar)
 	{
-	  Declaration *decl = ((VarExp *)e1)->var;
+	  Declaration *decl = ((VarExp *) e1)->var;
 	  // Look for reference initializations
 	  if (decl->storage_class & (STCout | STCref))
 	    {
@@ -953,7 +953,7 @@ AssignExp::toElem (IRState *irs)
 	  if (e2->op == TOKstructliteral)
 	    {
 	      // Initialize all alignment 'holes' to zero.
-	      StructLiteralExp *sle = ((StructLiteralExp *)e2);
+	      StructLiteralExp *sle = ((StructLiteralExp *) e2);
 	      if (sle->fillHoles)
 		{
 		  unsigned sz = sle->type->size();
@@ -965,7 +965,7 @@ AssignExp::toElem (IRState *irs)
 	  else if (e2->op == TOKint64)
 	    {
 	      // Maybe set-up hidden pointer to outer scope context.
-	      StructDeclaration *sd = ((TypeStruct *)tb1)->sym;
+	      StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
 	      if (sd->isNested())
 		{
 		  tree vthis_field = sd->vthis->toSymbol()->Stree;
@@ -1212,7 +1212,7 @@ DeleteExp::toElem (IRState *irs)
     {
       if (e1->op == TOKvar)
         {
-	  VarDeclaration *v = ((VarExp *)e1)->var->isVarDeclaration();
+	  VarDeclaration *v = ((VarExp *) e1)->var->isVarDeclaration();
 	  if (v && v->onstack)
 	    {
 	      libcall = tb1->isClassHandle()->isInterfaceDeclaration() ?
@@ -1236,7 +1236,7 @@ DeleteExp::toElem (IRState *irs)
 	next_type = next_type->nextOf()->toBasetype();
       if (next_type->ty == Tstruct)
 	{
-	  TypeStruct *ts = (TypeStruct *)next_type;
+	  TypeStruct *ts = (TypeStruct *) next_type;
 	  if (ts->sym->dtor)
 	    ti = tb1->nextOf()->getTypeInfo (NULL)->toElem (irs);
 	}
@@ -1362,7 +1362,7 @@ PtrExp::toElem (IRState *irs)
 
   if (rec_type && rec_type->ty == Tstruct)
     {
-      StructDeclaration *sd = ((TypeStruct *)rec_type)->sym;
+      StructDeclaration *sd = ((TypeStruct *) rec_type)->sym;
       for (size_t i = 0; i < sd->fields.dim; i++)
 	{
 	  VarDeclaration *field = sd->fields[i];
@@ -1990,34 +1990,17 @@ elem *
 StringExp::toElem (IRState *)
 {
   Type *tb = type->toBasetype();
-  TY base_ty = type ? tb->ty : (TY) Tvoid;
-  tree value;
+  // Assuming this->string is null terminated
+  dinteger_t dim = len + (tb->ty == Tpointer);
 
-  switch (base_ty)
-    {
-    case Tpointer:
-      // Assuming this->string is null terminated
-      // .. need to terminate with more nulls for wchar and dchar?
-      value = build_string ((len + 1) * sz, (char *) string);
-      break;
+  tree value = build_string (dim * sz, (char *) string);
 
-    case Tsarray:
-    case Tarray:
-      value = build_string (len * sz, (char *) string);
-      break;
-
-    default:
-      error ("Invalid type for string constant: %s", type->toChars());
-      return error_mark (type);
-    }
-
+  // Array type doesn't match string length if null terminated.
+  TREE_TYPE (value) = d_array_type (tb->nextOf(), len);
   TREE_CONSTANT (value) = 1;
   TREE_READONLY (value) = 1;
-  // %% array type doesn't match string length if null term'd...
-  Type *elem_type = base_ty != Tvoid ? tb->nextOf() : Type::tchar;
-  TREE_TYPE (value) = d_array_type (elem_type, len);
 
-  switch (base_ty)
+  switch (tb->ty)
     {
     case Tarray:
       value = d_array_value (type->toCtype(), size_int (len), build_address (value));
@@ -2032,8 +2015,10 @@ StringExp::toElem (IRState *)
       break;
 
     default:
-      break;
+      error ("Invalid type for string constant: %s", type->toChars());
+      return error_mark (type);
     }
+
   return value;
 }
 
@@ -2112,7 +2097,7 @@ AssocArrayLiteralExp::toElem (IRState *irs)
   TypeAArray *aa_type;
 
   if (tb->ty == Taarray)
-    aa_type = (TypeAArray *)tb;
+    aa_type = (TypeAArray *) tb;
   else
     {
       // It's the AssociativeArray type.

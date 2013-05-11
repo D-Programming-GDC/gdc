@@ -1,3 +1,57 @@
+2013-05-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-typinf.cc: New file containing type info routines originally in
+	the D Front End.
+
+	* d-todt.cc(dt_last): New helper function to retrieve last node in a
+	dt_t tree list.
+	(dt_cons): New helper function to append nodes to the end of a list.
+	(dt_chainon): New helper function to concatenate two lists together.
+	(dt_container): New helper function to build a ctor from a list.
+	(build_vptr_monitor): New helper function to generate the class
+	vtable, and put out __vptr and __monitor.
+	symbol default values in a class declaration.
+	(dtlist_to_tree): New helper function to convert a dt_t list into a
+	constructor tree.
+	(Type::toDt): Implement routines for new dt_t format.
+	(TypeInfoDeclaration::toDt): Likewise.
+	(Initializer::toDt): Likewise.
+	(Expression::toDt): Likewise.
+	(Declaration::toDt): Likewise.
+
+	* d-objfile.cc(Dsymbol::toObjFile): Update for new dt_t format.
+	(Module::genmoduleinfo): Likewise.
+	(Symbol::Symbol): Moved from symbol.cc
+	(Obj::objmod): Remove abstraction layer.
+	(Obj::moduleinfo): Renamed to build_moduleinfo.
+	(obj_tlssections): Renamed to build_tlssections.
+	(outdata): Renamed to d_finish_symbol.
+	(check_static_sym): Moved into d_finish_symbol.
+
+	* d-codegen.cc(d_gcc_emit_local_variable): Remove.
+
+	* d-decls.cc(Dsymbol::toSymbolX): Update to not call symbol_calloc.
+	(FuncDeclaration::toThunkSymbol): Likewise.
+	(ClassDeclaration::toSymbol): Build type as d_unknown_type_node.
+	(InterfaceDeclaration::toSymbol): Likewise.
+	(Module::toSymbol): Likewise.
+	(ClassDeclaration::toVtblSymbol): Update call to toSymbolX.
+	(AggregateDeclaration::toInitializer): Likewise.
+	(TypedefDeclaration::toInitializer): Likewise.
+	(EnumDeclaration::toInitializer): Likewise.
+
+	* d-ir.cc(CaseStatement::toIR): Don't call static_sym.
+
+	* d-lang.cc(rtlsym): Remove symbol.
+	(D_DECL_READONLY_STATIC): Remove macro.
+	(d_unknown_type_node): New LANG_TYPE node for marking TypeInfo_Class,
+	Interface, and ModuleInfo types that are of a variable size determined
+	at compile time.
+
+	* d-elem.cc(StringExp::toElem): Clean up for new dt_t format.
+
+	* symbol.cc: Remove file.
+
 2013-05-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::getFrameInfo): Don't create a frame/closure
