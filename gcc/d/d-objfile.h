@@ -18,6 +18,83 @@
 #ifndef GCC_DCMPLR_OBFILE_H
 #define GCC_DCMPLR_OBFILE_H
 
+#include "config.h"
+#include "coretypes.h"
+
+#include "root.h"
+#include "mtype.h"
+
+// These must match the values in object_.d
+enum ModuleInfoFlags
+{
+  MIstandalone	    = 4,
+  MItlsctor	    = 8,
+  MItlsdtor	    = 0x10,
+  MIctor	    = 0x20,
+  MIdtor	    = 0x40,
+  MIxgetMembers	    = 0x80,
+  MIictor	    = 0x100,
+  MIunitTest	    = 0x200,
+  MIimportedModules = 0x400,
+  MIlocalClasses    = 0x800,
+  MInew		    = 0x80000000
+};
+
+enum OutputStage
+{
+  NotStarted,
+  InProgress,
+  Finished
+};
+
+struct FuncFrameInfo;
+typedef ArrayBase<struct Thunk> Thunks;
+typedef union tree_node dt_t;
+
+struct Symbol : Object
+{
+  Symbol (void);
+
+  const char *Sident;
+  const char *prettyIdent;
+  int Salignment;
+  bool Sreadonly;
+
+  dt_t *Sdt;
+
+  // Specific to GNU backend
+  tree Stree;
+  tree ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
+  tree SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
+
+  // For FuncDeclarations:
+  Thunks thunks;
+  OutputStage outputStage;
+  FuncFrameInfo *frameInfo;
+};
+
+struct Thunk
+{
+  Thunk (void)
+  { offset = 0; symbol = NULL; }
+
+  int offset;
+  Symbol *symbol;
+};
+
+extern dt_t **dt_last (dt_t **pdt);
+extern dt_t **dt_cons (dt_t **pdt, dt_t *val);
+extern dt_t **dt_chainon (dt_t **pdt, dt_t *val);
+extern dt_t **dt_container (dt_t **pdt, Type *type, dt_t *dt);
+extern dt_t **build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd);
+
+extern tree dtlist_to_tree (dt_t *dt);
+
+extern void build_moduleinfo (Symbol *sym);
+extern void build_tlssections (void);
+extern void d_finish_symbol (Symbol *sym);
+
+
 struct ModuleInfo
 {
   ClassDeclarations classes;
@@ -49,7 +126,7 @@ struct DeferredThunk
 typedef ArrayBase<DeferredThunk> DeferredThunks;
 
 
-/* nearly everything is static for effeciency since there is
+/* Nearly everything is static for effeciency since there is
    only one object per run of the backend */
 struct ObjectFile
 {

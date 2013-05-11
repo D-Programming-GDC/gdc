@@ -17,6 +17,8 @@
 #endif
 
 #ifdef IN_GCC
+union tree_node;
+
 typedef long long               longlong;
 typedef unsigned long long      ulonglong;
 #else

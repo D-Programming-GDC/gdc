@@ -18,7 +18,6 @@
 #include "d-system.h"
 
 #include "enum.h"
-#include "symbol.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 
@@ -690,6 +689,7 @@ Type::toSymbol (void)
 {
   return NULL;
 }
+
 unsigned
 Type::totym (void)
 {
