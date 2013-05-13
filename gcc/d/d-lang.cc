@@ -39,11 +39,19 @@
 #include "async.h"
 #include "json.h"
 
+static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
+
+
 static char lang_name[6] = "GNU D";
 
 const struct attribute_spec d_attribute_table[] = 
-{ 
-  { NULL,                     0, 0, false, false, false, NULL, false }
+{
+    { "noinline",               0, 0, true,  false, false,
+				d_handle_noinline_attribute, false },
+    { "forceinline",            0, 0, true,  false, false,
+				d_handle_forceinline_attribute, false },
+    { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
 /* Lang Hooks */
@@ -1628,6 +1636,59 @@ void
 d_init_exceptions (void)
 {
   using_eh_for_cleanups();
+}
+
+
+/* Handle a "noinline" attribute.  */
+
+static tree
+d_handle_noinline_attribute (tree *node, tree name,
+			     tree ARG_UNUSED (args),
+			     int ARG_UNUSED (flags), bool *no_add_attrs)
+{
+  Type *t = build_dtype (TREE_TYPE (*node));
+
+  if (t->ty == Tfunction)
+    DECL_UNINLINABLE (*node) = 1;
+  else
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle a "forceinline" attribute.  */
+
+static tree
+d_handle_forceinline_attribute (tree *node, tree name,
+				tree ARG_UNUSED (args),
+				int ARG_UNUSED (flags),
+				bool *no_add_attrs)
+{
+  Type *t = build_dtype (TREE_TYPE (*node));
+
+  if (t->ty == Tfunction)
+    {
+      tree attributes = DECL_ATTRIBUTES (*node);
+
+      // Push attribute always_inline.
+      if (! lookup_attribute ("always_inline", attributes))
+	DECL_ATTRIBUTES (*node) = tree_cons (get_identifier ("always_inline"),
+					     NULL_TREE, attributes);
+
+      DECL_DECLARED_INLINE_P (*node) = 1;
+      DECL_NO_INLINE_WARNING_P (*node) = 1;
+      DECL_DISREGARD_INLINE_LIMITS (*node) = 1;
+    }
+  else
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
