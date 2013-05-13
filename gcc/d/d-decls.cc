@@ -64,7 +64,7 @@ SymbolDeclaration::toSymbol (void)
 Symbol *
 Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 {
-  char *n = mangle();
+  const char *n = mangle();
   unsigned nlen = strlen (n);
   size_t sz = (2 + nlen + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
   Symbol *s = new Symbol();

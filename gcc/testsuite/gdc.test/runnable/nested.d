@@ -2518,9 +2518,9 @@ int main()
     test8923b();
     test8923c();
     test9003();
-    //test9006();       BUG: Struct initialiser bug.
+    test9006();
     test9035();
-    //test9035a();      BUG: Struct initialiser bug.
+    test9035a();
     test9036();
 //    test8863();
     test8774();

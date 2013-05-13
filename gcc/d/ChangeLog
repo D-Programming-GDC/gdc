@@ -4,6 +4,9 @@
 	noinline attributes.
 	(d_handle_forceinline_attribute): New function to handle D forceinline
 	attributes.
+	* d-elem.cc(StructLiteralExp::toElem): Return the struct initialiser
+	symbol directly if the tree has already been built.
+	* d-decls.cc(Dsymbol::toSymbolX): Constify the mangling name to use.
 
 2013-05-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 

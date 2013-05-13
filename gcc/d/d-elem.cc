@@ -980,8 +980,7 @@ AssignExp::toElem (IRState *irs)
     }
 
   // Simple assignment
-  tree lhs = irs->toElemLvalue (e1);
-  return modify_expr (type->toCtype(), lhs,
+  return modify_expr (type->toCtype(), irs->toElemLvalue (e1),
 		      irs->convertForAssignment (e2, e1->type));
 }
 
@@ -2165,12 +2164,8 @@ StructLiteralExp::toElem (IRState *irs)
 
   gcc_assert (tb->ty == Tstruct);
 
-  if (sinit)
-    {
-      tree svar = irs->localVar (type);
-      DECL_INITIAL (svar) = sinit->Stree;
-      return svar;
-    }
+  if (sinit && sinit->Stree)
+    return sinit->Stree;
 
   if (elements)
     {
@@ -2260,6 +2255,7 @@ StructLiteralExp::toElem (IRState *irs)
       tree vthis_field = sd->vthis->toSymbol()->Stree;
       tree vthis_value = irs->getVThis (sd, this);
       ce.cons (vthis_field, vthis_value);
+      gcc_assert (sinit == NULL);
     }
 
   tree ctor = build_constructor (type->toCtype(), ce.head);
