@@ -3662,11 +3662,11 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
 
   if (!ffi->is_closure)
     {
-      /* __ensure never becomes a closure, but could still be referencing parameters
-	 of the calling function.  So we add all parameters as nested refs. This is
-	 written as such so that all parameters appear at the front of the frame so
-	 that overriding methods match the same layout when inheriting a contract.  */
-      if (global.params.useOut && func->fensure)
+      // __ensure and __require never becomes a closure, but could still be referencing
+      // parameters of the calling function.  So we add all parameters as nested refs.
+      // This is written as such so that all parameters appear at the front of the frame
+      // so that overriding methods match the same layout when inheriting a contract.
+      if ((global.params.useIn && func->frequire) || (global.params.useOut && func->fensure))
 	{
 	  for (size_t i = 0; func->parameters && i < func->parameters->dim; i++)
 	    {

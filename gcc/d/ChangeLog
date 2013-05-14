@@ -1,3 +1,8 @@
+2013-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::buildFrameForFunction): Also copy the
+	parameters of functions with 'in' contracts to a local frame decl.
+
 2013-05-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::chainLink): Remove function.
