@@ -41,6 +41,7 @@
 
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_flatten_attribute (tree *, tree, tree, int, bool *);
 
 
 static char lang_name[6] = "GNU D";
@@ -51,6 +52,8 @@ const struct attribute_spec d_attribute_table[] =
 				d_handle_noinline_attribute, false },
     { "forceinline",            0, 0, true,  false, false,
 				d_handle_forceinline_attribute, false },
+    { "flatten",                0, 0, true,  false, false,
+				d_handle_flatten_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1683,6 +1686,24 @@ d_handle_forceinline_attribute (tree *node, tree name,
       DECL_DISREGARD_INLINE_LIMITS (*node) = 1;
     }
   else
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle a "flatten" attribute.  */
+
+static tree
+d_handle_flatten_attribute (tree *node, tree name,
+			    tree args ATTRIBUTE_UNUSED,
+			    int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
+{
+  Type *t = build_dtype (TREE_TYPE (*node));
+
+  if (t->ty != Tfunction)
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
       *no_add_attrs = true;

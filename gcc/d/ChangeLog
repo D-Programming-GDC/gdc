@@ -2,6 +2,8 @@
 
 	* d-codegen.cc(IRState::buildFrameForFunction): Also copy the
 	parameters of functions with 'in' contracts to a local frame decl.
+	* d-lang.cc(d_handle_flatten_attribute): New function to handle D
+	flatten attributes.
 
 2013-05-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
