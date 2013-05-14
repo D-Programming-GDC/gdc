@@ -908,8 +908,8 @@ FuncDeclaration::toObjFile (int)
     fprintf (stdmsg, "function  %s\n", this->toPrettyChars());
 
   IRState *irs = current_irs->startFunction (this);
-
-  irs->useChain (NULL, NULL_TREE);
+  // Default chain value is 'null' unless parent found.
+  irs->sthis = d_null_pointer;
 
   tree old_current_function_decl = current_function_decl;
   function *old_cfun = cfun;
@@ -948,14 +948,11 @@ FuncDeclaration::toObjFile (int)
   if (vthis)
     {
       parm_decl = vthis->toSymbol()->Stree;
+      // For nested functions, D still generates a vthis, but it
+      // should not be referenced in any expression.
       if (!isThis() && isNested())
-	{
-	  // D still generates a vthis, but it should not be
-	  // referenced in any expression.
-	  FuncDeclaration *fd = toParent2()->isFuncDeclaration();
-	  DECL_ARTIFICIAL (parm_decl) = 1;
-	  irs->useChain (fd, parm_decl);
-	}
+	DECL_ARTIFICIAL (parm_decl) = 1;
+      irs->sthis = parm_decl;
       object_file->setDeclLoc (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
     }
@@ -998,24 +995,23 @@ FuncDeclaration::toObjFile (int)
     {
       AggregateDeclaration *ad = isThis();
       tree this_tree = vthis->toSymbol()->Stree;
+
       while (ad->isNested())
 	{
 	  Dsymbol *d = ad->toParent2();
 	  tree vthis_field = ad->vthis->toSymbol()->Stree;
 	  this_tree = component_ref (build_deref (this_tree), vthis_field);
 
-	  FuncDeclaration *fd = d->isFuncDeclaration();
 	  ad = d->isAggregateDeclaration();
 	  if (ad == NULL)
 	    {
-	      gcc_assert (fd != NULL);
-	      irs->useChain (fd, this_tree);
+	      irs->sthis = this_tree;
 	      break;
 	    }
 	}
     }
 
-  // May chain irs->chainLink and irs->chainFunc.
+  // May change irs->sthis.
   irs->buildChain (this);
   DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
 
@@ -1143,14 +1139,7 @@ FuncDeclaration::buildClosure (IRState *irs)
   gcc_assert (ffi->is_closure);
 
   if (!ffi->creates_frame)
-    {
-      if (ffi->static_chain)
-	{
-	  tree link = irs->chainLink();
-	  irs->useChain (this, link);
-	}
-      return;
-    }
+    return;
 
   tree closure_rec_type = irs->buildFrameForFunction (this);
   gcc_assert(COMPLETE_TYPE_P (closure_rec_type));
@@ -1168,11 +1157,9 @@ FuncDeclaration::buildClosure (IRState *irs)
   irs->expandDecl (closure_ptr);
 
   // set the first entry to the parent closure, if any
-  tree chain_link = irs->chainLink();
   tree chain_field = component_ref (build_deref (closure_ptr),
 				    TYPE_FIELDS (closure_rec_type));
-  tree chain_expr = vmodify_expr (chain_field,
-				  chain_link ? chain_link : d_null_pointer);
+  tree chain_expr = vmodify_expr (chain_field, irs->sthis);
   irs->addExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
@@ -1189,7 +1176,7 @@ FuncDeclaration::buildClosure (IRState *irs)
       irs->addExp (closure_expr);
     }
 
-  irs->useChain (this, closure_ptr);
+  irs->sthis = closure_ptr;
 }
 
 void

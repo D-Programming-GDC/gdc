@@ -1,3 +1,14 @@
+2013-05-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::chainLink): Remove function.
+	(IRState::chainFunc): Remove function.
+	(IRState::sthis): New member which holds the chain of function.
+	(IRState::buildChain): Update to use new static chain decl.
+	(IRState::getFrameInfo): Likewise.
+	* d-objfile.cc(FuncDeclaration::buildClosure): Likewise.
+	(FuncDeclaration::toObjFile): Default the function static chain decl
+	to null unless vthis is given for the function.
+
 2013-05-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc(d_handle_noinline_attribute): New function to handle D

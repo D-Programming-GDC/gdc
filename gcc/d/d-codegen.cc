@@ -3607,14 +3607,7 @@ IRState::buildChain (FuncDeclaration *func)
     }
 
   if (!ffi->creates_frame)
-    {
-      if (ffi->static_chain)
-	{
-	  tree link = chainLink();
-	  useChain (func, link);
-	}
-      return;
-    }
+    return;
 
   tree frame_rec_type = buildFrameForFunction (func);
   gcc_assert(COMPLETE_TYPE_P (frame_rec_type));
@@ -3625,13 +3618,8 @@ IRState::buildChain (FuncDeclaration *func)
   expandDecl (frame_decl);
 
   // set the first entry to the parent frame, if any
-  tree chain_link = chainLink();
   tree chain_field = component_ref (frame_decl, TYPE_FIELDS (frame_rec_type));
-
-  if (chain_link == NULL_TREE)
-    chain_link = d_null_pointer;
-
-  tree chain_expr = vmodify_expr (chain_field, chain_link);
+  tree chain_expr = vmodify_expr (chain_field, this->sthis);
   addExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
@@ -3648,7 +3636,7 @@ IRState::buildChain (FuncDeclaration *func)
       addExp (frame_expr);
     }
 
-  useChain (this->func, build_address (frame_decl));
+  this->sthis = build_address (frame_decl);
 }
 
 tree
@@ -3830,8 +3818,8 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 tree
 IRState::getFrameRef (FuncDeclaration *outer_func)
 {
-  tree result = chainLink();
-  FuncDeclaration *fd = chainFunc();
+  tree result = this->sthis;
+  FuncDeclaration *fd = this->func;
 
   while (fd && fd != outer_func)
     {

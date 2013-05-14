@@ -435,17 +435,7 @@ struct IRState : IRBase
   static tree label (Loc loc, Identifier *ident = 0);
 
   // Static chain of function, for D2, this is a closure.
-  void useChain (FuncDeclaration *f, tree l)
-  {
-    this->chainLink_ = l;
-    this->chainFunc_ = f;
-  }
-
-  tree chainLink (void)
-  { return this->chainLink_; }
-
-  FuncDeclaration *chainFunc (void)
-  { return this->chainFunc_; }
+  tree sthis;
 
   void buildChain (FuncDeclaration *func);
   tree buildFrameForFunction (FuncDeclaration *func);
@@ -501,8 +491,6 @@ struct IRState : IRBase
 
   tree getFrameForSymbol (Dsymbol *nested_sym);
   tree getFrameRef (FuncDeclaration *outer_func);
-  FuncDeclaration *chainFunc_;
-  tree chainLink_;
 };
 
 // 
