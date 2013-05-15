@@ -544,29 +544,6 @@ struct ListMaker
   tree *ptail_;
 };
 
-struct CtorEltMaker
-{
- public:
-  vec<constructor_elt, va_gc>* head;
-
-  CtorEltMaker (void)
-    : head(NULL)
-  { }
-
-  void reserve (int i)
-  { vec_safe_reserve (this->head, i); }
-
-  void cons (tree p, tree v)
-  {
-    constructor_elt ce = { p, v };
-    vec_safe_push (this->head, ce);
-  }
-
-  void cons (tree v)
-  { cons (NULL_TREE, v); }
-
-};
-
 class AggLayout
 {
  public:

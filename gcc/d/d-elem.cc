@@ -1889,24 +1889,24 @@ NewExp::toElem (IRState *irs)
       else
 	{
 	  // Multidimensional array allocations.
-
-	  tree dims_var = irs->exprVar (d_array_type (Type::tsize_t, arguments->dim));
-	  tree dims_init;
-	  CtorEltMaker elms;
-	  tree args[3];
+	  vec<constructor_elt, va_gc> *elms = NULL;
 	  Type *telem = newtype->toBasetype();
+	  tree dims_var = irs->exprVar (d_array_type (Type::tsize_t, arguments->dim));
+	  tree dims_init = build_constructor (TREE_TYPE (dims_var), NULL);
+	  tree args[3];
 
 	  for (size_t i = 0; i < arguments->dim; i++)
 	    {
 	      Expression *arg = (*arguments)[i];
-	      elms.cons (build_integer_cst (i, size_type_node), arg->toElem (irs));
-	      dims_init = build_constructor (TREE_TYPE (dims_var), elms.head);
-	      DECL_INITIAL (dims_var) = dims_init;
+	      tree index = build_integer_cst (i, size_type_node);
+	      CONSTRUCTOR_APPEND_ELT (elms, index, arg->toElem (irs));
 
 	      gcc_assert (telem->ty == Tarray);
 	      telem = telem->toBasetype()->nextOf();
 	      gcc_assert (telem);
 	    }
+	  CONSTRUCTOR_ELTS (dims_init) = elms;
+	  DECL_INITIAL (dims_var) = dims_init;
 
 	  libcall = telem->isZeroInit() ? LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
 	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
@@ -2049,16 +2049,16 @@ ArrayLiteralExp::toElem (IRState *irs)
   tree result = NULL_TREE;
 
   /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
-  CtorEltMaker elms;
+  vec<constructor_elt, va_gc> *elms = NULL;
+  vec_safe_reserve (elms, elements->dim);
 
-  elms.reserve (elements->dim);
   for (size_t i = 0; i < elements->dim; i++)
     {
-      elms.cons (build_integer_cst (i, size_type_node),
-		 irs->convertTo ((*elements)[i], etype));
+      CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
+			      irs->convertTo ((*elements)[i], etype));
     }
 
-  tree ctor = build_constructor (sa_type, elms.head);
+  tree ctor = build_constructor (sa_type, elms);
   tree args[2];
 
   args[0] = irs->typeinfoReference (etype->arrayOf());
@@ -2147,10 +2147,10 @@ AssocArrayLiteralExp::toElem (IRState *irs)
 
   result = maybe_compound_expr (result, build_libcall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
 
-  CtorEltMaker ce;
   tree aat_type = aa_type->toCtype();
-  ce.cons (TYPE_FIELDS (aat_type), result);
-  tree ctor = build_constructor (aat_type, ce.head);
+  vec<constructor_elt, va_gc> *ce = NULL;
+  CONSTRUCTOR_APPEND_ELT (ce, TYPE_FIELDS (aat_type), result);
+  tree ctor = build_constructor (aat_type, ce);
 
   result = bind_expr (keys_var, bind_expr (vals_var, ctor));
   return build_nop (type->toCtype(), result);
@@ -2159,7 +2159,7 @@ AssocArrayLiteralExp::toElem (IRState *irs)
 elem *
 StructLiteralExp::toElem (IRState *irs)
 {
-  CtorEltMaker ce;
+  vec<constructor_elt, va_gc> *ce = NULL;
   Type *tb = type->toBasetype();
 
   gcc_assert (tb->ty == Tstruct);
@@ -2241,7 +2241,7 @@ StructLiteralExp::toElem (IRState *irs)
 	  if (call_exp)
 	    irs->addExp (call_exp);
 
-	  ce.cons (fld->toSymbol()->Stree, exp_tree);
+	  CONSTRUCTOR_APPEND_ELT (ce, fld->toSymbol()->Stree, exp_tree);
 
 	  // Unions only have one field that gets assigned.
 	  if (sd->isUnionDeclaration())
@@ -2254,11 +2254,11 @@ StructLiteralExp::toElem (IRState *irs)
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;
       tree vthis_value = irs->getVThis (sd, this);
-      ce.cons (vthis_field, vthis_value);
+      CONSTRUCTOR_APPEND_ELT (ce, vthis_field, vthis_value);
       gcc_assert (sinit == NULL);
     }
 
-  tree ctor = build_constructor (type->toCtype(), ce.head);
+  tree ctor = build_constructor (type->toCtype(), ce);
   return ctor;
 }
 
@@ -2267,7 +2267,7 @@ NullExp::toElem (IRState *irs)
 {
   TY base_ty = type->toBasetype()->ty;
   tree null_exp;
-  CtorEltMaker ce;
+  vec<constructor_elt, va_gc> *ce = NULL;
 
   // 0 -> dynamic array.  This is a special case conversion.
   // Move to convert for convertTo if it shows up elsewhere.
@@ -2280,10 +2280,11 @@ NullExp::toElem (IRState *irs)
     case Taarray:
 	{
 	  tree ttype = type->toCtype();
-	  tree fa = TYPE_FIELDS (ttype);
+	  tree field = TYPE_FIELDS (ttype);
+	  tree value = irs->convertTo (TREE_TYPE (field), integer_zero_node);
 
-	  ce.cons (fa, irs->convertTo (TREE_TYPE (fa), integer_zero_node));
-	  null_exp = build_constructor (ttype, ce.head);
+	  CONSTRUCTOR_APPEND_ELT (ce, field, value);
+	  null_exp = build_constructor (ttype, ce);
 	  break;
 	}
 
@@ -2331,10 +2332,10 @@ VectorExp::toElem (IRState *irs)
   if (e1->op == TOKarrayliteral)
     {
       Expressions *elements = ((ArrayLiteralExp *) e1)->elements;
-      CtorEltMaker elms;
+      vec<constructor_elt, va_gc> *elms = NULL;
       bool constant_p = true;
 
-      elms.reserve (elements->dim);
+      vec_safe_reserve (elms, elements->dim);
       for (size_t i = 0; i < elements->dim; i++)
 	{
 	  Expression *e = (*elements)[i];
@@ -2342,14 +2343,14 @@ VectorExp::toElem (IRState *irs)
 	  if (!CONSTANT_CLASS_P (value))
 	    constant_p = false;
 
-	  elms.cons (build_integer_cst (i, size_type_node), value);
+	  CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
 	}
 
       // Build a VECTOR_CST from a constant vector constructor.
       if (constant_p)
-	return build_vector_from_ctor (vectype, elms.head);
+	return build_vector_from_ctor (vectype, elms);
 
-      return build_constructor (vectype, elms.head);
+      return build_constructor (vectype, elms);
     }
   else
     {

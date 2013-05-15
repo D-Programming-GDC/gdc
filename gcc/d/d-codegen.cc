@@ -566,14 +566,16 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 	  TypeSArray *sa_type = (TypeSArray *) target_base_type;
 	  uinteger_t count = sa_type->dim->toUInteger();
 
-	  tree ctor = build_constructor (target_type->toCtype(), 0);
+	  tree ctor = build_constructor (target_type->toCtype(), NULL);
 	  if (count)
 	    {
-	      CtorEltMaker ce;
-	      ce.cons (build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
-			       integer_zero_node, build_integer_cst (count - 1)),
-		       object_file->stripVarDecl (convertForAssignment (expr, sa_type->next)));
-	      CONSTRUCTOR_ELTS (ctor) = ce.head;
+	      vec<constructor_elt, va_gc> *ce = NULL;
+	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
+				   integer_zero_node, build_integer_cst (count - 1));
+	      tree value = object_file->stripVarDecl (convertForAssignment (expr, sa_type->next));
+
+	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
+	      CONSTRUCTOR_ELTS (ctor) = ce;
 	    }
 	  TREE_READONLY (ctor) = 1;
 	  TREE_CONSTANT (ctor) = 1;
@@ -1086,7 +1088,7 @@ d_array_value (tree type, tree len, tree data)
 {
   // %% assert type is a darray
   tree len_field, ptr_field;
-  CtorEltMaker ce;
+  vec<constructor_elt, va_gc> *ce = NULL;
 
   len_field = TYPE_FIELDS (type);
   ptr_field = TREE_CHAIN (len_field);
@@ -1094,10 +1096,10 @@ d_array_value (tree type, tree len, tree data)
   len = convert (TREE_TYPE (len_field), len);
   data = convert (TREE_TYPE (ptr_field), data);
 
-  ce.cons (len_field, len);
-  ce.cons (ptr_field, data);
+  CONSTRUCTOR_APPEND_ELT (ce, len_field, len);
+  CONSTRUCTOR_APPEND_ELT (ce, ptr_field, data);
 
-  tree ctor = build_constructor (type, ce.head);
+  tree ctor = build_constructor (type, ce);
   // TREE_STATIC and TREE_CONSTANT can be set by caller if needed
   TREE_STATIC (ctor) = 0;
   TREE_CONSTANT (ctor) = 0;
@@ -1201,7 +1203,7 @@ build_delegate_cst (tree method, tree object, Type *type)
   tree ctor = make_node (CONSTRUCTOR);
   tree obj_field = NULL_TREE;
   tree func_field = NULL_TREE;
-  CtorEltMaker ce;
+  vec<constructor_elt, va_gc> *ce = NULL;
 
   if (ctype)
     {
@@ -1209,10 +1211,10 @@ build_delegate_cst (tree method, tree object, Type *type)
       obj_field = TYPE_FIELDS (ctype);
       func_field = TREE_CHAIN (obj_field);
     }
-  ce.cons (obj_field, object);
-  ce.cons (func_field, method);
+  CONSTRUCTOR_APPEND_ELT (ce, obj_field, object);
+  CONSTRUCTOR_APPEND_ELT (ce, func_field, method);
 
-  CONSTRUCTOR_ELTS (ctor) = ce.head;
+  CONSTRUCTOR_ELTS (ctor) = ce;
   return ctor;
 }
 
@@ -1233,9 +1235,8 @@ void
 extract_from_method_call (tree t, tree& callee, tree& object)
 {
   gcc_assert (D_METHOD_CALL_EXPR (t));
-  vec<constructor_elt, va_gc>* elts = CONSTRUCTOR_ELTS (t);
-  object = (*elts)[0].value;
-  callee = (*elts)[1].value;
+  object = CONSTRUCTOR_ELT (t, 0)->value;
+  callee = CONSTRUCTOR_ELT (t, 1)->value;
 }
 
 // Return correct callee for method FUNC, which is dereferenced from

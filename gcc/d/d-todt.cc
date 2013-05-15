@@ -90,7 +90,7 @@ static tree
 dt_container2 (dt_t *dt)
 {
   // Generate type on the fly
-  CtorEltMaker elts;
+  vec<constructor_elt, va_gc> *elts = NULL;
   ListMaker fields;
   tree ctor;
 
@@ -112,7 +112,7 @@ dt_container2 (dt_t *dt)
 
       layout_decl (field, 0);
       fields.chain (field);
-      elts.cons (field, value);
+      CONSTRUCTOR_APPEND_ELT (elts, field, value);
 
       offset = size_binop (PLUS_EXPR, offset, size);
       dt = TREE_CHAIN (dt);
@@ -123,7 +123,7 @@ dt_container2 (dt_t *dt)
   TYPE_SIZE_UNIT (aggtype) = offset;
   compute_record_mode (aggtype);
 
-  ctor = build_constructor (aggtype, elts.head);
+  ctor = build_constructor (aggtype, elts);
   TREE_READONLY (ctor) = 1;
   TREE_STATIC (ctor) = 1;
   TREE_CONSTANT (ctor) = 1;
@@ -143,17 +143,17 @@ dt_container (dt_t **pdt, Type *type, dt_t *dt)
     {
       // Generate static array constructor.
       TypeSArray *tsa = (TypeSArray *) tb;
-      CtorEltMaker elts;
-      elts.reserve (tsa->dim->toInteger());
+      vec<constructor_elt, va_gc> *elts = NULL;
+      vec_safe_reserve (elts, tsa->dim->toInteger());
       size_t i = 0;
 
       while (dt)
 	{
-	  elts.cons (size_int (i++), TREE_VALUE (dt));
+	  CONSTRUCTOR_APPEND_ELT (elts, size_int (i++), TREE_VALUE (dt));
 	  dt = TREE_CHAIN (dt);
 	}
 
-      tree ctor = build_constructor (type->toCtype(), elts.head);
+      tree ctor = build_constructor (type->toCtype(), elts);
       TREE_CONSTANT (ctor) = 1;
       TREE_READONLY (ctor) = 1;
       TREE_STATIC (ctor) = 1;

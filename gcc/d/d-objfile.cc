@@ -2184,11 +2184,11 @@ build_moduleinfo (Symbol *sym)
   TREE_PRIVATE (our_mod_ref) = 1;
   TREE_STATIC (our_mod_ref) = 1;
 
-  CtorEltMaker ce;
-  ce.cons (fld_next, d_null_pointer);
-  ce.cons (fld_mod, build_address (sym->Stree));
+  vec<constructor_elt, va_gc> *ce = NULL;
+  CONSTRUCTOR_APPEND_ELT (ce, fld_next, d_null_pointer);
+  CONSTRUCTOR_APPEND_ELT (ce, fld_mod, build_address (sym->Stree));
 
-  DECL_INITIAL (our_mod_ref) = build_constructor (modref_type_node, ce.head);
+  DECL_INITIAL (our_mod_ref) = build_constructor (modref_type_node, ce);
   TREE_STATIC (DECL_INITIAL (our_mod_ref)) = 1;
   rest_of_decl_compilation (our_mod_ref, 1, 0);
 
