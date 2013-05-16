@@ -510,47 +510,12 @@ struct WrappedExp : Expression
   elem *toElem (IRState *irs);
 };
 
-struct ListMaker
-{
- public:
-  tree head;
-
-  ListMaker (void)
-    : head(NULL_TREE),
-      ptail_(&this->head)
-  { }
-
-  ListMaker (tree *alt_head)
-    : head(NULL_TREE),
-      ptail_(alt_head)
-  { }
-
-  void chain (tree t)
-  {
-    *this->ptail_ = t;
-    this->ptail_ = &TREE_CHAIN (t);
-  }
-
-  void cons (tree p, tree v)
-  {
-    *this->ptail_ = tree_cons (p,v,NULL_TREE);
-    this->ptail_ = &TREE_CHAIN (*this->ptail_);
-  }
-
-  void cons (tree v)
-  { cons (NULL_TREE, v); }
-
- private:
-  tree *ptail_;
-};
-
 class AggLayout
 {
  public:
   AggLayout (AggregateDeclaration *ini_agg_decl, tree ini_agg_type)
     : aggDecl_(ini_agg_decl),
-      aggType_(ini_agg_type),
-      fieldList_(&TYPE_FIELDS(this->aggType_))
+      aggType_(ini_agg_type)
   { }
 
   void go (void)
@@ -566,7 +531,6 @@ class AggLayout
  private:
   AggregateDeclaration *aggDecl_;
   tree aggType_;
-  ListMaker fieldList_;
 };
 
 class ArrayScope

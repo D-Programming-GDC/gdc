@@ -91,7 +91,7 @@ dt_container2 (dt_t *dt)
 {
   // Generate type on the fly
   vec<constructor_elt, va_gc> *elts = NULL;
-  ListMaker fields;
+  tree fields = NULL_TREE;
   tree ctor;
 
   tree aggtype = make_node (RECORD_TYPE);
@@ -111,14 +111,14 @@ dt_container2 (dt_t *dt)
       DECL_IGNORED_P (field) = 1;
 
       layout_decl (field, 0);
-      fields.chain (field);
+      fields = chainon (fields, field);
       CONSTRUCTOR_APPEND_ELT (elts, field, value);
 
       offset = size_binop (PLUS_EXPR, offset, size);
       dt = TREE_CHAIN (dt);
     }
 
-  TYPE_FIELDS (aggtype) = fields.head;
+  TYPE_FIELDS (aggtype) = fields;
   TYPE_SIZE (aggtype) = size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT));
   TYPE_SIZE_UNIT (aggtype) = offset;
   compute_record_mode (aggtype);

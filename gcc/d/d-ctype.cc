@@ -247,7 +247,7 @@ TypeEnum::toCtype (void)
 	  TYPE_UNSIGNED (ctype) = TYPE_UNSIGNED (cmemtype);
 
 	  // Move this to toDebug() ?
-	  ListMaker enum_values;
+	  tree enum_values = NULL_TREE;
 	  if (sym->members)
 	    {
 	      for (size_t i = 0; i < sym->members->dim; i++)
@@ -262,14 +262,15 @@ TypeEnum::toCtype (void)
 		    ident = concat (sym->ident->string, ".",
 				    member->ident->string, NULL);
 
-		  enum_values.cons (get_identifier (ident ? ident : member->ident->string),
-				    build_integer_cst (member->value->toInteger(), ctype));
+		  tree tident = get_identifier (ident ? ident : member->ident->string);
+		  tree tvalue = build_integer_cst (member->value->toInteger(), ctype);
+		  enum_values = chainon (enum_values, build_tree_list (tident, tvalue));
 
 		  if (sym->ident)
 		    free (ident);
 		}
 	    }
-	  TYPE_VALUES (ctype) = enum_values.head;
+	  TYPE_VALUES (ctype) = enum_values;
 
 	  object_file->initTypeDecl (ctype, sym);
 	  object_file->declareType (ctype, sym);
@@ -345,13 +346,13 @@ TypeFunction::toCtype (void)
 	}
       else 
 	{
-	  ListMaker type_list;
+	  tree type_list = NULL_TREE;
 	  tree ret_type;
 
 	  if (varargs == 1 && linkage == LINKd)
 	    {
 	      // hidden _arguments parameter
-	      type_list.cons (Type::typeinfotypelist->type->toCtype());
+	      type_list = chainon (type_list, build_tree_list (0, Type::typeinfotypelist->type->toCtype()));
 	    }
 
 	  if (parameters)
@@ -361,14 +362,14 @@ TypeFunction::toCtype (void)
 	      for (size_t i = 0; i < n_args; i++)
 		{
 		  Parameter *arg = Parameter::getNth (parameters, i);
-		  type_list.cons (type_passed_as (arg));
+		  type_list = chainon (type_list, build_tree_list (0, type_passed_as (arg)));
 		}
 	    }
 
 	  /* Last parm if void indicates fixed length list (as opposed to
 	     printf style va_* list). */
 	  if (varargs != 1)
-	    type_list.chain (void_list_node);
+	    type_list = chainon (type_list, void_list_node);
 
 	  ret_type = next ? next->toCtype() : void_type_node;
 
@@ -376,7 +377,7 @@ TypeFunction::toCtype (void)
 	    ret_type = build_reference_type (ret_type);
 
 	  // Function type can be reference by parameters, etc.  Set ctype earlier?
-	  ctype = build_function_type (ret_type, type_list.head);
+	  ctype = build_function_type (ret_type, type_list);
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 
 	  d_keep (ctype);

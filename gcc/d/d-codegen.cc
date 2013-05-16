@@ -896,7 +896,7 @@ build_attributes (Expressions *in_attrs)
 
   expandTuples(in_attrs);
 
-  ListMaker out_attrs;
+  tree out_attrs = NULL_TREE;
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
@@ -933,7 +933,7 @@ build_attributes (Expressions *in_attrs)
         return error_mark_node;
       }
 
-      ListMaker args;
+      tree args = NULL_TREE;
 
       for (size_t j = 1; j < elem->dim; j++)
         {
@@ -946,13 +946,15 @@ build_attributes (Expressions *in_attrs)
 	    }
 	  else
 	    aet = ae->toElem (&gen);
-	  args.cons (aet);
+
+	  args = chainon (args, build_tree_list (0, aet));
         }
 
-      out_attrs.cons (get_identifier (name), args.head);
+      tree list = build_tree_list (get_identifier (name), args);
+      out_attrs =  chainon (out_attrs, list);
     }
 
-  return out_attrs.head;
+  return out_attrs;
 }
 
 // Return qualified type variant of TYPE determined by modifier value MOD.
@@ -2192,7 +2194,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   tree actual_callee = callable;
   tree saved_args = NULL_TREE;
 
-  ListMaker actual_arg_list;
+  tree arg_list = NULL_TREE;
 
   if (POINTER_TYPE_P (func_type_node))
     func_type_node = TREE_TYPE (func_type_node);
@@ -2232,7 +2234,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   /* If this is a delegate call or a nested function being called as
      a delegate, the object should not be NULL. */
   if (object != NULL_TREE)
-    actual_arg_list.cons (object);
+    arg_list = build_tree_list (NULL_TREE, object);
 
   Parameters *formal_args = func_type->parameters; // can be NULL for genCfunc decls
   size_t n_formal_args = formal_args ? (int) Parameter::dim (formal_args) : 0;
@@ -2242,52 +2244,52 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   // assumes arguments->dim <= formal_args->dim if (!this->varargs)
   for (size_t ai = 0; ai < n_actual_args; ++ai)
     {
-      tree actual_arg_tree;
-      Expression *actual_arg_exp = (*arguments)[ai];
+      tree arg_tree;
+      Expression *arg_exp = (*arguments)[ai];
 
       if (ai == 0 && is_d_vararg)
 	{
 	  // The hidden _arguments parameter
-	  actual_arg_tree = actual_arg_exp->toElem (this);
+	  arg_tree = arg_exp->toElem (this);
 	}
       else if (fi < n_formal_args)
 	{
 	  // Actual arguments for declared formal arguments
 	  Parameter *formal_arg = Parameter::getNth (formal_args, fi);
-	  actual_arg_tree = convertForArgument (actual_arg_exp, formal_arg);
+	  arg_tree = convertForArgument (arg_exp, formal_arg);
 	  ++fi;
 	}
       else
 	{
-	  if (flag_split_darrays && actual_arg_exp->type->toBasetype()->ty == Tarray)
+	  if (flag_split_darrays && arg_exp->type->toBasetype()->ty == Tarray)
 	    {
-	      tree da_exp = maybe_make_temp (actual_arg_exp->toElem (this));
-	      actual_arg_list.cons (d_array_length (da_exp));
-	      actual_arg_list.cons (d_array_ptr (da_exp));
+	      tree da_exp = maybe_make_temp (arg_exp->toElem (this));
+	      arg_list = chainon (arg_list, build_tree_list (0, d_array_length (da_exp)));
+	      arg_list = chainon (arg_list, build_tree_list (0, d_array_ptr (da_exp)));
 	      continue;
 	    }
 	  else
 	    {
-	      actual_arg_tree = actual_arg_exp->toElem (this);
+	      arg_tree = arg_exp->toElem (this);
 	      /* Not all targets support passing unpromoted types, so
 		 promote anyway. */
-	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (actual_arg_tree));
-	      if (prom_type != TREE_TYPE (actual_arg_tree))
-		actual_arg_tree = convert (prom_type, actual_arg_tree);
+	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (arg_tree));
+	      if (prom_type != TREE_TYPE (arg_tree))
+		arg_tree = convert (prom_type, arg_tree);
 	    }
 	}
       /* Evaluate the argument before passing to the function.
 	 Needed for left to right evaluation.  */
-      if (func_type->linkage == LINKd && TREE_SIDE_EFFECTS (actual_arg_tree))
+      if (func_type->linkage == LINKd && TREE_SIDE_EFFECTS (arg_tree))
 	{
-	  actual_arg_tree = maybe_make_temp (actual_arg_tree);
-	  saved_args = maybe_vcompound_expr (saved_args, actual_arg_tree);
+	  arg_tree = maybe_make_temp (arg_tree);
+	  saved_args = maybe_vcompound_expr (saved_args, arg_tree);
 	}
 
-      actual_arg_list.cons (actual_arg_tree);
+      arg_list = chainon (arg_list, build_tree_list (0, arg_tree));
     }
 
-  tree result = d_build_call (TREE_TYPE (func_type_node), actual_callee, actual_arg_list.head);
+  tree result = d_build_call (TREE_TYPE (func_type_node), actual_callee, arg_list);
   result = maybeExpandSpecialCall (result);
 
   return maybe_compound_expr (saved_args, result);
@@ -3658,8 +3660,7 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
 			       get_identifier ("__chain"), ptr_type_node);
   DECL_CONTEXT (ptr_field) = frame_rec_type;
 
-  ListMaker fields;
-  fields.chain (ptr_field);
+  tree fields = chainon (NULL_TREE, ptr_field);
 
   if (!ffi->is_closure)
     {
@@ -3712,14 +3713,14 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
       s->SframeField = field;
       object_file->setDeclLoc (field, v);
       DECL_CONTEXT (field) = frame_rec_type;
-      fields.chain (field);
+      fields = chainon (fields, field);
       TREE_USED (s->Stree) = 1;
 
       /* Can't do nrvo if the variable is put in a frame.  */
       if (func->nrvo_can && func->nrvo_var == v)
 	func->nrvo_can = 0;
     }
-  TYPE_FIELDS (frame_rec_type) = fields.head;
+  TYPE_FIELDS (frame_rec_type) = fields;
   layout_type (frame_rec_type);
   d_keep (frame_rec_type);
 
@@ -4425,7 +4426,8 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
 	  gcc_assert (DECL_MODE (field_decl) != VOIDmode);
 	  gcc_assert (DECL_SIZE (field_decl) != NULL_TREE);
 	}
-      this->fieldList_.chain (field_decl);
+
+      TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), field_decl);
     }
 }
 
@@ -4463,7 +4465,7 @@ AggLayout::addField (tree field_decl, size_t offset)
   TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
 
   layout_decl (field_decl, 0);
-  this->fieldList_.chain (field_decl);
+  TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), field_decl);
 }
 
 // Wrap-up and compute finalised aggregate type.  ATTRS are

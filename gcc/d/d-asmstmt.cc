@@ -220,9 +220,9 @@ ExtAsmStatement::blockExit (bool)
 void
 ExtAsmStatement::toIR (IRState *irs)
 {
-  ListMaker outputs;
-  ListMaker inputs;
-  ListMaker tree_clobbers;
+  tree outputs = NULL_TREE;
+  tree inputs = NULL_TREE;
+  tree tree_clobbers = NULL_TREE;
 
   irs->doLineNote (this->loc);
 
@@ -234,14 +234,20 @@ ExtAsmStatement::toIR (IRState *irs)
 	  StringExp *constr = (StringExp *) (*this->constraints)[i];
 	  Expression *arg = (*this->args)[i];
 
-	  tree n = name ? build_string (name->len, name->string) : NULL_TREE;
-	  tree p = build_string (constr->len, (char *) constr->string);
-	  tree v = arg->toElem (irs);
+	  tree id = name ? build_string (name->len, name->string) : NULL_TREE;
+	  tree str = build_string (constr->len, (char *) constr->string);
+	  tree val = arg->toElem (irs);
 
 	  if (i < this->outputargs)
-	    outputs.cons (tree_cons (n, p, NULL_TREE), v);
+	    {
+	      tree arg = build_tree_list (id, str);
+	      outputs = chainon (outputs, build_tree_list (arg, val));
+	    }
 	  else
-	    inputs.cons (tree_cons (n, p, NULL_TREE), v);
+	    {
+	      tree arg = build_tree_list (id, str);
+	      inputs = chainon (inputs, build_tree_list (arg, val));
+	    }
 	}
     }
 
@@ -250,13 +256,14 @@ ExtAsmStatement::toIR (IRState *irs)
       for (size_t i = 0; i < this->clobbers->dim; i++)
 	{
 	  StringExp *clobber = (StringExp *) (*this->clobbers)[i];
-	  tree_clobbers.cons (NULL_TREE, build_string (clobber->len, (char *) clobber->string));
+	  tree val = build_string (clobber->len, (char *) clobber->string);
+	  tree_clobbers = chainon (tree_clobbers, build_tree_list (0, val));
 	}
     }
 
   StringExp *insn = (StringExp *) this->insn;
   tree exp = build5 (ASM_EXPR, void_type_node, build_string (insn->len, (char *) insn->string),
-		     outputs.head, inputs.head, tree_clobbers.head, NULL_TREE);
+		     outputs, inputs, tree_clobbers, NULL_TREE);
 
   TREE_SIDE_EFFECTS (exp) = 1;
   SET_EXPR_LOCATION (exp, input_location);

@@ -24,9 +24,9 @@
 #include "template.h"
 #include "d-codegen.h"
 
-static ListMaker bi_fn_list;
-static ListMaker bi_lib_list;
-static ListMaker bi_type_list;
+static tree bi_fn_list;
+static tree bi_lib_list;
+static tree bi_type_list;
 
 // Necessary for built-in struct types
 static Array builtin_converted_types;
@@ -345,9 +345,9 @@ void
 d_bi_builtin_func (tree decl)
 {
   if (!flag_no_builtin && DECL_ASSEMBLER_NAME_SET_P (decl))
-    bi_lib_list.cons (NULL_TREE, decl);
+    bi_lib_list = chainon (bi_lib_list, build_tree_list (0, decl));
 
-  bi_fn_list.cons (NULL_TREE, decl);
+  bi_fn_list = chainon (bi_fn_list, build_tree_list (0, decl));
 }
 
 // Hook from d_register_builtin_type.
@@ -357,7 +357,7 @@ d_bi_builtin_func (tree decl)
 void
 d_bi_builtin_type (tree decl)
 {
-  bi_type_list.cons (NULL_TREE, decl);
+  bi_type_list = chainon (bi_type_list, build_tree_list (0, decl));
 }
 
 
@@ -493,7 +493,7 @@ d_gcc_magic_builtins_module (Module *m)
 {
   Dsymbols *funcs = new Dsymbols;
 
-  for (tree n = bi_fn_list.head; n; n = TREE_CHAIN (n))
+  for (tree n = bi_fn_list; n != NULL_TREE; n = TREE_CHAIN (n))
     {
       tree decl = TREE_VALUE (n);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
@@ -531,7 +531,7 @@ d_gcc_magic_builtins_module (Module *m)
       funcs->push (func);
     }
 
-  for (tree n = bi_type_list.head; n; n = TREE_CHAIN (n))
+  for (tree n = bi_type_list; n != NULL_TREE; n = TREE_CHAIN (n))
     {
       tree decl = TREE_VALUE (n);
       tree type = TREE_TYPE (decl);
@@ -642,7 +642,7 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
     }
   else if (fd && !fd->fbody)
     {
-      for (tree n = bi_lib_list.head; n; n = TREE_CHAIN (n))
+      for (tree n = bi_lib_list; n != NULL_TREE; n = TREE_CHAIN (n))
 	{
 	  tree decl = TREE_VALUE (n);
 	  gcc_assert (DECL_ASSEMBLER_NAME_SET_P (decl));
