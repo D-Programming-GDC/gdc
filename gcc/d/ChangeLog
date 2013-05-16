@@ -1,3 +1,8 @@
+2013-05-16  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-incpath.cc(prefixed_path): use cpp_PREFIX instead of
+	cpp_GCC_INCLUDE_DIR for relocation.
+
 2013-05-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::convertForAssignment): Remove use of

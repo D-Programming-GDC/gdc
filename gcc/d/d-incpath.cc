@@ -71,9 +71,29 @@ static char *
 prefixed_path (const char *path)
 {
   // based on incpath.c
-  size_t len = cpp_GCC_INCLUDE_DIR_len;
-  if (iprefix && len != 0 && !strncmp (path, cpp_GCC_INCLUDE_DIR, len))
-    return concat (iprefix, path + len, NULL);
+  size_t len = cpp_PREFIX_len;
+  if (cpp_relocated() && len != 0 && !strncmp (path, cpp_PREFIX, len))
+  {
+    static const char *relocated_prefix;
+    /* If this path starts with the configure-time prefix,
+       but the compiler has been relocated, replace it
+       with the run-time prefix.  The run-time exec prefix
+       is GCC_EXEC_PREFIX.  Compute the path from there back
+       to the toplevel prefix.  */
+    if (!relocated_prefix)
+      {
+	char *dummy;
+	/* Make relative prefix expects the first argument
+	   to be a program, not a directory.  */
+	dummy = concat (gcc_exec_prefix, "dummy", NULL);
+	relocated_prefix
+	  = make_relative_prefix (dummy,
+				  cpp_EXEC_PREFIX,
+				  cpp_PREFIX);
+	free (dummy);
+      }
+    return concat (relocated_prefix, path + len, NULL);
+  }
   // else
   return xstrdup (path);
 }
