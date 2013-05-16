@@ -30,6 +30,14 @@
 	(TypeFunction::toCtype): Likewise.
 	* d-todt.cc(dt_container2): Likewise.
 
+	* d-codegen.cc(IRState::getFrameInfo): Replace with get_frameinfo.
+	(IRState::buildFrameForFunction): Replace with build_frame_type.
+	(IRState::isClassNestedInFunction): Replace with d_nested_class.
+	(IRState::isStructNestedInFunction): Replace with d_nested_struct.
+	(IRState::getFrameForFunction): Fold into IRState::getFrameForSymbol.
+	(IRState::getFrameForNestedClass): Likewise.
+	(IRState::getFrameForNestedStruct): Likewise.
+
 2013-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::buildFrameForFunction): Also copy the

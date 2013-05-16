@@ -697,7 +697,7 @@ VarDeclaration::toObjFile (int)
       // local variables of a function.  Otherwise, it would be
       // enough to make a check for isVarDeclaration() in
       // DeclarationExp::toElem.
-      current_irs->emitLocalVar (this);
+      cirstate->emitLocalVar (this);
     }
 }
 
@@ -907,7 +907,7 @@ FuncDeclaration::toObjFile (int)
   if (global.params.verbose)
     fprintf (stdmsg, "function  %s\n", this->toPrettyChars());
 
-  IRState *irs = current_irs->startFunction (this);
+  IRState *irs = cirstate->startFunction (this);
   // Default chain value is 'null' unless parent found.
   irs->sthis = d_null_pointer;
 
@@ -1135,13 +1135,13 @@ FuncDeclaration::toObjFile (int)
 void
 FuncDeclaration::buildClosure (IRState *irs)
 {
-  FuncFrameInfo *ffi = irs->getFrameInfo (this);
+  FuncFrameInfo *ffi = get_frameinfo (this);
   gcc_assert (ffi->is_closure);
 
   if (!ffi->creates_frame)
     return;
 
-  tree closure_rec_type = irs->buildFrameForFunction (this);
+  tree closure_rec_type = build_frame_type (this);
   gcc_assert(COMPLETE_TYPE_P (closure_rec_type));
 
   tree closure_ptr = irs->localVar (build_pointer_type (closure_rec_type));
@@ -1226,7 +1226,7 @@ void
 ObjectFile::beginModule (Module *m)
 {
   moduleInfo = new ModuleInfo;
-  current_module = m;
+  cmodule = m;
 }
 
 void
@@ -1239,7 +1239,7 @@ ObjectFile::endModule (void)
     }
   deferredThunks.setDim (0);
   moduleInfo = NULL;
-  current_module = NULL;
+  cmodule = NULL;
 }
 
 bool
@@ -1929,21 +1929,21 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
 FuncDeclaration *
 ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, bool public_fn)
 {
-  if (!current_module)
-    current_module = d_gcc_get_output_module();
+  if (!cmodule)
+    cmodule = d_gcc_get_output_module();
 
   if (name[0] == '*')
     {
-      Symbol *s = current_module->toSymbolX (name + 1, 0, 0, "FZv");
+      Symbol *s = cmodule->toSymbolX (name + 1, 0, 0, "FZv");
       name = s->Sident;
     }
 
   TypeFunction *func_type = new TypeFunction (0, Type::tvoid, 0, LINKc);
-  FuncDeclaration *func = new FuncDeclaration (current_module->loc, current_module->loc,
+  FuncDeclaration *func = new FuncDeclaration (cmodule->loc, cmodule->loc,
 					       Lexer::idPool (name), STCstatic, func_type);
-  func->loc = Loc (current_module, 1);
+  func->loc = Loc (cmodule, 1);
   func->linkage = func_type->linkage;
-  func->parent = current_module;
+  func->parent = cmodule;
   func->protection = public_fn ? PROTpublic : PROTprivate;
 
   tree func_decl = func->toSymbol()->Stree;
@@ -1956,8 +1956,8 @@ ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, boo
   TREE_USED (func_decl) = 1;
 
   // %% maybe remove the identifier
-  WrappedExp *body = new WrappedExp (current_module->loc, TOKcomma, expr, Type::tvoid);
-  func->fbody = new ExpStatement (current_module->loc, body);
+  WrappedExp *body = new WrappedExp (cmodule->loc, TOKcomma, expr, Type::tvoid);
+  func->fbody = new ExpStatement (cmodule->loc, body);
   func->toObjFile (0);
 
   return func;
@@ -2177,7 +2177,7 @@ build_moduleinfo (Symbol *sym)
   tree our_mod_ref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, modref_type_node);
   d_keep (our_mod_ref);
   object_file->giveDeclUniqueName (our_mod_ref, "__mod_ref");
-  object_file->setDeclLoc (our_mod_ref, current_module);
+  object_file->setDeclLoc (our_mod_ref, cmodule);
 
   DECL_ARTIFICIAL (our_mod_ref) = 1;
   DECL_IGNORED_P (our_mod_ref) = 1;
@@ -2223,7 +2223,7 @@ build_tlssections (void)
   // DECL_INITIAL so the symbol goes in .tdata
   DECL_INITIAL (tlsstart) = build_int_cst (integer_type_node, 3);
   DECL_TLS_MODEL (tlsstart) = decl_default_tls_model (tlsstart);
-  object_file->setDeclLoc (tlsstart, current_module);
+  object_file->setDeclLoc (tlsstart, cmodule);
   rest_of_decl_compilation (tlsstart, 1, 0);
 
   tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
@@ -2234,7 +2234,7 @@ build_tlssections (void)
   // DECL_COMMON so the symbol goes in .tcommon
   DECL_COMMON (tlsend) = 1;
   DECL_TLS_MODEL (tlsend) = decl_default_tls_model (tlsend);
-  object_file->setDeclLoc (tlsend, current_module);
+  object_file->setDeclLoc (tlsend, cmodule);
   rest_of_decl_compilation (tlsend, 1, 0);
 }
 

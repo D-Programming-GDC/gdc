@@ -32,7 +32,7 @@ IRState *
 IRBase::startFunction (FuncDeclaration *decl)
 {
   IRState *new_irs = new IRState();
-  new_irs->parent = current_irs;
+  new_irs->parent = cirstate;
   new_irs->func = decl;
   new_irs->varsInScope = NULL;
 
@@ -45,7 +45,7 @@ IRBase::startFunction (FuncDeclaration *decl)
 	}
     }
 
-  current_irs = (IRState *) new_irs;
+  cirstate = (IRState *) new_irs;
   ModuleInfo & mi = *object_file->moduleInfo;
 
   if (decl->isSharedStaticCtorDeclaration())
@@ -76,7 +76,7 @@ void
 IRBase::endFunction (void)
 {
   gcc_assert (this->scopes.dim == 0);
-  current_irs = (IRState *) this->parent;
+  cirstate = (IRState *) this->parent;
 }
 
 

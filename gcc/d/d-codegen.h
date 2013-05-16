@@ -201,6 +201,11 @@ extern tree build_offset (tree ptr_node, tree byte_offset);
 extern tree d_build_call (tree type, tree callee, tree args);
 extern tree d_build_call_nary (tree callee, int n_args, ...);
 
+// Closures and frame generation.
+extern tree build_frame_type (FuncDeclaration *func);
+extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
+extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
+
 // Temporaries (currently just SAVE_EXPRs)
 extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
@@ -438,21 +443,13 @@ struct IRState : IRBase
   tree sthis;
 
   void buildChain (FuncDeclaration *func);
-  tree buildFrameForFunction (FuncDeclaration *func);
-  FuncFrameInfo *getFrameInfo (FuncDeclaration *fd);
   bool functionNeedsChain (FuncDeclaration *f);
-
-  // Check for nested functions/class/structs
-  static FuncDeclaration *isClassNestedInFunction (ClassDeclaration *cd);
-  static FuncDeclaration *isStructNestedInFunction (StructDeclaration *sd);
 
   tree findThis (ClassDeclaration *target_cd);
   tree getVThis (Dsymbol *decl, Expression *e);
 
   // Static chain for nested functions
-  tree getFrameForFunction (FuncDeclaration *f);
-  tree getFrameForNestedClass (ClassDeclaration *c);
-  tree getFrameForNestedStruct (StructDeclaration *s);
+  tree getFrameForSymbol (Dsymbol *nested_sym);
 
   // ** Instruction stream manipulation
   void startCond (Statement *stmt, tree t_cond);
@@ -488,14 +485,11 @@ struct IRState : IRBase
 
  protected:
   tree maybeExpandSpecialCall (tree call_exp);
-
-  tree getFrameForSymbol (Dsymbol *nested_sym);
-  tree getFrameRef (FuncDeclaration *outer_func);
 };
 
 // 
-extern Module *current_module;
-extern IRState *current_irs;
+extern Module *cmodule;
+extern IRState *cirstate;
 extern ObjectFile *object_file;
 
 extern IRState gen;

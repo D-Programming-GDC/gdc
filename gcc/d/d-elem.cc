@@ -1483,7 +1483,7 @@ DelegateExp::toElem (IRState *irs)
 	  if (e1->op == TOKnull)
 	    this_tree = e1->toElem (irs);
 	  else
-	    this_tree = irs->getFrameForFunction (func);
+	    this_tree = irs->getFrameForSymbol (func);
 	}
       else
 	{
@@ -1625,7 +1625,7 @@ DeclarationExp::toElem (IRState *irs)
     }
 
   // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
-  // if needed.  This assumes irs == current_irs
+  // if needed.  This assumes irs == cirstate
   irs->pushStatementList();
   declaration->toObjFile (0);
   tree t = irs->popStatementList();
@@ -1668,7 +1668,7 @@ FuncExp::toElem (IRState *irs)
 
     case Tdelegate:
       return build_method_call (build_address (fd->toSymbol()->Stree),
-				irs->getFrameForFunction (fd), type);
+				irs->getFrameForSymbol (fd), type);
 
     default:
       ::error ("Unexpected FuncExp type");

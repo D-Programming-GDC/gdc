@@ -1037,7 +1037,7 @@ d_parse_file (void)
   else
     object_file->modules.append (&modules);
 
-  current_irs = &gen;
+  cirstate = &gen;
 
   // Generate output files
   if (global.params.doXGeneration)

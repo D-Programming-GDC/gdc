@@ -25,8 +25,8 @@
 
 IRState gen;
 
-Module *current_module;
-IRState *current_irs;
+Module *cmodule;
+IRState *cirstate;
 ObjectFile *object_file;
 
 
@@ -40,39 +40,39 @@ d_gcc_force_templates (void)
   return gen.emitTemplates == TEprivate;
 }
 
-// Return the DECL_CONTEXT for symbol D_SYM.
+// Return the DECL_CONTEXT for symbol DSYM.
 
 tree
-IRState::declContext (Dsymbol *d_sym)
+IRState::declContext (Dsymbol *dsym)
 {
-  Dsymbol *orig_sym = d_sym;
+  Dsymbol *orig_sym = dsym;
   AggregateDeclaration *ad;
 
-  while ((d_sym = d_sym->toParent2()))
+  while ((dsym = dsym->toParent2()))
     {
-      if (d_sym->isFuncDeclaration())
+      if (dsym->isFuncDeclaration())
 	{
 	  // dwarf2out chokes without this check... (output_pubnames)
 	  FuncDeclaration *f = orig_sym->isFuncDeclaration();
 	  if (f && !gen.functionNeedsChain (f))
 	    return NULL_TREE;
 
-	  return d_sym->toSymbol()->Stree;
+	  return dsym->toSymbol()->Stree;
 	}
-      else if ((ad = d_sym->isAggregateDeclaration()))
+      else if ((ad = dsym->isAggregateDeclaration()))
 	{
-	  tree ctx = ad->type->toCtype();
+	  tree context = ad->type->toCtype();
 	  if (ad->isClassDeclaration())
 	    {
 	      // RECORD_TYPE instead of REFERENCE_TYPE
-	      ctx = TREE_TYPE (ctx);
+	      context = TREE_TYPE (context);
 	    }
 
-	  return ctx;
+	  return context;
 	}
-      else if (d_sym->isModule())
+      else if (dsym->isModule())
 	{
-	  return d_sym->toSymbol()->ScontextDecl;
+	  return dsym->toSymbol()->ScontextDecl;
 	}
     }
   return NULL_TREE;
@@ -86,16 +86,16 @@ IRState::doLineNote (const Loc& loc)
   ObjectFile::doLineNote (loc);
 }
 
-// Add local variable V into the current body.  If NO_INIT,
+// Add local variable VD into the current body.  If NO_INIT,
 // then variable does not have a default initialiser.
 
 void
-IRState::emitLocalVar (VarDeclaration *v, bool no_init)
+IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
 {
-  if (v->isDataseg() || v->isMember())
+  if (vd->isDataseg() || vd->isMember())
     return;
 
-  Symbol *sym = v->toSymbol();
+  Symbol *sym = vd->toSymbol();
   tree var_decl = sym->Stree;
 
   gcc_assert (!TREE_STATIC (var_decl));
@@ -107,28 +107,28 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
   DECL_CONTEXT (var_decl) = getLocalContext();
 
   // Compiler generated symbols
-  if (v == this->func->vresult || v == this->func->v_argptr
-      || v == this->func->v_arguments_var)
+  if (vd == this->func->vresult || vd == this->func->v_argptr
+      || vd == this->func->v_arguments_var)
     DECL_ARTIFICIAL (var_decl) = 1;
 
   tree var_exp;
   if (sym->SframeField)
     {
       // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var_decl, var (v));
+      SET_DECL_VALUE_EXPR (var_decl, var (vd));
       DECL_HAS_VALUE_EXPR_P (var_decl) = 1;
     }
   var_exp = var_decl;
 
-  // complete initializer expression (include MODIFY_EXPR, e.g.)
+  // Complete initializer expression (include MODIFY_EXPR, e.g.)
   tree init_exp = NULL_TREE;
   tree init_val = NULL_TREE;
 
-  if (!no_init && !DECL_INITIAL (var_decl) && v->init)
+  if (!no_init && !DECL_INITIAL (var_decl) && vd->init)
     {
-      if (!v->init->isVoidInitializer())
+      if (!vd->init->isVoidInitializer())
 	{
-	  ExpInitializer *exp_init = v->init->isExpInitializer();
+	  ExpInitializer *exp_init = vd->init->isExpInitializer();
 	  Expression *ie = exp_init->toExpression();
 	  init_exp = ie->toElem (this);
 	}
@@ -136,60 +136,61 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
 	no_init = true;
     }
   else
-    gcc_assert (v->init == NULL);
+    gcc_assert (vd->init == NULL);
 
   if (!no_init)
     {
-      object_file->doLineNote (v->loc);
+      object_file->doLineNote (vd->loc);
 
       if (!init_val)
 	{
 	  init_val = DECL_INITIAL (var_decl);
-	  DECL_INITIAL (var_decl) = NULL_TREE; // %% from expandDecl
+	  DECL_INITIAL (var_decl) = NULL_TREE;
 	}
       if (!init_exp && init_val)
 	init_exp = build_vinit (var_exp, init_val);
 
       if (init_exp)
 	addExp (init_exp);
-      else if (!init_val && v->size (v->loc)) // Zero-length arrays do not have an initializer
-	warning (OPT_Wuninitialized, "uninitialized variable '%s'", v->ident ? v->ident->string : "(no name)");
+      else if (!init_val && vd->size (vd->loc))
+	// Zero-length arrays do not have an initializer
+	warning (OPT_Wuninitialized, "uninitialized variable '%s'", vd->ident ? vd->ident->string : "(no name)");
     }
 }
 
-// Return an unnamed local temporary of type T_TYPE.
+// Return an unnamed local temporary of type TYPE.
 
 tree
-IRState::localVar (tree t_type)
+IRState::localVar (tree type)
 {
-  tree t_decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
-  DECL_CONTEXT (t_decl) = getLocalContext();
-  DECL_ARTIFICIAL (t_decl) = 1;
-  DECL_IGNORED_P (t_decl) = 1;
-  pushdecl (t_decl);
-  return t_decl;
+  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  DECL_CONTEXT (decl) = getLocalContext();
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  pushdecl (decl);
+  return decl;
 }
 
-// Return an unnamed local temporary of type E_TYPE.
+// Return an unnamed local temporary of type TYPE.
 
 tree
-IRState::localVar (Type *e_type)
+IRState::localVar (Type *type)
 {
-  return localVar (e_type->toCtype());
+  return localVar (type->toCtype());
 }
 
-// Return an undeclared local temporary of type T_TYPE
+// Return an undeclared local temporary of type TYPE
 // for use with BIND_EXPR.
 
 tree
-IRState::exprVar (tree t_type)
+IRState::exprVar (tree type)
 {
-  tree t_decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
-  DECL_CONTEXT (t_decl) = getLocalContext();
-  DECL_ARTIFICIAL (t_decl) = 1;
-  DECL_IGNORED_P (t_decl) = 1;
-  layout_decl (t_decl, 0);
-  return t_decl;
+  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  DECL_CONTEXT (decl) = getLocalContext();
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  layout_decl (decl, 0);
+  return decl;
 }
 
 // Return an undeclared local temporary OUT_VAR initialised
@@ -217,36 +218,37 @@ IRState::maybeExprVar (tree exp, tree *out_var)
     }
 }
 
-// Emit an INIT_EXPR for decl T_DECL.
+// Emit an INIT_EXPR for decl DECL.
 
 void
-IRState::expandDecl (tree t_decl)
+IRState::expandDecl (tree decl)
 {
-  // nothing, pushdecl will add t_decl to a BIND_EXPR
-  if (DECL_INITIAL (t_decl))
+  // nothing, pushdecl will add decl to a BIND_EXPR
+  if (DECL_INITIAL (decl))
     {
-      tree exp = build_vinit (t_decl, DECL_INITIAL (t_decl));
+      tree exp = build_vinit (decl, DECL_INITIAL (decl));
       addExp (exp);
-      DECL_INITIAL (t_decl) = NULL_TREE;
+      DECL_INITIAL (decl) = NULL_TREE;
     }
 }
 
-// Return the correct decl to be used for variable V.
+// Return the correct decl to be used for variable VD.
 // Could be a VAR_DECL, or a FIELD_DECL from a closure.
 
 tree
 IRState::var (Declaration *decl)
 {
-  VarDeclaration *v = decl->isVarDeclaration();
+  VarDeclaration *vd = decl->isVarDeclaration();
 
-  if (v && v->toSymbol()->SframeField != NULL_TREE)
+  if (vd && vd->toSymbol()->SframeField != NULL_TREE)
     {
-      FuncDeclaration *f = v->toParent2()->isFuncDeclaration();
-      tree cf = getFrameRef (f);
-      tree field = v->toSymbol()->SframeField;
+      // Get the closure holding the var decl.
+      FuncDeclaration *fd = vd->toParent2()->isFuncDeclaration();
+      tree frame_ref = get_framedecl (this->func, fd);
+      tree field = vd->toSymbol()->SframeField;
 
       gcc_assert (field != NULL_TREE);
-      return component_ref (build_deref (cf), field);
+      return component_ref (build_deref (frame_ref), field);
     }
   else
     {
@@ -461,7 +463,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	  d_uns64 sz_src = src_elem_type->size();
 	  d_uns64 sz_dst = dst_elem_type->size();
 
-	  if (/*src_elem_type->ty == Tvoid ||*/ sz_src == sz_dst)
+	  if (sz_src == sz_dst)
 	    {
 	      // Convert from void[] or elements are the same size -- don't change length
 	      return build_vconvert (target_type->toCtype(), exp);
@@ -1273,7 +1275,7 @@ get_object_method (Expression *objexp, FuncDeclaration *func, Type *type)
 	    }
 	  break;
 	}
-      this_expr = objexp->toElem (current_irs);
+      this_expr = objexp->toElem (cirstate);
 
       // Calls to super are static (func is the super's method)
       // Structs don't have vtables.
@@ -2146,7 +2148,7 @@ IRState::call (Expression *expr, Expressions *arguments)
 	      // Re-evaluate symbol storage treating 'fd' as public.
 	      object_file->setupSymbolStorage (fd, callee, true);
 	    }
-	  object = getFrameForFunction (fd);
+	  object = getFrameForSymbol (fd);
 	}
       else if (fd->needThis())
 	{
@@ -3298,42 +3300,11 @@ IRState::label (Loc loc, Identifier *ident)
   return t_label;
 }
 
-// Entry points for protected getFrameForSymbol.
-
-tree
-IRState::getFrameForFunction (FuncDeclaration *f)
-{
-  if (f->fbody)
-    return getFrameForSymbol (f);
-  else
-    {
-      // Should instead error on line that references f
-      f->error ("nested function missing body");
-      return d_null_pointer;
-    }
-}
-
-tree
-IRState::getFrameForNestedClass (ClassDeclaration *c)
-{
-  return getFrameForSymbol (c);
-}
-
-tree
-IRState::getFrameForNestedStruct (StructDeclaration *s)
-{
-  return getFrameForSymbol (s);
-}
-
 // If NESTED_SYM is a nested function, return the static chain to be
 // used when invoking that function.
 
 // If NESTED_SYM is a nested class or struct, return the static chain
 // to be used when creating an instance of the class.
-
-// This method is protected to enforce the type checking of getFrameForFunction,
-// getFrameForNestedClass, and getFrameForNestedStruct.
-// getFrameForFunction also checks that the nested function is properly defined.
 
 tree
 IRState::getFrameForSymbol (Dsymbol *nested_sym)
@@ -3343,7 +3314,14 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 
   if ((nested_func = nested_sym->isFuncDeclaration()))
     {
-      // gcc_assert (nested_func->isNested())
+      // Check that the nested function is properly defined.
+      if (!nested_func->fbody)
+	{
+	  // Should instead error on line that references nested_func
+	  nested_func->error ("nested function missing body");
+	  return d_null_pointer;
+	}
+
       outer_func = nested_func->toParent2()->isFuncDeclaration();
       gcc_assert (outer_func != NULL);
 
@@ -3441,12 +3419,47 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
     outer_func = nested_func->toParent2()->isFuncDeclaration();
   gcc_assert (outer_func != NULL);
 
-  FuncFrameInfo *ffo = getFrameInfo (outer_func);
+  FuncFrameInfo *ffo = get_frameinfo (outer_func);
   if (ffo->creates_frame || ffo->static_chain)
-    return getFrameRef (outer_func);
+    return get_framedecl (this->func, outer_func);
 
   return d_null_pointer;
 }
+
+// Return the parent function of a nested class CD.
+
+static FuncDeclaration *
+d_nested_class (ClassDeclaration *cd)
+{
+  FuncDeclaration *fd = NULL;
+  while (cd && cd->isNested())
+    {
+      Dsymbol *dsym = cd->toParent2();
+      if ((fd = dsym->isFuncDeclaration()))
+	return fd;
+      else
+	cd = dsym->isClassDeclaration();
+    }
+  return NULL;
+}
+
+// Return the parent function of a nested struct SD.
+
+static FuncDeclaration *
+d_nested_struct (StructDeclaration *sd)
+{
+  FuncDeclaration *fd = NULL;
+  while (sd && sd->isNested())
+    {
+      Dsymbol *dsym = sd->toParent2();
+      if ((fd = dsym->isFuncDeclaration()))
+	return fd;
+      else
+	sd = dsym->isStructDeclaration();
+    }
+  return NULL;
+}
+
 
 // Starting from the current function, try to find a suitable value of
 // 'this' in nested function instances.
@@ -3471,7 +3484,7 @@ IRState::findThis (ClassDeclaration *ocd)
 	  else if (ocd->isBaseOf (cd, NULL))
 	    return convertTo (var (fd->vthis), cd->type, ocd->type);
 	  else
-	    fd = isClassNestedInFunction (cd);
+	    fd = d_nested_class (cd);
 	}
       else
 	{
@@ -3517,10 +3530,10 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	     STATIC_CHAIN_EXPR created here will never be
 	     translated. Use a null pointer for the link in
 	     this case. */
-	  FuncFrameInfo *ffo = getFrameInfo (fdo);
+	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = getFrameForNestedClass (cd);
+	    vthis_value = getFrameForSymbol (cd);
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
 	    vthis_value = var (fdo->vthis);
 	  else
@@ -3544,10 +3557,10 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	}
       else if (fdo)
 	{
-	  FuncFrameInfo *ffo = getFrameInfo (fdo);
+	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = getFrameForNestedStruct (sd);
+	    vthis_value = getFrameForSymbol (sd);
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
 	    vthis_value = var (fdo->vthis);
 	  else
@@ -3560,47 +3573,12 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
   return vthis_value;
 }
 
-// Return the parent function of a nested class CD.
-
-FuncDeclaration *
-IRState::isClassNestedInFunction (ClassDeclaration *cd)
-{
-  FuncDeclaration *fd = NULL;
-  while (cd && cd->isNested())
-    {
-      Dsymbol *dsym = cd->toParent2();
-      if ((fd = dsym->isFuncDeclaration()))
-	return fd;
-      else
-	cd = dsym->isClassDeclaration();
-    }
-  return NULL;
-}
-
-// Return the parent function of a nested struct SD.
-
-FuncDeclaration *
-IRState::isStructNestedInFunction (StructDeclaration *sd)
-{
-  FuncDeclaration *fd = NULL;
-  while (sd && sd->isNested())
-    {
-      Dsymbol *dsym = sd->toParent2();
-      if ((fd = dsym->isFuncDeclaration()))
-	return fd;
-      else
-	sd = dsym->isStructDeclaration();
-    }
-  return NULL;
-}
-
-
 // Build static chain decl for FUNC to be passed to nested functions in D.
 
 void
 IRState::buildChain (FuncDeclaration *func)
 {
-  FuncFrameInfo *ffi = getFrameInfo (func);
+  FuncFrameInfo *ffi = get_frameinfo (func);
 
   if (ffi->is_closure)
     {
@@ -3612,7 +3590,7 @@ IRState::buildChain (FuncDeclaration *func)
   if (!ffi->creates_frame)
     return;
 
-  tree frame_rec_type = buildFrameForFunction (func);
+  tree frame_rec_type = build_frame_type (func);
   gcc_assert(COMPLETE_TYPE_P (frame_rec_type));
 
   tree frame_decl = localVar (frame_rec_type);
@@ -3643,9 +3621,9 @@ IRState::buildChain (FuncDeclaration *func)
 }
 
 tree
-IRState::buildFrameForFunction (FuncDeclaration *func)
+build_frame_type (FuncDeclaration *func)
 {
-  FuncFrameInfo *ffi = getFrameInfo (func);
+  FuncFrameInfo *ffi = get_frameinfo (func);
 
   if (ffi->frame_rec != NULL_TREE)
     return ffi->frame_rec;
@@ -3731,7 +3709,7 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
 // passed via the hidden 'this' pointer.
 
 FuncFrameInfo *
-IRState::getFrameInfo (FuncDeclaration *fd)
+get_frameinfo (FuncDeclaration *fd)
 {
   Symbol *fds = fd->toSymbol();
   if (fds->frameInfo)
@@ -3772,7 +3750,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
       while (ff)
 	{
-	  FuncFrameInfo *ffo = getFrameInfo (ff);
+	  FuncFrameInfo *ffo = get_frameinfo (ff);
 	  AggregateDeclaration *ad;
 
 	  if (ff != fd && ffo->creates_frame)
@@ -3810,26 +3788,27 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   // Build type now as may be referenced from another module.
   if (ffi->creates_frame)
-    ffi->frame_rec = buildFrameForFunction (fd);
+    ffi->frame_rec = build_frame_type (fd);
 
   return ffi;
 }
 
-// Return a pointer to the frame/closure block of OUTER_FUNC.
+// Return a pointer to the frame/closure block of OUTER
+// so can be accessed from the function INNER.
 
 tree
-IRState::getFrameRef (FuncDeclaration *outer_func)
+get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 {
-  tree result = this->sthis;
-  FuncDeclaration *fd = this->func;
+  tree result = cirstate->sthis;
+  FuncDeclaration *fd = inner;
 
-  while (fd && fd != outer_func)
+  while (fd && fd != outer)
     {
       AggregateDeclaration *ad;
       ClassDeclaration *cd;
       StructDeclaration *sd;
 
-      if (getFrameInfo (fd)->creates_frame)
+      if (get_frameinfo (fd)->creates_frame)
 	{
 	  // like compon (indirect, field0) parent frame link is the first field;
 	  result = indirect_ref (ptr_type_node, result);
@@ -3837,22 +3816,22 @@ IRState::getFrameRef (FuncDeclaration *outer_func)
 
       if (fd->isNested())
 	fd = fd->toParent2()->isFuncDeclaration();
-      /* getFrameRef is only used to get the pointer to a function's frame
-	 (not a class instances.)  With the current implementation, the link
+      /* get_framedecl is only used to get the pointer to a function's frame
+	 (not a class instances).  With the current implementation, the link
 	 the frame/closure record always points to the outer function's frame even
 	 if there are intervening nested classes or structs.
 	 So, we can just skip over those... */
-	 else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
-	   fd = isClassNestedInFunction (cd);
-	 else if ((ad = fd->isThis()) && (sd = ad->isStructDeclaration()))
-	   fd = isStructNestedInFunction (sd);
-	 else
-	   break;
+      else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
+	fd = d_nested_class (cd);
+      else if ((ad = fd->isThis()) && (sd = ad->isStructDeclaration()))
+	fd = d_nested_struct (sd);
+      else
+	break;
     }
 
-  if (fd == outer_func)
+  if (fd == outer)
     {
-      tree frame_rec = getFrameInfo (outer_func)->frame_rec;
+      tree frame_rec = get_frameinfo (outer)->frame_rec;
 
       if (frame_rec != NULL_TREE)
 	{
@@ -3861,13 +3840,13 @@ IRState::getFrameRef (FuncDeclaration *outer_func)
 	}
       else
 	{
-	  this->func->error ("forward reference to frame of %s", outer_func->toChars());
+	  inner->error ("forward reference to frame of %s", outer->toChars());
 	  return d_null_pointer;
 	}
     }
   else
     {
-      this->func->error ("cannot access frame of %s", outer_func->toChars());
+      inner->error ("cannot access frame of %s", outer->toChars());
       return d_null_pointer;
     }
 }
@@ -3922,7 +3901,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
-      if (pf && !getFrameInfo (pf)->is_closure)
+      if (pf && !get_frameinfo (pf)->is_closure)
 	return true;
     }
 
@@ -3942,7 +3921,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
-	  && !getFrameInfo (pf)->is_closure
+	  && !get_frameinfo (pf)->is_closure
 	  && !functionDegenerateClosure(pf))
 	return true;
     }

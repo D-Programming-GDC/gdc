@@ -939,7 +939,7 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       TypeFunction *tf = (TypeFunction *) fd->type;
       tree callee = NULL_TREE;
 
-      // current_irs is not available.
+      // cirstate is not available.
       IRState irs;
       irs.doLineNote (loc);
       tree result = irs.call (tf, callee, NULL, arguments);

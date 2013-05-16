@@ -191,7 +191,7 @@ VarDeclaration::toSymbol (void)
 	    e = type->defaultInit();
 
 	  if (e)
-	    DECL_INITIAL (var_decl) = e->toElem (current_irs);
+	    DECL_INITIAL (var_decl) = e->toElem (cirstate);
 	}
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
