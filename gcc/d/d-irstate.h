@@ -187,6 +187,46 @@ struct IRBase : Object
 
   void startBindings (void);
   void endBindings (void);
+  
+  // ** Instruction stream manipulation
+
+  // ** Conditional statements.
+  void startCond (Statement *stmt, tree t_cond);
+  void startElse (void);
+  void endCond (void);
+
+  // ** Loop statements.
+  void startLoop (Statement *stmt);
+  void continueHere (void);
+  void setContinueLabel (tree lbl);
+  void exitIfFalse (tree t_cond);
+  void endLoop (void);
+  void continueLoop (Identifier *ident);
+  void exitLoop (Identifier *ident);
+
+  // ** Goto/Label statement evaluation
+  void doJump (Statement *stmt, tree t_label);
+  void pushLabel (LabelDsymbol *l);
+  void checkGoto (Statement *stmt, LabelDsymbol *label);
+  void checkPreviousGoto (Array *refs);
+
+  // ** Switch statements.
+  void startCase (Statement *stmt, tree t_cond, int has_vars = 0);
+  void checkSwitchCase (Statement *stmt, int default_flag = 0);
+  void doCase (tree t_value, tree t_label);
+  void endCase (void);
+
+  // ** Exception handling.
+  void startTry (Statement *stmt);
+  void startCatches (void);
+  void startCatch (tree t_type);
+  void endCatch (void);
+  void endCatches (void);
+  void startFinally (void);
+  void endFinally (void);
+
+  // ** Return statement.
+  void doReturn (tree t_value);
 };
 
 

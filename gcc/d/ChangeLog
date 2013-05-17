@@ -4,9 +4,36 @@
 	convert_expr.
 	(IRState::declContext): Replace with d_decl_context.
 	(IRState::functionNeedsChain): Replace with needs_static_chain.
+	(IRState::label): Replace with d_build_label.
 	(IRState::emitTemplates): Move to ObjectFile.
 	(functionDegenerateClosure): Replace with is_degenerate_closure.
 	(get_object_method): Assert that function is a method.
+	(IRState::startCond): Move to IRBase.
+	(IRState::startElse): Likewise.
+	(IRState::endCond): Likewise.
+	(IRState::startLoop): Likewise.
+	(IRState::continueHere): Likewise.
+	(IRState::setContinueLabel): Likewise.
+	(IRState::exitIfFalse): Likewise.
+	(IRState::endLoop): Likewise.
+	(IRState::startCase): Likewise.
+	(IRState::doCase): Likewise.
+	(IRState::endCase): Likewise.
+	(IRState::continueLoop): Likewise.
+	(IRState::exitLoop): Likewise.
+	(IRState::startTry): Likewise.
+	(IRState::startCatches): Likewise.
+	(IRState::startCatch): Likewise.
+	(IRState::endCatch): Likewise.
+	(IRState::endCatches): Likewise.
+	(IRState::startFinally): Likewise.
+	(IRState::endFinally): Likewise.
+	(IRState::doReturn): Likewise.
+	(IRState::doJump): Likewise.
+	(IRState::pushLabel): Likewise.
+	(IRState::checkSwitchCase): Likewise.
+	(IRState::checkGoto): Likewise.
+	(IRState::checkPreviousGoto): Likewise.
 
 2013-05-16  Johannes Pfau  <johannespfau@gmail.com>
 

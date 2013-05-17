@@ -174,6 +174,8 @@ extern tree bind_expr (tree var_chain, tree body);
 
 extern bool error_mark_p (tree t);
 
+extern tree d_build_label (Loc loc, Identifier *ident);
+
 // Type conversion.
 // 'd_convert' just to give it a different name from the extern "C" convert.
 extern tree d_convert (tree type, tree exp);
@@ -431,8 +433,6 @@ struct IRState : IRBase
 
   tree typeinfoReference (Type *t);
 
-  static tree label (Loc loc, Identifier *ident = 0);
-
   void buildChain (FuncDeclaration *func);
 
   tree findThis (ClassDeclaration *target_cd);
@@ -440,38 +440,6 @@ struct IRState : IRBase
 
   // Static chain for nested functions
   tree getFrameForSymbol (Dsymbol *nested_sym);
-
-  // ** Instruction stream manipulation
-  void startCond (Statement *stmt, tree t_cond);
-  void startCond (Statement *stmt, Expression *e_cond);
-  void startElse (void);
-  void endCond (void);
-  void startLoop (Statement *stmt);
-  void continueHere (void);
-  void setContinueLabel (tree lbl);
-  void exitIfFalse (tree t_cond);
-  void exitIfFalse (Expression *e_cond);
-  void endLoop (void);
-  void startCase (Statement *stmt, tree t_cond, int has_vars = 0);
-  void doCase (tree t_value, tree t_label);
-  void endCase (void);
-  void continueLoop (Identifier *ident);
-  void exitLoop (Identifier *ident);
-  void startTry (Statement *stmt);
-  void startCatches (void);
-  void startCatch (tree t_type);
-  void endCatch (void);
-  void endCatches (void);
-  void startFinally (void);
-  void endFinally (void);
-  void doReturn (tree t_value);
-  void doJump (Statement *stmt, tree t_label);
-
-  // ** Goto/Label statement evaluation
-  void pushLabel (LabelDsymbol *l);
-  void checkSwitchCase (Statement *stmt, int default_flag = 0);
-  void checkGoto (Statement *stmt, LabelDsymbol *label);
-  void checkPreviousGoto (Array *refs);
 
  protected:
   tree maybeExpandSpecialCall (tree call_exp);

@@ -349,10 +349,10 @@ SwitchStatement::toIR (IRState *irs)
       for (size_t i = 0; i < cases->dim; i++)
 	{
 	  CaseStatement *case_stmt = (*cases)[i];
-	  case_stmt->cblock = irs->label (case_stmt->loc);
+	  case_stmt->cblock = d_build_label (case_stmt->loc, NULL);
 	}
       if (sdefault)
-	sdefault->cblock = irs->label (sdefault->loc);
+	sdefault->cblock = d_build_label (sdefault->loc, NULL);
     }
   cond_tree = fold (cond_tree);
 
@@ -385,9 +385,11 @@ IfStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
   irs->startScope();
-  irs->startCond (this, condition);
+  irs->startCond (this, irs->convertForCondition (condition->toElemDtor (irs),
+						  condition->type));
   if (ifbody)
     ifbody->toIR (irs);
+
   if (elsebody)
     {
       irs->startElse();
@@ -421,7 +423,8 @@ ForStatement::toIR (IRState *irs)
   if (condition)
     {
       irs->doLineNote (condition->loc);
-      irs->exitIfFalse (condition);
+      irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
+						  condition->type));
     }
   if (body)
     body->toIR (irs);
@@ -444,7 +447,8 @@ DoStatement::toIR (IRState *irs)
     body->toIR (irs);
   irs->continueHere();
   irs->doLineNote (condition->loc);
-  irs->exitIfFalse (condition);
+  irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
+					      condition->type));
   irs->endLoop();
 }
 
@@ -493,7 +497,7 @@ UnrolledLoopStatement::toIR (IRState *irs)
       Statement *statement = (*statements)[i];
       if (statement)
 	{
-	  irs->setContinueLabel (irs->label (loc));
+	  irs->setContinueLabel (d_build_label (loc, NULL));
 	  statement->toIR (irs);
 	  irs->continueHere();
 	}
