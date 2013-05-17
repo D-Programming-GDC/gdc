@@ -33,6 +33,7 @@ unsigned  ObjectFile::moduleSearchIndex;
 DeferredThunks ObjectFile::deferredThunks;
 FuncDeclarations ObjectFile::staticCtorList;
 FuncDeclarations ObjectFile::staticDtorList;
+TemplateEmission ObjectFile::emitTemplates;
 
 // Construct a new Symbol.
 
@@ -1399,7 +1400,7 @@ d_comdat_group (tree decl)
 void
 ObjectFile::makeDeclOneOnly (tree decl_tree)
 {
-  if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
+  if (!D_DECL_IS_TEMPLATE (decl_tree) || emitTemplates != TEprivate)
     {
       // Weak definitions have to be public.
       if (!TREE_PUBLIC (decl_tree))
@@ -1408,7 +1409,7 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
 
   /* First method: Use one-only.  If user has specified -femit-templates,
      honor that even if the target supports one-only. */
-  if (!D_DECL_IS_TEMPLATE (decl_tree) || gen.emitTemplates != TEprivate)
+  if (!D_DECL_IS_TEMPLATE (decl_tree) || emitTemplates != TEprivate)
     {
       // Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined
       if (TREE_CODE (decl_tree) == FUNCTION_DECL)
@@ -1432,7 +1433,7 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
   /* Second method: Make a private copy.  For RTTI, we can always make
      a private copy.  For templates, only do this if the user specified
      -femit-templates. */
-  else if (gen.emitTemplates == TEprivate)
+  else if (emitTemplates == TEprivate)
     {
       TREE_PRIVATE (decl_tree) = 1;
       TREE_PUBLIC (decl_tree) = 0;
@@ -1475,7 +1476,7 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
 	{
 	  D_DECL_ONE_ONLY (decl_tree) = 1;
 	  D_DECL_IS_TEMPLATE (decl_tree) = 1;
-	  has_module = hasModule (ti_obj_file_mod) && gen.emitTemplates != TEnone;
+	  has_module = hasModule (ti_obj_file_mod) && emitTemplates != TEnone;
 	}
       else
 	has_module = hasModule (dsym->getModule());
@@ -1585,7 +1586,7 @@ ObjectFile::outputFunction (FuncDeclaration *f)
 	staticDtorList.push (f);
     }
 
-  if (!gen.functionNeedsChain (f))
+  if (!needs_static_chain (f))
     {
       bool context = decl_function_context (t) != NULL;
       cgraph_finalize_function (t, context);
@@ -1668,7 +1669,7 @@ ObjectFile::shouldEmit (Symbol *sym)
     }
 
   // Not emitting templates, so return true all others.
-  if (gen.emitTemplates == TEnone)
+  if (emitTemplates == TEnone)
     return !D_DECL_IS_TEMPLATE (sym->Stree);
 
   return true;
@@ -1693,7 +1694,7 @@ ObjectFile::initTypeDecl (tree t, Dsymbol *d_sym)
     {
       const char *name = d_sym->ident ? d_sym->ident->string : "fix";
       tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, get_identifier (name), t);
-      DECL_CONTEXT (decl) = gen.declContext (d_sym);
+      DECL_CONTEXT (decl) = d_decl_context (d_sym);
       setDeclLoc (decl, d_sym);
       initTypeDecl (t, decl);
     }

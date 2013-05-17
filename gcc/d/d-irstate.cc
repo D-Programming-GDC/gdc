@@ -26,6 +26,9 @@ IRBase::IRBase (void)
 {
   this->parent = NULL;
   this->func = NULL;
+  this->varsInScope = NULL;
+  this->mod = NULL;
+  this->sthis = NULL_TREE;
 }
 
 IRState *
@@ -34,7 +37,6 @@ IRBase::startFunction (FuncDeclaration *decl)
   IRState *new_irs = new IRState();
   new_irs->parent = cirstate;
   new_irs->func = decl;
-  new_irs->varsInScope = NULL;
 
   for (Dsymbol *p = decl->parent; p; p = p->parent)
     {

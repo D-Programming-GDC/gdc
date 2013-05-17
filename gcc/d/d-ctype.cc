@@ -315,7 +315,7 @@ TypeStruct::toCtype (void)
 
 	  // %%  stor-layout.c:finalize_type_size ... it's private to that file
 
-	  TYPE_CONTEXT (ctype) = gen.declContext (sym);
+	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
 	  object_file->initTypeDecl (ctype, sym);
 
 
@@ -673,7 +673,7 @@ TypeClass::toCtype (void)
 	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
 	    }
 
-	  TYPE_CONTEXT (rec_type) = gen.declContext (sym);
+	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);
 
 	  agg_layout.finish (sym->userAttributes);
 	}

@@ -169,7 +169,7 @@ VarDeclaration::toSymbol (void)
 	  /* from gcc code: Some languages have different nominal and real types.  */
 	  // %% What about DECL_ORIGINAL_TYPE, DECL_ARG_TYPE_AS_WRITTEN, DECL_ARG_TYPE ?
 	  DECL_ARG_TYPE (var_decl) = TREE_TYPE (var_decl);
-	  DECL_CONTEXT (var_decl) = gen.declContext (this);
+	  DECL_CONTEXT (var_decl) = d_decl_context (this);
 	  gcc_assert (TREE_CODE (DECL_CONTEXT (var_decl)) == FUNCTION_DECL);
 	}
       else if (decl_kind == CONST_DECL)
@@ -223,11 +223,11 @@ VarDeclaration::toSymbol (void)
       // Have to test for import first
       if (isImportedSymbol())
 	{
-	  gen.addDeclAttribute (var_decl, "dllimport");
+	  insert_decl_attributes (var_decl, "dllimport");
 	  DECL_DLLIMPORT_P (var_decl) = 1;
 	}
       else if (isExport())
-	gen.addDeclAttribute (var_decl, "dllexport");
+	insert_decl_attributes (var_decl, "dllexport");
 #endif
 
       if (isDataseg() && isThreadlocal())
@@ -337,9 +337,9 @@ FuncDeclaration::toSymbol (void)
 	      id = get_identifier (buf);
 	    }
 	  DECL_NAME (fndecl) = id;
-	  DECL_CONTEXT (fndecl) = gen.declContext (this);
+	  DECL_CONTEXT (fndecl) = d_decl_context (this);
 
-	  if (gen.functionNeedsChain (this))
+	  if (needs_static_chain (this))
 	    {
 	      D_DECL_STATIC_CHAIN (fndecl) = 1;
 	      // Save context and set decl_function_context for cgraph.
@@ -465,13 +465,11 @@ FuncDeclaration::toSymbol (void)
 	  // Have to test for import first
 	  if (isImportedSymbol())
 	    {
-	      gen.addDeclAttribute (fndecl, "dllimport");
+	      insert_decl_attributes (fndecl, "dllimport");
 	      DECL_DLLIMPORT_P (fndecl) = 1;
 	    }
 	  else if (isExport())
-	    {
-	      gen.addDeclAttribute (fndecl, "dllexport");
-	    }
+	    insert_decl_attributes (fndecl, "dllexport");
 #endif
 	  object_file->setDeclLoc (fndecl, this);
 	  object_file->setupSymbolStorage (this, fndecl);
@@ -536,7 +534,7 @@ FuncDeclaration::toThunkSymbol (int offset)
       tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (target_func_decl),
 				    FUNCTION_DECL, NULL_TREE, TREE_TYPE (target_func_decl));
       DECL_LANG_SPECIFIC (thunk_decl) = DECL_LANG_SPECIFIC (target_func_decl);
-      DECL_CONTEXT (thunk_decl) = gen.declContext (this); // from c++...
+      DECL_CONTEXT (thunk_decl) = d_decl_context (this); // from c++...
       TREE_READONLY (thunk_decl) = TREE_READONLY (target_func_decl);
       TREE_THIS_VOLATILE (thunk_decl) = TREE_THIS_VOLATILE (target_func_decl);
       TREE_NOTHROW (thunk_decl) = TREE_NOTHROW (target_func_decl);
@@ -674,7 +672,7 @@ ClassDeclaration::toVtblSymbol (void)
       TREE_CONSTANT (decl) = 1;
       TREE_ADDRESSABLE (decl) = 1;
       // from cp/class.c
-      DECL_CONTEXT (decl) = gen.declContext (this);
+      DECL_CONTEXT (decl) = d_decl_context (this);
       DECL_ARTIFICIAL (decl) = 1;
       DECL_VIRTUAL_P (decl) = 1;
       DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;

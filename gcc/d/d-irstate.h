@@ -111,15 +111,19 @@ struct IRBase : Object
   IRBase (void);
 
   // ** Functions
-
   FuncDeclaration *func;
   Module *mod;
+
+  // Static chain of function, for D2, this is a closure.
+  tree sthis;
 
   IRState *startFunction (FuncDeclaration *decl);
   void endFunction (void);
 
-  // ** Statement Lists
+  // Variables that are in scope that will need destruction later.
+  VarDeclarations *varsInScope;
 
+  // ** Statement Lists
   Array statementList;    // of tree
 
   void addExp (tree e);
@@ -127,7 +131,6 @@ struct IRBase : Object
   tree popStatementList (void);
 
   // ** Labels
-
   Labels labels;
 
   // It is only valid to call this while the function in which the label is defined
@@ -139,7 +142,6 @@ struct IRBase : Object
   { return this->func->returnLabel ? ident == this->func->returnLabel->ident : 0; }
 
   // ** Loops (and case statements)
-
   Flows loops;
 
   // These routines don't generate code.  They are for tracking labeled loops.
@@ -157,7 +159,6 @@ struct IRBase : Object
   void doLabel (tree t_label);
 
   // ** DECL_CONTEXT support
-
   tree getLocalContext (void)
   { return this->func ? this->func->toSymbol()->Stree : NULL_TREE; }
 

@@ -151,7 +151,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  gen.emitTemplates = TEnormal;
+  ObjectFile::emitTemplates = TEnormal;
 }
 
 /* Initialize options structure OPTS.  */
@@ -408,7 +408,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      gen.emitTemplates = value ? TEprivate : TEnone;
+      ObjectFile::emitTemplates = value ? TEprivate : TEnone;
       break;
 
     case OPT_femit_moduleinfo:
@@ -1037,7 +1037,7 @@ d_parse_file (void)
   else
     object_file->modules.append (&modules);
 
-  cirstate = &gen;
+  cirstate = new IRState();
 
   // Generate output files
   if (global.params.doXGeneration)

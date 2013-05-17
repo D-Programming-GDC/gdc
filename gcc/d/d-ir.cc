@@ -507,7 +507,7 @@ ExpStatement::toIR (IRState *irs)
 {
   if (exp)
     {
-      gen.doLineNote (loc);
+      irs->doLineNote (loc);
       tree exp_tree = exp->toElemDtor (irs);
       irs->addExp (exp_tree);
     }

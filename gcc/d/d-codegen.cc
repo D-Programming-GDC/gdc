@@ -23,7 +23,6 @@
 #include "init.h"
 #include "id.h"
 
-IRState gen;
 
 Module *cmodule;
 IRState *cirstate;
@@ -37,13 +36,13 @@ ObjectFile *object_file;
 bool
 d_gcc_force_templates (void)
 {
-  return gen.emitTemplates == TEprivate;
+  return ObjectFile::emitTemplates == TEprivate;
 }
 
 // Return the DECL_CONTEXT for symbol DSYM.
 
 tree
-IRState::declContext (Dsymbol *dsym)
+d_decl_context (Dsymbol *dsym)
 {
   Dsymbol *orig_sym = dsym;
   AggregateDeclaration *ad;
@@ -54,7 +53,7 @@ IRState::declContext (Dsymbol *dsym)
 	{
 	  // dwarf2out chokes without this check... (output_pubnames)
 	  FuncDeclaration *f = orig_sym->isFuncDeclaration();
-	  if (f && !gen.functionNeedsChain (f))
+	  if (f && !needs_static_chain (f))
 	    return NULL_TREE;
 
 	  return dsym->toSymbol()->Stree;
@@ -67,14 +66,12 @@ IRState::declContext (Dsymbol *dsym)
 	      // RECORD_TYPE instead of REFERENCE_TYPE
 	      context = TREE_TYPE (context);
 	    }
-
 	  return context;
 	}
       else if (dsym->isModule())
-	{
-	  return dsym->toSymbol()->ScontextDecl;
-	}
+	return dsym->toSymbol()->ScontextDecl;
     }
+
   return NULL_TREE;
 }
 
@@ -939,7 +936,7 @@ build_attributes (Expressions *in_attrs)
 	      aet = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = ae->toElem (&gen);
+	    aet = ae->toElem (cirstate);
 
 	  args = chainon (args, build_tree_list (0, aet));
         }
@@ -3843,8 +3840,8 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 // with those kind of functions. We have to detect them manually here
 // and make sure we neither construct a static chain nor a closure.
 
-bool
-functionDegenerateClosure (FuncDeclaration *f)
+static bool
+is_degenerate_closure (FuncDeclaration *f)
 {
   if (!f->needsClosure() && f->closureVars.dim == 0)
   {
@@ -3864,12 +3861,12 @@ functionDegenerateClosure (FuncDeclaration *f)
   return false;
 }
 
-// Return true if function F needs to have the static chain passed to
-// it.  This only applies to nested function handling provided by the
-// GCC back end (not D closures.)
+// Return true if function F needs to have the static chain passed to it.
+// This only applies to nested function handling provided by the GDC
+// front end (not D closures).
 
 bool
-IRState::functionNeedsChain (FuncDeclaration *f)
+needs_static_chain (FuncDeclaration *f)
 {
   Dsymbol *s;
   FuncDeclaration *pf = NULL;
@@ -3904,7 +3901,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
 	  && !get_frameinfo (pf)->is_closure
-	  && !functionDegenerateClosure(pf))
+	  && !is_degenerate_closure (pf))
 	return true;
     }
 

@@ -64,7 +64,7 @@ struct Symbol : Object
 
   // Specific to GNU backend
   tree Stree;
-  tree ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see IRState::declContext
+  tree ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see d_decl_context
   tree SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
 
   // For FuncDeclarations:
@@ -195,6 +195,9 @@ struct ObjectFile
   /* support for multiple modules per object file */
   static bool hasModule (Module *m);
   static Modules modules;
+
+  // Template emission behaviour.
+  static TemplateEmission emitTemplates;
 
  protected:
   static void outputThunk (tree thunk_decl, tree target_decl, int offset);

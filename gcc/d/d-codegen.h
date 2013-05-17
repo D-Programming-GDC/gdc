@@ -140,6 +140,7 @@ struct FuncFrameInfo
 class ArrayScope;
 
 // Code generation routines.
+extern tree d_decl_context (Dsymbol *dsym);
 
 extern tree d_mark_addressable (tree exp);
 extern tree d_mark_used (tree exp);
@@ -210,6 +211,8 @@ extern tree d_build_call_nary (tree callee, int n_args, ...);
 extern tree build_frame_type (FuncDeclaration *func);
 extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
 extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
+
+extern bool needs_static_chain (FuncDeclaration *f);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree maybe_make_temp (tree t);
@@ -366,19 +369,16 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 // Code generation routines should be in a separate namespace, but so many
 // routines need a reference to an IRState to expand Expressions.  Solution
 // is to make IRState the code generation namespace with the actual IR state
-// routines as a mixin.  There is still the global 'gen' which can be used when
-// it is known the full function IR state is not needed. Also a lot of routines
-// are static (don't need IR state or expand Expressions), but are still called
-// using . or ->.
+// routines as a mixin.  Also a lot of routines are static (don't need IR 
+// state or expand Expressions), but are still called using . or ->.
 
 // Functions without a verb create trees
-// Functions with 'do' affect the current instruction stream (or output assembler code.)
+// Functions with 'do' affect the current instruction stream (or output assembler code).
 // functions with other names are for attribute manipulate, etc.
 
 struct IRState : IRBase
 {
  public:
-  static tree declContext (Dsymbol *d_sym);
   static void doLineNote (const Loc& loc);
 
   // ** Local variables
@@ -393,7 +393,6 @@ struct IRState : IRBase
   tree var (Declaration *decl);
 
   // ** Type conversion
-
   tree convertForAssignment (Expression *exp, Type *target_type);
   tree convertForAssignment (tree exp_tree, Type *exp_type, Type *target_type);
   tree convertForArgument (Expression *exp, Parameter *arg);
@@ -428,22 +427,13 @@ struct IRState : IRBase
   tree assertCall (Loc loc, LibCall libcall = LIBCALL_ASSERT);
   tree assertCall (Loc loc, Expression *msg);
 
-  TemplateEmission emitTemplates;
-
-  // Variables that are in scope that will need destruction later
-  VarDeclarations *varsInScope;
-
   static tree floatMod (tree type, tree arg0, tree arg1);
 
   tree typeinfoReference (Type *t);
 
   static tree label (Loc loc, Identifier *ident = 0);
 
-  // Static chain of function, for D2, this is a closure.
-  tree sthis;
-
   void buildChain (FuncDeclaration *func);
-  bool functionNeedsChain (FuncDeclaration *f);
 
   tree findThis (ClassDeclaration *target_cd);
   tree getVThis (Dsymbol *decl, Expression *e);
@@ -487,12 +477,10 @@ struct IRState : IRBase
   tree maybeExpandSpecialCall (tree call_exp);
 };
 
-// 
+// Globals.
 extern Module *cmodule;
 extern IRState *cirstate;
 extern ObjectFile *object_file;
-
-extern IRState gen;
 
 // Various helpers that need extra state
 

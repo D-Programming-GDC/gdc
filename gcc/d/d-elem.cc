@@ -1415,7 +1415,7 @@ Expression::toElemDtor (IRState *irs)
   tree t = toElem (irs);
   size_t endi = irs->varsInScope ? irs->varsInScope->dim : 0;
 
-  // Code gen can be improved by determining if no exceptions can be thrown
+  // Codegen can be improved by determining if no exceptions can be thrown
   // between the ctor and dtor, and eliminating the ctor and dtor.
 
   // Build an expression that calls destructors on all the variables going
@@ -2273,7 +2273,7 @@ StructLiteralExp::toElem (IRState *irs)
 }
 
 elem *
-NullExp::toElem (IRState *irs)
+NullExp::toElem (IRState *)
 {
   TY base_ty = type->toBasetype()->ty;
   tree null_exp;
