@@ -173,6 +173,11 @@ extern tree bind_expr (tree var_chain, tree body);
 
 extern bool error_mark_p (tree t);
 
+// Type conversion.
+// 'd_convert' just to give it a different name from the extern "C" convert.
+extern tree d_convert (tree type, tree exp);
+extern tree convert_expr (tree exp, Type *exp_type, Type *target_type);
+
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
 extern tree build_float_cst (const real_t& value, Type *target_type);
@@ -220,7 +225,7 @@ extern tree build_delegate_cst (tree method, tree object, Type *type);
 // These are for references to nested functions/methods as opposed to a delegate var.
 extern tree build_method_call (tree callee, tree object, Type *type);
 extern void extract_from_method_call (tree t, tree& callee, tree& object);
-extern tree get_object_method (Expression *exp, FuncDeclaration *func, Type *type);
+extern tree get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type *type);
 
 // Built-in and Library functions.
 extern FuncDeclaration *get_libcall (LibCall libcall);
@@ -388,11 +393,6 @@ struct IRState : IRBase
   tree var (Declaration *decl);
 
   // ** Type conversion
-
-  // 'convertTo' just to give it a different name from the extern "C" convert
-  static tree convertTo (tree type, tree exp);
-  tree convertTo (Expression *exp, Type *target_type);
-  static tree convertTo (tree exp, Type *exp_type, Type *target_type);
 
   tree convertForAssignment (Expression *exp, Type *target_type);
   tree convertForAssignment (tree exp_tree, Type *exp_type, Type *target_type);

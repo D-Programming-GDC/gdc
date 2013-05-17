@@ -260,7 +260,7 @@ IRState::var (Declaration *decl)
 // Return expression EXP, whose type has been converted to TYPE.
 
 tree
-IRState::convertTo (tree type, tree exp)
+d_convert (tree type, tree exp)
 {
   // Check this first before passing to build_dtype.
   if (error_mark_p (type) || error_mark_p (TREE_TYPE (exp)))
@@ -270,23 +270,15 @@ IRState::convertTo (tree type, tree exp)
   Type *expr_type = build_dtype (TREE_TYPE (exp));
 
   if (target_type && expr_type)
-    return convertTo (exp, expr_type, target_type);
+    return convert_expr (exp, expr_type, target_type);
 
   return convert (type, exp);
-}
-
-// Return a TREE representation of EXP implictly converted to TARGET_TYPE.
-
-tree
-IRState::convertTo (Expression *exp, Type *target_type)
-{
-  return convertTo (exp->toElem (this), exp->type, target_type);
 }
 
 // Return expression EXP, whose type has been convert from EXP_TYPE to TARGET_TYPE.
 
 tree
-IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
+convert_expr (tree exp, Type *exp_type, Type *target_type)
 {
   tree result = NULL_TREE;
 
@@ -318,7 +310,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
       else
 	{
 	  ::error ("can't convert a delegate expression to %s", target_type->toChars());
-	  return error_mark_node;
+	  return error_mark (target_type);
 	}
       break;
 
@@ -333,12 +325,12 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	else if (tbtype->ty == Taarray)
 	  {
 	    tbtype = ((TypeAArray *) tbtype)->getImpl()->type;
-	    return convertTo (exp, exp_type, tbtype);
+	    return convert_expr (exp, exp_type, tbtype);
 	  }
 	else
 	  {
 	    ::error ("can't convert struct %s to %s", exp_type->toChars(), target_type->toChars());
-	    return error_mark_node;
+	    return error_mark (target_type);
 	  }
       }
       // else, default conversion, which should produce an error
@@ -393,7 +385,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	else
 	  {
 	    warning (OPT_Wcast_result, "cast to %s will produce null result", target_type->toChars());
-	    result = convertTo (target_type->toCtype(), d_null_pointer);
+	    result = d_convert (target_type->toCtype(), d_null_pointer);
 	    if (TREE_SIDE_EFFECTS (exp))
 	      {
 		// make sure the expression is still evaluated if necessary
@@ -422,7 +414,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    {
 	      ::error ("cannot cast %s to %s since sizes don't line up",
 		       exp_type->toChars(), target_type->toChars());
-	      return error_mark_node;
+	      return error_mark (target_type);
 	    }
 	  dim = (dim * esize) / tsize;
 
@@ -446,14 +438,14 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	{
 	  ::error ("cannot cast expression of type %s to type %s",
 		   exp_type->toChars(), target_type->toChars());
-	  return error_mark_node;
+	  return error_mark (target_type);
 	}
       break;
 
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
-	  return convertTo (target_type->toCtype(), d_array_ptr (exp));
+	  return d_convert (target_type->toCtype(), d_array_ptr (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -488,7 +480,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	{
 	  ::error ("cannot cast expression of type %s to %s",
 		   exp_type->toChars(), target_type->toChars());
-	  return error_mark_node;
+	  return error_mark (target_type);
 	}
       break;
 
@@ -498,7 +490,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
       else if (tbtype->ty == Tstruct)
 	{
 	  ebtype = ((TypeAArray *) ebtype)->getImpl()->type;
-	  return convertTo (exp, ebtype, target_type);
+	  return convert_expr (exp, ebtype, target_type);
 	}
       // Can convert associative arrays to void pointers.
       else if (tbtype == Type::tvoidptr)
@@ -610,7 +602,7 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 tree
 IRState::convertForAssignment (tree expr, Type *expr_type, Type *target_type)
 {
-  return convertTo (expr, expr_type, target_type);
+  return convert_expr (expr, expr_type, target_type);
 }
 
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
@@ -673,7 +665,7 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
       if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
 	{
 	  result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj,
-			   convertTo (TREE_TYPE (obj), func));
+			   d_convert (TREE_TYPE (obj), func));
 	}
       else
 	{
@@ -717,17 +709,17 @@ tree
 IRState::toDArray (Expression *exp)
 {
   TY ty = exp->type->toBasetype()->ty;
-  tree val;
+
   if (ty == Tsarray)
-    val = convertTo (exp, exp->type->toBasetype()->nextOf()->arrayOf());
-  else if (ty == Tarray)
-    val = exp->toElem (this);
-  else
     {
-      gcc_assert (ty == Tsarray || ty == Tarray);
-      return NULL_TREE;
+      Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
+      return convert_expr (exp->toElem (this), exp->type, totype);
     }
-  return val;
+  else if (ty == Tarray)
+    return exp->toElem (this);
+
+  // Invalid type passed.
+  gcc_unreachable();
 }
 
 // Return TRUE if declaration DECL is a reference type.
@@ -1144,7 +1136,7 @@ get_array_length (tree exp, Type *type)
 
     default:
       ::error ("can't determine the length of a %s", type->toChars());
-      return error_mark_node;
+      return error_mark (type);
     }
 }
 
@@ -1245,74 +1237,64 @@ extract_from_method_call (tree t, tree& callee, tree& object)
 
 // Return correct callee for method FUNC, which is dereferenced from
 // the 'this' pointer OBJEXP.  TYPE is the return type for the method.
+// THISEXP is the tree representation of OBJEXP.
 
 tree
-get_object_method (Expression *objexp, FuncDeclaration *func, Type *type)
+get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type *type)
 {
   Type *objtype = objexp->type->toBasetype();
+  bool is_dottype = false;
 
-  if (func->isThis())
+  gcc_assert (func->isThis());
+
+  Expression *ex = objexp;
+
+  while (1)
     {
-      bool is_dottype = false;
-      tree this_expr;
-
-      Expression *ex = objexp;
-      while (1)
+      if (ex->op == TOKsuper || ex->op == TOKdottype)
 	{
-	  switch (ex->op)
-	    {
-	      case TOKsuper:          // super.member() calls directly
-	      case TOKdottype:        // type.member() calls directly
-		is_dottype = true;
-		break;
-
-	      case TOKcast:
-		ex = ((CastExp *) ex)->e1;
-		continue;
-
-	      default:
-		break;
-	    }
+	  // super.member() and type.member() calls directly.
+	  is_dottype = true;
 	  break;
 	}
-      this_expr = objexp->toElem (cirstate);
-
-      // Calls to super are static (func is the super's method)
-      // Structs don't have vtables.
-      // Final and non-virtual methods can be called directly.
-      // DotTypeExp means non-virtual
-
-      if (objexp->op == TOKsuper
-	  || objtype->ty == Tstruct || objtype->ty == Tpointer
-	  || func->isFinal() || !func->isVirtual() || is_dottype)
+      else if (ex->op == TOKcast)
 	{
-	  if (objtype->ty == Tstruct)
-	    this_expr = build_address (this_expr);
-
-	  return build_method_call (build_address (func->toSymbol()->Stree),
-				    this_expr, type);
+	  ex = ((CastExp *) ex)->e1;
+	  continue;
 	}
-      else
-	{
-	  // Interface methods are also in the class's vtable, so we don't
-	  // need to convert from a class pointer to an interface pointer.
-	  this_expr = maybe_make_temp (this_expr);
-	  tree vtbl_ref = build_deref (this_expr);
-	  // The vtable is the first field.
-	  tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref));
-	  tree fntype = TREE_TYPE (func->toSymbol()->Stree);
+      break;
+    }
 
-	  vtbl_ref = component_ref (vtbl_ref, field);
-	  vtbl_ref = build_offset (vtbl_ref, size_int (PTRSIZE * func->vtblIndex));
-	  vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
+  // Calls to super are static (func is the super's method)
+  // Structs don't have vtables.
+  // Final and non-virtual methods can be called directly.
+  // DotTypeExp means non-virtual
 
-	  return build_method_call (vtbl_ref, this_expr, type);
-	}
+  if (objexp->op == TOKsuper
+      || objtype->ty == Tstruct || objtype->ty == Tpointer
+      || func->isFinal() || !func->isVirtual() || is_dottype)
+    {
+      if (objtype->ty == Tstruct)
+	thisexp = build_address (thisexp);
+
+      return build_method_call (build_address (func->toSymbol()->Stree),
+				thisexp, type);
     }
   else
     {
-      // Static method; ignore the object instance
-      return build_address (func->toSymbol()->Stree);
+      // Interface methods are also in the class's vtable, so we don't
+      // need to convert from a class pointer to an interface pointer.
+      thisexp = maybe_make_temp (thisexp);
+      tree vtbl_ref = build_deref (thisexp);
+      // The vtable is the first field.
+      tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref));
+      tree fntype = TREE_TYPE (func->toSymbol()->Stree);
+
+      vtbl_ref = component_ref (vtbl_ref, field);
+      vtbl_ref = build_offset (vtbl_ref, size_int (PTRSIZE * func->vtblIndex));
+      vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
+
+      return build_method_call (vtbl_ref, thisexp, type);
     }
 }
 
@@ -1414,7 +1396,7 @@ IRState::toElemLvalue (Expression *e)
 	  args[0] = build_address (toElemLvalue (e1));
 	  args[1] = typeinfoReference (key_type);
 	  args[2] = build_integer_cst (array_type->nextOf()->size(), Type::tsize_t->toCtype());
-	  args[3] = aoe.set (this, convertTo (e2, key_type));
+	  args[3] = aoe.set (this, convert_expr (e2->toElem (this), e2->type, key_type));
 
 	  result = aoe.finish (build_libcall (LIBCALL_AAGETX, 4, args,
 					      type->pointerTo()->toCtype()));
@@ -1674,11 +1656,11 @@ IRState::pointerIntSum (tree ptr_node, tree idx_exp)
 	{
 	  tree type = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
 						      TYPE_UNSIGNED (sizetype));
-	  intop = convertTo (type, intop);
+	  intop = d_convert (type, intop);
 	}
       intop = fold_convert (prod_result_type,
 			    fold_build2 (MULT_EXPR, TREE_TYPE (size_exp), // the type here may be wrong %%
-					 intop, convertTo (TREE_TYPE (intop), size_exp)));
+					 intop, d_convert (TREE_TYPE (intop), size_exp)));
     }
 
   // backend will ICE otherwise
@@ -1756,8 +1738,8 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
       // Need to convert pointers to integers because tree-vrp asserts
       // against (ptr MINUS ptr).
       tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode, TYPE_UNSIGNED (type));
-      arg0 = convertTo (ptrtype, arg0);
-      arg1 = convertTo (ptrtype, arg1);
+      arg0 = d_convert (ptrtype, arg0);
+      arg1 = d_convert (ptrtype, arg1);
 
       t = build2 (code, ptrtype, arg0, arg1);
     }
@@ -1771,14 +1753,14 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
       // Front-end does not do this conversion and GCC does not
       // always do it right.
       if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
-	arg1 = convertTo (t0, arg1);
+	arg1 = d_convert (t0, arg1);
       else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
-	arg0 = convertTo (t1, arg0);
+	arg0 = d_convert (t1, arg0);
 
       t = build2 (code, type, arg0, arg1);
     }
 
-  return convertTo (type, t);
+  return d_convert (type, t);
 }
 
 // Build an assignment expression of code CODE, data type TYPE, and
@@ -1801,11 +1783,11 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
   lhs = stabilize_reference (lhs);
 
   tree rhs = buildOp (code, e1->type->toCtype(),
-		      convertTo (lhs, e1b->type, e1->type), e2->toElem (this));
+		      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
 
   tree expr = modify_expr (lhs, convertForAssignment (rhs, e1->type, e1b->type));
 
-  return convertTo (expr, e1b->type, type);
+  return convert_expr (expr, e1b->type, type);
 }
 
 
@@ -1834,7 +1816,7 @@ IRState::boundsCond (tree index, tree upper_bound, bool inclusive)
   tree bound_check;
 
   bound_check = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node,
-			convertTo (d_unsigned_type (TREE_TYPE (index)), index),
+			d_convert (d_unsigned_type (TREE_TYPE (index)), index),
 			upper_bound);
 
   if (!TYPE_UNSIGNED (TREE_TYPE (index)))
@@ -1976,12 +1958,12 @@ IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
   startLoop (NULL);
   continueHere();
   exitIfFalse (build2 (NE_EXPR, boolean_type_node,
-		       convertTo (TREE_TYPE (count), integer_zero_node), count));
+		       d_convert (TREE_TYPE (count), integer_zero_node), count));
 
   addExp (vmodify_expr (build_deref (ptr), value));
   addExp (vmodify_expr (ptr, build_offset (ptr, TYPE_SIZE_UNIT (TREE_TYPE (ptr_type)))));
   addExp (vmodify_expr (count, build2 (MINUS_EXPR, count_type, count,
-				       convertTo (count_type, integer_one_node))));
+				       d_convert (count_type, integer_one_node))));
 
   endLoop();
   endBindings();
@@ -2227,7 +2209,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
 	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
-	  return error_mark_node;
+	  return error_mark (func_type);
 	}
 
       // Probably an internal error
@@ -3482,7 +3464,7 @@ IRState::findThis (ClassDeclaration *ocd)
 	  if (ocd == cd)
 	    return var (fd->vthis);
 	  else if (ocd->isBaseOf (cd, NULL))
-	    return convertTo (var (fd->vthis), cd->type, ocd->type);
+	    return convert_expr (var (fd->vthis), cd->type, ocd->type);
 	  else
 	    fd = d_nested_class (cd);
 	}

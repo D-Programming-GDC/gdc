@@ -115,7 +115,7 @@ ThrowStatement::toIR (IRState *irs)
   if (intfc_decl)
     {
       if (!intfc_decl->isCOMclass())
-	arg = irs->convertTo (arg, exp->type, build_object_type());
+	arg = convert_expr (arg, exp->type, build_object_type());
       else
 	error ("cannot throw COM interfaces");
     }
@@ -159,8 +159,8 @@ TryCatchStatement::toIR (IRState *irs)
 
 	  if (a_catch->var)
 	    {
-	      tree exc_obj = irs->convertTo (build_exception_object(),
-					     build_object_type(), a_catch->type);
+	      tree exc_obj = convert_expr (build_exception_object(),
+					   build_object_type(), a_catch->type);
 	      tree catch_var = a_catch->var->toSymbol()->Stree;
 	      // need to override initializer...
 	      // set DECL_INITIAL now and emitLocalVar will know not to change it
