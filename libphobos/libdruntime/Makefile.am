@@ -51,6 +51,9 @@ $(IMPORT)/%.di: %.d $(IMPORT)
 %.t.o : %.d
 	$(GDC) -o $@ $(DFLAGSX) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
+%.t.o : %.o
+	cp $< $@
+
 
 #--------------------------------------#
 # GDC Runtime
@@ -181,6 +184,13 @@ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core
 	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
 	$(RANLIB) $@
 
+libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+	$(RANLIB) $@
+
+unittest: libgdruntime.a libgdruntime_t.a unittest.o
+	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -lgdruntime_t $(LIBS) -ldl
+
 #--------------------------------------#
 # Install, doc, etc targets
 
@@ -223,6 +233,8 @@ clean-local:
 	rm -rf $(IMPORT)
 	rm -f libgdruntime.a
 
+check-local: unittest
+	./unittest
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and

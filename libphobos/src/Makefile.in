@@ -533,9 +533,6 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 std/xml.o : std/xml.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
-unittest: libgphobos2.a libgphobos2_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
-
 libgphobos2.a : $(ALL_PHOBOS_OBJS) ../libdruntime/libgdruntime.a
 	cp ../libdruntime/libgdruntime.a libgphobos2.a
 	$(AR) -q $@ $(ALL_PHOBOS_OBJS)
@@ -545,8 +542,11 @@ libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
-check-local: unittest
-	./unittest
+unittest: libgphobos2.a libgphobos2_t.a unittest.o
+	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
+
+#--------------------------------------#
+# Install, doc, etc targets
 
 install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
@@ -575,6 +575,9 @@ clean-local:
 	rm -f unittest$(EXEEXT)
 	rm -f libgphobos2.a
 	rm -f libgphobos2_t.a
+
+check-local: unittest
+	./unittest
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

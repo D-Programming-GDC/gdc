@@ -59,9 +59,6 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 std/xml.o : std/xml.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
-unittest: libgphobos2.a libgphobos2_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) -Wno-deprecated unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
-
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o \
 	  std/container.o std/complex.o std/concurrency.o \
@@ -128,8 +125,11 @@ libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
-check-local: unittest
-	./unittest
+unittest: libgphobos2.a libgphobos2_t.a unittest.o
+	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
+
+#--------------------------------------#
+# Install, doc, etc targets
 
 install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
@@ -158,6 +158,9 @@ clean-local:
 	rm -f unittest$(EXEEXT)
 	rm -f libgphobos2.a
 	rm -f libgphobos2_t.a
+
+check-local: unittest
+	./unittest
 
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
