@@ -464,27 +464,17 @@ PowExp::toElem (IRState *irs)
 elem *
 CatExp::toElem (IRState *irs)
 {
-  Type *elem_type;
+  Type *etype;
 
   // One of the operands may be an element instead of an array.
   // Logic copied from CatExp::semantic
   Type *tb1 = e1->type->toBasetype();
   Type *tb2 = e2->type->toBasetype();
 
-  if ((tb1->ty == Tsarray || tb1->ty == Tarray)
-      && d_types_compatible (e2->type, tb1->nextOf()))
-    {
-      elem_type = tb1->nextOf();
-    }
-  else if ((tb2->ty == Tsarray || tb2->ty == Tarray)
-	   && d_types_compatible (e1->type, tb2->nextOf()))
-    {
-      elem_type = tb2->nextOf();
-    }
+  if (tb1->ty == Tarray || tb1->ty == Tsarray)
+    etype = tb1->nextOf();
   else
-    {
-      elem_type = tb1->nextOf();
-    }
+    etype = tb2->nextOf();
 
   // Flatten multiple concatenations
   unsigned n_operands = 2;
@@ -520,7 +510,7 @@ CatExp::toElem (IRState *irs)
       while (1)
 	{
 	  tree array_exp;
-	  if (d_types_compatible (oe->type->toBasetype(), elem_type->toBasetype()))
+	  if (d_types_compatible (oe->type->toBasetype(), etype->toBasetype()))
 	    {
 	      tree elem_var = NULL_TREE;
 	      tree expr = irs->maybeExprVar (oe->toElem (irs), &elem_var);
@@ -720,36 +710,51 @@ PowAssignExp::toElem (IRState *)
   gcc_unreachable();
 }
 
+// Determine if type is an array of structs that need a postblit.
+static StructDeclaration *
+needsPostblit (Type *t)
+{
+  t = t->toBasetype();
+  while (t->ty == Tsarray)
+    t = t->nextOf()->toBasetype();
+  if (t->ty == Tstruct)
+    {   StructDeclaration *sd = ((TypeStruct *) t)->sym;
+      if (sd->postblit)
+	return sd;
+    }
+  return NULL;
+}
+
 elem *
 CatAssignExp::toElem (IRState *irs)
 {
-  Type *dest_type = e1->type->toBasetype();
-  Type *value_type = e2->type->toBasetype();
-  Type *elem_type = dest_type->nextOf()->toBasetype();
+  Type *tb1 = e1->type->toBasetype();
+  Type *tb2 = e2->type->toBasetype();
+  Type *etype = tb1->nextOf()->toBasetype();
   AddrOfExpr aoe;
   tree result;
 
-  if (dest_type->ty == Tarray && value_type->ty == Tdchar
-      && (elem_type->ty == Tchar || elem_type->ty == Twchar))
+  if (tb1->ty == Tarray && tb2->ty == Tdchar
+      && (etype->ty == Tchar || etype->ty == Twchar))
     {
-      // append a dchar to a char[] or wchar[]
+      // Append a dchar to a char[] or wchar[]
       tree args[2];
       args[0] = aoe.set (irs, e1->toElem (irs));
       args[1] = irs->toElemLvalue (e2);
 
-      LibCall libcall = elem_type->ty == Tchar ?
+      LibCall libcall = etype->ty == Tchar ?
 	LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
 
       result = build_libcall (libcall, 2, args, type->toCtype());
     }
   else
     {
-      gcc_assert (dest_type->ty == Tarray || value_type->ty == Tsarray);
+      gcc_assert (tb1->ty == Tarray || tb2->ty == Tsarray);
 
-      if ((value_type->ty == Tarray || value_type->ty == Tsarray)
-	  && d_types_compatible (elem_type, value_type->nextOf()->toBasetype()))
+      if ((tb2->ty == Tarray || tb2->ty == Tsarray)
+	  && d_types_compatible (etype, tb2->nextOf()->toBasetype()))
 	{
-	  // append an array
+	  // Append an array
 	  tree args[3];
 	  args[0] = irs->typeinfoReference (type);
 	  args[1] = build_address (irs->toElemLvalue (e1));
@@ -758,7 +763,7 @@ CatAssignExp::toElem (IRState *irs)
 	}
       else
 	{
-	  // append an element
+	  // Append an element
 	  tree args[3];
 	  args[0] = irs->typeinfoReference (type);
 	  args[1] = build_address (irs->toElemLvalue (e1));
@@ -767,7 +772,7 @@ CatAssignExp::toElem (IRState *irs)
 	  result = build_libcall (LIBCALL_ARRAYAPPENDCTX, 3, args, type->toCtype());
 	  result = save_expr (result);
 
-	  // assign e2 to last element
+	  // Assign e2 to last element
 	  tree off_exp = d_array_length (result);
 	  off_exp = build2 (MINUS_EXPR, TREE_TYPE (off_exp), off_exp, size_one_node);
 	  off_exp = maybe_make_temp (off_exp);
@@ -776,11 +781,19 @@ CatAssignExp::toElem (IRState *irs)
 	  ptr_exp = void_okay_p (ptr_exp);
 	  ptr_exp = irs->pointerIntSum (ptr_exp, off_exp);
 
-	  // evaluate expression before appending
+	  // Evaluate expression before appending
 	  tree e2e = e2->toElem (irs);
 	  e2e = save_expr (e2e);
+	  result = modify_expr (etype->toCtype(), build_deref (ptr_exp), e2e);
 
-	  result = modify_expr (elem_type->toCtype(), build_deref (ptr_exp), e2e);
+	  // Maybe call postblit on e2.
+	  StructDeclaration *sd = needsPostblit (tb2);
+	  if (sd != NULL)
+	    {
+	      Expressions args;
+	      tree callexp = irs->call (sd->postblit, build_address (e2e), &args);
+	      result = compound_expr (callexp, result);
+	    }
 	  result = compound_expr (e2e, result);
 	}
     }
@@ -806,23 +819,6 @@ AddAssignExp::toElem (IRState *irs)
   return irs->buildAssignOp (PLUS_EXPR, type, e1, e2);
 }
 
-
-// Determine if type is an array of structs that need a postblit.
-static StructDeclaration *
-needsPostblit (Type *t)
-{
-  t = t->toBasetype();
-  while (t->ty == Tsarray)
-    t = t->nextOf()->toBasetype();
-  if (t->ty == Tstruct)
-    {   StructDeclaration *sd = ((TypeStruct *) t)->sym;
-      if (sd->postblit)
-	return sd;
-    }
-  return NULL;
-}
-
-
 elem *
 AssignExp::toElem (IRState *irs)
 {
@@ -834,13 +830,13 @@ AssignExp::toElem (IRState *irs)
       // Assignment to an array's length property; resize the array.
       ArrayLengthExp *ale = (ArrayLengthExp *) e1;
       // Don't want ->toBasetype() for the element type.
-      Type *elem_type = ale->e1->type->toBasetype()->nextOf();
+      Type *etype = ale->e1->type->toBasetype()->nextOf();
       tree args[3];
       args[0] = irs->typeinfoReference (ale->e1->type);
       args[1] = convert_expr (e2->toElem (irs), e2->type, Type::tsize_t);
       args[2] = build_address (ale->e1->toElem (irs));
 
-      LibCall libcall = elem_type->isZeroInit() ?
+      LibCall libcall = etype->isZeroInit() ?
 	LIBCALL_ARRAYSETLENGTHT : LIBCALL_ARRAYSETLENGTHIT;
 
       tree result = build_libcall (libcall, 3, args);
@@ -850,18 +846,18 @@ AssignExp::toElem (IRState *irs)
   // Look for array[] = n;
   if (e1->op == TOKslice)
     {
-      Type *elem_type = e1->type->toBasetype()->nextOf()->toBasetype();
+      Type *etype = e1->type->toBasetype()->nextOf()->toBasetype();
 
       // Determine if we need to do postblit.
       int postblit = 0;
 
-      if (needsPostblit (elem_type) != NULL
+      if (needsPostblit (etype) != NULL
 	  && ((e2->op != TOKslice && e2->isLvalue())
 	      || (e2->op == TOKslice && ((UnaExp *) e2)->e1->isLvalue())
 	      || (e2->op == TOKcast && ((UnaExp *) e2)->e1->isLvalue())))
 	postblit = 1;
 
-      if (d_types_compatible (elem_type, e2->type->toBasetype()))
+      if (d_types_compatible (etype, e2->type->toBasetype()))
 	{
 	  // Set a range of elements to one value.
 	  tree t1 = maybe_make_temp (e1->toElem (irs));
@@ -878,7 +874,7 @@ AssignExp::toElem (IRState *irs)
 		  args[0] = d_array_ptr (t1);
 		  args[1] = aoe.set (irs, e2->toElem (irs));
 		  args[2] = d_array_length (t1);
-		  args[3] = irs->typeinfoReference (elem_type);
+		  args[3] = irs->typeinfoReference (etype);
 
 		  tree t = build_libcall (libcall, 4, args);
 		  return compound_expr (aoe.finish (t), t1);
@@ -897,7 +893,7 @@ AssignExp::toElem (IRState *irs)
 	  LibCall libcall = op == TOKconstruct ?
 	    LIBCALL_ARRAYCTOR : LIBCALL_ARRAYASSIGN;
 
-	  args[0] = irs->typeinfoReference (elem_type);
+	  args[0] = irs->typeinfoReference (etype);
 	  args[1] = irs->toDArray (e1);
 	  args[2] = irs->toDArray (e2);
 
@@ -907,7 +903,7 @@ AssignExp::toElem (IRState *irs)
       if (irs->arrayBoundsCheck())
 	{
 	  tree args[3];
-	  args[0] = build_integer_cst (elem_type->size(), Type::tsize_t->toCtype());
+	  args[0] = build_integer_cst (etype->size(), Type::tsize_t->toCtype());
 	  args[1] = irs->toDArray (e2);
 	  args[2] = irs->toDArray (e1);
 	  return build_libcall (LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
@@ -918,7 +914,7 @@ AssignExp::toElem (IRState *irs)
 	  tree t2 = irs->toDArray (e2);
 	  tree size = fold_build2 (MULT_EXPR, size_type_node,
 				   d_convert (size_type_node, d_array_length (t1)),
-				   size_int (elem_type->size()));
+				   size_int (etype->size()));
 
 	  tree result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCPY), 3,
 					   d_array_ptr (t1),
