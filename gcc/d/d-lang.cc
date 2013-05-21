@@ -218,7 +218,8 @@ d_init (void)
 {
   if(POINTER_SIZE == 64)
     global.params.is64bit = 1;
-  else global.params.is64bit = 0;
+  else
+    global.params.is64bit = 0;
 
   Type::init();
   Id::initialize();
@@ -571,10 +572,8 @@ d_post_options (const char ** fn)
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
     global.params.useDeprecated = 0;
 
-  /* Excess precision other than "fast" requires front-end
-     support that we don't offer. */
   if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
-    flag_excess_precision_cmdline = EXCESS_PRECISION_FAST;
+    flag_excess_precision_cmdline = EXCESS_PRECISION_STANDARD;
 
   return false;
 }

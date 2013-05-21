@@ -336,14 +336,12 @@ MATCH IntegerExp::implicitConvTo(Type *t)
             if (type->isunsigned())
             {
                 f = real_t((d_uns64) value);
-                f = f.convert(t);
                 if ((d_uns64) f.toInt() != (d_uns64) value)
                     goto Lno;
             }
             else
             {
                 f = real_t((d_int64) value);
-                f = f.convert(t);
                 if ((d_int64) f.toInt() != (d_int64) value)
                     goto Lno;
             }

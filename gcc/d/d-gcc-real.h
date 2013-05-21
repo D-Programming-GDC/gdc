@@ -77,11 +77,8 @@ struct real_t
   bool operator!= (const real_t& r);
   d_uns64 toInt (void) const;
   d_uns64 toInt (Type *real_type, Type *int_type) const;
-  real_t convert (Mode mode) const;
-  real_t convert (Type *type) const;
   bool isZero (void);
   bool isNegative (void);
-  bool floatCompare (int op, const real_t& r);
   bool isIdenticalTo (const real_t& r) const;
   int format (char *buf, unsigned buf_size) const;
   int formatHex (char *buf, unsigned buf_size) const;
