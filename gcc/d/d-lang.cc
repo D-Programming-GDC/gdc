@@ -395,10 +395,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ddocfiles->push (xstrdup (arg));
       break;
 
-    case OPT_fdump_source:
-      global.params.dump_source = value;
-      break;
-
     case OPT_fd_verbose:
       global.params.verbose = value;
       break;
@@ -1103,41 +1099,6 @@ d_parse_file (void)
 
   gcc_d_backend_term();
 }
-
-void
-d_gcc_dump_source (const char *srcname, const char *ext, unsigned char *data, unsigned len)
-{
-  // Note: There is a dump_base_name variable, but as long as the all-sources hack is in
-  // around, the base name has to be determined here.
-
-  /* construct output name */
-  char *base = (char *) alloca (strlen (srcname) + 1);
-  base = strcpy (base, srcname);
-  base = basename (base);
-
-  char *name = (char *) alloca (strlen (base)+strlen (ext) + 2);
-  name = strcpy (name, base);
-  if (strlen (ext) > 0)
-    {
-      name = strcat (name, ".");
-      name = strcat (name, ext);
-    }
-
-  /* output
-   * ignores if the output file exists
-   * ignores if the output fails
-   */
-  FILE *output = fopen (name, "w");
-  if (output)
-    {
-      fwrite (data, 1, len, output);
-      fclose (output);
-    }
-
-  /* cleanup */
-  errno = 0;
-}
-
 
 static tree
 d_type_for_mode (enum machine_mode mode, int unsignedp)

@@ -67,10 +67,6 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<filename> Include a Ddoc macro file
 
-fdump-source
-D RejectNegative
-Dump decoded UTF-8 text and source from HTML
-
 fd-verbose
 D
 Print information about D language processing to stdout

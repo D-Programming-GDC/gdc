@@ -29,7 +29,6 @@
 
 /* used in module.c */
 extern void d_gcc_magic_module (Module *);
-extern void d_gcc_dump_source (const char *, const char *, unsigned char *, unsigned);
 
 /* used in mtype.c */
 extern int d_gcc_type_align (Type *);
