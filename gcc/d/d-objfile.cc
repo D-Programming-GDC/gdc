@@ -2078,7 +2078,7 @@ d_finish_symbol (Symbol *sym)
     {
       gcc_assert (!sym->Sident);
 
-      tree init = dtlist_to_tree (sym->Sdt);
+      tree init = dtvector_to_tree (sym->Sdt);
       tree var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (init));
       object_file->giveDeclUniqueName (var);
 
@@ -2098,7 +2098,7 @@ d_finish_symbol (Symbol *sym)
     {
       if (DECL_INITIAL (t) == NULL_TREE)
 	{
-	  tree sinit = dtlist_to_tree (sym->Sdt);
+	  tree sinit = dtvector_to_tree (sym->Sdt);
 	  if (TREE_TYPE (t) == d_unknown_type_node)
 	    {
 	      TREE_TYPE (t) = TREE_TYPE (sinit);

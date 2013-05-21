@@ -27,44 +27,34 @@
 typedef ArrayBase<dt_t> Dts;
 
 
-// Return a pointer to the last empty node in PDT, which is a chain
-// of dt_t nodes (chained through TREE_CHAIN).
+// Append VAL to constructor PDT.  Create a new constructor
+// of generic type if PDT is not already pointing to one.
 
 dt_t **
-dt_last (dt_t **pdt)
+dt_cons (dt_t **pdt, tree val)
 {
-  if (*pdt)
-    {
-      tree chain = *pdt;
-      tree next;
-      while ((next = TREE_CHAIN (chain)))
-	chain = next;
-      pdt = &TREE_CHAIN (chain);
-    }
+  if (*pdt == NULL_TREE)
+    *pdt = build_constructor (d_unknown_type_node, NULL);
+
+  CONSTRUCTOR_APPEND_ELT (CONSTRUCTOR_ELTS (*pdt), 0, val);
   return pdt;
 }
 
-// Append dt_t node VAL on the end of chain of dt_t
-// nodes (chained through TREE_CHAIN) in PDT.
+// Concatenate two constructors of dt_t nodes by appending all
+// values of DT to PDT.
 
 dt_t **
-dt_cons (dt_t **pdt, dt_t *val)
+dt_chainon (dt_t **pdt, dt_t *dt)
 {
-  tree *pdtend = dt_last (pdt);
-  gcc_assert (TREE_CODE (val) != TREE_LIST);
-  *pdtend = tree_cons (NULL_TREE, val, NULL_TREE);
-  return pdt;
-}
+  vec<constructor_elt, va_gc> *elts = CONSTRUCTOR_ELTS (dt);
+  tree value;
+  size_t i;
 
-// Concatenate two chains of dt_t nodes (chained through TREE_CHAIN)
-// by modifying the last chain of PDT to point to VAL.
+  gcc_assert (*pdt != dt);
 
-dt_t **
-dt_chainon (dt_t **pdt, dt_t *val)
-{
-  tree *pdtend = dt_last (pdt);
-  gcc_assert (TREE_CODE (val) == TREE_LIST);
-  *pdtend = copy_node (val);
+  FOR_EACH_CONSTRUCTOR_VALUE (elts, i, value)
+    dt_cons (pdt, value);
+
   return pdt;
 }
 
@@ -83,7 +73,7 @@ dt_zeropad (dt_t **pdt, size_t size)
 // elements.
 
 // SRA accesses struct elements by field offset, so the
-// ad-hoc type from dtlist_to_tree is fine.  It must still
+// ad-hoc type from dtvector_to_tree is fine.  It must still
 // be a CONSTRUCTOR, or the CCP pass may use it incorrectly.
 
 static tree
@@ -92,43 +82,48 @@ dt_container2 (dt_t *dt)
   // Generate type on the fly
   vec<constructor_elt, va_gc> *elts = NULL;
   tree fields = NULL_TREE;
-  tree ctor;
 
   tree aggtype = make_node (RECORD_TYPE);
   tree offset = size_zero_node;
 
-  while (dt)
+  if (dt != NULL_TREE)
     {
-      tree value = TREE_VALUE (dt);
-      tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE (value));
-      tree size = TYPE_SIZE_UNIT (TREE_TYPE (value));
+      tree value;
+      size_t i;
 
-      DECL_CONTEXT (field) = aggtype;
-      DECL_FIELD_OFFSET (field) = offset;
-      DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
-      SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (value)));
-      DECL_ARTIFICIAL (field) = 1;
-      DECL_IGNORED_P (field) = 1;
+      FOR_EACH_CONSTRUCTOR_VALUE (CONSTRUCTOR_ELTS (dt), i, value)
+	{
+	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE (value));
+	  tree size = TYPE_SIZE_UNIT (TREE_TYPE (value));
 
-      layout_decl (field, 0);
-      fields = chainon (fields, field);
-      CONSTRUCTOR_APPEND_ELT (elts, field, value);
+	  DECL_CONTEXT (field) = aggtype;
+	  DECL_FIELD_OFFSET (field) = offset;
+	  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+	  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (value)));
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = 1;
 
-      offset = size_binop (PLUS_EXPR, offset, size);
-      dt = TREE_CHAIN (dt);
+	  layout_decl (field, 0);
+	  fields = chainon (fields, field);
+	  CONSTRUCTOR_APPEND_ELT (elts, field, value);
+	  offset = size_binop (PLUS_EXPR, offset, size);
+	}
     }
+  else
+    dt = build_constructor (d_unknown_type_node, NULL);
 
   TYPE_FIELDS (aggtype) = fields;
   TYPE_SIZE (aggtype) = size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT));
   TYPE_SIZE_UNIT (aggtype) = offset;
   compute_record_mode (aggtype);
 
-  ctor = build_constructor (aggtype, elts);
-  TREE_READONLY (ctor) = 1;
-  TREE_STATIC (ctor) = 1;
-  TREE_CONSTANT (ctor) = 1;
+  TREE_TYPE (dt) = aggtype;
+  CONSTRUCTOR_ELTS (dt) = elts;
+  TREE_READONLY (dt) = 1;
+  TREE_STATIC (dt) = 1;
+  TREE_CONSTANT (dt) = 1;
 
-  return ctor;
+  return dt;
 }
 
 // Build a new CONSTRUCTOR of type TYPE around the values
@@ -144,40 +139,40 @@ dt_container (dt_t **pdt, Type *type, dt_t *dt)
       // Generate static array constructor.
       TypeSArray *tsa = (TypeSArray *) tb;
       vec<constructor_elt, va_gc> *elts = NULL;
-      vec_safe_reserve (elts, tsa->dim->toInteger());
-      size_t i = 0;
+      tree value;
+      size_t i;
 
-      while (dt)
-	{
-	  CONSTRUCTOR_APPEND_ELT (elts, size_int (i++), TREE_VALUE (dt));
-	  dt = TREE_CHAIN (dt);
-	}
+      gcc_assert (CONSTRUCTOR_NELTS (dt) == tsa->dim->toInteger());
 
-      tree ctor = build_constructor (type->toCtype(), elts);
-      TREE_CONSTANT (ctor) = 1;
-      TREE_READONLY (ctor) = 1;
-      TREE_STATIC (ctor) = 1;
+      FOR_EACH_CONSTRUCTOR_VALUE (CONSTRUCTOR_ELTS (dt), i, value)
+	CONSTRUCTOR_APPEND_ELT (elts, size_int (i), value);
 
-      return dt_cons (pdt, ctor);
+      TREE_TYPE (dt) = type->toCtype();
+      CONSTRUCTOR_ELTS (dt) = elts;
+      TREE_CONSTANT (dt) = 1;
+      TREE_READONLY (dt) = 1;
+      TREE_STATIC (dt) = 1;
+
+      return dt_cons (pdt, dt);
     }
   else if (tb->ty == Tstruct)
     {
-      tree ctor = dt_container2 (dt);
-      TREE_TYPE (ctor) = type->toCtype();
-      return dt_cons (pdt, ctor);
+      dt = dt_container2 (dt);
+      TREE_TYPE (dt) = type->toCtype();
+      return dt_cons (pdt, dt);
     }
 
-  return dt_cons (pdt, dtlist_to_tree (dt));
+  return dt_cons (pdt, dtvector_to_tree (dt));
 }
 
 // Return a new CONSTRUCTOR whose values are in a dt_t
 // list pointed to by DT.
 
 tree
-dtlist_to_tree (dt_t *dt)
+dtvector_to_tree (dt_t *dt)
 {
-  if (dt && !TREE_CHAIN (dt))
-    return TREE_VALUE (dt);
+  if (dt && CONSTRUCTOR_NELTS (dt) == 1)
+    return CONSTRUCTOR_ELT (dt, 0)->value;
 
   return dt_container2 (dt);
 }
@@ -289,7 +284,7 @@ StructInitializer::toDt (void)
 	    error (loc, "duplicate union initialization for %s", v->toChars());
 	  else
 	    {
-	      size_t sz = int_size_in_bytes (TREE_TYPE (TREE_VALUE (fdt)));
+	      size_t sz = int_size_in_bytes (TREE_TYPE (CONSTRUCTOR_ELT (fdt, 0)->value));
 	      size_t vsz = v->type->size();
 	      size_t voffset = v->offset;
 	      size_t dim = 1;
@@ -577,7 +572,7 @@ StructLiteralExp::toDt (dt_t **pdt)
 	    error ("duplicate union initialization for %s", v->toChars());
 	  else
 	    {
-	      size_t sz = int_size_in_bytes (TREE_TYPE (TREE_VALUE (fdt)));
+	      size_t sz = int_size_in_bytes (TREE_TYPE (CONSTRUCTOR_ELT (fdt, 0)->value));
 	      size_t vsz = v->type->size();
 	      size_t voffset = v->offset;
 	      size_t dim = 1;

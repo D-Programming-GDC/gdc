@@ -6,6 +6,14 @@
 	(real_t::floatCompare): Remove function.
 	(real_t::operator): Always perform floating point compilation at the
 	precision of the target real mode.
+	* d-todt.cc(dt_last): Remove function.
+	(dtlist_to_tree): Rename to dtvector_to_tree.
+	(dt_cons): Replace TREE_CHAIN implementation for use of CONSTRUCTOR.
+	(dt_chainon): Likewise.
+	(dt_container): Likewise.
+	(dt_container2): Likewise.
+	(StructInitializer::toDt): Likewise.
+	(StructLiteralExp::toDt): Likewise.
 
 2013-05-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
