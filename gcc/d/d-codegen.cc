@@ -4048,17 +4048,19 @@ AggLayout::addField (tree field_decl, size_t offset)
 void
 AggLayout::finish (Expressions *attrs)
 {
-  unsigned size_to_use = this->aggDecl_->structsize;
-  unsigned align_to_use = this->aggDecl_->alignsize;
+  unsigned structsize = this->aggDecl_->structsize;
+  unsigned alignsize = this->aggDecl_->alignsize;
 
-  TYPE_SIZE (this->aggType_) = bitsize_int (size_to_use * BITS_PER_UNIT);
-  TYPE_SIZE_UNIT (this->aggType_) = size_int (size_to_use);
-  TYPE_ALIGN (this->aggType_) = align_to_use * BITS_PER_UNIT;
-  TYPE_PACKED (this->aggType_) = TYPE_PACKED (this->aggType_); // %% todo
+  TYPE_SIZE (this->aggType_) = NULL_TREE;
 
   if (attrs)
     decl_attributes (&this->aggType_, build_attributes (attrs),
 		     ATTR_FLAG_TYPE_IN_PLACE);
+
+  TYPE_SIZE (this->aggType_) = bitsize_int (structsize * BITS_PER_UNIT);
+  TYPE_SIZE_UNIT (this->aggType_) = size_int (structsize);
+  TYPE_ALIGN (this->aggType_) = alignsize * BITS_PER_UNIT;
+  TYPE_PACKED (this->aggType_) = (alignsize == 1);
 
   compute_record_mode (this->aggType_);
 

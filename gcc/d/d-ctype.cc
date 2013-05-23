@@ -294,34 +294,24 @@ TypeStruct::toCtype (void)
 	{
 	  // need to set this right away in case of self-references
 	  ctype = make_node (sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
-
-	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
+	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 
 	  /* Must set up the overall size, etc. before determining the
 	     context or laying out fields as those types may make references
 	     to this type. */
 	  TYPE_SIZE (ctype) = bitsize_int (sym->structsize * BITS_PER_UNIT);
 	  TYPE_SIZE_UNIT (ctype) = size_int (sym->structsize);
-	  TYPE_ALIGN (ctype) = sym->alignsize * BITS_PER_UNIT; // %%doc int, not a tree
-	  // TYPE_ALIGN_UNIT is not an lvalue
-	  TYPE_PACKED (ctype) = TYPE_PACKED (ctype); // %% todo
-
-	  if (sym->userAttributes)
-	    decl_attributes (&ctype, build_attributes (sym->userAttributes),
-			     ATTR_FLAG_TYPE_IN_PLACE);
-
+	  TYPE_ALIGN (ctype) = sym->alignsize * BITS_PER_UNIT;
+	  TYPE_PACKED (ctype) = (sym->alignsize == 1);
 	  compute_record_mode (ctype);
-
-	  // %%  stor-layout.c:finalize_type_size ... it's private to that file
-
-	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
-	  object_file->initTypeDecl (ctype, sym);
-
 
 	  AggLayout agg_layout (sym, ctype);
 	  agg_layout.go();
 	  agg_layout.finish (sym->userAttributes);
+
+	  object_file->initTypeDecl (ctype, sym);
+	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
 	}
     }
 
@@ -614,7 +604,6 @@ TypeClass::toCtype (void)
 	  rec_type = make_node (RECORD_TYPE);
 	  ctype = build_reference_type (rec_type);
 	  d_keep (ctype); // because BINFO moved out to toDebug
-	  object_file->initTypeDecl (rec_type, sym);
 
 	  obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
 
@@ -673,9 +662,10 @@ TypeClass::toCtype (void)
 	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
 	    }
 
-	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);
-
 	  agg_layout.finish (sym->userAttributes);
+
+	  object_file->initTypeDecl (rec_type, sym);
+	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);
 	}
     }
 
