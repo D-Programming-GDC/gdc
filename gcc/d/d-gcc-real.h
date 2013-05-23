@@ -58,9 +58,9 @@ struct real_t
   real_value& rv (void);
   real_t (const real_value& rv);
   real_t (int v);
-  real_t (d_uns64 v);
-  real_t (d_int64 v);
-  real_t (d_float64 d);
+  real_t (uint64_t v);
+  real_t (int64_t v);
+  real_t (double d);
   real_t& operator= (const real_t& r);
   real_t& operator= (int v);
   real_t operator+ (const real_t& r);
@@ -75,8 +75,8 @@ struct real_t
   bool operator>= (const real_t& r);
   bool operator== (const real_t& r);
   bool operator!= (const real_t& r);
-  d_uns64 toInt (void) const;
-  d_uns64 toInt (Type *real_type, Type *int_type) const;
+  uint64_t toInt (void) const;
+  uint64_t toInt (Type *real_type, Type *int_type) const;
   bool isZero (void);
   bool isNegative (void);
   bool isIdenticalTo (const real_t& r) const;
@@ -90,10 +90,10 @@ struct real_t
 
  private:
   // prevent this from being used
-  real_t& operator= (d_float32)
+  real_t& operator= (float)
   { return *this; }
 
-  real_t& operator= (d_float64)
+  real_t& operator= (double)
   { return *this; }
 
   fake_t frv_;
@@ -114,44 +114,44 @@ inline int ld_sprint(char* str, int fmt, longdouble x)
 
 // List of values for .max, .min, etc, for floats in D.
 
-struct real_t_Properties
+struct real_properties
 {
-  real_t maxval, minval, epsilonval /*, nanval, infval */;
-  d_int64 dig, mant_dig;
-  d_int64 max_10_exp, min_10_exp;
-  d_int64 max_exp, min_exp;
+  real_t maxval, minval, epsilonval;
+  int64_t dig, mant_dig;
+  int64_t max_10_exp, min_10_exp;
+  int64_t max_exp, min_exp;
 };
 
-extern real_t_Properties real_t_properties[real_t::NumModes];
+extern real_properties real_limits[real_t::NumModes];
 
 // Macros are used by the D frontend, so map to real_t property values instead of long double.
 
-#define FLT_MAX real_t_properties[real_t::Float].maxval;
-#define DBL_MAX real_t_properties[real_t::Double].maxval;
-#define LDBL_MAX real_t_properties[real_t::LongDouble].maxval;
-#define FLT_MIN real_t_properties[real_t::Float].minval;
-#define DBL_MIN real_t_properties[real_t::Double].minval;
-#define LDBL_MIN real_t_properties[real_t::LongDouble].minval;
-#define FLT_DIG real_t_properties[real_t::Float].dig;
-#define DBL_DIG real_t_properties[real_t::Double].dig;
-#define LDBL_DIG real_t_properties[real_t::LongDouble].dig;
-#define FLT_MANT_DIG real_t_properties[real_t::Float].mant_dig;
-#define DBL_MANT_DIG real_t_properties[real_t::Double].mant_dig;
-#define LDBL_MANT_DIG real_t_properties[real_t::LongDouble].mant_dig;
-#define FLT_MAX_10_EXP real_t_properties[real_t::Float].max_10_exp;
-#define DBL_MAX_10_EXP real_t_properties[real_t::Double].max_10_exp;
-#define LDBL_MAX_10_EXP real_t_properties[real_t::LongDouble].max_10_exp;
-#define FLT_MIN_10_EXP real_t_properties[real_t::Float].min_10_exp;
-#define DBL_MIN_10_EXP real_t_properties[real_t::Double].min_10_exp;
-#define LDBL_MIN_10_EXP real_t_properties[real_t::LongDouble].min_10_exp;
-#define FLT_MAX_EXP real_t_properties[real_t::Float].max_exp;
-#define DBL_MAX_EXP real_t_properties[real_t::Double].max_exp;
-#define LDBL_MAX_EXP real_t_properties[real_t::LongDouble].max_exp;
-#define FLT_MIN_EXP real_t_properties[real_t::Float].min_exp;
-#define DBL_MIN_EXP real_t_properties[real_t::Double].min_exp;
-#define LDBL_MIN_EXP real_t_properties[real_t::LongDouble].min_exp;
-#define FLT_EPSILON real_t_properties[real_t::Float].epsilonval;
-#define DBL_EPSILON real_t_properties[real_t::Double].epsilonval;
-#define LDBL_EPSILON real_t_properties[real_t::LongDouble].epsilonval;
+#define FLT_MAX real_limits[real_t::Float].maxval;
+#define DBL_MAX real_limits[real_t::Double].maxval;
+#define LDBL_MAX real_limits[real_t::LongDouble].maxval;
+#define FLT_MIN real_limits[real_t::Float].minval;
+#define DBL_MIN real_limits[real_t::Double].minval;
+#define LDBL_MIN real_limits[real_t::LongDouble].minval;
+#define FLT_DIG real_limits[real_t::Float].dig;
+#define DBL_DIG real_limits[real_t::Double].dig;
+#define LDBL_DIG real_limits[real_t::LongDouble].dig;
+#define FLT_MANT_DIG real_limits[real_t::Float].mant_dig;
+#define DBL_MANT_DIG real_limits[real_t::Double].mant_dig;
+#define LDBL_MANT_DIG real_limits[real_t::LongDouble].mant_dig;
+#define FLT_MAX_10_EXP real_limits[real_t::Float].max_10_exp;
+#define DBL_MAX_10_EXP real_limits[real_t::Double].max_10_exp;
+#define LDBL_MAX_10_EXP real_limits[real_t::LongDouble].max_10_exp;
+#define FLT_MIN_10_EXP real_limits[real_t::Float].min_10_exp;
+#define DBL_MIN_10_EXP real_limits[real_t::Double].min_10_exp;
+#define LDBL_MIN_10_EXP real_limits[real_t::LongDouble].min_10_exp;
+#define FLT_MAX_EXP real_limits[real_t::Float].max_exp;
+#define DBL_MAX_EXP real_limits[real_t::Double].max_exp;
+#define LDBL_MAX_EXP real_limits[real_t::LongDouble].max_exp;
+#define FLT_MIN_EXP real_limits[real_t::Float].min_exp;
+#define DBL_MIN_EXP real_limits[real_t::Double].min_exp;
+#define LDBL_MIN_EXP real_limits[real_t::LongDouble].min_exp;
+#define FLT_EPSILON real_limits[real_t::Float].epsilonval;
+#define DBL_EPSILON real_limits[real_t::Double].epsilonval;
+#define LDBL_EPSILON real_limits[real_t::LongDouble].epsilonval;
 
 #endif

@@ -19,7 +19,6 @@
 
 // d-real_t.cc
 
-#include "mars.h"
 #include "lexer.h"
 #include "mtype.h"
 #include "d-gcc-real.h"
@@ -49,7 +48,7 @@ machineMode (real_t::Mode mode)
     }
 }
 
-real_t_Properties real_t_properties[real_t::NumModes];
+real_properties real_limits[real_t::NumModes];
 
 #define M_LOG10_2       0.30102999566398119521
 
@@ -62,7 +61,7 @@ real_t::init (void)
 
   for (int i = (int) Float; i < (int) NumModes; i++)
     {
-      real_t_Properties& p = real_t_properties[i];
+      real_properties& p = real_limits[i];
 
       enum machine_mode mode = machineMode ((Mode) i);
       const struct real_format& rf = *REAL_MODE_FORMAT (mode);
@@ -189,23 +188,23 @@ real_t::real_t (int v)
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (double_type_node));
 }
 
-// Construct a new real_t from d_uns64 V.
+// Construct a new real_t from uint64_t V.
 
-real_t::real_t (d_uns64 v)
+real_t::real_t (uint64_t v)
 {
   REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, TYPE_MODE (long_double_type_node));
 }
 
-// Construct a new real_t from d_int64 V.
+// Construct a new real_t from int64_t V.
 
-real_t::real_t (d_int64 v)
+real_t::real_t (int64_t v)
 {
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (long_double_type_node));
 }
 
-// Construct a new real_t from d_float64 D.
+// Construct a new real_t from double D.
 
-real_t::real_t (d_float64 d)
+real_t::real_t (double d)
 {
   char buf[48];
   snprintf(buf, sizeof (buf), "%lf", d);
@@ -336,9 +335,9 @@ real_t::operator!= (const real_t& r)
   return real_compare (NE_EXPR, &rv(), &r.rv());
 }
 
-// Return conversion of real_t value to d_uns64.
+// Return conversion of real_t value to uint64_t.
 
-d_uns64
+uint64_t
 real_t::toInt (void) const
 {
   HOST_WIDE_INT low, high;
@@ -353,10 +352,10 @@ real_t::toInt (void) const
   return cst_to_hwi (double_int::from_pair (high, low));
 }
 
-// Return conversion of real_t value to d_uns64.
+// Return conversion of real_t value to uint64_t.
 // Value is converted from REAL_TYPE to INT_TYPE.
 
-d_uns64
+uint64_t
 real_t::toInt (Type *real_type, Type *int_type) const
 {
   tree t;
