@@ -264,7 +264,7 @@ diff -urp gcc.orig/config/rs6000/rs6000.h gcc/config/rs6000/rs6000.h
 diff -urp gcc.orig/config/s390/s390.h gcc/config/s390/s390.h
 --- gcc.orig/config/s390/s390.h	2013-03-27 14:22:29.744731834 +0100
 +++ gcc/config/s390/s390.h	2013-03-27 12:54:56.527631442 +0100
-@@ -104,6 +104,21 @@ enum processor_flags
+@@ -104,6 +104,22 @@ enum processor_flags
      }							\
    while (0)
  
@@ -281,6 +281,7 @@ diff -urp gcc.orig/config/s390/s390.h gcc/config/s390/s390.h
 +        builtin_define ("D_SoftFloat");			\
 +      else if(TARGET_HARD_FLOAT)			\
 +        builtin_define ("D_HardFloat");			\
++    }							\
 +  while (0)
 +
  #ifdef DEFAULT_TARGET_64BIT
