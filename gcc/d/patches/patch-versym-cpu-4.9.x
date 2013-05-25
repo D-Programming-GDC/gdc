@@ -275,7 +275,7 @@ for all supported architectures. And these where appropriate:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- gcc/config/s390/s390.h	2013-03-05 12:02:06.000000000 +0000
 +++ gcc/config/s390/s390.h	2013-03-20 16:26:19.094235727 +0000
-@@ -108,6 +108,21 @@ enum processor_flags
+@@ -108,6 +108,22 @@ enum processor_flags
      }							\
    while (0)
  
@@ -292,6 +292,7 @@ for all supported architectures. And these where appropriate:
 +        builtin_define ("D_SoftFloat");			\
 +      else if(TARGET_HARD_FLOAT)			\
 +        builtin_define ("D_HardFloat");			\
++    }							\
 +  while (0)
 +
  #ifdef DEFAULT_TARGET_64BIT

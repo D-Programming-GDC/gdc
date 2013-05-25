@@ -1,3 +1,8 @@
+2013-05-25  Johannes Pfau  <johannespfau@gmail.com>
+
+	* patch-versym-cpu-4.8.x(s390.h): Fix typo
+	patch-versym-cpu-4.9.x(s390.h): Likewise.
+
 2013-05-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(AggLayout::finish): Unset TYPE_SIZE before
