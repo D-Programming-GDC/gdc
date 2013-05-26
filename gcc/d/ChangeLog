@@ -1,7 +1,7 @@
-2013-05-25  Johannes Pfau  <johannespfau@gmail.com>
+2013-05-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* patch-versym-cpu-4.8.x(s390.h): Fix typo
-	patch-versym-cpu-4.9.x(s390.h): Likewise.
+	* d-incpath.cc(prefixed_path): Add cpp_GCC_INCLUDE_DIR back in as
+	second method for relocation.
 
 2013-05-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
