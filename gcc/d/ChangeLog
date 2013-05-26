@@ -11,6 +11,11 @@
 	(IRState::boundsCond): Rename to d_bounds_condition.
 	(IRState::arrayBoundsCheck): Rename to array_bounds_check.
 	(IRState::assertCall): Rename to d_assert_call.
+	(IRState::doLineNote): Move to irstate.h.
+	* d-irstate.cc(IRBase::getLocalContext): Remove function.
+	* d-decls.cc(VarDeclaration::toSymbol): Build decl lang specific for
+	decl to point back to D front end type.
+	(FuncDeclaration::toSymbol): Likewise.
 
 2013-05-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 

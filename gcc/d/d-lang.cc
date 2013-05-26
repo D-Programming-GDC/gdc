@@ -1343,8 +1343,7 @@ struct binding_level *global_binding_level;
 static binding_level *
 alloc_binding_level (void)
 {
-  unsigned sz = sizeof (struct binding_level);
-  return (struct binding_level *) ggc_alloc_cleared_atomic (sz);
+  return ggc_alloc_cleared_binding_level();
 }
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
@@ -1546,22 +1545,19 @@ d_finish_incomplete_decl (tree decl)
 struct lang_type *
 build_d_type_lang_specific (Type *t)
 {
-  struct lang_type *l;
   unsigned sz = sizeof (struct lang_type);
-  l = (struct lang_type *) ggc_alloc_cleared_atomic (sz);
-  l->d_type = t;
-  l->c_type = t->ctype;
-  return l;
+  struct lang_type *lt = ggc_alloc_cleared_lang_type (sz);
+  lt->d_type = t;
+  return lt;
 }
 
 struct lang_decl *
 build_d_decl_lang_specific (Declaration *d)
 {
-  struct lang_decl *l;
   unsigned sz = sizeof (struct lang_decl);
-  l = (struct lang_decl *) ggc_alloc_cleared_atomic (sz);
-  l->d_decl = d;
-  return l;
+  struct lang_decl *ld = ggc_alloc_cleared_lang_decl (sz);
+  ld->d_decl = d;
+  return ld;
 }
 
 

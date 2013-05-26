@@ -160,8 +160,11 @@ VarDeclaration::toSymbol (void)
 	      SET_DECL_ASSEMBLER_NAME (var_decl, id);
 	    }
 	}
+      
+      DECL_LANG_SPECIFIC (var_decl) = build_d_decl_lang_specific (this);
       d_keep (var_decl);
       object_file->setDeclLoc (var_decl, this);
+
       if (decl_kind == VAR_DECL)
 	object_file->setupSymbolStorage (this, var_decl);
       else if (decl_kind == PARM_DECL)
@@ -361,6 +364,7 @@ FuncDeclaration::toSymbol (void)
 	    }
 
 	  TREE_TYPE (fndecl) = ftype->toCtype();
+	  DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
 	  d_keep (fndecl);
 
 	  if (isNested())

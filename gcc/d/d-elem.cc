@@ -1054,7 +1054,7 @@ IndexExp::toElem (IRState *irs)
       /* arrayElemRef will call aryscp.finish.  This result
 	 of this function may be used as an lvalue and we
 	 do not want it to be a BIND_EXPR. */
-      ArrayScope aryscp (irs, lengthVar, loc);
+      ArrayScope aryscp (lengthVar, loc);
       return irs->arrayElemRef (this, &aryscp);
     }
 }
@@ -1100,7 +1100,7 @@ SliceExp::toElem (IRState *irs)
   tree lwr_tree = NULL_TREE;
   tree upr_tree = NULL_TREE;
 
-  ArrayScope aryscp (irs, lengthVar, loc);
+  ArrayScope aryscp (lengthVar, loc);
 
   orig_array_expr = aryscp.setArrayExp (e1->toElem (irs), e1->type);
   orig_array_expr = maybe_make_temp (orig_array_expr);
@@ -1165,6 +1165,7 @@ SliceExp::toElem (IRState *irs)
 	{
 	  final_len_expr = upr_tree;
 	}
+
       if (lwr_tree)
 	{
 	  // %% Need to ensure lwr always gets evaluated first, as it may be a function call.

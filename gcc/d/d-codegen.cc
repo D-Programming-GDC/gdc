@@ -75,14 +75,6 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
-// Update current source file location to LOC.
-
-void
-IRState::doLineNote (const Loc& loc)
-{
-  ObjectFile::doLineNote (loc);
-}
-
 // Add local variable VD into the current body.  If NO_INIT,
 // then variable does not have a default initialiser.
 
@@ -101,7 +93,7 @@ IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
   if (TREE_CODE (var_decl) == CONST_DECL)
     return;
 
-  DECL_CONTEXT (var_decl) = getLocalContext();
+  DECL_CONTEXT (var_decl) = current_function_decl;
 
   // Compiler generated symbols
   if (vd == this->func->vresult || vd == this->func->v_argptr
@@ -161,7 +153,7 @@ tree
 IRState::localVar (tree type)
 {
   tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
-  DECL_CONTEXT (decl) = getLocalContext();
+  DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_IGNORED_P (decl) = 1;
   pushdecl (decl);
@@ -183,7 +175,7 @@ tree
 IRState::exprVar (tree type)
 {
   tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
-  DECL_CONTEXT (decl) = getLocalContext();
+  DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_IGNORED_P (decl) = 1;
   layout_decl (decl, 0);
@@ -3219,7 +3211,7 @@ d_build_label (Loc loc, Identifier *ident)
 {
   tree decl = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
 			  ident ? get_identifier (ident->string) : NULL_TREE, void_type_node);
-  DECL_CONTEXT (decl) = cirstate->getLocalContext();
+  DECL_CONTEXT (decl) = current_function_decl;
   DECL_MODE (decl) = VOIDmode;
 
   // Not setting this doesn't seem to cause problems (unlike VAR_DECLs).
@@ -4025,7 +4017,7 @@ AggLayout::finish (Expressions *attrs)
 // in the slice.  A temp var INI_V would have been created that needs to
 // be bound into it's own scope.
 
-ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
+ArrayScope::ArrayScope (VarDeclaration *ini_v, const Loc& loc) :
   var_(ini_v)
 {
   /* If STCconst, the temp var is not required.  */
@@ -4037,7 +4029,7 @@ ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
       this->var_->loc = loc;
       Symbol *s = this->var_->toSymbol();
       tree decl = s->Stree;
-      DECL_CONTEXT (decl) = irs->getLocalContext();
+      DECL_CONTEXT (decl) = current_function_decl;
     }
   else
     this->var_ = NULL;

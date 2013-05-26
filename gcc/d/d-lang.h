@@ -46,7 +46,6 @@ struct Type;
 typedef struct Type *TypeGTYP;
 struct GTY((variable_size)) lang_type
 {
-  tree GTY((skip)) c_type;
   TypeGTYP GTY((skip)) d_type;
 };
 

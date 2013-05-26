@@ -158,10 +158,6 @@ struct IRBase : Object
 
   void doLabel (tree t_label);
 
-  // ** DECL_CONTEXT support
-  tree getLocalContext (void)
-  { return this->func ? this->func->toSymbol()->Stree : NULL_TREE; }
-
   // ** "Binding contours"
 
   /* Definitions for IRBase scope code:
@@ -188,6 +184,10 @@ struct IRBase : Object
   void startBindings (void);
   void endBindings (void);
   
+  // Update current source file location to LOC.
+  void doLineNote (const Loc& loc)
+  { ObjectFile::doLineNote (loc); }
+
   // ** Instruction stream manipulation
 
   // ** Conditional statements.

@@ -391,8 +391,6 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 struct IRState : IRBase
 {
  public:
-  static void doLineNote (const Loc& loc);
-
   // ** Local variables
   void emitLocalVar (VarDeclaration *v, bool no_init = false);
   tree localVar (tree t_type);
@@ -483,7 +481,7 @@ class AggLayout
 class ArrayScope
 {
  public:
-  ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc);
+  ArrayScope (VarDeclaration *ini_v, const Loc& loc);
   tree setArrayExp (tree e, Type *t);
   tree finish (tree e);
 

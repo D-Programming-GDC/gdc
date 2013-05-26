@@ -1014,7 +1014,6 @@ FuncDeclaration::toObjFile (int)
 
   // May change irs->sthis.
   irs->buildChain (this);
-  DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
 
   if (vresult)
     irs->emitLocalVar (vresult, true);
