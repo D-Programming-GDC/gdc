@@ -403,8 +403,6 @@ struct IRState : IRBase
   tree toDArray (Expression *exp);
 
   // ** Various expressions
-  tree toElemLvalue (Expression *e);
-
   tree pointerIntSum (Expression *ptr_exp, Expression *idx_exp);
   tree pointerIntSum (tree ptr_node, tree idx_exp);
 

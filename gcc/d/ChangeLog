@@ -2,6 +2,9 @@
 
 	* d-incpath.cc(prefixed_path): Add cpp_GCC_INCLUDE_DIR back in as
 	second method for relocation.
+	* d-elem.cc(IndexExp::toElem): Fix call to _aaGetX as from
+	IRState::toElemLvalue.
+	* d-codegen.cc(IRState::toElemLvalue): Remove function.
 
 2013-05-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 

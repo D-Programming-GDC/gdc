@@ -609,7 +609,7 @@ IRState::convertForArgument (Expression *expr, Parameter *arg)
 {
   if (arg_reference_p (arg))
     {
-      tree exp_tree = this->toElemLvalue (expr);
+      tree exp_tree = expr->toElem (this);
       // front-end already sometimes automatically takes the address
       // TODO: Make this safer?  Can this be confused by a non-zero SymOff?
       if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
@@ -854,7 +854,8 @@ insert_decl_attribute (tree decl, const char *attrname, tree value)
   DECL_ATTRIBUTES (decl) = merge_attributes (DECL_ATTRIBUTES (decl), attrib);
 }
 
-bool d_attribute_p (const char* name)
+bool
+d_attribute_p (const char* name)
 {
   static StringTable* table;
 
@@ -1370,39 +1371,6 @@ d_has_side_effects (tree expr)
   return TREE_SIDE_EFFECTS (t);
 }
 
-// Evaluates expression E as an Lvalue.
-
-tree
-IRState::toElemLvalue (Expression *e)
-{
-  if (e->op == TOKindex)
-    {
-      IndexExp *ie = (IndexExp *) e;
-      Expression *e1 = ie->e1;
-      Expression *e2 = ie->e2;
-      Type *type = e->type;
-      Type *array_type = e1->type->toBasetype();
-
-      if (array_type->ty == Taarray)
-	{
-	  Type *key_type = ((TypeAArray *) array_type)->index->toBasetype();
-	  AddrOfExpr aoe;
-	  tree args[4];
-	  tree result;
-
-	  args[0] = build_address (toElemLvalue (e1));
-	  args[1] = typeinfoReference (key_type);
-	  args[2] = build_integer_cst (array_type->nextOf()->size(), Type::tsize_t->toCtype());
-	  args[3] = aoe.set (this, convert_expr (e2->toElem (this), e2->type, key_type));
-
-	  result = aoe.finish (build_libcall (LIBCALL_AAGETX, 4, args,
-					      type->pointerTo()->toCtype()));
-	  return build1 (INDIRECT_REF, type->toCtype(), result);
-	}
-    }
-
-  return e->toElem (this);
-}
 
 // Returns the address of the expression EXP.
 
@@ -1776,13 +1744,13 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
     }
 
   // Prevent multiple evaluations of LHS
-  tree lhs = toElemLvalue (e1b);
+  tree lhs = e1b->toElem (this);
   lhs = stabilize_reference (lhs);
 
   tree rhs = buildOp (code, e1->type->toCtype(),
 		      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
 
-  tree expr = modify_expr (lhs, convertForAssignment (rhs, e1->type, e1b->type));
+  tree expr = modify_expr (lhs, convert_expr (rhs, e1->type, e1b->type));
 
   return convert_expr (expr, e1b->type, type);
 }
