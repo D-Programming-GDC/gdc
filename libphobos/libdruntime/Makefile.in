@@ -605,7 +605,7 @@ libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -lgdruntime_t $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
 
 #--------------------------------------#
 # Install, doc, etc targets
