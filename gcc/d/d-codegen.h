@@ -181,6 +181,9 @@ extern tree d_build_label (Loc loc, Identifier *ident);
 extern tree d_convert (tree type, tree exp);
 extern tree convert_expr (tree exp, Type *exp_type, Type *target_type);
 
+extern tree convert_for_assignment (tree expr, Type *exp_type, Type *target_type);
+extern tree convert_for_condition (tree expr, Type *type);
+
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
 extern tree build_float_cst (const real_t& value, Type *target_type);
@@ -205,9 +208,11 @@ extern tree void_okay_p (tree t);
 extern tree build_offset_op (enum tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
 
-// ** Function calls
+// Function calls
 extern tree d_build_call (tree type, tree callee, tree args);
 extern tree d_build_call_nary (tree callee, int n_args, ...);
+
+extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
 extern tree build_frame_type (FuncDeclaration *func);
@@ -220,7 +225,12 @@ extern bool needs_static_chain (FuncDeclaration *f);
 extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
+// Array operations
 extern bool unhandled_arrayop_p (BinExp *exp);
+
+extern bool array_bounds_check (void);
+extern tree d_checked_index (Loc loc, tree index, tree upr, bool inclusive);
+extern tree d_bounds_condition (tree index, tree upr, bool inclusive);
 
 // Delegates
 extern tree delegate_method (tree exp);
@@ -395,11 +405,7 @@ struct IRState : IRBase
   tree var (Declaration *decl);
 
   // ** Type conversion
-  tree convertForAssignment (Expression *exp, Type *target_type);
-  tree convertForAssignment (tree exp_tree, Type *exp_type, Type *target_type);
   tree convertForArgument (Expression *exp, Parameter *arg);
-  tree convertForCondition (Expression *exp);
-  tree convertForCondition (tree exp_tree, Type *exp_type);
   tree toDArray (Expression *exp);
 
   // ** Various expressions
@@ -408,10 +414,6 @@ struct IRState : IRBase
 
   static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
   tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
-
-  tree checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive);
-  tree boundsCond (tree index, tree upper_bound, bool inclusive);
-  int arrayBoundsCheck (void);
 
   tree arrayElemRef (IndexExp *aer_exp, ArrayScope *aryscp);
 
@@ -423,9 +425,6 @@ struct IRState : IRBase
   tree call (FuncDeclaration *func_decl, Expressions *args);
   tree call (FuncDeclaration *func_decl, tree object, Expressions *args);
   tree call (TypeFunction *guess, tree callable, tree object, Expressions *arguments);
-
-  tree assertCall (Loc loc, LibCall libcall = LIBCALL_ASSERT);
-  tree assertCall (Loc loc, Expression *msg);
 
   static tree floatMod (tree type, tree arg0, tree arg1);
 

@@ -5,6 +5,12 @@
 	* d-elem.cc(IndexExp::toElem): Fix call to _aaGetX as from
 	IRState::toElemLvalue.
 	* d-codegen.cc(IRState::toElemLvalue): Remove function.
+	(IRState::convertForAssignment): Rename to convert_for_assignment.
+	(IRState::convertForCondition): Rename to convert_for_condition.
+	(IRState::checkedIndex): Rename to d_checked_index.
+	(IRState::boundsCond): Rename to d_bounds_condition.
+	(IRState::arrayBoundsCheck): Rename to array_bounds_check.
+	(IRState::assertCall): Rename to d_assert_call.
 
 2013-05-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 

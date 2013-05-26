@@ -374,8 +374,10 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	  {
 	    // Otherwise, do dynamic cast
 	    tree args[2];
+
 	    args[0] = exp;
 	    args[1] = build_address (target_class_decl->toSymbol()->Stree);
+
 	    return build_libcall (obj_class_decl->isInterfaceDeclaration()
 				  ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
 	  }
@@ -461,9 +463,11 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	    {
 	      unsigned mult = 1;
 	      tree args[3];
+
 	      args[0] = build_integer_cst (sz_dst, Type::tsize_t->toCtype());
 	      args[1] = build_integer_cst (sz_src * mult, Type::tsize_t->toCtype());
 	      args[2] = exp;
+
 	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
 	    }
 	}
@@ -536,25 +540,24 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 // for use in assignment expressions MODIFY_EXPR, INIT_EXPR...
 
 tree
-IRState::convertForAssignment (Expression *expr, Type *target_type)
+convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
 {
-  Type *exp_base_type = expr->type->toBasetype();
-  Type *target_base_type = target_type->toBasetype();
-  tree exp_tree = NULL_TREE;
+  Type *ebtype = exp_type->toBasetype();
+  Type *tbtype = target_type->toBasetype();
 
   // Assuming this only has to handle converting a non Tsarray type to
   // arbitrarily dimensioned Tsarrays.
-  if (target_base_type->ty == Tsarray)
+  if (tbtype->ty == Tsarray)
     {
-      Type *sa_elem_type = target_base_type->nextOf()->toBasetype();
+      Type *sa_elem_type = tbtype->nextOf()->toBasetype();
 
       while (sa_elem_type->ty == Tsarray)
 	sa_elem_type = sa_elem_type->nextOf()->toBasetype();
 
-      if (d_types_compatible (sa_elem_type, exp_base_type))
+      if (d_types_compatible (sa_elem_type, ebtype))
 	{
 	  // %% what about implicit converions...?
-	  TypeSArray *sa_type = (TypeSArray *) target_base_type;
+	  TypeSArray *sa_type = (TypeSArray *) tbtype;
 	  uinteger_t count = sa_type->dim->toUInteger();
 
 	  tree ctor = build_constructor (target_type->toCtype(), NULL);
@@ -563,9 +566,9 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 	      vec<constructor_elt, va_gc> *ce = NULL;
 	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
 				   integer_zero_node, build_integer_cst (count - 1));
-	      tree value = object_file->stripVarDecl (convertForAssignment (expr, sa_type->next));
+	      tree value = convert_for_assignment (expr, exp_type, sa_type->next);
 
-	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
+	      CONSTRUCTOR_APPEND_ELT (ce, index, object_file->stripVarDecl (value));
 	      CONSTRUCTOR_ELTS (ctor) = ce;
 	    }
 	  TREE_READONLY (ctor) = 1;
@@ -574,12 +577,12 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 	}
     }
 
-  if (!target_type->isscalar() && exp_base_type->isintegral())
+  if (!target_type->isscalar() && ebtype->isintegral())
     {
       // D Front end uses IntegerExp (0) to mean zero-init a structure
       // This could go in convert for assignment, but we only see this for
       // internal init code -- this also includes default init for _d_newarrayi...
-      if (expr->toInteger() == 0)
+      if (integer_zerop (expr))
 	{
 	  tree empty = build_constructor (target_type->toCtype(), NULL);
 	  TREE_CONSTANT (empty) = 1;
@@ -590,16 +593,7 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
       gcc_unreachable();
     }
 
-  exp_tree = expr->toElem (this);
-  return convertForAssignment (exp_tree, expr->type, target_type);
-}
-
-// Return expression EXPR, whose type has been convert from EXPR_TYPE to TARGET_TYPE.
-
-tree
-IRState::convertForAssignment (tree expr, Type *expr_type, Type *target_type)
-{
-  return convert_expr (expr, expr_type, target_type);
+  return convert_expr (expr, exp_type, target_type);
 }
 
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
@@ -624,39 +618,30 @@ IRState::convertForArgument (Expression *expr, Parameter *arg)
     }
 }
 
-// Return a TREE representation of EXPR implictly converted to
-// BOOLEAN_TYPE for use in conversion expressions.
-
-tree
-IRState::convertForCondition (Expression *expr)
-{
-  return convertForCondition (expr->toElem (this), expr->type);
-}
-
 // Perform default promotions for data used in expressions.
 // Arrays and functions are converted to pointers;
 // enumeral types or short or char, to int.
 // In addition, manifest constants symbols are replaced by their values.
 
-// Return truth-value conversion of expression EXPR from value type EXP_TYPE.
+// Return truth-value conversion of expression EXPR from value type TYPE.
 
 tree
-IRState::convertForCondition (tree exp_tree, Type *exp_type)
+convert_for_condition (tree expr, Type *type)
 {
   tree result = NULL_TREE;
   tree obj, func, tmp;
 
-  switch (exp_type->toBasetype()->ty)
+  switch (type->toBasetype()->ty)
     {
     case Taarray:
       // Shouldn't this be...
-      //  result = build_libcall (LIBCALL_AALEN, 1, &exp_tree);
-      result = component_ref (exp_tree, TYPE_FIELDS (TREE_TYPE (exp_tree)));
+      //  result = build_libcall (LIBCALL_AALEN, 1, &expr);
+      result = component_ref (expr, TYPE_FIELDS (TREE_TYPE (expr)));
       break;
 
     case Tarray:
       // Checks (length || ptr) (i.e ary !is null)
-      tmp = maybe_make_temp (exp_tree);
+      tmp = maybe_make_temp (expr);
       obj = delegate_object (tmp);
       func = delegate_method (tmp);
       if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
@@ -676,14 +661,15 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
     case Tdelegate:
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
-      if (D_METHOD_CALL_EXPR (exp_tree))
-	extract_from_method_call (exp_tree, obj, func);
+      if (D_METHOD_CALL_EXPR (expr))
+	extract_from_method_call (expr, obj, func);
       else
 	{
-	  tmp = maybe_make_temp (exp_tree);
+	  tmp = maybe_make_temp (expr);
 	  obj = delegate_object (tmp);
 	  func = delegate_method (tmp);
 	}
+
       obj = d_truthvalue_conversion (obj);
       func = d_truthvalue_conversion (func);
       // probably not worth using TRUTH_ORIF ...
@@ -691,7 +677,7 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
       break;
 
     default:
-      result = exp_tree;
+      result = expr;
       break;
     }
 
@@ -1760,59 +1746,60 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
 // else throws a RangeError exception.
 
 tree
-IRState::checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive)
+d_checked_index (Loc loc, tree index, tree upr, bool inclusive)
 {
-  if (!arrayBoundsCheck())
+  if (!array_bounds_check())
     return index;
 
   return build3 (COND_EXPR, TREE_TYPE (index),
-		 boundsCond (index, upper_bound, inclusive),
-		 index, assertCall (loc, LIBCALL_ARRAY_BOUNDS));
+		 d_bounds_condition (index, upr, inclusive),
+		 index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
 }
 
-// Builds the condition [INDEX < UPPER_BOUND] and optionally [INDEX >= 0]
+// Builds the condition [INDEX < UPR] and optionally [INDEX >= 0]
 // if INDEX is a signed type.  For use in array bound checking routines.
 // If INCLUSIVE, we allow equality to return true also.
-// INDEX must be wrapped in a SAVE_EXPR to prevent multiple evaluation...
+// INDEX must be wrapped in a SAVE_EXPR to prevent multiple evaluation.
 
 tree
-IRState::boundsCond (tree index, tree upper_bound, bool inclusive)
+d_bounds_condition (tree index, tree upr, bool inclusive)
 {
-  tree bound_check;
+  tree uindex = d_convert (d_unsigned_type (TREE_TYPE (index)), index);
 
-  bound_check = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node,
-			d_convert (d_unsigned_type (TREE_TYPE (index)), index),
-			upper_bound);
+  // Build condition to test that INDEX < UPR.
+  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node, uindex, upr);
 
+  // Build condition to test that INDEX >= 0.
   if (!TYPE_UNSIGNED (TREE_TYPE (index)))
-    {
-      bound_check = build2 (TRUTH_ANDIF_EXPR, boolean_type_node, bound_check,
-			    // %% conversions
-			    build2 (GE_EXPR, boolean_type_node, index, integer_zero_node));
-    }
-  return bound_check;
+    condition = build2 (TRUTH_ANDIF_EXPR, boolean_type_node, condition,
+			build2 (GE_EXPR, boolean_type_node, index, integer_zero_node));
+
+  return condition;
 }
 
 // Returns TRUE if array bounds checking code generation is turned on.
 
-int
-IRState::arrayBoundsCheck (void)
+bool
+array_bounds_check (void)
 {
   int result = global.params.useArrayBounds;
+
+  if (result == 2)
+    return true;
 
   if (result == 1)
     {
       // For D2 safe functions only
-      result = 0;
+      FuncDeclaration *func = cirstate->func;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
 	  if (tf->trust == TRUSTsafe)
-	    result = 1;
+	    return true;
 	}
     }
 
-  return result;
+  return false;
 }
 
 // Builds an array index expression from AE.  ASC may build a
@@ -1843,8 +1830,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 
       // If it's a static array and the index is constant,
       // the front end has already checked the bounds.
-      if (arrayBoundsCheck()
-	  && !(base_type_ty == Tsarray && e2->isConst()))
+      if (array_bounds_check() && !(base_type_ty == Tsarray && e2->isConst()))
 	{
 	  tree array_len_expr;
 	  // implement bounds check as a conditional expression:
@@ -1861,8 +1847,8 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 	  else
 	    array_len_expr = ((TypeSArray *) base_type)->dim->toElem (this);
 
-	  subscript_expr = checkedIndex (ae->loc, index_expr,
-					 array_len_expr, false);
+	  subscript_expr = d_checked_index (ae->loc, index_expr,
+					    array_len_expr, false);
 	}
 
       if (base_type_ty == Tarray)
@@ -2244,37 +2230,30 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   return maybe_compound_expr (saved_args, result);
 }
 
-// Builds a call to AssertError.
+// Builds a call to AssertError or AssertErrorMsg.
 
 tree
-IRState::assertCall (Loc loc, LibCall libcall)
-{
-  tree args[2];
-
-  args[0] = d_array_string (loc.filename ? loc.filename : "");
-  args[1] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
-
-  if (libcall == LIBCALL_ASSERT && this->func->isUnitTestDeclaration())
-    libcall = LIBCALL_UNITTEST;
-
-  return build_libcall (libcall, 2, args);
-}
-
-// Builds a call to AssertErrorMsg.
-
-tree
-IRState::assertCall (Loc loc, Expression *msg)
+d_assert_call (Loc loc, LibCall libcall, tree msg)
 {
   tree args[3];
+  int nargs;
 
-  args[0] = msg->toElem (this);
-  args[1] = d_array_string (loc.filename ? loc.filename : "");
-  args[2] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
+  if (msg != NULL)
+    {
+      args[0] = msg;
+      args[1] = d_array_string (loc.filename ? loc.filename : "");
+      args[2] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
+      nargs = 3;
+    }
+  else
+    {
+      args[0] = d_array_string (loc.filename ? loc.filename : "");
+      args[1] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
+      args[2] = NULL_TREE;
+      nargs = 2;
+    }
 
-  LibCall libcall = this->func->isUnitTestDeclaration() ?
-    LIBCALL_UNITTEST_MSG : LIBCALL_ASSERT_MSG;
-
-  return build_libcall (libcall, 3, args);
+  return build_libcall (libcall, nargs, args);
 }
 
 

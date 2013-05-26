@@ -91,7 +91,7 @@ void
 SwitchErrorStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
-  irs->addExp (irs->assertCall (loc, LIBCALL_SWITCH_ERROR));
+  irs->addExp (d_assert_call (loc, LIBCALL_SWITCH_ERROR));
 }
 
 void
@@ -233,8 +233,7 @@ ReturnStatement::toIR (IRState *irs)
 	ret_type = Type::tint32;
 
       tree result_decl = DECL_RESULT (irs->func->toSymbol()->Stree);
-      tree result_value = irs->convertForAssignment (exp->toElemDtor (irs),
-						     exp->type, ret_type);
+      tree result_value = convert_expr (exp->toElemDtor (irs), exp->type, ret_type);
       // %% convert for init -- if we were returning a reference,
       // would want to take the address...
       if (tf->isref)
@@ -385,8 +384,8 @@ IfStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
   irs->startScope();
-  irs->startCond (this, irs->convertForCondition (condition->toElemDtor (irs),
-						  condition->type));
+  irs->startCond (this, convert_for_condition (condition->toElemDtor (irs),
+					       condition->type));
   if (ifbody)
     ifbody->toIR (irs);
 
@@ -423,8 +422,8 @@ ForStatement::toIR (IRState *irs)
   if (condition)
     {
       irs->doLineNote (condition->loc);
-      irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
-						  condition->type));
+      irs->exitIfFalse (convert_for_condition (condition->toElemDtor (irs),
+					       condition->type));
     }
   if (body)
     body->toIR (irs);
@@ -447,8 +446,8 @@ DoStatement::toIR (IRState *irs)
     body->toIR (irs);
   irs->continueHere();
   irs->doLineNote (condition->loc);
-  irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
-					      condition->type));
+  irs->exitIfFalse (convert_for_condition (condition->toElemDtor (irs),
+					   condition->type));
   irs->endLoop();
 }
 
