@@ -205,6 +205,7 @@ extern tree get_array_length (tree exp, Type *exp_type);
 extern tree void_okay_p (tree t);
 
 // Various expressions
+extern tree build_array_index (tree ptr, tree index);
 extern tree build_offset_op (enum tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
 
@@ -220,6 +221,11 @@ extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
 extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
 
 extern bool needs_static_chain (FuncDeclaration *f);
+
+// Local variables
+extern tree build_local_var (tree type);
+extern tree create_temporary_var (tree type);
+extern tree maybe_temporary_var (tree exp, tree *out_var);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree maybe_make_temp (tree t);
@@ -393,11 +399,7 @@ struct IRState : IRBase
  public:
   // ** Local variables
   void emitLocalVar (VarDeclaration *v, bool no_init = false);
-  tree localVar (tree t_type);
-  tree localVar (Type *e_type);
 
-  tree exprVar (tree t_type);
-  tree maybeExprVar (tree exp, tree *out_var);
   void expandDecl (tree t_decl);
 
   tree var (Declaration *decl);
@@ -407,9 +409,6 @@ struct IRState : IRBase
   tree toDArray (Expression *exp);
 
   // ** Various expressions
-  tree pointerIntSum (Expression *ptr_exp, Expression *idx_exp);
-  tree pointerIntSum (tree ptr_node, tree idx_exp);
-
   static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
   tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
 
@@ -495,8 +494,8 @@ class AddrOfExpr
   AddrOfExpr (void)
   { this->var_ = NULL_TREE; }
 
-  tree set (IRState *irs, tree exp)
-  { return build_address (irs->maybeExprVar (exp, &this->var_)); }
+  tree set (tree exp)
+  { return build_address (maybe_temporary_var (exp, &this->var_)); }
 
   tree finish (tree e2)
   { return this->var_ ? bind_expr (this->var_, e2) : e2; }

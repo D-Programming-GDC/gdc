@@ -169,7 +169,7 @@ InExp::toElem (IRState *irs)
 
   args[0] = e2->toElem (irs);
   args[1] = irs->typeinfoReference (key_type);
-  args[2] = aoe.set (irs, convert_expr (e1->toElem (irs), e1->type, key_type));
+  args[2] = aoe.set (convert_expr (e1->toElem (irs), e1->type, key_type));
 
   return convert (type->toCtype(),
 		  aoe.finish (build_libcall (LIBCALL_AAINX, 3, args)));
@@ -516,7 +516,7 @@ CatExp::toElem (IRState *irs)
 	  if (d_types_compatible (oe->type->toBasetype(), etype->toBasetype()))
 	    {
 	      tree elem_var = NULL_TREE;
-	      tree expr = irs->maybeExprVar (oe->toElem (irs), &elem_var);
+	      tree expr = maybe_temporary_var (oe->toElem (irs), &elem_var);
 	      array_exp = d_array_value (oe->type->arrayOf()->toCtype(),
 					 size_int (1), build_address (expr));
 
@@ -744,7 +744,7 @@ CatAssignExp::toElem (IRState *irs)
       tree args[2];
       LibCall libcall;
 
-      args[0] = aoe.set (irs, e1->toElem (irs));
+      args[0] = aoe.set (e1->toElem (irs));
       args[1] = e2->toElem (irs);
       libcall = etype->ty == Tchar ? LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
 
@@ -785,7 +785,7 @@ CatAssignExp::toElem (IRState *irs)
 
 	  tree ptr_exp = d_array_ptr (result);
 	  ptr_exp = void_okay_p (ptr_exp);
-	  ptr_exp = irs->pointerIntSum (ptr_exp, off_exp);
+	  ptr_exp = build_array_index (ptr_exp, off_exp);
 
 	  // Evaluate expression before appending
 	  tree e2e = e2->toElem (irs);
@@ -877,7 +877,7 @@ AssignExp::toElem (IRState *irs)
 		  LibCall libcall;
 
 		  args[0] = d_array_ptr (t1);
-		  args[1] = aoe.set (irs, e2->toElem (irs));
+		  args[1] = aoe.set (e2->toElem (irs));
 		  args[2] = d_array_length (t1);
 		  args[3] = irs->typeinfoReference (etype);
 		  libcall = (op == TOKconstruct) ? LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
@@ -1036,7 +1036,7 @@ IndexExp::toElem (IRState *irs)
 
       args[1] = irs->typeinfoReference (key_type);
       args[2] = build_integer_cst (tb1->nextOf()->size(), Type::tsize_t->toCtype());
-      args[3] = aoe.set (irs, convert_expr (e2->toElem (irs), e2->type, key_type));
+      args[3] = aoe.set (convert_expr (e2->toElem (irs), e2->type, key_type));
 
       index = aoe.finish (build_libcall (libcall, 4, args, type->pointerTo()->toCtype()));
 
@@ -1128,7 +1128,7 @@ SliceExp::toElem (IRState *irs)
 	{
 	  lwr_tree = maybe_make_temp (lwr_tree);
 	  // Adjust .ptr offset
-	  final_ptr_expr = irs->pointerIntSum (void_okay_p (final_ptr_expr), lwr_tree);
+	  final_ptr_expr = build_array_index (void_okay_p (final_ptr_expr), lwr_tree);
 	  final_ptr_expr = build_nop (TREE_TYPE (orig_pointer_expr), final_ptr_expr);
 	}
       else
@@ -1290,7 +1290,7 @@ RemoveExp::toElem (IRState *irs)
 
       args[0] = array->toElem (irs);
       args[1] = irs->typeinfoReference (key_type);
-      args[2] = aoe.set (irs, convert_expr (index->toElem (irs), index->type, key_type));
+      args[2] = aoe.set (convert_expr (index->toElem (irs), index->type, key_type));
 
       return aoe.finish (build_libcall (LIBCALL_AADELX, 3, args));
     }
@@ -1799,7 +1799,7 @@ NewExp::toElem (IRState *irs)
       // Call allocator (custom allocator or _d_newclass).
       if (onstack)
 	{
-	  tree stack_var = irs->localVar (rec_type);
+	  tree stack_var = build_local_var (rec_type);
 	  irs->expandDecl (stack_var);
 	  new_call = build_address (stack_var);
 	  setup_exp = modify_expr (indirect_ref (rec_type, new_call),
@@ -1932,7 +1932,7 @@ NewExp::toElem (IRState *irs)
 	  // Multidimensional array allocations.
 	  vec<constructor_elt, va_gc> *elms = NULL;
 	  Type *telem = newtype->toBasetype();
-	  tree dims_var = irs->exprVar (d_array_type (Type::tsize_t, arguments->dim));
+	  tree dims_var = create_temporary_var (d_array_type (Type::tsize_t, arguments->dim));
 	  tree dims_init = build_constructor (TREE_TYPE (dims_var), NULL);
 	  tree args[3];
 
@@ -2152,8 +2152,8 @@ AssocArrayLiteralExp::toElem (IRState *irs)
   gcc_assert (keys != NULL);
   gcc_assert (values != NULL);
 
-  tree keys_var = irs->exprVar (d_array_type (index, keys->dim)); //?
-  tree vals_var = irs->exprVar (d_array_type (next, keys->dim));
+  tree keys_var = create_temporary_var (d_array_type (index, keys->dim));
+  tree vals_var = create_temporary_var (d_array_type (next, keys->dim));
   tree keys_ptr = build_nop (index->pointerTo()->toCtype(),
  			     build_address (keys_var));
   tree vals_ptr = build_nop (next->pointerTo()->toCtype(),
@@ -2238,7 +2238,7 @@ StructLiteralExp::toElem (IRState *irs)
 		      Type *ti = fld_type->nextOf();
 		      tree args[3];
 
-		      exp_tree = irs->localVar (exp_type);
+		      exp_tree = build_local_var (exp_type->toCtype());
 		      args[0] = irs->typeinfoReference (ti);
 		      args[1] = irs->toDArray (exp);
 		      args[2] = convert_expr (exp_tree, exp_type, ti->arrayOf());
@@ -2253,7 +2253,7 @@ StructLiteralExp::toElem (IRState *irs)
 	      else
 		{
 		  // %% Could use memset if is zero init...
-		  exp_tree = irs->localVar (fld_type);
+		  exp_tree = build_local_var (fld_type->toCtype());
 		  Type *etype = fld_type;
 		  while (etype->ty == Tsarray)
 		    etype = etype->nextOf();

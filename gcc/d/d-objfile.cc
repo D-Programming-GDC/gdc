@@ -1144,7 +1144,7 @@ FuncDeclaration::buildClosure (IRState *irs)
   tree closure_rec_type = build_frame_type (this);
   gcc_assert(COMPLETE_TYPE_P (closure_rec_type));
 
-  tree closure_ptr = irs->localVar (build_pointer_type (closure_rec_type));
+  tree closure_ptr = build_local_var (build_pointer_type (closure_rec_type));
   DECL_NAME (closure_ptr) = get_identifier ("__closptr");
   DECL_IGNORED_P (closure_ptr) = 0;
 

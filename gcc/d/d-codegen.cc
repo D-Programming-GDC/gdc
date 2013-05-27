@@ -150,29 +150,23 @@ IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
 // Return an unnamed local temporary of type TYPE.
 
 tree
-IRState::localVar (tree type)
+build_local_var (tree type)
 {
   tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+
   DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_IGNORED_P (decl) = 1;
   pushdecl (decl);
+
   return decl;
-}
-
-// Return an unnamed local temporary of type TYPE.
-
-tree
-IRState::localVar (Type *type)
-{
-  return localVar (type->toCtype());
 }
 
 // Return an undeclared local temporary of type TYPE
 // for use with BIND_EXPR.
 
 tree
-IRState::exprVar (tree type)
+create_temporary_var (tree type)
 {
   tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
   DECL_CONTEXT (decl) = current_function_decl;
@@ -186,7 +180,7 @@ IRState::exprVar (tree type)
 // with result of expression EXP.
 
 tree
-IRState::maybeExprVar (tree exp, tree *out_var)
+maybe_temporary_var (tree exp, tree *out_var)
 {
   tree t = exp;
 
@@ -196,7 +190,7 @@ IRState::maybeExprVar (tree exp, tree *out_var)
 
   if (!DECL_P (t) && !REFERENCE_CLASS_P (t))
     {
-      *out_var = exprVar (TREE_TYPE (exp));
+      *out_var = create_temporary_var (TREE_TYPE (exp));
       DECL_INITIAL (*out_var) = exp;
       return *out_var;
     }
@@ -1554,32 +1548,26 @@ build_deref (tree exp)
   return build1 (INDIRECT_REF, TREE_TYPE (type), exp);
 }
 
-// Builds pointer offset expression PTR_EXP[IDX_EXP]
+// Builds pointer offset expression PTR[INDEX]
 
 tree
-IRState::pointerIntSum (Expression *ptr_exp, Expression *idx_exp)
+build_array_index (tree ptr, tree index)
 {
-  return pointerIntSum (ptr_exp->toElem (this), idx_exp->toElem (this));
-}
-
-tree
-IRState::pointerIntSum (tree ptr_node, tree idx_exp)
-{
-  tree result_type_node = TREE_TYPE (ptr_node);
+  tree result_type_node = TREE_TYPE (ptr);
   tree elem_type_node = TREE_TYPE (result_type_node);
-  tree intop = idx_exp;
   tree size_exp;
 
   tree prod_result_type;
   prod_result_type = sizetype;
 
-  size_exp = size_in_bytes (elem_type_node); // array element size
+  // array element size
+  size_exp = size_in_bytes (elem_type_node);
 
   if (integer_zerop (size_exp))
     {
       // Test for void case...
       if (TYPE_MODE (elem_type_node) == TYPE_MODE (void_type_node))
-	intop = fold_convert (prod_result_type, intop);
+	index = fold_convert (prod_result_type, index);
       else
 	{
 	  // FIXME: should catch this earlier.
@@ -1590,30 +1578,30 @@ IRState::pointerIntSum (tree ptr_node, tree idx_exp)
   else if (integer_onep (size_exp))
     {
       // ...or byte case -- No need to multiply.
-      intop = fold_convert (prod_result_type, intop);
+      index = fold_convert (prod_result_type, index);
     }
   else
     {
-      if (TYPE_PRECISION (TREE_TYPE (intop)) != TYPE_PRECISION (sizetype)
-	  || TYPE_UNSIGNED (TREE_TYPE (intop)) != TYPE_UNSIGNED (sizetype))
+      if (TYPE_PRECISION (TREE_TYPE (index)) != TYPE_PRECISION (sizetype)
+	  || TYPE_UNSIGNED (TREE_TYPE (index)) != TYPE_UNSIGNED (sizetype))
 	{
 	  tree type = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
 						      TYPE_UNSIGNED (sizetype));
-	  intop = d_convert (type, intop);
+	  index = d_convert (type, index);
 	}
-      intop = fold_convert (prod_result_type,
-			    fold_build2 (MULT_EXPR, TREE_TYPE (size_exp), // the type here may be wrong %%
-					 intop, d_convert (TREE_TYPE (intop), size_exp)));
+      index = fold_convert (prod_result_type,
+			    fold_build2 (MULT_EXPR, TREE_TYPE (size_exp),
+					 index, d_convert (TREE_TYPE (index), size_exp)));
     }
 
   // backend will ICE otherwise
   if (error_mark_p (result_type_node))
     return result_type_node;
 
-  if (integer_zerop (intop))
-    return ptr_node;
+  if (integer_zerop (index))
+    return ptr;
 
-  return build2 (POINTER_PLUS_EXPR, result_type_node, ptr_node, intop);
+  return build2 (POINTER_PLUS_EXPR, result_type_node, ptr, index);
 }
 
 // Builds pointer offset expression *(PTR OP IDX)
@@ -1865,7 +1853,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
   ptr_exp = void_okay_p (ptr_exp);
   subscript_expr = asc->finish (subscript_expr);
   elem_ref = indirect_ref (TREE_TYPE (TREE_TYPE (ptr_exp)),
-			   pointerIntSum (ptr_exp, subscript_expr));
+			   build_array_index (ptr_exp, subscript_expr));
 
   return elem_ref;
 }
@@ -1876,11 +1864,11 @@ IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
 {
   startBindings();
 
-  tree count = localVar (Type::tsize_t);
+  tree count = build_local_var (size_type_node);
   DECL_INITIAL (count) = in_count;
   expandDecl (count);
 
-  tree ptr = localVar (TREE_TYPE (in_ptr));
+  tree ptr = build_local_var (TREE_TYPE (in_ptr));
   DECL_INITIAL (ptr) = in_ptr;
   expandDecl (ptr);
 
@@ -1893,7 +1881,7 @@ IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
     value = in_value;
   else
     {
-      value = localVar (TREE_TYPE (in_value));
+      value = build_local_var (TREE_TYPE (in_value));
       DECL_INITIAL (value) = in_value;
       expandDecl (value);
     }
@@ -2850,7 +2838,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  exp = build_integer_cst (tree_low_cst (TYPE_SIZE (type), 1), type);
 
 	  // op1[op2 / exp]
-	  op1 = pointerIntSum (op1, fold_build2 (TRUNC_DIV_EXPR, type, op2, exp));
+	  op1 = build_array_index (op1, fold_build2 (TRUNC_DIV_EXPR, type, op2, exp));
 	  op1 = indirect_ref (type, op1);
 
 	  // mask = 1 << (op2 % exp);
@@ -2874,7 +2862,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  if (intrinsic == INTRINSIC_BTR)
 	    op2 = build1 (BIT_NOT_EXPR, TREE_TYPE (op2), op2);
 
-	  val = localVar (TREE_TYPE (call_exp));
+	  val = build_local_var (TREE_TYPE (call_exp));
 	  exp = vmodify_expr (val, exp);
 	  op1 = vmodify_expr (op1, fold_build2 (code, TREE_TYPE (op1), op1, op2));
 	  return compound_expr (exp, compound_expr (op1, val));
@@ -2962,8 +2950,8 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 		 to outside this expression.  */
 	      tree ltype = TREE_TYPE (TYPE_FIELDS (type));
 	      tree ptype = TREE_TYPE (TREE_CHAIN (TYPE_FIELDS (type)));
-	      tree lvar = exprVar (ltype);
-	      tree pvar = exprVar (ptype);
+	      tree lvar = create_temporary_var (ltype);
+	      tree pvar = create_temporary_var (ptype);
 
 	      op1 = stabilize_reference (op1);
 
@@ -3514,7 +3502,7 @@ IRState::buildChain (FuncDeclaration *func)
   tree frame_rec_type = build_frame_type (func);
   gcc_assert(COMPLETE_TYPE_P (frame_rec_type));
 
-  tree frame_decl = localVar (frame_rec_type);
+  tree frame_decl = build_local_var (frame_rec_type);
   DECL_NAME (frame_decl) = get_identifier ("__frame");
   DECL_IGNORED_P (frame_decl) = 0;
   expandDecl (frame_decl);
