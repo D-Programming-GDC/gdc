@@ -42,7 +42,7 @@
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_flatten_attribute (tree *, tree, tree, int, bool *);
-static tree d_handle_transparent_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_target_attribute (tree *, tree, tree, int, bool *);
 
 
 static char lang_name[6] = "GNU D";
@@ -55,8 +55,8 @@ const struct attribute_spec d_attribute_table[] =
 				d_handle_forceinline_attribute, false },
     { "flatten",                0, 0, true,  false, false,
 				d_handle_flatten_attribute, false },
-    { "transparent",            0, 0, false, false, false,
-				d_handle_transparent_attribute, false },
+    { "target",                 1, -1, true, false, false,
+				d_handle_target_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1671,46 +1671,23 @@ d_handle_flatten_attribute (tree *node, tree name,
   return NULL_TREE;
 }
 
-/* Handle a "transparent" attribute.  */
+/* Handle a "target" attribute.  */
 
 static tree
-d_handle_transparent_attribute (tree *node, tree name,
-				tree args ATTRIBUTE_UNUSED,
-				int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
+d_handle_target_attribute (tree *node, tree name, tree args, int flags,
+			   bool *no_add_attrs)
 {
-  Type *t = build_dtype (*node);
-  *no_add_attrs = true;
+  Type *t = build_dtype (TREE_TYPE (*node));
 
-  if (t->ty != Tstruct)
+  /* Ensure we have a function type.  */
+  if (t->ty != Tfunction)
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
-      return NULL_TREE;
+      *no_add_attrs = true;
     }
+  else if (! targetm.target_option.valid_attribute_p (*node, name, args, flags))
+    *no_add_attrs = true;
 
-  AggregateDeclaration *ad = ((TypeStruct *) t)->sym;
-
-  if (!ad->isUnionDeclaration() || ad->fields.dim == 0)
-    {
-      StructDeclaration *sd = ad->isStructDeclaration();
-
-      if (sd && !sd->isPOD())
-	{
-	  warning (OPT_Wattributes, "Cannot apply %qE attribute on non-POD types", name);
-	  return NULL_TREE;
-	}
-      else if (ad->fields.dim == 0)
-	{
-	  warning (OPT_Wattributes, "Cannot apply %qE attribute on empty type", name);
-	  return NULL_TREE;
-	}
-      else if (ad->members->dim > 1)
-	{
-	  warning (OPT_Wattributes, "Cannot apply %qE attribute on types with more than one member", name);
-	  return NULL_TREE;
-	}
-    }
-
-  TYPE_TRANSPARENT_AGGR (*node) = 1;
   return NULL_TREE;
 }
 

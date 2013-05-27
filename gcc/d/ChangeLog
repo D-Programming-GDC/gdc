@@ -4,6 +4,8 @@
 	(IRState::exprVar): Rename to create_temporary_var.
 	(IRState::maybeExprvar): Rename to maybe_temporary_var.
 	(IRState::pointerIntSum): Rename to build_array_index.
+	* d-lang.cc(d_handle_target_attribute): New function to handle D
+	target attributes.
 
 2013-05-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
@@ -30,8 +32,6 @@
 	re-calculating.
 	* d-ctype.cc(TypeStruct::toCtype): Don't call decl_attribute on the
 	type twice.
-	* d-lang.cc(d_handle_transparent_attribute): New function to handle D
-	transparent type attributes.
 
 2013-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
