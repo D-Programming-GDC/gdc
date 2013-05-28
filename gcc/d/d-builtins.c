@@ -129,7 +129,8 @@ gcc_type_to_d_type (tree t)
 	{
 	  d = Type::basic[i];
 	  if (d && d->isintegral() && d->size() == type_size
-	      && (d->isunsigned() ? true : false) == is_unsigned)
+	      && (d->isunsigned() ? true : false) == is_unsigned
+	      && d->ty != Tint128 && d->ty != Tuns128)
 	    return d;
 	}
       break;

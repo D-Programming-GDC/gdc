@@ -15,6 +15,7 @@
 	(longdouble::isSignallingNan): Move to Port::isSignallingNan.
 	* d-builtins.c(gcc_d_backend_init): Rename to d_backend_init.
 	(gcc_d_backend_term): Rename to d_backend_term.
+	(gcc_type_to_d_type): Don't map 128bit integers to D front end.
 
 	* d-elem.cc(AssignExp::toElem): Remove handling of fillHoles, use
 	memset to implement (struct = 0).
