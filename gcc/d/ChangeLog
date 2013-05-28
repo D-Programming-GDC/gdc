@@ -16,6 +16,11 @@
 	* d-builtins.c(gcc_d_backend_init): Rename to d_backend_init.
 	(gcc_d_backend_term): Rename to d_backend_term.
 
+	* d-elem.cc(AssignExp::toElem): Remove handling of fillHoles, use
+	memset to implement (struct = 0).
+	(StructLiteralExp::toElem): Handle fillHoles here, creating a
+	temporary var that is zero init'd with memset and returned.
+
 2013-05-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::localVar): Rename to build_local_var.

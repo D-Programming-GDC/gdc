@@ -935,51 +935,48 @@ AssignExp::toElem (IRState *irs)
   if (op == TOKconstruct)
     {
       tree lhs = e1->toElem (irs);
-      tree rhs = convert_for_assignment (e2->toElem (irs), e2->type, e1->type);
       Type *tb1 = e1->type->toBasetype();
       tree result = NULL_TREE;
 
-      if (e1->op == TOKvar)
+      if (tb1->ty == Tstruct && e2->op == TOKint64)
 	{
-	  Declaration *decl = ((VarExp *) e1)->var;
-	  // Look for reference initializations
-	  if (decl->storage_class & (STCout | STCref))
+	  StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
+
+	  // D Front end uses IntegerExp (0) to mean zero-init a structure.
+	  // Use memset to fill struct.
+	  result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
+				      build_address (lhs), size_zero_node,
+				      size_int (sd->structsize));
+
+
+	  // Maybe set-up hidden pointer to outer scope context.
+	  if (sd->isNested())
 	    {
-	      // Want reference to lhs, not indirect ref.
-	      lhs = TREE_OPERAND (lhs, 0);
-	      rhs = build_address (rhs);
+	      tree vthis_field = sd->vthis->toSymbol()->Stree;
+	      tree vthis_value = irs->getVThis (sd, this);
+
+	      tree vthis_exp = modify_expr (component_ref (lhs, vthis_field), vthis_value);
+	      result = maybe_compound_expr (result, vthis_exp);
 	    }
 	}
-      result = modify_expr (type->toCtype(), lhs, rhs);
-
-      if (tb1->ty == Tstruct)
+      else
 	{
-	  if (e2->op == TOKstructliteral)
-	    {
-	      // Initialize all alignment 'holes' to zero.
-	      StructLiteralExp *sle = ((StructLiteralExp *) e2);
-	      if (sle->fillHoles)
-		{
-		  unsigned sz = sle->type->size();
-		  tree init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
-						 build_address (lhs), size_zero_node, size_int (sz));
-		  result = maybe_compound_expr (init, result);
-		}
-	    }
-	  else if (e2->op == TOKint64)
-	    {
-	      // Maybe set-up hidden pointer to outer scope context.
-	      StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
-	      if (sd->isNested())
-		{
-		  tree vthis_field = sd->vthis->toSymbol()->Stree;
-		  tree vthis_value = irs->getVThis (sd, this);
+	  tree rhs = convert_for_assignment (e2->toElem (irs), e2->type, e1->type);
 
-		  tree vthis_exp = modify_expr (component_ref (lhs, vthis_field), vthis_value);
-		  result = maybe_compound_expr (result, vthis_exp);
+	  if (e1->op == TOKvar)
+	    {
+	      Declaration *decl = ((VarExp *) e1)->var;
+	      // Look for reference initializations
+	      if (decl->storage_class & (STCout | STCref))
+		{
+		  // Want reference to lhs, not indirect ref.
+		  lhs = TREE_OPERAND (lhs, 0);
+		  rhs = build_address (rhs);
 		}
 	    }
+	  result = modify_expr (type->toCtype(), lhs, rhs);
 	}
+
       return result;
     }
 
@@ -2255,6 +2252,7 @@ StructLiteralExp::toElem (IRState *irs)
 		  // %% Could use memset if is zero init...
 		  exp_tree = build_local_var (fld_type->toCtype());
 		  Type *etype = fld_type;
+
 		  while (etype->ty == Tsarray)
 		    etype = etype->nextOf();
 
@@ -2301,7 +2299,20 @@ StructLiteralExp::toElem (IRState *irs)
     }
 
   tree ctor = build_constructor (type->toCtype(), ce);
-  return ctor;
+  tree var = build_local_var (TREE_TYPE (ctor));
+  tree init = NULL_TREE;
+
+  if (fillHoles)
+    {
+      // Initialize all alignment 'holes' to zero.
+      init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
+				build_address (var), size_zero_node,
+				size_int (sd->structsize));
+    }
+
+  init = maybe_compound_expr (init, modify_expr (var, ctor));
+
+  return compound_expr (init, var);
 }
 
 elem *
