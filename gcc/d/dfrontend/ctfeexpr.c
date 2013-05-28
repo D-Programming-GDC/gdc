@@ -1136,11 +1136,7 @@ int realCmp(TOK op, real_t r1, real_t r2)
     }
 #else
     // Don't rely on compiler, handle NAN arguments separately
-#ifdef IN_GCC
-    if (r1.isNan() || r2.isNan())           // if unordered
-#else
     if (Port::isNan(r1) || Port::isNan(r2)) // if unordered
-#endif
     {
         switch (op)
         {
@@ -1318,11 +1314,7 @@ int ctfeRawCmp(Loc loc, Expression *e1, Expression *e2)
 #if __DMC__
         return (r1 != r2);
 #else
-#ifdef IN_GCC
-        if (r1.isNan() || r2.isNan())           // if unordered
-#else
         if (Port::isNan(r1) || Port::isNan(r2)) // if unordered
-#endif
         {
             return 1;
         }

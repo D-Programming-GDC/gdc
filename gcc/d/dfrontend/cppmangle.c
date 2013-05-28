@@ -72,11 +72,11 @@ int CppMangleState::substitute(OutBuffer *buf, void *p)
     {
         if (p == components[i])
         {
-            /* Sequence is S_, S0_, .., S9_, SA_, ..., SZ_, S10_, ...
+            /* Sequence is S_, S1_, .., S9_, SA_, ..., SZ_, S10_, ...
              */
             buf->writeByte('S');
             if (i)
-                writeBase36(buf, i - 1);
+                writeBase36(buf, i);
             buf->writeByte('_');
             return 1;
         }
@@ -186,7 +186,6 @@ void Type::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     if (!cms->substitute(buf, this))
     {   assert(deco);
         buf->printf("u%d%s", strlen(deco), deco);
-        cms->store(this);
     }
 }
 
@@ -251,7 +250,6 @@ void TypeBasic::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     {
         if (cms->substitute(buf, this))
             return;
-        cms->store(this);
     }
 
     if (isConst())
@@ -277,7 +275,6 @@ void TypeSArray::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     if (!cms->substitute(buf, this))
     {   buf->printf("A%llu_", dim ? dim->toInteger() : 0);
         next->toCppMangle(buf, cms);
-        cms->store(this);
     }
 }
 
@@ -295,21 +292,25 @@ void TypeAArray::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 
 void TypePointer::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
-    if (!cms->substitute(buf, this))
+    if (!cms->exist(this))
     {   buf->writeByte('P');
         next->toCppMangle(buf, cms);
         cms->store(this);
     }
+    else
+        cms->substitute(buf, this);
 }
 
 
 void TypeReference::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
-    if (!cms->substitute(buf, this))
+    if (!cms->exist(this))
     {   buf->writeByte('R');
         next->toCppMangle(buf, cms);
         cms->store(this);
     }
+    else
+        cms->substitute(buf, this);
 }
 
 
@@ -336,7 +337,7 @@ void TypeFunction::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         TypeFunctions for non-static member functions, and non-static
         member functions of different classes.
      */
-    if (!cms->substitute(buf, this))
+    if (!cms->exist(this))
     {
         buf->writeByte('F');
         if (linkage == LINKc)
@@ -344,8 +345,9 @@ void TypeFunction::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         next->toCppMangle(buf, cms);
         Parameter::argsCppMangle(buf, cms, parameters, varargs);
         buf->writeByte('E');
-        cms->store(this);
     }
+    else
+        cms->substitute(buf, this);
 }
 
 
@@ -357,7 +359,7 @@ void TypeDelegate::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 
 void TypeStruct::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
-    if (!cms->substitute(buf, this))
+    if (!cms->exist(this))
     {
         if (isConst())
             buf->writeByte('K');
@@ -368,12 +370,14 @@ void TypeStruct::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         if (isConst())
             cms->store(this);
     }
+    else
+        cms->substitute(buf, this);
 }
 
 
 void TypeEnum::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
-    if (!cms->substitute(buf, this))
+    if (!cms->exist(this))
     {
         if (isConst())
             buf->writeByte('K');
@@ -384,6 +388,8 @@ void TypeEnum::toCppMangle(OutBuffer *buf, CppMangleState *cms)
         if (isConst())
             cms->store(this);
     }
+    else
+        cms->substitute(buf, this);
 }
 
 
@@ -399,7 +405,6 @@ void TypeClass::toCppMangle(OutBuffer *buf, CppMangleState *cms)
     {   buf->writeByte('P');
         if (!cms->substitute(buf, sym))
             cpp_mangle_name(buf, cms, sym);
-        cms->store(this);
     }
 }
 

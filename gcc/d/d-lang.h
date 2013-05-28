@@ -209,8 +209,8 @@ extern const struct attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);
 void d_init_builtins (void);
 void d_register_builtin_type (tree, const char *);
-void gcc_d_backend_init (void);
-void gcc_d_backend_term (void);
+void d_backend_init (void);
+void d_backend_term (void);
 
 void d_bi_init (void);
 void d_bi_builtin_func (tree);

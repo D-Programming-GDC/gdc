@@ -1,4 +1,4 @@
-// d-gcc-real.cc -- D frontend for GCC.
+// d-longdouble.cc -- D frontend for GCC.
 // Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
@@ -17,11 +17,9 @@
 
 #include "d-system.h"
 
-// d-real_t.cc
-
 #include "lexer.h"
 #include "mtype.h"
-#include "d-gcc-real.h"
+#include "longdouble.h"
 
 #include "d-lang.h"
 #include "d-codegen.h"
@@ -30,17 +28,17 @@
 // Return backend machine_mode for frontend mode MODE.
 
 static enum machine_mode
-machineMode (real_t::Mode mode)
+machineMode (longdouble::Mode mode)
 {
   switch (mode)
     {
-    case real_t::Float:
+    case longdouble::Float:
       return TYPE_MODE (float_type_node);
 
-    case real_t::Double:
+    case longdouble::Double:
       return TYPE_MODE (double_type_node);
 
-    case real_t::LongDouble:
+    case longdouble::LongDouble:
       return TYPE_MODE (long_double_type_node);
 
     default:
@@ -48,16 +46,16 @@ machineMode (real_t::Mode mode)
     }
 }
 
-real_properties real_limits[real_t::NumModes];
+real_properties real_limits[longdouble::NumModes];
 
 #define M_LOG10_2       0.30102999566398119521
 
 // Initialise D floating point property values.
 
 void
-real_t::init (void)
+longdouble::init (void)
 {
-  gcc_assert (sizeof (real_t) >= sizeof (REAL_VALUE_TYPE));
+  gcc_assert (sizeof (longdouble) >= sizeof (REAL_VALUE_TYPE));
 
   for (int i = (int) Float; i < (int) NumModes; i++)
     {
@@ -111,175 +109,143 @@ real_t::init (void)
     }
 }
 
-// Return a real_t value from string STR of type MODE.
+// Return a longdouble value from string STR of type MODE.
 
-real_t
-real_t::parse (const char *str, Mode mode)
+longdouble
+longdouble::parse (const char *str, Mode mode)
 {
-  real_t r;
+  longdouble r;
   real_from_string3 (&r.rv(), str, machineMode (mode));
   return r;
 }
 
-// Return NaN value for type MODE.
-
-real_t
-real_t::getnan (Mode mode)
-{
-  real_t r;
-  real_nan (&r.rv(), "", 1, machineMode (mode));
-  return r;
-}
-
-// Same as getnan, except the significand is forced to be a signalling NaN
-
-real_t
-real_t::getsnan (Mode mode)
-{
-  real_t r;
-  real_nan (&r.rv(), "", 0, machineMode (mode));
-  return r;
-}
-
-// Return value of +Inf.
-
-real_t
-real_t::getinfinity (void)
-{
-  real_t r;
-  real_inf (&r.rv());
-  return r;
-}
-
-// Return the hidden REAL_VALUE_TYPE from the real_t type.
+// Return the hidden REAL_VALUE_TYPE from the longdouble type.
 
 const REAL_VALUE_TYPE &
-real_t::rv (void) const
+longdouble::rv (void) const
 {
   const REAL_VALUE_TYPE *r = (const REAL_VALUE_TYPE *) &this->frv_;
   return *r;
 }
 
 REAL_VALUE_TYPE &
-real_t::rv (void)
+longdouble::rv (void)
 {
   REAL_VALUE_TYPE *r = (REAL_VALUE_TYPE *) &this->frv_;
   return *r;
 }
 
-// Construct a new real_t from real_t value R.
+// Construct a new longdouble from longdouble value R.
 
-real_t::real_t (const real_t& r)
+longdouble::longdouble (const longdouble& r)
 {
   rv() = r.rv();
 }
 
-// Construct a new real_t from REAL_VALUE_TYPE RV.
+// Construct a new longdouble from REAL_VALUE_TYPE RV.
 
-real_t::real_t (const REAL_VALUE_TYPE& rv)
+longdouble::longdouble (const REAL_VALUE_TYPE& rv)
 {
   real_convert (&this->rv(), TYPE_MODE (long_double_type_node), &rv);
 }
 
-// Construct a new real_t from int V.
+// Construct a new longdouble from int V.
 
-real_t::real_t (int v)
+longdouble::longdouble (int v)
 {
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (double_type_node));
 }
 
-// Construct a new real_t from uint64_t V.
+// Construct a new longdouble from uint64_t V.
 
-real_t::real_t (uint64_t v)
+longdouble::longdouble (uint64_t v)
 {
   REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, TYPE_MODE (long_double_type_node));
 }
 
-// Construct a new real_t from int64_t V.
+// Construct a new longdouble from int64_t V.
 
-real_t::real_t (int64_t v)
+longdouble::longdouble (int64_t v)
 {
   REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (long_double_type_node));
 }
 
-// Construct a new real_t from double D.
+// Construct a new longdouble from double D.
 
-real_t::real_t (double d)
+longdouble::longdouble (double d)
 {
   char buf[48];
   snprintf(buf, sizeof (buf), "%lf", d);
   real_from_string3 (&rv(), buf, TYPE_MODE (long_double_type_node));
 }
 
-// Overload assignment operator for real_t types.
+// Overload assignment operator for longdouble types.
 
-real_t &
-real_t::operator= (const real_t& r)
+longdouble &
+longdouble::operator= (const longdouble& r)
 {
   rv() = r.rv();
   return *this;
 }
 
-real_t &
-real_t::operator= (int v)
+longdouble &
+longdouble::operator= (int v)
 {
   REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (double_type_node));
   return *this;
 }
 
-// Overload numeric operators for real_t types.
+// Overload numeric operators for longdouble types.
 
-real_t
-real_t::operator+ (const real_t& r)
+longdouble
+longdouble::operator+ (const longdouble& r)
 {
   REAL_VALUE_TYPE x;
   REAL_ARITHMETIC (x, PLUS_EXPR, rv(), r.rv());
-  return real_t (x);
+  return longdouble (x);
 }
 
-real_t
-real_t::operator- (const real_t& r)
+longdouble
+longdouble::operator- (const longdouble& r)
 {
   REAL_VALUE_TYPE x;
   REAL_ARITHMETIC (x, MINUS_EXPR, rv(), r.rv());
-  return real_t (x);
+  return longdouble (x);
 }
 
-real_t
-real_t::operator- (void)
+longdouble
+longdouble::operator- (void)
 {
   REAL_VALUE_TYPE x = real_value_negate (&rv());
-  return real_t (x);
+  return longdouble (x);
 }
 
-real_t
-real_t::operator* (const real_t& r)
+longdouble
+longdouble::operator* (const longdouble& r)
 {
   REAL_VALUE_TYPE x;
   REAL_ARITHMETIC (x, MULT_EXPR, rv(), r.rv());
-  return real_t (x);
+  return longdouble (x);
 }
 
-real_t
-real_t::operator/ (const real_t& r)
+longdouble
+longdouble::operator/ (const longdouble& r)
 {
   REAL_VALUE_TYPE x;
   REAL_ARITHMETIC (x, RDIV_EXPR, rv(), r.rv());
-  return real_t (x);
+  return longdouble (x);
 }
 
-real_t
-real_t::operator% (const real_t& r)
+longdouble
+longdouble::operator% (const longdouble& r)
 {
   REAL_VALUE_TYPE q, x;
-  // %% inf cases..
 
-  // %% signal error?
   if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF (rv()))
     {
       REAL_VALUE_TYPE rvt;
       real_nan (&rvt, "", 1, TYPE_MODE (long_double_type_node));
-      return real_t (rvt);
+      return longdouble (rvt);
     }
 
   if (rv().cl == rvc_zero)
@@ -288,57 +254,57 @@ real_t::operator% (const real_t& r)
   if (REAL_VALUE_ISINF (r.rv()))
     return *this;
 
-  // %% need to check for NaN?
+  // Need to check for NaN?
   REAL_ARITHMETIC (q, RDIV_EXPR, rv(), r.rv());
   real_arithmetic (&q, FIX_TRUNC_EXPR, &q, NULL);
   REAL_ARITHMETIC (q, MULT_EXPR, q, r.rv());
   REAL_ARITHMETIC (x, MINUS_EXPR, rv(), q);
 
-  return real_t (x);
+  return longdouble (x);
 }
 
-// Overload equality operators for real_t types.
+// Overload equality operators for longdouble types.
 
 bool
-real_t::operator< (const real_t& r)
+longdouble::operator< (const longdouble& r)
 {
   return real_compare (LT_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator> (const real_t& r)
+longdouble::operator> (const longdouble& r)
 {
   return real_compare (GT_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator<= (const real_t& r)
+longdouble::operator<= (const longdouble& r)
 {
   return real_compare (LE_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator>= (const real_t& r)
+longdouble::operator>= (const longdouble& r)
 {
   return real_compare (GE_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator== (const real_t& r)
+longdouble::operator== (const longdouble& r)
 {
   return real_compare (EQ_EXPR, &rv(), &r.rv());
 }
 
 bool
-real_t::operator!= (const real_t& r)
+longdouble::operator!= (const longdouble& r)
 {
   return real_compare (NE_EXPR, &rv(), &r.rv());
 }
 
-// Return conversion of real_t value to uint64_t.
+// Return conversion of longdouble value to uint64_t.
 
 uint64_t
-real_t::toInt (void) const
+longdouble::toInt (void) const
 {
   HOST_WIDE_INT low, high;
   REAL_VALUE_TYPE r;
@@ -352,11 +318,11 @@ real_t::toInt (void) const
   return cst_to_hwi (double_int::from_pair (high, low));
 }
 
-// Return conversion of real_t value to uint64_t.
-// Value is converted from REAL_TYPE to INT_TYPE.
+// Return conversion of longdouble value to uint64_t.
+// Value is converted from real type RT to int type IT.
 
 uint64_t
-real_t::toInt (Type *real_type, Type *int_type) const
+longdouble::toInt (Type *rt, Type *it) const
 {
   tree t;
   double_int cst;
@@ -366,84 +332,61 @@ real_t::toInt (Type *real_type, Type *int_type) const
     cst.low = cst.high = 0;
   else
     {
-      t = fold_build1 (FIX_TRUNC_EXPR, int_type->toCtype(),
-		       build_float_cst (r, real_type->toBasetype()));
+      t = fold_build1 (FIX_TRUNC_EXPR, it->toCtype(),
+		       build_float_cst (r, rt->toBasetype()));
       // can't use tree_low_cst as it asserts !TREE_OVERFLOW
       cst = TREE_INT_CST (t);
     }
   return cst_to_hwi (cst);
 }
 
-// Returns TRUE if real_t value is zero.
+// Returns TRUE if longdouble value is zero.
 
 bool
-real_t::isZero (void)
+longdouble::isZero (void)
 {
   return rv().cl == rvc_zero;
 }
 
-// Returns TRUE if real_t value is negative.
+// Returns TRUE if longdouble value is negative.
 
 bool
-real_t::isNegative (void)
+longdouble::isNegative (void)
 {
   return REAL_VALUE_NEGATIVE (rv());
 }
 
-// Returns TRUE if real_t value is identical to R.
+// Returns TRUE if longdouble value is identical to R.
 
 bool
-real_t::isIdenticalTo (const real_t& r) const
+longdouble::isIdenticalTo (const longdouble& r) const
 {
   return REAL_VALUES_IDENTICAL (rv(), r.rv());
 }
 
-// Format real_t value into decimal string BUF of size BUF_SIZE.
+// Format longdouble value into decimal string BUF of size BUF_SIZE.
 
 int
-real_t::format (char *buf, unsigned buf_size) const
+longdouble::format (char *buf, unsigned buf_size) const
 {
   // %% restricting the precision of significant digits to 18.
   real_to_decimal (buf, &rv(), buf_size, 18, 1);
   return strlen (buf);
 }
 
-// Format real_t value into hex string BUF of size BUF_SIZE.
+// Format longdouble value into hex string BUF of size BUF_SIZE.
 
 int
-real_t::formatHex (char *buf, unsigned buf_size) const
+longdouble::formatHex (char *buf, unsigned buf_size) const
 {
   real_to_hexadecimal (buf, &rv(), buf_size, 0, 1);
   return strlen (buf);
 }
 
-// Returns TRUE if real_t value is +Inf.
-
-bool
-real_t::isInf (void)
-{
-  return REAL_VALUE_ISINF (rv());
-}
-
-// Returns TRUE if real_t value is NaN.
-
-bool
-real_t::isNan (void)
-{
-  return REAL_VALUE_ISNAN (rv());
-}
-
-bool
-real_t::isSignallingNan (void)
-{
-  // Same as isNan, but also check if is signalling.
-  return REAL_VALUE_ISNAN (rv()) && rv().signalling;
-}
-
-// Dump value of real_t for debugging purposes.
+// Dump value of longdouble for debugging purposes.
 
 void
-real_t::dump (void)
+longdouble::dump (void)
 {
   char buf[128];
   format (buf, sizeof (buf));

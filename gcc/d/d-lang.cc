@@ -26,7 +26,6 @@
 
 #include "d-lang.h"
 #include "d-codegen.h"
-#include "d-gcc-real.h"
 #include "d-confdefs.h"
 
 #include "root.h"
@@ -228,8 +227,11 @@ d_init (void)
   Id::initialize();
   Module::init();
   initPrecedence();
-  gcc_d_backend_init();
-  real_t::init();
+
+  d_backend_init();
+
+  longdouble::init();
+  Port::init();
 
 #ifndef TARGET_CPU_D_BUILTINS
 # define TARGET_CPU_D_BUILTINS()
@@ -1099,7 +1101,7 @@ d_parse_file (void)
   object_file->finish();
   output_module = NULL;
 
-  gcc_d_backend_term();
+  d_backend_term();
 }
 
 static tree

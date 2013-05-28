@@ -28,7 +28,7 @@
 #include "attrib.h" // for AttribDeclaration
 
 #include "template.h"
-//#include "port.h"
+#include "port.h"
 #include "ctfe.h"
 
 #ifdef IN_GCC

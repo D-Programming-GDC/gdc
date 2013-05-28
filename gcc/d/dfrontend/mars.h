@@ -295,62 +295,21 @@ struct Global
 
 extern Global global;
 
-#ifndef IN_GCC
 /* Set if Windows Structured Exception Handling C extensions are supported.
  * Apparently, VC has dropped support for these?
  */
 #define WINDOWS_SEH     _WIN32
 
 #include "longdouble.h"
-#endif
 
 #ifdef __DMC__
  #include  <complex.h>
  typedef _Complex long double complex_t;
 #else
- #ifndef IN_GCC
-  #include "complex_t.h"
- #endif
- #ifdef __APPLE__
-  //#include "complex.h"//This causes problems with include the c++ <complex> and not the C "complex.h"
- #endif
+ #include "complex_t.h"
 #endif
 
-// Be careful not to care about sign when using dinteger_t
-//typedef uint64_t integer_t;
-typedef uint64_t dinteger_t;    // use this instead of integer_t to
-                                // avoid conflicts with system #include's
-
-// Signed and unsigned variants
-typedef int64_t sinteger_t;
-typedef uint64_t uinteger_t;
-
-typedef int8_t                  d_int8;
-typedef uint8_t                 d_uns8;
-typedef int16_t                 d_int16;
-typedef uint16_t                d_uns16;
-typedef int32_t                 d_int32;
-typedef uint32_t                d_uns32;
-typedef int64_t                 d_int64;
-typedef uint64_t                d_uns64;
-
-typedef float                   d_float32;
-typedef double                  d_float64;
-#ifdef IN_GCC
-typedef long double             d_float80;
-#else
-typedef longdouble              d_float80;
-#endif
-
-typedef d_uns8                  d_char;
-typedef d_uns16                 d_wchar;
-typedef d_uns32                 d_dchar;
-
-#ifdef IN_GCC
-#include "d-gcc-real.h"
-#else
 typedef longdouble real_t;
-#endif
 
 // Modify OutBuffer::writewchar to write the correct size of wchar
 #if _WIN32
@@ -358,10 +317,6 @@ typedef longdouble real_t;
 #else
 // This needs a configuration test...
 #define writewchar write4
-#endif
-
-#ifdef IN_GCC
-#include "d-gcc-complex_t.h"
 #endif
 
 struct Module;

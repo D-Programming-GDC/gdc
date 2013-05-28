@@ -1,3 +1,21 @@
+2013-05-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-gcc-complex_t.h: Rename to complex_t.h.
+	* d-gcc-real.cc: Rename to d-longdouble.cc.
+	* d-gcc-real.h: Rename to longdouble.h
+	* d-port.cc: New source file to handle Port structure.
+	* gdc_alloca.h: Remove source.
+
+	* d-longdouble.cc(real_t): Rename to longdouble.
+	(longdouble::getnan): Move to Port::nan.
+	(longdouble::getsnan): Move to Port::snan.
+	(longdouble::getinfinity): Move to Port::infinity.
+	(longdouble::isInf): Move to Port::isInfinite.
+	(longdouble::isNan): Move to Port::isNan.
+	(longdouble::isSignallingNan): Move to Port::isSignallingNan.
+	* d-builtins.c(gcc_d_backend_init): Rename to d_backend_init.
+	(gcc_d_backend_term): Rename to d_backend_term.
+
 2013-05-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::localVar): Rename to build_local_var.

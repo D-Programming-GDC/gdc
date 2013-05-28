@@ -1769,7 +1769,7 @@ ignore_attribute (tree * ARG_UNUSED (node), tree ARG_UNUSED (name),
 /* Backend init.  */
 
 void
-gcc_d_backend_init (void)
+d_backend_init (void)
 {
   init_global_binding_level ();
 
@@ -1792,7 +1792,7 @@ gcc_d_backend_init (void)
 /* Backend term.  */
 
 void
-gcc_d_backend_term (void)
+d_backend_term (void)
 {
 }
 

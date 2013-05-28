@@ -12,12 +12,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#ifdef IN_GCC
-#include "gdc_alloca.h"
-#else
 #if __sun || _MSC_VER
 #include <alloca.h>
-#endif
 #endif
 
 #include "speller.h"

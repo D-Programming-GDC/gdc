@@ -1,4 +1,4 @@
-// d-gcc-complex_t.h -- D frontend for GCC.
+// complex_t.h -- D frontend for GCC.
 // Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
@@ -24,8 +24,8 @@
 
 struct complex_t
 {
-  real_t re;
-  real_t im;
+  longdouble re;
+  longdouble im;
 
   complex_t (void)
   {
@@ -33,13 +33,13 @@ struct complex_t
     this->im = 0;
   }
 
-  complex_t (real_t re)
+  complex_t (longdouble re)
   {
     this->re = re;
     this->im = 0;
   }
 
-  complex_t (real_t re, real_t im)
+  complex_t (longdouble re, longdouble im)
   {
     this->re = re;
     this->im = im;
@@ -74,9 +74,9 @@ struct complex_t
 
   complex_t operator/ (complex_t y)
   {
-    real_t abs_y_re = y.re.isNegative() ? -y.re : y.re;
-    real_t abs_y_im = y.im.isNegative() ? -y.im : y.im;
-    real_t r, den;
+    longdouble abs_y_re = y.re.isNegative() ? -y.re : y.re;
+    longdouble abs_y_im = y.im.isNegative() ? -y.im : y.im;
+    longdouble r, den;
 
     if (abs_y_re < abs_y_im)
       {
@@ -104,27 +104,27 @@ struct complex_t
   { return this->re != y.re || this->im != y.im; }
 };
 
-inline complex_t operator* (real_t x, complex_t y)
+inline complex_t operator* (longdouble x, complex_t y)
 {
   return complex_t (x) * y;
 }
 
-inline complex_t operator* (complex_t x, real_t y)
+inline complex_t operator* (complex_t x, longdouble y)
 {
   return x * complex_t (y);
 }
 
-inline complex_t operator/ (complex_t x, real_t y)
+inline complex_t operator/ (complex_t x, longdouble y)
 {
   return x / complex_t (y);
 }
 
-inline real_t creall (complex_t x)
+inline longdouble creall (complex_t x)
 {
   return x.re;
 }
 
-inline real_t cimagl (complex_t x)
+inline longdouble cimagl (complex_t x)
 {
   return x.im;
 }

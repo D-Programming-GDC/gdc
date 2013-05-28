@@ -14,11 +14,11 @@
 #include <math.h>
 #include <stdio.h>
 #include <assert.h>
+#include <float.h>
+
 #ifdef IN_GCC
 #include "d-confdefs.h"
 #else
-#include <float.h>
-
 #if _MSC_VER
 #include <malloc.h>
 #include <complex>
@@ -31,7 +31,7 @@
 #endif
 
 #include "rmem.h"
-//#include "port.h"
+#include "port.h"
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -2939,12 +2939,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat64:
             case Tfloat80:
             {
-#ifdef IN_GCC
-                // mode doesn't matter, will be converted in RealExp anyway
-                fvalue = real_t::getnan(real_t::LongDouble);
-#else
                 fvalue = Port::nan;
-#endif
                 goto Lfvalue;
             }
         }
@@ -2962,11 +2957,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat32:
             case Tfloat64:
             case Tfloat80:
-#ifdef IN_GCC
-                fvalue = real_t::getinfinity();
-#else
                 fvalue = Port::infinity;
-#endif
                 goto Lfvalue;
         }
     }
@@ -3206,7 +3197,7 @@ Expression *TypeBasic::defaultInit(Loc loc)
     assert(REALSIZE <= sizeof(snan));
     d_float80 fvalue = snan.ld;
 #else
-    real_t fvalue = real_t::getsnan(real_t::LongDouble);
+    real_t fvalue = Port::snan;
 #endif
 #endif
 
