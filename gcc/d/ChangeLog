@@ -1,3 +1,14 @@
+2013-05-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc: New source file to handle Target structure.
+
+	* d-builtins.c(d_bi_init): Remove function.
+	(d_gcc_type_align): Move to Target::alignsize.
+	(d_gcc_field_align): Move to Target::fieldalign.
+	(d_init_builtins): Build va_list type for D frontend.
+	* d-lang.cc(d_init): Use isLP64 to determine LP64 targets.
+	(d_add_builtin_version): Set is64bit if target is X86_64.
+
 2013-05-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-gcc-complex_t.h: Rename to complex_t.h.

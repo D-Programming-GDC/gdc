@@ -212,7 +212,6 @@ void d_register_builtin_type (tree, const char *);
 void d_backend_init (void);
 void d_backend_term (void);
 
-void d_bi_init (void);
 void d_bi_builtin_func (tree);
 void d_bi_builtin_type (tree);
 

@@ -19,12 +19,13 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-#include "module.h"
-#include "template.h"
-#include "init.h"
 #include "attrib.h"
 #include "enum.h"
 #include "id.h"
+#include "init.h"
+#include "module.h"
+#include "template.h"
+#include "dfrontend/target.h"
 
 
 ModuleInfo *ObjectFile::moduleInfo;
@@ -178,9 +179,8 @@ ClassDeclaration::toObjFile (int)
   type->getTypeInfo (NULL);
 
   // must be ClassInfo.size
-  size_t classinfo_size = global.params.is64bit ? CLASSINFO_SIZE_64 : CLASSINFO_SIZE;
-  size_t offset = classinfo_size;
-  if (classinfo->structsize != classinfo_size)
+  size_t offset = CLASSINFO_SIZE;
+  if (classinfo->structsize != offset)
     {
       error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
       gcc_unreachable();
@@ -310,7 +310,7 @@ Lhaspointers:
    *  void*[] vtbl;
    *  ptrdiff_t offset;
    */
-  offset += vtblInterfaces->dim * (4 * PTRSIZE);
+  offset += vtblInterfaces->dim * (4 * Target::ptrsize);
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {
       BaseClass *b = (*vtblInterfaces)[i];
@@ -329,7 +329,7 @@ Lhaspointers:
       // 'this' offset.
       dt_cons (&dt, size_int (b->offset));
 
-      offset += id->vtbl.dim * PTRSIZE;
+      offset += id->vtbl.dim * Target::ptrsize;
     }
 
   // Put out the (*vtblInterfaces)[].vtbl[]
@@ -341,7 +341,7 @@ Lhaspointers:
 
       if (id->vtblOffset())
 	{
-	  tree size = size_int (classinfo_size + i * (4 * PTRSIZE));
+	  tree size = size_int (CLASSINFO_SIZE + i * (4 * Target::ptrsize));
 	  dt_cons (&dt, build_offset (build_address (csym->Stree), size));
 	}
 
@@ -374,7 +374,7 @@ Lhaspointers:
 
 	      if (id->vtblOffset())
 		{
-		  tree size = size_int (classinfo_size + i * (4 * PTRSIZE));
+		  tree size = size_int (CLASSINFO_SIZE + i * (4 * Target::ptrsize));
 		  dt_cons (&dt, build_offset (build_address (cd->toSymbol()->Stree), size));
 		}
 
@@ -458,15 +458,15 @@ Lhaspointers:
 unsigned
 ClassDeclaration::baseVtblOffset (BaseClass *bc)
 {
-  unsigned csymoffset = global.params.is64bit ? CLASSINFO_SIZE_64 : CLASSINFO_SIZE;
-  csymoffset += vtblInterfaces->dim * (4 * PTRSIZE);
+  unsigned csymoffset = CLASSINFO_SIZE;
+  csymoffset += vtblInterfaces->dim * (4 * Target::ptrsize);
 
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {
       BaseClass *b = (*vtblInterfaces)[i];
       if (b == bc)
 	return csymoffset;
-      csymoffset += b->base->vtbl.dim * PTRSIZE;
+      csymoffset += b->base->vtbl.dim * Target::ptrsize;
     }
 
   // Put out the overriding interface vtbl[]s.
@@ -479,7 +479,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
 	    {
 	      if (bc == bs)
 		return csymoffset;
-	      csymoffset += bs->base->vtbl.dim * PTRSIZE;
+	      csymoffset += bs->base->vtbl.dim * Target::ptrsize;
 	    }
 	}
     }
@@ -552,7 +552,7 @@ InterfaceDeclaration::toObjFile (int)
   if (vtblInterfaces->dim)
     {
       // must be ClassInfo.size
-      size_t offset = global.params.is64bit ? CLASSINFO_SIZE_64 : CLASSINFO_SIZE;
+      size_t offset = CLASSINFO_SIZE;
       if (classinfo->structsize != offset)
 	{
 	  error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");

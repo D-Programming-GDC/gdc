@@ -17,18 +17,19 @@
 
 
 #include "d-system.h"
-
-#include "mars.h"
-#include "statement.h"
-#include "aggregate.h"
-#include "init.h"
-#include "attrib.h"
-#include "enum.h"
-#include "module.h"
-#include "id.h"
-
 #include "d-lang.h"
 #include "d-codegen.h"
+
+#include "mars.h"
+#include "aggregate.h"
+#include "attrib.h"
+#include "enum.h"
+#include "id.h"
+#include "init.h"
+#include "module.h"
+#include "statement.h"
+
+#include "dfrontend/target.h"
 
 // Construct a SymbolDeclaration, whose components are a symbol S
 // and a struct declaration DSYM.
@@ -822,7 +823,7 @@ intfc_binfo_for (tree tgt_binfo, ClassDeclaration *iface, unsigned& inout_offset
   // Want RECORD_TYPE, not REFERENCE_TYPE
   TREE_TYPE (binfo) = TREE_TYPE (iface->type->toCtype());
   BINFO_INHERITANCE_CHAIN (binfo) = tgt_binfo;
-  BINFO_OFFSET (binfo) = size_int (inout_offset * PTRSIZE);
+  BINFO_OFFSET (binfo) = size_int (inout_offset * Target::ptrsize);
 
   for (size_t i = 0; i < iface->baseclasses->dim; i++, inout_offset++)
     {

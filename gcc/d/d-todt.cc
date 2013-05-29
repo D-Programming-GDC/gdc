@@ -19,10 +19,11 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
-#include "scope.h"
 #include "enum.h"
 #include "id.h"
 #include "init.h"
+#include "scope.h"
+#include "dfrontend/target.h"
 
 typedef ArrayBase<dt_t> Dts;
 
@@ -740,7 +741,7 @@ ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
       offset = baseClass->structsize;
     }
   else
-    offset = PTRSIZE * 2;
+    offset = Target::ptrsize * 2;
 
   // Note equivalence of this loop to struct's
   for (size_t i = 0; i < fields.dim; i++)
@@ -799,7 +800,7 @@ ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
 	    }
 	}
 
-      offset = b->offset + PTRSIZE;
+      offset = b->offset + Target::ptrsize;
     }
 
   if (offset < structsize)
@@ -821,7 +822,7 @@ StructDeclaration::toDt (dt_t **pdt)
 
       if (v->storage_class & STCref)
 	{
-	  vsize = PTRSIZE;
+	  vsize = Target::ptrsize;
 	  if (v->offset >= offset)
 	    dt_zeropad (&dt, vsize);
 	}
@@ -973,7 +974,7 @@ verify_structsize (ClassDeclaration *typeclass, size_t expected)
 void
 TypeInfoDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfo, 2 * PTRSIZE);
+  verify_structsize (Type::typeinfo, 2 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -985,7 +986,7 @@ TypeInfoDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoConstDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfoconst, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfoconst, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1006,7 +1007,7 @@ TypeInfoConstDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoInvariantDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfoinvariant, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfoinvariant, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1027,7 +1028,7 @@ TypeInfoInvariantDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoSharedDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfoshared, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfoshared, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1048,7 +1049,7 @@ TypeInfoSharedDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoWildDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfowild, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfowild, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1070,7 +1071,7 @@ TypeInfoWildDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoTypedefDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfotypedef, 7 * PTRSIZE);
+  verify_structsize (Type::typeinfotypedef, 7 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1110,7 +1111,7 @@ TypeInfoTypedefDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoEnumDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfoenum, 7 * PTRSIZE);
+  verify_structsize (Type::typeinfoenum, 7 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1156,7 +1157,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoPointerDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfopointer, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfopointer, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1178,7 +1179,7 @@ TypeInfoPointerDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoArrayDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfoarray, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfoarray, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1200,7 +1201,7 @@ TypeInfoArrayDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoStaticArrayDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfostaticarray, 4 * PTRSIZE);
+  verify_structsize (Type::typeinfostaticarray, 4 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1226,7 +1227,7 @@ TypeInfoStaticArrayDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoVectorDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfovector, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfovector, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1248,7 +1249,7 @@ TypeInfoVectorDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
 {
-  verify_structsize (Type::typeinfoassociativearray, 5 * PTRSIZE);
+  verify_structsize (Type::typeinfoassociativearray, 5 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1280,7 +1281,7 @@ TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
 void
 TypeInfoFunctionDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfofunction, 5 * PTRSIZE);
+  verify_structsize (Type::typeinfofunction, 5 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1307,7 +1308,7 @@ TypeInfoFunctionDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoDelegateDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfodelegate, 5 * PTRSIZE);
+  verify_structsize (Type::typeinfodelegate, 5 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1335,9 +1336,9 @@ void
 TypeInfoStructDeclaration::toDt (dt_t **pdt)
 {
   if (global.params.is64bit)
-    verify_structsize (Type::typeinfostruct, 17 * PTRSIZE);
+    verify_structsize (Type::typeinfostruct, 17 * Target::ptrsize);
   else
-    verify_structsize (Type::typeinfostruct, 15 * PTRSIZE);
+    verify_structsize (Type::typeinfostruct, 15 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1480,7 +1481,6 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
   // uint m_align;
   dt_cons (pdt, size_int (tc->alignsize()));
 
-  // %% FIXME: is64bit does not mean X86_64.
   if (global.params.is64bit)
     {
       // TypeInfo m_arg1;
@@ -1525,7 +1525,7 @@ TypeInfoClassDeclaration::toDt (dt_t **)
 void
 TypeInfoInterfaceDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfointerface, 3 * PTRSIZE);
+  verify_structsize (Type::typeinfointerface, 3 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1548,7 +1548,7 @@ TypeInfoInterfaceDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoTupleDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfotypelist, 4 * PTRSIZE);
+  verify_structsize (Type::typeinfotypelist, 4 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;

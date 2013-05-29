@@ -22,6 +22,7 @@
 #include "template.h"
 #include "init.h"
 #include "id.h"
+#include "dfrontend/target.h"
 
 
 Module *cmodule;
@@ -1261,7 +1262,7 @@ get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type
       tree fntype = TREE_TYPE (func->toSymbol()->Stree);
 
       vtbl_ref = component_ref (vtbl_ref, field);
-      vtbl_ref = build_offset (vtbl_ref, size_int (PTRSIZE * func->vtblIndex));
+      vtbl_ref = build_offset (vtbl_ref, size_int (Target::ptrsize * func->vtblIndex));
       vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
 
       return build_method_call (vtbl_ref, thisexp, type);

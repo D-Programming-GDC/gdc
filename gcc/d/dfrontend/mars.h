@@ -148,6 +148,7 @@ struct Param
     char map;           // generate linker .map file
     char cpu;           // target CPU
     char is64bit;       // generate 64 bit code
+    char isLP64;        // generate code for LP64
     char isLinux;       // generate code for linux
     char isOSX;         // generate code for Mac OSX
     char isWindows;     // generate code for Windows

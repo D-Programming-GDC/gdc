@@ -26,9 +26,9 @@ longdouble Port::infinity;
 void
 Port::init (void)
 {
-  real_nan (&Port::nan.rv(), "", 1, TYPE_MODE (long_double_type_node));
-  real_nan (&Port::snan.rv(), "", 0, TYPE_MODE (long_double_type_node));
-  real_inf (&Port::infinity.rv());
+  real_nan (&nan.rv(), "", 1, TYPE_MODE (long_double_type_node));
+  real_nan (&snan.rv(), "", 0, TYPE_MODE (long_double_type_node));
+  real_inf (&infinity.rv());
 }
 
 // Returns TRUE if longdouble value R is NaN.

@@ -46,8 +46,8 @@ D_DMD_H := \
     d/dfrontend/parse.h d/dfrontend/port.h d/dfrontend/rmem.h \
     d/dfrontend/root.h d/dfrontend/scope.h d/dfrontend/speller.h \
     d/dfrontend/statement.h d/dfrontend/staticassert.h \
-    d/dfrontend/stringtable.h d/dfrontend/template.h d/dfrontend/utf.h \
-    d/dfrontend/version.h \
+    d/dfrontend/stringtable.h d/dfrontend/target.h d/dfrontend/template.h \
+    d/dfrontend/utf.h d/dfrontend/version.h \
     d/d-dmd-gcc.h d/complex_t.h d/longdouble.h \
     d/id.h d/verstr.h
 
@@ -129,7 +129,8 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-longdouble.glue.o \
               d/d-gt.cglue.o d/d-builtins.cglue.o d/d-asmstmt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
-              d/d-ir.glue.o d/d-typinf.glue.o d/d-port.glue.o
+              d/d-ir.glue.o d/d-typinf.glue.o d/d-port.glue.o \
+              d/d-target.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h

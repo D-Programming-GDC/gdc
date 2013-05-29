@@ -289,54 +289,6 @@ gcc_type_to_d_type (tree t)
   return NULL;
 }
 
-// Map D frontend type and sizes to GCC backend types.
-
-void
-d_bi_init (void)
-{
-  // The "standard" abi va_list is va_list_type_node.
-  // assumes va_list_type_node already built
-  Type::tvalist = gcc_type_to_d_type (va_list_type_node);
-  if (!Type::tvalist)
-    {
-      // fallback to array of byte of the same size?
-      error ("cannot represent built in va_list type in D");
-      gcc_unreachable();
-    }
-
-  // Need to avoid errors in gimplification, else, need to not ICE
-  // in targetm.canonical_va_list_type
-  Type::tvalist->ctype = va_list_type_node;
-  TYPE_LANG_SPECIFIC (va_list_type_node) =
-    build_d_type_lang_specific (Type::tvalist);
-
-  REALSIZE = int_size_in_bytes (long_double_type_node);
-  REALPAD = TYPE_PRECISION (long_double_type_node) / BITS_PER_UNIT;
-  REALALIGNSIZE = TYPE_ALIGN_UNIT (long_double_type_node);
-
-  /* Define what type to use for size_t.  */
-  size_t wordsize = int_size_in_bytes (size_type_node);
-  if (wordsize == 2)
-    Tsize_t = Tuns16;
-  else if (wordsize == 4)
-    Tsize_t = Tuns32;
-  else if (wordsize == 8)
-    Tsize_t = Tuns64;
-  else
-    gcc_unreachable();
-
-  if (POINTER_SIZE == 32)
-    Tptrdiff_t = Tint32;
-  else if (POINTER_SIZE == 64)
-    Tptrdiff_t = Tint64;
-  else
-    gcc_unreachable();
-
-  PTRSIZE = (POINTER_SIZE / BITS_PER_UNIT);
-
-  CLASSINFO_SIZE = 19 * PTRSIZE;
-  CLASSINFO_SIZE_64 = 19 * PTRSIZE;
-}
 
 // Hook from d_builtin_function.
 // Add DECL to builtin functions list for maybe processing later
@@ -726,53 +678,6 @@ d_gcc_magic_module (Module *m)
 	    d_gcc_magic_libbuiltins_module (m);
 	}
     }
-}
-
-// Return GCC align size for type T.
-
-int
-d_gcc_type_align (Type *t)
-{
-  gcc_assert (t->isTypeBasic());
-  return TYPE_ALIGN_UNIT (t->toCtype());
-}
-
-// Return GCC align size for field VAR.
-
-int
-d_gcc_field_align (VarDeclaration *var)
-{
-  tree field;
-
-  // %% stor-layout.c:
-  // Some targets (i.e. i386, VMS) limit struct field alignment
-  // to a lower boundary than alignment of variables unless
-  // it was overridden by attribute aligned.
-  if (var->alignment != (unsigned) STRUCTALIGN_DEFAULT)
-    return var->alignment;
-
-  // Work out the correct alignment for the field decl.
-  field = make_node (FIELD_DECL);
-  DECL_ALIGN (field) = var->type->alignsize() * BITS_PER_UNIT;
-
-#ifdef BIGGEST_FIELD_ALIGNMENT
-  DECL_ALIGN (field)
-    = MIN (DECL_ALIGN (field), (unsigned) BIGGEST_FIELD_ALIGNMENT);
-#endif
-#ifdef ADJUST_FIELD_ALIGN
-  if (var->type->isTypeBasic())
-    {
-      TREE_TYPE (field) = var->type->toCtype();
-      DECL_ALIGN (field)
-	= ADJUST_FIELD_ALIGN (field, DECL_ALIGN (field));
-    }
-#endif
-
-  // Also controlled by -fpack-struct=
-  if (maximum_field_alignment)
-    DECL_ALIGN (field) = MIN (DECL_ALIGN (field), maximum_field_alignment);
-
-  return DECL_ALIGN_UNIT (field);
 }
 
 // Convert backend evaluated CST to D Frontend Expressions for CTFE
@@ -1192,7 +1097,22 @@ d_init_builtins (void)
   tree va_list_ref_type_node;
   tree va_list_arg_type_node;
 
-  d_bi_init ();
+  // The "standard" abi va_list is va_list_type_node.
+  // assumes va_list_type_node already built
+  Type::tvalist = gcc_type_to_d_type (va_list_type_node);
+  if (!Type::tvalist)
+    {
+      // fallback to array of byte of the same size?
+      error ("cannot represent built in va_list type in D");
+      gcc_unreachable();
+    }
+
+  // Need to avoid errors in gimplification, else, need to not ICE
+  // in targetm.canonical_va_list_type
+  Type::tvalist->ctype = va_list_type_node;
+  TYPE_LANG_SPECIFIC (va_list_type_node) =
+    build_d_type_lang_specific (Type::tvalist);
+
 
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {

@@ -24,10 +24,7 @@
 #include "expression.h"
 #include "statement.h"
 #include "hdrgen.h"
-
-#ifdef IN_GCC
-#include "d-dmd-gcc.h"
-#endif
+#include "target.h"
 
 AggregateDeclaration *isAggregate(Type *t); // from opover.c
 
@@ -1832,11 +1829,7 @@ void VarDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset,
 #endif
 
     unsigned memsize      = t->size(loc);            // size of member
-#ifdef IN_GCC
-    unsigned memalignsize = d_gcc_field_align(this); // size of member for alignment purposes
-#else
-    unsigned memalignsize = t->alignsize();          // size of member for alignment purposes
-#endif
+    unsigned memalignsize = Target::fieldalign(t);   // size of member for alignment purposes
 
     offset = AggregateDeclaration::placeField(poffset, memsize, memalignsize, alignment,
                 &ad->structsize, &ad->alignsize, isunion);

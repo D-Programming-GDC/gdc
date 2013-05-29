@@ -28,15 +28,15 @@
 #include "d-codegen.h"
 #include "d-confdefs.h"
 
-#include "root.h"
-#include "mtype.h"
-#include "id.h"
-#include "module.h"
-#include "cond.h"
 #include "mars.h"
-
-#include "async.h"
+#include "mtype.h"
+#include "cond.h"
+#include "id.h"
 #include "json.h"
+#include "module.h"
+#include "root.h"
+#include "async.h"
+#include "dfrontend/target.h"
 
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
@@ -211,6 +211,8 @@ d_add_builtin_version(const char* ident)
     global.params.isOpenBSD = 1;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = 1;
+  else if (strcmp (ident, "X86_64") == 0)
+    global.params.is64bit = 1;
 
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
@@ -219,9 +221,7 @@ static bool
 d_init (void)
 {
   if(POINTER_SIZE == 64)
-    global.params.is64bit = 1;
-  else
-    global.params.is64bit = 0;
+    global.params.isLP64 = 1;
 
   Type::init();
   Id::initialize();
@@ -231,6 +231,7 @@ d_init (void)
   d_backend_init();
 
   longdouble::init();
+  Target::init();
   Port::init();
 
 #ifndef TARGET_CPU_D_BUILTINS
@@ -265,7 +266,7 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent ("GNU_InlineAsm");
 
   /* LP64 only means 64bit pointers in D. */
-  if (global.params.is64bit)
+  if (global.params.isLP64)
     VersionCondition::addPredefinedGlobalIdent ("D_LP64");
 
   /* Setting global.params.cov forces module info generation which is

@@ -16,10 +16,11 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "d-system.h"
-
-#include "enum.h"
 #include "d-lang.h"
 #include "d-codegen.h"
+
+#include "enum.h"
+#include "dfrontend/target.h"
 
 type *
 Type::toCtype (void)
@@ -648,7 +649,7 @@ TypeClass::toCtype (void)
 				 get_identifier ("_monitor"), ptr_type_node);
 	      DECL_FCONTEXT (decl) = obj_rec_type;
 	      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
-	      agg_layout.addField (decl, PTRSIZE);
+	      agg_layout.addField (decl, Target::ptrsize);
 
 	      // Add the fields of each base class
 	      agg_layout.go();
