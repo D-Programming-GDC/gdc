@@ -935,46 +935,36 @@ AssignExp::toElem (IRState *irs)
   if (op == TOKconstruct)
     {
       tree lhs = e1->toElem (irs);
+      tree rhs = convert_for_assignment (e2->toElem (irs), e2->type, e1->type);
       Type *tb1 = e1->type->toBasetype();
-      tree result = NULL_TREE;
+
+      if (e1->op == TOKvar)
+	{
+	  Declaration *decl = ((VarExp *) e1)->var;
+	  // Look for reference initializations
+	  if (decl->storage_class & (STCout | STCref))
+	    {
+	      // Want reference to lhs, not indirect ref.
+	      lhs = TREE_OPERAND (lhs, 0);
+	      rhs = build_address (rhs);
+	    }
+	}
+      
+      tree result = modify_expr (type->toCtype(), lhs, rhs);
 
       if (tb1->ty == Tstruct && e2->op == TOKint64)
 	{
+	  // Maybe set-up hidden pointer to outer scope context.
 	  StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
 
-	  // D Front end uses IntegerExp (0) to mean zero-init a structure.
-	  // Use memset to fill struct.
-	  result = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
-				      build_address (lhs), size_zero_node,
-				      size_int (sd->structsize));
-
-
-	  // Maybe set-up hidden pointer to outer scope context.
 	  if (sd->isNested())
 	    {
 	      tree vthis_field = sd->vthis->toSymbol()->Stree;
 	      tree vthis_value = irs->getVThis (sd, this);
 
 	      tree vthis_exp = modify_expr (component_ref (lhs, vthis_field), vthis_value);
-	      result = maybe_compound_expr (result, vthis_exp);
+	      result = compound_expr (result, vthis_exp);
 	    }
-	}
-      else
-	{
-	  tree rhs = convert_for_assignment (e2->toElem (irs), e2->type, e1->type);
-
-	  if (e1->op == TOKvar)
-	    {
-	      Declaration *decl = ((VarExp *) e1)->var;
-	      // Look for reference initializations
-	      if (decl->storage_class & (STCout | STCref))
-		{
-		  // Want reference to lhs, not indirect ref.
-		  lhs = TREE_OPERAND (lhs, 0);
-		  rhs = build_address (rhs);
-		}
-	    }
-	  result = modify_expr (type->toCtype(), lhs, rhs);
 	}
 
       return result;

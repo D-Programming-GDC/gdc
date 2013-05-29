@@ -564,20 +564,23 @@ convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
 	}
     }
 
-  if (!target_type->isscalar() && ebtype->isintegral())
+  if (tbtype->ty == Tstruct && ebtype->isintegral())
     {
-      // D Front end uses IntegerExp (0) to mean zero-init a structure
-      // This could go in convert for assignment, but we only see this for
-      // internal init code -- this also includes default init for _d_newarrayi...
+      // D Front end uses IntegerExp (0) to mean zero-init a structure.
+      // Use memset to fill struct.
       if (integer_zerop (expr))
 	{
-	  tree empty = build_constructor (target_type->toCtype(), NULL);
-	  TREE_CONSTANT (empty) = 1;
-	  TREE_STATIC (empty) = 1;
-	  return empty;
-	}
+	  StructDeclaration *sd = ((TypeStruct *) tbtype)->sym;
+	  tree var = build_local_var (target_type->toCtype());
 
-      gcc_unreachable();
+	  tree init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
+					 build_address (var), expr,
+					 size_int (sd->structsize));
+
+	  return compound_expr (init, var);
+	}
+      else
+	gcc_unreachable();
     }
 
   return convert_expr (expr, exp_type, target_type);
