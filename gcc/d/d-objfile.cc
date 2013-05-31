@@ -1748,7 +1748,7 @@ void
 ObjectFile::declareType (tree decl)
 {
   bool top_level = !DECL_CONTEXT (decl);
-  // okay to do this?
+
   rest_of_decl_compilation (decl, top_level, 0);
 }
 
@@ -1927,7 +1927,7 @@ ObjectFile::outputThunk (tree thunk_decl, tree target_decl, int offset)
 }
 
 FuncDeclaration *
-ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, bool public_fn)
+ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor)
 {
   if (!cmodule)
     cmodule = d_gcc_get_output_module();
@@ -1944,7 +1944,7 @@ ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, boo
   func->loc = Loc (cmodule, 1);
   func->linkage = func_type->linkage;
   func->parent = cmodule;
-  func->protection = public_fn ? PROTpublic : PROTprivate;
+  func->protection = PROTprivate;
 
   tree func_decl = func->toSymbol()->Stree;
   if (static_ctor)
@@ -1952,7 +1952,7 @@ ObjectFile::doSimpleFunction (const char *name, tree expr, bool static_ctor, boo
 
   // D static ctors, dtors, unittests, and the ModuleInfo chain function
   // are always private (see ObjectFile::setupSymbolStorage, default case)
-  TREE_PUBLIC (func_decl) = public_fn;
+  TREE_PUBLIC (func_decl) = 0;
   TREE_USED (func_decl) = 1;
 
   // %% maybe remove the identifier
@@ -1987,7 +1987,7 @@ ObjectFile::doFunctionToCallFunctions (const char *name, FuncDeclarations *funct
 	}
     }
   if (expr_list)
-    return doSimpleFunction (name, expr_list, false, false);
+    return doSimpleFunction (name, expr_list, false);
 
   return NULL;
 }
@@ -2013,8 +2013,8 @@ ObjectFile::doCtorFunction (const char *name, FuncDeclarations *functions, VarDe
 	{
 	  VarDeclaration *var = (*gates)[i];
 	  tree var_decl = var->toSymbol()->Stree;
-	  tree var_expr = build2 (MODIFY_EXPR, void_type_node, var_decl,
-				  build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node));
+	  tree value = build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node);
+	  tree var_expr = vmodify_expr (var_decl, value);
 	  expr_list = maybe_vcompound_expr (expr_list, var_expr);
 	}
       // Call Ctor Functions
@@ -2026,7 +2026,7 @@ ObjectFile::doCtorFunction (const char *name, FuncDeclarations *functions, VarDe
 	}
     }
   if (expr_list)
-    return doSimpleFunction (name, expr_list, false, false);
+    return doSimpleFunction (name, expr_list, false);
 
   return NULL;
 }
@@ -2054,7 +2054,7 @@ ObjectFile::doDtorFunction (const char *name, FuncDeclarations *functions)
 	}
     }
   if (expr_list)
-    return doSimpleFunction (name, expr_list, false, false);
+    return doSimpleFunction (name, expr_list, false);
 
   return NULL;
 }
@@ -2152,53 +2152,54 @@ void
 build_moduleinfo (Symbol *sym)
 {
   // Generate:
-  //   struct ModuleReference
-  //   {
-  //     void *next;
-  //     ModuleReference m;
-  //   }
+  //  struct ModuleReference
+  //  {
+  //    void *next;
+  //    ModuleReference m;
+  //  }
 
   // struct ModuleReference in moduleinit.d
-  Type *obj_type = build_object_type();
-  tree modref_type_node = build_two_field_type (ptr_type_node, obj_type->toCtype(),
+  Type *type = build_object_type();
+  tree tmodref = build_two_field_type (ptr_type_node, type->toCtype(),
 						NULL, "next", "mod");
-  tree fld_next = TYPE_FIELDS (modref_type_node);
-  tree fld_mod = TREE_CHAIN (fld_next);
+  tree nextfield = TYPE_FIELDS (tmodref);
+  tree modfield = TREE_CHAIN (nextfield);
 
   // extern (C) ModuleReference *_Dmodule_ref;
-  tree module_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
-				get_identifier ("_Dmodule_ref"),
-				build_pointer_type (modref_type_node));
-  d_keep (module_ref);
-  DECL_EXTERNAL (module_ref) = 1;
-  TREE_PUBLIC (module_ref) = 1;
+  tree dmodule_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
+				 get_identifier ("_Dmodule_ref"),
+				 build_pointer_type (tmodref));
+  d_keep (dmodule_ref);
+  DECL_EXTERNAL (dmodule_ref) = 1;
+  TREE_PUBLIC (dmodule_ref) = 1;
 
-  // private ModuleReference our_mod_ref = { next: null, mod: _ModuleInfo_xxx };
-  tree our_mod_ref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, modref_type_node);
-  d_keep (our_mod_ref);
-  object_file->giveDeclUniqueName (our_mod_ref, "__mod_ref");
-  object_file->setDeclLoc (our_mod_ref, cmodule);
+  // private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };
+  tree modref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, tmodref);
+  d_keep (modref);
+  object_file->giveDeclUniqueName (modref, "__mod_ref");
+  object_file->setDeclLoc (modref, cmodule);
 
-  DECL_ARTIFICIAL (our_mod_ref) = 1;
-  DECL_IGNORED_P (our_mod_ref) = 1;
-  TREE_PRIVATE (our_mod_ref) = 1;
-  TREE_STATIC (our_mod_ref) = 1;
+  DECL_ARTIFICIAL (modref) = 1;
+  DECL_IGNORED_P (modref) = 1;
+  TREE_PRIVATE (modref) = 1;
+  TREE_STATIC (modref) = 1;
 
   vec<constructor_elt, va_gc> *ce = NULL;
-  CONSTRUCTOR_APPEND_ELT (ce, fld_next, d_null_pointer);
-  CONSTRUCTOR_APPEND_ELT (ce, fld_mod, build_address (sym->Stree));
+  CONSTRUCTOR_APPEND_ELT (ce, nextfield, d_null_pointer);
+  CONSTRUCTOR_APPEND_ELT (ce, modfield, build_address (sym->Stree));
 
-  DECL_INITIAL (our_mod_ref) = build_constructor (modref_type_node, ce);
-  TREE_STATIC (DECL_INITIAL (our_mod_ref)) = 1;
-  rest_of_decl_compilation (our_mod_ref, 1, 0);
+  DECL_INITIAL (modref) = build_constructor (tmodref, ce);
+  TREE_STATIC (DECL_INITIAL (modref)) = 1;
+  rest_of_decl_compilation (modref, 1, 0);
 
-  // void ___modinit()  // a static constructor
-  // {
-  //   our_mod_ref.next = _Dmodule_ref;
-  //   _Dmodule_ref = &our_mod_ref;
-  // }
-  tree m1 = vmodify_expr (component_ref (our_mod_ref, fld_next), module_ref);
-  tree m2 = vmodify_expr (module_ref, build_address (our_mod_ref));
+  // Generate:
+  //  void ___modinit()  // a static constructor
+  //  {
+  //    modref.next = _Dmodule_ref;
+  //    _Dmodule_ref = &modref;
+  //  }
+  tree m1 = vmodify_expr (component_ref (modref, nextfield), dmodule_ref);
+  tree m2 = vmodify_expr (dmodule_ref, build_address (modref));
 
   object_file->doSimpleFunction ("*__modinit", vcompound_expr (m1, m2), true);
 }
@@ -2209,10 +2210,9 @@ build_moduleinfo (Symbol *sym)
 void
 build_tlssections (void)
 {
-  /* Generate:
-	__thread int _tlsstart = 3;
-	__thread int _tlsend;
-   */
+  // Generate:
+  //  __thread int _tlsstart = 3;
+  //  __thread int _tlsend;
   tree tlsstart, tlsend;
 
   tlsstart = build_decl (UNKNOWN_LOCATION, VAR_DECL,

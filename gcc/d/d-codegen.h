@@ -250,8 +250,6 @@ extern tree get_object_method (tree thisexp, Expression *objexp, FuncDeclaration
 
 // Built-in and Library functions.
 extern FuncDeclaration *get_libcall (LibCall libcall);
-// This does not perform conversions on the arguments.  This allows arbitrary data
-// to be passed through varargs without going through the usual conversions.
 extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type = NULL_TREE);
 extern tree maybe_expand_builtin (tree call_exp);
 
@@ -277,8 +275,17 @@ inline Type *
 build_dtype (tree t)
 {
   gcc_assert (TYPE_P (t));
-  struct lang_type *l = TYPE_LANG_SPECIFIC (t);
-  return l ? l->d_type : NULL;
+  struct lang_type *lt = TYPE_LANG_SPECIFIC (t);
+  return lt ? lt->d_type : NULL;
+}
+
+// Returns D Frontend decl for GCC decl T.
+inline Declaration *
+build_ddecl (tree t)
+{
+  gcc_assert (DECL_P (t));
+  struct lang_decl *ld = DECL_LANG_SPECIFIC (t);
+  return ld ? ld->d_decl : NULL;
 }
 
 // Returns D frontend type 'Object' which all classes are derived from.

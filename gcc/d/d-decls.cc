@@ -236,12 +236,9 @@ VarDeclaration::toSymbol (void)
 
       if (isDataseg() && isThreadlocal())
 	{
-	  if (TREE_CODE (var_decl) == VAR_DECL)
-	    {
-	      // %% If not marked, variable will be accessible
-	      // from multiple threads, which is not what we want.
-	      DECL_TLS_MODEL (var_decl) = decl_default_tls_model (var_decl);
-	    }
+	  // Tell backend this is a thread local decl.
+	  DECL_TLS_MODEL (var_decl) = decl_default_tls_model (var_decl);
+
 	  if (global.params.vtls)
 	    {
 	      char *p = loc.toChars();
@@ -556,8 +553,6 @@ FuncDeclaration::toThunkSymbol (int offset)
       DECL_DECLARED_INLINE_P (thunk_decl) = 0;
 
       DECL_VISIBILITY (thunk_decl) = DECL_VISIBILITY (target_func_decl);
-      DECL_VISIBILITY_SPECIFIED (thunk_decl)
-	= DECL_VISIBILITY_SPECIFIED (target_func_decl);
       /* Needed on some targets to avoid "causes a section type conflict".  */
       D_DECL_ONE_ONLY (thunk_decl) = D_DECL_ONE_ONLY (target_func_decl);
       DECL_COMDAT (thunk_decl) = DECL_COMDAT (target_func_decl);

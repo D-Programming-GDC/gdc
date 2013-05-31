@@ -2732,6 +2732,9 @@ get_libcall (LibCall libcall)
 // specified in as a tree array ARGS.  The caller can force the return type
 // of the call to FORCE_TYPE if the library call returns a generic value.
 
+// This does not perform conversions on the arguments.  This allows arbitrary data
+// to be passed through varargs without going through the usual conversions.
+
 tree
 build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
 {
@@ -2745,17 +2748,16 @@ build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
 
   tree result = d_build_call (type->toCtype(), callee, arg_list);
 
-  // for TYPE, assumes caller knows what it is doing %%
+  // Assumes caller knows what it is doing.
   if (force_type != NULL_TREE)
     return convert (force_type, result);
 
   return result;
 }
 
-// Build a call to CALLEE, passing ARGS as arguments.
-// The expected return type is TYPE.
-// TREE_SIDE_EFFECTS gets set depending on the const/pure attributes
-// of the funcion and the SIDE_EFFECTS flags of the arguments.
+// Build a call to CALLEE, passing ARGS as arguments.  The expected return
+// type is TYPE.  TREE_SIDE_EFFECTS gets set depending on the const/pure
+// attributes of the funcion and the SIDE_EFFECTS flags of the arguments.
 
 tree
 d_build_call (tree type, tree callee, tree args)

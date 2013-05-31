@@ -627,7 +627,6 @@ LTLIBOBJS
 LIBOBJS
 ZLIB_OBJS
 D_GC_MODULES
-D_GC_FLAGS
 srcdir
 DFLAGSX
 DFLAGS
@@ -745,7 +744,6 @@ enable_thread_lib
 enable_unix
 enable_druntime_gc
 with_system_zlib
-enable_proc_maps
 enable_phobos_config_dir
 with_cross_host
 '
@@ -1378,9 +1376,6 @@ Optional Features:
   --enable-unix           enables Unix runtime (default: yes, for Unix
                           targets)
   --enable-druntime-gc    enable D runtime garbage collector (default: yes)
-  --enable-proc-maps      use /proc/self/maps to find data segments for
-                          garbage collection (default: yes, if supported on
-                          target)
   --enable-phobos-config-dir=<dir>
                           use source file fragments in <dir>
 
@@ -4208,21 +4203,6 @@ else
 fi
 
 
-# Check whether --enable-proc-maps was given.
-if test "${enable_proc_maps+set}" = set; then :
-  enableval=$enable_proc_maps; case "${enableval}" in
-yes) echo 'TODO: If cross, warn that there is no check that this works'
-     ;;
-auto|no)
-     ;;
-*)   as_fn_error $? "--enable-proc-maps argument must be \"yes\", \"no\", or \"auto\"" "$LINENO" 5
-     ;;
-esac
-else
-  enable_proc_maps=auto
-fi
-
-
 # Check whether --enable-phobos-config-dir was given.
 if test "${enable_phobos_config_dir+set}" = set; then :
   enableval=$enable_phobos_config_dir; if test -z "${enableval}"; then
@@ -5339,163 +5319,16 @@ done
 
 
 
-# Cross stuff
-# if test -n "$d_cross_comp"; then
-#
-# fi
 
 # Garbage collection configuration
 
 D_GC_MODULES=
-D_GC_FLAGS=
 
 if test "$enable_druntime_gc" = "yes"; then
     D_GC_MODULES="gc/gc.o gc/gcalloc.o gc/gcbits.o gc/gcstats.o gc/gcx.o"
 else
     D_GC_MODULES="gcstub/gc.o"
 fi
-
-case "$target_os" in
-  mingw*)
-	    need_to_cfgr_gc=''
-	    ;;
-  *)        if test "$with_newlib"; then
-				D_GC_FLAGS='-fversion=GC_Use_Stack_Guess -fversion=GC_Use_Alloc_Malloc'
-	    else
-		need_to_cfgr_gc=yes
-	    fi
-	    ;;
-esac
-
-if test "$need_to_cfgr_gc" = yes; then
-
-
-
-d_gc_alloc=
-d_gc_stack=
-d_gc_data=
-
-case "$d_target_os" in
-  aix*)     d_gc_data="$d_gc_data GC_Use_Data_Fixed"
-	    ;;
-  cygwin*)  d_gc_data="$d_gc_data GC_Use_Data_Fixed"
-	    ;;
-  darwin*)  D_GC_MODULES="$D_GC_MODULES rt/memory_osx.o"
-	    d_gc_stack=GC_Use_Stack_Fixed
-	    d_gc_data="$d_gc_data GC_Use_Data_Dyld"
-	    ;;
-  freebsd*|k*bsd*-gnu)
-	    d_gc_stack=GC_Use_Stack_FreeBSD
-	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
-	    	    ;;
-  linux*)
-  	    #d_gc_stack=GC_Use_Stack_Proc_Stat
-	    d_gc_data="$d_gc_data GC_Use_Data_Fixed"
-	    #have_proc_maps=1
-	    ;;
-  skyos*)   d_gc_data="$d_gc_data GC_Use_Data_Fixed"
-	    ;;
-  *)                    ;;
-esac
-
-if test -z "$d_gc_alloc"; then
-    ac_fn_c_check_func "$LINENO" "mmap" "ac_cv_func_mmap"
-if test "x$ac_cv_func_mmap" = xyes; then :
-  d_gc_alloc=GC_Use_Alloc_MMap
-fi
-
-fi
-if test -z "$d_gc_alloc"; then
-    ac_fn_c_check_func "$LINENO" "valloc" "ac_cv_func_valloc"
-if test "x$ac_cv_func_valloc" = xyes; then :
-  d_gc_alloc=GC_Use_Alloc_Valloc
-fi
-
-fi
-if test -z "$d_gc_alloc"; then
-    # Use malloc as a fallback
-    d_gc_alloc=GC_Use_Alloc_Malloc
-fi
-#if test -z "$d_gc_alloc"; then
-#    AC_MSG_ERROR([No usable memory allocation routine])
-#fi
-
-if test -z "$d_gc_stack"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __libc_stack_end" >&5
-$as_echo_n "checking for __libc_stack_end... " >&6; }
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-
-	extern long __libc_stack_end;
-	return __libc_stack_end == 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-       d_gc_stack=GC_Use_Stack_GLibC
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-fi
-if test -z "$d_gc_stack"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __get_stack_base" >&5
-$as_echo_n "checking for __get_stack_base... " >&6; }
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-
-	int stack_size;
-	extern void*  __get_stack_base(int  *p_stack_size);
-	return __get_stack_base(&stack_size) == 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-       d_gc_stack=GC_Use_Stack_Bionic
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-fi
-if test -z "$d_gc_stack"; then
-    as_fn_error $? "No usable stack origin information" "$LINENO" 5
-fi
-
-if test -n "$have_proc_maps" && test "$enable_proc_maps" = auto; then
-    enable_proc_maps=yes
-fi
-if test "$enable_proc_maps" = yes; then
-    d_gc_data="$d_gc_data GC_Use_Data_Proc_Maps"
-fi
-if test -z "$d_gc_data"; then
-    as_fn_error $? "No usable data segment information" "$LINENO" 5
-fi
-
-f="-fversion=$d_gc_alloc -fversion=$d_gc_stack"
-for m in $d_gc_data; do f="$f -fversion=$m"; done
-D_GC_FLAGS=$f
-
-
-fi
-
 
 
 

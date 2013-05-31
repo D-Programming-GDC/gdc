@@ -586,7 +586,7 @@ d_post_options (const char ** fn)
 
 /* wrapup_global_declaration needs to be called or functions will not
    be emitted. */
-Array globalDeclarations;
+static Array globalDeclarations;
 
 void
 d_add_global_declaration (tree decl)

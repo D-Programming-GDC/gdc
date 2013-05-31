@@ -21,7 +21,7 @@ ACLOCAL_AMFLAGS = -I. -I..
 
 OUR_CFLAGS=@DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
 D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -fproperty -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
-ALL_DFLAGS=$(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+ALL_DFLAGS=$(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -46,7 +46,7 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
+	$(GDC) -o $@ $(DFLAGSX) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
 	cp $< $@

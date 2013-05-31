@@ -62,10 +62,14 @@ struct Symbol : Object
 
   dt_t *Sdt;
 
-  // Specific to GNU backend
+  // Our GNU backend tree for the symbol.
   tree Stree;
-  tree ScontextDecl; // The DECL_CONTEXT to use for child declarations, but see d_decl_context
-  tree SframeField;  // FIELD_DECL in frame struct that this variable is allocated in
+
+  // The DECL_CONTEXT to use for child declarations.
+  tree ScontextDecl;
+
+  // FIELD_DECL in frame struct that this variable is allocated in.
+  tree SframeField;
 
   // For FuncDeclarations:
   Thunks thunks;
@@ -177,12 +181,12 @@ struct ObjectFile
   // Can't use VAR_DECLs for the DECL_INITIAL of static varibles or in CONSTRUCTORSs
   static tree stripVarDecl (tree value);
 
-  static FuncDeclaration *doSimpleFunction (const char *name, tree expr, bool static_ctor, bool public_fn = false);
+  static FuncDeclaration *doSimpleFunction (const char *name, tree expr, bool static_ctor);
   static FuncDeclaration *doFunctionToCallFunctions (const char *name, FuncDeclarations *functions, bool force_and_public = false);
   static FuncDeclaration *doCtorFunction (const char *name, FuncDeclarations *functions, VarDeclarations *gates);
   static FuncDeclaration *doDtorFunction (const char *name, FuncDeclarations *functions);
   static FuncDeclaration *doUnittestFunction (const char *name, FuncDeclarations *functions);
-
+  
   // ** Module info.  Assuming only one module per run of the compiler.
 
   static ModuleInfo *moduleInfo; // of ModuleInfo *

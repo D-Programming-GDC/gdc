@@ -21,7 +21,7 @@ ACLOCAL_AMFLAGS = -I . -I ..
 
 OUR_CFLAGS=@DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
 D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) -I ./$(host_alias) -I .
-ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -49,7 +49,7 @@ $(IMPORT)/%.di: %.d $(IMPORT)
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
+	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
 	cp $< $@
