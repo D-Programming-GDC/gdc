@@ -2706,6 +2706,22 @@ private:
                  and RAX, 0x03D;
             }
         }
+        else
+        version (GNU)
+        {
+            uint result;
+            version (X86) asm
+            {
+                "fstsw %%ax; andl $0x03D, %%eax;" : "=a" result;
+            }
+            else version (X86_64) asm
+            {
+                "fstsw %%ax; andq $0x03D, %%rax;" : "=a" result;
+            }
+            else
+                assert(0, "Not yet supported");
+            return result;
+        }
         else version (SPARC)
         {
            /*
@@ -2730,6 +2746,20 @@ private:
             {
                 fnclex;
             }
+        }
+        else
+        version (GNU)
+        {
+            version (X86) asm
+            {
+                "fnclex;";
+            }
+            else version (X86_64) asm
+            {
+                "fnclex;";
+            }
+            else
+                assert(0, "Not yet supported");
         }
         else
         {
@@ -2912,6 +2942,19 @@ private:
                 fclex;
             }
         }
+        else version (GNU)
+        {
+            version (X86) asm
+            {
+                "fclex;";
+            }
+            else version (X86_64) asm
+            {
+                "fclex;";
+            }
+            else
+                assert(0, "Not yet supported");
+        }
         else
             assert(0, "Not yet supported");
     }
@@ -2941,16 +2984,26 @@ private:
             return cont;
         }
         else
-        version (ARM)
+        version (GNU)
         {
             short cont;
-            asm
+            version (X86) asm
+            {
+                "xor %%eax, %%eax; fstcw %[cw];" : [cw] "=m" cont :: "eax";
+            }
+            else version (X86_64) asm
+            {
+                "xor %%rax, %%rax; fstcw %[cw];" : [cw] "=m" cont :: "rax";
+            }
+            else version (ARM) asm
             {
                 "mrc p10, 7, %[cw], cr1, cr0, 0"
                 :
                 [cw] "=r" cont
                 ;
             }
+            else
+                assert(0, "Not yet supported");
             return cont;
         }
         else
@@ -2982,9 +3035,25 @@ private:
                 }
             }
         }
-        else version (ARM)
+        else version (GNU)
         {
-            asm
+            version (X86) asm
+            {
+                "fclex; fldcw %[cw]"
+                :
+                :
+                [cw] "m" newState
+                ;
+            }
+            else version (X86_64) asm
+            {
+                "fclex; fldcw %[cw]"
+                :
+                :
+                [cw] "m" newState
+                ;
+            }
+            else version (ARM) asm
             {
                 "mcr p10, 7, %[cw], cr1, cr0, 0"
                 :
@@ -2992,6 +3061,8 @@ private:
                 [cw] "r" newState
                 ;
             }
+            else
+                assert(0, "Not yet supported");
         }
         else
             assert(0, "Not yet supported");
