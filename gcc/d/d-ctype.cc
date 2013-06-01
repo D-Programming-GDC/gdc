@@ -370,8 +370,15 @@ TypeFunction::toCtype (void)
 	  // Function type can be reference by parameters, etc.  Set ctype earlier?
 	  ctype = build_function_type (ret_type, type_list);
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
-
 	  d_keep (ctype);
+
+	  if (next->toBasetype()->ty == Tstruct)
+	    {
+	      // Non-POD structs must return in memory.
+	      TypeStruct *ts = (TypeStruct *) next->toBasetype();
+	      if (!ts->sym->isPOD())
+		TREE_ADDRESSABLE (ctype) = 1;
+	    }
 
 	  switch (linkage)
 	    {

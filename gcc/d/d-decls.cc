@@ -397,6 +397,7 @@ FuncDeclaration::toSymbol (void)
 	    {
 	      TYPE_ATTRIBUTES (fntype) = TYPE_ATTRIBUTES (TREE_TYPE (fndecl));
 	      TYPE_LANG_SPECIFIC (fntype) = TYPE_LANG_SPECIFIC (TREE_TYPE (fndecl));
+	      TREE_ADDRESSABLE (fntype) = TREE_ADDRESSABLE (TREE_TYPE (fndecl));
 	      TREE_TYPE (fndecl) = fntype;
 	      d_keep (fntype);
 	    }

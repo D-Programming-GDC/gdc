@@ -7,6 +7,10 @@
 	(FuncDeclaration::toObjFile): Set-up function for NRVO.
 	(build_tlssections): Align _tlsstart and _tlsend symbols to target
 	address size.
+	* d-ctype(TypeFunction::toSymbol): Mark functions returning non-POD
+	structs as TREE_ADDRESSABLE to force return in memory.
+	* d-decls.cc(FuncDeclaration::toSymbol): Propagate TREE_ADDRESSABLE
+	from the original function type.
 
 2013-05-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
