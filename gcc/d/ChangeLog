@@ -1,3 +1,8 @@
+2013-06-01  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-codegen.cc(maybe_set_builtin_frontend): Check parameter and
+	return types of intrinsics.
+
 2013-06-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::var): Handle variables used for NRVO.

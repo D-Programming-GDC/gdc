@@ -3096,7 +3096,18 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
   else
     {
       // Check if it's a front-end builtin.
+      static const char FeZe [] = "FNaNbNfeZe";      // @safe pure nothrow real function(real)
+      static const char FeZe2[] = "FNaNbNeeZe";      // @trusted pure nothrow real function(real)
+      static const char FuintZint[] = "FNaNbNfkZi";  // @safe pure nothrow int function(uint)
+      static const char FuintZuint[] = "FNaNbNfkZk"; // @safe pure nothrow uint function(uint)
+      static const char FulongZint[] = "FNaNbNfmZi"; // @safe pure nothrow int function(uint)
+      static const char FrealZlong [] = "FNaNbNfeZl";       // @safe pure nothrow long function(real)
+      static const char FlongplongZint [] = "FNaNbNfPmmZi"; // @safe pure nothrow int function(long*, long)
+      static const char FintpintZint [] = "FNaNbNfPkkZi";   // @safe pure nothrow int function(int*, int)
+      static const char FrealintZint [] = "FNaNbNfeiZe";    // @safe pure nothrow real function(real, int)
+
       Dsymbol *dsym = decl->toParent();
+      TypeFunction *ftype = (TypeFunction *) (decl->tintro ? decl->tintro : decl->type);
       Module *mod;
 
       if (dsym == NULL)
@@ -3116,6 +3127,27 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 
 	  if (i == -1)
 	    return;
+
+	  switch (i)
+	    {
+	    case 0:
+	    case 1:
+	      if (!(strcmp (ftype->deco, FuintZint) == 0 || strcmp (ftype->deco, FulongZint) == 0))
+		return;
+	      break;
+
+	    case 2:
+	      if (!(strcmp (ftype->deco, FuintZuint) == 0))
+		return;
+	      break;
+
+	    case 3:
+	    case 4:
+	    case 5:
+	      if (!(strcmp (ftype->deco, FlongplongZint) == 0 || strcmp (ftype->deco, FintpintZint) == 0))
+		return;
+	      break;
+	    }
 
 	  // Make sure 'i' is within the range we require.
 	  gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
@@ -3137,6 +3169,35 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 
 	  if (i == -1)
 	    return;
+
+	  switch (i)
+	    {
+	    case 0:
+	    case 1:
+	    case 3:
+	    case 5:
+	      if (!(strcmp (ftype->deco, FeZe) == 0 || strcmp (ftype->deco, FeZe2) == 0))
+		return;
+	      break;
+
+	    case 2:
+	      if (!(strcmp (ftype->deco, FrealintZint) == 0))
+		return;
+	      break;
+
+	    case 4:
+	      if (!(strcmp (ftype->deco, FrealZlong) == 0))
+		return;
+	      break;
+
+	    case 6:
+	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0 || //double
+		    strcmp (ftype->deco, "FNaNbNffZf") == 0 || //& float version
+		    strcmp (ftype->deco, FeZe) == 0 ||
+		    strcmp (ftype->deco, FeZe2) == 0))
+		return;
+	      break;
+	    }
 
 	  // Adjust 'i' for this range of enums
 	  i += INTRINSIC_COS;
