@@ -5,6 +5,8 @@
 	* d-objfile.cc(Symbol::SnamedResult): New member to hold the named
 	RESULT_DECL of the function.
 	(FuncDeclaration::toObjFile): Set-up function for NRVO.
+	(build_tlssections): Align _tlsstart and _tlsend symbols to target
+	address size.
 
 2013-05-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 

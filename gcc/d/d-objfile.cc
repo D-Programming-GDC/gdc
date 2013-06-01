@@ -2233,23 +2233,23 @@ void
 build_tlssections (void)
 {
   // Generate:
-  //  __thread int _tlsstart = 3;
-  //  __thread int _tlsend;
+  //  __thread size_t _tlsstart = 3;
+  //  __thread size_t _tlsend;
   tree tlsstart, tlsend;
 
   tlsstart = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			 get_identifier ("_tlsstart"), integer_type_node);
+			 get_identifier ("_tlsstart"), size_type_node);
   TREE_PUBLIC (tlsstart) = 1;
   TREE_STATIC (tlsstart) = 1;
   DECL_ARTIFICIAL (tlsstart) = 1;
   // DECL_INITIAL so the symbol goes in .tdata
-  DECL_INITIAL (tlsstart) = build_int_cst (integer_type_node, 3);
+  DECL_INITIAL (tlsstart) = build_int_cst (size_type_node, 3);
   DECL_TLS_MODEL (tlsstart) = decl_default_tls_model (tlsstart);
   object_file->setDeclLoc (tlsstart, cmodule);
   rest_of_decl_compilation (tlsstart, 1, 0);
 
   tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-		       get_identifier ("_tlsend"), integer_type_node);
+		       get_identifier ("_tlsend"), size_type_node);
   TREE_PUBLIC (tlsend) = 1;
   TREE_STATIC (tlsend) = 1;
   DECL_ARTIFICIAL (tlsend) = 1;
