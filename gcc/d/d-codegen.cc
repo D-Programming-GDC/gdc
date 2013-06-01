@@ -224,21 +224,29 @@ IRState::var (Declaration *decl)
 {
   VarDeclaration *vd = decl->isVarDeclaration();
 
-  if (vd && vd->toSymbol()->SframeField != NULL_TREE)
+  if (vd)
     {
-      // Get the closure holding the var decl.
-      FuncDeclaration *fd = vd->toParent2()->isFuncDeclaration();
-      tree frame_ref = get_framedecl (this->func, fd);
-      tree field = vd->toSymbol()->SframeField;
+      Symbol *vsym = vd->toSymbol();
+      if (vsym->SnamedResult != NULL_TREE)
+	{
+	  // Get the named return value.
+	  gcc_assert (TREE_CODE (vsym->SnamedResult) == RESULT_DECL);
+	  return vsym->SnamedResult;
+	}
+      else if (vsym->SframeField != NULL_TREE)
+	{
+    	  // Get the closure holding the var decl.
+    	  FuncDeclaration *fd = vd->toParent2()->isFuncDeclaration();
+    	  tree frame_ref = get_framedecl (this->func, fd);
+    	  tree field = vsym->SframeField;
 
-      gcc_assert (field != NULL_TREE);
-      return component_ref (build_deref (frame_ref), field);
+    	  gcc_assert (field != NULL_TREE);
+    	  return component_ref (build_deref (frame_ref), field);
+    	}
     }
-  else
-    {
-      // Static var or auto var that the back end will handle for us
-      return decl->toSymbol()->Stree;
-    }
+
+  // Static var or auto var that the back end will handle for us
+  return decl->toSymbol()->Stree;
 }
 
 // Return expression EXP, whose type has been converted to TYPE.
@@ -1406,7 +1414,6 @@ d_mark_addressable (tree exp)
       break;
 
       /* %% C++ prevents {& this} .... */
-      /* %% TARGET_EXPR ... */
     case TRUTH_ANDIF_EXPR:
     case TRUTH_ORIF_EXPR:
     case COMPOUND_EXPR:

@@ -183,7 +183,7 @@ struct IRBase : Object
 
   void startBindings (void);
   void endBindings (void);
-  
+
   // Update current source file location to LOC.
   void doLineNote (const Loc& loc)
   { ObjectFile::doLineNote (loc); }

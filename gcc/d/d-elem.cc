@@ -949,7 +949,7 @@ AssignExp::toElem (IRState *irs)
 	      rhs = build_address (rhs);
 	    }
 	}
-      
+
       tree result = modify_expr (type->toCtype(), lhs, rhs);
 
       if (tb1->ty == Tstruct && e2->op == TOKint64)

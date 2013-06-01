@@ -53,7 +53,7 @@ Target::init (void)
     gcc_unreachable();
 
   ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
-  
+
   CLASSINFO_SIZE = 19 * ptrsize;
 }
 

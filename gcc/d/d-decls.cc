@@ -161,7 +161,7 @@ VarDeclaration::toSymbol (void)
 	      SET_DECL_ASSEMBLER_NAME (var_decl, id);
 	    }
 	}
-      
+
       DECL_LANG_SPECIFIC (var_decl) = build_d_decl_lang_specific (this);
       d_keep (var_decl);
       object_file->setDeclLoc (var_decl, this);
@@ -388,7 +388,10 @@ FuncDeclaration::toSymbol (void)
 		vindex = size_int (vtblIndex);
 	    }
 	  else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
-	    fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
+	    {
+	      // void main() implicitly converted to int main().
+  	      fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
+	    }
 
 	  if (fntype != NULL_TREE)
 	    {

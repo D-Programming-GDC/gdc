@@ -178,29 +178,30 @@ tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
 /* In d-incpath.cc */
 extern const char *iprefix;
 extern const char *multilib_dir;
-void add_import_paths (bool stdinc);
-void add_phobos_versyms (void);
+extern void add_import_paths (bool stdinc);
+extern void add_phobos_versyms (void);
 
 /* In d-lang.cc */
-tree pushdecl (tree);
-void pushlevel (int);
-tree poplevel (int, int, int);
+extern tree pushdecl (tree);
+extern void pushlevel (int);
+extern tree poplevel (int, int, int);
 
-void init_global_binding_level (void);
-void set_decl_binding_chain (tree decl_chain);
+extern void init_global_binding_level (void);
+extern void set_decl_binding_chain (tree decl_chain);
 
-tree d_unsigned_type (tree);
-tree d_signed_type (tree);
+extern tree d_unsigned_type (tree);
+extern tree d_signed_type (tree);
 
-void d_init_exceptions (void);
+extern void d_init_exceptions (void);
 
-void d_keep (tree t);
-void d_free (tree t);
+extern void d_keep (tree t);
+extern void d_free (tree t);
 
-bool global_bindings_p (void);
-void insert_block (tree);
-void set_block (tree);
-tree getdecls (void);
+extern bool global_bindings_p (void);
+extern void insert_block (tree);
+extern void set_block (tree);
+extern tree getdecls (void);
+
 
 /* In d-builtins.c */
 extern const struct attribute_spec d_builtins_attribute_table[];

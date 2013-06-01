@@ -660,6 +660,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	  return GS_UNHANDLED;
 	}
 
+    case FLOAT_MOD_EXPR:
     case IASM_EXPR:
       gcc_unreachable();
 
@@ -667,6 +668,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
       return GS_UNHANDLED;
     }
 }
+
 
 static Module *output_module = NULL;
 

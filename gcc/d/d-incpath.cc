@@ -98,7 +98,7 @@ prefixed_path (const char *path)
 	return concat (relocated_prefix, path + len, NULL);
       }
   }
-  
+
   if (iprefix && (len = cpp_GCC_INCLUDE_DIR_len) != 0)
     {
       if (!strncmp (path, cpp_GCC_INCLUDE_DIR, len))

@@ -50,6 +50,7 @@ Symbol::Symbol (void)
   this->Stree = NULL_TREE;
   this->ScontextDecl = NULL_TREE;
   this->SframeField = NULL_TREE;
+  this->SnamedResult = NULL_TREE;
 
   this->outputStage = NotStarted;
   this->frameInfo = NULL;
@@ -876,6 +877,9 @@ Module::genmoduleinfo()
 }
 
 
+// Finish up a function declaration and compile it all the way
+// down to assembler language output.
+
 void
 FuncDeclaration::toObjFile (int)
 {
@@ -917,8 +921,8 @@ FuncDeclaration::toObjFile (int)
   current_function_decl = fndecl;
 
   tree return_type = TREE_TYPE (TREE_TYPE (fndecl));
-  tree result_decl = build_decl (UNKNOWN_LOCATION, RESULT_DECL,
-				 NULL_TREE, return_type);
+  tree result_decl = build_decl (UNKNOWN_LOCATION, RESULT_DECL, NULL_TREE, return_type);
+
   object_file->setDeclLoc (result_decl, this);
   DECL_RESULT (fndecl) = result_decl;
   DECL_CONTEXT (result_decl) = fndecl;
@@ -1023,6 +1027,25 @@ FuncDeclaration::toObjFile (int)
   if (v_arguments_var)
     irs->emitLocalVar (v_arguments_var);
 
+  /* The fabled D named return value optimisation.
+     Implemented by overriding all the RETURN_EXPRs and replacing all
+     occurrences of VAR with the RESULT_DECL for the function.
+     This is only worth doing for functions that return in memory.  */
+  nrvo_can = nrvo_can && aggregate_value_p (return_type, fndecl);
+
+  if (nrvo_can && nrvo_var)
+    {
+      Symbol *nrvsym = nrvo_var->toSymbol();
+      tree var = nrvsym->Stree;
+
+      // Copy name from VAR to RESULT.
+      DECL_NAME (result_decl) = DECL_NAME (var);
+      SET_DECL_VALUE_EXPR (var, result_decl);
+      DECL_HAS_VALUE_EXPR_P (var) = 1;
+
+      nrvsym->SnamedResult = result_decl;
+    }
+
   fbody->toIR (irs);
 
   if (v_argptr)
@@ -1049,27 +1072,21 @@ FuncDeclaration::toObjFile (int)
      there is a single statement.  This code creates a statemnt list
      unconditionally because the DECL_SAVED_TREE will always be a
      BIND_EXPR. */
+  tree saved_tree = DECL_SAVED_TREE (fndecl);
+  tree body = BIND_EXPR_BODY (saved_tree);
+
+  if (TREE_CODE (body) != STATEMENT_LIST)
     {
-      tree body = DECL_SAVED_TREE (fndecl);
-      tree t;
-
-      gcc_assert (TREE_CODE (body) == BIND_EXPR);
-
-      t = TREE_OPERAND (body, 1);
-      if (TREE_CODE (t) != STATEMENT_LIST)
-	{
-	  tree sl = alloc_stmt_list();
-	  append_to_statement_list_force (t, &sl);
-	  TREE_OPERAND (body, 1) = sl;
-	}
-      else if (!STATEMENT_LIST_HEAD (t))
-	{
-	  /* For empty functions: Without this, there is a
-	     segfault when inlined.  Seen on build=ppc-linux but
-	     not others (why?). */
-	  tree ret = build1 (RETURN_EXPR, void_type_node, NULL_TREE);
-	  append_to_statement_list_force (ret, &t);
-	}
+      tree stmtlist = alloc_stmt_list();
+      append_to_statement_list_force (body, &stmtlist);
+      BIND_EXPR_BODY (saved_tree) = stmtlist;
+    }
+  else if (!STATEMENT_LIST_HEAD (body))
+    {
+      /* For empty functions: Without this, there is a segfault when inlined.
+	 Seen on build=ppc-linux but not others (why?).  */
+      tree ret = build1 (RETURN_EXPR, void_type_node, NULL_TREE);
+      append_to_statement_list_force (ret, &body);
     }
 
   tree block = poplevel (1, 0, 1);
@@ -1078,21 +1095,19 @@ FuncDeclaration::toObjFile (int)
 
   if (!errorcount && !global.errors)
     {
-      FILE *dump_file;
-      int local_dump_flags;
-
       // Build cgraph for function.
       cgraph_get_create_node (fndecl);
 
       // Set original decl context back to true context
       if (D_DECL_STATIC_CHAIN (fndecl))
 	{
-	  struct lang_decl *d = DECL_LANG_SPECIFIC (fndecl);
-	  DECL_CONTEXT (fndecl) = d->d_decl->toSymbol()->ScontextDecl;
+	  Declaration *decl = build_ddecl (fndecl);
+	  DECL_CONTEXT (fndecl) = decl->toSymbol()->ScontextDecl;
 	}
 
-      /* Dump the D-specific tree IR.  */
-      dump_file = dump_begin (TDI_original, &local_dump_flags);
+      // Dump the D-specific tree IR.
+      int local_dump_flags;
+      FILE *dump_file = dump_begin (TDI_original, &local_dump_flags);
       if (dump_file)
 	{
 	  fprintf (dump_file, "\n;; Function %s",
@@ -1132,6 +1147,13 @@ FuncDeclaration::toObjFile (int)
   irs->endFunction();
 }
 
+
+// Closures are implemented by taking the local variables that
+// need to survive the scope of the function, and copying them
+// into a gc allocated chuck of memory. That chunk, called the
+// closure here, is inserted into the linked list of stack
+// frames instead of the usual stack frame.
+
 void
 FuncDeclaration::buildClosure (IRState *irs)
 {
@@ -1156,13 +1178,13 @@ FuncDeclaration::buildClosure (IRState *irs)
 	       build_libcall (LIBCALL_ALLOCMEMORY, 1, &arg));
   irs->expandDecl (closure_ptr);
 
-  // set the first entry to the parent closure, if any
+  // Set the first entry to the parent closure, if any
   tree chain_field = component_ref (build_deref (closure_ptr),
 				    TYPE_FIELDS (closure_rec_type));
   tree chain_expr = vmodify_expr (chain_field, irs->sthis);
   irs->addExp (chain_expr);
 
-  // copy parameters that are referenced nonlocally
+  // Copy parameters that are referenced nonlocally
   for (size_t i = 0; i < closureVars.dim; i++)
     {
       VarDeclaration *v = closureVars[i];

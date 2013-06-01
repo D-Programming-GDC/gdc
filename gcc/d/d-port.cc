@@ -66,13 +66,13 @@ char *
 Port::strupr (char *s)
 {
   char *t = s;
-  
+
   while (*s)
     {
       *s = TOUPPER (*s);
       s++;
     }
-  
+
   return t;
 }
 
@@ -80,12 +80,12 @@ int
 Port::memicmp (const char *s1, const char *s2, int n)
 {
   int result = 0;
-  
+
   for (int i = 0; i < n; i++)
     {
       char c1 = s1[i];
       char c2 = s2[i];
-      
+
       result = c1 - c2;
       if (result)
 	{
@@ -102,12 +102,12 @@ int
 Port::stricmp (const char *s1, const char *s2)
 {
   int result = 0;
-  
+
   for (;;)
     {
       char c1 = *s1;
       char c2 = *s2;
-      
+
       result = c1 - c2;
       if (result)
 	{

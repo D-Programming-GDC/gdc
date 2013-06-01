@@ -71,6 +71,9 @@ struct Symbol : Object
   // FIELD_DECL in frame struct that this variable is allocated in.
   tree SframeField;
 
+  // RESULT_DECL in a function that returns by nrvo.
+  tree SnamedResult;
+
   // For FuncDeclarations:
   Thunks thunks;
   OutputStage outputStage;
@@ -186,7 +189,7 @@ struct ObjectFile
   static FuncDeclaration *doCtorFunction (const char *name, FuncDeclarations *functions, VarDeclarations *gates);
   static FuncDeclaration *doDtorFunction (const char *name, FuncDeclarations *functions);
   static FuncDeclaration *doUnittestFunction (const char *name, FuncDeclarations *functions);
-  
+
   // ** Module info.  Assuming only one module per run of the compiler.
 
   static ModuleInfo *moduleInfo; // of ModuleInfo *
