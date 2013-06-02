@@ -3130,20 +3130,20 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 
 	  switch (i)
 	    {
-	    case 0:
-	    case 1:
+	    case INTRINSIC_BSF:
+	    case INTRINSIC_BSR:
 	      if (!(strcmp (ftype->deco, FuintZint) == 0 || strcmp (ftype->deco, FulongZint) == 0))
 		return;
 	      break;
 
-	    case 2:
+	    case INTRINSIC_BSWAP:
 	      if (!(strcmp (ftype->deco, FuintZuint) == 0))
 		return;
 	      break;
 
-	    case 3:
-	    case 4:
-	    case 5:
+	    case INTRINSIC_BTC:
+	    case INTRINSIC_BTR:
+	    case INTRINSIC_BTS:
 	      if (!(strcmp (ftype->deco, FlongplongZint) == 0 || strcmp (ftype->deco, FintpintZint) == 0))
 		return;
 	      break;
@@ -3170,27 +3170,31 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 	  if (i == -1)
 	    return;
 
+	  // Adjust 'i' for this range of enums
+	  i += INTRINSIC_COS;
+	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
+
 	  switch (i)
 	    {
-	    case 0:
-	    case 1:
-	    case 3:
-	    case 5:
+	    case INTRINSIC_COS:
+	    case INTRINSIC_FABS:
+	    case INTRINSIC_RINT:
+	    case INTRINSIC_SIN:
 	      if (!(strcmp (ftype->deco, FeZe) == 0 || strcmp (ftype->deco, FeZe2) == 0))
 		return;
 	      break;
 
-	    case 2:
+	    case INTRINSIC_LDEXP:
 	      if (!(strcmp (ftype->deco, FrealintZint) == 0))
 		return;
 	      break;
 
-	    case 4:
+	    case INTRINSIC_RNDTOL:
 	      if (!(strcmp (ftype->deco, FrealZlong) == 0))
 		return;
 	      break;
 
-	    case 6:
+	    case INTRINSIC_SQRT:
 	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0 || //double
 		    strcmp (ftype->deco, "FNaNbNffZf") == 0 || //& float version
 		    strcmp (ftype->deco, FeZe) == 0 ||
@@ -3199,9 +3203,6 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 	      break;
 	    }
 
-	  // Adjust 'i' for this range of enums
-	  i += INTRINSIC_COS;
-	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
 	  tree t = decl->toSymbol()->Stree;
 
 	  // rndtol returns a long type, sqrt any float type,
