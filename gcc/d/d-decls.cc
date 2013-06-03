@@ -234,18 +234,12 @@ VarDeclaration::toSymbol (void)
 	insert_decl_attributes (var_decl, "dllexport");
 #endif
 
-      if (isDataseg() && isThreadlocal())
+      if (global.params.vtls && isDataseg() && isThreadlocal())
 	{
-	  // Tell backend this is a thread local decl.
-	  DECL_TLS_MODEL (var_decl) = decl_default_tls_model (var_decl);
-
-	  if (global.params.vtls)
-	    {
-	      char *p = loc.toChars();
-	      fprintf (stderr, "%s: %s is thread local\n", p ? p : "", toChars());
-	      if (p)
-		free (p);
-	    }
+	  char *p = loc.toChars();
+	  fprintf (stderr, "%s: %s is thread local\n", p ? p : "", toChars());
+	  if (p)
+	    free (p);
 	}
     }
   return csym;

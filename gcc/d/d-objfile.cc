@@ -1419,35 +1419,35 @@ d_comdat_group (tree decl)
 
 
 void
-ObjectFile::makeDeclOneOnly (tree decl_tree)
+ObjectFile::makeDeclOneOnly (tree decl)
 {
-  if (!D_DECL_IS_TEMPLATE (decl_tree) || emitTemplates != TEprivate)
+  if (!D_DECL_IS_TEMPLATE (decl) || emitTemplates != TEprivate)
     {
       // Weak definitions have to be public.
-      if (!TREE_PUBLIC (decl_tree))
+      if (!TREE_PUBLIC (decl))
 	return;
     }
 
   /* First method: Use one-only.  If user has specified -femit-templates,
      honor that even if the target supports one-only. */
-  if (!D_DECL_IS_TEMPLATE (decl_tree) || emitTemplates != TEprivate)
+  if (!D_DECL_IS_TEMPLATE (decl) || emitTemplates != TEprivate)
     {
       // Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined
-      if (TREE_CODE (decl_tree) == FUNCTION_DECL)
-	DECL_DECLARED_INLINE_P (decl_tree) = 1;
+      if (TREE_CODE (decl) == FUNCTION_DECL)
+	DECL_DECLARED_INLINE_P (decl) = 1;
 
       // The following makes assumptions about the behavior of make_decl_one_only.
       if (SUPPORTS_ONE_ONLY)
 	{
-	  make_decl_one_only (decl_tree, d_comdat_group (decl_tree));
+	  make_decl_one_only (decl, d_comdat_group (decl));
 	  return;
 	}
       else if (SUPPORTS_WEAK)
 	{
-	  tree decl_init = DECL_INITIAL (decl_tree);
-	  DECL_INITIAL (decl_tree) = integer_zero_node;
-	  make_decl_one_only (decl_tree, d_comdat_group (decl_tree));
-	  DECL_INITIAL (decl_tree) = decl_init;
+	  tree decl_init = DECL_INITIAL (decl);
+	  DECL_INITIAL (decl) = integer_zero_node;
+	  make_decl_one_only (decl, d_comdat_group (decl));
+	  DECL_INITIAL (decl) = decl_init;
 	  return;
 	}
     }
@@ -1456,25 +1456,24 @@ ObjectFile::makeDeclOneOnly (tree decl_tree)
      -femit-templates. */
   else if (emitTemplates == TEprivate)
     {
-      TREE_PRIVATE (decl_tree) = 1;
-      TREE_PUBLIC (decl_tree) = 0;
+      TREE_PRIVATE (decl) = 1;
+      TREE_PUBLIC (decl) = 0;
     }
 
   /* Fallback, cannot have multiple copies. */
-  if (DECL_INITIAL (decl_tree) == NULL_TREE
-      || DECL_INITIAL (decl_tree) == error_mark_node)
-    DECL_COMMON (decl_tree) = 1;
+  if (DECL_INITIAL (decl) == NULL_TREE
+      || DECL_INITIAL (decl) == error_mark_node)
+    DECL_COMMON (decl) = 1;
 }
 
 void
-ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static_public)
+ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl, bool is_public)
 {
-  Declaration *real_decl = dsym->isDeclaration();
-  FuncDeclaration *func_decl = real_decl ? real_decl->isFuncDeclaration() : 0;
+  Declaration *rd = dsym->isDeclaration();
 
-  if (force_static_public
-      || (TREE_CODE (decl_tree) == VAR_DECL && (real_decl && real_decl->isDataseg()))
-      || (TREE_CODE (decl_tree) == FUNCTION_DECL))
+  if (is_public
+      || (TREE_CODE (decl) == VAR_DECL && (rd && rd->isDataseg()))
+      || (TREE_CODE (decl) == FUNCTION_DECL))
     {
       bool has_module = false;
       bool is_template = false;
@@ -1495,58 +1494,63 @@ ObjectFile::setupSymbolStorage (Dsymbol *dsym, tree decl_tree, bool force_static
 
       if (is_template)
 	{
-	  D_DECL_ONE_ONLY (decl_tree) = 1;
-	  D_DECL_IS_TEMPLATE (decl_tree) = 1;
+	  D_DECL_ONE_ONLY (decl) = 1;
+	  D_DECL_IS_TEMPLATE (decl) = 1;
 	  has_module = hasModule (ti_obj_file_mod) && emitTemplates != TEnone;
 	}
       else
 	has_module = hasModule (dsym->getModule());
 
-      if (real_decl)
+      VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;
+      if (vd != NULL)
 	{
-	  if (real_decl->isVarDeclaration()
-	      && real_decl->storage_class & STCextern)
+	  if (vd->storage_class & STCextern)
 	    has_module = false;
+
+	  // Tell backend this is a thread local decl.
+	  if (vd->isDataseg() && vd->isThreadlocal())
+	    DECL_TLS_MODEL (decl) = decl_default_tls_model (decl);
 	}
 
       if (has_module)
 	{
-	  DECL_EXTERNAL (decl_tree) = 0;
-	  TREE_STATIC (decl_tree) = 1;
+	  DECL_EXTERNAL (decl) = 0;
+	  TREE_STATIC (decl) = 1;
 
-	  if (real_decl && real_decl->storage_class & STCcomdat)
-	    D_DECL_ONE_ONLY (decl_tree) = 1;
+	  if (rd && rd->storage_class & STCcomdat)
+	    D_DECL_ONE_ONLY (decl) = 1;
 	}
       else
 	{
-	  DECL_EXTERNAL (decl_tree) = 1;
-	  TREE_STATIC (decl_tree) = 0;
+	  DECL_EXTERNAL (decl) = 1;
+	  TREE_STATIC (decl) = 0;
 	}
 
       // Do this by default, but allow private templates to override
-      if (!func_decl || !func_decl->isNested() || force_static_public)
-	TREE_PUBLIC (decl_tree) = 1;
+      FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;
+      if (!fd || !fd->isNested() || is_public)
+	TREE_PUBLIC (decl) = 1;
 
-      if (D_DECL_ONE_ONLY (decl_tree))
-	makeDeclOneOnly (decl_tree);
+      if (D_DECL_ONE_ONLY (decl))
+	makeDeclOneOnly (decl);
     }
   else
     {
-      TREE_STATIC (decl_tree) = 0;
-      DECL_EXTERNAL (decl_tree) = 0;
-      TREE_PUBLIC (decl_tree) = 0;
+      TREE_STATIC (decl) = 0;
+      DECL_EXTERNAL (decl) = 0;
+      TREE_PUBLIC (decl) = 0;
     }
 
-  if (real_decl && real_decl->userAttributes)
-    decl_attributes (&decl_tree, build_attributes (real_decl->userAttributes), 0);
-  else if (DECL_ATTRIBUTES (decl_tree) != NULL)
-    decl_attributes (&decl_tree, DECL_ATTRIBUTES (decl_tree), 0);
+  if (rd && rd->userAttributes)
+    decl_attributes (&decl, build_attributes (rd->userAttributes), 0);
+  else if (DECL_ATTRIBUTES (decl) != NULL)
+    decl_attributes (&decl, DECL_ATTRIBUTES (decl), 0);
 }
 
 void
-ObjectFile::setupStaticStorage (Dsymbol *dsym, tree decl_tree)
+ObjectFile::setupStaticStorage (Dsymbol *dsym, tree decl)
 {
-  setupSymbolStorage (dsym, decl_tree, true);
+  setupSymbolStorage (dsym, decl, true);
 }
 
 
@@ -2239,23 +2243,23 @@ build_tlssections (void)
 
   tlsstart = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			 get_identifier ("_tlsstart"), size_type_node);
-  TREE_PUBLIC (tlsstart) = 1;
   TREE_STATIC (tlsstart) = 1;
-  DECL_ARTIFICIAL (tlsstart) = 1;
   // DECL_INITIAL so the symbol goes in .tdata
   DECL_INITIAL (tlsstart) = build_int_cst (size_type_node, 3);
   DECL_TLS_MODEL (tlsstart) = decl_default_tls_model (tlsstart);
+  TREE_PUBLIC (tlsstart) = 1;
+  DECL_ARTIFICIAL (tlsstart) = 1;
   object_file->setDeclLoc (tlsstart, cmodule);
   rest_of_decl_compilation (tlsstart, 1, 0);
 
   tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 		       get_identifier ("_tlsend"), size_type_node);
-  TREE_PUBLIC (tlsend) = 1;
   TREE_STATIC (tlsend) = 1;
-  DECL_ARTIFICIAL (tlsend) = 1;
   // DECL_COMMON so the symbol goes in .tcommon
   DECL_COMMON (tlsend) = 1;
   DECL_TLS_MODEL (tlsend) = decl_default_tls_model (tlsend);
+  TREE_PUBLIC (tlsend) = 1;
+  DECL_ARTIFICIAL (tlsend) = 1;
   object_file->setDeclLoc (tlsend, cmodule);
   rest_of_decl_compilation (tlsend, 1, 0);
 }

@@ -102,13 +102,17 @@ struct OurUnwindException
     }
   }
 
-  version (GNU_ARM_EABI_Unwinder)
-    int _pad;  // to place 'obj' behind unwindHeader
+  // To place 'obj' behing unwindHeader.
+  enum UNWIND_PAD = (Phase1Info.sizeof + Object.sizeof)
+    % _Unwind_Exception.alignof;
+
+  static if (UNWIND_PAD > 0)
+    byte[UNWIND_PAD] _pad;
 
   Object obj;
 
   // The exception object must be directly behind unwindHeader.
-  // (See IRState::exceptionObject.)
+  // (See build_exception_object.)
   static assert(unwindHeader.offsetof - obj.offsetof == obj.sizeof);
 
   // The generic exception header
@@ -358,7 +362,7 @@ private _Unwind_Reason_Code personalityImpl(int iversion,
     while (p < info.action_table)
       {
 	_Unwind_Ptr cs_start, cs_len, cs_lp;
-	_Unwind_Word cs_action;
+	_uleb128_t cs_action;
 
 	// Note that all call-site encodings are "absolute" displacements.
 	p = read_encoded_value (null, info.call_site_encoding, p, &cs_start);

@@ -159,6 +159,9 @@ TypeTuple *TypeSArray::toArgTypes()
 
 TypeTuple *TypeDArray::toArgTypes()
 {
+    if (size(0) == 8)
+        return new TypeTuple(Type::tint64);
+
     /* Should be done as if it were:
      * struct S { size_t length; void* ptr; }
      */
@@ -177,6 +180,9 @@ TypeTuple *TypePointer::toArgTypes()
 
 TypeTuple *TypeDelegate::toArgTypes()
 {
+    if (size(0) == 8)
+        return new TypeTuple(Type::tint64);
+
     /* Should be done as if it were:
      * struct S { void* ptr; void* funcptr; }
      */
