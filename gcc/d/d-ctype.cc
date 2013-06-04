@@ -272,9 +272,7 @@ TypeEnum::toCtype (void)
 		}
 	    }
 	  TYPE_VALUES (ctype) = enum_values;
-
-	  object_file->initTypeDecl (ctype, sym);
-	  object_file->declareType (ctype, sym);
+	  build_type_decl (ctype, sym);
 	}
     }
 
@@ -311,7 +309,7 @@ TypeStruct::toCtype (void)
 	  agg_layout.go();
 	  agg_layout.finish (sym->userAttributes);
 
-	  object_file->initTypeDecl (ctype, sym);
+	  build_type_decl (ctype, sym);
 	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
 	}
     }
@@ -672,7 +670,7 @@ TypeClass::toCtype (void)
 
 	  agg_layout.finish (sym->userAttributes);
 
-	  object_file->initTypeDecl (rec_type, sym);
+	  build_type_decl (rec_type, sym);
 	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);
 	}
     }

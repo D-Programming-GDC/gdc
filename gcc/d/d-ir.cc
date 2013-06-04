@@ -58,8 +58,10 @@ GotoStatement::toIR (IRState *irs)
 {
   tree t_label;
 
-  object_file->setLoc (loc); /* This makes the 'undefined label' error show up on the correct line...
-				The extra doLineNote in doJump shouldn't cause a problem. */
+  /* This makes the 'undefined label' error show up on the correct line...
+     The extra doLineNote in doJump shouldn't cause a problem.  */
+  irs->doLineNote (loc);
+
   if (!label->statement)
     error ("label %s is undefined", label->toChars());
   else if (tf != label->statement->tf)
@@ -68,6 +70,7 @@ GotoStatement::toIR (IRState *irs)
     irs->checkGoto (this, label);
 
   t_label = irs->getLabelTree (label);
+
   if (t_label != NULL_TREE)
     irs->doJump (this, t_label);
   // else, there was an error

@@ -732,10 +732,10 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
   Expression *arg0 = (*arguments)[0];
   Type *t0 = arg0->type;
 
-  static IRState irs;
   tree callee = NULL_TREE;
   tree result;
-  irs.doLineNote (loc);
+
+  set_input_location (loc);
 
   switch (builtin)
     {
@@ -805,6 +805,7 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
       gcc_unreachable();
     }
 
+  static IRState irs;
   TypeFunction *tf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (callee));
   result = irs.call (tf, callee, NULL, arguments);
   result = fold (result);
@@ -846,8 +847,8 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       tree callee = NULL_TREE;
 
       // cirstate is not available.
-      IRState irs;
-      irs.doLineNote (loc);
+      static IRState irs;
+      set_input_location (loc);
       tree result = irs.call (tf, callee, NULL, arguments);
       result = fold (result);
 

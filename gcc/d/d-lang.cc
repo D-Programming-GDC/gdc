@@ -120,6 +120,9 @@ const struct attribute_spec d_attribute_table[] =
 
 static const char *fonly_arg;
 
+/* List of modules being compiled.  */
+Modules output_modules;
+
 /* Zero disables all standard directories for headers.  */
 static bool std_inc = true;
 
@@ -153,7 +156,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  ObjectFile::emitTemplates = TEnormal;
+  flag_emit_templates = TEnormal;
 }
 
 /* Initialize options structure OPTS.  */
@@ -411,7 +414,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      ObjectFile::emitTemplates = value ? TEprivate : TEnone;
+      flag_emit_templates = value ? TEprivate : TEnone;
       break;
 
     case OPT_femit_moduleinfo:
@@ -1034,11 +1037,10 @@ d_parse_file (void)
   if (global.errors || global.warnings)
     goto had_errors;
 
-  object_file = new ObjectFile();
   if (fonly_arg)
-    object_file->modules.push (output_module);
+    output_modules.push (output_module);
   else
-    object_file->modules.append (&modules);
+    output_modules.append (&modules);
 
   cirstate = new IRState();
 
@@ -1101,10 +1103,10 @@ d_parse_file (void)
   // Add D frontend error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);
 
-  object_file->finish();
-  output_module = NULL;
-
+  d_finish_module();
   d_backend_term();
+
+  output_module = NULL;
 }
 
 static tree

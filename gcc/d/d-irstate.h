@@ -186,7 +186,7 @@ struct IRBase : Object
 
   // Update current source file location to LOC.
   void doLineNote (const Loc& loc)
-  { ObjectFile::doLineNote (loc); }
+  { set_input_location (loc); }
 
   // ** Instruction stream manipulation
 

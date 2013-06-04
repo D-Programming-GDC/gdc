@@ -48,28 +48,28 @@ IRBase::startFunction (FuncDeclaration *decl)
     }
 
   cirstate = (IRState *) new_irs;
-  ModuleInfo & mi = *object_file->moduleInfo;
+  ModuleInfo *mi = current_module_info;
 
   if (decl->isSharedStaticCtorDeclaration())
-    mi.sharedctors.push (decl);
+    mi->sharedctors.push (decl);
   else if (decl->isStaticCtorDeclaration())
-    mi.ctors.push (decl);
+    mi->ctors.push (decl);
   else if (decl->isSharedStaticDtorDeclaration())
     {
       VarDeclaration *vgate;
       if ((vgate = decl->isSharedStaticDtorDeclaration()->vgate))
-	mi.sharedctorgates.push (vgate);
-      mi.shareddtors.push (decl);
+	mi->sharedctorgates.push (vgate);
+      mi->shareddtors.push (decl);
     }
   else if (decl->isStaticDtorDeclaration())
     {
       VarDeclaration *vgate;
       if ((vgate = decl->isStaticDtorDeclaration()->vgate))
-	mi.ctorgates.push (vgate);
-      mi.dtors.push (decl);
+	mi->ctorgates.push (vgate);
+      mi->dtors.push (decl);
     }
   else if (decl->isUnitTestDeclaration())
-    mi.unitTests.push (decl);
+    mi->unitTests.push (decl);
 
   return new_irs;
 }
@@ -344,7 +344,7 @@ IRBase::endCond (void)
   else
     t_false_brnch = t_brnch;
 
-  object_file->doLineNote (f->statement->loc);
+  doLineNote (f->statement->loc);
   tree t_stmt = build3 (COND_EXPR, void_type_node,
 			f->condition, f->trueBranch, t_false_brnch);
   endFlow();
@@ -524,7 +524,7 @@ void
 IRBase::endCatches (void)
 {
   tree t_catches = popStatementList();
-  object_file->doLineNote (currentFlow()->statement->loc);
+  doLineNote (currentFlow()->statement->loc);
   addExp (build2 (TRY_CATCH_EXPR, void_type_node,
 		  currentFlow()->tryBody, t_catches));
   endFlow();
@@ -546,7 +546,7 @@ void
 IRBase::endFinally (void)
 {
   tree t_finally = popStatementList();
-  object_file->doLineNote (currentFlow()->statement->loc);
+  doLineNote (currentFlow()->statement->loc);
   addExp (build2 (TRY_FINALLY_EXPR, void_type_node,
 		  currentFlow()->tryBody, t_finally));
   endFlow();
@@ -566,7 +566,8 @@ void
 IRBase::doJump (Statement *stmt, tree t_label)
 {
   if (stmt)
-    object_file->doLineNote (stmt->loc);
+    doLineNote (stmt->loc);
+
   addExp (build1 (GOTO_EXPR, void_type_node, t_label));
   TREE_USED (t_label) = 1;
 }

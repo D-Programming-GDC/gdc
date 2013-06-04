@@ -447,9 +447,8 @@ struct IRState : IRBase
 };
 
 // Globals.
-extern Module *cmodule;
+extern Module *current_module_decl;
 extern IRState *cirstate;
-extern ObjectFile *object_file;
 
 // Various helpers that need extra state
 

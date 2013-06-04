@@ -25,9 +25,8 @@
 #include "dfrontend/target.h"
 
 
-Module *cmodule;
+Module *current_module_decl;
 IRState *cirstate;
-ObjectFile *object_file;
 
 
 // Public routine called from D frontend to hide from glue interface.
@@ -37,7 +36,7 @@ ObjectFile *object_file;
 bool
 d_gcc_force_templates (void)
 {
-  return ObjectFile::emitTemplates == TEprivate;
+  return flag_emit_templates == TEprivate;
 }
 
 // Return the DECL_CONTEXT for symbol DSYM.
@@ -130,7 +129,7 @@ IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
 
   if (!no_init)
     {
-      object_file->doLineNote (vd->loc);
+      set_input_location (vd->loc);
 
       if (!init_val)
 	{
@@ -562,8 +561,15 @@ convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
 	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
 				   integer_zero_node, build_integer_cst (count - 1));
 	      tree value = convert_for_assignment (expr, exp_type, sa_type->next);
+	      
+	      // Can't use VAR_DECLs in CONSTRUCTORS.
+	      if (TREE_CODE (value) == VAR_DECL)
+		{
+		  value = DECL_INITIAL (value);
+		  gcc_assert (value);
+		}
 
-	      CONSTRUCTOR_APPEND_ELT (ce, index, object_file->stripVarDecl (value));
+	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
 	      CONSTRUCTOR_ELTS (ctor) = ce;
 	    }
 	  TREE_READONLY (ctor) = 1;
@@ -1300,7 +1306,7 @@ build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *
 	 split dynamic array varargs. */
       TYPE_LANG_SPECIFIC (rec_type) = build_d_type_lang_specific (type);
 
-      /* ObjectFile::declareType will try to declare it as top-level type
+      /* build_type_decl will try to declare it as top-level type
 	 which can break debugging info for element types. */
       tree stub_decl = build_decl (BUILTINS_LOCATION, TYPE_DECL,
 				   get_identifier (type->toChars()), rec_type);
@@ -2070,7 +2076,7 @@ IRState::call (Expression *expr, Expressions *arguments)
 	  if (call_by_alias_p (func, fd))
 	    {
 	      // Re-evaluate symbol storage treating 'fd' as public.
-	      object_file->setupSymbolStorage (fd, callee, true);
+	      setup_symbol_storage (fd, callee, true);
 	    }
 	  object = getFrameForSymbol (fd);
 	}
@@ -3279,7 +3285,7 @@ d_build_label (Loc loc, Identifier *ident)
 
   // Not setting this doesn't seem to cause problems (unlike VAR_DECLs).
   if (loc.filename)
-    object_file->setDeclLoc (decl, loc);
+    set_decl_location (decl, loc);
 
   return decl;
 }
@@ -3673,7 +3679,7 @@ build_frame_type (FuncDeclaration *func)
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
 			       declaration_type (v));
       s->SframeField = field;
-      object_file->setDeclLoc (field, v);
+      set_decl_location (field, v);
       DECL_CONTEXT (field) = frame_rec_type;
       fields = chainon (fields, field);
       TREE_USED (s->Stree) = 1;
@@ -3981,7 +3987,7 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
       tree ident = var_decl->ident ? get_identifier (var_decl->ident->string) : NULL_TREE;
       tree field_decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
 				    declaration_type (var_decl));
-      object_file->setDeclLoc (field_decl, var_decl);
+      set_decl_location (field_decl, var_decl);
       var_decl->csym = new Symbol;
       var_decl->csym->Stree = field_decl;
 
@@ -4036,7 +4042,7 @@ AggLayout::addField (tree field_decl, size_t offset)
   DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
 
   // Must set this or we crash with DWARF debugging.
-  object_file->setDeclLoc (field_decl, l);
+  set_decl_location (field_decl, l);
 
   TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
 

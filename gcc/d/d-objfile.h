@@ -98,7 +98,6 @@ extern tree dtvector_to_tree (dt_t *dt);
 
 extern void build_moduleinfo (Symbol *sym);
 extern void build_tlssections (void);
-extern void d_finish_symbol (Symbol *sym);
 
 
 struct ModuleInfo
@@ -115,6 +114,8 @@ struct ModuleInfo
   FuncDeclarations unitTests;
 };
 
+extern ModuleInfo *current_module_info;
+
 enum TemplateEmission
 {
   TEnone,
@@ -122,102 +123,38 @@ enum TemplateEmission
   TEprivate
 };
 
-struct DeferredThunk
-{
-  tree decl;
-  tree target;
-  int offset;
-};
+extern void set_input_location (const Loc& loc);
 
-typedef ArrayBase<DeferredThunk> DeferredThunks;
+extern void set_decl_location (tree t, const Loc& loc);
+extern void set_decl_location (tree t, Dsymbol *decl);
+extern void set_function_end_locus (const Loc& loc);
 
+extern void get_unique_name (tree decl, const char *prefix = NULL);
 
-/* Nearly everything is static for effeciency since there is
-   only one object per run of the backend */
-struct ObjectFile
-{
- public:
-  ObjectFile (void) { };
+extern void setup_symbol_storage (Dsymbol *dsym, tree decl, bool is_public);
+extern void d_comdat_linkage (tree decl);
 
-  static void beginModule (Module *m);
-  static void endModule (void);
+extern void d_finish_symbol (Symbol *sym);
+extern void d_finish_function (FuncDeclaration *f);
+extern void d_finish_module (void);
 
-  static void finish (void);
+extern void build_type_decl (tree t, Dsymbol *dsym);
 
-  static void doLineNote (const Loc& loc);
-  static void setLoc (const Loc& loc);
+extern Modules output_modules;
+extern bool output_module_p (Module *mod);
 
-  // ** Declaration maninpulation
-  static void setDeclLoc (tree t, const Loc& loc);
+extern bool output_declaration_p (Declaration *dsym);
+extern bool output_symbol_p (Symbol *sym);
 
-  // Some D Declarations don't have the loc set, this searches decl's parents
-  // until a valid loc is found.
-  static void setDeclLoc (tree t, Dsymbol *decl);
-  static void setCfunEndLoc (const Loc& loc);
-  static void giveDeclUniqueName (tree decl, const char *prefix = NULL);
+extern void write_deferred_thunks (void);
+extern void use_thunk (tree thunk_decl, tree target_decl, int offset);
+extern void finish_thunk (tree thunk_decl, tree target_decl, int offset);
 
-  // Set a DECL's STATIC and EXTERN based on the decl's storage class
-  // and if it is to be emitted in this module.
-  static void setupSymbolStorage (Dsymbol *decl, tree decl_tree, bool force_static_public = false);
-
-  // Definitely in static data, but not neccessarily this module.
-  // Assumed to be public data.
-  static void setupStaticStorage (Dsymbol *dsym, tree decl_tree);
-  static void makeDeclOneOnly (tree decl_tree);
-
-  static void outputStaticSymbol (Symbol *s);
-  static void outputFunction (FuncDeclaration *f);
-
-  static void addAggMethod (tree rec_type, FuncDeclaration *fd);
-
-  static void initTypeDecl (tree t, Dsymbol *d_sym);
-
-  static void declareType (tree t, Type *d_type);
-  static void declareType (tree t, Dsymbol *d_sym);
-
-  // Hack for systems without linkonce support
-  static bool shouldEmit (Declaration *d_sym);
-  static bool shouldEmit (Symbol *sym);
-
-  static void doThunk (tree thunk_decl, tree target_decl, int offset);
-
-  // Can't use VAR_DECLs for the DECL_INITIAL of static varibles or in CONSTRUCTORSs
-  static tree stripVarDecl (tree value);
-
-  static FuncDeclaration *doSimpleFunction (const char *name, tree expr, bool static_ctor);
-  static FuncDeclaration *doFunctionToCallFunctions (const char *name, FuncDeclarations *functions, bool force_and_public = false);
-  static FuncDeclaration *doCtorFunction (const char *name, FuncDeclarations *functions, VarDeclarations *gates);
-  static FuncDeclaration *doDtorFunction (const char *name, FuncDeclarations *functions);
-  static FuncDeclaration *doUnittestFunction (const char *name, FuncDeclarations *functions);
-
-  // ** Module info.  Assuming only one module per run of the compiler.
-
-  static ModuleInfo *moduleInfo; // of ModuleInfo *
-
-  // ** static constructors (not D static constructors)
-  static FuncDeclarations staticCtorList; // usually only one.
-  static FuncDeclarations staticDtorList; // only if __attribute__(destructor) is used.
-
-  /* support for multiple modules per object file */
-  static bool hasModule (Module *m);
-  static Modules modules;
-
-  // Template emission behaviour.
-  static TemplateEmission emitTemplates;
-
- protected:
-  static void outputThunk (tree thunk_decl, tree target_decl, int offset);
-
-  static void initTypeDecl (tree t, tree decl);
-  static void declareType (tree decl);
-
-  // Can't output thunks while a function is being compiled.
-  static DeferredThunks deferredThunks;
-
- private:
-  static unsigned moduleSearchIndex;
-
-};
+extern FuncDeclaration *build_simple_function (const char *, tree, bool);
+extern FuncDeclaration *build_call_function (const char *, FuncDeclarations *, bool);
+extern Symbol *build_ctor_function (const char *, FuncDeclarations *, VarDeclarations *);
+extern Symbol *build_dtor_function (const char *, FuncDeclarations *);
+extern Symbol *build_unittest_function (const char *, FuncDeclarations *);
 
 #endif
 
