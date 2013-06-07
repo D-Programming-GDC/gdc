@@ -157,17 +157,6 @@ TypeTuple *TypeSArray::toArgTypes()
 #endif
 }
 
-TypeTuple *TypeDArray::toArgTypes()
-{
-    if (size(0) == 8)
-        return new TypeTuple(Type::tint64);
-
-    /* Should be done as if it were:
-     * struct S { size_t length; void* ptr; }
-     */
-    return new TypeTuple(Type::tsize_t, Type::tvoidptr);
-}
-
 TypeTuple *TypeAArray::toArgTypes()
 {
     return new TypeTuple(Type::tvoidptr);
@@ -176,17 +165,6 @@ TypeTuple *TypeAArray::toArgTypes()
 TypeTuple *TypePointer::toArgTypes()
 {
     return new TypeTuple(Type::tvoidptr);
-}
-
-TypeTuple *TypeDelegate::toArgTypes()
-{
-    if (size(0) == 8)
-        return new TypeTuple(Type::tint64);
-
-    /* Should be done as if it were:
-     * struct S { void* ptr; void* funcptr; }
-     */
-    return new TypeTuple(Type::tvoidptr, Type::tvoidptr);
 }
 
 /*************************************
@@ -276,10 +254,42 @@ Type *argtypemerge(Type *t1, Type *t2, unsigned offset2)
                 t = Type::tint64;
                 break;
             default:
-                assert(0);
+                return NULL;
         }
     }
     return t;
+}
+
+TypeTuple *TypeDArray::toArgTypes()
+{
+    /* Should be done as if it were:
+     * struct S { size_t length; void* ptr; }
+     */
+    if (global.params.is64bit && !global.params.isLP64)
+    {
+        // For X32 ABI on 64bit, D arrays fit into a single integer register.
+        unsigned offset = Type::tsize_t->size(0);
+        Type *t = argtypemerge(Type::tsize_t, Type::tvoidptr, offset);
+        if (t)
+            return new TypeTuple(t);
+    }
+    return new TypeTuple(Type::tsize_t, Type::tvoidptr);
+}
+
+TypeTuple *TypeDelegate::toArgTypes()
+{
+    /* Should be done as if it were:
+     * struct S { size_t length; void* ptr; }
+     */
+    if (global.params.is64bit && !global.params.isLP64)
+    {
+        // For X32 ABI on 64bit, D arrays fit into a single integer register.
+        unsigned offset = Type::tsize_t->size(0);
+        Type *t = argtypemerge(Type::tsize_t, Type::tvoidptr, offset);
+        if (t)
+            return new TypeTuple(t);
+    }
+    return new TypeTuple(Type::tvoidptr, Type::tvoidptr);
 }
 
 TypeTuple *TypeStruct::toArgTypes()

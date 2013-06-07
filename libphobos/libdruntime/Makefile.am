@@ -143,9 +143,9 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/freebsd/dlfcn.di core/sys/freebsd/execinfo.di \
 	     core/sys/freebsd/sys/event.di \
 	     \
-	     core/sys/linux/elf.di core/sys/linux/epoll.di \
-	     core/sys/linux/execinfo.di core/sys/linux/sys/signalfd.di \
-	     core/sys/linux/sys/xattr.di \
+	     core/sys/linux/config.di core/sys/linux/elf.di \
+	     core/sys/linux/epoll.di core/sys/linux/execinfo.di \
+	     core/sys/linux/sys/signalfd.di core/sys/linux/sys/xattr.di \
 	     \
 	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
 	     core/sys/osx/mach/getsect.di core/sys/osx/mach/kern_return.di \
@@ -212,9 +212,10 @@ install-data-local: libgdruntime.a
 			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 		done; \
 	done
-	for i in core core/stdc core/sync core/sys/osx/mach core/sys/posix \
-		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
-		core/sys/posix/sys core/sys/windows; do \
+	for i in core core/stdc core/sync core/sys/freebsd core/sys/freebsd/sys \
+		core/sys/linux core/sys/linux/sys core/sys/osx core/sys/osx/mach \
+		core/sys/posix core/sys/posix/arpa core/sys/posix/net \
+		core/sys/posix/netinet core/sys/posix/sys core/sys/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
 		for f in $(IMPORT)/$$i/*.di; do \
 			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \

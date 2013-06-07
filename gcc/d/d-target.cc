@@ -110,7 +110,10 @@ Target::critsecsize (void)
   else if (global.params.isLinux)
     {
       // sizeof(pthread_mutex_t) for Linux.
-      return global.params.isLP64 ? 40 : 24;
+      if (global.params.is64bit)
+	return global.params.isLP64 ? 40 : 32;
+      else
+	return 24;
     }
   else if (global.params.isFreeBSD)
     {
