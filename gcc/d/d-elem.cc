@@ -1038,11 +1038,69 @@ IndexExp::toElem (IRState *irs)
     }
   else
     {
-      /* arrayElemRef will call aryscp.finish.  This result
-	 of this function may be used as an lvalue and we
-	 do not want it to be a BIND_EXPR. */
-      ArrayScope aryscp (lengthVar, loc);
-      return irs->arrayElemRef (this, &aryscp);
+      // Build an array index expression.  ArrayScope may build a BIND_EXPR
+      // if temporaries were created for bounds checking.
+      ArrayScope arrscope (lengthVar, loc);
+
+      // The expression that holds the array data.
+      tree t1 = e1->toElem (irs);
+      // The expression that indexes the array data.
+      tree t2 = e2->toElem (irs);
+      // The base pointer to the elements.
+      tree ptrexp;
+
+      switch (tb1->ty)
+	{
+	case Tarray:
+	case Tsarray:
+	  t1 = arrscope.setArrayExp (t1, e1->type);
+
+	  // If it's a static array and the index is constant,
+	  // the front end has already checked the bounds.
+	  if (array_bounds_check() && !(tb1->ty == Tsarray && e2->isConst()))
+	    {
+	      // Implement bounds check as a conditional expression:
+	      // array [inbounds(index) ? index : { throw ArrayBoundsError}]
+	      tree length;
+
+	      // First, set up the index expression to only be evaluated once.
+	      tree index = maybe_make_temp (t2);
+
+	      if (tb1->ty == Tarray)
+		{
+		  t1 = maybe_make_temp (t1);
+		  length = d_array_length (t1);
+		}
+	      else
+		length = ((TypeSArray *) tb1)->dim->toElem (irs);
+
+	      t2 = d_checked_index (loc, index, length, false);
+	    }
+
+	  if (tb1->ty == Tarray)
+	    ptrexp = d_array_ptr (t1);
+	  else
+	    ptrexp = build_address (t1);
+
+	  // This conversion is required for static arrays and is
+	  // just-to-be-safe for dynamic arrays.
+	  ptrexp = convert (tb1->nextOf()->pointerTo()->toCtype(), ptrexp);
+	  break;
+
+	case Tpointer:
+	  // Ignores ArrayScope.
+	  ptrexp = t1;
+	  break;
+
+	default:
+	  gcc_unreachable();
+	}
+
+      ptrexp = void_okay_p (ptrexp);
+      t2 = arrscope.finish (t2);
+
+      return indirect_ref (TREE_TYPE (TREE_TYPE (ptrexp)),
+			   build_array_index (ptrexp, t2));
     }
 }
 
@@ -1360,7 +1418,7 @@ PtrExp::toElem (IRState *irs)
       if (!decl_reference_p (sym_exp->var))
 	{
 	  rec_type = sym_exp->var->type->toBasetype();
-	  rec_tree = irs->var (sym_exp->var);
+	  rec_tree = get_decl_tree (sym_exp->var, irs->func);
 	  the_offset = sym_exp->offset;
 	}
     }
@@ -1492,7 +1550,7 @@ DelegateExp::toElem (IRState *irs)
 	  if (e1->op == TOKnull)
 	    this_tree = e1->toElem (irs);
 	  else
-	    this_tree = irs->getFrameForSymbol (func);
+	    this_tree = get_frame_for_symbol (irs->func, func);
 	}
       else
 	{
@@ -1537,7 +1595,7 @@ DotVarExp::toElem (IRState *irs)
       else if (var_decl)
 	{
 	  if (!(var_decl->storage_class & STCfield))
-	    return irs->var (var_decl);
+	    return get_decl_tree (var_decl, irs->func);
 	  else
 	    {
 	      tree this_tree = e1->toElem (irs);
@@ -1695,7 +1753,7 @@ FuncExp::toElem (IRState *irs)
 
     case Tdelegate:
       return build_method_call (build_address (fd->toSymbol()->Stree),
-				irs->getFrameForSymbol (fd), type);
+				get_frame_for_symbol (irs->func, fd), type);
 
     default:
       ::error ("Unexpected FuncExp type");
@@ -1727,7 +1785,7 @@ SymbolExp::toElem (IRState *irs)
       if (var->ident == Id::ctfe)
 	return integer_zero_node;
 
-      exp = irs->var (var);
+      exp = get_decl_tree (var, irs->func);
       TREE_USED (exp) = 1;
 
       // For variables that are references (currently only out/inout arguments;
@@ -1741,7 +1799,7 @@ SymbolExp::toElem (IRState *irs)
     {
       size_t offset = ((SymOffExp *) this)->offset;
 
-      exp = irs->var (var);
+      exp = get_decl_tree (var, irs->func);
       TREE_USED (exp) = 1;
 
       if (decl_reference_p (var))
@@ -2347,16 +2405,17 @@ elem *
 ThisExp::toElem (IRState *irs)
 {
   tree this_tree = NULL_TREE;
+  FuncDeclaration *fd = irs->func;
 
   if (var)
     {
       gcc_assert(var->isVarDeclaration());
-      this_tree = irs->var (var);
+      this_tree = get_decl_tree (var, fd);
     }
   else
     {
-      gcc_assert (irs->func && irs->func->vthis);
-      this_tree = irs->var (irs->func->vthis);
+      gcc_assert (fd && fd->vthis);
+      this_tree = get_decl_tree (fd->vthis, fd);
     }
 
   if (type->ty == Tstruct)

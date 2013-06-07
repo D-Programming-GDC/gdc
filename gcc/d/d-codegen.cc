@@ -104,7 +104,7 @@ IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
   if (sym->SframeField)
     {
       // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var_decl, var (vd));
+      SET_DECL_VALUE_EXPR (var_decl, get_decl_tree (vd, this->func));
       DECL_HAS_VALUE_EXPR_P (var_decl) = 1;
     }
   var_exp = var_decl;
@@ -215,11 +215,11 @@ IRState::expandDecl (tree decl)
     }
 }
 
-// Return the correct decl to be used for variable VD.
-// Could be a VAR_DECL, or a FIELD_DECL from a closure.
+// Return the correct decl to be used for variable DECL accessed from
+// function FUNC.  Could be a VAR_DECL, or a FIELD_DECL from a closure.
 
 tree
-IRState::var (Declaration *decl)
+get_decl_tree (Declaration *decl, FuncDeclaration *func)
 {
   VarDeclaration *vd = decl->isVarDeclaration();
 
@@ -235,12 +235,10 @@ IRState::var (Declaration *decl)
       else if (vsym->SframeField != NULL_TREE)
 	{
     	  // Get the closure holding the var decl.
-    	  FuncDeclaration *fd = vd->toParent2()->isFuncDeclaration();
-    	  tree frame_ref = get_framedecl (this->func, fd);
-    	  tree field = vsym->SframeField;
+    	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
+    	  tree frame_ref = get_framedecl (func, parent);
 
-    	  gcc_assert (field != NULL_TREE);
-    	  return component_ref (build_deref (frame_ref), field);
+    	  return component_ref (build_deref (frame_ref), vsym->SframeField);
     	}
     }
 
@@ -300,7 +298,7 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	}
       else
 	{
-	  ::error ("can't convert a delegate expression to %s", target_type->toChars());
+	  error ("can't convert a delegate expression to %s", target_type->toChars());
 	  return error_mark (target_type);
 	}
       break;
@@ -320,7 +318,7 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	  }
 	else
 	  {
-	    ::error ("can't convert struct %s to %s", exp_type->toChars(), target_type->toChars());
+	    error ("can't convert struct %s to %s", exp_type->toChars(), target_type->toChars());
 	    return error_mark (target_type);
 	  }
       }
@@ -405,8 +403,8 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 
 	  if ((dim * esize) % tsize != 0)
 	    {
-	      ::error ("cannot cast %s to %s since sizes don't line up",
-		       exp_type->toChars(), target_type->toChars());
+	      error ("cannot cast %s to %s since sizes don't line up",
+		     exp_type->toChars(), target_type->toChars());
 	      return error_mark (target_type);
 	    }
 	  dim = (dim * esize) / tsize;
@@ -429,8 +427,8 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	}
       else
 	{
-	  ::error ("cannot cast expression of type %s to type %s",
-		   exp_type->toChars(), target_type->toChars());
+	  error ("cannot cast expression of type %s to type %s",
+		 exp_type->toChars(), target_type->toChars());
 	  return error_mark (target_type);
 	}
       break;
@@ -473,8 +471,8 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	}
       else
 	{
-	  ::error ("cannot cast expression of type %s to %s",
-		   exp_type->toChars(), target_type->toChars());
+	  error ("cannot cast expression of type %s to %s",
+		 exp_type->toChars(), target_type->toChars());
 	  return error_mark (target_type);
 	}
       break;
@@ -603,23 +601,19 @@ convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
 
 tree
-IRState::convertForArgument (Expression *expr, Parameter *arg)
+convert_for_argument (tree exp_tree, Expression *expr, Parameter *arg)
 {
   if (arg_reference_p (arg))
     {
-      tree exp_tree = expr->toElem (this);
-      // front-end already sometimes automatically takes the address
-      // TODO: Make this safer?  Can this be confused by a non-zero SymOff?
+      // Front-end already sometimes automatically takes the address
       if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
 	exp_tree = build_address (exp_tree);
 
       return convert (type_passed_as (arg), exp_tree);
     }
-  else
-    {
-      // Lazy arguments: expr should already be a delegate
-      return expr->toElem (this);
-    }
+
+  // Lazy arguments: expr should already be a delegate
+  return exp_tree;
 }
 
 // Perform default promotions for data used in expressions.
@@ -1123,7 +1117,7 @@ get_array_length (tree exp, Type *type)
       return d_array_length (exp);
 
     default:
-      ::error ("can't determine the length of a %s", type->toChars());
+      error ("can't determine the length of a %s", type->toChars());
       return error_mark (type);
     }
 }
@@ -1673,7 +1667,7 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
 
   // Deal with float mod expressions immediately.
   if (code == FLOAT_MOD_EXPR)
-    return floatMod (TREE_TYPE (arg0), arg0, arg1);
+    return build_float_modulus (TREE_TYPE (arg0), arg0, arg1);
 
   if (POINTER_TYPE_P (t0) && INTEGRAL_TYPE_P (t1))
     return build_nop (type, build_offset_op (code, arg0, arg1));
@@ -1798,83 +1792,6 @@ array_bounds_check (void)
 
   return false;
 }
-
-// Builds an array index expression from AE.  ASC may build a
-// BIND_EXPR if temporaries were created for bounds checking.
-
-tree
-IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
-{
-  Expression *e1 = ae->e1;
-  Expression *e2 = ae->e2;
-
-  Type *base_type = e1->type->toBasetype();
-  TY base_type_ty = base_type->ty;
-  // expression that holds the array data.
-  tree array_expr = e1->toElem (this);
-  // expression that indexes the array data
-  tree subscript_expr = e2->toElem (this);
-  // base pointer to the elements
-  tree ptr_exp;
-  // reference the the element
-  tree elem_ref;
-
-  switch (base_type_ty)
-    {
-    case Tarray:
-    case Tsarray:
-      array_expr = asc->setArrayExp (array_expr, e1->type);
-
-      // If it's a static array and the index is constant,
-      // the front end has already checked the bounds.
-      if (array_bounds_check() && !(base_type_ty == Tsarray && e2->isConst()))
-	{
-	  tree array_len_expr;
-	  // implement bounds check as a conditional expression:
-	  // array [inbounds(index) ? index : { throw ArrayBoundsError }]
-
-	  // First, set up the index expression to only be evaluated once.
-	  tree index_expr = maybe_make_temp (subscript_expr);
-
-	  if (base_type_ty == Tarray)
-	    {
-	      array_expr = maybe_make_temp (array_expr);
-	      array_len_expr = d_array_length (array_expr);
-	    }
-	  else
-	    array_len_expr = ((TypeSArray *) base_type)->dim->toElem (this);
-
-	  subscript_expr = d_checked_index (ae->loc, index_expr,
-					    array_len_expr, false);
-	}
-
-      if (base_type_ty == Tarray)
-	ptr_exp = d_array_ptr (array_expr);
-      else
-	ptr_exp = build_address (array_expr);
-
-      // This conversion is required for static arrays and is just-to-be-safe
-      // for dynamic arrays
-      ptr_exp = convert (base_type->nextOf()->pointerTo()->toCtype(), ptr_exp);
-      break;
-
-    case Tpointer:
-      // Ignores array scope.
-      ptr_exp = array_expr;
-      break;
-
-    default:
-      gcc_unreachable();
-    }
-
-  ptr_exp = void_okay_p (ptr_exp);
-  subscript_expr = asc->finish (subscript_expr);
-  elem_ref = indirect_ref (TREE_TYPE (TREE_TYPE (ptr_exp)),
-			   build_array_index (ptr_exp, subscript_expr));
-
-  return elem_ref;
-}
-
 
 void
 IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
@@ -2078,7 +1995,7 @@ IRState::call (Expression *expr, Expressions *arguments)
 	      // Re-evaluate symbol storage treating 'fd' as public.
 	      setup_symbol_storage (fd, callee, true);
 	    }
-	  object = getFrameForSymbol (fd);
+	  object = get_frame_for_symbol (this->func, fd);
 	}
       else if (fd->needThis())
 	{
@@ -2188,7 +2105,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	{
 	  // Actual arguments for declared formal arguments
 	  Parameter *formal_arg = Parameter::getNth (formal_args, fi);
-	  arg_tree = convertForArgument (arg_exp, formal_arg);
+	  arg_tree = convert_for_argument (arg_exp->toElem (this), arg_exp, formal_arg);
 	  ++fi;
 	}
       else
@@ -3025,7 +2942,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 // ARG0 and ARG1 are the arguments pass to the function.
 
 tree
-IRState::floatMod (tree type, tree arg0, tree arg1)
+build_float_modulus (tree type, tree arg0, tree arg1)
 {
   tree fmodfn = NULL_TREE;
   tree basetype = type;
@@ -3043,7 +2960,7 @@ IRState::floatMod (tree type, tree arg0, tree arg1)
   if (!fmodfn)
     {
       // %qT pretty prints the tree type.
-      ::error ("tried to perform floating-point modulo division on %qT", type);
+      error ("tried to perform floating-point modulo division on %qT", type);
       return error_mark_node;
     }
 
@@ -3290,19 +3207,19 @@ d_build_label (Loc loc, Identifier *ident)
   return decl;
 }
 
-// If NESTED_SYM is a nested function, return the static chain to be
-// used when invoking that function.
+// If SYM is a nested function, return the static chain to be
+// used when calling that function from FUNC.
 
-// If NESTED_SYM is a nested class or struct, return the static chain
-// to be used when creating an instance of the class.
+// If SYM is a nested class or struct, return the static chain
+// to be used when creating an instance of the class from FUNC.
 
 tree
-IRState::getFrameForSymbol (Dsymbol *nested_sym)
+get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 {
-  FuncDeclaration *nested_func = NULL;
+  FuncDeclaration *nested_func = sym->isFuncDeclaration();
   FuncDeclaration *outer_func = NULL;
 
-  if ((nested_func = nested_sym->isFuncDeclaration()))
+  if (nested_func != NULL)
     {
       // Check that the nested function is properly defined.
       if (!nested_func->fbody)
@@ -3315,16 +3232,19 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
       outer_func = nested_func->toParent2()->isFuncDeclaration();
       gcc_assert (outer_func != NULL);
 
-      if (this->func != outer_func)
+      if (func != outer_func)
 	{
-	  Dsymbol *this_func = this->func;
-	  if (!this->func->vthis) // if no frame pointer for this function
+	  // If no frame pointer for this function
+	  if (!func->vthis)
 	    {
-	      nested_sym->error ("is a nested function and cannot be accessed from %s", this->func->toChars());
+	      sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
 	      return d_null_pointer;
 	    }
-	  /* Make sure we can get the frame pointer to the outer function,
-	     else we'll ICE later in tree-ssa.  */
+
+	  Dsymbol *this_func = func;
+
+	  // Make sure we can get the frame pointer to the outer function,
+	  // else we'll ICE later in tree-ssa.
 	  while (nested_func != this_func)
 	    {
 	      FuncDeclaration *fd;
@@ -3334,7 +3254,7 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 	      // Special case for __ensure and __require.
 	      if (nested_func->ident == Id::ensure || nested_func->ident == Id::require)
 		{
-		  outer_func = this->func;
+		  outer_func = func;
 		  break;
 		}
 
@@ -3342,12 +3262,14 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 		{
 		  if (outer_func == fd->toParent2())
 		    break;
+
 		  gcc_assert (fd->isNested() || fd->vthis);
 		}
 	      else if ((cd = this_func->isClassDeclaration()))
 		{
 		  if (!cd->isNested() || !cd->vthis)
 		    goto cannot_get_frame;
+
 		  if (outer_func == cd->toParent2())
 		    break;
 		}
@@ -3355,13 +3277,14 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 		{
 		  if (!sd->isNested() || !sd->vthis)
 		    goto cannot_get_frame;
+
 		  if (outer_func == sd->toParent2())
 		    break;
 		}
 	      else
 		{
-	    cannot_get_frame:
-		  this->func->error ("cannot get frame pointer to %s", nested_sym->toChars());
+	        cannot_get_frame:
+		  func->error ("cannot get frame pointer to %s", sym->toChars());
 		  return d_null_pointer;
 		}
 	      this_func = this_func->toParent2();
@@ -3373,33 +3296,41 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
       /* It's a class (or struct).  NewExp::toElem has already determined its
 	 outer scope is not another class, so it must be a function. */
 
-      Dsymbol *sym = nested_sym;
-
-      while (sym && !(outer_func = sym->isFuncDeclaration()))
+      while (sym && !sym->isFuncDeclaration())
 	sym = sym->toParent2();
 
+      outer_func = (FuncDeclaration *) sym;
+
       /* Make sure we can access the frame of outer_func.  */
-      if (outer_func != this->func)
+      if (outer_func != func)
 	{
-	  Dsymbol *o = nested_func = this->func;
-	  do {
+	  nested_func = func;
+	  while (nested_func && nested_func != outer_func)
+	    {
+	      Dsymbol *outer = nested_func->toParent2();
+
 	      if (!nested_func->isNested())
 		{
 		  if (!nested_func->isMember2())
 		    goto cannot_access_frame;
 		}
-	      while ((o = o->toParent2()))
-		{
-		  if ((nested_func = o->isFuncDeclaration()))
-		    break;
-		}
-	  } while (o && o != outer_func);
 
-	  if (!o)
+	      while (outer)
+		{
+		  if (outer->isFuncDeclaration())
+		    break;
+
+		  outer = outer->toParent2();
+		}
+
+	      nested_func = (FuncDeclaration *) outer;
+	    }
+
+	  if (!nested_func)
 	    {
-	cannot_access_frame:
+	    cannot_access_frame:
 	      error ("cannot access frame of function '%s' from '%s'",
-		     outer_func->toChars(), this->func->toChars());
+		     outer_func->toChars(), func->toChars());
 	      return d_null_pointer;
 	    }
 	}
@@ -3407,11 +3338,12 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 
   if (!outer_func)
     outer_func = nested_func->toParent2()->isFuncDeclaration();
+
   gcc_assert (outer_func != NULL);
 
   FuncFrameInfo *ffo = get_frameinfo (outer_func);
   if (ffo->creates_frame || ffo->static_chain)
-    return get_framedecl (this->func, outer_func);
+    return get_framedecl (func, outer_func);
 
   return d_null_pointer;
 }
@@ -3451,39 +3383,39 @@ d_nested_struct (StructDeclaration *sd)
 }
 
 
-// Starting from the current function, try to find a suitable value of
-// 'this' in nested function instances.
+// Starting from the current function FUNC, try to find a suitable value of
+// 'this' in nested function instances.  A suitable 'this' value is an
+// instance of OCD or a class that has OCD as a base.
 
-// A suitable 'this' value is an instance of OCD or a class that has
-// OCD as a base.
-
-tree
-IRState::findThis (ClassDeclaration *ocd)
+static tree
+find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
 {
-  FuncDeclaration *fd = func;
-
-  while (fd)
+  while (func)
     {
-      AggregateDeclaration *ad = fd->isThis();
+      AggregateDeclaration *ad = func->isThis();
       ClassDeclaration *cd = ad ? ad->isClassDeclaration() : NULL;
 
       if (cd != NULL)
 	{
 	  if (ocd == cd)
-	    return var (fd->vthis);
+	    return get_decl_tree (func->vthis, func);
 	  else if (ocd->isBaseOf (cd, NULL))
-	    return convert_expr (var (fd->vthis), cd->type, ocd->type);
-	  else
-	    fd = d_nested_class (cd);
+	    return convert_expr (get_decl_tree (func->vthis, func), cd->type, ocd->type);
+
+	  func = d_nested_class (cd);
 	}
       else
 	{
-	  if (fd->isNested())
-	    fd = fd->toParent2()->isFuncDeclaration();
-	  else
-	    fd = NULL;
+	  if (func->isNested())
+	    {
+	      func = func->toParent2()->isFuncDeclaration();
+	      continue;
+	    }
+
+	  func = NULL;
 	}
     }
+
   return NULL_TREE;
 }
 
@@ -3507,7 +3439,7 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 
       if (cdo)
 	{
-	  vthis_value = findThis (cdo);
+	  vthis_value = find_this_tree (this->func, cdo);
 	  if (vthis_value == NULL_TREE)
 	    e->error ("outer class %s 'this' needed to 'new' nested class %s",
 		      cdo->toChars(), cd->toChars());
@@ -3523,9 +3455,9 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = getFrameForSymbol (cd);
+	    vthis_value = get_frame_for_symbol (this->func, cd);
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
-	    vthis_value = var (fdo->vthis);
+	    vthis_value = get_decl_tree (fdo->vthis, this->func);
 	  else
 	    vthis_value = d_null_pointer;
 	}
@@ -3540,7 +3472,7 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 
       if (cdo)
 	{
-	  vthis_value = findThis (cdo);
+	  vthis_value = find_this_tree (this->func, cdo);
 	  if (vthis_value == NULL_TREE)
 	    e->error ("outer class %s 'this' needed to create nested struct %s",
 		      cdo->toChars(), sd->toChars());
@@ -3550,9 +3482,9 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = getFrameForSymbol (sd);
+	    vthis_value = get_frame_for_symbol (this->func, sd);
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
-	    vthis_value = var (fdo->vthis);
+	    vthis_value = get_decl_tree (fdo->vthis, this->func);
 	  else
 	    vthis_value = d_null_pointer;
 	}

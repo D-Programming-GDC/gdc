@@ -1,3 +1,14 @@
+2013-06-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::var): Rename to get_decl_tree.
+	(IRState::convertForArgument): Rename to convert_for_argument.
+	(IRState::floatMod): Rename to build_float_modulus.
+	(IRState::findThis): Rename to find_this_tree.
+	(IRState::emitLocalVar): Update signature.
+	(IRState::arrayElemRef): Remove function.
+	* d-elem.cc(IndexExp::toElem): Move implementation of
+	IRState::arrayElemRef here.
+
 2013-06-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(cmodule): Rename to current_module_decl.

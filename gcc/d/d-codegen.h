@@ -163,6 +163,7 @@ extern tree insert_type_modifiers (tree type, unsigned mod);
 extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);
 
 extern tree build_exception_object (void);
+extern tree build_float_modulus (tree type, tree t1, tree t2);
 
 extern tree indirect_ref (tree type, tree exp);
 extern tree build_deref (tree exp);
@@ -220,12 +221,17 @@ extern tree build_frame_type (FuncDeclaration *func);
 extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
 extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
 
+// Static chain for nested functions
+extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);
+
 extern bool needs_static_chain (FuncDeclaration *f);
 
 // Local variables
 extern tree build_local_var (tree type);
 extern tree create_temporary_var (tree type);
 extern tree maybe_temporary_var (tree exp, tree *out_var);
+
+extern tree get_decl_tree (Declaration *decl, FuncDeclaration *func);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree maybe_make_temp (tree t);
@@ -405,21 +411,16 @@ struct IRState : IRBase
 {
  public:
   // ** Local variables
-  void emitLocalVar (VarDeclaration *v, bool no_init = false);
+  void emitLocalVar (VarDeclaration *v, bool no_init);
 
   void expandDecl (tree t_decl);
 
-  tree var (Declaration *decl);
-
   // ** Type conversion
-  tree convertForArgument (Expression *exp, Parameter *arg);
   tree toDArray (Expression *exp);
 
   // ** Various expressions
   static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
   tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
-
-  tree arrayElemRef (IndexExp *aer_exp, ArrayScope *aryscp);
 
   void doArraySet (tree in_ptr, tree in_value, tree in_count);
   tree arraySetExpr (tree ptr, tree value, tree count);
@@ -430,17 +431,11 @@ struct IRState : IRBase
   tree call (FuncDeclaration *func_decl, tree object, Expressions *args);
   tree call (TypeFunction *guess, tree callable, tree object, Expressions *arguments);
 
-  static tree floatMod (tree type, tree arg0, tree arg1);
-
   tree typeinfoReference (Type *t);
 
   void buildChain (FuncDeclaration *func);
 
-  tree findThis (ClassDeclaration *target_cd);
   tree getVThis (Dsymbol *decl, Expression *e);
-
-  // Static chain for nested functions
-  tree getFrameForSymbol (Dsymbol *nested_sym);
 
  protected:
   tree maybeExpandSpecialCall (tree call_exp);

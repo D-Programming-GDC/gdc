@@ -168,7 +168,7 @@ TryCatchStatement::toIR (IRState *irs)
 	      // need to override initializer...
 	      // set DECL_INITIAL now and emitLocalVar will know not to change it
 	      DECL_INITIAL (catch_var) = exc_obj;
-	      irs->emitLocalVar (a_catch->var);
+	      irs->emitLocalVar (a_catch->var, false);
 	    }
 
 	  if (a_catch->handler)
@@ -190,7 +190,7 @@ WithStatement::toIR (IRState *irs)
 {
   irs->startScope();
   if (wthis)
-    irs->emitLocalVar (wthis);
+    irs->emitLocalVar (wthis, false);
 
   if (body)
     body->toIR (irs);

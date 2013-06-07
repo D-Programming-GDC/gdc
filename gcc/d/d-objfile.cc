@@ -699,7 +699,7 @@ VarDeclaration::toObjFile (int)
       // local variables of a function.  Otherwise, it would be
       // enough to make a check for isVarDeclaration() in
       // DeclarationExp::toElem.
-      cirstate->emitLocalVar (this);
+      cirstate->emitLocalVar (this, false);
     }
 }
 
@@ -1026,7 +1026,7 @@ FuncDeclaration::toObjFile (int)
   if (v_argptr)
     irs->pushStatementList();
   if (v_arguments_var)
-    irs->emitLocalVar (v_arguments_var);
+    irs->emitLocalVar (v_arguments_var, false);
 
   /* The fabled D named return value optimisation.
      Implemented by overriding all the RETURN_EXPRs and replacing all
@@ -1052,7 +1052,7 @@ FuncDeclaration::toObjFile (int)
   if (v_argptr)
     {
       tree body = irs->popStatementList();
-      tree var = irs->var (v_argptr);
+      tree var = get_decl_tree (v_argptr, this);
       var = build_address (var);
 
       tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
