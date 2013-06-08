@@ -254,7 +254,7 @@ Type *argtypemerge(Type *t1, Type *t2, unsigned offset2)
                 t = Type::tint64;
                 break;
             default:
-                return NULL;
+                assert(0);
         }
     }
     return t;

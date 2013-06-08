@@ -113,7 +113,7 @@ Target::critsecsize (void)
       if (global.params.is64bit)
 	return global.params.isLP64 ? 40 : 32;
       else
-	return 24;
+	return global.params.isLP64 ? 40 : 24;
     }
   else if (global.params.isFreeBSD)
     {
