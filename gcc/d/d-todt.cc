@@ -111,7 +111,7 @@ dt_container2 (dt_t *dt)
 	}
     }
   else
-    dt = build_constructor (d_unknown_type_node, NULL);
+    dt = build_constructor (aggtype, NULL);
 
   TYPE_FIELDS (aggtype) = fields;
   TYPE_SIZE (aggtype) = size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT));

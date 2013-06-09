@@ -1594,11 +1594,16 @@ d_eh_personality (void)
 static tree
 d_build_eh_type_type (tree type)
 {
-  TypeClass *d_type = (TypeClass *) build_dtype (type);
-  gcc_assert (d_type);
-  d_type = (TypeClass *) d_type->toBasetype();
-  gcc_assert (d_type->ty == Tclass);
-  return build_address (d_type->sym->toSymbol()->Stree);
+  Type *dtype = build_dtype (type);
+  Symbol *sym;
+
+  if (dtype)
+    dtype = dtype->toBasetype();
+
+  gcc_assert (dtype && dtype->ty == Tclass);
+  sym = ((TypeClass *) dtype)->sym->toSymbol();
+
+  return convert (ptr_type_node, build_address (sym->Stree));
 }
 
 void

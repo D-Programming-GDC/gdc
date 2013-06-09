@@ -1178,7 +1178,7 @@ d_init_builtins (void)
   D_TYPE_IMAGINARY_FLOAT (d_ireal_type_node) = 1;
 
   /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
-  d_unknown_type_node = make_node (LANG_TYPE);
+  d_unknown_type_node = make_node (RECORD_TYPE);
 
   {
     /* Make sure we get a unique function type, so we can give
