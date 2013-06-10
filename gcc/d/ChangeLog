@@ -1,3 +1,11 @@
+2013-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(FuncDeclaration::toObjFile): Set 'this' parameter as
+	implicitly read-only.
+	* d-codegen.cc(declaration_type): Set 'this' declaration type as
+	implicitly const.
+	(build_frame_type): Set frame or closure type as implicitly const.
+
 2013-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c(d_init_builtins): Make d_unknown_type_node a

@@ -951,16 +951,17 @@ FuncDeclaration::toObjFile (int)
   // Special arguments...
 
   // 'this' parameter
+  // For nested functions, D still generates a vthis, but it
+  // should not be referenced in any expression.
   if (vthis)
     {
       parm_decl = vthis->toSymbol()->Stree;
-      // For nested functions, D still generates a vthis, but it
-      // should not be referenced in any expression.
-      if (!isThis() && isNested())
-	DECL_ARTIFICIAL (parm_decl) = 1;
-      irs->sthis = parm_decl;
+      DECL_ARTIFICIAL (parm_decl) = 1;
+      TREE_READONLY (parm_decl) = 1;
+
       set_decl_location (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
+      irs->sthis = parm_decl;
     }
 
   // _arguments parameter.

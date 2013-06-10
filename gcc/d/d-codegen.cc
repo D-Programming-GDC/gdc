@@ -736,6 +736,8 @@ declaration_type (Declaration *decl)
       TypeDelegate *t = new TypeDelegate (tf);
       decl_type = t->merge()->toCtype();
     }
+  else if (decl->isThisDeclaration())
+    decl_type = insert_type_modifiers (decl_type, MODconst);
 
   return decl_type;
 }
@@ -3559,6 +3561,7 @@ build_frame_type (FuncDeclaration *func)
   tree ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       get_identifier ("__chain"), ptr_type_node);
   DECL_CONTEXT (ptr_field) = frame_rec_type;
+  TYPE_READONLY (frame_rec_type) = 1;
 
   tree fields = chainon (NULL_TREE, ptr_field);
 
