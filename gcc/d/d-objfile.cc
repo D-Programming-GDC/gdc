@@ -583,9 +583,14 @@ InterfaceDeclaration::toObjFile (int)
   dt_cons (&dt, d_array_value (Type::tuns8->arrayOf()->toCtype(),
 			       size_int (0), d_null_pointer));
 
-  // defaultConstructor*, xgetRTInfo*
+  // defaultConstructor*
   dt_cons (&dt, d_null_pointer);
-  dt_cons (&dt, size_int (0x12345678));
+
+  // xgetRTInfo*
+  if (getRTInfo)
+    getRTInfo->toDt (&dt);
+  else
+    dt_cons (&dt, size_int (0));
 
   /* Put out (*vtblInterfaces)[]. Must immediately follow csym.
    * The layout is:
@@ -767,6 +772,9 @@ Module::genmoduleinfo()
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
 
+  if (Module::moduleinfo == NULL)
+    ObjectNotFound (Id::ModuleInfo);
+
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *member = (*members)[i];
@@ -910,7 +918,7 @@ FuncDeclaration::toObjFile (int)
     }
 
   if (global.params.verbose)
-    fprintf (stdmsg, "function  %s\n", this->toPrettyChars());
+    fprintf (stderr, "function  %s\n", this->toPrettyChars());
 
   IRState *irs = cirstate->startFunction (this);
   // Default chain value is 'null' unless parent found.
@@ -1735,7 +1743,7 @@ output_symbol_p (Symbol *sym)
       if (!symtab)
 	{
 	  symtab = new StringTable;
-	  symtab->init();
+	  symtab->_init();
 	}
 
       if (!symtab->insert (ident, len))

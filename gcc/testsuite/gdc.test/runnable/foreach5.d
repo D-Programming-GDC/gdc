@@ -432,6 +432,129 @@ void test7814()
 }
 
 /***************************************/
+// 10049
+
+struct ByLine10049
+{
+    bool empty() { return true; }
+    string front() { return null; }
+    void popFront() {}
+
+    ~this() {}  // necessary
+}
+
+void test10049()
+{
+    ByLine10049 r;
+    foreach (line; r)
+    {
+        doNext:
+            {}
+    }
+}
+
+/******************************************/
+// 6652
+
+void test6652()
+{
+    size_t sum;
+    foreach (i; 0 .. 10)
+        sum += i++; // 0123456789
+    assert(sum == 45);
+
+    sum = 0;
+    foreach (ref i; 0 .. 10)
+        sum += i++; // 02468
+    assert(sum == 20);
+
+    sum = 0;
+    foreach_reverse (i; 0 .. 10)
+        sum += i--; // 9876543210
+    assert(sum == 45);
+
+    sum = 0;
+    foreach_reverse (ref i; 0 .. 10)
+        sum += i--; // 97531
+    assert(sum == 25);
+
+    enum ary = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    sum = 0;
+    foreach (i, v; ary)
+    {
+        assert(i == v);
+        sum += i++; // 0123456789
+    }
+    assert(sum == 45);
+
+    sum = 0;
+    foreach (ref i, v; ary)
+    {
+        assert(i == v);
+        sum += i++; // 02468
+    }
+    assert(sum == 20);
+
+    sum = 0;
+    foreach_reverse (i, v; ary)
+    {
+        assert(i == v);
+        sum += i--; // 9876543210
+    }
+    assert(sum == 45);
+
+    sum = 0;
+    foreach_reverse (ref i, v; ary)
+    {
+        assert(i == v);
+        sum += i--; // 97531
+    }
+    assert(sum == 25);
+
+    static struct Iter
+    {
+        ~this()
+        {
+            ++_dtorCount;
+        }
+
+        bool opCmp(ref const Iter rhs)
+        {
+            return _pos == rhs._pos;
+        }
+
+        void opUnary(string op)() if(op == "++" || op == "--")
+        {
+            mixin(op ~ q{_pos;});
+        }
+
+        size_t _pos;
+        static size_t _dtorCount;
+    }
+
+    Iter._dtorCount = sum = 0;
+    foreach (v; Iter(0) .. Iter(10))
+        sum += v._pos++; // 0123456789
+    assert(sum == 45 && Iter._dtorCount == 12);
+
+    Iter._dtorCount = sum = 0;
+    foreach (ref v; Iter(0) .. Iter(10))
+        sum += v._pos++; // 02468
+    assert(sum == 20 && Iter._dtorCount == 2);
+
+    // additional dtor calls due to unnecessary postdecrements
+    Iter._dtorCount = sum = 0;
+    foreach_reverse (v; Iter(0) .. Iter(10))
+        sum += v._pos--; // 9876543210
+    assert(sum == 45 && Iter._dtorCount >= 12);
+
+    Iter._dtorCount = sum = 0;
+    foreach_reverse (ref v; Iter(0) .. Iter(10))
+        sum += v._pos--; // 97531
+    assert(sum == 25 && Iter._dtorCount >= 2);
+}
+
+/***************************************/
 // 8595
 
 struct OpApply8595
@@ -449,6 +572,86 @@ string test8595()
         static assert(is(typeof(return) == string));
     }
     assert(0);
+}
+
+/***************************************/
+// 9068
+
+struct Foo9068
+{
+    static int[] destroyed;
+    int x;
+    ~this() { destroyed ~= x; }
+}
+
+struct SimpleCounter9068
+{
+    static int destroyedCount;
+    const(int) limit = 5;
+    int counter;
+    ~this() { destroyedCount++; }
+
+    // Range primitives.
+    @property bool empty() const { return counter >= limit; }
+    @property int front() { return counter; }
+    void popFront() { counter++; }
+}
+
+// ICE when trying to break outer loop from inside switch statement
+void test9068()
+{
+    //----------------------------------------
+    // There was never a bug in this case (no range).
+    int sum;
+loop_simple:
+    foreach (i; [10, 20]) {
+        sum += i;
+        break loop_simple;
+    }
+    assert(sum == 10);
+
+    //----------------------------------------
+    // There was a bug with loops over ranges.
+    int last = -1;
+X:  foreach (i; SimpleCounter9068()) {
+       switch(i) {
+           case 3: break X;
+           default: last = i;
+       }
+    }
+    assert(last == 2);
+    assert(SimpleCounter9068.destroyedCount == 1);
+
+    //----------------------------------------
+    // Simpler case: the compiler error had nothing to do with the switch.
+    last = -1;
+loop_with_range:
+    foreach (i; SimpleCounter9068()) {
+        last = i;
+        break loop_with_range;
+    }
+    assert(last == 0);
+    assert(SimpleCounter9068.destroyedCount == 2);
+
+    //----------------------------------------
+    // Test with destructors: the loop is implicitly wrapped into two
+    // try/finally clauses.
+loop_with_dtors:
+    for (auto x = Foo9068(4), y = Foo9068(5); x.x != 10; ++x.x) {
+        if (x.x == 8)
+            break loop_with_dtors;
+    }
+    assert(Foo9068.destroyed == [5, 8]);
+    Foo9068.destroyed.clear();
+
+    //----------------------------------------
+    // Same with an unlabelled break.
+    for (auto x = Foo9068(4), y = Foo9068(5); x.x != 10; ++x.x) {
+        if (x.x == 7)
+            break;
+    }
+    assert(Foo9068.destroyed == [5, 7]);
+    Foo9068.destroyed.clear();
 }
 
 /***************************************/
@@ -470,6 +673,8 @@ int main()
     test6659b();
     test6659c();
     test7814();
+    test6652();
+    test9068();
 
     printf("Success\n");
     return 0;

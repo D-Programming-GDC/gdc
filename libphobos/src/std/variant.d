@@ -29,7 +29,7 @@
  * a = 3.14;
  * assert(a.type == typeid(double));
  * // Implicit conversions work just as with built-in types
- * assert(a > b);
+ * assert(a < b);
  * // Check for convertibility
  * assert(!a.convertsTo!(int)); // double not convertible to int
  * // Strings and all other arrays are supported
@@ -211,7 +211,7 @@ private:
             // no need to copy the data (it's garbage)
             break;
         case OpID.compare:
-            auto rhs = cast(VariantN *) parm;
+            auto rhs = cast(const VariantN *) parm;
             return rhs.peek!(A)
                 ? 0 // all uninitialized are equal
                 : ptrdiff_t.min; // uninitialized variant is not comparable otherwise
@@ -299,6 +299,12 @@ private:
         case OpID.copyOut:
             auto target = cast(VariantN *) parm;
             assert(target);
+
+            static if (target.size < A.sizeof)
+            {
+                if (target.type.tsize < A.sizeof)
+                    *cast(A**)&target.store = new A;
+            }
             tryPutting(zis, typeid(A), cast(void*) getPtr(&target.store))
                 || assert(false);
             target.fptr = &handler!(A);
@@ -595,7 +601,7 @@ public:
      * assert(a == 6);
      * ----
      */
-    @property T * peek(T)()
+    @property inout T * peek(T)() inout
     {
         static if (!is(T == void))
             static assert(allowed!(T), "Cannot store a " ~ T.stringof
@@ -771,13 +777,14 @@ public:
      */
 
     // returns 1 if the two are equal
-    bool opEquals(T)(T rhs)
+    bool opEquals(T)(auto ref T rhs) const
     {
-        static if (is(T == VariantN))
+        static if (is(Unqual!T == VariantN))
             alias rhs temp;
         else
             auto temp = VariantN(rhs);
-        return fptr(OpID.compare, &store, &temp) == 0;
+        return !fptr(OpID.compare, cast(ubyte[size]*) &store,
+                     cast(void*) &temp);
     }
 
     /**
@@ -898,7 +905,7 @@ public:
     // Commenteed all _r versions for now because of ambiguities
     // arising when two Variants are used
 
-    /////ditto
+    // ///ditto
     // VariantN opSub_r(T)(T lhs)
     // {
     //     return VariantN(lhs).opArithmetic!(VariantN, "-")(this);
@@ -1096,7 +1103,7 @@ unittest
         int a;
         long b;
         string c;
-        real d;
+        real d = 0.0;
         bool e;
     }
 
@@ -1871,3 +1878,26 @@ private auto visitImpl(bool Strict, VariantType, Handler...)(VariantType variant
     assert(false);
 }
 
+unittest
+{
+    // http://d.puremagic.com/issues/show_bug.cgi?id=5310
+    const Variant a;
+    assert(a == a);
+    Variant b;
+    assert(a == b);
+    assert(b == a);
+}
+
+unittest
+{
+    // http://d.puremagic.com/issues/show_bug.cgi?id=10017
+    static struct S
+    {
+        ubyte[Variant.size + 1] s;
+    }
+
+    Variant v1, v2;
+    v1 = S(); // the payload is allocated on the heap
+    v2 = v1;  // AssertError: target must be non-null
+    assert(v1 == v2);
+}

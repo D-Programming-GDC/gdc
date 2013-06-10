@@ -1,3 +1,30 @@
+2013-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update to D front-end version 2.063.
+
+	* d-builtins.c(gcc_type_to_d_type): Use Loc for unknown locations.
+	(d_gcc_magic_builtins_module): Likewise.
+	(gcc_cst_to_d_expr): Likewise.
+	* d-codegen.cc(get_libcall): Use FuncDeclaration::genCfunc to build
+	D runtime library functions.
+	* d-decl.cc(SymbolDeclaration::SymbolDeclaration): Remove function.
+	(StructLiteralExp::toSymbol): New function.
+	(ClassReferenceExp::toSymbol): New function.
+	* d-elem.cc(AssertExp::toElem): Call struct/class invariants only if
+	compiler is generating invariant code.
+	(TupleExp::toElem): Update for new front-end.
+	(ClassReferenceExp::toElem): New function.
+	* d-lang.cc(d_init_options): Set compiler.vendor front-end parameter.
+	(d_init): Call Expression::init.
+	* d-objfile.cc(InterfaceDeclaration::toObjFile): Correctly set the
+	xgetRTInfo field in the record layout.
+	* d-todt.cc(CastExp::toDt): New function.
+	(AddrExp::toDt): New function.
+	(ClassReferenceExp::toDt): New function.
+	(ClassReferenceExp::toDtI): New function.
+	(ClassReferenceExp::toInstanceDt): New function.
+	(ClassReferenceExp::toDt2): New function.
+
 2013-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(FuncDeclaration::toObjFile): Set 'this' parameter as

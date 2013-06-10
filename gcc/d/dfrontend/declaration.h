@@ -93,10 +93,6 @@ enum PURE;
         STCmanifest | STCimmutable | STCshared | STCnothrow | STCpure | STCref | STCtls | \
         STCgshared | STCproperty | STCsafe | STCtrusted | STCsystem | STCdisable)
 
-#ifdef BUG6652
-#define STCbug6652      0x800000000000LL //
-#endif
-
 struct Match
 {
     int count;                  // number of matches found
@@ -107,10 +103,12 @@ struct Match
 };
 
 void overloadResolveX(Match *m, FuncDeclaration *f,
-        Expression *ethis, Expressions *arguments);
+        Type *tthis, Expressions *arguments);
 int overloadApply(FuncDeclaration *fstart,
         int (*fp)(void *, FuncDeclaration *),
         void *param);
+
+void ObjectNotFound(Identifier *id);
 
 enum Semantic
 {
@@ -130,7 +128,7 @@ struct Declaration : Dsymbol
     enum PROT protection;
     enum LINK linkage;
     int inuse;                  // used to detect cycles
-
+    const char *mangleOverride;      // overridden symbol with pragma(mangle, "...") 
     enum Semantic sem;
 
     Declaration(Identifier *id);
@@ -143,32 +141,33 @@ struct Declaration : Dsymbol
 
     void emitComment(Scope *sc);
     void toJson(JsonOut *json);
-    void jsonProperties(JsonOut *json);
+    virtual void jsonProperties(JsonOut *json);
     void toDocBuffer(OutBuffer *buf, Scope *sc);
 
-    char *mangle(bool isv = false);
-    int isStatic() { return storage_class & STCstatic; }
+    const char *mangle(bool isv = false);
+    bool isStatic() { return (storage_class & STCstatic) != 0; }
     virtual int isDelete();
     virtual int isDataseg();
     virtual int isThreadlocal();
     virtual int isCodeseg();
-    int isCtorinit()     { return storage_class & STCctorinit; }
-    int isFinal()        { return storage_class & STCfinal; }
-    int isAbstract()     { return storage_class & STCabstract; }
-    int isConst()        { return storage_class & STCconst; }
-    int isImmutable()    { return storage_class & STCimmutable; }
-    int isWild()         { return storage_class & STCwild; }
-    int isAuto()         { return storage_class & STCauto; }
-    int isScope()        { return storage_class & STCscope; }
-    int isSynchronized() { return storage_class & STCsynchronized; }
-    int isParameter()    { return storage_class & STCparameter; }
-    int isDeprecated()   { return storage_class & STCdeprecated; }
-    int isOverride()     { return storage_class & STCoverride; }
-    StorageClass isResult()       { return storage_class & STCresult; }
+    bool isCtorinit()     { return (storage_class & STCctorinit) != 0; }
+    bool isFinal()        { return (storage_class & STCfinal) != 0; }
+    bool isAbstract()     { return (storage_class & STCabstract) != 0; }
+    bool isConst()        { return (storage_class & STCconst) != 0; }
+    bool isImmutable()    { return (storage_class & STCimmutable) != 0; }
+    bool isWild()         { return (storage_class & STCwild) != 0; }
+    bool isAuto()         { return (storage_class & STCauto) != 0; }
+    bool isScope()        { return (storage_class & STCscope) != 0; }
+    bool isSynchronized() { return (storage_class & STCsynchronized) != 0; }
+    bool isParameter()    { return (storage_class & STCparameter) != 0; }
+    bool isDeprecated()   { return (storage_class & STCdeprecated) != 0; }
+    bool isOverride()     { return (storage_class & STCoverride) != 0; }
+    bool isResult()       { return (storage_class & STCresult) != 0; }
+    bool isField()        { return (storage_class & STCfield) != 0; }
 
-    int isIn()    { return storage_class & STCin; }
-    int isOut()   { return storage_class & STCout; }
-    int isRef()   { return storage_class & STCref; }
+    bool isIn()    { return (storage_class & STCin) != 0; }
+    bool isOut()   { return (storage_class & STCout) != 0; }
+    bool isRef()   { return (storage_class & STCref) != 0; }
 
     enum PROT prot();
 
@@ -204,7 +203,7 @@ struct TypedefDeclaration : Declaration
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     void semantic2(Scope *sc);
-    char *mangle(bool isv = false);
+    const char *mangle(bool isv = false);
     const char *kind();
     Type *getType();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -299,6 +298,7 @@ struct VarDeclaration : Declaration
     Initializer *hinit;
     AggregateDeclaration *isThis();
     int needThis();
+    int isExport();
     int isImportedSymbol();
     int isDataseg();
     int isThreadlocal();
@@ -310,15 +310,14 @@ struct VarDeclaration : Declaration
 #endif
     Expression *callScopeDtor(Scope *sc);
     ExpInitializer *getExpInitializer();
-    Expression *getConstInitializer();
+    Expression *getConstInitializer(bool needFullType = true);
     void checkCtorConstInit();
     void checkNestedReference(Scope *sc, Loc loc);
     Dsymbol *toAlias();
-
     Symbol *toSymbol();
     void toObjFile(int multiobj);                       // compile to .obj file
     int cvMember(unsigned char *p);
-
+    const char *mangle(bool isv = false);
     // Eliminate need for dynamic_cast
     VarDeclaration *isVarDeclaration() { return (VarDeclaration *)this; }
 };
@@ -329,10 +328,9 @@ struct VarDeclaration : Declaration
 
 struct SymbolDeclaration : Declaration
 {
-    Symbol *sym;
     StructDeclaration *dsym;
 
-    SymbolDeclaration(Loc loc, Symbol *s, StructDeclaration *dsym);
+    SymbolDeclaration(Loc loc, StructDeclaration *dsym);
 
     Symbol *toSymbol();
 
@@ -589,6 +587,7 @@ struct FuncDeclaration : Declaration
     ILS inlineStatusExp;
     int inlineNest;                     // !=0 if nested inline
     bool isArrayOp;                     // !=0 if array operation
+    FuncDeclaration *dArrayOp;          // D version of array op for ctfe
     enum PASS semanticRun;
     int semantic3Errors;                // !=0 if errors in semantic3
                                         // this function's frame ptr
@@ -654,7 +653,7 @@ struct FuncDeclaration : Declaration
     int findVtblIndex(Dsymbols *vtbl, int dim);
     int overloadInsert(Dsymbol *s);
     FuncDeclaration *overloadExactMatch(Type *t);
-    FuncDeclaration *overloadResolve(Loc loc, Expression *ethis, Expressions *arguments, int flags = 0);
+    FuncDeclaration *overloadResolve(Loc loc, Type *tthis, Expressions *arguments, int flags = 0);
     MATCH leastAsSpecialized(FuncDeclaration *g);
     LabelDsymbol *searchLabel(Identifier *ident);
     AggregateDeclaration *isThis();
@@ -662,8 +661,9 @@ struct FuncDeclaration : Declaration
     int getLevel(Loc loc, Scope *sc, FuncDeclaration *fd); // lexical nesting level difference
     void appendExp(Expression *e);
     void appendState(Statement *s);
-    char *mangle(bool isv = false);
+    const char *mangle(bool isv = false);
     const char *toPrettyChars();
+    const char *toFullSignature();  // for diagnostics, e.g. 'int foo(int x, int y) pure'
     int isMain();
     int isWinMain();
     int isDllMain();
@@ -681,6 +681,8 @@ struct FuncDeclaration : Declaration
     bool isSafeBypassingInference();
     int isTrusted();
     bool setUnsafe();
+    bool isolateReturn();
+    bool parametersIntersect(Type *t);
     virtual int isNested();
     int needThis();
     int isVirtualMethod();
@@ -718,11 +720,11 @@ struct FuncDeclaration : Declaration
 };
 
 #if DMDV2
-FuncDeclaration *resolveFuncCall(Scope *sc, Loc loc, Dsymbol *s,
+FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
         Objects *tiargs,
-        Expression *ethis,
+        Type *tthis,
         Expressions *arguments,
-        int flags);
+        int flags = 0);
 #endif
 
 struct FuncAliasDeclaration : FuncDeclaration
@@ -735,7 +737,7 @@ struct FuncAliasDeclaration : FuncDeclaration
     FuncAliasDeclaration *isFuncAliasDeclaration() { return this; }
     const char *kind();
     Symbol *toSymbol();
-    char *mangle(bool isv = false) { return toAliasFunc()->mangle(isv); }
+    const char *mangle(bool isv = false) { return toAliasFunc()->mangle(isv); }
 
     FuncDeclaration *toAliasFunc();
 };
@@ -766,7 +768,6 @@ struct CtorDeclaration : FuncDeclaration
     int isVirtual();
     int addPreInvariant();
     int addPostInvariant();
-    bool isImplicit;  // implicitly generated ctor
 
     CtorDeclaration *isCtorDeclaration() { return this; }
 };
@@ -792,7 +793,7 @@ struct PostBlitDeclaration : FuncDeclaration
 struct DtorDeclaration : FuncDeclaration
 {
     DtorDeclaration(Loc loc, Loc endloc);
-    DtorDeclaration(Loc loc, Loc endloc, Identifier *id);
+    DtorDeclaration(Loc loc, Loc endloc, StorageClass stc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -866,7 +867,7 @@ struct SharedStaticDtorDeclaration : StaticDtorDeclaration
 
 struct InvariantDeclaration : FuncDeclaration
 {
-    InvariantDeclaration(Loc loc, Loc endloc);
+    InvariantDeclaration(Loc loc, Loc endloc, StorageClass stc, Identifier *id = NULL);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     int isVirtual();
@@ -880,13 +881,15 @@ struct InvariantDeclaration : FuncDeclaration
 
 struct UnitTestDeclaration : FuncDeclaration
 {
-    UnitTestDeclaration(Loc loc, Loc endloc);
+    char *codedoc; /** For documented unittest. */
+    UnitTestDeclaration(Loc loc, Loc endloc, char *codedoc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     AggregateDeclaration *isThis();
     int isVirtual();
     int addPreInvariant();
     int addPostInvariant();
+    void emitComment(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
     UnitTestDeclaration *isUnitTestDeclaration() { return this; }

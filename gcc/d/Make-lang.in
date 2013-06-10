@@ -116,11 +116,11 @@ D_DMD_OBJS := \
     d/interpret.dmd.o d/json.dmd.o d/lexer.dmd.o \
     d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mtype.dmd.o d/module.dmd.o \
     d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o d/rmem.dmd.o d/root.dmd.o \
-    d/scope.dmd.o d/speller.dmd.o d/statement.dmd.o d/staticassert.dmd.o \
-    d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o d/utf.dmd.o \
-    d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o d/intrange.dmd.o \
-    d/cppmangle.dmd.o d/apply.dmd.o d/canthrow.dmd.o d/sideeffect.dmd.o \
-    d/unittests.dmd.o d/version.dmd.o
+    d/sapply.dmd.o d/scope.dmd.o d/speller.dmd.o d/statement.dmd.o \
+    d/staticassert.dmd.o d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o \
+    d/utf.dmd.o d/argtypes.dmd.o d/builtin.dmd.o d/traits.dmd.o \
+    d/intrange.dmd.o d/cppmangle.dmd.o d/apply.dmd.o d/canthrow.dmd.o \
+    d/sideeffect.dmd.o d/unittests.dmd.o d/version.dmd.o
 
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
 D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o

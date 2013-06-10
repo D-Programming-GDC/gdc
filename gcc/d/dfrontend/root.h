@@ -15,7 +15,6 @@
 #ifdef DEBUG
 #include <assert.h>
 #endif
-
 #include "port.h"
 
 #if __DMC__
@@ -259,6 +258,7 @@ struct OutBuffer : Object
     void writebyte(unsigned b) { writeByte(b); }
     void writeUTF8(unsigned b);
     void prependbyte(unsigned b);
+    void writewchar(unsigned w);
     void writeword(unsigned w);
     void writeUTF16(unsigned w);
     void write4(unsigned w);

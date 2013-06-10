@@ -24,8 +24,8 @@ $(BOOKTABLE ,
     ))
     $(TR $(TD $(D $(LREF isOutputRange)))
         $(TD Tests if something is an $(I output _range), defined to be
-        something to which one can sequentially write data using the $(D $(LREF
-        put)) primitive.
+        something to which one can sequentially write data using the
+        $(D $(LREF put)) primitive.
     ))
     $(TR $(TD $(D $(LREF isForwardRange)))
         $(TD Tests if something is a $(I forward _range), defined to be an
@@ -233,8 +233,8 @@ $(BOOKTABLE ,
 
 Ranges whose elements are sorted afford better efficiency with certain
 operations. For this, the $(D $(LREF assumeSorted)) function can be used to
-construct a $(D $(LREF SortedRange)) from a pre-sorted _range. The $(D $(LINK2
-std_algorithm.html#sort, std.algorithm.sort)) function also conveniently
+construct a $(D $(LREF SortedRange)) from a pre-sorted _range. The $(LINK2
+std_algorithm.html#sort, $(D std.algorithm.sort)) function also conveniently
 returns a $(D SortedRange). $(D SortedRange) objects provide some additional
 _range operations that take advantage of the fact that the _range is sorted.
 
@@ -286,7 +286,7 @@ module std.range;
 public import std.array;
 import core.bitop, core.exception;
 import std.algorithm, std.conv, std.exception,  std.functional,
-    std.traits, std.typecons, std.typetuple;
+    std.traits, std.typecons, std.typetuple, std.string;
 
 // For testing only.  This code is included in a string literal to be included
 // in whatever module it's needed in, so that each module that uses it can be
@@ -3162,8 +3162,6 @@ unittest
 
 unittest
 {
-    import std.metastrings;
-
     string genInput()
     {
         return "@property bool empty() { return _arr.empty; }" ~
@@ -3241,21 +3239,21 @@ unittest
                               //`InitStruct([1, 2, 3])`,
                               `TakeNoneStruct([1, 2, 3])`))
     {
-        mixin(Format!("enum a = takeNone(%s).empty;", range));
+        mixin(format("enum a = takeNone(%s).empty;", range));
         assert(a, typeof(range).stringof);
-        mixin(Format!("assert(takeNone(%s).empty);", range));
-        mixin(Format!("static assert(is(typeof(%s) == typeof(takeNone(%s))), typeof(%s).stringof);",
-                      range, range, range));
+        mixin(format("assert(takeNone(%s).empty);", range));
+        mixin(format("static assert(is(typeof(%s) == typeof(takeNone(%s))), typeof(%s).stringof);",
+                     range, range, range));
     }
 
     foreach(range; TypeTuple!(`NormalStruct([1, 2, 3])`,
                               `InitStruct([1, 2, 3])`))
     {
-        mixin(Format!("enum a = takeNone(%s).empty;", range));
+        mixin(format("enum a = takeNone(%s).empty;", range));
         assert(a, typeof(range).stringof);
-        mixin(Format!("assert(takeNone(%s).empty);", range));
-        mixin(Format!("static assert(is(typeof(takeExactly(%s, 0)) == typeof(takeNone(%s))), typeof(%s).stringof);",
-                      range, range, range));
+        mixin(format("assert(takeNone(%s).empty);", range));
+        mixin(format("static assert(is(typeof(takeExactly(%s, 0)) == typeof(takeNone(%s))), typeof(%s).stringof);",
+                     range, range, range));
     }
 
     //Don't work in CTFE.
@@ -3730,10 +3728,7 @@ Take!(Repeat!T) repeat(T)(T value, size_t n)
     return take(repeat(value), n);
 }
 
-/++
-    $(RED Deprecated. It will be removed in January 2013.
-          Please use $(LREF repeat) instead.)
-  +/
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use std.range.repeat instead.") Take!(Repeat!T) replicate(T)(T value, size_t n)
 {
     return repeat(value, n);
@@ -3834,6 +3829,7 @@ struct Cycle(Range)
 
         auto opSlice(size_t i, size_t j)
         {
+            version (assert) if (i > j) throw new RangeError();
             auto retval = this.save;
             retval._index += i;
             return takeExactly(retval, j - i);
@@ -3934,6 +3930,7 @@ struct Cycle(R)
 
     auto opSlice(size_t i, size_t j)
     {
+        version (assert) if (i > j) throw new RangeError();
         auto retval = this.save;
         retval._index += i;
         return takeExactly(retval, j - i);
@@ -4023,6 +4020,8 @@ unittest
                     }
 
                     assert(cRange[10] == 1);
+
+                    assertThrown!RangeError(cy[2..1]);
                 }
             }
 
@@ -4607,87 +4606,58 @@ unittest
     assert(equal(z2, [tuple(7, 0L)]));
 }
 
-/* CTFE function to generate opApply loop for Lockstep.*/
-private string lockstepApply(Ranges...)(bool withIndex) if (Ranges.length > 0)
+/*
+    Generate lockstep's opApply function as a mixin string.
+    If withIndex is true prepend a size_t index to the delegate.
+*/
+private string lockstepMixin(Ranges...)(bool withIndex)
 {
-    // Since there's basically no way to make this code readable as-is, I've
-    // included formatting to make the generated code look "normal" when
-    // printed out via pragma(msg).
-    string ret = "int opApply(scope int delegate(";
+    string[] params;
+    string[] emptyChecks;
+    string[] dgArgs;
+    string[] popFronts;
 
     if (withIndex)
     {
-        ret ~= "size_t, ";
+        params ~= "size_t";
+        dgArgs ~= "index";
     }
 
-    foreach (ti, Type; Ranges)
+    foreach (idx, Range; Ranges)
     {
-        static if(hasLvalueElements!Type)
+        params ~= format("ref ElementType!(Ranges[%s])", idx);
+        emptyChecks ~= format("!ranges[%s].empty", idx);
+        dgArgs ~= format("ranges[%s].front", idx);
+        popFronts ~= format("ranges[%s].popFront();", idx);
+    }
+
+    return format(
+    q{
+        int opApply(scope int delegate(%s) dg)
         {
-            ret ~= "ref ";
+            auto ranges = _ranges;
+            int res;
+            %s
+
+            while (%s)
+            {
+                res = dg(%s);
+                if (res) break;
+                %s
+                %s
+            }
+
+            if (_stoppingPolicy == StoppingPolicy.requireSameLength)
+            {
+                foreach(range; ranges)
+                    enforce(range.empty);
+            }
+            return res;
         }
-
-        ret ~= "ElementType!(Ranges[" ~ to!string(ti) ~ "]), ";
-    }
-
-    // Remove trailing ,
-    ret = ret[0..$ - 2];
-    ret ~= ") dg) {\n";
-
-    // Shallow copy _ranges to be consistent w/ regular foreach.
-    ret ~= "\tauto ranges = _ranges;\n";
-    ret ~= "\tint res;\n";
-
-    if (withIndex)
-    {
-        ret ~= "\tsize_t index = 0;\n";
-    }
-
-    // Check for emptiness.
-    ret ~= "\twhile(";                 //someEmpty) {\n";
-    foreach(ti, Unused; Ranges)
-    {
-        ret ~= "!ranges[" ~ to!string(ti) ~ "].empty && ";
-    }
-    // Strip trailing &&
-    ret = ret[0..$ - 4];
-    ret ~= ") {\n";
-
-    // Create code to call the delegate.
-    ret ~= "\t\tres = dg(";
-    if (withIndex)
-    {
-        ret ~= "index, ";
-    }
-
-
-    foreach(ti, Range; Ranges)
-    {
-        ret ~= "ranges[" ~ to!string(ti) ~ "].front, ";
-    }
-
-    // Remove trailing ,
-    ret = ret[0..$ - 2];
-    ret ~= ");\n";
-    ret ~= "\t\tif(res) break;\n";
-    foreach(ti, Range; Ranges)
-    {
-        ret ~= "\t\tranges[" ~ to!(string)(ti) ~ "].popFront();\n";
-    }
-
-    if (withIndex)
-    {
-        ret ~= "\t\tindex++;\n";
-    }
-
-    ret ~= "\t}\n";
-    ret ~= "\tif(_s == StoppingPolicy.requireSameLength) {\n";
-    ret ~= "\t\tforeach(range; ranges)\n";
-    ret ~= "\t\t\tenforce(range.empty);\n";
-    ret ~= "\t}\n";
-    ret ~= "\treturn res;\n}";
-
-    return ret;
+    }, params.join(", "), withIndex ? "size_t index = 0;" : "",
+       emptyChecks.join(" && "), dgArgs.join(", "),
+       popFronts.join("\n                "),
+       withIndex ? "index++;" : "").outdent();
 }
 
 /**
@@ -4726,22 +4696,21 @@ private string lockstepApply(Ranges...)(bool withIndex) if (Ranges.length > 0)
 struct Lockstep(Ranges...)
     if (Ranges.length > 1 && allSatisfy!(isInputRange, Ranges))
 {
+    this(R ranges, StoppingPolicy sp = StoppingPolicy.shortest)
+    {
+        _ranges = ranges;
+        enforce(sp != StoppingPolicy.longest,
+                "Can't use StoppingPolicy.Longest on Lockstep.");
+        _stoppingPolicy = sp;
+    }
+
+    mixin(lockstepMixin!Ranges(false));
+    mixin(lockstepMixin!Ranges(true));
+
 private:
     alias R = Ranges;
     R _ranges;
-    StoppingPolicy _s;
-
-public:
-    this(R ranges, StoppingPolicy s = StoppingPolicy.shortest)
-    {
-        _ranges = ranges;
-        enforce(s != StoppingPolicy.longest,
-                "Can't use StoppingPolicy.Longest on Lockstep.");
-        this._s = s;
-    }
-
-    mixin(lockstepApply!(Ranges)(false));
-    mixin(lockstepApply!(Ranges)(true));
+    StoppingPolicy _stoppingPolicy;
 }
 
 // For generic programming, make sure Lockstep!(Range) is well defined for a
@@ -6424,9 +6393,11 @@ unittest
 
 /**
 This range iterates over fixed-sized chunks of size $(D chunkSize) of a
-$(D source) range.  $(D Source) must be an input range with slicing and length.
-If $(D source.length) is not evenly divisible by $(D chunkSize), the back
-element of this range will contain fewer than $(D chunkSize) elements.
+$(D source) range. $(D Source) must be a forward range.
+
+If $(D !isInfinitite!Source) and $(D source.walkLength) is not evenly
+divisible by $(D chunkSize), the back element of this range will contain
+fewer than $(D chunkSize) elements.
 
 Examples:
 ---
@@ -6440,102 +6411,193 @@ assert(chunks.front == chunks[0]);
 assert(chunks.length == 3);
 ---
 */
-struct Chunks(Source) if(isInputRange!Source && hasSlicing!Source && hasLength!Source)
+struct Chunks(Source)
+    if (isForwardRange!Source)
 {
-    ///
+    /// Standard constructor
     this(Source source, size_t chunkSize)
     {
-        this._source = source;
-        this._chunkSize = chunkSize;
+        assert(chunkSize != 0, "Cannot create a Chunk with an empty chunkSize");
+        _source = source;
+        _chunkSize = chunkSize;
     }
 
-    /// Range primitives.
+    /// Forward range primitives. Always present.
     @property auto front()
     {
         assert(!empty);
-        return _source[0..min(_chunkSize, _source.length)];
+        return _source.save.take(_chunkSize);
     }
 
     /// Ditto
     void popFront()
     {
         assert(!empty);
-        popFrontN(_source, _chunkSize);
+        _source.popFrontN(_chunkSize);
     }
 
-    /// Ditto
-    @property bool empty()
-    {
-        return _source.empty;
-    }
-
-    static if(isForwardRange!Source)
-    {
+    static if (!isInfinite!Source)
         /// Ditto
-        @property typeof(this) save()
+        @property bool empty()
         {
-            return typeof(this)(_source.save, _chunkSize);
+            return _source.empty;
         }
-    }
+    else
+        // undocumented
+        enum empty = false;
 
     /// Ditto
-    auto opIndex(size_t index)
+    @property typeof(this) save()
     {
-        immutable end = min(_source.length, (index + 1) * _chunkSize);
-        return _source[index * _chunkSize..end];
+        return typeof(this)(_source.save, _chunkSize);
     }
 
-    /// Ditto
-    typeof(this) opSlice(size_t lower, size_t upper)
+    static if (hasLength!Source)
     {
-        immutable start = lower * _chunkSize;
-        immutable end = min(_source.length, upper * _chunkSize);
-        return typeof(this)(_source[start..end], _chunkSize);
-    }
-
-    /// Ditto
-    @property size_t length()
-    {
-        return (_source.length / _chunkSize) +
-            (_source.length % _chunkSize > 0);
-    }
-
-    alias length opDollar;
-
-    /// Ditto
-    @property auto back()
-    {
-        assert(!empty);
-
-        immutable remainder = _source.length % _chunkSize;
-        immutable len = _source.length;
-
-        if(remainder == 0)
+        /// Length. Only if $(D hasLength!Source) is $(D true)
+        @property size_t length()
         {
-            // Return a full chunk.
-            return _source[len - _chunkSize..len];
+            // Note: _source.length + _chunkSize may actually overflow.
+            // We cast to ulong to mitigate the problem on x86 machines.
+            // For x64 machines, we just suppose we'll never overflow.
+            // The "safe" code would require either an extra branch, or a
+            //   modulo operation, which is too expensive for such a rare case
+            return cast(size_t)((cast(ulong)(_source.length) + _chunkSize - 1) / _chunkSize);
+        }
+        //Note: No point in defining opDollar here without slicing.
+        //opDollar is defined below in the hasSlicing!Source section
+    }
+
+    static if (hasSlicing!Source)
+    {
+        //Used for various purposes
+        private enum hasSliceToEnd = is(typeof(Source.init[_chunkSize .. $]) == Source);
+
+        /**
+        Indexing and slicing operations. Provided only if
+        $(D hasSlicing!Source) is $(D true).
+         */
+        auto opIndex(size_t index)
+        {
+            immutable start = index * _chunkSize;
+            immutable end   = start + _chunkSize;
+
+            static if (isInfinite!Source)
+                return _source[start .. end];
+            else
+            {
+                immutable len = _source.length;
+                assert(start < len, "chunks index out of bounds");
+                return _source[start .. min(end, len)];
+            }
+        }
+
+        /// Ditto
+        static if (hasLength!Source)
+            typeof(this) opSlice(size_t lower, size_t upper)
+            {
+                assert(lower <= upper && upper <= length, "chunks slicing index out of bounds");
+                immutable len = _source.length;
+                return chunks(_source[min(lower * _chunkSize, len) .. min(upper * _chunkSize, len)], _chunkSize);
+            }
+        else static if (hasSliceToEnd)
+            //For slicing an infinite chunk, we need to slice the source to the end.
+            typeof(takeExactly(this, 0)) opSlice(size_t lower, size_t upper)
+            {
+                assert(lower <= upper, "chunks slicing index out of bounds");
+                return chunks(_source[lower * _chunkSize .. $], _chunkSize).takeExactly(upper - lower);
+            }
+
+        static if (isInfinite!Source)
+        {
+            static if (hasSliceToEnd)
+            {
+                private static struct DollarToken{}
+                DollarToken opDollar()
+                {
+                    return DollarToken();
+                }
+                //Slice to dollar
+                typeof(this) opSlice(size_t lower, DollarToken)
+                {
+                    return typeof(this)(_source[lower * _chunkSize .. $], _chunkSize);
+                }
+            }
         }
         else
         {
-            return _source[len - remainder..len];
+            //Dollar token carries a static type, with no extra information.
+            //It can lazily transform into _source.length on algorithmic
+            //operations such as : chunks[$/2, $-1];
+            private static struct DollarToken
+            {
+                Chunks!Source* mom;
+                @property size_t momLength()
+                {
+                    return mom.length;
+                }
+                alias momLength this;
+            }
+            DollarToken opDollar()
+            {
+                return DollarToken(&this);
+            }
+
+            //Slice overloads optimized for using dollar. Without this, to slice to end, we would...
+            //1. Evaluate chunks.length
+            //2. Multiply by _chunksSize
+            //3. To finally just compare it (with min) to the original length of source (!)
+            //These overloads avoid that.
+            typeof(this) opSlice(DollarToken, DollarToken)
+            {
+                static if (hasSliceToEnd)
+                    return chunks(_source[$ .. $], _chunkSize);
+                else
+                {
+                    immutable len = _source.length;
+                    return chunks(_source[len .. len], _chunkSize);
+                }
+            }
+            typeof(this) opSlice(size_t lower, DollarToken)
+            {
+                assert(lower <= length, "chunks slicing index out of bounds");
+                static if (hasSliceToEnd)
+                    return chunks(_source[min(lower * _chunkSize, _source.length) .. $], _chunkSize);
+                else
+                {
+                    immutable len = _source.length;
+                    return chunks(_source[min(lower * _chunkSize, len) .. len], _chunkSize);
+                }
+            }
+            typeof(this) opSlice(DollarToken, size_t upper)
+            {
+                assert(upper == length, "chunks slicing index out of bounds");
+                return this[$ .. $];
+            }
         }
     }
 
-    /// Ditto
-    void popBack()
+    //Bidirectional range primitives
+    static if (hasSlicing!Source && hasLength!Source)
     {
-        assert(!empty);
-
-        immutable remainder = _source.length % _chunkSize;
-        immutable len = _source.length;
-
-        if(remainder == 0)
+        /**
+        Bidirectional range primitives. Provided only if both
+        $(D hasSlicing!Source) and $(D hasLength!Source) are $(D true).
+         */
+        @property auto back()
         {
-            _source = _source[0..len - _chunkSize];
+            assert(!empty, "back called on empty chunks");
+            immutable len = _source.length;
+            immutable start = (len - 1) / _chunkSize * _chunkSize;
+            return _source[start .. len];
         }
-        else
+
+        /// Ditto
+        void popBack()
         {
-            _source = _source[0..len - remainder];
+            assert(!empty, "popBack() called on empty chunks");
+            immutable end = (_source.length - 1) / _chunkSize * _chunkSize;
+            _source = _source[0 .. end];
         }
     }
 
@@ -6571,6 +6633,60 @@ unittest
     assert(chunks2.length == 2);
 
     static assert(isRandomAccessRange!(typeof(chunks)));
+}
+
+unittest
+{
+    //Extra toying with slicing and indexing.
+    auto chunks1 = [0, 0, 1, 1, 2, 2, 3, 3, 4].chunks(2);
+    auto chunks2 = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4].chunks(2);
+
+    assert (chunks1.length == 5);
+    assert (chunks2.length == 5);
+    assert (chunks1[4] == [4]);
+    assert (chunks2[4] == [4, 4]);
+    assert (chunks1.back == [4]);
+    assert (chunks2.back == [4, 4]);
+
+    assert (chunks1[0 .. 1].equal([[0, 0]]));
+    assert (chunks1[0 .. 2].equal([[0, 0], [1, 1]]));
+    assert (chunks1[4 .. 5].equal([[4]]));
+    assert (chunks2[4 .. 5].equal([[4, 4]]));
+
+    assert (chunks1[0 .. 0].equal((int[][]).init));
+    assert (chunks1[5 .. 5].equal((int[][]).init));
+    assert (chunks2[5 .. 5].equal((int[][]).init));
+
+    //Fun with opDollar
+    assert (chunks1[$ .. $].equal((int[][]).init)); //Quick
+    assert (chunks2[$ .. $].equal((int[][]).init)); //Quick
+    assert (chunks1[$ - 1 .. $].equal([[4]]));      //Semiquick
+    assert (chunks2[$ - 1 .. $].equal([[4, 4]]));   //Semiquick
+    assert (chunks1[$ .. 5].equal((int[][]).init)); //Semiquick
+    assert (chunks2[$ .. 5].equal((int[][]).init)); //Semiquick
+
+    assert (chunks1[$ / 2 .. $ - 1].equal([[2, 2], [3, 3]])); //Slow
+}
+
+unittest
+{
+    //ForwardRange
+    auto r = filter!"true"([1, 2, 3, 4, 5]).chunks(2);
+    assert(equal!"equal(a, b)"(r, [[1, 2], [3, 4], [5]]));
+
+    //InfiniteRange w/o RA
+    auto fibsByPairs = recurrence!"a[n-1] + a[n-2]"(1, 1).chunks(2);
+    assert(equal!`equal(a, b)`(fibsByPairs.take(2),         [[ 1,  1], [ 2,  3]]));
+
+    //InfiniteRange w/ RA and slicing
+    auto odds = sequence!("a[0] + n * a[1]")(1, 2);
+    auto oddsByPairs = odds.chunks(2);
+    assert(equal!`equal(a, b)`(oddsByPairs.take(2),         [[ 1,  3], [ 5,  7]]));
+
+    //Requires phobos#991 for Sequence to have slice to end
+    static assert(hasSlicing!(typeof(odds)));
+    assert(equal!`equal(a, b)`(oddsByPairs[3 .. 5],         [[13, 15], [17, 19]]));
+    assert(equal!`equal(a, b)`(oddsByPairs[3 .. $].take(2), [[13, 15], [17, 19]]));
 }
 
 /**
@@ -7712,10 +7828,7 @@ sgi.com/tech/stl/binary_search.html, binary_search).
         return false;
     }
 
-/++
-    $(RED Deprecated. It will be removed in January 2013.
-          Please use $(LREF contains) instead.)
-  +/
+    // Explicitly undocumented. It will be removed in November 2013.
     deprecated("Please use contains instead.") alias contains canFind;
 }
 

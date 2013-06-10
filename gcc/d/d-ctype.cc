@@ -234,7 +234,7 @@ TypeEnum::toCtype (void)
 	  if (flag_short_enums)
 	    TYPE_PACKED (ctype) = 1;
 
-	  TYPE_PRECISION (ctype) = size (0) * 8;
+	  TYPE_PRECISION (ctype) = size (sym->loc) * 8;
 	  TYPE_SIZE (ctype) = 0;
 	  TYPE_MAIN_VARIANT (ctype) = TYPE_MAIN_VARIANT (cmemtype);
 

@@ -13,13 +13,14 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+version(Win64) {}
+else
+{
 public import std.base64;
 public import std.compiler;
 public import std.concurrency;
 public import std.conv;
-public import std.cpuid;
 public import std.cstream;
-public import std.ctype;
 public import std.datetime;
 public import std.demangle;
 public import std.file;
@@ -33,10 +34,9 @@ public import std.mmfile;
 public import std.outbuffer;
 public import std.parallelism;
 public import std.path;
-public import std.perf;
 public import std.process;
 public import std.random;
-public import std.regexp;
+public import std.regex;
 public import std.signals;
 //public import std.slist;
 public import std.socket;
@@ -52,35 +52,44 @@ public import std.typetuple;
 public import std.uni;
 public import std.uri;
 public import std.utf;
+public import std.uuid;
 public import std.variant;
 public import std.zip;
 public import std.zlib;
+public import std.net.isemail;
+public import std.net.curl;
+public import std.digest.digest;
+public import std.digest.crc;
+public import std.digest.sha;
+public import std.digest.md;
+
+}
 
 int main(char[][] args)
 {
 
-version (all)
+version(Win64) {}
+else
 {
     // Bring in unit test for module by referencing function in it
 
     cmp("foo", "bar");                  // string
-    fncharmatch('a', 'b');              // path
+    filenameCharCmp('a', 'b');          // path
     isNaN(1.0);                         // math
     std.conv.to!double("1.0");          // std.conv
     OutBuffer b = new OutBuffer();      // outbuffer
-    std.ctype.tolower('A');             // ctype
-    RegExp r = new RegExp(null, null);  // regexp
-    uint ranseed = std.random.unpredictableSeed();
-    thisTid();
+    auto r = regex("");                 // regex
+    uint ranseed = std.random.unpredictableSeed;
+    thisTid;
     int a[];
     a.reverse;                          // adi
     a.sort;                             // qsort
     Clock.currTime();                   // datetime
     Exception e = new ReadException(""); // stream
     din.eof();                           // cstream
-    isValidDchar(cast(dchar)0);                 // utf
-    std.uri.ascii2hex(0);                       // uri
-    std.zlib.adler32(0,null);                   // D.zlib
+    isValidDchar(cast(dchar)0);          // utf
+    std.uri.ascii2hex(0);                // uri
+    std.zlib.adler32(0,null);            // D.zlib
     auto t = task!cmp("foo", "bar");  // parallelism
 
     ubyte[16] buf;
@@ -109,7 +118,7 @@ version (all)
 
     std.demangle.demangle("hello");
 
-    std.uni.isUniAlpha('A');
+    std.uni.isAlpha('A');
 
     std.file.exists("foo");
 
@@ -118,8 +127,15 @@ version (all)
 
     std.signals.linkin();
 
-    writefln(std.cpuid.toString());
+    bool isEmail = std.net.isemail.isEmail("abc");
+    auto http = std.net.curl.HTTP("dlang.org");
+    auto uuid = randomUUID();
+
+    auto md5 = md5Of("hello");
+    auto sha1 = sha1Of("hello");
+    auto crc = crc32Of("hello");
+    auto string = toHexString(crc);
+    puts("Success!");
 }
-    printf("Success!\n");
     return 0;
 }

@@ -27,7 +27,9 @@ module std.bitmanip;
 //debug = bitarray;                // uncomment to turn on debugging printf's
 
 import core.bitop;
+import std.format;
 import std.range;
+import std.string;
 import std.system;
 import std.traits;
 
@@ -266,7 +268,7 @@ unittest
     {
         struct MoreIntegrals {
             bool checkExpectations(uint eu, ushort es, uint ei) { return u == eu && s == es && i == ei; }
-            
+
             mixin(bitfields!(
                   uint, "u", 24,
                   short, "s", 16,
@@ -585,7 +587,7 @@ struct BitArray
         }
         return result;
     }
-    
+
     /** ditto */
     int opApply(scope int delegate(size_t, bool) dg) const
     {
@@ -750,19 +752,17 @@ struct BitArray
 
         if (this.length != a2.length)
             return 0;                // not equal
-        byte *p1 = cast(byte*)this.ptr;
-        byte *p2 = cast(byte*)a2.ptr;
-        auto n = this.length / 8;
+        auto p1 = this.ptr;
+        auto p2 = a2.ptr;
+        auto n = this.length / bitsPerSizeT;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])
                 return 0;                // not equal
         }
 
-        ubyte mask;
-
-        n = this.length & 7;
-        mask = cast(ubyte)((1 << n) - 1);
+        n = this.length & (bitsPerSizeT-1);
+        size_t mask = (1 << n) - 1;
         //printf("i = %d, n = %d, mask = %x, %x, %x\n", i, n, mask, p1[i], p2[i]);
         return (mask == 0) || (p1[i] & mask) == (p2[i] & mask);
     }
@@ -799,22 +799,20 @@ struct BitArray
         auto len = this.length;
         if (a2.length < len)
             len = a2.length;
-        ubyte* p1 = cast(ubyte*)this.ptr;
-        ubyte* p2 = cast(ubyte*)a2.ptr;
-        auto n = len / 8;
+        auto p1 = this.ptr;
+        auto p2 = a2.ptr;
+        auto n = len / bitsPerSizeT;
         for (i = 0; i < n; i++)
         {
             if (p1[i] != p2[i])
                 break;                // not equal
         }
-        for (uint j = i * 8; j < len; j++)
+        for (size_t j = 0; j < len-i * bitsPerSizeT; j++)
         {
-            ubyte mask = cast(ubyte)(1 << j);
-            int c;
-
-            c = cast(int)(p1[i] & mask) - cast(int)(p2[i] & mask);
+            size_t mask = cast(size_t)(1 << j);
+            auto c = (cast(long)(p1[i] & mask) - cast(long)(p2[i] & mask));
             if (c)
-                return c;
+                return c > 0 ? 1 : -1;
         }
         return cast(int)this.len - cast(int)a2.length;
     }
@@ -844,6 +842,18 @@ struct BitArray
         assert(a == e);
         assert(a <= e);
         assert(a >= e);
+
+        bool[] v;
+        for (int i = 1; i < 256; i++)
+        {
+            v.length = i;
+            v[] = false;
+            BitArray x; x.init(v);
+            v[i-1] = true;
+            BitArray y; y.init(v);
+            assert(x < y);
+            assert(x <= y);
+        }
     }
 
     /***************************************
@@ -1421,6 +1431,112 @@ struct BitArray
         assert(c[1] == 1);
         assert(c[2] == 0);
     }
+
+    /***************************************
+     * Return a string representation of this BitArray.
+     *
+     * Two format specifiers are supported:
+     * $(LI $(B %s) which prints the bits as an array, and)
+     * $(LI $(B %b) which prints the bits as 8-bit byte packets)
+     * separated with an underscore.
+     */
+    void toString(scope void delegate(const(char)[]) sink,
+                  FormatSpec!char fmt) const
+    {
+        switch(fmt.spec)
+        {
+            case 'b':
+                return formatBitString(sink);
+            case 's':
+                return formatBitArray(sink);
+            default:
+                throw new Exception("Unknown format specifier: %" ~ fmt.spec);
+        }
+    }
+
+    ///
+    unittest
+    {
+        BitArray b;
+        b.init([0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1]);
+
+        auto s1 = format("%s", b);
+        assert(s1 == "[0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1]");
+
+        auto s2 = format("%b", b);
+        assert(s2 == "00001111_00001111");
+    }
+
+    private void formatBitString(scope void delegate(const(char)[]) sink) const
+    {
+        if (!length)
+            return;
+
+        auto leftover = len % 8;
+        foreach (idx; 0 .. leftover)
+        {
+            char[1] res = cast(char)(bt(ptr, idx) + '0');
+            sink.put(res[]);
+        }
+
+        if (leftover && len > 8)
+            sink.put("_");
+
+        size_t count;
+        foreach (idx; leftover .. len)
+        {
+            char[1] res = cast(char)(bt(ptr, idx) + '0');
+            sink.put(res[]);
+            if (++count == 8 && idx != len - 1)
+            {
+                sink.put("_");
+                count = 0;
+            }
+        }
+    }
+
+    private void formatBitArray(scope void delegate(const(char)[]) sink) const
+    {
+        sink("[");
+        foreach (idx; 0 .. len)
+        {
+            char[1] res = cast(char)(bt(ptr, idx) + '0');
+            sink(res[]);
+            if (idx+1 < len)
+                sink(", ");
+        }
+        sink("]");
+    }
+}
+
+unittest
+{
+    BitArray b;
+
+    b.init([]);
+    assert(format("%s", b) == "[]");
+    assert(format("%b", b) is null);
+
+    b.init([1]);
+    assert(format("%s", b) == "[1]");
+    assert(format("%b", b) == "1");
+
+    b.init([0, 0, 0, 0]);
+    assert(format("%b", b) == "0000");
+
+    b.init([0, 0, 0, 0, 1, 1, 1, 1]);
+    assert(format("%s", b) == "[0, 0, 0, 0, 1, 1, 1, 1]");
+    assert(format("%b", b) == "00001111");
+
+    b.init([0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1]);
+    assert(format("%s", b) == "[0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1]");
+    assert(format("%b", b) == "00001111_00001111");
+
+    b.init([1, 0, 0, 0, 0, 1, 1, 1, 1]);
+    assert(format("%b", b) == "1_00001111");
+
+    b.init([1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1]);
+    assert(format("%b", b) == "1_00001111_00001111");
 }
 
 /++
@@ -1952,7 +2068,7 @@ private template canSwapEndianness(T)
 unittest
 {
     foreach(T; TypeTuple!(bool, ubyte, byte, ushort, short, uint, int, ulong,
-                          long, char, wchar, dchar, float, double)) 
+                          long, char, wchar, dchar, float, double))
     {
         static assert(canSwapEndianness!(T));
         static assert(canSwapEndianness!(const T));
@@ -2161,7 +2277,7 @@ unittest
         ubyte[] buffer = [66, 0, 0, 0, 65, 200, 0, 0];
         assert(buffer.peek!float()== 32.0);
         assert(buffer.peek!float(4) == 25.0f);
-        
+
         size_t index = 0;
         assert(buffer.peek!float(&index) == 32.0f);
         assert(index == 4);
@@ -2175,7 +2291,7 @@ unittest
         ubyte[] buffer = [64, 64, 0, 0, 0, 0, 0, 0, 64, 57, 0, 0, 0, 0, 0, 0];
         assert(buffer.peek!double() == 32.0);
         assert(buffer.peek!double(8) == 25.0);
-        
+
         size_t index = 0;
         assert(buffer.peek!double(&index) == 32.0);
         assert(index == 8);
@@ -2187,7 +2303,7 @@ unittest
     {
         //enum
         ubyte[] buffer = [0, 0, 0, 10, 0, 0, 0, 20, 0, 0, 0, 30];
-        
+
         enum Foo
         {
             one = 10,
@@ -2719,7 +2835,7 @@ unittest
     {
         //char (8bit)
         ubyte[] buffer = [0, 0, 0];
-        
+
         buffer.write!char('a', 0);
         assert(buffer == [97, 0, 0]);
 
@@ -2743,7 +2859,7 @@ unittest
     {
         //wchar (16bit - 2x ubyte)
         ubyte[] buffer = [0, 0, 0, 0];
-        
+
         buffer.write!wchar('ą', 0);
         assert(buffer == [1, 5, 0, 0]);
 
@@ -2763,7 +2879,7 @@ unittest
     {
         //dchar (32bit - 4x ubyte)
         ubyte[] buffer = [0, 0, 0, 0, 0, 0, 0, 0];
-        
+
         buffer.write!dchar('ą', 0);
         assert(buffer == [0, 0, 1, 5, 0, 0, 0, 0]);
 
@@ -2778,7 +2894,7 @@ unittest
         buffer.write!dchar('ą', &index);
         assert(buffer == [0, 0, 1, 7, 0, 0, 1, 5]);
         assert(index == 8);
-    }     
+    }
 
     {
         //float (32bit - 4x ubyte)
@@ -2809,7 +2925,7 @@ unittest
 
         buffer.write!double(25.0, 8);
         assert(buffer == [64, 64, 0, 0, 0, 0, 0, 0, 64, 57, 0, 0, 0, 0, 0, 0]);
-        
+
         size_t index = 0;
         buffer.write!double(25.0, &index);
         assert(buffer == [64, 57, 0, 0, 0, 0, 0, 0, 64, 57, 0, 0, 0, 0, 0, 0]);
@@ -2823,7 +2939,7 @@ unittest
     {
         //enum
         ubyte[] buffer = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        
+
         enum Foo
         {
             one = 10,
@@ -3012,19 +3128,19 @@ unittest
     {
         //char wchar dchar
         auto buffer = appender!(const ubyte[])();
-        
+
         buffer.append!char('a');
         assert(buffer.data == [97]);
 
         buffer.append!char('b');
         assert(buffer.data == [97, 98]);
-        
+
         buffer.append!wchar('ą');
         assert(buffer.data == [97, 98, 1, 5]);
 
         buffer.append!dchar('ą');
         assert(buffer.data == [97, 98, 1, 5, 0, 0, 1, 5]);
-    }     
+    }
 
     {
         //float double
@@ -3040,7 +3156,7 @@ unittest
     {
         //enum
         auto buffer = appender!(const ubyte[])();
-        
+
         enum Foo
         {
             one = 10,
@@ -3141,7 +3257,7 @@ unittest
         size_t length = 0;
         foreach(T; Types)
         {
-            toWrite.append!T(cast(T)values[index++]);
+            toWrite.append!(T, endianness)(cast(T)values[index++]);
             length += T.sizeof;
         }
 
@@ -3151,11 +3267,11 @@ unittest
         index = 0;
         foreach(T; Types)
         {
-            assert(toRead.peek!T() == values[index], format("Failed Index: %s", index));
-            assert(toRead.peek!T(0) == values[index], format("Failed Index: %s", index));
+            assert(toRead.peek!(T, endianness)() == values[index], format("Failed Index: %s", index));
+            assert(toRead.peek!(T, endianness)(0) == values[index], format("Failed Index: %s", index));
             assert(toRead.length == length,
                    format("Failed Index [%s], Actual Length: %s", index, toRead.length));
-            assert(toRead.read!T() == values[index], format("Failed Index: %s", index));
+            assert(toRead.read!(T, endianness)() == values[index], format("Failed Index: %s", index));
             length -= T.sizeof;
             assert(toRead.length == length,
                    format("Failed Index [%s], Actual Length: %s", index, toRead.length));

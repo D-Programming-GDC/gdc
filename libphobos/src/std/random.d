@@ -593,7 +593,7 @@ Parameter for the generator.
    Throws:
    $(D Exception) if the InputRange didn't provide enough elements to seed the generator.
    The number of elements required is the 'n' template parameter of the MersenneTwisterEngine struct.
-   
+
    Examples:
    ----------------
    Mt19937 gen;
@@ -1253,7 +1253,7 @@ passed, uses the default $(D rndGen).
  */
 auto uniform(T, UniformRandomNumberGenerator)
 (ref UniformRandomNumberGenerator urng)
-if (isIntegral!T || isSomeChar!T)
+if (!is(T == enum) && (isIntegral!T || isSomeChar!T))
 {
     auto r = urng.front;
     urng.popFront();
@@ -1272,7 +1272,7 @@ if (isIntegral!T || isSomeChar!T)
 
 /// Ditto
 auto uniform(T)()
-if (isIntegral!T || isSomeChar!T)
+if (!is(T == enum) && (isIntegral!T || isSomeChar!T))
 {
     return uniform!T(rndGen);
 }
@@ -1286,6 +1286,37 @@ unittest
         size_t i = 50;
         while (--i && uniform!T() == init) {}
         assert(i > 0);
+    }
+}
+
+/**
+Returns a uniformly selected member of enum $(D E). If no random number
+generator is passed, uses the default $(D rndGen).
+ */
+auto uniform(E, UniformRandomNumberGenerator)
+(ref UniformRandomNumberGenerator urng)
+if (is(E == enum))
+{
+    static immutable E[EnumMembers!E.length] members = [EnumMembers!E];
+    return members[std.random.uniform(0, members.length, urng)];
+}
+
+/// Ditto
+auto uniform(E)()
+if (is(E == enum))
+{
+    return uniform!E(rndGen);
+}
+
+unittest
+{
+    enum Fruit { Apple = 12, Mango = 29, Pear = 72 }
+    foreach (_; 0 .. 100)
+    {
+        foreach(f; [uniform!Fruit(), rndGen.uniform!Fruit()])
+        {
+            assert(f == Fruit.Apple || f == Fruit.Mango || f == Fruit.Pear);
+        }
     }
 }
 
@@ -1342,15 +1373,15 @@ unittest
 }
 
 /**
-Partially shuffles the elements of $(D r) such that upon returning $(D r[0..n]) 
-is a random subset of $(D r) and is randomly ordered.  $(D r[n..r.length]) 
-will contain the elements not in $(D r[0..n]).  These will be in an undefined 
-order, but will not be random in the sense that their order after 
-$(D partialShuffle) returns will not be independent of their order before 
+Partially shuffles the elements of $(D r) such that upon returning $(D r[0..n])
+is a random subset of $(D r) and is randomly ordered.  $(D r[n..r.length])
+will contain the elements not in $(D r[0..n]).  These will be in an undefined
+order, but will not be random in the sense that their order after
+$(D partialShuffle) returns will not be independent of their order before
 $(D partialShuffle) was called.
 
 $(D r) must be a random-access range with length.  $(D n) must be less than
-or equal to $(D r.length).  
+or equal to $(D r.length).
 */
 void partialShuffle(Range, RandomGen = Random)(Range r, size_t n,
                                               ref RandomGen gen = rndGen)
@@ -1576,7 +1607,7 @@ struct RandomSample(R, Random = void)
     if(isInputRange!R && (isUniformRNG!Random || is(Random == void)))
 {
     private size_t _available, _toSelect;
-    private immutable ushort _alphaInverse = 13; // Vitter's recommended value.
+    private enum ushort _alphaInverse = 13; // Vitter's recommended value.
     private bool _first, _algorithmA;
     private double _Vprime;
     private R _input;
@@ -1595,14 +1626,16 @@ struct RandomSample(R, Random = void)
             this(R input, size_t howMany, Random gen)
             {
                 _gen = gen;
-                initialize(input, howMany, input.length);
+                _input = input;
+                initialize(howMany, input.length);
             }
         }
 
         this(R input, size_t howMany, size_t total, Random gen)
         {
             _gen = gen;
-            initialize(input, howMany, total);
+            _input = input;
+            initialize(howMany, total);
         }
     }
     else
@@ -1611,19 +1644,20 @@ struct RandomSample(R, Random = void)
         {
             this(R input, size_t howMany)
             {
-                initialize(input, howMany, input.length);
+                _input = input;
+                initialize(howMany, input.length);
             }
         }
 
         this(R input, size_t howMany, size_t total)
         {
-            initialize(input, howMany, total);
+            _input = input;
+            initialize(howMany, total);
         }
     }
 
-    private void initialize(R input, size_t howMany, size_t total)
+    private void initialize(size_t howMany, size_t total)
     {
-        _input = input;
         _available = total;
         _toSelect = howMany;
         enforce(_toSelect <= _available);
@@ -1675,11 +1709,14 @@ struct RandomSample(R, Random = void)
     }
 
 /// Ditto
-    @property typeof(this) save()
+    static if(isForwardRange!R)
     {
-        auto ret = this;
-        ret._input = _input.save;
-        return ret;
+        @property typeof(this) save()
+        {
+            auto ret = this;
+            ret._input = _input.save;
+            return ret;
+        }
     }
 
 /// Ditto
@@ -1917,6 +1954,32 @@ unittest
     int[] a = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ];
     static assert(isForwardRange!(typeof(randomSample(a, 5))));
     static assert(isForwardRange!(typeof(randomSample(a, 5, gen))));
+
+    struct TestInputRange
+    {
+        private int[] arr = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        @property bool empty() const { return arr.empty; }
+        @property int front() const { return arr.front; }
+        void popFront() { arr.popFront(); }
+    }
+    static assert(isInputRange!TestInputRange);
+    TestInputRange input;
+    static assert(isInputRange!(typeof(randomSample(input, 5, 10))));
+    static assert(isInputRange!(typeof(randomSample(input, 5, 10, gen))));
+
+    struct TestInputRangeWithLength
+    {
+        private int[] arr = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        @property bool empty() const { return arr.empty; }
+        @property int front() const { return arr.front; }
+        void popFront() { arr.popFront(); }
+        @property size_t length() const { return arr.length; }
+    }
+    static assert(isInputRange!TestInputRangeWithLength);
+    static assert(hasLength!TestInputRangeWithLength);
+    TestInputRangeWithLength inputWithLength;
+    static assert(isInputRange!(typeof(randomSample(inputWithLength, 5))));
+    static assert(isInputRange!(typeof(randomSample(inputWithLength, 5, gen))));
 
     //int[] a = [ 0, 1, 2 ];
     assert(randomSample(a, 5).length == 5);

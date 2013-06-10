@@ -855,7 +855,7 @@ d_attribute_p (const char* name)
         return false;
 
       table = new StringTable();
-      table->init(n);
+      table->_init(n);
 
       for (const attribute_spec *p = d_attribute_table; p->name; p++)
         table->insert(p->name, strlen(p->name));
@@ -2633,13 +2633,7 @@ get_libcall (LibCall libcall)
 	}
 
       // Build extern(C) function.
-      Identifier *id = Lexer::idPool(libcall_ids[libcall]);
-      TypeFunction *tf = new TypeFunction(NULL, treturn, 0, LINKc);
-      tf->varargs = varargs ? 1 : 0;
-
-      decl = new FuncDeclaration(0, 0, id, STCstatic, tf);
-      decl->protection = PROTpublic;
-      decl->linkage = LINKc;
+      decl = FuncDeclaration::genCfunc (treturn, libcall_ids[libcall]);
 
       // Add parameter types.
       Parameters *args = new Parameters;
@@ -2647,7 +2641,9 @@ get_libcall (LibCall libcall)
       for (size_t i = 0; i < targs.dim; i++)
 	(*args)[i] = new Parameter (0, targs[i], NULL, NULL);
 
+      TypeFunction *tf = (TypeFunction *) decl->type;
       tf->parameters = args;
+      tf->varargs = varargs ? 1 : 0;
       libcall_decls[libcall] = decl;
 
       // These functions do not return except through catching a thrown exception.
@@ -3822,7 +3818,7 @@ needs_static_chain (FuncDeclaration *f)
     {
       s = f->toParent();
       ti = s->isTemplateInstance();
-      if (ti && ti->isnested == NULL && ti->parent->isModule())
+      if (ti && ti->enclosing == NULL && ti->parent->isModule())
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
@@ -3917,7 +3913,7 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
       // %% D anonymous unions just put the fields into the outer struct...
       // does this cause problems?
       VarDeclaration *var_decl = (*fields)[i];
-      gcc_assert (var_decl && var_decl->storage_class & STCfield);
+      gcc_assert (var_decl && var_decl->isField());
 
       tree ident = var_decl->ident ? get_identifier (var_decl->ident->string) : NULL_TREE;
       tree field_decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,

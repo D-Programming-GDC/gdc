@@ -124,7 +124,7 @@ version( DigitalMars )
 }
 else version( GNU )
 {
-    void* alloca(size_t size); // compiler intrinsic.
+    void* alloca(size_t size); // compiler intrinsic
 }
 
 version (Win64)
@@ -135,3 +135,4 @@ version (Win64)
     long  _strtoi64(in char *,char **,int);
     long  _wcstoi64(in wchar *,wchar **,int);
 }
+

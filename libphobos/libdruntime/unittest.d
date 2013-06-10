@@ -1,38 +1,52 @@
-// Written in the D programming language.
-
 /**
- * This test program pulls in all the library modules in order to run the unit
- * tests on them.
+ * Unit tests for the D runtime.
+ *
+ * Copyright: Copyright Sean Kelly 2005 - 2010.
+ * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+ * Authors:   Sean Kelly
  */
 
-public import core.sys.posix.sys.select;
-public import core.demangle;
-public import core.time;
+/*          Copyright Sean Kelly 2005 - 2010.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
+ */
+public import core.atomic;
 public import core.bitop;
-public import core.thread;
+public import core.cpuid;
+public import core.demangle;
 public import core.exception;
-public import core.math;
-public import etc.linux.memoryerror;
-public import gc.gcbits;
-public import rt.adi;
-public import rt.arrayshort;
-public import rt.arrayfloat;
-public import rt.arrayint;
-public import rt.typeinfo.ti_Aint;
-public import rt.switch_;
-public import rt.arrayreal;
-public import rt.arraybyte;
-public import rt.aaA;
-public import rt.qsort;
-public import rt.lifetime;
-public import rt.minfo;
-public import rt.arraydouble;
-public import rt.util.hash;
-public import rt.util.container;
-public import rt.util.utf;
-public import rt.aApplyR;
-public import rt.arraycast;
+public import core.memory;
+public import core.runtime;
+public import core.thread;
+public import core.vararg;
+
+public import core.sync.condition;
+public import core.sync.mutex;
+public import core.sync.rwmutex;
+public import core.sync.semaphore;
+
+version(Posix)
+    public import core.sys.posix.sys.select;
 
 void main()
 {
+    // Bring in unit test for module by referencing a function in it
+    shared(int) i;
+    cas( &i, 0, 1 ); // atomic
+    auto b = bsf( 0 ); // bitop
+    mmx; // cpuid
+    demangle( "" ); // demangle
+    setAssertHandler( null ); // exception
+    // SES - disabled because you cannot enable the GC without disabling it.
+    //GC.enable(); // memory
+    Runtime.collectHandler = null; // runtime
+    static void fn() {}
+    new Thread( &fn ); // thread
+    va_end( null ); // vararg
+
+    auto m = new Mutex; // mutex
+    auto c = new Condition( m ); // condition
+    auto r = new ReadWriteMutex; // rwmutex
+    auto s = new Semaphore; // semaphore
 }

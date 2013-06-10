@@ -28,34 +28,16 @@
 #include "init.h"
 #include "module.h"
 #include "statement.h"
+#include "ctfe.h"
 
 #include "dfrontend/target.h"
-
-// Construct a SymbolDeclaration, whose components are a symbol S
-// and a struct declaration DSYM.
-
-SymbolDeclaration::SymbolDeclaration (Loc loc, Symbol *s, StructDeclaration *dsym)
-    : Declaration (new Identifier (s->Sident, TOKidentifier))
-{
-  this->loc = loc;
-  sym = s;
-  this->dsym = dsym;
-  storage_class |= STCconst;
-}
 
 // Create the symbol with tree for struct initialisers.
 
 Symbol *
 SymbolDeclaration::toSymbol (void)
 {
-  // Create the actual back-end value if not yet done
-  if (!sym->Stree)
-    {
-      if (dsym)
-	dsym->toInitializer();
-      gcc_assert (sym->Stree);
-    }
-  return sym;
+  return dsym->toInitializer();
 }
 
 
@@ -119,7 +101,7 @@ VarDeclaration::toSymbol (void)
 
       // For field declaration, it is possible for toSymbol to be called
       // before the parent's toCtype()
-      if (storage_class & STCfield)
+      if (isField())
 	{
 	  AggregateDeclaration *parent_decl = toParent()->isAggregateDeclaration();
 	  gcc_assert (parent_decl);
@@ -242,6 +224,7 @@ VarDeclaration::toSymbol (void)
 	    free (p);
 	}
     }
+
   return csym;
 }
 
@@ -280,6 +263,7 @@ TypeInfoDeclaration::toSymbol (void)
       D_DECL_ONE_ONLY (csym->Stree) = 1;
       d_comdat_linkage (csym->Stree);
     }
+
   return csym;
 }
 
@@ -485,6 +469,7 @@ FuncDeclaration::toSymbol (void)
 	  csym->Stree = isym->Stree;
 	}
     }
+
   return csym;
 }
 
@@ -567,6 +552,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 
       thunk->symbol = sthunk;
     }
+
   return thunk->symbol;
 }
 
@@ -591,6 +577,7 @@ ClassDeclaration::toSymbol (void)
       // ClassInfo cannot be const data, because we use the monitor on it.
       TREE_CONSTANT (decl) = 0;
     }
+
   return csym;
 }
 
@@ -613,6 +600,7 @@ InterfaceDeclaration::toSymbol (void)
 
       TREE_CONSTANT (decl) = 1;
     }
+
   return csym;
 }
 
@@ -637,7 +625,36 @@ Module::toSymbol (void)
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
     }
+
   return csym;
+}
+
+Symbol *
+StructLiteralExp::toSymbol (void)
+{
+  if (!sym)
+    {
+      sym = new Symbol();
+      toDt (&sym->Sdt);
+      d_finish_symbol (sym);
+    }
+  
+  return sym;
+}
+
+Symbol *
+ClassReferenceExp::toSymbol (void)
+{
+  if (!value->sym)
+    {
+      Symbol *sym = new Symbol();
+      toInstanceDt (&sym->Sdt);
+      d_finish_symbol (sym);
+
+      value->sym = sym;
+    }
+
+  return value->sym;
 }
 
 // Create the "vtbl" symbol for ClassDeclaration.

@@ -80,4 +80,9 @@ typedef ArrayBase<struct block> Blocks;
 
 typedef ArrayBase<struct Symbol> Symbols;
 
+#ifdef IN_GCC
+typedef ArrayBase<union tree_node> Dts;
+#else
+typedef ArrayBase<struct dt_t> Dts;
+#endif
 #endif

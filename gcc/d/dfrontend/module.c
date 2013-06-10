@@ -27,7 +27,7 @@
 #include "d-dmd-gcc.h"
 #endif
 
-ClassDeclaration *Module::moduleinfo;
+AggregateDeclaration *Module::moduleinfo;
 
 Module *Module::rootModule;
 DsymbolTable *Module::modules;
@@ -258,15 +258,15 @@ Module *Module::load(Loc loc, Identifiers *packages, Identifier *ident)
 
     if (global.params.verbose)
     {
-        fprintf(stdmsg, "import    ");
+        fprintf(stderr, "import    ");
         if (packages)
         {
             for (size_t i = 0; i < packages->dim; i++)
             {   Identifier *pid = (*packages)[i];
-                fprintf(stdmsg, "%s.", pid->toChars());
+                fprintf(stderr, "%s.", pid->toChars());
             }
         }
-        fprintf(stdmsg, "%s\t(%s)\n", ident->toChars(), m->srcfile->toChars());
+        fprintf(stderr, "%s\t(%s)\n", ident->toChars(), m->srcfile->toChars());
     }
 
     if (!m->read(loc))
@@ -304,11 +304,11 @@ bool Module::read(Loc loc)
                 for (size_t i = 0; i < global.path->dim; i++)
                 {
                     char *p = (*global.path)[i];
-                    fprintf(stdmsg, "import path[%llu] = %s\n", (ulonglong)i, p);
+                    fprintf(stderr, "import path[%llu] = %s\n", (ulonglong)i, p);
                 }
             }
             else
-                fprintf(stdmsg, "Specify path to file '%s' with -I switch\n", srcfile->toChars());
+                fprintf(stderr, "Specify path to file '%s' with -I switch\n", srcfile->toChars());
             fatal();
         }
         return false;
@@ -528,7 +528,8 @@ void Module::parse()
     p.nextToken();
     members = p.parseModule();
 
-    ::free(srcfile->buffer);
+    if (srcfile->ref == 0)
+        ::free(srcfile->buffer);
     srcfile->buffer = NULL;
     srcfile->len = 0;
 
@@ -566,8 +567,14 @@ void Module::parse()
         assert(prev);
         Module *mprev = prev->isModule();
         if (mprev)
-            error(loc, "from file %s conflicts with another module %s from file %s",
-                srcname, mprev->toChars(), mprev->srcfile->toChars());
+        {
+            if (strcmp(srcname, mprev->srcfile->toChars()) == 0)
+                error(loc, "from file %s must be imported as module '%s'",
+                    srcname, toPrettyChars());
+            else
+                error(loc, "from file %s conflicts with another module %s from file %s",
+                    srcname, mprev->toChars(), mprev->srcfile->toChars());
+        }
         else
         {
             Package *pkg = prev->isPackage();
@@ -608,7 +615,7 @@ void Module::importAll(Scope *prevsc)
     // would fail inside object.d.
     if (members->dim == 0 || ((*members)[0])->ident != Id::object)
     {
-        Import *im = new Import(0, NULL, Id::object, NULL, 0);
+        Import *im = new Import(Loc(), NULL, Id::object, NULL, 0);
         members->shift(im);
     }
 
@@ -873,7 +880,7 @@ Dsymbol *Module::search(Loc loc, Identifier *ident, int flags)
 
 Dsymbol *Module::symtabInsert(Dsymbol *s)
 {
-    searchCacheIdent = 0;       // symbol is inserted, so invalidate cache
+    searchCacheIdent = NULL;       // symbol is inserted, so invalidate cache
     return Package::symtabInsert(s);
 }
 

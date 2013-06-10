@@ -57,6 +57,9 @@ import core.exception, core.stdc.errno;
         T          = The $(D Throwable) to test for.
         expression = The expression to test.
         msg        = Optional message to output on test failure.
+                     If msg is empty, and the thrown exception has a
+                     non-empty msg field, the exception's msg field
+                     will be output on test failure.
 
     Throws:
         $(D AssertError) if the given $(D Throwable) is thrown.
@@ -70,7 +73,7 @@ assertNotThrown(enforceEx!StringException(true, "Error!"));
 
 assert(collectExceptionMsg!AssertError(assertNotThrown!StringException(
            enforceEx!StringException(false, "Error!"))) ==
-       `assertNotThrown failed: StringException was thrown.`);
+       `assertNotThrown failed: StringException was thrown: Error!`);
 --------------------
   +/
 void assertNotThrown(T : Throwable = Exception, E)
@@ -83,8 +86,8 @@ void assertNotThrown(T : Throwable = Exception, E)
         expression();
     catch(T t)
     {
-        immutable tail = msg.empty ? "." : ": " ~ msg;
-
+        immutable message = msg.empty ? t.msg : msg;
+        immutable tail = message.empty ? "." : ": " ~ message;
         throw new AssertError(format("assertNotThrown failed: %s was thrown%s",
                                      T.stringof,
                                      tail),
@@ -104,6 +107,18 @@ unittest
 
     assert(collectExceptionMsg!AssertError(assertNotThrown!StringException(
                enforceEx!StringException(false, "Error!"))) ==
+           `assertNotThrown failed: StringException was thrown: Error!`);
+
+    assert(collectExceptionMsg!AssertError(assertNotThrown!StringException(
+               enforceEx!StringException(false, ""), "Error!")) ==
+           `assertNotThrown failed: StringException was thrown: Error!`);
+
+    assert(collectExceptionMsg!AssertError(assertNotThrown!StringException(
+               enforceEx!StringException(false, ""))) ==
+           `assertNotThrown failed: StringException was thrown.`);
+
+    assert(collectExceptionMsg!AssertError(assertNotThrown!StringException(
+               enforceEx!StringException(false, ""), "")) ==
            `assertNotThrown failed: StringException was thrown.`);
 }
 
@@ -554,14 +569,7 @@ template enforceEx(E)
     }
 }
 
-/++
-    $(RED Deprecated. It will be removed in October 2012. Please use the version
-          of $(D enforceEx) which takes an exception that constructs with
-          $(D new E(msg, file, line)).)
-
-    If $(D !!value) is $(D true), $(D value) is returned. Otherwise,
-    $(D new E(msg)) is thrown.
-  +/
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use the version of enforceEx which takes an exception that constructs with new E(msg, file, line).")
 template enforceEx(E)
     if (is(typeof(new E(""))) && !is(typeof(new E("", __FILE__, __LINE__))) && !is(typeof(new E(__FILE__, __LINE__))))
@@ -1019,184 +1027,180 @@ class ErrnoException : Exception
     }
 }
 
-// structuralCast
-// class-to-class structural cast
-Target structuralCast(Target, Source)(Source obj)
-    if (is(Source == class) || is(Target == class))
+/++
+    ML-style functional exception handling. Runs the supplied expression and
+    returns its result. If the expression throws a $(D Throwable), runs the
+    supplied error handler instead and return its result. The error handler's
+    type must be the same as the expression's type.
+
+    Params:
+        E            = The type of $(D Throwable)s to catch. Defaults to ${D Exception}
+        T            = The return type of the expression and the error handler.
+        expression   = The expression to run and return its result.
+        errorHandler = The handler to run if the expression throwed.
+
+    Examples:
+--------------------
+    //Revert to a default value upon an error:
+    assert("x".to!int().ifThrown(0) == 0);
+--------------------
+
+    You can also chain multiple calls to ifThrown, each capturing errors from the
+    entire preceding expression.
+
+    Example:
+--------------------
+    //Chaining multiple calls to ifThrown to attempt multiple things in a row:
+    string s="true";
+    assert(s.to!int().
+            ifThrown(cast(int)s.to!double()).
+            ifThrown(cast(int)s.to!bool())
+            == 1);
+
+    //Respond differently to different types of errors
+    assert(enforce("x".to!int() < 1).to!string()
+            .ifThrown!ConvException("not a number")
+            .ifThrown!Exception("number too small")
+            == "not a number");
+--------------------
+
+    The expression and the errorHandler must have a common type they can both
+    be implicitly casted to, and that type will be the type of the compound
+    expression.
+
+    Examples:
+--------------------
+    //null and new Object have a common type(Object).
+    static assert(is(typeof(null.ifThrown(new Object())) == Object));
+    static assert(is(typeof((new Object()).ifThrown(null)) == Object));
+
+    //1 and new Object do not have a common type.
+    static assert(!__traits(compiles, 1.ifThrown(new Object())));
+    static assert(!__traits(compiles, (new Object()).ifThrown(1)));
+--------------------
+
+    If you need to use the actual thrown expection, you can use a delegate.
+    Example:
+--------------------
+    //Use a lambda to get the thrown object.
+    assert("%s".format().ifThrown!Exception(e => e.classinfo.name) == "std.format.FormatException");
+--------------------
+    +/
+//lazy version
+CommonType!(T1, T2) ifThrown(E : Throwable = Exception, T1, T2)(lazy scope T1 expression, lazy scope T2 errorHandler)
 {
-    // For the structural cast to work, the source and the target must
-    // have the same base class, and the target must add no data or
-    // methods
-    static assert(0, "Not implemented");
+    static assert(!is(typeof(return) == void),
+            "The error handler's return value("~T2.stringof~") does not have a common type with the expression("~T1.stringof~").");
+    try
+    {
+        return expression();
+    }
+    catch(E)
+    {
+        return errorHandler();
+    }
 }
 
-// interface-to-interface structural cast
-Target structuralCast(Target, Source)(Source obj)
-    if (is(Source == interface) || is(Target == interface))
+///ditto
+//delegate version
+CommonType!(T1, T2) ifThrown(E : Throwable, T1, T2)(lazy scope T1 expression, scope T2 delegate(E) errorHandler)
 {
+    static assert(!is(typeof(return) == void),
+            "The error handler's return value("~T2.stringof~") does not have a common type with the expression("~T1.stringof~").");
+    try
+    {
+        return expression();
+    }
+    catch(E e)
+    {
+        return errorHandler(e);
+    }
+}
+
+///ditto
+//delegate version, general overload to catch any Exception
+CommonType!(T1, T2) ifThrown(T1, T2)(lazy scope T1 expression, scope T2 delegate(Exception) errorHandler)
+{
+    static assert(!is(typeof(return) == void),
+            "The error handler's return value("~T2.stringof~") does not have a common type with the expression("~T1.stringof~").");
+    try
+    {
+        return expression();
+    }
+    catch(Exception e)
+    {
+        return errorHandler(e);
+    }
+}
+
+//Verify Examples
+unittest
+{
+    //Revert to a default value upon an error:
+    assert("x".to!int().ifThrown(0) == 0);
+
+    //Chaining multiple calls to ifThrown to attempt multiple things in a row:
+    string s="true";
+    assert(s.to!int().
+            ifThrown(cast(int)s.to!double()).
+            ifThrown(cast(int)s.to!bool())
+            == 1);
+
+    //Respond differently to different types of errors
+    assert(enforce("x".to!int() < 1).to!string()
+            .ifThrown!ConvException("not a number")
+            .ifThrown!Exception("number too small")
+            == "not a number");
+
+    //null and new Object have a common type(Object).
+    static assert(is(typeof(null.ifThrown(new Object())) == Object));
+    static assert(is(typeof((new Object()).ifThrown(null)) == Object));
+
+    //1 and new Object do not have a common type.
+    static assert(!__traits(compiles, 1.ifThrown(new Object())));
+    static assert(!__traits(compiles, (new Object()).ifThrown(1)));
+
+    //Use a lambda to get the thrown object.
+    assert("%s".format().ifThrown(e => e.classinfo.name) == "std.format.FormatException");
 }
 
 unittest
 {
-    interface I1 { void f1(); }
-    interface I2 { void f2(); }
-    interface I12 : I1, I2 { }
-    //pragma(msg, TransitiveBaseTypeTuple!I12.stringof);
-    //static assert(is(TransitiveBaseTypeTuple!I12 == TypeTuple!(I2, I1)));
+    //Basic behaviour - all versions.
+    assert("1".to!int().ifThrown(0) == 1);
+    assert("x".to!int().ifThrown(0) == 0);
+    assert("1".to!int().ifThrown!ConvException(0) == 1);
+    assert("x".to!int().ifThrown!ConvException(0) == 0);
+    assert("1".to!int().ifThrown(e=>0) == 1);
+    assert("x".to!int().ifThrown(e=>0) == 0);
+    static if (__traits(compiles, 0.ifThrown!Exception(e => 0))) //This will only work with a fix that was not yet pulled
+    {
+        assert("1".to!int().ifThrown!ConvException(e=>0) == 1);
+        assert("x".to!int().ifThrown!ConvException(e=>0) == 0);
+    }
+
+    //Exceptions other than stated not caught.
+    assert("x".to!int().ifThrown!StringException(0).collectException!ConvException() !is null);
+    static if (__traits(compiles, 0.ifThrown!Exception(e => 0))) //This will only work with a fix that was not yet pulled
+    {
+        assert("x".to!int().ifThrown!StringException(e=>0).collectException!ConvException() !is null);
+    }
+
+    //Default does not include errors.
+    int[] a=[];
+    assert(a[0].ifThrown(0).collectException!RangeError() !is null);
+    assert(a[0].ifThrown(e=>0).collectException!RangeError() !is null);
+
+    //Incompatible types are not accepted.
+    static assert(!__traits(compiles, 1.ifThrown(new Object())));
+    static assert(!__traits(compiles, (new Object()).ifThrown(1)));
+    static assert(!__traits(compiles, 1.ifThrown(e=>new Object())));
+    static assert(!__traits(compiles, (new Object()).ifThrown(e=>1)));
 }
 
-// Target structuralCast(Target, Source)(Source obj)
-//     if (is(Source == interface) || is(Target == interface))
-// {
-//     static assert(is(BaseTypeTuple!(Source)[0] ==
-//                     BaseTypeTuple!(Target)[0]));
-//     alias BaseTypeTuple!(Source)[1 .. $] SBases;
-//     alias BaseTypeTuple!(Target)[1 .. $] TBases;
-//         else
-//         {
-//             // interface-to-class
-//             static assert(0);
-//         }
-//     }
-//     else
-//     {
-//         static if (is(Source == class))
-//         {
-//             // class-to-interface structural cast
-//             alias BaseTypeTuple!(Source)[1 .. $] SBases;
-//             alias BaseTypeTuple!(Target) TBases;
-//         }
-//         else
-//         {
-//             // interface-to-interface structural cast
-//             alias BaseTypeTuple!(Source) SBases;
-//             alias BaseTypeTuple!(Target) TBases;
-//         }
-//     }
-//     static assert(SBases.length >= TBases.length,
-//             "Cannot structurally cast to a target with"
-//             " more interfaces implemented");
-//     static assert(
-//         is(typeof(Target.tupleof) == typeof(Source.tupleof)),
-//             "Cannot structurally cast to a target with more fields");
-//     // Target bases must be a prefix of the source bases
-//     foreach (i, B; TBases)
-//     {
-//         static assert(is(SBases[i] == B)
-//                 || is(SBases[i] == interface) && is(SBases[i] : B),
-//                 SBases[i].stringof ~ " does not inherit "
-//                 ~ B.stringof);
-//     }
-//     union Result
-//     {
-//         Source src;
-//         Target tgt;
-//     }
-//     Result result = { obj };
-//     return result.tgt;
-// }
-
-template structurallyCompatible(S, T) if (!isArray!S || !isArray!T)
+version(unittest) package
+@property void assertCTFEable(alias dg)()
 {
-    enum structurallyCompatible =
-        FieldTypeTuple!S.length >= FieldTypeTuple!T.length
-        && is(FieldTypeTuple!S[0 .. FieldTypeTuple!T.length]
-                == FieldTypeTuple!T);
-}
-
-template structurallyCompatible(S, T) if (isArray!S && isArray!T)
-{
-    enum structurallyCompatible =
-        .structurallyCompatible!(ElementType!S, ElementType!T) &&
-        .structurallyCompatible!(ElementType!T, ElementType!S);
-}
-
-unittest
-{
-    // struct X { uint a; }
-    // static assert(structurallyCompatible!(uint[], X[]));
-    // struct Y { uint a, b; }
-    // static assert(!structurallyCompatible!(uint[], Y[]));
-    // static assert(!structurallyCompatible!(Y[], uint[]));
-    // static assert(!structurallyCompatible!(Y[], X[]));
-}
-
-/*
-Structural cast. Allows casting among class types that logically have
-a common base, but that base is not made explicit.
-
-Example:
-----
-interface Document { ... }
-interface Storable { ... }
-interface StorableDocument : Storable, Document { ... }
-class Doc : Storable, Document { ... }
-void process(StorableDocument d);
-...
-
-auto c = new Doc;
-process(c); // does not work
-process(structuralCast!StorableDocument(c)); // works
- */
-
-// template structuralCast(Target)
-// {
-//     Target structuralCast(Source)(Source obj)
-//     {
-//         static if (is(Source : Object) || is(Source == interface))
-//         {
-//             return .structuralCastImpl!(Target)(obj);
-//         }
-//         else
-//         {
-//             static if (structurallyCompatible!(Source, Target))
-//                 return *(cast(Target*) &obj);
-//             else
-//                 static assert(false);
-//         }
-//     }
-// }
-
-unittest
-{
-    // interface I1 {}
-    // interface I2 {}
-    // class Base : I1 { int x; }
-    // class A : I1 {}
-    // class B : I1, I2 {}
-
-    // auto b = new B;
-    // auto a = structuralCast!(A)(b);
-    // assert(a);
-
-    // struct X { int a; }
-    // int[] arr = [ 1 ];
-    // auto x = structuralCast!(X[])(arr);
-    // assert(x[0].a == 1);
-}
-
-unittest
-{
-    // interface Document { int fun(); }
-    // interface Storable { int gun(); }
-    // interface StorableDocument : Storable, Document {  }
-    // class Doc : Storable, Document {
-    //     int fun() { return 42; }
-    //     int gun() { return 43; }
-    // }
-    // void process(StorableDocument d) {
-    //     assert(d.fun + d.gun == 85, text(d.fun + d.gun));
-    // }
-
-    // auto c = new Doc;
-    // Document d = c;
-    // //process(c); // does not work
-    // union A
-    // {
-    //     Storable s;
-    //     StorableDocument sd;
-    // }
-    // A a = { c };
-    //process(a.sd); // works
-    //process(structuralCast!StorableDocument(d)); // works
+    static assert({ dg(); return true; }());
+    dg();
 }

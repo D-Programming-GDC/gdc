@@ -362,7 +362,7 @@ IRBase::startLoop (Statement *stmt)
 {
   Flow *flow = this->beginFlow (stmt);
   // should be end for 'do' loop
-  flow->continueLabel = d_build_label (stmt ? stmt->loc : 0, NULL);
+  flow->continueLabel = d_build_label (stmt ? stmt->loc : Loc(), NULL);
 }
 
 // Emit continue label for loop.

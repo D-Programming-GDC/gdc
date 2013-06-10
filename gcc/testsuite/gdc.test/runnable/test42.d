@@ -611,7 +611,7 @@ void test40()
 
 /***************************************************/
 
-align (16) struct S41
+align(16) struct S41
 {
     int[4] a;
 }
@@ -4981,7 +4981,7 @@ mixin template mix7974()
 
 struct Foo7974
 {
-    immutable Foo7974 fa = Foo7974(0);
+    static immutable Foo7974 fa = Foo7974(0);
 
     this(uint x)
     {
@@ -5312,6 +5312,18 @@ void bar8870(S8870 t1, S8870 t2, bool someBool, float finalFloat)
 
 /***************************************************/
 
+int foo9781(int[1] x)
+{
+    return x[0] * x[0];
+}
+
+void test9781()
+{
+    foo9781([7]);
+}
+
+/***************************************************/
+
 struct S247 { size_t length; size_t ptr; }
 
 S247 foo247()
@@ -5449,6 +5461,23 @@ void test9248()
     void*[] b = [cast(void*)2];
     auto c = a ~ b;
     assert(c == [cast(void*)1, cast(void*)2]);
+}
+
+/***************************************************/
+// 9739
+
+class Foo9739
+{
+    int val = 1;
+    this(int arg = 2) { val = arg; }
+}
+
+class Bar9739 : Foo9739 { }
+
+void test9739()
+{
+    Bar9739 bar = new Bar9739;
+    assert(bar.val == 2);
 }
 
 /***************************************************/
@@ -5616,22 +5645,22 @@ void test250()
 {
     static uint[2]  a1 = [0x1001_1100, 0x0220_0012];
 
-    if ( bt32(a1,30)) assert(0);
-    if (!bt32(a1,8))  assert(0);
-    if ( bt32(a1,30+32)) assert(0);
-    if (!bt32(a1,1+32))  assert(0);
+    if ( bt32(a1.ptr,30)) assert(0);
+    if (!bt32(a1.ptr,8))  assert(0);
+    if ( bt32(a1.ptr,30+32)) assert(0);
+    if (!bt32(a1.ptr,1+32))  assert(0);
 
     static ulong[2] a2 = [0x1001_1100_12345678, 0x0220_0012_12345678];
 
-    if ( bt64a(a2,30+32)) assert(0);
-    if (!bt64a(a2,8+32))  assert(0);
-    if ( bt64a(a2,30+32+64)) assert(0);
-    if (!bt64a(a2,1+32+64))  assert(0);
+    if ( bt64a(a2.ptr,30+32)) assert(0);
+    if (!bt64a(a2.ptr,8+32))  assert(0);
+    if ( bt64a(a2.ptr,30+32+64)) assert(0);
+    if (!bt64a(a2.ptr,1+32+64))  assert(0);
 
-    if ( bt64b(a2,30+32)) assert(0);
-    if (!bt64b(a2,8+32))  assert(0);
-    if ( bt64b(a2,30+32+64)) assert(0);
-    if (!bt64b(a2,1+32+64))  assert(0);
+    if ( bt64b(a2.ptr,30+32)) assert(0);
+    if (!bt64b(a2.ptr,8+32))  assert(0);
+    if ( bt64b(a2.ptr,30+32+64)) assert(0);
+    if (!bt64b(a2.ptr,1+32+64))  assert(0);
 }
 
 /***************************************************/
@@ -5697,6 +5726,43 @@ void bug6962(string value)
 void test6962()
 {
     bug6962("42");
+}
+
+/***************************************************/
+
+int[1] foo4414() {
+    return [7];
+}
+
+ubyte[4] bytes4414()
+{
+    ubyte[4] x;
+    x[0] = 7;
+    x[1] = 8;
+    x[2] = 9;
+    x[3] = 10;
+    return x;
+}
+
+void test4414() {
+  {
+    int x = foo4414()[0];
+    assert(x == 7);
+  }
+  {
+    auto x = bytes4414()[0..4];
+    if (x[0] != 7 || x[1] != 8 || x[2] != 9 || x[3] != 10)
+	assert(0);
+  }
+}
+
+/***************************************************/
+
+void test9844() {
+    int a = -1;
+    long b = -1;
+    assert(a == -1);
+    assert(b == -1L);
 }
 
 /***************************************************/
@@ -5967,12 +6033,14 @@ int main()
     test8840();
     test8889();
     test8870();
+    test9781();
     test247();
     test8340();
     test8376();
     test8796();
     test9171();
     test9248();
+    test9739();
     testdbl_to_ulong();
     testdbl_to_uint();
     testreal_to_ulong();
@@ -5982,6 +6050,8 @@ int main()
     test6057();
     test251();
     test6962();
+    test4414();
+    test9844();
 
     writefln("Success");
     return 0;

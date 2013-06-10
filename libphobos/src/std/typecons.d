@@ -45,7 +45,7 @@ Authors:   $(WEB erdani.org, Andrei Alexandrescu),
 module std.typecons;
 import core.memory, core.stdc.stdlib;
 import std.algorithm, std.array, std.conv, std.exception, std.format,
-    std.metastrings, std.traits, std.typetuple, std.range;
+    std.string, std.traits, std.typetuple, std.range;
 
 debug(Unique) import std.stdio;
 
@@ -268,10 +268,8 @@ Tuple!(int, int) point2;
 assert(!is(typeof(point1) == typeof(point2))); // passes
 ----
 */
-struct Tuple(Specs...)
+template Tuple(Specs...)
 {
-private:
-
     // Parse (type,name) pairs (FieldSpecs) out of the specified
     // arguments. Some fields would have name, others not.
     template parseSpecs(Specs...)
@@ -318,16 +316,15 @@ private:
     //      :
     // NOTE: field[k] is an expression (which yields a symbol of a
     //       variable) and can't be aliased directly.
-    static string injectNamedFields()
+    string injectNamedFields()
     {
         string decl = "";
         foreach (i, name; staticMap!(extractName, fieldSpecs))
         {
-            enum numbered = toStringNow!(i);
-            decl ~= "alias Identity!(field[" ~ numbered ~ "]) _" ~ numbered ~ ";";
+            decl ~= format("alias Identity!(field[%s]) _%s;", i, i);
             if (name.length != 0)
             {
-                decl ~= "alias _" ~ numbered ~ " " ~ name ~ ";";
+                decl ~= format("alias _%s %s;", i, name);
             }
         }
         return decl;
@@ -353,206 +350,229 @@ private:
         }
     }
 
-    template defaultInit(T)
+    template areCompatibleTuples(Tup1, Tup2, string op)
     {
-        static if (!is(typeof({ T v = void; })))    // inout(U) and others
-            @property T defaultInit(T v = T.init);
-        else
-            @property T defaultInit();
-    }
-    template isCompatibleTuples(Tup1, Tup2, string op)
-    {
-        enum isCompatibleTuples = is(typeof(
+        enum areCompatibleTuples = isTuple!Tup2 && is(typeof(
         {
             Tup1 tup1 = void;
             Tup2 tup2 = void;
             static assert(tup1.field.length == tup2.field.length);
             foreach (i, _; Tup1.Types)
             {
-                // this doesn't work if typeof(tup1.field[i]) == const(int)
-                //typeof(tup1.field[i]) lhs = void;
-                //typeof(tup2.field[i]) rhs = void;
-                auto lhs = defaultInit!(typeof(tup1.field[i])); // workaround
-                auto rhs = defaultInit!(typeof(tup2.field[i]));
+                auto lhs = typeof(tup1.field[i]).init;
+                auto rhs = typeof(tup2.field[i]).init;
                 auto result = mixin("lhs "~op~" rhs");
             }
         }));
     }
 
-public:
-/**
-   The type of the tuple's components.
-*/
-    alias staticMap!(extractType, fieldSpecs) Types;
-
-    Types field;
-    mixin(injectNamedFields());
-    alias field expand;
-    alias field this;
-
-    // This mitigates breakage of old code now that std.range.Zip uses
-    // Tuple instead of the old Proxy.  It's intentionally lacking ddoc
-    // because it was intended for deprecation.
-    // Now that it has been deprecated, it will be removed in January 2013.
-    deprecated auto at(size_t index)() {
-        return field[index];
-    }
-
-/**
-   Constructor taking one value for each field. Each argument must be
-   implicitly assignable to the respective element of the target.
- */
-    this(U...)(U values) if (U.length == Types.length)
+    struct Tuple
     {
-        foreach (i, Unused; Types)
+        /**
+         * The type of the tuple's components.
+         */
+        alias staticMap!(extractType, fieldSpecs) Types;
+
+        /**
+         * Use $(D t.expand) for a tuple $(D t) to expand it into its
+         * components. The result of $(D expand) acts as if the tuple components
+         * were listed as a list of values. (Ordinarily, a $(D Tuple) acts as a
+         * single value.)
+         *
+         * Examples:
+         * ----
+         * auto t = tuple(1, " hello ", 2.3);
+         * writeln(t);        // Tuple!(int, string, double)(1, " hello ", 2.3)
+         * writeln(t.expand); // 1 hello 2.3
+         * ----
+         */
+        Types expand;
+        mixin(injectNamedFields());
+
+        static if (is(Specs))
         {
-            field[i] = values[i];
+            // This is mostly to make t[n] work.
+            alias expand this;
         }
-    }
-
-/**
-   Constructor taking a compatible tuple. Each element of the source
-   must be implicitly assignable to the respective element of the
-   target.
- */
-    this(U)(U another)
-        if (isTuple!U && isCompatibleTuples!(typeof(this), U, "="))
-    {
-        foreach (i, T; Types)
+        else
         {
-            field[i] = another.field[i];
-        }
-    }
-
-/**
-   Comparison for equality.
- */
-    bool opEquals(R)(R rhs)
-        if (isTuple!R && isCompatibleTuples!(typeof(this), R, "=="))
-    {
-        foreach (i, Unused; Types)
-        {
-            if (field[i] != rhs.field[i]) return false;
-        }
-        return true;
-    }
-    /// ditto
-    bool opEquals(R)(R rhs) const
-        if (isTuple!R && isCompatibleTuples!(typeof(this), R, "=="))
-    {
-        foreach (i, Unused; Types)
-        {
-            if (field[i] != rhs.field[i]) return false;
-        }
-        return true;
-    }
-
-/**
-   Comparison for ordering.
- */
-    int opCmp(R)(R rhs)
-        if (isTuple!R && isCompatibleTuples!(typeof(this), R, "<"))
-    {
-        foreach (i, Unused; Types)
-        {
-            if (field[i] != rhs.field[i])
+            @property
+            ref Tuple!Types _Tuple_super() @trusted
             {
-                return field[i] < rhs.field[i] ? -1 : 1;
+                foreach (i, _; Types)   // Rely on the field layout
+                {
+                    static assert(typeof(return).init.tupleof[i].offsetof ==
+                                                       expand[i].offsetof);
+                }
+                return *cast(typeof(return)*) &(field[0]);
+            }
+            // This is mostly to make t[n] work.
+            alias _Tuple_super this;
+        }
+
+        // backwards compatibility
+        alias field = expand;
+
+        /**
+         * Constructor taking one value for each field. Each argument must be
+         * implicitly assignable to the respective element of the target.
+         */
+        this()(Types values)
+        {
+            field[] = values[];
+        }
+
+        /**
+         * Constructor taking a compatible array. The array element type must
+         * be implicitly assignable to each element of the target.
+         *
+         * Examples:
+         * ----
+         * int[2] ints;
+         * Tuple!(int, int) t = ints;
+         * ----
+         */
+        this(U, size_t n)(U[n] values)
+        if (n == Types.length &&
+            is(typeof({ foreach (i, _; Types) field[i] = values[i]; })))
+        {
+            foreach (i, _; Types)
+            {
+                field[i] = values[i];
             }
         }
-        return 0;
-    }
-    /// ditto
-    int opCmp(R)(R rhs) const
-        if (isTuple!R && isCompatibleTuples!(typeof(this), R, "<"))
-    {
-        foreach (i, Unused; Types)
+
+        /**
+         * Constructor taking a compatible tuple. Each element of the source
+         * must be implicitly assignable to the respective element of the
+         * target.
+         */
+        this(U)(U another)
+        if (areCompatibleTuples!(typeof(this), U, "="))
         {
-            if (field[i] != rhs.field[i])
-            {
-                return field[i] < rhs.field[i] ? -1 : 1;
-            }
+            field[] = another.field[];
         }
-        return 0;
-    }
 
-/**
-   Assignment from another tuple. Each element of the source must be
-   implicitly assignable to the respective element of the target.
- */
-    void opAssign(R)(R rhs)
-        if (isTuple!R && allSatisfy!(isAssignable, Types))
-    {
-        static assert(field.length == rhs.field.length,
-                      "Length mismatch in attempting to assign a "
-                     ~ R.stringof ~" to a "~ typeof(this).stringof);
-        // Do not swap; opAssign should be called on the fields.
-        foreach (i, Unused; Types)
+        /**
+         * Comparison for equality.
+         */
+        bool opEquals(R)(R rhs)
+        if (areCompatibleTuples!(typeof(this), R, "=="))
         {
-            field[i] = rhs.field[i];
+            return field[] == rhs.field[];
         }
-    }
-
-    // @@@BUG4424@@@ workaround
-    private mixin template _workaround4424()
-    {
-        @disable void opAssign(typeof(this) );
-    }
-    mixin _workaround4424;
-
-/**
-   Takes a slice of the tuple.
-
-   Example:
-
-----
-Tuple!(int, string, float, double) a;
-a[1] = "abc";
-a[2] = 4.5;
-auto s = a.slice!(1, 3);
-static assert(is(typeof(s) == Tuple!(string, float)));
-assert(s[0] == "abc" && s[1] == 4.5);
-----
- */
-    @property
-    ref Tuple!(sliceSpecs!(from, to)) slice(uint from, uint to)()
-    {
-        return *cast(typeof(return) *) &(field[from]);
-    }
-
-/**
-   The length of the tuple.
- */
-    enum length = field.length;
-
-/**
-   Converts to string.
- */
-    string toString()
-    {
-        enum header = typeof(this).stringof ~ "(",
-             footer = ")",
-             separator = ", ";
-
-        Appender!string app;
-        app.put(header);
-        foreach (i, Unused; Types)
+        /// ditto
+        bool opEquals(R)(R rhs) const
+        if (areCompatibleTuples!(typeof(this), R, "=="))
         {
-            static if (i > 0)
+            return field[] == rhs.field[];
+        }
+
+        /**
+         * Comparison for ordering.
+         */
+        int opCmp(R)(R rhs)
+        if (areCompatibleTuples!(typeof(this), R, "<"))
+        {
+            foreach (i, Unused; Types)
             {
-                app.put(separator);
+                if (field[i] != rhs.field[i])
+                {
+                    return field[i] < rhs.field[i] ? -1 : 1;
+                }
             }
-            // TODO: Change this once toString() works for shared objects.
-            static if (is(Unused == class) && is(Unused == shared))
-                formattedWrite(app, "%s", field[i].stringof);
+            return 0;
+        }
+        /// ditto
+        int opCmp(R)(R rhs) const
+        if (areCompatibleTuples!(typeof(this), R, "<"))
+        {
+            foreach (i, Unused; Types)
+            {
+                if (field[i] != rhs.field[i])
+                {
+                    return field[i] < rhs.field[i] ? -1 : 1;
+                }
+            }
+            return 0;
+        }
+
+        /**
+         * Assignment from another tuple. Each element of the source must be
+         * implicitly assignable to the respective element of the target.
+         */
+        void opAssign(R)(auto ref R rhs)
+        if (areCompatibleTuples!(typeof(this), R, "="))
+        {
+            static if (is(R : Tuple!Types) && !__traits(isRef, rhs))
+            {
+                if (__ctfe)
+                {
+                    // Cannot use swap at compile time
+                    field[] = rhs.field[];
+                }
+                else
+                {
+                    // Use swap-and-destroy to optimize rvalue assignment
+                    swap!(Tuple!Types)(this, rhs);
+                }
+            }
             else
             {
-                FormatSpec!char f;  // "%s"
-                formatElement(app, field[i], f);
+                // Do not swap; opAssign should be called on the fields.
+                field[] = rhs.field[];
             }
         }
-        app.put(footer);
-        return app.data;
+
+        /**
+         * Takes a slice of the tuple.
+         *
+         * Examples:
+         * ----
+         * Tuple!(int, string, float, double) a;
+         * a[1] = "abc";
+         * a[2] = 4.5;
+         * auto s = a.slice!(1, 3);
+         * static assert(is(typeof(s) == Tuple!(string, float)));
+         * assert(s[0] == "abc" && s[1] == 4.5);
+         * ----
+         */
+        @property
+        ref Tuple!(sliceSpecs!(from, to)) slice(size_t from, size_t to)() @trusted
+        if (from <= to && to <= Types.length)
+        {
+            return *cast(typeof(return)*) &(field[from]);
+        }
+
+        /**
+         * Converts to string.
+         */
+        string toString()
+        {
+            enum header = typeof(this).stringof ~ "(",
+                 footer = ")",
+                 separator = ", ";
+
+            Appender!string w;
+            w.put(header);
+            foreach (i, Unused; Types)
+            {
+                static if (i > 0)
+                {
+                    w.put(separator);
+                }
+                // TODO: Change this once toString() works for shared objects.
+                static if (is(Unused == class) && is(Unused == shared))
+                    formattedWrite(w, "%s", field[i].stringof);
+                else
+                {
+                    FormatSpec!char f;  // "%s"
+                    formatElement(w, field[i], f);
+                }
+            }
+            w.put(footer);
+            return w.data;
+        }
     }
 }
 
@@ -708,6 +728,11 @@ unittest
         alias Tuple!(const(int)) T;
         auto t2 = T(1);
     }
+    // 9431
+    {
+        alias T = Tuple!(int[1][]);
+        auto t = T([[10]]);
+    }
 }
 unittest
 {
@@ -779,6 +804,37 @@ unittest
         static assert( is(typeof(tc4 < tm4)));
         static assert( is(typeof(tc4 < tc4)));
     }
+    {
+        int[2] ints = [ 1, 2 ];
+        Tuple!(int, int) t = ints;
+        assert(t[0] == 1 && t[1] == 2);
+        Tuple!(long, uint) t2 = ints;
+        assert(t2[0] == 1 && t2[1] == 2);
+    }
+}
+@safe unittest
+{
+    auto t1 = Tuple!(int, "x", string, "y")(1, "a");
+    assert(t1.x == 1);
+    assert(t1.y == "a");
+    void foo(Tuple!(int, string) t2) {}
+    foo(t1);
+
+    Tuple!(int, int)[] arr;
+    arr ~= tuple(10, 20); // OK
+    arr ~= Tuple!(int, "x", int, "y")(10, 20); // NG -> OK
+
+    static assert(is(typeof(Tuple!(int, "x", string, "y").tupleof) ==
+                     typeof(Tuple!(int,      string     ).tupleof)));
+}
+unittest
+{
+    // Bugzilla 10218
+    assertCTFEable!(
+    {
+        auto t = tuple(1);
+        t = tuple(2);   // assignment
+    });
 }
 
 /**
@@ -1131,7 +1187,8 @@ struct Nullable(T)
 /**
 Constructor initializing $(D this) with $(D value).
  */
-    this()(T value)
+    //this()(inout T value) inout   // proper signature
+    this(U:T)(inout U value) inout  // workaround for BUG 10313
     {
         _value = value;
         _isNull = false;
@@ -1154,13 +1211,6 @@ Forces $(D this) to the null state.
         _isNull = true;
     }
 
-    //@@@BUG4424@@@
-    private mixin template _workaround4424()
-    {
-        @disable void opAssign(ref const Nullable);
-    }
-    mixin _workaround4424;
-
 /**
 Assigns $(D value) to the internally-held state. If the assignment
 succeeds, $(D this) becomes non-null.
@@ -1172,19 +1222,19 @@ succeeds, $(D this) becomes non-null.
     }
 
 /**
-Gets the value. Throws an exception if $(D this) is in the null
-state. This function is also called for the implicit conversion to $(D
-T).
+Gets the value. $(D this) must not be in the null state.
+This function is also called for the implicit conversion to $(D T).
  */
-    @property ref inout(T) get() inout pure @safe
+    @property ref inout(T) get() inout pure nothrow @safe
     {
-        enforce(!isNull);
+        enum message = "Called `get' on null Nullable!" ~ T.stringof ~ ".";
+        assert(!isNull, message);
         return _value;
     }
 
 /**
-Implicitly converts to $(D T). Throws an exception if $(D this) is in
-the null state.
+Implicitly converts to $(D T).
+$(D this) must not be in the null state.
  */
     alias get this;
 }
@@ -1193,7 +1243,7 @@ unittest
 {
     Nullable!int a;
     assert(a.isNull);
-    assertThrown(a.get);
+    assertThrown!Throwable(a.get);
     a = 5;
     assert(!a.isNull);
     assert(a == 5);
@@ -1208,7 +1258,7 @@ unittest
     a = a;
     assert(a == 18);
     a.nullify();
-    assertThrown(a += 2);
+    assertThrown!Throwable(a += 2);
 }
 unittest
 {
@@ -1241,7 +1291,7 @@ unittest
     s.x = 9190;
     assert(s.x == 9190);
     s.nullify();
-    assertThrown(s.x = 9441);
+    assertThrown!Throwable(s.x = 9441);
 }
 unittest
 {
@@ -1252,7 +1302,7 @@ unittest
         assert(n.isNull);
         n = 4;
         assert(!n.isNull);
-        try { assert(n == 4); } catch (Exception) { assert(false); }
+        assert(n == 4);
         n.nullify();
         assert(n.isNull);
     }();
@@ -1286,6 +1336,133 @@ unittest
     }
     N n;
     foo(n);
+}
+unittest
+{
+    //Check nullable immutable is constructable
+    {
+        auto a1 = Nullable!(immutable int)();
+        auto a2 = Nullable!(immutable int)(1);
+        auto i = a2.get;
+    }
+    //Check immutable nullable is constructable
+    {
+        auto a1 = immutable (Nullable!int)();
+        auto a2 = immutable (Nullable!int)(1);
+        auto i = a2.get;
+    }
+}
+unittest
+{
+    alias NInt   = Nullable!int;
+
+    //Construct tests
+    {
+        //from other Nullable null
+        NInt a1;
+        NInt b1 = a1;
+        assert(b1.isNull);
+
+        //from other Nullable non-null
+        NInt a2 = NInt(1);
+        NInt b2 = a2;
+        assert(b2 == 1);
+
+        //Construct from similar nullable
+        auto a3 = immutable(NInt)();
+        NInt b3 = a3;
+        assert(b3.isNull);
+    }
+
+    //Assign tests
+    {
+        //from other Nullable null
+        NInt a1;
+        NInt b1;
+        b1 = a1;
+        assert(b1.isNull);
+
+        //from other Nullable non-null
+        NInt a2 = NInt(1);
+        NInt b2;
+        b2 = a2;
+        assert(b2 == 1);
+
+        //Construct from similar nullable
+        auto a3 = immutable(NInt)();
+        NInt b3 = a3;
+        b3 = a3;
+        assert(b3.isNull);
+    }
+}
+unittest
+{
+    //Check nullable is nicelly embedable in a struct
+    static struct S1
+    {
+        Nullable!int ni;
+    }
+    static struct S2 //inspired from 9404
+    {
+        Nullable!int ni;
+        this(S2 other)
+        {
+            ni = other.ni;
+        }
+        void opAssign(S2 other)
+        {
+            ni = other.ni;
+        }
+    }
+    foreach (S; TypeTuple!(S1, S2))
+    {
+        S a;
+        S b = a;
+        S c;
+        c = a;
+    }
+}
+unittest
+{
+    // Bugzilla 10268
+    import std.json;
+    JSONValue value = void;
+    value.type = JSON_TYPE.NULL;
+    auto na = Nullable!JSONValue(value);
+
+    struct S1 { int val; }
+    struct S2 { int* val; }
+    struct S3 { immutable int* val; }
+
+    {
+        auto sm = S1(1);
+        immutable si = immutable S1(1);
+        static assert( __traits(compiles, { auto x1 =           Nullable!S1(sm); }));
+        static assert( __traits(compiles, { auto x2 = immutable Nullable!S1(sm); }));
+        static assert( __traits(compiles, { auto x3 =           Nullable!S1(si); }));
+        static assert( __traits(compiles, { auto x4 = immutable Nullable!S1(si); }));
+    }
+
+    auto nm = 10;
+    immutable ni = 10;
+
+    {
+        auto sm = S2(&nm);
+        immutable si = immutable S2(&ni);
+        static assert( __traits(compiles, { auto x =           Nullable!S2(sm); }));
+        static assert(!__traits(compiles, { auto x = immutable Nullable!S2(sm); }));
+        static assert(!__traits(compiles, { auto x =           Nullable!S2(si); }));
+        static assert( __traits(compiles, { auto x = immutable Nullable!S2(si); }));
+    }
+
+    {
+        auto sm = S3(&ni);
+        immutable si = immutable S3(&ni);
+        static assert( __traits(compiles, { auto x =           Nullable!S3(sm); }));
+        static assert( __traits(compiles, { auto x = immutable Nullable!S3(sm); }));
+        static assert( __traits(compiles, { auto x =           Nullable!S3(si); }));
+        static assert( __traits(compiles, { auto x = immutable Nullable!S3(si); }));
+    }
 }
 
 /**
@@ -1325,7 +1502,7 @@ Forces $(D this) to the null state.
 
 /**
 Assigns $(D value) to the internally-held state. No null checks are
-made.
+made. Note that the assignment may leave $(D this) in the null state.
  */
     void opAssign()(T value)
     {
@@ -1333,19 +1510,21 @@ made.
     }
 
 /**
-Gets the value. Throws an exception if $(D this) is in the null
-state. This function is also called for the implicit conversion to $(D
-T).
+Gets the value. $(D this) must not be in the null state.
+This function is also called for the implicit conversion to $(D T).
  */
     @property ref inout(T) get()() inout
     {
-        enforce(!isNull);
+        //@@@6169@@@: We avoid any call that might evaluate nullValue's %s,
+        //Because it might messup get's purity and safety inference.
+        enum message = "Called `get' on null Nullable!(" ~ T.stringof ~ ",nullValue).";
+        assert(!isNull, message);
         return _value;
     }
 
 /**
-Implicitly converts to $(D T). Throws an exception if $(D this) is in
-the null state.
+Implicitly converts to $(D T).
+Gets the value. $(D this) must not be in the null state.
  */
     alias get this;
 }
@@ -1354,7 +1533,7 @@ unittest
 {
     Nullable!(int, int.min) a;
     assert(a.isNull);
-    assertThrown(a.get);
+    assertThrown!Throwable(a.get);
     a = 5;
     assert(!a.isNull);
     assert(a == 5);
@@ -1385,12 +1564,10 @@ unittest
     function() pure nothrow @safe
     {
         Nullable!(int, int.min) n;
-        pragma(msg, typeof(&n.get!()));
-
         assert(n.isNull);
         n = 4;
         assert(!n.isNull);
-        try { assert(n == 4); } catch (Exception) { assert(false); }
+        assert(n == 4);
         n.nullify();
         assert(n.isNull);
     }();
@@ -1412,6 +1589,33 @@ unittest
     s.nullify();
     assert(s.isNull);
 }
+unittest
+{
+    //Check nullable is nicelly embedable in a struct
+    static struct S1
+    {
+        Nullable!(int, 0) ni;
+    }
+    static struct S2 //inspired from 9404
+    {
+        Nullable!(int, 0) ni;
+        this(S2 other)
+        {
+            ni = other.ni;
+        }
+        void opAssign(S2 other)
+        {
+            ni = other.ni;
+        }
+    }
+    foreach (S; TypeTuple!(S1, S2))
+    {
+        S a;
+        S b = a;
+        S c;
+        c = a;
+    }
+}
 
 /**
 Just like $(D Nullable!T), except that the object refers to a value
@@ -1426,7 +1630,7 @@ struct NullableRef(T)
 /**
 Constructor binding $(D this) with $(D value).
  */
-    this(T * value) pure nothrow @safe
+    this(T* value) pure nothrow @safe
     {
         _value = value;
     }
@@ -1434,7 +1638,7 @@ Constructor binding $(D this) with $(D value).
 /**
 Binds the internal state to $(D value).
  */
-    void bind(T * value) pure nothrow @safe
+    void bind(T* value) pure nothrow @safe
     {
         _value = value;
     }
@@ -1459,25 +1663,27 @@ Forces $(D this) to the null state.
 Assigns $(D value) to the internally-held state.
  */
     void opAssign()(T value)
+        if (isAssignable!T) //@@@9416@@@
     {
-        enforce(_value);
+        enum message = "Called `opAssign' on null NullableRef!" ~ T.stringof ~ ".";
+        assert(!isNull, message);
         *_value = value;
     }
 
 /**
-Gets the value. Throws an exception if $(D this) is in the null
-state. This function is also called for the implicit conversion to $(D
-T).
+Gets the value. $(D this) must not be in the null state.
+This function is also called for the implicit conversion to $(D T).
  */
-    @property ref inout(T) get()() inout
+    @property ref inout(T) get() inout pure nothrow @safe
     {
-        enforce(!isNull);
+        enum message = "Called `get' on null NullableRef!" ~ T.stringof ~ ".";
+        assert(!isNull, message);
         return *_value;
     }
 
 /**
-Implicitly converts to $(D T). Throws an exception if $(D this) is in
-the null state.
+Implicitly converts to $(D T).
+$(D this) must not be in the null state.
  */
     alias get this;
 }
@@ -1496,8 +1702,8 @@ unittest
     a.nullify();
     assert(x == 42);
     assert(a.isNull);
-    assertThrown(a.get);
-    assertThrown(a = 71);
+    assertThrown!Throwable(a.get);
+    assertThrown!Throwable(a = 71);
     a.bind(&y);
     assert(a == 7);
     y = 135;
@@ -1525,16 +1731,9 @@ unittest
         assert(n.isNull);
         n.bind(storage);
         assert(!n.isNull);
-        try
-        {
-            assert(n == 19902);
-            n = 2294;
-            assert(n == 2294);
-        }
-        catch (Exception)
-        {
-            assert(false);
-        }
+        assert(n == 19902);
+        n = 2294;
+        assert(n == 2294);
         assert(*storage == 2294);
         n.nullify();
         assert(n.isNull);
@@ -1559,6 +1758,33 @@ unittest
     assert(s.x == 5);
     s.nullify();
     assert(s.isNull);
+}
+unittest
+{
+    //Check nullable is nicelly embedable in a struct
+    static struct S1
+    {
+        NullableRef!int ni;
+    }
+    static struct S2 //inspired from 9404
+    {
+        NullableRef!int ni;
+        this(S2 other)
+        {
+            ni = other.ni;
+        }
+        void opAssign(S2 other)
+        {
+            ni = other.ni;
+        }
+    }
+    foreach (S; TypeTuple!(S1, S2))
+    {
+        S a;
+        S b = a;
+        S c;
+        c = a;
+    }
 }
 
 /**
@@ -1903,7 +2129,7 @@ private static:
     // overloaded function with the name.
     template INTERNAL_FUNCINFO_ID(string name, size_t i)
     {
-        enum string INTERNAL_FUNCINFO_ID = "F_" ~ name ~ "_" ~ toStringNow!(i);
+        enum string INTERNAL_FUNCINFO_ID = format("F_%s_%s", name, i);
     }
 
     /*
@@ -2036,7 +2262,6 @@ unittest
             void test(string);
             real test(real);
             int  test();
-            int  test() @property; // ?
         }
         auto o = new BlackHole!I_5;
     }
@@ -2164,7 +2389,7 @@ private static:
     {
         template PARAMETER_VARIABLE_ID(size_t i)
         {
-            enum string PARAMETER_VARIABLE_ID = "a" ~ toStringNow!(i);
+            enum string PARAMETER_VARIABLE_ID = format("a%s", i);
                 // default: a0, a1, ...
         }
     }
@@ -2204,7 +2429,7 @@ private static:
                 // The generated function declarations may hide existing ones
                 // in the base class (cf. HiddenFuncError), so we put an alias
                 // declaration here to reveal possible hidden functions.
-                code ~= Format!("alias %s.%s %s;\n",
+                code ~= format("alias %s.%s %s;\n",
                             Policy.BASE_CLASS_ID, // [BUG 2540] super.
                             oset.name, oset.name );
             }
@@ -2246,6 +2471,8 @@ private static:
             enum atts     = functionAttributes!(func);
             enum realName = isCtor ? "this" : name;
 
+            // FIXME?? Make it so that these aren't CTFE funcs any more, since
+            // Format is deprecated, and format works at compile time?
             /* Made them CTFE funcs just for the sake of Format!(...) */
 
             // return type with optional "ref"
@@ -2289,7 +2516,7 @@ private static:
             //
             if (isAbstractFunction!func)
                 code ~= "override ";
-            code ~= Format!("extern(%s) %s %s(%s) %s %s\n",
+            code ~= format("extern(%s) %s %s(%s) %s %s\n",
                     functionLinkage!(func),
                     returnType,
                     realName,
@@ -2351,7 +2578,7 @@ private static:
             if (stc & STC.lazy_ ) params ~= "lazy ";
 
             // Take parameter type from the FuncInfo.
-            params ~= myFuncInfo ~ ".PT[" ~ toStringNow!(i) ~ "]";
+            params ~= format("%s.PT[%s]", myFuncInfo, i);
 
             // Declare a parameter variable.
             params ~= " " ~ PARAMETER_VARIABLE_ID!(i);
@@ -2430,6 +2657,626 @@ template generateAssertTrap(C, func.../+[BUG 4217]+/)
             `throw new NotImplementedError("` ~ C.stringof ~ "."
                     ~ __traits(identifier, func) ~ `");`;
 }
+
+/**
+ * Supports structural based typesafe conversion.
+ *
+ * If $(D Source) has structural conformance with the $(D interface) $(D Targets),
+ * wrap creates internal wrapper class which inherits $(D Targets) and
+ * wrap $(D src) object, then return it.
+ */
+template wrap(Targets...)
+if (Targets.length >= 1 && allSatisfy!(isMutable, Targets))
+{
+    // strict upcast
+    @property wrap(Source)(inout Source src) @trusted pure nothrow
+    if (Targets.length == 1 && is(Source : Targets[0]))
+    {
+        alias T = Select!(is(Source == shared), shared Targets[0], Targets[0]);
+        return cast(inout T)(src);
+    }
+    // structural upcast
+    template wrap(Source)
+    if (!allSatisfy!(Bind!(isImplicitlyConvertible, Source), Targets))
+    {
+        @property wrap(inout Source src)
+        {
+            static assert(hasRequireMethods!(),
+                          "Source "~Source.stringof~
+                          " does not have structural conformance to "~
+                          Targets.stringof);
+
+            alias T = Select!(is(Source == shared), shared Impl, Impl);
+            return new inout T(src);
+        }
+
+        template FuncInfo(string s, F)
+        {
+            enum name = s;
+            alias type = F;
+        }
+
+        // Concat all Targets function members into one tuple
+        template Concat(size_t i = 0)
+        {
+            static if (i >= Targets.length)
+                alias Concat = TypeTuple!();
+            else
+            {
+                alias Concat = TypeTuple!(GetOverloadedMethods!(Targets[i]), Concat!(i + 1));
+            }
+        }
+        // Remove duplicated functions based on the identifier name and function type covariance
+        template Uniq(members...)
+        {
+            static if (members.length == 0)
+                alias Uniq = TypeTuple!();
+            else
+            {
+                alias func = members[0];
+                enum  name = __traits(identifier, func);
+                alias type = FunctionTypeOf!func;
+                template check(size_t i, mem...)
+                {
+                    static if (i >= mem.length)
+                        enum ptrdiff_t check = -1;
+                    else
+                    {
+                        enum ptrdiff_t check =
+                            __traits(identifier, func) == __traits(identifier, mem[i]) &&
+                            !is(DerivedFunctionType!(type, FunctionTypeOf!(mem[i])) == void)
+                          ? i : check!(i + 1, mem);
+                    }
+                }
+                enum ptrdiff_t x = 1 + check!(0, members[1 .. $]);
+                static if (x >= 1)
+                {
+                    alias typex = DerivedFunctionType!(type, FunctionTypeOf!(members[x]));
+                    alias remain = Uniq!(members[1 .. x], members[x + 1 .. $]);
+
+                    static if (remain.length >= 1 && remain[0].name == name &&
+                               !is(DerivedFunctionType!(typex, remain[0].type) == void))
+                    {
+                        alias F = DerivedFunctionType!(typex, remain[0].type);
+                        alias Uniq = TypeTuple!(FuncInfo!(name, F), remain[1 .. $]);
+                    }
+                    else
+                        alias Uniq = TypeTuple!(FuncInfo!(name, typex), remain);
+                }
+                else
+                {
+                    alias Uniq = TypeTuple!(FuncInfo!(name, type), Uniq!(members[1 .. $]));
+                }
+            }
+        }
+        alias TargetMembers = Uniq!(Concat!());             // list of FuncInfo
+        alias SourceMembers = GetOverloadedMethods!Source;  // list of function symbols
+
+        // Check whether all of SourceMembers satisfy covariance target in TargetMembers
+        template hasRequireMethods(size_t i = 0)
+        {
+            static if (i >= TargetMembers.length)
+                enum hasRequireMethods = true;
+            else
+            {
+                enum hasRequireMethods =
+                    findCovariantFunction!(TargetMembers[i], SourceMembers) != -1 &&
+                    hasRequireMethods!(i + 1);
+            }
+        }
+
+        // Internal wrapper class
+        final class Impl : Structural, Targets
+        {
+        private:
+            Source _wrap_source;
+
+            this(       inout Source s)        inout @safe pure nothrow { _wrap_source = s; }
+            this(shared inout Source s) shared inout @safe pure nothrow { _wrap_source = s; }
+
+            // BUG: making private should work with NVI.
+            protected final inout(Object) _wrap_getSource() inout @trusted
+            {
+                return cast(inout Object)(_wrap_source);
+            }
+
+            import std.conv : to;
+            import std.algorithm : forward;
+            template generateFun(size_t i)
+            {
+                enum name = TargetMembers[i].name;
+                enum fa = functionAttributes!(TargetMembers[i].type);
+                static @property stc()
+                {
+                    string r;
+                    if (fa & FunctionAttribute.property)    r ~= "@property ";
+                    if (fa & FunctionAttribute.ref_)        r ~= "ref ";
+                    if (fa & FunctionAttribute.pure_)       r ~= "pure ";
+                    if (fa & FunctionAttribute.nothrow_)    r ~= "nothrow ";
+                    if (fa & FunctionAttribute.trusted)     r ~= "@trusted ";
+                    if (fa & FunctionAttribute.safe)        r ~= "@safe ";
+                    return r;
+                }
+                static @property mod()
+                {
+                    alias TypeTuple!(TargetMembers[i].type)[0] type;
+                    string r;
+                    static if (is(type == immutable))       r ~= " immutable";
+                    else
+                    {
+                        static if (is(type == shared))      r ~= " shared";
+                        static if (is(type == const))       r ~= " const";
+                        else static if (is(type == inout))  r ~= " inout";
+                        //else  --> mutable
+                    }
+                    return r;
+                }
+                enum n = to!string(i);
+                enum generateFun =
+                    "override "~stc~"ReturnType!(TargetMembers["~n~"].type) "
+                    ~ name~"(ParameterTypeTuple!(TargetMembers["~n~"].type) args) "~mod~
+                    "{ return _wrap_source."~name~"(forward!args); }";
+            }
+
+        public:
+            mixin mixinAll!(
+                staticMap!(generateFun, staticIota!(0, TargetMembers.length)));
+        }
+    }
+}
+/// ditto
+template wrap(Targets...)
+if (Targets.length >= 1 && !allSatisfy!(isMutable, Targets))
+{
+    alias wrap = .wrap!(staticMap!(Unqual, Targets));
+}
+
+// Internal class to support dynamic cross-casting
+private interface Structural
+{
+    inout(Object) _wrap_getSource() inout @safe pure nothrow;
+}
+
+/**
+ * Extract object which wrapped by $(D wrap).
+ */
+template unwrap(Target)
+if (isMutable!Target)
+{
+    // strict downcast
+    @property unwrap(Source)(inout Source src) @trusted pure nothrow
+    if (is(Target : Source))
+    {
+        alias T = Select!(is(Source == shared), shared Target, Target);
+        return cast(inout T)(src);
+    }
+    // structural downcast
+    @property unwrap(Source)(inout Source src) @trusted pure nothrow
+    if (!is(Target : Source))
+    {
+        alias T = Select!(is(Source == shared), shared Target, Target);
+        Object o = cast(Object)src;     // remove qualifier
+        do
+        {
+            if (auto a = cast(Structural)o)
+            {
+                if (auto d = cast(inout T)(o = a._wrap_getSource()))
+                    return d;
+            }
+            else if (auto d = cast(inout T)o)
+                return d;
+            else
+                break;
+        } while (o);
+        return null;
+    }
+}
+/// ditto
+template unwrap(Target)
+if (!isMutable!Target)
+{
+    alias unwrap = .unwrap!(Unqual!Target);
+}
+
+///
+unittest
+{
+    interface Quack
+    {
+        int quack();
+        @property int height();
+    }
+    interface Flyer
+    {
+        @property int height();
+    }
+    class Duck : Quack
+    {
+        int quack() { return 1; }
+        @property int height() { return 10; }
+    }
+    class Human
+    {
+        int quack() { return 2; }
+        @property int height() { return 20; }
+    }
+
+    Duck d1 = new Duck();
+    Human h1 = new Human();
+
+    interface Refleshable
+    {
+        int reflesh();
+    }
+    // does not have structural conformance
+    static assert(!__traits(compiles, d1.wrap!Refleshable));
+    static assert(!__traits(compiles, h1.wrap!Refleshable));
+
+    // strict upcast
+    Quack qd = d1.wrap!Quack;
+    assert(qd is d1);
+    assert(qd.quack() == 1);    // calls Duck.quack
+    // strict downcast
+    Duck d2 = qd.unwrap!Duck;
+    assert(d2 is d1);
+
+    // structural upcast
+    Quack qh = h1.wrap!Quack;
+    assert(qh.quack() == 2);    // calls Human.quack
+    // structural downcast
+    Human h2 = qh.unwrap!Human;
+    assert(h2 is h1);
+
+    // structural upcast (two steps)
+    Quack qx = h1.wrap!Quack;   // Human -> Quack
+    Flyer fx = qx.wrap!Flyer;   // Quack -> Flyer
+    assert(fx.height() == 20);  // calls Human.height
+    // strucural downcast (two steps)
+    Quack qy = fx.unwrap!Quack; // Flyer -> Quack
+    Human hy = qy.unwrap!Human; // Quack -> Human
+    assert(hy is h1);
+    // strucural downcast (one step)
+    Human hz = fx.unwrap!Human; // Flyer -> Human
+    assert(hz is h1);
+}
+///
+unittest
+{
+    interface A { int run(); }
+    interface B { int stop(); @property int status(); }
+    class X
+    {
+        int run() { return 1; }
+        int stop() { return 2; }
+        @property int status() { return 3; }
+    }
+
+    auto x = new X();
+    auto ab = x.wrap!(A, B);
+    A a = ab;
+    B b = ab;
+    assert(a.run() == 1);
+    assert(b.stop() == 2);
+    assert(b.status == 3);
+    static assert(functionAttributes!(typeof(ab).status) & FunctionAttribute.property);
+}
+unittest
+{
+    class A
+    {
+        int draw()              { return 1; }
+        int draw(int v)         { return v; }
+
+        int draw() const        { return 2; }
+        int draw() shared       { return 3; }
+        int draw() shared const { return 4; }
+        int draw() immutable    { return 5; }
+    }
+    interface Drawable
+    {
+        int draw();
+        int draw() const;
+        int draw() shared;
+        int draw() shared const;
+        int draw() immutable;
+    }
+    interface Drawable2
+    {
+        int draw(int v);
+    }
+
+    auto ma = new A();
+    auto sa = new shared A();
+    auto ia = new immutable A();
+    {
+                     Drawable  md = ma.wrap!Drawable;
+               const Drawable  cd = ma.wrap!Drawable;
+              shared Drawable  sd = sa.wrap!Drawable;
+        shared const Drawable scd = sa.wrap!Drawable;
+           immutable Drawable  id = ia.wrap!Drawable;
+        assert( md.draw() == 1);
+        assert( cd.draw() == 2);
+        assert( sd.draw() == 3);
+        assert(scd.draw() == 4);
+        assert( id.draw() == 5);
+    }
+    {
+        Drawable2 d = ma.wrap!Drawable2;
+        static assert(!__traits(compiles, d.draw()));
+        assert(d.draw(10) == 10);
+    }
+}
+
+// Make a tuple of non-static function symbols
+private template GetOverloadedMethods(T)
+{
+    alias allMembers = TypeTuple!(__traits(allMembers, T));
+    template follows(size_t i = 0)
+    {
+        static if (i >= allMembers.length)
+        {
+            alias follows = TypeTuple!();
+        }
+        else static if (allMembers[i] == "this")
+        {
+            alias follows = follows!(i + 1);
+        }
+        else
+        {
+            enum name = allMembers[i];
+
+            template isMethod(alias f)
+            {
+                static if (is(typeof(&f) F == F*) && is(F == function))
+                    enum isMethod = !__traits(isStaticFunction, f);
+                else
+                    enum isMethod = false;
+            }
+            alias follows = TypeTuple!(
+                std.typetuple.Filter!(isMethod, __traits(getOverloads, T, name)),
+                follows!(i + 1));
+        }
+    }
+    alias GetOverloadedMethods = follows!();
+}
+// find a function from Fs that has same identifier and covariant type with f
+private template findCovariantFunction(alias finfo, Fs...)
+{
+    template check(size_t i = 0)
+    {
+        static if (i >= Fs.length)
+            enum ptrdiff_t check = -1;
+        else
+        {
+            enum ptrdiff_t check =
+                (finfo.name == __traits(identifier, Fs[i])) &&
+                isCovariantWith!(FunctionTypeOf!(Fs[i]), finfo.type)
+              ? i : check!(i + 1);
+        }
+    }
+    enum ptrdiff_t findCovariantFunction = check!();
+}
+
+private enum TypeModifier
+{
+    mutable     = 0,    // type is mutable
+    const_      = 1,    // type is const
+    immutable_  = 2,    // type is immutable
+    shared_     = 4,    // type is shared
+    inout_      = 8,    // type is wild
+}
+private template TypeMod(T)
+{
+    static if (is(T == immutable))
+    {
+        enum mod1 = TypeModifier.immutable_;
+        enum mod2 = 0;
+    }
+    else
+    {
+        enum mod1 = is(T == shared) ? TypeModifier.shared_ : 0;
+        static if (is(T == const))
+            enum mod2 = TypeModifier.const_;
+        else static if (is(T == inout))
+            enum mod2 = TypeModifier.inout_;
+        else
+            enum mod2 = TypeModifier.mutable;
+    }
+    enum TypeMod = cast(TypeModifier)(mod1 | mod2);
+}
+
+version(unittest)
+{
+    private template UnittestFuncInfo(alias f)
+    {
+        enum name = __traits(identifier, f);
+        alias type = FunctionTypeOf!f;
+    }
+}
+unittest
+{
+    class A
+    {
+        int draw() { return 1; }
+        @property int value() { return 2; }
+        final int run() { return 3; }
+    }
+    alias methods = GetOverloadedMethods!A;
+
+    alias int F1();
+    alias @property int F2();
+    alias string F3();
+    alias nothrow @trusted uint F4();
+    alias int F5(Object);
+    alias bool F6(Object);
+    static assert(methods.length == 3 + 4);
+    static assert(__traits(identifier, methods[0]) == "draw"     && is(typeof(&methods[0]) == F1*));
+    static assert(__traits(identifier, methods[1]) == "value"    && is(typeof(&methods[1]) == F2*));
+    static assert(__traits(identifier, methods[2]) == "run"      && is(typeof(&methods[2]) == F1*));
+
+    int draw() { return 0; }
+    @property int value() { return 0; }
+    void opEquals() {}
+    int nomatch() { return 0; }
+    static assert(findCovariantFunction!(UnittestFuncInfo!draw, methods) == 0);
+    static assert(findCovariantFunction!(UnittestFuncInfo!value, methods) == 1);
+    static assert(findCovariantFunction!(UnittestFuncInfo!opEquals, methods) == -1);
+    static assert(findCovariantFunction!(UnittestFuncInfo!nomatch, methods) == -1);
+}
+
+private template DerivedFunctionType(T...)
+{
+    static if (!T.length)
+    {
+        alias DerivedFunctionType = void;
+    }
+    else static if (T.length == 1)
+    {
+        static if (is(T[0] == function))
+        {
+            alias DerivedFunctionType = T[0];
+        }
+        else
+        {
+            alias DerivedFunctionType = void;
+        }
+    }
+    else static if (is(T[0] P0 == function) && is(T[1] P1 == function))
+    {
+        alias FA = FunctionAttribute;
+
+        alias F0 = T[0], R0 = ReturnType!F0, PSTC0 = ParameterStorageClassTuple!F0;
+        alias F1 = T[1], R1 = ReturnType!F1, PSTC1 = ParameterStorageClassTuple!F1;
+        enum FA0 = functionAttributes!F0;
+        enum FA1 = functionAttributes!F1;
+
+        template CheckParams(size_t i = 0)
+        {
+            static if (i >= P0.length)
+                enum CheckParams = true;
+            else
+            {
+                enum CheckParams = (is(P0[i] == P1[i]) && PSTC0[i] == PSTC1[i]) &&
+                                   CheckParams!(i + 1);
+            }
+        }
+        static if (R0.sizeof == R1.sizeof && !is(CommonType!(R0, R1) == void) &&
+                   P0.length == P1.length && CheckParams!() && TypeMod!F0 == TypeMod!F1 &&
+                   variadicFunctionStyle!F0 == variadicFunctionStyle!F1 &&
+                   functionLinkage!F0 == functionLinkage!F1 &&
+                   ((FA0 ^ FA1) & (FA.ref_ | FA.property)) == 0)
+        {
+            alias R = Select!(is(R0 : R1), R0, R1);
+            alias FX = FunctionTypeOf!(R function(P0));
+            alias FY = SetFunctionAttributes!(FX, functionLinkage!F0, FA0 | FA1);
+            alias DerivedFunctionType = DerivedFunctionType!(FY, T[2 .. $]);
+        }
+        else
+            alias DerivedFunctionType = void;
+    }
+    else
+        alias DerivedFunctionType = void;
+}
+unittest
+{
+    // attribute covariance
+    alias int F1();
+    static assert(is(DerivedFunctionType!(F1, F1) == F1));
+    alias int F2() pure nothrow;
+    static assert(is(DerivedFunctionType!(F1, F2) == F2));
+    alias int F3() @safe;
+    alias int F23() pure nothrow @safe;
+    static assert(is(DerivedFunctionType!(F2, F3) == F23));
+
+    // return type covariance
+    alias long F4();
+    static assert(is(DerivedFunctionType!(F1, F4) == void));
+    class C {}
+    class D : C {}
+    alias C F5();
+    alias D F6();
+    static assert(is(DerivedFunctionType!(F5, F6) == F6));
+    alias typeof(null) F7();
+    alias int[] F8();
+    alias int* F9();
+    static assert(is(DerivedFunctionType!(F5, F7) == F7));
+    static assert(is(DerivedFunctionType!(F7, F8) == void));
+    static assert(is(DerivedFunctionType!(F7, F9) == F7));
+
+    // variadic type equality
+    alias int F10(int);
+    alias int F11(int...);
+    alias int F12(int, ...);
+    static assert(is(DerivedFunctionType!(F10, F11) == void));
+    static assert(is(DerivedFunctionType!(F10, F12) == void));
+    static assert(is(DerivedFunctionType!(F11, F12) == void));
+
+    // linkage equality
+    alias extern(C) int F13(int);
+    alias extern(D) int F14(int);
+    alias extern(Windows) int F15(int);
+    static assert(is(DerivedFunctionType!(F13, F14) == void));
+    static assert(is(DerivedFunctionType!(F13, F15) == void));
+    static assert(is(DerivedFunctionType!(F14, F15) == void));
+
+    // ref & @property equality
+    alias int F16(int);
+    alias ref int F17(int);
+    alias @property int F18(int);
+    static assert(is(DerivedFunctionType!(F16, F17) == void));
+    static assert(is(DerivedFunctionType!(F16, F18) == void));
+    static assert(is(DerivedFunctionType!(F17, F18) == void));
+}
+
+private template staticIota(int beg, int end, int step = 1) if (step != 0)
+{
+    static if (beg + 1 >= end)
+    {
+        static if (beg >= end)
+        {
+            alias TypeTuple!() staticIota;
+        }
+        else
+        {
+            alias TypeTuple!(+beg) staticIota;
+        }
+    }
+    else
+    {
+        enum mid = beg + (end - beg) / 2;
+        alias staticIota = TypeTuple!(staticIota!(beg, mid), staticIota!(mid, end));
+    }
+}
+
+private template mixinAll(mixins...)
+{
+    static if (mixins.length == 1)
+    {
+        static if (is(typeof(mixins[0]) == string))
+        {
+            mixin(mixins[0]);
+        }
+        else
+        {
+            alias mixins[0] it;
+            mixin it;
+        }
+    }
+    else static if (mixins.length >= 2)
+    {
+        mixin mixinAll!(mixins[ 0 .. $/2]);
+        mixin mixinAll!(mixins[$/2 .. $ ]);
+    }
+}
+
+private template Bind(alias Template, args1...)
+{
+    template Bind(args2...)
+    {
+        alias Bind = Template!(args1, args2);
+    }
+}
+
 
 /**
 Options regarding auto-initialization of a $(D RefCounted) object (see
@@ -2764,15 +3611,16 @@ void func(int n) { }
  */
 mixin template Proxy(alias a)
 {
-    auto ref opEquals(this X)(auto ref typeof(this) b)
+    auto ref opEquals(this X, B)(auto ref B b)
     {
-        import std.algorithm;
-        static assert(startsWith(a.stringof, "this."));
-        return a == mixin("b."~a.stringof[5..$]);   // remove "this."
-    }
-    auto ref opEquals(this X, B)(auto ref B b) if (!is(B == typeof(this)))
-    {
-        return a == b;
+        static if (is(immutable B == immutable typeof(this)))
+        {
+            import std.algorithm;
+            static assert(startsWith(a.stringof, "this."));
+            return a == mixin("b."~a.stringof[5..$]);   // remove "this."
+        }
+        else
+            return a == b;
     }
 
     auto ref opCmp(this X, B)(auto ref B b)
@@ -2799,13 +3647,17 @@ mixin template Proxy(alias a)
     auto ref opSliceUnary(string op, this X      )()                           { return mixin(op~"a[]"); }
     auto ref opSliceUnary(string op, this X, B, E)(auto ref B b, auto ref E e) { return mixin(op~"a[b..e]"); }
 
-    auto ref opBinary     (string op, this X, B)(auto ref B b) { return mixin("a "~op~" b"); }
+    auto ref opBinary(string op, this X, B)(auto ref B b)
+    if (op == "in" && is(typeof(a in b)) || op != "in")
+    {
+        return mixin("a "~op~" b");
+    }
     auto ref opBinaryRight(string op, this X, B)(auto ref B b) { return mixin("b "~op~" a"); }
 
     static if (!is(typeof(this) == class))
     {
         private import std.traits;
-        static if (isAssignable!(typeof(a), typeof(a)))
+        static if (isAssignable!(typeof(a)))
         {
             auto ref opAssign(this X)(auto ref typeof(this) v)
             {
@@ -2836,6 +3688,11 @@ mixin template Proxy(alias a)
             // non template function
             auto ref opDispatch(this X, Args...)(auto ref Args args) { return mixin("a."~name~"(args)"); }
         }
+        else static if (is(typeof({ enum x = mixin("a."~name); })))
+        {
+            // built-in type field, manifest constant, and static non-mutable field
+            enum opDispatch = mixin("a."~name);
+        }
         else static if (is(typeof(mixin("a."~name))) || __traits(getOverloads, a, name).length != 0)
         {
             // field or property function
@@ -2858,32 +3715,46 @@ unittest
     {
         private int value;
         mixin Proxy!value;
-        this(int n){ value = n; }
+        this(int n) inout { value = n; }
+
+        enum str = "str";
+        static immutable arr = [1,2,3];
     }
 
-    MyInt m = 10;
-    static assert(!__traits(compiles, { int x = m; }));
-    static assert(!__traits(compiles, { void func(int n){} func(m); }));
-    assert(m == 10);
-    assert(m != 20);
-    assert(m < 20);
-    assert(+m == 10);
-    assert(-m == -10);
-    assert(++m == 11);
-    assert(m++ == 11); assert(m == 12);
-    assert(--m == 11);
-    assert(m-- == 11); assert(m == 10);
-    assert(cast(double)m == 10.0);
-    assert(m + 10 == 20);
-    assert(m - 5 == 5);
-    assert(m * 20 == 200);
-    assert(m / 2 == 5);
-    assert(10 + m == 20);
-    assert(15 - m == 5);
-    assert(20 * m == 200);
-    assert(50 / m == 5);
-    m = m;
-    m = 20; assert(m == 20);
+    foreach (T; TypeTuple!(MyInt, const MyInt, immutable MyInt))
+    {
+        T m = 10;
+        static assert(!__traits(compiles, { int x = m; }));
+        static assert(!__traits(compiles, { void func(int n){} func(m); }));
+        assert(m == 10);
+        assert(m != 20);
+        assert(m < 20);
+        assert(+m == 10);
+        assert(-m == -10);
+        assert(cast(double)m == 10.0);
+        assert(m + 10 == 20);
+        assert(m - 5 == 5);
+        assert(m * 20 == 200);
+        assert(m / 2 == 5);
+        assert(10 + m == 20);
+        assert(15 - m == 5);
+        assert(20 * m == 200);
+        assert(50 / m == 5);
+        static if (is(T == MyInt))  // mutable
+        {
+            assert(++m == 11);
+            assert(m++ == 11); assert(m == 12);
+            assert(--m == 11);
+            assert(m-- == 11); assert(m == 10);
+            m = m;
+            m = 20; assert(m == 20);
+        }
+        static assert(T.max == int.max);
+        static assert(T.min == int.min);
+        static assert(T.init == int.init);
+        static assert(T.str == "str");
+        static assert(T.arr == [1,2,3]);
+    }
 }
 unittest
 {
@@ -2891,29 +3762,39 @@ unittest
     {
         private int[] value;
         mixin Proxy!value;
-        this(int[] arr){ value = arr; }
+        this(int[] arr) { value = arr; }
+        this(immutable int[] arr) immutable { value = arr; }
     }
 
-    MyArray a = [1,2,3,4];
-    assert(a == [1,2,3,4]);
-    assert(a != [5,6,7,8]);
-    assert(+a[0]    == 1);
-    version (LittleEndian)
-        assert(cast(ulong[])a == [0x0000_0002_0000_0001, 0x0000_0004_0000_0003]);
-    else
-        assert(cast(ulong[])a == [0x0000_0001_0000_0002, 0x0000_0003_0000_0004]);
-    assert(a ~ [10,11] == [1,2,3,4,10,11]);
-    assert(a[0]    == 1);
-    //assert(a[]     == [1,2,3,4]);     // blocked by bug 2486
-    //assert(a[2..4] == [3,4]);         // blocked by bug 2486
-    a = a;
-    a = [5,6,7,8];  assert(a == [5,6,7,8]);
-    a[0]     = 0;   assert(a == [0,6,7,8]);
-    a[]      = 1;   assert(a == [1,1,1,1]);
-    a[0..3]  = 2;   assert(a == [2,2,2,1]);
-    a[0]    += 2;   assert(a == [4,2,2,1]);
-    a[]     *= 2;   assert(a == [8,4,4,2]);
-    a[0..2] /= 2;   assert(a == [4,2,4,2]);
+    foreach (T; TypeTuple!(MyArray, const MyArray, immutable MyArray))
+    {
+      static if (is(T == immutable) && !is(typeof({ T a = [1,2,3,4]; })))
+        T a = [1,2,3,4].idup;   // workaround until qualified ctor is properly supported
+      else
+        T a = [1,2,3,4];
+        assert(a == [1,2,3,4]);
+        assert(a != [5,6,7,8]);
+        assert(+a[0]    == 1);
+        version (LittleEndian)
+            assert(cast(ulong[])a == [0x0000_0002_0000_0001, 0x0000_0004_0000_0003]);
+        else
+            assert(cast(ulong[])a == [0x0000_0001_0000_0002, 0x0000_0003_0000_0004]);
+        assert(a ~ [10,11] == [1,2,3,4,10,11]);
+        assert(a[0]    == 1);
+        assert(a[]     == [1,2,3,4]);
+        assert(a[2..4] == [3,4]);
+        static if (is(T == MyArray))    // mutable
+        {
+            a = a;
+            a = [5,6,7,8];  assert(a == [5,6,7,8]);
+            a[0]     = 0;   assert(a == [0,6,7,8]);
+            a[]      = 1;   assert(a == [1,1,1,1]);
+            a[0..3]  = 2;   assert(a == [2,2,2,1]);
+            a[0]    += 2;   assert(a == [4,2,2,1]);
+            a[]     *= 2;   assert(a == [8,4,4,2]);
+            a[0..2] /= 2;   assert(a == [4,2,4,2]);
+        }
+    }
 }
 unittest
 {
@@ -2943,8 +3824,7 @@ unittest
     auto h = new Hoge(new Foo());
     int n;
 
-    // blocked by bug 7641
-    //static assert(!__traits(compiles, { Foo f = h; }));
+    static assert(!__traits(compiles, { Foo f = h; }));
 
     // field
     h.field = 1;            // lhs of assign
@@ -2975,7 +3855,7 @@ unittest
     // bug5896 test
     assert(h.opCast!int() == 0);
     assert(cast(int)h == 0);
-    immutable(Hoge) ih = new immutable(Hoge)(new Foo());
+    const ih = new const Hoge(new Foo());
     static assert(!__traits(compiles, ih.opCast!int()));
     static assert(!__traits(compiles, cast(int)ih));
 
@@ -3019,6 +3899,20 @@ unittest
     MyFoo2 f2;
     f2 = f2;
 }
+unittest
+{
+    // bug8613
+    static struct Name
+    {
+        mixin Proxy!val;
+        private string val;
+        this(string s) { val = s; }
+    }
+
+    bool[Name] names;
+    names[Name("a")] = true;
+    bool* b = Name("a") in names;
+}
 
 /**
 Library typedef.
@@ -3050,12 +3944,38 @@ unittest
     Typedef!int y = 10;
     assert(x == y);
 
+    static assert(Typedef!int.init == int.init);
+
     Typedef!(float, 1.0) z; // specifies the init
     assert(z == 1.0);
+
+    static assert(typeof(z).init == 1.0);
 
     alias Typedef!(int, 0, "dollar") Dollar;
     alias Typedef!(int, 0, "yen") Yen;
     static assert(!is(Dollar == Yen));
+
+    Typedef!(int[3]) sa;
+    static assert(sa.length == 3);
+    static assert(typeof(sa).length == 3);
+}
+
+unittest
+{
+    // bug8655
+    import std.typecons;
+    import std.bitmanip;
+    static import core.stdc.config;
+
+    alias Typedef!(core.stdc.config.c_ulong) c_ulong;
+
+    static struct Foo
+    {
+        mixin(bitfields!(
+            c_ulong, "NameOffset", 31,
+            c_ulong, "NameIsString", 1
+        ));
+    }
 }
 
 
@@ -3066,32 +3986,17 @@ it is the responsibility of the user to not escape a reference to the
 object outside the scope.
 
 Note: it's illegal to move a class reference even if you are sure there
-are no pointers to it.
-
-Example:
-----
-unittest
-{
-    class A { int x; }
-    auto a1 = scoped!A();
-    auto a2 = scoped!A();
-    a1.x = 42;
-    a2.x = 53;
-    assert(a1.x == 42);
-
-    auto a3 = a2; // illegal, fails to compile
-    assert([a2][0].x == 42); // illegal, unexpected behaviour
-}
-----
+are no pointers to it. As such, it is illegal to move a scoped object.
  */
-@system auto scoped(T, Args...)(auto ref Args args) if (is(T == class))
+template scoped(T)
+    if (is(T == class))
 {
     // _d_newclass now use default GC alignment (looks like (void*).sizeof * 2 for
     // small objects). We will just use the maximum of filed alignments.
     alias classInstanceAlignment!T alignment;
     alias _alignUp!alignment aligned;
 
-    static struct Scoped(T)
+    static struct Scoped
     {
         // Addition of `alignment` is required as `Scoped_store` can be misaligned in memory.
         private void[aligned(__traits(classInstanceSize, T) + size_t.sizeof) + alignment] Scoped_store = void;
@@ -3112,10 +4017,8 @@ unittest
         }
         alias Scoped_payload this;
 
-        @disable this(this)
-        {
-            assert(false, "Illegal call to Scoped this(this)");
-        }
+        @disable this();
+        @disable this(this);
 
         ~this()
         {
@@ -3125,11 +4028,47 @@ unittest
         }
     }
 
-    Scoped!T result;
-    immutable size_t d = cast(void*) result.Scoped_payload - result.Scoped_store.ptr;
-    *cast(size_t*) &result.Scoped_store[$ - size_t.sizeof] = d;
-    emplace!(Unqual!T)(result.Scoped_store[d .. $ - size_t.sizeof], args);
-    return result;
+    /// Returns the scoped object
+    @system auto scoped(Args...)(auto ref Args args)
+    {
+        Scoped result = void;
+        void* alignedStore = cast(void*) aligned(cast(size_t) result.Scoped_store.ptr);
+        immutable size_t d = alignedStore - result.Scoped_store.ptr;
+        *cast(size_t*) &result.Scoped_store[$ - size_t.sizeof] = d;
+        emplace!(Unqual!T)(result.Scoped_store[d .. $ - size_t.sizeof], args);
+        return result;
+    }
+}
+///
+unittest
+{
+    class A
+    {
+        int x;
+        this()     {x = 0;}
+        this(int i){x = i;}
+    }
+
+    // Standard usage
+    auto a1 = scoped!A();
+    auto a2 = scoped!A(1);
+    a1.x = 42;
+    assert(a1.x == 42);
+    assert(a2.x ==  1);
+
+    // Restrictions
+    static assert(!is(typeof({
+        auto e1 = a1; // illegal, scoped objects can't be copied
+        assert([a2][0].x == 42); // ditto
+        alias ScopedObject = typeof(a1);
+        auto e2 = ScopedObject();  //Illegal, must be built via scoped!A
+        auto e3 = ScopedObject(1); //Illegal, must be built via scoped!A
+    })));
+
+    // Use with alias
+    alias makeScopedA = scoped!A;
+    auto a6 = makeScopedA();
+    auto a7 = makeScopedA();
 }
 
 private size_t _alignUp(size_t alignment)(size_t n)
@@ -3280,9 +4219,6 @@ unittest // Issue 8039 testcase
 
 unittest
 {
-    pragma(msg, "test disabled on gdc, see gdc bug 52 (NRVO not implemented)");
-    version(none)
-    {
     // bug4500
     class A
     {
@@ -3300,7 +4236,6 @@ unittest
 
     a1.a = a1;
     assert(a1.check());
-    }
 }
 
 unittest
@@ -3368,6 +4303,24 @@ unittest
     int val = 3;
     auto s = scoped!C(val);
     assert(val == 4);
+}
+
+unittest
+{
+    class C
+    {
+        this(){}
+        this(int){}
+        this(int, int){}
+    }
+    alias makeScopedC = scoped!C;
+
+    auto a = makeScopedC();
+    auto b = makeScopedC(1);
+    auto c = makeScopedC(1, 1);
+
+    static assert(is(typeof(a) == typeof(b)));
+    static assert(is(typeof(b) == typeof(c)));
 }
 
 /**

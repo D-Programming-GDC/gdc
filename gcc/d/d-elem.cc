@@ -17,11 +17,12 @@
 
 #include "d-system.h"
 
-#include "id.h"
-#include "module.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 
+#include "id.h"
+#include "module.h"
+#include "ctfe.h"
 
 elem *
 Expression::toElem (IRState *)
@@ -1594,7 +1595,7 @@ DotVarExp::toElem (IRState *irs)
       }
       else if (var_decl)
 	{
-	  if (!(var_decl->storage_class & STCfield))
+	  if (!var_decl->isField())
 	    return get_decl_tree (var_decl, irs->func);
 	  else
 	    {
@@ -1618,12 +1619,9 @@ DotVarExp::toElem (IRState *irs)
 elem *
 AssertExp::toElem (IRState *irs)
 {
-  // %% todo: Do we call a Tstruct's invariant if
-  // e1 is a pointer to the struct?
   if (global.params.useAssert)
     {
       Type *tb1 = e1->type->toBasetype();
-      TY ty = tb1->ty;
       tree assert_call;
 
       if (irs->func->isUnitTestDeclaration())
@@ -1639,10 +1637,12 @@ AssertExp::toElem (IRState *irs)
 	    : d_assert_call (loc, LIBCALL_ASSERT, NULL_TREE);
 	}
 
-      if (ty == Tclass)
+      if (tb1->ty == Tclass)
 	{
 	  ClassDeclaration *cd = tb1->isClassHandle();
 	  tree arg = e1->toElem (irs);
+	  tree invc = NULL_TREE;
+
 	  if (cd->isCOMclass())
 	    {
 	      return build3 (COND_EXPR, void_type_node,
@@ -1650,13 +1650,15 @@ AssertExp::toElem (IRState *irs)
 			     d_void_zero_node, assert_call);
 	    }
 	  else if (cd->isInterfaceDeclaration())
-	    {
-	      arg = convert_expr (arg, tb1, build_object_type());
-	    }
-	  // this does a null pointer check before calling _d_invariant
+	    arg = convert_expr (arg, tb1, build_object_type());
+
+	  if (global.params.useInvariants)
+	    invc = build_libcall (LIBCALL_INVARIANT, 1, &arg);
+
+	  // This does a null pointer check before calling _d_invariant
 	  return build3 (COND_EXPR, void_type_node,
 			 build_boolop (NE_EXPR, arg, d_null_pointer),
-			 build_libcall (LIBCALL_INVARIANT, 1, &arg), assert_call);
+			 invc ? invc : d_void_zero_node, assert_call);
 	}
       else
 	{
@@ -1666,18 +1668,15 @@ AssertExp::toElem (IRState *irs)
 	  tree invc = NULL_TREE;
 	  tree e1_t = e1->toElem (irs);
 
-	  if (ty == Tpointer)
+	  if (global.params.useInvariants
+	      && tb1->ty == Tpointer && tb1->nextOf()->ty == Tstruct)
 	    {
-	      Type *sub_type = tb1->nextOf()->toBasetype();
-	      if (sub_type->ty == Tstruct)
+	      FuncDeclaration *inv = ((TypeStruct *) tb1->nextOf())->sym->inv;
+	      if (inv != NULL)
 		{
-		  AggregateDeclaration *agg_decl = ((TypeStruct *) sub_type)->sym;
-		  if (agg_decl->inv)
-		    {
-		      Expressions args;
-		      e1_t = maybe_make_temp (e1_t);
-		      invc = irs->call (agg_decl->inv, e1_t, &args);
-		    }
+		  Expressions args;
+		  e1_t = maybe_make_temp (e1_t);
+		  invc = irs->call (inv, e1_t, &args);
 		}
 	    }
 	  result = build3 (COND_EXPR, void_type_node,
@@ -2110,19 +2109,21 @@ StringExp::toElem (IRState *)
 elem *
 TupleExp::toElem (IRState *irs)
 {
-  tree result = NULL_TREE;
-  if (exps && exps->dim)
-    {
-      for (size_t i = 0; i < exps->dim; ++i)
-	{
-	  Expression *e = (*exps)[i];
-	  result = maybe_vcompound_expr (result, e->toElem (irs));
-	}
-    }
-  else
-    result = d_void_zero_node;
+  tree exp = NULL_TREE;
 
-  return result;
+  if (e0)
+    exp = e0->toElem (irs);
+
+  for (size_t i = 0; i < exps->dim; ++i)
+    {
+      Expression *e = (*exps)[i];
+      exp = maybe_vcompound_expr (exp, e->toElem (irs));
+    }
+
+  if (exp == NULL_TREE)
+    exp = d_void_zero_node;
+
+  return exp;
 }
 
 elem *
@@ -2257,7 +2258,7 @@ StructLiteralExp::toElem (IRState *irs)
   if (elements)
     {
       size_t dim = elements->dim;
-      gcc_assert (dim <= sd->fields.dim - sd->isnested);
+      gcc_assert (dim <= sd->fields.dim - sd->isNested());
 
       for (size_t i = 0; i < dim; i++)
 	{
@@ -2461,5 +2462,11 @@ VectorExp::toElem (IRState *irs)
 
       return build_vector_from_val (vectype, val);
     }
+}
+
+elem *
+ClassReferenceExp::toElem (IRState *)
+{
+  return toSymbol()->Stree;
 }
 

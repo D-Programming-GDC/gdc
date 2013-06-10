@@ -563,6 +563,62 @@ void multicollide()
 
 /****************************************************/
 
+void use9568(char [] x, char [] y) {}
+
+int bug9568()
+{
+    try
+        return 7;
+     finally
+        use9568(null,null);
+}
+
+void test9568()
+{
+    assert( bug9568() == 7 );
+}
+
+/****************************************************/
+
+void test8()
+{
+  int a;
+  goto L2;    // L2 is not addressable.
+
+  try {
+      a += 2;
+  }
+  catch (Exception e) {
+      a += 3;
+L2: ;
+      a += 100;
+  }
+  assert(a == 100);
+}
+
+/****************************************************/
+
+uint foo9(uint i)
+{
+    try
+    {
+        ++i;
+        return 3;
+    }
+    catch (Exception e)
+    {
+        debug printf("Exception happened\n");
+    }
+    return 4;
+}
+
+void test9()
+{
+    assert(foo9(7) == 3);
+}
+
+/****************************************************/
+
 int main()
 {
     printf("start\n");
@@ -578,6 +634,10 @@ int main()
     //doublecollide();  // BUG: EH chaining unimplemented.
     //collideMixed();   // BUG: EH chaining unimplemented.
     //multicollide();   // BUG: EH chaining unimplemented.
+    test9568();
+
+    test8();
+    test9();
 
     printf("finish\n");
     return 0;
