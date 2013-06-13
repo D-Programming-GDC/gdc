@@ -234,6 +234,7 @@ extern tree maybe_temporary_var (tree exp, tree *out_var);
 extern tree get_decl_tree (Declaration *decl, FuncDeclaration *func);
 
 // Temporaries (currently just SAVE_EXPRs)
+extern tree make_temp (tree t);
 extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 

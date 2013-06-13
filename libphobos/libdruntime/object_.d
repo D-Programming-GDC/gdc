@@ -117,18 +117,6 @@ class Object
         return this is o;
     }
 
-    bool opEquals(Object lhs, Object rhs)
-    {
-        if (lhs is rhs)
-            return true;
-        if (lhs is null || rhs is null)
-            return false;
-        if (typeid(lhs) == typeid(rhs))
-            return lhs.opEquals(rhs);
-        return lhs.opEquals(rhs) &&
-               rhs.opEquals(lhs);
-    }
-
     interface Monitor
     {
         void lock();
@@ -2096,6 +2084,16 @@ extern (C)
     hash_t _aaGetHash(void* aa, const(TypeInfo) tiRaw) nothrow;
 }
 
+private template _Unqual(T)
+{
+         static if (is(T U == shared(const U))) alias U _Unqual;
+    else static if (is(T U ==        const U )) alias U _Unqual;
+    else static if (is(T U ==    immutable U )) alias U _Unqual;
+    else static if (is(T U ==        inout U )) alias U _Unqual;
+    else static if (is(T U ==       shared U )) alias U _Unqual;
+    else                                        alias T _Unqual;
+}
+
 struct AssociativeArray(Key, Value)
 {
 private:
@@ -2105,8 +2103,8 @@ private:
         Slot *next;
         size_t hash;
         Key key;
-        version(D_LP64) align(16) Value value; // c.f. rt/aaA.d, aligntsize()
-        else align(4) Value value;
+        version(D_LP64) align(16) _Unqual!Value value; // c.f. rt/aaA.d, aligntsize()
+        else align(4) _Unqual!Value value;
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
@@ -2255,7 +2253,7 @@ public:
 
             @property ref Value front()
             {
-                return state.front.value;
+                return *cast(Value*)&state.front.value;
             }
 
             alias state this;

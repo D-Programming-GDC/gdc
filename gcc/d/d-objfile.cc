@@ -831,7 +831,7 @@ Module::genmoduleinfo()
    *  void function() unitTest;
    *  ModuleInfo*[] importedModules;
    *  TypeInfo_Class[] localClasses;
-   *  string name;
+   *  char[N] name;
    */
   if (flags & MItlsctor)
     dt_cons (&dt, build_address (sctor->Stree));
@@ -875,8 +875,13 @@ Module::genmoduleinfo()
 	}
     }
 
-  // Put out module name as a 0-terminated string, to save bytes
-  dt_cons (&dt, d_array_string (toPrettyChars()));
+  // Put out module name as a 0-terminated C-string, to save bytes
+  const char *name = toPrettyChars();
+  size_t namelen = strlen (name) + 1;
+  tree strtree = build_string (namelen, name);
+  TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
+
+  dt_cons (&dt, strtree);
 
   csym->Sdt = dt;
   d_finish_symbol (csym);

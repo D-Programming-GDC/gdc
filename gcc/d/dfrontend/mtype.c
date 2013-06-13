@@ -3527,7 +3527,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         static const char *name[2] = { "_adReverseChar", "_adReverseWchar" };
 
         const char *nm = name[n->ty == Twchar];
-        FuncDeclaration *fd = FuncDeclaration::genCfunc(Type::tindex, nm);
+        FuncDeclaration *fd = FuncDeclaration::genCfunc(n->arrayOf(), nm);
         Expression *ec = new VarExp(Loc(), fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         Expressions *arguments = new Expressions();
@@ -3544,7 +3544,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         static const char *name[2] = { "_adSortChar", "_adSortWchar" };
 
         nm = name[n->ty == Twchar];
-        fd = FuncDeclaration::genCfunc(Type::tindex, nm);
+        fd = FuncDeclaration::genCfunc(n->arrayOf(), nm);
         ec = new VarExp(Loc(), fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();

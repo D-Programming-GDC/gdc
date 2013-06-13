@@ -635,6 +635,22 @@ StructLiteralExp::toSymbol (void)
   if (!sym)
     {
       sym = new Symbol();
+
+      // Build reference symbol.
+      tree ctype = type->toCtype();
+      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, ctype);
+      get_unique_name (decl, "*");
+      set_decl_location (decl, loc);
+
+      TREE_STATIC (decl) = 1;
+      TREE_READONLY (decl) = 1;
+      TREE_USED (decl) = 1;
+      TREE_PRIVATE (decl) = 1;
+      DECL_ARTIFICIAL (decl) = 1;
+
+      sym->Stree = decl;
+      this->sinit = sym;
+
       toDt (&sym->Sdt);
       d_finish_symbol (sym);
     }
@@ -647,11 +663,29 @@ ClassReferenceExp::toSymbol (void)
 {
   if (!value->sym)
     {
-      Symbol *sym = new Symbol();
-      toInstanceDt (&sym->Sdt);
-      d_finish_symbol (sym);
+      value->sym = new Symbol();
 
-      value->sym = sym;
+      // Build reference symbol.
+      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, d_unknown_type_node);
+      char *ident;
+
+      ASM_FORMAT_PRIVATE_NAME (ident, "*", DECL_UID (decl));
+      DECL_NAME (decl) = get_identifier (ident);
+      set_decl_location (decl, loc);
+
+      TREE_STATIC (decl) = 1;
+      TREE_READONLY (decl) = 1;
+      TREE_USED (decl) = 1;
+      TREE_PRIVATE (decl) = 1;
+      DECL_ARTIFICIAL (decl) = 1;
+
+      value->sym->Stree = decl;
+      value->sym->Sident = ident;
+
+      toInstanceDt (&value->sym->Sdt);
+      d_finish_symbol (value->sym);
+
+      value->sinit = value->sym;
     }
 
   return value->sym;

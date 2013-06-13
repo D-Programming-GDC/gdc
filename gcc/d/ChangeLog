@@ -1,3 +1,24 @@
+2013-06-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(make_temp): New function.
+	* d-decls.cc(StructLiteralExp::toSymbol): Implement correctly to
+	generate an anonymous symbol to reference to in the codegen.
+	(ClassReferenceExp::toSymbol): Likewise, but also use an anonymous
+	type as size is not determined until the data has been layed out.
+	* d-elem.cc(EqualExp::toElem): Optimise comparisons of arrays of basic
+	types, also ensure left-to-right evaluation.
+	(SliceExp::toElem): Handle returing slice as a static array type.
+	(AddrExp::toElem): Handle taking the address of StructLiteralExp and
+	ClassReferenceExp symbols.
+	(FuncExp::toElem): Relax type checking to allow returning function
+	addresses as generic pointer types.
+	(ArrayLiteralExp::toElem): Implicitly convert static arrays of void to
+	static arrays of ubyte.
+	(StructLiteralExp::toElem): Remove code generation of postblit calls,
+	now taken care of in the front end.
+	* d-objfile.cc(Module::genmoduleinfo): Emit module name as a null
+	terminated static array.
+
 2013-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* dfrontend: Update to D front-end version 2.063.

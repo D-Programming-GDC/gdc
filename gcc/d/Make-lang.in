@@ -129,7 +129,7 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-longdouble.glue.o \
               d/d-gt.cglue.o d/d-builtins.cglue.o d/d-asmstmt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
-              d/d-ir.glue.o d/d-typinf.glue.o d/d-port.glue.o \
+              d/d-toir.glue.o d/d-typinf.glue.o d/d-port.glue.o \
               d/d-target.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
@@ -184,7 +184,7 @@ d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
 d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
 d/d-ctype.glue.o: d/d-ctype.cc $(D_TREE_H)
 d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
-d/d-ir.glue.o: d/d-ir.cc $(D_TREE_H)
+d/d-toir.glue.o: d/d-toir.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
 d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
 d/d-typinf.glue.o: d/d-typinf.cc $(D_TREE_H)

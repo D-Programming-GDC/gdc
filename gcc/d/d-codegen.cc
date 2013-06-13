@@ -1093,7 +1093,7 @@ tree
 d_array_string (const char *str)
 {
   unsigned len = strlen (str);
-  // Assumes str is null-terminated.
+  // Assumes STR is 0-terminated.
   tree str_tree = build_string (len + 1, str);
 
   TREE_TYPE (str_tree) = d_array_type (Type::tchar, len);
@@ -1318,16 +1318,20 @@ build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *
 // more than once in an expression.
 
 tree
+make_temp (tree t)
+{
+  if (TREE_CODE (t) == CALL_EXPR
+      || TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
+    return save_expr (t);
+  else
+    return stabilize_reference (t);
+}
+
+tree
 maybe_make_temp (tree t)
 {
   if (d_has_side_effects (t))
-    {
-      if (TREE_CODE (t) == CALL_EXPR
-	  || TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
-	return save_expr (t);
-      else
-	return stabilize_reference (t);
-    }
+    return make_temp (t);
 
   return t;
 }
@@ -1860,7 +1864,7 @@ bind_expr (tree var_chain, tree body)
       body = compound_expr (ini, body);
     }
 
-  return save_expr (build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
+  return make_temp (build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
 }
 
 // Like compound_expr, but ARG0 or ARG1 might be NULL_TREE.
