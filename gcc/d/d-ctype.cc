@@ -526,6 +526,7 @@ TypeAArray::toCtype (void)
 	  DECL_CONTEXT (ptr) = ctype;
 	  TYPE_FIELDS (ctype) = ptr;
 	  TYPE_NAME (ctype) = get_identifier (toChars());
+	  TYPE_TRANSPARENT_AGGR (ctype) = 1;
 	  layout_type (ctype);
 
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);

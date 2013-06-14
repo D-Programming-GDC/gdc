@@ -18,6 +18,7 @@
 	now taken care of in the front end.
 	* d-objfile.cc(Module::genmoduleinfo): Emit module name as a null
 	terminated static array.
+	* d-ctype.cc(TypeAArray::toCtype): Pass AA types around like pointers.
 
 2013-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
