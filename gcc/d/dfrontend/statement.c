@@ -667,6 +667,12 @@ Statement *CompoundStatement::semantic(Scope *sc)
                     }
                 }
             }
+            else
+            {
+                // Remove NULL statement from list.
+                statements->remove(i);
+                continue;
+            }
         }
         i++;
     }
@@ -4423,8 +4429,9 @@ Statement *TryCatchStatement::syntaxCopy()
 Statement *TryCatchStatement::semantic(Scope *sc)
 {
     body = body->semanticScope(sc, NULL /*this*/, NULL);
+    assert(body);
 
-    /* Even if body is NULL, still do semantic analysis on catches
+    /* Even if body is empty, still do semantic analysis on catches
      */
     for (size_t i = 0; i < catches->dim; i++)
     {   Catch *c = (*catches)[i];
@@ -4440,28 +4447,6 @@ Statement *TryCatchStatement::semantic(Scope *sc)
                 error("catch at %s hides catch at %s", sj, si);
         }
     }
-
-#ifdef IN_GCC
-    if (!body || !body->hasCode())
-    {
-        for (size_t i = 0; i < catches->dim; i++)
-        {
-            Catch *c = (*catches)[i];
-            if (!c->handler || !c->handler->comeFrom())
-            {
-                catches->remove(i);
-                --i;
-            }
-        }
-        if (catches->dim == 0)
-            return NULL;
-    }
-#else
-    if (!body || !body->hasCode())
-    {
-        return NULL;
-    }
-#endif
 
     /* If the try body never throws, we can eliminate any catches
      * of recoverable exceptions.
@@ -4484,7 +4469,7 @@ Statement *TryCatchStatement::semantic(Scope *sc)
     }
 
     if (catches->dim == 0)
-        return body;
+        return (body->hasCode()) ? body : NULL;
 
     return this;
 }

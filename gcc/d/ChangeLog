@@ -1,3 +1,9 @@
+2013-06-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(build_struct_memcmp): New function.
+	* d-elem.cc(IdentityExp::toElem): Use build_struct_memcmp for field
+	comparisons of small structs.
+
 2013-06-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(make_temp): New function.

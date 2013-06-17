@@ -147,6 +147,8 @@ extern tree d_mark_used (tree exp);
 extern tree d_mark_read (tree exp);
 extern tree build_address (tree exp);
 
+extern tree build_struct_memcmp (tree_code code, StructDeclaration *sd, tree arg0, tree arg1);
+
 // Routines to handle variables that are references.
 extern bool decl_reference_p (Declaration *decl);
 extern tree declaration_type (Declaration *decl);

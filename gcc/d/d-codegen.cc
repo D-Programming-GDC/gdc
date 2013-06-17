@@ -1314,35 +1314,35 @@ build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *
   return rec_type;
 }
 
-// Create a SAVE_EXPR if T might have unwanted side effects if referenced
+// Create a SAVE_EXPR if EXP might have unwanted side effects if referenced
 // more than once in an expression.
 
 tree
-make_temp (tree t)
+make_temp (tree exp)
 {
-  if (TREE_CODE (t) == CALL_EXPR
-      || TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
-    return save_expr (t);
+  if (TREE_CODE (exp) == CALL_EXPR
+      || TREE_CODE (TREE_TYPE (exp)) != ARRAY_TYPE)
+    return save_expr (exp);
   else
-    return stabilize_reference (t);
+    return stabilize_reference (exp);
 }
 
 tree
-maybe_make_temp (tree t)
+maybe_make_temp (tree exp)
 {
-  if (d_has_side_effects (t))
-    return make_temp (t);
+  if (d_has_side_effects (exp))
+    return make_temp (exp);
 
-  return t;
+  return exp;
 }
 
-// Return TRUE if T can not be evaluated multiple times (i.e., in a loop body)
+// Return TRUE if EXP can not be evaluated multiple times (i.e., in a loop body)
 // without unwanted side effects.
 
 bool
-d_has_side_effects (tree expr)
+d_has_side_effects (tree exp)
 {
-  tree t = STRIP_NOPS (expr);
+  tree t = STRIP_NOPS (exp);
 
   // SAVE_EXPR is safe to reference more than once, but not to
   // expand in a loop.
@@ -1536,6 +1536,79 @@ d_mark_read (tree exp)
       break;
     }
   return exp;
+}
+
+// Build equality expression between two RECORD_TYPES T1 and T2.
+// CODE is the EQ_EXPR or NE_EXPR comparison.
+// SD is the front-end struct type.
+
+tree
+build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
+{
+  tree_code tcode = (code == EQ_EXPR) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
+  tree tmemcmp = NULL_TREE;
+
+  // Let backend take care of empty struct or union comparisons.
+  if (!sd->fields.dim || sd->isUnionDeclaration())
+    {
+      tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
+				   build_address (t1), build_address (t2),
+				   size_int (sd->structsize));
+
+      return build_boolop (code, tmemcmp, integer_zero_node);
+    }
+
+  for (size_t i = 0; i < sd->fields.dim; i++)
+    {
+      VarDeclaration *vd = sd->fields[i];
+      tree sfield = vd->toSymbol()->Stree;
+
+      tree t1ref = component_ref (t1, sfield);
+      tree t2ref = component_ref (t2, sfield);
+      tree tcmp;
+
+      if (vd->type->ty == Tstruct)
+	{
+	  // Compare inner data structures.
+	  StructDeclaration *decl = ((TypeStruct *) vd->type)->sym;
+	  tcmp = build_struct_memcmp (code, decl, t1ref, t2ref);
+	}
+      else
+	{
+	  tree stype = vd->type->toCtype();
+	  enum machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
+
+	  if (vd->type->isintegral())
+	    {
+	      // Integer comparison, no special handling required.
+	      tcmp = build_boolop (code, t1ref, t2ref);
+	    }
+	  else if (mode != BLKmode)
+	    {
+	      // Compare field bits as their corresponding integer type.
+	      //   *((T*) &t1) == *((T*) &t2)
+	      tree tmode = lang_hooks.types.type_for_mode (mode, 1);
+
+	      t1ref = build_vconvert (tmode, t1ref);
+	      t2ref = build_vconvert (tmode, t2ref);
+
+	      tcmp = build_boolop (code, t1ref, t2ref);
+	    }
+	  else
+	    {
+	      // Simple memcmp between types.
+	      tcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
+					build_address (t1ref), build_address (t2ref),
+					TYPE_SIZE_UNIT (stype));
+
+	      tcmp = build_boolop (code, tcmp, integer_zero_node);
+	    }
+	}
+
+      tmemcmp = (tmemcmp) ? build_boolop (tcode, tmemcmp, tcmp) : tcmp;
+    }
+
+  return tmemcmp;
 }
 
 // Cast EXP (which should be a pointer) to TYPE * and then indirect.  The

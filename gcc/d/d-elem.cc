@@ -46,47 +46,63 @@ IdentityExp::toElem (IRState *irs)
   Type *tb1 = e1->type->toBasetype();
   Type *tb2 = e2->type->toBasetype();
 
-  tree_code code = op == TOKidentity ? EQ_EXPR : NE_EXPR;
+  tree_code code = (op == TOKidentity) ? EQ_EXPR : NE_EXPR;
 
-  if (tb1->ty == Tstruct || tb1->isfloating())
+  if ((tb1->ty == Tsarray || tb1->ty == Tarray)
+      && (tb2->ty == Tsarray || tb2->ty == Tarray))
     {
-      tree size;
-      if (tb1->isfloating())
-	{
-	  // Assume all padding is at the end of the type.
-	  size = build_integer_cst (TYPE_PRECISION (e1->type->toCtype()) / BITS_PER_UNIT);
-	}
-      else
-	size = build_integer_cst (e1->type->size());
+      // Convert arrays to D array types.
+      return build2 (code, type->toCtype(), irs->toDArray (e1), irs->toDArray (e2));
+    }
+  else if (tb1->isfloating())
+    {
+      tree t1 = e1->toElem (irs);
+      tree t2 = e2->toElem (irs);
+      // Assume all padding is at the end of the type.
+      tree size = build_integer_cst (TYPE_PRECISION (e1->type->toCtype()) / BITS_PER_UNIT);
 
-      // Do bit compare.
+      // Do bit compare of floats.
       tree tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-					build_address (e1->toElem (irs)),
-					build_address (e2->toElem (irs)),
-					size);
+					build_address (t1), build_address (t2), size);
 
       return build_boolop (code, tmemcmp, integer_zero_node);
     }
-  else if ((tb1->ty == Tsarray || tb1->ty == Tarray)
-	   && (tb2->ty == Tsarray || tb2->ty == Tarray))
+  else if (tb1->ty == Tstruct)
     {
-      return build2 (code, type->toCtype(),
-		     irs->toDArray (e1), irs->toDArray (e2));
+      tree t1 = e1->toElem (irs);
+      tree t2 = e2->toElem (irs);
+
+      if (TYPE_MODE (TREE_TYPE (t1)) != BLKmode)
+	{
+	  // Bitwise comparison of small structs not returned in memory may
+	  // not work due to data holes loosing its zero padding upon return.
+	  // Instead do field-by-field comparison of the two structs.
+	  StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
+	  gcc_assert (d_types_same (tb1, tb2));
+
+	  // Make temporaries to prevent multiple evaluations.
+	  t1 = maybe_make_temp (t1);
+	  t2 = maybe_make_temp (t2);
+
+	  return build_struct_memcmp (code, sd, t1, t2);
+	}
+      else
+	{
+	  // Do bit compare of structs.
+	  tree size = build_integer_cst (e1->type->size());
+
+	  tree tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
+					    build_address (t1), build_address (t2), size);
+
+	  return build_boolop (code, tmemcmp, integer_zero_node);
+	}
     }
   else
     {
       // For operands of other types, identity is defined as being the same as equality.
-      tree t1 = e1->toElem (irs);
-      tree t2 = e2->toElem (irs);
+      tree tcmp = build_boolop (code, e1->toElem (irs), e2->toElem (irs));
 
-      if (type->iscomplex())
-	{
-	  t1 = maybe_make_temp (t1);
-	  t2 = maybe_make_temp (t2);
-	}
-
-      tree t_cmp = build_boolop (code, t1, t2);
-      return d_convert (type->toCtype(), t_cmp);
+      return d_convert (type->toCtype(), tcmp);
     }
 }
 
@@ -100,7 +116,7 @@ EqualExp::toElem (IRState *irs)
 
   if (tb1->ty == Tstruct)
     {
-      // Do bit compare of struct's
+      // Do bit compare of structs
       tree tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
 					build_address (e1->toElem (irs)),
 					build_address (e2->toElem (irs)),
@@ -116,7 +132,7 @@ EqualExp::toElem (IRState *irs)
 
       if ((t1elem->isintegral() || t1elem->ty == Tvoid) && t1elem->ty == t2elem->ty)
 	{
-	  // Optimize comparisons of arrays of basic types.
+	  // Optimise comparisons of arrays of basic types.
 	  // For arrays of integers/characters, and void[], replace _adEq2 call with:
 	  //     e1 == e2  =>  e1.length == e2.length && memcmp (e1.ptr, e2.ptr, size) == 0;
 	  //     e1 != e2  =>  e1.length != e2.length || memcmp (e1.ptr, e2.ptr, size) != 0;
@@ -219,17 +235,9 @@ EqualExp::toElem (IRState *irs)
     }
   else
     {
-      tree t1 = e1->toElem (irs);
-      tree t2 = e2->toElem (irs);
+      tree tcmp = build_boolop (code, e1->toElem (irs), e2->toElem (irs));
 
-      if (type->iscomplex())
-	{
-	  t1 = maybe_make_temp (t1);
-	  t2 = maybe_make_temp (t2);
-	}
-
-      tree t_cmp = build_boolop (code, t1, t2);
-      return d_convert (type->toCtype(), t_cmp);
+      return d_convert (type->toCtype(), tcmp);
     }
 }
 
@@ -370,14 +378,7 @@ AndAndExp::toElem (IRState *irs)
       tree t1 = convert_for_condition (e1->toElem (irs), e1->type);
       tree t2 = convert_for_condition (e2->toElem (irs), e2->type);
 
-      if (type->iscomplex())
-	{
-	  t1 = maybe_make_temp (t1);
-	  t2 = maybe_make_temp (t2);
-	}
-
-      tree t = build_boolop (TRUTH_ANDIF_EXPR, t1, t2);
-      return d_convert (type->toCtype(), t);
+      return d_convert (type->toCtype(), build_boolop (TRUTH_ANDIF_EXPR, t1, t2));
     }
   else
     {
@@ -395,14 +396,7 @@ OrOrExp::toElem (IRState *irs)
       tree t1 = convert_for_condition (e1->toElem (irs), e1->type);
       tree t2 = convert_for_condition (e2->toElem (irs), e2->type);
 
-      if (type->iscomplex())
-	{
-	  t1 = maybe_make_temp (t1);
-	  t2 = maybe_make_temp (t2);
-	}
-
-      tree t = build_boolop (TRUTH_ORIF_EXPR, t1, t2);
-      return d_convert (type->toCtype(), t);
+      return d_convert (type->toCtype(), build_boolop (TRUTH_ORIF_EXPR, t1, t2));
     }
   else
     {

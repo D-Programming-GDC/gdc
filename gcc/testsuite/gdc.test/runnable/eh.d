@@ -580,24 +580,6 @@ void test9568()
 
 /****************************************************/
 
-void test8()
-{
-  int a;
-  goto L2;    // L2 is not addressable.
-
-  try {
-      a += 2;
-  }
-  catch (Exception e) {
-      a += 3;
-L2: ;
-      a += 100;
-  }
-  assert(a == 100);
-}
-
-/****************************************************/
-
 uint foo9(uint i)
 {
     try
@@ -636,7 +618,7 @@ int main()
     //multicollide();   // BUG: EH chaining unimplemented.
     test9568();
 
-    test8();
+    //test8();          // BUG: !INVALID TEST!
     test9();
 
     printf("finish\n");
