@@ -40,6 +40,9 @@ private
     extern (C) CArgs rt_cArgs();
 
     // backtrace
+    version(GNU)
+        import gcc.backtrace;
+
     version( linux )
         import core.sys.linux.execinfo;
     else version( OSX )
@@ -381,7 +384,23 @@ import core.stdc.stdio;
 Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
     //printf("runtime.defaultTraceHandler()\n");
-    static if( __traits( compiles, backtrace ) )
+    static if( __traits( compiles, new LibBacktrace(0) ) )
+    {
+        version(Posix)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else version (Win64)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else
+        {
+            static enum FIRSTFRAME = 0;
+        }
+        return new LibBacktrace(FIRSTFRAME);
+    }
+    else static if( __traits( compiles, backtrace ) )
     {
         import core.demangle;
         import core.stdc.stdlib : free;
@@ -594,6 +613,22 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         }
         auto s = new StackTrace(FIRSTFRAME, cast(CONTEXT*)ptr);
         return s;
+    }
+    else static if( __traits( compiles, new GDCBacktrace(0) ) )
+    {
+        version(Posix)
+        {
+            static enum FIRSTFRAME = 5;
+        }
+        else version (Win64)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else
+        {
+            static enum FIRSTFRAME = 0;
+        }
+        return new GDCBacktrace(FIRSTFRAME);
     }
     else
     {
