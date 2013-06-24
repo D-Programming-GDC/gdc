@@ -1876,7 +1876,6 @@ make_alias_for_thunk (tree function)
   TREE_ADDRESSABLE (alias) = 1;
   TREE_USED (alias) = 1;
   SET_DECL_ASSEMBLER_NAME (alias, DECL_NAME (alias));
-  TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (alias)) = 1;
 
   if (!flag_syntax_only)
     {

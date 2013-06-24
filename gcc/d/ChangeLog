@@ -1,3 +1,8 @@
+2013-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(make_alias_for_thunk): Do not set
+	TREE_SYMBOL_REFERENCED.
+
 2013-06-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(build_struct_memcmp): New function.
