@@ -292,7 +292,49 @@ private:
  */
 extern (C) bool runModuleUnitTests()
 {
-    static if( __traits( compiles, backtrace ) )
+    static if( __traits( compiles, new LibBacktrace(0) ) )
+    {
+        import core.sys.posix.signal; // segv handler
+
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+        {
+            import core.stdc.stdio;
+            fprintf(stderr, "Segmentation fault while running unittests:\n");
+            fprintf(stderr, "----------------\n");
+
+            enum alignment = LibBacktrace.MaxAlignment;
+            enum classSize = __traits(classInstanceSize, LibBacktrace);
+
+            byte[classSize + alignment] bt_store = void;
+            byte* alignedAddress = cast(byte*)((cast(size_t)(bt_store.ptr + alignment - 1))
+                & ~(alignment - 1));
+
+            (alignedAddress[0 .. classSize]) = typeid(LibBacktrace).init[];
+            auto bt = cast(LibBacktrace)(alignedAddress);
+            // First frame is LibBacktrace ctor. Second is signal handler, but include that for now
+            bt.__ctor(1);
+
+            foreach(size_t i, const(char[]) msg; bt)
+                fprintf(stderr, "%s\n", msg.ptr ? msg.ptr : "???");
+        }
+
+        sigaction_t action = void;
+        sigaction_t oldseg = void;
+        sigaction_t oldbus = void;
+
+        (cast(byte*) &action)[0 .. action.sizeof] = 0;
+        sigfillset( &action.sa_mask ); // block other signals
+        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+        action.sa_sigaction = &unittestSegvHandler;
+        sigaction( SIGSEGV, &action, &oldseg );
+        sigaction( SIGBUS, &action, &oldbus );
+        scope( exit )
+        {
+            sigaction( SIGSEGV, &oldseg, null );
+            sigaction( SIGBUS, &oldbus, null );
+        }
+    }
+    else static if( __traits( compiles, backtrace ) )
     {
         import core.sys.posix.signal; // segv handler
 
