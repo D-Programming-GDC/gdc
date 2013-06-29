@@ -19,16 +19,23 @@
 
 #include "port.h"
 
-longdouble Port::nan;
+longdouble Port::ldbl_nan;
 longdouble Port::snan;
-longdouble Port::infinity;
+longdouble Port::ldbl_infinity;
+longdouble Port::ldbl_max;
 
 void
 Port::init (void)
 {
-  real_nan (&nan.rv(), "", 1, TYPE_MODE (long_double_type_node));
-  real_nan (&snan.rv(), "", 0, TYPE_MODE (long_double_type_node));
-  real_inf (&infinity.rv());
+  char buf[128];
+  enum machine_mode mode = TYPE_MODE (long_double_type_node);
+
+  real_nan (&ldbl_nan.rv(), "", 1, mode);
+  real_nan (&snan.rv(), "", 0, mode);
+  real_inf (&ldbl_infinity.rv());
+
+  get_max_float (REAL_MODE_FORMAT (mode), buf, sizeof (buf));
+  real_from_string (&ldbl_max.rv(), buf);
 }
 
 // Returns TRUE if longdouble value R is NaN.
@@ -122,5 +129,45 @@ Port::stricmp (const char *s1, const char *s2)
     }
 
   return result;
+}
+
+// Return a longdouble value from string BUFFER rounded to float mode.
+
+longdouble
+Port::strtof (const char *buffer, char **)
+{
+  longdouble r;
+  real_from_string3 (&r.rv(), buffer, TYPE_MODE (float_type_node));
+
+  // Front-end checks errno to see if the value is representable.
+  if (r == ldbl_infinity)
+    errno = ERANGE;
+
+  return r;
+}
+
+// Return a longdouble value from string BUFFER rounded to double mode.
+
+longdouble
+Port::strtod (const char *buffer, char **)
+{
+  longdouble r;
+  real_from_string3 (&r.rv(), buffer, TYPE_MODE (double_type_node));
+
+  // Front-end checks errno to see if the value is representable.
+  if (r == ldbl_infinity)
+    errno = ERANGE;
+
+  return r;
+}
+
+// Return a longdouble value from string BUFFER rounded to long double mode.
+
+longdouble
+Port::strtold (const char *buffer, char **)
+{
+  longdouble r;
+  real_from_string3 (&r.rv(), buffer, TYPE_MODE (long_double_type_node));
+  return r;
 }
 

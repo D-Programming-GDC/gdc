@@ -1,3 +1,29 @@
+2013-06-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* complex_t.h: Move into dfrontend.
+	* d-builtins.c(gcc_cst_to_d_expr): Explicitly create longdouble.
+	* d-longdouble.cc(longdouble::parse): Remove function.
+	(longdouble::longdouble): Remove constructors from longdouble.
+	Replaced with operator= template and longdouble::set.
+	(longdouble::rv): Update for new class layout.
+	(longdouble::from_shwi): New function to create a longdouble value
+	from a HOST_WIDE_INT.
+	(longdouble::from_uhwi): Likewise, but from an unsigned HOST_WIDE_INT.
+	(longdouble::to_shwi): New function to return a HOST_WIDE_INT value
+	from a longdouble.
+	(longdouble::to_uhwi): Likewise, but from an unsigedn HOST_WIDE_INT.
+	(longdouble::set): New function to explicitly set longdouble value.
+	(longdouble::toInt): Remove function.
+	(longdouble::isZero): Remove function.
+	(longdouble::isNegative): Remove function.
+	* d-port.cc(Port::nan): Rename to Port::ldbl_nan.
+	(Port::infinity): Rename to Port::ldbl_infinity.
+	(Port::ldbl_max): New static field.
+	(Port::init): Set ldbl_max to be maximimum value for long double type.
+	(Port::strtof): New function to convert string to longdouble.
+	(Port::strtod): Likewise.
+	(Port::strtold): Likewise.
+
 2013-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(make_alias_for_thunk): Do not set

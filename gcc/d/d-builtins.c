@@ -708,8 +708,8 @@ gcc_cst_to_d_expr (tree cst)
 	}
       else if (code == REAL_CST)
 	{
-	  real_t value = TREE_REAL_CST (cst);
-	  return new RealExp (Loc(), value, type);
+	  real_value value = TREE_REAL_CST (cst);
+	  return new RealExp (Loc(), ldouble(value), type);
 	}
       else if (code == STRING_CST)
 	{

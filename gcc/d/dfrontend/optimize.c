@@ -910,7 +910,7 @@ Expression *PowExp::optimize(int result, bool keepLvalue)
     else
     {
         // If e2 *could* have been an integer, make it one.
-        if (e2->op == TOKfloat64 && (e2->toReal() == (real_t)(sinteger_t)(e2->toInteger())))
+        if (e2->op == TOKfloat64 && (e2->toReal() == (sinteger_t)(e2->toReal())))
             e2 = new IntegerExp(loc, e2->toInteger(), Type::tint64);
 
         if (e1->isConst() == 1 && e2->isConst() == 1)

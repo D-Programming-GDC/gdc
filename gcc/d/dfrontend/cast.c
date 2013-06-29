@@ -340,27 +340,6 @@ MATCH IntegerExp::implicitConvTo(Type *t)
                 goto Lno;
             goto Lyes;
 
-#ifdef IN_GCC
-        case Tfloat32:
-        case Tfloat64:
-        case Tfloat80:
-        {
-            real_t f;
-            if (type->isunsigned())
-            {
-                f = real_t((d_uns64) value);
-                if ((d_uns64) f.toInt() != (d_uns64) value)
-                    goto Lno;
-            }
-            else
-            {
-                f = real_t((d_int64) value);
-                if ((d_int64) f.toInt() != (d_int64) value)
-                    goto Lno;
-            }
-            goto Lyes;
-        }
-#else
         case Tfloat32:
         {
             volatile float f;
@@ -372,8 +351,8 @@ MATCH IntegerExp::implicitConvTo(Type *t)
             }
             else
             {
-                f = (float)(long long)value;
-                if (f != (long long)value)
+                f = (float)(sinteger_t)value;
+                if (f != (sinteger_t)value)
                     goto Lno;
             }
             goto Lyes;
@@ -390,8 +369,8 @@ MATCH IntegerExp::implicitConvTo(Type *t)
             }
             else
             {
-                f = (double)(long long)value;
-                if (f != (long long)value)
+                f = (double)(sinteger_t)value;
+                if (f != (sinteger_t)value)
                     goto Lno;
             }
             goto Lyes;
@@ -408,13 +387,12 @@ MATCH IntegerExp::implicitConvTo(Type *t)
             }
             else
             {
-                f = ldouble((long long)value);
-                if (f != (long long)value)
+                f = ldouble((sinteger_t)value);
+                if (f != (sinteger_t)value)
                     goto Lno;
             }
             goto Lyes;
         }
-#endif
 
         case Tpointer:
 //printf("type = %s\n", type->toBasetype()->toChars());

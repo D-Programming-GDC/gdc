@@ -36,9 +36,9 @@ endif
 D_DMD_H := \
     d/dfrontend/aav.h d/dfrontend/aggregate.h d/dfrontend/aliasthis.h \
     d/dfrontend/arraytypes.h d/dfrontend/async.h d/dfrontend/attrib.h \
-    d/dfrontend/cond.h d/dfrontend/ctfe.h d/dfrontend/declaration.h \
-    d/dfrontend/doc.h d/dfrontend/dsymbol.h d/dfrontend/enum.h \
-    d/dfrontend/expression.h d/dfrontend/hdrgen.h \
+    d/dfrontend/complex_t.h d/dfrontend/cond.h d/dfrontend/ctfe.h \
+    d/dfrontend/declaration.h d/dfrontend/doc.h d/dfrontend/dsymbol.h \
+    d/dfrontend/enum.h d/dfrontend/expression.h d/dfrontend/hdrgen.h \
     d/dfrontend/identifier.h d/dfrontend/import.h \
     d/dfrontend/init.h d/dfrontend/intrange.h d/dfrontend/json.h \
     d/dfrontend/lexer.h d/dfrontend/macro.h \
@@ -48,8 +48,7 @@ D_DMD_H := \
     d/dfrontend/statement.h d/dfrontend/staticassert.h \
     d/dfrontend/stringtable.h d/dfrontend/target.h d/dfrontend/template.h \
     d/dfrontend/utf.h d/dfrontend/version.h \
-    d/d-dmd-gcc.h d/complex_t.h d/longdouble.h \
-    d/id.h d/verstr.h
+    d/d-dmd-gcc.h d/longdouble.h d/id.h d/verstr.h
 
 D_TREE_H = $(TREE_H) d/d-tree.def d/d-lang.h d/d-codegen.h \
         d/d-objfile.h d/d-irstate.h d/d-dmd-gcc.h d/d-system.h \
