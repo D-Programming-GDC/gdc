@@ -682,8 +682,7 @@ Complex!real expi(real y)  @trusted pure nothrow
 
 unittest
 {
-    real value = 1.3e5L; //Avoid constant folding
-    assert(expi(value) == complex(std.math.cos(value), std.math.sin(value)));
+    assert(expi(1.3e5L) == complex(std.math.cos(1.3e5L), std.math.sin(1.3e5L)));
     assert(expi(0.0L) == 1.0L);
     auto z1 = expi(1.234);
     auto z2 = std.math.expi(1.234);

@@ -1299,14 +1299,7 @@ struct Parser(R, bool CTFE = false)
             }
             put(Bytecode(greedy ? IR.InfiniteStart : IR.InfiniteQStart, len));
             enforce(ir.length + len < maxCompiledLength,  "maximum compiled pattern length is exceeded");
-            //workaround @@@BUG@@@ 9634
-            if(__ctfe)
-            { 
-                foreach(v; ir[offset .. offset+len])
-                    ir ~= v;
-            }
-            else
-                ir ~= ir[offset .. offset+len];
+            ir ~= ir[offset .. offset+len];
             //IR.InfinteX is always a hotspot
             put(Bytecode(greedy ? IR.InfiniteEnd : IR.InfiniteQEnd, len));
             put(Bytecode.init); //merge index
@@ -2957,9 +2950,9 @@ struct Input(Char)
     //codepoint at current stream position
     bool nextChar(ref dchar res, ref size_t pos)
     {
-        pos = _index;
         if(_index == _origin.length)
             return false;
+        pos = _index;
         res = std.utf.decode(_origin, _index);
         return true;
     }
@@ -2986,34 +2979,199 @@ struct Input(Char)
         alias size_t DataIndex;
         String _origin;
         size_t _index;
-        this(Input input, size_t index)
+        this(Input input)
         {
             _origin = input._origin;
-            _index = index;
+            _index = input._index;
         }
         @trusted bool nextChar(ref dchar res,ref size_t pos)
         {
-            pos = _index;
             if(_index == 0)
                 return false;
-
-            res = _origin[0.._index].back;
             _index -= std.utf.strideBack(_origin, _index);
-
+            if(_index == 0)
+                return false;
+            pos = _index;
+            res = _origin[0.._index].back;
             return true;
         }
         @property atEnd(){ return _index == 0 || _index == std.utf.strideBack(_origin, _index); }
-        auto loopBack(size_t index){   return Input(_origin, index); }
+        @property auto loopBack(){   return Input(_origin, _index); }
 
         //support for backtracker engine, might not be present
-        //void reset(size_t index){   _index = index ? index-std.utf.strideBack(_origin, index) : 0;  }
-        void reset(size_t index){   _index = index;  }
+        void reset(size_t index){   _index = index+std.utf.stride(_origin, index);  }
 
         String opSlice(size_t start, size_t end){   return _origin[end..start]; }
         //index of at End position
         @property size_t lastIndex(){   return 0; }
     }
-    auto loopBack(size_t index){   return BackLooper(this, index); }
+    @property auto loopBack(){   return BackLooper(this); }
+}
+
+// Test stream against simple UTF-string stream abstraction (w/o normalization and such)
+struct StreamTester(Char)
+    if (is(Char:dchar))
+{
+    alias ulong DataIndex;
+    alias const(Char)[] String;
+    Input!(Char) refStream;
+    String allStr;
+    StreamCBuf!(Char) stream;
+    size_t[] splits;
+    size_t pos;
+
+    //adds the next chunk to the stream
+    bool addNextChunk()
+    {
+        if(splits.length < pos)
+        {
+            ++pos;
+            if(pos < splits.length)
+            {
+                assert(splits[pos-1]<=splits[pos],"splits is not ordered");
+                stream.addChunk(allStr[splits[pos-1]..splits[pos]]);
+            }
+            else
+            {
+                stream.addChunk(allStr[splits[pos-1]..$]);
+                stream.hasEnd = true;
+            }
+            return true;
+        }
+        else
+            return false;
+    }
+
+    //constructs Input object out of plain string
+    this(String input, size_t[] splits)
+    {
+        allStr = input;
+        refStream = Input!(Char)(input,splits);
+        stream = new StreamCBuf!(Char)();
+        pos = 0;
+        if (splits.length) 
+        {
+            stream.addChunk(allStr);
+            stream.hasEnd = true;
+        }
+        else
+            stream.addChunk(allStr[0..splits[0]]);
+    }
+
+    //codepoint at current stream position
+    bool nextChar(ref dchar res, ref size_t pos)
+    {
+        bool ret = stream.nextChar(res,pos);
+        dchar refRes;
+        size_t refPos;
+        if(!res)
+        {
+            if (stream.hasEnd && refStream.nextChar(refRes,refPos))
+            {
+                throw new Exception("stream eneded too early");
+            }
+            return false;
+        }
+        else
+        {
+            bool refRet = refStream.nextChar(refRes,refPos);
+            enforce(refRet == ret,"stream contiinued past end");
+            enforce(refRes == res,"incorrect char "~res~" vs "~refRes);
+            enforce(refPos == (pos &~(255UL<<48)),"incorrect pos, string wans't normalized???");
+            return true;
+        }
+    }
+
+    @property bool atEnd()
+    {
+        enforce(!stream.atEnd || refStream.atEnd,"stream ended too early");
+        return stream.atEnd;
+    }
+
+    bool search(Kickstart)(ref Kickstart kick, ref dchar res, ref ulong pos)
+    {
+        bool ret = stream.search(kick,res,pos);
+        dchar refRes;
+        size_t refPos;
+        if(ret)
+        {
+            bool refRet = refStream.search(kick,refRes,refPos);
+            enforce(refRet,"stream found spurious kickstart match");
+            enforce(refRes == res,"stream found different kickstart match "~res~" vs "~refRes);
+            enforce(refPos==(pos &~(255UL<<48)),"stream found different pos for kickstart match, non normalized input?: "~to!string(pos)~" vs "~to!string(refPos));
+        }
+        else if(hasEnd)
+        {
+            enforce(!refStream.search(kick,refRes,refPos),"stream missed kickstart match");
+        }
+        return ret;
+    }
+
+    //index of at End position
+    @property size_t lastIndex(){   return _origin.length; }
+
+    String opSlice(size_t start, size_t end)
+    {
+        return _origin[start..end];
+    }
+
+    struct BackLooper
+    {
+        alias ulong DataIndex;
+        Input!(Char).BackLooper refBacklooper;
+        StreamCBuf!(Char).BackLooper backlooper;
+        ulong startPos;
+
+        this(Input!(Char).BackLooper refBacklooper,StreamCBuf!(Char).BackLooper backlooper)
+        {
+            this.refBacklooper = refBacklooper;
+            this.backlooper = backlooper;
+        }
+        bool nextChar(ref dchar res,ref ulong pos)
+        {
+            bool ret = backlooper.nextChar(res,pos);
+            if(ret)
+            {
+                dchar refRes;
+                size_t refPos;
+                bool refRet = refBacklooper.nextChar(refRes,refPos);
+                enforce(refRet,"stream backlooper goes back beyond start");
+                enforce(refRes == res,"stream backlooper has different char "~res~" vs "~refRes);
+                enforce(refPos==(pos &~(255UL<<48)),"stream backlooper has different pos: "~to!string(pos)~" vs "~to!string(refPos));
+            }
+            else if (refBacklooper.nextChar(refPos,refPos))
+            {
+                enforce(refPos+historySize<=(startPos &~(255UL<<48)),"stream backlooper stopped before historyWindow");
+            }
+            return ret;
+        }
+        @property atEnd(){
+            if(backlooper.atEnd)
+            {
+                dchar res;
+                size_t pos;
+                if (refBacklooper.nextChar(res,pos))
+                {
+                    // this should be mostly true for already normalized/decoded stuff
+                    enforce(pos+backlooper.streamBuf.historySize<=(startPos &~(255UL<<48)),"backlooper stream ended too early");
+                }
+            }
+            else
+            {
+                enforce(backlooper.atEnd,"backlooper stream did not end");
+            }
+            return backlooper.atEnd;
+        }
+        @property auto loopBack(){   return Input(_origin, _index); }
+
+        //support for backtracker engine, might not be present
+        void reset(size_t index){   _index = index+std.utf.stride(_origin, index);  }
+
+        String opSlice(size_t start, size_t end){   return _origin[end..start]; }
+        //index of at End position
+        @property size_t lastIndex(){   return 0; }
+    }
+    @property auto loopBack(){   return BackLooper(this); }
 }
 
 //both helperd below are internal, on its own are quite "explosive"
@@ -3306,13 +3464,13 @@ template BacktrackingMatcher(bool CTregex)
                             pc += IRL!(IR.Wordboundary);
                             break;
                         }
-                        else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                        else if(atEnd && s.loopBack.nextChar(back, bi)
                                 && wordTrie[back])
                         {
                             pc += IRL!(IR.Wordboundary);
                             break;
                         }
-                        else if(s.loopBack(index).nextChar(back, bi))
+                        else if(s.loopBack.nextChar(back, index))
                         {
                             bool af = wordTrie[front];
                             bool ab = wordTrie[back];
@@ -3329,10 +3487,10 @@ template BacktrackingMatcher(bool CTregex)
                         //at start & end of input
                         if(atStart && wordTrie[front])
                             goto L_backtrack;
-                        else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                        else if(atEnd && s.loopBack.nextChar(back, bi)
                                 && wordTrie[back])
                             goto L_backtrack;
-                        else if(s.loopBack(index).nextChar(back, bi))
+                        else if(s.loopBack.nextChar(back, index))
                         {
                             bool af = wordTrie[front];
                             bool ab = wordTrie[back];
@@ -3347,7 +3505,7 @@ template BacktrackingMatcher(bool CTregex)
                         if(atStart)
                             pc += IRL!(IR.Bol);
                         else if((re.flags & RegexOption.multiline)
-                            && s.loopBack(index).nextChar(back,bi)
+                            && s.loopBack.nextChar(back,bi)
                             && endOfLine(back, front == '\n'))
                         {
                             pc += IRL!(IR.Bol);
@@ -3361,8 +3519,8 @@ template BacktrackingMatcher(bool CTregex)
                         debug(fred_matching) writefln("EOL (front 0x%x) %s", front, s[index..s.lastIndex]);
                         //no matching inside \r\n
                         if(atEnd || ((re.flags & RegexOption.multiline)
-                            && endOfLine(front, s.loopBack(index).nextChar(back,bi)
-								&& back == '\r')))
+                            && s.loopBack.nextChar(back,bi)
+                            && endOfLine(front, back == '\r')))
                         {
                             pc += IRL!(IR.Eol);
                         }
@@ -3522,7 +3680,7 @@ template BacktrackingMatcher(bool CTregex)
                         uint ms = re.ir[pc+1].raw, me = re.ir[pc+2].raw;
                         auto mem = malloc(initialMemory(re))[0..initialMemory(re)];
                         scope(exit) free(mem.ptr);
-                        auto backMatcher = BacktrackingMatcher!(Char, typeof(s.loopBack(index)))(re, s.loopBack(index), mem);
+                        auto backMatcher = BacktrackingMatcher!(Char, typeof(s.loopBack))(re, s.loopBack, mem);
                         backMatcher.matches = matches[ms .. me];
                         backMatcher.re.ir = re.ir[pc .. pc+IRL!(IR.LookbehindStart)+len];
                         backMatcher.backrefed  = backrefed.empty ? matches : backrefed;
@@ -3746,13 +3904,13 @@ template BacktrackingMatcher(bool CTregex)
                             pc--;
                             break;
                         }
-                        else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                        else if(atEnd && s.loopBack.nextChar(back, bi)
                                 && wordTrie[back])
                         {
                             pc--;
                             break;
                         }
-                        else if(s.loopBack(index).nextChar(back, bi))
+                        else if(s.loopBack.nextChar(back, index))
                         {
                             bool af = wordTrie[front];
                             bool ab = wordTrie[back];
@@ -3769,10 +3927,10 @@ template BacktrackingMatcher(bool CTregex)
                         //at start & end of input
                         if(atStart && wordTrie[front])
                             goto L_backtrack;
-                        else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                        else if(atEnd && s.loopBack.nextChar(back, bi)
                                 && wordTrie[back])
                             goto L_backtrack;
-                        else if(s.loopBack(index).nextChar(back, bi))
+                        else if(s.loopBack.nextChar(back, index))
                         {
                             bool af = wordTrie[front];
                             bool ab = wordTrie[back];
@@ -3787,7 +3945,7 @@ template BacktrackingMatcher(bool CTregex)
                         if(atStart)
                             pc--;
                         else if((re.flags & RegexOption.multiline)
-                            && s.loopBack(index).nextChar(back,bi)
+                            && s.loopBack.nextChar(back,bi)
                             && endOfLine(back, front == '\n'))
                         {
                             pc--;
@@ -3802,7 +3960,7 @@ template BacktrackingMatcher(bool CTregex)
                             writefln("EOL (front 0x%x) %s", front, s[index..s.lastIndex]);
                         //no matching inside \r\n
                         if((re.flags & RegexOption.multiline)
-                                && s.loopBack(index).nextChar(back,bi)
+                                && s.loopBack.nextChar(back,bi)
                             && endOfLine(front, back == '\r'))
                         {
                             pc -= IRL!(IR.Eol);
@@ -3957,7 +4115,7 @@ template BacktrackingMatcher(bool CTregex)
                         uint ms = re.ir[pc+1].raw, me = re.ir[pc+2].raw;
                         auto mem = malloc(initialMemory(re))[0..initialMemory(re)];
                         scope(exit) free(mem.ptr);
-                        auto matcher = BacktrackingMatcher!(Char, typeof(s.loopBack(index)))(re, s.loopBack(index), mem);
+                        auto matcher = BacktrackingMatcher!(Char, typeof(s.loopBack))(re, s.loopBack, mem);
                         matcher.matches = matches[ms .. me];
                         matcher.backrefed  = backrefed.empty ? matches : backrefed;
                         matcher.re.ir = re.ir[pc+IRL!(IR.LookaheadStart) .. pc+IRL!(IR.LookaheadStart)+len+IRL!(IR.LookaheadEnd)];
@@ -4484,12 +4642,12 @@ struct CtContext
                     {
                         $$
                     }
-                    else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                    else if(atEnd && s.loopBack.nextChar(back, bi)
                             && wordTrie[back])
                     {
                         $$
                     }
-                    else if(s.loopBack(index).nextChar(back, bi))
+                    else if(s.loopBack.nextChar(back, bi))
                     {
                         bool af = wordTrie[front];
                         bool ab = wordTrie[back];
@@ -4508,10 +4666,10 @@ struct CtContext
                     //at start & end of input
                     if(atStart && wordTrie[front])
                         $$
-                    else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                    else if(atEnd && s.loopBack.nextChar(back, bi)
                             && wordTrie[back])
                         $$
-                    else if(s.loopBack(index).nextChar(back, bi))
+                    else if(s.loopBack.nextChar(back, index))
                     {
                         bool af = wordTrie[front];
                         bool ab = wordTrie[back];
@@ -4526,7 +4684,7 @@ struct CtContext
                     dchar back;
                     DataIndex bi;
                     if(atStart || ((re.flags & RegexOption.multiline)
-                        && s.loopBack(index).nextChar(back,bi)
+                        && s.loopBack.nextChar(back,bi)
                         && endOfLine(back, front == '\n')))
                     {
                         $$
@@ -4542,7 +4700,7 @@ struct CtContext
                     debug(fred_matching) writefln("EOL (front 0x%x) %s", front, s[index..s.lastIndex]);
                     //no matching inside \r\n
                     if(atEnd || ((re.flags & RegexOption.multiline)
-                             && s.loopBack(index).nextChar(back,bi)
+                             && s.loopBack.nextChar(back,bi)
                             && endOfLine(front, back == '\r')))
                     {
                         $$
@@ -4978,13 +5136,13 @@ enum OneShot { Fwd, Bwd };
                     t.pc += IRL!(IR.Wordboundary);
                     break;
                 }
-                else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                else if(atEnd && s.loopBack.nextChar(back, bi)
                         && wordTrie[back])
                 {
                     t.pc += IRL!(IR.Wordboundary);
                     break;
                 }
-                else if(s.loopBack(index).nextChar(back, bi))
+                else if(s.loopBack.nextChar(back, index))
                 {
                     bool af = wordTrie[front];
                     bool ab = wordTrie[back];
@@ -5011,7 +5169,7 @@ enum OneShot { Fwd, Bwd };
                         return;
                     break;
                 }
-                else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                else if(atEnd && s.loopBack.nextChar(back, bi)
                         && wordTrie[back])
                 {
                     recycle(t);
@@ -5020,7 +5178,7 @@ enum OneShot { Fwd, Bwd };
                         return;
                     break;
                 }
-                else if(s.loopBack(index).nextChar(back, bi))
+                else if(s.loopBack.nextChar(back, index))
                 {
                     bool af = wordTrie[front];
                     bool ab = wordTrie[back]  != 0;
@@ -5040,7 +5198,7 @@ enum OneShot { Fwd, Bwd };
                 DataIndex bi;
                 if(atStart
                     ||( (re.flags & RegexOption.multiline)
-                    && s.loopBack(index).nextChar(back,bi)
+                    && s.loopBack.nextChar(back,bi)
                     && startOfLine(back, front == '\n')))
                 {
                     t.pc += IRL!(IR.Bol);
@@ -5059,7 +5217,7 @@ enum OneShot { Fwd, Bwd };
                 DataIndex bi;
                 //no matching inside \r\n
                 if(atEnd || ((re.flags & RegexOption.multiline)
-                    && endOfLine(front, s.loopBack(index).nextChar(back, bi)
+                    && endOfLine(front, s.loopBack.nextChar(back, bi)
                         && back == '\r')))
                 {
                     t.pc += IRL!(IR.Eol);
@@ -5261,8 +5419,8 @@ enum OneShot { Fwd, Bwd };
             case IR.LookbehindStart:
             case IR.NeglookbehindStart:
                 auto matcher =
-                    ThompsonMatcher!(Char, typeof(s.loopBack(index)))
-                    (this, re.ir[t.pc..t.pc+re.ir[t.pc].data+IRL!(IR.LookbehindStart)], s.loopBack(index));
+                    ThompsonMatcher!(Char, typeof(s.loopBack))
+                    (this, re.ir[t.pc..t.pc+re.ir[t.pc].data+IRL!(IR.LookbehindStart)], s.loopBack);
                 matcher.re.ngroup = re.ir[t.pc+2].raw - re.ir[t.pc+1].raw;
                 matcher.backrefed = backrefed.empty ? t.matches : backrefed;
                 //backMatch
@@ -5518,13 +5676,13 @@ enum OneShot { Fwd, Bwd };
                     t.pc--;
                     break;
                 }
-                else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                else if(atEnd && s.loopBack.nextChar(back, bi)
                         && wordTrie[back])
                 {
                     t.pc--;
                     break;
                 }
-                else if(s.loopBack(index).nextChar(back, bi))
+                else if(s.loopBack.nextChar(back, index))
                 {
                     bool af = wordTrie[front];
                     bool ab = wordTrie[back];
@@ -5547,14 +5705,14 @@ enum OneShot { Fwd, Bwd };
                     t = worklist.fetch();
                     break;
                 }
-                else if(atEnd && s.loopBack(index).nextChar(back, bi)
+                else if(atEnd && s.loopBack.nextChar(back, bi)
                         && wordTrie[back])
                 {
                     recycle(t);
                     t = worklist.fetch();
                     break;
                 }
-                else if(s.loopBack(index).nextChar(back, bi))
+                else if(s.loopBack.nextChar(back, index))
                 {
                     bool af = wordTrie[front];
                     bool ab = wordTrie[back];
@@ -5572,7 +5730,7 @@ enum OneShot { Fwd, Bwd };
                 DataIndex bi;
                 if(atStart
                     ||((re.flags & RegexOption.multiline)
-                    && s.loopBack(index).nextChar(back,bi)
+                    && s.loopBack.nextChar(back,bi)
                     && startOfLine(back, front == '\n')))
                 {
                     t.pc--;
@@ -5589,7 +5747,7 @@ enum OneShot { Fwd, Bwd };
                 DataIndex bi;
                 //no matching inside \r\n
                 if((re.flags & RegexOption.multiline)
-                    && endOfLine(front, s.loopBack(index).nextChar(back, bi)
+                    && endOfLine(front, s.loopBack.nextChar(back, bi)
                         && back == '\r'))
                 {
                     t.pc--;
@@ -5794,10 +5952,10 @@ enum OneShot { Fwd, Bwd };
                 uint len = re.ir[t.pc].data;
                 t.pc -= len + IRL!(IR.LookaheadStart);
                 bool positive = re.ir[t.pc].code == IR.LookaheadStart;
-                auto matcher = ThompsonMatcher!(Char, typeof(s.loopBack(index)))
+                auto matcher = ThompsonMatcher!(Char, typeof(s.loopBack))
                     (this
                     , re.ir[t.pc .. t.pc+len+IRL!(IR.LookbehindStart)+IRL!(IR.LookbehindEnd)]
-                    , s.loopBack(index));
+                    , s.loopBack);
                 matcher.re.ngroup = re.ir[t.pc+2].raw - re.ir[t.pc+1].raw;
                 matcher.backrefed = backrefed.empty ? t.matches : backrefed;
                 matcher.next(); //fetch a char, since direction was reversed
@@ -6762,7 +6920,6 @@ unittest
     }
 
     enum TestVectors tv[] = [
-        TestVectors(  "a\\b",       "a",  "y",    "$&",    "a" ),
         TestVectors(  "(a)b\\1",   "abaab","y",    "$&",    "aba" ),
         TestVectors(  "()b\\1",     "aaab", "y",    "$&",    "b" ),
         TestVectors(  "abc",       "abc",  "y",    "$&",    "abc" ),
@@ -7501,13 +7658,6 @@ else
         auto c = nm.captures;
         assert(c[1] == "a");
         assert(c["nick"] == "a");
-    }
-
-    // bugzilla 9634
-    unittest 
-    {
-        auto re = ctRegex!"(?:a+)";
-        assert(match("aaaa", re).hit == "aaaa");
     }
 }
 

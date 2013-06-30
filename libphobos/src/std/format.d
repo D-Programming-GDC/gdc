@@ -177,7 +177,7 @@ $(I FormatChar):
     $(TR $(TD $(B '#')) $(TD floating) $(TD Always insert the decimal
        point and print trailing zeros.))
 
-    $(TR $(TD $(B '0')) $(TD numeric) $(TD Use leading
+    $(TR $(TD $(B '#')) $(TD numeric ($(B '0'))) $(TD Use leading
     zeros to pad rather than spaces (except for the floating point
     values $(D nan) and $(D infinity)).  Ignore if there's a $(I
     Precision).))
@@ -3631,6 +3631,13 @@ void formatReflectTest(T)(ref T val, string fmt, string formatted, string fn = _
             input, fn, ln);
 }
 
+version(unittest)
+@property void checkCTFEable(alias dg)()
+{
+    static assert({ dg(); return true; }());
+    dg();
+}
+
 unittest
 {
     void booleanTest()
@@ -3709,9 +3716,7 @@ unittest
         formatReflectTest(aa, "{%([%s=%(%c%)]%|; %)}",  `{[1=hello]; [2=world]}`);
     }
 
-    import std.exception;
-    assertCTFEable!(
-    {
+    checkCTFEable!({
         booleanTest();
         integerTest();
         if (!__ctfe) floatingTest();    // snprintf

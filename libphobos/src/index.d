@@ -121,32 +121,32 @@ D language compiler. Also, check out the
 
 	<dl>
 
-	<dt><a href="std_ascii.html"><b>std.ascii</b></a>
-	<dd>Functions that operate on ASCII characters.
-
 	<dt><a href="std_base64.html"><b>std.base64</b></a>
 	<dd>Encode/decode base64 format.
 
 	<dt><a href="std_bigint.html"><b>std.bigint</b></a>
 	<dd>Arbitrary-precision ('bignum') arithmetic
 
-$(V1
+	<dt><a href="std_bind.html"><b>std.bind</b></a>
+	<dd>Bind function arguments.
+
 	<dt><a href="std_bitarray.html"><b>std.bitarray</b></a>
 	<dd>Arrays of bits.
 
 	<dt><a href="std_boxer.html"><b>std.boxer</b></a>
 	<dd>Box/unbox types.
-)
+
 	<dt><a href="std_compiler.html"><b>std.compiler</b></a>
 	<dd>Information about the D compiler implementation.
 
 	<dt><a href="std_conv.html"><b>std.conv</b></a>
 	<dd>Conversion of strings to integers.
 
-$(V1
+	<dt><a href="std_ctype.html"><b>std.ctype</b></a>
+	<dd>Simple character classification
+
 	<dt><a href="std_date.html"><b>std.date</b></a>
 	<dd>Date and time functions. Support locales.
-)
 
 	<dt><a href="std_datetime.html"><b>std.datetime</b></a>
 	<dd>Date and time-related types and functions.
@@ -157,10 +157,9 @@ $(V1
 	<dt><a href="std_format.html"><b>std.format</b></a>
 	<dd>Formatted conversions of values to strings.
 
-$(V1
 	<dt><a href="std_gc.html"><b>std.gc</b></a>
 	<dd>Control the garbage collector.
-)
+
 	<dt><a href="std_math.html"><b>std.math</b></a>
 	<dd>Include all the usual math functions like sin, cos, atan, etc.
 
@@ -185,12 +184,11 @@ $(V1
 	<dt><a href="std_random.html"><b>std.random</b></a>
 	<dd>Random number generation.
 
-$(V1
 	<dt><a href="std_recls.html"><b>std.recls</b></a>
 	<dd>Recursively search file system and (currently Windows
 	only) FTP sites.
-)
-	<dt><a href="std_regex.html"><b>std.regex</b></a>
+
+	<dt><a href="std_regexp.html"><b>std.regexp</b></a>
 	<dd>The usual regular expression functions.
 
 	<dt><a href="std_socket.html"><b>std.socket</b></a>
@@ -219,9 +217,6 @@ $(V1
 
 	<!--dt><a href="std_thread.html"><b>std.thread</b></a>
 	<dd>One per thread. Operations to do on a thread.-->
-
-	<dt><a href="std_uni.html"><b>std.base64</b></a>
-	<dd>Functions that operate on Unicode characters.
 
 	<dt><a href="std_uri.html"><b>std.uri</b></a>
 	<dd>Encode and decode Uniform Resource Identifiers (URIs).

@@ -97,6 +97,9 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BACKTRACE_SUPPORTED = @BACKTRACE_SUPPORTED@
+BACKTRACE_SUPPORTS_THREADS = @BACKTRACE_SUPPORTS_THREADS@
+BACKTRACE_USES_MALLOC = @BACKTRACE_USES_MALLOC@
 BUILD_LIBIBERTY = @BUILD_LIBIBERTY@
 CC = @CC@
 CC_FOR_BUILD = @CC_FOR_BUILD@
@@ -127,12 +130,14 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 GDC = @GDC@
 GREP = @GREP@
+HAVE_DLADDR = @HAVE_DLADDR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
+LIBBACKTRACE_LIB = @LIBBACKTRACE_LIB@
 LIBIBERTY_H_PATH = @LIBIBERTY_H_PATH@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -231,7 +236,7 @@ MAIN_OBJS = std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/outbuffer.o std/parallelism.o std/signals.o \
 	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
-	  std/regex.o std/traits.o std/typecons.o std/typelist.o \
+	  std/regex.o std/traits.o std/typecons.o \
 	  std/typetuple.o std/uni.o std/uri.o std/utf.o \
 	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \

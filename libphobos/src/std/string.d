@@ -2365,11 +2365,9 @@ unittest
     assertThrown!FormatException(format("foo %s"));
     assertThrown!FormatException(format("foo %s", 123, 456));
 
-    assertCTFEable!(
-    {
-        assert(format("hel%slo%s%s%s", "world", -138, 'c', true) ==
-                      "helworldlo-138ctrue");
-    });
+    //Test CTFE-ability of format.
+    static assert(format("hel%slo%s%s%s", "world", -138, 'c', true) ==
+                  "helworldlo-138ctrue", "[" ~ s ~ "]");
 }
 
 

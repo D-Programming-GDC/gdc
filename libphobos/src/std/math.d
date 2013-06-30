@@ -333,7 +333,7 @@ unittest
     assert(abs(71.6Li) == 71.6L);
     assert(abs(-56) == 56);
     assert(abs(2321312L)  == 2321312L);
-    assert(abs(-1+1i) == sqrt(2.0));
+    assert(abs(-1+1i) == sqrt(2.0L));
 }
 
 /***********************************
@@ -1108,7 +1108,7 @@ real exp(real x) @trusted pure nothrow
     }
     else
     {
-        return exp2(LOG2E*x);
+        return core.stdc.math.expl(x);
     }
 }
 
@@ -1632,8 +1632,7 @@ creal expi(real y) @trusted pure nothrow
 
 unittest
 {
-    real value = 1.3e5L; //Avoid constant folding
-    assert(expi(value) == cos(value) + sin(value) * 1i);
+    assert(expi(1.3e5L) == cos(1.3e5L) + sin(1.3e5L) * 1i);
     assert(expi(0.0L) == 1L + 0.0Li);
 }
 

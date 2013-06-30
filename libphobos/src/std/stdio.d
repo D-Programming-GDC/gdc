@@ -969,8 +969,8 @@ with every line.
         {
             // TODO: optimize this
             string s = readln(terminator);
-            buf.length = 0;
             if (!s.length) return 0;
+            buf.length = 0;
             foreach (wchar c; s)
             {
                 buf ~= c;
@@ -1004,19 +1004,15 @@ with every line.
     {
         auto deleteme = testFilename();
         std.file.write(deleteme, "hello\n\rworld\nhow\n\rare ya");
+        auto witness = [ "hello\n\r", "world\nhow\n\r", "are ya" ];
         scope(exit) std.file.remove(deleteme);
-        foreach (C; Tuple!(char, wchar, dchar).Types)
+        auto f = File(deleteme);
+        uint i = 0;
+        char[] buf;
+        while (f.readln(buf, "\n\r"))
         {
-            immutable(C)[][] witness = [ "hello\n\r", "world\nhow\n\r", "are ya" ];
-            auto f = File(deleteme);
-            uint i = 0;
-            C[] buf;
-            while (f.readln(buf, "\n\r"))
-            {
-                assert(i < witness.length);
-                assert(buf == witness[i++]);
-            }
-            assert(buf.length==0);
+            assert(i < witness.length);
+            assert(buf == witness[i++]);
         }
     }
 
@@ -1089,42 +1085,8 @@ Returns the file number corresponding to this object.
     }
 
 /**
-Range that reads one line at a time.  Returned by $(LREF byLine).
-
-Allows to directly use range operations on lines of a file.
-
-Example:
-
-----
-import std.algorithm, std.string, std.stdio;
-// Count words in a file using ranges.
-void main()
-{
-    auto file = File("file.txt"); // Open for reading
-    const wordCount = file.byLine()                  // Read lines
-                          .map!split                 // Split into words
-                          .map!(a => a.length)       // Count words per line
-                          .reduce!((a, b) => a + b); // Total word count
-    writeln(wordCount);
-}
-----
-
-Example:
-----
-import std.stdio;
-// Count lines in file using a foreach
-void main()
-{
-    auto file = File("file.txt"); // open for reading
-    ulong lineCount = 0;
-    foreach (line; file.byLine())
-    {
-        ++lineCount;
-    }
-    writeln("Lines in file: ", lineCount);
-}
-----
-*/
+Range that reads one line at a time. */
+    /// ditto
     struct ByLine(Char, Terminator)
     {
         File file;

@@ -71,7 +71,7 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/outbuffer.o std/parallelism.o std/signals.o \
 	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
-	  std/regex.o std/traits.o std/typecons.o std/typelist.o \
+	  std/regex.o std/traits.o std/typecons.o \
 	  std/typetuple.o std/uni.o std/uri.o std/utf.o \
 	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \

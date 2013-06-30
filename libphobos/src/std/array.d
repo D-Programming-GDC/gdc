@@ -169,27 +169,6 @@ unittest
     }
 }
 
-// Bugzilla 10220
-unittest
-{
-    import std.algorithm : equal;
-    import std.range : repeat;
-
-    static struct S
-    {
-        int val;
-
-        @disable this();
-        this(int v) { val = v; }
-    }
-    assertCTFEable!(
-    {
-        auto r = S(1).repeat(2).array();
-        assert(equal(r, [S(1), S(1)]));
-    });
-}
-
-
 /**
 Returns a newly allocated associative array out of elements of the input range,
 which must be a range of tuples (Key, Value).
@@ -208,8 +187,8 @@ assert(b == ["foo":"bar", "baz":"quux"]);
  */
 
 auto assocArray(Range)(Range r)
-    if (isInputRange!Range && isTuple!(ElementType!Range) &&
-        ElementType!Range.length == 2)
+    if (isInputRange!Range && isTuple!(ElementType!Range)
+     && ElementType!Range.length == 2)
 {
     alias ElementType!Range.Types[0] KeyType;
     alias ElementType!Range.Types[1] ValueType;
@@ -223,7 +202,7 @@ unittest
 {
     static assert(!__traits(compiles, [ tuple("foo", "bar", "baz") ].assocArray()));
     static assert(!__traits(compiles, [ tuple("foo") ].assocArray()));
-    static assert( __traits(compiles, [ tuple("foo", "bar") ].assocArray()));
+    static assert(__traits(compiles, [ tuple("foo", "bar") ].assocArray()));
 
     auto aa1 = [ tuple("foo", "bar"), tuple("baz", "quux") ].assocArray();
     assert(is(typeof(aa1) == string[string]));
@@ -245,8 +224,7 @@ private template blockAttribute(T)
         enum blockAttribute = GC.BlkAttr.NO_SCAN;
     }
 }
-unittest
-{
+unittest {
     static assert(!(blockAttribute!void & GC.BlkAttr.NO_SCAN));
 }
 
@@ -263,8 +241,7 @@ private template nDimensions(T)
     }
 }
 
-unittest
-{
+unittest {
     static assert(nDimensions!(uint[]) == 1);
     static assert(nDimensions!(float[][]) == 2);
 }
@@ -341,21 +318,7 @@ if(allSatisfy!(isIntegral, I))
 
     alias typeof(T.init[0]) E;
 
-    auto ptr = (__ctfe) ?
-        {
-            static if(__traits(compiles, new E[1]))
-            {
-                return (new E[sizes[0]]).ptr;
-            }
-            else
-            {
-                E[] arr;
-                foreach (i; 0 .. sizes[0])
-                    arr ~= E.init;
-                return arr.ptr;
-            }
-        }() :
-        cast(E*) GC.malloc(sizes[0] * E.sizeof, blockAttribute!(E));
+    auto ptr = cast(E*) GC.malloc(sizes[0] * E.sizeof, blockAttribute!(E));
     auto ret = ptr[0..sizes[0]];
 
     static if(sizes.length > 1)
@@ -1195,13 +1158,14 @@ unittest
 
 unittest
 {
-    assertCTFEable!(
+    static int[] testCTFE()
     {
         int[] a = [1, 2];
         a.insertInPlace(2, 3);
         a.insertInPlace(0, -1, 0);
-        return a == [-1, 0, 1, 2, 3];
-    });
+        return a;
+    }
+    static assert(testCTFE() == [-1, 0, 1, 2, 3]);
 }
 
 unittest // bugzilla 6874
@@ -2620,19 +2584,23 @@ unittest
         }
     }
 
-    static struct S10122
     {
-        int val;
+        static struct S10122
+        {
+            int val;
 
-        @disable this();
-        this(int v) { val = v; }
-    }
-    assertCTFEable!(
-    {
+            @disable this();
+            this(int v) { val = v; }
+        }
         auto w = appender!(S10122[])();
         w.put(S10122(1));
-        assert(w.data.length == 1 && w.data[0].val == 1);
-    });
+
+        static assert({
+            auto w = appender!(S10122[])();
+            w.put(S10122(1));
+            return w.data.length == 1 && w.data[0].val == 1;
+        }());
+    }
 }
 
 /++

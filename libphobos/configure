@@ -608,6 +608,13 @@ DCFG_CBRIDGE_STDIO
 DCFG_ARM_EABI_UNWINDER
 DRUNTIME_OBJS
 D_EXTRA_OBJS
+BACKTRACE_SUPPORTS_THREADS
+BACKTRACE_USES_MALLOC
+BACKTRACE_SUPPORTED
+LIBBACKTRACE_LIB
+BACKTRACE_SUPPORTED_FALSE
+BACKTRACE_SUPPORTED_TRUE
+HAVE_DLADDR
 EGREP
 GREP
 CPP
@@ -715,6 +722,7 @@ enable_druntime_gc
 with_system_zlib
 enable_phobos_config_dir
 with_cross_host
+enable_libbacktrace
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1348,6 +1356,7 @@ Optional Features:
   --enable-druntime-gc    enable D runtime garbage collector (default: yes)
   --enable-phobos-config-dir=<dir>
                           use source file fragments in <dir>
+  --disable-libbacktrace  Do not use libbacktrace for backtraces
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -4674,6 +4683,132 @@ fi
 
 
 
+
+HAVE_DLADDR=false
+ac_fn_c_check_func "$LINENO" "dladdr" "ac_cv_func_dladdr"
+if test "x$ac_cv_func_dladdr" = x""yes; then :
+  HAVE_DLADDR=true
+fi
+
+#AC_CHECK_LIB(dl, dladdr, [HAVE_DLADDR=true])
+
+
+BACKTRACE_SUPPORTED=false
+BACKTRACE_USES_MALLOC=false
+BACKTRACE_SUPPORTS_THREADS=false
+LIBBACKTRACE_LIB=""
+
+CPPFLAGS+=" -I../libbacktrace "
+
+# Check whether --enable-libbacktrace was given.
+if test "${enable_libbacktrace+set}" = set; then :
+  enableval=$enable_libbacktrace; check_libbacktrace_h="$enableval"
+else
+  check_libbacktrace_h="yes"
+fi
+
+
+if test $check_libbacktrace_h = yes ; then
+  ac_fn_c_check_header_mongrel "$LINENO" "backtrace-supported.h" "ac_cv_header_backtrace_supported_h" "$ac_includes_default"
+if test "x$ac_cv_header_backtrace_supported_h" = x""yes; then :
+  have_libbacktrace_h=true
+else
+  have_libbacktrace_h=false
+fi
+
+
+else
+  have_libbacktrace_h=false
+fi
+
+if $have_libbacktrace_h; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking libbacktrace: BACKTRACE_SUPPORTED" >&5
+$as_echo_n "checking libbacktrace: BACKTRACE_SUPPORTED... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+  #include <backtrace-supported.h>
+  #if BACKTRACE_SUPPORTED
+    FOUND_LIBBACKTRACE_RESULT_GDC
+  #endif
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "FOUND_LIBBACKTRACE_RESULT_GDC" >/dev/null 2>&1; then :
+  BACKTRACE_SUPPORTED=true
+else
+  BACKTRACE_SUPPORTED=false
+fi
+rm -f conftest*
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $BACKTRACE_SUPPORTED" >&5
+$as_echo "$BACKTRACE_SUPPORTED" >&6; }
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking libbacktrace: BACKTRACE_USES_MALLOC" >&5
+$as_echo_n "checking libbacktrace: BACKTRACE_USES_MALLOC... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+  #include <backtrace-supported.h>
+  #if BACKTRACE_USES_MALLOC
+    FOUND_LIBBACKTRACE_RESULT_GDC
+  #endif
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "FOUND_LIBBACKTRACE_RESULT_GDC" >/dev/null 2>&1; then :
+  BACKTRACE_USES_MALLOC=true
+else
+  BACKTRACE_USES_MALLOC=false
+fi
+rm -f conftest*
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $BACKTRACE_USES_MALLOC" >&5
+$as_echo "$BACKTRACE_USES_MALLOC" >&6; }
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking libbacktrace: BACKTRACE_SUPPORTS_THREADS" >&5
+$as_echo_n "checking libbacktrace: BACKTRACE_SUPPORTS_THREADS... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+  #include <backtrace-supported.h>
+  #if BACKTRACE_SUPPORTS_THREADS
+    FOUND_LIBBACKTRACE_RESULT_GDC
+  #endif
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "FOUND_LIBBACKTRACE_RESULT_GDC" >/dev/null 2>&1; then :
+  BACKTRACE_SUPPORTS_THREADS=true
+else
+  BACKTRACE_SUPPORTS_THREADS=false
+fi
+rm -f conftest*
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $BACKTRACE_SUPPORTS_THREADS" >&5
+$as_echo "$BACKTRACE_SUPPORTS_THREADS" >&6; }
+fi
+
+ if $BACKTRACE_SUPPORTED; then
+  BACKTRACE_SUPPORTED_TRUE=
+  BACKTRACE_SUPPORTED_FALSE='#'
+else
+  BACKTRACE_SUPPORTED_TRUE='#'
+  BACKTRACE_SUPPORTED_FALSE=
+fi
+
+
+if $BACKTRACE_SUPPORTED; then
+  LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+else
+  LIBBACKTRACE_LIB=""
+fi
+
+
+
+
+
+
 # TODO...
 
 D_EXTRA_OBJS=
@@ -5339,7 +5474,7 @@ ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile"
 
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms"
+ac_config_files="$ac_config_files Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5446,6 +5581,10 @@ else
   am__EXEEXT_FALSE=
 fi
 
+if test -z "${BACKTRACE_SUPPORTED_TRUE}" && test -z "${BACKTRACE_SUPPORTED_FALSE}"; then
+  as_fn_error "conditional \"BACKTRACE_SUPPORTED\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 
 : ${CONFIG_STATUS=./config.status}
 ac_write_fail=0
@@ -6056,6 +6195,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES src/phobos-ver-syms" ;;
     "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
+    "libdruntime/gcc/libbacktrace.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/libbacktrace.d" ;;
 
   *) as_fn_error "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

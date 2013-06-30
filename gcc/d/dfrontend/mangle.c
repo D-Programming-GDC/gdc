@@ -174,8 +174,8 @@ const char *FuncDeclaration::mangle(bool isv)
 #endif
     {
         if (mangleOverride)
-            return mangleOverride; 
-    
+            return mangleOverride;
+
         if (isMain())
             return (char *)"_Dmain";
 
