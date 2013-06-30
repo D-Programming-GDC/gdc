@@ -43,7 +43,7 @@ void main()
     Runtime.collectHandler = null; // runtime
     static void fn() {}
     new Thread( &fn ); // thread
-    va_end( null ); // vararg
+    //va_end( null ); // vararg
 
     auto m = new Mutex; // mutex
     auto c = new Condition( m ); // condition

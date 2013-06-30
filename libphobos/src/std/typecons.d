@@ -618,6 +618,7 @@ unittest
         assert(t[0] == 10 && t[1] == "str");
         assert(t.toString() == `Tuple!(int, string)(10, "str")`, t.toString());
     }
+    /+  Disabled for GDC: Issue 10504
     {
         Tuple!(int, "a", double, "b") x;
         static assert(x.a.offsetof == x[0].offsetof);
@@ -627,6 +628,7 @@ unittest
         assert(x[0] == 5 && x[1] == 4.5);
         assert(x.a == 5 && x.b == 4.5);
     }
+    +/
     // indexing
     {
         Tuple!(int, real) t;

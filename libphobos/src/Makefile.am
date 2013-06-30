@@ -84,7 +84,7 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
 	  std/internal/math/errorfunction.o std/internal/processinit.o \
 	  std/internal/uni.o std/internal/uni_tab.o \
-	  std/net/isemail.o \
+	  std/net/curl.o std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 
 Z_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
