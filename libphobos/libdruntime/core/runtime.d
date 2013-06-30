@@ -14,37 +14,6 @@
  */
 module core.runtime;
 
-/*
- * Configuration stuff for backtraces
- * Versions:
- *     HaveDLADDR = the extern(C) dladdr function is available
- *     GenericBacktrace = Use GCC unwinding for backtraces
- * 
- * TODO: HaveDLADDR should be set by the configure script
- */
-
-version(Android)
-{
-    version = HaveDLADDR;
-    version = GenericBacktrace;
-}
-else version(Windows)
-{
-    version = WindowsBacktrace;
-}
-else version(linux)
-{
-    //assume GLIBC backtrace function exists, not always correct!
-    version = GlibcBacktrace;
-}
-else version(OSX)
-{
-    version = OSXBacktrace;
-}
-else version(GNU)
-{
-    version = GenericBacktrace;
-}
 
 private
 {
@@ -70,61 +39,18 @@ private
     extern (C) string[] rt_args();
     extern (C) CArgs rt_cArgs();
 
-    version(HaveDLADDR)
-    {
-        extern(C)
-        {
-            int dladdr(void *addr, Dl_info *info);
-            struct Dl_info
-            {
-                const (char*) dli_fname;  /* Pathname of shared object that
-                                           contains address */
-                void*         dli_fbase;  /* Address at which shared object
-                                           is loaded */
-                const (char*) dli_sname;  /* Name of nearest symbol with address
-                                           lower than addr */
-                void*         dli_saddr;  /* Exact address of symbol named
-                                           in dli_sname */
-            }
-        }
-    }
+    // backtrace
+    version(GNU)
+        import gcc.backtrace;
 
-    version(GenericBacktrace)
-    {
-        import gcc.unwind;
-        import core.demangle;
-        import core.stdc.stdio : snprintf, printf;
-        import core.stdc.string : strlen;
-
-        version(Posix)
-            import core.sys.posix.signal; // segv handler
-    }
-    else version(GlibcBacktrace)
-    {
-        import core.demangle;
-        import core.stdc.stdlib : free;
-        import core.stdc.string : strlen, memchr;
-        extern (C) int    backtrace(void**, int);
-        extern (C) char** backtrace_symbols(void**, int);
-        extern (C) void   backtrace_symbols_fd(void**, int, int);
-
-        version(Posix)
-            import core.sys.posix.signal; // segv handler
-    }
-    else version(OSXBacktrace)
-    {
-        import core.demangle;
-        import core.stdc.stdlib : free;
-        import core.stdc.string : strlen;
-        extern (C) int    backtrace(void**, int);
-        extern (C) char** backtrace_symbols(void**, int);
-        extern (C) void   backtrace_symbols_fd(void**, int, int);
-        import core.sys.posix.signal; // segv handler
-    }
-    else version(WindowsBacktrace)
-    {
+    version( linux )
+        import core.sys.linux.execinfo;
+    else version( OSX )
+        import core.sys.osx.execinfo;
+    else version( FreeBSD )
+        import core.sys.freebsd.execinfo;
+    else version( Windows )
         import core.sys.windows.stacktrace;
-    }
 
     // For runModuleUnitTests error reporting.
     version( Windows )
@@ -366,7 +292,49 @@ private:
  */
 extern (C) bool runModuleUnitTests()
 {
-    static if( __traits( compiles, backtrace ) )
+    static if( __traits( compiles, new LibBacktrace(0) ) )
+    {
+        import core.sys.posix.signal; // segv handler
+
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+        {
+            import core.stdc.stdio;
+            fprintf(stderr, "Segmentation fault while running unittests:\n");
+            fprintf(stderr, "----------------\n");
+
+            enum alignment = LibBacktrace.MaxAlignment;
+            enum classSize = __traits(classInstanceSize, LibBacktrace);
+
+            byte[classSize + alignment] bt_store = void;
+            byte* alignedAddress = cast(byte*)((cast(size_t)(bt_store.ptr + alignment - 1))
+                & ~(alignment - 1));
+
+            (alignedAddress[0 .. classSize]) = typeid(LibBacktrace).init[];
+            auto bt = cast(LibBacktrace)(alignedAddress);
+            // First frame is LibBacktrace ctor. Second is signal handler, but include that for now
+            bt.__ctor(1);
+
+            foreach(size_t i, const(char[]) msg; bt)
+                fprintf(stderr, "%s\n", msg.ptr ? msg.ptr : "???");
+        }
+
+        sigaction_t action = void;
+        sigaction_t oldseg = void;
+        sigaction_t oldbus = void;
+
+        (cast(byte*) &action)[0 .. action.sizeof] = 0;
+        sigfillset( &action.sa_mask ); // block other signals
+        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+        action.sa_sigaction = &unittestSegvHandler;
+        sigaction( SIGSEGV, &action, &oldseg );
+        sigaction( SIGBUS, &action, &oldbus );
+        scope( exit )
+        {
+            sigaction( SIGSEGV, &oldseg, null );
+            sigaction( SIGBUS, &oldbus, null );
+        }
+    }
+    else static if( __traits( compiles, backtrace ) )
     {
         import core.sys.posix.signal; // segv handler
 
@@ -458,7 +426,23 @@ import core.stdc.stdio;
 Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
     //printf("runtime.defaultTraceHandler()\n");
-    static if( __traits( compiles, backtrace ) ) //GlibcBacktrace || OSXBacktrace
+    static if( __traits( compiles, new LibBacktrace(0) ) )
+    {
+        version(Posix)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else version (Win64)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else
+        {
+            static enum FIRSTFRAME = 0;
+        }
+        return new LibBacktrace(FIRSTFRAME);
+    }
+    else static if( __traits( compiles, backtrace ) )
     {
         import core.demangle;
         import core.stdc.stdlib : free;
@@ -470,9 +454,6 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
             {
                 static enum MAXFRAMES = 128;
                 void*[MAXFRAMES]  callstack;
-              version( GNU )
-                numframes = backtrace( callstack.ptr, MAXFRAMES );
-              else
                 numframes = 0; //backtrace( callstack, MAXFRAMES );
                 if (numframes < 2) // backtrace() failed, do it ourselves
                 {
@@ -662,232 +643,37 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
         return new DefaultTraceInfo;
     }
-    else static if( __traits( compiles, new StackTrace ) ) // WindowsBacktrace
+    else static if( __traits( compiles, new StackTrace(0, null) ) )
     {
         version (Win64)
         {
-            /* Disabled for the moment, because DbgHelp's stack walking code
-             * does not work with dmd's stack frame.
-             */
-            return null;
+            static enum FIRSTFRAME = 4;
         }
         else
         {
-            auto s = new StackTrace;
-            return s;
+            static enum FIRSTFRAME = 0;
         }
+        auto s = new StackTrace(FIRSTFRAME, cast(CONTEXT*)ptr);
+        return s;
     }
-    else version(GenericBacktrace)
+    else static if( __traits( compiles, new GDCBacktrace(0) ) )
     {
-        class DefaultTraceInfo : Throwable.TraceInfo
+        version(Posix)
         {
-            this()
-            {
-                callstack = gdcBacktrace();
-                framelist = gdcBacktraceSymbols(callstack);
-            }
-
-            override int opApply( scope int delegate(ref char[]) dg )
-            {
-                return opApply( (ref size_t, ref char[] buf)
-                                {
-                                    return dg( buf );
-                                } );
-            }
-
-            override int opApply( scope int delegate(ref size_t, ref char[]) dg )
-            {
-                version( Posix )
-                {
-                    // NOTE: The first 5 frames with the current implementation are
-                    //       inside core.runtime and the object code, so eliminate
-                    //       these for readability.  The alternative would be to
-                    //       exclude the first N frames that are in a list of
-                    //       mangled function names.
-                    static enum FIRSTFRAME = 5;
-                }
-                else
-                {
-                    // NOTE: On Windows, the number of frames to exclude is based on
-                    //       whether the exception is user or system-generated, so
-                    //       it may be necessary to exclude a list of function names
-                    //       instead.
-                    static enum FIRSTFRAME = 0;
-                }
-                int ret = 0;
-
-                for( int i = FIRSTFRAME; i < framelist.entries; ++i )
-                {
-                    auto pos = cast(size_t)(i - FIRSTFRAME);
-                    auto buf = formatLine(framelist.symbols[i]);
-                    ret = dg( pos, buf );
-                    if( ret )
-                        break;
-                }
-                return ret;
-            }
-
-            override string toString()
-            {
-                string buf;
-                foreach( i, line; this )
-                    buf ~= i ? "\n" ~ line : line;
-                return buf;
-            }
-
-        private:
-            btSymbolData     framelist;
-            gdcBacktraceData callstack;
-
-        private:
-            char[4096] fixbuf;
-
-            /*Do not put \n at end of line!*/
-            char[] formatLine(backtraceSymbol sym)
-            {
-                int ret;
-                
-                if(sym.fileName)
-                {
-                    if(sym.name)
-                    {
-                        ret = snprintf(fixbuf.ptr, fixbuf.sizeof,
-                            "%s(", sym.fileName);
-                        if(ret >= fixbuf.sizeof)
-                            return fixbuf[];
-
-                        auto demangled = demangle(sym.name[0 .. strlen(sym.name)],
-                            fixbuf[ret .. $]);
-
-                        ret += demangled.length;
-                        if(ret >= fixbuf.sizeof)
-                            return fixbuf[];
-
-                        ret += snprintf(fixbuf.ptr + ret, fixbuf.sizeof - ret,
-                            "+%#x) [%p]", sym.offset, sym.address);
-                    }
-                    else
-                    {
-                        ret = snprintf(fixbuf.ptr, fixbuf.sizeof,
-                            "%s() [%p]", sym.fileName, sym.address);
-                    }
-                }
-                else
-                {
-                    if(sym.name)
-                    {
-                        fixbuf[0] = '(';
-                        ret = 1;
-
-                        auto demangled = demangle(sym.name[0 .. strlen(sym.name)],
-                            fixbuf[ret .. $]);
-
-                        ret += demangled.length;
-                        if(ret >= fixbuf.sizeof)
-                            return fixbuf[];
-
-                        ret += snprintf(fixbuf.ptr + ret, fixbuf.sizeof - ret,
-                            "+%#x) [%p]", sym.offset, sym.address);
-                    }
-                    else
-                    {
-                        ret = snprintf(fixbuf.ptr, fixbuf.sizeof, "() [%p]",
-                            sym.address);
-                    }
-                }
-
-                if(ret >= fixbuf.sizeof)
-                    return fixbuf[];
-                else
-                    return fixbuf[0 .. ret];
-            }
+            static enum FIRSTFRAME = 5;
         }
-
-        return new DefaultTraceInfo;
+        else version (Win64)
+        {
+            static enum FIRSTFRAME = 4;
+        }
+        else
+        {
+            static enum FIRSTFRAME = 0;
+        }
+        return new GDCBacktrace(FIRSTFRAME);
     }
     else
     {
         return null;
-    }
-}
-
-version(GenericBacktrace)
-{
-    static enum MAXFRAMES = 128;
-
-    struct gdcBacktraceData
-    {
-        void*[MAXFRAMES] callstack;
-        int numframes = 0;
-    }
-
-    struct backtraceSymbol
-    {
-        const(char)* name, fileName;
-        size_t offset;
-        void* address;
-    }
-
-    struct btSymbolData
-    {
-        size_t entries;
-        backtraceSymbol[MAXFRAMES] symbols;
-    }
-    
-    static extern (C) _Unwind_Reason_Code unwindCB(_Unwind_Context *ctx, void *d)
-    {
-        gdcBacktraceData* bt = cast(gdcBacktraceData*)d;
-        if(bt.numframes >= MAXFRAMES)
-            return _URC_NO_REASON;
-
-        bt.callstack[bt.numframes] = cast(void*)_Unwind_GetIP(ctx);
-        bt.numframes++;
-        return _URC_NO_REASON;
-    }
-
-    gdcBacktraceData gdcBacktrace()
-    {
-        gdcBacktraceData stackframe;
-        _Unwind_Backtrace(&unwindCB, &stackframe);
-        return stackframe;
-    }
-
-    btSymbolData gdcBacktraceSymbols(gdcBacktraceData data)
-    {
-        btSymbolData symData;
-
-        for(auto i = 0; i < data.numframes; i++)
-        {
-            version(HaveDLADDR)
-            {
-                Dl_info funcInfo;
-
-                if(data.callstack[i] !is null && dladdr(data.callstack[i], &funcInfo) != 0)
-                {
-                    symData.symbols[symData.entries].name = funcInfo.dli_sname;
-                    symData.symbols[symData.entries].fileName = funcInfo.dli_fname;
-
-                    if(funcInfo.dli_saddr is null)
-                        symData.symbols[symData.entries].offset = 0;
-                    else
-                        symData.symbols[symData.entries].offset = data.callstack[i] - funcInfo.dli_saddr;
-
-                    symData.symbols[symData.entries].address = data.callstack[i];
-                    symData.entries++;
-                }
-                else
-                {
-                    symData.symbols[symData.entries].address = data.callstack[i];
-                    symData.entries++;
-                }
-            }
-            else
-            {
-                symData.symbols[symData.entries].address = data.callstack[i];
-                symData.entries++;
-            }
-        }
-
-        return symData;
     }
 }
