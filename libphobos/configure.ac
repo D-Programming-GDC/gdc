@@ -251,6 +251,75 @@ dnl Checks for header files.
 AC_CHECK_HEADER(stdio.h,:,
   [AC_MSG_ERROR([cannot find stdio.h.])])
 
+
+HAVE_DLADDR=false
+AC_CHECK_FUNC(dladdr, HAVE_DLADDR=true)
+#AC_CHECK_LIB(dl, dladdr, [HAVE_DLADDR=true])
+AC_SUBST(HAVE_DLADDR)
+
+BACKTRACE_SUPPORTED=false
+BACKTRACE_USES_MALLOC=false
+BACKTRACE_SUPPORTS_THREADS=false
+LIBBACKTRACE_LIB=""
+
+CPPFLAGS+=" -I../libbacktrace "
+
+AC_ARG_ENABLE(libbacktrace,
+ [  --disable-libbacktrace  Do not use libbacktrace for backtraces],
+ check_libbacktrace_h="$enableval", check_libbacktrace_h="yes")
+
+if test $check_libbacktrace_h = yes ; then
+  AC_CHECK_HEADER(backtrace-supported.h, have_libbacktrace_h=true,
+    have_libbacktrace_h=false)
+else
+  have_libbacktrace_h=false
+fi
+
+if $have_libbacktrace_h; then
+  AC_MSG_CHECKING([libbacktrace: BACKTRACE_SUPPORTED])
+  AC_EGREP_CPP(FOUND_LIBBACKTRACE_RESULT_GDC,
+  [
+  #include <backtrace-supported.h>
+  #if BACKTRACE_SUPPORTED
+    FOUND_LIBBACKTRACE_RESULT_GDC
+  #endif
+  ], BACKTRACE_SUPPORTED=true, BACKTRACE_SUPPORTED=false)
+  AC_MSG_RESULT($BACKTRACE_SUPPORTED)
+
+  AC_MSG_CHECKING([libbacktrace: BACKTRACE_USES_MALLOC])
+  AC_EGREP_CPP(FOUND_LIBBACKTRACE_RESULT_GDC,
+  [
+  #include <backtrace-supported.h>
+  #if BACKTRACE_USES_MALLOC
+    FOUND_LIBBACKTRACE_RESULT_GDC
+  #endif
+  ], BACKTRACE_USES_MALLOC=true, BACKTRACE_USES_MALLOC=false)
+  AC_MSG_RESULT($BACKTRACE_USES_MALLOC)
+
+  AC_MSG_CHECKING([libbacktrace: BACKTRACE_SUPPORTS_THREADS])
+  AC_EGREP_CPP(FOUND_LIBBACKTRACE_RESULT_GDC,
+  [
+  #include <backtrace-supported.h>
+  #if BACKTRACE_SUPPORTS_THREADS
+    FOUND_LIBBACKTRACE_RESULT_GDC
+  #endif
+  ], BACKTRACE_SUPPORTS_THREADS=true, BACKTRACE_SUPPORTS_THREADS=false)
+  AC_MSG_RESULT($BACKTRACE_SUPPORTS_THREADS)
+fi
+
+AM_CONDITIONAL([BACKTRACE_SUPPORTED], [$BACKTRACE_SUPPORTED])
+
+if $BACKTRACE_SUPPORTED; then
+  LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+else
+  LIBBACKTRACE_LIB=""
+fi
+
+AC_SUBST(LIBBACKTRACE_LIB)
+AC_SUBST(BACKTRACE_SUPPORTED)
+AC_SUBST(BACKTRACE_USES_MALLOC)
+AC_SUBST(BACKTRACE_SUPPORTS_THREADS)
+
 dnl AC_HEADER_STDC
 # TODO...
 
@@ -466,4 +535,4 @@ _EOF
 ])
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms])
+AC_OUTPUT([Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d])
