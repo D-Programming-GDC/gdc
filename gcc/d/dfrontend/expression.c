@@ -18,10 +18,6 @@
 #include <complex.h>
 #endif
 
-#if _WIN32 && __DMC__
-extern "C" const char * __cdecl __locale_decpoint;
-#endif
-
 #include "rmem.h"
 #include "port.h"
 #include "root.h"
@@ -1870,11 +1866,7 @@ real_t Expression::toImaginary()
 complex_t Expression::toComplex()
 {
     error("Floating point constant expression expected instead of %s", toChars());
-#ifdef IN_GCC
-    return complex_t(real_t(0)); // %% nicer
-#else
     return 0.0;
-#endif
 }
 
 StringExp *Expression::toString()
@@ -2751,20 +2743,12 @@ char *RealExp::toChars()
 
 dinteger_t RealExp::toInteger()
 {
-#ifdef IN_GCC
-    return (sinteger_t) toReal().toInt();
-#else
     return (sinteger_t) toReal();
-#endif
 }
 
 uinteger_t RealExp::toUInteger()
 {
-#ifdef IN_GCC
-    return (uinteger_t) toReal().toInt();
-#else
     return (uinteger_t) toReal();
-#endif
 }
 
 real_t RealExp::toReal()
@@ -2830,12 +2814,8 @@ Expression *RealExp::semantic(Scope *sc)
 
 int RealExp::isBool(int result)
 {
-#ifdef IN_GCC
-    return result ? (! value.isZero()) : (value.isZero());
-#else
     return result ? (value != 0)
                   : (value == 0);
-#endif
 }
 
 void floatToBuffer(OutBuffer *buf, Type *type, const real_t& value)
@@ -2848,35 +2828,14 @@ void floatToBuffer(OutBuffer *buf, Type *type, const real_t& value)
      * "-1.18973e+4932\0".length == 17
      * "-0xf.fffffffffffffffp+16380\0".length == 28
      */
-#ifdef IN_GCC
-    char buffer[48];
-    real_t parsed_value;
-
-    value.format(buffer, sizeof(buffer));
-    parsed_value = real_t::parse(buffer, real_t::LongDouble);
-    if (parsed_value.isIdenticalTo(value))
-        buf->writestring(buffer);
-    else
-    {
-        value.formatHex(buffer, sizeof(buffer));
-        buf->writestring(buffer);
-    }
-#else
     char buffer[32];
     ld_sprint(buffer, 'g', value);
     assert(strlen(buffer) < sizeof(buffer) / sizeof(buffer[0]));
-#if _WIN32 && __DMC__
-    const char *save = __locale_decpoint;
-    __locale_decpoint = ".";
-    real_t r = strtold(buffer, NULL);
-    __locale_decpoint = save;
-#else
-    real_t r = strtold(buffer, NULL);
-#endif
+
+    real_t r = Port::strtold(buffer, NULL);
     if (r != value)                     // if exact duplication
         ld_sprint(buffer, 'a', value);
     buf->writestring(buffer);
-#endif
 
     if (type)
     {
@@ -2923,10 +2882,8 @@ void realToMangleBuffer(OutBuffer *buf, real_t value)
 
     if (Port::isNan(value))
         buf->writestring("NAN");        // no -NAN bugs
-#ifdef IN_GCC
     else if (Port::isInfinity(value))
-        buf->writestring(value.isNegative() ? "NINF" : "INF");
-#endif
+        buf->writestring(value < 0 ? "NINF" : "INF");
     else
     {
         char buffer[36];
@@ -2990,20 +2947,12 @@ char *ComplexExp::toChars()
 
 dinteger_t ComplexExp::toInteger()
 {
-#ifdef IN_GCC
-    return (sinteger_t) toReal().toInt();
-#else
     return (sinteger_t) toReal();
-#endif
 }
 
 uinteger_t ComplexExp::toUInteger()
 {
-#ifdef IN_GCC
-    return (uinteger_t) toReal().toInt();
-#else
     return (uinteger_t) toReal();
-#endif
 }
 
 real_t ComplexExp::toReal()
@@ -3057,19 +3006,11 @@ void ComplexExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     /* Print as:
      *  (re+imi)
      */
-#ifdef IN_GCC
-    char buf1[sizeof(value) * 3 + 8 + 1];
-    char buf2[sizeof(value) * 3 + 8 + 1];
-    creall(value).format(buf1, sizeof(buf1));
-    cimagl(value).format(buf2, sizeof(buf2));
-    buf->printf("(%s+%si)", buf1, buf2);
-#else
     buf->writeByte('(');
     floatToBuffer(buf, type, creall(value));
     buf->writeByte('+');
     floatToBuffer(buf, type, cimagl(value));
     buf->writestring("i)");
-#endif
 }
 
 void ComplexExp::toMangleBuffer(OutBuffer *buf)
@@ -12035,8 +11976,8 @@ Expression *PowExp::semantic(Scope *sc)
         sinteger_t intpow = 0;
         if (e2->op == TOKint64 && ((sinteger_t)e2->toInteger() == 2 || (sinteger_t)e2->toInteger() == 3))
             intpow = e2->toInteger();
-        else if (e2->op == TOKfloat64 && e2->toReal() == (real_t)(e2->toInteger()))
-            intpow = e2->toInteger();
+        else if (e2->op == TOKfloat64 && (e2->toReal() == (sinteger_t)(e2->toReal())))
+            intpow = (sinteger_t)(e2->toReal());
 
         // Deal with x^^2, x^^3 immediately, since they are of practical importance.
         if (intpow == 2 || intpow == 3)

@@ -2780,11 +2780,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident, int flag)
 {
     Expression *e;
     d_int64 ivalue;
-#ifdef IN_GCC
-    real_t    fvalue;
-#else
     d_float80 fvalue;
-#endif
 
     //printf("TypeBasic::getProperty('%s')\n", ident->toChars());
     if (ident == Id::max)
@@ -2812,7 +2808,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident, int flag)
             case Tfloat64:      fvalue = DBL_MAX;       goto Lfvalue;
             case Tcomplex80:
             case Timaginary80:
-            case Tfloat80:      fvalue = LDBL_MAX;      goto Lfvalue;
+            case Tfloat80:      fvalue = Port::ldbl_max; goto Lfvalue;
         }
     }
     else if (ident == Id::min)
@@ -2875,7 +2871,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident, int flag)
             case Tfloat64:
             case Tfloat80:
             {
-                fvalue = Port::nan;
+                fvalue = Port::ldbl_nan;
                 goto Lfvalue;
             }
         }
@@ -2893,7 +2889,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident, int flag)
             case Tfloat32:
             case Tfloat64:
             case Tfloat80:
-                fvalue = Port::infinity;
+                fvalue = Port::ldbl_infinity;
                 goto Lfvalue;
         }
     }
@@ -3113,34 +3109,12 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
 }
 
 Expression *TypeBasic::defaultInit(Loc loc)
-{   dinteger_t value = 0;
-
-#if SNAN_DEFAULT_INIT
-#ifndef IN_GCC
-    /*
-     * Use a payload which is different from the machine NaN,
-     * so that uninitialised variables can be
-     * detected even if exceptions are disabled.
-     */
-    union
-    {   unsigned short us[8];
-        longdouble     ld;
-    } snan = {{ 0, 0, 0, 0xA000, 0x7FFF }};
-    /*
-     * Although long doubles are 10 bytes long, some
-     * C ABIs pad them out to 12 or even 16 bytes, so
-     * leave enough space in the snan array.
-     */
-    assert(Target::realsize <= sizeof(snan));
-    d_float80 fvalue = snan.ld;
-#else
-    real_t fvalue = Port::snan;
-#endif
-#endif
-
+{
 #if LOGDEFAULTINIT
     printf("TypeBasic::defaultInit() '%s'\n", toChars());
 #endif
+    dinteger_t value = 0;
+
     switch (ty)
     {
         case Tchar:
@@ -3159,7 +3133,7 @@ Expression *TypeBasic::defaultInit(Loc loc)
         case Tfloat64:
         case Tfloat80:
 #if SNAN_DEFAULT_INIT
-            return new RealExp(loc, fvalue, this);
+            return new RealExp(loc, Port::snan, this);
 #else
             return getProperty(loc, Id::nan);
 #endif
@@ -3170,8 +3144,8 @@ Expression *TypeBasic::defaultInit(Loc loc)
 #if SNAN_DEFAULT_INIT
         {   // Can't use fvalue + I*fvalue (the im part becomes a quiet NaN).
             complex_t cvalue;
-            ((real_t *)&cvalue)[0] = fvalue;
-            ((real_t *)&cvalue)[1] = fvalue;
+            ((real_t *)&cvalue)[0] = Port::snan;
+            ((real_t *)&cvalue)[1] = Port::snan;
             return new ComplexExp(loc, cvalue, this);
         }
 #else
