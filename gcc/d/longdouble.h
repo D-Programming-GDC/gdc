@@ -24,10 +24,6 @@ struct Type;
 struct longdouble
 {
  public:
-  // Including gcc/real.h presents too many problems, so
-  // just statically allocate enough space for REAL_VALUE_TYPE.
-#define REAL_T_SIZE (16 + sizeof (long))/sizeof (long) + 1
-
   enum Mode
   {
     Float,
@@ -36,78 +32,137 @@ struct longdouble
     NumModes
   };
 
-  struct fake_t
-  {
-    int c;
-    int s;
-    int e;
-    long m[REAL_T_SIZE];
-  };
-
   static void init (void);
-  static longdouble parse (const char *str, Mode mode);
-
-  // This constructor prevent the use of the longdouble in a union
-  longdouble (void) { }
-  longdouble (const longdouble& r);
 
   const real_value& rv (void) const;
   real_value& rv (void);
-  longdouble (const real_value& rv);
-  longdouble (int v);
-  longdouble (uint64_t v);
-  longdouble (int64_t v);
-  longdouble (double d);
 
-  longdouble& operator= (const longdouble& r);
-  longdouble& operator= (int v);
-  longdouble operator+ (const longdouble& r);
-  longdouble operator- (const longdouble& r);
-  longdouble operator- (void);
-  longdouble operator* (const longdouble& r);
-  longdouble operator/ (const longdouble& r);
-  longdouble operator% (const longdouble& r);
+  // No constructor to be able to use this class in a union.
+  template<typename T> longdouble& operator = (T x)
+  { set (x); return *this;} 
 
-  bool operator< (const longdouble& r);
-  bool operator> (const longdouble& r);
-  bool operator<= (const longdouble& r);
-  bool operator>= (const longdouble& r);
-  bool operator== (const longdouble& r);
-  bool operator!= (const longdouble& r);
+  // We need to list all basic types to avoid ambiguities
+  void set (float d);
+  void set (double d);
+  void set (real_value& rv);
 
-  uint64_t toInt (void) const;
-  uint64_t toInt (Type *rt, Type *it) const;
-  bool isZero (void);
-  bool isNegative (void);
+  void set (int8_t d);
+  void set (int16_t d);
+  void set (int32_t d);
+  void set (int64_t d);
+
+  void set (uint8_t d);
+  void set (uint16_t d);
+  void set (uint32_t d);
+  void set (uint64_t d);
+
+  void set (bool d);
+
+  // Rvalue operators.
+  operator float (void);
+  operator double (void);
+  operator real_value& (void);
+
+  operator int8_t (void);
+  operator int16_t (void);
+  operator int32_t (void);
+  operator int64_t (void);
+
+  operator uint8_t (void);
+  operator uint16_t (void);
+  operator uint32_t (void);
+  operator uint64_t (void);
+
+  operator bool (void);
+
+  // Arithmetic operators.
+  longdouble operator + (const longdouble& r);
+  longdouble operator - (const longdouble& r);
+  longdouble operator * (const longdouble& r);
+  longdouble operator / (const longdouble& r);
+  longdouble operator % (const longdouble& r);
+
+  longdouble operator - (void);
+
+  // Comparison operators.
+  bool operator < (const longdouble& r);
+  bool operator <= (const longdouble& r);
+  bool operator > (const longdouble& r);
+  bool operator >= (const longdouble& r);
+  bool operator == (const longdouble& r);
+  bool operator != (const longdouble& r);
+
   bool isIdenticalTo (const longdouble& r) const;
   int format (char *buf, unsigned buf_size) const;
   int formatHex (char *buf, unsigned buf_size) const;
+
   // for debugging:
   void dump (void);
 
  private:
-  // prevent this from being used
-  longdouble& operator= (float)
-  { return *this; }
+  longdouble from_shwi (Type *type, int64_t d);
+  longdouble from_uhwi (Type *type, uint64_t d);
+  int64_t to_shwi (Type *type) const;
+  uint64_t to_uhwi (Type *type) const;
 
-  longdouble& operator= (double)
-  { return *this; }
+  // Including gcc/real.h presents too many problems, so
+  // just statically allocate enough space for REAL_VALUE_TYPE.
+#define REALSZ (16 + sizeof (long))/sizeof (long) + 1
 
-  fake_t frv_;
+  int exp[4];
+  long sig[REALSZ];
 };
 
+// "volatile" is not required.
+typedef longdouble volatile_longdouble;
 
-template<typename T> longdouble ldouble(T x)
+// Use ldouble() to explicitely create a longdouble value.
+template<typename T>
+inline longdouble
+ldouble (T x)
 {
-  return (longdouble) x;
+  longdouble d;
+  d.set (x);
+  return d;
 }
 
-inline int ld_sprint (char* str, int fmt, longdouble x)
-{
-  if(fmt == 'a' || fmt == 'A')
-    return x.formatHex(str, 32);
+template<typename T> inline longdouble operator + (longdouble ld, T x) { return ld + ldouble (x); }
+template<typename T> inline longdouble operator - (longdouble ld, T x) { return ld - ldouble (x); }
+template<typename T> inline longdouble operator * (longdouble ld, T x) { return ld * ldouble (x); }
+template<typename T> inline longdouble operator / (longdouble ld, T x) { return ld / ldouble (x); }
 
-  return x.format(str, 32);
+template<typename T> inline longdouble operator + (T x, longdouble ld) { return ldouble (x) + ld; }
+template<typename T> inline longdouble operator - (T x, longdouble ld) { return ldouble (x) - ld; }
+template<typename T> inline longdouble operator * (T x, longdouble ld) { return ldouble (x) * ld; }
+template<typename T> inline longdouble operator / (T x, longdouble ld) { return ldouble (x) / ld; }
+
+template<typename T> inline longdouble& operator += (longdouble& ld, T x) { return ld = ld + x; }
+template<typename T> inline longdouble& operator -= (longdouble& ld, T x) { return ld = ld - x; }
+template<typename T> inline longdouble& operator *= (longdouble& ld, T x) { return ld = ld * x; }
+template<typename T> inline longdouble& operator /= (longdouble& ld, T x) { return ld = ld / x; }
+
+template<typename T> inline bool operator <  (longdouble ld, T x) { return ld <  ldouble (x); }
+template<typename T> inline bool operator <= (longdouble ld, T x) { return ld <= ldouble (x); }
+template<typename T> inline bool operator >  (longdouble ld, T x) { return ld >  ldouble (x); }
+template<typename T> inline bool operator >= (longdouble ld, T x) { return ld >= ldouble (x); }
+template<typename T> inline bool operator == (longdouble ld, T x) { return ld == ldouble (x); }
+template<typename T> inline bool operator != (longdouble ld, T x) { return ld != ldouble (x); }
+
+template<typename T> inline bool operator < (T x, longdouble ld) { return ldouble (x) <  ld; }
+template<typename T> inline bool operator <= (T x, longdouble ld) { return ldouble (x) <= ld; }
+template<typename T> inline bool operator > (T x, longdouble ld) { return ldouble (x) >  ld; }
+template<typename T> inline bool operator >= (T x, longdouble ld) { return ldouble (x) >= ld; }
+template<typename T> inline bool operator == (T x, longdouble ld) { return ldouble (x) == ld; }
+template<typename T> inline bool operator != (T x, longdouble ld) { return ldouble (x) != ld; }
+
+
+inline size_t
+ld_sprint (char* str, int fmt, longdouble x)
+{
+  if (fmt == 'a' || fmt == 'A')
+    return x.formatHex (str, 32);
+
+  return x.format (str, 32);
 }
 
 
