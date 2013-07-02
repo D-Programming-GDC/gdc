@@ -445,6 +445,7 @@ struct TypeVector : Type
     int checkBoolean();
     MATCH implicitConvTo(Type *to);
     Expression *defaultInit(Loc loc);
+    Expression *defaultInitLiteral(Loc loc);
     TypeBasic *elementType();
     int isZeroInit(Loc loc);
     TypeInfoDeclaration *getTypeInfoDeclaration();

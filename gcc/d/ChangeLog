@@ -3,6 +3,8 @@
 	* d-objfile.cc(Module::genobjfile): Don't free current_module_info.
 	* d-codegen.cc(IRState::buildAssignOp): Don't create a SAVE_EXPR
 	around comma expressions used as lvalues.
+	* d-todt.cc(TypeSArray::toDtElem): Get underlying vector basetype when
+	layouting out data in a static array.
 
 2013-06-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
