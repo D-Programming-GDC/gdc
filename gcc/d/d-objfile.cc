@@ -1262,7 +1262,7 @@ Module::genobjfile (int)
   // Finish off any thunks deferred during compilation.
   write_deferred_thunks();
 
-  free (current_module_info);
+  current_module_info = NULL;
   current_module_decl = NULL;
 }
 
