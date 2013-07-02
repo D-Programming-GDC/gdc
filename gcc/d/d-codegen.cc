@@ -1799,14 +1799,30 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
       e1b = ce->e1;
     }
 
-  // Prevent multiple evaluations of LHS
-  tree lhs = e1b->toElem (this);
+  // Prevent multiple evaluations of LHS, but watch out!
+  // The LHS expression could be an assignment, to which
+  // it's operation gets lost during gimplification.
+  tree lexpr = NULL_TREE;
+  tree lhs;
+
+  if (e1b->op == TOKcomma)
+    {
+      CommaExp *ce = (CommaExp *) e1b;
+      lexpr = ce->e1->toElem (this);
+      lhs = ce->e2->toElem (this);
+    }
+  else
+    lhs = e1b->toElem (this);
+
   lhs = stabilize_reference (lhs);
 
   tree rhs = buildOp (code, e1->type->toCtype(),
 		      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
 
   tree expr = modify_expr (lhs, convert_expr (rhs, e1->type, e1b->type));
+
+  if (lexpr)
+    expr = compound_expr (lexpr, expr);
 
   return convert_expr (expr, e1b->type, type);
 }
