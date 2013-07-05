@@ -2950,6 +2950,22 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  op1 = ce.nextArg();
 	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_RINTL), 1, op1);
 
+	case INTRINSIC_YL2X:
+	case INTRINSIC_YL2XP1:
+	  op1 = ce.nextArg();
+	  op2 = ce.nextArg();
+	  type = TREE_TYPE (TREE_TYPE (callee));
+
+	  if (intrinsic == INTRINSIC_YL2XP1)
+	    op1 = fold_build2 (PLUS_EXPR, TREE_TYPE (op1), op1,
+			       fold_convert (TREE_TYPE (op1), size_one_node));
+
+	  // exp = log2 (op1)
+	  exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_LOG2L), 1, op1);
+
+	  // return y * exp
+	  return fold_build2 (MULT_EXPR, type, op2, exp);
+
 	case INTRINSIC_VA_ARG:
 	case INTRINSIC_C_VA_ARG:
 	  op1 = ce.nextArg();
@@ -3110,11 +3126,11 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
   else
     {
       // Check if it's a front-end builtin.
-      static const char FeZe [] = "FNaNbNfeZe";      // @safe pure nothrow real function(real)
-      static const char FeZe2[] = "FNaNbNeeZe";      // @trusted pure nothrow real function(real)
-      static const char FuintZint[] = "FNaNbNfkZi";  // @safe pure nothrow int function(uint)
-      static const char FuintZuint[] = "FNaNbNfkZk"; // @safe pure nothrow uint function(uint)
-      static const char FulongZint[] = "FNaNbNfmZi"; // @safe pure nothrow int function(uint)
+      static const char FeZe [] = "FNaNbNfeZe";		    // @safe pure nothrow real function(real)
+      static const char FeZe2[] = "FNaNbNeeZe";		    // @trusted pure nothrow real function(real)
+      static const char FuintZint[] = "FNaNbNfkZi";	    // @safe pure nothrow int function(uint)
+      static const char FuintZuint[] = "FNaNbNfkZk";	    // @safe pure nothrow uint function(uint)
+      static const char FulongZint[] = "FNaNbNfmZi";	    // @safe pure nothrow int function(uint)
       static const char FrealZlong [] = "FNaNbNfeZl";       // @safe pure nothrow long function(real)
       static const char FlongplongZint [] = "FNaNbNfPmmZi"; // @safe pure nothrow int function(long*, long)
       static const char FintpintZint [] = "FNaNbNfPkkZi";   // @safe pure nothrow int function(int*, int)
@@ -3176,7 +3192,7 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 	  static const char *math_names[] = {
 	      "cos", "fabs", "ldexp",
 	      "rint", "rndtol", "sin",
-	      "sqrt",
+	      "sqrt", "yl2x", "yl2xp1",
 	  };
 	  const size_t sz = sizeof (math_names) / sizeof (char *);
 	  int i = binary (decl->ident->string, math_names, sz);
@@ -3186,7 +3202,7 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 
 	  // Adjust 'i' for this range of enums
 	  i += INTRINSIC_COS;
-	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
+	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_YL2XP1);
 
 	  switch (i)
 	    {
@@ -3209,10 +3225,10 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 	      break;
 
 	    case INTRINSIC_SQRT:
-	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0 || //double
-		    strcmp (ftype->deco, "FNaNbNffZf") == 0 || //& float version
-		    strcmp (ftype->deco, FeZe) == 0 ||
-		    strcmp (ftype->deco, FeZe2) == 0))
+	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0
+		    || strcmp (ftype->deco, "FNaNbNffZf") == 0
+		    || strcmp (ftype->deco, FeZe) == 0
+		    || strcmp (ftype->deco, FeZe2) == 0))
 		return;
 	      break;
 	    }

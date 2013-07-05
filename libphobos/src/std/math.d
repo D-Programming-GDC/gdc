@@ -1527,7 +1527,6 @@ unittest
 
 unittest
 {
-    pragma(msg, "overflow/underflow test disabled in gdc. stdc exp doesn't set these flags");
     FloatingPointControl ctrl;
     ctrl.disableExceptions(FloatingPointControl.allExceptions);
     ctrl.rounding = FloatingPointControl.roundToNearest;

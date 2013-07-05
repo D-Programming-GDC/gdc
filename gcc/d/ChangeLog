@@ -1,3 +1,11 @@
+2013-07-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-longdouble.cc(longdouble::set): Intepret set values at higher
+	precision for min/max properties.
+	* d-codegen.cc(maybe_set_builtin_frontend): Add yl2x and yl2xp1
+	math intrinsics.
+	(IRState::maybeExpandSpecialCall): Likewise.
+
 2013-07-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(Module::genobjfile): Don't free current_module_info.

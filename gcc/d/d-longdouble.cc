@@ -198,7 +198,7 @@ longdouble::set (float d)
 {
   char buf[32];
   snprintf(buf, sizeof (buf), "%f", d);
-  real_from_string3 (&rv(), buf, TYPE_MODE (float_type_node));
+  real_from_string3 (&rv(), buf, TYPE_MODE (double_type_node));
 }
 
 void
@@ -206,7 +206,7 @@ longdouble::set (double d)
 {
   char buf[32];
   snprintf(buf, sizeof (buf), "%lf", d);
-  real_from_string3 (&rv(), buf, TYPE_MODE (double_type_node));
+  real_from_string3 (&rv(), buf, TYPE_MODE (long_double_type_node));
 }
 
 // These functions should never be called.
@@ -241,8 +241,8 @@ bool (void)
 
 void longdouble::set (int8_t d)  { from_shwi (Type::tfloat32, d); }
 void longdouble::set (int16_t d) { from_shwi (Type::tfloat32, d); }
-void longdouble::set (int32_t d) { from_shwi (Type::tfloat32, d); }
-void longdouble::set (int64_t d) { from_shwi (Type::tfloat64, d); }
+void longdouble::set (int32_t d) { from_shwi (Type::tfloat64, d); }
+void longdouble::set (int64_t d) { from_shwi (Type::tfloat80, d); }
 
 longdouble::operator int8_t (void)  { return to_shwi (Type::tint8); }
 longdouble::operator int16_t (void) { return to_shwi (Type::tint16); }
@@ -251,8 +251,8 @@ longdouble::operator int64_t (void) { return to_shwi (Type::tint64); }
 
 void longdouble::set (uint8_t d)  { from_uhwi (Type::tfloat32, d); }
 void longdouble::set (uint16_t d) { from_uhwi (Type::tfloat32, d); }
-void longdouble::set (uint32_t d) { from_uhwi (Type::tfloat32, d); }
-void longdouble::set (uint64_t d) { from_uhwi (Type::tfloat64, d); }
+void longdouble::set (uint32_t d) { from_uhwi (Type::tfloat64, d); }
+void longdouble::set (uint64_t d) { from_uhwi (Type::tfloat80, d); }
 
 longdouble::operator uint8_t (void)  { return to_uhwi (Type::tuns8); }
 longdouble::operator uint16_t (void) { return to_uhwi (Type::tuns16); }
