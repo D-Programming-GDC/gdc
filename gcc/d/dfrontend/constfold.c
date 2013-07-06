@@ -326,11 +326,7 @@ Expression *Mul(Type *type, Expression *e1, Expression *e2)
 
     if (type->isfloating())
     {   complex_t c;
-#ifdef IN_GCC
-        real_t r;
-#else
         d_float80 r;
-#endif
 
         if (e1->type->isreal())
         {
@@ -397,11 +393,7 @@ Expression *Div(Type *type, Expression *e1, Expression *e2)
 
     if (type->isfloating())
     {   complex_t c;
-#ifdef IN_GCC
-        real_t r;
-#else
         d_float80 r;
-#endif
 
         //e1->type->print();
         //e2->type->print();
@@ -603,7 +595,7 @@ Expression *Pow(Type *type, Expression *e1, Expression *e2)
         // x ^^ y for x < 0 and y not an integer is not defined
         if (e1->toReal() < 0.0)
         {
-            e = new RealExp(loc, ldouble(Port::nan), type);
+            e = new RealExp(loc, Port::ldbl_nan, type);
         }
         else if (e2->toReal() == 0.5)
         {
@@ -1233,23 +1225,7 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     {
         if (e1->type->isfloating())
         {   dinteger_t result;
-#ifdef IN_GCC
-            Type * rt = e1->type;
-            if (rt->iscomplex())
-            {
-                switch (rt->toBasetype()->ty)
-                {
-                    case Tcomplex32: rt = Type::tfloat32; break;
-                    case Tcomplex64: rt = Type::tfloat64; break;
-                    case Tcomplex80: rt = Type::tfloat80; break;
-                    default:
-                        assert(0);
-                }
-            }
-            d_int64 r = e1->toReal().toInt(rt, type);
-#else
             real_t r = e1->toReal();
-#endif
 
             switch (typeb->ty)
             {
@@ -1386,6 +1362,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
         {   ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
             e = (*ale->elements)[i];
             e->type = type;
+            e->loc = loc;
             if (e->hasSideEffect())
                 e = EXP_CANT_INTERPRET;
         }
@@ -1404,6 +1381,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
             else
             {   e = (*ale->elements)[i];
                 e->type = type;
+                e->loc = loc;
                 if (e->hasSideEffect())
                     e = EXP_CANT_INTERPRET;
             }
@@ -1424,6 +1402,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
             if (ex->isBool(TRUE))
             {   e = (*ae->values)[i];
                 e->type = type;
+                e->loc = loc;
                 if (e->hasSideEffect())
                     e = EXP_CANT_INTERPRET;
                 break;

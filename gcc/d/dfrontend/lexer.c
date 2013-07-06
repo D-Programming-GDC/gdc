@@ -30,11 +30,6 @@
 #include "id.h"
 #include "module.h"
 
-#if _WIN32 && __DMC__
-// from \dm\src\include\setlocal.h
-extern "C" char * __cdecl __locale_decpoint;
-#endif
-
 extern int HtmlNamedEntity(unsigned char *p, size_t length);
 
 #define LS 0x2028       // UTF line separator
@@ -90,7 +85,7 @@ void *Token::operator new(size_t size)
 #ifdef DEBUG
 void Token::print()
 {
-    fprintf(stdmsg, "%s\n", toChars());
+    fprintf(stderr, "%s\n", toChars());
 }
 #endif
 
@@ -102,22 +97,14 @@ const char *Token::toChars()
     switch (value)
     {
         case TOKint32v:
-#ifdef IN_GCC
-            sprintf(buffer,"%d",(d_int32)int64value);
-#else
             sprintf(buffer,"%d",int32value);
-#endif
             break;
 
         case TOKuns32v:
         case TOKcharv:
         case TOKwcharv:
         case TOKdcharv:
-#ifdef IN_GCC
-            sprintf(buffer,"%uU",(d_uns32)uns64value);
-#else
             sprintf(buffer,"%uU",uns32value);
-#endif
             break;
 
         case TOKint64v:
@@ -128,20 +115,6 @@ const char *Token::toChars()
             sprintf(buffer,"%lluUL",(ulonglong)uns64value);
             break;
 
-#ifdef IN_GCC
-        case TOKfloat32v:
-        case TOKfloat64v:
-        case TOKfloat80v:
-            float80value.format(buffer, sizeof(buffer));
-            break;
-        case TOKimaginary32v:
-        case TOKimaginary64v:
-        case TOKimaginary80v:
-            float80value.format(buffer, sizeof(buffer));
-            // %% buffer
-            strcat(buffer, "i");
-            break;
-#else
         case TOKfloat32v:
             ld_sprint(buffer, 'g', float80value);
             strcat(buffer, "f");
@@ -170,7 +143,6 @@ const char *Token::toChars()
             ld_sprint(buffer, 'g', float80value);
             strcat(buffer, "Li");
             break;
-#endif
 
         case TOKstring:
         {   OutBuffer buf;
@@ -672,11 +644,7 @@ void Lexer::scan(Token *t)
                     }
                     else if (id == Id::VENDOR)
                     {
-#ifdef IN_GCC
-                        t->ustring = (unsigned char *)"GDC";
-#else
-                        t->ustring = (unsigned char *)"Digital Mars D";
-#endif
+                        t->ustring = (unsigned char *)global.compiler.vendor;
                         goto Lstr;
                     }
                     else if (id == Id::TIMESTAMP)
@@ -690,6 +658,7 @@ void Lexer::scan(Token *t)
                     else if (id == Id::VERSIONX)
                     {   unsigned major = 0;
                         unsigned minor = 0;
+                        bool point = false;
 
                         for (const char *p = global.version + 1; 1; p++)
                         {
@@ -697,7 +666,11 @@ void Lexer::scan(Token *t)
                             if (isdigit((unsigned char)c))
                                 minor = minor * 10 + c - '0';
                             else if (c == '.')
-                            {   major = minor;
+                            {
+                                if (point)
+                                    break;      // ignore everything after second '.'
+                                point = true;
+                                major = minor;
                                 minor = 0;
                             }
                             else
@@ -907,6 +880,8 @@ void Lexer::scan(Token *t)
                         }
                         continue;
                     }
+                    default:
+                        break;
                 }
                 t->value = TOKdiv;
                 return;
@@ -1909,7 +1884,9 @@ TOK Lexer::number(Token *t)
     enum STATE state;
 
     enum FLAGS
-    {   FLAGS_decimal  = 1,             // decimal
+    {
+        FLAGS_none     = 0,
+        FLAGS_decimal  = 1,             // decimal
         FLAGS_unsigned = 2,             // u or U suffix
         FLAGS_long     = 4,             // l or L suffix
     };
@@ -2173,7 +2150,7 @@ done:
 
     switch (flags)
     {
-        case 0:
+        case FLAGS_none:
             /* Octal or Hexadecimal constant.
              * First that fits: int, uint, long, ulong
              */
@@ -2356,47 +2333,25 @@ done:
 
     stringbuffer.writeByte(0);
 
-#if _WIN32 && __DMC__
-    char *save = __locale_decpoint;
-    __locale_decpoint = ".";
-#endif
-#ifdef IN_GCC
-    t->float80value = real_t::parse((char *)stringbuffer.data, real_t::LongDouble);
-#else
-    t->float80value = strtold((char *)stringbuffer.data, NULL);
-#endif
+    t->float80value = Port::strtold((char *)stringbuffer.data, NULL);
     errno = 0;
     switch (*p)
     {
         case 'F':
         case 'f':
-#ifdef IN_GCC
-            real_t::parse((char *)stringbuffer.data, real_t::Float);
-#else
-            {   // Only interested in errno return
-                double d = strtof((char *)stringbuffer.data, NULL);
-                // Assign to d to keep gcc warnings at bay,
-                // but then CppCheck complains that d is never used.
-            }
-#endif
+            // Only interested in errno return
+            (void)Port::strtof((char *)stringbuffer.data, NULL);
             result = TOKfloat32v;
             p++;
             break;
 
         default:
-#ifdef IN_GCC
-            real_t::parse((char *)stringbuffer.data, real_t::Double);
-#else
             /* Should do our own strtod(), since dmc and linux gcc
              * accept 2.22507e-308, while apple gcc will only take
              * 2.22508e-308. Not sure who is right.
              */
-            {   // Only interested in errno return
-                double d = strtod((char *)stringbuffer.data, NULL);
-                // Assign to d to keep gcc warnings at bay
-                // but then CppCheck complains that d is never used.
-            }
-#endif
+            // Only interested in errno return
+            (void)Port::strtod((char *)stringbuffer.data, NULL);
             result = TOKfloat64v;
             break;
 
@@ -2426,9 +2381,6 @@ done:
             default: break;
         }
     }
-#if _WIN32 && __DMC__
-    __locale_decpoint = save;
-#endif
     if (errno == ERANGE)
         error("number is not representable");
     return result;
@@ -2787,7 +2739,7 @@ Identifier *Lexer::uniqueId(const char *s, int num)
 {   char buffer[32];
     size_t slen = strlen(s);
 
-    assert(slen + sizeof(num) * 3 + 1 <= sizeof(buffer));
+    assert(slen + sizeof(num) * 3 + 1 <= sizeof(buffer) / sizeof(buffer[0]));
     sprintf(buffer, "%s%d", s, num);
     return idPool(buffer);
 }
@@ -2926,13 +2878,15 @@ static Keyword keywords[] =
 #if DMDV2
     {   "pure",         TOKpure         },
     {   "nothrow",      TOKnothrow      },
-    {   "__thread",     TOKtls          },
     {   "__gshared",    TOKgshared      },
     {   "__traits",     TOKtraits       },
     {   "__vector",     TOKvector       },
     {   "__overloadset", TOKoverloadset },
     {   "__FILE__",     TOKfile         },
     {   "__LINE__",     TOKline         },
+    {   "__MODULE__",   TOKmodulestring },
+    {   "__FUNCTION__", TOKfuncstring   },
+    {   "__PRETTY_FUNCTION__", TOKprettyfunc   },
     {   "shared",       TOKshared       },
     {   "immutable",    TOKimmutable    },
 #endif
@@ -2952,7 +2906,7 @@ void Lexer::initKeywords()
 {
     size_t nkeywords = sizeof(keywords) / sizeof(keywords[0]);
 
-    stringtable.init(6151);
+    stringtable._init(6151);
 
     if (global.params.Dversion == 1)
         nkeywords -= 2;

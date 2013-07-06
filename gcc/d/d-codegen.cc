@@ -855,7 +855,7 @@ d_attribute_p (const char* name)
         return false;
 
       table = new StringTable();
-      table->init(n);
+      table->_init(n);
 
       for (const attribute_spec *p = d_attribute_table; p->name; p++)
         table->insert(p->name, strlen(p->name));
@@ -1103,7 +1103,7 @@ tree
 d_array_string (const char *str)
 {
   unsigned len = strlen (str);
-  // Assumes str is null-terminated.
+  // Assumes STR is 0-terminated.
   tree str_tree = build_string (len + 1, str);
 
   TREE_TYPE (str_tree) = d_array_type (Type::tchar, len);
@@ -1324,31 +1324,35 @@ build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *
   return rec_type;
 }
 
-// Create a SAVE_EXPR if T might have unwanted side effects if referenced
+// Create a SAVE_EXPR if EXP might have unwanted side effects if referenced
 // more than once in an expression.
 
 tree
-maybe_make_temp (tree t)
+make_temp (tree exp)
 {
-  if (d_has_side_effects (t))
-    {
-      if (TREE_CODE (t) == CALL_EXPR
-	  || TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
-	return save_expr (t);
-      else
-	return stabilize_reference (t);
-    }
-
-  return t;
+  if (TREE_CODE (exp) == CALL_EXPR
+      || TREE_CODE (TREE_TYPE (exp)) != ARRAY_TYPE)
+    return save_expr (exp);
+  else
+    return stabilize_reference (exp);
 }
 
-// Return TRUE if T can not be evaluated multiple times (i.e., in a loop body)
+tree
+maybe_make_temp (tree exp)
+{
+  if (d_has_side_effects (exp))
+    return make_temp (exp);
+
+  return exp;
+}
+
+// Return TRUE if EXP can not be evaluated multiple times (i.e., in a loop body)
 // without unwanted side effects.
 
 bool
-d_has_side_effects (tree expr)
+d_has_side_effects (tree exp)
 {
-  tree t = STRIP_NOPS (expr);
+  tree t = STRIP_NOPS (exp);
 
   // SAVE_EXPR is safe to reference more than once, but not to
   // expand in a loop.
@@ -1544,6 +1548,79 @@ d_mark_read (tree exp)
   return exp;
 }
 
+// Build equality expression between two RECORD_TYPES T1 and T2.
+// CODE is the EQ_EXPR or NE_EXPR comparison.
+// SD is the front-end struct type.
+
+tree
+build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
+{
+  tree_code tcode = (code == EQ_EXPR) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
+  tree tmemcmp = NULL_TREE;
+
+  // Let backend take care of empty struct or union comparisons.
+  if (!sd->fields.dim || sd->isUnionDeclaration())
+    {
+      tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
+				   build_address (t1), build_address (t2),
+				   size_int (sd->structsize));
+
+      return build_boolop (code, tmemcmp, integer_zero_node);
+    }
+
+  for (size_t i = 0; i < sd->fields.dim; i++)
+    {
+      VarDeclaration *vd = sd->fields[i];
+      tree sfield = vd->toSymbol()->Stree;
+
+      tree t1ref = component_ref (t1, sfield);
+      tree t2ref = component_ref (t2, sfield);
+      tree tcmp;
+
+      if (vd->type->ty == Tstruct)
+	{
+	  // Compare inner data structures.
+	  StructDeclaration *decl = ((TypeStruct *) vd->type)->sym;
+	  tcmp = build_struct_memcmp (code, decl, t1ref, t2ref);
+	}
+      else
+	{
+	  tree stype = vd->type->toCtype();
+	  enum machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
+
+	  if (vd->type->isintegral())
+	    {
+	      // Integer comparison, no special handling required.
+	      tcmp = build_boolop (code, t1ref, t2ref);
+	    }
+	  else if (mode != BLKmode)
+	    {
+	      // Compare field bits as their corresponding integer type.
+	      //   *((T*) &t1) == *((T*) &t2)
+	      tree tmode = lang_hooks.types.type_for_mode (mode, 1);
+
+	      t1ref = build_vconvert (tmode, t1ref);
+	      t2ref = build_vconvert (tmode, t2ref);
+
+	      tcmp = build_boolop (code, t1ref, t2ref);
+	    }
+	  else
+	    {
+	      // Simple memcmp between types.
+	      tcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
+					build_address (t1ref), build_address (t2ref),
+					TYPE_SIZE_UNIT (stype));
+
+	      tcmp = build_boolop (code, tcmp, integer_zero_node);
+	    }
+	}
+
+      tmemcmp = (tmemcmp) ? build_boolop (tcode, tmemcmp, tcmp) : tcmp;
+    }
+
+  return tmemcmp;
+}
+
 // Cast EXP (which should be a pointer) to TYPE * and then indirect.  The
 // back-end requires this cast in many cases.
 
@@ -1732,14 +1809,30 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
       e1b = ce->e1;
     }
 
-  // Prevent multiple evaluations of LHS
-  tree lhs = e1b->toElem (this);
+  // Prevent multiple evaluations of LHS, but watch out!
+  // The LHS expression could be an assignment, to which
+  // it's operation gets lost during gimplification.
+  tree lexpr = NULL_TREE;
+  tree lhs;
+
+  if (e1b->op == TOKcomma)
+    {
+      CommaExp *ce = (CommaExp *) e1b;
+      lexpr = ce->e1->toElem (this);
+      lhs = ce->e2->toElem (this);
+    }
+  else
+    lhs = e1b->toElem (this);
+
   lhs = stabilize_reference (lhs);
 
   tree rhs = buildOp (code, e1->type->toCtype(),
 		      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
 
   tree expr = modify_expr (lhs, convert_expr (rhs, e1->type, e1b->type));
+
+  if (lexpr)
+    expr = compound_expr (lexpr, expr);
 
   return convert_expr (expr, e1b->type, type);
 }
@@ -1870,7 +1963,7 @@ bind_expr (tree var_chain, tree body)
       body = compound_expr (ini, body);
     }
 
-  return save_expr (build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
+  return make_temp (build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
 }
 
 // Like compound_expr, but ARG0 or ARG1 might be NULL_TREE.
@@ -2643,13 +2736,7 @@ get_libcall (LibCall libcall)
 	}
 
       // Build extern(C) function.
-      Identifier *id = Lexer::idPool(libcall_ids[libcall]);
-      TypeFunction *tf = new TypeFunction(NULL, treturn, 0, LINKc);
-      tf->varargs = varargs ? 1 : 0;
-
-      decl = new FuncDeclaration(0, 0, id, STCstatic, tf);
-      decl->protection = PROTpublic;
-      decl->linkage = LINKc;
+      decl = FuncDeclaration::genCfunc (treturn, libcall_ids[libcall]);
 
       // Add parameter types.
       Parameters *args = new Parameters;
@@ -2657,7 +2744,9 @@ get_libcall (LibCall libcall)
       for (size_t i = 0; i < targs.dim; i++)
 	(*args)[i] = new Parameter (0, targs[i], NULL, NULL);
 
+      TypeFunction *tf = (TypeFunction *) decl->type;
       tf->parameters = args;
+      tf->varargs = varargs ? 1 : 0;
       libcall_decls[libcall] = decl;
 
       // These functions do not return except through catching a thrown exception.
@@ -2871,6 +2960,22 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  op1 = ce.nextArg();
 	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_RINTL), 1, op1);
 
+	case INTRINSIC_YL2X:
+	case INTRINSIC_YL2XP1:
+	  op1 = ce.nextArg();
+	  op2 = ce.nextArg();
+	  type = TREE_TYPE (TREE_TYPE (callee));
+
+	  if (intrinsic == INTRINSIC_YL2XP1)
+	    op1 = fold_build2 (PLUS_EXPR, TREE_TYPE (op1), op1,
+			       fold_convert (TREE_TYPE (op1), size_one_node));
+
+	  // exp = log2 (op1)
+	  exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_LOG2L), 1, op1);
+
+	  // return y * exp
+	  return fold_build2 (MULT_EXPR, type, op2, exp);
+
 	case INTRINSIC_VA_ARG:
 	case INTRINSIC_C_VA_ARG:
 	  op1 = ce.nextArg();
@@ -3031,11 +3136,11 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
   else
     {
       // Check if it's a front-end builtin.
-      static const char FeZe [] = "FNaNbNfeZe";      // @safe pure nothrow real function(real)
-      static const char FeZe2[] = "FNaNbNeeZe";      // @trusted pure nothrow real function(real)
-      static const char FuintZint[] = "FNaNbNfkZi";  // @safe pure nothrow int function(uint)
-      static const char FuintZuint[] = "FNaNbNfkZk"; // @safe pure nothrow uint function(uint)
-      static const char FulongZint[] = "FNaNbNfmZi"; // @safe pure nothrow int function(uint)
+      static const char FeZe [] = "FNaNbNfeZe";		    // @safe pure nothrow real function(real)
+      static const char FeZe2[] = "FNaNbNeeZe";		    // @trusted pure nothrow real function(real)
+      static const char FuintZint[] = "FNaNbNfkZi";	    // @safe pure nothrow int function(uint)
+      static const char FuintZuint[] = "FNaNbNfkZk";	    // @safe pure nothrow uint function(uint)
+      static const char FulongZint[] = "FNaNbNfmZi";	    // @safe pure nothrow int function(uint)
       static const char FrealZlong [] = "FNaNbNfeZl";       // @safe pure nothrow long function(real)
       static const char FlongplongZint [] = "FNaNbNfPmmZi"; // @safe pure nothrow int function(long*, long)
       static const char FintpintZint [] = "FNaNbNfPkkZi";   // @safe pure nothrow int function(int*, int)
@@ -3097,7 +3202,7 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 	  static const char *math_names[] = {
 	      "cos", "fabs", "ldexp",
 	      "rint", "rndtol", "sin",
-	      "sqrt",
+	      "sqrt", "yl2x", "yl2xp1",
 	  };
 	  const size_t sz = sizeof (math_names) / sizeof (char *);
 	  int i = binary (decl->ident->string, math_names, sz);
@@ -3107,7 +3212,7 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 
 	  // Adjust 'i' for this range of enums
 	  i += INTRINSIC_COS;
-	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
+	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_YL2XP1);
 
 	  switch (i)
 	    {
@@ -3130,10 +3235,10 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 	      break;
 
 	    case INTRINSIC_SQRT:
-	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0 || //double
-		    strcmp (ftype->deco, "FNaNbNffZf") == 0 || //& float version
-		    strcmp (ftype->deco, FeZe) == 0 ||
-		    strcmp (ftype->deco, FeZe2) == 0))
+	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0
+		    || strcmp (ftype->deco, "FNaNbNffZf") == 0
+		    || strcmp (ftype->deco, FeZe) == 0
+		    || strcmp (ftype->deco, FeZe2) == 0))
 		return;
 	      break;
 	    }
@@ -3832,7 +3937,7 @@ needs_static_chain (FuncDeclaration *f)
     {
       s = f->toParent();
       ti = s->isTemplateInstance();
-      if (ti && ti->isnested == NULL && ti->parent->isModule())
+      if (ti && ti->enclosing == NULL && ti->parent->isModule())
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
@@ -3927,7 +4032,7 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
       // %% D anonymous unions just put the fields into the outer struct...
       // does this cause problems?
       VarDeclaration *var_decl = (*fields)[i];
-      gcc_assert (var_decl && var_decl->storage_class & STCfield);
+      gcc_assert (var_decl && var_decl->isField());
 
       tree ident = var_decl->ident ? get_identifier (var_decl->ident->string) : NULL_TREE;
       tree field_decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,

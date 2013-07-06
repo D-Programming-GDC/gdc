@@ -27,6 +27,7 @@
 #include "module.h"
 #include "parse.h"
 #include "template.h"
+#include "hdrgen.h"
 
 
 /********************************* AttribDeclaration ****************************/
@@ -337,6 +338,10 @@ void AttribDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
     {
         if (decl->dim == 0)
             buf->writestring("{}");
+        else if (hgs->hdrgen && decl->dim == 1 && (*decl)[0]->isUnitTestDeclaration())
+        {   // hack for bugzilla 8081
+            buf->writestring("{}");
+        }
         else if (decl->dim == 1)
             ((*decl)[0])->toCBuffer(buf, hgs);
         else
@@ -495,7 +500,7 @@ const char *StorageClassDeclaration::stcToChars(char tmp[], StorageClass& stc)
         { STCnothrow,      TOKnothrow },
         { STCpure,         TOKpure },
         { STCref,          TOKref },
-        { STCtls,          TOKtls },
+        { STCtls },
         { STCgshared,      TOKgshared },
         { STCproperty,     TOKat,       Id::property },
         { STCsafe,         TOKat,       Id::safe },
@@ -512,6 +517,9 @@ const char *StorageClassDeclaration::stcToChars(char tmp[], StorageClass& stc)
         if (stc & tbl)
         {
             stc &= ~tbl;
+            if (tbl == STCtls)  // TOKtls was removed
+                return "__thread";
+
             enum TOK tok = table[i].tok;
 #if DMDV2
             if (tok == TOKat)
@@ -536,7 +544,7 @@ void StorageClassDeclaration::stcToCBuffer(OutBuffer *buf, StorageClass stc)
         const char *p = stcToChars(tmp, stc);
         if (!p)
             break;
-        assert(strlen(p) < sizeof(tmp));
+        assert(strlen(p) < sizeof(tmp) / sizeof(tmp[0]));
         buf->writestring(p);
         buf->writeByte(' ');
     }
@@ -956,6 +964,30 @@ void PragmaDeclaration::setScope(Scope *sc)
 {
 }
 
+static unsigned setMangleOverride(Dsymbol *s, char *sym)
+{
+    AttribDeclaration *ad = s->isAttribDeclaration();
+
+    if (ad)
+    {
+        Dsymbols *decls = ad->include(NULL, NULL);
+        unsigned nestedCount = 0;
+
+        if (decls && decls->dim)
+            for (size_t i = 0; i < decls->dim; ++i)
+                nestedCount += setMangleOverride((*decls)[i], sym);
+
+        return nestedCount;
+    }
+    else if (s->isFuncDeclaration() || s->isVarDeclaration())
+    {
+        s->isDeclaration()->mangleOverride = sym;
+        return 1;
+    }
+    else
+        return 0;
+}
+
 void PragmaDeclaration::semantic(Scope *sc)
 {   // Should be merged with PragmaStatement
 
@@ -968,7 +1000,7 @@ void PragmaDeclaration::semantic(Scope *sc)
             {
                 Expression *e = (*args)[i];
 
-                e = e->semantic(sc);
+                e = e->ctfeSemantic(sc);
                 e = resolveProperties(sc, e);
                 if (e->op != TOKerror && e->op != TOKtype)
                     e = e->ctfeInterpret();
@@ -979,12 +1011,12 @@ void PragmaDeclaration::semantic(Scope *sc)
                 StringExp *se = e->toString();
                 if (se)
                 {
-                    fprintf(stdmsg, "%.*s", (int)se->len, (char *)se->string);
+                    fprintf(stderr, "%.*s", (int)se->len, (char *)se->string);
                 }
                 else
-                    fprintf(stdmsg, "%s", e->toChars());
+                    fprintf(stderr, "%s", e->toChars());
             }
-            fprintf(stdmsg, "\n");
+            fprintf(stderr, "\n");
         }
         goto Lnodecl;
     }
@@ -996,7 +1028,7 @@ void PragmaDeclaration::semantic(Scope *sc)
         {
             Expression *e = (*args)[0];
 
-            e = e->semantic(sc);
+            e = e->ctfeSemantic(sc);
             e = resolveProperties(sc, e);
             e = e->ctfeInterpret();
             (*args)[0] = e;
@@ -1010,7 +1042,7 @@ void PragmaDeclaration::semantic(Scope *sc)
                 char *name = (char *)mem.malloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
-                fprintf(stdmsg, "library   %s\n", name);
+                fprintf(stderr, "library   %s\n", name);
                 mem.free(name);
             }
         }
@@ -1024,7 +1056,7 @@ void PragmaDeclaration::semantic(Scope *sc)
         else
         {
             Expression *e = (*args)[0];
-            e = e->semantic(sc);
+            e = e->ctfeSemantic(sc);
             e = resolveProperties(sc, e);
             e = e->ctfeInterpret();
             (*args)[0] = e;
@@ -1035,19 +1067,49 @@ void PragmaDeclaration::semantic(Scope *sc)
         goto Lnodecl;
     }
 #endif
+    else if (ident == Id::mangle)
+    {
+        if (!args || args->dim != 1)
+            error("string expected for mangled name");
+        else
+        {
+            Expression *e = (*args)[0];
+
+            e = e->semantic(sc);
+            e = e->ctfeInterpret();
+            (*args)[0] = e;
+
+            if (e->op == TOKerror)
+                goto Lnodecl;
+
+            StringExp *se = e->toString();
+
+            if (!se)
+            {
+                error("string expected for mangled name, not '%s'", e->toChars());
+                return;
+            }
+
+            if (!se->len)
+                error("zero-length string not allowed for mangled name");
+
+            if (se->sz != 1)
+                error("mangled name characters can only be of type char");
+        }
+    }
     else if (global.params.ignoreUnsupportedPragmas)
     {
         if (global.params.verbose)
         {
             /* Print unrecognized pragmas
              */
-            fprintf(stdmsg, "pragma    %s", ident->toChars());
+            fprintf(stderr, "pragma    %s", ident->toChars());
             if (args)
             {
                 for (size_t i = 0; i < args->dim; i++)
                 {
                     Expression *e = (*args)[i];
-                    e = e->semantic(sc);
+                    e = e->ctfeSemantic(sc);
                     e = resolveProperties(sc, e);
                     e = e->ctfeInterpret();
                     if (i == 0)
@@ -1074,6 +1136,20 @@ Ldecl:
             Dsymbol *s = (*decl)[i];
 
             s->semantic(sc);
+
+            if (ident == Id::mangle)
+            {
+                StringExp *e = (*args)[0]->toString();
+
+                char *name = (char *)mem.malloc(e->len + 1);
+                memcpy(name, e->string, e->len);
+                name[e->len] = 0;
+
+                unsigned cnt = setMangleOverride(s, name);
+
+                if (cnt > 1)
+                    error("can only apply to a single declaration");
+            }
         }
     }
     return;
@@ -1302,7 +1378,13 @@ Dsymbols *StaticIfDeclaration::include(Scope *sc, ScopeDsymbol *sd)
 
     if (condition->inc == 0)
     {
+        /* Bugzilla 10101: Condition evaluation may cause self-recursive
+         * condition evaluation. To resolve it, temporarily save sc into scope.
+         */
+        bool x = !scope && sc;
+        if (x) scope = sc;
         Dsymbols *d = ConditionalDeclaration::include(sc, sd);
+        if (x) scope = NULL;
 
         // Set the scopes lazily.
         if (scope && d)
@@ -1425,7 +1507,7 @@ int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 void CompileDeclaration::compileIt(Scope *sc)
 {
     //printf("CompileDeclaration::compileIt(loc = %d) %s\n", loc.linnum, exp->toChars());
-    exp = exp->semantic(sc);
+    exp = exp->ctfeSemantic(sc);
     exp = resolveProperties(sc, exp);
     exp = exp->ctfeInterpret();
     StringExp *se = exp->toString();
@@ -1533,8 +1615,8 @@ Expressions *UserAttributeDeclaration::concat(Expressions *udas1, Expressions *u
          * (do not append to left operand, as this is a copy-on-write operation)
          */
         udas = new Expressions();
-        udas->push(new TupleExp(0, udas1));
-        udas->push(new TupleExp(0, udas2));
+        udas->push(new TupleExp(Loc(), udas1));
+        udas->push(new TupleExp(Loc(), udas2));
     }
     return udas;
 }
@@ -1559,8 +1641,8 @@ void UserAttributeDeclaration::setScope(Scope *sc)
             {
                 // Create a tuple that combines them
                 Expressions *exps = new Expressions();
-                exps->push(new TupleExp(0, newsc->userAttributes));
-                exps->push(new TupleExp(0, atts));
+                exps->push(new TupleExp(Loc(), newsc->userAttributes));
+                exps->push(new TupleExp(Loc(), atts));
                 newsc->userAttributes = exps;
             }
         }

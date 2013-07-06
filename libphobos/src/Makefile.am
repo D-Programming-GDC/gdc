@@ -62,7 +62,7 @@ std/xml.o : std/xml.d
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o \
 	  std/container.o std/complex.o std/concurrency.o \
-	  std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/csv.o \
+	  std/conv.o std/cstream.o std/csv.o \
 	  std/datetime.o std/demangle.o std/encoding.o \
 	  std/exception.o std/format.o \
 	  std/functional.o std/getopt.o std/json.o \
@@ -71,7 +71,7 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/outbuffer.o std/parallelism.o std/signals.o \
 	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
-	  std/regex.o std/regexp.o std/traits.o std/typecons.o \
+	  std/regex.o std/traits.o std/typecons.o \
 	  std/typetuple.o std/uni.o std/uri.o std/utf.o \
 	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
@@ -84,7 +84,7 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
 	  std/internal/math/errorfunction.o std/internal/processinit.o \
 	  std/internal/uni.o std/internal/uni_tab.o \
-	  std/net/isemail.o \
+	  std/net/curl.o std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 
 Z_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
@@ -96,7 +96,7 @@ ZLIB_OBJS=@ZLIB_OBJS@
 
 
 # modules which require some kind of operating system
-OS_OBJS=std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
+OS_OBJS=std/file.o std/mmfile.o std/path.o std/process.o \
 	std/socket.o std/socketstream.o
 
 LINUX_OBJS=std/c/linux/linux.o std/c/linux/socket.o

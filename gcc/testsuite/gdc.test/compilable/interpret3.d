@@ -304,6 +304,27 @@ bool bug4837()
 static assert(bug4837());
 
 /**************************************************
+  'this' parameter bug revealed during refactoring
+**************************************************/
+int thisbug1(int x) { return x; }
+
+struct ThisBug1
+{
+    int m = 1;
+    int wut() {
+        return thisbug1(m);
+    }
+}
+
+int thisbug2()
+{
+    ThisBug1 spec;
+    return spec.wut();
+}
+
+static assert(thisbug2());
+
+/**************************************************
    6972 ICE with cast()cast()assign
 **************************************************/
 
@@ -838,6 +859,13 @@ bool bug7185() {
 
 static assert(bug7185());
 
+bool bug9908()
+{
+    static const int[3] sa = 1;
+    return sa == [1,1,1];
+}
+static assert(bug9908());
+
 /*******************************************
     6934
 *******************************************/
@@ -1108,7 +1136,8 @@ struct Zadok
     int bfg()
     {
         z[0] = 56;
-        fog(z[]) = [56, 6, 8];
+        auto zs = z[];
+        fog(zs) = [56, 6, 8];
         assert(z[1] == 6);
         assert(z[0] == 56);
         return z[2];
@@ -1245,7 +1274,7 @@ static assert(!is(typeof(compiles!(zfs(2)))));
 static assert(!is(typeof(compiles!(zfs(3)))));
 static assert(!is(typeof(compiles!(zfs(4)))));
 static assert(is(typeof(compiles!(zfs(1)))));
-static assert(!is(typeof(compiles!(zfs(5)))));
+static assert(is(typeof(compiles!(zfs(5)))));
 
 /**************************************************
    .dup must protect string literals
@@ -2321,6 +2350,66 @@ bool bug7216() {
 }
 
 static assert(bug7216());
+
+/**************************************************
+    9745 Allow pointers to static variables
+**************************************************/
+
+shared int x9745;
+shared int[5] y9745;
+
+shared (int) * bug9745(int m)
+{
+    auto k = &x9745;
+    auto j = &x9745;
+    auto p = &y9745[0];
+    auto q = &y9745[3];
+    assert (j - k == 0);
+    assert( j == k );
+    assert( q - p == 3);
+    --q;
+    int a = 0;
+    assert(p + 2 == q);
+    if (m==7)
+    {
+        auto z1 = y9745[0..2]; // slice global pointer
+    }
+    if (m==8)
+        p[1] = 7; // modify through a pointer
+    if (m==9)
+         a = p[1]; // read from a pointer
+    if (m == 0)
+        return & x9745;
+    return &y9745[1];
+}
+
+int test9745(int m)
+{
+    bug9745(m);
+    // type painting
+    shared int * w = bug9745(0);
+    return 1;
+}
+
+shared int * w9745a = bug9745(0);
+shared int * w9745b = bug9745(1);
+static assert( is(typeof(compiles!(test9745(6)))));
+static assert(!is(typeof(compiles!(test9745(7)))));
+static assert(!is(typeof(compiles!(test9745(8)))));
+static assert(!is(typeof(compiles!(test9745(9)))));
+
+// pointers cast from an absolute address
+// (mostly applies to fake pointers, eg Windows HANDLES)
+bool test9745b()
+{
+    void *b6 = cast(void *)0xFEFEFEFE;
+    void *b7 = cast(void *)0xFEFEFEFF;
+    assert(b6 is b6);
+    assert(b7 != b6);
+    return true;
+}
+static assert(test9745b());
+
 
 /**************************************************
     4065 [CTFE] AA "in" operator doesn't work
@@ -3676,13 +3765,13 @@ static assert(classtest1(1));
 static assert(classtest1(2));
 static assert(classtest1(7)); // bug 7154
 
-// can't return classes literals outside CTFE
+// can't initialize enum with not null class
 SomeClass classtest2(int n)
 {
     return n==5 ? (new SomeClass) : null;
 }
-static assert(is(typeof( (){ enum xx = classtest2(2);}() )));
-static assert(!is(typeof( (){ enum xx = classtest2(5);}() )));
+static assert(is(typeof( (){ enum const(SomeClass) xx = classtest2(2);}() )));
+static assert(!is(typeof( (){ enum const(SomeClass) xx = classtest2(5);}() )));
 
 class RecursiveClass
 {
@@ -3703,6 +3792,27 @@ int classtest3()
 }
 
 static assert(classtest3());
+
+/**************************************************
+    7147 typeid()
+**************************************************/
+
+static assert({
+    TypeInfo xxx = typeid(Object);
+    TypeInfo yyy = typeid(new Error("xxx"));
+    return true;
+    }());
+
+int bug7147(int n)
+{
+    Error err = n ? new Error("xxx") : null;
+    TypeInfo qqq = typeid(err);
+    return 1;
+}
+
+// Must not segfault if class is null
+static assert(!is(typeof(compiles!(bug7147(0)))));
+static assert( is(typeof(compiles!(bug7147(1)))));
 
 /**************************************************
     6885 wrong code with new array
@@ -4559,6 +4669,18 @@ void bug7419() {
 }
 
 /**************************************************
+    9445 ice
+**************************************************/
+
+template c9445(T...) { }
+
+void ice9445(void delegate() expr, void function() f2)
+{
+    static assert(!is(typeof(c9445!(f2()))));
+    static assert(!is(typeof(c9445!(expr()))));
+}
+
+/**************************************************
     7162 and 4711
 **************************************************/
 
@@ -4696,6 +4818,21 @@ template bar7197(y...) {
 }
 enum int bug7197 = 7;
 static assert(bar7197!(bug7197));
+
+/**************************************************
+    Enum string compare
+**************************************************/
+
+enum EScmp : string { a = "aaa" }
+
+bool testEScmp()
+{
+    EScmp x = EScmp.a;
+    assert( x < "abc" );
+    return true;
+}
+
+static assert(testEScmp());
 
 /**************************************************
     7667
@@ -4946,13 +5083,13 @@ bool bug7987()
     t.p = &q[1];
     assert(s!=t);
     s.p = &q[1];
-    assert(s == t);
+    /*assert(s == t);*/     assert(s.p == t.p);
     s.c = c1;
     t.c = c2;
-    assert(s != t);
+    /*assert(s != t);*/     assert(s.c !is t.c);
     assert(s !is t);
     s.c = c2;
-    assert(s == t);
+    /*assert(s == t);*/     assert(s.p == t.p && s.c is t.c);
     assert(s is t);
     return true;
 }
@@ -5020,3 +5157,65 @@ label:
 static assert(bug8865());
 
 
+
+/******************************************************/
+
+
+struct Test75
+{
+    this(int) pure {}
+}
+
+static assert(__traits(compiles, {static shared Test75* t75 = new shared(Test75)(0); return t75;}));
+static assert(__traits(compiles, {static shared(Test75)* t75 = new shared(Test75)(0); return t75;}));
+static assert(__traits(compiles, {static __gshared Test75* t75 = new Test75(0); return t75;}));
+static assert(__traits(compiles, {static const Test75* t75 = new const(Test75)(0); return t75;}));
+static assert(__traits(compiles, {static immutable Test75* t75 = new immutable(Test75)(0); return t75;}));
+static assert(!__traits(compiles, {static Test75* t75 = new Test75(0); return t75;}));
+
+//static assert(!__traits(compiles, {enum t75 = new shared(Test75)(0); return t75;}));
+//static assert(!__traits(compiles, {enum t75 = new Test75(0); return t75;}));
+//static assert(!__traits(compiles, {enum shared(Test75)* t75 = new shared(Test75)(0); return t75;}));
+//static assert(!__traits(compiles, {enum Test75* t75 = new Test75(0); return t75;}));
+
+//static assert(__traits(compiles, {enum t75 = new const(Test75)(0); return t75;}));
+//static assert(__traits(compiles, {enum t75 = new immutable(Test75)(0); return t75;}));
+//static assert(__traits(compiles, {enum const(Test75)* t75 = new const(Test75)(0); return t75;}));
+//static assert(__traits(compiles, {enum immutable(Test75)* t75 = new immutable(Test75)(0); return t75;}));
+
+/******************************************************/
+
+class Test76
+{
+    this(int) pure {}
+}
+
+//static assert(!__traits(compiles, {enum t76 = new shared(Test76)(0); return t76;}));
+//static assert(!__traits(compiles, {enum t76 = new Test76(0); return t76;}));
+//static assert(!__traits(compiles, {enum shared(Test76) t76 = new shared(Test76)(0); return t76;}));
+//static assert(!__traits(compiles, {enum Test76 t76 = new Test76(0); return t76;}));
+
+//static assert(__traits(compiles, {enum t76 = new const(Test76)(0); return t76;}));
+//static assert(__traits(compiles, {enum t76 = new immutable(Test76)(0); return t76;}));
+//static assert(__traits(compiles, {enum const(Test76) t76 = new const(Test76)(0); return t76;}));
+//static assert(__traits(compiles, {enum immutable(Test76) t76 = new immutable(Test76)(0); return t76;}));
+
+
+/******************************************************/
+static assert(__traits(compiles, {static shared Test76 t76 = new shared(Test76)(0); return t76;}));
+static assert(__traits(compiles, {static shared(Test76) t76 = new shared(Test76)(0); return t76;}));
+static assert(__traits(compiles, {static __gshared Test76 t76 = new Test76(0); return t76;}));
+static assert(__traits(compiles, {static const Test76 t76 = new const(Test76)(0); return t76;}));
+static assert(__traits(compiles, {static immutable Test76 t76 = new immutable Test76(0); return t76;}));
+static assert(!__traits(compiles, {static Test76 t76 = new Test76(0); return t76;}));
+
+/***** Bug 5678 *********************************/
+
+struct Bug5678 
+{
+    this(int) {}
+}
+
+static assert(!__traits(compiles, {enum const(Bug5678)* b5678 = new const(Bug5678)(0); return b5678;}));
+
+/******************************************************/

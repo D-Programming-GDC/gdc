@@ -1,6 +1,5 @@
-
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2012 by Digital Mars
+// Copyright (c) 1999-2013 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -23,6 +22,7 @@
 #include "rmem.h"
 #include "root.h"
 #include "async.h"
+#include "target.h"
 
 #include "mars.h"
 #include "module.h"
@@ -55,7 +55,7 @@ static bool parse_arch(size_t argc, char** argv, bool is64bit);
 
 Global global;
 
-Global::Global()
+void Global::init()
 {
     mars_ext = "d";
     sym_ext  = "d";
@@ -103,13 +103,15 @@ Global::Global()
     dll_ext = "so";
 #endif
 
-    copyright = "Copyright (c) 1999-2012 by Digital Mars";
+    copyright = "Copyright (c) 1999-2013 by Digital Mars";
     written = "written by Walter Bright";
     version = "v"
 #include "verstr.h"
     ;
 
-    global.structalign = STRUCTALIGN_DEFAULT;
+    compiler.vendor = "Digital Mars D";
+
+    main_d = "__main.d";
 
     memset(&params, 0, sizeof(Param));
 }
@@ -225,24 +227,24 @@ void verrorPrint(Loc loc, const char *header, const char *format, va_list ap,
     char *p = loc.toChars();
 
     if (*p)
-        fprintf(stdmsg, "%s: ", p);
+        fprintf(stderr, "%s: ", p);
     mem.free(p);
 
-    fputs(header, stdmsg);
+    fputs(header, stderr);
     if (p1)
-        fprintf(stdmsg, "%s ", p1);
+        fprintf(stderr, "%s ", p1);
     if (p2)
-        fprintf(stdmsg, "%s ", p2);
+        fprintf(stderr, "%s ", p2);
 #if _MSC_VER
     // MS doesn't recognize %zu format
     OutBuffer tmp;
     tmp.vprintf(format, ap);
-    fprintf(stdmsg, "%s", tmp.toChars());
+    fprintf(stderr, "%s", tmp.toChars());
 #else
-    vfprintf(stdmsg, format, ap);
+    vfprintf(stderr, format, ap);
 #endif
-    fprintf(stdmsg, "\n");
-    fflush(stdmsg);
+    fprintf(stderr, "\n");
+    fflush(stderr);
 }
 
 // header is "Error: " by default (see mars.h)
@@ -329,8 +331,8 @@ void usage()
 #else
     const char fpic[] = "";
 #endif
-    printf("DMD%d D Compiler %s\n%s %s\n",
-        sizeof(size_t) * 8,
+    printf("DMD%llu D Compiler %s\n%s %s\n",
+           (unsigned long long) sizeof(size_t) * 8,
         global.version, global.copyright, global.written);
     printf("\
 Documentation: http://dlang.org/\n\
@@ -341,6 +343,7 @@ Usage:\n\
   @cmdfile       read arguments from cmdfile\n\
   -c             do not link\n\
   -cov           do code coverage analysis\n\
+  -cov=nnn       require at least %%nnn code coverage\n\
   -D             generate documentation\n\
   -Dddocdir      write documentation file to docdir directory\n\
   -Dffilename    write documentation file to filename\n\
@@ -371,23 +374,24 @@ Usage:\n\
 "  -m32           generate 32 bit code\n\
   -m64           generate 64 bit code\n"
 #endif
-"  -man           open web browser on manual page\n\
+"  -main          add default main() (e.g. for unittesting)\n\
+  -man           open web browser on manual page\n\
   -map           generate linker .map file\n\
   -noboundscheck turns off array bounds checking for all functions\n\
   -O             optimize\n\
   -o-            do not write object file\n\
   -odobjdir      write object & library files to directory objdir\n\
   -offilename    name output file to filename\n\
-  -op            do not strip paths from source file\n\
+  -op            preserve source path for output files\n\
   -profile       profile runtime performance of generated code\n\
   -property      enforce property syntax\n\
   -quiet         suppress unnecessary messages\n\
   -release       compile release version\n\
-  -run srcfile args...   run resulting program, passing args\n"
-#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
-"  -shared        generate shared library\n"
-#endif
-"  -unittest      compile in unit tests\n\
+  -run srcfile args...   run resulting program, passing args\n\
+  -shared        generate shared library (DLL)\n\
+  -transition=id show additional info about language change identified by 'id'\n\
+  -transition=?  list all language changes\n\
+  -unittest      compile in unit tests\n\
   -v             verbose\n\
   -version=level compile in version code >= level\n\
   -version=ident compile in version code identified by ident\n\
@@ -426,6 +430,7 @@ int tryMain(size_t argc, char *argv[])
     char noboundscheck = 0;
         int setdefaultlib = 0;
     const char *inifilename = NULL;
+    global.init();
 
 #ifdef DEBUG
     printf("DMD %s DEBUG\n", global.version);
@@ -437,7 +442,7 @@ int tryMain(size_t argc, char *argv[])
     if (argc < 1 || !argv)
     {
       Largs:
-        error(0, "missing or null command line arguments");
+        error(Loc(), "missing or null command line arguments");
         fatal();
     }
     for (size_t i = 0; i < argc; i++)
@@ -447,7 +452,7 @@ int tryMain(size_t argc, char *argv[])
     }
 
     if (response_expand(&argc,&argv))   // expand response files
-        error(0, "can't open response file");
+        error(Loc(), "can't open response file");
 
     files.reserve(argc - 1);
 
@@ -477,7 +482,9 @@ int tryMain(size_t argc, char *argv[])
 #if TARGET_WINDOS
     global.params.is64bit = 0;
     global.params.defaultlibname = "phobos";
-#elif TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
+#elif TARGET_LINUX
+    global.params.defaultlibname = "libphobos2.a";
+#elif TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     global.params.defaultlibname = "phobos2";
 #else
 #error "fix this"
@@ -564,9 +571,29 @@ int tryMain(size_t argc, char *argv[])
                 global.params.useDeprecated = 2;
             else if (strcmp(p + 1, "c") == 0)
                 global.params.link = 0;
-            else if (strcmp(p + 1, "cov") == 0)
-                global.params.cov = 1;
-#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
+            else if (memcmp(p + 1, "cov", 3) == 0)
+            {
+                global.params.cov = true;
+                // Parse:
+                //      -cov
+                //      -cov=nnn
+                if (p[4] == '=')
+                {
+                    if (isdigit((unsigned char)p[5]))
+                    {   long percent;
+
+                        errno = 0;
+                        percent = strtol(p + 5, &p, 10);
+                        if (*p || errno || percent > 100)
+                            goto Lerror;
+                        global.params.covPercent = percent;
+                    }
+                    else
+                        goto Lerror;
+                }
+                else if (p[4])
+                    goto Lerror;
+            }
             else if (strcmp(p + 1, "shared") == 0
 #if TARGET_OSX
                 // backwards compatibility with old switch
@@ -574,6 +601,7 @@ int tryMain(size_t argc, char *argv[])
 #endif
                 )
                 global.params.dll = 1;
+#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
             else if (strcmp(p + 1, "fPIC") == 0)
                 global.params.pic = 1;
 #endif
@@ -590,7 +618,7 @@ int tryMain(size_t argc, char *argv[])
             else if (strcmp(p + 1, "gx") == 0)
                 global.params.stackstomp = true;
             else if (strcmp(p + 1, "gt") == 0)
-            {   error(0, "use -profile instead of -gt");
+            {   error(Loc(), "use -profile instead of -gt");
                 global.params.trace = 1;
             }
             else if (strcmp(p + 1, "m32") == 0)
@@ -604,13 +632,66 @@ int tryMain(size_t argc, char *argv[])
 #if DMDV2
             else if (strcmp(p + 1, "vtls") == 0)
                 global.params.vtls = 1;
+            else if (memcmp(p + 1, "transition", 10) == 0)
+            {
+                // Parse:
+                //      -transition=number
+                if (p[11] == '=')
+                {
+                    if (strcmp(p + 12, "?") == 0)
+                    {
+#if PULL93
+                        printf("\
+Language changes listed by -transition=id:\n\
+  =field,3449    do list all non-mutable fields occupies object instance\n\
+  =tls           do list all variables going into thread local storage\n\
+");
+#else
+                        printf("\
+Language changes listed by -transition=id:\n\
+  =tls           do list all variables going into thread local storage\n\
+");
+#endif
+                        return EXIT_FAILURE;
+                    }
+                    if (isdigit((unsigned char)p[12]))
+                    {   long num;
+
+                        errno = 0;
+                        num = strtol(p + 12, &p, 10);
+                        if (*p || errno || num > INT_MAX)
+                            goto Lerror;
+                        switch (num)    // Bugzilla issue number
+                        {
+                            case 3449:
+                                global.params.vfield = 1;
+                                break;
+                            default:
+                                goto Lerror;
+                        }
+                    }
+                    else if (Lexer::isValidIdentifier(p + 12))
+                    {
+                        if (strcmp(p + 12, "tls") == 0)
+                            global.params.vtls = 1;
+#if PULL93
+                        else if (strcmp(p + 12, "field") == 0)
+                            global.params.vfield = 1;
+#endif
+                    }
+                    else
+                        goto Lerror;
+                }
+                else
+                    goto Lerror;
+            }
 #endif
             else if (strcmp(p + 1, "v1") == 0)
             {
 #if DMDV1
                 global.params.Dversion = 1;
 #else
-                error(0, "use DMD 1.0 series compilers for -v1 switch");
+                error(Loc(), "use DMD 1.0 series compilers for -v1 switch");
                 break;
 #endif
             }
@@ -647,7 +728,7 @@ int tryMain(size_t argc, char *argv[])
                         break;
 
                     case 0:
-                        error(0, "-o no longer supported, use -of or -od");
+                        error(Loc(), "-o no longer supported, use -of or -od");
                         break;
 
                     default:
@@ -838,6 +919,10 @@ int tryMain(size_t argc, char *argv[])
                     goto Lnoarg;
                 global.params.moduleDeps = new OutBuffer;
             }
+            else if (strcmp(p + 1, "main") == 0)
+            {
+                global.params.addMain = true;
+            }
             else if (memcmp(p + 1, "man", 3) == 0)
             {
 #if _WIN32
@@ -886,7 +971,7 @@ int tryMain(size_t argc, char *argv[])
                     if (ext && FileName::equals(ext, "d") == 0
                             && FileName::equals(ext, "di") == 0)
                     {
-                        error(0, "-run must be followed by a source file, not '%s'", argv[i + 1]);
+                        error(Loc(), "-run must be followed by a source file, not '%s'", argv[i + 1]);
                         break;
                     }
 
@@ -903,11 +988,11 @@ int tryMain(size_t argc, char *argv[])
             else
             {
              Lerror:
-                error(0, "unrecognized switch '%s'", argv[i]);
+                error(Loc(), "unrecognized switch '%s'", argv[i]);
                 continue;
 
              Lnoarg:
-                error(0, "argument expected for switch '%s'", argv[i]);
+                error(Loc(), "argument expected for switch '%s'", argv[i]);
                 continue;
             }
         }
@@ -926,7 +1011,7 @@ int tryMain(size_t argc, char *argv[])
     }
 
     if(global.params.is64bit != is64bit)
-        error(0, "the architecture must not be changed in the %s section of %s",
+        error(Loc(), "the architecture must not be changed in the %s section of %s",
               is64bit ? "Environment64" : "Environment32", inifilename);
 
     if (global.errors)
@@ -947,7 +1032,7 @@ int tryMain(size_t argc, char *argv[])
 
 #if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
     if (global.params.lib && global.params.dll)
-        error(0, "cannot mix -lib and -shared");
+        error(Loc(), "cannot mix -lib and -shared");
 #endif
 
     if (global.params.release)
@@ -1009,7 +1094,7 @@ int tryMain(size_t argc, char *argv[])
     }
     else if (global.params.run)
     {
-        error(0, "flags conflict with -run");
+        error(Loc(), "flags conflict with -run");
         fatal();
     }
     else
@@ -1069,6 +1154,8 @@ int tryMain(size_t argc, char *argv[])
     Type::init();
     Id::initialize();
     Module::init();
+    Target::init();
+    Expression::init();
     initPrecedence();
 
     if (global.params.verbose)
@@ -1113,10 +1200,15 @@ int tryMain(size_t argc, char *argv[])
         }
     }
 
+    if (global.params.addMain)
+    {
+        files.push(const_cast<char*>(global.main_d)); // a dummy name, we never actually look up this file
+    }
+
     // Create Modules
     Modules modules;
     modules.reserve(files.dim);
-    int firstmodule = 1;
+    bool firstmodule = true;
     for (size_t i = 0; i < files.dim; i++)
     {
         const char *ext;
@@ -1208,12 +1300,12 @@ int tryMain(size_t argc, char *argv[])
                     strcmp(name, ".") == 0)
                 {
                 Linvalid:
-                    error(0, "invalid file name '%s'", files[i]);
+                    error(Loc(), "invalid file name '%s'", files[i]);
                     fatal();
                 }
             }
             else
-            {   error(0, "unrecognized file extension %s", ext);
+            {   error(Loc(), "unrecognized file extension %s", ext);
                 fatal();
             }
         }
@@ -1233,11 +1325,30 @@ int tryMain(size_t argc, char *argv[])
 
         if (firstmodule)
         {   global.params.objfiles->push((char *)m->objfile->name->str);
-            firstmodule = 0;
+            firstmodule = false;
         }
     }
 
     // Read files
+
+    /* Start by "reading" the dummy main.d file
+     */
+    if (global.params.addMain)
+    {
+        for (size_t i = 0; 1; i++)
+        {
+            assert(i != modules.dim);
+            Module *m = modules[i];
+            if (strcmp(m->srcfile->name->str, global.main_d) == 0)
+            {
+                static const char buf[] = "int main(){return 0;}";
+                m->srcfile->setbuffer((void *)buf, sizeof(buf));
+                m->srcfile->ref = 1;
+                break;
+            }
+        }
+    }
+
 #define ASYNCREAD 1
 #if ASYNCREAD
     // Multi threaded
@@ -1273,7 +1384,7 @@ int tryMain(size_t argc, char *argv[])
 #if ASYNCREAD
         if (aw->read(filei))
         {
-            error(0, "cannot read file %s", m->srcfile->name->toChars());
+            error(Loc(), "cannot read file %s", m->srcfile->name->toChars());
             fatal();
         }
 #endif
@@ -1308,7 +1419,7 @@ int tryMain(size_t argc, char *argv[])
     if (anydocfiles && modules.dim &&
         (global.params.oneobj || global.params.objname))
     {
-        error(0, "conflicting Ddoc and obj generation options");
+        error(Loc(), "conflicting Ddoc and obj generation options");
         fatal();
     }
     if (global.errors)
@@ -1337,7 +1448,7 @@ int tryMain(size_t argc, char *argv[])
        m = modules[i];
        if (global.params.verbose)
            printf("importall %s\n", m->toChars());
-       m->importAll(0);
+       m->importAll(NULL);
     }
     if (global.errors)
         fatal();
@@ -1549,7 +1660,7 @@ int tryMain(size_t argc, char *argv[])
     if (!global.params.objfiles->dim)
     {
         if (global.params.link)
-            error(0, "no object files to link");
+            error(Loc(), "no object files to link");
     }
     else
     {
@@ -1585,15 +1696,15 @@ int main(int argc, char *argv[])
 #if WINDOWS_SEH
   __try
   {
-#endif
     status = tryMain(argc, argv);
-#if WINDOWS_SEH
   }
   __except (__ehfilter(GetExceptionInformation()))
   {
     printf("Stack overflow\n");
     fatal();
   }
+#else
+  status = tryMain(argc, argv);
 #endif
     return status;
 }

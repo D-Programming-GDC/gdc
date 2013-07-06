@@ -364,7 +364,7 @@ unittest {
     real SQRT_PI = 1.77245385090551602729816748334114518279754945612238L;
 
 
-    assert(feqrel(gamma(0.5L), SQRT_PI) >= real.mant_dig - 1);
+    assert(feqrel(gamma(0.5L), SQRT_PI) == real.mant_dig - 1);
     assert(feqrel(gamma(17.25L), 4.224986665692703551570937158682064589938e13L) >= real.mant_dig-4);
 
     assert(feqrel(gamma(1.0 / 3.0L),  2.67893853470774763365569294097467764412868937795730L) >= real.mant_dig-2);
@@ -920,7 +920,8 @@ unittest { // also tested by the normal distribution
     assert(feqrel(betaIncompleteInv(0x1.ff1275ae5b939bcap-41, 4.6713e18, 0.0813601),
         0x1.f97749d90c7adba8p-63L) >= real.mant_dig - 39);
     real a1 = 3.40483;
-    assert(betaIncompleteInv(a1, 4.0640301659679627772e19L, 0.545113)== 0x1.ba8c08108aaf5d14p-109);
+    assert(feqrel(betaIncompleteInv(a1, 4.0640301659679627772e19L, 0.545113),
+        0x1.ba8c08108aaf5d14p-109L) >= real.mant_dig - 7);
     real b1 = 2.82847e-25;
     assert(feqrel(betaIncompleteInv(0.01, b1, 9e-26), 0x1.549696104490aa9p-830L) >= real.mant_dig-10);
 

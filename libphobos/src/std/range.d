@@ -233,8 +233,8 @@ $(BOOKTABLE ,
 
 Ranges whose elements are sorted afford better efficiency with certain
 operations. For this, the $(D $(LREF assumeSorted)) function can be used to
-construct a $(D $(LREF SortedRange)) from a pre-sorted _range. The $(D $(LINK2
-std_algorithm.html#sort, std.algorithm.sort)) function also conveniently
+construct a $(D $(LREF SortedRange)) from a pre-sorted _range. The $(LINK2
+std_algorithm.html#sort, $(D std.algorithm.sort)) function also conveniently
 returns a $(D SortedRange). $(D SortedRange) objects provide some additional
 _range operations that take advantage of the fact that the _range is sorted.
 
@@ -286,7 +286,7 @@ module std.range;
 public import std.array;
 import core.bitop, core.exception;
 import std.algorithm, std.conv, std.exception,  std.functional,
-    std.traits, std.typecons, std.typetuple;
+    std.traits, std.typecons, std.typetuple, std.string;
 
 // For testing only.  This code is included in a string literal to be included
 // in whatever module it's needed in, so that each module that uses it can be
@@ -3162,8 +3162,6 @@ unittest
 
 unittest
 {
-    import std.metastrings;
-
     string genInput()
     {
         return "@property bool empty() { return _arr.empty; }" ~
@@ -3241,21 +3239,21 @@ unittest
                               //`InitStruct([1, 2, 3])`,
                               `TakeNoneStruct([1, 2, 3])`))
     {
-        mixin(Format!("enum a = takeNone(%s).empty;", range));
+        mixin(format("enum a = takeNone(%s).empty;", range));
         assert(a, typeof(range).stringof);
-        mixin(Format!("assert(takeNone(%s).empty);", range));
-        mixin(Format!("static assert(is(typeof(%s) == typeof(takeNone(%s))), typeof(%s).stringof);",
-                      range, range, range));
+        mixin(format("assert(takeNone(%s).empty);", range));
+        mixin(format("static assert(is(typeof(%s) == typeof(takeNone(%s))), typeof(%s).stringof);",
+                     range, range, range));
     }
 
     foreach(range; TypeTuple!(`NormalStruct([1, 2, 3])`,
                               `InitStruct([1, 2, 3])`))
     {
-        mixin(Format!("enum a = takeNone(%s).empty;", range));
+        mixin(format("enum a = takeNone(%s).empty;", range));
         assert(a, typeof(range).stringof);
-        mixin(Format!("assert(takeNone(%s).empty);", range));
-        mixin(Format!("static assert(is(typeof(takeExactly(%s, 0)) == typeof(takeNone(%s))), typeof(%s).stringof);",
-                      range, range, range));
+        mixin(format("assert(takeNone(%s).empty);", range));
+        mixin(format("static assert(is(typeof(takeExactly(%s, 0)) == typeof(takeNone(%s))), typeof(%s).stringof);",
+                     range, range, range));
     }
 
     //Don't work in CTFE.
@@ -3730,10 +3728,7 @@ Take!(Repeat!T) repeat(T)(T value, size_t n)
     return take(repeat(value), n);
 }
 
-/++
-    $(RED Deprecated. It will be removed in January 2013.
-          Please use $(LREF repeat) instead.)
-  +/
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use std.range.repeat instead.") Take!(Repeat!T) replicate(T)(T value, size_t n)
 {
     return repeat(value, n);
@@ -3834,6 +3829,7 @@ struct Cycle(Range)
 
         auto opSlice(size_t i, size_t j)
         {
+            version (assert) if (i > j) throw new RangeError();
             auto retval = this.save;
             retval._index += i;
             return takeExactly(retval, j - i);
@@ -3934,6 +3930,7 @@ struct Cycle(R)
 
     auto opSlice(size_t i, size_t j)
     {
+        version (assert) if (i > j) throw new RangeError();
         auto retval = this.save;
         retval._index += i;
         return takeExactly(retval, j - i);
@@ -4023,6 +4020,8 @@ unittest
                     }
 
                     assert(cRange[10] == 1);
+
+                    assertThrown!RangeError(cy[2..1]);
                 }
             }
 
@@ -4607,87 +4606,58 @@ unittest
     assert(equal(z2, [tuple(7, 0L)]));
 }
 
-/* CTFE function to generate opApply loop for Lockstep.*/
-private string lockstepApply(Ranges...)(bool withIndex) if (Ranges.length > 0)
+/*
+    Generate lockstep's opApply function as a mixin string.
+    If withIndex is true prepend a size_t index to the delegate.
+*/
+private string lockstepMixin(Ranges...)(bool withIndex)
 {
-    // Since there's basically no way to make this code readable as-is, I've
-    // included formatting to make the generated code look "normal" when
-    // printed out via pragma(msg).
-    string ret = "int opApply(scope int delegate(";
+    string[] params;
+    string[] emptyChecks;
+    string[] dgArgs;
+    string[] popFronts;
 
     if (withIndex)
     {
-        ret ~= "size_t, ";
+        params ~= "size_t";
+        dgArgs ~= "index";
     }
 
-    foreach (ti, Type; Ranges)
+    foreach (idx, Range; Ranges)
     {
-        static if(hasLvalueElements!Type)
+        params ~= format("ref ElementType!(Ranges[%s])", idx);
+        emptyChecks ~= format("!ranges[%s].empty", idx);
+        dgArgs ~= format("ranges[%s].front", idx);
+        popFronts ~= format("ranges[%s].popFront();", idx);
+    }
+
+    return format(
+    q{
+        int opApply(scope int delegate(%s) dg)
         {
-            ret ~= "ref ";
+            auto ranges = _ranges;
+            int res;
+            %s
+
+            while (%s)
+            {
+                res = dg(%s);
+                if (res) break;
+                %s
+                %s
+            }
+
+            if (_stoppingPolicy == StoppingPolicy.requireSameLength)
+            {
+                foreach(range; ranges)
+                    enforce(range.empty);
+            }
+            return res;
         }
-
-        ret ~= "ElementType!(Ranges[" ~ to!string(ti) ~ "]), ";
-    }
-
-    // Remove trailing ,
-    ret = ret[0..$ - 2];
-    ret ~= ") dg) {\n";
-
-    // Shallow copy _ranges to be consistent w/ regular foreach.
-    ret ~= "\tauto ranges = _ranges;\n";
-    ret ~= "\tint res;\n";
-
-    if (withIndex)
-    {
-        ret ~= "\tsize_t index = 0;\n";
-    }
-
-    // Check for emptiness.
-    ret ~= "\twhile(";                 //someEmpty) {\n";
-    foreach(ti, Unused; Ranges)
-    {
-        ret ~= "!ranges[" ~ to!string(ti) ~ "].empty && ";
-    }
-    // Strip trailing &&
-    ret = ret[0..$ - 4];
-    ret ~= ") {\n";
-
-    // Create code to call the delegate.
-    ret ~= "\t\tres = dg(";
-    if (withIndex)
-    {
-        ret ~= "index, ";
-    }
-
-
-    foreach(ti, Range; Ranges)
-    {
-        ret ~= "ranges[" ~ to!string(ti) ~ "].front, ";
-    }
-
-    // Remove trailing ,
-    ret = ret[0..$ - 2];
-    ret ~= ");\n";
-    ret ~= "\t\tif(res) break;\n";
-    foreach(ti, Range; Ranges)
-    {
-        ret ~= "\t\tranges[" ~ to!(string)(ti) ~ "].popFront();\n";
-    }
-
-    if (withIndex)
-    {
-        ret ~= "\t\tindex++;\n";
-    }
-
-    ret ~= "\t}\n";
-    ret ~= "\tif(_s == StoppingPolicy.requireSameLength) {\n";
-    ret ~= "\t\tforeach(range; ranges)\n";
-    ret ~= "\t\t\tenforce(range.empty);\n";
-    ret ~= "\t}\n";
-    ret ~= "\treturn res;\n}";
-
-    return ret;
+    }, params.join(", "), withIndex ? "size_t index = 0;" : "",
+       emptyChecks.join(" && "), dgArgs.join(", "),
+       popFronts.join("\n                "),
+       withIndex ? "index++;" : "").outdent();
 }
 
 /**
@@ -4726,22 +4696,21 @@ private string lockstepApply(Ranges...)(bool withIndex) if (Ranges.length > 0)
 struct Lockstep(Ranges...)
     if (Ranges.length > 1 && allSatisfy!(isInputRange, Ranges))
 {
+    this(R ranges, StoppingPolicy sp = StoppingPolicy.shortest)
+    {
+        _ranges = ranges;
+        enforce(sp != StoppingPolicy.longest,
+                "Can't use StoppingPolicy.Longest on Lockstep.");
+        _stoppingPolicy = sp;
+    }
+
+    mixin(lockstepMixin!Ranges(false));
+    mixin(lockstepMixin!Ranges(true));
+
 private:
     alias R = Ranges;
     R _ranges;
-    StoppingPolicy _s;
-
-public:
-    this(R ranges, StoppingPolicy s = StoppingPolicy.shortest)
-    {
-        _ranges = ranges;
-        enforce(s != StoppingPolicy.longest,
-                "Can't use StoppingPolicy.Longest on Lockstep.");
-        this._s = s;
-    }
-
-    mixin(lockstepApply!(Ranges)(false));
-    mixin(lockstepApply!(Ranges)(true));
+    StoppingPolicy _stoppingPolicy;
 }
 
 // For generic programming, make sure Lockstep!(Range) is well defined for a
@@ -7712,10 +7681,7 @@ sgi.com/tech/stl/binary_search.html, binary_search).
         return false;
     }
 
-/++
-    $(RED Deprecated. It will be removed in January 2013.
-          Please use $(LREF contains) instead.)
-  +/
+    // Explicitly undocumented. It will be removed in November 2013.
     deprecated("Please use contains instead.") alias contains canFind;
 }
 

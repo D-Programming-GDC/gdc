@@ -67,6 +67,11 @@ version (Win64)
         return strtod(nptr, endptr);
     }
 }
+else version (MinGW)
+{
+    real __mingw_strtold(in char* nptr, char** endptr);
+    alias __mingw_strtold strtold;
+}
 else
 {
     real strtold(in char* nptr, char** endptr);
@@ -124,7 +129,7 @@ version( DigitalMars )
 }
 else version( GNU )
 {
-    void* alloca(size_t size); // compiler intrinsic.
+    void* alloca(size_t size); // compiler intrinsic
 }
 
 version (Win64)
@@ -135,3 +140,4 @@ version (Win64)
     long  _strtoi64(in char *,char **,int);
     long  _wcstoi64(in wchar *,wchar **,int);
 }
+

@@ -849,16 +849,9 @@ template make(T)
 if (is(T == struct) || is(T == class))
 {
     T make(Args...)(Args arguments)
-    if (is(T == struct) && __traits(compiles, T(arguments)) && Args.length > 0)
+    if (is(T == struct) && __traits(compiles, T(arguments)))
     {
         return T(arguments);
-    }
-
-    //@@@BUG@@@ 8763 makes this extra function necessary.
-    T make()()
-    if (is(T == struct))
-    {
-        return T();
     }
 
     T make(Args...)(Args arguments)
@@ -1889,7 +1882,7 @@ Appends the contents of stuff into this.
         insertBack(rhs);
         return this;
     }
-
+    
 // Private implementations helpers for opOpBinaryRight
     DList opOpAssignRightPrivate(string op, Stuff)(Stuff lhs)
     if (op == "~" && isInputRange!Stuff && isImplicitlyConvertible!(ElementType!Stuff, T))
@@ -2119,7 +2112,7 @@ $(D r) and $(D m) is the length of $(D stuff).
             last = new Node(item, last, null);
             ++result;
         }
-
+        
         //We have created a first-last chain. Now we insert it.
         if(!_first)
         {
@@ -2453,7 +2446,7 @@ unittest
     auto d = DList!int([4, 5, 6]);
 
     assert((a ~ b[])[].empty);
-
+    
     assert((c ~ d[])[].equal([1, 2, 3, 4, 5, 6]));
     assert(c[].equal([1, 2, 3]));
     assert(d[].equal([4, 5, 6]));
@@ -3622,14 +3615,14 @@ unittest
 // make sure that Array instances refuse ranges that don't belong to them
 unittest
 {
-        Array!int a = [1, 2, 3];
-        auto r = a.dup[];
-        assertThrown(a.insertBefore(r, 42));
-        assertThrown(a.insertBefore(r, [42]));
-        assertThrown(a.insertAfter(r, 42));
-        assertThrown(a.replace(r, 42));
-        assertThrown(a.replace(r, [42]));
-        assertThrown(a.linearRemove(r));
+	Array!int a = [1, 2, 3];
+	auto r = a.dup[];
+	assertThrown(a.insertBefore(r, 42));
+	assertThrown(a.insertBefore(r, [42]));
+	assertThrown(a.insertAfter(r, 42));
+	assertThrown(a.replace(r, 42));
+	assertThrown(a.replace(r, [42]));
+	assertThrown(a.linearRemove(r));
 }
 unittest
 {

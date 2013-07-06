@@ -38,6 +38,25 @@ enum LINK;
 enum PROT;
 #endif
 
+#define CSXthis_ctor    1       // called this()
+#define CSXsuper_ctor   2       // called super()
+#define CSXthis         4       // referenced this
+#define CSXsuper        8       // referenced super
+#define CSXlabel        0x10    // seen a label
+#define CSXreturn       0x20    // seen a return statement
+#define CSXany_ctor     0x40    // either this() or super() was called
+
+#define SCOPEctor       1       // constructor type
+#define SCOPEstaticif   2       // inside static if
+#define SCOPEfree       4       // is on free list
+#define SCOPEstaticassert 8     // inside static assert
+#define SCOPEdebug      0x10    // inside debug conditional
+
+#define SCOPEinvariant  0x20    // inside invariant code
+#define SCOPErequire    0x40    // inside in contract code
+#define SCOPEensure     0x60    // inside out contract code
+#define SCOPEcontract   0x60    // [mask] we're inside contract code
+
 struct Scope
 {
     Scope *enclosing;           // enclosing Scope
@@ -55,6 +74,7 @@ struct Scope
     Statement *sbreak;          // enclosing statement that supports "break"
     Statement *scontinue;       // enclosing statement that supports "continue"
     ForeachStatement *fes;      // if nested function for ForeachStatement, this is it
+    Scope *callsc;              // used for __FUNCTION__, __PRETTY_FUNCTION__ and __MODULE__
     unsigned offset;            // next offset to use in aggregate
                                 // This really shouldn't be a part of Scope, because it requires
                                 // semantic() to be done in the lexical field order. It should be
@@ -67,16 +87,9 @@ struct Scope
     bool speculative;            // in __traits(compiles) or typeof(exp)
     int parameterSpecialization; // if in template parameter specialization
     int noaccesscheck;          // don't do access checks
-    int mustsemantic;           // cannot defer semantic()
+    int needctfe;               // inside a ctfe-only expression
 
     unsigned callSuper;         // primitive flow analysis for constructors
-#define CSXthis_ctor    1       // called this()
-#define CSXsuper_ctor   2       // called super()
-#define CSXthis         4       // referenced this
-#define CSXsuper        8       // referenced super
-#define CSXlabel        0x10    // seen a label
-#define CSXreturn       0x20    // seen a return statement
-#define CSXany_ctor     0x40    // either this() or super() was called
 
     structalign_t structalign;       // alignment for struct members
     enum LINK linkage;          // linkage for external functions
@@ -88,16 +101,6 @@ struct Scope
     char *depmsg;               // customized deprecation message
 
     unsigned flags;
-#define SCOPEctor       1       // constructor type
-#define SCOPEstaticif   2       // inside static if
-#define SCOPEfree       4       // is on free list
-#define SCOPEstaticassert 8     // inside static assert
-#define SCOPEdebug      0x10    // inside debug conditional
-
-#define SCOPEinvariant  0x20    // inside invariant code
-#define SCOPErequire    0x40    // inside in contract code
-#define SCOPEensure     0x60    // inside out contract code
-#define SCOPEcontract   0x60    // [mask] we're inside contract code
 
     Expressions *userAttributes;        // user defined attributes
 
@@ -110,7 +113,6 @@ struct Scope
     static Scope *createGlobal(Module *module);
 
     Scope();
-    Scope(Module *module);
     Scope(Scope *enclosing);
 
     Scope *push();

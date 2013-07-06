@@ -583,9 +583,14 @@ InterfaceDeclaration::toObjFile (int)
   dt_cons (&dt, d_array_value (Type::tuns8->arrayOf()->toCtype(),
 			       size_int (0), d_null_pointer));
 
-  // defaultConstructor*, xgetRTInfo*
+  // defaultConstructor*
   dt_cons (&dt, d_null_pointer);
-  dt_cons (&dt, size_int (0x12345678));
+
+  // xgetRTInfo*
+  if (getRTInfo)
+    getRTInfo->toDt (&dt);
+  else
+    dt_cons (&dt, size_int (0));
 
   /* Put out (*vtblInterfaces)[]. Must immediately follow csym.
    * The layout is:
@@ -767,6 +772,9 @@ Module::genmoduleinfo()
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
 
+  if (Module::moduleinfo == NULL)
+    ObjectNotFound (Id::ModuleInfo);
+
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *member = (*members)[i];
@@ -823,7 +831,7 @@ Module::genmoduleinfo()
    *  void function() unitTest;
    *  ModuleInfo*[] importedModules;
    *  TypeInfo_Class[] localClasses;
-   *  string name;
+   *  char[N] name;
    */
   if (flags & MItlsctor)
     dt_cons (&dt, build_address (sctor->Stree));
@@ -867,8 +875,13 @@ Module::genmoduleinfo()
 	}
     }
 
-  // Put out module name as a 0-terminated string, to save bytes
-  dt_cons (&dt, d_array_string (toPrettyChars()));
+  // Put out module name as a 0-terminated C-string, to save bytes
+  const char *name = toPrettyChars();
+  size_t namelen = strlen (name) + 1;
+  tree strtree = build_string (namelen, name);
+  TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
+
+  dt_cons (&dt, strtree);
 
   csym->Sdt = dt;
   d_finish_symbol (csym);
@@ -910,7 +923,7 @@ FuncDeclaration::toObjFile (int)
     }
 
   if (global.params.verbose)
-    fprintf (stdmsg, "function  %s\n", this->toPrettyChars());
+    fprintf (stderr, "function  %s\n", this->toPrettyChars());
 
   IRState *irs = cirstate->startFunction (this);
   // Default chain value is 'null' unless parent found.
@@ -1249,7 +1262,7 @@ Module::genobjfile (int)
   // Finish off any thunks deferred during compilation.
   write_deferred_thunks();
 
-  free (current_module_info);
+  current_module_info = NULL;
   current_module_decl = NULL;
 }
 
@@ -1735,7 +1748,7 @@ output_symbol_p (Symbol *sym)
       if (!symtab)
 	{
 	  symtab = new StringTable;
-	  symtab->init();
+	  symtab->_init();
 	}
 
       if (!symtab->insert (ident, len))
@@ -1863,7 +1876,6 @@ make_alias_for_thunk (tree function)
   TREE_ADDRESSABLE (alias) = 1;
   TREE_USED (alias) = 1;
   SET_DECL_ASSEMBLER_NAME (alias, DECL_NAME (alias));
-  TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (alias)) = 1;
 
   if (!flag_syntax_only)
     {

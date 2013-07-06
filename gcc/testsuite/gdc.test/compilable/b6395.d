@@ -1,3 +1,4 @@
+
 // REQUIRED_ARGS: -c -Icompilable/extra-files
 // EXTRA_SOURCES: extra-files/c6395.d
 

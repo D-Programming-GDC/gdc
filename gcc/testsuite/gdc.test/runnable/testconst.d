@@ -533,8 +533,16 @@ struct S40
 
 void test40()
 {
+  version (PULL93)
+  {
+    assert(S40.sizeof == 8);
+    assert(S40.init.b == 3);
+  }
+  else
+  {
     assert(S40.sizeof == 4);
     assert(S40.b == 3);
+  }
 }
 
 /************************************/
@@ -566,7 +574,14 @@ class C42
 {
     int a = ctfe() - 2;
     const int b;
+  version (PULL93)
+  {
+    enum int c = ctfe();
+  }
+  else
+  {
     const int c = ctfe();
+  }
     static const int d;
     static const int e = ctfe() + 2;
 
@@ -584,7 +599,14 @@ class C42
 void test42()
 {
     printf("%d\n", C42.classinfo.init.length);
+  version (PULL93)
+  {
+    assert(C42.classinfo.init.length == 12 + (void*).sizeof + (void*).sizeof);
+  }
+  else
+  {
     assert(C42.classinfo.init.length == 8 + (void*).sizeof + (void*).sizeof);
+  }
     C42 c = new C42;
     assert(c.a == 1);
     assert(c.b == 2);
@@ -595,8 +617,11 @@ void test42()
     const(int)*p;
     p = &c.b;
     assert(*p == 2);
-//    p = &c.c;
-//    assert(*p == 3);
+  version (PULL93)
+  {
+    p = &c.c;
+    assert(*p == 3);
+  }
     p = &c.d;
     assert(*p == 4);
     p = &c.e;
@@ -2116,7 +2141,7 @@ void test5493()
     class C
     {
         int x;
-        this(int i) { x = i; }
+        this(int i) immutable { x = i; }
     }
     C[] cs;
     immutable C ci = new immutable(C)(6);
@@ -2744,6 +2769,57 @@ void test8212()
 }
 
 /************************************/
+// 8366
+
+class B8366
+{
+    bool foo(in Object o) const { return true; }
+}
+
+class C8366a : B8366
+{
+    bool foo(in Object o)              { return true; }
+  override
+    bool foo(in Object o) const        { return false; }
+    bool foo(in Object o) immutable    { return true; }
+    bool foo(in Object o) shared       { return true; }
+    bool foo(in Object o) shared const { return true; }
+}
+
+class C8366b : B8366
+{
+    bool foo(in Object o)              { return false; }
+    alias super.foo foo;
+    bool foo(in Object o) immutable    { return false; }
+    bool foo(in Object o) shared       { return false; }
+    bool foo(in Object o) shared const { return false; }
+}
+
+void test8366()
+{
+    {
+              C8366a mca = new C8366a();
+        const C8366a cca = new C8366a();
+              B8366  mb  = mca;
+        const B8366  cb  = cca;
+        assert(mca.foo(null) == true);
+        assert(cca.foo(null) == false);
+        assert(mb .foo(null) == false);
+        assert(cb .foo(null) == false);
+    }
+    {
+              C8366b mcb = new C8366b();
+        const C8366b ccb = new C8366b();
+              B8366  mb  = mcb;
+        const B8366  cb  = ccb;
+        assert(mcb.foo(null) == false);
+        assert(ccb.foo(null) == true);
+        assert(mb .foo(null) == true);
+        assert(cb .foo(null) == true);
+    }
+}
+
+/************************************/
 // 8408
 
 template hasMutableIndirection8408(T)
@@ -2884,6 +2960,38 @@ void test9090()
 }
 
 /************************************/
+// 9461
+
+void test9461()
+{
+    class A {}
+    class B : A {}
+
+    void conv(S, T)(ref S x) { T y = x; }
+
+    // should be NG
+    static assert(!__traits(compiles, conv!(inout(B)[],     inout(A)[])));
+    static assert(!__traits(compiles, conv!(int[inout(B)],  int[inout(A)])));
+    static assert(!__traits(compiles, conv!(inout(B)[int],  inout(A)[int])));
+    static assert(!__traits(compiles, conv!(inout(B)*,      inout(A)*)));
+    static assert(!__traits(compiles, conv!(inout(B)[1],    inout(A)[])));
+
+    // should be OK
+    static assert( __traits(compiles, conv!(inout(B),       inout(A))));
+}
+
+/************************************/
+
+struct S9209 { int x; }
+
+void bar9209(const S9209*) {}
+
+void test9209() {
+    const f = new S9209(1);
+    bar9209(f);
+}
+
+/************************************/
 
 int main()
 {
@@ -3001,10 +3109,13 @@ int main()
     test8099();
     test8201();
     test8212();
+    test8366();
     test8408();
     test8688();
     test9046();
     test9090();
+    test9461();
+    test9209();
 
     printf("Success\n");
     return 0;

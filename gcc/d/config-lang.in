@@ -17,17 +17,23 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
+# Configure looks for the existence of this file to auto-config each language.
+# We define several parameters used by configure:
+#
+# language	- name of language as it would appear in $(LANGUAGES)
+# compilers	- value to add to $(COMPILERS)
+
 language="d"
 
 compilers="cc1d\$(exeext)"
 
-stagestuff="gdc\$(exeext) gdc-cross\$(exeext) cc1d\$(exeext)"
+target_libs="target-libphobos target-zlib target-libbacktrace"
+
+# The D frontend is written in C++, so we need to build the C++
+# compiler during stage 1.
+lang_requires_boot_languages=c++
 
 gtfiles="\$(srcdir)/d/d-lang.h \$(srcdir)/d/d-builtins.c"
 
-target_libs="target-libphobos target-zlib"
-
-lang_requires=c++
-lang_requires_boot_languages=c++
-
+# Do not build by default.
 build_by_default="no"

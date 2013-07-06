@@ -1108,7 +1108,7 @@ real exp(real x) @trusted pure nothrow
     }
     else
     {
-        return exp2(LOG2E*x);
+        return core.stdc.math.expl(x);
     }
 }
 
@@ -1527,7 +1527,6 @@ unittest
 
 unittest
 {
-    pragma(msg, "overflow/underflow test disabled in gdc. stdc exp doesn't set these flags");
     FloatingPointControl ctrl;
     ctrl.disableExceptions(FloatingPointControl.allExceptions);
     ctrl.rounding = FloatingPointControl.roundToNearest;
@@ -1632,8 +1631,7 @@ creal expi(real y) @trusted pure nothrow
 
 unittest
 {
-    real value = 1.3e5L; //Avoid constant folding
-    assert(expi(value) == cos(value) + sin(value) * 1i);
+    assert(expi(1.3e5L) == cos(1.3e5L) + sin(1.3e5L) * 1i);
     assert(expi(0.0L) == 1L + 0.0Li);
 }
 
@@ -1700,6 +1698,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
             exp = ex - F.EXPBIAS - real.mant_dig + 1;
             vu[F.EXPPOS_SHORT] = (0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE;
         }
+        return value;
     }
     else static if (real.mant_dig == 113)   // quadruple
     {
@@ -1742,6 +1741,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
             vu[F.EXPPOS_SHORT] =
                 cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FFE);
         }
+        return value;
     }
     else static if (real.mant_dig==53) // real is double
     {
@@ -1781,12 +1781,12 @@ real frexp(real value, out int exp) @trusted pure nothrow
             vu[F.EXPPOS_SHORT] =
                 cast(ushort)((0x8000 & vu[F.EXPPOS_SHORT]) | 0x3FE0);
         }
+        return value;
     }
-    else
+    else // static if (real.mant_dig==106) // real is doubledouble
     {
         assert (0, "frexp not implemented");
     }
-    return value;
 }
 
 
@@ -2655,6 +2655,18 @@ private:
             INVALID_MASK   = 0xF80 // PowerPC has five types of invalid exceptions.
         }
     }
+    else version (PPC64)
+    {
+        // PowerPC FPSCR is a 32-bit register.
+        enum : int
+        {
+            INEXACT_MASK   = 0x600,
+            UNDERFLOW_MASK = 0x010,
+            OVERFLOW_MASK  = 0x008,
+            DIVBYZERO_MASK = 0x020,
+            INVALID_MASK   = 0xF80 // PowerPC has five types of invalid exceptions.
+        }
+    }
     else version (ARM)
     {
         enum : int
@@ -2821,23 +2833,36 @@ void resetIeeeFlags() { IeeeFlags.resetIeeeFlags(); }
 
 
 Example:
- ----
-  {
+----
+{
+    FloatingPointControl fpctrl;
+
     // Enable hardware exceptions for division by zero, overflow to infinity,
     // invalid operations, and uninitialized floating-point variables.
-
-    FloatingPointControl fpctrl;
     fpctrl.enableExceptions(FloatingPointControl.severeExceptions);
 
-    double y = x*3.0; // will generate a hardware exception, if x is uninitialized.
-    //
+    // This will generate a hardware exception, if x is a
+    // default-initialized floating point variable:
+    real x; // Add `= 0` or even `= real.nan` to not throw the exception.
+    real y = x * 3.0;
+
+    // The exception is only thrown for default-uninitialized NaN-s.
+    // NaN-s with other payload are valid:
+    real z = y * real.nan; // ok
+
+    // Changing the rounding mode:
     fpctrl.rounding = FloatingPointControl.roundUp;
+    assert(rint(1.1) == 2);
 
-    // The hardware exceptions will be disabled when leaving this scope.
+    // The set hardware exceptions will be disabled when leaving this scope.
     // The original rounding mode will also be restored.
-  }
+}
 
- ----
+// Ensure previous values are returned:
+assert(!FloatingPointControl.enabledExceptions);
+assert(FloatingPointControl.rounding == FloatingPointControl.roundToNearest);
+assert(rint(1.1) == 1);
+----
 
  */
 struct FloatingPointControl
@@ -2895,8 +2920,8 @@ public:
     //// Change the floating-point hardware rounding mode
     @property void rounding(RoundingMode newMode)
     {
-        ushort old = getControlState();
-        setControlState((old & ~ROUNDING_MASK) | (newMode & ROUNDING_MASK));
+        initialize();
+        setControlState((getControlState() & ~ROUNDING_MASK) | (newMode & ROUNDING_MASK));
     }
 
     /// Return the exceptions which are currently enabled (unmasked)
@@ -2915,7 +2940,8 @@ public:
     ~this()
     {
         clearExceptions();
-        setControlState(savedState);
+        if (initialized)
+            setControlState(savedState);
     }
 
 private:
@@ -3071,20 +3097,37 @@ private:
 
 unittest
 {
-   {
+    void ensureDefaults()
+    {
+        assert(FloatingPointControl.rounding
+               == FloatingPointControl.roundToNearest);
+        assert(FloatingPointControl.enabledExceptions == 0);
+    }
+
+    {
+        FloatingPointControl ctrl;
+    }
+    ensureDefaults();
+
+    {
+        FloatingPointControl ctrl;
+        ctrl.rounding = FloatingPointControl.roundDown;
+        assert(FloatingPointControl.rounding == FloatingPointControl.roundDown);
+    }
+    ensureDefaults();
+
+    {
         FloatingPointControl ctrl;
         ctrl.enableExceptions(FloatingPointControl.divByZeroException
-                           | FloatingPointControl.overflowException);
+                              | FloatingPointControl.overflowException);
         assert(ctrl.enabledExceptions ==
-            (FloatingPointControl.divByZeroException
-          | FloatingPointControl.overflowException));
+               (FloatingPointControl.divByZeroException
+                | FloatingPointControl.overflowException));
 
         ctrl.rounding = FloatingPointControl.roundUp;
         assert(FloatingPointControl.rounding == FloatingPointControl.roundUp);
     }
-    assert(FloatingPointControl.rounding
-       == FloatingPointControl.roundToNearest);
-    assert(FloatingPointControl.enabledExceptions ==0);
+    ensureDefaults();
 }
 
 
@@ -3703,7 +3746,11 @@ real nextUp(real x) @trusted pure nothrow
             }
         }
         return x;
-    } // doubledouble is not supported
+    }
+    else // static if (real.mant_dig==106) // real is doubledouble
+    {
+        assert (0, "nextUp not implemented");
+    }
 }
 
 /** ditto */

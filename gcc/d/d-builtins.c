@@ -170,10 +170,10 @@ gcc_type_to_d_type (tree t)
 	  length = size_binop (PLUS_EXPR, size_one_node,
 			       convert (sizetype, length));
 
-	  e = new IntegerExp (0, tree_to_hwi (length),
+	  e = new IntegerExp (Loc(), tree_to_hwi (length),
 			      Type::tindex);
 	  d = new TypeSArray (d, e);
-	  d = d->semantic (0, NULL);
+	  d = d->semantic (Loc(), NULL);
 	  d->ctype = t;
 	  return d;
 	}
@@ -183,7 +183,7 @@ gcc_type_to_d_type (tree t)
       d = gcc_type_to_d_type (TREE_TYPE (t));
       if (d)
 	{
-	  e = new IntegerExp (0, TYPE_VECTOR_SUBPARTS (t), Type::tindex);
+	  e = new IntegerExp (Loc(), TYPE_VECTOR_SUBPARTS (t), Type::tindex);
 	  d = new TypeSArray (d, e);
 
 	  if (d->nextOf()->isTypeBasic() == NULL)
@@ -194,8 +194,8 @@ gcc_type_to_d_type (tree t)
 	  if (type_size != 8 && type_size != 16 && type_size != 32)
 	    break;
 
-	  d = new TypeVector (0, d);
-	  d = d->semantic (0, NULL);
+	  d = new TypeVector (Loc(), d);
+	  d = d->semantic (Loc(), NULL);
 	  return d;
 	}
       break;
@@ -217,7 +217,7 @@ gcc_type_to_d_type (tree t)
 	  structname = structname_buf;
 	}
 
-      sdecl = new StructDeclaration (0, Lexer::idPool (structname));
+      sdecl = new StructDeclaration (Loc(), Lexer::idPool (structname));
       // The gcc.builtins module may not exist yet, so cannot set
       // sdecl->parent here. If it is va_list, the parent needs to
       // be set to the object module which will not exist when
@@ -476,7 +476,7 @@ d_gcc_magic_builtins_module (Module *m)
 	!DECL_ASSEMBLER_NAME_SET_P (decl) ? PUREweak :
 	PUREimpure;
 
-      FuncDeclaration *func = new FuncDeclaration (0, 0, Lexer::idPool (name),
+      FuncDeclaration *func = new FuncDeclaration (Loc(), Loc(), Lexer::idPool (name),
 						   STCextern, dtf);
       func->isym = new Symbol;
       func->isym->Stree = decl;
@@ -494,7 +494,7 @@ d_gcc_magic_builtins_module (Module *m)
       if (!dt)
 	continue;
 
-      funcs->push (new AliasDeclaration (0, Lexer::idPool (name), dt));
+      funcs->push (new AliasDeclaration (Loc(), Lexer::idPool (name), dt));
     }
 
   // Iterate through the target-specific builtin types for va_list.
@@ -510,7 +510,7 @@ d_gcc_magic_builtins_module (Module *m)
 	  if (!dt)
 	    continue;
 
-	  funcs->push (new AliasDeclaration (0, Lexer::idPool (name), dt));
+	  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool (name), dt));
 	}
     }
 
@@ -533,39 +533,39 @@ d_gcc_magic_builtins_module (Module *m)
     }
 
   // va_list should already be built, so no need to convert to D type again.
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_va_list"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_va_list"),
 				     Type::tvalist));
 
   // Provide access to target-specific integer types.
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_clong"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_clong"),
 				     gcc_type_to_d_type (long_integer_type_node)));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_culong"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_culong"),
 				     gcc_type_to_d_type (long_unsigned_type_node)));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_byte"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_machine_byte"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (byte_mode, 0))));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_ubyte"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_machine_ubyte"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (byte_mode, 1))));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_int"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_machine_int"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 0))));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_machine_uint"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_machine_uint"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (word_mode, 1))));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_int"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_pointer_int"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 0))));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_pointer_uint"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_pointer_uint"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (ptr_mode, 1))));
 
   // _Unwind_Word has it's own target specific mode.
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_unwind_int"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_unwind_int"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (targetm.unwind_word_mode(), 0))));
 
-  funcs->push (new AliasDeclaration (0, Lexer::idPool ("__builtin_unwind_uint"),
+  funcs->push (new AliasDeclaration (Loc(), Lexer::idPool ("__builtin_unwind_uint"),
 				     gcc_type_to_d_type (lang_hooks.types.type_for_mode (targetm.unwind_word_mode(), 1))));
 
   m->members->push (new LinkDeclaration (LINKc, funcs));
@@ -696,23 +696,23 @@ gcc_cst_to_d_expr (tree cst)
 	  complex_t value;
 	  value.re = TREE_REAL_CST (TREE_REALPART (cst));
 	  value.im = TREE_REAL_CST (TREE_IMAGPART (cst));
-	  return new ComplexExp (0, value, type);
+	  return new ComplexExp (Loc(), value, type);
 	}
       else if (code == INTEGER_CST)
 	{
 	  dinteger_t value = cst_to_hwi (TREE_INT_CST (cst));
-	  return new IntegerExp (0, value, type);
+	  return new IntegerExp (Loc(), value, type);
 	}
       else if (code == REAL_CST)
 	{
-	  real_t value = TREE_REAL_CST (cst);
-	  return new RealExp (0, value, type);
+	  real_value value = TREE_REAL_CST (cst);
+	  return new RealExp (Loc(), ldouble(value), type);
 	}
       else if (code == STRING_CST)
 	{
 	  const void *string = TREE_STRING_POINTER (cst);
 	  size_t len = TREE_STRING_LENGTH (cst);
-	  return new StringExp (0, CONST_CAST (void *, string), len);
+	  return new StringExp (Loc(), CONST_CAST (void *, string), len);
 	}
     }
   return NULL;

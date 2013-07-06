@@ -1,5 +1,5 @@
-// REQUIRED_ARGS: -de
 /*
+REQUIRED_ARGS: -de
 TEST_OUTPUT:
 ---
 fail_compilation/depmsg.d(20): Deprecation: struct depmsg.main.Inner.A is deprecated - With message!

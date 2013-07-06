@@ -1,3 +1,105 @@
+2013-07-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-longdouble.cc(longdouble::set): Intepret set values at higher
+	precision for min/max properties.
+	* d-codegen.cc(maybe_set_builtin_frontend): Add yl2x and yl2xp1
+	math intrinsics.
+	(IRState::maybeExpandSpecialCall): Likewise.
+
+2013-07-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(Module::genobjfile): Don't free current_module_info.
+	* d-codegen.cc(IRState::buildAssignOp): Don't create a SAVE_EXPR
+	around comma expressions used as lvalues.
+	* d-todt.cc(TypeSArray::toDtElem): Get underlying vector basetype when
+	layouting out data in a static array.
+
+2013-06-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* complex_t.h: Move into dfrontend.
+	* d-builtins.c(gcc_cst_to_d_expr): Explicitly create longdouble.
+	* d-longdouble.cc(longdouble::parse): Remove function.
+	(longdouble::longdouble): Remove constructors from longdouble.
+	Replaced with operator= template and longdouble::set.
+	(longdouble::rv): Update for new class layout.
+	(longdouble::from_shwi): New function to create a longdouble value
+	from a HOST_WIDE_INT.
+	(longdouble::from_uhwi): Likewise, but from an unsigned HOST_WIDE_INT.
+	(longdouble::to_shwi): New function to return a HOST_WIDE_INT value
+	from a longdouble.
+	(longdouble::to_uhwi): Likewise, but from an unsigedn HOST_WIDE_INT.
+	(longdouble::set): New function to explicitly set longdouble value.
+	(longdouble::toInt): Remove function.
+	(longdouble::isZero): Remove function.
+	(longdouble::isNegative): Remove function.
+	* d-port.cc(Port::nan): Rename to Port::ldbl_nan.
+	(Port::infinity): Rename to Port::ldbl_infinity.
+	(Port::ldbl_max): New static field.
+	(Port::init): Set ldbl_max to be maximimum value for long double type.
+	(Port::strtof): New function to convert string to longdouble.
+	(Port::strtod): Likewise.
+	(Port::strtold): Likewise.
+
+2013-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(make_alias_for_thunk): Do not set
+	TREE_SYMBOL_REFERENCED.
+
+2013-06-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(build_struct_memcmp): New function.
+	* d-elem.cc(IdentityExp::toElem): Use build_struct_memcmp for field
+	comparisons of small structs.
+
+2013-06-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(make_temp): New function.
+	* d-decls.cc(StructLiteralExp::toSymbol): Implement correctly to
+	generate an anonymous symbol to reference to in the codegen.
+	(ClassReferenceExp::toSymbol): Likewise, but also use an anonymous
+	type as size is not determined until the data has been layed out.
+	* d-elem.cc(EqualExp::toElem): Optimise comparisons of arrays of basic
+	types, also ensure left-to-right evaluation.
+	(SliceExp::toElem): Handle returing slice as a static array type.
+	(AddrExp::toElem): Handle taking the address of StructLiteralExp and
+	ClassReferenceExp symbols.
+	(FuncExp::toElem): Relax type checking to allow returning function
+	addresses as generic pointer types.
+	(ArrayLiteralExp::toElem): Implicitly convert static arrays of void to
+	static arrays of ubyte.
+	(StructLiteralExp::toElem): Remove code generation of postblit calls,
+	now taken care of in the front end.
+	* d-objfile.cc(Module::genmoduleinfo): Emit module name as a null
+	terminated static array.
+	* d-ctype.cc(TypeAArray::toCtype): Pass AA types around like pointers.
+
+2013-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update to D front-end version 2.063.
+
+	* d-builtins.c(gcc_type_to_d_type): Use Loc for unknown locations.
+	(d_gcc_magic_builtins_module): Likewise.
+	(gcc_cst_to_d_expr): Likewise.
+	* d-codegen.cc(get_libcall): Use FuncDeclaration::genCfunc to build
+	D runtime library functions.
+	* d-decl.cc(SymbolDeclaration::SymbolDeclaration): Remove function.
+	(StructLiteralExp::toSymbol): New function.
+	(ClassReferenceExp::toSymbol): New function.
+	* d-elem.cc(AssertExp::toElem): Call struct/class invariants only if
+	compiler is generating invariant code.
+	(TupleExp::toElem): Update for new front-end.
+	(ClassReferenceExp::toElem): New function.
+	* d-lang.cc(d_init_options): Set compiler.vendor front-end parameter.
+	(d_init): Call Expression::init.
+	* d-objfile.cc(InterfaceDeclaration::toObjFile): Correctly set the
+	xgetRTInfo field in the record layout.
+	* d-todt.cc(CastExp::toDt): New function.
+	(AddrExp::toDt): New function.
+	(ClassReferenceExp::toDt): New function.
+	(ClassReferenceExp::toDtI): New function.
+	(ClassReferenceExp::toInstanceDt): New function.
+	(ClassReferenceExp::toDt2): New function.
+
 2013-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(FuncDeclaration::toObjFile): Set 'this' parameter as

@@ -234,7 +234,7 @@ TypeEnum::toCtype (void)
 	  if (flag_short_enums)
 	    TYPE_PACKED (ctype) = 1;
 
-	  TYPE_PRECISION (ctype) = size (0) * 8;
+	  TYPE_PRECISION (ctype) = size (sym->loc) * 8;
 	  TYPE_SIZE (ctype) = 0;
 	  TYPE_MAIN_VARIANT (ctype) = TYPE_MAIN_VARIANT (cmemtype);
 
@@ -526,6 +526,7 @@ TypeAArray::toCtype (void)
 	  DECL_CONTEXT (ptr) = ctype;
 	  TYPE_FIELDS (ctype) = ptr;
 	  TYPE_NAME (ctype) = get_identifier (toChars());
+	  TYPE_TRANSPARENT_AGGR (ctype) = 1;
 	  layout_type (ctype);
 
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);

@@ -22,29 +22,39 @@ load_lib gdc-dg.exp
 proc gdc-convert-args { args } {
     set out ""
 
-    if [regexp -- "-c" $args] {
+    if [regexp -- {-c} $args] {
         lappend out "-c"
     }
-    if [regexp -- "-d" $args] {
-        lappend out "-Wno-deprecated"
+    if [regexp -- {-d} $args] {
+        if [regexp -- {-de} $args] {
+            lappend out "-Wdeprecated"
+            lappend out "-Werror"
+        } else {
+            lappend out "-Wno-deprecated"
+        }
     }
-    if [regexp -- "-de" $args] {
-        lappend out "-Wdeprecated"
-        lappend out "-Werror"
+    if [regexp -- {-g} $args] {
+	lappend out "-g"
     }
-    if [regexp -- "-inline" $args] {
+    if [regexp -- {-inline} $args] {
         lappend out "-finline-functions"
     }
-    if [regexp -- "-property" $args] {
+    if [regexp -- {-property} $args] {
         lappend out "-fproperty"
     }
-    if [regexp -- "-unittest" $args] {
+    if [regexp -- {-unittest} $args] {
         lappend out "-funittest"
     }
-    if [regexp -- "-w" $args] {
-        lappend out "-Wall"
-        lappend out "-Werror"
+    if [regexp -- {-w} $args] {
+        if [regexp -- {-wi} $args] {
+            lappend out "-Wall"
+            lappend out "-Wno-error"
+        } else {
+            lappend out "-Wall"
+            lappend out "-Werror"
+        }
     }
+
 
     set i 0
     while { [regexp -start $i -indices -- {-I([\w/-]+)} $args i j] } {
@@ -146,7 +156,7 @@ proc dmd2dg { base test } {
         set out_line $copy_line
 
         # PERMUTE_ARGS.  Must be handled separately
-        if [regexp -- {//\s*PERMUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {PERMUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
             set PERMUTE_ARGS [gdc-convert-args $m0]
             continue
         }
@@ -165,7 +175,7 @@ proc dmd2dg { base test } {
         # Can be handled with dg directives.
 
         # Handle EXECUTE_ARGS option.
-        if [regexp -- {//\s*EXECUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
             foreach arg $m0 {
                 lappend EXECUTE_ARGS $arg
             }
@@ -173,7 +183,7 @@ proc dmd2dg { base test } {
         }
 
         # Handle EXTRA_SOURCES option
-        if [regexp -- {//\s*EXTRA_SOURCES\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {EXTRA_SOURCES\s*:\s*(.*)} $copy_line m m0] {
             # Iterate imports and convert
             foreach import $m0 {
                 # print "Import: $base $type/$import"
@@ -183,7 +193,7 @@ proc dmd2dg { base test } {
         }
 
         # Handle EXTRA_FILES option
-        if [regexp -- {//\s*EXTRA_FILES\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {EXTRA_FILES\s*:\s*(.*)} $copy_line m m0] {
             # Iterate imports and convert
             foreach import $m0 {
                 # print "Import: $base $type/$import"
@@ -193,7 +203,7 @@ proc dmd2dg { base test } {
         }
 
         # REQUIRED_ARGS.
-        if [regexp -- {//\s*REQUIRED_ARGS\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {REQUIRED_ARGS\s*:\s*(.*)} $copy_line m m0] {
             set out_line "// { dg-additional-options \"[gdc-convert-args $m0]\" }"
         }
         puts $fdout $out_line

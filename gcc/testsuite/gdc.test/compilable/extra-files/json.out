@@ -38,8 +38,8 @@
    },
    {
     "kind" : "template",
-    "name" : "Foo(T)",
     "line" : 16,
+    "name" : "Foo",
     "parameters" : [
      {
       "name" : "T",
@@ -64,8 +64,8 @@
    },
    {
     "kind" : "template",
-    "name" : "Bar(int T)",
     "line" : 17,
+    "name" : "Bar",
     "parameters" : [
      {
       "name" : "T",
@@ -92,8 +92,8 @@
    },
    {
     "kind" : "template",
-    "name" : "Baz(T...)",
     "line" : 18,
+    "name" : "Baz",
     "parameters" : [
      {
       "name" : "T",
@@ -118,8 +118,8 @@
    },
    {
     "kind" : "template",
-    "name" : "P(alias T)",
     "line" : 20,
+    "name" : "P",
     "parameters" : [
      {
       "name" : "T",
@@ -142,6 +142,7 @@
       "kind" : "constructor",
       "line" : 23,
       "deco" : "FZC4json4Bar2",
+      "originalType" : "()",
       "endline" : 23
      },
      {
@@ -205,6 +206,7 @@
       "kind" : "constructor",
       "line" : 33,
       "deco" : "FiZC4json4Bar3",
+      "originalType" : "(int i)",
       "parameters" : [
        {
         "name" : "i",
@@ -264,6 +266,30 @@
         "line" : 45,
         "deco" : "C6Object",
         "originalType" : "Object",
+       }
+      ]
+     },
+     {
+      "name" : "__xopEquals",
+      "kind" : "function",
+      "storageClass" : [
+       "static"
+      ],
+      "deco" : "FKxS4json4Foo2KxS4json4Foo2Zb",
+      "parameters" : [
+       {
+        "name" : "p",
+        "deco" : "xS4json4Foo2",
+        "storageClass" : [
+         "ref"
+        ]
+       },
+       {
+        "name" : "q",
+        "deco" : "xS4json4Foo2",
+        "storageClass" : [
+         "ref"
+        ]
        }
       ]
      }
@@ -343,6 +369,117 @@
     "kind" : "import",
     "line" : 80,
     "protection" : "private"
+   },
+   {
+    "name" : "S",
+    "kind" : "struct",
+    "line" : 83,
+    "members" : [
+     {
+      "kind" : "template",
+      "line" : 85,
+      "name" : "this",
+      "parameters" : [
+       {
+        "name" : "T",
+        "kind" : "type"
+       }
+      ],
+      "members" : [
+       {
+        "name" : "this",
+        "kind" : "constructor",
+        "line" : 85,
+        "type" : "(T t)",
+        "parameters" : [
+         {
+          "name" : "t",
+          "type" : "T"
+         }
+        ],
+        "endline" : 85
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind" : "template",
+    "protection" : "private",
+    "line" : 89,
+    "name" : "S1_9755",
+    "parameters" : [
+     {
+      "name" : "T",
+      "kind" : "type"
+     }
+    ],
+    "members" : [
+     {
+      "name" : "S1_9755",
+      "kind" : "struct",
+      "line" : 89,
+      "members" : []
+     }
+    ]
+   },
+   {
+    "kind" : "template",
+    "protection" : "package",
+    "line" : 90,
+    "name" : "S2_9755",
+    "parameters" : [
+     {
+      "name" : "T",
+      "kind" : "type"
+     }
+    ],
+    "members" : [
+     {
+      "name" : "S2_9755",
+      "kind" : "struct",
+      "line" : 90,
+      "members" : []
+     }
+    ]
+   },
+   {
+    "name" : "C_9755",
+    "kind" : "class",
+    "line" : 93,
+    "members" : [
+     {
+      "kind" : "template",
+      "protection" : "protected",
+      "line" : 94,
+      "name" : "CI_9755",
+      "parameters" : [
+       {
+        "name" : "T",
+        "kind" : "type"
+       }
+      ],
+      "members" : [
+       {
+        "name" : "CI_9755",
+        "kind" : "class",
+        "line" : 94,
+        "members" : []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name" : "c_10011",
+    "kind" : "variable",
+    "line" : 98,
+    "storageClass" : [
+     "const"
+    ],
+    "deco" : "xC6Object",
+    "originalType" : "Object",
+    "init" : "Object()"
    }
   ]
  }

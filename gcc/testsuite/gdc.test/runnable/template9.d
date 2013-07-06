@@ -2,7 +2,7 @@
 
 module breaker;
 
-import std.c.stdio;
+import core.stdc.stdio, core.vararg;
 
 /**********************************/
 
@@ -392,16 +392,26 @@ static assert(is(typeof(bug4953(3))));
 /**********************************/
 // 5886 & 5393
 
-struct K5886 {
-    void get1(this T)() const {
+struct K5886
+{
+    void get1(this T)() const
+    {
         pragma(msg, T);
     }
-    void get2(int N=4, this T)() const {
+    void get2(int N=4, this T)() const
+    {
         pragma(msg, N, " ; ", T);
+    }
+    void test() const
+    {
+        get1;       // OK
+        get2;       // OK
+        get2!8;     // NG
     }
 }
 
-void test5886() {
+void test5886()
+{
     K5886 km;
     const(K5886) kc;
     immutable(K5886) ki;
@@ -458,6 +468,30 @@ void test5896()
     assert(cast(int)xi == 3);
     assert(cast(int)xs == 4);
     assert(cast(int)xcs== 5);
+}
+
+/**********************************/
+// 6312
+
+void h6312() {}
+
+class Bla6312
+{
+    mixin wrap6312!h6312;
+}
+
+mixin template wrap6312(alias f)
+{
+    void blub(alias g = f)()
+    {
+        g();
+    }
+}
+
+void test6312()
+{
+    Bla6312 b = new Bla6312();
+    b.blub();
 }
 
 /**********************************/
@@ -1143,6 +1177,25 @@ void test7563()
 }
 
 /**********************************/
+// 7572
+
+class F7572
+{
+    Tr fn7572(Tr, T...)(T t) { return 1; }
+}
+Tr Fn7572(Tr, T...)(T t) { return 2; }
+
+void test7572()
+{
+    F7572 f = new F7572();
+    int delegate() dg = &f.fn7572!int;
+    assert(dg() == 1);
+
+    int function() fn = &Fn7572!int;
+    assert(fn() == 2);
+}
+
+/**********************************/
 // 7580
 
 struct S7580(T)
@@ -1218,7 +1271,7 @@ template T7643(A...){ alias A T7643; }
 
 alias T7643!(long, "x", string, "y") Specs7643;
 
-alias T7643!( Specs7643[] ) U7643;	// Error: tuple A is used as a type
+alias T7643!( Specs7643[] ) U7643;  // Error: tuple A is used as a type
 
 /**********************************/
 // 7671
@@ -1544,6 +1597,105 @@ void test8129()
     static assert(!__traits(compiles, {
         baz8129!ushort(buffer, 915);
     }));
+}
+
+/**********************************/
+// 8238
+
+void test8238()
+{
+    static struct S { template t(){ int t; } }
+
+    S s1, s2;
+    assert(cast(void*)&s1      != cast(void*)&s2     );
+    assert(cast(void*)&s1      != cast(void*)&s1.t!());
+    assert(cast(void*)&s2      != cast(void*)&s2.t!());
+    assert(cast(void*)&s1.t!() == cast(void*)&s2.t!());
+    s1.t!() = 256;
+    assert(s2.t!() == 256);
+}
+
+/**********************************/
+// 8669
+
+struct X8669
+{
+    void mfoo(this T)()
+    {
+        static assert(is(typeof(this) == T));
+    }
+    void cfoo(this T)() const
+    {
+        static assert(is(typeof(this) == const(T)));
+    }
+    void sfoo(this T)() shared
+    {
+        static assert(is(typeof(this) == shared(T)));
+    }
+    void scfoo(this T)() shared const
+    {
+        static assert(is(typeof(this) == shared(const(T))));
+    }
+    void ifoo(this T)() immutable
+    {
+        static assert(is(typeof(this) == immutable(T)));
+    }
+}
+
+void test8669()
+{
+                 X8669 mx;
+           const X8669 cx;
+      immutable  X8669 ix;
+          shared X8669 sx;
+    shared const X8669 scx;
+
+     mx.mfoo();
+     cx.mfoo();
+     ix.mfoo();
+     sx.mfoo();
+    scx.mfoo();
+
+     mx.cfoo();
+     cx.cfoo();
+     ix.cfoo();
+     sx.cfoo();
+    scx.cfoo();
+
+    static assert(!is(typeof(  mx.sfoo() )));
+    static assert(!is(typeof(  cx.sfoo() )));
+     ix.sfoo();
+     sx.sfoo();
+    scx.sfoo();
+
+    static assert(!is(typeof(  mx.scfoo() )));
+    static assert(!is(typeof(  cx.scfoo() )));
+     ix.scfoo();
+     sx.scfoo();
+    scx.scfoo();
+
+    static assert(!is(typeof(  mx.ifoo() )));
+    static assert(!is(typeof(  cx.ifoo() )));
+     ix.ifoo();
+    static assert(!is(typeof(  sx.ifoo() )));
+    static assert(!is(typeof( scx.ifoo() )));
+}
+
+/**********************************/
+// 8833
+
+template TypeTuple8833(T...) { alias TypeTuple = T; }
+
+void func8833(alias arg)() { }
+
+void test8833()
+{
+    int x, y;
+
+    alias TypeTuple8833!(
+        func8833!(x),
+        func8833!(y),
+    ) Map;
 }
 
 /**********************************/
@@ -1939,6 +2091,318 @@ void test9361()
 }
 
 /**********************************/
+// 9536
+
+struct S9536
+{
+    static A foo(A)(A a)
+    {
+        return a * 2;
+    }
+    int bar() const
+    {
+        return foo(42);
+    }
+}
+
+void test9536()
+{
+    S9536 s;
+    assert(s.bar() == 84);
+}
+
+/******************************************/
+// 9806
+
+struct S9806a(alias x)
+{
+    alias S9806a!0 N;
+}
+enum expr9806a = 0 * 0;
+alias S9806a!expr9806a T9806a;
+
+// --------
+
+struct S9806b(alias x)
+{
+    template Next()
+    {
+        enum expr = x + 1;
+        alias S9806b!expr Next;
+    }
+}
+alias S9806b!1 One9806b;
+alias S9806b!0.Next!() OneAgain9806b;
+
+// --------
+
+struct S9806c(x...)
+{
+    template Next()
+    {
+        enum expr = x[0] + 1;
+        alias S9806c!expr Next;
+    }
+}
+alias S9806c!1 One9806c;
+alias S9806c!0.Next!() OneAgain9806c;
+
+/******************************************/
+// 9837
+
+void test9837()
+{
+    enum DA : int[] { a = [1,2,3] }
+    DA da;
+    int[] bda = da;
+    static assert(is(DA : int[]));
+    void fda1(int[] a) {}
+    void fda2(T)(T[] a) {}
+    fda1(da);
+    fda2(da);
+
+    enum SA : int[3] { a = [1,2,3] }
+    SA sa;
+    int[3] bsa = sa;
+    static assert(is(SA : int[3]));
+    void fsa1(int[3] a) {}
+    void fsa2(T)(T[3] a) {}
+    void fsa3(size_t d)(int[d] a) {}
+    void fsa4(T, size_t d)(T[d] a) {}
+    fsa1(sa);
+    fsa2(sa);
+    fsa3(sa);
+    fsa4(sa);
+
+    enum AA : int[int] { a = null }
+    AA aa;
+    int[int] baa = aa;
+    static assert(is(AA : int[int]));
+    void faa1(int[int] a) {}
+    void faa2(V)(V[int] a) {}
+    void faa3(K)(int[K] a) {}
+    void faa4(K, V)(V[K] a) {}
+    faa1(aa);
+    faa2(aa);
+    faa3(aa);
+    faa4(aa);
+}
+
+/******************************************/
+// 9874
+
+bool foo9874() { return true; }
+void bar9874(T)(T) if (foo9874()) {} // OK
+void baz9874(T)(T) if (foo9874)   {} // error
+
+void test9874()
+{
+    foo9874;                      // OK
+    bar9874(0);
+    baz9874(0);
+}
+
+/******************************************/
+
+void test9885()
+{
+    void foo(int[1][]) {}
+    void boo()(int[1][]){}
+    struct X(T...) { static void xoo(T){} }
+    struct Y(T...) { static void yoo()(T){} }
+    struct Z(T...) { static void zoo(U...)(T, U){} }
+
+    struct V(T...) { static void voo()(T, ...){} }
+    struct W(T...) { static void woo()(T...){} }
+
+    struct R(T...) { static void roo(U...)(int, U, T){} }
+
+    // OK
+    foo([[10]]);
+    boo([[10]]);
+
+    // OK
+    X!(int[1][]).xoo([[10]]);
+
+    // NG!
+    Y!().yoo();
+    Y!(int).yoo(1);
+    Y!(int, int[]).yoo(1, [10]);
+    static assert(!__traits(compiles, Y!().yoo(1)));
+    static assert(!__traits(compiles, Y!(int).yoo("a")));
+    static assert(!__traits(compiles, Y!().yoo!(int)()));
+
+    // NG!
+    Z!().zoo();
+    Z!().zoo([1], [1:1]);
+    Z!(int, string).zoo(1, "a");
+    Z!(int, string).zoo(1, "a", [1], [1:1]);
+    Z!().zoo!()();
+    static assert(!__traits(compiles, Z!().zoo!()(1)));     // (none) <- 1
+    static assert(!__traits(compiles, Z!(int).zoo!()()));   // int <- (none)
+    static assert(!__traits(compiles, Z!(int).zoo!()(""))); // int <- ""
+    static assert(!__traits(compiles, Z!().zoo!(int)()));   // int <- (none)
+    static assert(!__traits(compiles, Z!().zoo!(int)(""))); // int <- ""
+
+    V!().voo(1,2,3);
+    V!(int).voo(1,2,3);
+    V!(int, long).voo(1,2,3);
+    static assert(!__traits(compiles, V!(int).voo()));          // int <- (none)
+    static assert(!__traits(compiles, V!(int, long).voo(1)));       // long <- (none)
+    static assert(!__traits(compiles, V!(int, string).voo(1,2,3)));     // string <- 2
+
+    W!().woo();
+    //W!().woo(1, 2, 3);    // Access Violation
+    {   // this behavior is consistent with:
+        //alias TL = TypeTuple!();
+        //void foo(TL...) {}
+        //foo(1, 2, 3);     // Access Violation
+        //pragma(msg, typeof(foo));   // void(...)  -> D-style variadic function?
+    }
+    W!(int,int[]).woo(1,2,3);
+    W!(int,int[2]).woo(1,2,3);
+    static assert(!__traits(compiles, W!(int,int,int).woo(1,2,3)));	// int... <- 2
+    static assert(!__traits(compiles, W!(int,int).woo(1,2)));		// int... <- 2
+    static assert(!__traits(compiles, W!(int,int[2]).woo(1,2)));    // int[2]... <- 2
+
+    R!().roo(1, "", []);
+    R!(int).roo(1, "", [], 1);
+    R!(int, string).roo(1, "", [], 1, "");
+    R!(int, string).roo(1, 2, "");
+    static assert(!__traits(compiles, R!(int).roo(1, "", []))); // int <- []
+    static assert(!__traits(compiles, R!(int, int).roo(1, "", [])));    // int <- []
+    static assert(!__traits(compiles, R!(int, string).roo(1, 2, 3)));   // string <- 3
+
+    // test case
+    struct Tuple(T...) { this()(T values) {} }
+    alias T = Tuple!(int[1][]);
+    auto t = T([[10]]);
+}
+
+/******************************************/
+// 9971
+
+void goo9971()()
+{
+    auto g = &goo9971;
+}
+
+struct S9971
+{
+    void goo()()
+    {
+        auto g = &goo;
+        static assert(is(typeof(g) == delegate));
+    }
+}
+
+void test9971()
+{
+    goo9971!()();
+
+    S9971.init.goo!()();
+}
+
+/******************************************/
+// 9977
+
+void test9977()
+{
+    struct S1(T) { T value; }
+    auto func1(T)(T value) { return value; }
+    static assert(is(S1!int == struct));
+    assert(func1(10) == 10);
+
+    template S2(T) { struct S2 { T value; } }
+    template func2(T) { auto func2(T value) { return value; } }
+    static assert(is(S2!int == struct));
+    assert(func2(10) == 10);
+
+    template X(T) { alias X = T[3]; }
+    static assert(is(X!int == int[3]));
+
+    int a;
+    template Y(T) { alias Y = T[typeof(a)]; }
+    static assert(is(Y!double == double[int]));
+
+    int v = 10;
+    template Z() { alias Z = v; }
+    assert(v == 10);
+    Z!() = 20;
+    assert(v == 20);
+}
+
+/******************************************/
+// 9990
+
+auto initS9990() { return "hi"; }
+
+class C9990(alias init) {}
+
+alias SC9990 = C9990!(initS9990);
+
+/******************************************/
+// 10067
+
+struct assumeSize10067(alias F) {}
+
+template useItemAt10067(size_t idx, T)
+{
+    void impl(){ }
+
+    alias useItemAt10067 = assumeSize10067!(impl);
+}
+
+useItemAt10067!(0, char) mapS10067;
+
+/******************************************/
+// 10134
+
+template ReturnType10134(alias func)
+{
+    static if (is(typeof(func) R == return))
+        alias R ReturnType10134;
+    else
+        static assert(0);
+}
+
+struct Result10134(T) {}
+
+template getResultType10134(alias func)
+{
+    static if(is(ReturnType10134!(func.exec) _ == Result10134!(T), T))
+    {
+        alias getResultType10134 = T;
+    }
+}
+
+template f10134(alias func)
+{
+    Result10134!(getResultType10134!(func)) exec(int i)
+    {
+        return typeof(return)();
+    }
+}
+
+template a10134()
+{
+    Result10134!(double) exec(int i)
+    {
+        return b10134!().exec(i);
+    }
+}
+
+template b10134()
+{
+    Result10134!(double) exec(int i)
+    {
+        return f10134!(a10134!()).exec(i);
+    }
+}
+
+pragma(msg, getResultType10134!(a10134!()));
+
+/******************************************/
 
 int main()
 {
@@ -1985,6 +2449,7 @@ int main()
     test7359();
     test7416();
     test7563();
+    test7572();
     test7580();
     test7585();
     test7671();
@@ -2001,6 +2466,9 @@ int main()
     test13();
     test14();
     test8129();
+    test8238();
+    test8669();
+    test8833();
     test8976();
     test8940();
     test9026();
@@ -2011,6 +2479,12 @@ int main()
     test9124b();
     test9143();
     test9266();
+    test9536();
+    test9837();
+    test9874();
+    test9885();
+    test9971();
+    test9977();
 
     printf("Success\n");
     return 0;

@@ -133,6 +133,10 @@ static void
 d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
 {
   // Set default values
+  global.init();
+
+  global.compiler.vendor = lang_name;
+
   global.params.argv0 = xstrdup (decoded_options[0].arg);
   global.params.link = 1;
   global.params.useAssert = 1;
@@ -230,6 +234,7 @@ d_init (void)
   Type::init();
   Id::initialize();
   Module::init();
+  Expression::init();
   initPrecedence();
 
   d_backend_init();
@@ -794,8 +799,8 @@ d_parse_file (void)
 {
   if (global.params.verbose)
     {
-      fprintf (stdmsg, "binary    %s\n", global.params.argv0);
-      fprintf (stdmsg, "version   %s\n", global.version);
+      fprintf (stderr, "binary    %s\n", global.params.argv0);
+      fprintf (stderr, "version   %s\n", global.version);
     }
 
   if (global.params.useUnitTests)
@@ -823,7 +828,7 @@ d_parse_file (void)
 
   if (!main_input_filename || !main_input_filename[0])
     {
-      ::error ("input file name required; cannot use stdin");
+      error ("input file name required; cannot use stdin");
       goto had_errors;
     }
 
@@ -832,9 +837,9 @@ d_parse_file (void)
       /* In this mode, the first file name is supposed to be
 	 a duplicate of one of the input file. */
       if (strcmp (fonly_arg, main_input_filename))
-	::error ("-fonly= argument is different from main input file name");
+	error ("-fonly= argument is different from main input file name");
       if (strcmp (fonly_arg, in_fnames[0]))
-	::error ("-fonly= argument is different from first input file name");
+	error ("-fonly= argument is different from first input file name");
     }
 
   for (size_t i = 0; i < num_in_fnames; i++)
@@ -862,7 +867,7 @@ d_parse_file (void)
 	      || strcmp (name, ".") == 0)
 	    {
 	Linvalid:
-	      ::error ("invalid file name '%s'", fname);
+	      error ("invalid file name '%s'", fname);
 	      goto had_errors;
 	    }
 	}
@@ -908,7 +913,7 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "parse     %s\n", m->toChars());
+	fprintf (stderr, "parse     %s\n", m->toChars());
       if (!Module::rootModule)
 	Module::rootModule = m;
       m->importedFrom = m;
@@ -945,7 +950,7 @@ d_parse_file (void)
 	  if (fonly_arg && m != output_module)
 	    continue;
 	  if (global.params.verbose)
-	    fprintf (stdmsg, "import    %s\n", m->toChars());
+	    fprintf (stderr, "import    %s\n", m->toChars());
 	  m->genhdrfile();
 	}
     }
@@ -958,8 +963,8 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "importall %s\n", m->toChars());
-      m->importAll (0);
+	fprintf (stderr, "importall %s\n", m->toChars());
+      m->importAll (NULL);
     }
 
   if (global.errors)
@@ -970,7 +975,7 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "semantic  %s\n", m->toChars());
+	fprintf (stderr, "semantic  %s\n", m->toChars());
       m->semantic();
     }
 
@@ -985,7 +990,7 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "semantic2 %s\n", m->toChars());
+	fprintf (stderr, "semantic2 %s\n", m->toChars());
       m->semantic2();
     }
 
@@ -997,7 +1002,7 @@ d_parse_file (void)
     {
       m = modules[i];
       if (global.params.verbose)
-	fprintf (stdmsg, "semantic3 %s\n", m->toChars());
+	fprintf (stderr, "semantic3 %s\n", m->toChars());
       m->semantic3();
     }
 
@@ -1056,7 +1061,7 @@ d_parse_file (void)
 
       if (name && name[0] == '-' && name[1] == 0)
 	{
-	  size_t n = fwrite (buf.data, 1, buf.offset, stdmsg);
+	  size_t n = fwrite (buf.data, 1, buf.offset, stderr);
 	  gcc_assert (n == buf.offset);
 	}
       else
@@ -1088,7 +1093,7 @@ d_parse_file (void)
       if (fonly_arg && m != output_module)
 	continue;
       if (global.params.verbose)
-	fprintf (stdmsg, "code      %s\n", m->toChars());
+	fprintf (stderr, "code      %s\n", m->toChars());
       if (!flag_syntax_only)
 	m->genobjfile (false);
       if (!global.errors && !errorcount)

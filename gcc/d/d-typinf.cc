@@ -68,7 +68,7 @@ Type::getInternalTypeInfo (Scope *sc)
 	  tid = new TypeInfoDeclaration (t, 1);
 	  internalTI[t->ty] = tid;
 	}
-      e = new VarExp (0, tid);
+      e = new VarExp (Loc(), tid);
       e = e->addressOf (sc);
       // do this so we don't get redundant dereference
       e->type = tid->type;
@@ -90,7 +90,7 @@ Type::getTypeInfo (Scope *sc)
 {
   if (!Type::typeinfo)
     {
-      error (0, "TypeInfo not found. object.d may be incorrectly installed or corrupt, compile with -v switch");
+      error (Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt, compile with -v switch");
       fatal();
     }
 
@@ -131,7 +131,7 @@ Type::getTypeInfo (Scope *sc)
   if (!vtinfo)
     vtinfo = t->vtinfo;
 
-  Expression *e = new VarExp (0, t->vtinfo);
+  Expression *e = new VarExp (Loc(), t->vtinfo);
   e = e->addressOf (sc);
   // do this so we don't get redundant dereference
   e->type = t->vtinfo->type;

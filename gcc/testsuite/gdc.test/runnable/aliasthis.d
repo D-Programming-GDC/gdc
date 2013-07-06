@@ -127,6 +127,68 @@ void test5()
 }
 
 /**********************************************/
+// 4617
+
+struct S4617
+{
+    struct F
+    {
+        int  square(int  n) { return n*n; }
+        real square(real n) { return n*n; }
+    }
+    F forward;
+
+    alias forward this;
+
+    alias forward.square sqr;    // okay
+
+    int field;
+    void mfunc();
+    template Templ(){}
+    void tfunc()(){}
+}
+
+template Id4617(alias k) { alias k Id4617; }
+
+void test4617a()
+{
+    alias Id4617!(S4617.square) test1;            //NG
+    alias Id4617!(S4617.forward.square) test2;    //OK
+
+    alias Id4617!(S4617.sqr) test3;               //okay
+
+    static assert(__traits(isSame, S4617.square, S4617.forward.square));
+}
+
+void test4617b()
+{
+    static struct Sub(T)
+    {
+        T value;
+        @property ref inout(T) payload() inout { return value; }
+        alias payload this;
+    }
+
+    alias Id4617!(S4617.field) S_field;
+    alias Id4617!(S4617.mfunc) S_mfunc;
+    alias Id4617!(S4617.Templ) S_Templ;
+    alias Id4617!(S4617.tfunc) S_tfunc;
+
+    alias Sub!S4617 T4617;
+    alias Id4617!(T4617.field) R_field;
+    alias Id4617!(T4617.mfunc) R_mfunc;
+    alias Id4617!(T4617.Templ) R_Templ;
+    alias Id4617!(T4617.tfunc) R_tfunc;
+    static assert(__traits(isSame, R_field, S_field));
+    static assert(__traits(isSame, R_mfunc, S_mfunc));
+    static assert(__traits(isSame, R_Templ, S_Templ));
+    static assert(__traits(isSame, R_tfunc, S_tfunc));
+
+    alias Id4617!(T4617.square) R_sqr;
+    static assert(__traits(isSame, R_sqr, S4617.forward.square));
+}
+
+/**********************************************/
 // 4773
 
 void test4773()
@@ -186,6 +248,163 @@ void test6() {
 }
 
 /**********************************************/
+// recursive alias this detection
+
+class C0 {}
+
+class C1 { C2 c; alias c this; }
+class C2 { C1 c; alias c this; }
+
+class C3 { C2 c; alias c this; }
+
+struct S0 {}
+
+struct S1 { S2* ps; @property ref get(){return *ps;} alias get this; }
+struct S2 { S1* ps; @property ref get(){return *ps;} alias get this; }
+
+struct S3 { S2* ps; @property ref get(){return *ps;} alias get this; }
+
+struct S4 { S5* ps; @property ref get(){return *ps;} alias get this; }
+struct S5 { S4* ps; @property ref get(){return *ps;} alias get this; }
+
+struct S6 { S5* ps; @property ref get(){return *ps;} alias get this; }
+
+void test7()
+{
+    // Able to check a type is implicitly convertible within a finite time.
+    static assert(!is(C1 : C0));
+    static assert( is(C2 : C1));
+    static assert( is(C1 : C2));
+    static assert(!is(C3 : C0));
+    static assert( is(C3 : C1));
+    static assert( is(C3 : C2));
+
+    static assert(!is(S1 : S0));
+    static assert( is(S2 : S1));
+    static assert( is(S1 : S2));
+    static assert(!is(S3 : S0));
+    static assert( is(S3 : S1));
+    static assert( is(S3 : S2));
+
+    C0 c0;  C1 c1;  C3 c3;
+    S0 s0;  S1 s1;  S3 s3;  S4 s4;  S6 s6;
+
+    // Allow merging types that contains alias this recursion.
+    static assert( __traits(compiles, c0 is c1));   // typeMerge(c || c) e2->implicitConvTo(t1);
+    static assert( __traits(compiles, c0 is c3));   // typeMerge(c || c) e2->implicitConvTo(t1);
+    static assert( __traits(compiles, c1 is c0));   // typeMerge(c || c) e1->implicitConvTo(t2);
+    static assert( __traits(compiles, c3 is c0));   // typeMerge(c || c) e1->implicitConvTo(t2);
+    static assert(!__traits(compiles, s1 is c0));   // typeMerge(c || c) e1
+    static assert(!__traits(compiles, s3 is c0));   // typeMerge(c || c) e1
+    static assert(!__traits(compiles, c0 is s1));   // typeMerge(c || c) e2
+    static assert(!__traits(compiles, c0 is s3));   // typeMerge(c || c) e2
+
+    static assert(!__traits(compiles, s1 is s0));   // typeMerge(s && s) e1
+    static assert(!__traits(compiles, s3 is s0));   // typeMerge(s && s) e1
+    static assert(!__traits(compiles, s0 is s1));   // typeMerge(s && s) e2
+    static assert(!__traits(compiles, s0 is s3));   // typeMerge(s && s) e2
+    static assert(!__traits(compiles, s1 is s4));   // typeMerge(s && s) e1 + e2
+    static assert(!__traits(compiles, s3 is s6));   // typeMerge(s && s) e1 + e2
+
+    static assert(!__traits(compiles, s1 is 10));   // typeMerge(s || s) e1
+    static assert(!__traits(compiles, s3 is 10));   // typeMerge(s || s) e1
+    static assert(!__traits(compiles, 10 is s1));   // typeMerge(s || s) e2
+    static assert(!__traits(compiles, 10 is s3));   // typeMerge(s || s) e2
+
+    // SliceExp::semantic
+    static assert(!__traits(compiles, c1[]));
+    static assert(!__traits(compiles, c3[]));
+    static assert(!__traits(compiles, s1[]));
+    static assert(!__traits(compiles, s3[]));
+
+    // CallExp::semantic
+//  static assert(!__traits(compiles, c1()));
+//  static assert(!__traits(compiles, c3()));
+    static assert(!__traits(compiles, s1()));
+    static assert(!__traits(compiles, s3()));
+
+    // AssignExp::semantic
+    static assert(!__traits(compiles, { c1[1] = 0; }));
+    static assert(!__traits(compiles, { c3[1] = 0; }));
+    static assert(!__traits(compiles, { s1[1] = 0; }));
+    static assert(!__traits(compiles, { s3[1] = 0; }));
+    static assert(!__traits(compiles, { c1[ ] = 0; }));
+    static assert(!__traits(compiles, { c3[ ] = 0; }));
+    static assert(!__traits(compiles, { s1[ ] = 0; }));
+    static assert(!__traits(compiles, { s3[ ] = 0; }));
+
+    // UnaExp::op_overload
+    static assert(!__traits(compiles, +c1[1]));
+    static assert(!__traits(compiles, +c3[1]));
+    static assert(!__traits(compiles, +s1[1]));
+    static assert(!__traits(compiles, +s3[1]));
+    static assert(!__traits(compiles, +c1[ ]));
+    static assert(!__traits(compiles, +c3[ ]));
+    static assert(!__traits(compiles, +s1[ ]));
+    static assert(!__traits(compiles, +s3[ ]));
+    static assert(!__traits(compiles, +c1));
+    static assert(!__traits(compiles, +c3));
+    static assert(!__traits(compiles, +s1));
+    static assert(!__traits(compiles, +s3));
+
+    // ArrayExp::op_overload
+    static assert(!__traits(compiles, c1[1]));
+    static assert(!__traits(compiles, c3[1]));
+    static assert(!__traits(compiles, s1[1]));
+    static assert(!__traits(compiles, s3[1]));
+
+    // BinExp::op_overload
+    static assert(!__traits(compiles, c1 + 10));    // e1
+    static assert(!__traits(compiles, c3 + 10));    // e1
+    static assert(!__traits(compiles, 10 + c1));    // e2
+    static assert(!__traits(compiles, 10 + c3));    // e2
+    static assert(!__traits(compiles, s1 + 10));    // e1
+    static assert(!__traits(compiles, s3 + 10));    // e1
+    static assert(!__traits(compiles, 10 + s1));    // e2
+    static assert(!__traits(compiles, 10 + s3));    // e2
+
+    // BinExp::compare_overload
+    static assert(!__traits(compiles, c1 < 10));    // (Object.opCmp(int) is invalid)
+    static assert(!__traits(compiles, c3 < 10));    // (Object.opCmp(int) is invalid)
+    static assert(!__traits(compiles, 10 < c1));    // (Object.opCmp(int) is invalid)
+    static assert(!__traits(compiles, 10 < c3));    // (Object.opCmp(int) is invalid)
+    static assert(!__traits(compiles, s1 < 10));    // e1
+    static assert(!__traits(compiles, s3 < 10));    // e1
+    static assert(!__traits(compiles, 10 < s1));    // e2
+    static assert(!__traits(compiles, 10 < s3));    // e2
+
+    // BinAssignExp::op_overload
+    static assert(!__traits(compiles, c1[1] += 1));
+    static assert(!__traits(compiles, c3[1] += 1));
+    static assert(!__traits(compiles, s1[1] += 1));
+    static assert(!__traits(compiles, s3[1] += 1));
+    static assert(!__traits(compiles, c1[ ] += 1));
+    static assert(!__traits(compiles, c3[ ] += 1));
+    static assert(!__traits(compiles, s1[ ] += 1));
+    static assert(!__traits(compiles, s3[ ] += 1));
+    static assert(!__traits(compiles, c1 += c0));   // e1
+    static assert(!__traits(compiles, c3 += c0));   // e1
+    static assert(!__traits(compiles, s1 += s0));   // e1
+    static assert(!__traits(compiles, s3 += s0));   // e1
+    static assert(!__traits(compiles, c0 += c1));   // e2
+    static assert(!__traits(compiles, c0 += c3));   // e2
+    static assert(!__traits(compiles, s0 += s1));   // e2
+    static assert(!__traits(compiles, s0 += s3));   // e2
+    static assert(!__traits(compiles, c1 += s1));   // e1 + e2
+    static assert(!__traits(compiles, c3 += s3));   // e1 + e2
+
+    // ForeachStatement::inferAggregate
+    static assert(!__traits(compiles, { foreach (e; s1){} }));
+    static assert(!__traits(compiles, { foreach (e; s3){} }));
+    static assert(!__traits(compiles, { foreach (e; c1){} }));
+    static assert(!__traits(compiles, { foreach (e; c3){} }));
+
+    // Expression::checkToBoolean
+    static assert(!__traits(compiles, { if (s1){} }));
+    static assert(!__traits(compiles, { if (s3){} }));
+}
+
+/***************************************************/
 // 2781
 
 struct Tuple2781a(T...) {
@@ -874,8 +1093,8 @@ void test8169()
     }
 
     static assert(ValueImpl.getValue() == 42); // #0, OK
-    static assert(ValueUser.getValue() == 42); // #1, NG
-    static assert(       ValueUser.m_valueImpl .getValue() == 42); // #2, NG
+    static assert(ValueUser.getValue() == 42); // #1, NG -> OK
+    static assert(       ValueUser.m_valueImpl .getValue() == 42); // #2, NG -> OK
     static assert(typeof(ValueUser.m_valueImpl).getValue() == 42); // #3, OK
 }
 
@@ -904,6 +1123,127 @@ struct S9177
 pragma(msg, is(S9177 : int));
 
 /***************************************************/
+// 9858
+
+struct S9858()
+{
+    @property int get() const
+    {
+        return 42;
+    }
+    alias get this;
+    void opAssign(int) {}
+}
+void test9858()
+{
+    const S9858!() s;
+    int i = s;
+}
+
+/***************************************************/
+// 9873
+
+void test9873()
+{
+    struct Tup(T...) { T field; alias field this; }
+
+    auto seq1 = Seq!(1, "hi");
+    assert(Seq!(1, "hi") == Seq!(1, "hi"));
+    assert(seq1          == Seq!(1, "hi"));
+    assert(Seq!(1, "hi") == seq1);
+    assert(seq1          == seq1);
+
+    auto seq2 = Seq!(2, "hi");
+    assert(Seq!(1, "hi") != Seq!(2, "hi"));
+    assert(seq2          != Seq!(1, "hi"));
+    assert(Seq!(1, "hi") != seq2);
+    assert(seq2          != seq1);
+
+    auto tup1 = Tup!(int, string)(1, "hi");
+    assert(Seq!(1, "hi") == tup1);
+    assert(seq1          == tup1);
+    assert(tup1          == Seq!(1, "hi"));
+    assert(tup1          == seq1);
+
+    auto tup2 = Tup!(int, string)(2, "hi");
+    assert(Seq!(1, "hi") != tup2);
+    assert(seq1          != tup2);
+    assert(tup2          != Seq!(1, "hi"));
+    assert(tup2          != seq1);
+
+    static assert(!__traits(compiles, seq1 == Seq!(1, "hi", [1,2])));
+    static assert(!__traits(compiles, tup1 == Seq!(1, "hi", [1,2])));
+}
+
+/***************************************************/
+// 10178
+
+void test10178()
+{
+    struct S { static int count; }
+    S s;
+    assert((s.tupleof == s.tupleof) == true);
+    assert((s.tupleof != s.tupleof) == false);
+
+    S getS()
+    {
+        S s;
+        ++S.count;
+        return s;
+    }
+    assert(getS().tupleof == getS().tupleof);
+    assert(S.count == 2);
+}
+
+/***************************************************/
+// 9890
+
+void test9890()
+{
+    struct RefCounted(T)
+    {
+        T _payload;
+
+        ref T refCountedPayload() 
+        {
+            return _payload;
+        }
+
+        alias refCountedPayload this;
+    }
+
+    struct S(int x_) 
+    {
+        alias x_ x;
+    }
+
+    alias RefCounted!(S!1) Rs;
+    static assert(Rs.x == 1);
+}
+
+/***************************************************/
+// 10004
+
+void test10004()
+{
+    static int count = 0;
+
+    static S make(S)()
+    {
+        ++count;    // necessary to make this function impure
+        S s;
+        return s;
+    }
+
+    struct SX(T...) {
+        T field; alias field this;
+    }
+    alias S = SX!(int, long);
+    assert(make!S.field == make!S.field);
+    assert(count == 2);
+}
+
+/***************************************************/
 
 int main()
 {
@@ -912,9 +1252,12 @@ int main()
     test3();
     test4();
     test5();
+    test4617a();
+    test4617b();
     test4773();
     test5188();
     test6();
+    test7();
     test2781();
     test6546();
     test6736();
@@ -939,6 +1282,11 @@ int main()
     test7992();
     test8169();
     test9174();
+    test9858();
+    test9873();
+    test10178();
+    test9890();
+    test10004();
 
     printf("Success\n");
     return 0;

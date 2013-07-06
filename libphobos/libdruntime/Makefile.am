@@ -77,7 +77,7 @@ CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
 	  core/sync/semaphore.o
 
-GCC_OBJS=gcc/atomics.o gcc/builtins.o gcc/deh.o gcc/unwind_pe.o
+GCC_OBJS=gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o gcc/libbacktrace.o gcc/unwind_pe.o 
 
 UTIL_OBJS=rt/util/console.o rt/util/container.o rt/util/hash.o \
 	  rt/util/string.o rt/util/utf.o
@@ -143,8 +143,9 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/freebsd/dlfcn.di core/sys/freebsd/execinfo.di \
 	     core/sys/freebsd/sys/event.di \
 	     \
-	     core/sys/linux/config.di core/sys/linux/elf.di \
-	     core/sys/linux/epoll.di core/sys/linux/execinfo.di \
+	     core/sys/linux/config.di core/sys/linux/dlfcn.di \
+	     core/sys/linux/elf.di core/sys/linux/epoll.di \
+	     core/sys/linux/execinfo.di core/sys/linux/link.di \
 	     core/sys/linux/sys/signalfd.di core/sys/linux/sys/xattr.di \
 	     \
 	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
@@ -167,12 +168,13 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/posix/net/if_.di core/sys/posix/netinet/in_.di \
 	     core/sys/posix/netinet/tcp.di \
 	     core/sys/posix/sys/ioctl.di core/sys/posix/sys/ipc.di \
-	     core/sys/posix/sys/mman.di core/sys/posix/sys/select.di \
-	     core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
-	     core/sys/posix/sys/stat.di core/sys/posix/sys/statvfs.di \
-	     core/sys/posix/sys/time.di core/sys/posix/sys/types.di \
-	     core/sys/posix/sys/uio.di core/sys/posix/sys/un.di \
-	     core/sys/posix/sys/utsname.di core/sys/posix/sys/wait.di \
+	     core/sys/posix/sys/mman.di core/sys/posix/sys/resource.di \
+	     core/sys/posix/sys/select.di core/sys/posix/sys/shm.di \
+	     core/sys/posix/sys/socket.di core/sys/posix/sys/stat.di \
+	     core/sys/posix/sys/statvfs.di core/sys/posix/sys/time.di \
+	     core/sys/posix/sys/types.di core/sys/posix/sys/uio.di \
+	     core/sys/posix/sys/un.di core/sys/posix/sys/utsname.di \
+	     core/sys/posix/sys/wait.di \
 	     \
 	     core/sys/windows/dbghelp.di core/sys/windows/dll.di \
 	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \
@@ -181,11 +183,21 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
 libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
+if BACKTRACE_SUPPORTED
+	cp -f $(LIBBACKTRACE_LIB) $@
+	$(AR) -q $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+else
 	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+endif
 	$(RANLIB) $@
 
 libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+if BACKTRACE_SUPPORTED
+	cp -f $(LIBBACKTRACE_LIB) $@
+	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+else
 	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+endif
 	$(RANLIB) $@
 
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
@@ -225,6 +237,7 @@ install-data-local: libgdruntime.a
 		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
 	done
 	$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
+	$(INSTALL_HEADER) gcc/libbacktrace.d $(DESTDIR)$(gdc_include_dir)/gcc;
 
 clean-local:
 	rm -f $(CMAIN_OBJS)

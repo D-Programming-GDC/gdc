@@ -213,7 +213,7 @@ int VarExp::inlineCost3(InlineCostState *ics)
     if (tb->ty == Tstruct)
     {
         StructDeclaration *sd = ((TypeStruct *)tb)->sym;
-        if (sd->isnested)
+        if (sd->isNested())
             /* An inner struct will be nested inside another function hierarchy than where
              * we're inlining into, so don't inline it.
              * At least not until we figure out how to 'move' the struct to be nested
@@ -246,7 +246,7 @@ int StructLiteralExp::inlineCost3(InlineCostState *ics)
 {
     //printf("StructLiteralExp::inlineCost3() %s\n", toChars());
 #if DMDV2
-    if (sd->isnested)
+    if (sd->isNested())
         return COST_MAX;
 #endif
     return 1;
@@ -577,7 +577,7 @@ Expression *IfStatement::doInline(InlineDoState *ids)
 Expression *ReturnStatement::doInline(InlineDoState *ids)
 {
     //printf("ReturnStatement::doInline() '%s'\n", exp ? exp->toChars() : "");
-    return exp ? exp->doInline(ids) : 0;
+    return exp ? exp->doInline(ids) : NULL;
 }
 
 #if DMDV2
@@ -869,6 +869,8 @@ Expression *TupleExp::doInline(InlineDoState *ids)
     TupleExp *ce;
 
     ce = (TupleExp *)copy();
+    if (e0)
+        ce->e0 = e0->doInline(ids);
     ce->exps = arrayExpressiondoInline(exps, ids);
     return ce;
 }
@@ -897,10 +899,12 @@ Expression *AssocArrayLiteralExp::doInline(InlineDoState *ids)
 
 Expression *StructLiteralExp::doInline(InlineDoState *ids)
 {
+    if(inlinecopy) return inlinecopy;
     StructLiteralExp *ce;
-
     ce = (StructLiteralExp *)copy();
+    inlinecopy = ce;
     ce->elements = arrayExpressiondoInline(elements, ids);
+    inlinecopy = NULL;
     return ce;
 }
 
@@ -1342,6 +1346,8 @@ Expression *TupleExp::inlineScan(InlineScanState *iss)
 {   Expression *e = this;
 
     //printf("TupleExp::inlineScan()\n");
+    if (e0)
+        e0->inlineScan(iss);
     arrayInlineScan(iss, exps);
 
     return e;
@@ -1373,8 +1379,11 @@ Expression *StructLiteralExp::inlineScan(InlineScanState *iss)
 {   Expression *e = this;
 
     //printf("StructLiteralExp::inlineScan()\n");
+    if(stageflags & stageInlineScan) return e;
+    int old = stageflags;
+    stageflags |= stageInlineScan;
     arrayInlineScan(iss, elements);
-
+    stageflags = old;
     return e;
 }
 
@@ -1465,7 +1474,7 @@ int FuncDeclaration::canInline(int hasthis, int hdrscan, int statementsToo)
 
     if (type)
     {   assert(type->ty == Tfunction);
-        TypeFunction *tf = (TypeFunction *)(type);
+        TypeFunction *tf = (TypeFunction *)type;
         if (tf->varargs == 1)   // no variadic parameter lists
             goto Lno;
 
@@ -1637,7 +1646,7 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
     // Set up parameters
     if (ethis)
     {
-        e = new DeclarationExp(0, ids.vthis);
+        e = new DeclarationExp(Loc(), ids.vthis);
         e->type = Type::tvoid;
         if (as)
             as->push(new ExpStatement(e->loc, e));
@@ -1677,11 +1686,11 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
             ids.from.push(vfrom);
             ids.to.push(vto);
 
-            de = new DeclarationExp(0, vto);
+            de = new DeclarationExp(Loc(), vto);
             de->type = Type::tvoid;
 
             if (as)
-                as->push(new ExpStatement(0, de));
+                as->push(new ExpStatement(Loc(), de));
             else
                 e = Expression::combine(e, de);
         }
@@ -1692,7 +1701,7 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
         inlineNest++;
         Statement *s = fbody->doInlineStatement(&ids);
         as->push(s);
-        *ps = new ScopeStatement(0, new CompoundStatement(0, as));
+        *ps = new ScopeStatement(Loc(), new CompoundStatement(Loc(), as));
         inlineNest--;
     }
     else
@@ -1736,7 +1745,7 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
         ei->exp = new ConstructExp(loc, ve, e);
         ei->exp->type = ve->type;
 
-        DeclarationExp* de = new DeclarationExp(0, vd);
+        DeclarationExp* de = new DeclarationExp(Loc(), vd);
         de->type = Type::tvoid;
 
         // Chain the two together:

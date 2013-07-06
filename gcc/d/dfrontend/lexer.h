@@ -161,10 +161,12 @@ enum TOK
         TOKoverloadset,
         TOKpure,
         TOKnothrow,
-        TOKtls,
         TOKgshared,
         TOKline,
         TOKfile,
+        TOKmodulestring,
+        TOKfuncstring,
+        TOKprettyfunc,
         TOKshared,
         TOKat,
         TOKpow,
@@ -235,11 +237,7 @@ struct Token
         d_uns64 uns64value;
 
         // Floats
-#ifdef IN_GCC
-        // real_t float80value; // can't use this in a union!
-#else
         d_float80 float80value;
-#endif
 
         struct
         {   unsigned char *ustring;     // UTF8 string
@@ -249,16 +247,15 @@ struct Token
 
         Identifier *ident;
     };
-#ifdef IN_GCC
-    real_t float80value; // can't use this in a union!
-#endif
 
     static const char *tochars[TOKMAX];
     static void *operator new(size_t sz);
 
     Token() : next(NULL) {}
     int isKeyword();
+#ifdef DEBUG
     void print();
+#endif
     const char *toChars();
     static const char *toChars(enum TOK);
 };
@@ -305,7 +302,6 @@ struct Lexer
     TOK escapeStringConstant(Token *t, int wide);
     TOK charConstant(Token *t, int wide);
     void stringPostfix(Token *t);
-    unsigned wchar(unsigned u);
     TOK number(Token *t);
     TOK inreal(Token *t);
     void error(const char *format, ...);

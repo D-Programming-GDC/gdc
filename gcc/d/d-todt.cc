@@ -23,6 +23,8 @@
 #include "id.h"
 #include "init.h"
 #include "scope.h"
+#include "ctfe.h"
+
 #include "dfrontend/target.h"
 
 typedef ArrayBase<dt_t> Dts;
@@ -363,7 +365,7 @@ ArrayInitializer::toDt (void)
       tree dt = val->toDt();
 
       if (dts[length])
-	error(loc, "duplicate initializations for index %d", length);
+	error (loc, "duplicate initializations for index %d", length);
       dts[length] = dt;
       length++;
     }
@@ -560,7 +562,7 @@ StructLiteralExp::toDt (dt_t **pdt)
 
 		  VarDeclaration *v2 = sd->fields[j];
 
-		  // Overlap
+		  // Overlap.
 		  if (v2->offset < offset2 && dts[j])
 		    break;
 		}
@@ -713,6 +715,250 @@ VectorExp::toDt (dt_t **pdt)
   return pdt;
 }
 
+dt_t **
+CastExp::toDt (dt_t **pdt)
+{
+  if (e1->type->ty == Tclass && type->ty == Tclass)
+    {
+      TypeClass *tc = (TypeClass *) type;
+      if (tc->sym->isInterfaceDeclaration())
+	{
+	  // Casting from class to interface.
+	  gcc_assert (e1->op == TOKclassreference);
+
+	  ClassReferenceExp *exp = (ClassReferenceExp *) e1;
+	  ClassDeclaration *from = exp->originalClass();
+	  InterfaceDeclaration *to = (InterfaceDeclaration *) tc->sym;
+	  int off = 0;
+	  int isbase = to->isBaseOf (from, &off);
+	  gcc_assert (isbase);
+
+	  return exp->toDtI (pdt, off);
+	}
+      else
+	{
+	  // Casting from class to class.
+	  return e1->toDt (pdt);
+	}
+    }
+
+  return UnaExp::toDt (pdt);
+}
+
+dt_t **
+AddrExp::toDt (dt_t **pdt)
+{
+  if (e1->op == TOKstructliteral)
+    {
+      StructLiteralExp *sl = (StructLiteralExp *) e1;
+      tree dt = build_address (sl->toSymbol()->Stree);
+      return dt_cons (pdt, dt);
+    }
+
+  return UnaExp::toDt (pdt);
+}
+
+dt_t **
+ClassReferenceExp::toDt (dt_t **pdt)
+{
+  InterfaceDeclaration *to = ((TypeClass *) type)->sym->isInterfaceDeclaration();
+
+  if (to != NULL)
+    {
+      // Static typeof this literal is an interface.
+      // We must add offset to symbol.
+      ClassDeclaration *from = originalClass();
+      int off = 0;
+      int isbase = to->isBaseOf (from, &off);
+      gcc_assert (isbase);
+
+      return toDtI (pdt, off);
+    }
+
+  return toDtI (pdt, 0);
+}
+
+dt_t **
+ClassReferenceExp::toDtI (dt_t **pdt, int off)
+{
+  tree dt = build_address (toSymbol()->Stree);
+
+  if (off != 0)
+    dt = build_offset (dt, size_int (off));
+
+  return dt_cons (pdt, dt);
+}
+
+dt_t **
+ClassReferenceExp::toInstanceDt (dt_t **pdt)
+{
+  ClassDeclaration *cd = originalClass();
+  Dts dts;
+  dts.setDim (value->elements->dim);
+  dts.zero();
+
+  for (size_t i = 0; i < value->elements->dim; i++)
+    {
+      Expression *e = (*value->elements)[i];
+      if (!e)
+	continue;
+      tree dt = NULL_TREE;
+      e->toDt (&dt);
+      dts[i] = dt;
+    }
+
+  /* Put out:
+   *  void **vptr;
+   *  monitor_t monitor;
+   */
+  build_vptr_monitor (pdt, cd);
+
+  // Put out rest of class fields.
+  return toDt2 (pdt, cd, &dts);
+}
+
+// Generates the data for the static initializer of class variable.
+// DTS is an array of dt fields, which values have been evaluated in compile time.
+// CD - is a ClassDeclaration, for which initializing data is being built
+// this function, being alike to ClassDeclaration::toDt2, recursively builds the dt for all base classes.
+
+dt_t **
+ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
+{
+  // Note equivalence of this implementation to class's
+  size_t offset;
+
+  if (cd->baseClass)
+    {
+      toDt2 (pdt, cd->baseClass, dts);
+      offset = cd->baseClass->structsize;
+    }
+  else
+    offset = Target::ptrsize * 2;
+
+  for (size_t i = 0; i < cd->fields.dim; i++)
+    {
+      VarDeclaration *v = cd->fields[i];
+      int index = findFieldIndexByName (v);
+      gcc_assert (index != -1);
+
+      tree fdt = (*dts)[index];
+
+      if (fdt == NULL_TREE)
+	{
+	  tree dt = NULL_TREE;
+	  Initializer *init = v->init;
+
+	  if (init)
+	    {
+	      ExpInitializer *ei = init->isExpInitializer();
+	      Type *tb = v->type->toBasetype();
+	      if (!init->isVoidInitializer())
+		{
+		  if (ei && tb->ty == Tsarray)
+		    ((TypeSArray *) tb)->toDtElem (&dt, ei->exp);
+		  else
+		    dt = init->toDt();
+		}
+	    }
+	  else if (v->offset >= offset)
+	    v->type->toDt (&dt);
+
+	  if (dt != NULL_TREE)
+	    {
+	      if (v->offset < offset)
+		error ("duplicated union initialization for %s", v->toChars());
+	      else
+		{
+		  if (offset < v->offset)
+		    dt_zeropad (pdt, v->offset - offset);
+		  dt_chainon (pdt, dt);
+		  offset = v->offset + v->type->size();
+		}
+	    }
+	}
+
+      if (fdt != NULL_TREE)
+	{
+	  if (v->offset < offset)
+	    error ("duplicate union initialization for %s", v->toChars());
+	  else
+	    {
+	      size_t sz = int_size_in_bytes (TREE_TYPE (CONSTRUCTOR_ELT (fdt, 0)->value));
+	      size_t vsz = v->type->size();
+	      size_t voffset = v->offset;
+	      size_t dim = 1;
+
+	      if (sz > vsz)
+		{
+		  gcc_assert (v->type->ty == Tsarray && vsz == 0);
+		  error ("zero length array %s has non-zero length initializer", v->toChars());
+		}
+
+	      for (Type *vt = v->type->toBasetype();
+		   vt->ty == Tsarray; vt = vt->nextOf()->toBasetype())
+		{
+		  TypeSArray *tsa = (TypeSArray *) vt;
+		  dim *= tsa->dim->toInteger();
+		}
+
+	      gcc_assert (sz == vsz || sz * dim <= vsz);
+
+	      for (size_t i = 0; i < dim; i++)
+		{
+		  if (offset < voffset)
+		    dt_zeropad (pdt, voffset - offset);
+
+		  if (fdt == NULL_TREE)
+		    {
+		      if (v->init)
+			fdt = v->init->toDt();
+		      else
+			v->type->toDt (&fdt);
+		    }
+
+		  dt_chainon (pdt, fdt);
+		  fdt = NULL_TREE;
+
+		  offset = voffset + sz;
+		  voffset += vsz / dim;
+		  if (sz == vsz)
+		    break;
+		}
+	    }
+	}
+    }
+
+  // Interface vptr initializations
+  cd->toSymbol();
+
+  for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+    {
+      BaseClass *b = (*cd->vtblInterfaces)[i];
+
+      for (ClassDeclaration *cd2 = originalClass(); 1; cd2 = cd2->baseClass)
+	{
+	  gcc_assert (cd2);
+	  unsigned csymoffset = cd2->baseVtblOffset (b);
+	  if (csymoffset != (unsigned) ~0)
+	    {
+	      tree dt = build_address (cd2->toSymbol()->Stree);
+	      if (offset < (size_t) b->offset)
+		dt_zeropad (pdt, b->offset - offset);
+	      dt_cons (pdt, build_offset (dt, size_int (csymoffset)));
+	      break;
+	    }
+	}
+
+      offset = b->offset + Target::ptrsize;
+    }
+
+  if (offset < cd->structsize)
+    dt_zeropad (pdt, cd->structsize - offset);
+
+  return pdt;
+}
+
 /* ================================================================ */
 
 // Generate the data for the static initialiser.
@@ -849,7 +1095,7 @@ StructDeclaration::toDt (dt_t **pdt)
       if (dt != NULL_TREE)
 	{
 	  if (v->offset < offset)
-	    error("overlapping initialization for struct %s.%s", toChars(), v->toChars());
+	    error ("overlapping initialization for struct %s.%s", toChars(), v->toChars());
 	  else
 	    {
 	      if (offset < v->offset)
@@ -890,9 +1136,11 @@ TypeSArray::toDtElem (dt_t **pdt, Expression *e)
 
   if (len)
     {
+      tree dt = NULL_TREE;
       Type *tnext = next;
       Type *tbn = tnext->toBasetype();
-      tree dt = NULL_TREE;
+      if (tbn->ty == Tvector)
+	tbn = ((TypeVector *) tbn)->basetype;
 
       if (e && (e->op == TOKstring || e->op == TOKarrayliteral))
 	{
@@ -1131,7 +1379,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
   // TypeInfo for enum members.
   if (sd->memtype)
     {
-      sd->memtype->getTypeInfo(NULL);
+      sd->memtype->getTypeInfo (NULL);
       dt_cons (pdt, build_address (sd->memtype->vtinfo->toSymbol()->Stree));
     }
   else
@@ -1167,7 +1415,7 @@ TypeInfoPointerDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tpointer);
 
   TypePointer *tc = (TypePointer *) tinfo;
-  tc->next->getTypeInfo(NULL);
+  tc->next->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Pointer
   build_vptr_monitor (pdt, Type::typeinfopointer);
@@ -1189,7 +1437,7 @@ TypeInfoArrayDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tarray);
 
   TypeDArray *tc = (TypeDArray *) tinfo;
-  tc->next->getTypeInfo(NULL);
+  tc->next->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Array
   build_vptr_monitor (pdt, Type::typeinfoarray);
@@ -1212,7 +1460,7 @@ TypeInfoStaticArrayDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tsarray);
 
   TypeSArray *tc = (TypeSArray *) tinfo;
-  tc->next->getTypeInfo(NULL);
+  tc->next->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_StaticArray
   build_vptr_monitor (pdt, Type::typeinfostaticarray);
@@ -1237,7 +1485,7 @@ TypeInfoVectorDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tvector);
 
   TypeVector *tc = (TypeVector *) tinfo;
-  tc->basetype->getTypeInfo(NULL);
+  tc->basetype->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Vector
   build_vptr_monitor (pdt, Type::typeinfovector);
@@ -1261,9 +1509,9 @@ TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
   gcc_assert (tinfo->ty == Taarray);
 
   TypeAArray *tc = (TypeAArray *) tinfo;
-  tc->next->getTypeInfo(NULL);
-  tc->index->getTypeInfo(NULL);
-  tc->getImpl()->type->getTypeInfo(NULL);
+  tc->next->getTypeInfo (NULL);
+  tc->index->getTypeInfo (NULL);
+  tc->getImpl()->type->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_AssociativeArray
   build_vptr_monitor (pdt, Type::typeinfoassociativearray);
@@ -1293,7 +1541,7 @@ TypeInfoFunctionDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->deco);
 
   TypeFunction *tc = (TypeFunction *) tinfo;
-  tc->next->getTypeInfo(NULL);
+  tc->next->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Function
   build_vptr_monitor (pdt, Type::typeinfofunction);
@@ -1320,7 +1568,7 @@ TypeInfoDelegateDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->deco);
 
   TypeDelegate *tc = (TypeDelegate *) tinfo;
-  tc->next->nextOf()->getTypeInfo(NULL);
+  tc->next->nextOf()->getTypeInfo (NULL);
 
   // vtbl and monitor for TypeInfo_Delegate
   build_vptr_monitor (pdt, Type::typeinfodelegate);
@@ -1377,7 +1625,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
     dt_cons (pdt, build_address (sd->toInitializer()->Stree));
 
   // hash_t function(in void*) xtoHash;
-  Dsymbol *s = search_function(sd, Id::tohash);
+  Dsymbol *s = search_function (sd, Id::tohash);
   FuncDeclaration *fdx = s ? s->isFuncDeclaration() : NULL;
   if (fdx)
     {
@@ -1388,18 +1636,18 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
 	  // const hash_t toHash();
 	  tftohash = new TypeFunction (NULL, Type::thash_t, 0, LINKd);
 	  tftohash->mod = MODconst;
-	  tftohash = (TypeFunction *) tftohash->semantic (0, &sc);
+	  tftohash = (TypeFunction *) tftohash->semantic (Loc(), &sc);
 	}
 
-      FuncDeclaration *fd = fdx->overloadExactMatch(tftohash);
+      FuncDeclaration *fd = fdx->overloadExactMatch (tftohash);
       if (fd)
 	{
 	  dt_cons (pdt, build_address (fd->toSymbol()->Stree));
 	  TypeFunction *tf = (TypeFunction *) fd->type;
-	  gcc_assert(tf->ty == Tfunction);
+	  gcc_assert (tf->ty == Tfunction);
 
 	  if (!tf->isnothrow || tf->trust == TRUSTsystem)
-	    warning(fd->loc, "toHash() must be declared as extern (D) size_t toHash() const nothrow @safe, not %s", tf->toChars());
+	    warning (fd->loc, "toHash() must be declared as extern (D) size_t toHash() const nothrow @safe, not %s", tf->toChars());
 	}
       else
 	dt_cons (pdt, d_null_pointer);
@@ -1414,7 +1662,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
     dt_cons (pdt, d_null_pointer);
 
   // int function(in void*, in void*) xopCmp;
-  s = search_function(sd, Id::cmp);
+  s = search_function (sd, Id::cmp);
   fdx = s ? s->isFuncDeclaration() : NULL;
   if (fdx)
     {
@@ -1424,14 +1672,14 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
       Parameters *arguments = new Parameters;
 
       // arg type is ref const T
-      Parameter *arg = new Parameter(STCref, tc->constOf(), NULL, NULL);
-      arguments->push(arg);
+      Parameter *arg = new Parameter (STCref, tc->constOf(), NULL, NULL);
+      arguments->push (arg);
 
-      TypeFunction *tfcmpptr = new TypeFunction(arguments, Type::tint32, 0, LINKd);
+      TypeFunction *tfcmpptr = new TypeFunction (arguments, Type::tint32, 0, LINKd);
       tfcmpptr->mod = MODconst;
-      tfcmpptr = (TypeFunction *) tfcmpptr->semantic(0, &sc);
+      tfcmpptr = (TypeFunction *) tfcmpptr->semantic (Loc(), &sc);
 
-      FuncDeclaration *fd = fdx->overloadExactMatch(tfcmpptr);
+      FuncDeclaration *fd = fdx->overloadExactMatch (tfcmpptr);
       if (fd)
 	dt_cons (pdt, build_address (fd->toSymbol()->Stree));
       else
@@ -1441,7 +1689,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
     dt_cons (pdt, d_null_pointer);
 
   // string function(const(void)*) xtoString;
-  s = search_function(sd, Id::tostring);
+  s = search_function (sd, Id::tostring);
   fdx = s ? s->isFuncDeclaration() : NULL;
   if (fdx)
     {
@@ -1451,10 +1699,10 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
 	  Scope sc;
 	  // string toString()
 	  tftostring = new TypeFunction (NULL, Type::tchar->invariantOf()->arrayOf(), 0, LINKd);
-	  tftostring = (TypeFunction *) tftostring->semantic (0, &sc);
+	  tftostring = (TypeFunction *) tftostring->semantic (Loc(), &sc);
 	}
 
-      FuncDeclaration *fd = fdx->overloadExactMatch(tftostring);
+      FuncDeclaration *fd = fdx->overloadExactMatch (tftostring);
       if (fd)
 	dt_cons (pdt, build_address (fd->toSymbol()->Stree));
       else

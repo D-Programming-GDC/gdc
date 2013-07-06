@@ -34,6 +34,7 @@ enum Intrinsic
   INTRINSIC_LDEXP, INTRINSIC_RINT,
   INTRINSIC_RNDTOL, INTRINSIC_SIN,
   INTRINSIC_SQRT,
+  INTRINSIC_YL2X, INTRINSIC_YL2XP1,
 
   INTRINSIC_VA_START,
   INTRINSIC_VA_ARG,
@@ -147,6 +148,8 @@ extern tree d_mark_used (tree exp);
 extern tree d_mark_read (tree exp);
 extern tree build_address (tree exp);
 
+extern tree build_struct_memcmp (tree_code code, StructDeclaration *sd, tree arg0, tree arg1);
+
 // Routines to handle variables that are references.
 extern bool decl_reference_p (Declaration *decl);
 extern tree declaration_type (Declaration *decl);
@@ -235,6 +238,7 @@ extern tree maybe_temporary_var (tree exp, tree *out_var);
 extern tree get_decl_tree (Declaration *decl, FuncDeclaration *func);
 
 // Temporaries (currently just SAVE_EXPRs)
+extern tree make_temp (tree t);
 extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
