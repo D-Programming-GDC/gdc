@@ -1,4 +1,4 @@
-This implements the following official versions:
+This patch implements the following official versions:
 * Windows
 ** Win32
 ** Win64
@@ -12,7 +12,6 @@ This implements the following official versions:
 * Solaris
 * Posix
 * AIX
-* SysV4
 * Hurd
 * Android
 
@@ -20,8 +19,8 @@ These gdc specific versions are also implemented:
 * GNU_MinGW64 (for mingw-w64)
 * GNU_OpenSolaris (for opensolaris)
 * GNU_GLibc (implemented for linux & bsd & opensolaris)
-* GNU_UCLibc (implemented for linux)
-* GNU_Bionic (implemented for linux)
+* GNU_UCLibc (implemented for linux) (not on rs6000, alpha)
+* GNU_Bionic (implemented for linux) (not on rs6000, alpha)
 
 These official OS versions are not implemented:
 * DragonFlyBSD
@@ -29,11 +28,33 @@ These official OS versions are not implemented:
 * Haiku
 * SkyOS
 * SysV3
+* SysV4
 
 gdc-4.7 does not support Android on MIPS or i386.
 Use gdc-4.8+ for that.
 ---
 
+diff --git a/config/alpha/linux.h b/config/alpha/linux.h
+index 38dbdb0..369ffc9 100644
+--- a/config/alpha/linux.h
++++ b/config/alpha/linux.h
+@@ -37,6 +37,16 @@ along with GCC; see the file COPYING3.  If not see
+ 	  builtin_define ("_GNU_SOURCE");			\
+     } while (0)
+ 
++#undef TARGET_OS_D_BUILTINS 
++#define TARGET_OS_D_BUILTINS()					\
++    do {							\
++	if (OPTION_GLIBC)					\
++	  builtin_define ("GNU_GLibc");				\
++								\
++        builtin_define ("linux");				\
++	builtin_define ("Posix");				\
++    } while (0) 
++
+ #undef LIB_SPEC
+ #define LIB_SPEC \
+   "%{pthread:-lpthread} \
 diff --git a/config/arm/linux-eabi.h b/config/arm/linux-eabi.h
 index 80bd825..5167c8c 100644
 --- a/config/arm/linux-eabi.h
@@ -159,36 +180,6 @@ index 0e3751f..747ff52 100644
  #ifndef TARGET_USE_PTHREAD_BY_DEFAULT
  #define SPEC_PTHREAD1 "pthread"
  #define SPEC_PTHREAD2 "!no-pthread"
-diff --git a/config/i386/sysv4.h b/config/i386/sysv4.h
-index 64026e7..eb4c904 100644
---- a/config/i386/sysv4.h
-+++ b/config/i386/sysv4.h
-@@ -71,3 +71,10 @@ along with GCC; see the file COPYING3.  If not see
- 		   "|%0,_GLOBAL_OFFSET_TABLE_+(.-.LPR%=)}"		\
- 	   : "=d"(BASE))
- #endif
-+
-+#define TARGET_OS_D_BUILTINS()					\
-+    do {							\
-+								\
-+	builtin_define ("SysV4");				\
-+	builtin_define ("Posix");				\
-+    } while (0)
-diff --git a/config/ia64/sysv4.h b/config/ia64/sysv4.h
-index 25fd224..430eec5 100644
---- a/config/ia64/sysv4.h
-+++ b/config/ia64/sysv4.h
-@@ -143,3 +143,10 @@ do {									\
- 
- #define SDATA_SECTION_ASM_OP "\t.sdata"
- #define SBSS_SECTION_ASM_OP "\t.sbss"
-+
-+#define TARGET_OS_D_BUILTINS()					\
-+    do {							\
-+								\
-+	builtin_define ("SysV4");				\
-+	builtin_define ("Posix");				\
-+    } while (0)
 diff --git a/config/kfreebsd-gnu.h b/config/kfreebsd-gnu.h
 index 1a9747d..88b8dc2 100644
 --- a/config/kfreebsd-gnu.h
@@ -347,39 +338,50 @@ index 29eabbb..ca9e313 100644
  /* Define appropriate architecture macros for preprocessor depending on
     target switches.  */
  
-diff --git a/config/rs6000/sysv4.h b/config/rs6000/sysv4.h
-index aed2a29..76003bd 100644
---- a/config/rs6000/sysv4.h
-+++ b/config/rs6000/sysv4.h
-@@ -538,6 +538,13 @@ extern int fixuplabelno;
+diff --git a/config/rs6000/linux.h b/config/rs6000/linux.h
+index 3367274..866c6a7 100644
+--- a/config/rs6000/linux.h
++++ b/config/rs6000/linux.h
+@@ -53,6 +53,17 @@
+     }						\
    while (0)
- #endif
  
-+#define TARGET_OS_D_BUILTINS()					\
-+    do {							\
-+								\
-+	builtin_define ("SysV4");				\
-+	builtin_define ("Posix");				\
-+    } while (0)
++#undef  TARGET_OS_D_BUILTINS
++#define TARGET_OS_D_BUILTINS()			\
++  do						\
++    {						\
++      builtin_define ("linux");			\
++      builtin_define ("Posix");			\
++      if (OPTION_GLIBC)				\
++	builtin_define ("GNU_GLibc");		\
++    }						\
++  while (0) 
 +
- #undef	ASM_SPEC
- #define	ASM_SPEC "%(asm_cpu) \
- %{,assembler|,assembler-with-cpp: %{mregnames} %{mno-regnames}} \
-diff --git a/config/sparc/sysv4.h b/config/sparc/sysv4.h
-index 9584974..8ab9f74 100644
---- a/config/sparc/sysv4.h
-+++ b/config/sparc/sysv4.h
-@@ -119,3 +119,10 @@ do { ASM_OUTPUT_ALIGN ((FILE), Pmode == SImode ? 2 : 3);		\
+ #undef	CPP_OS_DEFAULT_SPEC
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
  
- #undef MCOUNT_FUNCTION
- #define MCOUNT_FUNCTION "*_mcount"
+diff --git a/config/rs6000/linux64.h b/config/rs6000/linux64.h
+index 7c516eb..e20fe3e 100644
+--- a/config/rs6000/linux64.h
++++ b/config/rs6000/linux64.h
+@@ -331,6 +331,17 @@ extern int dot_symbols;
+     }							\
+   while (0)
+ 
++#undef  TARGET_OS_D_BUILTINS
++#define TARGET_OS_D_BUILTINS()				\
++  do							\
++    {							\
++	builtin_define ("linux");			\
++	builtin_define ("Posix");			\
++	if (OPTION_GLIBC)				\
++	  builtin_define ("GNU_GLibc");			\
++    }							\
++  while (0)
 +
-+#define TARGET_OS_D_BUILTINS()					\
-+    do {							\
-+								\
-+	builtin_define ("SysV4");				\
-+	builtin_define ("Posix");				\
-+    } while (0)
+ #undef  CPP_OS_DEFAULT_SPEC
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
+ 
 -- 
 1.7.11.7
 
