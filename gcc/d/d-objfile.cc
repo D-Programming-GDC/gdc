@@ -2184,7 +2184,7 @@ build_moduleinfo (Symbol *sym)
   TREE_PRIVATE (our_mod_ref) = 1;
   TREE_STATIC (our_mod_ref) = 1;
 
-  vec<constructor_elt, va_gc> *ce = NULL;
+  VEC(constructor_elt, gc) *ce = NULL;
   CONSTRUCTOR_APPEND_ELT (ce, fld_next, d_null_pointer);
   CONSTRUCTOR_APPEND_ELT (ce, fld_mod, build_address (sym->Stree));
 

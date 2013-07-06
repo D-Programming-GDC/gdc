@@ -46,7 +46,7 @@ dt_cons (dt_t **pdt, tree val)
 dt_t **
 dt_chainon (dt_t **pdt, dt_t *dt)
 {
-  vec<constructor_elt, va_gc> *elts = CONSTRUCTOR_ELTS (dt);
+  VEC(constructor_elt, gc) *elts = CONSTRUCTOR_ELTS (dt);
   tree value;
   size_t i;
 
@@ -80,7 +80,7 @@ static tree
 dt_container2 (dt_t *dt)
 {
   // Generate type on the fly
-  vec<constructor_elt, va_gc> *elts = NULL;
+  VEC(constructor_elt, gc) *elts = NULL;
   tree fields = NULL_TREE;
 
   tree aggtype = make_node (RECORD_TYPE);
@@ -138,7 +138,7 @@ dt_container (dt_t **pdt, Type *type, dt_t *dt)
     {
       // Generate static array constructor.
       TypeSArray *tsa = (TypeSArray *) tb;
-      vec<constructor_elt, va_gc> *elts = NULL;
+      VEC(constructor_elt, gc) *elts = NULL;
       tree value;
       size_t i;
 

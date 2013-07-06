@@ -88,7 +88,7 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 
 Z_OBJS=zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
-       zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
+       zlib/gzio.o zlib/minigzip.o \
        zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
        zlib/trees.o zlib/uncompr.o zlib/zutil.o
 

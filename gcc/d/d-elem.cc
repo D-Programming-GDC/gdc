@@ -1894,7 +1894,7 @@ NewExp::toElem (IRState *irs)
       else
 	{
 	  // Multidimensional array allocations.
-	  vec<constructor_elt, va_gc> *elms = NULL;
+	  VEC(constructor_elt, gc) *elms = NULL;
 	  Type *telem = newtype->toBasetype();
 	  tree dims_var = irs->exprVar (d_array_type (Type::tsize_t, arguments->dim));
 	  tree dims_init = build_constructor (TREE_TYPE (dims_var), NULL);
@@ -2054,8 +2054,8 @@ ArrayLiteralExp::toElem (IRState *irs)
   tree result = NULL_TREE;
 
   /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
-  vec<constructor_elt, va_gc> *elms = NULL;
-  vec_safe_reserve (elms, elements->dim);
+  VEC(constructor_elt, gc) *elms = NULL;
+  VEC_reserve (constructor_elt, gc, elms, elements->dim);
 
   for (size_t i = 0; i < elements->dim; i++)
     {
@@ -2154,7 +2154,7 @@ AssocArrayLiteralExp::toElem (IRState *irs)
   result = maybe_compound_expr (result, build_libcall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
 
   tree aat_type = aa_type->toCtype();
-  vec<constructor_elt, va_gc> *ce = NULL;
+  VEC(constructor_elt, gc) *ce = NULL;
   CONSTRUCTOR_APPEND_ELT (ce, TYPE_FIELDS (aat_type), result);
   tree ctor = build_constructor (aat_type, ce);
 
@@ -2165,7 +2165,7 @@ AssocArrayLiteralExp::toElem (IRState *irs)
 elem *
 StructLiteralExp::toElem (IRState *irs)
 {
-  vec<constructor_elt, va_gc> *ce = NULL;
+  VEC(constructor_elt, gc) *ce = NULL;
   Type *tb = type->toBasetype();
 
   gcc_assert (tb->ty == Tstruct);
@@ -2273,7 +2273,7 @@ NullExp::toElem (IRState *)
 {
   TY base_ty = type->toBasetype()->ty;
   tree null_exp;
-  vec<constructor_elt, va_gc> *ce = NULL;
+  VEC(constructor_elt, gc) *ce = NULL;
 
   // 0 -> dynamic array.  This is a special case conversion.
   // Move to convert for convertTo if it shows up elsewhere.
@@ -2338,10 +2338,10 @@ VectorExp::toElem (IRState *irs)
   if (e1->op == TOKarrayliteral)
     {
       Expressions *elements = ((ArrayLiteralExp *) e1)->elements;
-      vec<constructor_elt, va_gc> *elms = NULL;
+      VEC(constructor_elt, gc) *elms = NULL;
       bool constant_p = true;
 
-      vec_safe_reserve (elms, elements->dim);
+      VEC_reserve (constructor_elt, gc, elms, elements->dim);
       for (size_t i = 0; i < elements->dim; i++)
 	{
 	  Expression *e = (*elements)[i];
