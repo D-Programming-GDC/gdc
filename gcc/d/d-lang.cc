@@ -28,23 +28,22 @@ extern "C" {
 
 #include "d-lang.h"
 #include "d-codegen.h"
-#include "d-gcc-real.h"
 #include "d-confdefs.h"
 
-#include "root.h"
-#include "mtype.h"
-#include "id.h"
-#include "module.h"
-#include "cond.h"
 #include "mars.h"
-
-#include "async.h"
+#include "mtype.h"
+#include "cond.h"
+#include "id.h"
 #include "json.h"
+#include "module.h"
+#include "root.h"
+#include "async.h"
+#include "dfrontend/target.h"
 
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_flatten_attribute (tree *, tree, tree, int, bool *);
-static tree d_handle_transparent_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_target_attribute (tree *, tree, tree, int, bool *);
 
 
 static char lang_name[6] = "GNU D";
@@ -57,8 +56,8 @@ const struct attribute_spec d_attribute_table[] =
 				d_handle_forceinline_attribute, false },
     { "flatten",                0, 0, true,  false, false,
 				d_handle_flatten_attribute, false },
-    { "transparent",            0, 0, false, false, false,
-				d_handle_transparent_attribute, false },
+    { "target",                 1, -1, true, false, false,
+				d_handle_target_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -123,6 +122,9 @@ const struct attribute_spec d_attribute_table[] =
 
 static const char *fonly_arg;
 
+/* List of modules being compiled.  */
+Modules output_modules;
+
 /* Zero disables all standard directories for headers.  */
 static bool std_inc = true;
 
@@ -156,7 +158,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  ObjectFile::emitTemplates = TEnormal;
+  flag_emit_templates = TEnormal;
 }
 
 /* Initialize options structure OPTS.  */
@@ -213,6 +215,8 @@ d_add_builtin_version(const char* ident)
     global.params.isOpenBSD = 1;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = 1;
+  else if (strcmp (ident, "X86_64") == 0)
+    global.params.is64bit = 1;
 
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
@@ -221,16 +225,18 @@ static bool
 d_init (void)
 {
   if(POINTER_SIZE == 64)
-    global.params.is64bit = 1;
-  else
-    global.params.is64bit = 0;
+    global.params.isLP64 = 1;
 
   Type::init();
   Id::initialize();
   Module::init();
   initPrecedence();
-  gcc_d_backend_init();
-  real_t::init();
+
+  d_backend_init();
+
+  longdouble::init();
+  Target::init();
+  Port::init();
 
 #ifndef TARGET_CPU_D_BUILTINS
 # define TARGET_CPU_D_BUILTINS()
@@ -264,7 +270,7 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent ("GNU_InlineAsm");
 
   /* LP64 only means 64bit pointers in D. */
-  if (global.params.is64bit)
+  if (global.params.isLP64)
     VersionCondition::addPredefinedGlobalIdent ("D_LP64");
 
   /* Setting global.params.cov forces module info generation which is
@@ -409,7 +415,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      ObjectFile::emitTemplates = value ? TEprivate : TEnone;
+      flag_emit_templates = value ? TEprivate : TEnone;
       break;
 
     case OPT_femit_moduleinfo:
@@ -584,7 +590,7 @@ d_post_options (const char ** fn)
 
 /* wrapup_global_declaration needs to be called or functions will not
    be emitted. */
-Array globalDeclarations;
+static Array globalDeclarations;
 
 void
 d_add_global_declaration (tree decl)
@@ -658,6 +664,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	  return GS_UNHANDLED;
 	}
 
+    case FLOAT_MOD_EXPR:
     case IASM_EXPR:
       gcc_unreachable();
 
@@ -665,6 +672,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
       return GS_UNHANDLED;
     }
 }
+
 
 static Module *output_module = NULL;
 
@@ -1030,11 +1038,10 @@ d_parse_file (void)
   if (global.errors || global.warnings)
     goto had_errors;
 
-  object_file = new ObjectFile();
   if (fonly_arg)
-    object_file->modules.push (output_module);
+    output_modules.push (output_module);
   else
-    object_file->modules.append (&modules);
+    output_modules.append (&modules);
 
   cirstate = new IRState();
 
@@ -1097,10 +1104,10 @@ d_parse_file (void)
   // Add D frontend error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);
 
-  object_file->finish();
-  output_module = NULL;
+  d_finish_module();
+  d_backend_term();
 
-  gcc_d_backend_term();
+  output_module = NULL;
 }
 
 static tree
@@ -1344,8 +1351,7 @@ struct binding_level *global_binding_level;
 static binding_level *
 alloc_binding_level (void)
 {
-  unsigned sz = sizeof (struct binding_level);
-  return (struct binding_level *) ggc_alloc_cleared_atomic (sz);
+  return ggc_alloc_cleared_binding_level();
 }
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
@@ -1547,22 +1553,19 @@ d_finish_incomplete_decl (tree decl)
 struct lang_type *
 build_d_type_lang_specific (Type *t)
 {
-  struct lang_type *l;
   unsigned sz = sizeof (struct lang_type);
-  l = (struct lang_type *) ggc_alloc_cleared_atomic (sz);
-  l->d_type = t;
-  l->c_type = t->ctype;
-  return l;
+  struct lang_type *lt = ggc_alloc_cleared_lang_type (sz);
+  lt->d_type = t;
+  return lt;
 }
 
 struct lang_decl *
 build_d_decl_lang_specific (Declaration *d)
 {
-  struct lang_decl *l;
   unsigned sz = sizeof (struct lang_decl);
-  l = (struct lang_decl *) ggc_alloc_cleared_atomic (sz);
-  l->d_decl = d;
-  return l;
+  struct lang_decl *ld = ggc_alloc_cleared_lang_decl (sz);
+  ld->d_decl = d;
+  return ld;
 }
 
 
@@ -1592,11 +1595,16 @@ d_eh_personality (void)
 static tree
 d_build_eh_type_type (tree type)
 {
-  TypeClass *d_type = (TypeClass *) build_dtype (type);
-  gcc_assert (d_type);
-  d_type = (TypeClass *) d_type->toBasetype();
-  gcc_assert (d_type->ty == Tclass);
-  return build_address (d_type->sym->toSymbol()->Stree);
+  Type *dtype = build_dtype (type);
+  Symbol *sym;
+
+  if (dtype)
+    dtype = dtype->toBasetype();
+
+  gcc_assert (dtype && dtype->ty == Tclass);
+  sym = ((TypeClass *) dtype)->sym->toSymbol();
+
+  return convert (ptr_type_node, build_address (sym->Stree));
 }
 
 void
@@ -1676,46 +1684,23 @@ d_handle_flatten_attribute (tree *node, tree name,
   return NULL_TREE;
 }
 
-/* Handle a "transparent" attribute.  */
+/* Handle a "target" attribute.  */
 
 static tree
-d_handle_transparent_attribute (tree *node, tree name,
-				tree args ATTRIBUTE_UNUSED,
-				int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
+d_handle_target_attribute (tree *node, tree name, tree args, int flags,
+			   bool *no_add_attrs)
 {
-  Type *t = build_dtype (*node);
-  *no_add_attrs = true;
+  Type *t = build_dtype (TREE_TYPE (*node));
 
-  if (t->ty != Tstruct)
+  /* Ensure we have a function type.  */
+  if (t->ty != Tfunction)
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
-      return NULL_TREE;
+      *no_add_attrs = true;
     }
+  else if (! targetm.target_option.valid_attribute_p (*node, name, args, flags))
+    *no_add_attrs = true;
 
-  AggregateDeclaration *ad = ((TypeStruct *) t)->sym;
-
-  if (!ad->isUnionDeclaration() || ad->fields.dim == 0)
-    {
-      StructDeclaration *sd = ad->isStructDeclaration();
-
-      if (sd && !sd->isPOD())
-	{
-	  warning (OPT_Wattributes, "Cannot apply %qE attribute on non-POD types", name);
-	  return NULL_TREE;
-	}
-      else if (ad->fields.dim == 0)
-	{
-	  warning (OPT_Wattributes, "Cannot apply %qE attribute on empty type", name);
-	  return NULL_TREE;
-	}
-      else if (ad->members->dim > 1)
-	{
-	  warning (OPT_Wattributes, "Cannot apply %qE attribute on types with more than one member", name);
-	  return NULL_TREE;
-	}
-    }
-
-  TYPE_TRANSPARENT_AGGR (*node) = 1;
   return NULL_TREE;
 }
 

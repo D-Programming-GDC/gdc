@@ -611,7 +611,7 @@ void test40()
 
 /***************************************************/
 
-struct S41
+align (16) struct S41
 {
     int[4] a;
 }
@@ -4182,36 +4182,27 @@ void bug3809b() {
 /***************************************************/
 //
 
-version (X86_64)
+void bug6184()
 {
-    void bug6184()
+    bool cmp(ref int[3] a, ref int[3] b)
     {
-        bool cmp(ref int[3] a, ref int[3] b)
-        {
-            return a is b;
-        }
-
-        static struct Ary
-        {
-            int[3] ary;
-        }
-
-        auto a = new Ary;
-        auto b = new Ary;
-        assert(!cmp(a.ary, b.ary));
-        b = a;
-        assert(cmp(a.ary, b.ary));
-
-        // change high bit of ary address
-        *(cast(size_t*)&b) ^= (1UL << 32);
-        assert(!cmp(a.ary, b.ary));
+        return a is b;
     }
-}
-else
-{
-    void bug6184()
+
+    static struct Ary
     {
+        int[3] ary;
     }
+
+    auto a = new Ary;
+    auto b = new Ary;
+    assert(!cmp(a.ary, b.ary));
+    b = a;
+    assert(cmp(a.ary, b.ary));
+
+    // change high bit of ary address
+    *(cast(size_t*)&b) ^= (1UL << (size_t.sizeof * 4));
+    assert(!cmp(a.ary, b.ary));
 }
 
 /***************************************************/

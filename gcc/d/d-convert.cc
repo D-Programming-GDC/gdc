@@ -25,7 +25,6 @@
 static tree
 d_convert_basic (tree type, tree expr)
 {
-  // taken from c-convert.c
   tree e = expr;
   enum tree_code code = TREE_CODE (type);
   const char *invalid_conv_diag;

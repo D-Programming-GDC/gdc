@@ -50,28 +50,28 @@ IRBase::startFunction (FuncDeclaration *decl)
     }
 
   cirstate = (IRState *) new_irs;
-  ModuleInfo & mi = *object_file->moduleInfo;
+  ModuleInfo *mi = current_module_info;
 
   if (decl->isSharedStaticCtorDeclaration())
-    mi.sharedctors.push (decl);
+    mi->sharedctors.push (decl);
   else if (decl->isStaticCtorDeclaration())
-    mi.ctors.push (decl);
+    mi->ctors.push (decl);
   else if (decl->isSharedStaticDtorDeclaration())
     {
       VarDeclaration *vgate;
       if ((vgate = decl->isSharedStaticDtorDeclaration()->vgate))
-	mi.sharedctorgates.push (vgate);
-      mi.shareddtors.push (decl);
+	mi->sharedctorgates.push (vgate);
+      mi->shareddtors.push (decl);
     }
   else if (decl->isStaticDtorDeclaration())
     {
       VarDeclaration *vgate;
       if ((vgate = decl->isStaticDtorDeclaration()->vgate))
-	mi.ctorgates.push (vgate);
-      mi.dtors.push (decl);
+	mi->ctorgates.push (vgate);
+      mi->dtors.push (decl);
     }
   else if (decl->isUnitTestDeclaration())
-    mi.unitTests.push (decl);
+    mi->unitTests.push (decl);
 
   return new_irs;
 }
@@ -79,7 +79,7 @@ IRBase::startFunction (FuncDeclaration *decl)
 void
 IRBase::endFunction (void)
 {
-  gcc_assert (this->scopes.dim == 0);
+  gcc_assert (this->scopes_.dim == 0);
   cirstate = (IRState *) this->parent;
 }
 
@@ -106,9 +106,9 @@ IRBase::addExp (tree e)
   if (EXPR_P (e) && !EXPR_HAS_LOCATION (e))
     SET_EXPR_LOCATION (e, input_location);
 
-  tree stmt_list = (tree) this->statementList.pop();
+  tree stmt_list = (tree) this->statementList_.pop();
   append_to_statement_list_force (e, &stmt_list);
-  this->statementList.push (stmt_list);
+  this->statementList_.push (stmt_list);
 }
 
 
@@ -116,14 +116,14 @@ void
 IRBase::pushStatementList (void)
 {
   tree t = alloc_stmt_list();
-  this->statementList.push (t);
+  this->statementList_.push (t);
   d_keep (t);
 }
 
 tree
 IRBase::popStatementList (void)
 {
-  tree t = (tree) this->statementList.pop();
+  tree t = (tree) this->statementList_.pop();
 
   /* If the statement list is completely empty, just return it.  This is
      just as good small as build_empty_stmt, with the advantage that
@@ -168,9 +168,9 @@ IRBase::getLabelBlock (LabelDsymbol *label, Statement *from)
 {
   Label *l = new Label();
 
-  for (int i = this->loops.dim - 1; i >= 0; i--)
+  for (int i = this->loops_.dim - 1; i >= 0; i--)
     {
-      Flow *flow = this->loops[i];
+      Flow *flow = this->loops_[i];
 
       if (flow->kind != level_block
 	  && flow->kind != level_switch)
@@ -202,9 +202,9 @@ IRBase::getLoopForLabel (Identifier *ident, bool want_continue)
       if (scope_stmt)
 	stmt = scope_stmt->statement;
 
-      for (int i = this->loops.dim - 1; i >= 0; i--)
+      for (int i = this->loops_.dim - 1; i >= 0; i--)
 	{
-	  Flow *flow = this->loops[i];
+	  Flow *flow = this->loops_[i];
 
 	  if (flow->statement == stmt)
 	    {
@@ -217,9 +217,9 @@ IRBase::getLoopForLabel (Identifier *ident, bool want_continue)
     }
   else
     {
-      for (int i = this->loops.dim - 1; i >= 0; i--)
+      for (int i = this->loops_.dim - 1; i >= 0; i--)
 	{
-	  Flow *flow = this->loops[i];
+	  Flow *flow = this->loops_[i];
 
 	  if ((!want_continue && flow->statement->hasBreak())
 	      || flow->statement->hasContinue())
@@ -234,33 +234,31 @@ Flow *
 IRBase::beginFlow (Statement *stmt)
 {
   Flow *flow = new Flow (stmt);
-  this->loops.push (flow);
-  pushStatementList();
+  this->loops_.push (flow);
+  this->pushStatementList();
   return flow;
 }
 
 void
 IRBase::endFlow (void)
 {
-  Flow *flow;
+  gcc_assert (this->loops_.dim);
 
-  gcc_assert (this->loops.dim);
+  Flow *flow = (Flow *) this->loops_.pop();
 
-  flow = (Flow *) this->loops.pop();
   if (flow->exitLabel)
-    doLabel (flow->exitLabel);
-  //%% delete flow;
+    this->doLabel (flow->exitLabel);
 }
 
 void
-IRBase::doLabel (tree t_label)
+IRBase::doLabel (tree label)
 {
   /* Don't write out label unless it is marked as used by the frontend.
      This makes auto-vectorization possible in conditional loops.
      The only excemption to this is in LabelStatement::toIR, in which
      all computed labels are marked regardless.  */
-  if (TREE_USED (t_label))
-    addExp (build1 (LABEL_EXPR, void_type_node, t_label));
+  if (TREE_USED (label))
+    this->addExp (build1 (LABEL_EXPR, void_type_node, label));
 }
 
 
@@ -269,8 +267,9 @@ IRBase::startScope (void)
 {
   unsigned *p_count = new unsigned;
   *p_count = 0;
-  this->scopes.push (p_count);
-  startBindings();
+
+  this->scopes_.push (p_count);
+  this->startBindings();
 }
 
 void
@@ -278,20 +277,22 @@ IRBase::endScope (void)
 {
   unsigned *p_count = currentScope();
   while (*p_count)
-    endBindings();
+    this->endBindings();
 
-  this->scopes.pop();
+  this->scopes_.pop();
 }
 
 
 void
 IRBase::startBindings (void)
 {
+  tree block;
+
   pushlevel (0);
-  tree block = make_node (BLOCK);
+  block = make_node (BLOCK);
   set_block (block);
 
-  pushStatementList();
+  this->pushStatementList();
 
   ++(*currentScope());
 }
@@ -301,9 +302,9 @@ IRBase::endBindings (void)
 {
   tree block = poplevel (1,0,0);
 
-  tree t_body = popStatementList();
-  addExp (build3 (BIND_EXPR, void_type_node,
-		  BLOCK_VARS (block), t_body, block));
+  tree body = this->popStatementList();
+  this->addExp (build3 (BIND_EXPR, void_type_node,
+			BLOCK_VARS (block), body, block));
 
   // Because we used set_block, the popped level/block is not automatically recorded
   insert_block (block);
@@ -314,13 +315,13 @@ IRBase::endBindings (void)
 
 
 // Routines for building statement lists around if/else conditions.
-// STMT contains the statement to be executed if T_COND is true.
+// STMT contains the statement to be executed if COND is true.
 
 void
-IRBase::startCond (Statement *stmt, tree t_cond)
+IRBase::startCond (Statement *stmt, tree cond)
 {
-  Flow *f = beginFlow (stmt);
-  f->condition = t_cond;
+  Flow *flow = this->beginFlow (stmt);
+  flow->condition = cond;
 }
 
 // Start a new statement list for the false condition branch.
@@ -328,8 +329,9 @@ IRBase::startCond (Statement *stmt, tree t_cond)
 void
 IRBase::startElse (void)
 {
-  currentFlow()->trueBranch = popStatementList();
-  pushStatementList();
+  Flow *flow = this->currentFlow();
+  flow->trueBranch = this->popStatementList();
+  this->pushStatementList();
 }
 
 // Wrap up our constructed if condition into a COND_EXPR.
@@ -337,20 +339,20 @@ IRBase::startElse (void)
 void
 IRBase::endCond (void)
 {
-  Flow *f = currentFlow();
-  tree t_brnch = popStatementList();
-  tree t_false_brnch = NULL_TREE;
+  Flow *flow = this->currentFlow();
+  tree branch = this->popStatementList();
+  tree false_branch = NULL_TREE;
 
-  if (f->trueBranch == NULL_TREE)
-    f->trueBranch = t_brnch;
+  if (flow->trueBranch == NULL_TREE)
+    flow->trueBranch = branch;
   else
-    t_false_brnch = t_brnch;
+    false_branch = branch;
 
-  object_file->doLineNote (f->statement->loc);
-  tree t_stmt = build3 (COND_EXPR, void_type_node,
-			f->condition, f->trueBranch, t_false_brnch);
-  endFlow();
-  addExp (t_stmt);
+  this->doLineNote (flow->statement->loc);
+  tree stmt = build3 (COND_EXPR, void_type_node,
+		      flow->condition, flow->trueBranch, false_branch);
+  this->endFlow();
+  this->addExp (stmt);
 }
 
 
@@ -360,9 +362,9 @@ IRBase::endCond (void)
 void
 IRBase::startLoop (Statement *stmt)
 {
-  Flow *f = beginFlow (stmt);
+  Flow *flow = this->beginFlow (stmt);
   // should be end for 'do' loop
-  f->continueLabel = d_build_label (stmt ? stmt->loc : 0, NULL);
+  flow->continueLabel = d_build_label (stmt ? stmt->loc : 0, NULL);
 }
 
 // Emit continue label for loop.
@@ -370,25 +372,27 @@ IRBase::startLoop (Statement *stmt)
 void
 IRBase::continueHere (void)
 {
-  doLabel (currentFlow()->continueLabel);
+  Flow *flow = this->currentFlow();
+  this->doLabel (flow->continueLabel);
 }
 
 // Set LBL as the continue label for the current loop.
 // Used in unrolled loop statements.
 
 void
-IRBase::setContinueLabel (tree lbl)
+IRBase::setContinueLabel (tree label)
 {
-  currentFlow()->continueLabel = lbl;
+  Flow *flow = this->currentFlow();
+  flow->continueLabel = label;
 }
 
 // Emit exit loop condition.
 
 void
-IRBase::exitIfFalse (tree t_cond)
+IRBase::exitIfFalse (tree cond)
 {
-  addExp (build1 (EXIT_EXPR, void_type_node,
-		  build1 (TRUTH_NOT_EXPR, TREE_TYPE (t_cond), t_cond)));
+  this->addExp (build1 (EXIT_EXPR, void_type_node,
+			build1 (TRUTH_NOT_EXPR, TREE_TYPE (cond), cond)));
 }
 
 // Emit a goto to the continue label IDENT of a loop.
@@ -396,7 +400,8 @@ IRBase::exitIfFalse (tree t_cond)
 void
 IRBase::continueLoop (Identifier *ident)
 {
-  doJump (NULL, getLoopForLabel (ident, true)->continueLabel);
+  Flow *flow = this->getLoopForLabel (ident, true);
+  this->doJump (NULL, flow->continueLabel);
 }
 
 // Emit a goto to the exit label IDENT of a loop.
@@ -404,10 +409,10 @@ IRBase::continueLoop (Identifier *ident)
 void
 IRBase::exitLoop (Identifier *ident)
 {
-  Flow *flow = getLoopForLabel (ident);
+  Flow *flow = this->getLoopForLabel (ident);
   if (!flow->exitLabel)
     flow->exitLabel = d_build_label (flow->statement->loc, NULL);
-  doJump (NULL, flow->exitLabel);
+  this->doJump (NULL, flow->exitLabel);
 }
 
 // Wrap up constructed loop body in a LOOP_EXPR.
@@ -416,44 +421,42 @@ void
 IRBase::endLoop (void)
 {
   // says must contain an EXIT_EXPR -- what about while (1)..goto;? something other thand LOOP_EXPR?
-  tree t_body = popStatementList();
-  tree t_loop = build1 (LOOP_EXPR, void_type_node, t_body);
-  addExp (t_loop);
-  endFlow();
+  tree body = this->popStatementList();
+  tree loop = build1 (LOOP_EXPR, void_type_node, body);
+  this->addExp (loop);
+  this->endFlow();
 }
 
 
 // Routines for building statement lists around switches.  STMT is the body
-// of the switch statement, T_COND is the condition to the switch. If HAS_VARS
+// of the switch statement, COND is the condition to the switch. If HAS_VARS
 // is true, then the switch statement has been converted to an if-then-else.
 
 void
-IRBase::startCase (Statement *stmt, tree t_cond, int has_vars)
+IRBase::startCase (Statement *stmt, tree cond, int has_vars)
 {
-  Flow *f = beginFlow (stmt);
-  f->condition = t_cond;
-  f->kind = level_switch;
+  Flow *flow = this->beginFlow (stmt);
+  flow->condition = cond;
+  flow->kind = level_switch;
   if (has_vars)
     {
       // %% dummy value so the tree is not NULL
-      f->hasVars = integer_one_node;
+      flow->hasVars = integer_one_node;
     }
 }
 
-// Emit a case statement for T_VALUE.
+// Emit a case statement for VALUE.
 
 void
-IRBase::doCase (tree t_value, tree t_label)
+IRBase::doCase (tree value, tree label)
 {
-  if (currentFlow()->hasVars)
-    {
-      // SwitchStatement has already taken care of label jumps.
-      doLabel (t_label);
-    }
+  // SwitchStatement has already taken care of label jumps.
+  if (this->currentFlow()->hasVars)
+    this->doLabel (label);
   else
     {
-      tree t_case = build_case_label (t_value, NULL_TREE, t_label);
-      addExp (t_case);
+      tree case_label = build_case_label (value, NULL_TREE, label);
+      this->addExp (case_label);
     }
 }
 
@@ -462,21 +465,21 @@ IRBase::doCase (tree t_value, tree t_label)
 void
 IRBase::endCase (void)
 {
-  Flow *f = currentFlow();
-  tree t_body = popStatementList();
-  tree t_condtype = TREE_TYPE (f->condition);
-  if (f->hasVars)
-    {
-      // %% switch was converted to if-then-else expression
-      addExp (t_body);
-    }
+  Flow *flow = this->currentFlow();
+  tree body = this->popStatementList();
+  tree condtype = TREE_TYPE (flow->condition);
+
+  // Switch was converted to if-then-else expression
+  if (flow->hasVars)
+    this->addExp (body);
   else
     {
-      tree t_stmt = build3 (SWITCH_EXPR, t_condtype, f->condition,
-			    t_body, NULL_TREE);
-      addExp (t_stmt);
+      tree stmt = build3 (SWITCH_EXPR, condtype,
+			  flow->condition, body, NULL_TREE);
+      this->addExp (stmt);
     }
-  endFlow();
+
+  this->endFlow();
 }
 
 // Routines for building statement lists around try/catch/finally.
@@ -485,8 +488,8 @@ IRBase::endCase (void)
 void
 IRBase::startTry (Statement *stmt)
 {
-  beginFlow (stmt);
-  currentFlow()->kind = level_try;
+  Flow *flow = this->beginFlow (stmt);
+  flow->kind = level_try;
 }
 
 // Pops the try body and starts a new statement list for all catches.
@@ -494,18 +497,19 @@ IRBase::startTry (Statement *stmt)
 void
 IRBase::startCatches (void)
 {
-  currentFlow()->tryBody = popStatementList();
-  currentFlow()->kind = level_catch;
-  pushStatementList();
+  Flow *flow = this->currentFlow();
+  flow->tryBody = this->popStatementList();
+  flow->kind = level_catch;
+  this->pushStatementList();
 }
 
-// Start a new catch expression for exception type T_TYPE.
+// Start a new catch expression for exception type TYPE.
 
 void
-IRBase::startCatch (tree t_type)
+IRBase::startCatch (tree type)
 {
-  currentFlow()->catchType = t_type;
-  pushStatementList();
+  this->currentFlow()->catchType = type;
+  this->pushStatementList();
 }
 
 // Wrap up catch expression into a CATCH_EXPR.
@@ -513,11 +517,11 @@ IRBase::startCatch (tree t_type)
 void
 IRBase::endCatch (void)
 {
-  tree t_body = popStatementList();
+  tree body = this->popStatementList();
   // % Wrong loc... can set pass statement to startCatch, set
-  // The loc on t_type and then use it here...
-  addExp (build2 (CATCH_EXPR, void_type_node,
-		  currentFlow()->catchType, t_body));
+  // The loc on type and then use it here...
+  this->addExp (build2 (CATCH_EXPR, void_type_node,
+			this->currentFlow()->catchType, body));
 }
 
 // Wrap up try/catch into a TRY_CATCH_EXPR.
@@ -525,11 +529,13 @@ IRBase::endCatch (void)
 void
 IRBase::endCatches (void)
 {
-  tree t_catches = popStatementList();
-  object_file->doLineNote (currentFlow()->statement->loc);
-  addExp (build2 (TRY_CATCH_EXPR, void_type_node,
-		  currentFlow()->tryBody, t_catches));
-  endFlow();
+  Flow *flow = this->currentFlow();
+  tree catches = this->popStatementList();
+
+  this->doLineNote (flow->statement->loc);
+  this->addExp (build2 (TRY_CATCH_EXPR, void_type_node,
+      			flow->tryBody, catches));
+  this->endFlow();
 }
 
 // Start a new finally expression.
@@ -537,9 +543,10 @@ IRBase::endCatches (void)
 void
 IRBase::startFinally (void)
 {
-  currentFlow()->tryBody = popStatementList();
-  currentFlow()->kind = level_finally;
-  pushStatementList();
+  Flow *flow = this->currentFlow();
+  flow->tryBody = this->popStatementList();
+  flow->kind = level_finally;
+  this->pushStatementList();
 }
 
 // Wrap-up try/finally into a TRY_FINALLY_EXPR.
@@ -547,40 +554,44 @@ IRBase::startFinally (void)
 void
 IRBase::endFinally (void)
 {
-  tree t_finally = popStatementList();
-  object_file->doLineNote (currentFlow()->statement->loc);
-  addExp (build2 (TRY_FINALLY_EXPR, void_type_node,
-		  currentFlow()->tryBody, t_finally));
-  endFlow();
+  Flow *flow = this->currentFlow();
+  tree finally = this->popStatementList();
+
+  this->doLineNote (flow->statement->loc);
+  this->addExp (build2 (TRY_FINALLY_EXPR, void_type_node,
+			flow->tryBody, finally));
+  this->endFlow();
 }
 
-// Emit a return expression of value T_VALUE.
+// Emit a return expression of value VALUE.
 
 void
-IRBase::doReturn (tree t_value)
+IRBase::doReturn (tree value)
 {
-  addExp (build1 (RETURN_EXPR, void_type_node, t_value));
+  this->addExp (build1 (RETURN_EXPR, void_type_node, value));
 }
 
-// Emit goto expression to T_LABEL.
+// Emit goto expression to LABEL.
 
 void
-IRBase::doJump (Statement *stmt, tree t_label)
+IRBase::doJump (Statement *stmt, tree label)
 {
   if (stmt)
-    object_file->doLineNote (stmt->loc);
-  addExp (build1 (GOTO_EXPR, void_type_node, t_label));
-  TREE_USED (t_label) = 1;
+    this->doLineNote (stmt->loc);
+
+  this->addExp (build1 (GOTO_EXPR, void_type_node, label));
+  TREE_USED (label) = 1;
 }
 
 // Routines for checking goto statements don't jump to invalid locations.
 // In particular, it is illegal for a goto to be used to skip initializations.
-// Saves the block label L is declared in for analysis later.
+// Saves the block LABEL is declared in for analysis later.
 
 void
-IRBase::pushLabel (LabelDsymbol *l)
+IRBase::pushLabel (LabelDsymbol *label)
 {
-  this->labels.push (getLabelBlock (l));
+  Label *lblock = this->getLabelBlock (label);
+  this->labels_.push (lblock);
 }
 
 // Error if STMT is in it's own try statement separate from other
@@ -589,9 +600,8 @@ IRBase::pushLabel (LabelDsymbol *l)
 void
 IRBase::checkSwitchCase (Statement *stmt, int default_flag)
 {
-  Flow *flow = currentFlow();
+  Flow *flow = this->currentFlow();
 
-  gcc_assert (flow);
   if (flow->kind != level_switch && flow->kind != level_block)
     {
       stmt->error ("%s cannot be in different try block level from switch",
@@ -606,15 +616,15 @@ void
 IRBase::checkGoto (Statement *stmt, LabelDsymbol *label)
 {
   Statement *curBlock = NULL;
-  unsigned curLevel = this->loops.dim;
+  unsigned curLevel = this->loops_.dim;
   int found = 0;
 
   if (curLevel)
-    curBlock = currentFlow()->statement;
+    curBlock = this->currentFlow()->statement;
 
-  for (size_t i = 0; i < this->labels.dim; i++)
+  for (size_t i = 0; i < this->labels_.dim; i++)
     {
-      Label *linfo = this->labels[i];
+      Label *linfo = this->labels_[i];
       gcc_assert (linfo);
 
       if (label == linfo->label)
@@ -637,9 +647,12 @@ IRBase::checkGoto (Statement *stmt, LabelDsymbol *label)
   // Push forward referenced gotos.
   if (!found)
     {
+      Label *lblock = this->getLabelBlock (label, stmt);
+
       if (!label->statement->fwdrefs)
 	label->statement->fwdrefs = new Blocks();
-      label->statement->fwdrefs->push (getLabelBlock (label, stmt));
+
+      label->statement->fwdrefs->push (lblock);
     }
 }
 
@@ -659,9 +672,9 @@ IRBase::checkPreviousGoto (Array *refs)
       gcc_assert (ref && ref->from);
       stmt = ref->from;
 
-      for (size_t i = 0; i < this->labels.dim; i++)
+      for (size_t i = 0; i < this->labels_.dim; i++)
 	{
-	  Label *linfo = this->labels[i];
+	  Label *linfo = this->labels_[i];
 	  gcc_assert (linfo);
 
 	  if (ref->label == linfo->label)

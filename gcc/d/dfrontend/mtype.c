@@ -14,9 +14,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <assert.h>
-#ifdef IN_GCC
-#include "d-confdefs.h"
-#else
 #include <float.h>
 
 #if _MSC_VER
@@ -28,10 +25,10 @@
 #elif __MINGW32__
 #include <malloc.h>
 #endif
-#endif
 
 #include "rmem.h"
-//#include "port.h"
+#include "port.h"
+#include "target.h"
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -48,10 +45,6 @@
 #include "aggregate.h"
 #include "hdrgen.h"
 
-#ifdef IN_GCC
-#include "d-dmd-gcc.h"
-#endif
-
 FuncDeclaration *hasThis(Scope *sc);
 void ObjectNotFound(Identifier *id);
 
@@ -61,36 +54,6 @@ void ObjectNotFound(Identifier *id);
 
 // Allow implicit conversion of T[] to T*
 #define IMPLICIT_ARRAY_TO_PTR   global.params.useDeprecated
-
-/* These have default values for 32 bit code, they get
- * adjusted for 64 bit code.
- */
-
-int PTRSIZE = 4;
-
-/* REALSIZE = size a real consumes in memory
- * REALPAD = 'padding' added to the CPU real size to bring it up to REALSIZE
- * REALALIGNSIZE = alignment for reals
- */
-#if TARGET_OSX
-int REALSIZE = 16;
-int REALPAD = 6;
-int REALALIGNSIZE = 16;
-#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
-int REALSIZE = 12;
-int REALPAD = 2;
-int REALALIGNSIZE = 4;
-#elif TARGET_WINDOS
-int REALSIZE = 10;
-int REALPAD = 0;
-int REALALIGNSIZE = 2;
-#elif defined(IN_GCC)
-int REALSIZE = 0;
-int REALPAD = 0;
-int REALALIGNSIZE = 0;
-#else
-#error "fix this"
-#endif
 
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
@@ -294,34 +257,13 @@ void Type::init()
     tstring = tchar->invariantOf()->arrayOf();
     tvalist = tvoid->pointerTo();
 
-    if (global.params.is64bit)
+    if (global.params.isLP64)
     {
-        PTRSIZE = 8;
-        if (global.params.isLinux || global.params.isFreeBSD || global.params.isSolaris)
-        {
-            REALSIZE = 16;
-            REALPAD = 6;
-            REALALIGNSIZE = 16;
-        }
         Tsize_t = Tuns64;
         Tptrdiff_t = Tint64;
     }
     else
     {
-        PTRSIZE = 4;
-#if TARGET_OSX
-        REALSIZE = 16;
-        REALPAD = 6;
-#elif TARGET_LINUX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
-        REALSIZE = 12;
-        REALPAD = 2;
-#elif TARGET_WINDOS
-        REALSIZE = 10;
-        REALPAD = 0;
-#elif defined(IN_GCC)
-#else
-        assert(0);
-#endif
         Tsize_t = Tuns32;
         Tptrdiff_t = Tint32;
     }
@@ -2769,7 +2711,7 @@ d_uns64 TypeBasic::size(Loc loc)
                         size = 8;       break;
         case Tfloat80:
         case Timaginary80:
-                        size = REALSIZE;        break;
+                        size = Target::realsize; break;
         case Tcomplex32:
                         size = 8;               break;
         case Tcomplex64:
@@ -2777,7 +2719,7 @@ d_uns64 TypeBasic::size(Loc loc)
         case Tuns128:
                         size = 16;              break;
         case Tcomplex80:
-                        size = REALSIZE * 2;    break;
+                        size = Target::realsize * 2; break;
 
         case Tvoid:
             //size = Type::size();      // error message
@@ -2798,45 +2740,8 @@ d_uns64 TypeBasic::size(Loc loc)
 }
 
 unsigned TypeBasic::alignsize()
-{   unsigned sz;
-
-#ifdef IN_GCC
-    sz = d_gcc_type_align(this);
-#else
-    switch (ty)
-    {
-        case Tfloat80:
-        case Timaginary80:
-        case Tcomplex80:
-            sz = REALALIGNSIZE;
-            break;
-
-#if TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
-        case Tint64:
-        case Tuns64:
-            sz = global.params.is64bit ? 8 : 4;
-            break;
-
-        case Tfloat64:
-        case Timaginary64:
-            sz = global.params.is64bit ? 8 : 4;
-            break;
-
-        case Tcomplex32:
-            sz = 4;
-            break;
-
-        case Tcomplex64:
-            sz = global.params.is64bit ? 8 : 4;
-            break;
-#endif
-
-        default:
-            sz = size(0);
-            break;
-    }
-#endif
-    return sz;
+{
+    return Target::alignsize(this);
 }
 
 
@@ -2939,12 +2844,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat64:
             case Tfloat80:
             {
-#ifdef IN_GCC
-                // mode doesn't matter, will be converted in RealExp anyway
-                fvalue = real_t::getnan(real_t::LongDouble);
-#else
                 fvalue = Port::nan;
-#endif
                 goto Lfvalue;
             }
         }
@@ -2962,11 +2862,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident)
             case Tfloat32:
             case Tfloat64:
             case Tfloat80:
-#ifdef IN_GCC
-                fvalue = real_t::getinfinity();
-#else
                 fvalue = Port::infinity;
-#endif
                 goto Lfvalue;
         }
     }
@@ -3203,10 +3099,10 @@ Expression *TypeBasic::defaultInit(Loc loc)
      * C ABIs pad them out to 12 or even 16 bytes, so
      * leave enough space in the snan array.
      */
-    assert(REALSIZE <= sizeof(snan));
+    assert(Target::realsize <= sizeof(snan));
     d_float80 fvalue = snan.ld;
 #else
-    real_t fvalue = real_t::getsnan(real_t::LongDouble);
+    real_t fvalue = Port::snan;
 #endif
 #endif
 
@@ -4233,14 +4129,14 @@ Type *TypeDArray::syntaxCopy()
 d_uns64 TypeDArray::size(Loc loc)
 {
     //printf("TypeDArray::size()\n");
-    return PTRSIZE * 2;
+    return Target::ptrsize * 2;
 }
 
 unsigned TypeDArray::alignsize()
 {
     // A DArray consists of two ptr-sized values, so align it on pointer size
     // boundary
-    return PTRSIZE;
+    return Target::ptrsize;
 }
 
 Type *TypeDArray::semantic(Loc loc, Scope *sc)
@@ -4462,7 +4358,7 @@ Type *TypeAArray::syntaxCopy()
 
 d_uns64 TypeAArray::size(Loc loc)
 {
-    return PTRSIZE /* * 2*/;
+    return Target::ptrsize /* * 2*/;
 }
 
 
@@ -4684,7 +4580,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident)
         arguments = new Expressions();
         arguments->push(e);
         size_t keysize = index->size(e->loc);
-        keysize = (keysize + PTRSIZE - 1) & ~(PTRSIZE - 1);
+        keysize = (keysize + Target::ptrsize - 1) & ~(Target::ptrsize - 1);
         arguments->push(new IntegerExp(0, keysize, Type::tsize_t));
         arguments->push(new IntegerExp(0, next->size(e->loc), Type::tsize_t));
         e = new CallExp(e->loc, ec, arguments);
@@ -4908,7 +4804,7 @@ Type *TypePointer::semantic(Loc loc, Scope *sc)
 
 d_uns64 TypePointer::size(Loc loc)
 {
-    return PTRSIZE;
+    return Target::ptrsize;
 }
 
 void TypePointer::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
@@ -5058,7 +4954,7 @@ Type *TypeReference::semantic(Loc loc, Scope *sc)
 
 d_uns64 TypeReference::size(Loc loc)
 {
-    return PTRSIZE;
+    return Target::ptrsize;
 }
 
 void TypeReference::toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod)
@@ -6388,7 +6284,7 @@ Type *TypeDelegate::semantic(Loc loc, Scope *sc)
 
 d_uns64 TypeDelegate::size(Loc loc)
 {
-    return PTRSIZE * 2;
+    return Target::ptrsize * 2;
 }
 
 unsigned TypeDelegate::alignsize()
@@ -6396,9 +6292,9 @@ unsigned TypeDelegate::alignsize()
 #if DMDV1
     // See Bugzilla 942 for discussion
     if (!global.params.is64bit)
-        return PTRSIZE * 2;
+        return Target::ptrsize * 2;
 #endif
-    return PTRSIZE;
+    return Target::ptrsize;
 }
 
 MATCH TypeDelegate::implicitConvTo(Type *to)
@@ -6478,7 +6374,7 @@ Expression *TypeDelegate::dotExp(Scope *sc, Expression *e, Identifier *ident)
         }
         e = e->addressOf(sc);
         e->type = tvoidptr;
-        e = new AddExp(e->loc, e, new IntegerExp(PTRSIZE));
+        e = new AddExp(e->loc, e, new IntegerExp(Target::ptrsize));
         e->type = tvoidptr;
         e = new PtrExp(e->loc, e);
         e->type = next->pointerTo();
@@ -8293,7 +8189,7 @@ Expression *TypeStruct::defaultInitLiteral(Loc loc)
     /* Copy from the initializer symbol for larger symbols,
      * otherwise the literals expressed as code get excessively large.
      */
-    if (size(loc) > PTRSIZE * 4 && !needsNested())
+    if (size(loc) > Target::ptrsize * 4 && !needsNested())
         structinit->sinit = sym->toInitializer();
 
     structinit->type = this;
@@ -8506,7 +8402,7 @@ Type *TypeClass::semantic(Loc loc, Scope *sc)
 
 d_uns64 TypeClass::size(Loc loc)
 {
-    return PTRSIZE;
+    return Target::ptrsize;
 }
 
 Dsymbol *TypeClass::toDsymbol(Scope *sc)

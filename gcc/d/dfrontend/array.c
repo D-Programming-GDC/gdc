@@ -12,7 +12,7 @@
 #include <string.h>
 #include <assert.h>
 
-//#include "port.h"
+#include "port.h"
 #include "root.h"
 #include "rmem.h"
 

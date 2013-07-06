@@ -21,7 +21,7 @@ ACLOCAL_AMFLAGS = -I . -I ..
 
 OUR_CFLAGS=@DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
 D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) -I ./$(host_alias) -I .
-ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -49,7 +49,7 @@ $(IMPORT)/%.di: %.d $(IMPORT)
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
+	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
 	cp $< $@
@@ -143,9 +143,9 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/freebsd/dlfcn.di core/sys/freebsd/execinfo.di \
 	     core/sys/freebsd/sys/event.di \
 	     \
-	     core/sys/linux/elf.di core/sys/linux/epoll.di \
-	     core/sys/linux/execinfo.di core/sys/linux/sys/signalfd.di \
-	     core/sys/linux/sys/xattr.di \
+	     core/sys/linux/config.di core/sys/linux/elf.di \
+	     core/sys/linux/epoll.di core/sys/linux/execinfo.di \
+	     core/sys/linux/sys/signalfd.di core/sys/linux/sys/xattr.di \
 	     \
 	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
 	     core/sys/osx/mach/getsect.di core/sys/osx/mach/kern_return.di \
@@ -189,7 +189,7 @@ libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -lgdruntime_t $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
 
 #--------------------------------------#
 # Install, doc, etc targets
@@ -212,9 +212,10 @@ install-data-local: libgdruntime.a
 			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 		done; \
 	done
-	for i in core core/stdc core/sync core/sys/osx/mach core/sys/posix \
-		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
-		core/sys/posix/sys core/sys/windows; do \
+	for i in core core/stdc core/sync core/sys/freebsd core/sys/freebsd/sys \
+		core/sys/linux core/sys/linux/sys core/sys/osx core/sys/osx/mach \
+		core/sys/posix core/sys/posix/arpa core/sys/posix/net \
+		core/sys/posix/netinet core/sys/posix/sys core/sys/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
 		for f in $(IMPORT)/$$i/*.di; do \
 			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \

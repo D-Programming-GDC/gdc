@@ -20,7 +20,7 @@
 
 #include "rmem.h"
 #include "root.h"
-//#include "port.h"
+#include "port.h"
 
 #include "mtype.h"
 #include "expression.h"
@@ -28,9 +28,6 @@
 #include "declaration.h"
 #include "utf.h"
 
-#ifdef IN_GCC
-#include "d-gcc-real.h"
-#endif
 #define LOG 0
 
 int RealEquals(real_t x1, real_t x2);
@@ -489,8 +486,6 @@ Expression *Mod(Type *type, Expression *e1, Expression *e2)
 
 #ifdef __DMC__
             c = Port::fmodl(e1->toReal(), r2) + Port::fmodl(e1->toImaginary(), r2) * I;
-#elif defined(IN_GCC)
-            c = complex_t(e1->toReal() % r2, e1->toImaginary() % r2);
 #else
             c = complex_t(Port::fmodl(e1->toReal(), r2), Port::fmodl(e1->toImaginary(), r2));
 #endif
@@ -500,8 +495,6 @@ Expression *Mod(Type *type, Expression *e1, Expression *e2)
 
 #ifdef __DMC__
             c = Port::fmodl(e1->toReal(), i2) + Port::fmodl(e1->toImaginary(), i2) * I;
-#elif defined(IN_GCC)
-            c = complex_t(e1->toReal() % i2, e1->toImaginary() % i2);
 #else
             c = complex_t(Port::fmodl(e1->toReal(), i2), Port::fmodl(e1->toImaginary(), i2));
 #endif
@@ -610,7 +603,7 @@ Expression *Pow(Type *type, Expression *e1, Expression *e2)
         // x ^^ y for x < 0 and y not an integer is not defined
         if (e1->toReal() < 0.0)
         {
-            e = new RealExp(loc, real_t::getnan(real_t::LongDouble), type);
+            e = new RealExp(loc, ldouble(Port::nan), type);
         }
         else if (e2->toReal() == 0.5)
         {
@@ -932,11 +925,7 @@ Expression *Equal(enum TOK op, Type *type, Expression *e1, Expression *e2)
 #if __DMC__
         cmp = (r1 == r2);
 #else
-#ifdef IN_GCC
-        if (r1.isNan() || r2.isNan())   // if unordered
-#else
         if (Port::isNan(r1) || Port::isNan(r2)) // if unordered
-#endif
         {
             cmp = 0;
         }
@@ -1089,11 +1078,7 @@ Expression *Cmp(enum TOK op, Type *type, Expression *e1, Expression *e2)
         }
 #else
         // Don't rely on compiler, handle NAN arguments separately
-#ifdef IN_GCC
-        if (r1.isNan() || r2.isNan())   // if unordered
-#else
         if (Port::isNan(r1) || Port::isNan(r2)) // if unordered
-#endif
         {
             switch (op)
             {
@@ -1257,7 +1242,8 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
                     case Tcomplex32: rt = Type::tfloat32; break;
                     case Tcomplex64: rt = Type::tfloat64; break;
                     case Tcomplex80: rt = Type::tfloat80; break;
-                    default: assert(0);
+                    default:
+                        assert(0);
                 }
             }
             d_int64 r = e1->toReal().toInt(rt, type);

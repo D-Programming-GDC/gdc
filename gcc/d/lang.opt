@@ -15,8 +15,14 @@
 ; along with GCC; see the file COPYING3.  If not see
 ; <http://www.gnu.org/licenses/>.
 
+; Please try to keep this file in ASCII collating order.
+
 Language
 D
+
+Variable
+int flag_emit_templates
+
 
 debuglib=
 Driver Joined

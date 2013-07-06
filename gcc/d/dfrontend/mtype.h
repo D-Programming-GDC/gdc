@@ -11,8 +11,6 @@
 #ifndef DMD_MTYPE_H
 #define DMD_MTYPE_H
 
-#ifndef ENUM_TY_ONLY
-
 #ifdef __DMC__
 #pragma once
 #endif /* __DMC__ */
@@ -52,8 +50,6 @@ typedef struct TYPE type;
 #endif
 struct Symbol;
 struct TypeTuple;
-
-#endif
 
 enum ENUMTY
 {
@@ -109,8 +105,6 @@ enum ENUMTY
     TMAX
 };
 typedef unsigned char TY;       // ENUMTY
-
-#ifndef ENUM_TY_ONLY
 
 #define Tascii Tchar
 
@@ -1059,10 +1053,6 @@ struct Parameter : Object
     static int foreach(Parameters *args, ForeachDg dg, void *ctx, size_t *pn=NULL);
 };
 
-extern int PTRSIZE;
-extern int REALSIZE;
-extern int REALPAD;
-extern int REALALIGNSIZE;
 extern int Tsize_t;
 extern int Tptrdiff_t;
 
@@ -1075,5 +1065,4 @@ int MODmethodConv(unsigned char modfrom, unsigned char modto);
 int MODmerge(unsigned char mod1, unsigned char mod2);
 void identifierToDocBuffer(Identifier* ident, OutBuffer *buf, HdrGenState *hgs);
 
-#endif
 #endif /* DMD_MTYPE_H */

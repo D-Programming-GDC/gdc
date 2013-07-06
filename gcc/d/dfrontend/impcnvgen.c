@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ENUM_TY_ONLY
 #include "mtype.h"
 
 TY impcnvResult[TMAX][TMAX];

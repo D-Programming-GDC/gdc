@@ -18,12 +18,6 @@
 #include <assert.h>
 #include <ctype.h>
 
-#ifdef IN_GCC
-#include "gdc_alloca.h"
-extern "C" {
-#include "errors.h"
-}//extern "C"
-#else
 #if defined (__sun)
 #include <alloca.h>
 #endif
@@ -31,7 +25,6 @@ extern "C" {
 #if _MSC_VER ||__MINGW32__
 #include <malloc.h>
 #include <string>
-#endif
 #endif
 
 #if _WIN32
@@ -49,7 +42,7 @@ extern "C" {
 #include <utime.h>
 #endif
 
-//#include "port.h"
+#include "port.h"
 #include "root.h"
 #include "rmem.h"
 
@@ -62,8 +55,12 @@ extern "C" void __cdecl _assert(void *e, void *f, unsigned line)
 }
 #endif
 
-#ifndef IN_GCC
-
+#ifdef IN_GCC
+extern "C" {
+#include "config.h"
+#include "errors.h"
+} //extern "C"
+#else
 /**************************************
  * Print error message and exit.
  */
@@ -73,11 +70,11 @@ void error(const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    printf("Error: ");
-    vprintf(format, ap);
+    fprintf(stderr, "Error: ");
+    vfprintf(stderr, format, ap);
     va_end( ap );
     printf("\n");
-    fflush(stdout);
+    fflush(stderr);
 
     exit(EXIT_FAILURE);
 }
@@ -91,13 +88,12 @@ void warning(const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    printf("Warning: ");
-    vprintf(format, ap);
+    fprintf(stderr, "Warning: ");
+    vfprintf(stderr, format, ap);
     va_end( ap );
     printf("\n");
-    fflush(stdout);
+    fflush(stderr);
 }
-
 #endif
 
 /****************************** Object ********************************/

@@ -10,26 +10,13 @@
  * Source: $(DRUNTIMESRC src/rt/_memory.d)
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-*/
 module rt.memory;
 
 
 private
 {
-    version( GNU )
-    {
-        import gcc.builtins;
-
-        version( GC_Use_Data_Proc_Maps )
-        {
-            import rt.gccmemory;
-        }
-    }
     extern (C) void gc_addRange( void* p, size_t sz );
     extern (C) void gc_removeRange( void* p );
-
 
     version( MinGW )
     {
@@ -160,33 +147,5 @@ void initStaticDataGC()
     else
     {
         static assert( false, "Operating system not supported." );
-    }
-
-    version( GC_Use_Data_Proc_Maps )
-    {
-        version( linux )
-        {
-            scanDataProcMaps( &__data_start, &_end );
-        }
-        else version( FreeBSD )
-        {
-            version (X86_64)
-            {
-                scanDataProcMaps( &etext, &_deh_end );
-                scanDataProcMaps( &__progname, &_end );
-            }
-            else
-            {
-                scanDataProcMaps( &etext, &_end );
-            }
-        }
-        else version( Solaris )
-        {
-            scanDataProcMaps( &etext, &_end );
-        }
-        else
-        {
-            static assert( false, "Operating system not supported." );
-        }
     }
 }

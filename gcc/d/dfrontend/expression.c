@@ -23,8 +23,9 @@ extern "C" char * __cdecl __locale_decpoint;
 #endif
 
 #include "rmem.h"
-//#include "port.h"
+#include "port.h"
 #include "root.h"
+#include "target.h"
 
 #include "mtype.h"
 #include "init.h"
@@ -2150,9 +2151,9 @@ dinteger_t IntegerExp::toInteger()
             case Tint64:        value = (d_int64) value;        break;
             case Tuns64:        value = (d_uns64) value;        break;
             case Tpointer:
-                if (PTRSIZE == 4)
+                if (Target::ptrsize == 4)
                     value = (d_uns32) value;
-                else if (PTRSIZE == 8)
+                else if (Target::ptrsize == 8)
                     value = (d_uns64) value;
                 else
                     assert(0);
@@ -2336,9 +2337,9 @@ void IntegerExp::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
                 buf->writestring("cast(");
                 buf->writestring(t->toChars());
                 buf->writeByte(')');
-                if (PTRSIZE == 4)
+                if (Target::ptrsize == 4)
                     goto L3;
-                else if (PTRSIZE == 8)
+                else if (Target::ptrsize == 8)
                     goto L4;
                 else
                     assert(0);
@@ -2418,14 +2419,9 @@ char *RealExp::toChars()
 {
     char buffer[sizeof(value) * 3 + 8 + 1 + 1];
 
-#ifdef IN_GCC
-    value.format(buffer, sizeof(buffer));
-#else
     ld_sprint(buffer, 'g', value);
-#endif
     if (type->isimaginary())
         strcat(buffer, "i");
-
     assert(strlen(buffer) < sizeof(buffer));
     return mem.strdup(buffer);
 }
@@ -2480,9 +2476,10 @@ int RealEquals(real_t x1, real_t x2)
         /* In some cases, the REALPAD bytes get garbage in them,
          * so be sure and ignore them.
          */
-        memcmp(&x1, &x2, REALSIZE - REALPAD) == 0;
+        memcmp(&x1, &x2, Target::realsize - Target::realpad) == 0;
 #else
-    return (x1.isNan() && x2.isNan()) || x1.isIdenticalTo(x2);
+    return (Port::isNan(x1) && Port::isNan(x2)) ||
+        x1.isIdenticalTo(x2);
 #endif
 }
 
@@ -2601,26 +2598,17 @@ void realToMangleBuffer(OutBuffer *buf, real_t value)
      * 0X1.9P+2                 => 19P2
      */
 
-#ifdef IN_GCC
-    if (value.isNan())
-        buf->writestring("NAN");        // no -NAN bugs
-    else if (value.isInf())
-        buf->writestring(value.isNegative()?"NINF":"INF");
-#else
     if (Port::isNan(value))
         buf->writestring("NAN");        // no -NAN bugs
+#ifdef IN_GCC
+    else if (Port::isInfinity(value))
+        buf->writestring(value.isNegative() ? "NINF" : "INF");
 #endif
     else
     {
-#ifdef IN_GCC
-        char buffer[64];
-        value.formatHex(buffer, sizeof(buffer));
-        int n = strlen(buffer);
-#else
         char buffer[32];
         int n = ld_sprint(buffer, 'A', value);
         assert(n > 0 && n < sizeof(buffer));
-#endif
         for (int i = 0; i < n; i++)
         {   char c = buffer[i];
 
@@ -2666,16 +2654,11 @@ ComplexExp::ComplexExp(Loc loc, complex_t value, Type *type)
 char *ComplexExp::toChars()
 {
     char buffer[sizeof(value) * 3 + 8 + 1];
-
     char buf1[sizeof(value) * 3 + 8 + 1];
     char buf2[sizeof(value) * 3 + 8 + 1];
-#ifdef IN_GCC
-    creall(value).format(buf1, sizeof(buf1));
-    cimagl(value).format(buf2, sizeof(buf2));
-#else
+
     ld_sprint(buf1, 'g', creall(value));
     ld_sprint(buf2, 'g', cimagl(value));
-#endif
     sprintf(buffer, "(%s+%si)", buf1, buf2);
     assert(strlen(buffer) < sizeof(buffer));
     return mem.strdup(buffer);
@@ -2720,13 +2703,8 @@ int ComplexExp::equals(Object *o)
     if (this == o ||
         (((Expression *)o)->op == TOKcomplex80 &&
          ((ne = (ComplexExp *)o), type->toHeadMutable()->equals(ne->type->toHeadMutable())) &&
-#ifndef IN_GCC
          RealEquals(creall(value), creall(ne->value)) &&
          RealEquals(cimagl(value), cimagl(ne->value))
-#else
-         RealEquals(value.re, ne->value.re) &&
-         RealEquals(value.im, ne->value.im)
-#endif
         )
        )
         return 1;

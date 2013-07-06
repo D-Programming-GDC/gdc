@@ -163,6 +163,7 @@ extern tree insert_type_modifiers (tree type, unsigned mod);
 extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);
 
 extern tree build_exception_object (void);
+extern tree build_float_modulus (tree type, tree t1, tree t2);
 
 extern tree indirect_ref (tree type, tree exp);
 extern tree build_deref (tree exp);
@@ -180,6 +181,9 @@ extern tree d_build_label (Loc loc, Identifier *ident);
 // 'd_convert' just to give it a different name from the extern "C" convert.
 extern tree d_convert (tree type, tree exp);
 extern tree convert_expr (tree exp, Type *exp_type, Type *target_type);
+
+extern tree convert_for_assignment (tree expr, Type *exp_type, Type *target_type);
+extern tree convert_for_condition (tree expr, Type *type);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
@@ -203,25 +207,43 @@ extern tree get_array_length (tree exp, Type *exp_type);
 extern tree void_okay_p (tree t);
 
 // Various expressions
+extern tree build_array_index (tree ptr, tree index);
 extern tree build_offset_op (enum tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
 
-// ** Function calls
+// Function calls
 extern tree d_build_call (tree type, tree callee, tree args);
 extern tree d_build_call_nary (tree callee, int n_args, ...);
+
+extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
 extern tree build_frame_type (FuncDeclaration *func);
 extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
 extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
 
+// Static chain for nested functions
+extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);
+
 extern bool needs_static_chain (FuncDeclaration *f);
+
+// Local variables
+extern tree build_local_var (tree type);
+extern tree create_temporary_var (tree type);
+extern tree maybe_temporary_var (tree exp, tree *out_var);
+
+extern tree get_decl_tree (Declaration *decl, FuncDeclaration *func);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
+// Array operations
 extern bool unhandled_arrayop_p (BinExp *exp);
+
+extern bool array_bounds_check (void);
+extern tree d_checked_index (Loc loc, tree index, tree upr, bool inclusive);
+extern tree d_bounds_condition (tree index, tree upr, bool inclusive);
 
 // Delegates
 extern tree delegate_method (tree exp);
@@ -235,8 +257,6 @@ extern tree get_object_method (tree thisexp, Expression *objexp, FuncDeclaration
 
 // Built-in and Library functions.
 extern FuncDeclaration *get_libcall (LibCall libcall);
-// This does not perform conversions on the arguments.  This allows arbitrary data
-// to be passed through varargs without going through the usual conversions.
 extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type = NULL_TREE);
 extern tree maybe_expand_builtin (tree call_exp);
 
@@ -262,8 +282,17 @@ inline Type *
 build_dtype (tree t)
 {
   gcc_assert (TYPE_P (t));
-  struct lang_type *l = TYPE_LANG_SPECIFIC (t);
-  return l ? l->d_type : NULL;
+  struct lang_type *lt = TYPE_LANG_SPECIFIC (t);
+  return lt ? lt->d_type : NULL;
+}
+
+// Returns D Frontend decl for GCC decl T.
+inline Declaration *
+build_ddecl (tree t)
+{
+  gcc_assert (DECL_P (t));
+  struct lang_decl *ld = DECL_LANG_SPECIFIC (t);
+  return ld ? ld->d_decl : NULL;
 }
 
 // Returns D frontend type 'Object' which all classes are derived from.
@@ -382,41 +411,17 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 struct IRState : IRBase
 {
  public:
-  static void doLineNote (const Loc& loc);
-
   // ** Local variables
-  void emitLocalVar (VarDeclaration *v, bool no_init = false);
-  tree localVar (tree t_type);
-  tree localVar (Type *e_type);
+  void emitLocalVar (VarDeclaration *v, bool no_init);
 
-  tree exprVar (tree t_type);
-  tree maybeExprVar (tree exp, tree *out_var);
   void expandDecl (tree t_decl);
 
-  tree var (Declaration *decl);
-
   // ** Type conversion
-  tree convertForAssignment (Expression *exp, Type *target_type);
-  tree convertForAssignment (tree exp_tree, Type *exp_type, Type *target_type);
-  tree convertForArgument (Expression *exp, Parameter *arg);
-  tree convertForCondition (Expression *exp);
-  tree convertForCondition (tree exp_tree, Type *exp_type);
   tree toDArray (Expression *exp);
 
   // ** Various expressions
-  tree toElemLvalue (Expression *e);
-
-  tree pointerIntSum (Expression *ptr_exp, Expression *idx_exp);
-  tree pointerIntSum (tree ptr_node, tree idx_exp);
-
   static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
   tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
-
-  tree checkedIndex (Loc loc, tree index, tree upper_bound, bool inclusive);
-  tree boundsCond (tree index, tree upper_bound, bool inclusive);
-  int arrayBoundsCheck (void);
-
-  tree arrayElemRef (IndexExp *aer_exp, ArrayScope *aryscp);
 
   void doArraySet (tree in_ptr, tree in_value, tree in_count);
   tree arraySetExpr (tree ptr, tree value, tree count);
@@ -427,29 +432,19 @@ struct IRState : IRBase
   tree call (FuncDeclaration *func_decl, tree object, Expressions *args);
   tree call (TypeFunction *guess, tree callable, tree object, Expressions *arguments);
 
-  tree assertCall (Loc loc, LibCall libcall = LIBCALL_ASSERT);
-  tree assertCall (Loc loc, Expression *msg);
-
-  static tree floatMod (tree type, tree arg0, tree arg1);
-
   tree typeinfoReference (Type *t);
 
   void buildChain (FuncDeclaration *func);
 
-  tree findThis (ClassDeclaration *target_cd);
   tree getVThis (Dsymbol *decl, Expression *e);
-
-  // Static chain for nested functions
-  tree getFrameForSymbol (Dsymbol *nested_sym);
 
  protected:
   tree maybeExpandSpecialCall (tree call_exp);
 };
 
 // Globals.
-extern Module *cmodule;
+extern Module *current_module_decl;
 extern IRState *cirstate;
-extern ObjectFile *object_file;
 
 // Various helpers that need extra state
 
@@ -487,7 +482,7 @@ class AggLayout
 class ArrayScope
 {
  public:
-  ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc);
+  ArrayScope (VarDeclaration *ini_v, const Loc& loc);
   tree setArrayExp (tree e, Type *t);
   tree finish (tree e);
 
@@ -501,8 +496,8 @@ class AddrOfExpr
   AddrOfExpr (void)
   { this->var_ = NULL_TREE; }
 
-  tree set (IRState *irs, tree exp)
-  { return build_address (irs->maybeExprVar (exp, &this->var_)); }
+  tree set (tree exp)
+  { return build_address (maybe_temporary_var (exp, &this->var_)); }
 
   tree finish (tree e2)
   { return this->var_ ? bind_expr (this->var_, e2) : e2; }

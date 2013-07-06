@@ -132,18 +132,6 @@ AC_ARG_WITH(system-zlib,
                  [use installed libz (default: no)]),
   :,[system_zlib=no])
 
-AC_ARG_ENABLE(proc-maps,
-  AC_HELP_STRING([--enable-proc-maps],
-	         [use /proc/self/maps to find data segments for garbage collection (default: yes, if supported on target)]),
-[case "${enableval}" in
-yes) echo 'TODO: If cross, warn that there is no check that this works'
-     ;;
-auto|no)
-     ;;
-*)   AC_MSG_ERROR([--enable-proc-maps argument must be "yes", "no", or "auto"])
-     ;;
-esac],[enable_proc_maps=auto])
-
 AC_ARG_ENABLE(phobos-config-dir,
   AC_HELP_STRING([--enable-phobos-config-dir=<dir>],
 		 [use source file fragments in <dir>]),
@@ -433,15 +421,10 @@ done
 
 AC_SUBST(srcdir)
 
-# Cross stuff
-# if test -n "$d_cross_comp"; then
-#
-# fi
 
 # Garbage collection configuration
 
 D_GC_MODULES=
-D_GC_FLAGS=
 
 if test "$enable_druntime_gc" = "yes"; then
     D_GC_MODULES="gc/gc.o gc/gcalloc.o gc/gcbits.o gc/gcstats.o gc/gcx.o"
@@ -449,24 +432,6 @@ else
     D_GC_MODULES="gcstub/gc.o"
 fi
 
-case "$target_os" in
-  mingw*)
-	    need_to_cfgr_gc=''
-	    ;;
-  *)        if test "$with_newlib"; then
-		dnl Not sure what to do about GC...
-		D_GC_FLAGS='-fversion=GC_Use_Stack_Guess -fversion=GC_Use_Alloc_Malloc'
-	    else
-		need_to_cfgr_gc=yes
-	    fi
-	    ;;
-esac
-
-if test "$need_to_cfgr_gc" = yes; then
-    DPHOBOS_CONFIGURE_GC
-fi
-
-AC_SUBST(D_GC_FLAGS)
 AC_SUBST(D_GC_MODULES)
 
 

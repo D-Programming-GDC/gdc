@@ -13,6 +13,7 @@
 #include <assert.h>
 
 #include "rmem.h"
+#include "target.h"
 
 #include "statement.h"
 #include "expression.h"
@@ -29,16 +30,6 @@
 #include "template.h"
 #include "attrib.h"
 #include "import.h"
-
-#if _WIN32
-#include <windows.h>
-#define CRITSECSIZE sizeof(CRITICAL_SECTION)
-#elif linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
-#include <pthread.h>
-#define CRITSECSIZE sizeof(pthread_mutex_t)
-#else
-#define CRITSECSIZE 64
-#endif
 
 Identifier *fixupLabelName(Scope *sc, Identifier *ident)
 {
@@ -2207,7 +2198,7 @@ Lagain:
                 Expressions *exps = new Expressions();
                 exps->push(aggr);
                 size_t keysize = taa->index->size();
-                keysize = (keysize + ((size_t)PTRSIZE-1)) & ~((size_t)PTRSIZE-1);
+                keysize = (keysize + ((size_t)Target::ptrsize-1)) & ~((size_t)Target::ptrsize-1);
                 exps->push(new IntegerExp(0, keysize, Type::tsize_t));
                 exps->push(flde);
                 e = new CallExp(loc, ec, exps);
@@ -4407,7 +4398,7 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
          *  try { body } finally { _d_criticalexit(critsec.ptr); }
          */
         Identifier *id = Lexer::uniqueId("__critsec");
-        Type *t = new TypeSArray(Type::tint8, new IntegerExp(PTRSIZE + CRITSECSIZE));
+        Type *t = new TypeSArray(Type::tint8, new IntegerExp(Target::ptrsize + Target::critsecsize()));
         VarDeclaration *tmp = new VarDeclaration(loc, t, id, NULL);
         tmp->storage_class |= STCgshared | STCstatic;
 

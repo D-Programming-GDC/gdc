@@ -124,15 +124,11 @@ struct IRBase : Object
   VarDeclarations *varsInScope;
 
   // ** Statement Lists
-  Array statementList;    // of tree
-
   void addExp (tree e);
   void pushStatementList (void);
   tree popStatementList (void);
 
   // ** Labels
-  Labels labels;
-
   // It is only valid to call this while the function in which the label is defined
   // is being compiled.
   tree    getLabelTree (LabelDsymbol *label);
@@ -142,8 +138,6 @@ struct IRBase : Object
   { return this->func->returnLabel ? ident == this->func->returnLabel->ident : 0; }
 
   // ** Loops (and case statements)
-  Flows loops;
-
   // These routines don't generate code.  They are for tracking labeled loops.
   Flow *getLoopForLabel (Identifier *ident, bool want_continue = false);
   Flow *beginFlow (Statement *stmt);
@@ -152,15 +146,11 @@ struct IRBase : Object
 
   Flow *currentFlow (void)
   {
-    gcc_assert (this->loops.dim);
-    return (Flow *) this->loops.tos();
+    gcc_assert (this->loops_.dim);
+    return (Flow *) this->loops_.tos();
   }
 
   void doLabel (tree t_label);
-
-  // ** DECL_CONTEXT support
-  tree getLocalContext (void)
-  { return this->func ? this->func->toSymbol()->Stree : NULL_TREE; }
 
   // ** "Binding contours"
 
@@ -175,19 +165,22 @@ struct IRBase : Object
      where the variable is declared and ends at it's containing scope.
    */
 
-  Array scopes; // of unsigned *
   void startScope (void);
   void endScope (void);
 
   unsigned *currentScope (void)
   {
-    gcc_assert (this->scopes.dim);
-    return (unsigned *) this->scopes.tos();
+    gcc_assert (this->scopes_.dim);
+    return (unsigned *) this->scopes_.tos();
   }
 
   void startBindings (void);
   void endBindings (void);
-  
+
+  // Update current source file location to LOC.
+  void doLineNote (const Loc& loc)
+  { set_input_location (loc); }
+
   // ** Instruction stream manipulation
 
   // ** Conditional statements.
@@ -227,6 +220,12 @@ struct IRBase : Object
 
   // ** Return statement.
   void doReturn (tree t_value);
+
+ protected:
+  Array statementList_;	// of tree
+  Array scopes_;	// of unsigned *
+  Flows loops_;
+  Labels labels_;
 };
 
 

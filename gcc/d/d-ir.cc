@@ -58,8 +58,10 @@ GotoStatement::toIR (IRState *irs)
 {
   tree t_label;
 
-  object_file->setLoc (loc); /* This makes the 'undefined label' error show up on the correct line...
-				The extra doLineNote in doJump shouldn't cause a problem. */
+  /* This makes the 'undefined label' error show up on the correct line...
+     The extra doLineNote in doJump shouldn't cause a problem.  */
+  irs->doLineNote (loc);
+
   if (!label->statement)
     error ("label %s is undefined", label->toChars());
   else if (tf != label->statement->tf)
@@ -68,6 +70,7 @@ GotoStatement::toIR (IRState *irs)
     irs->checkGoto (this, label);
 
   t_label = irs->getLabelTree (label);
+
   if (t_label != NULL_TREE)
     irs->doJump (this, t_label);
   // else, there was an error
@@ -91,7 +94,7 @@ void
 SwitchErrorStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
-  irs->addExp (irs->assertCall (loc, LIBCALL_SWITCH_ERROR));
+  irs->addExp (d_assert_call (loc, LIBCALL_SWITCH_ERROR));
 }
 
 void
@@ -165,7 +168,7 @@ TryCatchStatement::toIR (IRState *irs)
 	      // need to override initializer...
 	      // set DECL_INITIAL now and emitLocalVar will know not to change it
 	      DECL_INITIAL (catch_var) = exc_obj;
-	      irs->emitLocalVar (a_catch->var);
+	      irs->emitLocalVar (a_catch->var, false);
 	    }
 
 	  if (a_catch->handler)
@@ -187,7 +190,7 @@ WithStatement::toIR (IRState *irs)
 {
   irs->startScope();
   if (wthis)
-    irs->emitLocalVar (wthis);
+    irs->emitLocalVar (wthis, false);
 
   if (body)
     body->toIR (irs);
@@ -221,20 +224,31 @@ ReturnStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
 
-  if (exp && exp->type->toBasetype()->ty != Tvoid)
+  if (exp == NULL || exp->type->toBasetype()->ty == Tvoid)
     {
-      // %% == Type::tvoid ?
-      FuncDeclaration *func = irs->func;
-      TypeFunction *tf = (TypeFunction *) func->type;
-      Type *ret_type = func->tintro ?
-	func->tintro->nextOf() : tf->nextOf();
+      // Return has no value.
+      irs->doReturn (NULL_TREE);
+      return;
+    }
 
-      if (func->isMain() && ret_type->toBasetype()->ty == Tvoid)
-	ret_type = Type::tint32;
+  FuncDeclaration *func = irs->func;
+  TypeFunction *tf = (TypeFunction *) func->type;
+  Type *ret_type = func->tintro ? func->tintro->nextOf() : tf->nextOf();
 
-      tree result_decl = DECL_RESULT (irs->func->toSymbol()->Stree);
-      tree result_value = irs->convertForAssignment (exp->toElemDtor (irs),
-						     exp->type, ret_type);
+  if (func->isMain() && ret_type->toBasetype()->ty == Tvoid)
+    ret_type = Type::tint32;
+
+  tree result_decl = DECL_RESULT (irs->func->toSymbol()->Stree);
+
+  if (func->nrvo_can && func->nrvo_var)
+    {
+      // Just refer to the RESULT_DECL; this is a nop, but differs from using
+      // NULL_TREE in that it indicates that we care about the value of the RESULT_DECL.
+      irs->doReturn (result_decl);
+    }
+  else
+    {
+      tree result_value = convert_expr (exp->toElemDtor (irs), exp->type, ret_type);
       // %% convert for init -- if we were returning a reference,
       // would want to take the address...
       if (tf->isref)
@@ -243,11 +257,7 @@ ReturnStatement::toIR (IRState *irs)
       tree result_assign = build2 (INIT_EXPR, TREE_TYPE (result_decl),
 				   result_decl, result_value);
 
-      irs->doReturn (result_assign); // expand_return (result_assign);
-    }
-  else
-    {
-      irs->doReturn (NULL_TREE);
+      irs->doReturn (result_assign);
     }
 }
 
@@ -385,8 +395,8 @@ IfStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
   irs->startScope();
-  irs->startCond (this, irs->convertForCondition (condition->toElemDtor (irs),
-						  condition->type));
+  irs->startCond (this, convert_for_condition (condition->toElemDtor (irs),
+					       condition->type));
   if (ifbody)
     ifbody->toIR (irs);
 
@@ -423,8 +433,8 @@ ForStatement::toIR (IRState *irs)
   if (condition)
     {
       irs->doLineNote (condition->loc);
-      irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
-						  condition->type));
+      irs->exitIfFalse (convert_for_condition (condition->toElemDtor (irs),
+					       condition->type));
     }
   if (body)
     body->toIR (irs);
@@ -447,8 +457,8 @@ DoStatement::toIR (IRState *irs)
     body->toIR (irs);
   irs->continueHere();
   irs->doLineNote (condition->loc);
-  irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
-					      condition->type));
+  irs->exitIfFalse (convert_for_condition (condition->toElemDtor (irs),
+					   condition->type));
   irs->endLoop();
 }
 

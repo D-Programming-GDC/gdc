@@ -16,10 +16,11 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "d-system.h"
-
-#include "enum.h"
 #include "d-lang.h"
 #include "d-codegen.h"
+
+#include "enum.h"
+#include "dfrontend/target.h"
 
 type *
 Type::toCtype (void)
@@ -271,9 +272,7 @@ TypeEnum::toCtype (void)
 		}
 	    }
 	  TYPE_VALUES (ctype) = enum_values;
-
-	  object_file->initTypeDecl (ctype, sym);
-	  object_file->declareType (ctype, sym);
+	  build_type_decl (ctype, sym);
 	}
     }
 
@@ -310,7 +309,7 @@ TypeStruct::toCtype (void)
 	  agg_layout.go();
 	  agg_layout.finish (sym->userAttributes);
 
-	  object_file->initTypeDecl (ctype, sym);
+	  build_type_decl (ctype, sym);
 	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
 	}
     }
@@ -369,8 +368,15 @@ TypeFunction::toCtype (void)
 	  // Function type can be reference by parameters, etc.  Set ctype earlier?
 	  ctype = build_function_type (ret_type, type_list);
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
-
 	  d_keep (ctype);
+
+	  if (next->toBasetype()->ty == Tstruct)
+	    {
+	      // Non-POD structs must return in memory.
+	      TypeStruct *ts = (TypeStruct *) next->toBasetype();
+	      if (!ts->sym->isPOD())
+		TREE_ADDRESSABLE (ctype) = 1;
+	    }
 
 	  switch (linkage)
 	    {
@@ -648,7 +654,7 @@ TypeClass::toCtype (void)
 				 get_identifier ("_monitor"), ptr_type_node);
 	      DECL_FCONTEXT (decl) = obj_rec_type;
 	      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
-	      agg_layout.addField (decl, PTRSIZE);
+	      agg_layout.addField (decl, Target::ptrsize);
 
 	      // Add the fields of each base class
 	      agg_layout.go();
@@ -664,7 +670,7 @@ TypeClass::toCtype (void)
 
 	  agg_layout.finish (sym->userAttributes);
 
-	  object_file->initTypeDecl (rec_type, sym);
+	  build_type_decl (rec_type, sym);
 	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);
 	}
     }
