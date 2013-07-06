@@ -336,14 +336,12 @@ MATCH IntegerExp::implicitConvTo(Type *t)
             if (type->isunsigned())
             {
                 f = real_t((d_uns64) value);
-                f = f.convert(t);
                 if ((d_uns64) f.toInt() != (d_uns64) value)
                     goto Lno;
             }
             else
             {
                 f = real_t((d_int64) value);
-                f = f.convert(t);
                 if ((d_int64) f.toInt() != (d_int64) value)
                     goto Lno;
             }
@@ -2491,6 +2489,7 @@ Lcc:
     {
         e2 = e2->castTo(sc, t1);
         t2 = t1;
+        t = t1;
         goto Lagain;
     }
     else if (t2->ty == Tvector && t1->ty != Tvector &&
@@ -2498,6 +2497,7 @@ Lcc:
     {
         e1 = e1->castTo(sc, t2);
         t1 = t2;
+        t = t1;
         goto Lagain;
     }
     else if (t1->isintegral() && t2->isintegral())

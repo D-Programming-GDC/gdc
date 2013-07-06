@@ -30,14 +30,14 @@ all-local: libgdruntime.a
 
 SUFFIXES = .d
 
-%.o : %.d $(D_PREREQ_SRCS)
+%.o : %.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 
 IMPORT = import
-$(IMPORT): $(D_PREREQ_SRCS)
+$(IMPORT):
 	mkdir -p $(IMPORT)
 # For core objects, generate .di headers
-$(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
+$(IMPORT)/%.di: %.d $(IMPORT)
 	$(GDC) $(ALL_DFLAGS) -fintfc-file=$@ -fsyntax-only $<
 
 # %.o : %.c
@@ -47,6 +47,12 @@ $(IMPORT)/%.di: %.d $(D_PREREQ_SRCS) $(IMPORT)
 
 .S.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
+%.t.o : %.d
+	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
+
+%.t.o : %.o
+	cp $< $@
 
 
 #--------------------------------------#
@@ -178,15 +184,22 @@ libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core
 	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
 	$(RANLIB) $@
 
+libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+	$(RANLIB) $@
+
+unittest: libgdruntime.a libgdruntime_t.a unittest.o
+	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -lgdruntime_t $(LIBS) -ldl
+
 #--------------------------------------#
 # Install, doc, etc targets
 
-install-exec-local: $(D_PREREQ_SRCS) libgdruntime.a
+install-exec-local: libgdruntime.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
 	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
-install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
+install-data-local: libgdruntime.a
 	for i in core; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 		for f in $(srcdir)/$$i/*.di; do \
@@ -215,11 +228,13 @@ install-data-local: $(D_PREREQ_SRCS) libgdruntime.a
 clean-local:
 	rm -f $(CMAIN_OBJS)
 	rm -f $(ALL_DRUNTIME_OBJS)
+	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
 	rm -f $(CORE_IMPORTS)
 	rm -rf $(IMPORT)
-	rm -f testgc$(EXEEXT)
 	rm -f libgdruntime.a
 
+check-local: unittest
+	./unittest
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and

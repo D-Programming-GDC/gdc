@@ -16,23 +16,32 @@
    <http://www.gnu.org/licenses/>.
 */
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 
 #include "d-lang.h"
 #include "attrib.h"
 #include "module.h"
 #include "template.h"
-#include "symbol.h"
 #include "d-codegen.h"
 
-static ListMaker bi_fn_list;
-static ListMaker bi_lib_list;
-static ListMaker bi_type_list;
+static tree bi_fn_list;
+static tree bi_lib_list;
+static tree bi_type_list;
 
 // Necessary for built-in struct types
 static Array builtin_converted_types;
 static Dsymbols builtin_converted_decls;
 
+// Built-in symbols that require special handling.
+static Module *std_intrinsic_module;
+static Module *std_math_module;
+static Module *core_math_module;
+
+static Dsymbol *va_arg_template;
+static Dsymbol *va_arg2_template;
+static Dsymbol *va_start_template;
+
+// Internal attribute handlers for built-in functions.
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);
 static tree handle_leaf_attribute (tree *, tree, tree, int, bool *);
 static tree handle_const_attribute (tree *, tree, tree, int, bool *);
@@ -50,7 +59,7 @@ static tree handle_alias_attribute (tree *, tree, tree, int, bool *);
 static tree handle_weakref_attribute (tree *, tree, tree, int, bool *);
 static tree ignore_attribute (tree *, tree, tree, int, bool *);
 
-/* Array of d type/decl nodes. */
+// Array of d type/decl nodes.
 tree d_global_trees[DTI_MAX];
 
 // Build D frontend type from tree T type given.
@@ -336,9 +345,9 @@ void
 d_bi_builtin_func (tree decl)
 {
   if (!flag_no_builtin && DECL_ASSEMBLER_NAME_SET_P (decl))
-    bi_lib_list.cons (NULL_TREE, decl);
+    bi_lib_list = chainon (bi_lib_list, build_tree_list (0, decl));
 
-  bi_fn_list.cons (NULL_TREE, decl);
+  bi_fn_list = chainon (bi_fn_list, build_tree_list (0, decl));
 }
 
 // Hook from d_register_builtin_type.
@@ -348,19 +357,67 @@ d_bi_builtin_func (tree decl)
 void
 d_bi_builtin_type (tree decl)
 {
-  bi_type_list.cons (NULL_TREE, decl);
+  bi_type_list = chainon (bi_type_list, build_tree_list (0, decl));
+}
+
+
+// Returns TRUE if M is a module that contains specially handled intrinsics.
+// If module was never imported into current compilation, return false.
+
+bool
+is_intrinsic_module_p (Module *m)
+{
+  if (!std_intrinsic_module)
+    return false;
+
+  return m == std_intrinsic_module;
+}
+
+bool
+is_math_module_p (Module *m)
+{
+  if (std_math_module != NULL)
+    {
+      if (m == std_math_module)
+	return true;
+    }
+
+  if (core_math_module != NULL)
+    {
+      if (m == core_math_module)
+	return true;
+    }
+
+  return false;
+}
+
+// Returns TRUE if D is the built-in va_arg template.  If CSTYLE, test
+// if D is the T va_arg() decl, otherwise the void va_arg() decl.
+
+bool
+is_builtin_va_arg_p (Dsymbol *d, bool cstyle)
+{
+  if (cstyle)
+    return d == va_arg_template;
+
+  return d == va_arg2_template;
+}
+
+// Returns TRUE if D is the built-in va_start template.
+
+bool
+is_builtin_va_start_p (Dsymbol *d)
+{
+  return d == va_start_template;
 }
 
 // Helper function for d_gcc_magic_stdarg_module
-// In D2, the members of std.stdarg are hidden via @system attributes.
+// In D2, the members of core.vararg are hidden via @system attributes.
 // This function should be sufficient in looking through all members.
 
 static void
 d_gcc_magic_stdarg_check (Dsymbol *m)
 {
-  Identifier *id_arg = Lexer::idPool ("va_arg");
-  Identifier *id_start = Lexer::idPool ("va_start");
-
   AttribDeclaration *ad = m->isAttribDeclaration();
   TemplateDeclaration *td = m->isTemplateDeclaration();
 
@@ -379,7 +436,7 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
     }
   else if (td != NULL)
     {
-      if (td->ident == id_arg)
+      if (td->ident == Lexer::idPool ("va_arg"))
 	{
 	  FuncDeclaration *fd;
 	  TypeFunction *tf;
@@ -391,16 +448,16 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 	  gcc_assert (fd && !fd->parameters);
 	  tf = (TypeFunction *) fd->type;
 
-	  // Handle the following cases:
-	  //   T va_arg (va_list va);
-	  //   void va_arg (va_list va, T parm);
+	  // Function signature is: T va_arg (va_list va);
 	  if (tf->parameters->dim == 1 && tf->nextOf()->ty == Tident)
-	    gen.cstdargTemplateDecl = td;
-	  else if (tf->parameters->dim == 2 && tf->nextOf()->ty == Tvoid)
-	    gen.stdargTemplateDecl = td;
+	    va_arg_template = td;
+
+	  // Function signature is: void va_arg (va_list va, T parm);
+	  if (tf->parameters->dim == 2 && tf->nextOf()->ty == Tvoid)
+	    va_arg2_template = td;
 	}
-      else if (td->ident == id_start)
-	gen.cstdargStartTemplateDecl = td;
+      else if (td->ident == Lexer::idPool ("va_start"))
+	va_start_template = td;
       else
 	td = NULL;
     }
@@ -411,7 +468,7 @@ d_gcc_magic_stdarg_check (Dsymbol *m)
 
 // Helper function for d_gcc_magic_module.
 // Checks all members of the stdarg module M for any special processing.
-// std.stdarg is different: it expects pointer types (i.e. _argptr)
+// core.vararg is different: it expects pointer types (i.e. _argptr)
 
 // We can make it work fine as long as the argument to va_varg is _argptr,
 // we just call va_arg on the hidden va_list.  As long _argptr is not
@@ -436,7 +493,7 @@ d_gcc_magic_builtins_module (Module *m)
 {
   Dsymbols *funcs = new Dsymbols;
 
-  for (tree n = bi_fn_list.head; n; n = TREE_CHAIN (n))
+  for (tree n = bi_fn_list; n != NULL_TREE; n = TREE_CHAIN (n))
     {
       tree decl = TREE_VALUE (n);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
@@ -474,7 +531,7 @@ d_gcc_magic_builtins_module (Module *m)
       funcs->push (func);
     }
 
-  for (tree n = bi_type_list.head; n; n = TREE_CHAIN (n))
+  for (tree n = bi_type_list; n != NULL_TREE; n = TREE_CHAIN (n))
     {
       tree decl = TREE_VALUE (n);
       tree type = TREE_TYPE (decl);
@@ -582,7 +639,7 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
     }
   else if (fd && !fd->fbody)
     {
-      for (tree n = bi_lib_list.head; n; n = TREE_CHAIN (n))
+      for (tree n = bi_lib_list; n != NULL_TREE; n = TREE_CHAIN (n))
 	{
 	  tree decl = TREE_VALUE (n);
 	  gcc_assert (DECL_ASSEMBLER_NAME_SET_P (decl));
@@ -590,6 +647,17 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
 	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
 	  if (fd->ident == Lexer::idPool (name))
 	    {
+	      if (Type::tvalist->ty == Tsarray)
+		{
+		  // As per gcc.builtins module, va_list is passed by reference.
+		  TypeFunction *dtf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
+		  TypeFunction *tf = (TypeFunction *) fd->type;
+		  for (size_t i = 0; i < dtf->parameters->dim; i++)
+		    {
+		      if ((*dtf->parameters)[i]->type == Type::tvalist)
+			(*tf->parameters)[i]->storageClass |= STCref;
+		    }
+		}
 	      fd->isym = new Symbol;
 	      fd->isym->Stree = decl;
 	      return;
@@ -633,14 +701,14 @@ d_gcc_magic_module (Module *m)
       else if (!strcmp ((md->packages->tdata()[0])->string, "core"))
 	{
 	  if (!strcmp (md->id->string, "bitop"))
-	    gen.intrinsicModule = m;
+	    std_intrinsic_module = m;
 	  else if (!strcmp (md->id->string, "math"))
-	    gen.mathCoreModule = m;
+	    core_math_module = m;
 	}
       else if (!strcmp ((md->packages->tdata()[0])->string, "std"))
 	{
 	  if (!strcmp (md->id->string, "math"))
-	    gen.mathModule = m;
+	    std_math_module = m;
 	}
     }
   else if (md->packages->dim == 2)
@@ -868,7 +936,7 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       TypeFunction *tf = (TypeFunction *) fd->type;
       tree callee = NULL_TREE;
 
-      // current_irs is not available.
+      // cirstate is not available.
       IRState irs;
       irs.doLineNote (loc);
       tree result = irs.call (tf, callee, NULL, arguments);
@@ -1183,6 +1251,9 @@ d_init_builtins (void)
 
   d_ireal_type_node = build_variant_type_copy (long_double_type_node);
   D_TYPE_IMAGINARY_FLOAT (d_ireal_type_node) = 1;
+
+  /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
+  d_unknown_type_node = make_node (LANG_TYPE);
 
   {
     /* Make sure we get a unique function type, so we can give

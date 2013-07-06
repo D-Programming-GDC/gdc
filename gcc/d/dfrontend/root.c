@@ -97,6 +97,7 @@ void warning(const char *format, ...)
     printf("\n");
     fflush(stdout);
 }
+
 #endif
 
 /****************************** Object ********************************/

@@ -29,7 +29,8 @@
 #include "statement.h"
 #include "expression.h"
 #include "aggregate.h"
-#include "symbol.h"
+
+#include "d-objfile.h"
 
 // The kinds of levels we recognize.
 enum LevelKind
@@ -110,15 +111,19 @@ struct IRBase : Object
   IRBase (void);
 
   // ** Functions
-
   FuncDeclaration *func;
   Module *mod;
+
+  // Static chain of function, for D2, this is a closure.
+  tree sthis;
 
   IRState *startFunction (FuncDeclaration *decl);
   void endFunction (void);
 
-  // ** Statement Lists
+  // Variables that are in scope that will need destruction later.
+  VarDeclarations *varsInScope;
 
+  // ** Statement Lists
   Array statementList;    // of tree
 
   void addExp (tree e);
@@ -126,7 +131,6 @@ struct IRBase : Object
   tree popStatementList (void);
 
   // ** Labels
-
   Labels labels;
 
   // It is only valid to call this while the function in which the label is defined
@@ -138,7 +142,6 @@ struct IRBase : Object
   { return this->func->returnLabel ? ident == this->func->returnLabel->ident : 0; }
 
   // ** Loops (and case statements)
-
   Flows loops;
 
   // These routines don't generate code.  They are for tracking labeled loops.
@@ -156,7 +159,6 @@ struct IRBase : Object
   void doLabel (tree t_label);
 
   // ** DECL_CONTEXT support
-
   tree getLocalContext (void)
   { return this->func ? this->func->toSymbol()->Stree : NULL_TREE; }
 
@@ -185,19 +187,46 @@ struct IRBase : Object
 
   void startBindings (void);
   void endBindings (void);
+  
+  // ** Instruction stream manipulation
 
-  // ** Volatile state
+  // ** Conditional statements.
+  void startCond (Statement *stmt, tree t_cond);
+  void startElse (void);
+  void endCond (void);
 
-  unsigned volatileDepth;
+  // ** Loop statements.
+  void startLoop (Statement *stmt);
+  void continueHere (void);
+  void setContinueLabel (tree lbl);
+  void exitIfFalse (tree t_cond);
+  void endLoop (void);
+  void continueLoop (Identifier *ident);
+  void exitLoop (Identifier *ident);
 
-  bool inVolatile (void)
-  { return this->volatileDepth != 0; }
+  // ** Goto/Label statement evaluation
+  void doJump (Statement *stmt, tree t_label);
+  void pushLabel (LabelDsymbol *l);
+  void checkGoto (Statement *stmt, LabelDsymbol *label);
+  void checkPreviousGoto (Array *refs);
 
-  void pushVolatile (void)
-  { this->volatileDepth++; }
+  // ** Switch statements.
+  void startCase (Statement *stmt, tree t_cond, int has_vars = 0);
+  void checkSwitchCase (Statement *stmt, int default_flag = 0);
+  void doCase (tree t_value, tree t_label);
+  void endCase (void);
 
-  void popVolatile (void)
-  { this->volatileDepth--; }
+  // ** Exception handling.
+  void startTry (Statement *stmt);
+  void startCatches (void);
+  void startCatch (tree t_type);
+  void endCatch (void);
+  void endCatches (void);
+  void startFinally (void);
+  void endFinally (void);
+
+  // ** Return statement.
+  void doReturn (tree t_value);
 };
 
 

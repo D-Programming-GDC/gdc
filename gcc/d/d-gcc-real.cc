@@ -15,11 +15,10 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 
 // d-real_t.cc
 
-#include "mars.h"
 #include "lexer.h"
 #include "mtype.h"
 #include "d-gcc-real.h"
@@ -49,7 +48,7 @@ machineMode (real_t::Mode mode)
     }
 }
 
-real_t_Properties real_t_properties[real_t::NumModes];
+real_properties real_limits[real_t::NumModes];
 
 #define M_LOG10_2       0.30102999566398119521
 
@@ -62,7 +61,7 @@ real_t::init (void)
 
   for (int i = (int) Float; i < (int) NumModes; i++)
     {
-      real_t_Properties& p = real_t_properties[i];
+      real_properties& p = real_limits[i];
 
       enum machine_mode mode = machineMode ((Mode) i);
       const struct real_format& rf = *REAL_MODE_FORMAT (mode);
@@ -179,37 +178,37 @@ real_t::real_t (const real_t& r)
 
 real_t::real_t (const REAL_VALUE_TYPE& rv)
 {
-  this->rv() = rv;
+  real_convert (&this->rv(), TYPE_MODE (long_double_type_node), &rv);
 }
 
 // Construct a new real_t from int V.
 
 real_t::real_t (int v)
 {
-  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
+  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (double_type_node));
 }
 
-// Construct a new real_t from d_uns64 V.
+// Construct a new real_t from uint64_t V.
 
-real_t::real_t (d_uns64 v)
+real_t::real_t (uint64_t v)
 {
-  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, machineMode (LongDouble));
+  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, 0, TYPE_MODE (long_double_type_node));
 }
 
-// Construct a new real_t from d_int64 V.
+// Construct a new real_t from int64_t V.
 
-real_t::real_t (d_int64 v)
+real_t::real_t (int64_t v)
 {
-  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (LongDouble));
+  REAL_VALUE_FROM_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (long_double_type_node));
 }
 
-// Construct a new real_t from d_float64 D.
+// Construct a new real_t from double D.
 
-real_t::real_t (d_float64 d)
+real_t::real_t (double d)
 {
   char buf[48];
   snprintf(buf, sizeof (buf), "%lf", d);
-  real_from_string3 (&rv(), buf, machineMode (Double));
+  real_from_string3 (&rv(), buf, TYPE_MODE (long_double_type_node));
 }
 
 // Overload assignment operator for real_t types.
@@ -224,7 +223,7 @@ real_t::operator= (const real_t& r)
 real_t &
 real_t::operator= (int v)
 {
-  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, (v < 0) ? -1 : 0, machineMode (Double));
+  REAL_VALUE_FROM_UNSIGNED_INT (rv(), v, (v < 0) ? -1 : 0, TYPE_MODE (double_type_node));
   return *this;
 }
 
@@ -233,41 +232,40 @@ real_t::operator= (int v)
 real_t
 real_t::operator+ (const real_t& r)
 {
-  real_t x;
-  REAL_ARITHMETIC (x.rv(), PLUS_EXPR, rv(), r.rv());
-  return x;
+  REAL_VALUE_TYPE x;
+  REAL_ARITHMETIC (x, PLUS_EXPR, rv(), r.rv());
+  return real_t (x);
 }
 
 real_t
 real_t::operator- (const real_t& r)
 {
-  real_t x;
-  REAL_ARITHMETIC (x.rv(), MINUS_EXPR, rv(), r.rv());
-  return x;
+  REAL_VALUE_TYPE x;
+  REAL_ARITHMETIC (x, MINUS_EXPR, rv(), r.rv());
+  return real_t (x);
 }
 
 real_t
 real_t::operator- (void)
 {
-  real_t x;
-  x.rv() = real_value_negate (&rv());
-  return x;
+  REAL_VALUE_TYPE x = real_value_negate (&rv());
+  return real_t (x);
 }
 
 real_t
 real_t::operator* (const real_t& r)
 {
-  real_t x;
-  REAL_ARITHMETIC (x.rv(), MULT_EXPR, rv(), r.rv());
-  return x;
+  REAL_VALUE_TYPE x;
+  REAL_ARITHMETIC (x, MULT_EXPR, rv(), r.rv());
+  return real_t (x);
 }
 
 real_t
 real_t::operator/ (const real_t& r)
 {
-  real_t x;
-  REAL_ARITHMETIC (x.rv(), RDIV_EXPR, rv(), r.rv());
-  return x;
+  REAL_VALUE_TYPE x;
+  REAL_ARITHMETIC (x, RDIV_EXPR, rv(), r.rv());
+  return real_t (x);
 }
 
 real_t
@@ -280,7 +278,7 @@ real_t::operator% (const real_t& r)
   if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF (rv()))
     {
       REAL_VALUE_TYPE rvt;
-      real_nan (&rvt, "", 1, machineMode (LongDouble));
+      real_nan (&rvt, "", 1, TYPE_MODE (long_double_type_node));
       return real_t (rvt);
     }
 
@@ -337,9 +335,9 @@ real_t::operator!= (const real_t& r)
   return real_compare (NE_EXPR, &rv(), &r.rv());
 }
 
-// Return conversion of real_t value to d_uns64.
+// Return conversion of real_t value to uint64_t.
 
-d_uns64
+uint64_t
 real_t::toInt (void) const
 {
   HOST_WIDE_INT low, high;
@@ -354,17 +352,16 @@ real_t::toInt (void) const
   return cst_to_hwi (high, low);
 }
 
-// Return conversion of real_t value to d_uns64.
+// Return conversion of real_t value to uint64_t.
 // Value is converted from REAL_TYPE to INT_TYPE.
 
-d_uns64
+uint64_t
 real_t::toInt (Type *real_type, Type *int_type) const
 {
   tree t;
   double_int cst;
-  REAL_VALUE_TYPE r;
+  REAL_VALUE_TYPE r = rv();
 
-  r = rv();
   if (REAL_VALUE_ISNAN (r))
     cst.low = cst.high = 0;
   else
@@ -375,46 +372,6 @@ real_t::toInt (Type *real_type, Type *int_type) const
       cst = TREE_INT_CST (t);
     }
   return cst_to_hwi (cst);
-}
-
-// Return value of real_t rounded to fit in mode.
-
-real_t
-real_t::convert (Mode mode) const
-{
-  real_t result;
-  real_convert (&result.rv(), machineMode (mode), &rv());
-  return result;
-}
-
-// Return value of real_t rounded to fit in TYPE.
-
-real_t
-real_t::convert (Type *type) const
-{
-  Type *tb = type->toBasetype();
-  switch (tb->ty)
-    {
-    case Tfloat32:
-    case Timaginary32:
-      return convert (real_t::Float);
-
-    case Tfloat64:
-    case Timaginary64:
-      return convert (real_t::Double);
-
-    case Tfloat80:
-    case Timaginary80:
-      return convert (real_t::LongDouble);
-
-    case Tvector:
-      tb = ((TypeVector *)tb)->elementType();
-      gcc_assert (tb->ty != Tvector);
-      return convert (tb);
-
-    default:
-      gcc_unreachable();
-    }
 }
 
 // Returns TRUE if real_t value is zero.
@@ -431,60 +388,6 @@ bool
 real_t::isNegative (void)
 {
   return REAL_VALUE_NEGATIVE (rv());
-}
-
-// Returns boolean resulf of real_t value comparison OP to R.
-
-bool
-real_t::floatCompare (int op, const real_t& r)
-{
-  enum tree_code out;
-
-  switch ((enum TOK) op)
-    {
-    case TOKleg:
-      //n = r1 <>= r2;
-      out = ORDERED_EXPR;
-      break;
-
-    case TOKlg:
-      // n = r1 <> r2;
-      return *this < r || *this > r;
-
-    case TOKunord:
-      // n = r1 !<>= r2;
-      out = UNORDERED_EXPR;
-      break;
-
-    case TOKue:
-      // n = r1 !<> r2;
-      out = UNEQ_EXPR;
-      break;
-
-    case TOKug:
-      // n = r1 !<= r2;
-      out = UNGT_EXPR;
-      break;
-
-    case TOKuge:
-      // n = r1 !< r2;
-      out = UNGE_EXPR;
-      break;
-
-    case TOKul:
-      // n = r1 !>= r2;
-      out = UNLT_EXPR;
-      break;
-
-    case TOKule:
-      // n = r1 !> r2;
-      out = UNLE_EXPR;
-      break;
-
-    default:
-      gcc_unreachable();
-    }
-  return real_compare (out, &rv(), &r.rv());
 }
 
 // Returns TRUE if real_t value is identical to R.

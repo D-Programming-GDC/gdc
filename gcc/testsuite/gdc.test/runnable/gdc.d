@@ -176,6 +176,41 @@ void test6()
     topNIndex2();
 }
 
+/*
+ * Parameters are not copied into a frame to be accessed from
+ * the method's __require function.
+ */
+void contractTest(string path)
+{
+    assert(path[0] == 't'); 
+    assert(path.length == 9);
+    assert(path[8] == 'i'); 
+}
+
+interface ModuleSaver
+{
+    void save(string str)
+    in
+    {
+        contractTest(str);
+    }
+}
+
+class ModuleWriter : ModuleSaver
+{
+    void save (string str)
+    in {}
+    body
+    {
+    }
+}
+
+void test7()
+{
+  (new ModuleWriter()).save ("test.0.mci");
+}
+
+
 void main()
 {
     test1('n');
@@ -184,4 +219,5 @@ void main()
     test4();
     test5();
     test6();
+    test7();
 }

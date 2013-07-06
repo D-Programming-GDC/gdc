@@ -188,6 +188,10 @@ Turns off array bounds checking for all functions.
 Don't recognize built-in functions that do not begin with
 @samp{__builtin_} as prefix.
 
+@item -fno-emit-moduleinfo
+@cindex @option{-fno-emit-moduleinfo}
+Turns off generation of module information and related functions.
+
 @item -fd-verbose
 @cindex @option{-fd-verbose}
 Print information about D language processing to stdout.

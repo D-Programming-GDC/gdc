@@ -15,20 +15,17 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 
 #include "template.h"
 #include "init.h"
-#include "symbol.h"
-#include "dt.h"
 #include "id.h"
 
-IRState gen;
 
-Module *current_module;
-IRState *current_irs;
+Module *cmodule;
+IRState *cirstate;
 ObjectFile *object_file;
 
 
@@ -39,53 +36,42 @@ ObjectFile *object_file;
 bool
 d_gcc_force_templates (void)
 {
-  return gen.emitTemplates == TEprivate;
+  return ObjectFile::emitTemplates == TEprivate;
 }
 
-// Public routine called from D frontend to hide from glue interface.
-// Add local variable V into the current body.
-
-void
-d_gcc_emit_local_variable (VarDeclaration *v)
-{
-  current_irs->emitLocalVar (v);
-}
-
-// Return the DECL_CONTEXT for symbol D_SYM.
+// Return the DECL_CONTEXT for symbol DSYM.
 
 tree
-IRState::declContext (Dsymbol *d_sym)
+d_decl_context (Dsymbol *dsym)
 {
-  Dsymbol *orig_sym = d_sym;
+  Dsymbol *orig_sym = dsym;
   AggregateDeclaration *ad;
 
-  while ((d_sym = d_sym->toParent2()))
+  while ((dsym = dsym->toParent2()))
     {
-      if (d_sym->isFuncDeclaration())
+      if (dsym->isFuncDeclaration())
 	{
 	  // dwarf2out chokes without this check... (output_pubnames)
 	  FuncDeclaration *f = orig_sym->isFuncDeclaration();
-	  if (f && !gen.functionNeedsChain (f))
+	  if (f && !needs_static_chain (f))
 	    return NULL_TREE;
 
-	  return d_sym->toSymbol()->Stree;
+	  return dsym->toSymbol()->Stree;
 	}
-      else if ((ad = d_sym->isAggregateDeclaration()))
+      else if ((ad = dsym->isAggregateDeclaration()))
 	{
-	  tree ctx = ad->type->toCtype();
+	  tree context = ad->type->toCtype();
 	  if (ad->isClassDeclaration())
 	    {
 	      // RECORD_TYPE instead of REFERENCE_TYPE
-	      ctx = TREE_TYPE (ctx);
+	      context = TREE_TYPE (context);
 	    }
-
-	  return ctx;
+	  return context;
 	}
-      else if (d_sym->isModule())
-	{
-	  return d_sym->toSymbol()->ScontextDecl;
-	}
+      else if (dsym->isModule())
+	return dsym->toSymbol()->ScontextDecl;
     }
+
   return NULL_TREE;
 }
 
@@ -97,16 +83,16 @@ IRState::doLineNote (const Loc& loc)
   ObjectFile::doLineNote (loc);
 }
 
-// Add local variable V into the current body.  If NO_INIT,
+// Add local variable VD into the current body.  If NO_INIT,
 // then variable does not have a default initialiser.
 
 void
-IRState::emitLocalVar (VarDeclaration *v, bool no_init)
+IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
 {
-  if (v->isDataseg() || v->isMember())
+  if (vd->isDataseg() || vd->isMember())
     return;
 
-  Symbol *sym = v->toSymbol();
+  Symbol *sym = vd->toSymbol();
   tree var_decl = sym->Stree;
 
   gcc_assert (!TREE_STATIC (var_decl));
@@ -118,28 +104,28 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
   DECL_CONTEXT (var_decl) = getLocalContext();
 
   // Compiler generated symbols
-  if (v == this->func->vresult || v == this->func->v_argptr
-      || v == this->func->v_arguments_var)
+  if (vd == this->func->vresult || vd == this->func->v_argptr
+      || vd == this->func->v_arguments_var)
     DECL_ARTIFICIAL (var_decl) = 1;
 
   tree var_exp;
   if (sym->SframeField)
     {
       // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var_decl, var (v));
+      SET_DECL_VALUE_EXPR (var_decl, var (vd));
       DECL_HAS_VALUE_EXPR_P (var_decl) = 1;
     }
   var_exp = var_decl;
 
-  // complete initializer expression (include MODIFY_EXPR, e.g.)
+  // Complete initializer expression (include MODIFY_EXPR, e.g.)
   tree init_exp = NULL_TREE;
   tree init_val = NULL_TREE;
 
-  if (!no_init && !DECL_INITIAL (var_decl) && v->init)
+  if (!no_init && !DECL_INITIAL (var_decl) && vd->init)
     {
-      if (!v->init->isVoidInitializer())
+      if (!vd->init->isVoidInitializer())
 	{
-	  ExpInitializer *exp_init = v->init->isExpInitializer();
+	  ExpInitializer *exp_init = vd->init->isExpInitializer();
 	  Expression *ie = exp_init->toExpression();
 	  init_exp = ie->toElem (this);
 	}
@@ -147,60 +133,61 @@ IRState::emitLocalVar (VarDeclaration *v, bool no_init)
 	no_init = true;
     }
   else
-    gcc_assert (v->init == NULL);
+    gcc_assert (vd->init == NULL);
 
   if (!no_init)
     {
-      object_file->doLineNote (v->loc);
+      object_file->doLineNote (vd->loc);
 
       if (!init_val)
 	{
 	  init_val = DECL_INITIAL (var_decl);
-	  DECL_INITIAL (var_decl) = NULL_TREE; // %% from expandDecl
+	  DECL_INITIAL (var_decl) = NULL_TREE;
 	}
       if (!init_exp && init_val)
 	init_exp = build_vinit (var_exp, init_val);
 
       if (init_exp)
 	addExp (init_exp);
-      else if (!init_val && v->size (v->loc)) // Zero-length arrays do not have an initializer
-	warning (OPT_Wuninitialized, "uninitialized variable '%s'", v->ident ? v->ident->string : "(no name)");
+      else if (!init_val && vd->size (vd->loc))
+	// Zero-length arrays do not have an initializer
+	warning (OPT_Wuninitialized, "uninitialized variable '%s'", vd->ident ? vd->ident->string : "(no name)");
     }
 }
 
-// Return an unnamed local temporary of type T_TYPE.
+// Return an unnamed local temporary of type TYPE.
 
 tree
-IRState::localVar (tree t_type)
+IRState::localVar (tree type)
 {
-  tree t_decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
-  DECL_CONTEXT (t_decl) = getLocalContext();
-  DECL_ARTIFICIAL (t_decl) = 1;
-  DECL_IGNORED_P (t_decl) = 1;
-  pushdecl (t_decl);
-  return t_decl;
+  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  DECL_CONTEXT (decl) = getLocalContext();
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  pushdecl (decl);
+  return decl;
 }
 
-// Return an unnamed local temporary of type E_TYPE.
+// Return an unnamed local temporary of type TYPE.
 
 tree
-IRState::localVar (Type *e_type)
+IRState::localVar (Type *type)
 {
-  return localVar (e_type->toCtype());
+  return localVar (type->toCtype());
 }
 
-// Return an undeclared local temporary of type T_TYPE
+// Return an undeclared local temporary of type TYPE
 // for use with BIND_EXPR.
 
 tree
-IRState::exprVar (tree t_type)
+IRState::exprVar (tree type)
 {
-  tree t_decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, t_type);
-  DECL_CONTEXT (t_decl) = getLocalContext();
-  DECL_ARTIFICIAL (t_decl) = 1;
-  DECL_IGNORED_P (t_decl) = 1;
-  layout_decl (t_decl, 0);
-  return t_decl;
+  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  DECL_CONTEXT (decl) = getLocalContext();
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  layout_decl (decl, 0);
+  return decl;
 }
 
 // Return an undeclared local temporary OUT_VAR initialised
@@ -228,36 +215,37 @@ IRState::maybeExprVar (tree exp, tree *out_var)
     }
 }
 
-// Emit an INIT_EXPR for decl T_DECL.
+// Emit an INIT_EXPR for decl DECL.
 
 void
-IRState::expandDecl (tree t_decl)
+IRState::expandDecl (tree decl)
 {
-  // nothing, pushdecl will add t_decl to a BIND_EXPR
-  if (DECL_INITIAL (t_decl))
+  // nothing, pushdecl will add decl to a BIND_EXPR
+  if (DECL_INITIAL (decl))
     {
-      tree exp = build_vinit (t_decl, DECL_INITIAL (t_decl));
+      tree exp = build_vinit (decl, DECL_INITIAL (decl));
       addExp (exp);
-      DECL_INITIAL (t_decl) = NULL_TREE;
+      DECL_INITIAL (decl) = NULL_TREE;
     }
 }
 
-// Return the correct decl to be used for variable V.
+// Return the correct decl to be used for variable VD.
 // Could be a VAR_DECL, or a FIELD_DECL from a closure.
 
 tree
 IRState::var (Declaration *decl)
 {
-  VarDeclaration *v = decl->isVarDeclaration();
+  VarDeclaration *vd = decl->isVarDeclaration();
 
-  if (v && v->toSymbol()->SframeField != NULL_TREE)
+  if (vd && vd->toSymbol()->SframeField != NULL_TREE)
     {
-      FuncDeclaration *f = v->toParent2()->isFuncDeclaration();
-      tree cf = getFrameRef (f);
-      tree field = v->toSymbol()->SframeField;
+      // Get the closure holding the var decl.
+      FuncDeclaration *fd = vd->toParent2()->isFuncDeclaration();
+      tree frame_ref = get_framedecl (this->func, fd);
+      tree field = vd->toSymbol()->SframeField;
 
       gcc_assert (field != NULL_TREE);
-      return component_ref (build_deref (cf), field);
+      return component_ref (build_deref (frame_ref), field);
     }
   else
     {
@@ -269,7 +257,7 @@ IRState::var (Declaration *decl)
 // Return expression EXP, whose type has been converted to TYPE.
 
 tree
-IRState::convertTo (tree type, tree exp)
+d_convert (tree type, tree exp)
 {
   // Check this first before passing to build_dtype.
   if (error_mark_p (type) || error_mark_p (TREE_TYPE (exp)))
@@ -279,23 +267,15 @@ IRState::convertTo (tree type, tree exp)
   Type *expr_type = build_dtype (TREE_TYPE (exp));
 
   if (target_type && expr_type)
-    return convertTo (exp, expr_type, target_type);
+    return convert_expr (exp, expr_type, target_type);
 
   return convert (type, exp);
-}
-
-// Return a TREE representation of EXP implictly converted to TARGET_TYPE.
-
-tree
-IRState::convertTo (Expression *exp, Type *target_type)
-{
-  return convertTo (exp->toElem (this), exp->type, target_type);
 }
 
 // Return expression EXP, whose type has been convert from EXP_TYPE to TARGET_TYPE.
 
 tree
-IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
+convert_expr (tree exp, Type *exp_type, Type *target_type)
 {
   tree result = NULL_TREE;
 
@@ -327,7 +307,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
       else
 	{
 	  ::error ("can't convert a delegate expression to %s", target_type->toChars());
-	  return error_mark_node;
+	  return error_mark (target_type);
 	}
       break;
 
@@ -341,13 +321,13 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	  }
 	else if (tbtype->ty == Taarray)
 	  {
-	    tbtype = ((TypeAArray *)tbtype)->getImpl()->type;
-	    return convertTo (exp, exp_type, tbtype);
+	    tbtype = ((TypeAArray *) tbtype)->getImpl()->type;
+	    return convert_expr (exp, exp_type, tbtype);
 	  }
 	else
 	  {
 	    ::error ("can't convert struct %s to %s", exp_type->toChars(), target_type->toChars());
-	    return error_mark_node;
+	    return error_mark (target_type);
 	  }
       }
       // else, default conversion, which should produce an error
@@ -396,13 +376,13 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	    tree args[2];
 	    args[0] = exp;
 	    args[1] = build_address (target_class_decl->toSymbol()->Stree);
-	    return libCall (obj_class_decl->isInterfaceDeclaration()
-			    ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
+	    return build_libcall (obj_class_decl->isInterfaceDeclaration()
+				  ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
 	  }
 	else
 	  {
 	    warning (OPT_Wcast_result, "cast to %s will produce null result", target_type->toChars());
-	    result = convertTo (target_type->toCtype(), d_null_pointer);
+	    result = d_convert (target_type->toCtype(), d_null_pointer);
 	    if (TREE_SIDE_EFFECTS (exp))
 	      {
 		// make sure the expression is still evaluated if necessary
@@ -421,23 +401,23 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	}
       else if (tbtype->ty == Tarray)
 	{
-	  TypeSArray *a_type = (TypeSArray *) ebtype;
+	  dinteger_t dim = ((TypeSArray *) ebtype)->dim->toInteger();
+	  dinteger_t esize = ebtype->nextOf()->size();
+	  dinteger_t tsize = tbtype->nextOf()->size();
 
-	  uinteger_t array_len = a_type->dim->toUInteger();
-	  d_uns64 sz_a = a_type->next->size();
-	  d_uns64 sz_b = tbtype->nextOf()->size();
+	  tree ptrtype = tbtype->nextOf()->pointerTo()->toCtype();
 
-	  // conversions to different sizes
-	  // Assumes tvoid->size() == 1
-	  // %% TODO: handle misalign like _d_arraycast_xxx ?
-	  if (sz_a != sz_b)
-	    array_len = array_len * sz_a / sz_b;
-
-	  tree pointer_value = build_nop (tbtype->nextOf()->pointerTo()->toCtype(),
-					  build_address (exp));
+	  if ((dim * esize) % tsize != 0)
+	    {
+	      ::error ("cannot cast %s to %s since sizes don't line up",
+		       exp_type->toChars(), target_type->toChars());
+	      return error_mark (target_type);
+	    }
+	  dim = (dim * esize) / tsize;
 
 	  // Assumes casting to dynamic array of same type or void
-	  return darrayVal (target_type, array_len, pointer_value);
+	  return d_array_value (target_type->toCtype(),
+				size_int (dim), build_nop (ptrtype, build_address (exp)));
 	}
       else if (tbtype->ty == Tsarray)
 	{
@@ -455,14 +435,14 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	{
 	  ::error ("cannot cast expression of type %s to type %s",
 		   exp_type->toChars(), target_type->toChars());
-	  return error_mark_node;
+	  return error_mark (target_type);
 	}
       break;
 
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
-	  return convertTo (target_type->toCtype(), darrayPtrRef (exp));
+	  return d_convert (target_type->toCtype(), d_array_ptr (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -472,7 +452,7 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	  d_uns64 sz_src = src_elem_type->size();
 	  d_uns64 sz_dst = dst_elem_type->size();
 
-	  if (/*src_elem_type->ty == Tvoid ||*/ sz_src == sz_dst)
+	  if (sz_src == sz_dst)
 	    {
 	      // Convert from void[] or elements are the same size -- don't change length
 	      return build_vconvert (target_type->toCtype(), exp);
@@ -484,20 +464,20 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	      args[0] = build_integer_cst (sz_dst, Type::tsize_t->toCtype());
 	      args[1] = build_integer_cst (sz_src * mult, Type::tsize_t->toCtype());
 	      args[2] = exp;
-	      return libCall (LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
+	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
 	    }
 	}
       else if (tbtype->ty == Tsarray)
 	{
 	  // %% Strings are treated as dynamic arrays D2.
 	  if (ebtype->isString() && tbtype->isString())
-	    return indirect_ref (target_type->toCtype(), darrayPtrRef (exp));
+	    return indirect_ref (target_type->toCtype(), d_array_ptr (exp));
 	}
       else
 	{
 	  ::error ("cannot cast expression of type %s to %s",
 		   exp_type->toChars(), target_type->toChars());
-	  return error_mark_node;
+	  return error_mark (target_type);
 	}
       break;
 
@@ -506,8 +486,8 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
 	return build_vconvert (target_type->toCtype(), exp);
       else if (tbtype->ty == Tstruct)
 	{
-	  ebtype = ((TypeAArray *)ebtype)->getImpl()->type;
-	  return convertTo (exp, ebtype, target_type);
+	  ebtype = ((TypeAArray *) ebtype)->getImpl()->type;
+	  return convert_expr (exp, ebtype, target_type);
 	}
       // Can convert associative arrays to void pointers.
       else if (tbtype == Type::tvoidptr)
@@ -524,8 +504,9 @@ IRState::convertTo (tree exp, Type *exp_type, Type *target_type)
     case Tnull:
       if (tbtype->ty == Tarray)
 	{
-	  Type *pointer_type = tbtype->nextOf()->pointerTo();
-	  return darrayVal (target_type, 0, build_nop (pointer_type->toCtype(), exp));
+	  tree ptrtype = tbtype->nextOf()->pointerTo()->toCtype();
+	  return d_array_value (target_type->toCtype(),
+				size_int (0), build_nop (ptrtype, exp));
 	}
       break;
 
@@ -576,14 +557,16 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 	  TypeSArray *sa_type = (TypeSArray *) target_base_type;
 	  uinteger_t count = sa_type->dim->toUInteger();
 
-	  tree ctor = build_constructor (target_type->toCtype(), 0);
+	  tree ctor = build_constructor (target_type->toCtype(), NULL);
 	  if (count)
 	    {
-	      CtorEltMaker ce;
-	      ce.cons (build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
-			       integer_zero_node, build_integer_cst (count - 1)),
-		       object_file->stripVarDecl (convertForAssignment (expr, sa_type->next)));
-	      CONSTRUCTOR_ELTS (ctor) = ce.head;
+	      VEC(constructor_elt, gc) *ce = NULL;
+	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
+				   integer_zero_node, build_integer_cst (count - 1));
+	      tree value = object_file->stripVarDecl (convertForAssignment (expr, sa_type->next));
+
+	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
+	      CONSTRUCTOR_ELTS (ctor) = ce;
 	    }
 	  TREE_READONLY (ctor) = 1;
 	  TREE_CONSTANT (ctor) = 1;
@@ -616,7 +599,7 @@ IRState::convertForAssignment (Expression *expr, Type *target_type)
 tree
 IRState::convertForAssignment (tree expr, Type *expr_type, Type *target_type)
 {
-  return convertTo (expr, expr_type, target_type);
+  return convert_expr (expr, expr_type, target_type);
 }
 
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
@@ -667,7 +650,7 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
     {
     case Taarray:
       // Shouldn't this be...
-      //  result = libCall (LIBCALL_AALEN, 1, &exp_tree);
+      //  result = build_libcall (LIBCALL_AALEN, 1, &exp_tree);
       result = component_ref (exp_tree, TYPE_FIELDS (TREE_TYPE (exp_tree)));
       break;
 
@@ -679,7 +662,7 @@ IRState::convertForCondition (tree exp_tree, Type *exp_type)
       if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
 	{
 	  result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj,
-			   convertTo (TREE_TYPE (obj), func));
+			   d_convert (TREE_TYPE (obj), func));
 	}
       else
 	{
@@ -723,17 +706,17 @@ tree
 IRState::toDArray (Expression *exp)
 {
   TY ty = exp->type->toBasetype()->ty;
-  tree val;
+
   if (ty == Tsarray)
-    val = convertTo (exp, exp->type->toBasetype()->nextOf()->arrayOf());
-  else if (ty == Tarray)
-    val = exp->toElem (this);
-  else
     {
-      gcc_assert (ty == Tsarray || ty == Tarray);
-      return NULL_TREE;
+      Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
+      return convert_expr (exp->toElem (this), exp->type, totype);
     }
-  return val;
+  else if (ty == Tarray)
+    return exp->toElem (this);
+
+  // Invalid type passed.
+  gcc_unreachable();
 }
 
 // Return TRUE if declaration DECL is a reference type.
@@ -880,13 +863,13 @@ bool d_attribute_p (const char* name)
       size_t n = 0;
       for (const attribute_spec *p = d_attribute_table; p->name; p++)
         n++;
-      
+
       if(n == 0)
         return false;
 
       table = new StringTable();
       table->init(n);
-    
+
       for (const attribute_spec *p = d_attribute_table; p->name; p++)
         table->insert(p->name, strlen(p->name));
     }
@@ -901,10 +884,10 @@ build_attributes (Expressions *in_attrs)
 {
   if (!in_attrs)
     return NULL_TREE;
-  
+
   expandTuples(in_attrs);
-  
-  ListMaker out_attrs;
+
+  tree out_attrs = NULL_TREE;
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
@@ -941,8 +924,8 @@ build_attributes (Expressions *in_attrs)
         return error_mark_node;
       }
 
-      ListMaker args;
-      
+      tree args = NULL_TREE;
+
       for (size_t j = 1; j < elem->dim; j++)
         {
 	  Expression *ae = (*elem)[j];
@@ -953,14 +936,16 @@ build_attributes (Expressions *in_attrs)
 	      aet = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = ae->toElem (&gen);
-	  args.cons (aet);
+	    aet = ae->toElem (cirstate);
+
+	  args = chainon (args, build_tree_list (0, aet));
         }
 
-      out_attrs.cons (get_identifier (name), args.head);
+      tree list = build_tree_list (get_identifier (name), args);
+      out_attrs =  chainon (out_attrs, list);
     }
 
-  return out_attrs.head;
+  return out_attrs;
 }
 
 // Return qualified type variant of TYPE determined by modifier value MOD.
@@ -1071,7 +1056,7 @@ tree_to_hwi (tree t)
 // Returns the .length component from the D dynamic array EXP.
 
 tree
-IRState::darrayLenRef (tree exp)
+d_array_length (tree exp)
 {
   // backend will ICE otherwise
   if (error_mark_p (exp))
@@ -1086,7 +1071,7 @@ IRState::darrayLenRef (tree exp)
 // Returns the .ptr component from the D dynamic array EXP.
 
 tree
-IRState::darrayPtrRef (tree exp)
+d_array_ptr (tree exp)
 {
   // backend will ICE otherwise
   if (error_mark_p (exp))
@@ -1098,68 +1083,26 @@ IRState::darrayPtrRef (tree exp)
   return component_ref (exp, ptr_field);
 }
 
-// Builds D dynamic array expression E and returns the .ptr component.
-
-tree
-IRState::darrayPtrRef (Expression *e)
-{
-  return darrayPtrRef (e->toElem (this));
-}
-
 // Returns a constructor for D dynamic array type TYPE of .length LEN
 // and .ptr pointing to DATA.
 
 tree
-IRState::darrayVal (tree type, tree len, tree data)
+d_array_value (tree type, tree len, tree data)
 {
   // %% assert type is a darray
   tree len_field, ptr_field;
-  CtorEltMaker ce;
+  VEC(constructor_elt, gc) *ce = NULL;
 
   len_field = TYPE_FIELDS (type);
   ptr_field = TREE_CHAIN (len_field);
 
-  ce.cons (len_field, len);
-  ce.cons (ptr_field, data); // shouldn't need to convert the pointer...
+  len = convert (TREE_TYPE (len_field), len);
+  data = convert (TREE_TYPE (ptr_field), data);
 
-  tree ctor = build_constructor (type, ce.head);
-  TREE_STATIC (ctor) = 0;   // can be set by caller if needed
-  TREE_CONSTANT (ctor) = 0; // "
+  CONSTRUCTOR_APPEND_ELT (ce, len_field, len);
+  CONSTRUCTOR_APPEND_ELT (ce, ptr_field, data);
 
-  return ctor;
-}
-
-tree
-IRState::darrayVal (Type *type, uinteger_t len, tree data)
-{
-  return darrayVal (type->toCtype(), len, data);
-}
-
-tree
-IRState::darrayVal (tree type, uinteger_t len, tree data)
-{
-  // %% assert type is a darray
-  tree len_value, ptr_value, len_field, ptr_field;
-  CtorEltMaker ce;
-
-  len_field = TYPE_FIELDS (type);
-  ptr_field = TREE_CHAIN (len_field);
-
-  if (data)
-    {
-      gcc_assert (POINTER_TYPE_P (TREE_TYPE (data)));
-      ptr_value = data;
-    }
-  else
-    {
-      ptr_value = convertTo (TREE_TYPE (ptr_field), d_null_pointer);
-    }
-
-  len_value = build_integer_cst (len, TREE_TYPE (len_field));
-  ce.cons (len_field, len_value);
-  ce.cons (ptr_field, ptr_value); // shouldn't need to convert the pointer...
-
-  tree ctor = build_constructor (type, ce.head);
+  tree ctor = build_constructor (type, ce);
   // TREE_STATIC and TREE_CONSTANT can be set by caller if needed
   TREE_STATIC (ctor) = 0;
   TREE_CONSTANT (ctor) = 0;
@@ -1170,42 +1113,37 @@ IRState::darrayVal (tree type, uinteger_t len, tree data)
 // Builds a D string value from the C string STR.
 
 tree
-IRState::darrayString (const char *str)
+d_array_string (const char *str)
 {
   unsigned len = strlen (str);
-  // %% assumes str is null-terminated
+  // Assumes str is null-terminated.
   tree str_tree = build_string (len + 1, str);
 
   TREE_TYPE (str_tree) = d_array_type (Type::tchar, len);
 
-  return darrayVal (Type::tchar->arrayOf()->toCtype(),
-		    len, build_address (str_tree));
-}
-
-// Returns array length of expression EXP.
-
-tree
-IRState::arrayLength (Expression *exp)
-{
-  return arrayLength (exp->toElem (this), exp->type);
+  return d_array_value (Type::tchar->arrayOf()->toCtype(),
+			size_int (len), build_address (str_tree));
 }
 
 // Returns value representing the array length of expression EXP.
-// EXP_TYPE could be a dynamic or static array.
+// TYPE could be a dynamic or static array.
 
 tree
-IRState::arrayLength (tree exp, Type *exp_type)
+get_array_length (tree exp, Type *type)
 {
-  Type *base_type = exp_type->toBasetype();
-  switch (base_type->ty)
+  Type *tb = type->toBasetype();
+
+  switch (tb->ty)
     {
     case Tsarray:
-      return size_int (((TypeSArray *) base_type)->dim->toUInteger());
+      return size_int (((TypeSArray *) tb)->dim->toUInteger());
+
     case Tarray:
-      return darrayLenRef (exp);
+      return d_array_length (exp);
+
     default:
-      ::error ("can't determine the length of a %s", exp_type->toChars());
-      return error_mark_node;
+      ::error ("can't determine the length of a %s", type->toChars());
+      return error_mark (type);
     }
 }
 
@@ -1268,7 +1206,7 @@ build_delegate_cst (tree method, tree object, Type *type)
   tree ctor = make_node (CONSTRUCTOR);
   tree obj_field = NULL_TREE;
   tree func_field = NULL_TREE;
-  CtorEltMaker ce;
+  VEC(constructor_elt, gc) *ce = NULL;
 
   if (ctype)
     {
@@ -1276,10 +1214,10 @@ build_delegate_cst (tree method, tree object, Type *type)
       obj_field = TYPE_FIELDS (ctype);
       func_field = TREE_CHAIN (obj_field);
     }
-  ce.cons (obj_field, object);
-  ce.cons (func_field, method);
+  CONSTRUCTOR_APPEND_ELT (ce, obj_field, object);
+  CONSTRUCTOR_APPEND_ELT (ce, func_field, method);
 
-  CONSTRUCTOR_ELTS (ctor) = ce.head;
+  CONSTRUCTOR_ELTS (ctor) = ce;
   return ctor;
 }
 
@@ -1300,82 +1238,70 @@ void
 extract_from_method_call (tree t, tree& callee, tree& object)
 {
   gcc_assert (D_METHOD_CALL_EXPR (t));
-
-  VEC (constructor_elt,gc) *elts = CONSTRUCTOR_ELTS (t);
-  object = VEC_index (constructor_elt, elts, 0)->value;
-  callee = VEC_index (constructor_elt, elts, 1)->value;
+  object = CONSTRUCTOR_ELT (t, 0)->value;
+  callee = CONSTRUCTOR_ELT (t, 1)->value;
 }
 
 // Return correct callee for method FUNC, which is dereferenced from
 // the 'this' pointer OBJEXP.  TYPE is the return type for the method.
+// THISEXP is the tree representation of OBJEXP.
 
 tree
-get_object_method (IRState *irs, Expression *objexp, FuncDeclaration *func, Type *type)
+get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type *type)
 {
   Type *objtype = objexp->type->toBasetype();
+  bool is_dottype = false;
 
-  if (func->isThis())
+  gcc_assert (func->isThis());
+
+  Expression *ex = objexp;
+
+  while (1)
     {
-      bool is_dottype = false;
-      tree this_expr;
-
-      Expression *ex = objexp;
-      while (1)
+      if (ex->op == TOKsuper || ex->op == TOKdottype)
 	{
-	  switch (ex->op)
-	    {
-	      case TOKsuper:          // super.member() calls directly
-	      case TOKdottype:        // type.member() calls directly
-		is_dottype = true;
-		break;
-
-	      case TOKcast:
-		ex = ((CastExp *)ex)->e1;
-		continue;
-
-	      default:
-		break;
-	    }
+	  // super.member() and type.member() calls directly.
+	  is_dottype = true;
 	  break;
 	}
-      this_expr = objexp->toElem (irs);
-
-      // Calls to super are static (func is the super's method)
-      // Structs don't have vtables.
-      // Final and non-virtual methods can be called directly.
-      // DotTypeExp means non-virtual
-
-      if (objexp->op == TOKsuper
-	  || objtype->ty == Tstruct || objtype->ty == Tpointer
-	  || func->isFinal() || !func->isVirtual() || is_dottype)
+      else if (ex->op == TOKcast)
 	{
-	  if (objtype->ty == Tstruct)
-	    this_expr = build_address (this_expr);
-
-	  return build_method_call (build_address (func->toSymbol()->Stree),
-				    this_expr, type);
+	  ex = ((CastExp *) ex)->e1;
+	  continue;
 	}
-      else
-	{
-	  // Interface methods are also in the class's vtable, so we don't
-	  // need to convert from a class pointer to an interface pointer.
-	  this_expr = maybe_make_temp (this_expr);
-	  tree vtbl_ref = build_deref (this_expr);
-	  // The vtable is the first field.
-	  tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref));
-	  tree fntype = TREE_TYPE (func->toSymbol()->Stree);
+      break;
+    }
 
-	  vtbl_ref = component_ref (vtbl_ref, field);
-	  vtbl_ref = build_offset (vtbl_ref, size_int (PTRSIZE * func->vtblIndex));
-	  vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
+  // Calls to super are static (func is the super's method)
+  // Structs don't have vtables.
+  // Final and non-virtual methods can be called directly.
+  // DotTypeExp means non-virtual
 
-	  return build_method_call (vtbl_ref, this_expr, type);
-	}
+  if (objexp->op == TOKsuper
+      || objtype->ty == Tstruct || objtype->ty == Tpointer
+      || func->isFinal() || !func->isVirtual() || is_dottype)
+    {
+      if (objtype->ty == Tstruct)
+	thisexp = build_address (thisexp);
+
+      return build_method_call (build_address (func->toSymbol()->Stree),
+				thisexp, type);
     }
   else
     {
-      // Static method; ignore the object instance
-      return build_address (func->toSymbol()->Stree);
+      // Interface methods are also in the class's vtable, so we don't
+      // need to convert from a class pointer to an interface pointer.
+      thisexp = maybe_make_temp (thisexp);
+      tree vtbl_ref = build_deref (thisexp);
+      // The vtable is the first field.
+      tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref));
+      tree fntype = TREE_TYPE (func->toSymbol()->Stree);
+
+      vtbl_ref = component_ref (vtbl_ref, field);
+      vtbl_ref = build_offset (vtbl_ref, size_int (PTRSIZE * func->vtblIndex));
+      vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
+
+      return build_method_call (vtbl_ref, thisexp, type);
     }
 }
 
@@ -1419,7 +1345,8 @@ maybe_make_temp (tree t)
 {
   if (d_has_side_effects (t))
     {
-      if (TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
+      if (TREE_CODE (t) == CALL_EXPR
+	  || TREE_CODE (TREE_TYPE (t)) != ARRAY_TYPE)
 	return save_expr (t);
       else
 	return stabilize_reference (t);
@@ -1442,8 +1369,7 @@ d_has_side_effects (tree expr)
     return false;
 
   if (DECL_P (t)
-      || CONSTANT_CLASS_P (t)
-      || EXCEPTIONAL_CLASS_P (t))
+      || CONSTANT_CLASS_P (t))
     return false;
 
   if (INDIRECT_REF_P (t)
@@ -1477,9 +1403,10 @@ IRState::toElemLvalue (Expression *e)
 	  args[0] = build_address (toElemLvalue (e1));
 	  args[1] = typeinfoReference (key_type);
 	  args[2] = build_integer_cst (array_type->nextOf()->size(), Type::tsize_t->toCtype());
-	  args[3] = aoe.set (this, convertTo (e2, key_type));
+	  args[3] = aoe.set (this, convert_expr (e2->toElem (this), e2->type, key_type));
 
-	  result = aoe.finish (this, libCall (LIBCALL_AAGETX, 4, args, type->pointerTo()->toCtype()));
+	  result = aoe.finish (build_libcall (LIBCALL_AAGETX, 4, args,
+					      type->pointerTo()->toCtype()));
 	  return build1 (INDIRECT_REF, type->toCtype(), result);
 	}
     }
@@ -1736,11 +1663,11 @@ IRState::pointerIntSum (tree ptr_node, tree idx_exp)
 	{
 	  tree type = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
 						      TYPE_UNSIGNED (sizetype));
-	  intop = convertTo (type, intop);
+	  intop = d_convert (type, intop);
 	}
       intop = fold_convert (prod_result_type,
 			    fold_build2 (MULT_EXPR, TREE_TYPE (size_exp), // the type here may be wrong %%
-					 intop, convertTo (TREE_TYPE (intop), size_exp)));
+					 intop, d_convert (TREE_TYPE (intop), size_exp)));
     }
 
   // backend will ICE otherwise
@@ -1818,8 +1745,8 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
       // Need to convert pointers to integers because tree-vrp asserts
       // against (ptr MINUS ptr).
       tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode, TYPE_UNSIGNED (type));
-      arg0 = convertTo (ptrtype, arg0);
-      arg1 = convertTo (ptrtype, arg1);
+      arg0 = d_convert (ptrtype, arg0);
+      arg1 = d_convert (ptrtype, arg1);
 
       t = build2 (code, ptrtype, arg0, arg1);
     }
@@ -1833,14 +1760,14 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
       // Front-end does not do this conversion and GCC does not
       // always do it right.
       if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
-	arg1 = convertTo (t0, arg1);
+	arg1 = d_convert (t0, arg1);
       else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
-	arg0 = convertTo (t1, arg0);
+	arg0 = d_convert (t1, arg0);
 
       t = build2 (code, type, arg0, arg1);
     }
 
-  return convertTo (type, t);
+  return d_convert (type, t);
 }
 
 // Build an assignment expression of code CODE, data type TYPE, and
@@ -1863,11 +1790,11 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
   lhs = stabilize_reference (lhs);
 
   tree rhs = buildOp (code, e1->type->toCtype(),
-		      convertTo (lhs, e1b->type, e1->type), e2->toElem (this));
+		      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
 
   tree expr = modify_expr (lhs, convertForAssignment (rhs, e1->type, e1b->type));
 
-  return convertTo (expr, e1b->type, type);
+  return convert_expr (expr, e1b->type, type);
 }
 
 
@@ -1896,7 +1823,7 @@ IRState::boundsCond (tree index, tree upper_bound, bool inclusive)
   tree bound_check;
 
   bound_check = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node,
-			convertTo (d_unsigned_type (TREE_TYPE (index)), index),
+			d_convert (d_unsigned_type (TREE_TYPE (index)), index),
 			upper_bound);
 
   if (!TYPE_UNSIGNED (TREE_TYPE (index)))
@@ -1921,7 +1848,7 @@ IRState::arrayBoundsCheck (void)
       result = 0;
       if (func && func->type->ty == Tfunction)
 	{
-	  TypeFunction *tf = (TypeFunction *)func->type;
+	  TypeFunction *tf = (TypeFunction *) func->type;
 	  if (tf->trust == TRUSTsafe)
 	    result = 1;
 	}
@@ -1954,7 +1881,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
     {
     case Tarray:
     case Tsarray:
-      array_expr = asc->setArrayExp (this, array_expr, e1->type);
+      array_expr = asc->setArrayExp (array_expr, e1->type);
 
       // If it's a static array and the index is constant,
       // the front end has already checked the bounds.
@@ -1971,7 +1898,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 	  if (base_type_ty == Tarray)
 	    {
 	      array_expr = maybe_make_temp (array_expr);
-	      array_len_expr = darrayLenRef (array_expr);
+	      array_len_expr = d_array_length (array_expr);
 	    }
 	  else
 	    array_len_expr = ((TypeSArray *) base_type)->dim->toElem (this);
@@ -1981,7 +1908,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
 	}
 
       if (base_type_ty == Tarray)
-	ptr_exp = darrayPtrRef (array_expr);
+	ptr_exp = d_array_ptr (array_expr);
       else
 	ptr_exp = build_address (array_expr);
 
@@ -2000,7 +1927,7 @@ IRState::arrayElemRef (IndexExp *ae, ArrayScope *asc)
     }
 
   ptr_exp = void_okay_p (ptr_exp);
-  subscript_expr = asc->finish (this, subscript_expr);
+  subscript_expr = asc->finish (subscript_expr);
   elem_ref = indirect_ref (TREE_TYPE (TREE_TYPE (ptr_exp)),
 			   pointerIntSum (ptr_exp, subscript_expr));
 
@@ -2038,12 +1965,12 @@ IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
   startLoop (NULL);
   continueHere();
   exitIfFalse (build2 (NE_EXPR, boolean_type_node,
-		       convertTo (TREE_TYPE (count), integer_zero_node), count));
+		       d_convert (TREE_TYPE (count), integer_zero_node), count));
 
   addExp (vmodify_expr (build_deref (ptr), value));
   addExp (vmodify_expr (ptr, build_offset (ptr, TYPE_SIZE_UNIT (TREE_TYPE (ptr_type)))));
   addExp (vmodify_expr (count, build2 (MINUS_EXPR, count_type, count,
-				       convertTo (count_type, integer_one_node))));
+				       d_convert (count_type, integer_one_node))));
 
   endLoop();
   endBindings();
@@ -2061,7 +1988,7 @@ IRState::arraySetExpr (tree ptr, tree value, tree count)
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.
 
 tree
-IRState::binding (tree var_chain, tree body)
+bind_expr (tree var_chain, tree body)
 {
   // TODO: only handles one var
   gcc_assert (TREE_CHAIN (var_chain) == NULL_TREE);
@@ -2184,7 +2111,7 @@ IRState::call (Expression *expr, Expressions *arguments)
 	{
 	  /* This gets the true function type, the latter way can sometimes
 	     be incorrect. Example: ref functions in D2. */
-	  tf = get_function_type (((DotVarExp *)expr)->var->type);
+	  tf = get_function_type (((DotVarExp *) expr)->var->type);
 	}
       else
 	tf = get_function_type (t);
@@ -2210,7 +2137,7 @@ IRState::call (Expression *expr, Expressions *arguments)
 	      // Re-evaluate symbol storage treating 'fd' as public.
 	      object_file->setupSymbolStorage (fd, callee, true);
 	    }
-	  object = getFrameForFunction (fd);
+	  object = getFrameForSymbol (fd);
 	}
       else if (fd->needThis())
 	{
@@ -2258,7 +2185,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   tree actual_callee = callable;
   tree saved_args = NULL_TREE;
 
-  ListMaker actual_arg_list;
+  tree arg_list = NULL_TREE;
 
   if (POINTER_TYPE_P (func_type_node))
     func_type_node = TREE_TYPE (func_type_node);
@@ -2289,7 +2216,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
 	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
-	  return error_mark_node;
+	  return error_mark (func_type);
 	}
 
       // Probably an internal error
@@ -2298,7 +2225,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   /* If this is a delegate call or a nested function being called as
      a delegate, the object should not be NULL. */
   if (object != NULL_TREE)
-    actual_arg_list.cons (object);
+    arg_list = build_tree_list (NULL_TREE, object);
 
   Parameters *formal_args = func_type->parameters; // can be NULL for genCfunc decls
   size_t n_formal_args = formal_args ? (int) Parameter::dim (formal_args) : 0;
@@ -2308,52 +2235,52 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   // assumes arguments->dim <= formal_args->dim if (!this->varargs)
   for (size_t ai = 0; ai < n_actual_args; ++ai)
     {
-      tree actual_arg_tree;
-      Expression *actual_arg_exp = (*arguments)[ai];
+      tree arg_tree;
+      Expression *arg_exp = (*arguments)[ai];
 
       if (ai == 0 && is_d_vararg)
 	{
 	  // The hidden _arguments parameter
-	  actual_arg_tree = actual_arg_exp->toElem (this);
+	  arg_tree = arg_exp->toElem (this);
 	}
       else if (fi < n_formal_args)
 	{
 	  // Actual arguments for declared formal arguments
 	  Parameter *formal_arg = Parameter::getNth (formal_args, fi);
-	  actual_arg_tree = convertForArgument (actual_arg_exp, formal_arg);
+	  arg_tree = convertForArgument (arg_exp, formal_arg);
 	  ++fi;
 	}
       else
 	{
-	  if (flag_split_darrays && actual_arg_exp->type->toBasetype()->ty == Tarray)
+	  if (flag_split_darrays && arg_exp->type->toBasetype()->ty == Tarray)
 	    {
-	      tree da_exp = maybe_make_temp (actual_arg_exp->toElem (this));
-	      actual_arg_list.cons (darrayLenRef (da_exp));
-	      actual_arg_list.cons (darrayPtrRef (da_exp));
+	      tree da_exp = maybe_make_temp (arg_exp->toElem (this));
+	      arg_list = chainon (arg_list, build_tree_list (0, d_array_length (da_exp)));
+	      arg_list = chainon (arg_list, build_tree_list (0, d_array_ptr (da_exp)));
 	      continue;
 	    }
 	  else
 	    {
-	      actual_arg_tree = actual_arg_exp->toElem (this);
+	      arg_tree = arg_exp->toElem (this);
 	      /* Not all targets support passing unpromoted types, so
 		 promote anyway. */
-	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (actual_arg_tree));
-	      if (prom_type != TREE_TYPE (actual_arg_tree))
-		actual_arg_tree = convert (prom_type, actual_arg_tree);
+	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (arg_tree));
+	      if (prom_type != TREE_TYPE (arg_tree))
+		arg_tree = convert (prom_type, arg_tree);
 	    }
 	}
       /* Evaluate the argument before passing to the function.
 	 Needed for left to right evaluation.  */
-      if (func_type->linkage == LINKd && TREE_SIDE_EFFECTS (actual_arg_tree))
+      if (func_type->linkage == LINKd && TREE_SIDE_EFFECTS (arg_tree))
 	{
-	  actual_arg_tree = maybe_make_temp (actual_arg_tree);
-	  saved_args = maybe_vcompound_expr (saved_args, actual_arg_tree);
+	  arg_tree = maybe_make_temp (arg_tree);
+	  saved_args = maybe_vcompound_expr (saved_args, arg_tree);
 	}
 
-      actual_arg_list.cons (actual_arg_tree);
+      arg_list = chainon (arg_list, build_tree_list (0, arg_tree));
     }
 
-  tree result = d_build_call (TREE_TYPE (func_type_node), actual_callee, actual_arg_list.head);
+  tree result = d_build_call (TREE_TYPE (func_type_node), actual_callee, arg_list);
   result = maybeExpandSpecialCall (result);
 
   return maybe_compound_expr (saved_args, result);
@@ -2365,13 +2292,14 @@ tree
 IRState::assertCall (Loc loc, LibCall libcall)
 {
   tree args[2];
-  args[0] = darrayString (loc.filename ? loc.filename : "");
+
+  args[0] = d_array_string (loc.filename ? loc.filename : "");
   args[1] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
 
   if (libcall == LIBCALL_ASSERT && this->func->isUnitTestDeclaration())
     libcall = LIBCALL_UNITTEST;
 
-  return libCall (libcall, 2, args);
+  return build_libcall (libcall, 2, args);
 }
 
 // Builds a call to AssertErrorMsg.
@@ -2380,14 +2308,15 @@ tree
 IRState::assertCall (Loc loc, Expression *msg)
 {
   tree args[3];
+
   args[0] = msg->toElem (this);
-  args[1] = darrayString (loc.filename ? loc.filename : "");
+  args[1] = d_array_string (loc.filename ? loc.filename : "");
   args[2] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
 
   LibCall libcall = this->func->isUnitTestDeclaration() ?
     LIBCALL_UNITTEST_MSG : LIBCALL_ASSERT_MSG;
 
-  return libCall (libcall, 3, args);
+  return build_libcall (libcall, 3, args);
 }
 
 
@@ -2443,7 +2372,7 @@ static FuncDeclaration *libcall_decls[LIBCALL_count];
 // more like GCC builtin trees.
 
 FuncDeclaration *
-IRState::getLibCallDecl (LibCall libcall)
+get_libcall (LibCall libcall)
 {
   FuncDeclaration *decl = libcall_decls[libcall];
 
@@ -2878,41 +2807,14 @@ IRState::getLibCallDecl (LibCall libcall)
   return decl;
 }
 
-void
-IRState::maybeSetLibCallDecl (FuncDeclaration *decl)
-{
-  if (!decl->ident)
-    return;
-
-  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
-  if (libcall == LIBCALL_NONE)
-    return;
-
-  if (libcall_decls[libcall] == decl)
-    return;
-
-  TypeFunction *tf = (TypeFunction *) decl->type;
-  if (tf->parameters == NULL)
-    {
-      FuncDeclaration *new_decl = getLibCallDecl (libcall);
-      new_decl->toSymbol();
-
-      decl->type = new_decl->type;
-      decl->csym = new_decl->csym;
-    }
-
-  libcall_decls[libcall] = decl;
-}
-
-// Build call to LIBCALL. N_ARGS is the number of call arguments
-// which are specified in as a tree array ARGS.  The caller can
-// force the return type of the call to FORCE_RESULT_TYPE if the
-// library call returns a generic value.
+// Build call to LIBCALL. N_ARGS is the number of call arguments which are
+// specified in as a tree array ARGS.  The caller can force the return type
+// of the call to FORCE_TYPE if the library call returns a generic value.
 
 tree
-IRState::libCall (LibCall libcall, unsigned n_args, tree *args, tree force_result_type)
+build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
 {
-  FuncDeclaration *lib_decl = getLibCallDecl (libcall);
+  FuncDeclaration *lib_decl = get_libcall (libcall);
   Type *type = lib_decl->type->nextOf();
   tree callee = build_address (lib_decl->toSymbol()->Stree);
   tree arg_list = NULL_TREE;
@@ -2922,9 +2824,9 @@ IRState::libCall (LibCall libcall, unsigned n_args, tree *args, tree force_resul
 
   tree result = d_build_call (type->toCtype(), callee, arg_list);
 
-  // for force_result_type, assumes caller knows what it is doing %%
-  if (force_result_type != NULL_TREE)
-    return convert (force_result_type, result);
+  // for TYPE, assumes caller knows what it is doing %%
+  if (force_type != NULL_TREE)
+    return convert (force_type, result);
 
   return result;
 }
@@ -3032,7 +2934,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  // cond ? -1 : 0;
 	  exp = build3 (COND_EXPR, TREE_TYPE (call_exp), d_truthvalue_conversion (exp),
 			integer_minus_one_node, integer_zero_node);
-	  
+
 	  // Update the bit as needed.
 	  code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
 	    (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
@@ -3138,10 +3040,10 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	      tree e1 = vmodify_expr (lvar, build1 (VA_ARG_EXPR, ltype, op1));
 	      tree e2 = vmodify_expr (pvar, build1 (VA_ARG_EXPR, ptype, op1));
-	      tree val = darrayVal (type, lvar, pvar);
+	      tree val = d_array_value (type, lvar, pvar);
 
 	      exp = compound_expr (compound_expr (e1, e2), val);
-	      exp = binding (lvar, binding (pvar, exp));
+	      exp = bind_expr (lvar, bind_expr (pvar, exp));
 	    }
 	  else
 	    {
@@ -3157,7 +3059,7 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 
 	  return exp;
 
-	case INTRINSIC_C_VA_START:
+	case INTRINSIC_VA_START:
 	  /* The va_list argument should already have its
 	     address taken.  The second argument, however, is
 	     inout and that needs to be fixed to prevent a warning.  */
@@ -3231,101 +3133,123 @@ IRState::typeinfoReference (Type *t)
   return ti_ref;
 }
 
-// Returns TRUE if DECL is an intrinsic function that requires
-// special processing.  Marks the generated trees for DECL
+// Checks if DECL is an intrinsic or runtime library function that
+// requires special processing.  Marks the generated trees for DECL
 // as BUILT_IN_FRONTEND so can be identified later.
 
-bool
-IRState::maybeSetUpBuiltin (Declaration *decl)
+void
+maybe_set_builtin_frontend (FuncDeclaration *decl)
 {
-  Dsymbol *dsym;
-  TemplateInstance *ti;
+  if (!decl->ident)
+    return;
 
-  // Don't use toParent2.  We are looking for a template below.
-  dsym = decl->toParent();
+  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
 
-  if (!dsym)
-    return false;
-
-  if ((gen.intrinsicModule && dsym->getModule() == gen.intrinsicModule))
+  if (libcall != LIBCALL_NONE)
     {
-      // Matches order of Intrinsic enum
-      static const char *intrinsic_names[] = {
-	  "bsf", "bsr", "bswap",
-	  "btc", "btr", "bts",
-      };
-      const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
-      int i = binary (decl->ident->string, intrinsic_names, sz);
-      if (i == -1)
-	return false;
+      // It's a runtime library function, add to libcall_decls.
+      if (libcall_decls[libcall] == decl)
+	return;
 
-      // Make sure 'i' is within the range we require.
-      gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
-      tree t = decl->toSymbol()->Stree;
-
-      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-      DECL_FUNCTION_CODE (t) = (built_in_function) i;
-      return true;
-    }
-  else if ((gen.mathModule && dsym->getModule() == gen.mathModule)
-	   || (gen.mathCoreModule && dsym->getModule() == gen.mathCoreModule))
-    {
-      // Matches order of Intrinsic enum
-      static const char *math_names[] = {
-	  "cos", "fabs", "ldexp",
-	  "rint", "rndtol", "sin",
-	  "sqrt",
-      };
-      const size_t sz = sizeof (math_names) / sizeof (char *);
-      int i = binary (decl->ident->string, math_names, sz);
-      if (i == -1)
-	return false;
-
-      // Adjust 'i' for this range of enums
-      i += INTRINSIC_COS;
-      gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
-      tree t = decl->toSymbol()->Stree;
-
-      // rndtol returns a long, sqrt any real value,
-      // every other math builtin returns an 80bit float.
-      Type *tf = decl->type->nextOf();
-      if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
-	  || (i == INTRINSIC_SQRT && tf->isreal())
-	  || (i != INTRINSIC_RNDTOL && tf->ty == Tfloat80))
+      TypeFunction *tf = (TypeFunction *) decl->type;
+      if (tf->parameters == NULL)
 	{
-	  DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	  DECL_FUNCTION_CODE (t) = (built_in_function) i;
-	  return true;
+	  FuncDeclaration *new_decl = get_libcall (libcall);
+	  new_decl->toSymbol();
+
+	  decl->type = new_decl->type;
+	  decl->csym = new_decl->csym;
 	}
-      return false;
+
+      libcall_decls[libcall] = decl;
     }
   else
     {
-      ti = dsym->isTemplateInstance();
-      if (ti)
+      // Check if it's a front-end builtin.
+      Dsymbol *dsym = decl->toParent();
+      Module *mod;
+
+      if (dsym == NULL)
+	return;
+
+      mod = dsym->getModule();
+
+      if (is_intrinsic_module_p (mod))
 	{
+	  // Matches order of Intrinsic enum
+	  static const char *intrinsic_names[] = {
+	      "bsf", "bsr", "bswap",
+	      "btc", "btr", "bts",
+	  };
+	  const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
+	  int i = binary (decl->ident->string, intrinsic_names, sz);
+
+	  if (i == -1)
+	    return;
+
+	  // Make sure 'i' is within the range we require.
+	  gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
 	  tree t = decl->toSymbol()->Stree;
-	  if (ti->tempdecl == gen.stdargTemplateDecl)
+
+	  DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
+	  DECL_FUNCTION_CODE (t) = (built_in_function) i;
+	}
+      else if (is_math_module_p (mod))
+	{
+	  // Matches order of Intrinsic enum
+	  static const char *math_names[] = {
+	      "cos", "fabs", "ldexp",
+	      "rint", "rndtol", "sin",
+	      "sqrt",
+	  };
+	  const size_t sz = sizeof (math_names) / sizeof (char *);
+	  int i = binary (decl->ident->string, math_names, sz);
+
+	  if (i == -1)
+	    return;
+
+	  // Adjust 'i' for this range of enums
+	  i += INTRINSIC_COS;
+	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
+	  tree t = decl->toSymbol()->Stree;
+
+	  // rndtol returns a long type, sqrt any float type,
+	  // every other math builtin returns a real type.
+	  Type *tf = decl->type->nextOf();
+	  if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
+	      || (i == INTRINSIC_SQRT && tf->isreal())
+	      || (i != INTRINSIC_RNDTOL && tf->ty == Tfloat80))
+	    {
+	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
+	      DECL_FUNCTION_CODE (t) = (built_in_function) i;
+	    }
+	}
+      else
+	{
+	  TemplateInstance *ti = dsym->isTemplateInstance();
+
+	  if (ti == NULL)
+	    return;
+
+	  tree t = decl->toSymbol()->Stree;
+
+	  if (is_builtin_va_arg_p (ti->tempdecl, false))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_ARG;
-	      return true;
 	    }
-	  if (ti->tempdecl == gen.cstdargTemplateDecl)
+	  else if (is_builtin_va_arg_p (ti->tempdecl, true))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
 	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_ARG;
-	      return true;
 	    }
-	  else if (ti->tempdecl == gen.cstdargStartTemplateDecl)
+	  else if (is_builtin_va_start_p (ti->tempdecl))
 	    {
 	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_START;
-	      return true;
+	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_START;
 	    }
 	}
     }
-  return false;
 }
 
 // Build and return D's internal exception Object.
@@ -3351,45 +3275,21 @@ build_exception_object (void)
   return build1 (INDIRECT_REF, obj_type, eh);
 }
 
-// Build LABEL_DECL for IDENT given.
+// Build LABEL_DECL at location LOC for IDENT given.
 
 tree
-IRState::label (Loc loc, Identifier *ident)
+d_build_label (Loc loc, Identifier *ident)
 {
-  tree t_label = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
-			     ident ? get_identifier (ident->string) : NULL_TREE, void_type_node);
-  DECL_CONTEXT (t_label) = current_function_decl;
-  DECL_MODE (t_label) = VOIDmode;
+  tree decl = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
+			  ident ? get_identifier (ident->string) : NULL_TREE, void_type_node);
+  DECL_CONTEXT (decl) = cirstate->getLocalContext();
+  DECL_MODE (decl) = VOIDmode;
+
+  // Not setting this doesn't seem to cause problems (unlike VAR_DECLs).
   if (loc.filename)
-    object_file->setDeclLoc (t_label, loc);
-  return t_label;
-}
+    object_file->setDeclLoc (decl, loc);
 
-// Entry points for protected getFrameForSymbol.
-
-tree
-IRState::getFrameForFunction (FuncDeclaration *f)
-{
-  if (f->fbody)
-    return getFrameForSymbol (f);
-  else
-    {
-      // Should instead error on line that references f
-      f->error ("nested function missing body");
-      return d_null_pointer;
-    }
-}
-
-tree
-IRState::getFrameForNestedClass (ClassDeclaration *c)
-{
-  return getFrameForSymbol (c);
-}
-
-tree
-IRState::getFrameForNestedStruct (StructDeclaration *s)
-{
-  return getFrameForSymbol (s);
+  return decl;
 }
 
 // If NESTED_SYM is a nested function, return the static chain to be
@@ -3397,10 +3297,6 @@ IRState::getFrameForNestedStruct (StructDeclaration *s)
 
 // If NESTED_SYM is a nested class or struct, return the static chain
 // to be used when creating an instance of the class.
-
-// This method is protected to enforce the type checking of getFrameForFunction,
-// getFrameForNestedClass, and getFrameForNestedStruct.
-// getFrameForFunction also checks that the nested function is properly defined.
 
 tree
 IRState::getFrameForSymbol (Dsymbol *nested_sym)
@@ -3410,7 +3306,14 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
 
   if ((nested_func = nested_sym->isFuncDeclaration()))
     {
-      // gcc_assert (nested_func->isNested())
+      // Check that the nested function is properly defined.
+      if (!nested_func->fbody)
+	{
+	  // Should instead error on line that references nested_func
+	  nested_func->error ("nested function missing body");
+	  return d_null_pointer;
+	}
+
       outer_func = nested_func->toParent2()->isFuncDeclaration();
       gcc_assert (outer_func != NULL);
 
@@ -3508,12 +3411,47 @@ IRState::getFrameForSymbol (Dsymbol *nested_sym)
     outer_func = nested_func->toParent2()->isFuncDeclaration();
   gcc_assert (outer_func != NULL);
 
-  FuncFrameInfo *ffo = getFrameInfo (outer_func);
+  FuncFrameInfo *ffo = get_frameinfo (outer_func);
   if (ffo->creates_frame || ffo->static_chain)
-    return getFrameRef (outer_func);
+    return get_framedecl (this->func, outer_func);
 
   return d_null_pointer;
 }
+
+// Return the parent function of a nested class CD.
+
+static FuncDeclaration *
+d_nested_class (ClassDeclaration *cd)
+{
+  FuncDeclaration *fd = NULL;
+  while (cd && cd->isNested())
+    {
+      Dsymbol *dsym = cd->toParent2();
+      if ((fd = dsym->isFuncDeclaration()))
+	return fd;
+      else
+	cd = dsym->isClassDeclaration();
+    }
+  return NULL;
+}
+
+// Return the parent function of a nested struct SD.
+
+static FuncDeclaration *
+d_nested_struct (StructDeclaration *sd)
+{
+  FuncDeclaration *fd = NULL;
+  while (sd && sd->isNested())
+    {
+      Dsymbol *dsym = sd->toParent2();
+      if ((fd = dsym->isFuncDeclaration()))
+	return fd;
+      else
+	sd = dsym->isStructDeclaration();
+    }
+  return NULL;
+}
+
 
 // Starting from the current function, try to find a suitable value of
 // 'this' in nested function instances.
@@ -3536,9 +3474,9 @@ IRState::findThis (ClassDeclaration *ocd)
 	  if (ocd == cd)
 	    return var (fd->vthis);
 	  else if (ocd->isBaseOf (cd, NULL))
-	    return convertTo (var (fd->vthis), cd->type, ocd->type);
+	    return convert_expr (var (fd->vthis), cd->type, ocd->type);
 	  else
-	    fd = isClassNestedInFunction (cd);
+	    fd = d_nested_class (cd);
 	}
       else
 	{
@@ -3584,10 +3522,10 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	     STATIC_CHAIN_EXPR created here will never be
 	     translated. Use a null pointer for the link in
 	     this case. */
-	  FuncFrameInfo *ffo = getFrameInfo (fdo);
+	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = getFrameForNestedClass (cd);
+	    vthis_value = getFrameForSymbol (cd);
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
 	    vthis_value = var (fdo->vthis);
 	  else
@@ -3611,10 +3549,10 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	}
       else if (fdo)
 	{
-	  FuncFrameInfo *ffo = getFrameInfo (fdo);
+	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = getFrameForNestedStruct (sd);
+	    vthis_value = getFrameForSymbol (sd);
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
 	    vthis_value = var (fdo->vthis);
 	  else
@@ -3627,47 +3565,12 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
   return vthis_value;
 }
 
-// Return the parent function of a nested class CD.
-
-FuncDeclaration *
-IRState::isClassNestedInFunction (ClassDeclaration *cd)
-{
-  FuncDeclaration *fd = NULL;
-  while (cd && cd->isNested())
-    {
-      Dsymbol *dsym = cd->toParent2();
-      if ((fd = dsym->isFuncDeclaration()))
-	return fd;
-      else
-	cd = dsym->isClassDeclaration();
-    }
-  return NULL;
-}
-
-// Return the parent function of a nested struct SD.
-
-FuncDeclaration *
-IRState::isStructNestedInFunction (StructDeclaration *sd)
-{
-  FuncDeclaration *fd = NULL;
-  while (sd && sd->isNested())
-    {
-      Dsymbol *dsym = sd->toParent2();
-      if ((fd = dsym->isFuncDeclaration()))
-	return fd;
-      else
-	sd = dsym->isStructDeclaration();
-    }
-  return NULL;
-}
-
-
 // Build static chain decl for FUNC to be passed to nested functions in D.
 
 void
 IRState::buildChain (FuncDeclaration *func)
 {
-  FuncFrameInfo *ffi = getFrameInfo (func);
+  FuncFrameInfo *ffi = get_frameinfo (func);
 
   if (ffi->is_closure)
     {
@@ -3677,33 +3580,19 @@ IRState::buildChain (FuncDeclaration *func)
     }
 
   if (!ffi->creates_frame)
-    {
-      if (ffi->static_chain)
-	{
-	  tree link = chainLink();
-	  useChain (func, link);
-	}
-      return;
-    }
+    return;
 
-  tree frame_rec_type = buildFrameForFunction (func);
+  tree frame_rec_type = build_frame_type (func);
   gcc_assert(COMPLETE_TYPE_P (frame_rec_type));
 
   tree frame_decl = localVar (frame_rec_type);
-  tree frame_ptr = build_address (frame_decl);
   DECL_NAME (frame_decl) = get_identifier ("__frame");
   DECL_IGNORED_P (frame_decl) = 0;
   expandDecl (frame_decl);
 
   // set the first entry to the parent frame, if any
-  tree chain_link = chainLink();
-  tree chain_field = component_ref (build_deref (frame_ptr),
-				    TYPE_FIELDS (frame_rec_type));
-
-  if (chain_link == NULL_TREE)
-    chain_link = d_null_pointer;
-
-  tree chain_expr = vmodify_expr (chain_field, chain_link);
+  tree chain_field = component_ref (frame_decl, TYPE_FIELDS (frame_rec_type));
+  tree chain_expr = vmodify_expr (chain_field, this->sthis);
   addExp (chain_expr);
 
   // copy parameters that are referenced nonlocally
@@ -3715,18 +3604,18 @@ IRState::buildChain (FuncDeclaration *func)
 
       Symbol *vsym = v->toSymbol();
 
-      tree frame_field = component_ref (build_deref (frame_ptr), vsym->SframeField);
+      tree frame_field = component_ref (frame_decl, vsym->SframeField);
       tree frame_expr = vmodify_expr (frame_field, vsym->Stree);
       addExp (frame_expr);
     }
 
-  useChain (this->func, frame_ptr);
+  this->sthis = build_address (frame_decl);
 }
 
 tree
-IRState::buildFrameForFunction (FuncDeclaration *func)
+build_frame_type (FuncDeclaration *func)
 {
-  FuncFrameInfo *ffi = getFrameInfo (func);
+  FuncFrameInfo *ffi = get_frameinfo (func);
 
   if (ffi->frame_rec != NULL_TREE)
     return ffi->frame_rec;
@@ -3741,16 +3630,15 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
 			       get_identifier ("__chain"), ptr_type_node);
   DECL_CONTEXT (ptr_field) = frame_rec_type;
 
-  ListMaker fields;
-  fields.chain (ptr_field);
+  tree fields = chainon (NULL_TREE, ptr_field);
 
   if (!ffi->is_closure)
     {
-      /* __ensure never becomes a closure, but could still be referencing parameters
-	 of the calling function.  So we add all parameters as nested refs. This is
-	 written as such so that all parameters appear at the front of the frame so
-	 that overriding methods match the same layout when inheriting a contract.  */
-      if (global.params.useOut && func->fensure)
+      // __ensure and __require never becomes a closure, but could still be referencing
+      // parameters of the calling function.  So we add all parameters as nested refs.
+      // This is written as such so that all parameters appear at the front of the frame
+      // so that overriding methods match the same layout when inheriting a contract.
+      if ((global.params.useIn && func->frequire) || (global.params.useOut && func->fensure))
 	{
 	  for (size_t i = 0; func->parameters && i < func->parameters->dim; i++)
 	    {
@@ -3795,14 +3683,14 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
       s->SframeField = field;
       object_file->setDeclLoc (field, v);
       DECL_CONTEXT (field) = frame_rec_type;
-      fields.chain (field);
+      fields = chainon (fields, field);
       TREE_USED (s->Stree) = 1;
 
       /* Can't do nrvo if the variable is put in a frame.  */
       if (func->nrvo_can && func->nrvo_var == v)
 	func->nrvo_can = 0;
     }
-  TYPE_FIELDS (frame_rec_type) = fields.head;
+  TYPE_FIELDS (frame_rec_type) = fields;
   layout_type (frame_rec_type);
   d_keep (frame_rec_type);
 
@@ -3813,7 +3701,7 @@ IRState::buildFrameForFunction (FuncDeclaration *func)
 // passed via the hidden 'this' pointer.
 
 FuncFrameInfo *
-IRState::getFrameInfo (FuncDeclaration *fd)
+get_frameinfo (FuncDeclaration *fd)
 {
   Symbol *fds = fd->toSymbol();
   if (fds->frameInfo)
@@ -3829,7 +3717,10 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->vthis || fd->closureVars.dim != 0)
+  if (fd->closureVars.dim != 0)
+    ffi->creates_frame = true;
+
+  if (fd->vthis && fd->vthis->type == Type::tvoidptr)
     ffi->creates_frame = true;
 
   // Functions with In/Out contracts pass parameters to nested frame.
@@ -3851,7 +3742,7 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
       while (ff)
 	{
-	  FuncFrameInfo *ffo = getFrameInfo (ff);
+	  FuncFrameInfo *ffo = get_frameinfo (ff);
 	  AggregateDeclaration *ad;
 
 	  if (ff != fd && ffo->creates_frame)
@@ -3889,26 +3780,27 @@ IRState::getFrameInfo (FuncDeclaration *fd)
 
   // Build type now as may be referenced from another module.
   if (ffi->creates_frame)
-    ffi->frame_rec = buildFrameForFunction (fd);
+    ffi->frame_rec = build_frame_type (fd);
 
   return ffi;
 }
 
-// Return a pointer to the frame/closure block of OUTER_FUNC.
+// Return a pointer to the frame/closure block of OUTER
+// so can be accessed from the function INNER.
 
 tree
-IRState::getFrameRef (FuncDeclaration *outer_func)
+get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 {
-  tree result = chainLink();
-  FuncDeclaration *fd = chainFunc();
+  tree result = cirstate->sthis;
+  FuncDeclaration *fd = inner;
 
-  while (fd && fd != outer_func)
+  while (fd && fd != outer)
     {
       AggregateDeclaration *ad;
       ClassDeclaration *cd;
       StructDeclaration *sd;
 
-      if (getFrameInfo (fd)->creates_frame)
+      if (get_frameinfo (fd)->creates_frame)
 	{
 	  // like compon (indirect, field0) parent frame link is the first field;
 	  result = indirect_ref (ptr_type_node, result);
@@ -3916,22 +3808,22 @@ IRState::getFrameRef (FuncDeclaration *outer_func)
 
       if (fd->isNested())
 	fd = fd->toParent2()->isFuncDeclaration();
-      /* getFrameRef is only used to get the pointer to a function's frame
-	 (not a class instances.)  With the current implementation, the link
+      /* get_framedecl is only used to get the pointer to a function's frame
+	 (not a class instances).  With the current implementation, the link
 	 the frame/closure record always points to the outer function's frame even
 	 if there are intervening nested classes or structs.
 	 So, we can just skip over those... */
-	 else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
-	   fd = isClassNestedInFunction (cd);
-	 else if ((ad = fd->isThis()) && (sd = ad->isStructDeclaration()))
-	   fd = isStructNestedInFunction (sd);
-	 else
-	   break;
+      else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
+	fd = d_nested_class (cd);
+      else if ((ad = fd->isThis()) && (sd = ad->isStructDeclaration()))
+	fd = d_nested_struct (sd);
+      else
+	break;
     }
 
-  if (fd == outer_func)
+  if (fd == outer)
     {
-      tree frame_rec = getFrameInfo (outer_func)->frame_rec;
+      tree frame_rec = get_frameinfo (outer)->frame_rec;
 
       if (frame_rec != NULL_TREE)
 	{
@@ -3940,13 +3832,13 @@ IRState::getFrameRef (FuncDeclaration *outer_func)
 	}
       else
 	{
-	  this->func->error ("forward reference to frame of %s", outer_func->toChars());
+	  inner->error ("forward reference to frame of %s", outer->toChars());
 	  return d_null_pointer;
 	}
     }
   else
     {
-      this->func->error ("cannot access frame of %s", outer_func->toChars());
+      inner->error ("cannot access frame of %s", outer->toChars());
       return d_null_pointer;
     }
 }
@@ -3961,12 +3853,12 @@ IRState::getFrameRef (FuncDeclaration *outer_func)
 // with those kind of functions. We have to detect them manually here
 // and make sure we neither construct a static chain nor a closure.
 
-bool
-functionDegenerateClosure (FuncDeclaration *f)
+static bool
+is_degenerate_closure (FuncDeclaration *f)
 {
   if (!f->needsClosure() && f->closureVars.dim == 0)
   {
-    Type *tret = ((TypeFunction *)f->type)->next;
+    Type *tret = ((TypeFunction *) f->type)->next;
     gcc_assert(tret);
     tret = tret->toBasetype();
     if (tret->ty == Tclass || tret->ty == Tstruct)
@@ -3982,12 +3874,12 @@ functionDegenerateClosure (FuncDeclaration *f)
   return false;
 }
 
-// Return true if function F needs to have the static chain passed to
-// it.  This only applies to nested function handling provided by the
-// GCC back end (not D closures.)
+// Return true if function F needs to have the static chain passed to it.
+// This only applies to nested function handling provided by the GDC
+// front end (not D closures).
 
 bool
-IRState::functionNeedsChain (FuncDeclaration *f)
+needs_static_chain (FuncDeclaration *f)
 {
   Dsymbol *s;
   FuncDeclaration *pf = NULL;
@@ -4001,7 +3893,7 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 	return false;
 
       pf = f->toParent2()->isFuncDeclaration();
-      if (pf && !getFrameInfo (pf)->is_closure)
+      if (pf && !get_frameinfo (pf)->is_closure)
 	return true;
     }
 
@@ -4021,401 +3913,14 @@ IRState::functionNeedsChain (FuncDeclaration *f)
 
       s = s->toParent2();
       if ((pf = s->isFuncDeclaration())
-	  && !getFrameInfo (pf)->is_closure
-	  && !functionDegenerateClosure(pf))
+	  && !get_frameinfo (pf)->is_closure
+	  && !is_degenerate_closure (pf))
 	return true;
     }
 
   return false;
 }
 
-
-// Routines for building statement lists around if/else conditions.
-// STMT contains the statement to be executed if T_COND is true.
-
-void
-IRState::startCond (Statement *stmt, tree t_cond)
-{
-  Flow *f = beginFlow (stmt);
-  f->condition = t_cond;
-}
-
-void
-IRState::startCond (Statement *stmt, Expression *e_cond)
-{
-  tree t_cond = e_cond->toElemDtor (this);
-  startCond (stmt, convertForCondition (t_cond, e_cond->type));
-}
-
-// Start a new statement list for the false condition branch.
-
-void
-IRState::startElse (void)
-{
-  currentFlow()->trueBranch = popStatementList();
-  pushStatementList();
-}
-
-// Wrap up our constructed if condition into a COND_EXPR.
-
-void
-IRState::endCond (void)
-{
-  Flow *f = currentFlow();
-  tree t_brnch = popStatementList();
-  tree t_false_brnch = NULL_TREE;
-
-  if (f->trueBranch == NULL_TREE)
-    f->trueBranch = t_brnch;
-  else
-    t_false_brnch = t_brnch;
-
-  object_file->doLineNote (f->statement->loc);
-  tree t_stmt = build3 (COND_EXPR, void_type_node,
-			f->condition, f->trueBranch, t_false_brnch);
-  endFlow();
-  addExp (t_stmt);
-}
-
-
-// Routines for building statement lists around for/while loops.
-// STMT is the body of the loop.
-
-void
-IRState::startLoop (Statement *stmt)
-{
-  Flow *f = beginFlow (stmt);
-  // should be end for 'do' loop
-  f->continueLabel = label (stmt ? stmt->loc : 0);
-}
-
-// Emit continue label for loop.
-
-void
-IRState::continueHere (void)
-{
-  doLabel (currentFlow()->continueLabel);
-}
-
-// Set LBL as the continue label for the current loop.
-// Used in unrolled loop statements.
-
-void
-IRState::setContinueLabel (tree lbl)
-{
-  currentFlow()->continueLabel = lbl;
-}
-
-// Emit exit loop condition.
-
-void
-IRState::exitIfFalse (tree t_cond)
-{
-  addExp (build1 (EXIT_EXPR, void_type_node,
-		  build1 (TRUTH_NOT_EXPR, TREE_TYPE (t_cond), t_cond)));
-}
-
-void
-IRState::exitIfFalse (Expression *e_cond)
-{
-  tree t_cond = e_cond->toElemDtor (this);
-  exitIfFalse (convertForCondition (t_cond, e_cond->type));
-}
-
-// Emit a goto to the continue label IDENT of a loop.
-
-void
-IRState::continueLoop (Identifier *ident)
-{
-  doJump (NULL, getLoopForLabel (ident, true)->continueLabel);
-}
-
-// Emit a goto to the exit label IDENT of a loop.
-
-void
-IRState::exitLoop (Identifier *ident)
-{
-  Flow *flow = getLoopForLabel (ident);
-  if (!flow->exitLabel)
-    flow->exitLabel = label (flow->statement->loc);
-  doJump (NULL, flow->exitLabel);
-}
-
-// Wrap up constructed loop body in a LOOP_EXPR.
-
-void
-IRState::endLoop (void)
-{
-  // says must contain an EXIT_EXPR -- what about while (1)..goto;? something other thand LOOP_EXPR?
-  tree t_body = popStatementList();
-  tree t_loop = build1 (LOOP_EXPR, void_type_node, t_body);
-  addExp (t_loop);
-  endFlow();
-}
-
-
-// Routines for building statement lists around switches.  STMT is the body
-// of the switch statement, T_COND is the condition to the switch. If HAS_VARS
-// is true, then the switch statement has been converted to an if-then-else.
-
-void
-IRState::startCase (Statement *stmt, tree t_cond, int has_vars)
-{
-  Flow *f = beginFlow (stmt);
-  f->condition = t_cond;
-  f->kind = level_switch;
-  if (has_vars)
-    {
-      // %% dummy value so the tree is not NULL
-      f->hasVars = integer_one_node;
-    }
-}
-
-// Emit a case statement for T_VALUE.
-
-void
-IRState::doCase (tree t_value, tree t_label)
-{
-  if (currentFlow()->hasVars)
-    {
-      // SwitchStatement has already taken care of label jumps.
-      doLabel (t_label);
-    }
-  else
-    {
-      tree t_case = build_case_label (t_value, NULL_TREE, t_label);
-      addExp (t_case);
-    }
-}
-
-// Wrap up constructed body into a SWITCH_EXPR.
-
-void
-IRState::endCase (void)
-{
-  Flow *f = currentFlow();
-  tree t_body = popStatementList();
-  tree t_condtype = TREE_TYPE (f->condition);
-  if (f->hasVars)
-    {
-      // %% switch was converted to if-then-else expression
-      addExp (t_body);
-    }
-  else
-    {
-      tree t_stmt = build3 (SWITCH_EXPR, t_condtype, f->condition,
-			    t_body, NULL_TREE);
-      addExp (t_stmt);
-    }
-  endFlow();
-}
-
-// Routines for building statement lists around try/catch/finally.
-// Start a try statement, STMT is the body of the try expression.
-
-void
-IRState::startTry (Statement *stmt)
-{
-  beginFlow (stmt);
-  currentFlow()->kind = level_try;
-}
-
-// Pops the try body and starts a new statement list for all catches.
-
-void
-IRState::startCatches (void)
-{
-  currentFlow()->tryBody = popStatementList();
-  currentFlow()->kind = level_catch;
-  pushStatementList();
-}
-
-// Start a new catch expression for exception type T_TYPE.
-
-void
-IRState::startCatch (tree t_type)
-{
-  currentFlow()->catchType = t_type;
-  pushStatementList();
-}
-
-// Wrap up catch expression into a CATCH_EXPR.
-
-void
-IRState::endCatch (void)
-{
-  tree t_body = popStatementList();
-  // % Wrong loc... can set pass statement to startCatch, set
-  // The loc on t_type and then use it here...
-  addExp (build2 (CATCH_EXPR, void_type_node,
-		  currentFlow()->catchType, t_body));
-}
-
-// Wrap up try/catch into a TRY_CATCH_EXPR.
-
-void
-IRState::endCatches (void)
-{
-  tree t_catches = popStatementList();
-  object_file->doLineNote (currentFlow()->statement->loc);
-  addExp (build2 (TRY_CATCH_EXPR, void_type_node,
-		  currentFlow()->tryBody, t_catches));
-  endFlow();
-}
-
-// Start a new finally expression.
-
-void
-IRState::startFinally (void)
-{
-  currentFlow()->tryBody = popStatementList();
-  currentFlow()->kind = level_finally;
-  pushStatementList();
-}
-
-// Wrap-up try/finally into a TRY_FINALLY_EXPR.
-
-void
-IRState::endFinally (void)
-{
-  tree t_finally = popStatementList();
-  object_file->doLineNote (currentFlow()->statement->loc);
-  addExp (build2 (TRY_FINALLY_EXPR, void_type_node,
-		  currentFlow()->tryBody, t_finally));
-  endFlow();
-}
-
-// Emit a return expression of value T_VALUE.
-
-void
-IRState::doReturn (tree t_value)
-{
-  addExp (build1 (RETURN_EXPR, void_type_node, t_value));
-}
-
-// Emit goto expression to T_LABEL.
-
-void
-IRState::doJump (Statement *stmt, tree t_label)
-{
-  if (stmt)
-    object_file->doLineNote (stmt->loc);
-  addExp (build1 (GOTO_EXPR, void_type_node, t_label));
-  TREE_USED (t_label) = 1;
-}
-
-// Routines for checking goto statements don't jump to invalid locations.
-// In particular, it is illegal for a goto to be used to skip initializations.
-// Saves the block label L is declared in for analysis later.
-
-void
-IRState::pushLabel (LabelDsymbol *l)
-{
-  this->labels.push (getLabelBlock (l));
-}
-
-// Error if STMT is in it's own try statement separate from other
-// cases in the switch statement.
-
-void
-IRState::checkSwitchCase (Statement *stmt, int default_flag)
-{
-  Flow *flow = currentFlow();
-
-  gcc_assert (flow);
-  if (flow->kind != level_switch && flow->kind != level_block)
-    {
-      stmt->error ("%s cannot be in different try block level from switch",
-		   default_flag ? "default" : "case");
-    }
-}
-
-// Error if the goto referencing LABEL is jumping into a try or
-// catch block.  STMT is required to error on the correct line.
-
-void
-IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
-{
-  Statement *curBlock = NULL;
-  unsigned curLevel = this->loops.dim;
-  int found = 0;
-
-  if (curLevel)
-    curBlock = currentFlow()->statement;
-
-  for (size_t i = 0; i < this->labels.dim; i++)
-    {
-      Label *linfo = this->labels[i];
-      gcc_assert (linfo);
-
-      if (label == linfo->label)
-	{
-	  // No need checking for finally, should have already been handled.
-	  if (linfo->kind == level_try
-	      && curLevel <= linfo->level && curBlock != linfo->block)
-	    {
-	      stmt->error ("cannot goto into try block");
-	    }
-	  // %% doc: It is illegal for goto to be used to skip initializations,
-	  // %%      so this should include all gotos into catches...
-	  if (linfo->kind == level_catch && curBlock != linfo->block)
-	    stmt->error ("cannot goto into catch block");
-
-	  found = 1;
-	  break;
-	}
-    }
-  // Push forward referenced gotos.
-  if (!found)
-    {
-      if (!label->statement->fwdrefs)
-	label->statement->fwdrefs = new Blocks();
-      label->statement->fwdrefs->push (getLabelBlock (label, stmt));
-    }
-}
-
-// Check all forward references REFS for a label, and error
-// if goto is jumping into a try or catch block.
-
-void
-IRState::checkPreviousGoto (Array *refs)
-{
-  Statement *stmt; // Our forward reference.
-
-  for (size_t i = 0; i < refs->dim; i++)
-    {
-      Label *ref = (Label *) refs->data[i];
-      int found = 0;
-
-      gcc_assert (ref && ref->from);
-      stmt = ref->from;
-
-      for (size_t i = 0; i < this->labels.dim; i++)
-	{
-	  Label *linfo = this->labels[i];
-	  gcc_assert (linfo);
-
-	  if (ref->label == linfo->label)
-	    {
-	      // No need checking for finally, should have already been handled.
-	      if (linfo->kind == level_try
-		  && ref->level <= linfo->level && ref->block != linfo->block)
-		{
-		  stmt->error ("cannot goto into try block");
-		}
-	      // %% doc: It is illegal for goto to be used to skip initializations,
-	      // %%      so this should include all gotos into catches...
-	      if (linfo->kind == level_catch
-		  && (ref->block != linfo->block || ref->kind != linfo->kind))
-		stmt->error ("cannot goto into catch block");
-
-	      found = 1;
-	      break;
-	    }
-	}
-      gcc_assert (found);
-    }
-}
 
 // Construct a WrappedExp, whose components are an EXP_NODE, which contains
 // a list of instructions in GCC to be passed through.
@@ -4505,7 +4010,8 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
 	  gcc_assert (DECL_MODE (field_decl) != VOIDmode);
 	  gcc_assert (DECL_SIZE (field_decl) != NULL_TREE);
 	}
-      this->fieldList_.chain (field_decl);
+
+      TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), field_decl);
     }
 }
 
@@ -4530,17 +4036,20 @@ AggLayout::doInterfaces (BaseClasses *bases)
 void
 AggLayout::addField (tree field_decl, size_t offset)
 {
+  Loc l (this->aggDecl_->getModule(), 1);
+
   DECL_CONTEXT (field_decl) = this->aggType_;
   SET_DECL_OFFSET_ALIGN (field_decl, TYPE_ALIGN (TREE_TYPE (field_decl)));
   DECL_FIELD_OFFSET (field_decl) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
-  Loc l (this->aggDecl_->getModule(), 1); // Must set this or we crash with DWARF debugging
+
+  // Must set this or we crash with DWARF debugging.
   object_file->setDeclLoc (field_decl, l);
 
   TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
 
   layout_decl (field_decl, 0);
-  this->fieldList_.chain (field_decl);
+  TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), field_decl);
 }
 
 // Wrap-up and compute finalised aggregate type.  ATTRS are
@@ -4549,19 +4058,19 @@ AggLayout::addField (tree field_decl, size_t offset)
 void
 AggLayout::finish (Expressions *attrs)
 {
-  unsigned size_to_use = this->aggDecl_->structsize;
-  unsigned align_to_use = this->aggDecl_->alignsize;
+  unsigned structsize = this->aggDecl_->structsize;
+  unsigned alignsize = this->aggDecl_->alignsize;
 
-  TYPE_SIZE (this->aggType_) = bitsize_int (size_to_use * BITS_PER_UNIT);
-  TYPE_SIZE_UNIT (this->aggType_) = size_int (size_to_use);
-  TYPE_ALIGN (this->aggType_) = align_to_use * BITS_PER_UNIT;
-  TYPE_PACKED (this->aggType_) = TYPE_PACKED (this->aggType_); // %% todo
+  TYPE_SIZE (this->aggType_) = NULL_TREE;
 
   if (attrs)
-    {
-      decl_attributes (&this->aggType_, build_attributes (attrs),
-		       ATTR_FLAG_TYPE_IN_PLACE);
-    }
+    decl_attributes (&this->aggType_, build_attributes (attrs),
+		     ATTR_FLAG_TYPE_IN_PLACE);
+
+  TYPE_SIZE (this->aggType_) = bitsize_int (structsize * BITS_PER_UNIT);
+  TYPE_SIZE_UNIT (this->aggType_) = size_int (structsize);
+  TYPE_ALIGN (this->aggType_) = alignsize * BITS_PER_UNIT;
+  TYPE_PACKED (this->aggType_) = (alignsize == 1);
 
   compute_record_mode (this->aggType_);
 
@@ -4601,14 +4110,14 @@ ArrayScope::ArrayScope (IRState *irs, VarDeclaration *ini_v, const Loc& loc) :
 // the temp var decl to be used.
 
 tree
-ArrayScope::setArrayExp (IRState *irs, tree e, Type *t)
+ArrayScope::setArrayExp (tree e, Type *t)
 {
   if (this->var_)
     {
       tree v = this->var_->toSymbol()->Stree;
       if (t->toBasetype()->ty != Tsarray)
 	e = maybe_make_temp (e);
-      DECL_INITIAL (v) = irs->arrayLength (e, t);
+      DECL_INITIAL (v) = get_array_length (e, t);
     }
   return e;
 }
@@ -4616,7 +4125,7 @@ ArrayScope::setArrayExp (IRState *irs, tree e, Type *t)
 // Wrap-up temp var into a BIND_EXPR.
 
 tree
-ArrayScope::finish (IRState *irs, tree e)
+ArrayScope::finish (tree e)
 {
   if (this->var_)
     {
@@ -4625,7 +4134,7 @@ ArrayScope::finish (IRState *irs, tree e)
       if (TREE_CODE (t) == VAR_DECL)
 	{
 	  gcc_assert (!s->SframeField);
-	  return irs->binding (t, e);
+	  return bind_expr (t, e);
 	}
       else
 	gcc_unreachable();

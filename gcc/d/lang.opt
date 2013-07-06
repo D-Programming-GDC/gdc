@@ -67,10 +67,6 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<filename> Include a Ddoc macro file
 
-fdump-source
-D RejectNegative
-Dump decoded UTF-8 text and source from HTML
-
 fd-verbose
 D
 Print information about D language processing to stdout
@@ -114,9 +110,13 @@ fmake-mdeps=
 D Joined RejectNegative
 Like -fmake-deps=<file> but ignore system modules
 
+femit-moduleinfo
+D
+Generate ModuleInfo struct for output module
+
 fonly=
 D Joined RejectNegative
-Process all modules specified on the command line, but only generate code for the module specified by the argument.
+Process all modules specified on the command line, but only generate code for the module specified by the argument
 
 fout
 D
@@ -132,7 +132,7 @@ Compile release version
 
 fsplit-dynamic-arrays
 D Var(flag_split_darrays)
-Split dynamic arrays into length and pointer when passing to functions.
+Split dynamic arrays into length and pointer when passing to functions
 
 funittest
 D
@@ -172,7 +172,7 @@ D Joined Separate
 
 nophoboslib
 Driver
-Do not link the standard D library in the compilation.
+Do not link the standard D library in the compilation
 
 nostdinc
 D
@@ -180,7 +180,7 @@ Do not search standard system include directories (those specified with -isystem
 
 static-libphobos
 Driver
-Link the standard D library statically in the compilation.
+Link the standard D library statically in the compilation
 
 Wall
 D
@@ -188,7 +188,7 @@ D
 
 Wcast-result
 D Warning Var(warn_cast_result)
-Warn about casts that will produce a null or nil result.
+Warn about casts that will produce a null or nil result
 
 Wdeprecated
 D

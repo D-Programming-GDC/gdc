@@ -1319,10 +1319,6 @@ int ctfeRawCmp(Loc loc, Expression *e1, Expression *e2)
         return (r1 != r2);
 #else
 #ifdef IN_GCC
-        // Convert real value to correct precision for the type.
-        r1 = r1.convert(e1->type);
-        r2 = r2.convert(e2->type);
-
         if (r1.isNan() || r2.isNan())           // if unordered
 #else
         if (Port::isNan(r1) || Port::isNan(r2)) // if unordered

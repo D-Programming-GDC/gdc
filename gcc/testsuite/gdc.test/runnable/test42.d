@@ -6,6 +6,7 @@ module test42;
 import std.stdio;
 import std.c.stdio;
 import std.string;
+import core.memory;
 
 /***************************************************/
 
@@ -51,7 +52,7 @@ void test3()
 {
     auto i = mixin("__LINE__");
     writefln("%d", i);
-    assert(i == 51);
+    assert(i == 52);
 }
 
 /***************************************************/
@@ -4599,6 +4600,36 @@ void test242()
 }
 
 /***************************************************/
+// 7290
+
+void foo7290a(alias dg)()
+{
+    assert(dg(5) == 7);
+}
+
+void foo7290b(scope int delegate(int a) dg)
+{
+    assert(dg(5) == 7);
+}
+
+void foo7290c(int delegate(int a) dg)
+{
+    assert(dg(5) == 7);
+}
+
+void test7290()
+{
+    int add = 2;
+    scope dg = (int a) => a + add;
+
+    assert(GC.addrOf(dg.ptr) == null);
+
+    foo7290a!dg();
+    foo7290b(dg);
+    foo7290c(dg);
+}
+
+/***************************************************/
 
 void test7367()
 {
@@ -5918,7 +5949,7 @@ int main()
     test7072();
     test7212();
     test242();
-    // test7290(); Moved to test42-gdc.d
+    test7290();
     test7367();
     test7375();
     test6504();

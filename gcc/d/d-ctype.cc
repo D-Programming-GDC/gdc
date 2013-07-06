@@ -15,10 +15,9 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 
 #include "enum.h"
-#include "symbol.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 
@@ -248,7 +247,7 @@ TypeEnum::toCtype (void)
 	  TYPE_UNSIGNED (ctype) = TYPE_UNSIGNED (cmemtype);
 
 	  // Move this to toDebug() ?
-	  ListMaker enum_values;
+	  tree enum_values = NULL_TREE;
 	  if (sym->members)
 	    {
 	      for (size_t i = 0; i < sym->members->dim; i++)
@@ -263,14 +262,15 @@ TypeEnum::toCtype (void)
 		    ident = concat (sym->ident->string, ".",
 				    member->ident->string, NULL);
 
-		  enum_values.cons (get_identifier (ident ? ident : member->ident->string),
-				    build_integer_cst (member->value->toInteger(), ctype));
+		  tree tident = get_identifier (ident ? ident : member->ident->string);
+		  tree tvalue = build_integer_cst (member->value->toInteger(), ctype);
+		  enum_values = chainon (enum_values, build_tree_list (tident, tvalue));
 
 		  if (sym->ident)
 		    free (ident);
 		}
 	    }
-	  TYPE_VALUES (ctype) = enum_values.head;
+	  TYPE_VALUES (ctype) = enum_values;
 
 	  object_file->initTypeDecl (ctype, sym);
 	  object_file->declareType (ctype, sym);
@@ -294,34 +294,24 @@ TypeStruct::toCtype (void)
 	{
 	  // need to set this right away in case of self-references
 	  ctype = make_node (sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
-
-	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
+	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 
 	  /* Must set up the overall size, etc. before determining the
 	     context or laying out fields as those types may make references
 	     to this type. */
 	  TYPE_SIZE (ctype) = bitsize_int (sym->structsize * BITS_PER_UNIT);
 	  TYPE_SIZE_UNIT (ctype) = size_int (sym->structsize);
-	  TYPE_ALIGN (ctype) = sym->alignsize * BITS_PER_UNIT; // %%doc int, not a tree
-	  // TYPE_ALIGN_UNIT is not an lvalue
-	  TYPE_PACKED (ctype) = TYPE_PACKED (ctype); // %% todo
-
-	  if (sym->userAttributes)
-	    decl_attributes (&ctype, build_attributes (sym->userAttributes),
-			     ATTR_FLAG_TYPE_IN_PLACE);
-
+	  TYPE_ALIGN (ctype) = sym->alignsize * BITS_PER_UNIT;
+	  TYPE_PACKED (ctype) = (sym->alignsize == 1);
 	  compute_record_mode (ctype);
-
-	  // %%  stor-layout.c:finalize_type_size ... it's private to that file
-
-	  TYPE_CONTEXT (ctype) = gen.declContext (sym);
-	  object_file->initTypeDecl (ctype, sym);
-
 
 	  AggLayout agg_layout (sym, ctype);
 	  agg_layout.go();
 	  agg_layout.finish (sym->userAttributes);
+
+	  object_file->initTypeDecl (ctype, sym);
+	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
 	}
     }
 
@@ -346,13 +336,13 @@ TypeFunction::toCtype (void)
 	}
       else 
 	{
-	  ListMaker type_list;
+	  tree type_list = NULL_TREE;
 	  tree ret_type;
 
 	  if (varargs == 1 && linkage == LINKd)
 	    {
 	      // hidden _arguments parameter
-	      type_list.cons (Type::typeinfotypelist->type->toCtype());
+	      type_list = chainon (type_list, build_tree_list (0, Type::typeinfotypelist->type->toCtype()));
 	    }
 
 	  if (parameters)
@@ -362,14 +352,14 @@ TypeFunction::toCtype (void)
 	      for (size_t i = 0; i < n_args; i++)
 		{
 		  Parameter *arg = Parameter::getNth (parameters, i);
-		  type_list.cons (type_passed_as (arg));
+		  type_list = chainon (type_list, build_tree_list (0, type_passed_as (arg)));
 		}
 	    }
 
 	  /* Last parm if void indicates fixed length list (as opposed to
 	     printf style va_* list). */
 	  if (varargs != 1)
-	    type_list.chain (void_list_node);
+	    type_list = chainon (type_list, void_list_node);
 
 	  ret_type = next ? next->toCtype() : void_type_node;
 
@@ -377,7 +367,7 @@ TypeFunction::toCtype (void)
 	    ret_type = build_reference_type (ret_type);
 
 	  // Function type can be reference by parameters, etc.  Set ctype earlier?
-	  ctype = build_function_type (ret_type, type_list.head);
+	  ctype = build_function_type (ret_type, type_list);
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 
 	  d_keep (ctype);
@@ -408,8 +398,8 @@ TypeFunction::toCtype (void)
 enum RET
 TypeFunction::retStyle (void)
 {
-  /* Return by reference. Needed? */
-  if (isref)
+  /* Return by reference or pointer. */
+  if (isref || next->ty == Tclass || next->ty == Tpointer)
     return RETregs;
 
   /* Need the ctype to determine this, but this is called from
@@ -614,7 +604,6 @@ TypeClass::toCtype (void)
 	  rec_type = make_node (RECORD_TYPE);
 	  ctype = build_reference_type (rec_type);
 	  d_keep (ctype); // because BINFO moved out to toDebug
-	  object_file->initTypeDecl (rec_type, sym);
 
 	  obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
 
@@ -673,9 +662,10 @@ TypeClass::toCtype (void)
 	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
 	    }
 
-	  TYPE_CONTEXT (rec_type) = gen.declContext (sym);
-
 	  agg_layout.finish (sym->userAttributes);
+
+	  object_file->initTypeDecl (rec_type, sym);
+	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);
 	}
     }
 
@@ -690,6 +680,7 @@ Type::toSymbol (void)
 {
   return NULL;
 }
+
 unsigned
 Type::totym (void)
 {

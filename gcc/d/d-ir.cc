@@ -11,13 +11,12 @@
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 
 #include "id.h"
 #include "enum.h"
 #include "module.h"
 #include "init.h"
-#include "symbol.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 
@@ -96,17 +95,6 @@ SwitchErrorStatement::toIR (IRState *irs)
 }
 
 void
-VolatileStatement::toIR (IRState *irs)
-{
-  if (statement)
-    {
-      irs->pushVolatile();
-      statement->toIR (irs);
-      irs->popVolatile();
-    }
-}
-
-void
 ThrowStatement::toIR (IRState *irs)
 {
   ClassDeclaration *class_decl = exp->type->toBasetype()->isClassHandle();
@@ -127,12 +115,12 @@ ThrowStatement::toIR (IRState *irs)
   if (intfc_decl)
     {
       if (!intfc_decl->isCOMclass())
-	arg = irs->convertTo (arg, exp->type, build_object_type());
+	arg = convert_expr (arg, exp->type, build_object_type());
       else
 	error ("cannot throw COM interfaces");
     }
   irs->doLineNote (loc);
-  irs->addExp (irs->libCall (LIBCALL_THROW, 1, &arg));
+  irs->addExp (build_libcall (LIBCALL_THROW, 1, &arg));
 }
 
 void
@@ -171,8 +159,8 @@ TryCatchStatement::toIR (IRState *irs)
 
 	  if (a_catch->var)
 	    {
-	      tree exc_obj = irs->convertTo (build_exception_object(),
-					     build_object_type(), a_catch->type);
+	      tree exc_obj = convert_expr (build_exception_object(),
+					   build_object_type(), a_catch->type);
 	      tree catch_var = a_catch->var->toSymbol()->Stree;
 	      // need to override initializer...
 	      // set DECL_INITIAL now and emitLocalVar will know not to change it
@@ -237,7 +225,7 @@ ReturnStatement::toIR (IRState *irs)
     {
       // %% == Type::tvoid ?
       FuncDeclaration *func = irs->func;
-      TypeFunction *tf = (TypeFunction *)func->type;
+      TypeFunction *tf = (TypeFunction *) func->type;
       Type *ret_type = func->tintro ?
 	func->tintro->nextOf() : tf->nextOf();
 
@@ -291,13 +279,12 @@ CaseStatement::toIR (IRState *irs)
 void
 SwitchStatement::toIR (IRState *irs)
 {
-  tree cond_tree;
-  // %% also what about c-semantics doing emit_nop() ?
   irs->doLineNote (loc);
-  cond_tree = condition->toElemDtor (irs);
 
+  tree cond_tree = condition->toElemDtor (irs);
   Type *cond_type = condition->type->toBasetype();
-  if (cond_type->ty == Tarray)
+
+  if (condition->type->isString())
     {
       Type *elem_type = cond_type->nextOf()->toBasetype();
       LibCall libcall;
@@ -321,28 +308,34 @@ SwitchStatement::toIR (IRState *irs)
 	  gcc_unreachable();
 	}
 
-      tree args[2];
-      Symbol *s = static_sym();
-      dt_t **  pdt = &s->Sdt;
-      s->Sseg = CDATA;
-
       // Apparently the backend is supposed to sort and set the indexes
       // on the case array, have to change them to be useable.
       cases->sort();
 
+      tree args[2];
+      Symbol *s = new Symbol();
+      dt_t **pdt = &s->Sdt;
+
       for (size_t i = 0; i < cases->dim; i++)
 	{
-	  CaseStatement *case_stmt = (*cases)[i];
-	  pdt = case_stmt->exp->toDt (pdt);
-	  case_stmt->index = i;
-	}
-      outdata (s);
-      tree p_table = build_address (s->Stree);
+	  CaseStatement *cs = (*cases)[i];
+	  cs->index = i;
 
-      args[0] = irs->darrayVal (cond_type->arrayOf()->toCtype(), cases->dim, p_table);
+	  if (cs->exp->op != TOKstring)
+	    error("case '%s' is not a string", cs->exp->toChars());
+	  else
+	    pdt = cs->exp->toDt (pdt);
+	}
+
+      s->Sreadonly = true;
+      d_finish_symbol (s);
+
+      args[0] = d_array_value (cond_type->arrayOf()->toCtype(),
+			       size_int (cases->dim),
+			       build_address (s->Stree));
       args[1] = cond_tree;
 
-      cond_tree = irs->libCall (libcall, 2, args);
+      cond_tree = build_libcall (libcall, 2, args);
     }
   else if (!cond_type->isscalar())
     {
@@ -356,12 +349,10 @@ SwitchStatement::toIR (IRState *irs)
       for (size_t i = 0; i < cases->dim; i++)
 	{
 	  CaseStatement *case_stmt = (*cases)[i];
-	  case_stmt->cblock = irs->label (case_stmt->loc);
+	  case_stmt->cblock = d_build_label (case_stmt->loc, NULL);
 	}
       if (sdefault)
-	{
-	  sdefault->cblock = irs->label (sdefault->loc);
-	}
+	sdefault->cblock = d_build_label (sdefault->loc, NULL);
     }
   cond_tree = fold (cond_tree);
 
@@ -380,6 +371,8 @@ SwitchStatement::toIR (IRState *irs)
       if (sdefault)
 	irs->doJump (NULL, sdefault->cblock);
     }
+
+  // Emit body.
   irs->startCase (this, cond_tree, hasVars);
   if (body)
     body->toIR (irs);
@@ -392,9 +385,11 @@ IfStatement::toIR (IRState *irs)
 {
   irs->doLineNote (loc);
   irs->startScope();
-  irs->startCond (this, condition);
+  irs->startCond (this, irs->convertForCondition (condition->toElemDtor (irs),
+						  condition->type));
   if (ifbody)
     ifbody->toIR (irs);
+
   if (elsebody)
     {
       irs->startElse();
@@ -428,7 +423,8 @@ ForStatement::toIR (IRState *irs)
   if (condition)
     {
       irs->doLineNote (condition->loc);
-      irs->exitIfFalse (condition);
+      irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
+						  condition->type));
     }
   if (body)
     body->toIR (irs);
@@ -451,7 +447,8 @@ DoStatement::toIR (IRState *irs)
     body->toIR (irs);
   irs->continueHere();
   irs->doLineNote (condition->loc);
-  irs->exitIfFalse (condition);
+  irs->exitIfFalse (irs->convertForCondition (condition->toElemDtor (irs),
+					      condition->type));
   irs->endLoop();
 }
 
@@ -500,7 +497,7 @@ UnrolledLoopStatement::toIR (IRState *irs)
       Statement *statement = (*statements)[i];
       if (statement)
 	{
-	  irs->setContinueLabel (irs->label (loc));
+	  irs->setContinueLabel (d_build_label (loc, NULL));
 	  statement->toIR (irs);
 	  irs->continueHere();
 	}
@@ -514,7 +511,7 @@ ExpStatement::toIR (IRState *irs)
 {
   if (exp)
     {
-      gen.doLineNote (loc);
+      irs->doLineNote (loc);
       tree exp_tree = exp->toElemDtor (irs);
       irs->addExp (exp_tree);
     }

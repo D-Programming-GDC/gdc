@@ -57,8 +57,8 @@ enum TOK;
 struct IRState;
 struct Blockx;
 #ifdef IN_GCC
-union tree_node; typedef union tree_node block;
-union tree_node; typedef union tree_node elem;
+typedef union tree_node block;
+typedef union tree_node elem;
 #else
 struct block;
 struct elem;
@@ -784,22 +784,6 @@ struct ThrowStatement : Statement
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     int blockExit(bool mustNotThrow);
     Expression *interpret(InterState *istate);
-
-    Statement *inlineScan(InlineScanState *iss);
-
-    void toIR(IRState *irs);
-};
-
-struct VolatileStatement : Statement
-{
-    Statement *statement;
-
-    VolatileStatement(Loc loc, Statement *statement);
-    Statement *syntaxCopy();
-    Statement *semantic(Scope *sc);
-    Statements *flatten(Scope *sc);
-    int blockExit(bool mustNotThrow);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
     Statement *inlineScan(InlineScanState *iss);
 

@@ -8,6 +8,6 @@ Work is currently under way to merge GDC into GCC for the release of 4.8. Any as
 
 [home]: http://gdcproject.org
 [wiki]: http://gdcproject.org/wiki
-[bugs]: http://gdcproject.org/bugzilla
+[bugs]: http://bugzilla.gdcproject.org
 [maillist]: http://forum.dlang.org/group/D.gnu
 [email]: mailto:ibuclaw@gdcproject.org

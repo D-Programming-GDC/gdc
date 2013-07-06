@@ -32,7 +32,12 @@ struct DeleteDeclaration;
 struct InterfaceDeclaration;
 struct TypeInfoClassDeclaration;
 struct VarDeclaration;
+
+#ifdef IN_GCC
+typedef union tree_node dt_t;
+#else
 struct dt_t;
+#endif
 
 enum Sizeok
 {
@@ -256,7 +261,7 @@ struct ClassDeclaration : AggregateDeclaration
 
     virtual int isBaseInfoComplete();
     Dsymbol *search(Loc, Identifier *ident, int flags);
-    Dsymbol *searchBase(Loc, Identifier *ident);
+    ClassDeclaration *searchBase(Loc, Identifier *ident);
 #if DMDV2
     int isFuncHidden(FuncDeclaration *fd);
 #endif

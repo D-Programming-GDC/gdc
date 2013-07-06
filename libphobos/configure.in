@@ -271,9 +271,6 @@ AC_SUBST(D_EXTRA_OBJS)
 DRUNTIME_OBJS=
 AC_SUBST(DRUNTIME_OBJS)
 
-D_PREREQ_SRCS='$(config_d_src)'
-AC_SUBST(D_PREREQ_SRCS)
-
 if test "$with_newlib" = no; then
 
 AC_CHECK_LIB(m,cos)
@@ -342,19 +339,6 @@ AC_TRY_COMPILE([#include <unwind.h>],[
    DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
-
-AC_MSG_CHECKING([if std.boxer will work])
-cat > conftest.d <<END
-void test(...) { _argptr += 4; }
-END
-$GDC -c -I . -I $srcdir conftest.d >/dev/null 2>&1
-if test $? = 0; then
-    AC_MSG_RESULT([yes])
-    D_EXTRA_OBJS="$D_EXTRA_OBJS std/boxer.o"
-else
-    AC_MSG_RESULT([no])
-fi
-rm -f conftest.d conftest.$ac_objext
 
 case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
@@ -430,6 +414,10 @@ if test -z "$DFLAGS"; then
 fi
 AC_SUBST(DFLAGS)
 
+if test -z "$DFLAGSX"; then
+    DFLAGSX="-Wall -g -fno-release -funittest"
+fi
+AC_SUBST(DFLAGSX)
 
 dnl TODO: change this to using pthreads? if so, define usepthreads
 dnl and configure semaphore
@@ -499,7 +487,7 @@ AC_SUBST(ZLIB_OBJS)
 # append it here.  Only modify Makefiles that have just been created.
 #
 # Also, get rid of this simulated-VPATH thing that automake does.
-AC_CONFIG_FILES(AC_FOREACH([DIR], libdruntime, [DIR/Makefile ]),
+AC_CONFIG_FILES(AC_FOREACH([DIR], src libdruntime, [DIR/Makefile ]),
   [cat > vpsed$$ << \_EOF
 s!`test -f '$<' || echo '$(srcdir)/'`!!
 _EOF
@@ -513,4 +501,4 @@ _EOF
 ])
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile phobos-ver-syms libdruntime/phobos-ver-syms])
+AC_OUTPUT([Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms])

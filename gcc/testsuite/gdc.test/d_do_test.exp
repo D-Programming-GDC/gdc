@@ -17,7 +17,6 @@
 # Test using the DMD testsuite.
 # Load support procs.
 load_lib gdc-dg.exp
-#load_lib gdc.exp
 
 # Convert DMD arguments to GDC equivalent
 proc gdc-convert-args { args } {
@@ -233,8 +232,8 @@ proc gdc-do-test { } {
     # If a testcase doesn't have special options, use these.
     global DEFAULT_DFLAGS
     if ![info exists DEFAULT_DFLAGS] then {
-        #set DEFAULT_DFLAGS "-g -O2 -funittest -frelease"
-        set DEFAULT_DFLAGS "-O2"
+        set DEFAULT_DFLAGS "-g -O2 -frelease"
+        #set DEFAULT_DFLAGS "-O2"
     }
 
     # These are special options to use on testcase, and override DEFAULT_DFLAGS
@@ -299,7 +298,7 @@ proc gdc-do-test { } {
         }
 
         # Cleanup
-        #file delete $filename
+        file delete $filename
     }
 
     # All done.

@@ -1,4 +1,4 @@
-// d-gcc-includes.h -- D frontend for GCC.
+// d-system.h -- D frontend for GCC.
 // Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
@@ -15,8 +15,8 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#ifndef GCC_DCMPLR_DC_GCC_INCLUDES_H
-#define GCC_DCMPLR_DC_GCC_INCLUDES_H
+#ifndef GCC_DCMPLR_DC_SYSTEM_H
+#define GCC_DCMPLR_DC_SYSTEM_H
 
 #include "config.h"
 

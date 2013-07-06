@@ -80,9 +80,6 @@ extern GTY(()) tree d_eh_personality_decl;
    is not affected by -femit-templates. */
 #define D_DECL_IS_TEMPLATE(NODE) (DECL_LANG_FLAG_1 (NODE))
 
-/* True if the symbol has been marked "static const".  */
-#define D_DECL_READONLY_STATIC(NODE) (DECL_LANG_FLAG_2 (NODE))
-
 /* True if a custom static chain has been set-up for function.  */
 #define D_DECL_STATIC_CHAIN(NODE) (DECL_LANG_FLAG_3 (FUNCTION_DECL_CHECK (NODE)))
 
@@ -129,7 +126,7 @@ enum d_tree_index
   DTI_IDOUBLE_TYPE,
   DTI_IREAL_TYPE,
 
-  DTI_VA_LIST_TYPE,
+  DTI_UNKNOWN_TYPE,
 
   /* unused except for gcc builtins. */
   DTI_INTMAX_TYPE,
@@ -144,23 +141,25 @@ enum d_tree_index
 
 extern GTY(()) tree d_global_trees[DTI_MAX];
 
-#define d_null_pointer                  d_global_trees[DTI_NULL_PTR]
-#define d_void_zero_node                d_global_trees[DTI_VOID_ZERO]
-#define d_vtbl_ptr_type_node            d_global_trees[DTI_VTBL_PTR_TYPE]
-#define d_boolean_type_node             d_global_trees[DTI_BOOL_TYPE]
-#define d_char_type_node                d_global_trees[DTI_CHAR_TYPE]
-#define d_dchar_type_node               d_global_trees[DTI_DCHAR_TYPE]
-#define d_wchar_type_node               d_global_trees[DTI_WCHAR_TYPE]
-#define d_ifloat_type_node              d_global_trees[DTI_IFLOAT_TYPE]
-#define d_idouble_type_node             d_global_trees[DTI_IDOUBLE_TYPE]
-#define d_ireal_type_node               d_global_trees[DTI_IREAL_TYPE]
+#define d_null_pointer			d_global_trees[DTI_NULL_PTR]
+#define d_void_zero_node		d_global_trees[DTI_VOID_ZERO]
+#define d_vtbl_ptr_type_node		d_global_trees[DTI_VTBL_PTR_TYPE]
+#define d_boolean_type_node		d_global_trees[DTI_BOOL_TYPE]
+#define d_char_type_node		d_global_trees[DTI_CHAR_TYPE]
+#define d_dchar_type_node		d_global_trees[DTI_DCHAR_TYPE]
+#define d_wchar_type_node		d_global_trees[DTI_WCHAR_TYPE]
+#define d_ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
+#define d_idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
+#define d_ireal_type_node		d_global_trees[DTI_IREAL_TYPE]
 
-#define intmax_type_node                d_global_trees[DTI_INTMAX_TYPE]
-#define uintmax_type_node               d_global_trees[DTI_UINTMAX_TYPE]
-#define signed_size_type_node           d_global_trees[DTI_SIGNED_SIZE_TYPE]
-#define string_type_node                d_global_trees[DTI_STRING_TYPE]
-#define const_string_type_node          d_global_trees[DTI_CONST_STRING_TYPE]
-#define null_node                       d_global_trees[DTI_NULL]
+#define d_unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+
+#define intmax_type_node		d_global_trees[DTI_INTMAX_TYPE]
+#define uintmax_type_node		d_global_trees[DTI_UINTMAX_TYPE]
+#define signed_size_type_node		d_global_trees[DTI_SIGNED_SIZE_TYPE]
+#define string_type_node		d_global_trees[DTI_STRING_TYPE]
+#define const_string_type_node		d_global_trees[DTI_CONST_STRING_TYPE]
+#define null_node			d_global_trees[DTI_NULL]
 
 
 /* In d-lang.cc.  These are called through function pointers
@@ -214,10 +213,16 @@ void d_register_builtin_type (tree, const char *);
 void gcc_d_backend_init (void);
 void gcc_d_backend_term (void);
 
-/* In d-builtins2.cc */
 void d_bi_init (void);
 void d_bi_builtin_func (tree);
 void d_bi_builtin_type (tree);
+
+bool is_intrinsic_module_p (Module *);
+bool is_math_module_p (Module *);
+
+struct Dsymbol;
+bool is_builtin_va_arg_p (Dsymbol *, bool);
+bool is_builtin_va_start_p (Dsymbol *);
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;

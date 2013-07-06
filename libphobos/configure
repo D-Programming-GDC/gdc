@@ -629,6 +629,7 @@ ZLIB_OBJS
 D_GC_MODULES
 D_GC_FLAGS
 srcdir
+DFLAGSX
 DFLAGS
 DCFG_POSIX
 DCFG_UNIX
@@ -637,7 +638,6 @@ DCFG_MMAP
 DCFG_SEMAPHORE_IMPL
 DCFG_CBRIDGE_STDIO
 DCFG_ARM_EABI_UNWINDER
-D_PREREQ_SRCS
 DRUNTIME_OBJS
 D_EXTRA_OBJS
 EGREP
@@ -4759,9 +4759,6 @@ D_EXTRA_OBJS=
 DRUNTIME_OBJS=
 
 
-D_PREREQ_SRCS='$(config_d_src)'
-
-
 if test "$with_newlib" = no; then
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for cos in -lm" >&5
@@ -5020,22 +5017,6 @@ $as_echo "yes" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if std.boxer will work" >&5
-$as_echo_n "checking if std.boxer will work... " >&6; }
-cat > conftest.d <<END
-void test(...) { _argptr += 4; }
-END
-$GDC -c -I . -I $srcdir conftest.d >/dev/null 2>&1
-if test $? = 0; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-    D_EXTRA_OBJS="$D_EXTRA_OBJS std/boxer.o"
-else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f conftest.d conftest.$ac_objext
 
 case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
@@ -5341,6 +5322,10 @@ if test -z "$DFLAGS"; then
 fi
 
 
+if test -z "$DFLAGSX"; then
+    DFLAGSX="-Wall -g -fno-release -funittest"
+fi
+
 
 
 
@@ -5573,11 +5558,11 @@ fi
 # append it here.  Only modify Makefiles that have just been created.
 #
 # Also, get rid of this simulated-VPATH thing that automake does.
-ac_config_files="$ac_config_files libdruntime/Makefile"
+ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile"
 
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile phobos-ver-syms libdruntime/phobos-ver-syms"
+ac_config_files="$ac_config_files Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6300,9 +6285,10 @@ do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
     "default-1") CONFIG_COMMANDS="$CONFIG_COMMANDS default-1" ;;
+    "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "libdruntime/Makefile") CONFIG_FILES="$CONFIG_FILES libdruntime/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES phobos-ver-syms" ;;
+    "src/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES src/phobos-ver-syms" ;;
     "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
@@ -6907,6 +6893,17 @@ case " $CONFIG_FILES " in
    ac_file=Makefile . ${multi_basedir}/config-ml.in
    ;;
 esac ;;
+    "src/Makefile":F) cat > vpsed$$ << \_EOF
+s!`test -f '$<' || echo '$(srcdir)/'`!!
+_EOF
+   sed -f vpsed$$ $ac_file > tmp$$
+   mv tmp$$ $ac_file
+   rm vpsed$$
+   echo 'MULTISUBDIR =' >> $ac_file
+   ml_norecursion=yes
+   . ${multi_basedir}/config-ml.in
+   { ml_norecursion=; unset ml_norecursion;}
+ ;;
     "libdruntime/Makefile":F) cat > vpsed$$ << \_EOF
 s!`test -f '$<' || echo '$(srcdir)/'`!!
 _EOF

@@ -19,7 +19,7 @@
   d-lang.cc: implementation of back-end callbacks and data structures
 */
 
-#include "d-gcc-includes.h"
+#include "d-system.h"
 extern "C" {
 #include "options.h"
 #include "cppdefault.h"
@@ -41,11 +41,25 @@ extern "C" {
 #include "async.h"
 #include "json.h"
 
+static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_flatten_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_transparent_attribute (tree *, tree, tree, int, bool *);
+
+
 static char lang_name[6] = "GNU D";
 
 const struct attribute_spec d_attribute_table[] = 
-{ 
-  { NULL,                     0, 0, false, false, false, NULL, false }
+{
+    { "noinline",               0, 0, true,  false, false,
+				d_handle_noinline_attribute, false },
+    { "forceinline",            0, 0, true,  false, false,
+				d_handle_forceinline_attribute, false },
+    { "flatten",                0, 0, true,  false, false,
+				d_handle_flatten_attribute, false },
+    { "transparent",            0, 0, false, false, false,
+				d_handle_transparent_attribute, false },
+    { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
 /* Lang Hooks */
@@ -109,6 +123,9 @@ const struct attribute_spec d_attribute_table[] =
 
 static const char *fonly_arg;
 
+/* Zero disables all standard directories for headers.  */
+static bool std_inc = true;
+
 /* Common initialization before calling option handlers.  */
 static void
 d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
@@ -128,6 +145,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.Dversion = 2;
   global.params.quiet = 1;
   global.params.useDeprecated = 2;
+  global.params.betterC = 0;
 
   global.params.linkswitches = new Strings();
   global.params.libfiles = new Strings();
@@ -138,15 +156,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  gen.emitTemplates = TEnormal;
-  gen.stdInc = true;
-
-  gen.intrinsicModule = NULL;
-  gen.mathModule = NULL;
-  gen.mathCoreModule = NULL;
-  gen.stdargTemplateDecl = NULL;
-  gen.cstdargTemplateDecl = NULL;
-  gen.cstdargStartTemplateDecl = NULL;
+  ObjectFile::emitTemplates = TEnormal;
 }
 
 /* Initialize options structure OPTS.  */
@@ -203,7 +213,7 @@ d_add_builtin_version(const char* ident)
     global.params.isOpenBSD = 1;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = 1;
-  
+
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
 
@@ -212,7 +222,8 @@ d_init (void)
 {
   if(POINTER_SIZE == 64)
     global.params.is64bit = 1;
-  else global.params.is64bit = 0;
+  else
+    global.params.is64bit = 0;
 
   Type::init();
   Id::initialize();
@@ -233,7 +244,7 @@ d_init (void)
 
   TARGET_CPU_D_BUILTINS();
   TARGET_OS_D_BUILTINS();
-  
+
   VersionCondition::addPredefinedGlobalIdent ("GNU");
   VersionCondition::addPredefinedGlobalIdent ("D_Version2");
 
@@ -276,7 +287,7 @@ d_init (void)
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_import_paths(gen.stdInc);
+  add_import_paths(std_inc);
   add_phobos_versyms();
 
   return 1;
@@ -389,10 +400,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ddocfiles->push (xstrdup (arg));
       break;
 
-    case OPT_fdump_source:
-      global.params.dump_source = value;
-      break;
-
     case OPT_fd_verbose:
       global.params.verbose = value;
       break;
@@ -402,7 +409,11 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      gen.emitTemplates = value ? TEprivate : TEnone;
+      ObjectFile::emitTemplates = value ? TEprivate : TEnone;
+      break;
+
+    case OPT_femit_moduleinfo:
+      global.params.betterC = !value;
       break;
 
     case OPT_fignore_unknown_pragmas:
@@ -512,7 +523,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_nostdinc:
-      gen.stdInc = false;
+      std_inc = false;
       break;
 
     case OPT_Wall:
@@ -539,6 +550,15 @@ d_handle_option (size_t scode, const char *arg, int value,
 bool
 d_post_options (const char ** fn)
 {
+  // Canonicalize the input filename.
+  if (in_fnames == NULL)
+    {
+      in_fnames = XNEWVEC (const char *, 1);
+      in_fnames[0] = "";
+    }
+  else if (strcmp (in_fnames[0], "-") == 0)
+    in_fnames[0] = "";
+
   // The front end considers the first input file to be the main one.
   if (num_in_fnames)
     *fn = in_fnames[0];
@@ -556,10 +576,8 @@ d_post_options (const char ** fn)
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
     global.params.useDeprecated = 0;
 
-  /* Excess precision other than "fast" requires front-end
-     support that we don't offer. */
   if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
-    flag_excess_precision_cmdline = EXCESS_PRECISION_FAST;
+    flag_excess_precision_cmdline = EXCESS_PRECISION_STANDARD;
 
   return false;
 }
@@ -742,8 +760,6 @@ deps_write (Module *m)
   ob->writestring ("\n");
 }
 
-Symbol *rtlsym[N_RTLSYM];
-
 
 // Binary search for P in TAB between the range 0 to HIGH.
 
@@ -785,11 +801,6 @@ d_parse_file (void)
   // better to use input_location.xxx ?
   (*debug_hooks->start_source_file) (input_line, main_input_filename);
 
-  /*
-     printf ("input_filename = '%s'\n", input_filename);
-     printf ("main_input_filename = '%s'\n", main_input_filename);
-     */
-
   for (TY ty = (TY) 0; ty < TMAX; ty = (TY) (ty + 1))
     {
       if (Type::basic[ty] && ty != Terror)
@@ -801,10 +812,8 @@ d_parse_file (void)
   modules.reserve (num_in_fnames);
   AsyncRead *aw = NULL;
   Module *m = NULL;
-  output_module = NULL;
 
-  // %% FIX
-  if (!main_input_filename)
+  if (!main_input_filename || !main_input_filename[0])
     {
       ::error ("input file name required; cannot use stdin");
       goto had_errors;
@@ -866,18 +875,14 @@ d_parse_file (void)
 	output_module = m;
     }
 
-  // There is only one of these so far...
-  rtlsym[RTLSYM_DHIDDENFUNC] =
-    gen.getLibCallDecl (LIBCALL_HIDDEN_FUNC)->toSymbol();
-
-  // current_module shouldn't have any implications before genobjfile..
-  // ... but it does.  We need to know what module in which to insert
+  // Current_module shouldn't have any implications before genobjfile...
+  // but it does.  We need to know what module in which to insert
   // TemplateInstances during the semantic pass.  In order for
   // -femit-templates to work, template instances must be emitted
   // in every translation unit.  To do this, the TemplateInstaceS have to
   // have toObjFile called in the module being compiled.
   // TemplateInstance puts itself somwhere during ::semantic, thus it has
-  // to know the current module...
+  // to know the current module.
 
   gcc_assert (output_module);
 
@@ -997,7 +1002,7 @@ d_parse_file (void)
 
       File deps (global.params.moduleDepsFile);
       OutBuffer *ob = global.params.moduleDeps;
-      deps.setbuffer ((void *)ob->data, ob->offset);
+      deps.setbuffer ((void *) ob->data, ob->offset);
       deps.writev();
     }
 
@@ -1012,11 +1017,11 @@ d_parse_file (void)
 
       OutBuffer *ob = global.params.makeDeps;
       if (global.params.makeDepsFile == NULL)
-	printf ("%s", (char *)ob->data);
+	printf ("%s", (char *) ob->data);
       else
 	{
 	  File deps (global.params.makeDepsFile);
-	  deps.setbuffer ((void *)ob->data, ob->offset);
+	  deps.setbuffer ((void *) ob->data, ob->offset);
 	  deps.writev();
 	}
     }
@@ -1031,7 +1036,7 @@ d_parse_file (void)
   else
     object_file->modules.append (&modules);
 
-  current_irs = &gen;
+  cirstate = new IRState();
 
   // Generate output files
   if (global.params.doXGeneration)
@@ -1078,11 +1083,7 @@ d_parse_file (void)
       if (global.params.verbose)
 	fprintf (stdmsg, "code      %s\n", m->toChars());
       if (!flag_syntax_only)
-	{
-	  Obj::init ();
-	  m->genobjfile (false);
-	  Obj::term ();
-	}
+	m->genobjfile (false);
       if (!global.errors && !errorcount)
 	{
 	  if (global.params.doDocComments)
@@ -1101,41 +1102,6 @@ d_parse_file (void)
 
   gcc_d_backend_term();
 }
-
-void
-d_gcc_dump_source (const char *srcname, const char *ext, unsigned char *data, unsigned len)
-{
-  // Note: There is a dump_base_name variable, but as long as the all-sources hack is in
-  // around, the base name has to be determined here.
-
-  /* construct output name */
-  char *base = (char *) alloca (strlen (srcname) + 1);
-  base = strcpy (base, srcname);
-  base = basename (base);
-
-  char *name = (char *) alloca (strlen (base)+strlen (ext) + 2);
-  name = strcpy (name, base);
-  if (strlen (ext) > 0)
-    {
-      name = strcat (name, ".");
-      name = strcat (name, ext);
-    }
-
-  /* output
-   * ignores if the output file exists
-   * ignores if the output fails
-   */
-  FILE *output = fopen (name, "w");
-  if (output)
-    {
-      fwrite (data, 1, len, output);
-      fclose (output);
-    }
-
-  /* cleanup */
-  errno = 0;
-}
-
 
 static tree
 d_type_for_mode (enum machine_mode mode, int unsignedp)
@@ -1637,6 +1603,120 @@ void
 d_init_exceptions (void)
 {
   using_eh_for_cleanups();
+}
+
+
+/* Handle a "noinline" attribute.  */
+
+static tree
+d_handle_noinline_attribute (tree *node, tree name,
+			     tree ARG_UNUSED (args),
+			     int ARG_UNUSED (flags), bool *no_add_attrs)
+{
+  Type *t = build_dtype (TREE_TYPE (*node));
+
+  if (t->ty == Tfunction)
+    DECL_UNINLINABLE (*node) = 1;
+  else
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle a "forceinline" attribute.  */
+
+static tree
+d_handle_forceinline_attribute (tree *node, tree name,
+				tree ARG_UNUSED (args),
+				int ARG_UNUSED (flags),
+				bool *no_add_attrs)
+{
+  Type *t = build_dtype (TREE_TYPE (*node));
+
+  if (t->ty == Tfunction)
+    {
+      tree attributes = DECL_ATTRIBUTES (*node);
+
+      // Push attribute always_inline.
+      if (! lookup_attribute ("always_inline", attributes))
+	DECL_ATTRIBUTES (*node) = tree_cons (get_identifier ("always_inline"),
+					     NULL_TREE, attributes);
+
+      DECL_DECLARED_INLINE_P (*node) = 1;
+      DECL_NO_INLINE_WARNING_P (*node) = 1;
+      DECL_DISREGARD_INLINE_LIMITS (*node) = 1;
+    }
+  else
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle a "flatten" attribute.  */
+
+static tree
+d_handle_flatten_attribute (tree *node, tree name,
+			    tree args ATTRIBUTE_UNUSED,
+			    int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
+{
+  Type *t = build_dtype (TREE_TYPE (*node));
+
+  if (t->ty != Tfunction)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle a "transparent" attribute.  */
+
+static tree
+d_handle_transparent_attribute (tree *node, tree name,
+				tree args ATTRIBUTE_UNUSED,
+				int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
+{
+  Type *t = build_dtype (*node);
+  *no_add_attrs = true;
+
+  if (t->ty != Tstruct)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      return NULL_TREE;
+    }
+
+  AggregateDeclaration *ad = ((TypeStruct *) t)->sym;
+
+  if (!ad->isUnionDeclaration() || ad->fields.dim == 0)
+    {
+      StructDeclaration *sd = ad->isStructDeclaration();
+
+      if (sd && !sd->isPOD())
+	{
+	  warning (OPT_Wattributes, "Cannot apply %qE attribute on non-POD types", name);
+	  return NULL_TREE;
+	}
+      else if (ad->fields.dim == 0)
+	{
+	  warning (OPT_Wattributes, "Cannot apply %qE attribute on empty type", name);
+	  return NULL_TREE;
+	}
+      else if (ad->members->dim > 1)
+	{
+	  warning (OPT_Wattributes, "Cannot apply %qE attribute on types with more than one member", name);
+	  return NULL_TREE;
+	}
+    }
+
+  TYPE_TRANSPARENT_AGGR (*node) = 1;
+  return NULL_TREE;
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

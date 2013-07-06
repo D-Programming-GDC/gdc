@@ -16,7 +16,7 @@
 @SET_MAKE@
 
 # GDC -- D front-end for GCC
-# Copyright (C) 2012 Iain Buclaw
+# Copyright (C) 2004 David Friedman
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-subdir = libdruntime
+subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/phobos-ver-syms.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -117,8 +117,7 @@ DCFG_UNIX = @DCFG_UNIX@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
-DRUNTIME_OBJS = @DRUNTIME_OBJS@ $(BASE_OBJS) $(RUNTIME_OBJS) \
-	$(UTIL_OBJS) $(subst ti_,rt/typeinfo/ti_,$(TI))
+DRUNTIME_OBJS = @DRUNTIME_OBJS@
 D_EXTRA_OBJS = @D_EXTRA_OBJS@
 D_GC_FLAGS = @D_GC_FLAGS@
 D_GC_MODULES = @D_GC_MODULES@
@@ -214,124 +213,62 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
-ACLOCAL_AMFLAGS = -I . -I ..
-OUR_CFLAGS = @DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
-D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) -I ./$(host_alias) -I .
+ACLOCAL_AMFLAGS = -I. -I..
+OUR_CFLAGS = @DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
+D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -fproperty -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
 ALL_DFLAGS = $(DFLAGS) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
 SUFFIXES = .d
-IMPORT = import
-BASE_OBJS = object_.o
-RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
-	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
-	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-	     rt/cast_.o rt/critical_.o rt/dmain2.o rt/minfo.o \
-	     rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
-	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
+MAIN_OBJS = std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
+	  std/bitmanip.o std/compiler.o \
+	  std/container.o std/complex.o std/concurrency.o \
+	  std/conv.o std/cpuid.o std/cstream.o std/ctype.o std/csv.o \
+	  std/datetime.o std/demangle.o std/encoding.o \
+	  std/exception.o std/format.o \
+	  std/functional.o std/getopt.o std/json.o \
+	  std/math.o std/mathspecial.o std/md5.o \
+	  std/metastrings.o std/numeric.o \
+	  std/outbuffer.o std/parallelism.o std/signals.o \
+	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
+	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
+	  std/regex.o std/regexp.o std/traits.o std/typecons.o \
+	  std/typetuple.o std/uni.o std/uri.o std/utf.o \
+	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
+	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
+	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \
+	  std/c/string.o std/c/time.o std/c/wcharh.o \
+	  std/digest/digest.o std/digest/crc.o std/digest/md.o \
+	  std/digest/ripemd.o std/digest/sha.o \
+	  std/internal/digest/sha_SSSE3.o \
+	  std/internal/math/biguintcore.o std/internal/math/biguintnoasm.o \
+	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
+	  std/internal/math/errorfunction.o std/internal/processinit.o \
+	  std/internal/uni.o std/internal/uni_tab.o \
+	  std/net/isemail.o \
+	  crc32.o etc/c/curl.o etc/c/zlib.o
 
-CORE_OBJS = core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
-	  core/exception.o core/math.o core/memory.o core/runtime.o \
-	  core/simd.o core/thread.o core/time.o core/vararg.o \
-	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
-	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
-	  core/sync/semaphore.o
-
-GCC_OBJS = gcc/atomics.o gcc/builtins.o gcc/deh.o gcc/unwind_pe.o
-UTIL_OBJS = rt/util/console.o rt/util/container.o rt/util/hash.o \
-	  rt/util/string.o rt/util/utf.o
-
-TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
-   ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
-   ti_cdouble.o ti_cfloat.o ti_char.o ti_creal.o ti_dchar.o ti_delegate.o \
-   ti_double.o ti_float.o ti_idouble.o ti_ifloat.o ti_int.o ti_ireal.o \
-   ti_long.o ti_ptr.o ti_real.o ti_short.o ti_ubyte.o ti_uint.o ti_ulong.o \
-   ti_ushort.o ti_void.o ti_wchar.o
-
-
-# OS specific
-RT_STDC_OBJS = core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
-	     core/stdc/errno_.o core/stdc/math.o core/stdc/signal.o \
-	     core/stdc/stdarg.o core/stdc/stdio.o core/stdc/stdlib.o \
-	     core/stdc/stdint.o core/stdc/stddef.o core/stdc/string.o \
-	     core/stdc/time.o core/stdc/wchar_.o
-
-RT_FREEBSD_OBJS = core/sys/freebsd/execinfo.o core/sys/freebsd/sys/event.o
-RT_OSX_OBJS = core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
-	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o \
-	    core/sys/osx/pthread.o
-
-RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
-	      core/sys/posix/signal.o core/sys/posix/sys/ioctl.o \
-	      core/sys/posix/sys/select.o core/sys/posix/sys/socket.o \
-	      core/sys/posix/sys/stat.o core/sys/posix/sys/wait.o \
-	      core/sys/posix/sys/un.o core/sys/posix/sys/utsname.o \
-	      core/sys/posix/sys/utsname.o core/sys/posix/netinet/in_.o
-
-RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
-		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
-		core/sys/windows/windows.o
+Z_OBJS = zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
+       zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
+       zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
+       zlib/trees.o zlib/uncompr.o zlib/zutil.o
 
 
-# This should not be linked into a shared library.
-CMAIN_OBJS = #rt/cmain.o
+# modules which require some kind of operating system
+OS_OBJS = std/file.o std/mmfile.o std/path.o std/perf.o std/process.o \
+	std/socket.o std/socketstream.o
 
-# Regardless of OS, all import headers are generated.
-CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
-	     core/exception.di core/math.di core/memory.di core/runtime.di \
-	     core/simd.di core/time.di core/vararg.di \
-	     \
-	     core/stdc/complex.di core/stdc/config.di core/stdc/ctype.di \
-	     core/stdc/errno.di core/stdc/fenv.di core/stdc/float_.di \
-	     core/stdc/inttypes.di core/stdc/limits.di core/stdc/locale.di \
-	     core/stdc/math.di core/stdc/signal.di core/stdc/stdarg.di \
-	     core/stdc/stddef.di core/stdc/stdint.di core/stdc/stdio.di \
-	     core/stdc/stdlib.di core/stdc/string.di core/stdc/tgmath.di \
-	     core/stdc/time.di core/stdc/wchar_.di core/stdc/wctype.di \
-	     \
-	     core/sync/barrier.di core/sync/condition.di core/sync/config.di \
-	     core/sync/exception.di core/sync/mutex.di core/sync/rwmutex.di \
-	     core/sync/semaphore.di \
-	     \
-	     core/sys/freebsd/dlfcn.di core/sys/freebsd/execinfo.di \
-	     core/sys/freebsd/sys/event.di \
-	     \
-	     core/sys/linux/elf.di core/sys/linux/epoll.di \
-	     core/sys/linux/execinfo.di core/sys/linux/sys/signalfd.di \
-	     core/sys/linux/sys/xattr.di \
-	     \
-	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
-	     core/sys/osx/mach/getsect.di core/sys/osx/mach/kern_return.di \
-	     core/sys/osx/mach/loader.di core/sys/osx/mach/port.di \
-	     core/sys/osx/mach/semaphore.di core/sys/osx/mach/thread_act.di \
-	     core/sys/osx/pthread.di \
-	     \
-	     core/sys/posix/arpa/inet.di core/sys/posix/config.di \
-	     core/sys/posix/dirent.di core/sys/posix/dlfcn.di \
-	     core/sys/posix/fcntl.di core/sys/posix/grp.di \
-	     core/sys/posix/inttypes.di core/sys/posix/netdb.di \
-	     core/sys/posix/poll.di core/sys/posix/pthread.di \
-	     core/sys/posix/pwd.di core/sys/posix/sched.di \
-	     core/sys/posix/semaphore.di core/sys/posix/setjmp.di \
-	     core/sys/posix/signal.di core/sys/posix/stdio.di \
-	     core/sys/posix/stdlib.di core/sys/posix/termios.di \
-	     core/sys/posix/time.di core/sys/posix/ucontext.di \
-	     core/sys/posix/unistd.di core/sys/posix/utime.di \
-	     core/sys/posix/net/if_.di core/sys/posix/netinet/in_.di \
-	     core/sys/posix/netinet/tcp.di \
-	     core/sys/posix/sys/ioctl.di core/sys/posix/sys/ipc.di \
-	     core/sys/posix/sys/mman.di core/sys/posix/sys/select.di \
-	     core/sys/posix/sys/shm.di core/sys/posix/sys/socket.di \
-	     core/sys/posix/sys/stat.di core/sys/posix/sys/statvfs.di \
-	     core/sys/posix/sys/time.di core/sys/posix/sys/types.di \
-	     core/sys/posix/sys/uio.di core/sys/posix/sys/un.di \
-	     core/sys/posix/sys/utsname.di core/sys/posix/sys/wait.di \
-	     \
-	     core/sys/windows/dbghelp.di core/sys/windows/dll.di \
-	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \
-	     core/sys/windows/windows.di
+LINUX_OBJS = std/c/linux/linux.o std/c/linux/socket.o
+OSX_OBJS = std/c/osx/socket.o
+FREEBSD_OBJS = std/c/freebsd/socket.o
 
-ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
+# std.c.linux.linux, std.loader, gcc.cbridge*
+WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
+	     std/c/windows/windows.o std/c/windows/winsock.o \
+	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
+	     std/windows/syserror.o std/__fileinit.o std/internal/windows/advapi32.o
+
+ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and
@@ -390,9 +327,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign --ignore-deps libdruntime/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign --ignore-deps src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign --ignore-deps libdruntime/Makefile
+	  $(AUTOMAKE) --foreign --ignore-deps src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -566,17 +503,16 @@ uninstall-am:
 	uninstall-am
 
 
-all-local: libgdruntime.a
+all-local: libgphobos2.a
 
 %.o : %.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
-$(IMPORT):
-	mkdir -p $(IMPORT)
-# For core objects, generate .di headers
-$(IMPORT)/%.di: %.d $(IMPORT)
-	$(GDC) $(ALL_DFLAGS) -fintfc-file=$@ -fsyntax-only $<
 
 # %.o : %.c
+zlib/%.o: $(top_srcdir)/../zlib/%.c
+	@test -d zlib || mkdir -p zlib
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
 # Use .c.o to override Automake
 .c.o:
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
@@ -585,69 +521,60 @@ $(IMPORT)/%.di: %.d $(IMPORT)
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
+	$(GDC) -o $@ $(DFLAGSX) $(D_GC_FLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
 	cp $< $@
 
 #--------------------------------------#
-# GDC Runtime
+# GDC LibPhobos
 
-gcc/cbridge_math.o: gcc/cbridge_math.c
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
+# Special-case for std.xml, need to emit templates.
+std/xml.o : std/xml.d
+	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
 
-libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+libgphobos2.a : $(ALL_PHOBOS_OBJS) ../libdruntime/libgdruntime.a
+	cp ../libdruntime/libgdruntime.a libgphobos2.a
+	$(AR) -q $@ $(ALL_PHOBOS_OBJS)
 	$(RANLIB) $@
 
-libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
+	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
-unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -lgdruntime_t $(LIBS) -ldl
+unittest: libgphobos2.a libgphobos2_t.a unittest.o
+	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
 
 #--------------------------------------#
 # Install, doc, etc targets
 
-install-exec-local: libgdruntime.a
+install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
-	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
-	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
+	$(INSTALL) libgphobos2.a $(DESTDIR)$(toolexeclibdir)
+	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgphobos2.a
 
-install-data-local: libgdruntime.a
-	for i in core; do \
+install-data-local: libgphobos2.a
+	for i in etc/c \
+		std std/c std/c/freebsd \
+		std/c/linux std/c/osx std/c/windows \
+		std/internal std/internal/math std/internal/windows \
+		std/digest std/internal/digest \
+		std/net std/windows; do \
 		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.di; do \
-			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-		done; \
+		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
 	done
-	for i in gcc; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.d; do \
-			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-		done; \
-	done
-	for i in core core/stdc core/sync core/sys/osx/mach core/sys/posix \
-		core/sys/posix/arpa core/sys/posix/net core/sys/posix/netinet \
-		core/sys/posix/sys core/sys/windows; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
-		for f in $(IMPORT)/$$i/*.di; do \
-			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
-		done; \
-	done
-	for i in object.di; do \
-		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
-	done
-	$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
+	for i in crc32.d; do \
+		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
+#disabled, already installed by druntime
+#$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
 
 clean-local:
-	rm -f $(CMAIN_OBJS)
-	rm -f $(ALL_DRUNTIME_OBJS)
-	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
-	rm -f $(CORE_IMPORTS)
-	rm -rf $(IMPORT)
-	rm -f libgdruntime.a
+	rm -f $(ALL_PHOBOS_OBJS)
+	rm -f $(ALL_PHOBOS_OBJS:.o=.t.o)
+	rm -f unittest.o
+	rm -f unittest$(EXEEXT)
+	rm -f libgphobos2.a
+	rm -f libgphobos2_t.a
 
 check-local: unittest
 	./unittest

@@ -29,25 +29,12 @@
 
 /* used in module.c */
 extern void d_gcc_magic_module (Module *);
-extern void d_gcc_dump_source (const char *, const char *, unsigned char *, unsigned);
-
-/* used in toobj.c */
-struct VarDeclaration;
-extern void d_gcc_emit_local_variable (VarDeclaration *);
 
 /* used in mtype.c */
 extern int d_gcc_type_align (Type *);
 
 /* used in declaration.c */
 extern int d_gcc_field_align (VarDeclaration *);
-
-struct Symbol;
-enum RTLSYM
-{
-  RTLSYM_DHIDDENFUNC,
-  N_RTLSYM
-};
-extern Symbol *rtlsym[N_RTLSYM];
 
 /* used in template.c */
 extern bool d_gcc_force_templates (void);

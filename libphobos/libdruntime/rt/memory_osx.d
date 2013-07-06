@@ -15,8 +15,8 @@ module rt.memory_osx;
 version(OSX):
 
 //import core.stdc.stdio;   // printf
-import src.core.sys.osx.mach.dyld;
-import src.core.sys.osx.mach.getsect;
+import core.sys.osx.mach.dyld;
+import core.sys.osx.mach.getsect;
 
 extern (C) extern __gshared ModuleInfo*[] _moduleinfo_array;
 extern (C) extern __gshared ubyte[] _deh_eh_array;
