@@ -1,3 +1,8 @@
+2013-07-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(Expression::toElemDtor): Wrap temp variables destructor
+	calls in a try/finally expression.
+
 2013-07-05  Johannes Pfau  <johannespfau@gmail.com>
 
 	* patch-versym-os-4.8.x: Set versions on powerpc and alpha.

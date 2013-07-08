@@ -1575,10 +1575,10 @@ Expression::toElemDtor (IRState *irs)
   tree tdtors = NULL_TREE;
   for (size_t i = starti; i != endi; ++i)
     {
-      VarDeclaration *vd = irs->varsInScope->tdata()[i];
+      VarDeclaration *vd = (*irs->varsInScope)[i];
       if (vd)
 	{
-	  irs->varsInScope->tdata()[i] = NULL;
+	  (*irs->varsInScope)[i] = NULL;
 	  tree td = vd->edtor->toElem (irs);
 	  // Execute in reverse order.
 	  tdtors = maybe_compound_expr (tdtors, td);
@@ -1587,8 +1587,32 @@ Expression::toElemDtor (IRState *irs)
 
   if (tdtors != NULL_TREE)
     {
-      exp = make_temp (exp);
-      exp = compound_expr (compound_expr (exp, tdtors), exp);
+      if (op == TOKcall)
+	{
+	  // Wrap expression and dtors in a try/finally expression.
+	  tree body = exp;
+	  
+	  if (type->ty == Tvoid)
+	    exp = build2 (TRY_FINALLY_EXPR, void_type_node, body, tdtors);
+	  else
+	    {
+	      body = maybe_make_temp (body);
+	      tree tfexp = build2 (TRY_FINALLY_EXPR, void_type_node, body, tdtors);
+	      exp = compound_expr (tfexp, body);
+	    }
+	}
+      else if (op == TOKcomma && ((CommaExp *) this)->e2->op == TOKvar)
+	{
+	  // Split comma expressions, so as don't require a save_expr.
+	  tree lexp = TREE_OPERAND (exp, 0);
+	  tree rvalue = TREE_OPERAND (exp, 1);
+	  exp = compound_expr (compound_expr (lexp, tdtors), rvalue);
+	}
+      else
+	{
+	  exp = maybe_make_temp (exp);
+	  exp = compound_expr (compound_expr (exp, tdtors), exp);
+	}
     }
 
   return exp;
