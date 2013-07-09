@@ -460,21 +460,22 @@ d_gcc_magic_builtins_module (Module *m)
       if (dtf->parameters && dtf->parameters->dim == 0 && dtf->varargs)
 	continue;
 
-      // %% D2 - builtins are trusted and optionally nothrow.
-      // The purity of a builtins can vary depending on compiler
-      // flags set at init, or by the -foptions passed, such as
+      // D2 @safe/pure/nothrow functions.
+      // It is assumed that builtins solely provided by the compiler are
+      // considered @safe, pure and nothrow.  Builtins that correspond to
+      // functions in the standard library that don't throw are considered
+      // @trusted.  The purity of a builtin can vary depending on compiler
+      // flags set upon initialisation, or by the -foptions passed, such as
       // flag_unsafe_math_optimizations.
-
-      // Similiarly, if a builtin does not correspond to a function
-      // in the standard library (is provided by the compiler), then
-      // will also mark the function as weakly pure in the D frontend.
-      dtf->trust = TREE_NOTHROW (decl) ? TRUSTtrusted : TRUSTsystem;
-      dtf->isnothrow = TREE_NOTHROW (decl);
+      dtf->isnothrow = TREE_NOTHROW (decl) || !DECL_ASSEMBLER_NAME_SET_P (decl);
       dtf->purity = DECL_PURE_P (decl) ?   PUREstrong :
 	TREE_READONLY (decl) ? PUREconst :
 	DECL_IS_NOVOPS (decl) ? PUREweak :
 	!DECL_ASSEMBLER_NAME_SET_P (decl) ? PUREweak :
 	PUREimpure;
+      dtf->trust = !DECL_ASSEMBLER_NAME_SET_P (decl) ? TRUSTsafe :
+	TREE_NOTHROW (decl) ? TRUSTtrusted :
+	TRUSTsystem;
 
       FuncDeclaration *func = new FuncDeclaration (Loc(), Loc(), Lexer::idPool (name),
 						   STCextern, dtf);

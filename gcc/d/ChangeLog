@@ -1,3 +1,8 @@
+2013-07-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(d_gcc_magic_builtins_module): Set builtins solely
+	provided by the compiler as @safe, pure and nothrow.
+
 2013-07-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(Expression::toElemDtor): Wrap temp variables destructor

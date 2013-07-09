@@ -767,6 +767,7 @@ tree
 type_passed_as (Parameter *arg)
 {
   tree arg_type = arg->type->toCtype();
+
   if (arg_reference_p (arg))
     arg_type = build_reference_type (arg_type);
   else if (arg->storageClass & STClazy)
@@ -775,6 +776,7 @@ type_passed_as (Parameter *arg)
       TypeDelegate *t = new TypeDelegate (tf);
       arg_type = t->merge()->toCtype();
     }
+
   return arg_type;
 }
 
@@ -796,11 +798,13 @@ d_array_type (Type *d_type, uinteger_t size)
 					NULL_TREE);
 
   tree array_type = build_array_type (type_node, index_type_node);
+
   if (size == 0)
     {
       TYPE_SIZE (array_type) = bitsize_zero_node;
       TYPE_SIZE_UNIT (array_type) = size_zero_node;
     }
+
   return array_type;
 }
 
