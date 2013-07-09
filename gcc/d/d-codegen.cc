@@ -3594,8 +3594,6 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
 	    vthis_value = get_frame_for_symbol (this->func, sd);
-	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
-	    vthis_value = get_decl_tree (fdo->vthis, this->func);
 	  else
 	    vthis_value = d_null_pointer;
 	}

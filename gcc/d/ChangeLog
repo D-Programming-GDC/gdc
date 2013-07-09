@@ -2,6 +2,8 @@
 
 	* d-builtins.c(d_gcc_magic_builtins_module): Set builtins solely
 	provided by the compiler as @safe, pure and nothrow.
+	* d-codegen.cc(IRState::getVThis): Don't set outer 'this' of structs
+	to be parent function chain if no frame has been created.
 
 2013-07-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
