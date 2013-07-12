@@ -2509,7 +2509,7 @@ unittest
         assert(to!Float("123.") == Literal!Float(123.0));
         assert(to!Float(".456") == Literal!Float(.456));
 
-        assert(to!Float("1.23456E+2") == Literal!Float(1.23456E+2));
+        assert(feqrel(to!Float("1.23456E+2"), Literal!Float(1.23456E+2)) >= Float.mant_dig -1);
 
         assert(to!Float("0") is 0.0);
         assert(to!Float("-0") is -0.0);
@@ -2609,7 +2609,7 @@ unittest
 // Unittest for bug 6160
 unittest
 {
-    assert(1000_000_000e50L == to!real("1000_000_000_e50"));        // 1e59
+    assert(feqrel(1000_000_000e50L, to!real("1000_000_000_e50")) >= real.mant_dig -1);        // 1e59
     assert(0x1000_000_000_p10 == to!real("0x1000_000_000_p10"));    // 7.03687e+13
 }
 
