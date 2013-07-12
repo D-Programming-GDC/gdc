@@ -663,7 +663,8 @@ Complex!T cos(T)(Complex!T z)  @safe pure nothrow
 unittest{
     assert(cos(complex(0.0)) == 1.0);
     assert(cos(complex(1.3L)) == std.math.cos(1.3L));
-    assert(cos(complex(0, 5.2L)) == cosh(5.2L));
+    assert(feqrel(cos(complex(0, 5.2L)).re, cosh(5.2L)) >= real.mant_dig - 1);
+    assert(cos(complex(0, 5.2L)).im == 0);
 }
 
 
