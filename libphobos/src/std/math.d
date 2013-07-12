@@ -1634,7 +1634,8 @@ creal expi(real y) @trusted pure nothrow
 
 unittest
 {
-    assert(expi(1.3e5L) == cos(1.3e5L) + sin(1.3e5L) * 1i);
+    real arg = 1.25e5L;
+    assert(expi(arg) == cos(arg) + sin(arg) * 1i);
     assert(expi(0.0L) == 1L + 0.0Li);
 }
 
