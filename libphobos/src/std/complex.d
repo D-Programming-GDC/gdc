@@ -663,7 +663,8 @@ Complex!T cos(T)(Complex!T z)  @safe pure nothrow
 unittest{
     assert(cos(complex(0.0)) == 1.0);
     assert(cos(complex(1.3L)) == std.math.cos(1.3L));
-    assert(cos(complex(0, 5.2L)) == cosh(5.2L));
+    assert(feqrel(cos(complex(0, 5.2L)).re, cosh(5.2L)) >= real.mant_dig - 1);
+    assert(cos(complex(0, 5.2L)).im == 0);
 }
 
 
@@ -682,7 +683,7 @@ Complex!real expi(real y)  @trusted pure nothrow
 
 unittest
 {
-    assert(expi(1.3e5L) == complex(std.math.cos(1.3e5L), std.math.sin(1.3e5L)));
+    assert(expi(1.125L) == complex(std.math.cos(1.125L), std.math.sin(1.125L)));
     assert(expi(0.0L) == 1.0L);
     auto z1 = expi(1.234);
     auto z2 = std.math.expi(1.234);
