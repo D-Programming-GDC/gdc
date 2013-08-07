@@ -2954,22 +2954,6 @@ IRState::maybeExpandSpecialCall (tree call_exp)
 	  op1 = ce.nextArg();
 	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_RINTL), 1, op1);
 
-	case INTRINSIC_YL2X:
-	case INTRINSIC_YL2XP1:
-	  op1 = ce.nextArg();
-	  op2 = ce.nextArg();
-	  type = TREE_TYPE (TREE_TYPE (callee));
-
-	  if (intrinsic == INTRINSIC_YL2XP1)
-	    op1 = fold_build2 (PLUS_EXPR, TREE_TYPE (op1), op1,
-			       fold_convert (TREE_TYPE (op1), size_one_node));
-
-	  // exp = log2 (op1)
-	  exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_LOG2L), 1, op1);
-
-	  // return y * exp
-	  return fold_build2 (MULT_EXPR, type, op2, exp);
-
 	case INTRINSIC_VA_ARG:
 	case INTRINSIC_C_VA_ARG:
 	  op1 = ce.nextArg();
@@ -3195,8 +3179,7 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 	  // Matches order of Intrinsic enum
 	  static const char *math_names[] = {
 	      "cos", "fabs", "ldexp",
-	      "rint", "rndtol", "sin",
-	      "sqrt", "yl2x", "yl2xp1",
+	      "rint", "rndtol", "sin", "sqrt",
 	  };
 	  const size_t sz = sizeof (math_names) / sizeof (char *);
 	  int i = binary (decl->ident->string, math_names, sz);
@@ -3206,7 +3189,7 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
 
 	  // Adjust 'i' for this range of enums
 	  i += INTRINSIC_COS;
-	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_YL2XP1);
+	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
 
 	  switch (i)
 	    {
