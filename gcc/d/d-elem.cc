@@ -2243,7 +2243,15 @@ ArrayLiteralExp::toElem (IRState *irs)
   tree sa_type = d_array_type (etype, elements->dim);
   tree result = NULL_TREE;
 
-  /* Build an expression that assigns the expressions in ELEMENTS to a constructor. */
+  if (elements->dim == 0)
+    {
+      if (tb->ty == Tarray)
+	return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+      else
+	return d_convert (etype->pointerTo()->toCtype(), integer_zero_node);
+    }
+
+  // Build an expression that assigns the expressions in ELEMENTS to a constructor.
   vec<constructor_elt, va_gc> *elms = NULL;
   vec_safe_reserve (elms, elements->dim);
 
