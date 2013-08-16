@@ -700,8 +700,21 @@ void test10684b()
 
 int main()
 {
-    test1();
-    test2();
+    version(X86)
+    {
+        test1();
+        test2();
+    }
+    else version(X86_64)
+    {
+        test1();
+        test2();
+    }
+    else
+    {
+        pragma(msg, "arrayop.d:test1 Test skipped because arrayop evaluation"
+                    " order is ill-defined. See GDC issue #8");
+    }
     test3();
     test4();
     test5();
