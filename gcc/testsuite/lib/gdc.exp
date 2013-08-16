@@ -19,6 +19,7 @@
 #
 load_lib prune.exp
 load_lib gcc-defs.exp
+load_lib timeout.exp
 load_lib target-libpath.exp
 
 #
@@ -230,6 +231,7 @@ proc gdc_target_compile { source dest type options } {
         lappend options "ldflags=${wrap_flags}"
     }
 
+    lappend options "timeout=[timeout_value]"
     lappend options "compiler=$GDC_UNDER_TEST"
 
     set options [concat "$ALWAYS_DFLAGS" $options]
