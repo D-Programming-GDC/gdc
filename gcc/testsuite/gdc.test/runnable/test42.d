@@ -1660,6 +1660,7 @@ void test100()
     printf("d = %llx, ulong.max = %llx\n", d, ulong.max);
     assert(d == ulong.max);
   }
+  static if(real.mant_dig == 64)
   {
     real r = ulong.max - 1;
     printf("r = %Lg, ulong.max = %llu\n", r, ulong.max);
@@ -1667,6 +1668,11 @@ void test100()
     printf("d = %llx, ulong.max = %llx\n", d, ulong.max);
     assert(d == ulong.max - 1);
   }
+  else static if(real.mant_dig == 53)
+  { //can't store ulong.max-1 in double
+  }
+  else
+     static assert(false, "Test not implemented for this platform");
 }
 
 /***************************************************/
@@ -5464,7 +5470,12 @@ void testdbl_to_ulong()
     real adjust = 1.0L/real.epsilon;
     u = d2ulong(adjust);
     //writefln("%s %s", adjust, u);
-    assert(u == 9223372036854775808UL);
+    static if(real.mant_dig == 64)
+        assert(u == 9223372036854775808UL);
+    else static if(real.mant_dig == 53)
+        assert(u == 4503599627370496UL);
+    else
+        static assert(false, "Test not implemented for this architecture");
 
     auto v = d2ulong(adjust * 1.1);
     //writefln("%s %s %s", adjust, v, u + u/10);
@@ -5506,7 +5517,12 @@ void testreal_to_ulong()
     real adjust = 1.0L/real.epsilon;
     u = r2ulong(adjust);
     //writefln("%s %s", adjust, u);
-    assert(u == 9223372036854775808UL);
+    static if(real.mant_dig == 64)
+        assert(u == 9223372036854775808UL);
+    else static if(real.mant_dig == 53)
+        assert(u == 4503599627370496UL);
+    else
+        static assert(false, "Test not implemented for this architecture");
 
     auto v = r2ulong(adjust * 1.1);
     writefln("%s %s %s", adjust, v, u + u/10);
