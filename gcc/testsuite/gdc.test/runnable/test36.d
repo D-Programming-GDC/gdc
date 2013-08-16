@@ -38,6 +38,10 @@ extern (Windows):
             {
                 "mov %%ESP,%0" : "=r" esp : : ;
             }
+            else version(ARM) asm
+            {
+                "str sp,%0" : "=m" esp : : ;
+            }
             else static assert(false, "ASM code not implemented for this architecture");
         }
         else asm
@@ -66,6 +70,10 @@ int main()
             {
                 "mov %%ESP,%0" : "=r" esp : : ;
             }
+            else version(ARM) asm
+            {
+                "str sp,%0" : "=m" esp : : ;
+            }
             else static assert(false, "ASM code not implemented for this architecture");
         }
         else asm
@@ -84,6 +92,10 @@ int main()
             else version(X86_64) asm
             {
                 "mov %%ESP,%0" : "=r" esp : : ;
+            }
+            else version(ARM) asm
+            {
+                "str sp,%0" : "=m" esp : : ;
             }
             else static assert(false, "ASM code not implemented for this architecture");
         }
