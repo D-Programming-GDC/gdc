@@ -775,12 +775,12 @@ real atan(real x) @safe pure nothrow
         if (isInfinity(x))
             return copysign(PI_2, x);
 
-        // Make argument positive and save the sign.
+        // Make argument positive but save the sign.
         bool sign = false;
         if (signbit(x))
         {
-            sign = true;
             x = -x;
+            sign = true;
         }
 
         // Range reduction.
@@ -3209,12 +3209,62 @@ long lrint(real x) @trusted pure nothrow
     }
     else
     {
-        static if (real.mant_dig == 64)
+        static if (real.mant_dig == 53)
+        {
+            long result;
+
+            // Rounding limit when casting from real(double) to ulong.
+            enum real OF = 4.50359962737049600000E15L;
+
+            uint* vi = cast(uint*)(&x);
+
+            // Find the exponent and sign
+            uint msb = vi[MANTISSA_MSB];
+            uint lsb = vi[MANTISSA_LSB];
+            int exp = ((msb >> 20) & 0x7ff) - 0x3ff;
+            int sign = msb >> 31;
+            msb &= 0xfffff;
+            msb |= 0x100000;
+
+            if (exp < 63)
+            {
+                if (exp >= 52)
+                    result = (cast(long) msb << (exp - 20)) | (lsb << (exp - 52));
+                else
+                {
+                    // Adjust x and check result.
+                    real j = sign ? -OF : OF;
+                    x = (j + x) - j;
+                    msb = vi[MANTISSA_MSB];
+                    lsb = vi[MANTISSA_LSB];
+                    exp = ((msb >> 20) & 0x7ff) - 0x3ff;
+                    msb &= 0xfffff;
+                    msb |= 0x100000;
+
+                    if (exp < 0)
+                        result = 0;
+                    else if (exp < 20)
+                        result = cast(long) msb >> (20 - exp);
+                    else if (exp == 20)
+                        result = cast(long) msb;
+                    else
+                        result = (cast(long) msb << (exp - 20)) | (lsb >> (52 - exp));
+                }
+            }
+            else
+            {
+                // It is left implementation defined when the number is too large.
+                return cast(long) x;
+            }
+
+            return sign ? -result : result;
+        }
+        else static if (real.mant_dig == 64)
         {
             alias floatTraits!(real) F;
             long result;
 
-            // Rounding limit when casting from real to ulong.
+            // Rounding limit when casting from real(80-bit) to ulong.
             enum real OF = 9.22337203685477580800E18L;
 
             ushort* vu = cast(ushort*)(&x);
@@ -3261,7 +3311,7 @@ long lrint(real x) @trusted pure nothrow
         }
         else
         {
-            static assert(false, "Only 80-bit and 96-bit reals are supported by lrint()");
+            static assert(false, "Only 64-bit and 80-bit reals are supported by lrint()");
         }
     }
 }
