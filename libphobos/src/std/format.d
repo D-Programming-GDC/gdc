@@ -4858,7 +4858,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     va.stack_args = p;
                     argptr = *cast(va_list*) &va;
                 }
-                else version(ARM)
+                else version (ARM)
                     *cast(void**) &argptr = p;
                 else
                     static assert(false, "unsupported platform");
@@ -4921,9 +4921,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     argptr = *cast(va_list*) &va;
                 }
                 else version (ARM)
-                {
                     *cast(void**) &argptr = pkey;
-                }
                 else static assert(false, "unsupported platform");
 
                 ti = keyti;

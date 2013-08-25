@@ -255,27 +255,27 @@ d_convert (tree type, tree exp)
   if (error_mark_p (type) || error_mark_p (TREE_TYPE (exp)))
     return error_mark_node;
 
-  Type *target_type = build_dtype (type);
+  Type *totype = build_dtype (type);
   Type *expr_type = build_dtype (TREE_TYPE (exp));
 
-  if (target_type && expr_type)
-    return convert_expr (exp, expr_type, target_type);
+  if (totype && expr_type)
+    return convert_expr (exp, expr_type, totype);
 
   return convert (type, exp);
 }
 
-// Return expression EXP, whose type has been convert from EXP_TYPE to TARGET_TYPE.
+// Return expression EXP, whose type has been convert from ETYPE to TOTYPE.
 
 tree
-convert_expr (tree exp, Type *exp_type, Type *target_type)
+convert_expr (tree exp, Type *etype, Type *totype)
 {
   tree result = NULL_TREE;
 
-  gcc_assert (exp_type && target_type);
-  Type *ebtype = exp_type->toBasetype();
-  Type *tbtype = target_type->toBasetype();
+  gcc_assert (etype && totype);
+  Type *ebtype = etype->toBasetype();
+  Type *tbtype = totype->toBasetype();
 
-  if (d_types_same (exp_type, target_type))
+  if (d_types_same (etype, totype))
     return exp;
 
   if (error_mark_p (exp))
@@ -287,8 +287,7 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
       if (tbtype->ty == Tdelegate)
 	{
 	  exp = maybe_make_temp (exp);
-	  return build_delegate_cst (delegate_method (exp), delegate_object (exp),
-				     target_type);
+	  return build_delegate_cst (delegate_method (exp), delegate_object (exp), totype);
 	}
       else if (tbtype->ty == Tpointer)
 	{
@@ -298,28 +297,28 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	}
       else
 	{
-	  error ("can't convert a delegate expression to %s", target_type->toChars());
-	  return error_mark (target_type);
+	  error ("can't convert a delegate expression to %s", totype->toChars());
+	  return error_mark (totype);
 	}
       break;
 
     case Tstruct:
       if (tbtype->ty == Tstruct)
       {
-	if (target_type->size() == exp_type->size())
+	if (totype->size() == etype->size())
 	  {
 	    // Allowed to cast to structs with same type size.
-	    result = build_vconvert (target_type->toCtype(), exp);
+	    result = build_vconvert (totype->toCtype(), exp);
 	  }
 	else if (tbtype->ty == Taarray)
 	  {
 	    tbtype = ((TypeAArray *) tbtype)->getImpl()->type;
-	    return convert_expr (exp, exp_type, tbtype);
+	    return convert_expr (exp, etype, tbtype);
 	  }
 	else
 	  {
-	    error ("can't convert struct %s to %s", exp_type->toChars(), target_type->toChars());
-	    return error_mark (target_type);
+	    error ("can't convert struct %s to %s", etype->toChars(), totype->toChars());
+	    return error_mark (totype);
 	  }
       }
       // else, default conversion, which should produce an error
@@ -328,62 +327,56 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
     case Tclass:
       if (tbtype->ty == Tclass)
       {
-	ClassDeclaration *target_class_decl = ((TypeClass *) tbtype)->sym;
-	ClassDeclaration *obj_class_decl = ((TypeClass *) ebtype)->sym;
-	bool use_dynamic = false;
+	ClassDeclaration *cdfrom = tbtype->isClassHandle();
+	ClassDeclaration *cdto = ebtype->isClassHandle();
 	int offset;
 
-	if (target_class_decl->isBaseOf (obj_class_decl, &offset))
+	if (cdfrom->isBaseOf (cdto, &offset) && offset != OFFSET_RUNTIME)
 	  {
 	    // Casting up the inheritance tree: Don't do anything special.
 	    // Cast to an implemented interface: Handle at compile time.
-	    if (offset == OFFSET_RUNTIME)
-	      use_dynamic = true;
-	    else if (offset)
+	    if (offset)
 	      {
-		tree t = target_type->toCtype();
+		tree t = totype->toCtype();
 		exp = maybe_make_temp (exp);
 		return build3 (COND_EXPR, t,
 			       build_boolop (NE_EXPR, exp, d_null_pointer),
 			       build_nop (t, build_offset (exp, size_int (offset))),
 			       build_nop (t, d_null_pointer));
 	      }
-	    else
-	      {
-		// d_convert will make a NOP cast
-		break;
-	      }
-	  }
-	else if (target_class_decl == obj_class_decl)
-	  {
-	    // d_convert will make a NOP cast
+
+	    // d_convert will make a no-op cast
 	    break;
 	  }
-	else if (!obj_class_decl->isCOMclass())
-	  use_dynamic = true;
 
-	if (use_dynamic)
+	// More cases for no-op cast
+	if (cdfrom == cdto)
+	  break;
+
+	if (cdfrom->isCPPinterface() && cdto->isCPPinterface())
+	  break;
+
+	// Casting from a C++ interface to a class/non-C++ interface
+	// always results in null as there is no runtime information,
+	// and no way one can derive from the other.
+	if (cdto->isCOMclass() || cdfrom->isCPPinterface() != cdto->isCPPinterface())
 	  {
-	    // Otherwise, do dynamic cast
-	    tree args[2];
-
-	    args[0] = exp;
-	    args[1] = build_address (target_class_decl->toSymbol()->Stree);
-
-	    return build_libcall (obj_class_decl->isInterfaceDeclaration()
-				  ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
-	  }
-	else
-	  {
-	    warning (OPT_Wcast_result, "cast to %s will produce null result", target_type->toChars());
-	    result = d_convert (target_type->toCtype(), d_null_pointer);
+	    warning (OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
+	    result = d_convert (totype->toCtype(), d_null_pointer);
+	    // Make sure the expression is still evaluated if necessary
 	    if (TREE_SIDE_EFFECTS (exp))
-	      {
-		// make sure the expression is still evaluated if necessary
-		result = compound_expr (exp, result);
-	      }
+	      result = compound_expr (exp, result);
+
 	    return result;
 	  }
+
+	// The offset can only be determined at runtime, do dynamic cast
+	tree args[2];
+	args[0] = exp;
+	args[1] = build_address (cdfrom->toSymbol()->Stree);
+
+	return build_libcall (cdto->isInterfaceDeclaration()
+			      ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
       }
       // else default conversion
       break;
@@ -391,7 +384,7 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
     case Tsarray:
       if (tbtype->ty == Tpointer)
 	{
-	  result = build_nop (target_type->toCtype(), build_address (exp));
+	  result = build_nop (totype->toCtype(), build_address (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -404,39 +397,39 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	  if ((dim * esize) % tsize != 0)
 	    {
 	      error ("cannot cast %s to %s since sizes don't line up",
-		     exp_type->toChars(), target_type->toChars());
-	      return error_mark (target_type);
+		     etype->toChars(), totype->toChars());
+	      return error_mark (totype);
 	    }
 	  dim = (dim * esize) / tsize;
 
 	  // Assumes casting to dynamic array of same type or void
-	  return d_array_value (target_type->toCtype(),
-				size_int (dim), build_nop (ptrtype, build_address (exp)));
+	  return d_array_value (totype->toCtype(), size_int (dim),
+				build_nop (ptrtype, build_address (exp)));
 	}
       else if (tbtype->ty == Tsarray)
 	{
 	  // D apparently allows casting a static array to any static array type
-	  return build_vconvert (target_type->toCtype(), exp);
+	  return build_vconvert (totype->toCtype(), exp);
 	}
       else if (tbtype->ty == Tstruct)
 	{
 	  // And allows casting a static array to any struct type too.
 	  // %% type sizes should have already been checked by the frontend.
-	  gcc_assert (target_type->size() == exp_type->size());
-	  result = build_vconvert (target_type->toCtype(), exp);
+	  gcc_assert (totype->size() == etype->size());
+	  result = build_vconvert (totype->toCtype(), exp);
 	}
       else
 	{
 	  error ("cannot cast expression of type %s to type %s",
-		 exp_type->toChars(), target_type->toChars());
-	  return error_mark (target_type);
+		 etype->toChars(), totype->toChars());
+	  return error_mark (totype);
 	}
       break;
 
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
-	  return d_convert (target_type->toCtype(), d_array_ptr (exp));
+	  return d_convert (totype->toCtype(), d_array_ptr (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -449,7 +442,7 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	  if (sz_src == sz_dst)
 	    {
 	      // Convert from void[] or elements are the same size -- don't change length
-	      return build_vconvert (target_type->toCtype(), exp);
+	      return build_vconvert (totype->toCtype(), exp);
 	    }
 	  else
 	    {
@@ -460,49 +453,49 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
 	      args[1] = build_integer_cst (sz_src * mult, Type::tsize_t->toCtype());
 	      args[2] = exp;
 
-	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, target_type->toCtype());
+	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, totype->toCtype());
 	    }
 	}
       else if (tbtype->ty == Tsarray)
 	{
 	  // %% Strings are treated as dynamic arrays D2.
 	  if (ebtype->isString() && tbtype->isString())
-	    return indirect_ref (target_type->toCtype(), d_array_ptr (exp));
+	    return indirect_ref (totype->toCtype(), d_array_ptr (exp));
 	}
       else
 	{
 	  error ("cannot cast expression of type %s to %s",
-		 exp_type->toChars(), target_type->toChars());
-	  return error_mark (target_type);
+		 etype->toChars(), totype->toChars());
+	  return error_mark (totype);
 	}
       break;
 
     case Taarray:
       if (tbtype->ty == Taarray)
-	return build_vconvert (target_type->toCtype(), exp);
+	return build_vconvert (totype->toCtype(), exp);
       else if (tbtype->ty == Tstruct)
 	{
 	  ebtype = ((TypeAArray *) ebtype)->getImpl()->type;
-	  return convert_expr (exp, ebtype, target_type);
+	  return convert_expr (exp, ebtype, totype);
 	}
       // Can convert associative arrays to void pointers.
       else if (tbtype == Type::tvoidptr)
-	return build_vconvert (target_type->toCtype(), exp);
+	return build_vconvert (totype->toCtype(), exp);
       // else, default conversion, which should product an error
       break;
 
     case Tpointer:
       // Can convert void pointers to associative arrays too...
       if (tbtype->ty == Taarray && ebtype == Type::tvoidptr)
-	return build_vconvert (target_type->toCtype(), exp);
+	return build_vconvert (totype->toCtype(), exp);
       break;
 
     case Tnull:
       if (tbtype->ty == Tarray)
 	{
 	  tree ptrtype = tbtype->nextOf()->pointerTo()->toCtype();
-	  return d_array_value (target_type->toCtype(),
-				size_int (0), build_nop (ptrtype, exp));
+	  return d_array_value (totype->toCtype(), size_int (0),
+				build_nop (ptrtype, exp));
 	}
       break;
 
@@ -510,32 +503,32 @@ convert_expr (tree exp, Type *exp_type, Type *target_type)
       if (tbtype->ty == Tsarray)
 	{
 	  if (tbtype->size() == ebtype->size())
-	    return build_vconvert (target_type->toCtype(), exp);
+	    return build_vconvert (totype->toCtype(), exp);
 	}
       break;
 
     default:
-      exp = fold_convert (exp_type->toCtype(), exp);
+      exp = fold_convert (etype->toCtype(), exp);
       gcc_assert (TREE_CODE (exp) != STRING_CST);
       break;
     }
 
   return result ? result :
-    convert (target_type->toCtype(), exp);
+    convert (totype->toCtype(), exp);
 }
 
 
-// Apply semantics of assignment to a values of type TARGET_TYPE to EXPR
+// Apply semantics of assignment to a values of type TOTYPE to EXPR
 // (e.g., pointer = array -> pointer = &array[0])
 
-// Return a TREE representation of EXPR implictly converted to TARGET_TYPE
+// Return a TREE representation of EXPR implictly converted to TOTYPE
 // for use in assignment expressions MODIFY_EXPR, INIT_EXPR...
 
 tree
-convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
+convert_for_assignment (tree expr, Type *etype, Type *totype)
 {
-  Type *ebtype = exp_type->toBasetype();
-  Type *tbtype = target_type->toBasetype();
+  Type *ebtype = etype->toBasetype();
+  Type *tbtype = totype->toBasetype();
 
   // Assuming this only has to handle converting a non Tsarray type to
   // arbitrarily dimensioned Tsarrays.
@@ -552,13 +545,13 @@ convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;
 	  uinteger_t count = sa_type->dim->toUInteger();
 
-	  tree ctor = build_constructor (target_type->toCtype(), NULL);
+	  tree ctor = build_constructor (totype->toCtype(), NULL);
 	  if (count)
 	    {
 	      vec<constructor_elt, va_gc> *ce = NULL;
 	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
 				   integer_zero_node, build_integer_cst (count - 1));
-	      tree value = convert_for_assignment (expr, exp_type, sa_type->next);
+	      tree value = convert_for_assignment (expr, etype, sa_type->next);
 	      
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
 	      if (TREE_CODE (value) == VAR_DECL)
@@ -583,7 +576,7 @@ convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
       if (integer_zerop (expr))
 	{
 	  StructDeclaration *sd = ((TypeStruct *) tbtype)->sym;
-	  tree var = build_local_var (target_type->toCtype());
+	  tree var = build_local_var (totype->toCtype());
 
 	  tree init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
 					 build_address (var), expr,
@@ -595,7 +588,7 @@ convert_for_assignment (tree expr, Type *exp_type, Type *target_type)
 	gcc_unreachable();
     }
 
-  return convert_expr (expr, exp_type, target_type);
+  return convert_expr (expr, etype, totype);
 }
 
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
@@ -987,13 +980,13 @@ build_integer_cst (dinteger_t value, tree type)
   return build_int_cst_type (type, value);
 }
 
-// Build REAL_CST of type TARGET_TYPE with the value VALUE.
+// Build REAL_CST of type TOTYPE with the value VALUE.
 
 tree
-build_float_cst (const real_t& value, Type *target_type)
+build_float_cst (const real_t& value, Type *totype)
 {
   real_t new_value;
-  TypeBasic *tb = target_type->isTypeBasic();
+  TypeBasic *tb = totype->isTypeBasic();
 
   gcc_assert (tb != NULL);
 
