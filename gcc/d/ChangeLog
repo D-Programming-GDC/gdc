@@ -1,3 +1,33 @@
+2013-08-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::doArraySet): Rename to IRBase::doArraySet.
+	(IRState::arraySetExpr): Remove function.
+	(IRState::expandDecl): Rename to expand_decl.
+	(IRState::typeinfoReference): Rename to build_typeinfo.
+	(IRState::buildChain): Merge into FuncDeclaration::buildClosure.
+	(IRState::getVThis): Rename to build_vthis.
+	(IRState::maybeExpandSpecialCall): Rename to maybe_expand_builtin.
+	(IRState::toDArray): Rename to d_array_convert.
+
+2013-08-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(convert_expr): Check that the class type the codegen is
+	casting from is a base class of the class type the codegen is casting
+	to, not the other way round.
+
+2013-08-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(ArrayLiteralExp::toElem): Return null for zero length
+	array literals.
+
+2013-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(finish_thunk): Don't emit thunks to external symbols as
+	weakref declarations.
+	* d-codegen.cc(IRState::maybeExpandSpecialCall): Remove intrinsic yl2x
+	and yl2xp1 builtins.
+	(maybe_set_builtin_frontend): Likewise.
+
 2013-07-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c(d_gcc_magic_builtins_module): Set builtins solely

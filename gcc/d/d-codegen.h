@@ -187,6 +187,8 @@ extern tree convert_expr (tree exp, Type *exp_type, Type *target_type);
 extern tree convert_for_assignment (tree expr, Type *exp_type, Type *target_type);
 extern tree convert_for_condition (tree expr, Type *type);
 
+extern tree d_array_convert (Expression *exp);
+
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
 extern tree build_float_cst (const real_t& value, Type *target_type);
@@ -223,6 +225,8 @@ extern tree build_frame_type (FuncDeclaration *func);
 extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
 extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
 
+extern tree build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e);
+
 // Static chain for nested functions
 extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);
 
@@ -232,6 +236,7 @@ extern bool needs_static_chain (FuncDeclaration *f);
 extern tree build_local_var (tree type);
 extern tree create_temporary_var (tree type);
 extern tree maybe_temporary_var (tree exp, tree *out_var);
+extern void expand_decl (tree decl);
 
 extern tree get_decl_tree (Declaration *decl, FuncDeclaration *func);
 
@@ -263,6 +268,8 @@ extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree fo
 extern tree maybe_expand_builtin (tree call_exp);
 
 extern void maybe_set_builtin_frontend (FuncDeclaration *decl);
+
+extern tree build_typeinfo (Type *t);
 
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.
@@ -416,32 +423,13 @@ struct IRState : IRBase
   // ** Local variables
   void emitLocalVar (VarDeclaration *v, bool no_init);
 
-  void expandDecl (tree t_decl);
-
-  // ** Type conversion
-  tree toDArray (Expression *exp);
-
   // ** Various expressions
   static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
   tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
 
-  void doArraySet (tree in_ptr, tree in_value, tree in_count);
-  tree arraySetExpr (tree ptr, tree value, tree count);
-
   // ** Function calls
-  tree call (Expression *expr, Expressions *arguments);
-  tree call (FuncDeclaration *func_decl, Expressions *args);
-  tree call (FuncDeclaration *func_decl, tree object, Expressions *args);
-  tree call (TypeFunction *guess, tree callable, tree object, Expressions *arguments);
-
-  tree typeinfoReference (Type *t);
-
-  void buildChain (FuncDeclaration *func);
-
-  tree getVThis (Dsymbol *decl, Expression *e);
-
- protected:
-  tree maybeExpandSpecialCall (tree call_exp);
+  tree call (FuncDeclaration *fd, tree object, Expressions *args);
+  tree call (TypeFunction *tf, tree callable, tree object, Expressions *arguments);
 };
 
 // Globals.

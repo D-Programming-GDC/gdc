@@ -52,7 +52,8 @@ IdentityExp::toElem (IRState *irs)
       && (tb2->ty == Tsarray || tb2->ty == Tarray))
     {
       // Convert arrays to D array types.
-      return build2 (code, type->toCtype(), irs->toDArray (e1), irs->toDArray (e2));
+      return build2 (code, type->toCtype(),
+		     d_array_convert (e1), d_array_convert (e2));
     }
   else if (tb1->isfloating())
     {
@@ -205,9 +206,9 @@ EqualExp::toElem (IRState *irs)
 	  tree args[3];
 	  tree result;
 
-	  args[0] = irs->toDArray (e1);
-	  args[1] = irs->toDArray (e2);
-	  args[2] = irs->typeinfoReference (t1elem->arrayOf());
+	  args[0] = d_array_convert (e1);
+	  args[1] = d_array_convert (e2);
+	  args[2] = build_typeinfo (t1elem->arrayOf());
 
 	  result = d_convert (type->toCtype(), build_libcall (LIBCALL_ADEQ2, 3, args));
 
@@ -223,7 +224,7 @@ EqualExp::toElem (IRState *irs)
       tree args[3];
       tree result;
 
-      args[0] = irs->typeinfoReference (taa1);
+      args[0] = build_typeinfo (taa1);
       args[1] = e1->toElem (irs);
       args[2] = e2->toElem (irs);
       result = d_convert (type->toCtype(), build_libcall (LIBCALL_AAEQUAL, 3, args));
@@ -244,16 +245,16 @@ EqualExp::toElem (IRState *irs)
 elem *
 InExp::toElem (IRState *irs)
 {
-  Type *e2_base_type = e2->type->toBasetype();
+  Type *tb2 = e2->type->toBasetype();
   AddrOfExpr aoe;
-  gcc_assert (e2_base_type->ty == Taarray);
+  gcc_assert (tb2->ty == Taarray);
 
-  Type *key_type = ((TypeAArray *) e2_base_type)->index->toBasetype();
+  Type *tkey = ((TypeAArray *) tb2)->index->toBasetype();
   tree args[3];
 
   args[0] = e2->toElem (irs);
-  args[1] = irs->typeinfoReference (key_type);
-  args[2] = aoe.set (convert_expr (e1->toElem (irs), e1->type, key_type));
+  args[1] = build_typeinfo (tkey);
+  args[2] = aoe.set (convert_expr (e1->toElem (irs), e1->type, tkey));
 
   return convert (type->toCtype(),
 		  aoe.finish (build_libcall (LIBCALL_AAINX, 3, args)));
@@ -334,9 +335,9 @@ CmpExp::toElem (IRState *irs)
       Type *telem = tb1->nextOf()->toBasetype();
       tree args[3];
 
-      args[0] = irs->toDArray (e1);
-      args[1] = irs->toDArray (e2);
-      args[2] = irs->typeinfoReference (telem->arrayOf());
+      args[0] = d_array_convert (e1);
+      args[1] = d_array_convert (e2);
+      args[2] = build_typeinfo (telem->arrayOf());
       result = build_libcall (LIBCALL_ADCMP2, 3, args);
 
       // %% For float element types, warn that NaN is not taken into account?
@@ -569,7 +570,7 @@ CatExp::toElem (IRState *irs)
 	    n_operands * (n_operands > 2 && flag_split_darrays ? 2 : 1));
 
   args = new tree[n_args];
-  args[0] = irs->typeinfoReference (type);
+  args[0] = build_typeinfo (type);
 
   if (n_operands > 2)
     args[1] = build_integer_cst (n_operands, Type::tuns32->toCtype());
@@ -594,13 +595,14 @@ CatExp::toElem (IRState *irs)
 		elem_vars.push (elem_var);
 	    }
 	  else
-	    array_exp = irs->toDArray (oe);
+	    array_exp = d_array_convert (oe);
 
 	  if (n_operands > 2 && flag_split_darrays)
 	    {
+	      // Filling array backwards, so ptr is first.
 	      array_exp = maybe_make_temp (array_exp);
-	      args[ai--] = d_array_ptr (array_exp);	// note: filling array
-	      args[ai--] = d_array_length (array_exp);	// backwards, so ptr 1st
+	      args[ai--] = d_array_ptr (array_exp);
+	      args[ai--] = d_array_length (array_exp);
 	    }
 	  else
 	    args[ai--] = array_exp;
@@ -609,14 +611,15 @@ CatExp::toElem (IRState *irs)
 	    {
 	      if (ce->e1->op != TOKcat)
 		{
+		  // Finish with atomtic lhs
 		  oe = ce->e1;
 		  ce = NULL;
-		  // finish with atomtic lhs
 		}
 	      else
 		{
+		  // Continue with lhs CatExp
 		  ce = (CatExp *) ce->e1;
-		  break;  // continue with lhs CatExp
+		  break;
 		}
 	    }
 	  else
@@ -830,9 +833,9 @@ CatAssignExp::toElem (IRState *irs)
 	  // Append an array
 	  tree args[3];
 
-	  args[0] = irs->typeinfoReference (type);
+	  args[0] = build_typeinfo (type);
 	  args[1] = build_address (e1->toElem (irs));
-	  args[2] = irs->toDArray (e2);
+	  args[2] = d_array_convert (e2);
 
 	  result = build_libcall (LIBCALL_ARRAYAPPENDT, 3, args, type->toCtype());
 	}
@@ -841,7 +844,7 @@ CatAssignExp::toElem (IRState *irs)
 	  // Append an element
 	  tree args[3];
 
-	  args[0] = irs->typeinfoReference (type);
+	  args[0] = build_typeinfo (type);
 	  args[1] = build_address (e1->toElem (irs));
 	  args[2] = size_one_node;
 
@@ -910,7 +913,7 @@ AssignExp::toElem (IRState *irs)
       tree args[3];
       LibCall libcall;
 
-      args[0] = irs->typeinfoReference (ale->e1->type);
+      args[0] = build_typeinfo (ale->e1->type);
       args[1] = convert_expr (e2->toElem (irs), e2->type, Type::tsize_t);
       args[2] = build_address (ale->e1->toElem (irs));
       libcall = etype->isZeroInit() ? LIBCALL_ARRAYSETLENGTHT : LIBCALL_ARRAYSETLENGTHIT;
@@ -949,7 +952,7 @@ AssignExp::toElem (IRState *irs)
 		  args[0] = d_array_ptr (t1);
 		  args[1] = aoe.set (e2->toElem (irs));
 		  args[2] = d_array_length (t1);
-		  args[3] = irs->typeinfoReference (etype);
+		  args[3] = build_typeinfo (etype);
 		  libcall = (op == TOKconstruct) ? LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
 
 		  tree call = build_libcall (libcall, 4, args);
@@ -957,8 +960,7 @@ AssignExp::toElem (IRState *irs)
 		}
 	    }
 
-	  tree set_exp = irs->arraySetExpr (d_array_ptr (t1),
-					    e2->toElem (irs), d_array_length (t1));
+	  tree set_exp = irs->doArraySet (d_array_ptr (t1), e2->toElem (irs), d_array_length (t1));
 	  return compound_expr (set_exp, t1);
 	}
 
@@ -968,9 +970,9 @@ AssignExp::toElem (IRState *irs)
 	  tree args[3];
 	  LibCall libcall;
 
-	  args[0] = irs->typeinfoReference (etype);
-	  args[1] = irs->toDArray (e1);
-	  args[2] = irs->toDArray (e2);
+	  args[0] = build_typeinfo (etype);
+	  args[1] = d_array_convert (e1);
+	  args[2] = d_array_convert (e2);
 	  libcall = (op == TOKconstruct) ? LIBCALL_ARRAYCTOR : LIBCALL_ARRAYASSIGN;
 
 	  return build_libcall (libcall, 3, args, type->toCtype());
@@ -981,15 +983,15 @@ AssignExp::toElem (IRState *irs)
 	  tree args[3];
 
 	  args[0] = build_integer_cst (etype->size(), Type::tsize_t->toCtype());
-	  args[1] = irs->toDArray (e2);
-	  args[2] = irs->toDArray (e1);
+	  args[1] = d_array_convert (e2);
+	  args[2] = d_array_convert (e1);
 
 	  return build_libcall (LIBCALL_ARRAYCOPY, 3, args, type->toCtype());
 	}
       else
 	{
-	  tree t1 = maybe_make_temp (irs->toDArray (e1));
-	  tree t2 = irs->toDArray (e2);
+	  tree t1 = maybe_make_temp (d_array_convert (e1));
+	  tree t2 = d_array_convert (e2);
 	  tree size = fold_build2 (MULT_EXPR, size_type_node,
 				   d_convert (size_type_node, d_array_length (t1)),
 				   size_int (etype->size()));
@@ -1030,7 +1032,7 @@ AssignExp::toElem (IRState *irs)
 	  if (sd->isNested())
 	    {
 	      tree vthis_field = sd->vthis->toSymbol()->Stree;
-	      tree vthis_value = irs->getVThis (sd, this);
+	      tree vthis_value = build_vthis (sd, irs->func, this);
 
 	      tree vthis_exp = modify_expr (component_ref (lhs, vthis_field), vthis_value);
 	      result = compound_expr (result, vthis_exp);
@@ -1074,7 +1076,7 @@ IndexExp::toElem (IRState *irs)
 
   if (tb1->ty == Taarray)
     {
-      Type *key_type = ((TypeAArray *) tb1)->index->toBasetype();
+      Type *tkey = ((TypeAArray *) tb1)->index->toBasetype();
       AddrOfExpr aoe;
       tree args[4];
       LibCall libcall;
@@ -1091,9 +1093,9 @@ IndexExp::toElem (IRState *irs)
 	  args[0] = e1->toElem (irs);
 	}
 
-      args[1] = irs->typeinfoReference (key_type);
+      args[1] = build_typeinfo (tkey);
       args[2] = build_integer_cst (tb1->nextOf()->size(), Type::tsize_t->toCtype());
-      args[3] = aoe.set (convert_expr (e2->toElem (irs), e2->type, key_type));
+      args[3] = aoe.set (convert_expr (e2->toElem (irs), e2->type, tkey));
 
       index = aoe.finish (build_libcall (libcall, 4, args, type->pointerTo()->toCtype()));
 
@@ -1408,13 +1410,13 @@ RemoveExp::toElem (IRState *irs)
   if (array->type->toBasetype()->ty == Taarray)
     {
       Type *a_type = array->type->toBasetype();
-      Type *key_type = ((TypeAArray *) a_type)->index->toBasetype();
+      Type *tkey = ((TypeAArray *) a_type)->index->toBasetype();
       AddrOfExpr aoe;
       tree args[3];
 
       args[0] = array->toElem (irs);
-      args[1] = irs->typeinfoReference (key_type);
-      args[2] = aoe.set (convert_expr (index->toElem (irs), index->type, key_type));
+      args[1] = build_typeinfo (tkey);
+      args[2] = aoe.set (convert_expr (index->toElem (irs), index->type, tkey));
 
       return aoe.finish (build_libcall (LIBCALL_AADELX, 3, args));
     }
@@ -1542,14 +1544,84 @@ AddrExp::toElem (IRState *irs)
 elem *
 CallExp::toElem (IRState *irs)
 {
-  tree exp = irs->call (e1, arguments);
+  Type *tb = e1->type->toBasetype();
+  Expression *e1b = e1;
+  tree object = NULL_TREE;
 
-  TypeFunction *tf = get_function_type (e1->type->toBasetype());
+  // Calls to delegates can sometimes look like this:
+  if (e1b->op == TOKcomma)
+    {
+      e1b = ((CommaExp *) e1b)->e2;
+      gcc_assert (e1b->op == TOKvar);
+
+      Declaration *var = ((VarExp *) e1b)->var;
+      gcc_assert (var->isFuncDeclaration() && !var->needThis());
+    }
+
+  tree callee = e1b->toElem (irs);
+  TypeFunction *tf = NULL;
+
+  if (D_METHOD_CALL_EXPR (callee))
+    {
+      // This could be a delegate expression (TY == Tdelegate), but not
+      // actually a delegate variable.
+      if (e1b->op == TOKdotvar)
+	{
+	  // This gets the true function type, getting the function type from
+	  // e1->type can sometimes be incorrect, eg: ref return functions.
+	  tf = get_function_type (((DotVarExp *) e1b)->var->type);
+	}
+      else
+	tf = get_function_type (tb);
+
+      extract_from_method_call (callee, callee, object);
+    }
+  else if (tb->ty == Tdelegate)
+    {
+      // Delegate call, extract .object and .funcptr from var.
+      callee = maybe_make_temp (callee);
+      tf = get_function_type (tb);
+      object = delegate_object (callee);
+      callee = delegate_method (callee);
+    }
+  else if (e1b->op == TOKvar)
+    {
+      FuncDeclaration *fd = ((VarExp *) e1b)->var->isFuncDeclaration();
+      gcc_assert (fd);
+      tf = get_function_type (fd->type);
+
+      if (fd->isNested())
+	{
+	  // Maybe re-evaluate symbol storage treating 'fd' as public.
+	  if (call_by_alias_p (irs->func, fd))
+	    setup_symbol_storage (fd, callee, true);
+
+	  object = get_frame_for_symbol (irs->func, fd);
+	}
+      else if (fd->needThis())
+	{
+	  e1b->error ("need 'this' to access member %s", fd->toChars());
+	  // Continue processing...
+	  object = d_null_pointer;
+	}
+    }
+  else
+    {
+      // Normal direct function call.
+      tf = get_function_type (tb);
+    }
+
+  gcc_assert (tf != NULL);
+
+  // Now we have the type, callee and maybe object reference,
+  // build the call expression.
+  tree exp = irs->call (tf, callee, object, arguments);
+
   if (tf->isref)
     exp = build_deref (exp);
 
   // Some library calls are defined to return a generic type.
-  // this->type is the real type. (See crash2.d)
+  // this->type is the real type we want to return.
   if (type->isTypeBasic())
     exp = d_convert (type->toCtype(), exp);
 
@@ -1944,14 +2016,14 @@ NewExp::toElem (IRState *irs)
       if (onstack)
 	{
 	  tree stack_var = build_local_var (rec_type);
-	  irs->expandDecl (stack_var);
+	  expand_decl (stack_var);
 	  new_call = build_address (stack_var);
 	  setup_exp = modify_expr (indirect_ref (rec_type, new_call),
 				   class_decl->toInitializer()->Stree);
 	}
       else if (allocator)
 	{
-	  new_call = irs->call (allocator, newargs);
+	  new_call = irs->call (allocator, NULL_TREE, newargs);
 	  new_call = maybe_make_temp (new_call);
 	  // copy memory...
 	  setup_exp = modify_expr (indirect_ref (rec_type, new_call),
@@ -1986,7 +2058,7 @@ NewExp::toElem (IRState *irs)
 	    }
 	  else
 	    {
-	      vthis_value = irs->getVThis (class_decl, this);
+	      vthis_value = build_vthis (class_decl, irs->func, this);
 	    }
 
 	  if (vthis_value)
@@ -2020,7 +2092,7 @@ NewExp::toElem (IRState *irs)
       tree init_exp;
 
       if (allocator)
-	new_call = irs->call (allocator, newargs);
+	new_call = irs->call (allocator, NULL_TREE, newargs);
       else
 	{
 	  libcall = struct_type->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
@@ -2038,7 +2110,7 @@ NewExp::toElem (IRState *irs)
       // Set vthis for nested structs/classes.
       if (sd->isNested())
 	{
-	  tree vthis_value = irs->getVThis (sd, this);
+	  tree vthis_value = build_vthis (sd, irs->func, this);
 	  tree vthis_field;
 	  new_call = maybe_make_temp (new_call);
 	  vthis_field = component_ref (indirect_ref (struct_type->toCtype(), new_call),
@@ -2265,7 +2337,7 @@ ArrayLiteralExp::toElem (IRState *irs)
   tree ctor = build_constructor (sa_type, elms);
   tree args[2];
 
-  args[0] = irs->typeinfoReference (etype->arrayOf());
+  args[0] = build_typeinfo (etype->arrayOf());
   args[1] = build_integer_cst (elements->dim, size_type_node);
 
   // Call _d_arrayliteralTX (ti, dim);
@@ -2346,7 +2418,7 @@ AssocArrayLiteralExp::toElem (IRState *irs)
 
   tree args[3];
 
-  args[0] = irs->typeinfoReference (aa_type);
+  args[0] = build_typeinfo (aa_type);
   args[1] = d_array_value (index->arrayOf()->toCtype(), size_int (keys->dim), keys_ptr);
   args[2] = d_array_value (next->arrayOf()->toCtype(), size_int (keys->dim), vals_ptr);
   result = maybe_compound_expr (result, build_libcall (LIBCALL_ASSOCARRAYLITERALTX, 3, args));
@@ -2410,7 +2482,7 @@ StructLiteralExp::toElem (IRState *irs)
 
 		  tree ptr_tree = build_nop (etype->pointerTo()->toCtype(),
 					     build_address (exp_tree));
-		  tree set_exp = irs->arraySetExpr (ptr_tree, exp->toElem (irs), size);
+		  tree set_exp = irs->doArraySet (ptr_tree, exp->toElem (irs), size);
 		  exp_tree = compound_expr (set_exp, exp_tree);
 		}
 	    }
@@ -2429,7 +2501,7 @@ StructLiteralExp::toElem (IRState *irs)
     {
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;
-      tree vthis_value = irs->getVThis (sd, this);
+      tree vthis_value = build_vthis (sd, irs->func, this);
       CONSTRUCTOR_APPEND_ELT (ce, vthis_field, vthis_value);
       gcc_assert (sinit == NULL);
     }

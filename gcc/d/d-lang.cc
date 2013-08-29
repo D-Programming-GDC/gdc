@@ -589,6 +589,15 @@ d_post_options (const char ** fn)
   if (flag_excess_precision_cmdline == EXCESS_PRECISION_DEFAULT)
     flag_excess_precision_cmdline = EXCESS_PRECISION_STANDARD;
 
+  if (global.params.useUnitTests)
+    global.params.useAssert = 1;
+
+  global.params.symdebug = write_symbols != NO_DEBUG;
+  //global.params.useInline = flag_inline_functions;
+  global.params.obj = !flag_syntax_only;
+  // Has no effect yet.
+  global.params.pic = flag_pic != 0;
+
   return false;
 }
 
@@ -802,15 +811,7 @@ d_parse_file (void)
       fprintf (stderr, "version   %s\n", global.version);
     }
 
-  if (global.params.useUnitTests)
-    global.params.useAssert = 1;
-
-  global.params.symdebug = write_symbols != NO_DEBUG;
-  //global.params.useInline = flag_inline_functions;
-  global.params.obj = !flag_syntax_only;
-  global.params.pic = flag_pic != 0; // Has no effect yet.
-
-  // better to use input_location.xxx ?
+  // Better to use input_location ?
   (*debug_hooks->start_source_file) (input_line, main_input_filename);
 
   for (TY ty = (TY) 0; ty < TMAX; ty = (TY) (ty + 1))
@@ -818,6 +819,8 @@ d_parse_file (void)
       if (Type::basic[ty] && ty != Terror)
 	nametype (Type::basic[ty]);
     }
+
+  cirstate = new IRState();
 
   // Create Modules
   Modules modules;
@@ -1046,8 +1049,6 @@ d_parse_file (void)
     output_modules.push (output_module);
   else
     output_modules.append (&modules);
-
-  cirstate = new IRState();
 
   // Generate output files
   if (global.params.doXGeneration)

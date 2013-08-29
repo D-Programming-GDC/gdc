@@ -1032,7 +1032,7 @@ FuncDeclaration::toObjFile (int)
     }
 
   // May change irs->sthis.
-  irs->buildChain (this);
+  this->buildClosure (irs);
 
   if (vresult)
     irs->emitLocalVar (vresult, true);
@@ -1169,37 +1169,51 @@ FuncDeclaration::toObjFile (int)
 // closure here, is inserted into the linked list of stack
 // frames instead of the usual stack frame.
 
+// If a closure is not required, but FUNC still needs a frame to lower
+// nested refs, then instead build custom static chain decl on stack.
+
 void
 FuncDeclaration::buildClosure (IRState *irs)
 {
   FuncFrameInfo *ffi = get_frameinfo (this);
-  gcc_assert (ffi->is_closure);
 
   if (!ffi->creates_frame)
     return;
 
-  tree closure_rec_type = build_frame_type (this);
-  gcc_assert(COMPLETE_TYPE_P (closure_rec_type));
+  tree type = build_frame_type (this);
+  gcc_assert(COMPLETE_TYPE_P (type));
 
-  tree closure_ptr = build_local_var (build_pointer_type (closure_rec_type));
-  DECL_NAME (closure_ptr) = get_identifier ("__closptr");
-  DECL_IGNORED_P (closure_ptr) = 0;
+  tree decl, decl_ref;
 
-  tree arg = convert (Type::tsize_t->toCtype(),
-		      TYPE_SIZE_UNIT (closure_rec_type));
+  if (ffi->is_closure)
+    {
+      decl = build_local_var (build_pointer_type (type));
+      DECL_NAME (decl) = get_identifier ("__closptr");
+      decl_ref = build_deref (decl);
 
-  DECL_INITIAL (closure_ptr) =
-    build_nop (TREE_TYPE (closure_ptr),
-	       build_libcall (LIBCALL_ALLOCMEMORY, 1, &arg));
-  irs->expandDecl (closure_ptr);
+      // Allocate memory for closure.
+      tree arg = convert (Type::tsize_t->toCtype(),
+			  TYPE_SIZE_UNIT (type));
+      tree init = build_libcall (LIBCALL_ALLOCMEMORY, 1, &arg);
 
-  // Set the first entry to the parent closure, if any
-  tree chain_field = component_ref (build_deref (closure_ptr),
-				    TYPE_FIELDS (closure_rec_type));
+      DECL_INITIAL (decl) = build_nop (TREE_TYPE (decl), init);
+    }
+  else
+    {
+      decl = build_local_var (type);
+      DECL_NAME (decl) = get_identifier ("__frame");
+      decl_ref = decl;
+    }
+
+  DECL_IGNORED_P (decl) = 0;
+  expand_decl (decl);
+
+  // Set the first entry to the parent closure/frame, if any.
+  tree chain_field = component_ref (decl_ref, TYPE_FIELDS (type));
   tree chain_expr = vmodify_expr (chain_field, irs->sthis);
   irs->addExp (chain_expr);
 
-  // Copy parameters that are referenced nonlocally
+  // Copy parameters that are referenced nonlocally.
   for (size_t i = 0; i < closureVars.dim; i++)
     {
       VarDeclaration *v = closureVars[i];
@@ -1208,12 +1222,15 @@ FuncDeclaration::buildClosure (IRState *irs)
 
       Symbol *vsym = v->toSymbol();
 
-      tree closure_field = component_ref (build_deref (closure_ptr), vsym->SframeField);
-      tree closure_expr = vmodify_expr (closure_field, vsym->Stree);
-      irs->addExp (closure_expr);
+      tree field = component_ref (decl_ref, vsym->SframeField);
+      tree expr = vmodify_expr (field, vsym->Stree);
+      irs->addExp (expr);
     }
 
-  irs->sthis = closure_ptr;
+  if (!ffi->is_closure)
+    decl = build_address (decl);
+
+  irs->sthis = decl;
 }
 
 void

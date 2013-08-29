@@ -204,13 +204,13 @@ maybe_temporary_var (tree exp, tree *out_var)
 // Emit an INIT_EXPR for decl DECL.
 
 void
-IRState::expandDecl (tree decl)
+expand_decl (tree decl)
 {
-  // nothing, pushdecl will add decl to a BIND_EXPR
+  // Nothing, pushdecl will add decl to a BIND_EXPR
   if (DECL_INITIAL (decl))
     {
       tree exp = build_vinit (decl, DECL_INITIAL (decl));
-      addExp (exp);
+      cirstate->addExp (exp);
       DECL_INITIAL (decl) = NULL_TREE;
     }
 }
@@ -680,17 +680,17 @@ convert_for_condition (tree expr, Type *type)
 // EXP must be a static array or dynamic array.
 
 tree
-IRState::toDArray (Expression *exp)
+d_array_convert (Expression *exp)
 {
   TY ty = exp->type->toBasetype()->ty;
 
-  if (ty == Tsarray)
+  if (ty == Tarray)
+    return exp->toElem (cirstate);
+  else if (ty == Tsarray)
     {
       Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
-      return convert_expr (exp->toElem (this), exp->type, totype);
+      return convert_expr (exp->toElem (cirstate), exp->type, totype);
     }
-  else if (ty == Tarray)
-    return exp->toElem (this);
 
   // Invalid type passed.
   gcc_unreachable();
@@ -1295,12 +1295,12 @@ build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *
   layout_type (rec_type);
   if (type)
     {
-      /* This is needed so that maybeExpandSpecialCall knows to
-	 split dynamic array varargs. */
+      // This is needed so that maybe_expand_builtin knows to split
+      // dynamic array varargs.
       TYPE_LANG_SPECIFIC (rec_type) = build_d_type_lang_specific (type);
 
-      /* build_type_decl will try to declare it as top-level type
-	 which can break debugging info for element types. */
+      // Build_type_decl will try to declare it as top-level type which can
+      // break debugging info for element types.
       tree stub_decl = build_decl (BUILTINS_LOCATION, TYPE_DECL,
 				   get_identifier (type->toChars()), rec_type);
       TYPE_STUB_DECL (rec_type) = stub_decl;
@@ -1885,56 +1885,6 @@ array_bounds_check (void)
   return false;
 }
 
-void
-IRState::doArraySet (tree in_ptr, tree in_value, tree in_count)
-{
-  startBindings();
-
-  tree count = build_local_var (size_type_node);
-  DECL_INITIAL (count) = in_count;
-  expandDecl (count);
-
-  tree ptr = build_local_var (TREE_TYPE (in_ptr));
-  DECL_INITIAL (ptr) = in_ptr;
-  expandDecl (ptr);
-
-  tree ptr_type = TREE_TYPE (ptr);
-  tree count_type = TREE_TYPE (count);
-
-  tree value = NULL_TREE;
-
-  if (!d_has_side_effects (in_value))
-    value = in_value;
-  else
-    {
-      value = build_local_var (TREE_TYPE (in_value));
-      DECL_INITIAL (value) = in_value;
-      expandDecl (value);
-    }
-
-  startLoop (NULL);
-  continueHere();
-  exitIfFalse (build2 (NE_EXPR, boolean_type_node,
-		       d_convert (TREE_TYPE (count), integer_zero_node), count));
-
-  addExp (vmodify_expr (build_deref (ptr), value));
-  addExp (vmodify_expr (ptr, build_offset (ptr, TYPE_SIZE_UNIT (TREE_TYPE (ptr_type)))));
-  addExp (vmodify_expr (count, build2 (MINUS_EXPR, count_type, count,
-				       d_convert (count_type, integer_one_node))));
-
-  endLoop();
-  endBindings();
-}
-
-// Create a tree node to set multiple elements to a single value
-tree
-IRState::arraySetExpr (tree ptr, tree value, tree count)
-{
-  pushStatementList();
-  doArraySet (ptr, value, count);
-  return popStatementList();
-}
-
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.
 
 tree
@@ -2029,122 +1979,36 @@ call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee)
   return true;
 }
 
-// Entry point for call routines.  Extracts the callee, object,
-// and function type from expression EXPR, passing down ARGUMENTS.
+// Entry point for call routines.  Builds a function call to FD.
+// OBJECT is the 'this' reference passed and ARGS are the arguments to FD.
 
 tree
-IRState::call (Expression *expr, Expressions *arguments)
+IRState::call (FuncDeclaration *fd, tree object, Expressions *args)
 {
-  // Calls to delegates can sometimes look like this:
-  if (expr->op == TOKcomma)
-    {
-      CommaExp *ce = (CommaExp *) expr;
-      expr = ce->e2;
-
-      VarExp *ve;
-      gcc_assert (ce->e2->op == TOKvar);
-      ve = (VarExp *) ce->e2;
-      gcc_assert (ve->var->isFuncDeclaration() && !ve->var->needThis());
-    }
-
-  Type *t = expr->type->toBasetype();
-  TypeFunction *tf = NULL;
-  tree callee = expr->toElem (this);
-  tree object = NULL_TREE;
-
-  if (D_METHOD_CALL_EXPR (callee))
-    {
-      /* This could be a delegate expression (TY == Tdelegate), but not
-	 actually a delegate variable. */
-      // %% Is this ever not a DotVarExp ?
-      if (expr->op == TOKdotvar)
-	{
-	  /* This gets the true function type, the latter way can sometimes
-	     be incorrect. Example: ref functions in D2. */
-	  tf = get_function_type (((DotVarExp *) expr)->var->type);
-	}
-      else
-	tf = get_function_type (t);
-
-      extract_from_method_call (callee, callee, object);
-    }
-  else if (t->ty == Tdelegate)
-    {
-      tf = (TypeFunction *) ((TypeDelegate *) t)->next;
-      callee = maybe_make_temp (callee);
-      object = delegate_object (callee);
-      callee = delegate_method (callee);
-    }
-  else if (expr->op == TOKvar)
-    {
-      FuncDeclaration *fd = ((VarExp *) expr)->var->isFuncDeclaration();
-      gcc_assert (fd);
-      tf = (TypeFunction *) fd->type;
-      if (fd->isNested())
-	{
-	  if (call_by_alias_p (func, fd))
-	    {
-	      // Re-evaluate symbol storage treating 'fd' as public.
-	      setup_symbol_storage (fd, callee, true);
-	    }
-	  object = get_frame_for_symbol (this->func, fd);
-	}
-      else if (fd->needThis())
-	{
-	  expr->error ("need 'this' to access member %s", fd->toChars());
-	  object = d_null_pointer; // continue processing...
-	}
-    }
-  else
-    {
-      tf = get_function_type (t);
-    }
-  return call (tf, callee, object, arguments);
+  return call (get_function_type (fd->type),
+	       build_address (fd->toSymbol()->Stree), object, args);
 }
 
-// Like above, but is assumed to be a direct call to FUNC_DECL.
-// ARGS are the arguments passed.
-
-tree
-IRState::call (FuncDeclaration *func_decl, Expressions *args)
-{
-  // Otherwise need to copy code from above
-  gcc_assert (!func_decl->isNested());
-
-  return call (get_function_type (func_decl->type),
-	       func_decl->toSymbol()->Stree, NULL_TREE, args);
-}
-
-// Like above, but FUNC_DECL is a nested function, method, delegate or lambda.
-// OBJECT is the 'this' reference passed and ARGS are the arguments passed.
-
-tree
-IRState::call (FuncDeclaration *func_decl, tree object, Expressions *args)
-{
-  return call (get_function_type (func_decl->type),
-	       build_address (func_decl->toSymbol()->Stree), object, args);
-}
-
-// Builds a CALL_EXPR of type FUNC_TYPE to CALLABLE. OBJECT holds the 'this' pointer,
+// Builds a CALL_EXPR of type TF to CALLABLE. OBJECT holds the 'this' pointer,
 // ARGUMENTS are evaluated in left to right order, saved and promoted before passing.
 
 tree
-IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions *arguments)
+IRState::call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
 {
-  tree func_type_node = TREE_TYPE (callable);
+  tree ctype = TREE_TYPE (callable);
   tree actual_callee = callable;
   tree saved_args = NULL_TREE;
 
   tree arg_list = NULL_TREE;
 
-  if (POINTER_TYPE_P (func_type_node))
-    func_type_node = TREE_TYPE (func_type_node);
+  if (POINTER_TYPE_P (ctype))
+    ctype = TREE_TYPE (ctype);
   else
     actual_callee = build_address (callable);
 
-  gcc_assert (function_type_p (func_type_node));
-  gcc_assert (func_type != NULL);
-  gcc_assert (func_type->ty == Tfunction);
+  gcc_assert (function_type_p (ctype));
+  gcc_assert (tf != NULL);
+  gcc_assert (tf->ty == Tfunction);
 
   // Evaluate the callee before calling it.
   if (TREE_SIDE_EFFECTS (actual_callee))
@@ -2153,9 +2017,9 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
       saved_args = actual_callee;
     }
 
-  bool is_d_vararg = func_type->varargs == 1 && func_type->linkage == LINKd;
+  bool is_d_vararg = tf->varargs == 1 && tf->linkage == LINKd;
 
-  if (TREE_CODE (func_type_node) == FUNCTION_TYPE)
+  if (TREE_CODE (ctype) == FUNCTION_TYPE)
     {
       if (object != NULL_TREE)
 	gcc_unreachable();
@@ -2166,7 +2030,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
 	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
-	  return error_mark (func_type);
+	  return error_mark (tf);
 	}
 
       // Probably an internal error
@@ -2177,7 +2041,8 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
   if (object != NULL_TREE)
     arg_list = build_tree_list (NULL_TREE, object);
 
-  Parameters *formal_args = func_type->parameters; // can be NULL for genCfunc decls
+  // tf->parameters can be NULL for genCfunc decls
+  Parameters *formal_args = tf->parameters;
   size_t n_formal_args = formal_args ? (int) Parameter::dim (formal_args) : 0;
   size_t n_actual_args = arguments ? arguments->dim : 0;
   size_t fi = 0;
@@ -2221,7 +2086,7 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
 	}
       /* Evaluate the argument before passing to the function.
 	 Needed for left to right evaluation.  */
-      if (func_type->linkage == LINKd && TREE_SIDE_EFFECTS (arg_tree))
+      if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (arg_tree))
 	{
 	  arg_tree = maybe_make_temp (arg_tree);
 	  saved_args = maybe_vcompound_expr (saved_args, arg_tree);
@@ -2230,8 +2095,8 @@ IRState::call (TypeFunction *func_type, tree callable, tree object, Expressions 
       arg_list = chainon (arg_list, build_tree_list (0, arg_tree));
     }
 
-  tree result = d_build_call (TREE_TYPE (func_type_node), actual_callee, arg_list);
-  result = maybeExpandSpecialCall (result);
+  tree result = d_build_call (TREE_TYPE (ctype), actual_callee, arg_list);
+  result = maybe_expand_builtin (result);
 
   return maybe_compound_expr (saved_args, result);
 }
@@ -2811,7 +2676,7 @@ d_build_call_nary (tree callee, int n_args, ...)
 // others require a little extra work around them.
 
 tree
-IRState::maybeExpandSpecialCall (tree call_exp)
+maybe_expand_builtin (tree call_exp)
 {
   // More code duplication from C
   CallExpr ce (call_exp);
@@ -3067,11 +2932,11 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 // Returns typeinfo reference for type T.
 
 tree
-IRState::typeinfoReference (Type *t)
+build_typeinfo (Type *t)
 {
-  tree ti_ref = t->getInternalTypeInfo (NULL)->toElem (this);
-  gcc_assert (POINTER_TYPE_P (TREE_TYPE (ti_ref)));
-  return ti_ref;
+  tree tinfo = t->getInternalTypeInfo (NULL)->toElem (cirstate);
+  gcc_assert (POINTER_TYPE_P (TREE_TYPE (tinfo)));
+  return tinfo;
 }
 
 // Checks if DECL is an intrinsic or runtime library function that
@@ -3506,12 +3371,11 @@ find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
   return NULL_TREE;
 }
 
-// Return the outer class/struct 'this' value.
-// This is here mostly due to removing duplicate code,
-// and clean implementation purposes.
+// Retrieve the outer class/struct 'this' value of DECL from the function FD
+// where E is the expression requiring 'this'.
 
 tree
-IRState::getVThis (Dsymbol *decl, Expression *e)
+build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
 {
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
@@ -3526,25 +3390,23 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 
       if (cdo)
 	{
-	  vthis_value = find_this_tree (this->func, cdo);
+	  vthis_value = find_this_tree (fd, cdo);
 	  if (vthis_value == NULL_TREE)
 	    e->error ("outer class %s 'this' needed to 'new' nested class %s",
 		      cdo->toChars(), cd->toChars());
 	}
       else if (fdo)
 	{
-	  /* If a class nested in a function has no methods
-	     and there are no other nested functions,
-	     lower_nested_functions is never called and any
-	     STATIC_CHAIN_EXPR created here will never be
-	     translated. Use a null pointer for the link in
-	     this case. */
+	  // If a class nested in a function has no methods and there
+	  // are no other nested functions, any static chain created
+	  // here will never be translated.  Use a null pointer for the
+	  // link in this case.
 	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = get_frame_for_symbol (this->func, cd);
+	    vthis_value = get_frame_for_symbol (fd, cd);
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
-	    vthis_value = get_decl_tree (fdo->vthis, this->func);
+	    vthis_value = get_decl_tree (fdo->vthis, fd);
 	  else
 	    vthis_value = d_null_pointer;
 	}
@@ -3559,7 +3421,7 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 
       if (cdo)
 	{
-	  vthis_value = find_this_tree (this->func, cdo);
+	  vthis_value = find_this_tree (fd, cdo);
 	  if (vthis_value == NULL_TREE)
 	    e->error ("outer class %s 'this' needed to create nested struct %s",
 		      cdo->toChars(), sd->toChars());
@@ -3569,7 +3431,7 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
 	  FuncFrameInfo *ffo = get_frameinfo (fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = get_frame_for_symbol (this->func, sd);
+	    vthis_value = get_frame_for_symbol (fd, sd);
 	  else
 	    vthis_value = d_null_pointer;
 	}
@@ -3578,53 +3440,6 @@ IRState::getVThis (Dsymbol *decl, Expression *e)
     }
 
   return vthis_value;
-}
-
-// Build static chain decl for FUNC to be passed to nested functions in D.
-
-void
-IRState::buildChain (FuncDeclaration *func)
-{
-  FuncFrameInfo *ffi = get_frameinfo (func);
-
-  if (ffi->is_closure)
-    {
-      // Build closure pointer, which is initialised on heap.
-      func->buildClosure (this);
-      return;
-    }
-
-  if (!ffi->creates_frame)
-    return;
-
-  tree frame_rec_type = build_frame_type (func);
-  gcc_assert(COMPLETE_TYPE_P (frame_rec_type));
-
-  tree frame_decl = build_local_var (frame_rec_type);
-  DECL_NAME (frame_decl) = get_identifier ("__frame");
-  DECL_IGNORED_P (frame_decl) = 0;
-  expandDecl (frame_decl);
-
-  // set the first entry to the parent frame, if any
-  tree chain_field = component_ref (frame_decl, TYPE_FIELDS (frame_rec_type));
-  tree chain_expr = vmodify_expr (chain_field, this->sthis);
-  addExp (chain_expr);
-
-  // copy parameters that are referenced nonlocally
-  for (size_t i = 0; i < func->closureVars.dim; i++)
-    {
-      VarDeclaration *v = func->closureVars[i];
-      if (!v->isParameter())
-	continue;
-
-      Symbol *vsym = v->toSymbol();
-
-      tree frame_field = component_ref (frame_decl, vsym->SframeField);
-      tree frame_expr = vmodify_expr (frame_field, vsym->Stree);
-      addExp (frame_expr);
-    }
-
-  this->sthis = build_address (frame_decl);
 }
 
 tree

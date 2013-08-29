@@ -197,6 +197,9 @@ struct IRBase : Object
   void continueLoop (Identifier *ident);
   void exitLoop (Identifier *ident);
 
+  // ** Array initialiser loop expression.
+  tree doArraySet (tree ptr, tree value, tree count);
+
   // ** Goto/Label statement evaluation
   void doJump (Statement *stmt, tree t_label);
   void pushLabel (LabelDsymbol *l);

@@ -806,9 +806,8 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
       gcc_unreachable();
     }
 
-  static IRState irs;
   TypeFunction *tf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (callee));
-  result = irs.call (tf, callee, NULL, arguments);
+  result = cirstate->call (tf, callee, NULL, arguments);
   result = fold (result);
 
   // Special case bsr.
@@ -847,10 +846,8 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       TypeFunction *tf = (TypeFunction *) fd->type;
       tree callee = NULL_TREE;
 
-      // cirstate is not available.
-      static IRState irs;
       set_input_location (loc);
-      tree result = irs.call (tf, callee, NULL, arguments);
+      tree result = cirstate->call (tf, callee, NULL, arguments);
       result = fold (result);
 
       // Builtin should be successfully evaluated.
