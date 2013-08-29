@@ -1,3 +1,7 @@
+2013-08-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-spec.c (lang_specific_spec_functions): Remove.
+
 2013-08-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::doArraySet): Rename to IRBase::doArraySet.
