@@ -832,63 +832,14 @@ EnumDeclaration::toInitializer (void)
 }
 
 
-/* Create debug information for a ClassDeclaration's inheritance tree.
-   Interfaces are not included. */
-static tree
-binfo_for (tree tgt_binfo, ClassDeclaration *cls)
-{
-  tree binfo = make_tree_binfo (1);
-  // Want RECORD_TYPE, not REFERENCE_TYPE
-  TREE_TYPE (binfo) = TREE_TYPE (cls->type->toCtype());
-  BINFO_INHERITANCE_CHAIN (binfo) = tgt_binfo;
-  BINFO_OFFSET (binfo) = integer_zero_node;
-
-  if (cls->baseClass)
-    BINFO_BASE_APPEND (binfo, binfo_for (binfo, cls->baseClass));
-
-  return binfo;
-}
-
-/* Create debug information for an InterfaceDeclaration's inheritance
-   tree.  In order to access all inherited methods in the debugger,
-   the entire tree must be described.
-
-   This function makes assumptions about inherface layout. */
-static tree
-intfc_binfo_for (tree tgt_binfo, ClassDeclaration *iface, unsigned& inout_offset)
-{
-  tree binfo = make_tree_binfo (iface->baseclasses->dim);
-
-  // Want RECORD_TYPE, not REFERENCE_TYPE
-  TREE_TYPE (binfo) = TREE_TYPE (iface->type->toCtype());
-  BINFO_INHERITANCE_CHAIN (binfo) = tgt_binfo;
-  BINFO_OFFSET (binfo) = size_int (inout_offset * Target::ptrsize);
-
-  for (size_t i = 0; i < iface->baseclasses->dim; i++, inout_offset++)
-    {
-      BaseClass *bc = iface->baseclasses->tdata()[i];
-      BINFO_BASE_APPEND (binfo, intfc_binfo_for (binfo, bc->base, inout_offset));
-    }
-
-  return binfo;
-}
+//
 
 void
 ClassDeclaration::toDebug (void)
 {
-  /* Used to create BINFO even if debugging was off.  This was needed to keep
-     references to inherited types. */
   tree rec_type = TREE_TYPE (type->toCtype());
-
-  if (!isInterfaceDeclaration())
-    TYPE_BINFO (rec_type) = binfo_for (NULL_TREE, this);
-  else
-    {
-      unsigned offset = 0;
-      TYPE_BINFO (rec_type) = intfc_binfo_for (NULL_TREE, this, offset);
-    }
-
   build_type_decl (rec_type, this);
+  rest_of_type_compilation (rec_type, 1);
 }
 
 void

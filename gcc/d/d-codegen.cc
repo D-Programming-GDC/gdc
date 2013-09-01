@@ -1139,6 +1139,49 @@ unhandled_arrayop_p (BinExp *exp)
   return false;
 }
 
+// Create BINFO for a ClassDeclaration's inheritance tree.
+// Interfaces are not included.
+
+tree
+build_class_binfo (tree super, ClassDeclaration *cd)
+{
+  tree binfo = make_tree_binfo (1);
+  // Want RECORD_TYPE, not REFERENCE_TYPE
+  BINFO_TYPE (binfo) = TREE_TYPE (cd->type->toCtype());
+  BINFO_INHERITANCE_CHAIN (binfo) = super;
+  BINFO_OFFSET (binfo) = integer_zero_node;
+
+  if (cd->baseClass)
+    BINFO_BASE_APPEND (binfo, build_class_binfo (binfo, cd->baseClass));
+
+  return binfo;
+}
+
+// Create BINFO for an InterfaceDeclaration's inheritance tree.
+// In order to access all inherited methods in the debugger,
+// the entire tree must be described.
+// This function makes assumptions about interface layout.
+
+tree
+build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
+{
+  tree binfo = make_tree_binfo (cd->baseclasses->dim);
+
+  // Want RECORD_TYPE, not REFERENCE_TYPE
+  BINFO_TYPE (binfo) = TREE_TYPE (cd->type->toCtype());
+  BINFO_INHERITANCE_CHAIN (binfo) = super;
+  BINFO_OFFSET (binfo) = size_int (offset * Target::ptrsize);
+  BINFO_VIRTUAL_P (binfo) = 1;
+
+  for (size_t i = 0; i < cd->baseclasses->dim; i++, offset++)
+    {
+      BaseClass *bc = cd->baseclasses->tdata()[i];
+      BINFO_BASE_APPEND (binfo, build_interface_binfo (binfo, bc->base, offset));
+    }
+
+  return binfo;
+}
+
 // Returns the .funcptr component from the D delegate EXP.
 
 tree

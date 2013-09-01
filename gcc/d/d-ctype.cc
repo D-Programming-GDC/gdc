@@ -610,7 +610,7 @@ TypeClass::toCtype (void)
 	     the type during this call. */
 	  rec_type = make_node (RECORD_TYPE);
 	  ctype = build_reference_type (rec_type);
-	  d_keep (ctype); // because BINFO moved out to toDebug
+	  d_keep (ctype);
 
 	  obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
 
@@ -621,12 +621,6 @@ TypeClass::toCtype (void)
 
 	  // Most of this silly code is just to produce correct debugging information.
 
-	  /* gdb apparently expects the vtable field to be named
-	     "_vptr$...." (stabsread.c) Otherwise, the debugger gives
-	     lots of annoying error messages.  C++ appends the class
-	     name of the first base witht that field after the '$'. */
-	  /* update: annoying messages might not appear anymore after making
-	     other changes */
 	  // Add the virtual table pointer
 	  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
 				  get_identifier ("_vptr$"), d_vtbl_ptr_type_node);
@@ -642,7 +636,7 @@ TypeClass::toCtype (void)
 	      vfield = decl;
 	    }
 	  DECL_VIRTUAL_P (vfield) = 1;
-	  TYPE_VFIELD (rec_type) = vfield; // This only seems to affect debug info
+	  TYPE_VFIELD (rec_type) = vfield;
 	  TREE_ADDRESSABLE (rec_type) = 1;
 
 	  if (!sym->isInterfaceDeclaration())
@@ -650,7 +644,6 @@ TypeClass::toCtype (void)
 	      DECL_FCONTEXT (vfield) = obj_rec_type;
 
 	      // Add the monitor
-	      // %% target type
 	      decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
 				 get_identifier ("_monitor"), ptr_type_node);
 	      DECL_FCONTEXT (decl) = obj_rec_type;
@@ -670,6 +663,16 @@ TypeClass::toCtype (void)
 	    }
 
 	  agg_layout.finish (sym->userAttributes);
+
+	  // Create BINFO even if debugging is off.  This is needed to keep
+	  // references to inherited types.
+	  if (!sym->isInterfaceDeclaration())
+	    TYPE_BINFO (rec_type) = build_class_binfo (NULL_TREE, sym);
+	  else
+	    {
+	      unsigned offset = 0;
+	      TYPE_BINFO (rec_type) = build_interface_binfo (NULL_TREE, sym, offset);
+	    }
 
 	  build_type_decl (rec_type, sym);
 	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);

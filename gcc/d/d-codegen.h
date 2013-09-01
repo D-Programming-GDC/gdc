@@ -252,6 +252,10 @@ extern bool array_bounds_check (void);
 extern tree d_checked_index (Loc loc, tree index, tree upr, bool inclusive);
 extern tree d_bounds_condition (tree index, tree upr, bool inclusive);
 
+// Classes
+extern tree build_class_binfo (tree super, ClassDeclaration *cd);
+extern tree build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset);
+
 // Delegates
 extern tree delegate_method (tree exp);
 extern tree delegate_object (tree exp);

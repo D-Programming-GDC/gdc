@@ -1,3 +1,9 @@
+2013-09-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(binfo_for): Rename to build_class_binfo.
+	(intfc_binfo_for): Rename to build_interface_binfo.
+	(ClassDeclaration::toDebug): Move binfo generation into toCtype.
+
 2013-08-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-spec.c (lang_specific_spec_functions): Remove.
