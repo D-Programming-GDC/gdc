@@ -273,7 +273,7 @@ IRBase::startScope (void)
 void
 IRBase::endScope (void)
 {
-  unsigned *p_count = currentScope();
+  unsigned *p_count = this->currentScope();
   while (*p_count)
     this->endBindings();
 
@@ -286,29 +286,30 @@ IRBase::startBindings (void)
 {
   tree block;
 
-  pushlevel (0);
+  push_binding_level();
   block = make_node (BLOCK);
-  set_block (block);
+  current_binding_level->this_block = block;
 
   this->pushStatementList();
 
-  ++(*currentScope());
+  ++(*this->currentScope());
 }
 
 void
 IRBase::endBindings (void)
 {
-  tree block = poplevel (1,0,0);
+  tree block = pop_binding_level (1, 0);
+  TREE_USED (block) = 1;
 
   tree body = this->popStatementList();
   this->addExp (build3 (BIND_EXPR, void_type_node,
 			BLOCK_VARS (block), body, block));
 
-  // Because we used set_block, the popped level/block is not automatically recorded
-  insert_block (block);
+  // The popped level/block is not automatically recorded
+  current_binding_level->blocks = block_chainon (current_binding_level->blocks, block);
 
-  --(*currentScope());
-  gcc_assert (*(int *) currentScope() >= 0);
+  --(*this->currentScope());
+  gcc_assert (*(int *) this->currentScope() >= 0);
 }
 
 

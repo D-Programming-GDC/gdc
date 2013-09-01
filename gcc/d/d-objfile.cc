@@ -1002,7 +1002,7 @@ FuncDeclaration::toObjFile (int)
 
   rest_of_decl_compilation (fndecl, 1, 0);
   DECL_INITIAL (fndecl) = error_mark_node;
-  pushlevel (0);
+  push_binding_level();
 
   irs->pushStatementList();
   irs->startScope();
@@ -1104,7 +1104,7 @@ FuncDeclaration::toObjFile (int)
       append_to_statement_list_force (ret, &body);
     }
 
-  tree block = poplevel (1, 0, 1);
+  tree block = pop_binding_level (1, 1);
   DECL_INITIAL (fndecl) = block;
   BLOCK_SUPERCONTEXT (DECL_INITIAL (fndecl)) = fndecl;
 

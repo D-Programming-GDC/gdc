@@ -105,7 +105,14 @@ const struct attribute_spec d_attribute_table[] =
 #define LANG_HOOKS_EH_RUNTIME_TYPE		d_build_eh_type_type
 
 /* Lang Hooks for decls */
+#undef LANG_HOOKS_PUSHDECL
+#undef LANG_HOOKS_GETDECLS
+#undef LANG_HOOKS_GLOBAL_BINDINGS_P
 #undef LANG_HOOKS_WRITE_GLOBALS
+
+#define LANG_HOOKS_PUSHDECL			d_pushdecl
+#define LANG_HOOKS_GETDECLS			d_getdecls
+#define LANG_HOOKS_GLOBAL_BINDINGS_P		d_global_bindings_p
 #define LANG_HOOKS_WRITE_GLOBALS		d_write_global_declarations
 
 /* Lang Hooks for types */
@@ -1352,7 +1359,6 @@ d_type_promotes_to (tree type)
 struct binding_level *current_binding_level;
 struct binding_level *global_binding_level;
 
-
 static binding_level *
 alloc_binding_level (void)
 {
@@ -1364,7 +1370,7 @@ alloc_binding_level (void)
    otherwise support the backend. */
 
 void
-pushlevel (int)
+push_binding_level (void)
 {
   binding_level *new_level = alloc_binding_level();
   new_level->level_chain = current_binding_level;
@@ -1372,15 +1378,13 @@ pushlevel (int)
 }
 
 tree
-poplevel (int keep, int reverse, int routinebody)
+pop_binding_level (int keep, int routinebody)
 {
   binding_level *level = current_binding_level;
   tree block, decls;
 
   current_binding_level = level->level_chain;
   decls = level->names;
-  if (reverse)
-    decls = nreverse (decls);
 
   if (level->this_block)
     block = level->this_block;
@@ -1393,9 +1397,6 @@ poplevel (int keep, int reverse, int routinebody)
     {
       BLOCK_VARS (block) = routinebody ? NULL_TREE : decls;
       BLOCK_SUBBLOCKS (block) = level->blocks;
-      // %% need this for when insert_block is called by backend... or make
-      // insert_block do it's work elsewere
-      // %% pascal does: in each subblock, record that this is the superiod..
     }
   /* In each subblock, record that this is its superior. */
   for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
@@ -1410,8 +1411,6 @@ poplevel (int keep, int reverse, int routinebody)
       // call and not and earlier set_block, insert it into the parent's
       // list of blocks.  Blocks created with set_block have to be
       // inserted with insert_block.
-      //
-      // For D, currently always using set_block/insert_block
       if (!level->this_block)
 	current_binding_level->blocks = chainon (current_binding_level->blocks, block);
     }
@@ -1451,47 +1450,37 @@ poplevel (int keep, int reverse, int routinebody)
 // This is called by the backend before parsing.  Need to make this do
 // something or lang_hooks.clear_binding_stack (lhd_clear_binding_stack)
 // loops forever.
-bool
-global_bindings_p (void)
+
+static bool
+d_global_bindings_p (void)
 {
-  return current_binding_level == global_binding_level || !global_binding_level;
+  if (current_binding_level == global_binding_level)
+    return true;
+
+  return !global_binding_level;
 }
 
 void
 init_global_binding_level (void)
 {
-  current_binding_level = global_binding_level = alloc_binding_level();
-}
-
-
-void
-insert_block (tree block)
-{
-  TREE_USED (block) = 1;
-  current_binding_level->blocks = block_chainon (current_binding_level->blocks, block);
-}
-
-void
-set_block (tree block)
-{
-  current_binding_level->this_block = block;
+  global_binding_level = alloc_binding_level();
+  current_binding_level = global_binding_level;
 }
 
 tree
-pushdecl (tree decl)
+d_pushdecl (tree decl)
 {
-  // %% Pascal: if not a local external routine decl doesn't consitite nesting
-
-  // %% probably  should be cur_irs->getDeclContext()
-  // %% should only be for variables OR, should also use TRANSLATION_UNIT for toplevel..
+  // Should only be for variables OR, should also use TRANSLATION_UNIT for toplevel...
+  // current_function_decl could be NULL_TREE (top level)...
   if (DECL_CONTEXT (decl) == NULL_TREE)
-    DECL_CONTEXT (decl) = current_function_decl; // could be NULL_TREE (top level) .. hmm. // hm.m.
+    DECL_CONTEXT (decl) = current_function_decl;
 
-  /* Put decls on list in reverse order. We will reverse them later if necessary. */
+  // Put decls on list in reverse order. We will reverse them later if necessary.
   TREE_CHAIN (decl) = current_binding_level->names;
   current_binding_level->names = decl;
   if (!TREE_CHAIN (decl))
     current_binding_level->names_end = decl;
+
   return decl;
 }
 
@@ -1503,13 +1492,15 @@ set_decl_binding_chain (tree decl_chain)
 }
 
 
-// Supports dbx and stabs
-tree
-getdecls (void)
+// Return the list of declarations of the current level.
+// Supports dbx and stabs.
+
+static tree
+d_getdecls (void)
 {
   if (current_binding_level)
     return current_binding_level->names;
-  else
+
     return NULL_TREE;
 }
 

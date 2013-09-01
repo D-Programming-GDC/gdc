@@ -182,9 +182,9 @@ extern void add_import_paths (bool stdinc);
 extern void add_phobos_versyms (void);
 
 /* In d-lang.cc */
-extern tree pushdecl (tree);
-extern void pushlevel (int);
-extern tree poplevel (int, int, int);
+extern tree d_pushdecl (tree);
+extern void push_binding_level (void);
+extern tree pop_binding_level (int, int);
 
 extern void init_global_binding_level (void);
 extern void set_decl_binding_chain (tree decl_chain);
@@ -197,10 +197,7 @@ extern void d_init_exceptions (void);
 extern void d_keep (tree t);
 extern void d_free (tree t);
 
-extern bool global_bindings_p (void);
-extern void insert_block (tree);
 extern void set_block (tree);
-extern tree getdecls (void);
 
 
 /* In d-builtins.c */

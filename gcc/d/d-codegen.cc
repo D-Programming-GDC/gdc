@@ -88,7 +88,7 @@ IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
   tree var_decl = sym->Stree;
 
   gcc_assert (!TREE_STATIC (var_decl));
-  pushdecl (var_decl);
+  d_pushdecl (var_decl);
 
   if (TREE_CODE (var_decl) == CONST_DECL)
     return;
@@ -157,7 +157,7 @@ build_local_var (tree type)
   DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_IGNORED_P (decl) = 1;
-  pushdecl (decl);
+  d_pushdecl (decl);
 
   return decl;
 }
@@ -206,7 +206,7 @@ maybe_temporary_var (tree exp, tree *out_var)
 void
 expand_decl (tree decl)
 {
-  // Nothing, pushdecl will add decl to a BIND_EXPR
+  // Nothing, d_pushdecl will add decl to a BIND_EXPR
   if (DECL_INITIAL (decl))
     {
       tree exp = build_vinit (decl, DECL_INITIAL (decl));
