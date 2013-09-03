@@ -1775,7 +1775,7 @@ void_okay_p (tree t)
 // and ARG1. Perform relevant conversions needs for correct code operations.
 
 tree
-IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
+build_binary_op (tree_code code, tree type, tree arg0, tree arg1)
 {
   tree t0 = TREE_TYPE (arg0);
   tree t1 = TREE_TYPE (arg1);
@@ -1806,8 +1806,8 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
     }
   else if (INTEGRAL_TYPE_P (type) && (TYPE_UNSIGNED (type) != unsignedp))
     {
-      t = build2 (code, unsignedp ? d_unsigned_type (type) : d_signed_type (type),
-		  arg0, arg1);
+      tree inttype = unsignedp ? d_unsigned_type (type) : d_signed_type (type);
+      t = build2 (code, inttype, arg0, arg1);
     }
   else
     {
@@ -1828,7 +1828,7 @@ IRState::buildOp (tree_code code, tree type, tree arg0, tree arg1)
 // operands E1 and E2.
 
 tree
-IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *e2)
+IRState::buildAssignOp (tree_code code, Expression *e1, Expression *e2)
 {
   // Skip casts for lhs assignment.
   Expression *e1b = e1;
@@ -1856,15 +1856,15 @@ IRState::buildAssignOp (tree_code code, Type *type, Expression *e1, Expression *
 
   lhs = stabilize_reference (lhs);
 
-  tree rhs = buildOp (code, e1->type->toCtype(),
-		      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
+  tree rhs = build_binary_op (code, e1->type->toCtype(),
+			      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
 
   tree expr = modify_expr (lhs, convert_expr (rhs, e1->type, e1b->type));
 
   if (lexpr)
     expr = compound_expr (lexpr, expr);
 
-  return convert_expr (expr, e1b->type, type);
+  return expr;
 }
 
 

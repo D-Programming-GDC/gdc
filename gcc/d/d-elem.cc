@@ -414,8 +414,8 @@ XorExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (BIT_XOR_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (BIT_XOR_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -424,8 +424,8 @@ OrExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (BIT_IOR_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (BIT_IOR_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -434,8 +434,8 @@ AndExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (BIT_AND_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (BIT_AND_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -444,8 +444,8 @@ UshrExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (UNSIGNED_RSHIFT_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (UNSIGNED_RSHIFT_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -454,8 +454,8 @@ ShrExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (RSHIFT_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (RSHIFT_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -464,8 +464,8 @@ ShlExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (LSHIFT_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (LSHIFT_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -474,8 +474,8 @@ ModExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR,
-		       type->toCtype(), e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR,
+			  type->toCtype(), e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -484,8 +484,8 @@ DivExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR,
-		       type->toCtype(), e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR,
+			  type->toCtype(), e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -494,8 +494,8 @@ MulExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildOp (MULT_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (MULT_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -663,8 +663,8 @@ MinExp::toElem (IRState *irs)
     }
 
   // The front end has already taken care of pointer-int and pointer-pointer
-  return irs->buildOp (MINUS_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (MINUS_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -688,8 +688,8 @@ AddExp::toElem (IRState *irs)
     }
 
   // The front end has already taken care of (pointer + integer)
-  return irs->buildOp (PLUS_EXPR, type->toCtype(),
-		       e1->toElem (irs), e2->toElem (irs));
+  return build_binary_op (PLUS_EXPR, type->toCtype(),
+			  e1->toElem (irs), e2->toElem (irs));
 }
 
 elem *
@@ -698,7 +698,8 @@ XorAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (BIT_XOR_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (BIT_XOR_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -707,7 +708,8 @@ OrAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (BIT_IOR_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (BIT_IOR_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -716,7 +718,8 @@ AndAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (BIT_AND_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (BIT_AND_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -725,7 +728,8 @@ UshrAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (UNSIGNED_RSHIFT_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (UNSIGNED_RSHIFT_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -734,7 +738,8 @@ ShrAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (RSHIFT_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (RSHIFT_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -743,7 +748,8 @@ ShlAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (LSHIFT_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (LSHIFT_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -752,9 +758,9 @@ ModAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (e1->type->isfloating() ?
-			     FLOAT_MOD_EXPR : TRUNC_MOD_EXPR,
-			     type, e1, e2);
+  tree exp = irs->buildAssignOp (e1->type->isfloating() ?
+				 FLOAT_MOD_EXPR : TRUNC_MOD_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -763,9 +769,9 @@ DivAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (e1->type->isintegral() ?
-			     TRUNC_DIV_EXPR : RDIV_EXPR,
-			     type, e1, e2);
+  tree exp = irs->buildAssignOp (e1->type->isintegral() ?
+				 TRUNC_DIV_EXPR : RDIV_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -774,7 +780,8 @@ MulAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (MULT_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (MULT_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -886,7 +893,8 @@ MinAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (MINUS_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (MINUS_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *
@@ -895,7 +903,8 @@ AddAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  return irs->buildAssignOp (PLUS_EXPR, type, e1, e2);
+  tree exp = irs->buildAssignOp (PLUS_EXPR, e1, e2);
+  return convert_expr (exp, e1->type, type);
 }
 
 elem *

@@ -210,6 +210,7 @@ extern tree get_array_length (tree exp, Type *exp_type);
 extern tree void_okay_p (tree t);
 
 // Various expressions
+extern tree build_binary_op (enum tree_code code, tree type, tree arg0, tree arg1);
 extern tree build_array_index (tree ptr, tree index);
 extern tree build_offset_op (enum tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
@@ -428,8 +429,7 @@ struct IRState : IRBase
   void emitLocalVar (VarDeclaration *v, bool no_init);
 
   // ** Various expressions
-  static tree buildOp (enum tree_code code, tree type, tree arg0, tree arg1);
-  tree buildAssignOp (enum tree_code code, Type *type, Expression *e1, Expression *e2);
+  tree buildAssignOp (enum tree_code code, Expression *e1, Expression *e2);
 
   // ** Function calls
   tree call (FuncDeclaration *fd, tree object, Expressions *args);
