@@ -49,7 +49,7 @@ enum OutputStage
 
 struct FuncFrameInfo;
 typedef ArrayBase<struct Thunk> Thunks;
-typedef union tree_node dt_t;
+typedef tree_node dt_t;
 
 struct Symbol : Object
 {

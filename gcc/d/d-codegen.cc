@@ -1616,7 +1616,7 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
       else
 	{
 	  tree stype = vd->type->toCtype();
-	  enum machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
+	  machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
 
 	  if (vd->type->isintegral())
 	    {
@@ -1738,7 +1738,7 @@ build_array_index (tree ptr, tree index)
 // OP could be a plus or minus expression.
 
 tree
-build_offset_op (enum tree_code op, tree ptr, tree idx)
+build_offset_op (tree_code op, tree ptr, tree idx)
 {
   gcc_assert (op == MINUS_EXPR || op == PLUS_EXPR);
 
@@ -2726,7 +2726,7 @@ maybe_expand_builtin (tree call_exp)
   tree callee = ce.callee();
   tree op1 = NULL_TREE, op2 = NULL_TREE;
   tree exp = NULL_TREE, val;
-  enum tree_code code;
+  tree_code code;
 
   if (POINTER_TYPE_P (TREE_TYPE (callee)))
     callee = TREE_OPERAND (callee, 0);
@@ -3799,7 +3799,7 @@ needs_static_chain (FuncDeclaration *f)
 // Construct a WrappedExp, whose components are an EXP_NODE, which contains
 // a list of instructions in GCC to be passed through.
 
-WrappedExp::WrappedExp (Loc loc, enum TOK op, tree exp_node, Type *type)
+WrappedExp::WrappedExp (Loc loc, TOK op, tree exp_node, Type *type)
     : Expression (loc, op, sizeof (WrappedExp))
 {
   this->exp_node = exp_node;

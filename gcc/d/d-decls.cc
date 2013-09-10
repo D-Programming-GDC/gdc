@@ -97,7 +97,7 @@ VarDeclaration::toSymbol (void)
   if (!csym)
     {
       tree var_decl;
-      enum tree_code decl_kind;
+      tree_code decl_kind;
 
       // For field declaration, it is possible for toSymbol to be called
       // before the parent's toCtype()

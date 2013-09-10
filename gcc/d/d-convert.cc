@@ -26,7 +26,7 @@ static tree
 d_convert_basic (tree type, tree expr)
 {
   tree e = expr;
-  enum tree_code code = TREE_CODE (type);
+  tree_code code = TREE_CODE (type);
   const char *invalid_conv_diag;
   tree ret;
 
@@ -121,7 +121,7 @@ d_convert_basic (tree type, tree expr)
 tree
 convert (tree type, tree expr)
 {
-  enum tree_code code = TREE_CODE (type);
+  tree_code code = TREE_CODE (type);
   tree etype = TREE_TYPE (expr);
 
   switch (code)

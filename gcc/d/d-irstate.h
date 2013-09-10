@@ -89,7 +89,7 @@ struct Flow
 
 
 typedef ArrayBase<Label> Labels;
-typedef ArrayBase<struct Flow> Flows;
+typedef ArrayBase<Flow> Flows;
 
 
 

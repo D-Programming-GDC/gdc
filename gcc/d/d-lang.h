@@ -35,7 +35,7 @@ struct GTY(()) language_function
 /* The D front end types have not been integrated into the GCC garbage
    collection system.  Handle this by using the "skip" attribute. */
 struct Declaration;
-typedef struct Declaration *DeclarationGTYP;
+typedef Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
   DeclarationGTYP GTY((skip)) d_decl;
@@ -43,7 +43,7 @@ struct GTY(()) lang_decl
 
 /* The lang_type field is not set for every GCC type. */
 struct Type;
-typedef struct Type *TypeGTYP;
+typedef Type *TypeGTYP;
 struct GTY((variable_size)) lang_type
 {
   TypeGTYP GTY((skip)) d_type;
@@ -58,7 +58,7 @@ lang_tree_node
 {
   union tree_node GTY((tag ("0"),
 		       desc ("tree_node_structure (&%h)"))) generic;
-  struct lang_identifier GTY((tag ("1"))) identifier;
+  lang_identifier GTY((tag ("1"))) identifier;
 };
 
 extern GTY(()) tree d_eh_personality_decl;
@@ -104,11 +104,11 @@ struct GTY(()) binding_level
   tree this_block;
 
   /* The binding level this one is contained in. */
-  struct binding_level *level_chain;
+  binding_level *level_chain;
 };
 
-extern GTY(()) struct binding_level *current_binding_level;
-extern GTY(()) struct binding_level *global_binding_level;
+extern GTY(()) binding_level *current_binding_level;
+extern GTY(()) binding_level *global_binding_level;
 
 enum d_tree_index
 {
@@ -201,9 +201,9 @@ extern void set_block (tree);
 
 
 /* In d-builtins.c */
-extern const struct attribute_spec d_builtins_attribute_table[];
-extern const struct attribute_spec d_attribute_table[];
-extern const struct attribute_spec d_format_attribute_table[];
+extern const attribute_spec d_builtins_attribute_table[];
+extern const attribute_spec d_attribute_table[];
+extern const attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);
 void d_init_builtins (void);
 void d_register_builtin_type (tree, const char *);

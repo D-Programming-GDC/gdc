@@ -27,7 +27,7 @@
 
 // Return backend machine_mode for frontend mode MODE.
 
-static enum machine_mode
+static machine_mode
 machineMode (longdouble::Mode mode)
 {
   switch (mode)
@@ -61,8 +61,8 @@ longdouble::init (void)
     {
       real_properties& p = real_limits[i];
 
-      enum machine_mode mode = machineMode ((Mode) i);
-      const struct real_format& rf = *REAL_MODE_FORMAT (mode);
+      machine_mode mode = machineMode ((Mode) i);
+      const real_format& rf = *REAL_MODE_FORMAT (mode);
       char buf[128];
 
       /* .max:

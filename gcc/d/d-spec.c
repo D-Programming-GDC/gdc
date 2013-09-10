@@ -63,7 +63,7 @@
 #endif
 
 void
-lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+lang_specific_driver (cl_decoded_option **in_decoded_options,
 		      unsigned int *in_decoded_options_count,
 		      int *in_added_libraries)
 {
@@ -92,19 +92,19 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   int added = 0;
 
   /* The new argument list will be contained in this.  */
-  struct cl_decoded_option *new_decoded_options;
+  cl_decoded_option *new_decoded_options;
 
   /* "-lm" or "-lmath" if it appears on the command line.  */
-  const struct cl_decoded_option *saw_math = 0;
+  const cl_decoded_option *saw_math = 0;
 
   /* "-lpthread" if it appears on the command line.  */
-  const struct cl_decoded_option *saw_thread = 0;
+  const cl_decoded_option *saw_thread = 0;
 
   /* "-lrt" if it appears on the command line.  */
-  const struct cl_decoded_option *saw_librt = 0;
+  const cl_decoded_option *saw_librt = 0;
 
   /* "-lc" if it appears on the command line.  */
-  const struct cl_decoded_option *saw_libc = 0;
+  const cl_decoded_option *saw_libc = 0;
 
   /* An array used to flag each argument that needs a bit set for
      LANGSPEC, MATHLIB, WITHTHREAD, or WITHLIBC.  */
@@ -129,7 +129,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   int argc;
 
   /* The argument list.  */
-  struct cl_decoded_option *decoded_options;
+  cl_decoded_option *decoded_options;
 
   /* What default library to use instead of phobos */
   const char *defaultlib = NULL;
@@ -324,7 +324,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
      library: -lgphobos.  The -pthread argument is added by
      setting need_thread. */
   num_args = argc + added + need_math + shared_libgcc + (library > 0) * 4 + 2;
-  new_decoded_options = XNEWVEC (struct cl_decoded_option, num_args);
+  new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
   j = 0;

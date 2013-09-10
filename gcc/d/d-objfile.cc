@@ -1896,7 +1896,7 @@ make_alias_for_thunk (tree function)
 
   if (!flag_syntax_only)
     {
-      struct cgraph_node *aliasn;
+      cgraph_node *aliasn;
       aliasn = cgraph_same_body_alias (cgraph_get_create_node (function),
 				       alias, function);
       DECL_ASSEMBLER_NAME (function);
@@ -1956,7 +1956,7 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
   DECL_ARGUMENTS (thunk_decl) = nreverse (t);
   TREE_ASM_WRITTEN (thunk_decl) = 1;
 
-  struct cgraph_node *funcn, *thunk_node;
+  cgraph_node *funcn, *thunk_node;
 
   funcn = cgraph_get_create_node (target_decl);
   gcc_assert (funcn);

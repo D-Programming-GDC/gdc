@@ -210,9 +210,9 @@ extern tree get_array_length (tree exp, Type *exp_type);
 extern tree void_okay_p (tree t);
 
 // Various expressions
-extern tree build_binary_op (enum tree_code code, tree type, tree arg0, tree arg1);
+extern tree build_binary_op (tree_code code, tree type, tree arg0, tree arg1);
 extern tree build_array_index (tree ptr, tree index);
-extern tree build_offset_op (enum tree_code op, tree ptr, tree idx);
+extern tree build_offset_op (tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
 
 // Function calls
@@ -363,7 +363,7 @@ build_vconvert (tree t, tree e)
 }
 
 inline tree
-build_boolop (enum tree_code code, tree arg0, tree arg1)
+build_boolop (tree_code code, tree arg0, tree arg1)
 {
   return fold_build2_loc (input_location, code, boolean_type_node, arg0, arg1);
 }
@@ -429,7 +429,7 @@ struct IRState : IRBase
   void emitLocalVar (VarDeclaration *v, bool no_init);
 
   // ** Various expressions
-  tree buildAssignOp (enum tree_code code, Expression *e1, Expression *e2);
+  tree buildAssignOp (tree_code code, Expression *e1, Expression *e2);
 
   // ** Function calls
   tree call (FuncDeclaration *fd, tree object, Expressions *args);
@@ -445,7 +445,7 @@ extern IRState *cirstate;
 struct WrappedExp : Expression
 {
   tree exp_node;
-  WrappedExp (Loc loc, enum TOK op, tree exp_node, Type *type);
+  WrappedExp (Loc loc, TOK op, tree exp_node, Type *type);
   void toCBuffer (OutBuffer *buf, HdrGenState *hgs);
   elem *toElem (IRState *irs);
 };

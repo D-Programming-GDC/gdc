@@ -978,9 +978,9 @@ lookup_ctype_name (const char *p)
 }
 
 static void
-do_build_builtin_fn (enum built_in_function fncode,
+do_build_builtin_fn (built_in_function fncode,
 		     const char *name,
-		     enum built_in_class fnclass,
+		     built_in_class fnclass,
 		     tree fntype, bool both_p, bool fallback_p,
 		     tree fnattrs, bool implicit_p)
 {
@@ -1298,7 +1298,7 @@ d_builtin_function (tree decl)
 
 
 /* Table of machine-independent attributes supported in GIMPLE.  */
-const struct attribute_spec d_builtins_attribute_table[] =
+const attribute_spec d_builtins_attribute_table[] =
 {
   /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
        affects_type_identity } */
@@ -1344,7 +1344,7 @@ const struct attribute_spec d_builtins_attribute_table[] =
 /* Give the specifications for the format attributes, used by C and all
    descendants.  */
 
-const struct attribute_spec d_format_attribute_table[] =
+const attribute_spec d_format_attribute_table[] =
 {
   /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
        affects_type_identity } */

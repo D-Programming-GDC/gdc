@@ -46,7 +46,7 @@ static tree d_handle_target_attribute (tree *, tree, tree, int, bool *);
 
 static char lang_name[6] = "GNU D";
 
-const struct attribute_spec d_attribute_table[] = 
+const attribute_spec d_attribute_table[] = 
 {
     { "noinline",               0, 0, true,  false, false,
 				d_handle_noinline_attribute, false },
@@ -135,7 +135,7 @@ static bool std_inc = true;
 
 /* Common initialization before calling option handlers.  */
 static void
-d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
+d_init_options (unsigned int, cl_decoded_option *decoded_options)
 {
   // Set default values
   global.init();
@@ -172,7 +172,7 @@ d_init_options (unsigned int, struct cl_decoded_option *decoded_options)
 
 /* Initialize options structure OPTS.  */
 static void
-d_init_options_struct (struct gcc_options *opts)
+d_init_options_struct (gcc_options *opts)
 {
   // GCC options
   opts->x_flag_exceptions = 1;
@@ -356,9 +356,9 @@ static bool
 d_handle_option (size_t scode, const char *arg, int value,
 		 int kind ATTRIBUTE_UNUSED,
 		 location_t loc ATTRIBUTE_UNUSED,
-		 const struct cl_option_handlers *handlers ATTRIBUTE_UNUSED)
+		 const cl_option_handlers *handlers ATTRIBUTE_UNUSED)
 {
-  enum opt_code code = (enum opt_code) scode;
+  opt_code code = (opt_code) scode;
   bool result = true;
   int level;
 
@@ -648,7 +648,7 @@ int
 d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 		 gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
-  enum tree_code code = TREE_CODE (*expr_p);
+  tree_code code = TREE_CODE (*expr_p);
   switch (code)
     {
     case INIT_EXPR:
@@ -1123,7 +1123,7 @@ d_parse_file (void)
 }
 
 static tree
-d_type_for_mode (enum machine_mode mode, int unsignedp)
+d_type_for_mode (machine_mode mode, int unsignedp)
 {
   // taken from c-common.c
   if (mode == TYPE_MODE (integer_type_node))
@@ -1175,7 +1175,7 @@ d_type_for_mode (enum machine_mode mode, int unsignedp)
 
   if (COMPLEX_MODE_P (mode))
     {
-      enum machine_mode inner_mode;
+      machine_mode inner_mode;
       tree inner_type;
 
       if (mode == TYPE_MODE (complex_float_type_node))
@@ -1195,7 +1195,7 @@ d_type_for_mode (enum machine_mode mode, int unsignedp)
     }
   else if (VECTOR_MODE_P (mode))
     {
-      enum machine_mode inner_mode = (machine_mode) GET_MODE_INNER (mode);
+      machine_mode inner_mode = (machine_mode) GET_MODE_INNER (mode);
       tree inner_type = d_type_for_mode (inner_mode, unsignedp);
       if (inner_type != NULL_TREE)
 	return build_vector_type_for_mode (inner_type, mode);
@@ -1549,7 +1549,7 @@ d_finish_incomplete_decl (tree decl)
 struct lang_type *
 build_d_type_lang_specific (Type *t)
 {
-  unsigned sz = sizeof (struct lang_type);
+  unsigned sz = sizeof (lang_type);
   struct lang_type *lt = ggc_alloc_cleared_lang_type (sz);
   lt->d_type = t;
   return lt;
@@ -1558,7 +1558,7 @@ build_d_type_lang_specific (Type *t)
 struct lang_decl *
 build_d_decl_lang_specific (Declaration *d)
 {
-  unsigned sz = sizeof (struct lang_decl);
+  unsigned sz = sizeof (lang_decl);
   struct lang_decl *ld = ggc_alloc_cleared_lang_decl (sz);
   ld->d_decl = d;
   return ld;
