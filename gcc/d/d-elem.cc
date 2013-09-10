@@ -1327,8 +1327,7 @@ SliceExp::toElem (IRState *irs)
   else
     {
       gcc_assert (lwr && tb->ty == Tsarray);
-      exp = d_array_value (tb1->toCtype(), len_expr, ptr_expr);
-      exp = indirect_ref (type->toCtype(), d_array_ptr (exp));
+      exp = indirect_ref (type->toCtype(), ptr_expr);
     }
 
   return aryscp.finish (exp);
