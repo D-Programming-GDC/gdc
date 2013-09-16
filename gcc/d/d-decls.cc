@@ -96,9 +96,6 @@ VarDeclaration::toSymbol (void)
 {
   if (!csym)
     {
-      tree var_decl;
-      tree_code decl_kind;
-
       // For field declaration, it is possible for toSymbol to be called
       // before the parent's toCtype()
       if (isField())
@@ -121,82 +118,50 @@ VarDeclaration::toSymbol (void)
       else
 	csym->Sident = ident->string;
 
-      if (storage_class & STCparameter)
-	decl_kind = PARM_DECL;
-      else if (storage_class & STCmanifest)
-	decl_kind = CONST_DECL;
-      else
-	decl_kind = VAR_DECL;
+      tree var_decl;
+      tree id = get_identifier (csym->Sident);
 
-      var_decl = build_decl (UNKNOWN_LOCATION, decl_kind, get_identifier (csym->Sident),
-			     declaration_type (this));
+      if (isParameter())
+	{
+	  var_decl = build_decl (UNKNOWN_LOCATION, PARM_DECL, id, declaration_type (this));
+	  DECL_ARG_TYPE (var_decl) = TREE_TYPE (var_decl);
+	  DECL_CONTEXT (var_decl) = d_decl_context (this);
+	  gcc_assert (TREE_CODE (DECL_CONTEXT (var_decl)) == FUNCTION_DECL);
+	}
+      else
+	{
+	  gcc_assert (canTakeAddressOf() != false);
+	  var_decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, id, declaration_type (this));
+	  setup_symbol_storage (this, var_decl, false);
+	}
 
       csym->Stree = var_decl;
 
-      if (decl_kind != CONST_DECL)
+      if (isDataseg())
 	{
-	  if (isDataseg())
-	    {
-	      tree id = get_identifier (csym->Sident);
-	      if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
-		id = targetm.mangle_decl_assembler_name (var_decl, id);
-	      SET_DECL_ASSEMBLER_NAME (var_decl, id);
-	    }
+	  tree id = get_identifier (csym->Sident);
+
+	  if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
+	    id = targetm.mangle_decl_assembler_name (var_decl, id);
+
+	  SET_DECL_ASSEMBLER_NAME (var_decl, id);
 	}
 
       DECL_LANG_SPECIFIC (var_decl) = build_d_decl_lang_specific (this);
       d_keep (var_decl);
       set_decl_location (var_decl, this);
 
-      if (decl_kind == VAR_DECL)
-	setup_symbol_storage (this, var_decl, false);
-      else if (decl_kind == PARM_DECL)
-	{
-	  /* from gcc code: Some languages have different nominal and real types.  */
-	  // %% What about DECL_ORIGINAL_TYPE, DECL_ARG_TYPE_AS_WRITTEN, DECL_ARG_TYPE ?
-	  DECL_ARG_TYPE (var_decl) = TREE_TYPE (var_decl);
-	  DECL_CONTEXT (var_decl) = d_decl_context (this);
-	  gcc_assert (TREE_CODE (DECL_CONTEXT (var_decl)) == FUNCTION_DECL);
-	}
-      else if (decl_kind == CONST_DECL)
-	{
-	  /* Not sure how much of an optimization this is... It is needed
-	     for foreach loops on tuples which 'declare' the index variable
-	     as a constant for each iteration. */
-	  Expression *e = NULL;
-
-	  if (init)
-	    {
-	      if (!init->isVoidInitializer())
-		{
-		  e = init->toExpression();
-		  gcc_assert (e != NULL);
-		}
-	    }
-	  else
-	    e = type->defaultInit();
-
-	  if (e)
-	    DECL_INITIAL (var_decl) = e->toElem (current_irstate);
-	}
-
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
-      // called from a varaible in an imported module
-      // %% (out const X x) doesn't mean the reference is const...
+      // called from a variable in an imported module.
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
 	  && !decl_reference_p (this))
 	{
-	  // %% CONST_DECLS don't have storage, so we can't use those,
-	  // but it would be nice to get the benefit of them (could handle in
-	  // VarExp -- makeAddressOf could switch back to the VAR_DECL
-
 	  if (!TREE_STATIC (var_decl))
 	    TREE_READONLY (var_decl) = 1;
 	  else
 	    csym->Sreadonly = true;
 
-	  // can at least do this...
-	  //  const doesn't seem to matter for aggregates, so prevent problems..
+	  // Const doesn't seem to matter for aggregates, so prevent problems.
 	  if (isConst() && isDataseg())
 	    TREE_CONSTANT (var_decl) = 1;
 	}
@@ -384,7 +349,7 @@ FuncDeclaration::toSymbol (void)
 	    {
 	      csym->Sident = mangle(); // save for making thunks
 	      csym->prettyIdent = toPrettyChars();
-	      tree id = get_identifier (csym->Sident);
+	      id = get_identifier (csym->Sident);
 	      id = targetm.mangle_decl_assembler_name (fndecl, id);
 	      SET_DECL_ASSEMBLER_NAME (fndecl, id);
 	    }
