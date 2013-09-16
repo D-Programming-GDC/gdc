@@ -236,7 +236,6 @@ TypeEnum::toCtype (void)
 
 	  TYPE_PRECISION (ctype) = size (sym->loc) * 8;
 	  TYPE_SIZE (ctype) = 0;
-	  TYPE_MAIN_VARIANT (ctype) = TYPE_MAIN_VARIANT (cmemtype);
 
 	  if (sym->userAttributes)
 	    decl_attributes (&ctype, build_attributes (sym->userAttributes),
@@ -247,7 +246,6 @@ TypeEnum::toCtype (void)
 	  layout_type (ctype);
 	  TYPE_UNSIGNED (ctype) = TYPE_UNSIGNED (cmemtype);
 
-	  // Move this to toDebug() ?
 	  tree enum_values = NULL_TREE;
 	  if (sym->members)
 	    {
@@ -258,19 +256,24 @@ TypeEnum::toCtype (void)
 		  if (member == NULL)
 		    continue;
 
-		  char *ident = NULL;
-		  if (sym->ident)
-		    ident = concat (sym->ident->string, ".",
-				    member->ident->string, NULL);
+		  tree ident = get_identifier (member->toPrettyChars());
+		  tree value = build_integer_cst (member->value->toInteger(), cmemtype);
 
-		  tree tident = get_identifier (ident ? ident : member->ident->string);
-		  tree tvalue = build_integer_cst (member->value->toInteger(), ctype);
-		  enum_values = chainon (enum_values, build_tree_list (tident, tvalue));
+		  // Build a identifier for the enumeration constant.
+		  tree decl = build_decl (UNKNOWN_LOCATION, CONST_DECL, ident, cmemtype);
+		  set_decl_location (decl, member->loc);
+		  DECL_CONTEXT (decl) = ctype;
+		  TREE_CONSTANT (decl) = 1;
+		  TREE_READONLY (decl) = 1;
+		  DECL_INITIAL (decl) = value;
 
-		  if (sym->ident)
-		    free (ident);
+		  d_pushdecl (decl);
+
+		  // Add this enumeration constant to the list for this type.
+		  enum_values = chainon (enum_values, build_tree_list (ident, decl));
 		}
 	    }
+
 	  TYPE_VALUES (ctype) = enum_values;
 	  build_type_decl (ctype, sym);
 	}

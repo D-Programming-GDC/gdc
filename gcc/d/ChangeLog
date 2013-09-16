@@ -8,6 +8,10 @@
 	from Object class.
 	* d-decls.cc(VarDeclaration::toSymbol): Remove redundant CONST_DECL
 	code as VarDeclaration::toObjFile does not emit manifest constants.
+	* d-ctype.cc(TypeEnum::toCtype): Generate CONST_DECLs for enumeration
+	members for correct debugging.
+	* d-objfile.cc(build_type_decl): Use fully qualified type name in
+	debugging code.
 
 2013-09-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 

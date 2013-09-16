@@ -1298,7 +1298,7 @@ build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *
       // dynamic array varargs.
       TYPE_LANG_SPECIFIC (rec_type) = build_d_type_lang_specific (type);
 
-      // Build_type_decl will try to declare it as top-level type which can
+      // build_type_decl will try to declare it as top-level type which can
       // break debugging info for element types.
       tree stub_decl = build_decl (BUILTINS_LOCATION, TYPE_DECL,
 				   get_identifier (type->toChars()), rec_type);

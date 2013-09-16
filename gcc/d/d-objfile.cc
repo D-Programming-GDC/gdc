@@ -709,7 +709,7 @@ VarDeclaration::toObjFile (int)
 	  IRState *irs = current_irstate;
 	  build_local_var (this, toParent2()->isFuncDeclaration());
 
-	  if (init != NULL)
+	  if (init)
 	    {
 	      if (!init->isVoidInitializer())
 		{
@@ -1814,7 +1814,7 @@ build_type_decl (tree t, Dsymbol *dsym)
   
   gcc_assert (!POINTER_TYPE_P (t));
 
-  const char *name = dsym->ident ? dsym->ident->string : "fix";
+  const char *name = dsym->toPrettyChars();
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, get_identifier (name), t);
 
   DECL_CONTEXT (decl) = d_decl_context (dsym);
