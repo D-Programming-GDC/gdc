@@ -693,12 +693,55 @@ AddExp::toElem (IRState *irs)
 }
 
 elem *
+BinExp::toElemBin (IRState *irs, int op)
+{
+  tree_code code = (tree_code) op;
+
+  // Skip casts for lhs assignment.
+  Expression *e1b = e1;
+  while (e1b->op == TOKcast)
+    {
+      CastExp *ce = (CastExp *) e1b;
+      gcc_assert (d_types_compatible (ce->type, ce->to));
+      e1b = ce->e1;
+    }
+
+  // Prevent multiple evaluations of LHS, but watch out!
+  // The LHS expression could be an assignment, to which
+  // it's operation gets lost during gimplification.
+  tree lexpr = NULL_TREE;
+  tree lhs;
+
+  if (e1b->op == TOKcomma)
+    {
+      CommaExp *ce = (CommaExp *) e1b;
+      lexpr = ce->e1->toElem (irs);
+      lhs = ce->e2->toElem (irs);
+    }
+  else
+    lhs = e1b->toElem (irs);
+
+  // Build assignment expression. Stabilize lhs for assignment.
+  lhs = stabilize_reference (lhs);
+
+  tree rhs = build_binary_op (code, e1->type->toCtype(),
+			      convert_expr (lhs, e1b->type, e1->type), e2->toElem (irs));
+
+  tree expr = modify_expr (lhs, convert_expr (rhs, e1->type, e1b->type));
+
+  if (lexpr)
+    expr = compound_expr (lexpr, expr);
+
+  return expr;
+}
+
+elem *
 XorAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (BIT_XOR_EXPR, e1, e2);
+  tree exp = toElemBin (irs, BIT_XOR_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -708,7 +751,7 @@ OrAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (BIT_IOR_EXPR, e1, e2);
+  tree exp = toElemBin (irs, BIT_IOR_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -718,7 +761,7 @@ AndAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (BIT_AND_EXPR, e1, e2);
+  tree exp = toElemBin (irs, BIT_AND_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -728,7 +771,7 @@ UshrAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (UNSIGNED_RSHIFT_EXPR, e1, e2);
+  tree exp = toElemBin (irs, UNSIGNED_RSHIFT_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -738,7 +781,7 @@ ShrAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (RSHIFT_EXPR, e1, e2);
+  tree exp = toElemBin (irs, RSHIFT_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -748,7 +791,7 @@ ShlAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (LSHIFT_EXPR, e1, e2);
+  tree exp = toElemBin (irs, LSHIFT_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -758,8 +801,8 @@ ModAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (e1->type->isfloating() ?
-				 FLOAT_MOD_EXPR : TRUNC_MOD_EXPR, e1, e2);
+  tree exp = toElemBin (irs, e1->type->isfloating() ?
+			FLOAT_MOD_EXPR : TRUNC_MOD_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -769,8 +812,8 @@ DivAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (e1->type->isintegral() ?
-				 TRUNC_DIV_EXPR : RDIV_EXPR, e1, e2);
+  tree exp = toElemBin (irs, e1->type->isintegral() ?
+			TRUNC_DIV_EXPR : RDIV_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -780,7 +823,7 @@ MulAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (MULT_EXPR, e1, e2);
+  tree exp = toElemBin (irs, MULT_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -877,7 +920,7 @@ CatAssignExp::toElem (IRState *irs)
 	  if (sd != NULL)
 	    {
 	      Expressions args;
-	      tree callexp = irs->call (sd->postblit, build_address (e2e), &args);
+	      tree callexp = d_build_call (sd->postblit, build_address (e2e), &args);
 	      result = compound_expr (callexp, result);
 	    }
 	  result = compound_expr (e2e, result);
@@ -893,7 +936,7 @@ MinAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (MINUS_EXPR, e1, e2);
+  tree exp = toElemBin (irs, MINUS_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -903,7 +946,7 @@ AddAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark (type);
 
-  tree exp = irs->buildAssignOp (PLUS_EXPR, e1, e2);
+  tree exp = toElemBin (irs, PLUS_EXPR);
   return convert_expr (exp, e1->type, type);
 }
 
@@ -1623,7 +1666,7 @@ CallExp::toElem (IRState *irs)
 
   // Now we have the type, callee and maybe object reference,
   // build the call expression.
-  tree exp = irs->call (tf, callee, object, arguments);
+  tree exp = d_build_call (tf, callee, object, arguments);
 
   if (tf->isref)
     exp = build_deref (exp);
@@ -1867,7 +1910,7 @@ AssertExp::toElem (IRState *irs)
 		{
 		  Expressions args;
 		  e1_t = maybe_make_temp (e1_t);
-		  invc = irs->call (inv, e1_t, &args);
+		  invc = d_build_call (inv, e1_t, &args);
 		}
 	    }
 	  result = build3 (COND_EXPR, void_type_node,
@@ -1884,6 +1927,7 @@ elem *
 DeclarationExp::toElem (IRState *irs)
 {
   VarDeclaration *vd = declaration->isVarDeclaration();
+
   if (vd != NULL)
     {
       if (!vd->isStatic() && !(vd->storage_class & STCmanifest)
@@ -1899,8 +1943,6 @@ DeclarationExp::toElem (IRState *irs)
 	}
     }
 
-  // VarDeclaration::toObjFile was modified to call d_gcc_emit_local_variable
-  // if needed.  This assumes irs == cirstate
   irs->pushStatementList();
   declaration->toObjFile (0);
   tree t = irs->popStatementList();
@@ -2023,7 +2065,7 @@ NewExp::toElem (IRState *irs)
       // Call allocator (custom allocator or _d_newclass).
       if (onstack)
 	{
-	  tree stack_var = build_local_var (rec_type);
+	  tree stack_var = build_local_temp (rec_type);
 	  expand_decl (stack_var);
 	  new_call = build_address (stack_var);
 	  setup_exp = modify_expr (indirect_ref (rec_type, new_call),
@@ -2031,7 +2073,7 @@ NewExp::toElem (IRState *irs)
 	}
       else if (allocator)
 	{
-	  new_call = irs->call (allocator, NULL_TREE, newargs);
+	  new_call = d_build_call (allocator, NULL_TREE, newargs);
 	  new_call = maybe_make_temp (new_call);
 	  // copy memory...
 	  setup_exp = modify_expr (indirect_ref (rec_type, new_call),
@@ -2080,7 +2122,7 @@ NewExp::toElem (IRState *irs)
 
       // Call constructor.
       if (member)
-	result = irs->call (member, new_call, arguments);
+	result = d_build_call (member, new_call, arguments);
       else
 	result = new_call;
     }
@@ -2100,7 +2142,7 @@ NewExp::toElem (IRState *irs)
       tree init_exp;
 
       if (allocator)
-	new_call = irs->call (allocator, NULL_TREE, newargs);
+	new_call = d_build_call (allocator, NULL_TREE, newargs);
       else
 	{
 	  libcall = struct_type->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
@@ -2128,7 +2170,7 @@ NewExp::toElem (IRState *irs)
 
       // Call constructor.
       if (member)
-	result = irs->call (member, new_call, arguments);
+	result = d_build_call (member, new_call, arguments);
       else
 	result = new_call;
     }
@@ -2478,7 +2520,7 @@ StructLiteralExp::toElem (IRState *irs)
 	      else
 		{
 		  // %% Could use memset if is zero init...
-		  exp_tree = build_local_var (fld_type->toCtype());
+		  exp_tree = build_local_temp (fld_type->toCtype());
 		  Type *etype = fld_type;
 
 		  while (etype->ty == Tsarray)
@@ -2515,7 +2557,7 @@ StructLiteralExp::toElem (IRState *irs)
     }
 
   tree ctor = build_constructor (type->toCtype(), ce);
-  tree var = build_local_var (TREE_TYPE (ctor));
+  tree var = build_local_temp (TREE_TYPE (ctor));
   tree init = NULL_TREE;
 
   if (fillHoles)

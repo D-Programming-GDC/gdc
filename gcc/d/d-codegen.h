@@ -216,7 +216,9 @@ extern tree build_offset_op (tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
 
 // Function calls
-extern tree d_build_call (tree type, tree callee, tree args);
+extern tree d_build_call (FuncDeclaration *fd, tree object, Expressions *args);
+extern tree d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *arguments);
+extern tree d_build_call_list (tree type, tree callee, tree args);
 extern tree d_build_call_nary (tree callee, int n_args, ...);
 
 extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
@@ -234,7 +236,8 @@ extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);
 extern bool needs_static_chain (FuncDeclaration *f);
 
 // Local variables
-extern tree build_local_var (tree type);
+extern void build_local_var (VarDeclaration *vd, FuncDeclaration *fd);
+extern tree build_local_temp (tree type);
 extern tree create_temporary_var (tree type);
 extern tree maybe_temporary_var (tree exp, tree *out_var);
 extern void expand_decl (tree decl);
@@ -412,33 +415,9 @@ extern TypeFunction *get_function_type (Type *t);
 extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 
-// Code generation routines should be in a separate namespace, but so many
-// routines need a reference to an IRState to expand Expressions.  Solution
-// is to make IRState the code generation namespace with the actual IR state
-// routines as a mixin.  Also a lot of routines are static (don't need IR 
-// state or expand Expressions), but are still called using . or ->.
-
-// Functions without a verb create trees
-// Functions with 'do' affect the current instruction stream (or output assembler code).
-// functions with other names are for attribute manipulate, etc.
-
-struct IRState : IRBase
-{
- public:
-  // ** Local variables
-  void emitLocalVar (VarDeclaration *v, bool no_init);
-
-  // ** Various expressions
-  tree buildAssignOp (tree_code code, Expression *e1, Expression *e2);
-
-  // ** Function calls
-  tree call (FuncDeclaration *fd, tree object, Expressions *args);
-  tree call (TypeFunction *tf, tree callable, tree object, Expressions *arguments);
-};
-
 // Globals.
 extern Module *current_module_decl;
-extern IRState *cirstate;
+extern IRState *current_irstate;
 
 // Various helpers that need extra state
 

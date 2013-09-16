@@ -807,7 +807,7 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
     }
 
   TypeFunction *tf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (callee));
-  result = cirstate->call (tf, callee, NULL, arguments);
+  result = d_build_call (tf, callee, NULL, arguments);
   result = fold (result);
 
   // Special case bsr.
@@ -847,7 +847,7 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
       tree callee = NULL_TREE;
 
       set_input_location (loc);
-      tree result = cirstate->call (tf, callee, NULL, arguments);
+      tree result = d_build_call (tf, callee, NULL, arguments);
       result = fold (result);
 
       // Builtin should be successfully evaluated.

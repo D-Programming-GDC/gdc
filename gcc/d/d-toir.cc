@@ -154,25 +154,25 @@ TryCatchStatement::toIR (IRState *irs)
     {
       for (size_t i = 0; i < catches->dim; i++)
 	{
-	  Catch *a_catch = (*catches)[i];
+	  Catch *vcatch = (*catches)[i];
 
-	  irs->startCatch (a_catch->type->toCtype());
-	  irs->doLineNote (a_catch->loc);
+	  irs->startCatch (vcatch->type->toCtype());
+	  irs->doLineNote (vcatch->loc);
 	  irs->startScope();
 
-	  if (a_catch->var)
+	  if (vcatch->var)
 	    {
 	      tree exc_obj = convert_expr (build_exception_object(),
-					   build_object_type(), a_catch->type);
-	      tree catch_var = a_catch->var->toSymbol()->Stree;
-	      // need to override initializer...
-	      // set DECL_INITIAL now and emitLocalVar will know not to change it
-	      DECL_INITIAL (catch_var) = exc_obj;
-	      irs->emitLocalVar (a_catch->var, false);
+					   build_object_type(), vcatch->type);
+	      tree catch_var = vcatch->var->toSymbol()->Stree;
+	      tree init = build_vinit (catch_var, exc_obj);
+
+	      build_local_var (vcatch->var, irs->func);
+	      irs->addExp (init);
 	    }
 
-	  if (a_catch->handler)
-	    a_catch->handler->toIR (irs);
+	  if (vcatch->handler)
+	    vcatch->handler->toIR (irs);
 	  irs->endScope();
 	  irs->endCatch();
 	}
@@ -188,9 +188,17 @@ OnScopeStatement::toIR (IRState *)
 void
 WithStatement::toIR (IRState *irs)
 {
+  irs->doLineNote (loc);
   irs->startScope();
   if (wthis)
-    irs->emitLocalVar (wthis, false);
+    {
+      ExpInitializer *ie = wthis->init->isExpInitializer();
+      gcc_assert (ie);
+
+      build_local_var (wthis, irs->func);
+      tree init = ie->exp->toElemDtor (irs); 
+      irs->addExp (init);
+    }
 
   if (body)
     body->toIR (irs);

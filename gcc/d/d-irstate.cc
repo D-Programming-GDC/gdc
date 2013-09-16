@@ -22,7 +22,7 @@
 
 #include "init.h"
 
-IRBase::IRBase (void)
+IRState::IRState (void)
 {
   this->parent = NULL;
   this->func = NULL;
@@ -32,10 +32,10 @@ IRBase::IRBase (void)
 }
 
 IRState *
-IRBase::startFunction (FuncDeclaration *decl)
+IRState::startFunction (FuncDeclaration *decl)
 {
   IRState *new_irs = new IRState();
-  new_irs->parent = cirstate;
+  new_irs->parent = current_irstate;
   new_irs->func = decl;
 
   for (Dsymbol *p = decl->parent; p; p = p->parent)
@@ -47,7 +47,7 @@ IRBase::startFunction (FuncDeclaration *decl)
 	}
     }
 
-  cirstate = (IRState *) new_irs;
+  current_irstate = (IRState *) new_irs;
   ModuleInfo *mi = current_module_info;
 
   if (decl->isSharedStaticCtorDeclaration())
@@ -75,17 +75,17 @@ IRBase::startFunction (FuncDeclaration *decl)
 }
 
 void
-IRBase::endFunction (void)
+IRState::endFunction (void)
 {
   gcc_assert (this->scopes_.dim == 0);
-  cirstate = (IRState *) this->parent;
+  current_irstate = (IRState *) this->parent;
 }
 
 
 // Emit statement E into function body.
 
 void
-IRBase::addExp (tree e)
+IRState::addExp (tree e)
 {
   /* Need to check that this is actually an expression; it
      could be an integer constant (statement with no effect.)
@@ -111,7 +111,7 @@ IRBase::addExp (tree e)
 
 
 void
-IRBase::pushStatementList (void)
+IRState::pushStatementList (void)
 {
   tree t = alloc_stmt_list();
   this->statementList_.push (t);
@@ -119,7 +119,7 @@ IRBase::pushStatementList (void)
 }
 
 tree
-IRBase::popStatementList (void)
+IRState::popStatementList (void)
 {
   tree t = (tree) this->statementList_.pop();
 
@@ -147,7 +147,7 @@ IRBase::popStatementList (void)
 
 
 tree
-IRBase::getLabelTree (LabelDsymbol *label)
+IRState::getLabelTree (LabelDsymbol *label)
 {
   if (!label->statement)
     return NULL_TREE;
@@ -162,7 +162,7 @@ IRBase::getLabelTree (LabelDsymbol *label)
 }
 
 Label *
-IRBase::getLabelBlock (LabelDsymbol *label, Statement *from)
+IRState::getLabelBlock (LabelDsymbol *label, Statement *from)
 {
   Label *l = new Label();
 
@@ -188,7 +188,7 @@ IRBase::getLabelBlock (LabelDsymbol *label, Statement *from)
 
 
 Flow *
-IRBase::getLoopForLabel (Identifier *ident, bool want_continue)
+IRState::getLoopForLabel (Identifier *ident, bool want_continue)
 {
   if (ident)
     {
@@ -229,7 +229,7 @@ IRBase::getLoopForLabel (Identifier *ident, bool want_continue)
 
 
 Flow *
-IRBase::beginFlow (Statement *stmt)
+IRState::beginFlow (Statement *stmt)
 {
   Flow *flow = new Flow (stmt);
   this->loops_.push (flow);
@@ -238,7 +238,7 @@ IRBase::beginFlow (Statement *stmt)
 }
 
 void
-IRBase::endFlow (void)
+IRState::endFlow (void)
 {
   gcc_assert (this->loops_.dim);
 
@@ -249,7 +249,7 @@ IRBase::endFlow (void)
 }
 
 void
-IRBase::doLabel (tree label)
+IRState::doLabel (tree label)
 {
   /* Don't write out label unless it is marked as used by the frontend.
      This makes auto-vectorization possible in conditional loops.
@@ -261,7 +261,7 @@ IRBase::doLabel (tree label)
 
 
 void
-IRBase::startScope (void)
+IRState::startScope (void)
 {
   unsigned *p_count = new unsigned;
   *p_count = 0;
@@ -271,7 +271,7 @@ IRBase::startScope (void)
 }
 
 void
-IRBase::endScope (void)
+IRState::endScope (void)
 {
   unsigned *p_count = this->currentScope();
   while (*p_count)
@@ -282,7 +282,7 @@ IRBase::endScope (void)
 
 
 void
-IRBase::startBindings (void)
+IRState::startBindings (void)
 {
   tree block;
 
@@ -296,7 +296,7 @@ IRBase::startBindings (void)
 }
 
 void
-IRBase::endBindings (void)
+IRState::endBindings (void)
 {
   tree block = pop_binding_level (1, 0);
   TREE_USED (block) = 1;
@@ -317,7 +317,7 @@ IRBase::endBindings (void)
 // STMT contains the statement to be executed if COND is true.
 
 void
-IRBase::startCond (Statement *stmt, tree cond)
+IRState::startCond (Statement *stmt, tree cond)
 {
   Flow *flow = this->beginFlow (stmt);
   flow->condition = cond;
@@ -326,7 +326,7 @@ IRBase::startCond (Statement *stmt, tree cond)
 // Start a new statement list for the false condition branch.
 
 void
-IRBase::startElse (void)
+IRState::startElse (void)
 {
   Flow *flow = this->currentFlow();
   flow->trueBranch = this->popStatementList();
@@ -336,7 +336,7 @@ IRBase::startElse (void)
 // Wrap up our constructed if condition into a COND_EXPR.
 
 void
-IRBase::endCond (void)
+IRState::endCond (void)
 {
   Flow *flow = this->currentFlow();
   tree branch = this->popStatementList();
@@ -359,7 +359,7 @@ IRBase::endCond (void)
 // STMT is the body of the loop.
 
 void
-IRBase::startLoop (Statement *stmt)
+IRState::startLoop (Statement *stmt)
 {
   Flow *flow = this->beginFlow (stmt);
   // should be end for 'do' loop
@@ -369,7 +369,7 @@ IRBase::startLoop (Statement *stmt)
 // Emit continue label for loop.
 
 void
-IRBase::continueHere (void)
+IRState::continueHere (void)
 {
   Flow *flow = this->currentFlow();
   this->doLabel (flow->continueLabel);
@@ -379,7 +379,7 @@ IRBase::continueHere (void)
 // Used in unrolled loop statements.
 
 void
-IRBase::setContinueLabel (tree label)
+IRState::setContinueLabel (tree label)
 {
   Flow *flow = this->currentFlow();
   flow->continueLabel = label;
@@ -388,7 +388,7 @@ IRBase::setContinueLabel (tree label)
 // Emit exit loop condition.
 
 void
-IRBase::exitIfFalse (tree cond)
+IRState::exitIfFalse (tree cond)
 {
   this->addExp (build1 (EXIT_EXPR, void_type_node,
 			build1 (TRUTH_NOT_EXPR, TREE_TYPE (cond), cond)));
@@ -397,7 +397,7 @@ IRBase::exitIfFalse (tree cond)
 // Emit a goto to the continue label IDENT of a loop.
 
 void
-IRBase::continueLoop (Identifier *ident)
+IRState::continueLoop (Identifier *ident)
 {
   Flow *flow = this->getLoopForLabel (ident, true);
   this->doJump (NULL, flow->continueLabel);
@@ -406,7 +406,7 @@ IRBase::continueLoop (Identifier *ident)
 // Emit a goto to the exit label IDENT of a loop.
 
 void
-IRBase::exitLoop (Identifier *ident)
+IRState::exitLoop (Identifier *ident)
 {
   Flow *flow = this->getLoopForLabel (ident);
   if (!flow->exitLabel)
@@ -417,7 +417,7 @@ IRBase::exitLoop (Identifier *ident)
 // Wrap up constructed loop body in a LOOP_EXPR.
 
 void
-IRBase::endLoop (void)
+IRState::endLoop (void)
 {
   // says must contain an EXIT_EXPR -- what about while (1)..goto;? something other thand LOOP_EXPR?
   tree body = this->popStatementList();
@@ -430,7 +430,7 @@ IRBase::endLoop (void)
 // Create a tree node to set multiple elements to a single value
 
 tree
-IRBase::doArraySet(tree ptr, tree value, tree count)
+IRState::doArraySet(tree ptr, tree value, tree count)
 {
   tree t;
 
@@ -438,19 +438,19 @@ IRBase::doArraySet(tree ptr, tree value, tree count)
   startBindings();
 
   // Build temporary locals for count and ptr, and maybe value.
-  t = build_local_var (size_type_node);
+  t = build_local_temp (size_type_node);
   DECL_INITIAL (t) = count;
   count = t;
   expand_decl (count);
 
-  t = build_local_var (TREE_TYPE (ptr));
+  t = build_local_temp (TREE_TYPE (ptr));
   DECL_INITIAL (t) = ptr;
   ptr = t;
   expand_decl (ptr);
 
   if (d_has_side_effects (value))
     {
-      t = build_local_var (TREE_TYPE (value));
+      t = build_local_temp (TREE_TYPE (value));
       DECL_INITIAL (t) = value;
       value = t;
       expand_decl (value);
@@ -487,7 +487,7 @@ IRBase::doArraySet(tree ptr, tree value, tree count)
 // is true, then the switch statement has been converted to an if-then-else.
 
 void
-IRBase::startCase (Statement *stmt, tree cond, int has_vars)
+IRState::startCase (Statement *stmt, tree cond, int has_vars)
 {
   Flow *flow = this->beginFlow (stmt);
   flow->condition = cond;
@@ -502,7 +502,7 @@ IRBase::startCase (Statement *stmt, tree cond, int has_vars)
 // Emit a case statement for VALUE.
 
 void
-IRBase::doCase (tree value, tree label)
+IRState::doCase (tree value, tree label)
 {
   // SwitchStatement has already taken care of label jumps.
   if (this->currentFlow()->hasVars)
@@ -517,7 +517,7 @@ IRBase::doCase (tree value, tree label)
 // Wrap up constructed body into a SWITCH_EXPR.
 
 void
-IRBase::endCase (void)
+IRState::endCase (void)
 {
   Flow *flow = this->currentFlow();
   tree body = this->popStatementList();
@@ -540,7 +540,7 @@ IRBase::endCase (void)
 // Start a try statement, STMT is the body of the try expression.
 
 void
-IRBase::startTry (Statement *stmt)
+IRState::startTry (Statement *stmt)
 {
   Flow *flow = this->beginFlow (stmt);
   flow->kind = level_try;
@@ -549,7 +549,7 @@ IRBase::startTry (Statement *stmt)
 // Pops the try body and starts a new statement list for all catches.
 
 void
-IRBase::startCatches (void)
+IRState::startCatches (void)
 {
   Flow *flow = this->currentFlow();
   flow->tryBody = this->popStatementList();
@@ -560,7 +560,7 @@ IRBase::startCatches (void)
 // Start a new catch expression for exception type TYPE.
 
 void
-IRBase::startCatch (tree type)
+IRState::startCatch (tree type)
 {
   this->currentFlow()->catchType = type;
   this->pushStatementList();
@@ -569,7 +569,7 @@ IRBase::startCatch (tree type)
 // Wrap up catch expression into a CATCH_EXPR.
 
 void
-IRBase::endCatch (void)
+IRState::endCatch (void)
 {
   tree body = this->popStatementList();
   // % Wrong loc... can set pass statement to startCatch, set
@@ -581,7 +581,7 @@ IRBase::endCatch (void)
 // Wrap up try/catch into a TRY_CATCH_EXPR.
 
 void
-IRBase::endCatches (void)
+IRState::endCatches (void)
 {
   Flow *flow = this->currentFlow();
   tree catches = this->popStatementList();
@@ -595,7 +595,7 @@ IRBase::endCatches (void)
 // Start a new finally expression.
 
 void
-IRBase::startFinally (void)
+IRState::startFinally (void)
 {
   Flow *flow = this->currentFlow();
   flow->tryBody = this->popStatementList();
@@ -606,7 +606,7 @@ IRBase::startFinally (void)
 // Wrap-up try/finally into a TRY_FINALLY_EXPR.
 
 void
-IRBase::endFinally (void)
+IRState::endFinally (void)
 {
   Flow *flow = this->currentFlow();
   tree finally = this->popStatementList();
@@ -620,7 +620,7 @@ IRBase::endFinally (void)
 // Emit a return expression of value VALUE.
 
 void
-IRBase::doReturn (tree value)
+IRState::doReturn (tree value)
 {
   this->addExp (build1 (RETURN_EXPR, void_type_node, value));
 }
@@ -628,7 +628,7 @@ IRBase::doReturn (tree value)
 // Emit goto expression to LABEL.
 
 void
-IRBase::doJump (Statement *stmt, tree label)
+IRState::doJump (Statement *stmt, tree label)
 {
   if (stmt)
     this->doLineNote (stmt->loc);
@@ -642,7 +642,7 @@ IRBase::doJump (Statement *stmt, tree label)
 // Saves the block LABEL is declared in for analysis later.
 
 void
-IRBase::pushLabel (LabelDsymbol *label)
+IRState::pushLabel (LabelDsymbol *label)
 {
   Label *lblock = this->getLabelBlock (label);
   this->labels_.push (lblock);
@@ -652,7 +652,7 @@ IRBase::pushLabel (LabelDsymbol *label)
 // cases in the switch statement.
 
 void
-IRBase::checkSwitchCase (Statement *stmt, int default_flag)
+IRState::checkSwitchCase (Statement *stmt, int default_flag)
 {
   Flow *flow = this->currentFlow();
 
@@ -667,7 +667,7 @@ IRBase::checkSwitchCase (Statement *stmt, int default_flag)
 // catch block.  STMT is required to error on the correct line.
 
 void
-IRBase::checkGoto (Statement *stmt, LabelDsymbol *label)
+IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
 {
   Statement *curBlock = NULL;
   unsigned curLevel = this->loops_.dim;
@@ -714,7 +714,7 @@ IRBase::checkGoto (Statement *stmt, LabelDsymbol *label)
 // if goto is jumping into a try or catch block.
 
 void
-IRBase::checkPreviousGoto (Array *refs)
+IRState::checkPreviousGoto (Array *refs)
 {
   Statement *stmt; // Our forward reference.
 

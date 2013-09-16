@@ -827,7 +827,7 @@ d_parse_file (void)
 	nametype (Type::basic[ty]);
     }
 
-  cirstate = new IRState();
+  current_irstate = new IRState();
 
   // Create Modules
   Modules modules;

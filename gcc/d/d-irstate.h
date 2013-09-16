@@ -93,22 +93,24 @@ typedef ArrayBase<Flow> Flows;
 
 
 
-// IRBase contains the core functionality of IRState.  The actual IRState class
-// extends this with lots of code generation utilities.
+// IRState contains the core functionality of code generation utilities.
 //
 // Currently, each function gets its own IRState when emitting code.  There is
-// also a global IRState.
+// also a global IRState current_irstate.
 //
 // Most toElem calls don't actually need the IRState because they create GCC
 // expression trees rather than emit instructions.
 
+// Functions without a verb create trees
+// Functions with 'do' affect the current instruction stream (or output assembler code).
+// functions with other names are for attribute manipulate, etc.
 
-struct IRBase : Object
+struct IRState
 {
  public:
-  IRBase *parent;
+  IRState *parent;
 
-  IRBase (void);
+  IRState (void);
 
   // ** Functions
   FuncDeclaration *func;
@@ -154,7 +156,7 @@ struct IRBase : Object
 
   // ** "Binding contours"
 
-  /* Definitions for IRBase scope code:
+  /* Definitions for IRState scope code:
      "Scope": A container for binding contours.  Each user-declared
      function has a toplevel scope.  Every ScopeStatement creates
      a new scope. (And for now, until the emitLocalVar crash is

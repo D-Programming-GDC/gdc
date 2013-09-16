@@ -1,3 +1,12 @@
+2013-09-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(IRState::call): Rename to d_build_call.
+	(IRState::emitLocalVar): Rename to build_local_var.
+	(IRState::buildAssignOp): Move to BinExp::toElemBin.
+	(IRState::IRState): Remove IRState class.
+	* d-irstate.cc(IRBase::IRBase): Rename to IRState, remove inheritance
+	from Object class.
+
 2013-09-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(SliceExp::toElem): Don't build D array for slices that

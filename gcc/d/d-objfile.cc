@@ -704,7 +704,28 @@ VarDeclaration::toObjFile (int)
       // local variables of a function.  Otherwise, it would be
       // enough to make a check for isVarDeclaration() in
       // DeclarationExp::toElem.
-      cirstate->emitLocalVar (this, false);
+      if (!isDataseg() && !isMember())
+	{
+	  IRState *irs = current_irstate;
+	  build_local_var (this, toParent2()->isFuncDeclaration());
+
+	  if (init != NULL)
+	    {
+	      if (!init->isVoidInitializer())
+		{
+		  ExpInitializer *vinit = init->isExpInitializer();
+		  Expression *ie = vinit->toExpression();
+		  tree exp = ie->toElem (irs);
+		  irs->addExp (exp);
+		}
+	      else if (size (loc) != 0)
+		{
+		  // Zero-length arrays do not have an initializer.
+		  warning (OPT_Wuninitialized, "uninitialized variable '%s'",
+			   ident ? ident->string : "(no name)");
+		}
+	    }
+	}
     }
 }
 
@@ -925,7 +946,7 @@ FuncDeclaration::toObjFile (int)
   if (global.params.verbose)
     fprintf (stderr, "function  %s\n", this->toPrettyChars());
 
-  IRState *irs = cirstate->startFunction (this);
+  IRState *irs = current_irstate->startFunction (this);
   // Default chain value is 'null' unless parent found.
   irs->sthis = d_null_pointer;
 
@@ -1035,12 +1056,16 @@ FuncDeclaration::toObjFile (int)
   this->buildClosure (irs);
 
   if (vresult)
-    irs->emitLocalVar (vresult, true);
+    build_local_var (vresult, this);
 
   if (v_argptr)
     irs->pushStatementList();
+
   if (v_arguments_var)
-    irs->emitLocalVar (v_arguments_var, false);
+    {
+      gcc_assert (v_arguments_var->init->isVoidInitializer());
+      build_local_var (v_arguments_var, this);
+    }
 
   /* The fabled D named return value optimisation.
      Implemented by overriding all the RETURN_EXPRs and replacing all
@@ -1070,8 +1095,7 @@ FuncDeclaration::toObjFile (int)
       var = build_address (var);
 
       tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
-      v_argptr->init = NULL; // VoidInitializer?
-      irs->emitLocalVar (v_argptr, true);
+      build_local_var (v_argptr, this);
       irs->addExp (init_exp);
 
       tree cleanup = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_END), 1, var);
@@ -1187,7 +1211,7 @@ FuncDeclaration::buildClosure (IRState *irs)
 
   if (ffi->is_closure)
     {
-      decl = build_local_var (build_pointer_type (type));
+      decl = build_local_temp (build_pointer_type (type));
       DECL_NAME (decl) = get_identifier ("__closptr");
       decl_ref = build_deref (decl);
 
@@ -1200,7 +1224,7 @@ FuncDeclaration::buildClosure (IRState *irs)
     }
   else
     {
-      decl = build_local_var (type);
+      decl = build_local_temp (type);
       DECL_NAME (decl) = get_identifier ("__frame");
       decl_ref = decl;
     }
@@ -2035,7 +2059,7 @@ build_call_function (const char *name, FuncDeclarations *functions, bool force_p
   for (size_t i = 0; i < functions->dim; i++)
     {
       tree fndecl = ((*functions)[i])->toSymbol()->Stree;
-      tree call_expr = d_build_call (void_type_node, build_address (fndecl), NULL_TREE);
+      tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = maybe_vcompound_expr (expr_list, call_expr);
     }
 
@@ -2072,7 +2096,7 @@ build_ctor_function (const char *name, FuncDeclarations *functions, VarDeclarati
   for (size_t i = 0; i < functions->dim; i++)
     {
       tree fndecl = ((*functions)[i])->toSymbol()->Stree;
-      tree call_expr = d_build_call (void_type_node, build_address (fndecl), NULL_TREE);
+      tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = maybe_vcompound_expr (expr_list, call_expr);
     }
 
@@ -2100,7 +2124,7 @@ build_dtor_function (const char *name, FuncDeclarations *functions)
   for (int i = functions->dim - 1; i >= 0; i--)
     {
       tree fndecl = ((*functions)[i])->toSymbol()->Stree;
-      tree call_expr = d_build_call (void_type_node, build_address (fndecl), NULL_TREE);
+      tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = maybe_vcompound_expr (expr_list, call_expr);
     }
 

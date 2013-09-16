@@ -26,7 +26,7 @@
 
 
 Module *current_module_decl;
-IRState *cirstate;
+IRState *current_irstate;
 
 
 // Public routine called from D frontend to hide from glue interface.
@@ -75,82 +75,38 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
-// Add local variable VD into the current body.  If NO_INIT,
-// then variable does not have a default initialiser.
+// Add local variable VD into the current body of function fd.
 
 void
-IRState::emitLocalVar (VarDeclaration *vd, bool no_init)
+build_local_var (VarDeclaration *vd, FuncDeclaration *fd)
 {
-  if (vd->isDataseg() || vd->isMember())
-    return;
+  gcc_assert (!vd->isDataseg() && !vd->isMember());
 
   Symbol *sym = vd->toSymbol();
-  tree var_decl = sym->Stree;
+  tree var = sym->Stree;
 
-  gcc_assert (!TREE_STATIC (var_decl));
-  d_pushdecl (var_decl);
+  gcc_assert (!TREE_STATIC (var));
 
-  if (TREE_CODE (var_decl) == CONST_DECL)
-    return;
-
-  DECL_CONTEXT (var_decl) = current_function_decl;
+  set_input_location (vd->loc);
+  d_pushdecl (var);
+  DECL_CONTEXT (var) = fd->toSymbol()->Stree;
 
   // Compiler generated symbols
-  if (vd == this->func->vresult || vd == this->func->v_argptr
-      || vd == this->func->v_arguments_var)
-    DECL_ARTIFICIAL (var_decl) = 1;
+  if (vd == fd->vresult || vd == fd->v_argptr || vd == fd->v_arguments_var)
+    DECL_ARTIFICIAL (var) = 1;
 
-  tree var_exp;
   if (sym->SframeField)
     {
       // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var_decl, get_decl_tree (vd, this->func));
-      DECL_HAS_VALUE_EXPR_P (var_decl) = 1;
-    }
-  var_exp = var_decl;
-
-  // Complete initializer expression (include MODIFY_EXPR, e.g.)
-  tree init_exp = NULL_TREE;
-  tree init_val = NULL_TREE;
-
-  if (!no_init && !DECL_INITIAL (var_decl) && vd->init)
-    {
-      if (!vd->init->isVoidInitializer())
-	{
-	  ExpInitializer *exp_init = vd->init->isExpInitializer();
-	  Expression *ie = exp_init->toExpression();
-	  init_exp = ie->toElem (this);
-	}
-      else
-	no_init = true;
-    }
-  else
-    gcc_assert (vd->init == NULL);
-
-  if (!no_init)
-    {
-      set_input_location (vd->loc);
-
-      if (!init_val)
-	{
-	  init_val = DECL_INITIAL (var_decl);
-	  DECL_INITIAL (var_decl) = NULL_TREE;
-	}
-      if (!init_exp && init_val)
-	init_exp = build_vinit (var_exp, init_val);
-
-      if (init_exp)
-	addExp (init_exp);
-      else if (!init_val && vd->size (vd->loc))
-	// Zero-length arrays do not have an initializer
-	warning (OPT_Wuninitialized, "uninitialized variable '%s'", vd->ident ? vd->ident->string : "(no name)");
+      SET_DECL_VALUE_EXPR (var, get_decl_tree (vd, fd));
+      DECL_HAS_VALUE_EXPR_P (var) = 1;
     }
 }
 
 // Return an unnamed local temporary of type TYPE.
 
 tree
-build_local_var (tree type)
+build_local_temp (tree type)
 {
   tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
 
@@ -210,7 +166,7 @@ expand_decl (tree decl)
   if (DECL_INITIAL (decl))
     {
       tree exp = build_vinit (decl, DECL_INITIAL (decl));
-      cirstate->addExp (exp);
+      current_irstate->addExp (exp);
       DECL_INITIAL (decl) = NULL_TREE;
     }
 }
@@ -576,7 +532,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
       if (integer_zerop (expr))
 	{
 	  StructDeclaration *sd = ((TypeStruct *) tbtype)->sym;
-	  tree var = build_local_var (totype->toCtype());
+	  tree var = build_local_temp (totype->toCtype());
 
 	  tree init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
 					 build_address (var), expr,
@@ -685,11 +641,11 @@ d_array_convert (Expression *exp)
   TY ty = exp->type->toBasetype()->ty;
 
   if (ty == Tarray)
-    return exp->toElem (cirstate);
+    return exp->toElem (current_irstate);
   else if (ty == Tsarray)
     {
       Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
-      return convert_expr (exp->toElem (cirstate), exp->type, totype);
+      return convert_expr (exp->toElem (current_irstate), exp->type, totype);
     }
 
   // Invalid type passed.
@@ -920,7 +876,7 @@ build_attributes (Expressions *in_attrs)
 	      aet = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = ae->toElem (cirstate);
+	    aet = ae->toElem (current_irstate);
 
 	  args = chainon (args, build_tree_list (0, aet));
         }
@@ -1824,50 +1780,6 @@ build_binary_op (tree_code code, tree type, tree arg0, tree arg1)
   return d_convert (type, t);
 }
 
-// Build an assignment expression of code CODE, data type TYPE, and
-// operands E1 and E2.
-
-tree
-IRState::buildAssignOp (tree_code code, Expression *e1, Expression *e2)
-{
-  // Skip casts for lhs assignment.
-  Expression *e1b = e1;
-  while (e1b->op == TOKcast)
-    {
-      CastExp *ce = (CastExp *) e1b;
-      gcc_assert (d_types_compatible (ce->type, ce->to));
-      e1b = ce->e1;
-    }
-
-  // Prevent multiple evaluations of LHS, but watch out!
-  // The LHS expression could be an assignment, to which
-  // it's operation gets lost during gimplification.
-  tree lexpr = NULL_TREE;
-  tree lhs;
-
-  if (e1b->op == TOKcomma)
-    {
-      CommaExp *ce = (CommaExp *) e1b;
-      lexpr = ce->e1->toElem (this);
-      lhs = ce->e2->toElem (this);
-    }
-  else
-    lhs = e1b->toElem (this);
-
-  lhs = stabilize_reference (lhs);
-
-  tree rhs = build_binary_op (code, e1->type->toCtype(),
-			      convert_expr (lhs, e1b->type, e1->type), e2->toElem (this));
-
-  tree expr = modify_expr (lhs, convert_expr (rhs, e1->type, e1b->type));
-
-  if (lexpr)
-    expr = compound_expr (lexpr, expr);
-
-  return expr;
-}
-
-
 // Builds an array bounds checking condition, returning INDEX if true,
 // else throws a RangeError exception.
 
@@ -1916,7 +1828,7 @@ array_bounds_check (void)
   if (result == 1)
     {
       // For D2 safe functions only
-      FuncDeclaration *func = cirstate->func;
+      FuncDeclaration *func = current_irstate->func;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
@@ -2026,18 +1938,19 @@ call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee)
 // OBJECT is the 'this' reference passed and ARGS are the arguments to FD.
 
 tree
-IRState::call (FuncDeclaration *fd, tree object, Expressions *args)
+d_build_call (FuncDeclaration *fd, tree object, Expressions *args)
 {
-  return call (get_function_type (fd->type),
-	       build_address (fd->toSymbol()->Stree), object, args);
+  return d_build_call (get_function_type (fd->type),
+		       build_address (fd->toSymbol()->Stree), object, args);
 }
 
 // Builds a CALL_EXPR of type TF to CALLABLE. OBJECT holds the 'this' pointer,
 // ARGUMENTS are evaluated in left to right order, saved and promoted before passing.
 
 tree
-IRState::call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
+d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
 {
+  IRState *irs = current_irstate;
   tree ctype = TREE_TYPE (callable);
   tree actual_callee = callable;
   tree saved_args = NULL_TREE;
@@ -2099,27 +2012,28 @@ IRState::call (TypeFunction *tf, tree callable, tree object, Expressions *argume
       if (ai == 0 && is_d_vararg)
 	{
 	  // The hidden _arguments parameter
-	  arg_tree = arg_exp->toElem (this);
+	  arg_tree = arg_exp->toElem (irs);
 	}
       else if (fi < n_formal_args)
 	{
 	  // Actual arguments for declared formal arguments
 	  Parameter *formal_arg = Parameter::getNth (formal_args, fi);
-	  arg_tree = convert_for_argument (arg_exp->toElem (this), arg_exp, formal_arg);
+	  arg_tree = convert_for_argument (arg_exp->toElem (irs),
+					   arg_exp, formal_arg);
 	  ++fi;
 	}
       else
 	{
 	  if (flag_split_darrays && arg_exp->type->toBasetype()->ty == Tarray)
 	    {
-	      tree da_exp = maybe_make_temp (arg_exp->toElem (this));
+	      tree da_exp = maybe_make_temp (arg_exp->toElem (irs));
 	      arg_list = chainon (arg_list, build_tree_list (0, d_array_length (da_exp)));
 	      arg_list = chainon (arg_list, build_tree_list (0, d_array_ptr (da_exp)));
 	      continue;
 	    }
 	  else
 	    {
-	      arg_tree = arg_exp->toElem (this);
+	      arg_tree = arg_exp->toElem (irs);
 	      /* Not all targets support passing unpromoted types, so
 		 promote anyway. */
 	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (arg_tree));
@@ -2138,7 +2052,7 @@ IRState::call (TypeFunction *tf, tree callable, tree object, Expressions *argume
       arg_list = chainon (arg_list, build_tree_list (0, arg_tree));
     }
 
-  tree result = d_build_call (TREE_TYPE (ctype), actual_callee, arg_list);
+  tree result = d_build_call_list (TREE_TYPE (ctype), actual_callee, arg_list);
   result = maybe_expand_builtin (result);
 
   return maybe_compound_expr (saved_args, result);
@@ -2672,7 +2586,7 @@ build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
   for (int i = n_args - 1; i >= 0; i--)
     arg_list = tree_cons (NULL_TREE, args[i], arg_list);
 
-  tree result = d_build_call (type->toCtype(), callee, arg_list);
+  tree result = d_build_call_list (type->toCtype(), callee, arg_list);
 
   // Assumes caller knows what it is doing.
   if (force_type != NULL_TREE)
@@ -2686,7 +2600,7 @@ build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
 // attributes of the funcion and the SIDE_EFFECTS flags of the arguments.
 
 tree
-d_build_call (tree type, tree callee, tree args)
+d_build_call_list (tree type, tree callee, tree args)
 {
   int nargs = list_length (args);
   tree *pargs = new tree[nargs];
@@ -2697,7 +2611,7 @@ d_build_call (tree type, tree callee, tree args)
 }
 
 // Conveniently construct the function arguments for passing
-// to the real d_build_call function.
+// to the d_build_call_list function.
 
 tree
 d_build_call_nary (tree callee, int n_args, ...)
@@ -2711,7 +2625,7 @@ d_build_call_nary (tree callee, int n_args, ...)
     arg_list = tree_cons (NULL_TREE, va_arg (ap, tree), arg_list);
   va_end (ap);
 
-  return d_build_call (TREE_TYPE (fntype), build_address (callee), nreverse (arg_list));
+  return d_build_call_list (TREE_TYPE (fntype), build_address (callee), nreverse (arg_list));
 }
 
 // If CALL_EXP is a BUILT_IN_FRONTEND, expand and return inlined
@@ -2794,7 +2708,7 @@ maybe_expand_builtin (tree call_exp)
 	  if (intrinsic == INTRINSIC_BTR)
 	    op2 = build1 (BIT_NOT_EXPR, TREE_TYPE (op2), op2);
 
-	  val = build_local_var (TREE_TYPE (call_exp));
+	  val = build_local_temp (TREE_TYPE (call_exp));
 	  exp = vmodify_expr (val, exp);
 	  op1 = vmodify_expr (op1, fold_build2 (code, TREE_TYPE (op1), op1, op2));
 	  return compound_expr (exp, compound_expr (op1, val));
@@ -2977,7 +2891,7 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 tree
 build_typeinfo (Type *t)
 {
-  tree tinfo = t->getInternalTypeInfo (NULL)->toElem (cirstate);
+  tree tinfo = t->getInternalTypeInfo (NULL)->toElem (current_irstate);
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (tinfo)));
   return tinfo;
 }
@@ -3665,7 +3579,7 @@ get_frameinfo (FuncDeclaration *fd)
 tree
 get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 {
-  tree result = cirstate->sthis;
+  tree result = current_irstate->sthis;
   FuncDeclaration *fd = inner;
 
   while (fd && fd != outer)
