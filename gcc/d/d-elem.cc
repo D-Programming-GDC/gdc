@@ -1970,7 +1970,8 @@ FuncExp::toElem (IRState *irs)
     }
 
   // Emit after current function body has finished.
-  irs->func->deferred.push (fd);
+  if (irs->func)
+    irs->func->deferred.push (fd);
 
   // If nested, this will be a trampoline...
   if (fd->isNested())

@@ -12,6 +12,8 @@
 	members for correct debugging.
 	* d-objfile.cc(build_type_decl): Use fully qualified type name in
 	debugging code.
+	(VarDeclaration::toObjFile): Emit manifest constant values in debug
+	code generation.
 
 2013-09-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 

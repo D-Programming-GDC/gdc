@@ -666,9 +666,48 @@ VarDeclaration::toObjFile (int)
       return;
     }
 
-  // Do not store variables we cannot take the address of
+  // Do not store variables we cannot take the address of,
+  // but keep the values for purposes of debugging.
   if (!canTakeAddressOf())
-    return;
+    {
+      Expression *ie = NULL;
+      tree ctype = declaration_type (this);
+      tree ident;
+
+      if (toParent2()->isModule())
+	ident = get_identifier (toPrettyChars());
+      else
+	ident = get_identifier (toChars());
+
+      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident, ctype);
+      set_decl_location (decl, this);
+
+      if (init)
+	{
+	  gcc_assert (!init->isVoidInitializer());
+	  ie = init->toExpression();
+	}
+      else
+	ie = type->defaultInit();
+
+      gcc_assert (ie != NULL);
+      DECL_INITIAL (decl) = ie->toElem (current_irstate);
+
+      // Manifest constants have no address in memory.
+      TREE_CONSTANT (decl) = 1;
+      TREE_READONLY (decl) = 1;
+      TREE_STATIC (decl) = 0;
+
+      d_pushdecl (decl);
+      d_keep (decl);
+
+      bool toplevel = !DECL_CONTEXT (decl);
+      if (toplevel)
+      	d_add_global_declaration (decl);
+
+      rest_of_decl_compilation (decl, toplevel, 0);
+      return;
+    }
 
   if (isDataseg() && !(storage_class & STCextern))
     {
