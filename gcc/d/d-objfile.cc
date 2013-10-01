@@ -1394,8 +1394,8 @@ d_finish_module (void)
     }
 }
 
-static location_t
-cvtLocToloc_t (const Loc loc)
+location_t
+get_linemap (const Loc loc)
 {
   location_t gcc_location;
 
@@ -1413,7 +1413,7 @@ void
 set_input_location (const Loc& loc)
 {
   if (loc.filename)
-    input_location = cvtLocToloc_t (loc);
+    input_location = get_linemap (loc);
 }
 
 // Set the decl T source location to LOC.
@@ -1424,7 +1424,7 @@ set_decl_location (tree t, const Loc& loc)
   // DWARF2 will often crash if the DECL_SOURCE_FILE is not set.  It's
   // easier the error here.
   gcc_assert (loc.filename);
-  DECL_SOURCE_LOCATION (t) = cvtLocToloc_t (loc);
+  DECL_SOURCE_LOCATION (t) = get_linemap (loc);
 }
 
 // Some D Declarations don't have the loc set, this searches DECL's parents
@@ -1462,7 +1462,7 @@ void
 set_function_end_locus (const Loc& loc)
 {
   if (loc.filename)
-    cfun->function_end_locus = cvtLocToloc_t (loc);
+    cfun->function_end_locus = get_linemap (loc);
   else
     cfun->function_end_locus = DECL_SOURCE_LOCATION (cfun->decl);
 }

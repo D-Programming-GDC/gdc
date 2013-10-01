@@ -113,7 +113,7 @@ D_DMD_OBJS := \
     d/hdrgen.dmd.o d/identifier.dmd.o \
     d/imphint.dmd.o d/import.dmd.o d/init.dmd.o d/inline.dmd.o \
     d/interpret.dmd.o d/json.dmd.o d/lexer.dmd.o \
-    d/macro.dmd.o d/mangle.dmd.o d/mars.dmd.o d/mtype.dmd.o d/module.dmd.o \
+    d/macro.dmd.o d/mangle.dmd.o d/mtype.dmd.o d/module.dmd.o \
     d/opover.dmd.o d/optimize.dmd.o d/parse.dmd.o d/rmem.dmd.o d/root.dmd.o \
     d/sapply.dmd.o d/scope.dmd.o d/speller.dmd.o d/statement.dmd.o \
     d/staticassert.dmd.o d/stringtable.dmd.o d/struct.dmd.o d/template.dmd.o \
@@ -129,7 +129,7 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
               d/d-gt.cglue.o d/d-builtins.cglue.o d/d-asmstmt.glue.o \
               d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
               d/d-toir.glue.o d/d-typinf.glue.o d/d-port.glue.o \
-              d/d-target.glue.o
+              d/d-target.glue.o d/d-glue.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h

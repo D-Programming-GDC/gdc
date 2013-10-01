@@ -1,3 +1,9 @@
+2013-10-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(cvtLocToloc_t): Rename to get_linemap.
+	* d-glue.cc: New source to provide interface for defined globals and
+	error handling called from the front-end.
+
 2013-09-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(IRState::call): Rename to d_build_call.
