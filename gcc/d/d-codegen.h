@@ -191,7 +191,7 @@ extern tree d_array_convert (Expression *exp);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
-extern tree build_float_cst (const real_t& value, Type *target_type);
+extern tree build_float_cst (const real_t& value, Type *totype);
 
 extern dinteger_t cst_to_hwi (double_int cst);
 extern dinteger_t tree_to_hwi (tree t);

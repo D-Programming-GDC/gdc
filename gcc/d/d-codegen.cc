@@ -212,10 +212,10 @@ d_convert (tree type, tree exp)
     return error_mark_node;
 
   Type *totype = build_dtype (type);
-  Type *expr_type = build_dtype (TREE_TYPE (exp));
+  Type *etype = build_dtype (TREE_TYPE (exp));
 
-  if (totype && expr_type)
-    return convert_expr (exp, expr_type, totype);
+  if (totype && etype)
+    return convert_expr (exp, etype, totype);
 
   return convert (type, exp);
 }
@@ -949,12 +949,10 @@ build_float_cst (const real_t& value, Type *totype)
   tree type_node = tb->toCtype();
   real_convert (&new_value.rv(), TYPE_MODE (type_node), &value.rv());
 
+  // Value grew as a result of the conversion. %% precision bug ??
+  // For now just revert back to original.
   if (new_value > value)
-    {
-      // value grew as a result of the conversion. %% precision bug ??
-      // For now just revert back to original.
-      new_value = value;
-    }
+    new_value = value;
 
   return build_real (type_node, new_value.rv());
 }
@@ -1364,14 +1362,14 @@ tree
 build_address (tree exp)
 {
   tree t, ptrtype;
-  tree exp_type = TREE_TYPE (exp);
+  tree type = TREE_TYPE (exp);
   d_mark_addressable (exp);
 
   // Gimplify doesn't like &(* (ptr-to-array-type)) with static arrays
   if (TREE_CODE (exp) == INDIRECT_REF)
     {
       t = TREE_OPERAND (exp, 0);
-      ptrtype = build_pointer_type (exp_type);
+      ptrtype = build_pointer_type (type);
       t = build_nop (ptrtype, t);
     }
   else
@@ -1379,18 +1377,18 @@ build_address (tree exp)
       /* Just convert string literals (char[]) to C-style strings (char *), otherwise
 	 the latter method (char[]*) causes conversion problems during gimplification. */
       if (TREE_CODE (exp) == STRING_CST)
-	ptrtype = build_pointer_type (TREE_TYPE (exp_type));
+	ptrtype = build_pointer_type (TREE_TYPE (type));
       /* Special case for va_list. The backends will be expecting a pointer to vatype,
        * but some targets use an array. So fix it.  */
-      else if (TYPE_MAIN_VARIANT (exp_type) == TYPE_MAIN_VARIANT (va_list_type_node))
+      else if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node))
 	{
-	  if (TREE_CODE (TYPE_MAIN_VARIANT (exp_type)) == ARRAY_TYPE)
-	    ptrtype = build_pointer_type (TREE_TYPE (exp_type));
+	  if (TREE_CODE (TYPE_MAIN_VARIANT (type)) == ARRAY_TYPE)
+	    ptrtype = build_pointer_type (TREE_TYPE (type));
 	  else
-	    ptrtype = build_pointer_type (exp_type);
+	    ptrtype = build_pointer_type (type);
 	}
       else
-	ptrtype = build_pointer_type (exp_type);
+	ptrtype = build_pointer_type (type);
 
       t = build1 (ADDR_EXPR, ptrtype, exp);
     }

@@ -1,3 +1,9 @@
+2013-10-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(gcc_cst_to_d_expr): Add support for VECTOR_CST to
+	Expression conversion.
+	(d_gcc_paint_type): Add support for painting to/from array literals.
+
 2013-10-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(cvtLocToloc_t): Rename to get_linemap.

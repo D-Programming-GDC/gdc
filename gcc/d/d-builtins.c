@@ -718,13 +718,33 @@ gcc_cst_to_d_expr (tree cst)
 	  size_t len = TREE_STRING_LENGTH (cst);
 	  return new StringExp (Loc(), CONST_CAST (void *, string), len);
 	}
+      else if (code == VECTOR_CST)
+	{
+	  dinteger_t nunits = VECTOR_CST_NELTS (cst);
+	  Expressions *elements = new Expressions;
+	  elements->setDim (nunits);
+
+	  for (size_t i = 0; i < nunits; i++)
+	    {
+	      Expression *elem = gcc_cst_to_d_expr (VECTOR_CST_ELT (cst, i));
+	      if (elem == NULL)
+		return NULL;
+
+	      (*elements)[i] = elem;
+	    }
+
+	  Expression *e = new ArrayLiteralExp (Loc(), elements);
+	  e->type = ((TypeVector *) type)->basetype;
+
+	  return new VectorExp (Loc(), e, type);
+	}
     }
+
   return NULL;
 }
 
-// Helper for d_gcc_eval_builtin. Evaluate builtin D
-// function BUILTIN whose argument list is ARGUMENTS.
-// Return result; NULL if cannot evaluate it.
+// Helper for d_gcc_eval_builtin. Evaluate builtin D function BUILTIN whose
+// argument list is ARGUMENTS.  Return result; NULL if cannot evaluate it.
 
 Expression *
 eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
@@ -827,7 +847,6 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
     }
 
   return e;
-
 }
 
 // Evaluate builtin D function FD whose argument list is ARGUMENTS.
@@ -859,27 +878,85 @@ d_gcc_eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
     }
 }
 
+// Perform a reinterpret cast of EXPR to type TYPE for use in CTFE.
+// The front end should have already ensured that EXPR is a constant,
+// so we just lower the value to GCC and return the converted CST.
+
 Expression *
 d_gcc_paint_type (Expression *expr, Type *type)
 {
   /* We support up to 512-bit values.  */
   unsigned char buffer[64];
-  int len;
-  Expression *e;
   tree cst;
 
-  if (type->isintegral())
-    cst = build_float_cst (expr->toReal(), expr->type);
-  else
+  Type *tb = type->toBasetype();
+
+  if (expr->type->isintegral())
     cst = build_integer_cst (expr->toInteger(), expr->type->toCtype());
+  else if (expr->type->isfloating())
+    cst = build_float_cst (expr->toReal(), expr->type);
+  else if (expr->op == TOKarrayliteral)
+    {
+      // Build array as VECTOR_CST, assumes EXPR is constant.
+      Expressions *elements = ((ArrayLiteralExp *) expr)->elements;
+      vec<constructor_elt, va_gc> *elms = NULL;
 
-  len = native_encode_expr (cst, buffer, sizeof (buffer));
-  cst = native_interpret_expr (type->toCtype(), buffer, len);
+      vec_safe_reserve (elms, elements->dim);
+      for (size_t i = 0; i < elements->dim; i++)
+	{
+	  Expression *e = (*elements)[i];
+	  if (e->type->isintegral())
+	    {
+	      tree value = build_integer_cst (e->toInteger(), e->type->toCtype());
+	      CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
+	    }
+	  else if (e->type->isfloating())
+	    {
+	      tree value = build_float_cst (e->toReal(), e->type);
+	      CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
+	    }
+	  else
+	    gcc_unreachable();
+	}
 
-  e = gcc_cst_to_d_expr (cst);
-  gcc_assert (e != NULL);
+      // Build vector type.
+      int nunits = ((TypeSArray *) expr->type)->dim->toUInteger();
+      Type *telem = expr->type->nextOf();
+      tree vectype = build_vector_type (telem->toCtype(), nunits);
 
-  return e;
+      cst = build_vector_from_ctor (vectype, elms);
+    }
+  else
+    gcc_unreachable();
+
+  // Encode CST to buffer.
+  int len = native_encode_expr (cst, buffer, sizeof (buffer));
+
+  if (tb->ty == Tsarray)
+    {
+      // Interpret value as a vector of the same size,
+      // then return the array literal.
+      int nunits = ((TypeSArray *) type)->dim->toUInteger();
+      Type *elem = type->nextOf();
+      tree vectype = build_vector_type (elem->toCtype(), nunits);
+
+      cst = native_interpret_expr (vectype, buffer, len);
+
+      Expression *e = gcc_cst_to_d_expr (cst);
+      gcc_assert (e != NULL && e->op == TOKvector);
+
+      return ((VectorExp *) e)->e1;
+    }
+  else
+    {
+      // Normal interpret cast.
+      cst = native_interpret_expr (type->toCtype(), buffer, len);
+
+      Expression *e = gcc_cst_to_d_expr (cst);
+      gcc_assert (e != NULL);
+
+      return e;
+    }
 }
 
 /* Used to help initialize the builtin-types.def table.  When a type of
@@ -1686,34 +1763,34 @@ ignore_attribute (tree * ARG_UNUSED (node), tree ARG_UNUSED (name),
 }
 
 
-/* Backend init.  */
+// Backend init.
 
 void
 d_backend_init (void)
 {
-  init_global_binding_level ();
+  init_global_binding_level();
 
-  /* This allows the code in d-builtins2 to not have to worry about
-     converting (C signed char *) to (D char *) for string arguments of
-     built-in functions.
-     Parameters are (signed_char = false, short_double = false).  */
+  // This allows the code in d-builtins.c to not have to worry about
+  // converting (C signed char *) to (D char *) for string arguments of
+  // built-in functions.
+  // Parameters are (signed_char = false, short_double = false).
   build_common_tree_nodes (false, false);
 
-  d_init_builtins ();
+  d_init_builtins();
 
   if (flag_exceptions)
-    d_init_exceptions ();
+    d_init_exceptions();
 
-  /* This is the C main, not the D main.  */
+  // This is the C main, not the D main.
   main_identifier_node = get_identifier ("main");
 }
 
-
-/* Backend term.  */
+// Backend term.
 
 void
 d_backend_term (void)
 {
 }
+
 
 #include "gt-d-d-builtins.h"
