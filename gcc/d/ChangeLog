@@ -1,3 +1,7 @@
+2013-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(DEF_FUNCTION_TYPE_8): Define.
+
 2013-10-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c(gcc_cst_to_d_expr): Add support for VECTOR_CST to
