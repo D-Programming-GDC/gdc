@@ -1,3 +1,10 @@
+2013-10-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(AssignExp::toElem): Optimise assigning array literal to a
+	static array.
+	(ArrayLiteralExp::toElem): Do not allocate static or const array
+	literals on the heap using the GC.
+
 2013-10-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c(DEF_FUNCTION_TYPE_8): Define.

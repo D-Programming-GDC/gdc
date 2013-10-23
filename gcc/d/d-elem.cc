@@ -977,7 +977,30 @@ AssignExp::toElem (IRState *irs)
   // Look for array[] = n;
   if (e1->op == TOKslice)
     {
-      Type *etype = e1->type->toBasetype()->nextOf()->toBasetype();
+      SliceExp *se = (SliceExp *) e1;
+      Type *stype = se->e1->type->toBasetype();
+      Type *tb2 = e2->type->toBasetype();
+      Type *etype = stype->nextOf()->toBasetype();
+
+      // Optimize static array assignment with array literal.
+      // Front-end writes these as an assignment of a dynamic
+      // array literal with a slice.
+      if (se->lwr == NULL && stype->ty == Tsarray
+	  && e2->op == TOKarrayliteral
+	  && tb2->nextOf()->mutableOf()->implicitConvTo(stype->nextOf()))
+	{
+	  Expression *e1 = se->e1;
+	  Type *t2save = e2->type;
+
+	  // Treat [e2] as a static array literal.
+	  e2->type = stype;
+	  tree t1 = e1->toElem (irs);
+	  tree t2 = convert_for_assignment (e2->toElem (irs), e2->type, e1->type);
+	  tree result = modify_expr (e1->type->toCtype(), t1, t2);
+	  e2->type = t2save;
+
+	  return convert_expr (result, e1->type, type);
+	}
 
       // Determine if we need to do postblit.
       int postblit = 0;
@@ -988,7 +1011,7 @@ AssignExp::toElem (IRState *irs)
 	      || (e2->op == TOKcast && ((UnaExp *) e2)->e1->isLvalue())))
 	postblit = 1;
 
-      if (d_types_compatible (etype, e2->type->toBasetype()))
+      if (d_types_compatible (etype, tb2))
 	{
 	  // Set a range of elements to one value.
 	  tree t1 = maybe_make_temp (e1->toElem (irs));
@@ -2365,6 +2388,7 @@ ArrayLiteralExp::toElem (IRState *irs)
   Type *etype = tb->nextOf();
   tree sa_type = d_array_type (etype, elements->dim);
   tree result = NULL_TREE;
+  bool constant_p = tb->isImmutable();
 
   if (elements->dim == 0)
     {
@@ -2383,10 +2407,20 @@ ArrayLiteralExp::toElem (IRState *irs)
       Expression *e = (*elements)[i];
       CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
 			      convert_expr (e->toElem (irs), e->type, etype));
+      if (constant_p && !e->isConst())
+	constant_p = false;
     }
 
   tree ctor = build_constructor (sa_type, elms);
   tree args[2];
+
+  // Nothing else to do for static arrays.
+  if (tb->ty == Tsarray)
+    return d_convert (type->toCtype(), ctor);
+
+  // Don't allocate immutable arrays on the heap.
+  if (tb->ty == Tarray && constant_p)
+    return d_array_value (type->toCtype(), size_int (elements->dim), build_address (ctor));
 
   args[0] = build_typeinfo (etype->arrayOf());
   args[1] = build_integer_cst (elements->dim, size_type_node);
@@ -2407,8 +2441,6 @@ ArrayLiteralExp::toElem (IRState *irs)
 
   if (tb->ty == Tarray)
     result = d_array_value (type->toCtype(), size_int (elements->dim), result);
-  else if (tb->ty == Tsarray)
-    result = indirect_ref (sa_type, result);
 
   return result;
 }
