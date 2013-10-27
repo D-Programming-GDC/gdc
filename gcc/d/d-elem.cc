@@ -2395,7 +2395,7 @@ ArrayLiteralExp::toElem (IRState *irs)
       if (tb->ty == Tarray)
 	return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
       else
-	return d_convert (etype->pointerTo()->toCtype(), integer_zero_node);
+	return build_constructor (sa_type, NULL);
     }
 
   // Build an expression that assigns the expressions in ELEMENTS to a constructor.
