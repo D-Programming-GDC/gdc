@@ -79,6 +79,7 @@ const attribute_spec d_attribute_table[] =
 #undef LANG_HOOKS_REGISTER_BUILTIN_TYPE
 #undef LANG_HOOKS_FINISH_INCOMPLETE_DECL
 #undef LANG_HOOKS_GIMPLIFY_EXPR
+#undef LANG_HOOKS_CLASSIFY_RECORD
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
 
@@ -101,6 +102,7 @@ const attribute_spec d_attribute_table[] =
 #define LANG_HOOKS_REGISTER_BUILTIN_TYPE	d_register_builtin_type
 #define LANG_HOOKS_FINISH_INCOMPLETE_DECL	d_finish_incomplete_decl
 #define LANG_HOOKS_GIMPLIFY_EXPR		d_gimplify_expr
+#define LANG_HOOKS_CLASSIFY_RECORD		d_classify_record
 #define LANG_HOOKS_EH_PERSONALITY		d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE		d_build_eh_type_type
 
@@ -1543,6 +1545,29 @@ d_finish_incomplete_decl (tree decl)
 	  DECL_SIZE_UNIT (decl) = size_zero_node;
 	}
     }
+}
+
+
+// Return the true debug type for TYPE.
+
+static enum classify_record
+d_classify_record (tree type)
+{
+  Type *dtype = build_dtype (type);
+
+  if (dtype && dtype->ty == Tclass)
+    {
+      TypeClass *tclass = (TypeClass *) dtype;
+
+      // extern(C++) interfaces get emitted as classes.
+      if (tclass->sym->isInterfaceDeclaration()
+	  && !tclass->sym->isCPPinterface())
+	return RECORD_IS_INTERFACE;
+
+      return RECORD_IS_CLASS;
+    }
+
+  return RECORD_IS_STRUCT;
 }
 
 

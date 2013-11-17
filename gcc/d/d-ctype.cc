@@ -606,23 +606,20 @@ TypeClass::toCtype (void)
 	  tree rec_type;
 	  Array base_class_decls;
 	  bool inherited = sym->baseClass != 0;
-	  tree obj_rec_type;
 	  tree vfield;
 
-	  /* Need to set ctype right away in case of self-references to
-	     the type during this call. */
+	  // Need to set ctype right away in case of self-references to
+	  // the type during this call.
 	  rec_type = make_node (RECORD_TYPE);
 	  ctype = build_reference_type (rec_type);
 	  d_keep (ctype);
 
-	  obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
-
-	  // Note that this is set on the reference type, not the record type.
+	  // Note that this is set on both the reference type and record type.
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
+	  TYPE_LANG_SPECIFIC (rec_type) = TYPE_LANG_SPECIFIC (ctype);
 
-	  AggLayout agg_layout (sym, rec_type);
-
-	  // Most of this silly code is just to produce correct debugging information.
+	  // Most of this code is just to produce correct debugging information.
+	  AggLayout agg_layout = AggLayout (sym, rec_type);
 
 	  // Add the virtual table pointer
 	  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
@@ -644,6 +641,7 @@ TypeClass::toCtype (void)
 
 	  if (!sym->isInterfaceDeclaration())
 	    {
+	      tree obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
 	      DECL_FCONTEXT (vfield) = obj_rec_type;
 
 	      // Add the monitor
