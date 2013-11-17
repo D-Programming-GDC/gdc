@@ -623,7 +623,7 @@ TypeClass::toCtype (void)
 
 	  // Add the virtual table pointer
 	  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				  get_identifier ("_vptr$"), d_vtbl_ptr_type_node);
+				  get_identifier ("__vptr"), d_vtbl_ptr_type_node);
 	  agg_layout.addField (decl, 0); // %% target stuff..
 
 	  if (inherited)
@@ -646,7 +646,7 @@ TypeClass::toCtype (void)
 
 	      // Add the monitor
 	      decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				 get_identifier ("_monitor"), ptr_type_node);
+				 get_identifier ("__monitor"), ptr_type_node);
 	      DECL_FCONTEXT (decl) = obj_rec_type;
 	      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
 	      agg_layout.addField (decl, Target::ptrsize);

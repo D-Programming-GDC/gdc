@@ -1,5 +1,8 @@
 2013-11-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-ctype.cc(TypeClass::toCtype): Fix ABI to emit correct vtable and
+	monitor field names.
+
 	* d-ctype.cc(TypeClass:toCtype): Set TYPE_LANG_SPECIFIC on record as
 	well as reference type.
 	* d-lang.cc(d_classify_record): New langhook to return appropriate
