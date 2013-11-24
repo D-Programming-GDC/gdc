@@ -1,9 +1,9 @@
 This implements building of libphobos library in GCC.
 ---
 
---- gcc/configure	2013-08-09 04:50:55.000000000 +0100
-+++ gcc/configure	2013-09-01 11:02:44.721080577 +0100
-@@ -2782,7 +2782,8 @@ target_libraries="target-libgcc \
+--- a/configure
++++ b/configure
+@@ -2785,7 +2785,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
  		target-libobjc \
  		target-libada \
@@ -13,8 +13,8 @@ This implements building of libphobos library in GCC.
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
---- gcc/configure.ac	2013-08-09 04:50:55.000000000 +0100
-+++ gcc/configure.ac	2013-09-01 11:02:44.721080577 +0100
+--- a/configure.ac
++++ b/configure.ac
 @@ -169,7 +169,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
  		target-libobjc \
@@ -25,9 +25,9 @@ This implements building of libphobos library in GCC.
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
---- gcc/Makefile.def	2013-08-07 04:38:59.000000000 +0100
-+++ gcc/Makefile.def	2013-09-01 11:02:44.725080578 +0100
-@@ -134,6 +134,7 @@ target_modules = { module= libquadmath;
+--- a/Makefile.def
++++ b/Makefile.def
+@@ -135,6 +135,7 @@ target_modules = { module= libquadmath; };
  target_modules = { module= libgfortran; };
  target_modules = { module= libobjc; };
  target_modules = { module= libgo; };
@@ -35,7 +35,7 @@ This implements building of libphobos library in GCC.
  target_modules = { module= libtermcap; no_check=true;
                     missing=mostlyclean;
                     missing=clean;
-@@ -508,6 +509,8 @@ dependencies = { module=configure-target
+@@ -510,6 +511,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
  dependencies = { module=all-target-libgo; on=all-target-libbacktrace; };
  dependencies = { module=all-target-libgo; on=all-target-libffi; };
  dependencies = { module=all-target-libgo; on=all-target-libatomic; };
@@ -44,7 +44,7 @@ This implements building of libphobos library in GCC.
  dependencies = { module=configure-target-libjava; on=configure-target-zlib; };
  dependencies = { module=configure-target-libjava; on=configure-target-boehm-gc; };
  dependencies = { module=configure-target-libjava; on=configure-target-libffi; };
-@@ -566,6 +569,8 @@ languages = { language=objc;	gcc-check-t
+@@ -569,6 +572,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
  languages = { language=obj-c++;	gcc-check-target=check-obj-c++; };
  languages = { language=go;	gcc-check-target=check-go;
  				lib-check-target=check-target-libgo; };
@@ -53,9 +53,9 @@ This implements building of libphobos library in GCC.
  
  // Toplevel bootstrap
  bootstrap_stage = { id=1 ; };
---- gcc/Makefile.in	2013-08-07 04:38:59.000000000 +0100
-+++ gcc/Makefile.in	2013-09-01 11:02:44.745080578 +0100
-@@ -938,6 +938,7 @@ configure-target:  \
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -940,6 +940,7 @@ configure-target:  \
      maybe-configure-target-libgfortran \
      maybe-configure-target-libobjc \
      maybe-configure-target-libgo \
@@ -63,7 +63,7 @@ This implements building of libphobos library in GCC.
      maybe-configure-target-libtermcap \
      maybe-configure-target-winsup \
      maybe-configure-target-libgloss \
-@@ -1094,6 +1095,7 @@ all-target: maybe-all-target-libquadmath
+@@ -1096,6 +1097,7 @@ all-target: maybe-all-target-libquadmath
  all-target: maybe-all-target-libgfortran
  all-target: maybe-all-target-libobjc
  all-target: maybe-all-target-libgo
@@ -71,7 +71,7 @@ This implements building of libphobos library in GCC.
  all-target: maybe-all-target-libtermcap
  all-target: maybe-all-target-winsup
  all-target: maybe-all-target-libgloss
-@@ -1184,6 +1186,7 @@ info-target: maybe-info-target-libquadma
+@@ -1186,6 +1188,7 @@ info-target: maybe-info-target-libquadmath
  info-target: maybe-info-target-libgfortran
  info-target: maybe-info-target-libobjc
  info-target: maybe-info-target-libgo
@@ -79,7 +79,7 @@ This implements building of libphobos library in GCC.
  info-target: maybe-info-target-libtermcap
  info-target: maybe-info-target-winsup
  info-target: maybe-info-target-libgloss
-@@ -1267,6 +1270,7 @@ dvi-target: maybe-dvi-target-libquadmath
+@@ -1269,6 +1272,7 @@ dvi-target: maybe-dvi-target-libquadmath
  dvi-target: maybe-dvi-target-libgfortran
  dvi-target: maybe-dvi-target-libobjc
  dvi-target: maybe-dvi-target-libgo
@@ -87,7 +87,7 @@ This implements building of libphobos library in GCC.
  dvi-target: maybe-dvi-target-libtermcap
  dvi-target: maybe-dvi-target-winsup
  dvi-target: maybe-dvi-target-libgloss
-@@ -1350,6 +1354,7 @@ pdf-target: maybe-pdf-target-libquadmath
+@@ -1352,6 +1356,7 @@ pdf-target: maybe-pdf-target-libquadmath
  pdf-target: maybe-pdf-target-libgfortran
  pdf-target: maybe-pdf-target-libobjc
  pdf-target: maybe-pdf-target-libgo
@@ -95,7 +95,7 @@ This implements building of libphobos library in GCC.
  pdf-target: maybe-pdf-target-libtermcap
  pdf-target: maybe-pdf-target-winsup
  pdf-target: maybe-pdf-target-libgloss
-@@ -1433,6 +1438,7 @@ html-target: maybe-html-target-libquadma
+@@ -1435,6 +1440,7 @@ html-target: maybe-html-target-libquadmath
  html-target: maybe-html-target-libgfortran
  html-target: maybe-html-target-libobjc
  html-target: maybe-html-target-libgo
@@ -103,7 +103,7 @@ This implements building of libphobos library in GCC.
  html-target: maybe-html-target-libtermcap
  html-target: maybe-html-target-winsup
  html-target: maybe-html-target-libgloss
-@@ -1516,6 +1522,7 @@ TAGS-target: maybe-TAGS-target-libquadma
+@@ -1518,6 +1524,7 @@ TAGS-target: maybe-TAGS-target-libquadmath
  TAGS-target: maybe-TAGS-target-libgfortran
  TAGS-target: maybe-TAGS-target-libobjc
  TAGS-target: maybe-TAGS-target-libgo
@@ -111,7 +111,7 @@ This implements building of libphobos library in GCC.
  TAGS-target: maybe-TAGS-target-libtermcap
  TAGS-target: maybe-TAGS-target-winsup
  TAGS-target: maybe-TAGS-target-libgloss
-@@ -1599,6 +1606,7 @@ install-info-target: maybe-install-info-
+@@ -1601,6 +1608,7 @@ install-info-target: maybe-install-info-target-libquadmath
  install-info-target: maybe-install-info-target-libgfortran
  install-info-target: maybe-install-info-target-libobjc
  install-info-target: maybe-install-info-target-libgo
@@ -119,7 +119,7 @@ This implements building of libphobos library in GCC.
  install-info-target: maybe-install-info-target-libtermcap
  install-info-target: maybe-install-info-target-winsup
  install-info-target: maybe-install-info-target-libgloss
-@@ -1682,6 +1690,7 @@ install-pdf-target: maybe-install-pdf-ta
+@@ -1684,6 +1692,7 @@ install-pdf-target: maybe-install-pdf-target-libquadmath
  install-pdf-target: maybe-install-pdf-target-libgfortran
  install-pdf-target: maybe-install-pdf-target-libobjc
  install-pdf-target: maybe-install-pdf-target-libgo
@@ -127,7 +127,7 @@ This implements building of libphobos library in GCC.
  install-pdf-target: maybe-install-pdf-target-libtermcap
  install-pdf-target: maybe-install-pdf-target-winsup
  install-pdf-target: maybe-install-pdf-target-libgloss
-@@ -1765,6 +1774,7 @@ install-html-target: maybe-install-html-
+@@ -1767,6 +1776,7 @@ install-html-target: maybe-install-html-target-libquadmath
  install-html-target: maybe-install-html-target-libgfortran
  install-html-target: maybe-install-html-target-libobjc
  install-html-target: maybe-install-html-target-libgo
@@ -135,7 +135,7 @@ This implements building of libphobos library in GCC.
  install-html-target: maybe-install-html-target-libtermcap
  install-html-target: maybe-install-html-target-winsup
  install-html-target: maybe-install-html-target-libgloss
-@@ -1848,6 +1858,7 @@ installcheck-target: maybe-installcheck-
+@@ -1850,6 +1860,7 @@ installcheck-target: maybe-installcheck-target-libquadmath
  installcheck-target: maybe-installcheck-target-libgfortran
  installcheck-target: maybe-installcheck-target-libobjc
  installcheck-target: maybe-installcheck-target-libgo
@@ -143,7 +143,7 @@ This implements building of libphobos library in GCC.
  installcheck-target: maybe-installcheck-target-libtermcap
  installcheck-target: maybe-installcheck-target-winsup
  installcheck-target: maybe-installcheck-target-libgloss
-@@ -1931,6 +1942,7 @@ mostlyclean-target: maybe-mostlyclean-ta
+@@ -1933,6 +1944,7 @@ mostlyclean-target: maybe-mostlyclean-target-libquadmath
  mostlyclean-target: maybe-mostlyclean-target-libgfortran
  mostlyclean-target: maybe-mostlyclean-target-libobjc
  mostlyclean-target: maybe-mostlyclean-target-libgo
@@ -151,7 +151,7 @@ This implements building of libphobos library in GCC.
  mostlyclean-target: maybe-mostlyclean-target-libtermcap
  mostlyclean-target: maybe-mostlyclean-target-winsup
  mostlyclean-target: maybe-mostlyclean-target-libgloss
-@@ -2014,6 +2026,7 @@ clean-target: maybe-clean-target-libquad
+@@ -2016,6 +2028,7 @@ clean-target: maybe-clean-target-libquadmath
  clean-target: maybe-clean-target-libgfortran
  clean-target: maybe-clean-target-libobjc
  clean-target: maybe-clean-target-libgo
@@ -159,7 +159,7 @@ This implements building of libphobos library in GCC.
  clean-target: maybe-clean-target-libtermcap
  clean-target: maybe-clean-target-winsup
  clean-target: maybe-clean-target-libgloss
-@@ -2097,6 +2110,7 @@ distclean-target: maybe-distclean-target
+@@ -2099,6 +2112,7 @@ distclean-target: maybe-distclean-target-libquadmath
  distclean-target: maybe-distclean-target-libgfortran
  distclean-target: maybe-distclean-target-libobjc
  distclean-target: maybe-distclean-target-libgo
@@ -167,7 +167,7 @@ This implements building of libphobos library in GCC.
  distclean-target: maybe-distclean-target-libtermcap
  distclean-target: maybe-distclean-target-winsup
  distclean-target: maybe-distclean-target-libgloss
-@@ -2180,6 +2194,7 @@ maintainer-clean-target: maybe-maintaine
+@@ -2182,6 +2196,7 @@ maintainer-clean-target: maybe-maintainer-clean-target-libquadmath
  maintainer-clean-target: maybe-maintainer-clean-target-libgfortran
  maintainer-clean-target: maybe-maintainer-clean-target-libobjc
  maintainer-clean-target: maybe-maintainer-clean-target-libgo
@@ -175,7 +175,7 @@ This implements building of libphobos library in GCC.
  maintainer-clean-target: maybe-maintainer-clean-target-libtermcap
  maintainer-clean-target: maybe-maintainer-clean-target-winsup
  maintainer-clean-target: maybe-maintainer-clean-target-libgloss
-@@ -2318,6 +2333,7 @@ check-target:  \
+@@ -2320,6 +2335,7 @@ check-target:  \
      maybe-check-target-libgfortran \
      maybe-check-target-libobjc \
      maybe-check-target-libgo \
@@ -183,7 +183,7 @@ This implements building of libphobos library in GCC.
      maybe-check-target-libtermcap \
      maybe-check-target-winsup \
      maybe-check-target-libgloss \
-@@ -2474,6 +2490,7 @@ install-target:  \
+@@ -2476,6 +2492,7 @@ install-target:  \
      maybe-install-target-libgfortran \
      maybe-install-target-libobjc \
      maybe-install-target-libgo \
@@ -191,7 +191,7 @@ This implements building of libphobos library in GCC.
      maybe-install-target-libtermcap \
      maybe-install-target-winsup \
      maybe-install-target-libgloss \
-@@ -2577,6 +2594,7 @@ install-strip-target:  \
+@@ -2579,6 +2596,7 @@ install-strip-target:  \
      maybe-install-strip-target-libgfortran \
      maybe-install-strip-target-libobjc \
      maybe-install-strip-target-libgo \
@@ -199,7 +199,7 @@ This implements building of libphobos library in GCC.
      maybe-install-strip-target-libtermcap \
      maybe-install-strip-target-winsup \
      maybe-install-strip-target-libgloss \
-@@ -38318,6 +38336,463 @@ maintainer-clean-target-libgo:
+@@ -38320,6 +38338,463 @@ maintainer-clean-target-libgo:
  
  
  
@@ -663,7 +663,7 @@ This implements building of libphobos library in GCC.
  .PHONY: configure-target-libtermcap maybe-configure-target-libtermcap
  maybe-configure-target-libtermcap:
  @if gcc-bootstrap
-@@ -44342,6 +44817,14 @@ check-gcc-go:
+@@ -44337,6 +44812,14 @@ check-gcc-go:
  	(cd gcc && $(MAKE) $(GCC_FLAGS_TO_PASS) check-go);
  check-go: check-gcc-go check-target-libgo
  
@@ -678,7 +678,7 @@ This implements building of libphobos library in GCC.
  
  # The gcc part of install-no-fixedincludes, which relies on an intimate
  # knowledge of how a number of gcc internal targets (inter)operate.  Delegate.
-@@ -46401,6 +46884,7 @@ configure-target-libquadmath: stage_last
+@@ -46396,6 +46879,7 @@ configure-target-libquadmath: stage_last
  configure-target-libgfortran: stage_last
  configure-target-libobjc: stage_last
  configure-target-libgo: stage_last
@@ -686,7 +686,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: stage_last
  configure-target-winsup: stage_last
  configure-target-libgloss: stage_last
-@@ -46433,6 +46917,7 @@ configure-target-libquadmath: maybe-all-
+@@ -46428,6 +46912,7 @@ configure-target-libquadmath: maybe-all-gcc
  configure-target-libgfortran: maybe-all-gcc
  configure-target-libobjc: maybe-all-gcc
  configure-target-libgo: maybe-all-gcc
@@ -694,7 +694,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-gcc
  configure-target-winsup: maybe-all-gcc
  configure-target-libgloss: maybe-all-gcc
-@@ -47175,6 +47660,8 @@ configure-target-libgo: maybe-all-target
+@@ -47170,6 +47655,8 @@ configure-target-libgo: maybe-all-target-libstdc++-v3
  all-target-libgo: maybe-all-target-libbacktrace
  all-target-libgo: maybe-all-target-libffi
  all-target-libgo: maybe-all-target-libatomic
@@ -703,7 +703,7 @@ This implements building of libphobos library in GCC.
  configure-target-libjava: maybe-configure-target-zlib
  configure-target-libjava: maybe-configure-target-boehm-gc
  configure-target-libjava: maybe-configure-target-libffi
-@@ -47278,6 +47765,7 @@ configure-target-libquadmath: maybe-all-
+@@ -47275,6 +47762,7 @@ configure-target-libquadmath: maybe-all-target-libgcc
  configure-target-libgfortran: maybe-all-target-libgcc
  configure-target-libobjc: maybe-all-target-libgcc
  configure-target-libgo: maybe-all-target-libgcc
@@ -711,7 +711,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-target-libgcc
  configure-target-winsup: maybe-all-target-libgcc
  configure-target-libgloss: maybe-all-target-libgcc
-@@ -47315,6 +47803,8 @@ configure-target-libobjc: maybe-all-targ
+@@ -47313,6 +47801,8 @@ configure-target-libobjc: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-libgo: maybe-all-target-newlib maybe-all-target-libgloss
  
