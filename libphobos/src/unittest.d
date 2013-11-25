@@ -13,6 +13,9 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+version(Win64) {}
+else
+{
 public import std.base64;
 public import std.compiler;
 public import std.concurrency;
@@ -54,7 +57,7 @@ public import std.variant;
 public import std.zip;
 public import std.zlib;
 public import std.net.isemail;
-public import std.net.curl;
+//public import std.net.curl;
 public import std.digest.digest;
 public import std.digest.crc;
 public import std.digest.sha;

@@ -4234,6 +4234,8 @@ unittest // Issue 8039 testcase
     assert(dels == 1+6);
 }
 
+//GDC bug 52
+/+
 unittest
 {
     // bug4500
@@ -4254,6 +4256,7 @@ unittest
     a1.a = a1;
     assert(a1.check());
 }
++/
 
 unittest
 {

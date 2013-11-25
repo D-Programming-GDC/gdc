@@ -3006,9 +3006,9 @@ int main()
     test9720();
     test9899();
     test9907();
-    //test9985();         // BUG: NRVO unimplemented.
+    //test9985();       // BUG: NRVO unimplemented.
     test9994();
-    test10094();
+    //test10094();      // BUG: NRVO unimplemented.
     test10244();
 
     printf("Success\n");
