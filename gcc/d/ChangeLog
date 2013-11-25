@@ -1,3 +1,30 @@
+2013-11-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-asmstmt.cc(ExtAsmStatement::comeFromImpl): Define for frontend
+	implementation changes.
+	* d-codegen.cc(get_libcall): Update to use Type::typeinfoclass.
+	* d-codegen.cc(WrappedExp): Define as class.
+	* d-convert.cc(d_convert_basic): Fix format warnings.
+	* d-decls.cc(ModuleInfoDeclaration::toSymbol): Remove.
+	(FuncDeclaration::toSymbol): Use mangleExact to get decl mangle.
+	* d-elem.cc(ClassReferenceExp::toElem): Return reference to class.
+	* d-glue.cc(verror): Fix format warnings.
+	(verrorSupplemental): Likewise.
+	(vwarning): Likewise.
+	(vdeprecation): Likewise.
+	(escapePath): For for frontend implementation changes.
+	* d-irstate.cc(IRState::getLoopForLabel): Implement breaking on named
+	scope labels in for/while loops.
+	* d-lang.cc(d_handle_option): Add handler for new -fdeps and
+	-fmake-deps options.
+	(d_parse_file): Handle new -fdeps and fmake-deps options.
+	* d-objfile.cc(Dsymbol::toObjFile): Update to use RootObject.
+	(Type::typeinfoclass): Update to use Type::typeinfoclass.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	* d-objfile.h(Symbol): Remove inheritance from Object.
+	* d-todt.cc(TypeInfoStructDeclaration::toDt): Update to use
+	Type::immutableOf.
+
 2013-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c(gcc_type_to_d_type): Use TREE_INT_CST_LOW macro instead
