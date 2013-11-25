@@ -649,6 +649,19 @@ void AsmStatement::ctfeCompile(CompiledCtfeFunction *ccf)
     // we can't compile asm statements
 }
 
+#ifdef IN_GCC
+// CTFE compile extended asm statement.
+
+void
+ExtAsmStatement::ctfeCompile (CompiledCtfeFunction *)
+{
+#if LOGCOMPILE
+    printf("%s ExtAsmStatement::ctfeCompile\n", loc.toChars());
+#endif
+    // We can't compile extended asm statements.
+}
+#endif
+
 /*************************************
  * Compile this function for CTFE.
  * At present, this merely allocates variables.
@@ -1861,6 +1874,18 @@ Expression *AsmStatement::interpret(InterState *istate)
     error("asm statements cannot be interpreted at compile time");
     return EXP_CANT_INTERPRET;
 }
+
+#ifdef IN_GCC
+Expression *ExtAsmStatement::interpret(InterState *istate)
+{
+#if LOG
+    printf("%s ExtAsmStatement::interpret()\n", loc.toChars());
+#endif
+    START()
+    error("extended asm statements cannot be interpreted at compile time");
+    return EXP_CANT_INTERPRET;
+}
+#endif
 
 #if DMDV2
 Expression *ImportStatement::interpret(InterState *istate)

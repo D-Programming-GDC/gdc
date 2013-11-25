@@ -985,12 +985,15 @@ public:
     Expressions *clobbers;      // of StringExp*
     Dsymbols *labels;           // of LabelDsymbol*
 
-    ExtAsmStatement(Loc loc, Expression *insn, Expressions *args, Identifiers *names,
-                    Expressions *constraints, int outputargs, Expressions *clobbers, Dsymbols *labels);
+    ExtAsmStatement(Loc loc, Expression *insn, Expressions *args,
+		    Identifiers *names, Expressions *constraints,
+		    int outputargs, Expressions *clobbers, Dsymbols *labels);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     int blockExit(bool mustNotThrow);
-    int comeFrom();
+    bool comeFromImpl();
+    Expression *interpret(InterState *istate);
+    void ctfeCompile(CompiledCtfeFunction *ccf);
 
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
