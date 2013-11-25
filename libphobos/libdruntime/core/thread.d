@@ -48,12 +48,12 @@ else version (Windows)
  */
 class ThreadException : Exception
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
         super(msg, file, line, next);
     }
 
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    @safe pure nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, next);
     }
@@ -65,12 +65,12 @@ class ThreadException : Exception
  */
 class FiberException : Exception
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
         super(msg, file, line, next);
     }
 
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    @safe pure nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, next);
     }
@@ -3151,6 +3151,13 @@ private
             version = AsmExternal;
         }
     }
+    else version( PPC64 )
+    {
+        version( Posix )
+        {
+            version = AlignFiberStackTo16Byte;
+        }
+    }
     else version( MIPS_O32 )
     {
         version( Posix )
@@ -3288,7 +3295,8 @@ private
                 pop EBP;
 
                 // 'return' to complete switch
-                ret;
+                pop ECX;
+                jmp ECX;
             }
         }
         else version( AsmX86_64_Windows )
@@ -4354,7 +4362,12 @@ version (D_LP64)
     else version (OSX)
         static assert(__traits(classInstanceSize, Fiber) == 88);
     else version (Posix)
-        static assert(__traits(classInstanceSize, Fiber) == 88);
+    {
+        static if( __traits( compiles, ucontext_t ) )
+            static assert(__traits(classInstanceSize, Fiber) == 88 + ucontext_t.sizeof + 8);
+        else
+            static assert(__traits(classInstanceSize, Fiber) == 88);
+    }
     else
         static assert(0, "Platform not supported.");
 }
@@ -4367,7 +4380,12 @@ else
     else version (OSX)
         static assert(__traits(classInstanceSize, Fiber) == 44);
     else version (Posix)
-        static assert(__traits(classInstanceSize, Fiber) == 44);
+    {
+        static if( __traits( compiles, ucontext_t ) )
+            static assert(__traits(classInstanceSize, Fiber) == 44 + ucontext_t.sizeof + 4);
+        else
+            static assert(__traits(classInstanceSize, Fiber) == 44);
+    }
     else
         static assert(0, "Platform not supported.");
 }

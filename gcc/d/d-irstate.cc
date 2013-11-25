@@ -211,7 +211,6 @@ IRState::getLoopForLabel (Identifier *ident, bool want_continue)
 	      return flow;
 	    }
 	}
-      gcc_unreachable();
     }
   else
     {
@@ -223,8 +222,9 @@ IRState::getLoopForLabel (Identifier *ident, bool want_continue)
 	      || flow->statement->hasContinue())
 	    return flow;
 	}
-      gcc_unreachable();
     }
+
+  return NULL;
 }
 
 
@@ -400,7 +400,16 @@ void
 IRState::continueLoop (Identifier *ident)
 {
   Flow *flow = this->getLoopForLabel (ident, true);
-  this->doJump (NULL, flow->continueLabel);
+  gcc_assert (flow || ident);
+
+  if (flow)
+    this->doJump (NULL, flow->continueLabel);
+  else
+    {
+      LabelDsymbol *label = this->func->searchLabel (ident);
+      tree tlabel = this->getLabelTree (label);
+      this->doJump (NULL, tlabel);
+    }
 }
 
 // Emit a goto to the exit label IDENT of a loop.
@@ -409,9 +418,20 @@ void
 IRState::exitLoop (Identifier *ident)
 {
   Flow *flow = this->getLoopForLabel (ident);
-  if (!flow->exitLabel)
-    flow->exitLabel = d_build_label (flow->statement->loc, NULL);
-  this->doJump (NULL, flow->exitLabel);
+  gcc_assert (flow || ident);
+
+  if (flow)
+    {
+      if (!flow->exitLabel)
+	flow->exitLabel = d_build_label (flow->statement->loc, NULL);
+      this->doJump (NULL, flow->exitLabel);
+    }
+  else
+    {
+      LabelDsymbol *label = this->func->searchLabel (ident);
+      tree tlabel = this->getLabelTree (label);
+      this->doJump (NULL, tlabel);
+    }
 }
 
 // Wrap up constructed loop body in a LOOP_EXPR.

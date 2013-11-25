@@ -12,9 +12,8 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#ifdef DEBUG
+#include <string.h>
 #include <assert.h>
-#endif
 #include "port.h"
 
 #if __DMC__
@@ -27,20 +26,21 @@ typedef size_t hash_t;
  * Root of our class library.
  */
 
-struct OutBuffer;
+class OutBuffer;
 
 // Can't include arraytypes.h here, need to declare these directly.
 template <typename TYPE> struct ArrayBase;
-typedef ArrayBase<struct File> Files;
+typedef ArrayBase<class File> Files;
 typedef ArrayBase<char> Strings;
 
 
-struct Object
+class RootObject
 {
-    Object() { }
-    virtual ~Object() { }
+public:
+    RootObject() { }
+    virtual ~RootObject() { }
 
-    virtual int equals(Object *o);
+    virtual bool equals(RootObject *o);
 
     /**
      * Returns a hash code, useful for things like building hash tables of Objects.
@@ -51,7 +51,7 @@ struct Object
      * Return <0, ==0, or >0 if this is less than, equal to, or greater than obj.
      * Useful for sorting Objects.
      */
-    virtual int compare(Object *obj);
+    virtual int compare(RootObject *obj);
 
     /**
      * Pretty-print an Object. Useful for debugging the old-fashioned way.
@@ -74,8 +74,9 @@ struct Object
         void mark();
 };
 
-struct String : Object
+class String : public RootObject
 {
+public:
     const char *str;                  // the string itself
 
     String(const char *str);
@@ -85,20 +86,21 @@ struct String : Object
     static hash_t calcHash(const char *str);
     hash_t hashCode();
     size_t len();
-    int equals(Object *obj);
-    int compare(Object *obj);
+    bool equals(RootObject *obj);
+    int compare(RootObject *obj);
     char *toChars();
     void print();
     void mark();
 };
 
-struct FileName : String
+class FileName : public String
 {
+public:
     FileName(const char *str);
     hash_t hashCode();
-    int equals(Object *obj);
+    bool equals(RootObject *obj);
     static int equals(const char *name1, const char *name2);
-    int compare(Object *obj);
+    int compare(RootObject *obj);
     static int compare(const char *name1, const char *name2);
     static int absolute(const char *name);
     static const char *ext(const char *);
@@ -128,8 +130,9 @@ struct FileName : String
     static void free(const char *str);
 };
 
-struct File : Object
+class File : public RootObject
 {
+public:
     int ref;                    // != 0 if this is a reference to someone else's buffer
     unsigned char *buffer;      // data for our file
     size_t len;                 // amount of data in buffer[]
@@ -233,8 +236,9 @@ struct File : Object
     void remove();              // delete file
 };
 
-struct OutBuffer : Object
+class OutBuffer : public RootObject
 {
+public:
     unsigned char *data;
     size_t offset;
     size_t size;
@@ -263,7 +267,7 @@ struct OutBuffer : Object
     void writeUTF16(unsigned w);
     void write4(unsigned w);
     void write(OutBuffer *buf);
-    void write(Object *obj);
+    void write(RootObject *obj);
     void fill0(size_t nbytes);
     void align(size_t size);
     void vprintf(const char *format, va_list args);
@@ -368,8 +372,9 @@ struct ArrayBase : Array
 };
 
 // TODO: Remove (only used by disabled GC)
-struct Bits : Object
+class Bits : public RootObject
 {
+public:
     unsigned bitdim;
     unsigned allocdim;
     unsigned *data;

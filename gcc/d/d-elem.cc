@@ -2709,6 +2709,10 @@ VectorExp::toElem (IRState *irs)
 elem *
 ClassReferenceExp::toElem (IRState *)
 {
-  return toSymbol()->Stree;
+  // ClassReferenceExp builds the RECORD_TYPE,
+  // we want to return a reference to it.
+  tree exp = toSymbol()->Stree;
+
+  return build_address (exp);
 }
 

@@ -418,6 +418,11 @@ Lno:
     return MATCHnomatch;
 }
 
+MATCH ErrorExp::implicitConvTo(Type *t)
+{
+    return MATCHnomatch;
+}
+
 MATCH NullExp::implicitConvTo(Type *t)
 {
 #if 0
@@ -431,7 +436,7 @@ MATCH NullExp::implicitConvTo(Type *t)
      * and mutable to immutable. It works because, after all, a null
      * doesn't actually point to anything.
      */
-    if (t->invariantOf()->equals(type->invariantOf()))
+    if (t->immutableOf()->equals(type->immutableOf()))
         return MATCHconst;
 
     return Expression::implicitConvTo(t);
@@ -655,7 +660,7 @@ MATCH CallExp::implicitConvTo(Type *t)
      * convert to immutable
      */
     if (f && f->isolateReturn())
-        return type->invariantOf()->implicitConvTo(t);
+        return type->immutableOf()->implicitConvTo(t);
 
     /* The result of arr.dup and arr.idup can be unique essentially.
      * So deal with this case specially.
@@ -680,7 +685,7 @@ MATCH CallExp::implicitConvTo(Type *t)
                     return MATCHnomatch;
             }
         }
-        m = type->invariantOf()->implicitConvTo(t);
+        m = type->immutableOf()->implicitConvTo(t);
         return m;
     }
 
@@ -1049,6 +1054,7 @@ MATCH SliceExp::implicitConvTo(Type *t)
 
 /**************************************
  * Do an explicit cast.
+ * Assume that the 'this' expression does not have any indirections.
  */
 
 Expression *Expression::castTo(Scope *sc, Type *t)
@@ -1065,7 +1071,7 @@ Expression *Expression::castTo(Scope *sc, Type *t)
         VarDeclaration *v = ((VarExp *)this)->var->isVarDeclaration();
         if (v && v->storage_class & STCmanifest)
         {
-            Expression *e = optimize(WANTvalue | WANTinterpret);
+            Expression *e = ctfeInterpret();
             return e->castTo(sc, t);
         }
     }
@@ -1674,7 +1680,7 @@ Expression *SymOffExp::castTo(Scope *sc, Type *t)
     printf("SymOffExp::castTo(this=%s, type=%s, t=%s)\n",
         toChars(), type->toChars(), t->toChars());
 #endif
-    if (type == t && hasOverloads == 0)
+    if (type == t && !hasOverloads)
         return this;
     Expression *e;
     Type *tb = t->toBasetype();
@@ -1732,7 +1738,7 @@ Expression *SymOffExp::castTo(Scope *sc, Type *t)
     else
     {   e = copy();
         e->type = t;
-        ((SymOffExp *)e)->hasOverloads = 0;
+        ((SymOffExp *)e)->hasOverloads = false;
     }
     return e;
 }
@@ -1849,6 +1855,14 @@ Expression *SliceExp::castTo(Scope *sc, Type *t)
         /* If a SliceExp has Tsarray, it will become lvalue.
          * That's handled in SliceExp::isLvalue and toLvalue
          */
+        e = copy();
+        e->type = t;
+    }
+    else if (typeb->ty == Tarray && tb->ty == Tarray &&
+             typeb->nextOf()->constConv(tb->nextOf()) == MATCHconst)
+    {
+        // immutable(T)[] to const(T)[]
+        //           T [] to const(T)[]
         e = copy();
         e->type = t;
     }
@@ -2230,6 +2244,9 @@ Lagain:
 
     if (t1 == t2)
     {
+        // merging can not result in new enum type
+        if (t->ty == Tenum)
+            t = t1b;
     }
     else if ((t1->ty == Tpointer && t2->ty == Tpointer) ||
              (t1->ty == Tdelegate && t2->ty == Tdelegate))

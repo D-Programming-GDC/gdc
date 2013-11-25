@@ -155,7 +155,6 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.useInline = 0;
   global.params.warnings = 0;
   global.params.obj = 1;
-  global.params.Dversion = 2;
   global.params.quiet = 1;
   global.params.useDeprecated = 2;
   global.params.betterC = 0;
@@ -461,12 +460,20 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
+    case OPT_fmake_deps:
+      global.params.makeDeps = new OutBuffer;
+      break;
+
     case OPT_fmake_deps_:
       global.params.makeDeps = new OutBuffer;
       global.params.makeDepsStyle = 1;
       global.params.makeDepsFile = xstrdup (arg);
       if (!global.params.makeDepsFile[0])
 	error ("bad argument for -fmake-deps");
+      break;
+
+    case OPT_fmake_mdeps:
+      global.params.makeDeps = new OutBuffer;
       break;
 
     case OPT_fmake_mdeps_:
@@ -787,29 +794,10 @@ deps_write (Module *m)
 	}
       ob->writestring (fn->str);
     }
-  ob->writestring ("\n");
+
+  ob->writenl();
 }
 
-
-// Binary search for P in TAB between the range 0 to HIGH.
-
-int binary(const char *p , const char **tab, int high)
-{
-    int low = 0;
-    do
-    {
-        int pos = (low + high) / 2;
-        int cmp = strcmp(p, tab[pos]);
-        if (! cmp)
-            return pos;
-        else if (cmp < 0)
-            high = pos;
-        else
-            low = pos + 1;
-    } while (low != high);
-
-    return -1;
-}
 
 void
 d_parse_file (void)
@@ -1021,17 +1009,20 @@ d_parse_file (void)
   if (global.errors)
     goto had_errors;
 
-  if (global.params.moduleDeps != NULL)
+  if (global.params.moduleDeps)
     {
-      gcc_assert (global.params.moduleDepsFile != NULL);
-
-      File deps (global.params.moduleDepsFile);
       OutBuffer *ob = global.params.moduleDeps;
-      deps.setbuffer ((void *) ob->data, ob->offset);
-      deps.writev();
+      if (global.params.moduleDepsFile)
+	{
+	  File deps (global.params.moduleDepsFile);
+	  deps.setbuffer ((void *) ob->data, ob->offset);
+	  deps.writev();
+	}
+      else
+	fprintf (stderr, "%s", (char *) ob->data);
     }
 
-  if (global.params.makeDeps != NULL)
+  if (global.params.makeDeps)
     {
       for (size_t i = 0; i < modules.dim; i++)
 	{
@@ -1039,16 +1030,15 @@ d_parse_file (void)
 	  deps_write (m);
 	}
 
-
       OutBuffer *ob = global.params.makeDeps;
-      if (global.params.makeDepsFile == NULL)
-	printf ("%s", (char *) ob->data);
-      else
+      if (global.params.makeDepsFile)
 	{
 	  File deps (global.params.makeDepsFile);
 	  deps.setbuffer ((void *) ob->data, ob->offset);
 	  deps.writev();
 	}
+      else
+	fprintf (stderr, "%s", (char *) ob->data);
     }
 
   // Do not attempt to generate output files if errors or warnings occurred
@@ -1553,7 +1543,7 @@ d_finish_incomplete_decl (tree decl)
 
 // Return the true debug type for TYPE.
 
-static enum classify_record
+static classify_record
 d_classify_record (tree type)
 {
   Type *dtype = build_dtype (type);

@@ -2203,7 +2203,7 @@ get_libcall (LibCall libcall)
 	  break;
 
 	case LIBCALL_NEWCLASS:
-	  targs.push (ClassDeclaration::classinfo->type->constOf());
+	  targs.push (Type::typeinfoclass->type->constOf());
 	  treturn = build_object_type ();
 	  break;
 
@@ -2267,7 +2267,7 @@ get_libcall (LibCall libcall)
 	case LIBCALL_DYNAMIC_CAST:
 	case LIBCALL_INTERFACE_CAST:
 	  targs.push (build_object_type ());
-	  targs.push (ClassDeclaration::classinfo->type);
+	  targs.push (Type::typeinfoclass->type);
 	  treturn = build_object_type ();
 	  break;
 

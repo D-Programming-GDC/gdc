@@ -152,7 +152,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Type *t = isType(o);
         StructDeclaration *sd;
         if (!t)
@@ -174,7 +174,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Dsymbol *s = getDsymbol(o);
         AggregateDeclaration *a;
         FuncDeclaration *f;
@@ -247,7 +247,7 @@ Expression *TraitsExp::semantic(Scope *sc)
 
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Parameter *po = isParameter(o);
         Identifier *id;
         if (po)
@@ -271,7 +271,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Dsymbol *s = getDsymbol(o);
         if (!s)
         {
@@ -292,7 +292,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Dsymbol *s = getDsymbol(o);
         if (s)
         {
@@ -317,7 +317,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 2)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Expression *e = isExpression((*args)[1]);
         if (!e)
         {   error("expression expected as second argument of __traits %s", ident->toChars());
@@ -422,7 +422,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Dsymbol *s = getDsymbol(o);
         ClassDeclaration *cd;
         if (!s || (cd = s->isClassDeclaration()) == NULL)
@@ -436,7 +436,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Dsymbol *s = getDsymbol(o);
         if (!s)
         {
@@ -459,7 +459,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         if (dim != 1)
             goto Ldimerror;
-        Object *o = (*args)[0];
+        RootObject *o = (*args)[0];
         Dsymbol *s = getDsymbol(o);
         ScopeDsymbol *sd;
         if (!s)
@@ -488,6 +488,14 @@ Expression *TraitsExp::semantic(Scope *sc)
                 //printf("\t[%i] %s %s\n", i, sm->kind(), sm->toChars());
                 if (sm->ident)
                 {
+                    if (sm->ident != Id::ctor &&        // backword compatibility
+                        sm->ident != Id::dtor &&        // backword compatibility
+                        sm->ident != Id::_postblit &&   // backword compatibility
+                        memcmp(sm->ident->string, "__", 2) == 0)
+                    {
+                        return 0;
+                    }
+
                     //printf("\t%s\n", sm->ident->toChars());
                     Identifiers *idents = (Identifiers *)ctx;
 
@@ -570,7 +578,7 @@ Expression *TraitsExp::semantic(Scope *sc)
             goto Lfalse;
 
         for (size_t i = 0; i < dim; i++)
-        {   Object *o = (*args)[i];
+        {   RootObject *o = (*args)[i];
             Expression *e;
 
             unsigned errors = global.startGagging();
@@ -613,8 +621,8 @@ Expression *TraitsExp::semantic(Scope *sc)
         if (dim != 2)
             goto Ldimerror;
         TemplateInstance::semanticTiargs(loc, sc, args, 0);
-        Object *o1 = (*args)[0];
-        Object *o2 = (*args)[1];
+        RootObject *o1 = (*args)[0];
+        RootObject *o2 = (*args)[1];
         Dsymbol *s1 = getDsymbol(o1);
         Dsymbol *s2 = getDsymbol(o2);
 
@@ -668,7 +676,7 @@ Expression *TraitsExp::semantic(Scope *sc)
     return NULL;
 
 Ldimerror:
-    error("wrong number of arguments %d", dim);
+    error("wrong number of arguments %d", (int)dim);
     goto Lfalse;
 
 

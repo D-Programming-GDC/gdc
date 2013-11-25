@@ -53,6 +53,10 @@ fdebug=
 D Joined RejectNegative
 -fdebug,-fdebug=<level>,-fdebug=<ident> Compile in debug code, code <= level, or code identified by ident
 
+fdeps
+D
+Print information about module dependencies
+
 fdeps=
 D Joined RejectNegative
 -fdeps=<filename> Write module dependencies to filename
@@ -108,9 +112,17 @@ finvariants
 D
 Generate runtime code for invariant()'s
 
+fmake-deps
+D
+Print information about module makefile dependencies
+
 fmake-deps=
 D Joined RejectNegative
--fmake-deps=<file> Write dependency output to the given file
+-fmake-deps=<file> Write makefile dependency output to the given file
+
+fmake-mdeps
+D
+Like -fmake-deps but ignore system modules
 
 fmake-mdeps=
 D Joined RejectNegative

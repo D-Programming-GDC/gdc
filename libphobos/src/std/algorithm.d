@@ -6,9 +6,9 @@
 $(BOOKTABLE ,
 $(TR $(TH Category) $(TH Functions)
 )
-$(TR $(TDNW Searching) $(TD $(MYREF balancedParens) $(MYREF
+$(TR $(TDNW Searching) $(TD $(MYREF all) $(MYREF any) $(MYREF balancedParens) $(MYREF
 boyerMooreFinder) $(MYREF canFind) $(MYREF count) $(MYREF countUntil)
-$(MYREF endsWith) $(MYREF commonPrefix) $(MYREF find) $(MYREF
+$(MYREF commonPrefix) $(MYREF endsWith) $(MYREF find) $(MYREF
 findAdjacent) $(MYREF findAmong) $(MYREF findSkip) $(MYREF findSplit)
 $(MYREF findSplitAfter) $(MYREF findSplitBefore) $(MYREF indexOf)
 $(MYREF minCount) $(MYREF minPos) $(MYREF mismatch) $(MYREF skipOver)
@@ -23,10 +23,10 @@ $(MYREF group) $(MYREF joiner) $(MYREF map) $(MYREF reduce) $(MYREF
 splitter) $(MYREF uniq) )
 )
 $(TR $(TDNW Sorting) $(TD $(MYREF completeSort) $(MYREF isPartitioned)
-$(MYREF isSorted) $(MYREF makeIndex) $(MYREF partialSort) $(MYREF
+$(MYREF isSorted) $(MYREF makeIndex) $(MYREF nextPermutation)
+$(MYREF nextEvenPermutation) $(MYREF partialSort) $(MYREF
 partition) $(MYREF partition3) $(MYREF schwartzSort) $(MYREF sort)
-$(MYREF topN) $(MYREF topNCopy) $(MYREF nextPermutation)
-$(MYREF nextEvenPermutation) )
+$(MYREF topN) $(MYREF topNCopy) )
 )
 $(TR $(TDNW Set&nbsp;operations) $(TD $(MYREF cartesianProduct) $(MYREF
 largestPartialIntersection) $(MYREF largestPartialIntersectionWeighted)
@@ -74,6 +74,10 @@ $(BOOKTABLE Cheat Sheet,
 $(TR $(TH Function Name) $(TH Description)
 )
 $(LEADINGROW Searching
+)
+$(TR $(TDNW $(LREF all)) $(TD $(D all!"a > 0"([1, 2, 3, 4])) returns $(D true) because all elements are positive)
+)
+$(TR $(TDNW $(LREF any)) $(TD $(D any!"a > 0"([1, 2, -3, -4])) returns $(D true) because at least one element is positive)
 )
 $(TR $(TDNW $(LREF balancedParens)) $(TD $(D
 balancedParens("((1 + 1) / 2)")) returns $(D true) because the string
@@ -218,6 +222,12 @@ returns $(D true).)
 $(TR $(TDNW $(LREF makeIndex)) $(TD Creates a separate index
 for a range.)
 )
+$(TR $(TDNW $(LREF nextPermutation)) $(TD Computes the next lexicographically
+greater permutation of a range in-place.)
+)
+$(TR $(TDNW $(LREF nextEvenPermutation)) $(TD Computes the next
+lexicographically greater even permutation of a range in-place.)
+)
 $(TR $(TDNW $(LREF partialSort)) $(TD If $(D a = [5, 4, 3, 2,
 1]), then $(D partialSort(a, 3)) leaves $(D a[0 .. 3] = [1, 2,
 3]). The other elements of $(D a) are left in an unspecified order.)
@@ -235,12 +245,6 @@ range.)
 )
 $(TR $(TDNW $(LREF topNCopy)) $(TD Copies out the top elements
 of a range.)
-)
-$(TR $(TDNW $(LREF nextPermutation)) $(TD Computes the next lexicographically
-greater permutation of a range in-place.)
-)
-$(TR $(TDNW $(LREF nextEvenPermutation)) $(TD Computes the next
-lexicographically greater even permutation of a range in-place.)
 )
 $(LEADINGROW Set operations
 )
@@ -595,6 +599,20 @@ unittest
     assert(equal(m, [1L, 4L, 9L]));
 }
 
+unittest
+{
+    // Issue #10130 - map of iota with const step.
+    const step = 2;
+    static assert(__traits(compiles, map!(i => i)(iota(0, 10, step))));
+
+    // Need these to all by const to repro the float case, due to the
+    // CommonType template used in the float specialization of iota.
+    const floatBegin = 0.0;
+    const floatEnd = 1.0;
+    const floatStep = 0.02;
+    static assert(__traits(compiles, map!(i => i)(iota(floatBegin, floatEnd, floatStep))));
+}
+
 /**
 $(D auto reduce(Args...)(Args args)
     if (Args.length > 0 && Args.length <= 2 && isIterable!(Args[$ - 1]));)
@@ -725,11 +743,12 @@ template reduce(fun...) if (fun.length >= 1)
                 else
                 {
                     static assert(fun.length > 1);
-                    typeof(adjoin!(staticMap!(binaryFun, fun))(r.front, r.front))
+                    Unqual!(typeof(r.front)) seed = r.front;
+                    typeof(adjoin!(staticMap!(binaryFun, fun))(seed, seed))
                         result = void;
                     foreach (i, T; result.Types)
                     {
-                        emplace(&result[i], r.front);
+                        emplace(&result[i], seed);
                     }
                     r.popFront();
                     return reduce(result, r);
@@ -885,6 +904,16 @@ unittest
     float[] c = [ 1.2, 3, 3.3 ];
     auto r = reduce!"a + b"(a, b);
     r = reduce!"a + b"(a, c);
+}
+
+unittest
+{
+    // Issue #10408 - Two-function reduce of a const array.
+    const numbers = [10, 30, 20];
+    immutable m = reduce!(min)(numbers);
+    assert(m == 10);
+    immutable minmax = reduce!(min, max)(numbers);
+    assert(minmax == tuple(10, 30));
 }
 
 /**
@@ -1338,7 +1367,7 @@ private struct FilterResult(alias pred, Range)
     {
         @property auto save()
         {
-            return typeof(this)(_input);
+            return typeof(this)(_input.save);
         }
     }
 }
@@ -3983,7 +4012,7 @@ unittest
 struct BoyerMooreFinder(alias pred, Range)
 {
 private:
-    size_t skip[];
+    size_t[] skip;
     ptrdiff_t[ElementType!(Range)] occ;
     Range needle;
 
@@ -5718,7 +5747,7 @@ unittest
     assert(count("abcadfabf", "ab") == 2);
     assert(count("ababab", "abab") == 1);
     assert(count("ababab", "abx") == 0);
-    assert(count!"std.uni.toLower(a) == std.uni.toLower(b)"("AbcAdFaBf", "ab") == 2);
+    assert(count!((a, b) => std.uni.toLower(a) == std.uni.toLower(b))("AbcAdFaBf", "ab") == 2);
 }
 
 /// Ditto
@@ -6611,7 +6640,7 @@ unittest
     assert(levenshteinDistance("cat", "rat") == 1);
     assert(levenshteinDistance("parks", "spark") == 2);
     assert(levenshteinDistance("kitten", "sitting") == 3);
-    assert(levenshteinDistance!("std.uni.toUpper(a) == std.uni.toUpper(b)")
+    assert(levenshteinDistance!((a, b) => std.uni.toUpper(a) == std.uni.toUpper(b))
         ("parks", "SPARK") == 2);
 }
 
@@ -9745,8 +9774,8 @@ unittest
     // random data
     auto b = rndstuff!(string)();
     auto index = new string*[b.length];
-    partialIndex!("std.uni.toUpper(a) < std.uni.toUpper(b)")(b, index);
-    assert(isSorted!("std.uni.toUpper(*a) < std.uni.toUpper(*b)")(index));
+    partialIndex!((a, b) => std.uni.toUpper(a) < std.uni.toUpper(b))(b, index);
+    assert(isSorted!((a, b) => std.uni.toUpper(*a) < std.uni.toUpper(*b))(index));
 
     // random data with indexes
     auto index1 = new size_t[b.length];

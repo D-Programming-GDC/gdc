@@ -68,7 +68,7 @@ Dsymbol::toObjFile (int)
   // Emit local variables for tuples.
   for (size_t i = 0; i < td->objects->dim; i++)
     {
-      Object *o = (*td->objects)[i];
+      RootObject *o = (*td->objects)[i];
       if ((o->dyncast() == DYNCAST_EXPRESSION) && ((Expression *) o)->op == TOKdsymbol)
 	{
 	  Declaration *d = ((DsymbolExp *) o)->s->isDeclaration();
@@ -181,7 +181,7 @@ ClassDeclaration::toObjFile (int)
 
   // must be ClassInfo.size
   size_t offset = CLASSINFO_SIZE;
-  if (classinfo->structsize != offset)
+  if (Type::typeinfoclass->structsize != offset)
     {
       error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
       gcc_unreachable();
@@ -206,7 +206,7 @@ ClassDeclaration::toObjFile (int)
    */
   tree dt = NULL_TREE;
 
-  build_vptr_monitor (&dt, classinfo);
+  build_vptr_monitor (&dt, Type::typeinfoclass);
 
   // initializer[]
   gcc_assert (structsize >= 8);
@@ -309,7 +309,7 @@ Lhaspointers:
    * The layout is:
    *  TypeInfo_Class typeinfo;
    *  void*[] vtbl;
-   *  ptrdiff_t offset;
+   *  size_t offset;
    */
   offset += vtblInterfaces->dim * (4 * Target::ptrsize);
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
@@ -536,7 +536,7 @@ InterfaceDeclaration::toObjFile (int)
    */
   tree dt = NULL_TREE;
 
-  build_vptr_monitor (&dt, classinfo);
+  build_vptr_monitor (&dt, Type::typeinfoclass);
 
   // initializer[]
   dt_cons (&dt, d_array_value (Type::tint8->arrayOf()->toCtype(),
@@ -554,7 +554,7 @@ InterfaceDeclaration::toObjFile (int)
     {
       // must be ClassInfo.size
       size_t offset = CLASSINFO_SIZE;
-      if (classinfo->structsize != offset)
+      if (Type::typeinfoclass->structsize != offset)
 	{
 	  error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
 	  gcc_unreachable();
@@ -596,7 +596,7 @@ InterfaceDeclaration::toObjFile (int)
    * The layout is:
    *  TypeInfo_Class typeinfo;
    *  void*[] vtbl;
-   *  ptrdiff_t offset;
+   *  size_t offset;
    */
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {

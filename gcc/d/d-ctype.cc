@@ -404,7 +404,7 @@ TypeFunction::toCtype (void)
   return ctype;
 }
 
-enum RET
+RET
 TypeFunction::retStyle (void)
 {
   /* Return by reference or pointer. */

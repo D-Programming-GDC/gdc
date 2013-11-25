@@ -38,7 +38,7 @@ d_convert_basic (tree type, tree expr)
   invalid_conv_diag = targetm.invalid_conversion (TREE_TYPE (expr), type);
   if (invalid_conv_diag)
     {
-      error (invalid_conv_diag);
+      error ("%s", invalid_conv_diag);
       return error_mark_node;
     }
 

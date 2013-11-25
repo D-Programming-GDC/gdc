@@ -1698,7 +1698,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
 	{
 	  Scope sc;
 	  // string toString()
-	  tftostring = new TypeFunction (NULL, Type::tchar->invariantOf()->arrayOf(), 0, LINKd);
+	  tftostring = new TypeFunction (NULL, Type::tchar->immutableOf()->arrayOf(), 0, LINKd);
 	  tftostring = (TypeFunction *) tftostring->semantic (Loc(), &sc);
 	}
 

@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2012 by Digital Mars
+// Copyright (c) 1999-2013 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -18,12 +18,11 @@
 #include "root.h"
 #include "dsymbol.h"
 
-struct ModuleInfoDeclaration;
-struct ClassDeclaration;
+class ClassDeclaration;
 struct ModuleDeclaration;
 struct Macro;
 struct Escape;
-struct VarDeclaration;
+class VarDeclaration;
 class Library;
 
 // Back end
@@ -33,8 +32,19 @@ typedef union tree_node elem;
 struct elem;
 #endif
 
-struct Package : ScopeDsymbol
+enum PKG
 {
+    PKGunknown, // not yet determined whether it's a package.d or not
+    PKGmodule,  // already determined that's an actual package.d
+    PKGpackage, // already determined that's an actual package
+};
+
+class Package : public ScopeDsymbol
+{
+public:
+    PKG isPkgMod;
+    Module *mod;        // != NULL if isPkgMod == PKGmodule
+
     Package(Identifier *ident);
     const char *kind();
 
@@ -42,11 +52,13 @@ struct Package : ScopeDsymbol
 
     Package *isPackage() { return this; }
 
-    virtual void semantic(Scope *sc) { (void)sc; }
+    virtual void semantic(Scope *) { }
+    Dsymbol *search(Loc loc, Identifier *ident, int flags);
 };
 
-struct Module : Package
+class Module : public Package
 {
+public:
     static Module *rootModule;
     static DsymbolTable *modules;       // symbol table of all modules
     static Modules amodules;            // array of all modules
@@ -89,8 +101,6 @@ struct Module : Package
     Dsymbols *decldefs;         // top level declarations for this Module
 
     Modules aimports;             // all imported modules
-
-    ModuleInfoDeclaration *vmoduleinfo;
 
     unsigned debuglevel;        // debug level
     Strings *debugids;      // debug identifiers
@@ -163,7 +173,6 @@ struct Module : Package
     Symbol *toModuleArray();    // get module array bounds function
 
 
-    static Symbol *gencritsec();
     elem *toEfilename();
 
     Symbol *toSymbol();
@@ -175,11 +184,12 @@ struct Module : Package
 
 struct ModuleDeclaration
 {
+    Loc loc;
     Identifier *id;
     Identifiers *packages;            // array of Identifier's representing packages
     bool safe;
 
-    ModuleDeclaration(Identifiers *packages, Identifier *id, bool safe);
+    ModuleDeclaration(Loc loc, Identifiers *packages, Identifier *id, bool safe);
 
     char *toChars();
 };

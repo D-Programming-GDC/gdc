@@ -120,11 +120,11 @@ void unittests();
 #endif
 
 
-struct OutBuffer;
+class OutBuffer;
 
 // Can't include arraytypes.h here, need to declare these directly.
 template <typename TYPE> struct ArrayBase;
-typedef ArrayBase<struct Identifier> Identifiers;
+typedef ArrayBase<class Identifier> Identifiers;
 typedef ArrayBase<char> Strings;
 
 // Put command line switches in here
@@ -178,7 +178,6 @@ struct Param
     bool cov;           // generate code coverage data
     unsigned char covPercent;   // 0..100 code coverage percentage required
     bool nofloat;       // code should not pull in floating point support
-    char Dversion;      // D version number
     char ignoreUnsupportedPragmas;      // rather than error on them
     char enforcePropertySyntax;
     char betterC;       // be a "better C" compiler; no dependency on D runtime
@@ -344,7 +343,7 @@ typedef d_uns32                 d_dchar;
 typedef longdouble real_t;
 
 
-struct Module;
+class Module;
 
 //typedef unsigned Loc;         // file location
 struct Loc
@@ -432,17 +431,17 @@ void deleteExeFile();
 int runProgram();
 const char *inifile(const char *argv0, const char *inifile, const char* envsectionname);
 void halt();
-void util_progress();
 
-/*** Where to send error messages ***/
-struct Dsymbol;
+class Dsymbol;
 class Library;
-struct File;
+class File;
 void obj_start(char *srcfile);
 void obj_end(Library *library, File *objfile);
 void obj_append(Dsymbol *s);
 void obj_write_deferred(Library *library);
 
 const char *importHint(const char *s);
+/// Little helper function for writting out deps. 
+void escapePath(OutBuffer *buf, const char *fname);
 
 #endif /* DMD_MARS_H */

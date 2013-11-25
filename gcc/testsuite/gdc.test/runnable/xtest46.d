@@ -2174,8 +2174,8 @@ struct Foo110(T, alias V = Boo!T)
 alias Foo110!double B110;
 alias Foo110!int A110;
 
-static assert(B110.s == "Boo!(double)");
-static assert(A110.s == "Boo!(int)");
+static assert(B110.s == "Boo!double");
+static assert(A110.s == "Boo!int");
 
 /***************************************************/
 
@@ -5168,9 +5168,11 @@ void test7150()
 /***************************************************/
 // 7159
 
+alias void delegate()  Void7159;
+
 class HomeController7159 {
-    void* foo() {
-        return cast(void*)&HomeController7159.displayDefault;
+    Void7159 foo() {
+        return cast(Void7159)&HomeController7159.displayDefault;
     }
     auto displayDefault() {
         return 1;
@@ -6362,6 +6364,67 @@ void test10091()
 }
 
 /***************************************************/
+// 9130
+
+class S9130 { void bar() { } }
+
+import core.stdc.stdio : printf;
+
+struct Function
+{
+    int[] ai = [1,2,3];
+}
+
+@property void meta(alias m)()
+{
+    static Function md;
+    printf("length = %d\n", md.ai.length);
+    printf("ptr = %p\n", md.ai.ptr);
+    md.ai[0] = 0;
+}
+
+void test9130()
+{
+    meta!(__traits(getOverloads, S9130, "bar")[0]);
+    meta!(S9130.bar);
+}
+
+/***************************************************/
+// 10390
+
+class C10390 { this() { this.c = this; } C10390 c; }
+const c10390 = new C10390();
+pragma(msg, c10390);
+
+/***************************************************/
+// 10542
+
+class B10542
+{
+    this() nothrow pure @safe { }
+}
+
+class D10542 : B10542
+{
+}
+
+void test10542() nothrow pure @safe
+{
+    new D10542;
+}
+
+/***************************************************/
+// 10539
+
+void test10539()
+{
+    int[2][2] a;
+    int* p1 = a.ptr.ptr;    // OK <- error
+    int* p2 = (*a.ptr).ptr; // OK
+    assert(p1 is p2);
+}
+
+/***************************************************/
 
 int main()
 {
@@ -6629,6 +6692,9 @@ int main()
     test9834();
     test9883();
     test10091();
+    test9130();
+    test10542();
+    test10539();
 
     printf("Success\n");
     return 0;

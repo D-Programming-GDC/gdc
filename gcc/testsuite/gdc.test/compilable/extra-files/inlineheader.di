@@ -34,12 +34,12 @@ template Foo(T, int V)
 {
 	void foo(...)
 	{
-		static if (is(Object _ : X!(TL), alias X, TL...))
+		static if (is(Object _ : X!TL, alias X, TL...))
 		{
 		}
 
 		auto x = __traits(hasMember, Object, "noMember");
-		auto y = is(Object : X!(TL), alias X, TL...);
+		auto y = is(Object : X!TL, alias X, TL...);
 		assert(!x && !y, "message");
 		S s = {1, 2};
 		auto a = [1, 2, 3];
@@ -63,13 +63,11 @@ template Foo(T, int V)
 				d = d + 1;
 			}
 		}
+		for (int i = 0;
+		 i < 10; i++)
 		{
-			for (int i = 0;
-			 i < 10; i++)
 			{
-				{
-					d = i ? d + 1 : 5;
-				}
+				d = i ? d + 1 : 5;
 			}
 		}
 		char[] s;
@@ -328,17 +326,17 @@ class Test
 	template A(T)
 	{
 	}
-	alias A!(uint) getHUint;
-	alias A!(int) getHInt;
-	alias A!(float) getHFloat;
-	alias A!(ulong) getHUlong;
-	alias A!(long) getHLong;
-	alias A!(double) getHDouble;
-	alias A!(byte) getHByte;
-	alias A!(ubyte) getHUbyte;
-	alias A!(short) getHShort;
-	alias A!(ushort) getHUShort;
-	alias A!(real) getHReal;
+	alias A!uint getHUint;
+	alias A!int getHInt;
+	alias A!float getHFloat;
+	alias A!ulong getHUlong;
+	alias A!long getHLong;
+	alias A!double getHDouble;
+	alias A!byte getHByte;
+	alias A!ubyte getHUbyte;
+	alias A!short getHShort;
+	alias A!ushort getHUShort;
+	alias A!real getHReal;
 }
 template templ(T)
 {
@@ -438,11 +436,9 @@ template V10(T)
 {
 	void func()
 	{
+		for (int i, j = 4; i < 3; i++)
 		{
-			for (int i, j = 4; i < 3; i++)
 			{
-				{
-				}
 			}
 		}
 	}
@@ -519,3 +515,60 @@ template foo6591()
 	}
 
 }
+template Foo10334(T) if (Bar10334!())
+{
+}
+template Foo10334(T) if (Bar10334!100)
+{
+}
+template Foo10334(T) if (Bar10334!3.14)
+{
+}
+template Foo10334(T) if (Bar10334!"str")
+{
+}
+template Foo10334(T) if (Bar10334!1.4i)
+{
+}
+template Foo10334(T) if (Bar10334!null)
+{
+}
+template Foo10334(T) if (Bar10334!true)
+{
+}
+template Foo10334(T) if (Bar10334!false)
+{
+}
+template Foo10334(T) if (Bar10334!'A')
+{
+}
+template Foo10334(T) if (Bar10334!int)
+{
+}
+template Foo10334(T) if (Bar10334!string)
+{
+}
+template Foo10334(T) if (Bar10334!this)
+{
+}
+template Foo10334(T) if (Bar10334!([1, 2, 3]))
+{
+}
+template Foo10334(T) if (Bar10334!(Baz10334!()))
+{
+}
+template Foo10334(T) if (Bar10334!(Baz10334!T))
+{
+}
+template Foo10334(T) if (Bar10334!(Baz10334!100))
+{
+}
+template Foo10334(T) if (Bar10334!(.foo))
+{
+}
+template Test10334(T...)
+{
+}
+mixin Test10334!int a;
+mixin Test10334!(int, long) b;
+mixin Test10334!"str" c;

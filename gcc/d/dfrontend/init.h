@@ -16,29 +16,28 @@
 #include "mars.h"
 #include "arraytypes.h"
 
-struct Identifier;
-struct Expression;
-struct Scope;
-struct Type;
-
+class Identifier;
+class Expression;
+class Scope;
+class Type;
 #ifdef IN_GCC
 typedef union tree_node dt_t;
 #else
 struct dt_t;
 #endif
-
-struct AggregateDeclaration;
-struct ErrorInitializer;
-struct VoidInitializer;
-struct StructInitializer;
-struct ArrayInitializer;
-struct ExpInitializer;
+class AggregateDeclaration;
+class ErrorInitializer;
+class VoidInitializer;
+class StructInitializer;
+class ArrayInitializer;
+class ExpInitializer;
 struct HdrGenState;
 
 enum NeedInterpret { INITnointerpret, INITinterpret };
 
-struct Initializer : Object
+class Initializer : public RootObject
 {
+public:
     Loc loc;
 
     Initializer(Loc loc);
@@ -61,8 +60,9 @@ struct Initializer : Object
     virtual ExpInitializer     *isExpInitializer()  { return NULL; }
 };
 
-struct VoidInitializer : Initializer
+class VoidInitializer : public Initializer
 {
+public:
     Type *type;         // type that this will initialize to
 
     VoidInitializer(Loc loc);
@@ -76,8 +76,9 @@ struct VoidInitializer : Initializer
     virtual VoidInitializer *isVoidInitializer() { return this; }
 };
 
-struct ErrorInitializer : Initializer
+class ErrorInitializer : public Initializer
 {
+public:
     ErrorInitializer();
     Initializer *syntaxCopy();
     Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret);
@@ -87,8 +88,9 @@ struct ErrorInitializer : Initializer
     virtual ErrorInitializer *isErrorInitializer() { return this; }
 };
 
-struct StructInitializer : Initializer
+class StructInitializer : public Initializer
 {
+public:
     Identifiers field;  // of Identifier *'s
     Initializers value; // parallel array of Initializer *'s
 
@@ -107,8 +109,9 @@ struct StructInitializer : Initializer
     StructInitializer *isStructInitializer() { return this; }
 };
 
-struct ArrayInitializer : Initializer
+class ArrayInitializer : public Initializer
 {
+public:
     Expressions index;  // indices
     Initializers value; // of Initializer *'s
     size_t dim;         // length of array being initialized
@@ -130,8 +133,9 @@ struct ArrayInitializer : Initializer
     ArrayInitializer *isArrayInitializer() { return this; }
 };
 
-struct ExpInitializer : Initializer
+class ExpInitializer : public Initializer
 {
+public:
     Expression *exp;
     int expandTuples;
 

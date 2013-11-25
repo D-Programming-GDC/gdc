@@ -52,6 +52,15 @@ Identifier *fixupLabelName(Scope *sc, Identifier *ident)
     return ident;
 }
 
+LabelStatement *checkLabeledLoop(Scope *sc, Statement *statement)
+{
+    if (sc->slabel && sc->slabel->statement == statement)
+    {
+        return sc->slabel;
+    }
+    return NULL;
+}
+
 /******************************** Statement ***************************/
 
 Statement::Statement(Loc loc)
@@ -74,12 +83,13 @@ void Statement::print()
 }
 
 char *Statement::toChars()
-{   OutBuffer *buf;
+{
     HdrGenState hgs;
 
-    buf = new OutBuffer();
-    toCBuffer(buf, &hgs);
-    return buf->toChars();
+    OutBuffer buf;
+    toCBuffer(&buf, &hgs);
+    buf.writebyte(0);
+    return buf.extractData();
 }
 
 void Statement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -667,12 +677,14 @@ Statement *CompoundStatement::semantic(Scope *sc)
                     }
                 }
             }
+#ifdef IN_GCC
             else
             {
                 // Remove NULL statement from list.
                 statements->remove(i);
                 continue;
             }
+#endif
         }
         i++;
     }
@@ -1175,7 +1187,6 @@ ForStatement::ForStatement(Loc loc, Statement *init, Expression *condition, Expr
     this->condition = condition;
     this->increment = increment;
     this->body = body;
-    this->nest = 0;
     this->relatedLabeled = NULL;
 }
 
@@ -1194,111 +1205,41 @@ Statement *ForStatement::syntaxCopy()
     return s;
 }
 
-/*
- * Run semantic on init recursively.
- * Rewrite:
- *      for (auto x=X(), y = Y(); ...; ...) {}
- * as:
- *      try {
- *          try {
- *              for (auto x=X(), auto y=Y(); ...; ...) {}
- *          }
- *          finally { y.~this(); }
- *      }
- *      finally { x.~this(); }
- */
-Statement *ForStatement::semanticInit(Scope *sc, Statements *ainit, size_t i)
-{
-    Statement *statement = this;
-    if (i < ainit->dim)
-    {
-        Statement *s = (*ainit)[i];
-        (*ainit)[i] = s = s->semantic(sc);
-        if (!s)
-            return semanticInit(sc, ainit, i + 1);
-
-        Statement *sentry;
-        Statement *sexception;
-        Statement *sfinally;
-        (*ainit)[i] = s->scopeCode(sc, &sentry, &sexception, &sfinally);
-
-        /* Rewrite to:
-         *  ainit =
-         *      [ ..., sentry, ainit[i], ... ]
-         *  statement =
-         *      try {                   // sfinally   != NULL
-         *          try {               // sexception != NULL
-         *              statement;
-         *          } catch (__o) {     // sexception != NULL
-         *              sexception;     // sexception != NULL
-         *              throw __o;      // sexception != NULL (internalThrow = true)
-         *          }                   // sexception != NULL
-         *      } finally { sfinally; } // sfinally   != NULL
-         */
-        if (sentry)
-        {   sentry = sentry->semantic(sc);
-            if (sentry)
-                ainit->insert(i++, sentry);
-        }
-        if (sexception)
-            sexception = sexception->semantic(sc);
-
-        statement = semanticInit(sc, ainit, i + 1);
-
-        if (sexception)
-        {
-            Identifier *id = Lexer::uniqueId("__o");
-            Statement *handler;
-            if (sexception->blockExit(FALSE) & BEfallthru)
-            {   handler = new ThrowStatement(Loc(), new IdentifierExp(Loc(), id));
-                ((ThrowStatement *)handler)->internalThrow = true;
-                handler = new CompoundStatement(Loc(), sexception, handler);
-            }
-            else
-                handler = sexception;
-            Catches *catches = new Catches();
-            Catch *ctch = new Catch(Loc(), NULL, id, handler);
-            catches->push(ctch);
-            statement = new TryCatchStatement(Loc(), statement, catches);
-        }
-        if (sfinally)
-            statement = new TryFinallyStatement(Loc(), statement, sfinally);
-    }
-
-    //printf("-ForStatement::semanticInit %s\n", statement->toChars());
-    return statement;
-}
-
 Statement *ForStatement::semantic(Scope *sc)
 {
     //printf("ForStatement::semantic %s\n", toChars());
 
-    if (!nest)
+    if (init)
     {
-        ScopeDsymbol *sym = new ScopeDsymbol();
-        sym->parent = sc->scopesym;
-        sc = sc->push(sym);
-    }
-    if (!nest && init)
-    {
-        Loc loc = init->loc;
-        Statements *ainit = init->flatten(sc);
-        if (!ainit)
-            (ainit = new Statements())->push(init);
-        init = NULL;
-
-        Statement *s = semanticInit(sc, ainit, 0);
-        ++nest;
+        /* Rewrite:
+         *  for (auto v1 = i1, v2 = i2; condition; increment) { ... }
+         * to:
+         *  { auto v1 = i1, v2 = i2; for (; condition; increment) { ... } }
+         * then lowered to:
+         *  auto v1 = i1;
+         *  try {
+         *    auto v2 = i2;
+         *    try {
+         *      for (; condition; increment) { ... }
+         *    } finally { v2.~this(); }
+         *  } finally { v1.~this(); }
+         */
+        Statements *ainit = new Statements();
+        ainit->push(init), init = NULL;
+        ainit->push(this);
+        Statement *s = new CompoundStatement(loc, ainit);
+        s = new ScopeStatement(loc, s);
         s = s->semantic(sc);
-        --nest;
-
-        init = new CompoundStatement(loc, ainit);
+        if (LabelStatement *ls = checkLabeledLoop(sc, this))
+            ls->gotoTarget = this;
         relatedLabeled = s;
-
-        sc->pop();
         return s;
     }
     assert(init == NULL);
+
+    ScopeDsymbol *sym = new ScopeDsymbol();
+    sym->parent = sc->scopesym;
+    sc = sc->push(sym);
 
     sc->noctor++;
     if (condition)
@@ -1319,8 +1260,7 @@ Statement *ForStatement::semantic(Scope *sc)
         body = body->semanticNoScope(sc);
     sc->noctor--;
 
-    if (!nest)
-        sc->pop();
+    sc->pop();
 
     return this;
 }
@@ -1406,7 +1346,7 @@ void ForStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /******************************** ForeachStatement ***************************/
 
-ForeachStatement::ForeachStatement(Loc loc, enum TOK op, Parameters *arguments,
+ForeachStatement::ForeachStatement(Loc loc, TOK op, Parameters *arguments,
         Expression *aggr, Statement *body)
     : Statement(loc)
 {
@@ -1471,7 +1411,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
         if (dim < 1 || dim > 2)
         {
             error("only one (value) or two (key,value) arguments for tuple foreach");
-            return s;
+            return this;
         }
 
         Type *argtype = (*arguments)[dim-1]->type;
@@ -1591,6 +1531,8 @@ Statement *ForeachStatement::semantic(Scope *sc)
         }
 
         s = new UnrolledLoopStatement(loc, statements);
+        if (LabelStatement *ls = checkLabeledLoop(sc, this))
+            ls->gotoTarget = s;
         if (te && te->e0)
             s = new CompoundStatement(loc,
                     new ExpStatement(te->e0->loc, te->e0), s);
@@ -1661,7 +1603,7 @@ Lagain:
                     key = var;
                     if (arg->storageClass & STCref)
                     {
-                        if (!var->type->invariantOf()->equals(arg->type->invariantOf()) ||
+                        if (!var->type->immutableOf()->equals(arg->type->immutableOf()) ||
                             !MODimplicitConv(var->type->mod, arg->type->mod))
                         {
                             error("key type mismatch, %s to ref %s",
@@ -1688,7 +1630,7 @@ Lagain:
                             var->storage_class |= STCconst;
 
                         Type *t = tab->nextOf();
-                        if (!t->invariantOf()->equals(arg->type->invariantOf()) ||
+                        if (!t->immutableOf()->equals(arg->type->immutableOf()) ||
                             !MODimplicitConv(t->mod, arg->type->mod))
                         {
                             error("argument type mismatch, %s to ref %s",
@@ -1769,6 +1711,8 @@ Lagain:
             body = new CompoundStatement(loc, ds, body);
 
             s = new ForStatement(loc, forinit, cond, increment, body);
+            if (LabelStatement *ls = checkLabeledLoop(sc, this))
+                ls->gotoTarget = s;
             s = s->semantic(sc);
             break;
         }
@@ -1944,6 +1888,8 @@ Lagain:
                 makeargs, this->body);
 
             s = new ForStatement(loc, init, condition, increment, forbody);
+            if (LabelStatement *ls = checkLabeledLoop(sc, this))
+                ls->gotoTarget = s;
 #if 0
             printf("init: %s\n", init->toChars());
             printf("condition: %s\n", condition->toChars());
@@ -2270,8 +2216,7 @@ void ForeachStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
         if (i)
             buf->writestring(", ");
         if (a->storageClass & STCref)
-            buf->writestring((global.params.Dversion == 1)
-                ? (char*)"inout " : (char*)"ref ");
+            buf->writestring((char*)"ref ");
         if (a->type)
             a->type->toCBuffer(buf, a->ident, hgs);
         else
@@ -2295,7 +2240,7 @@ void ForeachStatement::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 #if DMDV2
 
-ForeachRangeStatement::ForeachRangeStatement(Loc loc, enum TOK op, Parameter *arg,
+ForeachRangeStatement::ForeachRangeStatement(Loc loc, TOK op, Parameter *arg,
         Expression *lwr, Expression *upr, Statement *body)
     : Statement(loc)
 {
@@ -2321,8 +2266,6 @@ Statement *ForeachRangeStatement::syntaxCopy()
 Statement *ForeachRangeStatement::semantic(Scope *sc)
 {
     //printf("ForeachRangeStatement::semantic() %p\n", this);
-    Statement *s = this;
-
     lwr = lwr->semantic(sc);
     lwr = resolveProperties(sc, lwr);
     lwr = lwr->optimize(WANTvalue);
@@ -2370,7 +2313,7 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
             upr = ea.e2;
         }
     }
-#if 1
+
     /* Convert to a for loop:
      *  foreach (key; lwr .. upr) =>
      *  for (auto key = lwr, auto tmp = upr; key < tmp; ++key)
@@ -2441,7 +2384,7 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
     }
     if (arg->storageClass & STCref)
     {
-        if (!key->type->invariantOf()->equals(arg->type->invariantOf()) ||
+        if (!key->type->immutableOf()->equals(arg->type->immutableOf()) ||
             !MODimplicitConv(key->type->mod, arg->type->mod))
         {
             error("argument type mismatch, %s to ref %s",
@@ -2449,34 +2392,10 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
         }
     }
 
-    ForStatement *fs = new ForStatement(loc, forinit, cond, increment, body);
-    s = fs->semantic(sc);
-    return s;
-#else
-    if (!arg->type->isscalar())
-        error("%s is not a scalar type", arg->type->toChars());
-
-    sym = new ScopeDsymbol();
-    sym->parent = sc->scopesym;
-    sc = sc->push(sym);
-
-    sc->noctor++;
-
-    key = new VarDeclaration(loc, arg->type, arg->ident, NULL);
-    DeclarationExp *de = new DeclarationExp(loc, key);
-    de->semantic(sc);
-
-    if (key->storage_class)
-        error("foreach range: key cannot have storage class");
-
-    sc->sbreak = this;
-    sc->scontinue = this;
-    body = body->semantic(sc);
-
-    sc->noctor--;
-    sc->pop();
-    return s;
-#endif
+    ForStatement *s = new ForStatement(loc, forinit, cond, increment, body);
+    if (LabelStatement *ls = checkLabeledLoop(sc, this))
+        ls->gotoTarget = s;
+    return s->semantic(sc);
 }
 
 bool ForeachRangeStatement::hasBreak()
@@ -2823,8 +2742,8 @@ Statement *PragmaStatement::semantic(Scope *sc)
 
                 e = e->ctfeSemantic(sc);
                 e = resolveProperties(sc, e);
-                if (e->op != TOKerror && e->op != TOKtype)
-                    e = e->ctfeInterpret();
+                // pragma(msg) is allowed to contain types as well as expressions
+                e = ctfeInterpretForPragmaMsg(e);
                 if (e->op == TOKerror)
                 {   errorSupplemental(loc, "while evaluating pragma(msg, %s)", (*args)[i]->toChars());
                     goto Lerror;
@@ -3024,7 +2943,8 @@ Statement *SwitchStatement::semantic(Scope *sc)
         condition->type = condition->type->constOf();
     }
     else
-    {   condition = condition->integralPromotions(sc);
+    {
+        condition = condition->integralPromotions(sc);
         if (!condition->type->isintegral())
             error("'%s' must be of integral or string type, it is a %s", condition->toChars(), condition->type->toChars());
     }
@@ -3094,8 +3014,11 @@ Statement *SwitchStatement::semantic(Scope *sc)
                 if (em)
                 {
                     for (size_t j = 0; j < cases->dim; j++)
-                    {   CaseStatement *cs = (*cases)[j];
-                        if (cs->exp->equals(em->value) || cs->exp->toInteger() == em->value->toInteger())
+                    {
+                        CaseStatement *cs = (*cases)[j];
+                        if (cs->exp->equals(em->value) ||
+                                (!cs->exp->type->isString() && !em->value->type->isString() &&
+                                cs->exp->toInteger() == em->value->toInteger()))
                             goto L1;
                     }
                     error("enum member %s not represented in final switch", em->toChars());
@@ -3278,7 +3201,7 @@ Statement *CaseStatement::semantic(Scope *sc)
     return this;
 }
 
-int CaseStatement::compare(Object *obj)
+int CaseStatement::compare(RootObject *obj)
 {
     // Sort cases so we can do an efficient lookup
     CaseStatement *cs2 = (CaseStatement *)(obj);
@@ -3323,6 +3246,12 @@ Statement *CaseRangeStatement::syntaxCopy()
 
 Statement *CaseRangeStatement::semantic(Scope *sc)
 {   SwitchStatement *sw = sc->sw;
+
+    if (sw == NULL)
+    {
+        error("case range not in switch statement");
+        return NULL;
+    }
 
     //printf("CaseRangeStatement::semantic() %s\n", toChars());
     if (sw->isFinal)
@@ -3755,8 +3684,8 @@ Statement *ReturnStatement::semantic(Scope *sc)
             if (!exp->type->implicitConvTo(tret) &&
                 fd->parametersIntersect(exp->type))
             {
-                if (exp->type->invariantOf()->implicitConvTo(tret))
-                    exp = exp->castTo(sc, exp->type->invariantOf());
+                if (exp->type->immutableOf()->implicitConvTo(tret))
+                    exp = exp->castTo(sc, exp->type->immutableOf());
                 else if (exp->type->wildOf()->implicitConvTo(tret))
                     exp = exp->castTo(sc, exp->type->wildOf());
             }
@@ -3903,18 +3832,19 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
     if (exp && tbret->ty == Tvoid && !implicit0)
     {
-        /* Replace:
-         *      return exp;
-         * with:
-         *      exp; return;
-         */
-        Statement *s = new ExpStatement(loc, exp);
-        s = s->semantic(sc);
-
         if (exp->type->ty != Tvoid)
         {
             error("cannot return non-void from void function");
         }
+
+        /* Replace:
+         *      return exp;
+         * with:
+         *      cast(void)exp; return;
+         */
+        Expression *ce = new CastExp(loc, exp, Type::tvoid);
+        Statement *s = new ExpStatement(loc, ce);
+        s = s->semantic(sc);
 
         exp = NULL;
         return new CompoundStatement(loc, s, this);
@@ -4429,9 +4359,11 @@ Statement *TryCatchStatement::syntaxCopy()
 Statement *TryCatchStatement::semantic(Scope *sc)
 {
     body = body->semanticScope(sc, NULL /*this*/, NULL);
+#ifdef IN_GCC
     assert(body);
+#endif
 
-    /* Even if body is empty, still do semantic analysis on catches
+    /* Even if body is NULL, still do semantic analysis on catches
      */
     for (size_t i = 0; i < catches->dim; i++)
     {   Catch *c = (*catches)[i];
@@ -4447,6 +4379,13 @@ Statement *TryCatchStatement::semantic(Scope *sc)
                 error("catch at %s hides catch at %s", sj, si);
         }
     }
+
+#ifndef IN_GCC
+    if (!body || !body->hasCode())
+    {
+        return NULL;
+    }
+#endif
 
     /* If the try body never throws, we can eliminate any catches
      * of recoverable exceptions.
@@ -4468,8 +4407,13 @@ Statement *TryCatchStatement::semantic(Scope *sc)
         }
     }
 
+#ifdef IN_GCC
     if (catches->dim == 0)
         return (body->hasCode()) ? body : NULL;
+#else
+    if (catches->dim == 0)
+        return body;
+#endif
 
     return this;
 }
@@ -4496,7 +4440,11 @@ int TryCatchStatement::blockExit(bool mustNotThrow)
         /* If we're catching Object, then there is no throwing
          */
         Identifier *id = c->type->toBasetype()->isClassHandle()->ident;
-        if (id == Id::Object || id == Id::Throwable || id == Id::Exception)
+        if (id == Id::Object || id == Id::Throwable)
+        {
+            result &= ~(BEthrow | BEerrthrow);
+        }
+        if (id == Id::Exception)
         {
             result &= ~BEthrow;
         }
@@ -4547,9 +4495,6 @@ Catch *Catch::syntaxCopy()
 
 void Catch::semantic(Scope *sc)
 {
-    if (type && type->deco)
-        return;
-
     //printf("Catch::semantic(%s)\n", ident->toChars());
 
 #ifndef IN_GCC
@@ -4834,16 +4779,19 @@ Statement *ThrowStatement::semantic(Scope *sc)
 int ThrowStatement::blockExit(bool mustNotThrow)
 {
     Type *t = exp->type->toBasetype();
-    if (mustNotThrow && t->ty != Terror)
+    if (t->ty != Terror)
     {
         ClassDeclaration *cd = t->isClassHandle();
         assert(cd);
 
+        if (cd == ClassDeclaration::errorException ||
+            ClassDeclaration::errorException->isBaseOf(cd, NULL))
+        {
+            return BEerrthrow;
+        }
         // Bugzilla 8675
         // Throwing Errors is allowed even if mustNotThrow
-        if (!internalThrow &&
-            cd != ClassDeclaration::errorException &&
-            !ClassDeclaration::errorException->isBaseOf(cd, NULL))
+        if (!internalThrow && mustNotThrow)
             error("%s is thrown but not caught", exp->type->toChars());
     }
     return BEthrow;

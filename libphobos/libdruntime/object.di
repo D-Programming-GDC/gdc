@@ -54,7 +54,7 @@ struct Interface
 {
     TypeInfo_Class   classinfo;
     void*[]     vtbl;
-    ptrdiff_t   offset;   // offset to Interface 'this' from Object 'this'
+    size_t      offset;   // offset to Interface 'this' from Object 'this'
 }
 
 struct OffsetTypeInfo
@@ -372,22 +372,18 @@ extern (C)
 {
     // from druntime/src/compiler/dmd/aaA.d
 
-    size_t _aaLen(void* p);
-    void*  _aaGetX(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
-    void*  _aaGetRvalueX(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
-    void*  _aaInX(void* p, TypeInfo keyti, void* pkey);
-    bool   _aaDelX(void* p, TypeInfo keyti, void* pkey);
-    void[] _aaValues(void* p, size_t keysize, size_t valuesize);
-    void[] _aaKeys(void* p, size_t keysize);
-    void*  _aaRehash(void** pp, TypeInfo keyti);
+    size_t _aaLen(in void* p) pure nothrow;
+    void* _aaGet(void** pp, const TypeInfo keyti, in size_t valuesize, ...);
+    inout(void)* _aaGetRvalue(inout void* p, in TypeInfo keyti, in size_t valuesize, ...);
+    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
+    inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
+    void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
 
     extern (D) alias scope int delegate(void *) _dg_t;
     int _aaApply(void* aa, size_t keysize, _dg_t dg);
 
     extern (D) alias scope int delegate(void *, void *) _dg2_t;
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
-
-    void* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] values);
 }
 
 private template _Unqual(T)
@@ -424,7 +420,7 @@ private:
         Slot*[4] binit;
     }
 
-    void* p; // really Hashtable*
+    Hashtable* p;
 
     struct Range
     {
@@ -432,11 +428,10 @@ private:
         Slot*[] slots;
         Slot* current;
 
-        this(void * aa)
+        this(Hashtable* aa)
         {
-            if (!aa) return;
-            auto pImpl = cast(Hashtable*) aa;
-            slots = pImpl.b;
+            if (aa is null) return;
+            slots = aa.b;
             nextSlot();
         }
 
@@ -477,25 +472,41 @@ private:
 
 public:
 
-    @property size_t length() { return _aaLen(p); }
+    @property size_t length() const { return _aaLen(p); }
 
     Value[Key] rehash() @property
     {
-        auto p = _aaRehash(&p, typeid(Value[Key]));
+        auto p = _aaRehash(cast(void**) &p, typeid(Value[Key]));
         return *cast(Value[Key]*)(&p);
     }
 
-    Value[] values() @property
+    // Note: can't make `values` and `keys` inout as it is used
+    // e.g. in Phobos like `ReturnType!(aa.keys)` instead of `typeof(aa.keys)`
+    // which will result in `inout` propagation.
+
+    inout(Value)[] inout_values() inout @property
     {
         auto a = _aaValues(p, Key.sizeof, Value.sizeof);
-        return *cast(Value[]*) &a;
+        return *cast(inout Value[]*) &a;
     }
 
-    Key[] keys() @property
+    inout(Key)[] inout_keys() inout @property
     {
         auto a = _aaKeys(p, Key.sizeof);
-        return *cast(Key[]*) &a;
+        return *cast(inout Key[]*) &a;
     }
+
+    Value[] values() @property
+    { return inout_values; }
+
+    Key[] keys() @property
+    { return inout_keys; }
+
+    const(Value)[] values() const @property
+    { return inout_values; }
+
+    const(Key)[] keys() const @property
+    { return inout_keys; }
 
     int opApply(scope int delegate(ref Key, ref Value) dg)
     {
@@ -530,7 +541,7 @@ public:
         {
             Range state;
 
-            this(void* p)
+            this(Hashtable* p)
             {
                 state = Range(p);
             }
@@ -552,7 +563,7 @@ public:
         {
             Range state;
 
-            this(void* p)
+            this(Hashtable* p)
             {
                 state = Range(p);
             }
@@ -626,7 +637,7 @@ private
     return _d_arraysetcapacity(typeid(T[]), 0, cast(void *)&arr);
 }
 
-size_t reserve(T)(ref T[] arr, size_t newcapacity) pure nothrow
+size_t reserve(T)(ref T[] arr, size_t newcapacity) pure nothrow @trusted
 {
     return _d_arraysetcapacity(typeid(T[]), newcapacity, cast(void *)&arr);
 }

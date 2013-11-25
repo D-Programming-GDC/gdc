@@ -288,6 +288,11 @@ version(unittest)
 
         shared(immutable(Inner) delegate(ref double, scope string) const shared @trusted nothrow) attrDeleg;
     }
+
+    private enum QualifiedEnum
+    {
+        a = 42
+    }
 }
 
 private template fullyQualifiedNameImplForSymbols(alias T)
@@ -452,11 +457,11 @@ private template fullyQualifiedNameImplForTypes(T,
     {
         enum fullyQualifiedNameImplForTypes = "dstring";
     }
-    else static if (isBasicType!T || is(T == enum))
+    else static if (isBasicType!T && !is(T == enum))
     {
         enum fullyQualifiedNameImplForTypes = chain!((Unqual!T).stringof);
     }
-    else static if (isAggregateType!T)
+    else static if (isAggregateType!T || is(T == enum))
     {
         enum fullyQualifiedNameImplForTypes = chain!(fullyQualifiedNameImplForSymbols!T);
     }
@@ -540,6 +545,8 @@ unittest
 
         // Basic qualified name
         static assert(fqn!(Inner) == inner_name);
+        static assert(fqn!(QualifiedEnum) == "std.traits.QualifiedEnum"); // type
+        static assert(fqn!(QualifiedEnum.a) == "std.traits.QualifiedEnum.a"); // symbol
 
         // Array types
         static assert(fqn!(typeof(array)) == format("%s[]", inner_name));
@@ -5645,72 +5652,14 @@ unittest
     static assert(is(S3 == immutable(int)));
 }
 
-/**
- * Returns the corresponding unsigned value for $(D x), e.g. if $(D x)
- * has type $(D int), returns $(D cast(uint) x). The advantage
- * compared to the cast is that you do not need to rewrite the cast if
- * $(D x) later changes type to e.g. $(D long).
- */
-auto unsigned(T)(T x) if (isIntegral!T)
-{
-         static if (is(Unqual!T == byte )) return cast(ubyte ) x;
-    else static if (is(Unqual!T == short)) return cast(ushort) x;
-    else static if (is(Unqual!T == int  )) return cast(uint  ) x;
-    else static if (is(Unqual!T == long )) return cast(ulong ) x;
-    else
-    {
-        static assert(T.min == 0, "Bug in either unsigned or isIntegral");
-        return cast(Unqual!T) x;
-    }
-}
 
-unittest
-{
-    foreach(T; TypeTuple!(byte, ubyte))
-    {
-        static assert(is(typeof(unsigned(cast(T)1)) == ubyte));
-        static assert(is(typeof(unsigned(cast(const T)1)) == ubyte));
-        static assert(is(typeof(unsigned(cast(immutable T)1)) == ubyte));
-    }
+// Remove import when unsigned is removed.
+import std.conv;
 
-    foreach(T; TypeTuple!(short, ushort))
-    {
-        static assert(is(typeof(unsigned(cast(T)1)) == ushort));
-        static assert(is(typeof(unsigned(cast(const T)1)) == ushort));
-        static assert(is(typeof(unsigned(cast(immutable T)1)) == ushort));
-    }
+// Purposefully undocumented. Will be removed in June 2014.
+deprecated("unsigned has been moved to std.conv. Please adjust your imports accordingly.")
+alias std.conv.unsigned unsigned;
 
-    foreach(T; TypeTuple!(int, uint))
-    {
-        static assert(is(typeof(unsigned(cast(T)1)) == uint));
-        static assert(is(typeof(unsigned(cast(const T)1)) == uint));
-        static assert(is(typeof(unsigned(cast(immutable T)1)) == uint));
-    }
-
-    foreach(T; TypeTuple!(long, ulong))
-    {
-        static assert(is(typeof(unsigned(cast(T)1)) == ulong));
-        static assert(is(typeof(unsigned(cast(const T)1)) == ulong));
-        static assert(is(typeof(unsigned(cast(immutable T)1)) == ulong));
-    }
-}
-
-auto unsigned(T)(T x) if (isSomeChar!T)
-{
-    // All characters are unsigned
-    static assert(T.min == 0);
-    return cast(Unqual!T) x;
-}
-
-unittest
-{
-    foreach(T; TypeTuple!(char, wchar, dchar))
-    {
-        static assert(is(typeof(unsigned(cast(T)'A')) == T));
-        static assert(is(typeof(unsigned(cast(const T)'A')) == T));
-        static assert(is(typeof(unsigned(cast(immutable T)'A')) == T));
-    }
-}
 
 /**
 Returns the most negative value of the numeric type T.

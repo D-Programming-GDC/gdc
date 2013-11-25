@@ -304,6 +304,35 @@ bool bug4837()
 static assert(bug4837());
 
 /**************************************************
+  10252 shift out of range
+**************************************************/
+int lshr10252(int shift)
+{
+     int a = 5;
+     return a << shift;
+}
+
+int rshr10252(int shift)
+{
+     int a = 5;
+     return a >> shift;
+}
+
+int ushr10252(int shift)
+{
+     int a = 5;
+     return a >>> shift;
+}
+
+static assert(is(typeof(compiles!(lshr10252(4)))));
+static assert(!is(typeof(compiles!(lshr10252(60)))));
+static assert(is(typeof(compiles!(rshr10252(4)))));
+static assert(!is(typeof(compiles!(rshr10252(80)))));
+static assert(is(typeof(compiles!(ushr10252(2)))));
+static assert(!is(typeof(compiles!(ushr10252(60)))));
+
+
+/**************************************************
   'this' parameter bug revealed during refactoring
 **************************************************/
 int thisbug1(int x) { return x; }
@@ -1094,6 +1123,40 @@ int wconcat(wstring replace)
 static assert(wconcat("X"w));
 
 /*******************************************
+    10397 string concat
+*******************************************/
+
+static assert(!is(typeof(compiles!("abc" ~ undefined))));
+static assert(!is(typeof(compiles!(otherundefined ~ "abc"))));
+
+/*******************************************
+    9634 struct concat
+*******************************************/
+
+struct Bug9634
+{
+    int raw;
+}
+
+bool bug9634()
+{
+    Bug9634[] jr = [Bug9634(42)];
+
+    Bug9634[] ir = null ~ jr;
+    Bug9634[] kr = jr ~ null;
+    Bug9634[] mr = jr ~ jr;
+
+    jr[0].raw = 6;
+    assert(ir[0].raw == 42);
+    assert(kr[0].raw == 42);
+    assert(jr[0].raw == 6);
+    assert(&mr[0] != &mr[1]);
+    return true;
+}
+
+static assert(bug9634());
+
+/*******************************************
     Bug 4001: A Space Oddity
 *******************************************/
 
@@ -1475,6 +1538,23 @@ bool bug6001h() {
     return true;
 }
 static assert(bug6001h());
+
+/**************************************************
+   10243 wrong code *&arr as ref parameter
+**************************************************/
+
+void bug10243(ref int n)
+{ n = 3; }
+
+bool test10243()
+{
+    int[1] arr;
+    bug10243(*arr.ptr);
+    assert(arr[0] == 3);
+    return true;
+}
+
+static assert(test10243());
 
 /**************************************************
    Bug 4910
@@ -2410,6 +2490,19 @@ bool test9745b()
 }
 static assert(test9745b());
 
+/**************************************************
+    10251 Pointers to const globals
+**************************************************/
+
+static const int glob10251 = 7;
+
+const (int) * bug10251()
+{
+   return &glob10251;
+}
+
+static a10251 = &glob10251; //  OK
+static b10251 = bug10251();
 
 /**************************************************
     4065 [CTFE] AA "in" operator doesn't work
@@ -3419,6 +3512,23 @@ static assert(!is(typeof(compiles!(badpointer(7)))));
 static assert(!is(typeof(compiles!(badpointer(8)))));
 
 /**************************************************
+    10211 Allow casts S**->D**, when S*->D* is OK
+**************************************************/
+
+int bug10211()
+{
+    int m = 7;
+    int *x = &m;
+    int **y = &x;
+    assert(**y == 7);
+    uint *p = cast(uint *)x;
+    uint **q = cast(uint **)y;
+    return 1;
+}
+
+static assert(bug10211());
+
+/**************************************************
     9170 Allow reinterpret casts float<->int
 **************************************************/
 int f9170(float x) {
@@ -3553,6 +3663,27 @@ static assert(!is(typeof(compiles!(bug7780(1)))));
 static assert(!is(typeof(compiles!(bug7780(2)))));
 
 /**************************************************
+    10275 cast struct literals to immutable
+**************************************************/
+
+struct Bug10275
+{
+    uint[] ivals;
+}
+
+Bug10275 bug10275() {
+    return Bug10275([1,2,3]);
+}
+
+int test10275()
+{
+    immutable(Bug10275) xxx = cast(immutable(Bug10275))bug10275();
+    return 1;
+}
+
+static assert(test10275());
+
+/**************************************************
     6851 passing pointer by argument
 **************************************************/
 
@@ -3643,7 +3774,7 @@ struct S6816 {
 enum s6816 = S6816().foo();
 
 /**************************************************
-    7277 ICE
+    7277 ICE nestedstruct.init.tupleof
 **************************************************/
 
 struct Foo7277
@@ -3663,6 +3794,24 @@ struct Foo7277
 }
 
 static assert(Foo7277().func() == 17);
+
+/**************************************************
+    10217 ICE. CTFE version of 9315
+**************************************************/
+
+bool bug10217()
+{
+    struct S
+    {
+        int i;
+        void bar() {}
+    }
+    auto yyy = S.init.tupleof[$-1];
+    assert(!yyy);
+    return 1;
+}
+
+static assert(bug10217());
 
 /**************************************************
     8276 ICE
@@ -4495,6 +4644,29 @@ int bug7940() {
 static assert(bug7940());
 
 /**************************************************
+    10298 wrong code for struct array literal init
+**************************************************/
+
+struct Bug10298 {
+    int m;
+}
+
+int bug10298()
+{
+    Bug10298[1] y = [Bug10298(78)];
+    y[0].m = 6;
+    assert(y[0].m == 6);
+
+    // Root cause
+    Bug10298[1] x;
+    x[] = [cast(const Bug10298)(Bug10298(78))];
+    assert(x[0].m == 78);
+    return 1;
+}
+
+static assert(bug10298());
+
+/**************************************************
     7266 dotvar ref parameters
 **************************************************/
 
@@ -4935,6 +5107,23 @@ int bug9113(T)()
 
 static assert( !is( typeof( compiles!(bug9113!(int)())) ) );
 
+/**************************************************
+    Creation of unions
+**************************************************/
+
+union UnionTest1
+{
+    int x;
+    float y;
+}
+
+int uniontest1()
+{
+    UnionTest1 u = UnionTest1(1);
+    return 1;
+}
+
+static assert(uniontest1());
 
 /**************************************************
     6438 void

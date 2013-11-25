@@ -103,6 +103,35 @@ void test6()
 }
 
 /**********************************************/
+// 3096
+
+void test3096()
+{
+    template Tuple(T...) { alias Tuple = T; }
+
+    template Base(E)
+    {
+        static if(is(E B == enum))
+            alias Base = B;
+    }
+
+    template GetEnum(T)
+    {
+        enum GetEnum { v = T.init }
+    }
+
+    struct S { }
+    class C { }
+
+    foreach (Type; Tuple!(char, wchar, dchar, byte, ubyte,
+                          short, ushort, int, uint, long,
+                          ulong, float, double, real, S, C))
+    {
+        static assert(is(Base!(GetEnum!Type) == Type));
+    }
+}
+
+/**********************************************/
 // 7719
 
 enum foo7719 = bar7719;
@@ -121,6 +150,67 @@ const int A9846 = B9846;
 enum { B9846 = 1 }
 
 /**********************************************/
+// 10105
+
+enum E10105 : char[1] { a = "a" }
+
+/**********************************************/
+// 10113
+
+enum E10113 : string
+{
+    a = "a",
+    b = "b",
+    abc = "abc"
+}
+
+void test10113()
+{
+    E10113 v = E10113.b;
+    bool check = false;
+
+    final switch (v) {
+    case E10113.a: assert(false);
+    case E10113.b: check = true; break;
+    case E10113.abc: assert(false);
+    }
+
+    assert(check);
+}
+
+/**********************************************/
+// 10503
+
+@property int octal10503(string num)()
+{
+    return num.length;
+}
+
+enum
+{
+    A10503 = octal10503!"2000000",
+    B10503 = octal10503!"4000",
+}
+
+/**********************************************/
+// 10505
+
+enum
+{
+    a10505 = true,
+    b10505 = 10.0f,
+    c10505 = false,
+    d10505 = 10,
+    e10505 = null
+}
+
+static assert(is(typeof(a10505) == bool));
+static assert(is(typeof(b10505) == float));
+static assert(is(typeof(c10505) == bool));
+static assert(is(typeof(d10505) == int));
+static assert(is(typeof(e10505) == typeof(null)));
+
+/**********************************************/
 
 int main()
 {
@@ -130,6 +220,7 @@ int main()
     test4();
     test5();
     test6();
+    test10113();
 
     printf("Success\n");
     return 0;

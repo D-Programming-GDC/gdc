@@ -130,11 +130,6 @@ void EnumDeclaration::semantic(Scope *sc)
     if (!members && !memtype)               // enum ident;
         return;
 
-    if (!memtype && !isAnonymous())
-    {   // Set memtype if we can to reduce fwd reference errors
-        memtype = Type::tint32; // case 1)  enum ident { ... }
-    }
-
     if (symtab)                 // if already done
     {   if (isdone || !scope)
             return;             // semantic() already completed
@@ -254,10 +249,14 @@ void EnumDeclaration::semantic(Scope *sc)
         {
             assert(e->dyncast() == DYNCAST_EXPRESSION);
             e = e->ctfeSemantic(sce);
+            e = resolveProperties(sc, e);
             e = e->ctfeInterpret();
-            if (memtype)
+            if (first && !memtype && !isAnonymous())
+                memtype = e->type;
+            if (memtype && !em->type)
             {
-                e = e->implicitCastTo(sce, memtype);
+                if (!isAnonymous())
+                    e = e->implicitCastTo(sce, memtype);
                 e = e->ctfeInterpret();
                 if (!isAnonymous())
                     e = e->castTo(sce, type);
@@ -272,15 +271,22 @@ void EnumDeclaration::semantic(Scope *sc)
             }
             else
                 t = e->type;
+            if (isAnonymous() && em->type)
+            {
+                e = e->implicitCastTo(sce, em->type);
+                e = e->ctfeInterpret();
+            }
         }
         else if (first)
         {
             if (memtype)
                 t = memtype;
-            else if (em->type)
-                t = em->type;
             else
+            {
                 t = Type::tint32;
+                if (!isAnonymous())
+                    memtype = t;
+            }
             e = new IntegerExp(em->loc, 0, Type::tint32);
             e = e->implicitCastTo(sce, t);
             e = e->ctfeInterpret();
@@ -388,7 +394,7 @@ void EnumDeclaration::semantic(Scope *sc)
     //members->print();
 }
 
-int EnumDeclaration::oneMember(Dsymbol **ps, Identifier *ident)
+bool EnumDeclaration::oneMember(Dsymbol **ps, Identifier *ident)
 {
     if (isAnonymous())
         return Dsymbol::oneMembers(members, ps, ident);
@@ -444,6 +450,11 @@ const char *EnumDeclaration::kind()
 bool EnumDeclaration::isDeprecated()
 {
     return isdeprecated;
+}
+
+PROT EnumDeclaration::prot()
+{
+    return protection;
 }
 
 Dsymbol *EnumDeclaration::search(Loc loc, Identifier *ident, int flags)

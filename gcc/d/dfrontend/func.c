@@ -62,12 +62,14 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     parameters = NULL;
     labtab = NULL;
     overnext = NULL;
+    overnext0 = NULL;
     vtblIndex = -1;
     hasReturnExp = 0;
     naked = 0;
     inlineStatusExp = ILSuninitialized;
     inlineStatusStmt = ILSuninitialized;
     inlineNest = 0;
+    ctfeCode = NULL;
     isArrayOp = 0;
     dArrayOp = NULL;
     semanticRun = PASSinit;
@@ -497,7 +499,7 @@ void FuncDeclaration::semantic(Scope *sc)
         doesoverride = FALSE;
         switch (vi)
         {
-            case -1:
+            case (size_t)-1:
         Lintro:
                 /* Didn't find one, so
                  * This is an 'introducing' function which gets a new
@@ -537,7 +539,7 @@ void FuncDeclaration::semantic(Scope *sc)
                 }
                 break;
 
-            case -2:    // can't determine because of fwd refs
+            case (size_t)-2:    // can't determine because of fwd refs
                 cd->sizeok = SIZEOKfwd; // can't finish due to forward reference
                 Module::dprogress = dprogress_save;
                 return;
@@ -626,10 +628,10 @@ void FuncDeclaration::semantic(Scope *sc)
             vi = findVtblIndex((Dsymbols *)&b->base->vtbl, b->base->vtbl.dim);
             switch (vi)
             {
-                case -1:
+                case (size_t)-1:
                     break;
 
-                case -2:
+                case (size_t)-2:
                     cd->sizeok = SIZEOKfwd;     // can't finish due to forward reference
                     Module::dprogress = dprogress_save;
                     return;
@@ -1153,7 +1155,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                     assert(arg->ident);
                     TupleDeclaration *v = new TupleDeclaration(loc, arg->ident, exps);
                     //printf("declaring tuple %s\n", v->toChars());
-                    v->isexp = 1;
+                    v->isexp = true;
                     if (!sc2->insert(v))
                         error("parameter %s.%s is already defined", toChars(), v->toChars());
                     localsymtab->insert(v);
@@ -1288,7 +1290,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 {
                     for (size_t i = 0; i < returns->dim; i++)
                     {   Expression *exp = (*returns)[i]->exp;
-                        if (!f->next->invariantOf()->equals(exp->type->invariantOf()))
+                        if (!f->next->immutableOf()->equals(exp->type->immutableOf()))
                         {   exp = exp->castTo(sc2, f->next);
                             exp = exp->optimize(WANTvalue);
                             (*returns)[i]->exp = exp;
@@ -1327,7 +1329,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 int nothrowErrors = global.errors;
                 int blockexit = fbody->blockExit(f->isnothrow);
                 if (f->isnothrow && (global.errors != nothrowErrors) )
-                    error("'%s' is nothrow yet may throw", toChars());
+                    ::error(loc, "%s '%s' is nothrow yet may throw", kind(), toPrettyChars());
                 if (flags & FUNCFLAGnothrowInprocess)
                     f->isnothrow = !(blockexit & BEthrow);
 #endif
@@ -1415,10 +1417,10 @@ void FuncDeclaration::semantic3(Scope *sc)
                 int nothrowErrors = global.errors;
                 int blockexit = fbody->blockExit(f->isnothrow);
                 if (f->isnothrow && (global.errors != nothrowErrors) )
-                    error("'%s' is nothrow yet may throw", toChars());
+                    ::error(loc, "%s '%s' is nothrow yet may throw", kind(), toPrettyChars());
                 if (flags & FUNCFLAGnothrowInprocess)
                 {
-                    if (type == f) f = f->copy();
+                    if (type == f) f = (TypeFunction *)f->copy();
                     f->isnothrow = !(blockexit & BEthrow);
                 }
 
@@ -1691,7 +1693,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                         bool isnothrow = f->isnothrow & !(flags & FUNCFLAGnothrowInprocess);
                         int blockexit = s->blockExit(isnothrow);
                         if (f->isnothrow && (global.errors != nothrowErrors) )
-                            error("'%s' is nothrow yet may throw", toChars());
+                            ::error(loc, "%s '%s' is nothrow yet may throw", kind(), toPrettyChars());
                         if (flags & FUNCFLAGnothrowInprocess && blockexit & BEthrow)
                             f->isnothrow = FALSE;
                         if (fbody->blockExit(f->isnothrow) == BEfallthru)
@@ -1753,14 +1755,14 @@ void FuncDeclaration::semantic3(Scope *sc)
     if (flags & FUNCFLAGpurityInprocess)
     {
         flags &= ~FUNCFLAGpurityInprocess;
-        if (type == f) f = f->copy();
+        if (type == f) f = (TypeFunction *)f->copy();
         f->purity = PUREfwdref;
     }
 
     if (flags & FUNCFLAGsafetyInprocess)
     {
         flags &= ~FUNCFLAGsafetyInprocess;
-        if (type == f) f = f->copy();
+        if (type == f) f = (TypeFunction *)f->copy();
         f->trust = TRUSTsafe;
     }
 
@@ -1800,7 +1802,10 @@ void FuncDeclaration::semantic3(Scope *sc)
 
 bool FuncDeclaration::functionSemantic()
 {
-    if (scope && !originalType)     // semantic not yet run
+    if (!scope)
+        return true;
+
+    if (!originalType)      // semantic not yet run
     {
         TemplateInstance *spec = isSpeculative();
         unsigned olderrs = global.errors;
@@ -1816,14 +1821,26 @@ bool FuncDeclaration::functionSemantic()
     }
 
     // if inferring return type, sematic3 needs to be run
-    TemplateInstance *ti;
-    AggregateDeclaration *ad;
-    if (scope &&
-        (inferRetType && type && !type->nextOf() ||
-         (ti = parent->isTemplateInstance()) != NULL && !ti->isTemplateMixin() && ti->name == ident ||
-         (ad = isThis()) != NULL && ad->parent && ad->parent->isTemplateInstance() && !isVirtualMethod()))
-    {
+    if (inferRetType && type && !type->nextOf())
         return functionSemantic3();
+
+    TemplateInstance *ti = parent->isTemplateInstance();
+    if (ti && !ti->isTemplateMixin() && ti->name == ident)
+        return functionSemantic3();
+
+    AggregateDeclaration *ad = isThis();
+    if (ad && ad->parent && ad->parent->isTemplateInstance() && !isVirtualMethod())
+    {
+        if (ad->sizeok != SIZEOKdone)
+        {
+            /* Currently dmd cannot resolve forward references per methods,
+             * then setting SIZOKfwd is too conservative and would break existing code.
+             * So, just stop method attributes inference until ad->semantic() done.
+             */
+            //ad->sizeok = SIZEOKfwd;
+        }
+        else
+            return functionSemantic3();
     }
 
     return true;
@@ -1920,24 +1937,38 @@ VarDeclaration *FuncDeclaration::declareThis(Scope *sc, AggregateDeclaration *ad
     return NULL;
 }
 
-int FuncDeclaration::equals(Object *o)
+bool FuncDeclaration::equals(RootObject *o)
 {
     if (this == o)
-        return TRUE;
+        return true;
 
     Dsymbol *s = isDsymbol(o);
     if (s)
     {
-        FuncDeclaration *fd1 = this->toAliasFunc();
+        FuncDeclaration *fd1 = this;
         FuncDeclaration *fd2 = s->isFuncDeclaration();
-        if (fd2)
+        if (!fd2)
+            return false;
+
+        FuncAliasDeclaration *fa1 = fd1->isFuncAliasDeclaration();
+        FuncAliasDeclaration *fa2 = fd2->isFuncAliasDeclaration();
+        if (fa1 && fa2)
         {
-            fd2 = fd2->toAliasFunc();
-            return fd1->toParent()->equals(fd2->toParent()) &&
-                fd1->ident->equals(fd2->ident) && fd1->type->equals(fd2->type);
+            return fa1->toAliasFunc()->equals(fa2->toAliasFunc()) &&
+                   fa1->hasOverloads == fa2->hasOverloads;
         }
+
+        if (fa1 && (fd1 = fa1->toAliasFunc())->isUnique() && !fa1->hasOverloads)
+            fa1 = NULL;
+        if (fa2 && (fd2 = fa2->toAliasFunc())->isUnique() && !fa2->hasOverloads)
+            fa2 = NULL;
+        if ((fa1 != NULL) != (fa2 != NULL))
+            return false;
+
+        return fd1->toParent()->equals(fd2->toParent()) &&
+            fd1->ident->equals(fd2->ident) && fd1->type->equals(fd2->type);
     }
-    return FALSE;
+    return false;
 }
 
 void FuncDeclaration::bodyToCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -2160,12 +2191,11 @@ Statement *FuncDeclaration::mergeFensure(Statement *sf)
 
                 Type *t1 = fdv->type->nextOf()->toBasetype();
                 Type *t2 = this->type->nextOf()->toBasetype();
-                int offset;
-                if (t1->isBaseOf(t2, &offset) && offset != 0)
+                if (t1->isBaseOf(t2, NULL))
                 {
                     /* Making temporary reference variable is necessary
-                     * to match offset difference in covariant return.
-                     * See bugzilla 5204.
+                     * in covariant return.
+                     * See bugzilla 5204 and 10479.
                      */
                     ExpInitializer *ei = new ExpInitializer(Loc(), eresult);
                     VarDeclaration *v = new VarDeclaration(Loc(), t1, Lexer::uniqueId("__covres"), ei);
@@ -2293,10 +2323,10 @@ int FuncDeclaration::findVtblIndex(Dsymbols *vtbl, int dim)
 
 /****************************************************
  * Overload this FuncDeclaration with the new one f.
- * Return !=0 if successful; i.e. no conflict.
+ * Return true if successful; i.e. no conflict.
  */
 
-int FuncDeclaration::overloadInsert(Dsymbol *s)
+bool FuncDeclaration::overloadInsert(Dsymbol *s)
 {
     //printf("FuncDeclaration::overloadInsert(s = %s) this = %s\n", s->toChars(), toChars());
     AliasDeclaration *ad = s->isAliasDeclaration();
@@ -2307,15 +2337,23 @@ int FuncDeclaration::overloadInsert(Dsymbol *s)
         if (!ad->aliassym && ad->type->ty != Tident && ad->type->ty != Tinstance)
         {
             //printf("\tad = '%s'\n", ad->type->toChars());
-            return FALSE;
+            return false;
         }
         overnext = ad;
         //printf("\ttrue: no conflict\n");
+        return true;
+    }
+    TemplateDeclaration *td = s->isTemplateDeclaration();
+    if (td)
+    {
+        if (overnext)
+            return overnext->overloadInsert(td);
+        overnext = td;
         return TRUE;
     }
     FuncDeclaration *fd = s->isFuncDeclaration();
     if (!fd)
-        return FALSE;
+        return false;
 
 #if 0
     /* Disable this check because:
@@ -2338,10 +2376,16 @@ int FuncDeclaration::overloadInsert(Dsymbol *s)
 #endif
 
     if (overnext)
-        return overnext->overloadInsert(fd);
+    {
+        td = overnext->isTemplateDeclaration();
+        if (td)
+            fd->overloadInsert(td);
+        else
+            return overnext->overloadInsert(fd);
+    }
     overnext = fd;
     //printf("\ttrue: no conflict\n");
-    return TRUE;
+    return true;
 }
 
 /********************************************
@@ -2359,7 +2403,7 @@ int FuncDeclaration::overloadInsert(Dsymbol *s)
 
 int overloadApply(FuncDeclaration *fstart,
         int (*fp)(void *, FuncDeclaration *),
-        void *param)
+        void *param, Dsymbol **plast)
 {
     FuncDeclaration *f;
     Declaration *d;
@@ -2372,7 +2416,7 @@ int overloadApply(FuncDeclaration *fstart,
         {
             if (fa->hasOverloads)
             {
-                if (overloadApply(fa->funcalias, fp, param))
+                if (overloadApply(fa->funcalias, fp, param, plast))
                     return 1;
             }
             else
@@ -2385,7 +2429,8 @@ int overloadApply(FuncDeclaration *fstart,
                 if ((*fp)(param, f))
                     return 1;
             }
-            next = fa->overnext;
+            next = fa->overnext ? fa->overnext->isDeclaration() : NULL;
+            if (plast) *plast = fa->overnext;
         }
         else
         {
@@ -2410,7 +2455,8 @@ int overloadApply(FuncDeclaration *fstart,
                 if ((*fp)(param, f))
                     return 1;
 
-                next = f->overnext;
+                next = f->overnext ? f->overnext->isDeclaration() : NULL;
+                if (plast) *plast = f->overnext;
             }
         }
     }
@@ -2436,8 +2482,8 @@ static int fpunique(void *param, FuncDeclaration *f)
 }
 
 FuncDeclaration *FuncDeclaration::isUnique()
-{   FuncDeclaration *result = NULL;
-
+{
+    FuncDeclaration *result = NULL;
     overloadApply(this, &fpunique, &result);
     return result;
 }
@@ -2511,7 +2557,6 @@ int fp2(void *param, FuncDeclaration *f)
 {
     Param2 *p = (Param2 *)param;
     Match *m = p->m;
-    Expressions *arguments = p->arguments;
 
     if (f != m->lastf)          // skip duplicates
     {
@@ -2543,22 +2588,17 @@ int fp2(void *param, FuncDeclaration *f)
             else
                 return 0;   // MATCHnomatch
         }
-        MATCH match = tf->callMatch(tthis, arguments);
+        MATCH match = tf->callMatch(tthis, p->arguments);
         //printf("test1: match = %d\n", match);
         if (match != MATCHnomatch)
         {
-            if (match > m->last)
-                goto LfIsBetter;
-
-            if (match < m->last)
-                goto LlastIsBetter;
+            if (match > m->last) goto LfIsBetter;
+            if (match < m->last) goto LlastIsBetter;
 
             /* See if one of the matches overrides the other.
              */
-            if (m->lastf->overrides(f))
-                goto LlastIsBetter;
-            else if (f->overrides(m->lastf))
-                goto LfIsBetter;
+            if (m->lastf->overrides(f)) goto LlastIsBetter;
+            if (f->overrides(m->lastf)) goto LfIsBetter;
 
 #if DMDV2
             /* Try to disambiguate using template-style partial ordering rules.
@@ -2567,13 +2607,11 @@ int fp2(void *param, FuncDeclaration *f)
              * This is because f() is "more specialized."
              */
             {
-            MATCH c1 = f->leastAsSpecialized(m->lastf);
-            MATCH c2 = m->lastf->leastAsSpecialized(f);
-            //printf("c1 = %d, c2 = %d\n", c1, c2);
-            if (c1 > c2)
-                goto LfIsBetter;
-            if (c1 < c2)
-                goto LlastIsBetter;
+                MATCH c1 = f->leastAsSpecialized(m->lastf);
+                MATCH c2 = m->lastf->leastAsSpecialized(f);
+                //printf("c1 = %d, c2 = %d\n", c1, c2);
+                if (c1 > c2) goto LfIsBetter;
+                if (c1 < c2) goto LlastIsBetter;
             }
 
             /* If the two functions are the same function, like:
@@ -2587,10 +2625,8 @@ int fp2(void *param, FuncDeclaration *f)
                 f->protection == m->lastf->protection &&
                 f->linkage == m->lastf->linkage)
             {
-                if (f->fbody && !m->lastf->fbody)
-                    goto LfIsBetter;
-                else if (!f->fbody && m->lastf->fbody)
-                    goto LlastIsBetter;
+                if ( f->fbody && !m->lastf->fbody) goto LfIsBetter;
+                if (!f->fbody &&  m->lastf->fbody) goto LlastIsBetter;
             }
 #endif
         Lambiguous:
@@ -2611,16 +2647,16 @@ int fp2(void *param, FuncDeclaration *f)
     return 0;
 }
 
-
-void overloadResolveX(Match *m, FuncDeclaration *fstart,
-        Type *tthis, Expressions *arguments)
+void functionResolve(Match *m, FuncDeclaration *fstart,
+        Type *tthis, Expressions *arguments, Dsymbol **plast)
 {
     Param2 p;
     p.m = m;
     p.tthis = tthis;
     p.property = 0;
     p.arguments = arguments;
-    overloadApply(fstart, &fp2, &p);
+    if (plast) *plast = NULL;
+    overloadApply(fstart, &fp2, &p, plast);
 }
 
 static void MODMatchToBuffer(OutBuffer *buf, unsigned char lhsMod, unsigned char rhsMod)
@@ -2646,89 +2682,20 @@ static void MODMatchToBuffer(OutBuffer *buf, unsigned char lhsMod, unsigned char
         buf->writestring("mutable ");
 }
 
-FuncDeclaration *FuncDeclaration::overloadResolve(Loc loc, Type *tthis, Expressions *arguments, int flags)
+/********************************************
+ * find function template root in overload list
+ */
+
+TemplateDeclaration *FuncDeclaration::findTemplateDeclRoot()
 {
-#if 0
-    printf("FuncDeclaration::overloadResolve('%s')\n", toChars());
-    if (arguments)
+    FuncDeclaration *f = this;
+    while (f && f->overnext)
     {
-        for (size_t i = 0; i < arguments->dim; i++)
-        {
-            Expression *arg = (*arguments)[i];
-            assert(arg->type);
-            printf("\t%s: ", arg->toChars());
-            arg->type->print();
-        }
-    }
-#endif
-
-    Match m;
-    memset(&m, 0, sizeof(m));
-    m.last = MATCHnomatch;
-    overloadResolveX(&m, this, tthis, arguments);
-
-    if (m.count == 1)           // exactly one match
-    {
-        if (!(flags & 1))
-            m.lastf->functionSemantic();
-        return m.lastf;
-    }
-
-    if (m.last != MATCHnomatch && (flags & 2) && !tthis && m.lastf->needThis())
-    {
-        return m.lastf;
-    }
-
-    /* Failed to find a best match.
-     * Do nothing or print error.
-     */
-    if (m.last == MATCHnomatch && (flags & 1))
-    {                   // if do not print error messages
-    }
-    else
-    {
-        OutBuffer buf;
-
-        buf.writeByte('(');
-        if (arguments && arguments->dim)
-        {
-            HdrGenState hgs;
-            argExpTypesToCBuffer(&buf, arguments, &hgs);
-        }
-        buf.writeByte(')');
-        if (tthis)
-            tthis->modToBuffer(&buf);
-
-        if (m.last == MATCHnomatch)
-        {
-            TypeFunction *tf = (TypeFunction *)type;
-            if (tthis && !MODimplicitConv(tthis->mod, tf->mod)) // modifier mismatch
-            {
-                OutBuffer thisBuf, funcBuf;
-                MODMatchToBuffer(&thisBuf, tthis->mod, tf->mod);
-                MODMatchToBuffer(&funcBuf, tf->mod, tthis->mod);
-                ::error(loc, "%smethod %s is not callable using a %sobject",
-                    funcBuf.toChars(), this->toPrettyChars(), thisBuf.toChars());
-            }
-            else
-            {
-                //printf("tf = %s, args = %s\n", tf->deco, (*arguments)[0]->type->deco);
-                error(loc, "%s%s is not callable using argument types %s",
-                    Parameter::argsTypesToChars(tf->parameters, tf->varargs),
-                    tf->modToChars(),
-                    buf.toChars());
-            }
-        }
-        else
-        {
-            TypeFunction *t1 = (TypeFunction *)m.lastf->type;
-            TypeFunction *t2 = (TypeFunction *)m.nextf->type;
-
-            error(loc, "called with argument types:\n\t(%s)\nmatches both:\n\t%s(%d): %s%s\nand:\n\t%s(%d): %s%s",
-                    buf.toChars(),
-                    m.lastf->loc.filename, m.lastf->loc.linnum, m.lastf->toPrettyChars(), Parameter::argsTypesToChars(t1->parameters, t1->varargs),
-                    m.nextf->loc.filename, m.nextf->loc.linnum, m.nextf->toPrettyChars(), Parameter::argsTypesToChars(t2->parameters, t2->varargs));
-        }
+        //printf("f->overnext = %p %s\n", f->overnext, f->overnext->toChars());
+        TemplateDeclaration *td = f->overnext->isTemplateDeclaration();
+        if (td)
+            return td;
+        f = f->overnext->isFuncDeclaration();
     }
     return NULL;
 }
@@ -2741,7 +2708,6 @@ FuncDeclaration *FuncDeclaration::overloadResolve(Loc loc, Type *tthis, Expressi
  *      0       g is more specialized than 'this'
  */
 
-#if DMDV2
 MATCH FuncDeclaration::leastAsSpecialized(FuncDeclaration *g)
 {
 #define LOG_LEASTAS     0
@@ -2842,23 +2808,179 @@ FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
 {
     if (!s)
         return NULL;                    // no match
+
+#if 0
+    printf("resolveFuncCall('%s')\n", toChars());
+    if (arguments)
+    {
+        for (size_t i = 0; i < arguments->dim; i++)
+        {
+            Expression *arg = (*arguments)[i];
+            assert(arg->type);
+            printf("\t%s: ", arg->toChars());
+            arg->type->print();
+        }
+    }
+#endif
+
     if (tiargs    && arrayObjectIsError(tiargs) ||
         arguments && arrayObjectIsError((Objects *)arguments))
     {
         return NULL;
     }
-    FuncDeclaration *f = s->isFuncDeclaration();
-    if (f)
-        f = f->overloadResolve(loc, tthis, arguments, flags);
-    else
-    {   TemplateDeclaration *td = s->isTemplateDeclaration();
-        assert(td);
-        if (!sc) sc = td->scope;
-        f = td->deduceFunctionTemplate(loc, sc, tiargs, tthis, arguments, flags);
+
+    FuncDeclaration *fd = s->isFuncDeclaration();
+    TemplateDeclaration *td = s->isTemplateDeclaration();
+    if (td) fd = td->funcroot;
+    assert(fd || td); //?
+
+    Match m;
+    memset(&m, 0, sizeof(m));
+    m.last = MATCHnomatch;
+
+    if (fd && tiargs && tiargs->dim > 0)
+    {
+        td = fd->findTemplateDeclRoot();
     }
-    return f;
+    else if (fd)
+    {
+        Dsymbol *lastnext;
+        functionResolve(&m, fd, tthis, arguments, &lastnext);
+        if (lastnext) td = lastnext->isTemplateDeclaration();
+    }
+    if (td)
+    {
+        if (!sc) sc = td->scope;
+        templateResolve(&m, td, loc, sc, tiargs, tthis, arguments);
+    }
+
+    if (m.count == 1)   // exactly one match
+    {   assert(m.lastf);
+        if (!(flags & 1))
+            m.lastf->functionSemantic();
+        return m.lastf;
+    }
+
+    if (m.last != MATCHnomatch && (flags & 2) && !tthis && m.lastf->needThis())
+    {
+        return m.lastf;
+    }
+
+Lerror:
+    /* Failed to find a best match.
+     * Do nothing or print error.
+     */
+    if (m.last == MATCHnomatch && (flags & 1))
+    {   // if do not print error messages
+        return NULL;    // no match
+    }
+
+    HdrGenState hgs;
+
+    OutBuffer tiargsBuf;
+    if (td)
+    {
+        size_t dim = tiargs ? tiargs->dim : 0;
+        for (size_t i = 0; i < dim; i++)
+        {
+            if (i)
+                tiargsBuf.writestring(", ");
+            RootObject *oarg = (*tiargs)[i];
+            ObjectToCBuffer(&tiargsBuf, &hgs, oarg);
+        }
+    }
+
+    OutBuffer fargsBuf;
+    fargsBuf.writeByte('(');
+    argExpTypesToCBuffer(&fargsBuf, arguments, &hgs);
+    fargsBuf.writeByte(')');
+    if (tthis)
+        tthis->modToBuffer(&fargsBuf);
+
+    assert(!m.lastf || m.nextf);
+    if (!m.lastf && !(flags & 1))   // no match
+    {
+        if (td)
+        {
+            if (!fd)    // all of overloads are template
+            {
+                ::error(loc, "%s %s.%s does not match any function template declaration. Candidates are:",
+                        td->kind(), td->parent->toPrettyChars(), td->ident->toChars());
+
+                // Display candidate template functions
+                int numToDisplay = 5; // sensible number to display
+                for (TemplateDeclaration *tdx = td; tdx; tdx = tdx->overnext)
+                {
+                    ::errorSupplemental(tdx->loc, "%s", tdx->toPrettyChars());
+                    if (!global.params.verbose && --numToDisplay == 0)
+                    {
+                        // Too many overloads to sensibly display.
+                        // Just show count of remaining overloads.
+                        int remaining = 0;
+                        for (; tdx; tdx = tdx->overnext)
+                            ++remaining;
+                        if (remaining > 0)
+                            ::errorSupplemental(loc, "... (%d more, -v to show) ...", remaining);
+                        break;
+                    }
+                }
+            }
+            td->error(loc, "cannot deduce template function from argument types !(%s)%s",
+                  tiargsBuf.toChars(), fargsBuf.toChars());
+        }
+        else
+        {
+            assert(fd);
+            TypeFunction *tf = (TypeFunction *)fd->type;
+            if (tthis && !MODimplicitConv(tthis->mod, tf->mod)) // modifier mismatch
+            {
+                OutBuffer thisBuf, funcBuf;
+                MODMatchToBuffer(&thisBuf, tthis->mod, tf->mod);
+                MODMatchToBuffer(&funcBuf, tf->mod, tthis->mod);
+                ::error(loc, "%smethod %s is not callable using a %sobject",
+                    funcBuf.toChars(), fd->toPrettyChars(), thisBuf.toChars());
+            }
+            else
+            {
+                //printf("tf = %s, args = %s\n", tf->deco, (*arguments)[0]->type->deco);
+                fd->error(loc, "%s%s is not callable using argument types %s",
+                    Parameter::argsTypesToChars(tf->parameters, tf->varargs),
+                    tf->modToChars(),
+                    fargsBuf.toChars());
+            }
+        }
+    }
+    else if (m.nextf)
+    {
+        /* CAUTION: m.lastf and m.nextf might be incompletely instantiated functions
+         * (created by doHeaderInstantiation), so call toPrettyChars will segfault.
+         */
+        assert(m.lastf);
+        if (td)
+        {
+            TemplateInstance *lastti = m.lastf->parent->isTemplateInstance();
+            TemplateInstance *nextti = m.nextf->parent->isTemplateInstance();
+            Dsymbol *lasts = lastti ? (Dsymbol *)lastti->tempdecl : (Dsymbol *)m.lastf;
+            Dsymbol *nexts = nextti ? (Dsymbol *)nextti->tempdecl : (Dsymbol *)m.nextf;
+            ::error(loc, "%s %s.%s matches more than one template declaration:\n\t%s(%d):%s\nand:\n\t%s(%d):%s",
+                    td->kind(), td->parent->toPrettyChars(), td->ident->toChars(),
+                    lasts->loc.filename, lasts->loc.linnum, lasts->toChars(),
+                    nexts->loc.filename, nexts->loc.linnum, nexts->toChars());
+        }
+        else
+        {
+            assert(fd);
+            TypeFunction *t1 = (TypeFunction *)m.lastf->type;
+            TypeFunction *t2 = (TypeFunction *)m.nextf->type;
+            error(loc, "called with argument types:\n\t%s\nmatches both:\n"
+                       "\t%s(%d): %s%s\nand:\n\t%s(%d): %s%s",
+                    fargsBuf.toChars(),
+                    m.lastf->loc.filename, m.lastf->loc.linnum, m.lastf->toPrettyChars(), Parameter::argsTypesToChars(t1->parameters, t1->varargs),
+                    m.nextf->loc.filename, m.nextf->loc.linnum, m.nextf->toPrettyChars(), Parameter::argsTypesToChars(t2->parameters, t2->varargs));
+        }
+    }
+    return NULL;
 }
-#endif
 
 /********************************
  * Labels are in a separate scope, one per function.
@@ -3028,17 +3150,17 @@ const char *FuncDeclaration::toFullSignature()
     return buf.extractData();
 }
 
-int FuncDeclaration::isMain()
+bool FuncDeclaration::isMain()
 {
     return ident == Id::main &&
         linkage != LINKc && !isMember() && !isNested();
 }
 
-int FuncDeclaration::isWinMain()
+bool FuncDeclaration::isWinMain()
 {
     //printf("FuncDeclaration::isWinMain() %s\n", toChars());
 #if 0
-    int x = ident == Id::WinMain &&
+    bool x = ident == Id::WinMain &&
         linkage != LINKc && !isMember();
     printf("%s\n", x ? "yes" : "no");
     return x;
@@ -3048,18 +3170,18 @@ int FuncDeclaration::isWinMain()
 #endif
 }
 
-int FuncDeclaration::isDllMain()
+bool FuncDeclaration::isDllMain()
 {
     return ident == Id::DllMain &&
         linkage != LINKc && !isMember();
 }
 
-int FuncDeclaration::isExport()
+bool FuncDeclaration::isExport()
 {
     return protection == PROTexport;
 }
 
-int FuncDeclaration::isImportedSymbol()
+bool FuncDeclaration::isImportedSymbol()
 {
     //printf("isImportedSymbol()\n");
     //printf("protection = %d\n", protection);
@@ -3068,7 +3190,7 @@ int FuncDeclaration::isImportedSymbol()
 
 // Determine if function goes into virtual function pointer table
 
-int FuncDeclaration::isVirtual()
+bool FuncDeclaration::isVirtual()
 {
     if (toAliasFunc() != this)
         return toAliasFunc()->isVirtual();
@@ -3091,23 +3213,23 @@ int FuncDeclaration::isVirtual()
 
 // Determine if a function is pedantically virtual
 
-int FuncDeclaration::isVirtualMethod()
+bool FuncDeclaration::isVirtualMethod()
 {
     if (toAliasFunc() != this)
         return toAliasFunc()->isVirtualMethod();
 
     //printf("FuncDeclaration::isVirtualMethod() %s\n", toChars());
     if (!isVirtual())
-        return 0;
+        return false;
     // If it's a final method, and does not override anything, then it is not virtual
     if (isFinal() && foverrides.dim == 0)
     {
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
-int FuncDeclaration::isFinal()
+bool FuncDeclaration::isFinal()
 {
     if (toAliasFunc() != this)
         return toAliasFunc()->isFinal();
@@ -3133,27 +3255,22 @@ int FuncDeclaration::isFinal()
          ((cd = toParent()->isClassDeclaration()) != NULL && cd->storage_class & STCfinal));
 }
 
-int FuncDeclaration::isAbstract()
+bool FuncDeclaration::isCodeseg()
 {
-    return storage_class & STCabstract;
+    return true;                // functions are always in the code segment
 }
 
-int FuncDeclaration::isCodeseg()
+bool FuncDeclaration::isOverloadable()
 {
-    return TRUE;                // functions are always in the code segment
+    return true;                // functions can be overloaded
 }
 
-int FuncDeclaration::isOverloadable()
-{
-    return 1;                   // functions can be overloaded
-}
-
-int FuncDeclaration::hasOverloads()
+bool FuncDeclaration::hasOverloads()
 {
     return overnext != NULL;
 }
 
-enum PURE FuncDeclaration::isPure()
+PURE FuncDeclaration::isPure()
 {
     //printf("FuncDeclaration::isPure() '%s'\n", toChars());
     assert(type->ty == Tfunction);
@@ -3162,7 +3279,7 @@ enum PURE FuncDeclaration::isPure()
         setImpure();
     if (tf->purity == PUREfwdref)
         tf->purityLevel();
-    enum PURE purity = tf->purity;
+    PURE purity = tf->purity;
     if (purity > PUREweak && isNested())
         purity = PUREweak;
     if (purity > PUREweak && needThis())
@@ -3180,7 +3297,7 @@ enum PURE FuncDeclaration::isPure()
     return purity;
 }
 
-enum PURE FuncDeclaration::isPureBypassingInference()
+PURE FuncDeclaration::isPureBypassingInference()
 {
     if (flags & FUNCFLAGpurityInprocess)
         return PUREfwdref;
@@ -3204,7 +3321,7 @@ bool FuncDeclaration::setImpure()
     return FALSE;
 }
 
-int FuncDeclaration::isSafe()
+bool FuncDeclaration::isSafe()
 {
     assert(type->ty == Tfunction);
     if (flags & FUNCFLAGsafetyInprocess)
@@ -3220,7 +3337,7 @@ bool FuncDeclaration::isSafeBypassingInference()
         return isSafe();
 }
 
-int FuncDeclaration::isTrusted()
+bool FuncDeclaration::isTrusted()
 {
     assert(type->ty == Tfunction);
     if (flags & FUNCFLAGsafetyInprocess)
@@ -3279,7 +3396,7 @@ int traverseIndirections(Type *ta, Type *tb, void *p = NULL, bool a2b = true)
         //printf("\ttraverse(1) %s appears in %s\n", ta->toChars(), tb->toChars());
         if (ta->constConv(tb))
             return 1;
-        else if (ta->invariantOf()->equals(tb->invariantOf()))
+        else if (ta->immutableOf()->equals(tb->immutableOf()))
             return 0;
         else if (tb->ty == Tvoid && MODimplicitConv(ta->mod, tb->mod))
             return 1;
@@ -3289,7 +3406,7 @@ int traverseIndirections(Type *ta, Type *tb, void *p = NULL, bool a2b = true)
         //printf("\ttraverse(2) %s appears in %s\n", tb->toChars(), ta->toChars());
         if (tb->constConv(ta))
             return 1;
-        else if (tb->invariantOf()->equals(ta->invariantOf()))
+        else if (tb->immutableOf()->equals(ta->immutableOf()))
             return 0;
         else if (ta->ty == Tvoid && MODimplicitConv(tb->mod, ta->mod))
             return 1;
@@ -3414,7 +3531,7 @@ bool FuncDeclaration::parametersIntersect(Type *t)
 // Determine if function needs
 // a static frame pointer to its lexically enclosing function
 
-int FuncDeclaration::isNested()
+bool FuncDeclaration::isNested()
 {
     FuncDeclaration *f = toAliasFunc();
     //printf("\ttoParent2() = '%s'\n", f->toParent2()->toChars());
@@ -3423,13 +3540,13 @@ int FuncDeclaration::isNested()
            (f->toParent2()->isFuncDeclaration() != NULL);
 }
 
-int FuncDeclaration::needThis()
+bool FuncDeclaration::needThis()
 {
     //printf("FuncDeclaration::needThis() '%s'\n", toChars());
     return toAliasFunc()->isThis() != NULL;
 }
 
-int FuncDeclaration::addPreInvariant()
+bool FuncDeclaration::addPreInvariant()
 {
     AggregateDeclaration *ad = isThis();
     return (ad &&
@@ -3440,7 +3557,7 @@ int FuncDeclaration::addPreInvariant()
             ident != Id::cpctor);
 }
 
-int FuncDeclaration::addPostInvariant()
+bool FuncDeclaration::addPostInvariant()
 {
     AggregateDeclaration *ad = isThis();
     return (ad &&
@@ -3615,7 +3732,7 @@ bool checkEscapingSiblings(FuncDeclaration *f, FuncDeclaration *outerFunc)
  */
 
 #if DMDV2
-int FuncDeclaration::needsClosure()
+bool FuncDeclaration::needsClosure()
 {
     /* Need a closure for all the closureVars[] if any of the
      * closureVars[] are accessed by a
@@ -3703,11 +3820,11 @@ int FuncDeclaration::needsClosure()
         }
     }
 
-    return 0;
+    return false;
 
 Lyes:
     //printf("\tneeds closure\n");
-    return 1;
+    return true;
 }
 #endif
 
@@ -3716,14 +3833,14 @@ Lyes:
  * nested within it.
  */
 
-int FuncDeclaration::hasNestedFrameRefs()
+bool FuncDeclaration::hasNestedFrameRefs()
 {
 #if DMDV2
     if (closureVars.dim)
 #else
     if (nestedFrameRef)
 #endif
-        return 1;
+        return true;
 
     /* If a virtual method has contracts, assume its variables are referenced
      * by those contracts, even if they aren't. Because they might be referenced
@@ -3733,7 +3850,7 @@ int FuncDeclaration::hasNestedFrameRefs()
      * context had better match, or Bugzilla 7337 will bite.
      */
     if ((fdrequire || fdensure) && isVirtualMethod())
-        return 1;
+        return true;
 
     if (foverrides.dim && isVirtualMethod())
     {
@@ -3741,11 +3858,11 @@ int FuncDeclaration::hasNestedFrameRefs()
         {
             FuncDeclaration *fdv = foverrides[i];
             if (fdv->hasNestedFrameRefs())
-                return 1;
+                return true;
         }
     }
 
-    return 0;
+    return false;
 }
 
 /*********************************************
@@ -3754,8 +3871,8 @@ int FuncDeclaration::hasNestedFrameRefs()
  */
 
 Parameters *FuncDeclaration::getParameters(int *pvarargs)
-{   Parameters *fparameters;
-    int fvarargs;
+{   Parameters *fparameters = NULL;
+    int fvarargs = 0;
 
     if (type)
     {
@@ -3774,7 +3891,7 @@ Parameters *FuncDeclaration::getParameters(int *pvarargs)
 
 // Used as a way to import a set of functions from another scope into this one.
 
-FuncAliasDeclaration::FuncAliasDeclaration(FuncDeclaration *funcalias, int hasOverloads)
+FuncAliasDeclaration::FuncAliasDeclaration(FuncDeclaration *funcalias, bool hasOverloads)
     : FuncDeclaration(funcalias->loc, funcalias->endloc, funcalias->ident,
         funcalias->storage_class, funcalias->type)
 {
@@ -3790,7 +3907,7 @@ FuncAliasDeclaration::FuncAliasDeclaration(FuncDeclaration *funcalias, int hasOv
     else
     {   // for internal use
         assert(!funcalias->isFuncAliasDeclaration());
-        this->hasOverloads = 0;
+        this->hasOverloads = false;
     }
     userAttributes = funcalias->userAttributes;
 }
@@ -3809,20 +3926,19 @@ FuncDeclaration *FuncAliasDeclaration::toAliasFunc()
 /****************************** FuncLiteralDeclaration ************************/
 
 FuncLiteralDeclaration::FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type,
-        enum TOK tok, ForeachStatement *fes)
+        TOK tok, ForeachStatement *fes, Identifier *id)
     : FuncDeclaration(loc, endloc, NULL, STCundefined, type)
 {
-    const char *id;
-
-    if (fes)
-        id = "__foreachbody";
-    else if (tok == TOKreserved)
-        id = "__lambda";
-    else if (tok == TOKdelegate)
-        id = "__dgliteral";
-    else
-        id = "__funcliteral";
-    this->ident = Lexer::uniqueId(id);
+    if (!id)
+    {
+        const char *s;
+        if (fes)                        s = "__foreachbody";
+        else if (tok == TOKreserved)    s = "__lambda";
+        else if (tok == TOKdelegate)    s = "__dgliteral";
+        else                            s = "__funcliteral";
+        id = Lexer::uniqueId(s);
+    }
+    this->ident = id;
     this->tok = tok;
     this->fes = fes;
     this->treq = NULL;
@@ -3831,29 +3947,35 @@ FuncLiteralDeclaration::FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type,
 
 Dsymbol *FuncLiteralDeclaration::syntaxCopy(Dsymbol *s)
 {
+    return syntaxCopy(s, false);
+}
+
+Dsymbol *FuncLiteralDeclaration::syntaxCopy(Dsymbol *s, bool keepId)
+{
     FuncLiteralDeclaration *f;
 
     //printf("FuncLiteralDeclaration::syntaxCopy('%s')\n", toChars());
     if (s)
         f = (FuncLiteralDeclaration *)s;
     else
-    {   f = new FuncLiteralDeclaration(loc, endloc, type->syntaxCopy(), tok, fes);
-        f->ident = ident;               // keep old identifier
-        f->treq = treq;                 // don't need to copy
+    {
+        Identifier *id = keepId ? ident : NULL;
+        f = new FuncLiteralDeclaration(loc, endloc, type->syntaxCopy(), tok, fes, id);
     }
+    f->treq = treq;     // don't need to copy
     FuncDeclaration::syntaxCopy(f);
     return f;
 }
 
-int FuncLiteralDeclaration::isNested()
+bool FuncLiteralDeclaration::isNested()
 {
     //printf("FuncLiteralDeclaration::isNested() '%s'\n", toChars());
     return (tok != TOKfunction);
 }
 
-int FuncLiteralDeclaration::isVirtual()
+bool FuncLiteralDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
 const char *FuncLiteralDeclaration::kind()
@@ -3969,17 +4091,17 @@ char *CtorDeclaration::toChars()
     return (char *)"this";
 }
 
-int CtorDeclaration::isVirtual()
+bool CtorDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
-int CtorDeclaration::addPreInvariant()
+bool CtorDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int CtorDeclaration::addPostInvariant()
+bool CtorDeclaration::addPostInvariant()
 {
     return (isThis() && vthis && global.params.useInvariants);
 }
@@ -4032,24 +4154,24 @@ void PostBlitDeclaration::semantic(Scope *sc)
     sc->pop();
 }
 
-int PostBlitDeclaration::overloadInsert(Dsymbol *s)
+bool PostBlitDeclaration::overloadInsert(Dsymbol *s)
 {
-    return FALSE;       // cannot overload postblits
+    return false;       // cannot overload postblits
 }
 
-int PostBlitDeclaration::addPreInvariant()
+bool PostBlitDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int PostBlitDeclaration::addPostInvariant()
+bool PostBlitDeclaration::addPostInvariant()
 {
     return (isThis() && vthis && global.params.useInvariants);
 }
 
-int PostBlitDeclaration::isVirtual()
+bool PostBlitDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
 void PostBlitDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4109,19 +4231,19 @@ void DtorDeclaration::semantic(Scope *sc)
     sc->pop();
 }
 
-int DtorDeclaration::overloadInsert(Dsymbol *s)
+bool DtorDeclaration::overloadInsert(Dsymbol *s)
 {
-    return FALSE;       // cannot overload destructors
+    return false;       // cannot overload destructors
 }
 
-int DtorDeclaration::addPreInvariant()
+bool DtorDeclaration::addPreInvariant()
 {
     return (isThis() && vthis && global.params.useInvariants);
 }
 
-int DtorDeclaration::addPostInvariant()
+bool DtorDeclaration::addPostInvariant()
 {
-    return FALSE;
+    return false;
 }
 
 const char *DtorDeclaration::kind()
@@ -4134,10 +4256,10 @@ char *DtorDeclaration::toChars()
     return (char *)"~this";
 }
 
-int DtorDeclaration::isVirtual()
+bool DtorDeclaration::isVirtual()
 {
-    // FALSE so that dtor's don't get put into the vtbl[]
-    return FALSE;
+    // false so that dtor's don't get put into the vtbl[]
+    return false;
 }
 
 void DtorDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4225,9 +4347,9 @@ AggregateDeclaration *StaticCtorDeclaration::isThis()
     return NULL;
 }
 
-int StaticCtorDeclaration::isVirtual()
+bool StaticCtorDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
 bool StaticCtorDeclaration::hasStaticCtorOrDtor()
@@ -4235,14 +4357,14 @@ bool StaticCtorDeclaration::hasStaticCtorOrDtor()
     return TRUE;
 }
 
-int StaticCtorDeclaration::addPreInvariant()
+bool StaticCtorDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int StaticCtorDeclaration::addPostInvariant()
+bool StaticCtorDeclaration::addPostInvariant()
 {
-    return FALSE;
+    return false;
 }
 
 void StaticCtorDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4360,9 +4482,9 @@ AggregateDeclaration *StaticDtorDeclaration::isThis()
     return NULL;
 }
 
-int StaticDtorDeclaration::isVirtual()
+bool StaticDtorDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
 bool StaticDtorDeclaration::hasStaticCtorOrDtor()
@@ -4370,14 +4492,14 @@ bool StaticDtorDeclaration::hasStaticCtorOrDtor()
     return TRUE;
 }
 
-int StaticDtorDeclaration::addPreInvariant()
+bool StaticDtorDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int StaticDtorDeclaration::addPostInvariant()
+bool StaticDtorDeclaration::addPostInvariant()
 {
-    return FALSE;
+    return false;
 }
 
 void StaticDtorDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4464,19 +4586,19 @@ void InvariantDeclaration::semantic(Scope *sc)
     sc->pop();
 }
 
-int InvariantDeclaration::isVirtual()
+bool InvariantDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
-int InvariantDeclaration::addPreInvariant()
+bool InvariantDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int InvariantDeclaration::addPostInvariant()
+bool InvariantDeclaration::addPostInvariant()
 {
-    return FALSE;
+    return false;
 }
 
 void InvariantDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4536,8 +4658,6 @@ void UnitTestDeclaration::semantic(Scope *sc)
         if (!type)
             type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
         Scope *sc2 = sc->push();
-        // It makes no sense for unit tests to be pure or nothrow.
-        sc2->stc &= ~(STCnothrow | STCpure);
         sc2->linkage = LINKd;
         FuncDeclaration::semantic(sc2);
         sc2->pop();
@@ -4564,19 +4684,19 @@ AggregateDeclaration *UnitTestDeclaration::isThis()
     return NULL;
 }
 
-int UnitTestDeclaration::isVirtual()
+bool UnitTestDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
-int UnitTestDeclaration::addPreInvariant()
+bool UnitTestDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int UnitTestDeclaration::addPostInvariant()
+bool UnitTestDeclaration::addPostInvariant()
 {
-    return FALSE;
+    return false;
 }
 
 void UnitTestDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4654,19 +4774,19 @@ const char *NewDeclaration::kind()
     return "allocator";
 }
 
-int NewDeclaration::isVirtual()
+bool NewDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
-int NewDeclaration::addPreInvariant()
+bool NewDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int NewDeclaration::addPostInvariant()
+bool NewDeclaration::addPostInvariant()
 {
-    return FALSE;
+    return false;
 }
 
 void NewDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
@@ -4742,24 +4862,24 @@ const char *DeleteDeclaration::kind()
     return "deallocator";
 }
 
-int DeleteDeclaration::isDelete()
+bool DeleteDeclaration::isDelete()
 {
-    return TRUE;
+    return true;
 }
 
-int DeleteDeclaration::isVirtual()
+bool DeleteDeclaration::isVirtual()
 {
-    return FALSE;
+    return false;
 }
 
-int DeleteDeclaration::addPreInvariant()
+bool DeleteDeclaration::addPreInvariant()
 {
-    return FALSE;
+    return false;
 }
 
-int DeleteDeclaration::addPostInvariant()
+bool DeleteDeclaration::addPostInvariant()
 {
-    return FALSE;
+    return false;
 }
 
 void DeleteDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)

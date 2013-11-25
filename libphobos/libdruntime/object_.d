@@ -175,7 +175,7 @@ struct Interface
 {
     TypeInfo_Class   classinfo;  /// .classinfo for this interface (not for containing class)
     void*[]     vtbl;
-    ptrdiff_t   offset;     /// offset to Interface 'this' from Object 'this'
+    size_t      offset;     /// offset to Interface 'this' from Object 'this'
 }
 
 /**
@@ -617,6 +617,11 @@ class TypeInfo_AssociativeArray : TypeInfo
         auto c = cast(const TypeInfo_AssociativeArray)o;
         return c && this.key == c.key &&
                     this.value == c.value;
+    }
+
+    override bool equals(in void* p1, in void* p2) @trusted const
+    {
+        return !!_aaEqual(this, *cast(const void**) p1, *cast(const void**) p2);
     }
 
     override hash_t getHash(in void* p) nothrow @trusted const
@@ -2065,14 +2070,12 @@ extern (C)
 {
     // from druntime/compiler/gdc/rt/aaA.d
 
-    size_t _aaLen(void* p);
-    void* _aaGetX(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
-    void* _aaGetRvalueX(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
-    void* _aaInX(void* p, TypeInfo keyti, void* pkey);
-    bool _aaDelX(void* p, TypeInfo keyti, void* pkey);
-    void[] _aaValues(void* p, size_t keysize, size_t valuesize);
-    void[] _aaKeys(void* p, size_t keysize);
-    void* _aaRehash(void** pp, TypeInfo keyti);
+    size_t _aaLen(in void* p) pure nothrow;
+    void* _aaGet(void** pp, const TypeInfo keyti, in size_t valuesize, ...);
+    inout(void)* _aaGetRvalue(inout void* p, in TypeInfo keyti, in size_t valuesize, ...);
+    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
+    inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
+    void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
 
     extern (D) alias scope int delegate(void *) _dg_t;
     int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -2080,8 +2083,8 @@ extern (C)
     extern (D) alias scope int delegate(void *, void *) _dg2_t;
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    void* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] values);
-    hash_t _aaGetHash(void* aa, const(TypeInfo) tiRaw) nothrow;
+    int _aaEqual(in TypeInfo tiRaw, in void* e1, in void* e2);
+    hash_t _aaGetHash(in void* aa, in TypeInfo tiRaw) nothrow;
 }
 
 private template _Unqual(T)
@@ -2118,7 +2121,7 @@ private:
         Slot*[4] binit;
     }
 
-    void* p; // really Hashtable*
+    Hashtable* p;
 
     struct Range
     {
@@ -2126,11 +2129,10 @@ private:
         Slot*[] slots;
         Slot* current;
 
-        this(void * aa)
+        this(Hashtable* aa)
         {
-            if (!aa) return;
-            auto pImpl = cast(Hashtable*) aa;
-            slots = pImpl.b;
+            if (aa is null) return;
+            slots = aa.b;
             nextSlot();
         }
 
@@ -2171,25 +2173,41 @@ private:
 
 public:
 
-    @property size_t length() { return _aaLen(p); }
+    @property size_t length() const { return _aaLen(p); }
 
     Value[Key] rehash() @property
     {
-        auto p = _aaRehash(&p, typeid(Value[Key]));
+        auto p = _aaRehash(cast(void**) &p, typeid(Value[Key]));
         return *cast(Value[Key]*)(&p);
     }
 
-    Value[] values() @property
+    // Note: can't make `values` and `keys` inout as it is used
+    // e.g. in Phobos like `ReturnType!(aa.keys)` instead of `typeof(aa.keys)`
+    // which will result in `inout` propagation.
+
+    inout(Value)[] inout_values() inout @property
     {
         auto a = _aaValues(p, Key.sizeof, Value.sizeof);
-        return *cast(Value[]*) &a;
+        return *cast(inout Value[]*) &a;
     }
 
-    Key[] keys() @property
+    inout(Key)[] inout_keys() inout @property
     {
         auto a = _aaKeys(p, Key.sizeof);
-        return *cast(Key[]*) &a;
+        return *cast(inout Key[]*) &a;
     }
+
+    Value[] values() @property
+    { return inout_values; }
+
+    Key[] keys() @property
+    { return inout_keys; }
+
+    const(Value)[] values() const @property
+    { return inout_values; }
+
+    const(Key)[] keys() const @property
+    { return inout_keys; }
 
     int opApply(scope int delegate(ref Key, ref Value) dg)
     {
@@ -2224,7 +2242,7 @@ public:
         {
             Range state;
 
-            this(void* p)
+            this(Hashtable* p)
             {
                 state = Range(p);
             }
@@ -2246,7 +2264,7 @@ public:
         {
             Range state;
 
-            this(void* p)
+            this(Hashtable* p)
             {
                 state = Range(p);
             }
@@ -2533,7 +2551,7 @@ unittest
     //Appending to slice will reallocate to a new array
     slice ~= 5;
     assert(slice.capacity >= 5);
-    
+
     //Dynamic array slices
     int[] a = [1, 2, 3, 4];
     int[] b = a[1 .. $];
@@ -2551,7 +2569,7 @@ unittest
  * The return value is the new capacity of the array (which may be larger than
  * the requested capacity).
  */
-size_t reserve(T)(ref T[] arr, size_t newcapacity) pure nothrow
+size_t reserve(T)(ref T[] arr, size_t newcapacity) pure nothrow @trusted
 {
     return _d_arraysetcapacity(typeid(T[]), newcapacity, cast(void *)&arr);
 }
@@ -2561,11 +2579,11 @@ unittest
     //Static array slice: no capacity. Reserve relocates.
     int[4] sarray = [1, 2, 3, 4];
     int[]  slice  = sarray[];
-    auto u = slice.reserve(8); 
+    auto u = slice.reserve(8);
     assert(u >= 8);
     assert(sarray.ptr !is slice.ptr);
     assert(slice.capacity == u);
-    
+
     //Dynamic array slices
     int[] a = [1, 2, 3, 4];
     a.reserve(8); //prepare a for appending 4 more items
@@ -2574,6 +2592,13 @@ unittest
     a ~= [5, 6, 7, 8];
     assert(p == a.ptr);      //a should not have been reallocated
     assert(u == a.capacity); //a should not have been extended
+}
+
+// Issue 6646: should be possible to use array.reserve from SafeD.
+@safe unittest
+{
+    int[] a;
+    a.reserve(10);
 }
 
 /**

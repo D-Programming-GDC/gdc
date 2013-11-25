@@ -51,7 +51,7 @@ struct FuncFrameInfo;
 typedef ArrayBase<struct Thunk> Thunks;
 typedef tree_node dt_t;
 
-struct Symbol : Object
+struct Symbol
 {
   Symbol (void);
 

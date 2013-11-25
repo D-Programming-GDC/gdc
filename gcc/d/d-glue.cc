@@ -157,8 +157,8 @@ verror (Loc loc, const char *format, va_list ap,
       if (p1)
 	format = concat (p1, " ", format, NULL);
 
-      vasprintf (&msg, format, ap);
-      error_at (location, msg);
+      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
+	error_at (location, "%s", msg);
 
       // Moderate blizzard of cascading messages
       if (global.errors >= 20)
@@ -190,8 +190,8 @@ verrorSupplemental (Loc loc, const char *format, va_list ap)
       location_t location = get_linemap (loc);
       char *msg;
 
-      vasprintf (&msg, format, ap);
-      inform (location, msg);
+      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
+	inform (location, "%s", msg);
     }
 }
 
@@ -214,8 +214,8 @@ vwarning (Loc loc, const char *format, va_list ap)
       location_t location = get_linemap (loc);
       char *msg;
 
-      vasprintf (&msg, format, ap);
-      warning_at (location, 0, msg);
+      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
+	warning_at (location, 0, "%s", msg);
 
       // Warnings don't count if gagged.
       if (global.params.warnings == 1)
@@ -252,8 +252,8 @@ vdeprecation (Loc loc, const char *format, va_list ap,
       if (p1)
 	format = concat (p1, " ", format, NULL);
 
-      vasprintf (&msg, format, ap);
-      warning_at (location, OPT_Wdeprecated, msg);
+      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
+	warning_at (location, OPT_Wdeprecated, "%s", msg);
     }
 }
 
@@ -264,5 +264,49 @@ void
 fatal (void)
 {
   exit (FATAL_EXIT_CODE);
+}
+
+
+void
+escapePath (OutBuffer *buf, const char *fname)
+{
+    while (1)
+      {
+	switch (*fname)
+	  {
+	  case 0:
+	    return;
+
+	  case '(':
+	  case ')':
+	  case '\\':
+	    buf->writebyte('\\');
+
+	  default:
+	    buf->writebyte(*fname);
+	    break;
+	  }
+	fname++;
+      }
+}
+
+// Binary search for P in TAB between the range 0 to HIGH.
+
+int binary(const char *p , const char **tab, int high)
+{
+    int low = 0;
+    do
+    {
+        int pos = (low + high) / 2;
+        int cmp = strcmp(p, tab[pos]);
+        if (! cmp)
+            return pos;
+        else if (cmp < 0)
+            high = pos;
+        else
+            low = pos + 1;
+    } while (low != high);
+
+    return -1;
 }
 

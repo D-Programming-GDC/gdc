@@ -3357,6 +3357,7 @@ class CurlException : Exception
             line = The line number where the exception occurred.
             next = The previous exception in the chain of exceptions, if any.
       +/
+    @safe pure nothrow
     this(string msg,
          string file = __FILE__,
          size_t line = __LINE__,
@@ -3378,6 +3379,7 @@ class CurlTimeoutException : CurlException
             line = The line number where the exception occurred.
             next = The previous exception in the chain of exceptions, if any.
       +/
+    @safe pure nothrow
     this(string msg,
          string file = __FILE__,
          size_t line = __LINE__,
@@ -3507,6 +3509,8 @@ struct Curl
 
     private string errorString(CurlCode code)
     {
+        import core.stdc.string : strlen;
+
         auto msgZ = curl_easy_strerror(code);
         // doing the following (instead of just using std.conv.to!string) avoids 1 allocation
         return format("%s on handle %s", msgZ[0 .. core.stdc.string.strlen(msgZ)], handle);

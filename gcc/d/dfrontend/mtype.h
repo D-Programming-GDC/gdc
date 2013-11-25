@@ -21,25 +21,25 @@
 #include "arraytypes.h"
 #include "expression.h"
 
-struct Scope;
-struct Identifier;
-struct Expression;
-struct StructDeclaration;
-struct ClassDeclaration;
-struct VarDeclaration;
-struct EnumDeclaration;
-struct TypedefDeclaration;
-struct TypeInfoDeclaration;
-struct Dsymbol;
-struct TemplateInstance;
+class Scope;
+class Identifier;
+class Expression;
+class StructDeclaration;
+class ClassDeclaration;
+class VarDeclaration;
+class EnumDeclaration;
+class TypedefDeclaration;
+class TypeInfoDeclaration;
+class Dsymbol;
+class TemplateInstance;
 struct CppMangleState;
-struct TemplateDeclaration;
+class TemplateDeclaration;
 struct JsonOut;
 enum LINK;
 
-struct TypeBasic;
+class TypeBasic;
 struct HdrGenState;
-struct Parameter;
+class Parameter;
 
 // Back end
 #ifdef IN_GCC
@@ -48,7 +48,7 @@ typedef union tree_node type;
 typedef struct TYPE type;
 #endif
 struct Symbol;
-struct TypeTuple;
+class TypeTuple;
 
 enum ENUMTY
 {
@@ -119,13 +119,14 @@ extern int Tptrdiff_t;
 #define MODwild      8  // type is wild
 #define MODmutable   0x10       // type is mutable (only used in wildcard matching)
 
-struct Type : Object
+class Type : public RootObject
 {
+public:
     TY ty;
     unsigned char mod;  // modifiers MODxxxx
     char *deco;
 
-    /* These are cached values that are lazily evaluated by constOf(), invariantOf(), etc.
+    /* These are cached values that are lazily evaluated by constOf(), immutableOf(), etc.
      * They should not be referenced by anybody but mtype.c.
      * They can be NULL if not lazily evaluated yet.
      * Note that there is no "shared immutable", because that is just immutable
@@ -226,8 +227,9 @@ struct Type : Object
 
     Type(TY ty);
     virtual const char *kind();
+    Type *copy();
     virtual Type *syntaxCopy();
-    int equals(Object *o);
+    bool equals(RootObject *o);
     int dyncast() { return DYNCAST_TYPE; } // kludge for template.isType()
     int covariant(Type *t, StorageClass *pstc = NULL);
     char *toChars();
@@ -274,7 +276,7 @@ struct Type : Object
     int isNaked()       { return mod == 0; }
     Type *nullAttributes();
     Type *constOf();
-    Type *invariantOf();
+    Type *immutableOf();
     Type *mutableOf();
     Type *sharedOf();
     Type *sharedConstOf();
@@ -347,8 +349,9 @@ struct Type : Object
     virtual TypeBasic *isTypeBasic();
 };
 
-struct TypeError : Type
+class TypeError : public Type
 {
+public:
     TypeError();
     Type *syntaxCopy();
 
@@ -362,8 +365,9 @@ struct TypeError : Type
     TypeTuple *toArgTypes();
 };
 
-struct TypeNext : Type
+class TypeNext : public Type
 {
+public:
     Type *next;
 
     TypeNext(TY ty, Type *next);
@@ -384,8 +388,9 @@ struct TypeNext : Type
     void transitive();
 };
 
-struct TypeBasic : Type
+class TypeBasic : public Type
 {
+public:
     const char *dstring;
     unsigned flags;
 
@@ -418,8 +423,9 @@ struct TypeBasic : Type
     TypeBasic *isTypeBasic();
 };
 
-struct TypeVector : Type
+class TypeVector : public Type
 {
+public:
     Type *basetype;
 
     TypeVector(Loc loc, Type *basetype);
@@ -435,6 +441,7 @@ struct TypeVector : Type
     void toDecoBuffer(OutBuffer *buf, int flag);
     void toJson(JsonOut *json);
     MATCH deduceType(Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wildmatch = NULL);
+    Type *reliesOnTident(TemplateParameters *tparams);
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -454,15 +461,17 @@ struct TypeVector : Type
     type *toCtype();
 };
 
-struct TypeArray : TypeNext
+class TypeArray : public TypeNext
 {
+public:
     TypeArray(TY ty, Type *next);
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident, int flag);
 };
 
 // Static array, one with a fixed dimension
-struct TypeSArray : TypeArray
+class TypeSArray : public TypeArray
 {
+public:
     Expression *dim;
 
     TypeSArray(Type *t, Expression *dim);
@@ -502,8 +511,9 @@ struct TypeSArray : TypeArray
 };
 
 // Dynamic array, no dimension
-struct TypeDArray : TypeArray
+class TypeDArray : public TypeArray
 {
+public:
     TypeDArray(Type *t);
     const char *kind();
     Type *syntaxCopy();
@@ -532,8 +542,9 @@ struct TypeDArray : TypeArray
     type *toCtype();
 };
 
-struct TypeAArray : TypeArray
+class TypeAArray : public TypeArray
 {
+public:
     Type *index;                // key type
     Loc loc;
     Scope *sc;
@@ -572,8 +583,9 @@ struct TypeAArray : TypeArray
     type *toCtype();
 };
 
-struct TypePointer : TypeNext
+class TypePointer : public TypeNext
 {
+public:
     TypePointer(Type *t);
     const char *kind();
     Type *syntaxCopy();
@@ -596,8 +608,9 @@ struct TypePointer : TypeNext
     type *toCtype();
 };
 
-struct TypeReference : TypeNext
+class TypeReference : public TypeNext
 {
+public:
     TypeReference(Type *t);
     const char *kind();
     Type *syntaxCopy();
@@ -636,8 +649,9 @@ enum PURE
     PUREfwdref = 4,     // it's pure, but not known which level yet
 };
 
-struct TypeFunction : TypeNext
+class TypeFunction : public TypeNext
 {
+public:
     // .next is the return type
 
     Parameters *parameters;     // function parameters
@@ -646,17 +660,16 @@ struct TypeFunction : TypeNext
     bool isnothrow;     // true: nothrow
     bool isproperty;    // can be called without parentheses
     bool isref;         // true: returns a reference
-    enum LINK linkage;  // calling convention
-    enum TRUST trust;   // level of trust
-    enum PURE purity;   // PURExxxx
+    LINK linkage;  // calling convention
+    TRUST trust;   // level of trust
+    PURE purity;   // PURExxxx
     bool iswild;        // is inout function
     Expressions *fargs; // function arguments
 
     int inuse;
 
-    TypeFunction(Parameters *parameters, Type *treturn, int varargs, enum LINK linkage, StorageClass stc = 0);
+    TypeFunction(Parameters *parameters, Type *treturn, int varargs, LINK linkage, StorageClass stc = 0);
     const char *kind();
-    TypeFunction *copy();
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
     void purityLevel();
@@ -678,15 +691,16 @@ struct TypeFunction : TypeNext
 
     MATCH callMatch(Type *tthis, Expressions *toargs, int flag = 0);
     type *toCtype();
-    enum RET retStyle();
+    RET retStyle();
 
     unsigned totym();
 
     Expression *defaultInit(Loc loc);
 };
 
-struct TypeDelegate : TypeNext
+class TypeDelegate : public TypeNext
 {
+public:
     // .next is a TypeFunction
 
     TypeDelegate(Type *t);
@@ -712,8 +726,9 @@ struct TypeDelegate : TypeNext
     type *toCtype();
 };
 
-struct TypeQualified : Type
+class TypeQualified : public Type
 {
+public:
     Loc loc;
     Objects idents;         // array of Identifier and TypeInstance,
                             // representing ident.ident!tiargs.ident. ... etc.
@@ -729,8 +744,9 @@ struct TypeQualified : Type
         Expression **pe, Type **pt, Dsymbol **ps);
 };
 
-struct TypeIdentifier : TypeQualified
+class TypeIdentifier : public TypeQualified
 {
+public:
     Identifier *ident;
     Dsymbol *originalSymbol; // The symbol representing this identifier, before alias resolution
 
@@ -751,8 +767,9 @@ struct TypeIdentifier : TypeQualified
 
 /* Similar to TypeIdentifier, but with a TemplateInstance as the root
  */
-struct TypeInstance : TypeQualified
+class TypeInstance : public TypeQualified
 {
+public:
     TemplateInstance *tempinst;
 
     TypeInstance(Loc loc, TemplateInstance *tempinst);
@@ -770,8 +787,9 @@ struct TypeInstance : TypeQualified
     Expression *toExpression();
 };
 
-struct TypeTypeof : TypeQualified
+class TypeTypeof : public TypeQualified
 {
+public:
     Expression *exp;
     int inuse;
 
@@ -786,8 +804,9 @@ struct TypeTypeof : TypeQualified
     d_uns64 size(Loc loc);
 };
 
-struct TypeReturn : TypeQualified
+class TypeReturn : public TypeQualified
 {
+public:
     TypeReturn(Loc loc);
     const char *kind();
     Type *syntaxCopy();
@@ -808,10 +827,11 @@ enum AliasThisRec
     RECtracing = 0x4, // mark in progress of implicitConvTo/wildConvTo
 };
 
-struct TypeStruct : Type
+class TypeStruct : public Type
 {
+public:
     StructDeclaration *sym;
-    enum AliasThisRec att;
+    AliasThisRec att;
 
     TypeStruct(StructDeclaration *sym);
     const char *kind();
@@ -850,8 +870,9 @@ struct TypeStruct : Type
     type *toCtype();
 };
 
-struct TypeEnum : Type
+class TypeEnum : public Type
 {
+public:
     EnumDeclaration *sym;
 
     TypeEnum(EnumDeclaration *sym);
@@ -875,6 +896,7 @@ struct TypeEnum : Type
     int isscalar();
     int isunsigned();
     int checkBoolean();
+    int isString();
     int isAssignable();
     int needsDestruction();
     bool needsNested();
@@ -887,6 +909,7 @@ struct TypeEnum : Type
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
     TypeTuple *toArgTypes();
+    Type *nextOf();
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
@@ -894,8 +917,9 @@ struct TypeEnum : Type
     type *toCtype();
 };
 
-struct TypeTypedef : Type
+class TypeTypedef : public Type
 {
+public:
     TypedefDeclaration *sym;
 
     TypeTypedef(TypedefDeclaration *sym);
@@ -944,10 +968,11 @@ struct TypeTypedef : Type
     type *toCParamtype();
 };
 
-struct TypeClass : Type
+class TypeClass : public Type
 {
+public:
     ClassDeclaration *sym;
-    enum AliasThisRec att;
+    AliasThisRec att;
 
     TypeClass(ClassDeclaration *sym);
     const char *kind();
@@ -984,8 +1009,9 @@ struct TypeClass : Type
     Symbol *toSymbol();
 };
 
-struct TypeTuple : Type
+class TypeTuple : public Type
 {
+public:
     Parameters *arguments;      // types making up the tuple
 
     TypeTuple(Parameters *arguments);
@@ -996,7 +1022,7 @@ struct TypeTuple : Type
     const char *kind();
     Type *syntaxCopy();
     Type *semantic(Loc loc, Scope *sc);
-    int equals(Object *o);
+    bool equals(RootObject *o);
     Type *reliesOnTident(TemplateParameters *tparams = NULL);
     void toCBuffer2(OutBuffer *buf, HdrGenState *hgs, int mod);
     void toDecoBuffer(OutBuffer *buf, int flag);
@@ -1006,8 +1032,9 @@ struct TypeTuple : Type
     TypeInfoDeclaration *getTypeInfoDeclaration();
 };
 
-struct TypeSlice : TypeNext
+class TypeSlice : public TypeNext
 {
+public:
     Expression *lwr;
     Expression *upr;
 
@@ -1020,8 +1047,9 @@ struct TypeSlice : TypeNext
     void toJson(JsonOut *json);
 };
 
-struct TypeNull : Type
+class TypeNull : public Type
 {
+public:
     TypeNull();
     const char *kind();
 
@@ -1041,8 +1069,9 @@ struct TypeNull : Type
 
 //enum InOut { None, In, Out, InOut, Lazy };
 
-struct Parameter : Object
+class Parameter : public RootObject
 {
+public:
     //enum InOut inout;
     StorageClass storageClass;
     Type *type;

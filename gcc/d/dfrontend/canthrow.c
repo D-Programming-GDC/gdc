@@ -79,7 +79,7 @@ int lambdaCanThrow(Expression *e, void *param)
             else
             {
                 if (pct->mustnot)
-                    e->error("%s is not nothrow", ce->e1->toChars());
+                    e->error("'%s' is not nothrow", ce->f ? ce->f->toPrettyChars() : ce->e1->toChars());
                 pct->can = TRUE;
             }
             break;
@@ -175,7 +175,7 @@ int Dsymbol_canThrow(Dsymbol *s, bool mustNotThrow)
     else if ((td = s->isTupleDeclaration()) != NULL)
     {
         for (size_t i = 0; i < td->objects->dim; i++)
-        {   Object *o = (*td->objects)[i];
+        {   RootObject *o = (*td->objects)[i];
             if (o->dyncast() == DYNCAST_EXPRESSION)
             {   Expression *eo = (Expression *)o;
                 if (eo->op == TOKdsymbol)

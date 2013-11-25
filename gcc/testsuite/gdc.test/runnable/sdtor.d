@@ -2822,6 +2822,103 @@ void test10160()
 }
 
 /**********************************/
+// 10094
+
+void test10094()
+{
+    static void* p;
+    const string[4] i2s = ()
+    {
+        string[4] tmp;
+        p = &tmp[0];
+        for (int i = 0; i < 4; ++i)
+        {
+            char[1] buf = [cast(char)('0' + i)];
+            string str = buf.idup;
+            tmp[i] = str;
+        }
+        return tmp; // NRVO should work
+    }();
+    assert(p == cast(void*)&i2s[0]);
+    assert(i2s == ["0", "1", "2", "3"]);
+}
+
+/**********************************/
+// 10079
+
+// dtor || postblit
+struct S10079a
+{
+    this(this) pure nothrow @safe {}
+}
+struct S10079b
+{
+    ~this() pure nothrow @safe {}
+}
+struct S10079c
+{
+    this(this) pure nothrow @safe {}
+    ~this() pure nothrow @safe {}
+}
+struct S10079d
+{
+    this(this) {}
+}
+struct S10079e
+{
+    this(this) {}
+    ~this() pure nothrow @safe {}
+}
+
+// memberwise
+struct S10079f
+{
+    S10079a a;
+    S10079b b;
+    S10079c c;
+    S10079d d;
+    S10079e e;
+}
+
+void check10079(S)(ref S s) pure nothrow @safe { s = S(); }
+
+// Assignment is pure, nothrow, and @safe in all cases.
+static assert(__traits(compiles, &check10079!S10079a));
+static assert(__traits(compiles, &check10079!S10079b));
+static assert(__traits(compiles, &check10079!S10079c));
+static assert(__traits(compiles, &check10079!S10079d));
+static assert(__traits(compiles, &check10079!S10079e));
+static assert(__traits(compiles, &check10079!S10079f));
+
+/**********************************/
+// 10244
+
+void test10244()
+{
+    static struct Foo
+    {
+        string _str;
+        long _num;
+
+        template DeclareConstructor(string fieldName)
+        {
+            enum code =
+                `this(typeof(_` ~ fieldName ~ `) value)` ~
+                `{ this._` ~ fieldName ~ ` = value; }`;
+            mixin(code);
+        }
+
+        mixin DeclareConstructor!"str";
+        mixin DeclareConstructor!"num";
+    }
+
+    Foo value1 = Foo("D");
+    Foo value2 = Foo(128);
+    assert(value1._str == "D");
+    assert(value2._num == 128);
+}
+
+/**********************************/
 
 int main()
 {
@@ -2911,6 +3008,8 @@ int main()
     test9907();
     //test9985();         // BUG: NRVO unimplemented.
     test9994();
+    test10094();
+    test10244();
 
     printf("Success\n");
     return 0;

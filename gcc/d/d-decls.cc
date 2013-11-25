@@ -201,14 +201,6 @@ ClassInfoDeclaration::toSymbol (void)
   return cd->toSymbol();
 }
 
-// Create the symbol with tree for moduleinfo decls.
-
-Symbol *
-ModuleInfoDeclaration::toSymbol (void)
-{
-  return mod->toSymbol();
-}
-
 // Create the symbol with tree for typeinfo decls.
 
 Symbol *
@@ -347,7 +339,8 @@ FuncDeclaration::toSymbol (void)
 
 	  if (ident)
 	    {
-	      csym->Sident = mangle(); // save for making thunks
+	      // Save ident for making thunks.
+	      csym->Sident = mangleExact();
 	      csym->prettyIdent = toPrettyChars();
 	      id = get_identifier (csym->Sident);
 	      id = targetm.mangle_decl_assembler_name (fndecl, id);

@@ -18,18 +18,20 @@
 #include "root.h"
 #include "dsymbol.h"
 
-struct Identifier;
-struct Type;
-struct Expression;
+class Identifier;
+class Type;
+class Expression;
 struct HdrGenState;
-struct VarDeclaration;
+class VarDeclaration;
 
-struct EnumDeclaration : ScopeDsymbol
-{   /* enum ident : memtype { ... }
+class EnumDeclaration : public ScopeDsymbol
+{
+public:
+    /* enum ident : memtype { ... }
      */
     Type *type;                 // the TypeEnum
     Type *memtype;              // type of the members
-    enum PROT protection;
+    PROT protection;
 
 #if DMDV1
     dinteger_t maxval;
@@ -50,7 +52,7 @@ struct EnumDeclaration : ScopeDsymbol
     void setScope(Scope *sc);
     void semantic0(Scope *sc);
     void semantic(Scope *sc);
-    int oneMember(Dsymbol **ps, Identifier *ident = NULL);
+    bool oneMember(Dsymbol **ps, Identifier *ident);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Type *getType();
     const char *kind();
@@ -58,6 +60,7 @@ struct EnumDeclaration : ScopeDsymbol
     Dsymbol *search(Loc, Identifier *ident, int flags);
 #endif
     bool isDeprecated();                // is Dsymbol deprecated?
+    PROT prot();
 
     void emitComment(Scope *sc);
     void toJson(JsonOut *json);
@@ -75,8 +78,9 @@ struct EnumDeclaration : ScopeDsymbol
 };
 
 
-struct EnumMember : Dsymbol
+class EnumMember : public Dsymbol
 {
+public:
     EnumDeclaration *ed;
     Expression *value;
     Type *type;

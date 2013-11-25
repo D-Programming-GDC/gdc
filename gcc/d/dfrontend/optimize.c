@@ -165,7 +165,10 @@ Expression *fromConstInitializer(int result, Expression *e1)
             if (v && (result & WANTinterpret) &&
                 !(v->storage_class & STCtemplateparameter))
             {
-                e1->error("variable %s cannot be read at compile time", v->toChars());
+                if (!v->isCTFE() && v->isDataseg())
+                    e1->error("static variable %s cannot be read at compile time", v->toChars());
+                else
+                    e1->error("variable %s cannot be read at compile time", v->toChars());
                 e = e->copy();
                 e->type = Type::terror;
             }
@@ -549,7 +552,7 @@ Expression *CallExp::optimize(int result, bool keepLvalue)
         FuncDeclaration *fd = ((VarExp *)e1)->var->isFuncDeclaration();
         if (fd)
         {
-            enum BUILTIN b = fd->isBuiltin();
+            BUILTIN b = fd->isBuiltin();
             if (b)
             {
                 e = eval_builtin(b, arguments);
@@ -591,7 +594,7 @@ Expression *CastExp::optimize(int result, bool keepLvalue)
     //printf("e1->type %s\n", e1->type->toChars());
     //printf("type = %p\n", type);
     assert(type);
-    enum TOK op1 = e1->op;
+    TOK op1 = e1->op;
 #define X 0
 
     Expression *e1old = e1;
@@ -921,6 +924,21 @@ Expression *PowExp::optimize(int result, bool keepLvalue)
         }
         e = this;
     }
+
+    if (e1->op == TOKint64 && e1->toInteger() > 0 &&
+        !((e1->toInteger() - 1) & e1->toInteger()) && // is power of two
+        e2->type->isintegral() && e2->type->isunsigned())
+    {
+        dinteger_t i = e1->toInteger();
+        dinteger_t mul = 1;
+        while ((i >>= 1) > 1)
+            mul++;
+        Expression *shift = new MulExp(loc, e2, new IntegerExp(loc, mul, e2->type));
+        shift->type = e2->type;
+        e = new ShlExp(loc, new IntegerExp(loc, 1, e1->type), shift);
+        e->type = type;
+    }
+
     return e;
 }
 

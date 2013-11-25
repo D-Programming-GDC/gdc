@@ -881,10 +881,11 @@ int main()
 ---
 */
     S readln(S = string)(dchar terminator = '\n')
+    if (isSomeString!S)
     {
         Unqual!(ElementEncodingType!S)[] buf;
         readln(buf, terminator);
-        return assumeUnique(buf);
+        return cast(S)buf;
     }
 
     unittest
@@ -892,13 +893,13 @@ int main()
         auto deleteme = testFilename();
         std.file.write(deleteme, "hello\nworld\n");
         scope(exit) std.file.remove(deleteme);
-        foreach (C; Tuple!(char, wchar, dchar).Types)
+        foreach (String; TypeTuple!(string, char[], wstring, wchar[], dstring, dchar[]))
         {
             auto witness = [ "hello\n", "world\n" ];
             auto f = File(deleteme);
             uint i = 0;
-            immutable(C)[] buf;
-            while ((buf = f.readln!(typeof(buf))()).length)
+            String buf;
+            while ((buf = f.readln!String()).length)
             {
                 assert(i < witness.length);
                 assert(equal(buf, witness[i++]));
@@ -958,7 +959,8 @@ because $(D stdin.readln(buf)) reuses (if possible) memory allocated
 by $(D buf), whereas $(D buf = stdin.readln()) makes a new memory allocation
 with every line. 
 */
-    size_t readln(C)(ref C[] buf, dchar terminator = '\n') if (isSomeChar!C && !is(C == enum))
+    size_t readln(C)(ref C[] buf, dchar terminator = '\n')
+    if (isSomeChar!C && is(Unqual!C == C) && !is(C == enum))
     {
         static if (is(C == char))
         {
@@ -969,9 +971,9 @@ with every line.
         {
             // TODO: optimize this
             string s = readln(terminator);
-            if (!s.length) return 0;
             buf.length = 0;
-            foreach (wchar c; s)
+            if (!s.length) return 0;
+            foreach (C c; s)
             {
                 buf ~= c;
             }
@@ -981,7 +983,8 @@ with every line.
 
 /** ditto */
     size_t readln(C, R)(ref C[] buf, R terminator)
-        if (isBidirectionalRange!R && is(typeof(terminator.front == buf[0])))
+    if (isSomeChar!C && is(Unqual!C == C) && !is(C == enum) &&
+        isBidirectionalRange!R && is(typeof(terminator.front == dchar.init)))
     {
         auto last = terminator.back;
         C[] buf2;
@@ -1004,15 +1007,19 @@ with every line.
     {
         auto deleteme = testFilename();
         std.file.write(deleteme, "hello\n\rworld\nhow\n\rare ya");
-        auto witness = [ "hello\n\r", "world\nhow\n\r", "are ya" ];
         scope(exit) std.file.remove(deleteme);
-        auto f = File(deleteme);
-        uint i = 0;
-        char[] buf;
-        while (f.readln(buf, "\n\r"))
+        foreach (C; Tuple!(char, wchar, dchar).Types)
         {
-            assert(i < witness.length);
-            assert(buf == witness[i++]);
+            immutable(C)[][] witness = [ "hello\n\r", "world\nhow\n\r", "are ya" ];
+            auto f = File(deleteme);
+            uint i = 0;
+            C[] buf;
+            while (f.readln(buf, "\n\r"))
+            {
+                assert(i < witness.length);
+                assert(buf == witness[i++]);
+            }
+            assert(buf.length==0);
         }
     }
 
@@ -1085,8 +1092,42 @@ Returns the file number corresponding to this object.
     }
 
 /**
-Range that reads one line at a time. */
-    /// ditto
+Range that reads one line at a time.  Returned by $(LREF byLine).
+
+Allows to directly use range operations on lines of a file.
+
+Example:
+
+----
+import std.algorithm, std.string, std.stdio;
+// Count words in a file using ranges.
+void main()
+{
+    auto file = File("file.txt"); // Open for reading
+    const wordCount = file.byLine()                  // Read lines
+                          .map!split                 // Split into words
+                          .map!(a => a.length)       // Count words per line
+                          .reduce!((a, b) => a + b); // Total word count
+    writeln(wordCount);
+}
+----
+
+Example:
+----
+import std.stdio;
+// Count lines in file using a foreach
+void main()
+{
+    auto file = File("file.txt"); // open for reading
+    ulong lineCount = 0;
+    foreach (line; file.byLine())
+    {
+        ++lineCount;
+    }
+    writeln("Lines in file: ", lineCount);
+}
+----
+*/
     struct ByLine(Char, Terminator)
     {
         File file;
@@ -1997,15 +2038,47 @@ int main()
 }
 ---
 */
-string readln(dchar terminator = '\n')
+S readln(S = string)(dchar terminator = '\n')
+if (isSomeString!S)
 {
-    return stdin.readln(terminator);
+    return stdin.readln!S(terminator);
+}
+/** ditto */
+size_t readln(C)(ref C[] buf, dchar terminator = '\n')
+if (isSomeChar!C && is(Unqual!C == C) && !is(C == enum))
+{
+    return stdin.readln(buf, terminator);
 }
 
 /** ditto */
-size_t readln(ref char[] buf, dchar terminator = '\n')
+size_t readln(C, R)(ref C[] buf, R terminator)
+if (isSomeChar!C && is(Unqual!C == C) && !is(C == enum) &&
+    isBidirectionalRange!R && is(typeof(terminator.front == dchar.init)))
 {
     return stdin.readln(buf, terminator);
+}
+
+unittest
+{
+    //we can't actually test readln, so at the very least,
+    //we test compilability
+    void foo()
+    {
+        readln();
+        readln('\t');
+        foreach (String; TypeTuple!(string, char[], wstring, wchar[], dstring, dchar[]))
+        {
+            readln!String();
+            readln!String('\t');
+        }
+        foreach (String; TypeTuple!(char[], wchar[], dchar[]))
+        {
+            String buf;
+            readln(buf);
+            readln(buf, '\t');
+            readln(buf, "<br />");
+        }
+    }
 }
 
 /*
@@ -2453,6 +2526,8 @@ Initialize with a message and an error code. */
         errno = e;
         version (Posix)
         {
+            import std.c.string : strerror_r;
+
             char[256] buf = void;
             version (linux)
             {
@@ -2466,7 +2541,7 @@ Initialize with a message and an error code. */
         }
         else
         {
-            auto s = std.c.string.strerror(errno);
+            auto s = core.stdc.string.strerror(errno);
         }
         auto sysmsg = to!string(s);
         // If e is 0, we don't use the system error message.  (The message
@@ -2978,18 +3053,22 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
         Bugs:
                 Only works on Linux
 */
-version(linux) {
+version(linux)
+{
     static import linux = std.c.linux.linux;
     static import sock = std.c.linux.socket;
+    import core.stdc.string : memcpy;
 
-    File openNetwork(string host, ushort port) {
+    File openNetwork(string host, ushort port)
+    {
         auto h = enforce( sock.gethostbyname(std.string.toStringz(host)),
             new StdioException("gethostbyname"));
 
         int s = sock.socket(sock.AF_INET, sock.SOCK_STREAM, 0);
         enforce(s != -1, new StdioException("socket"));
 
-        scope(failure) {
+        scope(failure)
+        {
             linux.close(s); // want to make sure it doesn't dangle if
                             // something throws. Upon normal exit, the
                             // File struct's reference counting takes
@@ -3001,7 +3080,7 @@ version(linux) {
 
         addr.sin_family = sock.AF_INET;
         addr.sin_port = sock.htons(port);
-        std.c.string.memcpy(&addr.sin_addr.s_addr, h.h_addr, h.h_length);
+        core.stdc.string.memcpy(&addr.sin_addr.s_addr, h.h_addr, h.h_length);
 
         enforce(sock.connect(s, cast(sock.sockaddr*) &addr, addr.sizeof) != -1,
             new StdioException("Connect failed"));

@@ -44,8 +44,9 @@ struct Escape
     const char *escapeChar(unsigned c);
 };
 
-struct Section
+class Section
 {
+public:
     unsigned char *name;
     size_t namelen;
 
@@ -57,13 +58,15 @@ struct Section
     virtual void write(DocComment *dc, Scope *sc, Dsymbol *s, OutBuffer *buf);
 };
 
-struct ParamSection : Section
+class ParamSection : public Section
 {
+public:
     void write(DocComment *dc, Scope *sc, Dsymbol *s, OutBuffer *buf);
 };
 
-struct MacroSection : Section
+class MacroSection : public Section
 {
+public:
     void write(DocComment *dc, Scope *sc, Dsymbol *s, OutBuffer *buf);
 };
 
@@ -185,6 +188,7 @@ DDOC_CLASS_MEMBERS  = $(DDOC_MEMBERS $0)\n\
 DDOC_STRUCT_MEMBERS = $(DDOC_MEMBERS $0)\n\
 DDOC_ENUM_MEMBERS   = $(DDOC_MEMBERS $0)\n\
 DDOC_TEMPLATE_MEMBERS = $(DDOC_MEMBERS $0)\n\
+DDOC_ENUM_BASETYPE = $0\n\
 DDOC_PARAMS    = $(B Params:)$(BR)\n$(TABLE $0)$(BR)\n\
 DDOC_PARAM_ROW = $(TR $0)\n\
 DDOC_PARAM_ID  = $(TD $0)\n\
@@ -410,9 +414,16 @@ void escapeDdocString(OutBuffer *buf, size_t start)
 
  * Fix by replacing unmatched ( with $(LPAREN) and unmatched ) with $(RPAREN).
  */
-void escapeStrayParenthesis(OutBuffer *buf, size_t start, Loc loc)
+void escapeStrayParenthesis(OutBuffer *buf, size_t start, Dsymbol *s)
 {
     unsigned par_open = 0;
+    Loc loc = s->loc;
+
+    if (Module *m = s->isModule())
+    {
+        if (m->md)
+            loc = m->md->loc;
+    }
 
     for (size_t u = start; u < buf->offset; u++)
     {
@@ -501,6 +512,7 @@ static bool emitAnchorName(OutBuffer *buf, Dsymbol *s)
          * We don't want the template parameter list and constraints. */
         buf->writestring(s->Dsymbol::toChars());
     }
+
     return true;
 }
 
@@ -658,7 +670,6 @@ void DtorDeclaration::emitComment(Scope *sc)       { }
 void StaticCtorDeclaration::emitComment(Scope *sc) { }
 void StaticDtorDeclaration::emitComment(Scope *sc) { }
 void ClassInfoDeclaration::emitComment(Scope *sc)  { }
-void ModuleInfoDeclaration::emitComment(Scope *sc) { }
 void TypeInfoDeclaration::emitComment(Scope *sc)   { }
 
 
@@ -919,6 +930,16 @@ void declarationToDocBuffer(Declaration *decl, OutBuffer *buf, TemplateDeclarati
         else
             buf->writestring(decl->ident->toChars());
 
+        // emit constraints if declaration is a templated declaration
+        if (td && td->constraint)
+        {
+            HdrGenState hgs;
+            hgs.ddoc = 1;
+            buf->writestring(" if (");
+            td->constraint->toCBuffer(buf, &hgs);
+            buf->writeByte(')');
+        }
+
         if (decl->isDeprecated())
             buf->writestring(")");
 
@@ -1162,6 +1183,13 @@ void EnumDeclaration::toDocBuffer(OutBuffer *buf, Scope *sc)
     if (ident)
     {
         buf->printf("%s %s", kind(), toChars());
+        if (memtype)
+        {
+            buf->writestring(": $(DDOC_ENUM_BASETYPE ");
+            HdrGenState *hgs = NULL;
+            memtype->toCBuffer(buf, NULL, hgs);
+            buf->writestring(")");
+        }
         buf->writestring(";\n");
     }
 }
@@ -1353,7 +1381,7 @@ void DocComment::writeSections(Scope *sc, Dsymbol *s, OutBuffer *buf)
                 buf->writestring("$(DDOC_SUMMARY ");
                     size_t o = buf->offset;
                     buf->write(sec->body, sec->bodylen);
-                    escapeStrayParenthesis(buf, o, s->loc);
+                    escapeStrayParenthesis(buf, o, s);
                     highlightText(sc, s, buf, o);
                 buf->writestring(")\n");
             }
@@ -1398,7 +1426,7 @@ void Section::write(DocComment *dc, Scope *sc, Dsymbol *s, OutBuffer *buf)
             {   unsigned char c = name[u];
                 buf->writeByte((c == '_') ? ' ' : c);
             }
-            escapeStrayParenthesis(buf, o, s->loc);
+            escapeStrayParenthesis(buf, o, s);
             buf->writestring(":)\n");
     }
     else
@@ -1408,7 +1436,7 @@ void Section::write(DocComment *dc, Scope *sc, Dsymbol *s, OutBuffer *buf)
   L1:
     size_t o = buf->offset;
     buf->write(body, bodylen);
-    escapeStrayParenthesis(buf, o, s->loc);
+    escapeStrayParenthesis(buf, o, s);
     highlightText(sc, s, buf, o);
     buf->writestring(")\n");
 }
@@ -1490,14 +1518,14 @@ void ParamSection::write(DocComment *dc, Scope *sc, Dsymbol *s, OutBuffer *buf)
                         arg->type->toCBuffer(buf, arg->ident, &hgs);
                     else
                         buf->write(namestart, namelen);
-                    escapeStrayParenthesis(buf, o, s->loc);
+                    escapeStrayParenthesis(buf, o, s);
                     highlightCode(sc, s, buf, o, false);
                 buf->writestring(")\n");
 
                 buf->writestring("$(DDOC_PARAM_DESC ");
                     o = buf->offset;
                     buf->write(textstart, textlen);
-                    escapeStrayParenthesis(buf, o, s->loc);
+                    escapeStrayParenthesis(buf, o, s);
                     highlightText(sc, s, buf, o);
                 buf->writestring(")");
             buf->writestring(")\n");
@@ -2294,7 +2322,7 @@ void highlightCode3(Scope *sc, OutBuffer *buf, unsigned char *p, unsigned char *
 
 void highlightCode2(Scope *sc, Dsymbol *s, OutBuffer *buf, size_t offset)
 {
-    char *sid = s->ident->toChars();
+    const char *sid = s->ident->toChars();
     FuncDeclaration *f = s->isFuncDeclaration();
     unsigned errorsave = global.errors;
     Lexer lex(NULL, buf->data, 0, buf->offset - 1, 0, 1);

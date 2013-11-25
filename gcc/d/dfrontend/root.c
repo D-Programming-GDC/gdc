@@ -59,6 +59,7 @@ extern "C" void __cdecl _assert(void *e, void *f, unsigned line)
 #include "config.h"
 #include "errors.h"
 #else
+
 /**************************************
  * Print error message and exit.
  */
@@ -96,42 +97,42 @@ void warning(const char *format, ...)
 
 /****************************** Object ********************************/
 
-int Object::equals(Object *o)
+bool RootObject::equals(RootObject *o)
 {
     return o == this;
 }
 
-hash_t Object::hashCode()
+hash_t RootObject::hashCode()
 {
     return (hash_t) this;
 }
 
-int Object::compare(Object *obj)
+int RootObject::compare(RootObject *obj)
 {
     return this - obj;
 }
 
-void Object::print()
+void RootObject::print()
 {
     fprintf(stderr, "%s %p\n", toChars(), this);
 }
 
-char *Object::toChars()
+char *RootObject::toChars()
 {
     return (char *)"Object";
 }
 
-int Object::dyncast()
+int RootObject::dyncast()
 {
     return 0;
 }
 
-void Object::toBuffer(OutBuffer *b)
+void RootObject::toBuffer(OutBuffer *b)
 {
     b->writestring("Object");
 }
 
-void Object::mark()
+void RootObject::mark()
 {
 }
 
@@ -204,12 +205,12 @@ size_t String::len()
     return strlen(str);
 }
 
-int String::equals(Object *obj)
+bool String::equals(RootObject *obj)
 {
     return strcmp(str,((String *)obj)->str) == 0;
 }
 
-int String::compare(Object *obj)
+int String::compare(RootObject *obj)
 {
     return strcmp(str,((String *)obj)->str);
 }
@@ -382,7 +383,7 @@ hash_t FileName::hashCode()
 #endif
 }
 
-int FileName::compare(Object *obj)
+int FileName::compare(RootObject *obj)
 {
     return compare(str, ((FileName *)obj)->str);
 }
@@ -396,7 +397,7 @@ int FileName::compare(const char *name1, const char *name2)
 #endif
 }
 
-int FileName::equals(Object *obj)
+bool FileName::equals(RootObject *obj)
 {
     return compare(obj) == 0;
 }
@@ -694,7 +695,7 @@ const char *FileName::searchPath(Strings *path, const char *name, int cwd)
 
         for (size_t i = 0; i < path->dim; i++)
         {
-            const char *p = path->tdata()[i];
+            const char *p = (*path)[i];
             const char *n = combine(p, name);
 
             if (exists(n))
@@ -754,7 +755,7 @@ const char *FileName::safeSearchPath(Strings *path, const char *name)
         for (size_t i = 0; i < path->dim; i++)
         {
             const char *cname = NULL;
-            const char *cpath = canonicalName(path->tdata()[i]);
+            const char *cpath = canonicalName((*path)[i]);
             //printf("FileName::safeSearchPath(): name=%s; path=%s; cpath=%s\n",
             //      name, (char *)path->data[i], cpath);
             if (cpath == NULL)
@@ -1497,6 +1498,7 @@ void OutBuffer::reserve(size_t nbytes)
     if (size - offset < nbytes)
     {
         size = (offset + nbytes) * 2;
+        size = (size + 15) & ~15;
         data = (unsigned char *)mem.realloc(data, size);
     }
 }
@@ -1728,7 +1730,7 @@ void OutBuffer::write(OutBuffer *buf)
     }
 }
 
-void OutBuffer::write(Object *obj)
+void OutBuffer::write(RootObject *obj)
 {
     if (obj)
     {

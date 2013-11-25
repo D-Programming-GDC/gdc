@@ -71,7 +71,7 @@ private struct Demangle
 
     static class ParseException : Exception
     {
-        this( string msg )
+        @safe pure nothrow this( string msg )
         {
             super( msg );
         }
@@ -80,7 +80,7 @@ private struct Demangle
 
     static class OverflowException : Exception
     {
-        this( string msg )
+        @safe pure nothrow this( string msg )
         {
             super( msg );
         }
@@ -113,7 +113,8 @@ private struct Demangle
     static bool isAlpha( char val )
     {
         return ('a' <= val && 'z' >= val) ||
-               ('A' <= val && 'Z' >= val);
+               ('A' <= val && 'Z' >= val) ||
+               (0x80 & val); // treat all unicode as alphabetic
     }
 
 

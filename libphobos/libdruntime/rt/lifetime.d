@@ -38,7 +38,7 @@ private
         ALL_BITS   = 0b1111_1111
     }
 
-    struct BlkInfo
+    package struct BlkInfo
     {
         void*  base;
         size_t size;

@@ -25,6 +25,7 @@ private
     import core.stdc.stdlib;
     import core.stdc.string;
     import core.stdc.stdio;   // for printf()
+    import core.stdc.errno : errno;
 }
 
 version (Windows)
@@ -51,14 +52,14 @@ version (all)
 {
     extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null);
 
-    extern (C) void _d_createTrace(Object *o)
+    extern (C) void _d_createTrace(Object *o, void* context)
     {
         auto t = cast(Throwable) o;
 
         if (t !is null && t.info is null &&
             cast(byte*) t !is t.classinfo.init.ptr)
         {
-            t.info = _d_traceContext();
+            t.info = _d_traceContext(context);
         }
     }
 }
@@ -105,8 +106,6 @@ version (OSX)
 {
     // The bottom of the stack
     extern (C) __gshared void* __osx_stack_end = cast(void*)0xC0000000;
-
-    extern (C) extern (C) void _d_osx_image_init2();
 }
 
 /***********************************
@@ -306,8 +305,6 @@ alias void delegate(Throwable) ExceptionHandler;
 
 extern (C) bool rt_init(ExceptionHandler dg = null)
 {
-    version (OSX)
-        _d_osx_image_init2();
     _d_criticalInit();
 
     try
@@ -391,7 +388,17 @@ alias extern(C) int function(char[][] args) MainFunc;
  */
 extern (C) int main(int argc, char **argv)
 {
-    return _d_run_main(argc, argv, &_Dmain);
+    auto result = _d_run_main(argc, argv, &_Dmain);
+    // Issue 10344: flush stdout and return nonzero on failure
+    if (.fflush(.stdout) != 0)
+    {
+        .fprintf(.stderr, "Failed to flush stdout: %s\n", .strerror(.errno));
+        if (result == 0)
+        {
+            result = EXIT_FAILURE;
+        }
+    }
+    return result;
 }
 
 version (Solaris) extern (C) int _main(int argc, char** argv)
@@ -420,8 +427,6 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
          * of the main thread's stack, so save the address of that.
          */
         __osx_stack_end = cast(void*)&argv;
-
-        _d_osx_image_init2();
     }
 
     version (FreeBSD) version (D_InlineAsm_X86)

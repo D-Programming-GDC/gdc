@@ -266,6 +266,22 @@ void test5893()
 }
 
 /**********************************/
+// 5988
+
+template Templ5988(alias T)
+{
+    alias T!int Templ5988;
+}
+
+class C5988a(T) { Templ5988!C5988a foo; }
+//Templ5988!C5988a foo5988a;    // Commented version
+void test5988a() { C5988a!int a; }  // Was error, now works
+
+class C5988b(T) { Templ5988!C5988b foo; }
+Templ5988!C5988b foo5988b;      // Uncomment version
+void test5988b() { C5988b!int a; }  // Works
+
+/**********************************/
 // 6404
 
 // receive only rvalue
@@ -332,7 +348,7 @@ void test2246(){
 /**********************************/
 // 2296
 
-void foo2296(uint D)(int[D] i...){}
+void foo2296(size_t D)(int[D] i...){}
 void test2296()
 {
     foo2296(1, 2, 3);
@@ -1366,6 +1382,7 @@ struct Bar7755
 
 /**********************************/
 
+             U[]   id11a(U)(              U[]   );
        inout(U)[]  id11a(U)(        inout(U)[]  );
        inout(U[])  id11a(U)(        inout(U[])  );
 inout(shared(U[])) id11a(U)( inout(shared(U[])) );
@@ -1772,6 +1789,51 @@ static assert(!__traits(compiles, Inst9018!(Template9018, int))); // Assert pass
 static assert(!__traits(compiles, Inst9018!(Template9018, int))); // Assert fails
 
 /**********************************/
+// 9022
+
+class C9022
+{
+    struct X {}
+
+    alias B = X;
+}
+class D9022
+{
+    struct X {}
+}
+
+void test9022()
+{
+    auto c = new C9022();
+    auto d = new D9022();
+    auto cx = C9022.X();
+    auto dx = D9022.X();
+
+    void foo1(T)(T, T.X) { static assert(is(T == C9022)); }
+    void foo2(T)(T.X, T) { static assert(is(T == C9022)); }
+    foo1(c, cx);
+    foo2(cx, c);
+
+    void hoo1(T)(T, T.B) { static assert(is(T == C9022)); }
+    void hoo2(T)(T.B, T) { static assert(is(T == C9022)); }
+    hoo1(c, cx);
+    hoo1(c, cx);
+
+    void bar1(alias A)(A.C9022, A.D9022) { static assert(A.stringof == "module breaker"); }
+    void bar2(alias A)(A.D9022, A.C9022) { static assert(A.stringof == "module breaker"); }
+    bar1(c, d);
+    bar2(d, c);
+
+    void var1(alias A)(A.C9022, A.D9022.X) { static assert(A.stringof == "module breaker"); }
+    void var2(alias A)(A.D9022.X, A.C9022) { static assert(A.stringof == "module breaker"); }
+    var1(c, dx);
+    var2(dx, c);
+
+    void baz(T)(T.X t, T.X u) { }
+    static assert(!__traits(compiles, baz(cx, dx)));
+}
+
+/**********************************/
 // 9026
 
 mixin template node9026()
@@ -2111,6 +2173,38 @@ void test9536()
     assert(s.bar() == 84);
 }
 
+/**********************************/
+// 9596
+
+int foo9596a(K, V)(inout(       V  [K])) { return 1; }
+int foo9596a(K, V)(inout(shared(V) [K])) { return 2; }
+
+int foo9596b(K, V)(inout(       V  [K])) { return 1; }
+int foo9596b(K, V)(inout( const(V) [K])) { return 3; }
+
+int foo9596c(K, V)(inout(shared(V) [K])) { return 2; }
+int foo9596c(K, V)(inout( const(V) [K])) { return 3; }
+
+int foo9596d(K, V)(inout(       V  [K])) { return 1; }
+int foo9596d(K, V)(inout(shared(V) [K])) { return 2; }
+int foo9596d(K, V)(inout( const(V) [K])) { return 3; }
+
+int foo9596e(K, V)(inout(shared(V) [K])) { return 2; }
+int foo9596e(K, V)(inout(       V  [K])) { return 1; }
+int foo9596e(K, V)(inout( const(V) [K])) { return 3; }
+
+void test9596()
+{
+    shared(int)[int] aa;
+    static assert(!__traits(compiles, foo9596a(aa)));
+
+    assert(foo9596b(aa) == 1);
+    assert(foo9596c(aa) == 2);
+
+    static assert(!__traits(compiles, foo9596d(aa)));
+    static assert(!__traits(compiles, foo9596e(aa)));
+}
+
 /******************************************/
 // 9806
 
@@ -2356,6 +2450,100 @@ template useItemAt10067(size_t idx, T)
 useItemAt10067!(0, char) mapS10067;
 
 /******************************************/
+// 10083
+
+// [a-c] IFTI can find syntactic eponymous member
+template foo10083a(T)
+{
+    int foo10083a(double) { return 1; }
+    int foo10083a(T) { return 2; }
+}
+template foo10083b(T)
+{
+    int foo10083b(T) { return 1; }
+    int foo10083b(T, T) { return 2; }
+}
+template foo10083c1(T)
+{
+    int foo10083c1(T) { return 1; }
+    static if (true) { int x; }
+}
+template foo10083c2(T)
+{
+    int foo10083c2(T) { return 1; }
+    static if (true) { int x; } else { int y; }
+}
+
+// [d-f] IFTI cannot find syntactic eponymous member
+template foo10083d1(T)
+{
+    static if (true)
+    {
+        int foo10083d1(T) { return 1; }
+    }
+    else
+    {
+    }
+}
+template foo10083d2(T)
+{
+    static if (true)
+    {
+    }
+    else
+    {
+        int foo10083d2(T) { return 1; }
+    }
+}
+template foo10083e(T)
+{
+    static if (true)
+    {
+        int foo10083e(double arg) { return 1; }
+    }
+    int foo10083e(T arg) { return 2; }
+}
+template foo10083f(T)
+{
+    static if (true)
+    {
+        int foo10083f(T) { return 1; }
+    }
+    else
+    {
+        int foo10083f(T) { return 2; }
+    }
+}
+
+void test10083()
+{
+    assert(foo10083a(1) == 2);
+    assert(foo10083a!int(1) == 2);
+    assert(foo10083a!int(1.0) == 1);
+    version (Win64) {}  // workaround
+    else
+    {
+    static assert(!__traits(compiles, foo10083a!double(1)));
+    static assert(!__traits(compiles, foo10083a!double(1.0)));
+    }
+    static assert(!__traits(compiles, foo10083a!real(1)));
+    assert(foo10083a!real(1.0) == 1);
+    assert(foo10083a!real(1.0L) == 2);
+
+    assert(foo10083b(2) == 1);
+    assert(foo10083b(3, 4) == 2);
+    static assert(!__traits(compiles, foo10083b(2, "")));
+
+    assert(foo10083c1(1) == 1);
+    assert(foo10083c2(1) == 1);
+
+    static assert(!__traits(compiles, foo10083d1(2)));
+    static assert(!__traits(compiles, foo10083d2(2)));
+    static assert(!__traits(compiles, foo10083e(3)));
+    static assert(!__traits(compiles, foo10083f(3)));
+}
+
+/******************************************/
 // 10134
 
 template ReturnType10134(alias func)
@@ -2401,6 +2589,42 @@ template b10134()
 }
 
 pragma(msg, getResultType10134!(a10134!()));
+
+/******************************************/
+// 10249
+
+template Seq10249(T...) { alias Seq10249 = T; }
+
+mixin template Func10249(T)
+{
+    void func10249(T) {}
+}
+mixin Func10249!long;
+mixin Func10249!string;
+
+void f10249(long) {}
+
+class C10249
+{
+    mixin Func10249!long;
+    mixin Func10249!string;
+    static assert(Seq10249!(.func10249)[0].mangleof == "7breaker9func10249");           // <- 9func10249
+    static assert(Seq10249!( func10249)[0].mangleof == "7breaker6C102499func10249");    // <- 9func10249
+
+static: // necessary to make overloaded symbols accessible via __traits(getOverloads, C10249)
+    void foo(long) {}
+    void foo(string) {}
+    static assert(Seq10249!(foo)[0].mangleof                                   == "7breaker6C102493foo");           // <- _D7breaker6C102493fooFlZv
+    static assert(Seq10249!(__traits(getOverloads, C10249, "foo"))[0].mangleof == "_D7breaker6C102493fooFlZv");     // <-
+    static assert(Seq10249!(__traits(getOverloads, C10249, "foo"))[1].mangleof == "_D7breaker6C102493fooFAyaZv");   // <-
+
+    void g(string) {}
+    alias bar = .f10249;
+    alias bar =  g;
+    static assert(Seq10249!(bar)[0].mangleof                                   == "7breaker6C102496f10249");        // <- _D7breaker1fFlZv (todo!)
+    static assert(Seq10249!(__traits(getOverloads, C10249, "bar"))[0].mangleof == "_D7breaker6f10249FlZv");         // <-
+    static assert(Seq10249!(__traits(getOverloads, C10249, "bar"))[1].mangleof == "_D7breaker6C102491gFAyaZv");     // <-
+}
 
 /******************************************/
 
@@ -2471,6 +2695,7 @@ int main()
     test8833();
     test8976();
     test8940();
+    test9022();
     test9026();
     test9038();
     test9076();
@@ -2480,11 +2705,13 @@ int main()
     test9143();
     test9266();
     test9536();
+    test9596();
     test9837();
     test9874();
     test9885();
     test9971();
     test9977();
+    test10083();
 
     printf("Success\n");
     return 0;
