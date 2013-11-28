@@ -46,7 +46,7 @@ public:
     void semantic2(Scope *sc);
     void semantic3(Scope *sc);
     void inlineScan();
-    void addComment(unsigned char *comment);
+    void addComment(utf8_t *comment);
     void emitComment(Scope *sc);
     const char *kind();
     bool oneMember(Dsymbol **ps, Identifier *ident);
@@ -137,7 +137,7 @@ public:
     structalign_t alignment;
     int sem;                    // 1 if successful semantic()
 
-    AnonDeclaration(Loc loc, int isunion, Dsymbols *decl);
+    AnonDeclaration(Loc loc, bool isunion, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
@@ -171,7 +171,7 @@ public:
     bool oneMember(Dsymbol **ps, Identifier *ident);
     void emitComment(Scope *sc);
     Dsymbols *include(Scope *sc, ScopeDsymbol *s);
-    void addComment(unsigned char *comment);
+    void addComment(utf8_t *comment);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toJson(JsonOut *json);
     void importAll(Scope *sc);

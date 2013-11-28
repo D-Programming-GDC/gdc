@@ -61,7 +61,7 @@ int CLASSINFO_SIZE_64 = (0x98);
 
 /***************************** Type *****************************/
 
-ClassDeclaration *Type::typeinfo;
+ClassDeclaration *Type::dtypeinfo;
 ClassDeclaration *Type::typeinfoclass;
 ClassDeclaration *Type::typeinfointerface;
 ClassDeclaration *Type::typeinfostruct;
@@ -1380,57 +1380,19 @@ int MODmerge(unsigned char mod1, unsigned char mod2)
         return mod1;
 
     //printf("MODmerge(1 = %x, 2 = %x)\n", modfrom, modto);
-    #define X(m, n) (((m) << 4) | (n))
-    // cases are commutative
-    #define Y(m, n) X(m, n): case X(n, m)
-    switch (X(mod1, mod2))
-    {
-#if 0
-        case X(0, 0):
-        case X(MODconst, MODconst):
-        case X(MODimmutable, MODimmutable):
-        case X(MODshared, MODshared):
-        case X(MODshared | MODconst, MODshared | MODconst):
-        case X(MODwild, MODwild):
-        case X(MODshared | MODwild, MODshared | MODwild):
-#endif
+    unsigned char result = 0;
 
-        case Y(0, MODconst):
-        case Y(0, MODimmutable):
-        case Y(MODconst, MODimmutable):
-        case Y(MODconst, MODwild):
-        case Y(0, MODwild):
-        case Y(MODimmutable, MODwild):
-            return MODconst;
-
-        case Y(0, MODshared):
-            return MODshared;
-
-        case Y(0, MODshared | MODconst):
-        case Y(MODconst, MODshared):
-        case Y(MODconst, MODshared | MODconst):
-        case Y(MODimmutable, MODshared):
-        case Y(MODimmutable, MODshared | MODconst):
-        case Y(MODshared, MODshared | MODconst):
-        case Y(0, MODshared | MODwild):
-        case Y(MODconst, MODshared | MODwild):
-        case Y(MODimmutable, MODshared | MODwild):
-        case Y(MODshared, MODwild):
-        case Y(MODshared, MODshared | MODwild):
-        case Y(MODshared | MODconst, MODwild):
-        case Y(MODshared | MODconst, MODshared | MODwild):
-            return MODshared | MODconst;
-
-        case Y(MODwild, MODshared | MODwild):
-            return MODshared | MODwild;
-
-        default:
-            assert(0);
-    }
-    #undef Y
-    #undef X
-    assert(0);
-    return 0;
+    // If either type is shared, the result will be shared
+    if ((mod1 | mod2) & MODshared)
+        result |= MODshared;
+    // If both types are wild, the result will be wild
+    // Otherwise if either type is const or immutable or wild
+    // the result will be const
+    if (mod1 & mod2 & MODwild)
+        result |= MODwild;
+    else if ((mod1 | mod2) & (MODconst | MODimmutable | MODwild))
+        result |= MODconst;
+    return result;
 }
 
 /*********************************
@@ -1726,7 +1688,7 @@ Type *Type::merge()
         }
         else
         {
-            sv->ptrvalue = (t = stripDefaultArgs(t));
+            sv->ptrvalue = (char *)(t = stripDefaultArgs(t));
             deco = t->deco = (char *)sv->toDchars();
             //printf("new value, deco = '%s' %p\n", t->deco, t->deco);
         }
@@ -1897,7 +1859,7 @@ MATCH Type::implicitConvTo(Type *to)
     //printf("Type::implicitConvTo(this=%p, to=%p)\n", this, to);
     //printf("from: %s\n", toChars());
     //printf("to  : %s\n", to->toChars());
-    if (this == to)
+    if (this->equals(to))
         return MATCHexact;
     return MATCHnomatch;
 }
@@ -2218,6 +2180,11 @@ Expression *Type::noMember(Scope *sc, Expression *e, Identifier *ident, int flag
             DotTemplateInstanceExp *dti = new DotTemplateInstanceExp(e->loc, e, Id::opDispatch, tiargs);
             dti->ti->tempdecl = td;
 
+            /* opDispatch, which doesn't need IFTI,  may occur instantiate error.
+             * It should be gagged if flag != 0.
+             * e.g.
+             *  tempalte opDispatch(name) if (isValid!name) { ... }
+             */
             unsigned errors = flag ? global.startGagging() : 0;
             Expression *e = dti->semanticY(sc, 0);
             if (flag && global.endGagging(errors))
@@ -3595,11 +3562,19 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
 
     if (ident == Id::reverse && (n->ty == Tchar || n->ty == Twchar))
     {
-        static const char *name[2] = { "_adReverseChar", "_adReverseWchar" };
+        static const char *reverseName[2] = { "_adReverseChar", "_adReverseWchar" };
+        static FuncDeclaration *reverseFd[2] = { NULL, NULL };
 
-        const char *nm = name[n->ty == Twchar];
-        FuncDeclaration *fd = FuncDeclaration::genCfunc(n->arrayOf(), nm);
-        Expression *ec = new VarExp(Loc(), fd);
+        int i = n->ty == Twchar;
+        if (!reverseFd[i]) {
+            Parameters *args = new Parameters;
+            Type *next = n->ty == Twchar ? Type::twchar : Type::tchar;
+            Type *arrty = next->arrayOf();
+            args->push(new Parameter(STCin, arrty, NULL, NULL));
+            reverseFd[i] = FuncDeclaration::genCfunc(args, arrty, reverseName[i]);
+        }
+
+        Expression *ec = new VarExp(Loc(), reverseFd[i]);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         Expressions *arguments = new Expressions();
         arguments->push(e);
@@ -3608,9 +3583,19 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
     }
     else if (ident == Id::sort && (n->ty == Tchar || n->ty == Twchar))
     {
-        const char *nm = n->ty == Twchar ? "_adSortWchar" : "_adSortChar";
-        FuncDeclaration *fd = FuncDeclaration::genCfunc(n->arrayOf(), nm);
-        Expression *ec = new VarExp(Loc(), fd);
+        static const char *sortName[2] = { "_adSortChar", "_adSortWchar" };
+        static FuncDeclaration *sortFd[2] = { NULL, NULL };
+
+        int i = n->ty == Twchar;
+        if (!sortFd[i]) {
+            Parameters *args = new Parameters;
+            Type *next = n->ty == Twchar ? Type::twchar : Type::tchar;
+            Type *arrty = next->arrayOf();
+            args->push(new Parameter(STCin, arrty, NULL, NULL));
+            sortFd[i] = FuncDeclaration::genCfunc(args, arrty, sortName[i]);
+        }
+
+        Expression *ec = new VarExp(Loc(), sortFd[i]);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         Expressions *arguments = new Expressions();
         arguments->push(e);
@@ -3628,7 +3613,27 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         Expression *olde = e;
         assert(size);
         dup = (ident == Id::dup || ident == Id::idup);
-        fd = FuncDeclaration::genCfunc(tvoid->arrayOf(), dup ? Id::adDup : Id::adReverse);
+
+        if (dup) {
+            static FuncDeclaration *adDup_fd = NULL;
+            if (!adDup_fd) {
+                Parameters* args = new Parameters;
+                args->push(new Parameter(STCin, Type::dtypeinfo->type, NULL, NULL));
+                args->push(new Parameter(STCin, Type::tvoid->arrayOf(), NULL, NULL));
+                adDup_fd = FuncDeclaration::genCfunc(args, Type::tvoid->arrayOf(), Id::adDup);
+            }
+            fd = adDup_fd;
+        } else {
+            static FuncDeclaration *adReverse_fd = NULL;
+            if (!adReverse_fd) {
+                Parameters* args = new Parameters;
+                args->push(new Parameter(STCin, Type::tvoid->arrayOf(), NULL, NULL));
+                args->push(new Parameter(STCin, Type::tsize_t, NULL, NULL));
+                adReverse_fd = FuncDeclaration::genCfunc(args, Type::tvoid->arrayOf(), Id::adReverse);
+            }
+            fd = adReverse_fd;
+        }
+
         ec = new VarExp(Loc(), fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -3662,11 +3667,16 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
     }
     else if (ident == Id::sort)
     {
+        static FuncDeclaration *fd = NULL;
         Expression *ec;
-        FuncDeclaration *fd;
         Expressions *arguments;
 
-        fd = FuncDeclaration::genCfunc(tvoid->arrayOf(), "_adSort");
+        if (!fd) {
+            Parameters* args = new Parameters;
+            args->push(new Parameter(STCin, Type::tvoid->arrayOf(), NULL, NULL));
+            args->push(new Parameter(STCin, Type::dtypeinfo->type, NULL, NULL));
+            fd = FuncDeclaration::genCfunc(args, Type::tvoid->arrayOf(), "_adSort");
+        }
         ec = new VarExp(Loc(), fd);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
@@ -3747,16 +3757,24 @@ unsigned TypeSArray::alignsize()
 Expression *semanticLength(Scope *sc, Type *t, Expression *exp)
 {
     if (t->ty == Ttuple)
-    {   ScopeDsymbol *sym = new ArrayScopeSymbol(sc, (TypeTuple *)t);
+    {
+        ScopeDsymbol *sym = new ArrayScopeSymbol(sc, (TypeTuple *)t);
         sym->parent = sc->scopesym;
         sc = sc->push(sym);
 
-        exp = exp->ctfeSemantic(sc);
+        sc = sc->startCTFE();
+        exp = exp->semantic(sc);
+        sc = sc->endCTFE();
 
         sc->pop();
     }
     else
-        exp = exp->ctfeSemantic(sc);
+    {
+        sc = sc->startCTFE();
+        exp = exp->semantic(sc);
+        sc = sc->endCTFE();
+    }
+
     return exp;
 }
 
@@ -3766,7 +3784,9 @@ Expression *semanticLength(Scope *sc, TupleDeclaration *s, Expression *exp)
     sym->parent = sc->scopesym;
     sc = sc->push(sym);
 
-    exp = exp->ctfeSemantic(sc);
+    sc = sc->startCTFE();
+    exp = exp->semantic(sc);
+    sc = sc->endCTFE();
 
     sc->pop();
     return exp;
@@ -3794,12 +3814,13 @@ void TypeSArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
             ScopeDsymbol *sym = new ArrayScopeSymbol(sc, td);
             sym->parent = sc->scopesym;
             sc = sc->push(sym);
+            sc = sc->startCTFE();
+            dim = dim->semantic(sc);
+            sc = sc->endCTFE();
+            sc = sc->pop();
 
-            dim = dim->ctfeSemantic(sc);
             dim = dim->ctfeInterpret();
             uinteger_t d = dim->toUInteger();
-
-            sc = sc->pop();
 
             if (d >= td->objects->dim)
             {   error(loc, "tuple index %llu exceeds length %u", d, td->objects->dim);
@@ -3883,7 +3904,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         return t;
     }
 
-    Type *tn = next->semantic(loc,sc);
+    Type *tn = next->semantic(loc, sc);
     if (tn->ty == Terror)
         return terror;
 
@@ -3979,6 +4000,19 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
 
 Lerror:
     return Type::terror;
+}
+
+// Make corresponding static array type without semantic
+Type *TypeSArray::makeType(Loc loc, Type *tn, dinteger_t dim)
+{
+    assert(tn->deco);
+    Type *t = new TypeSArray(tn, new IntegerExp(loc, dim, Type::tindex));
+
+    // according to TypeSArray::semantic()
+    t = t->addMod(tn->mod);
+    t = t->merge();
+
+    return t;
 }
 
 void TypeSArray::toDecoBuffer(OutBuffer *buf, int flag)
@@ -4478,13 +4512,11 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
         if (e)
         {   // It was an expression -
             // Rewrite as a static array
-            TypeSArray *tsa;
-
-            tsa = new TypeSArray(next, e);
-            return tsa->semantic(loc,sc);
+            TypeSArray *tsa = new TypeSArray(next, e);
+            return tsa->semantic(loc, sc);
         }
         else if (t)
-            index = t;
+            index = t->semantic(loc, sc);
         else
         {   index->error(loc, "index is not a type or an expression");
             return Type::terror;
@@ -5942,20 +5974,23 @@ MATCH TypeFunction::callMatch(Type *tthis, Expressions *args, int flag)
             if (m && !arg->isLvalue())
             {
                 if (arg->op == TOKstring && tprmb->ty == Tsarray)
-                {   if (targb->ty != Tsarray)
-                        {
-                        targb = new TypeSArray(tprmb->nextOf()->castMod(targb->nextOf()->mod),
-                                new IntegerExp(Loc(), ((StringExp *)arg)->len,
-                                Type::tindex));
-                        targb = targb->semantic(Loc(), NULL);
+                {
+                    if (targb->ty != Tsarray)
+                    {
+                        Type *tn = tprmb->nextOf()->castMod(targb->nextOf()->mod);
+                        dinteger_t dim = ((StringExp *)arg)->len;
+                        targb = TypeSArray::makeType(Loc(), tn, dim);
                     }
                 }
                 else if (arg->op == TOKslice && tprmb->ty == Tsarray)
-                {   // Allow conversion from T[lwr .. upr] to ref T[upr-lwr]
-                    targb = new TypeSArray(targb->nextOf(),
-                            new IntegerExp(Loc(), ((TypeSArray *)tprmb)->dim->toUInteger(),
-                            Type::tindex));
-                    targb = targb->semantic(Loc(), NULL);
+                {
+                    // Allow conversion from T[lwr .. upr] to ref T[upr-lwr]
+                    if (targb->ty != Tsarray)
+                    {
+                        Type *tn = targb->nextOf();
+                        dinteger_t dim = ((TypeSArray *)tprmb)->dim->toUInteger();
+                        targb = TypeSArray::makeType(Loc(), tn, dim);
+                    }
                 }
                 else
                     goto Nomatch;
@@ -6482,7 +6517,6 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
                 }
                 else
                 {
-                  Lerror:
                     if (id->dyncast() == DYNCAST_DSYMBOL)
                     {   // searchX already handles errors for template instances
                         assert(global.errors);
@@ -6779,7 +6813,8 @@ Expression *TypeIdentifier::toExpression()
             e = new DotIdExp(loc, e, (Identifier *)id);
         }
         else
-        {   assert(id->dyncast() == DYNCAST_DSYMBOL);
+        {
+            assert(id->dyncast() == DYNCAST_DSYMBOL);
             TemplateInstance *ti = ((Dsymbol *)id)->isTemplateInstance();
             assert(ti);
             e = new DotTemplateInstanceExp(loc, e, ti->name, ti->tiargs);
@@ -6924,7 +6959,24 @@ Type *TypeInstance::reliesOnTident(TemplateParameters *tparams)
 
 Expression *TypeInstance::toExpression()
 {
-    return new ScopeExp(loc, tempinst);
+    Expression *e = new ScopeExp(loc, tempinst);
+    for (size_t i = 0; i < idents.dim; i++)
+    {
+        RootObject *id = idents[i];
+        if (id->dyncast() == DYNCAST_IDENTIFIER)
+        {
+            e = new DotIdExp(loc, e, (Identifier *)id);
+        }
+        else
+        {
+            assert(id->dyncast() == DYNCAST_DSYMBOL);
+            TemplateInstance *ti = ((Dsymbol *)id)->isTemplateInstance();
+            assert(ti);
+            e = new DotTemplateInstanceExp(loc, e, ti->name, ti->tiargs);
+        }
+    }
+
+    return e;
 }
 
 
@@ -7001,13 +7053,10 @@ void TypeTypeof::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
         if (global.gag)
             global.speculativeGag = global.gag;
         exp = exp->semantic(sc2);
-        global.speculativeGag = oldspecgag;
-
 #if DMDV2
-        if (exp->type && exp->type->ty == Tfunction &&
-            ((TypeFunction *)exp->type)->isproperty)
-            exp = resolveProperties(sc2, exp);
+        exp = resolvePropertiesOnly(sc2, exp);
 #endif
+        global.speculativeGag = oldspecgag;
         sc2->pop();
         if (exp->op == TOKtype)
         {
@@ -7256,7 +7305,11 @@ Type *TypeEnum::syntaxCopy()
 Type *TypeEnum::semantic(Loc loc, Scope *sc)
 {
     //printf("TypeEnum::semantic() %s\n", toChars());
-    //sym->semantic(sc);
+    if (!sym->isdone)
+    {
+        assert(sym->scope);
+        sym->semantic(sym->scope);
+    }
     return merge();
 }
 
@@ -7350,14 +7403,24 @@ Expression *TypeEnum::getProperty(Loc loc, Identifier *ident, int flag)
 
     if (ident == Id::max)
     {
-        if (!sym->maxval)
+        if (!sym->isdone)
             goto Lfwd;
+        if (!sym->maxval)
+        {
+            error(loc, "enum %s has no .max property because the base type %s is not an integral type", toChars(), sym->memtype->toChars());
+            return new ErrorExp;
+        }
         e = sym->maxval;
     }
     else if (ident == Id::min)
     {
-        if (!sym->minval)
+        if (!sym->isdone)
             goto Lfwd;
+        if (!sym->minval)
+        {
+            error(loc, "enum %s has no .min property because the base type %s is not an integral type", toChars(), sym->memtype->toChars());
+            return new ErrorExp;
+        }
         e = sym->minval;
     }
     else if (ident == Id::init)
@@ -7756,7 +7819,13 @@ Expression *TypeTypedef::defaultInitLiteral(Loc loc)
     if (sym->init)
     {
         //sym->init->toExpression()->print();
-        return sym->init->toExpression();
+        Expression *e = sym->init->toExpression();
+        if (!e)
+        {
+            error(loc, "void initializer has no value");
+            e = new ErrorExp();
+        }
+        return e;
     }
     Type *bt = sym->basetype;
     Expression *e = bt->defaultInitLiteral(loc);
@@ -7923,10 +7992,10 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
             exps->push(new DotVarExp(ev->loc, ev, v));
         }
         e = new TupleExp(e->loc, e0, exps);
-        sc = sc->push();
-        sc->noaccesscheck = 1;
-        e = e->semantic(sc);
-        sc->pop();
+        Scope *sc2 = sc->push();
+        sc2->flags = sc->flags | SCOPEnoaccesscheck;
+        e = e->semantic(sc2);
+        sc2->pop();
         return e;
     }
 
@@ -8463,17 +8532,18 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
             ev = new VarExp(e->loc, vd);
         }
         for (size_t i = 0; i < sym->fields.dim; i++)
-        {   VarDeclaration *v = sym->fields[i];
+        {
+            VarDeclaration *v = sym->fields[i];
             // Don't include hidden 'this' pointer
             if (v->isThisDeclaration())
                 continue;
             exps->push(new DotVarExp(ev->loc, ev, v));
         }
         e = new TupleExp(e->loc, e0, exps);
-        sc = sc->push();
-        sc->noaccesscheck = 1;
-        e = e->semantic(sc);
-        sc->pop();
+        Scope *sc2 = sc->push();
+        sc2->flags = sc->flags | SCOPEnoaccesscheck;
+        e = e->semantic(sc2);
+        sc2->pop();
         return e;
     }
 
@@ -9180,16 +9250,16 @@ void TypeSlice::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol 
             ScopeDsymbol *sym = new ArrayScopeSymbol(sc, td);
             sym->parent = sc->scopesym;
             sc = sc->push(sym);
-
-            lwr = lwr->ctfeSemantic(sc);
-            lwr = lwr->ctfeInterpret();
-            uinteger_t i1 = lwr->toUInteger();
-
-            upr = upr->ctfeSemantic(sc);
-            upr = upr->ctfeInterpret();
-            uinteger_t i2 = upr->toUInteger();
-
+            sc = sc->startCTFE();
+            lwr = lwr->semantic(sc);
+            upr = upr->semantic(sc);
+            sc = sc->endCTFE();
             sc = sc->pop();
+
+            lwr = lwr->ctfeInterpret();
+            upr = upr->ctfeInterpret();
+            uinteger_t i1 = lwr->toUInteger();
+            uinteger_t i2 = upr->toUInteger();
 
             if (!(i1 <= i2 && i2 <= td->objects->dim))
             {   error(loc, "slice [%llu..%llu] is out of range of [0..%u]", i1, i2, td->objects->dim);

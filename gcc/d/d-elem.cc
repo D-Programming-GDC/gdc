@@ -1174,7 +1174,7 @@ IndexExp::toElem (IRState *irs)
 
       index = aoe.finish (build_libcall (libcall, 4, args, type->pointerTo()->toCtype()));
 
-      if (array_bounds_check())
+      if (array_bounds_check() && !skipboundscheck)
 	{
 	  index = make_temp (index);
 	  index = build3 (COND_EXPR, TREE_TYPE (index), d_truthvalue_conversion (index),
@@ -2378,24 +2378,22 @@ ArrayLiteralExp::toElem (IRState *irs)
   Type *tb = type->toBasetype();
   gcc_assert (tb->ty == Tarray || tb->ty == Tsarray || tb->ty == Tpointer);
 
+  // Convert void[n] to ubyte[n]
   if (tb->ty == Tsarray && tb->nextOf()->toBasetype()->ty == Tvoid)
-    {
-      // Convert void[n] to ubyte[n]
-      tb = new TypeSArray(Type::tuns8, ((TypeSArray *)tb)->dim);
-      tb = tb->semantic(loc, NULL);
-    }
+    tb = TypeSArray::makeType(loc, Type::tuns8, ((TypeSArray *)tb)->dim->toUInteger());
 
   Type *etype = tb->nextOf();
-  tree sa_type = d_array_type (etype, elements->dim);
+  tree tsa = d_array_type (etype, elements->dim);
   tree result = NULL_TREE;
   bool constant_p = tb->isImmutable();
 
+  // Handle empty array literals.
   if (elements->dim == 0)
     {
       if (tb->ty == Tarray)
 	return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
       else
-	return build_constructor (sa_type, NULL);
+	return build_constructor (tsa, NULL);
     }
 
   // Build an expression that assigns the expressions in ELEMENTS to a constructor.
@@ -2411,7 +2409,7 @@ ArrayLiteralExp::toElem (IRState *irs)
 	constant_p = false;
     }
 
-  tree ctor = build_constructor (sa_type, elms);
+  tree ctor = build_constructor (tsa, elms);
   tree args[2];
 
   // Nothing else to do for static arrays.
@@ -2526,61 +2524,59 @@ StructLiteralExp::toElem (IRState *irs)
   if (sinit && sinit->Stree)
     return sinit->Stree;
 
-  if (elements)
+  // CTFE may fill the hidden pointer by NullExp.
+  size_t dim = elements ? elements->dim : 0;
+  gcc_assert (dim <= sd->fields.dim);
+
+  for (size_t i = 0; i < dim; i++)
     {
-      size_t dim = elements->dim;
-      gcc_assert (dim <= sd->fields.dim - sd->isNested());
+      if (!(*elements)[i])
+	continue;
 
-      for (size_t i = 0; i < dim; i++)
+      Expression *exp = (*elements)[i];
+      Type *exp_type = exp->type->toBasetype();
+      tree exp_tree = NULL_TREE;
+
+      VarDeclaration *fld = sd->fields[i];
+      Type *fld_type = fld->type->toBasetype();
+
+      if (fld_type->ty == Tsarray)
 	{
-	  if (!(*elements)[i])
-	    continue;
-
-	  Expression *exp = (*elements)[i];
-	  Type *exp_type = exp->type->toBasetype();
-	  tree exp_tree = NULL_TREE;
-
-	  VarDeclaration *fld = sd->fields[i];
-	  Type *fld_type = fld->type->toBasetype();
-
-	  if (fld_type->ty == Tsarray)
+	  if (d_types_compatible (exp_type, fld_type))
 	    {
-	      if (d_types_compatible (exp_type, fld_type))
-		{
-		  // %% This would call _d_newarrayT ... use memcpy?
-		  exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
-		}
-	      else
-		{
-		  // %% Could use memset if is zero init...
-		  exp_tree = build_local_temp (fld_type->toCtype());
-		  Type *etype = fld_type;
-
-		  while (etype->ty == Tsarray)
-		    etype = etype->nextOf();
-
-		  gcc_assert (fld_type->size() % etype->size() == 0);
-		  tree size = fold_build2 (TRUNC_DIV_EXPR, size_type_node,
-					   size_int (fld_type->size()), size_int (etype->size()));
-
-		  tree ptr_tree = build_nop (etype->pointerTo()->toCtype(),
-					     build_address (exp_tree));
-		  tree set_exp = irs->doArraySet (ptr_tree, exp->toElem (irs), size);
-		  exp_tree = compound_expr (set_exp, exp_tree);
-		}
+	      // %% This would call _d_newarrayT ... use memcpy?
+	      exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
 	    }
 	  else
-	    exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
+	    {
+	      // %% Could use memset if is zero init...
+	      exp_tree = build_local_temp (fld_type->toCtype());
+	      Type *etype = fld_type;
 
-	  CONSTRUCTOR_APPEND_ELT (ce, fld->toSymbol()->Stree, exp_tree);
+	      while (etype->ty == Tsarray)
+		etype = etype->nextOf();
 
-	  // Unions only have one field that gets assigned.
-	  if (sd->isUnionDeclaration())
-	    break;
+	      gcc_assert (fld_type->size() % etype->size() == 0);
+	      tree size = fold_build2 (TRUNC_DIV_EXPR, size_type_node,
+				       size_int (fld_type->size()), size_int (etype->size()));
+
+	      tree ptr_tree = build_nop (etype->pointerTo()->toCtype(),
+					 build_address (exp_tree));
+	      tree set_exp = irs->doArraySet (ptr_tree, exp->toElem (irs), size);
+	      exp_tree = compound_expr (set_exp, exp_tree);
+	    }
 	}
+      else
+	exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
+
+      CONSTRUCTOR_APPEND_ELT (ce, fld->toSymbol()->Stree, exp_tree);
+
+      // Unions only have one field that gets assigned.
+      if (sd->isUnionDeclaration())
+	break;
     }
 
-  if (sd->isNested())
+  if (sd->isNested() && dim != sd->fields.dim)
     {
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;

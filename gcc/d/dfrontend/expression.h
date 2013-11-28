@@ -19,7 +19,7 @@
 
 class Type;
 class TypeVector;
-class Scope;
+struct Scope;
 class TupleDeclaration;
 class VarDeclaration;
 class FuncDeclaration;
@@ -72,6 +72,7 @@ void initPrecedence();
 typedef int (*apply_fp_t)(Expression *, void *);
 
 Expression *resolveProperties(Scope *sc, Expression *e);
+Expression *resolvePropertiesOnly(Scope *sc, Expression *e1);
 void accessCheck(Loc loc, Scope *sc, Expression *e, Declaration *d);
 Expression *build_overload(Loc loc, Scope *sc, Expression *ethis, Expression *earg, Dsymbol *d);
 Dsymbol *search_function(ScopeDsymbol *ad, Identifier *funcid);
@@ -91,8 +92,8 @@ Expression *resolveAliasThis(Scope *sc, Expression *e);
 Expression *callCpCtor(Loc loc, Scope *sc, Expression *e, int noscope);
 bool checkPostblit(Loc loc, Type *t);
 #endif
-ArrayExp *resolveOpDollar(Scope *sc, ArrayExp *ae);
-SliceExp *resolveOpDollar(Scope *sc, SliceExp *se);
+Expression *resolveOpDollar(Scope *sc, ArrayExp *ae);
+Expression *resolveOpDollar(Scope *sc, SliceExp *se);
 Expressions *arrayExpressionSemantic(Expressions *exps, Scope *sc);
 
 /* Run CTFE on the expression, but allow the expression to be a TypeExp
@@ -112,8 +113,6 @@ enum CtfeGoal
 
 #define WANTflags   1
 #define WANTvalue   2
-// A compile-time result is required. Give an error if not possible
-#define WANTinterpret 4
 // Same as WANTvalue, but also expand variables as far as possible
 #define WANTexpand  8
 
@@ -133,7 +132,6 @@ public:
     virtual int apply(apply_fp_t fp, void *param);
     virtual Expression *semantic(Scope *sc);
     Expression *trySemantic(Scope *sc);
-    Expression *ctfeSemantic(Scope *sc);
 
     int dyncast() { return DYNCAST_EXPRESSION; }        // kludge for template.isExpression()
 
@@ -406,12 +404,12 @@ public:
     size_t len;         // number of chars, wchars, or dchars
     unsigned char sz;   // 1: char, 2: wchar, 4: dchar
     unsigned char committed;    // !=0 if type is committed
-    unsigned char postfix;      // 'c', 'w', 'd'
+    utf8_t postfix;      // 'c', 'w', 'd'
     bool ownedByCtfe;   // true = created in CTFE
 
     StringExp(Loc loc, char *s);
     StringExp(Loc loc, void *s, size_t len);
-    StringExp(Loc loc, void *s, size_t len, unsigned char postfix);
+    StringExp(Loc loc, void *s, size_t len, utf8_t postfix);
     //Expression *syntaxCopy();
     bool equals(RootObject *o);
     Expression *semantic(Scope *sc);
@@ -872,6 +870,9 @@ public:
     virtual Expression *op_overload(Scope *sc);
 };
 
+typedef Expression *(*fp_t)(Type *, Expression *, Expression *);
+typedef int (*fp2_t)(Loc loc, TOK, Expression *, Expression *);
+
 class BinExp : public Expression
 {
 public:
@@ -896,12 +897,9 @@ public:
     void dump(int indent);
 
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    Expression *interpretCommon(InterState *istate, CtfeGoal goal,
-        Expression *(*fp)(Type *, Expression *, Expression *));
-    Expression *interpretCompareCommon(InterState *istate, CtfeGoal goal,
-        int (*fp)(Loc, TOK, Expression *, Expression *));
-    Expression *interpretAssignCommon(InterState *istate, CtfeGoal goal,
-        Expression *(*fp)(Type *, Expression *, Expression *), int post = 0);
+    Expression *interpretCommon(InterState *istate, CtfeGoal goal, fp_t fp);
+    Expression *interpretCompareCommon(InterState *istate, CtfeGoal goal, fp2_t fp);
+    Expression *interpretAssignCommon(InterState *istate, CtfeGoal goal, fp_t fp, int post = 0);
     Expression *interpretFourPointerRelation(InterState *istate, CtfeGoal goal);
     virtual Expression *arrayOp(Scope *sc);
 
@@ -911,6 +909,9 @@ public:
     Expression *op_overload(Scope *sc);
     Expression *compare_overload(Scope *sc, Identifier *id);
     Expression *reorderSettingAAElem(Scope *sc);
+
+    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     elem *toElemBin(IRState *irs, int op);
 };
@@ -929,6 +930,9 @@ public:
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
 
     Expression *op_overload(Scope *sc);
+
+    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
+    Expression *buildArrayLoop(Parameters *fparams);
 
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *ex);
@@ -1019,7 +1023,7 @@ public:
 
     DotTemplateInstanceExp(Loc loc, Expression *e, Identifier *name, Objects *tiargs);
     Expression *syntaxCopy();
-    TemplateDeclaration *getTempdecl(Scope *sc);
+    bool findTempDecl(Scope *sc);
     Expression *semantic(Scope *sc);
     Expression *semanticY(Scope *sc, int flag);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -1338,6 +1342,7 @@ class IndexExp : public BinExp
 public:
     VarDeclaration *lengthVar;
     int modifiable;
+    bool skipboundscheck;
 
     IndexExp(Loc loc, Expression *e1, Expression *e2);
     Expression *syntaxCopy();
@@ -1404,8 +1409,6 @@ class op##AssignExp : public BinAssignExp                       \
 public:                                                         \
     op##AssignExp(Loc loc, Expression *e1, Expression *e2);     \
     S(Expression *semantic(Scope *sc);)                          \
-    X(void buildArrayIdent(OutBuffer *buf, Expressions *arguments);) \
-    X(Expression *buildArrayLoop(Parameters *fparams);)         \
                                                                 \
     Identifier *opId();    /* For operator overloading */       \
                                                                 \
@@ -1454,8 +1457,6 @@ public:
     AddExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1472,8 +1473,6 @@ public:
     MinExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1504,8 +1503,6 @@ public:
     MulExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1522,8 +1519,6 @@ public:
     DivExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1539,8 +1534,6 @@ public:
     ModExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1557,8 +1550,6 @@ public:
     PowExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
 
     // For operator overloading
     Identifier *opId();
@@ -1619,8 +1610,6 @@ public:
     AndExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     IntRange getIntRange();
 
     // For operator overloading
@@ -1637,8 +1626,6 @@ public:
     OrExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     MATCH implicitConvTo(Type *t);
     IntRange getIntRange();
 
@@ -1656,8 +1643,6 @@ public:
     XorExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
-    Expression *buildArrayLoop(Parameters *fparams);
     MATCH implicitConvTo(Type *t);
     IntRange getIntRange();
 

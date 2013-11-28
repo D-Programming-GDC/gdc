@@ -648,10 +648,10 @@ enum RegexOption: uint {
     nonunicode = 0x8,
     multiline = 0x10,
     singleline = 0x20
-};
+}
 alias TypeTuple!('g', 'i', 'x', 'U', 'm', 's') RegexOptionNames;//do not reorder this list
 static assert( RegexOption.max < 0x80);
-enum RegexInfo : uint { oneShot = 0x80 };
+enum RegexInfo : uint { oneShot = 0x80 }
 
 private enum NEL = '\u0085', LS = '\u2028', PS = '\u2029';
 
@@ -681,9 +681,9 @@ dchar parseUniHex(Char)(ref Char[] str, size_t maxDigit)
 
 @system unittest //BUG canFind is system
 {
-    string[] non_hex = [ "000j", "000z", "FffG", "0Z"]; 
+    string[] non_hex = [ "000j", "000z", "FffG", "0Z"];
     string[] hex = [ "01", "ff", "00af", "10FFFF" ];
-    int value[] = [ 1, 0xFF, 0xAF, 0x10FFFF ];
+    int[] value = [ 1, 0xFF, 0xAF, 0x10FFFF ];
     foreach(v; non_hex)
         assert(collectException(parseUniHex(v, v.length)).msg
           .canFind("invalid escape sequence"));
@@ -1004,9 +1004,9 @@ struct Parser(R, bool CTFE = false)
                 }
                 default:
                     if(__ctfe)
-                       assert(text("unknown regex flag '",ch,"'"));
+                        assert(text("unknown regex flag '",ch,"'"));
                     else
-                        new RegexException(text("unknown regex flag '",ch,"'"));
+                        throw new RegexException(text("unknown regex flag '",ch,"'"));
             }
         }
     }
@@ -1301,7 +1301,7 @@ struct Parser(R, bool CTFE = false)
             enforce(ir.length + len < maxCompiledLength,  "maximum compiled pattern length is exceeded");
             //workaround @@@BUG@@@ 9634
             if(__ctfe)
-            { 
+            {
                 foreach(v; ir[offset .. offset+len])
                     ir ~= v;
             }
@@ -1400,7 +1400,7 @@ struct Parser(R, bool CTFE = false)
     //CodepointSet operations relatively in order of priority
     enum Operator:uint {
         Open = 0, Negate,  Difference, SymDifference, Intersection, Union, None
-    };
+    }
 
     //parse unit of CodepointSet spec, most notably escape sequences and char ranges
     //also fetches next set operation
@@ -1987,6 +1987,70 @@ public struct Regex(Char)
     +/
     @property bool empty() const nothrow {  return ir is null; }
 
+    /++
+        A range of all the named captures in the regex.
+        Example:
+        ----
+        import std.range;
+        import std.algorithm;
+
+        auto re = regex(`(?P<name>\w+) = (?P<var>\d+)`);
+        auto nc = re.namedCaptures;
+        static assert(isRandomAccessRange!(typeof(nc)));
+        assert(!nc.empty);
+        assert(nc.length == 2);
+        assert(nc.equal(["name", "var"]));
+        assert(nc[0] == "name");
+        assert(nc[1..$].equal(["var"]));
+        ----
+     +/
+    @property auto namedCaptures()
+    {
+        static struct NamedGroupRange
+        {
+        private:
+            NamedGroup[] groups;
+            size_t start;
+            size_t end;
+        public:
+            this(NamedGroup[] g, size_t s, size_t e)
+            {
+                assert(s <= e);
+                assert(e <= g.length);
+                groups = g;
+                start = s;
+                end = e;
+            }
+
+            @property string front() { return groups[start].name; }
+            @property string back() { return groups[end-1].name; }
+            @property bool empty() { return start >= end; }
+            @property size_t length() { return end - start; }
+            alias length opDollar;
+            @property NamedGroupRange save()
+            {
+                return NamedGroupRange(groups, start, end);
+            }
+            void popFront() { assert(!empty); start++; }
+            void popBack() { assert(!empty); end--; }
+            string opIndex()(size_t i)
+            {
+                assert(start + i < end,
+                       "Requested named group is out of range.");
+                return groups[start+i].name;
+            }
+            NamedGroupRange opSlice(size_t low, size_t high) {
+                assert(low <= high);
+                assert(start + high <= end);
+                return NamedGroupRange(groups, start + low, start + high);
+            }
+            NamedGroupRange opSlice() { return this.save; }
+        }
+        return NamedGroupRange(dict, 0, dict.length);
+    }
+
+    ///
+
 private:
     NamedGroup[] dict;  //maps name -> user group number
     uint ngroup;        //number of internal groups
@@ -2152,6 +2216,38 @@ private:
         }
         debug validate();
     }
+}
+
+unittest
+{
+    auto re = regex(`(?P<name>\w+) = (?P<var>\d+)`);
+    auto nc = re.namedCaptures;
+    static assert(isRandomAccessRange!(typeof(nc)));
+    assert(!nc.empty);
+    assert(nc.length == 2);
+    assert(nc.equal(["name", "var"]));
+    assert(nc[0] == "name");
+    assert(nc[1..$].equal(["var"]));
+
+    re = regex(`(\w+) (?P<named>\w+) (\w+)`);
+    nc = re.namedCaptures;
+    assert(nc.length == 1);
+    assert(nc[0] == "named");
+    assert(nc.front == "named");
+    assert(nc.back == "named");
+
+    re = regex(`(\w+) (\w+)`);
+    nc = re.namedCaptures;
+    assert(nc.empty);
+
+    re = regex(`(?P<year>\d{4})/(?P<month>\d{2})/(?P<day>\d{2})/`);
+    nc = re.namedCaptures;
+    auto cp = nc.save;
+    assert(nc.equal(cp));
+    nc.popFront();
+    assert(nc.equal(cp[1..$]));
+    nc.popBack();
+    assert(nc.equal(cp[1..$-1]));
 }
 
 //
@@ -2543,7 +2639,7 @@ public:
                     fChar = re.ir[i].data;
                     static if(charSize != 3)
                     {
-                        Char buf[dchar.sizeof/Char.sizeof];
+                        Char[dchar.sizeof/Char.sizeof] buf;
                         encode(buf, fChar);
                         fChar = buf[0];
                     }
@@ -5438,7 +5534,7 @@ enum OneShot { Fwd, Bwd };
                 static if(direction == OneShot.Fwd)
                     writefln("-- Threaded matching (forward) threads at  %s",  s[index..s.lastIndex]);
                 else
-                    writefln("-- Threaded matching (backward) threads at  %s", retro(s[index..s.lastIndex])); 
+                    writefln("-- Threaded matching (backward) threads at  %s", retro(s[index..s.lastIndex]));
             }
             if(startPc!=RestartPc)
             {
@@ -5449,7 +5545,7 @@ enum OneShot { Fwd, Bwd };
             for(;;)
             {
                 debug(fred_matching) writeln("\n-- Started iteration of main cycle");
-                genCounter++;                
+                genCounter++;
                 debug(fred_matching)
                 {
                     foreach(t; clist[])
@@ -7460,16 +7556,16 @@ else
         enforce(m);
     }
 
-    // bugzilla 8725 
+    // bugzilla 8725
     unittest
-    {        
+    {
       static italic = regex( r"\*
                     (?!\s+)
                     (.*?)
                     (?!\s+)
                     \*", "gx" );
       string input = "this * is* interesting, *very* interesting";
-      assert(replace(input, italic, "<i>$1</i>") == 
+      assert(replace(input, italic, "<i>$1</i>") ==
           "this * is* interesting, <i>very</i> interesting");
     }
 
@@ -7486,10 +7582,10 @@ else
     unittest
     {
         auto rx_1 =  regex(r"^(\w)*(\d)");
-        auto m = match("1234", rx_1);  
+        auto m = match("1234", rx_1);
         assert(equal(m.front, ["1234", "3", "4"]));
         auto rx_2 = regex(r"^([0-9])*(\d)");
-        auto m2 = match("1234", rx_2);      
+        auto m2 = match("1234", rx_2);
         assert(equal(m2.front, ["1234", "3", "4"]));
     }
 
@@ -7506,7 +7602,7 @@ else
     }
 
     // bugzilla 9634
-    unittest 
+    unittest
     {
         auto re = ctRegex!"(?:a+)";
         assert(match("aaaa", re).hit == "aaaa");

@@ -88,9 +88,9 @@ Type::getInternalTypeInfo (Scope *sc)
 Expression *
 Type::getTypeInfo (Scope *sc)
 {
-  if (!Type::typeinfo)
+  if (!Type::dtypeinfo)
     {
-      error (Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt, compile with -v switch");
+      error (Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt");
       fatal();
     }
 

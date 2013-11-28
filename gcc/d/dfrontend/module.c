@@ -262,7 +262,15 @@ bool Module::read(Loc loc)
         }
         else
         {
-            error(loc, "is in file '%s' which cannot be read", srcfile->toChars());
+            // if module is not named 'package' but we're trying to read 'package.d', we're looking for a package module
+            bool isPackageMod = (strcmp(toChars(), "package") != 0) &&
+                                (strcmp(srcfile->name->name(), "package.d") == 0);
+
+            if (isPackageMod)
+                ::error(loc, "importing package '%s' requires a 'package.d' file which cannot be found in '%s'",
+                    toChars(), srcfile->toChars());
+            else
+                error(loc, "is in file '%s' which cannot be read", srcfile->toChars());
         }
 
         if (!global.gag)
@@ -318,7 +326,7 @@ void Module::parse()
     char *srcname = srcfile->name->toChars();
     //printf("Module::parse(srcname = '%s')\n", srcname);
 
-    unsigned char *buf = srcfile->buffer;
+    utf8_t *buf = srcfile->buffer;
     size_t buflen = srcfile->len;
 
     if (buflen >= 2)
@@ -368,7 +376,7 @@ void Module::parse()
                 }
                 dbuf.writeByte(0);              // add 0 as sentinel for scanner
                 buflen = dbuf.offset - 1;       // don't include sentinel in count
-                buf = (unsigned char *) dbuf.extractData();
+                buf = (utf8_t *) dbuf.extractData();
             }
             else
             {   // UTF-16LE (X86)
@@ -421,7 +429,7 @@ void Module::parse()
                 }
                 dbuf.writeByte(0);              // add 0 as sentinel for scanner
                 buflen = dbuf.offset - 1;       // don't include sentinel in count
-                buf = (unsigned char *) dbuf.extractData();
+                buf = (utf8_t *) dbuf.extractData();
             }
         }
         else if (buf[0] == 0xFE && buf[1] == 0xFF)

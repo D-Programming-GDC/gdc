@@ -331,6 +331,85 @@ static assert(!is(typeof(compiles!(rshr10252(80)))));
 static assert(is(typeof(compiles!(ushr10252(2)))));
 static assert(!is(typeof(compiles!(ushr10252(60)))));
 
+/**************************************************
+  1982 CTFE null problems
+**************************************************/
+
+enum a1982 = [1, 2, 3];
+static assert (a1982 !is null);
+
+string foo1982() { return null; }
+static assert (foo1982() is null);
+static assert (!foo1982().length);
+
+static assert (null is null);
+
+/**************************************************
+  7988 CTFE return values should be allowed in compile-time expressions
+**************************************************/
+
+class X7988 { int y; this() { y = 2; }}
+static assert( (new X7988).y == 2);
+
+/**************************************************
+  8253 ICE: calling of member function of non-CTFE class variable
+**************************************************/
+
+class Bug8253 {
+    bool j(){
+        return true;
+    }
+}
+Bug8253 m8253;
+static assert(!is(typeof(compiles!(m8253.j()))));
+
+/**************************************************
+  8285 Issue with slice returned from CTFE function
+**************************************************/
+
+string foo8285() {
+     string s = "ab";
+     return s[0 .. $];
+}
+
+template T8285b(string s) { }
+
+template T8285a() {
+     enum s = foo8285();
+     alias T8285b!(s) t2;
+}
+
+int bar8285() {
+     alias T8285a!() t1;
+     return 0;
+}
+
+int baz8285(int x) {
+     return 0;
+}
+
+static assert(baz8285(bar8285()) == 0);
+
+// test case 2
+
+string xbar8285() {
+    string s = "ab";
+    return s[0..$];
+}
+
+template xT8285a() {
+    enum xT8285a = xbar8285()[0..$];
+}
+
+string xbaz8285() {
+    return xT8285a!();
+}
+
+string xfoo8285(string s) {
+    return s;
+}
+
+static assert(xfoo8285(xbaz8285()) == "ab");
 
 /**************************************************
   'this' parameter bug revealed during refactoring
@@ -1541,16 +1620,28 @@ static assert(bug6001h());
 
 /**************************************************
    10243 wrong code *&arr as ref parameter
+   10551 wrong code (&arr)[0] as ref parameter
 **************************************************/
 
 void bug10243(ref int n)
 { n = 3; }
+
+void bug10551(int *p)
+{
+   bug10243(p[0]);
+}
 
 bool test10243()
 {
     int[1] arr;
     bug10243(*arr.ptr);
     assert(arr[0] == 3);
+    int [1] arr2;
+    bug10551(arr2.ptr);
+    assert(arr2[0] == 3);
+    int v;
+    bug10551(&v);
+    assert(v == 3);
     return true;
 }
 
@@ -3529,6 +3620,21 @@ int bug10211()
 static assert(bug10211());
 
 /**************************************************
+    10568 CTFE rejects function pointer safety casts
+**************************************************/
+
+@safe void safetyDance() {}
+
+int isItSafeToDance()
+{
+    void function() @trusted yourfriends = &safetyDance;
+    void function() @safe nofriendsOfMine = yourfriends;
+    return 1;
+}
+
+static assert(isItSafeToDance());
+
+/**************************************************
     9170 Allow reinterpret casts float<->int
 **************************************************/
 int f9170(float x) {
@@ -4002,6 +4108,24 @@ int bug6886()
 
 static assert(bug6886());
 
+/**************************************************
+    10198 Multidimensional struct block initializer
+**************************************************/
+
+struct Block10198 {
+    int val[3][4];
+}
+
+int bug10198()
+{
+   Block10198 pp = Block10198(67);
+   assert(pp.val[2][3] == 67);
+   assert(pp.val[1][3] == 67);
+  return 1;
+}
+static assert(bug10198());
+
+
 /****************************************************
  * Exception chaining tests from xtest46.d
  ****************************************************/
@@ -4457,6 +4581,15 @@ static assert({
 }());
 
 /**************************************************
+    10499 static template struct declaration
+**************************************************/
+
+static assert({
+    static struct Result() {}
+    return true;
+}());
+
+/**************************************************
     6522 opAssign + foreach ref
 **************************************************/
 
@@ -4851,6 +4984,71 @@ void ice9445(void delegate() expr, void function() f2)
     static assert(!is(typeof(c9445!(f2()))));
     static assert(!is(typeof(c9445!(expr()))));
 }
+
+/**************************************************
+    10452 delegate ==
+**************************************************/
+
+struct S10452 {
+    bool func() { return true; }
+}
+
+struct Outer10452 {
+    S10452 inner;
+}
+
+class C10452 {
+    bool func() { return true; }
+}
+
+bool delegate() ref10452(ref S10452 s)
+{
+    return &s.func;
+}
+
+bool test10452()
+{
+    bool delegate() bar = () { return true; };
+
+    assert(bar !is null);
+    assert(bar is bar);
+
+    S10452 bag;
+    S10452[6] bad;
+    Outer10452 outer;
+    C10452 tag = new C10452;
+
+    auto rat = &outer.inner.func;
+    assert(rat == rat);
+    auto tat = &tag.func;
+    assert(tat == tat);
+
+    auto bat = &outer.inner.func;
+    auto mat = &bad[2].func;
+    assert(mat is mat);
+    assert(rat == bat);
+
+    auto zat = &bag.func;
+    auto cat = &bag.func;
+    assert(zat == zat);
+    assert(zat == cat);
+
+    auto drat = ref10452(bag);
+    assert(cat == drat);
+    assert(drat == drat);
+    drat = ref10452(bad[2]);
+    assert( drat == mat);
+    assert(tat != rat);
+    assert(zat != rat);
+    assert(rat != cat);
+    assert(zat != bar);
+    assert(tat != cat);
+    cat = bar;
+    assert(cat == bar);
+    return true;
+}
+static assert(test10452());
+
 
 /**************************************************
     7162 and 4711
@@ -5285,6 +5483,18 @@ bool bug7987()
 
 static assert(bug7987());
 
+/**************************************************
+    10579 typeinfo.func() must not segfault
+**************************************************/
+
+static assert(!is(typeof(compiles!(typeid(int).toString.length))));
+
+class Bug10579 {
+    int foo() { return 1; }
+}
+Bug10579 uninitialized10579;
+
+static assert(!is(typeof(compiles!(uninitialized10579.foo()))));
 
 /******************************************************/
 
@@ -5345,8 +5555,6 @@ label:
 }
 static assert(bug8865());
 
-
-
 /******************************************************/
 
 
@@ -5400,7 +5608,7 @@ static assert(!__traits(compiles, {static Test76 t76 = new Test76(0); return t76
 
 /***** Bug 5678 *********************************/
 
-struct Bug5678 
+struct Bug5678
 {
     this(int) {}
 }

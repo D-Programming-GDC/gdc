@@ -308,6 +308,40 @@ void test7591()
 
 /***************************************/
 
+void foo8966(cfloat x)
+{
+    assert(x.re == 3.0f);
+}
+
+__gshared cfloat[] a8966;
+
+void test8966()
+{
+    a8966 = new cfloat[2];
+    a8966[0] = 3.0f + 1.0fi;
+    foo8966(a8966[0]);
+}
+
+/***************************************/
+
+void formatTest2(cfloat s, double re, double im)
+{
+    assert(s.re == re);
+    assert(s.im == im);
+}
+
+cfloat getcf()
+{
+    return 2 + 1i;
+}
+
+void test10677()
+{
+    formatTest2( getcf(), 2, 1 );
+}
+
+/***************************************/
+
 int main(char[][] args)
 {
 
@@ -329,6 +363,8 @@ int main(char[][] args)
     test7594();
     test7593();
     test7591();
+    test8966();
+    test10677();
 
     printf("Success!\n");
     return 0;

@@ -18,7 +18,7 @@
 
 class Identifier;
 class Expression;
-class Scope;
+struct Scope;
 class Type;
 #ifdef IN_GCC
 typedef union tree_node dt_t;

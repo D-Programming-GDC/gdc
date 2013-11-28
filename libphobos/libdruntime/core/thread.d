@@ -125,40 +125,6 @@ version( Windows )
         extern (Windows) alias uint function(void*) btex_fptr;
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
 
-        version( DigitalMars )
-        {
-            version (Win32)
-            {
-                // NOTE: The memory between the addresses of _tlsstart and _tlsend
-                //       is the storage for thread-local data in D 2.0.  Both of
-                //       these are defined in dm\src\win32\tlsseg.asm by DMC.
-                extern (C)
-                {
-                    extern int _tlsstart;
-                    extern int _tlsend;
-                }
-            }
-            version (Win64)
-            {
-                // NOTE: The memory between the addresses of _tls_start and _tls_end
-                //       is the storage for thread-local data in D 2.0.  Both of
-                //       these are defined in LIBCMT:tlssub.obj
-                extern (C)
-                {
-                    extern int _tls_start;
-                    extern int _tls_end;
-                }
-                alias _tls_start _tlsstart;
-                alias _tls_end   _tlsend;
-            }
-        }
-        else
-        {
-            __gshared int   _tlsstart;
-            alias _tlsstart _tlsend;
-        }
-
-
         //
         // Entry point for Windows threads
         //
@@ -170,10 +136,7 @@ version( Windows )
             assert( obj.m_curr is &obj.m_main );
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
-
-            void* pstart = cast(void*) &_tlsstart;
-            void* pend   = cast(void*) &_tlsend;
-            obj.m_tls = pstart[0 .. pend - pstart];
+            obj.m_tlsgcdata = rt.tlsgc.init();
 
             Thread.setThis( obj );
             //Thread.add( obj );
@@ -182,7 +145,6 @@ version( Windows )
                 Thread.remove( obj );
             }
             Thread.add( &obj.m_main );
-            obj.m_tlsgcdata = rt.tlsgc.init();
 
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
@@ -266,53 +228,13 @@ else version( Posix )
         version( GNU )
         {
             import gcc.builtins;
-        }
 
-        version( DigitalMars )
-        {
-            version( linux )
-            {
-                extern (C)
-                {
-                    extern int _tlsstart;
-                    extern int _tlsend;
-                }
-            }
-            else version( OSX )
-            {
-                extern (C)
-                {
-                    __gshared void[][2] _tls_data_array;
-                }
-            }
-            else version( FreeBSD )
-            {
-                extern (C)
-                {
-                    extern void* _tlsstart;
-                    extern void* _tlsend;
-                }
-            }
-            else
-            {
-                __gshared int   _tlsstart;
-                alias _tlsstart _tlsend;
-            }
-        }
-        else version( GNU )
-        {
             extern (C)
             {
                 extern int _tlsstart;
                 extern int _tlsend;
             }
         }
-        else
-        {
-            __gshared int   _tlsstart;
-            alias _tlsstart _tlsend;
-        }
-
 
         //
         // Entry point for POSIX threads
@@ -325,22 +247,8 @@ else version( Posix )
             assert( obj.m_curr is &obj.m_main );
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
-
-            version (OSX)
-            {
-                // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
-                //       data output by the compiler is bracketed by _tls_data_array[2],
-                //       so make a copy of it for each thread.
-                const sz0 = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
-                const sz2 = sz0 + _tls_data_array[1].length;
-                auto p = malloc( sz2 );
-                assert( p );
-                obj.m_tls = p[0 .. sz2];
-                memcpy( p, _tls_data_array[0].ptr, _tls_data_array[0].length );
-                memcpy( p + sz0, _tls_data_array[1].ptr, _tls_data_array[1].length );
-                scope (exit) { free( p ); obj.m_tls = null; }
-            }
-            else
+            obj.m_tlsgcdata = rt.tlsgc.init();
+            version (GNU)
             {
                 auto pstart = cast(void*) &_tlsstart;
                 auto pend   = cast(void*) &_tlsend;
@@ -359,7 +267,6 @@ else version( Posix )
                 obj.m_isRunning = false;
             }
             Thread.add( &obj.m_main );
-            obj.m_tlsgcdata = rt.tlsgc.init();
 
             static extern (C) void thread_cleanupHandler( void* arg ) nothrow
             {
@@ -934,10 +841,19 @@ class Thread
     /**
      * The maximum scheduling priority that may be set for a thread.  On
      * systems where multiple scheduling policies are defined, this value
-     * represents the minimum valid priority for the scheduling policy of
+     * represents the maximum valid priority for the scheduling policy of
      * the process.
      */
     __gshared const int PRIORITY_MAX;
+
+
+    /**
+     * The default scheduling priority that is set for a thread.  On
+     * systems where multiple scheduling policies are defined, this value
+     * represents the default priority for the scheduling policy of
+     * the process.
+     */
+    __gshared const int PRIORITY_DEFAULT;
 
 
     /**
@@ -971,6 +887,12 @@ class Thread
      *  val = The new scheduling priority of this thread.
      */
     final @property void priority( int val )
+    in
+    {
+        assert(val >= PRIORITY_MIN);
+        assert(val <= PRIORITY_MAX);
+    }
+    body
     {
         version( Windows )
         {
@@ -979,22 +901,41 @@ class Thread
         }
         else version( Posix )
         {
-            // NOTE: pthread_setschedprio is not implemented on linux, so use
-            //       the more complicated get/set sequence below.
-            //if( pthread_setschedprio( m_addr, val ) )
-            //    throw new ThreadException( "Unable to set thread priority" );
+            static if( __traits( compiles, pthread_setschedprio ) )
+            {
+                if( pthread_setschedprio( m_addr, val ) )
+                    throw new ThreadException( "Unable to set thread priority" );
+            }
+            else
+            {
+                // NOTE: pthread_setschedprio is not implemented on OSX or FreeBSD, so use
+                //       the more complicated get/set sequence below.
+                int         policy;
+                sched_param param;
 
-            int         policy;
-            sched_param param;
-
-            if( pthread_getschedparam( m_addr, &policy, &param ) )
-                throw new ThreadException( "Unable to set thread priority" );
-            param.sched_priority = val;
-            if( pthread_setschedparam( m_addr, policy, &param ) )
-                throw new ThreadException( "Unable to set thread priority" );
+                if( pthread_getschedparam( m_addr, &policy, &param ) )
+                    throw new ThreadException( "Unable to set thread priority" );
+                param.sched_priority = val;
+                if( pthread_setschedparam( m_addr, policy, &param ) )
+                    throw new ThreadException( "Unable to set thread priority" );
+            }
         }
     }
 
+
+    unittest
+    {
+        auto thr = Thread.getThis();
+        immutable prio = thr.priority();
+        scope (exit) thr.priority = prio;
+
+        assert(prio == PRIORITY_DEFAULT);
+        assert(prio >= PRIORITY_MIN && prio <= PRIORITY_MAX);
+        thr.priority = PRIORITY_MIN;
+        assert(thr.priority == PRIORITY_MIN);
+        thr.priority = PRIORITY_MAX;
+        assert(thr.priority == PRIORITY_MAX);
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Actions on Calling Thread
@@ -1074,41 +1015,6 @@ class Thread
 
 
     /**
-     * $(RED Deprecated. It will be removed in December 2012. Please use the
-     *       version which takes a $(D Duration) instead.)
-     *
-     * Suspends the calling thread for at least the supplied period.  This may
-     * result in multiple OS calls if period is greater than the maximum sleep
-     * duration supported by the operating system.
-     *
-     * Params:
-     *  period = The minimum duration the calling thread should be suspended,
-     *           in 100 nanosecond intervals.
-     *
-     * In:
-     *  period must be non-negative.
-     *
-     * Example:
-     * ------------------------------------------------------------------------
-     *
-     * Thread.sleep( 500_000 );    // sleep for 50 milliseconds
-     * Thread.sleep( 50_000_000 ); // sleep for 5 seconds
-     *
-     * ------------------------------------------------------------------------
-     */
-    deprecated("Please use the overload of sleep which takes a Duration.")
-    static void sleep( long period )
-    in
-    {
-        assert( period >= 0 );
-    }
-    body
-    {
-        sleep( dur!"hnsecs"( period ) );
-    }
-
-
-    /**
      * Forces a context switch to occur away from the calling thread.
      */
     static void yield()
@@ -1138,30 +1044,7 @@ class Thread
         // NOTE: This function may not be called until thread_init has
         //       completed.  See thread_suspendAll for more information
         //       on why this might occur.
-        version( Windows )
-        {
-            auto t = cast(Thread) TlsGetValue( sm_this );
-
-            // NOTE: If this thread was attached via thread_attachByAddr then
-            //       this TLS lookup won't initially be set, so when the TLS
-            //       lookup fails, try an exhaustive search.
-            if( t is null )
-            {
-                t = thread_findByAddr( GetCurrentThreadId() );
-                setThis( t );
-            }
-            return t;
-        }
-        else version( Posix )
-        {
-            auto t = cast(Thread) pthread_getspecific( sm_this );
-
-            // NOTE: See the comment near thread_findByAddr() for why the
-            //       secondary thread_findByAddr lookup can't be done on
-            //       Posix.  However, because thread_attachByAddr() is for
-            //       Windows only, the secondary lookup is pointless anyway.
-            return t;
-        }
+        return sm_this;
     }
 
 
@@ -1229,8 +1112,9 @@ class Thread
     {
         version( Windows )
         {
-            PRIORITY_MIN = -15;
-            PRIORITY_MAX =  15;
+            PRIORITY_MIN = THREAD_PRIORITY_IDLE;
+            PRIORITY_DEFAULT = THREAD_PRIORITY_NORMAL;
+            PRIORITY_MAX = THREAD_PRIORITY_TIME_CRITICAL;
         }
         else version( Posix )
         {
@@ -1243,6 +1127,8 @@ class Thread
 
             PRIORITY_MIN = sched_get_priority_min( policy );
             assert( PRIORITY_MIN != -1 );
+
+            PRIORITY_DEFAULT = param.sched_priority;
 
             PRIORITY_MAX = sched_get_priority_max( policy );
             assert( PRIORITY_MAX != -1 );
@@ -1265,23 +1151,7 @@ private:
         m_call = Call.NO;
         m_curr = &m_main;
 
-        version (OSX)
-        {
-            //printf("test2 %p %p\n", _tls_data_array[0].ptr, &_tls_data_array[1][length]);
-            //printf("test2 %p %p\n", &_tls_beg, &_tls_end);
-            // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
-            //       data output by the compiler is bracketed by _tls_data_array2],
-            //       so make a copy of it for each thread.
-            const sz0 = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
-            const sz2 = sz0 + _tls_data_array[1].length;
-            auto p = malloc( sz2 );
-            assert( p );
-            m_tls = p[0 .. sz2];
-            memcpy( p, _tls_data_array[0].ptr, _tls_data_array[0].length );
-            memcpy( p + sz0, _tls_data_array[1].ptr, _tls_data_array[1].length );
-            // The free must happen at program end, if anywhere.
-        }
-        else
+        version (GNU)
         {
             auto pstart = cast(void*) &_tlsstart;
             auto pend   = cast(void*) &_tlsend;
@@ -1340,7 +1210,7 @@ private:
     //
     // Local storage
     //
-    __gshared TLSKey    sm_this;
+    static Thread       sm_this;
 
 
     //
@@ -1389,14 +1259,7 @@ private:
     //
     static void setThis( Thread t )
     {
-        version( Windows )
-        {
-            TlsSetValue( sm_this, cast(void*) t );
-        }
-        else version( Posix )
-        {
-            pthread_setspecific( sm_this, cast(void*) t );
-        }
+        sm_this = t;
     }
 
 
@@ -1533,21 +1396,30 @@ private:
     //
     @property static Mutex slock()
     {
-        __gshared Mutex m;
-        __gshared byte[__traits(classInstanceSize, Mutex)] ms;
+        return cast(Mutex)_locks[0].ptr;
+    }
 
-        if (m is null)
+    @property static Mutex criticalRegionLock()
+    {
+        return cast(Mutex)_locks[1].ptr;
+    }
+
+    __gshared byte[__traits(classInstanceSize, Mutex)][2] _locks;
+
+    static void initLocks()
+    {
+        foreach (ref lock; _locks)
         {
-            // Initialization doesn't need to be synchronized because
-            // creating a thread will lock this mutex.
-            ms[] = Mutex.classinfo.init[];
-            m = cast(Mutex)ms.ptr;
-            m.__ctor();
-
-            extern(C) void destroy() { m.__dtor(); }
-            atexit(&destroy);
+            lock[] = Mutex.classinfo.init[];
+            (cast(Mutex)lock.ptr).__ctor();
         }
-        return m;
+
+        extern(C) void destroy()
+        {
+            foreach (ref lock; _locks)
+                (cast(Mutex)lock.ptr).__dtor();
+        }
+        atexit(&destroy);
     }
 
     __gshared Context*  sm_cbeg;
@@ -1822,17 +1694,10 @@ extern (C) void thread_init()
     //       exist to be scanned at this point, it is sufficient for these
     //       functions to detect the condition and return immediately.
 
-    version( Windows )
-    {
-        Thread.sm_this = TlsAlloc();
-        assert( Thread.sm_this != TLS_OUT_OF_INDEXES );
-    }
-    else version( OSX )
-    {
-        int status;
+    Thread.initLocks();
 
-        status = pthread_key_create( &Thread.sm_this, null );
-        assert( status == 0 );
+    version( OSX )
+    {
     }
     else version( Posix )
     {
@@ -1875,9 +1740,6 @@ extern (C) void thread_init()
         assert( status == 0 );
 
         status = sem_init( &suspendCount, 0, 0 );
-        assert( status == 0 );
-
-        status = pthread_key_create( &Thread.sm_this, null );
         assert( status == 0 );
     }
     Thread.sm_main = thread_attachThis();
@@ -1924,6 +1786,7 @@ extern (C) Thread thread_attachThis()
         thisThread.m_isRunning = true;
     }
     thisThread.m_isDaemon = true;
+    thisThread.m_tlsgcdata = rt.tlsgc.init();
     Thread.setThis( thisThread );
 
     version( OSX )
@@ -1932,23 +1795,7 @@ extern (C) Thread thread_attachThis()
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    version (OSX)
-    {
-        //printf("test3 %p %p\n", _tls_data_array[0].ptr, &_tls_data_array[1][length]);
-        //printf("test3 %p %p\n", &_tls_beg, &_tls_end);
-        // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
-        //       data output by the compiler is bracketed by _tls_data_array[2],
-        //       so make a copy of it for each thread.
-        const sz0 = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
-        const sz2 = sz0 + _tls_data_array[1].length;
-        auto p = gc_malloc( sz2 );
-        assert( p );
-        thisThread.m_tls = p[0 .. sz2];
-        memcpy( p, _tls_data_array[0].ptr, _tls_data_array[0].length );
-        memcpy( p + sz0, _tls_data_array[1].ptr, _tls_data_array[1].length );
-        // used gc_malloc so no need to free
-    }
-    else
+    version (GNU)
     {
         auto pstart = cast(void*) &_tlsstart;
         auto pend   = cast(void*) &_tlsend;
@@ -1959,7 +1806,6 @@ extern (C) Thread thread_attachThis()
     Thread.add( thisContext );
     if( Thread.sm_main !is null )
         multiThreadedFlag = true;
-    thisThread.m_tlsgcdata = rt.tlsgc.init();
     return thisThread;
 }
 
@@ -1999,44 +1845,44 @@ version( Windows )
         thisContext.bstack = bstack;
         thisContext.tstack = thisContext.bstack;
 
-        if( addr == GetCurrentThreadId() )
-        {
-            thisThread.m_hndl = GetCurrentThreadHandle();
-        }
-        else
-        {
-            thisThread.m_hndl = OpenThreadHandle( addr );
-        }
-
         thisThread.m_isDaemon = true;
 
         if( addr == GetCurrentThreadId() )
         {
-            auto pstart = cast(void*) &_tlsstart;
-            auto pend   = cast(void*) &_tlsend;
-            thisThread.m_tls = pstart[0 .. pend - pstart];
+            thisThread.m_hndl = GetCurrentThreadHandle();
+            thisThread.m_tlsgcdata = rt.tlsgc.init();
+            version (GNU)
+            {
+                auto pstart = cast(void*) &_tlsstart;
+                auto pend   = cast(void*) &_tlsend;
+                thisThread.m_tls = pstart[0 .. pend - pstart];
+            }
             Thread.setThis( thisThread );
         }
         else
         {
-            // TODO: This seems wrong.  If we're binding threads from
-            //       a DLL, will they always have space reserved for
-            //       the TLS chunk we expect?  I don't know Windows
-            //       well enough to say.
-            auto pstart = cast(void*) &_tlsstart;
-            auto pend   = cast(void*) &_tlsend;
-            auto pos    = GetTlsDataAddress( thisThread.m_hndl );
-            if( pos ) // on x64, threads without TLS happen to exist
-                thisThread.m_tls = pos[0 .. pend - pstart];
-            else
-                thisThread.m_tls = [];
+            thisThread.m_hndl = OpenThreadHandle( addr );
+            impersonate_thread(addr,
+            {
+                thisThread.m_tlsgcdata = rt.tlsgc.init();
+                version (GNU)
+                {
+                    auto pstart = cast(void*) &_tlsstart;
+                    auto pend   = cast(void*) &_tlsend;
+                    auto pos    = GetTlsDataAddress( thisThread.m_hndl );
+                    if( pos ) // on x64, threads without TLS happen to exist
+                        thisThread.m_tls = pos[0 .. pend - pstart];
+                    else
+                        thisThread.m_tls = [];
+                }
+                Thread.setThis( thisThread );
+            });
         }
 
         Thread.add( thisThread );
         Thread.add( thisContext );
         if( Thread.sm_main !is null )
             multiThreadedFlag = true;
-        thisThread.m_tlsgcdata = rt.tlsgc.init();
         return thisThread;
     }
 }
@@ -2151,101 +1997,94 @@ shared static ~this()
 // Used for needLock below.
 private __gshared bool multiThreadedFlag = false;
 
+version (PPC64) version = ExternStackShell;
 
-// Calls the given delegate, passing the current thread's stack pointer to it.
-private void callWithStackShell(scope void delegate(void* sp) fn)
-in
+version (ExternStackShell)
 {
-    assert(fn);
+    extern(D) public void callWithStackShell(scope void delegate(void* sp) fn);
 }
-body
+else
 {
-    // The purpose of the 'shell' is to ensure all the registers
-    // get put on the stack so they'll be scanned
-    void *sp;
+    // Calls the given delegate, passing the current thread's stack pointer to it.
+    private void callWithStackShell(scope void delegate(void* sp) fn)
+    in
+    {
+        assert(fn);
+    }
+    body
+    {
+        // The purpose of the 'shell' is to ensure all the registers get
+        // put on the stack so they'll be scanned. We only need to push
+        // the callee-save registers.
+        void *sp = void;
 
-    version (GNU)
-    {
-        __builtin_unwind_init();
-        sp = & sp;
-    }
-    else version (D_InlineAsm_X86)
-    {
-        asm
+        version (GNU)
         {
-            pushad              ;
-            mov sp[EBP],ESP     ;
+            __builtin_unwind_init();
+            sp = &sp;
         }
-    }
-    else version (D_InlineAsm_X86_64)
-    {
-        asm
+        else version (AsmX86_Posix)
         {
-            push RAX ;
-            push RBX ;
-            push RCX ;
-            push RDX ;
-            push RSI ;
-            push RDI ;
-            push RBP ;
-            push R8  ;
-            push R9  ;
-            push R10  ;
-            push R11  ;
-            push R12  ;
-            push R13  ;
-            push R14  ;
-            push R15  ;
-            push RAX ;   // 16 byte align the stack
-            mov sp[RBP],RSP     ;
-        }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
+            size_t[3] regs = void;
+            asm
+            {
+                mov [regs + 0 * 4], EBX;
+                mov [regs + 1 * 4], ESI;
+                mov [regs + 2 * 4], EDI;
 
-    fn(sp);
+                mov sp[EBP], ESP;
+            }
+        }
+        else version (AsmX86_Windows)
+        {
+            size_t[3] regs = void;
+            asm
+            {
+                mov [regs + 0 * 4], EBX;
+                mov [regs + 1 * 4], ESI;
+                mov [regs + 2 * 4], EDI;
 
-    version (GNU)
-    {
-        // registers will be popped automatically
-    }
-    else version (D_InlineAsm_X86)
-    {
-        asm
-        {
-            popad;
+                mov sp[EBP], ESP;
+            }
         }
-    }
-    else version (D_InlineAsm_X86_64)
-    {
-        asm
+        else version (AsmX86_64_Posix)
         {
-            pop RAX ;   // 16 byte align the stack
-            pop R15  ;
-            pop R14  ;
-            pop R13  ;
-            pop R12  ;
-            pop R11  ;
-            pop R10  ;
-            pop R9  ;
-            pop R8  ;
-            pop RBP ;
-            pop RDI ;
-            pop RSI ;
-            pop RDX ;
-            pop RCX ;
-            pop RBX ;
-            pop RAX ;
+            size_t[5] regs = void;
+            asm
+            {
+                mov [regs + 0 * 8], RBX;
+                mov [regs + 1 * 8], R12;
+                mov [regs + 2 * 8], R13;
+                mov [regs + 3 * 8], R14;
+                mov [regs + 4 * 8], R15;
+
+                mov sp[RBP], RSP;
+            }
         }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
+        else version (AsmX86_64_Windows)
+        {
+            size_t[7] regs = void;
+            asm
+            {
+                mov [regs + 0 * 8], RBX;
+                mov [regs + 1 * 8], RSI;
+                mov [regs + 2 * 8], RDI;
+                mov [regs + 3 * 8], R12;
+                mov [regs + 4 * 8], R13;
+                mov [regs + 5 * 8], R14;
+                mov [regs + 6 * 8], R15;
+
+                mov sp[RBP], RSP;
+            }
+        }
+        else
+        {
+            static assert(false, "Architecture not supported.");
+        }
+
+        fn(sp);
     }
 }
-
 
 // Used for suspendAll/resumeAll below.
 private __gshared uint suspendDepth = 0;
@@ -2402,17 +2241,12 @@ private void suspend( Thread t )
                 }
                 throw new ThreadException( "Unable to suspend thread" );
             }
-            // NOTE: It's really not ideal to wait for each thread to
-            //       signal individually -- rather, it would be better to
-            //       suspend them all and wait once at the end.  However,
-            //       semaphores don't really work this way, and the obvious
-            //       alternative (looping on an atomic suspend count)
-            //       requires either the atomic module (which only works on
-            //       x86) or other specialized functionality.  It would
-            //       also be possible to simply loop on sem_wait at the
-            //       end, but I'm not convinced that this would be much
-            //       faster than the current approach.
-            sem_wait( &suspendCount );
+            while (sem_wait(&suspendCount) != 0)
+            {
+                if (errno != EINTR)
+                    throw new ThreadException( "Unable to wait for semaphore" );
+                errno = 0;
+            }
         }
         else if( !t.m_lock )
         {
@@ -2465,61 +2299,30 @@ extern (C) void thread_suspendAll()
         //       the same thread to be suspended twice, which would likely
         //       cause the second suspend to fail, the garbage collection to
         //       abort, and Bad Things to occur.
-        for( Thread t = Thread.sm_tbeg; t; t = t.next )
-        {
-            if( t.isRunning )
-                suspend( t );
-            else
-                Thread.remove( t );
-        }
 
-        // The world is stopped. We now make sure that all threads are outside
-        // critical regions by continually suspending and resuming them until all
-        // of them are safe. This is extremely error-prone; if some thread enters
-        // a critical region and never exits it (e.g. it waits for a mutex forever),
-        // then we'll pretty much 'deadlock' here. Not much we can do about that,
-        // and it indicates incorrect use of the critical region API anyway.
-        for (;;)
+        Thread.criticalRegionLock.lock();
+        for (Thread t = Thread.sm_tbeg; t !is null; t = t.next)
         {
-            uint unsafeCount;
-
-            for (auto t = Thread.sm_tbeg; t; t = t.next)
+            Duration waittime = dur!"usecs"(10);
+        Lagain:
+            if (!t.isRunning)
             {
-                // NOTE: We don't need to check whether the thread has died here,
-                //       since it's checked in the loops above and below.
-                if (atomicLoad(*cast(shared)&t.m_isInCriticalRegion))
-                {
-                    unsafeCount += 10;
-                    resume(t);
-                }
+                Thread.remove(t);
             }
-
-            // If all threads are safe (i.e. unsafeCount == 0), no threads were in
-            // critical regions in the first place, and we can just break. Otherwise,
-            // we sleep for a bit to give the threads a chance to get to safe points.
-            if (unsafeCount)
-                Thread.sleep(dur!"usecs"(unsafeCount)); // This heuristic could probably use some tuning.
-            else
-                break;
-
-            // Some thread was not in a safe region, so we suspend the world again to
-            // re-do this loop to check whether we're safe now.
-            for (auto t = Thread.sm_tbeg; t; t = t.next)
+            else if (t.m_isInCriticalRegion)
             {
-                // The thread could have died in the meantime. Also see the note in
-                // the topmost loop that initially suspends the world.
-                if (t.isRunning)
-                    suspend(t);
-                else
-                    Thread.remove(t);
+                Thread.criticalRegionLock.unlock();
+                Thread.sleep(waittime);
+                if (waittime < dur!"msecs"(10)) waittime *= 2;
+                Thread.criticalRegionLock.lock();
+                goto Lagain;
+            }
+            else
+            {
+                suspend(t);
             }
         }
-
-        version( Posix )
-        {
-            // wait on semaphore -- see note in suspend for
-            // why this is currently not implemented
-        }
+        Thread.criticalRegionLock.unlock();
     }
 }
 
@@ -2699,16 +2502,17 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
 
     for( Thread t = Thread.sm_tbeg; t; t = t.next )
     {
-        scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
-
         version( Windows )
         {
             // Ideally, we'd pass ScanType.regs or something like that, but this
             // would make portability annoying because it only makes sense on Windows.
             scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
         }
+        version (GNU)
+            scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
 
-        rt.tlsgc.scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
+        if (t.m_tlsgcdata !is null)
+            rt.tlsgc.scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
     }
 }
 
@@ -2725,7 +2529,8 @@ in
 }
 body
 {
-    atomicStore(*cast(shared)&Thread.getThis().m_isInCriticalRegion, true);
+    synchronized (Thread.criticalRegionLock)
+        Thread.getThis().m_isInCriticalRegion = true;
 }
 
 extern (C) void thread_exitCriticalRegion()
@@ -2735,7 +2540,8 @@ in
 }
 body
 {
-    atomicStore(*cast(shared)&Thread.getThis().m_isInCriticalRegion, false);
+    synchronized (Thread.criticalRegionLock)
+        Thread.getThis().m_isInCriticalRegion = false;
 }
 
 extern (C) bool thread_inCriticalRegion()
@@ -2745,7 +2551,8 @@ in
 }
 body
 {
-    return atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion);
+    synchronized (Thread.criticalRegionLock)
+        return Thread.getThis().m_isInCriticalRegion;
 }
 
 unittest
@@ -2773,55 +2580,66 @@ unittest
     //       to cause a deadlock.
     // NOTE: DO NOT USE LOCKS IN CRITICAL REGIONS IN NORMAL CODE.
 
-    import core.sync.condition;
+    import core.sync.semaphore;
 
-    bool critical;
-    auto cond1 = new Condition(new Mutex());
+    auto sema = new Semaphore(),
+         semb = new Semaphore();
 
-    bool stop;
-    auto cond2 = new Condition(new Mutex());
-
-    auto thr = new Thread(delegate void()
+    auto thr = new Thread(
     {
         thread_enterCriticalRegion();
-
         assert(thread_inCriticalRegion());
-        assert(atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion));
+        sema.notify();
 
-        synchronized (cond1.mutex)
-        {
-            critical = true;
-            cond1.notify();
-        }
-
-        synchronized (cond2.mutex)
-            while (!stop)
-                cond2.wait();
-
+        semb.wait();
         assert(thread_inCriticalRegion());
-        assert(atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion));
 
         thread_exitCriticalRegion();
-
         assert(!thread_inCriticalRegion());
-        assert(!atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion));
+        sema.notify();
+
+        semb.wait();
+        assert(!thread_inCriticalRegion());
     });
 
     thr.start();
 
-    synchronized (cond1.mutex)
-        while (!critical)
-            cond1.wait();
+    sema.wait();
+    synchronized (Thread.criticalRegionLock)
+        assert(thr.m_isInCriticalRegion);
+    semb.notify();
 
-    assert(atomicLoad(*cast(shared)&thr.m_isInCriticalRegion));
-
-    synchronized (cond2.mutex)
-    {
-        stop = true;
-        cond2.notify();
-    }
+    sema.wait();
+    synchronized (Thread.criticalRegionLock)
+        assert(!thr.m_isInCriticalRegion);
+    semb.notify();
 
     thr.join();
+}
+
+unittest
+{
+    import core.sync.semaphore;
+
+    shared bool inCriticalRegion;
+    auto sem = new Semaphore();
+
+    auto thr = new Thread(
+    {
+        thread_enterCriticalRegion();
+        inCriticalRegion = true;
+        sem.notify();
+        Thread.sleep(dur!"msecs"(1));
+        inCriticalRegion = false;
+        thread_exitCriticalRegion();
+    });
+    thr.start();
+
+    sem.wait();
+    assert(inCriticalRegion);
+    thread_suspendAll();
+    assert(!inCriticalRegion);
+    thread_resumeAll();
 }
 
 /**
@@ -4617,40 +4435,5 @@ version( AsmX86_64_Posix )
 
         auto fib = new Fiber(&testStackAlignment);
         fib.call();
-    }
-}
-
-
-version( OSX )
-{
-    // NOTE: The Mach-O object file format does not allow for thread local
-    //       storage declarations. So instead we roll our own by putting tls
-    //       into the sections bracketed by _tls_beg and _tls_end.
-    //
-    //       This function is called by the code emitted by the compiler.  It
-    //       is expected to translate an address into the TLS static data to
-    //       the corresponding address in the TLS dynamic per-thread data.
-    extern (D) void* ___tls_get_addr( void* p )
-    {
-        // NOTE: p is an address in the TLS static data emitted by the
-        //       compiler.  If it isn't, something is disastrously wrong.
-        auto obj = Thread.getThis();
-
-        immutable off0 = cast(size_t)(p - _tls_data_array[0].ptr);
-        if (off0 < _tls_data_array[0].length)
-        {
-            return obj.m_tls.ptr + off0;
-        }
-        immutable off1 = cast(size_t)(p - _tls_data_array[1].ptr);
-        if (off1 < _tls_data_array[1].length)
-        {
-            size_t sz = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
-            return obj.m_tls.ptr + sz + off1;
-        }
-        else
-            assert(0);
-
-        //assert( p >= cast(void*) &_tls_beg && p < cast(void*) &_tls_end );
-        //return obj.m_tls.ptr + (p - cast(void*) &_tls_beg);
     }
 }

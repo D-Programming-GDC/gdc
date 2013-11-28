@@ -278,7 +278,7 @@ Strings *FileName::splitPath(const char *path)
         do
         {   char instring = 0;
 
-            while (isspace((unsigned char)*p))         // skip leading whitespace
+            while (isspace((utf8_t)*p))         // skip leading whitespace
                 p++;
             buf.reserve(strlen(p) + 1); // guess size of path
             for (; ; p++)
@@ -344,7 +344,7 @@ hash_t FileName::hashCode()
     // We need a different hashCode because it must be case-insensitive
     size_t len = strlen(str);
     hash_t hash = 0;
-    unsigned char *s = (unsigned char *)str;
+    utf8_t *s = (utf8_t *)str;
 
     for (;;)
     {
@@ -837,19 +837,20 @@ void FileName::ensurePathExists(const char *path)
                 mem.free((void *)p);
             }
 #if _WIN32
-            if (path[strlen(path) - 1] != '\\')
+            char sep = '\\';
+#elif POSIX
+            char sep = '/';
 #endif
-#if POSIX
-            if (path[strlen(path) - 1] != '\\')
-#endif
+            if (path[strlen(path) - 1] != sep)
             {
                 //printf("mkdir(%s)\n", path);
 #if _WIN32
-                if (_mkdir(path))
+                int r = _mkdir(path);
 #endif
 #if POSIX
-                if (mkdir(path, 0777))
+                int r = mkdir(path, 0777);
 #endif
+                if (r)
                 {
                     /* Don't error out if another instance of dmd just created
                      * this directory
@@ -1016,7 +1017,7 @@ int File::read()
         goto err2;
     }
     size = buf.st_size;
-    buffer = (unsigned char *) ::malloc(size + 2);
+    buffer = (utf8_t *) ::malloc(size + 2);
     if (!buffer)
     {
         fprintf(stderr, "\tmalloc error, errno = %d\n",errno);
@@ -1074,7 +1075,7 @@ err1:
     ref = 0;
 
     size = GetFileSize(h,NULL);
-    buffer = (unsigned char *) ::malloc(size + 2);
+    buffer = (utf8_t *) ::malloc(size + 2);
     if (!buffer)
         goto err2;
 
@@ -1150,7 +1151,7 @@ int File::mmread()
     if (!ref)
         mem.free(buffer);
     ref = 2;
-    buffer = (unsigned char *)MapViewOfFileEx(hFileMap, FILE_MAP_READ,0,0,size,NULL);
+    buffer = (utf8_t *)MapViewOfFileEx(hFileMap, FILE_MAP_READ,0,0,size,NULL);
     if (CloseHandle(hFileMap) != TRUE)
         goto Lerr;
     if (buffer == NULL)                 // mapping view failed
@@ -1358,7 +1359,7 @@ int File::exists()
 void File::remove()
 {
 #if POSIX
-    ::remove(this->name->toChars());
+    int dummy = ::remove(this->name->toChars());
 #elif _WIN32
     DeleteFileA(this->name->toChars());
 #else
@@ -1468,7 +1469,7 @@ OutBuffer::OutBuffer()
 
     doindent = 0;
     level = 0;
-    linehead = 1;
+    notlinehead = 0;
 }
 
 OutBuffer::~OutBuffer()
@@ -1499,7 +1500,7 @@ void OutBuffer::reserve(size_t nbytes)
     {
         size = (offset + nbytes) * 2;
         size = (size + 15) & ~15;
-        data = (unsigned char *)mem.realloc(data, size);
+        data = (utf8_t *)mem.realloc(data, size);
     }
 }
 
@@ -1515,7 +1516,7 @@ void OutBuffer::setsize(size_t size)
 
 void OutBuffer::write(const void *data, size_t nbytes)
 {
-    if (doindent && linehead)
+    if (doindent && !notlinehead)
     {
         if (level)
         {
@@ -1526,14 +1527,14 @@ void OutBuffer::write(const void *data, size_t nbytes)
                 offset++;
             }
         }
-        linehead = 0;
+        notlinehead = 1;
     }
     reserve(nbytes);
     memcpy(this->data + offset, data, nbytes);
     offset += nbytes;
 }
 
-void OutBuffer::writebstring(unsigned char *string)
+void OutBuffer::writebstring(utf8_t *string)
 {
     write(string,*string + 1);
 }
@@ -1560,12 +1561,12 @@ void OutBuffer::writenl()
     writeByte('\n');
 #endif
     if (doindent)
-        linehead = 1;
+        notlinehead = 0;
 }
 
 void OutBuffer::writeByte(unsigned b)
 {
-    if (doindent && linehead
+    if (doindent && !notlinehead
         && b != '\n')
     {
         if (level)
@@ -1577,7 +1578,7 @@ void OutBuffer::writeByte(unsigned b)
                 offset++;
             }
         }
-        linehead = 0;
+        notlinehead = 1;
     }
     reserve(1);
     this->data[offset] = (unsigned char)b;
@@ -1655,12 +1656,13 @@ void OutBuffer::writewchar(unsigned w)
 
 void OutBuffer::writeword(unsigned w)
 {
-    if (doindent && linehead
 #if _WIN32
-        && w != 0x0A0D)
+    unsigned newline = 0x0A0D;
 #else
-        && w != '\n')
+    unsigned newline = '\n';
 #endif
+    if (doindent && !notlinehead
+        && w != newline)
     {
         if (level)
         {
@@ -1671,7 +1673,7 @@ void OutBuffer::writeword(unsigned w)
                 offset++;
             }
         }
-        linehead = 0;
+        notlinehead = 1;
     }
     reserve(2);
     *(unsigned short *)(this->data + offset) = (unsigned short)w;
@@ -1698,12 +1700,12 @@ void OutBuffer::writeUTF16(unsigned w)
 
 void OutBuffer::write4(unsigned w)
 {
-    if (doindent && linehead
 #if _WIN32
-        && w != 0x000A000D)
+    bool notnewline = w != 0x000A000D;
 #else
-        )
+    bool notnewline = true;
 #endif
+    if (doindent && !notlinehead && notnewline)
     {
         if (level)
         {
@@ -1714,7 +1716,7 @@ void OutBuffer::write4(unsigned w)
                 offset++;
             }
         }
-        linehead = 0;
+        notlinehead = 1;
     }
     reserve(4);
     *(unsigned *)(this->data + offset) = w;

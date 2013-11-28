@@ -709,7 +709,13 @@ Expression *Expression::ctfeInterpret()
     CompiledCtfeFunction ctfeCodeGlobal(NULL);
     ctfeCodeGlobal.callingloc = loc;
     ctfeCodeGlobal.onExpression(this);
-    return optimize(WANTvalue | WANTinterpret);
+
+    Expression *e = interpret(NULL);
+    if (e != EXP_CANT_INTERPRET)
+        e = scrubReturnValue(loc, e);
+    if (e == EXP_CANT_INTERPRET)
+        e = new ErrorExp();
+    return e;
 }
 
 /* Run CTFE on the expression, but allow the expression to be a TypeExp
@@ -796,7 +802,6 @@ Expression *FuncDeclaration::interpret(InterState *istate, Expressions *argument
     Type *tb = type->toBasetype();
     assert(tb->ty == Tfunction);
     TypeFunction *tf = (TypeFunction *)tb;
-    Type *tret = tf->next->toBasetype();
     if (tf->varargs && arguments &&
         ((parameters && arguments->dim != parameters->dim) || (!parameters && arguments->dim)))
     {
@@ -1484,7 +1489,6 @@ Expression *DoStatement::interpret(InterState *istate)
         if (istate->gotoTarget && istate->gotoTarget != this)
             break; // continue at a higher level
 
-    Lcontinue:
         istate->gotoTarget = NULL;
         e = condition->interpret(istate);
         if (exceptionOrCantInterpret(e))
@@ -2005,7 +2009,6 @@ Expression *SymOffExp::interpret(InterState *istate, CtfeGoal goal)
     }
     // Check for taking an address of a shared variable.
     // If the shared variable is an array, the offset might not be zero.
-    VarDeclaration *vd = var->isVarDeclaration();
     Type *fromType = NULL;
     if (var->type->ty == Tarray || var->type->ty == Tsarray)
     {
@@ -2047,7 +2050,6 @@ Expression *SymOffExp::interpret(InterState *istate, CtfeGoal goal)
             return EXP_CANT_INTERPRET;
         }
 
-        TypeArray *tar = (TypeArray *)val->type;
         dinteger_t sz = pointee->size();
         dinteger_t indx = offset/sz;
         assert(sz * indx == offset);
@@ -2108,7 +2110,27 @@ Expression *DelegateExp::interpret(InterState *istate, CtfeGoal goal)
 #if LOG
     printf("%s DelegateExp::interpret() %s\n", loc.toChars(), toChars());
 #endif
-    return this;
+    // TODO: Really we should create a CTFE-only delegate expression
+    // of a pointer and a funcptr.
+
+    // If it is &nestedfunc, just return it
+    // TODO: We should save the context pointer
+    if (e1->op == TOKvar && ((VarExp *)e1)->var->isFuncDeclaration())
+        return this;
+
+    // If it has already been CTFE'd, just return it
+    if (e1->op == TOKstructliteral || e1->op == TOKclassreference)
+        return this;
+
+    // Else change it into &structliteral.func or &classref.func
+    Expression *e = e1->interpret(istate, ctfeNeedLvalue);
+
+    if (exceptionOrCantInterpret(e))
+        return e;
+
+    e = new DelegateExp(loc, e, func);
+    e->type = type;
+    return e;
 }
 
 
@@ -2171,12 +2193,23 @@ Expression *getVarExp(Loc loc, InterState *istate, Declaration *d, CtfeGoal goal
          */
         if (v->ident == Id::ctfe)
             return new IntegerExp(loc, 1, Type::tbool);
+
+        if (!v->originalType && v->scope)   // semantic() not yet run
+        {
+            v->semantic (v->scope);
+            if (v->type->ty == Terror)
+                return EXP_CANT_INTERPRET;
+        }
+
         if ((v->isConst() || v->isImmutable() || v->storage_class & STCmanifest)
             && v->init && !v->hasValue() && !v->isCTFE())
 #else
         if (v->isConst() && v->init && !v->isCTFE())
 #endif
-        {   e = v->init->toExpression(v->type);
+        {
+            if(v->scope)
+                v->init->semantic(v->scope, v->type, INITinterpret); // might not be run on aggregate members
+            e = v->init->toExpression(v->type);
             if (v->inuse)
             {
                 error(loc, "circular initialization of %s", v->toChars());
@@ -2408,9 +2441,15 @@ Expression *DeclarationExp::interpret(InterState *istate, CtfeGoal goal)
              declaration->isTupleDeclaration())
     {   // Check for static struct declarations, which aren't executable
         AttribDeclaration *ad = declaration->isAttribDeclaration();
-        if (ad && ad->decl && ad->decl->dim == 1
-            && (*ad->decl)[0]->isAggregateDeclaration())
-            return NULL;    // static struct declaration. Nothing to do.
+        if (ad && ad->decl && ad->decl->dim == 1)
+        {
+            Dsymbol *s = (*ad->decl)[0];
+            if (s->isAggregateDeclaration() ||
+                s->isTemplateDeclaration())
+            {
+                return NULL;    // static (template) struct declaration. Nothing to do.
+            }
+        }
 
         // These can be made to work, too lazy now
         error("Declaration %s is not yet implemented in CTFE", toChars());
@@ -2838,7 +2877,6 @@ Expression *UnaExp::interpret(InterState *istate,  CtfeGoal goal)
     return e;
 }
 
-typedef Expression *(*fp_t)(Type *, Expression *, Expression *);
 
 Expression *BinExp::interpretCommon(InterState *istate, CtfeGoal goal, fp_t fp)
 {   Expression *e;
@@ -2915,8 +2953,6 @@ Expression *BinExp::interpretCommon(InterState *istate, CtfeGoal goal, fp_t fp)
         error("%s cannot be interpreted at compile time", toChars());
     return e;
 }
-
-typedef int (*fp2_t)(Loc loc, TOK, Expression *, Expression *);
 
 Expression *BinExp::interpretCompareCommon(InterState *istate, CtfeGoal goal, fp2_t fp)
 {
@@ -3761,7 +3797,6 @@ bool interpretAssignToIndex(InterState *istate, Loc loc,
         aggregate->op == TOKslice || aggregate->op == TOKcall ||
         aggregate->op == TOKstar)
     {
-        Expression *origagg = aggregate;
         aggregate = aggregate->interpret(istate, ctfeNeedLvalue);
         if (exceptionOrCantInterpret(aggregate))
             return false;
@@ -3834,7 +3869,7 @@ bool interpretAssignToIndex(InterState *istate, Loc loc,
     }
     if (existingSE)
     {
-        unsigned char *s = (unsigned char *)existingSE->string;
+        utf8_t *s = (utf8_t *)existingSE->string;
         if (!existingSE->ownedByCtfe)
         {
             originalExp->error("cannot modify read-only string literal %s", ie->e1->toChars());
@@ -4097,7 +4132,7 @@ Expression *interpretAssignToSlice(InterState *istate, CtfeGoal goal, Loc loc,
     else if (existingSE)
     {   // String literal block slice assign
         unsigned value = newval->toInteger();
-        unsigned char *s = (unsigned char *)existingSE->string;
+        utf8_t *s = (utf8_t *)existingSE->string;
         for (size_t j = 0; j < upperbound-lowerbound; j++)
         {
             switch (existingSE->sz)
@@ -4648,10 +4683,21 @@ Expression *CallExp::interpret(InterState *istate, CtfeGoal goal)
                 VarDeclaration *vthis = ((VarExp*)thisval)->var->isVarDeclaration();
                 assert(vthis);
                 thisval = getVarExp(loc, istate, vthis, ctfeNeedLvalue);
+                if (exceptionOrCantInterpret(thisval))
+                    return thisval;
                 // If it is a reference, resolve it
                 if (thisval->op != TOKnull && thisval->op != TOKclassreference)
                     thisval = pthis->interpret(istate);
             }
+            else if (pthis->op == TOKsymoff)
+            {
+                VarDeclaration *vthis = ((SymOffExp*)thisval)->var->isVarDeclaration();
+                assert(vthis);
+                thisval = getVarExp(loc, istate, vthis, ctfeNeedLvalue);
+                if (exceptionOrCantInterpret(thisval))
+                    return thisval;
+            }
+
             // Get the function from the vtable of the original class
             ClassDeclaration *cd;
             if (thisval && thisval->op == TOKnull)
@@ -4883,6 +4929,15 @@ Expression *IndexExp::interpret(InterState *istate, CtfeGoal goal)
                     indx+ofs, len);
                 return EXP_CANT_INTERPRET;
             }
+            if (goal == ctfeNeedLvalueRef)
+            {
+                // if we need a reference, IndexExp shouldn't be interpreting
+                // the expression to a value, it should stay as a reference
+                Expression *e = new IndexExp(loc, agg,
+                    ofs ? new IntegerExp(loc,indx + ofs, e2->type) : e2);
+                e->type = type;
+                return e;
+            }
             return ctfeIndex(loc, type, agg, indx+ofs);
         }
         else
@@ -4897,6 +4952,10 @@ Expression *IndexExp::interpret(InterState *istate, CtfeGoal goal)
                 error("pointer index [%lld] lies outside memory block [0..1]",
                     indx+ofs);
                 return EXP_CANT_INTERPRET;
+            }
+            if (goal == ctfeNeedLvalueRef)
+            {
+                return paintTypeOntoLiteral(type, agg);
             }
             return agg->interpret(istate);
         }
@@ -5864,11 +5923,7 @@ Expression *interpret_aaApply(InterState *istate, Expression *aa, Expression *de
     assert(fd && fd->fbody);
     assert(fd->parameters);
     int numParams = fd->parameters->dim;
-    assert(numParams == 1 || numParams==2);
-
-    Type *valueType = (*fd->parameters)[numParams-1]->type;
-    Type *keyType = numParams == 2 ? (*fd->parameters)[0]->type
-                                   : Type::tsize_t;
+    assert(numParams == 1 || numParams == 2);
 
     Parameter *valueArg = Parameter::getNth(((TypeFunction *)fd->type)->parameters, numParams - 1);
     bool wantRefValue = 0 != (valueArg->storageClass & (STCout | STCref));
@@ -5961,7 +6016,7 @@ Expression *foreachApplyUtf(InterState *istate, Expression *str, Expression *del
     Expression *eresult;
 
     // Buffers for encoding; also used for decoding array literals
-    unsigned char utf8buf[4];
+    utf8_t utf8buf[4];
     unsigned short utf16buf[2];
 
     size_t start = rvs ? len : 0;
@@ -5991,7 +6046,7 @@ Expression *foreachApplyUtf(InterState *istate, Expression *str, Expression *del
                     {
                         Expression * r = (*ale->elements)[indx];
                         assert(r->op == TOKint64);
-                        unsigned char x = (unsigned char)(((IntegerExp *)r)->value);
+                        utf8_t x = (utf8_t)(((IntegerExp *)r)->value);
                         if ( (x & 0xC0) != 0x80)
                             break;
                         ++buflen;
@@ -6003,7 +6058,7 @@ Expression *foreachApplyUtf(InterState *istate, Expression *str, Expression *del
                 {
                     Expression * r = (*ale->elements)[indx + i];
                     assert(r->op == TOKint64);
-                    utf8buf[i] = (unsigned char)(((IntegerExp *)r)->value);
+                    utf8buf[i] = (utf8_t)(((IntegerExp *)r)->value);
                 }
                 n = 0;
                 errmsg = utf_decodeChar(&utf8buf[0], buflen, &n, &rawvalue);
@@ -6059,13 +6114,13 @@ Expression *foreachApplyUtf(InterState *istate, Expression *str, Expression *del
             case 1:
                 if (rvs)
                 {   // find the start of the string
-                    unsigned char *s = (unsigned char *)se->string;
+                    utf8_t *s = (utf8_t *)se->string;
                     --indx;
                     while (indx > 0 && ((s[indx]&0xC0)==0x80))
                         --indx;
                     saveindx = indx;
                 }
-                errmsg = utf_decodeChar((unsigned char *)se->string, se->len, &indx, &rawvalue);
+                errmsg = utf_decodeChar((utf8_t *)se->string, se->len, &indx, &rawvalue);
                 if (rvs)
                     indx = saveindx;
                 break;

@@ -829,8 +829,65 @@ void test6366()
     }
 }
 
+/***************************************************/
+// 6711
+
+void test6711()
+{
+    struct A { int i; }
+    struct B { A a; alias a this; }
+    struct C { B b; alias b this; }
+
+    B b;
+    with (b)
+    {
+        i = 42;
+    }
+    assert(b.i == 42);
+
+    C c;
+    with (c)
+    {
+        i = 42;
+    }
+    assert(c.i == 42);
+
+    struct Foo
+    {
+        string[string] strs;
+        alias strs this;
+    }
+
+    struct Bar
+    {
+        Foo f;
+        alias f this;
+    }
+
+    void test(T)()
+    {
+        T f;
+        f = ["first" : "a", "second" : "b"];
+        with (f)
+        {
+            assert(length == 2);
+            rehash;
+            auto vs = values;
+            assert(vs == ["a", "b"]);
+            auto ks = keys;
+            assert(ks == ["first", "second"]);
+            foreach (k; byKey) { }
+            foreach (v; byValue) { }
+            assert(get("a", "default") == "default");
+        }
+    }
+
+    test!Foo;
+    test!Bar;
+}
+
 /**********************************************/
-// Bugzill 6759
+// 6759
 
 struct Range
 {
@@ -1224,7 +1281,7 @@ void test9890()
     {
         T _payload;
 
-        ref T refCountedPayload() 
+        ref T refCountedPayload()
         {
             return _payload;
         }
@@ -1232,7 +1289,7 @@ void test9890()
         alias refCountedPayload this;
     }
 
-    struct S(int x_) 
+    struct S(int x_)
     {
         alias x_ x;
     }
@@ -1346,6 +1403,7 @@ int main()
     test6369d();
     test6434();
     test6366();
+    test6711();
     test6759();
     test6832();
     test6928();

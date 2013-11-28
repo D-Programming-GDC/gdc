@@ -19,7 +19,7 @@
 #define GCC_D_LONGDOUBLE_H
 
 struct real_value;
-struct Type;
+class Type;
 
 struct longdouble
 {

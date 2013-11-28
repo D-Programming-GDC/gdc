@@ -595,14 +595,19 @@ StructLiteralExp::toDt (dt_t **pdt)
 
 	      gcc_assert (sz == vsz || sz * dim <= vsz);
 
-	      for (size_t i = 0; i < dim; i++)
+	      for (size_t j = 0; j < dim; j++)
 		{
 		  if (offset < voffset)
 		    dt_zeropad (&sdt, voffset - offset);
 
 		  if (fdt == NULL_TREE)
 		    {
-		      if (v->init)
+		      // If this literal has an initialiser, use it, else
+		      // check the declaration has an initialiser, falling
+		      // back the default initializer.
+		      if ((*elements)[i] != NULL)
+			(*elements)[i]->toDt (&fdt);
+		      else if (v->init)
 			fdt = v->init->toDt();
 		      else
 			v->type->toDt (&fdt);
@@ -1222,13 +1227,13 @@ verify_structsize (ClassDeclaration *typeclass, size_t expected)
 void
 TypeInfoDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfo, 2 * Target::ptrsize);
+  verify_structsize (Type::dtypeinfo, 2 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
    *  monitor_t monitor;
    */
-  build_vptr_monitor (pdt, Type::typeinfo);
+  build_vptr_monitor (pdt, Type::dtypeinfo);
 }
 
 void
@@ -1632,11 +1637,10 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
       static TypeFunction *tftohash;
       if (!tftohash)
 	{
-	  Scope sc;
 	  // const hash_t toHash();
 	  tftohash = new TypeFunction (NULL, Type::thash_t, 0, LINKd);
 	  tftohash->mod = MODconst;
-	  tftohash = (TypeFunction *) tftohash->semantic (Loc(), &sc);
+	  tftohash = (TypeFunction *) tftohash->merge();
 	}
 
       FuncDeclaration *fd = fdx->overloadExactMatch (tftohash);
@@ -1662,29 +1666,8 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
     dt_cons (pdt, d_null_pointer);
 
   // int function(in void*, in void*) xopCmp;
-  s = search_function (sd, Id::cmp);
-  fdx = s ? s->isFuncDeclaration() : NULL;
-  if (fdx)
-    {
-      Scope sc;
-
-      // const int opCmp(ref const KeyType s);
-      Parameters *arguments = new Parameters;
-
-      // arg type is ref const T
-      Parameter *arg = new Parameter (STCref, tc->constOf(), NULL, NULL);
-      arguments->push (arg);
-
-      TypeFunction *tfcmpptr = new TypeFunction (arguments, Type::tint32, 0, LINKd);
-      tfcmpptr->mod = MODconst;
-      tfcmpptr = (TypeFunction *) tfcmpptr->semantic (Loc(), &sc);
-
-      FuncDeclaration *fd = fdx->overloadExactMatch (tfcmpptr);
-      if (fd)
-	dt_cons (pdt, build_address (fd->toSymbol()->Stree));
-      else
-	dt_cons (pdt, d_null_pointer);
-    }
+  if (sd->xcmp)
+    dt_cons (pdt, build_address (sd->xcmp->toSymbol()->Stree));
   else
     dt_cons (pdt, d_null_pointer);
 
@@ -1696,10 +1679,9 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
       static TypeFunction *tftostring;
       if (!tftostring)
 	{
-	  Scope sc;
 	  // string toString()
 	  tftostring = new TypeFunction (NULL, Type::tchar->immutableOf()->arrayOf(), 0, LINKd);
-	  tftostring = (TypeFunction *) tftostring->semantic (Loc(), &sc);
+	  tftostring = (TypeFunction *) tftostring->merge();
 	}
 
       FuncDeclaration *fd = fdx->overloadExactMatch (tftostring);

@@ -5404,7 +5404,7 @@ done
 D_GC_MODULES=
 
 if test "$enable_druntime_gc" = "yes"; then
-    D_GC_MODULES="gc/gc.o gc/gcalloc.o gc/gcbits.o gc/gcstats.o gc/gcx.o"
+    D_GC_MODULES="gc/bits.o gc/gc.o gc/os.o gc/proxy.o gc/stats.o"
 else
     D_GC_MODULES="gcstub/gc.o"
 fi

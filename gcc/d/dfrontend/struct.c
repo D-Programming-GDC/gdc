@@ -22,6 +22,7 @@
 #include "template.h"
 
 FuncDeclaration *StructDeclaration::xerreq;     // object.xopEquals
+FuncDeclaration *StructDeclaration::xerrcmp;    // object.xopCmp
 
 /********************************* AggregateDeclaration ****************************/
 
@@ -88,6 +89,22 @@ void AggregateDeclaration::semantic2(Scope *sc)
             //printf("\t[%d] %s\n", i, s->toChars());
             s->semantic2(sc);
         }
+
+        if (StructDeclaration *sd = isStructDeclaration())
+        {
+            /* Even if the struct exists in imported module, calculating
+             * xeq and xcmp is necessary in order to generate correct TypeInfo.
+             * However, immediately doing it at the end of StructDeclaration::semantic
+             * might cause forward reference error during instantiation of
+             * template opEquals/opCmp. So should be done at the end of semantic2.
+             */
+            //if (sd->xeq != NULL) printf("sd = %s xeq @ [%s]\n", sd->toChars(), sd->loc.toChars());
+            //assert(sd->xeq == NULL);
+            if (sd->xeq == NULL)
+                sd->xeq = sd->buildXopEquals(sc);
+            if (sd->xcmp == NULL)
+                sd->xcmp = sd->buildXopCmp(sc);
+        }
         sc->pop();
     }
 }
@@ -104,14 +121,6 @@ void AggregateDeclaration::semantic3(Scope *sc)
             Dsymbol *s = (*members)[i];
             s->semantic3(sc);
         }
-
-        if (StructDeclaration *sd = isStructDeclaration())
-        {
-            //if (sd->xeq != NULL) printf("sd = %s xeq @ [%s]\n", sd->toChars(), sd->loc.toChars());
-            //assert(sd->xeq == NULL);
-            if (sd->xeq == NULL)
-                sd->xeq = sd->buildXopEquals(sc);
-        }
         sc = sc->pop();
 
         if (!getRTInfo && Type::rtinfo &&
@@ -126,7 +135,11 @@ void AggregateDeclaration::semantic3(Scope *sc)
             ti->semantic3(sc);
             Dsymbol *s = ti->toAlias();
             Expression *e = new DsymbolExp(Loc(), s, 0);
-            e = e->ctfeSemantic(ti->tempdecl->scope);
+
+            Scope *sc = ti->tempdecl->scope->startCTFE();
+            e = e->semantic(sc);
+            sc->endCTFE();
+
             e = e->ctfeInterpret();
             getRTInfo = e;
         }
@@ -428,6 +441,7 @@ StructDeclaration::StructDeclaration(Loc loc, Identifier *id)
     postblit = NULL;
 
     xeq = NULL;
+    xcmp = NULL;
     alignment = 0;
 #endif
     arg1type = NULL;
@@ -535,15 +549,10 @@ void StructDeclaration::semantic(Scope *sc)
      * resolve individual members like enums.
      */
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s = (*members)[i];
-        /* There are problems doing this in the general case because
-         * Scope keeps track of things like 'offset'
-         */
-        //if (s->isEnumDeclaration() || (s->isAggregateDeclaration() && s->ident))
-        {
-            //printf("struct: setScope %s %s\n", s->kind(), s->toChars());
-            s->setScope(sc2);
-        }
+    {
+        Dsymbol *s = (*members)[i];
+        //printf("struct: setScope %s %s\n", s->kind(), s->toChars());
+        s->setScope(sc2);
     }
 
     for (size_t i = 0; i < members->dim; i++)

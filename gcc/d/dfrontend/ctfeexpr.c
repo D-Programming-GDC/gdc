@@ -242,8 +242,7 @@ Expression *copyLiteral(Expression *e)
     if (e->op == TOKstring) // syntaxCopy doesn't make a copy for StringExp!
     {
         StringExp *se = (StringExp *)e;
-        unsigned char *s;
-        s = (unsigned char *)mem.calloc(se->len + 1, se->sz);
+        utf8_t *s = (utf8_t *)mem.calloc(se->len + 1, se->sz);
         memcpy(s, se->string, se->len * se->sz);
         StringExp *se2 = new StringExp(se->loc, s, se->len);
         se2->committed = se->committed;
@@ -334,12 +333,12 @@ Expression *copyLiteral(Expression *e)
         else if (e->op == TOKindex)
             r = new IndexExp(e->loc, ((IndexExp *)e)->e1, ((IndexExp *)e)->e2);
         else if (e->op == TOKdotvar)
-            r = new DotVarExp(e->loc, ((DotVarExp *)e)->e1,
-                ((DotVarExp *)e)->var
 #if DMDV2
-                , ((DotVarExp *)e)->hasOverloads
+            r = new DotVarExp(e->loc, ((DotVarExp *)e)->e1,
+                ((DotVarExp *)e)->var, ((DotVarExp *)e)->hasOverloads);
+#else
+            r = new DotVarExp(e->loc, ((DotVarExp *)e)->e1, ((DotVarExp *)e)->var);
 #endif
-                );
         else
             assert(0);
         r->type = e->type;
@@ -461,6 +460,13 @@ ArrayLiteralExp *createBlockDuplicatedArrayLiteral(Loc loc, Type *type,
 {
     Expressions *elements = new Expressions();
     elements->setDim(dim);
+    if (type->ty == Tsarray && type->nextOf()->ty == Tsarray &&
+        elem->type->ty != Tsarray)
+    {
+        // If it is a multidimensional array literal, do it recursively
+        elem = createBlockDuplicatedArrayLiteral(loc, type->nextOf(), elem,
+            ((TypeSArray *)type->nextOf())->dim->toInteger());
+    }
     bool mustCopy = needToCopyLiteral(elem);
     for (size_t i = 0; i < dim; i++)
     {   if (mustCopy)
@@ -480,8 +486,7 @@ ArrayLiteralExp *createBlockDuplicatedArrayLiteral(Loc loc, Type *type,
 StringExp *createBlockDuplicatedStringLiteral(Loc loc, Type *type,
         unsigned value, size_t dim, int sz)
 {
-    unsigned char *s;
-    s = (unsigned char *)mem.calloc(dim + 1, sz);
+    utf8_t *s = (utf8_t *)mem.calloc(dim + 1, sz);
     for (size_t elemi = 0; elemi < dim; ++elemi)
     {
         switch (sz)
@@ -545,8 +550,8 @@ TypeAArray *toBuiltinAAType(Type *t)
 bool isTypeInfo_Class(Type *type)
 {
     return type->ty == Tclass &&
-        (( Type::typeinfo == ((TypeClass*)type)->sym)
-        || Type::typeinfo->isBaseOf(((TypeClass*)type)->sym, NULL));
+        (( Type::dtypeinfo == ((TypeClass*)type)->sym)
+        || Type::dtypeinfo->isBaseOf(((TypeClass*)type)->sym, NULL));
 }
 
 /************** Pointer operations ************************************/
@@ -577,17 +582,23 @@ bool isSafePointerCast(Type *srcPointee, Type *destPointee)
         srcPointee = srcPointee->nextOf();
         destPointee = destPointee->nextOf();
     }
-   // It's OK if both are the same (modulo const)
+
 #if DMDV2
-    if (srcPointee->castMod(0) == destPointee->castMod(0))
-        return true;
-#else
+   // It's OK if both are the same (modulo const)
+    srcPointee = srcPointee->castMod(0);
+    destPointee = destPointee->castMod(0);
+#endif
     if (srcPointee == destPointee)
         return true;
-#endif
+
+    // It's OK if function pointers differ only in safe/pure/nothrow
+    if (srcPointee->ty == Tfunction && destPointee->ty == Tfunction)
+        return srcPointee->covariant(destPointee) == 1;
+
     // it's OK to cast to void*
     if (destPointee->ty == Tvoid)
         return true;
+
     // It's OK if they are the same size integers, eg int* and uint*
     return srcPointee->isintegral() && destPointee->isintegral()
            && srcPointee->size() == destPointee->size();
@@ -767,9 +778,7 @@ int comparePointers(Loc loc, TOK op, Type *type, Expression *agg1, dinteger_t of
 {
     if ( pointToSameMemoryBlock(agg1, agg2) )
     {
-        dinteger_t cm = ofs1 - ofs2;
         dinteger_t n;
-        dinteger_t zero = 0;
         switch(op)
         {
         case TOKlt:          n = (ofs1 <  ofs2); break;
@@ -1107,6 +1116,8 @@ bool isCtfeComparable(Expression *e)
     if (x->isConst() != 1 &&
         x->op != TOKnull &&
         x->op != TOKstring &&
+        x->op != TOKfunction &&
+        x->op != TOKdelegate &&
         x->op != TOKarrayliteral &&
         x->op != TOKstructliteral &&
         x->op != TOKclassreference)
@@ -1304,6 +1315,21 @@ int ctfeCmpArrays(Loc loc, Expression *e1, Expression *e2, uinteger_t len)
     return 0;
 }
 
+/* Given a delegate expression e, return .funcptr.
+ * If e is NullExp, return NULL.
+ */
+FuncDeclaration *funcptrOf(Expression *e)
+{
+    assert(e->type->ty == Tdelegate);
+
+    if (e->op == TOKdelegate)
+        return ((DelegateExp *)e)->func;
+    if (e->op == TOKfunction)
+        return ((FuncExp *)e)->fd;
+    assert(e->op == TOKnull);
+    return NULL;
+}
+
 bool isArray(Expression *e)
 {
     return e->op == TOKarrayliteral || e->op == TOKstring ||
@@ -1321,13 +1347,16 @@ int ctfeRawCmp(Loc loc, Expression *e1, Expression *e2)
             return 0;
         return 1;
     }
+
+    // null == null, regardless of type
+
     if (e1->op == TOKnull && e2->op == TOKnull)
         return 0;
 
     if (e1->type->ty == Tpointer && e2->type->ty == Tpointer)
-    {    // Can only be an equality test.
-        if (e1->op == TOKnull && e2->op == TOKnull)
-            return 0;
+    {
+        // Can only be an equality test.
+
         dinteger_t ofs1, ofs2;
         Expression *agg1 = getAggregateFromPointer(e1, &ofs1);
         Expression *agg2 = getAggregateFromPointer(e2, &ofs2);
@@ -1335,6 +1364,35 @@ int ctfeRawCmp(Loc loc, Expression *e1, Expression *e2)
             ((VarExp *)agg1)->var == ((VarExp *)agg2)->var))
         {   if (ofs1 == ofs2)
                 return 0;
+        }
+        return 1;
+    }
+    if (e1->type->ty == Tdelegate && e2->type->ty == Tdelegate)
+    {
+        // If .funcptr isn't the same, they are not equal
+
+        if (funcptrOf(e1) != funcptrOf(e2))
+            return 1;
+
+        // If both are delegate literals, assume they have the
+        // same closure pointer. TODO: We don't support closures yet!
+        if (e1->op == TOKfunction && e2->op == TOKfunction)
+            return 0;
+        assert(e1->op == TOKdelegate && e2->op == TOKdelegate);
+
+        // Same .funcptr. Do they have the same .ptr?
+        Expression * ptr1 = ((DelegateExp *)e1)->e1;
+        Expression * ptr2 = ((DelegateExp *)e2)->e1;
+
+        dinteger_t ofs1, ofs2;
+        Expression *agg1 = getAggregateFromPointer(ptr1, &ofs1);
+        Expression *agg2 = getAggregateFromPointer(ptr2, &ofs2);
+        // If they are TOKvar, it means they are FuncDeclarations
+        if ((agg1 == agg2 && ofs1 == ofs2) ||
+            (agg1->op == TOKvar && agg2->op == TOKvar &&
+             ((VarExp *)agg1)->var == ((VarExp *)agg2)->var))
+        {
+            return 0;
         }
         return 1;
     }
@@ -1545,11 +1603,11 @@ Expression *ctfeCat(Type *type, Expression *e1, Expression *e2)
             if (es2e->op != TOKint64)
                 return EXP_CANT_INTERPRET;
             dinteger_t v = es2e->toInteger();
-            memcpy((unsigned char *)s + i * sz, &v, sz);
+            memcpy((utf8_t *)s + i * sz, &v, sz);
         }
 
         // Add terminating 0
-        memset((unsigned char *)s + len * sz, 0, sz);
+        memset((utf8_t *)s + len * sz, 0, sz);
 
         StringExp *es = new StringExp(loc, s, len);
         es->sz = sz;
@@ -1576,11 +1634,11 @@ Expression *ctfeCat(Type *type, Expression *e1, Expression *e2)
             if (es2e->op != TOKint64)
                 return EXP_CANT_INTERPRET;
             dinteger_t v = es2e->toInteger();
-            memcpy((unsigned char *)s + (es1->len + i) * sz, &v, sz);
+            memcpy((utf8_t *)s + (es1->len + i) * sz, &v, sz);
         }
 
         // Add terminating 0
-        memset((unsigned char *)s + len * sz, 0, sz);
+        memset((utf8_t *)s + len * sz, 0, sz);
 
         StringExp *es = new StringExp(loc, s, len);
         es->sz = sz;
@@ -1872,7 +1930,7 @@ Expression *changeArrayLiteralLength(Loc loc, TypeArray *arrayType,
     if (oldval->op == TOKstring)
     {
         StringExp *oldse = (StringExp *)oldval;
-        unsigned char *s = (unsigned char *)mem.calloc(newlen + 1, oldse->sz);
+        utf8_t *s = (utf8_t *)mem.calloc(newlen + 1, oldse->sz);
         memcpy(s, oldse->string, copylen * oldse->sz);
         unsigned defaultValue = (unsigned)(defaultElem->toInteger());
         for (size_t elemi = copylen; elemi < newlen; ++elemi)
@@ -1924,11 +1982,12 @@ Expression *changeArrayLiteralLength(Loc loc, TypeArray *arrayType,
 
 bool isCtfeValueValid(Expression *newval)
 {
-    if (
 #if DMDV2
-        newval->type->ty == Tnull ||
+    bool isnull = newval->type->ty == Tnull;
+#else
+    bool isnull = false;
 #endif
-        isPointer(newval->type) )
+    if (isnull || isPointer(newval->type))
     {
         if (newval->op == TOKaddress || newval->op == TOKnull ||
             newval->op == TOKstring)
@@ -1980,8 +2039,19 @@ bool isCtfeValueValid(Expression *newval)
         if (ie->e2->op == TOKvar)
             return true;
     }
-    if (newval->op == TOKfunction) return true; // function/delegate literal
-    if (newval->op == TOKdelegate) return true;
+
+    if (newval->op == TOKfunction)
+        return true; // function literal or delegate literal
+
+    if (newval->op == TOKdelegate)
+    {
+        Expression *dge = ((DelegateExp *)newval)->e1;
+        if (dge->op == TOKvar && ((VarExp *)dge)->var->isFuncDeclaration())
+            return true;        // &nestedfunc
+
+        if (dge->op == TOKstructliteral || dge->op == TOKclassreference)
+            return true;       // &struct.func or &clasinst.func
+    }
     if (newval->op == TOKsymoff)  // function pointer
     {
         if (((SymOffExp *)newval)->var->isFuncDeclaration())
@@ -1989,6 +2059,7 @@ bool isCtfeValueValid(Expression *newval)
         if (((SymOffExp *)newval)->var->isDataseg())
             return true;    // pointer to static variable
     }
+
     if (newval->op == TOKint64 || newval->op == TOKfloat64 ||
         newval->op == TOKchar || newval->op == TOKcomplex80)
         return true;

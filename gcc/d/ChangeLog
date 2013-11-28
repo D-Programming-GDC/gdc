@@ -1,3 +1,26 @@
+2013-11-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc(gcc_type_to_d_type): Use TypeSArray::makeType to
+	generate frontend static array types.
+	* d-codegen.cc(build_attributes): Use optimize as don't want the
+	ctfeInterpret of TypeExp expressions.
+	(get_object_method): Update for frontend changes.
+	(get_libcall): Update to use Type::dtypeinfo.
+	* d-elem.cc(IndexExp::toElem): Don't generate bounds checking codegen
+	if frontend explictly requests it.
+	(ArrayLiteralExp::toElem): Use TypeSArray::makeType to generate
+	frontend static array type.
+	(StructLiteralExp::toElem): Update for frontend changes.
+	* d-glue.cc(Global::increaseErrorCount): Define.
+	* d-objfile.cc(Module::genmoduleinfo): Remove moduleinfo 'New'
+	implementation for libdruntime changes.
+	* d-todt.cc(StructLiteralExp::toDt): Literal initialisers override
+	default initialisers.
+	(TypeInfoDeclaration::toDt): Update to use Type::dtypeinfo.
+	(TypeInfoStructDeclaration::toDt): Update for frontend changes.
+	* d-typinf.c(Type::getInternalTypeInfo): Update to use
+	Type::dtypeinfo.
+
 2013-11-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-asmstmt.cc(ExtAsmStatement::comeFromImpl): Define for frontend
@@ -12,7 +35,7 @@
 	(verrorSupplemental): Likewise.
 	(vwarning): Likewise.
 	(vdeprecation): Likewise.
-	(escapePath): For for frontend implementation changes.
+	(escapePath): Define for frontend implementation changes.
 	* d-irstate.cc(IRState::getLoopForLabel): Implement breaking on named
 	scope labels in for/while loops.
 	* d-lang.cc(d_handle_option): Add handler for new -fdeps and

@@ -81,6 +81,15 @@ Global::isSpeculativeGagging (void)
   return true;
 }
 
+void
+Global::increaseErrorCount (void)
+{
+  if (gag)
+    this->gaggedErrors++;
+
+  this->errors++;
+}
+
 char *
 Loc::toChars (void)
 {

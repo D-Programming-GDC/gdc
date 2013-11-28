@@ -1,4 +1,3 @@
-
 // 1028 Segfault using tuple inside asm code.
 
 void a(X...)(X expr)

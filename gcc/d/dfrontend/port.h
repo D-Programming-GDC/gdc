@@ -24,6 +24,8 @@ typedef long long longlong;
 typedef unsigned long long ulonglong;
 #endif
 
+typedef unsigned char utf8_t;
+
 struct Port
 {
     static longdouble ldbl_nan;

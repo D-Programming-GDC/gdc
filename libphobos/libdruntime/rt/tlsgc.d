@@ -30,13 +30,13 @@ struct Data
  */
 Data* init()
 {
-    auto p = cast(Data*).malloc(Data.sizeof);
-    *p = Data.init;
+    auto data = cast(Data*).malloc(Data.sizeof);
+    *data = Data.init;
 
     // do module specific initialization
-    p.blockInfoCache = &rt.lifetime.__blkcache_storage;
+    data.blockInfoCache = &rt.lifetime.__blkcache_storage;
 
-    return p;
+    return data;
 }
 
 /**

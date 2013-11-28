@@ -68,8 +68,6 @@ public import std.digest.md;
 int main(char[][] args)
 {
 
-version (none)
-{
     // Bring in unit test for module by referencing function in it
 
     cmp("foo", "bar");                  // string
@@ -127,7 +125,7 @@ version (none)
     std.signals.linkin();
 
     bool isEmail = std.net.isemail.isEmail("abc");
-    auto http = std.net.curl.HTTP("dlang.org");
+    //auto http = std.net.curl.HTTP("dlang.org");
     auto uuid = randomUUID();
 
     auto md5 = md5Of("hello");
@@ -135,6 +133,5 @@ version (none)
     auto crc = crc32Of("hello");
     auto string = toHexString(crc);
     puts("Success!");
-}
     return 0;
 }

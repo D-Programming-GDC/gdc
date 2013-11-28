@@ -713,6 +713,8 @@ body
         if(u)
         {
             // extend worked, save the new current allocated size
+            if(bic)
+                bic.size = u; // update cache
             curcapacity = u - offset - LARGEPAD;
             return curcapacity / size;
         }

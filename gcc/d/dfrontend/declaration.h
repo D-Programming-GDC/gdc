@@ -102,13 +102,8 @@ struct Match
     FuncDeclaration *anyf;      // pick a func, any func, to use for error recovery
 };
 
-void functionResolve(Match *m, FuncDeclaration *f,
-        Type *tthis, Expressions *arguments, Dsymbol **plast = NULL);
-void templateResolve(Match *m, TemplateDeclaration *td, Loc loc, Scope *sc,
-        Objects *tiargs, Type *tthis, Expressions *fargs);
-int overloadApply(FuncDeclaration *fstart,
-        int (*fp)(void *, FuncDeclaration *),
-        void *param, Dsymbol **plast = NULL);
+void functionResolve(Match *m, Dsymbol *fd, Loc loc, Scope *sc, Objects *tiargs, Type *tthis, Expressions *fargs);
+int overloadApply(Dsymbol *fstart, void *param, int (*fp)(void *, Dsymbol *));
 
 void ObjectNotFound(Identifier *id);
 
@@ -705,7 +700,7 @@ public:
     bool needThis();
     bool isVirtualMethod();
     virtual bool isVirtual();
-    virtual bool isFinal();
+    virtual bool isFinalFunc();
     virtual bool addPreInvariant();
     virtual bool addPostInvariant();
     Expression *interpret(InterState *istate, Expressions *arguments, Expression *thisexp = NULL);
@@ -721,11 +716,11 @@ public:
     bool hasNestedFrameRefs();
     void buildResultVar();
     Statement *mergeFrequire(Statement *);
-    Statement *mergeFensure(Statement *);
+    Statement *mergeFensure(Statement *, Identifier *oid);
     Parameters *getParameters(int *pvarargs);
 
-    static FuncDeclaration *genCfunc(Type *treturn, const char *name);
-    static FuncDeclaration *genCfunc(Type *treturn, Identifier *id);
+    static FuncDeclaration *genCfunc(Parameters *args, Type *treturn, const char *name);
+    static FuncDeclaration *genCfunc(Parameters *args, Type *treturn, Identifier *id);
 
     Symbol *toSymbol();
     Symbol *toThunkSymbol(int offset);  // thunk version

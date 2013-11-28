@@ -562,13 +562,6 @@ void AliasDeclaration::semantic(Scope *sc)
     else if (t)
     {
         type = t->semantic(loc, sc);
-
-        /* TypeTuple might have extra info,
-         *    is(typeof(func) PT == __parameters)
-         * Otherwise, strip all redundant informations.
-         */
-        if (type->ty != Ttuple)
-            type = type->merge2();
         //printf("\talias resolved to type %s\n", type->toChars());
     }
     if (overnext)
@@ -688,7 +681,13 @@ Dsymbol *AliasDeclaration::toAlias()
     assert(this != aliassym);
     //static int count; if (++count == 10) *(char*)0=0;
     if (inSemantic)
-    {   error("recursive alias declaration");
+    {
+        error("recursive alias declaration");
+
+        // Avoid breaking "recursive alias" state during errors gagged
+        if (global.isSpeculativeGagging())
+            return this;
+
         aliassym = new AliasDeclaration(loc, ident, Type::terror);
         type = Type::terror;
     }
@@ -833,6 +832,9 @@ void VarDeclaration::semantic(Scope *sc)
 //      return;
 //    sem = SemanticIn;
 
+    if (sem >= SemanticDone)
+        return;
+
     Scope *scx = NULL;
     if (scope)
     {   sc = scope;
@@ -860,8 +862,8 @@ void VarDeclaration::semantic(Scope *sc)
 
         // Infering the type requires running semantic,
         // so mark the scope as ctfe if required
-        if (storage_class & (STCmanifest | STCstatic))
-            sc->needctfe++;
+        bool needctfe = (storage_class & (STCmanifest | STCstatic));
+        if (needctfe) sc = sc->startCTFE();
 
         //printf("inferring type for %s with init %s\n", toChars(), init->toChars());
         ArrayInitializer *ai = init->isArrayInitializer();
@@ -884,8 +886,7 @@ void VarDeclaration::semantic(Scope *sc)
         else
             type = init->inferType(sc);
 
-        if (storage_class & (STCmanifest | STCstatic))
-            sc->needctfe--;
+        if (needctfe) sc = sc->endCTFE();
 //      type = type->semantic(loc, sc);
 
         inuse--;
@@ -1201,6 +1202,12 @@ Lnomatch:
                 const char *s = (storage_class & STCimmutable) ? "immutable" : "const";
                 fprintf(stderr, "%s: %s.%s is %s field\n", p ? p : "", ad->toPrettyChars(), toChars(), s);
             }
+            storage_class |= STCfield;
+#if DMDV2
+            if (tbn->ty == Tstruct && ((TypeStruct *)tbn)->sym->noDefaultCtor ||
+                tbn->ty == Tclass  && ((TypeClass  *)tbn)->sym->noDefaultCtor)
+                aad->noDefaultCtor = TRUE;
+#endif
 #else
             if (storage_class & (STCconst | STCimmutable) && init)
             {
@@ -1211,7 +1218,6 @@ Lnomatch:
                     storage_class |= STCstatic;
             }
             else
-#endif
             {
                 storage_class |= STCfield;
 #if DMDV2
@@ -1220,6 +1226,7 @@ Lnomatch:
                     aad->noDefaultCtor = TRUE;
 #endif
             }
+#endif
         }
 
         InterfaceDeclaration *id = parent->isInterfaceDeclaration();
@@ -1272,7 +1279,16 @@ Lnomatch:
         {
             if (func->fes)
                 func = func->fes->func;
-            if (!((TypeFunction *)func->type)->iswild)
+            bool isWild = false;
+            for (FuncDeclaration *fd = func; fd; fd = fd->toParent2()->isFuncDeclaration())
+            {
+                if (((TypeFunction *)fd->type)->iswild)
+                {
+                    isWild = true;
+                    break;
+                }
+            }
+            if (!isWild)
             {
                 error("inout variables can only be declared inside inout functions");
             }
@@ -1395,7 +1411,6 @@ Lnomatch:
             init = new ExpInitializer(e->loc, e);
         }
 
-        StructInitializer *si = init->isStructInitializer();
         ExpInitializer *ei = init->isExpInitializer();
 
         if (ei && isScope())
@@ -1464,7 +1479,7 @@ Lnomatch:
                             if (t->ty != Tsarray)
                                 break;
                             dim *= ((TypeSArray *)t)->dim->toInteger();
-                            e1->type = new TypeSArray(t->nextOf(), new IntegerExp(Loc(), dim, Type::tindex));
+                            e1->type = TypeSArray::makeType(Loc(), t->nextOf(), dim);
                         }
                     }
                     e1 = new SliceExp(loc, e1, NULL, NULL);
@@ -1613,20 +1628,21 @@ Lnomatch:
              * Ignore failure.
              */
 
-            if (!global.errors && !inferred)
+            if (!inferred)
             {
                 unsigned errors = global.errors;
                 inuse++;
 #if DMDV2
                 if (ei)
                 {
-                    Expression *exp;
-                    exp = ei->exp->syntaxCopy();
-                    if (isDataseg() || (storage_class & STCmanifest))
-                        exp = exp->ctfeSemantic(sc);
-                    else
-                        exp = exp->semantic(sc);
+                    Expression *exp = ei->exp->syntaxCopy();
+
+                    bool needctfe = isDataseg() || (storage_class & STCmanifest);
+                    if (needctfe) sc = sc->startCTFE();
+                    exp = exp->semantic(sc);
                     exp = resolveProperties(sc, exp);
+                    if (needctfe) sc = sc->endCTFE();
+
                     Type *tb = type->toBasetype();
                     Type *ti = exp->type->toBasetype();
 
@@ -1694,7 +1710,10 @@ Ldtor:
     edtor = callScopeDtor(sc);
     if (edtor)
     {
-        edtor = edtor->semantic(sc);
+        if (sc->func && storage_class & (STCstatic | STCgshared))
+            edtor = edtor->semantic(sc->module->scope);
+        else
+            edtor = edtor->semantic(sc);
 
 #if 0 // currently disabled because of std.stdio.stdin, stdout and stderr
         if (isDataseg() && !(storage_class & STCextern))
@@ -2341,7 +2360,7 @@ void ClassInfoDeclaration::semantic(Scope *sc)
 /********************************* TypeInfoDeclaration ****************************/
 
 TypeInfoDeclaration::TypeInfoDeclaration(Type *tinfo, int internal)
-    : VarDeclaration(Loc(), Type::typeinfo->type, tinfo->getTypeInfoIdent(internal), NULL)
+    : VarDeclaration(Loc(), Type::dtypeinfo->type, tinfo->getTypeInfoIdent(internal), NULL)
 {
     this->tinfo = tinfo;
     storage_class = STCstatic | STCgshared;

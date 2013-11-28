@@ -408,6 +408,11 @@ static assert(is(typeof(bug4953(3))));
 /**********************************/
 // 5886 & 5393
 
+mixin template Foo5886(T)
+{
+    void foo(U : T, this X)() const { static assert(is(X == const K5886)); }
+}
+
 struct K5886
 {
     void get1(this T)() const
@@ -418,11 +423,18 @@ struct K5886
     {
         pragma(msg, N, " ; ", T);
     }
+
+    mixin Foo5886!double;
+    mixin Foo5886!string;
+
     void test() const
     {
         get1;       // OK
         get2;       // OK
         get2!8;     // NG
+
+        foo!(int);
+        foo!(typeof(null));
     }
 }
 
@@ -2174,6 +2186,23 @@ void test9536()
 }
 
 /**********************************/
+// 9578
+
+template t9578(alias f) { void tf()() { f(); } }
+
+void g9578a(alias f)()  { f(); }        // Error -> OK
+void g9578b(alias ti)() { ti.tf(); }    // Error -> OK
+
+void test9578()
+{
+    int i = 0;
+    int m() { return i; }
+
+    g9578a!(t9578!m.tf)();
+    g9578b!(t9578!m)();
+}
+
+/**********************************/
 // 9596
 
 int foo9596a(K, V)(inout(       V  [K])) { return 1; }
@@ -2627,6 +2656,131 @@ static: // necessary to make overloaded symbols accessible via __traits(getOverl
 }
 
 /******************************************/
+// 10498
+
+template triggerIssue10498a()
+{
+    enum triggerIssue10498a = __traits(compiles, { T10498a; });
+}
+
+template PackedGenericTuple10498a(Args...)
+{
+    alias Args Tuple;
+    enum e = triggerIssue10498a!();
+}
+
+struct S10498a { }
+
+template T10498a()
+{
+    alias PackedGenericTuple10498a!S10498a T10498a;
+}
+
+void test10498a()
+{
+    alias T10498a!() t;
+    static assert(is(t.Tuple[0])); // Fails -> OK
+}
+
+// --------
+
+template triggerIssue10498b(A...)
+{
+    enum triggerIssue10498b = __traits(compiles, { auto a = A[0]; });
+}
+
+template PackedGenericTuple10498b(Args...)
+{
+    alias Args Tuple;
+    enum e = triggerIssue10498b!Args;
+}
+
+template T10498b()
+{
+    struct S {} // The fact `S` is in `T` causes the problem
+    alias PackedGenericTuple10498b!S T10498b;
+}
+
+void test10498b()
+{
+    alias T10498b!() t;
+    static assert(is(t.Tuple[0]));
+}
+
+/******************************************/
+// 10537
+
+struct Iota10537
+{
+    int s,e,i;
+    mixin Yield10537!q{ ; };
+}
+
+auto skipStrings10537(T)(T source)
+{
+    return "";
+}
+
+mixin template Yield10537(dstring code)
+{
+    alias X = typeof({ enum x = rewriteCode10537(code); }());
+}
+
+dstring rewriteCode10537(dstring code)
+{
+    skipStrings10537(code);  // IFTI causes forward reference
+    return "";
+}
+
+/******************************************/
+// 10558
+
+template Template10558() {}
+
+struct Struct10558(alias T){}
+
+alias bar10558 = foo10558!(Template10558!());
+
+template foo10558(alias T)
+{
+    alias foobar = Struct10558!T;
+
+    void fun()
+    {
+        alias a = foo10558!T;
+    }
+}
+
+/******************************************/
+// 10592
+
+void test10592()
+{
+    struct A(E)
+    {
+        int put()(const(E)[] data)
+        {
+            return 1;
+        }
+
+        int put()(const(dchar)[] data) if (!is(E == dchar))
+        {
+            return 2;
+        }
+
+        int put(C)(const(C)[] data) if (!is(C == dchar) && !is(E == C))
+        {
+            return 3;
+        }
+    }
+
+    A!char x;
+    assert(x.put("abcde"c) == 1);   // OK: hit 1
+    assert(x.put("abcde"w) == 3);   // NG: this should hit 3
+    assert(x.put("abcde"d) == 2);   // OK: hit 2
+}
+
+/******************************************/
 
 int main()
 {
@@ -2705,6 +2859,7 @@ int main()
     test9143();
     test9266();
     test9536();
+    test9578();
     test9596();
     test9837();
     test9874();
@@ -2712,6 +2867,7 @@ int main()
     test9971();
     test9977();
     test10083();
+    test10592();
 
     printf("Success\n");
     return 0;

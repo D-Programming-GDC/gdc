@@ -192,6 +192,16 @@ proc dmd2dg { base test } {
             set out_line "// { dg-additional-sources \"$m0\" }"
         }
 
+        # Handle EXTRA_CPP_SOURCES option
+        if [regexp -- {EXTRA_CPP_SOURCES\s*:\s*(.*)} $copy_line m m0] {
+            # Iterate imports and convert
+            foreach import $m0 {
+                # print "Import: $base $type/$import"
+                gdc-copy-extra $base "$type/$import"
+            }
+            set out_line "// { dg-additional-sources \"$m0\" }"
+        }
+
         # Handle EXTRA_FILES option
         if [regexp -- {EXTRA_FILES\s*:\s*(.*)} $copy_line m m0] {
             # Iterate imports and convert
@@ -308,7 +318,7 @@ proc gdc-do-test { } {
         }
 
         # Cleanup
-        file delete $filename
+        #file delete $filename
     }
 
     # All done.

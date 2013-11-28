@@ -20,7 +20,7 @@
 #include "dsymbol.h"
 
 
-class OutBuffer;
+struct OutBuffer;
 class Identifier;
 class TemplateInstance;
 class TemplateParameter;
@@ -32,7 +32,7 @@ class TemplateTupleParameter;
 class Type;
 class TypeQualified;
 class TypeTypeof;
-class Scope;
+struct Scope;
 class Expression;
 class AliasDeclaration;
 class FuncDeclaration;
@@ -300,7 +300,6 @@ public:
      *      tiargs = args
      */
     Identifier *name;
-    //Identifiers idents;
     Objects *tiargs;            // Array of Types/Expressions of template
                                 // instance arguments [int*, char, 10*10]
 
@@ -308,7 +307,7 @@ public:
                                 // to TemplateDeclaration.parameters
                                 // [int, char, 100]
 
-    TemplateDeclaration *tempdecl;      // referenced by foo.bar.abc
+    Dsymbol *tempdecl;                  // referenced by foo.bar.abc
     TemplateInstance *inst;             // refer to existing instance
     TemplateInstance *tinst;            // enclosing template instance
     ScopeDsymbol *argsym;               // argument symbol table
@@ -344,7 +343,7 @@ public:
     Dsymbol *toAlias();                 // resolve real symbol
     const char *kind();
     bool oneMember(Dsymbol **ps, Identifier *ident);
-    int needsTypeInference(Scope *sc);
+    bool needsTypeInference(Scope *sc, int flag = 0);
     char *toChars();
     const char *mangle(bool isv = false);
     void printInstantiationTrace();
@@ -358,6 +357,7 @@ public:
     static void semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int flags);
     bool semanticTiargs(Scope *sc);
     bool findTemplateDeclaration(Scope *sc);
+    bool updateTemplateDeclaration(Scope *sc, Dsymbol *s);
     bool findBestMatch(Scope *sc, Expressions *fargs);
     void declareParameters(Scope *sc);
     int hasNestedArgs(Objects *tiargs);
@@ -391,6 +391,8 @@ public:
     void toJson(JsonOut *json);
 
     void toObjFile(int multiobj);                       // compile to .obj file
+
+    bool findTemplateDeclaration(Scope *sc);
 
     TemplateMixin *isTemplateMixin() { return this; }
 };

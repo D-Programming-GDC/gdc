@@ -264,8 +264,8 @@ TypeTuple *TypeDArray::toArgTypes()
      */
     if (global.params.is64bit && !global.params.isLP64)
     {
-        // For X32 ABI on 64bit, D arrays fit into a single integer register.
-        unsigned offset = Type::tsize_t->size();
+        // For AMD64 ILP32 ABI, D arrays fit into a single integer register.
+        unsigned offset = Type::tsize_t->size(Loc());
         Type *t = argtypemerge(Type::tsize_t, Type::tvoidptr, offset);
         if (t)
             return new TypeTuple(t);
@@ -280,8 +280,8 @@ TypeTuple *TypeDelegate::toArgTypes()
      */
     if (global.params.is64bit && !global.params.isLP64)
     {
-        // For X32 ABI on 64bit, D arrays fit into a single integer register.
-        unsigned offset = Type::tsize_t->size();
+        // For AMD64 ILP32 ABI, delegates fit into a single integer register.
+        unsigned offset = Type::tsize_t->size(Loc());
         Type *t = argtypemerge(Type::tsize_t, Type::tvoidptr, offset);
         if (t)
             return new TypeTuple(t);
@@ -325,8 +325,6 @@ TypeTuple *TypeStruct::toArgTypes()
     if (global.params.is64bit && sym->fields.dim)
     {
 #if 1
-        unsigned sz1 = 0;
-        unsigned sz2 = 0;
         t1 = NULL;
         for (size_t i = 0; i < sym->fields.dim; i++)
         {   VarDeclaration *f = sym->fields[i];

@@ -781,7 +781,7 @@ TypedefDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo(NULL);
+  type->getTypeInfo (NULL);
 
   TypeTypedef *tc = (TypeTypedef *) type;
   if (tc->sym->init && !type->isZeroInit())
@@ -851,7 +851,7 @@ Module::genmoduleinfo()
 
   sgetmembers = findGetMembers();
 
-  size_t flags = MInew;
+  size_t flags = 0;
   if (sctor)
     flags |= MItlsctor;
   if (sdtor)
@@ -870,9 +870,10 @@ Module::genmoduleinfo()
     flags |= MIimportedModules;
   if (aclasses.dim)
     flags |= MIlocalClasses;
-
   if (!needmoduleinfo)
     flags |= MIstandalone;
+
+  flags |= MIname;
 
   /* Put out:
    *  uint flags;
@@ -935,13 +936,15 @@ Module::genmoduleinfo()
 	}
     }
 
-  // Put out module name as a 0-terminated C-string, to save bytes
-  const char *name = toPrettyChars();
-  size_t namelen = strlen (name) + 1;
-  tree strtree = build_string (namelen, name);
-  TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
-
-  dt_cons (&dt, strtree);
+  if (flags & MIname)
+    {
+      // Put out module name as a 0-terminated C-string, to save bytes
+      const char *name = toPrettyChars();
+      size_t namelen = strlen (name) + 1;
+      tree strtree = build_string (namelen, name);
+      TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
+      dt_cons (&dt, strtree);
+    }
 
   csym->Sdt = dt;
   d_finish_symbol (csym);

@@ -19,8 +19,8 @@
 
 
 class Identifier;
-class Scope;
-class OutBuffer;
+struct Scope;
+struct OutBuffer;
 class Module;
 class Package;
 class AliasDeclaration;

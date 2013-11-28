@@ -46,20 +46,22 @@ enum PROT;
 #define CSXreturn       0x20    // seen a return statement
 #define CSXany_ctor     0x40    // either this() or super() was called
 
-#define SCOPEctor       1       // constructor type
-#define SCOPEstaticif   2       // inside static if
-#define SCOPEfree       4       // is on free list
-#define SCOPEstaticassert 8     // inside static assert
-#define SCOPEdebug      0x10    // inside debug conditional
+#define SCOPEctor           0x0001  // constructor type
+#define SCOPEstaticif       0x0002  // inside static if
+#define SCOPEfree           0x0004  // is on free list
+#define SCOPEstaticassert   0x0008  // inside static assert
+#define SCOPEdebug          0x0010  // inside debug conditional
 
-#define SCOPEinvariant  0x20    // inside invariant code
-#define SCOPErequire    0x40    // inside in contract code
-#define SCOPEensure     0x60    // inside out contract code
-#define SCOPEcontract   0x60    // [mask] we're inside contract code
+#define SCOPEinvariant      0x0020  // inside invariant code
+#define SCOPErequire        0x0040  // inside in contract code
+#define SCOPEensure         0x0060  // inside out contract code
+#define SCOPEcontract       0x0060  // [mask] we're inside contract code
 
-class Scope
+#define SCOPEctfe           0x0080  // inside a ctfe-only expression
+#define SCOPEnoaccesscheck  0x0100  // don't do access checks
+
+struct Scope
 {
-public:
     Scope *enclosing;           // enclosing Scope
 
     Module *module;             // Root module
@@ -86,8 +88,6 @@ public:
     int noctor;                 // set if constructor calls aren't allowed
     int intypeof;               // in typeof(exp)
     bool speculative;            // in __traits(compiles) or typeof(exp)
-    int noaccesscheck;          // don't do access checks
-    int needctfe;               // inside a ctfe-only expression
 
     unsigned callSuper;         // primitive flow analysis for constructors
 
@@ -118,6 +118,9 @@ public:
     Scope *push();
     Scope *push(ScopeDsymbol *ss);
     Scope *pop();
+
+    Scope *startCTFE();
+    Scope *endCTFE();
 
     void mergeCallSuper(Loc loc, unsigned cs);
 

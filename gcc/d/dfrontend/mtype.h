@@ -21,7 +21,7 @@
 #include "arraytypes.h"
 #include "expression.h"
 
-class Scope;
+struct Scope;
 class Identifier;
 class Expression;
 class StructDeclaration;
@@ -189,7 +189,7 @@ public:
     static Type *thash_t;               // matches hash_t alias
     static Type *tindex;                // array/ptr index
 
-    static ClassDeclaration *typeinfo;
+    static ClassDeclaration *dtypeinfo;
     static ClassDeclaration *typeinfoclass;
     static ClassDeclaration *typeinfointerface;
     static ClassDeclaration *typeinfostruct;
@@ -505,6 +505,8 @@ public:
 #if CPP_MANGLE
     void toCppMangle(OutBuffer *buf, CppMangleState *cms);
 #endif
+
+    static Type *makeType(Loc loc, Type *tn, dinteger_t dim);
 
     type *toCtype();
     type *toCParamtype();

@@ -648,8 +648,66 @@ Expression *VarExp::doInline(InlineDoState *ids)
         }
     }
     if (ids->fd && var == ids->fd->vthis)
-    {   VarExp *ve = new VarExp(loc, ids->vthis);
+    {
+        VarExp *ve = new VarExp(loc, ids->vthis);
         ve->type = type;
+        return ve;
+    }
+
+    /* Inlining context pointer access for nested referenced variables.
+     * For example:
+     *      auto fun() {
+     *        int i = 40;
+     *        auto foo() {
+     *          int g = 2;
+     *          struct Result {
+     *            auto bar() { return i + g; }
+     *          }
+     *          return Result();
+     *        }
+     *        return foo();
+     *      }
+     *      auto t = fun();
+     * 'i' and 'g' are nested referenced variables in Result.bar(), so:
+     *      auto x = t.bar();
+     * should be inlined to:
+     *      auto x = *(t.vthis.vthis + i->voffset) + *(t.vthis + g->voffset)
+     */
+    VarDeclaration *v = var->isVarDeclaration();
+    if (v && v->nestedrefs.dim && ids->vthis)
+    {
+        Dsymbol *s = ids->fd;
+        FuncDeclaration *fdv = v->toParent()->isFuncDeclaration();
+        assert(fdv);
+        Expression *ve = new VarExp(loc, ids->vthis);
+        ve->type = ids->vthis->type;
+        while (s != fdv)
+        {
+            FuncDeclaration *f = s->isFuncDeclaration();
+            if (AggregateDeclaration *ad = s->isThis())
+            {
+                assert(ad->vthis);
+                ve = new DotVarExp(loc, ve, ad->vthis);
+                ve->type = ad->vthis->type;
+                s = ad->toParent2();
+            }
+            else if (f && f->isNested())
+            {
+                assert(f->vthis);
+                if (f->hasNestedFrameRefs())
+                {
+                    ve = new DotVarExp(loc, ve, f->vthis);
+                    ve->type = f->vthis->type;
+                }
+                s = f->toParent2();
+            }
+            else
+                assert(0);
+            assert(s);
+        }
+        ve = new DotVarExp(loc, ve, v);
+        ve->type = v->type;
+        //printf("\t==> ve = %s, type = %s\n", ve->toChars(), ve->type->toChars());
         return ve;
     }
 
@@ -707,7 +765,7 @@ Expression *DeclarationExp::doInline(InlineDoState *ids)
             VarDeclaration *vto;
 
             vto = new VarDeclaration(vd->loc, vd->type, vd->ident, vd->init);
-            *vto = *vd;
+            memcpy(vto, vd, sizeof(VarDeclaration));
             vto->parent = ids->parent;
             vto->csym = NULL;
             vto->isym = NULL;
@@ -801,7 +859,7 @@ Expression *IndexExp::doInline(InlineDoState *ids)
         VarDeclaration *vto;
 
         vto = new VarDeclaration(vd->loc, vd->type, vd->ident, vd->init);
-        *vto = *vd;
+        memcpy(vto, vd, sizeof(VarDeclaration));
         vto->parent = ids->parent;
         vto->csym = NULL;
         vto->isym = NULL;
@@ -838,7 +896,7 @@ Expression *SliceExp::doInline(InlineDoState *ids)
         VarDeclaration *vto;
 
         vto = new VarDeclaration(vd->loc, vd->type, vd->ident, vd->init);
-        *vto = *vd;
+        memcpy(vto, vd, sizeof(VarDeclaration));
         vto->parent = ids->parent;
         vto->csym = NULL;
         vto->isym = NULL;
@@ -1110,12 +1168,7 @@ Statement *ReturnStatement::inlineScan(InlineScanState *iss)
 {
     //printf("ReturnStatement::inlineScan()\n");
     if (exp)
-    {
         exp = exp->inlineScan(iss);
-
-        FuncDeclaration *func = iss->fd;
-        TypeFunction *tf = (TypeFunction *)(func->type);
-    }
     return this;
 }
 
@@ -1510,7 +1563,7 @@ int FuncDeclaration::canInline(int hasthis, int hdrscan, int statementsToo)
         isSynchronized() ||
         isImportedSymbol() ||
         hasNestedFrameRefs() ||      // no nested references to this frame
-        (isVirtual() && !isFinal())
+        (isVirtual() && !isFinalFunc())
        ))
     {
         goto Lno;
@@ -1719,6 +1772,7 @@ Expression *FuncDeclaration::expandInline(InlineScanState *iss, Expression *ethi
         //eb->print();
         //eb->dump(0);
     }
+    //printf("%s->expandInline = { %s }\n", toChars(), e->toChars());
 
     /* There's a problem if what the function returns is used subsequently as an
      * lvalue, as in a struct return that is then used as a 'this'.

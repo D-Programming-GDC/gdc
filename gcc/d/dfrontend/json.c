@@ -128,7 +128,7 @@ void JsonOut::stringPart(const char *s)
 {
     for (; *s; s++)
     {
-        unsigned char c = (unsigned char) *s;
+        utf8_t c = (utf8_t) *s;
         switch (c)
         {
             case '\n':
@@ -395,7 +395,7 @@ void JsonOut::propertyStorageClass(const char *name, StorageClass stc)
         {   char tmp[20];
             const char *p = StorageClassDeclaration::stcToChars(tmp, stc);
             assert(p);
-            assert(strlen(p) < sizeof(tmp));
+            assert(strlen(p) < sizeof(tmp) / sizeof(tmp[0]));
             if (p[0] == '@')
             {
                 indent();
@@ -970,9 +970,10 @@ void TemplateDeclaration::toJson(JsonOut *json)
             if (s->isTemplateThisParameter())
                 json->property("kind", "this");
             else
-#endif
                 json->property("kind", "type");
-
+#else
+            json->property("kind", "type");
+#endif
             json->property("type", "deco", type->specType);
 
             json->property("default", "defaultDeco", type->defaultType);

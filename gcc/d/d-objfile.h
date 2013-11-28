@@ -27,8 +27,8 @@
 // These must match the values in object_.d
 enum ModuleInfoFlags
 {
-  MIstandalone	    = 4,
-  MItlsctor	    = 8,
+  MIstandalone	    = 0x4,
+  MItlsctor	    = 0x8,
   MItlsdtor	    = 0x10,
   MIctor	    = 0x20,
   MIdtor	    = 0x40,
@@ -37,7 +37,7 @@ enum ModuleInfoFlags
   MIunitTest	    = 0x200,
   MIimportedModules = 0x400,
   MIlocalClasses    = 0x800,
-  MInew		    = 0x80000000
+  MIname	    = 0x1000,
 };
 
 enum OutputStage
