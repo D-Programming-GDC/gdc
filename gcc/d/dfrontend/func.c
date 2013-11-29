@@ -1,5 +1,5 @@
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2012 by Digital Mars
+// Copyright (c) 1999-2013 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -25,8 +25,10 @@
 #include "template.h"
 #include "hdrgen.h"
 #include "target.h"
+#include "parse.h"
 
 void functionToCBuffer2(TypeFunction *t, OutBuffer *buf, HdrGenState *hgs, int mod, const char *kind);
+void genCmain(Scope *sc);
 
 /********************************* FuncDeclaration ****************************/
 
@@ -867,6 +869,9 @@ Ldone:
             fprintf(stderr, "entry     %-10s\t%s\n", type, name);
         }
     }
+
+    if (fbody && isMain() && sc->module == sc->module->importedFrom)
+        genCmain(sc);
 
     return;
 }
@@ -4233,16 +4238,16 @@ void SharedStaticCtorDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /********************************* StaticDtorDeclaration ****************************/
 
-StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc)
+StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc, StorageClass stc)
     : FuncDeclaration(loc, endloc,
-      Identifier::generateId("_staticDtor"), STCstatic, NULL)
+      Identifier::generateId("_staticDtor"), STCstatic | stc, NULL)
 {
     vgate = NULL;
 }
 
-StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc, const char *name)
+StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc, const char *name, StorageClass stc)
     : FuncDeclaration(loc, endloc,
-      Identifier::generateId(name), STCstatic, NULL)
+      Identifier::generateId(name), STCstatic | stc, NULL)
 {
     vgate = NULL;
 }
@@ -4250,7 +4255,7 @@ StaticDtorDeclaration::StaticDtorDeclaration(Loc loc, Loc endloc, const char *na
 Dsymbol *StaticDtorDeclaration::syntaxCopy(Dsymbol *s)
 {
     assert(!s);
-    StaticDtorDeclaration *sdd = new StaticDtorDeclaration(loc, endloc);
+    StaticDtorDeclaration *sdd = new StaticDtorDeclaration(loc, endloc, storage_class);
     return FuncDeclaration::syntaxCopy(sdd);
 }
 
@@ -4263,7 +4268,7 @@ void StaticDtorDeclaration::semantic(Scope *sc)
     }
 
     if (!type)
-        type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd);
+        type = new TypeFunction(NULL, Type::tvoid, FALSE, LINKd, storage_class);
 
     /* If the static ctor appears within a template instantiation,
      * it could get called multiple times by the module constructors
@@ -4342,15 +4347,15 @@ void StaticDtorDeclaration::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
 
 /********************************* SharedStaticDtorDeclaration ****************************/
 
-SharedStaticDtorDeclaration::SharedStaticDtorDeclaration(Loc loc, Loc endloc)
-    : StaticDtorDeclaration(loc, endloc, "_sharedStaticDtor")
+SharedStaticDtorDeclaration::SharedStaticDtorDeclaration(Loc loc, Loc endloc, StorageClass stc)
+    : StaticDtorDeclaration(loc, endloc, "_sharedStaticDtor", stc)
 {
 }
 
 Dsymbol *SharedStaticDtorDeclaration::syntaxCopy(Dsymbol *s)
 {
     assert(!s);
-    SharedStaticDtorDeclaration *sdd = new SharedStaticDtorDeclaration(loc, endloc);
+    SharedStaticDtorDeclaration *sdd = new SharedStaticDtorDeclaration(loc, endloc, storage_class);
     return FuncDeclaration::syntaxCopy(sdd);
 }
 

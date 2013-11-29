@@ -63,6 +63,7 @@ public:
     static DsymbolTable *modules;       // symbol table of all modules
     static Modules amodules;            // array of all modules
     static Dsymbols deferred;   // deferred Dsymbol's needing semantic() run on them
+    static Dsymbols deferred3;  // deferred Dsymbol's needing semantic3() run on them
     static unsigned dprogress;  // progress resolving the deferred list
     static void init();
 
@@ -85,9 +86,6 @@ public:
     int selfImports();          // returns !=0 if module imports itself
 
     int insearch;
-    Identifier *searchCacheIdent;
-    Dsymbol *searchCacheSymbol; // cached value of search
-    int searchCacheFlags;       // cached flags
 
     int semanticstarted;        // has semantic() been started?
     int semanticRun;            // has semantic() been done?
@@ -141,11 +139,11 @@ public:
     void gendocfile();
     int needModuleInfo();
     Dsymbol *search(Loc loc, Identifier *ident, int flags);
-    Dsymbol *symtabInsert(Dsymbol *s);
     void deleteObjFile();
-    void addDeferredSemantic(Dsymbol *s);
+    static void addDeferredSemantic(Dsymbol *s);
     static void runDeferredSemantic();
-    static void clearCache();
+    static void addDeferredSemantic3(Dsymbol *s);
+    static void runDeferredSemantic3();
     int imports(Module *m);
 
     // Back end

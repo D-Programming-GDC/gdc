@@ -365,14 +365,6 @@ longdouble::operator != (const longdouble& r)
   return real_compare (NE_EXPR, &rv(), &r.rv());
 }
 
-// Returns TRUE if longdouble value is identical to R.
-
-bool
-longdouble::isIdenticalTo (const longdouble& r) const
-{
-  return REAL_VALUES_IDENTICAL (rv(), r.rv());
-}
-
 // Format longdouble value into decimal string BUF of size BUF_SIZE.
 
 int

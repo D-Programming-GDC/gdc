@@ -2817,7 +2817,16 @@ Expression *NewExp::interpret(InterState *istate, CtfeGoal goal)
                 Dsymbol *s = c->fields[i];
                 VarDeclaration *v = s->isVarDeclaration();
                 assert(v);
-                Expression *m = v->init ? v->init->toExpression() : v->type->defaultInitLiteral(loc);
+                Expression *m;
+                if (v->init)
+                {
+                    if (v->init->isVoidInitializer())
+                        m = v->type->voidInitLiteral(v);
+                    else
+                        m = v->getConstInitializer(true);
+                }
+                else
+                    m = v->type->defaultInitLiteral(loc);
                 if (exceptionOrCantInterpret(m))
                     return m;
                 (*elems)[fieldsSoFar+i] = copyLiteral(m);
@@ -3226,7 +3235,7 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, CtfeGoal goal, fp_
         if (exceptionOrCantInterpret(e1))
             return e1;
         if (!(e1->op == TOKvar || e1->op == TOKdotvar || e1->op == TOKindex
-            || e1->op == TOKslice))
+            || e1->op == TOKslice || e1->op == TOKstructliteral))
         {
             error("cannot dereference invalid pointer %s",
                 this->e1->toChars());
@@ -3235,7 +3244,7 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, CtfeGoal goal, fp_
     }
 
     if (!(e1->op == TOKarraylength || e1->op == TOKvar || e1->op == TOKdotvar
-        || e1->op == TOKindex || e1->op == TOKslice))
+        || e1->op == TOKindex || e1->op == TOKslice || e1->op == TOKstructliteral))
     {
         error("CTFE internal error: unsupported assignment %s", toChars());
         return EXP_CANT_INTERPRET;
@@ -3547,18 +3556,17 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, CtfeGoal goal, fp_
     // collapsed into a single assignment.
     if (!wantRef && e1->op == TOKdotvar)
     {
-        // Strip of all of the leading dotvars, unless we started with a call
-        // or a ref parameter
+        // Strip of all of the leading dotvars, unless it is a CTFE dotvar
+        // pointer or reference
         // (in which case, we already have the lvalue).
-        if (this->e1->op != TOKcall && !(this->e1->op==TOKvar
-            && ((VarExp*)this->e1)->var->storage_class & (STCref | STCout)))
-            e1 = e1->interpret(istate, isPointer(type)? ctfeNeedLvalueRef : ctfeNeedLvalue);
-        if (exceptionOrCantInterpret(e1))
-            return e1;
-        if (e1->op == TOKstructliteral && newval->op == TOKstructliteral)
+        DotVarExp *dve = (DotVarExp *)e1;
+        bool isCtfePointer = (dve->e1->op == TOKstructliteral)
+                && ((StructLiteralExp *)(dve->e1))->ownedByCtfe;
+        if (!isCtfePointer)
         {
-            assignInPlace(e1, newval);
-            return returnValue;
+            e1 = e1->interpret(istate, isPointer(type) ? ctfeNeedLvalueRef : ctfeNeedLvalue);
+            if (exceptionOrCantInterpret(e1))
+                return e1;
         }
     }
 #if LOGASSIGN
@@ -3607,6 +3615,15 @@ Expression *BinExp::interpretAssignCommon(InterState *istate, CtfeGoal goal, fp_
                 v->setValue(newval);
             }
         }
+    }
+    else if (e1->op == TOKstructliteral && newval->op == TOKstructliteral)
+    {
+        /* Assignment to complete struct of the form:
+         *  e1 = newval
+         * (e1 was a ref parameter, or was created via TOKstar dereferencing).
+         */
+        assignInPlace(e1, newval);
+        return returnValue;
     }
     else if (e1->op == TOKdotvar)
     {
@@ -3990,7 +4007,7 @@ Expression *interpretAssignToSlice(InterState *istate, CtfeGoal goal, Loc loc,
         return newval;
 
     Expression *aggregate = resolveReferences(sexp->e1);
-    dinteger_t firstIndex = lowerbound;
+    sinteger_t firstIndex = lowerbound;
 
     ArrayLiteralExp *existingAE = NULL;
     StringExp *existingSE = NULL;
@@ -4844,7 +4861,7 @@ Expression *CondExp::interpret(InterState *istate, CtfeGoal goal)
     Expression *e;
     if ( isPointer(econd->type) )
     {
-        e = econd->interpret(istate, ctfeNeedLvalue);
+        e = econd->interpret(istate);
         if (exceptionOrCantInterpret(e))
             return e;
         if (e->op != TOKnull)
@@ -4923,7 +4940,7 @@ Expression *IndexExp::interpret(InterState *istate, CtfeGoal goal)
         {
             dinteger_t len = ArrayLength(Type::tsize_t, agg)->toInteger();
             //Type *pointee = ((TypePointer *)agg->type)->next;
-            if ((indx + ofs) < 0 || (indx+ofs) > len)
+            if ((sinteger_t)(indx + ofs) < 0 || (indx+ofs) > len)
             {
                 error("pointer index [%lld] exceeds allocated memory block [0..%lld]",
                     indx+ofs, len);
@@ -5724,6 +5741,10 @@ Expression *DotVarExp::interpret(InterState *istate, CtfeGoal goal)
         }
         if (ex->op == TOKnull && ex->type->toBasetype()->ty == Tclass)
         {   error("class '%s' is null and cannot be dereferenced", e1->toChars());
+            return EXP_CANT_INTERPRET;
+        }
+        if (ex->op == TOKnull)
+        {   error("dereference of null pointer '%s'", e1->toChars());
             return EXP_CANT_INTERPRET;
         }
         if (ex->op == TOKstructliteral || ex->op == TOKclassreference)

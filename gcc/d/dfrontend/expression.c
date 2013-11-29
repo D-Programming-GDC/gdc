@@ -1580,7 +1580,8 @@ Type *functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
             break;
     }
     if (wildmatch)
-    {   /* Calculate wild matching modifier
+    {
+        /* Calculate wild matching modifier
          */
         if (wildmatch & MODconst || wildmatch & (wildmatch - 1))
             wildmatch = MODconst;
@@ -1589,8 +1590,51 @@ Type *functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
         else if (wildmatch & MODwild)
             wildmatch = MODwild;
         else
-        {   assert(wildmatch & MODmutable);
+        {
+            assert(wildmatch & MODmutable);
             wildmatch = MODmutable;
+        }
+
+        if ((wildmatch == MODmutable || wildmatch == MODimmutable) &&
+            tf->next->hasWild() &&
+            (tf->isref || !tf->next->implicitConvTo(tf->next->immutableOf())))
+        {
+            if (fd)
+            {
+                /* If the called function may return the reference to
+                 * outer inout data, it should be rejected.
+                 *
+                 * void foo(ref inout(int) x) {
+                 *   ref inout(int) bar(inout(int)) { return x; }
+                 *   struct S { ref inout(int) bar() inout { return x; } }
+                 *   bar(int.init) = 1;  // bad!
+                 *   S().bar() = 1;      // bad!
+                 * }
+                 */
+                FuncDeclaration *f;
+                if (AggregateDeclaration *ad = fd->isThis())
+                {
+                    f = ad->toParent2()->isFuncDeclaration();
+                    goto Linoutnest;
+                }
+                else if (fd->isNested())
+                {
+                    f = fd->toParent2()->isFuncDeclaration();
+                Linoutnest:
+                    for (; f; f = f->toParent2()->isFuncDeclaration())
+                    {
+                        if (((TypeFunction *)f->type)->iswild)
+                            goto Linouterr;
+                    }
+                }
+            }
+            else if (tf->isWild())
+            {
+            Linouterr:
+                const char *s = wildmatch == MODmutable ? "mutable" : MODtoChars(wildmatch);
+                error(loc, "modify inout to %s is not allowed inside inout function", s);
+                return Type::terror;
+            }
         }
     }
 
@@ -1937,7 +1981,7 @@ Expression *Expression::copy()
     }
     e = (Expression *)mem.malloc(size);
     //printf("Expression::copy(op = %d) e = %p\n", op, e);
-    return (Expression *)memcpy(e, this, size);
+    return (Expression *)memcpy((void*)e, (void*)this, size);
 }
 
 /**************************
@@ -3010,16 +3054,8 @@ complex_t RealExp::toComplex()
 
 int RealEquals(real_t x1, real_t x2)
 {
-#ifndef IN_GCC
     return (Port::isNan(x1) && Port::isNan(x2)) ||
-        /* In some cases, the REALPAD bytes get garbage in them,
-         * so be sure and ignore them.
-         */
-        memcmp(&x1, &x2, Target::realsize - Target::realpad) == 0;
-#else
-    return (Port::isNan(x1) && Port::isNan(x2)) ||
-        x1.isIdenticalTo(x2);
-#endif
+        Port::fequal(x1, x2);
 }
 
 bool RealExp::equals(RootObject *o)
@@ -3478,6 +3514,11 @@ Lagain:
     em = s->isEnumMember();
     if (em)
     {
+        if (!em->ed->isdone)
+        {
+            assert(em->ed->scope);
+            em->ed->semantic(NULL);
+        }
         e = em->value;
         if (!e)
         {
@@ -4322,6 +4363,29 @@ ArrayLiteralExp::ArrayLiteralExp(Loc loc, Expression *e)
     this->ownedByCtfe = false;
 }
 
+bool ArrayLiteralExp::equals(RootObject *o)
+{
+    if (this == o)
+        return true;
+    if (o && o->dyncast() == DYNCAST_EXPRESSION &&
+        ((Expression *)o)->op == TOKarrayliteral)
+    {
+        ArrayLiteralExp *ae = (ArrayLiteralExp *)o;
+        if (elements->dim != ae->elements->dim)
+            return false;
+        for (size_t i = 0; i < elements->dim; i++)
+        {
+            Expression *e1 = (*elements)[i];
+            Expression *e2 = (*ae->elements)[i];
+            if (e1 != e2 &&
+                (!e1 || !e2 || !e1->equals(e2)))
+                return false;
+        }
+        return true;
+    }
+    return false;
+}
+
 Expression *ArrayLiteralExp::syntaxCopy()
 {
     return new ArrayLiteralExp(loc, arraySyntaxCopy(elements));
@@ -4371,23 +4435,31 @@ StringExp *ArrayLiteralExp::toString()
     if (telem == Tchar || telem == Twchar || telem == Tdchar ||
         (telem == Tvoid && (!elements || elements->dim == 0)))
     {
+        unsigned char sz = 1;
+        if (telem == Twchar) sz = 2;
+        else if (telem == Tdchar) sz = 4;
+
         OutBuffer buf;
         if (elements)
+        {
             for (int i = 0; i < elements->dim; ++i)
             {
                 Expression *ch = (*elements)[i];
                 if (ch->op != TOKint64)
                     return NULL;
-                buf.writeUTF8(ch->toInteger());
+                     if (sz == 1) buf.writebyte(ch->toInteger());
+                else if (sz == 2) buf.writeword(ch->toInteger());
+                else              buf.write4(ch->toInteger());
             }
-        buf.writebyte(0);
+        }
+        char prefix;
+             if (sz == 1) { prefix = 'c'; buf.writebyte(0); }
+        else if (sz == 2) { prefix = 'w'; buf.writeword(0); }
+        else              { prefix = 'd'; buf.write4(0); }
 
-        char prefix = 'c';
-        if (telem == Twchar) prefix = 'w';
-        else if (telem == Tdchar) prefix = 'd';
-
-        const size_t len = buf.offset - 1;
+        const size_t len = buf.offset / sz - 1;
         StringExp *se = new StringExp(loc, buf.extractData(), len, prefix);
+        se->sz = sz;
         se->type = type;
         return se;
     }
@@ -9764,6 +9836,10 @@ Expression *CastExp::semantic(Scope *sc)
         }
         if (e1->type->ty == Terror)
             return new ErrorExp();
+
+        // cast(void) is used to mark e1 as unused, so it is safe
+        if (to->ty == Tvoid)
+            goto Lsafe;
 
         if (!to->equals(e1->type))
         {

@@ -69,6 +69,15 @@ Port::fmodl (longdouble x, longdouble y)
   return x % y;
 }
 
+// Returns TRUE if longdouble value X is identical to Y.
+
+int
+Port::fequal (longdouble x, longdouble y)
+{
+  return (Port::isNan(x) && Port::isNan(y))
+    || REAL_VALUES_IDENTICAL (x.rv(), y.rv());
+}
+
 char *
 Port::strupr (char *s)
 {

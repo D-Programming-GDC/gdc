@@ -2192,6 +2192,29 @@ void test111()
 }
 
 /***************************************************/
+// 658
+
+void test658()
+{
+    struct S { int i; }
+    class C { int i; }
+
+    S s;
+    S* sp = &s;
+    with (sp) i = 42;
+    assert(s.i == 42);
+    with (&s) i = 43;
+    assert(s.i == 43);
+
+    C c = new C;
+    C* cp = &c;
+    with (cp) i = 42;
+    assert(c.i == 42);
+    with (&c) i = 43;
+    assert(c.i == 43);
+}
+
+/***************************************************/
 
 void test3069()
 {
@@ -2489,6 +2512,14 @@ void test796()
         assert(s);
     } catch (Error) {
     }
+}
+
+/***************************************************/
+
+void test7077()
+{
+    if(0) mixin("auto x = 2;");
+    auto x = 1;
 }
 
 /***************************************************/
@@ -3713,6 +3744,14 @@ void test156()
 
 /***************************************************/
 
+void test10724()
+{
+    const(char)* s = "abc"[0..$-1];
+    assert(s[2] == '\0');
+}
+
+/***************************************************/
+
 void test6708(const ref int y)
 {
     immutable int x;
@@ -4381,6 +4420,25 @@ template Hoge6691()
 alias Hoge6691!() H6691;
 
 /***************************************************/
+
+void test10626()
+{
+    double[2] v, x;
+    struct Y { double u; }
+    double z;
+    Y y;
+    double[2] r = v[] * x[0];
+    //double[2] s = v[] * z++;
+    //double[2] t = v[] * z--;
+    double[2] a = v[] * ++z;
+    double[2] b = v[] * --z;
+    double[2] c = v[] * y.u;
+    double[2] d = v[] * (x[] = 3, x[0]);
+    double[2] e = v[] * (v[] ~ z)[0];
+}
+
+
+/***************************************************/
 // 2953
 
 template Tuple2953(T...)
@@ -4473,10 +4531,10 @@ void test4647()
     assert(app.run() == 1);             // This would call Timer.run() if the two calls
                                         // above were commented out
     assert(app.funCalls == 5);
-    
+
     assert(app.TimedApp.fun() == 2);
     assert(app.funCalls == 6);
-    
+
     //Test direct access to SubTimedApp interfaces
     auto app2 = new SubTimedApp();
     assert((cast(Application)app2).run() == 2);
@@ -4485,7 +4543,7 @@ void test4647()
     assert(app2.Timer.run() == 1);
     assert(app2.funCalls == 0);
     assert(app2.subFunCalls == 4);
-    
+
     assert(app2.fun() == 1);
     assert(app2.SubTimedApp.fun() == 1);
     assert(app2.funCalls == 0);
@@ -6329,6 +6387,50 @@ void test9834()
 }
 
 /***************************************************/
+// 9859
+
+void test9859(inout int[] arr)
+{
+    auto dg1 = { foreach (i, e; arr) { } };
+    dg1();
+
+    void foo() { auto v = arr; auto w = arr[0]; }
+    void bar(inout int i) { auto v = arr[i]; }
+
+    auto dg2 =
+    {
+        auto dg =
+        {
+            void foo(T)()
+            {
+                auto dg =
+                {
+                    auto dg =
+                    {
+                        auto v = arr;
+                    };
+                };
+            }
+            foo!int;
+        };
+    };
+
+    void qux(T)()
+    {
+        auto v = arr;
+        auto dg1 = { auto v = arr; };
+        auto dg2 =
+        {
+            auto dg =
+            {
+                auto v = arr;
+            };
+        };
+    }
+    qux!int;
+}
+
+/***************************************************/
 // 9912
 
 template TypeTuple9912(Stuff...)
@@ -6442,6 +6544,37 @@ void test10539()
     int* p1 = a.ptr.ptr;    // OK <- error
     int* p2 = (*a.ptr).ptr; // OK
     assert(p1 is p2);
+}
+
+/***************************************************/
+
+struct TimeOfDay
+{
+    ubyte h, m, s;
+}
+
+__gshared byte glob;
+
+struct DateTime
+{
+    this(ubyte _d, ubyte _m, ubyte _y, TimeOfDay _tod = TimeOfDay.init)
+    {
+        d = _d;
+        m = _m;
+        y = _y;
+        tod = _tod;
+    }
+    TimeOfDay tod;
+    ubyte d, m, y;
+}
+
+
+void test10634()
+{
+    glob = 123;
+    DateTime date1 = DateTime(0, 0, 0);
+    DateTime date2;
+    assert(date1 == date2);
 }
 
 /***************************************************/
@@ -6581,7 +6714,7 @@ int main()
     test5081();
 
     test120();
-
+    test10724();
     test122();
     test123();
     test124();
@@ -6626,6 +6759,7 @@ int main()
     test154();
     test155();
     test156();
+    test658();
     test4258();
     test4539();
     test4596();
@@ -6715,6 +6849,7 @@ int main()
     test9130();
     test10542();
     test10539();
+    test10634();
 
     printf("Success\n");
     return 0;

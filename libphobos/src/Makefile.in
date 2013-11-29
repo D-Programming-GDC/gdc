@@ -197,7 +197,7 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
 ACLOCAL_AMFLAGS = -I. -I..
 OUR_CFLAGS = @DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -fproperty -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
+D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
 ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -227,6 +227,7 @@ MAIN_OBJS = std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
 	  std/internal/math/errorfunction.o std/internal/processinit.o \
 	  std/internal/uni.o std/internal/uni_tab.o \
+	  std/internal/unicode_tables.o \
 	  std/net/curl.o std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 

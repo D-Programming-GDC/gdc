@@ -578,8 +578,8 @@ Lret: {}
         bool sign = false;
         if (signbit(x))
         {
-            x = -x;
             sign = true;
+            x = -x;
         }
 
         // Compute x mod PI/4.
@@ -777,8 +777,8 @@ real atan(real x) @safe pure nothrow
         bool sign = false;
         if (signbit(x))
         {
-            x = -x;
             sign = true;
+            x = -x;
         }
 
         // Range reduction.
@@ -1969,7 +1969,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
 {
     ushort* vu = cast(ushort*)&value;
     long* vl = cast(long*)&value;
-    uint ex;
+    int ex;
     alias floatTraits!(real) F;
 
     ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
@@ -3321,6 +3321,11 @@ unittest
     assert(lrint(5.5) == 6);
     assert(lrint(-4.5) == -4);
     assert(lrint(-5.5) == -6);
+
+    assert(lrint(int.max - 0.5) == 2147483646L);
+    assert(lrint(int.max + 0.5) == 2147483648L);
+    assert(lrint(int.min - 0.5) == -2147483648L);
+    assert(lrint(int.min + 0.5) == -2147483648L);
 }
 
 /*******************************************
@@ -5917,4 +5922,11 @@ unittest
 
     real r = tan(-2.0L);
     assert(fabs(r - 2.18504f) < .00001);
+}
+
+pure @safe nothrow unittest
+{
+    // issue 6381: floor/ceil should be usable in pure function.
+    auto x = floor(1.2);
+    auto y = ceil(1.2);
 }

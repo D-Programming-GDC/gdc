@@ -476,6 +476,7 @@ public:
 
     Expression *syntaxCopy();
     int apply(apply_fp_t fp, void *param);
+    bool equals(RootObject *o);
     Expression *semantic(Scope *sc);
     int isBool(int result);
     elem *toElem(IRState *irs);

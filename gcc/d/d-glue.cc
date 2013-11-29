@@ -90,6 +90,23 @@ Global::increaseErrorCount (void)
   this->errors++;
 }
 
+Ungag
+Dsymbol::ungagSpeculative (void)
+{
+  unsigned oldgag = global.gag;
+
+  if (global.isSpeculativeGagging() && !isSpeculative())
+    global.gag = 0;
+
+  return Ungag (oldgag);
+}
+
+Ungag::~Ungag (void)
+{
+  global.gag = this->oldgag;
+}
+
+
 char *
 Loc::toChars (void)
 {

@@ -1,3 +1,15 @@
+2013-11-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(ClassDeclaration::toVtblSymbol): Use TypeSArray::makeType
+	to generate frontend static array type.
+	* d-glue.cc(Dsymbol::ungagSpeculative): Define.
+	* d-lang.cc(genCmain): Define as empty.
+	(d_parse_file): Update for frontend changes.
+	* d-objfile.cc(StructDeclaration::toObjFile): Likewise.
+	* d-typinf.cc(TypeBasic::builtinTypeInfo): Likewise.
+	* d-longdouble.cc(longdouble::isIdenticalTo): Remove.
+	* d-port.cc(Port::fequal): Define.
+
 2013-11-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc(gcc_type_to_d_type): Use TypeSArray::makeType to

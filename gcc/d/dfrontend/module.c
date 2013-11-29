@@ -34,6 +34,7 @@ DsymbolTable *Module::modules;
 Modules Module::amodules;
 
 Dsymbols Module::deferred; // deferred Dsymbol's needing semantic() run on them
+Dsymbols Module::deferred3;
 unsigned Module::dprogress;
 
 const char *lookForSourceFile(const char *filename);
@@ -59,9 +60,6 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
     needmoduleinfo = 0;
     selfimports = 0;
     insearch = 0;
-    searchCacheIdent = NULL;
-    searchCacheSymbol = NULL;
-    searchCacheFlags = 0;
     semanticstarted = 0;
     semanticRun = 0;
     decldefs = NULL;
@@ -888,36 +886,13 @@ Dsymbol *Module::search(Loc loc, Identifier *ident, int flags)
     Dsymbol *s;
     if (insearch)
         s = NULL;
-    else if (searchCacheIdent == ident && searchCacheFlags == flags)
-    {
-        s = searchCacheSymbol;
-        //printf("%s Module::search('%s', flags = %d) insearch = %d searchCacheSymbol = %s\n", toChars(), ident->toChars(), flags, insearch, searchCacheSymbol ? searchCacheSymbol->toChars() : "null");
-    }
     else
     {
         insearch = 1;
         s = ScopeDsymbol::search(loc, ident, flags);
         insearch = 0;
-
-        searchCacheIdent = ident;
-        searchCacheSymbol = s;
-        searchCacheFlags = flags;
     }
     return s;
-}
-
-Dsymbol *Module::symtabInsert(Dsymbol *s)
-{
-    searchCacheIdent = NULL;       // symbol is inserted, so invalidate cache
-    return Package::symtabInsert(s);
-}
-
-void Module::clearCache()
-{
-    for (size_t i = 0; i < amodules.dim; i++)
-    {   Module *m = amodules[i];
-        m->searchCacheIdent = NULL;
-    }
 }
 
 /*******************************************
@@ -992,6 +967,33 @@ void Module::runDeferredSemantic()
     } while (deferred.dim < len || dprogress);  // while making progress
     nested--;
     //printf("-Module::runDeferredSemantic(), len = %d\n", deferred.dim);
+}
+
+void Module::addDeferredSemantic3(Dsymbol *s)
+{
+    // Don't add it if it is already there
+    for (size_t i = 0; i < deferred3.dim; i++)
+    {
+        Dsymbol *sd = deferred3[i];
+        if (sd == s)
+            return;
+    }
+    deferred3.push(s);
+}
+
+void Module::runDeferredSemantic3()
+{
+    Dsymbols *a = &Module::deferred3;
+    for (size_t i = 0; i < a->dim; i++)
+    {
+        Dsymbol *s = (*a)[i];
+        //printf("[%d] %s semantic3a\n", i, s->toPrettyChars());
+
+        s->semantic3(NULL);
+
+        if (global.errors)
+            break;
+    }
 }
 
 /************************************

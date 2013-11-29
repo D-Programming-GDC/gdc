@@ -68,6 +68,9 @@ public import std.digest.md;
 int main(char[][] args)
 {
 
+version(Win64) {}
+else
+{
     // Bring in unit test for module by referencing function in it
 
     cmp("foo", "bar");                  // string
@@ -133,5 +136,6 @@ int main(char[][] args)
     auto crc = crc32Of("hello");
     auto string = toHexString(crc);
     puts("Success!");
+}
     return 0;
 }

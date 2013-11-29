@@ -10,9 +10,9 @@ $(TR $(TDNW Searching) $(TD $(MYREF all) $(MYREF any) $(MYREF balancedParens) $(
 boyerMooreFinder) $(MYREF canFind) $(MYREF count) $(MYREF countUntil)
 $(MYREF commonPrefix) $(MYREF endsWith) $(MYREF find) $(MYREF
 findAdjacent) $(MYREF findAmong) $(MYREF findSkip) $(MYREF findSplit)
-$(MYREF findSplitAfter) $(MYREF findSplitBefore) $(MYREF indexOf)
-$(MYREF minCount) $(MYREF minPos) $(MYREF mismatch) $(MYREF skipOver)
-$(MYREF startsWith) $(MYREF until) )
+$(MYREF findSplitAfter) $(MYREF findSplitBefore) $(MYREF minCount)
+$(MYREF minPos) $(MYREF mismatch) $(MYREF skipOver) $(MYREF startsWith)
+$(MYREF until) )
 )
 $(TR $(TDNW Comparison) $(TD $(MYREF cmp) $(MYREF equal) $(MYREF
 levenshteinDistance) $(MYREF levenshteinDistanceAndPath) $(MYREF max)
@@ -338,6 +338,8 @@ version(unittest)
     import std.stdio;
     mixin(dummyRanges);
 }
+
+private T* addressOf(T)(ref T val) { return &val; }
 
 /**
 $(D auto map(Range)(Range r) if (isInputRange!(Unqual!Range));)
@@ -1163,9 +1165,11 @@ void uninitializedFill(Range, Value)(Range range, Value filler)
 {
     alias ElementType!Range T;
     static if (hasElaborateAssign!T)
+    {
         // Must construct stuff by the book
         for (; !range.empty; range.popFront())
-            emplace(&range.front(), filler);
+            emplace(addressOf(range.front), filler);
+    }
     else
         // Doesn't matter whether fill is initialized or not
         return fill(range, filler);
@@ -1208,13 +1212,13 @@ void initializeAll(Range)(Range range)
         auto p = typeid(T).init().ptr;
         if (p)
             for ( ; !range.empty ; range.popFront() )
-                memcpy(&range.front(), p, T.sizeof);
+                memcpy(addressOf(range.front), p, T.sizeof);
         else
             static if (isDynamicArray!Range)
                 memset(range.ptr, 0, range.length * T.sizeof);
             else
                 for ( ; !range.empty ; range.popFront() )
-                    memset(&range.front(), 0, T.sizeof);
+                    memset(addressOf(range.front), 0, T.sizeof);
     }
     else
         fill(range, T.init);
@@ -2202,6 +2206,15 @@ if (is(typeof(ElementType!Range.init == Separator.init))
         IndexType _frontLength = _unComputed;
         IndexType _backLength = _unComputed;
 
+        static if (isNarrowString!Range) 
+        {
+            size_t _separatorLength;
+        }
+        else
+        {
+            enum _separatorLength = 1;
+        }
+
         static if (isBidirectionalRange!Range)
         {
             static IndexType lastIndexOf(Range haystack, Separator needle)
@@ -2216,6 +2229,11 @@ if (is(typeof(ElementType!Range.init == Separator.init))
         {
             _input = input;
             _separator = separator;
+
+            static if (isNarrowString!Range)
+            {
+                _separatorLength = codeLength!(ElementEncodingType!Range)(separator);
+            }
         }
 
         static if (isInfinite!Range)
@@ -2259,8 +2277,7 @@ if (is(typeof(ElementType!Range.init == Separator.init))
             }
             else
             {
-                _input = _input[_frontLength .. _input.length];
-                skipOver(_input, _separator) || assert(false);
+                _input = _input[_frontLength + _separatorLength .. _input.length];
                 _frontLength = _unComputed;
             }
         }
@@ -2312,15 +2329,7 @@ if (is(typeof(ElementType!Range.init == Separator.init))
                 }
                 else
                 {
-                    _input = _input[0 .. _input.length - _backLength];
-                    if (!_input.empty && _input.back == _separator)
-                    {
-                        _input.popBack();
-                    }
-                    else
-                    {
-                        assert(false);
-                    }
+                    _input = _input[0 .. _input.length - _backLength - _separatorLength];
                     _backLength = _unComputed;
                 }
             }
@@ -2335,6 +2344,7 @@ unittest
     debug(std_algorithm) scope(success)
         writeln("unittest @", __FILE__, ":", __LINE__, " done.");
     assert(equal(splitter("hello  world", ' '), [ "hello", "", "world" ]));
+    assert(equal(splitter("žlutoučkýřkůň", 'ř'), [ "žlutoučký", "kůň" ]));
     int[] a = [ 1, 2, 0, 0, 3, 0, 4, 5, 0 ];
     int[][] w = [ [1, 2], [], [3], [4, 5], [] ];
     static assert(isForwardRange!(typeof(splitter(a, 0))));
@@ -2408,7 +2418,9 @@ with string types.
  */
 auto splitter(Range, Separator)(Range r, Separator s)
 if (is(typeof(Range.init.front == Separator.init.front) : bool)
-        && (hasSlicing!Range || isNarrowString!Range))
+        && (hasSlicing!Range || isNarrowString!Range)
+        && isForwardRange!Separator
+        && (hasLength!Separator || isNarrowString!Separator))
 {
     static struct Result
     {
@@ -2428,7 +2440,8 @@ if (is(typeof(Range.init.front == Separator.init.front) : bool)
             if (_frontLength != _frontLength.max) return;
             assert(!_input.empty);
             // compute front length
-            _frontLength = _input.length - find(_input, _separator).length;
+            _frontLength = (_separator.empty) ? 1 :
+                           _input.length - find(_input, _separator).length;
             static if (isBidirectionalRange!Range)
                 if (_frontLength == _input.length) _backLength = _frontLength;
         }
@@ -2439,7 +2452,7 @@ if (is(typeof(Range.init.front == Separator.init.front) : bool)
                 if (_backLength != _backLength.max) return;
             assert(!_input.empty);
             // compute back length
-            static if (isBidirectionalRange!Range)
+            static if (isBidirectionalRange!Range && isBidirectionalRange!Separator)
             {
                 _backLength = _input.length -
                     find(retro(_input), retro(_separator)).source.length;
@@ -2513,7 +2526,7 @@ if (is(typeof(Range.init.front == Separator.init.front) : bool)
         }
 
 // Bidirectional functionality as suggested by Brad Roberts.
-        static if (isBidirectionalRange!Range)
+        static if (isBidirectionalRange!Range && isBidirectionalRange!Separator)
         {
             @property Range back()
             {
@@ -2601,6 +2614,31 @@ unittest
         //writeln("{", e, "}");
     }
     assert(equal(sp6, ["", ""][]));
+}
+
+unittest
+{
+    // Issue 10773
+    auto s = splitter("abc", "");
+    assert(s.equal(["a", "b", "c"]));
+}
+
+unittest
+{
+    // Test by-reference separator
+    class RefSep {
+        string _impl;
+        this(string s) { _impl = s; }
+        @property empty() { return _impl.empty; }
+        @property auto front() { return _impl.front; }
+        void popFront() { _impl = _impl[1..$]; }
+        @property RefSep save() { return new RefSep(_impl); }
+        @property auto length() { return _impl.length; }
+    }
+    auto sep = new RefSep("->");
+    auto data = "i->am->pointing";
+    auto words = splitter(data, sep);
+    assert(words.equal([ "i", "am", "pointing" ]));
 }
 
 auto splitter(alias isTerminator, Range)(Range input)
@@ -3556,15 +3594,27 @@ string[] s = [ "Hello", "world", "!" ];
 assert(!find!("toLower(a) == b")(s, "hello").empty);
 ----
  */
+
 R find(alias pred = "a == b", R, E)(R haystack, E needle)
 if (isInputRange!R &&
         is(typeof(binaryFun!pred(haystack.front, needle)) : bool))
 {
-    for (; !haystack.empty; haystack.popFront())
+    static if (isNarrowString!R && isSomeChar!E && is(typeof(pred == "a == b")) && pred == "a == b")
     {
-        if (binaryFun!pred(haystack.front, needle)) break;
+        alias Unqual!(ElementEncodingType!R) EEType;
+        EEType[EEType.sizeof == 1 ? 4 : 2] buf;
+
+        size_t len = encode(buf, needle);
+        return () @trusted {return std.algorithm.find!pred(haystack, cast(R)buf[0 .. len]);}();
     }
-    return haystack;
+    else
+    {
+        for (; !haystack.empty; haystack.popFront())
+        {
+            if (binaryFun!pred(haystack.front, needle)) break;
+        }
+        return haystack;
+    }
 }
 
 unittest
@@ -3576,6 +3626,7 @@ unittest
     auto r = find(lst[], 5);
     assert(equal(r, SList!int(5, 7, 3)[]));
     assert(find([1, 2, 3, 5], 4).empty);
+    assert(equal(find!"a>b"("hello", 'k'), "llo"));
 }
 
 /**
@@ -7350,7 +7401,7 @@ if (s != SwapStrategy.stable
             blackouts[i].len = 1;
         }
         static if (i > 0)
-        {            
+        {
             enforce(blackouts[i - 1].pos + blackouts[i - 1].len 
                     <= blackouts[i].pos, 
                 "remove(): incorrect ordering of elements to remove");
@@ -9462,7 +9513,7 @@ makeIndex(
     // assume collection already ordered
     size_t i;
     for (; !r.empty; r.popFront(), ++i)
-        index[i] = &(r.front);
+        index[i] = addressOf(r.front);
     enforce(index.length == i);
     // sort the index
     sort!((a, b) => binaryFun!less(*a, *b), ss)(index);

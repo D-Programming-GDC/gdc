@@ -40,6 +40,7 @@ struct Port
     static int isInfinity(longdouble);
 
     static longdouble fmodl(longdouble x, longdouble y);
+    static int fequal(longdouble x, longdouble y);
 
     static char *strupr(char *);
 

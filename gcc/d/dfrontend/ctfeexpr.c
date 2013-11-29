@@ -812,6 +812,8 @@ int comparePointers(Loc loc, TOK op, Type *type, Expression *agg1, dinteger_t of
         case TOKnotequal:
             cmp = (null1 == null2);
             break;
+        default:
+            assert(0);
         }
     }
     else
@@ -913,6 +915,9 @@ void intUnary(TOK op, IntegerExp *e)
         break;
     case TOKtilde:
         e->value = ~e->value;
+        break;
+    default:
+        assert(0);
         break;
     }
 }

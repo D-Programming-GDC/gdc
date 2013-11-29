@@ -142,6 +142,13 @@ StructDeclaration::toObjFile (int)
       // be put in separate object files.
       member->toObjFile (0);
     }
+
+  // Put out xopEquals and xopCmp
+  if (xeq && xeq != xerreq)
+    xeq->toObjFile (0);
+
+  if (xcmp && xcmp != xerrcmp)
+    xcmp->toObjFile (0);
 }
 
 void

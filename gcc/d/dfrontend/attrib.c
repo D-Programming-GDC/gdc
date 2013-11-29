@@ -1566,6 +1566,9 @@ Dsymbol *CompileDeclaration::syntaxCopy(Dsymbol *s)
 int CompileDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 {
     //printf("CompileDeclaration::addMember(sc = %p, sd = %p, memnum = %d)\n", sc, sd, memnum);
+    if (compiled)
+        return 1;
+
     this->sd = sd;
     if (memnum == 0)
     {   /* No members yet, so parse the mixin now
@@ -1595,9 +1598,12 @@ void CompileDeclaration::compileIt(Scope *sc)
         Parser p(sc->module, (utf8_t *)se->string, se->len, 0);
         p.loc = loc;
         p.nextToken();
+        unsigned errors = global.errors;
         decl = p.parseDeclDefs(0);
         if (p.token.value != TOKeof)
             exp->error("incomplete mixin declaration (%s)", se->toChars());
+        if (global.errors != errors)
+            decl = NULL;
     }
 }
 

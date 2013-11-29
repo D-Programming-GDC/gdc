@@ -34,7 +34,7 @@ struct GTY(()) language_function
 
 /* The D front end types have not been integrated into the GCC garbage
    collection system.  Handle this by using the "skip" attribute. */
-struct Declaration;
+class Declaration;
 typedef Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
@@ -42,7 +42,7 @@ struct GTY(()) lang_decl
 };
 
 /* The lang_type field is not set for every GCC type. */
-struct Type;
+class Type;
 typedef Type *TypeGTYP;
 struct GTY((variable_size)) lang_type
 {
@@ -166,7 +166,7 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 tree d_truthvalue_conversion (tree);
 void d_add_global_declaration (tree);
 
-struct Module;
+class Module;
 Module *d_gcc_get_output_module (void);
 
 struct lang_type *build_d_type_lang_specific (Type *t);
@@ -216,7 +216,7 @@ void d_bi_builtin_type (tree);
 bool is_intrinsic_module_p (Module *);
 bool is_math_module_p (Module *);
 
-struct Dsymbol;
+class Dsymbol;
 bool is_builtin_va_arg_p (Dsymbol *, bool);
 bool is_builtin_va_start_p (Dsymbol *);
 

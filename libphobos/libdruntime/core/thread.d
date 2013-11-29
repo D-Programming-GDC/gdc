@@ -926,7 +926,7 @@ class Thread
     unittest
     {
         auto thr = Thread.getThis();
-        immutable prio = thr.priority();
+        immutable prio = thr.priority;
         scope (exit) thr.priority = prio;
 
         assert(prio == PRIORITY_DEFAULT);
@@ -971,6 +971,10 @@ class Thread
         version( Windows )
         {
             auto maxSleepMillis = dur!("msecs")( uint.max - 1 );
+
+            // avoid a non-zero time to be round down to 0
+            if( val > dur!"msecs"( 0 ) && val < dur!"msecs"( 1 ) )
+                val = dur!"msecs"( 1 );
 
             // NOTE: In instances where all other threads in the process have a
             //       lower priority than the current thread, the current thread
@@ -1413,13 +1417,12 @@ private:
             lock[] = Mutex.classinfo.init[];
             (cast(Mutex)lock.ptr).__ctor();
         }
+    }
 
-        extern(C) void destroy()
-        {
-            foreach (ref lock; _locks)
-                (cast(Mutex)lock.ptr).__dtor();
-        }
-        atexit(&destroy);
+    static void termLocks()
+    {
+        foreach (ref lock; _locks)
+            (cast(Mutex)lock.ptr).__dtor();
     }
 
     __gshared Context*  sm_cbeg;
@@ -1743,6 +1746,16 @@ extern (C) void thread_init()
         assert( status == 0 );
     }
     Thread.sm_main = thread_attachThis();
+}
+
+
+/**
+ * Terminates the thread module. No other thread routine may be called
+ * afterwards.
+ */
+extern (C) void thread_term()
+{
+    Thread.termLocks();
 }
 
 

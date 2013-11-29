@@ -525,8 +525,9 @@ Statements *CompileStatement::flatten(Scope *sc)
 
             while (p.token.value != TOKeof)
             {
+                unsigned errors = global.errors;
                 Statement *s = p.parseStatement(PSsemi | PScurlyscope);
-                if (!s)                  // fix: parsing error returns ErrorStatement
+                if (!s || global.errors != errors)
                     goto Lerror;
                 a->push(s);
             }
@@ -3095,7 +3096,7 @@ Statement *SwitchStatement::semantic(Scope *sc)
     else
     {
         condition = condition->integralPromotions(sc);
-        if (!condition->type->isintegral())
+        if (condition->op != TOKerror && !condition->type->isintegral())
             error("'%s' must be of integral or string type, it is a %s", condition->toChars(), condition->type->toChars());
     }
     condition = condition->optimize(WANTvalue);
@@ -3185,7 +3186,7 @@ Statement *SwitchStatement::semantic(Scope *sc)
     if (!sc->sw->sdefault && (!isFinal || needswitcherror || global.params.useAssert))
     {   hasNoDefault = 1;
 
-        if (!isFinal)
+        if (!isFinal && !body->isErrorStatement())
            deprecation("non-final switch statement without a default is deprecated");
 
         // Generate runtime error if the default is hit
@@ -4410,7 +4411,7 @@ Statement *WithStatement::semantic(Scope *sc)
     exp = exp->semantic(sc);
     exp = resolveProperties(sc, exp);
     if (exp->op == TOKerror)
-        return NULL;
+        return new ErrorStatement();
     if (exp->op == TOKimport)
     {   ScopeExp *es = (ScopeExp *)exp;
 
@@ -4429,7 +4430,17 @@ Statement *WithStatement::semantic(Scope *sc)
         }
     }
     else
-    {   Type *t = exp->type;
+    {
+        Type *t = exp->type;
+        t = t->toBasetype();
+
+        Expression *olde = exp;
+        if (t->ty == Tpointer)
+        {
+            exp = new PtrExp(loc, exp);
+            exp = exp->semantic(sc);
+            t = exp->type->toBasetype();
+        }
 
         assert(t);
         t = t->toBasetype();
@@ -4461,7 +4472,8 @@ Statement *WithStatement::semantic(Scope *sc)
             sym->parent = sc->scopesym;
         }
         else
-        {   error("with expressions must be aggregate types, not '%s'", exp->type->toChars());
+        {
+            error("with expressions must be aggregate types or pointers to them, not '%s'", olde->type->toChars());
             return NULL;
         }
     }

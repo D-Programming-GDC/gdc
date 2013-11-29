@@ -92,7 +92,6 @@ struct longdouble
   bool operator == (const longdouble& r);
   bool operator != (const longdouble& r);
 
-  bool isIdenticalTo (const longdouble& r) const;
   int format (char *buf, unsigned buf_size) const;
   int formatHex (char *buf, unsigned buf_size) const;
 

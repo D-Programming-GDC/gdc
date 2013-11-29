@@ -726,6 +726,16 @@ nametype (Type *t)
   nametype (t->toCtype(), t->toChars());
 }
 
+// Generate C main() in response to seeing D main().
+// This used to be in libdruntime, but contained a reference to _Dmain which
+// didn't work when druntime was made into a shared library and was linked
+// to a program, such as a C++ program, that didn't have a _Dmain.
+
+void
+genCmain (Scope *)
+{
+}
+
 static void
 deps_write (Module *m)
 {
@@ -798,7 +808,6 @@ deps_write (Module *m)
   ob->writenl();
 }
 
-
 void
 d_parse_file (void)
 {
@@ -824,7 +833,6 @@ d_parse_file (void)
   Modules modules;
   modules.reserve (num_in_fnames);
   AsyncRead *aw = NULL;
-  Module *m = NULL;
 
   if (!main_input_filename || !main_input_filename[0])
     {
@@ -881,7 +889,8 @@ d_parse_file (void)
       // At this point, name is the D source file name stripped of
       // its path and extension.
       Identifier *id = Lexer::idPool (name);
-      m = new Module (fname, id, global.params.doDocComments, global.params.doHdrGeneration);
+      Module *m = new Module (fname, id, global.params.doDocComments,
+			      global.params.doHdrGeneration);
       modules.push (m);
 
       if (!strcmp (in_fnames[i], main_input_filename))
@@ -903,7 +912,7 @@ d_parse_file (void)
   aw = AsyncRead::create (modules.dim);
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       aw->addFile (m->srcfile);
     }
   aw->start();
@@ -911,7 +920,7 @@ d_parse_file (void)
   // Parse files
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       if (global.params.verbose)
 	fprintf (stderr, "parse     %s\n", m->toChars());
       if (!Module::rootModule)
@@ -946,7 +955,7 @@ d_parse_file (void)
        */
       for (size_t i = 0; i < modules.dim; i++)
 	{
-	  m = modules[i];
+	  Module *m = modules[i];
 	  if (fonly_arg && m != output_module)
 	    continue;
 	  if (global.params.verbose)
@@ -961,7 +970,7 @@ d_parse_file (void)
   // load all unconditional imports for better symbol resolving
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       if (global.params.verbose)
 	fprintf (stderr, "importall %s\n", m->toChars());
       m->importAll (NULL);
@@ -973,7 +982,7 @@ d_parse_file (void)
   // Do semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       if (global.params.verbose)
 	fprintf (stderr, "semantic  %s\n", m->toChars());
       m->semantic();
@@ -988,7 +997,7 @@ d_parse_file (void)
   // Do pass 2 semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       if (global.params.verbose)
 	fprintf (stderr, "semantic2 %s\n", m->toChars());
       m->semantic2();
@@ -1000,11 +1009,13 @@ d_parse_file (void)
   // Do pass 3 semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       if (global.params.verbose)
 	fprintf (stderr, "semantic3 %s\n", m->toChars());
       m->semantic3();
     }
+
+  Module::runDeferredSemantic3();
 
   if (global.errors)
     goto had_errors;
@@ -1019,14 +1030,14 @@ d_parse_file (void)
 	  deps.writev();
 	}
       else
-	fprintf (stderr, "%s", (char *) ob->data);
+	fprintf (stderr, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
   if (global.params.makeDeps)
     {
       for (size_t i = 0; i < modules.dim; i++)
 	{
-	  m = modules[i];
+	  Module *m = modules[i];
 	  deps_write (m);
 	}
 
@@ -1038,7 +1049,7 @@ d_parse_file (void)
 	  deps.writev();
 	}
       else
-	fprintf (stderr, "%s", (char *) ob->data);
+	fprintf (stderr, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
   // Do not attempt to generate output files if errors or warnings occurred
@@ -1089,7 +1100,7 @@ d_parse_file (void)
 
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       if (fonly_arg && m != output_module)
 	continue;
       if (global.params.verbose)

@@ -188,7 +188,7 @@ $(BOOKTABLE ,
 These _range-construction tools are implemented using templates; but sometimes
 an object-based interface for ranges is needed. For this purpose, this module
 provides a number of object and $(D interface) definitions that can be used to
-wrap around _range objects created by the above templates:
+wrap around _range objects created by the above templates.
 
 $(BOOKTABLE ,
     $(TR $(TD $(D $(LREF InputRange)))
@@ -228,6 +228,9 @@ $(BOOKTABLE ,
     $(TR $(TD $(D $(LREF InputRangeObject)))
         $(TD Class that implements the $(D InputRange) interface and wraps the
         input _range methods in virtual functions.
+    ))
+    $(TR $(TD $(D $(LREF RefRange)))
+        $(TD Wrapper around a forward _range that gives it reference semantics.
     ))
 )
 
@@ -1887,7 +1890,7 @@ unittest
     assert(s1[0..0].empty);
     assert(s1[3..3].empty);
     // assert(s1[$ .. $].empty);
-    assert(s1[s1.opDollar() .. s1.opDollar()].empty);
+    assert(s1[s1.opDollar .. s1.opDollar].empty);
 
     auto s2 = stride(arr, 2);
     assert(equal(s2[0..2], [1,3]));
@@ -1897,7 +1900,7 @@ unittest
     assert(s2[0..0].empty);
     assert(s2[3..3].empty);
     // assert(s2[$ .. $].empty);
-    assert(s2[s2.opDollar() .. s2.opDollar()].empty);
+    assert(s2[s2.opDollar .. s2.opDollar].empty);
 
     // Test fix for Bug 5035
     auto m = [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]; // 3 rows, 4 columns

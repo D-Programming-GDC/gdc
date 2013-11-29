@@ -339,7 +339,7 @@ FuncDeclaration::toSymbol (void)
 
 	  if (ident)
 	    {
-	      // Save ident for making thunks.
+	      // Save mangle/debug names for making thunks.
 	      csym->Sident = mangleExact();
 	      csym->prettyIdent = toPrettyChars();
 	      id = get_identifier (csym->Sident);
@@ -662,11 +662,9 @@ ClassDeclaration::toVtblSymbol (void)
 
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
-      TypeSArray *vtbl_type = new TypeSArray (Type::tvoidptr,
-					       new IntegerExp (loc, vtbl.dim, Type::tindex));
-
+      Type *vtbltype = TypeSArray::makeType (loc, Type::tvoidptr, vtbl.dim);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (vtblsym->Sident), vtbl_type->toCtype());
+			      get_identifier (vtblsym->Sident), vtbltype->toCtype());
       vtblsym->Stree = decl;
       d_keep (decl);
 

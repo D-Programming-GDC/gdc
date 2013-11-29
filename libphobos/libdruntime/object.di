@@ -383,7 +383,7 @@ private:
 public:
     @property size_t length() const { return _aaLen(p); }
 
-    Value[Key] rehash() @property
+    Value[Key] rehash()
     {
         auto p = _aaRehash(cast(void**) &p, typeid(Value[Key]));
         return *cast(Value[Key]*)(&p);
@@ -439,7 +439,7 @@ public:
         // bug 10720 - check whether Value is copyable
     })))
     {
-        @property Value[Key] dup()
+        Value[Key] dup()
         {
             Value[Key] result;
             foreach (k, v; this)
@@ -450,9 +450,9 @@ public:
         }
     }
     else
-        @disable @property Value[Key] dup();    // for better error message
+        @disable Value[Key] dup();    // for better error message
 
-    @property auto byKey()
+    auto byKey()
     {
         static struct Result
         {
@@ -461,12 +461,13 @@ public:
             @property bool empty() { return _aaRangeEmpty(r); }
             @property ref Key front() { return *cast(Key*)_aaRangeFrontKey(r); }
             void popFront() { _aaRangePopFront(r); }
+            Result save() { return this; }
         }
 
         return Result(_aaRange(p));
     }
 
-    @property auto byValue()
+    auto byValue()
     {
         static struct Result
         {
@@ -475,6 +476,7 @@ public:
             @property bool empty() { return _aaRangeEmpty(r); }
             @property ref Value front() { return *cast(Value*)_aaRangeFrontValue(r); }
             void popFront() { _aaRangePopFront(r); }
+            Result save() { return this; }
         }
 
         return Result(_aaRange(p));

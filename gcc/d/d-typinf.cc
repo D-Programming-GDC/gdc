@@ -240,9 +240,11 @@ TypeBasic::builtinTypeInfo (void)
 int
 TypeDArray::builtinTypeInfo (void)
 {
-  return !mod && ((next->isTypeBasic() != NULL && !next->mod)
-		  // strings are so common, make them builtin
-		  || (next->ty == Tchar && next->mod == MODimmutable));
+  // Strings are so common, make them builtin.
+  return !mod
+    && ((next->isTypeBasic() != NULL && !next->mod)
+	|| (next->ty == Tchar && next->mod == MODimmutable)
+	|| (next->ty == Tchar && next->mod == MODconst));
 }
 
 int

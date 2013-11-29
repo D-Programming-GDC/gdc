@@ -1,5 +1,8 @@
 
-version(GNU) {static assert(0);}
+version(GNU)
+{
+    static assert(0);
+}
 version(Win64)
 {
     static assert(0);

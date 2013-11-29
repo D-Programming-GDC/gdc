@@ -1252,8 +1252,11 @@ StaticDtorDeclaration *Parser::parseStaticDtor()
     check(TOKthis);
     check(TOKlparen);
     check(TOKrparen);
+    StorageClass stc = parsePostfix();
+    if (stc & STCshared)
+        error("to create a 'shared' static destructor, move 'shared' in front of the declaration");
 
-    StaticDtorDeclaration *f = new StaticDtorDeclaration(loc, Loc());
+    StaticDtorDeclaration *f = new StaticDtorDeclaration(loc, Loc(), stc);
     parseContracts(f);
     return f;
 }
@@ -1274,8 +1277,11 @@ SharedStaticDtorDeclaration *Parser::parseSharedStaticDtor()
     check(TOKthis);
     check(TOKlparen);
     check(TOKrparen);
+    StorageClass stc = parsePostfix();
+    if (stc & STCshared)
+        error("static destructor is 'shared' already");
 
-    SharedStaticDtorDeclaration *f = new SharedStaticDtorDeclaration(loc, Loc());
+    SharedStaticDtorDeclaration *f = new SharedStaticDtorDeclaration(loc, Loc(), stc);
     parseContracts(f);
     return f;
 }
@@ -2976,6 +2982,7 @@ Dsymbols *Parser::parseDeclarations(StorageClass storage_class, utf8_t *comment)
             /* Look for:
              *  enum identifier(...) = type;
              */
+            tok = token.value;
             Token *tk = peek(&token);
             if (tk->value == TOKidentifier &&
                 (tk = peek(tk))->value == TOKlparen && skipParens(tk, &tk) &&
@@ -4274,7 +4281,8 @@ Statement *Parser::parseStatement(int flags, utf8_t** endPtr)
         }
 
         case TOKif:
-        {   Parameter *arg = NULL;
+        {
+            Parameter *arg = NULL;
             Expression *condition;
             Statement *ifbody;
             Statement *elsebody;
@@ -4365,6 +4373,8 @@ Statement *Parser::parseStatement(int flags, utf8_t** endPtr)
             }
 
             condition = parseExpression();
+            if (condition->op == TOKassign)
+                error("assignment cannot be used as a condition, perhaps == was meant?");
             check(TOKrparen);
             {
                 Loc lookingForElseSave = lookingForElse;
