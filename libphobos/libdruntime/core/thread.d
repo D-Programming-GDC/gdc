@@ -231,8 +231,8 @@ else version( Posix )
 
             extern (C)
             {
-                extern int _tlsstart;
-                extern int _tlsend;
+                extern size_t _tlsstart;
+                extern size_t _tlsend;
             }
         }
 

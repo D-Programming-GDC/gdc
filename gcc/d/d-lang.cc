@@ -34,6 +34,7 @@
 #include "id.h"
 #include "json.h"
 #include "module.h"
+#include "scope.h"
 #include "root.h"
 #include "async.h"
 #include "dfrontend/target.h"
@@ -131,6 +132,10 @@ static const char *fonly_arg;
 
 /* List of modules being compiled.  */
 Modules output_modules;
+
+static Module *output_module = NULL;
+
+static Module *entrypoint = NULL;
 
 /* Zero disables all standard directories for headers.  */
 static bool std_inc = true;
@@ -703,8 +708,6 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 }
 
 
-static Module *output_module = NULL;
-
 Module *
 d_gcc_get_output_module (void)
 {
@@ -732,8 +735,22 @@ nametype (Type *t)
 // to a program, such as a C++ program, that didn't have a _Dmain.
 
 void
-genCmain (Scope *)
+genCmain (Scope *sc)
 {
+  if (entrypoint)
+    return;
+
+  // The D code to be generated is provided by __entrypoint.di
+  Module *m = Module::load (Loc(), NULL, Lexer::idPool ("__entrypoint"));
+  m->importedFrom = sc->module;
+  m->importAll (NULL);
+  m->semantic();
+  m->semantic2();
+  m->semantic3();
+
+  // We are emitting this straight to object file.
+  output_modules.push (m);
+  entrypoint = m;
 }
 
 static void
@@ -781,9 +798,11 @@ deps_write (Module *m)
 	      if (strcmp ((md->packages->tdata()[0])->string, "gcc") == 0)
 		continue;
 	    }
-	  else if (md && md->id)
+	  else if (md && md->id && md->packages == NULL)
 	    {
-	      if (strcmp (md->id->string, "object") == 0 && md->packages == NULL)
+	      if (strcmp (md->id->string, "object") == 0)
+		continue;
+	      if (strcmp (md->id->string, "__entrypoint") == 0)
 		continue;
 	    }
 	}
@@ -1103,10 +1122,18 @@ d_parse_file (void)
       Module *m = modules[i];
       if (fonly_arg && m != output_module)
 	continue;
+
       if (global.params.verbose)
 	fprintf (stderr, "code      %s\n", m->toChars());
+
       if (!flag_syntax_only)
-	m->genobjfile (false);
+	{
+	  if (entrypoint && m == entrypoint->importedFrom)
+	    entrypoint->genobjfile (false);
+
+	  m->genobjfile (false);
+	}
+
       if (!global.errors && !errorcount)
 	{
 	  if (global.params.doDocComments)

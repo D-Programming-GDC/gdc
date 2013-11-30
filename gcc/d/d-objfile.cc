@@ -1723,19 +1723,15 @@ d_finish_symbol (Symbol *sym)
 
   d_add_global_declaration (decl);
 
-  // %% Hack: defer output of tls symbols to ensure that _tlsstart gets
-  // emitted first, but this doesn't work because ld may re-order tls data.
-  if (!DECL_THREAD_LOCAL_P (decl))
-    rest_of_decl_compilation (decl, 1, 0);
-  else
+  // %% FIXME: DECL_COMMON so the symbol goes in .tcommon
+  if (DECL_THREAD_LOCAL_P (decl)
+      && DECL_ASSEMBLER_NAME (decl) == get_identifier ("_tlsend"))
     {
-      tree sinit = DECL_INITIAL (decl);
       DECL_INITIAL (decl) = NULL_TREE;
-
-      DECL_DEFER_OUTPUT (decl) = 1;
-      rest_of_decl_compilation (decl, 1, 0);
-      DECL_INITIAL (decl) = sinit;
+      DECL_COMMON (decl) = 1;
     }
+
+  rest_of_decl_compilation (decl, 1, 0);
 }
 
 void
@@ -1745,10 +1741,6 @@ d_finish_function (FuncDeclaration *f)
   tree t = s->Stree;
 
   gcc_assert (TREE_CODE (t) == FUNCTION_DECL);
-
-  // Write out _tlsstart/_tlsend.
-  if (f->isMain() || f->isWinMain() || f->isDllMain())
-    build_tlssections();
 
   if (s->prettyIdent)
     DECL_NAME (t) = get_identifier (s->prettyIdent);
@@ -2252,39 +2244,5 @@ build_moduleinfo (Symbol *sym)
   tree m2 = vmodify_expr (dmodule_ref, build_address (modref));
 
   build_simple_function ("*__modinit", vcompound_expr (m1, m2), true);
-}
-
-// Put out symbols that define the beginning and end
-// of the thread local storage sections.
-
-void
-build_tlssections (void)
-{
-  // Generate:
-  //  __thread size_t _tlsstart = 3;
-  //  __thread size_t _tlsend;
-  tree tlsstart, tlsend;
-
-  tlsstart = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			 get_identifier ("_tlsstart"), size_type_node);
-  TREE_STATIC (tlsstart) = 1;
-  // DECL_INITIAL so the symbol goes in .tdata
-  DECL_INITIAL (tlsstart) = build_int_cst (size_type_node, 3);
-  DECL_TLS_MODEL (tlsstart) = decl_default_tls_model (tlsstart);
-  TREE_PUBLIC (tlsstart) = 1;
-  DECL_ARTIFICIAL (tlsstart) = 1;
-  set_decl_location (tlsstart, current_module_decl);
-  rest_of_decl_compilation (tlsstart, 1, 0);
-
-  tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-		       get_identifier ("_tlsend"), size_type_node);
-  TREE_STATIC (tlsend) = 1;
-  // DECL_COMMON so the symbol goes in .tcommon
-  DECL_COMMON (tlsend) = 1;
-  DECL_TLS_MODEL (tlsend) = decl_default_tls_model (tlsend);
-  TREE_PUBLIC (tlsend) = 1;
-  DECL_ARTIFICIAL (tlsend) = 1;
-  set_decl_location (tlsend, current_module_decl);
-  rest_of_decl_compilation (tlsend, 1, 0);
 }
 
