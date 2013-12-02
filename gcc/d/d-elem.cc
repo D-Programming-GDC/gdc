@@ -916,15 +916,6 @@ CatAssignExp::toElem (IRState *irs)
 	  tree e2e = e2->toElem (irs);
 	  e2e = make_temp (e2e);
 	  result = modify_expr (etype->toCtype(), build_deref (ptr_exp), e2e);
-
-	  // Maybe call postblit on e2.
-	  StructDeclaration *sd = needsPostblit (tb2);
-	  if (sd != NULL)
-	    {
-	      Expressions args;
-	      tree callexp = d_build_call (sd->postblit, build_address (e2e), &args);
-	      result = compound_expr (callexp, result);
-	    }
 	  result = compound_expr (e2e, result);
 	}
     }
@@ -2164,32 +2155,34 @@ NewExp::toElem (IRState *irs)
   // New'ing a struct.
   else if (tb->ty == Tpointer && tb->nextOf()->toBasetype()->ty == Tstruct)
     {
+      Type *htype = newtype->toBasetype();
+      gcc_assert (htype->ty == Tstruct);
       gcc_assert (!onstack);
 
-      Type * handle_type = newtype->toBasetype();
-      gcc_assert (handle_type->ty == Tstruct);
-      TypeStruct *struct_type = (TypeStruct *) handle_type;
-      StructDeclaration *sd = struct_type->sym;
-      Expression *init = struct_type->defaultInit (loc);
-
+      TypeStruct *stype = (TypeStruct *) htype;
+      StructDeclaration *sd = stype->sym;
+      Expression *init = stype->defaultInit (loc);
       tree new_call;
-      tree setup_exp;
-      tree init_exp;
+
+      // Struct size is unknown.
+      if (sd->size (loc) == 0)
+	return d_convert (type->toCtype(), integer_zero_node);
 
       if (allocator)
 	new_call = d_build_call (allocator, NULL_TREE, newargs);
       else
 	{
-	  libcall = struct_type->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+	  libcall = stype->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
 	  tree arg = type->getTypeInfo(NULL)->toElem (irs);
 	  new_call = build_libcall (libcall, 1, &arg);
 	}
       new_call = build_nop (tb->toCtype(), new_call);
 
       // Save the result allocation call.
-      init_exp = convert_for_assignment (init->toElem (irs), init->type, struct_type);
+      tree init_exp = convert_for_assignment (init->toElem (irs), init->type, stype);
       new_call = maybe_make_temp (new_call);
-      setup_exp = modify_expr (build_deref (new_call), init_exp);
+
+      tree setup_exp = modify_expr (build_deref (new_call), init_exp);
       new_call = compound_expr (setup_exp, new_call);
 
       // Set vthis for nested structs/classes.
@@ -2198,7 +2191,7 @@ NewExp::toElem (IRState *irs)
 	  tree vthis_value = build_vthis (sd, irs->func, this);
 	  tree vthis_field;
 	  new_call = maybe_make_temp (new_call);
-	  vthis_field = component_ref (indirect_ref (struct_type->toCtype(), new_call),
+	  vthis_field = component_ref (indirect_ref (stype->toCtype(), new_call),
 				       sd->vthis->toSymbol()->Stree);
 	  new_call = compound_expr (modify_expr (vthis_field, vthis_value), new_call);
 	}
@@ -2222,8 +2215,13 @@ NewExp::toElem (IRState *irs)
 	{
 	  // Single dimension array allocations.
 	  Expression *arg = (*arguments)[0];
-	  libcall = tarray->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
 	  tree args[2];
+
+	  // Elem size is unknown.
+	  if (tarray->next->size() == 0)
+	    return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+
+	  libcall = tarray->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
 	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
 	  args[1] = arg->toElem (irs);
 	  result = build_libcall (libcall, 2, args, tb->toCtype());
@@ -2247,6 +2245,7 @@ NewExp::toElem (IRState *irs)
 	      telem = telem->toBasetype()->nextOf();
 	      gcc_assert (telem);
 	    }
+
 	  CONSTRUCTOR_ELTS (dims_init) = elms;
 	  DECL_INITIAL (dims_var) = dims_init;
 
@@ -2261,9 +2260,14 @@ NewExp::toElem (IRState *irs)
   // New'ing a pointer
   else if (tb->ty == Tpointer)
     {
-      TypePointer *pointer_type = (TypePointer *) tb;
+      TypePointer *tpointer = (TypePointer *) tb;
 
-      libcall = pointer_type->next->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+      // Elem size is unknown.
+      if (tpointer->next->size() == 0)
+	return d_convert (type->toCtype(), integer_zero_node);
+
+      libcall = tpointer->next->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+
       tree arg = type->getTypeInfo(NULL)->toElem (irs);
       result = build_libcall (libcall, 1, &arg, tb->toCtype());
     }

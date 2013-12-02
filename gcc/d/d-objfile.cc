@@ -1449,12 +1449,12 @@ FuncDeclaration::buildClosure (IRState *irs)
     {
       VarDeclaration *v = closureVars[i];
 
+      if (!v->isParameter())
+	continue;
+
       // Because the value needs to survive the end of the scope.
       if (v->needsAutoDtor())
 	v->error("has scoped destruction, cannot build closure");
-
-      if (!v->isParameter())
-	continue;
 
       Symbol *vsym = v->toSymbol();
 

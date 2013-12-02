@@ -397,117 +397,56 @@ ArrayLiteralExp::toDt (dt_t **pdt)
 dt_t **
 StructLiteralExp::toDt (dt_t **pdt)
 {
-  // For elements[], construct a corresponding array dts[] the elements
-  // of which are the initializers.
-  // Nulls in elements[] become nulls in dts[].
-  Dts dts;
-  dts.setDim (sd->fields.dim);
-  dts.zero();
+  tree sdt = NULL_TREE;
+  size_t offset = 0;
 
-  gcc_assert (elements->dim <= sd->fields.dim);
+  gcc_assert (sd->fields.dim - sd->isNested() <= elements->dim);
 
   for (size_t i = 0; i < elements->dim; i++)
     {
       Expression *e = (*elements)[i];
       if (!e)
 	continue;
-      tree dt = NULL_TREE;
-      e->toDt (&dt);
-      dts[i] = dt;
-    }
 
-  size_t offset = 0;
-  tree sdt = NULL_TREE;
+      VarDeclaration *vd = NULL;
+      size_t k = 0;
 
-  for (size_t i = 0; i < dts.dim; i++)
-    {
-      VarDeclaration *v = sd->fields[i];
-      tree fdt = dts[i];
-
-      if (fdt == NULL_TREE)
+      for (size_t j = i; j < elements->dim; j++)
 	{
-	  // An instance specific initialiser was not provided.
-	  // If there is no overlap with any explicit initialiser in dts[],
-	  // supply a default initialiser.
-	  if (v->offset >= offset)
+	  VarDeclaration *vd2 = sd->fields[j];
+	  if (vd2->offset < offset || (*elements)[j] == NULL)
+	    continue;
+
+	  // Find the nearest field
+	  if (!vd)
 	    {
-	      size_t offset2 = v->offset + v->type->size();
-
-	      for (size_t j = i + 1; 1; j++)
-		{
-		  // Didn't find any overlap
-		  if (j == dts.dim)
-		    {
-		      // Set fdt to be the default initialiser
-		      if (v->init)
-			fdt = v->init->toDt();
-		      else
-			v->type->toDt (&fdt);
-		      break;
-		    }
-
-		  VarDeclaration *v2 = sd->fields[j];
-
-		  // Overlap.
-		  if (v2->offset < offset2 && dts[j])
-		    break;
-		}
+	      vd = vd2;
+	      k = j;
+	    }
+	  else if (vd2->offset < vd->offset)
+	    {
+	      // Each elements should have no overlapping
+	      gcc_assert (!(vd->offset < vd2->offset + vd2->type->size()
+			    && vd2->offset < vd->offset + vd->type->size()));
+	      vd = vd2;
+	      k = j;
 	    }
 	}
 
-      if (fdt != NULL_TREE)
+      if (vd != NULL)
 	{
-	  if (v->offset < offset)
-	    error ("duplicate union initialization for %s", v->toChars());
+	  if (offset < vd->offset)
+	    dt_zeropad (&sdt, vd->offset - offset);
+
+	  e = (*elements)[k];
+
+	  Type *tb = vd->type->toBasetype();
+	  if (tb->ty == Tsarray)
+	    ((TypeSArray *)tb)->toDtElem (&sdt, e);
 	  else
-	    {
-	      size_t sz = int_size_in_bytes (TREE_TYPE (CONSTRUCTOR_ELT (fdt, 0)->value));
-	      size_t vsz = v->type->size();
-	      size_t voffset = v->offset;
-	      size_t dim = 1;
+	    e->toDt (&sdt);
 
-	      if (sz > vsz)
-		{
-		  gcc_assert (v->type->ty == Tsarray && vsz == 0);
-		  error ("zero length array %s has non-zero length initializer", v->toChars());
-		}
-
-	      for (Type *vt = v->type->toBasetype();
-		   vt->ty == Tsarray; vt = vt->nextOf()->toBasetype())
-		{
-		  TypeSArray *tsa = (TypeSArray *) vt;
-		  dim *= tsa->dim->toInteger();
-		}
-
-	      gcc_assert (sz == vsz || sz * dim <= vsz);
-
-	      for (size_t j = 0; j < dim; j++)
-		{
-		  if (offset < voffset)
-		    dt_zeropad (&sdt, voffset - offset);
-
-		  if (fdt == NULL_TREE)
-		    {
-		      // If this literal has an initialiser, use it, else
-		      // check the declaration has an initialiser, falling
-		      // back the default initializer.
-		      if ((*elements)[i] != NULL)
-			(*elements)[i]->toDt (&fdt);
-		      else if (v->init)
-			fdt = v->init->toDt();
-		      else
-			v->type->toDt (&fdt);
-		    }
-
-		  dt_chainon (&sdt, fdt);
-		  fdt = NULL_TREE;
-
-		  offset = voffset + sz;
-		  voffset += vsz / dim;
-		  if (sz == vsz)
-		    break;
-		}
-	    }
+	  offset = vd->offset + vd->type->size();
 	}
     }
 
