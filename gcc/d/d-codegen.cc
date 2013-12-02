@@ -29,16 +29,6 @@ Module *current_module_decl;
 IRState *current_irstate;
 
 
-// Public routine called from D frontend to hide from glue interface.
-// Returns TRUE if all templates are being emitted, either publicly
-// or privately, into the current compilation.
-
-bool
-d_gcc_force_templates (void)
-{
-  return flag_emit_templates == TEprivate;
-}
-
 // Return the DECL_CONTEXT for symbol DSYM.
 
 tree
@@ -309,13 +299,13 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	if (cdfrom == cdto)
 	  break;
 
-	if (cdfrom->isCPPinterface() && cdto->isCPPinterface())
+	if (cdfrom->cpp && cdto->cpp)
 	  break;
 
 	// Casting from a C++ interface to a class/non-C++ interface
 	// always results in null as there is no runtime information,
 	// and no way one can derive from the other.
-	if (cdto->isCOMclass() || cdfrom->isCPPinterface() != cdto->isCPPinterface())
+	if (cdto->isCOMclass() || cdfrom->cpp != cdto->cpp)
 	  {
 	    warning (OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
 	    result = d_convert (totype->toCtype(), d_null_pointer);
@@ -490,12 +480,9 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
   // arbitrarily dimensioned Tsarrays.
   if (tbtype->ty == Tsarray)
     {
-      Type *sa_elem_type = tbtype->nextOf()->toBasetype();
+      Type *telem = tbtype->nextOf()->baseElemOf();
 
-      while (sa_elem_type->ty == Tsarray)
-	sa_elem_type = sa_elem_type->nextOf()->toBasetype();
-
-      if (d_types_compatible (sa_elem_type, ebtype))
+      if (d_types_compatible (telem, ebtype))
 	{
 	  // %% what about implicit converions...?
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;
@@ -2935,9 +2922,9 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
       static const char FuintZint[] = "FNaNbNfkZi";	    // @safe pure nothrow int function(uint)
       static const char FuintZuint[] = "FNaNbNfkZk";	    // @safe pure nothrow uint function(uint)
       static const char FulongZint[] = "FNaNbNfmZi";	    // @safe pure nothrow int function(uint)
-      static const char FrealZlong [] = "FNaNbNfeZl";       // @safe pure nothrow long function(real)
-      static const char FlongplongZint [] = "FNaNbNfPmmZi"; // @safe pure nothrow int function(long*, long)
-      static const char FintpintZint [] = "FNaNbNfPkkZi";   // @safe pure nothrow int function(int*, int)
+      static const char FrealZlong [] = "FNaNbNfeZl";	    // @safe pure nothrow long function(real)
+      static const char FlongplongZint [] = "FNaNbPmmZi";   // pure nothrow int function(long*, long)
+      static const char FintpintZint [] = "FNaNbPkkZi";	    // pure nothrow int function(int*, int)
       static const char FrealintZint [] = "FNaNbNfeiZe";    // @safe pure nothrow real function(real, int)
 
       Dsymbol *dsym = decl->toParent();

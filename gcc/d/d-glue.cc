@@ -43,6 +43,7 @@ Global::init (void)
     ;
 
   this->compiler.vendor = "GNU D";
+  this->stdmsg = stdout;
   this->main_d = "__main.d";
 
   memset (&this->params, 0, sizeof (Param));

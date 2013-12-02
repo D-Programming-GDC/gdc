@@ -66,8 +66,6 @@ public:
     TemplateDeclaration *overroot;      // first in overnext list
     FuncDeclaration *funcroot;          // first function in unified overload list
 
-    PASS semanticRun;              // 1 semantic() run
-
     Dsymbol *onemember;         // if !=NULL then one member of this template
 
     int literal;                // this template declaration is a literal
@@ -97,8 +95,8 @@ public:
     PROT prot();
 //    void toDocBuffer(OutBuffer *buf);
 
-    MATCH matchWithInstance(TemplateInstance *ti, Objects *atypes, Expressions *fargs, int flag);
-    MATCH leastAsSpecialized(TemplateDeclaration *td2, Expressions *fargs);
+    MATCH matchWithInstance(Scope *sc, TemplateInstance *ti, Objects *atypes, Expressions *fargs, int flag);
+    MATCH leastAsSpecialized(Scope *sc, TemplateDeclaration *td2, Expressions *fargs);
 
     MATCH deduceFunctionTemplateMatch(FuncDeclaration *f, Loc loc, Scope *sc, Objects *tiargs, Type *tthis, Expressions *fargs, Objects *dedargs);
     RootObject *declareParameter(Scope *sc, TemplateParameter *tp, RootObject *o);
@@ -159,7 +157,7 @@ public:
 
     /* Match actual argument against parameter.
      */
-    virtual MATCH matchArg(Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam) = 0;
+    virtual MATCH matchArg(Loc loc, Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     virtual MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam) = 0;
 
     /* Create dummy argument based on parameter.
@@ -189,7 +187,6 @@ public:
     RootObject *specialization();
     RootObject *defaultArg(Loc loc, Scope *sc);
     int overloadMatch(TemplateParameter *);
-    MATCH matchArg(Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
 };
@@ -234,7 +231,6 @@ public:
     RootObject *specialization();
     RootObject *defaultArg(Loc loc, Scope *sc);
     int overloadMatch(TemplateParameter *);
-    MATCH matchArg(Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
 };
@@ -263,7 +259,6 @@ public:
     RootObject *specialization();
     RootObject *defaultArg(Loc loc, Scope *sc);
     int overloadMatch(TemplateParameter *);
-    MATCH matchArg(Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
 };
@@ -286,7 +281,7 @@ public:
     RootObject *specialization();
     RootObject *defaultArg(Loc loc, Scope *sc);
     int overloadMatch(TemplateParameter *);
-    MATCH matchArg(Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
+    MATCH matchArg(Loc loc, Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
 };
@@ -314,7 +309,6 @@ public:
     AliasDeclaration *aliasdecl;        // !=NULL if instance is an alias for its
                                         // sole member
     WithScopeSymbol *withsym;           // if a member of a with statement
-    PASS semanticRun;                   // has semantic() been done?
     int nest;                           // for recursion detection
     bool semantictiargsdone;            // has semanticTiargs() been done?
     bool havetempdecl;                  // if used second constructor
@@ -322,12 +316,7 @@ public:
     Dsymbol *enclosing;                 // if referencing local symbols, this is the context
     hash_t hash;                        // cached result of hashCode()
     Expressions *fargs;                 // for function template, these are the function arguments
-#ifdef IN_GCC
-    /* On some targets, it is necessary to know whether a symbol
-       will be emitted in the output or not before the symbol
-       is used.  This can be different from getModule(). */
-    Module * objFileModule;
-#endif
+    Module *instantiatingModule;        // the top module that instantiated this instance
 
     TemplateInstance(Loc loc, Identifier *temp_id);
     TemplateInstance(Loc loc, TemplateDeclaration *tempdecl, Objects *tiargs);
@@ -343,7 +332,6 @@ public:
     Dsymbol *toAlias();                 // resolve real symbol
     const char *kind();
     bool oneMember(Dsymbol **ps, Identifier *ident);
-    bool needsTypeInference(Scope *sc, int flag = 0);
     char *toChars();
     const char *mangle(bool isv = false);
     void printInstantiationTrace();
@@ -354,13 +342,14 @@ public:
     void toObjFile(int multiobj);                       // compile to .obj file
 
     // Internal
-    static void semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int flags);
-    bool semanticTiargs(Scope *sc);
     bool findTemplateDeclaration(Scope *sc);
     bool updateTemplateDeclaration(Scope *sc, Dsymbol *s);
+    static void semanticTiargs(Loc loc, Scope *sc, Objects *tiargs, int flags);
+    bool semanticTiargs(Scope *sc);
     bool findBestMatch(Scope *sc, Expressions *fargs);
+    bool needsTypeInference(Scope *sc, int flag = 0);
+    bool hasNestedArgs(Objects *tiargs);
     void declareParameters(Scope *sc);
-    int hasNestedArgs(Objects *tiargs);
     Identifier *genIdent(Objects *args);
     void expandMembers(Scope *sc);
     void tryExpandMembers(Scope *sc);

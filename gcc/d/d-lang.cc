@@ -398,6 +398,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 	}
       break;
 
+    case OPT_fdeps:
+      global.params.moduleDeps = new OutBuffer;
+      break;
+
     case OPT_fdeps_:
       global.params.moduleDepsFile = xstrdup (arg);
       if (!global.params.moduleDepsFile[0])
@@ -432,7 +436,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      flag_emit_templates = value ? TEprivate : TEnone;
+      flag_emit_templates = value ? TEnormal : TEnone;
       break;
 
     case OPT_femit_moduleinfo:
@@ -741,7 +745,7 @@ genCmain (Scope *sc)
     return;
 
   // The D code to be generated is provided by __entrypoint.di
-  Module *m = Module::load (Loc(), NULL, Lexer::idPool ("__entrypoint"));
+  Module *m = Module::load (Loc(), NULL, Id::entrypoint);
   m->importedFrom = sc->module;
   m->importAll (NULL);
   m->semantic();
@@ -832,8 +836,8 @@ d_parse_file (void)
 {
   if (global.params.verbose)
     {
-      fprintf (stderr, "binary    %s\n", global.params.argv0);
-      fprintf (stderr, "version   %s\n", global.version);
+      fprintf (global.stdmsg, "binary    %s\n", global.params.argv0);
+      fprintf (global.stdmsg, "version   %s\n", global.version);
     }
 
   // Start the main input file, if the debug writer wants it.
@@ -871,7 +875,7 @@ d_parse_file (void)
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
-      //fprintf (stderr, "fn %d = %s\n", i, in_fnames[i]);
+      //fprintf (global.stdmsg, "fn %d = %s\n", i, in_fnames[i]);
       char *fname = xstrdup (in_fnames[i]);
 
       // Strip path
@@ -941,7 +945,7 @@ d_parse_file (void)
     {
       Module *m = modules[i];
       if (global.params.verbose)
-	fprintf (stderr, "parse     %s\n", m->toChars());
+	fprintf (global.stdmsg, "parse     %s\n", m->toChars());
       if (!Module::rootModule)
 	Module::rootModule = m;
       m->importedFrom = m;
@@ -978,7 +982,7 @@ d_parse_file (void)
 	  if (fonly_arg && m != output_module)
 	    continue;
 	  if (global.params.verbose)
-	    fprintf (stderr, "import    %s\n", m->toChars());
+	    fprintf (global.stdmsg, "import    %s\n", m->toChars());
 	  m->genhdrfile();
 	}
     }
@@ -991,7 +995,7 @@ d_parse_file (void)
     {
       Module *m = modules[i];
       if (global.params.verbose)
-	fprintf (stderr, "importall %s\n", m->toChars());
+	fprintf (global.stdmsg, "importall %s\n", m->toChars());
       m->importAll (NULL);
     }
 
@@ -1003,7 +1007,7 @@ d_parse_file (void)
     {
       Module *m = modules[i];
       if (global.params.verbose)
-	fprintf (stderr, "semantic  %s\n", m->toChars());
+	fprintf (global.stdmsg, "semantic  %s\n", m->toChars());
       m->semantic();
     }
 
@@ -1018,7 +1022,7 @@ d_parse_file (void)
     {
       Module *m = modules[i];
       if (global.params.verbose)
-	fprintf (stderr, "semantic2 %s\n", m->toChars());
+	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars());
       m->semantic2();
     }
 
@@ -1030,7 +1034,7 @@ d_parse_file (void)
     {
       Module *m = modules[i];
       if (global.params.verbose)
-	fprintf (stderr, "semantic3 %s\n", m->toChars());
+	fprintf (global.stdmsg, "semantic3 %s\n", m->toChars());
       m->semantic3();
     }
 
@@ -1049,7 +1053,7 @@ d_parse_file (void)
 	  deps.writev();
 	}
       else
-	fprintf (stderr, "%.*s", (int) ob->offset, (char *) ob->data);
+	fprintf (global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
   if (global.params.makeDeps)
@@ -1068,7 +1072,7 @@ d_parse_file (void)
 	  deps.writev();
 	}
       else
-	fprintf (stderr, "%.*s", (int) ob->offset, (char *) ob->data);
+	fprintf (global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
   // Do not attempt to generate output files if errors or warnings occurred
@@ -1091,7 +1095,7 @@ d_parse_file (void)
 
       if (name && name[0] == '-' && name[1] == 0)
 	{
-	  size_t n = fwrite (buf.data, 1, buf.offset, stderr);
+	  size_t n = fwrite (buf.data, 1, buf.offset, global.stdmsg);
 	  gcc_assert (n == buf.offset);
 	}
       else
@@ -1124,7 +1128,7 @@ d_parse_file (void)
 	continue;
 
       if (global.params.verbose)
-	fprintf (stderr, "code      %s\n", m->toChars());
+	fprintf (global.stdmsg, "code      %s\n", m->toChars());
 
       if (!flag_syntax_only)
 	{

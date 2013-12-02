@@ -162,7 +162,6 @@ longdouble::to_shwi (Type *type) const
     {
       tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
 			    build_float_cst (*this, Type::tfloat64));
-      // Can't use tree_low_cst as it asserts !TREE_OVERFLOW
       cst = TREE_INT_CST (t);
     }
 
@@ -391,6 +390,6 @@ longdouble::dump (void)
 {
   char buf[128];
   format (buf, sizeof (buf));
-  fprintf (stderr, "%s\n", buf);
+  fprintf (global.stdmsg, "%s\n", buf);
 }
 

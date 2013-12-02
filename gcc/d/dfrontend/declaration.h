@@ -364,6 +364,7 @@ public:
     TypeInfoDeclaration(Type *tinfo, int internal);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
+    char *toChars();
 
     void emitComment(Scope *sc);
     void toJson(JsonOut *json);
@@ -371,6 +372,8 @@ public:
     Symbol *toSymbol();
     void toObjFile(int multiobj);                       // compile to .obj file
     virtual void toDt(dt_t **pdt);
+
+    TypeInfoDeclaration *isTypeInfoDeclaration() { return this; }
 };
 
 class TypeInfoStructDeclaration : public TypeInfoDeclaration
@@ -601,7 +604,6 @@ public:
     int inlineNest;                     // !=0 if nested inline
     bool isArrayOp;                     // true if array operation
     FuncDeclaration *dArrayOp;          // D version of array op for ctfe
-    PASS semanticRun;
     int semantic3Errors;                // !=0 if errors in semantic3
                                         // this function's frame ptr
     ForeachStatement *fes;              // if foreach body, this is the foreach
@@ -767,7 +769,6 @@ public:
         ForeachStatement *fes, Identifier *id = NULL);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Dsymbol *syntaxCopy(Dsymbol *);
-    Dsymbol *syntaxCopy(Dsymbol *s, bool keepId);
     bool isNested();
     bool isVirtual();
 

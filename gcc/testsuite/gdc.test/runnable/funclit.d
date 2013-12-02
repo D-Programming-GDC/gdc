@@ -823,6 +823,44 @@ void test10288() @safe pure nothrow
 }
 
 /***************************************************/
+// 10666
+
+struct S10666
+{
+    int val;
+    ~this() {}
+}
+
+void foo10666(S10666 s1)
+{
+    S10666 s2;
+
+    /* Even if closureVars(s1 and s2) are accessed by directly called lambdas,
+     * they won't escape the scope of this function.
+     */
+    auto x1 = (){ return s1.val; }();   // OK
+    auto x2 = (){ return s2.val; }();   // OK
+}
+
+/***************************************************/
+// 11081
+
+T ifThrown11081(E : Throwable, T)(T delegate(E) errorHandler)
+{
+    return errorHandler();
+}
+
+void test11081()
+{
+    static if (__traits(compiles, ifThrown11081!Exception(e => 0)))
+    {
+    }
+    static if (__traits(compiles, ifThrown11081!Exception(e => 0)))
+    {
+    }
+}
+
+/***************************************************/
 
 int main()
 {

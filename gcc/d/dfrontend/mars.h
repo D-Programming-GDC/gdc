@@ -282,6 +282,7 @@ struct Global
     Param params;
     unsigned errors;       // number of errors reported so far
     unsigned warnings;     // number of warnings reported so far
+    FILE *stdmsg;          // where to send verbose messages
     unsigned gag;          // !=0 means gag reporting of errors & warnings
     unsigned gaggedErrors; // number of errors reported while gagged
 
@@ -451,7 +452,7 @@ void obj_append(Dsymbol *s);
 void obj_write_deferred(Library *library);
 
 const char *importHint(const char *s);
-/// Little helper function for writting out deps. 
+/// Little helper function for writting out deps.
 void escapePath(OutBuffer *buf, const char *fname);
 
 #endif /* DMD_MARS_H */

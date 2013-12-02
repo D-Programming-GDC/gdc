@@ -520,7 +520,7 @@ Statements *CompileStatement::flatten(Scope *sc)
         {
             se = se->toUTF8(sc);
             Parser p(sc->module, (utf8_t *)se->string, se->len, 0);
-            p.loc = loc;
+            p.scanloc = loc;
             p.nextToken();
 
             while (p.token.value != TOKeof)
@@ -2439,17 +2439,22 @@ Statement *ForeachRangeStatement::semantic(Scope *sc)
             /* Just picking the first really isn't good enough.
              */
             arg->type = lwr->type;
-            arg->type = arg->type->addStorageClass(arg->storageClass);
+        }
+        else if (lwr->type == upr->type)
+        {
+            /* Same logic as CondExp ?lwr:upr
+             */
+            arg->type = lwr->type;
         }
         else
         {
             AddExp ea(loc, lwr, upr);
             Expression *e = ea.typeCombine(sc);
             arg->type = ea.type;
-            arg->type = arg->type->addStorageClass(arg->storageClass);
             lwr = ea.e1;
             upr = ea.e2;
         }
+        arg->type = arg->type->addStorageClass(arg->storageClass);
     }
 
     /* Convert to a for loop:
@@ -2931,7 +2936,7 @@ Statement *PragmaStatement::semantic(Scope *sc)
                 char *name = (char *)mem.malloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
-                printf("library   %s\n", name);
+                fprintf(global.stdmsg, "library   %s\n", name);
                 mem.free(name);
             }
         }
@@ -3725,17 +3730,14 @@ Statement *ReturnStatement::semantic(Scope *sc)
         if (!tf->isref)
             exp = exp->optimize(WANTvalue);
 
+        if (Expression *e = exp->isTemp())
+            exp = e;                // don't need temporary
         if (exp->op == TOKcall)
-            valueNoDtor(exp);
-        else
-        {
-            Expression *e = exp->isTemp();
-            if (e)
-                exp = e;                // don't need temporary
-        }
+            exp = valueNoDtor(exp);
 
         if (fd->nrvo_can && exp->op == TOKvar)
-        {   VarExp *ve = (VarExp *)exp;
+        {
+            VarExp *ve = (VarExp *)exp;
             VarDeclaration *v = ve->var->isVarDeclaration();
 
             if (isRefReturn)
@@ -3744,8 +3746,10 @@ Statement *ReturnStatement::semantic(Scope *sc)
             else if (!v || v->isOut() || v->isRef())
                 fd->nrvo_can = 0;
             else if (fd->nrvo_var == NULL)
-            {   if (!v->isDataseg() && !v->isParameter() && v->toParent2() == fd)
-                {   //printf("Setting nrvo to %s\n", v->toChars());
+            {
+                if (!v->isDataseg() && !v->isParameter() && v->toParent2() == fd)
+                {
+                    //printf("Setting nrvo to %s\n", v->toChars());
                     fd->nrvo_var = v;
                 }
                 else
@@ -3817,13 +3821,10 @@ Statement *ReturnStatement::semantic(Scope *sc)
                 tf->next = exp->type;
                 //fd->type = tf->semantic(loc, sc);     // Removed with 6902
                 if (!fd->tintro)
-                {   tret = tf->next;
+                {
+                    tret = tf->next;
                     tbret = tret->toBasetype();
                 }
-            }
-            if (!fd->nrvo_can && exp->isLvalue() && !isRefReturn)
-            {
-                exp = callCpCtor(exp->loc, sc, exp, 1);
             }
             if (fd->returnLabel)
                 eorg = exp->copy();
@@ -3834,11 +3835,6 @@ Statement *ReturnStatement::semantic(Scope *sc)
         }
         else if (tbret->ty != Tvoid)
         {
-            if (!fd->nrvo_can && exp->isLvalue() && !isRefReturn)
-            {
-                exp = callCpCtor(exp->loc, sc, exp, 1);
-            }
-
             if (!exp->type->implicitConvTo(tret) &&
                 fd->parametersIntersect(exp->type))
             {
@@ -3857,6 +3853,10 @@ Statement *ReturnStatement::semantic(Scope *sc)
 
             if (!isRefReturn)
                 exp = exp->optimize(WANTvalue);
+
+            if (!fd->returns)
+                fd->returns = new ReturnStatements();
+            fd->returns->push(this);
         }
     }
     else if (fd->inferRetType)
@@ -4052,13 +4052,10 @@ Statement *BreakStatement::semantic(Scope *sc)
     {
         ident = fixupLabelName(sc, ident);
 
-        Scope *scx;
         FuncDeclaration *thisfunc = sc->func;
 
-        for (scx = sc; scx; scx = scx->enclosing)
+        for (Scope *scx = sc; scx; scx = scx->enclosing)
         {
-            LabelStatement *ls;
-
             if (scx->func != thisfunc)  // if in enclosing function
             {
                 if (sc->fes)            // if this is the body of a foreach
@@ -4070,38 +4067,40 @@ Statement *BreakStatement::semantic(Scope *sc)
                      * Case numbers start with 2, not 0, as 0 is continue
                      * and 1 is break.
                      */
-                    Statement *s;
                     sc->fes->cases->push(this);
-                    s = new ReturnStatement(Loc(), new IntegerExp(sc->fes->cases->dim + 1));
+                    Statement *s = new ReturnStatement(Loc(), new IntegerExp(sc->fes->cases->dim + 1));
                     return s;
                 }
                 break;                  // can't break to it
             }
 
-            ls = scx->slabel;
+            LabelStatement *ls = scx->slabel;
             if (ls && ls->ident == ident)
             {
                 Statement *s = ls->statement;
 
                 if (!s->hasBreak())
                     error("label '%s' has no break", ident->toChars());
-                if (ls->tf != sc->tf)
+                else if (ls->tf != sc->tf)
                     error("cannot break out of finally block");
-                return this;
+                else
+                    return this;
+                return new ErrorStatement();
             }
         }
         error("enclosing label '%s' for break not found", ident->toChars());
+        return new ErrorStatement();
     }
     else if (!sc->sbreak)
     {
         if (sc->fes)
-        {   Statement *s;
-
+        {
             // Replace break; with return 1;
-            s = new ReturnStatement(Loc(), new IntegerExp(1));
+            Statement *s = new ReturnStatement(Loc(), new IntegerExp(1));
             return s;
         }
         error("break is not inside a loop or switch");
+        return new ErrorStatement();
     }
     return this;
 }
@@ -4173,9 +4172,8 @@ Statement *ContinueStatement::semantic(Scope *sc)
                      * Case numbers start with 2, not 0, as 0 is continue
                      * and 1 is break.
                      */
-                    Statement *s;
                     sc->fes->cases->push(this);
-                    s = new ReturnStatement(Loc(), new IntegerExp(sc->fes->cases->dim + 1));
+                    Statement *s = new ReturnStatement(Loc(), new IntegerExp(sc->fes->cases->dim + 1));
                     return s;
                 }
                 break;                  // can't continue to it
@@ -4188,20 +4186,22 @@ Statement *ContinueStatement::semantic(Scope *sc)
 
                 if (!s->hasContinue())
                     error("label '%s' has no continue", ident->toChars());
-                if (ls->tf != sc->tf)
+                else if (ls->tf != sc->tf)
                     error("cannot continue out of finally block");
-                return this;
+                else
+                    return this;
+                return new ErrorStatement();
             }
         }
         error("enclosing label '%s' for continue not found", ident->toChars());
+        return new ErrorStatement();
     }
     else if (!sc->scontinue)
     {
         if (sc->fes)
-        {   Statement *s;
-
+        {
             // Replace continue; with return 0;
-            s = new ReturnStatement(Loc(), new IntegerExp(0));
+            Statement *s = new ReturnStatement(Loc(), new IntegerExp(0));
             return s;
         }
         error("continue is not inside a loop");
@@ -4261,7 +4261,10 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
             goto Lbody;
         ClassDeclaration *cd = exp->type->isClassHandle();
         if (!cd)
+        {
             error("can only synchronize on class objects, not '%s'", exp->type->toChars());
+            return new ErrorStatement();
+        }
         else if (cd->isInterfaceDeclaration())
         {   /* Cast the interface to an object, as the object has the monitor,
              * not the interface.
@@ -4353,6 +4356,8 @@ Statement *SynchronizedStatement::semantic(Scope *sc)
 Lbody:
     if (body)
         body = body->semantic(sc);
+    if (body && body->isErrorStatement())
+        return body;
     return this;
 }
 
@@ -4424,9 +4429,7 @@ Statement *WithStatement::semantic(Scope *sc)
         sym = s ? s->isScopeDsymbol() : NULL;
         if (!sym)
         {   error("with type %s has no members", es->toChars());
-            if (body)
-                body = body->semantic(sc);
-            return this;
+            return new ErrorStatement();
         }
     }
     else
@@ -4474,15 +4477,18 @@ Statement *WithStatement::semantic(Scope *sc)
         else
         {
             error("with expressions must be aggregate types or pointers to them, not '%s'", olde->type->toChars());
-            return NULL;
+            return new ErrorStatement();
         }
     }
-    sc = sc->push(sym);
 
     if (body)
+    {
+        sc = sc->push(sym);
         body = body->semantic(sc);
-
-    sc->pop();
+        sc->pop();
+        if (body && body->isErrorStatement())
+            return body;
+    }
 
     return this;
 }
@@ -4542,9 +4548,14 @@ Statement *TryCatchStatement::semantic(Scope *sc)
 
     /* Even if body is NULL, still do semantic analysis on catches
      */
+    bool catchErrors = false;
     for (size_t i = 0; i < catches->dim; i++)
     {   Catch *c = (*catches)[i];
         c->semantic(sc);
+        if (c->type->ty == Terror)
+        {   catchErrors = true;
+            continue;
+        }
 
         // Determine if current catch 'hides' any previous catches
         for (size_t j = 0; j < i; j++)
@@ -4553,15 +4564,29 @@ Statement *TryCatchStatement::semantic(Scope *sc)
             char *sj = cj->loc.toChars();
 
             if (c->type->toBasetype()->implicitConvTo(cj->type->toBasetype()))
+            {
                 error("catch at %s hides catch at %s", sj, si);
+                catchErrors = true;
+            }
         }
     }
+    if (catchErrors)
+        return new ErrorStatement();
 
 #ifndef IN_GCC
-    if (!body || !body->hasCode())
+    if (!body)
+        return NULL;
+#endif
+
+    if (body->isErrorStatement())
+        return body;
+
+#ifndef IN_GCC
+    if (!body->hasCode())
     {
         return NULL;
     }
+
 #endif
 
     /* If the try body never throws, we can eliminate any catches
@@ -5076,7 +5101,10 @@ Statement *GotoStatement::semantic(Scope *sc)
         return s;
     }
     if (label->statement && label->statement->tf != sc->tf)
+    {
         error("cannot goto in or out of finally block");
+        return new ErrorStatement();
+    }
     return this;
 }
 
@@ -5123,7 +5151,10 @@ Statement *LabelStatement::semantic(Scope *sc)
 
     ls = fd->searchLabel(ident);
     if (ls->statement)
+    {
         error("Label '%s' already defined", ls->toChars());
+        return new ErrorStatement();
+    }
     else
         ls->statement = this;
     tf = sc->tf;

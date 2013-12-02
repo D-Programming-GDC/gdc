@@ -85,18 +85,18 @@ DebugCondition::DebugCondition(Module *mod, unsigned level, Identifier *ident)
 }
 
 // Helper for printing dependency information
-void printDepsConditional(Scope *sc, DVCondition* condition, const char* depType) 
+void printDepsConditional(Scope *sc, DVCondition* condition, const char* depType)
 {
     if (!global.params.moduleDeps || global.params.moduleDepsFile)
         return;
     OutBuffer *ob = global.params.moduleDeps;
-    Module* md = sc && sc->module ? sc->module : condition->mod;
-    if (!md)
+    Module* imod = sc ? (sc->instantiatingModule ? sc->instantiatingModule : sc->module) : condition->mod;
+    if (!imod)
         return;
     ob->writestring(depType);
-    ob->writestring(md->toPrettyChars());
+    ob->writestring(imod->toPrettyChars());
     ob->writestring(" (");
-    escapePath(ob, md->srcfile->toChars());
+    escapePath(ob, imod->srcfile->toChars());
     ob->writestring(") : ");
     if (condition->ident)
         ob->printf("%s\n", condition->ident->toChars());
@@ -335,9 +335,7 @@ int StaticIfCondition::include(Scope *sc, ScopeDsymbol *s)
         {
             error(loc, (nest > 1000) ? "unresolvable circular static if expression"
                                      : "error evaluating static if expression");
-            if (!global.gag)
-                inc = 2;                // so we don't see the error message again
-            return 0;
+            goto Lerror;
         }
 
         if (!sc)
@@ -364,13 +362,12 @@ int StaticIfCondition::include(Scope *sc, ScopeDsymbol *s)
         {
             if (e->type->toBasetype() != Type::terror)
                 exp->error("expression %s of type %s does not have a boolean value", exp->toChars(), e->type->toChars());
-            inc = 0;
-            return 0;
+            goto Lerror;
         }
         e = e->ctfeInterpret();
         if (e->op == TOKerror)
-        {   exp = e;
-            inc = 0;
+        {
+            goto Lerror;
         }
         else if (e->isBool(TRUE))
             inc = 1;
@@ -379,10 +376,15 @@ int StaticIfCondition::include(Scope *sc, ScopeDsymbol *s)
         else
         {
             e->error("expression %s is not constant or does not evaluate to a bool", e->toChars());
-            inc = 2;
+            goto Lerror;
         }
     }
     return (inc == 1);
+
+Lerror:
+    if (!global.gag)
+        inc = 2;                // so we don't see the error message again
+    return 0;
 }
 
 void StaticIfCondition::toCBuffer(OutBuffer *buf, HdrGenState *hgs)

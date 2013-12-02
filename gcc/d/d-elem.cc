@@ -837,17 +837,19 @@ PowAssignExp::toElem (IRState *)
 }
 
 // Determine if type is an array of structs that need a postblit.
+
 static StructDeclaration *
 needsPostblit (Type *t)
 {
-  t = t->toBasetype();
-  while (t->ty == Tsarray)
-    t = t->nextOf()->toBasetype();
+  t = t->baseElemOf();
+
   if (t->ty == Tstruct)
-    {   StructDeclaration *sd = ((TypeStruct *) t)->sym;
+    {
+      StructDeclaration *sd = ((TypeStruct *) t)->sym;
       if (sd->postblit)
 	return sd;
     }
+
   return NULL;
 }
 
@@ -1406,11 +1408,9 @@ CastExp::toElem (IRState *irs)
   Type *tbtype = to->toBasetype();
   tree t = e1->toElem (irs);
 
+  // Just evaluate e1 if it has any side effects
   if (tbtype->ty == Tvoid)
-    {
-      // Just evaluate e1 if it has any side effects
-      return build1 (NOP_EXPR, tbtype->toCtype(), t);
-    }
+    return build1 (NOP_EXPR, tbtype->toCtype(), t);
 
   return convert_expr (t, ebtype, tbtype);
 }
@@ -1444,15 +1444,13 @@ DeleteExp::toElem (IRState *irs)
   else if (tb1->ty == Tarray)
     {
       // Might need to run destructor on array contents
-      Type *next_type = tb1->nextOf()->toBasetype();
+      Type *telem = tb1->nextOf()->baseElemOf();
       tree ti = d_null_pointer;
       tree args[2];
 
-      while (next_type->ty == Tsarray)
-	next_type = next_type->nextOf()->toBasetype();
-      if (next_type->ty == Tstruct)
+      if (telem->ty == Tstruct)
 	{
-	  TypeStruct *ts = (TypeStruct *) next_type;
+	  TypeStruct *ts = (TypeStruct *) telem;
 	  if (ts->sym->dtor)
 	    ti = tb1->nextOf()->getTypeInfo (NULL)->toElem (irs);
 	}
@@ -1879,21 +1877,34 @@ AssertExp::toElem (IRState *irs)
   if (global.params.useAssert)
     {
       Type *tb1 = e1->type->toBasetype();
-      tree assert_call;
+      tree tmsg = NULL_TREE;
+      LibCall libcall;
 
+      // Build _d_assert call.
       if (irs->func->isUnitTestDeclaration())
 	{
-	  assert_call = (msg != NULL)
-	    ? d_assert_call (loc, LIBCALL_UNITTEST_MSG, msg->toElem (irs))
-	    : d_assert_call (loc, LIBCALL_UNITTEST, NULL_TREE);
+	  if (msg)
+	    {
+	      tmsg = msg->toElemDtor (irs);
+	      libcall = LIBCALL_UNITTEST_MSG;
+	    }
+	  else
+	    libcall = LIBCALL_UNITTEST;
 	}
       else
 	{
-	  assert_call = (msg != NULL)
-	    ? d_assert_call (loc, LIBCALL_ASSERT_MSG, msg->toElem (irs))
-	    : d_assert_call (loc, LIBCALL_ASSERT, NULL_TREE);
+	  if (msg)
+	    {
+	      tmsg = msg->toElemDtor (irs);
+	      libcall = LIBCALL_ASSERT_MSG;
+	    }
+	  else
+	    libcall = LIBCALL_ASSERT;
 	}
 
+      tree assert_call = d_assert_call (loc, libcall, tmsg);
+
+      // Build condition that we are asserting in this contract.
       if (tb1->ty == Tclass)
 	{
 	  ClassDeclaration *cd = tb1->isClassHandle();
@@ -1909,7 +1920,7 @@ AssertExp::toElem (IRState *irs)
 	  else if (cd->isInterfaceDeclaration())
 	    arg = convert_expr (arg, tb1, build_object_type());
 
-	  if (global.params.useInvariants)
+	  if (global.params.useInvariants && !cd->isCPPclass())
 	    invc = build_libcall (LIBCALL_INVARIANT, 1, &arg);
 
 	  // This does a null pointer check before calling _d_invariant

@@ -267,7 +267,6 @@ least ensure all relevant buffers are flushed.
 Params:
 args    = An array which contains the program name as the zeroth element
           and any command-line arguments in the following elements.
-program = The program name, $(I without) command-line arguments.
 stdin   = The standard input stream of the child process.
           This can be any $(XREF stdio,File) that is opened for reading.
           By default the child process inherits the parent's input
@@ -486,18 +485,21 @@ private Pid spawnProcessImpl(in char[] commandLine,
             version (DMC_RUNTIME) handle = _fdToHandle(fileDescriptor);
             else    /* MSVCRT */  handle = _get_osfhandle(fileDescriptor);
         }
+
         DWORD dwFlags;
-        GetHandleInformation(handle, &dwFlags);
-        if (!(dwFlags & HANDLE_FLAG_INHERIT))
+        if (GetHandleInformation(handle, &dwFlags))
         {
-            if (!SetHandleInformation(handle,
-                                      HANDLE_FLAG_INHERIT,
-                                      HANDLE_FLAG_INHERIT))
+            if (!(dwFlags & HANDLE_FLAG_INHERIT))
             {
-                throw new StdioException(
-                    "Failed to make "~which~" stream inheritable by child process ("
-                    ~sysErrorString(GetLastError()) ~ ')',
-                    0);
+                if (!SetHandleInformation(handle,
+                                          HANDLE_FLAG_INHERIT,
+                                          HANDLE_FLAG_INHERIT))
+                {
+                    throw new StdioException(
+                        "Failed to make "~which~" stream inheritable by child process ("
+                        ~sysErrorString(GetLastError()) ~ ')',
+                        0);
+                }
             }
         }
     }
@@ -1582,32 +1584,32 @@ foreach (line; pipes.stderr.byLine) errors ~= line.idup;
 ---
 */
 ProcessPipes pipeProcess(in char[][] args,
-                         Redirect redirectFlags = Redirect.all,
+                         Redirect redirect = Redirect.all,
                          const string[string] env = null,
                          Config config = Config.none)
     @trusted //TODO: @safe
 {
-    return pipeProcessImpl!spawnProcess(args, redirectFlags, env, config);
+    return pipeProcessImpl!spawnProcess(args, redirect, env, config);
 }
 
 /// ditto
 ProcessPipes pipeProcess(in char[] program,
-                         Redirect redirectFlags = Redirect.all,
+                         Redirect redirect = Redirect.all,
                          const string[string] env = null,
                          Config config = Config.none)
     @trusted
 {
-    return pipeProcessImpl!spawnProcess(program, redirectFlags, env, config);
+    return pipeProcessImpl!spawnProcess(program, redirect, env, config);
 }
 
 /// ditto
 ProcessPipes pipeShell(in char[] command,
-                       Redirect redirectFlags = Redirect.all,
+                       Redirect redirect = Redirect.all,
                        const string[string] env = null,
                        Config config = Config.none)
     @safe
 {
-    return pipeProcessImpl!spawnShell(command, redirectFlags, env, config);
+    return pipeProcessImpl!spawnShell(command, redirect, env, config);
 }
 
 // Implementation of the pipeProcess() family of functions.
@@ -2194,6 +2196,48 @@ string escapeShellCommand(in char[][] args...)
     return escapeShellCommandString(escapeShellArguments(args));
 }
 
+unittest
+{
+    // This is a simple unit test without any special requirements,
+    // in addition to the unittest_burnin one below which requires
+    // special preparation.
+
+    struct TestVector { string[] args; string windows, posix; }
+    TestVector[] tests =
+    [
+        {
+            args    : ["foo"],
+            windows : `^"foo^"`,
+            posix   : `'foo'`
+        },
+        {
+            args    : ["foo", "hello"],
+            windows : `^"foo^" ^"hello^"`,
+            posix   : `'foo' 'hello'`
+        },
+        {
+            args    : ["foo", "hello world"],
+            windows : `^"foo^" ^"hello world^"`,
+            posix   : `'foo' 'hello world'`
+        },
+        {
+            args    : ["foo", "hello", "world"],
+            windows : `^"foo^" ^"hello^" ^"world^"`,
+            posix   : `'foo' 'hello' 'world'`
+        },
+        {
+            args    : ["foo", `'"^\`],
+            windows : `^"foo^" ^"'\^"^^\\^"`,
+            posix   : `'foo' ''\''"^\'`
+        },
+    ];
+
+    foreach (test; tests)
+        version (Windows)
+            assert(escapeShellCommand(test.args) == test.windows);
+        else
+            assert(escapeShellCommand(test.args) == test.posix  );
+}
 
 private string escapeShellCommandString(string command)
     //TODO: @safe pure nothrow

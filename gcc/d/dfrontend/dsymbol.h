@@ -26,6 +26,7 @@ struct Scope;
 class DsymbolTable;
 class Declaration;
 class ThisDeclaration;
+class TypeInfoDeclaration;
 class TupleDeclaration;
 class TypedefDeclaration;
 class AliasDeclaration;
@@ -102,9 +103,12 @@ enum PASS
     PASSinit,           // initial state
     PASSsemantic,       // semantic() started
     PASSsemanticdone,   // semantic() done
-    PASSsemantic2,      // semantic2() run
+    PASSsemantic2,      // semantic2() started
+    PASSsemantic2done,  // semantic2() done
     PASSsemantic3,      // semantic3() started
     PASSsemantic3done,  // semantic3() done
+    PASSinline,         // inline started
+    PASSinlinedone,     // inline done
     PASSobj,            // toObjFile() run
 };
 
@@ -121,9 +125,10 @@ public:
     Loc loc;                    // where defined
     Scope *scope;               // !=NULL means context to use for semantic()
     bool errors;                // this symbol failed to pass semantic()
+    PASS semanticRun;
     char *depmsg;               // customized deprecation message
     Expressions *userAttributes;        // user defined attributes from UserAttributeDeclaration
-    UnitTestDeclaration *unittest; // !=NULL means there's a unittest associated with this symbol
+    UnitTestDeclaration *ddocUnittest; // !=NULL means there's a ddoc unittest associated with this symbol (only use this with ddoc)
 
     Dsymbol();
     Dsymbol(Identifier *);
@@ -158,7 +163,6 @@ public:
     virtual int addMember(Scope *sc, ScopeDsymbol *s, int memnum);
     virtual void setScope(Scope *sc);
     virtual void importAll(Scope *sc);
-    virtual void semantic0(Scope *sc);
     virtual void semantic(Scope *sc);
     virtual void semantic2(Scope *sc);
     virtual void semantic3(Scope *sc);
@@ -225,6 +229,7 @@ public:
     virtual TemplateMixin *isTemplateMixin() { return NULL; }
     virtual Declaration *isDeclaration() { return NULL; }
     virtual ThisDeclaration *isThisDeclaration() { return NULL; }
+    virtual TypeInfoDeclaration *isTypeInfoDeclaration() { return NULL; }
     virtual TupleDeclaration *isTupleDeclaration() { return NULL; }
     virtual TypedefDeclaration *isTypedefDeclaration() { return NULL; }
     virtual AliasDeclaration *isAliasDeclaration() { return NULL; }

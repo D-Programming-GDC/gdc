@@ -278,7 +278,10 @@ void Import::semantic(Scope *sc)
 
     if (global.params.moduleDeps != NULL &&
         // object self-imports itself, so skip that (Bugzilla 7547)
-        !(id == Id::object && sc->module->ident == Id::object))
+        !(id == Id::object && sc->module->ident == Id::object) &&
+        // don't list pseudo modules __entrypoint.d, __main.d (Bugzilla 11117, 11164)
+        sc->module->ident != Id::entrypoint &&
+        strcmp(sc->module->ident->string, "__main") != 0)
     {
         /* The grammar of the file is:
          *      ImportDeclaration
@@ -294,11 +297,12 @@ void Import::semantic(Scope *sc)
          */
 
         OutBuffer *ob = global.params.moduleDeps;
+        Module* imod = sc->instantiatingModule ? sc->instantiatingModule : sc->module;
         if (!global.params.moduleDepsFile)
             ob->writestring("depsImport ");
-        ob->writestring(sc->module->toPrettyChars());
+        ob->writestring(imod->toPrettyChars());
         ob->writestring(" (");
-        escapePath(ob, sc->module->srcfile->toChars());
+        escapePath(ob,  imod->srcfile->toChars());
         ob->writestring(") : ");
 
         // use protection instead of sc->protection because it couldn't be

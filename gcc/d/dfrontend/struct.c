@@ -24,23 +24,72 @@
 FuncDeclaration *StructDeclaration::xerreq;     // object.xopEquals
 FuncDeclaration *StructDeclaration::xerrcmp;    // object.xopCmp
 
-bool isImportedSym(Dsymbol *s)
+bool inNonRoot(Dsymbol *s)
 {
     if (!s || !s->parent)
         return false;
     s = s->parent;
     for (; s; s = s->parent)
     {
-        if (s->isTemplateInstance())
+        if (TemplateInstance *ti = s->isTemplateInstance())
+        {
+            if (!ti->instantiatingModule || !ti->instantiatingModule->isRoot())
+                return true;
             return false;
+        }
         else if (Module *m = s->isModule())
         {
-            if (m->importedFrom != m)
+            if (!m->isRoot())
                 return true;
             break;
         }
     }
     return false;
+}
+
+/***************************************
+ * Search toHash member function for TypeInfo_Struct.
+ *      const hash_t toHash();
+ */
+FuncDeclaration *search_toHash(StructDeclaration *sd)
+{
+    Dsymbol *s = search_function(sd, Id::tohash);
+    FuncDeclaration *fd = s ? s->isFuncDeclaration() : NULL;
+    if (fd)
+    {
+        static TypeFunction *tftohash;
+        if (!tftohash)
+        {
+            tftohash = new TypeFunction(NULL, Type::thash_t, 0, LINKd);
+            tftohash->mod = MODconst;
+            tftohash = (TypeFunction *)tftohash->merge();
+        }
+
+        fd = fd->overloadExactMatch(tftohash);
+    }
+    return fd;
+}
+
+/***************************************
+ * Search toString member function for TypeInfo_Struct.
+ *      string toString();
+ */
+FuncDeclaration *search_toString(StructDeclaration *sd)
+{
+    Dsymbol *s = search_function(sd, Id::tostring);
+    FuncDeclaration *fd = s ? s->isFuncDeclaration() : NULL;
+    if (fd)
+    {
+        static TypeFunction *tftostring;
+        if (!tftostring)
+        {
+            tftostring = new TypeFunction(NULL, Type::tstring, 0, LINKd);
+            tftostring = (TypeFunction *)tftostring->merge();
+        }
+
+        fd = fd->overloadExactMatch(tftostring);
+    }
+    return fd;
 }
 
 /********************************* AggregateDeclaration ****************************/
@@ -118,7 +167,7 @@ void AggregateDeclaration::semantic3(Scope *sc)
     if (members)
     {
         StructDeclaration *sd = isStructDeclaration();
-        if (isImportedSym(sd))
+        if (!sc)    // from runDeferredSemantic3 for TypeInfo generation
             goto Lxop;
 
         sc = sc->push(this);
@@ -144,9 +193,10 @@ void AggregateDeclaration::semantic3(Scope *sc)
             Dsymbol *s = ti->toAlias();
             Expression *e = new DsymbolExp(Loc(), s, 0);
 
-            Scope *sc = ti->tempdecl->scope->startCTFE();
-            e = e->semantic(sc);
-            sc->endCTFE();
+            Scope *sc2 = ti->tempdecl->scope->startCTFE();
+            sc2->instantiatingModule = sc->instantiatingModule ? sc->instantiatingModule : sc->module;
+            e = e->semantic(sc2);
+            sc2->endCTFE();
 
             e = e->ctfeInterpret();
             getRTInfo = e;
@@ -164,6 +214,7 @@ void AggregateDeclaration::semantic3(Scope *sc)
                 if (global.endGagging(errors))
                     sd->xeq = sd->xerreq;
             }
+
             if (sd->xcmp &&
                 sd->xcmp->scope &&
                 sd->xcmp->semanticRun < PASSsemantic3done)
@@ -172,6 +223,22 @@ void AggregateDeclaration::semantic3(Scope *sc)
                 sd->xcmp->semantic3(sd->xcmp->scope);
                 if (global.endGagging(errors))
                     sd->xcmp = sd->xerrcmp;
+            }
+
+            FuncDeclaration *ftostr = search_toString(sd);
+            if (ftostr &&
+                ftostr->scope &&
+                ftostr->semanticRun < PASSsemantic3done)
+            {
+                ftostr->semantic3(ftostr->scope);
+            }
+
+            FuncDeclaration *ftohash = search_toHash(sd);
+            if (ftohash &&
+                ftohash->scope &&
+                ftohash->semanticRun < PASSsemantic3done)
+            {
+                ftohash->semantic3(ftohash->scope);
             }
         }
     }
@@ -196,8 +263,6 @@ unsigned AggregateDeclaration::size(Loc loc)
     //printf("AggregateDeclaration::size() %s, scope = %p\n", toChars(), scope);
     if (loc.linnum == 0)
         loc = this->loc;
-    if (!members)
-        error(loc, "unknown size");
     if (sizeok != SIZEOKdone && scope)
         semantic(NULL);
 
@@ -241,8 +306,13 @@ unsigned AggregateDeclaration::size(Loc loc)
       L1: ;
     }
 
-    if (sizeok != SIZEOKdone)
-    {   error(loc, "no size yet for forward reference");
+    if (!members)
+    {
+        error(loc, "unknown size");
+    }
+    else if (sizeok != SIZEOKdone)
+    {
+        error(loc, "no size yet for forward reference");
         //*(char*)0=0;
     }
     return structsize;
@@ -457,6 +527,25 @@ int AggregateDeclaration::numFieldsInUnion(int firstIndex)
         ++count;
     }
     return count;
+}
+
+/*******************************************
+ * Look for constructor declaration.
+ */
+void AggregateDeclaration::searchCtor()
+{
+    ctor = search(Loc(), Id::ctor, 0);
+    if (ctor)
+    {
+        if (!(ctor->isCtorDeclaration() ||
+              ctor->isTemplateDeclaration() ||
+              ctor->isOverloadSet()))
+        {
+            error("%s %s is not a constructor; identifiers starting with __ are reserved for the implementation", ctor->kind(), ctor->toChars());
+            errors = true;
+            ctor = NULL;
+        }
+    }
 }
 
 /********************************* StructDeclaration ****************************/
@@ -735,8 +824,11 @@ void StructDeclaration::semantic(Scope *sc)
      * the TypeInfo object would be speculatively stored in each object
      * files. To set correct function pointer, run semantic3 for xeq and xcmp.
      */
-    if ((xeq && xeq != xerreq || xcmp && xcmp != xerrcmp) && isImportedSym(this))
-        Module::addDeferredSemantic3(this);
+    //if ((xeq && xeq != xerreq || xcmp && xcmp != xerrcmp) && isImportedSym(this))
+    //    Module::addDeferredSemantic3(this);
+    /* Defer requesting semantic3 until TypeInfo generation is actually invoked.
+     * See Type::getTypeInfo().
+     */
 #endif
     inv = buildInv(sc2);
 
@@ -744,9 +836,7 @@ void StructDeclaration::semantic(Scope *sc)
 
     /* Look for special member functions.
      */
-#if DMDV2
-    ctor = search(Loc(), Id::ctor, 0);
-#endif
+    searchCtor();
     aggNew =       (NewDeclaration *)search(Loc(), Id::classNew,       0);
     aggDelete = (DeleteDeclaration *)search(Loc(), Id::classDelete,    0);
 
@@ -863,13 +953,10 @@ bool StructDeclaration::isPOD()
         assert(v && v->isField());
         if (v->storage_class & STCref)
             continue;
-        Type *tv = v->type->toBasetype();
-        while (tv->ty == Tsarray)
-        {   TypeSArray *ta = (TypeSArray *)tv;
-            tv = tv->nextOf()->toBasetype();
-        }
+        Type *tv = v->type->baseElemOf();
         if (tv->ty == Tstruct)
-        {   TypeStruct *ts = (TypeStruct *)tv;
+        {
+            TypeStruct *ts = (TypeStruct *)tv;
             StructDeclaration *sd = ts->sym;
             if (!sd->isPOD())
                 return false;

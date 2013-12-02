@@ -2552,6 +2552,19 @@ bool bug7216() {
 static assert(bug7216());
 
 /**************************************************
+    10858 Wrong code with array of pointers
+**************************************************/
+
+bool bug10858()
+{
+    int *[4] x;
+    x[0] = null;
+    assert(x[0] == null);
+    return true;
+}
+static assert(bug10858());
+
+/**************************************************
     9745 Allow pointers to static variables
 **************************************************/
 
@@ -2609,6 +2622,24 @@ bool test9745b()
     return true;
 }
 static assert(test9745b());
+
+/**************************************************
+    9364 ICE with pointer to local struct
+**************************************************/
+
+struct S9364
+{
+    int i;
+}
+
+bool bug9364()
+{
+    S9364 s;
+    auto k = (&s).i;
+    return 1;
+}
+
+static assert(bug9364());
 
 /**************************************************
     10251 Pointers to const globals
@@ -5430,6 +5461,40 @@ bool bug6438(int testnum)
 static assert( is(typeof(compiles!(bug6438(1)))));
 static assert(!is(typeof(compiles!(bug6438(2)))));
 static assert(!is(typeof(compiles!(bug6438(3)))));
+
+/**************************************************
+    10994 void static array members
+**************************************************/
+
+struct Bug10994
+{
+    ubyte[2] buf = void;
+}
+
+static bug10994 = Bug10994.init;
+
+/**************************************************
+    10937 struct inside union
+**************************************************/
+
+struct S10937 {
+    union {
+        ubyte[1] a;
+        struct {
+            ubyte b;
+        }
+    }
+
+    this(ubyte B) {
+        if (B > 6)
+            this.b = B;
+        else
+            this.a[0] = B;
+    }
+}
+
+enum test10937 = S10937(7);
+enum west10937 = S10937(2);
 
 /**************************************************
     7732

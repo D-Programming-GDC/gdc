@@ -1514,6 +1514,7 @@ unittest
 
  Params:
     s = the string to be counted
+    n = the current code point index
  */
 ptrdiff_t index(E)(const(E)[] s,int n)
 in
@@ -1688,7 +1689,8 @@ body
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
  Params:
-    c = the code point to be encoded
+    c     = the code point to be encoded
+    array = the destination array
 
  Returns:
           the number of code units written to the array
@@ -1780,22 +1782,29 @@ size_t encode(E, R)(dchar c, R range)
     {
         if (c <= 0xFFFF)
         {
-            r.put(cast(wchar) c);
+            range.put(cast(wchar) c);
             return 1;
         }
-        r.put(cast(wchar) ((((c - 0x10000) >> 10) & 0x3FF) + 0xD800));
-        r.put(cast(wchar) (((c - 0x10000) & 0x3FF) + 0xDC00));
+        range.put(cast(wchar) ((((c - 0x10000) >> 10) & 0x3FF) + 0xD800));
+        range.put(cast(wchar) (((c - 0x10000) & 0x3FF) + 0xDC00));
         return 2;
     }
     else static if (is(Unqual!E == dchar))
     {
-        r.put(c);
+        range.put(c);
         return 1;
     }
     else
     {
-        assert(0);
+        static assert(0);
     }
+}
+unittest
+{
+    Appender!(char[]) r;
+    assert(encode!(char)('T', r) == 1);
+    assert(encode!(wchar)('T', r) == 1);
+    assert(encode!(dchar)('T', r) == 1);
 }
 
 /**
@@ -1817,7 +1826,8 @@ size_t encode(E, R)(dchar c, R range)
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
  Params:
-    c = the code point to be encoded
+    c  = the code point to be encoded
+    dg = the delegate to invoke for each code unit
  */
 void encode(E)(dchar c, void delegate(E) dg)
 in
@@ -1898,7 +1908,7 @@ unittest
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
  Params:
-    d = the code point to be encoded
+    c = the code point to be encoded
 
  Examples:
  --------------------------------------------------------
@@ -2145,7 +2155,8 @@ abstract class EncodingScheme
          * The input to this function MUST be a valid code point.
          *
          * Params:
-         *    c = the code point to be encoded
+         *    c      = the code point to be encoded
+         *    buffer = the destination array
          *
          * Returns:
          *    the number of ubytes written.
@@ -2333,6 +2344,7 @@ abstract class EncodingScheme
      *
      * Params:
      *    s = the string to be counted
+     *    n = the current code point index
      */
     ptrdiff_t index(const(ubyte)[] s, size_t n)
     in

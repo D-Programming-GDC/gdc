@@ -91,13 +91,12 @@ static int fptraits(void *param, Dsymbol *s)
  *      unitTests           array of DsymbolExp's of the collected unit test functions
  *      uniqueUnitTests     updated with symbols from unitTests[ ]
  */
-static void collectUnitTests (Dsymbols *symbols, AA *uniqueUnitTests, Expressions *unitTests)
+static void collectUnitTests(Dsymbols *symbols, AA *uniqueUnitTests, Expressions *unitTests)
 {
     for (size_t i = 0; i < symbols->dim; i++)
     {
         Dsymbol *symbol = (*symbols)[i];
-        UnitTestDeclaration *unitTest = symbol->unittest ? symbol->unittest : symbol->isUnitTestDeclaration();
-
+        UnitTestDeclaration *unitTest = symbol->isUnitTestDeclaration();
         if (unitTest)
         {
             if (!_aaGetRvalue(uniqueUnitTests, unitTest))
@@ -110,13 +109,15 @@ static void collectUnitTests (Dsymbols *symbols, AA *uniqueUnitTests, Expression
                 *value = true;
             }
         }
-
         else
         {
             AttribDeclaration *attrDecl = symbol->isAttribDeclaration();
 
             if (attrDecl)
-                collectUnitTests(attrDecl->decl, uniqueUnitTests, unitTests);
+            {
+                Dsymbols *decl = attrDecl->include(NULL, NULL);
+                collectUnitTests(decl, uniqueUnitTests, unitTests);
+            }
         }
     }
 }
@@ -642,6 +643,7 @@ Expression *TraitsExp::semantic(Scope *sc)
             sc = sc->push();
             sc->speculative = true;
             sc->flags = sc->enclosing->flags & ~SCOPEctfe;   // inherit without CTFEing
+            bool err = false;
 
             RootObject *o = (*args)[i];
             Type *t = isType(o);
@@ -651,17 +653,25 @@ Expression *TraitsExp::semantic(Scope *sc)
                 Dsymbol *s;
                 t->resolve(loc, sc, &e, &t, &s);
                 if (t)
+                {
                     t->semantic(loc, sc);
+                    if (t->ty == Terror)
+                        err = true;
+                }
+                else if (s && s->errors)
+                    err = true;
             }
             if (e)
             {
                 e = e->semantic(sc);
                 e = e->optimize(WANTvalue);
+                if (e->op == TOKerror)
+                    err = true;
             }
 
             sc = sc->pop();
             global.speculativeGag = oldspec;
-            if (global.endGagging(errors))
+            if (global.endGagging(errors) || err)
             {
                 goto Lfalse;
             }
@@ -733,6 +743,10 @@ Expression *TraitsExp::semantic(Scope *sc)
             goto Lfalse;
         }
 
+        Import *imp = s->isImport();
+        if (imp)  // Bugzilla 10990
+            s = imp->mod;
+
         ScopeDsymbol* scope = s->isScopeDsymbol();
 
         if (!scope)
@@ -758,6 +772,22 @@ Expression *TraitsExp::semantic(Scope *sc)
     {
         FuncDeclaration *f;
         ISDSYMBOL((f = s->isFuncDeclaration()) != NULL && f->isOverride())
+    }
+    else if(ident == Id::getVirtualIndex)
+    {
+        if (dim != 1)
+            goto Ldimerror;
+        RootObject *o = (*args)[0];
+        Dsymbol *s = getDsymbol(o);
+        FuncDeclaration *fd;
+        if (!s || (fd = s->isFuncDeclaration()) == NULL)
+        {
+            error("first argument to __traits(getVirtualIndex) must be a function");
+            goto Lfalse;
+        }
+        fd = fd->toAliasFunc(); // Neccessary to support multiple overloads.
+        ptrdiff_t result = fd->isVirtual() ? fd->vtblIndex : -1;
+        return new IntegerExp(loc, fd->vtblIndex, Type::tptrdiff_t);
     }
     else
     {   error("unrecognized trait %s", ident->toChars());

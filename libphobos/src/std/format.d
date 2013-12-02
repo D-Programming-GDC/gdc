@@ -188,7 +188,7 @@ $(I FormatChar):
     Precision).))
 
     $(TR $(TD $(B ' ')) $(TD numeric) $(TD Prefix positive
-    numbers in a signed conversion with a space.))
+    numbers in a signed conversion with a space.)))
 
     <dt>$(I Width)
     <dd>
@@ -1757,7 +1757,8 @@ if (is(CharTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
     }
     else
     {
-        formatValue(w, cast(uint) val, f);
+        alias U = TypeTuple!(ubyte, ushort, uint)[CharTypeOf!T.sizeof/2];
+        formatValue(w, cast(U) val, f);
     }
 }
 
@@ -1782,6 +1783,21 @@ unittest
                 string toString() const { return "S"; } }
     formatTest( S1('c'), "c" );
     formatTest( S2('c'), "S" );
+}
+
+@safe pure unittest
+{
+    //Little Endian
+    formatTest( "%-r", cast( char)'c', ['c'         ] );
+    formatTest( "%-r", cast(wchar)'c', ['c', 0      ] );
+    formatTest( "%-r", cast(dchar)'c', ['c', 0, 0, 0] );
+    formatTest( "%-r", '本', ['\x2c', '\x67'] );
+
+    //Big Endian
+    formatTest( "%+r", cast( char)'c', [         'c'] );
+    formatTest( "%+r", cast(wchar)'c', [0,       'c'] );
+    formatTest( "%+r", cast(dchar)'c', [0, 0, 0, 'c'] );
+    formatTest( "%+r", '本', ['\x67', '\x2c'] );
 }
 
 /**
@@ -1823,6 +1839,25 @@ unittest
     struct S3 { string val; alias val this;
                 string toString() const { return "S"; } }
     formatTest( S3("s3"), "S" );
+}
+
+@safe pure unittest
+{
+    //Little Endian
+    formatTest( "%-r", "ab"c, ['a'         , 'b'         ] );
+    formatTest( "%-r", "ab"w, ['a', 0      , 'b', 0      ] );
+    formatTest( "%-r", "ab"d, ['a', 0, 0, 0, 'b', 0, 0, 0] );
+    formatTest( "%-r", "日本語"c, ['\xe6', '\x97', '\xa5', '\xe6', '\x9c', '\xac', '\xe8', '\xaa', '\x9e'] );
+    formatTest( "%-r", "日本語"w, ['\xe5', '\x65',                 '\x2c', '\x67',                 '\x9e', '\x8a'                ] );
+    formatTest( "%-r", "日本語"d, ['\xe5', '\x65', '\x00', '\x00', '\x2c', '\x67', '\x00', '\x00', '\x9e', '\x8a', '\x00', '\x00'] );
+
+    //Big Endian
+    formatTest( "%+r", "ab"c, [         'a',          'b'] );
+    formatTest( "%+r", "ab"w, [      0, 'a',       0, 'b'] );
+    formatTest( "%+r", "ab"d, [0, 0, 0, 'a', 0, 0, 0, 'b'] );
+    formatTest( "%+r", "日本語"c, ['\xe6', '\x97', '\xa5', '\xe6', '\x9c', '\xac', '\xe8', '\xaa', '\x9e'] );
+    formatTest( "%+r", "日本語"w, [                '\x65', '\xe5',                 '\x67', '\x2c',                 '\x8a', '\x9e'] );
+    formatTest( "%+r", "日本語"d, ['\x00', '\x00', '\x65', '\xe5', '\x00', '\x00', '\x67', '\x2c', '\x00', '\x00', '\x8a', '\x9e'] );
 }
 
 /**
@@ -1993,12 +2028,16 @@ unittest
                     `["hello"]` );
 
         // 1 character escape sequences (' is not escaped in strings)
-        formatTest( [cast(StrType)"\"'\\\a\b\f\n\r\t\v"],
-                    `["\"'\\\a\b\f\n\r\t\v"]` );
+        formatTest( [cast(StrType)"\"'\0\\\a\b\f\n\r\t\v"],
+                    `["\"'\0\\\a\b\f\n\r\t\v"]` );
+
+        // 1 character optional escape sequences
+        formatTest( [cast(StrType)"\'\?"],
+                    `["'?"]` );
 
         // Valid and non-printable code point (<= U+FF)
-        formatTest( [cast(StrType)"\x00\x10\x1F\x20test"],
-                    `["\x00\x10\x1F test"]` );
+        formatTest( [cast(StrType)"\x10\x1F\x20test"],
+                    `["\x10\x1F test"]` );
 
         // Valid and non-printable code point (<= U+FFFF)
         formatTest( [cast(StrType)"\u200B..\u200F"],
@@ -2054,116 +2093,126 @@ private void formatRange(Writer, T, Char)(ref Writer w, ref T val, ref FormatSpe
 if (isInputRange!T)
 {
     // Formatting character ranges like string
-    static if (is(CharTypeOf!(ElementType!T)))
     if (f.spec == 's')
     {
-        static if (is(StringTypeOf!T))
+        static if (is(CharTypeOf!(ElementType!T)))
         {
-            auto s = val[0 .. f.precision < $ ? f.precision : $];
-            if (!f.flDash)
+            static if (is(StringTypeOf!T))
             {
-                // right align
-                if (f.width > s.length)
-                    foreach (i ; 0 .. f.width - s.length) put(w, ' ');
-                put(w, s);
-            }
-            else
-            {
-                // left align
-                put(w, s);
-                if (f.width > s.length)
-                    foreach (i ; 0 .. f.width - s.length) put(w, ' ');
-            }
-        }
-        else
-        {
-            if (!f.flDash)
-            {
-                static if (hasLength!T)
+                auto s = val[0 .. f.precision < $ ? f.precision : $];
+                if (!f.flDash)
                 {
                     // right align
-                    auto len = val.length;
-                }
-                else static if (isForwardRange!T && !isInfinite!T)
-                {
-                    auto len = walkLength(val.save);
+                    if (f.width > s.length)
+                        foreach (i ; 0 .. f.width - s.length) put(w, ' ');
+                    put(w, s);
                 }
                 else
                 {
-                    enforce(f.width == 0, "Cannot right-align a range without length");
-                    size_t len = 0;
-                }
-                if (f.precision != f.UNSPECIFIED && len > f.precision)
-                    len = f.precision;
-
-                if (f.width > len)
-                    foreach (i ; 0 .. f.width - len)
-                        put(w, ' ');
-                if (f.precision == f.UNSPECIFIED)
-                    put(w, val);
-                else
-                {
-                    size_t printed = 0;
-                    for (; !val.empty && printed < f.precision; val.popFront(), ++printed)
-                        put(w, val.front);
+                    // left align
+                    put(w, s);
+                    if (f.width > s.length)
+                        foreach (i ; 0 .. f.width - s.length) put(w, ' ');
                 }
             }
             else
             {
-                size_t printed = void;
-
-                // left align
-                if (f.precision == f.UNSPECIFIED)
+                if (!f.flDash)
                 {
                     static if (hasLength!T)
                     {
-                        printed = val.length;
-                        put(w, val);
+                        // right align
+                        auto len = val.length;
+                    }
+                    else static if (isForwardRange!T && !isInfinite!T)
+                    {
+                        auto len = walkLength(val.save);
                     }
                     else
                     {
-                        printed = 0;
-                        for (; !val.empty; val.popFront(), ++printed)
+                        enforce(f.width == 0, "Cannot right-align a range without length");
+                        size_t len = 0;
+                    }
+                    if (f.precision != f.UNSPECIFIED && len > f.precision)
+                        len = f.precision;
+
+                    if (f.width > len)
+                        foreach (i ; 0 .. f.width - len)
+                            put(w, ' ');
+                    if (f.precision == f.UNSPECIFIED)
+                        put(w, val);
+                    else
+                    {
+                        size_t printed = 0;
+                        for (; !val.empty && printed < f.precision; val.popFront(), ++printed)
                             put(w, val.front);
                     }
                 }
                 else
                 {
-                    printed = 0;
-                    for (; !val.empty && printed < f.precision; val.popFront(), ++printed)
-                        put(w, val.front);
-                }
+                    size_t printed = void;
 
-                if (f.width > printed)
-                    foreach (i ; 0 .. f.width - printed)
-                        put(w, ' ');
+                    // left align
+                    if (f.precision == f.UNSPECIFIED)
+                    {
+                        static if (hasLength!T)
+                        {
+                            printed = val.length;
+                            put(w, val);
+                        }
+                        else
+                        {
+                            printed = 0;
+                            for (; !val.empty; val.popFront(), ++printed)
+                                put(w, val.front);
+                        }
+                    }
+                    else
+                    {
+                        printed = 0;
+                        for (; !val.empty && printed < f.precision; val.popFront(), ++printed)
+                            put(w, val.front);
+                    }
+
+                    if (f.width > printed)
+                        foreach (i ; 0 .. f.width - printed)
+                            put(w, ' ');
+                }
             }
         }
-        return;
-    }
-
-    if (f.spec == 'r')
-    {
-        // raw writes
-        for (size_t i; !val.empty; val.popFront(), ++i)
+        else
         {
-            formatValue(w, val.front, f);
+            put(w, f.seqBefore);
+            if (!val.empty)
+            {
+                formatElement(w, val.front, f);
+                val.popFront();
+                for (size_t i; !val.empty; val.popFront(), ++i)
+                {
+                    put(w, f.seqSeparator);
+                    formatElement(w, val.front, f);
+                }
+            }
+            static if (!isInfinite!T) put(w, f.seqAfter);
         }
     }
-    else if (f.spec == 's')
+    else if (f.spec == 'r')
     {
-        put(w, f.seqBefore);
-        if (!val.empty)
+        static if (is(DynamicArrayTypeOf!T))
         {
-            formatElement(w, val.front, f);
-            val.popFront();
+            alias ARR = DynamicArrayTypeOf!T;
+            foreach (e ; cast(ARR)val)
+            {
+                formatValue(w, e, f);
+            }
+        }
+        else
+        {
             for (size_t i; !val.empty; val.popFront(), ++i)
             {
-                put(w, f.seqSeparator);
-                formatElement(w, val.front, f);
+                formatValue(w, val.front, f);
             }
         }
-        static if (!isInfinite!T) put(w, f.seqAfter);
     }
     else if (f.spec == '(')
     {
@@ -2216,6 +2265,7 @@ private void formatChar(Writer)(Writer w, in dchar c, in char quote)
         put(w, '\\');
         switch (c)
         {
+        case '\0':  put(w, '0');  break;
         case '\a':  put(w, 'a');  break;
         case '\b':  put(w, 'b');  break;
         case '\f':  put(w, 'f');  break;
@@ -2383,21 +2433,21 @@ unittest
     formatTest( aa0, `[]` );
 
     // elements escaping
-    formatTest(  ["aaa":1, "bbb":2, "ccc":3],
-                `["aaa":1, "bbb":2, "ccc":3]` );
+    formatTest(  ["aaa":1, "bbb":2],
+               [`["aaa":1, "bbb":2]`, `["bbb":2, "aaa":1]`] );
     formatTest(  ['c':"str"],
                 `['c':"str"]` );
     formatTest(  ['"':"\"", '\'':"'"],
-                `['"':"\"", '\'':"'"]` );
+               [`['"':"\"", '\'':"'"]`, `['\'':"'", '"':"\""]`] );
 
     // range formatting for AA
     auto aa3 = [1:"hello", 2:"world"];
     // escape
     formatTest( "{%(%s:%s $ %)}", aa3,
-                `{1:"hello" $ 2:"world"}`);
+               [`{1:"hello" $ 2:"world"}`, `{2:"world" $ 1:"hello"}`]);
     // use range formatting for key and value, and use %|
     formatTest( "{%([%04d->%(%c.%)]%| $ %)}", aa3,
-                `{[0001->h.e.l.l.o] $ [0002->w.o.r.l.d]}` );
+               [`{[0001->h.e.l.l.o] $ [0002->w.o.r.l.d]}`, `{[0002->w.o.r.l.d]} $ [0001->h.e.l.l.o]`] );
 }
 
 unittest
@@ -2405,13 +2455,13 @@ unittest
     class C1 { int[char] val; alias val this; this(int[char] v){ val = v; } }
     class C2 { int[char] val; alias val this; this(int[char] v){ val = v; }
                override string toString() const { return "C"; } }
-    formatTest( new C1(['c':1, 'd':2]), `['c':1, 'd':2]` );
+    formatTest( new C1(['c':1, 'd':2]), [`['c':1, 'd':2]`, `['d':2, 'c':1]`] );
     formatTest( new C2(['c':1, 'd':2]), "C" );
 
     struct S1 { int[char] val; alias val this; }
     struct S2 { int[char] val; alias val this;
                 string toString() const { return "S"; } }
-    formatTest( S1(['c':1, 'd':2]), `['c':1, 'd':2]` );
+    formatTest( S1(['c':1, 'd':2]), [`['c':1, 'd':2]`, `['d':2, 'c':1]`] );
     formatTest( S2(['c':1, 'd':2]), "S" );
 }
 
@@ -3084,6 +3134,35 @@ void formatTest(T)(string fmt, T val, string expected, size_t ln = __LINE__, str
     enforceEx!AssertError(
             w.data == expected,
             text("expected = `", expected, "`, result = `", w.data, "`"), fn, ln);
+}
+
+version(unittest)
+void formatTest(T)(T val, string[] expected, size_t ln = __LINE__, string fn = __FILE__)
+{
+    FormatSpec!char f;
+    auto w = appender!string();
+    formatValue(w, val, f);
+    foreach(cur; expected)
+    {
+        if(w.data == cur) return;
+    }
+    enforceEx!AssertError(
+            false,
+            text("expected one of `", expected, "`, result = `", w.data, "`"), fn, ln);
+}
+
+version(unittest)
+void formatTest(T)(string fmt, T val, string[] expected, size_t ln = __LINE__, string fn = __FILE__)
+{
+    auto w = appender!string();
+    formattedWrite(w, fmt, val);
+    foreach(cur; expected)
+    {
+        if(w.data == cur) return;
+    }
+    enforceEx!AssertError(
+            false,
+            text("expected one of `", expected, "`, result = `", w.data, "`"), fn, ln);
 }
 
 unittest
@@ -5925,9 +6004,9 @@ unittest
 
     immutable(char[5])[int] aa = ([3:"hello", 4:"betty"]);
     r = std.string.format("%s", aa.values);
-    assert(r == `["hello", "betty"]`);
+    assert(r == `["hello", "betty"]` || r == `["betty", "hello"]`);
     r = std.string.format("%s", aa);
-    assert(r == `[3:"hello", 4:"betty"]`);
+    assert(r == `[3:"hello", 4:"betty"]` || r == `[4:"betty", 3:"hello"]`);
 
     static const dchar[] ds = ['a','b'];
     for (int j = 0; j < ds.length; ++j)

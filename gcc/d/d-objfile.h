@@ -40,13 +40,6 @@ enum ModuleInfoFlags
   MIname	    = 0x1000,
 };
 
-enum OutputStage
-{
-  NotStarted,
-  InProgress,
-  Finished
-};
-
 struct FuncFrameInfo;
 typedef ArrayBase<struct Thunk> Thunks;
 typedef tree_node dt_t;
@@ -76,7 +69,6 @@ struct Symbol
 
   // For FuncDeclarations:
   Thunks thunks;
-  OutputStage outputStage;
   FuncFrameInfo *frameInfo;
 };
 
@@ -119,7 +111,6 @@ enum TemplateEmission
 {
   TEnone,
   TEnormal,
-  TEprivate
 };
 
 extern location_t get_linemap (const Loc loc);
@@ -142,9 +133,6 @@ extern void build_type_decl (tree t, Dsymbol *dsym);
 
 extern Modules output_modules;
 extern bool output_module_p (Module *mod);
-
-extern bool output_declaration_p (Declaration *dsym);
-extern bool output_symbol_p (Symbol *sym);
 
 extern void write_deferred_thunks (void);
 extern void use_thunk (tree thunk_decl, tree target_decl, int offset);

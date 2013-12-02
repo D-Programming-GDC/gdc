@@ -48,10 +48,11 @@ Dsymbol::Dsymbol()
     this->loc = Loc();
     this->comment = NULL;
     this->scope = NULL;
+    this->semanticRun = PASSinit;
     this->errors = false;
     this->depmsg = NULL;
     this->userAttributes = NULL;
-    this->unittest = NULL;
+    this->ddocUnittest = NULL;
 }
 
 Dsymbol::Dsymbol(Identifier *ident)
@@ -64,10 +65,11 @@ Dsymbol::Dsymbol(Identifier *ident)
     this->loc = Loc();
     this->comment = NULL;
     this->scope = NULL;
+    this->semanticRun = PASSinit;
     this->errors = false;
     this->depmsg = NULL;
     this->userAttributes = NULL;
-    this->unittest = NULL;
+    this->ddocUnittest = NULL;
 }
 
 bool Dsymbol::equals(RootObject *o)
@@ -348,10 +350,6 @@ void Dsymbol::importAll(Scope *sc)
 /*************************************
  * Does semantic analysis on the public face of declarations.
  */
-
-void Dsymbol::semantic0(Scope *sc)
-{
-}
 
 void Dsymbol::semantic(Scope *sc)
 {

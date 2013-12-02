@@ -120,9 +120,12 @@ struct Runtime
 
 
     /**
-     * Terminates the runtime.  This call is to be used in instances where the
-     * standard program termination process will not be not executed.  This is
-     * most often in shared libraries or in libraries linked to a C program.
+     * Terminates the runtime. This call is to be used in instances
+     * where the standard program termination process will not be not
+     * executed. This is most often in shared libraries or in
+     * libraries linked to a C program. All non-daemon threads must be
+     * joined or detached prior to calling this function. See also
+     * $(CXREF thread, thread_joinAll) and $(CXREF thread, thread_detachThis).
      *
      * Params:
      *  dg = A delegate which will receive any exception thrown during the
@@ -150,11 +153,25 @@ struct Runtime
     }
 
     /**
-     * Returns the unprocessed C arguments supplied when the process was
-     * started. Use this when you need to supply argc and argv to C libraries.
+     * Returns the unprocessed C arguments supplied when the process was started.
+     * Use this when you need to supply argc and argv to C libraries.
      *
      * Returns:
      *  A $(LREF CArgs) struct with the arguments supplied when this process was started.
+     *
+     * Example:
+     * ---
+     * import core.runtime;
+     *
+     * // A C library function requiring char** arguments
+     * extern(C) void initLibFoo(int argc, char** argv);
+     *
+     * void main()
+     * {
+     *     auto args = Runtime.cArgs;
+     *     initLibFoo(args.argc, args.argv);
+     * }
+     * ---
      */
     static @property CArgs cArgs()
     {
@@ -172,7 +189,7 @@ struct Runtime
      * Returns:
      *  A reference to the library or null on error.
      */
-    static void* loadLibrary( in char[] name )
+    static void* loadLibrary()(in char[] name)
     {
         import core.stdc.stdlib : free, malloc;
         version (Windows)
@@ -225,9 +242,9 @@ struct Runtime
      * Params:
      *  p = A reference to the library to unload.
      */
-    static bool unloadLibrary( void* p )
+    static bool unloadLibrary()(void* p)
     {
-        return rt_unloadLibrary( p );
+        return rt_unloadLibrary(p);
     }
 
 

@@ -109,6 +109,7 @@ public:
     bool isNested();
     void makeNested();
     bool isExport();
+    void searchCtor();
 
     void emitComment(Scope *sc);
     void toJson(JsonOut *json);
@@ -133,6 +134,15 @@ public:
     Symbol *toInitializer();
 
     AggregateDeclaration *isAggregateDeclaration() { return this; }
+};
+
+struct StructFlags
+{
+    typedef unsigned Type;
+    enum Enum
+    {
+        hasPointers = 0x1, // NB: should use noPointers as in ClassFlags
+    };
 };
 
 class StructDeclaration : public AggregateDeclaration
@@ -225,6 +235,22 @@ struct BaseClass
 extern int CLASSINFO_SIZE;              // value of ClassInfo.size
 extern int CLASSINFO_SIZE_64;           // value of ClassInfo.size
 
+struct ClassFlags
+{
+    typedef unsigned Type;
+    enum Enum
+    {
+        isCOMclass = 0x1,
+        noPointers = 0x2,
+        hasOffTi = 0x4,
+        hasCtor = 0x8,
+        hasGetMembers = 0x10,
+        hasTypeInfo = 0x20,
+        isAbstract = 0x40,
+        isCPPclass = 0x80,
+    };
+};
+
 class ClassDeclaration : public AggregateDeclaration
 {
 public:
@@ -256,6 +282,9 @@ public:
     TypeInfoClassDeclaration *vclassinfo;       // the ClassInfo object for this ClassDeclaration
     int com;                            // !=0 if this is a COM class (meaning
                                         // it derives from IUnknown)
+#if DMDV2
+    int cpp;                            // !=0 if this is a C++ interface
+#endif
     int isscope;                        // !=0 if this is an auto class
     int isabstract;                     // !=0 if abstract class
     int inuse;                          // to prevent recursive attempts
@@ -283,6 +312,7 @@ public:
     int isCOMclass();
     virtual int isCOMinterface();
 #if DMDV2
+    int isCPPclass();
     virtual int isCPPinterface();
 #endif
     bool isAbstract();
@@ -312,9 +342,6 @@ public:
 class InterfaceDeclaration : public ClassDeclaration
 {
 public:
-#if DMDV2
-    int cpp;                            // !=0 if this is a C++ interface
-#endif
     InterfaceDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);

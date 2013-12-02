@@ -1102,7 +1102,8 @@ string alignForSize(E...)(string[] names...)
 
     string[7] declaration = ["", "", "", "", "", "", ""];
 
-    foreach (i, T; E) {
+    foreach (i, T; E)
+    {
         auto a = T.alignof;
         auto k = a>=64? 0 : a>=32? 1 : a>=16? 2 : a>=8? 3 : a>=4? 4 : a>=2? 5 : 6;
         declaration[k] ~= T.stringof ~ " " ~ names[i] ~ ";\n";
@@ -1114,28 +1115,21 @@ string alignForSize(E...)(string[] names...)
     return s;
 }
 
-unittest {
+unittest
+{
     enum x = alignForSize!(int[], char[3], short, double[5])("x", "y","z", "w");
-    struct Foo{ int x; }
-    enum y = alignForSize!(ubyte, Foo, cdouble)("x", "y","z");
+    struct Foo { int x; }
+    enum y = alignForSize!(ubyte, Foo, cdouble)("x", "y", "z");
 
-    static if(size_t.sizeof == uint.sizeof)
-    {
-        enum passNormalX = x == "double[5u] w;\nint[] x;\nshort z;\nchar[3u] y;\n";
-        enum passNormalY = y == "cdouble z;\nFoo y;\nubyte x;\n";
+    enum passNormalX = x == "double[5] w;\nint[] x;\nshort z;\nchar[3] y;\n";
+    enum passNormalY = y == "cdouble z;\nFoo y;\nubyte x;\n";
 
-        enum passAbnormalX = x == "int[] x;\ndouble[5u] w;\nshort z;\nchar[3u] y;\n";
-        enum passAbnormalY = y == "Foo y;\ncdouble z;\nubyte x;\n";
-        // ^ blame http://d.puremagic.com/issues/show_bug.cgi?id=231
+    enum passAbnormalX = x == "int[] x;\ndouble[5] w;\nshort z;\nchar[3] y;\n";
+    enum passAbnormalY = y == "Foo y;\ncdouble z;\nubyte x;\n";
+    // ^ blame http://d.puremagic.com/issues/show_bug.cgi?id=231
 
-        static assert(passNormalX || double.alignof <= (int[]).alignof && passAbnormalX);
-        static assert(passNormalY || double.alignof <= int.alignof && passAbnormalY);
-    }
-    else
-    {
-        static assert(x == "int[] x;\ndouble[5LU] w;\nshort z;\nchar[3LU] y;\n");
-        static assert(y == "cdouble z;\nFoo y;\nubyte x;\n");
-    }
+    static assert(passNormalX || passAbnormalX && double.alignof <= (int[]).alignof);
+    static assert(passNormalY || passAbnormalY && double.alignof <= int.alignof);
 }
 
 /*--*
@@ -1197,6 +1191,11 @@ Constructor initializing $(D this) with $(D value).
  */
     //this()(inout T value) inout   // proper signature
     this(U:T)(inout U value) inout  // workaround for BUG 10313
+    {
+        _value = value;
+        _isNull = false;
+    }
+    this(U:T)(U value)  // workaround for BUG 10357
     {
         _value = value;
         _isNull = false;
@@ -1471,6 +1470,12 @@ unittest
         static assert( __traits(compiles, { auto x =           Nullable!S3(si); }));
         static assert( __traits(compiles, { auto x = immutable Nullable!S3(si); }));
     }
+}
+unittest
+{
+    // Bugzila 10357
+    import std.datetime;
+    Nullable!SysTime time = SysTime(0);
 }
 
 /**
@@ -2705,6 +2710,54 @@ template generateAssertTrap(C, func.../+[BUG 4217]+/)
                     ~ __traits(identifier, func) ~ `");`;
 }
 
+private
+{
+    pragma(mangle, "_d_toObject")
+    extern(C) pure nothrow Object typecons_d_toObject(void* p);
+}
+
+/*
+ * Avoids opCast operator overloading.
+ */
+private template dynamicCast(T)
+if (is(T == class) || is(T == interface))
+{
+    @trusted
+    T dynamicCast(S)(inout S source)
+    if (is(S == class) || is(S == interface))
+    {
+        static if (is(Unqual!S : Unqual!T))
+        {
+            import std.traits : QualifierOf;
+            alias Qual = QualifierOf!S; // SharedOf or MutableOf
+            alias TmpT = Qual!(Unqual!T);
+            inout(TmpT) tmp = source;   // bypass opCast by implicit conversion
+            return *cast(T*)(&tmp);     // + variable pointer cast + dereference
+        }
+        else
+        {
+            return cast(T)typecons_d_toObject(*cast(void**)(&source));
+        }
+    }
+}
+
+unittest
+{
+    class C { @disable opCast(T)() {} }
+    auto c = new C;
+    static assert(!__traits(compiles, cast(Object)c));
+    auto o = dynamicCast!Object(c);
+    assert(c is o);
+
+    interface I { @disable opCast(T)() {} Object instance(); }
+    interface J { @disable opCast(T)() {} Object instance(); }
+    class D : I, J { Object instance() { return this; } }
+    I i = new D();
+    static assert(!__traits(compiles, cast(J)i));
+    J j = dynamicCast!J(i);
+    assert(i.instance() is j.instance());
+}
+
 /**
  * Supports structural based typesafe conversion.
  *
@@ -2720,7 +2773,7 @@ if (Targets.length >= 1 && allSatisfy!(isMutable, Targets))
     if (Targets.length == 1 && is(Source : Targets[0]))
     {
         alias T = Select!(is(Source == shared), shared Targets[0], Targets[0]);
-        return cast(inout T)(src);
+        return dynamicCast!(inout T)(src);
     }
     // structural upcast
     template wrap(Source)
@@ -2807,7 +2860,7 @@ if (Targets.length >= 1 && allSatisfy!(isMutable, Targets))
             else
             {
                 enum hasRequireMethods =
-                    findCovariantFunction!(TargetMembers[i], SourceMembers) != -1 &&
+                    findCovariantFunction!(TargetMembers[i], Source, SourceMembers) != -1 &&
                     hasRequireMethods!(i + 1);
             }
         }
@@ -2824,7 +2877,7 @@ if (Targets.length >= 1 && allSatisfy!(isMutable, Targets))
             // BUG: making private should work with NVI.
             protected final inout(Object) _wrap_getSource() inout @trusted
             {
-                return cast(inout Object)(_wrap_source);
+                return dynamicCast!(inout Object)(_wrap_source);
             }
 
             import std.conv : to;
@@ -2906,22 +2959,22 @@ if (isMutable!Target)
     if (is(Target : Source))
     {
         alias T = Select!(is(Source == shared), shared Target, Target);
-        return cast(inout T)(src);
+        return dynamicCast!(inout T)(src);
     }
     // structural downcast
     auto unwrap(Source)(inout Source src) @trusted pure nothrow
     if (!is(Target : Source))
     {
         alias T = Select!(is(Source == shared), shared Target, Target);
-        Object o = cast(Object)src;     // remove qualifier
+        Object o = dynamicCast!(Object)(src);   // remove qualifier
         do
         {
-            if (auto a = cast(Structural)o)
+            if (auto a = dynamicCast!(Structural)(o))
             {
-                if (auto d = cast(inout T)(o = a._wrap_getSource()))
+                if (auto d = dynamicCast!(inout T)(o = a._wrap_getSource()))
                     return d;
             }
-            else if (auto d = cast(inout T)o)
+            else if (auto d = dynamicCast!(inout T)(o))
                 return d;
             else
                 break;
@@ -3081,6 +3134,39 @@ unittest
     auto r = iota(0,10,1).inputRangeObject().wrap!(MyInputRange!int)();
     assert(equal(r, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
 }
+unittest
+{
+    // Bugzilla 10536
+    interface Interface
+    {
+        int foo();
+    }
+    class Pluggable
+    {
+        int foo() { return 1; }
+        @disable void opCast(T, this X)();  // !
+    }
+
+    Interface i = new Pluggable().wrap!Interface;
+    assert(i.foo() == 1);
+}
+unittest
+{
+    // Enhancement 10538
+    interface Interface
+    {
+        int foo();
+        int bar(int);
+    }
+    class Pluggable
+    {
+        int opDispatch(string name, A...)(A args) { return 100; }
+    }
+
+    Interface i = wrap!Interface(new Pluggable());
+    assert(i.foo() == 100);
+    assert(i.bar(10) == 100);
+}
 
 // Make a tuple of non-static function symbols
 private template GetOverloadedMethods(T)
@@ -3115,7 +3201,7 @@ private template GetOverloadedMethods(T)
     alias GetOverloadedMethods = follows!();
 }
 // find a function from Fs that has same identifier and covariant type with f
-private template findCovariantFunction(alias finfo, Fs...)
+private template findCovariantFunction(alias finfo, Source, Fs...)
 {
     template check(size_t i = 0)
     {
@@ -3129,7 +3215,20 @@ private template findCovariantFunction(alias finfo, Fs...)
               ? i : check!(i + 1);
         }
     }
-    enum ptrdiff_t findCovariantFunction = check!();
+    enum x = check!();
+    static if (x == -1 && is(typeof(Source.opDispatch)))
+    {
+        alias Params = ParameterTypeTuple!(finfo.type);
+        enum ptrdiff_t findCovariantFunction =
+            is(typeof((             Source).init.opDispatch!(finfo.name)(Params.init))) ||
+            is(typeof((       const Source).init.opDispatch!(finfo.name)(Params.init))) ||
+            is(typeof((   immutable Source).init.opDispatch!(finfo.name)(Params.init))) ||
+            is(typeof((      shared Source).init.opDispatch!(finfo.name)(Params.init))) ||
+            is(typeof((shared const Source).init.opDispatch!(finfo.name)(Params.init)))
+          ? ptrdiff_t.max : -1;
+    }
+    else
+        enum ptrdiff_t findCovariantFunction = x;
 }
 
 private enum TypeModifier
@@ -3193,10 +3292,21 @@ unittest
     @property int value() { return 0; }
     void opEquals() {}
     int nomatch() { return 0; }
-    static assert(findCovariantFunction!(UnittestFuncInfo!draw, methods) == 0);
-    static assert(findCovariantFunction!(UnittestFuncInfo!value, methods) == 1);
-    static assert(findCovariantFunction!(UnittestFuncInfo!opEquals, methods) == -1);
-    static assert(findCovariantFunction!(UnittestFuncInfo!nomatch, methods) == -1);
+    static assert(findCovariantFunction!(UnittestFuncInfo!draw,     A, methods) == 0);
+    static assert(findCovariantFunction!(UnittestFuncInfo!value,    A, methods) == 1);
+    static assert(findCovariantFunction!(UnittestFuncInfo!opEquals, A, methods) == -1);
+    static assert(findCovariantFunction!(UnittestFuncInfo!nomatch,  A, methods) == -1);
+
+    // considering opDispatch
+    class B
+    {
+        void opDispatch(string name, A...)(A) {}
+    }
+    alias methodsB = GetOverloadedMethods!B;
+    static assert(findCovariantFunction!(UnittestFuncInfo!draw,     B, methodsB) == ptrdiff_t.max);
+    static assert(findCovariantFunction!(UnittestFuncInfo!value,    B, methodsB) == ptrdiff_t.max);
+    static assert(findCovariantFunction!(UnittestFuncInfo!opEquals, B, methodsB) == ptrdiff_t.max);
+    static assert(findCovariantFunction!(UnittestFuncInfo!nomatch,  B, methodsB) == ptrdiff_t.max);
 }
 
 private template DerivedFunctionType(T...)
@@ -3562,7 +3672,7 @@ Assignment operators
         @property nothrow @safe
         ref inout(T) refCountedPayload() inout
         {
-            assert(_refCounted.isInitialized);
+            assert(_refCounted.isInitialized, "Attempted to access an uninitialized payload.");
             return _refCounted._store._payload;
         }
     }

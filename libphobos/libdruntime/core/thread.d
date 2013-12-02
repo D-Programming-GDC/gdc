@@ -13,6 +13,7 @@ module core.thread;
 
 
 public import core.time; // for Duration
+import core.exception : onOutOfMemoryError;
 static import rt.tlsgc;
 
 // this should be true for most architectures
@@ -241,7 +242,17 @@ else version( Posix )
         //
         extern (C) void* thread_entryPoint( void* arg )
         {
-            Thread  obj = cast(Thread) arg;
+            version (Shared)
+            {
+                import rt.sections;
+                Thread obj = cast(Thread)(cast(void**)arg)[0];
+                auto loadedLibraries = (cast(void**)arg)[1];
+                .free(arg);
+            }
+            else
+            {
+                Thread obj = cast(Thread)arg;
+            }
             assert( obj );
 
             assert( obj.m_curr is &obj.m_main );
@@ -326,6 +337,7 @@ else version( Posix )
 
             try
             {
+                version (Shared) inheritLoadedLibraries(loadedLibraries);
                 rt_moduleTlsCtor();
                 try
                 {
@@ -336,6 +348,7 @@ else version( Posix )
                     append( t );
                 }
                 rt_moduleTlsDtor();
+                version (Shared) cleanupLoadedLibraries();
             }
             catch( Throwable t )
             {
@@ -648,8 +661,26 @@ class Thread
                 m_isRunning = true;
                 scope( failure ) m_isRunning = false;
 
-                if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
-                    throw new ThreadException( "Error creating thread" );
+                version (Shared)
+                {
+                    import rt.sections;
+                    auto libs = pinLoadedLibraries();
+                    auto ps = cast(void**).malloc(2 * size_t.sizeof);
+                    if (ps is null) onOutOfMemoryError();
+                    ps[0] = cast(void*)this;
+                    ps[1] = cast(void*)libs;
+                    if( pthread_create( &m_addr, &attr, &thread_entryPoint, ps ) != 0 )
+                    {
+                        unpinLoadedLibraries(libs);
+                        .free(ps);
+                        throw new ThreadException( "Error creating thread" );
+                    }
+                }
+                else
+                {
+                    if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
+                        throw new ThreadException( "Error creating thread" );
+                }
             }
             version( OSX )
             {
@@ -1322,7 +1353,10 @@ private:
     Context             m_main;
     Context*            m_curr;
     bool                m_lock;
-    void[]              m_tls;  // spans implicit thread local storage
+    version (GNU)
+    {
+        void[]          m_tls;  // spans implicit thread local storage
+    }
     rt.tlsgc.Data*      m_tlsgcdata;
 
     version( Windows )
@@ -1617,8 +1651,10 @@ private:
 }
 
 // These must be kept in sync with core/thread.di
-version (D_LP64)
+version (GNU)
 {
+  version (D_LP64)
+  {
     version (Windows)
         static assert(__traits(classInstanceSize, Thread) == 312);
     else version (OSX)
@@ -1628,10 +1664,10 @@ version (D_LP64)
     else version (Posix)
         static assert(__traits(classInstanceSize, Thread) == 184);
     else
-            static assert(0, "Platform not supported.");
-}
-else
-{
+        static assert(0, "Platform not supported.");
+  }
+  else
+  {
     static assert((void*).sizeof == 4); // 32-bit
 
     version (Windows)
@@ -1640,6 +1676,35 @@ else
         static assert(__traits(classInstanceSize, Thread) == 128);
     else version (Posix)
         static assert(__traits(classInstanceSize, Thread) ==  92);
+    else
+        static assert(0, "Platform not supported.");
+
+  }
+}
+else
+version (D_LP64)
+{
+    version (Windows)
+        static assert(__traits(classInstanceSize, Thread) == 296);
+    else version (OSX)
+        static assert(__traits(classInstanceSize, Thread) == 304);
+    else version (Solaris)
+        static assert(__traits(classInstanceSize, Thread) == 160);
+    else version (Posix)
+        static assert(__traits(classInstanceSize, Thread) == 168);
+    else
+            static assert(0, "Platform not supported.");
+}
+else
+{
+    static assert((void*).sizeof == 4); // 32-bit
+
+    version (Windows)
+        static assert(__traits(classInstanceSize, Thread) == 120);
+    else version (OSX)
+        static assert(__traits(classInstanceSize, Thread) == 120);
+    else version (Posix)
+        static assert(__traits(classInstanceSize, Thread) ==  84);
     else
         static assert(0, "Platform not supported.");
 }
@@ -3450,15 +3515,12 @@ class Fiber
 
 
     /**
-     * Resets this fiber so that it may be re-used.  This routine may only be
-     * called for fibers that have terminated, as doing otherwise could result
-     * in scope-dependent functionality that is not executed.  Stack-based
-     * classes, for example, may not be cleaned up properly if a fiber is reset
-     * before it has terminated.
-     *
-     * Params:
-     *  fn = The fiber function.
-     *  dg = The fiber function.
+     * Resets this fiber so that it may be re-used, optionally with a
+     * new function/delegate.  This routine may only be called for
+     * fibers that have terminated, as doing otherwise could result in
+     * scope-dependent functionality that is not executed.
+     * Stack-based classes, for example, may not be cleaned up
+     * properly if a fiber is reset before it has terminated.
      *
      * In:
      *  This fiber must be in state TERM.
@@ -3752,6 +3814,7 @@ private:
         else
         {
             version (Posix) import core.sys.posix.sys.mman; // mmap
+            version (linux) import core.sys.linux.sys.mman : MAP_ANON;
 
             static if( __traits( compiles, mmap ) )
             {
@@ -4213,7 +4276,15 @@ else
     else version (Posix)
     {
         static if( __traits( compiles, ucontext_t ) )
-            static assert(__traits(classInstanceSize, Fiber) == 44 + ucontext_t.sizeof + 4);
+        {
+            // ucontext_t might have an alignment larger than 4.
+            static roundUp()(size_t n)
+            {
+                return (n + (ucontext_t.alignof - 1)) & ~(ucontext_t.alignof - 1);
+            }
+            static assert(__traits(classInstanceSize, Fiber) ==
+                roundUp(roundUp(44) + ucontext_t.sizeof + 4));
+        }
         else
             static assert(__traits(classInstanceSize, Fiber) == 44);
     }
@@ -4428,6 +4499,86 @@ unittest
 
     fib.reset(delegate void(){method = "delegate";});
     expect(fib, "delegate");
+}
+
+
+// stress testing GC stack scanning
+unittest
+{
+    import core.memory;
+
+    static void unreferencedThreadObject()
+    {
+        static void sleep() { Thread.sleep(dur!"msecs"(100)); }
+        auto thread = new Thread(&sleep);
+        thread.start();
+    }
+    unreferencedThreadObject();
+    GC.collect();
+
+    static class Foo
+    {
+        this(int value)
+        {
+            _value = value;
+        }
+
+        int bar()
+        {
+            return _value;
+        }
+
+        int _value;
+    }
+
+    static void collect()
+    {
+        auto foo = new Foo(2);
+        assert(foo.bar() == 2);
+        GC.collect();
+        Fiber.yield();
+        GC.collect();
+        assert(foo.bar() == 2);
+    }
+
+    auto fiber = new Fiber(&collect);
+
+    fiber.call();
+    GC.collect();
+    fiber.call();
+
+    // thread reference
+    auto foo = new Foo(2);
+
+    void collect2()
+    {
+        assert(foo.bar() == 2);
+        GC.collect();
+        Fiber.yield();
+        GC.collect();
+        assert(foo.bar() == 2);
+    }
+
+    fiber = new Fiber(&collect2);
+
+    fiber.call();
+    GC.collect();
+    fiber.call();
+
+    static void recurse(size_t cnt)
+    {
+        --cnt;
+        Fiber.yield();
+        if (cnt)
+        {
+            auto fib = new Fiber(() { recurse(cnt); });
+            fib.call();
+            GC.collect();
+            fib.call();
+        }
+    }
+    fiber = new Fiber(() { recurse(20); });
+    fiber.call();
 }
 
 }

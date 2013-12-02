@@ -798,12 +798,15 @@ T toImpl(T, S)(S value)
     }
     else static if (isExactSomeString!S)
     {
-        // other string-to-string conversions always run decode/encode
-        return toStr!T(value);
+        // other string-to-string
+        //Use Appender directly instead of toStr, which also uses a formatedWrite
+        auto w = appender!T();
+        w.put(value);
+        return w.data;
     }
     else static if (isIntegral!S && !is(S == enum))
     {
-        // other integral-to-string conversions with default radix 
+        // other integral-to-string conversions with default radix
         return toImpl!(T, S)(value, 10);
     }
     else static if (is(S == void[]) || is(S == const(void)[]) || is(S == immutable(void)[]))
@@ -824,6 +827,39 @@ T toImpl(T, S)(S value)
         // It is unsafe because we cannot guarantee that the pointer is null terminated.
         return value ? cast(T) value[0 .. strlen(value)].dup : cast(string)null;
     }
+    else static if (isSomeString!T && is(S == enum))
+    {
+        static if (isSwitchable!(OriginalType!S) && EnumMembers!S.length <= 50)
+        {
+            switch(value)
+            {
+                foreach (I, member; NoDuplicates!(EnumMembers!S))
+                {
+                    case member:
+                        return to!T(enumRep!(immutable(T), S, I));
+                }
+                default:
+            }
+        }
+        else
+        {
+            foreach (I, member; EnumMembers!S)
+            {
+                if (value == member)
+                    return to!T(enumRep!(immutable(T), S, I));
+            }
+        }
+
+        //Default case, delegate to format
+        //Note: we don't call toStr directly, to avoid duplicate work.
+        auto app = appender!T();
+        app.put("cast(");
+        app.put(S.stringof);
+        app.put(')');
+        FormatSpec!char f;
+        formatValue(app, cast(OriginalType!S)value, f);
+        return app.data;
+    }
     else
     {
         // other non-string values runs formatting
@@ -831,45 +867,78 @@ T toImpl(T, S)(S value)
     }
 }
 
-/*@safe pure */unittest
+/*
+    Check whether type $(D T) can be used in a switch statement.
+    This is useful for compile-time generation of switch case statements.
+*/
+private template isSwitchable(E)
 {
-    // string to string conversion
-    debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+    enum bool isSwitchable = is(typeof({
+        switch (E.init) { default: }
+    }));
+}
 
-    alias TypeTuple!(char, wchar, dchar) Chars;
-    foreach (LhsC; Chars)
+//
+unittest
+{
+    static assert(isSwitchable!int);
+    static assert(!isSwitchable!double);
+    static assert(!isSwitchable!real);
+}
+
+//Static representation of the index I of the enum S,
+//In representation T.
+//T must be an immutable string (avoids un-necessary initializations).
+private template enumRep(T, S, size_t I)
+if (is (T == immutable) && isExactSomeString!T && is(S == enum))
+{
+    static T enumRep = to!T(__traits(allMembers, S)[I]);
+}
+
+@safe pure unittest
+{
+    void dg()
     {
-        alias TypeTuple!(LhsC[], const(LhsC)[], immutable(LhsC)[]) LhStrings;
-        foreach (Lhs; LhStrings)
+        // string to string conversion
+        debug(conv) scope(success) writeln("unittest @", __FILE__, ":", __LINE__, " succeeded.");
+
+        alias TypeTuple!(char, wchar, dchar) Chars;
+        foreach (LhsC; Chars)
         {
-            foreach (RhsC; Chars)
+            alias TypeTuple!(LhsC[], const(LhsC)[], immutable(LhsC)[]) LhStrings;
+            foreach (Lhs; LhStrings)
             {
-                alias TypeTuple!(RhsC[], const(RhsC)[], immutable(RhsC)[])
-                    RhStrings;
-                foreach (Rhs; RhStrings)
+                foreach (RhsC; Chars)
                 {
-                    Lhs s1 = to!Lhs("wyda");
-                    Rhs s2 = to!Rhs(s1);
-                    //writeln(Lhs.stringof, " -> ", Rhs.stringof);
-                    assert(s1 == to!Lhs(s2));
+                    alias TypeTuple!(RhsC[], const(RhsC)[], immutable(RhsC)[])
+                        RhStrings;
+                    foreach (Rhs; RhStrings)
+                    {
+                        Lhs s1 = to!Lhs("wyda");
+                        Rhs s2 = to!Rhs(s1);
+                        //writeln(Lhs.stringof, " -> ", Rhs.stringof);
+                        assert(s1 == to!Lhs(s2));
+                    }
                 }
             }
         }
-    }
 
-    foreach (T; Chars)
-    {
-        foreach (U; Chars)
+        foreach (T; Chars)
         {
-            T[] s1 = to!(T[])("Hello, world!");
-            auto s2 = to!(U[])(s1);
-            assert(s1 == to!(T[])(s2));
-            auto s3 = to!(const(U)[])(s1);
-            assert(s1 == to!(T[])(s3));
-            auto s4 = to!(immutable(U)[])(s1);
-            assert(s1 == to!(T[])(s4));
+            foreach (U; Chars)
+            {
+                T[] s1 = to!(T[])("Hello, world!");
+                auto s2 = to!(U[])(s1);
+                assert(s1 == to!(T[])(s2));
+                auto s3 = to!(const(U)[])(s1);
+                assert(s1 == to!(T[])(s3));
+                auto s4 = to!(immutable(U)[])(s1);
+                assert(s1 == to!(T[])(s4));
+            }
         }
     }
+    dg();
+    assertCTFEable!dg;
 }
 
 @safe pure unittest
@@ -1076,6 +1145,34 @@ unittest
     assert(to!dstring(o) == "cast(EU)5"d);
 }
 
+unittest
+{
+    enum E
+    {
+        foo,
+        bar,
+        doo = foo, // check duplicate switch statements
+    }
+
+    foreach (S; TypeTuple!(string, wstring, dstring, const(char[]), const(wchar[]), const(dchar[])))
+    {
+        auto s1 = to!S(E.foo);
+        auto s2 = to!S(E.foo);
+        assert(s1 == s2);
+        // ensure we don't allocate when it's unnecessary
+        assert(s1 is s2);
+    }
+
+    foreach (S; TypeTuple!(char[], wchar[], dchar[]))
+    {
+        auto s1 = to!S(E.foo);
+        auto s2 = to!S(E.foo);
+        assert(s1 == s2);
+        // ensure each mutable array is unique
+        assert(s1 !is s2);
+    }
+}
+
 /// ditto
 @trusted pure T toImpl(T, S)(S value, uint radix, LetterCase letterCase = LetterCase.upper)
     if (isIntegral!S &&
@@ -1136,15 +1233,15 @@ body
     {
         case 10:
             if (value < 0)
-                return toStringRadixConvert!(S.sizeof * 3 + 1, 10, true);
+                return toStringRadixConvert!(S.sizeof * 3 + 1, 10, true)();
             else
-                return toStringRadixConvert!(S.sizeof * 3, 10);
+                return toStringRadixConvert!(S.sizeof * 3, 10)();
         case 16:
-            return toStringRadixConvert!(S.sizeof * 2, 16);
+            return toStringRadixConvert!(S.sizeof * 2, 16)();
         case 2:
-            return toStringRadixConvert!(S.sizeof * 8, 2);
+            return toStringRadixConvert!(S.sizeof * 8, 2)();
         case 8:
-            return toStringRadixConvert!(S.sizeof * 3, 8);
+            return toStringRadixConvert!(S.sizeof * 3, 8)();
         default:
            return toStringRadixConvert!(S.sizeof * 6)(radix);
     }
@@ -1308,8 +1405,8 @@ fit in the narrower type.
  */
 T toImpl(T, S)(S value)
     if (!isImplicitlyConvertible!(S, T) &&
-        (isNumeric!S || isSomeChar!S) &&
-        (isNumeric!T || isSomeChar!T) && !is(T == enum))
+        (isNumeric!S || isSomeChar!S || isBoolean!S) &&
+        (isNumeric!T || isSomeChar!T || isBoolean!T) && !is(T == enum))
 {
     enum sSmallest = mostNegative!S;
     enum tSmallest = mostNegative!T;
@@ -1365,9 +1462,12 @@ unittest
     // Narrowing conversions from enum -> integral should be allowed, but they
     // should throw at runtime if the enum value doesn't fit in the target
     // type.
-    enum E1 : ulong { A = 1, B = 1UL<<48 }
+    enum E1 : ulong { A = 1, B = 1UL<<48, C = 0 }
     assert(to!int(E1.A) == 1);
+    assert(to!bool(E1.A) == true);    
     assertThrown!ConvOverflowException(to!int(E1.B)); // E1.B overflows int
+    assertThrown!ConvOverflowException(to!bool(E1.B)); // E1.B overflows bool
+    assert(to!bool(E1.C) == false);
 
     enum E2 : long { A = -1L<<48, B = -1<<31, C = 1<<31 }
     assertThrown!ConvOverflowException(to!int(E2.A)); // E2.A overflows int
@@ -1375,12 +1475,17 @@ unittest
     assert(to!int(E2.B) == -1<<31); // but does not overflow int
     assert(to!int(E2.C) == 1<<31);  // E2.C does not overflow int
 
-    enum E3 : int { A = -1, B = 1, C = 255 }
+    enum E3 : int { A = -1, B = 1, C = 255, D = 0 }
     assertThrown!ConvOverflowException(to!ubyte(E3.A));
+    assertThrown!ConvOverflowException(to!bool(E3.A));
     assert(to!byte(E3.A) == -1);
     assert(to!byte(E3.B) == 1);
     assert(to!ubyte(E3.C) == 255);
-    assertThrown!ConvOverflowException(to!byte(E3.C));
+    assert(to!bool(E3.B) == true);
+    assertThrown!ConvOverflowException(to!byte(E3.C));    
+    assertThrown!ConvOverflowException(to!bool(E3.C));
+    assert(to!bool(E3.D) == false);
+
 }
 
 /**
@@ -3601,30 +3706,22 @@ as $(D chunk)).
  */
 T* emplace(T)(T* chunk) @safe nothrow pure
 {
-    static assert(is(T* : void*), "Cannot emplace type " ~ T.stringof ~ " because it is qualified.");
+    static assert (is(T* : void*),
+        format("Cannot emplace a %s because it is qualified.", T.stringof));
 
-    static if (is(T == class))
-    {
-        *chunk = null;
-    }
-    else static if (isStaticArray!T)
-    {
-        //TODO: This can probably be optimized.
-        foreach(ref e; (*chunk)[])
-            emplace(()@trusted{return &e;}());
-    }
+    static assert (is(typeof({static T i;})),
+        format("Cannot emplace a %1$s because %1$s.this() is annotated with @disable.", T.stringof));
+
+    static if (isAssignable!T && !hasElaborateAssign!T)
+        *chunk = T.init;
     else
     {
-        static assert(!is(T == struct) || is(typeof({static T i;})),
-            text("Cannot emplace because ", T.stringof, ".this() is annotated with @disable."));
-
-        static if (isAssignable!T && !hasElaborateAssign!T)
-            *chunk = T.init;
-        else
+        static immutable T i;
+        static void trustedMemcpy(T* chunk) @trusted nothrow pure
         {
-            static immutable T i;
-            ()@trusted{memcpy(chunk, &i, T.sizeof);}();
+            memcpy(chunk, &i, T.sizeof);
         }
+        trustedMemcpy(chunk);
     }
 
     return chunk;
@@ -3731,8 +3828,12 @@ as $(D chunk)).
 T* emplace(T, Args...)(T* chunk, Args args)
     if (!is(T == struct) && Args.length == 1)
 {
+    static assert (is(T* : void*),
+        format("Cannot emplace a %s because it is qualified.", T.stringof));
+
     static assert(is(typeof(*chunk = args[0])),
-        text("Don't know how to emplace a ", T.stringof, " with a ", Args[0].stringof, "."));
+        format("Don't know how to emplace a %s with a %s.", T.stringof, Args[0].stringof));
+
     //TODO FIXME: For static arrays, this uses the "postblit-then-destroy" sequence.
     //This means it will destroy unitialized data.
     //It needs to be fixed.
@@ -3781,7 +3882,8 @@ unittest
 T* emplace(T, Args...)(T* chunk, auto ref Args args)
     if (is(T == struct))
 {
-    static assert(is(T* : void*), "Cannot emplace type " ~ T.stringof ~ " because it is qualified.");
+    static assert (is(T* : void*),
+        format("Cannot emplace a %s because it is qualified.", T.stringof));
 
     static if (Args.length == 1 && is(Args[0] : T) &&
         is (typeof({T t = args[0];})) //Check for legal postblit
@@ -3819,13 +3921,13 @@ T* emplace(T, Args...)(T* chunk, auto ref Args args)
     }
     else
     {
-        //We can't emplace. Try to diagnose a disabled postblit. 
-        static assert(!(Args.length == 1 && is(Args[0] : T)), 
-            "struct " ~ T.stringof ~ " is not emplaceable because its copy is annotated with @disable");
+        //We can't emplace. Try to diagnose a disabled postblit.
+        static assert(!(Args.length == 1 && is(Args[0] : T)),
+            format("Cannot emplace a %1$s because %1$s.this(this) is annotated with @disable.", T.stringof));
 
         //We can't emplace.
         static assert(false,
-            "Don't know how to emplace a " ~ T.stringof ~ " with " ~ Args[].stringof);
+            format("Don't know how to emplace a %s with %s.", T.stringof, Args[].stringof));
     }
 
     return chunk;
@@ -3846,10 +3948,11 @@ private void emplaceInitializer(T)(T* chunk)
 }
 private void emplacePostblitter(T, Arg)(ref T chunk, auto ref Arg arg)
 {
-    static assert(is(Arg : T), "emplace internal error: " ~ T.stringof ~ " " ~ Arg.stringof);
+    static assert(is(Arg : T),
+        format("emplace internal error: %s %s", T.stringof, Arg.stringof));
 
     static assert(is(typeof({T t = arg;})),
-        "struct " ~ T.stringof ~ " is not emplaceable because its copy is annotated with @disable");
+        format("Cannot emplace a %1$s because %1$s.this(this) is annotated with @disable.", T.stringof));
 
     static if (isAssignable!T && !hasElaborateAssign!T)
         chunk = arg;
@@ -3863,7 +3966,7 @@ private deprecated("Using static opCall for emplace is deprecated. Plase use emp
 void emplaceOpCaller(T, Args...)(T* chunk, auto ref Args args)
 {
     static assert (is(typeof({T t = T.opCall(args);})),
-        T.stringof ~ ".opCall does not return adequate data for construction.");
+        format("%s.opCall does not return adequate data for construction.", T.stringof));
     emplace(chunk, chunk.opCall(args));
 }
 
@@ -3958,7 +4061,7 @@ unittest
     static struct S
     {
         int i;
-    
+
         this(S other){assert(false);}
         this(int i){this.i = i;}
         this(this){}
@@ -4047,7 +4150,7 @@ unittest
     static assert( __traits(compiles, emplace(&ss2)));
     static assert(!__traits(compiles, emplace(&ss2, SS2.init)));
 
-    
+
     // SS1 sss1 = s1;      //This doesn't compile
     // SS1 sss1 = SS1(s1); //This doesn't compile
     // So emplace shouldn't compile either
@@ -4341,10 +4444,10 @@ unittest //http://forum.dlang.org/thread/nxbdgtdlmwscocbiypjs@forum.dlang.org
     assert(&b2);
     auto b3 = B(SysTime(0, UTC()), 1, A(1));
     assert(&b3);
-    
+
     import std.array;
     auto arr = [b2, b3];
-    
+
     assert(arr[0].j == 1);
     assert(arr[1].j == 1);
     auto a2 = arr.array(); // << bang, invariant is raised, also if b2 and b3 are good

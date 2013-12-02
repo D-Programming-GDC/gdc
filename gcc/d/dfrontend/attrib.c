@@ -1044,20 +1044,21 @@ void PragmaDeclaration::semantic(Scope *sc)
             StringExp *se = e->toString();
             if (!se)
                 error("string expected for library name, not '%s'", e->toChars());
-            else 
+            else
             {
                 char *name = (char *)mem.malloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
                 if (global.params.verbose)
-                    fprintf(stderr, "library   %s\n", name);
+                    fprintf(global.stdmsg, "library   %s\n", name);
                 if (global.params.moduleDeps && !global.params.moduleDepsFile)
                 {
                     OutBuffer *ob = global.params.moduleDeps;
+                    Module* imod = sc->instantiatingModule ? sc->instantiatingModule : sc->module;
                     ob->writestring("depsLib ");
-                    ob->writestring(sc->module->toPrettyChars());
+                    ob->writestring(imod->toPrettyChars());
                     ob->writestring(" (");
-                    escapePath(ob, sc->module->srcfile->toChars());
+                    escapePath(ob, imod->srcfile->toChars());
                     ob->writestring(") : ");
                     ob->writestring((char *) name);
                     ob->writenl();
@@ -1167,7 +1168,7 @@ void PragmaDeclaration::semantic(Scope *sc)
         {
             /* Print unrecognized pragmas
              */
-            fprintf(stderr, "pragma    %s", ident->toChars());
+            fprintf(global.stdmsg, "pragma    %s", ident->toChars());
             if (args)
             {
                 for (size_t i = 0; i < args->dim; i++)
@@ -1181,15 +1182,15 @@ void PragmaDeclaration::semantic(Scope *sc)
 
                     e = e->ctfeInterpret();
                     if (i == 0)
-                        printf(" (");
+                        fprintf(global.stdmsg, " (");
                     else
-                        printf(",");
-                    printf("%s", e->toChars());
+                        fprintf(global.stdmsg, ",");
+                    fprintf(global.stdmsg, "%s", e->toChars());
                 }
                 if (args->dim)
-                    printf(")");
+                    fprintf(global.stdmsg, ")");
             }
-            printf("\n");
+            fprintf(global.stdmsg, "\n");
         }
         goto Lnodecl;
     }
@@ -1596,7 +1597,7 @@ void CompileDeclaration::compileIt(Scope *sc)
     {
         se = se->toUTF8(sc);
         Parser p(sc->module, (utf8_t *)se->string, se->len, 0);
-        p.loc = loc;
+        p.scanloc = loc;
         p.nextToken();
         unsigned errors = global.errors;
         decl = p.parseDeclDefs(0);

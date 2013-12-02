@@ -2954,6 +2954,143 @@ shared static ~this() nothrow pure @safe
 }
 
 /**********************************/
+// 10789
+
+struct S10789
+{
+    static int count;
+    int value;
+
+    this(int)  { value = ++count; }
+    ~this()    { --count; }
+    this(this) { value = ++count; assert(value == 3); }
+}
+
+S10789 fun10789a(bool isCondExp)(bool cond)
+{
+    S10789 s1 = S10789(42), s2 = S10789(24);
+    assert(S10789.count == 2);
+    static if (isCondExp)
+    {
+        return cond ? s1 : s2;
+    }
+    else
+    {
+        if (cond)
+            return s1;
+        else
+            return s2;
+    }
+}
+
+auto fun10789b(bool isCondExp)(bool cond)
+{
+    S10789 s1 = S10789(42), s2 = S10789(24);
+    assert(S10789.count == 2);
+    static if (isCondExp)
+    {
+        return cond ? s1 : s2;
+    }
+    else
+    {
+        if (cond)
+            return s1;
+        else
+            return s2;
+    }
+}
+
+void test10789()
+{
+    foreach (fun; TypeTuple!(fun10789a, fun10789b))
+    foreach (isCondExp; TypeTuple!(false, true))
+    {
+        {
+            S10789 s = fun!isCondExp(true);
+            assert(S10789.count == 1);
+            assert(s.value == 3);
+        }
+        assert(S10789.count == 0);
+        {
+            S10789 s = fun!isCondExp(false);
+            assert(S10789.count == 1);
+            assert(s.value == 3);
+        }
+        assert(S10789.count == 0);
+    }
+}
+
+/**********************************/
+// 11134
+
+void test11134()
+{
+    void test(S)()
+    {
+        S s;
+        S[2] sa;
+        S[2][] dsa = [[S(), S()]];
+        dsa.reserve(dsa.length + 2);    // avoid postblit calls by GC
+
+        S.count = 0;
+        dsa ~= sa;
+        assert(S.count == 2);
+
+        S.count = 0;
+        dsa ~= [s, s];
+        assert(S.count == 2);
+    }
+
+    static struct SS
+    {
+        static int count;
+        this(this) { ++count; }
+    }
+    test!SS();
+
+    struct NS
+    {
+        static int count;
+        this(this) { ++count; }
+    }
+    test!NS();
+}
+
+/**********************************/
+// 11197
+
+struct S11197a
+{
+    this(bool) {}
+    this(this) {}
+}
+
+struct S11197b
+{
+    //this(bool) {}
+    this(this) {}
+}
+
+void test11197()
+{
+    S11197a[][string] aa1;
+    aa1["test"] ~= S11197a.init;
+
+    S11197b[][string] aa2;
+    aa2["test"] ~= S11197b.init;
+}
+
+/**********************************/
+
+struct S7474 {
+  float x;
+  ~this() {}
+}
+
+void fun7474(T...)() { T x; }
+void test7474() { fun7474!S7474(); }
+
+/**********************************/
 
 int main()
 {
@@ -3046,6 +3183,10 @@ int main()
     //test10094();      // BUG: NRVO unimplemented.
     test10244();
     test10694();
+    test10789();
+    test11134();
+    test11197();
+    test7474();
 
     printf("Success\n");
     return 0;

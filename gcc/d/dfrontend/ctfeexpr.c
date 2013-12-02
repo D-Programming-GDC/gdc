@@ -161,7 +161,7 @@ char *ThrownExceptionExp::toChars()
 void ThrownExceptionExp::generateUncaughtError()
 {
     thrown->error("Uncaught CTFE exception %s(%s)", thrown->type->toChars(),
-        (*thrown->value->elements)[0]->toChars());
+        (*thrown->value->elements)[0]->toString()->toChars());
     /* Also give the line where the throw statement was. We won't have it
      * in the case where the ThrowStatement is generated internally
      * (eg, in ScopeStatement)
@@ -353,6 +353,8 @@ Expression *copyLiteral(Expression *e)
     }
     else if (e->op == TOKclassreference)
         return new ClassReferenceExp(e->loc, ((ClassReferenceExp *)e)->value, e->type);
+    else if (e->op == TOKerror)
+        return e;
     else
     {
         e->error("Internal Compiler Error: CTFE literal %s", e->toChars());
@@ -371,6 +373,11 @@ Expression *paintTypeOntoLiteral(Type *type, Expression *lit)
 {
     if (lit->type->equals(type))
         return lit;
+
+    // If it is a cast to inout, retain the original type.
+    if (type->hasWild())
+        return lit;
+
     Expression *e;
     if (lit->op == TOKslice)
     {
@@ -599,9 +606,12 @@ bool isSafePointerCast(Type *srcPointee, Type *destPointee)
     if (destPointee->ty == Tvoid)
         return true;
 
-    // It's OK if they are the same size integers, eg int* and uint*
-    return srcPointee->isintegral() && destPointee->isintegral()
-           && srcPointee->size() == destPointee->size();
+    // It's OK if they are the same size (static array of) integers, eg:
+    //     int*     --> uint*
+    //     int[5][] --> uint[5][]
+    return srcPointee->baseElemOf()->isintegral() &&
+           destPointee->baseElemOf()->isintegral() &&
+           srcPointee->size() == destPointee->size();
 }
 
 Expression *getAggregateFromPointer(Expression *e, dinteger_t *ofs)

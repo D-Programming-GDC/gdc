@@ -570,8 +570,8 @@ Expression *Pow(Type *type, Expression *e1, Expression *e2)
         }
         else
         {
-            r = new RealExp(loc, e1->toReal(), Type::tfloat64);
-            v = new RealExp(loc, ldouble(1.0), Type::tfloat64);
+            r = new IntegerExp(loc, e1->toInteger(), e1->type);
+            v = new IntegerExp(loc, 1, e1->type);
         }
 
         while (n != 0)
@@ -1214,7 +1214,7 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     }
 
     if (e1->op == TOKarrayliteral && typeb == tb)
-        return e1;
+        return expType(to, e1);
 
     if (e1->isConst() != 1)
         return EXP_CANT_INTERPRET;

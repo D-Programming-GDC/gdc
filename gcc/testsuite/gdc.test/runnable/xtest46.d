@@ -890,6 +890,14 @@ void test45()
 
 /***************************************************/
 
+void text10682()
+{
+    ulong x = 1;
+    ulong y = 2 ^^ x;
+}
+
+/***************************************************/
+
 struct Test46
 {
  int foo;
@@ -1873,6 +1881,20 @@ void test93()
 
 /***************************************************/
 
+
+extern(C++) class C1687
+{
+    void func() {}
+}
+
+void test1687()
+{
+    auto c = new C1687();
+    assert(c.__vptr[0] == (&c.func).funcptr);
+}
+
+/***************************************************/
+
 struct Foo94
 {
     int x, y;
@@ -2141,14 +2163,6 @@ void test107()
     writeln(a.init);
     assert(a.init == [0,0,0,0,0,0]);
 }
-
-/***************************************************/
-
-void bug4072(T)(T x)
-   if (is(typeof(bug4072(x))))
-{}
-
-static assert(!is(typeof(bug4072(7))));
 
 /***************************************************/
 
@@ -2462,6 +2476,8 @@ struct Bar124 {
 
 void test124() {
     Foo124[string] stuff;
+    stuff["foo"] = Foo124.init;
+    assert(stuff["foo"].z == 3);
     stuff["foo"] = Foo124.init;
     assert(stuff["foo"].z == 2);
 
@@ -5938,6 +5954,61 @@ void test8108()
 }
 
 /***************************************************/
+// 8360
+
+struct Foo8360
+{
+    int value = 0;
+    int check = 1337;
+
+    this(int value)
+    {
+        assert(0);
+        this.value = value;
+    }
+
+    ~this()
+    {
+        assert(0);
+        assert(check == 1337);
+    }
+
+    string str()
+    {
+        assert(0);
+        return "Foo";
+    }
+}
+
+Foo8360 makeFoo8360()
+{
+    assert(0);
+    return Foo8360(2);
+}
+
+void test8360()
+{
+    size_t length = 0;
+
+    // The message part 'makeFoo().str()' should not be evaluated at all.
+    assert(length < 5, makeFoo8360().str());
+}
+
+/***************************************************/
+// 8361
+
+struct Foo8361
+{
+    string bar = "hello";
+    ~this() {}
+}
+
+void test8361()
+{
+    assert(true, Foo8361().bar);
+}
+
+/***************************************************/
 // 6141 + 8526
 
 void test6141()
@@ -6579,6 +6650,22 @@ void test10634()
 
 /***************************************************/
 
+immutable(char)[4] bar7254(int i) {
+    if (i)
+    {
+        immutable(char)[4] r; return r;
+    }
+    else
+        return "1234";
+}
+
+void test7254()
+{
+    assert(bar7254(0) == "1234");
+}
+
+/***************************************************/
+
 int main()
 {
     test1();
@@ -6774,6 +6861,7 @@ int main()
     test5046();
     test1471();
     test6335();
+    test1687();
     test6228();
     test2774();
     test3733();
@@ -6832,6 +6920,7 @@ int main()
     test160();
     test8665();
     test8108();
+    test8360();
     test6141();
     test8526();
     test161();
@@ -6850,6 +6939,7 @@ int main()
     test10542();
     test10539();
     test10634();
+    test7254();
 
     printf("Success\n");
     return 0;

@@ -884,7 +884,9 @@ void VarDeclaration::semantic(Scope *sc)
                 type = type->nextOf()->arrayOf();
         }
         else
+        {
             type = init->inferType(sc);
+        }
 
         if (needctfe) sc = sc->endCTFE();
 //      type = type->semantic(loc, sc);
@@ -962,9 +964,7 @@ void VarDeclaration::semantic(Scope *sc)
     FuncDeclaration *fd = parent->isFuncDeclaration();
 
     Type *tb = type->toBasetype();
-    Type *tbn = tb;
-    while (tbn->ty == Tsarray)
-        tbn = tbn->nextOf()->toBasetype();
+    Type *tbn = tb->baseElemOf();
     if (tb->ty == Tvoid && !(storage_class & STClazy))
     {
         if (inferred)
@@ -1201,13 +1201,16 @@ Lnomatch:
             {
                 const char *p = loc.toChars();
                 const char *s = (storage_class & STCimmutable) ? "immutable" : "const";
-                fprintf(stderr, "%s: %s.%s is %s field\n", p ? p : "", ad->toPrettyChars(), toChars(), s);
+                fprintf(global.stdmsg, "%s: %s.%s is %s field\n", p ? p : "", ad->toPrettyChars(), toChars(), s);
             }
             storage_class |= STCfield;
 #if DMDV2
             if (tbn->ty == Tstruct && ((TypeStruct *)tbn)->sym->noDefaultCtor ||
                 tbn->ty == Tclass  && ((TypeClass  *)tbn)->sym->noDefaultCtor)
-                aad->noDefaultCtor = TRUE;
+            {
+                if (!isThisDeclaration())
+                    aad->noDefaultCtor = TRUE;
+            }
 #endif
 #else
             if (storage_class & (STCconst | STCimmutable) && init)
@@ -1224,7 +1227,10 @@ Lnomatch:
 #if DMDV2
                 if ((tbn->ty == Tstruct && ((TypeStruct *)tbn)->sym->noDefaultCtor) ||
                     (tbn->ty == Tclass  && ((TypeClass  *)tbn)->sym->noDefaultCtor))
-                    aad->noDefaultCtor = TRUE;
+                {
+                    if (!isThisDeclaration())
+                        aad->noDefaultCtor = TRUE;
+                }
 #endif
             }
 #endif
@@ -1296,18 +1302,19 @@ Lnomatch:
         }
     }
 
-    if (!(storage_class & (STCctfe | STCref)) && tbn->ty == Tstruct &&
+    if (!(storage_class & (STCctfe | STCref | STCresult)) && tbn->ty == Tstruct &&
         ((TypeStruct *)tbn)->sym->noDefaultCtor)
     {
         if (!init)
-        {   if (isField())
+        {
+            if (isField())
                 /* For fields, we'll check the constructor later to make sure it is initialized
                  */
                 storage_class |= STCnodefaultctor;
             else if (storage_class & STCparameter)
                 ;
             else
-                error("initializer required for type %s", type->toChars());
+                error("default construction is disabled for type %s", type->toChars());
         }
     }
 #endif
@@ -1659,30 +1666,17 @@ Lnomatch:
                      * because the postblit doesn't get run on the initialization of w.
                      */
                     if (ti->ty == Tstruct)
-                    {   StructDeclaration *sd = ((TypeStruct *)ti)->sym;
+                    {
+                        StructDeclaration *sd = ((TypeStruct *)ti)->sym;
                         /* Look to see if initializer involves a copy constructor
                          * (which implies a postblit)
                          */
                         if (sd->cpctor &&               // there is a copy constructor
-                            tb->equals(ti))             // rvalue is the same struct
+                            tb->toDsymbol(NULL) == sd)  // exp is the same struct
                         {
                             // The only allowable initializer is a (non-copy) constructor
-                            if (exp->op == TOKcall)
-                            {
-                                CallExp *ce = (CallExp *)exp;
-                                if (ce->e1->op == TOKdotvar)
-                                {
-                                    DotVarExp *dve = (DotVarExp *)ce->e1;
-                                    if (dve->var->isCtorDeclaration())
-                                        goto LNoCopyConstruction;
-                                }
-                            }
-                            global.gag--;
-                            error("of type struct %s uses this(this), which is not allowed in static initialization", tb->toChars());
-                            global.gag++;
-
-                          LNoCopyConstruction:
-                            ;
+                            if (exp->isLvalue())
+                                error("of type struct %s uses this(this), which is not allowed in static initialization", tb->toChars());
                         }
                     }
                     ei->exp = exp;
@@ -1863,11 +1857,7 @@ void VarDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset,
     }
     if (t->ty == Tstruct || t->ty == Tsarray)
     {
-        Type *tv = t;
-        while (tv->ty == Tsarray)
-        {
-            tv = tv->nextOf()->toBasetype();
-        }
+        Type *tv = t->baseElemOf();
         if (tv->ty == Tstruct)
         {
             TypeStruct *ts = (TypeStruct *)tv;
@@ -2117,7 +2107,7 @@ Expression *VarDeclaration::getConstInitializer(bool needFullType)
     if (scope)
     {
         inuse++;
-        init->semantic(scope, type, INITinterpret);
+        init = init->semantic(scope, type, INITinterpret);
         scope = NULL;
         inuse--;
     }
@@ -2252,19 +2242,14 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
     }
 
     // Destructors for structs and arrays of structs
-    bool array = false;
-    Type *tv = type->toBasetype();
-    while (tv->ty == Tsarray)
-    {   TypeSArray *ta = (TypeSArray *)tv;
-        array = true;
-        tv = tv->nextOf()->toBasetype();
-    }
+    Type *tv = type->baseElemOf();
     if (tv->ty == Tstruct)
-    {   TypeStruct *ts = (TypeStruct *)tv;
+    {
+        TypeStruct *ts = (TypeStruct *)tv;
         StructDeclaration *sd = ts->sym;
         if (sd->dtor)
         {
-            if (array)
+            if (type->toBasetype()->ty == Tsarray)
             {
                 // Typeinfo.destroy(cast(void*)&v);
                 Expression *ea = new SymOffExp(loc, this, 0, 0);
@@ -2378,6 +2363,17 @@ Dsymbol *TypeInfoDeclaration::syntaxCopy(Dsymbol *s)
 void TypeInfoDeclaration::semantic(Scope *sc)
 {
     assert(linkage == LINKc);
+}
+
+char *TypeInfoDeclaration::toChars()
+{
+    //printf("TypeInfoDeclaration::toChars() tinfo = %s\n", tinfo->toChars());
+    OutBuffer buf;
+    buf.writestring("typeid(");
+    buf.writestring(tinfo->toChars());
+    buf.writeByte(')');
+    buf.writeByte(0);
+    return buf.extractData();
 }
 
 /***************************** TypeInfoConstDeclaration **********************/
