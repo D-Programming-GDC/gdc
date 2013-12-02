@@ -239,7 +239,7 @@ install-data-local: libgdruntime.a
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
 	done
-	for i in gcc core core/stdc core/sync core/sys/freebsd \
+	for i in core core/stdc core/sync core/sys/freebsd \
 	    core/sys/freebsd/sys core/sys/linux core/sys/linux/sys \
 	    core/sys/osx core/sys/osx/mach core/sys/posix \
 	    core/sys/posix/arpa core/sys/posix/net \
@@ -252,13 +252,13 @@ install-data-local: libgdruntime.a
 	done
 	for i in gcc; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(srcdir)/$$i/*.di; do \
+	    for f in $(IMPDIR)/$$i/*.di; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
 	done
 	for i in phobos-ver-syms; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR) \
-	    $(INSTALL_HEADER) $$i $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR) \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR); \
+	    $(INSTALL_HEADER) $$i $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR); \
 	done
 
 clean-local:
