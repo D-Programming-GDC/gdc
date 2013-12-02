@@ -3462,10 +3462,15 @@ build_frame_type (FuncDeclaration *func)
       fields = chainon (fields, field);
       TREE_USED (s->Stree) = 1;
 
-      /* Can't do nrvo if the variable is put in a frame.  */
+      // Can't do nrvo if the variable is put in a frame.
       if (func->nrvo_can && func->nrvo_var == v)
 	func->nrvo_can = 0;
+
+      // Because the value needs to survive the end of the scope.
+      if (ffi->is_closure && v->needsAutoDtor())
+	v->error("has scoped destruction, cannot build closure");
     }
+
   TYPE_FIELDS (frame_rec_type) = fields;
   layout_type (frame_rec_type);
   d_keep (frame_rec_type);

@@ -34,7 +34,7 @@ proc gdc-convert-args { args } {
         }
     }
     if [regexp -- {-g} $args] {
-	lappend out "-g"
+        lappend out "-g"
     }
     if [regexp -- {-inline} $args] {
         lappend out "-finline-functions"
@@ -200,6 +200,8 @@ proc dmd2dg { base test } {
                 gdc-copy-extra $base "$type/$import"
             }
             set out_line "// { dg-additional-sources \"$m0\" }"
+            # Should probably do this automatically in the driver.
+            puts $fdout "// { dg-additional-options \"-lstdc++\" }"
         }
 
         # Handle EXTRA_FILES option

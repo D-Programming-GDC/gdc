@@ -914,7 +914,7 @@ CatAssignExp::toElem (IRState *irs)
 
 	  // Evaluate expression before appending
 	  tree e2e = e2->toElem (irs);
-	  e2e = make_temp (e2e);
+	  e2e = maybe_make_temp (e2e);
 	  result = modify_expr (etype->toCtype(), build_deref (ptr_exp), e2e);
 	  result = compound_expr (e2e, result);
 	}
@@ -2418,8 +2418,12 @@ ArrayLiteralExp::toElem (IRState *irs)
   for (size_t i = 0; i < elements->dim; i++)
     {
       Expression *e = (*elements)[i];
+      tree elem = e->toElem (irs);
+
+      elem = maybe_make_temp (elem);
       CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
-			      convert_expr (e->toElem (irs), e->type, etype));
+			      convert_expr (elem, e->type, etype));
+
       if (constant_p && !e->isConst())
 	constant_p = false;
     }

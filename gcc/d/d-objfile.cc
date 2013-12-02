@@ -1452,10 +1452,6 @@ FuncDeclaration::buildClosure (IRState *irs)
       if (!v->isParameter())
 	continue;
 
-      // Because the value needs to survive the end of the scope.
-      if (v->needsAutoDtor())
-	v->error("has scoped destruction, cannot build closure");
-
       Symbol *vsym = v->toSymbol();
 
       tree field = component_ref (decl_ref, vsym->SframeField);
@@ -1885,7 +1881,8 @@ d_finish_symbol (Symbol *sym)
       // Initialiser must never be bigger than symbol size.
       dinteger_t tsize = int_size_in_bytes (TREE_TYPE (decl));
       dinteger_t dtsize = int_size_in_bytes (TREE_TYPE (DECL_INITIAL (decl)));
-      if (tsize != dtsize)
+
+      if (tsize < dtsize)
 	internal_error ("Mismatch between declaration '%s' size (%wd) and it's initializer size (%wd).",
 			sym->prettyIdent ? sym->prettyIdent : sym->Sident, tsize, dtsize);
     }

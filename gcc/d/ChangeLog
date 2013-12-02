@@ -3,7 +3,12 @@
 	* d-elem.cc(CatAssignExp::toElem): Don't call postblit after element
 	append to array.
 	(NewExp::toElem): Handle calling 'new' on opaque types.
+	(ArrayLiteralExp::toElem): Ensure array literal elements have no side
+	effects by making temporaries as necessary.
 	* d-todt.cc(StructLiteralExp::toDt): Update for frontend changes.
+	* d-codegen.cc(build_frame_type): Check for scoped variables if
+	building a closure.
+	* d-objfile.cc(d_finish_symbol): Relax toDt checking rule.
 
 2013-12-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 

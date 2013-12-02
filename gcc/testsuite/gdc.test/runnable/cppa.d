@@ -1,4 +1,4 @@
-// EXTRA_CPP_SOURCES: cppb.cpp
+// EXTRA_CPP_SOURCES: extra-files/cppb.cpp
 
 import std.c.stdio;
 
