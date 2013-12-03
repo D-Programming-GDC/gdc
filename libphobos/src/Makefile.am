@@ -55,10 +55,6 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 #--------------------------------------#
 # GDC LibPhobos
 
-# Special-case for std.xml, need to emit templates.
-std/xml.o : std/xml.d
-	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
-
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o \
 	  std/container.o std/complex.o std/concurrency.o \
@@ -84,6 +80,8 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
 	  std/internal/math/errorfunction.o std/internal/processinit.o \
 	  std/internal/uni.o std/internal/uni_tab.o \
+	  std/internal/unicode_comp.o std/internal/unicode_decomp.o \
+	  std/internal/unicode_grapheme.o std/internal/unicode_norm.o \
 	  std/internal/unicode_tables.o \
 	  std/net/curl.o std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o

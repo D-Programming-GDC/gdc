@@ -5749,6 +5749,28 @@ void test10628()
 }
 
 /***************************************************/
+// 11265
+
+struct S11265
+{
+    class InnerClass
+    {
+        S11265 s;
+
+        bool empty()
+        {
+            return true;
+        }
+    }
+}
+
+void test11265()
+{
+    S11265.InnerClass trav = new S11265.InnerClass();
+    trav.empty();
+}
+
+/***************************************************/
 
 struct TimeOfDay
 {
@@ -6117,6 +6139,7 @@ int main()
     test4414();
     test9844();
     test10628();
+    test11265();
     test10633();
     test10642();
     test7436();

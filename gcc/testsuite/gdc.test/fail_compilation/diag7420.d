@@ -1,4 +1,3 @@
-
 // REQUIRED_ARGS: -m32
 /*
 TEST_OUTPUT:

@@ -3435,6 +3435,25 @@ void test2356()
 }
 
 /***************************************************/
+// 11238
+
+void test11238()
+{
+    int[2] m;
+    m[0] = 4,m[1] = 6;
+    //printf("%d,%d\n", m[0], m[1]);
+    assert(m[0] == 4 && m[1] == 6);
+
+    m = [m[1], m[0]];   // swap
+    assert(m[0] == 6 && m[1] == 4);
+    //printf("%d,%d\n", m[0], m[1]);
+
+    m = [m[1], m[0]];   // swap
+    //printf("%d,%d\n", m[0], m[1]);
+    assert(m[0] == 4 && m[1] == 6);
+}
+
+/***************************************************/
 
 class A2540
 {
@@ -6666,6 +6685,27 @@ void test7254()
 
 /***************************************************/
 
+struct S11075() { int x = undefined_expr; }
+
+class C11075() { int x = undefined_expr; }
+
+interface I11075() { enum int x = undefined_expr; }
+
+void test11075()
+{
+    static assert(!is(typeof(S11075!().x)));
+    static assert(!is(typeof(S11075!().x)));
+
+    static assert(!is(typeof(C11075!().x)));
+    static assert(!is(typeof(C11075!().x)));
+
+    static assert(!is(typeof(I11075!().x)));
+    static assert(!is(typeof(I11075!().x)));
+}
+
+
+/***************************************************/
+
 int main()
 {
     test1();
@@ -6838,6 +6878,7 @@ int main()
     test148();
     test149();
     test2356();
+    test11238();
     test2540();
     test150();
     test151();
@@ -6940,6 +6981,7 @@ int main()
     test10539();
     test10634();
     test7254();
+    test11075();
 
     printf("Success\n");
     return 0;

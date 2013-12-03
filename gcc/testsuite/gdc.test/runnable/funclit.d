@@ -861,6 +861,56 @@ void test11081()
 }
 
 /***************************************************/
+// 11220
+
+int parsePrimaryExp11220(int x)
+{
+    parseAmbig11220!( (parsed){ x += 1; } )();
+    return 1;
+}
+
+typeof(handler(1)) parseAmbig11220(alias handler)()
+{
+    return handler(parsePrimaryExp11220(1));
+}
+
+/***************************************************/
+// 11230
+
+template map11230(fun...)
+{
+    auto map11230(Range)(Range r)
+    {
+        return MapResult11230!(fun, Range)(r);
+    }
+}
+
+struct MapResult11230(alias fun, R)
+{
+    R _input;
+    this(R input) { _input = input; }
+}
+
+class A11230 { A11230[] as; }
+class B11230 { A11230[] as; }
+class C11230 : A11230 {}
+
+C11230 visit11230(A11230 a)
+{
+    a.as.map11230!(a => visit11230);
+    return null;
+}
+C11230 visit11230(B11230 b)
+{
+    b.as.map11230!(a => visit11230);
+    return null;
+}
+C11230 visit11230()
+{
+    return null;
+}
+
+/***************************************************/
 
 int main()
 {

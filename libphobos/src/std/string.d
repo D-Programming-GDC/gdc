@@ -29,7 +29,7 @@ debug(string) import core.stdc.stdio;
 import core.exception : RangeError, onRangeError;
 import core.vararg, core.stdc.stdlib, core.stdc.string,
     std.algorithm, std.ascii, std.conv, std.exception, std.format, std.functional,
-    std.range, std.regex, std.traits,
+    std.range, std.traits,
     std.typecons, std.typetuple, std.uni, std.utf;
 
 //Remove when repeat is finally removed. They're only here as part of the
@@ -2339,6 +2339,9 @@ private void translateImplAscii(C = immutable char, Buffer)(in char[] str, in ch
 /*****************************************************
  * Format arguments into a string.
  *
+ * Params: fmt  = Format string. For detailed specification, see $(XREF format,formattedWrite).
+ *         args = Variadic list of arguments to format into returned string.
+ *
  *  $(RED format's current implementation has been replaced with $(LREF xformat)'s
  *        implementation. in November 2012.
  *        This is seamless for most code, but it makes it so that the only
@@ -3167,7 +3170,12 @@ bool isNumeric(const(char)[] s, in bool bAllowSep = false) @safe pure
 
     // A sign is allowed only in the 1st character
     if (sx[0] == '-' || sx[0] == '+')
+    {
+        if (iLen == 1)  // but must be followed by other characters
+            return false;
+
         j++;
+    }
 
     for (int i = j; i < iLen; i++)
     {
@@ -3331,6 +3339,9 @@ unittest
     assert(isNumeric(s) == false);
     assert(isNumeric(s[0..s.length - 1]) == false);
     });
+
+    assert(!isNumeric("-"));
+    assert(!isNumeric("+"));
 }
 
 

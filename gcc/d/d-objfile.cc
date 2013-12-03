@@ -1026,8 +1026,15 @@ output_symbol_p (Symbol *sym)
 static bool
 output_template_p (TemplateInstance *ti)
 {
+  // Only templates are handled here.
+  if (ti == NULL)
+    return true;
+
   if (!global.params.useUnitTests
-      && ti && ti->instantiatingModule && !ti->instantiatingModule->isRoot())
+      && !global.params.allInst
+      && !global.params.debuglevel
+      && ti->instantiatingModule
+      && !ti->instantiatingModule->isRoot())
     {
       Module *mi = ti->instantiatingModule;
       bool importsRoot = false;

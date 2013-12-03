@@ -936,7 +936,6 @@ Statement *UnrolledLoopStatement::semantic(Scope *sc)
 {
     //printf("UnrolledLoopStatement::semantic(this = %p, sc = %p)\n", this, sc);
 
-    sc->noctor++;
     Scope *scd = sc->push();
     scd->sbreak = this;
     scd->scontinue = this;
@@ -956,7 +955,6 @@ Statement *UnrolledLoopStatement::semantic(Scope *sc)
     }
 
     scd->pop();
-    sc->noctor--;
     return serror ? serror : this;
 }
 
@@ -2618,6 +2616,8 @@ Statement *IfStatement::semantic(Scope *sc)
     // Evaluate at runtime
     unsigned cs0 = sc->callSuper;
     unsigned cs1;
+    unsigned *fi0 = fi0 = sc->saveFieldInit();
+    unsigned *fi1 = NULL;
 
     ScopeDsymbol *sym = new ScopeDsymbol();
     sym->parent = sc->scopesym;
@@ -2664,10 +2664,13 @@ Statement *IfStatement::semantic(Scope *sc)
     scd->pop();
 
     cs1 = sc->callSuper;
+    fi1 = sc->fieldinit;
     sc->callSuper = cs0;
+    sc->fieldinit = fi0;
     if (elsebody)
         elsebody = elsebody->semanticScope(sc, NULL, NULL);
     sc->mergeCallSuper(loc, cs1);
+    sc->mergeFieldInit(loc, fi1);
 
     if (condition->op == TOKerror ||
         (ifbody && ifbody->isErrorStatement()) ||
@@ -3969,8 +3972,23 @@ Statement *ReturnStatement::semantic(Scope *sc)
     if (sc->callSuper & CSXany_ctor &&
         !(sc->callSuper & (CSXthis_ctor | CSXsuper_ctor)))
         error("return without calling constructor");
-
     sc->callSuper |= CSXreturn;
+    if (sc->fieldinit)
+    {
+        AggregateDeclaration *ad = fd->isAggregateMember2();
+        assert(ad);
+        size_t dim = sc->fieldinit_dim;
+        for (size_t i = 0; i < dim; i++)
+        {
+            VarDeclaration *v = ad->fields[i];
+            bool mustInit = (v->storage_class & STCnodefaultctor ||
+                             v->type->needsNested());
+            if (mustInit && !(sc->fieldinit[i] & CSXthis_ctor))
+                error("an earlier return statement skips field %s initialization", v->toChars());
+
+            sc->fieldinit[i] |= CSXreturn;
+        }
+    }
 
     // See if all returns are instead to be replaced with a goto returnLabel;
     if (fd->returnLabel)
@@ -4586,7 +4604,6 @@ Statement *TryCatchStatement::semantic(Scope *sc)
     {
         return NULL;
     }
-
 #endif
 
     /* If the try body never throws, we can eliminate any catches
@@ -5161,6 +5178,12 @@ Statement *LabelStatement::semantic(Scope *sc)
     sc = sc->push();
     sc->scopesym = sc->enclosing->scopesym;
     sc->callSuper |= CSXlabel;
+    if (sc->fieldinit)
+    {
+        size_t dim = sc->fieldinit_dim;
+        for (size_t i = 0; i < dim; i++)
+            sc->fieldinit[i] |= CSXlabel;
+    }
     sc->slabel = this;
     if (statement)
         statement = statement->semanticNoScope(sc);

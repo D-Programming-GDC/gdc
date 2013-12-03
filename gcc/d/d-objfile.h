@@ -111,6 +111,7 @@ enum TemplateEmission
 {
   TEnone,
   TEnormal,
+  TEallinst,
 };
 
 extern location_t get_linemap (const Loc loc);

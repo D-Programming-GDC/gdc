@@ -758,7 +758,7 @@ public:
     unittest
     {
         Variant a = "10";
-	assert(a.coerce!int == 10);
+        assert(a.coerce!int == 10);
     }
 
     /**

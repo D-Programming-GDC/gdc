@@ -886,10 +886,14 @@ ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
 void
 StructDeclaration::toDt (dt_t **pdt)
 {
-  StructInitializer *sle = new StructInitializer (loc);
-  Expression *exp = sle->fill (NULL, type, INITinterpret);
+  StructLiteralExp *sle = new StructLiteralExp (loc, this, NULL);
+  Expression *e = sle->fill (true);
 
-  exp->toDt (pdt);
+  if (e == sle)
+    {
+      sle->type = type;
+      sle->toDt (pdt);
+    }
 }
 
 /* ================================================================ */

@@ -27,11 +27,12 @@ module std.format;
 import core.stdc.stdio, core.stdc.stdlib, core.stdc.string, core.vararg;
 import std.algorithm, std.array, std.ascii, std.bitmanip, std.conv,
     std.exception, std.functional, std.math, std.range,
-    std.string, std.system, std.traits, std.typecons, std.typetuple,
+    std.system, std.traits, std.typecons, std.typetuple,
     std.utf;
 version(unittest) {
     import std.stdio;
     import core.exception;
+    import std.string;
 }
 
 version (Win32) version (DigitalMars)
@@ -2079,13 +2080,13 @@ unittest
     formatTest( "%-(%s, %)", arr, `hello, world` );
 
     auto aa1 = [1:"hello", 2:"world"];
-    formatTest( "%(%s:%s, %)",  aa1, `1:"hello", 2:"world"` );
-    formatTest( "%-(%s:%s, %)", aa1, `1:hello, 2:world` );
+    formatTest( "%(%s:%s, %)",  aa1, [`1:"hello", 2:"world"`, `2:"world", 1:"hello"`] );
+    formatTest( "%-(%s:%s, %)", aa1, [`1:hello, 2:world`, `2:world, 1:hello`] );
 
     auto aa2 = [1:["ab", "cd"], 2:["ef", "gh"]];
-    formatTest( "%-(%s:%s, %)",        aa2, `1:["ab", "cd"], 2:["ef", "gh"]` );
-    formatTest( "%-(%s:%(%s%), %)",    aa2, `1:"ab""cd", 2:"ef""gh"` );
-    formatTest( "%-(%s:%-(%s%)%|, %)", aa2, `1:abcd, 2:efgh` );
+    formatTest( "%-(%s:%s, %)",        aa2, [`1:["ab", "cd"], 2:["ef", "gh"]`, `2:["ef", "gh"], 1:["ab", "cd"]`] );
+    formatTest( "%-(%s:%(%s%), %)",    aa2, [`1:"ab""cd", 2:"ef""gh"`, `2:"ef""gh", 1:"ab""cd"`] );
+    formatTest( "%-(%s:%-(%s%)%|, %)", aa2, [`1:abcd, 2:efgh`, `2:efgh, 1:abcd`] );
 }
 
 // input range formatting
@@ -2447,7 +2448,7 @@ unittest
                [`{1:"hello" $ 2:"world"}`, `{2:"world" $ 1:"hello"}`]);
     // use range formatting for key and value, and use %|
     formatTest( "{%([%04d->%(%c.%)]%| $ %)}", aa3,
-               [`{[0001->h.e.l.l.o] $ [0002->w.o.r.l.d]}`, `{[0002->w.o.r.l.d]} $ [0001->h.e.l.l.o]`] );
+               [`{[0001->h.e.l.l.o] $ [0002->w.o.r.l.d]}`, `{[0002->w.o.r.l.d] $ [0001->h.e.l.l.o]}`] );
 }
 
 unittest
@@ -2524,7 +2525,7 @@ void enforceValidFormatSpec(T, Char)(ref FormatSpec!Char f)
     static if (!isInputRange!T && hasToString!(T, Char) != 4)
     {
         enforceFmt(f.spec == 's',
-            format("Expected '%%s' format specifier for type '%s'", T.stringof));
+            "Expected '%s' format specifier for type '" ~ T.stringof ~ "'");
     }
 }
 
@@ -3761,6 +3762,53 @@ void formatReflectTest(T)(ref T val, string fmt, string formatted, string fn = _
             input, fn, ln);
 }
 
+version(unittest)
+void formatReflectTest(T)(ref T val, string fmt, string[] formatted, string fn = __FILE__, size_t ln = __LINE__)
+{
+    auto w = appender!string();
+    formattedWrite(w, fmt, val);
+
+    auto input = w.data;
+
+    foreach(cur; formatted)
+    {
+        if(input == cur) return;
+    }
+    enforceEx!AssertError(
+            false,
+            input,
+            fn,
+            ln);
+
+    T val2;
+    formattedRead(input, fmt, &val2);
+    static if (isAssociativeArray!T)
+    if (__ctfe)
+    {
+        alias val aa1;
+        alias val2 aa2;
+        //assert(aa1 == aa2);
+
+        assert(aa1.length == aa2.length);
+
+        assert(aa1.keys == aa2.keys);
+
+        //assert(aa1.values == aa2.values);
+        assert(aa1.values.length == aa2.values.length);
+        foreach (i; 0 .. aa1.values.length)
+            assert(aa1.values[i] == aa2.values[i]);
+
+        //foreach (i, key; aa1.keys)
+        //    assert(aa1.values[i] == aa1[key]);
+        //foreach (i, key; aa2.keys)
+        //    assert(aa2.values[i] == aa2[key]);
+        return;
+    }
+    enforceEx!AssertError(
+            val == val2,
+            input, fn, ln);
+}
+
 unittest
 {
     void booleanTest()
@@ -3837,9 +3885,9 @@ unittest
     void aaTest()
     {
         auto aa = [1:"hello", 2:"world"];
-        formatReflectTest(aa, "%s",                     `[1:"hello", 2:"world"]`);
-        formatReflectTest(aa, "[%(%s->%s, %)]",         `[1->"hello", 2->"world"]`);
-        formatReflectTest(aa, "{%([%s=%(%c%)]%|; %)}",  `{[1=hello]; [2=world]}`);
+        formatReflectTest(aa, "%s",                     [`[1:"hello", 2:"world"]`, `[2:"world", 1:"hello"]`]);
+        formatReflectTest(aa, "[%(%s->%s, %)]",         [`[1->"hello", 2->"world"]`, `[2->"world", 1->"hello"]`]);
+        formatReflectTest(aa, "{%([%s=%(%c%)]%|; %)}",  [`{[1=hello]; [2=world]}`, `{[2=world]; [1=hello]}`]);
     }
 
     import std.exception;

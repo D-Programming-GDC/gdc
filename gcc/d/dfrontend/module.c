@@ -513,7 +513,8 @@ void Module::parse()
     DsymbolTable *dst;
 
     if (md)
-    {   /* A ModuleDeclaration, md, was provided.
+    {
+        /* A ModuleDeclaration, md, was provided.
          * The ModuleDeclaration sets the packages this module appears in, and
          * the name of this module.
          */
@@ -522,17 +523,17 @@ void Module::parse()
         Package *ppack = NULL;
         dst = Package::resolve(md->packages, &this->parent, &ppack);
         assert(dst);
-#if 0
-        if (ppack && ppack->isModule())
+
+        Module *m = ppack ? ppack->isModule() : NULL;
+        if (m && strcmp(m->srcfile->name->name(), "package.d") != 0)
         {
-            error(loc, "package name '%s' in file %s conflicts with usage as a module name in file %s",
-                ppack->toChars(), srcname, ppack->isModule()->srcfile->toChars());
-            dst = modules;
+            ::error(md->loc, "package name '%s' conflicts with usage as a module name in file %s",
+                ppack->toPrettyChars(), m->srcfile->toChars());
         }
-#endif
     }
     else
-    {   /* The name of the module is set to the source file name.
+    {
+        /* The name of the module is set to the source file name.
          * There are no packages.
          */
         dst = modules;          // and so this module goes into global module symbol table
@@ -579,8 +580,7 @@ void Module::parse()
          */
         Dsymbol *prev = dst->lookup(ident);
         assert(prev);
-        Module *mprev = prev->isModule();
-        if (mprev)
+        if (Module *mprev = prev->isModule())
         {
             if (strcmp(srcname, mprev->srcfile->toChars()) == 0)
                 error(loc, "from file %s must be imported as module '%s'",
@@ -589,10 +589,8 @@ void Module::parse()
                 error(loc, "from file %s conflicts with another module %s from file %s",
                     srcname, mprev->toChars(), mprev->srcfile->toChars());
         }
-        else
+        else if (Package *pkg = prev->isPackage())
         {
-            Package *pkg = prev->isPackage();
-            assert(pkg);
             if (pkg->isPkgMod == PKGunknown && isPackageMod)
             {
                 /* If the previous inserted Package is not yet determined as package.d,
@@ -605,6 +603,8 @@ void Module::parse()
                 error(pkg->loc, "from file %s conflicts with package name %s",
                     srcname, pkg->toChars());
         }
+        else
+            assert(global.errors);
     }
     else
     {
@@ -1103,8 +1103,8 @@ DsymbolTable *Package::resolve(Identifiers *packages, Dsymbol **pparent, Package
     if (packages)
     {
         for (size_t i = 0; i < packages->dim; i++)
-        {   Identifier *pid = (*packages)[i];
-
+        {
+            Identifier *pid = (*packages)[i];
             Package *pkg;
             Dsymbol *p = dst->lookup(pid);
             if (!p)
@@ -1131,14 +1131,13 @@ DsymbolTable *Package::resolve(Identifiers *packages, Dsymbol **pparent, Package
             dst = pkg->symtab;
             if (ppkg && !*ppkg)
                 *ppkg = pkg;
-#if 0
             if (pkg->isModule())
-            {   // Return the module so that a nice error message can be generated
+            {
+                // Return the module so that a nice error message can be generated
                 if (ppkg)
                     *ppkg = (Package *)p;
                 break;
             }
-#endif
         }
     }
     if (pparent)
@@ -1192,8 +1191,12 @@ const char *lookForSourceFile(const char *filename)
     {
         /* The filename exists and it's a directory.
          * Therefore, the result should be: filename/package.d
+         * iff filename/package.d is a file
          */
-        return FileName::combine(filename, "package.d");
+        const char *n = FileName::combine(filename, "package.d");
+        if (FileName::exists(n) == 1)
+            return n;
+        FileName::free(n);
     }
 
     if (FileName::absolute(filename))
@@ -1220,7 +1223,12 @@ const char *lookForSourceFile(const char *filename)
         n = FileName::combine(p, b);
         FileName::free(b);
         if (FileName::exists(n) == 2)
-            return FileName::combine(n, "package.d");
+        {
+            const char *n2 = FileName::combine(n, "package.d");
+            if (FileName::exists(n2) == 1)
+                return n2;
+            FileName::free(n2);
+        }
         FileName::free(n);
     }
     return NULL;

@@ -640,10 +640,12 @@ CLUSTER = $(S_LINK Grapheme cluster, grapheme cluster)
 module std.uni;
 
 static import std.ascii;
-import std.traits, std.range, std.algorithm, std.typecons,
-    std.format, std.conv, std.typetuple, std.exception, core.stdc.stdlib;
+import std.traits, std.range, std.algorithm, std.conv,
+    std.typetuple, std.exception, core.stdc.stdlib;
 import std.array; //@@BUG UFCS doesn't work with 'local' imports
 import core.bitop;
+
+version(unittest) import std.typecons;
 
 // debug = std_uni;
 
@@ -1806,14 +1808,17 @@ public alias InversionList!GcPolicy CodepointSet;
     to represent [a, b$(RPAREN) intervals of $(CODEPOINTS). As used in $(LREF InversionList).
     Any interval type should pass $(LREF isIntegralPair) trait.
 */
-public struct CodepointInterval {
+public struct CodepointInterval 
+{
     uint[2] _tuple;
     alias _tuple this;
-    this(uint low, uint high){
+    this(uint low, uint high)
+    {
         _tuple[0] = low;
         _tuple[1] = high;
     }
-    bool opEquals(T)(T val){
+    bool opEquals(T)(T val) const
+    {
         return this[0] == val[0] && this[1] == val[1];
     }
     @property ref uint a(){ return _tuple[0]; }
@@ -4616,93 +4621,93 @@ else
     // conjure cumulative properties by hand
     if(ucmp(name, "L") == 0 || ucmp(name, "Letter") == 0)
     {
-        target |= asSet(uniPropLu);
-        target |= asSet(uniPropLl);
-        target |= asSet(uniPropLt);
-        target |= asSet(uniPropLo);
-        target |= asSet(uniPropLm);
+        target |= asSet(uniProps.Lu);
+        target |= asSet(uniProps.Ll);
+        target |= asSet(uniProps.Lt);
+        target |= asSet(uniProps.Lo);
+        target |= asSet(uniProps.Lm);
     }
     else if(ucmp(name,"LC") == 0 || ucmp(name,"Cased Letter")==0)
     {
-        target |= asSet(uniPropLl);
-        target |= asSet(uniPropLu);
-        target |= asSet(uniPropLt);// Title case
+        target |= asSet(uniProps.Ll);
+        target |= asSet(uniProps.Lu);
+        target |= asSet(uniProps.Lt);// Title case
     }
     else if(ucmp(name, "M") == 0 || ucmp(name, "Mark") == 0)
     {
-        target |= asSet(uniPropMn);
-        target |= asSet(uniPropMc);
-        target |= asSet(uniPropMe);
+        target |= asSet(uniProps.Mn);
+        target |= asSet(uniProps.Mc);
+        target |= asSet(uniProps.Me);
     }
     else if(ucmp(name, "N") == 0 || ucmp(name, "Number") == 0)
     {
-        target |= asSet(uniPropNd);
-        target |= asSet(uniPropNl);
-        target |= asSet(uniPropNo);
+        target |= asSet(uniProps.Nd);
+        target |= asSet(uniProps.Nl);
+        target |= asSet(uniProps.No);
     }
     else if(ucmp(name, "P") == 0 || ucmp(name, "Punctuation") == 0)
     {
-        target |= asSet(uniPropPc);
-        target |= asSet(uniPropPd);
-        target |= asSet(uniPropPs);
-        target |= asSet(uniPropPe);
-        target |= asSet(uniPropPi);
-        target |= asSet(uniPropPf);
-        target |= asSet(uniPropPo);
+        target |= asSet(uniProps.Pc);
+        target |= asSet(uniProps.Pd);
+        target |= asSet(uniProps.Ps);
+        target |= asSet(uniProps.Pe);
+        target |= asSet(uniProps.Pi);
+        target |= asSet(uniProps.Pf);
+        target |= asSet(uniProps.Po);
     }
     else if(ucmp(name, "S") == 0 || ucmp(name, "Symbol") == 0)
     {
-        target |= asSet(uniPropSm);
-        target |= asSet(uniPropSc);
-        target |= asSet(uniPropSk);
-        target |= asSet(uniPropSo);
+        target |= asSet(uniProps.Sm);
+        target |= asSet(uniProps.Sc);
+        target |= asSet(uniProps.Sk);
+        target |= asSet(uniProps.So);
     }
     else if(ucmp(name, "Z") == 0 || ucmp(name, "Separator") == 0)
     {
-        target |= asSet(uniPropZs);
-        target |= asSet(uniPropZl);
-        target |= asSet(uniPropZp);
+        target |= asSet(uniProps.Zs);
+        target |= asSet(uniProps.Zl);
+        target |= asSet(uniProps.Zp);
     }
     else if(ucmp(name, "C") == 0 || ucmp(name, "Other") == 0)
     {
-        target |= asSet(uniPropCo);
-        target |= asSet(uniPropLo);
-        target |= asSet(uniPropNo);
-        target |= asSet(uniPropSo);
-        target |= asSet(uniPropPo);
+        target |= asSet(uniProps.Co);
+        target |= asSet(uniProps.Lo);
+        target |= asSet(uniProps.No);
+        target |= asSet(uniProps.So);
+        target |= asSet(uniProps.Po);
     }
     else if(ucmp(name, "graphical") == 0){
-        target |= asSet(uniPropAlphabetic);
+        target |= asSet(uniProps.Alphabetic);
 
-        target |= asSet(uniPropMn);
-        target |= asSet(uniPropMc);
-        target |= asSet(uniPropMe);
+        target |= asSet(uniProps.Mn);
+        target |= asSet(uniProps.Mc);
+        target |= asSet(uniProps.Me);
 
-        target |= asSet(uniPropNd);
-        target |= asSet(uniPropNl);
-        target |= asSet(uniPropNo);
+        target |= asSet(uniProps.Nd);
+        target |= asSet(uniProps.Nl);
+        target |= asSet(uniProps.No);
 
-        target |= asSet(uniPropPc);
-        target |= asSet(uniPropPd);
-        target |= asSet(uniPropPs);
-        target |= asSet(uniPropPe);
-        target |= asSet(uniPropPi);
-        target |= asSet(uniPropPf);
-        target |= asSet(uniPropPo);
+        target |= asSet(uniProps.Pc);
+        target |= asSet(uniProps.Pd);
+        target |= asSet(uniProps.Ps);
+        target |= asSet(uniProps.Pe);
+        target |= asSet(uniProps.Pi);
+        target |= asSet(uniProps.Pf);
+        target |= asSet(uniProps.Po);
 
-        target |= asSet(uniPropZs);
+        target |= asSet(uniProps.Zs);
 
-        target |= asSet(uniPropSm);
-        target |= asSet(uniPropSc);
-        target |= asSet(uniPropSk);
-        target |= asSet(uniPropSo);
+        target |= asSet(uniProps.Sm);
+        target |= asSet(uniProps.Sc);
+        target |= asSet(uniProps.Sk);
+        target |= asSet(uniProps.So);
     }
     else if(ucmp(name, "any") == 0)
         target = Set(0,0x110000);
     else if(ucmp(name, "ascii") == 0)
         target = Set(0,0x80);
     else
-        return loadUnicodeSet!propsTab(name, target);
+        return loadUnicodeSet!(uniProps.tab)(name, target);
     return true;
 }
 
@@ -4847,7 +4852,7 @@ template SetSearcher(alias table, string kind)
     */
     struct block
     {
-        mixin SetSearcher!(blocksTab, "block");
+        mixin SetSearcher!(blocks.tab, "block");
     }
 
     /**
@@ -4871,7 +4876,7 @@ template SetSearcher(alias table, string kind)
     */
     struct script
     {
-        mixin SetSearcher!(scriptsTab, "script");
+        mixin SetSearcher!(scripts.tab, "script");
     }
 
     /**
@@ -4897,7 +4902,7 @@ template SetSearcher(alias table, string kind)
     */
     struct hangulSyllableType
     {
-        mixin SetSearcher!(hangulTab, "hangul syllable type");
+        mixin SetSearcher!(hangul.tab, "hangul syllable type");
     }
 
 private:
@@ -4906,16 +4911,16 @@ private:
     static bool findAny(string name)
     {
         return isPrettyPropertyName(name)
-            || findSetName!propsTab(name) || findSetName!scriptsTab(name)
-            || (ucmp(name[0..2],"In") == 0 && findSetName!blocksTab(name[2..$]));
+            || findSetName!(uniProps.tab)(name) || findSetName!(scripts.tab)(name)
+            || (ucmp(name[0..2],"In") == 0 && findSetName!(blocks.tab)(name[2..$]));
     }
 
     static auto loadAny(Set=CodepointSet, C)(in C[] name)
     {
         Set set;
-        bool loaded = loadProperty(name, set) || loadUnicodeSet!scriptsTab(name, set)
+        bool loaded = loadProperty(name, set) || loadUnicodeSet!(scripts.tab)(name, set)
             || (ucmp(name[0..2],"In") == 0
-                && loadUnicodeSet!blocksTab(name[2..$], set));
+                && loadUnicodeSet!(blocks.tab)(name[2..$], set));
         if(loaded)
             return set;
         throw new Exception("No unicode set by name "~name.to!string()~" was found.");
@@ -4967,9 +4972,9 @@ unittest
 
 unittest
 {
-    assert(unicode("InHebrew") == asSet(blockHebrew));
-    assert(unicode("separator") == (asSet(uniPropZs) | asSet(uniPropZl) | asSet(uniPropZp)));
-    assert(unicode("In-Kharoshthi") == asSet(blockKharoshthi));
+    assert(unicode("InHebrew") == asSet(blocks.Hebrew));
+    assert(unicode("separator") == (asSet(uniProps.Zs) | asSet(uniProps.Zl) | asSet(uniProps.Zp)));
+    assert(unicode("In-Kharoshthi") == asSet(blocks.Kharoshthi));
 }
 
 enum EMPTY_CASE_TRIE = ushort.max;// from what gen_uni uses internally
@@ -4988,8 +4993,8 @@ private static bool isRegionalIndicator(dchar ch)
 
 template genericDecodeGrapheme(bool getValue)
 {
-    static immutable graphemeExtend = asTrie(graphemeExtendTrieEntries);
-    static immutable spacingMark = asTrie(mcTrieEntries);
+    alias graphemeExtend = graphemeExtendTrie;
+    alias spacingMark = mcTrie;
     static if(getValue)
         alias Grapheme Value;
     else
@@ -5544,10 +5549,11 @@ unittest
     assert(icmp("ΌΎ", "όύ") == 0);
     ---
 +/
-int sicmp(C1, C2)(const(C1)[] str1, const(C2)[] str2)
+int sicmp(S1, S2)(S1 str1, S2 str2)
+    if(isForwardRange!S1 && is(Unqual!(ElementType!S1) == dchar)
+    && isForwardRange!S2 && is(Unqual!(ElementType!S2) == dchar))
 {
-    static immutable simpleCaseTrie = asTrie(simpleCaseTrieEntries);
-    static immutable sTable = simpleCaseTable;
+    alias sTable = simpleCaseTable;
     size_t ridx=0;
     foreach(dchar lhs; str1)
     {
@@ -5584,11 +5590,21 @@ int sicmp(C1, C2)(const(C1)[] str1, const(C2)[] str2)
     }
     return ridx == str2.length ? 0 : -1;
 }
+// overloads for the most common cases to reduce compile time
+@safe pure /*TODO nothrow*/
+{
+    int sicmp(const(char)[] str1, const(char)[] str2)
+    { return sicmp!(const(char)[], const(char)[])(str1, str2); }
+    int sicmp(const(wchar)[] str1, const(wchar)[] str2)
+    { return sicmp!(const(wchar)[], const(wchar)[])(str1, str2); }
+    int sicmp(const(dchar)[] str1, const(dchar)[] str2)
+    { return sicmp!(const(dchar)[], const(dchar)[])(str1, str2); }
+}
 
 private int fullCasedCmp(Range)(dchar lhs, dchar rhs, ref Range rtail)
+    @trusted pure /*TODO nothrow*/
 {
-    static immutable fullCaseTrie = asTrie(fullCaseTrieEntries);
-    static immutable fTable = fullCaseTable;
+    alias fTable = fullCaseTable;
     size_t idx = fullCaseTrie[lhs];
     // fullCaseTrie is packed index table
     if(idx == EMPTY_CASE_TRIE)
@@ -5598,16 +5614,17 @@ private int fullCasedCmp(Range)(dchar lhs, dchar rhs, ref Range rtail)
     assert(fTable[start].entry_len == 1);
     for(idx=start; idx<end; idx++)
     {
-        if(fTable[idx].entry_len == 1)
+        auto entryLen = fTable[idx].entry_len;
+        if(entryLen == 1)
         {
-            if(fTable[idx].ch == rhs)
+            if(fTable[idx].seq[0] == rhs)
             {
                 return 0;
             }
         }
         else
         {// OK it's a long chunk, like 'ss' for German
-            dstring seq = fTable[idx].seq;
+            dstring seq = fTable[idx].seq[0..entryLen];
             if(rhs == seq[0]
                 && rtail.skipOver(seq[1..$]))
             {
@@ -5617,7 +5634,7 @@ private int fullCasedCmp(Range)(dchar lhs, dchar rhs, ref Range rtail)
             }
         }
     }
-    return fTable[start].ch; // new remapped character for accurate diffs
+    return fTable[start].seq[0]; // new remapped character for accurate diffs
 }
 
 /++
@@ -5665,6 +5682,16 @@ int icmp(S1, S2)(S1 str1, S2 str2)
         diff = cmpLR - cmpRL;
         return diff;
     }
+}
+// overloads for the most common cases to reduce compile time
+@safe pure /*TODO nothrow*/
+{
+    int icmp(const(char)[] str1, const(char)[] str2)
+    { return icmp!(const(char)[], const(char)[])(str1, str2); }
+    int icmp(const(wchar)[] str1, const(wchar)[] str2)
+    { return icmp!(const(wchar)[], const(wchar)[])(str1, str2); }
+    int icmp(const(dchar)[] str1, const(dchar)[] str2)
+    { return icmp!(const(dchar)[], const(dchar)[])(str1, str2); }
 }
 
 unittest
@@ -5722,7 +5749,6 @@ unittest
 +/
 ubyte combiningClass(dchar ch)
 {
-    static immutable combiningClassTrie = asTrie(combiningClassTrieEntries);
     return combiningClassTrie[ch];
 }
 
@@ -5779,7 +5805,7 @@ enum {
 +/
 public dchar compose(dchar first, dchar second)
 {
-    static immutable compositionJumpTrie = asTrie(compositionJumpTrieEntries);
+    import std.internal.unicode_comp;
     size_t packed = compositionJumpTrie[first];
     if(packed == ushort.max)
         return dchar.init;
@@ -5821,15 +5847,16 @@ public dchar compose(dchar first, dchar second)
 +/
 public Grapheme decompose(UnicodeDecomposition decompType=Canonical)(dchar ch)
 {
+    import std.internal.unicode_decomp;
     static if(decompType == Canonical)
     {
-        static immutable table = decompCanonTable;
-        static immutable mapping = asTrie(canonMappingTrieEntries);
+        alias table = decompCanonTable;
+        alias mapping = canonMappingTrie;
     }
     else static if(decompType == Compatibility)
     {
-        static immutable table = decompCompatTable;
-        static immutable mapping = asTrie(compatMappingTrieEntries);
+        alias table = decompCompatTable;
+        alias mapping = compatMappingTrie;
     }
     ushort idx = mapping[ch];
     if(!idx) // not found, check hangul arithmetic decomposition
@@ -6295,13 +6322,13 @@ public bool allowedIn(NormalizationForm norm)(dchar ch)
 private bool notAllowedIn(NormalizationForm norm)(dchar ch)
 {
     static if(norm == NFC)
-        static immutable qcTrie = asTrie(nfcQCTrieEntries);
+        alias qcTrie = nfcQCTrie;
     else static if(norm == NFD)
-        static immutable qcTrie = asTrie(nfdQCTrieEntries);
+        alias qcTrie = nfdQCTrie;
     else static if(norm == NFKC)
-        static immutable qcTrie = asTrie(nfkcQCTrieEntries);
+        alias qcTrie = nfkcQCTrie;
     else static if(norm == NFKD)
-        static immutable qcTrie = asTrie(nfkdQCTrieEntries);
+        alias qcTrie = nfkdQCTrie;
     else
         static assert("Unknown normalization form "~norm);
     return qcTrie[ch];
@@ -6338,7 +6365,7 @@ else
 @trusted pure nothrow
 ushort toLowerIndex(dchar c)
 {
-    static immutable trie = asTrie(toLowerIndexTrieEntries);
+    alias trie = toLowerIndexTrie;
     return trie[c];
 }
 
@@ -6346,15 +6373,14 @@ ushort toLowerIndex(dchar c)
 @trusted pure nothrow
 dchar toLowerTab(size_t idx)
 {
-    static immutable tab = toLowerTable;
-    return tab[idx];
+    return toLowerTable[idx];
 }
 
 // trusted -> avoid bounds check
 @trusted pure nothrow
 ushort toTitleIndex(dchar c)
 {
-    static immutable trie = asTrie(toTitleIndexTrieEntries);
+    alias trie = toTitleIndexTrie;
     return trie[c];
 }
 
@@ -6362,15 +6388,14 @@ ushort toTitleIndex(dchar c)
 @trusted pure nothrow
 dchar toTitleTab(size_t idx)
 {
-    static immutable tab = toTitleTable;
-    return tab[idx];
+    return toTitleTable[idx];
 }
 
 // trusted -> avoid bounds check
 @trusted pure nothrow
 ushort toUpperIndex(dchar c)
 {
-    static immutable trie = asTrie(toUpperIndexTrieEntries);
+    alias trie = toUpperIndexTrie;
     return trie[c];
 }
 
@@ -6378,8 +6403,7 @@ ushort toUpperIndex(dchar c)
 @trusted pure nothrow
 dchar toUpperTab(size_t idx)
 {
-    static immutable tab = toUpperTable;
-    return tab[idx];
+    return toUpperTable[idx];
 }
 
 public:
@@ -6409,7 +6433,6 @@ bool isLower(dchar c)
 {
     if(std.ascii.isASCII(c))
         return std.ascii.isLower(c);
-    static immutable lowerCaseTrie = asTrie(lowerCaseTrieEntries);
     return lowerCaseTrie[c];
 }
 
@@ -6448,7 +6471,6 @@ bool isUpper(dchar c)
 {
     if(std.ascii.isASCII(c))
         return std.ascii.isUpper(c);
-    static immutable upperCaseTrie = asTrie(upperCaseTrieEntries);
     return upperCaseTrie[c];
 }
 
@@ -6487,7 +6509,7 @@ dchar toUniLower(dchar c)
     upper-lower mapping. Use overload of toLower which takes full string instead.
 +/
 @safe pure nothrow
-dchar toLower()(dchar c)
+dchar toLower(dchar c)
 {
      // optimize ASCII case
     if(c < 0xAA)
@@ -6823,6 +6845,16 @@ void toLowerInPlace(C)(ref C[] s) @trusted pure
 {
     toCaseInPlace!(LowerTriple)(s);
 }
+// overloads for the most common cases to reduce compile time
+@safe pure /*TODO nothrow*/
+{
+    void toLowerInPlace(ref char[] s)
+    { toLowerInPlace!char(s); }
+    void toLowerInPlace(ref wchar[] s)
+    { toLowerInPlace!wchar(s); }
+    void toLowerInPlace(ref dchar[] s)
+    { toLowerInPlace!dchar(s); }
+}
 
 /++
     Converts $(D s) to uppercase  (by performing Unicode uppercase mapping) in place.
@@ -6835,6 +6867,16 @@ void toUpperInPlace(C)(ref C[] s) @trusted pure
 {
     toCaseInPlace!(UpperTriple)(s);
 }
+// overloads for the most common cases to reduce compile time/code size
+@safe pure /*TODO nothrow*/
+{
+    void toUpperInPlace(ref char[] s)
+    { toUpperInPlace!char(s); }
+    void toUpperInPlace(ref wchar[] s)
+    { toUpperInPlace!wchar(s); }
+    void toUpperInPlace(ref dchar[] s)
+    { toUpperInPlace!dchar(s); }
+}
 
 /++
     Returns a string which is identical to $(D s) except that all of its
@@ -6845,6 +6887,16 @@ S toLower(S)(S s) @trusted pure
     if(isSomeString!S)
 {
     return toCase!(LowerTriple)(s);
+}
+// overloads for the most common cases to reduce compile time
+@safe pure /*TODO nothrow*/
+{
+    string toLower(string s)
+    { return toLower!string(s); }
+    wstring toLower(wstring s)
+    { return toLower!wstring(s); }
+    dstring toLower(dstring s)
+    { return toLower!dstring(s); }
 }
 
 
@@ -6933,7 +6985,7 @@ dchar toUniUpper(dchar c)
     upper-lower mapping. Use overload of toUpper which takes full string instead.
 +/
 @safe pure nothrow
-dchar toUpper()(dchar c)
+dchar toUpper(dchar c)
 {
     // optimize ASCII case
     if(c < 0xAA)
@@ -6975,6 +7027,16 @@ S toUpper(S)(S s) @trusted pure
     if(isSomeString!S)
 {
     return toCase!(UpperTriple)(s);
+}
+// overloads for the most common cases to reduce compile time
+@safe pure /*TODO nothrow*/
+{
+    string toUpper(string s)
+    { return toUpper!string(s); }
+    wstring toUpper(wstring s)
+    { return toUpper!wstring(s); }
+    dstring toUpper(dstring s)
+    { return toUpper!dstring(s); }
 }
 
 unittest
@@ -7090,7 +7152,6 @@ bool isAlpha(dchar c)
         return false;
     }
 
-    static immutable alphaTrie = asTrie(alphaTrieEntries);
     return alphaTrie[c];
 }
 
@@ -7111,7 +7172,6 @@ bool isAlpha(dchar c)
 @safe pure nothrow
 bool isMark(dchar c)
 {
-    static immutable markTrie = asTrie(markTrieEntries);
     return markTrie[c];
 }
 
@@ -7131,7 +7191,6 @@ bool isMark(dchar c)
 @safe pure nothrow
 bool isNumber(dchar c)
 {
-    static immutable numberTrie = asTrie(numberTrieEntries);
     return numberTrie[c];
 }
 
@@ -7152,7 +7211,6 @@ bool isNumber(dchar c)
 @safe pure nothrow
 bool isPunctuation(dchar c)
 {
-    static immutable punctuationTrie = asTrie(punctuationTrieEntries);
     return punctuationTrie[c];
 }
 
@@ -7176,7 +7234,6 @@ unittest
 @safe pure nothrow
 bool isSymbol(dchar c)
 {
-   static immutable symbolTrie = asTrie(symbolTrieEntries);
    return symbolTrie[c];
 }
 
@@ -7222,7 +7279,6 @@ unittest
 @safe pure nothrow
 bool isGraphical(dchar c)
 {
-    static immutable graphicalTrie = asTrie(graphicalTrieEntries);
     return graphicalTrie[c];
 }
 
@@ -7330,7 +7386,6 @@ bool isSurrogateLo(dchar c)
 @safe pure nothrow
 bool isNonCharacter(dchar c)
 {
-    static immutable nonCharacterTrie = asTrie(nonCharacterTrieEntries);
     return nonCharacterTrie[c];
 }
 
@@ -7350,19 +7405,122 @@ private:
     return CodepointSet(decompressIntervals(compressed));
 }
 
-auto asTrie(T...)(in TrieEntry!T e)
+@safe pure nothrow auto asTrie(T...)(in TrieEntry!T e)
 {
     return const(CodepointTrie!T)(e.offsets, e.sizes, e.data);
 }
 
-// TODO: move sets below to Tries
-__gshared CodepointSet hangLV;
-__gshared CodepointSet hangLVT;
-
-shared static this()
+@safe pure nothrow @property
 {
-    hangLV = asSet(hangulLV);
-    hangLVT = asSet(hangulLVT);
+    // It's important to use auto return here, so that the compiler
+    // only runs semantic on the return type if the function gets
+    // used. Also these are functions rather than templates to not
+    // increase the object size of the caller.
+    auto lowerCaseTrie() { static immutable res = asTrie(lowerCaseTrieEntries); return res; }
+    auto upperCaseTrie() { static immutable res = asTrie(upperCaseTrieEntries); return res; }
+    auto simpleCaseTrie() { static immutable res = asTrie(simpleCaseTrieEntries); return res; }
+    auto fullCaseTrie() { static immutable res = asTrie(fullCaseTrieEntries); return res; }
+    auto alphaTrie() { static immutable res = asTrie(alphaTrieEntries); return res; }
+    auto markTrie() { static immutable res = asTrie(markTrieEntries); return res; }
+    auto numberTrie() { static immutable res = asTrie(numberTrieEntries); return res; }
+    auto punctuationTrie() { static immutable res = asTrie(punctuationTrieEntries); return res; }
+    auto symbolTrie() { static immutable res = asTrie(symbolTrieEntries); return res; }
+    auto graphicalTrie() { static immutable res = asTrie(graphicalTrieEntries); return res; }
+    auto nonCharacterTrie() { static immutable res = asTrie(nonCharacterTrieEntries); return res; }
+
+    //normalization quick-check tables
+    auto nfcQCTrie()
+    {
+        import std.internal.unicode_norm;
+        static immutable res = asTrie(nfcQCTrieEntries);
+        return res;
+    }
+
+    auto nfdQCTrie()
+    {
+        import std.internal.unicode_norm;
+        static immutable res = asTrie(nfdQCTrieEntries);
+        return res;
+    }
+
+    auto nfkcQCTrie()
+    {
+        import std.internal.unicode_norm;
+        static immutable res = asTrie(nfkcQCTrieEntries);
+        return res;
+    }
+
+    auto nfkdQCTrie()
+    {
+        import std.internal.unicode_norm;
+        static immutable res = asTrie(nfkdQCTrieEntries);
+        return res;
+    }
+
+    //grapheme breaking algorithm tables
+    auto mcTrie()
+    {
+        import std.internal.unicode_grapheme;
+        static immutable res = asTrie(mcTrieEntries);
+        return res;
+    }
+
+    auto graphemeExtendTrie()
+    {
+        import std.internal.unicode_grapheme;
+        static immutable res = asTrie(graphemeExtendTrieEntries);
+        return res;
+    }
+
+    auto hangLV()
+    {
+        import std.internal.unicode_grapheme;
+        static immutable res = asTrie(hangulLVTrieEntries);
+        return res; 
+    }
+    
+    auto hangLVT()
+    {
+        import std.internal.unicode_grapheme;
+        static immutable res = asTrie(hangulLVTTrieEntries);
+        return res;
+    }
+
+    // tables below are used for composition/decomposition
+    auto combiningClassTrie() 
+    { 
+        import std.internal.unicode_comp;
+        static immutable res = asTrie(combiningClassTrieEntries); 
+        return res; 
+    }
+
+    auto compatMappingTrie()
+    { 
+        import std.internal.unicode_decomp;
+        static immutable res = asTrie(compatMappingTrieEntries); 
+        return res; 
+    }
+
+    auto canonMappingTrie()
+    { 
+        import std.internal.unicode_decomp;
+        static immutable res = asTrie(canonMappingTrieEntries);
+        return res; 
+    }
+
+    auto compositionJumpTrie()
+    {
+        import std.internal.unicode_comp;
+        static immutable res = asTrie(compositionJumpTrieEntries);
+        return res;
+    }
+
+    //case conversion tables
+    auto toUpperIndexTrie() { static immutable res = asTrie(toUpperIndexTrieEntries); return res; }
+    auto toLowerIndexTrie() { static immutable res = asTrie(toLowerIndexTrieEntries); return res; }
+    auto toTitleIndexTrie() { static immutable res = asTrie(toTitleIndexTrieEntries); return res; }
+
+
 }
 
 }// version(!std_uni_bootstrap)
