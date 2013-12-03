@@ -569,7 +569,7 @@ convert_for_condition (tree expr, Type *type)
     {
     case Taarray:
       // Shouldn't this be...
-      //  result = build_libcall (LIBCALL_AALEN, 1, &expr);
+      //  result = _aaLen (&expr);
       result = component_ref (expr, TYPE_FIELDS (TREE_TYPE (expr)));
       break;
 
@@ -2078,21 +2078,11 @@ d_assert_call (Loc loc, LibCall libcall, tree msg)
 // List kept in ascii collating order to allow binary search
 
 static const char *libcall_ids[LIBCALL_count] = {
-    /*"_d_invariant",*/ "_D9invariant12_d_invariantFC6ObjectZv",
-    "_aApplyRcd1", "_aApplyRcd2", "_aApplyRcw1", "_aApplyRcw2",
-    "_aApplyRdc1", "_aApplyRdc2", "_aApplyRdw1", "_aApplyRdw2",
-    "_aApplyRwc1", "_aApplyRwc2", "_aApplyRwd1", "_aApplyRwd2",
-    "_aApplycd1", "_aApplycd2", "_aApplycw1", "_aApplycw2",
-    "_aApplydc1", "_aApplydc2", "_aApplydw1", "_aApplydw2",
-    "_aApplywc1", "_aApplywc2", "_aApplywd1", "_aApplywd2",
-    "_aaApply", "_aaApply2",
+    "_D9invariant12_d_invariantFC6ObjectZv",
     "_aaDelX", "_aaEqual",
     "_aaGetRvalueX", "_aaGetX",
-    "_aaInX", "_aaLen",
-    "_adCmp", "_adCmp2",
-    "_adDupT", "_adEq", "_adEq2",
-    "_adReverse", "_adReverseChar", "_adReverseWchar",
-    "_adSort", "_adSortChar", "_adSortWchar",
+    "_aaInX",
+    "_adCmp2", "_adEq2",
     "_d_allocmemory", "_d_array_bounds",
     "_d_arrayappendT", "_d_arrayappendcTX",
     "_d_arrayappendcd", "_d_arrayappendwd",
@@ -2105,11 +2095,9 @@ static const char *libcall_ids[LIBCALL_count] = {
     "_d_assert", "_d_assert_msg",
     "_d_assocarrayliteralTX",
     "_d_callfinalizer", "_d_callinterfacefinalizer",
-    "_d_criticalenter", "_d_criticalexit",
     "_d_delarray", "_d_delarray_t", "_d_delclass",
     "_d_delinterface", "_d_delmemory",
     "_d_dynamic_cast", "_d_hidden_func", "_d_interface_cast",
-    "_d_monitorenter", "_d_monitorexit",
     "_d_newarrayT", "_d_newarrayiT",
     "_d_newarraymTX", "_d_newarraymiTX",
     "_d_newclass", "_d_newitemT", "_d_newitemiT",
@@ -2129,9 +2117,7 @@ get_libcall (LibCall libcall)
 {
   FuncDeclaration *decl = libcall_decls[libcall];
 
-  static Type *aa_type = NULL;
-  static Type *dg_type = NULL;
-  static Type *dg2_type = NULL;
+  static Type *aatype = NULL;
 
   if (!decl)
     {
@@ -2140,27 +2126,8 @@ get_libcall (LibCall libcall)
       bool varargs = false;
 
       // Build generic AA type void*[void*]
-      if (aa_type == NULL)
-	aa_type = new TypeAArray (Type::tvoidptr, Type::tvoidptr);
-
-      // Build generic delegate type int(void*)
-      if (dg_type == NULL)
-	{
-	  Parameters *fn_parms = new Parameters;
-	  fn_parms->push (new Parameter (STCin, Type::tvoidptr, NULL, NULL));
-	  Type *fn_type = new TypeFunction (fn_parms, Type::tint32, false, LINKd);
-	  dg_type = new TypeDelegate (fn_type);
-	}
-
-      // Build generic delegate type int(void*, void*)
-      if (dg2_type == NULL)
-	{
-	  Parameters *fn_parms = new Parameters;
-	  fn_parms->push (new Parameter (STCin, Type::tvoidptr, NULL, NULL));
-	  fn_parms->push (new Parameter (STCin, Type::tvoidptr, NULL, NULL));
-	  Type *fn_type = new TypeFunction (fn_parms, Type::tint32, false, LINKd);
-	  dg2_type = new TypeDelegate (fn_type);
-	}
+      if (aatype == NULL)
+	aatype = new TypeAArray (Type::tvoidptr, Type::tvoidptr);
 
       switch (libcall)
 	{
@@ -2258,9 +2225,7 @@ get_libcall (LibCall libcall)
 	  treturn = build_object_type ();
 	  break;
 
-	case LIBCALL_ADEQ:
 	case LIBCALL_ADEQ2:
-	case LIBCALL_ADCMP:
 	case LIBCALL_ADCMP2:
 	  targs.push (Type::tvoid->arrayOf());
 	  targs.push (Type::tvoid->arrayOf());
@@ -2270,25 +2235,20 @@ get_libcall (LibCall libcall)
 
 	case LIBCALL_AAEQUAL:
 	  targs.push (Type::dtypeinfo->type->constOf());
-	  targs.push (aa_type);
-	  targs.push (aa_type);
+	  targs.push (aatype);
+	  targs.push (aatype);
 	  treturn = Type::tint32;
 	  break;
 
-	case LIBCALL_AALEN:
-	  targs.push (aa_type);
-	  treturn = Type::tsize_t;
-	  break;
-
 	case LIBCALL_AAINX:
-	  targs.push (aa_type);
+	  targs.push (aatype);
 	  targs.push (Type::dtypeinfo->type->constOf());
 	  targs.push (Type::tvoidptr);
 	  treturn = Type::tvoidptr;
 	  break;
 
 	case LIBCALL_AAGETX:
-	  targs.push (aa_type->pointerTo());
+	  targs.push (aatype->pointerTo());
 	  targs.push (Type::dtypeinfo->type->constOf());
 	  targs.push (Type::tsize_t);
 	  targs.push (Type::tvoidptr);
@@ -2296,7 +2256,7 @@ get_libcall (LibCall libcall)
 	  break;
 
 	case LIBCALL_AAGETRVALUEX:
-	  targs.push (aa_type);
+	  targs.push (aatype);
 	  targs.push (Type::dtypeinfo->type->constOf());
 	  targs.push (Type::tsize_t);
 	  targs.push (Type::tvoidptr);
@@ -2304,7 +2264,7 @@ get_libcall (LibCall libcall)
 	  break;
 
 	case LIBCALL_AADELX:
-	  targs.push (aa_type);
+	  targs.push (aatype);
 	  targs.push (Type::dtypeinfo->type->constOf());
 	  targs.push (Type::tvoidptr);
 	  treturn = Type::tbool;
@@ -2382,16 +2342,9 @@ get_libcall (LibCall libcall)
 	  treturn = Type::tvoidptr;
 	  break;
 
-	case LIBCALL_MONITORENTER:
-	case LIBCALL_MONITOREXIT:
 	case LIBCALL_THROW:
 	case LIBCALL_INVARIANT:
 	  targs.push (build_object_type ());
-	  break;
-
-	case LIBCALL_CRITICALENTER:
-	case LIBCALL_CRITICALEXIT:
-	  targs.push (Type::tvoidptr);
 	  break;
 
 	case LIBCALL_SWITCH_USTRING:
@@ -2411,6 +2364,7 @@ get_libcall (LibCall libcall)
 	  targs.push (Type::tchar->arrayOf());
 	  treturn = Type::tint32;
 	  break;
+
 	case LIBCALL_ASSOCARRAYLITERALTX:
 	  targs.push (Type::dtypeinfo->type->constOf());
 	  targs.push (Type::tvoid->arrayOf());
@@ -2422,104 +2376,6 @@ get_libcall (LibCall libcall)
 	  targs.push (Type::dtypeinfo->type->constOf());
 	  targs.push (Type::tsize_t);
 	  treturn = Type::tvoidptr;
-	  break;
-
-	case LIBCALL_ADSORTCHAR:
-	case LIBCALL_ADREVERSECHAR:
-	  targs.push (Type::tchar->arrayOf());
-	  treturn = Type::tchar->arrayOf();
-	  break;
-
-	case LIBCALL_ADSORTWCHAR:
-	case LIBCALL_ADREVERSEWCHAR:
-	  targs.push (Type::twchar->arrayOf());
-	  treturn = Type::twchar->arrayOf();
-	  break;
-
-	case LIBCALL_ADDUPT:
-	  targs.push (Type::dtypeinfo->type->constOf());
-	  targs.push (Type::tvoid->arrayOf());
-	  treturn = Type::tvoid->arrayOf();
-	  break;
-
-	case LIBCALL_ADREVERSE:
-	  targs.push (Type::tvoid->arrayOf());
-	  targs.push (Type::tsize_t);
-	  treturn = Type::tvoid->arrayOf();
-	  break;
-
-	case LIBCALL_ADSORT:
-	  targs.push (Type::tvoid->arrayOf());
-	  targs.push (Type::dtypeinfo->type->constOf());
-	  treturn = Type::tvoid->arrayOf();
-	  break;
-
-	case LIBCALL_AAAPPLY:
-	  targs.push (aa_type);
-	  targs.push (Type::tsize_t);
-	  targs.push (dg_type);
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_AAAPPLY2:
-	  targs.push (aa_type);
-	  targs.push (Type::tsize_t);
-	  targs.push (dg2_type);
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_AAPPLYCD1:
-	case LIBCALL_AAPPLYCW1:
-	case LIBCALL_AAPPLYRCD1:
-	case LIBCALL_AAPPLYRCW1:
-	  targs.push (Type::tchar->arrayOf());
-	  targs.push (dg_type);
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_AAPPLYCD2:
-	case LIBCALL_AAPPLYCW2:
-	case LIBCALL_AAPPLYRCD2:
-	case LIBCALL_AAPPLYRCW2:
-	  targs.push (Type::tchar->arrayOf());
-	  targs.push (dg2_type);
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_AAPPLYDC1:
-	case LIBCALL_AAPPLYDW1:
-	case LIBCALL_AAPPLYRDC1:
-	case LIBCALL_AAPPLYRDW1:
-	  targs.push (Type::tdchar->arrayOf());
-	  targs.push (dg_type);
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_AAPPLYDC2:
-	case LIBCALL_AAPPLYDW2:
-	case LIBCALL_AAPPLYRDC2:
-	case LIBCALL_AAPPLYRDW2:
-	  targs.push (Type::tdchar->arrayOf());
-	  targs.push (dg2_type);
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_AAPPLYWC1:
-	case LIBCALL_AAPPLYWD1:
-	case LIBCALL_AAPPLYRWC1:
-	case LIBCALL_AAPPLYRWD1:
-	  targs.push (Type::twchar->arrayOf());
-	  targs.push (dg_type);
-	  treturn = Type::tint32;
-	  break;
-
-	case LIBCALL_AAPPLYWC2:
-	case LIBCALL_AAPPLYWD2:
-	case LIBCALL_AAPPLYRWC2:
-	case LIBCALL_AAPPLYRWD2:
-	  targs.push (Type::twchar->arrayOf());
-	  targs.push (dg2_type);
-	  treturn = Type::tint32;
 	  break;
 
 	case LIBCALL_HIDDEN_FUNC:
@@ -2902,15 +2758,9 @@ maybe_set_builtin_frontend (FuncDeclaration *decl)
       if (libcall_decls[libcall] == decl)
 	return;
 
+      // This should have been done either by the front-end or get_libcall.
       TypeFunction *tf = (TypeFunction *) decl->type;
-      if (tf->parameters == NULL)
-	{
-	  FuncDeclaration *new_decl = get_libcall (libcall);
-	  new_decl->toSymbol();
-
-	  decl->type = new_decl->type;
-	  decl->csym = new_decl->csym;
-	}
+      gcc_assert (tf->parameters != NULL);
 
       libcall_decls[libcall] = decl;
     }
