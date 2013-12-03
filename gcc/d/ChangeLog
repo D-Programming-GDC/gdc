@@ -6,6 +6,12 @@
 	templates if -femit-templates or -fdebug was passed to the compiler.
 	* d-objfile.h(TemplateEmission): Define TEallinst.
 	* d-todt.cc(StructDeclaration::toDt): Update for frontend changes.
+	* d-spec.cc(THREAD_LIBRARY): Define default thread library to link if
+	one is not already specified in the configuration process.
+	(TIME_LIBRARY): Define default real time library to link if one is not
+	already specified in the configuration process.
+	(LIBSTDCXX): Define C++ library to link if compiling C++ and D sources.
+	(lang_specific_driver): Update implementation to use new macros.
 
 2013-12-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 

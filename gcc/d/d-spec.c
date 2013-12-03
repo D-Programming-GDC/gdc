@@ -26,18 +26,18 @@
 #include "gcc.h"
 #include "opts.h"
 
-/* This bit is set if we saw a `-xfoo' language specification.  */
-#define LANGSPEC	(1<<1)
+/* This bit is set if the arguments is a D source file. */
+#define DSOURCE 	(1<<1)
 /* This bit is set if they did `-lm' or `-lmath'.  */
 #define MATHLIB		(1<<2)
 /* This bit is set if they did `-lpthread'.  */
 #define WITHTHREAD	(1<<3)
-/* This bit is set if they did `-lrt'.  */
-#define TIMERLIB	(1<<4)
-/* This bit is set if they did `-lc'.  */
+ /* This bit is set if they did `-lrt'.  */
+#define TIMELIB		(1<<4)
+/* this bit is set if they did `-lstdc++'.  */
+#define WITHLIBCXX	(1<<5)
+/* this bit is set if they did `-lc'.  */
 #define WITHLIBC	(1<<6)
-/* This bit is set if the arguments is a D source file. */
-#define D_SOURCE_FILE	(1<<7)
 /* This bit is set when the argument should not be passed to gcc or the backend */
 #define SKIPOPT		(1<<8)
 
@@ -48,6 +48,21 @@
 #define MATH_LIBRARY_PROFILE MATH_LIBRARY
 #endif
 
+#ifndef THREAD_LIBRARY
+#define THREAD_LIBRARY "pthread"
+#endif
+
+#ifndef TIME_LIBRARY
+#define TIME_LIBRARY "rt"
+#endif
+
+#ifndef LIBSTDCXX
+#define LIBSTDCXX "stdc++"
+#endif
+#ifndef LIBSTDCXX_PROFILE
+#define LIBSTDCXX_PROFILE LIBSTDCXX
+#endif
+
 #ifndef LIBPHOBOS
 #define LIBPHOBOS "gphobos"
 #endif
@@ -55,12 +70,6 @@
 #define LIBPHOBOS_PROFILE LIBPHOBOS
 #endif
 
-/* mingw and cygwin don't have pthread. %% TODO: check darwin.  */
-#if TARGET_WINDOS || TARGET_OSX || TARGET_ANDROID_D
-#define USE_PTHREADS	0
-#else
-#define USE_PTHREADS	1
-#endif
 
 void
 lang_specific_driver (cl_decoded_option **in_decoded_options,
@@ -101,29 +110,35 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   const cl_decoded_option *saw_thread = 0;
 
   /* "-lrt" if it appears on the command line.  */
-  const cl_decoded_option *saw_librt = 0;
+  const cl_decoded_option *saw_time = 0;
 
   /* "-lc" if it appears on the command line.  */
   const cl_decoded_option *saw_libc = 0;
 
+  /* "-lstdc++" if it appears on the command line.  */
+  const cl_decoded_option *saw_libcxx = 0;
+
   /* An array used to flag each argument that needs a bit set for
-     LANGSPEC, MATHLIB, WITHTHREAD, or WITHLIBC.  */
+     DSOURCE, MATHLIB, WITHTHREAD, WITHLIBC or WITHLIBCXX.  */
   int *args;
 
-  /* Whether we need the thread library.  */
-  int need_thread = 0;
+  /* Whether we need the C++ STD library.  */
+  int need_stdcxx = 0;
 
   /* By default, we throw on the math library if we have one.  */
   int need_math = (MATH_LIBRARY[0] != '\0');
+
+  /* Whether we need the thread library.  */
+  int need_thread = (THREAD_LIBRARY[0] != '\0');
+
+  /* By default, we throw on the time library if we have one.  */
+  int need_time = (TIME_LIBRARY[0] != '\0');
 
   /* True if we saw -static. */
   int static_link = 0;
 
   /* True if we should add -shared-libgcc to the command-line.  */
   int shared_libgcc = 1;
-
-  /* True if libphobos should be linked statically.  */
-  int static_phobos = 1;
 
   /* The total number of arguments with the new stuff.  */
   int argc;
@@ -206,17 +221,28 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_l:
-	  if (strcmp (arg, "m") == 0
-	      || strcmp (arg, "math") == 0
-	      || strcmp (arg, MATH_LIBRARY) == 0)
+	  if ((strcmp (arg, LIBSTDCXX) == 0)
+	      || (strcmp (arg, LIBSTDCXX_PROFILE) == 0))
+	    {
+	      args[i] |= WITHLIBCXX;
+	      need_stdcxx = 0;
+	    }
+	  else if ((strcmp (arg, MATH_LIBRARY) == 0)
+		   || (strcmp (arg, MATH_LIBRARY_PROFILE) == 0))
 	    {
 	      args[i] |= MATHLIB;
 	      need_math = 0;
 	    }
-	  else if (strcmp (arg, "pthread") == 0)
-	    args[i] |= WITHTHREAD;
-	  else if (strcmp (arg, "rt") == 0)
-	    args[i] |= TIMERLIB;
+	  else if (strcmp (arg, THREAD_LIBRARY) == 0)
+	    {
+	      args[i] |= WITHTHREAD;
+	      need_thread = 0;
+	    }
+	  else if (strcmp (arg, TIME_LIBRARY) == 0)
+	    {
+	      args[i] |= TIMELIB;
+	      need_time = 0;
+	    }
 	  else if (strcmp (arg, "c") == 0)
 	    args[i] |= WITHLIBC;
 	  else
@@ -233,7 +259,8 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  saw_debug_flag = 1;
 
 	case OPT_x:
-	  if (library == 0 && (strcmp (arg, "d") == 0))
+	  if (library == 0
+	      && (strcmp (arg, "d") == 0))
 	    library = 1;
 	  break;
 
@@ -290,16 +317,30 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	    {
 	      int len;
 
-	      if (library == 0)
-		library = 1;
+	      if (arg[0] == '\0' || arg[1] == '\0')
+		continue;
 
 	      len = strlen (arg);
-	      if (len > 2 && strcmp (arg + len - 2, ".d") == 0)
+	      if ((len <= 2 || strcmp (arg + len - 2, ".d") == 0)
+		  || (len <= 3 || strcmp (arg + len - 3, ".di") == 0))
 		{
 		  if (first_d_file == NULL)
 		    first_d_file = arg;
-		  args[i] |= D_SOURCE_FILE;
+
+		  /* This is a D source file, so assume we need to link
+		     against libphobos library.  */
+		  if (library == 0)
+		    library = 1;
+
+		  args[i] |= DSOURCE;
 		}
+
+	      /* If this is a C++ source file, we'll need to link
+		 against libstdc++ library.  */
+	      if ((len <= 3 || strcmp (arg + len - 3, ".cc") == 0)
+		  || (len <= 4 || strcmp (arg + len - 4, ".cpp") == 0)
+		  || (len <= 4 || strcmp (arg + len - 4, ".c++") == 0))
+		need_stdcxx = 1;
 
 	      break;
 	    }
@@ -357,10 +398,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  saw_thread = &decoded_options[i];
 	}
 
-      if (!saw_librt && (args[i] & TIMERLIB) && library > 0)
+      if (!saw_time && (args[i] & TIMELIB) && library > 0)
 	{
 	  --j;
-	  saw_librt = &decoded_options[i];
+	  saw_time = &decoded_options[i];
 	}
 
       if (!saw_libc && (args[i] & WITHLIBC) && library > 0)
@@ -369,7 +410,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  saw_libc = &decoded_options[i];
 	}
 
-      if (args[i] & D_SOURCE_FILE)
+      if (!saw_libcxx && (args[i] & WITHLIBCXX) && library > 0)
+	{
+	  --j;
+	  saw_libcxx = &decoded_options[i];
+	}
+
+      if (args[i] & DSOURCE)
 	{
 	  if (only_source_option)
 	    --j;
@@ -439,25 +486,30 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  j++;
 	}
 #endif
-
-#if USE_PTHREADS
-      /* When linking libphobos statically we also need to link with the
-	 pthread library.  */
-      if (library > 1 || static_link || static_phobos)
-	need_thread = 1;
-#endif
     }
   else if (saw_debug_flag && debuglib)
     {
-      generate_option (OPT_l, debuglib, 1, CL_DRIVER, &new_decoded_options[j]);
+      generate_option (OPT_l, debuglib, 1, CL_DRIVER,
+		       &new_decoded_options[j++]);
       added_libraries++;
-      j++;
     }
   else if (defaultlib)
     {
-      generate_option (OPT_l, defaultlib, 1, CL_DRIVER, &new_decoded_options[j]);
+      generate_option (OPT_l, defaultlib, 1, CL_DRIVER,
+		       &new_decoded_options[j++]);
       added_libraries++;
-      j++;
+    }
+
+  if (saw_libcxx)
+    new_decoded_options[j++] = *saw_libcxx;
+  else if (library > 0 && need_stdcxx)
+    {
+      generate_option (OPT_l,
+		       (saw_profile_flag
+			? LIBSTDCXX_PROFILE
+			: LIBSTDCXX),
+		       1, CL_DRIVER, &new_decoded_options[j++]);
+      added_libraries++;
     }
 
   if (saw_math)
@@ -468,33 +520,27 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 		       (saw_profile_flag
 			? MATH_LIBRARY_PROFILE
 			: MATH_LIBRARY),
-		       1, CL_DRIVER, &new_decoded_options[j]);
+		       1, CL_DRIVER, &new_decoded_options[j++]);
       added_libraries++;
-      j++;
     }
 
   if (saw_thread)
     new_decoded_options[j++] = *saw_thread;
   else if (library > 0 && need_thread)
     {
-      generate_option (OPT_l, "pthread", 1, CL_DRIVER,
-		       &new_decoded_options[j]);
+      generate_option (OPT_l, THREAD_LIBRARY, 1, CL_DRIVER,
+		       &new_decoded_options[j++]);
       added_libraries++;
-      j++;
     }
 
-  if (saw_librt)
-    new_decoded_options[j++] = *saw_librt;
-#if TARGET_LINUX && !TARGET_ANDROID_D
-  /* Only link if linking statically and target platform supports. */
-  else if (library > 1 || static_link || static_phobos)
+  if (saw_time)
+    new_decoded_options[j++] = *saw_time;
+  else if (library > 0 && need_time)
     {
-      generate_option (OPT_l, "rt", 1, CL_DRIVER,
-		       &new_decoded_options[j]);
+      generate_option (OPT_l, TIME_LIBRARY, 1, CL_DRIVER,
+		       &new_decoded_options[j++]);
       added_libraries++;
-      j++;
     }
-#endif
 
   if (saw_libc)
     new_decoded_options[j++] = *saw_libc;
@@ -502,8 +548,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   if (shared_libgcc && !static_link)
     {
       generate_option (OPT_shared_libgcc, NULL, 1, CL_DRIVER,
-		       &new_decoded_options[j]);
-      j++;
+		       &new_decoded_options[j++]);
     }
 
   *in_decoded_options_count = j;

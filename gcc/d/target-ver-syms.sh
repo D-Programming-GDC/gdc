@@ -61,13 +61,37 @@ esac
 
 # In DMD, this is usually defined in the target's Makefile.
 case "$d_os_versym" in
-darwin)  echo "#define TARGET_OSX       1" ;;
-FreeBSD) echo "#define TARGET_FREEBSD   1" ;;
-linux)   echo "#define TARGET_LINUX     1" ;;
-OpenBSD) echo "#define TARGET_OPENBSD   1" ;;
-Solaris) echo "#define TARGET_SOLARIS   1" ;;
-Win32)   echo "#define TARGET_WINDOS    1" ;;
-Win64)   echo "#define TARGET_WINDOS    1" ;;
-Android) echo "#define TARGET_ANDROID_D 1";
-         echo "#define TARGET_LINUX     1";  ;;
+darwin)
+  echo "#define TARGET_OSX       1"
+  echo "#define THREAD_LIBRARY   \"\""
+  echo "#define TIME_LIBRARY     \"\""
+  ;;
+FreeBSD)
+  echo "#define TARGET_FREEBSD   1"
+  ;;
+linux)
+  echo "#define TARGET_LINUX     1"
+  ;;
+OpenBSD)
+  echo "#define TARGET_OPENBSD   1"
+  ;;
+Solaris)
+  echo "#define TARGET_SOLARIS   1"
+  ;;
+Win32)
+  echo "#define TARGET_WINDOS    1"
+  echo "#define THREAD_LIBRARY   \"\""
+  echo "#define TIME_LIBRARY     \"\""
+  ;;
+Win64)
+  echo "#define TARGET_WINDOS    1"
+  echo "#define THREAD_LIBRARY   \"\""
+  echo "#define TIME_LIBRARY     \"\""
+  ;;
+Android)
+  echo "#define TARGET_ANDROID_D 1"
+  echo "#define TARGET_LINUX     1"
+  echo "#define THREAD_LIBRARY   \"\""
+  echo "#define TIME_LIBRARY     \"\""
+  ;;
 esac

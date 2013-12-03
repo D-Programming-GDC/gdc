@@ -200,8 +200,6 @@ proc dmd2dg { base test } {
                 gdc-copy-extra $base "$type/$import"
             }
             set out_line "// { dg-additional-sources \"$m0\" }"
-            # Should probably do this automatically in the driver.
-            puts $fdout "// { dg-additional-options \"-lstdc++\" }"
         }
 
         # Handle EXTRA_FILES option
