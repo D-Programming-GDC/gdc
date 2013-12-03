@@ -36,7 +36,6 @@
 #include "module.h"
 #include "scope.h"
 #include "root.h"
-#include "async.h"
 #include "dfrontend/target.h"
 
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
@@ -855,7 +854,6 @@ d_parse_file (void)
   // Create Modules
   Modules modules;
   modules.reserve (num_in_fnames);
-  AsyncRead *aw = NULL;
 
   if (!main_input_filename || !main_input_filename[0])
     {
@@ -932,30 +930,27 @@ d_parse_file (void)
   gcc_assert (output_module);
 
   // Read files
-  aw = AsyncRead::create (modules.dim);
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
-      aw->addFile (m->srcfile);
+      m->read (Loc());
     }
-  aw->start();
 
   // Parse files
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
+
       if (global.params.verbose)
 	fprintf (global.stdmsg, "parse     %s\n", m->toChars());
+
       if (!Module::rootModule)
 	Module::rootModule = m;
+
       m->importedFrom = m;
-      if (aw->read (i))
-	{
-	  error ("cannot read file %s", m->srcfile->name->toChars());
-	  goto had_errors;
-	}
       m->parse();
       d_gcc_magic_module (m);
+
       if (m->isDocFile)
 	{
 	  m->gendocfile();
@@ -964,7 +959,6 @@ d_parse_file (void)
 	  i--;
 	}
     }
-  AsyncRead::dispose (aw);
 
   if (global.errors)
     goto had_errors;
@@ -981,8 +975,10 @@ d_parse_file (void)
 	  Module *m = modules[i];
 	  if (fonly_arg && m != output_module)
 	    continue;
+
 	  if (global.params.verbose)
 	    fprintf (global.stdmsg, "import    %s\n", m->toChars());
+
 	  m->genhdrfile();
 	}
     }
@@ -990,12 +986,14 @@ d_parse_file (void)
   if (global.errors)
     goto had_errors;
 
-  // load all unconditional imports for better symbol resolving
+  // Load all unconditional imports for better symbol resolving
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
+
       if (global.params.verbose)
 	fprintf (global.stdmsg, "importall %s\n", m->toChars());
+
       m->importAll (NULL);
     }
 
@@ -1006,8 +1004,10 @@ d_parse_file (void)
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
+
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic  %s\n", m->toChars());
+
       m->semantic();
     }
 
@@ -1021,8 +1021,10 @@ d_parse_file (void)
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
+
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars());
+
       m->semantic2();
     }
 
@@ -1033,8 +1035,10 @@ d_parse_file (void)
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
+
       if (global.params.verbose)
 	fprintf (global.stdmsg, "semantic3 %s\n", m->toChars());
+
       m->semantic3();
     }
 
@@ -1046,6 +1050,7 @@ d_parse_file (void)
   if (global.params.moduleDeps)
     {
       OutBuffer *ob = global.params.moduleDeps;
+
       if (global.params.moduleDepsFile)
 	{
 	  File deps (global.params.moduleDepsFile);
