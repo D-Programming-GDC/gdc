@@ -11,6 +11,8 @@
 
 module core.thread;
 
+version(BareMetal) {}
+else:
 
 public import core.time; // for Duration
 import core.exception : onOutOfMemoryError;

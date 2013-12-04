@@ -30,6 +30,9 @@ alias wchar_t wint_t;
 
 enum wchar_t WEOF = 0xFFFF;
 
+version(BareMetal) {}
+else:
+
 int fwprintf(FILE* stream, in wchar_t* format, ...);
 int fwscanf(FILE* stream, in wchar_t* format, ...);
 int swscanf(in wchar_t* s, in wchar_t* format, ...);

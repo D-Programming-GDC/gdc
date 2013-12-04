@@ -11,6 +11,9 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+version(BareMetal) {}
+else:
+ 
 public import core.atomic;
 public import core.bitop;
 public import core.cpuid;

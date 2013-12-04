@@ -25,7 +25,7 @@ private
     import core.stdc.stdlib;
     import core.stdc.string;
     import core.stdc.stdio;   // for printf()
-    import core.stdc.errno : errno;
+    import core.stdc.errno;
 }
 
 version (Windows)
@@ -172,24 +172,32 @@ extern (C) int rt_init()
        rt_init. */
     if (_initCount++) return 1;
 
-    _STI_monitor_staticctor();
-    _STI_critical_init();
+    version(BareMetal)
+    {
+    	gc_init();
+    }
+    else
+    {
+	    _STI_monitor_staticctor();
+	    _STI_critical_init();
+	
+	    try
+	    {
+	        gc_init();
+	        initStaticDataGC();
+	        rt_moduleCtor();
+	        rt_moduleTlsCtor();
+	        return 1;
+	    }
+	    catch (Throwable t)
+	    {
+	        _initCount = 0;
+	        printThrowable(t);
+	    }
+	    _STD_critical_term();
+	    _STD_monitor_staticdtor();
+	}
 
-    try
-    {
-        gc_init();
-        initStaticDataGC();
-        rt_moduleCtor();
-        rt_moduleTlsCtor();
-        return 1;
-    }
-    catch (Throwable t)
-    {
-        _initCount = 0;
-        printThrowable(t);
-    }
-    _STD_critical_term();
-    _STD_monitor_staticdtor();
     return 0;
 }
 
@@ -201,23 +209,30 @@ extern (C) int rt_term()
     if (!_initCount) return 0; // was never initialized
     if (--_initCount) return 1;
 
-    try
+    version(BareMetal)
     {
-        rt_moduleTlsDtor();
-        thread_joinAll();
-        rt_moduleDtor();
-        gc_term();
-        return 1;
+    	gc_term();
     }
-    catch (Throwable t)
+    else
     {
-        printThrowable(t);
-    }
-    finally
-    {
-        _STD_critical_term();
-        _STD_monitor_staticdtor();
-    }
+	    try
+	    {
+	        rt_moduleTlsDtor();
+	        thread_joinAll();
+	        rt_moduleDtor();
+	        gc_term();
+	        return 1;
+	    }
+	    catch (Throwable t)
+	    {
+	        printThrowable(t);
+	    }
+	    finally
+	    {
+	        _STD_critical_term();
+	        _STD_monitor_staticdtor();
+	    }
+	}
     return 0;
 }
 
@@ -244,6 +259,10 @@ extern (C) CArgs rt_cArgs()
  * Its purpose is to wrap the D main()
  * function and catch any unhandled exceptions.
  */
+
+version(BareMetal) {}
+else: 
+
 private alias extern(C) int function(char[][] args) MainFunc;
 
 extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)

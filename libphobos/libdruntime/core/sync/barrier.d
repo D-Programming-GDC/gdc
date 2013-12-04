@@ -15,6 +15,8 @@
  */
 module core.sync.barrier;
 
+version(BareMetal) {}
+else:
 
 public import core.sync.exception;
 private import core.sync.condition;

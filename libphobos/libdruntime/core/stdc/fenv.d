@@ -14,6 +14,9 @@
  */
 module core.stdc.fenv;
 
+version(BareMetal) {}
+else:
+
 extern (C):
 @system:
 nothrow:

@@ -65,6 +65,15 @@ private
             pthread_mutex_t mon;
         }
     }
+    else version( BareMetal )
+    {
+        struct Monitor
+        {
+            IMonitor impl; // for user-level monitors
+            DEvent[] devt; // for internal monitors
+            size_t   refs; // reference count
+        }
+    }
     else
     {
         static assert(0, "Unsupported platform");
@@ -251,3 +260,30 @@ version( USE_PTHREADS )
     }
 }
 
+//Stubs
+version( BareMetal )
+{ 
+    extern (C) void _STI_monitor_staticctor()
+    {
+    }
+
+    extern (C) void _STD_monitor_staticdtor()
+    {
+    }
+
+    extern (C) void _d_monitor_create(Object h)
+    {
+    }
+
+    extern (C) void _d_monitor_destroy(Object h)
+    {
+    }
+
+    extern (C) void _d_monitor_lock(Object h)
+    {
+    }
+
+    extern (C) void _d_monitor_unlock(Object h)
+    {
+    }
+}

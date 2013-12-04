@@ -13,6 +13,9 @@
  */
 module gc.proxy;
 
+version(BareMetal) {}
+else:
+
 import gc.gc;
 import gc.stats;
 import core.stdc.stdlib;

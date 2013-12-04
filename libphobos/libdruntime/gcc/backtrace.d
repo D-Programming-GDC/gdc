@@ -19,6 +19,9 @@
 /* This module provides a backtrace implementation for gdc */
 module gcc.backtrace;
 
+version(BareMetal) {}
+else:
+
 import gcc.libbacktrace;
 
 

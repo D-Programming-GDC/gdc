@@ -13,6 +13,9 @@
  */
 module rt.critical_;
 
+version(BareMetal) {}
+else:
+
 private
 {
     debug(PRINTF) import core.stdc.stdio;

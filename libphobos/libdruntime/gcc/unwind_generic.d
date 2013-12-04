@@ -21,6 +21,13 @@
 
 module gcc.unwind_generic;
 
+version(BareMetal)
+{
+	//Stub; mark functions @nothrow would be cleaner
+	extern(C) void _Unwind_Resume (void *) { }
+}
+else:
+
 private import gcc.builtins;
 private import core.stdc.stdlib; // for abort
 

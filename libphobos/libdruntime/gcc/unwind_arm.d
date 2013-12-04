@@ -20,6 +20,9 @@
 
 module gcc.unwind_arm;
 
+version(BareMetal) {}
+else:
+
 import gcc.builtins;
 import gcc.unwind_pe;
 

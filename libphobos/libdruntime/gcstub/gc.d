@@ -131,7 +131,9 @@ extern (C) void gc_init()
 {
     // NOTE: The GC must initialize the thread library before its first
     //       collection, and always before returning from gc_init().
-    thread_init();
+    
+    version(BareMetal) {}
+    else thread_init();
     initProxy();
 }
 

@@ -14,6 +14,8 @@
  */
 module core.sync.semaphore;
 
+version(BareMetal) {}
+else:
 
 public import core.sync.exception;
 public import core.time;

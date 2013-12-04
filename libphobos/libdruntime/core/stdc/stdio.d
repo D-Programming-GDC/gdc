@@ -15,6 +15,10 @@
  */
 module core.stdc.stdio;
 
+version(BareMetal) {}
+
+else:
+
 private
 {
     import core.stdc.config;
