@@ -73,6 +73,7 @@ const attribute_spec d_attribute_table[] =
 #undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
+#undef LANG_HOOKS_GET_ALIAS_SET
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
 #undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
@@ -96,6 +97,7 @@ const attribute_spec d_attribute_table[] =
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE       d_builtins_attribute_table
 #define LANG_HOOKS_ATTRIBUTE_TABLE              d_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_format_attribute_table
+#define LANG_HOOKS_GET_ALIAS_SET		d_get_alias_set
 #define LANG_HOOKS_TYPES_COMPATIBLE_P		d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION		d_builtin_function
 #define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE	d_builtin_function
@@ -195,9 +197,6 @@ d_init_options_struct (gcc_options *opts)
 
   // Honour left to right code evaluation.
   opts->x_flag_evaluation_order = 1;
-
-  // Default to using strict aliasing.
-  opts->x_flag_strict_aliasing = 1;
 }
 
 static void
@@ -1548,6 +1547,30 @@ d_getdecls (void)
     return NULL_TREE;
 }
 
+
+// Get the alias set corresponding to a type or expression.
+// Return -1 if we don't do anything special.
+
+static alias_set_type
+d_get_alias_set (tree t)
+{
+  // Permit type-punning when accessing a union, provided the access
+  // is directly through the union.
+  for (tree u = t; handled_component_p (u); u = TREE_OPERAND (u, 0))
+    {
+      if (TREE_CODE (u) == COMPONENT_REF
+	  && TREE_CODE (TREE_TYPE (TREE_OPERAND (u, 0))) == UNION_TYPE)
+	return 0;
+    }
+
+  // That's all the expressions we handle.
+  if (!TYPE_P (t))
+    return get_alias_set (TREE_TYPE (t));
+
+  // For now in D, assume everything aliases everything else,
+  // until we define some solid rules.
+  return 0;
+}
 
 static int
 d_types_compatible_p (tree t1, tree t2)

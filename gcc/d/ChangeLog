@@ -1,3 +1,8 @@
+2013-12-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_init_options_struct): Don't define strict aliasing.
+	(d_get_alias_set): New function to return language-specific alias set.
+
 2013-12-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(maybe_set_builtin_frontend): Assert that all runtime
