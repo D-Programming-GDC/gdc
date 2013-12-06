@@ -230,6 +230,7 @@ install-exec-local: libgdruntime.a
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
 install-data-local: libgdruntime.a
+	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
 	for i in __entrypoint.di object.di; do \
 	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
 	done

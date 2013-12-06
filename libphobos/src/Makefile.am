@@ -137,18 +137,19 @@ install-exec-local: libgphobos2.a
 
 install-data-local: libgphobos2.a
 	for i in etc/c \
-		std std/c std/c/freebsd \
-		std/c/linux std/c/osx std/c/windows \
-		std/internal std/internal/math std/internal/windows \
-		std/digest std/internal/digest \
-		std/net std/windows; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+	    std std/c std/c/freebsd \
+	    std/c/linux std/c/osx std/c/windows \
+	    std/internal std/internal/math std/internal/windows \
+	    std/digest std/internal/digest \
+	    std/net std/windows; do \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    for f in $(srcdir)/$$i/*.d; do \
+		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    done; \
 	done
 	for i in crc32.d; do \
-		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
-#disabled, already installed by druntime
-#$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
+	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
+	done
 
 clean-local:
 	rm -f $(ALL_PHOBOS_OBJS)
