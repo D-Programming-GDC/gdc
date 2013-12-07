@@ -1077,7 +1077,38 @@ class Fiber
 
 private:
     // These must be kept in sync with core/thread.d
-    version (D_LP64)
+    version (GNU)
+    {
+        version (D_LP64)
+        {
+            version (Windows)      enum FiberSize = 88;
+            else version (OSX)     enum FiberSize = 88;
+            else version (Posix)
+            {
+                version(X86_64) 
+                    enum FiberSize = 1032;
+                else
+                    enum FiberSize = 88;
+            }
+            else static assert(0, "Platform not supported.");
+        }
+        else
+        {
+            static assert((void*).sizeof == 4); // 32-bit
+    
+            version (Windows)      enum FiberSize = 44;
+            else version (OSX)     enum FiberSize = 44;
+            else version (Posix)
+            {
+                version(X86)
+                    enum FiberSize = 396;
+                else
+                    enum FiberSize = 44;
+            }
+            else static assert(0, "Platform not supported.");
+        }
+    }
+    else version (D_LP64)
     {
         version (Windows)      enum FiberSize = 88;
         else version (OSX)     enum FiberSize = 88;

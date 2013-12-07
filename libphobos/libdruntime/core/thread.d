@@ -4248,7 +4248,44 @@ private:
 }
 
 // These must be kept in sync with core/thread.di
-version (GNU) {} else
+version (GNU)
+{
+    version (D_LP64)
+    {
+        version (Windows)
+            static assert(__traits(classInstanceSize, Fiber) == 88);
+        else version (OSX)
+            static assert(__traits(classInstanceSize, Fiber) == 88);
+        else version (Posix)
+        {
+            version(X86_64)
+                static assert(__traits(classInstanceSize, Fiber) == 1032);
+            else
+                static assert(__traits(classInstanceSize, Fiber) == 88);
+        }
+        else
+            static assert(0, "Platform not supported.");
+    }
+    else
+    {
+        static assert((void*).sizeof == 4); // 32-bit
+    
+        version (Windows)
+            static assert(__traits(classInstanceSize, Fiber) == 44);
+        else version (OSX)
+            static assert(__traits(classInstanceSize, Fiber) == 44);
+        else version (Posix)
+        {
+            version(X86)
+                static assert(__traits(classInstanceSize, Fiber) == 396);
+            else
+                static assert(__traits(classInstanceSize, Fiber) == 44);
+        }
+        else
+            static assert(0, "Platform not supported.");
+    }
+}
+else
 version (D_LP64)
 {
     version (Windows)
