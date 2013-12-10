@@ -1652,17 +1652,13 @@ d_comdat_linkage (tree decl)
 
   // The following makes assumptions about the behavior of make_decl_one_only.
   if (SUPPORTS_ONE_ONLY)
-    {
-      make_decl_one_only (decl, d_comdat_group (decl));
-      return;
-    }
+    make_decl_one_only (decl, d_comdat_group (decl));
   else if (SUPPORTS_WEAK)
     {
       tree decl_init = DECL_INITIAL (decl);
       DECL_INITIAL (decl) = integer_zero_node;
       make_decl_one_only (decl, d_comdat_group (decl));
       DECL_INITIAL (decl) = decl_init;
-      return;
     }
   else if (TREE_CODE (decl) == FUNCTION_DECL
 	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
@@ -1680,7 +1676,7 @@ d_comdat_linkage (tree decl)
       DECL_COMMON (decl) = 1;
     }
 
-  DECL_COMDAT (decl) = 1;
+  //DECL_COMDAT (decl) = 1;
 }
 
 // Set a DECL's STATIC and EXTERN based on the decl's storage class
@@ -1888,7 +1884,9 @@ d_finish_function (FuncDeclaration *fd)
   tree decl = s->Stree;
 
   gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
-  mark_needed (decl);
+
+  if (!D_DECL_ONE_ONLY (decl))
+    mark_needed (decl);
 
   if (s->prettyIdent)
     DECL_NAME (decl) = get_identifier (s->prettyIdent);
