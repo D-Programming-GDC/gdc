@@ -709,14 +709,15 @@ VarDeclaration::toObjFile (int)
 
       gcc_assert (init && !init->isVoidInitializer());
 
+      unsigned errors = global.startGagging();
       Expression *ie = init->toExpression();
-      // Default init for synthetic types.
-      if (ie->op == TOKassocarrayliteral)
-	ie = type->defaultInit();
-
       tree sinit = NULL_TREE;
       ie->toDt (&sinit);
-      DECL_INITIAL (decl) = dtvector_to_tree (sinit);
+
+      if (!global.endGagging (errors))
+	DECL_INITIAL (decl) = dtvector_to_tree (sinit);
+      else
+	DECL_INITIAL (decl) = error_mark (type);
 
       // Manifest constants have no address in memory.
       TREE_CONSTANT (decl) = 1;
