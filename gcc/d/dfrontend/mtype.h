@@ -456,6 +456,7 @@ public:
     Expression *defaultInitLiteral(Loc loc);
     TypeBasic *elementType();
     int isZeroInit(Loc loc);
+    dt_t **toDt(dt_t **pdt);
     TypeInfoDeclaration *getTypeInfoDeclaration();
     TypeTuple *toArgTypes();
 

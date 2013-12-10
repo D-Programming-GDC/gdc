@@ -434,7 +434,7 @@ TypeVector::toCtype (void)
 	  tree inner = elementType()->toCtype();
 
 	  if (inner == void_type_node)
-	    inner = Type::tint8->toCtype();
+	    inner = Type::tuns8->toCtype();
 
 	  ctype = build_vector_type (inner, nunits);
 	  layout_type (ctype);

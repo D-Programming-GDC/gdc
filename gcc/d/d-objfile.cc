@@ -696,7 +696,6 @@ VarDeclaration::toObjFile (int)
   // but keep the values for purposes of debugging.
   if (!canTakeAddressOf())
     {
-      Expression *ie = NULL;
       tree ctype = declaration_type (this);
       tree ident;
 
@@ -708,16 +707,16 @@ VarDeclaration::toObjFile (int)
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident, ctype);
       set_decl_location (decl, this);
 
-      if (init)
-	{
-	  gcc_assert (!init->isVoidInitializer());
-	  ie = init->toExpression();
-	}
-      else
+      gcc_assert (init && !init->isVoidInitializer());
+
+      Expression *ie = init->toExpression();
+      // Default init for synthetic types.
+      if (ie->op == TOKassocarrayliteral)
 	ie = type->defaultInit();
 
-      gcc_assert (ie != NULL);
-      DECL_INITIAL (decl) = ie->toElem (current_irstate);
+      tree sinit = NULL_TREE;
+      ie->toDt (&sinit);
+      DECL_INITIAL (decl) = dtvector_to_tree (sinit);
 
       // Manifest constants have no address in memory.
       TREE_CONSTANT (decl) = 1;

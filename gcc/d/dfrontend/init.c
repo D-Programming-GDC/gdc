@@ -512,6 +512,11 @@ Expression *ArrayInitializer::toExpression(Type *tx)
                edim = ((TypeSArray *)t)->dim->toInteger();
                break;
 
+           case Tvector:
+               t = ((TypeVector *)t)->basetype;
+               edim = ((TypeSArray *)t)->dim->toInteger();
+               break;
+
            case Tpointer:
            case Tarray:
                edim = dim;

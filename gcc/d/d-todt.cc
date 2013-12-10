@@ -908,6 +908,13 @@ Type::toDt (dt_t **pdt)
 }
 
 dt_t **
+TypeVector::toDt (dt_t **pdt)
+{
+  gcc_assert (basetype->ty == Tsarray);
+  return ((TypeSArray *) basetype)->toDtElem (pdt, NULL);
+}
+
+dt_t **
 TypeSArray::toDt (dt_t **pdt)
 {
   return toDtElem (pdt, NULL);

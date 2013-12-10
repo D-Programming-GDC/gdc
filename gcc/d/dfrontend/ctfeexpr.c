@@ -321,7 +321,7 @@ Expression *copyLiteral(Expression *e)
             || e->op == TOKvar
             || e->op == TOKint64 || e->op == TOKfloat64
             || e->op == TOKchar || e->op == TOKcomplex80
-            || e->op == TOKvoid)
+            || e->op == TOKvoid || e->op == TOKvector)
     {   // Simple value types
         Expression *r = e->syntaxCopy();
         r->type = e->type;
@@ -2059,6 +2059,9 @@ bool isCtfeValueValid(Expression *newval)
 
     if (newval->op == TOKfunction)
         return true; // function literal or delegate literal
+
+    if (newval->op == TOKvector)
+        return true; // vector literal
 
     if (newval->op == TOKdelegate)
     {

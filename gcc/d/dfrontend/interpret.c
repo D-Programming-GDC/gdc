@@ -3856,7 +3856,7 @@ bool interpretAssignToIndex(InterState *istate, Loc loc,
      */
     if (aggregate->op == TOKindex || aggregate->op == TOKdotvar ||
         aggregate->op == TOKslice || aggregate->op == TOKcall ||
-        aggregate->op == TOKstar)
+        aggregate->op == TOKstar || aggregate->op == TOKcast)
     {
         aggregate = aggregate->interpret(istate, ctfeNeedLvalue);
         if (exceptionOrCantInterpret(aggregate))
@@ -4061,7 +4061,7 @@ Expression *interpretAssignToSlice(InterState *istate, CtfeGoal goal, Loc loc,
      */
 
     if (aggregate->op == TOKindex || aggregate->op == TOKdotvar ||
-        aggregate->op == TOKslice ||
+        aggregate->op == TOKslice || aggregate->op == TOKcast ||
         aggregate->op == TOKstar  || aggregate->op == TOKcall)
     {
         aggregate = aggregate->interpret(istate, ctfeNeedLvalue);
