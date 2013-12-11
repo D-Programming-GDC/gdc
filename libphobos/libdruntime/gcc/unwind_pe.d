@@ -20,6 +20,9 @@
 
 module gcc.unwind_pe;
 
+version(BareMetal) {}
+else:
+
 import gcc.unwind;
 private import core.stdc.stdlib : abort;
 

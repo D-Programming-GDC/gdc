@@ -20,6 +20,14 @@
 
 module gcc.deh;
 
+//Stub, called alot :/
+version(BareMetal)
+{
+	extern (C) void _d_throw(Object obj) { }
+	extern (C) int __gdc_personality_v0(int iversion, int actions, int exception_class, void *ue_header, void *context) { return 0; }
+}
+else:
+
 import gcc.unwind;
 import gcc.unwind_pe;
 import gcc.builtins;

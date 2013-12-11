@@ -15,6 +15,8 @@
  */
 module core.sync.condition;
 
+version(BareMetal) {}
+else:
 
 public import core.sync.exception;
 public import core.sync.mutex;

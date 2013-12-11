@@ -63,6 +63,14 @@ else version (OSX)
         return a;
     }
 }
+else version (BareMetal)
+{
+	//Stub, should really implement generic
+    extern (C) void[] _adSort(void[] a, TypeInfo ti)
+    {
+    	return a;
+    }
+}
 else
 {
     private TypeInfo tiglobal;

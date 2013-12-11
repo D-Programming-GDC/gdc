@@ -13,6 +13,9 @@
  */
 module gc.gc;
 
+version(BareMetal) {}
+else:
+
 // D Programming Language Garbage Collector implementation
 
 /************** Debugging ***************************/

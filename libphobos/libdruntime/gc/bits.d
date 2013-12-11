@@ -13,6 +13,9 @@
  */
 module gc.bits;
 
+version(BareMetal) {}
+else:
+
 
 import core.bitop;
 import core.stdc.string;

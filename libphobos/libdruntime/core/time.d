@@ -19,6 +19,9 @@
  +/
 module core.time;
 
+version(BareMetal) {}
+else:
+
 import core.exception;
 import core.stdc.time;
 import core.stdc.stdio;

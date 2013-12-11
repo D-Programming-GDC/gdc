@@ -14,12 +14,17 @@
  */
 module core.demangle;
 
-
-debug(trace) import core.stdc.stdio : printf;
-debug(info) import core.stdc.stdio : printf;
-import core.stdc.stdio : snprintf;
-import core.stdc.string : memmove;
-import core.stdc.stdlib : strtold;
+version(BareMetal)
+{
+}
+else
+{
+	debug(trace) import core.stdc.stdio : printf;
+	debug(info) import core.stdc.stdio : printf;
+	import core.stdc.stdio : snprintf;
+	import core.stdc.string : memmove;
+	import core.stdc.stdlib : strtold;
+}
 
 
 private struct Demangle
@@ -374,76 +379,81 @@ private struct Demangle
         return val;
     }
 
-
-    void parseReal()
+    version(BareMetal)
     {
-        debug(trace) printf( "parseReal+\n" );
-        debug(trace) scope(success) printf( "parseReal-\n" );
-
-        char[64] tbuf = void;
-        size_t   tlen = 0;
-        real     val  = void;
-
-        if( 'I' == tok() )
-        {
-            match( "INF" );
-            put( "real.infinity" );
-            return;
-        }
-        if( 'N' == tok() )
-        {
-            next();
-            if( 'I' == tok() )
-            {
-                match( "INF" );
-                put( "-real.infinity" );
-                return;
-            }
-            if( 'A' == tok() )
-            {
-                match( "AN" );
-                put( "real.nan" );
-                return;
-            }
-            tbuf[tlen++] = '-';
-        }
-
-        tbuf[tlen++] = '0';
-        tbuf[tlen++] = 'X';
-        if( !isHexDigit( tok() ) )
-            error( "Expected hex digit" );
-        tbuf[tlen++] = tok();
-        tbuf[tlen++] = '.';
-        next();
-
-        while( isHexDigit( tok() ) )
-        {
-            tbuf[tlen++] = tok();
-            next();
-        }
-        match( 'P' );
-        tbuf[tlen++] = 'p';
-        if( 'N' == tok() )
-        {
-            tbuf[tlen++] = '-';
-            next();
-        }
-        else
-        {
-            tbuf[tlen++] = '+';
-        }
-        while( isDigit( tok() ) )
-        {
-            tbuf[tlen++] = tok();
-            next();
-        }
-
-        tbuf[tlen] = 0;
-        debug(info) printf( "got (%s)\n", tbuf.ptr );
-        val = strtold( tbuf.ptr, null );
-        tlen = snprintf( tbuf.ptr, tbuf.length, "%#Lg", val );
-        debug(info) printf( "converted (%.*s)\n", cast(int) tlen, tbuf.ptr );
-        put( tbuf[0 .. tlen] );
+    }
+    else
+    {
+	    void parseReal()
+	    {
+	        debug(trace) printf( "parseReal+\n" );
+	        debug(trace) scope(success) printf( "parseReal-\n" );
+	
+	        char[64] tbuf = void;
+	        size_t   tlen = 0;
+	        real     val  = void;
+	
+	        if( 'I' == tok() )
+	        {
+	            match( "INF" );
+	            put( "real.infinity" );
+	            return;
+	        }
+	        if( 'N' == tok() )
+	        {
+	            next();
+	            if( 'I' == tok() )
+	            {
+	                match( "INF" );
+	                put( "-real.infinity" );
+	                return;
+	            }
+	            if( 'A' == tok() )
+	            {
+	                match( "AN" );
+	                put( "real.nan" );
+	                return;
+	            }
+	            tbuf[tlen++] = '-';
+	        }
+	
+	        tbuf[tlen++] = '0';
+	        tbuf[tlen++] = 'X';
+	        if( !isHexDigit( tok() ) )
+	            error( "Expected hex digit" );
+	        tbuf[tlen++] = tok();
+	        tbuf[tlen++] = '.';
+	        next();
+	
+	        while( isHexDigit( tok() ) )
+	        {
+	            tbuf[tlen++] = tok();
+	            next();
+	        }
+	        match( 'P' );
+	        tbuf[tlen++] = 'p';
+	        if( 'N' == tok() )
+	        {
+	            tbuf[tlen++] = '-';
+	            next();
+	        }
+	        else
+	        {
+	            tbuf[tlen++] = '+';
+	        }
+	        while( isDigit( tok() ) )
+	        {
+	            tbuf[tlen++] = tok();
+	            next();
+	        }
+	
+	        tbuf[tlen] = 0;
+	        debug(info) printf( "got (%s)\n", tbuf.ptr );
+	        val = strtold( tbuf.ptr, null );
+	        tlen = snprintf( tbuf.ptr, tbuf.length, "%#Lg", val );
+	        debug(info) printf( "converted (%.*s)\n", cast(int) tlen, tbuf.ptr );
+	        put( tbuf[0 .. tlen] );
+	    }
     }
 
 
@@ -1097,15 +1107,21 @@ private struct Demangle
             return;
         case 'e':
             next();
-            parseReal();
+
+            version(BareMetal) {}
+			else parseReal();
             return;
         case 'c':
             next();
-            parseReal();
-            put( "+" );
-            match( 'c' );
-            parseReal();
-            put( "i" );
+            version(BareMetal) {}
+			else
+			{
+	            parseReal();
+	            put( "+" );
+	            match( 'c' );
+	            parseReal();
+	            put( "i" );
+	        }
             return;
         case 'a': case 'w': case 'd':
             char t = tok();

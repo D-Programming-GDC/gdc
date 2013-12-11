@@ -14,6 +14,10 @@
  */
 module core.stdc.errno;
 
+version(BareMetal) {}
+else:
+
+
 @trusted: // Only manipulates errno.
 nothrow:
 

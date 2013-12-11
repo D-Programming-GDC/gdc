@@ -13,6 +13,9 @@
  */
 module gc.stats;
 
+version(BareMetal) {}
+else:
+
 
 /**
  *

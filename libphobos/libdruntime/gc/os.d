@@ -13,6 +13,9 @@
  */
 module gc.os;
 
+version(BareMetal) {}
+else:
+
 
 version (Windows)
 {

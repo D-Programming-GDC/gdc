@@ -12,6 +12,8 @@
 
 module rt.memory;
 
+version(BareMetal) {}
+else:
 
 import core.memory;
 private

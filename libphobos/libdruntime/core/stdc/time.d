@@ -15,6 +15,10 @@
  */
 module core.stdc.time;
 
+version(BareMetal) {}
+else:
+
+
 private import core.stdc.config;
 private import core.stdc.stddef; // for size_t
 

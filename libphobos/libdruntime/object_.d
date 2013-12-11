@@ -1747,6 +1747,10 @@ void setMonitor(Object h, Monitor* m)
     h.__monitor = m;
 }
 
+version(BareMetal) {}
+else
+{
+
 void setSameMutex(shared Object ownee, shared Object owner)
 in
 {
@@ -1772,6 +1776,7 @@ body
     // If m.impl is set (ie. if this is a user-created monitor), assume
     // the monitor is garbage collected and simply copy the reference.
     ownee.__monitor = owner.__monitor;
+}
 }
 
 extern (C) void _d_monitor_create(Object);
@@ -1866,6 +1871,9 @@ extern (C) void _d_monitor_devt(Monitor* m, Object h)
     }
 }
 
+version(BareMetal) {}
+else
+{
 extern (C) void rt_attachDisposeEvent(Object h, DEvent e)
 {
     synchronized (h)
@@ -1912,6 +1920,7 @@ extern (C) void rt_detachDisposeEvent(Object h, DEvent e)
             }
         }
     }
+}
 }
 
 extern (C)
