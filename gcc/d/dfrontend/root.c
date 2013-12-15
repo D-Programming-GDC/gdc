@@ -7,7 +7,7 @@
 // in artistic.txt, or the GNU General Public License in gnu.txt.
 // See the included readme.txt for details.
 
-#define POSIX (linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun)
+#define POSIX (linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun || __CYGWIN__)
 
 #include <stdio.h>
 #include <stdlib.h>
