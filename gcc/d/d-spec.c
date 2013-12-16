@@ -321,18 +321,21 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 		continue;
 
 	      len = strlen (arg);
-	      if ((len <= 2 || strcmp (arg + len - 2, ".d") == 0)
-		  || (len <= 3 || strcmp (arg + len - 3, ".di") == 0))
+	      /* Record that this is a D source file.  */
+	      if (len <= 2 || strcmp (arg + len - 2, ".d") == 0)
 		{
 		  if (first_d_file == NULL)
 		    first_d_file = arg;
 
-		  /* This is a D source file, so assume we need to link
-		     against libphobos library.  */
-		  if (library == 0)
-		    library = 1;
-
 		  args[i] |= DSOURCE;
+		}
+
+	      /* If we don't know that this is a interface file, we might
+		 need to be link against libphobos library.  */
+	      if (library == 0)
+		{
+		  if (len <= 3 || strcmp (arg + len - 3, ".di") != 0)
+		    library = 1;
 		}
 
 	      /* If this is a C++ source file, we'll need to link
