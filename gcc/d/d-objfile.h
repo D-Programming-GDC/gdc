@@ -129,6 +129,7 @@ extern void d_comdat_linkage (tree decl);
 extern void d_finish_symbol (Symbol *sym);
 extern void d_finish_function (FuncDeclaration *f);
 extern void d_finish_module (void);
+extern void d_finish_compilation (tree *vec, int len);
 
 extern void build_type_decl (tree t, Dsymbol *dsym);
 

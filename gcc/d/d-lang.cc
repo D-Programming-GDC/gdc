@@ -626,8 +626,7 @@ d_post_options (const char ** fn)
   return false;
 }
 
-/* wrapup_global_declaration needs to be called or functions will not
-   be emitted. */
+// Array of all global declarations to pass back to the middle-end.
 static Array globalDeclarations;
 
 void
@@ -636,28 +635,17 @@ d_add_global_declaration (tree decl)
   globalDeclarations.push (decl);
 }
 
+// Write out globals.
+
 static void
 d_write_global_declarations (void)
 {
   tree *vec = (tree *) globalDeclarations.data;
+  int len = globalDeclarations.dim;
 
-  /* Complete all generated thunks. */
-  cgraph_process_same_body_aliases();
+  gcc_assert (len >= 0);
 
-  /* Process all file scopes in this compilation, and the external_scope,
-     through wrapup_global_declarations.  */
-  wrapup_global_declarations (vec, globalDeclarations.dim);
-
-  /* We're done parsing; proceed to optimize and emit assembly. */
-  if (!global.errors && !errorcount)
-    finalize_compilation_unit();
-
-  /* Now, issue warnings about static, but not defined, functions.  */
-  check_global_declarations (vec, globalDeclarations.dim);
-
-  /* After cgraph has had a chance to emit everything that's going to
-     be emitted, output debug information for globals.  */
-  emit_debug_global_declarations (vec, globalDeclarations.dim);
+  d_finish_compilation (vec, len);
 }
 
 

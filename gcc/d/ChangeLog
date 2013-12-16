@@ -1,3 +1,21 @@
+2013-12-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_write_global_declarations): Call d_finish_compilation.
+	* d-objfile.cc(mark_needed): Mark static.
+	(d_finish_symbol): Don't call mark_needed.
+	(d_finish_function): Likewise.
+	(d_finish_compilation): New function to wrapup all global
+	declarations, mark templates/comdats as needed if required, and start
+	the final compilation.
+
+2013-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-ctype.cc(TypeVector::toCtype): Treat void vectors as ubyte.
+	* d-objfile.cc(VarDeclaration::toObjFile): Gag all errors compiling
+	manifest constants.
+	* d-todt.cc(TypeVector::toDt): New function to generate correct static
+	data for vector initialisers.
+
 2013-12-05  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc(d_init_options_struct): Don't define strict aliasing.

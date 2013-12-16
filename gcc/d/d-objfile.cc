@@ -1677,7 +1677,7 @@ d_comdat_linkage (tree decl)
       DECL_COMMON (decl) = 1;
     }
 
-  //DECL_COMDAT (decl) = 1;
+  DECL_COMDAT (decl) = 1;
 }
 
 // Set a DECL's STATIC and EXTERN based on the decl's storage class
@@ -1760,10 +1760,11 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 // Mark DECL, which is a VAR_DECL or FUNCTION_DECL as a symbol that
 // must be emitted in this, output module.
 
-void
+static void
 mark_needed (tree decl)
 {
   TREE_USED (decl) = 1;
+
   if (TREE_CODE (decl) == FUNCTION_DECL)
     {
       struct cgraph_node *node = cgraph_get_create_node (decl);
@@ -1835,7 +1836,6 @@ d_finish_symbol (Symbol *sym)
   // We are sending this symbol to object file.
   gcc_assert (!DECL_EXTERNAL (decl));
   relayout_decl (decl);
-  mark_needed (decl);
 
 #ifdef ENABLE_TREE_CHECKING
   if (DECL_INITIAL (decl) != NULL_TREE) 
@@ -1886,9 +1886,6 @@ d_finish_function (FuncDeclaration *fd)
 
   gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
 
-  if (!D_DECL_ONE_ONLY (decl))
-    mark_needed (decl);
-
   if (s->prettyIdent)
     DECL_NAME (decl) = get_identifier (s->prettyIdent);
 
@@ -1907,6 +1904,59 @@ d_finish_function (FuncDeclaration *fd)
       bool context = decl_function_context (decl) != NULL;
       cgraph_finalize_function (decl, context);
     }
+}
+
+// Wrapup all global declarations and start the final compilation.
+
+void
+d_finish_compilation (tree *vec, int len)
+{
+  // Complete all generated thunks.
+  cgraph_process_same_body_aliases();
+
+  StringTable *symtab = new StringTable;
+  symtab->_init();
+
+  // Process all file scopes in this compilation, and the external_scope,
+  // through wrapup_global_declarations.
+  for (int i = 0; i < len; i++)
+    {
+      tree decl = vec[i];
+
+      // Determine if a global var/function is needed.
+      // For templates, this means if we took the address of the decl,
+      // or if the decl is a class member/method or public toplevel symbol.
+      int needed = wrapup_global_declarations (&decl, 1);
+
+      if ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
+	  || TREE_CODE (decl) == FUNCTION_DECL)
+	{
+	  tree name = DECL_ASSEMBLER_NAME (decl);
+
+	  // Don't emit, assembler name already in symtab.
+	  if (!symtab->insert (IDENTIFIER_POINTER (name), IDENTIFIER_LENGTH (name)))
+	    needed = 0;
+	  else if ((D_DECL_IS_TEMPLATE (decl) || D_DECL_ONE_ONLY (decl))
+		   && TREE_PUBLIC (decl)
+		   && (TREE_ADDRESSABLE (decl) || !DECL_CONTEXT (decl)
+		       || decl_type_context (decl)))
+	    needed = 1;
+	}
+
+      if (needed)
+	mark_needed (decl);
+    }
+
+  // We're done parsing; proceed to optimize and emit assembly.
+  if (!global.errors && !errorcount)
+    finalize_compilation_unit();
+
+  // Now, issue warnings about static, but not defined, functions.
+  check_global_declarations (vec, len);
+
+  // After cgraph has had a chance to emit everything that's going to
+  // be emitted, output debug information for globals.
+  emit_debug_global_declarations (vec, len);
 }
 
 // Build TYPE_DECL for the declaration DSYM.
