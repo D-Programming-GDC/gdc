@@ -27,8 +27,8 @@ alias gthread_key_t   = int;
 alias gthread_once_t  = int;
 alias gthread_mutex_t = int;
 
-//enum GTHREAD_ONCE_INIT = 0;
-//enum GTHREAD_MUTEX_INIT = 0;
+enum GTHREAD_ONCE_INIT = 0;
+enum GTHREAD_MUTEX_INIT = 0;
 
 // Backend thread functions
 extern(C):

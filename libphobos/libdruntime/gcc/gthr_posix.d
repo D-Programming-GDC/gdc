@@ -30,8 +30,8 @@ alias gthread_key_t   = pthread_key_t;
 alias gthread_once_t  = pthread_once_t;
 alias gthread_mutex_t = pthread_mutex_t;
 
-//enum GTHREAD_MUTEX_INIT = PTHREAD_MUTEX_INITIALIZER;
-//enum GTHREAD_ONCE_INIT = PTHREAD_ONCE_INIT;
+enum GTHREAD_MUTEX_INIT = PTHREAD_MUTEX_INITIALIZER;
+enum GTHREAD_ONCE_INIT = PTHREAD_ONCE_INIT;
 
 // Backend thread functions
 extern(C):

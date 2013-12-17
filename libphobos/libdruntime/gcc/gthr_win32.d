@@ -56,8 +56,8 @@ struct gthread_once_t
 
 alias gthread_key_t   = ULONG;
 
-//enum GTHREAD_ONCE_INIT  = gthread_once_t(0, -1);
-//enum GTHREAD_MUTEX_INIT = CRITICAL_SECTION.init
+enum GTHREAD_ONCE_INIT  = gthread_once_t(0, -1);
+enum GTHREAD_MUTEX_INIT = CRITICAL_SECTION.init;
 
 extern(C):
 
