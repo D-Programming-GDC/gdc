@@ -86,7 +86,7 @@ emutls_alloc(emutls_object_t* obj)
 
   if (obj.palign <= (void*).sizeof)
     {
-      void* ptr = malloc(obj.size + (void*).sizeof);
+      void* ptr = malloc(cast(pointer_t)(obj.size) + (void*).sizeof);
       assert(ptr != null);
 
       (cast(void**) ptr)[0] = ptr;
@@ -94,8 +94,8 @@ emutls_alloc(emutls_object_t* obj)
     }
   else
     {
-      pointer_t alignsize = (void*).sizeof + obj.palign - 1;
-      void* ptr = malloc(obj.size + alignsize);
+      pointer_t alignsize = cast(pointer_t)(obj.palign - 1) + (void*).sizeof;
+      void* ptr = malloc(cast(pointer_t)(obj.size) + alignsize);
       assert(ptr != null);
 
       ret = cast(void*)((cast(pointer_t)(ptr + alignsize)) & ~cast(pointer_t)(obj.palign - 1));
@@ -103,9 +103,9 @@ emutls_alloc(emutls_object_t* obj)
     }
 
   if (obj.templ)
-    memcpy(ret, obj.templ, obj.size);
+    memcpy(ret, obj.templ, cast(pointer_t)(obj.size));
   else
-    memset(ret, 0, obj.size);
+    memset(ret, 0, cast(pointer_t)(obj.size));
 
   return ret;
 }
@@ -153,16 +153,16 @@ __emutls_get_address(emutls_object_t* obj)
   else if (offset > arr.length)
     {
       pointer_t orig_size = arr.length;
-      pointer_t size = orig_size*  2;
+      pointer_t size = orig_size * 2;
 
       if (offset > size)
 	size = offset + 32;
 
-      arr.ptr = cast(void***) realloc(arr.ptr, (size + 1)*  (void*).sizeof);
+      arr.ptr = cast(void***) realloc(arr.ptr, (size + 1) * (void*).sizeof);
       assert(arr.ptr != null);
 
       arr.length = size;
-      memset(arr.ptr + orig_size, 0, (size - orig_size)*  (void*).sizeof);
+      memset(arr.ptr + orig_size, 0, (size - orig_size) * (void*).sizeof);
       gthread_setspecific(emutls_key, cast(void*) arr);
     }
 
