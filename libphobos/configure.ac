@@ -148,11 +148,6 @@ fi
 
 d_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`
 
-# SkyOS uses i386-skyos-pe
-case "$target" in
-*-skyos*-pe*) d_target_os=skyos ;;
-esac
-
 GDC=$CC
 GDC=`echo $CC | sed s/xgcc/gdc/`
 
@@ -254,7 +249,6 @@ AC_CHECK_HEADER(stdio.h,:,
 
 HAVE_DLADDR=false
 AC_CHECK_FUNC(dladdr, HAVE_DLADDR=true)
-#AC_CHECK_LIB(dl, dladdr, [HAVE_DLADDR=true])
 AC_SUBST(HAVE_DLADDR)
 
 BACKTRACE_SUPPORTED=false
@@ -319,6 +313,13 @@ AC_SUBST(LIBBACKTRACE_LIB)
 AC_SUBST(BACKTRACE_SUPPORTED)
 AC_SUBST(BACKTRACE_USES_MALLOC)
 AC_SUBST(BACKTRACE_SUPPORTS_THREADS)
+
+AC_MSG_CHECKING([for thread model used by GDC])
+target_thread_model=`$GDC -v 2>&1 | sed -n 's/^Thread model: //p'`
+AC_MSG_RESULT([$target_thread_model])
+
+# Map from thread model to thread interface.
+DRUNTIME_CONFIGURE_THREADS([$target_thread_model])
 
 dnl AC_HEADER_STDC
 # TODO...
@@ -411,8 +412,8 @@ fi
 case "$d_target_os" in
     aix*)    d_is_aix=1
 	     ;;
-    darwin*) d_module_mach=1
-	     d_sem_impl="mach"
+    darwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_OSX_OBJS)"
+	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
 	     ;;
     freebsd*|k*bsd*-gnu)
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
@@ -421,7 +422,6 @@ case "$d_target_os" in
 	     ;;
     linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
-	     d_sem_impl="posix"
              ;;
     cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
@@ -434,10 +434,6 @@ case "$d_target_os" in
 	     #DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     DCFG_UNIX=Windows
 	     ;;
-    skyos*)  d_sem_impl="skyos"
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
-	     ;;
     *)       if test "$enable_unix" != "yes"; then
 	         DCFG_UNIX=NoSystem
 	     fi
@@ -446,11 +442,6 @@ case "$d_target_os" in
 	     ;;
 esac
 
-if test -n "$d_module_mach"; then
-  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_OSX_OBJS)"
-  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
-fi
-
 if test "$enable_unix" = "yes"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
@@ -458,11 +449,8 @@ if test "$enable_unix" = "yes"; then
   DPHOBOS_CONFIGURE_UNIX
 fi
 dnl can these be moved to acinclude.m4?
-AC_SUBST(DCFG_SEMAPHORE_IMPL)
 AC_SUBST(DCFG_MMAP)
 AC_SUBST(DCFG_GETPWNAM_R)
-
-
 AC_SUBST(DCFG_UNIX)
 AC_SUBST(DCFG_POSIX)
 
