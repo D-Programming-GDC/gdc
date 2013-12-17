@@ -26,9 +26,11 @@ module gcc.gthr_single;
 alias gthread_key_t   = int;
 alias gthread_once_t  = int;
 alias gthread_mutex_t = int;
+alias gthread_recursive_mutex_t = int;
 
-enum GTHREAD_ONCE_INIT = 0;
 enum GTHREAD_MUTEX_INIT = 0;
+enum GTHREAD_ONCE_INIT  = 0;
+enum GTHREAD_RECURSIVE_MUTEX_INIT = 0;
 
 // Backend thread functions
 extern(C):
@@ -63,8 +65,9 @@ int gthread_setspecific(gthread_key_t, in void*)
   return 0;
 }
 
-void gthread_mutex_init_function(gthread_mutex_t*)
+void gthread_mutex_init(gthread_mutex_t* mutex)
 {
+  *(mutex) = GTHREAD_MUTEX_INIT;
 }
 
 int gthread_mutex_destroy(gthread_mutex_t*)
@@ -85,5 +88,31 @@ int gthread_mutex_trylock(gthread_mutex_t*)
 int gthread_mutex_unlock(gthread_mutex_t*)
 {
   return 0;
+}
+
+int gthread_recursive_mutex_init(gthread_mutex_t* mutex)
+{
+  gthread_mutex_init(mutex);
+  return 0;
+}
+
+int gthread_recursive_mutex_lock(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_lock(mutex);
+}
+
+int gthread_recursive_mutex_trylock(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_trylock(mutex);
+}
+
+int gthread_recursive_mutex_unlock(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_unlock(mutex);
+}
+
+int gthread_recursive_mutex_destroy(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_destroy(mutex);
 }
 

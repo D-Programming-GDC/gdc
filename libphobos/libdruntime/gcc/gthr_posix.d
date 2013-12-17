@@ -29,9 +29,11 @@ import core.sys.posix.pthread;
 alias gthread_key_t   = pthread_key_t;
 alias gthread_once_t  = pthread_once_t;
 alias gthread_mutex_t = pthread_mutex_t;
+alias gthread_recursive_mutex_t = pthread_mutex_t;
 
 enum GTHREAD_MUTEX_INIT = PTHREAD_MUTEX_INITIALIZER;
-enum GTHREAD_ONCE_INIT = PTHREAD_ONCE_INIT;
+enum GTHREAD_ONCE_INIT  = PTHREAD_ONCE_INIT;
+enum GTHREAD_RECURSIVE_MUTEX_INIT = PTHREAD_MUTEX_INITIALIZER;
 
 // Backend thread functions
 extern(C):
@@ -71,7 +73,7 @@ int gthread_setspecific(gthread_key_t key, in void* ptr)
   return pthread_setspecific(key, ptr);
 }
 
-void gthread_mutex_init_function(gthread_mutex_t* mutex)
+void gthread_mutex_init(gthread_mutex_t* mutex)
 {
   if (gthread_active_p())
     pthread_mutex_init(mutex, null);
@@ -107,5 +109,46 @@ int gthread_mutex_unlock(gthread_mutex_t* mutex)
     return pthread_mutex_unlock(mutex);
   else
     return 0;
+}
+
+int gthread_recursive_mutex_init(gthread_recursive_mutex_t* mutex)
+{
+  if (gthread_active_p())
+    {
+      pthread_mutexattr_t attr;
+      int status = pthread_mutexattr_init(&attr);
+
+      if (!status)
+        status = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+
+      if (!status)
+        status = pthread_mutex_init(mutex, &attr);
+
+      if (!status)
+        status = pthread_mutexattr_destroy(&attr);
+
+      return status;
+    }
+  return 0;
+}
+
+int gthread_recursive_mutex_lock(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_lock(mutex);
+}
+
+int gthread_recursive_mutex_trylock(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_trylock(mutex);
+}
+
+int gthread_recursive_mutex_unlock(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_unlock(mutex);
+}
+
+int gthread_recursive_mutex_destroy(gthread_recursive_mutex_t* mutex)
+{
+  return gthread_mutex_destroy(mutex);
 }
 

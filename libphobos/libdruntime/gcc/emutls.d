@@ -73,7 +73,7 @@ emutls_destroy(void* ptr)
 private void
 emutls_init()
 {
-  gthread_mutex_init_function(&emutls_mutex);
+  gthread_mutex_init(&emutls_mutex);
 
   if (gthread_key_create(&emutls_key, &emutls_destroy) != 0)
     abort();
