@@ -16,9 +16,11 @@
    <http://www.gnu.org/licenses/>.
 */
 
-module gcc.gthr;
+module gcc.gthreads;
 
 version (GNU_Thread_Posix)
   public import gcc.gthr_posix;
 else version (GNU_Thread_Single)
   public import gcc.gthr_single;
+version (GNU_Thread_Win32)
+  public import gcc.gthr_win32;
