@@ -4751,19 +4751,19 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for thread model used by GDC" >&5
 $as_echo_n "checking for thread model used by GDC... " >&6; }
-target_thread_model=`$GDC -v 2>&1 | sed -n 's/^Thread model: //p'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $target_thread_model" >&5
-$as_echo "$target_thread_model" >&6; }
+d_thread_model=`$GDC -v 2>&1 | sed -n 's/^Thread model: //p'`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $d_thread_model" >&5
+$as_echo "$d_thread_model" >&6; }
 
 # Map from thread model to thread interface.
 
-case $target_thread_model in
+case $d_thread_model in
     posix)  DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
     single) DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
     # TODO: These targets need porting.
     aix|dce|lynx|mipssde|rtems|tpf|vxworks|win32)
 	    DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
-    *)	    as_fn_error "Thread implementation '$target_thread_model' not recognised" "$LINENO" 5 ;;
+    *)	    as_fn_error "Thread implementation '$d_thread_model' not recognised" "$LINENO" 5 ;;
 esac
 
 
@@ -5035,6 +5035,13 @@ $as_echo "yes" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+
+case "$d_thread_model" in
+  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_posix.o"
+	 ;;
+  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_single.o"
+	 ;;
+esac
 
 case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;

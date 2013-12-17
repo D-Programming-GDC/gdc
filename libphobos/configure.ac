@@ -315,11 +315,11 @@ AC_SUBST(BACKTRACE_USES_MALLOC)
 AC_SUBST(BACKTRACE_SUPPORTS_THREADS)
 
 AC_MSG_CHECKING([for thread model used by GDC])
-target_thread_model=`$GDC -v 2>&1 | sed -n 's/^Thread model: //p'`
-AC_MSG_RESULT([$target_thread_model])
+d_thread_model=`$GDC -v 2>&1 | sed -n 's/^Thread model: //p'`
+AC_MSG_RESULT([$d_thread_model])
 
 # Map from thread model to thread interface.
-DRUNTIME_CONFIGURE_THREADS([$target_thread_model])
+DRUNTIME_CONFIGURE_THREADS([$d_thread_model])
 
 dnl AC_HEADER_STDC
 # TODO...
@@ -397,6 +397,13 @@ AC_TRY_COMPILE([#include <unwind.h>],[
    DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
+
+case "$d_thread_model" in
+  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_posix.o"
+	 ;;
+  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_single.o"
+	 ;;
+esac
 
 case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
