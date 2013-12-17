@@ -19,11 +19,13 @@ dnl usage: DRUNTIME_CONFIGURE_THREADS([thread_model])
 AC_DEFUN([DRUNTIME_CONFIGURE_THREADS],
 [
 case $1 in
+    aix)    DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
+    lynx)   DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
     posix)  DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
     single) DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
     win32)  DCFG_THREAD_MODEL="GNU_Thread_Win32" ;;
     # TODO: These targets need porting.
-    aix|dce|lynx|mipssde|rtems|tpf|vxworks)
+    dce|mipssde|rtems|tpf|vxworks)
 	    DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
     *)	    as_fn_error "Thread implementation '$1' not recognised" "$LINENO" 5 ;;
 esac
