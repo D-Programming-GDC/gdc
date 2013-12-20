@@ -1662,7 +1662,7 @@ d_comdat_linkage (tree decl)
       DECL_INITIAL (decl) = decl_init;
     }
   else if (TREE_CODE (decl) == FUNCTION_DECL
-	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
+	   || ((TREE_CODE (decl) == VAR_DECL) && DECL_ARTIFICIAL (decl)))
     {
       // We can just emit function and compiler-generated variables
       // statically; having multiple copies is (for the most part) only
@@ -1768,12 +1768,12 @@ mark_needed (tree decl)
   if (TREE_CODE (decl) == FUNCTION_DECL)
     {
       struct cgraph_node *node = cgraph_get_create_node (decl);
-      node->forced_by_abi = true;
+      node->symbol.force_output = true;
     }
   else if (TREE_CODE (decl) == VAR_DECL)
     {
       struct varpool_node *node = varpool_node_for_decl (decl);
-      node->forced_by_abi = true;
+      node->symbol.force_output = true;
     }
 }
 
