@@ -162,7 +162,6 @@ longdouble::to_shwi (Type *type) const
     {
       tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
 			    build_float_cst (*this, Type::tfloat64));
-      // Can't use tree_low_cst as it asserts !TREE_OVERFLOW
       cst = TREE_INT_CST (t);
     }
 
@@ -365,14 +364,6 @@ longdouble::operator != (const longdouble& r)
   return real_compare (NE_EXPR, &rv(), &r.rv());
 }
 
-// Returns TRUE if longdouble value is identical to R.
-
-bool
-longdouble::isIdenticalTo (const longdouble& r) const
-{
-  return REAL_VALUES_IDENTICAL (rv(), r.rv());
-}
-
 // Format longdouble value into decimal string BUF of size BUF_SIZE.
 
 int
@@ -399,6 +390,6 @@ longdouble::dump (void)
 {
   char buf[128];
   format (buf, sizeof (buf));
-  fprintf (stderr, "%s\n", buf);
+  fprintf (global.stdmsg, "%s\n", buf);
 }
 

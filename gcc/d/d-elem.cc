@@ -837,17 +837,19 @@ PowAssignExp::toElem (IRState *)
 }
 
 // Determine if type is an array of structs that need a postblit.
+
 static StructDeclaration *
 needsPostblit (Type *t)
 {
-  t = t->toBasetype();
-  while (t->ty == Tsarray)
-    t = t->nextOf()->toBasetype();
+  t = t->baseElemOf();
+
   if (t->ty == Tstruct)
-    {   StructDeclaration *sd = ((TypeStruct *) t)->sym;
+    {
+      StructDeclaration *sd = ((TypeStruct *) t)->sym;
       if (sd->postblit)
 	return sd;
     }
+
   return NULL;
 }
 
@@ -912,17 +914,8 @@ CatAssignExp::toElem (IRState *irs)
 
 	  // Evaluate expression before appending
 	  tree e2e = e2->toElem (irs);
-	  e2e = make_temp (e2e);
+	  e2e = maybe_make_temp (e2e);
 	  result = modify_expr (etype->toCtype(), build_deref (ptr_exp), e2e);
-
-	  // Maybe call postblit on e2.
-	  StructDeclaration *sd = needsPostblit (tb2);
-	  if (sd != NULL)
-	    {
-	      Expressions args;
-	      tree callexp = d_build_call (sd->postblit, build_address (e2e), &args);
-	      result = compound_expr (callexp, result);
-	    }
 	  result = compound_expr (e2e, result);
 	}
     }
@@ -1174,7 +1167,7 @@ IndexExp::toElem (IRState *irs)
 
       index = aoe.finish (build_libcall (libcall, 4, args, type->pointerTo()->toCtype()));
 
-      if (array_bounds_check())
+      if (array_bounds_check() && !skipboundscheck)
 	{
 	  index = make_temp (index);
 	  index = build3 (COND_EXPR, TREE_TYPE (index), d_truthvalue_conversion (index),
@@ -1406,11 +1399,9 @@ CastExp::toElem (IRState *irs)
   Type *tbtype = to->toBasetype();
   tree t = e1->toElem (irs);
 
+  // Just evaluate e1 if it has any side effects
   if (tbtype->ty == Tvoid)
-    {
-      // Just evaluate e1 if it has any side effects
-      return build1 (NOP_EXPR, tbtype->toCtype(), t);
-    }
+    return build1 (NOP_EXPR, tbtype->toCtype(), t);
 
   return convert_expr (t, ebtype, tbtype);
 }
@@ -1444,15 +1435,13 @@ DeleteExp::toElem (IRState *irs)
   else if (tb1->ty == Tarray)
     {
       // Might need to run destructor on array contents
-      Type *next_type = tb1->nextOf()->toBasetype();
+      Type *telem = tb1->nextOf()->baseElemOf();
       tree ti = d_null_pointer;
       tree args[2];
 
-      while (next_type->ty == Tsarray)
-	next_type = next_type->nextOf()->toBasetype();
-      if (next_type->ty == Tstruct)
+      if (telem->ty == Tstruct)
 	{
-	  TypeStruct *ts = (TypeStruct *) next_type;
+	  TypeStruct *ts = (TypeStruct *) telem;
 	  if (ts->sym->dtor)
 	    ti = tb1->nextOf()->getTypeInfo (NULL)->toElem (irs);
 	}
@@ -1879,21 +1868,34 @@ AssertExp::toElem (IRState *irs)
   if (global.params.useAssert)
     {
       Type *tb1 = e1->type->toBasetype();
-      tree assert_call;
+      tree tmsg = NULL_TREE;
+      LibCall libcall;
 
+      // Build _d_assert call.
       if (irs->func->isUnitTestDeclaration())
 	{
-	  assert_call = (msg != NULL)
-	    ? d_assert_call (loc, LIBCALL_UNITTEST_MSG, msg->toElem (irs))
-	    : d_assert_call (loc, LIBCALL_UNITTEST, NULL_TREE);
+	  if (msg)
+	    {
+	      tmsg = msg->toElemDtor (irs);
+	      libcall = LIBCALL_UNITTEST_MSG;
+	    }
+	  else
+	    libcall = LIBCALL_UNITTEST;
 	}
       else
 	{
-	  assert_call = (msg != NULL)
-	    ? d_assert_call (loc, LIBCALL_ASSERT_MSG, msg->toElem (irs))
-	    : d_assert_call (loc, LIBCALL_ASSERT, NULL_TREE);
+	  if (msg)
+	    {
+	      tmsg = msg->toElemDtor (irs);
+	      libcall = LIBCALL_ASSERT_MSG;
+	    }
+	  else
+	    libcall = LIBCALL_ASSERT;
 	}
 
+      tree assert_call = d_assert_call (loc, libcall, tmsg);
+
+      // Build condition that we are asserting in this contract.
       if (tb1->ty == Tclass)
 	{
 	  ClassDeclaration *cd = tb1->isClassHandle();
@@ -1909,7 +1911,7 @@ AssertExp::toElem (IRState *irs)
 	  else if (cd->isInterfaceDeclaration())
 	    arg = convert_expr (arg, tb1, build_object_type());
 
-	  if (global.params.useInvariants)
+	  if (global.params.useInvariants && !cd->isCPPclass())
 	    invc = build_libcall (LIBCALL_INVARIANT, 1, &arg);
 
 	  // This does a null pointer check before calling _d_invariant
@@ -2153,32 +2155,34 @@ NewExp::toElem (IRState *irs)
   // New'ing a struct.
   else if (tb->ty == Tpointer && tb->nextOf()->toBasetype()->ty == Tstruct)
     {
+      Type *htype = newtype->toBasetype();
+      gcc_assert (htype->ty == Tstruct);
       gcc_assert (!onstack);
 
-      Type * handle_type = newtype->toBasetype();
-      gcc_assert (handle_type->ty == Tstruct);
-      TypeStruct *struct_type = (TypeStruct *) handle_type;
-      StructDeclaration *sd = struct_type->sym;
-      Expression *init = struct_type->defaultInit (loc);
-
+      TypeStruct *stype = (TypeStruct *) htype;
+      StructDeclaration *sd = stype->sym;
+      Expression *init = stype->defaultInit (loc);
       tree new_call;
-      tree setup_exp;
-      tree init_exp;
+
+      // Struct size is unknown.
+      if (sd->size (loc) == 0)
+	return d_convert (type->toCtype(), integer_zero_node);
 
       if (allocator)
 	new_call = d_build_call (allocator, NULL_TREE, newargs);
       else
 	{
-	  libcall = struct_type->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+	  libcall = stype->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
 	  tree arg = type->getTypeInfo(NULL)->toElem (irs);
 	  new_call = build_libcall (libcall, 1, &arg);
 	}
       new_call = build_nop (tb->toCtype(), new_call);
 
       // Save the result allocation call.
-      init_exp = convert_for_assignment (init->toElem (irs), init->type, struct_type);
+      tree init_exp = convert_for_assignment (init->toElem (irs), init->type, stype);
       new_call = maybe_make_temp (new_call);
-      setup_exp = modify_expr (build_deref (new_call), init_exp);
+
+      tree setup_exp = modify_expr (build_deref (new_call), init_exp);
       new_call = compound_expr (setup_exp, new_call);
 
       // Set vthis for nested structs/classes.
@@ -2187,7 +2191,7 @@ NewExp::toElem (IRState *irs)
 	  tree vthis_value = build_vthis (sd, irs->func, this);
 	  tree vthis_field;
 	  new_call = maybe_make_temp (new_call);
-	  vthis_field = component_ref (indirect_ref (struct_type->toCtype(), new_call),
+	  vthis_field = component_ref (indirect_ref (stype->toCtype(), new_call),
 				       sd->vthis->toSymbol()->Stree);
 	  new_call = compound_expr (modify_expr (vthis_field, vthis_value), new_call);
 	}
@@ -2211,8 +2215,13 @@ NewExp::toElem (IRState *irs)
 	{
 	  // Single dimension array allocations.
 	  Expression *arg = (*arguments)[0];
-	  libcall = tarray->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
 	  tree args[2];
+
+	  // Elem size is unknown.
+	  if (tarray->next->size() == 0)
+	    return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+
+	  libcall = tarray->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
 	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
 	  args[1] = arg->toElem (irs);
 	  result = build_libcall (libcall, 2, args, tb->toCtype());
@@ -2236,6 +2245,7 @@ NewExp::toElem (IRState *irs)
 	      telem = telem->toBasetype()->nextOf();
 	      gcc_assert (telem);
 	    }
+
 	  CONSTRUCTOR_ELTS (dims_init) = elms;
 	  DECL_INITIAL (dims_var) = dims_init;
 
@@ -2250,9 +2260,14 @@ NewExp::toElem (IRState *irs)
   // New'ing a pointer
   else if (tb->ty == Tpointer)
     {
-      TypePointer *pointer_type = (TypePointer *) tb;
+      TypePointer *tpointer = (TypePointer *) tb;
 
-      libcall = pointer_type->next->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+      // Elem size is unknown.
+      if (tpointer->next->size() == 0)
+	return d_convert (type->toCtype(), integer_zero_node);
+
+      libcall = tpointer->next->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+
       tree arg = type->getTypeInfo(NULL)->toElem (irs);
       result = build_libcall (libcall, 1, &arg, tb->toCtype());
     }
@@ -2378,24 +2393,22 @@ ArrayLiteralExp::toElem (IRState *irs)
   Type *tb = type->toBasetype();
   gcc_assert (tb->ty == Tarray || tb->ty == Tsarray || tb->ty == Tpointer);
 
+  // Convert void[n] to ubyte[n]
   if (tb->ty == Tsarray && tb->nextOf()->toBasetype()->ty == Tvoid)
-    {
-      // Convert void[n] to ubyte[n]
-      tb = new TypeSArray(Type::tuns8, ((TypeSArray *)tb)->dim);
-      tb = tb->semantic(loc, NULL);
-    }
+    tb = TypeSArray::makeType(loc, Type::tuns8, ((TypeSArray *)tb)->dim->toUInteger());
 
   Type *etype = tb->nextOf();
-  tree sa_type = d_array_type (etype, elements->dim);
+  tree tsa = d_array_type (etype, elements->dim);
   tree result = NULL_TREE;
   bool constant_p = tb->isImmutable();
 
+  // Handle empty array literals.
   if (elements->dim == 0)
     {
       if (tb->ty == Tarray)
 	return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
       else
-	return build_constructor (sa_type, NULL);
+	return build_constructor (tsa, NULL);
     }
 
   // Build an expression that assigns the expressions in ELEMENTS to a constructor.
@@ -2405,13 +2418,17 @@ ArrayLiteralExp::toElem (IRState *irs)
   for (size_t i = 0; i < elements->dim; i++)
     {
       Expression *e = (*elements)[i];
+      tree elem = e->toElem (irs);
+
+      elem = maybe_make_temp (elem);
       CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
-			      convert_expr (e->toElem (irs), e->type, etype));
+			      convert_expr (elem, e->type, etype));
+
       if (constant_p && !e->isConst())
 	constant_p = false;
     }
 
-  tree ctor = build_constructor (sa_type, elms);
+  tree ctor = build_constructor (tsa, elms);
   tree args[2];
 
   // Nothing else to do for static arrays.
@@ -2526,61 +2543,59 @@ StructLiteralExp::toElem (IRState *irs)
   if (sinit && sinit->Stree)
     return sinit->Stree;
 
-  if (elements)
+  // CTFE may fill the hidden pointer by NullExp.
+  size_t dim = elements ? elements->dim : 0;
+  gcc_assert (dim <= sd->fields.dim);
+
+  for (size_t i = 0; i < dim; i++)
     {
-      size_t dim = elements->dim;
-      gcc_assert (dim <= sd->fields.dim - sd->isNested());
+      if (!(*elements)[i])
+	continue;
 
-      for (size_t i = 0; i < dim; i++)
+      Expression *exp = (*elements)[i];
+      Type *exp_type = exp->type->toBasetype();
+      tree exp_tree = NULL_TREE;
+
+      VarDeclaration *fld = sd->fields[i];
+      Type *fld_type = fld->type->toBasetype();
+
+      if (fld_type->ty == Tsarray)
 	{
-	  if (!(*elements)[i])
-	    continue;
-
-	  Expression *exp = (*elements)[i];
-	  Type *exp_type = exp->type->toBasetype();
-	  tree exp_tree = NULL_TREE;
-
-	  VarDeclaration *fld = sd->fields[i];
-	  Type *fld_type = fld->type->toBasetype();
-
-	  if (fld_type->ty == Tsarray)
+	  if (d_types_compatible (exp_type, fld_type))
 	    {
-	      if (d_types_compatible (exp_type, fld_type))
-		{
-		  // %% This would call _d_newarrayT ... use memcpy?
-		  exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
-		}
-	      else
-		{
-		  // %% Could use memset if is zero init...
-		  exp_tree = build_local_temp (fld_type->toCtype());
-		  Type *etype = fld_type;
-
-		  while (etype->ty == Tsarray)
-		    etype = etype->nextOf();
-
-		  gcc_assert (fld_type->size() % etype->size() == 0);
-		  tree size = fold_build2 (TRUNC_DIV_EXPR, size_type_node,
-					   size_int (fld_type->size()), size_int (etype->size()));
-
-		  tree ptr_tree = build_nop (etype->pointerTo()->toCtype(),
-					     build_address (exp_tree));
-		  tree set_exp = irs->doArraySet (ptr_tree, exp->toElem (irs), size);
-		  exp_tree = compound_expr (set_exp, exp_tree);
-		}
+	      // %% This would call _d_newarrayT ... use memcpy?
+	      exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
 	    }
 	  else
-	    exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
+	    {
+	      // %% Could use memset if is zero init...
+	      exp_tree = build_local_temp (fld_type->toCtype());
+	      Type *etype = fld_type;
 
-	  CONSTRUCTOR_APPEND_ELT (ce, fld->toSymbol()->Stree, exp_tree);
+	      while (etype->ty == Tsarray)
+		etype = etype->nextOf();
 
-	  // Unions only have one field that gets assigned.
-	  if (sd->isUnionDeclaration())
-	    break;
+	      gcc_assert (fld_type->size() % etype->size() == 0);
+	      tree size = fold_build2 (TRUNC_DIV_EXPR, size_type_node,
+				       size_int (fld_type->size()), size_int (etype->size()));
+
+	      tree ptr_tree = build_nop (etype->pointerTo()->toCtype(),
+					 build_address (exp_tree));
+	      tree set_exp = irs->doArraySet (ptr_tree, exp->toElem (irs), size);
+	      exp_tree = compound_expr (set_exp, exp_tree);
+	    }
 	}
+      else
+	exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);
+
+      CONSTRUCTOR_APPEND_ELT (ce, fld->toSymbol()->Stree, exp_tree);
+
+      // Unions only have one field that gets assigned.
+      if (sd->isUnionDeclaration())
+	break;
     }
 
-  if (sd->isNested())
+  if (sd->isNested() && dim != sd->fields.dim)
     {
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;
@@ -2709,6 +2724,10 @@ VectorExp::toElem (IRState *irs)
 elem *
 ClassReferenceExp::toElem (IRState *)
 {
-  return toSymbol()->Stree;
+  // ClassReferenceExp builds the RECORD_TYPE,
+  // we want to return a reference to it.
+  tree exp = toSymbol()->Stree;
+
+  return build_address (exp);
 }
 

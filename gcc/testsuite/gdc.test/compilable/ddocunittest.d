@@ -1,5 +1,5 @@
 // PERMUTE_ARGS: -unittest
-// REQUIRED_ARGS: -D -w -o- -c -Ddtest_results/compilable -o-
+// REQUIRED_ARGS: -D -w -o- -c -Dd${RESULTS_DIR}/compilable -o-
 // POST_SCRIPT: compilable/extra-files/ddocAny-postscript.sh unittest
 
 module ddocunittest;
@@ -275,6 +275,18 @@ void foo(){}
 
 ///
 unittest {  }
+
+// ------------------------------------
+// Issue 10519
+
+///
+bool balancedParens10519(string, char, char) { return true; }
+///
+unittest
+{
+    auto s = "1 + (2 * (3 + 1 / 2)";
+    assert(!balancedParens10519(s, '(', ')'));
+}
 
 // ------------------------------------
 

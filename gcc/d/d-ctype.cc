@@ -373,10 +373,11 @@ TypeFunction::toCtype (void)
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
 
-	  if (next->toBasetype()->ty == Tstruct)
+	  Type *tn = next->baseElemOf();
+	  if (tn->ty == Tstruct)
 	    {
 	      // Non-POD structs must return in memory.
-	      TypeStruct *ts = (TypeStruct *) next->toBasetype();
+	      TypeStruct *ts = (TypeStruct *) tn->toBasetype();
 	      if (!ts->sym->isPOD())
 		TREE_ADDRESSABLE (ctype) = 1;
 	    }
@@ -395,7 +396,7 @@ TypeFunction::toCtype (void)
 	      break;
 
 	    default:
-	      fprintf (stderr, "linkage = %d\n", linkage);
+	      fprintf (global.stdmsg, "linkage = %d\n", linkage);
 	      gcc_unreachable();
 	    }
 	}
@@ -404,7 +405,7 @@ TypeFunction::toCtype (void)
   return ctype;
 }
 
-enum RET
+RET
 TypeFunction::retStyle (void)
 {
   /* Return by reference or pointer. */
@@ -433,7 +434,7 @@ TypeVector::toCtype (void)
 	  tree inner = elementType()->toCtype();
 
 	  if (inner == void_type_node)
-	    inner = Type::tint8->toCtype();
+	    inner = Type::tuns8->toCtype();
 
 	  ctype = build_vector_type (inner, nunits);
 	  layout_type (ctype);

@@ -20,7 +20,6 @@ module std.json;
 import std.ascii;
 import std.conv;
 import std.range;
-import std.uni : isControl;
 import std.utf;
 
 private
@@ -378,8 +377,12 @@ JSONValue parseJSON(T)(T json, int maxDepth = -1) if(isInputRange!T)
 
 /**
 Takes a tree of JSON values and returns the serialized string.
+
+If $(D pretty) is false no whitespaces are generated.
+If $(D pretty) is true serialized string is formatted to be human-readable.
+No exact formatting layout is guaranteed in the latter case.
 */
-string toJSON(in JSONValue* root)
+string toJSON(in JSONValue* root, in bool pretty = false)
 {
     auto json = appender!string();
 
@@ -408,34 +411,73 @@ string toJSON(in JSONValue* root)
         json.put('"');
     }
 
-    void toValue(in JSONValue* value)
+    void toValue(in JSONValue* value, ulong indentLevel)
     {
+        void putTabs(ulong additionalIndent = 0)
+        {
+            if(pretty)
+                foreach(i; 0 .. indentLevel + additionalIndent)
+                    json.put("    ");
+        }
+        void putEOL()
+        {
+            if(pretty)
+                json.put('\n');
+        }
+        void putCharAndEOL(char ch)
+        {
+            json.put(ch);
+            putEOL();
+        }
+
         final switch(value.type)
         {
             case JSON_TYPE.OBJECT:
-                json.put('{');
-                bool first = true;
-                foreach(name, member; value.object)
+                if(!value.object.length)
                 {
-                    if(!first)
-                        json.put(',');
-                    first = false;
-                    toString(name);
-                    json.put(':');
-                    toValue(&member);
+                    json.put("{}");
                 }
-                json.put('}');
+                else
+                {
+                    putCharAndEOL('{');
+                    bool first = true;
+                    foreach(name, member; value.object)
+                    {
+                        if(!first)
+                            putCharAndEOL(',');
+                        first = false;
+                        putTabs(1);
+                        toString(name);
+                        json.put(':');
+                        if(pretty)
+                            json.put(' ');
+                        toValue(&member, indentLevel + 1);
+                    }
+                    putEOL();
+                    putTabs();
+                    json.put('}');
+                }
                 break;
 
             case JSON_TYPE.ARRAY:
-                json.put('[');
-                foreach (i, ref el; value.array)
+                if(value.array.empty)
                 {
-                    if(i)
-                        json.put(',');
-                    toValue(&el);
+                    json.put("[]");
                 }
-                json.put(']');
+                else
+                {
+                    putCharAndEOL('[');
+                    foreach (i, ref el; value.array)
+                    {
+                        if(i)
+                            putCharAndEOL(',');
+                        putTabs(1);
+                        toValue(&el, indentLevel + 1);
+                    }
+                    putEOL();
+                    putTabs();
+                    json.put(']');
+                }
                 break;
 
             case JSON_TYPE.STRING:
@@ -468,13 +510,15 @@ string toJSON(in JSONValue* root)
         }
     }
 
-    toValue(root);
+    toValue(root, 0);
     return json.data;
 }
 
 private void appendJSONChar(Appender!string* dst, dchar c,
                             scope void delegate(string) error)
 {
+    import std.uni : isControl;
+
     if(isControl(c))
         error("Illegal control character.");
     dst.put(c);
@@ -512,7 +556,6 @@ unittest
         `0.23`,
         `-0.23`,
         `""`,
-        `1.223e+24`,
         `"hello\nworld"`,
         `"\"\\\/\b\f\n\r\t"`,
         `[]`,
@@ -522,6 +565,11 @@ unittest
         // Currently broken
         // `{"hello":{"json":"is great","array":[12,null,{}]},"goodbye":[true,"or",false,["test",42,{"nested":{"a":23.54,"b":0.0012}}]]}`
     ];
+
+    version (MinGW)
+        jsons ~= `1.223e+024`;
+    else
+        jsons ~= `1.223e+24`;
 
     JSONValue val;
     string result;
@@ -548,10 +596,24 @@ unittest
     val = parseJSON(`"\u2660\u2666"`);
     assert(toJSON(&val) == "\"\&spades;\&diams;\"");
 
-    assertNotThrown(parseJSON(`{ "foo": "` ~ "\u007F" ~ `"}`));
+    //0x7F is a control character (see Unicode spec)
+    assertThrown(parseJSON(`{ "foo": "` ~ "\u007F" ~ `"}`));
 
     with(parseJSON(`""`))
         assert(str == "" && str !is null);
     with(parseJSON(`[]`))
         assert(!array.length && array !is null);
+
+    // Formatting
+    val = parseJSON(`{"a":[null,{"x":1},{},[]]}`);
+    assert(toJSON(&val, true) == `{
+    "a": [
+        null,
+        {
+            "x": 1
+        },
+        {},
+        []
+    ]
+}`);
 }

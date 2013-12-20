@@ -49,7 +49,7 @@ AsmStatement::toIR (IRState *)
 ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insn,
 				  Expressions *args, Identifiers *names,
 				  Expressions *constraints, int outputargs,
-				  Expressions *clobbers, Dsymbols * labels)
+				  Expressions *clobbers)
     : Statement (loc)
 {
   this->insn = insn;
@@ -58,7 +58,6 @@ ExtAsmStatement::ExtAsmStatement (Loc loc, Expression *insn,
   this->constraints = constraints;
   this->outputargs = outputargs;
   this->clobbers = clobbers;
-  this->labels = labels;
 }
 
 // Create a copy of ExtAsmStatement.
@@ -70,15 +69,13 @@ ExtAsmStatement::syntaxCopy (void)
   Expressions *args = NULL;
   Expressions *constraints = NULL;
   Expressions *clobbers = NULL;
-  Dsymbols *labels = NULL;
 
   args = Expression::arraySyntaxCopy (this->args);
   constraints = Expression::arraySyntaxCopy (this->constraints);
   clobbers = Expression::arraySyntaxCopy (this->clobbers);
-  labels = Dsymbol::arraySyntaxCopy (this->labels);
 
   return new ExtAsmStatement (this->loc, insn, args, this->names, constraints,
-			      this->outputargs, clobbers, labels);
+			      this->outputargs, clobbers);
 }
 
 // Semantically analyze ExtAsmStatement where SC is the scope of the statment.
@@ -200,9 +197,10 @@ ExtAsmStatement::toCBuffer (OutBuffer *buf, HdrGenState *hgs ATTRIBUTE_UNUSED)
 
 // TRUE if statement 'comes from' somewhere else, like a goto.
 
-int ExtAsmStatement::comeFrom()
+bool
+ExtAsmStatement::comeFromImpl()
 {
-  return 1;
+  return true;
 }
 
 // Return how an ExtAsmStatement exits.

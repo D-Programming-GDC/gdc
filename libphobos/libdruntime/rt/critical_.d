@@ -11,198 +11,87 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+   Modified by Iain Buclaw, December 2013
+*/
 module rt.critical_;
 
 private
 {
     debug(PRINTF) import core.stdc.stdio;
     import core.stdc.stdlib;
+    import gcc.gthreads;
 
-    version( linux )
+    /* We don't initialize critical sections unless we actually need them.
+     * So keep a linked list of the ones we do use, and in the static destructor
+     * code, walk the list and release them.
+     */
+    struct critsec_t
     {
-        version = USE_PTHREADS;
-    }
-    else version( FreeBSD )
-    {
-        version = USE_PTHREADS;
-    }
-    else version( OSX )
-    {
-        version = USE_PTHREADS;
-    }
-    else version( Solaris )
-    {
-        version = USE_PTHREADS;
-    }
-
-    version( Windows )
-    {
-        import core.sys.windows.windows;
-
-        /* We don't initialize critical sections unless we actually need them.
-         * So keep a linked list of the ones we do use, and in the static destructor
-         * code, walk the list and release them.
-         */
-        struct D_CRITICAL_SECTION
-        {
-            D_CRITICAL_SECTION *next;
-            CRITICAL_SECTION cs;
-        }
-    }
-    else version( USE_PTHREADS )
-    {
-        import core.sys.posix.pthread;
-
-        /* We don't initialize critical sections unless we actually need them.
-         * So keep a linked list of the ones we do use, and in the static destructor
-         * code, walk the list and release them.
-         */
-        struct D_CRITICAL_SECTION
-        {
-            D_CRITICAL_SECTION *next;
-            pthread_mutex_t cs;
-        }
-    }
-    else
-    {
-        static assert(0, "Unsupported platform");
+        critsec_t *next;
+        gthread_recursive_mutex_t cs;
     }
 }
 
+/******************************************
+ * Enter/exit critical section.
+ */
 
-/* ================================= Win32 ============================ */
+static __gshared critsec_t *dcs_list;
+static __gshared critsec_t critical_section;
 
-version( Windows )
+extern (C) void _d_criticalenter(critsec_t *dcs)
 {
-    /******************************************
-     * Enter/exit critical section.
-     */
-
-    static __gshared D_CRITICAL_SECTION *dcs_list;
-    static __gshared D_CRITICAL_SECTION critical_section;
-    static __gshared int inited;
-
-    extern (C) void _d_criticalenter(D_CRITICAL_SECTION *dcs)
+  if (!dcs_list)
     {
-        if (!dcs_list)
-        {
-            _STI_critical_init();
-            atexit(&_STD_critical_term);
-        }
-        debug(PRINTF) printf("_d_criticalenter(dcs = x%x)\n", dcs);
-        if (!dcs.next)
-        {
-            EnterCriticalSection(&critical_section.cs);
-            if (!dcs.next) // if, in the meantime, another thread didn't set it
-            {
-                dcs.next = dcs_list;
-                dcs_list = dcs;
-                InitializeCriticalSection(&dcs.cs);
-            }
-            LeaveCriticalSection(&critical_section.cs);
-        }
-        EnterCriticalSection(&dcs.cs);
+      _STI_critical_init();
+      atexit(&_STD_critical_term);
     }
-
-    extern (C) void _d_criticalexit(D_CRITICAL_SECTION *dcs)
+  debug(PRINTF) printf("_d_criticalenter(dcs = x%x)\n", dcs);
+  if (!dcs.next)
     {
-        debug(PRINTF) printf("_d_criticalexit(dcs = x%x)\n", dcs);
-        LeaveCriticalSection(&dcs.cs);
+      gthread_recursive_mutex_lock(&critical_section.cs);
+      if (!dcs.next) // if, in the meantime, another thread didn't set it
+	{
+	  dcs.next = dcs_list;
+	  dcs_list = dcs;
+	  gthread_recursive_mutex_init(&dcs.cs);
+	}
+      gthread_recursive_mutex_unlock(&critical_section.cs);
     }
+  gthread_recursive_mutex_lock(&dcs.cs);
+}
 
-    extern (C) void _STI_critical_init()
-    {
-        if (!inited)
-        {
-            debug(PRINTF) printf("_STI_critical_init()\n");
-            InitializeCriticalSection(&critical_section.cs);
-            dcs_list = &critical_section;
-            inited = 1;
-        }
-    }
+extern (C) void _d_criticalexit(critsec_t *dcs)
+{
+  debug(PRINTF) printf("_d_criticalexit(dcs = x%x)\n", dcs);
+  gthread_recursive_mutex_unlock(&dcs.cs);
+}
 
-    extern (C) void _STD_critical_term()
+extern (C) void _STI_critical_init()
+{
+  if (!dcs_list)
     {
-        if (inited)
-        {
-            debug(PRINTF) printf("_STI_critical_term()\n");
-            while (dcs_list)
-            {
-                debug(PRINTF) printf("\tlooping... %x\n", dcs_list);
-                DeleteCriticalSection(&dcs_list.cs);
-                dcs_list = dcs_list.next;
-            }
-            inited = 0;
-        }
+      debug(PRINTF) printf("_STI_critical_init()\n");
+      // The global critical section doesn't need to be recursive
+      gthread_recursive_mutex_init(&critical_section.cs);
+      dcs_list = &critical_section;
     }
 }
 
-/* ================================= linux ============================ */
-
-version( USE_PTHREADS )
+extern (C) void _STD_critical_term()
 {
-    /******************************************
-     * Enter/exit critical section.
-     */
-
-    static __gshared D_CRITICAL_SECTION *dcs_list;
-    static __gshared D_CRITICAL_SECTION critical_section;
-    static __gshared pthread_mutexattr_t _criticals_attr;
-
-    extern (C) void _d_criticalenter(D_CRITICAL_SECTION *dcs)
+  if (dcs_list)
     {
-        if (!dcs_list)
-        {
-            _STI_critical_init();
-            atexit(&_STD_critical_term);
-        }
-        debug(PRINTF) printf("_d_criticalenter(dcs = x%x)\n", dcs);
-        if (!dcs.next)
-        {
-            pthread_mutex_lock(&critical_section.cs);
-            if (!dcs.next) // if, in the meantime, another thread didn't set it
-            {
-                dcs.next = dcs_list;
-                dcs_list = dcs;
-                pthread_mutex_init(&dcs.cs, &_criticals_attr);
-            }
-            pthread_mutex_unlock(&critical_section.cs);
-        }
-        pthread_mutex_lock(&dcs.cs);
-    }
-
-    extern (C) void _d_criticalexit(D_CRITICAL_SECTION *dcs)
-    {
-        debug(PRINTF) printf("_d_criticalexit(dcs = x%x)\n", dcs);
-        pthread_mutex_unlock(&dcs.cs);
-    }
-
-    extern (C) void _STI_critical_init()
-    {
-        if (!dcs_list)
-        {
-            debug(PRINTF) printf("_STI_critical_init()\n");
-            pthread_mutexattr_init(&_criticals_attr);
-            pthread_mutexattr_settype(&_criticals_attr, PTHREAD_MUTEX_RECURSIVE);
-
-            // The global critical section doesn't need to be recursive
-            pthread_mutex_init(&critical_section.cs, null);
-            dcs_list = &critical_section;
-        }
-    }
-
-    extern (C) void _STD_critical_term()
-    {
-        if (dcs_list)
-        {
-            debug(PRINTF) printf("_STI_critical_term()\n");
-            while (dcs_list)
-            {
-                debug(PRINTF) printf("\tlooping... %x\n", dcs_list);
-                pthread_mutex_destroy(&dcs_list.cs);
-                dcs_list = dcs_list.next;
-            }
-        }
+      debug(PRINTF) printf("_STI_critical_term()\n");
+      while (dcs_list)
+	{
+	  debug(PRINTF) printf("\tlooping... %x\n", dcs_list);
+	  gthread_recursive_mutex_destroy(&dcs_list.cs);
+	  dcs_list = dcs_list.next;
+	}
     }
 }
 

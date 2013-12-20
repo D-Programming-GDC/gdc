@@ -28,7 +28,7 @@ void
 Port::init (void)
 {
   char buf[128];
-  enum machine_mode mode = TYPE_MODE (long_double_type_node);
+  machine_mode mode = TYPE_MODE (long_double_type_node);
 
   real_nan (&ldbl_nan.rv(), "", 1, mode);
   real_nan (&snan.rv(), "", 0, mode);
@@ -67,6 +67,15 @@ longdouble
 Port::fmodl (longdouble x, longdouble y)
 {
   return x % y;
+}
+
+// Returns TRUE if longdouble value X is identical to Y.
+
+int
+Port::fequal (longdouble x, longdouble y)
+{
+  return (Port::isNan(x) && Port::isNan(y))
+    || REAL_VALUES_IDENTICAL (x.rv(), y.rv());
 }
 
 char *

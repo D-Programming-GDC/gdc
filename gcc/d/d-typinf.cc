@@ -23,6 +23,10 @@
 #include "declaration.h"
 #include "aggregate.h"
 
+extern bool inNonRoot(Dsymbol *s);
+extern FuncDeclaration *search_toHash(StructDeclaration *sd);
+extern FuncDeclaration *search_toString(StructDeclaration *sd);
+
 
 /*******************************************
  * Get a canonicalized form of the TypeInfo for use with the internal
@@ -88,9 +92,9 @@ Type::getInternalTypeInfo (Scope *sc)
 Expression *
 Type::getTypeInfo (Scope *sc)
 {
-  if (!Type::typeinfo)
+  if (!Type::dtypeinfo)
     {
-      error (Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt, compile with -v switch");
+      error (Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt");
       fatal();
     }
 
@@ -109,6 +113,7 @@ Type::getTypeInfo (Scope *sc)
 	t->vtinfo = new TypeInfoWildDeclaration (t);
       else
 	t->vtinfo = t->getTypeInfoDeclaration();
+
       gcc_assert (t->vtinfo);
       vtinfo = t->vtinfo;
 
@@ -122,6 +127,17 @@ Type::getTypeInfo (Scope *sc)
 	      // Find module that will go all the way to an object file
 	      Module *m = sc->module->importedFrom;
 	      m->members->push (t->vtinfo);
+
+	      if (ty == Tstruct)
+		{
+		  StructDeclaration *sd = ((TypeStruct *) this)->sym;
+
+		  if (((sd->xeq && sd->xeq != sd->xerreq)
+		       || (sd->xcmp && sd->xcmp != sd->xerrcmp)
+		       || search_toHash (sd) || search_toString (sd))
+		      && inNonRoot (sd))
+		    Module::addDeferredSemantic3 (sd);
+		}
 	    }
 	  else
 	    t->vtinfo->toObjFile (0);
@@ -240,9 +256,11 @@ TypeBasic::builtinTypeInfo (void)
 int
 TypeDArray::builtinTypeInfo (void)
 {
-  return !mod && ((next->isTypeBasic() != NULL && !next->mod)
-		  // strings are so common, make them builtin
-		  || (next->ty == Tchar && next->mod == MODimmutable));
+  // Strings are so common, make them builtin.
+  return !mod
+    && ((next->isTypeBasic() != NULL && !next->mod)
+	|| (next->ty == Tchar && next->mod == MODimmutable)
+	|| (next->ty == Tchar && next->mod == MODconst));
 }
 
 int

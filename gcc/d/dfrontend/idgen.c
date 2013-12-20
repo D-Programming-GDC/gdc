@@ -279,6 +279,7 @@ Msgtable msgtable[] =
     { "WinMain" },
     { "DllMain" },
     { "tls_get_addr", "___tls_get_addr" },
+    { "entrypoint", "__entrypoint" },
 
     // varargs implementation
     { "va_argsave_t", "__va_argsave_t" },
@@ -340,6 +341,9 @@ Msgtable msgtable[] =
     { "compiles" },
     { "parameters" },
     { "getAttributes" },
+    { "getUnitTests" },
+    { "isOverrideFunction" },
+    { "getVirtualIndex" }
 };
 
 
@@ -361,7 +365,7 @@ int main()
 #endif
         fprintf(fp, "#ifndef DMD_ID_H\n");
         fprintf(fp, "#define DMD_ID_H 1\n");
-        fprintf(fp, "struct Identifier;\n");
+        fprintf(fp, "class Identifier;\n");
         fprintf(fp, "struct Id\n");
         fprintf(fp, "{\n");
 

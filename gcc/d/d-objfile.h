@@ -27,8 +27,8 @@
 // These must match the values in object_.d
 enum ModuleInfoFlags
 {
-  MIstandalone	    = 4,
-  MItlsctor	    = 8,
+  MIstandalone	    = 0x4,
+  MItlsctor	    = 0x8,
   MItlsdtor	    = 0x10,
   MIctor	    = 0x20,
   MIdtor	    = 0x40,
@@ -37,21 +37,14 @@ enum ModuleInfoFlags
   MIunitTest	    = 0x200,
   MIimportedModules = 0x400,
   MIlocalClasses    = 0x800,
-  MInew		    = 0x80000000
-};
-
-enum OutputStage
-{
-  NotStarted,
-  InProgress,
-  Finished
+  MIname	    = 0x1000,
 };
 
 struct FuncFrameInfo;
 typedef ArrayBase<struct Thunk> Thunks;
 typedef tree_node dt_t;
 
-struct Symbol : Object
+struct Symbol
 {
   Symbol (void);
 
@@ -76,7 +69,6 @@ struct Symbol : Object
 
   // For FuncDeclarations:
   Thunks thunks;
-  OutputStage outputStage;
   FuncFrameInfo *frameInfo;
 };
 
@@ -97,7 +89,6 @@ extern dt_t **build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd);
 extern tree dtvector_to_tree (dt_t *dt);
 
 extern void build_moduleinfo (Symbol *sym);
-extern void build_tlssections (void);
 
 
 struct ModuleInfo
@@ -120,7 +111,7 @@ enum TemplateEmission
 {
   TEnone,
   TEnormal,
-  TEprivate
+  TEallinst,
 };
 
 extern location_t get_linemap (const Loc loc);
@@ -138,14 +129,12 @@ extern void d_comdat_linkage (tree decl);
 extern void d_finish_symbol (Symbol *sym);
 extern void d_finish_function (FuncDeclaration *f);
 extern void d_finish_module (void);
+extern void d_finish_compilation (tree *vec, int len);
 
 extern void build_type_decl (tree t, Dsymbol *dsym);
 
 extern Modules output_modules;
 extern bool output_module_p (Module *mod);
-
-extern bool output_declaration_p (Declaration *dsym);
-extern bool output_symbol_p (Symbol *sym);
 
 extern void write_deferred_thunks (void);
 extern void use_thunk (tree thunk_decl, tree target_decl, int offset);

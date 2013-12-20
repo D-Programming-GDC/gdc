@@ -14,11 +14,12 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module std.windows.syserror;
+version (Windows):
 
 private import std.windows.charset;
 private import std.c.windows.windows;
 
-string sysErrorString(uint errcode)
+string sysErrorString(uint errcode) @trusted
 {
     char[] result;
     char* buffer;
@@ -46,8 +47,9 @@ string sysErrorString(uint errcode)
     result[0 .. r] = buffer[0 .. r];
     result[r] = 0;
 
+    LocalFree(cast(HLOCAL)buffer);
+
     auto res = std.windows.charset.fromMBSz(cast(immutable)result.ptr);
 
-    LocalFree(cast(HLOCAL)buffer);
     return res;
 }

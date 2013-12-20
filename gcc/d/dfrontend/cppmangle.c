@@ -129,16 +129,24 @@ void cpp_mangle_name(OutBuffer *buf, CppMangleState *cms, Dsymbol *s)
         buf->writeByte('N');
 
         FuncDeclaration *fd = s->isFuncDeclaration();
-        if (!fd)
+        VarDeclaration *vd = s->isVarDeclaration();
+        if (fd && fd->type->isConst())
         {
-            s->error("C++ static variables not supported");
-        }
-        else if (fd->type->isConst())
             buf->writeByte('K');
-
-        prefix_name(buf, cms, p);
-        source_name(buf, s);
-
+        }
+        if (vd && !(vd->storage_class & (STCextern | STCgshared)))
+        {
+            s->error("C++ static non- __gshared non-extern variables not supported");
+        }
+        if (vd || fd)
+        {
+            prefix_name(buf, cms, p);
+            source_name(buf, s);
+        }
+        else
+        {
+            assert(0);
+        }
         buf->writeByte('E');
     }
     else
@@ -402,11 +410,17 @@ void TypeTypedef::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 
 void TypeClass::toCppMangle(OutBuffer *buf, CppMangleState *cms)
 {
-    if (!cms->substitute(buf, this))
-    {   buf->writeByte('P');
+    if (!cms->exist(this))
+    {
+        buf->writeByte('P');
+
         if (!cms->substitute(buf, sym))
             cpp_mangle_name(buf, cms, sym);
+
+        cms->store(this);
     }
+    else
+        cms->substitute(buf, this);
 }
 
 struct ArgsCppMangleCtx
@@ -420,7 +434,7 @@ static int argsCppMangleDg(void *ctx, size_t n, Parameter *arg)
 {
     ArgsCppMangleCtx *p = (ArgsCppMangleCtx *)ctx;
 
-    Type *t = arg->type;
+    Type *t = arg->type->merge2();
     if (arg->storageClass & (STCout | STCref))
         t = t->referenceTo();
     else if (arg->storageClass & STClazy)
@@ -430,7 +444,7 @@ static int argsCppMangleDg(void *ctx, size_t n, Parameter *arg)
         t = t->merge();
     }
     if (t->ty == Tsarray)
-    {   // Mangle static arrays as pointers
+    {   // Mangle static arrays as pointers.
         t = t->pointerTo();
     }
 

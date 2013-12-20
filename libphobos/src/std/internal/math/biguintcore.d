@@ -73,6 +73,13 @@ else static if (BigDigit.sizeof == long.sizeof)
 }
 else static assert(0, "Unsupported BigDigit size");
 
+private import std.traits:isIntegral;
+enum BigDigitBits = BigDigit.sizeof*8;
+template maxBigDigits(T) if (isIntegral!T)
+{
+    enum maxBigDigits = (T.sizeof+BigDigit.sizeof-1)/BigDigit.sizeof;
+}
+
 enum BigDigit [] ZERO = [0];
 enum BigDigit [] ONE = [1];
 enum BigDigit [] TWO = [2];
@@ -93,6 +100,10 @@ private:
     this(BigDigit [] x) pure
     {
        data = x;
+    }
+    this(T)(T x) pure if (isIntegral!T)
+    {
+        opAssign(x);
     }
 public:
     // Length in uints
@@ -184,7 +195,7 @@ public:
     }
 
     ///
-    int opCmp(Tdummy = void)(BigUint y) pure
+    int opCmp(Tdummy = void)(const BigUint y) pure const
     {
         if (data.length != y.data.length)
             return (data.length > y.data.length) ?  1 : -1;
@@ -197,15 +208,24 @@ public:
     ///
     int opCmp(Tulong)(Tulong y) pure if(is (Tulong == ulong))
     {
-        if (data.length > 2)
+        if (data.length > maxBigDigits!Tulong)
             return 1;
-        uint ylo = cast(uint)(y & 0xFFFF_FFFF);
-        uint yhi = cast(uint)(y >> 32);
-        if (data.length == 2 && data[1] != yhi)
-            return data[1] > yhi ? 1: -1;
-        if (data[0] == ylo)
-            return 0;
-        return data[0] > ylo ? 1: -1;
+
+        foreach_reverse (i; 0 .. maxBigDigits!Tulong)
+        {
+            BigDigit tmp = cast(BigDigit)(y>>(i*BigDigitBits));
+            if (tmp == 0)
+                if (data.length >= i+1)
+                    return 1;
+                else
+                    continue;
+            else
+                if (i+1 > data.length)
+                    return -1;
+                else if (tmp != data[i])
+                    return data[i] > tmp ? 1 : -1;
+        }
+        return 0;
     }
 
     bool opEquals(Tdummy = void)(ref const BigUint y) pure const
@@ -828,8 +848,21 @@ public:
         return result;
     }
 
+    // Implement toHash so that BigUint works properly as an AA key.
+    size_t toHash() const @trusted nothrow
+    {
+        return typeid(data).getHash(&data);
+    }
+
 } // end BigUint
 
+unittest
+{
+    // ulong comparison test
+    BigUint a = [1];
+    assert(a == 1);
+    assert(a < 0x8000_0000_0000_0000UL); // bug 9548
+}
 
 // Remove leading zeros from x, to restore the BigUint invariant
 BigDigit[] removeLeadingZeros(BigDigit [] x) pure
@@ -2006,7 +2039,7 @@ private:
 
 // Returns the highest value of i for which left[i]!=right[i],
 // or 0 if left[] == right[]
-size_t highestDifferentDigit(BigDigit [] left, BigDigit [] right) pure
+size_t highestDifferentDigit(const BigDigit [] left, const BigDigit [] right) pure
 {
     assert(left.length == right.length);
     for (ptrdiff_t i = left.length - 1; i>0; --i)

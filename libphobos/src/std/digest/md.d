@@ -168,11 +168,11 @@ struct MD5
 {
     private:
         // magic initialization constants
-        uint _state[4] = [0x67452301,0xefcdab89,0x98badcfe,0x10325476]; // state (ABCD)
+        uint[4] _state = [0x67452301,0xefcdab89,0x98badcfe,0x10325476]; // state (ABCD)
         ulong _count; //number of bits, modulo 2^64
         ubyte[64] _buffer; // input buffer
 
-        enum ubyte[64] _padding =
+        static immutable ubyte[64] _padding =
         [
           0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

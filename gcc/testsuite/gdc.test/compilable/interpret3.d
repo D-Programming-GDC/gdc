@@ -304,6 +304,114 @@ bool bug4837()
 static assert(bug4837());
 
 /**************************************************
+  10252 shift out of range
+**************************************************/
+int lshr10252(int shift)
+{
+     int a = 5;
+     return a << shift;
+}
+
+int rshr10252(int shift)
+{
+     int a = 5;
+     return a >> shift;
+}
+
+int ushr10252(int shift)
+{
+     int a = 5;
+     return a >>> shift;
+}
+
+static assert(is(typeof(compiles!(lshr10252(4)))));
+static assert(!is(typeof(compiles!(lshr10252(60)))));
+static assert(is(typeof(compiles!(rshr10252(4)))));
+static assert(!is(typeof(compiles!(rshr10252(80)))));
+static assert(is(typeof(compiles!(ushr10252(2)))));
+static assert(!is(typeof(compiles!(ushr10252(60)))));
+
+/**************************************************
+  1982 CTFE null problems
+**************************************************/
+
+enum a1982 = [1, 2, 3];
+static assert (a1982 !is null);
+
+string foo1982() { return null; }
+static assert (foo1982() is null);
+static assert (!foo1982().length);
+
+static assert (null is null);
+
+/**************************************************
+  7988 CTFE return values should be allowed in compile-time expressions
+**************************************************/
+
+class X7988 { int y; this() { y = 2; }}
+static assert( (new X7988).y == 2);
+
+/**************************************************
+  8253 ICE: calling of member function of non-CTFE class variable
+**************************************************/
+
+class Bug8253 {
+    bool j(){
+        return true;
+    }
+}
+Bug8253 m8253;
+static assert(!is(typeof(compiles!(m8253.j()))));
+
+/**************************************************
+  8285 Issue with slice returned from CTFE function
+**************************************************/
+
+string foo8285() {
+     string s = "ab";
+     return s[0 .. $];
+}
+
+template T8285b(string s) { }
+
+template T8285a() {
+     enum s = foo8285();
+     alias T8285b!(s) t2;
+}
+
+int bar8285() {
+     alias T8285a!() t1;
+     return 0;
+}
+
+int baz8285(int x) {
+     return 0;
+}
+
+static assert(baz8285(bar8285()) == 0);
+
+// test case 2
+
+string xbar8285() {
+    string s = "ab";
+    return s[0..$];
+}
+
+template xT8285a() {
+    enum xT8285a = xbar8285()[0..$];
+}
+
+string xbaz8285() {
+    return xT8285a!();
+}
+
+string xfoo8285(string s) {
+    return s;
+}
+
+static assert(xfoo8285(xbaz8285()) == "ab");
+
+/**************************************************
   'this' parameter bug revealed during refactoring
 **************************************************/
 int thisbug1(int x) { return x; }
@@ -1094,6 +1202,40 @@ int wconcat(wstring replace)
 static assert(wconcat("X"w));
 
 /*******************************************
+    10397 string concat
+*******************************************/
+
+static assert(!is(typeof(compiles!("abc" ~ undefined))));
+static assert(!is(typeof(compiles!(otherundefined ~ "abc"))));
+
+/*******************************************
+    9634 struct concat
+*******************************************/
+
+struct Bug9634
+{
+    int raw;
+}
+
+bool bug9634()
+{
+    Bug9634[] jr = [Bug9634(42)];
+
+    Bug9634[] ir = null ~ jr;
+    Bug9634[] kr = jr ~ null;
+    Bug9634[] mr = jr ~ jr;
+
+    jr[0].raw = 6;
+    assert(ir[0].raw == 42);
+    assert(kr[0].raw == 42);
+    assert(jr[0].raw == 6);
+    assert(&mr[0] != &mr[1]);
+    return true;
+}
+
+static assert(bug9634());
+
+/*******************************************
     Bug 4001: A Space Oddity
 *******************************************/
 
@@ -1475,6 +1617,35 @@ bool bug6001h() {
     return true;
 }
 static assert(bug6001h());
+
+/**************************************************
+   10243 wrong code *&arr as ref parameter
+   10551 wrong code (&arr)[0] as ref parameter
+**************************************************/
+
+void bug10243(ref int n)
+{ n = 3; }
+
+void bug10551(int *p)
+{
+   bug10243(p[0]);
+}
+
+bool test10243()
+{
+    int[1] arr;
+    bug10243(*arr.ptr);
+    assert(arr[0] == 3);
+    int [1] arr2;
+    bug10551(arr2.ptr);
+    assert(arr2[0] == 3);
+    int v;
+    bug10551(&v);
+    assert(v == 3);
+    return true;
+}
+
+static assert(test10243());
 
 /**************************************************
    Bug 4910
@@ -2051,6 +2222,35 @@ bool nullptrcmp()
 static assert(nullptrcmp());
 
 /**************************************************
+ 10840 null pointer in dotvar
+**************************************************/
+
+struct Data10840
+{
+   bool xxx;
+}
+
+struct Bug10840
+{
+    Data10840* _data;
+}
+
+bool bug10840(int n)
+{
+    Bug10840 stack;
+    if (n == 1)
+    {   // detect deref through null pointer
+        return stack._data.xxx;
+    }
+    // Wrong-code for ?:
+    return stack._data ? false : true;
+}
+
+static assert(bug10840(0));
+static assert(!is(typeof(Compileable!(bug10840(1)))));
+
+
+/**************************************************
   8216 ptr inside a pointer range
 **************************************************/
 
@@ -2352,6 +2552,19 @@ bool bug7216() {
 static assert(bug7216());
 
 /**************************************************
+    10858 Wrong code with array of pointers
+**************************************************/
+
+bool bug10858()
+{
+    int *[4] x;
+    x[0] = null;
+    assert(x[0] == null);
+    return true;
+}
+static assert(bug10858());
+
+/**************************************************
     9745 Allow pointers to static variables
 **************************************************/
 
@@ -2410,6 +2623,37 @@ bool test9745b()
 }
 static assert(test9745b());
 
+/**************************************************
+    9364 ICE with pointer to local struct
+**************************************************/
+
+struct S9364
+{
+    int i;
+}
+
+bool bug9364()
+{
+    S9364 s;
+    auto k = (&s).i;
+    return 1;
+}
+
+static assert(bug9364());
+
+/**************************************************
+    10251 Pointers to const globals
+**************************************************/
+
+static const int glob10251 = 7;
+
+const (int) * bug10251()
+{
+   return &glob10251;
+}
+
+static a10251 = &glob10251; //  OK
+static b10251 = bug10251();
 
 /**************************************************
     4065 [CTFE] AA "in" operator doesn't work
@@ -3419,6 +3663,38 @@ static assert(!is(typeof(compiles!(badpointer(7)))));
 static assert(!is(typeof(compiles!(badpointer(8)))));
 
 /**************************************************
+    10211 Allow casts S**->D**, when S*->D* is OK
+**************************************************/
+
+int bug10211()
+{
+    int m = 7;
+    int *x = &m;
+    int **y = &x;
+    assert(**y == 7);
+    uint *p = cast(uint *)x;
+    uint **q = cast(uint **)y;
+    return 1;
+}
+
+static assert(bug10211());
+
+/**************************************************
+    10568 CTFE rejects function pointer safety casts
+**************************************************/
+
+@safe void safetyDance() {}
+
+int isItSafeToDance()
+{
+    void function() @trusted yourfriends = &safetyDance;
+    void function() @safe nofriendsOfMine = yourfriends;
+    return 1;
+}
+
+static assert(isItSafeToDance());
+
+/**************************************************
     9170 Allow reinterpret casts float<->int
 **************************************************/
 int f9170(float x) {
@@ -3553,6 +3829,27 @@ static assert(!is(typeof(compiles!(bug7780(1)))));
 static assert(!is(typeof(compiles!(bug7780(2)))));
 
 /**************************************************
+    10275 cast struct literals to immutable
+**************************************************/
+
+struct Bug10275
+{
+    uint[] ivals;
+}
+
+Bug10275 bug10275() {
+    return Bug10275([1,2,3]);
+}
+
+int test10275()
+{
+    immutable(Bug10275) xxx = cast(immutable(Bug10275))bug10275();
+    return 1;
+}
+
+static assert(test10275());
+
+/**************************************************
     6851 passing pointer by argument
 **************************************************/
 
@@ -3643,7 +3940,7 @@ struct S6816 {
 enum s6816 = S6816().foo();
 
 /**************************************************
-    7277 ICE
+    7277 ICE nestedstruct.init.tupleof
 **************************************************/
 
 struct Foo7277
@@ -3663,6 +3960,24 @@ struct Foo7277
 }
 
 static assert(Foo7277().func() == 17);
+
+/**************************************************
+    10217 ICE. CTFE version of 9315
+**************************************************/
+
+bool bug10217()
+{
+    struct S
+    {
+        int i;
+        void bar() {}
+    }
+    auto yyy = S.init.tupleof[$-1];
+    assert(!yyy);
+    return 1;
+}
+
+static assert(bug10217());
 
 /**************************************************
     8276 ICE
@@ -3852,6 +4167,24 @@ int bug6886()
 }
 
 static assert(bug6886());
+
+/**************************************************
+    10198 Multidimensional struct block initializer
+**************************************************/
+
+struct Block10198 {
+    int val[3][4];
+}
+
+int bug10198()
+{
+   Block10198 pp = Block10198(67);
+   assert(pp.val[2][3] == 67);
+   assert(pp.val[1][3] == 67);
+  return 1;
+}
+static assert(bug10198());
+
 
 /****************************************************
  * Exception chaining tests from xtest46.d
@@ -4308,6 +4641,15 @@ static assert({
 }());
 
 /**************************************************
+    10499 static template struct declaration
+**************************************************/
+
+static assert({
+    static struct Result() {}
+    return true;
+}());
+
+/**************************************************
     6522 opAssign + foreach ref
 **************************************************/
 
@@ -4495,6 +4837,29 @@ int bug7940() {
 static assert(bug7940());
 
 /**************************************************
+    10298 wrong code for struct array literal init
+**************************************************/
+
+struct Bug10298 {
+    int m;
+}
+
+int bug10298()
+{
+    Bug10298[1] y = [Bug10298(78)];
+    y[0].m = 6;
+    assert(y[0].m == 6);
+
+    // Root cause
+    Bug10298[1] x;
+    x[] = [cast(const Bug10298)(Bug10298(78))];
+    assert(x[0].m == 78);
+    return 1;
+}
+
+static assert(bug10298());
+
+/**************************************************
     7266 dotvar ref parameters
 **************************************************/
 
@@ -4524,6 +4889,46 @@ void out7266(out int b)
 }
 
 static assert( bug7266());
+
+/**************************************************
+    9982 dotvar assign through pointer
+**************************************************/
+
+struct Bug9982 {
+    int a;
+}
+
+int test9982()
+{
+    Bug9982 x;
+    int *q = &x.a;
+    *q = 99;
+    assert(x.a == 99);
+    return 1;
+}
+
+static assert(test9982());
+
+// 9982, rejects-valid case
+
+struct SS9982
+{
+    Bug9982 s2;
+    this(Bug9982 s1)
+    {
+        s2.a = 6;
+        emplace9982(&s2, s1);
+        assert(s2.a == 3);
+    }
+}
+
+void emplace9982(Bug9982* chunk, Bug9982 arg)
+{
+    *chunk = arg;
+}
+
+enum s9982 = Bug9982(3);
+enum p9982 = SS9982(s9982);
 
 /**************************************************
     7143 'is' for classes
@@ -4679,6 +5084,71 @@ void ice9445(void delegate() expr, void function() f2)
     static assert(!is(typeof(c9445!(f2()))));
     static assert(!is(typeof(c9445!(expr()))));
 }
+
+/**************************************************
+    10452 delegate ==
+**************************************************/
+
+struct S10452 {
+    bool func() { return true; }
+}
+
+struct Outer10452 {
+    S10452 inner;
+}
+
+class C10452 {
+    bool func() { return true; }
+}
+
+bool delegate() ref10452(ref S10452 s)
+{
+    return &s.func;
+}
+
+bool test10452()
+{
+    bool delegate() bar = () { return true; };
+
+    assert(bar !is null);
+    assert(bar is bar);
+
+    S10452 bag;
+    S10452[6] bad;
+    Outer10452 outer;
+    C10452 tag = new C10452;
+
+    auto rat = &outer.inner.func;
+    assert(rat == rat);
+    auto tat = &tag.func;
+    assert(tat == tat);
+
+    auto bat = &outer.inner.func;
+    auto mat = &bad[2].func;
+    assert(mat is mat);
+    assert(rat == bat);
+
+    auto zat = &bag.func;
+    auto cat = &bag.func;
+    assert(zat == zat);
+    assert(zat == cat);
+
+    auto drat = ref10452(bag);
+    assert(cat == drat);
+    assert(drat == drat);
+    drat = ref10452(bad[2]);
+    assert( drat == mat);
+    assert(tat != rat);
+    assert(zat != rat);
+    assert(rat != cat);
+    assert(zat != bar);
+    assert(tat != cat);
+    cat = bar;
+    assert(cat == bar);
+    return true;
+}
+static assert(test10452());
+
 
 /**************************************************
     7162 and 4711
@@ -4935,6 +5405,23 @@ int bug9113(T)()
 
 static assert( !is( typeof( compiles!(bug9113!(int)())) ) );
 
+/**************************************************
+    Creation of unions
+**************************************************/
+
+union UnionTest1
+{
+    int x;
+    float y;
+}
+
+int uniontest1()
+{
+    UnionTest1 u = UnionTest1(1);
+    return 1;
+}
+
+static assert(uniontest1());
 
 /**************************************************
     6438 void
@@ -4974,6 +5461,40 @@ bool bug6438(int testnum)
 static assert( is(typeof(compiles!(bug6438(1)))));
 static assert(!is(typeof(compiles!(bug6438(2)))));
 static assert(!is(typeof(compiles!(bug6438(3)))));
+
+/**************************************************
+    10994 void static array members
+**************************************************/
+
+struct Bug10994
+{
+    ubyte[2] buf = void;
+}
+
+static bug10994 = Bug10994.init;
+
+/**************************************************
+    10937 struct inside union
+**************************************************/
+
+struct S10937 {
+    union {
+        ubyte[1] a;
+        struct {
+            ubyte b;
+        }
+    }
+
+    this(ubyte B) {
+        if (B > 6)
+            this.b = B;
+        else
+            this.a[0] = B;
+    }
+}
+
+enum test10937 = S10937(7);
+enum west10937 = S10937(2);
 
 /**************************************************
     7732
@@ -5096,6 +5617,69 @@ bool bug7987()
 
 static assert(bug7987());
 
+/**************************************************
+    10579 typeinfo.func() must not segfault
+**************************************************/
+
+static assert(!is(typeof(compiles!(typeid(int).toString.length))));
+
+class Bug10579 {
+    int foo() { return 1; }
+}
+Bug10579 uninitialized10579;
+
+static assert(!is(typeof(compiles!(uninitialized10579.foo()))));
+
+/**************************************************
+    10804 mixin ArrayLiteralExp typed string
+**************************************************/
+
+void test10804()
+{
+    String identity(String)(String a) { return a; }
+
+    string cfun()
+    {
+        char[] s;
+        s.length = 8 + 2 + (2) + 1 + 2;
+        s[] = "identity(`Ω`c)"c[];
+        return cast(string)s;   // Return ArrayLiteralExp as the CTFE result
+    }
+    {
+        enum a1 = "identity(`Ω`c)"c;
+        enum a2 = cfun();
+        static assert(cast(ubyte[])mixin(a1) == [0xCE, 0xA9]);
+        static assert(cast(ubyte[])mixin(a2) == [0xCE, 0xA9]);  // should pass
+    }
+
+    wstring wfun()
+    {
+        wchar[] s;
+        s.length = 8 + 2 + (2) + 1 + 2;
+        s[] = "identity(`\U0002083A`w)"w[];
+        return cast(wstring)s;  // Return ArrayLiteralExp as the CTFE result
+    }
+    {
+        enum a1 = "identity(`\U0002083A`w)"w;
+        enum a2 = wfun();
+        static assert(cast(ushort[])mixin(a1) == [0xD842, 0xDC3A]);
+        static assert(cast(ushort[])mixin(a2) == [0xD842, 0xDC3A]);
+    }
+
+    dstring dfun()
+    {
+        dchar[] s;
+        s.length = 8 + 2 + (1) + 1 + 2;
+        s[] = "identity(`\U00101000`d)"d[];
+        return cast(dstring)s;  // Return ArrayLiteralExp as the CTFE result
+    }
+    {
+        enum a1 = "identity(`\U00101000`d)"d;
+        enum a2 = dfun();
+        static assert(cast(uint[])mixin(a1) == [0x00101000]);
+        static assert(cast(uint[])mixin(a2) == [0x00101000]);
+    }
+}
 
 /******************************************************/
 
@@ -5156,8 +5740,6 @@ label:
 }
 static assert(bug8865());
 
-
-
 /******************************************************/
 
 
@@ -5211,11 +5793,23 @@ static assert(!__traits(compiles, {static Test76 t76 = new Test76(0); return t76
 
 /***** Bug 5678 *********************************/
 
-struct Bug5678 
+struct Bug5678
 {
     this(int) {}
 }
 
 static assert(!__traits(compiles, {enum const(Bug5678)* b5678 = new const(Bug5678)(0); return b5678;}));
 
-/******************************************************/
+/**************************************************
+    10782 run semantic2 for class field
+**************************************************/
+
+enum e10782 = 0;
+class C10782 { int x = e10782; }
+string f10782()
+{
+    auto c = new C10782();
+    return "";
+}
+mixin(f10782());
+

@@ -71,7 +71,6 @@ tree d_global_trees[DTI_MAX];
 static Type *
 gcc_type_to_d_type (tree t)
 {
-  Expression *e;
   Type *d;
   unsigned type_size;
   bool is_unsigned;
@@ -170,10 +169,7 @@ gcc_type_to_d_type (tree t)
 	  length = size_binop (PLUS_EXPR, size_one_node,
 			       convert (sizetype, length));
 
-	  e = new IntegerExp (Loc(), tree_to_hwi (length),
-			      Type::tindex);
-	  d = new TypeSArray (d, e);
-	  d = d->semantic (Loc(), NULL);
+	  d = TypeSArray::makeType (Loc(), d, tree_to_hwi (length));
 	  d->ctype = t;
 	  return d;
 	}
@@ -183,8 +179,7 @@ gcc_type_to_d_type (tree t)
       d = gcc_type_to_d_type (TREE_TYPE (t));
       if (d)
 	{
-	  e = new IntegerExp (Loc(), TYPE_VECTOR_SUBPARTS (t), Type::tindex);
-	  d = new TypeSArray (d, e);
+	  d = TypeSArray::makeType (Loc(), d, TYPE_VECTOR_SUBPARTS (t));
 
 	  if (d->nextOf()->isTypeBasic() == NULL)
 	    break;
@@ -195,7 +190,6 @@ gcc_type_to_d_type (tree t)
 	    break;
 
 	  d = new TypeVector (Loc(), d);
-	  d = d->semantic (Loc(), NULL);
 	  return d;
 	}
       break;
@@ -225,17 +219,16 @@ gcc_type_to_d_type (tree t)
       sdecl->structsize = int_size_in_bytes (t);
       sdecl->alignsize = TYPE_ALIGN_UNIT (t);
       sdecl->sizeok = SIZEOKdone;
-
-      d = new TypeStruct (sdecl);
-      d->ctype = t;
-
-      sdecl->type = d;
-      sdecl->handle = d;
+      sdecl->type = new TypeStruct (sdecl);
+      sdecl->type->ctype = t;
+      sdecl->handle = sdecl->type;
+      sdecl->type->merge();
 
       // Does not seem necessary to convert fields, but the
       // members field must be non-null for the above size
       // setting to stick.
       sdecl->members = new Dsymbols;
+      d = sdecl->type;
 
       builtin_converted_types.push (t);
       builtin_converted_types.push (d);

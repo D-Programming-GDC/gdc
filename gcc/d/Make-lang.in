@@ -35,10 +35,10 @@ endif
 # Common headers between D1 and D2
 D_DMD_H := \
     d/dfrontend/aav.h d/dfrontend/aggregate.h d/dfrontend/aliasthis.h \
-    d/dfrontend/arraytypes.h d/dfrontend/async.h d/dfrontend/attrib.h \
-    d/dfrontend/complex_t.h d/dfrontend/cond.h d/dfrontend/ctfe.h \
-    d/dfrontend/declaration.h d/dfrontend/doc.h d/dfrontend/dsymbol.h \
-    d/dfrontend/enum.h d/dfrontend/expression.h d/dfrontend/hdrgen.h \
+    d/dfrontend/arraytypes.h d/dfrontend/attrib.h d/dfrontend/complex_t.h \
+    d/dfrontend/cond.h d/dfrontend/ctfe.h d/dfrontend/declaration.h \
+    d/dfrontend/doc.h d/dfrontend/dsymbol.h d/dfrontend/enum.h \
+    d/dfrontend/expression.h d/dfrontend/hdrgen.h \
     d/dfrontend/identifier.h d/dfrontend/import.h \
     d/dfrontend/init.h d/dfrontend/intrange.h d/dfrontend/json.h \
     d/dfrontend/lexer.h d/dfrontend/macro.h \
@@ -106,7 +106,7 @@ gdc-cross$(exeext): gdc$(exeext)
 # Common sources between D1 and D2
 D_DMD_OBJS := \
     d/aav.dmd.o d/access.dmd.o d/aliasthis.dmd.o d/array.dmd.o \
-    d/arrayop.dmd.o d/async.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o \
+    d/arrayop.dmd.o d/attrib.dmd.o d/cast.dmd.o d/class.dmd.o \
     d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/ctfeexpr.dmd.o \
     d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o d/dsymbol.dmd.o \
     d/dump.dmd.o d/entity.dmd.o d/enum.dmd.o d/expression.dmd.o d/func.dmd.o \
@@ -167,9 +167,7 @@ d/verstr.h: d/VERSION
 	cat $^ > $@
 
 d/d-confdefs.h: d/Make-lang.in
-	#echo "#define D_PHOBOS_DIR \""$(gcc_d_include_dir)"\"" > $@
-	#echo "#define D_PHOBOS_TARGET_DIR \""$(gcc_d_target_include_dir)"\"" >> $@
-	$(srcdir)/d/target-ver-syms.sh $(target) >> $@
+	$(srcdir)/d/target-ver-syms.sh $(target) > $@
 
 d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H) d/d-confdefs.h
 	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(PHOBOS_DIRS) -DGCC_SAFE_DMD=1 -o $@ -c $<

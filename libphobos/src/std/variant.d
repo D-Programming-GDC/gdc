@@ -758,7 +758,7 @@ public:
     unittest
     {
         Variant a = "10";
-	assert(a.coerce!int == 10);
+        assert(a.coerce!int == 10);
     }
 
     /**
@@ -785,6 +785,12 @@ public:
             auto temp = VariantN(rhs);
         return !fptr(OpID.compare, cast(ubyte[size]*) &store,
                      cast(void*) &temp);
+    }
+
+    // workaround for bug 10567 fix
+    int opCmp(ref const VariantN rhs) const
+    {
+        return (cast()this).opCmp!(VariantN)(cast()rhs);
     }
 
     /**

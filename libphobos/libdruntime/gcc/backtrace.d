@@ -255,7 +255,6 @@ static if(BACKTRACE_SUPPORTED && !BACKTRACE_USES_MALLOC)
 
                     return dg(i, msg);
                 } );
-                return 0;
         }
 
         int opApply(ApplyCallback dg) const

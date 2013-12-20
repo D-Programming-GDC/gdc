@@ -1,3 +1,192 @@
+2013-12-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-spec.cc(lang_specific_driver): Require linking in library for all
+	files except D interface files.
+	* d-lang.cc(d_write_global_declarations): Call d_finish_compilation.
+	* d-objfile.cc(mark_needed): Mark static.
+	(d_finish_symbol): Don't call mark_needed.
+	(d_finish_function): Likewise.
+	(d_finish_compilation): New function to wrapup all global
+	declarations, mark templates/comdats as needed if required, and start
+	the final compilation.
+
+2013-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-ctype.cc(TypeVector::toCtype): Treat void vectors as ubyte.
+	* d-objfile.cc(VarDeclaration::toObjFile): Gag all errors compiling
+	manifest constants.
+	* d-todt.cc(TypeVector::toDt): New function to generate correct static
+	data for vector initialisers.
+
+2013-12-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_init_options_struct): Don't define strict aliasing.
+	(d_get_alias_set): New function to return language-specific alias set.
+	* d-convert.cc(d_convert_basic): Always zero extend pointer to integer
+	conversions.
+
+2013-12-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(maybe_set_builtin_frontend): Assert that all runtime
+	library functions have been set-up correctly.
+	(libcall_ids): Remove unhandled library functions.
+	(get_libcall): Likewise.
+	* d-codegen.h(LibCall): Likewise.
+	* d-objfile.cc(output_symbol_p): Remove.
+
+2013-12-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_init_options): Update for frontend changes.
+	(d_handle_option): Set frontend allInst option if -femit-templates.
+	* d-objfile.cc(output_template_p): Want to emit all instantiated
+	templates if -femit-templates or -fdebug was passed to the compiler.
+	* d-objfile.h(TemplateEmission): Define TEallinst.
+	* d-todt.cc(StructDeclaration::toDt): Update for frontend changes.
+	* d-spec.cc(THREAD_LIBRARY): Define default thread library to link if
+	one is not already specified in the configuration process.
+	(TIME_LIBRARY): Define default real time library to link if one is not
+	already specified in the configuration process.
+	(LIBSTDCXX): Define C++ library to link if compiling C++ and D sources.
+	(lang_specific_driver): Update implementation to use new macros.
+
+2013-12-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(CatAssignExp::toElem): Don't call postblit after element
+	append to array.
+	(NewExp::toElem): Handle calling 'new' on opaque types.
+	(ArrayLiteralExp::toElem): Ensure array literal elements have no side
+	effects by making temporaries as necessary.
+	* d-todt.cc(StructLiteralExp::toDt): Update for frontend changes.
+	* d-codegen.cc(build_frame_type): Check for scoped variables if
+	building a closure.
+	* d-objfile.cc(d_finish_symbol): Relax toDt checking rule.
+
+2013-12-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-asmstmt.cc(ExtAsmStatement::ExtAsmStatement): Remove labels
+	member from class.
+	* d-codegen.cc(d_gcc_force_templates): Remove.
+	(convert_expr): Update for frontend changes.
+	(convert_for_assignment): Likewise.
+	(maybe_set_builtin_frontend): Update for changes to libdruntime
+	core.bitops signatures.
+	* d-ctype.cc(TypeFunction::toCtype): Update for frontend changes.
+	* d-decls.cc(Dsymbol::toSymbolX): Likewise.
+	(VarDeclaration::toSymbol): Likewise.
+	(FuncDeclaration::toSymbol): Don't defer nested functions here.
+	* d-elem.cc(PowAssignExp::toElem): Update for frontend changes.
+	(DeleteExp::toElem): Likewise.
+	(AssertExp::toElem): Don't call invariant on an extern C++ class.
+	* d-glue.cc(Global::init): Initialise new stdmsg member.
+	* d-lang.cc(d_handle_option): Handle -fdeps switch.  Remove TEprivate
+	for -femit-templates switch.
+	(genCmain): Update for frontend changes.
+	(d_parse_file): Likewise.
+	* d-longdouble.cc(longdouble::dump): Likewise.
+	* d-objfile.cc(ClassDeclaration::toObjFile): Update for frontend
+	changes.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	(EnumDeclaration::toObjFile): Likewise.
+	(Symbol::Symbol): Remove outputSymbol member.
+	(output_symbol_p): Mark static.
+	(output_declaration_p): Determine symbol codegen status from
+	semanticRun.
+	(output_template_p): New function to determine whether an instantiated
+	template is to be written to object file.
+	(FuncDeclaration::toObjFile): Use semanticRun to update codegen status
+	of function.
+	(FuncDeclaration::buildClosure): Error if putting a scoped variable in
+	a closure.
+	(Module::genobjfile): Update for frontend changes.
+	(d_comdat_linkage): Don't determine linkage from TE setting.  Mark all
+	comdat symbols as DECL_COMDAT.
+	(setup_symbol_storage): Use output_template_p to determine whether the
+	symbol is being written to object file.
+	(mark_needed): New function to mark decls that must be emitted.
+	(d_finish_symbol): Mark finished symbols as needed.
+	(d_finish_function): Mark finished functions as needed.
+	(build_simple_function): Set semanticRun for glue changes.
+	* d-objfile.h(OutputStage): Remove enum.
+	* d-todt.cc(build_vptr_monitor): Update for frontend changes.
+	(StructInitializer::toDt): Likewise.
+	(StructDeclaration::toDt): Likewise.
+	(TypeInfoEnumDeclaration::toDt): Likewise.
+	(TypeInfoStructDeclaration::toDt): Likewise.
+	(Type::getTypeInfo): Likewise.
+
+2013-11-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(genCmain): Implement code generation of __entrypoint
+	module to provide the target C main function.
+	(deps_write): Ignore the module __entrypoint when writing make deps.
+	(d_parse_file): Handle writing __entrypoint module to object file.
+	* d-objfile.cc(d_finish_symbol): Remove special handling of _tlsstart
+	symbol, but ensure _tlsend gets written to the thread common section.
+	(d_finish_function): Remove call to build_tlssections.
+	(build_tlssections): Remove.
+
+2013-11-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(ClassDeclaration::toVtblSymbol): Use TypeSArray::makeType
+	to generate frontend static array type.
+	* d-glue.cc(Dsymbol::ungagSpeculative): Define.
+	* d-lang.cc(genCmain): Define as empty.
+	(d_parse_file): Update for frontend changes.
+	* d-objfile.cc(StructDeclaration::toObjFile): Likewise.
+	* d-typinf.cc(TypeBasic::builtinTypeInfo): Likewise.
+	* d-longdouble.cc(longdouble::isIdenticalTo): Remove.
+	* d-port.cc(Port::fequal): Define.
+
+2013-11-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc(gcc_type_to_d_type): Use TypeSArray::makeType to
+	generate frontend static array types.
+	* d-codegen.cc(build_attributes): Use optimize as don't want the
+	ctfeInterpret of TypeExp expressions.
+	(get_object_method): Update for frontend changes.
+	(get_libcall): Update to use Type::dtypeinfo.
+	* d-elem.cc(IndexExp::toElem): Don't generate bounds checking codegen
+	if frontend explictly requests it.
+	(ArrayLiteralExp::toElem): Use TypeSArray::makeType to generate
+	frontend static array type.
+	(StructLiteralExp::toElem): Update for frontend changes.
+	* d-glue.cc(Global::increaseErrorCount): Define.
+	* d-objfile.cc(Module::genmoduleinfo): Remove moduleinfo 'New'
+	implementation for libdruntime changes.
+	* d-todt.cc(StructLiteralExp::toDt): Literal initialisers override
+	default initialisers.
+	(TypeInfoDeclaration::toDt): Update to use Type::dtypeinfo.
+	(TypeInfoStructDeclaration::toDt): Update for frontend changes.
+	* d-typinf.c(Type::getInternalTypeInfo): Update to use
+	Type::dtypeinfo.
+
+2013-11-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-asmstmt.cc(ExtAsmStatement::comeFromImpl): Define for frontend
+	implementation changes.
+	* d-codegen.cc(get_libcall): Update to use Type::typeinfoclass.
+	* d-codegen.cc(WrappedExp): Define as class.
+	* d-convert.cc(d_convert_basic): Fix format warnings.
+	* d-decls.cc(ModuleInfoDeclaration::toSymbol): Remove.
+	(FuncDeclaration::toSymbol): Use mangleExact to get decl mangle.
+	* d-elem.cc(ClassReferenceExp::toElem): Return reference to class.
+	* d-glue.cc(verror): Fix format warnings.
+	(verrorSupplemental): Likewise.
+	(vwarning): Likewise.
+	(vdeprecation): Likewise.
+	(escapePath): Define for frontend implementation changes.
+	* d-irstate.cc(IRState::getLoopForLabel): Implement breaking on named
+	scope labels in for/while loops.
+	* d-lang.cc(d_handle_option): Add handler for new -fdeps and
+	-fmake-deps options.
+	(d_parse_file): Handle new -fdeps and fmake-deps options.
+	* d-objfile.cc(Dsymbol::toObjFile): Update to use RootObject.
+	(Type::typeinfoclass): Update to use Type::typeinfoclass.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	* d-objfile.h(Symbol): Remove inheritance from Object.
+	* d-todt.cc(TypeInfoStructDeclaration::toDt): Update to use
+	Type::immutableOf.
+
 2013-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c(gcc_type_to_d_type): Use TREE_INT_CST_LOW macro instead

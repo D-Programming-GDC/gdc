@@ -570,8 +570,8 @@ Expression *Pow(Type *type, Expression *e1, Expression *e2)
         }
         else
         {
-            r = new RealExp(loc, e1->toReal(), Type::tfloat64);
-            v = new RealExp(loc, ldouble(1.0), Type::tfloat64);
+            r = new IntegerExp(loc, e1->toInteger(), e1->type);
+            v = new IntegerExp(loc, 1, e1->type);
         }
 
         while (n != 0)
@@ -745,7 +745,7 @@ Expression *Xor(Type *type, Expression *e1, Expression *e2)
 
 /* Also returns EXP_CANT_INTERPRET if cannot be computed.
  */
-Expression *Equal(enum TOK op, Type *type, Expression *e1, Expression *e2)
+Expression *Equal(TOK op, Type *type, Expression *e1, Expression *e2)
 {   Expression *e;
     Loc loc = e1->loc;
     int cmp;
@@ -943,7 +943,7 @@ Expression *Equal(enum TOK op, Type *type, Expression *e1, Expression *e2)
     return e;
 }
 
-Expression *Identity(enum TOK op, Type *type, Expression *e1, Expression *e2)
+Expression *Identity(TOK op, Type *type, Expression *e1, Expression *e2)
 {
     Loc loc = e1->loc;
     int cmp;
@@ -990,7 +990,7 @@ Expression *Identity(enum TOK op, Type *type, Expression *e1, Expression *e2)
 }
 
 
-Expression *Cmp(enum TOK op, Type *type, Expression *e1, Expression *e2)
+Expression *Cmp(TOK op, Type *type, Expression *e1, Expression *e2)
 {   Expression *e;
     Loc loc = e1->loc;
     dinteger_t n;
@@ -1214,7 +1214,7 @@ Expression *Cast(Type *type, Type *to, Expression *e1)
     }
 
     if (e1->op == TOKarrayliteral && typeb == tb)
-        return e1;
+        return expType(to, e1);
 
     if (e1->isConst() != 1)
         return EXP_CANT_INTERPRET;
@@ -1321,6 +1321,8 @@ Expression *ArrayLength(Type *type, Expression *e1)
 
         e = new IntegerExp(loc, dim, type);
     }
+    else if (e1->type->toBasetype()->ty == Tsarray)
+        e = ((TypeSArray *)e1->type->toBasetype())->dim;
     else
         e = EXP_CANT_INTERPRET;
     return e;
@@ -1444,12 +1446,12 @@ Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr)
             StringExp *es;
 
             s = mem.malloc((len + 1) * sz);
-            memcpy((unsigned char *)s, (unsigned char *)es1->string + ilwr * sz, len * sz);
-            memset((unsigned char *)s + len * sz, 0, sz);
+            memcpy((utf8_t *)s, (utf8_t *)es1->string + ilwr * sz, len * sz);
+            memset((utf8_t *)s + len * sz, 0, sz);
 
             es = new StringExp(loc, s, len, es1->postfix);
             es->sz = sz;
-            es->committed = 1;
+            es->committed = es1->committed;
             es->type = type;
             e = es;
         }
@@ -1487,7 +1489,7 @@ void sliceAssignArrayLiteralFromString(ArrayLiteralExp *existingAE, StringExp *n
 {
     size_t newlen =  newval->len;
     size_t sz = newval->sz;
-    unsigned char *s = (unsigned char *)newval->string;
+    utf8_t *s = (utf8_t *)newval->string;
     Type *elemType = existingAE->type->nextOf();
     for (size_t j = 0; j < newlen; j++)
     {
@@ -1511,7 +1513,7 @@ void sliceAssignArrayLiteralFromString(ArrayLiteralExp *existingAE, StringExp *n
  */
 void sliceAssignStringFromArrayLiteral(StringExp *existingSE, ArrayLiteralExp *newae, size_t firstIndex)
 {
-    unsigned char *s = (unsigned char *)existingSE->string;
+    utf8_t *s = (utf8_t *)existingSE->string;
     for (size_t j = 0; j < newae->elements->dim; j++)
     {
         unsigned value = (unsigned)((*newae->elements)[j]->toInteger());
@@ -1532,7 +1534,7 @@ void sliceAssignStringFromArrayLiteral(StringExp *existingSE, ArrayLiteralExp *n
  */
 void sliceAssignStringFromString(StringExp *existingSE, StringExp *newstr, size_t firstIndex)
 {
-    unsigned char *s = (unsigned char *)existingSE->string;
+    utf8_t *s = (utf8_t *)existingSE->string;
     size_t sz = existingSE->sz;
     assert(sz == newstr->sz);
     memcpy(s + firstIndex * sz, newstr->string, sz * newstr->len);
@@ -1543,8 +1545,8 @@ void sliceAssignStringFromString(StringExp *existingSE, StringExp *newstr, size_
  */
 int sliceCmpStringWithString(StringExp *se1, StringExp *se2, size_t lo1, size_t lo2, size_t len)
 {
-    unsigned char *s1 = (unsigned char *)se1->string;
-    unsigned char *s2 = (unsigned char *)se2->string;
+    utf8_t *s1 = (utf8_t *)se1->string;
+    utf8_t *s2 = (utf8_t *)se2->string;
     size_t sz = se1->sz;
     assert(sz == se2->sz);
 
@@ -1556,10 +1558,8 @@ int sliceCmpStringWithString(StringExp *se1, StringExp *se2, size_t lo1, size_t 
  */
 int sliceCmpStringWithArray(StringExp *se1, ArrayLiteralExp *ae2, size_t lo1, size_t lo2, size_t len)
 {
-    unsigned char *s = (unsigned char *)se1->string;
+    utf8_t *s = (utf8_t *)se1->string;
     size_t sz = se1->sz;
-
-    int c = 0;
 
     for (size_t j = 0; j < len; j++)
     {
@@ -1616,12 +1616,12 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
             size_t len = (t->ty == tn->ty) ? 1 : utf_codeLength(sz, v);
             s = mem.malloc((len + 1) * sz);
             if (t->ty == tn->ty)
-                memcpy((unsigned char *)s, &v, sz);
+                memcpy((utf8_t *)s, &v, sz);
             else
                 utf_encode(sz, s, v);
 
             // Add terminating 0
-            memset((unsigned char *)s + len * sz, 0, sz);
+            memset((utf8_t *)s + len * sz, 0, sz);
 
             es = new StringExp(loc, s, len);
             es->sz = sz;
@@ -1675,10 +1675,10 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         }
         s = mem.malloc((len + 1) * sz);
         memcpy(s, es1->string, es1->len * sz);
-        memcpy((unsigned char *)s + es1->len * sz, es2->string, es2->len * sz);
+        memcpy((utf8_t *)s + es1->len * sz, es2->string, es2->len * sz);
 
         // Add terminating 0
-        memset((unsigned char *)s + len * sz, 0, sz);
+        memset((utf8_t *)s + len * sz, 0, sz);
 
         es = new StringExp(loc, s, len);
         es->sz = sz;
@@ -1740,12 +1740,12 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         s = mem.malloc((len + 1) * sz);
         memcpy(s, es1->string, es1->len * sz);
         if (homoConcat)
-             memcpy((unsigned char *)s + (sz * es1->len), &v, sz);
+             memcpy((utf8_t *)s + (sz * es1->len), &v, sz);
         else
-             utf_encode(sz, (unsigned char *)s + (sz * es1->len), v);
+             utf_encode(sz, (utf8_t *)s + (sz * es1->len), v);
 
         // Add terminating 0
-        memset((unsigned char *)s + len * sz, 0, sz);
+        memset((utf8_t *)s + len * sz, 0, sz);
 
         es = new StringExp(loc, s, len);
         es->sz = sz;
@@ -1764,11 +1764,11 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
         dinteger_t v = e1->toInteger();
 
         s = mem.malloc((len + 1) * sz);
-        memcpy((unsigned char *)s, &v, sz);
-        memcpy((unsigned char *)s + sz, es2->string, es2->len * sz);
+        memcpy((utf8_t *)s, &v, sz);
+        memcpy((utf8_t *)s + sz, es2->string, es2->len * sz);
 
         // Add terminating 0
-        memset((unsigned char *)s + len * sz, 0, sz);
+        memset((utf8_t *)s + len * sz, 0, sz);
 
         es = new StringExp(loc, s, len);
         es->sz = sz;
@@ -1789,8 +1789,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = new TypeSArray(t1->nextOf(), new IntegerExp(loc, es1->elements->dim, Type::tindex));
-            e->type = e->type->semantic(loc, NULL);
+            e->type = TypeSArray::makeType(loc, t1->nextOf(), es1->elements->dim);
         }
         else
             e->type = type;
@@ -1814,8 +1813,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = new TypeSArray(t1->nextOf(), new IntegerExp(loc, es->elements->dim, Type::tindex));
-            e->type = e->type->semantic(loc, NULL);
+            e->type = TypeSArray::makeType(loc, t1->nextOf(), es->elements->dim);
         }
         else
             e->type = type;
@@ -1837,8 +1835,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = new TypeSArray(e2->type, new IntegerExp(loc, es1->elements->dim, Type::tindex));
-            e->type = e->type->semantic(loc, NULL);
+            e->type = TypeSArray::makeType(loc, e2->type, es1->elements->dim);
         }
         else
             e->type = type;
@@ -1854,8 +1851,7 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
 
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = new TypeSArray(e1->type, new IntegerExp(loc, es2->elements->dim, Type::tindex));
-            e->type = e->type->semantic(loc, NULL);
+            e->type = TypeSArray::makeType(loc, e1->type, es2->elements->dim);
         }
         else
             e->type = type;

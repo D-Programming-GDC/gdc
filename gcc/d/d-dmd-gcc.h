@@ -30,10 +30,6 @@
 /* used in module.c */
 extern void d_gcc_magic_module (Module *);
 
-/* used in template.c */
-extern bool d_gcc_force_templates (void);
-extern Module *d_gcc_get_output_module (void);
-
 /* used in interpret.c */
 extern Expression *d_gcc_eval_builtin (Loc, FuncDeclaration *, Expressions *);
 

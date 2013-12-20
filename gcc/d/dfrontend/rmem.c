@@ -11,15 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef IN_GCC
 #include "rmem.h"
-#else
-#if linux || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun&&__SVR4
-#include "../root/rmem.h"
-#else
-#include "rmem.h"
-#endif
-#endif
 
 /* This implementation of the storage allocator uses the standard C allocation package.
  */
@@ -151,7 +143,11 @@ void Mem::addroots(char* pStart, char* pEnd)
 /* Allocate, but never release
  */
 
-#define CHUNK_SIZE (4096 * 16)
+// Allocate a little less than 64kB because the C runtime adds some overhead that
+// causes the actual memory block to be larger than 64kB otherwise. E.g. the dmc
+// runtime rounds the size up to 128kB, but the remaining space in the chunk is less
+// than 64kB, so it cannot be used by another chunk.
+#define CHUNK_SIZE (4096 * 16 - 64)
 
 static size_t heapleft = 0;
 static void *heapp;

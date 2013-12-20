@@ -27,18 +27,18 @@ d_convert_basic (tree type, tree expr)
 {
   tree e = expr;
   tree_code code = TREE_CODE (type);
-  const char *invalid_conv_diag;
-  tree ret;
 
   if (type == error_mark_node
       || expr == error_mark_node
       || TREE_TYPE (expr) == error_mark_node)
     return error_mark_node;
 
-  invalid_conv_diag = targetm.invalid_conversion (TREE_TYPE (expr), type);
+  const char *invalid_conv_diag
+    = targetm.invalid_conversion (TREE_TYPE (expr), type);
+
   if (invalid_conv_diag)
     {
-      error (invalid_conv_diag);
+      error ("%s", invalid_conv_diag);
       return error_mark_node;
     }
 
@@ -50,11 +50,12 @@ d_convert_basic (tree type, tree expr)
       && TYPE_DOMAIN (type) == TYPE_DOMAIN (TREE_TYPE (expr)))
     return expr;
 
-  ret = targetm.convert_to_type (type, expr);
+  tree ret = targetm.convert_to_type (type, expr);
   if (ret)
     return ret;
 
   STRIP_TYPE_NOPS (e);
+  tree etype = TREE_TYPE (e);
 
   if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (TREE_TYPE (expr)))
     return fold_convert (type, expr);
@@ -73,6 +74,14 @@ d_convert_basic (tree type, tree expr)
 
     case INTEGER_TYPE:
     case ENUMERAL_TYPE:
+      if (TREE_CODE (etype) == POINTER_TYPE
+	  || TREE_CODE (etype) == REFERENCE_TYPE)
+	{
+	  // Convert to an unsigned integer of the correct width first.
+	  tree utype = lang_hooks.types.type_for_size (TYPE_PRECISION (etype), 1);
+	  e = fold_build1 (CONVERT_EXPR, utype, e);
+	}
+
       ret = convert_to_integer (type, e);
       goto maybe_fold;
 

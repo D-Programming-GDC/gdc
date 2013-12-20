@@ -192,26 +192,23 @@ IRState::getLoopForLabel (Identifier *ident, bool want_continue)
 {
   if (ident)
     {
-      LabelStatement *lbl_stmt = this->func->searchLabel (ident)->statement;
-      gcc_assert (lbl_stmt != 0);
-      Statement *stmt = lbl_stmt->statement;
-      ScopeStatement *scope_stmt = stmt->isScopeStatement();
-
-      if (scope_stmt)
-	stmt = scope_stmt->statement;
+      LabelStatement *lstmt = this->func->searchLabel (ident)->statement;
+      gcc_assert (lstmt != NULL);
+      // The break label for a loop may actually be some levels up;
+      // eg: on a try/finally wrapping a loop.
+      Statement *stmt = lstmt->statement->getRelatedLabeled();
 
       for (int i = this->loops_.dim - 1; i >= 0; i--)
 	{
 	  Flow *flow = this->loops_[i];
 
-	  if (flow->statement == stmt)
+	  if (flow->statement->getRelatedLabeled() == stmt)
 	    {
 	      if (want_continue)
-		gcc_assert (stmt->hasContinue());
+		gcc_assert (flow->statement->hasContinue());
 	      return flow;
 	    }
 	}
-      gcc_unreachable();
     }
   else
     {
@@ -223,8 +220,9 @@ IRState::getLoopForLabel (Identifier *ident, bool want_continue)
 	      || flow->statement->hasContinue())
 	    return flow;
 	}
-      gcc_unreachable();
     }
+
+  return NULL;
 }
 
 
@@ -400,6 +398,7 @@ void
 IRState::continueLoop (Identifier *ident)
 {
   Flow *flow = this->getLoopForLabel (ident, true);
+  gcc_assert (flow);
   this->doJump (NULL, flow->continueLabel);
 }
 
@@ -409,8 +408,11 @@ void
 IRState::exitLoop (Identifier *ident)
 {
   Flow *flow = this->getLoopForLabel (ident);
+  gcc_assert (flow);
+
   if (!flow->exitLabel)
     flow->exitLabel = d_build_label (flow->statement->loc, NULL);
+
   this->doJump (NULL, flow->exitLabel);
 }
 

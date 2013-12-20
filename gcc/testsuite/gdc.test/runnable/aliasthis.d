@@ -655,6 +655,50 @@ void test6508()
     assert(y == 20);
 }
 
+void test6508x()
+{
+    static int ctor, cpctor, dtor;
+
+    static struct Tuple(T...)
+    {
+        T field;
+        alias field this;
+
+        this(int)  { ++ctor;   printf("ctor\n");   }
+        this(this) { ++cpctor; printf("cpctor\n"); }
+        ~this()    { ++dtor;   printf("dtor\n");   }
+    }
+
+    {
+        alias Tup = Tuple!(int, string);
+        auto tup = Tup(1);
+        assert(ctor==1 && cpctor==0 && dtor==0);
+
+        auto getVal() { return tup; }
+        ref getRef(ref Tup s = tup) { return s; }
+
+        {
+            auto n1 = tup[0];
+            assert(ctor==1 && cpctor==0 && dtor==0);
+
+            auto n2 = getRef()[0];
+            assert(ctor==1 && cpctor==0 && dtor==0);
+
+            auto n3 = getVal()[0];
+            assert(ctor==1 && cpctor==1 && dtor==1);
+        }
+
+        // bug in DotVarExp::semantic
+        {
+            typeof(tup.field) vars;
+            vars = getVal();
+            assert(ctor==1 && cpctor==2 && dtor==2);
+        }
+    }
+    assert(ctor==1 && cpctor==2 && dtor==3);
+    assert(ctor + cpctor == dtor);
+}
+
 /***********************************/
 // 6369
 
@@ -829,8 +873,65 @@ void test6366()
     }
 }
 
+/***************************************************/
+// 6711
+
+void test6711()
+{
+    struct A { int i; }
+    struct B { A a; alias a this; }
+    struct C { B b; alias b this; }
+
+    B b;
+    with (b)
+    {
+        i = 42;
+    }
+    assert(b.i == 42);
+
+    C c;
+    with (c)
+    {
+        i = 42;
+    }
+    assert(c.i == 42);
+
+    struct Foo
+    {
+        string[string] strs;
+        alias strs this;
+    }
+
+    struct Bar
+    {
+        Foo f;
+        alias f this;
+    }
+
+    void test(T)()
+    {
+        T f;
+        f = ["first" : "a", "second" : "b"];
+        with (f)
+        {
+            assert(length == 2);
+            rehash;
+            auto vs = values;
+            assert(vs == ["a", "b"] || vs == ["b", "a"]);
+            auto ks = keys;
+            assert(ks == ["first", "second"] || ks == ["second", "first"]);
+            foreach (k; byKey) { }
+            foreach (v; byValue) { }
+            assert(get("a", "default") == "default");
+        }
+    }
+
+    test!Foo;
+    test!Bar;
+}
+
 /**********************************************/
-// Bugzill 6759
+// 6759
 
 struct Range
 {
@@ -1196,6 +1297,26 @@ void test10178()
 }
 
 /***************************************************/
+// 10179
+
+void test10179()
+{
+    struct S { static int count; }
+    S s;
+    static assert(s.tupleof.length == 0);
+    s.tupleof = s.tupleof;   // error -> OK
+
+    S getS()
+    {
+        S s;
+        ++S.count;
+        return s;
+    }
+    getS().tupleof = getS().tupleof;
+    assert(S.count == 2);
+}
+
+/***************************************************/
 // 9890
 
 void test9890()
@@ -1204,7 +1325,7 @@ void test9890()
     {
         T _payload;
 
-        ref T refCountedPayload() 
+        ref T refCountedPayload()
         {
             return _payload;
         }
@@ -1212,7 +1333,7 @@ void test9890()
         alias refCountedPayload this;
     }
 
-    struct S(int x_) 
+    struct S(int x_)
     {
         alias x_ x;
     }
@@ -1244,6 +1365,151 @@ void test10004()
 }
 
 /***************************************************/
+// 10180
+
+template TypeTuple10180(TL...) { alias TypeTuple10180 = TL; }
+
+template Identity10180(alias T) { alias Identity10180 = T; }
+
+struct Tuple10180(Specs...)
+{
+    static if (is(Specs))
+    {
+        alias Types = Specs;
+        Types expand;
+        alias expand this;
+    }
+    else
+    {
+        alias Types = TypeTuple10180!(Specs[0]);
+        Types expand;
+        mixin("alias Identity10180!(expand[0]) "~Specs[1]~";");
+
+        @property
+        ref Tuple10180!(Specs[0]) _Tuple_super()
+        {
+            return *cast(typeof(return)*) (&expand[0]);
+        }
+        alias _Tuple_super this;
+    }
+}
+
+void test10180()
+{
+    Tuple10180!(int, "a") x;
+    auto o1 = x.a.offsetof;     // OK
+    auto o2 = x[0].offsetof;    // NG: no property 'offsetof' for type 'int'
+    auto o3 = x._Tuple_super[0].offsetof;   // same as above
+    assert(o2 == o3);
+}
+
+/***************************************************/
+// 10456
+
+void test10456()
+{
+    S10456 s1, s2;
+    auto x = s1 == s2;
+}
+
+struct S10456
+{
+    enum E { e };
+    alias E this;
+    int[] x;
+}
+
+/***************************************************/
+// 11261
+
+template Tuple11261(Specs...)
+{
+    struct Tuple11261
+    {
+        static if (Specs.length != 4)   // anonymous field version
+        {
+            alias Specs Types;
+            Types expand;
+            alias expand this;
+        }
+        else
+        {
+            alias Seq!(Specs[0], Specs[2]) Types;
+            Types expand;
+            ref inout(Tuple11261!Types) _Tuple_super() inout @trusted
+            {
+                return *cast(typeof(return)*) &(expand[0]);
+            }
+            // This is mostly to make t[n] work.
+            alias _Tuple_super this;
+        }
+
+        this()(Types values)
+        {
+            expand[] = values[];
+        }
+    }
+}
+
+interface InputRange11261(E)
+{
+    @property bool empty();
+    @property E front();
+    void popFront();
+
+    int opApply(int delegate(E));
+    int opApply(int delegate(size_t, E));
+
+}
+template InputRangeObject11261(R)
+{
+    alias typeof(R.init.front()) E;
+
+    class InputRangeObject11261 : InputRange11261!E
+    {
+        private R _range;
+
+        this(R range) { this._range = range; }
+
+        @property bool empty() { return _range.empty; }
+        @property E front() { return _range.front; }
+        void popFront() { _range.popFront(); }
+
+        int opApply(int delegate(E) dg) { return 0; }
+        int opApply(int delegate(size_t, E) dg) { return 0; }
+    }
+}
+
+// ------
+
+class Container11261
+{
+    alias Tuple11261!(string, "key", string, "value") Key;
+
+    InputRange11261!Key opSlice()
+    {
+        Range r;
+        return new InputRangeObject11261!Range(r);
+    }
+    private struct Range
+    {
+        enum empty = false;
+        auto popFront() {}
+        auto front() { return Key("myKey", "myValue"); }
+    }
+}
+
+void test11261()
+{
+    auto container = new Container11261();
+    foreach (k, v; container)   // map the tuple of container[].front to (k, v)
+    {
+        static assert(is(typeof(k) == string) && is(typeof(v) == string));
+        break;
+    }
+}
+
+/***************************************************/
 
 int main()
 {
@@ -1265,12 +1531,14 @@ int main()
     test2777b();
     test5679();
     test6508();
+    test6508x();
     test6369a();
     test6369b();
     test6369c();
     test6369d();
     test6434();
     test6366();
+    test6711();
     test6759();
     test6832();
     test6928();
@@ -1285,8 +1553,11 @@ int main()
     test9858();
     test9873();
     test10178();
+    test10179();
     test9890();
     test10004();
+    test10180();
+    test10456();
 
     printf("Success\n");
     return 0;

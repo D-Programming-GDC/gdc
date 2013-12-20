@@ -54,7 +54,7 @@ struct Interface
 {
     TypeInfo_Class   classinfo;
     void*[]     vtbl;
-    ptrdiff_t   offset;   // offset to Interface 'this' from Object 'this'
+    size_t      offset;   // offset to Interface 'this' from Object 'this'
 }
 
 struct OffsetTypeInfo
@@ -162,13 +162,18 @@ class TypeInfo_Class : TypeInfo
     TypeInfo_Class   base;
     void*       destructor;
     void function(Object) classInvariant;
-    uint        m_flags;
-    //  1:      // is IUnknown or is derived from IUnknown
-    //  2:      // has no possible pointers into GC memory
-    //  4:      // has offTi[] member
-    //  8:      // has constructors
-    // 16:      // has xgetMembers member
-    // 32:      // has typeinfo member
+    enum ClassFlags : uint
+    {
+        isCOMclass = 0x1,
+        noPointers = 0x2,
+        hasOffTi = 0x4,
+        hasCtor = 0x8,
+        hasGetMembers = 0x10,
+        hasTypeInfo = 0x20,
+        isAbstract = 0x40,
+        isCPPclass = 0x80,
+    }
+    ClassFlags m_flags;
     void*       deallocator;
     OffsetTypeInfo[] m_offTi;
     void*       defaultConstructor;
@@ -197,7 +202,11 @@ class TypeInfo_Struct : TypeInfo
     int function(in void*, in void*)      xopCmp;
     string function(in void*)             xtoString;
 
-    uint m_flags;
+    enum StructFlags : uint
+    {
+        hasPointers = 0x1,
+    }
+    StructFlags m_flags;
   }
     void function(void*)                    xdtor;
     void function(void*)                    xpostblit;
@@ -268,37 +277,9 @@ class MemberInfo_function : MemberInfo
 
 struct ModuleInfo
 {
-    struct New
-    {
-        uint flags;
-        uint index;
-    }
+    uint _flags;
+    uint _index;
 
-    struct Old
-    {
-        string           name;
-        ModuleInfo*[]    importedModules;
-        TypeInfo_Class[] localClasses;
-        uint             flags;
-
-        void function() ctor;
-        void function() dtor;
-        void function() unitTest;
-        void* xgetMembers;
-        void function() ictor;
-        void function() tlsctor;
-        void function() tlsdtor;
-        uint index;
-        void*[1] reserved;
-    }
-
-    union
-    {
-        New n;
-        Old o;
-    }
-
-    @property bool isNew() nothrow pure;
     @property uint index() nothrow pure;
     @property void index(uint i) nothrow pure;
     @property uint flags() nothrow pure;
@@ -372,14 +353,12 @@ extern (C)
 {
     // from druntime/src/compiler/dmd/aaA.d
 
-    size_t _aaLen(void* p);
-    void*  _aaGetX(void** pp, TypeInfo keyti, size_t valuesize, void* pkey);
-    void*  _aaGetRvalueX(void* p, TypeInfo keyti, size_t valuesize, void* pkey);
-    void*  _aaInX(void* p, TypeInfo keyti, void* pkey);
-    bool   _aaDelX(void* p, TypeInfo keyti, void* pkey);
-    void[] _aaValues(void* p, size_t keysize, size_t valuesize);
-    void[] _aaKeys(void* p, size_t keysize);
-    void*  _aaRehash(void** pp, TypeInfo keyti);
+    size_t _aaLen(in void* p) pure nothrow;
+    void* _aaGetX(void** pp, const TypeInfo keyti, in size_t valuesize, in void* pkey);
+    inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
+    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
+    inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
+    void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
 
     extern (D) alias scope int delegate(void *) _dg_t;
     int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -387,7 +366,12 @@ extern (C)
     extern (D) alias scope int delegate(void *, void *) _dg2_t;
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    void* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] values);
+    private struct AARange { void* impl, current; }
+    AARange _aaRange(void* aa);
+    bool _aaRangeEmpty(AARange r);
+    void* _aaRangeFrontKey(AARange r);
+    void* _aaRangeFrontValue(AARange r);
+    void _aaRangePopFront(ref AARange r);
 }
 
 private template _Unqual(T)
@@ -403,99 +387,44 @@ private template _Unqual(T)
 struct AssociativeArray(Key, Value)
 {
 private:
-    // Duplicates of the stuff found in druntime/src/rt/aaA.d
-    struct Slot
-    {
-        Slot *next;
-        size_t hash;
-        Key key;
-        version(D_LP64) align(16) _Unqual!Value value; // c.f. rt/aaA.d, aligntsize()
-        else align(4) _Unqual!Value value;
-
-        // Stop creating built-in opAssign
-        @disable void opAssign(Slot);
-    }
-
-    struct Hashtable
-    {
-        Slot*[] b;
-        size_t nodes;
-        TypeInfo keyti;
-        Slot*[4] binit;
-    }
-
-    void* p; // really Hashtable*
-
-    struct Range
-    {
-        // State
-        Slot*[] slots;
-        Slot* current;
-
-        this(void * aa)
-        {
-            if (!aa) return;
-            auto pImpl = cast(Hashtable*) aa;
-            slots = pImpl.b;
-            nextSlot();
-        }
-
-        void nextSlot()
-        {
-            foreach (i, slot; slots)
-            {
-                if (!slot) continue;
-                current = slot;
-                slots = slots.ptr[i .. slots.length];
-                break;
-            }
-        }
-
-    public:
-        @property bool empty() const
-        {
-            return current is null;
-        }
-
-        @property ref inout(Slot) front() inout
-        {
-            assert(current);
-            return *current;
-        }
-
-        void popFront()
-        {
-            assert(current);
-            current = current.next;
-            if (!current)
-            {
-                slots = slots[1 .. $];
-                nextSlot();
-            }
-        }
-    }
+    void* p;
 
 public:
+    @property size_t length() const { return _aaLen(p); }
 
-    @property size_t length() { return _aaLen(p); }
-
-    Value[Key] rehash() @property
+    Value[Key] rehash()
     {
-        auto p = _aaRehash(&p, typeid(Value[Key]));
+        auto p = _aaRehash(cast(void**) &p, typeid(Value[Key]));
         return *cast(Value[Key]*)(&p);
     }
 
-    Value[] values() @property
+    // Note: can't make `values` and `keys` inout as it is used
+    // e.g. in Phobos like `ReturnType!(aa.keys)` instead of `typeof(aa.keys)`
+    // which will result in `inout` propagation.
+
+    inout(Value)[] inout_values() inout @property
     {
         auto a = _aaValues(p, Key.sizeof, Value.sizeof);
-        return *cast(Value[]*) &a;
+        return *cast(inout Value[]*) &a;
     }
 
-    Key[] keys() @property
+    inout(Key)[] inout_keys() inout @property
     {
         auto a = _aaKeys(p, Key.sizeof);
-        return *cast(Key[]*) &a;
+        return *cast(inout Key[]*) &a;
     }
+
+    Value[] values() @property
+    { return inout_values; }
+
+    Key[] keys() @property
+    { return inout_keys; }
+
+    const(Value)[] values() const @property
+    { return inout_values; }
+
+    const(Key)[] keys() const @property
+    { return inout_keys; }
 
     int opApply(scope int delegate(ref Key, ref Value) dg)
     {
@@ -513,8 +442,13 @@ public:
         return p ? *p : defaultValue;
     }
 
-    static if (is(typeof({ Value[Key] r; r[Key.init] = Value.init; }())))
-        @property Value[Key] dup()
+    static if (is(typeof({
+        ref Value get();    // pseudo lvalue of Value
+        Value[Key] r; r[Key.init] = get();
+        // bug 10720 - check whether Value is copyable
+    })))
+    {
+        Value[Key] dup()
         {
             Value[Key] result;
             foreach (k, v; this)
@@ -523,49 +457,38 @@ public:
             }
             return result;
         }
+    }
+    else
+        @disable Value[Key] dup();    // for better error message
 
-    @property auto byKey()
+    auto byKey()
     {
         static struct Result
         {
-            Range state;
+            AARange r;
 
-            this(void* p)
-            {
-                state = Range(p);
-            }
-
-            @property ref Key front()
-            {
-                return state.front.key;
-            }
-
-            alias state this;
+            @property bool empty() { return _aaRangeEmpty(r); }
+            @property ref Key front() { return *cast(Key*)_aaRangeFrontKey(r); }
+            void popFront() { _aaRangePopFront(r); }
+            Result save() { return this; }
         }
 
-        return Result(p);
+        return Result(_aaRange(p));
     }
 
-    @property auto byValue()
+    auto byValue()
     {
         static struct Result
         {
-            Range state;
+            AARange r;
 
-            this(void* p)
-            {
-                state = Range(p);
-            }
-
-            @property ref Value front()
-            {
-                return *cast(Value*)&state.front.value;
-            }
-
-            alias state this;
+            @property bool empty() { return _aaRangeEmpty(r); }
+            @property ref Value front() { return *cast(Value*)_aaRangeFrontValue(r); }
+            void popFront() { _aaRangePopFront(r); }
+            Result save() { return this; }
         }
 
-        return Result(p);
+        return Result(_aaRange(p));
     }
 }
 
@@ -594,7 +517,7 @@ void destroy(T)(ref T obj) if (is(T == struct))
         buf[] = init[];
 }
 
-void destroy(T : U[n], U, size_t n)(ref T obj)
+void destroy(T : U[n], U, size_t n)(ref T obj) if (!is(T == struct))
 {
     obj[] = U.init;
 }
@@ -626,14 +549,15 @@ private
     return _d_arraysetcapacity(typeid(T[]), 0, cast(void *)&arr);
 }
 
-size_t reserve(T)(ref T[] arr, size_t newcapacity) pure nothrow
+size_t reserve(T)(ref T[] arr, size_t newcapacity) pure nothrow @trusted
 {
     return _d_arraysetcapacity(typeid(T[]), newcapacity, cast(void *)&arr);
 }
 
-void assumeSafeAppend(T)(T[] arr)
+auto ref inout(T[]) assumeSafeAppend(T)(auto ref inout(T[]) arr)
 {
     _d_arrayshrinkfit(typeid(T[]), *(cast(void[]*)&arr));
+    return arr;
 }
 
 bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
@@ -648,6 +572,7 @@ bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
 }
 
 bool _xopEquals(in void* ptr, in void* ptr);
+bool _xopCmp(in void* ptr, in void* ptr);
 
 void __ctfeWrite(T...)(auto ref T) {}
 void __ctfeWriteln(T...)(auto ref T values) { __ctfeWrite(values, "\n"); }

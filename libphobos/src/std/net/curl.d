@@ -396,9 +396,9 @@ unittest
  *
  * Params:
  * url = resource to post to
- * putData = data to send as the body of the request. An array
- *           of an arbitrary type is accepted and will be cast to ubyte[]
- *           before sending it.
+ * postData = data to send as the body of the request. An array
+ *            of an arbitrary type is accepted and will be cast to ubyte[]
+ *            before sending it.
  * conn = connection to use e.g. FTP or HTTP. The default AutoProtocol will
  *        guess connection type and create a new instance for this call only.
  *
@@ -894,7 +894,6 @@ struct ByLineBuffer(Char)
  *
  * Params:
  * url = The url to receive content from
- * postData = Data to HTTP Post
  * keepTerminator = KeepTerminator.yes signals that the line terminator should be
  *                  returned as part of the lines in the range.
  * terminator = The character that terminates a line
@@ -1433,7 +1432,6 @@ static struct AsyncChunkInputRange
  * Params:
  * url = The url to receive content from
  * postData = Data to HTTP Post
- * terminator = The character that terminates a line
  * chunkSize = The size of the chunks
  * transmitBuffers = The number of chunks buffered asynchronously
  * conn = The connection to use e.g. HTTP or FTP.
@@ -3357,6 +3355,7 @@ class CurlException : Exception
             line = The line number where the exception occurred.
             next = The previous exception in the chain of exceptions, if any.
       +/
+    @safe pure nothrow
     this(string msg,
          string file = __FILE__,
          size_t line = __LINE__,
@@ -3378,6 +3377,7 @@ class CurlTimeoutException : CurlException
             line = The line number where the exception occurred.
             next = The previous exception in the chain of exceptions, if any.
       +/
+    @safe pure nothrow
     this(string msg,
          string file = __FILE__,
          size_t line = __LINE__,
@@ -3507,6 +3507,8 @@ struct Curl
 
     private string errorString(CurlCode code)
     {
+        import core.stdc.string : strlen;
+
         auto msgZ = curl_easy_strerror(code);
         // doing the following (instead of just using std.conv.to!string) avoids 1 allocation
         return format("%s on handle %s", msgZ[0 .. core.stdc.string.strlen(msgZ)], handle);

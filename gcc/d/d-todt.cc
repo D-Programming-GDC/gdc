@@ -29,6 +29,9 @@
 
 typedef ArrayBase<dt_t> Dts;
 
+extern FuncDeclaration *search_toHash(StructDeclaration *sd);
+extern FuncDeclaration *search_toString(StructDeclaration *sd);
+
 
 // Append VAL to constructor PDT.  Create a new constructor
 // of generic type if PDT is not already pointing to one.
@@ -188,7 +191,10 @@ build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd)
   gcc_assert (cd != NULL);
   Symbol *s = cd->toVtblSymbol();
   dt_cons (pdt, build_address (s->Stree));
-  dt_cons (pdt, size_int (0));
+
+  if (!cd->cpp)
+    dt_cons (pdt, size_int (0));
+
   return pdt;
 }
 
@@ -216,128 +222,8 @@ VoidInitializer::toDt (void)
 dt_t *
 StructInitializer::toDt (void)
 {
-  Dts dts;
-  dts.setDim (ad->fields.dim);
-  dts.zero();
-
-  for (size_t i = 0; i < vars.dim; i++)
-    {
-      VarDeclaration *v = vars[i];
-      Initializer *val = value[i];
-
-      for (size_t j = 0; true; j++)
-	{
-	  gcc_assert (j < dts.dim);
-
-	  if (ad->fields[j] == v)
-	    {
-	      if (dts[j])
-		error (loc, "field %s of %s already initialized", v->toChars(), ad->toChars());
-	      dts[j] = val->toDt();
-	      break;
-	    }
-	}
-    }
-
-  size_t offset = 0;
-  tree sdt = NULL_TREE;
-
-  for (size_t i = 0; i < dts.dim; i++)
-    {
-      VarDeclaration *v = ad->fields[i];
-      tree fdt = dts[i];
-
-      if (fdt == NULL_TREE)
-	{
-	  // An instance specific initialiser was not provided.
-	  // Look to see if there's a default initialiser from the
-	  // struct definition
-	  if (v->init)
-	    {
-	      if (!v->init->isVoidInitializer())
-		fdt = v->init->toDt();
-	    }
-	  else if (v->offset >= offset)
-	    {
-	      size_t offset2 = v->offset + v->type->size();
-
-	      // Make sure this field does not overlap any explicitly
-	      // initialized field.
-	      for (size_t j = i + 1; true; j++)
-		{
-		  // Didn't find any overlap.
-		  if (j == dts.dim)
-		    {
-		      v->type->toDt (&fdt);
-		      break;
-		    }
-
-		  VarDeclaration *v2 = ad->fields[j];
-
-		  // Overlap.
-		  if (v2->offset < offset2 && dts[j])
-		    break;
-		}
-	    }
-	}
-
-      if (fdt != NULL_TREE)
-	{
-	  if (v->offset < offset)
-	    error (loc, "duplicate union initialization for %s", v->toChars());
-	  else
-	    {
-	      size_t sz = int_size_in_bytes (TREE_TYPE (CONSTRUCTOR_ELT (fdt, 0)->value));
-	      size_t vsz = v->type->size();
-	      size_t voffset = v->offset;
-	      size_t dim = 1;
-
-	      if (sz > vsz)
-		{
-		  gcc_assert (v->type->ty == Tsarray && vsz == 0);
-		  error (loc, "zero length array %s has non-zero length initializer", v->toChars());
-		}
-
-	      for (Type *vt = v->type->toBasetype();
-		   vt->ty == Tsarray; vt = vt->nextOf()->toBasetype())
-		{
-		  TypeSArray *tsa = (TypeSArray *) vt;
-		  dim *= tsa->dim->toInteger();
-		}
-
-	      gcc_assert (sz == vsz || sz * dim <= vsz);
-
-	      for (size_t i = 0; i < dim; i++)
-		{
-		  if (offset < voffset)
-		    dt_zeropad (&sdt, voffset - offset);
-
-		  if (fdt == NULL_TREE)
-		    {
-		      if (v->init)
-			fdt = v->init->toDt();
-		      else
-			v->type->toDt (&fdt);
-		    }
-
-		  dt_chainon (&sdt, fdt);
-		  fdt = NULL_TREE;
-
-		  offset = voffset + sz;
-		  voffset += vsz / dim;
-		  if (sz == vsz)
-		    break;
-		}
-	    }
-	}
-    }
-
-  if (offset < ad->structsize)
-    dt_zeropad (&sdt, ad->structsize - offset);
-
-  tree cdt = NULL_TREE;
-  dt_container (&cdt, ad->type, sdt);
-  return cdt;
+  ::error ("StructInitializer::toDt: we shouldn't emit this (%s)", toChars());
+  gcc_unreachable();
 }
 
 dt_t *
@@ -511,112 +397,56 @@ ArrayLiteralExp::toDt (dt_t **pdt)
 dt_t **
 StructLiteralExp::toDt (dt_t **pdt)
 {
-  // For elements[], construct a corresponding array dts[] the elements
-  // of which are the initializers.
-  // Nulls in elements[] become nulls in dts[].
-  Dts dts;
-  dts.setDim (sd->fields.dim);
-  dts.zero();
+  tree sdt = NULL_TREE;
+  size_t offset = 0;
 
-  gcc_assert (elements->dim <= sd->fields.dim);
+  gcc_assert (sd->fields.dim - sd->isNested() <= elements->dim);
 
   for (size_t i = 0; i < elements->dim; i++)
     {
       Expression *e = (*elements)[i];
       if (!e)
 	continue;
-      tree dt = NULL_TREE;
-      e->toDt (&dt);
-      dts[i] = dt;
-    }
 
-  size_t offset = 0;
-  tree sdt = NULL_TREE;
+      VarDeclaration *vd = NULL;
+      size_t k = 0;
 
-  for (size_t i = 0; i < dts.dim; i++)
-    {
-      VarDeclaration *v = sd->fields[i];
-      tree fdt = dts[i];
-
-      if (fdt == NULL_TREE)
+      for (size_t j = i; j < elements->dim; j++)
 	{
-	  // An instance specific initialiser was not provided.
-	  // If there is no overlap with any explicit initialiser in dts[],
-	  // supply a default initialiser.
-	  if (v->offset >= offset)
+	  VarDeclaration *vd2 = sd->fields[j];
+	  if (vd2->offset < offset || (*elements)[j] == NULL)
+	    continue;
+
+	  // Find the nearest field
+	  if (!vd)
 	    {
-	      size_t offset2 = v->offset + v->type->size();
-
-	      for (size_t j = i + 1; 1; j++)
-		{
-		  // Didn't find any overlap
-		  if (j == dts.dim)
-		    {
-		      // Set fdt to be the default initialiser
-		      if (v->init)
-			fdt = v->init->toDt();
-		      else
-			v->type->toDt (&fdt);
-		      break;
-		    }
-
-		  VarDeclaration *v2 = sd->fields[j];
-
-		  // Overlap.
-		  if (v2->offset < offset2 && dts[j])
-		    break;
-		}
+	      vd = vd2;
+	      k = j;
+	    }
+	  else if (vd2->offset < vd->offset)
+	    {
+	      // Each elements should have no overlapping
+	      gcc_assert (!(vd->offset < vd2->offset + vd2->type->size()
+			    && vd2->offset < vd->offset + vd->type->size()));
+	      vd = vd2;
+	      k = j;
 	    }
 	}
 
-      if (fdt != NULL_TREE)
+      if (vd != NULL)
 	{
-	  if (v->offset < offset)
-	    error ("duplicate union initialization for %s", v->toChars());
+	  if (offset < vd->offset)
+	    dt_zeropad (&sdt, vd->offset - offset);
+
+	  e = (*elements)[k];
+
+	  Type *tb = vd->type->toBasetype();
+	  if (tb->ty == Tsarray)
+	    ((TypeSArray *)tb)->toDtElem (&sdt, e);
 	  else
-	    {
-	      size_t sz = int_size_in_bytes (TREE_TYPE (CONSTRUCTOR_ELT (fdt, 0)->value));
-	      size_t vsz = v->type->size();
-	      size_t voffset = v->offset;
-	      size_t dim = 1;
+	    e->toDt (&sdt);
 
-	      if (sz > vsz)
-		{
-		  gcc_assert (v->type->ty == Tsarray && vsz == 0);
-		  error ("zero length array %s has non-zero length initializer", v->toChars());
-		}
-
-	      for (Type *vt = v->type->toBasetype();
-		   vt->ty == Tsarray; vt = vt->nextOf()->toBasetype())
-		{
-		  TypeSArray *tsa = (TypeSArray *) vt;
-		  dim *= tsa->dim->toInteger();
-		}
-
-	      gcc_assert (sz == vsz || sz * dim <= vsz);
-
-	      for (size_t i = 0; i < dim; i++)
-		{
-		  if (offset < voffset)
-		    dt_zeropad (&sdt, voffset - offset);
-
-		  if (fdt == NULL_TREE)
-		    {
-		      if (v->init)
-			fdt = v->init->toDt();
-		      else
-			v->type->toDt (&fdt);
-		    }
-
-		  dt_chainon (&sdt, fdt);
-		  fdt = NULL_TREE;
-
-		  offset = voffset + sz;
-		  voffset += vsz / dim;
-		  if (sz == vsz)
-		    break;
-		}
-	    }
+	  offset = vd->offset + vd->type->size();
 	}
     }
 
@@ -1056,60 +886,14 @@ ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
 void
 StructDeclaration::toDt (dt_t **pdt)
 {
-  size_t offset = 0;
-  tree sdt = NULL_TREE;
+  StructLiteralExp *sle = new StructLiteralExp (loc, this, NULL);
+  Expression *e = sle->fill (true);
 
-  // Note equivalence of this loop to class's
-  for (size_t i = 0; i < fields.dim; i++)
+  if (e == sle)
     {
-      size_t vsize;
-      VarDeclaration *v = fields[i];
-      tree dt = NULL_TREE;
-
-      if (v->storage_class & STCref)
-	{
-	  vsize = Target::ptrsize;
-	  if (v->offset >= offset)
-	    dt_zeropad (&dt, vsize);
-	}
-      else
-	{
-	  vsize = v->type->size();
-	  Initializer *init = v->init;
-	  if (init)
-	    {
-	      ExpInitializer *ei = init->isExpInitializer();
-	      Type *tb = v->type->toBasetype();
-	      if (!init->isVoidInitializer())
-		{
-		  if (ei && tb->ty == Tsarray)
-		    ((TypeSArray *) tb)->toDtElem (&dt, ei->exp);
-		  else
-		    dt = init->toDt();
-		}
-	    }
-	  else if (v->offset >= offset)
-	    v->type->toDt (&dt);
-	}
-
-      if (dt != NULL_TREE)
-	{
-	  if (v->offset < offset)
-	    error ("overlapping initialization for struct %s.%s", toChars(), v->toChars());
-	  else
-	    {
-	      if (offset < v->offset)
-		dt_zeropad (&sdt, v->offset - offset);
-	      dt_chainon (&sdt, dt);
-	      offset = v->offset + vsize;
-	    }
-	}
+      sle->type = type;
+      sle->toDt (pdt);
     }
-
-  if (offset < structsize)
-    dt_zeropad (&sdt, structsize - offset);
-
-  dt_container (pdt, type, sdt);
 }
 
 /* ================================================================ */
@@ -1121,6 +905,13 @@ Type::toDt (dt_t **pdt)
 {
   Expression *e = defaultInit();
   return e->toDt (pdt);
+}
+
+dt_t **
+TypeVector::toDt (dt_t **pdt)
+{
+  gcc_assert (basetype->ty == Tsarray);
+  return ((TypeSArray *) basetype)->toDtElem (pdt, NULL);
 }
 
 dt_t **
@@ -1222,13 +1013,13 @@ verify_structsize (ClassDeclaration *typeclass, size_t expected)
 void
 TypeInfoDeclaration::toDt (dt_t **pdt)
 {
-  verify_structsize (Type::typeinfo, 2 * Target::ptrsize);
+  verify_structsize (Type::dtypeinfo, 2 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
    *  monitor_t monitor;
    */
-  build_vptr_monitor (pdt, Type::typeinfo);
+  build_vptr_monitor (pdt, Type::dtypeinfo);
 }
 
 void
@@ -1390,7 +1181,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
 
   // Default initialiser for enum.
   tree tarray = Type::tvoid->arrayOf()->toCtype();
-  if (!sd->defaultval || tinfo->isZeroInit())
+  if (!sd->members || tinfo->isZeroInit())
     {
       // zero initialiser, or the same as the base type.
       dt_cons (pdt, d_array_value (tarray, size_int (0), d_null_pointer));
@@ -1597,7 +1388,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
    *  bool function(in void*, in void*) xopEquals;
    *  int function(in void*, in void*) xopCmp;
    *  string function(const(void)*) xtoString;
-   *  uint m_flags;
+   *  StructFlags m_flags;
    *  xdtor;
    *  xpostblit;
    *  uint m_align;
@@ -1614,6 +1405,9 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
   // vtbl and monitor for TypeInfo_Struct
   build_vptr_monitor (pdt, Type::typeinfostruct);
 
+  if (!sd->members)
+    return;
+
   // Name of the struct declaration.
   dt_cons (pdt, d_array_string (sd->toPrettyChars()));
 
@@ -1625,32 +1419,16 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
     dt_cons (pdt, build_address (sd->toInitializer()->Stree));
 
   // hash_t function(in void*) xtoHash;
-  Dsymbol *s = search_function (sd, Id::tohash);
-  FuncDeclaration *fdx = s ? s->isFuncDeclaration() : NULL;
+  FuncDeclaration *fdx = search_toHash(sd);
   if (fdx)
     {
-      static TypeFunction *tftohash;
-      if (!tftohash)
-	{
-	  Scope sc;
-	  // const hash_t toHash();
-	  tftohash = new TypeFunction (NULL, Type::thash_t, 0, LINKd);
-	  tftohash->mod = MODconst;
-	  tftohash = (TypeFunction *) tftohash->semantic (Loc(), &sc);
-	}
+      TypeFunction *tf = (TypeFunction *) fdx->type;
+      gcc_assert(tf->ty == Tfunction);
 
-      FuncDeclaration *fd = fdx->overloadExactMatch (tftohash);
-      if (fd)
-	{
-	  dt_cons (pdt, build_address (fd->toSymbol()->Stree));
-	  TypeFunction *tf = (TypeFunction *) fd->type;
-	  gcc_assert (tf->ty == Tfunction);
+      dt_cons (pdt, build_address (fdx->toSymbol()->Stree));
 
-	  if (!tf->isnothrow || tf->trust == TRUSTsystem)
-	    warning (fd->loc, "toHash() must be declared as extern (D) size_t toHash() const nothrow @safe, not %s", tf->toChars());
-	}
-      else
-	dt_cons (pdt, d_null_pointer);
+      if (!tf->isnothrow || tf->trust == TRUSTsystem)
+	warning (fdx->loc, "toHash() must be declared as extern (D) size_t toHash() const nothrow @safe, not %s", tf->toChars());
     }
   else
     dt_cons (pdt, d_null_pointer);
@@ -1662,57 +1440,26 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
     dt_cons (pdt, d_null_pointer);
 
   // int function(in void*, in void*) xopCmp;
-  s = search_function (sd, Id::cmp);
-  fdx = s ? s->isFuncDeclaration() : NULL;
-  if (fdx)
-    {
-      Scope sc;
-
-      // const int opCmp(ref const KeyType s);
-      Parameters *arguments = new Parameters;
-
-      // arg type is ref const T
-      Parameter *arg = new Parameter (STCref, tc->constOf(), NULL, NULL);
-      arguments->push (arg);
-
-      TypeFunction *tfcmpptr = new TypeFunction (arguments, Type::tint32, 0, LINKd);
-      tfcmpptr->mod = MODconst;
-      tfcmpptr = (TypeFunction *) tfcmpptr->semantic (Loc(), &sc);
-
-      FuncDeclaration *fd = fdx->overloadExactMatch (tfcmpptr);
-      if (fd)
-	dt_cons (pdt, build_address (fd->toSymbol()->Stree));
-      else
-	dt_cons (pdt, d_null_pointer);
-    }
+  if (sd->xcmp)
+    dt_cons (pdt, build_address (sd->xcmp->toSymbol()->Stree));
   else
     dt_cons (pdt, d_null_pointer);
 
   // string function(const(void)*) xtoString;
-  s = search_function (sd, Id::tostring);
-  fdx = s ? s->isFuncDeclaration() : NULL;
+  fdx = search_toString(sd);
   if (fdx)
-    {
-      static TypeFunction *tftostring;
-      if (!tftostring)
-	{
-	  Scope sc;
-	  // string toString()
-	  tftostring = new TypeFunction (NULL, Type::tchar->invariantOf()->arrayOf(), 0, LINKd);
-	  tftostring = (TypeFunction *) tftostring->semantic (Loc(), &sc);
-	}
-
-      FuncDeclaration *fd = fdx->overloadExactMatch (tftostring);
-      if (fd)
-	dt_cons (pdt, build_address (fd->toSymbol()->Stree));
-      else
-	dt_cons (pdt, d_null_pointer);
-    }
+    dt_cons (pdt, build_address (fdx->toSymbol()->Stree));
   else
     dt_cons (pdt, d_null_pointer);
 
   // uint m_flags;
-  dt_cons (pdt, size_int (tc->hasPointers()));
+  // StructFlags::Type m_flags;
+  StructFlags::Type m_flags = 0;
+
+  if (tc->hasPointers())
+    m_flags |= StructFlags::hasPointers;
+
+  dt_cons (pdt, size_int (m_flags));
 
   // xdtor
   if (sd->dtor)
@@ -1756,7 +1503,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
   else
     {
       // If struct has pointers.
-      if (tc->hasPointers())
+      if (m_flags & StructFlags::hasPointers)
 	dt_cons (pdt, size_int (1));
       else
 	dt_cons (pdt, size_int (0));

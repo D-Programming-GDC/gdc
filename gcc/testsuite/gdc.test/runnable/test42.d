@@ -2699,6 +2699,7 @@ enum FwdEnum : int
 }
 
 /***************************************************/
+// 3740
 
 abstract class Address {
     abstract int nameLen();
@@ -2714,7 +2715,8 @@ class Class171 : Address {
 
 void test171 ()
 {
-        Class171 xxx = new Class171;
+    Class171 xxx = new Class171;
+    assert(typeid(Class171).vtbl.length - typeid(Object).vtbl.length == 1);
 }
 
 /***************************************************/
@@ -3238,18 +3240,16 @@ int bug2931()
 int bug2931_2()
 {
   Outer2931 v;
+  Bug2931 w = Bug2931(68);
   assert(v.move==3);
   for (int i = 0; i < 4; i++)
-  { for (int j = 0; j < 3; j++)
+  {
+    for (int j = 0; j < 3; j++)
     {
-	printf("[%d][%d] = %d\n", j, i, v.p.val[j][i]);
-	if (i == 0 && j == 0)
-	    assert(v.p.val[j][i] == 67);
-	else
-	    assert(v.p.val[j][i] == 0);
+        assert(w.val[j][i] == 68);
+	assert(v.p.val[j][i] == 67);
     }
   }
-  printf("v.zoom = %d\n", v.zoom);
   assert(v.scale == 4);
   return v.zoom;
 }
@@ -4253,18 +4253,21 @@ void test6270()
 
 /***************************************************/
 
-void test236()
+void testrolror(int shift)
 {
-    uint a;
-    int shift;
-    a = 7;
-    shift = 1;
-    int r;
+    uint a = 7;
+    uint r;
     r = (a >> shift) | (a << (int.sizeof * 8 - shift));
     assert(r == 0x8000_0003);
-    r = (a << shift) | (a >> (int.sizeof * 8 - shift));
-    assert(a == 7);
+    r = (r << shift) | (r >> (int.sizeof * 8 - shift));
+    assert(r == 7);
 }
+
+void test236()
+{
+    testrolror(1);
+}
+
 
 /***************************************************/
 // 4460
@@ -4734,49 +4737,6 @@ struct Logger {
 void test7422() {
     if (Logger.info()) {
     }
-}
-
-/***************************************************/
-
-void test7504() pure nothrow @safe
-{
-    auto n = null;
-    char[] k = n;
-    assert(k.ptr == null);
-    assert(k.length == 0);
-
-    double[] l;
-    l = n;
-    assert(l.ptr == null);
-    assert(l.length == 0);
-
-    immutable(int[]) m = n;
-    assert(m.ptr == null);
-    assert(m.length == 0);
-
-    const(float)[] o;
-    o = n;
-    assert(o.ptr == null);
-    assert(o.length == 0);
-
-    auto c = create7504(null, null);
-    assert(c.k.ptr == null);
-    assert(c.k.length == 0);
-    assert(c.l.ptr == null);
-    assert(c.l.length == 0);
-}
-
-class C7504
-{
-    int[] k;
-    string l;
-}
-
-C7504 create7504(T...)(T input)
-{
-    auto obj = new C7504;
-    obj.tupleof = input;
-    return obj;
 }
 
 /***************************************************/
@@ -5766,6 +5726,133 @@ void test9844() {
 }
 
 /***************************************************/
+// 10628
+
+abstract class B10628
+{
+    static if (! __traits(isVirtualMethod, foo))
+    {
+    }
+
+    private bool _bar;
+    public void foo();
+}
+
+class D10628 : B10628
+{
+    public override void foo() {}
+}
+
+void test10628()
+{
+    assert(typeid(D10628).vtbl.length - typeid(Object).vtbl.length == 1);
+}
+
+/***************************************************/
+// 11265
+
+struct S11265
+{
+    class InnerClass
+    {
+        S11265 s;
+
+        bool empty()
+        {
+            return true;
+        }
+    }
+}
+
+void test11265()
+{
+    S11265.InnerClass trav = new S11265.InnerClass();
+    trav.empty();
+}
+
+/***************************************************/
+
+struct TimeOfDay
+{
+    void roll(int value) 
+    {
+        value %= 60;
+        auto newVal = _seconds + value;
+
+        if(newVal < 0)
+            newVal += 60;
+        else if(newVal >= 60)
+            newVal -= 60;
+
+        _seconds = cast(ubyte)newVal;
+    }
+
+    ubyte _seconds;
+}
+
+
+void test10633()
+{
+    TimeOfDay tod = TimeOfDay(0);
+    tod.roll(-1);
+    assert(tod._seconds == 59);
+}
+
+/***************************************************/
+
+import std.stdio;
+
+void _assertEq (ubyte lhs, short rhs, string msg, string file, size_t line)
+{
+    immutable result = lhs == rhs;
+
+    if(!result)
+    {
+        string op = "==";
+        if(msg.length > 0)
+            writefln(`_assertEq failed: [%s] is not [%s].`, lhs, rhs);
+        else
+            writefln(`_assertEq failed: [%s] is not [%s]: %s`, lhs, rhs, msg);
+    }
+
+    assert(result);
+}
+
+struct Date
+{
+    short year;
+    ubyte month;
+    ubyte day;
+}
+
+struct MonthDay
+{
+    ubyte month;
+    short day;
+}
+
+void test10642()
+{
+    static void test(Date date, int day, MonthDay expected, size_t line = __LINE__)
+    {
+        _assertEq(date.day, expected.day, "", __FILE__, line);
+    }
+
+    test(Date(1999, 1, 1), 1, MonthDay(1,1));
+}
+
+
+/***************************************************/
+
+void test7436()
+{
+    ubyte a = 10;
+    float f = 6;
+    ubyte b = a += f;
+    assert(b == 16);
+}
+
+/***************************************************/
 
 int main()
 {
@@ -6012,7 +6099,6 @@ int main()
     test6504();
     test7422();
     test7424();
-    test7504();
     test7502();
     test4820();
     test4820_2();
@@ -6052,6 +6138,11 @@ int main()
     test6962();
     test4414();
     test9844();
+    test10628();
+    test11265();
+    test10633();
+    test10642();
+    test7436();
 
     writefln("Success");
     return 0;

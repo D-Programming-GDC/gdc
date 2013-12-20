@@ -20,7 +20,7 @@ AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
 ACLOCAL_AMFLAGS = -I. -I..
 
 OUR_CFLAGS=@DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -fproperty -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
+D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
 ALL_DFLAGS=$(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
@@ -55,10 +55,6 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 #--------------------------------------#
 # GDC LibPhobos
 
-# Special-case for std.xml, need to emit templates.
-std/xml.o : std/xml.d
-	$(GDC) -o $@ $(ALL_DFLAGS) -femit-templates -c $<
-
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o \
 	  std/container.o std/complex.o std/concurrency.o \
@@ -84,6 +80,9 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
 	  std/internal/math/errorfunction.o std/internal/processinit.o \
 	  std/internal/uni.o std/internal/uni_tab.o \
+	  std/internal/unicode_comp.o std/internal/unicode_decomp.o \
+	  std/internal/unicode_grapheme.o std/internal/unicode_norm.o \
+	  std/internal/unicode_tables.o \
 	  std/net/curl.o std/net/isemail.o \
 	  crc32.o etc/c/curl.o etc/c/zlib.o
 
@@ -138,18 +137,19 @@ install-exec-local: libgphobos2.a
 
 install-data-local: libgphobos2.a
 	for i in etc/c \
-		std std/c std/c/freebsd \
-		std/c/linux std/c/osx std/c/windows \
-		std/internal std/internal/math std/internal/windows \
-		std/digest std/internal/digest \
-		std/net std/windows; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.d; do $(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; done; \
+	    std std/c std/c/freebsd \
+	    std/c/linux std/c/osx std/c/windows \
+	    std/internal std/internal/math std/internal/windows \
+	    std/digest std/internal/digest \
+	    std/net std/windows; do \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    for f in $(srcdir)/$$i/*.d; do \
+		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    done; \
 	done
 	for i in crc32.d; do \
-		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); done
-#disabled, already installed by druntime
-#$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
+	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
+	done
 
 clean-local:
 	rm -f $(ALL_PHOBOS_OBJS)

@@ -751,11 +751,163 @@ void test9415()
 }
 
 /***************************************************/
+// 9628
+
+template TypeTuple9628(TL...) { alias TypeTuple9628 = TL; }
+void map9628(alias func)() { func(0); }
+
+void test9628()
+{
+    auto items = [[10, 20], [30]];
+    size_t[] res;
+
+    res = null;
+    foreach (_; 0 .. 2)
+    {
+        foreach (sub; items)
+        {
+            map9628!((       i){ res ~= sub.length; });
+            map9628!((size_t i){ res ~= sub.length; });
+        }
+    }
+    assert(res == [2,2,1,1, 2,2,1,1]);
+
+    res = null;
+    foreach (_; TypeTuple9628!(0, 1))
+    {
+        foreach (sub; items)
+        {
+            map9628!((       i){ res ~= sub.length; });
+            map9628!((size_t i){ res ~= sub.length; });
+        }
+    }
+    assert(res == [2,2,1,1, 2,2,1,1]);
+}
+
+/***************************************************/
 // 9928
 
 void test9928()
 {
     void* smth = (int x) { return x; };
+}
+
+/***************************************************/
+// 10288
+
+T foo10288(T)(T x)
+{
+    void lambda() @trusted nothrow { x += 10; }
+    lambda();
+    return x;
+}
+
+T bar10288(T)(T x)
+{
+    () @trusted { x += 10; } ();
+    return x;
+}
+
+T baz10288(T)(T arg)
+{
+    static int g = 10;
+    () @trusted { x += g; } ();
+    return x;
+}
+
+void test10288() @safe pure nothrow
+{
+    assert(foo10288(10) == 20); // OK
+    assert(bar10288(10) == 20); // OK <- NG
+    static assert(!__traits(compiles, baz10288(10)));
+}
+
+/***************************************************/
+// 10666
+
+struct S10666
+{
+    int val;
+    ~this() {}
+}
+
+void foo10666(S10666 s1)
+{
+    S10666 s2;
+
+    /* Even if closureVars(s1 and s2) are accessed by directly called lambdas,
+     * they won't escape the scope of this function.
+     */
+    auto x1 = (){ return s1.val; }();   // OK
+    auto x2 = (){ return s2.val; }();   // OK
+}
+
+/***************************************************/
+// 11081
+
+T ifThrown11081(E : Throwable, T)(T delegate(E) errorHandler)
+{
+    return errorHandler();
+}
+
+void test11081()
+{
+    static if (__traits(compiles, ifThrown11081!Exception(e => 0)))
+    {
+    }
+    static if (__traits(compiles, ifThrown11081!Exception(e => 0)))
+    {
+    }
+}
+
+/***************************************************/
+// 11220
+
+int parsePrimaryExp11220(int x)
+{
+    parseAmbig11220!( (parsed){ x += 1; } )();
+    return 1;
+}
+
+typeof(handler(1)) parseAmbig11220(alias handler)()
+{
+    return handler(parsePrimaryExp11220(1));
+}
+
+/***************************************************/
+// 11230
+
+template map11230(fun...)
+{
+    auto map11230(Range)(Range r)
+    {
+        return MapResult11230!(fun, Range)(r);
+    }
+}
+
+struct MapResult11230(alias fun, R)
+{
+    R _input;
+    this(R input) { _input = input; }
+}
+
+class A11230 { A11230[] as; }
+class B11230 { A11230[] as; }
+class C11230 : A11230 {}
+
+C11230 visit11230(A11230 a)
+{
+    a.as.map11230!(a => visit11230);
+    return null;
+}
+C11230 visit11230(B11230 b)
+{
+    b.as.map11230!(a => visit11230);
+    return null;
+}
+C11230 visit11230()
+{
+    return null;
 }
 
 /***************************************************/
@@ -802,7 +954,9 @@ int main()
     test9153();
     test9393();
     test9415();
+    test9628();
     test9928();
+    test10288();
 
     printf("Success\n");
     return 0;

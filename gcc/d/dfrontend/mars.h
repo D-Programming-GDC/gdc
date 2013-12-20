@@ -1,6 +1,6 @@
 
 // Compiler implementation of the D programming language
-// Copyright (c) 1999-2012 by Digital Mars
+// Copyright (c) 1999-2013 by Digital Mars
 // All Rights Reserved
 // written by Walter Bright
 // http://www.digitalmars.com
@@ -80,10 +80,6 @@ the target object file format:
 #endif
 void unittests();
 
-#ifdef IN_GCC
-/* Changes for the GDC compiler by David Friedman */
-#endif
-
 #define DMDV1   0
 #define DMDV2   1       // Version 2.0 features
 #define SNAN_DEFAULT_INIT DMDV2 // if floats are default initialized to signalling NaN
@@ -124,7 +120,7 @@ struct OutBuffer;
 
 // Can't include arraytypes.h here, need to declare these directly.
 template <typename TYPE> struct ArrayBase;
-typedef ArrayBase<struct Identifier> Identifiers;
+typedef ArrayBase<class Identifier> Identifiers;
 typedef ArrayBase<char> Strings;
 
 // Put command line switches in here
@@ -178,11 +174,11 @@ struct Param
     bool cov;           // generate code coverage data
     unsigned char covPercent;   // 0..100 code coverage percentage required
     bool nofloat;       // code should not pull in floating point support
-    char Dversion;      // D version number
     char ignoreUnsupportedPragmas;      // rather than error on them
     char enforcePropertySyntax;
     char betterC;       // be a "better C" compiler; no dependency on D runtime
     bool addMain;       // add a default main() function
+    bool allInst;       // generate code for all template instantiations
 
     char *argv0;        // program name
     Strings *imppath;     // array of char*'s of where to look for import modules
@@ -255,6 +251,14 @@ typedef unsigned structalign_t;
 #define STRUCTALIGN_DEFAULT ~0  // magic value means "match whatever the underlying C compiler does"
 // other values are all powers of 2
 
+struct Ungag
+{
+    unsigned oldgag;
+
+    Ungag(unsigned old) : oldgag(old) {}
+    ~Ungag();
+};
+
 struct Global
 {
     const char *mars_ext;
@@ -279,6 +283,7 @@ struct Global
     Param params;
     unsigned errors;       // number of errors reported so far
     unsigned warnings;     // number of warnings reported so far
+    FILE *stdmsg;          // where to send verbose messages
     unsigned gag;          // !=0 means gag reporting of errors & warnings
     unsigned gaggedErrors; // number of errors reported while gagged
 
@@ -295,6 +300,12 @@ struct Global
      * Return true if errors occured while gagged.
      */
     bool endGagging(unsigned oldGagged);
+
+    /*  Increment the error count to record that an error
+     *  has occured in the current context. An error message
+     *  may or may not have been printed.
+     */
+    void increaseErrorCount();
 
     void init();
 };
@@ -344,7 +355,7 @@ typedef d_uns32                 d_dchar;
 typedef longdouble real_t;
 
 
-struct Module;
+class Module;
 
 //typedef unsigned Loc;         // file location
 struct Loc
@@ -432,17 +443,17 @@ void deleteExeFile();
 int runProgram();
 const char *inifile(const char *argv0, const char *inifile, const char* envsectionname);
 void halt();
-void util_progress();
 
-/*** Where to send error messages ***/
-struct Dsymbol;
+class Dsymbol;
 class Library;
-struct File;
+class File;
 void obj_start(char *srcfile);
 void obj_end(Library *library, File *objfile);
 void obj_append(Dsymbol *s);
 void obj_write_deferred(Library *library);
 
 const char *importHint(const char *s);
+/// Little helper function for writting out deps.
+void escapePath(OutBuffer *buf, const char *fname);
 
 #endif /* DMD_MARS_H */

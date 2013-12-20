@@ -3044,6 +3044,7 @@ const t109c = new Test109C();
 
 struct Test109S { this(int){ this.s = &this; } Test109S* s; }
 const t109s = new Test109S(0);
+pragma(msg, t109s); // Make sure there is no infinite recursion.
 
 void test109()
 {
@@ -3082,6 +3083,19 @@ void test9954()
 }
 
 /************************************************/
+struct S10669 { uint x; }
+
+static const S10669 iid0_10669 = S10669(0);
+
+class C10669
+{
+    static const S10669 iid1_10669 = S10669(1);
+};
+
+const S10669 IID0_10669 = iid0_10669;
+const S10669 IID1_10669 = C10669.iid1_10669;
+
+/************************************************/
 
 TypeInfo getTi()
 {
@@ -3093,6 +3107,22 @@ auto t112 = getTi();
 void test112()
 {
     assert(t112.toString() == "int");
+}
+
+/************************************************/
+// 10687
+
+enum Foo10687 : uint { A, B, C, D, E }
+immutable uint[5][] m10687 = [[0, 1, 2, 3, 4]];
+
+void test10687()
+{
+    static immutable uint[5] a1 = [0, 1, 2, 3, 4];
+    auto   a2 = cast(immutable(Foo10687[5]))a1;
+    static a3 = cast(immutable(Foo10687[5]))a1;
+
+    auto   foos1 = cast(immutable(Foo10687[5][]))m10687;
+    static foos2 = cast(immutable(Foo10687[5][]))m10687;
 }
 
 /************************************************/

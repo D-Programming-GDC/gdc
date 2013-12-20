@@ -36,7 +36,7 @@ void Array::mark()
 {
     mem.mark(data);
     for (size_t u = 0; u < dim; u++)
-        mem.mark(data[u]);      // BUG: what if arrays of Object's?
+        mem.mark(data[u]);      // BUG: what if arrays of RootObject's?
 }
 
 void Array::reserve(size_t nentries)
@@ -160,7 +160,7 @@ char *Array::toChars()
     size_t len = 2;
     for (size_t u = 0; u < dim; u++)
     {
-        buf[u] = ((Object *)data[u])->toChars();
+        buf[u] = ((RootObject *)data[u])->toChars();
         len += strlen(buf[u]) + 1;
     }
     char *str = (char *)mem.malloc(len);
@@ -197,8 +197,8 @@ int
 #endif
         Array_sort_compare(const void *x, const void *y)
 {
-    Object *ox = *(Object **)x;
-    Object *oy = *(Object **)y;
+    RootObject *ox = *(RootObject **)x;
+    RootObject *oy = *(RootObject **)y;
 
     return ox->compare(oy);
 }
@@ -207,7 +207,7 @@ void Array::sort()
 {
     if (dim)
     {
-        qsort(data, dim, sizeof(Object *), Array_sort_compare);
+        qsort(data, dim, sizeof(RootObject *), Array_sort_compare);
     }
 }
 

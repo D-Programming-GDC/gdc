@@ -34,8 +34,8 @@
 #include "id.h"
 #include "json.h"
 #include "module.h"
+#include "scope.h"
 #include "root.h"
-#include "async.h"
 #include "dfrontend/target.h"
 
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
@@ -73,6 +73,7 @@ const attribute_spec d_attribute_table[] =
 #undef LANG_HOOKS_COMMON_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_ATTRIBUTE_TABLE
 #undef LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE
+#undef LANG_HOOKS_GET_ALIAS_SET
 #undef LANG_HOOKS_TYPES_COMPATIBLE_P
 #undef LANG_HOOKS_BUILTIN_FUNCTION
 #undef LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE
@@ -96,6 +97,7 @@ const attribute_spec d_attribute_table[] =
 #define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE       d_builtins_attribute_table
 #define LANG_HOOKS_ATTRIBUTE_TABLE              d_attribute_table
 #define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_format_attribute_table
+#define LANG_HOOKS_GET_ALIAS_SET		d_get_alias_set
 #define LANG_HOOKS_TYPES_COMPATIBLE_P		d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION		d_builtin_function
 #define LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE	d_builtin_function
@@ -132,6 +134,10 @@ static const char *fonly_arg;
 /* List of modules being compiled.  */
 Modules output_modules;
 
+static Module *output_module = NULL;
+
+static Module *entrypoint = NULL;
+
 /* Zero disables all standard directories for headers.  */
 static bool std_inc = true;
 
@@ -155,10 +161,10 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.useInline = 0;
   global.params.warnings = 0;
   global.params.obj = 1;
-  global.params.Dversion = 2;
   global.params.quiet = 1;
   global.params.useDeprecated = 2;
   global.params.betterC = 0;
+  global.params.allInst = 0;
 
   global.params.linkswitches = new Strings();
   global.params.libfiles = new Strings();
@@ -191,9 +197,6 @@ d_init_options_struct (gcc_options *opts)
 
   // Honour left to right code evaluation.
   opts->x_flag_evaluation_order = 1;
-
-  // Default to using strict aliasing.
-  opts->x_flag_strict_aliasing = 1;
 }
 
 static void
@@ -394,6 +397,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 	}
       break;
 
+    case OPT_fdeps:
+      global.params.moduleDeps = new OutBuffer;
+      break;
+
     case OPT_fdeps_:
       global.params.moduleDepsFile = xstrdup (arg);
       if (!global.params.moduleDepsFile[0])
@@ -428,7 +435,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      flag_emit_templates = value ? TEprivate : TEnone;
+      flag_emit_templates = value ? TEallinst : TEnone;
+      global.params.allInst = value;
       break;
 
     case OPT_femit_moduleinfo:
@@ -461,12 +469,20 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
+    case OPT_fmake_deps:
+      global.params.makeDeps = new OutBuffer;
+      break;
+
     case OPT_fmake_deps_:
       global.params.makeDeps = new OutBuffer;
       global.params.makeDepsStyle = 1;
       global.params.makeDepsFile = xstrdup (arg);
       if (!global.params.makeDepsFile[0])
 	error ("bad argument for -fmake-deps");
+      break;
+
+    case OPT_fmake_mdeps:
+      global.params.makeDeps = new OutBuffer;
       break;
 
     case OPT_fmake_mdeps_:
@@ -610,8 +626,7 @@ d_post_options (const char ** fn)
   return false;
 }
 
-/* wrapup_global_declaration needs to be called or functions will not
-   be emitted. */
+// Array of all global declarations to pass back to the middle-end.
 static Array globalDeclarations;
 
 void
@@ -620,28 +635,17 @@ d_add_global_declaration (tree decl)
   globalDeclarations.push (decl);
 }
 
+// Write out globals.
+
 static void
 d_write_global_declarations (void)
 {
   tree *vec = (tree *) globalDeclarations.data;
+  int len = globalDeclarations.dim;
 
-  /* Complete all generated thunks. */
-  cgraph_process_same_body_aliases();
+  gcc_assert (len >= 0);
 
-  /* Process all file scopes in this compilation, and the external_scope,
-     through wrapup_global_declarations.  */
-  wrapup_global_declarations (vec, globalDeclarations.dim);
-
-  /* We're done parsing; proceed to optimize and emit assembly. */
-  if (!global.errors && !errorcount)
-    finalize_compilation_unit();
-
-  /* Now, issue warnings about static, but not defined, functions.  */
-  check_global_declarations (vec, globalDeclarations.dim);
-
-  /* After cgraph has had a chance to emit everything that's going to
-     be emitted, output debug information for globals.  */
-  emit_debug_global_declarations (vec, globalDeclarations.dim);
+  d_finish_compilation (vec, len);
 }
 
 
@@ -696,8 +700,6 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 }
 
 
-static Module *output_module = NULL;
-
 Module *
 d_gcc_get_output_module (void)
 {
@@ -717,6 +719,30 @@ static void
 nametype (Type *t)
 {
   nametype (t->toCtype(), t->toChars());
+}
+
+// Generate C main() in response to seeing D main().
+// This used to be in libdruntime, but contained a reference to _Dmain which
+// didn't work when druntime was made into a shared library and was linked
+// to a program, such as a C++ program, that didn't have a _Dmain.
+
+void
+genCmain (Scope *sc)
+{
+  if (entrypoint)
+    return;
+
+  // The D code to be generated is provided by __entrypoint.di
+  Module *m = Module::load (Loc(), NULL, Id::entrypoint);
+  m->importedFrom = sc->module;
+  m->importAll (NULL);
+  m->semantic();
+  m->semantic2();
+  m->semantic3();
+
+  // We are emitting this straight to object file.
+  output_modules.push (m);
+  entrypoint = m;
 }
 
 static void
@@ -764,9 +790,11 @@ deps_write (Module *m)
 	      if (strcmp ((md->packages->tdata()[0])->string, "gcc") == 0)
 		continue;
 	    }
-	  else if (md && md->id)
+	  else if (md && md->id && md->packages == NULL)
 	    {
-	      if (strcmp (md->id->string, "object") == 0 && md->packages == NULL)
+	      if (strcmp (md->id->string, "object") == 0)
+		continue;
+	      if (strcmp (md->id->string, "__entrypoint") == 0)
 		continue;
 	    }
 	}
@@ -787,28 +815,8 @@ deps_write (Module *m)
 	}
       ob->writestring (fn->str);
     }
-  ob->writestring ("\n");
-}
 
-
-// Binary search for P in TAB between the range 0 to HIGH.
-
-int binary(const char *p , const char **tab, int high)
-{
-    int low = 0;
-    do
-    {
-        int pos = (low + high) / 2;
-        int cmp = strcmp(p, tab[pos]);
-        if (! cmp)
-            return pos;
-        else if (cmp < 0)
-            high = pos;
-        else
-            low = pos + 1;
-    } while (low != high);
-
-    return -1;
+  ob->writenl();
 }
 
 void
@@ -816,8 +824,8 @@ d_parse_file (void)
 {
   if (global.params.verbose)
     {
-      fprintf (stderr, "binary    %s\n", global.params.argv0);
-      fprintf (stderr, "version   %s\n", global.version);
+      fprintf (global.stdmsg, "binary    %s\n", global.params.argv0);
+      fprintf (global.stdmsg, "version   %s\n", global.version);
     }
 
   // Start the main input file, if the debug writer wants it.
@@ -835,8 +843,6 @@ d_parse_file (void)
   // Create Modules
   Modules modules;
   modules.reserve (num_in_fnames);
-  AsyncRead *aw = NULL;
-  Module *m = NULL;
 
   if (!main_input_filename || !main_input_filename[0])
     {
@@ -856,7 +862,7 @@ d_parse_file (void)
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
-      //fprintf (stderr, "fn %d = %s\n", i, in_fnames[i]);
+      //fprintf (global.stdmsg, "fn %d = %s\n", i, in_fnames[i]);
       char *fname = xstrdup (in_fnames[i]);
 
       // Strip path
@@ -893,7 +899,8 @@ d_parse_file (void)
       // At this point, name is the D source file name stripped of
       // its path and extension.
       Identifier *id = Lexer::idPool (name);
-      m = new Module (fname, id, global.params.doDocComments, global.params.doHdrGeneration);
+      Module *m = new Module (fname, id, global.params.doDocComments,
+			      global.params.doHdrGeneration);
       modules.push (m);
 
       if (!strcmp (in_fnames[i], main_input_filename))
@@ -912,30 +919,27 @@ d_parse_file (void)
   gcc_assert (output_module);
 
   // Read files
-  aw = AsyncRead::create (modules.dim);
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
-      aw->addFile (m->srcfile);
+      Module *m = modules[i];
+      m->read (Loc());
     }
-  aw->start();
 
   // Parse files
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
+
       if (global.params.verbose)
-	fprintf (stderr, "parse     %s\n", m->toChars());
+	fprintf (global.stdmsg, "parse     %s\n", m->toChars());
+
       if (!Module::rootModule)
 	Module::rootModule = m;
+
       m->importedFrom = m;
-      if (aw->read (i))
-	{
-	  error ("cannot read file %s", m->srcfile->name->toChars());
-	  goto had_errors;
-	}
       m->parse();
       d_gcc_magic_module (m);
+
       if (m->isDocFile)
 	{
 	  m->gendocfile();
@@ -944,7 +948,6 @@ d_parse_file (void)
 	  i--;
 	}
     }
-  AsyncRead::dispose (aw);
 
   if (global.errors)
     goto had_errors;
@@ -958,11 +961,13 @@ d_parse_file (void)
        */
       for (size_t i = 0; i < modules.dim; i++)
 	{
-	  m = modules[i];
+	  Module *m = modules[i];
 	  if (fonly_arg && m != output_module)
 	    continue;
+
 	  if (global.params.verbose)
-	    fprintf (stderr, "import    %s\n", m->toChars());
+	    fprintf (global.stdmsg, "import    %s\n", m->toChars());
+
 	  m->genhdrfile();
 	}
     }
@@ -970,12 +975,14 @@ d_parse_file (void)
   if (global.errors)
     goto had_errors;
 
-  // load all unconditional imports for better symbol resolving
+  // Load all unconditional imports for better symbol resolving
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
+
       if (global.params.verbose)
-	fprintf (stderr, "importall %s\n", m->toChars());
+	fprintf (global.stdmsg, "importall %s\n", m->toChars());
+
       m->importAll (NULL);
     }
 
@@ -985,9 +992,11 @@ d_parse_file (void)
   // Do semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
+
       if (global.params.verbose)
-	fprintf (stderr, "semantic  %s\n", m->toChars());
+	fprintf (global.stdmsg, "semantic  %s\n", m->toChars());
+
       m->semantic();
     }
 
@@ -1000,9 +1009,11 @@ d_parse_file (void)
   // Do pass 2 semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
+
       if (global.params.verbose)
-	fprintf (stderr, "semantic2 %s\n", m->toChars());
+	fprintf (global.stdmsg, "semantic2 %s\n", m->toChars());
+
       m->semantic2();
     }
 
@@ -1012,43 +1023,50 @@ d_parse_file (void)
   // Do pass 3 semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
+
       if (global.params.verbose)
-	fprintf (stderr, "semantic3 %s\n", m->toChars());
+	fprintf (global.stdmsg, "semantic3 %s\n", m->toChars());
+
       m->semantic3();
     }
+
+  Module::runDeferredSemantic3();
 
   if (global.errors)
     goto had_errors;
 
-  if (global.params.moduleDeps != NULL)
+  if (global.params.moduleDeps)
     {
-      gcc_assert (global.params.moduleDepsFile != NULL);
-
-      File deps (global.params.moduleDepsFile);
       OutBuffer *ob = global.params.moduleDeps;
-      deps.setbuffer ((void *) ob->data, ob->offset);
-      deps.writev();
+
+      if (global.params.moduleDepsFile)
+	{
+	  File deps (global.params.moduleDepsFile);
+	  deps.setbuffer ((void *) ob->data, ob->offset);
+	  deps.writev();
+	}
+      else
+	fprintf (global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
-  if (global.params.makeDeps != NULL)
+  if (global.params.makeDeps)
     {
       for (size_t i = 0; i < modules.dim; i++)
 	{
-	  m = modules[i];
+	  Module *m = modules[i];
 	  deps_write (m);
 	}
 
-
       OutBuffer *ob = global.params.makeDeps;
-      if (global.params.makeDepsFile == NULL)
-	printf ("%s", (char *) ob->data);
-      else
+      if (global.params.makeDepsFile)
 	{
 	  File deps (global.params.makeDepsFile);
 	  deps.setbuffer ((void *) ob->data, ob->offset);
 	  deps.writev();
 	}
+      else
+	fprintf (global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
   // Do not attempt to generate output files if errors or warnings occurred
@@ -1071,7 +1089,7 @@ d_parse_file (void)
 
       if (name && name[0] == '-' && name[1] == 0)
 	{
-	  size_t n = fwrite (buf.data, 1, buf.offset, stderr);
+	  size_t n = fwrite (buf.data, 1, buf.offset, global.stdmsg);
 	  gcc_assert (n == buf.offset);
 	}
       else
@@ -1099,13 +1117,21 @@ d_parse_file (void)
 
   for (size_t i = 0; i < modules.dim; i++)
     {
-      m = modules[i];
+      Module *m = modules[i];
       if (fonly_arg && m != output_module)
 	continue;
+
       if (global.params.verbose)
-	fprintf (stderr, "code      %s\n", m->toChars());
+	fprintf (global.stdmsg, "code      %s\n", m->toChars());
+
       if (!flag_syntax_only)
-	m->genobjfile (false);
+	{
+	  if (entrypoint && m == entrypoint->importedFrom)
+	    entrypoint->genobjfile (false);
+
+	  m->genobjfile (false);
+	}
+
       if (!global.errors && !errorcount)
 	{
 	  if (global.params.doDocComments)
@@ -1510,6 +1536,30 @@ d_getdecls (void)
 }
 
 
+// Get the alias set corresponding to a type or expression.
+// Return -1 if we don't do anything special.
+
+static alias_set_type
+d_get_alias_set (tree t)
+{
+  // Permit type-punning when accessing a union, provided the access
+  // is directly through the union.
+  for (tree u = t; handled_component_p (u); u = TREE_OPERAND (u, 0))
+    {
+      if (TREE_CODE (u) == COMPONENT_REF
+	  && TREE_CODE (TREE_TYPE (TREE_OPERAND (u, 0))) == UNION_TYPE)
+	return 0;
+    }
+
+  // That's all the expressions we handle.
+  if (!TYPE_P (t))
+    return get_alias_set (TREE_TYPE (t));
+
+  // For now in D, assume everything aliases everything else,
+  // until we define some solid rules.
+  return 0;
+}
+
 static int
 d_types_compatible_p (tree t1, tree t2)
 {
@@ -1553,7 +1603,7 @@ d_finish_incomplete_decl (tree decl)
 
 // Return the true debug type for TYPE.
 
-static enum classify_record
+static classify_record
 d_classify_record (tree type)
 {
   Type *dtype = build_dtype (type);

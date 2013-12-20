@@ -62,7 +62,7 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 Symbol *
 Dsymbol::toSymbol (void)
 {
-  fprintf (stderr, "Dsymbol::toSymbol() '%s', kind = '%s'\n", toChars(), kind());
+  fprintf (global.stdmsg, "Dsymbol::toSymbol() '%s', kind = '%s'\n", toChars(), kind());
   gcc_unreachable();          // BUG: implement
   return NULL;
 }
@@ -184,7 +184,7 @@ VarDeclaration::toSymbol (void)
       if (global.params.vtls && isDataseg() && isThreadlocal())
 	{
 	  char *p = loc.toChars();
-	  fprintf (stderr, "%s: %s is thread local\n", p ? p : "", toChars());
+	  fprintf (global.stdmsg, "%s: %s is thread local\n", p ? p : "", toChars());
 	  if (p)
 	    free (p);
 	}
@@ -199,14 +199,6 @@ Symbol *
 ClassInfoDeclaration::toSymbol (void)
 {
   return cd->toSymbol();
-}
-
-// Create the symbol with tree for moduleinfo decls.
-
-Symbol *
-ModuleInfoDeclaration::toSymbol (void)
-{
-  return mod->toSymbol();
 }
 
 // Create the symbol with tree for typeinfo decls.
@@ -292,18 +284,6 @@ FuncDeclaration::toSymbol (void)
 	    }
 
 
-	  /* Nested functions may not have its toObjFile called before the outer
-	     function is finished.  GCC requires that nested functions be finished
-	     first so we need to arrange for toObjFile to be called earlier.  */
-	  Dsymbol *outer = toParent2();
-	  if (outer && outer->isFuncDeclaration())
-	    {
-	      Symbol *osym = outer->toSymbol();
-
-	      if (osym->outputStage != Finished)
-		((FuncDeclaration *) outer)->deferred.push (this);
-	    }
-
 	  TREE_TYPE (fndecl) = ftype->toCtype();
 	  DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
 	  d_keep (fndecl);
@@ -327,7 +307,7 @@ FuncDeclaration::toSymbol (void)
 
 	      fntype = build_method_type (handle, TREE_TYPE (fndecl));
 
-	      if (isVirtual())
+	      if (isVirtual() && vtblIndex != -1)
 		vindex = size_int (vtblIndex);
 	    }
 	  else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
@@ -347,7 +327,8 @@ FuncDeclaration::toSymbol (void)
 
 	  if (ident)
 	    {
-	      csym->Sident = mangle(); // save for making thunks
+	      // Save mangle/debug names for making thunks.
+	      csym->Sident = mangleExact();
 	      csym->prettyIdent = toPrettyChars();
 	      id = get_identifier (csym->Sident);
 	      id = targetm.mangle_decl_assembler_name (fndecl, id);
@@ -669,11 +650,9 @@ ClassDeclaration::toVtblSymbol (void)
 
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
-      TypeSArray *vtbl_type = new TypeSArray (Type::tvoidptr,
-					       new IntegerExp (loc, vtbl.dim, Type::tindex));
-
+      Type *vtbltype = TypeSArray::makeType (loc, Type::tvoidptr, vtbl.dim);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (vtblsym->Sident), vtbl_type->toCtype());
+			      get_identifier (vtblsym->Sident), vtbltype->toCtype());
       vtblsym->Stree = decl;
       d_keep (decl);
 

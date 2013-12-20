@@ -52,7 +52,6 @@ Symbol::Symbol (void)
   this->SframeField = NULL_TREE;
   this->SnamedResult = NULL_TREE;
 
-  this->outputStage = NotStarted;
   this->frameInfo = NULL;
 }
 
@@ -68,7 +67,7 @@ Dsymbol::toObjFile (int)
   // Emit local variables for tuples.
   for (size_t i = 0; i < td->objects->dim; i++)
     {
-      Object *o = (*td->objects)[i];
+      RootObject *o = (*td->objects)[i];
       if ((o->dyncast() == DYNCAST_EXPRESSION) && ((Expression *) o)->op == TOKdsymbol)
 	{
 	  Declaration *d = ((DsymbolExp *) o)->s->isDeclaration();
@@ -142,6 +141,13 @@ StructDeclaration::toObjFile (int)
       // be put in separate object files.
       member->toObjFile (0);
     }
+
+  // Put out xopEquals and xopCmp
+  if (xeq && xeq != xerreq)
+    xeq->toObjFile (0);
+
+  if (xcmp && xcmp != xerrcmp)
+    xcmp->toObjFile (0);
 }
 
 void
@@ -181,7 +187,7 @@ ClassDeclaration::toObjFile (int)
 
   // must be ClassInfo.size
   size_t offset = CLASSINFO_SIZE;
-  if (classinfo->structsize != offset)
+  if (Type::typeinfoclass->structsize != offset)
     {
       error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
       gcc_unreachable();
@@ -198,7 +204,7 @@ ClassDeclaration::toObjFile (int)
    *  Object *base;               // base class
    *  void *destructor;
    *  void *invariant;            // class invariant
-   *  uint flags;
+   *  ClassFlags flags;
    *  void *deallocator;
    *  OffsetTypeInfo[] offTi;
    *  void *defaultConstructor;
@@ -206,10 +212,10 @@ ClassDeclaration::toObjFile (int)
    */
   tree dt = NULL_TREE;
 
-  build_vptr_monitor (&dt, classinfo);
+  build_vptr_monitor (&dt, Type::typeinfoclass);
 
   // initializer[]
-  gcc_assert (structsize >= 8);
+  gcc_assert (structsize >= 8 || (cpp && structsize >= 4));
   dt_cons (&dt, d_array_value (Type::tint8->arrayOf()->toCtype(),
 			       size_int (structsize),
 			       build_address (sinit->Stree)));
@@ -255,24 +261,37 @@ ClassDeclaration::toObjFile (int)
     dt_cons (&dt, d_null_pointer);
 
   // flags
-  size_t flags = (4 | isCOMclass() | 16 | 32);
+  ClassFlags::Type flags = ClassFlags::hasOffTi;
+
+  if (isCOMclass())
+    flags |= ClassFlags::isCOMclass;
+
+  if (isCPPclass())
+    flags |= ClassFlags::isCPPclass;
+
+  flags |= ClassFlags::hasGetMembers;
+  flags |= ClassFlags::hasTypeInfo;
+
   if (ctor)
-    flags |= 8;
+    flags |= ClassFlags::hasCtor;
+
   if (isabstract)
-    flags |= 64;
+    flags |= ClassFlags::isAbstract;
+
   for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
     {
-      if (cd->members)
+      if (!cd->members)
+	continue;
+
+      for (size_t i = 0; i < cd->members->dim; i++)
 	{
-	  for (size_t i = 0; i < cd->members->dim; i++)
-	    {
-	      Dsymbol *sm = (*cd->members)[i];
-	      if (sm->hasPointers())
-		goto Lhaspointers;
-	    }
+	  Dsymbol *sm = (*cd->members)[i];
+	  if (sm->hasPointers())
+	    goto Lhaspointers;
 	}
     }
-  flags |= 2;
+
+  flags |= ClassFlags::noPointers;
 
 Lhaspointers:
   dt_cons (&dt, size_int (flags));
@@ -299,7 +318,7 @@ Lhaspointers:
   else
     {
       // If class has no pointers.
-      if (flags & 2)
+      if (flags & ClassFlags::noPointers)
     	dt_cons (&dt, size_int (0));
       else
 	dt_cons (&dt, size_int (1));
@@ -309,7 +328,7 @@ Lhaspointers:
    * The layout is:
    *  TypeInfo_Class typeinfo;
    *  void*[] vtbl;
-   *  ptrdiff_t offset;
+   *  size_t offset;
    */
   offset += vtblInterfaces->dim * (4 * Target::ptrsize);
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
@@ -399,9 +418,10 @@ Lhaspointers:
   dt = NULL_TREE;
 
   // first entry is ClassInfo reference
-  dt_cons (&dt, build_address (csym->Stree));
+  if (vtblOffset())
+    dt_cons (&dt, build_address (csym->Stree));
 
-  for (size_t i = 1; i < vtbl.dim; i++)
+  for (size_t i = vtblOffset(); i < vtbl.dim; i++)
     {
       FuncDeclaration *fd = vtbl[i]->isFuncDeclaration();
 
@@ -536,7 +556,7 @@ InterfaceDeclaration::toObjFile (int)
    */
   tree dt = NULL_TREE;
 
-  build_vptr_monitor (&dt, classinfo);
+  build_vptr_monitor (&dt, Type::typeinfoclass);
 
   // initializer[]
   dt_cons (&dt, d_array_value (Type::tint8->arrayOf()->toCtype(),
@@ -554,7 +574,7 @@ InterfaceDeclaration::toObjFile (int)
     {
       // must be ClassInfo.size
       size_t offset = CLASSINFO_SIZE;
-      if (classinfo->structsize != offset)
+      if (Type::typeinfoclass->structsize != offset)
 	{
 	  error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
 	  gcc_unreachable();
@@ -574,7 +594,13 @@ InterfaceDeclaration::toObjFile (int)
   dt_cons (&dt, d_null_pointer);
 
   // flags
-  dt_cons (&dt, size_int (4 | isCOMinterface() | 32));
+  ClassFlags::Type flags = ClassFlags::hasOffTi;
+  flags |= ClassFlags::hasTypeInfo;
+
+  if (isCOMinterface())
+    flags |= ClassFlags::isCOMclass;
+
+  dt_cons (&dt, size_int (flags));
 
   // deallocator*
   dt_cons (&dt, d_null_pointer);
@@ -596,7 +622,7 @@ InterfaceDeclaration::toObjFile (int)
    * The layout is:
    *  TypeInfo_Class typeinfo;
    *  void*[] vtbl;
-   *  ptrdiff_t offset;
+   *  size_t offset;
    */
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {
@@ -621,10 +647,10 @@ InterfaceDeclaration::toObjFile (int)
 void
 EnumDeclaration::toObjFile (int)
 {
-  if (objFileDone)
+  if (semanticRun >= PASSobj)
     return;
 
-  if (type->ty == Terror)
+  if (errors || type->ty == Terror)
     {
       error ("had semantic errors when compiling");
       return;
@@ -637,10 +663,10 @@ EnumDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo(NULL);
+  type->getTypeInfo (NULL);
 
   TypeEnum *tc = (TypeEnum *) type;
-  if (tc->sym->defaultval && !type->isZeroInit())
+  if (tc->sym->members && !type->isZeroInit())
     {
       // Generate static initialiser
       toInitializer();
@@ -648,7 +674,7 @@ EnumDeclaration::toObjFile (int)
       d_finish_symbol (sinit);
     }
 
-  objFileDone = true;
+  semanticRun = PASSobj;
 }
 
 void
@@ -670,7 +696,6 @@ VarDeclaration::toObjFile (int)
   // but keep the values for purposes of debugging.
   if (!canTakeAddressOf())
     {
-      Expression *ie = NULL;
       tree ctype = declaration_type (this);
       tree ident;
 
@@ -682,16 +707,17 @@ VarDeclaration::toObjFile (int)
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident, ctype);
       set_decl_location (decl, this);
 
-      if (init)
-	{
-	  gcc_assert (!init->isVoidInitializer());
-	  ie = init->toExpression();
-	}
-      else
-	ie = type->defaultInit();
+      gcc_assert (init && !init->isVoidInitializer());
 
-      gcc_assert (ie != NULL);
-      DECL_INITIAL (decl) = ie->toElem (current_irstate);
+      unsigned errors = global.startGagging();
+      Expression *ie = init->toExpression();
+      tree sinit = NULL_TREE;
+      ie->toDt (&sinit);
+
+      if (!global.endGagging (errors))
+	DECL_INITIAL (decl) = dtvector_to_tree (sinit);
+      else
+	DECL_INITIAL (decl) = error_mark (type);
 
       // Manifest constants have no address in memory.
       TREE_CONSTANT (decl) = 1;
@@ -781,7 +807,7 @@ TypedefDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo(NULL);
+  type->getTypeInfo (NULL);
 
   TypeTypedef *tc = (TypeTypedef *) type;
   if (tc->sym->init && !type->isZeroInit())
@@ -851,7 +877,7 @@ Module::genmoduleinfo()
 
   sgetmembers = findGetMembers();
 
-  size_t flags = MInew;
+  size_t flags = 0;
   if (sctor)
     flags |= MItlsctor;
   if (sdtor)
@@ -870,9 +896,10 @@ Module::genmoduleinfo()
     flags |= MIimportedModules;
   if (aclasses.dim)
     flags |= MIlocalClasses;
-
   if (!needmoduleinfo)
     flags |= MIstandalone;
+
+  flags |= MIname;
 
   /* Put out:
    *  uint flags;
@@ -935,13 +962,15 @@ Module::genmoduleinfo()
 	}
     }
 
-  // Put out module name as a 0-terminated C-string, to save bytes
-  const char *name = toPrettyChars();
-  size_t namelen = strlen (name) + 1;
-  tree strtree = build_string (namelen, name);
-  TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
-
-  dt_cons (&dt, strtree);
+  if (flags & MIname)
+    {
+      // Put out module name as a 0-terminated C-string, to save bytes
+      const char *name = toPrettyChars();
+      size_t namelen = strlen (name) + 1;
+      tree strtree = build_string (namelen, name);
+      TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
+      dt_cons (&dt, strtree);
+    }
 
   csym->Sdt = dt;
   d_finish_symbol (csym);
@@ -949,6 +978,109 @@ Module::genmoduleinfo()
   build_moduleinfo (msym);
 }
 
+// Returns TRUE if we want to compile the instantiated template TI.
+
+static bool
+output_template_p (TemplateInstance *ti)
+{
+  // Only templates are handled here.
+  if (ti == NULL)
+    return true;
+
+  if (!global.params.useUnitTests
+      && !global.params.allInst
+      && !global.params.debuglevel
+      && ti->instantiatingModule
+      && !ti->instantiatingModule->isRoot())
+    {
+      Module *mi = ti->instantiatingModule;
+      bool importsRoot = false;
+
+      // If mi imports any root modules, we still need to generate the code.
+      for (size_t i = 0; i < Module::amodules.dim; ++i)
+	{
+	  Module *m = Module::amodules[i];
+	  m->insearch = 0;
+	}
+
+      for (size_t i = 0; i < Module::amodules.dim; ++i)
+	{
+	  Module *m = Module::amodules[i];
+	  if (m->isRoot() && mi->imports(m))
+	    {
+	      importsRoot = true;
+	      break;
+	    }
+	}
+
+      for (size_t i = 0; i < Module::amodules.dim; ++i)
+	{
+	  Module *m = Module::amodules[i];
+	  m->insearch = 0;
+	}
+
+      if (!importsRoot)
+	return false;
+    }
+
+  return true;
+}
+
+// Returns true if we want to compile the declaration DSYM.
+
+static bool
+output_declaration_p (Declaration *dsym)
+{
+  // If errors occurred compiling it.
+  if (dsym->type->ty == Tfunction && ((TypeFunction *) dsym->type)->next->ty == Terror)
+    return false;
+
+  FuncDeclaration *fd = dsym->isFuncDeclaration();
+
+  if (fd != NULL)
+    {
+      // If have already started emitting, continue doing so.
+      if (fd->semanticRun >= PASSobj)
+	return true;
+
+      if (fd->isNested())
+	{
+	  // Typically, an error occurred whilst compiling
+	  if (fd->fbody && !fd->vthis)
+	    {
+	      gcc_assert (global.errors);
+	      return false;
+	    }
+	}
+
+      // Nested functions may not have its toObjFile called before the outer
+      // function is finished.  GCC requires that nested functions be finished
+      // first so we need to arrange for toObjFile to be called earlier.
+      // If the parent never gets emitted, then neither will fd.
+      Dsymbol *outer = fd->toParent2();
+      if (outer && outer->isFuncDeclaration())
+	{
+	  FuncDeclaration *fouter = (FuncDeclaration *) outer;
+
+	  if (fouter->semanticRun < PASSobj)
+	    {
+	      fouter->deferred.push (fd);
+	      return false;
+	    }
+	}
+
+      // Skip generating code if this part of a TemplateInstance that is instantiated
+      // only by non-root modules (i.e. modules not listed on the command line).
+      if (! output_template_p (fd->inTemplateInstance()))
+	return false;
+
+    }
+
+  if (flag_emit_templates == TEnone)
+    return !D_DECL_IS_TEMPLATE (dsym->toSymbol()->Stree);
+
+  return true;
+}
 
 // Finish up a function declaration and compile it all the way
 // down to assembler language output.
@@ -959,16 +1091,14 @@ FuncDeclaration::toObjFile (int)
   if (!global.params.useUnitTests && isUnitTestDeclaration())
     return;
 
+  // Already generated the function.
+  if (semanticRun >= PASSobj)
+    return;
+
   if (!output_declaration_p (this))
     return;
 
-  Symbol *sym = toSymbol();
-  if (sym->outputStage)
-    return;
-
-  sym->outputStage = InProgress;
-
-  tree fndecl = sym->Stree;
+  tree fndecl = toSymbol()->Stree;
 
   if (!fbody)
     {
@@ -982,8 +1112,14 @@ FuncDeclaration::toObjFile (int)
       return;
     }
 
+  if (global.errors)
+    return;
+
+  // Start generating code for this function.
+  gcc_assert(semanticRun == PASSsemantic3done);
+
   if (global.params.verbose)
-    fprintf (stderr, "function  %s\n", this->toPrettyChars());
+    fprintf (global.stdmsg, "function  %s\n", this->toPrettyChars());
 
   IRState *irs = current_irstate->startFunction (this);
   // Default chain value is 'null' unless parent found.
@@ -1056,6 +1192,7 @@ FuncDeclaration::toObjFile (int)
       // chain them in the correct order
       param_list = chainon (param_list, parm_decl);
     }
+
   DECL_ARGUMENTS (fndecl) = param_list;
   for (tree t = param_list; t; t = DECL_CHAIN (t))
     DECL_CONTEXT (t) = fndecl;
@@ -1207,10 +1344,10 @@ FuncDeclaration::toObjFile (int)
 	}
     }
 
-  sym->outputStage = Finished;
-
   if (!errorcount && !global.errors)
     d_finish_function (this);
+
+  semanticRun = PASSobj;
 
   // Process all deferred nested functions.
   for (size_t i = 0; i < this->deferred.dim; ++i)
@@ -1280,6 +1417,7 @@ FuncDeclaration::buildClosure (IRState *irs)
   for (size_t i = 0; i < closureVars.dim; i++)
     {
       VarDeclaration *v = closureVars[i];
+
       if (!v->isParameter())
 	continue;
 
@@ -1317,7 +1455,7 @@ Module::genobjfile (int)
 
   // Default behaviour is to always generate module info because of templates.
   // Can be switched off for not compiling against runtime library.
-  if (!global.params.betterC)
+  if (!global.params.betterC && ident != Id::entrypoint)
     {
       ModuleInfo *mi = current_module_info;
 
@@ -1487,7 +1625,7 @@ get_unique_name (tree decl, const char *prefix)
     DECL_NAME (decl) = DECL_ASSEMBLER_NAME (decl);
 }
 
-/* Return the COMDAT group into which DECL should be placed. */
+// Return the COMDAT group into which DECL should be placed.
 
 static tree
 d_comdat_group (tree decl)
@@ -1499,50 +1637,47 @@ d_comdat_group (tree decl)
   return DECL_ASSEMBLER_NAME (decl);
 }
 
+// Set DECL up to have the closest approximation of "initialized common"
+// linkage available.
 
 void
 d_comdat_linkage (tree decl)
 {
-  /* First method: Use one-only.  If user has specified -femit-templates,
-     honor that even if the target supports one-only. */
-  if (!D_DECL_IS_TEMPLATE (decl) || flag_emit_templates != TEprivate)
+  // Weak definitions have to be public.
+  if (!TREE_PUBLIC (decl))
+    return;
+
+  // Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined
+  if (TREE_CODE (decl) == FUNCTION_DECL)
+    DECL_DECLARED_INLINE_P (decl) = 1;
+
+  // The following makes assumptions about the behavior of make_decl_one_only.
+  if (SUPPORTS_ONE_ONLY)
+    make_decl_one_only (decl, d_comdat_group (decl));
+  else if (SUPPORTS_WEAK)
     {
-      // Weak definitions have to be public.
-      if (!TREE_PUBLIC (decl))
-	return;
-
-      // Necessary to allow DECL_ONE_ONLY or DECL_WEAK functions to be inlined
-      if (TREE_CODE (decl) == FUNCTION_DECL)
-	DECL_DECLARED_INLINE_P (decl) = 1;
-
-      // The following makes assumptions about the behavior of make_decl_one_only.
-      if (SUPPORTS_ONE_ONLY)
-	{
-	  make_decl_one_only (decl, d_comdat_group (decl));
-	  return;
-	}
-      else if (SUPPORTS_WEAK)
-	{
-	  tree decl_init = DECL_INITIAL (decl);
-	  DECL_INITIAL (decl) = integer_zero_node;
-	  make_decl_one_only (decl, d_comdat_group (decl));
-	  DECL_INITIAL (decl) = decl_init;
-	  return;
-	}
+      tree decl_init = DECL_INITIAL (decl);
+      DECL_INITIAL (decl) = integer_zero_node;
+      make_decl_one_only (decl, d_comdat_group (decl));
+      DECL_INITIAL (decl) = decl_init;
     }
-  /* Second method: Make a private copy.  For RTTI, we can always make
-     a private copy.  For templates, only do this if the user specified
-     -femit-templates. */
-  else if (flag_emit_templates == TEprivate)
+  else if (TREE_CODE (decl) == FUNCTION_DECL
+	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
     {
-      TREE_PRIVATE (decl) = 1;
+      // We can just emit function and compiler-generated variables
+      // statically; having multiple copies is (for the most part) only
+      // a waste of space.
       TREE_PUBLIC (decl) = 0;
+      TREE_PRIVATE (decl) = 1;
+    }
+  else if (DECL_INITIAL (decl) == NULL_TREE
+	   || DECL_INITIAL (decl) == error_mark_node)
+    {
+      // Fallback, cannot have multiple copies.
+      DECL_COMMON (decl) = 1;
     }
 
-  /* Fallback, cannot have multiple copies. */
-  if (DECL_INITIAL (decl) == NULL_TREE
-      || DECL_INITIAL (decl) == error_mark_node)
-    DECL_COMMON (decl) = 1;
+  DECL_COMDAT (decl) = 1;
 }
 
 // Set a DECL's STATIC and EXTERN based on the decl's storage class
@@ -1559,21 +1694,20 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
     {
       bool local_p = output_module_p (dsym->getModule());
       Dsymbol *sym = dsym->toParent();
-      Module *timod = NULL;
 
       while (sym)
 	{
 	  TemplateInstance *ti = sym->isTemplateInstance();
 	  if (ti)
 	    {
-	      timod = ti->objFileModule;
 	      D_DECL_ONE_ONLY (decl) = 1;
 	      D_DECL_IS_TEMPLATE (decl) = 1;
 
 	      local_p = flag_emit_templates != TEnone
-		&& output_module_p (timod);
+		&& output_template_p (ti);
 	      break;
 	    }
+
 	  sym = sym->toParent();
 	}
 
@@ -1623,6 +1757,25 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
     decl_attributes (&decl, DECL_ATTRIBUTES (decl), 0);
 }
 
+// Mark DECL, which is a VAR_DECL or FUNCTION_DECL as a symbol that
+// must be emitted in this, output module.
+
+static void
+mark_needed (tree decl)
+{
+  TREE_USED (decl) = 1;
+
+  if (TREE_CODE (decl) == FUNCTION_DECL)
+    {
+      struct cgraph_node *node = cgraph_get_create_node (decl);
+      node->forced_by_abi = true;
+    }
+  else if (TREE_CODE (decl) == VAR_DECL)
+    {
+      struct varpool_node *node = varpool_node_for_decl (decl);
+      node->forced_by_abi = true;
+    }
+}
 
 // Finish up a symbol declaration and compile it all the way to
 // the assembler language output.
@@ -1680,11 +1833,7 @@ d_finish_symbol (Symbol *sym)
 
   DECL_CONTEXT (decl) = decl_function_context (decl);
 
-  if (!output_symbol_p (sym))
-    return;
-
-  // This was for typeinfo decls ... shouldn't happen now.
-  // %% Oops, this was supposed to be static.
+  // We are sending this symbol to object file.
   gcc_assert (!DECL_EXTERNAL (decl));
   relayout_decl (decl);
 
@@ -1694,11 +1843,16 @@ d_finish_symbol (Symbol *sym)
       // Initialiser must never be bigger than symbol size.
       dinteger_t tsize = int_size_in_bytes (TREE_TYPE (decl));
       dinteger_t dtsize = int_size_in_bytes (TREE_TYPE (DECL_INITIAL (decl)));
-      if (tsize != dtsize)
+
+      if (tsize < dtsize)
 	internal_error ("Mismatch between declaration '%s' size (%wd) and it's initializer size (%wd).",
 			sym->prettyIdent ? sym->prettyIdent : sym->Sident, tsize, dtsize);
     }
 #endif
+
+  // Our mangled symbol.
+  if (!DECL_ASSEMBLER_NAME_SET_P (decl) && sym->Sident)
+    SET_DECL_ASSEMBLER_NAME (decl, get_identifier (sym->Sident));
 
   // DECL_NAME for debugging.
   if (sym->prettyIdent)
@@ -1713,134 +1867,96 @@ d_finish_symbol (Symbol *sym)
 
   d_add_global_declaration (decl);
 
-  // %% Hack: defer output of tls symbols to ensure that _tlsstart gets
-  // emitted first, but this doesn't work because ld may re-order tls data.
-  if (!DECL_THREAD_LOCAL_P (decl))
-    rest_of_decl_compilation (decl, 1, 0);
-  else
+  // %% FIXME: DECL_COMMON so the symbol goes in .tcommon
+  if (DECL_THREAD_LOCAL_P (decl)
+      && DECL_ASSEMBLER_NAME (decl) == get_identifier ("_tlsend"))
     {
-      tree sinit = DECL_INITIAL (decl);
       DECL_INITIAL (decl) = NULL_TREE;
-
-      DECL_DEFER_OUTPUT (decl) = 1;
-      rest_of_decl_compilation (decl, 1, 0);
-      DECL_INITIAL (decl) = sinit;
+      DECL_COMMON (decl) = 1;
     }
+
+  rest_of_decl_compilation (decl, 1, 0);
 }
 
 void
-d_finish_function (FuncDeclaration *f)
+d_finish_function (FuncDeclaration *fd)
 {
-  Symbol *s = f->toSymbol();
-  tree t = s->Stree;
+  Symbol *s = fd->toSymbol();
+  tree decl = s->Stree;
 
-  gcc_assert (TREE_CODE (t) == FUNCTION_DECL);
-
-  // Write out _tlsstart/_tlsend.
-  if (f->isMain() || f->isWinMain() || f->isDllMain())
-    build_tlssections();
+  gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
 
   if (s->prettyIdent)
-    DECL_NAME (t) = get_identifier (s->prettyIdent);
+    DECL_NAME (decl) = get_identifier (s->prettyIdent);
 
-  d_add_global_declaration (t);
+  d_add_global_declaration (decl);
 
   if (!targetm.have_ctors_dtors)
     {
-      if (DECL_STATIC_CONSTRUCTOR (t))
-	static_ctor_list.push (f);
-      if (DECL_STATIC_DESTRUCTOR (t))
-	static_dtor_list.push (f);
+      if (DECL_STATIC_CONSTRUCTOR (decl))
+	static_ctor_list.push (fd);
+      if (DECL_STATIC_DESTRUCTOR (decl))
+	static_dtor_list.push (fd);
     }
 
-  if (!needs_static_chain (f))
+  if (!needs_static_chain (fd))
     {
-      bool context = decl_function_context (t) != NULL;
-      cgraph_finalize_function (t, context);
+      bool context = decl_function_context (decl) != NULL;
+      cgraph_finalize_function (decl, context);
     }
 }
 
-/* Multiple copies of the same template instantiations can be
-   passed to the backend from the frontend leaving assembler
-   errors left in their wrath.
+// Wrapup all global declarations and start the final compilation.
 
-   One such example:
-     class C (int i = -1) { }
-     auto c = new C!();
-
-   So put these symbols as generated by toSymbol, toInitializer,
-   toVtblSymbol on COMDAT where possible, and disgard duplicates
-   for the benefit of systems without link-once support.  */
-
-static StringTable *symtab = NULL;
-
-bool
-output_declaration_p (Declaration *dsym)
+void
+d_finish_compilation (tree *vec, int len)
 {
-  // If errors occurred compiling it.
-  if (dsym->type->ty == Tfunction && ((TypeFunction *) dsym->type)->next->ty == Terror)
-    return false;
+  // Complete all generated thunks.
+  cgraph_process_same_body_aliases();
 
-  FuncDeclaration *fd = dsym->isFuncDeclaration();
-  if (fd && fd->isNested())
+  StringTable *symtab = new StringTable;
+  symtab->_init();
+
+  // Process all file scopes in this compilation, and the external_scope,
+  // through wrapup_global_declarations.
+  for (int i = 0; i < len; i++)
     {
-      // Typically, an error occurred whilst compiling
-      if (fd->fbody && !fd->vthis)
+      tree decl = vec[i];
+
+      // Determine if a global var/function is needed.
+      // For templates, this means if we took the address of the decl,
+      // or if the decl is a class member/method or public toplevel symbol.
+      int needed = wrapup_global_declarations (&decl, 1);
+
+      if ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
+	  || TREE_CODE (decl) == FUNCTION_DECL)
 	{
-	  gcc_assert (global.errors);
-	  return false;
-	}
-    }
+	  tree name = DECL_ASSEMBLER_NAME (decl);
 
-  // Defer emitting nested functions whose parent isn't started yet.
-  // If the parent never gets emitted, then neither will fd.
-  Dsymbol *outer = fd->toParent2();
-  if (outer && outer->isFuncDeclaration())
-    {
-      Symbol *osym = outer->toSymbol();
-      if (osym->outputStage != Finished)
-	{
-	  ((FuncDeclaration *) outer)->deferred.push (fd);
-	  return false;
-	}
-    }
-
-  return output_symbol_p (dsym->toSymbol());
-}
-
-bool
-output_symbol_p (Symbol *sym)
-{
-  gcc_assert (sym);
-
-  // If have already started emitting, continue doing so.
-  if (sym->outputStage)
-    return true;
-
-  if (D_DECL_ONE_ONLY (sym->Stree))
-    {
-      tree id = DECL_ASSEMBLER_NAME (sym->Stree);
-      const char *ident = IDENTIFIER_POINTER (id);
-      size_t len = IDENTIFIER_LENGTH (id);
-
-      gcc_assert (ident != NULL);
-
-      if (!symtab)
-	{
-	  symtab = new StringTable;
-	  symtab->_init();
+	  // Don't emit, assembler name already in symtab.
+	  if (!symtab->insert (IDENTIFIER_POINTER (name), IDENTIFIER_LENGTH (name)))
+	    needed = 0;
+	  else if ((D_DECL_IS_TEMPLATE (decl) || D_DECL_ONE_ONLY (decl))
+		   && TREE_PUBLIC (decl)
+		   && (TREE_ADDRESSABLE (decl) || !DECL_CONTEXT (decl)
+		       || decl_type_context (decl)))
+	    needed = 1;
 	}
 
-      if (!symtab->insert (ident, len))
-	/* Don't emit, assembler name already in symtab. */
-	return false;
+      if (needed)
+	mark_needed (decl);
     }
 
-  // Not emitting templates, so return true all others.
-  if (flag_emit_templates == TEnone)
-    return !D_DECL_IS_TEMPLATE (sym->Stree);
+  // We're done parsing; proceed to optimize and emit assembly.
+  if (!global.errors && !errorcount)
+    finalize_compilation_unit();
 
-  return true;
+  // Now, issue warnings about static, but not defined, functions.
+  check_global_declarations (vec, len);
+
+  // After cgraph has had a chance to emit everything that's going to
+  // be emitted, output debug information for globals.
+  emit_debug_global_declarations (vec, len);
 }
 
 // Build TYPE_DECL for the declaration DSYM.
@@ -2062,6 +2178,7 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   func->linkage = func_type->linkage;
   func->parent = mod;
   func->protection = PROTprivate;
+  func->semanticRun = PASSsemantic3done;
 
   tree func_decl = func->toSymbol()->Stree;
 
@@ -2073,7 +2190,7 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   TREE_PUBLIC (func_decl) = 0;
   TREE_USED (func_decl) = 1;
 
-  // %% maybe remove the identifier
+  // %% Maybe remove the identifier
   WrappedExp *body = new WrappedExp (mod->loc, TOKcomma, expr, Type::tvoid);
   func->fbody = new ExpStatement (mod->loc, body);
   func->toObjFile (0);
@@ -2243,39 +2360,5 @@ build_moduleinfo (Symbol *sym)
   tree m2 = vmodify_expr (dmodule_ref, build_address (modref));
 
   build_simple_function ("*__modinit", vcompound_expr (m1, m2), true);
-}
-
-// Put out symbols that define the beginning and end
-// of the thread local storage sections.
-
-void
-build_tlssections (void)
-{
-  // Generate:
-  //  __thread size_t _tlsstart = 3;
-  //  __thread size_t _tlsend;
-  tree tlsstart, tlsend;
-
-  tlsstart = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			 get_identifier ("_tlsstart"), size_type_node);
-  TREE_STATIC (tlsstart) = 1;
-  // DECL_INITIAL so the symbol goes in .tdata
-  DECL_INITIAL (tlsstart) = build_int_cst (size_type_node, 3);
-  DECL_TLS_MODEL (tlsstart) = decl_default_tls_model (tlsstart);
-  TREE_PUBLIC (tlsstart) = 1;
-  DECL_ARTIFICIAL (tlsstart) = 1;
-  set_decl_location (tlsstart, current_module_decl);
-  rest_of_decl_compilation (tlsstart, 1, 0);
-
-  tlsend = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-		       get_identifier ("_tlsend"), size_type_node);
-  TREE_STATIC (tlsend) = 1;
-  // DECL_COMMON so the symbol goes in .tcommon
-  DECL_COMMON (tlsend) = 1;
-  DECL_TLS_MODEL (tlsend) = decl_default_tls_model (tlsend);
-  TREE_PUBLIC (tlsend) = 1;
-  DECL_ARTIFICIAL (tlsend) = 1;
-  set_decl_location (tlsend, current_module_decl);
-  rest_of_decl_compilation (tlsend, 1, 0);
 }
 

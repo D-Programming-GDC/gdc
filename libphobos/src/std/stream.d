@@ -88,10 +88,7 @@ private {
   import std.utf;
   import core.bitop; // for bswap
   import core.vararg;
-}
-
-version (Windows) {
-  private import std.file;
+  import std.file;
 }
 
 /// InputStream is the interface for readable streams.
@@ -1175,10 +1172,7 @@ class Stream : InputStream, OutputStream {
   }
   else version (Win64)
   size_t printf(const(char)[] format, ...) {
-    va_list ap;
-    ap = cast(va_list) &format;
-    ap += format.sizeof;
-    return vprintf(format, ap);
+    return vprintf(format, _argptr);
   }
   else version (X86_64)
   size_t printf(const(char)[] format, ...) {

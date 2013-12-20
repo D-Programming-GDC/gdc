@@ -134,8 +134,8 @@ version(unittest)
         if (isnan(x) || isnan(y))
             return 0;
 
-        char bufx[30];
-        char bufy[30];
+        char[30] bufx;
+        char[30] bufy;
         assert(ndigits < bufx.length);
 
         int ix;
@@ -497,8 +497,7 @@ trigerr:
     }
     return real.nan;
 
-Lret:
-    ;
+Lret: {}
     }
     else version(D_InlineAsm_X86_64)
     {
@@ -546,8 +545,7 @@ trigerr:
     }
     return real.nan;
 
-Lret:
-    ;
+Lret: {}
     }
     else
     {
@@ -580,8 +578,8 @@ Lret:
         bool sign = false;
         if (signbit(x))
         {
-            x = -x;
             sign = true;
+            x = -x;
         }
 
         // Compute x mod PI/4.
@@ -618,7 +616,7 @@ Lret:
 
 unittest
 {
-    static real vals[][2] =     // angle,tan
+    static real[2][] vals =     // angle,tan
         [
          [   0,   0],
          [   .5,  .5463024898],
@@ -779,8 +777,8 @@ real atan(real x) @safe pure nothrow
         bool sign = false;
         if (signbit(x))
         {
-            x = -x;
             sign = true;
+            x = -x;
         }
 
         // Range reduction.
@@ -1971,7 +1969,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
 {
     ushort* vu = cast(ushort*)&value;
     long* vl = cast(long*)&value;
-    uint ex;
+    int ex;
     alias floatTraits!(real) F;
 
     ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
@@ -2106,7 +2104,7 @@ real frexp(real value, out int exp) @trusted pure nothrow
 
 unittest
 {
-    static real vals[][3] =     // x,frexp,exp
+    static real[3][] vals =     // x,frexp,exp
         [
          [0.0,   0.0,    0],
          [-0.0,  -0.0,   0],
@@ -2136,7 +2134,7 @@ unittest
 
     static if (real.mant_dig == 64)
     {
-        static real extendedvals[][3] = [ // x,frexp,exp
+        static real[3][] extendedvals = [ // x,frexp,exp
                                           [0x1.a5f1c2eb3fe4efp+73L, 0x1.A5F1C2EB3FE4EFp-1L,   74],    // normal
                                           [0x1.fa01712e8f0471ap-1064L,  0x1.fa01712e8f0471ap-1L,     -1063],
                                           [real.min_normal,  .5,     -16381],
@@ -2247,7 +2245,7 @@ unittest
 
 unittest
 {
-    static real vals[][3] =    // value,exp,ldexp
+    static real[3][] vals =    // value,exp,ldexp
     [
     [    0,    0,    0],
     [    1,    0,    1],
@@ -2941,7 +2939,7 @@ real hypot(real x, real y) @safe pure nothrow
 
 unittest
 {
-    static real vals[][3] =     // x,y,hypot
+    static real[3][] vals =     // x,y,hypot
         [
             [ 0.0,     0.0,   0.0],
             [ 0.0,    -0.0,   0.0],
@@ -3323,6 +3321,11 @@ unittest
     assert(lrint(5.5) == 6);
     assert(lrint(-4.5) == -4);
     assert(lrint(-5.5) == -6);
+
+    assert(lrint(int.max - 0.5) == 2147483646L);
+    assert(lrint(int.max + 0.5) == 2147483648L);
+    assert(lrint(int.min - 0.5) == -2147483648L);
+    assert(lrint(int.min + 0.5) == -2147483648L);
 }
 
 /*******************************************
@@ -5590,6 +5593,7 @@ public:
  * Uses Horner's rule A(x) = $(SUB a, 0) + x($(SUB a, 1) + x($(SUB a, 2)
  *                         + x($(SUB a, 3) + ...)))
  * Params:
+ *      x =     the value to evaluate.
  *      A =     array of coefficients $(SUB a, 0), $(SUB a, 1), etc.
  */
 real poly(real x, const real[] A) @trusted pure nothrow
@@ -5736,7 +5740,7 @@ unittest
 {
     debug (math) printf("math.poly.unittest\n");
     real x = 3.1;
-    static real pp[] = [56.1, 32.7, 6];
+    static real[] pp = [56.1, 32.7, 6];
 
     assert( poly(x, pp) == (56.1L + (32.7L + 6L * x) * x) );
 }
@@ -5919,4 +5923,11 @@ unittest
 
     real r = tan(-2.0L);
     assert(fabs(r - 2.18504f) < .00001);
+}
+
+pure @safe nothrow unittest
+{
+    // issue 6381: floor/ceil should be usable in pure function.
+    auto x = floor(1.2);
+    auto y = ceil(1.2);
 }

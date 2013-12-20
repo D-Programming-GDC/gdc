@@ -1,8 +1,5 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Define to 1 if the system has the type `clockid_t'. */
-#undef HAVE_CLOCKID_T
-
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -14,30 +11,6 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
-
-/* Define to 1 if the system has the type `pthread_barrierattr_t'. */
-#undef HAVE_PTHREAD_BARRIERATTR_T
-
-/* Define to 1 if the system has the type `pthread_barrier_t'. */
-#undef HAVE_PTHREAD_BARRIER_T
-
-/* Define to 1 if you have the <pthread.h> header file. */
-#undef HAVE_PTHREAD_H
-
-/* Determines how to declared recursive mutexes */
-#undef HAVE_PTHREAD_MUTEX_RECURSIVE
-
-/* Define to 1 if the system has the type `pthread_rwlockattr_t'. */
-#undef HAVE_PTHREAD_RWLOCKATTR_T
-
-/* Define to 1 if the system has the type `pthread_rwlock_t'. */
-#undef HAVE_PTHREAD_RWLOCK_T
-
-/* Define to 1 if the system has the type `pthread_spinlock_t'. */
-#undef HAVE_PTHREAD_SPINLOCK_T
-
-/* Define to 1 if you have the <semaphore.h> header file. */
-#undef HAVE_SEMAPHORE_H
 
 /* Define to 1 if you have the `snprintf' function. */
 #undef HAVE_SNPRINTF
@@ -101,9 +74,6 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
-
-/* Define if using pthreads */
-#undef PHOBOS_USE_PTHREADS
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS

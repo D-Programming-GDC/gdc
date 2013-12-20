@@ -187,7 +187,9 @@ else version( Win64 )
 }
 else version( linux )
 {
-    align(1) struct _iobuf
+    alias _iobuf = _IO_FILE;
+
+    align(1) struct _IO_FILE
     {
         int     _flags;
         char*   _read_ptr;
@@ -337,36 +339,36 @@ version( Win32 )
         _IOAPP   = 0x200, // non-standard
     }
 
-    version( MinGW )
+  version( MinGW )
+  {
+    private extern
     {
-        private extern
-        {
-            __gshared export FILE[5] _iob;
-        }
-
-        __gshared FILE* stdin;
-        __gshared FILE* stdout;
-        __gshared FILE* stderr;
-
-        shared static this()
-        {
-            stdin  = &_iob[0];
-            stdout = &_iob[1];
-            stderr = &_iob[2];
-        }
+       __gshared export FILE[5] _iob;
     }
-    else
+
+    __gshared FILE* stdin;
+    __gshared FILE* stdout;
+    __gshared FILE* stderr;
+
+    shared static this()
     {
-        extern shared void function() _fcloseallp;
-
-        private extern shared FILE[_NFILE] _iob;
-
-        shared stdin  = &_iob[0];
-        shared stdout = &_iob[1];
-        shared stderr = &_iob[2];
-        shared stdaux = &_iob[3];
-        shared stdprn = &_iob[4];
+        stdin  = &_iob[0];
+        stdout = &_iob[1];
+        stderr = &_iob[2];
     }
+  }
+  else
+  {
+    extern shared void function() _fcloseallp;
+
+    private extern shared FILE[_NFILE] _iob;
+
+    shared stdin  = &_iob[0];
+    shared stdout = &_iob[1];
+    shared stderr = &_iob[2];
+    shared stdaux = &_iob[3];
+    shared stdprn = &_iob[4];
+  }
 }
 else version( Win64 )
 {
@@ -650,6 +652,9 @@ else version( Win64 )
 
     int   _vsnprintf(char* s, size_t n, in char* format, va_list arg);
     alias _vsnprintf vsnprintf;
+
+    uint _set_output_format(uint format);
+    enum _TWO_DIGIT_EXPONENT = 1;
 
     int _filbuf(FILE *fp);
     int _flsbuf(int c, FILE *fp);

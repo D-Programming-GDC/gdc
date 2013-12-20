@@ -13,11 +13,9 @@
 module rt.memory;
 
 
+import core.memory;
 private
 {
-    extern (C) void gc_addRange( void* p, size_t sz );
-    extern (C) void gc_removeRange( void* p );
-
     version( MinGW )
     {
         extern (C)
@@ -110,19 +108,19 @@ void initStaticDataGC()
 {
     version( MinGW )
     {
-        gc_addRange( &_data_start__, cast(size_t) &_bss_end__ - cast(size_t) &_data_start__ );
+        GC.addRange( &_data_start__, cast(size_t) &_bss_end__ - cast(size_t) &_data_start__ );
     }
     else version( Win32 )
     {
-        gc_addRange( &_xi_a, cast(size_t) &_end - cast(size_t) &_xi_a );
+        GC.addRange( &_xi_a, cast(size_t) &_end - cast(size_t) &_xi_a );
     }
     else version( Win64 )
     {
-        gc_addRange( &__xc_a, cast(size_t) &_deh_beg - cast(size_t) &__xc_a );
+        GC.addRange( &__xc_a, cast(size_t) &_deh_beg - cast(size_t) &__xc_a );
     }
     else version( linux )
     {
-        gc_addRange( &__data_start, cast(size_t) &end - cast(size_t) &__data_start );
+        GC.addRange( &__data_start, cast(size_t) &end - cast(size_t) &__data_start );
     }
     else version( OSX )
     {
@@ -132,17 +130,17 @@ void initStaticDataGC()
     {
         version (X86_64)
         {
-            gc_addRange( &etext, cast(size_t) &_deh_end - cast(size_t) &etext );
-            gc_addRange( &__progname, cast(size_t) &_end - cast(size_t) &__progname );
+            GC.addRange( &etext, cast(size_t) &_deh_end - cast(size_t) &etext );
+            GC.addRange( &__progname, cast(size_t) &_end - cast(size_t) &__progname );
         }
         else
         {
-            gc_addRange( &etext, cast(size_t) &_end - cast(size_t) &etext );
+            GC.addRange( &etext, cast(size_t) &_end - cast(size_t) &etext );
         }
     }
     else version( Solaris )
     {
-        gc_addRange(&__dso_handle, cast(size_t)&_end - cast(size_t)&__dso_handle);
+        GC.addRange(&__dso_handle, cast(size_t)&_end - cast(size_t)&__dso_handle);
     }
     else
     {

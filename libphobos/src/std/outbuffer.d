@@ -41,7 +41,7 @@ private
 
 class OutBuffer
 {
-    ubyte data[];
+    ubyte[] data;
     size_t offset;
 
     invariant()
@@ -318,10 +318,7 @@ class OutBuffer
         }
         else version (Win64)
         {
-            va_list ap;
-            ap = cast(va_list)&format;
-            ap += format.sizeof;
-            vprintf(format, ap);
+            vprintf(format, _argptr);
         }
         else version (X86_64)
         {

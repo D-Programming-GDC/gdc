@@ -20,20 +20,19 @@
 #include "dsymbol.h"
 #include "declaration.h"
 
-struct Identifier;
-struct Type;
-struct TypeFunction;
-struct Expression;
-struct FuncDeclaration;
-struct CtorDeclaration;
-struct DtorDeclaration;
-struct InvariantDeclaration;
-struct NewDeclaration;
-struct DeleteDeclaration;
-struct InterfaceDeclaration;
-struct TypeInfoClassDeclaration;
-struct VarDeclaration;
-
+class Identifier;
+class Type;
+class TypeFunction;
+class Expression;
+class FuncDeclaration;
+class CtorDeclaration;
+class DtorDeclaration;
+class InvariantDeclaration;
+class NewDeclaration;
+class DeleteDeclaration;
+class InterfaceDeclaration;
+class TypeInfoClassDeclaration;
+class VarDeclaration;
 #ifdef IN_GCC
 typedef union tree_node dt_t;
 #else
@@ -47,17 +46,18 @@ enum Sizeok
     SIZEOKfwd,          // error in computing size of aggregate
 };
 
-struct AggregateDeclaration : ScopeDsymbol
+class AggregateDeclaration : public ScopeDsymbol
 {
+public:
     Type *type;
     StorageClass storage_class;
-    enum PROT protection;
+    PROT protection;
     Type *handle;               // 'this' type
     unsigned structsize;        // size of struct
     unsigned alignsize;         // size of struct for alignment purposes
     int hasUnions;              // set if aggregate has overlapping fields
     VarDeclarations fields;     // VarDeclaration fields
-    enum Sizeok sizeok;         // set when structsize contains valid data
+    Sizeok sizeok;         // set when structsize contains valid data
     Dsymbol *deferred;          // any deferred semantic2() or semantic3() symbol
     bool isdeprecated;          // !=0 if deprecated
 
@@ -108,7 +108,8 @@ struct AggregateDeclaration : ScopeDsymbol
     FuncDeclaration *buildInv(Scope *sc);
     bool isNested();
     void makeNested();
-    int isExport();
+    bool isExport();
+    void searchCtor();
 
     void emitComment(Scope *sc);
     void toJson(JsonOut *json);
@@ -125,7 +126,7 @@ struct AggregateDeclaration : ScopeDsymbol
     int hasPrivateAccess(Dsymbol *smember);     // does smember have private access to members of this class?
     void accessCheck(Loc loc, Scope *sc, Dsymbol *smember);
 
-    enum PROT prot();
+    PROT prot();
 
     // Back end
     Symbol *stag;               // tag symbol for debug data
@@ -135,8 +136,18 @@ struct AggregateDeclaration : ScopeDsymbol
     AggregateDeclaration *isAggregateDeclaration() { return this; }
 };
 
-struct StructDeclaration : AggregateDeclaration
+struct StructFlags
 {
+    typedef unsigned Type;
+    enum Enum
+    {
+        hasPointers = 0x1, // NB: should use noPointers as in ClassFlags
+    };
+};
+
+class StructDeclaration : public AggregateDeclaration
+{
+public:
     int zeroInit;               // !=0 if initialize with 0 fill
 #if DMDV2
     int hasIdentityAssign;      // !=0 if has identity opAssign
@@ -146,7 +157,9 @@ struct StructDeclaration : AggregateDeclaration
     FuncDeclaration *postblit;  // aggregate postblit
 
     FuncDeclaration *xeq;       // TypeInfo_Struct.xopEquals
+    FuncDeclaration *xcmp;      // TypeInfo_Struct.xopCmp
     static FuncDeclaration *xerreq;      // object.xopEquals
+    static FuncDeclaration *xerrcmp;     // object.xopCmp
 
     structalign_t alignment;    // alignment applied outside of the struct
 #endif
@@ -175,6 +188,7 @@ struct StructDeclaration : AggregateDeclaration
     FuncDeclaration *buildCpCtor(Scope *sc);
     FuncDeclaration *buildOpEquals(Scope *sc);
     FuncDeclaration *buildXopEquals(Scope *sc);
+    FuncDeclaration *buildXopCmp(Scope *sc);
 #endif
     void toDocBuffer(OutBuffer *buf, Scope *sc);
 
@@ -187,8 +201,9 @@ struct StructDeclaration : AggregateDeclaration
     StructDeclaration *isStructDeclaration() { return this; }
 };
 
-struct UnionDeclaration : StructDeclaration
+class UnionDeclaration : public StructDeclaration
 {
+public:
     UnionDeclaration(Loc loc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *s);
     const char *kind();
@@ -199,10 +214,10 @@ struct UnionDeclaration : StructDeclaration
 struct BaseClass
 {
     Type *type;                         // (before semantic processing)
-    enum PROT protection;               // protection for the base interface
+    PROT protection;               // protection for the base interface
 
     ClassDeclaration *base;
-    int offset;                         // 'this' pointer offset
+    unsigned offset;                    // 'this' pointer offset
     FuncDeclarations vtbl;              // for interfaces: Array of FuncDeclaration's
                                         // making up the vtbl[]
 
@@ -211,7 +226,7 @@ struct BaseClass
                                         // are a copy of the InterfaceDeclaration::interfaces
 
     BaseClass();
-    BaseClass(Type *type, enum PROT protection);
+    BaseClass(Type *type, PROT protection);
 
     int fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newinstance);
     void copyBaseInterfaces(BaseClasses *);
@@ -220,10 +235,26 @@ struct BaseClass
 extern int CLASSINFO_SIZE;              // value of ClassInfo.size
 extern int CLASSINFO_SIZE_64;           // value of ClassInfo.size
 
-struct ClassDeclaration : AggregateDeclaration
+struct ClassFlags
 {
+    typedef unsigned Type;
+    enum Enum
+    {
+        isCOMclass = 0x1,
+        noPointers = 0x2,
+        hasOffTi = 0x4,
+        hasCtor = 0x8,
+        hasGetMembers = 0x10,
+        hasTypeInfo = 0x20,
+        isAbstract = 0x40,
+        isCPPclass = 0x80,
+    };
+};
+
+class ClassDeclaration : public AggregateDeclaration
+{
+public:
     static ClassDeclaration *object;
-    static ClassDeclaration *classinfo;
     static ClassDeclaration *throwable;
     static ClassDeclaration *exception;
     static ClassDeclaration *errorException;
@@ -251,14 +282,17 @@ struct ClassDeclaration : AggregateDeclaration
     TypeInfoClassDeclaration *vclassinfo;       // the ClassInfo object for this ClassDeclaration
     int com;                            // !=0 if this is a COM class (meaning
                                         // it derives from IUnknown)
+#if DMDV2
+    int cpp;                            // !=0 if this is a C++ interface
+#endif
     int isscope;                        // !=0 if this is an auto class
     int isabstract;                     // !=0 if abstract class
     int inuse;                          // to prevent recursive attempts
-    enum Semantic doAncestorsSemantic;  // Before searching symbol, whole ancestors should finish
+    Semantic doAncestorsSemantic;  // Before searching symbol, whole ancestors should finish
                                         // calling semantic() at least once, due to fill symtab
                                         // and do addMember(). [== Semantic(Start,In,Done)]
 
-    ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
+    ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses, bool inObject = false);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -278,9 +312,10 @@ struct ClassDeclaration : AggregateDeclaration
     int isCOMclass();
     virtual int isCOMinterface();
 #if DMDV2
+    int isCPPclass();
     virtual int isCPPinterface();
 #endif
-    int isAbstract();
+    bool isAbstract();
     virtual int vtblOffset();
     const char *kind();
     const char *mangle(bool isv = false);
@@ -304,11 +339,9 @@ struct ClassDeclaration : AggregateDeclaration
     ClassDeclaration *isClassDeclaration() { return (ClassDeclaration *)this; }
 };
 
-struct InterfaceDeclaration : ClassDeclaration
+class InterfaceDeclaration : public ClassDeclaration
 {
-#if DMDV2
-    int cpp;                            // !=0 if this is a C++ interface
-#endif
+public:
     InterfaceDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);

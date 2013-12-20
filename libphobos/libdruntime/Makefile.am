@@ -22,6 +22,7 @@ ACLOCAL_AMFLAGS = -I . -I ..
 OUR_CFLAGS=@DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
 D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) -I ./$(host_alias) -I .
 ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+IMPDIR = import
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -33,12 +34,23 @@ SUFFIXES = .d
 %.o : %.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 
-IMPORT = import
-$(IMPORT):
-	mkdir -p $(IMPORT)
-# For core objects, generate .di headers
-$(IMPORT)/%.di: %.d $(IMPORT)
-	$(GDC) $(ALL_DFLAGS) -fintfc-file=$@ -fsyntax-only $<
+# Used to generate .di headers, now just copy from source.d to import/source.di
+$(IMPDIR):
+	mkdir -p $(IMPDIR)
+	mkdir -p $(IMPDIR)/core/stdc
+	mkdir -p $(IMPDIR)/core/sync
+	mkdir -p $(IMPDIR)/core/sys/freebsd/sys
+	mkdir -p $(IMPDIR)/core/sys/linux/sys
+	mkdir -p $(IMPDIR)/core/sys/osx/mach
+	mkdir -p $(IMPDIR)/core/sys/posix/arpa
+	mkdir -p $(IMPDIR)/core/sys/posix/net
+	mkdir -p $(IMPDIR)/core/sys/posix/netinet
+	mkdir -p $(IMPDIR)/core/sys/posix/sys
+	mkdir -p $(IMPDIR)/core/sys/windows
+	mkdir -p $(IMPDIR)/gcc
+
+$(IMPDIR)/%.di: %.d $(IMPDIR)
+	cp $< $@
 
 # %.o : %.c
 # Use .c.o to override Automake
@@ -66,8 +78,8 @@ BASE_OBJS=object_.o
 RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-	     rt/cast_.o rt/critical_.o rt/dmain2.o rt/minfo.o \
-	     rt/memory.o rt/invariant.o rt/invariant_.o rt/lifetime.o \
+	     rt/cast_.o rt/critical_.o rt/deh.o rt/dmain2.o rt/minfo.o \
+	     rt/memory.o rt/invariant.o rt/lifetime.o \
 	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
 
 CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
@@ -77,7 +89,8 @@ CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
 	  core/sync/semaphore.o
 
-GCC_OBJS=gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o gcc/libbacktrace.o gcc/unwind_pe.o 
+GCC_OBJS=gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o gcc/emutls.o \
+	 gcc/libbacktrace.o gcc/unwind_pe.o
 
 UTIL_OBJS=rt/util/console.o rt/util/container.o rt/util/hash.o \
 	  rt/util/string.o rt/util/utf.o
@@ -118,9 +131,6 @@ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
 		core/sys/windows/windows.o
 
-# This should not be linked into a shared library.
-CMAIN_OBJS= #rt/cmain.o
-
 D_GC_MODULES=@D_GC_MODULES@
 
 # Regardless of OS, all import headers are generated.
@@ -141,12 +151,16 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sync/semaphore.di \
 	     \
 	     core/sys/freebsd/dlfcn.di core/sys/freebsd/execinfo.di \
-	     core/sys/freebsd/sys/event.di \
+	     core/sys/freebsd/sys/elf32.di core/sys/freebsd/sys/elf64.di \
+	     core/sys/freebsd/sys/elf_common.di core/sys/freebsd/sys/elf.di \
+	     core/sys/freebsd/sys/event.di core/sys/freebsd/sys/link_elf.di \
 	     \
 	     core/sys/linux/config.di core/sys/linux/dlfcn.di \
 	     core/sys/linux/elf.di core/sys/linux/epoll.di \
-	     core/sys/linux/execinfo.di core/sys/linux/link.di \
-	     core/sys/linux/sys/signalfd.di core/sys/linux/sys/xattr.di \
+	     core/sys/linux/errno.di core/sys/linux/execinfo.di \
+	     core/sys/linux/link.di core/sys/linux/sys/inotify.di \
+	     core/sys/linux/sys/mman.di core/sys/linux/sys/signalfd.di \
+	     core/sys/linux/sys/xattr.di \
 	     \
 	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
 	     core/sys/osx/mach/getsect.di core/sys/osx/mach/kern_return.di \
@@ -162,11 +176,11 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/posix/pwd.di core/sys/posix/sched.di \
 	     core/sys/posix/semaphore.di core/sys/posix/setjmp.di \
 	     core/sys/posix/signal.di core/sys/posix/stdio.di \
-	     core/sys/posix/stdlib.di core/sys/posix/termios.di \
-	     core/sys/posix/time.di core/sys/posix/ucontext.di \
-	     core/sys/posix/unistd.di core/sys/posix/utime.di \
-	     core/sys/posix/net/if_.di core/sys/posix/netinet/in_.di \
-	     core/sys/posix/netinet/tcp.di \
+	     core/sys/posix/stdlib.di core/sys/posix/syslog.di \
+	     core/sys/posix/termios.di core/sys/posix/time.di \
+	     core/sys/posix/ucontext.di core/sys/posix/unistd.di \
+	     core/sys/posix/utime.di core/sys/posix/net/if_.di \
+	     core/sys/posix/netinet/in_.di core/sys/posix/netinet/tcp.di \
 	     core/sys/posix/sys/ioctl.di core/sys/posix/sys/ipc.di \
 	     core/sys/posix/sys/mman.di core/sys/posix/sys/resource.di \
 	     core/sys/posix/sys/select.di core/sys/posix/sys/shm.di \
@@ -180,23 +194,28 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \
 	     core/sys/windows/windows.di
 
+GCC_IMPORTS=gcc/atomics.di gcc/attribute.di gcc/backtrace.di \
+	    gcc/builtins.di gcc/libbacktrace.di
+
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
-libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS) $(subst core/,$(IMPORT)/core/,$(CORE_IMPORTS))
+libgdruntime.a : $(ALL_DRUNTIME_OBJS) \
+		 $(subst core/,$(IMPDIR)/core/,$(CORE_IMPORTS)) \
+		 $(subst gcc/,$(IMPDIR)/gcc/,$(GCC_IMPORTS))
 if BACKTRACE_SUPPORTED
 	cp -f $(LIBBACKTRACE_LIB) $@
-	$(AR) -q $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+	$(AR) -q $@ $(ALL_DRUNTIME_OBJS)
 else
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS) $(CMAIN_OBJS)
+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
 endif
 	$(RANLIB) $@
 
-libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
 if BACKTRACE_SUPPORTED
 	cp -f $(LIBBACKTRACE_LIB) $@
-	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
 else
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(CMAIN_OBJS:.o=.t.o)
+	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
 endif
 	$(RANLIB) $@
 
@@ -212,39 +231,44 @@ install-exec-local: libgdruntime.a
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
 install-data-local: libgdruntime.a
+	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
+	for i in __entrypoint.di object.di; do \
+	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
+	done
 	for i in core; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.di; do \
-			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-		done; \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    for f in $(srcdir)/$$i/*.di; do \
+		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    done; \
+	done
+	for i in core core/stdc core/sync core/sys/freebsd \
+	    core/sys/freebsd/sys core/sys/linux core/sys/linux/sys \
+	    core/sys/osx core/sys/osx/mach core/sys/posix \
+	    core/sys/posix/arpa core/sys/posix/net \
+	    core/sys/posix/netinet core/sys/posix/sys \
+	    core/sys/windows; do \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    for f in $(IMPDIR)/$$i/*.di; do \
+		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    done; \
 	done
 	for i in gcc; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-		for f in $(srcdir)/$$i/*.d; do \
-			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-		done; \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    for f in $(IMPDIR)/$$i/*.di; do \
+		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    done; \
 	done
-	for i in core core/stdc core/sync core/sys/freebsd core/sys/freebsd/sys \
-		core/sys/linux core/sys/linux/sys core/sys/osx core/sys/osx/mach \
-		core/sys/posix core/sys/posix/arpa core/sys/posix/net \
-		core/sys/posix/netinet core/sys/posix/sys core/sys/windows; do \
-		$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
-		for f in $(IMPORT)/$$i/*.di; do \
-			$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)/$$i; \
-		done; \
+	for i in phobos-ver-syms; do \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR); \
+	    $(INSTALL_HEADER) $$i $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR); \
 	done
-	for i in object.di; do \
-		$(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
-	done
-	$(INSTALL) phobos-ver-syms $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR)
-	$(INSTALL_HEADER) gcc/libbacktrace.d $(DESTDIR)$(gdc_include_dir)/gcc;
 
 clean-local:
-	rm -f $(CMAIN_OBJS)
 	rm -f $(ALL_DRUNTIME_OBJS)
 	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
 	rm -f $(CORE_IMPORTS)
-	rm -rf $(IMPORT)
+	rm -f $(GCC_IMPORTS)
+	rm -rf $(IMPDIR)
 	rm -f libgdruntime.a
 
 check-local: unittest
