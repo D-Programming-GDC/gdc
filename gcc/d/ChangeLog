@@ -1,3 +1,15 @@
+2013-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(gcc_type_to_d_type): Use TREE_INT_CST_LOW macro instead
+	of tree_low_cst.
+	(eval_builtin): Likewise.
+	(gcc_cst_to_d_expr): Use tree_cst_hwi.
+	* d-codegen.cc(tree_to_hwi): Remove call to deleted host_integerp.
+	(maybe_expand_builtin): Use TREE_INT_CST_LOW macro.
+	* d-lang.cc(d_parse_file): Update debug_hooks call for middle-end
+	changes.
+	* d-system.h: Update includes for middle-end changes.
+
 2013-11-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-ctype.cc(TypeClass::toCtype): Fix ABI to emit correct vtable and

@@ -46,6 +46,9 @@
 
 #include "cgraph.h"
 #include "tree-iterator.h"
+#include "tree-ssa-alias.h"
+#include "internal-fn.h"
+#include "is-a.h"
 #include "gimple.h"
 #include "vec.h"
 

@@ -820,8 +820,9 @@ d_parse_file (void)
       fprintf (stderr, "version   %s\n", global.version);
     }
 
-  // Better to use input_location ?
-  (*debug_hooks->start_source_file) (input_line, main_input_filename);
+  // Start the main input file, if the debug writer wants it.
+  if (debug_hooks->start_end_main_source_file)
+    (*debug_hooks->start_source_file) (0, main_input_filename);
 
   for (TY ty = (TY) 0; ty < TMAX; ty = (TY) (ty + 1))
     {
@@ -1112,8 +1113,10 @@ d_parse_file (void)
 	}
     }
 
-  // better to use input_location.xxx ?
-  (*debug_hooks->end_source_file) (input_line);
+  // And end the main input file, if the debug writer wants it.
+  if (debug_hooks->start_end_main_source_file)
+    (*debug_hooks->end_source_file) (0);
+
  had_errors:
   // Add D frontend error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);

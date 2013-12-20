@@ -121,7 +121,7 @@ gcc_type_to_d_type (tree t)
       return Type::tbool;
 
     case INTEGER_TYPE:
-      type_size = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
+      type_size = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (t));
       is_unsigned = TYPE_UNSIGNED (t);
 
       // This search assumes that integer types come before char and bit...
@@ -136,7 +136,7 @@ gcc_type_to_d_type (tree t)
       break;
 
     case REAL_TYPE:
-      type_size = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
+      type_size = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (t));
       for (size_t i = 0; i < TMAX; i++)
 	{
 	  d = Type::basic[i];
@@ -146,7 +146,7 @@ gcc_type_to_d_type (tree t)
       break;
 
     case COMPLEX_TYPE:
-      type_size = tree_low_cst (TYPE_SIZE_UNIT (t), 1);
+      type_size = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (t));
       for (size_t i = 0; i < TMAX; i++)
 	{
 	  d = Type::basic[i];
@@ -704,7 +704,7 @@ gcc_cst_to_d_expr (tree cst)
 	}
       else if (code == INTEGER_CST)
 	{
-	  dinteger_t value = cst_to_hwi (TREE_INT_CST (cst));
+	  dinteger_t value = tree_to_hwi (cst);
 	  return new IntegerExp (Loc(), value, type);
 	}
       else if (code == REAL_CST)
@@ -834,7 +834,7 @@ eval_builtin (Loc loc, BUILTIN builtin, Expressions *arguments)
   if (builtin == BUILTINbsr)
     {
       tree type = t0->toCtype();
-      tree lhs = size_int (tree_low_cst (TYPE_SIZE (type), 1) - 1);
+      tree lhs = size_int (TREE_INT_CST_LOW (TYPE_SIZE (type)) - 1);
       result = fold_build2(MINUS_EXPR, type,
 			   fold_convert (type, lhs), result);
     }

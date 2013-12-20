@@ -975,8 +975,11 @@ cst_to_hwi (double_int cst)
 dinteger_t
 tree_to_hwi (tree t)
 {
-  if (host_integerp (t, 0) || host_integerp (t, 1))
-    return tree_low_cst (t, 1);
+  if (TREE_INT_CST_HIGH (t) == 0
+      || (TREE_INT_CST_HIGH (t) == -1
+	  && (HOST_WIDE_INT) TREE_INT_CST_LOW (t) < 0
+	  && !TYPE_UNSIGNED (TREE_TYPE (t))))
+    return TREE_INT_CST_LOW (t);
 
   return cst_to_hwi (TREE_INT_CST (t));
 }
@@ -2663,7 +2666,7 @@ maybe_expand_builtin (tree call_exp)
 	  op1 = ce.nextArg();
 	  type = TREE_TYPE (op1);
 
-	  op2 = build_integer_cst (tree_low_cst (TYPE_SIZE (type), 1) - 1, type);
+	  op2 = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)) - 1, type);
 	  exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_CLZL), 1, op1);
 
 	  // Handle int -> long conversions.
@@ -2679,7 +2682,7 @@ maybe_expand_builtin (tree call_exp)
 	  op2 = ce.nextArg();
 	  type = TREE_TYPE (TREE_TYPE (op1));
 
-	  exp = build_integer_cst (tree_low_cst (TYPE_SIZE (type), 1), type);
+	  exp = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)), type);
 
 	  // op1[op2 / exp]
 	  op1 = build_array_index (op1, fold_build2 (TRUNC_DIV_EXPR, type, op2, exp));
