@@ -19,7 +19,7 @@
 // GNU/GCC threads interface routines for D.
 // This must match gthr-posix.h
 
-module gcc.gthr_posix;
+module gcc.gthreads.posix;
 
 // POSIX threads specific definitions.
 // Easy, since the interface is just one-to-one mapping.

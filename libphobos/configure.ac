@@ -392,16 +392,18 @@ AC_TRY_COMPILE([#include <unwind.h>],[
 ],
   [AC_MSG_RESULT([no])
    DCFG_ARM_EABI_UNWINDER=""
-   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_generic.o"],
+   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/generic.o"],
   [AC_MSG_RESULT([yes])
    DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
-   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"])
+   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
 case "$d_thread_model" in
-  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_posix.o"
+  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/posix.o"
 	 ;;
-  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_single.o"
+  win32) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/win32.o"
+	 ;;
+  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/single.o"
 	 ;;
 esac
 

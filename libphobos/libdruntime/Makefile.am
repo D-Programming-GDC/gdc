@@ -90,7 +90,7 @@ CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 	  core/sync/semaphore.o
 
 GCC_OBJS=gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o gcc/emutls.o \
-	 gcc/libbacktrace.o gcc/unwind_pe.o
+	 gcc/libbacktrace.o gcc/unwind/pe.o
 
 UTIL_OBJS=rt/util/console.o rt/util/container.o rt/util/hash.o \
 	  rt/util/string.o rt/util/utf.o

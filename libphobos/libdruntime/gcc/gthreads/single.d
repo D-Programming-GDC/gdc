@@ -19,7 +19,7 @@
 // GNU/GCC threads interface routines for D.
 // This must match gthr-single.h
 
-module gcc.gthr_single;
+module gcc.gthreads.single;
 
 // Just provide compatibility for mutex handling.
 

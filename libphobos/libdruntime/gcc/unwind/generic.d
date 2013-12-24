@@ -19,7 +19,7 @@
 /* GNU/GCC unwind interface declarations for D.  This must match
    unwind-generic.h */
 
-module gcc.unwind_generic;
+module gcc.unwind.generic;
 
 private import gcc.builtins;
 private import core.stdc.stdlib; // for abort

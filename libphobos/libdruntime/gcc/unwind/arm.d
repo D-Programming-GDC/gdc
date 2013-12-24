@@ -18,10 +18,10 @@
 
 /* ARM unwind interface declarations for D.  This must match unwind-arm.h.  */
 
-module gcc.unwind_arm;
+module gcc.unwind.arm;
 
 import gcc.builtins;
-import gcc.unwind_pe;
+import gcc.unwind.pe;
 
 extern (C):
 

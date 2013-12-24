@@ -21,7 +21,7 @@
 module gcc.deh;
 
 import gcc.unwind;
-import gcc.unwind_pe;
+import gcc.unwind.pe;
 import gcc.builtins;
 
 import core.memory;

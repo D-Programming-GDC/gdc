@@ -5029,20 +5029,22 @@ if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
    DCFG_ARM_EABI_UNWINDER=""
-   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_generic.o"
+   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/generic.o"
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
    DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
-   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind_arm.o"
+   DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 
 case "$d_thread_model" in
-  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_posix.o"
+  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/posix.o"
 	 ;;
-  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthr_single.o"
+  win32) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/win32.o"
+	 ;;
+  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/single.o"
 	 ;;
 esac
 
