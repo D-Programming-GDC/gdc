@@ -797,7 +797,7 @@ EnumDeclaration::toDebug (void)
 
   // The ctype is not necessarily enum, which doesn't sit well with
   // rest_of_type_compilation.  Can call this on structs though.
-  if (AGGREGATE_TYPE_P (ctype) || TREE_CODE (ctype) == ENUMERAL_TYPE)
+  if (RECORD_OR_UNION_TYPE_P (ctype) || TREE_CODE (ctype) == ENUMERAL_TYPE)
     rest_of_type_compilation (ctype, 1);
 }
 
