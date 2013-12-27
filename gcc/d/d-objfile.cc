@@ -2317,7 +2317,7 @@ build_moduleinfo (Symbol *sym)
   // struct ModuleReference in moduleinit.d
   Type *type = build_object_type();
   tree tmodref = build_two_field_type (ptr_type_node, type->toCtype(),
-						NULL, "next", "mod");
+				       NULL, "next", "mod");
   tree nextfield = TYPE_FIELDS (tmodref);
   tree modfield = TREE_CHAIN (nextfield);
 

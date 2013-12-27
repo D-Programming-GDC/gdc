@@ -1,3 +1,10 @@
+2013-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(build_two_field_type): Declare builtin types as
+	toplevel declarations.
+	* d-ctype(EnumDeclaration::toDebug): Build type decl in debug code.
+	* d-lang.cc(nametype): Rename to d_nametype.
+
 2013-12-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(EnumDeclaration::toDebug): Don't send array types to
