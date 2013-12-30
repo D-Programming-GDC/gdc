@@ -18,7 +18,7 @@
 
 /* GNU/GCC unwind interface declarations for D.  This must match unwind-pe.h */
 
-module gcc.unwind_pe;
+module gcc.unwind.pe;
 
 import gcc.unwind;
 private import core.stdc.stdlib : abort;

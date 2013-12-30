@@ -1273,29 +1273,27 @@ get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type
 tree
 build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2)
 {
-  tree rec_type = make_node (RECORD_TYPE);
+  tree rectype = make_node (RECORD_TYPE);
   tree f0 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n1), t1);
   tree f1 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n2), t2);
-  DECL_CONTEXT (f0) = rec_type;
-  DECL_CONTEXT (f1) = rec_type;
-  TYPE_FIELDS (rec_type) = chainon (f0, f1);
-  layout_type (rec_type);
+
+  DECL_CONTEXT (f0) = rectype;
+  DECL_CONTEXT (f1) = rectype;
+  TYPE_FIELDS (rectype) = chainon (f0, f1);
+  layout_type (rectype);
+
   if (type)
     {
-      // This is needed so that maybe_expand_builtin knows to split
-      // dynamic array varargs.
-      TYPE_LANG_SPECIFIC (rec_type) = build_d_type_lang_specific (type);
+      tree ident = get_identifier (type->toChars());
+      tree stubdecl = build_decl (BUILTINS_LOCATION, TYPE_DECL, ident, rectype);
 
-      // build_type_decl will try to declare it as top-level type which can
-      // break debugging info for element types.
-      tree stub_decl = build_decl (BUILTINS_LOCATION, TYPE_DECL,
-				   get_identifier (type->toChars()), rec_type);
-      TYPE_STUB_DECL (rec_type) = stub_decl;
-      TYPE_NAME (rec_type) = stub_decl;
-      DECL_ARTIFICIAL (stub_decl) = 1;
-      rest_of_decl_compilation (stub_decl, 0, 0);
+      TYPE_STUB_DECL (rectype) = stubdecl;
+      TYPE_NAME (rectype) = stubdecl;
+      DECL_ARTIFICIAL (stubdecl) = 1;
+      rest_of_decl_compilation (stubdecl, 1, 0);
     }
-  return rec_type;
+
+  return rectype;
 }
 
 // Create a SAVE_EXPR if EXP might have unwanted side effects if referenced
@@ -2158,7 +2156,7 @@ get_libcall (LibCall libcall)
 
 	case LIBCALL_NEWCLASS:
 	  targs.push (Type::typeinfoclass->type->constOf());
-	  treturn = build_object_type ();
+	  treturn = build_object_type();
 	  break;
 
 	case LIBCALL_NEWARRAYT:
@@ -2220,9 +2218,9 @@ get_libcall (LibCall libcall)
 
 	case LIBCALL_DYNAMIC_CAST:
 	case LIBCALL_INTERFACE_CAST:
-	  targs.push (build_object_type ());
+	  targs.push (build_object_type());
 	  targs.push (Type::typeinfoclass->type);
-	  treturn = build_object_type ();
+	  treturn = build_object_type();
 	  break;
 
 	case LIBCALL_ADEQ2:
@@ -2344,7 +2342,7 @@ get_libcall (LibCall libcall)
 
 	case LIBCALL_THROW:
 	case LIBCALL_INVARIANT:
-	  targs.push (build_object_type ());
+	  targs.push (build_object_type());
 	  break;
 
 	case LIBCALL_SWITCH_USTRING:

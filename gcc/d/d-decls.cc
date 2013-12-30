@@ -53,8 +53,13 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
   Symbol *s = new Symbol();
 
   s->Sident = XNEWVEC (const char, sz);
+#ifdef _WIN32
+  snprintf (CONST_CAST (char *, s->Sident), sz, "_D%s%Iu%s%s",
+	    n, strlen (prefix), prefix, suffix);
+#else  
   snprintf (CONST_CAST (char *, s->Sident), sz, "_D%s%zu%s%s",
 	    n, strlen (prefix), prefix, suffix);
+#endif
   return s;
 }
 
@@ -794,6 +799,7 @@ EnumDeclaration::toDebug (void)
     return;
 
   tree ctype = type->toCtype();
+  build_type_decl (ctype, this);
 
   // The ctype is not necessarily enum, which doesn't sit well with
   // rest_of_type_compilation.  Can call this on structs though.

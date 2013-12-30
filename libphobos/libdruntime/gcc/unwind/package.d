@@ -1,5 +1,5 @@
 /* GDC -- D front-end for GCC
-   Copyright (C) 2013 Free Software Foundation, Inc.
+   Copyright (C) 2011, 2012 Free Software Foundation, Inc.
 
    GCC is free software; you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free
@@ -16,11 +16,9 @@
    <http://www.gnu.org/licenses/>.
 */
 
-module gcc.gthreads;
+module gcc.unwind;
 
-version (GNU_Thread_Posix)
-  public import gcc.gthr_posix;
-else version (GNU_Thread_Single)
-  public import gcc.gthr_single;
-else version (GNU_Thread_Win32)
-  public import gcc.gthr_win32;
+version (GNU_ARM_EABI_Unwinder)
+    public import gcc.unwind.arm;
+else
+    public import gcc.unwind.generic;

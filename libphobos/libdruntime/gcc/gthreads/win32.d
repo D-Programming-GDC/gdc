@@ -19,7 +19,7 @@
 // GNU/GCC threads interface routines for D.
 // This must match gthr-win32.h
 
-module gcc.gthr_win32;
+module gcc.gthreads.win32;
 
 /* Windows32 threads specific definitions. The windows32 threading model
    does not map well into pthread-inspired gcc's threading model, and so

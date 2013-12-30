@@ -707,18 +707,13 @@ d_gcc_get_output_module (void)
 }
 
 static void
-nametype (tree type, const char *name)
+d_nametype (Type *t)
 {
-  tree ident = get_identifier (name);
-  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type);
+  tree type = t->toCtype();
+  tree ident = get_identifier (t->toChars());
+  tree decl = build_decl (BUILTINS_LOCATION, TYPE_DECL, ident, type);
   TYPE_NAME (type) = decl;
   rest_of_decl_compilation (decl, 1, 0);
-}
-
-static void
-nametype (Type *t)
-{
-  nametype (t->toCtype(), t->toChars());
 }
 
 // Generate C main() in response to seeing D main().
@@ -835,7 +830,7 @@ d_parse_file (void)
   for (TY ty = (TY) 0; ty < TMAX; ty = (TY) (ty + 1))
     {
       if (Type::basic[ty] && ty != Terror)
-	nametype (Type::basic[ty]);
+	d_nametype (Type::basic[ty]);
     }
 
   current_irstate = new IRState();
