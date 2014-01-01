@@ -7,7 +7,7 @@ Documentation on GDC is available from [the wiki][wiki]. Any bugs or issues foun
 Work is currently under way to merge GDC into GCC for the release of 4.9. Any assitance of any sort during this time would be invaluably appreciated. Feel free to contact me via [email][email] or message me at #d.gdc on FreeNode.
 
 [home]: http://gdcproject.org
-[wiki]: http://gdcproject.org/wiki
+[wiki]: http://wiki.dlang.org/GDC
 [bugs]: http://bugzilla.gdcproject.org
 [maillist]: http://forum.dlang.org/group/D.gnu
 [email]: mailto:ibuclaw@gdcproject.org

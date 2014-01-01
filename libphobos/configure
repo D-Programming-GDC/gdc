@@ -4185,7 +4185,32 @@ BUILD_LIBIBERTY="../$BUILD_LIBIBERTY"
 # include dir .. need to support --enable-version-specific.. but
 # will have to modify gcc/configure.ac ..
 # For now, basic workaround for cross compilers ..
-if test "${host}" != "${target}"; then
+# To really mirror the check in Make-lang.in we need to access the
+# host/target of the compiler. The libphobos 'host' and 'target' variables
+# are always equal (and are the same as the compilers target)
+d_count=""
+d_pkgvars_prefix=../..
+while test "$d_count" != 'xxx'; do
+    d_pkgvars=$d_pkgvars_prefix/gcc/d/pkgvars
+    if test -f $d_pkgvars; then
+	break
+    fi
+
+    d_pkgvars_prefix=../$d_pkgvars_prefix
+    d_count="x$d_count"
+done
+
+if test -f "${d_pkgvars}"; then
+    gdc_host=`grep "host=" "${d_pkgvars}" | sed -e 's|host=||'`
+    gdc_target=`grep "target=" "${d_pkgvars}" | sed -e 's|target=||'`
+else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Cannot find pkgvars file to determine compiler host/target" >&5
+$as_echo "$as_me: WARNING: Cannot find pkgvars file to determine compiler host/target" >&2;}
+    gdc_host=${build}
+    gdc_target=${host}
+fi
+
+if test "${gdc_host}" != "${gdc_target}"; then
     gdc_include_dir='${libdir}/gcc/${host_alias}'/${d_gcc_ver}/include/d
 else
     gdc_include_dir='${prefix}'/include/d/${d_gcc_ver}
