@@ -1442,7 +1442,7 @@ Module::genobjfile (int)
   current_module_info = new ModuleInfo;
   current_module_decl = this;
 
-  setup_symbol_storage (this, toSymbol()->Stree, /*public_p*/true);
+  setup_symbol_storage (this, toSymbol()->Stree, true);
 
   if (members)
     {
@@ -1702,12 +1702,10 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	    {
 	      D_DECL_ONE_ONLY (decl) = 1;
 	      D_DECL_IS_TEMPLATE (decl) = 1;
-
 	      local_p = flag_emit_templates != TEnone
-		&& output_template_p (ti);
+		&& output_module_p (ti->instantiatingModule);
 	      break;
 	    }
-
 	  sym = sym->toParent();
 	}
 
@@ -1716,19 +1714,18 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	{
 	  if (vd->storage_class & STCextern)
 	    local_p = false;
-
 	  // Tell backend this is a thread local decl.
 	  if (vd->isDataseg() && vd->isThreadlocal())
 	    DECL_TLS_MODEL (decl) = decl_default_tls_model (decl);
 	}
 
+      if (rd && rd->storage_class & STCcomdat)
+	D_DECL_ONE_ONLY (decl) = 1;
+
       if (local_p)
 	{
 	  DECL_EXTERNAL (decl) = 0;
 	  TREE_STATIC (decl) = 1;
-
-	  if (rd && rd->storage_class & STCcomdat)
-	    D_DECL_ONE_ONLY (decl) = 1;
 	}
       else
 	{
@@ -1888,6 +1885,12 @@ d_finish_function (FuncDeclaration *fd)
 
   if (s->prettyIdent)
     DECL_NAME (decl) = get_identifier (s->prettyIdent);
+
+  if (DECL_SAVED_TREE (decl) != NULL_TREE)
+    {
+      TREE_STATIC (decl) = 1;
+      DECL_EXTERNAL (decl) = 0;
+    }
 
   d_add_global_declaration (decl);
 

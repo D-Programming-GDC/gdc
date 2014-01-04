@@ -47,19 +47,15 @@ SymbolDeclaration::toSymbol (void)
 Symbol *
 Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 {
-  const char *n = mangle();
-  unsigned nlen = strlen (n);
-  size_t sz = (2 + nlen + sizeof (size_t) * 3 + strlen (prefix) + strlen (suffix) + 1);
+  const char *symbol = mangle();
+  unsigned prefixlen = strlen (prefix);
+  size_t sz = (2 + strlen (symbol) + sizeof (size_t) * 3 + prefixlen + strlen (suffix) + 1);
   Symbol *s = new Symbol();
 
   s->Sident = XNEWVEC (const char, sz);
-#ifdef _WIN32
-  snprintf (CONST_CAST (char *, s->Sident), sz, "_D%s%Iu%s%s",
-	    n, strlen (prefix), prefix, suffix);
-#else  
-  snprintf (CONST_CAST (char *, s->Sident), sz, "_D%s%zu%s%s",
-	    n, strlen (prefix), prefix, suffix);
-#endif
+  snprintf (CONST_CAST (char *, s->Sident), sz, "_D%s%u%s%s",
+	    symbol, prefixlen, prefix, suffix);
+
   return s;
 }
 
