@@ -267,8 +267,6 @@ TypeEnum::toCtype (void)
 		  TREE_READONLY (decl) = 1;
 		  DECL_INITIAL (decl) = value;
 
-		  d_pushdecl (decl);
-
 		  // Add this enumeration constant to the list for this type.
 		  enum_values = chainon (enum_values, build_tree_list (ident, decl));
 		}
