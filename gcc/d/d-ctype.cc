@@ -622,12 +622,13 @@ TypeClass::toCtype (void)
 	  // Add the virtual table pointer
 	  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
 				  get_identifier ("__vptr"), d_vtbl_ptr_type_node);
-	  agg_layout.addField (decl, 0); // %% target stuff..
+	  agg_layout.addField (decl, 0);
 
 	  if (inherited)
 	    {
 	      vfield = copy_node (decl);
-	      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = 1;
+	      DECL_ARTIFICIAL (decl) = 1;
+	      DECL_IGNORED_P (decl) = 1;
 	    }
 	  else
 	    {
@@ -637,22 +638,7 @@ TypeClass::toCtype (void)
 	  TYPE_VFIELD (rec_type) = vfield;
 	  TREE_ADDRESSABLE (rec_type) = 1;
 
-	  if (!sym->isInterfaceDeclaration())
-	    {
-	      tree obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
-	      DECL_FCONTEXT (vfield) = obj_rec_type;
-
-	      // Add the monitor
-	      decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				 get_identifier ("__monitor"), ptr_type_node);
-	      DECL_FCONTEXT (decl) = obj_rec_type;
-	      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
-	      agg_layout.addField (decl, Target::ptrsize);
-
-	      // Add the fields of each base class
-	      agg_layout.go();
-	    }
-	  else
+	  if (sym->isInterfaceDeclaration())
 	    {
 	      ClassDeclaration *p = sym;
 
@@ -660,6 +646,25 @@ TypeClass::toCtype (void)
 	        p = (*p->baseclasses)[0]->base;
 
 	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
+	    }
+	  else
+	    {
+	      tree obj_type = TREE_TYPE (build_object_type()->toCtype());
+	      DECL_FCONTEXT (vfield) = obj_type;
+
+	      if (!sym->cpp)
+		{
+		  // Add the monitor
+		  decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+				     get_identifier ("__monitor"), ptr_type_node);
+		  DECL_FCONTEXT (decl) = obj_type;
+		  DECL_ARTIFICIAL (decl) = inherited;
+		  DECL_IGNORED_P (decl) = inherited;
+		  agg_layout.addField (decl, Target::ptrsize);
+		}
+
+	      // Add the fields of each base class
+	      agg_layout.go();
 	    }
 
 	  agg_layout.finish (sym->userAttributes);
