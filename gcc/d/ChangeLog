@@ -2,6 +2,13 @@
 
 	* d-ctype.cc(TypeEnum::toCtype): Don't push CONST_DECLs into current
 	function.
+	* d-decls.cc(FuncDeclaration::toThunkSymbol): Don't mark symbol as
+	TREE_PRIVATE, just TREE_PUBLIC as false.
+	(StructLiteralExp::toSymbol): Likewise.
+	(ClassReferenceExp::toSymbol): Likewise.
+	* d-objfile.cc(d_comdat_linkage): Likewise.
+	(d_finish_symbol): Likewise.
+	(build_moduleinfo): Likewise.
 
 	* config-lang.in: Add d-lang.cc to gtfiles.
 	* d-irstate.h(IRState::varsInScope): Change from Array to vec<> type.

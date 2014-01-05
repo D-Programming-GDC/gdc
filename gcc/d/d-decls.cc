@@ -466,14 +466,14 @@ FuncDeclaration::toThunkSymbol (int offset)
       tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (target_func_decl),
 				    FUNCTION_DECL, NULL_TREE, TREE_TYPE (target_func_decl));
       DECL_LANG_SPECIFIC (thunk_decl) = DECL_LANG_SPECIFIC (target_func_decl);
-      DECL_CONTEXT (thunk_decl) = d_decl_context (this); // from c++...
       TREE_READONLY (thunk_decl) = TREE_READONLY (target_func_decl);
       TREE_THIS_VOLATILE (thunk_decl) = TREE_THIS_VOLATILE (target_func_decl);
       TREE_NOTHROW (thunk_decl) = TREE_NOTHROW (target_func_decl);
 
-      /* Thunks inherit the public/private access of the function they are targetting.  */
+      DECL_CONTEXT (thunk_decl) = d_decl_context (this);
+
+      /* Thunks inherit the public access of the function they are targetting.  */
       TREE_PUBLIC (thunk_decl) = TREE_PUBLIC (target_func_decl);
-      TREE_PRIVATE (thunk_decl) = TREE_PRIVATE (target_func_decl);
       DECL_EXTERNAL (thunk_decl) = 0;
 
       /* Thunks are always addressable.  */
@@ -589,10 +589,10 @@ StructLiteralExp::toSymbol (void)
       get_unique_name (decl, "*");
       set_decl_location (decl, loc);
 
+      TREE_PUBLIC (decl) = 0;
       TREE_STATIC (decl) = 1;
       TREE_READONLY (decl) = 1;
       TREE_USED (decl) = 1;
-      TREE_PRIVATE (decl) = 1;
       DECL_ARTIFICIAL (decl) = 1;
 
       sym->Stree = decl;
@@ -620,10 +620,10 @@ ClassReferenceExp::toSymbol (void)
       DECL_NAME (decl) = get_identifier (ident);
       set_decl_location (decl, loc);
 
+      TREE_PUBLIC (decl) = 0;
       TREE_STATIC (decl) = 1;
       TREE_READONLY (decl) = 1;
       TREE_USED (decl) = 1;
-      TREE_PRIVATE (decl) = 1;
       DECL_ARTIFICIAL (decl) = 1;
 
       value->sym->Stree = decl;

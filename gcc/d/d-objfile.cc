@@ -1667,19 +1667,14 @@ d_comdat_linkage (tree decl)
     }
   else if (TREE_CODE (decl) == FUNCTION_DECL
 	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
-    {
-      // We can just emit function and compiler-generated variables
-      // statically; having multiple copies is (for the most part) only
-      // a waste of space.
-      TREE_PUBLIC (decl) = 0;
-      TREE_PRIVATE (decl) = 1;
-    }
+    // We can just emit function and compiler-generated variables
+    // statically; having multiple copies is (for the most part) only
+    // a waste of space.
+    TREE_PUBLIC (decl) = 0;
   else if (DECL_INITIAL (decl) == NULL_TREE
 	   || DECL_INITIAL (decl) == error_mark_node)
-    {
-      // Fallback, cannot have multiple copies.
-      DECL_COMMON (decl) = 1;
-    }
+    // Fallback, cannot have multiple copies.
+    DECL_COMMON (decl) = 1;
 
   DECL_COMDAT (decl) = 1;
 }
@@ -1794,8 +1789,8 @@ d_finish_symbol (Symbol *sym)
 
       DECL_INITIAL (var) = init;
       TREE_STATIC (var) = 1;
+      TREE_PUBLIC (var) = 0;
       TREE_USED (var) = 1;
-      TREE_PRIVATE (var) = 1;
       DECL_IGNORED_P (var) = 1;
       DECL_ARTIFICIAL (var) = 1;
 
@@ -2343,7 +2338,7 @@ build_moduleinfo (Symbol *sym)
 
   DECL_ARTIFICIAL (modref) = 1;
   DECL_IGNORED_P (modref) = 1;
-  TREE_PRIVATE (modref) = 1;
+  TREE_PUBLIC (modref) = 0;
   TREE_STATIC (modref) = 1;
 
   vec<constructor_elt, va_gc> *ce = NULL;
