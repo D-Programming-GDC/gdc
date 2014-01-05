@@ -251,7 +251,7 @@ TypeEnum::toCtype (void)
 	    {
 	      for (size_t i = 0; i < sym->members->dim; i++)
 		{
-		  EnumMember *member = (sym->members->tdata()[i])->isEnumMember();
+		  EnumMember *member = (*sym->members)[i]->isEnumMember();
 		  // Templated functions can seep through to the backend - just ignore for now.
 		  if (member == NULL)
 		    continue;
@@ -655,8 +655,9 @@ TypeClass::toCtype (void)
 	  else
 	    {
 	      ClassDeclaration *p = sym;
+
 	      while (p->baseclasses->dim)
-	        p = (p->baseclasses->tdata()[0])->base;
+	        p = (*p->baseclasses)[0]->base;
 
 	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
 	    }

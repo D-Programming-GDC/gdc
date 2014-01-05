@@ -776,11 +776,11 @@ deps_write (Module *m)
 
 	  if (md && md->packages)
 	    {
-	      if (strcmp ((md->packages->tdata()[0])->string, "core") == 0)
+	      if (strcmp ((*md->packages)[0]->string, "core") == 0)
 		continue;
-	      if (strcmp ((md->packages->tdata()[0])->string, "std") == 0)
+	      if (strcmp ((*md->packages)[0]->string, "std") == 0)
 		continue;
-	      if (strcmp ((md->packages->tdata()[0])->string, "gcc") == 0)
+	      if (strcmp ((*md->packages)[0]->string, "gcc") == 0)
 		continue;
 	    }
 	  else if (md && md->id && md->packages == NULL)

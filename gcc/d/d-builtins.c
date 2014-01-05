@@ -626,19 +626,19 @@ d_gcc_magic_module (Module *m)
 
   if (md->packages->dim == 1)
     {
-      if (!strcmp ((md->packages->tdata()[0])->string, "gcc"))
+      if (!strcmp ((*md->packages)[0]->string, "gcc"))
 	{
 	  if (!strcmp (md->id->string, "builtins"))
 	    d_gcc_magic_builtins_module (m);
 	}
-      else if (!strcmp ((md->packages->tdata()[0])->string, "core"))
+      else if (!strcmp ((*md->packages)[0]->string, "core"))
 	{
 	  if (!strcmp (md->id->string, "bitop"))
 	    std_intrinsic_module = m;
 	  else if (!strcmp (md->id->string, "math"))
 	    core_math_module = m;
 	}
-      else if (!strcmp ((md->packages->tdata()[0])->string, "std"))
+      else if (!strcmp ((*md->packages)[0]->string, "std"))
 	{
 	  if (!strcmp (md->id->string, "math"))
 	    std_math_module = m;
@@ -646,8 +646,8 @@ d_gcc_magic_module (Module *m)
     }
   else if (md->packages->dim == 2)
     {
-      if (!strcmp ((md->packages->tdata()[0])->string, "core")
-	  && !strcmp ((md->packages->tdata()[1])->string, "stdc"))
+      if (!strcmp ((*md->packages)[0]->string, "core")
+	  && !strcmp ((*md->packages)[1]->string, "stdc"))
 	{
 	  if (!strcmp (md->id->string, "stdarg"))
 	    d_gcc_magic_stdarg_module (m);
