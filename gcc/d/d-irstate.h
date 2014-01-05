@@ -88,11 +88,6 @@ struct Flow
 };
 
 
-typedef ArrayBase<Label> Labels;
-typedef ArrayBase<Flow> Flows;
-
-
-
 // IRState contains the core functionality of code generation utilities.
 //
 // Currently, each function gets its own IRState when emitting code.  There is
@@ -123,7 +118,7 @@ struct IRState
   void endFunction (void);
 
   // Variables that are in scope that will need destruction later.
-  VarDeclarations *varsInScope;
+  auto_vec<VarDeclaration *> varsInScope;
 
   // ** Statement Lists
   void addExp (tree e);
@@ -133,7 +128,7 @@ struct IRState
   // ** Labels
   // It is only valid to call this while the function in which the label is defined
   // is being compiled.
-  tree    getLabelTree (LabelDsymbol *label);
+  tree getLabelTree (LabelDsymbol *label);
   Label *getLabelBlock (LabelDsymbol *label, Statement *from = NULL);
 
   bool isReturnLabel (Identifier *ident)
@@ -148,8 +143,8 @@ struct IRState
 
   Flow *currentFlow (void)
   {
-    gcc_assert (this->loops_.dim);
-    return (Flow *) this->loops_.tos();
+    gcc_assert (!this->loops_.is_empty());
+    return this->loops_.last();
   }
 
   void doLabel (tree t_label);
@@ -172,8 +167,8 @@ struct IRState
 
   unsigned *currentScope (void)
   {
-    gcc_assert (this->scopes_.dim);
-    return (unsigned *) this->scopes_.tos();
+    gcc_assert (!this->scopes_.is_empty());
+    return this->scopes_.last();
   }
 
   void startBindings (void);
@@ -206,7 +201,7 @@ struct IRState
   void doJump (Statement *stmt, tree t_label);
   void pushLabel (LabelDsymbol *l);
   void checkGoto (Statement *stmt, LabelDsymbol *label);
-  void checkPreviousGoto (Array *refs);
+  void checkPreviousGoto (Blocks *refs);
 
   // ** Switch statements.
   void startCase (Statement *stmt, tree t_cond, int has_vars = 0);
@@ -227,10 +222,10 @@ struct IRState
   void doReturn (tree t_value);
 
  protected:
-  Array statementList_;	// of tree
-  Array scopes_;	// of unsigned *
-  Flows loops_;
-  Labels labels_;
+  auto_vec<tree> statementList_;
+  auto_vec<unsigned *> scopes_;
+  auto_vec<Flow *> loops_;
+  auto_vec<Label *> labels_;
 };
 
 

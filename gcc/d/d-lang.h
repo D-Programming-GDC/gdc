@@ -210,18 +210,12 @@ void d_register_builtin_type (tree, const char *);
 void d_backend_init (void);
 void d_backend_term (void);
 
-void d_bi_builtin_func (tree);
-void d_bi_builtin_type (tree);
-
 bool is_intrinsic_module_p (Module *);
 bool is_math_module_p (Module *);
 
 class Dsymbol;
 bool is_builtin_va_arg_p (Dsymbol *, bool);
 bool is_builtin_va_start_p (Dsymbol *);
-
-/* protect from garbage collection */
-extern GTY(()) tree d_keep_list;
 
 #include "d-dmd-gcc.h"
 

@@ -627,29 +627,27 @@ d_post_options (const char ** fn)
 }
 
 // Array of all global declarations to pass back to the middle-end.
-static Array globalDeclarations;
+static GTY(()) vec<tree, va_gc> *global_declarations;
 
 void
 d_add_global_declaration (tree decl)
 {
-  globalDeclarations.push (decl);
+  vec_safe_push (global_declarations, decl);
 }
 
 // Write out globals.
-
 static void
 d_write_global_declarations (void)
 {
-  tree *vec = (tree *) globalDeclarations.data;
-  int len = globalDeclarations.dim;
-
-  gcc_assert (len >= 0);
-
-  d_finish_compilation (vec, len);
+  if (vec_safe_length (global_declarations) != 0)
+    {
+      d_finish_compilation (global_declarations->address(),
+			    global_declarations->length());
+    }
 }
 
 
-/* Gimplification of expression trees.  */
+// Gimplification of D specific expression trees.
 int
 d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 		 gimple_seq *post_p ATTRIBUTE_UNUSED)
@@ -1638,8 +1636,8 @@ build_d_decl_lang_specific (Declaration *d)
 }
 
 
-// This preserves tree we create from the garbage collector.
-tree d_keep_list = NULL_TREE;
+// This preserves trees we create from the garbage collector.
+static GTY(()) tree d_keep_list = NULL_TREE;
 
 void
 d_keep (tree t)
@@ -1774,3 +1772,5 @@ d_handle_target_attribute (tree *node, tree name, tree args, int flags,
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
+
+#include "gt-d-d-lang.h"

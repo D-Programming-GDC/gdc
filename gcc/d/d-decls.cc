@@ -437,7 +437,7 @@ FuncDeclaration::toThunkSymbol (int offset)
      is a list of all thunks for a given function. */
   bool found = false;
 
-  for (size_t i = 0; i < csym->thunks.dim; i++)
+  for (size_t i = 0; i < csym->thunks.length(); i++)
     {
       thunk = csym->thunks[i];
       if (thunk->offset == offset)
@@ -451,7 +451,7 @@ FuncDeclaration::toThunkSymbol (int offset)
     {
       thunk = new Thunk();
       thunk->offset = offset;
-      csym->thunks.push (thunk);
+      csym->thunks.safe_push (thunk);
     }
 
   if (!thunk->symbol)

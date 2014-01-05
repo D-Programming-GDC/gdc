@@ -605,7 +605,6 @@ TypeClass::toCtype (void)
       else 
 	{
 	  tree rec_type;
-	  Array base_class_decls;
 	  bool inherited = sym->baseClass != 0;
 	  tree vfield;
 

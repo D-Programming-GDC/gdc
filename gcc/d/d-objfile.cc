@@ -32,9 +32,13 @@
 ModuleInfo *current_module_info;
 
 // static constructors (not D static constructors)
-static FuncDeclarations static_ctor_list;
-static FuncDeclarations static_dtor_list;
+static vec<FuncDeclaration *> static_ctor_list;
+static vec<FuncDeclaration *> static_dtor_list;
 
+static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
+static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
+static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
+static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
 
 // Construct a new Symbol.
 
@@ -1459,20 +1463,20 @@ Module::genobjfile (int)
     {
       ModuleInfo *mi = current_module_info;
 
-      if (mi->ctors.dim || mi->ctorgates.dim)
-	sctor = build_ctor_function ("*__modctor", &mi->ctors, &mi->ctorgates);
+      if (!mi->ctors.is_empty() || !mi->ctorgates.is_empty())
+	sctor = build_ctor_function ("*__modctor", mi->ctors, mi->ctorgates);
 
-      if (mi->dtors.dim)
-	sdtor = build_dtor_function ("*__moddtor", &mi->dtors);
+      if (!mi->dtors.is_empty())
+	sdtor = build_dtor_function ("*__moddtor", mi->dtors);
 
-      if (mi->sharedctors.dim || mi->sharedctorgates.dim)
-	ssharedctor = build_ctor_function ("*__modsharedctor", &mi->sharedctors, &mi->sharedctorgates);
+      if (!mi->sharedctors.is_empty() || !mi->sharedctorgates.is_empty())
+	ssharedctor = build_ctor_function ("*__modsharedctor", mi->sharedctors, mi->sharedctorgates);
 
-      if (mi->shareddtors.dim)
-	sshareddtor = build_dtor_function ("*__modshareddtor", &mi->shareddtors);
+      if (!mi->shareddtors.is_empty())
+	sshareddtor = build_dtor_function ("*__modshareddtor", mi->shareddtors);
 
-      if (mi->unitTests.dim)
-	stest = build_unittest_function ("*__modtest", &mi->unitTests);
+      if (!mi->unitTests.is_empty())
+	stest = build_unittest_function ("*__modtest", mi->unitTests);
 
       genmoduleinfo();
     }
@@ -1519,16 +1523,16 @@ d_finish_module (void)
      and is picked up by collect2. */
   const char *ident;
 
-  if (static_ctor_list.dim)
+  if (!static_ctor_list.is_empty())
     {
       ident = IDENTIFIER_POINTER (get_file_function_name ("I"));
-      build_call_function (ident, &static_ctor_list, true);
+      build_call_function (ident, static_ctor_list, true);
     }
 
-  if (static_dtor_list.dim)
+  if (!static_dtor_list.is_empty())
     {
       ident = IDENTIFIER_POINTER (get_file_function_name ("D"));
-      build_call_function (ident, &static_dtor_list, true);
+      build_call_function (ident, static_dtor_list, true);
     }
 }
 
@@ -1897,9 +1901,9 @@ d_finish_function (FuncDeclaration *fd)
   if (!targetm.have_ctors_dtors)
     {
       if (DECL_STATIC_CONSTRUCTOR (decl))
-	static_ctor_list.push (fd);
+	static_ctor_list.safe_push (fd);
       if (DECL_STATIC_DESTRUCTOR (decl))
-	static_dtor_list.push (fd);
+	static_dtor_list.safe_push (fd);
     }
 
   if (!needs_static_chain (fd))
@@ -2003,21 +2007,20 @@ struct DeferredThunk
   int offset;
 };
 
-typedef ArrayBase<DeferredThunk> DeferredThunks;
-static DeferredThunks deferred_thunks;
+static vec<DeferredThunk *> deferred_thunks;
 
 // Process all deferred thunks in list DEFERRED_THUNKS.
 
 void
 write_deferred_thunks (void)
 {
-  for (size_t i = 0; i < deferred_thunks.dim; i++)
+  for (size_t i = 0; i < deferred_thunks.length(); i++)
     {
       DeferredThunk *t = deferred_thunks[i];
       finish_thunk (t->decl, t->target, t->offset);
     }
 
-  deferred_thunks.setDim (0);
+  deferred_thunks.truncate (0);
 }
 
 // Emit the definition of a D vtable thunk.  If a function
@@ -2032,7 +2035,7 @@ use_thunk (tree thunk_decl, tree target_decl, int offset)
       t->decl = thunk_decl;
       t->target = target_decl;
       t->offset = offset;
-      deferred_thunks.push (t);
+      deferred_thunks.safe_push (t);
     }
   else
     finish_thunk (thunk_decl, target_decl, offset);
@@ -2050,7 +2053,7 @@ make_alias_for_thunk (tree function)
   tree alias;
   char buf[256];
 
-  // For gdc: Thunks may reference extern functions which cannot be aliased.
+  // Thunks may reference extern functions which cannot be aliased.
   if (DECL_EXTERNAL (function))
     return function;
 
@@ -2159,7 +2162,7 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
 
 // Build and emit a function named NAME, whose function body is in EXPR.
 
-FuncDeclaration *
+static FuncDeclaration *
 build_simple_function (const char *name, tree expr, bool static_ctor)
 {
   Module *mod = current_module_decl;
@@ -2204,19 +2207,19 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
 // the list of functions in FUNCTIONS.  If FORCE_P, create a new function
 // even if there is only one function to call in the list.
 
-FuncDeclaration *
-build_call_function (const char *name, FuncDeclarations *functions, bool force_p)
+static FuncDeclaration *
+build_call_function (const char *name, vec<FuncDeclaration *> functions, bool force_p)
 {
   tree expr_list = NULL_TREE;
 
   // If there is only one function, just return that
-  if (functions->dim == 1 && !force_p)
-    return (*functions)[0];
+  if (functions.length() == 1 && !force_p)
+    return functions[0];
 
   // Shouldn't front end build these?
-  for (size_t i = 0; i < functions->dim; i++)
+  for (size_t i = 0; i < functions.length(); i++)
     {
-      tree fndecl = ((*functions)[i])->toSymbol()->Stree;
+      tree fndecl = (functions[i])->toSymbol()->Stree;
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = maybe_vcompound_expr (expr_list, call_expr);
     }
@@ -2231,29 +2234,28 @@ build_call_function (const char *name, FuncDeclarations *functions, bool force_p
 // Same as build_call_function, but includes a gate to
 // protect static ctors in templates getting called multiple times.
 
-Symbol *
-build_ctor_function (const char *name, FuncDeclarations *functions, VarDeclarations *gates)
+static Symbol *
+build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<VarDeclaration *> gates)
 {
   tree expr_list = NULL_TREE;
 
   // If there is only one function, just return that
-  if (functions->dim == 1 && !gates->dim)
-    return (*functions)[0]->toSymbol();
+  if (functions.length() == 1 && gates.is_empty())
+    return (functions[0])->toSymbol();
 
   // Increment gates first.
-  for (size_t i = 0; i < gates->dim; i++)
+  for (size_t i = 0; i < gates.length(); i++)
     {
-      VarDeclaration *var = (*gates)[i];
-      tree var_decl = var->toSymbol()->Stree;
+      tree var_decl = (gates[i])->toSymbol()->Stree;
       tree value = build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node);
       tree var_expr = vmodify_expr (var_decl, value);
       expr_list = maybe_vcompound_expr (expr_list, var_expr);
     }
 
   // Call Ctor Functions
-  for (size_t i = 0; i < functions->dim; i++)
+  for (size_t i = 0; i < functions.length(); i++)
     {
-      tree fndecl = ((*functions)[i])->toSymbol()->Stree;
+      tree fndecl = (functions[i])->toSymbol()->Stree;
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = maybe_vcompound_expr (expr_list, call_expr);
     }
@@ -2270,18 +2272,18 @@ build_ctor_function (const char *name, FuncDeclarations *functions, VarDeclarati
 // Same as build_call_function, but calls all functions in
 // the reverse order that the constructors were called in.
 
-Symbol *
-build_dtor_function (const char *name, FuncDeclarations *functions)
+static Symbol *
+build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
 {
   tree expr_list = NULL_TREE;
 
   // If there is only one function, just return that
-  if (functions->dim == 1)
-    return (*functions)[0]->toSymbol();
+  if (functions.length() == 1)
+    return (functions[0])->toSymbol();
 
-  for (int i = functions->dim - 1; i >= 0; i--)
+  for (int i = functions.length() - 1; i >= 0; i--)
     {
-      tree fndecl = ((*functions)[i])->toSymbol()->Stree;
+      tree fndecl = (functions[i])->toSymbol()->Stree;
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = maybe_vcompound_expr (expr_list, call_expr);
     }
@@ -2298,8 +2300,8 @@ build_dtor_function (const char *name, FuncDeclarations *functions)
 // Same as build_call_function, but returns the Symbol to
 // the function generated.
 
-Symbol *
-build_unittest_function (const char *name, FuncDeclarations *functions)
+static Symbol *
+build_unittest_function (const char *name, vec<FuncDeclaration *> functions)
 {
   FuncDeclaration *fd = build_call_function (name, functions, false);
   return fd->toSymbol();

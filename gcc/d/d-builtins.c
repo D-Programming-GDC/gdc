@@ -24,13 +24,23 @@
 #include "template.h"
 #include "d-codegen.h"
 
-static tree bi_fn_list;
-static tree bi_lib_list;
-static tree bi_type_list;
+static GTY(()) vec<tree, va_gc> *gcc_builtins_functions = NULL;
+static GTY(()) vec<tree, va_gc> *gcc_builtins_libfuncs = NULL;
+static GTY(()) vec<tree, va_gc> *gcc_builtins_types = NULL;
 
 // Necessary for built-in struct types
-static Array builtin_converted_types;
-static Dsymbols builtin_converted_decls;
+struct builtin_sym
+{
+  builtin_sym (Dsymbol *d, Type *t, tree c)
+    : decl(d), dtype(t), ctype(c)
+    { }
+
+  Dsymbol *decl;
+  Type *dtype;
+  tree ctype;
+};
+
+static vec<builtin_sym *, va_gc> *builtin_converted_decls = NULL;
 
 // Built-in symbols that require special handling.
 static Module *std_intrinsic_module;
@@ -195,11 +205,11 @@ gcc_type_to_d_type (tree t)
       break;
 
     case RECORD_TYPE:
-      for (size_t i = 0; i < builtin_converted_types.dim; i += 2)
+      for (size_t i = 0; i < vec_safe_length (builtin_converted_decls); ++i)
 	{
-	  tree ti = (tree) builtin_converted_types.data[i];
+	  tree ti = (*builtin_converted_decls)[i]->ctype;
 	  if (TYPE_MAIN_VARIANT (ti) == TYPE_MAIN_VARIANT (t))
-	    return (Type *) builtin_converted_types.data[i + 1];
+	    return (*builtin_converted_decls)[i]->dtype;
 	}
 
       if (TYPE_NAME (t))
@@ -229,11 +239,8 @@ gcc_type_to_d_type (tree t)
       // setting to stick.
       sdecl->members = new Dsymbols;
       d = sdecl->type;
-
-      builtin_converted_types.push (t);
-      builtin_converted_types.push (d);
-      builtin_converted_decls.push (sdecl);
-      return d;
+      vec_safe_push (builtin_converted_decls, new builtin_sym (sdecl, d, t));
+      return sdecl->type;
 
     case FUNCTION_TYPE:
       typefunc_ret= gcc_type_to_d_type (TREE_TYPE (t));
@@ -280,30 +287,6 @@ gcc_type_to_d_type (tree t)
     }
 
   return NULL;
-}
-
-
-// Hook from d_builtin_function.
-// Add DECL to builtin functions list for maybe processing later
-// if gcc.builtins was imported into the current module.
-
-void
-d_bi_builtin_func (tree decl)
-{
-  if (!flag_no_builtin && DECL_ASSEMBLER_NAME_SET_P (decl))
-    bi_lib_list = chainon (bi_lib_list, build_tree_list (0, decl));
-
-  bi_fn_list = chainon (bi_fn_list, build_tree_list (0, decl));
-}
-
-// Hook from d_register_builtin_type.
-// Add DECL to builtin types list for maybe processing later
-// if gcc.builtins was imported into the current module.
-
-void
-d_bi_builtin_type (tree decl)
-{
-  bi_type_list = chainon (bi_type_list, build_tree_list (0, decl));
 }
 
 
@@ -438,10 +421,10 @@ static void
 d_gcc_magic_builtins_module (Module *m)
 {
   Dsymbols *funcs = new Dsymbols;
+  tree decl;
 
-  for (tree n = bi_fn_list; n != NULL_TREE; n = TREE_CHAIN (n))
+  for (size_t i = 0; vec_safe_iterate (gcc_builtins_functions, i, &decl); ++i)
     {
-      tree decl = TREE_VALUE (n);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
       TypeFunction *dtf = (TypeFunction *) gcc_type_to_d_type (TREE_TYPE (decl));
 
@@ -478,9 +461,8 @@ d_gcc_magic_builtins_module (Module *m)
       funcs->push (func);
     }
 
-  for (tree n = bi_type_list; n != NULL_TREE; n = TREE_CHAIN (n))
+  for (size_t i = 0; vec_safe_iterate (gcc_builtins_types, i, &decl); ++i)
     {
-      tree decl = TREE_VALUE (n);
       tree type = TREE_TYPE (decl);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
       Type *dt = gcc_type_to_d_type (type);
@@ -508,9 +490,9 @@ d_gcc_magic_builtins_module (Module *m)
 	}
     }
 
-  for (size_t i = 0; i < builtin_converted_decls.dim ; ++i)
+  for (size_t i = 0; i < vec_safe_length (builtin_converted_decls); ++i)
     {
-      Dsymbol *sym = builtin_converted_decls[i];
+      Dsymbol *sym = (*builtin_converted_decls)[i]->decl;
       // va_list is a pain.  It can be referenced without importing
       // gcc.builtins so it really needs to go in the object module.
       if (!sym->parent)
@@ -518,9 +500,9 @@ d_gcc_magic_builtins_module (Module *m)
 	  Declaration *decl = sym->isDeclaration();
 	  if (!decl || decl->type != Type::tvalist)
 	    {
-	      sym->parent = m;
 	      // Currently, there is no need to run semantic, but we do
 	      // want to output inits, etc.
+	      sym->parent = m;
 	      funcs->push (sym);
 	    }
 	}
@@ -589,9 +571,10 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
     }
   else if (fd && !fd->fbody)
     {
-      for (tree n = bi_lib_list; n != NULL_TREE; n = TREE_CHAIN (n))
+      tree decl;
+
+      for (size_t i = 0; vec_safe_iterate (gcc_builtins_libfuncs, i, &decl); ++i)
 	{
-	  tree decl = TREE_VALUE (n);
 	  gcc_assert (DECL_ASSEMBLER_NAME_SET_P (decl));
 
 	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
@@ -1344,7 +1327,10 @@ d_init_builtins (void)
   build_common_builtin_nodes ();
 }
 
-/* Registration of machine- or os-specific builtin types.  */
+/* Registration of machine- or os-specific builtin types.
+   Add to builtin types list for maybe processing later
+   if gcc.builtins was imported into the current module.  */
+
 void
 d_register_builtin_type (tree type, const char *name)
 {
@@ -1355,22 +1341,19 @@ d_register_builtin_type (tree type, const char *name)
   if (!TYPE_NAME (type))
     TYPE_NAME (type) = decl;
 
-  d_bi_builtin_type (decl);
+  vec_safe_push (gcc_builtins_types, decl);
 }
 
-/* Return a definition for a builtin function named NAME and whose data type
-   is TYPE.  TYPE should be a function type with argument types.
-   FUNCTION_CODE tells later passes how to compile calls to this function.
-   See tree.h for its possible values.
-
-   If LIBRARY_NAME is nonzero, use that for DECL_ASSEMBLER_NAME,
-   the name to be called if we can't opencode the function.  If
-   ATTRS is nonzero, use that for the function's attribute list.  */
+/* Add DECL to builtin functions list for maybe processing later
+   if gcc.builtins was imported into the current module.  */
 
 tree
 d_builtin_function (tree decl)
 {
-  d_bi_builtin_func (decl);
+  if (!flag_no_builtin && DECL_ASSEMBLER_NAME_SET_P (decl))
+    vec_safe_push (gcc_builtins_libfuncs, decl);
+
+  vec_safe_push (gcc_builtins_functions, decl);
   return decl;
 }
 
@@ -1792,6 +1775,5 @@ void
 d_backend_term (void)
 {
 }
-
 
 #include "gt-d-d-builtins.h"
