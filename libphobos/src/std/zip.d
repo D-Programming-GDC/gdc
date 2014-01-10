@@ -37,6 +37,7 @@ import std.datetime;
 import core.bitop;
 import std.conv;
 import std.algorithm;
+import std.bitmanip : littleEndianToNative, nativeToLittleEndian;
 
 //debug=print;
 
@@ -473,50 +474,24 @@ class ZipArchive
 
     ushort getUshort(int i)
     {
-        version (LittleEndian)
-        {
-            return *cast(ushort *)&data[i];
-        }
-        else
-        {
-            ubyte b0 = data[i];
-            ubyte b1 = data[i + 1];
-            return (b1 << 8) | b0;
-        }
+        ubyte[2] result = data[i .. i + 2];
+        return littleEndianToNative!ushort(result);
     }
 
     uint getUint(int i)
     {
-        version (LittleEndian)
-        {
-            return *cast(uint *)&data[i];
-        }
-        else
-        {
-            return bswap(*cast(uint *)&data[i]);
-        }
+        ubyte[4] result = data[i .. i + 4];
+        return littleEndianToNative!uint(result);
     }
 
     void putUshort(int i, ushort us)
     {
-        version (LittleEndian)
-        {
-            *cast(ushort *)&data[i] = us;
-        }
-        else
-        {
-            data[i] = cast(ubyte)us;
-            data[i + 1] = cast(ubyte)(us >> 8);
-        }
+        data[i .. i + 2] = nativeToLittleEndian(us);
     }
 
     void putUint(int i, uint ui)
     {
-        version (BigEndian)
-        {
-            ui = bswap(ui);
-        }
-        *cast(uint *)&data[i] = ui;
+        data[i .. i + 4] = nativeToLittleEndian(ui);
     }
 }
 
