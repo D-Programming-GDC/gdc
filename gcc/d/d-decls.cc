@@ -795,7 +795,9 @@ EnumDeclaration::toDebug (void)
     return;
 
   tree ctype = type->toCtype();
-  build_type_decl (ctype, this);
+
+  if (TREE_CODE (ctype) == ENUMERAL_TYPE)
+    build_type_decl (ctype, this);
 
   // The ctype is not necessarily enum, which doesn't sit well with
   // rest_of_type_compilation.  Can call this on structs though.
