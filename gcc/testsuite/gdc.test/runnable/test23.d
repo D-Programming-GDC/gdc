@@ -364,8 +364,13 @@ void test17()
     {
         /*const*/ float f = 1.2f;
         float g = void;
-        
-        version(GNU)
+
+
+        version(D_SoftFloat)
+        {
+            g = f;
+        }
+        else version(GNU)
         {
             version(X86) asm
             {

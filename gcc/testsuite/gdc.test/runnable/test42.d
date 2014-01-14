@@ -722,8 +722,8 @@ void test49()
 {
     version(GNU)
     {
-        assert((25.5).stringof ~ (3.01).stringof == "2.55e+13.01e+0");
-        assert(25.5.stringof ~ 3.01.stringof == "2.55e+13.01e+0");
+        assert((25.5).stringof ~ (3.0625).stringof == "2.55e+13.0625e+0");
+        assert(25.5.stringof ~ 3.0625.stringof == "2.55e+13.0625e+0");
     }
     else
     {
@@ -1722,6 +1722,46 @@ else version(X86_64)
 {
     pragma(msg, "Not ported to x86-64 compatible varargs, yet.");
     void test103() {}
+}
+else version(GNU)
+{
+int x103;
+
+void external(int a, ...)
+{
+    va_list ap;
+    va_start(ap, a);
+    auto ext = va_arg!int(ap);
+    printf("external: %d\n", ext);
+    x103 = ext;
+    va_end(ap);
+}
+
+class C103
+{
+    void method ()
+    {
+	void internal (int a, ...)
+	{
+	    va_list ap;
+	    va_start(ap, a);
+        auto internal = va_arg!int(ap);
+	    printf("internal: %d\n", internal);
+	    x103 = internal;
+	    va_end(ap);
+	}
+
+	internal (0, 43);
+	assert(x103 == 43);
+    }
+}
+
+void test103()
+{
+    external(0, 42);
+    assert(x103 == 42);
+    (new C103).method ();
+}
 }
 else
     static assert(false, "Unknown platform");
