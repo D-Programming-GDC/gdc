@@ -1,6 +1,5 @@
 // NOTE: this is a dup of runnable/tls.d strictly to test the same code compiled
 // separately rather than together like the original is.
-
 // COMPILE_SEPARATELY
 // EXTRA_SOURCES: imports/tlsa.d
 // PERMUTE_ARGS:
