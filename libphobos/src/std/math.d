@@ -3580,6 +3580,14 @@ private:
             {
                 "fstsw %%ax; andq $0x03D, %%rax;" : "=a" result;
             }
+            else version (ARM_SoftFloat)
+            {
+                return 0;
+            }
+            else version (ARM) asm
+            {
+                "vmrs %0, FPSCR; and %0, %0, #0x1F;" : "=r" result;
+            }
             else
                 assert(0, "Not yet supported");
             return result;
@@ -3619,6 +3627,15 @@ private:
             else version (X86_64) asm
             {
                 "fnclex;";
+            }
+            else version (ARM_SoftFloat)
+            {
+            }
+            else version (ARM)
+            {
+                uint old = getIeeeFlags();
+                old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
+                asm {"vmsr FPSCR, %0;" : : "r" (old);} 
             }
             else
                 assert(0, "Not yet supported");
@@ -3901,6 +3918,15 @@ private:
             {
                 "fclex;";
             }
+            else version (ARM_SoftFloat)
+            {
+            }
+            else version (ARM)
+            {
+                uint old = getControlState();
+                old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
+                asm {"vmsr FPSCR, %0;" : : "r" (old);} 
+            }
             else
                 assert(0, "Not yet supported");
         }
@@ -3909,7 +3935,7 @@ private:
     }
 
     // Read from the control register
-    static ushort getControlState() @trusted nothrow
+    static ControlState getControlState() @trusted nothrow
     {
         version (D_InlineAsm_X86)
         {
@@ -3935,7 +3961,7 @@ private:
         else
         version (GNU)
         {
-            short cont;
+            ControlState cont;
             version (X86) asm
             {
                 "xor %%eax, %%eax; fstcw %[cw];" : [cw] "=m" cont :: "eax";
@@ -3944,12 +3970,14 @@ private:
             {
                 "xor %%rax, %%rax; fstcw %[cw];" : [cw] "=m" cont :: "rax";
             }
-            else version (ARM) asm
+            else version (ARM)
             {
-                "mrc p10, 7, %[cw], cr1, cr0, 0"
-                :
-                [cw] "=r" cont
-                ;
+                version (ARM_SoftFloat)
+                   return 0;
+                else asm
+                {
+                    "vmrs %0, FPSCR;" : "=r" cont;
+                }
             }
             else
                 assert(0, "Not yet supported");
@@ -3960,7 +3988,7 @@ private:
     }
 
     // Set the control register
-    static void setControlState(ushort newState) @trusted nothrow
+    static void setControlState(ControlState newState) @trusted nothrow
     {
         version (InlineAsm_X86_Any)
         {
@@ -3988,27 +4016,20 @@ private:
         {
             version (X86) asm
             {
-                "fclex; fldcw %[cw]"
-                :
-                :
-                [cw] "m" newState
-                ;
+                "fclex; fldcw %[cw]" : : [cw] "m" newState;
             }
             else version (X86_64) asm
             {
-                "fclex; fldcw %[cw]"
-                :
-                :
-                [cw] "m" newState
-                ;
+                "fclex; fldcw %[cw]" : : [cw] "m" newState;
             }
-            else version (ARM) asm
+            else version (ARM)
             {
-                "mcr p10, 7, %[cw], cr1, cr0, 0"
-                :
-                :
-                [cw] "r" newState
-                ;
+                version (ARM_SoftFloat)
+                   return;
+                else asm
+                {
+                    "vmsr FPSCR, %0;" : : "r" (newState);
+                }
             }
             else
                 assert(0, "Not yet supported");
@@ -4020,6 +4041,11 @@ private:
 
 unittest
 {
+    //GCC floating point emulation doesn't allow changing
+    //rounding modes, getting error bits etc
+    version(GNU) version(D_SoftFloat)
+        return;
+
     void ensureDefaults()
     {
         assert(FloatingPointControl.rounding
