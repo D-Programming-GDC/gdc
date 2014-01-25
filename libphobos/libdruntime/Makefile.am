@@ -84,7 +84,7 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 
 CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 	  core/exception.o core/math.o core/memory.o core/runtime.o \
-	  core/simd.o core/thread.o core/time.o core/vararg.o \
+	  core/simd.o core/thread.o core/threadasm.o core/time.o core/vararg.o \
 	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
 	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
 	  core/sync/semaphore.o
