@@ -1,3 +1,99 @@
+2014-01-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(EnumDeclaration::toDebug): Build TYPE_DECL only for
+	enumeral types.
+
+2014-01-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-ctype.cc(TypeClass::toCtype): Don't add __monitor field for
+	extern(C++) classes.
+
+	* d-builtins.c(d_gcc_magic_module): Remove tdata.
+	* d-codegen.cc(build_interface_binfo): Likewise.
+	* d-ctype.cc(TypeEnum::toCtype): Likewise.
+	(TypeClass::toCtype): Likewise.
+	* d-lang.cc(deps_write): Likewise.
+
+2014-01-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-ctype.cc(TypeEnum::toCtype): Don't push CONST_DECLs into current
+	function.
+	* d-decls.cc(FuncDeclaration::toThunkSymbol): Don't mark symbol as
+	TREE_PRIVATE, just TREE_PUBLIC as false.
+	(StructLiteralExp::toSymbol): Likewise.
+	(ClassReferenceExp::toSymbol): Likewise.
+	* d-objfile.cc(d_comdat_linkage): Likewise.
+	(d_finish_symbol): Likewise.
+	(build_moduleinfo): Likewise.
+
+	* config-lang.in: Add d-lang.cc to gtfiles.
+	* d-irstate.h(IRState::varsInScope): Change from Array to vec<> type.
+	(IRState::statementList_): Likewise.
+	(IRState::scopes_): Likewise.
+	(IRState::loops_): Likewise.
+	(IRState::labels_): Likewise.
+	* d-lang.h(d_bi_builtin_func): Remove declaration.
+	(d_bi_builtin_type): Likewise.
+	(d_keep_list): Likewise.
+	* d-objfile.h(Symbol::thunks): Change from Array to vec<> type.
+	(ModuleInfo::classes): Likewise.
+	(ModuleInfo::ctors): Likewise.
+	(ModuleInfo::dtors): Likewise.
+	(ModuleInfo::ctorgates): Likewise.
+	(ModuleInfo::sharedctors): Likewise.
+	(ModuleInfo::shareddtors): Likewise.
+	(ModuleInfo::sharedctorgates): Likewise.
+	(ModuleInfo::unitTests): Likewise.
+	(build_simple_function): Remove declaration.
+	(build_call_function): Likewise.
+	(build_ctor_function): Likewise.
+	(build_dtor_function): Likewise.
+	(build_unittest_function): Likewise.
+	* d-builtins.c(bi_fn_list): Rename to gcc_builtins_functions.
+	(bi_lib_list): Rename to gcc_builtins_libfuncs.
+	(bi_type_list): Rename to gcc_builtins_types.
+	(builtin_converted_types): Remove.
+	(builtin_converted_decls): Change from Array to vec<> type.
+	(gcc_type_to_d_type): Update.
+	(d_bi_builtin_func): Remove and move to d_builtin_function.
+	(d_bi_builtin_type): Remove and move to d_register_builtin_type.
+	(d_gcc_magic_builtins_module): Update.
+	* d-ctype.cc(TypeClass::toCtype): Remove unused var.
+	* d-decls.cc(FuncDeclaration::toThunkSymbol): Update for change to
+	vec<> type.
+	* d-elem.cc(CatExp::toElem): Change stashed vars from Array to vec<>.
+	(Expression::toElemDtor): Update for change to vec<> type.
+	* d-irstate.cc(IRState::startFunction): Likewise.
+	(IRState::endFunction): Likewise.
+	(IRState::addExp): Likewise.
+	(IRState::pushStatementList): Likewise.
+	(IRState::popStatementList): Likewise.
+	(IRState::getLabelBlock): Likewise.
+	(IRState::getLoopForLabel): Likewise.
+	(IRState::beginFlow): Likewise.
+	(IRState::endFlow): Likewise.
+	(IRState::startScope): Likewise.
+	(IRState::pushLabel): Likewise.
+	(IRState::checkGoto): Likewise.
+	(IRState::checkPreviousGoto): Change from Array to Blocks type.
+	* d-lang.cc(global_declarations): Change from Array to vec<> type.
+	(d_add_global_declaration): Update for change to vec<> type.
+	(d_write_global_declarations): Likewise.
+	(d_keep_list): Make static to source file.
+	* d-objfile.cc(static_ctor_list): Change from Array to vec<> type.
+	(static_dtor_list): Likewise.
+	(Module::genobjfile): Update for change to vec<> type.
+	(d_finish_module): Likewise.
+	(d_finish_function): Likewise.
+	(deferred_thunks): Change from ArrayBase<> to vec<> type.
+	(write_deferred_thunks): Update for change to vec<> type.
+	(use_thunk): Likewise.
+	(build_simple_function): Make static to source file.
+	(build_call_function): Likewise.
+	(build_ctor_function): Likewise.
+	(build_dtor_function): Likewise.
+	(build_unittest_function): Likewise.
+
 2014-01-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(setup_symbol_storage): Use output_module_p on template

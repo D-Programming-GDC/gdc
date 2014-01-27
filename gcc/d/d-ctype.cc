@@ -251,7 +251,7 @@ TypeEnum::toCtype (void)
 	    {
 	      for (size_t i = 0; i < sym->members->dim; i++)
 		{
-		  EnumMember *member = (sym->members->tdata()[i])->isEnumMember();
+		  EnumMember *member = (*sym->members)[i]->isEnumMember();
 		  // Templated functions can seep through to the backend - just ignore for now.
 		  if (member == NULL)
 		    continue;
@@ -266,8 +266,6 @@ TypeEnum::toCtype (void)
 		  TREE_CONSTANT (decl) = 1;
 		  TREE_READONLY (decl) = 1;
 		  DECL_INITIAL (decl) = value;
-
-		  d_pushdecl (decl);
 
 		  // Add this enumeration constant to the list for this type.
 		  enum_values = chainon (enum_values, build_tree_list (ident, decl));
@@ -605,7 +603,6 @@ TypeClass::toCtype (void)
       else 
 	{
 	  tree rec_type;
-	  Array base_class_decls;
 	  bool inherited = sym->baseClass != 0;
 	  tree vfield;
 
@@ -625,12 +622,13 @@ TypeClass::toCtype (void)
 	  // Add the virtual table pointer
 	  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
 				  get_identifier ("__vptr"), d_vtbl_ptr_type_node);
-	  agg_layout.addField (decl, 0); // %% target stuff..
+	  agg_layout.addField (decl, 0);
 
 	  if (inherited)
 	    {
 	      vfield = copy_node (decl);
-	      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = 1;
+	      DECL_ARTIFICIAL (decl) = 1;
+	      DECL_IGNORED_P (decl) = 1;
 	    }
 	  else
 	    {
@@ -640,28 +638,33 @@ TypeClass::toCtype (void)
 	  TYPE_VFIELD (rec_type) = vfield;
 	  TREE_ADDRESSABLE (rec_type) = 1;
 
-	  if (!sym->isInterfaceDeclaration())
+	  if (sym->isInterfaceDeclaration())
 	    {
-	      tree obj_rec_type = TREE_TYPE (build_object_type()->toCtype());
-	      DECL_FCONTEXT (vfield) = obj_rec_type;
+	      ClassDeclaration *p = sym;
 
-	      // Add the monitor
-	      decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				 get_identifier ("__monitor"), ptr_type_node);
-	      DECL_FCONTEXT (decl) = obj_rec_type;
-	      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
-	      agg_layout.addField (decl, Target::ptrsize);
+	      while (p->baseclasses->dim)
+	        p = (*p->baseclasses)[0]->base;
 
-	      // Add the fields of each base class
-	      agg_layout.go();
+	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
 	    }
 	  else
 	    {
-	      ClassDeclaration *p = sym;
-	      while (p->baseclasses->dim)
-	        p = (p->baseclasses->tdata()[0])->base;
+	      tree obj_type = TREE_TYPE (build_object_type()->toCtype());
+	      DECL_FCONTEXT (vfield) = obj_type;
 
-	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
+	      if (!sym->cpp)
+		{
+		  // Add the monitor
+		  decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+				     get_identifier ("__monitor"), ptr_type_node);
+		  DECL_FCONTEXT (decl) = obj_type;
+		  DECL_ARTIFICIAL (decl) = inherited;
+		  DECL_IGNORED_P (decl) = inherited;
+		  agg_layout.addField (decl, Target::ptrsize);
+		}
+
+	      // Add the fields of each base class
+	      agg_layout.go();
 	    }
 
 	  agg_layout.finish (sym->userAttributes);

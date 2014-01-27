@@ -41,7 +41,7 @@ enum ModuleInfoFlags
 };
 
 struct FuncFrameInfo;
-typedef ArrayBase<struct Thunk> Thunks;
+struct Thunk;
 typedef tree_node dt_t;
 
 struct Symbol
@@ -68,7 +68,7 @@ struct Symbol
   tree SnamedResult;
 
   // For FuncDeclarations:
-  Thunks thunks;
+  auto_vec<Thunk *> thunks;
   FuncFrameInfo *frameInfo;
 };
 
@@ -93,16 +93,16 @@ extern void build_moduleinfo (Symbol *sym);
 
 struct ModuleInfo
 {
-  ClassDeclarations classes;
-  FuncDeclarations ctors;
-  FuncDeclarations dtors;
-  VarDeclarations ctorgates;
+  auto_vec<ClassDeclaration *> classes;
+  auto_vec<FuncDeclaration *> ctors;
+  auto_vec<FuncDeclaration *> dtors;
+  auto_vec<VarDeclaration *> ctorgates;
 
-  FuncDeclarations sharedctors;
-  FuncDeclarations shareddtors;
-  VarDeclarations sharedctorgates;
+  auto_vec<FuncDeclaration *> sharedctors;
+  auto_vec<FuncDeclaration *> shareddtors;
+  auto_vec<VarDeclaration *> sharedctorgates;
 
-  FuncDeclarations unitTests;
+  auto_vec<FuncDeclaration *> unitTests;
 };
 
 extern ModuleInfo *current_module_info;
@@ -139,12 +139,6 @@ extern bool output_module_p (Module *mod);
 extern void write_deferred_thunks (void);
 extern void use_thunk (tree thunk_decl, tree target_decl, int offset);
 extern void finish_thunk (tree thunk_decl, tree target_decl, int offset);
-
-extern FuncDeclaration *build_simple_function (const char *, tree, bool);
-extern FuncDeclaration *build_call_function (const char *, FuncDeclarations *, bool);
-extern Symbol *build_ctor_function (const char *, FuncDeclarations *, VarDeclarations *);
-extern Symbol *build_dtor_function (const char *, FuncDeclarations *);
-extern Symbol *build_unittest_function (const char *, FuncDeclarations *);
 
 #endif
 

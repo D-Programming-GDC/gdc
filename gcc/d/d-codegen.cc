@@ -1090,8 +1090,10 @@ tree
 build_class_binfo (tree super, ClassDeclaration *cd)
 {
   tree binfo = make_tree_binfo (1);
+  tree ctype = cd->type->toCtype();
+
   // Want RECORD_TYPE, not REFERENCE_TYPE
-  BINFO_TYPE (binfo) = TREE_TYPE (cd->type->toCtype());
+  BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = integer_zero_node;
 
@@ -1110,16 +1112,17 @@ tree
 build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
 {
   tree binfo = make_tree_binfo (cd->baseclasses->dim);
+  tree ctype = cd->type->toCtype();
 
   // Want RECORD_TYPE, not REFERENCE_TYPE
-  BINFO_TYPE (binfo) = TREE_TYPE (cd->type->toCtype());
+  BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = size_int (offset * Target::ptrsize);
   BINFO_VIRTUAL_P (binfo) = 1;
 
   for (size_t i = 0; i < cd->baseclasses->dim; i++, offset++)
     {
-      BaseClass *bc = cd->baseclasses->tdata()[i];
+      BaseClass *bc = (*cd->baseclasses)[i];
       BINFO_BASE_APPEND (binfo, build_interface_binfo (binfo, bc->base, offset));
     }
 
@@ -3612,35 +3615,34 @@ AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
     {
       // %% D anonymous unions just put the fields into the outer struct...
       // does this cause problems?
-      VarDeclaration *var_decl = (*fields)[i];
-      gcc_assert (var_decl && var_decl->isField());
+      VarDeclaration *var = (*fields)[i];
+      gcc_assert (var && var->isField());
 
-      tree ident = var_decl->ident ? get_identifier (var_decl->ident->string) : NULL_TREE;
-      tree field_decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
-				    declaration_type (var_decl));
-      set_decl_location (field_decl, var_decl);
-      var_decl->csym = new Symbol;
-      var_decl->csym->Stree = field_decl;
+      tree ident = var->ident ? get_identifier (var->ident->string) : NULL_TREE;
+      tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
+			      declaration_type (var));
+      set_decl_location (decl, var);
+      var->csym = new Symbol;
+      var->csym->Stree = decl;
 
-      DECL_CONTEXT (field_decl) = this->aggType_;
-      DECL_FCONTEXT (field_decl) = fcontext;
-      DECL_FIELD_OFFSET (field_decl) = size_int (var_decl->offset);
-      DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
+      DECL_CONTEXT (decl) = this->aggType_;
+      DECL_FCONTEXT (decl) = fcontext;
+      DECL_FIELD_OFFSET (decl) = size_int (var->offset);
+      DECL_FIELD_BIT_OFFSET (decl) = bitsize_zero_node;
 
-      DECL_ARTIFICIAL (field_decl) = DECL_IGNORED_P (field_decl) = inherited;
-      SET_DECL_OFFSET_ALIGN (field_decl, TYPE_ALIGN (TREE_TYPE (field_decl)));
+      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
+      SET_DECL_OFFSET_ALIGN (decl, TYPE_ALIGN (TREE_TYPE (decl)));
 
-      layout_decl (field_decl, 0);
+      TREE_THIS_VOLATILE (decl) = TYPE_VOLATILE (TREE_TYPE (decl));
+      layout_decl (decl, 0);
 
-      TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
-
-      if (var_decl->size (var_decl->loc))
+      if (var->size (var->loc))
 	{
-	  gcc_assert (DECL_MODE (field_decl) != VOIDmode);
-	  gcc_assert (DECL_SIZE (field_decl) != NULL_TREE);
+	  gcc_assert (DECL_MODE (decl) != VOIDmode);
+	  gcc_assert (DECL_SIZE (decl) != NULL_TREE);
 	}
 
-      TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), field_decl);
+      TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), decl);
     }
 }
 
@@ -3660,25 +3662,25 @@ AggLayout::doInterfaces (BaseClasses *bases)
     }
 }
 
-// Add single field FIELD_DECL at OFFSET into aggregate.
+// Add single field DECL at OFFSET into aggregate.
 
 void
-AggLayout::addField (tree field_decl, size_t offset)
+AggLayout::addField (tree decl, size_t offset)
 {
   Loc l (this->aggDecl_->getModule(), 1);
 
-  DECL_CONTEXT (field_decl) = this->aggType_;
-  SET_DECL_OFFSET_ALIGN (field_decl, TYPE_ALIGN (TREE_TYPE (field_decl)));
-  DECL_FIELD_OFFSET (field_decl) = size_int (offset);
-  DECL_FIELD_BIT_OFFSET (field_decl) = bitsize_zero_node;
+  DECL_CONTEXT (decl) = this->aggType_;
+  SET_DECL_OFFSET_ALIGN (decl, TYPE_ALIGN (TREE_TYPE (decl)));
+  DECL_FIELD_OFFSET (decl) = size_int (offset);
+  DECL_FIELD_BIT_OFFSET (decl) = bitsize_zero_node;
 
   // Must set this or we crash with DWARF debugging.
-  set_decl_location (field_decl, l);
+  set_decl_location (decl, l);
 
-  TREE_THIS_VOLATILE (field_decl) = TYPE_VOLATILE (TREE_TYPE (field_decl));
+  TREE_THIS_VOLATILE (decl) = TYPE_VOLATILE (TREE_TYPE (decl));
 
-  layout_decl (field_decl, 0);
-  TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), field_decl);
+  layout_decl (decl, 0);
+  TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), decl);
 }
 
 // Wrap-up and compute finalised aggregate type.  ATTRS are

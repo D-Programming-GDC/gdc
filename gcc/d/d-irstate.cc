@@ -26,7 +26,6 @@ IRState::IRState (void)
 {
   this->parent = NULL;
   this->func = NULL;
-  this->varsInScope = NULL;
   this->mod = NULL;
   this->sthis = NULL_TREE;
 }
@@ -51,25 +50,25 @@ IRState::startFunction (FuncDeclaration *decl)
   ModuleInfo *mi = current_module_info;
 
   if (decl->isSharedStaticCtorDeclaration())
-    mi->sharedctors.push (decl);
+    mi->sharedctors.safe_push (decl);
   else if (decl->isStaticCtorDeclaration())
-    mi->ctors.push (decl);
+    mi->ctors.safe_push (decl);
   else if (decl->isSharedStaticDtorDeclaration())
     {
       VarDeclaration *vgate;
       if ((vgate = decl->isSharedStaticDtorDeclaration()->vgate))
-	mi->sharedctorgates.push (vgate);
-      mi->shareddtors.push (decl);
+	mi->sharedctorgates.safe_push (vgate);
+      mi->shareddtors.safe_push (decl);
     }
   else if (decl->isStaticDtorDeclaration())
     {
       VarDeclaration *vgate;
       if ((vgate = decl->isStaticDtorDeclaration()->vgate))
-	mi->ctorgates.push (vgate);
-      mi->dtors.push (decl);
+	mi->ctorgates.safe_push (vgate);
+      mi->dtors.safe_push (decl);
     }
   else if (decl->isUnitTestDeclaration())
-    mi->unitTests.push (decl);
+    mi->unitTests.safe_push (decl);
 
   return new_irs;
 }
@@ -77,7 +76,7 @@ IRState::startFunction (FuncDeclaration *decl)
 void
 IRState::endFunction (void)
 {
-  gcc_assert (this->scopes_.dim == 0);
+  gcc_assert (this->scopes_.is_empty());
   current_irstate = (IRState *) this->parent;
 }
 
@@ -104,9 +103,9 @@ IRState::addExp (tree e)
   if (EXPR_P (e) && !EXPR_HAS_LOCATION (e))
     SET_EXPR_LOCATION (e, input_location);
 
-  tree stmt_list = (tree) this->statementList_.pop();
+  tree stmt_list = this->statementList_.pop();
   append_to_statement_list_force (e, &stmt_list);
-  this->statementList_.push (stmt_list);
+  this->statementList_.safe_push (stmt_list);
 }
 
 
@@ -114,14 +113,14 @@ void
 IRState::pushStatementList (void)
 {
   tree t = alloc_stmt_list();
-  this->statementList_.push (t);
+  this->statementList_.safe_push (t);
   d_keep (t);
 }
 
 tree
 IRState::popStatementList (void)
 {
-  tree t = (tree) this->statementList_.pop();
+  tree t = this->statementList_.pop();
 
   /* If the statement list is completely empty, just return it.  This is
      just as good small as build_empty_stmt, with the advantage that
@@ -166,7 +165,7 @@ IRState::getLabelBlock (LabelDsymbol *label, Statement *from)
 {
   Label *l = new Label();
 
-  for (int i = this->loops_.dim - 1; i >= 0; i--)
+  for (int i = this->loops_.length() - 1; i >= 0; i--)
     {
       Flow *flow = this->loops_[i];
 
@@ -198,7 +197,7 @@ IRState::getLoopForLabel (Identifier *ident, bool want_continue)
       // eg: on a try/finally wrapping a loop.
       Statement *stmt = lstmt->statement->getRelatedLabeled();
 
-      for (int i = this->loops_.dim - 1; i >= 0; i--)
+      for (int i = this->loops_.length() - 1; i >= 0; i--)
 	{
 	  Flow *flow = this->loops_[i];
 
@@ -212,7 +211,7 @@ IRState::getLoopForLabel (Identifier *ident, bool want_continue)
     }
   else
     {
-      for (int i = this->loops_.dim - 1; i >= 0; i--)
+      for (int i = this->loops_.length() - 1; i >= 0; i--)
 	{
 	  Flow *flow = this->loops_[i];
 
@@ -230,7 +229,7 @@ Flow *
 IRState::beginFlow (Statement *stmt)
 {
   Flow *flow = new Flow (stmt);
-  this->loops_.push (flow);
+  this->loops_.safe_push (flow);
   this->pushStatementList();
   return flow;
 }
@@ -238,9 +237,9 @@ IRState::beginFlow (Statement *stmt)
 void
 IRState::endFlow (void)
 {
-  gcc_assert (this->loops_.dim);
+  gcc_assert (!this->loops_.is_empty());
 
-  Flow *flow = (Flow *) this->loops_.pop();
+  Flow *flow = this->loops_.pop();
 
   if (flow->exitLabel)
     this->doLabel (flow->exitLabel);
@@ -264,7 +263,7 @@ IRState::startScope (void)
   unsigned *p_count = new unsigned;
   *p_count = 0;
 
-  this->scopes_.push (p_count);
+  this->scopes_.safe_push (p_count);
   this->startBindings();
 }
 
@@ -647,7 +646,7 @@ void
 IRState::pushLabel (LabelDsymbol *label)
 {
   Label *lblock = this->getLabelBlock (label);
-  this->labels_.push (lblock);
+  this->labels_.safe_push (lblock);
 }
 
 // Error if STMT is in it's own try statement separate from other
@@ -672,13 +671,13 @@ void
 IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
 {
   Statement *curBlock = NULL;
-  unsigned curLevel = this->loops_.dim;
+  unsigned curLevel = this->loops_.length();
   int found = 0;
 
   if (curLevel)
     curBlock = this->currentFlow()->statement;
 
-  for (size_t i = 0; i < this->labels_.dim; i++)
+  for (size_t i = 0; i < this->labels_.length(); i++)
     {
       Label *linfo = this->labels_[i];
       gcc_assert (linfo);
@@ -716,19 +715,19 @@ IRState::checkGoto (Statement *stmt, LabelDsymbol *label)
 // if goto is jumping into a try or catch block.
 
 void
-IRState::checkPreviousGoto (Array *refs)
+IRState::checkPreviousGoto (Blocks *refs)
 {
   Statement *stmt; // Our forward reference.
 
   for (size_t i = 0; i < refs->dim; i++)
     {
-      Label *ref = (Label *) refs->data[i];
+      Label *ref = (*refs)[i];
       int found = 0;
 
       gcc_assert (ref && ref->from);
       stmt = ref->from;
 
-      for (size_t i = 0; i < this->labels_.dim; i++)
+      for (size_t i = 0; i < this->labels_.length(); i++)
 	{
 	  Label *linfo = this->labels_[i];
 	  gcc_assert (linfo);
