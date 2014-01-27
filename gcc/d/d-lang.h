@@ -217,6 +217,12 @@ class Dsymbol;
 bool is_builtin_va_arg_p (Dsymbol *, bool);
 bool is_builtin_va_start_p (Dsymbol *);
 
+/* protect from garbage collection */
+extern GTY(()) tree d_keep_list;
+
+// Array of all global declarations to pass back to the middle-end.
+extern GTY(()) vec<tree, va_gc> *global_declarations;
+
 #include "d-dmd-gcc.h"
 
 #endif

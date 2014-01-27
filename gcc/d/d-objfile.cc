@@ -40,6 +40,30 @@ static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<Va
 static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
 static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
 
+ModuleInfo::ModuleInfo (void)
+{
+  this->classes = vNULL;
+  this->ctors = vNULL;
+  this->dtors = vNULL;
+  this->ctorgates = vNULL;
+  this->sharedctors = vNULL;
+  this->shareddtors = vNULL;
+  this->sharedctorgates = vNULL;
+  this->unitTests = vNULL;
+}
+
+ModuleInfo::~ModuleInfo (void)
+{
+  this->classes.release();
+  this->ctors.release();
+  this->dtors.release();
+  this->ctorgates.release();
+  this->sharedctors.release();
+  this->shareddtors.release();
+  this->sharedctorgates.release();
+  this->unitTests.release();
+}
+
 // Construct a new Symbol.
 
 Symbol::Symbol (void)
@@ -57,8 +81,13 @@ Symbol::Symbol (void)
   this->SnamedResult = NULL_TREE;
 
   this->frameInfo = NULL;
+  this->thunks = vNULL;
 }
 
+Symbol::~Symbol (void)
+{
+  this->thunks.release();
+}
 
 void
 Dsymbol::toObjFile (int)
