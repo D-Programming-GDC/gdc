@@ -552,24 +552,19 @@ CatExp::toElem (IRState *irs)
 
   // Flatten multiple concatenations
   unsigned n_operands = 2;
-  unsigned n_args;
-  tree *args;
-  Array elem_vars;
-  tree result;
+  {
+    Expression *e = e1;
+    while (e->op == TOKcat)
+      {
+	e = ((CatExp *) e)->e1;
+	n_operands += 1;
+      }
+  }
 
-    {
-      Expression *e = e1;
-      while (e->op == TOKcat)
-	{
-	  e = ((CatExp *) e)->e1;
-	  n_operands += 1;
-	}
-    }
+  unsigned n_args = (1 + (n_operands > 2 ? 1 : 0) +
+		     n_operands * (n_operands > 2 && flag_split_darrays ? 2 : 1));
 
-  n_args = (1 + (n_operands > 2 ? 1 : 0) +
-	    n_operands * (n_operands > 2 && flag_split_darrays ? 2 : 1));
-
-  args = new tree[n_args];
+  tree *args = new tree[n_args];
   args[0] = build_typeinfo (type);
 
   if (n_operands > 2)
@@ -577,6 +572,7 @@ CatExp::toElem (IRState *irs)
 
   unsigned ai = n_args - 1;
   CatExp *ce = this;
+  vec<tree, va_gc> *elem_vars = NULL;
 
   while (ce)
     {
@@ -592,7 +588,7 @@ CatExp::toElem (IRState *irs)
 					 size_int (1), build_address (expr));
 
 	      if (elem_var)
-		elem_vars.push (elem_var);
+		vec_safe_push (elem_vars, elem_var);
 	    }
 	  else
 	    array_exp = d_array_convert (oe);
@@ -628,14 +624,11 @@ CatExp::toElem (IRState *irs)
     }
  all_done:
 
-  result = build_libcall (n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
-			  n_args, args, type->toCtype());
+  tree result = build_libcall (n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
+			       n_args, args, type->toCtype());
 
-  for (size_t i = 0; i < elem_vars.dim; ++i)
-    {
-      tree elem_var = (tree) elem_vars.data[i];
-      result = bind_expr (elem_var, result);
-    }
+  for (size_t i = 0; i < vec_safe_length (elem_vars); ++i)
+    result = bind_expr ((*elem_vars)[i], result);
 
   return result;
 }
@@ -1698,9 +1691,9 @@ CallExp::toElem (IRState *irs)
 elem *
 Expression::toElemDtor (IRState *irs)
 {
-  size_t starti = irs->varsInScope ? irs->varsInScope->dim : 0;
+  size_t starti = irs->varsInScope.length();
   tree exp = toElem (irs);
-  size_t endi = irs->varsInScope ? irs->varsInScope->dim : 0;
+  size_t endi = irs->varsInScope.length();
 
   // Codegen can be improved by determining if no exceptions can be thrown
   // between the ctor and dtor, and eliminating the ctor and dtor.
@@ -1710,10 +1703,10 @@ Expression::toElemDtor (IRState *irs)
   tree tdtors = NULL_TREE;
   for (size_t i = starti; i != endi; ++i)
     {
-      VarDeclaration *vd = (*irs->varsInScope)[i];
+      VarDeclaration *vd = irs->varsInScope[i];
       if (vd)
 	{
-	  (*irs->varsInScope)[i] = NULL;
+	  irs->varsInScope[i] = NULL;
 	  tree td = vd->edtor->toElem (irs);
 	  // Execute in reverse order.
 	  tdtors = maybe_compound_expr (tdtors, td);
@@ -1960,11 +1953,7 @@ DeclarationExp::toElem (IRState *irs)
 	{
 	  // Put variable on list of things needing destruction
 	  if (vd->edtor && !vd->noscope)
-	    {
-	      if (!irs->varsInScope)
-		irs->varsInScope = new VarDeclarations();
-	      irs->varsInScope->push (vd);
-	    }
+	    irs->varsInScope.safe_push (vd);
 	}
     }
 

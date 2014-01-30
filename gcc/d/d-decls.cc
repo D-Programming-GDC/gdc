@@ -437,7 +437,7 @@ FuncDeclaration::toThunkSymbol (int offset)
      is a list of all thunks for a given function. */
   bool found = false;
 
-  for (size_t i = 0; i < csym->thunks.dim; i++)
+  for (size_t i = 0; i < csym->thunks.length(); i++)
     {
       thunk = csym->thunks[i];
       if (thunk->offset == offset)
@@ -451,7 +451,7 @@ FuncDeclaration::toThunkSymbol (int offset)
     {
       thunk = new Thunk();
       thunk->offset = offset;
-      csym->thunks.push (thunk);
+      csym->thunks.safe_push (thunk);
     }
 
   if (!thunk->symbol)
@@ -466,14 +466,14 @@ FuncDeclaration::toThunkSymbol (int offset)
       tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (target_func_decl),
 				    FUNCTION_DECL, NULL_TREE, TREE_TYPE (target_func_decl));
       DECL_LANG_SPECIFIC (thunk_decl) = DECL_LANG_SPECIFIC (target_func_decl);
-      DECL_CONTEXT (thunk_decl) = d_decl_context (this); // from c++...
       TREE_READONLY (thunk_decl) = TREE_READONLY (target_func_decl);
       TREE_THIS_VOLATILE (thunk_decl) = TREE_THIS_VOLATILE (target_func_decl);
       TREE_NOTHROW (thunk_decl) = TREE_NOTHROW (target_func_decl);
 
-      /* Thunks inherit the public/private access of the function they are targetting.  */
+      DECL_CONTEXT (thunk_decl) = d_decl_context (this);
+
+      /* Thunks inherit the public access of the function they are targetting.  */
       TREE_PUBLIC (thunk_decl) = TREE_PUBLIC (target_func_decl);
-      TREE_PRIVATE (thunk_decl) = TREE_PRIVATE (target_func_decl);
       DECL_EXTERNAL (thunk_decl) = 0;
 
       /* Thunks are always addressable.  */
@@ -589,10 +589,10 @@ StructLiteralExp::toSymbol (void)
       get_unique_name (decl, "*");
       set_decl_location (decl, loc);
 
+      TREE_PUBLIC (decl) = 0;
       TREE_STATIC (decl) = 1;
       TREE_READONLY (decl) = 1;
       TREE_USED (decl) = 1;
-      TREE_PRIVATE (decl) = 1;
       DECL_ARTIFICIAL (decl) = 1;
 
       sym->Stree = decl;
@@ -620,10 +620,10 @@ ClassReferenceExp::toSymbol (void)
       DECL_NAME (decl) = get_identifier (ident);
       set_decl_location (decl, loc);
 
+      TREE_PUBLIC (decl) = 0;
       TREE_STATIC (decl) = 1;
       TREE_READONLY (decl) = 1;
       TREE_USED (decl) = 1;
-      TREE_PRIVATE (decl) = 1;
       DECL_ARTIFICIAL (decl) = 1;
 
       value->sym->Stree = decl;
@@ -795,7 +795,9 @@ EnumDeclaration::toDebug (void)
     return;
 
   tree ctype = type->toCtype();
-  build_type_decl (ctype, this);
+
+  if (TREE_CODE (ctype) == ENUMERAL_TYPE)
+    build_type_decl (ctype, this);
 
   // The ctype is not necessarily enum, which doesn't sit well with
   // rest_of_type_compilation.  Can call this on structs though.
