@@ -25,16 +25,16 @@ import gcc.unwind.pe;
 
 extern (C):
 
-alias __builtin_machine_uint _Unwind_Word;
-alias __builtin_machine_int _Unwind_Sword;
-alias __builtin_pointer_uint _Unwind_Ptr;
-alias __builtin_pointer_uint _Unwind_Internal_Ptr;
-alias _Unwind_Word _uw;
-alias ulong _uw64;
-alias ushort _uw16;
-alias ubyte _uw8;
+alias _Unwind_Word = __builtin_machine_uint;
+alias _Unwind_Sword = __builtin_machine_int;
+alias _Unwind_Ptr = __builtin_pointer_uint;
+alias _Unwind_Internal_Ptr =__builtin_pointer_uint;
+alias _uw = _Unwind_Word;
+alias _uw64 = ulong;
+alias _uw16 = ushort;
+alias _uw8 = ubyte;
 
-alias uint _Unwind_Reason_Code;
+alias _Unwind_Reason_Code = uint;
 enum : _Unwind_Reason_Code
 {
   _URC_OK = 0,       /* operation completed successfully */
@@ -46,7 +46,7 @@ enum : _Unwind_Reason_Code
   _URC_FAILURE = 9   /* unspecified failure of some kind */
 }
 
-alias int _Unwind_State;
+alias _Unwind_State = int;
 enum : _Unwind_State
 {
   _US_VIRTUAL_UNWIND_FRAME = 0,
@@ -58,7 +58,7 @@ enum : _Unwind_State
 }
 
 /* Provided only for for compatibility with existing code.  */
-alias int _Unwind_Action;
+alias _Unwind_Action = int;
 enum : _Unwind_Action
 {
   _UA_SEARCH_PHASE =  1,
@@ -70,52 +70,54 @@ enum : _Unwind_Action
 }
 
 struct _Unwind_Context;
-alias _uw _Unwind_EHT_Header;
+alias _Unwind_EHT_Header = _uw;
 
+extern(C) alias _Unwind_Exception_Cleanup_Fn
+    = void function(_Unwind_Reason_Code, _Unwind_Exception *);
 
 /* UCB: */
 
 struct _Unwind_Control_Block
 {
-  char exception_class[8] = '\0';
-  extern(C) void function(_Unwind_Reason_Code, _Unwind_Control_Block *) exception_cleanup;
+  _Unwind_Exception_Class exception_class = '\0';
+  _Unwind_Exception_Cleanup_Fn exception_cleanup;
   /* Unwinder cache, private fields for the unwinder's use */
   struct _unwinder_cache
-    {
-      _uw reserved1;  /* Forced unwind stop fn, 0 if not forced */
-      _uw reserved2;  /* Personality routine address */
-      _uw reserved3;  /* Saved callsite address */
-      _uw reserved4;  /* Forced unwind stop arg */
-      _uw reserved5;
-    }
+  {
+    _uw reserved1;  /* Forced unwind stop fn, 0 if not forced */
+    _uw reserved2;  /* Personality routine address */
+    _uw reserved3;  /* Saved callsite address */
+    _uw reserved4;  /* Forced unwind stop arg */
+    _uw reserved5;
+  }
   _unwinder_cache unwinder_cache;
   /* Propagation barrier cache (valid after phase 1): */
   struct _barrier_cache
-    {
-      _uw sp;
-      _uw bitpattern[5];
-    }
+  {
+    _uw sp;
+    _uw[5] bitpattern;
+  }
   _barrier_cache barrier_cache;
   /* Cleanup cache (preserved over cleanup): */
   struct _cleanup_cache
-    {
-      _uw bitpattern[4];
-    }
+  {
+    _uw[4] bitpattern;
+  }
   _cleanup_cache cleanup_cache;
   /* Pr cache (for pr's benefit): */
   struct _pr_cache
-    {
-      _uw fnstart;			/* function start address */
-      _Unwind_EHT_Header *ehtp;		/* pointer to EHT entry header word */
-      _uw additional;			/* additional data */
-      _uw reserved1;
-    }
+  {
+    _uw fnstart;			/* function start address */
+    _Unwind_EHT_Header *ehtp;		/* pointer to EHT entry header word */
+    _uw additional;			/* additional data */
+    _uw reserved1;
+  }
   _pr_cache pr_cache;
   long[0] _force_alignment;     /* Force alignment to 8-byte boundary */
 }
 
 /* Virtual Register Set*/
-alias int _Unwind_VRS_RegClass;
+alias _Unwind_VRS_RegClass = int;
 enum : _Unwind_VRS_RegClass
 {
   _UVRSC_CORE = 0,      /* integer register */
@@ -125,7 +127,7 @@ enum : _Unwind_VRS_RegClass
   _UVRSC_WMMXC = 4      /* Intel WMMX control register */
 }
 
-alias int _Unwind_VRS_DataRepresentation;
+alias _Unwind_VRS_DataRepresentation = int;
 enum : _Unwind_VRS_DataRepresentation
 {
   _UVRSD_UINT32 = 0,
@@ -136,7 +138,7 @@ enum : _Unwind_VRS_DataRepresentation
   _UVRSD_DOUBLE = 5
 }
 
-alias int _Unwind_VRS_Result;
+alias _Unwind_VRS_Result = int;
 enum : _Unwind_VRS_Result
 {
   _UVRSR_OK = 0,
@@ -157,8 +159,10 @@ struct __gnu_unwind_state
   _uw8 words_left;
 }
 
-alias extern(C) _Unwind_Reason_Code function(_Unwind_State,
-					     _Unwind_Control_Block *, _Unwind_Context *) personality_routine;
+extern(C) alias personality_routine
+    = _Unwind_Reason_Code function(_Unwind_State,
+				   _Unwind_Control_Block *,
+				   _Unwind_Context *);
 
 _Unwind_VRS_Result _Unwind_VRS_Set(_Unwind_Context *, _Unwind_VRS_RegClass,
 				   _uw, _Unwind_VRS_DataRepresentation,
@@ -173,8 +177,8 @@ _Unwind_VRS_Result _Unwind_VRS_Pop(_Unwind_Context *, _Unwind_VRS_RegClass,
 
 
 /* Support functions for the PR.  */
-alias _Unwind_Control_Block _Unwind_Exception ;
-alias char[8] _Unwind_Exception_Class; // = '\0'
+alias _Unwind_Exception = _Unwind_Control_Block;
+alias _Unwind_Exception_Class = char[8];
 
 void * _Unwind_GetLanguageSpecificData (_Unwind_Context *);
 _Unwind_Ptr _Unwind_GetRegionStart (_Unwind_Context *);
@@ -188,15 +192,21 @@ _Unwind_Reason_Code _Unwind_RaiseException(_Unwind_Control_Block *ucbp);
 /*pragma (noreturn)*/ void _Unwind_Resume(_Unwind_Control_Block *ucbp);
 _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (_Unwind_Control_Block *ucbp);
 
-alias extern(C) _Unwind_Reason_Code function(int, _Unwind_Action, _Unwind_Exception_Class,
-					     _Unwind_Control_Block *, _Unwind_Context *, void *) _Unwind_Stop_Fn;
+extern(C) alias _Unwind_Stop_Fn
+    =_Unwind_Reason_Code function(int, _Unwind_Action,
+				  _Unwind_Exception_Class,
+				  _Unwind_Control_Block *,
+				  _Unwind_Context *, void *);
 
 _Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Control_Block *,
 					  _Unwind_Stop_Fn, void *);
+
 /* @@@ Use unwind data to perform a stack backtrace.  The trace callback
    is called for every stack frame in the call chain, but no cleanup
    actions are performed.  */
-alias extern(C) _Unwind_Reason_Code function(_Unwind_Context *, void *) _Unwind_Trace_Fn;
+extern(C) alias _Unwind_Trace_Fn
+    = _Unwind_Reason_Code function(_Unwind_Context *, void *);
+
 _Unwind_Reason_Code _Unwind_Backtrace(_Unwind_Trace_Fn, void *);
 
 _Unwind_Word _Unwind_GetCFA (_Unwind_Context *);
@@ -208,20 +218,23 @@ _Unwind_Reason_Code __gnu_unwind_frame (_Unwind_Control_Block *,
 _Unwind_Reason_Code __gnu_unwind_execute (_Unwind_Context *,
 					  __gnu_unwind_state *);
 
-_Unwind_Word _Unwind_GetIPInfo (_Unwind_Context *context, int *ip_before_insn)
+_Unwind_Word
+_Unwind_GetIPInfo (_Unwind_Context *context, int *ip_before_insn)
 {
   *ip_before_insn = 0;
   return _Unwind_GetIP (context);
 }
 
-_Unwind_Word _Unwind_GetGR (_Unwind_Context *context, int regno)
+_Unwind_Word
+_Unwind_GetGR (_Unwind_Context *context, int regno)
 {
   _uw val;
   _Unwind_VRS_Get (context, _UVRSC_CORE, regno, _UVRSD_UINT32, &val);
   return val;
 }
 
-void _Unwind_SetGR (_Unwind_Context *context, int regno, _Unwind_Word val)
+void
+_Unwind_SetGR (_Unwind_Context *context, int regno, _Unwind_Word val)
 {
   _Unwind_VRS_Set (context, _UVRSC_CORE, regno, _UVRSD_UINT32, &val);
 }
@@ -230,8 +243,8 @@ void _Unwind_SetGR (_Unwind_Context *context, int regno, _Unwind_Word val)
    The target of the following definitions of _sleb128_t and _uleb128_t
    is to have efficient data types large enough to hold the leb128 type
    numbers used in the unwind code.  */
-alias __builtin_clong _sleb128_t;
-alias __builtin_culong _uleb128_t;
+alias _sleb128_t = __builtin_clong;
+alias _uleb128_t = __builtin_culong;
 
 enum int UNWIND_STACK_REG = 13;
 /* Use IP as a scratch register within the personality routine.  */
@@ -249,7 +262,8 @@ else
   const ubyte _TTYPE_ENCODING = (DW_EH_PE_pcrel);
 
 /* Decode an R_ARM_TARGET2 relocation.  */
-_Unwind_Word _Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
+_Unwind_Word
+_Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
 {
   _Unwind_Word tmp;
   tmp = *cast(_Unwind_Word *) ptr;
@@ -275,20 +289,23 @@ _Unwind_Word _Unwind_decode_typeinfo_ptr (_Unwind_Word base, _Unwind_Word ptr)
   return tmp;
 }
 
-_Unwind_Reason_Code __gnu_unwind_24bit (_Unwind_Context * context, _uw data, int compact)
+_Unwind_Reason_Code
+__gnu_unwind_24bit (_Unwind_Context * context, _uw data, int compact)
 {
   return _URC_FAILURE;
 }
 
 /* Return the address of the instruction, not the actual IP value.  */
-_Unwind_Word _Unwind_GetIP(_Unwind_Context *context)
+_Unwind_Word
+_Unwind_GetIP(_Unwind_Context *context)
 {
   return _Unwind_GetGR (context, 15) & ~ cast(_Unwind_Word) 1;
 }
 
 /* The dwarf unwinder doesn't understand arm/thumb state.  We assume the
    landing pad uses the same instruction set as the call site.  */
-void _Unwind_SetIP(_Unwind_Context *context, _Unwind_Word val)
+void
+_Unwind_SetIP(_Unwind_Context *context, _Unwind_Word val)
 {
   return _Unwind_SetGR (context, 15, val | (_Unwind_GetGR (context, 15) & 1));
 }
