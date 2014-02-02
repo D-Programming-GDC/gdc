@@ -1,3 +1,8 @@
+2014-02-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(ClassDeclaration::toVtblSymbol): Don't mark __vtbl
+	symbols as virtual.  They are global static symbols.
+
 2014-01-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(EnumDeclaration::toDebug): Build TYPE_DECL only for

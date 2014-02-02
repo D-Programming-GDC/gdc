@@ -663,10 +663,9 @@ ClassDeclaration::toVtblSymbol (void)
       TREE_READONLY (decl) = 1;
       TREE_CONSTANT (decl) = 1;
       TREE_ADDRESSABLE (decl) = 1;
-      // from cp/class.c
+
       DECL_CONTEXT (decl) = d_decl_context (this);
       DECL_ARTIFICIAL (decl) = 1;
-      DECL_VIRTUAL_P (decl) = 1;
       DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;
     }
   return vtblsym;
