@@ -59,7 +59,7 @@ public:
     Expression *constraint;
 
     // Hash table to look up TemplateInstance's of this TemplateDeclaration
-    ArrayBase<TemplateInstances> buckets;
+    Array<TemplateInstances> buckets;
     size_t numinstances;                // number of instances in the hash table
 
     TemplateDeclaration *overnext;      // next overloaded TemplateDeclaration

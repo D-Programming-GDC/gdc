@@ -27,7 +27,7 @@
 
 #include "dfrontend/target.h"
 
-typedef ArrayBase<dt_t> Dts;
+typedef Array<dt_t> Dts;
 
 extern FuncDeclaration *search_toHash(StructDeclaration *sd);
 extern FuncDeclaration *search_toString(StructDeclaration *sd);

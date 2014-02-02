@@ -145,8 +145,8 @@ add_import_path (Strings *paths)
 
       for (size_t i = 0; i < paths->dim; i++)
 	{
-	  String p = (*paths)[i];
-	  char *target_dir = make_absolute (p.toChars());
+	  char *path = (*paths)[i];
+	  char *target_dir = make_absolute (path);
 
 	  if (!FileName::exists (target_dir))
 	    {
@@ -171,8 +171,8 @@ add_fileimp_path (Strings *paths)
 
       for (size_t i = 0; i < paths->dim; i++)
 	{
-	  String p = (*paths)[i];
-	  char *target_dir = make_absolute (p.toChars());
+	  char *path = (*paths)[i];
+	  char *target_dir = make_absolute (path);
 
 	  if (!FileName::exists (target_dir))
 	    {
