@@ -1,3 +1,4 @@
+// PERMUTE_ARGS:
 // EXTRA_CPP_SOURCES: extra-files/cppb.cpp
 
 import std.c.stdio;
