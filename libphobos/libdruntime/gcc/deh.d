@@ -58,6 +58,23 @@ else
 
 struct d_exception_header
 {
+  // The object being thrown.  Like GCJ, the compiled code expects this to 
+  // be immediately before the generic exception header.
+  // (See build_exception_object)
+  enum UNWIND_PAD = (Object.alignof < _Unwind_Exception.alignof)
+    ? _Unwind_Exception.alignof - Object.alignof : 0;
+
+  // Because of a lack of __aligned__ style attribute, our object
+  // and the unwind object are the first two fields.
+  ubyte[UNWIND_PAD] pad;
+
+  Object object;
+
+  // The generic exception header.
+  _Unwind_Exception unwindHeader;
+
+  static assert(unwindHeader.offsetof - object.offsetof == object.sizeof);
+
   version (GNU_ARM_EABI_Unwinder)
   {
     // Nothing here yet.
@@ -70,28 +87,13 @@ struct d_exception_header
     ubyte *languageSpecificData;
     _Unwind_Ptr catchTemp;
   }
-
-  // The object being thrown.  Like GCJ, the compiled code expects this to 
-  // be immediately before the generic exception header.
-  // (See build_exception_object)
-  enum UNWIND_PAD = (Object.alignof < _Unwind_Exception.alignof)
-    ? _Unwind_Exception.alignof - Object.alignof : 0;
-
-  // FIXME: padding should be aligned max for target.
-  ubyte[UNWIND_PAD] pad;
-
-  Object object;
-
-  // The generic exception header.
-  _Unwind_Exception unwindHeader;
-
-  static assert(unwindHeader.offsetof - object.offsetof == object.sizeof);
 }
 
 private d_exception_header *
 get_exception_header_from_ue(_Unwind_Exception *exc)
 {
-  return cast(d_exception_header *)(exc + 1) - 1;
+  return cast(d_exception_header *)
+    (cast(void *) exc - d_exception_header.unwindHeader.offsetof);
 }
 
 // D doesn't define these, so they are private for now.
