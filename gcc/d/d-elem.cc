@@ -561,8 +561,7 @@ CatExp::toElem (IRState *irs)
       }
   }
 
-  unsigned n_args = (1 + (n_operands > 2 ? 1 : 0) +
-		     n_operands * (n_operands > 2 && flag_split_darrays ? 2 : 1));
+  unsigned n_args = (1 + (n_operands > 2 ? 1 : 0) + n_operands);
 
   tree *args = new tree[n_args];
   args[0] = build_typeinfo (type);
@@ -593,17 +592,9 @@ CatExp::toElem (IRState *irs)
 	  else
 	    array_exp = d_array_convert (oe);
 
-	  if (n_operands > 2 && flag_split_darrays)
-	    {
-	      // Filling array backwards, so ptr is first.
-	      array_exp = maybe_make_temp (array_exp);
-	      args[ai--] = d_array_ptr (array_exp);
-	      args[ai--] = d_array_length (array_exp);
-	    }
-	  else
-	    args[ai--] = array_exp;
+	  args[ai--] = array_exp;
 
-	  if (ce)
+	  if (ce != NULL)
 	    {
 	      if (ce->e1->op != TOKcat)
 		{
