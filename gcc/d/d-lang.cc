@@ -747,7 +747,7 @@ deps_write (Module *m)
 
   // Write out object name.
   fn = m->objfile->name;
-  size = fn->len();
+  size = strlen (fn->str);
   ob->writestring (fn->str);
   column = size;
 
@@ -756,7 +756,7 @@ deps_write (Module *m)
 
   // First dependency is source file for module.
   fn = m->srcfile->name;
-  size = fn->len();
+  size = strlen (fn->str);
   ob->writestring (fn->str);
   column += size;
 
@@ -794,7 +794,7 @@ deps_write (Module *m)
 
       // All checks done, write out file path/name.
       fn = mi->srcfile->name;
-      size = fn->len();
+      size = strlen (fn->str);
       column += size;
       if (column > colmax)
 	{
@@ -1037,7 +1037,7 @@ d_parse_file (void)
 	{
 	  File deps (global.params.moduleDepsFile);
 	  deps.setbuffer ((void *) ob->data, ob->offset);
-	  deps.writev();
+	  writeFile(Loc(), &deps);
 	}
       else
 	fprintf (global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
@@ -1056,7 +1056,7 @@ d_parse_file (void)
 	{
 	  File deps (global.params.makeDepsFile);
 	  deps.setbuffer ((void *) ob->data, ob->offset);
-	  deps.writev();
+	  writeFile(Loc(), &deps);
 	}
       else
 	fprintf (global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
@@ -1088,6 +1088,7 @@ d_parse_file (void)
       else
 	{
 	  const char *jsonfilename;
+	  File *jsonfile;
 
 	  if (name && *name)
 	    jsonfilename = FileName::defaultExt(name, global.json_ext);
@@ -1099,12 +1100,11 @@ d_parse_file (void)
 	      jsonfilename = FileName::forceExt(n, global.json_ext);
 	    }
 
-	  FileName::ensurePathToNameExists(jsonfilename);
-	  File *jsonfile = new File(jsonfilename);
-
+	  ensurePathToNameExists(Loc(), jsonfilename);
+	  jsonfile = new File(jsonfilename);
 	  jsonfile->setbuffer(buf.data, buf.offset);
 	  jsonfile->ref = 1;
-	  jsonfile->writev();
+	  writeFile(Loc(), jsonfile);
 	}
     }
 

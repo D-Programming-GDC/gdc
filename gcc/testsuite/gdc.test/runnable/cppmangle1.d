@@ -1,3 +1,4 @@
+// PERMUTE_ARGS:
 // EXTRA_CPP_SOURCES: extra-files/cppmangle1.cpp
 
 extern(C++):

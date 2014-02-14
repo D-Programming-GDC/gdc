@@ -846,7 +846,7 @@ void Module::gensymfile()
     symfile->setbuffer(buf.data, buf.offset);
     buf.data = NULL;
 
-    symfile->writev();
+    writeFile(loc, symfile);
 }
 
 /**********************************

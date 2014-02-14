@@ -22,6 +22,23 @@ void Mem::init()
 {
 }
 
+#ifdef IN_GCC
+void *mem_malloc(size_t size)
+{
+    return mem.malloc(size);
+}
+
+void *mem_realloc(void *p, size_t size)
+{
+    return mem.realloc(p, size);
+}
+
+void mem_free(void *p)
+{
+    mem.free(p);
+}
+#endif
+
 char *Mem::strdup(const char *s)
 {
     char *p;

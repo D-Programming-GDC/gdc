@@ -297,43 +297,77 @@ fatal (void)
 void
 escapePath (OutBuffer *buf, const char *fname)
 {
-    while (1)
-      {
-	switch (*fname)
-	  {
-	  case 0:
-	    return;
+  while (1)
+    {
+      switch (*fname)
+	{
+	case 0:
+	  return;
 
-	  case '(':
-	  case ')':
-	  case '\\':
-	    buf->writebyte('\\');
+	case '(':
+	case ')':
+	case '\\':
+	  buf->writebyte('\\');
 
-	  default:
-	    buf->writebyte(*fname);
-	    break;
-	  }
-	fname++;
-      }
+	default:
+	  buf->writebyte(*fname);
+	  break;
+	}
+      fname++;
+    }
+}
+
+void
+readFile (Loc loc, File *f)
+{
+  if (f->read())
+    {
+      error (loc, "Error reading file '%s'", f->name->toChars());
+      fatal();
+    }
+}
+
+void
+writeFile (Loc loc, File *f)
+{
+  if (f->write())
+    {
+      error (loc, "Error writing file '%s'", f->name->toChars());
+      fatal();
+    }
+}
+
+void
+ensurePathToNameExists (Loc loc, const char *name)
+{
+  const char *pt = FileName::path (name);
+  if (*pt)
+    {
+      if (FileName::ensurePathExists(pt))
+ 	{
+ 	  error (loc, "cannot create directory %s", pt);
+ 	  fatal();
+ 	}
+    }
 }
 
 // Binary search for P in TAB between the range 0 to HIGH.
 
 int binary(const char *p , const char **tab, int high)
 {
-    int low = 0;
-    do
+  int low = 0;
+  do
     {
-        int pos = (low + high) / 2;
-        int cmp = strcmp(p, tab[pos]);
-        if (! cmp)
-            return pos;
-        else if (cmp < 0)
-            high = pos;
-        else
-            low = pos + 1;
+      int pos = (low + high) / 2;
+      int cmp = strcmp(p, tab[pos]);
+      if (! cmp)
+	return pos;
+      else if (cmp < 0)
+	high = pos;
+      else
+	low = pos + 1;
     } while (low != high);
 
-    return -1;
+  return -1;
 }
 

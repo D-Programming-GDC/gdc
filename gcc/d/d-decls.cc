@@ -215,6 +215,7 @@ TypeInfoDeclaration::toSymbol (void)
       // given TypeInfo.  It is the actual data, not a reference
       gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
+      relayout_decl (csym->Stree);
       TREE_USED (csym->Stree) = 1;
 
       // Built-in typeinfo will be referenced as one-only.
@@ -387,9 +388,6 @@ FuncDeclaration::toSymbol (void)
 	      if (isPure() == PUREstrong && vthis == NULL
 		  && ftype->isnothrow && ftype->retStyle() == RETstack)
 		DECL_PURE_P (fndecl) = 1;
-
-	      if (ftype->isnothrow)
-		TREE_NOTHROW (fndecl) = 1;
 	    }
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
@@ -663,10 +661,9 @@ ClassDeclaration::toVtblSymbol (void)
       TREE_READONLY (decl) = 1;
       TREE_CONSTANT (decl) = 1;
       TREE_ADDRESSABLE (decl) = 1;
-      // from cp/class.c
+
       DECL_CONTEXT (decl) = d_decl_context (this);
       DECL_ARTIFICIAL (decl) = 1;
-      DECL_VIRTUAL_P (decl) = 1;
       DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;
     }
   return vtblsym;

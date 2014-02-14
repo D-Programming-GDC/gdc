@@ -722,8 +722,8 @@ void test49()
 {
     version(GNU)
     {
-        assert((25.5).stringof ~ (3.01).stringof == "2.55e+13.01e+0");
-        assert(25.5.stringof ~ 3.01.stringof == "2.55e+13.01e+0");
+        assert((25.5).stringof ~ (3.0625).stringof == "2.55e+13.0625e+0");
+        assert(25.5.stringof ~ 3.0625.stringof == "2.55e+13.0625e+0");
     }
     else
     {
@@ -1660,6 +1660,7 @@ void test100()
     printf("d = %llx, ulong.max = %llx\n", d, ulong.max);
     assert(d == ulong.max);
   }
+  static if(real.mant_dig == 64)
   {
     real r = ulong.max - 1;
     printf("r = %Lg, ulong.max = %llu\n", r, ulong.max);
@@ -1667,6 +1668,11 @@ void test100()
     printf("d = %llx, ulong.max = %llx\n", d, ulong.max);
     assert(d == ulong.max - 1);
   }
+  else static if(real.mant_dig == 53)
+  { //can't store ulong.max-1 in double
+  }
+  else
+     static assert(false, "Test not implemented for this platform");
 }
 
 /***************************************************/
@@ -1716,6 +1722,46 @@ else version(X86_64)
 {
     pragma(msg, "Not ported to x86-64 compatible varargs, yet.");
     void test103() {}
+}
+else version(GNU)
+{
+int x103;
+
+void external(int a, ...)
+{
+    va_list ap;
+    va_start(ap, a);
+    auto ext = va_arg!int(ap);
+    printf("external: %d\n", ext);
+    x103 = ext;
+    va_end(ap);
+}
+
+class C103
+{
+    void method ()
+    {
+	void internal (int a, ...)
+	{
+	    va_list ap;
+	    va_start(ap, a);
+        auto internal = va_arg!int(ap);
+	    printf("internal: %d\n", internal);
+	    x103 = internal;
+	    va_end(ap);
+	}
+
+	internal (0, 43);
+	assert(x103 == 43);
+    }
+}
+
+void test103()
+{
+    external(0, 42);
+    assert(x103 == 42);
+    (new C103).method ();
+}
 }
 else
     static assert(false, "Unknown platform");
@@ -5464,7 +5510,12 @@ void testdbl_to_ulong()
     real adjust = 1.0L/real.epsilon;
     u = d2ulong(adjust);
     //writefln("%s %s", adjust, u);
-    assert(u == 9223372036854775808UL);
+    static if(real.mant_dig == 64)
+        assert(u == 9223372036854775808UL);
+    else static if(real.mant_dig == 53)
+        assert(u == 4503599627370496UL);
+    else
+        static assert(false, "Test not implemented for this architecture");
 
     auto v = d2ulong(adjust * 1.1);
     //writefln("%s %s %s", adjust, v, u + u/10);
@@ -5506,7 +5557,12 @@ void testreal_to_ulong()
     real adjust = 1.0L/real.epsilon;
     u = r2ulong(adjust);
     //writefln("%s %s", adjust, u);
-    assert(u == 9223372036854775808UL);
+    static if(real.mant_dig == 64)
+        assert(u == 9223372036854775808UL);
+    else static if(real.mant_dig == 53)
+        assert(u == 4503599627370496UL);
+    else
+        static assert(false, "Test not implemented for this architecture");
 
     auto v = r2ulong(adjust * 1.1);
     writefln("%s %s %s", adjust, v, u + u/10);

@@ -82,7 +82,8 @@ else
      read_encoded_value_with_base for use when the _Unwind_Context is
      not available.  */
 
-  _Unwind_Ptr base_of_encoded_value (ubyte encoding, _Unwind_Context *context)
+  _Unwind_Ptr
+  base_of_encoded_value (ubyte encoding, _Unwind_Context *context)
   {
     if (encoding == DW_EH_PE_omit)
       return cast(_Unwind_Ptr) 0;
@@ -166,7 +167,7 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
 {
   union unaligned
     {
-      align(1):
+    align(1):
       void *ptr;
       ushort u2;
       uint u4;
@@ -260,12 +261,13 @@ else
   /* Like read_encoded_value_with_base, but get the base from the context
      rather than providing it directly.  */
 
-  ubyte *read_encoded_value (_Unwind_Context *context, ubyte encoding,
-			     ubyte *p, _Unwind_Ptr *val)
+  ubyte *
+  read_encoded_value (_Unwind_Context *context, ubyte encoding,
+		      ubyte *p, _Unwind_Ptr *val)
   {
     return read_encoded_value_with_base (encoding,
-					 base_of_encoded_value (encoding, context),
-					 p, val);
+		  base_of_encoded_value (encoding, context),
+		  p, val);
   }
 }
 

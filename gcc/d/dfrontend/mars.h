@@ -119,9 +119,9 @@ void unittests();
 struct OutBuffer;
 
 // Can't include arraytypes.h here, need to declare these directly.
-template <typename TYPE> struct ArrayBase;
-typedef ArrayBase<class Identifier> Identifiers;
-typedef ArrayBase<char> Strings;
+template <typename TYPE> struct Array;
+typedef Array<class Identifier> Identifiers;
+typedef Array<char> Strings;
 
 // Put command line switches in here
 struct Param
@@ -446,6 +446,10 @@ void obj_start(char *srcfile);
 void obj_end(Library *library, File *objfile);
 void obj_append(Dsymbol *s);
 void obj_write_deferred(Library *library);
+
+void readFile(Loc loc, File *f);
+void writeFile(Loc loc, File *f);
+void ensurePathToNameExists(Loc loc, const char *name);
 
 const char *importHint(const char *s);
 /// Little helper function for writting out deps.

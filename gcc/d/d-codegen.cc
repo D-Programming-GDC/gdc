@@ -1941,7 +1941,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 {
   IRState *irs = current_irstate;
   tree ctype = TREE_TYPE (callable);
-  tree actual_callee = callable;
+  tree callee = callable;
   tree saved_args = NULL_TREE;
 
   tree arg_list = NULL_TREE;
@@ -1949,20 +1949,18 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
   if (POINTER_TYPE_P (ctype))
     ctype = TREE_TYPE (ctype);
   else
-    actual_callee = build_address (callable);
+    callee = build_address (callable);
 
   gcc_assert (function_type_p (ctype));
   gcc_assert (tf != NULL);
   gcc_assert (tf->ty == Tfunction);
 
   // Evaluate the callee before calling it.
-  if (TREE_SIDE_EFFECTS (actual_callee))
+  if (TREE_SIDE_EFFECTS (callee))
     {
-      actual_callee = maybe_make_temp (actual_callee);
-      saved_args = actual_callee;
+      callee = maybe_make_temp (callee);
+      saved_args = callee;
     }
-
-  bool is_d_vararg = tf->varargs == 1 && tf->linkage == LINKd;
 
   if (TREE_CODE (ctype) == FUNCTION_TYPE)
     {
@@ -1981,67 +1979,75 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       // Probably an internal error
       gcc_unreachable();
     }
+
   /* If this is a delegate call or a nested function being called as
      a delegate, the object should not be NULL. */
   if (object != NULL_TREE)
     arg_list = build_tree_list (NULL_TREE, object);
 
-  // tf->parameters can be NULL for genCfunc decls
-  Parameters *formal_args = tf->parameters;
-  size_t n_formal_args = formal_args ? (int) Parameter::dim (formal_args) : 0;
-  size_t n_actual_args = arguments ? arguments->dim : 0;
-  size_t fi = 0;
-
-  // assumes arguments->dim <= formal_args->dim if (!this->varargs)
-  for (size_t ai = 0; ai < n_actual_args; ++ai)
+  if (arguments)
     {
-      tree arg_tree;
-      Expression *arg_exp = (*arguments)[ai];
+      // First pass, evaluated expanded tuples in function arguments.
+      for (size_t i = 0; i < arguments->dim; ++i)
+	{
+	Lagain:
+	  Expression *arg = (*arguments)[i];
+	  gcc_assert (arg->op != TOKtuple);
 
-      if (ai == 0 && is_d_vararg)
-	{
-	  // The hidden _arguments parameter
-	  arg_tree = arg_exp->toElem (irs);
-	}
-      else if (fi < n_formal_args)
-	{
-	  // Actual arguments for declared formal arguments
-	  Parameter *formal_arg = Parameter::getNth (formal_args, fi);
-	  arg_tree = convert_for_argument (arg_exp->toElem (irs),
-					   arg_exp, formal_arg);
-	  ++fi;
-	}
-      else
-	{
-	  if (flag_split_darrays && arg_exp->type->toBasetype()->ty == Tarray)
+	  if (arg->op == TOKcomma)
 	    {
-	      tree da_exp = maybe_make_temp (arg_exp->toElem (irs));
-	      arg_list = chainon (arg_list, build_tree_list (0, d_array_length (da_exp)));
-	      arg_list = chainon (arg_list, build_tree_list (0, d_array_ptr (da_exp)));
-	      continue;
+	      CommaExp *ce = (CommaExp *) arg;
+	      tree tce = ce->e1->toElem (irs);
+	      saved_args = maybe_vcompound_expr (saved_args, tce);
+	      (*arguments)[i] = ce->e2;
+	      goto Lagain;
+	    }
+	}
+
+      // if _arguments[] is the first argument.
+      size_t dvarargs = (tf->linkage == LINKd && tf->varargs == 1);
+      size_t nparams = Parameter::dim (tf->parameters);
+
+      // Assumes arguments->dim <= formal_args->dim if (!this->varargs)
+      for (size_t i = 0; i < arguments->dim; ++i)
+	{
+	  Expression *arg = (*arguments)[i];
+	  tree targ;
+
+	  if (i < dvarargs)
+	    {
+	      // The hidden _arguments parameter
+	      targ = arg->toElem (irs);
+	    }
+	  else if (i - dvarargs < nparams && i >= dvarargs)
+	    {
+	      // Actual arguments for declared formal arguments
+	      Parameter *parg = Parameter::getNth (tf->parameters, i - dvarargs);
+	      targ = convert_for_argument (arg->toElem (irs), arg, parg);
 	    }
 	  else
 	    {
-	      arg_tree = arg_exp->toElem (irs);
-	      /* Not all targets support passing unpromoted types, so
-		 promote anyway. */
-	      tree prom_type = lang_hooks.types.type_promotes_to (TREE_TYPE (arg_tree));
-	      if (prom_type != TREE_TYPE (arg_tree))
-		arg_tree = convert (prom_type, arg_tree);
-	    }
-	}
-      /* Evaluate the argument before passing to the function.
-	 Needed for left to right evaluation.  */
-      if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (arg_tree))
-	{
-	  arg_tree = maybe_make_temp (arg_tree);
-	  saved_args = maybe_vcompound_expr (saved_args, arg_tree);
-	}
+	      // Not all targets support passing unpromoted types, so
+	      // promote anyway.
+	      targ = arg->toElem (irs);
+	      tree ptype = lang_hooks.types.type_promotes_to (TREE_TYPE (targ));
 
-      arg_list = chainon (arg_list, build_tree_list (0, arg_tree));
+	      if (ptype != TREE_TYPE (targ))
+		targ = convert (ptype, targ);
+	    }
+
+	  // Evaluate the argument before passing to the function.
+	  // Needed for left to right evaluation.
+	  if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (targ))
+	    {
+	      targ = maybe_make_temp (targ);
+	      saved_args = maybe_vcompound_expr (saved_args, targ);
+	    }
+	  arg_list = chainon (arg_list, build_tree_list (0, targ));
+	}
     }
 
-  tree result = d_build_call_list (TREE_TYPE (ctype), actual_callee, arg_list);
+  tree result = d_build_call_list (TREE_TYPE (ctype), callee, arg_list);
   result = maybe_expand_builtin (result);
 
   return maybe_compound_expr (saved_args, result);
@@ -2495,7 +2501,8 @@ maybe_expand_builtin (tree call_exp)
     {
       Intrinsic intrinsic = (Intrinsic) DECL_FUNCTION_CODE (callee);
       tree type;
-      Type *d_type;
+      tree ptype;
+
       switch (intrinsic)
 	{
 	case INTRINSIC_BSF:
@@ -2633,34 +2640,12 @@ maybe_expand_builtin (tree call_exp)
 	      type = TREE_TYPE (op2);
 	    }
 
-	  d_type = build_dtype (type);
-	  if (flag_split_darrays
-	      && (d_type && d_type->toBasetype()->ty == Tarray))
-	    {
-	      /* should create a temp var of type TYPE and move the binding
-		 to outside this expression.  */
-	      tree ltype = TREE_TYPE (TYPE_FIELDS (type));
-	      tree ptype = TREE_TYPE (TREE_CHAIN (TYPE_FIELDS (type)));
-	      tree lvar = create_temporary_var (ltype);
-	      tree pvar = create_temporary_var (ptype);
+	  // Silently convert promoted types.
+	  ptype = lang_hooks.types.type_promotes_to (type);
+	  exp = build1 (VA_ARG_EXPR, ptype, op1);
 
-	      op1 = stabilize_reference (op1);
-
-	      tree e1 = vmodify_expr (lvar, build1 (VA_ARG_EXPR, ltype, op1));
-	      tree e2 = vmodify_expr (pvar, build1 (VA_ARG_EXPR, ptype, op1));
-	      tree val = d_array_value (type, lvar, pvar);
-
-	      exp = compound_expr (compound_expr (e1, e2), val);
-	      exp = bind_expr (lvar, bind_expr (pvar, exp));
-	    }
-	  else
-	    {
-	      tree type2 = lang_hooks.types.type_promotes_to (type);
-	      exp = build1 (VA_ARG_EXPR, type2, op1);
-	      // silently convert promoted type...
-	      if (type != type2)
-		exp = convert (type, exp);
-	    }
+	  if (type != ptype)
+	    exp = convert (type, exp);
 
 	  if (intrinsic == INTRINSIC_VA_ARG)
 	    exp = vmodify_expr (op2, exp);
@@ -2675,7 +2660,7 @@ maybe_expand_builtin (tree call_exp)
 	  op2 = ce.nextArg();
 	  type = TREE_TYPE (op1);
 
-	  // could be casting... so need to check type too?
+	  // Could be casting... so need to check type too?
 	  STRIP_NOPS (op1);
 	  STRIP_NOPS (op2);
 	  gcc_assert (TREE_CODE (op1) == ADDR_EXPR

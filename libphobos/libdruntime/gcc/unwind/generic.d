@@ -33,30 +33,30 @@ extern (C):
 
 /* @@@ The IA-64 ABI uses uint64 throughout.  Most places this is
    inefficient for 32-bit and smaller machines.  */
-alias __builtin_unwind_uint _Unwind_Word;
-alias __builtin_unwind_int  _Unwind_Sword;
+alias _Unwind_Word = __builtin_unwind_uint;
+alias _Unwind_Sword = __builtin_unwind_int;
 version (IA64)
 {
   version (HPUX)
-    alias __builtin_machine_uint _Unwind_Ptr;
+    alias _Unwind_Ptr = __builtin_machine_uint;
   else
-    alias __builtin_pointer_uint _Unwind_Ptr;
+    alias _Unwind_Ptr = __builtin_pointer_uint;
 }
 else
 {
-  alias __builtin_pointer_uint _Unwind_Ptr;
+  alias _Unwind_Ptr = __builtin_pointer_uint;
 }
-alias __builtin_pointer_uint _Unwind_Internal_Ptr;
+alias _Unwind_Internal_Ptr = __builtin_pointer_uint;
 
 /* @@@ The IA-64 ABI uses a 64-bit word to identify the producer and
    consumer of an exception.  We'll go along with this for now even on
    32-bit machines.  We'll need to provide some other option for
    16-bit machines and for machines with > 8 bits per byte.  */
-alias ulong _Unwind_Exception_Class;
+alias _Unwind_Exception_Class = ulong;
 
 /* The unwind interface uses reason codes in several contexts to
    identify the reasons for failures or other actions.  */
-alias uint _Unwind_Reason_Code;
+alias _Unwind_Reason_Code = uint;
 enum : _Unwind_Reason_Code
 {
   _URC_NO_REASON = 0,
@@ -70,19 +70,19 @@ enum : _Unwind_Reason_Code
   _URC_CONTINUE_UNWIND = 8
 }
 
-
 /* The unwind interface uses a pointer to an exception header object
    as its representation of an exception being thrown. In general, the
    full representation of an exception object is language- and
    implementation-specific, but it will be prefixed by a header
    understood by the unwind interface.  */
 
-alias extern(C) void function(_Unwind_Reason_Code, _Unwind_Exception *) _Unwind_Exception_Cleanup_Fn;
+extern(C) alias _Unwind_Exception_Cleanup_Fn
+    = void function(_Unwind_Reason_Code, _Unwind_Exception *);
 
 /* @@@ The IA-64 ABI says that this structure must be double-word aligned.
    Taking that literally does not make much sense generically.  Instead we
    provide the maximum alignment required by any type for the machine.  */
-align struct _Unwind_Exception
+struct _Unwind_Exception
 {
   _Unwind_Exception_Class exception_class;
   _Unwind_Exception_Cleanup_Fn exception_cleanup;
@@ -90,10 +90,9 @@ align struct _Unwind_Exception
   _Unwind_Word private_2;
 }
 
-
 /* The ACTIONS argument to the personality routine is a bitwise OR of one
    or more of the following constants.  */
-alias int _Unwind_Action;
+alias _Unwind_Action = int;
 
 enum
 {
@@ -115,8 +114,11 @@ _Unwind_Reason_Code _Unwind_RaiseException (_Unwind_Exception *);
 
 /* Raise an exception for forced unwinding.  */
 
-alias extern(C) _Unwind_Reason_Code function (int, _Unwind_Action, _Unwind_Exception_Class,
-					      _Unwind_Exception *, _Unwind_Context *, void *) _Unwind_Stop_Fn;
+extern(C) alias _Unwind_Stop_Fn
+    = _Unwind_Reason_Code function (int, _Unwind_Action,
+				    _Unwind_Exception_Class,
+				    _Unwind_Exception *,
+				    _Unwind_Context *, void *);
 
 _Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Exception *, _Unwind_Stop_Fn, void *);
 
@@ -134,7 +136,8 @@ _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (_Unwind_Exception *);
 /* @@@ Use unwind data to perform a stack backtrace.  The trace callback
    is called for every stack frame in the call chain, but no cleanup
    actions are performed.  */
-alias extern(C) _Unwind_Reason_Code function (_Unwind_Context *, void *) _Unwind_Trace_Fn;
+extern(C) alias _Unwind_Trace_Fn
+    = _Unwind_Reason_Code function (_Unwind_Context *, void *);
 
 _Unwind_Reason_Code _Unwind_Backtrace (_Unwind_Trace_Fn, void *);
 
@@ -172,8 +175,11 @@ _Unwind_Ptr _Unwind_GetRegionStart (_Unwind_Context *);
    provides more effective versioning by detecting at link time the
    lack of code to handle the different data format.  */
 
-alias extern(C) _Unwind_Reason_Code function (int, _Unwind_Action, _Unwind_Exception_Class,
-					      _Unwind_Exception *, _Unwind_Context *) _Unwind_Personality_Fn;
+extern(C) alias _Unwind_Personality_Fn
+    = _Unwind_Reason_Code function (int, _Unwind_Action,
+				    _Unwind_Exception_Class,
+				    _Unwind_Exception *,
+				    _Unwind_Context *);
 
 /* @@@ The following alternate entry points are for setjmp/longjmp
    based unwinding.  */
@@ -193,13 +199,15 @@ _Unwind_Reason_Code _Unwind_SjLj_Resume_or_Rethrow (_Unwind_Exception *);
 
 version (IA64)
 {
-  _Unwind_Ptr _Unwind_GetDataRelBase (_Unwind_Context *_C)
+  _Unwind_Ptr
+  _Unwind_GetDataRelBase (_Unwind_Context *_C)
   {
     /* The GP is stored in R1.  */
     return _Unwind_GetGR (_C, 1);
   }
 
-  _Unwind_Ptr _Unwind_GetTextRelBase (_Unwind_Context *)
+  _Unwind_Ptr
+  _Unwind_GetTextRelBase (_Unwind_Context *)
   {
     abort ();
     return 0;
@@ -229,13 +237,13 @@ extern void * _Unwind_FindEnclosingFunction (void *pc);
 
 static if (__builtin_clong.sizeof >= (void*).sizeof)
 {
-  alias __builtin_clong _sleb128_t;
-  alias __builtin_culong _uleb128_t;
+  alias _sleb128_t = __builtin_clong;
+  alias _uleb128_t = __builtin_culong;
 }
 else static if (long.sizeof >= (void*).sizeof)
 {
-  alias long _sleb128_t;
-  alias ulong _uleb128_t;
+  alias _sleb128_t = long;
+  alias _uleb128_t = ulong;
 }
 else
 {
