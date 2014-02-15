@@ -2448,7 +2448,11 @@ void crash(int x)
         {
             "int $3;" : : :;
         }
-        else static assert(false, "ASM code not implemented for this architecture");
+        else
+        {
+            import gcc.builtins;
+            __builtin_trap();
+        }
     }
     else
     {
@@ -4210,6 +4214,10 @@ int bug3809()
             "nop;" : :  :;
         }
         else version(X86_64) asm
+        {
+            "nop;" : : :;
+        }
+        else version(ARM) asm
         {
             "nop;" : : :;
         }
