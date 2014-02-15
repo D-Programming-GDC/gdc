@@ -119,67 +119,67 @@ VarDeclaration::toSymbol (void)
       else
 	csym->Sident = ident->string;
 
-      tree var_decl;
+      tree decl;
       tree id = get_identifier (csym->Sident);
 
       if (isParameter())
 	{
-	  var_decl = build_decl (UNKNOWN_LOCATION, PARM_DECL, id, declaration_type (this));
-	  DECL_ARG_TYPE (var_decl) = TREE_TYPE (var_decl);
-	  DECL_CONTEXT (var_decl) = d_decl_context (this);
-	  gcc_assert (TREE_CODE (DECL_CONTEXT (var_decl)) == FUNCTION_DECL);
+	  decl = build_decl (UNKNOWN_LOCATION, PARM_DECL, id, declaration_type (this));
+	  DECL_ARG_TYPE (decl) = TREE_TYPE (decl);
+	  DECL_CONTEXT (decl) = d_decl_context (this);
+	  gcc_assert (TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL);
 	}
       else
 	{
 	  gcc_assert (canTakeAddressOf() != false);
-	  var_decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, id, declaration_type (this));
-	  setup_symbol_storage (this, var_decl, false);
+	  decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, id, declaration_type (this));
 	}
 
-      csym->Stree = var_decl;
+      csym->Stree = decl;
 
       if (isDataseg())
 	{
 	  tree id = get_identifier (csym->Sident);
 
 	  if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
-	    id = targetm.mangle_decl_assembler_name (var_decl, id);
+	    id = targetm.mangle_decl_assembler_name (decl, id);
 
-	  SET_DECL_ASSEMBLER_NAME (var_decl, id);
+	  SET_DECL_ASSEMBLER_NAME (decl, id);
+	  setup_symbol_storage (this, decl, false);
 	}
 
-      DECL_LANG_SPECIFIC (var_decl) = build_d_decl_lang_specific (this);
-      d_keep (var_decl);
-      set_decl_location (var_decl, this);
+      DECL_LANG_SPECIFIC (decl) = build_d_decl_lang_specific (this);
+      d_keep (decl);
+      set_decl_location (decl, this);
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a variable in an imported module.
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
 	  && !decl_reference_p (this))
 	{
-	  if (!TREE_STATIC (var_decl))
-	    TREE_READONLY (var_decl) = 1;
+	  if (!TREE_STATIC (decl))
+	    TREE_READONLY (decl) = 1;
 	  else
 	    csym->Sreadonly = true;
 
 	  // Const doesn't seem to matter for aggregates, so prevent problems.
 	  if (isConst() && isDataseg())
-	    TREE_CONSTANT (var_decl) = 1;
+	    TREE_CONSTANT (decl) = 1;
 	}
 
       // Propagate volatile.
-      if (TYPE_VOLATILE (TREE_TYPE (var_decl)))
-	TREE_THIS_VOLATILE (var_decl) = 1;
+      if (TYPE_VOLATILE (TREE_TYPE (decl)))
+	TREE_THIS_VOLATILE (decl) = 1;
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
       if (isImportedSymbol())
 	{
-	  insert_decl_attributes (var_decl, "dllimport");
-	  DECL_DLLIMPORT_P (var_decl) = 1;
+	  insert_decl_attributes (decl, "dllimport");
+	  DECL_DLLIMPORT_P (decl) = 1;
 	}
       else if (isExport())
-	insert_decl_attributes (var_decl, "dllexport");
+	insert_decl_attributes (decl, "dllexport");
 #endif
 
       if (global.params.vtls && isDataseg() && isThreadlocal())

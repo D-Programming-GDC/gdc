@@ -1,3 +1,8 @@
+2014-02-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(VarDeclaration::toSymbol): Don't call
+	setup_symbol_storage until after SET_DECL_ASSEMBLER_NAME has been set.
+
 2014-02-12  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Do not set TREE_NOTHROW on
