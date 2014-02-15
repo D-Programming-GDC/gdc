@@ -3,6 +3,13 @@
 	* d-decls.cc(VarDeclaration::toSymbol): Don't call
 	setup_symbol_storage until after SET_DECL_ASSEMBLER_NAME has been set.
 
+	* d-decls.cc(VarDeclaration::toSymbol): Give prettyIdent precedence
+	for the DECL_NAME over the simple identifier.
+	(FuncDeclaration::toSymbol): Likewise.
+	* d-objfile.cc(d_finish_symbol): Remove setting DECL_NAME as
+	prettyIdent, this has already been done in Declaration::toSymbol.
+	(d_finish_function): Likewise.
+
 2014-02-12  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Do not set TREE_NOTHROW on

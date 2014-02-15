@@ -1846,14 +1846,6 @@ d_finish_symbol (Symbol *sym)
     }
 #endif
 
-  // Our mangled symbol.
-  if (!DECL_ASSEMBLER_NAME_SET_P (decl) && sym->Sident)
-    SET_DECL_ASSEMBLER_NAME (decl, get_identifier (sym->Sident));
-
-  // DECL_NAME for debugging.
-  if (sym->prettyIdent)
-    DECL_NAME (decl) = get_identifier (sym->prettyIdent);
-
   // User declared alignment.
   if (sym->Salignment > 0)
     {
@@ -1881,9 +1873,6 @@ d_finish_function (FuncDeclaration *fd)
   tree decl = s->Stree;
 
   gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
-
-  if (s->prettyIdent)
-    DECL_NAME (decl) = get_identifier (s->prettyIdent);
 
   if (DECL_SAVED_TREE (decl) != NULL_TREE)
     {

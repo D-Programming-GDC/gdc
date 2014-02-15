@@ -120,7 +120,12 @@ VarDeclaration::toSymbol (void)
 	csym->Sident = ident->string;
 
       tree decl;
-      tree id = get_identifier (csym->Sident);
+      tree id;
+
+      if (csym->prettyIdent)
+	id = get_identifier (csym->prettyIdent);
+      else
+	id = get_identifier (csym->Sident);
 
       if (isParameter())
 	{
@@ -139,12 +144,12 @@ VarDeclaration::toSymbol (void)
 
       if (isDataseg())
 	{
-	  tree id = get_identifier (csym->Sident);
+	  tree mangle = get_identifier (csym->Sident);
 
 	  if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
-	    id = targetm.mangle_decl_assembler_name (decl, id);
+	    mangle = targetm.mangle_decl_assembler_name (decl, mangle);
 
-	  SET_DECL_ASSEMBLER_NAME (decl, id);
+	  SET_DECL_ASSEMBLER_NAME (decl, mangle);
 	  setup_symbol_storage (this, decl, false);
 	}
 
@@ -256,17 +261,20 @@ FuncDeclaration::toSymbol (void)
 
       if (!isym)
 	{
-	  tree id;
 	  TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
-	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
-				    NULL_TREE, NULL_TREE);
 	  tree fntype = NULL_TREE;
 	  tree vindex = NULL_TREE;
 
-	  csym->Stree = fndecl;
+	  tree fndecl;
+	  tree id;
 
 	  if (ident)
-	    id = get_identifier (ident->string);
+	    {
+	      // Save mangle/debug names for making thunks.
+	      csym->Sident = mangleExact();
+	      csym->prettyIdent = toPrettyChars();
+	      id = get_identifier (csym->prettyIdent);
+	    }
 	  else
 	    {
 	      static unsigned unamed_seq = 0;
@@ -274,8 +282,11 @@ FuncDeclaration::toSymbol (void)
 	      snprintf (buf, sizeof(buf), "___unamed_%u", ++unamed_seq);
 	      id = get_identifier (buf);
 	    }
-	  DECL_NAME (fndecl) = id;
+
+	  fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, id, NULL_TREE);
 	  DECL_CONTEXT (fndecl) = d_decl_context (this);
+
+	  csym->Stree = fndecl;
 
 	  if (needs_static_chain (this))
 	    {
@@ -329,12 +340,9 @@ FuncDeclaration::toSymbol (void)
 
 	  if (ident)
 	    {
-	      // Save mangle/debug names for making thunks.
-	      csym->Sident = mangleExact();
-	      csym->prettyIdent = toPrettyChars();
-	      id = get_identifier (csym->Sident);
-	      id = targetm.mangle_decl_assembler_name (fndecl, id);
-	      SET_DECL_ASSEMBLER_NAME (fndecl, id);
+	      tree mangle = get_identifier (csym->Sident);
+	      mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
+	      SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
 	    }
 
 	  if (vindex)
@@ -402,6 +410,7 @@ FuncDeclaration::toSymbol (void)
 #endif
 	  set_decl_location (fndecl, this);
 	  setup_symbol_storage (this, fndecl, false);
+
 	  if (!ident)
 	    TREE_PUBLIC (fndecl) = 0;
 
