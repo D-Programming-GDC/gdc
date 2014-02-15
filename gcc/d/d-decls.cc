@@ -144,12 +144,18 @@ VarDeclaration::toSymbol (void)
 
       if (isDataseg())
 	{
-	  tree mangle = get_identifier (csym->Sident);
+	  if (this->mangleOverride)
+	    set_user_assembler_name (decl, this->mangleOverride);
+	  else
+	    {
+	      tree mangle = get_identifier (csym->Sident);
 
-	  if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
-	    mangle = targetm.mangle_decl_assembler_name (decl, mangle);
+	      if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
+		mangle = targetm.mangle_decl_assembler_name (decl, mangle);
 
-	  SET_DECL_ASSEMBLER_NAME (decl, mangle);
+	      SET_DECL_ASSEMBLER_NAME (decl, mangle);
+	    }
+
 	  setup_symbol_storage (this, decl, false);
 	}
 
@@ -340,9 +346,14 @@ FuncDeclaration::toSymbol (void)
 
 	  if (ident)
 	    {
-	      tree mangle = get_identifier (csym->Sident);
-	      mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
-	      SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
+	      if (this->mangleOverride)
+		set_user_assembler_name (fndecl, this->mangleOverride);
+	      else
+		{
+		  tree mangle = get_identifier (csym->Sident);
+		  mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
+		  SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
+		}
 	    }
 
 	  if (vindex)

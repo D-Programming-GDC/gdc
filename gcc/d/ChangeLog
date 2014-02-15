@@ -10,6 +10,10 @@
 	prettyIdent, this has already been done in Declaration::toSymbol.
 	(d_finish_function): Likewise.
 
+	* d-decls.cc(VarDeclaration::toSymbol): Call set_user_assembler_name
+	if pragma(mangle) was seen.
+	(FuncDeclaration::toSymbol): Likewise.
+
 2014-02-12  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-decls.cc(FuncDeclaration::toSymbol): Do not set TREE_NOTHROW on
