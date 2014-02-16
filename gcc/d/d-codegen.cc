@@ -34,32 +34,43 @@ IRState *current_irstate;
 tree
 d_decl_context (Dsymbol *dsym)
 {
-  Dsymbol *orig_sym = dsym;
+  Dsymbol *parent = dsym;
   AggregateDeclaration *ad;
 
-  while ((dsym = dsym->toParent2()))
+  while ((parent = parent->toParent2()))
     {
-      if (dsym->isFuncDeclaration())
+      if (parent->isFuncDeclaration())
 	{
-	  // dwarf2out chokes without this check... (output_pubnames)
-	  FuncDeclaration *f = orig_sym->isFuncDeclaration();
-	  if (f && !needs_static_chain (f))
+	  FuncDeclaration *fd = dsym->isFuncDeclaration();
+	  if (fd && !needs_static_chain (fd))
 	    return NULL_TREE;
 
-	  return dsym->toSymbol()->Stree;
+	  return parent->toSymbol()->Stree;
 	}
-      else if ((ad = dsym->isAggregateDeclaration()))
+      else if ((ad = parent->isAggregateDeclaration()))
 	{
 	  tree context = ad->type->toCtype();
 	  if (ad->isClassDeclaration())
 	    {
-	      // RECORD_TYPE instead of REFERENCE_TYPE
+	      // Want the underlying RECORD_TYPE.
 	      context = TREE_TYPE (context);
 	    }
 	  return context;
 	}
-      else if (dsym->isModule())
-	return dsym->toSymbol()->ScontextDecl;
+      else if (parent->isModule())
+	{
+	  // We've reached the top-level module namespace.
+	  // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing
+	  // module, but only for extern(D) symbols that aren't D main.
+	  Declaration *decl = dsym->isDeclaration();
+	  FuncDeclaration *fd = dsym->isFuncDeclaration();
+	  if (decl != NULL)
+	    {
+	      if (decl->linkage != LINKd || fd->isMain())
+		return NULL_TREE;
+	    }
+	  return parent->toSymbol()->ScontextDecl;
+	}
     }
 
   return NULL_TREE;

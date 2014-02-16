@@ -569,7 +569,7 @@ InterfaceDeclaration::toSymbol (void)
   return csym;
 }
 
-// Create the "ModuleInfo" symbol for given module.
+// Create the "ModuleInfo" symbol and namespace for given module.
 
 Symbol *
 Module::toSymbol (void)
@@ -589,6 +589,15 @@ Module::toSymbol (void)
       // Not readonly, moduleinit depends on this.
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
+
+      // Build the module namespace, any enclosing members will have
+      // this set as their DECL_CONTEXT, see d_decl_context.
+      const char *name = this->toPrettyChars();
+      tree mod = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
+			     get_identifier (name), void_type_node);
+      set_decl_location (mod, this);
+      csym->ScontextDecl = mod;
+      d_keep (mod);
     }
 
   return csym;

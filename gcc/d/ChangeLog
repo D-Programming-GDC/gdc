@@ -1,3 +1,11 @@
+2014-02-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(Module::toSymbol): Build a NAMESPACE_DECL to populate the
+	DECL_CONTEXT of toplevel functions.
+	* d-codegen.cc(d_decl_context): Return the enclosing module
+	NAMESPACE_DECL as the decl context only when the symbol is extern(D)
+	and not D main.
+
 2014-02-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(VarDeclaration::toSymbol): Don't call
