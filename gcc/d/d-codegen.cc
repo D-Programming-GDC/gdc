@@ -2512,19 +2512,163 @@ d_build_call_nary (tree callee, int n_args, ...)
   return d_build_call_list (TREE_TYPE (fntype), build_address (callee), nreverse (arg_list));
 }
 
-// If CALL_EXP is a BUILT_IN_FRONTEND, expand and return inlined
+// Call an fold the intrinsic call CALLEE with the argument ARG
+// with the built-in function CODE passed.
+
+static tree
+expand_intrinsic_op (built_in_function code, tree callee, tree arg)
+{
+  tree exp = d_build_call_nary (builtin_decl_explicit (code), 1, arg);
+  return fold_convert (TREE_TYPE (callee), fold (exp));
+}
+
+// Like expand_intrinsic_op, but takes two arguments.
+
+static tree
+expand_intrinsic_op2 (built_in_function code, tree callee, tree arg1, tree arg2)
+{
+  tree exp = d_build_call_nary (builtin_decl_explicit (code), 2, arg1, arg2);
+  return fold_convert (TREE_TYPE (callee), fold (exp));
+}
+
+// Expand a front-end instrinsic call to bsr whose arguments are ARG.
+// The original call expression is held in CALLEE.
+
+static tree
+expand_intrinsic_bsr (tree callee, tree arg)
+{
+  // Intrinsic bsr gets turned into (size - 1) - count_leading_zeros(arg).
+  // %% TODO: The return value is supposed to be undefined if arg is zero.
+  tree type = TREE_TYPE (arg);
+  tree tsize = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)) - 1, type);
+  tree exp = expand_intrinsic_op (BUILT_IN_CLZL, callee, arg);
+
+  // Handle int -> long conversions.
+  if (TREE_TYPE (exp) != type)
+    exp = fold_convert (type, exp);
+
+  exp = fold_build2 (MINUS_EXPR, type, tsize, exp);
+  return fold_convert (TREE_TYPE (callee), exp);
+}
+
+// Expand the front-end built-in function INTRINSIC, which is either a
+// call to bt, btc, btr, or bts.  These intrinsics take two arguments,
+// ARG1 and ARG2, and the original call expression is held in CALLEE.
+
+static tree
+expand_intrinsic_bt (Intrinsic intrinsic, tree callee, tree arg1, tree arg2)
+{
+  tree type = TREE_TYPE (TREE_TYPE (arg1));
+  tree exp = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)), type);
+  tree_code code;
+  tree tval;
+
+  // arg1[arg2 / exp]
+  arg1 = build_array_index (arg1, fold_build2 (TRUNC_DIV_EXPR, type, arg2, exp));
+  arg1 = indirect_ref (type, arg1);
+
+  // mask = 1 << (arg2 % exp);
+  arg2 = fold_build2 (TRUNC_MOD_EXPR, type, arg2, exp);
+  arg2 = fold_build2 (LSHIFT_EXPR, type, size_one_node, arg2);
+
+  // cond = arg1[arg2 / size] & mask;
+  exp = fold_build2 (BIT_AND_EXPR, type, arg1, arg2);
+
+  // cond ? -1 : 0;
+  exp = fold_build3 (COND_EXPR, TREE_TYPE (callee), d_truthvalue_conversion (exp),
+                    integer_minus_one_node, integer_zero_node);
+
+  // Update the bit as needed.
+  code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
+    (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
+    (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
+  gcc_assert (code != ERROR_MARK);
+
+  // arg1[arg2 / size] op= mask
+  if (intrinsic == INTRINSIC_BTR)
+    arg2 = fold_build1 (BIT_NOT_EXPR, TREE_TYPE (arg2), arg2);
+
+  tval = build_local_temp (TREE_TYPE (callee));
+  exp = vmodify_expr (tval, exp);
+  arg1 = vmodify_expr (arg1, fold_build2 (code, TREE_TYPE (arg1), arg1, arg2));
+
+  return compound_expr (exp, compound_expr (arg1, tval));
+}
+
+// Expand a front-end built-in call to va_arg, whose arguments are
+// ARG1 and optionally ARG2.
+// The original call expression is held in CALLEE.
+
+// The cases handled here are:
+//	va_arg!T(ap);
+//	=>	return (T) VA_ARG_EXP<ap>
+//
+//	va_arg!T(ap, T arg);
+//	=>	return arg = (T) VA_ARG_EXP<ap>;
+
+static tree
+expand_intrinsic_vaarg (tree callee, tree arg1, tree arg2)
+{
+  tree type;
+
+  STRIP_NOPS (arg1);
+
+  if (TREE_CODE (arg1) == ADDR_EXPR)
+    arg1 = TREE_OPERAND (arg1, 0);
+
+  if (arg2 == NULL_TREE)
+    type = TREE_TYPE (callee);
+  else
+    {
+      STRIP_NOPS (arg2);
+      gcc_assert (TREE_CODE (arg2) == ADDR_EXPR);
+      arg2 = TREE_OPERAND (arg2, 0);
+      type = TREE_TYPE (arg2);
+    }
+
+  // Silently convert promoted types.
+  tree ptype = lang_hooks.types.type_promotes_to (type);
+  tree exp = build1 (VA_ARG_EXPR, ptype, arg1);
+
+  if (type != ptype)
+    exp = fold_convert (type, exp);
+
+  if (arg2 != NULL_TREE)
+    exp = vmodify_expr (arg2, exp);
+
+  return exp;
+}
+
+// Expand a front-end built-in call to va_start, whose arguments are
+// ARG1 and ARG2.  The original call expression is held in CALLEE.
+
+static tree
+expand_intrinsic_vastart (tree callee, tree arg1, tree arg2)
+{
+  // The va_list argument should already have its address taken.
+  // The second argument, however, is inout and that needs to be
+  // fixed to prevent a warning.
+
+  // Could be casting... so need to check type too?
+  STRIP_NOPS (arg1);
+  STRIP_NOPS (arg2);
+  gcc_assert (TREE_CODE (arg1) == ADDR_EXPR && TREE_CODE (arg2) == ADDR_EXPR);
+
+  arg2 = TREE_OPERAND (arg2, 0);
+  // Assuming nobody tries to change the return type.
+  return expand_intrinsic_op2 (BUILT_IN_VA_START, callee, arg1, arg2);
+}
+
+// If CALLEXP is a BUILT_IN_FRONTEND, expand and return inlined
 // compiler generated instructions. Most map onto GCC builtins,
 // others require a little extra work around them.
 
 tree
-maybe_expand_builtin (tree call_exp)
+maybe_expand_builtin (tree callexp)
 {
   // More code duplication from C
-  CallExpr ce (call_exp);
+  CallExpr ce (callexp);
   tree callee = ce.callee();
-  tree op1 = NULL_TREE, op2 = NULL_TREE;
-  tree exp = NULL_TREE, val;
-  tree_code code;
 
   if (POINTER_TYPE_P (TREE_TYPE (callee)))
     callee = TREE_OPERAND (callee, 0);
@@ -2533,182 +2677,100 @@ maybe_expand_builtin (tree call_exp)
       && DECL_BUILT_IN_CLASS (callee) == BUILT_IN_FRONTEND)
     {
       Intrinsic intrinsic = (Intrinsic) DECL_FUNCTION_CODE (callee);
+      tree op1, op2;
       tree type;
-      tree ptype;
 
       switch (intrinsic)
 	{
 	case INTRINSIC_BSF:
-	  /* builtin count_trailing_zeros matches behaviour of bsf.
-	     %% TODO: The return value is supposed to be undefined if op1 is zero. */
+	  // builtin count_trailing_zeros matches behaviour of bsf.
+	  // %% TODO: The return value is supposed to be undefined if op1 is zero.
 	  op1 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_CTZL), 1, op1);
+	  return expand_intrinsic_op (BUILT_IN_CTZL, callexp, op1);
 
 	case INTRINSIC_BSR:
-	  /* bsr becomes 31-(clz), but parameter passed to bsf may not be a 32bit type!!
-	     %% TODO: The return value is supposed to be undefined if op1 is zero. */
 	  op1 = ce.nextArg();
-	  type = TREE_TYPE (op1);
-
-	  op2 = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)) - 1, type);
-	  exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_CLZL), 1, op1);
-
-	  // Handle int -> long conversions.
-	  if (TREE_TYPE (exp) != type)
-	    exp = fold_convert (type, exp);
-
-	  return fold_build2 (MINUS_EXPR, type, op2, exp);
+	  return expand_intrinsic_bsr (callexp, op1);
 
 	case INTRINSIC_BTC:
 	case INTRINSIC_BTR:
 	case INTRINSIC_BTS:
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
-	  type = TREE_TYPE (TREE_TYPE (op1));
-
-	  exp = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)), type);
-
-	  // op1[op2 / exp]
-	  op1 = build_array_index (op1, fold_build2 (TRUNC_DIV_EXPR, type, op2, exp));
-	  op1 = indirect_ref (type, op1);
-
-	  // mask = 1 << (op2 % exp);
-	  op2 = fold_build2 (TRUNC_MOD_EXPR, type, op2, exp);
-	  op2 = fold_build2 (LSHIFT_EXPR, type, size_one_node, op2);
-
-	  // cond = op1[op2 / size] & mask;
-	  exp = fold_build2 (BIT_AND_EXPR, type, op1, op2);
-
-	  // cond ? -1 : 0;
-	  exp = build3 (COND_EXPR, TREE_TYPE (call_exp), d_truthvalue_conversion (exp),
-			integer_minus_one_node, integer_zero_node);
-
-	  // Update the bit as needed.
-	  code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
-	    (intrinsic == INTRINSIC_BTR) ? BIT_AND_EXPR :
-	    (intrinsic == INTRINSIC_BTS) ? BIT_IOR_EXPR : ERROR_MARK;
-	  gcc_assert (code != ERROR_MARK);
-
-	  // op1[op2 / size] op= mask
-	  if (intrinsic == INTRINSIC_BTR)
-	    op2 = build1 (BIT_NOT_EXPR, TREE_TYPE (op2), op2);
-
-	  val = build_local_temp (TREE_TYPE (call_exp));
-	  exp = vmodify_expr (val, exp);
-	  op1 = vmodify_expr (op1, fold_build2 (code, TREE_TYPE (op1), op1, op2));
-	  return compound_expr (exp, compound_expr (op1, val));
+	  return expand_intrinsic_bt (intrinsic, callexp, op1, op2);
 
 	case INTRINSIC_BSWAP:
 	  /* Backend provides builtin bswap32.
 	     Assumes first argument and return type is uint. */
 	  op1 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_BSWAP32), 1, op1);
+	  return expand_intrinsic_op (BUILT_IN_BSWAP32, callexp, op1);
 
-	case INTRINSIC_COS:
 	  // Math intrinsics just map to their GCC equivalents.
+	case INTRINSIC_COS:
 	  op1 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_COSL), 1, op1);
+	  return expand_intrinsic_op (BUILT_IN_COSL, callexp, op1);
 
 	case INTRINSIC_SIN:
 	  op1 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_SINL), 1, op1);
+	  return expand_intrinsic_op (BUILT_IN_SINL, callexp, op1);
 
 	case INTRINSIC_RNDTOL:
-	  // %% not sure if llroundl stands as a good replacement
-	  // for the expected behaviour of rndtol.
+	  // Not sure if llroundl stands as a good replacement for the
+	  // expected behaviour of rndtol.
 	  op1 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_LLROUNDL), 1, op1);
+	  return expand_intrinsic_op (BUILT_IN_LLROUNDL, callexp, op1);
 
 	case INTRINSIC_SQRT:
 	  // Have float, double and real variants of sqrt.
 	  op1 = ce.nextArg();
-	  type = TREE_TYPE (op1);
-	  // Could have used mathfn_built_in, but that only returns
-	  // implicit built in decls.
-	  if (TYPE_MAIN_VARIANT (type) == double_type_node)
-	    exp = builtin_decl_explicit (BUILT_IN_SQRT);
-	  else if (TYPE_MAIN_VARIANT (type) == float_type_node)
-	    exp = builtin_decl_explicit (BUILT_IN_SQRTF);
-	  else if (TYPE_MAIN_VARIANT (type) == long_double_type_node)
-	    exp = builtin_decl_explicit (BUILT_IN_SQRTL);
+	  type = TYPE_MAIN_VARIANT (TREE_TYPE (op1));
 	  // op1 is an integral type - use double precision.
-	  else if (INTEGRAL_TYPE_P (TYPE_MAIN_VARIANT (type)))
-	    {
-	      op1 = convert (double_type_node, op1);
-	      exp = builtin_decl_explicit (BUILT_IN_SQRT);
-	    }
+	  if (INTEGRAL_TYPE_P (type))
+	    op1 = convert (double_type_node, op1);
 
-	  gcc_assert (exp);    // Should never trigger.
-	  return d_build_call_nary (exp, 1, op1);
+	  if (type == double_type_node)
+	    return expand_intrinsic_op (BUILT_IN_SQRT, callexp, op1);
+	  else if (type == float_type_node)
+	    return expand_intrinsic_op (BUILT_IN_SQRTF, callexp, op1);
+	  else if (type == long_double_type_node)
+	    return expand_intrinsic_op (BUILT_IN_SQRTL, callexp, op1);
+
+	  gcc_unreachable();
+	  break;
 
 	case INTRINSIC_LDEXP:
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_LDEXPL), 2, op1, op2);
+	  return expand_intrinsic_op2 (BUILT_IN_LDEXPL, callexp, op1, op2);
 
 	case INTRINSIC_FABS:
 	  op1 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_FABSL), 1, op1);
+	  return expand_intrinsic_op (BUILT_IN_FABSL, callexp, op1);
 
 	case INTRINSIC_RINT:
 	  op1 = ce.nextArg();
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_RINTL), 1, op1);
+	  return expand_intrinsic_op (BUILT_IN_RINTL, callexp, op1);
 
 	case INTRINSIC_VA_ARG:
-	case INTRINSIC_C_VA_ARG:
-	  op1 = ce.nextArg();
-	  STRIP_NOPS (op1);
-
-	  if (TREE_CODE (op1) == ADDR_EXPR)
-	    op1 = TREE_OPERAND (op1, 0);
-
-	  if (intrinsic == INTRINSIC_C_VA_ARG)
-	    type = TREE_TYPE (TREE_TYPE (callee));
-	  else
-	    {
-	      op2 = ce.nextArg();
-	      STRIP_NOPS (op2);
-	      gcc_assert (TREE_CODE (op2) == ADDR_EXPR);
-	      op2 = TREE_OPERAND (op2, 0);
-	      type = TREE_TYPE (op2);
-	    }
-
-	  // Silently convert promoted types.
-	  ptype = lang_hooks.types.type_promotes_to (type);
-	  exp = build1 (VA_ARG_EXPR, ptype, op1);
-
-	  if (type != ptype)
-	    exp = convert (type, exp);
-
-	  if (intrinsic == INTRINSIC_VA_ARG)
-	    exp = vmodify_expr (op2, exp);
-
-	  return exp;
-
-	case INTRINSIC_VA_START:
-	  /* The va_list argument should already have its
-	     address taken.  The second argument, however, is
-	     inout and that needs to be fixed to prevent a warning.  */
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
-	  type = TREE_TYPE (op1);
+	  return expand_intrinsic_vaarg (callexp, op1, op2);
 
-	  // Could be casting... so need to check type too?
-	  STRIP_NOPS (op1);
-	  STRIP_NOPS (op2);
-	  gcc_assert (TREE_CODE (op1) == ADDR_EXPR
-		      && TREE_CODE (op2) == ADDR_EXPR);
+	case INTRINSIC_C_VA_ARG:
+	  op1 = ce.nextArg();
+	  return expand_intrinsic_vaarg (callexp, op1, NULL_TREE);
 
-	  op2 = TREE_OPERAND (op2, 0);
-	  // assuming nobody tries to change the return type
-	  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START), 2, op1, op2);
+	case INTRINSIC_VA_START:
+	  op1 = ce.nextArg();
+	  op2 = ce.nextArg();
+	  return expand_intrinsic_vastart (callexp, op1, op2);
 
 	default:
 	  gcc_unreachable();
 	}
     }
 
-  return call_exp;
+  return callexp;
 }
 
 // Build and return the correct call to fmod depending on TYPE.

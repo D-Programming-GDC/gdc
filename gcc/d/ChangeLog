@@ -4,6 +4,14 @@
 	* d-decls.cc(Module::toSymbol): Use d_build_module to build up the
 	qualified module namespace.
 
+	* d-codegen.cc(expand_intrinsic_op, expand_intrinsic_op2): New
+	functions to build a call to a builtin code.
+	(expand_intrinsic_bsr, expand_intrinsic_bt): New functions to expand a
+	BUILTIN_FRONTEND call to core.bitop intrinsics.
+	(expand_intrinsic_vaarg, expand_intrinsic_vastart): New functions to
+	expand a BUILTIN_FRONTEND call to core.vararg intrinsics.
+	(maybe_expand_builtin): Update.
+
 2014-02-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(Module::toSymbol): Build a NAMESPACE_DECL to populate the
