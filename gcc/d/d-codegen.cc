@@ -76,6 +76,28 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
+// Build a complete module namespace, any modules in packages will
+// have their DECL_CONTEXT set as the symbol of the parent.
+
+tree
+d_build_module (Dsymbol *dsym)
+{
+  if (dsym->isModule() || dsym->isPackage())
+    {
+      tree decl = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
+			      get_identifier (dsym->ident->string),
+			      void_type_node);
+      set_decl_location (decl, dsym);
+
+      if (dsym->parent)
+	DECL_CONTEXT (decl) = d_build_module (dsym->parent);
+
+      return decl;
+    }
+
+  gcc_unreachable();
+}
+
 // Add local variable VD into the current body of function fd.
 
 void
