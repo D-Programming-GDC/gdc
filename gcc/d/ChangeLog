@@ -1,3 +1,10 @@
+2014-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(VarDeclaration::toObjFile): Remove toplevel check.
+	DECL_CONTEXT is never set on manifest constants.
+	(d_finish_compilation): Remove fancy check on force outputting
+	symbols to object file.
+
 2014-02-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_build_module): New function.

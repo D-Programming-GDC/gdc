@@ -731,11 +731,7 @@ VarDeclaration::toObjFile (int)
       d_pushdecl (decl);
       d_keep (decl);
 
-      bool toplevel = !DECL_CONTEXT (decl);
-      if (toplevel)
-      	d_add_global_declaration (decl);
-
-      rest_of_decl_compilation (decl, toplevel, 0);
+      rest_of_decl_compilation (decl, 1, 0);
       return;
     }
 
@@ -1915,22 +1911,16 @@ d_finish_compilation (tree *vec, int len)
       tree decl = vec[i];
 
       // Determine if a global var/function is needed.
-      // For templates, this means if we took the address of the decl,
-      // or if the decl is a class member/method or public toplevel symbol.
       int needed = wrapup_global_declarations (&decl, 1);
 
       if ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
 	  || TREE_CODE (decl) == FUNCTION_DECL)
 	{
-	  tree name = DECL_ASSEMBLER_NAME (decl);
-
 	  // Don't emit, assembler name already in symtab.
+	  tree name = DECL_ASSEMBLER_NAME (decl);
 	  if (!symtab->insert (IDENTIFIER_POINTER (name), IDENTIFIER_LENGTH (name)))
 	    needed = 0;
-	  else if ((D_DECL_IS_TEMPLATE (decl) || D_DECL_ONE_ONLY (decl))
-		   && TREE_PUBLIC (decl)
-		   && (TREE_ADDRESSABLE (decl) || !DECL_CONTEXT (decl)
-		       || decl_type_context (decl)))
+	  else
 	    needed = 1;
 	}
 
