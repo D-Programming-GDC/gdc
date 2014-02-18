@@ -270,8 +270,9 @@ FuncDeclaration::toSymbol (void)
 	  csym->Sident = mangleExact();
 	  csym->prettyIdent = toPrettyChars();
 
-	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
-				    get_identifier (this->ident->string), NULL_TREE);
+	  tree id = get_identifier (this->isMain() 
+				    ? csym->prettyIdent : ident->string);
+	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, id, NULL_TREE);
 	  DECL_CONTEXT (fndecl) = d_decl_context (this);
 
 	  csym->Stree = fndecl;

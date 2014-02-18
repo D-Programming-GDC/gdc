@@ -11,6 +11,11 @@
 	(VarDeclaration::toSymbol): Likewise for static variables.
 	(FuncDeclaration::toSymbol): Likewise for functions.
 
+	* d-decls.cc(FuncDeclaration::toSymbol): Don't emit the 'D main'
+	symbol to debug as plain 'main'.
+	* d-objfile.cc(VarDeclaration::toObjFile): Don't emit the qualified
+	identifier of manifest constants in debug information.
+
 2014-02-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_build_module): New function.

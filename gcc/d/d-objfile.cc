@@ -701,14 +701,9 @@ VarDeclaration::toObjFile (int)
   if (!canTakeAddressOf())
     {
       tree ctype = declaration_type (this);
-      tree ident;
 
-      if (toParent2()->isModule())
-	ident = get_identifier (toPrettyChars());
-      else
-	ident = get_identifier (toChars());
-
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident, ctype);
+      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			      get_identifier (ident->string), ctype);
       set_decl_location (decl, this);
 
       gcc_assert (init && !init->isVoidInitializer());
@@ -1950,8 +1945,8 @@ build_type_decl (tree t, Dsymbol *dsym)
   
   gcc_assert (!POINTER_TYPE_P (t));
 
-  const char *name = dsym->ident->string;
-  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, get_identifier (name), t);
+  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
+			  get_identifier (dsym->ident->string), t);
 
   DECL_CONTEXT (decl) = d_decl_context (dsym);
   set_decl_location (decl, dsym);
