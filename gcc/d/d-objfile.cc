@@ -1950,7 +1950,7 @@ build_type_decl (tree t, Dsymbol *dsym)
   
   gcc_assert (!POINTER_TYPE_P (t));
 
-  const char *name = dsym->toPrettyChars();
+  const char *name = dsym->ident->string;
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, get_identifier (name), t);
 
   DECL_CONTEXT (decl) = d_decl_context (dsym);

@@ -119,13 +119,8 @@ VarDeclaration::toSymbol (void)
       else
 	csym->Sident = ident->string;
 
+      tree id = get_identifier (this->ident->string);
       tree decl;
-      tree id;
-
-      if (csym->prettyIdent)
-	id = get_identifier (csym->prettyIdent);
-      else
-	id = get_identifier (csym->Sident);
 
       if (isParameter())
 	{
@@ -271,25 +266,12 @@ FuncDeclaration::toSymbol (void)
 	  tree fntype = NULL_TREE;
 	  tree vindex = NULL_TREE;
 
-	  tree fndecl;
-	  tree id;
+	  // Save mangle/debug names for making thunks.
+	  csym->Sident = mangleExact();
+	  csym->prettyIdent = toPrettyChars();
 
-	  if (ident)
-	    {
-	      // Save mangle/debug names for making thunks.
-	      csym->Sident = mangleExact();
-	      csym->prettyIdent = toPrettyChars();
-	      id = get_identifier (csym->prettyIdent);
-	    }
-	  else
-	    {
-	      static unsigned unamed_seq = 0;
-	      char buf[64];
-	      snprintf (buf, sizeof(buf), "___unamed_%u", ++unamed_seq);
-	      id = get_identifier (buf);
-	    }
-
-	  fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, id, NULL_TREE);
+	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
+				    get_identifier (this->ident->string), NULL_TREE);
 	  DECL_CONTEXT (fndecl) = d_decl_context (this);
 
 	  csym->Stree = fndecl;
@@ -302,15 +284,14 @@ FuncDeclaration::toSymbol (void)
 	      DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
 	    }
 
-
 	  TREE_TYPE (fndecl) = ftype->toCtype();
 	  DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
 	  d_keep (fndecl);
 
 	  if (isNested())
 	    {
-	      /* Even if D-style nested functions are not implemented, add an
-		 extra argument to be compatible with delegates. */
+	      // Even if D-style nested functions are not implemented, add an
+	      // extra argument to be compatible with delegates.
 	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
 	    }
 	  else if (isThis())
@@ -344,16 +325,13 @@ FuncDeclaration::toSymbol (void)
 	      d_keep (fntype);
 	    }
 
-	  if (ident)
+	  if (this->mangleOverride)
+	    set_user_assembler_name (fndecl, this->mangleOverride);
+	  else
 	    {
-	      if (this->mangleOverride)
-		set_user_assembler_name (fndecl, this->mangleOverride);
-	      else
-		{
-		  tree mangle = get_identifier (csym->Sident);
-		  mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
-		  SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
-		}
+	      tree mangle = get_identifier (csym->Sident);
+	      mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
+	      SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
 	    }
 
 	  if (vindex)
