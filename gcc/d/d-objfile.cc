@@ -2185,6 +2185,11 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   if (functions.length() == 1 && !force_p)
     return functions[0];
 
+  Module *mod = current_module_decl;
+  if (!mod)
+    mod = d_gcc_get_output_module();
+  set_input_location (Loc (mod, 1));
+
   // Shouldn't front end build these?
   for (size_t i = 0; i < functions.length(); i++)
     {
