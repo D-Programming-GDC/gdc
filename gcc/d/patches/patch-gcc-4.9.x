@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- gcc/config/rs6000/rs6000.c
 +++ gcc/config/rs6000/rs6000.c
-@@ -24314,7 +24314,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -24406,7 +24406,8 @@ rs6000_output_function_epilogue (FILE *file,
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
@@ -35,7 +35,7 @@ relevant documentation about the GDC front end.
  current official meaning is ``GNU Compiler Collection'', which refers
 --- gcc/doc/install.texi
 +++ gcc/doc/install.texi
-@@ -1402,12 +1402,12 @@ their runtime libraries should be built.  For a list of valid values for
+@@ -1418,12 +1418,12 @@ their runtime libraries should be built.  For a list of valid values for
  grep language= */config-lang.in
  @end smallexample
  Currently, you can use any of the following:
@@ -52,7 +52,7 @@ relevant documentation about the GDC front end.
  Specify that a particular subset of compilers and their runtime
 --- gcc/doc/invoke.texi
 +++ gcc/doc/invoke.texi
-@@ -1216,6 +1216,15 @@ called @dfn{specs}.
+@@ -1229,6 +1229,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -68,7 +68,7 @@ relevant documentation about the GDC front end.
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1251,6 +1260,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1264,6 +1273,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -90,7 +90,7 @@ relevant documentation about the GDC front end.
  
 --- gcc/doc/standards.texi
 +++ gcc/doc/standards.texi
-@@ -283,6 +283,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
+@@ -282,6 +282,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
  As of the GCC 4.7.1 release, GCC supports the Go 1 language standard,
  described at @uref{http://golang.org/doc/go1.html}.
  
@@ -109,7 +109,23 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- gcc/dwarf2out.c
 +++ gcc/dwarf2out.c
-@@ -19249,6 +19249,8 @@ gen_compile_unit_die (const char *filename)
+@@ -4613,6 +4613,15 @@ is_ada (void)
+   return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
+ }
+ 
++/* Return TRUE if the language is D.  */
++static inline bool
++is_dlang (void)
++{
++  unsigned int lang = get_AT_unsigned (comp_unit_die (), DW_AT_language);
++
++  return lang == DW_LANG_D;
++}
++
+ /* Remove the specified attribute if present.  */
+ 
+ static void
+@@ -19277,6 +19286,8 @@ gen_compile_unit_die (const char *filename)
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -118,9 +134,18 @@ relevant documentation about the GDC front end.
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
+@@ -20236,7 +20247,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+     {
+       /* Output a real namespace or module.  */
+       context_die = setup_namespace_context (decl, comp_unit_die ());
+-      namespace_die = new_die (is_fortran ()
++      namespace_die = new_die (is_fortran () || is_dlang ()
+ 			       ? DW_TAG_module : DW_TAG_namespace,
+ 			       context_die, decl);
+       /* For Fortran modules defined in different CU don't add src coords.  */
 --- gcc/gcc.c
 +++ gcc/gcc.c
-@@ -1034,6 +1034,7 @@ static const struct compiler default_compilers[] =
+@@ -1021,6 +1021,7 @@ static const struct compiler default_compilers[] =
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},

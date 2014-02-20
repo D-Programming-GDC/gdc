@@ -730,14 +730,9 @@ VarDeclaration::toObjFile (int)
   if (!canTakeAddressOf())
     {
       tree ctype = declaration_type (this);
-      tree ident;
 
-      if (toParent2()->isModule())
-	ident = get_identifier (toPrettyChars());
-      else
-	ident = get_identifier (toChars());
-
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident, ctype);
+      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			      get_identifier (ident->string), ctype);
       set_decl_location (decl, this);
 
       gcc_assert (init && !init->isVoidInitializer());
@@ -760,11 +755,7 @@ VarDeclaration::toObjFile (int)
       d_pushdecl (decl);
       d_keep (decl);
 
-      bool toplevel = !DECL_CONTEXT (decl);
-      if (toplevel)
-      	d_add_global_declaration (decl);
-
-      rest_of_decl_compilation (decl, toplevel, 0);
+      rest_of_decl_compilation (decl, 1, 0);
       return;
     }
 
@@ -1875,14 +1866,6 @@ d_finish_symbol (Symbol *sym)
     }
 #endif
 
-  // Our mangled symbol.
-  if (!DECL_ASSEMBLER_NAME_SET_P (decl) && sym->Sident)
-    SET_DECL_ASSEMBLER_NAME (decl, get_identifier (sym->Sident));
-
-  // DECL_NAME for debugging.
-  if (sym->prettyIdent)
-    DECL_NAME (decl) = get_identifier (sym->prettyIdent);
-
   // User declared alignment.
   if (sym->Salignment > 0)
     {
@@ -1910,9 +1893,6 @@ d_finish_function (FuncDeclaration *fd)
   tree decl = s->Stree;
 
   gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
-
-  if (s->prettyIdent)
-    DECL_NAME (decl) = get_identifier (s->prettyIdent);
 
   if (DECL_SAVED_TREE (decl) != NULL_TREE)
     {
@@ -1955,22 +1935,16 @@ d_finish_compilation (tree *vec, int len)
       tree decl = vec[i];
 
       // Determine if a global var/function is needed.
-      // For templates, this means if we took the address of the decl,
-      // or if the decl is a class member/method or public toplevel symbol.
       int needed = wrapup_global_declarations (&decl, 1);
 
       if ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
 	  || TREE_CODE (decl) == FUNCTION_DECL)
 	{
-	  tree name = DECL_ASSEMBLER_NAME (decl);
-
 	  // Don't emit, assembler name already in symtab.
+	  tree name = DECL_ASSEMBLER_NAME (decl);
 	  if (!symtab->insert (IDENTIFIER_POINTER (name), IDENTIFIER_LENGTH (name)))
 	    needed = 0;
-	  else if ((D_DECL_IS_TEMPLATE (decl) || D_DECL_ONE_ONLY (decl))
-		   && TREE_PUBLIC (decl)
-		   && (TREE_ADDRESSABLE (decl) || !DECL_CONTEXT (decl)
-		       || decl_type_context (decl)))
+	  else
 	    needed = 1;
 	}
 
@@ -2000,8 +1974,8 @@ build_type_decl (tree t, Dsymbol *dsym)
   
   gcc_assert (!POINTER_TYPE_P (t));
 
-  const char *name = dsym->toPrettyChars();
-  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, get_identifier (name), t);
+  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
+			  get_identifier (dsym->ident->string), t);
 
   DECL_CONTEXT (decl) = d_decl_context (dsym);
   set_decl_location (decl, dsym);
@@ -2240,6 +2214,11 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   // If there is only one function, just return that
   if (functions.length() == 1 && !force_p)
     return functions[0];
+
+  Module *mod = current_module_decl;
+  if (!mod)
+    mod = d_gcc_get_output_module();
+  set_input_location (Loc (mod, 1));
 
   // Shouldn't front end build these?
   for (size_t i = 0; i < functions.length(); i++)

@@ -119,67 +119,73 @@ VarDeclaration::toSymbol (void)
       else
 	csym->Sident = ident->string;
 
-      tree var_decl;
-      tree id = get_identifier (csym->Sident);
+      tree id = get_identifier (this->ident->string);
+      tree decl;
 
       if (isParameter())
 	{
-	  var_decl = build_decl (UNKNOWN_LOCATION, PARM_DECL, id, declaration_type (this));
-	  DECL_ARG_TYPE (var_decl) = TREE_TYPE (var_decl);
-	  DECL_CONTEXT (var_decl) = d_decl_context (this);
-	  gcc_assert (TREE_CODE (DECL_CONTEXT (var_decl)) == FUNCTION_DECL);
+	  decl = build_decl (UNKNOWN_LOCATION, PARM_DECL, id, declaration_type (this));
+	  DECL_ARG_TYPE (decl) = TREE_TYPE (decl);
+	  DECL_CONTEXT (decl) = d_decl_context (this);
+	  gcc_assert (TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL);
 	}
       else
 	{
 	  gcc_assert (canTakeAddressOf() != false);
-	  var_decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, id, declaration_type (this));
-	  setup_symbol_storage (this, var_decl, false);
+	  decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, id, declaration_type (this));
 	}
 
-      csym->Stree = var_decl;
+      csym->Stree = decl;
 
       if (isDataseg())
 	{
-	  tree id = get_identifier (csym->Sident);
+	  if (this->mangleOverride)
+	    set_user_assembler_name (decl, this->mangleOverride);
+	  else
+	    {
+	      tree mangle = get_identifier (csym->Sident);
 
-	  if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
-	    id = targetm.mangle_decl_assembler_name (var_decl, id);
+	      if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
+		mangle = targetm.mangle_decl_assembler_name (decl, mangle);
 
-	  SET_DECL_ASSEMBLER_NAME (var_decl, id);
+	      SET_DECL_ASSEMBLER_NAME (decl, mangle);
+	    }
+
+	  setup_symbol_storage (this, decl, false);
 	}
 
-      DECL_LANG_SPECIFIC (var_decl) = build_d_decl_lang_specific (this);
-      d_keep (var_decl);
-      set_decl_location (var_decl, this);
+      DECL_LANG_SPECIFIC (decl) = build_d_decl_lang_specific (this);
+      d_keep (decl);
+      set_decl_location (decl, this);
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a variable in an imported module.
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
 	  && !decl_reference_p (this))
 	{
-	  if (!TREE_STATIC (var_decl))
-	    TREE_READONLY (var_decl) = 1;
+	  if (!TREE_STATIC (decl))
+	    TREE_READONLY (decl) = 1;
 	  else
 	    csym->Sreadonly = true;
 
 	  // Const doesn't seem to matter for aggregates, so prevent problems.
 	  if (isConst() && isDataseg())
-	    TREE_CONSTANT (var_decl) = 1;
+	    TREE_CONSTANT (decl) = 1;
 	}
 
       // Propagate volatile.
-      if (TYPE_VOLATILE (TREE_TYPE (var_decl)))
-	TREE_THIS_VOLATILE (var_decl) = 1;
+      if (TYPE_VOLATILE (TREE_TYPE (decl)))
+	TREE_THIS_VOLATILE (decl) = 1;
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
       if (isImportedSymbol())
 	{
-	  insert_decl_attributes (var_decl, "dllimport");
-	  DECL_DLLIMPORT_P (var_decl) = 1;
+	  insert_decl_attributes (decl, "dllimport");
+	  DECL_DLLIMPORT_P (decl) = 1;
 	}
       else if (isExport())
-	insert_decl_attributes (var_decl, "dllexport");
+	insert_decl_attributes (decl, "dllexport");
 #endif
 
       if (global.params.vtls && isDataseg() && isThreadlocal())
@@ -256,26 +262,20 @@ FuncDeclaration::toSymbol (void)
 
       if (!isym)
 	{
-	  tree id;
 	  TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
-	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
-				    NULL_TREE, NULL_TREE);
 	  tree fntype = NULL_TREE;
 	  tree vindex = NULL_TREE;
 
-	  csym->Stree = fndecl;
+	  // Save mangle/debug names for making thunks.
+	  csym->Sident = mangleExact();
+	  csym->prettyIdent = toPrettyChars();
 
-	  if (ident)
-	    id = get_identifier (ident->string);
-	  else
-	    {
-	      static unsigned unamed_seq = 0;
-	      char buf[64];
-	      snprintf (buf, sizeof(buf), "___unamed_%u", ++unamed_seq);
-	      id = get_identifier (buf);
-	    }
-	  DECL_NAME (fndecl) = id;
+	  tree id = get_identifier (this->isMain() 
+				    ? csym->prettyIdent : ident->string);
+	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, id, NULL_TREE);
 	  DECL_CONTEXT (fndecl) = d_decl_context (this);
+
+	  csym->Stree = fndecl;
 
 	  if (needs_static_chain (this))
 	    {
@@ -285,15 +285,14 @@ FuncDeclaration::toSymbol (void)
 	      DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
 	    }
 
-
 	  TREE_TYPE (fndecl) = ftype->toCtype();
 	  DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
 	  d_keep (fndecl);
 
 	  if (isNested())
 	    {
-	      /* Even if D-style nested functions are not implemented, add an
-		 extra argument to be compatible with delegates. */
+	      // Even if D-style nested functions are not implemented, add an
+	      // extra argument to be compatible with delegates.
 	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
 	    }
 	  else if (isThis())
@@ -327,14 +326,13 @@ FuncDeclaration::toSymbol (void)
 	      d_keep (fntype);
 	    }
 
-	  if (ident)
+	  if (this->mangleOverride)
+	    set_user_assembler_name (fndecl, this->mangleOverride);
+	  else
 	    {
-	      // Save mangle/debug names for making thunks.
-	      csym->Sident = mangleExact();
-	      csym->prettyIdent = toPrettyChars();
-	      id = get_identifier (csym->Sident);
-	      id = targetm.mangle_decl_assembler_name (fndecl, id);
-	      SET_DECL_ASSEMBLER_NAME (fndecl, id);
+	      tree mangle = get_identifier (csym->Sident);
+	      mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
+	      SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
 	    }
 
 	  if (vindex)
@@ -402,6 +400,7 @@ FuncDeclaration::toSymbol (void)
 #endif
 	  set_decl_location (fndecl, this);
 	  setup_symbol_storage (this, fndecl, false);
+
 	  if (!ident)
 	    TREE_PUBLIC (fndecl) = 0;
 
@@ -549,7 +548,7 @@ InterfaceDeclaration::toSymbol (void)
   return csym;
 }
 
-// Create the "ModuleInfo" symbol for given module.
+// Create the "ModuleInfo" symbol and namespace for given module.
 
 Symbol *
 Module::toSymbol (void)
@@ -569,6 +568,10 @@ Module::toSymbol (void)
       // Not readonly, moduleinit depends on this.
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
+
+      tree module = d_build_module (this);
+      csym->ScontextDecl = module;
+      d_keep (module);
     }
 
   return csym;

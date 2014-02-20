@@ -217,10 +217,10 @@ TypeEnum::toCtype (void)
 {
   if (!ctype)
     {
-      /* Enums in D2 can have a base type that is not necessarily integral.
-	 So don't bother trying to make an ENUMERAL_TYPE using them.  */
       if (!sym->memtype->isintegral() || sym->memtype->ty == Tbool)
 	{
+	  // Enums in D2 can have a base type that is not necessarily integral.
+	  // So don't bother trying to make an ENUMERAL_TYPE using them.
 	  ctype = sym->memtype->toCtype();
 	}
       else
@@ -256,7 +256,7 @@ TypeEnum::toCtype (void)
 		  if (member == NULL)
 		    continue;
 
-		  tree ident = get_identifier (member->toPrettyChars());
+		  tree ident = get_identifier (member->ident->string);
 		  tree value = build_integer_cst (member->value->toInteger(), cmemtype);
 
 		  // Build a identifier for the enumeration constant.
