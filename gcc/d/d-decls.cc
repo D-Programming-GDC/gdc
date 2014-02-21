@@ -569,10 +569,23 @@ Module::toSymbol (void)
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
 
+      // Store the NAMESPACE_DECL in ScontextDecl.
       Loc loc = (this->md != NULL) ? this->md->loc : Loc(this, 1);
       tree module = d_build_module (loc, this);
-      csym->ScontextDecl = module;
       d_keep (module);
+
+      if (output_module_p (this))
+	{
+	  DECL_EXTERNAL (module) = 0;
+	  TREE_PUBLIC (module) = 1;
+	}
+      else
+	{
+	  DECL_EXTERNAL (module) = 1;
+	  TREE_PUBLIC (module) = 0;
+	}
+
+      csym->ScontextDecl = module;
     }
 
   return csym;

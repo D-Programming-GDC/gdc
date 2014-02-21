@@ -556,5 +556,14 @@ PragmaStatement::toIR (IRState *)
 void
 ImportStatement::toIR (IRState *)
 {
+  if (!imports)
+    return;
+
+  for (size_t i = 0; i < imports->dim; i++)
+    {
+      Dsymbol *dsym = (*imports)[i];
+      if (dsym)
+	dsym->toObjFile (0);
+    }
 }
 

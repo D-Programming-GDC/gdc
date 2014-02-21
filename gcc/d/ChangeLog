@@ -3,6 +3,13 @@
 	* d-codegen.cc(d_build_module): Update signature to accept a Loc
 	location to the module declaration.
 	* d-decls.cc(Module::toSymbol): Update call to d_build_module.
+	Set TREE_PUBLIC/DECL_EXTERNAL to distingush which modules are being
+	compiled.
+	* d-objfile.cc(Dsymbol::toObjFile): Handle Import symbols, and emit
+	debug information for imported modules.
+	(ImportStatement::toIR): Likewise.
+	(set_input_location): New function to implement the equivalent of
+	set_decl_location, but instead sets input_location.
 
 2014-02-19  Johannes Pfau  <johannespfau@gmail.com>
 
