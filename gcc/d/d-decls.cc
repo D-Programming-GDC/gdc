@@ -569,7 +569,8 @@ Module::toSymbol (void)
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
 
-      tree module = d_build_module (this);
+      Loc loc = (this->md != NULL) ? this->md->loc : Loc(this, 1);
+      tree module = d_build_module (loc, this);
       csym->ScontextDecl = module;
       d_keep (module);
     }

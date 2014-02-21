@@ -113,7 +113,7 @@ class ArrayScope;
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);
-extern tree d_build_module (Dsymbol *dsym);
+extern tree d_build_module (Loc loc, Dsymbol *dsym);
 
 extern tree d_mark_addressable (tree exp);
 extern tree d_mark_used (tree exp);

@@ -80,17 +80,17 @@ d_decl_context (Dsymbol *dsym)
 // have their DECL_CONTEXT set as the symbol of the parent.
 
 tree
-d_build_module (Dsymbol *dsym)
+d_build_module (Loc loc, Dsymbol *dsym)
 {
   if (dsym->isModule() || dsym->isPackage())
     {
       tree decl = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
 			      get_identifier (dsym->ident->string),
 			      void_type_node);
-      set_decl_location (decl, dsym);
+      set_decl_location (decl, loc);
 
       if (dsym->parent)
-	DECL_CONTEXT (decl) = d_build_module (dsym->parent);
+	DECL_CONTEXT (decl) = d_build_module (loc, dsym->parent);
 
       return decl;
     }

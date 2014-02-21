@@ -1584,7 +1584,7 @@ set_decl_location (tree t, Dsymbol *decl)
   if (m && m->srcfile && m->srcfile->name)
     l.filename = m->srcfile->name->str;
   else
-    // Emptry string can mess up debug info
+    // Empty string can mess up debug info
     l.filename = "<no_file>";
 
   l.linnum = 1;
