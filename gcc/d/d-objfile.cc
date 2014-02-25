@@ -734,12 +734,7 @@ VarDeclaration::toObjFile (int)
   // but keep the values for purposes of debugging.
   if (!canTakeAddressOf())
     {
-      tree ctype = declaration_type (this);
-
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (ident->string), ctype);
-      set_decl_location (decl, this);
-
+      tree decl = toSymbol()->Stree;
       gcc_assert (init && !init->isVoidInitializer());
 
       unsigned errors = global.startGagging();
@@ -752,19 +747,10 @@ VarDeclaration::toObjFile (int)
       else
 	DECL_INITIAL (decl) = error_mark (type);
 
-      // Manifest constants have no address in memory.
-      TREE_CONSTANT (decl) = 1;
-      TREE_READONLY (decl) = 1;
-      TREE_STATIC (decl) = 0;
-
       d_pushdecl (decl);
-      d_keep (decl);
-
       rest_of_decl_compilation (decl, 1, 0);
-      return;
     }
-
-  if (isDataseg() && !(storage_class & STCextern))
+  else if (isDataseg() && !(storage_class & STCextern))
     {
       Symbol *s = toSymbol();
       size_t sz = type->size();
@@ -1223,9 +1209,6 @@ FuncDeclaration::toObjFile (int)
     }
 
   DECL_ARGUMENTS (fndecl) = param_list;
-  for (tree t = param_list; t; t = DECL_CHAIN (t))
-    DECL_CONTEXT (t) = fndecl;
-
   rest_of_decl_compilation (fndecl, 1, 0);
   DECL_INITIAL (fndecl) = error_mark_node;
   push_binding_level();
@@ -1880,8 +1863,6 @@ d_finish_symbol (Symbol *sym)
   if (sym->Sreadonly)
     TREE_READONLY (decl) = 1;
 
-  DECL_CONTEXT (decl) = decl_function_context (decl);
-
   // We are sending this symbol to object file.
   gcc_assert (!DECL_EXTERNAL (decl));
   relayout_decl (decl);
@@ -2094,7 +2075,7 @@ make_alias_for_thunk (tree function)
   alias = build_decl (DECL_SOURCE_LOCATION (function), FUNCTION_DECL,
 		      get_identifier (buf), TREE_TYPE (function));
   DECL_LANG_SPECIFIC (alias) = DECL_LANG_SPECIFIC (function);
-  DECL_CONTEXT (alias) = NULL;
+  DECL_CONTEXT (alias) = NULL_TREE;
   TREE_READONLY (alias) = TREE_READONLY (function);
   TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
   TREE_PUBLIC (alias) = 0;

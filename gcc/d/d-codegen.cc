@@ -66,7 +66,7 @@ d_decl_context (Dsymbol *dsym)
 	  FuncDeclaration *fd = dsym->isFuncDeclaration();
 	  if (decl != NULL)
 	    {
-	      if (decl->linkage != LINKd || fd->isMain())
+	      if ((decl->linkage != LINKd) || (fd && fd->isMain()))
 		return NULL_TREE;
 	    }
 	  return parent->toSymbol()->ScontextDecl;

@@ -1,8 +1,18 @@
+2014-03-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(d_decl_context): Fix null pointer dereference.
+	* d-objfile.cc(FuncDeclaration::toObjFile): Don't override the setting
+	of DECL_CONTEXT on the declaration here.
+	(d_finish_symbol): Likewise.
+	* d-objfile.cc(VarDeclaration::toObjFile): Move the generation of
+	manifest constants to ...
+	* d-decls.cc(VarDeclaration::toSymbol): ... here, and emit them as
+	CONST_DECLs.  Set the DECL_CONTEXT for all variable symbols.
+
 2014-03-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(build_attributes): Ensure D-specific attributes have
 	their value interpreted through CTFE.
-
 2014-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_build_module): Update signature to accept a Loc

@@ -119,25 +119,29 @@ VarDeclaration::toSymbol (void)
       else
 	csym->Sident = ident->string;
 
-      tree id = get_identifier (this->ident->string);
-      tree decl;
+      tree_code code = isParameter() ? PARM_DECL
+	: !canTakeAddressOf() ? CONST_DECL
+	: VAR_DECL;
+
+      tree decl = build_decl (UNKNOWN_LOCATION, code,
+			      get_identifier (ident->string),
+			      declaration_type (this));
+      DECL_CONTEXT (decl) = d_decl_context (this);
+      set_decl_location (decl, this);
 
       if (isParameter())
 	{
-	  decl = build_decl (UNKNOWN_LOCATION, PARM_DECL, id, declaration_type (this));
 	  DECL_ARG_TYPE (decl) = TREE_TYPE (decl);
-	  DECL_CONTEXT (decl) = d_decl_context (this);
 	  gcc_assert (TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL);
 	}
-      else
+      else if (!canTakeAddressOf())
 	{
-	  gcc_assert (canTakeAddressOf() != false);
-	  decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, id, declaration_type (this));
+	  // Manifest constants have no address in memory.
+	  TREE_CONSTANT (decl) = 1;
+	  TREE_READONLY (decl) = 1;
+	  TREE_STATIC (decl) = 0;
 	}
-
-      csym->Stree = decl;
-
-      if (isDataseg())
+      else if (isDataseg())
 	{
 	  if (this->mangleOverride)
 	    set_user_assembler_name (decl, this->mangleOverride);
@@ -156,7 +160,7 @@ VarDeclaration::toSymbol (void)
 
       DECL_LANG_SPECIFIC (decl) = build_d_decl_lang_specific (this);
       d_keep (decl);
-      set_decl_location (decl, this);
+      csym->Stree = decl;
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a variable in an imported module.
@@ -728,7 +732,7 @@ AggregateDeclaration::toInitializer (void)
       TREE_READONLY (sinit->Stree) = 1;
       TREE_CONSTANT (sinit->Stree) = 1;
       // These initialisers are always global.
-      DECL_CONTEXT (sinit->Stree) = 0;
+      DECL_CONTEXT (sinit->Stree) = NULL_TREE;
     }
 
   return sinit;
@@ -753,7 +757,7 @@ TypedefDeclaration::toInitializer (void)
 
       TREE_CONSTANT (sinit->Stree) = 1;
       TREE_READONLY (sinit->Stree) = 1;
-      DECL_CONTEXT (sinit->Stree) = 0;
+      DECL_CONTEXT (sinit->Stree) = NULL_TREE;
     }
 
   return sinit;
@@ -784,7 +788,7 @@ EnumDeclaration::toInitializer (void)
 
       TREE_CONSTANT (sinit->Stree) = 1;
       TREE_READONLY (sinit->Stree) = 1;
-      DECL_CONTEXT (sinit->Stree) = 0;
+      DECL_CONTEXT (sinit->Stree) = NULL_TREE;
     }
 
   return sinit;
