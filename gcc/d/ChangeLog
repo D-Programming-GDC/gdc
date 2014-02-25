@@ -9,10 +9,24 @@
 	* d-decls.cc(VarDeclaration::toSymbol): ... here, and emit them as
 	CONST_DECLs.  Set the DECL_CONTEXT for all variable symbols.
 
+	* d-builtins.cc(d_gcc_magic_builtins_module): Don't store compiler
+	generated builtins in Symbol::isym, use Symbol::csym instead.
+	(d_gcc_magic_libbuiltins_check): Likewise.
+	* d-codegen.cc(d_decl_context): Return the imported symbol tree of
+	modules where the NAMESPACE_DECL is now stored.
+	(d_build_module): Remove function.  Move implementation to ...
+	* d-decls.cc(Dsymbol::toImport): ... here.  Build an IMPORTED_DECL for
+	all imported declarations.
+	(FuncDeclaration::toSymbol): Remove special handling of Symbol::isym.
+	(Module::toSymbol): Remove call to d_build_module.
+	* d-objfile.cc(Dsymbol::toObjFile): Handle emission of IMPORTED_DECL
+	symbols to debug.
+
 2014-03-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(build_attributes): Ensure D-specific attributes have
 	their value interpreted through CTFE.
+
 2014-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_build_module): Update signature to accept a Loc

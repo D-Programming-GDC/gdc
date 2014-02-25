@@ -50,52 +50,26 @@ d_decl_context (Dsymbol *dsym)
       else if ((ad = parent->isAggregateDeclaration()))
 	{
 	  tree context = ad->type->toCtype();
+	  // Want the underlying RECORD_TYPE.
 	  if (ad->isClassDeclaration())
-	    {
-	      // Want the underlying RECORD_TYPE.
-	      context = TREE_TYPE (context);
-	    }
+	    context = TREE_TYPE (context);
+
 	  return context;
 	}
       else if (parent->isModule())
 	{
 	  // We've reached the top-level module namespace.
 	  // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing
-	  // module, but only for extern(D) symbols that aren't D main.
+	  // module, but only for extern(D) symbols.
 	  Declaration *decl = dsym->isDeclaration();
-	  FuncDeclaration *fd = dsym->isFuncDeclaration();
-	  if (decl != NULL)
-	    {
-	      if ((decl->linkage != LINKd) || (fd && fd->isMain()))
-		return NULL_TREE;
-	    }
-	  return parent->toSymbol()->ScontextDecl;
+	  if (decl != NULL && decl->linkage != LINKd)
+	    return NULL_TREE;
+
+	  return parent->toImport()->Stree;
 	}
     }
 
   return NULL_TREE;
-}
-
-// Build a complete module namespace, any modules in packages will
-// have their DECL_CONTEXT set as the symbol of the parent.
-
-tree
-d_build_module (Loc loc, Dsymbol *dsym)
-{
-  if (dsym->isModule() || dsym->isPackage())
-    {
-      tree decl = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
-			      get_identifier (dsym->ident->string),
-			      void_type_node);
-      set_decl_location (decl, loc);
-
-      if (dsym->parent)
-	DECL_CONTEXT (decl) = d_build_module (loc, dsym->parent);
-
-      return decl;
-    }
-
-  gcc_unreachable();
 }
 
 // Add local variable VD into the current body of function fd.

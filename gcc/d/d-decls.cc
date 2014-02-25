@@ -68,25 +68,63 @@ Dsymbol::toSymbol (void)
   return NULL;
 }
 
-// Generate an import symbol from symbol.
+// Generate an import symbol for debug.  If this is a module or package symbol,
+// then build the chain of NAMESPACE_DECLs.
 
 Symbol *
 Dsymbol::toImport (void)
 {
   if (!isym)
     {
-      if (!csym)
-	csym = toSymbol();
-      isym = toImport (csym);
+      Module *m = this->isModule();
+      if (m != NULL)
+	{
+	  isym = new Symbol();
+	  isym->prettyIdent = this->toPrettyChars();
+
+	  // Build the module namespace, this is considered toplevel,
+	  // regardless if there are parent packages.
+	  tree decl = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
+				  get_identifier (isym->prettyIdent),
+				  void_type_node);
+	  isym->Stree = decl;
+	  d_keep (decl);
+
+	  Loc loc = (m->md != NULL) ? m->md->loc : Loc (m, 1);
+	  set_decl_location (decl, loc);
+
+	  if (output_module_p (m))
+	    DECL_EXTERNAL (decl) = 1;
+
+	  TREE_PUBLIC (decl) = 1;
+	  DECL_CONTEXT (decl) = NULL_TREE;
+	}
+      else
+	{
+	  // Any other kind of symbol should have their csym set.
+	  // If this is an unexpected import, the compiler will throw an error.
+	  if (!csym)
+	    csym = toSymbol();
+
+	  isym = toImport (csym);
+	}
     }
+
   return isym;
 }
 
+// Generate an IMPORTED_DECL from symbol SYM.
+
 Symbol *
-Dsymbol::toImport (Symbol *)
+Dsymbol::toImport (Symbol *sym)
 {
-  // This is not used in GDC (yet?)
-  return NULL;
+  tree decl = make_node (IMPORTED_DECL);
+  TREE_TYPE (decl) = void_type_node;
+  IMPORTED_DECL_ASSOCIATED_DECL (decl) = sym->Stree;
+
+  Symbol *s = new Symbol();
+  s->Stree = decl;
+  return s;
 }
 
 
@@ -264,158 +302,154 @@ FuncDeclaration::toSymbol (void)
     {
       csym = new Symbol();
 
-      if (!isym)
+      TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
+      tree fntype = NULL_TREE;
+      tree vindex = NULL_TREE;
+
+      // Save mangle/debug names for making thunks.
+      csym->Sident = mangleExact();
+      csym->prettyIdent = toPrettyChars();
+
+      tree id = get_identifier (this->isMain()
+				? csym->prettyIdent : ident->string);
+      tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, id, NULL_TREE);
+      DECL_CONTEXT (fndecl) = d_decl_context (this);
+
+      csym->Stree = fndecl;
+
+      if (needs_static_chain (this))
 	{
-	  TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
-	  tree fntype = NULL_TREE;
-	  tree vindex = NULL_TREE;
-
-	  // Save mangle/debug names for making thunks.
-	  csym->Sident = mangleExact();
-	  csym->prettyIdent = toPrettyChars();
-
-	  tree id = get_identifier (this->isMain() 
-				    ? csym->prettyIdent : ident->string);
-	  tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, id, NULL_TREE);
-	  DECL_CONTEXT (fndecl) = d_decl_context (this);
-
-	  csym->Stree = fndecl;
-
-	  if (needs_static_chain (this))
-	    {
-	      D_DECL_STATIC_CHAIN (fndecl) = 1;
-	      // Save context and set decl_function_context for cgraph.
-	      csym->ScontextDecl = DECL_CONTEXT (fndecl);
-	      DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
-	    }
-
-	  TREE_TYPE (fndecl) = ftype->toCtype();
-	  DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
-	  d_keep (fndecl);
-
-	  if (isNested())
-	    {
-	      // Even if D-style nested functions are not implemented, add an
-	      // extra argument to be compatible with delegates.
-	      fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
-	    }
-	  else if (isThis())
-	    {
-	      // Do this even if there is no debug info.  It is needed to make
-	      // sure member functions are not called statically
-	      AggregateDeclaration *agg_decl = isMember2();
-	      tree handle = agg_decl->handle->toCtype();
-
-	      // If handle is a pointer type, get record type.
-	      if (!agg_decl->isStructDeclaration())
-		handle = TREE_TYPE (handle);
-
-	      fntype = build_method_type (handle, TREE_TYPE (fndecl));
-
-	      if (isVirtual() && vtblIndex != -1)
-		vindex = size_int (vtblIndex);
-	    }
-	  else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
-	    {
-	      // void main() implicitly converted to int main().
-  	      fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
-	    }
-
-	  if (fntype != NULL_TREE)
-	    {
-	      TYPE_ATTRIBUTES (fntype) = TYPE_ATTRIBUTES (TREE_TYPE (fndecl));
-	      TYPE_LANG_SPECIFIC (fntype) = TYPE_LANG_SPECIFIC (TREE_TYPE (fndecl));
-	      TREE_ADDRESSABLE (fntype) = TREE_ADDRESSABLE (TREE_TYPE (fndecl));
-	      TREE_TYPE (fndecl) = fntype;
-	      d_keep (fntype);
-	    }
-
-	  if (this->mangleOverride)
-	    set_user_assembler_name (fndecl, this->mangleOverride);
-	  else
-	    {
-	      tree mangle = get_identifier (csym->Sident);
-	      mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
-	      SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
-	    }
-
-	  if (vindex)
-	    {
-	      DECL_VINDEX (fndecl) = vindex;
-	      DECL_VIRTUAL_P (fndecl) = 1;
-	    }
-
-	  if (isMember2() || isFuncLiteralDeclaration())
-	    {
-	      // See grokmethod in cp/decl.c
-	      DECL_DECLARED_INLINE_P (fndecl) = 1;
-	      DECL_NO_INLINE_WARNING_P (fndecl) = 1;
-	    }
-	  // Don't know what to do with this.
-	  else if (flag_inline_functions && canInline (0, 1, 0))
-	    {
-	      DECL_DECLARED_INLINE_P (fndecl) = 1;
-	      DECL_NO_INLINE_WARNING_P (fndecl) = 1;
-	    }
-
-	  if (naked)
-	    {
-	      DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl) = 1;
-	      DECL_UNINLINABLE (fndecl) = 1;
-	    }
-
-	  // These are always compiler generated.
-	  if (isArrayOp)
-	    {
-	      DECL_ARTIFICIAL (fndecl) = 1;
-	      D_DECL_ONE_ONLY (fndecl) = 1;
-	    }
-	  // So are ensure and require contracts.
-	  if (ident == Id::ensure || ident == Id::require)
-	    {
-	      DECL_ARTIFICIAL (fndecl) = 1;
-	      TREE_PUBLIC (fndecl) = 1;
-	    }
-
-	  if (isStatic())
-	    TREE_STATIC (fndecl) = 1;
-
-	  // Assert contracts in functions cause implicit side effects that could
-	  // cause wrong codegen if pure/nothrow is thrown in the equation.
-	  if (!global.params.useAssert)
-	    {
-	      // Cannot mark as pure as in 'no side effects' if the function either
-	      // returns by ref, or has an internal state 'this'.
-	      // Note, pure D functions don't imply nothrow.
-	      if (isPure() == PUREstrong && vthis == NULL
-		  && ftype->isnothrow && ftype->retStyle() == RETstack)
-		DECL_PURE_P (fndecl) = 1;
-	    }
-
-#if TARGET_DLLIMPORT_DECL_ATTRIBUTES
-	  // Have to test for import first
-	  if (isImportedSymbol())
-	    {
-	      insert_decl_attribute (fndecl, "dllimport");
-	      DECL_DLLIMPORT_P (fndecl) = 1;
-	    }
-	  else if (isExport())
-	    insert_decl_attribute (fndecl, "dllexport");
-#endif
-	  set_decl_location (fndecl, this);
-	  setup_symbol_storage (this, fndecl, false);
-
-	  if (!ident)
-	    TREE_PUBLIC (fndecl) = 0;
-
-	  TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
-
-	  maybe_set_builtin_frontend (this);
+	  D_DECL_STATIC_CHAIN (fndecl) = 1;
+	  // Save context and set decl_function_context for cgraph.
+	  csym->ScontextDecl = DECL_CONTEXT (fndecl);
+	  DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
 	}
+
+      TREE_TYPE (fndecl) = ftype->toCtype();
+      DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
+      d_keep (fndecl);
+
+      if (isNested())
+	{
+	  // Even if D-style nested functions are not implemented, add an
+	  // extra argument to be compatible with delegates.
+	  fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
+	}
+      else if (isThis())
+	{
+	  // Do this even if there is no debug info.  It is needed to make
+	  // sure member functions are not called statically
+	  AggregateDeclaration *agg_decl = isMember2();
+	  tree handle = agg_decl->handle->toCtype();
+
+	  // If handle is a pointer type, get record type.
+	  if (!agg_decl->isStructDeclaration())
+	    handle = TREE_TYPE (handle);
+
+	  fntype = build_method_type (handle, TREE_TYPE (fndecl));
+
+	  if (isVirtual() && vtblIndex != -1)
+	    vindex = size_int (vtblIndex);
+	}
+      else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
+	{
+	  // void main() implicitly converted to int main().
+	  fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
+	}
+
+      if (fntype != NULL_TREE)
+	{
+	  TYPE_ATTRIBUTES (fntype) = TYPE_ATTRIBUTES (TREE_TYPE (fndecl));
+	  TYPE_LANG_SPECIFIC (fntype) = TYPE_LANG_SPECIFIC (TREE_TYPE (fndecl));
+	  TREE_ADDRESSABLE (fntype) = TREE_ADDRESSABLE (TREE_TYPE (fndecl));
+	  TREE_TYPE (fndecl) = fntype;
+	  d_keep (fntype);
+	}
+
+      if (this->mangleOverride)
+	set_user_assembler_name (fndecl, this->mangleOverride);
       else
 	{
-	  csym->Stree = isym->Stree;
+	  tree mangle = get_identifier (csym->Sident);
+	  mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
+	  SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
 	}
+
+      if (vindex)
+	{
+	  DECL_VINDEX (fndecl) = vindex;
+	  DECL_VIRTUAL_P (fndecl) = 1;
+	}
+
+      if (isMember2() || isFuncLiteralDeclaration())
+	{
+	  // See grokmethod in cp/decl.c
+	  DECL_DECLARED_INLINE_P (fndecl) = 1;
+	  DECL_NO_INLINE_WARNING_P (fndecl) = 1;
+	}
+      // Don't know what to do with this.
+      else if (flag_inline_functions && canInline (0, 1, 0))
+	{
+	  DECL_DECLARED_INLINE_P (fndecl) = 1;
+	  DECL_NO_INLINE_WARNING_P (fndecl) = 1;
+	}
+
+      if (naked)
+	{
+	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl) = 1;
+	  DECL_UNINLINABLE (fndecl) = 1;
+	}
+
+      // These are always compiler generated.
+      if (isArrayOp)
+	{
+	  DECL_ARTIFICIAL (fndecl) = 1;
+	  D_DECL_ONE_ONLY (fndecl) = 1;
+	}
+      // So are ensure and require contracts.
+      if (ident == Id::ensure || ident == Id::require)
+	{
+	  DECL_ARTIFICIAL (fndecl) = 1;
+	  TREE_PUBLIC (fndecl) = 1;
+	}
+
+      // Storage class attributes
+      if (storage_class & STCstatic)
+	TREE_STATIC (fndecl) = 1;
+      if (storage_class & STCfinal)
+	DECL_FINAL_P (fndecl) = 1;
+
+      // Assert contracts in functions cause implicit side effects that could
+      // cause wrong codegen if pure/nothrow is thrown in the equation.
+      if (!global.params.useAssert)
+	{
+	  // Cannot mark as pure as in 'no side effects' if the function either
+	  // returns by ref, or has an internal state 'this'.
+	  // Note, pure D functions don't imply nothrow.
+	  if (isPure() == PUREstrong && vthis == NULL
+	      && ftype->isnothrow && ftype->retStyle() == RETstack)
+	    DECL_PURE_P (fndecl) = 1;
+	}
+
+#if TARGET_DLLIMPORT_DECL_ATTRIBUTES
+      // Have to test for import first
+      if (isImportedSymbol())
+	{
+	  insert_decl_attribute (fndecl, "dllimport");
+	  DECL_DLLIMPORT_P (fndecl) = 1;
+	}
+      else if (isExport())
+	insert_decl_attribute (fndecl, "dllexport");
+#endif
+      set_decl_location (fndecl, this);
+      setup_symbol_storage (this, fndecl, false);
+
+      if (!ident)
+	TREE_PUBLIC (fndecl) = 0;
+
+      TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
+
+      maybe_set_builtin_frontend (this);
     }
 
   return csym;

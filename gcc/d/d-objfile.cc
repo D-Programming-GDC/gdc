@@ -71,30 +71,58 @@ Dsymbol::toObjFile (int)
 
   if (imp != NULL)
     {
-      tree decl, context;
-      tree name = NULL_TREE;
+      // Implements import declarations by telling the debug backend we are
+      // importing the NAMESPACE_DECL of the module or IMPORTED_DECL of the
+      // declaration into the current lexical scope CONTEXT.  NAME is set if
+      // this is a renamed import.
+
+      if (imp->isstatic)
+	return;
+
+      IRState *irs = current_irstate;
+      Module *mod = current_module_decl;
+      tree context;
+
+      // Get the context of this import, this should never be null.
+      if (irs->func != NULL)
+	context = irs->func->toSymbol()->Stree;
+      else
+	context = mod->toImport()->Stree;
 
       if (imp->ident == NULL)
 	{
-	  // Implements selective imported as IMPORTED_DECL.
-	  // TODO: use Dsymbol->toImport?
-	  return;
+	  // Importing declaration list.
+	  for (size_t i = 0; i < imp->names.dim; i++)
+	    {
+	      AliasDeclaration *aliasdecl = imp->aliasdecls[i];
+	      Dsymbol *dsym = aliasdecl->toAlias();
+	      Identifier *alias = imp->aliases[i];
+
+	      // Skip over importing of aliases and templates.
+	      if (dsym == aliasdecl || !dsym->isDeclaration())
+		continue;
+
+	      tree decl = dsym->toImport()->Stree;
+	      set_decl_location (decl, imp);
+
+	      tree name = (alias != NULL)
+		? get_identifier (alias->string) : NULL_TREE;
+
+	      (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
+	    }
 	}
       else
 	{
-	  // Implements import declarations.
-	  // %% Do we need special treatment for static imports?
-    	  decl = imp->mod->toSymbol()->ScontextDecl;
-    	  context = d_decl_context (imp);
-	  
-	  // It's a renamed import, set name as the alias.
-	  if (imp->aliasId != NULL)
-	    name = get_identifier (imp->aliasId->string);
-
+	  // Importing the entire module.
+	  tree decl = imp->mod->toImport()->Stree;
 	  set_input_location (imp);
+
+	  tree name = (imp->aliasId != NULL)
+	    ? name = get_identifier (imp->aliasId->string) : NULL_TREE;
+
+	  (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
 	}
 
-      (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
       return;
     }
 

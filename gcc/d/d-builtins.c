@@ -455,8 +455,9 @@ d_gcc_magic_builtins_module (Module *m)
 
       FuncDeclaration *func = new FuncDeclaration (Loc(), Loc(), Lexer::idPool (name),
 						   STCextern, dtf);
-      func->isym = new Symbol;
-      func->isym->Stree = decl;
+      func->csym = new Symbol;
+      func->csym->Sident = name;
+      func->csym->Stree = decl;
 
       funcs->push (func);
     }
@@ -591,8 +592,9 @@ d_gcc_magic_libbuiltins_check (Dsymbol *m)
 			(*tf->parameters)[i]->storageClass |= STCref;
 		    }
 		}
-	      fd->isym = new Symbol;
-	      fd->isym->Stree = decl;
+	      fd->csym = new Symbol;
+	      fd->csym->Sident = name;
+	      fd->csym->Stree = decl;
 	      return;
 	    }
 	}
