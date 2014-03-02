@@ -213,6 +213,7 @@ int gthread_recursive_mutex_unlock(gthread_recursive_mutex_t* mutex)
 
 int gthread_recursive_mutex_destroy(gthread_recursive_mutex_t* mutex)
 {
-  return gthread_mutex_destroy(mutex);
+  gthread_mutex_destroy(mutex);
+  return 0;
 }
 
