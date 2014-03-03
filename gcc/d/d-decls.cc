@@ -181,11 +181,11 @@ VarDeclaration::toSymbol (void)
       // Have to test for import first
       if (isImportedSymbol())
 	{
-	  insert_decl_attributes (decl, "dllimport");
+	  insert_decl_attribute (decl, "dllimport");
 	  DECL_DLLIMPORT_P (decl) = 1;
 	}
       else if (isExport())
-	insert_decl_attributes (decl, "dllexport");
+	insert_decl_attribute (decl, "dllexport");
 #endif
 
       if (global.params.vtls && isDataseg() && isThreadlocal())
@@ -392,11 +392,11 @@ FuncDeclaration::toSymbol (void)
 	  // Have to test for import first
 	  if (isImportedSymbol())
 	    {
-	      insert_decl_attributes (fndecl, "dllimport");
+	      insert_decl_attribute (fndecl, "dllimport");
 	      DECL_DLLIMPORT_P (fndecl) = 1;
 	    }
 	  else if (isExport())
-	    insert_decl_attributes (fndecl, "dllexport");
+	    insert_decl_attribute (fndecl, "dllexport");
 #endif
 	  set_decl_location (fndecl, this);
 	  setup_symbol_storage (this, fndecl, false);
