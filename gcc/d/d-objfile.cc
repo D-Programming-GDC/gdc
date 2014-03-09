@@ -16,12 +16,15 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "d-system.h"
+#include "debug.h"
+
 #include "d-lang.h"
 #include "d-codegen.h"
 
 #include "attrib.h"
 #include "enum.h"
 #include "id.h"
+#include "import.h"
 #include "init.h"
 #include "module.h"
 #include "template.h"
@@ -92,12 +95,43 @@ Symbol::~Symbol (void)
 void
 Dsymbol::toObjFile (int)
 {
-  TupleDeclaration *td = this->isTupleDeclaration();
+  // Emit the imported symbol to debug.
+  Import *imp = this->isImport();
 
-  if (!td)
-    return;
+  if (imp != NULL)
+    {
+      tree decl, context;
+      tree name = NULL_TREE;
+
+      if (imp->ident == NULL)
+	{
+	  // Implements selective imported as IMPORTED_DECL.
+	  // TODO: use Dsymbol->toImport?
+	  return;
+	}
+      else
+	{
+	  // Implements import declarations.
+	  // %% Do we need special treatment for static imports?
+    	  decl = imp->mod->toSymbol()->ScontextDecl;
+    	  context = d_decl_context (imp);
+	  
+	  // It's a renamed import, set name as the alias.
+	  if (imp->aliasId != NULL)
+	    name = get_identifier (imp->aliasId->string);
+
+	  set_input_location (imp);
+	}
+
+      (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
+      return;
+    }
 
   // Emit local variables for tuples.
+  TupleDeclaration *td = this->isTupleDeclaration();
+  if (td == NULL)
+    return;
+
   for (size_t i = 0; i < td->objects->dim; i++)
     {
       RootObject *o = (*td->objects)[i];
@@ -1578,19 +1612,47 @@ set_input_location (const Loc& loc)
     input_location = get_linemap (loc);
 }
 
-// Set the decl T source location to LOC.
+// Some D Declarations don't have the loc set, this searches DECL's parents
+// until a valid loc is found.
+
+void
+set_input_location (Dsymbol *decl)
+{
+  Dsymbol *dsym = decl;
+  while (dsym)
+    {
+      if (dsym->loc.filename)
+	{
+	  set_input_location (dsym->loc);
+	  return;
+	}
+      dsym = dsym->toParent();
+    }
+
+  // Fallback; backend sometimes crashes if not set
+  Module *mod = decl->getModule();
+  Loc loc;
+
+  if (mod && mod->srcfile && mod->srcfile->name)
+    loc.filename = mod->srcfile->name->str;
+  else
+    // Empty string can mess up debug info
+    loc.filename = "<no_file>";
+
+  loc.linnum = 1;
+  set_input_location (loc);
+}
+
+// Like set_input_location, but sets the location on decl T.
 
 void
 set_decl_location (tree t, const Loc& loc)
 {
-  // DWARF2 will often crash if the DECL_SOURCE_FILE is not set.  It's
-  // easier the error here.
+  // DWARF2 will often crash if the DECL_SOURCE_FILE is not set.
+  // It's easier the error here.
   gcc_assert (loc.filename);
   DECL_SOURCE_LOCATION (t) = get_linemap (loc);
 }
-
-// Some D Declarations don't have the loc set, this searches DECL's parents
-// until a valid loc is found.
 
 void
 set_decl_location (tree t, Dsymbol *decl)
@@ -1607,17 +1669,17 @@ set_decl_location (tree t, Dsymbol *decl)
     }
 
   // Fallback; backend sometimes crashes if not set
-  Module *m = decl->getModule();
-  Loc l;
+  Module *mod = decl->getModule();
+  Loc loc;
 
-  if (m && m->srcfile && m->srcfile->name)
-    l.filename = m->srcfile->name->str;
+  if (mod && mod->srcfile && mod->srcfile->name)
+    loc.filename = mod->srcfile->name->str;
   else
-    // Emptry string can mess up debug info
-    l.filename = "<no_file>";
+    // Empty string can mess up debug info
+    loc.filename = "<no_file>";
 
-  l.linnum = 1;
-  set_decl_location (t, l);
+  loc.linnum = 1;
+  set_decl_location (t, loc);
 }
 
 void

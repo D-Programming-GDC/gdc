@@ -181,11 +181,11 @@ VarDeclaration::toSymbol (void)
       // Have to test for import first
       if (isImportedSymbol())
 	{
-	  insert_decl_attributes (decl, "dllimport");
+	  insert_decl_attribute (decl, "dllimport");
 	  DECL_DLLIMPORT_P (decl) = 1;
 	}
       else if (isExport())
-	insert_decl_attributes (decl, "dllexport");
+	insert_decl_attribute (decl, "dllexport");
 #endif
 
       if (global.params.vtls && isDataseg() && isThreadlocal())
@@ -392,11 +392,11 @@ FuncDeclaration::toSymbol (void)
 	  // Have to test for import first
 	  if (isImportedSymbol())
 	    {
-	      insert_decl_attributes (fndecl, "dllimport");
+	      insert_decl_attribute (fndecl, "dllimport");
 	      DECL_DLLIMPORT_P (fndecl) = 1;
 	    }
 	  else if (isExport())
-	    insert_decl_attributes (fndecl, "dllexport");
+	    insert_decl_attribute (fndecl, "dllexport");
 #endif
 	  set_decl_location (fndecl, this);
 	  setup_symbol_storage (this, fndecl, false);
@@ -569,9 +569,23 @@ Module::toSymbol (void)
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
 
-      tree module = d_build_module (this);
-      csym->ScontextDecl = module;
+      // Store the NAMESPACE_DECL in ScontextDecl.
+      Loc loc = (this->md != NULL) ? this->md->loc : Loc(this, 1);
+      tree module = d_build_module (loc, this);
       d_keep (module);
+
+      if (output_module_p (this))
+	{
+	  DECL_EXTERNAL (module) = 0;
+	  TREE_PUBLIC (module) = 1;
+	}
+      else
+	{
+	  DECL_EXTERNAL (module) = 1;
+	  TREE_PUBLIC (module) = 0;
+	}
+
+      csym->ScontextDecl = module;
     }
 
   return csym;

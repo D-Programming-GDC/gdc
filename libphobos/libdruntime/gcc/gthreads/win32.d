@@ -161,9 +161,10 @@ void gthread_mutex_init(gthread_mutex_t* mutex)
   InitializeCriticalSection(mutex);
 }
 
-void gthread_mutex_destroy(gthread_mutex_t* mutex)
+int gthread_mutex_destroy(gthread_mutex_t* mutex)
 {
   DeleteCriticalSection(mutex);
+  return 0;
 }
 
 int gthread_mutex_lock(gthread_mutex_t* mutex)
