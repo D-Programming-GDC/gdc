@@ -627,7 +627,7 @@ d_post_options (const char ** fn)
 }
 
 // Array of all global declarations to pass back to the middle-end.
-static GTY(()) vec<tree, va_gc> *global_declarations;
+vec<tree, va_gc> *global_declarations;
 
 void
 d_add_global_declaration (tree decl)
@@ -1637,7 +1637,7 @@ build_d_decl_lang_specific (Declaration *d)
 
 
 // This preserves trees we create from the garbage collector.
-static GTY(()) tree d_keep_list = NULL_TREE;
+tree d_keep_list = NULL_TREE;
 
 void
 d_keep (tree t)
@@ -1772,5 +1772,3 @@ d_handle_target_attribute (tree *node, tree name, tree args, int flags,
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
-
-#include "gt-d-d-lang.h"

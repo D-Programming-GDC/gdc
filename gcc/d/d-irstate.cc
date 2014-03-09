@@ -28,6 +28,20 @@ IRState::IRState (void)
   this->func = NULL;
   this->mod = NULL;
   this->sthis = NULL_TREE;
+  this->varsInScope = vNULL;
+  this->statementList_ = vNULL;
+  this->scopes_ = vNULL;
+  this->loops_ = vNULL;
+  this->labels_ = vNULL;
+}
+
+IRState::~IRState (void)
+{
+  this->varsInScope.release();
+  this->statementList_.release();
+  this->scopes_.release();
+  this->loops_.release();
+  this->labels_.release();
 }
 
 IRState *

@@ -43,6 +43,30 @@ static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<Va
 static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
 static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
 
+ModuleInfo::ModuleInfo (void)
+{
+  this->classes = vNULL;
+  this->ctors = vNULL;
+  this->dtors = vNULL;
+  this->ctorgates = vNULL;
+  this->sharedctors = vNULL;
+  this->shareddtors = vNULL;
+  this->sharedctorgates = vNULL;
+  this->unitTests = vNULL;
+}
+
+ModuleInfo::~ModuleInfo (void)
+{
+  this->classes.release();
+  this->ctors.release();
+  this->dtors.release();
+  this->ctorgates.release();
+  this->sharedctors.release();
+  this->shareddtors.release();
+  this->sharedctorgates.release();
+  this->unitTests.release();
+}
+
 // Construct a new Symbol.
 
 Symbol::Symbol (void)
@@ -60,8 +84,13 @@ Symbol::Symbol (void)
   this->SnamedResult = NULL_TREE;
 
   this->frameInfo = NULL;
+  this->thunks = vNULL;
 }
 
+Symbol::~Symbol (void)
+{
+  this->thunks.release();
+}
 
 void
 Dsymbol::toObjFile (int)
@@ -1719,7 +1748,7 @@ d_comdat_linkage (tree decl)
       DECL_INITIAL (decl) = decl_init;
     }
   else if (TREE_CODE (decl) == FUNCTION_DECL
-	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
+	   || ((TREE_CODE (decl) == VAR_DECL) && DECL_ARTIFICIAL (decl)))
     // We can just emit function and compiler-generated variables
     // statically; having multiple copies is (for the most part) only
     // a waste of space.
@@ -1817,12 +1846,12 @@ mark_needed (tree decl)
   if (TREE_CODE (decl) == FUNCTION_DECL)
     {
       struct cgraph_node *node = cgraph_get_create_node (decl);
-      node->forced_by_abi = true;
+      node->symbol.force_output = true;
     }
   else if (TREE_CODE (decl) == VAR_DECL)
     {
       struct varpool_node *node = varpool_node_for_decl (decl);
-      node->forced_by_abi = true;
+      node->symbol.force_output = true;
     }
 }
 
@@ -2181,7 +2210,8 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
 				 virtual_value, 0, alias);
 
   if (DECL_ONE_ONLY (target_decl))
-    symtab_add_to_same_comdat_group (thunk_node, funcn);
+    symtab_add_to_same_comdat_group ((symtab_node) thunk_node,
+				     (symtab_node) funcn);
 
   if (!targetm.asm_out.can_output_mi_thunk (thunk_decl, fixed_offset,
 					    virtual_value, alias))

@@ -47,6 +47,7 @@ typedef tree_node dt_t;
 struct Symbol
 {
   Symbol (void);
+  ~Symbol (void);
 
   const char *Sident;
   const char *prettyIdent;
@@ -68,7 +69,7 @@ struct Symbol
   tree SnamedResult;
 
   // For FuncDeclarations:
-  auto_vec<Thunk *> thunks;
+  vec<Thunk *> thunks;
   FuncFrameInfo *frameInfo;
 };
 
@@ -93,16 +94,19 @@ extern void build_moduleinfo (Symbol *sym);
 
 struct ModuleInfo
 {
-  auto_vec<ClassDeclaration *> classes;
-  auto_vec<FuncDeclaration *> ctors;
-  auto_vec<FuncDeclaration *> dtors;
-  auto_vec<VarDeclaration *> ctorgates;
+  ModuleInfo (void);
+  ~ModuleInfo (void);
 
-  auto_vec<FuncDeclaration *> sharedctors;
-  auto_vec<FuncDeclaration *> shareddtors;
-  auto_vec<VarDeclaration *> sharedctorgates;
+  vec<ClassDeclaration *> classes;
+  vec<FuncDeclaration *> ctors;
+  vec<FuncDeclaration *> dtors;
+  vec<VarDeclaration *> ctorgates;
 
-  auto_vec<FuncDeclaration *> unitTests;
+  vec<FuncDeclaration *> sharedctors;
+  vec<FuncDeclaration *> shareddtors;
+  vec<VarDeclaration *> sharedctorgates;
+
+  vec<FuncDeclaration *> unitTests;
 };
 
 extern ModuleInfo *current_module_info;

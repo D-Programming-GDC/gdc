@@ -106,6 +106,7 @@ struct IRState
   IRState *parent;
 
   IRState (void);
+  ~IRState (void);
 
   // ** Functions
   FuncDeclaration *func;
@@ -118,7 +119,7 @@ struct IRState
   void endFunction (void);
 
   // Variables that are in scope that will need destruction later.
-  auto_vec<VarDeclaration *> varsInScope;
+  vec<VarDeclaration *> varsInScope;
 
   // ** Statement Lists
   void addExp (tree e);
@@ -222,10 +223,10 @@ struct IRState
   void doReturn (tree t_value);
 
  protected:
-  auto_vec<tree> statementList_;
-  auto_vec<unsigned *> scopes_;
-  auto_vec<Flow *> loops_;
-  auto_vec<Label *> labels_;
+  vec<tree> statementList_;
+  vec<unsigned *> scopes_;
+  vec<Flow *> loops_;
+  vec<Label *> labels_;
 };
 
 
