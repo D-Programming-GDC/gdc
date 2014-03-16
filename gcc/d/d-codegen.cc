@@ -864,6 +864,9 @@ build_attributes (Expressions *in_attrs)
           && !mod->parent->parent))
         continue;
 
+      if (attr->op == TOKcall)
+	attr = attr->ctfeInterpret();
+
       gcc_assert(attr->op == TOKstructliteral);
       Expressions *elem = ((StructLiteralExp*) attr)->elements;
 
