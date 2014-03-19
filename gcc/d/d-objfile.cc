@@ -1482,8 +1482,6 @@ Module::genobjfile (int)
   current_module_info = new ModuleInfo;
   current_module_decl = this;
 
-  setup_symbol_storage (this, toSymbol()->Stree, true);
-
   if (members)
     {
       for (size_t i = 0; i < members->dim; i++)

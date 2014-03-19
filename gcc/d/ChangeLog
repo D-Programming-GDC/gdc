@@ -1,3 +1,18 @@
+2014-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(Dsymbol::toSymbolX): Set the symbol prettyIdent.
+	(Dsymbol::toImport): Emit packages as their fully qualified names.
+	(ClassDeclaration::toSymbol): Distinguish between the classinfo
+	assembler and decl name.
+	(InterfaceDeclaration::toSymbol): Likewise for interface symbol.
+	(Module::toSymbol): Likewise for moduleinfo symbol.
+	(ClassDeclaration::toVtblSymbol): Likewise for class vtable symbol.
+	(AggregateDeclaration::toInitializer)
+	(TypedefDeclaration::toInitializer, EnumDeclaration::toInitializer):
+	Likewise for default initialisers.
+	* d-objfile.cc(Module::genobjfile): Don't set-up moduleinfo symbol
+	storage twice.
+
 2014-03-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_decl_context): Fix null pointer dereference.

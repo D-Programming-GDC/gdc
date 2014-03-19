@@ -56,6 +56,10 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
   snprintf (CONST_CAST (char *, s->Sident), sz, "_D%s%u%s%s",
 	    symbol, prefixlen, prefix, suffix);
 
+  s->prettyIdent = XNEWVEC (const char, sz);
+  snprintf (CONST_CAST (char *, s->prettyIdent), sz, "%s.%s",
+	    toPrettyChars(), prefix);
+
   return s;
 }
 
@@ -549,13 +553,15 @@ ClassDeclaration::toSymbol (void)
       csym = toSymbolX ("__Class", 0, 0, "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (csym->Sident), d_unknown_type_node);
+			      get_identifier (csym->prettyIdent), d_unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (csym->Sident));
       csym->Stree = decl;
       d_keep (decl);
 
       setup_symbol_storage (this, decl, true);
       set_decl_location (decl, this);
 
+      DECL_ARTIFICIAL (decl) = 1;
       // ClassInfo cannot be const data, because we use the monitor on it.
       TREE_CONSTANT (decl) = 0;
     }
@@ -573,20 +579,22 @@ InterfaceDeclaration::toSymbol (void)
       csym = toSymbolX ("__Interface", 0, 0, "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (csym->Sident), d_unknown_type_node);
+			      get_identifier (csym->prettyIdent), d_unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (csym->Sident));
       csym->Stree = decl;
       d_keep (decl);
 
       setup_symbol_storage (this, decl, true);
       set_decl_location (decl, this);
 
+      DECL_ARTIFICIAL (decl) = 1;
       TREE_CONSTANT (decl) = 1;
     }
 
   return csym;
 }
 
-// Create the "ModuleInfo" symbol and namespace for given module.
+// Create the "ModuleInfo" symbol for a given module.
 
 Symbol *
 Module::toSymbol (void)
@@ -596,34 +604,18 @@ Module::toSymbol (void)
       csym = toSymbolX ("__ModuleInfo", 0, 0, "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (csym->Sident), d_unknown_type_node);
+			      get_identifier (csym->prettyIdent), d_unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (csym->Sident));
       csym->Stree = decl;
       d_keep (decl);
 
       setup_symbol_storage (this, decl, true);
       set_decl_location (decl, this);
 
+      DECL_ARTIFICIAL (decl) = 1;
       // Not readonly, moduleinit depends on this.
       TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
-
-      // Store the NAMESPACE_DECL in ScontextDecl.
-      Loc loc = (this->md != NULL) ? this->md->loc : Loc(this, 1);
-      tree module = d_build_module (loc, this);
-      d_keep (module);
-
-      if (output_module_p (this))
-	{
-	  DECL_EXTERNAL (module) = 0;
-	  TREE_PUBLIC (module) = 1;
-	}
-      else
-	{
-	  DECL_EXTERNAL (module) = 1;
-	  TREE_PUBLIC (module) = 0;
-	}
-
-      csym->ScontextDecl = module;
     }
 
   return csym;
@@ -706,7 +698,8 @@ ClassDeclaration::toVtblSymbol (void)
 	 VAR_DECL.  The back end seems to accept this. */
       Type *vtbltype = TypeSArray::makeType (loc, Type::tvoidptr, vtbl.dim);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (vtblsym->Sident), vtbltype->toCtype());
+			      get_identifier (vtblsym->prettyIdent), vtbltype->toCtype());
+      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (vtblsym->Sident));
       vtblsym->Stree = decl;
       d_keep (decl);
 
@@ -716,9 +709,9 @@ ClassDeclaration::toVtblSymbol (void)
       TREE_READONLY (decl) = 1;
       TREE_CONSTANT (decl) = 1;
       TREE_ADDRESSABLE (decl) = 1;
+      DECL_ARTIFICIAL (decl) = 1;
 
       DECL_CONTEXT (decl) = d_decl_context (this);
-      DECL_ARTIFICIAL (decl) = 1;
       DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;
     }
   return vtblsym;
@@ -756,7 +749,8 @@ AggregateDeclaration::toInitializer (void)
 	stype = TREE_TYPE (type->toCtype());
 
       sinit->Stree = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-				 get_identifier (sinit->Sident), stype);
+				 get_identifier (sinit->prettyIdent), stype);
+      SET_DECL_ASSEMBLER_NAME (sinit->Stree, get_identifier (sinit->Sident));
       d_keep (sinit->Stree);
 
       setup_symbol_storage (this, sinit->Stree, true);
@@ -765,6 +759,7 @@ AggregateDeclaration::toInitializer (void)
       TREE_ADDRESSABLE (sinit->Stree) = 1;
       TREE_READONLY (sinit->Stree) = 1;
       TREE_CONSTANT (sinit->Stree) = 1;
+      DECL_ARTIFICIAL (sinit->Stree) = 1;
       // These initialisers are always global.
       DECL_CONTEXT (sinit->Stree) = NULL_TREE;
     }
@@ -783,7 +778,8 @@ TypedefDeclaration::toInitializer (void)
   if (!sinit->Stree && current_module_decl)
     {
       sinit->Stree = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-				 get_identifier (sinit->Sident), type->toCtype());
+				 get_identifier (sinit->prettyIdent), type->toCtype());
+      SET_DECL_ASSEMBLER_NAME (sinit->Stree, get_identifier (sinit->Sident));
       d_keep (sinit->Stree);
 
       setup_symbol_storage (this, sinit->Stree, true);
@@ -791,6 +787,7 @@ TypedefDeclaration::toInitializer (void)
 
       TREE_CONSTANT (sinit->Stree) = 1;
       TREE_READONLY (sinit->Stree) = 1;
+      DECL_ARTIFICIAL (sinit->Stree) = 1;
       DECL_CONTEXT (sinit->Stree) = NULL_TREE;
     }
 
@@ -814,7 +811,8 @@ EnumDeclaration::toInitializer (void)
   if (!sinit->Stree && current_module_decl)
     {
       sinit->Stree = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-				 get_identifier (sinit->Sident), type->toCtype());
+				 get_identifier (sinit->prettyIdent), type->toCtype());
+      SET_DECL_ASSEMBLER_NAME (sinit->Stree, get_identifier (sinit->Sident));
       d_keep (sinit->Stree);
 
       setup_symbol_storage (this, sinit->Stree, true);
@@ -822,6 +820,7 @@ EnumDeclaration::toInitializer (void)
 
       TREE_CONSTANT (sinit->Stree) = 1;
       TREE_READONLY (sinit->Stree) = 1;
+      DECL_ARTIFICIAL (sinit->Stree) = 1;
       DECL_CONTEXT (sinit->Stree) = NULL_TREE;
     }
 
