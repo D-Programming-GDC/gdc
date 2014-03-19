@@ -402,28 +402,18 @@ public:
   elem *toElem (IRState *irs);
 };
 
-class AggLayout
+struct AggLayout
 {
- public:
-  AggLayout (AggregateDeclaration *ini_agg_decl, tree ini_agg_type)
-    : aggDecl_(ini_agg_decl),
-      aggType_(ini_agg_type)
-  { }
+  AggLayout (AggregateDeclaration *indecl, tree intype)
+    : decl (indecl), type (intype) { }
 
-  void go (void)
-  { visit (this->aggDecl_); }
-
-  void visit (AggregateDeclaration *decl);
-
-  void doFields (VarDeclarations *fields, AggregateDeclaration *agg);
-  void doInterfaces (BaseClasses *bases);
-  void addField (tree field_decl, size_t offset);
-  void finish (Expressions *attrs);
-
- private:
-  AggregateDeclaration *aggDecl_;
-  tree aggType_;
+  AggregateDeclaration *decl;
+  tree type;
 };
+
+extern void layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl);
+extern void insert_aggregate_field (AggLayout *al, tree field, size_t offset);
+extern void finish_aggregate_type (AggLayout *al, Expressions *attrs);
 
 class ArrayScope
 {

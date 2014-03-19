@@ -306,9 +306,9 @@ TypeStruct::toCtype (void)
 	  TYPE_PACKED (ctype) = (sym->alignsize == 1);
 	  compute_record_mode (ctype);
 
-	  AggLayout agg_layout (sym, ctype);
-	  agg_layout.go();
-	  agg_layout.finish (sym->userAttributes);
+	  AggLayout al = AggLayout (sym, ctype);
+	  layout_aggregate_type (&al, sym);
+	  finish_aggregate_type (&al, sym->userAttributes);
 
 	  build_type_decl (ctype, sym);
 	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
@@ -371,13 +371,16 @@ TypeFunction::toCtype (void)
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
 
-	  Type *tn = next->baseElemOf();
-	  if (tn->ty == Tstruct)
+	  if (ret_type != void_type_node)
 	    {
-	      // Non-POD structs must return in memory.
-	      TypeStruct *ts = (TypeStruct *) tn->toBasetype();
-	      if (!ts->sym->isPOD())
-		TREE_ADDRESSABLE (ctype) = 1;
+	      Type *tn = next->baseElemOf();
+	      if (tn->ty == Tstruct)
+		{
+		  // Non-POD structs must return in memory.
+		  TypeStruct *ts = (TypeStruct *) tn->toBasetype();
+		  if (!ts->sym->isPOD())
+		    TREE_ADDRESSABLE (ctype) = 1;
+		}
 	    }
 
 	  switch (linkage)
@@ -602,85 +605,50 @@ TypeClass::toCtype (void)
 	}
       else 
 	{
-	  tree rec_type;
-	  bool inherited = sym->baseClass != 0;
-	  tree vfield;
-
 	  // Need to set ctype right away in case of self-references to
 	  // the type during this call.
-	  rec_type = make_node (RECORD_TYPE);
-	  ctype = build_reference_type (rec_type);
+	  tree basetype = make_node (RECORD_TYPE);
+	  ctype = build_reference_type (basetype);
 	  d_keep (ctype);
 
 	  // Note that this is set on both the reference type and record type.
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
-	  TYPE_LANG_SPECIFIC (rec_type) = TYPE_LANG_SPECIFIC (ctype);
+	  TYPE_LANG_SPECIFIC (basetype) = TYPE_LANG_SPECIFIC (ctype);
 
-	  // Most of this code is just to produce correct debugging information.
-	  AggLayout agg_layout = AggLayout (sym, rec_type);
+	  // Add the fields of each base class
+	  AggLayout al = AggLayout (sym, basetype);
+	  layout_aggregate_type (&al, sym);
+	  finish_aggregate_type (&al, sym->userAttributes);
 
-	  // Add the virtual table pointer
-	  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				  get_identifier ("__vptr"), d_vtbl_ptr_type_node);
-	  agg_layout.addField (decl, 0);
-
-	  if (inherited)
-	    {
-	      vfield = copy_node (decl);
-	      DECL_ARTIFICIAL (decl) = 1;
-	      DECL_IGNORED_P (decl) = 1;
-	    }
-	  else
-	    {
-	      vfield = decl;
-	    }
-	  DECL_VIRTUAL_P (vfield) = 1;
-	  TYPE_VFIELD (rec_type) = vfield;
-	  TREE_ADDRESSABLE (rec_type) = 1;
-
-	  if (sym->isInterfaceDeclaration())
-	    {
-	      ClassDeclaration *p = sym;
-
-	      while (p->baseclasses->dim)
-	        p = (*p->baseclasses)[0]->base;
-
-	      DECL_FCONTEXT (vfield) = TREE_TYPE (p->type->toCtype());
-	    }
-	  else
-	    {
-	      tree obj_type = TREE_TYPE (build_object_type()->toCtype());
-	      DECL_FCONTEXT (vfield) = obj_type;
-
-	      if (!sym->cpp)
-		{
-		  // Add the monitor
-		  decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				     get_identifier ("__monitor"), ptr_type_node);
-		  DECL_FCONTEXT (decl) = obj_type;
-		  DECL_ARTIFICIAL (decl) = inherited;
-		  DECL_IGNORED_P (decl) = inherited;
-		  agg_layout.addField (decl, Target::ptrsize);
-		}
-
-	      // Add the fields of each base class
-	      agg_layout.go();
-	    }
-
-	  agg_layout.finish (sym->userAttributes);
+	  // Type is final, there are no derivations.
+	  if (sym->storage_class & STCfinal)
+	    TYPE_FINAL_P (basetype) = 1;
 
 	  // Create BINFO even if debugging is off.  This is needed to keep
 	  // references to inherited types.
 	  if (!sym->isInterfaceDeclaration())
-	    TYPE_BINFO (rec_type) = build_class_binfo (NULL_TREE, sym);
+	    TYPE_BINFO (basetype) = build_class_binfo (NULL_TREE, sym);
 	  else
 	    {
 	      unsigned offset = 0;
-	      TYPE_BINFO (rec_type) = build_interface_binfo (NULL_TREE, sym, offset);
+	      TYPE_BINFO (basetype) = build_interface_binfo (NULL_TREE, sym, offset);
 	    }
 
-	  build_type_decl (rec_type, sym);
-	  TYPE_CONTEXT (rec_type) = d_decl_context (sym);
+	  // Same for virtual methods too.
+	  for (size_t i = 0; i < sym->vtbl.dim; i++)
+	    {
+	      FuncDeclaration *fd = sym->vtbl[i]->isFuncDeclaration();
+	      tree method = fd ? fd->toSymbol()->Stree : NULL_TREE;
+
+	      if (method && DECL_CONTEXT (method) == basetype)
+		{
+		  DECL_CHAIN (method) = TYPE_METHODS (basetype);
+		  TYPE_METHODS (basetype) = method;
+		}
+	    }
+
+	  build_type_decl (basetype, sym);
+	  TYPE_CONTEXT (basetype) = d_decl_context (sym);
 	}
     }
 

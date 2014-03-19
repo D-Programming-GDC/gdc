@@ -1,3 +1,19 @@
+2014-03-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(AggLayout::visit): Rename to layout_aggregate_type.
+	(AggLayout::doFields, AggLayout::doInterfaces): Remove function and
+	move implementation into layout_aggregate_type.
+	(AggLayout::addField): Rename to insert_aggregate_field.
+	(AggLayout::finish): Rename to finish_aggregate_type.
+	* d-codegen.h(AggLayout): Update definition.
+	* d-ctype.cc(TypeStruct::toCtype): Update for glue changes.
+	(TypeFunction::toCtype): Fix ICE on generic function types.
+	(TypeClass::toCtype): Move generation of vptr and monitor fields into
+	layout_aggregate_type.  Moved generation of TYPE_METHODS from ...
+	* d-objfile.cc(FuncDeclaration::toObjFile): ... here into
+	TypeClass::toCtype.  Don't build up TYPE_METHODS on a per-function
+	basis, generate the entire vtable.
+
 2014-03-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc(Dsymbol::toSymbolX): Set the symbol prettyIdent.

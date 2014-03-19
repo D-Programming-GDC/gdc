@@ -1184,19 +1184,6 @@ FuncDeclaration::toObjFile (int)
   allocate_struct_function (fndecl, false);
   set_function_end_locus (endloc);
 
-  // Add method to record for debug information.
-  if (isThis())
-    {
-      AggregateDeclaration *ad = isThis();
-      tree rec = ad->type->toCtype();
-
-      if (ad->isClassDeclaration())
-	rec = TREE_TYPE (rec);
-
-      if (write_symbols != NO_DEBUG)
-	TYPE_METHODS (rec) = chainon (TYPE_METHODS (rec), fndecl);
-    }
-
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
 
@@ -2011,7 +1998,7 @@ build_type_decl (tree t, Dsymbol *dsym)
 {
   if (TYPE_STUB_DECL (t))
     return;
-  
+
   gcc_assert (!POINTER_TYPE_P (t));
 
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL,

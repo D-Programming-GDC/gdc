@@ -3641,134 +3641,149 @@ WrappedExp::toElem (IRState *)
 // out base class fields first, and adds all interfaces last.
 
 void
-AggLayout::visit (AggregateDeclaration *decl)
+layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl)
 {
-  ClassDeclaration *class_decl = decl->isClassDeclaration();
+  ClassDeclaration *cd = decl->isClassDeclaration();
+  bool inherited_p = (al->decl != decl);
 
-  if (class_decl && class_decl->baseClass)
-    AggLayout::visit (class_decl->baseClass);
+  if (cd != NULL)
+    {
+      if (cd->baseClass)
+	layout_aggregate_type (al, cd->baseClass);
+      else
+	{
+	  // This is the base class (Object) or interface.
+	  tree objtype = TREE_TYPE (cd->type->toCtype());
+
+	  // Add the virtual table pointer, and optionally the monitor fields.
+	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+				   get_identifier ("__vptr"), d_vtbl_ptr_type_node);
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = inherited_p;
+
+	  insert_aggregate_field (al, field, 0);
+
+	  DECL_VIRTUAL_P (field) = 1;
+	  DECL_FCONTEXT (field) = objtype;
+	  TYPE_VFIELD (al->type) = field;
+
+	  if (cd->cpp == false)
+	    {
+	      field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+				  get_identifier ("__monitor"), ptr_type_node);
+	      DECL_FCONTEXT (field) = objtype;
+	      DECL_ARTIFICIAL (field) = 1;
+	      DECL_IGNORED_P (field) = inherited_p;
+	      insert_aggregate_field (al, field, Target::ptrsize);
+	    }
+	}
+    }
 
   if (decl->fields.dim)
-    doFields (&decl->fields, decl);
-
-  if (class_decl && class_decl->vtblInterfaces)
-    doInterfaces (class_decl->vtblInterfaces);
-}
-
-
-// Add all FIELDS into aggregate AGG.
-
-void
-AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
-{
-  bool inherited = agg != this->aggDecl_;
-  tree fcontext;
-
-  fcontext = agg->type->toCtype();
-  if (POINTER_TYPE_P (fcontext))
-    fcontext = TREE_TYPE (fcontext);
-
-  for (size_t i = 0; i < fields->dim; i++)
     {
-      // %% D anonymous unions just put the fields into the outer struct...
-      // does this cause problems?
-      VarDeclaration *var = (*fields)[i];
-      gcc_assert (var && var->isField());
+      tree fcontext = decl->type->toCtype();
 
-      tree ident = var->ident ? get_identifier (var->ident->string) : NULL_TREE;
-      tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
-			      declaration_type (var));
-      set_decl_location (decl, var);
-      var->csym = new Symbol;
-      var->csym->Stree = decl;
+      if (POINTER_TYPE_P (fcontext))
+	fcontext = TREE_TYPE (fcontext);
 
-      DECL_CONTEXT (decl) = this->aggType_;
-      DECL_FCONTEXT (decl) = fcontext;
-      DECL_FIELD_OFFSET (decl) = size_int (var->offset);
-      DECL_FIELD_BIT_OFFSET (decl) = bitsize_zero_node;
-
-      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
-      SET_DECL_OFFSET_ALIGN (decl, TYPE_ALIGN (TREE_TYPE (decl)));
-
-      TREE_THIS_VOLATILE (decl) = TYPE_VOLATILE (TREE_TYPE (decl));
-      layout_decl (decl, 0);
-
-      if (var->size (var->loc))
+      for (size_t i = 0; i < decl->fields.dim; i++)
 	{
-	  gcc_assert (DECL_MODE (decl) != VOIDmode);
-	  gcc_assert (DECL_SIZE (decl) != NULL_TREE);
+	  // D anonymous unions just put the fields into the outer struct...
+	  // Does this cause problems?
+	  VarDeclaration *var = decl->fields[i];
+	  gcc_assert (var && var->isField());
+
+	  tree ident = var->ident ? get_identifier (var->ident->string) : NULL_TREE;
+	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
+				   declaration_type (var));
+	  set_decl_location (field, var);
+	  var->csym = new Symbol;
+	  var->csym->Stree = field;
+
+	  DECL_CONTEXT (field) = al->type;
+	  DECL_FCONTEXT (field) = fcontext;
+	  DECL_FIELD_OFFSET (field) = size_int (var->offset);
+	  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+
+	  DECL_ARTIFICIAL (field) = inherited_p;
+	  DECL_IGNORED_P (field) = inherited_p;
+	  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
+
+	  TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
+	  layout_decl (field, 0);
+
+	  if (var->size (var->loc))
+	    {
+	      gcc_assert (DECL_MODE (field) != VOIDmode);
+	      gcc_assert (DECL_SIZE (field) != NULL_TREE);
+	    }
+
+	  TYPE_FIELDS(al->type) = chainon (TYPE_FIELDS (al->type), field);
 	}
-
-      TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), decl);
     }
-}
 
-// Write out all interfaces BASES for a class.
-
-void
-AggLayout::doInterfaces (BaseClasses *bases)
-{
-  for (size_t i = 0; i < bases->dim; i++)
+  if (cd && cd->vtblInterfaces)
     {
-      BaseClass *bc = (*bases)[i];
-      tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
-			      Type::tvoidptr->pointerTo()->toCtype());
-      DECL_ARTIFICIAL (decl) = 1;
-      DECL_IGNORED_P (decl) = 1;
-      addField (decl, bc->offset);
+      for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *bc = (*cd->vtblInterfaces)[i];
+	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
+				   Type::tvoidptr->pointerTo()->toCtype());
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = 1;
+	  insert_aggregate_field (al, field, bc->offset);
+	}
     }
 }
 
-// Add single field DECL at OFFSET into aggregate.
+// Add a compiler generated field DECL at OFFSET into aggregate.
 
 void
-AggLayout::addField (tree decl, size_t offset)
+insert_aggregate_field (AggLayout *al, tree decl, size_t offset)
 {
-  Loc l (this->aggDecl_->getModule(), 1);
-
-  DECL_CONTEXT (decl) = this->aggType_;
+  DECL_CONTEXT (decl) = al->type;
   SET_DECL_OFFSET_ALIGN (decl, TYPE_ALIGN (TREE_TYPE (decl)));
   DECL_FIELD_OFFSET (decl) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (decl) = bitsize_zero_node;
 
   // Must set this or we crash with DWARF debugging.
-  set_decl_location (decl, l);
+  set_decl_location (decl, al->decl->loc);
 
   TREE_THIS_VOLATILE (decl) = TYPE_VOLATILE (TREE_TYPE (decl));
 
   layout_decl (decl, 0);
-  TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), decl);
+  TYPE_FIELDS(al->type) = chainon (TYPE_FIELDS (al->type), decl);
 }
 
-// Wrap-up and compute finalised aggregate type.  ATTRS are
-// if any GCC attributes were applied to the type declaration.
+// Wrap-up and compute finalised aggregate type.  Writing out
+// any GCC attributes that were applied to the type declaration.
 
 void
-AggLayout::finish (Expressions *attrs)
+finish_aggregate_type (AggLayout *al, Expressions *attrs)
 {
-  unsigned structsize = this->aggDecl_->structsize;
-  unsigned alignsize = this->aggDecl_->alignsize;
+  unsigned structsize = al->decl->structsize;
+  unsigned alignsize = al->decl->alignsize;
 
-  TYPE_SIZE (this->aggType_) = NULL_TREE;
+  TYPE_SIZE (al->type) = NULL_TREE;
 
   if (attrs)
-    decl_attributes (&this->aggType_, build_attributes (attrs),
+    decl_attributes (&al->type, build_attributes (attrs),
 		     ATTR_FLAG_TYPE_IN_PLACE);
 
-  TYPE_SIZE (this->aggType_) = bitsize_int (structsize * BITS_PER_UNIT);
-  TYPE_SIZE_UNIT (this->aggType_) = size_int (structsize);
-  TYPE_ALIGN (this->aggType_) = alignsize * BITS_PER_UNIT;
-  TYPE_PACKED (this->aggType_) = (alignsize == 1);
+  TYPE_SIZE (al->type) = bitsize_int (structsize * BITS_PER_UNIT);
+  TYPE_SIZE_UNIT (al->type) = size_int (structsize);
+  TYPE_ALIGN (al->type) = alignsize * BITS_PER_UNIT;
+  TYPE_PACKED (al->type) = (alignsize == 1);
 
-  compute_record_mode (this->aggType_);
+  compute_record_mode (al->type);
 
   // Set up variants.
-  for (tree x = TYPE_MAIN_VARIANT (this->aggType_); x; x = TYPE_NEXT_VARIANT (x))
+  for (tree x = TYPE_MAIN_VARIANT (al->type); x; x = TYPE_NEXT_VARIANT (x))
     {
-      TYPE_FIELDS (x) = TYPE_FIELDS (this->aggType_);
-      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (this->aggType_);
-      TYPE_ALIGN (x) = TYPE_ALIGN (this->aggType_);
-      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (this->aggType_);
+      TYPE_FIELDS (x) = TYPE_FIELDS (al->type);
+      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (al->type);
+      TYPE_ALIGN (x) = TYPE_ALIGN (al->type);
+      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (al->type);
     }
 }
 
