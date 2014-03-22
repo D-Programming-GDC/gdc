@@ -1839,7 +1839,8 @@ unittest
 unittest
 {
     FloatingPointControl ctrl;
-    ctrl.disableExceptions(FloatingPointControl.allExceptions);
+    if(FloatingPointControl.hasExceptionTraps())
+        ctrl.disableExceptions(FloatingPointControl.allExceptions);
     ctrl.rounding = FloatingPointControl.roundToNearest;
 
     // @@BUG@@: Non-immutable array literals are ridiculous.
@@ -3838,9 +3839,31 @@ private:
         static assert(false, "Architecture not supported");
 
 public:
+    /// Returns true if the current FPU supports exception trapping
+    @property static bool hasExceptionTraps() @safe nothrow
+    {
+        version(X86)
+            return true;
+        else version(X86_64)
+            return true;
+        else version(ARM)
+        {
+            auto oldState = getControlState();
+            // If exceptions are not supported, we set the bit but read it back as zero
+            // https://sourceware.org/ml/libc-ports/2012-06/msg00091.html
+            setControlState(oldState | (divByZeroException & EXCEPTION_MASK));
+            bool result = (getControlState() & EXCEPTION_MASK) != 0;
+            setControlState(oldState);
+            return result;
+        }
+        else
+            static assert(false, "Not implemented for this architecture");
+    }
+
     /// Enable (unmask) specific hardware exceptions. Multiple exceptions may be ORed together.
     void enableExceptions(uint exceptions)
     {
+        assert(hasExceptionTraps);
         initialize();
         version(ARM)
             setControlState(getControlState() | (exceptions & EXCEPTION_MASK));
@@ -3851,6 +3874,7 @@ public:
     /// Disable (mask) specific hardware exceptions. Multiple exceptions may be ORed together.
     void disableExceptions(uint exceptions)
     {
+        assert(hasExceptionTraps);
         initialize();
         version(ARM)
             setControlState(getControlState() & ~(exceptions & EXCEPTION_MASK));
@@ -3868,6 +3892,7 @@ public:
     /// Return the exceptions which are currently enabled (unmasked)
     @property static uint enabledExceptions()
     {
+        assert(hasExceptionTraps);
         version(ARM)
             return (getControlState() & EXCEPTION_MASK);
         else
@@ -4063,7 +4088,8 @@ unittest
     {
         assert(FloatingPointControl.rounding
                == FloatingPointControl.roundToNearest);
-        assert(FloatingPointControl.enabledExceptions == 0);
+        if(FloatingPointControl.hasExceptionTraps())
+            assert(FloatingPointControl.enabledExceptions == 0);
     }
 
     {
@@ -4078,6 +4104,7 @@ unittest
     }
     ensureDefaults();
 
+    if(FloatingPointControl.hasExceptionTraps)
     {
         FloatingPointControl ctrl;
         ctrl.enableExceptions(FloatingPointControl.divByZeroException
