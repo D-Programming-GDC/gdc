@@ -1,3 +1,8 @@
+2014-03-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(Dsymbol::toImport): Prevent GC from collecting
+	IMPORTED_DECL nodes whilst front-end compilation in progress.
+
 2014-03-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(AggLayout::visit): Rename to layout_aggregate_type.

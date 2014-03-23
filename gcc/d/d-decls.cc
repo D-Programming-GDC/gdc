@@ -125,6 +125,7 @@ Dsymbol::toImport (Symbol *sym)
   tree decl = make_node (IMPORTED_DECL);
   TREE_TYPE (decl) = void_type_node;
   IMPORTED_DECL_ASSOCIATED_DECL (decl) = sym->Stree;
+  d_keep (decl);
 
   Symbol *s = new Symbol();
   s->Stree = decl;
