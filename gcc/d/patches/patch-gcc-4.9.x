@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- gcc/dwarf2out.c
 +++ gcc/dwarf2out.c
-@@ -4613,6 +4613,15 @@ is_ada (void)
+@@ -4616,6 +4616,15 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -125,7 +125,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  */
  
  static void
-@@ -19277,6 +19286,8 @@ gen_compile_unit_die (const char *filename)
+@@ -19285,6 +19294,8 @@ gen_compile_unit_die (const char *filename)
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -134,7 +134,16 @@ relevant documentation about the GDC front end.
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
-@@ -20236,7 +20247,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -20226,7 +20237,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+ 
+   if (ns_context != context_die)
+     {
+-      if (is_fortran ())
++      if (is_fortran () || is_dlang ())
+ 	return ns_context;
+       if (DECL_P (thing))
+ 	gen_decl_die (thing, NULL, ns_context);
+@@ -20249,7 +20260,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -143,6 +152,24 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
+@@ -20306,7 +20317,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
+       break;
+ 
+     case CONST_DECL:
+-      if (!is_fortran () && !is_ada ())
++      if (!is_fortran () && !is_ada () && !is_dlang ())
+ 	{
+ 	  /* The individual enumerators of an enum type get output when we output
+ 	     the Dwarf representation of the relevant enum type itself.  */
+@@ -20776,7 +20787,7 @@ dwarf2out_decl (tree decl)
+     case CONST_DECL:
+       if (debug_info_level <= DINFO_LEVEL_TERSE)
+ 	return;
+-      if (!is_fortran () && !is_ada ())
++      if (!is_fortran () && !is_ada () && !is_dlang ())
+ 	return;
+       if (TREE_STATIC (decl) && decl_function_context (decl))
+ 	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 --- gcc/gcc.c
 +++ gcc/gcc.c
 @@ -1021,6 +1021,7 @@ static const struct compiler default_compilers[] =
