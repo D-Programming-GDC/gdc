@@ -196,7 +196,7 @@ WithStatement::toIR (IRState *irs)
       gcc_assert (ie);
 
       build_local_var (wthis, irs->func);
-      tree init = ie->exp->toElemDtor (irs); 
+      tree init = ie->exp->toElemDtor (irs);
       irs->addExp (init);
     }
 

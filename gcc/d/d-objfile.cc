@@ -259,7 +259,7 @@ ClassDeclaration::toObjFile (int)
       gcc_unreachable();
     }
 
-  /* Put out the ClassInfo. 
+  /* Put out the ClassInfo.
    * The layout is:
    *  void **vptr;
    *  monitor_t monitor;
@@ -499,7 +499,7 @@ Lhaspointers:
 	  if (!isFuncHidden (fd))
 	    goto Lcontinue;
 
-	  // If fd overlaps with any function in the vtbl[], then 
+	  // If fd overlaps with any function in the vtbl[], then
 	  // issue 'hidden' error.
 	  for (size_t j = 1; j < vtbl.dim; j++)
 	    {
@@ -603,7 +603,7 @@ InterfaceDeclaration::toObjFile (int)
   type->getTypeInfo (NULL);
   type->vtinfo->toObjFile (0);
 
-  /* Put out the ClassInfo. 
+  /* Put out the ClassInfo.
    * The layout is:
    *  void **vptr;
    *  monitor_t monitor;
@@ -762,18 +762,18 @@ VarDeclaration::toObjFile (int)
   // but keep the values for purposes of debugging.
   if (!canTakeAddressOf())
     {
+      // CONST_DECL was initially intended for enumerals and may
+      // be used for scalars in general but not for aggregates.
+      if (!type->isscalar())
+	return;
+
       tree decl = toSymbol()->Stree;
       gcc_assert (init && !init->isVoidInitializer());
 
-      unsigned errors = global.startGagging();
       Expression *ie = init->toExpression();
       tree sinit = NULL_TREE;
       ie->toDt (&sinit);
-
-      if (!global.endGagging (errors))
-	DECL_INITIAL (decl) = dtvector_to_tree (sinit);
-      else
-	DECL_INITIAL (decl) = error_mark_node;
+      DECL_INITIAL (decl) = dtvector_to_tree (sinit);
 
       d_pushdecl (decl);
       rest_of_decl_compilation (decl, 1, 0);
@@ -1881,7 +1881,7 @@ d_finish_symbol (Symbol *sym)
   relayout_decl (decl);
 
 #ifdef ENABLE_TREE_CHECKING
-  if (DECL_INITIAL (decl) != NULL_TREE) 
+  if (DECL_INITIAL (decl) != NULL_TREE)
     {
       // Initialiser must never be bigger than symbol size.
       dinteger_t tsize = int_size_in_bytes (TREE_TYPE (decl));

@@ -502,7 +502,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
 				   integer_zero_node, build_integer_cst (count - 1));
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
-	      
+
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
 	      if (TREE_CODE (value) == VAR_DECL)
 		{
@@ -831,9 +831,9 @@ build_attributes (Expressions *in_attrs)
       if (!sym)
 	continue;
 
-      Dsymbol *mod = (Dsymbol*) sym->getModule();  
+      Dsymbol *mod = (Dsymbol*) sym->getModule();
       if (!(strcmp(mod->toChars(), "attribute") == 0
-          && mod->parent 
+          && mod->parent != NULL
           && strcmp(mod->parent->toChars(), "gcc") == 0
           && !mod->parent->parent))
         continue;
@@ -1162,7 +1162,7 @@ delegate_object (tree exp)
 }
 
 // Build a delegate literal of type TYPE whose pointer function is
-// METHOD, and hidden object is OBJECT.  
+// METHOD, and hidden object is OBJECT.
 
 tree
 build_delegate_cst (tree method, tree object, Type *type)
@@ -3522,7 +3522,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 }
 
 // Special case: If a function returns a nested class with functions
-// but there are no "closure variables" the frontend (needsClosure) 
+// but there are no "closure variables" the frontend (needsClosure)
 // returns false even though the nested class _is_ returned from the
 // function. (See case 4 in needsClosure)
 // A closure is strictly speaking not necessary, but we also can not
@@ -3540,7 +3540,7 @@ is_degenerate_closure (FuncDeclaration *f)
     gcc_assert(tret);
     tret = tret->toBasetype();
     if (tret->ty == Tclass || tret->ty == Tstruct)
-    { 
+    {
       Dsymbol *st = tret->toDsymbol(NULL);
       for (Dsymbol *s = st->parent; s; s = s->parent)
       {

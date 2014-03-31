@@ -1,7 +1,12 @@
 2014-03-31  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* (error_mark_p): Removed function, replace uses with error_operand_p.
+	* d-codegen.cc(error_mark_p): Removed function, replace uses with
+	error_operand_p.
 	(error_mark): Removed function, replace uses with error_mark_node.
+	* d-ctype.cc(Type::toCtype): Return d_unknown_type_node for frontend
+	error types.
+	* d-objfile.cc(VarDeclaration::toObjFile): Don't build CONST_DECLs for
+	non-scalar manifests.
 
 2014-03-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 

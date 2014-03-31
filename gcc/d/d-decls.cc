@@ -647,7 +647,7 @@ StructLiteralExp::toSymbol (void)
       toDt (&sym->Sdt);
       d_finish_symbol (sym);
     }
-  
+
   return sym;
 }
 

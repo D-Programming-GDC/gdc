@@ -1712,7 +1712,7 @@ Expression::toElemDtor (IRState *irs)
 	{
 	  // Wrap expression and dtors in a try/finally expression.
 	  tree body = exp;
-	  
+
 	  if (type->ty == Tvoid)
 	    exp = build2 (TRY_FINALLY_EXPR, void_type_node, body, tdtors);
 	  else

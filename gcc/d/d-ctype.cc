@@ -32,7 +32,7 @@ Type::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  switch (ty)
 	    {
@@ -134,7 +134,7 @@ Type::toCtype (void)
 
 
 	    case Terror:
-	      return error_mark_node;
+	      return d_unknown_type_node;
 
 	      /* We can get Tident with forward references.  There seems to
 		be a legitame case (dstress:debug_info_03).  I have not seen this
@@ -186,7 +186,7 @@ TypeTypedef::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  tree basetype = sym->basetype->toCtype();
 	  const char *name = toChars();
@@ -290,7 +290,7 @@ TypeStruct::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  // need to set this right away in case of self-references
 	  ctype = make_node (sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
@@ -334,7 +334,7 @@ TypeFunction::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  tree type_list = NULL_TREE;
 	  tree ret_type;
@@ -429,7 +429,7 @@ TypeVector::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  int nunits = ((TypeSArray *) basetype)->dim->toUInteger();
 	  tree inner = elementType()->toCtype();
@@ -521,7 +521,7 @@ TypeAArray::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  /* Library functions expect a struct-of-pointer which could be passed
 	     differently from a pointer. */
@@ -552,7 +552,7 @@ TypePointer::toCtype (void)
 	ctype = castMod(0)->toCtype();
 	ctype = insert_type_modifiers (ctype, mod);
       }
-    else 
+    else
       {
 	ctype = build_pointer_type (next->toCtype());
       }
@@ -571,7 +571,7 @@ TypeDelegate::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  gcc_assert (next->toBasetype()->ty == Tfunction);
 	  tree nexttype = next->toCtype();
@@ -603,7 +603,7 @@ TypeClass::toCtype (void)
 	  ctype = castMod(0)->toCtype();
 	  ctype = insert_type_modifiers (ctype, mod);
 	}
-      else 
+      else
 	{
 	  // Need to set ctype right away in case of self-references to
 	  // the type during this call.
