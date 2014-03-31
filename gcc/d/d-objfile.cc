@@ -773,7 +773,7 @@ VarDeclaration::toObjFile (int)
       if (!global.endGagging (errors))
 	DECL_INITIAL (decl) = dtvector_to_tree (sinit);
       else
-	DECL_INITIAL (decl) = error_mark (type);
+	DECL_INITIAL (decl) = error_mark_node;
 
       d_pushdecl (decl);
       rest_of_decl_compilation (decl, 1, 0);
@@ -1864,7 +1864,7 @@ d_finish_symbol (Symbol *sym)
       gcc_assert (COMPLETE_TYPE_P (TREE_TYPE (decl)));
     }
 
-  gcc_assert (!error_mark_p (decl));
+  gcc_assert (!error_operand_p (decl));
 
   if (DECL_INITIAL (decl) != NULL_TREE)
     {

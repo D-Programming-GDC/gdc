@@ -146,9 +146,6 @@ extern tree maybe_compound_expr (tree arg0, tree arg1);
 extern tree maybe_vcompound_expr (tree arg0, tree arg1);
 
 extern tree bind_expr (tree var_chain, tree body);
-
-extern bool error_mark_p (tree t);
-
 extern tree d_build_label (Loc loc, Identifier *ident);
 
 // Type conversion.
@@ -353,14 +350,6 @@ inline tree
 vcompound_expr (tree arg0, tree arg1)
 {
   return build2_loc (input_location, COMPOUND_EXPR, void_type_node, arg0, arg1);
-}
-
-// Giving error_mark_node a type allows for some assumptions about
-// the type of an arbitrary expression.
-inline tree
-error_mark (Type *t)
-{
-  return build1_loc (input_location, NOP_EXPR, t->toCtype(), error_mark_node);
 }
 
 // Routines for built in structured types

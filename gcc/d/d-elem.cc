@@ -28,7 +28,7 @@ elem *
 Expression::toElem (IRState *)
 {
   error ("abstract Expression::toElem called");
-  return error_mark (type);
+  return error_mark_node;
 }
 
 elem *
@@ -412,7 +412,7 @@ elem *
 XorExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (BIT_XOR_EXPR, type->toCtype(),
 			  e1->toElem (irs), e2->toElem (irs));
@@ -422,7 +422,7 @@ elem *
 OrExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (BIT_IOR_EXPR, type->toCtype(),
 			  e1->toElem (irs), e2->toElem (irs));
@@ -432,7 +432,7 @@ elem *
 AndExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (BIT_AND_EXPR, type->toCtype(),
 			  e1->toElem (irs), e2->toElem (irs));
@@ -442,7 +442,7 @@ elem *
 UshrExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (UNSIGNED_RSHIFT_EXPR, type->toCtype(),
 			  e1->toElem (irs), e2->toElem (irs));
@@ -452,7 +452,7 @@ elem *
 ShrExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (RSHIFT_EXPR, type->toCtype(),
 			  e1->toElem (irs), e2->toElem (irs));
@@ -462,7 +462,7 @@ elem *
 ShlExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (LSHIFT_EXPR, type->toCtype(),
 			  e1->toElem (irs), e2->toElem (irs));
@@ -472,7 +472,7 @@ elem *
 ModExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR,
 			  type->toCtype(), e1->toElem (irs), e2->toElem (irs));
@@ -482,7 +482,7 @@ elem *
 DivExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR,
 			  type->toCtype(), e1->toElem (irs), e2->toElem (irs));
@@ -492,7 +492,7 @@ elem *
 MulExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   return build_binary_op (MULT_EXPR, type->toCtype(),
 			  e1->toElem (irs), e2->toElem (irs));
@@ -526,7 +526,7 @@ PowExp::toElem (IRState *irs)
 	error ("Array operation %s not implemented", toChars());
       else
 	error ("%s ^^ %s is not supported", e1->type->toChars(), e2->type->toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 
   e1_t = d_convert (powtype, e1->toElem (irs));
@@ -628,7 +628,7 @@ elem *
 MinExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   // %% faster: check if result is complex
   if ((e1->type->isreal() && e2->type->isimaginary())
@@ -655,7 +655,7 @@ elem *
 AddExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   // %% faster: check if result is complex
   if ((e1->type->isreal() && e2->type->isimaginary())
@@ -723,7 +723,7 @@ elem *
 XorAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, BIT_XOR_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -733,7 +733,7 @@ elem *
 OrAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, BIT_IOR_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -743,7 +743,7 @@ elem *
 AndAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, BIT_AND_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -753,7 +753,7 @@ elem *
 UshrAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, UNSIGNED_RSHIFT_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -763,7 +763,7 @@ elem *
 ShrAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, RSHIFT_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -773,7 +773,7 @@ elem *
 ShlAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, LSHIFT_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -783,7 +783,7 @@ elem *
 ModAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, e1->type->isfloating() ?
 			FLOAT_MOD_EXPR : TRUNC_MOD_EXPR);
@@ -794,7 +794,7 @@ elem *
 DivAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, e1->type->isintegral() ?
 			TRUNC_DIV_EXPR : RDIV_EXPR);
@@ -805,7 +805,7 @@ elem *
 MulAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, MULT_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -815,7 +815,7 @@ elem *
 PowAssignExp::toElem (IRState *)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   gcc_unreachable();
 }
@@ -911,7 +911,7 @@ elem *
 MinAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, MINUS_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -921,7 +921,7 @@ elem *
 AddAssignExp::toElem (IRState *irs)
 {
   if (unhandled_arrayop_p (this))
-    return error_mark (type);
+    return error_mark_node;
 
   tree exp = toElemBin (irs, PLUS_EXPR);
   return convert_expr (exp, e1->type, type);
@@ -1247,7 +1247,7 @@ ArrayLengthExp::toElem (IRState *irs)
     {
       // Tsarray case seems to be handled by front-end
       error ("unexpected type for array length: %s", type->toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 }
 
@@ -1359,7 +1359,7 @@ SliceExp::toElem (IRState *irs)
 
 	default:
 	  error ("Attempt to take length of something that was not an array");
-	  return error_mark (type);
+	  return error_mark_node;
 	}
     }
 
@@ -1444,7 +1444,7 @@ DeleteExp::toElem (IRState *irs)
   else
     {
       error ("don't know how to delete %s", e1->toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 }
 
@@ -1470,7 +1470,7 @@ RemoveExp::toElem (IRState *irs)
   else
     {
       error ("%s is not an associative array", array->toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 }
 
@@ -1512,7 +1512,7 @@ NegExp::toElem (IRState *irs)
   if (ty1 == Tarray || ty1 == Tsarray)
     {
       error ("Array operation %s not implemented", toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 
   return build1 (NEGATE_EXPR, type->toCtype(), e1->toElem (irs));
@@ -1560,8 +1560,10 @@ PtrExp::toElem (IRState *irs)
 	  if (field->offset == the_offset
 	      && d_types_same (field->type, this->type))
 	    {
-	      if (error_mark_p (rec_tree))
-		return rec_tree; // backend will ICE otherwise
+	      // Catch errors, backend will ICE otherwise.
+	      if (error_operand_p (rec_tree))
+		return rec_tree;
+
 	      return component_ref (rec_tree, field->toSymbol()->Stree);
 	    }
 	  else if (field->offset > the_offset)
@@ -1767,7 +1769,7 @@ DelegateExp::toElem (IRState *irs)
       if (!func->isThis())
 	{
 	  error ("delegates are only for non-static functions");
-	  return error_mark (type);
+	  return error_mark_node;
 	}
 
       return get_object_method (e1->toElem (irs), e1, func, type);
@@ -1843,7 +1845,7 @@ DotVarExp::toElem (IRState *irs)
     }
 
   error ("Don't know how to handle %s", toChars());
-  return error_mark (type);
+  return error_mark_node;
 }
 
 elem *
@@ -2005,7 +2007,7 @@ SymbolExp::toElem (IRState *irs)
       if (var->needThis())
 	{
 	  error ("need 'this' to access member %s", var->ident->string);
-	  return error_mark (type);
+	  return error_mark_node;
 	}
 
       // __ctfe is always false at runtime
@@ -2261,14 +2263,14 @@ elem *
 ScopeExp::toElem (IRState *)
 {
   error ("%s is not an expression", toChars());
-  return error_mark (type);
+  return error_mark_node;
 }
 
 elem *
 TypeExp::toElem (IRState *)
 {
   error ("type %s is not an expression", toChars());
-  return error_mark (type);
+  return error_mark_node;
 }
 
 elem *
@@ -2341,7 +2343,7 @@ StringExp::toElem (IRState *)
 
     default:
       error ("Invalid type for string constant: %s", type->toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 
   return value;

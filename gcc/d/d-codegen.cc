@@ -205,7 +205,7 @@ tree
 d_convert (tree type, tree exp)
 {
   // Check this first before passing to build_dtype.
-  if (error_mark_p (type) || error_mark_p (TREE_TYPE (exp)))
+  if (error_operand_p (type) || error_operand_p (exp))
     return error_mark_node;
 
   Type *totype = build_dtype (type);
@@ -231,7 +231,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
   if (d_types_same (etype, totype))
     return exp;
 
-  if (error_mark_p (exp))
+  if (error_operand_p (exp))
     return exp;
 
   switch (ebtype->ty)
@@ -251,7 +251,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
       else
 	{
 	  error ("can't convert a delegate expression to %s", totype->toChars());
-	  return error_mark (totype);
+	  return error_mark_node;
 	}
       break;
 
@@ -271,7 +271,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	else
 	  {
 	    error ("can't convert struct %s to %s", etype->toChars(), totype->toChars());
-	    return error_mark (totype);
+	    return error_mark_node;
 	  }
       }
       // else, default conversion, which should produce an error
@@ -351,7 +351,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	    {
 	      error ("cannot cast %s to %s since sizes don't line up",
 		     etype->toChars(), totype->toChars());
-	      return error_mark (totype);
+	      return error_mark_node;
 	    }
 	  dim = (dim * esize) / tsize;
 
@@ -375,7 +375,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	{
 	  error ("cannot cast expression of type %s to type %s",
 		 etype->toChars(), totype->toChars());
-	  return error_mark (totype);
+	  return error_mark_node;
 	}
       break;
 
@@ -419,7 +419,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	{
 	  error ("cannot cast expression of type %s to %s",
 		 etype->toChars(), totype->toChars());
-	  return error_mark (totype);
+	  return error_mark_node;
 	}
       break;
 
@@ -927,7 +927,7 @@ tree
 build_integer_cst (dinteger_t value, tree type)
 {
   // The type is error_mark_node, we can't do anything.
-  if (error_mark_p (type))
+  if (error_operand_p (type))
     return type;
 
   return build_int_cst_type (type, value);
@@ -987,7 +987,7 @@ tree
 d_array_length (tree exp)
 {
   // backend will ICE otherwise
-  if (error_mark_p (exp))
+  if (error_operand_p (exp))
     return exp;
 
   // Get the backend type for the array and pick out the array
@@ -1002,7 +1002,7 @@ tree
 d_array_ptr (tree exp)
 {
   // backend will ICE otherwise
-  if (error_mark_p (exp))
+  if (error_operand_p (exp))
     return exp;
 
   // Get the backend type for the array and pick out the array
@@ -1071,7 +1071,7 @@ get_array_length (tree exp, Type *type)
 
     default:
       error ("can't determine the length of a %s", type->toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 }
 
@@ -1680,7 +1680,7 @@ build_array_index (tree ptr, tree index)
     }
 
   // backend will ICE otherwise
-  if (error_mark_p (result_type_node))
+  if (error_operand_p (result_type_node))
     return result_type_node;
 
   if (integer_zerop (index))
@@ -1883,17 +1883,6 @@ maybe_vcompound_expr (tree arg0, tree arg1)
     return vcompound_expr (arg0, arg1);
 }
 
-// Returns TRUE if T is an ERROR_MARK node.
-
-bool
-error_mark_p (tree t)
-{
-  return (t == error_mark_node
-	  || (t && TREE_TYPE (t) == error_mark_node)
-	  || (t && TREE_CODE (t) == NOP_EXPR
-	      && TREE_OPERAND (t, 0) == error_mark_node));
-}
-
 // Returns the TypeFunction class for Type T.
 // Assumes T is already ->toBasetype()
 
@@ -1983,7 +1972,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
 	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
-	  return error_mark (tf);
+	  return error_mark_node;
 	}
 
       // Probably an internal error
