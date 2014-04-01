@@ -620,10 +620,6 @@ TypeClass::toCtype (void)
 	  layout_aggregate_type (&al, sym);
 	  finish_aggregate_type (&al, sym->userAttributes);
 
-	  // Type is final, there are no derivations.
-	  if (sym->storage_class & STCfinal)
-	    TYPE_FINAL_P (basetype) = 1;
-
 	  // Create BINFO even if debugging is off.  This is needed to keep
 	  // references to inherited types.
 	  if (!sym->isInterfaceDeclaration())

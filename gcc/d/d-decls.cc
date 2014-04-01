@@ -421,8 +421,6 @@ FuncDeclaration::toSymbol (void)
       // Storage class attributes
       if (storage_class & STCstatic)
 	TREE_STATIC (fndecl) = 1;
-      if (storage_class & STCfinal)
-	DECL_FINAL_P (fndecl) = 1;
 
       // Assert contracts in functions cause implicit side effects that could
       // cause wrong codegen if pure/nothrow is thrown in the equation.
