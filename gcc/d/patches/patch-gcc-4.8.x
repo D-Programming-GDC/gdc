@@ -2,8 +2,8 @@ This implements D language support in the GCC back end, and adds
 relevant documentation about the GDC front end.
 ---
 
---- gcc/config/rs6000/rs6000.c	2013-09-23 16:19:31.000000000 +0200
-+++ gcc/config/rs6000/rs6000.c	2014-02-20 11:31:16.690232916 +0100
+--- gcc/config/rs6000/rs6000.c	2014-04-01 16:31:04.663249606 +0200
++++ gcc/config/rs6000/rs6000.c	2014-04-01 16:32:01.263248109 +0200
 @@ -21584,7 +21584,8 @@
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
@@ -14,8 +14,8 @@ relevant documentation about the GDC front end.
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU Fortran"))
---- gcc/doc/frontends.texi	2013-01-10 21:38:27.000000000 +0100
-+++ gcc/doc/frontends.texi	2014-02-20 11:31:16.690232916 +0100
+--- gcc/doc/frontends.texi	2014-04-01 16:31:04.799916268 +0200
++++ gcc/doc/frontends.texi	2014-04-01 16:32:01.263248109 +0200
 @@ -9,6 +9,7 @@
  @cindex GNU Compiler Collection
  @cindex GNU C Compiler
@@ -33,8 +33,8 @@ relevant documentation about the GDC front end.
  
  The abbreviation @dfn{GCC} has multiple meanings in common use.  The
  current official meaning is ``GNU Compiler Collection'', which refers
---- gcc/doc/install.texi	2013-02-05 10:26:06.000000000 +0100
-+++ gcc/doc/install.texi	2014-02-20 11:31:16.690232916 +0100
+--- gcc/doc/install.texi	2014-04-01 16:31:04.799916268 +0200
++++ gcc/doc/install.texi	2014-04-01 16:32:01.263248109 +0200
 @@ -1350,12 +1350,12 @@
  grep language= */config-lang.in
  @end smallexample
@@ -50,8 +50,8 @@ relevant documentation about the GDC front end.
  
  @item --enable-stage1-languages=@var{lang1},@var{lang2},@dots{}
  Specify that a particular subset of compilers and their runtime
---- gcc/doc/invoke.texi	2013-06-19 21:55:50.000000000 +0200
-+++ gcc/doc/invoke.texi	2014-02-20 11:31:16.693566250 +0100
+--- gcc/doc/invoke.texi	2014-04-01 16:31:04.799916268 +0200
++++ gcc/doc/invoke.texi	2014-04-01 16:32:01.266581442 +0200
 @@ -1163,6 +1163,15 @@
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
@@ -76,8 +76,8 @@ relevant documentation about the GDC front end.
  f77  f77-cpp-input f95  f95-cpp-input
  go
  java
---- gcc/doc/sourcebuild.texi	2013-01-10 21:38:27.000000000 +0100
-+++ gcc/doc/sourcebuild.texi	2014-02-20 11:31:16.693566250 +0100
+--- gcc/doc/sourcebuild.texi	2014-04-01 16:31:04.799916268 +0200
++++ gcc/doc/sourcebuild.texi	2014-04-01 16:32:01.266581442 +0200
 @@ -113,6 +113,9 @@
  @item libquadmath
  The runtime support library for quad-precision math operations.
@@ -88,8 +88,8 @@ relevant documentation about the GDC front end.
  @item libssp
  The Stack protector runtime library.
  
---- gcc/doc/standards.texi	2013-04-05 06:26:20.000000000 +0200
-+++ gcc/doc/standards.texi	2014-02-20 11:31:16.693566250 +0100
+--- gcc/doc/standards.texi	2014-04-01 16:31:04.799916268 +0200
++++ gcc/doc/standards.texi	2014-04-01 16:32:01.266581442 +0200
 @@ -283,6 +283,16 @@
  As of the GCC 4.7.1 release, GCC supports the Go 1 language standard,
  described at @uref{http://golang.org/doc/go1.html}.
@@ -107,8 +107,8 @@ relevant documentation about the GDC front end.
  @section References for other languages
  
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
---- gcc/dwarf2out.c	2013-03-21 22:24:47.000000000 +0100
-+++ gcc/dwarf2out.c	2014-02-20 11:37:15.040240785 +0100
+--- gcc/dwarf2out.c	2014-04-01 16:31:04.689916271 +0200
++++ gcc/dwarf2out.c	2014-04-01 16:38:25.286571288 +0200
 @@ -4557,6 +4557,15 @@
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
@@ -134,6 +134,15 @@ relevant documentation about the GDC front end.
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
+@@ -19831,7 +19842,7 @@
+ 
+   if (ns_context != context_die)
+     {
+-      if (is_fortran ())
++      if (is_fortran () || is_dlang ())
+ 	return ns_context;
+       if (DECL_P (thing))
+ 	gen_decl_die (thing, NULL, ns_context);
 @@ -19854,7 +19865,7 @@
      {
        /* Output a real namespace or module.  */
@@ -143,8 +152,26 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
---- gcc/gcc.c	2013-05-17 14:24:26.000000000 +0200
-+++ gcc/gcc.c	2014-02-20 11:31:16.696899583 +0100
+@@ -19911,7 +19922,7 @@
+       break;
+ 
+     case CONST_DECL:
+-      if (!is_fortran () && !is_ada ())
++      if (!is_fortran () && !is_ada () && !is_dlang ())
+ 	{
+ 	  /* The individual enumerators of an enum type get output when we output
+ 	     the Dwarf representation of the relevant enum type itself.  */
+@@ -20334,7 +20345,7 @@
+     case CONST_DECL:
+       if (debug_info_level <= DINFO_LEVEL_TERSE)
+ 	return;
+-      if (!is_fortran () && !is_ada ())
++      if (!is_fortran () && !is_ada () && !is_dlang ())
+ 	return;
+       if (TREE_STATIC (decl) && decl_function_context (decl))
+ 	context_die = lookup_decl_die (DECL_CONTEXT (decl));
+--- gcc/gcc.c	2014-04-01 16:31:04.676582939 +0200
++++ gcc/gcc.c	2014-04-01 16:32:01.273248109 +0200
 @@ -1003,6 +1003,7 @@
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
