@@ -50,52 +50,26 @@ d_decl_context (Dsymbol *dsym)
       else if ((ad = parent->isAggregateDeclaration()))
 	{
 	  tree context = ad->type->toCtype();
+	  // Want the underlying RECORD_TYPE.
 	  if (ad->isClassDeclaration())
-	    {
-	      // Want the underlying RECORD_TYPE.
-	      context = TREE_TYPE (context);
-	    }
+	    context = TREE_TYPE (context);
+
 	  return context;
 	}
       else if (parent->isModule())
 	{
 	  // We've reached the top-level module namespace.
 	  // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing
-	  // module, but only for extern(D) symbols that aren't D main.
+	  // module, but only for extern(D) symbols.
 	  Declaration *decl = dsym->isDeclaration();
-	  FuncDeclaration *fd = dsym->isFuncDeclaration();
-	  if (decl != NULL)
-	    {
-	      if (decl->linkage != LINKd || fd->isMain())
-		return NULL_TREE;
-	    }
-	  return parent->toSymbol()->ScontextDecl;
+	  if (decl != NULL && decl->linkage != LINKd)
+	    return NULL_TREE;
+
+	  return parent->toImport()->Stree;
 	}
     }
 
   return NULL_TREE;
-}
-
-// Build a complete module namespace, any modules in packages will
-// have their DECL_CONTEXT set as the symbol of the parent.
-
-tree
-d_build_module (Loc loc, Dsymbol *dsym)
-{
-  if (dsym->isModule() || dsym->isPackage())
-    {
-      tree decl = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
-			      get_identifier (dsym->ident->string),
-			      void_type_node);
-      set_decl_location (decl, loc);
-
-      if (dsym->parent)
-	DECL_CONTEXT (decl) = d_build_module (loc, dsym->parent);
-
-      return decl;
-    }
-
-  gcc_unreachable();
 }
 
 // Add local variable VD into the current body of function fd.
@@ -231,7 +205,7 @@ tree
 d_convert (tree type, tree exp)
 {
   // Check this first before passing to build_dtype.
-  if (error_mark_p (type) || error_mark_p (TREE_TYPE (exp)))
+  if (error_operand_p (type) || error_operand_p (exp))
     return error_mark_node;
 
   Type *totype = build_dtype (type);
@@ -257,7 +231,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
   if (d_types_same (etype, totype))
     return exp;
 
-  if (error_mark_p (exp))
+  if (error_operand_p (exp))
     return exp;
 
   switch (ebtype->ty)
@@ -277,7 +251,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
       else
 	{
 	  error ("can't convert a delegate expression to %s", totype->toChars());
-	  return error_mark (totype);
+	  return error_mark_node;
 	}
       break;
 
@@ -297,7 +271,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	else
 	  {
 	    error ("can't convert struct %s to %s", etype->toChars(), totype->toChars());
-	    return error_mark (totype);
+	    return error_mark_node;
 	  }
       }
       // else, default conversion, which should produce an error
@@ -377,7 +351,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	    {
 	      error ("cannot cast %s to %s since sizes don't line up",
 		     etype->toChars(), totype->toChars());
-	      return error_mark (totype);
+	      return error_mark_node;
 	    }
 	  dim = (dim * esize) / tsize;
 
@@ -401,7 +375,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	{
 	  error ("cannot cast expression of type %s to type %s",
 		 etype->toChars(), totype->toChars());
-	  return error_mark (totype);
+	  return error_mark_node;
 	}
       break;
 
@@ -445,7 +419,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	{
 	  error ("cannot cast expression of type %s to %s",
 		 etype->toChars(), totype->toChars());
-	  return error_mark (totype);
+	  return error_mark_node;
 	}
       break;
 
@@ -528,7 +502,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
 				   integer_zero_node, build_integer_cst (count - 1));
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
-	      
+
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
 	      if (TREE_CODE (value) == VAR_DECL)
 		{
@@ -857,12 +831,15 @@ build_attributes (Expressions *in_attrs)
       if (!sym)
 	continue;
 
-      Dsymbol *mod = (Dsymbol*) sym->getModule();  
+      Dsymbol *mod = (Dsymbol*) sym->getModule();
       if (!(strcmp(mod->toChars(), "attribute") == 0
-          && mod->parent 
+          && mod->parent != NULL
           && strcmp(mod->parent->toChars(), "gcc") == 0
           && !mod->parent->parent))
         continue;
+
+      if (attr->op == TOKcall)
+	attr = attr->ctfeInterpret();
 
       gcc_assert(attr->op == TOKstructliteral);
       Expressions *elem = ((StructLiteralExp*) attr)->elements;
@@ -950,7 +927,7 @@ tree
 build_integer_cst (dinteger_t value, tree type)
 {
   // The type is error_mark_node, we can't do anything.
-  if (error_mark_p (type))
+  if (error_operand_p (type))
     return type;
 
   return build_int_cst_type (type, value);
@@ -1010,7 +987,7 @@ tree
 d_array_length (tree exp)
 {
   // backend will ICE otherwise
-  if (error_mark_p (exp))
+  if (error_operand_p (exp))
     return exp;
 
   // Get the backend type for the array and pick out the array
@@ -1025,7 +1002,7 @@ tree
 d_array_ptr (tree exp)
 {
   // backend will ICE otherwise
-  if (error_mark_p (exp))
+  if (error_operand_p (exp))
     return exp;
 
   // Get the backend type for the array and pick out the array
@@ -1094,7 +1071,7 @@ get_array_length (tree exp, Type *type)
 
     default:
       error ("can't determine the length of a %s", type->toChars());
-      return error_mark (type);
+      return error_mark_node;
     }
 }
 
@@ -1185,7 +1162,7 @@ delegate_object (tree exp)
 }
 
 // Build a delegate literal of type TYPE whose pointer function is
-// METHOD, and hidden object is OBJECT.  
+// METHOD, and hidden object is OBJECT.
 
 tree
 build_delegate_cst (tree method, tree object, Type *type)
@@ -1703,7 +1680,7 @@ build_array_index (tree ptr, tree index)
     }
 
   // backend will ICE otherwise
-  if (error_mark_p (result_type_node))
+  if (error_operand_p (result_type_node))
     return result_type_node;
 
   if (integer_zerop (index))
@@ -1906,17 +1883,6 @@ maybe_vcompound_expr (tree arg0, tree arg1)
     return vcompound_expr (arg0, arg1);
 }
 
-// Returns TRUE if T is an ERROR_MARK node.
-
-bool
-error_mark_p (tree t)
-{
-  return (t == error_mark_node
-	  || (t && TREE_TYPE (t) == error_mark_node)
-	  || (t && TREE_CODE (t) == NOP_EXPR
-	      && TREE_OPERAND (t, 0) == error_mark_node));
-}
-
 // Returns the TypeFunction class for Type T.
 // Assumes T is already ->toBasetype()
 
@@ -2006,7 +1972,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
 	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
-	  return error_mark (tf);
+	  return error_mark_node;
 	}
 
       // Probably an internal error
@@ -3556,7 +3522,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 }
 
 // Special case: If a function returns a nested class with functions
-// but there are no "closure variables" the frontend (needsClosure) 
+// but there are no "closure variables" the frontend (needsClosure)
 // returns false even though the nested class _is_ returned from the
 // function. (See case 4 in needsClosure)
 // A closure is strictly speaking not necessary, but we also can not
@@ -3574,7 +3540,7 @@ is_degenerate_closure (FuncDeclaration *f)
     gcc_assert(tret);
     tret = tret->toBasetype();
     if (tret->ty == Tclass || tret->ty == Tstruct)
-    { 
+    {
       Dsymbol *st = tret->toDsymbol(NULL);
       for (Dsymbol *s = st->parent; s; s = s->parent)
       {
@@ -3664,134 +3630,149 @@ WrappedExp::toElem (IRState *)
 // out base class fields first, and adds all interfaces last.
 
 void
-AggLayout::visit (AggregateDeclaration *decl)
+layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl)
 {
-  ClassDeclaration *class_decl = decl->isClassDeclaration();
+  ClassDeclaration *cd = decl->isClassDeclaration();
+  bool inherited_p = (al->decl != decl);
 
-  if (class_decl && class_decl->baseClass)
-    AggLayout::visit (class_decl->baseClass);
+  if (cd != NULL)
+    {
+      if (cd->baseClass)
+	layout_aggregate_type (al, cd->baseClass);
+      else
+	{
+	  // This is the base class (Object) or interface.
+	  tree objtype = TREE_TYPE (cd->type->toCtype());
+
+	  // Add the virtual table pointer, and optionally the monitor fields.
+	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+				   get_identifier ("__vptr"), d_vtbl_ptr_type_node);
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = inherited_p;
+
+	  insert_aggregate_field (al, field, 0);
+
+	  DECL_VIRTUAL_P (field) = 1;
+	  DECL_FCONTEXT (field) = objtype;
+	  TYPE_VFIELD (al->type) = field;
+
+	  if (cd->cpp == false)
+	    {
+	      field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+				  get_identifier ("__monitor"), ptr_type_node);
+	      DECL_FCONTEXT (field) = objtype;
+	      DECL_ARTIFICIAL (field) = 1;
+	      DECL_IGNORED_P (field) = inherited_p;
+	      insert_aggregate_field (al, field, Target::ptrsize);
+	    }
+	}
+    }
 
   if (decl->fields.dim)
-    doFields (&decl->fields, decl);
-
-  if (class_decl && class_decl->vtblInterfaces)
-    doInterfaces (class_decl->vtblInterfaces);
-}
-
-
-// Add all FIELDS into aggregate AGG.
-
-void
-AggLayout::doFields (VarDeclarations *fields, AggregateDeclaration *agg)
-{
-  bool inherited = agg != this->aggDecl_;
-  tree fcontext;
-
-  fcontext = agg->type->toCtype();
-  if (POINTER_TYPE_P (fcontext))
-    fcontext = TREE_TYPE (fcontext);
-
-  for (size_t i = 0; i < fields->dim; i++)
     {
-      // %% D anonymous unions just put the fields into the outer struct...
-      // does this cause problems?
-      VarDeclaration *var = (*fields)[i];
-      gcc_assert (var && var->isField());
+      tree fcontext = decl->type->toCtype();
 
-      tree ident = var->ident ? get_identifier (var->ident->string) : NULL_TREE;
-      tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
-			      declaration_type (var));
-      set_decl_location (decl, var);
-      var->csym = new Symbol;
-      var->csym->Stree = decl;
+      if (POINTER_TYPE_P (fcontext))
+	fcontext = TREE_TYPE (fcontext);
 
-      DECL_CONTEXT (decl) = this->aggType_;
-      DECL_FCONTEXT (decl) = fcontext;
-      DECL_FIELD_OFFSET (decl) = size_int (var->offset);
-      DECL_FIELD_BIT_OFFSET (decl) = bitsize_zero_node;
-
-      DECL_ARTIFICIAL (decl) = DECL_IGNORED_P (decl) = inherited;
-      SET_DECL_OFFSET_ALIGN (decl, TYPE_ALIGN (TREE_TYPE (decl)));
-
-      TREE_THIS_VOLATILE (decl) = TYPE_VOLATILE (TREE_TYPE (decl));
-      layout_decl (decl, 0);
-
-      if (var->size (var->loc))
+      for (size_t i = 0; i < decl->fields.dim; i++)
 	{
-	  gcc_assert (DECL_MODE (decl) != VOIDmode);
-	  gcc_assert (DECL_SIZE (decl) != NULL_TREE);
+	  // D anonymous unions just put the fields into the outer struct...
+	  // Does this cause problems?
+	  VarDeclaration *var = decl->fields[i];
+	  gcc_assert (var && var->isField());
+
+	  tree ident = var->ident ? get_identifier (var->ident->string) : NULL_TREE;
+	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, ident,
+				   declaration_type (var));
+	  set_decl_location (field, var);
+	  var->csym = new Symbol;
+	  var->csym->Stree = field;
+
+	  DECL_CONTEXT (field) = al->type;
+	  DECL_FCONTEXT (field) = fcontext;
+	  DECL_FIELD_OFFSET (field) = size_int (var->offset);
+	  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+
+	  DECL_ARTIFICIAL (field) = inherited_p;
+	  DECL_IGNORED_P (field) = inherited_p;
+	  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
+
+	  TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
+	  layout_decl (field, 0);
+
+	  if (var->size (var->loc))
+	    {
+	      gcc_assert (DECL_MODE (field) != VOIDmode);
+	      gcc_assert (DECL_SIZE (field) != NULL_TREE);
+	    }
+
+	  TYPE_FIELDS(al->type) = chainon (TYPE_FIELDS (al->type), field);
 	}
-
-      TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), decl);
     }
-}
 
-// Write out all interfaces BASES for a class.
-
-void
-AggLayout::doInterfaces (BaseClasses *bases)
-{
-  for (size_t i = 0; i < bases->dim; i++)
+  if (cd && cd->vtblInterfaces)
     {
-      BaseClass *bc = (*bases)[i];
-      tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
-			      Type::tvoidptr->pointerTo()->toCtype());
-      DECL_ARTIFICIAL (decl) = 1;
-      DECL_IGNORED_P (decl) = 1;
-      addField (decl, bc->offset);
+      for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *bc = (*cd->vtblInterfaces)[i];
+	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
+				   Type::tvoidptr->pointerTo()->toCtype());
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = 1;
+	  insert_aggregate_field (al, field, bc->offset);
+	}
     }
 }
 
-// Add single field DECL at OFFSET into aggregate.
+// Add a compiler generated field DECL at OFFSET into aggregate.
 
 void
-AggLayout::addField (tree decl, size_t offset)
+insert_aggregate_field (AggLayout *al, tree decl, size_t offset)
 {
-  Loc l (this->aggDecl_->getModule(), 1);
-
-  DECL_CONTEXT (decl) = this->aggType_;
+  DECL_CONTEXT (decl) = al->type;
   SET_DECL_OFFSET_ALIGN (decl, TYPE_ALIGN (TREE_TYPE (decl)));
   DECL_FIELD_OFFSET (decl) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (decl) = bitsize_zero_node;
 
   // Must set this or we crash with DWARF debugging.
-  set_decl_location (decl, l);
+  set_decl_location (decl, al->decl->loc);
 
   TREE_THIS_VOLATILE (decl) = TYPE_VOLATILE (TREE_TYPE (decl));
 
   layout_decl (decl, 0);
-  TYPE_FIELDS(this->aggType_) = chainon (TYPE_FIELDS (this->aggType_), decl);
+  TYPE_FIELDS(al->type) = chainon (TYPE_FIELDS (al->type), decl);
 }
 
-// Wrap-up and compute finalised aggregate type.  ATTRS are
-// if any GCC attributes were applied to the type declaration.
+// Wrap-up and compute finalised aggregate type.  Writing out
+// any GCC attributes that were applied to the type declaration.
 
 void
-AggLayout::finish (Expressions *attrs)
+finish_aggregate_type (AggLayout *al, Expressions *attrs)
 {
-  unsigned structsize = this->aggDecl_->structsize;
-  unsigned alignsize = this->aggDecl_->alignsize;
+  unsigned structsize = al->decl->structsize;
+  unsigned alignsize = al->decl->alignsize;
 
-  TYPE_SIZE (this->aggType_) = NULL_TREE;
+  TYPE_SIZE (al->type) = NULL_TREE;
 
   if (attrs)
-    decl_attributes (&this->aggType_, build_attributes (attrs),
+    decl_attributes (&al->type, build_attributes (attrs),
 		     ATTR_FLAG_TYPE_IN_PLACE);
 
-  TYPE_SIZE (this->aggType_) = bitsize_int (structsize * BITS_PER_UNIT);
-  TYPE_SIZE_UNIT (this->aggType_) = size_int (structsize);
-  TYPE_ALIGN (this->aggType_) = alignsize * BITS_PER_UNIT;
-  TYPE_PACKED (this->aggType_) = (alignsize == 1);
+  TYPE_SIZE (al->type) = bitsize_int (structsize * BITS_PER_UNIT);
+  TYPE_SIZE_UNIT (al->type) = size_int (structsize);
+  TYPE_ALIGN (al->type) = alignsize * BITS_PER_UNIT;
+  TYPE_PACKED (al->type) = (alignsize == 1);
 
-  compute_record_mode (this->aggType_);
+  compute_record_mode (al->type);
 
   // Set up variants.
-  for (tree x = TYPE_MAIN_VARIANT (this->aggType_); x; x = TYPE_NEXT_VARIANT (x))
+  for (tree x = TYPE_MAIN_VARIANT (al->type); x; x = TYPE_NEXT_VARIANT (x))
     {
-      TYPE_FIELDS (x) = TYPE_FIELDS (this->aggType_);
-      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (this->aggType_);
-      TYPE_ALIGN (x) = TYPE_ALIGN (this->aggType_);
-      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (this->aggType_);
+      TYPE_FIELDS (x) = TYPE_FIELDS (al->type);
+      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (al->type);
+      TYPE_ALIGN (x) = TYPE_ALIGN (al->type);
+      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (al->type);
     }
 }
 

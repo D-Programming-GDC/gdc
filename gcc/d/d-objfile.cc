@@ -100,30 +100,58 @@ Dsymbol::toObjFile (int)
 
   if (imp != NULL)
     {
-      tree decl, context;
-      tree name = NULL_TREE;
+      // Implements import declarations by telling the debug backend we are
+      // importing the NAMESPACE_DECL of the module or IMPORTED_DECL of the
+      // declaration into the current lexical scope CONTEXT.  NAME is set if
+      // this is a renamed import.
+
+      if (imp->isstatic)
+	return;
+
+      IRState *irs = current_irstate;
+      Module *mod = current_module_decl;
+      tree context;
+
+      // Get the context of this import, this should never be null.
+      if (irs->func != NULL)
+	context = irs->func->toSymbol()->Stree;
+      else
+	context = mod->toImport()->Stree;
 
       if (imp->ident == NULL)
 	{
-	  // Implements selective imported as IMPORTED_DECL.
-	  // TODO: use Dsymbol->toImport?
-	  return;
+	  // Importing declaration list.
+	  for (size_t i = 0; i < imp->names.dim; i++)
+	    {
+	      AliasDeclaration *aliasdecl = imp->aliasdecls[i];
+	      Dsymbol *dsym = aliasdecl->toAlias();
+	      Identifier *alias = imp->aliases[i];
+
+	      // Skip over importing of aliases and templates.
+	      if (dsym == aliasdecl || !dsym->isDeclaration())
+		continue;
+
+	      tree decl = dsym->toImport()->Stree;
+	      set_decl_location (decl, imp);
+
+	      tree name = (alias != NULL)
+		? get_identifier (alias->string) : NULL_TREE;
+
+	      (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
+	    }
 	}
       else
 	{
-	  // Implements import declarations.
-	  // %% Do we need special treatment for static imports?
-    	  decl = imp->mod->toSymbol()->ScontextDecl;
-    	  context = d_decl_context (imp);
-	  
-	  // It's a renamed import, set name as the alias.
-	  if (imp->aliasId != NULL)
-	    name = get_identifier (imp->aliasId->string);
-
+	  // Importing the entire module.
+	  tree decl = imp->mod->toImport()->Stree;
 	  set_input_location (imp);
+
+	  tree name = (imp->aliasId != NULL)
+	    ? name = get_identifier (imp->aliasId->string) : NULL_TREE;
+
+	  (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
 	}
 
-      (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
       return;
     }
 
@@ -260,7 +288,7 @@ ClassDeclaration::toObjFile (int)
       gcc_unreachable();
     }
 
-  /* Put out the ClassInfo. 
+  /* Put out the ClassInfo.
    * The layout is:
    *  void **vptr;
    *  monitor_t monitor;
@@ -500,7 +528,7 @@ Lhaspointers:
 	  if (!isFuncHidden (fd))
 	    goto Lcontinue;
 
-	  // If fd overlaps with any function in the vtbl[], then 
+	  // If fd overlaps with any function in the vtbl[], then
 	  // issue 'hidden' error.
 	  for (size_t j = 1; j < vtbl.dim; j++)
 	    {
@@ -604,7 +632,7 @@ InterfaceDeclaration::toObjFile (int)
   type->getTypeInfo (NULL);
   type->vtinfo->toObjFile (0);
 
-  /* Put out the ClassInfo. 
+  /* Put out the ClassInfo.
    * The layout is:
    *  void **vptr;
    *  monitor_t monitor;
@@ -763,37 +791,23 @@ VarDeclaration::toObjFile (int)
   // but keep the values for purposes of debugging.
   if (!canTakeAddressOf())
     {
-      tree ctype = declaration_type (this);
+      // CONST_DECL was initially intended for enumerals and may
+      // be used for scalars in general but not for aggregates.
+      if (!type->isscalar())
+	return;
 
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (ident->string), ctype);
-      set_decl_location (decl, this);
-
+      tree decl = toSymbol()->Stree;
       gcc_assert (init && !init->isVoidInitializer());
 
-      unsigned errors = global.startGagging();
       Expression *ie = init->toExpression();
       tree sinit = NULL_TREE;
       ie->toDt (&sinit);
-
-      if (!global.endGagging (errors))
-	DECL_INITIAL (decl) = dtvector_to_tree (sinit);
-      else
-	DECL_INITIAL (decl) = error_mark (type);
-
-      // Manifest constants have no address in memory.
-      TREE_CONSTANT (decl) = 1;
-      TREE_READONLY (decl) = 1;
-      TREE_STATIC (decl) = 0;
+      DECL_INITIAL (decl) = dtvector_to_tree (sinit);
 
       d_pushdecl (decl);
-      d_keep (decl);
-
       rest_of_decl_compilation (decl, 1, 0);
-      return;
     }
-
-  if (isDataseg() && !(storage_class & STCextern))
+  else if (isDataseg() && !(storage_class & STCextern))
     {
       Symbol *s = toSymbol();
       size_t sz = type->size();
@@ -1199,19 +1213,6 @@ FuncDeclaration::toObjFile (int)
   allocate_struct_function (fndecl, false);
   set_function_end_locus (endloc);
 
-  // Add method to record for debug information.
-  if (isThis())
-    {
-      AggregateDeclaration *ad = isThis();
-      tree rec = ad->type->toCtype();
-
-      if (ad->isClassDeclaration())
-	rec = TREE_TYPE (rec);
-
-      if (write_symbols != NO_DEBUG)
-	TYPE_METHODS (rec) = chainon (TYPE_METHODS (rec), fndecl);
-    }
-
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
 
@@ -1252,9 +1253,6 @@ FuncDeclaration::toObjFile (int)
     }
 
   DECL_ARGUMENTS (fndecl) = param_list;
-  for (tree t = param_list; t; t = DECL_CHAIN (t))
-    DECL_CONTEXT (t) = fndecl;
-
   rest_of_decl_compilation (fndecl, 1, 0);
   DECL_INITIAL (fndecl) = error_mark_node;
   push_binding_level();
@@ -1499,8 +1497,6 @@ Module::genobjfile (int)
   // file per pass and there may be more than one module per object file.
   current_module_info = new ModuleInfo;
   current_module_decl = this;
-
-  setup_symbol_storage (this, toSymbol()->Stree, true);
 
   if (members)
     {
@@ -1897,7 +1893,7 @@ d_finish_symbol (Symbol *sym)
       gcc_assert (COMPLETE_TYPE_P (TREE_TYPE (decl)));
     }
 
-  gcc_assert (!error_mark_p (decl));
+  gcc_assert (!error_operand_p (decl));
 
   if (DECL_INITIAL (decl) != NULL_TREE)
     {
@@ -1909,14 +1905,12 @@ d_finish_symbol (Symbol *sym)
   if (sym->Sreadonly)
     TREE_READONLY (decl) = 1;
 
-  DECL_CONTEXT (decl) = decl_function_context (decl);
-
   // We are sending this symbol to object file.
   gcc_assert (!DECL_EXTERNAL (decl));
   relayout_decl (decl);
 
 #ifdef ENABLE_TREE_CHECKING
-  if (DECL_INITIAL (decl) != NULL_TREE) 
+  if (DECL_INITIAL (decl) != NULL_TREE)
     {
       // Initialiser must never be bigger than symbol size.
       dinteger_t tsize = int_size_in_bytes (TREE_TYPE (decl));
@@ -2033,7 +2027,7 @@ build_type_decl (tree t, Dsymbol *dsym)
 {
   if (TYPE_STUB_DECL (t))
     return;
-  
+
   gcc_assert (!POINTER_TYPE_P (t));
 
   tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
@@ -2123,7 +2117,7 @@ make_alias_for_thunk (tree function)
   alias = build_decl (DECL_SOURCE_LOCATION (function), FUNCTION_DECL,
 		      get_identifier (buf), TREE_TYPE (function));
   DECL_LANG_SPECIFIC (alias) = DECL_LANG_SPECIFIC (function);
-  DECL_CONTEXT (alias) = NULL;
+  DECL_CONTEXT (alias) = NULL_TREE;
   TREE_READONLY (alias) = TREE_READONLY (function);
   TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
   TREE_PUBLIC (alias) = 0;

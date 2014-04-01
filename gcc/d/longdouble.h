@@ -39,7 +39,7 @@ struct longdouble
 
   // No constructor to be able to use this class in a union.
   template<typename T> longdouble& operator = (T x)
-  { set (x); return *this;} 
+  { set (x); return *this;}
 
   // We need to list all basic types to avoid ambiguities
   void set (float d);

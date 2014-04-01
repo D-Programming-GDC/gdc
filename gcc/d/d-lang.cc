@@ -46,7 +46,7 @@ static tree d_handle_target_attribute (tree *, tree, tree, int, bool *);
 
 static char lang_name[6] = "GNU D";
 
-const attribute_spec d_attribute_table[] = 
+const attribute_spec d_attribute_table[] =
 {
     { "noinline",               0, 0, true,  false, false,
 				d_handle_noinline_attribute, false },
@@ -663,7 +663,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	  tree op0 = TREE_OPERAND (*expr_p, 0);
 	  tree op1 = TREE_OPERAND (*expr_p, 1);
 
-	  if (!error_mark_p (op0) && !error_mark_p (op1)
+	  if (!error_operand_p (op0) && !error_operand_p (op1)
 	      && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
 		  || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
 	      && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))

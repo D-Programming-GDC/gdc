@@ -113,7 +113,6 @@ class ArrayScope;
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);
-extern tree d_build_module (Loc loc, Dsymbol *dsym);
 
 extern tree d_mark_addressable (tree exp);
 extern tree d_mark_used (tree exp);
@@ -147,9 +146,6 @@ extern tree maybe_compound_expr (tree arg0, tree arg1);
 extern tree maybe_vcompound_expr (tree arg0, tree arg1);
 
 extern tree bind_expr (tree var_chain, tree body);
-
-extern bool error_mark_p (tree t);
-
 extern tree d_build_label (Loc loc, Identifier *ident);
 
 // Type conversion.
@@ -356,14 +352,6 @@ vcompound_expr (tree arg0, tree arg1)
   return build2_loc (input_location, COMPOUND_EXPR, void_type_node, arg0, arg1);
 }
 
-// Giving error_mark_node a type allows for some assumptions about
-// the type of an arbitrary expression.
-inline tree
-error_mark (Type *t)
-{
-  return build1_loc (input_location, NOP_EXPR, t->toCtype(), error_mark_node);
-}
-
 // Routines for built in structured types
 inline tree
 real_part (tree c)
@@ -403,28 +391,18 @@ public:
   elem *toElem (IRState *irs);
 };
 
-class AggLayout
+struct AggLayout
 {
- public:
-  AggLayout (AggregateDeclaration *ini_agg_decl, tree ini_agg_type)
-    : aggDecl_(ini_agg_decl),
-      aggType_(ini_agg_type)
-  { }
+  AggLayout (AggregateDeclaration *indecl, tree intype)
+    : decl (indecl), type (intype) { }
 
-  void go (void)
-  { visit (this->aggDecl_); }
-
-  void visit (AggregateDeclaration *decl);
-
-  void doFields (VarDeclarations *fields, AggregateDeclaration *agg);
-  void doInterfaces (BaseClasses *bases);
-  void addField (tree field_decl, size_t offset);
-  void finish (Expressions *attrs);
-
- private:
-  AggregateDeclaration *aggDecl_;
-  tree aggType_;
+  AggregateDeclaration *decl;
+  tree type;
 };
+
+extern void layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl);
+extern void insert_aggregate_field (AggLayout *al, tree field, size_t offset);
+extern void finish_aggregate_type (AggLayout *al, Expressions *attrs);
 
 class ArrayScope
 {
