@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- gcc/config/rs6000/rs6000.c
 +++ gcc/config/rs6000/rs6000.c
-@@ -24406,7 +24406,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -24786,7 +24786,8 @@ rs6000_output_function_epilogue (FILE *file,
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
@@ -35,7 +35,7 @@ relevant documentation about the GDC front end.
  current official meaning is ``GNU Compiler Collection'', which refers
 --- gcc/doc/install.texi
 +++ gcc/doc/install.texi
-@@ -1418,12 +1418,12 @@ their runtime libraries should be built.  For a list of valid values for
+@@ -1423,12 +1423,12 @@ their runtime libraries should be built.  For a list of valid values for
  grep language= */config-lang.in
  @end smallexample
  Currently, you can use any of the following:
@@ -52,7 +52,7 @@ relevant documentation about the GDC front end.
  Specify that a particular subset of compilers and their runtime
 --- gcc/doc/invoke.texi
 +++ gcc/doc/invoke.texi
-@@ -1229,6 +1229,15 @@ called @dfn{specs}.
+@@ -1231,6 +1231,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -68,7 +68,7 @@ relevant documentation about the GDC front end.
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1264,6 +1273,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1266,6 +1275,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -125,7 +125,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  */
  
  static void
-@@ -19285,6 +19294,8 @@ gen_compile_unit_die (const char *filename)
+@@ -19295,6 +19304,8 @@ gen_compile_unit_die (const char *filename)
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -134,7 +134,7 @@ relevant documentation about the GDC front end.
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
-@@ -20226,7 +20237,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -20236,7 +20247,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
  
    if (ns_context != context_die)
      {
@@ -143,7 +143,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, ns_context);
-@@ -20249,7 +20260,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -20259,7 +20270,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -152,7 +152,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -20306,7 +20317,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
+@@ -20316,7 +20327,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
        break;
  
      case CONST_DECL:
@@ -161,7 +161,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -20776,7 +20787,7 @@ dwarf2out_decl (tree decl)
+@@ -20786,7 +20797,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -172,7 +172,7 @@ relevant documentation about the GDC front end.
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 --- gcc/gcc.c
 +++ gcc/gcc.c
-@@ -1021,6 +1021,7 @@ static const struct compiler default_compilers[] =
+@@ -1028,6 +1028,7 @@ static const struct compiler default_compilers[] =
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},
