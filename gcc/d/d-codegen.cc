@@ -3430,7 +3430,7 @@ get_frameinfo (FuncDeclaration *fd)
 	      ffi->static_chain = true;
 	      ffi->is_closure = ffo->is_closure;
 	      gcc_assert (COMPLETE_TYPE_P (ffo->frame_rec));
-	      ffi->frame_rec = copy_node (ffo->frame_rec);
+	      ffi->frame_rec = ffo->frame_rec;
 	      break;
 	    }
 

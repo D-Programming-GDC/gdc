@@ -1,3 +1,7 @@
+2014-04-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(get_frameinfo): Don't copy the node for frame record.
+
 2014-03-31  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(error_mark_p): Removed function, replace uses with
