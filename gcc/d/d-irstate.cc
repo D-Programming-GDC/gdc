@@ -99,7 +99,6 @@ IRState::addExp (tree e)
       e = build1 (CONVERT_EXPR, void_type_node, e);
     }
 
-  // C doesn't do this for label_exprs %% why?
   if (EXPR_P (e) && !EXPR_HAS_LOCATION (e))
     SET_EXPR_LOCATION (e, input_location);
 
@@ -141,6 +140,7 @@ IRState::popStatementList (void)
 	  t = u;
 	}
     }
+
   return t;
 }
 
@@ -573,8 +573,6 @@ void
 IRState::endCatch (void)
 {
   tree body = this->popStatementList();
-  // % Wrong loc... can set pass statement to startCatch, set
-  // The loc on type and then use it here...
   this->addExp (build2 (CATCH_EXPR, void_type_node,
 			this->currentFlow()->catchType, body));
 }
@@ -586,6 +584,17 @@ IRState::endCatches (void)
 {
   Flow *flow = this->currentFlow();
   tree catches = this->popStatementList();
+
+  /* Backend expects all catches in a TRY_CATCH_EXPR to be enclosed in a
+     statement list, however popStatementList may optimise away the list
+     if there is only a single catch to push.  */
+  if (TREE_CODE (catches) != STATEMENT_LIST)
+    {
+      tree stmt_list = alloc_stmt_list();
+      append_to_statement_list_force (catches, &stmt_list);
+      d_keep (stmt_list);
+      catches = stmt_list;
+    }
 
   this->doLineNote (flow->statement->loc);
   this->addExp (build2 (TRY_CATCH_EXPR, void_type_node,
