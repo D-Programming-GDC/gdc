@@ -210,7 +210,7 @@ This implements building of libphobos library in GCC.
 +@endif gcc-bootstrap
 +@if target-libphobos
 +maybe-configure-target-libphobos: configure-target-libphobos
-+configure-target-libphobos: 
++configure-target-libphobos: all-build-libiberty
 +	@: $(MAKE); $(unstage)
 +	@r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
