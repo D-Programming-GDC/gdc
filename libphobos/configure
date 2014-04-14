@@ -4153,7 +4153,7 @@ export CFLAGS_FOR_BUILD
 # Should not have to go up too many directories
 
 d_libiberty_dir=../..
-while test "$d_count" != 'xxx'; do
+while test "$d_count" != 'xxxx'; do
     BUILD_LIBIBERTY=$d_libiberty_dir/build-${build_alias}/libiberty/libiberty.a
     if test -f $BUILD_LIBIBERTY; then
 	break
