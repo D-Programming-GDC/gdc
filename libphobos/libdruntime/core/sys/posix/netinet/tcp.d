@@ -26,7 +26,11 @@ extern (C):
 TCP_NODELAY
 */
 
-version( linux )
+version( Android )
+{
+    enum TCP_NODELAY = 1;
+}
+else version( linux )
 {
     enum TCP_NODELAY = 1;
 }

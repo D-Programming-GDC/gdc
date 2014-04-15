@@ -29,7 +29,12 @@ extern (C):
 __syscall_slong_t
 __syscall_ulong_t
 */
-version (linux)
+version (Android)
+{
+    alias c_long slong_t;
+    alias c_ulong ulong_t;
+}
+else version (linux)
 {
     version (X86_64)
     {
@@ -76,7 +81,70 @@ time_t
 uid_t
 */
 
-version( linux )
+version( Android )
+{
+    version(X86)
+    {
+        alias c_ulong   blkcnt_t;
+        alias c_ulong   blksize_t;
+        alias uint      dev_t;
+        alias uint      gid_t;
+        alias c_ulong   ino_t;
+        alias ushort    mode_t;
+        alias ushort    nlink_t;
+        alias c_long    off_t;
+        alias int       pid_t;
+        alias c_long    ssize_t;
+        alias c_long    time_t;
+        alias uint      uid_t;
+    }
+    else version(ARM)
+    {
+        alias c_ulong   blkcnt_t;
+        alias c_ulong   blksize_t;
+        alias uint      dev_t;
+        alias ushort    gid_t;
+        alias c_ulong   ino_t;
+        alias ushort    mode_t;
+        alias ushort    nlink_t;
+        alias c_long    off_t;
+        alias int       pid_t;
+        alias int       ssize_t;
+        alias c_long    time_t;
+        alias ushort    uid_t;
+    }
+    else version(MIPS)
+    {
+        alias c_ulong   blkcnt_t;
+        alias c_ulong   blksize_t;
+        alias uint      dev_t;
+        alias uint      gid_t;
+        alias c_ulong   ino_t;
+        alias uint      mode_t;
+        version(MIPS32)
+        {
+            alias c_ulong nlink_t;
+        }
+        else version(MIPS64)
+        {
+            alias uint    nlink_t;
+        }
+        else
+        {
+            static assert(false, "Architecture not supported.");
+        }
+        alias c_long    off_t;
+        alias int       pid_t;
+        alias int       ssize_t;
+        alias c_long    time_t;
+        alias uint      uid_t;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+}
+else version( linux )
 {
   static if( __USE_FILE_OFFSET64 )
   {
@@ -194,7 +262,16 @@ suseconds_t
 useconds_t
 */
 
-version( linux )
+version( Android )
+{
+    alias c_ulong  fsblkcnt_t;
+    alias c_ulong  fsfilcnt_t;
+    alias c_long   clock_t;
+    alias uint     id_t;
+    alias int      key_t;
+    alias c_long   suseconds_t;
+}
+else version( linux )
 {
   static if( __USE_FILE_OFFSET64 )
   {
@@ -278,7 +355,49 @@ pthread_rwlockattr_t
 pthread_t
 */
 
-version (linux)
+version( Android )
+{
+    struct pthread_attr_t
+    {
+        uint    flags;
+        void*   stack_base;
+        size_t  stack_size;
+        size_t  guard_size;
+        int     sched_policy;
+        int     sched_priority;
+    }
+
+    struct pthread_cond_t
+    {
+        int value; //volatile
+    }
+
+    alias c_long pthread_condattr_t;
+    alias int    pthread_key_t;
+
+    struct pthread_mutex_t
+    {
+        int value; //volatile
+    }
+
+    alias c_long pthread_mutexattr_t;
+    alias int    pthread_once_t; //volatile
+
+    struct pthread_rwlock_t
+    {
+        pthread_mutex_t  lock;
+        pthread_cond_t   cond;
+        int              numLocks;
+        int              writerThreadId;
+        int              pendingReaders;
+        int              pendingWriters;
+        void*[4]         reserved;
+    }
+
+    alias int    pthread_rwlockattr_t;
+    alias c_long pthread_t;
+}
+else version (linux)
 {
     version (X86)
     {
@@ -701,7 +820,10 @@ pthread_barrier_t
 pthread_barrierattr_t
 */
 
-version( linux )
+version( Android )
+{
+}
+else version( linux )
 {
     struct pthread_barrier_t
     {
@@ -752,7 +874,10 @@ else
 pthread_spinlock_t
 */
 
-version( linux )
+version( Android )
+{
+}
+else version( linux )
 {
     alias int pthread_spinlock_t; // volatile
 }

@@ -37,7 +37,18 @@ ssize_t readv(int, in iovec*, int);
 ssize_t writev(int, in iovec*, int);
 */
 
-version( linux )
+version( Android )
+{
+    struct iovec
+    {
+        void*  iov_base;
+        size_t iov_len;
+    }
+
+    int readv(int, in iovec*, int);
+    int writev(int, in iovec*, int);
+}
+else version( linux )
 {
     struct iovec
     {

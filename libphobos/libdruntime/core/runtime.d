@@ -49,10 +49,12 @@ private
     extern (C) CArgs rt_cArgs();
 
     // backtrace
-    version(GNU)
+    version( Android ) {}
+    else version(GNU)
         import gcc.backtrace;
 
-    version( linux )
+    version( Android ) {}
+    else version( linux )
         import core.sys.linux.execinfo;
     else version( OSX )
         import core.sys.osx.execinfo;
@@ -637,6 +639,10 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                             break;
                         }
                     }
+                }
+                else version( Android )
+                {
+                    // fallthrough
                 }
                 else version( linux )
                 {

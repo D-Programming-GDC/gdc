@@ -37,7 +37,19 @@ passwd* getpwnam(in char*);
 passwd* getpwuid(uid_t);
 */
 
-version( linux )
+version( Android )
+{
+    struct passwd
+    {
+        char*   pw_name;
+        char*   pw_passwd;
+        uid_t   pw_uid;
+        gid_t   pw_gid;
+        char*   pw_dir;
+        char*   pw_shell;
+    }
+}
+else version( linux )
 {
     struct passwd
     {
@@ -117,7 +129,12 @@ int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
 int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
 */
 
-version( linux )
+version( Android )
+{
+    int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
+    int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
+}
+else version( linux )
 {
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
@@ -151,7 +168,11 @@ passwd* getpwent();
 void    setpwent();
 */
 
-version( linux )
+version ( Android )
+{
+    void    endpwent();
+}
+else version( linux )
 {
     void    endpwent();
     passwd* getpwent();

@@ -38,7 +38,16 @@ int sem_unlink(in char*);
 int sem_wait(sem_t*);
 */
 
-version( linux )
+version( Android )
+{
+    struct sem_t
+    {
+        uint count; //volatile
+    }
+
+    enum SEM_FAILED = null;
+}
+else version( linux )
 {
     private alias int __atomic_lock_t;
 
@@ -117,7 +126,11 @@ version( Posix )
 int sem_timedwait(sem_t*, in timespec*);
 */
 
-version( linux )
+version( Android )
+{
+    int sem_timedwait(sem_t*, in timespec*);
+}
+else version( linux )
 {
     int sem_timedwait(sem_t*, in timespec*);
 }

@@ -77,6 +77,10 @@ else version( FreeBSD )
 {
     enum clock_t CLOCKS_PER_SEC = 128;
 }
+else version (Android)
+{
+    enum clock_t CLOCKS_PER_SEC = 1_000_000;
+}
 else version (linux)
 {
     enum clock_t CLOCKS_PER_SEC = 1000000;
@@ -105,6 +109,11 @@ else version( OSX )
 {
     void tzset();                            // non-standard
     extern __gshared const(char)*[2] tzname; // non-standard
+}
+else version( Android )
+{
+    void tzset();
+    extern __gshared const(char)*[2] tzname;
 }
 else version( linux )
 {
