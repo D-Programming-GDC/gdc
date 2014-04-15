@@ -1,7 +1,9 @@
 2014-04-15  Johannes Pfau  <johannespfau@gmail.com>
 
-	* d-lang.cc(d_handle_noclone_attribute): New function, required for
-	naked attribute.
+	* d-lang.cc(d_handle_noclone_attribute): New function to handle
+	noclone attribute. noclone is required by the naked attribute.
+	* d-elem.cc(SymbolExp::toElem): Convert symbols to the expression
+	type.
 
 2014-04-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 

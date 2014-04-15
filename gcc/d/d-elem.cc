@@ -2022,6 +2022,12 @@ SymbolExp::toElem (IRState *irs)
       if (decl_reference_p (var))
 	exp = indirect_ref (var->type->toCtype(), exp);
 
+      // The frontend sometimes emits different types for the expression and var.
+      // Convert to the expressions type, but don't convert FuncDeclaration as
+      // type->toCtype sometimes isn't the correct type for functions!
+      if (!var->type->equals (type) && !var->isFuncDeclaration())
+	exp = build1 (VIEW_CONVERT_EXPR, type->toCtype(), exp);
+
       return exp;
     }
   else if (op == TOKsymoff)
