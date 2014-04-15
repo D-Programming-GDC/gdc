@@ -792,20 +792,29 @@ d_attribute_p (const char* name)
 {
   static StringTable* table;
 
-  if(!table)
+  if(table == NULL)
     {
+      // Build the table of attributes exposed to the language.
+      // Common and format attributes are kept internal.
       size_t n = 0;
-      for (const attribute_spec *p = d_attribute_table; p->name; p++)
-        n++;
-
-      if(n == 0)
-        return false;
-
       table = new StringTable();
-      table->_init(n);
 
-      for (const attribute_spec *p = d_attribute_table; p->name; p++)
-        table->insert(p->name, strlen(p->name));
+      for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
+	n++;
+
+      for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
+	n++;
+
+      if(n != 0)
+	{
+	  table->_init(n);
+
+	  for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
+	    table->insert(p->name, strlen(p->name));
+
+	  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
+	    table->insert(p->name, strlen(p->name));
+	}
     }
 
   return table->lookup(name, strlen(name)) != NULL;

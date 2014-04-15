@@ -46,7 +46,7 @@ static tree d_handle_target_attribute (tree *, tree, tree, int, bool *);
 
 static char lang_name[6] = "GNU D";
 
-const attribute_spec d_attribute_table[] =
+static const attribute_spec d_attribute_table[] =
 {
     { "noinline",               0, 0, true,  false, false,
 				d_handle_noinline_attribute, false },
