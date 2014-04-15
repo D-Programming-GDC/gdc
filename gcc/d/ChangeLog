@@ -1,9 +1,15 @@
+2014-04-15  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-lang.cc(d_handle_noclone_attribute): New function, required for
+	naked attribute.
+
 2014-04-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(get_frameinfo): Don't copy the node for frame record.
 	* d-irstate.cc(IRState::endCatches): Rebuild the STATEMENT_LIST of
 	catches in a TRY_CATCH_EXPR if it gets optimised away by
 	IRState::popStatement.
+	* d-codegen.cc(d_attribute_p): Provide access to target attributes.
 
 2014-03-31  Iain Buclaw  <ibuclaw@gdcproject.org>
 
