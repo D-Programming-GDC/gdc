@@ -52,7 +52,11 @@ version (Posix)
     alias core.sys.posix.stdio.fileno fileno;
 }
 
-version (linux)
+version (Android)
+{
+    version = GENERIC_IO;
+}
+else version (linux)
 {
     // Specific to the way Gnu C does stdio
     version = GCC_IO;
