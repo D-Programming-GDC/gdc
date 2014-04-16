@@ -666,6 +666,12 @@ Throws: $(D Exception) if the file is not opened.
             errnoEnforce(fseek(_p.handle, to!int(offset), origin) == 0,
                     "Could not seek in file `"~_name~"'");
         }
+        else version (Android)
+        {
+            // May truncate; no different than Windows though.
+            errnoEnforce(fseeko(_p.handle, to!off_t(offset), origin) == 0,
+                    "Could not seek in file `"~_name~"'");
+        }
         else
         {
             //static assert(off_t.sizeof == 8);
