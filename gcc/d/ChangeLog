@@ -1,3 +1,8 @@
+2014-04-20  Johannes Pfau  <johannespfau@gmail.com>
+
+	* patch-versym-os-4.9.x(): Do not define linux on Android systems.
+	This is a temporary workaround requested by Android developers.
+
 2014-04-15  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_handle_noclone_attribute): New function to handle

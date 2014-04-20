@@ -60,7 +60,7 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS() 			\
 +  do 						\
 +    {						\
-+      TARGET_GENERIC_LINUX_OS_D_BUILTINS();	\
++      TARGET_BASIC_LINUX_OS_D_BUILTINS();	\
 +      ANDROID_TARGET_OS_D_BUILTINS();		\
 +    }						\
 +  while (false)
@@ -137,7 +137,7 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS() 			\
 +  do 						\
 +    {						\
-+      TARGET_GENERIC_LINUX_OS_D_BUILTINS();	\
++      TARGET_BASIC_LINUX_OS_D_BUILTINS();	\
 +      ANDROID_TARGET_OS_D_BUILTINS();		\
 +    }						\
 +  while (0)
@@ -235,7 +235,7 @@ These official OS versions are not implemented:
  #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
 --- gcc/config/linux-android.h
 +++ gcc/config/linux-android.h
-@@ -25,6 +25,12 @@
+@@ -25,6 +25,14 @@
  	  builtin_define ("__ANDROID__");			\
      } while (0)
  
@@ -243,6 +243,8 @@ These official OS versions are not implemented:
 +    do {							\
 +	if (TARGET_ANDROID)					\
 +	  builtin_define ("Android");				\
++	else							\
++	  builtin_define ("linux");				\
 +    } while (0)
 +
  #if ANDROID_DEFAULT
@@ -250,12 +252,17 @@ These official OS versions are not implemented:
  #else
 --- gcc/config/linux.h
 +++ gcc/config/linux.h
-@@ -49,6 +49,20 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+@@ -49,6 +49,24 @@
  	builtin_assert ("system=posix");			\
      } while (0)
  
 +#define TARGET_OS_D_BUILTINS() TARGET_GENERIC_LINUX_OS_D_BUILTINS()
 +#define TARGET_GENERIC_LINUX_OS_D_BUILTINS()			\
++    do {							\
++	builtin_define ("linux");				\
++	TARGET_BASIC_LINUX_OS_D_BUILTINS();			\
++    } while (0)
++#define TARGET_BASIC_LINUX_OS_D_BUILTINS()			\
 +    do {							\
 +	if (OPTION_GLIBC)					\
 +	  builtin_define ("GNU_GLibc");				\
@@ -264,7 +271,6 @@ These official OS versions are not implemented:
 +	else if (OPTION_BIONIC)					\
 +	  builtin_define ("GNU_Bionic");			\
 +								\
-+	builtin_define ("linux");				\
 +	builtin_define ("Posix");				\
 +    } while (0)
 +
@@ -281,7 +287,7 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS() 			\
 +  do 						\
 +    {						\
-+      TARGET_GENERIC_LINUX_OS_D_BUILTINS();	\
++      TARGET_BASIC_LINUX_OS_D_BUILTINS();	\
 +      ANDROID_TARGET_OS_D_BUILTINS();		\
 +    }						\
 +  while (0)
