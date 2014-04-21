@@ -83,17 +83,17 @@ TupleDeclaration *isAliasThisTuple(Expression *e);
 int expandAliasThisTuples(Expressions *exps, size_t starti = 0);
 FuncDeclaration *hasThis(Scope *sc);
 Expression *fromConstInitializer(int result, Expression *e);
+bool arrayExpressionSemantic(Expressions *exps, Scope *sc);
 int arrayExpressionCanThrow(Expressions *exps, bool mustNotThrow);
 TemplateDeclaration *getFuncTemplateDecl(Dsymbol *s);
 Expression *valueNoDtor(Expression *e);
 int modifyFieldVar(Loc loc, Scope *sc, VarDeclaration *var, Expression *e1);
-#if DMDV2
 Expression *resolveAliasThis(Scope *sc, Expression *e);
 Expression *callCpCtor(Scope *sc, Expression *e);
-#endif
 Expression *resolveOpDollar(Scope *sc, ArrayExp *ae);
 Expression *resolveOpDollar(Scope *sc, SliceExp *se);
-Expressions *arrayExpressionSemantic(Expressions *exps, Scope *sc);
+
+AggregateDeclaration *isAggregate(Type *t);
 
 /* Run CTFE on the expression, but allow the expression to be a TypeExp
  * or a tuple containing a TypeExp. (This is required by pragma(msg)).
@@ -140,7 +140,7 @@ public:
     void error(const char *format, ...);
     void warning(const char *format, ...);
     void deprecation(const char *format, ...);
-    virtual int rvalue();
+    virtual int rvalue(bool allowVoid = false);
 
     static Expression *combine(Expression *e1, Expression *e2);
     static Expressions *arraySyntaxCopy(Expressions *exps);
@@ -180,7 +180,6 @@ public:
     Expression *addressOf(Scope *sc);
     Expression *deref();
     Expression *integralPromotions(Scope *sc);
-    Expression *isTemp();
 
     Expression *toDelegate(Scope *sc, Type *t);
 
@@ -195,11 +194,10 @@ public:
 
     virtual int isConst();
     virtual int isBool(int result);
-    virtual int isBit();
     bool hasSideEffect();
     void discardValue();
     void useValue();
-    int canThrow(bool mustNotThrow);
+    bool canThrow(bool mustNotThrow);
 
     virtual int inlineCost3(InlineCostState *ics);
     virtual Expression *doInline(InlineDoState *ids);
@@ -249,7 +247,7 @@ public:
     dt_t **toDt(dt_t **pdt);
 };
 
-class ErrorExp : public IntegerExp
+class ErrorExp : public Expression
 {
 public:
     ErrorExp();
@@ -316,6 +314,7 @@ public:
     Declaration *var;
 
     IdentifierExp(Loc loc, Identifier *ident);
+    static IdentifierExp *create(Loc loc, Identifier *ident);
     Expression *semantic(Scope *sc);
     char *toChars();
     void dump(int indent);
@@ -410,6 +409,7 @@ public:
     StringExp(Loc loc, char *s);
     StringExp(Loc loc, void *s, size_t len);
     StringExp(Loc loc, void *s, size_t len, utf8_t postfix);
+    static StringExp *create(Loc loc, char *s);
     //Expression *syntaxCopy();
     bool equals(RootObject *o);
     Expression *semantic(Scope *sc);
@@ -425,7 +425,7 @@ public:
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
-    unsigned charAt(size_t i);
+    unsigned charAt(uinteger_t i);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void toMangleBuffer(OutBuffer *buf);
     elem *toElem(IRState *irs);
@@ -485,6 +485,7 @@ public:
     void toMangleBuffer(OutBuffer *buf);
     Expression *optimize(int result, bool keepLvalue = false);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
+    Expression *implicitCastTo(Scope *sc, Type *t);
     MATCH implicitConvTo(Type *t);
     Expression *castTo(Scope *sc, Type *t);
     Expression *inferType(Type *t, int flag = 0, Scope *sc = NULL, TemplateParameters *tparams = NULL);
@@ -505,7 +506,7 @@ public:
     bool ownedByCtfe;   // true = created in CTFE
 
     AssocArrayLiteralExp(Loc loc, Expressions *keys, Expressions *values);
-
+    bool equals(RootObject *o);
     Expression *syntaxCopy();
     int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
@@ -562,11 +563,11 @@ public:
                                   // (with infinite recursion) of this expression.
 
     StructLiteralExp(Loc loc, StructDeclaration *sd, Expressions *elements, Type *stype = NULL);
+    static StructLiteralExp *create(Loc loc, StructDeclaration *sd, void *elements, Type *stype = NULL);
     bool equals(RootObject *o);
     Expression *syntaxCopy();
     int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
-    Expression *fill(bool ctorinit);
     Expression *getField(Type *type, unsigned offset);
     int getFieldIndex(Type *type, unsigned offset);
     elem *toElem(IRState *irs);
@@ -574,6 +575,7 @@ public:
     void toMangleBuffer(OutBuffer *buf);
     Expression *optimize(int result, bool keepLvalue = false);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
+    Expression *addDtorHook(Scope *sc);
     dt_t **toDt(dt_t **pdt);
     Symbol *toSymbol();
     MATCH implicitConvTo(Type *t);
@@ -593,7 +595,7 @@ public:
     TypeExp(Loc loc, Type *type);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
-    int rvalue();
+    int rvalue(bool allowVoid = false);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Expression *optimize(int result, bool keepLvalue = false);
     elem *toElem(IRState *irs);
@@ -618,7 +620,7 @@ public:
     FuncDeclaration *fd;
 
     TemplateExp(Loc loc, TemplateDeclaration *td, FuncDeclaration *fd = NULL);
-    int rvalue();
+    int rvalue(bool allowVoid = false);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
@@ -672,7 +674,6 @@ public:
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
 
-#if DMDV2
 class SymbolExp : public Expression
 {
 public:
@@ -683,16 +684,15 @@ public:
 
     elem *toElem(IRState *irs);
 };
-#endif
 
 // Offset from symbol
 
 class SymOffExp : public SymbolExp
 {
 public:
-    unsigned offset;
+    dinteger_t offset;
 
-    SymOffExp(Loc loc, Declaration *var, unsigned offset, bool hasOverloads = false);
+    SymOffExp(Loc loc, Declaration *var, dinteger_t offset, bool hasOverloads = false);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
@@ -713,6 +713,7 @@ class VarExp : public SymbolExp
 {
 public:
     VarExp(Loc loc, Declaration *var, bool hasOverloads = false);
+    static VarExp *create(Loc loc, Declaration *var, bool hasOverloads = false);
     bool equals(RootObject *o);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
@@ -733,7 +734,6 @@ public:
     //Expression *inlineScan(InlineScanState *iss);
 };
 
-#if DMDV2
 // Overload Set
 
 class OverExp : public Expression
@@ -746,7 +746,6 @@ public:
     Expression *toLvalue(Scope *sc, Expression *e);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
-#endif
 
 // Function/Delegate literal
 
@@ -807,7 +806,6 @@ public:
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
 
-#if DMDV2
 class TraitsExp : public Expression
 {
 public:
@@ -817,9 +815,11 @@ public:
     TraitsExp(Loc loc, Identifier *ident, Objects *args);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    Expression *isTypeX(bool (*fp)(Type *t));
+    Expression *isFuncX(bool (*fp)(FuncDeclaration *f));
+    Expression *isDeclX(bool (*fp)(Declaration *d));
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 };
-#endif
 
 class HaltExp : public Expression
 {
@@ -986,6 +986,7 @@ public:
     Identifier *ident;
 
     DotIdExp(Loc loc, Expression *e, Identifier *ident);
+    static DotIdExp *create(Loc loc, Expression *e, Identifier *ident);
     Expression *semantic(Scope *sc);
     Expression *semanticX(Scope *sc);
     Expression *semanticY(Scope *sc, int flag);
@@ -1075,6 +1076,10 @@ public:
     CallExp(Loc loc, Expression *e, Expression *earg1);
     CallExp(Loc loc, Expression *e, Expression *earg1, Expression *earg2);
 
+    static CallExp *create(Loc loc, Expression *e, Expressions *exps);
+    static CallExp *create(Loc loc, Expression *e);
+    static CallExp *create(Loc loc, Expression *e, Expression *earg1);
+
     Expression *syntaxCopy();
     int apply(apply_fp_t fp, void *param);
     Expression *semantic(Scope *sc);
@@ -1086,11 +1091,13 @@ public:
     int isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *addDtorHook(Scope *sc);
+    Expression *implicitCastTo(Scope *sc, Type *t);
     MATCH implicitConvTo(Type *t);
 
     int inlineCost3(InlineCostState *ics);
     Expression *doInline(InlineDoState *ids);
     Expression *inlineScan(InlineScanState *iss);
+    Expression *inlineScan(InlineScanState *iss, Expression *eret);
 };
 
 class AddrExp : public UnaExp
@@ -1175,7 +1182,6 @@ public:
     NotExp(Loc loc, Expression *e);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    int isBit();
     elem *toElem(IRState *irs);
 };
 
@@ -1185,7 +1191,6 @@ public:
     BoolExp(Loc loc, Expression *e, Type *type);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    int isBit();
     elem *toElem(IRState *irs);
 };
 
@@ -1204,10 +1209,10 @@ class CastExp : public UnaExp
 public:
     // Possible to cast to one type while painting to another type
     Type *to;                   // type to cast to
-    unsigned mod;               // MODxxxxx
+    unsigned char mod;          // MODxxxxx
 
     CastExp(Loc loc, Expression *e, Type *t);
-    CastExp(Loc loc, Expression *e, unsigned mod);
+    CastExp(Loc loc, Expression *e, unsigned char mod);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     MATCH implicitConvTo(Type *t);
@@ -1399,6 +1404,9 @@ public:
     Identifier *opId();    // For operator overloading
     void buildArrayIdent(OutBuffer *buf, Expressions *arguments);
     Expression *buildArrayLoop(Parameters *fparams);
+
+    Expression *inlineScan(InlineScanState *iss);
+
     elem *toElem(IRState *irs);
 };
 
@@ -1408,53 +1416,111 @@ public:
     ConstructExp(Loc loc, Expression *e1, Expression *e2);
 };
 
-#define ASSIGNEXP(op)   \
-class op##AssignExp : public BinAssignExp                       \
-{                                                               \
-public:                                                         \
-    op##AssignExp(Loc loc, Expression *e1, Expression *e2);     \
-    S(Expression *semantic(Scope *sc);)                          \
-                                                                \
-    Identifier *opId();    /* For operator overloading */       \
-                                                                \
-    elem *toElem(IRState *irs);                                 \
+class AddAssignExp : public BinAssignExp
+{
+public:
+    AddAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
 };
 
-#define X(a) a
-#define S(a)
-ASSIGNEXP(Add)
-ASSIGNEXP(Min)
-ASSIGNEXP(Mul)
-ASSIGNEXP(Div)
-ASSIGNEXP(Mod)
-ASSIGNEXP(And)
-ASSIGNEXP(Or)
-ASSIGNEXP(Xor)
-#undef S
+class MinAssignExp : public BinAssignExp
+{
+public:
+    MinAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
 
-#if DMDV2
-#define S(a) a
-ASSIGNEXP(Pow)
-#undef S
-#endif
+class MulAssignExp : public BinAssignExp
+{
+public:
+    MulAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
 
-#undef S
-#undef X
+class DivAssignExp : public BinAssignExp
+{
+public:
+    DivAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
 
-#define X(a)
+class ModAssignExp : public BinAssignExp
+{
+public:
+    ModAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
 
-#define S(a)
-ASSIGNEXP(Shl)
-ASSIGNEXP(Shr)
-ASSIGNEXP(Ushr)
-#undef S
+class AndAssignExp : public BinAssignExp
+{
+public:
+    AndAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
 
-#define S(a) a
-ASSIGNEXP(Cat)
-#undef S
+class OrAssignExp : public BinAssignExp
+{
+public:
+    OrAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
 
-#undef X
-#undef ASSIGNEXP
+class XorAssignExp : public BinAssignExp
+{
+public:
+    XorAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
+
+class PowAssignExp : public BinAssignExp
+{
+public:
+    PowAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Expression *semantic(Scope *sc);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
+
+class ShlAssignExp : public BinAssignExp
+{
+public:
+    ShlAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
+
+class ShrAssignExp : public BinAssignExp
+{
+public:
+    ShrAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
+
+class UshrAssignExp : public BinAssignExp
+{
+public:
+    UshrAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
+
+class CatAssignExp : public BinAssignExp
+{
+public:
+    CatAssignExp(Loc loc, Expression *e1, Expression *e2);
+    Expression *semantic(Scope *sc);
+    Identifier *opId();    /* For operator overloading */
+    elem *toElem(IRState *irs);
+};
 
 class AddExp : public BinExp
 {
@@ -1548,7 +1614,6 @@ public:
     elem *toElem(IRState *irs);
 };
 
-#if DMDV2
 class PowExp : public BinExp
 {
 public:
@@ -1562,7 +1627,6 @@ public:
 
     elem *toElem(IRState *irs);
 };
-#endif
 
 class ShlExp : public BinExp
 {
@@ -1665,7 +1729,6 @@ public:
     OrOrExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *checkToBoolean(Scope *sc);
-    int isBit();
     Expression *optimize(int result, bool keepLvalue = false);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     elem *toElem(IRState *irs);
@@ -1677,7 +1740,6 @@ public:
     AndAndExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *checkToBoolean(Scope *sc);
-    int isBit();
     Expression *optimize(int result, bool keepLvalue = false);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
     elem *toElem(IRState *irs);
@@ -1689,7 +1751,6 @@ public:
     CmpExp(TOK op, Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    int isBit();
 
     // For operator overloading
     int isCommutative();
@@ -1705,7 +1766,6 @@ public:
     InExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *interpret(InterState *istate, CtfeGoal goal = ctfeNeedRvalue);
-    int isBit();
 
     // For operator overloading
     Identifier *opId();
@@ -1731,7 +1791,6 @@ public:
     EqualExp(TOK op, Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     Expression *optimize(int result, bool keepLvalue = false);
-    int isBit();
 
     // For operator overloading
     int isCommutative();
@@ -1748,7 +1807,6 @@ class IdentityExp : public BinExp
 public:
     IdentityExp(TOK op, Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
-    int isBit();
     Expression *optimize(int result, bool keepLvalue = false);
     elem *toElem(IRState *irs);
 };
@@ -1784,7 +1842,6 @@ public:
     elem *toElem(IRState *irs);
 };
 
-#if DMDV2
 /****************************************************************/
 
 class DefaultInitExp : public Expression
@@ -1835,8 +1892,6 @@ public:
     Expression *semantic(Scope *sc);
     Expression *resolveLoc(Loc loc, Scope *sc);
 };
-
-#endif
 
 /****************************************************************/
 

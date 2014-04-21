@@ -13,8 +13,9 @@ Source: $(PHOBOSSRC std/_array.d)
 module std.array;
 
 import core.memory, core.bitop;
-import std.algorithm, std.ascii, std.conv, std.exception, std.range, std.string,
-       std.traits, std.typecons, std.typetuple, std.uni, std.utf;
+import std.algorithm, std.ascii, std.conv, std.exception, std.functional,
+       std.range, std.string, std.traits, std.typecons, std.typetuple,
+       std.uni, std.utf;
 import std.c.string : memcpy;
 version(unittest) import core.exception, std.stdio;
 
@@ -31,27 +32,22 @@ if (isIterable!Range && !isNarrowString!Range && !isInfinite!Range)
     static if (hasLength!Range)
     {
         if(r.length == 0) return null;
-        //@@@BUG@@@ 10928 should be lambda
-        static @trusted nothrow auto trustedAllocateArray(size_t n)
+
+        static auto trustedAllocateArray(size_t n) @trusted nothrow
         {
             return uninitializedArray!(Unqual!E[])(n);
         }
         auto result = trustedAllocateArray(r.length);
-        size_t i = 0;
+
+        size_t i;
+        static auto trustedGetAddr(T)(ref T t) @trusted nothrow pure
+        {
+            return &t;
+        }
         foreach (e; r)
         {
-            // hacky
-            static if (is(typeof(result[i].opAssign(e))) ||
-                       !is(typeof(result[i] = e)))
-            {
-                // this should be in-place construction
-                emplace(result.ptr + i, e);
-            }
-            else
-            {
-                result[i] = e;
-            }
-            i++;
+            emplace(trustedGetAddr(result[i]), e);
+            ++i;
         }
         return cast(E[])result;
     }
@@ -746,7 +742,7 @@ inout(T)[] overlap(T)(inout(T)[] r1, inout(T)[] r2) @trusted pure nothrow
 
 @safe pure nothrow unittest // bugzilla 9836
 {
-	// range primitives for array should work with alias this types
+    // range primitives for array should work with alias this types
     struct Wrapper
     {
         int[] data;
@@ -876,8 +872,14 @@ private void copyBackwards(T)(T[] src, T[] dest)
 {
     import core.stdc.string;
     assert(src.length == dest.length);
+
+    void trustedMemmove(void* d, const void* s, size_t len) @trusted
+    {
+        memmove(d, s, len);
+    }
+
     if (!__ctfe)
-        memmove(dest.ptr, src.ptr, src.length * T.sizeof);
+        trustedMemmove(dest.ptr, src.ptr, src.length * T.sizeof);
     else
     {
         immutable len = src.length;
@@ -907,6 +909,35 @@ void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
 {
     static if(allSatisfy!(isInputRangeWithLengthOrConvertible!T, U))
     {
+        import core.stdc.string;
+        void assign(E)(ref T dest, ref E src)
+        {
+            static if (is(typeof(dest.opAssign(src))) ||
+                       !is(typeof(dest = src)))
+            {
+                // this should be in-place construction
+                emplace(&dest, src);
+            }
+            else
+            {
+                dest = src;
+            }
+        }
+        auto trustedAllocateArray(size_t n) @trusted nothrow
+        {
+            return uninitializedArray!(T[])(n);
+        }
+        void trustedMemcopy(T[] dest, T[] src) @trusted
+        {
+            assert(src.length == dest.length);
+            if (!__ctfe)
+                memcpy(dest.ptr, src.ptr, src.length * T.sizeof);
+            else
+            {
+                dest[] = src[];
+            }
+        }
+
         immutable oldLen = array.length;
         size_t to_insert = 0;
         foreach (i, E; U)
@@ -916,21 +947,25 @@ void insertInPlace(T, U...)(ref T[] array, size_t pos, U stuff)
             else
                 to_insert += stuff[i].length;
         }
-        array.length += to_insert;
-        copyBackwards(array[pos..oldLen], array[pos+to_insert..$]);
-        auto ptr = array.ptr + pos;
+        auto tmp = trustedAllocateArray(to_insert);
+        auto j = 0;
         foreach (i, E; U)
         {
             static if (is(E : T)) //ditto
             {
-                emplace(ptr++, stuff[i]);
+                assign(tmp[j++], stuff[i]);
             }
             else
             {
                 foreach (v; stuff[i])
-                    emplace(ptr++, v);
+                {
+                    assign(tmp[j++], v);
+                }
             }
         }
+        array.length += to_insert;
+        copyBackwards(array[pos..oldLen], array[pos+to_insert..$]);
+        trustedMemcopy(array[pos..pos+to_insert], tmp);
     }
     else
     {
@@ -1052,7 +1087,7 @@ private template isInputRangeOrConvertible(E)
 
 
 //Verify Example.
-unittest
+@safe unittest
 {
     int[] a = [ 1, 2, 3, 4 ];
     a.insertInPlace(2, [ 1, 2 ]);
@@ -1067,7 +1102,7 @@ unittest
                string file = __FILE__, size_t line = __LINE__)
     {
         {
-            static if(is(T == typeof(T.dup)))
+            static if(is(T == typeof(T.init.dup)))
                 auto a = orig.dup;
             else
                 auto a = orig.idup;
@@ -1123,7 +1158,7 @@ unittest
     // variadic version
     bool testVar(T, U...)(T orig, size_t pos, U args)
     {
-        static if(is(T == typeof(T.dup)))
+        static if(is(T == typeof(T.init.dup)))
             auto a = orig.dup;
         else
             auto a = orig.idup;
@@ -1168,20 +1203,20 @@ unittest
         }
         ~this()
         {
-            *payload = 0; //'destroy' it
+            if (payload)
+                *payload = 0; //'destroy' it
         }
         @property int getPayload(){ return *payload; }
         alias getPayload this;
     }
 
-    Int[] arr;// = [Int(1), Int(4), Int(5)]; //@@BUG 8740
-    arr ~= [Int(1), Int(4), Int(5)];
+    Int[] arr = [Int(1), Int(4), Int(5)];
     assert(arr[0] == 1);
     insertInPlace(arr, 1, Int(2), Int(3));
     assert(equal(arr, [1, 2, 3, 4, 5]));  //check it works with postblit
 }
 
-unittest
+@safe unittest
 {
     assertCTFEable!(
     {
@@ -1314,34 +1349,36 @@ unittest
     }
 }
 
-/**************************************
-Split the string $(D s) into an array of words, using whitespace as
+/++
+Eagerly split the string $(D s) into an array of words, using whitespace as
 delimiter. Runs of whitespace are merged together (no empty words are produced).
- */
-S[] split(S)(S s) @safe pure if (isSomeString!S)
+
+$(D @safe), $(D pure) and $(D CTFE)-able.
++/
+S[] split(S)(S s) @safe pure
+if (isSomeString!S)
 {
     size_t istart;
     bool inword = false;
     S[] result;
 
-    foreach (i; 0 .. s.length)
+    foreach (i, dchar c ; s)
     {
-        switch (s[i])
+        if (std.uni.isWhite(c))
         {
-        case ' ': case '\t': case '\f': case '\r': case '\n': case '\v':
             if (inword)
             {
                 result ~= s[istart .. i];
                 inword = false;
             }
-            break;
-        default:
+        }
+        else
+        {
             if (!inword)
             {
                 istart = i;
                 inword = true;
             }
-            break;
         }
     }
     if (inword)
@@ -1351,59 +1388,82 @@ S[] split(S)(S s) @safe pure if (isSomeString!S)
 
 unittest
 {
-    foreach (S; TypeTuple!(string, wstring, dstring))
-    {
-        debug(std_array) printf("array.split1\n");
-        S s = " \t\npeter paul\tjerry \n";
-        assert(equal(split(s), [ to!S("peter"), to!S("paul"), to!S("jerry") ]));
+    static auto makeEntry(S)(string l, string[] r)
+    {return tuple(l.to!S(), r.to!(S[])());}
 
-        S s2 = " \t\npeter paul\tjerry";
-        assert(equal(split(s2), [ to!S("peter"), to!S("paul"), to!S("jerry") ]));
+    foreach (S; TypeTuple!(string, wstring, dstring,))
+    {
+        auto entries =
+        [
+            makeEntry!S("", []),
+            makeEntry!S(" ", []),
+            makeEntry!S("hello", ["hello"]),
+            makeEntry!S(" hello ", ["hello"]),
+            makeEntry!S("  h  e  l  l  o ", ["h", "e", "l", "l", "o"]),
+            makeEntry!S("peter\t\npaul\rjerry", ["peter", "paul", "jerry"]),
+            makeEntry!S(" \t\npeter paul\tjerry \n", ["peter", "paul", "jerry"]),
+            makeEntry!S("\u2000日\u202F本\u205F語\u3000", ["日", "本", "語"]),
+            makeEntry!S("　　哈・郎博尔德｝　　　　___一个", ["哈・郎博尔德｝", "___一个"])
+        ];
+        foreach (entry; entries)
+            assert(entry[0].split() == entry[1], format("got: %s, expected: %s.", entry[0].split(), entry[1]));
     }
 
+    //Just to test that an immutable is split-able
     immutable string s = " \t\npeter paul\tjerry \n";
-    assert(equal(split(s), ["peter", "paul", "jerry"]));
+    assert(split(s) == ["peter", "paul", "jerry"]);
 }
 
-/**
-Splits a string by whitespace.
- */
-auto splitter(C)(C[] s) @safe pure
-    if(isSomeString!(C[]))
+unittest //safety, purity, ctfe ...
 {
-    return std.algorithm.splitter!(std.uni.isWhite)(s);
-}
-
-///
-@safe pure unittest
-{
-    auto a = " a     bcd   ef gh ";
-    assert(equal(splitter(a), ["", "a", "bcd", "ef", "gh"][]));
-}
-
-/*@safe*/ pure unittest
-{
-    foreach(S; TypeTuple!(string, wstring, dstring))
-    {
-        S a = " a     bcd   ef gh ";
-        assert(equal(splitter(a), [to!S(""), to!S("a"), to!S("bcd"), to!S("ef"), to!S("gh")][]));
-        a = "";
-        assert(splitter(a).empty);
+    void dg() @safe pure {
+        assert(split("hello world"c) == ["hello"c, "world"c]);
+        assert(split("hello world"w) == ["hello"w, "world"w]);
+        assert(split("hello world"d) == ["hello"d, "world"d]);
     }
+    dg();
+    assertCTFEable!dg;
 }
 
-/**************************************
- * Splits $(D s) into an array, using $(D delim) as the delimiter.
- */
-Unqual!(S1)[] split(S1, S2)(S1 s, S2 delim)
-if (isForwardRange!(Unqual!S1) && isForwardRange!S2)
+/++
+Alias for $(XREF algorithm, splitter).
+ +/
+alias splitter = std.algorithm.splitter;
+
+/++
+Eagerly splits $(D s) into an array, using $(D delim) as the delimiter.
+
+See also: $(XREF algorithm, splitter) for the lazy version of this operator.
+ +/
+auto split(R, E)(R r, E delim)
+if (isForwardRange!R && is(typeof(ElementType!R.init == E.init)))
 {
-    Unqual!S1 us = s;
-    auto app = appender!(Unqual!(S1)[])();
-    foreach (word; std.algorithm.splitter(us, delim))
-    {
-        app.put(word);
-    }
+    auto spl = std.algorithm.splitter(r, delim);
+    alias S = typeof(spl.front.init); // "Slice_t"
+    auto app = appender!(S[])();
+    foreach (e; spl)
+        app.put(e);
+    return app.data;
+}
+auto split(R1, R2)(R1 r, R2 delim)
+if (isForwardRange!R1 && isForwardRange!R2 && is(typeof(ElementType!R1.init == ElementType!R2.init)))
+{
+    auto spl = std.algorithm.splitter(r, delim);
+    alias S = typeof(spl.front.init); // "Slice_t"
+    auto app = appender!(S[])();
+    foreach (e; spl)
+        app.put(e);
+    return app.data;
+}
+///ditto
+auto split(alias isTerminator, R)(R r)
+if (isForwardRange!R && is(typeof(unaryFun!isTerminator(r.front))))
+{
+    auto spl = std.algorithm.splitter!isTerminator(r);
+    alias S = typeof(spl.front.init); // "Slice_t"
+    auto app = appender!(S[])();
+    foreach (e; spl)
+        app.put(e);
     return app.data;
 }
 
@@ -1862,7 +1922,7 @@ void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff
        !is(T == const T) &&
        !is(T == immutable T))
 {
-    if (overlap(array, stuff))
+    if (overlap(array, stuff).length)
     {
         // use slower/conservative method
         array = array[0 .. from] ~ stuff ~ array[to .. $];
@@ -1920,7 +1980,7 @@ unittest
                string file = __FILE__, size_t line = __LINE__)
     {
         {
-            static if(is(T == typeof(T.dup)))
+            static if(is(T == typeof(T.init.dup)))
                 auto a = orig.dup;
             else
                 auto a = orig.idup;
@@ -2036,7 +2096,7 @@ unittest
 }
 
 /++
-    Returns an array that is $(D s) with $(D slice) replaced by
+    Returns a new array that is $(D s) with $(D slice) replaced by
     $(D replacement[]).
  +/
 inout(T)[] replaceSlice(T)(inout(T)[] s, in T[] slice, in T[] replacement)
@@ -2132,9 +2192,15 @@ struct Appender(A : T[], T)
      */
     void reserve(size_t newCapacity) @safe pure nothrow
     {
-        immutable cap = _data ? _data.capacity : 0;
-        if (newCapacity > cap)
-            ensureAddable(newCapacity - cap);
+        if (_data)
+        {
+            if (newCapacity > _data.capacity)
+                ensureAddable(newCapacity - _data.arr.length);
+        }
+        else
+        {
+            ensureAddable(newCapacity);
+        }
     }
 
     /**
@@ -2161,16 +2227,6 @@ struct Appender(A : T[], T)
     // ensure we can add nelems elements, resizing as necessary
     private void ensureAddable(size_t nelems) @safe pure nothrow
     {
-        static size_t newCapacity(size_t newlength) @safe pure nothrow
-        {
-            long mult = 100 + (1000L) / (bsr(newlength * T.sizeof) + 1);
-            // limit to doubling the length, we don't want to grow too much
-            if(mult > 200)
-                mult = 200;
-            auto newext = cast(size_t)((newlength * mult + 99) / 100);
-            return newext > newlength ? newext : newlength;
-        }
-
         if (!_data)
             _data = new Data;
         immutable len = _data.arr.length;
@@ -2201,7 +2257,7 @@ struct Appender(A : T[], T)
             // Time to reallocate.
             // We need to almost duplicate what's in druntime, except we
             // have better access to the capacity field.
-            auto newlen = newCapacity(reqlen);
+            auto newlen = appenderNewCapacity!(T.sizeof)(_data.capacity, reqlen);
             // first, try extending the current block
             auto u = ()@trusted{ return
                 GC.extend(_data.arr.ptr, nelems * T.sizeof, (newlen - len) * T.sizeof);
@@ -2264,14 +2320,30 @@ struct Appender(A : T[], T)
         {
             ensureAddable(1);
             immutable len = _data.arr.length;
-            //_data.arr.ptr[len] = cast(Unqual!T)item;    // assign? emplace?
-            //_data.arr = _data.arr.ptr[0 .. len + 1];
 
-            // Cannot return ref because it doesn't work in CTFE
-            ()@trusted{ return _data.arr.ptr[len .. len + 1]; }()[0]
-            =   // assign? emplace?
-            ()@trusted{ return cast(Unqual!T)item; } ();
-            ()@trusted{ _data.arr = _data.arr.ptr[0 .. len + 1]; }();
+            auto bigDataFun() @trusted nothrow { return _data.arr.ptr[0 .. len + 1];}
+            auto bigData = bigDataFun();
+
+            static if (is(Unqual!T == T))
+                alias uitem = item;
+            else
+                auto ref uitem() @trusted nothrow @property { return cast(Unqual!T)item;}
+
+            //The idea is to only call emplace if we must.
+            static if ( is(typeof(bigData[0].opAssign(uitem))) ||
+                       !is(typeof(bigData[0] = uitem)))
+            {
+                //pragma(msg, T.stringof); pragma(msg, U.stringof);
+                emplace(&bigData[len], uitem);
+            }
+            else
+            {
+                //pragma(msg, T.stringof); pragma(msg, U.stringof);
+                bigData[len] = uitem;
+            }
+
+            //We do this at the end, in case of exceptions
+            _data.arr = bigData;
         }
     }
 
@@ -2309,23 +2381,44 @@ struct Appender(A : T[], T)
             ensureAddable(items.length);
             immutable len = _data.arr.length;
             immutable newlen = len + items.length;
-            _data.arr = ()@trusted{ return _data.arr.ptr[0 .. newlen]; }();
-            static if (is(typeof(_data.arr[] = items[])))
+
+            auto bigDataFun() @trusted nothrow { return _data.arr.ptr[0 .. newlen];}
+            auto bigData = bigDataFun();
+
+            enum mustEmplace =  is(typeof(bigData[0].opAssign(cast(Unqual!T)items.front))) ||
+                               !is(typeof(bigData[0] = cast(Unqual!T)items.front));
+
+            static if (is(typeof(_data.arr[] = items[])) && !mustEmplace)
             {
-                ()@trusted{ return _data.arr.ptr[len .. newlen]; }()[] = items[];
+                //pragma(msg, T.stringof); pragma(msg, Range.stringof);
+                bigData[len .. newlen] = items[];
+            }
+            else static if (is(Unqual!T == ElementType!Range))
+            {
+                foreach (ref it ; bigData[len .. newlen])
+                {
+                    static if (mustEmplace)
+                        emplace(&it, items.front);
+                    else
+                        it = items.front;
+                    items.popFront();
+                }
             }
             else
             {
-                for (size_t i = len; !items.empty; items.popFront(), ++i)
+                static auto ref getUItem(U)(U item) @trusted {return cast(Unqual!T)item;}
+                foreach (ref it ; bigData[len .. newlen])
                 {
-                    //_data.arr.ptr[i] = cast(Unqual!T)items.front;
-
-                    // Cannot return ref because it doesn't work in CTFE
-                    ()@trusted{ return _data.arr.ptr[i .. i + 1]; }()[0]
-                    =   // assign? emplace?
-                    ()@trusted{ return cast(Unqual!T)items.front; }();
+                    static if (mustEmplace)
+                        emplace(&it, getUItem(items.front));
+                    else
+                        it = getUItem(items.front);
+                    items.popFront();
                 }
             }
+
+            //We do this at the end, in case of exceptions
+            _data.arr = bigData;
         }
         else
         {
@@ -2394,6 +2487,23 @@ struct Appender(A : T[], T)
                 enforce(newlength == 0);
         }
     }
+}
+
+//Calculates an efficient growth scheme based on the old capacity
+//of data, and the minimum requested capacity.
+//arg curLen: The current length
+//arg reqLen: The length as requested by the user
+//ret sugLen: A suggested growth.
+private size_t appenderNewCapacity(size_t TSizeOf)(size_t curLen, size_t reqLen) @safe pure nothrow
+{
+    if(curLen == 0)
+        return max(reqLen,8);
+    ulong mult = 100 + (1000UL) / (bsr(curLen * TSizeOf) + 1);
+    // limit to doubling the length, we don't want to grow too much
+    if(mult > 200)
+        mult = 200;
+    auto sugLen = cast(size_t)((curLen * mult + 99) / 100);
+    return max(reqLen, sugLen);
 }
 
 /**
@@ -2654,6 +2764,96 @@ Appender!(E[]) appender(A : E[], E)(A array)
     }
 }
 
+unittest
+{
+    //10690
+    [tuple(1)].filter!(t => true).array; // No error
+    [tuple("A")].filter!(t => true).array; // error
+}
+
+unittest
+{
+    //Coverage for put(Range)
+    struct S1
+    {
+    }
+    struct S2
+    {
+        void opAssign(S2){}
+    }
+    auto a1 = Appender!(S1[])();
+    auto a2 = Appender!(S2[])();
+    auto au1 = Appender!(const(S1)[])();
+    auto au2 = Appender!(const(S2)[])();
+    a1.put(S1().repeat().take(10));
+    a2.put(S2().repeat().take(10));
+    auto sc1 = const(S1)();
+    auto sc2 = const(S2)();
+    au1.put(sc1.repeat().take(10));
+    au2.put(sc2.repeat().take(10));
+}
+
+unittest
+{
+    struct S
+    {
+        int* p;
+    }
+
+    auto a0 = Appender!(S[])();
+    auto a1 = Appender!(const(S)[])();
+    auto a2 = Appender!(immutable(S)[])();
+    auto s0 = S(null);
+    auto s1 = const(S)(null);
+    auto s2 = immutable(S)(null);
+    a1.put(s0);
+    a1.put(s1);
+    a1.put(s2);
+    a1.put([s0]);
+    a1.put([s1]);
+    a1.put([s2]);
+    a0.put(s0);
+    static assert(!is(typeof(a0.put(a1))));
+    static assert(!is(typeof(a0.put(a2))));
+    a0.put([s0]);
+    static assert(!is(typeof(a0.put([a1]))));
+    static assert(!is(typeof(a0.put([a2]))));
+    static assert(!is(typeof(a2.put(a0))));
+    static assert(!is(typeof(a2.put(a1))));
+    a2.put(s2);
+    static assert(!is(typeof(a2.put([a0]))));
+    static assert(!is(typeof(a2.put([a1]))));
+    a2.put([s2]);
+}
+
+unittest
+{ //9528
+    const(E)[] fastCopy(E)(E[] src) {
+            auto app = appender!(const(E)[])();
+            foreach (i, e; src)
+                    app.put(e);
+            return app.data;
+    }
+
+    class C {}
+    struct S { const(C) c; }
+    S[] s = [ S(new C) ];
+
+    auto t = fastCopy(s); // Does not compile
+}
+
+unittest
+{ //10753
+    struct Foo {
+       immutable dchar d;
+    }
+    struct Bar {
+       immutable int x;
+    }
+   "12".map!Foo.array;
+   [1, 2].map!Bar.array;
+}
+
 /++
     Convenience function that returns a $(D RefAppender!A) object initialized
     with $(D array).  Don't use null for the $(D array) pointer, use the other
@@ -2716,6 +2916,14 @@ unittest
     const app3 = app2;
     assert(app3.capacity >= 3);
     assert(app3.data == [1, 2, 3]);
+}
+
+unittest
+{
+    Appender!(int[]) app;
+    short[] range = [1, 2, 3];
+    app.put(range);
+    assert(app.data == [1, 2, 3]);
 }
 
 /*

@@ -2723,22 +2723,33 @@ static assert({
 }());
 
 /**************************************************
+    8365 - block assignment of enum arrays
+**************************************************/
+
+enum E8365 { first = 7, second, third, fourth }
+static assert({ E8365[2] x; return x[0]; }() == E8365.first);
+static assert({ E8365[2][2] x; return x[0][0]; }() == E8365.first);
+static assert({ E8365[2][2][2] x; return x[0][0][0]; }() == E8365.first);
+
+/**************************************************
     4448 - labelled break + continue
 **************************************************/
 
 int bug4448()
 {
     int n=2;
-    L1:{ switch(n)
+    L1: do
     {
-       case 5:
-        return 7;
-       default:
-       n = 5;
-       break L1;
-    }
-    int w = 7;
-    }
+        switch(n)
+        {
+        case 5:
+            return 7;
+        default:
+            n = 5;
+            break L1;
+        }
+        int w = 7;
+    } while (0);
     return 3;
 }
 
@@ -3188,6 +3199,26 @@ bool bug4021() {
     return true;
 }
 static assert(bug4021());
+
+/**************************************************
+    11629 crash on AA.rehash
+**************************************************/
+
+struct Base11629
+{
+    alias T = ubyte, Char = char;
+    alias String = immutable(Char)[];
+
+    const Char[T] toChar;
+
+    this(int _dummy)
+    {
+        Char[T] toCharTmp = [0:'A'];
+
+        toChar = toCharTmp.rehash;
+    }
+}
+enum ct11629 = Base11629(4);
 
 /**************************************************
     3512 foreach(dchar; string)
@@ -3905,6 +3936,23 @@ static assert( is(typeof(compiles!(test7876(11)))));
 static assert(!is(typeof(compiles!(test7876(10)))));
 
 /**************************************************
+    11824
+**************************************************/
+
+int f11824(T)()
+{
+    T[] arr = new T[](1);
+    T* getAddr(ref T a)
+    {
+        return &a;
+    }
+    getAddr(arr[0]);
+    return 1;
+}
+static assert(f11824!int());        // OK
+static assert(f11824!(int[])());    // OK <- NG
+
+/**************************************************
     6817 if converted to &&, only with -inline
 **************************************************/
 static assert({
@@ -4107,6 +4155,28 @@ int classtest3()
 }
 
 static assert(classtest3());
+
+/**************************************************
+    12016 class cast and qualifier reinterpret
+**************************************************/
+
+class B12016 { }
+
+class C12016 : B12016 { }
+
+bool f12016(immutable B12016 b)
+{
+    assert(b);
+    return true;
+}
+
+static assert(f12016(new immutable C12016));
+
+/**************************************************
+    11587 AA compare
+**************************************************/
+
+static assert([1:2, 3:4] == [3:4, 1:2]);
 
 /**************************************************
     7147 typeid()
@@ -4929,6 +4999,23 @@ void emplace9982(Bug9982* chunk, Bug9982 arg)
 
 enum s9982 = Bug9982(3);
 enum p9982 = SS9982(s9982);
+
+/**************************************************
+    11618 dotvar assign through casted pointer
+**************************************************/
+
+struct Tuple11618(T...)
+{
+    T field;
+    alias field this;
+}
+
+static assert({
+    Tuple11618!(immutable dchar) result = void;
+    auto addr = cast(dchar*) &result[0];
+    *addr = dchar.init;
+    return (result[0] == dchar.init);
+}());
 
 /**************************************************
     7143 'is' for classes
@@ -5813,3 +5900,334 @@ string f10782()
 }
 mixin(f10782());
 
+/**************************************************
+    11510 support overlapped field access in CTFE
+**************************************************/
+
+struct S11510
+{
+    union
+    {
+        size_t x;
+        int* y; // pointer field
+    }
+}
+bool test11510()
+{
+    S11510 s;
+
+    s.y = [1,2,3].ptr;            // writing overlapped pointer field is OK
+    assert(s.y[0..3] == [1,2,3]); // reading valid field is OK
+
+    s.x = 10;
+    assert(s.x == 10);
+
+    // There's no reinterpretation between S.x and S.y
+    return true;
+}
+static assert(test11510());
+
+/**************************************************
+    11534 - subtitude inout
+**************************************************/
+
+struct MultiArray11534
+{
+    this(size_t[] sizes...)
+    {
+        storage = new size_t[5];
+    }
+
+    @property auto raw_ptr() inout
+    {
+        return storage.ptr + 1;
+    }
+    size_t[] storage;
+}
+
+enum test11534 = () {
+    auto m = MultiArray11534(3,2,1);
+    auto start = m.raw_ptr;   //this trigger the bug
+    //auto start = m.storage.ptr + 1; //this obviously works
+    return 0;
+}();
+
+/**************************************************
+    11941 - Regression of 11534 fix
+**************************************************/
+
+void takeConst11941(const string[]) {}
+string[] identity11941(string[] x) { return x; }
+
+bool test11941a()
+{
+    struct S { string[] a; }
+    S s;
+
+    takeConst11941(identity11941(s.a));
+    s.a ~= [];
+
+    return true;
+}
+static assert(test11941a());
+
+bool test11941b()
+{
+    struct S { string[] a; }
+    S s;
+
+    takeConst11941(identity11941(s.a));
+    s.a ~= "foo"; /* Error refers to this line (15), */
+    string[] b = s.a[]; /* but only when this is here. */
+
+    return true;
+}
+static assert(test11941b());
+
+/**************************************************
+    11540 - goto label + try-catch-finally / with statement
+**************************************************/
+
+static assert(()
+{
+    // enter to TryCatchStatement.body
+    {
+        bool c = false;
+        try {
+            if (c)  // need to bypass front-end optimization
+                throw new Exception("");
+            else
+            {
+                goto Lx;
+              L1:
+                c = true;
+            }
+        }
+        catch (Exception e) {}
+
+      Lx:
+        if (!c)
+            goto L1;
+    }
+
+    // jump inside TryCatchStatement.body
+    {
+        bool c = false;
+        try
+        {
+            if (c)  // need to bypass front-end optimization
+                throw new Exception("");
+            else
+                goto L2;
+          L2:
+            ;
+        }
+        catch (Exception e) {}
+    }
+
+    // exit from TryCatchStatement.body
+    {
+        bool c = false;
+        try
+        {
+            if (c)  // need to bypass front-end optimization
+                throw new Exception("");
+            else
+                goto L3;
+        }
+        catch (Exception e) {}
+
+        c = true;
+      L3:
+        assert(!c);
+    }
+
+    return 1;
+}());
+
+static assert(()
+{
+    // enter to TryCatchStatement.catches which has no exception variable
+    {
+        bool c = false;
+        goto L1;
+        try
+        {
+            c = true;
+        }
+        catch (Exception/* e*/)
+        {
+          L1:
+            ;
+        }
+        assert(c == false);
+    }
+
+    // jump inside TryCatchStatement.catches
+    {
+        bool c = false;
+        try
+        {
+            throw new Exception("");
+        }
+        catch (Exception e)
+        {
+            goto L2;
+            c = true;
+          L2:
+            ;
+        }
+        assert(c == false);
+    }
+
+    // exit from TryCatchStatement.catches
+    {
+        bool c = false;
+        try
+        {
+            throw new Exception("");
+        }
+        catch (Exception e)
+        {
+            goto L3;
+            c = true;
+        }
+      L3:
+        assert(c == false);
+    }
+
+    return 1;
+}());
+
+static assert(()
+{
+    // enter forward to TryFinallyStatement.body
+    {
+        bool c = false;
+        goto L0;
+        c = true;
+        try
+        {
+          L0:
+            ;
+        }
+        finally {}
+        assert(!c);
+    }
+
+    // enter back to TryFinallyStatement.body
+    {
+        bool c = false;
+        try
+        {
+            goto Lx;
+          L1:
+            c = true;
+        }
+        finally {
+        }
+
+      Lx:
+        if (!c)
+            goto L1;
+    }
+
+    // jump inside TryFinallyStatement.body
+    {
+        try
+        {
+            goto L2;
+          L2: ;
+        }
+        finally {}
+    }
+
+    // exit from TryFinallyStatement.body
+    {
+        bool c = false;
+        try
+        {
+            goto L3;
+        }
+        finally {}
+
+        c = true;
+      L3:
+        assert(!c);
+    }
+
+    // enter in / exit out from finally block is rejected in semantic analysis
+
+    // jump inside TryFinallyStatement.finalbody
+    {
+        bool c = false;
+        try
+        {
+        }
+        finally
+        {
+            goto L4;
+            c = true;
+          L4:
+            assert(c == false);
+        }
+    }
+
+    return 1;
+}());
+
+static assert(()
+{
+    {
+        bool c = false;
+        with (Object.init)
+        {
+            goto L2;
+            c = true;
+          L2:
+            ;
+        }
+        assert(c == false);
+    }
+
+    {
+        bool c = false;
+        with (Object.init)
+        {
+            goto L3;
+            c = true;
+        }
+      L3:
+        assert(c == false);
+    }
+
+    return 1;
+}());
+
+/**************************************************
+    11627 -  cast dchar to char at compile time on AA assignment
+**************************************************/
+
+bool test11627()
+{
+    char[ubyte] toCharTmp;
+    dchar letter = 'A';
+
+    //char c = cast(char)letter;    // OK
+    toCharTmp[0] = cast(char)letter;    // NG
+
+    return true;
+}
+static assert(test11627());
+
+/**************************************************
+    11664 - ignore function local static variables
+**************************************************/
+
+bool test11664()
+{
+    static int x;
+    static int y = 1;
+    return true;
+}
+static assert(test11664());

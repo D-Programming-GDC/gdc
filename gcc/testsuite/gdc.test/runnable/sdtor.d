@@ -2415,6 +2415,11 @@ struct Test9386
         printf("Deleted %.*s\n", name.length, name.ptr);
         op ~= "c";
     }
+
+    const int opCmp(ref const Test9386 t)
+    {
+	return op[0] - t.op[0];
+    }
 }
 
 void test9386()
@@ -3091,6 +3096,44 @@ void fun7474(T...)() { T x; }
 void test7474() { fun7474!S7474(); }
 
 /**********************************/
+// 11286
+
+struct A11286
+{
+    ~this() {}
+}
+
+A11286 getA11286() pure nothrow
+{
+    return A11286();
+}
+
+void test11286()
+{
+    A11286 a = getA11286();
+}
+
+/**********************************/
+// 11505
+
+struct Foo11505
+{
+    Bar11505 b;
+}
+
+struct Bar11505
+{
+    ~this() @safe { }
+    void* p;
+}
+
+void test11505()
+{
+    Foo11505 f;
+    f = Foo11505();
+}
+
+/**********************************/
 
 int main()
 {
@@ -3151,7 +3194,7 @@ int main()
     test55();
     test56();
     test57();
-    //test58();         // BUG: NRVO unimplemented.
+    //test58();         // XBUG: NRVO unimplemented.
     test59();
     test5737();
     test6119();
@@ -3178,15 +3221,16 @@ int main()
     test9720();
     test9899();
     test9907();
-    //test9985();       // BUG: NRVO unimplemented.
+    //test9985();       // XBUG: NRVO unimplemented.
     test9994();
-    //test10094();      // BUG: NRVO unimplemented.
+    //test10094();      // XBUG: NRVO unimplemented.
     test10244();
     test10694();
     test10789();
     test11134();
     test11197();
     test7474();
+    test11505();
 
     printf("Success\n");
     return 0;

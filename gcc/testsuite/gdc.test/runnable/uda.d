@@ -262,9 +262,9 @@ void test9178()
 }
 
 /************************************************/
-// 9741
+// 9652
 
-struct Bug9741
+struct Bug9652
 {
     pragma(msg, __traits(getAttributes, enum_field));
     alias Tuple!(__traits(getAttributes, enum_field)) Tenum_field;
@@ -273,7 +273,7 @@ struct Bug9741
     static assert(Tenum_field[0] == 10);
     static assert(__traits(getAttributes, enum_field)[0] == 10);
     static assert(__traits(getProtection, enum_field) == "private");
-    static assert(__traits(isSame, __traits(parent, enum_field), Bug9741));
+    static assert(__traits(isSame, __traits(parent, enum_field), Bug9652));
     static assert(__traits(isSame, enum_field, enum_field));
 
     pragma(msg, __traits(getAttributes, anon_enum_member));
@@ -283,7 +283,7 @@ struct Bug9741
     static assert(Tanon_enum_member[0] == 20);
     static assert(__traits(getAttributes, anon_enum_member)[0] == 20);
     static assert(__traits(getProtection, anon_enum_member) == "private");
-    static assert(__traits(isSame, __traits(parent, anon_enum_member), Bug9741));
+    static assert(__traits(isSame, __traits(parent, anon_enum_member), Bug9652));
     static assert(__traits(isSame, anon_enum_member, anon_enum_member));
 
     pragma(msg, __traits(getAttributes, Foo.enum_member));
@@ -302,7 +302,7 @@ struct Bug9741
     static assert(Tanon_enum_member_2[0] == 40);
     static assert(__traits(getAttributes, anon_enum_member_2)[0] == 40);
     static assert(__traits(getProtection, anon_enum_member_2) == "private");
-    static assert(__traits(isSame, __traits(parent, anon_enum_member_2), Bug9741));
+    static assert(__traits(isSame, __traits(parent, anon_enum_member_2), Bug9652));
     static assert(__traits(isSame, anon_enum_member_2, anon_enum_member_2));
 
     template Bug(alias X, bool is_exp)
@@ -315,6 +315,37 @@ struct Bug9741
     enum en = 0;
     enum dummy1 = Bug!(5, true);
     enum dummy2 = Bug!(en, false);
+}
+
+/************************************************/
+// 9741
+
+import imports.a9741;
+
+struct A9741 {}
+
+alias X9741 = ShowAttributes!(B9741);
+
+@A9741 struct B9741 {}
+
+/************************************************/
+// 12160
+
+auto before12160(alias Hook)(string) { return 0; }
+
+template checkUDAs12160(alias Func)
+{
+    enum x = __traits(getAttributes, Func).length;
+}
+
+void test12160()
+{
+    int foo() { return 42; }    // OK <- NG
+
+    @before12160!foo("name1")
+    void bar(int name1, double name2) {}
+
+    alias X = checkUDAs12160!(bar);
 }
 
 /************************************************/
@@ -348,6 +379,26 @@ static assert(__traits(getAttributes, x10208_11)[0] == 110); // OK
 static assert(__traits(getAttributes, x10208_12)[0] == 120); // OK
 static assert(__traits(getAttributes, x10208_13)[0] == 130); // Error -> OK
 static assert(__traits(getAttributes, x10208_14)[0] == 140); // Error -> OK
+
+/************************************************/
+// 11844
+
+auto make_encode11844(T, string name)()
+{
+    return mixin("function(T self) { return self.encodeField!\""~ name ~ "\"();}");
+}
+
+class FileData11844
+{
+    ulong _member;
+
+    @make_encode11844!(FileData11844, "member")()
+    ulong member() const { return _member; }
+
+    ubyte[] encodeField(string key)() { return [1,2,3]; }
+}
+
+static assert(__traits(getAttributes, FileData11844.member)[0](new FileData11844()) == [1,2,3]);
 
 /************************************************/
 

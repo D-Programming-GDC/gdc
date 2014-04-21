@@ -530,6 +530,51 @@ class Bar11245
 }
 
 /********************************************************/
+// 11614
+
+struct Tuple11614(T...)
+{
+    T field;
+    alias field this;
+}
+
+struct Foo11614
+{
+    alias Tuple11614!(int) NEW_ARGS;
+
+    NEW_ARGS args;
+
+    void foo()
+    {
+        static if (NEW_ARGS.length == 1)
+        {}
+        else
+            static assert(0);
+    }
+}
+
+/********************************************************/
+// 11993
+
+struct S11993
+{
+    void foo()() const
+    if (is(typeof(this) == const(S11993)))
+    {}
+
+    const void bar()()
+    if (is(typeof(this) == const(S11993)))
+    {}
+}
+
+void test11993()
+{
+    S11993 s;
+    s.foo();
+    s.bar();
+}
+
+/********************************************************/
 
 int main()
 {

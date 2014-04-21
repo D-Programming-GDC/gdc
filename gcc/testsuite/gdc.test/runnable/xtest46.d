@@ -1168,6 +1168,14 @@ void test61()
 
 /***************************************************/
 
+void test9577()
+{
+    static int function(int)[] foo = [x => x];
+    foo[0](0);
+}
+
+/***************************************************/
+
 int[3] foo62(int[3] a)
 {
     a[1]++;
@@ -1480,6 +1488,15 @@ void test74()
     C74 c = null;
     a = b;
     a = c;
+}
+
+/***************************************************/
+
+void test9212()
+{
+    int[int] aa;
+    foreach (const key, const val; aa) {}
+    foreach (size_t key, size_t val; aa) {}
 }
 
 /***************************************************/
@@ -2190,6 +2207,15 @@ alias Foo110!int A110;
 
 static assert(B110.s == "Boo!double");
 static assert(A110.s == "Boo!int");
+
+/***************************************************/
+
+int test11247()
+{
+    static assert(is(byte[typeof(int.init).sizeof] == byte[4]));
+    static assert(is(byte[typeof(return).sizeof] == byte[4]));
+    return 0;
+}
 
 /***************************************************/
 
@@ -3455,6 +3481,19 @@ void test11238()
 
 /***************************************************/
 
+void test11805()
+{
+    int i;
+
+    i = 47;
+    i = 1 && i;
+    assert(i == 1);
+    i = 0 || i;
+    assert(i == 1);
+}
+
+/***************************************************/
+
 class A2540
 {
     int a;
@@ -3917,6 +3956,14 @@ void test4596()
 
 /***************************************************/
 
+void test10927()
+{
+    static assert( (1+2i) ^^ 3 == -11 - 2i );
+    auto a = (1+2i) ^^ 3;
+}
+
+/***************************************************/
+
 void test4963()
 {
     struct Value {
@@ -4344,6 +4391,24 @@ void test6473()
 
 /***************************************************/
 
+uint rol11417(uint n)(in uint x)
+{
+    return x << n | x >> 32 - n;
+}
+
+uint ror11417(uint n)(in uint x)
+{
+    return x >> n | x << 32 - n;
+}
+
+void test11417()
+{
+    assert(rol11417!1(0x8000_0000) == 0x1);
+    assert(ror11417!1(0x1) == 0x8000_0000);
+}
+
+/***************************************************/
+
 void test6578()
 {
     static struct Foo
@@ -4423,6 +4488,19 @@ void test6630()
     fun(a);
     assert(a !is null);
     assert(a.b !is null);
+}
+
+/***************************************************/
+
+int i199 = 1;
+
+void test199()
+{
+    label:
+    {
+        int i199 = 2;
+    }
+    assert(i199 == 1);
 }
 
 /***************************************************/
@@ -5851,6 +5929,87 @@ void test8395()
 }
 
 /***************************************************/
+// 5749
+
+void test5749()
+{
+    static struct A
+    {
+        A foo(int x, int i)
+        {
+            //printf("this = %p, %d: i=%d\n", &this, x, i);
+            assert(i == x);
+            return this;
+        }
+        A bar(int x, ref int i)
+        {
+            //printf("this = %p, %d: i=%d\n", &this, x, i);
+            assert(i == x);
+            return this;
+        }
+    }
+
+    static     int inc1(ref int i) { return ++i; }
+    static ref int inc2(ref int i) { return ++i; }
+
+    int i;
+    A a;
+    //printf("&a = %p\n", &a);
+
+    i = 0;  a.foo(1, ++i).foo(2, ++i);          // OK <-- 2 1
+    i = 0;  a.bar(1, ++i).bar(2, ++i);          // OK <-- 2 2
+    i = 0;  a.foo(1, inc1(i)).foo(2, inc1(i));  // OK <-- 2 1
+    i = 0;  a.bar(1, inc2(i)).bar(2, inc2(i));  // OK <-- 2 2
+    //printf("\n");
+
+    A getVal() { static A a; return a; }
+    i = 0;  getVal().foo(1, ++i).foo(2, ++i);           // OK <-- 2 1
+    i = 0;  getVal().bar(1, ++i).bar(2, ++i);           // OK <-- 2 2
+    i = 0;  getVal().foo(1, inc1(i)).foo(2, inc1(i));   // OK <-- 2 1
+    i = 0;  getVal().bar(1, inc2(i)).bar(2, inc2(i));   // OK <-- 2 2
+    //printf("\n");
+
+    ref A getRef() { static A a; return a; }
+    i = 0;  getRef().foo(1, ++i).foo(2, ++i);           // OK <-- 2 1
+    i = 0;  getRef().bar(1, ++i).bar(2, ++i);           // OK <-- 2 2
+    i = 0;  getRef().foo(1, inc1(i)).foo(2, inc1(i));   // OK <-- 2 1
+    i = 0;  getRef().bar(1, inc2(i)).bar(2, inc2(i));   // OK <-- 2 2
+}
+
+/***************************************************/
+// 8396
+
+void test8396()
+{
+    static int g;
+
+    static extern(C) int bar(int a, int b)
+    {
+        //printf("a = %d, b = %d\n", a, b);
+        assert(b - a == 1);
+        return ++g;
+    }
+    static auto getFunc(int n)
+    {
+        assert(++g == n);
+        return &bar;
+    }
+
+    static struct Tuple { int _a, _b; }
+    static Tuple foo(int n)
+    {
+        assert(++g == n);
+        return Tuple(1, 2);
+    }
+
+    g = 0;
+    assert(bar(foo(1).tupleof) == 2);
+
+    g = 0;
+    assert(getFunc(1)(foo(2).tupleof) == 3);
+}
+
+/***************************************************/
 
 enum E160 : ubyte { jan = 1 }
 
@@ -6106,7 +6265,7 @@ void test161()
 void test8819()
 {
     void[0] sa0 = (void[0]).init;
-    assert(sa0.ptr is null);
+    assert(sa0.ptr !is null); // 7175 - ptr should not be null
 
     void[1] sa1 = (void[1]).init;
     assert((cast(ubyte*)sa1.ptr)[0] == 0);
@@ -6705,6 +6864,48 @@ void test11075()
 
 
 /***************************************************/
+// 11317
+
+void test11317()
+{
+    auto ref uint fun()
+    {
+        return 0;
+    }
+
+    void test(ref uint x) {}
+    static assert(!__traits(compiles, test(fun())));
+
+    assert(fun() == 0);
+}
+
+/***************************************************/
+
+struct S12044(T)
+{
+    void f()()
+    {
+        new T[1];
+    }
+
+    bool opEquals(O)(O)
+    {
+        f();
+    }
+}
+
+void test12044()
+{
+    ()
+    {
+        enum E { e }
+        auto arr = [E.e];
+        S12044!E s;
+    }
+    ();
+}
+
+/***************************************************/
 
 int main()
 {
@@ -6946,6 +7147,7 @@ int main()
     test7534cov();
     test7618();
     test7621();
+    test11417();
     test7682();
     test7735();
     test7823();
@@ -6958,16 +7160,21 @@ int main()
     test159();
     test8283();
     test8395();
+    test5749();
+    test8396();
     test160();
     test8665();
     test8108();
     test8360();
+    test9577();
     test6141();
+    test199();
     test8526();
     test161();
     test8819();
     test8917();
     test8945();
+    test11805();
     test163();
     test9428();
     test9477();
@@ -6982,6 +7189,8 @@ int main()
     test10634();
     test7254();
     test11075();
+    test11317();
+    test12044();
 
     printf("Success\n");
     return 0;

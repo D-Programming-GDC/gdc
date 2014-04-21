@@ -140,6 +140,7 @@ Modules output_modules;
 static Module *output_module = NULL;
 
 static Module *entrypoint = NULL;
+static Module *rootmodule = NULL;
 
 /* Zero disables all standard directories for headers.  */
 static bool std_inc = true;
@@ -234,7 +235,7 @@ d_add_builtin_version(const char* ident)
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = 1;
   else if (strcmp (ident, "X86_64") == 0)
-    global.params.is64bit = 1;
+    global.params.is64bit = true;
 
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
@@ -396,7 +397,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  DebugCondition::setGlobalLevel (level);
 	}
       else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
-	DebugCondition::addGlobalIdent (xstrdup (arg));
+	DebugCondition::addGlobalIdent (arg);
       else
 	{
     Lerror_d:
@@ -409,7 +410,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fdeps_:
-      global.params.moduleDepsFile = xstrdup (arg);
+      global.params.moduleDepsFile = arg;
       if (!global.params.moduleDepsFile[0])
 	error ("bad argument for -fdeps");
       global.params.moduleDeps = new OutBuffer;
@@ -421,16 +422,16 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdoc_dir_:
       global.params.doDocComments = 1;
-      global.params.docdir = xstrdup (arg);
+      global.params.docdir = arg;
       break;
 
     case OPT_fdoc_file_:
       global.params.doDocComments = 1;
-      global.params.docname = xstrdup (arg);
+      global.params.docname = arg;
       break;
 
     case OPT_fdoc_inc_:
-      global.params.ddocfiles->push (xstrdup (arg));
+      global.params.ddocfiles->push (arg);
       break;
 
     case OPT_fd_verbose:
@@ -464,12 +465,12 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fintfc_dir_:
       global.params.doHdrGeneration = 1;
-      global.params.hdrdir = xstrdup (arg);
+      global.params.hdrdir = arg;
       break;
 
     case OPT_fintfc_file_:
       global.params.doHdrGeneration = 1;
-      global.params.hdrname = xstrdup (arg);
+      global.params.hdrname = arg;
       break;
 
     case OPT_finvariants:
@@ -483,7 +484,7 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fmake_deps_:
       global.params.makeDeps = new OutBuffer;
       global.params.makeDepsStyle = 1;
-      global.params.makeDepsFile = xstrdup (arg);
+      global.params.makeDepsFile = arg;
       if (!global.params.makeDepsFile[0])
 	error ("bad argument for -fmake-deps");
       break;
@@ -495,13 +496,13 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fmake_mdeps_:
       global.params.makeDeps = new OutBuffer;
       global.params.makeDepsStyle = 2;
-      global.params.makeDepsFile = xstrdup (arg);
+      global.params.makeDepsFile = arg;
       if (!global.params.makeDepsFile[0])
 	error ("bad argument for -fmake-deps");
       break;
 
     case OPT_fonly_:
-      fonly_arg = xstrdup (arg);
+      fonly_arg = arg;
       break;
 
     case OPT_fout:
@@ -535,7 +536,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	  VersionCondition::setGlobalLevel (level);
 	}
       else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
-	VersionCondition::addGlobalIdent (xstrdup (arg));
+	VersionCondition::addGlobalIdent (arg);
       else
 	{
     Lerror_v:
@@ -545,23 +546,23 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fXf_:
       global.params.doXGeneration = 1;
-      global.params.xfilename = xstrdup (arg);
+      global.params.xfilename = arg;
       break;
 
     case OPT_imultilib:
-      multilib_dir = xstrdup (arg);
+      multilib_dir = arg;
       break;
 
     case OPT_iprefix:
-      iprefix = xstrdup (arg);
+      iprefix = arg;
       break;
 
     case OPT_I:
-      global.params.imppath->push (xstrdup (arg)); // %% not sure if we can keep the arg or not
+      global.params.imppath->push (arg); // %% not sure if we can keep the arg or not
       break;
 
     case OPT_J:
-      global.params.fileImppath->push (xstrdup (arg));
+      global.params.fileImppath->push (arg);
       break;
 
     case OPT_nostdinc:
@@ -734,7 +735,7 @@ genCmain (Scope *sc)
 
   // The D code to be generated is provided by __entrypoint.di
   Module *m = Module::load (Loc(), NULL, Id::entrypoint);
-  m->importedFrom = sc->module;
+  m->importedFrom = m;
   m->importAll (NULL);
   m->semantic();
   m->semantic2();
@@ -743,6 +744,7 @@ genCmain (Scope *sc)
   // We are emitting this straight to object file.
   output_modules.push (m);
   entrypoint = m;
+  rootmodule = sc->module;
 }
 
 static void
@@ -866,34 +868,41 @@ d_parse_file (void)
       char *fname = xstrdup (in_fnames[i]);
 
       // Strip path
-      char *p = CONST_CAST (char *, FileName::name (fname));
-      const char *ext = FileName::ext (p);
+      const char *path = FileName::name (fname);
+      const char *ext = FileName::ext (path);
       char *name;
+      size_t pathlen;
 
       if (ext)
 	{
 	  // Skip onto '.'
 	  ext--;
 	  gcc_assert (*ext == '.');
-	  name = (char *) xmalloc ((ext - p) + 1);
-	  memcpy (name, p, ext - p);
+	  pathlen = (ext - path);
+	  name = (char *) xmalloc (pathlen + 1);
+	  memcpy (name, path, pathlen);
 	  // Strip extension
-	  name[ext - p] = 0;
+	  name[pathlen] = '\0';
 
-	  if (name[0] == 0
+	  if (name[0] == '\0'
 	      || strcmp (name, "..") == 0
 	      || strcmp (name, ".") == 0)
 	    {
-	Linvalid:
 	      error ("invalid file name '%s'", fname);
 	      goto had_errors;
 	    }
 	}
       else
 	{
-	  name = p;
-	  if (!*name)
-	    goto Linvalid;
+	  pathlen = strlen (path);
+	  name = (char *) xmalloc (pathlen);
+	  memcpy (name, path, pathlen);
+
+	  if (name[0] == '\0')
+	    {
+	      error ("invalid file name '%s'", fname);
+	      goto had_errors;
+	    }
 	}
 
       // At this point, name is the D source file name stripped of
@@ -1126,7 +1135,7 @@ d_parse_file (void)
 
       if (!flag_syntax_only)
 	{
-	  if (entrypoint && m == entrypoint->importedFrom)
+	  if ((entrypoint != NULL) && (m == rootmodule))
 	    entrypoint->genobjfile (false);
 
 	  m->genobjfile (false);

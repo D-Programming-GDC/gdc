@@ -30,6 +30,10 @@
 #include "template.h"
 #include "dfrontend/target.h"
 
+static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
+static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
+static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
+static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
 
 // Module info.  Assuming only one module per run of the compiler.
 ModuleInfo *current_module_info;
@@ -37,11 +41,6 @@ ModuleInfo *current_module_info;
 // static constructors (not D static constructors)
 static vec<FuncDeclaration *> static_ctor_list;
 static vec<FuncDeclaration *> static_dtor_list;
-
-static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
-static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
-static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
-static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
 
 // Construct a new Symbol.
 
@@ -762,6 +761,10 @@ VarDeclaration::toObjFile (int)
   // but keep the values for purposes of debugging.
   if (!canTakeAddressOf())
     {
+      // Don't know if there is a good way to handle instantiations.
+      if (isInstantiated())
+	return;
+
       // CONST_DECL was initially intended for enumerals and may
       // be used for scalars in general but not for aggregates.
       if (!type->isscalar())
@@ -866,7 +869,7 @@ TypedefDeclaration::toObjFile (int)
 void
 TemplateInstance::toObjFile (int)
 {
-  if (errors || !members)
+  if (isError (this)|| !members)
     return;
 
   for (size_t i = 0; i < members->dim; i++)
@@ -1021,62 +1024,23 @@ Module::genmoduleinfo()
   build_moduleinfo (msym);
 }
 
-// Returns TRUE if we want to compile the instantiated template TI.
-
-static bool
-output_template_p (TemplateInstance *ti)
-{
-  // Only templates are handled here.
-  if (ti == NULL)
-    return true;
-
-  if (!global.params.useUnitTests
-      && !global.params.allInst
-      && !global.params.debuglevel
-      && ti->instantiatingModule
-      && !ti->instantiatingModule->isRoot())
-    {
-      Module *mi = ti->instantiatingModule;
-      bool importsRoot = false;
-
-      // If mi imports any root modules, we still need to generate the code.
-      for (size_t i = 0; i < Module::amodules.dim; ++i)
-	{
-	  Module *m = Module::amodules[i];
-	  m->insearch = 0;
-	}
-
-      for (size_t i = 0; i < Module::amodules.dim; ++i)
-	{
-	  Module *m = Module::amodules[i];
-	  if (m->isRoot() && mi->imports(m))
-	    {
-	      importsRoot = true;
-	      break;
-	    }
-	}
-
-      for (size_t i = 0; i < Module::amodules.dim; ++i)
-	{
-	  Module *m = Module::amodules[i];
-	  m->insearch = 0;
-	}
-
-      if (!importsRoot)
-	return false;
-    }
-
-  return true;
-}
-
 // Returns true if we want to compile the declaration DSYM.
 
 static bool
 output_declaration_p (Declaration *dsym)
 {
   // If errors occurred compiling it.
-  if (dsym->type->ty == Tfunction && ((TypeFunction *) dsym->type)->next->ty == Terror)
+  Type *t = dsym->type;
+
+  if (t->ty == Terror)
     return false;
+
+  if (t->ty == Tfunction)
+    {
+      TypeFunction *tf = (TypeFunction *) t;
+      if (tf->next == NULL || tf->next->ty == Terror)
+	return false;
+    }
 
   FuncDeclaration *fd = dsym->isFuncDeclaration();
 
@@ -1112,11 +1076,8 @@ output_declaration_p (Declaration *dsym)
 	    }
 	}
 
-      // Skip generating code if this part of a TemplateInstance that is instantiated
-      // only by non-root modules (i.e. modules not listed on the command line).
-      if (! output_template_p (fd->inTemplateInstance()))
+      if (!fd->needsCodegen())
 	return false;
-
     }
 
   if (flag_emit_templates == TEnone)
@@ -1289,7 +1250,7 @@ FuncDeclaration::toObjFile (int)
       nrvsym->SnamedResult = result_decl;
     }
 
-  fbody->toIR (irs);
+  build_ir (fbody, irs);
 
   if (v_argptr)
     {
@@ -1796,8 +1757,11 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
       TREE_PUBLIC (decl) = 0;
     }
 
-  if (rd && rd->userAttributes)
-    decl_attributes (&decl, build_attributes (rd->userAttributes), 0);
+  if (rd && rd->userAttribDecl)
+    {
+      Expressions *attrs = rd->userAttribDecl->getAttributes();
+      decl_attributes (&decl, build_attributes (attrs), 0);
+    }
   else if (DECL_ATTRIBUTES (decl) != NULL)
     decl_attributes (&decl, DECL_ATTRIBUTES (decl), 0);
 }

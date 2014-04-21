@@ -31,7 +31,7 @@
         Converting text to any of the four normalization forms via $(LREF normalize).
     )
     $(LI
-        Decoding ($(LREF decodeGrapheme))  and iteration ($(LREF graphemeStride))
+        Decoding ($(LREF decodeGrapheme))  and iteration ($(LREF byGrapheme), $(LREF graphemeStride))
         by user-perceived characters, that is by $(LREF Grapheme) clusters.
     )
     $(LI
@@ -121,11 +121,11 @@
 
         // build the trie with the most sensible trie level
         // and bind it as a functor
-        auto cyrilicOrArmenian = toDelegate(set);
-        auto balance = find!(cyrilicOrArmenian)("Hello ընկեր!");
+        auto cyrillicOrArmenian = toDelegate(set);
+        auto balance = find!(cyrillicOrArmenian)("Hello ընկեր!");
         assert(balance == "ընկեր!");
         // compatible with bool delegate(dchar)
-        bool delegate(dchar) bindIt = cyrilicOrArmenian;
+        bool delegate(dchar) bindIt = cyrillicOrArmenian;
 
         // Normalization
         string s = "Plain ascii (and not only), is always normalized!";
@@ -146,7 +146,7 @@
     $(P The following is a list of important Unicode notions
     and definitions. Any conventions used specifically in this
     module alone are marked as such. The descriptions are based on the formal
-    definition as found in ($WEB http://www.unicode.org/versions/Unicode6.2.0/ch03.pdf,
+    definition as found in $(WEB http://www.unicode.org/versions/Unicode6.2.0/ch03.pdf,
     chapter three of The Unicode Standard Core Specification.)
     )
 
@@ -645,7 +645,7 @@ import std.traits, std.range, std.algorithm, std.conv,
 import std.array; //@@BUG UFCS doesn't work with 'local' imports
 import core.bitop;
 
-version(unittest) import std.typecons;
+import std.typecons;
 
 // debug = std_uni;
 
@@ -721,11 +721,11 @@ unittest
 
     // build the trie with the most sensible trie level
     // and bind it as a functor
-    auto cyrilicOrArmenian = toDelegate(set);
-    auto balance = find!(cyrilicOrArmenian)("Hello ընկեր!");
+    auto cyrillicOrArmenian = toDelegate(set);
+    auto balance = find!(cyrillicOrArmenian)("Hello ընկեր!");
     assert(balance == "ընկեր!");
     // compatible with bool delegate(dchar)
-    bool delegate(dchar) bindIt = cyrilicOrArmenian;
+    bool delegate(dchar) bindIt = cyrillicOrArmenian;
 
     // Normalization
     string s = "Plain ascii (and not only), is always normalized!";
@@ -798,6 +798,13 @@ size_t replicateBits(size_t times, size_t bits)(size_t val)
 {
     static if(times == 1)
         return val;
+    else static if(bits == 1)
+    {
+        static if(times == size_t.sizeof*8)
+            return val ? size_t.max : 0;
+        else
+            return val ? (1<<times)-1 : 0;
+    }
     else static if(times % 2)
         return (replicateBits!(times-1, bits)(val)<<bits) | val;
     else
@@ -890,7 +897,7 @@ struct MultiArray(Types...)
                 static if(n != dim-1)
                 {
                     auto start = raw_ptr!(n+1);
-                    size_t len = storage.length;
+                    size_t len = (storage.ptr+storage.length-start);
                     copyForward(start[0..len-delta], start[delta..len]);
 
                     // adjust offsets last, they affect raw_slice
@@ -916,6 +923,7 @@ struct MultiArray(Types...)
     void store(OutRange)(scope OutRange sink) const
         if(isOutputRange!(OutRange, char))
     {
+        import std.format;
         formattedWrite(sink, "[%( 0x%x, %)]", offsets[]);
         formattedWrite(sink, ", [%( 0x%x, %)]", sz[]);
         formattedWrite(sink, ", [%( 0x%x, %)]", storage);
@@ -940,69 +948,74 @@ private:
 
 unittest
 {
-    // sizes are:
-    // lvl0: 3, lvl1 : 2, lvl2: 1
-    auto m = MultiArray!(int, ubyte, int)(3,2,1);
+    enum dg = (){
+        // sizes are:
+        // lvl0: 3, lvl1 : 2, lvl2: 1
+        auto m = MultiArray!(int, ubyte, int)(3,2,1);
 
-    static void check(size_t k, T)(ref T m, int n)
-    {
-        foreach(i; 0..n)
-            assert(m.slice!(k)[i] == i+1, text("level:",i," : ",m.slice!(k)[0..n]));
-    }
+        static void check(size_t k, T)(ref T m, int n)
+        {
+            foreach(i; 0..n)
+                assert(m.slice!(k)[i] == i+1, text("level:",i," : ",m.slice!(k)[0..n]));
+        }
 
-    static void checkB(size_t k, T)(ref T m, int n)
-    {
-        foreach(i; 0..n)
-            assert(m.slice!(k)[i] == n-i, text("level:",i," : ",m.slice!(k)[0..n]));
-    }
+        static void checkB(size_t k, T)(ref T m, int n)
+        {
+            foreach(i; 0..n)
+                assert(m.slice!(k)[i] == n-i, text("level:",i," : ",m.slice!(k)[0..n]));
+        }
 
-    static void fill(size_t k, T)(ref T m, int n)
-    {
-        foreach(i; 0..n)
-            m.slice!(k)[i] = force!ubyte(i+1);
-    }
+        static void fill(size_t k, T)(ref T m, int n)
+        {
+            foreach(i; 0..n)
+                m.slice!(k)[i] = force!ubyte(i+1);
+        }
 
-    static void fillB(size_t k, T)(ref T m, int n)
-    {
-        foreach(i; 0..n)
-            m.slice!(k)[i] = force!ubyte(n-i);
-    }
+        static void fillB(size_t k, T)(ref T m, int n)
+        {
+            foreach(i; 0..n)
+                m.slice!(k)[i] = force!ubyte(n-i);
+        }
 
-    m.length!1 = 100;
-    fill!1(m, 100);
-    check!1(m, 100);
+        m.length!1 = 100;
+        fill!1(m, 100);
+        check!1(m, 100);
 
-    m.length!0 = 220;
-    fill!0(m, 220);
-    check!1(m, 100);
-    check!0(m, 220);
+        m.length!0 = 220;
+        fill!0(m, 220);
+        check!1(m, 100);
+        check!0(m, 220);
 
-    m.length!2 = 17;
-    fillB!2(m, 17);
-    checkB!2(m, 17);
-    check!0(m, 220);
-    check!1(m, 100);
+        m.length!2 = 17;
+        fillB!2(m, 17);
+        checkB!2(m, 17);
+        check!0(m, 220);
+        check!1(m, 100);
 
-    m.length!2 = 33;
-    checkB!2(m, 17);
-    fillB!2(m, 33);
-    checkB!2(m, 33);
-    check!0(m, 220);
-    check!1(m, 100);
+        m.length!2 = 33;
+        checkB!2(m, 17);
+        fillB!2(m, 33);
+        checkB!2(m, 33);
+        check!0(m, 220);
+        check!1(m, 100);
 
-    m.length!1 = 195;
-    fillB!1(m, 195);
-    checkB!1(m, 195);
-    checkB!2(m, 33);
-    check!0(m, 220);
+        m.length!1 = 195;
+        fillB!1(m, 195);
+        checkB!1(m, 195);
+        checkB!2(m, 33);
+        check!0(m, 220);
 
-    auto marr = MultiArray!(BitPacked!(uint, 4), BitPacked!(uint, 6))(20, 10);
-    marr.length!0 = 15;
-    marr.length!1 = 30;
-    fill!1(marr, 30);
-    fill!0(marr, 15);
-    check!1(marr, 30);
-    check!0(marr, 15);
+        auto marr = MultiArray!(BitPacked!(uint, 4), BitPacked!(uint, 6))(20, 10);
+        marr.length!0 = 15;
+        marr.length!1 = 30;
+        fill!1(marr, 30);
+        fill!0(marr, 15);
+        check!1(marr, 30);
+        check!0(marr, 15);
+        return 0;
+    };
+    enum ct = dg();
+    auto rt = dg();
 }
 
 unittest
@@ -1118,19 +1131,25 @@ pure nothrow:
 
     private T simpleIndex(size_t n) inout
     {
-        static if(factor == bytesPerWord*8)
-        {
-            // a re-write with less data dependency
-            auto q = n / factor;
-            auto r = n % factor;
-            return cast(T)(origin[q] & (mask<<r) ? 1 : 0);
-        }
-        else
-        {
-            auto q = n / factor;
-            auto r = n % factor;
-            return cast(T)((origin[q] >> bits*r) & mask);
-        }
+        auto q = n / factor;
+        auto r = n % factor;
+        return cast(T)((origin[q] >> bits*r) & mask);
+    }
+
+    private void simpleWrite(TypeOfBitPacked!T val, size_t n)
+    in
+    {
+        static if(isIntegral!T)
+            assert(val <= mask);
+    }
+    body
+    {
+        auto q = n / factor;
+        auto r = n % factor;
+        size_t tgt_shift = bits*r;
+        size_t word = origin[q];
+        origin[q] = (word & ~(mask<<tgt_shift))
+            | (cast(size_t)val << tgt_shift);
     }
 
     static if(factor == bytesPerWord// can safely pack by byte
@@ -1163,7 +1182,10 @@ pure nothrow:
 
         void opIndexAssign(TypeOfBitPacked!T val, size_t idx)
         {
-            (cast(U*)origin)[idx] = cast(U)val;
+            if(__ctfe)
+                simpleWrite(val, idx);
+            else
+                (cast(U*)origin)[idx] = cast(U)val;
         }
     }
     else
@@ -1182,19 +1204,8 @@ pure nothrow:
         }
 
         void opIndexAssign(TypeOfBitPacked!T val, size_t n)
-        in
         {
-            static if(isIntegral!T)
-                assert(val <= mask);
-        }
-        body
-        {
-            auto q = n / factor;
-            auto r = n % factor;
-            size_t tgt_shift = bits*r;
-            size_t word = origin[q];
-            origin[q] = (word & ~(mask<<tgt_shift))
-                | (cast(size_t)val << tgt_shift);
+            return simpleWrite(val, n);
         }
     }
 
@@ -1216,6 +1227,19 @@ pure nothrow:
     {
         ptr = inout(PackedPtr!(T))(origin);
         limit = items;
+    }
+
+    bool zeros(size_t s, size_t e)
+    in
+    {
+        assert(s <= e);
+    }
+    body
+    {
+        foreach(v; this[s..e])
+            if(v)
+                return false;
+        return true;
     }
 
     T opIndex(size_t idx) inout
@@ -1455,6 +1479,8 @@ private auto packedArrayView(T)(inout(size_t)* ptr, size_t items) @trusted pure 
 // Partially unrolled binary search using Shar's method
 //============================================================================
 
+private import std.math : pow;
+
 string genUnrolledSwitchSearch(size_t size)
 {
     assert(isPowerOf2(size));
@@ -1662,11 +1688,14 @@ unittest
     static void destroy(T)(ref T arr)
         if(isDynamicArray!T && is(Unqual!T == T))
     {
-        debug
+        version(bug10929) //@@@BUG@@@
         {
-            arr[] = cast(typeof(T.init[0]))(0xdead_beef);
+            debug
+            {
+                arr[] = cast(typeof(T.init[0]))(0xdead_beef);
+            }
+            arr = null;
         }
-        arr = null;
     }
 
     static void destroy(T)(ref T arr)
@@ -1808,7 +1837,7 @@ public alias InversionList!GcPolicy CodepointSet;
     to represent [a, b$(RPAREN) intervals of $(CODEPOINTS). As used in $(LREF InversionList).
     Any interval type should pass $(LREF isIntegralPair) trait.
 */
-public struct CodepointInterval 
+public struct CodepointInterval
 {
     uint[2] _tuple;
     alias _tuple this;
@@ -1839,6 +1868,8 @@ public struct CodepointInterval
         rhs.popFront();
     }
 }
+
+
 
 /**
     $(P
@@ -1884,7 +1915,7 @@ public struct CodepointInterval
 
     $(P Memory usage is 6 bytes per each contiguous interval in a set.
     The value semantics are achieved by using the
-    ($WEB http://en.wikipedia.org/wiki/Copy-on-write, COW) technique
+    $(WEB http://en.wikipedia.org/wiki/Copy-on-write, COW) technique
     and thus it's $(RED not) safe to cast this type to $(D_KEYWORD shared).
     )
 
@@ -1916,7 +1947,7 @@ public:
     }
 
     /**
-        Construct a set from a range of sorted code point intervals.
+        Construct a set from a forward range of code point intervals.
     */
     this(Range)(Range intervals)
         if(isForwardRange!Range && isIntegralPair!(ElementType!Range))
@@ -1924,30 +1955,40 @@ public:
         auto flattened = roundRobin(intervals.save.map!"a[0]"(),
             intervals.save.map!"a[1]"());
         data = Uint24Array!(SP)(flattened);
+        sanitize(); //enforce invariant: sort intervals etc.
     }
 
     /**
-        Construct a set from plain values of sorted code point intervals.
+        Construct a set from plain values of code point intervals.
         Example:
         ---
+        import std.algorithm;
         auto set = CodepointSet('a', 'z'+1, 'а', 'я'+1);
         foreach(v; 'a'..'z'+1)
             assert(set[v]);
         // Cyrillic lowercase interval
         foreach(v; 'а'..'я'+1)
             assert(set[v]);
+        //specific order is not required, intervals may interesect
+        auto set2 = CodepointSet('а', 'я'+1, 'a', 'd', 'b', 'z'+1);
+        //the same end result
+        assert(set2.byInterval.equal(set.byInterval));
         ---
     */
     this()(uint[] intervals...)
     in
     {
         assert(intervals.length % 2 == 0, "Odd number of interval bounds [a, b)!");
-        for(uint i=1; i<intervals.length; i++)
-            assert(intervals[i-1] < intervals[i]);
+        for(uint i=0; i<intervals.length/2; i++)
+        {
+            auto a = intervals[2*i], b = intervals[2*i+1];
+            assert(a < b, text("illegal interval [a, b): ", a, " > ", b));
+        }
     }
     body
     {
         data = Uint24Array!(SP)(intervals);
+        sanitize(); //enforce invariant: sort intervals etc.
     }
 
     /**
@@ -1962,47 +2003,7 @@ public:
     */
     @property auto byInterval()
     {
-        static struct Intervals
-        {
-            this(Uint24Array!SP sp)
-            {
-                slice = sp;
-                start = 0;
-                end = sp.length;
-            }
-
-            @property auto front()const
-            {
-                uint a = slice[start];
-                uint b = slice[start+1];
-                return CodepointInterval(a, b);
-            }
-
-            @property auto back()const
-            {
-                uint a = slice[end-2];
-                uint b = slice[end-1];
-                return CodepointInterval(a, b);
-            }
-
-            void popFront()
-            {
-                start += 2;
-            }
-
-            void popBack()
-            {
-                end -= 2;
-            }
-
-            @property bool empty()const { return start == end; }
-
-            @property auto save(){ return this; }
-        private:
-            size_t start, end;
-            Uint24Array!SP slice;
-        }
-        return Intervals(data);
+        return Intervals!(typeof(data))(data);
     }
 
     /**
@@ -2142,11 +2143,20 @@ public:
         Tests the presence of codepoint $(D ch) in this set,
         the same as $(LREF opIndex).
     */
-    bool opBinaryRight(string op: "in", U)(U ch)
+    bool opBinaryRight(string op: "in", U)(U ch) const
         if(is(U : dchar))
     {
         return this[ch];
     }
+
+    ///
+    unittest
+    {
+        assert('я' in unicode.Cyrillic);
+        assert(!('z' in unicode.Cyrillic));
+    }
+
+
 
     /// Obtains a set that is the inversion of this set. See also $(LREF inverted).
     auto opUnary(string op: "!")()
@@ -2268,10 +2278,16 @@ private:
     ref intersect()(dchar ch)
     {
         foreach(i; byInterval)
-            if(i.a >= ch && ch < i.b)
+            if(i.a <= ch && ch < i.b)
                 return this = This.init.add(ch, ch+1);
         this = This.init;
         return this;
+    }
+
+    ///
+    unittest
+    {
+        assert(unicode.Cyrillic.intersect('-').byInterval.empty);
     }
 
     ref sub()(dchar ch)
@@ -2303,6 +2319,7 @@ private:
         }
         return this;
     }
+
 // end of mixin-able part
 //============================================================================
 public:
@@ -2494,6 +2511,135 @@ public:
 private:
     alias typeof(this) This;
     alias size_t Marker;
+
+    // a random-access range of integral pairs
+    static struct Intervals(Range)
+    {
+        this(Range sp)
+        {
+            slice = sp;
+            start = 0;
+            end = sp.length;
+        }
+
+        this(Range sp, size_t s, size_t e)
+        {
+            slice = sp;
+            start = s;
+            end = e;
+        }
+
+        @property auto front()const
+        {
+            uint a = slice[start];
+            uint b = slice[start+1];
+            return CodepointInterval(a, b);
+        }
+
+        //may break sorted property - but we need std.sort to access it
+        //hence package protection attribute
+        package @property auto front(CodepointInterval val)
+        {
+            slice[start] = val.a;
+            slice[start+1] = val.b;
+        }
+
+        @property auto back()const
+        {
+            uint a = slice[end-2];
+            uint b = slice[end-1];
+            return CodepointInterval(a, b);
+        }
+
+        //ditto about package
+        package @property auto back(CodepointInterval val)
+        {
+            slice[end-2] = val.a;
+            slice[end-1] = val.b;
+        }
+
+        void popFront()
+        {
+            start += 2;
+        }
+
+        void popBack()
+        {
+            end -= 2;
+        }
+
+        auto opIndex(size_t idx) const
+        {
+            uint a = slice[start+idx*2];
+            uint b = slice[start+idx*2+1];
+            return CodepointInterval(a, b);
+        }
+
+        //ditto about package
+        package auto opIndexAssign(CodepointInterval val, size_t idx)
+        {
+            slice[start+idx*2] = val.a;
+            slice[start+idx*2+1] = val.b;
+        }
+
+        auto opSlice(size_t s, size_t e)
+        {
+            return Intervals(slice, s*2+start, e*2+start);
+        }
+
+        @property size_t length()const {  return slice.length/2; }
+
+        @property bool empty()const { return start == end; }
+
+        @property auto save(){ return this; }
+    private:
+        size_t start, end;
+        Range slice;
+    }
+
+    // called after construction from intervals
+    // to make sure invariants hold
+    void sanitize()
+    {
+        if (data.length == 0)
+            return;
+        alias Ival = CodepointInterval;
+        //intervals wrapper for a _range_ over packed array
+        auto ivals = Intervals!(typeof(data[]))(data[]);
+        sort!("a.a < b.a", SwapStrategy.stable)(ivals);
+        // what follows is a variation on stable remove
+        // differences:
+        // - predicate is binary, and is tested against
+        //   the last kept element (at 'i').
+        // - predicate mutates lhs (merges rhs into lhs)
+        size_t len = ivals.length;
+        size_t i = 0;
+        size_t j = 1;
+        while (j < len)
+        {
+            if (ivals[i].b >= ivals[j].a)
+            {
+                ivals[i] = Ival(ivals[i].a, max(ivals[i].b, ivals[j].b));
+                j++;
+            }
+            else //unmergable
+            {
+                // check if there is a hole after merges
+                // (in the best case we do 0 writes to ivals)
+                if (j != i+1)
+                    ivals[i+1] = ivals[j]; //copy over
+                i++;
+                j++;
+            }
+        }
+        len = i + 1;
+        for (size_t k=0; k + 1 < len; k++)
+        {
+            assert(ivals[k].a < ivals[k].b);
+            assert(ivals[k].b < ivals[k+1].a);
+        }
+        data.length = len * 2;
+    }
 
     // special case for normal InversionList
     ref subChar(dchar ch)
@@ -2691,6 +2837,9 @@ private:
     // Cyrillic lowercase interval
     foreach(v; 'а'..'я'+1)
         assert(set[v]);
+    //specific order is not required, intervals may interesect
+    auto set2 = CodepointSet('а', 'я'+1, 'a', 'd', 'b', 'z'+1);
+    assert(set2.byInterval.equal(set.byInterval));
 
     auto gothic = unicode.Gothic;
     // Gothic letter ahsa
@@ -2979,7 +3128,10 @@ private:
         }
         else
             SP.destroy(data);
-        assert(!data.ptr);
+        version(bug10929)
+            assert(!data.ptr);
+        else
+            data = null;
     }
 
     void dupThisReference(uint count)
@@ -3162,6 +3314,49 @@ version(unittest)
         assert(a == CodeList(100, 120), text(a.data[]));
     }
 }
+
+
+//test constructor to work with any order of intervals
+@system unittest //@@@BUG@@@ iota is @system
+{
+    import std.conv, std.range, std.algorithm;
+    //ensure constructor handles bad ordering and overlap
+    auto c1 = CodepointSet('а', 'я'+1, 'А','Я'+1);
+    foreach(ch; chain(iota('a', 'я'+1)), iota('А','Я'+1))
+        assert(ch in c1, to!string(ch));
+
+    //contiguos
+    assert(CodepointSet(1000, 1006, 1006, 1009)
+        .byInterval.equal([tuple(1000, 1009)]));
+    //contains
+    assert(CodepointSet(900, 1200, 1000, 1100)
+        .byInterval.equal([tuple(900, 1200)]));
+    //intersect left
+    assert(CodepointSet(900, 1100, 1000, 1200)
+        .byInterval.equal([tuple(900, 1200)]));
+    //intersect right
+    assert(CodepointSet(1000, 1200, 900, 1100)
+        .byInterval.equal([tuple(900, 1200)]));
+
+    //ditto with extra items at end
+    assert(CodepointSet(1000, 1200, 900, 1100, 800, 850)
+        .byInterval.equal([tuple(800, 850), tuple(900, 1200)]));
+    assert(CodepointSet(900, 1100, 1000, 1200, 800, 850)
+        .byInterval.equal([tuple(800, 850), tuple(900, 1200)]));
+
+    //"plug a hole" test
+    auto c2 = CodepointSet(20, 40,
+        60, 80, 100, 140, 150, 200,
+        40, 60, 80, 100, 140, 150
+    );
+    assert(c2.byInterval.equal([tuple(20, 200)]));
+
+    auto c3 = CodepointSet(
+        20, 40, 60, 80, 100, 140, 150, 200,
+        0, 10, 15, 100, 10, 20, 200, 220);
+    assert(c3.byInterval.equal([tuple(0, 140), tuple(150, 220)]));
+}
+
 
 @trusted unittest
 {   // full set operations
@@ -3395,8 +3590,7 @@ private:
     enum lastLevel = Prefix.length-1;
     struct ConstructState
     {
-        bool zeros, ones; // current page is zeros? ones?
-        uint idx_zeros, idx_ones;
+        size_t idx_zeros, idx_ones;
     }
     // iteration over levels of Trie, each indexes its own level and thus a shortened domain
     size_t[Prefix.length] indices;
@@ -3411,91 +3605,96 @@ private:
 
     @disable this();
 
+    //shortcut for index variable at level 'level'
+    @property ref idx(size_t level)(){ return indices[level]; }
+
     // this function assumes no holes in the input so
     // indices are going one by one
     void addValue(size_t level, T)(T val, size_t numVals)
     {
+        alias j = idx!level;
         enum pageSize = 1<<Prefix[level].bitSize;
         if(numVals == 0)
             return;
-        do
+        auto ptr = table.slice!(level);
+        if(numVals == 1)
         {
-            // need to take pointer again, memory block may move on resize
-            auto ptr = table.slice!(level);
-            static if(is(T : bool))
-            {
-                if(val)
-                    state[level].zeros = false;
-                else
-                    state[level].ones = false;
+            static if(level == Prefix.length-1)
+                ptr[j] = val;
+            else
+            {// can incur narrowing conversion
+                assert(j < ptr.length);
+                ptr[j] = force!(typeof(ptr[j]))(val);
             }
-            if(numVals == 1)
+            j++;
+            if(j % pageSize == 0)
+                spillToNextPage!level(ptr);
+            return;
+        }
+        // longer row of values
+        // get to the next page boundary
+        size_t nextPB = (j + pageSize) & ~(pageSize-1);
+        size_t n =  nextPB - j;// can fill right in this page
+        if(numVals < n) //fits in current page
+        {
+            ptr[j..j+numVals]  = val;
+            j += numVals;
+            return;
+        }
+        static if(level != 0)//on the first level it always fits
+        {
+            numVals -= n;
+            //write till the end of current page
+            ptr[j..j+n]  = val;
+            j += n;
+            //spill to the next page
+            spillToNextPage!level(ptr);
+            // page at once loop
+            if(state[level].idx_zeros != size_t.max && val == T.init)
             {
-                static if(level == Prefix.length-1)
-                    ptr[indices[level]] = val;
-                else{// can incur narrowing conversion
-                    assert(indices[level] < ptr.length);
-                    ptr[indices[level]] = force!(typeof(ptr[indices[level]]))(val);
-                }
-                indices[level]++;
-                numVals = 0;
+                alias typeof(table.slice!(level-1)[0]) NextIdx;
+                addValue!(level-1)(force!NextIdx(state[level].idx_zeros),
+                    numVals/pageSize);
+                ptr = table.slice!level; //table structure might have changed
+                numVals %= pageSize;
             }
             else
             {
-                // where is the next page boundary
-                size_t nextPB = (indices[level]+pageSize)/pageSize*pageSize;
-                size_t j = indices[level];
-                size_t n =  nextPB-j;// can fill right in this page
-                if(numVals > n)
-                    numVals -= n;
-                else
+                while(numVals >= pageSize)
                 {
-                    n = numVals;
-                    numVals = 0;
-                }
-                static if(level < Prefix.length-1)
-                    assert(indices[level] <= 2^^Prefix[level+1].bitSize);
-                ptr[j..j+n]  = val;
-                j += n;
-                indices[level] = j;
-            }
-            // last level (i.e. topmost) has 1 "page"
-            // thus it need not to add a new page on upper level
-            static if(level != 0)
-            {
-                if(indices[level] % pageSize == 0)
+                    numVals -= pageSize;
+                    ptr[j..j+pageSize]  = val;
+                    j += pageSize;
                     spillToNextPage!level(ptr);
+                }
+            }
+            if(numVals)
+            {
+                // the leftovers, an incomplete page
+                ptr[j..j+numVals]  = val;
+                j += numVals;
             }
         }
-        while(numVals);
+    }
+
+    void spillToNextPage(size_t level, Slice)(ref Slice ptr)
+    {
+        // last level (i.e. topmost) has 1 "page"
+        // thus it need not to add a new page on upper level
+        static if(level != 0)
+            spillToNextPageImpl!(level)(ptr);
     }
 
     // this can re-use the current page if duplicate or allocate a new one
     // it also makes sure that previous levels point to the correct page in this level
-    void spillToNextPage(size_t level, Slice)(ref Slice ptr)
+    void spillToNextPageImpl(size_t level, Slice)(ref Slice ptr)
     {
         alias typeof(table.slice!(level-1)[0]) NextIdx;
         NextIdx next_lvl_index;
         enum pageSize = 1<<Prefix[level].bitSize;
-        static if(is(T : bool))
-        {
-            if(state[level].zeros)
-            {
-                if(state[level].idx_empty == uint.max)
-                {
-                    state[level].idx_empty = cast(uint)(indices[level]/pageSize - 1);
-                    goto L_allocate_page;
-                }
-                else
-                {
-                    next_lvl_index = force!NextIdx(state[level].idx_empty);
-                    indices[level] -= pageSize;// it is a duplicate
-                    goto L_know_index;
-                }
-            }
-        }
-        auto last = indices[level]-pageSize;
-        auto slice = ptr[indices[level] - pageSize..indices[level]];
+        assert(idx!level % pageSize == 0);
+        auto last = idx!level-pageSize;
+        auto slice = ptr[idx!level - pageSize..idx!level];
         size_t j;
         for(j=0; j<last; j+=pageSize)
         {
@@ -3513,14 +3712,18 @@ private:
                 writeln("LEVEL(", level
                         , ") src page is :", ptr, ": ", arrayRepr(slice[0..pageSize]));
                 }
-                indices[level] -= pageSize; // reuse this page, it is duplicate
+                idx!level -= pageSize; // reuse this page, it is duplicate
                 break;
             }
         }
         if(j == last)
         {
     L_allocate_page:
-            next_lvl_index = force!NextIdx(indices[level]/pageSize - 1);
+            next_lvl_index = force!NextIdx(idx!level/pageSize - 1);
+            if(state[level].idx_zeros == size_t.max && ptr.zeros(j, j+pageSize))
+            {
+                state[level].idx_zeros = next_lvl_index;
+            }
             // allocate next page
             version(none)
             {
@@ -3537,14 +3740,9 @@ private:
             table.length!level = table.length!level + pageSize;
         }
     L_know_index:
-        // reset all zero/ones tracking variables
-        static if(is(TypeOfBitPacked!T : bool))
-        {
-            state[level].zeros = true;
-            state[level].ones = true;
-        }
         // for the previous level, values are indices to the pages in the current level
         addValue!(level-1)(next_lvl_index, 1);
+        ptr = table.slice!level; //re-load the slice after moves
     }
 
     // idx - full-width index to fill with v (full-width index != key)
@@ -3583,7 +3781,7 @@ public:
         defValue = filler;
         // zeros-page index, ones-page index
         foreach(ref v; state)
-            v = ConstructState(true, true, uint.max, uint.max);
+            v = ConstructState(size_t.max, size_t.max);
         table = typeof(table)(indices);
         // one page per level is a bootstrap minimum
         foreach(i; Sequence!(0, Prefix.length))
@@ -3702,8 +3900,7 @@ public:
         idx = cast(size_t)p[0](key);
         foreach(i, v; p[0..$-1])
             idx = cast(size_t)((_table.ptr!i[idx]<<p[i+1].bitSize) + p[i+1](key));
-        auto val = _table.ptr!(p.length-1)[idx];
-        return val;
+        return _table.ptr!(p.length-1)[idx];
     }
 
     @property size_t bytes(size_t n=size_t.max)() const
@@ -3983,6 +4180,7 @@ public template CodepointTrie(T, sizes...)
 // @@@BUG multiSort can's access private symbols from uni
 public template cmpK0(alias Pred)
 {
+    import std.typecons;
     static bool cmpK0(Value, Key)
         (Tuple!(Value, Key) a, Tuple!(Value, Key) b)
     {
@@ -5187,6 +5385,193 @@ unittest
 }
 
 /++
+    $(P Iterate a string by grapheme.)
+
+    $(P Useful for doing string manipulation that needs to be aware
+    of graphemes.)
+
+    See_Also:
+        $(LREF byCodePoint)
++/
+// TODO: Bidirectional access
+auto byGrapheme(Range)(Range range)
+    if(isInputRange!Range && is(Unqual!(ElementType!Range) == dchar))
+{
+    static struct Result
+    {
+        private Range _range;
+        private Grapheme _front;
+
+        bool empty() @property
+        {
+            return _front.length == 0;
+        }
+
+        Grapheme front() @property
+        {
+            return _front;
+        }
+
+        void popFront()
+        {
+            _front = _range.empty ? Grapheme.init : _range.decodeGrapheme();
+        }
+
+        static if(isForwardRange!Range)
+        {
+            Result save() @property
+            {
+                return Result(_range.save, _front);
+            }
+        }
+    }
+
+    auto result = Result(range);
+    result.popFront();
+    return result;
+}
+
+///
+unittest
+{
+    auto text = "noe\u0308l"; // noël using e + combining diaeresis
+    assert(text.walkLength == 5); // 5 code points
+
+    auto gText = text.byGrapheme;
+    assert(gText.walkLength == 4); // 4 graphemes
+
+    assert(gText.take(3).equal("noe\u0308".byGrapheme));
+    assert(gText.drop(3).equal("l".byGrapheme));
+}
+
+// For testing non-forward-range input ranges
+version(unittest)
+private static struct InputRangeString
+{
+    private string s;
+
+    bool empty() @property { return s.empty; }
+    dchar front() @property { return s.front; }
+    void popFront() { s.popFront(); }
+}
+
+unittest
+{
+    assert("".byGrapheme.walkLength == 0);
+
+    auto reverse = "le\u0308on";
+    assert(reverse.walkLength == 5);
+
+    auto gReverse = reverse.byGrapheme;
+    assert(gReverse.walkLength == 4);
+
+    foreach(text; TypeTuple!("noe\u0308l"c, "noe\u0308l"w, "noe\u0308l"d))
+    {
+        assert(text.walkLength == 5);
+        static assert(isForwardRange!(typeof(text)));
+
+        auto gText = text.byGrapheme;
+        static assert(isForwardRange!(typeof(gText)));
+        assert(gText.walkLength == 4);
+        assert(gText.array.retro.equal(gReverse));
+    }
+
+    auto nonForwardRange = InputRangeString("noe\u0308l").byGrapheme;
+    static assert(!isForwardRange!(typeof(nonForwardRange)));
+    assert(nonForwardRange.walkLength == 4);
+}
+
+/++
+    $(P Lazily transform a range of $(LREF Grapheme)s to a range of code points.)
+
+    $(P Useful for converting the result to a string after doing operations
+    on graphemes.)
+
+    $(P Acts as the identity function when given a range of code points.)
++/
+// TODO: Propagate bidirectional access
+auto byCodePoint(Range)(Range range)
+    if(isInputRange!Range && is(Unqual!(ElementType!Range) == Grapheme))
+{
+    static struct Result
+    {
+        private Range _range;
+        private size_t i = 0;
+
+        bool empty() @property
+        {
+            return _range.empty;
+        }
+
+        dchar front() @property
+        {
+            return _range.front[i];
+        }
+
+        void popFront()
+        {
+            ++i;
+
+            if(i >= _range.front.length)
+            {
+                _range.popFront();
+                i = 0;
+            }
+        }
+
+        static if(isForwardRange!Range)
+        {
+            Result save() @property
+            {
+                return Result(_range.save, i);
+            }
+        }
+    }
+
+    return Result(range);
+}
+
+/// Ditto
+Range byCodePoint(Range)(Range range)
+    if(isInputRange!Range && is(Unqual!(ElementType!Range) == dchar))
+{
+    return range;
+}
+
+///
+unittest
+{
+    import std.string : text;
+
+    string s = "noe\u0308l"; // noël
+
+    // reverse it and convert the result to a string
+    string reverse = s.byGrapheme
+        .array
+        .retro
+        .byCodePoint
+        .text;
+
+    assert(reverse == "le\u0308on"); // lëon
+}
+
+unittest
+{
+    assert("".byGrapheme.byCodePoint.equal(""));
+
+    string text = "noe\u0308l";
+    static assert(is(typeof(text.byCodePoint) == string));
+
+    auto gText = InputRangeString(text).byGrapheme;
+    static assert(!isForwardRange!(typeof(gText)));
+
+    auto cpText = gText.byCodePoint;
+    static assert(!isForwardRange!(typeof(cpText)));
+
+    assert(cpText.walkLength == text.walkLength);
+}
+
+/++
     $(P A structure designed to effectively pack $(CHARACTERS)
     of a $(CLUSTER).
     )
@@ -5553,6 +5938,8 @@ int sicmp(S1, S2)(S1 str1, S2 str2)
     if(isForwardRange!S1 && is(Unqual!(ElementType!S1) == dchar)
     && isForwardRange!S2 && is(Unqual!(ElementType!S2) == dchar))
 {
+    import std.utf : decode;
+
     alias sTable = simpleCaseTable;
     size_t ridx=0;
     foreach(dchar lhs; str1)
@@ -6273,6 +6660,8 @@ private auto splitNormalized(NormalizationForm norm, C)(const(C)[] input)
 
 private auto seekStable(NormalizationForm norm, C)(size_t idx, in C[] input)
 {
+    import std.utf : codeLength;
+
     auto br = input[0..idx];
     size_t region_start = 0;// default
     for(;;)
@@ -6419,12 +6808,6 @@ public bool isWhite(dchar c)
     return isWhiteGen(c); // call pregenerated binary search
 }
 
-deprecated ("Please use std.uni.isLower instead")
-bool isUniLower(dchar c) @safe pure nothrow
-{
-    return isLower(c);
-}
-
 /++
     Return whether $(D c) is a Unicode lowercase $(CHARACTER).
 +/
@@ -6456,13 +6839,6 @@ bool isLower(dchar c)
 }
 
 
-deprecated ("Please use std.uni.isUpper instead")
-@safe pure nothrow
-bool isUniUpper(dchar c)
-{
-    return isUpper(c);
-}
-
 /++
     Return whether $(D c) is a Unicode uppercase $(CHARACTER).
 +/
@@ -6490,14 +6866,6 @@ bool isUpper(dchar c)
     assert(isUpper('\u1F18'));
     foreach(v; unicode.upperCase.byCodepoint)
         assert(isUpper(v) && !isLower(v));
-}
-
-
-deprecated ("Please use std.uni.toLower instead")
-@safe pure nothrow
-dchar toUniLower(dchar c)
-{
-    return toLower(c);
 }
 
 
@@ -6913,7 +7281,7 @@ S toLower(S)(S s) @trusted pure
         assert(low == ch || isLower(low), format("%s -> %s", ch, low));
     }
     assert(toLower("АЯ") == "ая");
-    
+
     assert("\u1E9E".toLower == "\u00df");
     assert("\u00df".toUpper == "SS");
 }
@@ -6968,13 +7336,6 @@ unittest
     assert(toLower("Some String"d) == "some string"d);
 }
 
-
-deprecated("Please use std.uni.toUpper instead")
-@safe pure nothrow
-dchar toUniUpper(dchar c)
-{
-    return toUpper(c);
-}
 
 /++
     If $(D c) is a Unicode lowercase $(CHARACTER), then its uppercase equivalent
@@ -7123,12 +7484,6 @@ unittest
     }
 }
 
-deprecated("Please use std.uni.isAlpha instead.")
-@safe pure nothrow
-bool isUniAlpha(dchar c)
-{
-    return isAlpha(c);
-}
 
 /++
     Returns whether $(D c) is a Unicode alphabetic $(CHARACTER)
@@ -7476,9 +7831,9 @@ private:
     {
         import std.internal.unicode_grapheme;
         static immutable res = asTrie(hangulLVTrieEntries);
-        return res; 
+        return res;
     }
-    
+
     auto hangLVT()
     {
         import std.internal.unicode_grapheme;
@@ -7487,25 +7842,25 @@ private:
     }
 
     // tables below are used for composition/decomposition
-    auto combiningClassTrie() 
-    { 
+    auto combiningClassTrie()
+    {
         import std.internal.unicode_comp;
-        static immutable res = asTrie(combiningClassTrieEntries); 
-        return res; 
+        static immutable res = asTrie(combiningClassTrieEntries);
+        return res;
     }
 
     auto compatMappingTrie()
-    { 
+    {
         import std.internal.unicode_decomp;
-        static immutable res = asTrie(compatMappingTrieEntries); 
-        return res; 
+        static immutable res = asTrie(compatMappingTrieEntries);
+        return res;
     }
 
     auto canonMappingTrie()
-    { 
+    {
         import std.internal.unicode_decomp;
         static immutable res = asTrie(canonMappingTrieEntries);
-        return res; 
+        return res;
     }
 
     auto compositionJumpTrie()

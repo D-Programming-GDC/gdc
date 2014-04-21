@@ -27,6 +27,7 @@
 #include "module.h"
 #include "id.h"
 #include "lexer.h"
+#include "template.h"
 
 Scope *Scope::freelist = NULL;
 
@@ -48,11 +49,11 @@ void *Scope::operator new(size_t size)
 }
 
 Scope::Scope()
-{   // Create root scope
+{
+    // Create root scope
 
     //printf("Scope::Scope() %p\n", this);
     this->module = NULL;
-    this->instantiatingModule = NULL;
     this->scopesym = NULL;
     this->sd = NULL;
     this->enclosing = NULL;
@@ -78,6 +79,7 @@ Scope::Scope()
     this->noctor = 0;
     this->intypeof = 0;
     this->speculative = 0;
+    this->lastVar = NULL;
     this->callSuper = 0;
     this->fieldinit = NULL;
     this->fieldinit_dim = 0;
@@ -85,7 +87,7 @@ Scope::Scope()
     this->lastdc = NULL;
     this->lastoffset = 0;
     this->docbuf = NULL;
-    this->userAttributes = NULL;
+    this->userAttribDecl = NULL;
 }
 
 Scope::Scope(Scope *enclosing)
@@ -93,7 +95,6 @@ Scope::Scope(Scope *enclosing)
     //printf("Scope::Scope(enclosing = %p) %p\n", enclosing, this);
     assert(!(enclosing->flags & SCOPEfree));
     this->module = enclosing->module;
-    this->instantiatingModule = enclosing->instantiatingModule;
     this->func   = enclosing->func;
     this->parent = enclosing->parent;
     this->scopesym = NULL;
@@ -128,14 +129,15 @@ Scope::Scope(Scope *enclosing)
     this->noctor = enclosing->noctor;
     this->intypeof = enclosing->intypeof;
     this->speculative = enclosing->speculative;
+    this->lastVar = enclosing->lastVar;
     this->callSuper = enclosing->callSuper;
     this->fieldinit = enclosing->saveFieldInit();
     this->fieldinit_dim = enclosing->fieldinit_dim;
-    this->flags = (enclosing->flags & (SCOPEcontract | SCOPEdebug | SCOPEctfe));
+    this->flags = (enclosing->flags & (SCOPEcontract | SCOPEdebug | SCOPEctfe | SCOPEcompile));
     this->lastdc = NULL;
     this->lastoffset = 0;
     this->docbuf = enclosing->docbuf;
-    this->userAttributes = enclosing->userAttributes;
+    this->userAttribDecl = enclosing->userAttribDecl;
     assert(this != enclosing);
 }
 
@@ -190,7 +192,10 @@ Scope *Scope::pop()
             size_t dim = fieldinit_dim;
             for (size_t i = 0; i < dim; i++)
                 enclosing->fieldinit[i] |= fieldinit[i];
-            delete[] fieldinit;
+            /* Workaround regression @@@BUG11777@@@.
+            Probably this memory is used in future.
+            mem.free(fieldinit);
+            */
             fieldinit = NULL;
         }
     }
@@ -276,8 +281,7 @@ unsigned *Scope::saveFieldInit()
     if (fieldinit)  // copy
     {
         size_t dim = fieldinit_dim;
-        fi = new unsigned[dim];
-        fi[0] = dim;
+        fi = (unsigned *)mem.malloc(sizeof(unsigned) * dim);
         for (size_t i = 0; i < dim; i++)
             fi[i] = fieldinit[i];
     }
@@ -395,6 +399,13 @@ void Scope::mergeFieldInit(Loc loc, unsigned *fies)
     }
 }
 
+Module *Scope::instantiatingModule()
+{
+    if (tinst && tinst->instantiatingModule)
+        return tinst->instantiatingModule;
+    return module;
+}
+
 Dsymbol *Scope::search(Loc loc, Identifier *ident, Dsymbol **pscopesym)
 {   Dsymbol *s;
     Scope *sc;
@@ -427,7 +438,7 @@ Dsymbol *Scope::search(Loc loc, Identifier *ident, Dsymbol **pscopesym)
         if (sc->scopesym)
         {
             //printf("\tlooking in scopesym '%s', kind = '%s'\n", sc->scopesym->toChars(), sc->scopesym->kind());
-            s = sc->scopesym->search(loc, ident, 0);
+            s = sc->scopesym->search(loc, ident);
             if (s)
             {
                 if (ident == Id::length &&
@@ -450,9 +461,24 @@ Dsymbol *Scope::search(Loc loc, Identifier *ident, Dsymbol **pscopesym)
 }
 
 Dsymbol *Scope::insert(Dsymbol *s)
-{   Scope *sc;
-
-    for (sc = this; sc; sc = sc->enclosing)
+{
+    if (VarDeclaration *vd = s->isVarDeclaration())
+    {
+        if (lastVar)
+            vd->lastVar = lastVar;
+        lastVar = vd;
+    }
+    else if (WithScopeSymbol *ss = s->isWithScopeSymbol())
+    {
+        if (VarDeclaration *vd = ss->withstate->wthis)
+        {
+            if (lastVar)
+                vd->lastVar = lastVar;
+            lastVar = vd;
+        }
+        return NULL;
+    }
+    for (Scope *sc = this; sc; sc = sc->enclosing)
     {
         //printf("\tsc = %p\n", sc);
         if (sc->scopesym)

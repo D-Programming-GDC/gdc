@@ -188,10 +188,10 @@ version(unittest)
 }
 version(StdDdoc) import std.stdio;
 
-pragma(lib, "curl");
+version (Windows) pragma(lib, "curl");
 extern (C) void exit(int);
 
-// Default data timeout for Protcools
+// Default data timeout for Protocols
 private enum _defaultDataTimeout = dur!"minutes"(2);
 
 /** Connection type used when the URL should be used to auto detect the protocol.
@@ -342,7 +342,10 @@ unittest
  *        guess connection type and create a new instance for this call only.
  *
  * The template parameter $(D T) specifies the type to return. Possible values
- * are $(D char) and $(D ubyte) to return $(D char[]) or $(D ubyte[]).
+ * are $(D char) and $(D ubyte) to return $(D char[]) or $(D ubyte[]). If asking
+ * for $(D char), content will be converted from the connection character set
+ * (specified in HTTP response headers or FTP connection properties, both ISO-8859-1
+ * by default) to UTF-8.
  *
  * Example:
  * ----
@@ -403,7 +406,10 @@ unittest
  *        guess connection type and create a new instance for this call only.
  *
  * The template parameter $(D T) specifies the type to return. Possible values
- * are $(D char) and $(D ubyte) to return $(D char[]) or $(D ubyte[]).
+ * are $(D char) and $(D ubyte) to return $(D char[]) or $(D ubyte[]). If asking
+ * for $(D char), content will be converted from the connection character set
+ * (specified in HTTP response headers or FTP connection properties, both ISO-8859-1
+ * by default) to UTF-8.
  *
  * Example:
  * ----
@@ -463,7 +469,10 @@ unittest
  *        guess connection type and create a new instance for this call only.
  *
  * The template parameter $(D T) specifies the type to return. Possible values
- * are $(D char) and $(D ubyte) to return $(D char[]) or $(D ubyte[]).
+ * are $(D char) and $(D ubyte) to return $(D char[]) or $(D ubyte[]). If asking
+ * for $(D char), content will be converted from the connection character set
+ * (specified in HTTP response headers or FTP connection properties, both ISO-8859-1
+ * by default) to UTF-8.
  *
  * Example:
  * ----
@@ -852,7 +861,7 @@ private auto _decodeContent(T)(ubyte[] content, string encoding)
 
         auto strInfo = decodeString(content, scheme);
         enforceEx!CurlException(strInfo[0] != size_t.max,
-                                format("Invalid encoding sequence for enconding '%s'",
+                                format("Invalid encoding sequence for encoding '%s'",
                                        encoding));
 
         return strInfo[1];
@@ -1821,8 +1830,8 @@ private mixin template Protocol()
       * callback returns.
       *
       * Returns:
-      * The callback returns the incoming bytes read. If not the entire array is
-      * the request will abort.
+      * The callback returns the number of incoming bytes read. If the entire array is
+      * not read the request will abort.
       * The special value .pauseRequest can be returned in order to pause the
       * current request.
       *
@@ -2054,48 +2063,56 @@ struct HTTP
             // status lines. The last one is the one recorded.
             auto dg = (in char[] header)
             {
-                if (header.empty)
+                import std.utf : UTFException;
+                try
                 {
-                    // header delimiter
-                    return;
-                }
-                if (header.startsWith("HTTP/"))
-                {
-                    string[string] empty;
-                    headersIn = empty; // clear
-
-                    auto m = match(header, regex(r"^HTTP/(\d+)\.(\d+) (\d+) (.*)$"));
-                    if (m.empty)
+                    if (header.empty)
                     {
-                        // Invalid status line
+                        // header delimiter
+                        return;
                     }
-                    else
+                    if (header.startsWith("HTTP/"))
                     {
-                        status.majorVersion = to!ushort(m.captures[1]);
-                        status.minorVersion = to!ushort(m.captures[2]);
-                        status.code = to!ushort(m.captures[3]);
-                        status.reason = m.captures[4].idup;
-                        if (onReceiveStatusLine != null)
-                            onReceiveStatusLine(status);
+                        string[string] empty;
+                        headersIn = empty; // clear
+
+                        auto m = match(header, regex(r"^HTTP/(\d+)\.(\d+) (\d+) (.*)$"));
+                        if (m.empty)
+                        {
+                            // Invalid status line
+                        }
+                        else
+                        {
+                            status.majorVersion = to!ushort(m.captures[1]);
+                            status.minorVersion = to!ushort(m.captures[2]);
+                            status.code = to!ushort(m.captures[3]);
+                            status.reason = m.captures[4].idup;
+                            if (onReceiveStatusLine != null)
+                                onReceiveStatusLine(status);
+                        }
+                        return;
                     }
-                    return;
+
+                    // Normal http header
+                    auto m = match(cast(char[]) header, regex("(.*?): (.*)$"));
+
+                    auto fieldName = m.captures[1].toLower().idup;
+                    if (fieldName == "content-type")
+                    {
+                        auto mct = match(cast(char[]) m.captures[2],
+                                         regex("charset=([^;]*)"));
+                        if (!mct.empty && mct.captures.length > 1)
+                            charset = mct.captures[1].idup;
+                    }
+
+                    if (!m.empty && callback !is null)
+                        callback(fieldName, m.captures[2]);
+                    headersIn[fieldName] = m.captures[2].idup;
                 }
-
-                // Normal http header
-                auto m = match(cast(char[]) header, regex("(.*?): (.*)$"));
-
-                auto fieldName = m.captures[1].toLower().idup;
-                if (fieldName == "content-type")
+                catch(UTFException e)
                 {
-                    auto mct = match(cast(char[]) m.captures[2],
-                                     regex("charset=([^;]*)"));
-                    if (!mct.empty && mct.captures.length > 1)
-                        charset = mct.captures[1].idup;
+                    //munch it - a header should be all ASCII, any "wrong UTF" is broken header
                 }
-
-                if (!m.empty && callback !is null)
-                    callback(fieldName, m.captures[2]);
-                headersIn[fieldName] = m.captures[2].idup;
             };
 
             curl.onReceiveHeader = dg;
@@ -2113,11 +2130,12 @@ struct HTTP
     /**
        Constructor taking the url as parameter.
     */
-    this(const(char)[] url)
+    static HTTP opCall(const(char)[] url)
     {
-        initialize();
-
-        this.url = url;
+        HTTP http;
+        http.initialize();
+        http.url = url;
+        return http;
     }
 
     static HTTP opCall()
@@ -2153,6 +2171,7 @@ struct HTTP
         maxRedirects = HTTP.defaultMaxRedirects;
         p.charset = "ISO-8859-1"; // Default charset defined in HTTP RFC
         p.method = Method.undefined;
+        setUserAgent(HTTP.defaultUserAgent);
         dataTimeout = _defaultDataTimeout;
         onReceiveHeader = null;
         version (unittest) verbose = true;
@@ -2216,6 +2235,7 @@ struct HTTP
         p.curl.set(CurlOption.url, url);
     }
 
+    /// Set the CA certificate bundle file to use for SSL peer verification
     @property void caInfo(const(char)[] caFile)
     {
         p.curl.set(CurlOption.cainfo, caFile);
@@ -2450,10 +2470,45 @@ struct HTTP
      */
     void addRequestHeader(const(char)[] name, const(char)[] value)
     {
+        if (icmp(name, "User-Agent") == 0)
+            return setUserAgent(value);
         string nv = format("%s: %s", name, value);
         p.headersOut = curl_slist_append(p.headersOut,
                                          cast(char*) toStringz(nv));
         p.curl.set(CurlOption.httpheader, p.headersOut);
+    }
+
+    /**
+     * The default "User-Agent" value send with a request.
+     * It has the form "Phobos-std.net.curl/$(I PHOBOS_VERSION) (libcurl/$(I CURL_VERSION))"
+     */
+    static immutable string defaultUserAgent;
+
+    shared static this()
+    {
+        import std.compiler : version_major, version_minor;
+
+        // http://curl.haxx.se/docs/versions.html
+        enum fmt = "Phobos-std.net.curl/%d.%03d (libcurl/%d.%d.%d)";
+        enum maxLen = fmt.length - "%d%03d%d%d%d".length + 10 + 10 + 3 + 3 + 3;
+
+        __gshared char[maxLen] buf = void;
+
+        auto curlVer = curl_version_info(CURLVERSION_NOW).version_num;
+        defaultUserAgent = cast(immutable)sformat(
+            buf, fmt, version_major, version_minor,
+            curlVer >> 16 & 0xFF, curlVer >> 8 & 0xFF, curlVer & 0xFF);
+    }
+
+    /** Set the value of the user agent request header field.
+     *
+     * By default a request has it's "User-Agent" field set to $(LREF
+     * defaultUserAgent) even if $(D setUserAgent) was never called.  Pass
+     * an empty string to suppress the "User-Agent" field altogether.
+     */
+    void setUserAgent(const(char)[] userAgent)
+    {
+        p.curl.set(CurlOption.useragent, userAgent);
     }
 
     /** The headers read from a successful response.
@@ -2766,11 +2821,12 @@ struct FTP
     /**
        FTP access to the specified url.
     */
-    this(const(char)[] url)
+    static FTP opCall(const(char)[] url)
     {
-        initialize();
-
-        this.url = url;
+        FTP ftp;
+        ftp.initialize();
+        ftp.url = url;
+        return ftp;
     }
 
     static FTP opCall()
@@ -3028,11 +3084,13 @@ struct FTP
         p.curl.set(CurlOption.postquote, p.commands);
     }
 
+    /// Connection encoding. Defaults to ISO-8859-1.
     @property void encoding(string name)
     {
         p.encoding = name;
     }
 
+    /// ditto
     @property string encoding()
     {
         return p.encoding;
@@ -3101,11 +3159,12 @@ struct SMTP
     /**
         Sets to the URL of the SMTP server.
     */
-    this(const(char)[] url)
+    static SMTP opCall(const(char)[] url)
     {
-        initialize();
-
-        this.url = url;
+        SMTP smtp;
+        smtp.initialize();
+        smtp.url = url;
+        return smtp;
     }
 
     static SMTP opCall()
@@ -3422,7 +3481,7 @@ alias CURLcode CurlCode;
   Warning: This struct uses interior pointers for callbacks. Only allocate it
   on the stack if you never move or copy it. This also means passing by reference
   when passing Curl to other functions. Otherwise always allocate on
-  the heap. 
+  the heap.
 */
 struct Curl
 {

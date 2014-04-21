@@ -224,6 +224,10 @@ VarDeclaration::toSymbol (void)
       if (TYPE_VOLATILE (TREE_TYPE (decl)))
 	TREE_THIS_VOLATILE (decl) = 1;
 
+      // Mark compiler generated temporaries as artificial.
+      if (storage_class & STCtemp)
+	DECL_ARTIFICIAL (decl) = 1;
+
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
       if (isImportedSymbol())
@@ -452,9 +456,10 @@ FuncDeclaration::toSymbol (void)
       if (!ident)
 	TREE_PUBLIC (fndecl) = 0;
 
-      TREE_USED (fndecl) = 1; // %% Probably should be a little more intelligent about this
+      // %% Probably should be a little more intelligent about this
+      TREE_USED (fndecl) = 1;
 
-      maybe_set_builtin_frontend (this);
+      maybe_set_intrinsic (this);
     }
 
   return csym;
@@ -696,7 +701,7 @@ ClassDeclaration::toVtblSymbol (void)
 
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
-      Type *vtbltype = TypeSArray::makeType (loc, Type::tvoidptr, vtbl.dim);
+      Type *vtbltype = Type::tvoidptr->sarrayOf (vtbl.dim);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			      get_identifier (vtblsym->prettyIdent), vtbltype->toCtype());
       SET_DECL_ASSEMBLER_NAME (decl, get_identifier (vtblsym->Sident));

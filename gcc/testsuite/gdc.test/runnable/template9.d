@@ -243,6 +243,22 @@ template _ElemType(T) {
 }
 
 /**********************************/
+// 5185
+
+class C5185(V)
+{
+    void f()
+    {
+        C5185!(C5185!(int)) c;
+    }
+}
+
+void test5185()
+{
+    C5185!(C5185!(int)) c;
+}
+
+/**********************************/
 // 5893
 
 class C5893
@@ -1914,6 +1930,42 @@ void test9038()
 }
 
 /**********************************/
+// 9050
+
+struct A9050(T) {}
+
+struct B9050(T)
+{
+    void f() { foo9050(A9050!int()); }
+}
+
+auto foo9050()(A9050!int base) pure
+{
+    return B9050!int();
+}
+
+auto s9050 = foo9050(A9050!int());
+
+/**********************************/
+// 10936 (dup of 9050)
+
+struct Vec10936(string s)
+{
+    auto foo(string v)()
+    {
+        return Vec10936!(v)();
+    }
+
+    static void bar()
+    {
+        Vec10936!"" v;
+        auto p = v.foo!"sup";
+    }
+}
+
+Vec10936!"" v;
+
+/**********************************/
 // 9076
 
 template forward9076(args...)
@@ -2680,6 +2732,25 @@ static: // necessary to make overloaded symbols accessible via __traits(getOverl
 }
 
 /******************************************/
+// 10313
+
+void test10313()
+{
+    struct Nullable(T)
+    {
+        this()(inout T value) inout {}
+    }
+
+    struct S { S[] array; }
+    S s;
+    auto ns = Nullable!S(s);
+
+    class C { C[] array; }
+    C c;
+    auto nc = Nullable!C(c);
+}
+
+/******************************************/
 // 10498
 
 template triggerIssue10498a()
@@ -2867,6 +2938,138 @@ void test11271()
 }
 
 /******************************************/
+// 11533
+
+struct S11533
+{
+    void put(alias fun)() { fun!int(); }
+}
+void test11533a()
+{
+    static void foo(T)() {}
+    S11533 s;
+    s.put!foo();
+}
+
+void test11533b()
+{
+    static void bar(alias fun)() { fun(); }
+    void nested() {}
+    bar!nested();
+}
+
+void test11533c()
+{
+    static struct Foo(alias fun)
+    {
+        auto call() { return fun(); }
+    }
+    int var = 1;
+    auto getVar() { return var; }
+    Foo!getVar foo;
+    assert(foo.call() == var);
+    var += 1;
+    assert(foo.call() == var);
+}
+
+/******************************************/
+// 11553
+
+struct Pack11553(T ...)
+{
+    alias Unpack = T;
+    enum length = T.length;
+}
+
+template isPack11553(TList ...)
+{
+    static if (TList.length == 1 && is(Pack11553!(TList[0].Unpack) == TList[0]))
+    {
+        enum isPack11553 = true;
+    }
+    else
+    {
+        enum isPack11553 = false;
+    }
+}
+
+template PartialApply11553(alias T, uint argLoc, Arg ...)
+    if (Arg.length == 1)
+{
+    template PartialApply11553(L ...)
+    {
+        alias PartialApply11553 = T!(L[0 .. argLoc], Arg, L[argLoc .. $]);
+    }
+}
+
+template _hasLength11553(size_t len, T)
+{
+    static if (T.length == len)
+    {
+        enum _hasLength11553 = true;
+    }
+    else
+    {
+        enum _hasLength11553 = false;
+    }
+}
+
+alias _hasLength11553(size_t len) = PartialApply11553!(._hasLength11553, 0, len);
+
+
+alias hl11553 = _hasLength11553!1;
+
+// this segfaults
+static if (!isPack11553!hl11553) { pragma(msg, "All good 1"); }
+
+// these are fine
+static if ( hl11553!(Pack11553!(5))) { pragma(msg, "All good 2"); }
+
+static if (!hl11553!(Pack11553!( ))) { pragma(msg, "All good 3"); }
+
+/******************************************/
+// 11818
+
+enum E11818 { e0, e1 }
+
+struct SortedRange11818
+{
+    void fun(E11818 e = true ? E11818.e0 : E11818.e1)()
+    {
+    }
+}
+
+void test11818()
+{
+    SortedRange11818 s;
+    s.fun();
+}
+
+/******************************************/
+// 11843
+
+void test11843()
+{
+    struct Foo
+    {
+        int x[string];
+    }
+
+    struct Bar(alias foo) {}
+
+    enum bar1 = Bar!(Foo(["a": 1]))();
+    enum bar2 = Bar!(Foo(["a": 1]))();
+    static assert(is(typeof(bar1) == typeof(bar2)));
+
+    enum foo1 = Foo(["a": 1]);
+    enum foo2 = Foo(["b": -1]);
+    static assert(!__traits(isSame, foo1, foo2));
+    enum bar3 = Bar!foo1();
+    enum bar4 = Bar!foo2();
+    static assert(!is(typeof(bar3) == typeof(bar4)));
+}
+
+/******************************************/
 
 int main()
 {
@@ -2958,6 +3161,11 @@ int main()
     test10811();
     test10969();
     test11271();
+    test11533a();
+    test11533b();
+    test11533c();
+    test11818();
+    test11843();
 
     printf("Success\n");
     return 0;

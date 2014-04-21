@@ -49,6 +49,11 @@ File::File(const FileName *n)
     name = (FileName *)n;
 }
 
+File *File::create(const char *n)
+{
+    return new File(n);
+}
+
 File::File(const char *n)
 {
     ref = 0;
@@ -108,7 +113,7 @@ int File::read()
         goto err2;
     }
     size = buf.st_size;
-    buffer = (utf8_t *) ::malloc(size + 2);
+    buffer = (unsigned char *) ::malloc(size + 2);
     if (!buffer)
     {
         printf("\tmalloc error, errno = %d\n",errno);
@@ -166,7 +171,7 @@ err1:
     ref = 0;
 
     size = GetFileSize(h,NULL);
-    buffer = (utf8_t *) ::malloc(size + 2);
+    buffer = (unsigned char *) ::malloc(size + 2);
     if (!buffer)
         goto err2;
 
@@ -242,7 +247,7 @@ int File::mmread()
     if (!ref)
         mem.free(buffer);
     ref = 2;
-    buffer = (utf8_t *)MapViewOfFileEx(hFileMap, FILE_MAP_READ,0,0,size,NULL);
+    buffer = (unsigned char *)MapViewOfFileEx(hFileMap, FILE_MAP_READ,0,0,size,NULL);
     if (CloseHandle(hFileMap) != TRUE)
         goto Lerr;
     if (buffer == NULL)                 // mapping view failed

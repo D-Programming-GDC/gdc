@@ -1,6 +1,16 @@
 // PERMUTE_ARGS:
 
 /**************************************************
+    1748 class template with stringof
+**************************************************/
+
+struct S1748(T) {}
+static assert(S1748!int.stringof == "S1748!int");
+
+class C1748(T) {}
+static assert(C1748!int.stringof == "C1748!int");
+
+/**************************************************
     5996    ICE(expression.c)
 **************************************************/
 
@@ -398,6 +408,21 @@ void test9348()
     assert(F!0 !in [new Object():1]);
 }
 
+/***************************************************/
+// 9690
+
+@disable
+{
+    void dep9690() {}
+    void test9690()
+    {
+        dep9690();      // OK
+        void inner()
+        {
+            dep9690();  // OK <- NG
+        }
+    }
+}
 
 /***************************************************/
 // 9987
@@ -418,3 +443,11 @@ static if (is(object.ModuleInfo == class))
                   __traits(classInstanceSize, ModuleInfo));
 }
 
+/***************************************************/
+// 11554
+
+enum E11554;
+static assert(is(E11554 == enum));
+
+struct Bro11554(N...) {}
+static assert(!is(E11554 unused : Bro11554!M, M...));
