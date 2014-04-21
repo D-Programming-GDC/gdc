@@ -165,7 +165,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.warnings = 0;
   global.params.obj = 1;
   global.params.quiet = 1;
-  global.params.useDeprecated = 2;
+  global.params.useDeprecated = 1;
   global.params.betterC = 0;
   global.params.allInst = 0;
 

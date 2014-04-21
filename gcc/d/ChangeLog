@@ -1,3 +1,7 @@
+2014-04-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc(d_init_options): Default deprecation warnings to off.
+
 2014-04-15  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_handle_noclone_attribute): New function to handle
