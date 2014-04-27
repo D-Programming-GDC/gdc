@@ -67,7 +67,7 @@ version (MinGW)
 {
   // Mingw runtime >= v0.3 provides a magic variable that is set to nonzero
   // if -mthreads option was specified, or 0 otherwise.
-  extern int _CRT_MT;
+  extern __gshared int _CRT_MT;
   extern int __mingwthr_key_dtor(ULONG, void function(void*));
 }
 
