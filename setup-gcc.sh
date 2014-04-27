@@ -34,24 +34,8 @@ if grep version_string $d_gccsrc/gcc/version.c | grep -q '"3.4'; then
     gcc_ver=3.4
 elif grep version_string $d_gccsrc/gcc/version.c | grep -q '"4.0'; then
     gcc_ver=4.0
-elif grep -q -E '^4\.1([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.1
-elif grep -q -E '^4\.2([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.2
-elif grep -q -E '^4\.3([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.3
-elif grep -q -E '^4\.4([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.4
-elif grep -q -E '^4\.5([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.5
-elif grep -q -E '^4\.6([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.6
-elif grep -q -E '^4\.7([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.7
-elif grep -q -E '^4\.8([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.8
-elif grep -q -E '^4\.9([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=4.9
+elif grep -q -E '^4\.[0-9]+[^0-9]|$' $d_gccsrc/gcc/BASE-VER; then
+    gcc_ver=$(grep -oh -E '^4\.[0-9]+|$' $d_gccsrc/gcc/BASE-VER)
 fi
 
 gcc_patch_key=${gcc_ver}.x
