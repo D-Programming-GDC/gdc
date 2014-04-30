@@ -11,9 +11,4 @@ This patch is required to fix a bug in GCC buildscripts:
  * https://github.com/venix1/MinGW-GDC/blob/master/patches/gcc/0001-Remove-fPIC-for-MinGW.patch
 
 ## SEH ##
-GCC supports SEH for Windows 64 bit targets, but GDC has not been tested with SEH
-enabled. It also does not compile right now because no SEH personality routine has
-been written yet (__gdc_personality_seh0).
-
-Configure gcc with --enable-sjlj-exceptions to use SJLJ execptions for win64 targets.
-DWARF exceptions are untested.
+SEH should work for 64 bit windows targets.
