@@ -286,18 +286,22 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         stdout = &fp[1];
         stderr = &fp[2];
 
-        // ensure that sprintf generates only 2 digit exponent when writing floating point values
-        _set_output_format(_TWO_DIGIT_EXPONENT);
-
-        // enable full precision for reals
-        asm
+        version (MinGW) {}
+        else
         {
-            push    RAX;
-            fstcw   word ptr [RSP];
-            or      [RSP], 0b11_00_111111; // 11: use 64 bit extended-precision
-                                           // 111111: mask all FP exceptions
-            fldcw   word ptr [RSP];
-            pop     RAX;
+            // ensure that sprintf generates only 2 digit exponent when writing floating point values
+            _set_output_format(_TWO_DIGIT_EXPONENT);
+
+            // enable full precision for reals
+            asm
+            {
+                push    RAX;
+                fstcw   word ptr [RSP];
+                or      [RSP], 0b11_00_111111; // 11: use 64 bit extended-precision
+                                               // 111111: mask all FP exceptions
+                fldcw   word ptr [RSP];
+                pop     RAX;
+            }
         }
     }
 
@@ -376,6 +380,12 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     {
         if (IsDebuggerPresent())
             trapExceptions = false;
+        version (GNU)
+        {
+            /* IsDebuggerPresent doesn't detect GDC.  Would be nice to have
+               some way of detecting valid console output */
+            trapExceptions = true;
+        }
     }
 
     void tryExec(scope void delegate() dg)

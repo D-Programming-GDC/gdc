@@ -126,6 +126,23 @@ version( Windows )
         extern (Windows) alias uint function(void*) btex_fptr;
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
 
+        version (MinGW)
+        {
+            import gcc.builtins;
+
+            // NOTE: The memory between the addresses of _tls_start and _tls_end
+            //       is the storage for thread-local data in MinGW.  Both of
+            //       these are defined in tlssup.c.
+            extern (C)
+            {
+                extern int _tls_start;
+                extern int _tls_end;
+            }
+
+            alias _tls_start _tlsstart;
+            alias _tls_end _tlsend;
+        }
+
         //
         // Entry point for Windows threads
         //
@@ -2779,6 +2796,19 @@ private void* getStackBottom()
                  mov RAX, GS:[RAX];
                  ret;
             }
+        else version (GNU_InlineAsm)
+        {
+            void *bottom;
+
+            version( X86 )
+                asm{ "movl %%fs:4, %0;" : "=r" bottom; }
+            else version( X86_64 )
+                asm{ "movq %%gs:8, %0;" : "=r" bottom; }
+            else
+                static assert(false, "Platform not supported.");
+
+            return bottom;
+        }
         else
             static assert(false, "Architecture not supported.");
     }
@@ -3037,6 +3067,21 @@ private
         {
             version = AsmX86_64_Posix;
             version = AlignFiberStackTo16Byte;
+        }
+    }
+    else version (GNU_InlineAsm)
+    {
+        version (MinGW64)
+        {
+            version = GNU_AsmX86_64_Windows;
+            version = AlignFiberStackTo16Byte;
+            version = AsmExternal;
+        }
+        else version (MinGW)
+        {
+            version = GNU_AsmX86_Windows;
+            version = AlignFiberStackTo16Byte;
+            version = AsmExternal;
         }
     }
     else version( PPC )
@@ -4297,6 +4342,46 @@ private:
              * Position the stack pointer above the lr register
              */
             pstack += int.sizeof * 1;
+        }
+        else version (GNU_AsmX86_Windows)
+        {
+            version( StackGrowsDown ) {} else static assert( false );
+
+            // Currently, MinGW doesn't utilize SEH exceptions.
+            // See DMD AsmX86_Windows If this code ever becomes fails and SEH is used.
+
+            push( 0x00000000 );                                     // Return address of fiber_entryPoint call
+            push( cast(size_t) &fiber_entryPoint );                 // EIP
+            push( 0x00000000 );                                     // EBP
+            push( 0x00000000 );                                     // EDI
+            push( 0x00000000 );                                     // ESI
+            push( 0x00000000 );                                     // EBX
+            push( 0xFFFFFFFF );                                     // FS:[0] - Current SEH frame
+            push( cast(size_t) m_ctxt.bstack );                     // FS:[4] - Top of stack
+            push( cast(size_t) m_ctxt.bstack - m_size );            // FS:[8] - Bottom of stack
+            push( 0x00000000 );                                     // EAX
+        }
+        else version (GNU_AsmX86_64_Windows)
+        {
+            push( 0x00000000_00000000 );                            // Return address of fiber_entryPoint call
+            push( cast(size_t) &fiber_entryPoint );                 // RIP
+            push( 0x00000000_00000000 );                            // RBP
+            push( 0x00000000_00000000 );                            // RBX
+            push( 0x00000000_00000000 );                            // R12
+            push( 0x00000000_00000000 );                            // R13
+            push( 0x00000000_00000000 );                            // R14
+            push( 0x00000000_00000000 );                            // R15
+            push( 0xFFFFFFFF_FFFFFFFF );                            // GS:[0] - Current SEH frame
+            version( StackGrowsDown )
+            {
+                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
+                push( cast(size_t) m_ctxt.bstack - m_size );        // GS:[16] - Bottom of stack
+            }
+            else
+            {
+                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]  - Top of stack
+                push( cast(size_t) m_ctxt.bstack + m_size );        // GS:[16] - Bottom of stack
+            }
         }
         else static if( __traits( compiles, ucontext_t ) )
         {
