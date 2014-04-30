@@ -280,6 +280,10 @@ d_init (void)
 
   if (targetm_common.except_unwind_info (&global_options) == UI_SJLJ)
     VersionCondition::addPredefinedGlobalIdent ("GNU_SjLj_Exceptions");
+  else if(targetm_common.except_unwind_info (&global_options) == UI_SEH)
+    VersionCondition::addPredefinedGlobalIdent ("GNU_SEH_Exceptions");
+  else if(targetm_common.except_unwind_info (&global_options) == UI_DWARF2)
+    VersionCondition::addPredefinedGlobalIdent ("GNU_DWARF2_Exceptions");
 
 #ifdef STACK_GROWS_DOWNWARD
   VersionCondition::addPredefinedGlobalIdent ("GNU_StackGrowsDown");
