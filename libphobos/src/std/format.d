@@ -5015,16 +5015,25 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
             //doFormat(putc, (&valti)[0 .. 1], p);
             version (Win64)
             {
-                void* q = void;
-
-                if (tsize > 8 && m != Mangle.Tsarray)
-                {   q = p;
-                    argptr = &q;
+                version (GNU)
+                {
+                    __va_list va;
+                    va.stack_args = p;
+                    argptr = *cast(va_list*) &va;
                 }
                 else
-                argptr = p;
-                formatArg('s');
-                p += tsize;
+                {
+                    void* q = void;
+
+                    if (tsize > 8 && m != Mangle.Tsarray)
+                    {   q = p;
+                        argptr = &q;
+                    }
+                    else
+                    argptr = p;
+                    formatArg('s');
+                    p += tsize;
+                }
             }
             else
             {
@@ -5084,13 +5093,22 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     argptr = cast(va_list) pkey;
                 else version (Win64)
                 {
-                    void* q = void;
-                    if (keysize > 8 && m != Mangle.Tsarray)
-                    {   q = pkey;
-                        argptr = &q;
+                    version (GNU)
+                    {
+                        __va_list va;
+                        va.stack_args = pkey;
+                        argptr = *cast(va_list*) &va;
                     }
                     else
-                        argptr = pkey;
+                    {
+                        void* q = void;
+                        if (keysize > 8 && m != Mangle.Tsarray)
+                        {   q = pkey;
+                            argptr = &q;
+                        }
+                        else
+                            argptr = pkey;
+                    }
                 }
                 else version (X86_64)
                 {   __va_list va;
@@ -5111,14 +5129,23 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     argptr = cast(va_list) pvalue;
                 else version (Win64)
                 {
-                    void* q2 = void;
-                    auto valuesize = valti.tsize;
-                    if (valuesize > 8 && m != Mangle.Tsarray)
-                    {   q2 = pvalue;
-                        argptr = &q2;
+                    version (GNU)
+                    {
+                        __va_list va2;
+                        va2.stack_args = pvalue;
+                        argptr = *cast(va_list*) &va2;
                     }
                     else
-                        argptr = pvalue;
+                    {
+                        void* q2 = void;
+                        auto valuesize = valti.tsize;
+                        if (valuesize > 8 && m != Mangle.Tsarray)
+                        {   q2 = pvalue;
+                            argptr = &q2;
+                        }
+                        else
+                            argptr = pvalue;
+                    }
                 }
                 else version (X86_64)
                 {   __va_list va2;

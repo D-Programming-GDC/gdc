@@ -52,5 +52,6 @@ mingw32*)
   echo "#define TARGET_WINDOS    1"
   echo "#define THREAD_LIBRARY   \"\""
   echo "#define TIME_LIBRARY     \"\""
+  echo "#define MATH_LIBRARY     \"\""
   ;;
 esac

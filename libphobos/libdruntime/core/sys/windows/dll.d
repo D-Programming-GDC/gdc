@@ -24,7 +24,17 @@ version( Windows )
 
     extern (C)
     {
-        version (Win32)
+        version (MinGW)
+        {
+            extern __gshared void* _tls_start;
+            extern __gshared void* _tls_end;
+            extern __gshared void* __xl_a;
+
+            alias _tls_start _tlsstart;
+            alias _tls_end   _tlsend;
+            alias __xl_a     _tls_callbacks_a;
+        }
+        else version (Win32)
         {
             extern __gshared void* _tlsstart;
             extern __gshared void* _tlsend;
@@ -297,7 +307,7 @@ public:
      *
      * _tls_index is initialized by the compiler to 0, so we can use this as a test.
      */
-    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex ) nothrow
+    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex )
     {
         version (Win64)
             return true;                // fixed
@@ -312,11 +322,19 @@ public:
             return true;
 
         void** peb;
-        asm
+        version (GNU_InlineAsm)
         {
-            mov EAX,FS:[0x30];
-            mov peb, EAX;
+            asm { "movl %%fs:0x30, %0;" : "=r" peb; }
         }
+        else
+        {
+            asm
+            {
+                mov EAX,FS:[0x30];
+                mov peb, EAX;
+            }
+        }
+
         dll_aux.LDR_MODULE *ldrMod = dll_aux.findLdrModule( hInstance, peb );
         if( !ldrMod )
             return false; // not in module list, bail out

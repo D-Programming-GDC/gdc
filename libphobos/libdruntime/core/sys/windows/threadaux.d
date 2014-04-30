@@ -166,21 +166,39 @@ private:
         {
             version(Win32)
             {
-                asm
+                version(GNU_InlineAsm)
                 {
-                    naked;
-                    mov EAX,FS:[0x18];
-                    ret;
+                    void** teb;
+                    asm { "movl %%fs:0x18, %0;" : "=r" teb; }
+                    return teb;
+                }
+                else
+                {
+                    asm
+                    {
+                        naked;
+                        mov EAX,FS:[0x18];
+                        ret;
+                    }
                 }
             }
             else version(Win64)
             {
-                asm
+                version(GNU_InlineAsm)
                 {
-                    naked;
-                    mov RAX,0x30;
-                    mov RAX,GS:[RAX]; // immediate value causes fixup
-                    ret;
+                    void** teb;
+                    asm { "movq %%gs:0x30, %0;" : "=r" teb; }
+                    return teb;
+                }
+                else
+                {
+                    asm
+                    {
+                        naked;
+                        mov RAX,0x30;
+                        mov RAX,GS:[RAX]; // immediate value causes fixup
+                        ret;
+                    }
                 }
             }
             else
