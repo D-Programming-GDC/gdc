@@ -32,6 +32,26 @@ extern(C)
   void _d_createTrace(Object *);
 }
 
+version(GNU_SEH_Exceptions)
+{
+    enum EXCEPTION_DISPOSITION
+    {
+        ExceptionContinueExecution,
+        ExceptionContinueSearch,
+        ExceptionNestedException,
+        ExceptionCollidedUnwind
+    }
+
+    //Pointer types. We're lazy, exact definition in MinGW/winnt.h
+    alias PEXCEPTION_RECORD = void*;
+    alias PCONTEXT = void*;
+    alias PDISPATCHER_CONTEXT = void*;
+
+    extern(C) EXCEPTION_DISPOSITION _GCC_specific_handler(PEXCEPTION_RECORD ms_exc,
+        void *this_frame, PCONTEXT ms_orig_context, PDISPATCHER_CONTEXT ms_disp,
+        _Unwind_Personality_Fn gcc_per);
+}
+
 // This is the primary exception class we report -- "GNUCD__\0".
 version (GNU_ARM_EABI_Unwinder)
 {
@@ -276,7 +296,28 @@ restore_caught_exception(_Unwind_Exception *ue_header,
 // Using a different personality function name causes link failures
 // when trying to mix code using different exception handling models.
 // extern(C) alias __gdc_personality_impl ...; would be nice
-version (GNU_SjLj_Exceptions)
+version(GNU_SEH_Exceptions)
+{
+  extern(C) EXCEPTION_DISPOSITION
+  __gdc_personality_seh0 (PEXCEPTION_RECORD ms_exc, void *this_frame,
+			PCONTEXT ms_orig_context, PDISPATCHER_CONTEXT ms_disp)
+  {
+    return _GCC_specific_handler (ms_exc, this_frame, ms_orig_context,
+				ms_disp, &__gdc_personality_imp);
+  }
+  extern(C) _Unwind_Reason_Code
+  __gdc_personality_imp(int iversion,
+		       _Unwind_Action actions,
+		       _Unwind_Exception_Class exception_class,
+		       _Unwind_Exception *ue_header,
+		       _Unwind_Context *context)
+  {
+    return __gdc_personality_impl (iversion, actions,
+				   exception_class != __gdc_exception_class,
+				   ue_header, context);
+  }
+}
+else version (GNU_SjLj_Exceptions)
 {
   extern(C) _Unwind_Reason_Code
   __gdc_personality_sj0(int iversion,
