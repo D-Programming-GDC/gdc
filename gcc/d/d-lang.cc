@@ -42,11 +42,12 @@ static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_flatten_attribute (tree *, tree, tree, int, bool *);
 static tree d_handle_target_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_noclone_attribute (tree *, tree, tree, int, bool *);
 
 
 static char lang_name[6] = "GNU D";
 
-const attribute_spec d_attribute_table[] =
+static const attribute_spec d_attribute_table[] =
 {
     { "noinline",               0, 0, true,  false, false,
 				d_handle_noinline_attribute, false },
@@ -56,6 +57,8 @@ const attribute_spec d_attribute_table[] =
 				d_handle_flatten_attribute, false },
     { "target",                 1, -1, true, false, false,
 				d_handle_target_attribute, false },
+    { "noclone",                0, 0, true, false, false,
+				d_handle_noclone_attribute, false }, 
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -162,7 +165,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
   global.params.warnings = 0;
   global.params.obj = 1;
   global.params.quiet = 1;
-  global.params.useDeprecated = 2;
+  global.params.useDeprecated = 1;
   global.params.betterC = 0;
   global.params.allInst = 0;
 
@@ -1767,6 +1770,34 @@ d_handle_target_attribute (tree *node, tree name, tree args, int flags,
     }
   else if (! targetm.target_option.valid_attribute_p (*node, name, args, flags))
     *no_add_attrs = true;
+
+  return NULL_TREE;
+}
+
+/* Handle a "noclone" attribute.  */
+
+static tree
+d_handle_noclone_attribute (tree *node, tree name,
+				tree ARG_UNUSED (args),
+				int ARG_UNUSED (flags),
+				bool *no_add_attrs)
+{
+  Type *t = build_dtype (TREE_TYPE (*node));
+
+  if (t->ty == Tfunction)
+    {
+      tree attributes = DECL_ATTRIBUTES (*node);
+
+      // Push attribute noclone.
+      if (! lookup_attribute ("noclone", attributes))
+	DECL_ATTRIBUTES (*node) = tree_cons (get_identifier ("noclone"),
+					     NULL_TREE, attributes);
+    }
+  else
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
 
   return NULL_TREE;
 }

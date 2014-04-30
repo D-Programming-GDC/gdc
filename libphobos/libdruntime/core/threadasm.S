@@ -409,3 +409,74 @@ fiber_switchContext:
     mov pc, r1
     .fnend
 #endif
+/************************************************************************************
+ * GDC MinGW ASM BITS
+ ************************************************************************************/
+#if defined(__x86_64__) && defined(__MINGW32__)
+.global fiber_switchContext
+fiber_switchContext:
+    pushq %RBP;
+    movq %RSP, %RBP;
+    pushq %RBX;
+    pushq %R12;
+    pushq %R13;
+    pushq %R14;
+    pushq %R15;
+    pushq %GS:0;
+    pushq %GS:8;
+    pushq %GS:16;
+
+    // store oldp
+    movq %RSP, (%RCX);
+    // load newp to begin context switch
+    movq %RDX, %RSP;
+
+    // load saved state from new stack
+    popq %GS:16;
+    popq %GS:8;
+    popq %GS:0;
+    popq %R15;
+    popq %R14;
+    popq %R13;
+    popq %R12;
+    popq %RBX;
+    popq %RBP;
+
+    // 'return' to complete switch
+    popq %RCX;
+    jmp *%RCX;
+#endif
+#if defined(_X86_) && defined(__MINGW32__)
+.global _fiber_switchContext
+_fiber_switchContext:
+    // Save current stack state.save current stack state
+    // Standard CDECL prologue.
+    push %EBP;
+    mov  %ESP, %EBP;
+    push %EDI;
+    push %ESI;
+    push %EBX;
+    push %FS:0;
+    push %FS:4;
+    push %FS:8;
+    push %EAX;
+
+    // store oldp again with more accurate address
+    mov 8(%EBP), %EAX;
+    mov %ESP, (%EAX);
+    // load newp to begin context switch
+    mov 12(%EBP), %ESP;
+
+    // load saved state from new stack
+    pop %EAX;
+    pop %FS:8;
+    pop %FS:4;
+    pop %FS:0;
+    pop %EBX;
+    pop %ESI;
+    pop %EDI;
+    pop %EBP;
+
+    // 'return' to complete switch
+    ret;
+#endif

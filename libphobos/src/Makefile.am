@@ -108,7 +108,7 @@ FREEBSD_OBJS=std/c/freebsd/socket.o
 WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
 	     std/c/windows/windows.o std/c/windows/winsock.o \
 	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
-	     std/windows/syserror.o std/__fileinit.o std/internal/windows/advapi32.o
+	     std/windows/syserror.o std/internal/windows/advapi32.o
 
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 

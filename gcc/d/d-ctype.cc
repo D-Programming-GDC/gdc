@@ -366,7 +366,7 @@ TypeFunction::toCtype (void)
 	  if (isref)
 	    ret_type = build_reference_type (ret_type);
 
-	  // Function type can be reference by parameters, etc.  Set ctype earlier?
+	  // Function type could be referenced by parameters, so set ctype earlier?
 	  ctype = build_function_type (ret_type, type_list);
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
@@ -582,6 +582,7 @@ TypeDelegate::toCtype (void)
 
 	  TYPE_ATTRIBUTES (funtype) = TYPE_ATTRIBUTES (nexttype);
 	  TYPE_LANG_SPECIFIC (funtype) = TYPE_LANG_SPECIFIC (nexttype);
+	  TREE_ADDRESSABLE (funtype) = TREE_ADDRESSABLE (nexttype);
 
 	  ctype = build_two_field_type (objtype, build_pointer_type (funtype),
 					this, "object", "func");

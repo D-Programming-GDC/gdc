@@ -22,10 +22,24 @@ private
         {
             extern __gshared
             {
-                int _data_start__;
-                int _data_end__;
-                int _bss_start__;
-                int _bss_end__;
+                // We need to alias __data_*__ and __bss_*__ to correct
+                // symbols on Win64. Binutils exports the same symbol for
+                // both Win32 and Win64, where-as the ABI says no _ should be
+                // prefixed.
+                version (X86)
+                {
+                    int _data_start__;
+                    int _data_end__;
+                    int _bss_start__;
+                    int _bss_end__;
+                }
+                else version (X86_64)
+                {
+                    pragma(mangle, "__data_start__") int _data_start__;
+                    pragma(mangle, "__data_end__") int _data_end__;
+                    pragma(mangle, "__bss_start__") int _bss_start__;
+                    pragma(mangle, "__bss_end__") int _bss_end__;
+                }
             }
         }
     }

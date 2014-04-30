@@ -1579,20 +1579,42 @@ export BOOL SwitchToThread();
 
 // Synchronization
 
-export
+version (MinGW)
 {
-LONG InterlockedIncrement(LPLONG lpAddend);
-LONG InterlockedDecrement(LPLONG lpAddend);
-LONG InterlockedExchange(LPLONG Target, LONG Value);
-LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
-LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
+    version (X86_64)
+        version = MinGW64RT;
+}
 
-void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-BOOL TryEnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-void DeleteCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+version (MinGW64RT)
+{
+    LONG InterlockedIncrement(LPLONG lpAddend);
+    LONG InterlockedDecrement(LPLONG lpAddend);
+    LONG InterlockedExchange(LPLONG Target, LONG Value);
+    LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
+    LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
 
+    void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+    void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+    BOOL TryEnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+    void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+    void DeleteCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+}
+else
+{
+    export
+    {
+        LONG InterlockedIncrement(LPLONG lpAddend);
+        LONG InterlockedDecrement(LPLONG lpAddend);
+        LONG InterlockedExchange(LPLONG Target, LONG Value);
+        LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
+        LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
+
+        void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+        void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+        BOOL TryEnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+        void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+        void DeleteCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+    }
 }
 
 
