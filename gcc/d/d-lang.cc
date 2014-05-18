@@ -58,7 +58,7 @@ static const attribute_spec d_attribute_table[] =
     { "target",                 1, -1, true, false, false,
 				d_handle_target_attribute, false },
     { "noclone",                0, 0, true, false, false,
-				d_handle_noclone_attribute, false }, 
+				d_handle_noclone_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1393,7 +1393,7 @@ struct binding_level *global_binding_level;
 static binding_level *
 alloc_binding_level (void)
 {
-  return ggc_alloc_cleared_binding_level();
+  return ggc_cleared_alloc<binding_level>();
 }
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
@@ -1627,8 +1627,7 @@ d_classify_record (tree type)
 struct lang_type *
 build_d_type_lang_specific (Type *t)
 {
-  unsigned sz = sizeof (lang_type);
-  struct lang_type *lt = ggc_alloc_cleared_lang_type (sz);
+  struct lang_type *lt = ggc_cleared_alloc<struct lang_type>();
   lt->d_type = t;
   return lt;
 }
@@ -1636,8 +1635,7 @@ build_d_type_lang_specific (Type *t)
 struct lang_decl *
 build_d_decl_lang_specific (Declaration *d)
 {
-  unsigned sz = sizeof (lang_decl);
-  struct lang_decl *ld = ggc_alloc_cleared_lang_decl (sz);
+  struct lang_decl *ld = ggc_cleared_alloc<struct lang_decl>();
   ld->d_decl = d;
   return ld;
 }

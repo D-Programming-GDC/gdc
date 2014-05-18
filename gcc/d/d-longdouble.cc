@@ -129,8 +129,8 @@ longdouble::rv (void)
 longdouble
 longdouble::from_int (Type *type, int64_t d)
 {
-  double_int cst = double_int::from_shwi (d);
-  REAL_VALUE_FROM_INT (rv(), cst.low, cst.high, TYPE_MODE (type->toCtype()));
+  tree t = type->toCtype();
+  real_from_integer (&rv(), TYPE_MODE (t), d, SIGNED);
   return *this;
 }
 
@@ -140,8 +140,8 @@ longdouble::from_int (Type *type, int64_t d)
 longdouble
 longdouble::from_uint (Type *type, uint64_t d)
 {
-  double_int cst = double_int::from_uhwi (d);
-  REAL_VALUE_FROM_UNSIGNED_INT (rv(), cst.low, cst.high, TYPE_MODE (type->toCtype()));
+  tree t = type->toCtype();
+  real_from_integer (&rv(), TYPE_MODE (t), d, UNSIGNED);
   return *this;
 }
 
@@ -151,21 +151,12 @@ longdouble::from_uint (Type *type, uint64_t d)
 int64_t
 longdouble::to_int (Type *type) const
 {
-  double_int cst;
-
   if (REAL_VALUE_ISNAN (rv()))
-    {
-      cst.low = 0;
-      cst.high = 0;
-    }
-  else
-    {
-      tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
-			    build_float_cst (*this, Type::tfloat64));
-      cst = TREE_INT_CST (t);
-    }
+    return 0;
 
-  return cst_to_hwi (cst);
+  tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
+			build_float_cst (*this, Type::tfloat64));
+  return TREE_INT_CST_LOW (t);
 }
 
 // Same as longdouble::to_int, but returns a uint64_t.

@@ -963,33 +963,6 @@ build_float_cst (const real_t& value, Type *totype)
   return build_real (type_node, new_value.rv());
 }
 
-// Convert LOW / HIGH pair into dinteger_t type.
-
-dinteger_t
-cst_to_hwi (double_int cst)
-{
-  if (cst.high == 0 || (cst.high == -1 && (HOST_WIDE_INT) cst.low < 0))
-    return cst.low;
-  else if (cst.low == 0 && cst.high == 1)
-    return (~(dinteger_t) 0);
-
-  gcc_unreachable();
-}
-
-// Return host integer value for INT_CST T.
-
-dinteger_t
-tree_to_hwi (tree t)
-{
-  if (TREE_INT_CST_HIGH (t) == 0
-      || (TREE_INT_CST_HIGH (t) == -1
-	  && (HOST_WIDE_INT) TREE_INT_CST_LOW (t) < 0
-	  && !TYPE_UNSIGNED (TREE_TYPE (t))))
-    return TREE_INT_CST_LOW (t);
-
-  return cst_to_hwi (TREE_INT_CST (t));
-}
-
 // Returns the .length component from the D dynamic array EXP.
 
 tree

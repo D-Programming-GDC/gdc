@@ -44,7 +44,7 @@ struct GTY(()) lang_decl
 /* The lang_type field is not set for every GCC type. */
 class Type;
 typedef Type *TypeGTYP;
-struct GTY((variable_size)) lang_type
+struct GTY(()) lang_type
 {
   TypeGTYP GTY((skip)) d_type;
 };
