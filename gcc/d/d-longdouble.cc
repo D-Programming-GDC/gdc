@@ -127,7 +127,7 @@ longdouble::rv (void)
 // Conversion is done at precision mode of TYPE.
 
 longdouble
-longdouble::from_shwi (Type *type, int64_t d)
+longdouble::from_int (Type *type, int64_t d)
 {
   double_int cst = double_int::from_shwi (d);
   REAL_VALUE_FROM_INT (rv(), cst.low, cst.high, TYPE_MODE (type->toCtype()));
@@ -138,7 +138,7 @@ longdouble::from_shwi (Type *type, int64_t d)
 // Conversion is done at precision mode of TYPE.
 
 longdouble
-longdouble::from_uhwi (Type *type, uint64_t d)
+longdouble::from_uint (Type *type, uint64_t d)
 {
   double_int cst = double_int::from_uhwi (d);
   REAL_VALUE_FROM_UNSIGNED_INT (rv(), cst.low, cst.high, TYPE_MODE (type->toCtype()));
@@ -149,7 +149,7 @@ longdouble::from_uhwi (Type *type, uint64_t d)
 // Conversion is done at precision mode of TYPE.
 
 int64_t
-longdouble::to_shwi (Type *type) const
+longdouble::to_int (Type *type) const
 {
   double_int cst;
 
@@ -168,12 +168,12 @@ longdouble::to_shwi (Type *type) const
   return cst_to_hwi (cst);
 }
 
-// Same as longdouble::to_shwi, but returns a uint64_t.
+// Same as longdouble::to_int, but returns a uint64_t.
 
 uint64_t
-longdouble::to_uhwi (Type *type) const
+longdouble::to_uint (Type *type) const
 {
-  return (uint64_t) to_shwi (type);
+  return (uint64_t) to_int (type);
 }
 
 // Helper functions which set longdouble to value D.
@@ -238,25 +238,25 @@ bool (void)
 
 // Conversion routines between longdouble and integer types.
 
-void longdouble::set (int8_t d)  { from_shwi (Type::tfloat32, d); }
-void longdouble::set (int16_t d) { from_shwi (Type::tfloat32, d); }
-void longdouble::set (int32_t d) { from_shwi (Type::tfloat64, d); }
-void longdouble::set (int64_t d) { from_shwi (Type::tfloat80, d); }
+void longdouble::set (int8_t d)  { from_int (Type::tfloat32, d); }
+void longdouble::set (int16_t d) { from_int (Type::tfloat32, d); }
+void longdouble::set (int32_t d) { from_int (Type::tfloat64, d); }
+void longdouble::set (int64_t d) { from_int (Type::tfloat80, d); }
 
-longdouble::operator int8_t (void)  { return to_shwi (Type::tint8); }
-longdouble::operator int16_t (void) { return to_shwi (Type::tint16); }
-longdouble::operator int32_t (void) { return to_shwi (Type::tint32); }
-longdouble::operator int64_t (void) { return to_shwi (Type::tint64); }
+longdouble::operator int8_t (void)  { return to_int (Type::tint8); }
+longdouble::operator int16_t (void) { return to_int (Type::tint16); }
+longdouble::operator int32_t (void) { return to_int (Type::tint32); }
+longdouble::operator int64_t (void) { return to_int (Type::tint64); }
 
-void longdouble::set (uint8_t d)  { from_uhwi (Type::tfloat32, d); }
-void longdouble::set (uint16_t d) { from_uhwi (Type::tfloat32, d); }
-void longdouble::set (uint32_t d) { from_uhwi (Type::tfloat64, d); }
-void longdouble::set (uint64_t d) { from_uhwi (Type::tfloat80, d); }
+void longdouble::set (uint8_t d)  { from_uint (Type::tfloat32, d); }
+void longdouble::set (uint16_t d) { from_uint (Type::tfloat32, d); }
+void longdouble::set (uint32_t d) { from_uint (Type::tfloat64, d); }
+void longdouble::set (uint64_t d) { from_uint (Type::tfloat80, d); }
 
-longdouble::operator uint8_t (void)  { return to_uhwi (Type::tuns8); }
-longdouble::operator uint16_t (void) { return to_uhwi (Type::tuns16); }
-longdouble::operator uint32_t (void) { return to_uhwi (Type::tuns32); }
-longdouble::operator uint64_t (void) { return to_uhwi (Type::tuns64); }
+longdouble::operator uint8_t (void)  { return to_uint (Type::tuns8); }
+longdouble::operator uint16_t (void) { return to_uint (Type::tuns16); }
+longdouble::operator uint32_t (void) { return to_uint (Type::tuns32); }
+longdouble::operator uint64_t (void) { return to_uint (Type::tuns64); }
 
 // Overload numeric operators for longdouble types.
 

@@ -99,10 +99,10 @@ struct longdouble
   void dump (void);
 
  private:
-  longdouble from_shwi (Type *type, int64_t d);
-  longdouble from_uhwi (Type *type, uint64_t d);
-  int64_t to_shwi (Type *type) const;
-  uint64_t to_uhwi (Type *type) const;
+  longdouble from_int (Type *type, int64_t d);
+  longdouble from_uint (Type *type, uint64_t d);
+  int64_t to_int (Type *type) const;
+  uint64_t to_uint (Type *type) const;
 
   // Including gcc/real.h presents too many problems, so
   // just statically allocate enough space for REAL_VALUE_TYPE.
