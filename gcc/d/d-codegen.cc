@@ -293,9 +293,9 @@ convert_expr (tree exp, Type *etype, Type *totype)
 		tree t = totype->toCtype();
 		exp = maybe_make_temp (exp);
 		return build3 (COND_EXPR, t,
-			       build_boolop (NE_EXPR, exp, d_null_pointer),
+			       build_boolop (NE_EXPR, exp, null_pointer_node),
 			       build_nop (t, build_offset (exp, size_int (offset))),
-			       build_nop (t, d_null_pointer));
+			       build_nop (t, null_pointer_node));
 	      }
 
 	    // d_convert will make a no-op cast
@@ -315,7 +315,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	if (cdto->isCOMclass() || cdfrom->cpp != cdto->cpp)
 	  {
 	    warning (OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
-	    result = d_convert (totype->toCtype(), d_null_pointer);
+	    result = d_convert (totype->toCtype(), null_pointer_node);
 	    // Make sure the expression is still evaluated if necessary
 	    if (TREE_SIDE_EFFECTS (exp))
 	      result = compound_expr (exp, result);
@@ -3002,7 +3002,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 	{
 	  // Should instead error on line that references nested_func
 	  nested_func->error ("nested function missing body");
-	  return d_null_pointer;
+	  return null_pointer_node;
 	}
 
       outer_func = nested_func->toParent2()->isFuncDeclaration();
@@ -3014,7 +3014,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 	  if (!func->vthis)
 	    {
 	      sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
-	      return d_null_pointer;
+	      return null_pointer_node;
 	    }
 
 	  Dsymbol *this_func = func;
@@ -3061,7 +3061,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 		{
 	        cannot_get_frame:
 		  func->error ("cannot get frame pointer to %s", sym->toChars());
-		  return d_null_pointer;
+		  return null_pointer_node;
 		}
 	      this_func = this_func->toParent2();
 	    }
@@ -3107,7 +3107,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 	    cannot_access_frame:
 	      error ("cannot access frame of function '%s' from '%s'",
 		     outer_func->toChars(), func->toChars());
-	      return d_null_pointer;
+	      return null_pointer_node;
 	    }
 	}
     }
@@ -3121,7 +3121,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
   if (ffo->creates_frame || ffo->static_chain)
     return get_framedecl (func, outer_func);
 
-  return d_null_pointer;
+  return null_pointer_node;
 }
 
 // Return the parent function of a nested class CD.
@@ -3204,7 +3204,7 @@ build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
 
-  tree vthis_value = d_null_pointer;
+  tree vthis_value = null_pointer_node;
 
   if (cd)
     {
@@ -3232,7 +3232,7 @@ build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
 	    vthis_value = get_decl_tree (fdo->vthis, fd);
 	  else
-	    vthis_value = d_null_pointer;
+	    vthis_value = null_pointer_node;
 	}
       else
 	gcc_unreachable();
@@ -3257,7 +3257,7 @@ build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
 	      || fdo->hasNestedFrameRefs())
 	    vthis_value = get_frame_for_symbol (fd, sd);
 	  else
-	    vthis_value = d_null_pointer;
+	    vthis_value = null_pointer_node;
 	}
       else
 	gcc_unreachable();
@@ -3493,13 +3493,13 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
       else
 	{
 	  inner->error ("forward reference to frame of %s", outer->toChars());
-	  return d_null_pointer;
+	  return null_pointer_node;
 	}
     }
   else
     {
       inner->error ("cannot access frame of %s", outer->toChars());
-      return d_null_pointer;
+      return null_pointer_node;
     }
 }
 

@@ -113,7 +113,6 @@ extern GTY(()) binding_level *global_binding_level;
 enum d_tree_index
 {
   DTI_NULL_PTR,
-  DTI_VOID_ZERO,
   DTI_VTBL_PTR_TYPE,
 
   DTI_BOOL_TYPE,
@@ -140,8 +139,6 @@ enum d_tree_index
 
 extern GTY(()) tree d_global_trees[DTI_MAX];
 
-#define d_null_pointer			d_global_trees[DTI_NULL_PTR]
-#define d_void_zero_node		d_global_trees[DTI_VOID_ZERO]
 #define d_vtbl_ptr_type_node		d_global_trees[DTI_VTBL_PTR_TYPE]
 #define d_boolean_type_node		d_global_trees[DTI_BOOL_TYPE]
 #define d_char_type_node		d_global_trees[DTI_CHAR_TYPE]

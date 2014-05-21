@@ -1,3 +1,34 @@
+2014-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(d_init_builtins): Use void_node instead of
+	d_void_zero_node.
+	* d-lang.h(d_void_zero_node): Remove.
+	* d-elem.cc(AndAndExp::toElem): Adjust.
+	(OrOrExp::toElem): Likewise.
+	(AssertExp::toElem): Likewise.
+	(TupleExp::toElem): Likewise.
+
+	* d-builtins.c(d_init_builtins): Use null_pointer_node instead of
+	d_null_pointer.
+	* d-lang.h(d_null_pointer): Remove.
+	* d-codegen.cc(convert_expr): Adjust.
+	(get_frame_for_symbol): Likewise.
+	(build_vthis): Likewise.
+	(get_framedecl): Likewise.
+	* d-elem.cc(DeleteExp::toElem): Likewise.
+	(CallExp::toElem): Likewise.
+	(AssertExp::toElem): Likewise.
+	(NewExp::toElem): Likewise.
+	(ArrayLiteralExp::toElem): Likewise.
+	(NullExp::toElem): Likewise.
+	* d-objfile.cc(ClassDeclaration::toObjFile): Likewise.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	(FuncDeclaration::toObjFile): Likewise.
+	(build_moduleinfo): Likewise.
+	* d-todt.cc(TypeInfoTypedefDeclaration::toDt): Likewise.
+	(TypeInfoEnumDeclaration::toDt): Likewise.
+	(TypeInfoStructDeclaration::toDt): Likewise.
+
 2014-05-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-longdouble.cc(longdouble::from_shwi): Rename to from_int.

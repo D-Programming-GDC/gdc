@@ -1139,7 +1139,7 @@ TypeInfoTypedefDeclaration::toDt (dt_t **pdt)
   // Default initialiser for typedef.
   tree tarray = Type::tvoid->arrayOf()->toCtype();
   if (tinfo->isZeroInit() || !sd->init)
-    dt_cons (pdt, d_array_value (tarray, size_int (0), d_null_pointer));
+    dt_cons (pdt, d_array_value (tarray, size_int (0), null_pointer_node));
   else
     {
       tree sinit = build_address (sd->toInitializer()->Stree);
@@ -1174,7 +1174,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
       dt_cons (pdt, build_address (sd->memtype->vtinfo->toSymbol()->Stree));
     }
   else
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
 
   // Name of the enum declaration.
   dt_cons (pdt, d_array_string (sd->toPrettyChars()));
@@ -1184,7 +1184,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
   if (!sd->members || tinfo->isZeroInit())
     {
       // zero initialiser, or the same as the base type.
-      dt_cons (pdt, d_array_value (tarray, size_int (0), d_null_pointer));
+      dt_cons (pdt, d_array_value (tarray, size_int (0), null_pointer_node));
     }
   else
     {
@@ -1414,7 +1414,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
   // Default initialiser for struct.
   dt_cons (pdt, size_int (sd->structsize));
   if (sd->zeroInit)
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
   else
     dt_cons (pdt, build_address (sd->toInitializer()->Stree));
 
@@ -1431,26 +1431,26 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
 	warning (fdx->loc, "toHash() must be declared as extern (D) size_t toHash() const nothrow @safe, not %s", tf->toChars());
     }
   else
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
 
   // bool function(in void*, in void*) xopEquals;
   if (sd->xeq)
     dt_cons (pdt, build_address (sd->xeq->toSymbol()->Stree));
   else
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
 
   // int function(in void*, in void*) xopCmp;
   if (sd->xcmp)
     dt_cons (pdt, build_address (sd->xcmp->toSymbol()->Stree));
   else
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
 
   // string function(const(void)*) xtoString;
   fdx = search_toString(sd);
   if (fdx)
     dt_cons (pdt, build_address (fdx->toSymbol()->Stree));
   else
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
 
   // uint m_flags;
   // StructFlags::Type m_flags;
@@ -1465,13 +1465,13 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
   if (sd->dtor)
     dt_cons (pdt, build_address (sd->dtor->toSymbol()->Stree));
   else
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
 
   // xpostblit
   if (sd->postblit && !(sd->postblit->storage_class & STCdisable))
     dt_cons (pdt, build_address (sd->postblit->toSymbol()->Stree));
   else
-    dt_cons (pdt, d_null_pointer);
+    dt_cons (pdt, null_pointer_node);
 
   // uint m_align;
   dt_cons (pdt, size_int (tc->alignsize()));
@@ -1485,7 +1485,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
 	  dt_cons (pdt, build_address (sd->arg1type->vtinfo->toSymbol()->Stree));
 	}
       else
-	dt_cons (pdt, d_null_pointer);
+	dt_cons (pdt, null_pointer_node);
 
       // TypeInfo m_arg2;
       if (sd->arg2type)
@@ -1494,7 +1494,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
 	  dt_cons (pdt, build_address (sd->arg2type->vtinfo->toSymbol()->Stree));
 	}
       else
-	dt_cons (pdt, d_null_pointer);
+	dt_cons (pdt, null_pointer_node);
     }
 
   // xgetRTInfo

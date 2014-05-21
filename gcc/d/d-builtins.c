@@ -1200,19 +1200,13 @@ d_init_builtins (void)
 
   /* Create the built-in __null node.  It is important that this is
      not shared.  */
-  null_node = make_node (INTEGER_CST);
+  null_node = make_int_cst (1, 1);
   TREE_TYPE (null_node) = lang_hooks.types.type_for_size (POINTER_SIZE, 0);
 
   TYPE_NAME (integer_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
 					      get_identifier ("int"), integer_type_node);
   TYPE_NAME (char_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
 					   get_identifier ("char"), char_type_node);
-
-  /* Types specific to D (but so far all taken from C).  */
-  d_void_zero_node = make_node (INTEGER_CST);
-  TREE_TYPE (d_void_zero_node) = void_type_node;
-
-  d_null_pointer = convert (ptr_type_node, integer_zero_node);
 
   /* D variant types of C types.  */
   d_boolean_type_node = make_unsigned_type (1);
