@@ -91,7 +91,12 @@ version( Posix )
     ssize_t write(int, in void*, size_t);
 }
 
-version( linux )
+version( Android )
+{
+  off_t lseek(int, off_t, int);
+  int   ftruncate(int, off_t);
+}
+else version( linux )
 {
   static if( __USE_FILE_OFFSET64 )
   {
@@ -123,7 +128,17 @@ else version( Posix )
     int   ftruncate(int, off_t);
 }
 
-version( linux )
+version( Android )
+{
+    enum F_OK       = 0;
+    enum R_OK       = 4;
+    enum W_OK       = 2;
+    enum X_OK       = 1;
+
+    enum _SC_PAGESIZE         = 0x0027;
+    enum _SC_NPROCESSORS_ONLN = 0x0061;
+}
+else version( linux )
 {
     enum F_OK       = 0;
     enum R_OK       = 4;
@@ -470,7 +485,11 @@ else version( FreeBSD )
 int fsync(int);
 */
 
-version( linux )
+version( Android )
+{
+    int fsync(int);
+}
+else version( linux )
 {
     int fsync(int);
 }
@@ -490,7 +509,11 @@ else version( FreeBSD )
 int fdatasync(int);
 */
 
-version( linux )
+version( Android )
+{
+    int fdatasync(int);
+}
+else version( linux )
 {
     int fdatasync(int);
 }
@@ -523,7 +546,23 @@ int        usleep(useconds_t);
 pid_t      vfork();
 */
 
-version( linux )
+version( Android )
+{
+    int        fchdir(int);
+    pid_t      getpgid(pid_t);
+    int        lchown(in char*, uid_t, gid_t);
+    int        nice(int);
+    ssize_t    pread(int, void*, size_t, off_t);
+    ssize_t    pwrite(int, in void*, size_t, off_t);
+    int        setpgrp();
+    int        setregid(gid_t, gid_t);
+    int        setreuid(uid_t, uid_t);
+    int        sync();
+    int        truncate(in char*, off_t);
+    int        usleep(c_ulong);
+    pid_t      vfork();
+}
+else version( linux )
 {
     char*      crypt(in char*, in char*);
     char*      ctermid(char*);

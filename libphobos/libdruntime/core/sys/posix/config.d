@@ -24,7 +24,20 @@ enum _XOPEN_SOURCE     = 600;
 enum _POSIX_SOURCE     = true;
 enum _POSIX_C_SOURCE   = 200112L;
 
-version (linux)
+version (Android)
+{
+    enum _BSD_SOURCE = true;
+    enum _GNU_SOURCE = true;
+
+    // Assume C99 support (all NDK toolchains support them).
+    enum __USE_ISOC95 = true;
+    enum __USE_ISOC99 = true;
+
+    enum __USE_POSIX = true;
+    enum __USE_POSIX2 = true;
+    enum __USE_XPG = true;
+}
+else version (linux)
 {
     // man 7 feature_test_macros
     // http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html

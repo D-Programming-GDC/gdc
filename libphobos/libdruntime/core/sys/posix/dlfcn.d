@@ -34,7 +34,31 @@ void* dlopen(in char*, int);
 void* dlsym(void*, in char*);
 */
 
-version( linux )
+version( Android )
+{
+    enum
+    {
+        RTLD_NOW    = 0,
+        RTLD_LAZY   = 1,
+        RTLD_LOCAL  = 0,
+        RTLD_GLOBAL = 2
+    }
+
+    int          dladdr(in void*, Dl_info*);
+    int          dlclose(void*);
+    const(char)* dlerror();
+    void*        dlopen(in char*, int);
+    void*        dlsym(void*, in char*);
+
+    struct Dl_info
+    {
+        const(char)* dli_fname;
+        void*        dli_fbase;
+        const(char)* dli_sname;
+        void*        dli_saddr;
+    }
+}
+else version( linux )
 {
     version (X86)
     {

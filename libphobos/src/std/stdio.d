@@ -52,7 +52,11 @@ version (Posix)
     alias core.sys.posix.stdio.fileno fileno;
 }
 
-version (linux)
+version (Android)
+{
+    version = GENERIC_IO;
+}
+else version (linux)
 {
     // Specific to the way Gnu C does stdio
     version = GCC_IO;
@@ -664,6 +668,12 @@ Throws: $(D Exception) if the file is not opened.
         version (Windows)
         {
             errnoEnforce(fseek(_p.handle, to!int(offset), origin) == 0,
+                    "Could not seek in file `"~_name~"'");
+        }
+        else version (Android)
+        {
+            // May truncate; no different than Windows though.
+            errnoEnforce(fseeko(_p.handle, to!off_t(offset), origin) == 0,
                     "Could not seek in file `"~_name~"'");
         }
         else

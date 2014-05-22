@@ -37,7 +37,17 @@ group* getgrnam(in char*);
 group* getgrgid(gid_t);
 */
 
-version( linux )
+version( Android )
+{
+    struct group
+    {
+        char*   gr_name;
+        char*   gr_passwd;
+        gid_t   gr_gid;
+        char**  gr_mem;
+    }
+}
+else version( linux )
 {
     struct group
     {
@@ -83,7 +93,10 @@ int getgrnam_r(in char*, group*, char*, size_t, group**);
 int getgruid_r(gid_t, group*, char*, size_t, group**);
 */
 
-version( linux )
+version( Android )
+{
+}
+else version( linux )
 {
     int getgrnam_r(in char*, group*, char*, size_t, group**);
     int getgruid_r(gid_t, group*, char*, size_t, group**);
@@ -112,7 +125,10 @@ void           endgrent(void);
 void           setgrent(void);
 */
 
-version( linux )
+version( Android )
+{
+}
+else version( linux )
 {
     group* getgrent();
     @trusted void endgrent();

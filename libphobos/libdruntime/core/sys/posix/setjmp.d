@@ -30,7 +30,32 @@ int  setjmp(ref jmp_buf);
 void longjmp(ref jmp_buf, int);
 */
 
-version( linux )
+version( Android )
+{
+    // <machine/setjmp.h>
+    version( X86 )
+    {
+        enum _JBLEN = 10;
+    }
+    else version( ARM )
+    {
+        enum _JBLEN = 64;
+    }
+    else version( MIPS )
+    {
+        enum _JBLEN = 157;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    alias c_long[_JBLEN] jmp_buf;
+
+    int  setjmp(ref jmp_buf);
+    void longjmp(ref jmp_buf, int);
+}
+else version( linux )
 {
     version( X86_64 )
     {
@@ -152,7 +177,14 @@ int  sigsetjmp(sigjmp_buf, int);
 void siglongjmp(sigjmp_buf, int);
 */
 
-version( linux )
+version( Android )
+{
+    alias c_long[_JBLEN + 1] sigjmp_buf;
+
+    int  sigsetjmp(ref sigjmp_buf, int);
+    void siglongjmp(ref sigjmp_buf, int);
+}
+else version( linux )
 {
     alias jmp_buf sigjmp_buf;
 
@@ -197,7 +229,12 @@ int  _setjmp(jmp_buf);
 void _longjmp(jmp_buf, int);
 */
 
-version( linux )
+version( Android )
+{
+    int  _setjmp(ref jmp_buf);
+    void _longjmp(ref jmp_buf, int);
+}
+else version( linux )
 {
     int  _setjmp(ref jmp_buf);
     void _longjmp(ref jmp_buf, int);

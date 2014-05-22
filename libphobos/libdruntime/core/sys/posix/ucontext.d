@@ -35,7 +35,11 @@ struct ucontext_t
 }
 */
 
-version( linux )
+version( Android )
+{
+    // Not supported.
+}
+else version( linux )
 {
 
     version( X86_64 )

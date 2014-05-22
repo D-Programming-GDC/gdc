@@ -32,7 +32,17 @@ struct sockaddr_un
 sa_family_t    // From core.sys.posix.sys.socket
 */
 
-version( linux )
+version( Android )
+{
+    enum UNIX_PATH_MAX = 108;
+
+    struct sockaddr_un
+    {
+        sa_family_t         sun_family;
+        byte[UNIX_PATH_MAX] sun_path;
+    }
+}
+else version( linux )
 {
     struct sockaddr_un
     {

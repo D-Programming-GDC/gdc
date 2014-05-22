@@ -42,6 +42,7 @@ enum EXIT_FAILURE = 1;
 enum MB_CUR_MAX   = 1;
 
 version(Windows)      enum RAND_MAX = 0x7fff;
+else version(Android) enum RAND_MAX = 0x7fffffff;
 else version(linux)   enum RAND_MAX = 0x7fffffff;
 else version(OSX)     enum RAND_MAX = 0x7fffffff;
 else version(FreeBSD) enum RAND_MAX = 0x7fffffff;
@@ -71,6 +72,13 @@ else version (MinGW)
 {
     real __mingw_strtold(in char* nptr, char** endptr);
     alias __mingw_strtold strtold;
+}
+else version (Android)
+{
+    real strtold(in char* nptr, char** endptr)
+    {   // Fake it again till we make it
+        return strtod(nptr, endptr);
+    }
 }
 else
 {

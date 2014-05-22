@@ -41,7 +41,19 @@ pid_t wait(int*);
 pid_t waitpid(pid_t, int*, int);
 */
 
-version( linux )
+version( Android )
+{
+    enum WNOHANG   = 1;
+    enum WUNTRACED = 2;
+
+    extern (D) int  WEXITSTATUS( int status ) { return ( status & 0xFF00 ) >> 8; }
+    extern (D) bool WIFEXITED( int status ) { return WTERMSIG(status) == 0; }
+    extern (D) bool WIFSIGNALED( int status ) { return WTERMSIG(status + 1) >= 2; }
+    extern (D) bool WIFSTOPPED( int status ) { return WTERMSIG(status) == 0x7F; }
+    extern (D) int  WSTOPSIG( int status ) { return WEXITSTATUS(status); }
+    extern (D) int  WTERMSIG( int status ) { return status & 0x7F; }
+}
+else version( linux )
 {
     enum WNOHANG        = 1;
     enum WUNTRACED      = 2;
@@ -156,7 +168,18 @@ enum idtype_t
 int waitid(idtype_t, id_t, siginfo_t*, int);
 */
 
-version( linux )
+version( Android )
+{
+    enum WEXITED    = 4;
+    enum WSTOPPED   = 2;
+    enum WCONTINUED = 8;
+    enum WNOWAIT    = 0x01000000;
+
+    alias int idtype_t;
+
+    int waitid(idtype_t, id_t, siginfo_t*, int);
+}
+else version( linux )
 {
     enum WEXITED    = 4;
     enum WSTOPPED   = 2;

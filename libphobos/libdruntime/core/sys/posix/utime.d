@@ -33,7 +33,17 @@ struct utimbuf
 int utime(in char*, in utimbuf*);
 */
 
-version( linux )
+version( Android )
+{
+    struct utimbuf
+    {
+        time_t  actime;
+        time_t  modtime;
+    }
+
+    int utime(in char*, in utimbuf*);
+}
+else version( linux )
 {
     struct utimbuf
     {
