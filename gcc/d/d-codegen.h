@@ -262,7 +262,7 @@ d_types_compatible (Type *t1, Type *t2)
 
 // Returns D Frontend type for GCC type T.
 inline Type *
-build_dtype (tree t)
+lang_dtype (tree t)
 {
   gcc_assert (TYPE_P (t));
   struct lang_type *lt = TYPE_LANG_SPECIFIC (t);
@@ -271,7 +271,7 @@ build_dtype (tree t)
 
 // Returns D Frontend decl for GCC decl T.
 inline Declaration *
-build_ddecl (tree t)
+lang_ddecl (tree t)
 {
   gcc_assert (DECL_P (t));
   struct lang_decl *ld = DECL_LANG_SPECIFIC (t);
