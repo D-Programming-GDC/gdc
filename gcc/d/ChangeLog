@@ -13,6 +13,12 @@
 
 2014-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-decls.cc(TypeInfoDeclaration::toSymbol): Add assert that Error
+	types never reach the backend.
+	* d-typinf.cc(Type::getTypeInfo): Likewise.
+
+2014-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* dfrontend: Update to D front-end version 2.065.
 
 	* d-codegen.cc(d_build_call): Evaluate side effects of the object

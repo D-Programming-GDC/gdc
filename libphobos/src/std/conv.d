@@ -2715,7 +2715,7 @@ unittest
 //Tests for the double implementation
 unittest
 {
-    import core.stdc.stdlib;
+    import core.stdc.stdlib, std.math;
     static if(real.mant_dig == 53)
     {
         //Should be parsed exactly: 53 bit mantissa

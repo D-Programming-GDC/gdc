@@ -6358,6 +6358,10 @@ Expression *TypeidExp::semantic(Scope *sc)
         e = new DotIdExp(ea->loc, ea, Id::classinfo);
         e = e->semantic(sc);
     }
+    else if (ta->ty == Terror)
+    {
+        e = new ErrorExp();
+    }
     else
     {
         /* Get the static type

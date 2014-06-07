@@ -97,6 +97,8 @@ Type::getTypeInfo (Scope *sc)
       fatal();
     }
 
+  gcc_assert (ty != Terror);
+
   // do this since not all Type's are merge'd
   Type *t = merge2();
   if (!t->vtinfo)

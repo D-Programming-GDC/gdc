@@ -266,6 +266,8 @@ TypeInfoDeclaration::toSymbol (void)
 {
   if (!csym)
     {
+      gcc_assert(tinfo->ty != Terror);
+
       VarDeclaration::toSymbol();
 
       // This variable is the static initialization for the
