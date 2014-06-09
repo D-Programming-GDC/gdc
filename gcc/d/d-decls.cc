@@ -526,7 +526,6 @@ FuncDeclaration::toThunkSymbol (int offset)
       /* Needed on some targets to avoid "causes a section type conflict".  */
       D_DECL_ONE_ONLY (thunk_decl) = D_DECL_ONE_ONLY (target_func_decl);
       DECL_COMDAT (thunk_decl) = DECL_COMDAT (target_func_decl);
-      DECL_COMDAT_GROUP (thunk_decl) = DECL_COMDAT_GROUP (target_func_decl);
       DECL_WEAK (thunk_decl) = DECL_WEAK (target_func_decl);
 
       DECL_NAME (thunk_decl) = get_identifier (sthunk->Sident);

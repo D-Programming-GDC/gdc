@@ -1687,7 +1687,7 @@ d_comdat_group (tree decl)
   if (DECL_COMDAT_GROUP (decl))
     return DECL_COMDAT_GROUP (decl);
 
-  return DECL_ASSEMBLER_NAME (decl);
+  return decl;
 }
 
 // Set DECL up to have the closest approximation of "initialized common"
