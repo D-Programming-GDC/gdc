@@ -1937,11 +1937,14 @@ d_finish_function (FuncDeclaration *fd)
 	static_dtor_list.safe_push (fd);
     }
 
-  if (!needs_static_chain (fd))
-    {
-      bool context = decl_function_context (decl) != NULL;
-      cgraph_finalize_function (decl, context);
-    }
+  struct cgraph_node *node = cgraph_get_node (decl);
+
+  // For nested functions update the cgraph to reflect unnesting,
+  // which is handled by the front-end.
+  if (node->origin)
+    cgraph_unnest_node (node);
+
+  cgraph_finalize_function (decl, true);
 }
 
 // Wrapup all global declarations and start the final compilation.

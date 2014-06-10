@@ -1,3 +1,9 @@
+2014-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(d_finish_function): Update the callgraph to reflect
+	unnesting of the function, as unravelling has already been handled by
+	the frontend.  Do not delay calling cgraph_finalize_function.
+
 2014-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(d_comdat_group): Return a decl.
