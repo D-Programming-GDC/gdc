@@ -119,6 +119,7 @@ else version (MINGW_IO)
     extern (C)
     {
         int setmode(int, int);
+        intptr_t _get_osfhandle(int fd);
     }
 
     void flockfile(FILE* fp) { }

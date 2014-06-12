@@ -1086,7 +1086,7 @@ AssignExp::toElem (IRState *irs)
 	  if (sd->isNested())
 	    {
 	      tree vthis_field = sd->vthis->toSymbol()->Stree;
-	      tree vthis_value = build_vthis (sd, irs->func, this);
+	      tree vthis_value = build_vthis (sd, irs->func);
 
 	      tree vthis_exp = modify_expr (component_ref (lhs, vthis_field), vthis_value);
 	      result = compound_expr (result, vthis_exp);
@@ -2113,9 +2113,7 @@ NewExp::toElem (IRState *irs)
 		}
 	    }
 	  else
-	    {
-	      vthis_value = build_vthis (class_decl, irs->func, this);
-	    }
+	    vthis_value = build_vthis (class_decl, irs->func);
 
 	  if (vthis_value)
 	    {
@@ -2168,7 +2166,7 @@ NewExp::toElem (IRState *irs)
       // Set vthis for nested structs/classes.
       if (sd->isNested())
 	{
-	  tree vthis_value = build_vthis (sd, irs->func, this);
+	  tree vthis_value = build_vthis (sd, irs->func);
 	  tree vthis_field;
 	  new_call = maybe_make_temp (new_call);
 	  vthis_field = component_ref (indirect_ref (stype->toCtype(), new_call),
@@ -2579,7 +2577,7 @@ StructLiteralExp::toElem (IRState *irs)
     {
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;
-      tree vthis_value = build_vthis (sd, irs->func, this);
+      tree vthis_value = build_vthis (sd, irs->func);
       CONSTRUCTOR_APPEND_ELT (ce, vthis_field, vthis_value);
       gcc_assert (sinit == NULL);
     }

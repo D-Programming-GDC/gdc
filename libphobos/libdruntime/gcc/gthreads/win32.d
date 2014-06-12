@@ -68,7 +68,7 @@ version (MinGW)
   extern(C)
   {
     extern __gshared int _CRT_MT;
-    extern int __mingwthr_key_dtor(ULONG, void function(void*));
+    extern nothrow int __mingwthr_key_dtor(ULONG, void function(void*));
   }
 }
 
@@ -85,7 +85,7 @@ int gthread_active_p()
     return 1;
 }
 
-int gthread_once(gthread_once_t* once, void function() func)
+int gthread_once(gthread_once_t* once, void function() nothrow func)
 {
   if (! gthread_active_p())
     return -1;

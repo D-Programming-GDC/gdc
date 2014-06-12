@@ -203,55 +203,15 @@ d_default_conversion (tree exp)
   return exp;
 }
 
-// Helper for d_build_truthvalue_op, so assumes exp will be converted to bool.
-
-static tree
-d_scalar_conversion (tree exp)
-{
-  exp = d_default_conversion (exp);
-
-  switch (TREE_CODE (exp))
-    {
-    case ARRAY_TYPE:
-    case RECORD_TYPE:
-    case UNION_TYPE:
-    case VOID_TYPE:
-    case FUNCTION_TYPE:
-    case VECTOR_TYPE:
-      // This should already be handled by the front end.
-      gcc_unreachable ();
-
-    default:
-      break;
-    }
-
-  return exp;
-}
-
-
-// Build CODE expression with operands ORIG_OP0 and ORIG_OP1,
-// performing default value conversions if CONVERT_P.
+// Build CODE expression with operands OP0 and OP1.
 // Helper function for d_truthvalue_conversion, so assumes bool result.
 
 static tree
-d_build_truthvalue_op (tree_code code, tree orig_op0,
-		       tree orig_op1, int convert_p)
+d_build_truthvalue_op (tree_code code, tree op0, tree op1)
 {
   tree type0, type1;
-  tree op0, op1;
 
   tree result_type = NULL_TREE;
-
-  if (convert_p)
-    {
-      op0 = d_scalar_conversion (orig_op0);
-      op1 = d_scalar_conversion (orig_op1);
-    }
-  else
-    {
-      op0 = orig_op0;
-      op1 = orig_op1;
-    }
 
   type0 = TREE_TYPE (op0);
   type1 = TREE_TYPE (op1);
@@ -355,8 +315,7 @@ d_truthvalue_conversion (tree expr)
       return d_build_truthvalue_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
 				     ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
 				    d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
-				    d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
-				    /* convert_p */ 0);
+				    d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
 
     case NEGATE_EXPR:
     case ABS_EXPR:
@@ -438,18 +397,17 @@ d_truthvalue_conversion (tree expr)
     {
       tree t = save_expr (expr);
       tree compon_type = TREE_TYPE (TREE_TYPE (expr));
-      return (d_build_truthvalue_op ((TREE_SIDE_EFFECTS (expr)
+      return d_build_truthvalue_op ((TREE_SIDE_EFFECTS (expr)
 				      ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
 				     d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
-				     d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)),
-				     /* convert_p */ 0));
+				     d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)));
     }
   /* Without this, the backend tries to load a float reg with and integer
      value with fails (on i386 and rs6000, at least). */
   else if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
     return d_build_truthvalue_op (NE_EXPR, expr,
-				  d_convert_basic (TREE_TYPE (expr), integer_zero_node), 1);
+				  d_convert_basic (TREE_TYPE (expr), integer_zero_node));
 
-  return d_build_truthvalue_op (NE_EXPR, expr, integer_zero_node, 1);
+  return d_build_truthvalue_op (NE_EXPR, expr, integer_zero_node);
 }
 

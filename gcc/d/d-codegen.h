@@ -175,7 +175,7 @@ extern tree build_frame_type (FuncDeclaration *func);
 extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
 extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
 
-extern tree build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e);
+extern tree build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd);
 
 // Static chain for nested functions
 extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);

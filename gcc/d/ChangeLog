@@ -1,5 +1,18 @@
 2014-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-convert.cc(d_scalar_conversion): Remove function.
+	(d_build_truthvalue_op): Update.
+	(d_truthvalue_conversion): Update.
+
+	* d-codegen.cc(get_frame_for_symbol): Remove glue-specific error
+	messages and refactor.
+	(build_vthis): Likewise.
+	(get_framedecl): Likewise.
+	* d-elem.cc(AssignExp::toElem): Update call to build_vthis.
+	(NewExp::toElem): Likewise.
+	(StructLiteralExp::toElem): Likewise.
+	* d-objfile.cc(Dsymbol::toObjFile): Fix build warning.
+
 	* d-codegen.cc(d_decl_context): Always return parent context for
 	functions nested in functions.
 	(is_degenerate_closure): Remove function.
