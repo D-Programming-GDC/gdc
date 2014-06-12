@@ -1587,17 +1587,20 @@ export BOOL SwitchToThread();
 
 version (MinGW)
 {
-    version (X86_64)
-        version = MinGW64RT;
-}
+    extern(C)
+    {
+        LONG _InterlockedIncrement(LPLONG lpAddend);
+        LONG _InterlockedDecrement(LPLONG lpAddend);
+        LONG _InterlockedExchange(LPLONG Target, LONG Value);
+        LONG _InterlockedExchangeAdd(LPLONG Addend, LONG Value);
+        LONG _InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
 
-version (MinGW64RT)
-{
-    LONG InterlockedIncrement(LPLONG lpAddend);
-    LONG InterlockedDecrement(LPLONG lpAddend);
-    LONG InterlockedExchange(LPLONG Target, LONG Value);
-    LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
-    LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
+        alias InterlockedIncrement =  _InterlockedIncrement;
+        alias InterlockedDecrement = _InterlockedDecrement;
+        alias InterlockedExchange = _InterlockedExchange;
+        alias InterlockedExchangeAdd = _InterlockedExchangeAdd;
+        alias InterlockedCompareExchange = _InterlockedCompareExchange;
+    }
 
     void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection);
     void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);

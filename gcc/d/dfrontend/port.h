@@ -26,6 +26,12 @@ typedef unsigned long long ulonglong;
 
 typedef unsigned char utf8_t;
 
+// MinGWs stdlib.h defines strtod to __strtod.
+// Depending on whether this header is included our function name changes...
+#ifdef strtod
+    #undef strtod
+#endif
+
 struct Port
 {
     static longdouble ldbl_nan;
