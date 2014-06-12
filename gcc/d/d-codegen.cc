@@ -204,12 +204,12 @@ get_decl_tree (Declaration *decl, FuncDeclaration *func)
 tree
 d_convert (tree type, tree exp)
 {
-  // Check this first before passing to build_dtype.
+  // Check this first before passing to lang_dtype.
   if (error_operand_p (type) || error_operand_p (exp))
     return error_mark_node;
 
-  Type *totype = build_dtype (type);
-  Type *etype = build_dtype (TREE_TYPE (exp));
+  Type *totype = lang_dtype (type);
+  Type *etype = lang_dtype (TREE_TYPE (exp));
 
   if (totype && etype)
     return convert_expr (exp, etype, totype);

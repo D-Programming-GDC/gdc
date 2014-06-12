@@ -1606,7 +1606,7 @@ d_finish_incomplete_decl (tree decl)
 static classify_record
 d_classify_record (tree type)
 {
-  Type *dtype = build_dtype (type);
+  Type *dtype = lang_dtype (type);
 
   if (dtype && dtype->ty == Tclass)
     {
@@ -1669,7 +1669,7 @@ d_eh_personality (void)
 static tree
 d_build_eh_type_type (tree type)
 {
-  Type *dtype = build_dtype (type);
+  Type *dtype = lang_dtype (type);
   Symbol *sym;
 
   if (dtype)
@@ -1695,7 +1695,7 @@ d_handle_noinline_attribute (tree *node, tree name,
 			     tree ARG_UNUSED (args),
 			     int ARG_UNUSED (flags), bool *no_add_attrs)
 {
-  Type *t = build_dtype (TREE_TYPE (*node));
+  Type *t = lang_dtype (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     DECL_UNINLINABLE (*node) = 1;
@@ -1716,7 +1716,7 @@ d_handle_forceinline_attribute (tree *node, tree name,
 				int ARG_UNUSED (flags),
 				bool *no_add_attrs)
 {
-  Type *t = build_dtype (TREE_TYPE (*node));
+  Type *t = lang_dtype (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     {
@@ -1747,7 +1747,7 @@ d_handle_flatten_attribute (tree *node, tree name,
 			    tree args ATTRIBUTE_UNUSED,
 			    int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
 {
-  Type *t = build_dtype (TREE_TYPE (*node));
+  Type *t = lang_dtype (TREE_TYPE (*node));
 
   if (t->ty != Tfunction)
     {
@@ -1764,7 +1764,7 @@ static tree
 d_handle_target_attribute (tree *node, tree name, tree args, int flags,
 			   bool *no_add_attrs)
 {
-  Type *t = build_dtype (TREE_TYPE (*node));
+  Type *t = lang_dtype (TREE_TYPE (*node));
 
   /* Ensure we have a function type.  */
   if (t->ty != Tfunction)
@@ -1786,7 +1786,7 @@ d_handle_noclone_attribute (tree *node, tree name,
 				int ARG_UNUSED (flags),
 				bool *no_add_attrs)
 {
-  Type *t = build_dtype (TREE_TYPE (*node));
+  Type *t = lang_dtype (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     {

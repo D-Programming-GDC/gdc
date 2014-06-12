@@ -1343,7 +1343,7 @@ FuncDeclaration::toObjFile (int)
       // Set original decl context back to true context
       if (D_DECL_STATIC_CHAIN (fndecl))
 	{
-	  Declaration *decl = build_ddecl (fndecl);
+	  Declaration *decl = lang_ddecl (fndecl);
 	  DECL_CONTEXT (fndecl) = decl->toSymbol()->ScontextDecl;
 	}
 
