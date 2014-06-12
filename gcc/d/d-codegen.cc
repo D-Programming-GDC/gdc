@@ -2937,134 +2937,90 @@ d_build_label (Loc loc, Identifier *ident)
 tree
 get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 {
-  FuncDeclaration *nested_func = sym->isFuncDeclaration();
-  FuncDeclaration *outer_func = NULL;
+  FuncDeclaration *thisfd = sym->isFuncDeclaration();
+  FuncDeclaration *parentfd = NULL;
 
-  if (nested_func != NULL)
+  if (thisfd != NULL)
     {
       // Check that the nested function is properly defined.
-      if (!nested_func->fbody)
+      if (!thisfd->fbody)
 	{
-	  // Should instead error on line that references nested_func
-	  nested_func->error ("nested function missing body");
+	  // Should instead error on line that references 'thisfd'.
+	  thisfd->error ("nested function missing body");
 	  return null_pointer_node;
 	}
 
-      outer_func = nested_func->toParent2()->isFuncDeclaration();
-      gcc_assert (outer_func != NULL);
-
-      if (func != outer_func)
-	{
-	  // If no frame pointer for this function
-	  if (!func->vthis)
-	    {
-	      sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
-	      return null_pointer_node;
-	    }
-
-	  Dsymbol *this_func = func;
-
-	  // Make sure we can get the frame pointer to the outer function,
-	  // else we'll ICE later in tree-ssa.
-	  while (nested_func != this_func)
-	    {
-	      FuncDeclaration *fd;
-	      ClassDeclaration *cd;
-	      StructDeclaration *sd;
-
-	      // Special case for __ensure and __require.
-	      if (nested_func->ident == Id::ensure || nested_func->ident == Id::require)
-		{
-		  outer_func = func;
-		  break;
-		}
-
-	      if ((fd = this_func->isFuncDeclaration()))
-		{
-		  if (outer_func == fd->toParent2())
-		    break;
-
-		  gcc_assert (fd->isNested() || fd->vthis);
-		}
-	      else if ((cd = this_func->isClassDeclaration()))
-		{
-		  if (!cd->isNested() || !cd->vthis)
-		    goto cannot_get_frame;
-
-		  if (outer_func == cd->toParent2())
-		    break;
-		}
-	      else if ((sd = this_func->isStructDeclaration()))
-		{
-		  if (!sd->isNested() || !sd->vthis)
-		    goto cannot_get_frame;
-
-		  if (outer_func == sd->toParent2())
-		    break;
-		}
-	      else
-		{
-	        cannot_get_frame:
-		  func->error ("cannot get frame pointer to %s", sym->toChars());
-		  return null_pointer_node;
-		}
-	      this_func = this_func->toParent2();
-	    }
-	}
+      // Special case for __ensure and __require.
+      if (thisfd->ident == Id::ensure || thisfd->ident == Id::require)
+	parentfd = func;
+      else
+	parentfd = thisfd->toParent2()->isFuncDeclaration();
     }
   else
     {
-      /* It's a class (or struct).  NewExp::toElem has already determined its
-	 outer scope is not another class, so it must be a function. */
-
+      // It's a class (or struct).  NewExp::toElem has already determined its
+      // outer scope is not another class, so it must be a function.
       while (sym && !sym->isFuncDeclaration())
 	sym = sym->toParent2();
 
-      outer_func = (FuncDeclaration *) sym;
+      parentfd = (FuncDeclaration *) sym;
+    }
 
-      /* Make sure we can access the frame of outer_func.  */
-      if (outer_func != func)
+  gcc_assert (parentfd != NULL);
+
+  if (func != parentfd)
+    {
+      // If no frame pointer for this function
+      if (!func->vthis)
 	{
-	  nested_func = func;
-	  while (nested_func && nested_func != outer_func)
+	  sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
+	  return null_pointer_node;
+	}
+
+      // Make sure we can get the frame pointer to the outer function.
+      // Go up each nesting level until we find the enclosing function.
+      Dsymbol *dsym = func;
+
+      while (thisfd != dsym)
+	{
+	  // Check if enclosing function is a function.
+	  FuncDeclaration *fd = dsym->isFuncDeclaration();
+
+	  if (fd != NULL)
 	    {
-	      Dsymbol *outer = nested_func->toParent2();
+	      if (parentfd == fd->toParent2())
+		break;
 
-	      if (!nested_func->isNested())
-		{
-		  if (!nested_func->isMember2())
-		    goto cannot_access_frame;
-		}
-
-	      while (outer)
-		{
-		  if (outer->isFuncDeclaration())
-		    break;
-
-		  outer = outer->toParent2();
-		}
-
-	      nested_func = (FuncDeclaration *) outer;
+	      gcc_assert (fd->isNested() || fd->vthis);
+	      dsym = dsym->toParent2();
+	      continue;
 	    }
 
-	  if (!nested_func)
+	  // Check if enclosed by an aggregate. That means the current
+	  // function must be a member function of that aggregate.
+	  AggregateDeclaration *ad = dsym->isAggregateDeclaration();
+
+	  if (ad == NULL)
+	    goto Lnoframe;
+	  if (ad->isClassDeclaration() && parentfd == ad->toParent2())
+	    break;
+	  if (ad->isStructDeclaration() && parentfd == ad->toParent2())
+	    break;
+
+	  if (!ad->isNested() || !ad->vthis)
 	    {
-	    cannot_access_frame:
-	      error ("cannot access frame of function '%s' from '%s'",
-		     outer_func->toChars(), func->toChars());
+	    Lnoframe:
+	      func->error ("cannot get frame pointer to %s", sym->toChars());
 	      return null_pointer_node;
 	    }
+
+	  dsym = dsym->toParent2();
 	}
     }
 
-  if (!outer_func)
-    outer_func = nested_func->toParent2()->isFuncDeclaration();
-
-  gcc_assert (outer_func != NULL);
-
-  FuncFrameInfo *ffo = get_frameinfo (outer_func);
+  FuncFrameInfo *ffo = get_frameinfo (parentfd);
   if (ffo->creates_frame || ffo->static_chain)
-    return get_framedecl (func, outer_func);
+    return get_framedecl (func, parentfd);
 
   return null_pointer_node;
 }
@@ -3140,11 +3096,10 @@ find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
   return NULL_TREE;
 }
 
-// Retrieve the outer class/struct 'this' value of DECL from the function FD
-// where E is the expression requiring 'this'.
+// Retrieve the outer class/struct 'this' value of DECL from the function FD.
 
 tree
-build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
+build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd)
 {
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
@@ -3160,9 +3115,7 @@ build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
       if (cdo)
 	{
 	  vthis_value = find_this_tree (fd, cdo);
-	  if (vthis_value == NULL_TREE)
-	    e->error ("outer class %s 'this' needed to 'new' nested class %s",
-		      cdo->toChars(), cd->toChars());
+	  gcc_assert (vthis_value != NULL_TREE);
 	}
       else if (fdo)
 	{
@@ -3191,9 +3144,7 @@ build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
       if (cdo)
 	{
 	  vthis_value = find_this_tree (fd, cdo);
-	  if (vthis_value == NULL_TREE)
-	    e->error ("outer class %s 'this' needed to create nested struct %s",
-		      cdo->toChars(), sd->toChars());
+	  gcc_assert (vthis_value != NULL_TREE);
 	}
       else if (fdo)
 	{
@@ -3405,19 +3356,15 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
       ClassDeclaration *cd;
       StructDeclaration *sd;
 
+      // Parent frame link is the first field.
       if (get_frameinfo (fd)->creates_frame)
-	{
-	  // like compon (indirect, field0) parent frame link is the first field;
-	  result = indirect_ref (ptr_type_node, result);
-	}
+	result = indirect_ref (ptr_type_node, result);
 
       if (fd->isNested())
 	fd = fd->toParent2()->isFuncDeclaration();
-      /* get_framedecl is only used to get the pointer to a function's frame
-	 (not a class instances).  With the current implementation, the link
-	 the frame/closure record always points to the outer function's frame even
-	 if there are intervening nested classes or structs.
-	 So, we can just skip over those... */
+      // The frame/closure record always points to the outer function's
+      // frame, even if there are intervening nested classes or structs.
+      // So, we can just skip over these...
       else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
 	fd = d_nested_class (cd);
       else if ((ad = fd->isThis()) && (sd = ad->isStructDeclaration()))
@@ -3426,24 +3373,18 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 	break;
     }
 
-  if (fd == outer)
-    {
-      tree frame_rec = get_frameinfo (outer)->frame_rec;
+  // Go get our frame record.
+  gcc_assert (fd == outer);
+  tree frame_rec = get_frameinfo (outer)->frame_rec;
 
-      if (frame_rec != NULL_TREE)
-	{
-	  result = build_nop (build_pointer_type (frame_rec), result);
-	  return result;
-	}
-      else
-	{
-	  inner->error ("forward reference to frame of %s", outer->toChars());
-	  return null_pointer_node;
-	}
+  if (frame_rec != NULL_TREE)
+    {
+      result = build_nop (build_pointer_type (frame_rec), result);
+      return result;
     }
   else
     {
-      inner->error ("cannot access frame of %s", outer->toChars());
+      inner->error ("forward reference to frame of %s", outer->toChars());
       return null_pointer_node;
     }
 }

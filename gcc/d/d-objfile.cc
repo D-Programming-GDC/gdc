@@ -116,7 +116,7 @@ Dsymbol::toObjFile (int)
 	  set_input_location (imp);
 
 	  tree name = (imp->aliasId != NULL)
-	    ? name = get_identifier (imp->aliasId->string) : NULL_TREE;
+	    ? get_identifier (imp->aliasId->string) : NULL_TREE;
 
 	  (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
 	}
