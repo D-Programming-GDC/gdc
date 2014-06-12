@@ -58,9 +58,6 @@ struct Symbol
   // Our GNU backend tree for the symbol.
   tree Stree;
 
-  // The real DECL_CONTEXT of the symbol, if the context of Stree differs.
-  tree ScontextDecl;
-
   // FIELD_DECL in frame struct that this variable is allocated in.
   tree SframeField;
 

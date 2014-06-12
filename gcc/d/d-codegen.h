@@ -180,8 +180,6 @@ extern tree build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e);
 // Static chain for nested functions
 extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);
 
-extern bool needs_static_chain (FuncDeclaration *f);
-
 // Local variables
 extern void build_local_var (VarDeclaration *vd, FuncDeclaration *fd);
 extern tree build_local_temp (tree type);

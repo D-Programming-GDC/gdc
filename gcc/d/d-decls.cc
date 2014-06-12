@@ -328,14 +328,6 @@ FuncDeclaration::toSymbol (void)
 
       csym->Stree = fndecl;
 
-      if (needs_static_chain (this))
-	{
-	  D_DECL_STATIC_CHAIN (fndecl) = 1;
-	  // Save context and set decl_function_context for cgraph.
-	  csym->ScontextDecl = DECL_CONTEXT (fndecl);
-	  DECL_CONTEXT (fndecl) = decl_function_context (fndecl);
-	}
-
       TREE_TYPE (fndecl) = ftype->toCtype();
       DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
       d_keep (fndecl);
