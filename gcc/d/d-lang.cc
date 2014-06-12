@@ -58,7 +58,7 @@ static const attribute_spec d_attribute_table[] =
     { "target",                 1, -1, true, false, false,
 				d_handle_target_attribute, false },
     { "noclone",                0, 0, true, false, false,
-				d_handle_noclone_attribute, false }, 
+				d_handle_noclone_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 

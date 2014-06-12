@@ -179,7 +179,7 @@ gcc_type_to_d_type (tree t)
 	  length = size_binop (PLUS_EXPR, size_one_node,
 			       convert (sizetype, length));
 
-	  d = TypeSArray::makeType (Loc(), d, tree_to_hwi (length));
+	  d = TypeSArray::makeType (Loc(), d, TREE_INT_CST_LOW (length));
 	  d->ctype = t;
 	  return d;
 	}
@@ -682,7 +682,7 @@ gcc_cst_to_d_expr (tree cst)
 	}
       else if (code == INTEGER_CST)
 	{
-	  dinteger_t value = tree_to_hwi (cst);
+	  dinteger_t value = TREE_INT_CST_LOW (cst);
 	  return new IntegerExp (Loc(), value, type);
 	}
       else if (code == REAL_CST)
@@ -1545,8 +1545,7 @@ static bool
 get_nonnull_operand (tree arg_num_expr, unsigned HOST_WIDE_INT *valp)
 {
   /* Verify the arg number is a constant.  */
-  if (TREE_CODE (arg_num_expr) != INTEGER_CST
-      || TREE_INT_CST_HIGH (arg_num_expr) != 0)
+  if (!tree_fits_uhwi_p (arg_num_expr))
     return false;
 
   *valp = TREE_INT_CST_LOW (arg_num_expr);

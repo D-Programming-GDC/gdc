@@ -7,6 +7,20 @@
 	(longdouble::set): Adjust.
 	(longdouble::operator): Likewise.
 
+	* d-lang.cc(alloc_binding_level): Adjust.
+	(build_d_type_lang_specific): Likewise.
+	(build_d_decl_lang_specific): Likewise.
+	* d-lang.h(lang_type): Don't use variable_size gty attribute.
+	* d-codegen.cc(cst_to_hwi): Remove function.
+	* d-codegen.cc(tree_to_hwi): Remove function.
+	* d-builtins.c(gcc_type_to_d_type): Adjust.
+	(gcc_cst_to_d_expr): Likewise.
+	* d-convert.cc(d_truthvalue_conversion): Use integer_zerop.
+	(get_nonnull_operand): Use tree_fits_uhwi_p.
+	* d-longdouble.cc(longdouble::from_int): Adjust.
+	(longdouble::from_uint): Likewise.
+	(longdouble::to_int): Likewise.
+
 2014-04-30  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_init): Define GNU_SEH_Exceptions and

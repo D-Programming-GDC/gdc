@@ -151,21 +151,12 @@ longdouble::from_uint (Type *type, uint64_t d)
 int64_t
 longdouble::to_int (Type *type) const
 {
-  double_int cst;
-
   if (REAL_VALUE_ISNAN (rv()))
-    {
-      cst.low = 0;
-      cst.high = 0;
-    }
-  else
-    {
-      tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
-			    build_float_cst (*this, Type::tfloat64));
-      cst = TREE_INT_CST (t);
-    }
+    return 0;
 
-  return cst_to_hwi (cst);
+  tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
+			build_float_cst (*this, Type::tfloat64));
+  return TREE_INT_CST_LOW (t);
 }
 
 // Same as longdouble::to_int, but returns a uint64_t.
