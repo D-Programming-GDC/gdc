@@ -1,5 +1,9 @@
 2014-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-convert.cc(d_scalar_conversion): Remove function.
+	(d_build_truthvalue_op): Update.
+	(d_truthvalue_conversion): Update.
+
 	* d-codegen.cc(get_frame_for_symbol): Remove glue-specific error
 	messages and refactor.
 	(build_vthis): Likewise.
