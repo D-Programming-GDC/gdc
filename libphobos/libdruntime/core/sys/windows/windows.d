@@ -12,6 +12,11 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/*
+ * NOTE: This file has been patched from the original DMD distribution to
+ * work with the GDC compiler.
+ */
 module core.sys.windows.windows;
 
 version (Windows):
@@ -501,6 +506,7 @@ BOOL   FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW* lpFindFileData);
 BOOL   GetExitCodeThread(HANDLE hThread, DWORD *lpExitCode);
 BOOL   GetExitCodeProcess(HANDLE hProcess, DWORD *lpExitCode);
 DWORD  GetLastError();
+void   SetLastError(DWORD dwErrCode);
 DWORD  GetFileAttributesA(in char *lpFileName);
 DWORD  GetFileAttributesW(in wchar *lpFileName);
 BOOL   GetFileAttributesExA(LPCSTR, GET_FILEEX_INFO_LEVELS, PVOID);
