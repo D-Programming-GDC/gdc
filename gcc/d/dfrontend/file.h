@@ -18,8 +18,7 @@
 
 #include "array.h"
 
-template <typename TYPE> struct Array;
-typedef Array<struct File> Files;
+typedef Array<struct File *> Files;
 
 struct FileName;
 
@@ -33,6 +32,7 @@ struct File
     FileName *name;             // name of our file
 
     File(const char *);
+    static File *create(const char *);
     File(const FileName *);
     ~File();
 

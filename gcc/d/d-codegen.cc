@@ -19,9 +19,11 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
+#include "attrib.h"
 #include "template.h"
 #include "init.h"
 #include "id.h"
+#include "module.h"
 #include "dfrontend/target.h"
 
 
@@ -909,6 +911,7 @@ insert_type_modifiers (tree type, unsigned mod)
 
     case MODconst:
     case MODwild:
+    case MODwildconst:
     case MODimmutable:
       quals |= TYPE_QUAL_CONST;
       break;
@@ -917,8 +920,9 @@ insert_type_modifiers (tree type, unsigned mod)
       quals |= TYPE_QUAL_VOLATILE;
       break;
 
-    case MODshared | MODwild:
     case MODshared | MODconst:
+    case MODshared | MODwild:
+    case MODshared | MODwildconst:
       quals |= TYPE_QUAL_CONST;
       quals |= TYPE_QUAL_VOLATILE;
       break;
@@ -1961,10 +1965,17 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       gcc_unreachable();
     }
 
-  /* If this is a delegate call or a nested function being called as
-     a delegate, the object should not be NULL. */
+  // If this is a delegate call or a nested function being called as
+  // a delegate, the object should not be NULL.
   if (object != NULL_TREE)
-    arg_list = build_tree_list (NULL_TREE, object);
+    {
+      if (TREE_SIDE_EFFECTS (object))
+	{
+	  object = maybe_make_temp (object);
+	  saved_args = maybe_vcompound_expr (saved_args, object);
+	}
+      arg_list = build_tree_list (NULL_TREE, object);
+    }
 
   if (arguments)
     {
@@ -2029,7 +2040,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
     }
 
   tree result = d_build_call_list (TREE_TYPE (ctype), callee, arg_list);
-  result = maybe_expand_builtin (result);
+  result = expand_intrinsic (result);
 
   return maybe_compound_expr (saved_args, result);
 }
@@ -2071,7 +2082,7 @@ static const char *libcall_ids[LIBCALL_count] = {
     "_aaGetRvalueX", "_aaGetX",
     "_aaInX",
     "_adCmp2", "_adEq2",
-    "_d_allocmemory", "_d_array_bounds",
+    "_d_allocmemory", "_d_arraybounds",
     "_d_arrayappendT", "_d_arrayappendcTX",
     "_d_arrayappendcd", "_d_arrayappendwd",
     "_d_arrayassign", "_d_arraycast",
@@ -2267,9 +2278,9 @@ get_libcall (LibCall libcall)
 
 	case LIBCALL_ARRAYCOPY:
 	  targs.push (Type::tsize_t);
-	  targs.push (Type::tint8->arrayOf());
-	  targs.push (Type::tint8->arrayOf());
-	  treturn = Type::tint8->arrayOf();
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYCATT:
@@ -2460,6 +2471,40 @@ d_build_call_nary (tree callee, int n_args, ...)
   return d_build_call_list (TREE_TYPE (fntype), build_address (callee), nreverse (arg_list));
 }
 
+// List of codes for internally recognised compiler intrinsics.
+
+enum intrinsic_code
+{
+#define DEF_INTRINSIC(CODE, A, N, M, D) CODE,
+#include "d-intrinsics.def"
+#undef DEF_INTRINSIC
+  INTRINSIC_LAST
+};
+
+// An internal struct used to hold information on D intrinsics.
+
+struct intrinsic_decl
+{
+  // The DECL_FUNCTION_CODE of this decl.
+  intrinsic_code code;
+
+  // The name of the intrinsic.
+  const char *name;
+
+  // The module where the intrinsic is located.
+  const char *module;
+
+  // The mangled signature decoration of the intrinsic.
+  const char *deco;
+};
+
+static const intrinsic_decl intrinsic_decls[] =
+{
+#define DEF_INTRINSIC(CODE, ALIAS, NAME, MODULE, DECO) { ALIAS, NAME, MODULE, DECO },
+#include "d-intrinsics.def"
+#undef DEF_INTRINSIC
+};
+
 // Call an fold the intrinsic call CALLEE with the argument ARG
 // with the built-in function CODE passed.
 
@@ -2485,7 +2530,7 @@ expand_intrinsic_op2 (built_in_function code, tree callee, tree arg1, tree arg2)
 static tree
 expand_intrinsic_bsr (tree callee, tree arg)
 {
-  // Intrinsic bsr gets turned into (size - 1) - count_leading_zeros(arg).
+  // intrinsic_code bsr gets turned into (size - 1) - count_leading_zeros(arg).
   // %% TODO: The return value is supposed to be undefined if arg is zero.
   tree type = TREE_TYPE (arg);
   tree tsize = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)) - 1, type);
@@ -2504,7 +2549,7 @@ expand_intrinsic_bsr (tree callee, tree arg)
 // ARG1 and ARG2, and the original call expression is held in CALLEE.
 
 static tree
-expand_intrinsic_bt (Intrinsic intrinsic, tree callee, tree arg1, tree arg2)
+expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2)
 {
   tree type = TREE_TYPE (TREE_TYPE (arg1));
   tree exp = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)), type);
@@ -2607,14 +2652,89 @@ expand_intrinsic_vastart (tree callee, tree arg1, tree arg2)
   return expand_intrinsic_op2 (BUILT_IN_VA_START, callee, arg1, arg2);
 }
 
+// Checks if DECL is an intrinsic or runtime library function that
+// requires special processing.  Marks the generated trees for DECL
+// as BUILT_IN_FRONTEND so can be identified later.
+
+void
+maybe_set_intrinsic (FuncDeclaration *decl)
+{
+  if (!decl->ident || decl->builtin == BUILTINyes)
+    return;
+
+  // It's a runtime library function, add to libcall_decls.
+  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
+  if (libcall != LIBCALL_NONE)
+    {
+      if (libcall_decls[libcall] == decl)
+	return;
+
+      // This should have been done either by the front-end or get_libcall.
+      TypeFunction *tf = (TypeFunction *) decl->type;
+      gcc_assert (tf->parameters != NULL);
+
+      libcall_decls[libcall] = decl;
+      return;
+    }
+
+  // Check if it's a compiler intrinsic.  We only require that any
+  // internally recognised intrinsics are declared in a module with
+  // an explicit module declaration.
+  Module *m = decl->getModule();
+  if (!m || !m->md)
+    return;
+
+  // Look through all D intrinsics.
+  TemplateInstance *ti = decl->isInstantiated();
+  TemplateDeclaration *td = ti ? ti->tempdecl->isTemplateDeclaration() : NULL;
+  const char *tname = decl->ident->string;
+  const char *tmodule = m->md->toChars();
+  const char *tdeco = decl->type->deco;
+
+  for (size_t i = 0; i < (int) INTRINSIC_LAST; i++)
+    {
+      if (strcmp (intrinsic_decls[i].name, tname) != 0
+	  || strcmp (intrinsic_decls[i].module, tmodule) != 0)
+	continue;
+
+      if (td && td->onemember)
+	{
+	  FuncDeclaration *fd = td->onemember->isFuncDeclaration();
+	  if (fd != NULL
+	      && strcmp (fd->type->toChars(), intrinsic_decls[i].deco) == 0)
+	    goto Lfound;
+	}
+      else if (strcmp (intrinsic_decls[i].deco, tdeco) == 0)
+	{
+	Lfound:
+	  intrinsic_code code = intrinsic_decls[i].code;
+
+	  if (decl->csym == NULL)
+	    {
+	      // Store a stub BUILT_IN_FRONTEND decl.
+	      decl->csym = new Symbol();
+	      decl->csym->Stree = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+					      NULL_TREE, NULL_TREE);
+	      DECL_NAME (decl->csym->Stree) = get_identifier (tname);
+	      TREE_TYPE (decl->csym->Stree) = decl->type->toCtype();
+	      d_keep (decl->csym->Stree);
+	    }
+
+	  DECL_BUILT_IN_CLASS (decl->csym->Stree) = BUILT_IN_FRONTEND;
+	  DECL_FUNCTION_CODE (decl->csym->Stree) = (built_in_function) code;
+	  decl->builtin = BUILTINyes;
+	  break;
+	}
+    }
+}
+
 // If CALLEXP is a BUILT_IN_FRONTEND, expand and return inlined
 // compiler generated instructions. Most map onto GCC builtins,
 // others require a little extra work around them.
 
 tree
-maybe_expand_builtin (tree callexp)
+expand_intrinsic (tree callexp)
 {
-  // More code duplication from C
   CallExpr ce (callexp);
   tree callee = ce.callee();
 
@@ -2624,15 +2744,14 @@ maybe_expand_builtin (tree callexp)
   if (TREE_CODE (callee) == FUNCTION_DECL
       && DECL_BUILT_IN_CLASS (callee) == BUILT_IN_FRONTEND)
     {
-      Intrinsic intrinsic = (Intrinsic) DECL_FUNCTION_CODE (callee);
+      intrinsic_code intrinsic = (intrinsic_code) DECL_FUNCTION_CODE (callee);
       tree op1, op2;
       tree type;
 
       switch (intrinsic)
 	{
 	case INTRINSIC_BSF:
-	  // builtin count_trailing_zeros matches behaviour of bsf.
-	  // %% TODO: The return value is supposed to be undefined if op1 is zero.
+	  // Builtin count_trailing_zeros matches behaviour of bsf
 	  op1 = ce.nextArg();
 	  return expand_intrinsic_op (BUILT_IN_CTZL, callexp, op1);
 
@@ -2648,8 +2767,8 @@ maybe_expand_builtin (tree callexp)
 	  return expand_intrinsic_bt (intrinsic, callexp, op1, op2);
 
 	case INTRINSIC_BSWAP:
-	  /* Backend provides builtin bswap32.
-	     Assumes first argument and return type is uint. */
+	  // Backend provides builtin bswap32.
+	  // Assumes first argument and return type is uint.
 	  op1 = ce.nextArg();
 	  return expand_intrinsic_op (BUILT_IN_BSWAP32, callexp, op1);
 
@@ -2669,6 +2788,8 @@ maybe_expand_builtin (tree callexp)
 	  return expand_intrinsic_op (BUILT_IN_LLROUNDL, callexp, op1);
 
 	case INTRINSIC_SQRT:
+	case INTRINSIC_SQRTF:
+	case INTRINSIC_SQRTL:
 	  // Have float, double and real variants of sqrt.
 	  op1 = ce.nextArg();
 	  type = TYPE_MAIN_VARIANT (TREE_TYPE (op1));
@@ -2676,11 +2797,11 @@ maybe_expand_builtin (tree callexp)
 	  if (INTEGRAL_TYPE_P (type))
 	    op1 = convert (double_type_node, op1);
 
-	  if (type == double_type_node)
+	  if (intrinsic == INTRINSIC_SQRT)
 	    return expand_intrinsic_op (BUILT_IN_SQRT, callexp, op1);
-	  else if (type == float_type_node)
+	  else if (intrinsic == INTRINSIC_SQRTF)
 	    return expand_intrinsic_op (BUILT_IN_SQRTF, callexp, op1);
-	  else if (type == long_double_type_node)
+	  else if (intrinsic == INTRINSIC_SQRTL)
 	    return expand_intrinsic_op (BUILT_IN_SQRTL, callexp, op1);
 
 	  gcc_unreachable();
@@ -2708,7 +2829,7 @@ maybe_expand_builtin (tree callexp)
 	  op1 = ce.nextArg();
 	  return expand_intrinsic_vaarg (callexp, op1, NULL_TREE);
 
-	case INTRINSIC_VA_START:
+	case INTRINSIC_VASTART:
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
 	  return expand_intrinsic_vastart (callexp, op1, op2);
@@ -2767,180 +2888,6 @@ build_typeinfo (Type *t)
   tree tinfo = t->getInternalTypeInfo (NULL)->toElem (current_irstate);
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (tinfo)));
   return tinfo;
-}
-
-// Checks if DECL is an intrinsic or runtime library function that
-// requires special processing.  Marks the generated trees for DECL
-// as BUILT_IN_FRONTEND so can be identified later.
-
-void
-maybe_set_builtin_frontend (FuncDeclaration *decl)
-{
-  if (!decl->ident)
-    return;
-
-  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
-
-  if (libcall != LIBCALL_NONE)
-    {
-      // It's a runtime library function, add to libcall_decls.
-      if (libcall_decls[libcall] == decl)
-	return;
-
-      // This should have been done either by the front-end or get_libcall.
-      TypeFunction *tf = (TypeFunction *) decl->type;
-      gcc_assert (tf->parameters != NULL);
-
-      libcall_decls[libcall] = decl;
-    }
-  else
-    {
-      // Check if it's a front-end builtin.
-      static const char FeZe [] = "FNaNbNfeZe";		    // @safe pure nothrow real function(real)
-      static const char FeZe2[] = "FNaNbNeeZe";		    // @trusted pure nothrow real function(real)
-      static const char FuintZint[] = "FNaNbNfkZi";	    // @safe pure nothrow int function(uint)
-      static const char FuintZuint[] = "FNaNbNfkZk";	    // @safe pure nothrow uint function(uint)
-      static const char FulongZint[] = "FNaNbNfmZi";	    // @safe pure nothrow int function(uint)
-      static const char FrealZlong [] = "FNaNbNfeZl";	    // @safe pure nothrow long function(real)
-      static const char FlongplongZint [] = "FNaNbPmmZi";   // pure nothrow int function(long*, long)
-      static const char FintpintZint [] = "FNaNbPkkZi";	    // pure nothrow int function(int*, int)
-      static const char FrealintZint [] = "FNaNbNfeiZe";    // @safe pure nothrow real function(real, int)
-
-      Dsymbol *dsym = decl->toParent();
-      TypeFunction *ftype = (TypeFunction *) (decl->tintro ? decl->tintro : decl->type);
-      Module *mod;
-
-      if (dsym == NULL)
-	return;
-
-      mod = dsym->getModule();
-
-      if (is_intrinsic_module_p (mod))
-	{
-	  // Matches order of Intrinsic enum
-	  static const char *intrinsic_names[] = {
-	      "bsf", "bsr", "bswap",
-	      "btc", "btr", "bts",
-	  };
-	  const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
-	  int i = binary (decl->ident->string, intrinsic_names, sz);
-
-	  if (i == -1)
-	    return;
-
-	  switch (i)
-	    {
-	    case INTRINSIC_BSF:
-	    case INTRINSIC_BSR:
-	      if (!(strcmp (ftype->deco, FuintZint) == 0 || strcmp (ftype->deco, FulongZint) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_BSWAP:
-	      if (!(strcmp (ftype->deco, FuintZuint) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_BTC:
-	    case INTRINSIC_BTR:
-	    case INTRINSIC_BTS:
-	      if (!(strcmp (ftype->deco, FlongplongZint) == 0 || strcmp (ftype->deco, FintpintZint) == 0))
-		return;
-	      break;
-	    }
-
-	  // Make sure 'i' is within the range we require.
-	  gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
-	  tree t = decl->toSymbol()->Stree;
-
-	  DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	  DECL_FUNCTION_CODE (t) = (built_in_function) i;
-	}
-      else if (is_math_module_p (mod))
-	{
-	  // Matches order of Intrinsic enum
-	  static const char *math_names[] = {
-	      "cos", "fabs", "ldexp",
-	      "rint", "rndtol", "sin", "sqrt",
-	  };
-	  const size_t sz = sizeof (math_names) / sizeof (char *);
-	  int i = binary (decl->ident->string, math_names, sz);
-
-	  if (i == -1)
-	    return;
-
-	  // Adjust 'i' for this range of enums
-	  i += INTRINSIC_COS;
-	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
-
-	  switch (i)
-	    {
-	    case INTRINSIC_COS:
-	    case INTRINSIC_FABS:
-	    case INTRINSIC_RINT:
-	    case INTRINSIC_SIN:
-	      if (!(strcmp (ftype->deco, FeZe) == 0 || strcmp (ftype->deco, FeZe2) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_LDEXP:
-	      if (!(strcmp (ftype->deco, FrealintZint) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_RNDTOL:
-	      if (!(strcmp (ftype->deco, FrealZlong) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_SQRT:
-	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0
-		    || strcmp (ftype->deco, "FNaNbNffZf") == 0
-		    || strcmp (ftype->deco, FeZe) == 0
-		    || strcmp (ftype->deco, FeZe2) == 0))
-		return;
-	      break;
-	    }
-
-	  tree t = decl->toSymbol()->Stree;
-
-	  // rndtol returns a long type, sqrt any float type,
-	  // every other math builtin returns a real type.
-	  Type *tf = decl->type->nextOf();
-	  if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
-	      || (i == INTRINSIC_SQRT && tf->isreal())
-	      || (i != INTRINSIC_RNDTOL && tf->ty == Tfloat80))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) i;
-	    }
-	}
-      else
-	{
-	  TemplateInstance *ti = dsym->isTemplateInstance();
-
-	  if (ti == NULL)
-	    return;
-
-	  tree t = decl->toSymbol()->Stree;
-
-	  if (is_builtin_va_arg_p (ti->tempdecl, false))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_ARG;
-	    }
-	  else if (is_builtin_va_arg_p (ti->tempdecl, true))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_ARG;
-	    }
-	  else if (is_builtin_va_start_p (ti->tempdecl))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_START;
-	    }
-	}
-    }
 }
 
 // Build and return D's internal exception Object.
@@ -3730,16 +3677,19 @@ insert_aggregate_field (AggLayout *al, tree decl, size_t offset)
 // any GCC attributes that were applied to the type declaration.
 
 void
-finish_aggregate_type (AggLayout *al, Expressions *attrs)
+finish_aggregate_type (AggLayout *al, UserAttributeDeclaration *declattrs)
 {
   unsigned structsize = al->decl->structsize;
   unsigned alignsize = al->decl->alignsize;
 
   TYPE_SIZE (al->type) = NULL_TREE;
 
-  if (attrs)
-    decl_attributes (&al->type, build_attributes (attrs),
-		     ATTR_FLAG_TYPE_IN_PLACE);
+  if (declattrs)
+    {
+      Expressions *attrs = declattrs->getAttributes();
+      decl_attributes (&al->type, build_attributes (attrs),
+		       ATTR_FLAG_TYPE_IN_PLACE);
+    }
 
   TYPE_SIZE (al->type) = bitsize_int (structsize * BITS_PER_UNIT);
   TYPE_SIZE_UNIT (al->type) = size_int (structsize);

@@ -147,8 +147,8 @@ EqualExp::toElem (IRState *irs)
 	  tree t1size, t2size;
 
 	  // Make temporaries to prevent multiple evaluations.
-	  tree t1saved = maybe_make_temp (t1);
-	  tree t2saved = maybe_make_temp (t2);
+	  tree t1saved = make_temp (t1);
+	  tree t2saved = make_temp (t2);
 
 	  if (tb1->ty == Tarray)
 	    {
@@ -192,10 +192,10 @@ EqualExp::toElem (IRState *irs)
 	    }
 
 	  // Ensure left-to-right order of evaluation.
-	  if (t2 != t2saved)
+	  if (d_has_side_effects (t2))
 	    result = compound_expr (t2saved, result);
 
-	  if (t1 != t1saved)
+	  if (d_has_side_effects (t1))
 	    result = compound_expr (t1saved, result);
 
 	  return result;
@@ -875,7 +875,7 @@ CatAssignExp::toElem (IRState *irs)
 
 	  result = build_libcall (LIBCALL_ARRAYAPPENDT, 3, args, type->toCtype());
 	}
-      else
+      else if (d_types_compatible (etype, tb2))
 	{
 	  // Append an element
 	  tree args[3];
@@ -902,6 +902,8 @@ CatAssignExp::toElem (IRState *irs)
 	  result = modify_expr (etype->toCtype(), build_deref (ptr_exp), e2e);
 	  result = compound_expr (e2e, result);
 	}
+      else
+	gcc_unreachable();
     }
 
   return aoe.finish (result);
@@ -1390,6 +1392,13 @@ CastExp::toElem (IRState *irs)
   return convert_expr (t, ebtype, tbtype);
 }
 
+elem *
+BoolExp::toElem (IRState *irs)
+{
+  // Check, should we instead do truthvalue conversion?
+  tree exp = e1->toElem (irs);
+  return d_convert (type->toCtype(), exp);
+}
 
 elem *
 DeleteExp::toElem (IRState *irs)
@@ -1475,22 +1484,9 @@ RemoveExp::toElem (IRState *irs)
 }
 
 elem *
-BoolExp::toElem (IRState *irs)
-{
-  if (e1->op == TOKcall && e1->type->toBasetype()->ty == Tvoid)
-    {
-      /* This could happen as '&&' is allowed as a shorthand for 'if'
-	 eg:  (condition) && callexpr();  */
-      return e1->toElem (irs);
-    }
-
-  return convert (type->toCtype(), convert_for_condition (e1->toElem (irs), e1->type));
-}
-
-elem *
 NotExp::toElem (IRState *irs)
 {
-  // %% doc: need to convert to boolean type or this will fail.
+  // Need to convert to boolean type or this will fail.
   tree t = build1 (TRUTH_NOT_EXPR, boolean_type_node,
 		   convert_for_condition (e1->toElem (irs), e1->type));
   return d_convert (type->toCtype(), t);
@@ -1499,21 +1495,17 @@ NotExp::toElem (IRState *irs)
 elem *
 ComExp::toElem (IRState *irs)
 {
+  TY ty1 = e1->type->toBasetype()->ty;
+  gcc_assert ((ty1 != Tarray) && (ty1 != Tsarray));
+
   return build1 (BIT_NOT_EXPR, type->toCtype(), e1->toElem (irs));
 }
 
 elem *
 NegExp::toElem (IRState *irs)
 {
-  // %% GCC B.E. won't optimize (NEGATE_EXPR (INTEGER_CST ..))..
-  // %% is type correct?
   TY ty1 = e1->type->toBasetype()->ty;
-
-  if (ty1 == Tarray || ty1 == Tsarray)
-    {
-      error ("Array operation %s not implemented", toChars());
-      return error_mark_node;
-    }
+  gcc_assert ((ty1 != Tarray) && (ty1 != Tsarray));
 
   return build1 (NEGATE_EXPR, type->toCtype(), e1->toElem (irs));
 }
@@ -2383,7 +2375,7 @@ ArrayLiteralExp::toElem (IRState *irs)
 
   // Convert void[n] to ubyte[n]
   if (tb->ty == Tsarray && tb->nextOf()->toBasetype()->ty == Tvoid)
-    tb = TypeSArray::makeType(loc, Type::tuns8, ((TypeSArray *)tb)->dim->toUInteger());
+    tb = Type::tuns8->sarrayOf (((TypeSArray *) tb)->dim->toUInteger());
 
   Type *etype = tb->nextOf();
   tree tsa = d_array_type (etype, elements->dim);

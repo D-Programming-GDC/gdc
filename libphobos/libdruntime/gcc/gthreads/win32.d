@@ -61,17 +61,21 @@ enum GTHREAD_MUTEX_INIT = CRITICAL_SECTION.init;
 enum GTHREAD_ONCE_INIT  = gthread_once_t(0, -1);
 enum GTHREAD_RECURSIVE_MUTEX_INIT = CRITICAL_SECTION.init;
 
-extern(C):
-
 version (MinGW)
 {
   // Mingw runtime >= v0.3 provides a magic variable that is set to nonzero
   // if -mthreads option was specified, or 0 otherwise.
-  extern __gshared int _CRT_MT;
-  extern int __mingwthr_key_dtor(ULONG, void function(void*));
+  extern(C)
+  {
+    extern __gshared int _CRT_MT;
+    extern int __mingwthr_key_dtor(ULONG, void function(void*));
+  }
 }
 
 // Backend thread functions
+extern(C):
+@trusted:
+nothrow:
 
 int gthread_active_p()
 {

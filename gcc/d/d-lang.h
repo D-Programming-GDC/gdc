@@ -200,7 +200,7 @@ extern void d_free (tree t);
 extern void set_block (tree);
 
 
-/* In d-builtins.c */
+/* In d-builtins.cc */
 extern const attribute_spec d_builtins_attribute_table[];
 extern const attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);
@@ -209,12 +209,9 @@ void d_register_builtin_type (tree, const char *);
 void d_backend_init (void);
 void d_backend_term (void);
 
-bool is_intrinsic_module_p (Module *);
-bool is_math_module_p (Module *);
-
-class Dsymbol;
-bool is_builtin_va_arg_p (Dsymbol *, bool);
-bool is_builtin_va_start_p (Dsymbol *);
+class Expression;
+extern Expression *build_expression (tree cst);
+extern Type *build_dtype(tree type);
 
 #include "d-dmd-gcc.h"
 

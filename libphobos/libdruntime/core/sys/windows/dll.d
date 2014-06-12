@@ -307,7 +307,7 @@ public:
      *
      * _tls_index is initialized by the compiler to 0, so we can use this as a test.
      */
-    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex )
+    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex ) nothrow
     {
         version (Win64)
             return true;                // fixed

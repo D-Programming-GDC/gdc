@@ -44,7 +44,7 @@ void Module::init()
     modules = new DsymbolTable();
 }
 
-Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen)
+Module::Module(const char *filename, Identifier *ident, int doDocComment, int doHdrGen)
         : Package(ident)
 {
     const char *srcfilename;
@@ -84,7 +84,7 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
 
     macrotable = NULL;
     escapetable = NULL;
-    safe = FALSE;
+    safe = false;
     doppelganger = 0;
     cov = NULL;
     covb = NULL;
@@ -93,7 +93,16 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
     namelen = 0;
 
     srcfilename = FileName::defaultExt(filename, global.mars_ext);
-    if (!FileName::equalsExt(srcfilename, global.mars_ext) &&
+
+    if (global.run_noext && global.params.run &&
+        !FileName::ext(filename) &&
+        FileName::exists(srcfilename) == 0 &&
+        FileName::exists(filename) == 1)
+    {
+        FileName::free(srcfilename);
+        srcfilename = FileName::removeExt(filename);    // just does a mem.strdup(filename)
+    }
+    else if (!FileName::equalsExt(srcfilename, global.mars_ext) &&
         !FileName::equalsExt(srcfilename, global.hdr_ext) &&
         !FileName::equalsExt(srcfilename, "dd"))
     {
@@ -114,6 +123,11 @@ Module::Module(char *filename, Identifier *ident, int doDocComment, int doHdrGen
 
     //objfile = new File(objfilename);
     symfile = new File(symfilename);
+}
+
+Module *Module::create(const char *filename, Identifier *ident, int doDocComment, int doHdrGen)
+{
+    return new Module(filename, ident, doDocComment, doHdrGen);
 }
 
 void Module::setDocfile()
@@ -170,10 +184,6 @@ void Module::deleteObjFile()
         objfile->remove();
     if (docfile)
         docfile->remove();
-}
-
-Module::~Module()
-{
 }
 
 const char *Module::kind()
@@ -275,7 +285,7 @@ bool Module::read(Loc loc)
             {
                 for (size_t i = 0; i < global.path->dim; i++)
                 {
-                    char *p = (*global.path)[i];
+                    const char *p = (*global.path)[i];
                     fprintf(stderr, "import path[%llu] = %s\n", (ulonglong)i, p);
                 }
             }
@@ -321,7 +331,7 @@ void Module::parse()
     char *srcname = srcfile->name->toChars();
     //printf("Module::parse(srcname = '%s')\n", srcname);
 
-    utf8_t *buf = srcfile->buffer;
+    utf8_t *buf = (utf8_t *)srcfile->buffer;
     size_t buflen = srcfile->len;
 
     if (buflen >= 2)
@@ -496,17 +506,18 @@ void Module::parse()
             setDocfile();
         return;
     }
-    Parser p(this, buf, buflen, docfile != NULL);
-    p.nextToken();
-    members = p.parseModule();
+    {
+        Parser p(this, buf, buflen, docfile != NULL);
+        p.nextToken();
+        members = p.parseModule();
+        md = p.md;
+        numlines = p.scanloc.linnum;
+    }
 
     if (srcfile->ref == 0)
         ::free(srcfile->buffer);
     srcfile->buffer = NULL;
     srcfile->len = 0;
-
-    md = p.md;
-    numlines = p.scanloc.linnum;
 
     /* The symbol table into which the module is to be inserted.
      */
@@ -662,7 +673,8 @@ void Module::importAll(Scope *prevsc)
      */
     setScope(sc);               // remember module scope for semantic
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s = (*members)[i];
+    {
+        Dsymbol *s = (*members)[i];
         s->setScope(sc);
     }
 
@@ -706,7 +718,8 @@ void Module::semantic()
     // Add all symbols into module's symbol table
     symtab = new DsymbolTable();
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s = (Dsymbol *)members->data[i];
+    {
+        Dsymbol *s = (Dsymbol *)members->data[i];
         s->addMember(NULL, sc->scopesym, 1);
     }
 
@@ -716,14 +729,16 @@ void Module::semantic()
      * before any semantic() on any of them.
      */
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s = (Dsymbol *)members->data[i];
+    {
+        Dsymbol *s = (Dsymbol *)members->data[i];
         s->setScope(sc);
     }
 #endif
 
     // Pass 1 semantic routines: do public side of the definition
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s = (*members)[i];
+    {
+        Dsymbol *s = (*members)[i];
 
         //printf("\tModule('%s'): '%s'.semantic()\n", toChars(), s->toChars());
         s->semantic(sc);
@@ -731,7 +746,8 @@ void Module::semantic()
     }
 
     if (!scope)
-    {   sc = sc->pop();
+    {
+        sc = sc->pop();
         sc->pop();              // 2 pops because Scope::createGlobal() created 2
     }
     semanticRun = PASSsemanticdone;
@@ -763,9 +779,8 @@ void Module::semantic2()
 
     // Pass 2 semantic routines: do initializers and function bodies
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s;
-
-        s = (*members)[i];
+    {
+        Dsymbol *s = (*members)[i];
         s->semantic2(sc);
     }
 
@@ -790,9 +805,8 @@ void Module::semantic3()
 
     // Pass 3 semantic routines: do initializers and function bodies
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s;
-
-        s = (*members)[i];
+    {
+        Dsymbol *s = (*members)[i];
         //printf("Module %s: %s.semantic3()\n", toChars(), s->toChars());
         s->semantic3(sc);
     }
@@ -814,10 +828,10 @@ void Module::inlineScan()
     //printf("Module = %p\n", sc.scopesym);
 
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s = (*members)[i];
+    {
+        Dsymbol *s = (*members)[i];
         //if (global.params.verbose)
-            //fprintf(global.stdmsg, "inline scan symbol %s\n", s->toChars());
-
+        //    fprintf(global.stdmsg, "inline scan symbol %s\n", s->toChars());
         s->inlineScan();
     }
     semanticRun = PASSinlinedone;
@@ -837,8 +851,8 @@ void Module::gensymfile()
     buf.writenl();
 
     for (size_t i = 0; i < members->dim; i++)
-    {   Dsymbol *s = (*members)[i];
-
+    {
+        Dsymbol *s = (*members)[i];
         s->toCBuffer(&buf, &hgs);
     }
 
@@ -983,7 +997,7 @@ void Module::runDeferredSemantic3()
 
 /************************************
  * Recursively look at every module this module imports,
- * return TRUE if it imports m.
+ * return true if it imports m.
  * Can be used to detect circular imports.
  */
 
@@ -992,14 +1006,16 @@ int Module::imports(Module *m)
     //printf("%s Module::imports(%s)\n", toChars(), m->toChars());
 #if 0
     for (size_t i = 0; i < aimports.dim; i++)
-    {   Module *mi = (Module *)aimports.data[i];
+    {
+        Module *mi = (Module *)aimports.data[i];
         printf("\t[%d] %s\n", i, mi->toChars());
     }
 #endif
     for (size_t i = 0; i < aimports.dim; i++)
-    {   Module *mi = aimports[i];
+    {
+        Module *mi = aimports[i];
         if (mi == m)
-            return TRUE;
+            return true;
         if (!mi->insearch)
         {
             mi->insearch = 1;
@@ -1008,7 +1024,7 @@ int Module::imports(Module *m)
                 return r;
         }
     }
-    return FALSE;
+    return false;
 }
 
 /*************************************
@@ -1021,7 +1037,8 @@ int Module::selfImports()
     if (!selfimports)
     {
         for (size_t i = 0; i < amodules.dim; i++)
-        {   Module *mi = amodules[i];
+        {
+            Module *mi = amodules[i];
             //printf("\t[%d] %s\n", i, mi->toChars());
             mi->insearch = 0;
         }
@@ -1029,7 +1046,8 @@ int Module::selfImports()
         selfimports = imports(this) + 1;
 
         for (size_t i = 0; i < amodules.dim; i++)
-        {   Module *mi = amodules[i];
+        {
+            Module *mi = amodules[i];
             //printf("\t[%d] %s\n", i, mi->toChars());
             mi->insearch = 0;
         }
@@ -1055,8 +1073,8 @@ char *ModuleDeclaration::toChars()
     if (packages && packages->dim)
     {
         for (size_t i = 0; i < packages->dim; i++)
-        {   Identifier *pid = (*packages)[i];
-
+        {
+            Identifier *pid = (*packages)[i];
             buf.writestring(pid->toChars());
             buf.writeByte('.');
         }

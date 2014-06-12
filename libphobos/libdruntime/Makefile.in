@@ -244,7 +244,7 @@ CORE_OBJS = core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 GCC_OBJS = gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o gcc/emutls.o \
 	 gcc/libbacktrace.o gcc/unwind/pe.o
 
-UTIL_OBJS = rt/util/console.o rt/util/container.o rt/util/hash.o \
+UTIL_OBJS = rt/util/array.o rt/util/container.o rt/util/hash.o \
 	  rt/util/string.o rt/util/utf.o
 
 TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
@@ -304,9 +304,9 @@ CORE_IMPORTS = core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/linux/config.di core/sys/linux/dlfcn.di \
 	     core/sys/linux/elf.di core/sys/linux/epoll.di \
 	     core/sys/linux/errno.di core/sys/linux/execinfo.di \
-	     core/sys/linux/link.di core/sys/linux/sys/inotify.di \
-	     core/sys/linux/sys/mman.di core/sys/linux/sys/signalfd.di \
-	     core/sys/linux/sys/xattr.di \
+	     core/sys/linux/link.di core/sys/linux/termios.di \
+	     core/sys/linux/sys/inotify.di core/sys/linux/sys/mman.di \
+	     core/sys/linux/sys/signalfd.di core/sys/linux/sys/xattr.di \
 	     \
 	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
 	     core/sys/osx/mach/getsect.di core/sys/osx/mach/kern_return.di \

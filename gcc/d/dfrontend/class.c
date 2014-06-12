@@ -153,7 +153,6 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
                 Type::typeinfotypelist = this;
             }
 
-#if DMDV2
             if (id == Id::TypeInfo_Const)
             {   if (!inObject)
                     error("%s", msg);
@@ -183,7 +182,6 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
                     error("%s", msg);
                 Type::typeinfovector = this;
             }
-#endif
         }
 
         if (id == Id::Object)
@@ -209,19 +207,6 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
                 error("%s", msg);
             errorException = this;
         }
-
-#if !MODULEINFO_IS_STRUCT
-  #ifdef DMDV2
-        if (id == Id::ModuleInfo && !Module::moduleinfo)
-            Module::moduleinfo = this;
-  #else
-        if (id == Id::ModuleInfo)
-        {   if (Module::moduleinfo)
-                error("%s", msg);
-            Module::moduleinfo = this;
-        }
-  #endif
-#endif
     }
 
     com = 0;
@@ -305,7 +290,7 @@ void ClassDeclaration::semantic(Scope *sc)
     {
         isdeprecated = true;
     }
-    userAttributes = sc->userAttributes;
+    userAttribDecl = sc->userAttribDecl;
 
     if (sc->linkage == LINKcpp)
         cpp = 1;
@@ -379,10 +364,21 @@ void ClassDeclaration::semantic(Scope *sc)
                         goto L7;
                     }
                 }
-                if (!tc->sym->symtab || tc->sym->sizeok == SIZEOKnone)
-                {   // Try to resolve forward reference
-                    if (/*doAncestorsSemantic == SemanticIn &&*/ tc->sym->scope)
-                        tc->sym->semantic(NULL);
+                if (tc->sym->scope)
+                {
+                    // Try to resolve forward reference
+                    tc->sym->semantic(NULL);
+                }
+
+                if (tc->sym->symtab && tc->sym->scope == NULL)
+                {
+                    /* Bugzilla 11034: Essentailly, class inheritance hierarchy
+                     * and instance size of each classes are orthogonal information.
+                     * Therefore, even if tc->sym->sizeof == SIZEOKnone,
+                     * we need to set baseClass field for class covariance check.
+                     */
+                    baseClass = tc->sym;
+                    b->base = baseClass;
                 }
                 if (!tc->sym->symtab || tc->sym->scope || tc->sym->sizeok == SIZEOKnone)
                 {
@@ -396,10 +392,6 @@ void ClassDeclaration::semantic(Scope *sc)
                         tc->sym->scope->module->addDeferredSemantic(tc->sym);
                     scope->module->addDeferredSemantic(this);
                     return;
-                }
-                else
-                {   baseClass = tc->sym;
-                    b->base = baseClass;
                 }
              L7: ;
             }
@@ -446,10 +438,10 @@ void ClassDeclaration::semantic(Scope *sc)
                     error("inherits from duplicate interface %s", b2->base->toChars());
             }
 
-            if (!tc->sym->symtab)
-            {   // Try to resolve forward reference
-                if (/*doAncestorsSemantic == SemanticIn &&*/ tc->sym->scope)
-                    tc->sym->semantic(NULL);
+            if (tc->sym->scope)
+            {
+                // Try to resolve forward reference
+                tc->sym->semantic(NULL);
             }
 
             b->base = tc->sym;
@@ -614,7 +606,7 @@ void ClassDeclaration::semantic(Scope *sc)
             sc->offset = Target::ptrsize * 2;   // allow room for __vptr and __monitor
         alignsize = Target::ptrsize;
     }
-    sc->userAttributes = NULL;
+    sc->userAttribDecl = NULL;
     structsize = sc->offset;
     Scope scsave = *sc;
     size_t members_dim = members->dim;
@@ -661,8 +653,8 @@ void ClassDeclaration::semantic(Scope *sc)
         // Unwind what we did, and defer it for later
         for (size_t i = 0; i < fields.dim; i++)
         {
-            if (VarDeclaration *v = fields[i])
-                v->offset = 0;
+            VarDeclaration *v = fields[i];
+            v->offset = 0;
         }
         fields.setDim(0);
         structsize = 0;
@@ -696,7 +688,7 @@ void ClassDeclaration::semantic(Scope *sc)
         // A class object is always created by constructor, so this check is legitimate.
         for (size_t i = 0; i < fields.dim; i++)
         {
-            VarDeclaration *v = fields[i]->isVarDeclaration();
+            VarDeclaration *v = fields[i];
             if (v->storage_class & STCnodefaultctor)
                 ::error(v->loc, "field %s must be initialized in constructor", v->toChars());
         }
@@ -705,8 +697,8 @@ void ClassDeclaration::semantic(Scope *sc)
     inv = buildInv(sc);
 
     // Can be in base class
-    aggNew    = (NewDeclaration *)search(Loc(), Id::classNew, 0);
-    aggDelete = (DeleteDeclaration *)search(Loc(), Id::classDelete, 0);
+    aggNew    =    (NewDeclaration *)search(Loc(), Id::classNew);
+    aggDelete = (DeleteDeclaration *)search(Loc(), Id::classDelete);
 
     // If this class has no constructor, but base class has a default
     // ctor, create a constructor:
@@ -990,7 +982,6 @@ ClassDeclaration *ClassDeclaration::searchBase(Loc loc, Identifier *ident)
  * Return 1 if function is hidden (not findable through search).
  */
 
-#if DMDV2
 int isf(void *param, Dsymbol *s)
 {
     FuncDeclaration *fd = s->isFuncDeclaration();
@@ -1003,7 +994,7 @@ int isf(void *param, Dsymbol *s)
 int ClassDeclaration::isFuncHidden(FuncDeclaration *fd)
 {
     //printf("ClassDeclaration::isFuncHidden(class = %s, fd = %s)\n", toChars(), fd->toChars());
-    Dsymbol *s = search(Loc(), fd->ident, 4|2);
+    Dsymbol *s = search(Loc(), fd->ident, IgnoreAmbiguous | IgnoreErrors);
     if (!s)
     {
         //printf("not found\n");
@@ -1035,7 +1026,6 @@ int ClassDeclaration::isFuncHidden(FuncDeclaration *fd)
         return !fd->parent->isTemplateMixin();
     }
 }
-#endif
 
 /****************
  * Find virtual function matching identifier and type.
@@ -1069,8 +1059,8 @@ FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
 
                 {
                 // Function type matcing: exact > covariant
-                int m1 = tf->equals(fd     ->type) ? MATCHexact : MATCHnomatch;
-                int m2 = tf->equals(fdmatch->type) ? MATCHexact : MATCHnomatch;
+                MATCH m1 = tf->equals(fd     ->type) ? MATCHexact : MATCHnomatch;
+                MATCH m2 = tf->equals(fdmatch->type) ? MATCHexact : MATCHnomatch;
                 if (m1 > m2)
                     goto Lfd;
                 else if (m1 < m2)
@@ -1078,8 +1068,8 @@ FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
                 }
 
                 {
-                int m1 = (tf->mod == fd     ->type->mod) ? MATCHexact : MATCHnomatch;
-                int m2 = (tf->mod == fdmatch->type->mod) ? MATCHexact : MATCHnomatch;
+                MATCH m1 = (tf->mod == fd     ->type->mod) ? MATCHexact : MATCHnomatch;
+                MATCH m2 = (tf->mod == fdmatch->type->mod) ? MATCHexact : MATCHnomatch;
                 if (m1 > m2)
                     goto Lfd;
                 else if (m1 < m2)
@@ -1088,8 +1078,8 @@ FuncDeclaration *ClassDeclaration::findFunc(Identifier *ident, TypeFunction *tf)
 
                 {
                 // The way of definition: non-mixin > mixin
-                int m1 = fd     ->parent->isClassDeclaration() ? MATCHexact : MATCHnomatch;
-                int m2 = fdmatch->parent->isClassDeclaration() ? MATCHexact : MATCHnomatch;
+                MATCH m1 = fd     ->parent->isClassDeclaration() ? MATCHexact : MATCHnomatch;
+                MATCH m2 = fdmatch->parent->isClassDeclaration() ? MATCHexact : MATCHnomatch;
                 if (m1 > m2)
                     goto Lfd;
                 else if (m1 < m2)
@@ -1163,7 +1153,6 @@ int ClassDeclaration::isCOMinterface()
     return 0;
 }
 
-#if DMDV2
 int ClassDeclaration::isCPPclass()
 {
     return cpp;
@@ -1173,7 +1162,6 @@ int ClassDeclaration::isCPPinterface()
 {
     return 0;
 }
-#endif
 
 
 /****************************************
@@ -1292,7 +1280,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     {
         isdeprecated = true;
     }
-    userAttributes = sc->userAttributes;
+    userAttribDecl = sc->userAttribDecl;
 
     // Expand any tuples in baseclasses[]
     for (size_t i = 0; i < baseclasses->dim; )
@@ -1357,10 +1345,10 @@ void InterfaceDeclaration::semantic(Scope *sc)
                 baseclasses->remove(i);
                 continue;
             }
-            if (!b->base->symtab)
-            {   // Try to resolve forward reference
-                if (doAncestorsSemantic == SemanticIn && b->base->scope)
-                    b->base->semantic(NULL);
+            if (b->base->scope)
+            {
+                // Try to resolve forward reference
+                b->base->semantic(NULL);
             }
             if (!b->base->symtab || b->base->scope || b->base->inuse)
             {
@@ -1441,7 +1429,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
     sc->explicitProtection = 0;
 //    structalign = sc->structalign;
     sc->offset = Target::ptrsize * 2;
-    sc->userAttributes = NULL;
+    sc->userAttribDecl = NULL;
     structsize = sc->offset;
     inuse++;
 
@@ -1596,12 +1584,10 @@ int InterfaceDeclaration::isCOMinterface()
     return com;
 }
 
-#if DMDV2
 int InterfaceDeclaration::isCPPinterface()
 {
     return cpp;
 }
-#endif
 
 /*******************************************
  */

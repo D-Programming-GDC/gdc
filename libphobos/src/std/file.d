@@ -73,10 +73,6 @@ version (Windows)
                                               LPCWSTR lpNewFileName,
                                               DWORD dwFlags);
 }
-else version (Posix)
-{
-    deprecated alias stat_t struct_stat64;
-}
 // }}}
 
 
@@ -880,7 +876,7 @@ bool exists(in char[] name) @trusted
         */
 
         stat_t statbuf = void;
-        return stat(toStringz(name), &statbuf) == 0;
+        return lstat(toStringz(name), &statbuf) == 0;
     }
 }
 
@@ -962,6 +958,26 @@ uint getLinkAttributes(in char[] name)
         stat_t lstatbuf = void;
         cenforce(lstat(toStringz(name), &lstatbuf) == 0, name);
         return lstatbuf.st_mode;
+    }
+}
+
+
+/++
+    Set the attributes of the given file.
+
+    Throws:
+        $(D FileException) if the given file does not exist.
+ +/
+void setAttributes(in char[] name, uint attributes)
+{
+    version (Windows)
+    {
+        cenforce(SetFileAttributesW(std.utf.toUTF16z(name), attributes), name);
+    }
+    else version (Posix)
+    {
+        assert(attributes <= mode_t.max);
+        cenforce(!chmod(toStringz(name), cast(mode_t)attributes), name);
     }
 }
 
@@ -1350,6 +1366,27 @@ void mkdir(in char[] pathname)
     }
 }
 
+// Same as mkdir but ignores "already exists" errors.
+// Returns: "true" if the directory was created,
+//   "false" if it already existed.
+private bool ensureDirExists(in char[] pathname)
+{
+    version(Windows)
+    {
+        if (CreateDirectoryW(std.utf.toUTF16z(pathname), null))
+            return true;
+        cenforce(GetLastError() == ERROR_ALREADY_EXISTS, pathname.idup);
+    }
+    else version(Posix)
+    {
+        if (core.sys.posix.sys.stat.mkdir(toStringz(pathname), octal!777) == 0)
+            return true;
+        cenforce(errno == EEXIST, pathname);
+    }
+    enforce(pathname.isDir, new FileException(pathname.idup));
+    return false;
+}
+
 /****************************************************
  * Make directory and all parent directories as needed.
  *
@@ -1359,25 +1396,41 @@ void mkdir(in char[] pathname)
 void mkdirRecurse(in char[] pathname)
 {
     const left = dirName(pathname);
-    if (!exists(left))
+    if (left.length != pathname.length && !exists(left))
     {
-        version (Windows)
-        {   /* Prevent infinite recursion if left is "d:\" and
-             * drive d does not exist.
-             */
-            if (left.length >= 3 && left[$ - 2] == ':')
-                throw new FileException(left.idup);
-        }
         mkdirRecurse(left);
     }
     if (!baseName(pathname).empty)
     {
-        mkdir(pathname);
+        ensureDirExists(pathname);
     }
 }
 
 unittest
 {
+    {
+        immutable basepath = deleteme ~ "_dir";
+        scope(exit) rmdirRecurse(basepath);
+
+        auto path = buildPath(basepath, "a", "..", "b");
+        mkdirRecurse(path);
+        path = path.buildNormalizedPath;
+        assert(path.isDir);
+
+        path = buildPath(basepath, "c");
+        write(path, "");
+        assertThrown!FileException(mkdirRecurse(path));
+
+        path = buildPath(basepath, "d");
+        mkdirRecurse(path);
+        mkdirRecurse(path); // should not throw
+    }
+
+    version(Windows)
+    {
+        assertThrown!FileException(mkdirRecurse(`1:\foobar`));
+    }
+
     // bug3570
     {
         immutable basepath = deleteme ~ "_dir";
@@ -2012,14 +2065,14 @@ else version(Posix)
 
         @property bool isDir()
         {
-            _ensureStatDone();
+            _ensureStatOrLStatDone();
 
             return (_statBuf.st_mode & S_IFMT) == S_IFDIR;
         }
 
         @property bool isFile()
         {
-            _ensureStatDone();
+            _ensureStatOrLStatDone();
 
             return (_statBuf.st_mode & S_IFMT) == S_IFREG;
         }
@@ -2093,6 +2146,31 @@ else version(Posix)
                     "Failed to stat file `" ~ _name ~ "'");
 
             _didStat = true;
+        }
+
+        /++
+            This is to support lazy evaluation, because doing stat's is
+            expensive and not always needed.
+
+            Try both stat and lstat for isFile and isDir
+            to detect broken symlinks.
+         +/
+        void _ensureStatOrLStatDone()
+        {
+            if(_didStat)
+                return;
+
+            if( stat(toStringz(_name), &_statBuf) != 0 )
+            {
+                _ensureLStatDone();
+
+                _statBuf = stat_t.init;
+                _statBuf.st_mode = S_IFLNK;
+            }
+            else
+            {
+                _didStat = true;
+            }
         }
 
         /++
@@ -2174,6 +2252,26 @@ unittest
                 assert(!de.isFile);
                 assert(de.isDir);
                 assert(de.isSymlink);
+            }
+
+            symfile.remove();
+            core.sys.posix.unistd.symlink((deleteme ~ "_broken_symlink\0").ptr, symfile.ptr);
+
+            {
+                //Issue 8298
+                DirEntry de = DirEntry(symfile);
+
+                assert(!de.isFile);
+                assert(!de.isDir);
+                assert(de.isSymlink);
+                assertThrown(de.size);
+                assertThrown(de.timeStatusChanged);
+                assertThrown(de.timeLastAccessed);
+                assertThrown(de.timeLastModified);
+                assertThrown(de.attributes);
+                assertThrown(de.statBuf);
+                assert(symfile.exists);
+                symfile.remove();
             }
         }
 
@@ -2711,24 +2809,21 @@ unittest
         //writeln(name);
         assert(e.isFile || e.isDir, e.name);
     }
-}
 
-unittest
-{
     //issue 7264
-    foreach (string name; dirEntries(".", "*.d", SpanMode.breadth))
+    foreach (string name; dirEntries(testdir, "*.d", SpanMode.breadth))
     {
 
     }
-    foreach (entry; dirEntries(".", SpanMode.breadth))
+    foreach (entry; dirEntries(testdir, SpanMode.breadth))
     {
         static assert(is(typeof(entry) == DirEntry));
     }
     //issue 7138
-    auto a = array(dirEntries(".", SpanMode.shallow));
+    auto a = array(dirEntries(testdir, SpanMode.shallow));
 
     // issue 11392
-    auto dFiles = dirEntries(".", SpanMode.shallow);
+    auto dFiles = dirEntries(testdir, SpanMode.shallow);
     foreach(d; dFiles){}
 }
 

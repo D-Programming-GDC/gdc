@@ -27,8 +27,6 @@
 
 #include "dfrontend/target.h"
 
-typedef Array<dt_t> Dts;
-
 extern FuncDeclaration *search_toHash(StructDeclaration *sd);
 extern FuncDeclaration *search_toString(StructDeclaration *sd);
 
@@ -893,13 +891,12 @@ void
 StructDeclaration::toDt (dt_t **pdt)
 {
   StructLiteralExp *sle = new StructLiteralExp (loc, this, NULL);
-  Expression *e = sle->fill (true);
 
-  if (e == sle)
-    {
-      sle->type = type;
-      sle->toDt (pdt);
-    }
+  if (!fill(loc, sle->elements, true))
+    gcc_unreachable();
+
+  sle->type = type;
+  sle->toDt (pdt);
 }
 
 /* ================================================================ */

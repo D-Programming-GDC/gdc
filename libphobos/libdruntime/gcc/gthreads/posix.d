@@ -37,6 +37,8 @@ enum GTHREAD_RECURSIVE_MUTEX_INIT = PTHREAD_MUTEX_INITIALIZER;
 
 // Backend thread functions
 extern(C):
+@trusted:
+nothrow:
 
 // TODO: FreeBSD and Solaris exposes a dummy POSIX threads
 // interface that will need to be handled here.

@@ -21,26 +21,6 @@
 #include "d-irstate.h"
 #include "d-objfile.h"
 
-
-// Intrinsic bitop, intrinsic math, and internally recognised runtime library functions
-// are listed in alphabetical order for use of bsearch.
-enum Intrinsic
-{
-  INTRINSIC_BSF, INTRINSIC_BSR,
-  INTRINSIC_BSWAP,
-  INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
-
-  INTRINSIC_COS, INTRINSIC_FABS,
-  INTRINSIC_LDEXP, INTRINSIC_RINT,
-  INTRINSIC_RNDTOL, INTRINSIC_SIN,
-  INTRINSIC_SQRT,
-
-  INTRINSIC_VA_START,
-  INTRINSIC_VA_ARG,
-  INTRINSIC_C_VA_ARG,
-  INTRINSIC_count,
-};
-
 enum LibCall
 {
   LIBCALL_NONE = -1,
@@ -109,7 +89,8 @@ struct FuncFrameInfo
   };
 };
 
-class ArrayScope;
+// Visitor routines for barrier between frontend and glue.
+void build_ir(Statement *s, IRState *irs);
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);
@@ -239,9 +220,9 @@ extern tree get_object_method (tree thisexp, Expression *objexp, FuncDeclaration
 // Built-in and Library functions.
 extern FuncDeclaration *get_libcall (LibCall libcall);
 extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type = NULL_TREE);
-extern tree maybe_expand_builtin (tree call_exp);
 
-extern void maybe_set_builtin_frontend (FuncDeclaration *decl);
+extern void maybe_set_intrinsic (FuncDeclaration *decl);
+extern tree expand_intrinsic (tree callexp);
 
 extern tree build_typeinfo (Type *t);
 
@@ -399,7 +380,7 @@ struct AggLayout
 
 extern void layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl);
 extern void insert_aggregate_field (AggLayout *al, tree field, size_t offset);
-extern void finish_aggregate_type (AggLayout *al, Expressions *attrs);
+extern void finish_aggregate_type (AggLayout *al, UserAttributeDeclaration *declattrs);
 
 class ArrayScope
 {

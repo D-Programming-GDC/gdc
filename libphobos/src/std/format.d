@@ -7,11 +7,11 @@
 
    Macros: WIKI = Phobos/StdFormat
 
-   Copyright: Copyright Digital Mars 2000-.
+   Copyright: Copyright Digital Mars 2000-2013.
 
    License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
-   Authors: $(WEB digitalmars.com, Walter Bright), $(WEB erdani.com,
+   Authors: $(WEB walterbright.com, Walter Bright), $(WEB erdani.com,
    Andrei Alexandrescu), and Kenji Hara
 
    Source: $(PHOBOSSRC std/_format.d)
@@ -25,12 +25,18 @@ module std.format;
 //debug=format;                // uncomment to turn on debugging printf's
 
 import core.stdc.stdio, core.stdc.stdlib, core.stdc.string, core.vararg;
-import std.algorithm, std.array, std.ascii, std.bitmanip, std.conv,
-    std.exception, std.functional, std.math, std.range,
-    std.system, std.traits, std.typecons, std.typetuple,
+import std.algorithm, std.ascii, std.bitmanip, std.conv,
+    std.exception, std.range,
+    std.system, std.traits, std.typetuple,
     std.utf;
+version (Win64) {
+    import std.math : isnan;
+}
 version(unittest) {
+    import std.math;
     import std.stdio;
+    import std.string;
+    import std.typecons;
     import core.exception;
     import std.string;
 }
@@ -68,10 +74,6 @@ class FormatException : Exception
         super(msg, fn, ln, next);
     }
 }
-
-// Explicitly undocumented. It will be removed in November 2013.
-deprecated("Please use FormatException instead.")
-alias FormatException FormatError;
 
 private alias enforceFmt = enforceEx!FormatException;
 
@@ -544,6 +546,8 @@ assert(a == "hello" && b == 124 && c == 34.5);
  */
 uint formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
 {
+    import std.typecons : isTuple;
+
     auto spec = FormatSpec!Char(fmt);
     static if (!S.length)
     {
@@ -773,7 +777,7 @@ struct FormatSpec(Char)
        Construct a new $(D FormatSpec) using the format string $(D fmt), no
        processing is done until needed.
      */
-    this(in Char[] fmt)
+    this(in Char[] fmt) @safe pure
     {
         trailing = fmt;
     }
@@ -785,18 +789,18 @@ struct FormatSpec(Char)
         for (size_t i = 0; i < trailing.length; ++i)
         {
             if (trailing[i] != '%') continue;
-            if (trailing[++i] != '%')
+            put(writer, trailing[0 .. i]);
+            trailing = trailing[i .. $];
+            enforceFmt(trailing.length >= 2, `Unterminated format specifier: "%"`);
+            trailing = trailing[1 .. $];
+
+            if (trailing[0] != '%')
             {
-                // Spec found. Print, fill up the spec, and bailout
-                put(writer, trailing[0 .. i - 1]);
-                trailing = trailing[i .. $];
+                // Spec found. Fill up the spec, and bailout
                 fillUp();
                 return true;
             }
-            // Doubled! Now print whatever we had, then update the
-            // string and move on
-            put(writer, trailing[0 .. i - 1]);
-            trailing = trailing[i .. $];
+            // Doubled! Reset and Keep going
             i = 0;
         }
         // no format spec found
@@ -831,6 +835,11 @@ struct FormatSpec(Char)
         w.clear();
         while (f.writeUpToNextSpec(w)) continue;
         assert(w.data == "%%%");
+
+        f = FormatSpec("a%%b%%c%");
+        w.clear();
+        assertThrown!FormatException(f.writeUpToNextSpec(w));
+        assert(w.data == "a%b%c" && f.trailing == "%");
     }
 
     private void fillUp()
@@ -907,7 +916,7 @@ struct FormatSpec(Char)
                 else
                 {
                     nested = to!(typeof(nested))(trailing[i + 1 .. j - 1]);
-                    sep = null;
+                    sep = null; // use null (issue 12135)
                 }
                 //this = FormatSpec(innerTrailingSpec);
                 spec = '(';
@@ -1293,7 +1302,8 @@ unittest
    $(D null) literal is formatted as $(D "null").
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (is(T == typeof(null)) && !is(T == enum) && !hasToString!(T, Char))
+if (is(Unqual!T == typeof(null)) &&
+!is(T == enum) && !hasToString!(T, Char))
 {
     enforceFmt(f.spec == 's',
         "null");
@@ -2229,7 +2239,7 @@ if (isInputRange!T)
                 formatValue(w, val.front, fmt);
             else
                 formatElement(w, val.front, fmt);
-            if (f.sep)
+            if (f.sep.ptr)
             {
                 put(w, fmt.trailing);
                 val.popFront();
@@ -2413,7 +2423,7 @@ if (is(AssocArrayTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
             fmt.writeUpToNextSpec(w);
             formatElement(w, v, fmt);
         }
-        if (f.sep)
+        if (f.sep !is null)
         {
             fmt.writeUpToNextSpec(w);
             if (++i != end)
@@ -2450,6 +2460,10 @@ unittest
     // use range formatting for key and value, and use %|
     formatTest( "{%([%04d->%(%c.%)]%| $ %)}", aa3,
                [`{[0001->h.e.l.l.o] $ [0002->w.o.r.l.d]}`, `{[0002->w.o.r.l.d] $ [0001->h.e.l.l.o]}`] );
+
+    // issue 12135
+    formatTest("%(%s:<%s>%|,%)", [1:2], "1:<2>");
+    formatTest("%(%s:<%s>%|%)" , [1:2], "1:<2>");
 }
 
 unittest
@@ -4391,10 +4405,10 @@ body
             }
             else static if (isAssociativeArray!T)
             {
-                auto key = unformatElement!(typeof(T.keys[0]))(input, fmt);
+                auto key = unformatElement!(typeof(T.init.keys[0]))(input, fmt);
                 fmt.readUpToNextSpec(input);        // eat key separator
 
-                result[key] = unformatElement!(typeof(T.values[0]))(input, fmt);
+                result[key] = unformatElement!(typeof(T.init.values[0]))(input, fmt);
             }
             debug (unformatRange) {
             if (input.empty) printf("-> front = [empty] ");
@@ -4826,11 +4840,11 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
     {
         for (;;)
         {
-            if (valti.classinfo.name.length == 18 &&
-                    valti.classinfo.name[9..18] == "Invariant")
+            if (typeid(valti).name.length == 18 &&
+                    typeid(valti).name[9..18] == "Invariant")
                 valti = (cast(TypeInfo_Invariant)valti).next;
-            else if (valti.classinfo.name.length == 14 &&
-                    valti.classinfo.name[9..14] == "Const")
+            else if (typeid(valti).name.length == 14 &&
+                    typeid(valti).name[9..14] == "Const")
                 valti = (cast(TypeInfo_Const)valti).next;
             else
                 break;
@@ -4987,9 +5001,9 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
 
         static Mangle getMan(TypeInfo ti)
         {
-          auto m = cast(Mangle)ti.classinfo.name[9];
-          if (ti.classinfo.name.length == 20 &&
-              ti.classinfo.name[9..20] == "StaticArray")
+          auto m = cast(Mangle)typeid(ti).name[9];
+          if (typeid(ti).name.length == 20 &&
+              typeid(ti).name[9..20] == "StaticArray")
                 m = cast(Mangle)'G';
           return m;
         }
@@ -5008,7 +5022,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
           auto tiSave = ti;
           auto mSave = m;
           ti = valti;
-          //printf("\n%.*s\n", valti.classinfo.name.length, valti.classinfo.name.ptr);
+          //printf("\n%.*s\n", typeid(valti).name.length, typeid(valti).name.ptr);
           m = getMan(valti);
           while (len--)
           {
@@ -5166,6 +5180,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
         }
 
         //printf("formatArg(fc = '%c', m = '%c')\n", fc, m);
+        int mi;
         switch (m)
         {
             case Mangle.Tbool:
@@ -5311,13 +5326,13 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 return;
 
             case Mangle.Tarray:
-                int mi = 10;
-                if (ti.classinfo.name.length == 14 &&
-                    ti.classinfo.name[9..14] == "Array")
+                mi = 10;
+                if (typeid(ti).name.length == 14 &&
+                    typeid(ti).name[9..14] == "Array")
                 { // array of non-primitive types
                   TypeInfo tn = (cast(TypeInfo_Array)ti).next;
                   tn = skipCI(tn);
-                  switch (cast(Mangle)tn.classinfo.name[9])
+                  switch (cast(Mangle)typeid(tn).name[9])
                   {
                     case Mangle.Tchar:  goto LarrayChar;
                     case Mangle.Twchar: goto LarrayWchar;
@@ -5329,8 +5344,8 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                   putArray(va.ptr, va.length, tn);
                   return;
                 }
-                if (ti.classinfo.name.length == 25 &&
-                    ti.classinfo.name[9..25] == "AssociativeArray")
+                if (typeid(ti).name.length == 25 &&
+                    typeid(ti).name[9..25] == "AssociativeArray")
                 { // associative array
                   ubyte[long] vaa = va_arg!(ubyte[long])(argptr);
                   putAArray(vaa,
@@ -5341,7 +5356,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
 
                 while (1)
                 {
-                    m2 = cast(Mangle)ti.classinfo.name[mi];
+                    m2 = cast(Mangle)typeid(ti).name[mi];
                     switch (m2)
                     {
                         case Mangle.Tchar:
@@ -5357,8 +5372,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
 
                         case Mangle.Tdchar:
                         LarrayDchar:
-                            auto sd = va_arg!(dstring)(argptr);
-                            s = toUTF8(sd);
+                            s = toUTF8(va_arg!(dstring)(argptr));
                         Lputstr:
                             if (fc != 's')
                                 throw new FormatException("string");
@@ -5385,13 +5399,13 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
 
             case Mangle.Ttypedef:
                 ti = (cast(TypeInfo_Typedef)ti).base;
-                m = cast(Mangle)ti.classinfo.name[9];
+                m = cast(Mangle)typeid(ti).name[9];
                 formatArg(fc);
                 return;
 
             case Mangle.Tenum:
                 ti = (cast(TypeInfo_Enum)ti).base;
-                m = cast(Mangle)ti.classinfo.name[9];
+                m = cast(Mangle)typeid(ti).name[9];
                 formatArg(fc);
                 return;
 
@@ -5544,28 +5558,30 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
             }
         }
 
-        ptrdiff_t n = tmpbuf.length;
-        char c;
-        int hexoffset = uc ? ('A' - ('9' + 1)) : ('a' - ('9' + 1));
+        {
+            ptrdiff_t n = tmpbuf.length;
+            char c;
+            int hexoffset = uc ? ('A' - ('9' + 1)) : ('a' - ('9' + 1));
 
-        while (vnumber)
-        {
-            c = cast(char)((vnumber % base) + '0');
-            if (c > '9')
-                c += hexoffset;
-            vnumber /= base;
-            tmpbuf[--n] = c;
+            while (vnumber)
+            {
+                c = cast(char)((vnumber % base) + '0');
+                if (c > '9')
+                    c += hexoffset;
+                vnumber /= base;
+                tmpbuf[--n] = c;
+            }
+            if (tmpbuf.length - n < precision && precision < tmpbuf.length)
+            {
+                ptrdiff_t m = tmpbuf.length - precision;
+                tmpbuf[m .. n] = '0';
+                n = m;
+            }
+            else if (flags & FLhash && fc == 'o')
+                prefix = "0";
+            putstr(tmpbuf[n .. tmpbuf.length]);
+            return;
         }
-        if (tmpbuf.length - n < precision && precision < tmpbuf.length)
-        {
-            ptrdiff_t m = tmpbuf.length - precision;
-            tmpbuf[m .. n] = '0';
-            n = m;
-        }
-        else if (flags & FLhash && fc == 'o')
-            prefix = "0";
-        putstr(tmpbuf[n .. tmpbuf.length]);
-        return;
 
     Lreal:
         putreal(vreal);
@@ -5588,7 +5604,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
     for (int j = 0; j < arguments.length; )
     {
         ti = arguments[j++];
-        //printf("arg[%d]: '%.*s' %d\n", j, ti.classinfo.name.length, ti.classinfo.name.ptr, ti.classinfo.name.length);
+        //printf("arg[%d]: '%.*s' %d\n", j, typeid(ti).name.length, typeid(ti).name.ptr, typeid(ti).name.length);
         //ti.print();
 
         flags = 0;
@@ -5599,19 +5615,19 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
         int mi = 9;
         do
         {
-            if (ti.classinfo.name.length <= mi)
+            if (typeid(ti).name.length <= mi)
                 goto Lerror;
-            m = cast(Mangle)ti.classinfo.name[mi++];
+            m = cast(Mangle)typeid(ti).name[mi++];
         } while (m == Mangle.Tconst || m == Mangle.Timmutable);
 
         if (m == Mangle.Tarray)
         {
-            if (ti.classinfo.name.length == 14 &&
-                    ti.classinfo.name[9..14] == "Array")
+            if (typeid(ti).name.length == 14 &&
+                    typeid(ti).name[9..14] == "Array")
             {
                 TypeInfo tn = (cast(TypeInfo_Array)ti).next;
                 tn = skipCI(tn);
-                switch (cast(Mangle)tn.classinfo.name[9])
+                switch (cast(Mangle)typeid(tn).name[9])
                 {
                 case Mangle.Tchar:
                 case Mangle.Twchar:
@@ -5624,7 +5640,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 }
             }
           L1:
-            Mangle m2 = cast(Mangle)ti.classinfo.name[mi];
+            Mangle m2 = cast(Mangle)typeid(ti).name[mi];
             string  fmt;                        // format string
             wstring wfmt;
             dstring dfmt;
@@ -5693,7 +5709,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                     if (j == arguments.length)
                         throw new FormatException("too few arguments");
                     ti = arguments[j++];
-                    m = cast(Mangle)ti.classinfo.name[9];
+                    m = cast(Mangle)typeid(ti).name[9];
                     if (m != Mangle.Tint)
                         throw new FormatException("int argument expected");
                     return va_arg!(int)(argptr);
@@ -5781,7 +5797,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 mi = 9;
                 do
                 {
-                    m = cast(Mangle)ti.classinfo.name[mi++];
+                    m = cast(Mangle)typeid(ti).name[mi++];
                 } while (m == Mangle.Tconst || m == Mangle.Timmutable);
 
                 if (c > 0x7F)                // if UTF sequence

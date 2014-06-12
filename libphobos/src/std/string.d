@@ -72,7 +72,7 @@ class StringException : Exception
 /++
     Compares two ranges of characters lexicographically. The comparison is
     case insensitive. Use $(XREF algorithm, cmp) for a case sensitive
-    comparison. For details see $(XREF uni, icmp).
+    comparison. For details see $(XREF uni, _icmp).
 
     $(BOOKTABLE,
         $(TR $(TD $(D < 0))  $(TD $(D s1 < s2) ))
@@ -570,12 +570,12 @@ unittest
   +/
 ptrdiff_t lastIndexOf(Char)(const(Char)[] s,
                           dchar c,
-                          CaseSensitive cs = CaseSensitive.yes)
+                          CaseSensitive cs = CaseSensitive.yes) @safe pure
     if (isSomeChar!Char)
 {
     if (cs == CaseSensitive.yes)
     {
-        if (std.ascii.isASCII(c))
+        if (canSearchInCodeUnits!Char(c))
         {
             foreach_reverse (i, it; s)
             {
@@ -678,7 +678,7 @@ unittest
     $(D cs) indicates whether the comparisons are case sensitive.
   +/
 ptrdiff_t lastIndexOf(Char)(const(Char)[] s, dchar c, const size_t startIdx,
-        CaseSensitive cs = CaseSensitive.yes)
+        CaseSensitive cs = CaseSensitive.yes) @safe pure
     if (isSomeChar!Char)
 {
     if (startIdx <= s.length)
@@ -729,7 +729,7 @@ unittest
   +/
 ptrdiff_t lastIndexOf(Char1, Char2)(const(Char1)[] s,
                                   const(Char2)[] sub,
-                                  CaseSensitive cs = CaseSensitive.yes)
+                                  CaseSensitive cs = CaseSensitive.yes) @safe pure
     if (isSomeChar!Char1 && isSomeChar!Char2)
 {
     if (sub.empty)
@@ -759,7 +759,11 @@ ptrdiff_t lastIndexOf(Char1, Char2)(const(Char1)[] s,
                     }
                     else
                     {
-                        if (memcmp(&s[i + 1], &sub[1], sub.length - 1) == 0)
+                        auto trustedMemcmp(in void* s1, in void* s2, size_t n) @trusted
+                        {
+                            return memcmp(s1, s2, n);
+                        }
+                        if (trustedMemcmp(&s[i + 1], &sub[1], sub.length - 1) == 0)
                             return i;
                     }
                 }
@@ -864,7 +868,7 @@ unittest
     $(D cs) indicates whether the comparisons are case sensitive.
   +/
 ptrdiff_t lastIndexOf(Char1, Char2)(const(Char1)[] s, const(Char2)[] sub,
-        const size_t startIdx, CaseSensitive cs = CaseSensitive.yes)
+        const size_t startIdx, CaseSensitive cs = CaseSensitive.yes) @safe pure
     if (isSomeChar!Char1 && isSomeChar!Char2)
 {
     if (startIdx <= s.length)
@@ -1184,7 +1188,12 @@ unittest
 
 
 /++
-    Strips leading whitespace.
+    Strips leading whitespace (as defined by $(XREF uni, isWhite)).
+
+    Returns: $(D str) stripped of leading whitespace.
+
+    Postconditions: $(D str) and the returned value
+    will share the same tail (see $(XREF array, sameTail)).
   +/
 C[] stripLeft(C)(C[] str) @safe pure
     if (isSomeChar!C)
@@ -1215,7 +1224,12 @@ C[] stripLeft(C)(C[] str) @safe pure
 
 
 /++
-    Strips trailing whitespace.
+    Strips trailing whitespace (as defined by $(XREF uni, isWhite)).
+
+    Returns: $(D str) stripped of trailing whitespace.
+
+    Postconditions: $(D str) and the returned value
+    will share the same head (see $(XREF array, sameHead)).
   +/
 C[] stripRight(C)(C[] str) @safe pure
     if (isSomeChar!C)
@@ -1246,7 +1260,10 @@ C[] stripRight(C)(C[] str) @safe pure
 
 
 /++
-    Strips both leading and trailing whitespace.
+    Strips both leading and trailing whitespace (as defined by
+    $(XREF uni, isWhite)).
+
+    Returns: $(D str) stripped of trailing whitespace.
   +/
 C[] strip(C)(C[] str) @safe pure
     if (isSomeChar!C)
@@ -1375,19 +1392,22 @@ C1[] chomp(C1, C2)(C1[] str, const(C2)[] delimiter) @safe pure
     {
         if (str.endsWith(delimiter))
             return str[0 .. $ - delimiter.length];
+        return str;
     }
-
-    auto orig = str;
-
-    foreach_reverse (dchar c; delimiter)
+    else
     {
-        if (str.empty || str.back != c)
-            return orig;
+        auto orig = str;
 
-        str.popBack();
+        foreach_reverse (dchar c; delimiter)
+        {
+            if (str.empty || str.back != c)
+                return orig;
+
+            str.popBack();
+        }
+
+        return str;
     }
-
-    return str;
 }
 
 ///
@@ -1405,6 +1425,9 @@ C1[] chomp(C1, C2)(C1[] str, const(C2)[] delimiter) @safe pure
     assert(chomp(" hello world", "orld") == " hello w");
     assert(chomp(" hello world", " he") == " hello world");
     assert(chomp("", "hello") == "");
+
+    // Don't decode pointlessly
+    assert(chomp("hello\xFE", "\r") == "hello\xFE");
 }
 
 unittest
@@ -1565,9 +1588,9 @@ unittest
 S leftJustify(S)(S s, size_t width, dchar fillChar = ' ') @trusted pure
     if (isSomeString!S)
 {
-    alias typeof(s[0]) C;
+    alias C = ElementEncodingType!S;
 
-    if (cast(dchar)(cast(C)fillChar) == fillChar)
+    if (canSearchInCodeUnits!C(fillChar))
     {
         immutable len = s.walkLength();
         if (len >= width)
@@ -1600,9 +1623,9 @@ S leftJustify(S)(S s, size_t width, dchar fillChar = ' ') @trusted pure
 S rightJustify(S)(S s, size_t width, dchar fillChar = ' ') @trusted pure
     if (isSomeString!S)
 {
-    alias typeof(s[0]) C;
+    alias C = ElementEncodingType!S;
 
-    if (cast(dchar)(cast(C)fillChar) == fillChar)
+    if (canSearchInCodeUnits!C(fillChar))
     {
         immutable len = s.walkLength();
         if (len >= width)
@@ -1635,9 +1658,9 @@ S rightJustify(S)(S s, size_t width, dchar fillChar = ' ') @trusted pure
 S center(S)(S s, size_t width, dchar fillChar = ' ') @trusted pure
     if (isSomeString!S)
 {
-    alias typeof(s[0]) C;
+    alias C = ElementEncodingType!S;
 
-    if (cast(dchar)(cast(C)fillChar) == fillChar)
+    if (canSearchInCodeUnits!C(fillChar))
     {
         immutable len = s.walkLength();
         if (len >= width)
@@ -1690,6 +1713,10 @@ unittest
         assert(leftJustify(s, 8, '\u0100') == "hello\u0100\u0100\u0100");
         assert(rightJustify(s, 8, '\u0100') == "\u0100\u0100\u0100hello");
         assert(center(s, 8, '\u0100') == "\u0100hello\u0100\u0100");
+
+        assert(leftJustify(s, 8, 'ö') == "helloööö");
+        assert(rightJustify(s, 8, 'ö') == "öööhello");
+        assert(center(s, 8, 'ö') == "öhelloöö");
     }
     });
 }
@@ -1746,10 +1773,7 @@ S detab(S)(S s, size_t tabSize = 8) @trusted pure
         L1:
             if (changes)
             {
-                if (cast(dchar)(cast(C)c) == c)
-                    result ~= cast(C)c;
-                else
-                    std.utf.encode(result, c);
+                std.utf.encode(result, c);
             }
             break;
         }
@@ -1870,10 +1894,7 @@ S entab(S)(S s, size_t tabSize = 8) @trusted pure
         }
         if (changes)
         {
-            if (cast(dchar)(cast(C)c) == c)
-                result ~= cast(C)c;
-            else
-                std.utf.encode(result, c);
+            std.utf.encode(result, c);
         }
     }
 
@@ -2489,16 +2510,7 @@ unittest
     });
 }
 
-
-/*****************************************************
- * $(RED Deprecated. It will be removed in November 2013.
- *       Please use std.string.format instead.)
- *
- * Format arguments into a string.
- *
- * $(LREF format) was changed to use this implementation in November 2012,
- */
-
+// Explicitly undocumented. It will be removed in July 2014.
 deprecated("Please use std.string.format instead.") alias format xformat;
 
 deprecated unittest
@@ -2521,17 +2533,7 @@ deprecated unittest
     });
 }
 
-
-/*****************************************************
- * $(RED Deprecated. It will be removed in November 2013.
- *       Please use std.string.sformat instead.)
- *
- * Format arguments into string $(D buf) which must be large
- * enough to hold the result. Throws RangeError if it is not.
- *
- * $(LREF sformat) was changed to use this implementation in November 2012,
- */
-
+// Explicitly undocumented. It will be removed in July 2014.
 deprecated("Please use std.string.sformat instead.") alias sformat xsformat;
 
 deprecated unittest
@@ -2817,7 +2819,7 @@ strings. (In such cases, the return value is not used.)
 S1 munch(S1, S2)(ref S1 s, S2 pattern)
 {
     size_t j = s.length;
-    foreach (i, c; s)
+    foreach (i, dchar c; s)
     {
         if (!inPattern(c, pattern))
         {
@@ -2831,11 +2833,13 @@ S1 munch(S1, S2)(ref S1 s, S2 pattern)
 
 @safe pure unittest
 {
-    string s = "123abc";
+    string s = "123€abc";
     string t = munch(s, "0123456789");
-    assert(t == "123" && s == "abc");
+    assert(t == "123" && s == "€abc");
     t = munch(s, "0123456789");
-    assert(t == "" && s == "abc");
+    assert(t == "" && s == "€abc");
+    t = munch(s, "£$€¥");
+    assert(t == "€" && s == "abc");
 }
 
 
@@ -3147,150 +3151,127 @@ unittest
 
 bool isNumeric(const(char)[] s, in bool bAllowSep = false) @safe pure
 {
-    ptrdiff_t iLen = s.length;
-    bool   bDecimalPoint = false;
-    bool   bExponent = false;
-    bool   bComplex = false;
-    auto sx = std.string.toLower(s);
-    int    j  = 0;
-    char   c;
-
-    //writefln("isNumeric(string, bool = false) called!");
-    // Empty string, return false
+    immutable iLen = s.length;
     if (iLen == 0)
         return false;
 
-    // Check for NaN (Not a Number)
-    if (sx == "nan" || sx == "nani" || sx == "nan+nani")
+    // Check for NaN (Not a Number) and for Infinity
+    if (s.among!((a, b) => icmp(a, b) == 0)
+            ("nan", "nani", "nan+nani", "inf", "-inf"))
         return true;
 
-    // Check for Infinity
-    if (sx == "inf" || sx == "-inf")
-        return true;
+    immutable j = s[0].among!('-', '+') != 0;
+    bool bDecimalPoint, bExponent, bComplex, sawDigits;
 
-    // A sign is allowed only in the 1st character
-    if (sx[0] == '-' || sx[0] == '+')
+    for (size_t i = j; i < iLen; i++)
     {
-        if (iLen == 1)  // but must be followed by other characters
-            return false;
-
-        j++;
-    }
-
-    for (int i = j; i < iLen; i++)
-    {
-        c = sx[i];
+        immutable c = s[i];
 
         // Digits are good, continue checking
         // with the popFront character... ;)
         if (c >= '0' && c <= '9')
+        {
+            sawDigits = true;
             continue;
+        }
 
         // Check for the complex type, and if found
         // reset the flags for checking the 2nd number.
-        else if (c == '+')
+        if (c == '+')
         {
-            if (i > 0)
-            {
-                bDecimalPoint = false;
-                bExponent = false;
-                bComplex = true;
-                continue;
-            }
-            else
+            if (!i)
                 return false;
+            bDecimalPoint = false;
+            bExponent = false;
+            bComplex = true;
+            sawDigits = false;
+            continue;
         }
+
         // Allow only one exponent per number
-        else if (c == 'e')
+        if (c.among!('e', 'E'))
         {
             // A 2nd exponent found, return not a number
-            if (bExponent)
+            if (bExponent || i + 1 >= iLen)
                 return false;
-
-            if (i + 1 < iLen)
-            {
-                // Look forward for the sign, and if
-                // missing then this is not a number.
-                if (sx[i + 1] != '-' && sx[i + 1] != '+')
-                    return false;
-                else
-                {
-                    bExponent = true;
-                    i++;
-                }
-            }
-            else
-                // Ending in "E", return not a number
+            // Look forward for the sign, and if
+            // missing then this is not a number.
+            if (!s[i + 1].among!('-', '+'))
                 return false;
+            bExponent = true;
+            i++;
+            continue;
         }
         // Allow only one decimal point per number to be used
-        else if (c == '.' )
+        if (c == '.' )
         {
             // A 2nd decimal point found, return not a number
             if (bDecimalPoint)
                 return false;
-
             bDecimalPoint = true;
             continue;
         }
         // Check for ending literal characters: "f,u,l,i,ul,fi,li",
-        // and wheater they're being used with the correct datatype.
-        else if (i == iLen - 2)
+        // and whether they're being used with the correct datatype.
+        if (i == iLen - 2)
         {
+            if (!sawDigits)
+                return false;
             // Integer Whole Number
-            if (sx[i..iLen] == "ul" &&
-               (!bDecimalPoint && !bExponent && !bComplex))
+            if (icmp(s[i..iLen], "ul") == 0 &&
+                    (!bDecimalPoint && !bExponent && !bComplex))
                 return true;
             // Floating-Point Number
-            else if ((sx[i..iLen] == "fi" || sx[i..iLen] == "li") &&
-                     (bDecimalPoint || bExponent || bComplex))
+            if (s[i..iLen].among!((a, b) => icmp(a, b) == 0)("fi", "li") &&
+                    (bDecimalPoint || bExponent || bComplex))
                 return true;
-            else if (sx[i..iLen] == "ul" &&
+            if (icmp(s[i..iLen], "ul") == 0 &&
                     (bDecimalPoint || bExponent || bComplex))
                 return false;
             // Could be a Integer or a Float, thus
             // all these suffixes are valid for both
-            else if (sx[i..iLen] == "ul" ||
-                     sx[i..iLen] == "fi" ||
-                     sx[i..iLen] == "li")
-                return true;
-            else
-                return false;
+            return s[i..iLen].among!((a, b) => icmp(a, b) == 0)
+                ("ul", "fi", "li") != 0;
         }
-        else if (i == iLen - 1)
+        if (i == iLen - 1)
         {
+            if (!sawDigits)
+                return false;
             // Integer Whole Number
-            if ((c == 'u' || c == 'l') &&
-                (!bDecimalPoint && !bExponent && !bComplex))
+            if (c.among!('u', 'l', 'U', 'L') &&
+                   (!bDecimalPoint && !bExponent && !bComplex))
                 return true;
             // Check to see if the last character in the string
             // is the required 'i' character
-            else if (bComplex)
-                if (c == 'i')
-                    return true;
-                else
-                    return false;
+            if (bComplex)
+                return c.among!('i', 'I') != 0;
             // Floating-Point Number
-            else if ((c == 'l' || c == 'f' || c == 'i') &&
-                     (bDecimalPoint || bExponent))
-                return true;
-            // Could be a Integer or a Float, thus
-            // all these suffixes are valid for both
-            else if (c == 'l' || c == 'f' || c == 'i')
-                return true;
-            else
-                return false;
+            return c.among!('l', 'L', 'f', 'F', 'i', 'I') != 0;
         }
-        else
-            // Check if separators are allow
-            // to be in the numeric string
-            if (bAllowSep == true && (c == '_' || c == ','))
-                continue;
-            else
-                return false;
+        // Check if separators are allowed to be in the numeric string
+        if (!bAllowSep || !c.among!('_', ','))
+            return false;
     }
 
-    return true;
+    return sawDigits;
+}
+
+unittest
+{
+    assert(!isNumeric("F"));
+    assert(!isNumeric("L"));
+    assert(!isNumeric("U"));
+    assert(!isNumeric("i"));
+    assert(!isNumeric("fi"));
+    assert(!isNumeric("ul"));
+    assert(!isNumeric("li"));
+    assert(!isNumeric("."));
+    assert(!isNumeric("-"));
+    assert(!isNumeric("+"));
+    assert(!isNumeric("e-"));
+    assert(!isNumeric("e+"));
+    assert(!isNumeric(".f"));
+    assert(!isNumeric("e+f"));
 }
 
 
@@ -3376,11 +3357,11 @@ unittest
 char[] soundex(const(char)[] string, char[] buffer = null) @safe pure nothrow
 in
 {
-    assert(!buffer || buffer.length >= 4);
+    assert(!buffer.ptr || buffer.length >= 4);
 }
 out (result)
 {
-    if (result)
+    if (result.ptr)
     {
         assert(result.length == 4);
         assert(result[0] >= 'A' && result[0] <= 'Z');
@@ -3411,7 +3392,7 @@ body
         }
         if (b == 0)
         {
-            if (!buffer)
+            if (!buffer.ptr)
                 buffer = new char[4];
             buffer[0] = c;
             b++;

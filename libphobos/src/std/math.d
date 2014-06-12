@@ -72,7 +72,7 @@ version (Win64)
 }
 
 import core.stdc.math;
-import std.range, std.traits;
+import std.traits;
 
 version(unittest)
 {
@@ -665,7 +665,7 @@ unittest
         r = -r;
         t = tan(x);
         //printf("tan(%Lg) = %Lg, should be %Lg\n", x, t, r);
-        if (!isIdentical(r, t) && !(r!<>=0 && t!<>=0)) assert(fabs(r-t) <= .0000001);
+        if (!isIdentical(r, t) && !(r!=r && t!=t)) assert(fabs(r-t) <= .0000001);
     }
     // overflow
     assert(isNaN(tan(real.infinity)));
@@ -1892,13 +1892,13 @@ unittest
     resetIeeeFlags();
     x = exp(real.nan);
     f = ieeeFlags;
-    assert(isIdentical(x,real.nan));
+    assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
     resetIeeeFlags();
     x = exp(-real.nan);
     f = ieeeFlags;
-    assert(isIdentical(x, -real.nan));
+    assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
     x = exp(NaN(0x123));
@@ -2386,7 +2386,7 @@ real log(real x) @safe pure nothrow
                 exp -= 1;
                 z = x - 0.5;
                 y = 0.5 * z + 0.5;
-            }       
+            }
             else
             {   // 2(x - 1)/(x + 1)
                 z = x - 0.5;
@@ -2517,7 +2517,7 @@ real log10(real x) @safe pure nothrow
                 exp -= 1;
                 z = x - 0.5;
                 y = 0.5 * z + 0.5;
-            }       
+            }
             else
             {   // 2(x - 1)/(x + 1)
                 z = x - 0.5;
@@ -2680,7 +2680,7 @@ real log2(real x) @safe pure nothrow
                 exp -= 1;
                 z = x - 0.5;
                 y = 0.5 * z + 0.5;
-            }       
+            }
             else
             {   // 2(x - 1)/(x + 1)
                 z = x - 0.5;
@@ -2923,7 +2923,7 @@ real hypot(real x, real y) @safe pure nothrow
 
     real u = fabs(x);
     real v = fabs(y);
-    if (u !>= v)  // check for NaN as well.
+    if (!(u >= v))  // check for NaN as well.
     {
         v = u;
         u = fabs(y);
@@ -5626,7 +5626,7 @@ in
 {
     // both x and y must have the same sign, and must not be NaN.
     assert(signbit(x) == signbit(y));
-    assert(x<>=0 && y<>=0);
+    assert(x==x && y==y);
 }
 body
 {
@@ -5923,6 +5923,7 @@ unittest
  */
 bool approxEqual(T, U, V)(T lhs, U rhs, V maxRelDiff, V maxAbsDiff = 1e-5)
 {
+    import std.range;
     static if (isInputRange!T)
     {
         static if (isInputRange!U)

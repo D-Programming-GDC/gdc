@@ -145,8 +145,8 @@ add_import_path (Strings *paths)
 
       for (size_t i = 0; i < paths->dim; i++)
 	{
-	  char *path = (*paths)[i];
-	  char *target_dir = make_absolute (path);
+	  const char *path = (*paths)[i];
+	  char *target_dir = make_absolute (CONST_CAST (char *, path));
 
 	  if (!FileName::exists (target_dir))
 	    {
@@ -171,8 +171,8 @@ add_fileimp_path (Strings *paths)
 
       for (size_t i = 0; i < paths->dim; i++)
 	{
-	  char *path = (*paths)[i];
-	  char *target_dir = make_absolute (path);
+	  const char *path = (*paths)[i];
+	  char *target_dir = make_absolute (CONST_CAST (char *, path));
 
 	  if (!FileName::exists (target_dir))
 	    {
@@ -192,7 +192,6 @@ add_fileimp_path (Strings *paths)
 void
 add_import_paths (bool stdinc)
 {
-  // %%TODO: front or back?
   if (stdinc)
     {
       char *phobos_dir = prefixed_path (D_PHOBOS_DIR);
@@ -213,7 +212,7 @@ add_import_paths (bool stdinc)
     {
       for (size_t i = 0; i < global.params.imppath->dim; i++)
 	{
-	  char *path = (*global.params.imppath)[i];
+	  const char *path = (*global.params.imppath)[i];
 	  if (path)
 	    add_import_path (FileName::splitPath (path));
 	}
@@ -224,7 +223,7 @@ add_import_paths (bool stdinc)
     {
       for (size_t i = 0; i < global.params.fileImppath->dim; i++)
 	{
-	  char *path = (*global.params.fileImppath)[i];
+	  const char *path = (*global.params.fileImppath)[i];
 	  if (path)
 	    add_fileimp_path (FileName::splitPath (path));
 	}

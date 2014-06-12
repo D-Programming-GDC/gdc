@@ -34,6 +34,8 @@ enum GTHREAD_RECURSIVE_MUTEX_INIT = 0;
 
 // Backend thread functions
 extern(C):
+@trusted:
+nothrow:
 
 int gthread_active_p()
 {
