@@ -54,7 +54,6 @@ Symbol::Symbol (void)
   this->Sreadonly = false;
 
   this->Stree = NULL_TREE;
-  this->ScontextDecl = NULL_TREE;
   this->SframeField = NULL_TREE;
   this->SnamedResult = NULL_TREE;
 
@@ -1298,16 +1297,6 @@ FuncDeclaration::toObjFile (int)
 
   if (!errorcount && !global.errors)
     {
-      // Build cgraph for function.
-      cgraph_get_create_node (fndecl);
-
-      // Set original decl context back to true context
-      if (D_DECL_STATIC_CHAIN (fndecl))
-	{
-	  Declaration *decl = lang_ddecl (fndecl);
-	  DECL_CONTEXT (fndecl) = decl->toSymbol()->ScontextDecl;
-	}
-
       // Dump the D-specific tree IR.
       int local_dump_flags;
       FILE *dump_file = dump_begin (TDI_original, &local_dump_flags);
@@ -1901,7 +1890,8 @@ d_finish_function (FuncDeclaration *fd)
 	static_dtor_list.safe_push (fd);
     }
 
-  struct cgraph_node *node = cgraph_get_node (decl);
+  // Build cgraph for function.
+  struct cgraph_node *node = cgraph_get_create_node (decl);
 
   // For nested functions update the cgraph to reflect unnesting,
   // which is handled by the front-end.

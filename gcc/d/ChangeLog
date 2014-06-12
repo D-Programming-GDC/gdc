@@ -1,3 +1,18 @@
+2014-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(d_decl_context): Always return parent context for
+	functions nested in functions.
+	(is_degenerate_closure): Remove function.
+	(needs_static_chain): Remove function.
+	* d-decls.cc(FuncDeclaration::toSymbol): Remove workaround for cgraph
+	nesting structure, saving the original context decl.
+	* d-lang.h(D_DECL_STATIC_CHAIN): Remove macro.
+	* d-objfile.cc(Symbol::Symbol): Remove ScontextDecl field.
+	(FuncDeclaration::toObjFile): Remove workaround for cgraph nesting
+	structure, restoring the original context decl.  Delay building the
+	cgraph node until...
+	(d_finish_function): ... here, where the function is unnested.
+
 2014-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(d_finish_function): Update the callgraph to reflect

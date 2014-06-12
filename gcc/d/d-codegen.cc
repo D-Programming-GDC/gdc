@@ -37,19 +37,16 @@ tree
 d_decl_context (Dsymbol *dsym)
 {
   Dsymbol *parent = dsym;
-  AggregateDeclaration *ad;
 
   while ((parent = parent->toParent2()))
     {
+      // Nested functions.
       if (parent->isFuncDeclaration())
-	{
-	  FuncDeclaration *fd = dsym->isFuncDeclaration();
-	  if (fd && !needs_static_chain (fd))
-	    return NULL_TREE;
+	return parent->toSymbol()->Stree;
 
-	  return parent->toSymbol()->Stree;
-	}
-      else if ((ad = parent->isAggregateDeclaration()))
+      // Methods of classes or structs.
+      AggregateDeclaration *ad = parent->isAggregateDeclaration();
+      if (ad != NULL)
 	{
 	  tree context = ad->type->toCtype();
 	  // Want the underlying RECORD_TYPE.
@@ -58,11 +55,12 @@ d_decl_context (Dsymbol *dsym)
 
 	  return context;
 	}
-      else if (parent->isModule())
+
+      // We've reached the top-level module namespace.
+      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
+      // but only for extern(D) symbols.
+      if (parent->isModule())
 	{
-	  // We've reached the top-level module namespace.
-	  // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing
-	  // module, but only for extern(D) symbols.
 	  Declaration *decl = dsym->isDeclaration();
 	  if (decl != NULL && decl->linkage != LINKd)
 	    return NULL_TREE;
@@ -3449,85 +3447,6 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
       return null_pointer_node;
     }
 }
-
-// Special case: If a function returns a nested class with functions
-// but there are no "closure variables" the frontend (needsClosure)
-// returns false even though the nested class _is_ returned from the
-// function. (See case 4 in needsClosure)
-// A closure is strictly speaking not necessary, but we also can not
-// use a static function chain for functions in the nested class as
-// they can be called from outside. GCC's nested functions can't deal
-// with those kind of functions. We have to detect them manually here
-// and make sure we neither construct a static chain nor a closure.
-
-static bool
-is_degenerate_closure (FuncDeclaration *f)
-{
-  if (!f->needsClosure() && f->closureVars.dim == 0)
-  {
-    Type *tret = ((TypeFunction *) f->type)->next;
-    gcc_assert(tret);
-    tret = tret->toBasetype();
-    if (tret->ty == Tclass || tret->ty == Tstruct)
-    {
-      Dsymbol *st = tret->toDsymbol(NULL);
-      for (Dsymbol *s = st->parent; s; s = s->parent)
-      {
-	if (s == f)
-	  return true;
-      }
-    }
-  }
-  return false;
-}
-
-// Return true if function F needs to have the static chain passed to it.
-// This only applies to nested function handling provided by the GDC
-// front end (not D closures).
-
-bool
-needs_static_chain (FuncDeclaration *f)
-{
-  Dsymbol *s;
-  FuncDeclaration *pf = NULL;
-  TemplateInstance *ti = NULL;
-
-  if (f->isNested())
-    {
-      s = f->toParent();
-      ti = s->isTemplateInstance();
-      if (ti && ti->enclosing == NULL && ti->parent->isModule())
-	return false;
-
-      pf = f->toParent2()->isFuncDeclaration();
-      if (pf && !get_frameinfo (pf)->is_closure)
-	return true;
-    }
-
-  if (f->isStatic())
-    return false;
-
-  s = f->toParent2();
-
-  while (s)
-    {
-      AggregateDeclaration *ad = s->isAggregateDeclaration();
-      if (!ad || !ad->isNested())
-	break;
-
-      if (!s->isTemplateInstance())
-	break;
-
-      s = s->toParent2();
-      if ((pf = s->isFuncDeclaration())
-	  && !get_frameinfo (pf)->is_closure
-	  && !is_degenerate_closure (pf))
-	return true;
-    }
-
-  return false;
-}
-
 
 // Construct a WrappedExp, whose components are an EXP_NODE, which contains
 // a list of instructions in GCC to be passed through.
