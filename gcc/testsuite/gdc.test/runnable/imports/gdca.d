@@ -2,7 +2,7 @@ module imports.gdca;
 
 private import gdc;
 
-void test4a()
+void test36d_1()
 {
     auto parser = Parser!(char[])();
 }
