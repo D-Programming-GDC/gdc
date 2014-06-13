@@ -195,6 +195,18 @@ void testsizes()
 
 ///////////////////////
 
+size_t cond11565(size_t val)
+{
+    return val ? size_t.max : 0;
+}
+
+void test11565()
+{
+    assert(cond11565(true) == size_t.max);
+}
+
+///////////////////////
+
 int array1[3] = [1:1,2,0:3];
 
 void testarrayinit()
@@ -391,6 +403,19 @@ void testfastudiv()
     r = ulremquo14(u);  assert(r == ((u/14)|(u%y14)));
     r = ulremquo14007(u);  assert(r == ((u/14007)|(u%y14007)));
   }
+}
+
+
+////////////////////////////////////////////////////////////////////////
+
+void vfunc() {}
+
+void test12095(int k)
+{
+    int e = 0;
+    e ? k || assert(0) : !e || vfunc();
+    e ? k || assert(0) : e && vfunc();
+    !e ? !e || vfunc() : k || assert(0);
 }
 
 
@@ -729,6 +754,25 @@ void testdocond()
 
 ////////////////////////////////////////////////////////////////////////
 
+struct S8658
+{
+    int[16385] a;
+}
+
+void foo8658(S8658 s)
+{
+    int x;
+}
+
+void test8658()
+{
+    S8658 s;
+    for(int i = 0; i < 1000; i++)
+        foo8658(s);
+}
+
+////////////////////////////////////////////////////////////////////////
+
 uint neg(uint i)
 {
     return ~i + 1;
@@ -906,6 +950,18 @@ void testandand()
 
 ////////////////////////////////////////////////////////////////////////
 
+bool bittest11508(char c)
+{
+    return c=='_' || c=='-' || c=='+' || c=='.';
+}
+
+void testbittest()
+{
+    assert(bittest11508('_'));
+}
+
+////////////////////////////////////////////////////////////////////////
+
 uint or1(ubyte x)
 {
     return x | (x<<8) | (x<<16) | (x<<24) | (x * 3);
@@ -995,6 +1051,25 @@ void test10678()
 
 ////////////////////////////////////////////////////////////////////////
 
+struct S12051
+{
+    this(char c)
+    {
+        assert(c == 'P' || c == 'M');
+    }
+}
+
+void test12051()
+{
+    auto ip = ["abc"];
+    foreach (i, s; ip)
+    {
+        S12051(i < ip.length ? 'P' : 'M');
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+
 void bug7565( double x) { assert(x == 3); }
 
 void test7565()
@@ -1003,6 +1078,14 @@ void test7565()
    bug7565( y++ );
    assert(y == 4);
 }
+
+////////////////////////////////////////////////////////////////////////
+
+int bug8525(int[] devt)
+{
+    return devt[$ - 1];
+}
+
 
 ////////////////////////////////////////////////////////////////////////
  
@@ -1018,12 +1101,17 @@ int main()
     testarrayinit();
     testU();
     testulldiv();
+    testbittest();
+    test8658();
     testfastudiv();
     testfastdiv();
+    test12051();
     testdocond();
     testnegcom();
+    test11565();
     testoror();
     testbt();
+    test12095(0);
     testandand();
     testor_combine();
     testshrshl();

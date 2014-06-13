@@ -19,11 +19,14 @@ Macros:
 WIKI = Phobos/StdConv
 
 */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+   work with the GDC compiler.
+ */
 module std.conv;
 
-import std.math : ldexp;
 import core.stdc.string;
-import std.algorithm, std.array, std.ascii, std.exception, std.math, std.range,
+import std.algorithm, std.array, std.ascii, std.exception, std.range,
     std.string, std.traits, std.typecons, std.typetuple, std.uni,
     std.utf;
 import std.format;
@@ -102,6 +105,8 @@ private
     T toStr(T, S)(S src)
         if (isSomeString!T)
     {
+        import std.format : FormatSpec, formatValue;
+
         auto w = appender!T();
         FormatSpec!(ElementEncodingType!T) f;
         formatValue(w, src, f);
@@ -121,7 +126,7 @@ private
     template isNullToStr(S, T)
     {
         enum isNullToStr = isImplicitlyConvertible!(S, T) &&
-                           is(S == typeof(null)) && isExactSomeString!T;
+                           (is(Unqual!S == typeof(null))) && isExactSomeString!T;
     }
 
     template isRawStaticArray(T, A...)
@@ -305,6 +310,15 @@ template to(T)
     assert(text(null) == "null");
 }
 
+// Tests for issue 11390
+@safe pure unittest
+{
+    const(typeof(null)) ctn;
+    immutable(typeof(null)) itn;
+    assert(to!string(ctn) == "null");
+    assert(to!string(itn) == "null");
+}
+
 // Tests for issue 8729: do NOT skip leading WS
 @safe pure unittest
 {
@@ -463,7 +477,8 @@ T toImpl(T, S)(ref S s)
 When source type supports member template function opCast, is is used.
 */
 T toImpl(T, S)(S value)
-    if (is(typeof(S.init.opCast!T()) : T) &&
+    if (!isImplicitlyConvertible!(S, T) &&
+        is(typeof(S.init.opCast!T()) : T) &&
         !isExactSomeString!T)
 {
     return value.opCast!T();
@@ -849,6 +864,8 @@ T toImpl(T, S)(S value)
                     return to!T(enumRep!(immutable(T), S, I));
             }
         }
+
+        import std.format : FormatSpec, formatValue;
 
         //Default case, delegate to format
         //Note: we don't call toStr directly, to avoid duplicate work.
@@ -1275,129 +1292,6 @@ body
     assert(to!string(long.max) == "9223372036854775807");
 }
 
-// Explicitly undocumented. It will be removed in November 2013.
-deprecated("Please use std.format.formattedWrite instead.")
-T toImpl(T, S)(S s, in T leftBracket, in T separator = ", ", in T rightBracket = "]")
-    if (!isSomeChar!(ElementType!S) && (isInputRange!S || isInputRange!(Unqual!S)) &&
-        isExactSomeString!T)
-{
-    static if (!isInputRange!S)
-    {
-        alias toImpl!(T, Unqual!S) ti;
-        return ti(s, leftBracket, separator, rightBracket);
-    }
-    else
-    {
-        alias Unqual!(ElementEncodingType!T) Char;
-        // array-to-string conversion
-        auto result = appender!(Char[])();
-        result.put(leftBracket);
-        bool first = true;
-        for (; !s.empty; s.popFront())
-        {
-            if (!first)
-            {
-                result.put(separator);
-            }
-            else
-            {
-                first = false;
-            }
-            result.put(to!T(s.front));
-        }
-        result.put(rightBracket);
-        return cast(T) result.data;
-    }
-}
-
-// Explicitly undocumented. It will be removed in November 2013.
-deprecated("Please use std.format.formattedWrite instead.")
-T toImpl(T, S)(ref S s, in T leftBracket, in T separator = " ", in T rightBracket = "]")
-    if ((is(S == void[]) || is(S == const(void)[]) || is(S == immutable(void)[])) &&
-        isExactSomeString!T)
-{
-    return toImpl(s);
-}
-
-// Explicitly undocumented. It will be removed in November 2013.
-deprecated("Please use std.format.formattedWrite instead.")
-T toImpl(T, S)(S s, in T leftBracket, in T keyval = ":", in T separator = ", ", in T rightBracket = "]")
-    if (isAssociativeArray!S && !is(S == enum) &&
-        isExactSomeString!T)
-{
-    alias Unqual!(ElementEncodingType!T) Char;
-    auto result = appender!(Char[])();
-// hash-to-string conversion
-    result.put(leftBracket);
-    bool first = true;
-    foreach (k, v; s)
-    {
-        if (!first)
-            result.put(separator);
-        else first = false;
-        result.put(to!T(k));
-        result.put(keyval);
-        result.put(to!T(v));
-    }
-    result.put(rightBracket);
-    return cast(T) result.data;
-}
-
-// Explicitly undocumented. It will be removed in November 2013.
-deprecated("Please use std.format.formattedWrite instead.")
-T toImpl(T, S)(S s, in T nullstr)
-    if (is(S : Object) &&
-        isExactSomeString!T)
-{
-    if (!s)
-        return nullstr;
-    return to!T(s.toString());
-}
-
-// Explicitly undocumented. It will be removed in November 2013.
-deprecated("Please use std.format.formattedWrite instead.")
-T toImpl(T, S)(S s, in T left, in T separator = ", ", in T right = ")")
-    if (is(S == struct) && !is(typeof(&S.init.toString)) && !isInputRange!S &&
-        isExactSomeString!T)
-{
-    Tuple!(FieldTypeTuple!S) * t = void;
-    static if ((*t).sizeof == S.sizeof)
-    {
-        // ok, attempt to forge the tuple
-        t = cast(typeof(t)) &s;
-        alias Unqual!(ElementEncodingType!T) Char;
-        auto app = appender!(Char[])();
-        app.put(left);
-        foreach (i, e; t.field)
-        {
-            if (i > 0)
-                app.put(to!T(separator));
-            app.put(to!T(e));
-        }
-        app.put(right);
-        return cast(T) app.data;
-    }
-    else
-    {
-        // struct with weird alignment
-        return to!T(S.stringof);
-    }
-}
-
-/*
-  $(LI A $(D typedef Type Symbol) is converted to string as $(D "Type(value)").)
-*/
-deprecated T toImpl(T, S)(S s, in T left = to!T(S.stringof~"("), in T right = ")")
-    if (is(S == typedef) &&
-        isExactSomeString!T)
-{
-    static if (is(S Original == typedef))
-    {
-        // typedef
-        return left ~ to!T(cast(Original) s) ~ right;
-    }
-}
-
 
 /**
 Narrowing numeric-numeric conversions throw when the value does not
@@ -1464,7 +1358,7 @@ unittest
     // type.
     enum E1 : ulong { A = 1, B = 1UL<<48, C = 0 }
     assert(to!int(E1.A) == 1);
-    assert(to!bool(E1.A) == true);    
+    assert(to!bool(E1.A) == true);
     assertThrown!ConvOverflowException(to!int(E1.B)); // E1.B overflows int
     assertThrown!ConvOverflowException(to!bool(E1.B)); // E1.B overflows bool
     assert(to!bool(E1.C) == false);
@@ -1482,7 +1376,7 @@ unittest
     assert(to!byte(E3.B) == 1);
     assert(to!ubyte(E3.C) == 255);
     assert(to!bool(E3.B) == true);
-    assertThrown!ConvOverflowException(to!byte(E3.C));    
+    assertThrown!ConvOverflowException(to!byte(E3.C));
     assertThrown!ConvOverflowException(to!bool(E3.C));
     assert(to!bool(E3.D) == false);
 
@@ -1888,6 +1782,8 @@ template roundTo(Target)
 {
     Target roundTo(Source)(Source value)
     {
+        import std.math : trunc;
+
         static assert(isFloatingPoint!Source);
         static assert(isIntegral!Target);
         return to!Target(trunc(value + (value < 0 ? -0.5L : 0.5L)));
@@ -2548,6 +2444,8 @@ Target parse(Target, Source)(ref Source p)
                 ()@trusted{ *cast(long*)&ldval = msdec; }();
                 ()@trusted{ (cast(ushort*)&ldval)[4] = cast(ushort) e2; }();
 
+                import std.math : ldexp;
+
                 // Exponent is power of 2, not power of 10
                 ldval = ldexp(ldval,exp);
             }
@@ -2606,6 +2504,8 @@ Target parse(Target, Source)(ref Source p)
                 //Store exponent, now overwriting implicit bit
                 ()@trusted{ *cast(long *)&ldval &= 0x000F_FFFF_FFFF_FFFF; }();
                 ()@trusted{ *cast(long *)&ldval |= ((e2 & 0xFFFUL) << 52); }();
+
+                import std.math : ldexp;
 
                 // Exponent is power of 2, not power of 10
                 ldval = ldexp(ldval,exp);
@@ -2741,6 +2641,8 @@ Target parse(Target, Source)(ref Source p)
 
 unittest
 {
+    import std.math : isnan, fabs;
+
     // Compare reals with given precision
     bool feq(in real rx, in real ry, in real precision = 0.000001L)
     {
@@ -2813,7 +2715,7 @@ unittest
 //Tests for the double implementation
 unittest
 {
-    import core.stdc.stdlib;
+    import core.stdc.stdlib, std.math;
     static if(real.mant_dig == 53)
     {
         //Should be parsed exactly: 53 bit mantissa
@@ -3322,8 +3224,8 @@ Target parse(Target, Source)(ref Source s, dchar lbracket = '[', dchar rbracket 
     if (isExactSomeString!Source &&
         isAssociativeArray!Target && !is(Target == enum))
 {
-    alias KeyType = typeof(Target.keys[0]);
-    alias ValType = typeof(Target.values[0]);
+    alias KeyType = typeof(Target.init.keys[0]);
+    alias ValType = typeof(Target.init.values[0]);
 
     Target result;
 
@@ -4435,7 +4337,7 @@ unittest
         assert(!__traits(compiles, emplace(&sa, sb)));
     }
 }
- 
+
 unittest
 {
     static struct S
@@ -4618,7 +4520,7 @@ unittest
     enum c = bar!S2;
 }
 
- 
+
 unittest
 {
     struct S
@@ -4705,7 +4607,10 @@ unittest //@@@9559@@@
 
 unittest //http://forum.dlang.org/thread/nxbdgtdlmwscocbiypjs@forum.dlang.org
 {
-    import std.datetime;
+    import std.array : array;
+    import std.datetime : SysTime, UTC;
+    import std.math : isNaN;
+
     static struct A
     {
         double i;
@@ -4733,14 +4638,13 @@ unittest //http://forum.dlang.org/thread/nxbdgtdlmwscocbiypjs@forum.dlang.org
     auto b3 = B(SysTime(0, UTC()), 1, A(1));
     assert(&b3);
 
-    import std.array;
     auto arr = [b2, b3];
 
     assert(arr[0].j == 1);
     assert(arr[1].j == 1);
     auto a2 = arr.array(); // << bang, invariant is raised, also if b2 and b3 are good
 }
- 
+
 //static arrays
 unittest
 {

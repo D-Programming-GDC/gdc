@@ -23,7 +23,6 @@
 #include "declaration.h"
 #include "aggregate.h"
 
-extern bool inNonRoot(Dsymbol *s);
 extern FuncDeclaration *search_toHash(StructDeclaration *sd);
 extern FuncDeclaration *search_toString(StructDeclaration *sd);
 
@@ -69,10 +68,10 @@ Type::getInternalTypeInfo (Scope *sc)
       tid = internalTI[t->ty];
       if (!tid)
 	{
-	  tid = new TypeInfoDeclaration (t, 1);
+	  tid = TypeInfoDeclaration::create (t, 1);
 	  internalTI[t->ty] = tid;
 	}
-      e = new VarExp (Loc(), tid);
+      e = VarExp::create (Loc(), tid);
       e = e->addressOf (sc);
       // do this so we don't get redundant dereference
       e->type = tid->type;
@@ -98,19 +97,21 @@ Type::getTypeInfo (Scope *sc)
       fatal();
     }
 
+  gcc_assert (ty != Terror);
+
   // do this since not all Type's are merge'd
   Type *t = merge2();
   if (!t->vtinfo)
     {
       // does both 'shared' and 'shared const'
       if (t->isShared())
-	t->vtinfo = new TypeInfoSharedDeclaration (t);
+	t->vtinfo = TypeInfoSharedDeclaration::create (t);
       else if (t->isConst())
-	t->vtinfo = new TypeInfoConstDeclaration (t);
+	t->vtinfo = TypeInfoConstDeclaration::create (t);
       else if (t->isImmutable())
-	t->vtinfo = new TypeInfoInvariantDeclaration (t);
+	t->vtinfo = TypeInfoInvariantDeclaration::create (t);
       else if (t->isWild())
-	t->vtinfo = new TypeInfoWildDeclaration (t);
+	t->vtinfo = TypeInfoWildDeclaration::create (t);
       else
 	t->vtinfo = t->getTypeInfoDeclaration();
 
@@ -135,7 +136,7 @@ Type::getTypeInfo (Scope *sc)
 		  if (((sd->xeq && sd->xeq != sd->xerreq)
 		       || (sd->xcmp && sd->xcmp != sd->xerrcmp)
 		       || search_toHash (sd) || search_toString (sd))
-		      && inNonRoot (sd))
+		      && sd->inNonRoot())
 		    Module::addDeferredSemantic3 (sd);
 		}
 	    }
@@ -147,7 +148,7 @@ Type::getTypeInfo (Scope *sc)
   if (!vtinfo)
     vtinfo = t->vtinfo;
 
-  Expression *e = new VarExp (Loc(), t->vtinfo);
+  Expression *e = VarExp::create (Loc(), t->vtinfo);
   e = e->addressOf (sc);
   // do this so we don't get redundant dereference
   e->type = t->vtinfo->type;
@@ -157,82 +158,82 @@ Type::getTypeInfo (Scope *sc)
 TypeInfoDeclaration *
 Type::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoDeclaration (this, 0);
+  return TypeInfoDeclaration::create (this, 0);
 }
 
 TypeInfoDeclaration *
 TypeTypedef::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoTypedefDeclaration (this);
+  return TypeInfoTypedefDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypePointer::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoPointerDeclaration (this);
+  return TypeInfoPointerDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeDArray::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoArrayDeclaration (this);
+  return TypeInfoArrayDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeSArray::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoStaticArrayDeclaration (this);
+  return TypeInfoStaticArrayDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeAArray::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoAssociativeArrayDeclaration (this);
+  return TypeInfoAssociativeArrayDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeStruct::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoStructDeclaration (this);
+  return TypeInfoStructDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeClass::getTypeInfoDeclaration (void)
 {
   if (sym->isInterfaceDeclaration())
-    return new TypeInfoInterfaceDeclaration (this);
+    return TypeInfoInterfaceDeclaration::create (this);
   else
-    return new TypeInfoClassDeclaration (this);
+    return TypeInfoClassDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeVector::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoVectorDeclaration (this);
+  return TypeInfoVectorDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeEnum::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoEnumDeclaration (this);
+  return TypeInfoEnumDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeFunction::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoFunctionDeclaration (this);
+  return TypeInfoFunctionDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeDelegate::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoDelegateDeclaration (this);
+  return TypeInfoDelegateDeclaration::create (this);
 }
 
 TypeInfoDeclaration *
 TypeTuple::getTypeInfoDeclaration (void)
 {
-  return new TypeInfoTupleDeclaration (this);
+  return TypeInfoTupleDeclaration::create (this);
 }
 
 /* ========================================================================= */
@@ -293,10 +294,10 @@ createTypeInfoArray (Scope *sc, Expression *exps[], size_t dim)
   args->setDim (dim);
   for (size_t i = 0; i < dim; i++)
     {
-      Parameter *arg = new Parameter (STCin, exps[i]->type, NULL, NULL);
+      Parameter *arg = Parameter::create (STCin, exps[i]->type, NULL, NULL);
       (*args)[i] = arg;
     }
-  TypeTuple *tup = new TypeTuple (args);
+  TypeTuple *tup = TypeTuple::create (args);
   Expression *e = tup->getTypeInfo (sc);
   e = e->optimize (WANTvalue);
   gcc_assert (e->op == TOKsymoff);

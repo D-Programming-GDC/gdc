@@ -2766,6 +2766,36 @@ struct S5117b
 }
 
 /************************************************/
+// 6439
+
+struct A6439
+{
+    this(uint a, uint b)
+    {
+        begin = a;
+        end = b;
+    }
+    union
+    {
+        struct
+        {
+            uint begin, end;
+        }
+        uint[2] arr;
+    }
+}
+
+void test6439()
+{
+    enum y = A6439(10, 20);
+    A6439 y2 = A6439(10, 20);
+    assert(y2.begin == y.begin && y2.end == y.end);  //passes
+    assert(y.arr != [0,0]);
+    assert(y.arr == [10,20]);
+    assert(y.arr == y2.arr);
+}
+
+/************************************************/
 // from tests/fail_compilation/fail147
 
 static assert(!is(typeof(Compileable!(
@@ -3083,6 +3113,27 @@ void test9954()
 }
 
 /************************************************/
+// 10483
+
+struct Bug10483
+{
+    int val[3][4];
+}
+
+struct Outer10483
+{
+    Bug10483 p = Bug10483(67);
+}
+
+int k10483a = Outer10483.init.p.val[2][2];   // ICE(expression.c)
+
+void test10483()
+{
+    int k10483b = Outer10483.init.p.val[2][2]; // Segfault (backend/type.c)
+}
+
+/************************************************/
+
 struct S10669 { uint x; }
 
 static const S10669 iid0_10669 = S10669(0);
@@ -3238,6 +3289,7 @@ int main()
     //test108(); 
     test109();
     test112();
+    test6439();
     test6504();
     test8818();
     test9954();    

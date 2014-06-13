@@ -1,3 +1,208 @@
+2014-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-convert.cc(d_scalar_conversion): Remove function.
+	(d_build_truthvalue_op): Update.
+	(d_truthvalue_conversion): Update.
+
+	* d-codegen.cc(get_frame_for_symbol): Remove glue-specific error
+	messages and refactor.
+	(build_vthis): Likewise.
+	(get_framedecl): Likewise.
+	* d-elem.cc(AssignExp::toElem): Update call to build_vthis.
+	(NewExp::toElem): Likewise.
+	(StructLiteralExp::toElem): Likewise.
+	* d-objfile.cc(Dsymbol::toObjFile): Fix build warning.
+
+	* d-codegen.cc(d_decl_context): Always return parent context for
+	functions nested in functions.
+	(is_degenerate_closure): Remove function.
+	(needs_static_chain): Remove function.
+	* d-decls.cc(FuncDeclaration::toSymbol): Remove workaround for cgraph
+	nesting structure, saving the original context decl.
+	* d-lang.h(D_DECL_STATIC_CHAIN): Remove macro.
+	* d-objfile.cc(Symbol::Symbol): Remove ScontextDecl field.
+	(FuncDeclaration::toObjFile): Remove workaround for cgraph nesting
+	structure, restoring the original context decl.  Delay building the
+	cgraph node until...
+	(d_finish_function): ... here, where the function is unnested.
+
+2014-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(d_finish_function): Update the callgraph to reflect
+	unnesting of the function, as unravelling has already been handled by
+	the frontend.  Do not delay calling cgraph_finalize_function.
+
+2014-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(d_comdat_group): Return a decl.
+	* d-decl.cc(FuncDeclaration::toThunkSymbol): Don't set comdat group.
+	* d-elem.cc(EqualExp::toElem): Always store temporaries when comparing
+	two dynamic arrays.
+
+2014-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc(TypeInfoDeclaration::toSymbol): Add assert that Error
+	types never reach the backend.
+	* d-typinf.cc(Type::getTypeInfo): Likewise.
+
+2014-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update to D front-end version 2.065.
+
+	* d-codegen.cc(d_build_call): Evaluate side effects of the object
+	parameter for method or delegate calls before passing.
+	(libcall_ids): Rename _d_array_bounds to _d_arraybounds.
+	(get_libcall): Update parameter types for _d_arraycopy.
+	(finish_aggregate_type): Update for frontend UDA changes.
+	* d-ctype.cc(TypeTypedef::toCtype): Update for frontend UDA changes.
+	(TypeEnum::toCtype): Likewise.
+	(TypeStruct::toCtype): Likewise.
+	(TypeClass::toCtype): Likewise.
+	* d-elem.cc(BoolExp::toElem): New function.
+	* d-lang.cc(rootmodule): New declaration for frontend entrypoint
+	changes.
+	(genCmain): Update for frontend entrypoint changes.
+	(d_handle_option): Don't duplicate memory for argument values.
+	(d_parse_file): Don't duplicate memory for source filenames.
+	* d-objfile.cc(VarDeclaration::toObjFile): Don't emit instantiated
+	manifest constants to debug.
+	(TemplateInstance::toObjFile): Update for frontend changes.
+	(output_template_p): Remove function.
+	(output_declaration_p): Update for frontend changes.
+	(setup_symbol_storage): Update for frontend UDA changes.
+	* d-target.cc(Target::reverseCppOverloads): New declaration.
+	* d-typinf.cc(Type::getInternalTypeInfo): Update for frontend changes.
+	(Type::getTypeInfo, Type::getTypeInfoDeclaration): Likewise.
+	(TypeTypedef::getTypeInfoDeclaration): Likewise.
+	(TypePointer::getTypeInfoDeclaration): Likewise.
+	(TypeDArray::getTypeInfoDeclaration): Likewise.
+	(TypeSArray::getTypeInfoDeclaration): Likewise.
+	(TypeAArray::getTypeInfoDeclaration): Likewise.
+	(TypeStruct::getTypeInfoDeclaration): Likewise.
+	(TypeClass::getTypeInfoDeclaration): Likewise.
+	(TypeVector::getTypeInfoDeclaration): Likewise.
+	(TypeEnum::getTypeInfoDeclaration): Likewise.
+	(TypeFunction::getTypeInfoDeclaration): Likewise.
+	(TypeDelegate::getTypeInfoDeclaration): Likewise.
+	(TypeTuple::getTypeInfoDeclaration): Likewise.
+	(createTypeInfoArray): Likewise.
+
+	* d-intrinsics.def: New file for declaring D intrinsics.
+
+	* d-builtins.cc(std_intrinsic_module, std_math_module)
+	(core_math_module, va_arg_template, va_arg2_template)
+	(va_start_template): Remove declarations.
+	(is_intrinsic_module_p, is_math_module_p, is_builtin_va_arg_p)
+	(is_builtin_va_start_p, d_gcc_magic_stdarg_check)
+	(d_gcc_magic_stdarg_module): Remove functions.
+	(d_gcc_magic_builtins_module): Rename to d_build_builtins_module.
+	(d_gcc_magic_libbuiltins_module): Rename to maybe_set_builtin.
+	(d_gcc_magic_libbuiltins_check): Rename to maybe_set_builtin_1.
+	(gcc_type_to_d_type): Rename to build_dtype.
+	(gcc_cst_to_d_expr): Rename to build_expression.
+	(d_gcc_eval_builtin): Remove function.
+	(eval_builtin): Moved to...
+	* d-glue.cc(eval_builtin): New function, updated for glue changes.
+	(FuncDeclaration::isBuiltin): New function to determine whether a
+	given function symbol is a compiler intrinsic.
+	* d-codegen.cc(maybe_expand_builtin): Rename to expand_intrinsic.
+	(Intrinsic): Remove enum declaration, replaced with...
+	(intrinsic_code): New enum for compiler intrinsics.
+	(intrinsic_decls): New declaration for store intrinsic information.
+	(expand_intrinsic_bt): Update signature.
+	(maybe_set_intrinsic): New function to replace...
+	(maybe_set_builtin_frontend): Remove function.
+	* d-decls.cc(FuncDeclaration::toSymbol): Update for glue changes.
+
+	* d-builtins.c: Rename to d-builtins.cc
+	* d-gt.c: Rename to d-gt.cc
+	* d-spec.c: Rename to d-spec.cc
+
+	* d-toir.cc: Renamed to toir.cc
+	* toir.cc: New file, re-implement toIR methods as a visitor.
+
+	* d-codegen.cc(insert_type_modifiers): Handle MODwildconst modifiers.
+	(build_ir): New function.
+	* d-objfile.cc(FuncDeclaration::toObjFile): Use build_ir to walk
+	front-end IR trees.
+	* d-decls.cc(VarDeclaration::toSymbol): Mark compiler temporaries as
+	DECL_ARTIFICIAL.
+	(ClassDeclaration::toVtblSymbol): Update for front-end changes.
+	* d-builtins.c(gcc_type_to_d_type): Likewise.
+	* d-elem.cc(CatAssignExp::toElem): Likewise.
+	(ArrayLiteralExp::toElem): Likewise.
+	(BoolExp::toElem): Remove function.
+	(ComExp::toElem): Assert that unhandled array operations no longer
+	leak from the front-end.
+	(NegExp::toElem): Likewise.
+	* d-glue.cc(Global::init): Initialise new member run_noext.
+	* d-incpath(add_import_path): Update for front-end changes.
+	* d-lang.cc(d_add_builtin_version): Likewise.
+	* d-todt.cc(StructDeclaration::toDt): Likewise.
+	* d-toir.cc(LabelStatement::toIR): Don't delete forward references.
+	(GotoStatement::toIR): Assert that undefined labels no longer leak
+	from the front-end.
+
+2014-05-31  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-todt.cc(dt_container): Properly handle zero length static arrays.
+	* d-codegen.h(build_dtype): Rename to lang_dtype.
+	(build_ddecl): Rename to lang_ddecl.
+
+2014-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.c(d_init_builtins): Use void_node instead of
+	d_void_zero_node.
+	* d-lang.h(d_void_zero_node): Remove.
+	* d-elem.cc(AndAndExp::toElem): Adjust.
+	(OrOrExp::toElem): Likewise.
+	(AssertExp::toElem): Likewise.
+	(TupleExp::toElem): Likewise.
+
+	* d-builtins.c(d_init_builtins): Use null_pointer_node instead of
+	d_null_pointer.
+	* d-lang.h(d_null_pointer): Remove.
+	* d-codegen.cc(convert_expr): Adjust.
+	(get_frame_for_symbol): Likewise.
+	(build_vthis): Likewise.
+	(get_framedecl): Likewise.
+	* d-elem.cc(DeleteExp::toElem): Likewise.
+	(CallExp::toElem): Likewise.
+	(AssertExp::toElem): Likewise.
+	(NewExp::toElem): Likewise.
+	(ArrayLiteralExp::toElem): Likewise.
+	(NullExp::toElem): Likewise.
+	* d-objfile.cc(ClassDeclaration::toObjFile): Likewise.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	(FuncDeclaration::toObjFile): Likewise.
+	(build_moduleinfo): Likewise.
+	* d-todt.cc(TypeInfoTypedefDeclaration::toDt): Likewise.
+	(TypeInfoEnumDeclaration::toDt): Likewise.
+	(TypeInfoStructDeclaration::toDt): Likewise.
+
+2014-05-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-longdouble.cc(longdouble::from_shwi): Rename to from_int.
+	(longdouble::from_uhwi): Rename to from_uint.
+	(longdouble::to_shwi): Rename to to_int.
+	(longdouble::to_uhwi): Rename to to_uint.
+	(longdouble::set): Adjust.
+	(longdouble::operator): Likewise.
+
+	* d-lang.cc(alloc_binding_level): Adjust.
+	(build_d_type_lang_specific): Likewise.
+	(build_d_decl_lang_specific): Likewise.
+	* d-lang.h(lang_type): Don't use variable_size gty attribute.
+	* d-codegen.cc(cst_to_hwi): Remove function.
+	* d-codegen.cc(tree_to_hwi): Remove function.
+	* d-builtins.c(gcc_type_to_d_type): Adjust.
+	(gcc_cst_to_d_expr): Likewise.
+	* d-convert.cc(d_truthvalue_conversion): Use integer_zerop.
+	(get_nonnull_operand): Use tree_fits_uhwi_p.
+	* d-longdouble.cc(longdouble::from_int): Adjust.
+	(longdouble::from_uint): Likewise.
+	(longdouble::to_int): Likewise.
+
 2014-04-30  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_init): Define GNU_SEH_Exceptions and

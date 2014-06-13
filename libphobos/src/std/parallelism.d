@@ -1392,10 +1392,14 @@ private:
         singleTaskThread = new Thread(&doSingleTask);
         singleTaskThread.start();
 
-        if(priority != int.max)
+        // Disabled until writing code to support
+        // running thread with specified priority
+        // See https://d.puremagic.com/issues/show_bug.cgi?id=8960
+
+        /*if(priority != int.max)
         {
             singleTaskThread.priority = priority;
-        }
+        }*/
     }
 
 public:
@@ -1431,7 +1435,7 @@ public:
     */
     this(size_t nWorkers) @trusted
     {
-        synchronized(TaskPool.classinfo)
+        synchronized(typeid(TaskPool))
         {
             instanceStartIndex = nextInstanceIndex;
 
@@ -3272,7 +3276,7 @@ terminating the main thread.
 
     if(!initialized)
     {
-        synchronized(TaskPool.classinfo)
+        synchronized(typeid(TaskPool))
         {
             if(!pool)
             {
@@ -3916,7 +3920,7 @@ unittest
     scope(exit) poolInstance.stop();
 
     // The only way this can be verified is manually.
-    stderr.writeln("totalCPUs = ", totalCPUs);
+    debug(std_parallelism) stderr.writeln("totalCPUs = ", totalCPUs);
 
     auto oldPriority = poolInstance.priority;
     poolInstance.priority = Thread.PRIORITY_MAX;

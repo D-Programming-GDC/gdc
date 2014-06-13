@@ -19,6 +19,7 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
+#include "attrib.h"
 #include "enum.h"
 #include "dfrontend/target.h"
 
@@ -132,26 +133,16 @@ Type::toCtype (void)
 	      ctype = d_ireal_type_node;
 	      break;
 
-
 	    case Terror:
 	      return d_unknown_type_node;
 
-	      /* We can get Tident with forward references.  There seems to
-		be a legitame case (dstress:debug_info_03).  I have not seen this
-		happen for an error, so maybe it's okay...
-
-		Update:
-		Seems to be fixed in the frontend, so changed to an error
-		to catch potential bugs.
-	       */
 	    case Tident:
 	    case Ttypeof:
 	      ::error ("forward reference of %s\n", this->toChars());
 	      return error_mark_node;
 
-	      /* Valid case for Ttuple is in CommaExp::toElem, in instances when
-		a tuple has been expanded as a large chain of comma expressions.
-		*/
+	      // Valid case for Ttuple is in CommaExp::toElem, in instances when
+	      // a tuple has been expanded as a large chain of comma expressions.
 	    case Ttuple:
 	      ctype = void_type_node;
 	      break;
@@ -196,8 +187,11 @@ TypeTypedef::toCtype (void)
 	  tree type_decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type_node);
 	  TYPE_NAME (type_node) = type_decl;
 
-	  if (sym->userAttributes)
-	    decl_attributes (&type_node, build_attributes (sym->userAttributes), 0);
+	  if (sym->userAttribDecl)
+	    {
+	      Expressions *attrs = sym->userAttribDecl->getAttributes();
+	      decl_attributes (&type_node, build_attributes (attrs), 0);
+	    }
 
 	  ctype = type_node;
 	}
@@ -237,9 +231,12 @@ TypeEnum::toCtype (void)
 	  TYPE_PRECISION (ctype) = size (sym->loc) * 8;
 	  TYPE_SIZE (ctype) = 0;
 
-	  if (sym->userAttributes)
-	    decl_attributes (&ctype, build_attributes (sym->userAttributes),
-			     ATTR_FLAG_TYPE_IN_PLACE);
+	  if (sym->userAttribDecl)
+	    {
+	      Expressions *attrs = sym->userAttribDecl->getAttributes();
+	      decl_attributes (&ctype, build_attributes (attrs),
+			       ATTR_FLAG_TYPE_IN_PLACE);
+	    }
 
 	  TYPE_MIN_VALUE (ctype) = TYPE_MIN_VALUE (cmemtype);
 	  TYPE_MAX_VALUE (ctype) = TYPE_MAX_VALUE (cmemtype);
@@ -308,7 +305,7 @@ TypeStruct::toCtype (void)
 
 	  AggLayout al = AggLayout (sym, ctype);
 	  layout_aggregate_type (&al, sym);
-	  finish_aggregate_type (&al, sym->userAttributes);
+	  finish_aggregate_type (&al, sym->userAttribDecl);
 
 	  build_type_decl (ctype, sym);
 	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
@@ -619,7 +616,7 @@ TypeClass::toCtype (void)
 	  // Add the fields of each base class
 	  AggLayout al = AggLayout (sym, basetype);
 	  layout_aggregate_type (&al, sym);
-	  finish_aggregate_type (&al, sym->userAttributes);
+	  finish_aggregate_type (&al, sym->userAttribDecl);
 
 	  // Create BINFO even if debugging is off.  This is needed to keep
 	  // references to inherited types.

@@ -33,15 +33,6 @@ AsmStatement::semantic (Scope *sc)
   return Statement::semantic (sc);
 }
 
-// Build the intermediate representation of an AsmStatment.
-// Not used in GDC.
-
-void
-AsmStatement::toIR (IRState *)
-{
-  sorry ("D inline assembler statements are not supported in GDC.");
-}
-
 // Construct an ExtAsmStatement, whose components are an INSN,
 // some ARGS, a list of all NAMES used, and their CONSTRAINTS,
 // the number of OUTPUTARGS, and the list of CLOBBERS.
@@ -210,62 +201,5 @@ ExtAsmStatement::blockExit (bool)
 {
   // Assume the worst
   return BEany;
-}
-
-// Build the intermediate representation of an ExtAsmStatment where IRS
-// holds the state of the current function.
-
-void
-ExtAsmStatement::toIR (IRState *irs)
-{
-  tree outputs = NULL_TREE;
-  tree inputs = NULL_TREE;
-  tree tree_clobbers = NULL_TREE;
-
-  irs->doLineNote (this->loc);
-
-  if (this->args)
-    {
-      for (size_t i = 0; i < this->args->dim; i++)
-	{
-	  Identifier *name = (*this->names)[i];
-	  StringExp *constr = (StringExp *) (*this->constraints)[i];
-	  Expression *arg = (*this->args)[i];
-
-	  tree id = name ? build_string (name->len, name->string) : NULL_TREE;
-	  tree str = build_string (constr->len, (char *) constr->string);
-	  tree val = arg->toElem (irs);
-
-	  if (i < this->outputargs)
-	    {
-	      tree arg = build_tree_list (id, str);
-	      outputs = chainon (outputs, build_tree_list (arg, val));
-	    }
-	  else
-	    {
-	      tree arg = build_tree_list (id, str);
-	      inputs = chainon (inputs, build_tree_list (arg, val));
-	    }
-	}
-    }
-
-  if (this->clobbers)
-    {
-      for (size_t i = 0; i < this->clobbers->dim; i++)
-	{
-	  StringExp *clobber = (StringExp *) (*this->clobbers)[i];
-	  tree val = build_string (clobber->len, (char *) clobber->string);
-	  tree_clobbers = chainon (tree_clobbers, build_tree_list (0, val));
-	}
-    }
-
-  StringExp *insn = (StringExp *) this->insn;
-  tree exp = build5 (ASM_EXPR, void_type_node, build_string (insn->len, (char *) insn->string),
-		     outputs, inputs, tree_clobbers, NULL_TREE);
-
-  TREE_SIDE_EFFECTS (exp) = 1;
-  SET_EXPR_LOCATION (exp, input_location);
-  ASM_VOLATILE_P (exp) = 1;
-  irs->addExp (exp);
 }
 

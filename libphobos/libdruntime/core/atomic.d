@@ -1130,25 +1130,25 @@ else version( GNU )
     }
 
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
-        if( !is(T == class) && !is(T U : U*) &&  __traits( compiles, { *here = writeThis; } ) )
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
+        if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
         if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
         if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis )
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
     {
         bool res = void;
 
@@ -1173,7 +1173,7 @@ else version( GNU )
         }
         else static if (is(T P == U*, U) || _passAsSizeT!T)
         {
-            res = __sync_bool_compare_and_swap!size_t(cast(shared size_t*) here, cast(size_t) ifThis, cast(size_t) writeThis);
+            res = __sync_bool_compare_and_swap!size_t(cast(shared size_t*) here, *cast(size_t*) &ifThis, *cast(size_t*) &writeThis);
         }
         else static if (T.sizeof == bool.sizeof)
         {

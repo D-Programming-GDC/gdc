@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "object.h"
 #ifdef IN_GCC
 // rmem uses functions poisoned by GCC.
 void *mem_malloc(size_t size);
@@ -28,17 +27,18 @@ void mem_free(void *p);
 #else
 #include "rmem.h"
 #endif
+#include "object.h"
 
 template <typename TYPE>
 struct Array
 {
     size_t dim;
-    TYPE **data;
+    TYPE *data;
 
   private:
     size_t allocdim;
     #define SMALLARRAYCAP       1
-    TYPE *smallarray[SMALLARRAYCAP];    // inline storage for small arrays
+    TYPE smallarray[SMALLARRAYCAP];    // inline storage for small arrays
 
   public:
     Array()
@@ -112,9 +112,9 @@ struct Array
                 else
                 {   allocdim = nentries;
 #ifdef IN_GCC
-                    data = (TYPE **)mem_malloc(allocdim * sizeof(*data));
+                    data = (TYPE *)mem_malloc(allocdim * sizeof(*data));
 #else
-                    data = (TYPE **)mem.malloc(allocdim * sizeof(*data));
+                    data = (TYPE *)mem.malloc(allocdim * sizeof(*data));
 #endif
                 }
             }
@@ -122,18 +122,18 @@ struct Array
             {
                 allocdim = dim + nentries;
 #ifdef IN_GCC
-                data = (TYPE **)mem_malloc(allocdim * sizeof(*data));
+                data = (TYPE *)mem_malloc(allocdim * sizeof(*data));
 #else
-                data = (TYPE **)mem.malloc(allocdim * sizeof(*data));
+                data = (TYPE *)mem.malloc(allocdim * sizeof(*data));
 #endif
                 memcpy(data, &smallarray[0], dim * sizeof(*data));
             }
             else
             {   allocdim = dim + nentries;
 #ifdef IN_GCC
-                data = (TYPE **)mem_realloc(data, allocdim * sizeof(*data));
+                data = (TYPE *)mem_realloc(data, allocdim * sizeof(*data));
 #else
-                data = (TYPE **)mem.realloc(data, allocdim * sizeof(*data));
+                data = (TYPE *)mem.realloc(data, allocdim * sizeof(*data));
 #endif
             }
         }
@@ -165,21 +165,21 @@ struct Array
                 }
                 else
 #ifdef IN_GCC
-                    data = (TYPE **)mem_realloc(data, dim * sizeof(*data));
+                    data = (TYPE *)mem_realloc(data, dim * sizeof(*data));
 #else
-                    data = (TYPE **)mem.realloc(data, dim * sizeof(*data));
+                    data = (TYPE *)mem.realloc(data, dim * sizeof(*data));
 #endif
             }
             allocdim = dim;
         }
     }
 
-    TYPE *pop()
+    TYPE pop()
     {
         return data[--dim];
     }
 
-    void shift(TYPE *ptr)
+    void shift(TYPE ptr)
     {
         reserve(1);
         memmove(data + 1, data, dim * sizeof(*data));
@@ -199,7 +199,7 @@ struct Array
         memset(data,0,dim * sizeof(data[0]));
     }
 
-    TYPE *tos()
+    TYPE tos()
     {
         return dim ? data[dim - 1] : NULL;
     }
@@ -223,12 +223,12 @@ struct Array
         }
     }
 
-    TYPE **tdata()
+    TYPE *tdata()
     {
         return data;
     }
 
-    TYPE*& operator[] (size_t index)
+    TYPE& operator[] (size_t index)
     {
 #ifdef DEBUG
         assert(index < dim);
@@ -236,7 +236,7 @@ struct Array
         return data[index];
     }
 
-    void insert(size_t index, TYPE *v)
+    void insert(size_t index, TYPE v)
     {
         reserve(1);
         memmove(data + index + 1, data + index, (dim - index) * sizeof(*data));
@@ -262,7 +262,7 @@ struct Array
         insert(dim, a);
     }
 
-    void push(TYPE *a)
+    void push(TYPE a)
     {
         reserve(1);
         data[dim++] = a;
@@ -277,11 +277,11 @@ struct Array
         return a;
     }
 
-    typedef int (*Array_apply_ft_t)(TYPE *, void *);
+    typedef int (*Array_apply_ft_t)(TYPE, void *);
     int apply(Array_apply_ft_t fp, void *param)
     {
         for (size_t i = 0; i < dim; i++)
-        {   TYPE *e = (*this)[i];
+        {   TYPE e = (*this)[i];
 
             if (e)
             {

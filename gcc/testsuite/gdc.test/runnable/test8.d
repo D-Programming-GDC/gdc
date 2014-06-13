@@ -796,7 +796,7 @@ int foo42(const(char) *x, ...)
     else version (Win64)  va_start!(typeof(x))(ap, x);
     else version (X86_64) va_start(ap, __va_argsave);
     else                  va_start!(typeof(x))(ap, x);
-    printf("&x = %p, ap = %p\n", &x, ap);
+    //printf("&x = %p, ap = %p\n", &x, ap);     // XBUG: static array va_lists (eg: x86_64) cannot be passed as vararg.
 
     int i;
     i = va_arg!(typeof(i))(ap);

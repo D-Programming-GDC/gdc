@@ -579,6 +579,61 @@ void test9568()
 }
 
 /****************************************************/
+/+
+void test8a()
+{
+  int a;
+  goto L2;    // L2 is not addressable.
+
+  try {
+      a += 2;
+  }
+  catch (Exception) {
+      a += 3;
+L2: ;
+      a += 100;
+  }
+  assert(a == 100);
+}
+
+void test8b()
+{
+  int a;
+  goto L2;    // L2 is not addressable.
+
+  try {
+  }
+  catch (Exception) {
+      a += 3;
+L2: ;
+      a += 100;
+  }
+  assert(a == 100);
+}
+
+void test8c()
+{
+  int a;
+  goto L2;    // L2 is not addressable.
+
+  try
+    static assert(true);
+  catch (Exception) {
+      a += 3;
+L2: ;
+      a += 100;
+  }
+  assert(a == 100);
+}
+
+void test8()
+{
+  test8a();
+  test8b();
+  test8c();
+}
++/
+/****************************************************/
 
 uint foo9(uint i)
 {
@@ -658,13 +713,13 @@ int main()
     test6();
     test7();
 
-    //bug1513();        // BUG: EH chaining unimplemented.
-    //doublecollide();  // BUG: EH chaining unimplemented.
-    //collideMixed();   // BUG: EH chaining unimplemented.
-    //multicollide();   // BUG: EH chaining unimplemented.
+    //bug1513();        // XBUG: EH chaining unimplemented.
+    //doublecollide();  // XBUG: EH chaining unimplemented.
+    //collideMixed();   // XBUG: EH chaining unimplemented.
+    //multicollide();   // XBUG: EH chaining unimplemented.
     test9568();
 
-    //test8();          // BUG: !INVALID TEST!
+    //test8();          // XBUG: Cannot goto into catch bug to prevent GCC middle-end ICE.
     test9();
     test10964();
 

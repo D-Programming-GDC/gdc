@@ -79,9 +79,6 @@ extern GTY(()) tree d_eh_personality_decl;
    is not affected by -femit-templates. */
 #define D_DECL_IS_TEMPLATE(NODE) (DECL_LANG_FLAG_1 (NODE))
 
-/* True if a custom static chain has been set-up for function.  */
-#define D_DECL_STATIC_CHAIN(NODE) (DECL_LANG_FLAG_3 (FUNCTION_DECL_CHECK (NODE)))
-
 /* The D front-end does not use the 'binding level' system for a symbol table,
    It is only needed to get debugging information for local variables and
    otherwise support the backend. */
@@ -200,7 +197,7 @@ extern void d_free (tree t);
 extern void set_block (tree);
 
 
-/* In d-builtins.c */
+/* In d-builtins.cc */
 extern const attribute_spec d_builtins_attribute_table[];
 extern const attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);
@@ -209,12 +206,9 @@ void d_register_builtin_type (tree, const char *);
 void d_backend_init (void);
 void d_backend_term (void);
 
-bool is_intrinsic_module_p (Module *);
-bool is_math_module_p (Module *);
-
-class Dsymbol;
-bool is_builtin_va_arg_p (Dsymbol *, bool);
-bool is_builtin_va_start_p (Dsymbol *);
+class Expression;
+extern Expression *build_expression (tree cst);
+extern Type *build_dtype(tree type);
 
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;

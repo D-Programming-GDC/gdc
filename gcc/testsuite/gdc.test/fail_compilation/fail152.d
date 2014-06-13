@@ -1,3 +1,10 @@
+/*
+TEST_OUTPUT:
+---
+fail_compilation/fail152.d(15): Error: cannot use type double as an operand
+---
+*/
+
 // 1028 Segfault using tuple inside asm code.
 
 void a(X...)(X expr)
@@ -10,8 +17,8 @@ void a(X...)(X expr)
         else static assert(false, "ASM code not implemented for this architecture");
     }
     else asm {
-//        fld double ptr X[0];   // (1) segfaults
-        fstp double ptr var1;  // (2) ICE
+        //fld double ptr X[0];   // (1) segfaults
+        fstp double ptr var1;    // (2) ICE
     }
 }
 

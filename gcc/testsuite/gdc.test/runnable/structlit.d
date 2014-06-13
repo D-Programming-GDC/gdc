@@ -463,7 +463,7 @@ void test15b()
         this(int[] m, const int[] c, immutable int[] i) inout pure
         {
             static assert(!__traits(compiles, marr = m));
-            carr = c;
+            static assert(!__traits(compiles, carr = c));  // cannot implicitly convertible const(int[]) to inout(const(int[]))
             iarr = i;
         }
     }
@@ -851,6 +851,38 @@ void test6937()
 }
 
 /********************************************/
+// 3991
+
+union X3991
+{
+    int   a = void;
+    dchar b = void;
+}
+
+union Y3991
+{
+    int   a = void;
+    dchar b = 'a';
+}
+
+union Z3991
+{
+    int   a = 123;
+    dchar b = void;
+}
+
+void test3991()
+{
+    X3991 x;
+
+    Y3991 y;
+    assert(y.b == 'a');
+
+    Z3991 z;
+    assert(z.a == 123);
+}
+
+/********************************************/
 // 7727
 
 union U7727A1 { int i;       double d;       }
@@ -1208,6 +1240,26 @@ void test11269()
 }
 
 /********************************************/
+// 11427
+
+struct S11427
+{
+    union
+    {
+        ubyte a;
+        int x;
+    }
+    void[] arr;
+}
+
+int foo11427() @safe
+{
+    S11427 s1 = S11427();
+    S11427 s2;
+    return 0;
+}
+
+/********************************************/
 
 int main()
 {
@@ -1237,6 +1289,7 @@ int main()
     test5889();
     test4247();
     test6937();
+    test3991();
     test7727();
     test7929();
     test7021();

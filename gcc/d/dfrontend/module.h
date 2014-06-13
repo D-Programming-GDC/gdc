@@ -53,7 +53,8 @@ public:
     Package *isPackage() { return this; }
 
     virtual void semantic(Scope *) { }
-    Dsymbol *search(Loc loc, Identifier *ident, int flags);
+    Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 class Module : public Package
@@ -110,14 +111,12 @@ public:
     size_t nameoffset;          // offset of module name from start of ModuleInfo
     size_t namelen;             // length of module name in characters
 
-    Module(char *arg, Identifier *ident, int doDocComment, int doHdrGen);
-    ~Module();
+    Module(const char *arg, Identifier *ident, int doDocComment, int doHdrGen);
+    static Module* create(const char *arg, Identifier *ident, int doDocComment, int doHdrGen);
 
     static Module *load(Loc loc, Identifiers *packages, Identifier *ident);
 
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void toJson(JsonOut *json);
-    void jsonProperties(JsonOut *json);
     const char *kind();
     File *setOutfile(const char *name, const char *dir, const char *arg, const char *ext);
     void setDocfile();
@@ -133,7 +132,7 @@ public:
     void gensymfile();
     void gendocfile();
     int needModuleInfo();
-    Dsymbol *search(Loc loc, Identifier *ident, int flags);
+    Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
     void deleteObjFile();
     static void addDeferredSemantic(Dsymbol *s);
     static void runDeferredSemantic();
@@ -176,6 +175,7 @@ public:
     void genmoduleinfo();
 
     Module *isModule() { return this; }
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 

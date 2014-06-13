@@ -3,6 +3,8 @@ import std.stdio;
 
 // Test function inlining
 
+debug = NRVO;
+
 /************************************/
 
 int foo(int i)
@@ -142,6 +144,21 @@ void test7()
 }
 
 /************************************/
+
+// 10833
+string fun10833(T...)()
+{
+    foreach (v ; T)
+        return v;
+    assert(0);
+}
+
+void test10833()
+{
+    auto a = fun10833!("bar")();
+}
+
+/************************************/
 // Bugzilla 4825
 
 int a8() {
@@ -269,6 +286,28 @@ struct Task
     }
 }
 
+void test9356()
+{
+    static inout(char)[] bar (inout(char)[] a)
+    {
+        return a;
+    }
+
+    string result;
+    result ~= bar("abc");
+    assert(result == "abc");
+}
+
+/************************************/
+// 12079
+
+void test12079()
+{
+    string[string][string] foo;
+
+    foo.get("bar", null).get("baz", null);
+}
+
 /************************************/
 // 11223
 
@@ -292,6 +331,155 @@ void test11223()
 }
 
 /************************************/
+// 11314
+
+struct Tuple11314(T...)
+{
+    T values;
+
+    void opAssign(typeof(this) rhs)
+    {
+        if (0)
+            values[] = rhs.values[];
+        else
+            assert(1);
+    }
+}
+
+struct S11314 {}
+
+void test11314()
+{
+    Tuple11314!S11314 t;
+    t = Tuple11314!S11314(S11314.init);
+}
+
+/************************************/
+// 11224
+
+S11224* ptr11224;
+
+struct S11224
+{
+    this(int)
+    {
+        ptr11224 = &this;
+        /*printf("ctor &this = %p\n", &this);*/
+    }
+    this(this)
+    {
+        /*printf("cpctor &this = %p\n", &this);*/
+    }
+    int num;
+}
+S11224 foo11224()
+{
+    S11224 s = S11224(1);
+    //printf("foo  &this = %p\n", &s);
+    assert(ptr11224 is &s);
+    return s;
+}
+void test11224()
+{
+    auto s = foo11224();
+    //printf("main &this = %p\n", &s);
+    assert(ptr11224 is &s);
+}
+
+/************************************/
+// 11322
+
+bool b11322;
+uint n11322;
+
+ref uint fun11322()
+{
+    if (b11322)
+        return n11322;
+    else
+        return n11322;
+}
+
+void test11322()
+{
+    fun11322()++;
+    assert(n11322 == 1);
+    fun11322() *= 5;
+    assert(n11322 == 5);
+}
+
+/************************************/
+// 11394
+
+debug(NRVO) static void* p11394a, p11394b, p11394c;
+
+static int[3] make11394(in int x) pure
+{
+    typeof(return) a;
+    a[0] = x;
+    a[1] = x + 1;
+    a[2] = x + 2;
+    debug(NRVO) p11394a = cast(void*)a.ptr;
+    return a;
+}
+
+struct Bar11394
+{
+    immutable int[3] arr;
+
+    this(int x)
+    {
+        this.arr = make11394(x);    // NRVO should work
+        debug(NRVO) p11394b = cast(void*)this.arr.ptr;
+    }
+}
+
+void test11394()
+{
+    auto b = Bar11394(5);
+    debug(NRVO) p11394c = cast(void*)b.arr.ptr;
+  //debug(NRVO) printf("p1 = %p\np2 = %p\np3 = %p\n", p11394a, p11394b, p11394c);
+    debug(NRVO) assert(p11394a == p11394b);
+    debug(NRVO) assert(p11394b == p11394c);
+}
+
+/**********************************/
+// 12080
+
+class TZ12080 {}
+
+struct ST12080
+{
+    ST12080 opBinary()() const pure nothrow
+    {
+        auto retval = ST12080();
+        return retval;  // NRVO
+    }
+
+    long  _stdTime;
+    immutable TZ12080 _timezone;
+}
+
+class Foo12080
+{
+
+    ST12080 bar;
+    bool quux;
+
+    public ST12080 sysTime()
+    out {}
+    body
+    {
+        if (quux)
+            return ST12080();
+
+        return bar.opBinary();
+        // returned value is set to __result
+        // --> Inliner wrongly created the second DeclarationExp for __result.
+    }
+}
+
+/**********************************/
 
 int main()
 {
@@ -300,11 +488,16 @@ int main()
     test3();
     test4();
     test5();
+    test9356();
     test6();
     test7();
     test8();
     test4841();
     test11223();
+    test11314();
+    //test11224();      // XBUG: NRVO unimplemented.
+    test11322();
+    //test11394();      // XBUG: NRVO unimplemented.
 
     printf("Success\n");
     return 0;

@@ -14,12 +14,12 @@
  */
 module core.sys.posix.sys.wait;
 
-version (Posix):
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for id_t, pid_t
 public import core.sys.posix.signal;    // for siginfo_t (XSI)
 //public import core.sys.posix.resource; // for rusage (XSI)
 
+version (Posix):
 extern (C):
 
 //

@@ -21,26 +21,6 @@
 #include "d-irstate.h"
 #include "d-objfile.h"
 
-
-// Intrinsic bitop, intrinsic math, and internally recognised runtime library functions
-// are listed in alphabetical order for use of bsearch.
-enum Intrinsic
-{
-  INTRINSIC_BSF, INTRINSIC_BSR,
-  INTRINSIC_BSWAP,
-  INTRINSIC_BTC, INTRINSIC_BTR, INTRINSIC_BTS,
-
-  INTRINSIC_COS, INTRINSIC_FABS,
-  INTRINSIC_LDEXP, INTRINSIC_RINT,
-  INTRINSIC_RNDTOL, INTRINSIC_SIN,
-  INTRINSIC_SQRT,
-
-  INTRINSIC_VA_START,
-  INTRINSIC_VA_ARG,
-  INTRINSIC_C_VA_ARG,
-  INTRINSIC_count,
-};
-
 enum LibCall
 {
   LIBCALL_NONE = -1,
@@ -109,7 +89,8 @@ struct FuncFrameInfo
   };
 };
 
-class ArrayScope;
+// Visitor routines for barrier between frontend and glue.
+void build_ir(Statement *s, IRState *irs);
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);
@@ -162,9 +143,6 @@ extern tree d_array_convert (Expression *exp);
 extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
 extern tree build_float_cst (const real_t& value, Type *totype);
 
-extern dinteger_t cst_to_hwi (double_int cst);
-extern dinteger_t tree_to_hwi (tree t);
-
 // Dynamic arrays
 extern tree d_array_length (tree exp);
 extern tree d_array_ptr (tree exp);
@@ -197,12 +175,10 @@ extern tree build_frame_type (FuncDeclaration *func);
 extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
 extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
 
-extern tree build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e);
+extern tree build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd);
 
 // Static chain for nested functions
 extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);
-
-extern bool needs_static_chain (FuncDeclaration *f);
 
 // Local variables
 extern void build_local_var (VarDeclaration *vd, FuncDeclaration *fd);
@@ -242,9 +218,9 @@ extern tree get_object_method (tree thisexp, Expression *objexp, FuncDeclaration
 // Built-in and Library functions.
 extern FuncDeclaration *get_libcall (LibCall libcall);
 extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type = NULL_TREE);
-extern tree maybe_expand_builtin (tree call_exp);
 
-extern void maybe_set_builtin_frontend (FuncDeclaration *decl);
+extern void maybe_set_intrinsic (FuncDeclaration *decl);
+extern tree expand_intrinsic (tree callexp);
 
 extern tree build_typeinfo (Type *t);
 
@@ -265,7 +241,7 @@ d_types_compatible (Type *t1, Type *t2)
 
 // Returns D Frontend type for GCC type T.
 inline Type *
-build_dtype (tree t)
+lang_dtype (tree t)
 {
   gcc_assert (TYPE_P (t));
   struct lang_type *lt = TYPE_LANG_SPECIFIC (t);
@@ -274,7 +250,7 @@ build_dtype (tree t)
 
 // Returns D Frontend decl for GCC decl T.
 inline Declaration *
-build_ddecl (tree t)
+lang_ddecl (tree t)
 {
   gcc_assert (DECL_P (t));
   struct lang_decl *ld = DECL_LANG_SPECIFIC (t);
@@ -402,7 +378,7 @@ struct AggLayout
 
 extern void layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl);
 extern void insert_aggregate_field (AggLayout *al, tree field, size_t offset);
-extern void finish_aggregate_type (AggLayout *al, Expressions *attrs);
+extern void finish_aggregate_type (AggLayout *al, UserAttributeDeclaration *declattrs);
 
 class ArrayScope
 {

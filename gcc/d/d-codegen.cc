@@ -19,9 +19,11 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 
+#include "attrib.h"
 #include "template.h"
 #include "init.h"
 #include "id.h"
+#include "module.h"
 #include "dfrontend/target.h"
 
 
@@ -35,19 +37,16 @@ tree
 d_decl_context (Dsymbol *dsym)
 {
   Dsymbol *parent = dsym;
-  AggregateDeclaration *ad;
 
   while ((parent = parent->toParent2()))
     {
+      // Nested functions.
       if (parent->isFuncDeclaration())
-	{
-	  FuncDeclaration *fd = dsym->isFuncDeclaration();
-	  if (fd && !needs_static_chain (fd))
-	    return NULL_TREE;
+	return parent->toSymbol()->Stree;
 
-	  return parent->toSymbol()->Stree;
-	}
-      else if ((ad = parent->isAggregateDeclaration()))
+      // Methods of classes or structs.
+      AggregateDeclaration *ad = parent->isAggregateDeclaration();
+      if (ad != NULL)
 	{
 	  tree context = ad->type->toCtype();
 	  // Want the underlying RECORD_TYPE.
@@ -56,11 +55,12 @@ d_decl_context (Dsymbol *dsym)
 
 	  return context;
 	}
-      else if (parent->isModule())
+
+      // We've reached the top-level module namespace.
+      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
+      // but only for extern(D) symbols.
+      if (parent->isModule())
 	{
-	  // We've reached the top-level module namespace.
-	  // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing
-	  // module, but only for extern(D) symbols.
 	  Declaration *decl = dsym->isDeclaration();
 	  if (decl != NULL && decl->linkage != LINKd)
 	    return NULL_TREE;
@@ -204,12 +204,12 @@ get_decl_tree (Declaration *decl, FuncDeclaration *func)
 tree
 d_convert (tree type, tree exp)
 {
-  // Check this first before passing to build_dtype.
+  // Check this first before passing to lang_dtype.
   if (error_operand_p (type) || error_operand_p (exp))
     return error_mark_node;
 
-  Type *totype = build_dtype (type);
-  Type *etype = build_dtype (TREE_TYPE (exp));
+  Type *totype = lang_dtype (type);
+  Type *etype = lang_dtype (TREE_TYPE (exp));
 
   if (totype && etype)
     return convert_expr (exp, etype, totype);
@@ -909,6 +909,7 @@ insert_type_modifiers (tree type, unsigned mod)
 
     case MODconst:
     case MODwild:
+    case MODwildconst:
     case MODimmutable:
       quals |= TYPE_QUAL_CONST;
       break;
@@ -917,8 +918,9 @@ insert_type_modifiers (tree type, unsigned mod)
       quals |= TYPE_QUAL_VOLATILE;
       break;
 
-    case MODshared | MODwild:
     case MODshared | MODconst:
+    case MODshared | MODwild:
+    case MODshared | MODwildconst:
       quals |= TYPE_QUAL_CONST;
       quals |= TYPE_QUAL_VOLATILE;
       break;
@@ -961,33 +963,6 @@ build_float_cst (const real_t& value, Type *totype)
     new_value = value;
 
   return build_real (type_node, new_value.rv());
-}
-
-// Convert LOW / HIGH pair into dinteger_t type.
-
-dinteger_t
-cst_to_hwi (double_int cst)
-{
-  if (cst.high == 0 || (cst.high == -1 && (HOST_WIDE_INT) cst.low < 0))
-    return cst.low;
-  else if (cst.low == 0 && cst.high == 1)
-    return (~(dinteger_t) 0);
-
-  gcc_unreachable();
-}
-
-// Return host integer value for INT_CST T.
-
-dinteger_t
-tree_to_hwi (tree t)
-{
-  if (TREE_INT_CST_HIGH (t) == 0
-      || (TREE_INT_CST_HIGH (t) == -1
-	  && (HOST_WIDE_INT) TREE_INT_CST_LOW (t) < 0
-	  && !TYPE_UNSIGNED (TREE_TYPE (t))))
-    return TREE_INT_CST_LOW (t);
-
-  return cst_to_hwi (TREE_INT_CST (t));
 }
 
 // Returns the .length component from the D dynamic array EXP.
@@ -1988,10 +1963,17 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       gcc_unreachable();
     }
 
-  /* If this is a delegate call or a nested function being called as
-     a delegate, the object should not be NULL. */
+  // If this is a delegate call or a nested function being called as
+  // a delegate, the object should not be NULL.
   if (object != NULL_TREE)
-    arg_list = build_tree_list (NULL_TREE, object);
+    {
+      if (TREE_SIDE_EFFECTS (object))
+	{
+	  object = maybe_make_temp (object);
+	  saved_args = maybe_vcompound_expr (saved_args, object);
+	}
+      arg_list = build_tree_list (NULL_TREE, object);
+    }
 
   if (arguments)
     {
@@ -2056,7 +2038,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
     }
 
   tree result = d_build_call_list (TREE_TYPE (ctype), callee, arg_list);
-  result = maybe_expand_builtin (result);
+  result = expand_intrinsic (result);
 
   return maybe_compound_expr (saved_args, result);
 }
@@ -2098,7 +2080,7 @@ static const char *libcall_ids[LIBCALL_count] = {
     "_aaGetRvalueX", "_aaGetX",
     "_aaInX",
     "_adCmp2", "_adEq2",
-    "_d_allocmemory", "_d_array_bounds",
+    "_d_allocmemory", "_d_arraybounds",
     "_d_arrayappendT", "_d_arrayappendcTX",
     "_d_arrayappendcd", "_d_arrayappendwd",
     "_d_arrayassign", "_d_arraycast",
@@ -2294,9 +2276,9 @@ get_libcall (LibCall libcall)
 
 	case LIBCALL_ARRAYCOPY:
 	  targs.push (Type::tsize_t);
-	  targs.push (Type::tint8->arrayOf());
-	  targs.push (Type::tint8->arrayOf());
-	  treturn = Type::tint8->arrayOf();
+	  targs.push (Type::tvoid->arrayOf());
+	  targs.push (Type::tvoid->arrayOf());
+	  treturn = Type::tvoid->arrayOf();
 	  break;
 
 	case LIBCALL_ARRAYCATT:
@@ -2487,6 +2469,40 @@ d_build_call_nary (tree callee, int n_args, ...)
   return d_build_call_list (TREE_TYPE (fntype), build_address (callee), nreverse (arg_list));
 }
 
+// List of codes for internally recognised compiler intrinsics.
+
+enum intrinsic_code
+{
+#define DEF_INTRINSIC(CODE, A, N, M, D) CODE,
+#include "d-intrinsics.def"
+#undef DEF_INTRINSIC
+  INTRINSIC_LAST
+};
+
+// An internal struct used to hold information on D intrinsics.
+
+struct intrinsic_decl
+{
+  // The DECL_FUNCTION_CODE of this decl.
+  intrinsic_code code;
+
+  // The name of the intrinsic.
+  const char *name;
+
+  // The module where the intrinsic is located.
+  const char *module;
+
+  // The mangled signature decoration of the intrinsic.
+  const char *deco;
+};
+
+static const intrinsic_decl intrinsic_decls[] =
+{
+#define DEF_INTRINSIC(CODE, ALIAS, NAME, MODULE, DECO) { ALIAS, NAME, MODULE, DECO },
+#include "d-intrinsics.def"
+#undef DEF_INTRINSIC
+};
+
 // Call an fold the intrinsic call CALLEE with the argument ARG
 // with the built-in function CODE passed.
 
@@ -2512,7 +2528,7 @@ expand_intrinsic_op2 (built_in_function code, tree callee, tree arg1, tree arg2)
 static tree
 expand_intrinsic_bsr (tree callee, tree arg)
 {
-  // Intrinsic bsr gets turned into (size - 1) - count_leading_zeros(arg).
+  // intrinsic_code bsr gets turned into (size - 1) - count_leading_zeros(arg).
   // %% TODO: The return value is supposed to be undefined if arg is zero.
   tree type = TREE_TYPE (arg);
   tree tsize = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)) - 1, type);
@@ -2531,7 +2547,7 @@ expand_intrinsic_bsr (tree callee, tree arg)
 // ARG1 and ARG2, and the original call expression is held in CALLEE.
 
 static tree
-expand_intrinsic_bt (Intrinsic intrinsic, tree callee, tree arg1, tree arg2)
+expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2)
 {
   tree type = TREE_TYPE (TREE_TYPE (arg1));
   tree exp = build_integer_cst (TREE_INT_CST_LOW (TYPE_SIZE (type)), type);
@@ -2634,14 +2650,89 @@ expand_intrinsic_vastart (tree callee, tree arg1, tree arg2)
   return expand_intrinsic_op2 (BUILT_IN_VA_START, callee, arg1, arg2);
 }
 
+// Checks if DECL is an intrinsic or runtime library function that
+// requires special processing.  Marks the generated trees for DECL
+// as BUILT_IN_FRONTEND so can be identified later.
+
+void
+maybe_set_intrinsic (FuncDeclaration *decl)
+{
+  if (!decl->ident || decl->builtin == BUILTINyes)
+    return;
+
+  // It's a runtime library function, add to libcall_decls.
+  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
+  if (libcall != LIBCALL_NONE)
+    {
+      if (libcall_decls[libcall] == decl)
+	return;
+
+      // This should have been done either by the front-end or get_libcall.
+      TypeFunction *tf = (TypeFunction *) decl->type;
+      gcc_assert (tf->parameters != NULL);
+
+      libcall_decls[libcall] = decl;
+      return;
+    }
+
+  // Check if it's a compiler intrinsic.  We only require that any
+  // internally recognised intrinsics are declared in a module with
+  // an explicit module declaration.
+  Module *m = decl->getModule();
+  if (!m || !m->md)
+    return;
+
+  // Look through all D intrinsics.
+  TemplateInstance *ti = decl->isInstantiated();
+  TemplateDeclaration *td = ti ? ti->tempdecl->isTemplateDeclaration() : NULL;
+  const char *tname = decl->ident->string;
+  const char *tmodule = m->md->toChars();
+  const char *tdeco = decl->type->deco;
+
+  for (size_t i = 0; i < (int) INTRINSIC_LAST; i++)
+    {
+      if (strcmp (intrinsic_decls[i].name, tname) != 0
+	  || strcmp (intrinsic_decls[i].module, tmodule) != 0)
+	continue;
+
+      if (td && td->onemember)
+	{
+	  FuncDeclaration *fd = td->onemember->isFuncDeclaration();
+	  if (fd != NULL
+	      && strcmp (fd->type->toChars(), intrinsic_decls[i].deco) == 0)
+	    goto Lfound;
+	}
+      else if (strcmp (intrinsic_decls[i].deco, tdeco) == 0)
+	{
+	Lfound:
+	  intrinsic_code code = intrinsic_decls[i].code;
+
+	  if (decl->csym == NULL)
+	    {
+	      // Store a stub BUILT_IN_FRONTEND decl.
+	      decl->csym = new Symbol();
+	      decl->csym->Stree = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+					      NULL_TREE, NULL_TREE);
+	      DECL_NAME (decl->csym->Stree) = get_identifier (tname);
+	      TREE_TYPE (decl->csym->Stree) = decl->type->toCtype();
+	      d_keep (decl->csym->Stree);
+	    }
+
+	  DECL_BUILT_IN_CLASS (decl->csym->Stree) = BUILT_IN_FRONTEND;
+	  DECL_FUNCTION_CODE (decl->csym->Stree) = (built_in_function) code;
+	  decl->builtin = BUILTINyes;
+	  break;
+	}
+    }
+}
+
 // If CALLEXP is a BUILT_IN_FRONTEND, expand and return inlined
 // compiler generated instructions. Most map onto GCC builtins,
 // others require a little extra work around them.
 
 tree
-maybe_expand_builtin (tree callexp)
+expand_intrinsic (tree callexp)
 {
-  // More code duplication from C
   CallExpr ce (callexp);
   tree callee = ce.callee();
 
@@ -2651,15 +2742,14 @@ maybe_expand_builtin (tree callexp)
   if (TREE_CODE (callee) == FUNCTION_DECL
       && DECL_BUILT_IN_CLASS (callee) == BUILT_IN_FRONTEND)
     {
-      Intrinsic intrinsic = (Intrinsic) DECL_FUNCTION_CODE (callee);
+      intrinsic_code intrinsic = (intrinsic_code) DECL_FUNCTION_CODE (callee);
       tree op1, op2;
       tree type;
 
       switch (intrinsic)
 	{
 	case INTRINSIC_BSF:
-	  // builtin count_trailing_zeros matches behaviour of bsf.
-	  // %% TODO: The return value is supposed to be undefined if op1 is zero.
+	  // Builtin count_trailing_zeros matches behaviour of bsf
 	  op1 = ce.nextArg();
 	  return expand_intrinsic_op (BUILT_IN_CTZL, callexp, op1);
 
@@ -2675,8 +2765,8 @@ maybe_expand_builtin (tree callexp)
 	  return expand_intrinsic_bt (intrinsic, callexp, op1, op2);
 
 	case INTRINSIC_BSWAP:
-	  /* Backend provides builtin bswap32.
-	     Assumes first argument and return type is uint. */
+	  // Backend provides builtin bswap32.
+	  // Assumes first argument and return type is uint.
 	  op1 = ce.nextArg();
 	  return expand_intrinsic_op (BUILT_IN_BSWAP32, callexp, op1);
 
@@ -2696,6 +2786,8 @@ maybe_expand_builtin (tree callexp)
 	  return expand_intrinsic_op (BUILT_IN_LLROUNDL, callexp, op1);
 
 	case INTRINSIC_SQRT:
+	case INTRINSIC_SQRTF:
+	case INTRINSIC_SQRTL:
 	  // Have float, double and real variants of sqrt.
 	  op1 = ce.nextArg();
 	  type = TYPE_MAIN_VARIANT (TREE_TYPE (op1));
@@ -2703,11 +2795,11 @@ maybe_expand_builtin (tree callexp)
 	  if (INTEGRAL_TYPE_P (type))
 	    op1 = convert (double_type_node, op1);
 
-	  if (type == double_type_node)
+	  if (intrinsic == INTRINSIC_SQRT)
 	    return expand_intrinsic_op (BUILT_IN_SQRT, callexp, op1);
-	  else if (type == float_type_node)
+	  else if (intrinsic == INTRINSIC_SQRTF)
 	    return expand_intrinsic_op (BUILT_IN_SQRTF, callexp, op1);
-	  else if (type == long_double_type_node)
+	  else if (intrinsic == INTRINSIC_SQRTL)
 	    return expand_intrinsic_op (BUILT_IN_SQRTL, callexp, op1);
 
 	  gcc_unreachable();
@@ -2735,7 +2827,7 @@ maybe_expand_builtin (tree callexp)
 	  op1 = ce.nextArg();
 	  return expand_intrinsic_vaarg (callexp, op1, NULL_TREE);
 
-	case INTRINSIC_VA_START:
+	case INTRINSIC_VASTART:
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
 	  return expand_intrinsic_vastart (callexp, op1, op2);
@@ -2796,180 +2888,6 @@ build_typeinfo (Type *t)
   return tinfo;
 }
 
-// Checks if DECL is an intrinsic or runtime library function that
-// requires special processing.  Marks the generated trees for DECL
-// as BUILT_IN_FRONTEND so can be identified later.
-
-void
-maybe_set_builtin_frontend (FuncDeclaration *decl)
-{
-  if (!decl->ident)
-    return;
-
-  LibCall libcall = (LibCall) binary (decl->ident->string, libcall_ids, LIBCALL_count);
-
-  if (libcall != LIBCALL_NONE)
-    {
-      // It's a runtime library function, add to libcall_decls.
-      if (libcall_decls[libcall] == decl)
-	return;
-
-      // This should have been done either by the front-end or get_libcall.
-      TypeFunction *tf = (TypeFunction *) decl->type;
-      gcc_assert (tf->parameters != NULL);
-
-      libcall_decls[libcall] = decl;
-    }
-  else
-    {
-      // Check if it's a front-end builtin.
-      static const char FeZe [] = "FNaNbNfeZe";		    // @safe pure nothrow real function(real)
-      static const char FeZe2[] = "FNaNbNeeZe";		    // @trusted pure nothrow real function(real)
-      static const char FuintZint[] = "FNaNbNfkZi";	    // @safe pure nothrow int function(uint)
-      static const char FuintZuint[] = "FNaNbNfkZk";	    // @safe pure nothrow uint function(uint)
-      static const char FulongZint[] = "FNaNbNfmZi";	    // @safe pure nothrow int function(uint)
-      static const char FrealZlong [] = "FNaNbNfeZl";	    // @safe pure nothrow long function(real)
-      static const char FlongplongZint [] = "FNaNbPmmZi";   // pure nothrow int function(long*, long)
-      static const char FintpintZint [] = "FNaNbPkkZi";	    // pure nothrow int function(int*, int)
-      static const char FrealintZint [] = "FNaNbNfeiZe";    // @safe pure nothrow real function(real, int)
-
-      Dsymbol *dsym = decl->toParent();
-      TypeFunction *ftype = (TypeFunction *) (decl->tintro ? decl->tintro : decl->type);
-      Module *mod;
-
-      if (dsym == NULL)
-	return;
-
-      mod = dsym->getModule();
-
-      if (is_intrinsic_module_p (mod))
-	{
-	  // Matches order of Intrinsic enum
-	  static const char *intrinsic_names[] = {
-	      "bsf", "bsr", "bswap",
-	      "btc", "btr", "bts",
-	  };
-	  const size_t sz = sizeof (intrinsic_names) / sizeof (char *);
-	  int i = binary (decl->ident->string, intrinsic_names, sz);
-
-	  if (i == -1)
-	    return;
-
-	  switch (i)
-	    {
-	    case INTRINSIC_BSF:
-	    case INTRINSIC_BSR:
-	      if (!(strcmp (ftype->deco, FuintZint) == 0 || strcmp (ftype->deco, FulongZint) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_BSWAP:
-	      if (!(strcmp (ftype->deco, FuintZuint) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_BTC:
-	    case INTRINSIC_BTR:
-	    case INTRINSIC_BTS:
-	      if (!(strcmp (ftype->deco, FlongplongZint) == 0 || strcmp (ftype->deco, FintpintZint) == 0))
-		return;
-	      break;
-	    }
-
-	  // Make sure 'i' is within the range we require.
-	  gcc_assert (i >= INTRINSIC_BSF && i <= INTRINSIC_BTS);
-	  tree t = decl->toSymbol()->Stree;
-
-	  DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	  DECL_FUNCTION_CODE (t) = (built_in_function) i;
-	}
-      else if (is_math_module_p (mod))
-	{
-	  // Matches order of Intrinsic enum
-	  static const char *math_names[] = {
-	      "cos", "fabs", "ldexp",
-	      "rint", "rndtol", "sin", "sqrt",
-	  };
-	  const size_t sz = sizeof (math_names) / sizeof (char *);
-	  int i = binary (decl->ident->string, math_names, sz);
-
-	  if (i == -1)
-	    return;
-
-	  // Adjust 'i' for this range of enums
-	  i += INTRINSIC_COS;
-	  gcc_assert (i >= INTRINSIC_COS && i <= INTRINSIC_SQRT);
-
-	  switch (i)
-	    {
-	    case INTRINSIC_COS:
-	    case INTRINSIC_FABS:
-	    case INTRINSIC_RINT:
-	    case INTRINSIC_SIN:
-	      if (!(strcmp (ftype->deco, FeZe) == 0 || strcmp (ftype->deco, FeZe2) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_LDEXP:
-	      if (!(strcmp (ftype->deco, FrealintZint) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_RNDTOL:
-	      if (!(strcmp (ftype->deco, FrealZlong) == 0))
-		return;
-	      break;
-
-	    case INTRINSIC_SQRT:
-	      if (!(strcmp (ftype->deco, "FNaNbNfdZd") == 0
-		    || strcmp (ftype->deco, "FNaNbNffZf") == 0
-		    || strcmp (ftype->deco, FeZe) == 0
-		    || strcmp (ftype->deco, FeZe2) == 0))
-		return;
-	      break;
-	    }
-
-	  tree t = decl->toSymbol()->Stree;
-
-	  // rndtol returns a long type, sqrt any float type,
-	  // every other math builtin returns a real type.
-	  Type *tf = decl->type->nextOf();
-	  if ((i == INTRINSIC_RNDTOL && tf->ty == Tint64)
-	      || (i == INTRINSIC_SQRT && tf->isreal())
-	      || (i != INTRINSIC_RNDTOL && tf->ty == Tfloat80))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) i;
-	    }
-	}
-      else
-	{
-	  TemplateInstance *ti = dsym->isTemplateInstance();
-
-	  if (ti == NULL)
-	    return;
-
-	  tree t = decl->toSymbol()->Stree;
-
-	  if (is_builtin_va_arg_p (ti->tempdecl, false))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_ARG;
-	    }
-	  else if (is_builtin_va_arg_p (ti->tempdecl, true))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_C_VA_ARG;
-	    }
-	  else if (is_builtin_va_start_p (ti->tempdecl))
-	    {
-	      DECL_BUILT_IN_CLASS (t) = BUILT_IN_FRONTEND;
-	      DECL_FUNCTION_CODE (t) = (built_in_function) INTRINSIC_VA_START;
-	    }
-	}
-    }
-}
-
 // Build and return D's internal exception Object.
 // Different from the generic exception pointer.
 
@@ -3019,134 +2937,90 @@ d_build_label (Loc loc, Identifier *ident)
 tree
 get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 {
-  FuncDeclaration *nested_func = sym->isFuncDeclaration();
-  FuncDeclaration *outer_func = NULL;
+  FuncDeclaration *thisfd = sym->isFuncDeclaration();
+  FuncDeclaration *parentfd = NULL;
 
-  if (nested_func != NULL)
+  if (thisfd != NULL)
     {
       // Check that the nested function is properly defined.
-      if (!nested_func->fbody)
+      if (!thisfd->fbody)
 	{
-	  // Should instead error on line that references nested_func
-	  nested_func->error ("nested function missing body");
+	  // Should instead error on line that references 'thisfd'.
+	  thisfd->error ("nested function missing body");
 	  return d_null_pointer;
 	}
 
-      outer_func = nested_func->toParent2()->isFuncDeclaration();
-      gcc_assert (outer_func != NULL);
-
-      if (func != outer_func)
-	{
-	  // If no frame pointer for this function
-	  if (!func->vthis)
-	    {
-	      sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
-	      return d_null_pointer;
-	    }
-
-	  Dsymbol *this_func = func;
-
-	  // Make sure we can get the frame pointer to the outer function,
-	  // else we'll ICE later in tree-ssa.
-	  while (nested_func != this_func)
-	    {
-	      FuncDeclaration *fd;
-	      ClassDeclaration *cd;
-	      StructDeclaration *sd;
-
-	      // Special case for __ensure and __require.
-	      if (nested_func->ident == Id::ensure || nested_func->ident == Id::require)
-		{
-		  outer_func = func;
-		  break;
-		}
-
-	      if ((fd = this_func->isFuncDeclaration()))
-		{
-		  if (outer_func == fd->toParent2())
-		    break;
-
-		  gcc_assert (fd->isNested() || fd->vthis);
-		}
-	      else if ((cd = this_func->isClassDeclaration()))
-		{
-		  if (!cd->isNested() || !cd->vthis)
-		    goto cannot_get_frame;
-
-		  if (outer_func == cd->toParent2())
-		    break;
-		}
-	      else if ((sd = this_func->isStructDeclaration()))
-		{
-		  if (!sd->isNested() || !sd->vthis)
-		    goto cannot_get_frame;
-
-		  if (outer_func == sd->toParent2())
-		    break;
-		}
-	      else
-		{
-	        cannot_get_frame:
-		  func->error ("cannot get frame pointer to %s", sym->toChars());
-		  return d_null_pointer;
-		}
-	      this_func = this_func->toParent2();
-	    }
-	}
+      // Special case for __ensure and __require.
+      if (thisfd->ident == Id::ensure || thisfd->ident == Id::require)
+	parentfd = func;
+      else
+	parentfd = thisfd->toParent2()->isFuncDeclaration();
     }
   else
     {
-      /* It's a class (or struct).  NewExp::toElem has already determined its
-	 outer scope is not another class, so it must be a function. */
-
+      // It's a class (or struct).  NewExp::toElem has already determined its
+      // outer scope is not another class, so it must be a function.
       while (sym && !sym->isFuncDeclaration())
 	sym = sym->toParent2();
 
-      outer_func = (FuncDeclaration *) sym;
+      parentfd = (FuncDeclaration *) sym;
+    }
 
-      /* Make sure we can access the frame of outer_func.  */
-      if (outer_func != func)
+  gcc_assert (parentfd != NULL);
+
+  if (func != parentfd)
+    {
+      // If no frame pointer for this function
+      if (!func->vthis)
 	{
-	  nested_func = func;
-	  while (nested_func && nested_func != outer_func)
+	  sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
+	  return d_null_pointer;
+	}
+
+      // Make sure we can get the frame pointer to the outer function.
+      // Go up each nesting level until we find the enclosing function.
+      Dsymbol *dsym = func;
+
+      while (thisfd != dsym)
+	{
+	  // Check if enclosing function is a function.
+	  FuncDeclaration *fd = dsym->isFuncDeclaration();
+
+	  if (fd != NULL)
 	    {
-	      Dsymbol *outer = nested_func->toParent2();
+	      if (parentfd == fd->toParent2())
+		break;
 
-	      if (!nested_func->isNested())
-		{
-		  if (!nested_func->isMember2())
-		    goto cannot_access_frame;
-		}
-
-	      while (outer)
-		{
-		  if (outer->isFuncDeclaration())
-		    break;
-
-		  outer = outer->toParent2();
-		}
-
-	      nested_func = (FuncDeclaration *) outer;
+	      gcc_assert (fd->isNested() || fd->vthis);
+	      dsym = dsym->toParent2();
+	      continue;
 	    }
 
-	  if (!nested_func)
+	  // Check if enclosed by an aggregate. That means the current
+	  // function must be a member function of that aggregate.
+	  AggregateDeclaration *ad = dsym->isAggregateDeclaration();
+
+	  if (ad == NULL)
+	    goto Lnoframe;
+	  if (ad->isClassDeclaration() && parentfd == ad->toParent2())
+	    break;
+	  if (ad->isStructDeclaration() && parentfd == ad->toParent2())
+	    break;
+
+	  if (!ad->isNested() || !ad->vthis)
 	    {
-	    cannot_access_frame:
-	      error ("cannot access frame of function '%s' from '%s'",
-		     outer_func->toChars(), func->toChars());
+	    Lnoframe:
+	      func->error ("cannot get frame pointer to %s", sym->toChars());
 	      return d_null_pointer;
 	    }
+
+	  dsym = dsym->toParent2();
 	}
     }
 
-  if (!outer_func)
-    outer_func = nested_func->toParent2()->isFuncDeclaration();
-
-  gcc_assert (outer_func != NULL);
-
-  FuncFrameInfo *ffo = get_frameinfo (outer_func);
+  FuncFrameInfo *ffo = get_frameinfo (parentfd);
   if (ffo->creates_frame || ffo->static_chain)
-    return get_framedecl (func, outer_func);
+    return get_framedecl (func, parentfd);
 
   return d_null_pointer;
 }
@@ -3222,11 +3096,10 @@ find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
   return NULL_TREE;
 }
 
-// Retrieve the outer class/struct 'this' value of DECL from the function FD
-// where E is the expression requiring 'this'.
+// Retrieve the outer class/struct 'this' value of DECL from the function FD.
 
 tree
-build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
+build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd)
 {
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
@@ -3242,9 +3115,7 @@ build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
       if (cdo)
 	{
 	  vthis_value = find_this_tree (fd, cdo);
-	  if (vthis_value == NULL_TREE)
-	    e->error ("outer class %s 'this' needed to 'new' nested class %s",
-		      cdo->toChars(), cd->toChars());
+	  gcc_assert (vthis_value != NULL_TREE);
 	}
       else if (fdo)
 	{
@@ -3273,9 +3144,7 @@ build_vthis (Dsymbol *decl, FuncDeclaration *fd, Expression *e)
       if (cdo)
 	{
 	  vthis_value = find_this_tree (fd, cdo);
-	  if (vthis_value == NULL_TREE)
-	    e->error ("outer class %s 'this' needed to create nested struct %s",
-		      cdo->toChars(), sd->toChars());
+	  gcc_assert (vthis_value != NULL_TREE);
 	}
       else if (fdo)
 	{
@@ -3487,19 +3356,15 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
       ClassDeclaration *cd;
       StructDeclaration *sd;
 
+      // Parent frame link is the first field.
       if (get_frameinfo (fd)->creates_frame)
-	{
-	  // like compon (indirect, field0) parent frame link is the first field;
-	  result = indirect_ref (ptr_type_node, result);
-	}
+	result = indirect_ref (ptr_type_node, result);
 
       if (fd->isNested())
 	fd = fd->toParent2()->isFuncDeclaration();
-      /* get_framedecl is only used to get the pointer to a function's frame
-	 (not a class instances).  With the current implementation, the link
-	 the frame/closure record always points to the outer function's frame even
-	 if there are intervening nested classes or structs.
-	 So, we can just skip over those... */
+      // The frame/closure record always points to the outer function's
+      // frame, even if there are intervening nested classes or structs.
+      // So, we can just skip over these...
       else if ((ad = fd->isThis()) && (cd = ad->isClassDeclaration()))
 	fd = d_nested_class (cd);
       else if ((ad = fd->isThis()) && (sd = ad->isStructDeclaration()))
@@ -3508,106 +3373,21 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 	break;
     }
 
-  if (fd == outer)
-    {
-      tree frame_rec = get_frameinfo (outer)->frame_rec;
+  // Go get our frame record.
+  gcc_assert (fd == outer);
+  tree frame_rec = get_frameinfo (outer)->frame_rec;
 
-      if (frame_rec != NULL_TREE)
-	{
-	  result = build_nop (build_pointer_type (frame_rec), result);
-	  return result;
-	}
-      else
-	{
-	  inner->error ("forward reference to frame of %s", outer->toChars());
-	  return d_null_pointer;
-	}
+  if (frame_rec != NULL_TREE)
+    {
+      result = build_nop (build_pointer_type (frame_rec), result);
+      return result;
     }
   else
     {
-      inner->error ("cannot access frame of %s", outer->toChars());
+      inner->error ("forward reference to frame of %s", outer->toChars());
       return d_null_pointer;
     }
 }
-
-// Special case: If a function returns a nested class with functions
-// but there are no "closure variables" the frontend (needsClosure)
-// returns false even though the nested class _is_ returned from the
-// function. (See case 4 in needsClosure)
-// A closure is strictly speaking not necessary, but we also can not
-// use a static function chain for functions in the nested class as
-// they can be called from outside. GCC's nested functions can't deal
-// with those kind of functions. We have to detect them manually here
-// and make sure we neither construct a static chain nor a closure.
-
-static bool
-is_degenerate_closure (FuncDeclaration *f)
-{
-  if (!f->needsClosure() && f->closureVars.dim == 0)
-  {
-    Type *tret = ((TypeFunction *) f->type)->next;
-    gcc_assert(tret);
-    tret = tret->toBasetype();
-    if (tret->ty == Tclass || tret->ty == Tstruct)
-    {
-      Dsymbol *st = tret->toDsymbol(NULL);
-      for (Dsymbol *s = st->parent; s; s = s->parent)
-      {
-	if (s == f)
-	  return true;
-      }
-    }
-  }
-  return false;
-}
-
-// Return true if function F needs to have the static chain passed to it.
-// This only applies to nested function handling provided by the GDC
-// front end (not D closures).
-
-bool
-needs_static_chain (FuncDeclaration *f)
-{
-  Dsymbol *s;
-  FuncDeclaration *pf = NULL;
-  TemplateInstance *ti = NULL;
-
-  if (f->isNested())
-    {
-      s = f->toParent();
-      ti = s->isTemplateInstance();
-      if (ti && ti->enclosing == NULL && ti->parent->isModule())
-	return false;
-
-      pf = f->toParent2()->isFuncDeclaration();
-      if (pf && !get_frameinfo (pf)->is_closure)
-	return true;
-    }
-
-  if (f->isStatic())
-    return false;
-
-  s = f->toParent2();
-
-  while (s)
-    {
-      AggregateDeclaration *ad = s->isAggregateDeclaration();
-      if (!ad || !ad->isNested())
-	break;
-
-      if (!s->isTemplateInstance())
-	break;
-
-      s = s->toParent2();
-      if ((pf = s->isFuncDeclaration())
-	  && !get_frameinfo (pf)->is_closure
-	  && !is_degenerate_closure (pf))
-	return true;
-    }
-
-  return false;
-}
-
 
 // Construct a WrappedExp, whose components are an EXP_NODE, which contains
 // a list of instructions in GCC to be passed through.
@@ -3757,16 +3537,19 @@ insert_aggregate_field (AggLayout *al, tree decl, size_t offset)
 // any GCC attributes that were applied to the type declaration.
 
 void
-finish_aggregate_type (AggLayout *al, Expressions *attrs)
+finish_aggregate_type (AggLayout *al, UserAttributeDeclaration *declattrs)
 {
   unsigned structsize = al->decl->structsize;
   unsigned alignsize = al->decl->alignsize;
 
   TYPE_SIZE (al->type) = NULL_TREE;
 
-  if (attrs)
-    decl_attributes (&al->type, build_attributes (attrs),
-		     ATTR_FLAG_TYPE_IN_PLACE);
+  if (declattrs)
+    {
+      Expressions *attrs = declattrs->getAttributes();
+      decl_attributes (&al->type, build_attributes (attrs),
+		       ATTR_FLAG_TYPE_IN_PLACE);
+    }
 
   TYPE_SIZE (al->type) = bitsize_int (structsize * BITS_PER_UNIT);
   TYPE_SIZE_UNIT (al->type) = size_int (structsize);

@@ -16,10 +16,13 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "d-system.h"
+#include "d-lang.h"
 #include "d-objfile.h"
+#include "d-codegen.h"
 
 #include "mars.h"
 #include "module.h"
+#include "declaration.h"
 
 Global global;
 
@@ -38,6 +41,7 @@ Global::init (void)
   this->lib_ext = "a";
   this->dll_ext = "so";
 
+  this->run_noext = true;
   this->version = "v"
 #include "verstr.h"
     ;
@@ -369,5 +373,51 @@ int binary(const char *p , const char **tab, int high)
     } while (low != high);
 
   return -1;
+}
+
+// Determine if function is a builtin one that we can
+// evaluate at compile time.
+
+BUILTIN
+FuncDeclaration::isBuiltin (void)
+{
+  if (this->builtin != BUILTINunknown)
+    return this->builtin;
+
+  this->builtin = BUILTINno;
+
+  // Intrinsics have no function body.
+  if (this->fbody)
+    return BUILTINno;
+
+  maybe_set_intrinsic (this);
+  return this->builtin;
+}
+
+// Evaluate builtin D function FD whose argument list is ARGUMENTS.
+// Return result; NULL if cannot evaluate it.
+
+Expression *
+eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
+{
+  if (fd->builtin != BUILTINyes)
+    return NULL;
+
+  tree decl = fd->toSymbol()->Stree;
+  gcc_assert (DECL_BUILT_IN (decl));
+
+  TypeFunction *tf = (TypeFunction *) fd->type;
+  Expression *e = NULL;
+  set_input_location (loc);
+
+  tree result = d_build_call (tf, decl, NULL, arguments);
+  result = fold (result);
+
+  // Builtin should be successfully evaluated.
+  // Will only return NULL if we can't convert it.
+  if (TREE_CONSTANT (result) && TREE_CODE (result) != CALL_EXPR)
+    e = build_expression (result);
+
+  return e;
 }
 

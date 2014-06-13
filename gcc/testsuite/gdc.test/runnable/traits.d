@@ -1060,28 +1060,28 @@ void test9091()
 
 /********************************************************/
 
-struct CtorS_9237 { this(int x) { } }
-struct DtorS_9237 { ~this() { } }
-struct PostblitS_9237 { this(this) { } }
+struct CtorS_9237 { this(int x) { } }       // ctor -> POD
+struct DtorS_9237 { ~this() { } }           // dtor -> nonPOD
+struct PostblitS_9237 { this(this) { } }    // cpctor -> nonPOD
 
 struct NonPOD1_9237
 {
-    CtorS_9237 field;  // nonPOD -> ng
+    DtorS_9237 field;  // nonPOD -> ng
 }
 
 struct NonPOD2_9237
 {
-    CtorS_9237[2] field;  // static array of nonPOD -> ng
+    DtorS_9237[2] field;  // static array of nonPOD -> ng
 }
 
 struct POD1_9237
 {
-    CtorS_9237* field;  // pointer to nonPOD -> ok
+    DtorS_9237* field;  // pointer to nonPOD -> ok
 }
 
 struct POD2_9237
 {
-    CtorS_9237[] field;  // dynamic array of nonPOD -> ok
+    DtorS_9237[] field;  // dynamic array of nonPOD -> ok
 }
 
 struct POD3_9237
@@ -1105,7 +1105,7 @@ void test9237()
     static assert(!__traits(isPOD, NS_9237));
     static assert(__traits(isPOD, NonNS_9237));
     static assert(__traits(isPOD, StatNS_9237));
-    static assert(!__traits(isPOD, CtorS_9237));
+    static assert(__traits(isPOD, CtorS_9237));
     static assert(!__traits(isPOD, DtorS_9237));
     static assert(!__traits(isPOD, PostblitS_9237));
     static assert(!__traits(isPOD, NonPOD1_9237));
@@ -1302,6 +1302,32 @@ void test_isOverrideFunction ()
 {
     assert(__traits(isOverrideFunction, TestIsOverrideFunctionPass.bar) == true);
     assert(__traits(isOverrideFunction, TestIsOverrideFunctionBase.bar) == false);
+}
+
+/********************************************************/
+// 11711 - Add __traits(getAliasThis)
+
+alias TypeTuple(T...) = T;
+
+void test11711()
+{
+    struct S1
+    {
+        string var;
+        alias var this;
+    }
+    static assert(__traits(getAliasThis, S1) == TypeTuple!("var"));
+    static assert(is(typeof(__traits(getMember, S1.init, __traits(getAliasThis, S1)[0]))
+                == string));
+
+    struct S2
+    {
+        TypeTuple!(int, string) var;
+        alias var this;
+    }
+    static assert(__traits(getAliasThis, S2) == TypeTuple!("var"));
+    static assert(is(typeof(__traits(getMember, S2.init, __traits(getAliasThis, S2)[0]))
+                == TypeTuple!(int, string)));
 }
 
 /********************************************************/

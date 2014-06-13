@@ -70,7 +70,7 @@ emutls_destroy(void* ptr)
   free(ptr);
 }
 
-private void
+private nothrow void
 emutls_init()
 {
   gthread_mutex_init(&emutls_mutex);

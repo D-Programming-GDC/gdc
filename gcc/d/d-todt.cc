@@ -27,8 +27,6 @@
 
 #include "dfrontend/target.h"
 
-typedef Array<dt_t> Dts;
-
 extern FuncDeclaration *search_toHash(StructDeclaration *sd);
 extern FuncDeclaration *search_toString(StructDeclaration *sd);
 
@@ -148,13 +146,19 @@ dt_container (dt_t **pdt, Type *type, dt_t *dt)
       tree value;
       size_t i;
 
-      gcc_assert (CONSTRUCTOR_NELTS (dt) == tsa->dim->toInteger());
+      if (dt == NULL)
+	dt = dt_container2 (dt);
+      else
+	{
+	  gcc_assert (CONSTRUCTOR_NELTS (dt) == tsa->dim->toInteger());
 
-      FOR_EACH_CONSTRUCTOR_VALUE (CONSTRUCTOR_ELTS (dt), i, value)
-	CONSTRUCTOR_APPEND_ELT (elts, size_int (i), value);
+	  FOR_EACH_CONSTRUCTOR_VALUE (CONSTRUCTOR_ELTS (dt), i, value)
+	    CONSTRUCTOR_APPEND_ELT (elts, size_int (i), value);
+
+	  CONSTRUCTOR_ELTS (dt) = elts;
+	}
 
       TREE_TYPE (dt) = type->toCtype();
-      CONSTRUCTOR_ELTS (dt) = elts;
       TREE_CONSTANT (dt) = 1;
       TREE_READONLY (dt) = 1;
       TREE_STATIC (dt) = 1;
@@ -887,13 +891,12 @@ void
 StructDeclaration::toDt (dt_t **pdt)
 {
   StructLiteralExp *sle = new StructLiteralExp (loc, this, NULL);
-  Expression *e = sle->fill (true);
 
-  if (e == sle)
-    {
-      sle->type = type;
-      sle->toDt (pdt);
-    }
+  if (!fill(loc, sle->elements, true))
+    gcc_unreachable();
+
+  sle->type = type;
+  sle->toDt (pdt);
 }
 
 /* ================================================================ */

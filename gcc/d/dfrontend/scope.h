@@ -26,13 +26,14 @@ class ForeachStatement;
 class ClassDeclaration;
 class AggregateDeclaration;
 class FuncDeclaration;
+class UserAttributeDeclaration;
 struct DocComment;
 class TemplateInstance;
 
 #if __GNUC__
 // Requires a full definition for PROT and LINK
-#include "dsymbol.h"    // PROT
-#include "mars.h"       // LINK
+#include "dsymbol.h"
+#include "mars.h"
 #else
 enum LINK;
 enum PROT;
@@ -59,13 +60,13 @@ enum PROT;
 
 #define SCOPEctfe           0x0080  // inside a ctfe-only expression
 #define SCOPEnoaccesscheck  0x0100  // don't do access checks
+#define SCOPEcompile        0x0200  // inside __traits(compile)
 
 struct Scope
 {
     Scope *enclosing;           // enclosing Scope
 
     Module *module;             // Root module
-    Module *instantiatingModule; // top level module that started a chain of template instantiations
     ScopeDsymbol *scopesym;     // current symbol
     ScopeDsymbol *sd;           // if in static if, and declaring new symbols,
                                 // sd gets the addMember()
@@ -89,10 +90,11 @@ struct Scope
     int noctor;                 // set if constructor calls aren't allowed
     int intypeof;               // in typeof(exp)
     bool speculative;            // in __traits(compiles) or typeof(exp)
+    VarDeclaration *lastVar;    // Previous symbol used to prevent goto-skips-init
 
     unsigned callSuper;         // primitive flow analysis for constructors
     unsigned *fieldinit;
-    unsigned fieldinit_dim;
+    size_t fieldinit_dim;
 
     structalign_t structalign;       // alignment for struct members
     LINK linkage;          // linkage for external functions
@@ -105,10 +107,10 @@ struct Scope
 
     unsigned flags;
 
-    Expressions *userAttributes;        // user defined attributes
+    UserAttributeDeclaration *userAttribDecl;   // user defined attributes
 
     DocComment *lastdc;         // documentation comment for last symbol at this scope
-    unsigned lastoffset;        // offset in docbuf of where to insert next dec
+    size_t lastoffset;        // offset in docbuf of where to insert next dec
     OutBuffer *docbuf;          // buffer for documentation output
 
     static Scope *freelist;
@@ -129,6 +131,8 @@ struct Scope
 
     unsigned *saveFieldInit();
     void mergeFieldInit(Loc loc, unsigned *cses);
+
+    Module *instantiatingModule();
 
     Dsymbol *search(Loc loc, Identifier *ident, Dsymbol **pscopesym);
     Dsymbol *search_correct(Identifier *ident);
