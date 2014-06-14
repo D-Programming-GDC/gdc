@@ -654,11 +654,17 @@ void test131()
 
 void delegate()[] D133;
 
-void test133(void delegate() dg)
+void test133a(void delegate() dg)
 {
     D133 ~= dg;
 }
 
+void test133()
+{
+    void nested()
+    {}
+    test133a(&nested);
+}
 
 /******************************************/
 
