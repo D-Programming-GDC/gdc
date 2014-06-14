@@ -1,3 +1,9 @@
+2014-06-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-convert.cc(d_default_conversion): Remove function, fold
+	implementation into...
+	(d_truthvalue_conversion): ... here.
+
 2014-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-convert.cc(d_scalar_conversion): Remove function.
