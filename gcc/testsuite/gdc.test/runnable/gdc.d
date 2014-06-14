@@ -634,6 +634,22 @@ int[0][1] test127c;  // ICE
 
 /******************************************/
 
+// Bug 131
+
+struct S131
+{
+    this(string ) { }
+    string opAssign(string v) { return v; }
+}
+
+void test131()
+{
+    S131[string] s;
+    s["foo"] = "bar";
+}
+
+/******************************************/
+
 // Bug 133
 
 void delegate()[] D133;
@@ -662,6 +678,8 @@ void main()
     test77();
     test108();
     test115();
+    test131();
+    test133();
 
     printf("Success!\n");
 }

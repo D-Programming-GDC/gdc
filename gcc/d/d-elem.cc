@@ -34,10 +34,17 @@ Expression::toElem (IRState *)
 elem *
 CondExp::toElem (IRState *irs)
 {
-  tree cn = convert_for_condition (econd->toElem (irs), econd->type);
-  tree t1 = convert_expr (e1->toElemDtor (irs), e1->type, type);
-  tree t2 = convert_expr (e2->toElemDtor (irs), e2->type, type);
-  return build3 (COND_EXPR, type->toCtype(), cn, t1, t2);
+  tree cond = convert_for_condition (econd->toElem (irs), econd->type);
+  tree t1 = e1->toElemDtor (irs);
+  tree t2 = e2->toElemDtor (irs);
+
+  if (type->ty != Tvoid)
+    {
+      t1 = convert_expr (t1, e1->type, type);
+      t2 = convert_expr (t2, e2->type, type);
+    }
+
+  return build3 (COND_EXPR, type->toCtype(), cond, t1, t2);
 }
 
 elem *
@@ -1387,7 +1394,7 @@ CastExp::toElem (IRState *irs)
 
   // Just evaluate e1 if it has any side effects
   if (tbtype->ty == Tvoid)
-    return build1 (NOP_EXPR, tbtype->toCtype(), t);
+    return build_nop (tbtype->toCtype(), t);
 
   return convert_expr (t, ebtype, tbtype);
 }
