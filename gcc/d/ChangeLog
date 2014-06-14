@@ -1,5 +1,7 @@
 2014-06-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.h(d_types_compatible): First check equality of types, then
+	implicit compatibility.
 	* d-convert.cc(d_default_conversion): Remove function, fold
 	implementation into...
 	(d_truthvalue_conversion): ... here.

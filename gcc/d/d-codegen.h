@@ -236,7 +236,8 @@ d_types_same (Type *t1, Type *t2)
 inline bool
 d_types_compatible (Type *t1, Type *t2)
 {
-  return t1->implicitConvTo (t2) >= MATCHconst;
+  return t1->equals(t2)
+    || t1->implicitConvTo (t2) >= MATCHconst;
 }
 
 // Returns D Frontend type for GCC type T.
