@@ -1,6 +1,10 @@
 2014-06-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(CondExp::toElem): Handle void type condition expressions.
+	(AssignExp::toElem): Use ismemset to test for initialising arrays with
+	a single value.
+	(StructLiteralExp::toElem): Build static initialiser if a symbol was
+	created by the front-end.
 	* d-codegen.h(d_types_compatible): First check equality of types, then
 	implicit compatibility.
 	* d-convert.cc(d_default_conversion): Remove function, fold

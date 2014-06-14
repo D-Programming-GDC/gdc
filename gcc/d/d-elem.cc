@@ -997,7 +997,7 @@ AssignExp::toElem (IRState *irs)
 	      || (e2->op == TOKcast && ((UnaExp *) e2)->e1->isLvalue())))
 	postblit = 1;
 
-      if (d_types_compatible (etype, tb2))
+      if (ismemset)
 	{
 	  // Set a range of elements to one value.
 	  tree t1 = maybe_make_temp (e1->toElem (irs));
@@ -2525,8 +2525,16 @@ StructLiteralExp::toElem (IRState *irs)
 
   gcc_assert (tb->ty == Tstruct);
 
-  if (sinit && sinit->Stree)
-    return sinit->Stree;
+  if (sinit)
+    {
+      // Building sinit trees are delayed until after frontend semantic
+      // processing has complete.  Build the static initialiser now.
+      if (sinit->Stree == NULL_TREE)
+	sd->toInitializer();
+
+      gcc_assert (sinit->Stree != NULL);
+      return sinit->Stree;
+    }
 
   // CTFE may fill the hidden pointer by NullExp.
   size_t dim = elements ? elements->dim : 0;
