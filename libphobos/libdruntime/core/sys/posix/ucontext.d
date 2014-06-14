@@ -600,6 +600,98 @@ else version( FreeBSD )
         int[4]          __spare__;
     }
 }
+else version( Solaris )
+{
+    // XXX: should this be private?
+    alias uint[4] upad128_t;
+
+    version ( X86_64 )
+    {
+        private enum _NGREG = 28;
+    }
+    else version ( X86 )
+    {
+        private enum _NGREG = 19;
+    }
+
+    alias c_long greg_t;
+    alias greg_t[_NGREG] gregset_t;
+
+    version ( X86_64 )
+    {
+        // XXX: Is there a better way to do this?
+	    union _u_st
+        {
+		    ushort[5]	fpr_16;
+            upad128_t   __fpr_pad;
+        }
+
+        struct fpregset_t
+        {
+            union fp_reg_set
+            {
+                struct fpchip_state
+                {
+                    ushort          cw;
+                    ushort          sw;
+                    ubyte           fctw;
+                    ubyte           __fx_rsvd;
+                    ushort          fop;
+                    ulong           rip;
+                    ulong           rdp;
+                    uint            mxcsr;
+                    uint            mxcsr_mask;
+                    _u_st[8]        st;
+                    upad128_t[16]   xmm;
+                    upad128_t[6]    __fx_ign2;
+                    uint            status;
+                    uint            xstatus;
+                }
+                uint[130]   f_fpregs;
+            }
+        }
+    }
+    else version ( X86 )
+    {
+        struct fpregset_t
+        {
+            union fp_reg_set
+            {
+                struct fpchip_state
+                {
+                    uint[27]        state;
+                    uint            status;
+                    uint            mxcsr;
+                    uint            xstatus;
+                    uint[2]         __pad;
+                    upad128_t[8]    xmm;
+                }
+                struct fp_emul_space
+                {
+                    ubyte[246]  fp_emul;
+                    ubyte[2]    fp_epad;
+                }
+                uint[95]    f_fpregs;
+            }
+        }
+    }
+
+    struct mcontext_t
+    {
+        gregset_t   gregs;
+        fpregset_t  fpregs;
+    }
+
+    struct ucontext_t
+    {
+        c_ulong      uc_flags;
+        ucontext_t  *uc_link;
+        sigset_t    uc_sigmask;
+        stack_t     uc_stack;
+        mcontext_t  uc_mcontext;
+        c_ulong[5]  uc_filler;
+    }
+}
 
 //
 // Obsolescent (OB)

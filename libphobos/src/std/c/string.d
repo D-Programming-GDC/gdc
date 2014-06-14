@@ -32,3 +32,8 @@ version (FreeBSD)
 {
     int strerror_r(int errnum, char* buf, size_t buflen);
 }
+
+version (Solaris)
+{
+    int strerror_r(int errnum, char* buf, size_t buflen);
+}

@@ -240,6 +240,7 @@ else version (Solaris)
         timespec it_value;
     }
 
+    enum CLOCK_REALTIME = 0x3;
     enum TIMER_ABSOLUTE = 0x1;
 
     alias int clockid_t;

@@ -663,6 +663,12 @@ else version (Solaris)
             timestruc_t st_atim;
             timestruc_t st_mtim;
             timestruc_t st_ctim;
+	    extern (D)
+	    {
+		    @property ref time_t st_atime() { return st_atim.tv_sec; }
+		    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+		    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+	    }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -688,6 +694,12 @@ else version (Solaris)
             timestruc_t st_atim;
             timestruc_t st_mtim;
             timestruc_t st_ctim;
+	    extern (D)
+	    {
+		    @property ref time_t st_atime() { return st_atim.tv_sec; }
+		    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+		    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+	    }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -710,6 +722,12 @@ else version (Solaris)
             timestruc_t st_atim;
             timestruc_t st_mtim;
             timestruc_t st_ctim;
+	    extern (D)
+	    {
+		    @property ref time_t st_atime() { return st_atim.tv_sec; }
+		    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+		    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+	    }
             blksize_t st_blksize;
             blkcnt64_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;

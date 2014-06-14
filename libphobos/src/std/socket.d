@@ -90,6 +90,15 @@ else version(Posix)
         private enum SD_SEND    = SHUT_WR;
         private enum SD_BOTH    = SHUT_RDWR;
     }
+    else version(Solaris)
+    {
+        import core.sys.posix.sys.socket;
+	import core.sys.posix.sys.select;
+	import std.c.solaris.socket;
+	private enum SD_RECEIVE = SHUT_RD;
+	private enum SD_SEND    = SHUT_WR;
+	private enum SD_BOTH    = SHUT_RDWR;
+    }
     else
         static assert(false);
 
@@ -182,6 +191,14 @@ string formatSocketError(int err)
                 return "Socket error " ~ to!string(err);
         }
         else version (FreeBSD)
+        {
+            auto errs = strerror_r(err, buf.ptr, buf.length);
+            if (errs == 0)
+                cs = buf.ptr;
+            else
+                return "Socket error " ~ to!string(err);
+        }
+        else version (Solaris)
         {
             auto errs = strerror_r(err, buf.ptr, buf.length);
             if (errs == 0)

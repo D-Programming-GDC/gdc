@@ -142,12 +142,15 @@ else version( FreeBSD )
 }
 else version (Solaris)
 {
+    enum DT_UNKNOWN = 0;
+
     struct dirent
     {
         ino_t d_ino;
         off_t d_off;
         ushort d_reclen;
         char[1] d_name;
+	extern (D) @property ubyte d_type() { return DT_UNKNOWN; }
     }
 
     struct DIR
