@@ -814,22 +814,30 @@ version( linux )
 }
 else version (Solaris)
 {
-    static if (__USE_LARGEFILE64)
-    {
-        int   fstat64(int, stat_t*);
-        alias fstat64 fstat;
+    version (X86) {
+        static if (__USE_LARGEFILE64)
+        {
+            int   fstat64(int, stat_t*);
+            alias fstat64 fstat;
 
-        int   lstat64(in char*, stat_t*);
-        alias lstat64 lstat;
+            int   lstat64(in char*, stat_t*);
+            alias lstat64 lstat;
 
-        int   stat64(in char*, stat_t*);
-        alias stat64 stat;
+            int   stat64(in char*, stat_t*);
+            alias stat64 stat;
+        }
+        else
+        {
+            int fstat(int, stat_t*);
+            int lstat(in char*, stat_t*);
+            int stat(in char*, stat_t*);
+	}
     }
-    else
+    else version (X86_64)
     {
         int fstat(int, stat_t*);
-        int lstat(in char*, stat_t*);
-        int stat(in char*, stat_t*);
+	int lstat(in char*, stat_t*);
+	int stat(in char*, stat_t*);
     }
 }
 else version( Posix )

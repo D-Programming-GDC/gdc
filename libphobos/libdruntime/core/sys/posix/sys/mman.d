@@ -80,6 +80,12 @@ else version( FreeBSD )
 }
 else version (Solaris)
 {
+    enum POSIX_MADV_NORMAL      = 0;
+    enum POSIX_MADV_RANDOM      = 1;
+    enum POSIX_MADV_SEQUENTIAL  = 2;
+    enum POSIX_MADV_WILLNEED    = 3;
+    enum POSIX_MADV_DONTNEED    = 4;
+    int posix_madvise(void *addr, size_t len, int advice);
 }
 else
 {
@@ -158,7 +164,13 @@ else version( FreeBSD )
 }
 else version (Solaris)
 {
-    void* mmap(void*, size_t, int, int, int, off_t);
+    version (D_LP64) {
+        void* mmap(void*, size_t, int, int, int, off_t);
+        alias mmap64 = mmap;
+    } else {
+        void* mmap64(void*, size_t, int, int, int, off64_t);
+        alias mmap = mmap64;
+    }
     int   munmap(void*, size_t);
 }
 else

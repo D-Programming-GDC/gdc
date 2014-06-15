@@ -148,4 +148,24 @@ else version( FreeBSD )
         const(char)* dli_sname;
         void*        dli_saddr;
     }
+} else version(Solaris)
+{
+    enum RTLD_LAZY   = 0x00001;
+    enum RTLD_NOW    = 0x00002;
+    enum RTLD_GLOBAL = 0x00100;
+    enum RTLD_LOCAL  = 0x00000;
+
+    int     dlclose(void*);
+    char*   dlerror();
+    void*   dlopen(in char*, int);
+    void*   dlsym(void*, in char*);
+    int     dladdr(const(void)* addr, Dl_info* info);
+
+    struct Dl_info
+    {
+        const(char)*    dli_fname;
+        void*           dli_fbase;
+        const(char)*    dli_sname;
+        void*           dli_saddr;
+    }
 }

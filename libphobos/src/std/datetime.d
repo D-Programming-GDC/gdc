@@ -27756,6 +27756,7 @@ auto tz = TimeZone.getTimeZone("America/Los_Angeles");
             version(FreeBSD) enum utcZone = "Etc/UTC";
             version(linux)   enum utcZone = "UTC";
             version(OSX)     enum utcZone = "UTC";
+            version(Solaris) enum utcZone = "UTC";
 
             auto tzs = [testTZ("America/Los_Angeles", "PST", "PDT", dur!"hours"(-8), dur!"hours"(1)),
                         testTZ("America/New_York", "EST", "EDT", dur!"hours"(-5), dur!"hours"(1)),
@@ -29245,7 +29246,11 @@ public:
     }
 
 
-    version(Posix)
+    version(Solaris)
+    {
+        enum defaultTZDatabaseDir = "/usr/share/lib/zoneinfo/";
+    }
+    else version(Posix)
     {
         /++
             The default directory where the TZ Database files are. It's empty

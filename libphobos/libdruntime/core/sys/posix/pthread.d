@@ -390,6 +390,8 @@ version( Posix )
     int pthread_cond_init(in pthread_cond_t*, pthread_condattr_t*);
     int pthread_cond_signal(pthread_cond_t*);
     int pthread_cond_timedwait(pthread_cond_t*, pthread_mutex_t*, in timespec*);
+    version( Solaris )
+        int pthread_cond_reltimedwait_np(pthread_cond_t*, pthread_mutex_t*, in timespec*);
     int pthread_cond_wait(pthread_cond_t*, pthread_mutex_t*);
     int pthread_condattr_destroy(pthread_condattr_t*);
     int pthread_condattr_init(pthread_condattr_t*);

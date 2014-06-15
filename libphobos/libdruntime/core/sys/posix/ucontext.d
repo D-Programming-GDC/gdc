@@ -608,13 +608,14 @@ else version( Solaris )
     version ( X86_64 )
     {
         private enum _NGREG = 28;
+        alias long greg_t;
     }
     else version ( X86 )
     {
         private enum _NGREG = 19;
+        alias int greg_t;
     }
 
-    alias c_long greg_t;
     alias greg_t[_NGREG] gregset_t;
 
     version ( X86_64 )
@@ -655,9 +656,9 @@ else version( Solaris )
     {
         struct fpregset_t
         {
-            union fp_reg_set
+            union u_fp_reg_set
             {
-                struct fpchip_state
+                struct s_fpchip_state
                 {
                     uint[27]        state;
                     uint            status;
@@ -666,13 +667,17 @@ else version( Solaris )
                     uint[2]         __pad;
                     upad128_t[8]    xmm;
                 }
-                struct fp_emul_space
+                s_fpchip_state    fpchip_state;
+
+                struct s_fp_emul_space
                 {
                     ubyte[246]  fp_emul;
                     ubyte[2]    fp_epad;
                 }
-                uint[95]    f_fpregs;
+                s_fp_emul_space   fp_emul_space;
+                uint[95]        f_fpregs;
             }
+        u_fp_reg_set fp_reg_set;
         }
     }
 
@@ -689,7 +694,7 @@ else version( Solaris )
         sigset_t    uc_sigmask;
         stack_t     uc_stack;
         mcontext_t  uc_mcontext;
-        c_ulong[5]  uc_filler;
+        c_long[5]   uc_filler;
     }
 }
 
