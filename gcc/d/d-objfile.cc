@@ -827,7 +827,7 @@ VarDeclaration::toObjFile (int)
 	      TypeSArray *tsa = (TypeSArray *) tb;
 	      tsa->toDtElem (&s->Sdt, ie->exp);
 	    }
-	  else
+	  else if (!init->isVoidInitializer())
 	    s->Sdt = init->toDt();
 	}
       else
