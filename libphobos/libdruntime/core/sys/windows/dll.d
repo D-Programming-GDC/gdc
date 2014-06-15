@@ -9,6 +9,10 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_dll.d)
  */
 
+/*
+ * NOTE: This file has been patched from the original DMD distribution to
+ * work with the GDC compiler.
+ */
 module core.sys.windows.dll;
 
 version( Windows )
@@ -307,7 +311,7 @@ public:
      *
      * _tls_index is initialized by the compiler to 0, so we can use this as a test.
      */
-    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex ) nothrow
+    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex )
     {
         version (Win64)
             return true;                // fixed

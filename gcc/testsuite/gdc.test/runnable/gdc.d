@@ -626,6 +626,28 @@ void test115()
 
 /******************************************/
 
+// Bug 121
+
+immutable char C121 = void; // ICE
+
+/******************************************/
+
+// Bug 122
+
+void test122()
+{
+    import std.algorithm : map;
+    import std.parallelism : taskPool;
+    import std.range : iota;
+
+    immutable n = 10000;
+    immutable delta = 1.0 / n;
+    immutable pi = 4.0 * delta * taskPool.reduce!"a + b"(
+        map!((int i) { immutable x = (i - 0.5) * delta; return 1.0 / (1.0 + x * x); })(iota(n)));
+}
+
+/******************************************/
+
 // Bug 127
 
 int[0] test127a;     // OK
