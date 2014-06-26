@@ -586,7 +586,7 @@ CatExp::toElem (IRState *irs)
       while (1)
 	{
 	  tree array_exp;
-	  if (d_types_compatible (oe->type->toBasetype(), etype->toBasetype()))
+	  if (d_types_same (oe->type->toBasetype(), etype->toBasetype()))
 	    {
 	      tree elem_var = NULL_TREE;
 	      tree expr = maybe_temporary_var (oe->toElem (irs), &elem_var);
@@ -693,7 +693,7 @@ BinExp::toElemBin (IRState *irs, int op)
   while (e1b->op == TOKcast)
     {
       CastExp *ce = (CastExp *) e1b;
-      gcc_assert (d_types_compatible (ce->type, ce->to));
+      gcc_assert (d_types_same (ce->type, ce->to));
       e1b = ce->e1;
     }
 
@@ -871,7 +871,7 @@ CatAssignExp::toElem (IRState *irs)
       gcc_assert (tb1->ty == Tarray || tb2->ty == Tsarray);
 
       if ((tb2->ty == Tarray || tb2->ty == Tsarray)
-	  && d_types_compatible (etype, tb2->nextOf()->toBasetype()))
+	  && d_types_same (etype, tb2->nextOf()->toBasetype()))
 	{
 	  // Append an array
 	  tree args[3];
@@ -882,7 +882,7 @@ CatAssignExp::toElem (IRState *irs)
 
 	  result = build_libcall (LIBCALL_ARRAYAPPENDT, 3, args, type->toCtype());
 	}
-      else if (d_types_compatible (etype, tb2))
+      else if (d_types_same (etype, tb2))
 	{
 	  // Append an element
 	  tree args[3];
@@ -2554,7 +2554,7 @@ StructLiteralExp::toElem (IRState *irs)
 
       if (fld_type->ty == Tsarray)
 	{
-	  if (d_types_compatible (exp_type, fld_type))
+	  if (d_types_same (exp_type, fld_type))
 	    {
 	      // %% This would call _d_newarrayT ... use memcpy?
 	      exp_tree = convert_expr (exp->toElem (irs), exp->type, fld->type);

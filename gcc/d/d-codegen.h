@@ -229,15 +229,9 @@ extern tree build_typeinfo (Type *t);
 inline bool
 d_types_same (Type *t1, Type *t2)
 {
-  return t1->mutableOf()->equals (t2->mutableOf());
-}
-
-// Returns TRUE if T1 and T2 don't require special conversions.
-inline bool
-d_types_compatible (Type *t1, Type *t2)
-{
-  return t1->equals(t2)
-    || t1->implicitConvTo (t2) >= MATCHconst;
+  Type *tb1 = t1->toBasetype()->immutableOf();
+  Type *tb2 = t2->toBasetype()->immutableOf();
+  return tb1->equals (tb2);
 }
 
 // Returns D Frontend type for GCC type T.

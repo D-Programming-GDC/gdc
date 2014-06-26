@@ -489,7 +489,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
     {
       Type *telem = tbtype->nextOf()->baseElemOf();
 
-      if (d_types_compatible (telem, ebtype))
+      if (d_types_same (telem, ebtype))
 	{
 	  // %% what about implicit converions...?
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;

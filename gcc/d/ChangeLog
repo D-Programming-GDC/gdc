@@ -1,7 +1,14 @@
 2014-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.h(d_types_compatible): Remove function.
+	(d_types_same): Use more conservative approach to type equality.
 	* d-codegen.cc(get_libcall): Allow backend to be able to optimise
 	closure memory allocations.
+	(convert_for_assignment): Use d_types_same.
+	* d-elem.cc(CatExp::toElem): Likewise.
+	(BinExp::toElemBin): Likewise.
+	(CatAssignExp::toElem): Likewise.
+	(StructLiteralExp::toElem): Likewise.
 
 2014-06-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
