@@ -1,3 +1,9 @@
+2014-07-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(finish_thunk): Use set_decl_section_name, copy the
+	implicit section flag.
+	(setup_symbol_storage): Use decl_default_tls_model.
+
 2014-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.h(d_types_compatible): Remove function.
