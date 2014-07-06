@@ -11,7 +11,7 @@
 module rt.sections;
 
 version (Android)
-    public import rt.sections_linux;
+    public import rt.sections_android;
 else version (linux)
     public import rt.sections_linux;
 else version (FreeBSD)

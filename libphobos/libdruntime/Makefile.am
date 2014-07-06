@@ -40,6 +40,7 @@ $(IMPDIR):
 	mkdir -p $(IMPDIR)/core/stdc
 	mkdir -p $(IMPDIR)/core/sync
 	mkdir -p $(IMPDIR)/core/sys/freebsd/sys
+	mkdir -p $(IMPDIR)/core/sys/android/sys
 	mkdir -p $(IMPDIR)/core/sys/linux/sys
 	mkdir -p $(IMPDIR)/core/sys/osx/mach
 	mkdir -p $(IMPDIR)/core/sys/posix/arpa
@@ -155,6 +156,8 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
 	     core/sys/freebsd/sys/elf_common.di core/sys/freebsd/sys/elf.di \
 	     core/sys/freebsd/sys/event.di core/sys/freebsd/sys/link_elf.di \
 	     \
+	     core/sys/android/elf.di core/sys/android/link.di \
+	     \
 	     core/sys/linux/config.di core/sys/linux/dlfcn.di \
 	     core/sys/linux/elf.di core/sys/linux/epoll.di \
 	     core/sys/linux/errno.di core/sys/linux/execinfo.di \
@@ -246,7 +249,7 @@ install-data-local: libgdruntime.a
 	    core/sys/osx core/sys/osx/mach core/sys/posix \
 	    core/sys/posix/arpa core/sys/posix/net \
 	    core/sys/posix/netinet core/sys/posix/sys \
-	    core/sys/windows; do \
+	    core/sys/windows core/sys/android; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    for f in $(IMPDIR)/$$i/*.di; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
