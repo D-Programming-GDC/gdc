@@ -123,14 +123,6 @@ enum d_tree_index
 
   DTI_UNKNOWN_TYPE,
 
-  /* unused except for gcc builtins. */
-  DTI_INTMAX_TYPE,
-  DTI_UINTMAX_TYPE,
-  DTI_SIGNED_SIZE_TYPE,
-  DTI_STRING_TYPE,
-  DTI_CONST_STRING_TYPE,
-  DTI_NULL,
-
   DTI_MAX
 };
 
@@ -144,15 +136,7 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define d_ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
 #define d_idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define d_ireal_type_node		d_global_trees[DTI_IREAL_TYPE]
-
 #define d_unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
-
-#define intmax_type_node		d_global_trees[DTI_INTMAX_TYPE]
-#define uintmax_type_node		d_global_trees[DTI_UINTMAX_TYPE]
-#define signed_size_type_node		d_global_trees[DTI_SIGNED_SIZE_TYPE]
-#define string_type_node		d_global_trees[DTI_STRING_TYPE]
-#define const_string_type_node		d_global_trees[DTI_CONST_STRING_TYPE]
-#define null_node			d_global_trees[DTI_NULL]
 
 
 /* In d-lang.cc.  These are called through function pointers
