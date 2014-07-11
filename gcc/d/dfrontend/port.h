@@ -13,6 +13,10 @@
 #include <stdlib.h> // for alloca
 #include <stdint.h>
 
+#ifdef __sun
+#include <alloca.h>
+#endif
+
 #include "longdouble.h"
 
 #if _MSC_VER

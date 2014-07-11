@@ -1721,6 +1721,10 @@ else version (FreeBSD)
 
         return buffer.assumeUnique;
     }
+    else version(Solaris)
+    {
+	    return readLink("/proc/self/object/a.out");
+    }
     else
         static assert(0, "thisExePath is not supported on this platform");
 }

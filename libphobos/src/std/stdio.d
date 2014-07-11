@@ -68,6 +68,11 @@ version (FreeBSD)
     version = GENERIC_IO;
 }
 
+version (Solaris)
+{
+    version = GENERIC_IO;
+}
+
 version (MinGW)
 {
     version = MINGW_IO;

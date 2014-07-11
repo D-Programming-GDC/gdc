@@ -241,6 +241,23 @@ class Semaphore
                     throw new SyncException( "Unable to wait for semaphore" );
             }
         }
+        else version( Solaris )
+        {
+            timespec t = void;
+            mvtspec( t, period );
+
+            // Solaris uses relative timeouts inside libc, avoid
+            // unecessary relative->absolute->relative conversion
+            while( true )
+            {
+                if( !sem_reltimedwait_np( &m_hndl, &t ) )
+                    return true;
+                if( errno == ETIMEDOUT )
+                    return false;
+                if( errno != EINTR )
+                    throw new SyncException( "Unable to wait for semaphore" );
+            }
+        }
         else version( Posix )
         {
             timespec t = void;
@@ -413,7 +430,6 @@ version( unittest )
         group.create(&producer);
         group.joinAll();
     }
-
 
     void testWaitTimeout()
     {

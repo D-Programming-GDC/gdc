@@ -58,6 +58,8 @@ private
         import core.sys.osx.execinfo;
     else version( FreeBSD )
         import core.sys.freebsd.execinfo;
+    else version( Solaris )
+        import core.sys.solaris.execinfo;
     else version( Windows )
         import core.sys.windows.stacktrace;
 

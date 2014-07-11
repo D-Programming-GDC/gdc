@@ -41,6 +41,7 @@ pure char*  strrchr(in char* s, int c);
 pure size_t strspn(in char* s1, in char* s2);
 pure char*  strstr(in char* s1, in char* s2);
 char*  strtok(char* s1, in char* s2);
-char*  strerror(int errnum);
+// probably not entirely correct
+pure char*  strerror(int errnum);
 pure size_t strlen(in char* s);
 char*  strdup(in char *s);

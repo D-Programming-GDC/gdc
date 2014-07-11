@@ -11,6 +11,12 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+#if __sun
+/* Without this, you get the errno of the initial thread everywhere */
+#define	_REENTRANT
+#endif
+
 #include <errno.h>
 
 

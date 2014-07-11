@@ -16,6 +16,13 @@ public import core.time; // for Duration
 import core.exception : onOutOfMemoryError;
 static import rt.tlsgc;
 
+version( Solaris )
+{
+    import core.sys.solaris.sys.priocntl;
+    import core.sys.solaris.sys.procset;
+    import core.sys.solaris.sys.types;
+}
+
 // this should be true for most architectures
 version( GNU_StackGrowsDown )
     version = StackGrowsDown;
@@ -38,7 +45,6 @@ else version (Windows)
     alias core.sys.windows.windows.GetCurrentProcessId getpid;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // Thread and Fiber Exceptions
 ///////////////////////////////////////////////////////////////////////////////
@@ -59,7 +65,6 @@ class ThreadException : Exception
         super(msg, file, line, next);
     }
 }
-
 
 /**
  * Base class for fiber exceptions.
@@ -903,7 +908,6 @@ class Thread
      */
     __gshared const int PRIORITY_DEFAULT;
 
-
     /**
      * Gets the scheduling priority for the associated thread.
      *
@@ -947,11 +951,35 @@ class Thread
             if( !SetThreadPriority( m_hndl, val ) )
                 throw new ThreadException( "Unable to set thread priority" );
         }
+        else version( Solaris )
+        {
+            // pthread_setschedprio and pthread_getschedparam are broken
+            // for the default (TS / time sharing class) and will also set
+            // the per-process maximum priority (uprilim) to the given
+            // priority.  As uprilim can only ever be set to the same or lower
+            // value, this has the nasty side effect of only ever allowing a thread
+            // to lower it's priority, never raise it.  Bizzarely, this only applies
+            // to time-shared threads -- interactive, fixed, and fair-share threads
+            // do not do this.  As such, we do the same thing pthread_setschedprio()
+            // does but without altering uprilim.
+            pcparms_t   pcparm;
+
+            pcparm.pc_cid = PC_CLNULL;
+            if (priocntl(idtype_t.P_LWPID, P_MYID, PC_GETPARMS, &pcparm) == -1)
+                throw new ThreadException( "Unable to get scheduling class" );
+
+            // XXX: need to check for RT class
+            pri_t* clparms = cast(pri_t*)&pcparm.pc_clparms;
+            clparms[1] = cast(pri_t) val;
+
+            if (priocntl(idtype_t.P_LWPID, P_MYID, PC_SETPARMS, &pcparm) == -1)
+                throw new ThreadException( "Unable to set scheduling class" );
+        }
         else version( Posix )
         {
             static if( __traits( compiles, pthread_setschedprio ) )
             {
-                if( pthread_setschedprio( m_addr, val ) )
+                if ( pthread_setschedprio( m_addr, val ) )
                     throw new ThreadException( "Unable to set thread priority" );
             }
             else
@@ -974,13 +1002,15 @@ class Thread
     unittest
     {
         auto thr = Thread.getThis();
-        immutable prio = thr.priority;
+        immutable int prio = thr.priority;
         scope (exit) thr.priority = prio;
 
         assert(prio == PRIORITY_DEFAULT);
         assert(prio >= PRIORITY_MIN && prio <= PRIORITY_MAX);
+ 
         thr.priority = PRIORITY_MIN;
         assert(thr.priority == PRIORITY_MIN);
+
         thr.priority = PRIORITY_MAX;
         assert(thr.priority == PRIORITY_MAX);
     }
@@ -1168,6 +1198,41 @@ class Thread
             PRIORITY_DEFAULT = THREAD_PRIORITY_NORMAL;
             PRIORITY_MAX = THREAD_PRIORITY_TIME_CRITICAL;
         }
+        else version( Solaris )
+        {
+            // Every scheduling class except the real-time (RT) scheduling class
+            // on Solaris has the notion of a per-process priority limit (uprilim), which can
+            // be lower than the maximum value possible in a scheduling class.
+            // Thus, we cap the maximum priority to uprilim
+            pcparms_t pcparms;
+
+            pcparms.pc_cid = PC_CLNULL;
+            if (priocntl(idtype_t.P_PID, P_MYID, PC_GETPARMS, &pcparms) == -1)
+                throw new ThreadException( "Unable to get scheduling class" );
+
+            // Get the scheduling class information
+            pcinfo_t pcinfo;
+            pcinfo.pc_cid = pcparms.pc_cid;
+            // PC_GETCLINFO ignores the first two arguments
+            if (priocntl(idtype_t.min, 0, PC_GETCLINFO, &pcinfo) == -1)
+                throw new ThreadException( "Unable to get scheduling class info" );
+
+            pri_t* clparms = cast(pri_t*)&pcparms.pc_clparms;
+            pri_t* clinfo = cast(pri_t*)&pcinfo.pc_clinfo;
+
+            if (pcinfo.pc_clname == "RT") {
+                // We leave this fixed for real-time threads
+                PRIORITY_MAX = clparms[0];
+                PRIORITY_MIN = clparms[0];
+                PRIORITY_DEFAULT = clparms[0];
+            } else {
+                // uprilim
+                PRIORITY_MAX = clparms[0];
+                // maxupro
+                PRIORITY_MIN = -clinfo[0];
+                PRIORITY_DEFAULT = 0;
+            }
+        }
         else version( Posix )
         {
             int         policy;
@@ -1178,12 +1243,12 @@ class Thread
             assert( status == 0 );
 
             PRIORITY_MIN = sched_get_priority_min( policy );
-            assert( PRIORITY_MIN != -1 );
-
-            PRIORITY_DEFAULT = param.sched_priority;
+            assert( PRIORITY_MIN != -1);
 
             PRIORITY_MAX = sched_get_priority_max( policy );
-            assert( PRIORITY_MAX != -1 );
+            assert( PRIORITY_MAX != -1);
+
+            PRIORITY_DEFAULT = param.sched_priority;
         }
     }
 
@@ -1269,7 +1334,6 @@ private:
     // Main process thread
     //
     __gshared Thread    sm_main;
-
 
     //
     // Standard thread data

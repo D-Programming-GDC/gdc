@@ -663,6 +663,12 @@ else version (Solaris)
             timestruc_t st_atim;
             timestruc_t st_mtim;
             timestruc_t st_ctim;
+	    extern (D)
+	    {
+		    @property ref time_t st_atime() { return st_atim.tv_sec; }
+		    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+		    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+	    }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -688,6 +694,12 @@ else version (Solaris)
             timestruc_t st_atim;
             timestruc_t st_mtim;
             timestruc_t st_ctim;
+	    extern (D)
+	    {
+		    @property ref time_t st_atime() { return st_atim.tv_sec; }
+		    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+		    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+	    }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -710,6 +722,12 @@ else version (Solaris)
             timestruc_t st_atim;
             timestruc_t st_mtim;
             timestruc_t st_ctim;
+	    extern (D)
+	    {
+		    @property ref time_t st_atime() { return st_atim.tv_sec; }
+		    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+		    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+	    }
             blksize_t st_blksize;
             blkcnt64_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -796,22 +814,30 @@ version( linux )
 }
 else version (Solaris)
 {
-    static if (__USE_LARGEFILE64)
-    {
-        int   fstat64(int, stat_t*);
-        alias fstat64 fstat;
+    version (X86) {
+        static if (__USE_LARGEFILE64)
+        {
+            int   fstat64(int, stat_t*);
+            alias fstat64 fstat;
 
-        int   lstat64(in char*, stat_t*);
-        alias lstat64 lstat;
+            int   lstat64(in char*, stat_t*);
+            alias lstat64 lstat;
 
-        int   stat64(in char*, stat_t*);
-        alias stat64 stat;
+            int   stat64(in char*, stat_t*);
+            alias stat64 stat;
+        }
+        else
+        {
+            int fstat(int, stat_t*);
+            int lstat(in char*, stat_t*);
+            int stat(in char*, stat_t*);
+	}
     }
-    else
+    else version (X86_64)
     {
         int fstat(int, stat_t*);
-        int lstat(in char*, stat_t*);
-        int stat(in char*, stat_t*);
+	int lstat(in char*, stat_t*);
+	int stat(in char*, stat_t*);
     }
 }
 else version( Posix )

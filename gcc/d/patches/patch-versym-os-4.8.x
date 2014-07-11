@@ -233,6 +233,23 @@ These official OS versions are not implemented:
 +
  #undef GNU_USER_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
+--- gcc/config/sol2.h	2014-06-13 22:32:59.642262618 -0500
++++ gcc/config/sol2.h	2014-06-13 22:35:08.125209793 -0500
+@@ -98,6 +98,14 @@
+ 	TARGET_SUB_OS_CPP_BUILTINS();			\
+     } while (0)
+ 
++#define	TARGET_OS_D_BUILTINS()				\
++  do							\
++    {							\
++      builtin_define ("Solaris");			\
++      builtin_define ("Posix");				\
++    }							\
++  while (0)
++
+ #define SUBTARGET_OVERRIDE_OPTIONS			\
+   do {							\
+     solaris_override_options ();			\
 --- gcc/config/linux-android.h	2013-07-04 20:28:59.561658533 +0200
 +++ gcc/config/linux-android.h	2013-07-04 18:30:36.000000000 +0200
 @@ -25,6 +25,12 @@

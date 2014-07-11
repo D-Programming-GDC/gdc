@@ -193,6 +193,22 @@ class Condition
             }
             return timedWait( cast(uint) val.total!"msecs" );
         }
+        else version( Solaris )
+        {
+            timespec t = void;
+            mvtspec( t, val );
+
+            // Solaris uses relative timeouts inside of libc.
+            // Avoid unnesessary relative->clock->relative conversion
+            int rc = pthread_cond_reltimedwait_np( &m_hndl,
+                                                   m_assocMutex.handleAddr(),
+                                                   &t);
+            if( !rc )
+                return true;
+            if( rc == ETIMEDOUT )
+                return false;
+            throw new SyncException( "Unable to wait for condition" );
+        }
         else version( Posix )
         {
             timespec t = void;

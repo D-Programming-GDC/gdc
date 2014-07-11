@@ -81,7 +81,12 @@ else version (linux)
 {
     enum clock_t CLOCKS_PER_SEC = 1000000;
 }
-
+else version (Solaris)
+{
+    // technically, this should be the output of
+    // sysconf(_SC_CLK_TCK), but should work for now
+    enum clock_t CLOCKS_PER_SEC = 100;
+}
 clock_t clock();
 double  difftime(time_t time1, time_t time0);
 time_t  mktime(tm* timeptr);
