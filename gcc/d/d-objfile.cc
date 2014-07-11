@@ -1737,28 +1737,23 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	}
 
       VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;
-      if (vd != NULL)
-	{
-	  if (vd->storage_class & STCextern)
-	    local_p = false;
-	  // Tell backend this is a thread local decl.
-	  if (vd->isDataseg() && vd->isThreadlocal())
-	    DECL_TLS_MODEL (decl) = decl_default_tls_model (decl);
-	}
-
-      if (rd && rd->storage_class & STCcomdat)
-	D_DECL_ONE_ONLY (decl) = 1;
-
-      if (local_p)
-	{
-	  DECL_EXTERNAL (decl) = 0;
-	  TREE_STATIC (decl) = 1;
-	}
-      else
+      if (!local_p || (vd && vd->storage_class & STCextern))
 	{
 	  DECL_EXTERNAL (decl) = 1;
 	  TREE_STATIC (decl) = 0;
 	}
+      else
+	{
+	  DECL_EXTERNAL (decl) = 0;
+	  TREE_STATIC (decl) = 1;
+	}
+
+      // Tell backend this is a thread local decl.
+      if (vd && vd->isDataseg() && vd->isThreadlocal())
+	DECL_TLS_MODEL (decl) = decl_default_tls_model (decl);
+
+      if (rd && rd->storage_class & STCcomdat)
+	D_DECL_ONE_ONLY (decl) = 1;
 
       // Do this by default, but allow private templates to override
       FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;

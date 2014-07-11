@@ -15,9 +15,7 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-/*
-  d-lang.cc: implementation of back-end callbacks and data structures
-*/
+// d-lang.cc: Implementation of back-end callbacks and data structures
 
 #include "d-system.h"
 #include "options.h"
@@ -1165,22 +1163,6 @@ d_parse_file (void)
 static tree
 d_type_for_mode (machine_mode mode, int unsignedp)
 {
-  // taken from c-common.c
-  if (mode == TYPE_MODE (integer_type_node))
-    return unsignedp ? unsigned_type_node : integer_type_node;
-
-  if (mode == TYPE_MODE (signed_char_type_node))
-    return unsignedp ? unsigned_char_type_node : signed_char_type_node;
-
-  if (mode == TYPE_MODE (short_integer_type_node))
-    return unsignedp ? short_unsigned_type_node : short_integer_type_node;
-
-  if (mode == TYPE_MODE (long_integer_type_node))
-    return unsignedp ? long_unsigned_type_node : long_integer_type_node;
-
-  if (mode == TYPE_MODE (long_long_integer_type_node))
-    return unsignedp ? long_long_unsigned_type_node : long_long_integer_type_node;
-
   if (mode == QImode)
     return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
 
@@ -1247,22 +1229,6 @@ d_type_for_mode (machine_mode mode, int unsignedp)
 static tree
 d_type_for_size (unsigned bits, int unsignedp)
 {
-  if (bits == TYPE_PRECISION (integer_type_node))
-    return unsignedp ? unsigned_type_node : integer_type_node;
-
-  if (bits == TYPE_PRECISION (signed_char_type_node))
-    return unsignedp ? unsigned_char_type_node : signed_char_type_node;
-
-  if (bits == TYPE_PRECISION (short_integer_type_node))
-    return unsignedp ? short_unsigned_type_node : short_integer_type_node;
-
-  if (bits == TYPE_PRECISION (long_integer_type_node))
-    return unsignedp ? long_unsigned_type_node : long_integer_type_node;
-
-  if (bits == TYPE_PRECISION (long_long_integer_type_node))
-    return (unsignedp ? long_long_unsigned_type_node
-	    : long_long_integer_type_node);
-
   if (bits <= TYPE_PRECISION (intQI_type_node))
     return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
 
@@ -1285,17 +1251,6 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
       || TYPE_UNSIGNED (type) == (unsigned) unsignedp)
     return type;
 
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (signed_char_type_node))
-    return unsignedp ? unsigned_char_type_node : signed_char_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (integer_type_node))
-    return unsignedp ? unsigned_type_node : integer_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (short_integer_type_node))
-    return unsignedp ? short_unsigned_type_node : short_integer_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (long_integer_type_node))
-    return unsignedp ? long_unsigned_type_node : long_integer_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (long_long_integer_type_node))
-    return (unsignedp ? long_long_unsigned_type_node
-	    : long_long_integer_type_node);
 #if HOST_BITS_PER_WIDE_INT >= 64
   if (TYPE_PRECISION (type) == TYPE_PRECISION (intTI_type_node))
     return unsignedp ? unsigned_intTI_type_node : intTI_type_node;
@@ -1315,80 +1270,36 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
 tree
 d_unsigned_type (tree type)
 {
-  tree type1 = TYPE_MAIN_VARIANT (type);
-  if (type1 == signed_char_type_node || type1 == char_type_node)
-    return unsigned_char_type_node;
-  if (type1 == integer_type_node)
-    return unsigned_type_node;
-  if (type1 == short_integer_type_node)
-    return short_unsigned_type_node;
-  if (type1 == long_integer_type_node)
-    return long_unsigned_type_node;
-  if (type1 == long_long_integer_type_node)
-    return long_long_unsigned_type_node;
-#if HOST_BITS_PER_WIDE_INT >= 64
-  if (type1 == intTI_type_node)
-    return unsigned_intTI_type_node;
-#endif
-  if (type1 == intDI_type_node)
-    return unsigned_intDI_type_node;
-  if (type1 == intSI_type_node)
-    return unsigned_intSI_type_node;
-  if (type1 == intHI_type_node)
-    return unsigned_intHI_type_node;
-  if (type1 == intQI_type_node)
-    return unsigned_intQI_type_node;
-
   return d_signed_or_unsigned_type (1, type);
 }
 
 tree
 d_signed_type (tree type)
 {
-  tree type1 = TYPE_MAIN_VARIANT (type);
-  if (type1 == unsigned_char_type_node || type1 == char_type_node)
-    return signed_char_type_node;
-  if (type1 == unsigned_type_node)
-    return integer_type_node;
-  if (type1 == short_unsigned_type_node)
-    return short_integer_type_node;
-  if (type1 == long_unsigned_type_node)
-    return long_integer_type_node;
-  if (type1 == long_long_unsigned_type_node)
-    return long_long_integer_type_node;
-#if HOST_BITS_PER_WIDE_INT >= 64
-  if (type1 == unsigned_intTI_type_node)
-    return intTI_type_node;
-#endif
-  if (type1 == unsigned_intDI_type_node)
-    return intDI_type_node;
-  if (type1 == unsigned_intSI_type_node)
-    return intSI_type_node;
-  if (type1 == unsigned_intHI_type_node)
-    return intHI_type_node;
-  if (type1 == unsigned_intQI_type_node)
-    return intQI_type_node;
-
   return d_signed_or_unsigned_type (0, type);
 }
 
-/* Type promotion for variable arguments.  */
+// Type promotion for variable arguments.
+// This is needed for varargs to work on certain targets.
+
 static tree
 d_type_promotes_to (tree type)
 {
-  /* Almost the same as c_type_promotes_to.  This is needed varargs to work on
-     certain targets. */
+  tree ptype = targetm.promoted_type (type);
+  if (ptype)
+    return ptype;
+
   if (TYPE_MAIN_VARIANT (type) == float_type_node)
     return double_type_node;
 
-  // not quite the same as... if (c_promoting_integer_type_p (type))
   if (INTEGRAL_TYPE_P (type)
-      && (TYPE_PRECISION (type) < TYPE_PRECISION (integer_type_node)))
+      && (TYPE_PRECISION (type) <= TYPE_PRECISION (integer_type_node)))
     {
-      /* Preserve unsignedness if not really getting any wider.  */
+      // Preserve unsignedness if not really getting any wider.
       if (TYPE_UNSIGNED (type)
 	  && (TYPE_PRECISION (type) == TYPE_PRECISION (integer_type_node)))
 	return unsigned_type_node;
+
       return integer_type_node;
     }
 
