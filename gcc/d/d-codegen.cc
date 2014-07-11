@@ -489,7 +489,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
     {
       Type *telem = tbtype->nextOf()->baseElemOf();
 
-      if (d_types_compatible (telem, ebtype))
+      if (d_types_same (telem, ebtype))
 	{
 	  // %% what about implicit converions...?
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;
@@ -2121,6 +2121,8 @@ get_libcall (LibCall libcall)
       Types targs;
       Type *treturn = Type::tvoid;
       bool varargs = false;
+      bool fnmalloc = false;
+      bool fnthrows = false;
 
       // Build generic AA type void*[void*]
       if (aatype == NULL)
@@ -2134,23 +2136,27 @@ get_libcall (LibCall libcall)
 	  // need to spec chararray/string because internal code passes string constants
 	  targs.push (Type::tchar->arrayOf());
 	  targs.push (Type::tuns32);
+	  fnthrows = true;
 	  break;
 
 	case LIBCALL_ASSERT_MSG:
 	  targs.push (Type::tchar->arrayOf());
 	  targs.push (Type::tchar->arrayOf());
 	  targs.push (Type::tuns32);
+	  fnthrows = true;
 	  break;
 
 	case LIBCALL_UNITTEST:
 	  targs.push (Type::tchar->arrayOf());
 	  targs.push (Type::tuns32);
+	  fnthrows = true;
 	  break;
 
 	case LIBCALL_UNITTEST_MSG:
 	  targs.push (Type::tchar->arrayOf());
 	  targs.push (Type::tchar->arrayOf());
 	  targs.push (Type::tuns32);
+	  fnthrows = true;
 	  break;
 
 	case LIBCALL_NEWCLASS:
@@ -2182,6 +2188,7 @@ get_libcall (LibCall libcall)
 	case LIBCALL_ALLOCMEMORY:
 	  targs.push (Type::tsize_t);
 	  treturn = Type::tvoidptr;
+	  fnmalloc = true;
 	  break;
 
 	case LIBCALL_DELCLASS:
@@ -2292,8 +2299,8 @@ get_libcall (LibCall libcall)
 	  targs.push (Type::dtypeinfo->type->constOf());
 	  // Currently 'uint', even if 64-bit
 	  targs.push (Type::tuns32);
-	  varargs = true;
 	  treturn = Type::tvoid->arrayOf();
+	  varargs = true;
 	  break;
 
 	case LIBCALL_ARRAYAPPENDT:
@@ -2399,11 +2406,15 @@ get_libcall (LibCall libcall)
       tf->varargs = varargs ? 1 : 0;
       libcall_decls[libcall] = decl;
 
-      // These functions do not return except through catching a thrown exception.
-      if (libcall == LIBCALL_ASSERT || libcall == LIBCALL_ASSERT_MSG
-	  || libcall == LIBCALL_UNITTEST || libcall == LIBCALL_UNITTEST_MSG
-	  || libcall == LIBCALL_ARRAY_BOUNDS || libcall == LIBCALL_SWITCH_ERROR)
-	TREE_THIS_VOLATILE (decl->toSymbol()->Stree) = 1;
+      tree t = decl->toSymbol()->Stree;
+
+      // Function does not return except through catching a thrown exception.
+      if (fnthrows)
+	TREE_THIS_VOLATILE (t) = 1;
+
+      // Function performs a malloc-like operation.
+      if (fnmalloc)
+	DECL_IS_MALLOC (t) = 1;
     }
 
   return decl;

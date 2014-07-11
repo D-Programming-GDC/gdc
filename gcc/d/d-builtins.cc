@@ -706,43 +706,6 @@ d_init_attributes (void)
 }
 
 
-#ifndef WINT_TYPE
-#define WINT_TYPE "unsigned int"
-#endif
-#ifndef PID_TYPE
-#define PID_TYPE "int"
-#endif
-
-static tree
-lookup_ctype_name (const char *p)
-{
-  // These are the names used in c_common_nodes_and_builtins
-  if (strcmp (p, "char"))
-    return char_type_node;
-  else if (strcmp (p, "signed char"))
-    return signed_char_type_node;
-  else if (strcmp (p, "unsigned char"))
-    return unsigned_char_type_node;
-  else if (strcmp (p, "short int"))
-    return short_integer_type_node;
-  else if (strcmp (p, "short unsigned int "))
-    return short_unsigned_type_node; //cxx! -- affects ming/c++?
-  else if (strcmp (p, "int"))
-    return integer_type_node;
-  else if (strcmp (p, "unsigned int"))
-    return unsigned_type_node;
-  else if (strcmp (p, "long int"))
-    return long_integer_type_node;
-  else if (strcmp (p, "long unsigned int"))
-    return long_unsigned_type_node; // cxx!
-  else if (strcmp (p, "long long int"))
-    return long_integer_type_node;
-  else if (strcmp (p, "long long unsigned int"))
-    return long_unsigned_type_node; // cxx!
-
-  internal_error ("unsigned C type '%s'", p);
-}
-
 static void
 do_build_builtin_fn (built_in_function fncode,
 		     const char *name,
@@ -807,13 +770,19 @@ enum d_builtin_type
 #undef DEF_POINTER_TYPE
   BT_LAST
 };
+
 typedef enum d_builtin_type builtin_type;
 
-
-/* A temporary array for d_init_builtins.  Used in communication with def_fn_type.  */
-
+// A temporary array for d_init_builtins.
+// Used in communication with def_fn_type.
 static tree builtin_types[(int) BT_LAST + 1];
 
+static GTY(()) tree string_type_node;
+static GTY(()) tree const_string_type_node;
+static GTY(()) tree wint_type_node;
+static GTY(()) tree intmax_type_node;
+static GTY(()) tree uintmax_type_node;
+static GTY(()) tree signed_size_type_node;
 
 /* A helper function for d_init_builtins.  Build function type for DEF with
    return type RET and N arguments.  If VAR is true, then the function should
@@ -856,7 +825,7 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
 }
 
 
-/* Build builtin functions and types for the D language frontend.  */
+// Build builtin functions and types for the D language frontend.
 
 void
 d_init_builtins (void)
@@ -865,11 +834,10 @@ d_init_builtins (void)
   tree va_list_arg_type_node;
 
   // The "standard" abi va_list is va_list_type_node.
-  // assumes va_list_type_node already built
+  // This assumes va_list_type_node already built
   Type::tvalist = build_dtype (va_list_type_node);
   if (!Type::tvalist)
     {
-      // fallback to array of byte of the same size?
       error ("cannot represent built in va_list type in D");
       gcc_unreachable();
     }
@@ -883,9 +851,9 @@ d_init_builtins (void)
 
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
-      /* It might seem natural to make the reference type a pointer,
-	 but this will not work in D: There is no implicit casting from
-	 an array to a pointer. */
+      // It might seem natural to make the reference type a pointer,
+      // but this will not work in D.  There is no implicit casting
+      // from an array to a pointer.
       va_list_arg_type_node = build_reference_type (va_list_type_node);
       va_list_ref_type_node = va_list_arg_type_node;
     }
@@ -895,29 +863,36 @@ d_init_builtins (void)
       va_list_ref_type_node = build_reference_type (va_list_type_node);
     }
 
-  intmax_type_node = intDI_type_node;
-  uintmax_type_node = unsigned_intDI_type_node;
-  signed_size_type_node = d_signed_type (size_type_node);
-  string_type_node = build_pointer_type (char_type_node);
-  const_string_type_node = build_pointer_type (build_qualified_type
-					       (char_type_node, TYPE_QUAL_CONST));
-
+  // Maybe it's better not to support these builtin types, which
+  // inhibits support for a small number of builtin functions.
   void_list_node = build_tree_list (NULL_TREE, void_type_node);
+  string_type_node = build_pointer_type (char_type_node);
+  const_string_type_node
+    = build_pointer_type (build_qualified_type (char_type_node, TYPE_QUAL_CONST));
 
-  /* WINT_TYPE is a C type name, not an itk_ constant or something useful
-     like that... */
-  tree wint_type_node = lookup_ctype_name (WINT_TYPE);
-  pid_type_node = lookup_ctype_name (PID_TYPE);
+  if (strcmp (SIZE_TYPE, "unsigned int") == 0)
+    {
+      intmax_type_node = integer_type_node;
+      uintmax_type_node = unsigned_type_node;
+      signed_size_type_node = integer_type_node;
+    }
+  else if (strcmp (SIZE_TYPE, "long unsigned int") == 0)
+    {
+      intmax_type_node = long_integer_type_node;
+      uintmax_type_node = long_unsigned_type_node;
+      signed_size_type_node = long_integer_type_node;
+    }
+  else if (strcmp (SIZE_TYPE, "long long unsigned int") == 0)
+    {
+      intmax_type_node = long_long_integer_type_node;
+      uintmax_type_node = long_long_unsigned_type_node;
+      signed_size_type_node = long_long_integer_type_node;
+    }
+  else
+    gcc_unreachable ();
 
-  /* Create the built-in __null node.  It is important that this is
-     not shared.  */
-  null_node = make_node (INTEGER_CST);
-  TREE_TYPE (null_node) = lang_hooks.types.type_for_size (POINTER_SIZE, 0);
-
-  TYPE_NAME (integer_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
-					      get_identifier ("int"), integer_type_node);
-  TYPE_NAME (char_type_node) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
-					   get_identifier ("char"), char_type_node);
+  wint_type_node = unsigned_type_node;
+  pid_type_node = integer_type_node;
 
   /* Types specific to D (but so far all taken from C).  */
   d_void_zero_node = make_node (INTEGER_CST);
