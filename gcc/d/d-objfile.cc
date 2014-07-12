@@ -1807,7 +1807,10 @@ d_finish_symbol (Symbol *sym)
 	      TYPE_NAME (TREE_TYPE (decl)) = get_identifier (sym->Sident);
 	    }
 
-	  DECL_INITIAL (decl) = sinit;
+	  // No gain setting DECL_INITIAL if the initialiser is all zeros.
+	  // Let the backend put the symbol in bss instead, if supported.
+	  if (!initializer_zerop (sinit))
+	    DECL_INITIAL (decl) = sinit;
 	}
       gcc_assert (COMPLETE_TYPE_P (TREE_TYPE (decl)));
     }

@@ -1,3 +1,8 @@
+2014-07-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(d_finish_symbol): Don't set DECL_INITIAL if the
+	initialiser is all zeros.
+
 2014-07-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc(lookup_ctype_name): Remove function.
