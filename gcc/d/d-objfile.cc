@@ -1807,25 +1807,23 @@ d_finish_symbol (Symbol *sym)
 	      TYPE_NAME (TREE_TYPE (decl)) = get_identifier (sym->Sident);
 	    }
 
-	  DECL_INITIAL (decl) = sinit;
+	  // No gain setting DECL_INITIAL if the initialiser is all zeros.
+	  // Let the backend put the symbol in bss instead, if supported.
+	  if (!initializer_zerop (sinit))
+	    DECL_INITIAL (decl) = sinit;
 	}
       gcc_assert (COMPLETE_TYPE_P (TREE_TYPE (decl)));
     }
 
   gcc_assert (!error_operand_p (decl));
 
-  if (DECL_INITIAL (decl) != NULL_TREE)
-    {
-      TREE_STATIC (decl) = 1;
-      DECL_EXTERNAL (decl) = 0;
-    }
-
-  /* If the symbol was marked as readonly in the frontend, set TREE_READONLY.  */
+  // If the symbol was marked as readonly in the frontend, set TREE_READONLY.
   if (sym->Sreadonly)
     TREE_READONLY (decl) = 1;
 
-  // We are sending this symbol to object file.
-  gcc_assert (!DECL_EXTERNAL (decl));
+  // We are sending this symbol to object file, can't be extern.
+  TREE_STATIC (decl) = 1;
+  DECL_EXTERNAL (decl) = 0;
   relayout_decl (decl);
 
 #ifdef ENABLE_TREE_CHECKING
