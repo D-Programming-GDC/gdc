@@ -1817,18 +1817,13 @@ d_finish_symbol (Symbol *sym)
 
   gcc_assert (!error_operand_p (decl));
 
-  if (DECL_INITIAL (decl) != NULL_TREE)
-    {
-      TREE_STATIC (decl) = 1;
-      DECL_EXTERNAL (decl) = 0;
-    }
-
-  /* If the symbol was marked as readonly in the frontend, set TREE_READONLY.  */
+  // If the symbol was marked as readonly in the frontend, set TREE_READONLY.
   if (sym->Sreadonly)
     TREE_READONLY (decl) = 1;
 
-  // We are sending this symbol to object file.
-  gcc_assert (!DECL_EXTERNAL (decl));
+  // We are sending this symbol to object file, can't be extern.
+  TREE_STATIC (decl) = 1;
+  DECL_EXTERNAL (decl) = 0;
   relayout_decl (decl);
 
 #ifdef ENABLE_TREE_CHECKING
