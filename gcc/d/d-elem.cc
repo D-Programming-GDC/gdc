@@ -2146,38 +2146,25 @@ NewExp::toElem (IRState *irs)
 
       TypeStruct *stype = (TypeStruct *) htype;
       StructDeclaration *sd = stype->sym;
-      Expression *init = stype->defaultInit (loc);
       tree new_call;
-
-      // Struct size is unknown.
-      if (sd->size (loc) == 0)
-	return d_convert (type->toCtype(), integer_zero_node);
 
       if (allocator)
 	new_call = d_build_call (allocator, NULL_TREE, newargs);
       else
 	{
-	  libcall = stype->isZeroInit (loc) ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
+	  libcall = htype->isZeroInit() ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
 	  tree arg = type->getTypeInfo(NULL)->toElem (irs);
 	  new_call = build_libcall (libcall, 1, &arg);
 	}
-      new_call = build_nop (tb->toCtype(), new_call);
-
-      // Save the result allocation call.
-      tree init_exp = convert_for_assignment (init->toElem (irs), init->type, stype);
       new_call = maybe_make_temp (new_call);
-
-      tree setup_exp = modify_expr (build_deref (new_call), init_exp);
-      new_call = compound_expr (setup_exp, new_call);
+      new_call = build_nop (tb->toCtype(), new_call);
 
       // Set vthis for nested structs/classes.
       if (sd->isNested())
 	{
 	  tree vthis_value = build_vthis (sd, irs->func);
-	  tree vthis_field;
-	  new_call = maybe_make_temp (new_call);
-	  vthis_field = component_ref (indirect_ref (stype->toCtype(), new_call),
-				       sd->vthis->toSymbol()->Stree);
+	  tree vthis_field = component_ref (indirect_ref (stype->toCtype(), new_call),
+					    sd->vthis->toSymbol()->Stree);
 	  new_call = compound_expr (modify_expr (vthis_field, vthis_value), new_call);
 	}
 
