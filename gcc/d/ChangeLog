@@ -1,3 +1,8 @@
+2014-07-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(NewExp::toElem): Don't initialise a new'd struct at the
+	caller.  The callee ensures this is done.
+
 2014-07-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(d_finish_symbol): Always set TREE_STATIC for symbols
