@@ -34,6 +34,7 @@ static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *
 static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
 static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
 static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
+static bool output_declaration_p (Dsymbol *dsym);
 
 // Module info.  Assuming only one module per run of the compiler.
 ModuleInfo *current_module_info;
@@ -182,6 +183,9 @@ StructDeclaration::toObjFile (int)
   // Anonymous structs/unions only exist as part of others,
   // do not output forward referenced structs's
   if (isAnonymous() || !members)
+    return;
+
+  if (!output_declaration_p (this))
     return;
 
   if (global.params.symdebug)
@@ -1026,18 +1030,30 @@ Module::genmoduleinfo()
 // Returns true if we want to compile the declaration DSYM.
 
 static bool
-output_declaration_p (Declaration *dsym)
+output_declaration_p (Dsymbol *dsym)
 {
   // If errors occurred compiling it.
-  Type *t = dsym->type;
-
-  if (t->ty == Terror)
-    return false;
-
-  if (t->ty == Tfunction)
+  if (dsym->isDeclaration())
     {
-      TypeFunction *tf = (TypeFunction *) t;
-      if (tf->next == NULL || tf->next->ty == Terror)
+      Type *t = ((Declaration *) dsym)->type;
+
+      if (t->ty == Terror)
+	return false;
+
+      if (t->ty == Tfunction)
+	{
+	  TypeFunction *tf = (TypeFunction *) t;
+	  if (tf->next == NULL || tf->next->ty == Terror)
+	    return false;
+	}
+    }
+
+  // Don't emit any symbols from gcc.attribute module.
+  ModuleDeclaration *md = dsym->getModule()->md;
+  if (md && md->packages && md->packages->dim == 1)
+    {
+      if (!strcmp ((*md->packages)[0]->string, "gcc")
+	  && !strcmp (md->id->string, "attribute"))
 	return false;
     }
 
