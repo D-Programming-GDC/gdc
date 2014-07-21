@@ -4,6 +4,7 @@ module gdc;
 
 import imports.gdca;
 import core.stdc.stdio;
+import gcc.attribute;
 
 
 /******************************************/
@@ -598,8 +599,6 @@ void test77()
 
 // Bug 108
 
-import gcc.attribute;
-
 @attribute("forceinline")
 void test108()
 {
@@ -690,6 +689,36 @@ void test133()
 
 /******************************************/
 
+// Bug 141
+
+bool test141a(int a)
+{
+    return a > (a + 1);
+}
+
+void test141()
+{
+    assert(test141a(int.min) == false);
+    assert(test141a(int.max) == true);
+}
+
+/******************************************/
+
+// Bug 142
+
+@attribute("noinline")
+int test142a()()
+{
+    return 142;
+}
+
+void test142()
+{
+    enum E142 = test142a();
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -708,6 +737,8 @@ void main()
     test115();
     test131();
     test133();
+    test141();
+    test142();
 
     printf("Success!\n");
 }
