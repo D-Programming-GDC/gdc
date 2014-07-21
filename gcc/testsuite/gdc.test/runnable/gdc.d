@@ -738,7 +738,6 @@ void main()
     test131();
     test133();
     test141();
-    test142();
 
     printf("Success!\n");
 }

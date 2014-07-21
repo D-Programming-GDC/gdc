@@ -182,14 +182,16 @@ verror (Loc loc, const char *format, va_list ap,
       char *msg;
 
       // Build string and emit.
-      if (p2)
-	format = concat (p2, " ", format, NULL);
-
-      if (p1)
-	format = concat (p1, " ", format, NULL);
-
       if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
-	error_at (location, "%s", msg);
+	{
+	  if (p2)
+	    msg = concat (p2, " ", msg, NULL);
+
+	  if (p1)
+	    msg = concat (p1, " ", msg, NULL);
+
+	  error_at (location, "%s", msg);
+	}
 
       // Moderate blizzard of cascading messages
       if (global.errors >= 20)

@@ -3,6 +3,7 @@
 	* d-objfile.cc(output_declaration_p): Don't emit any declarations from
 	the gcc.attribute module.
 	(StructDeclaration::toObjFile): Call output_declaration_p.
+	* d-glue.cc(verror): Only call vasprintf on the initial format string.
 
 2014-07-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
