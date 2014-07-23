@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- gcc/config/rs6000/rs6000.c
 +++ gcc/config/rs6000/rs6000.c
-@@ -24786,7 +24786,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -24791,7 +24791,8 @@ rs6000_output_function_epilogue (FILE *file,
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
@@ -52,7 +52,7 @@ relevant documentation about the GDC front end.
  Specify that a particular subset of compilers and their runtime
 --- gcc/doc/invoke.texi
 +++ gcc/doc/invoke.texi
-@@ -1231,6 +1231,15 @@ called @dfn{specs}.
+@@ -1210,6 +1210,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -68,7 +68,7 @@ relevant documentation about the GDC front end.
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1266,6 +1275,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1245,6 +1254,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
