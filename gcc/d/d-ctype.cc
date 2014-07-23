@@ -358,10 +358,14 @@ TypeFunction::toCtype (void)
 	  if (varargs != 1)
 	    type_list = chainon (type_list, void_list_node);
 
-	  ret_type = next ? next->toCtype() : void_type_node;
-
-	  if (isref)
-	    ret_type = build_reference_type (ret_type);
+	  if (next != NULL)
+	    {
+	      ret_type = next->toCtype();
+	      if (this->isref)
+		ret_type = build_reference_type (ret_type);
+	    }
+	  else
+	    ret_type = void_type_node;
 
 	  // Function type could be referenced by parameters, so set ctype earlier?
 	  ctype = build_function_type (ret_type, type_list);
