@@ -42,43 +42,43 @@ Type::toCtype (void)
 	      break;
 
 	    case Tint8:
-	      ctype = intQI_type_node;
+	      ctype = byte_type_node;
 	      break;
 
 	    case Tuns8:
-	      ctype = unsigned_intQI_type_node;
+	      ctype = ubyte_type_node;
 	      break;
 
 	    case Tint16:
-	      ctype = intHI_type_node;
+	      ctype = short_type_node;
 	      break;
 
 	    case Tuns16:
-	      ctype = unsigned_intHI_type_node;
+	      ctype = ushort_type_node;
 	      break;
 
 	    case Tint32:
-	      ctype = intSI_type_node;
+	      ctype = int_type_node;
 	      break;
 
 	    case Tuns32:
-	      ctype = unsigned_intSI_type_node;
+	      ctype = uint_type_node;
 	      break;
 
 	    case Tint64:
-	      ctype = intDI_type_node;
-	      break;
-
-	    case Tint128:
-	      ctype = intTI_type_node;
-	      break;
-
-	    case Tuns128:
-	      ctype = unsigned_intTI_type_node;
+	      ctype = long_type_node;
 	      break;
 
 	    case Tuns64:
-	      ctype = unsigned_intDI_type_node;
+	      ctype = ulong_type_node;
+	      break;
+
+	    case Tint128:
+	      ctype = cent_type_node;
+	      break;
+
+	    case Tuns128:
+	      ctype = ucent_type_node;
 	      break;
 
 	    case Tfloat32:
@@ -106,31 +106,31 @@ Type::toCtype (void)
 	      break;
 
 	    case Tbool:
-	      ctype = d_boolean_type_node;
+	      ctype = bool_type_node;
 	      break;
 
 	    case Tchar:
-	      ctype = d_char_type_node;
+	      ctype = char8_type_node;
 	      break;
 
 	    case Twchar:
-	      ctype = d_wchar_type_node;
+	      ctype = char16_type_node;
 	      break;
 
 	    case Tdchar:
-	      ctype = d_dchar_type_node;
+	      ctype = char32_type_node;
 	      break;
 
 	    case Timaginary32:
-	      ctype = d_ifloat_type_node;
+	      ctype = ifloat_type_node;
 	      break;
 
 	    case Timaginary64:
-	      ctype = d_idouble_type_node;
+	      ctype = idouble_type_node;
 	      break;
 
 	    case Timaginary80:
-	      ctype = d_ireal_type_node;
+	      ctype = ireal_type_node;
 	      break;
 
 	    case Terror:

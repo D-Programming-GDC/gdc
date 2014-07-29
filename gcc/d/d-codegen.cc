@@ -1788,12 +1788,12 @@ d_bounds_condition (tree index, tree upr, bool inclusive)
   tree uindex = d_convert (d_unsigned_type (TREE_TYPE (index)), index);
 
   // Build condition to test that INDEX < UPR.
-  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node, uindex, upr);
+  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, bool_type_node, uindex, upr);
 
   // Build condition to test that INDEX >= 0.
   if (!TYPE_UNSIGNED (TREE_TYPE (index)))
-    condition = build2 (TRUTH_ANDIF_EXPR, boolean_type_node, condition,
-			build2 (GE_EXPR, boolean_type_node, index, integer_zero_node));
+    condition = build2 (TRUTH_ANDIF_EXPR, bool_type_node, condition,
+			build2 (GE_EXPR, bool_type_node, index, integer_zero_node));
 
   return condition;
 }
@@ -3446,7 +3446,7 @@ layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl)
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
 	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				   get_identifier ("__vptr"), d_vtbl_ptr_type_node);
+				   get_identifier ("__vptr"), vtbl_ptr_type_node);
 	  DECL_ARTIFICIAL (field) = 1;
 	  DECL_IGNORED_P (field) = inherited_p;
 

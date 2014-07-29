@@ -894,23 +894,52 @@ d_init_builtins (void)
   wint_type_node = unsigned_type_node;
   pid_type_node = integer_type_node;
 
-  /* D variant types of C types.  */
-  d_boolean_type_node = make_unsigned_type (1);
-  TREE_SET_CODE (d_boolean_type_node, BOOLEAN_TYPE);
+  // D types are distinct from C types.
 
-  d_char_type_node = build_variant_type_copy (unsigned_intQI_type_node);
-  d_wchar_type_node = build_variant_type_copy (unsigned_intHI_type_node);
-  d_dchar_type_node = build_variant_type_copy (unsigned_intSI_type_node);
+  // Integral types.
+  byte_type_node = make_signed_type(8);
+  ubyte_type_node = make_unsigned_type(8);
 
-  /* Imaginary types.  */
-  d_ifloat_type_node = build_variant_type_copy (float_type_node);
-  D_TYPE_IMAGINARY_FLOAT (d_ifloat_type_node) = 1;
+  short_type_node = make_signed_type(16);
+  ushort_type_node = make_unsigned_type(16);
 
-  d_idouble_type_node = build_variant_type_copy (double_type_node);
-  D_TYPE_IMAGINARY_FLOAT (d_idouble_type_node) = 1;
+  int_type_node = make_signed_type(32);
+  uint_type_node = make_unsigned_type(32);
 
-  d_ireal_type_node = build_variant_type_copy (long_double_type_node);
-  D_TYPE_IMAGINARY_FLOAT (d_ireal_type_node) = 1;
+  long_type_node = make_signed_type(64);
+  ulong_type_node = make_unsigned_type(64);
+
+  cent_type_node = make_signed_type(128);
+  ucent_type_node = make_unsigned_type(128);
+
+  {
+    // Re-define size_t as a D type.
+    machine_mode type_mode = TYPE_MODE(size_type_node);
+    size_type_node = lang_hooks.types.type_for_mode(type_mode, 1);
+  }
+
+  // Bool and Character types.
+  bool_type_node = make_unsigned_type (1);
+  TREE_SET_CODE (bool_type_node, BOOLEAN_TYPE);
+
+  char8_type_node = make_unsigned_type(8);
+  TYPE_STRING_FLAG(char8_type_node) = 1;
+
+  char16_type_node = make_unsigned_type(16);
+  TYPE_STRING_FLAG(char16_type_node) = 1;
+
+  char32_type_node = make_unsigned_type(32);
+  TYPE_STRING_FLAG(char32_type_node) = 1;
+
+  // Imaginary types.
+  ifloat_type_node = build_variant_type_copy (float_type_node);
+  D_TYPE_IMAGINARY_FLOAT (ifloat_type_node) = 1;
+
+  idouble_type_node = build_variant_type_copy (double_type_node);
+  D_TYPE_IMAGINARY_FLOAT (idouble_type_node) = 1;
+
+  ireal_type_node = build_variant_type_copy (long_double_type_node);
+  D_TYPE_IMAGINARY_FLOAT (ireal_type_node) = 1;
 
   /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
   d_unknown_type_node = make_node (RECORD_TYPE);
@@ -920,14 +949,14 @@ d_init_builtins (void)
        its pointer type a name.  (This wins for gdb.) */
     tree vtable_entry_type;
     tree vfunc_type = make_node (FUNCTION_TYPE);
-    TREE_TYPE (vfunc_type) = integer_type_node;
+    TREE_TYPE (vfunc_type) = int_type_node;
     TYPE_ARG_TYPES (vfunc_type) = NULL_TREE;
     layout_type (vfunc_type);
 
     vtable_entry_type = build_pointer_type (vfunc_type);
 
-    d_vtbl_ptr_type_node = build_pointer_type (vtable_entry_type);
-    layout_type (d_vtbl_ptr_type_node);
+    vtbl_ptr_type_node = build_pointer_type (vtable_entry_type);
+    layout_type (vtbl_ptr_type_node);
   }
 
   /* Since builtin_types isn't gc'ed, don't export these nodes.  */

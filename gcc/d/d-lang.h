@@ -117,6 +117,17 @@ enum d_tree_index
   DTI_WCHAR_TYPE,
   DTI_DCHAR_TYPE,
 
+  DTI_BYTE_TYPE,
+  DTI_UBYTE_TYPE,
+  DTI_SHORT_TYPE,
+  DTI_USHORT_TYPE,
+  DTI_INT_TYPE,
+  DTI_UINT_TYPE,
+  DTI_LONG_TYPE,
+  DTI_ULONG_TYPE,
+  DTI_CENT_TYPE,
+  DTI_UCENT_TYPE,
+
   DTI_IFLOAT_TYPE,
   DTI_IDOUBLE_TYPE,
   DTI_IREAL_TYPE,
@@ -128,19 +139,28 @@ enum d_tree_index
 
 extern GTY(()) tree d_global_trees[DTI_MAX];
 
-#define d_vtbl_ptr_type_node		d_global_trees[DTI_VTBL_PTR_TYPE]
-#define d_boolean_type_node		d_global_trees[DTI_BOOL_TYPE]
-#define d_char_type_node		d_global_trees[DTI_CHAR_TYPE]
-#define d_dchar_type_node		d_global_trees[DTI_DCHAR_TYPE]
-#define d_wchar_type_node		d_global_trees[DTI_WCHAR_TYPE]
-#define d_ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
-#define d_idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
-#define d_ireal_type_node		d_global_trees[DTI_IREAL_TYPE]
+#define vtbl_ptr_type_node		d_global_trees[DTI_VTBL_PTR_TYPE]
+#define bool_type_node			d_global_trees[DTI_BOOL_TYPE]
+#define char8_type_node			d_global_trees[DTI_CHAR_TYPE]
+#define char16_type_node		d_global_trees[DTI_DCHAR_TYPE]
+#define char32_type_node		d_global_trees[DTI_WCHAR_TYPE]
+#define byte_type_node			d_global_trees[DTI_BYTE_TYPE]
+#define ubyte_type_node			d_global_trees[DTI_UBYTE_TYPE]
+#define short_type_node			d_global_trees[DTI_SHORT_TYPE]
+#define ushort_type_node		d_global_trees[DTI_USHORT_TYPE]
+#define int_type_node			d_global_trees[DTI_INT_TYPE]
+#define uint_type_node			d_global_trees[DTI_UINT_TYPE]
+#define long_type_node			d_global_trees[DTI_LONG_TYPE]
+#define ulong_type_node			d_global_trees[DTI_ULONG_TYPE]
+#define cent_type_node			d_global_trees[DTI_CENT_TYPE]
+#define ucent_type_node			d_global_trees[DTI_UCENT_TYPE]
+#define ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
+#define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
+#define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
 #define d_unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
 
 
-/* In d-lang.cc.  These are called through function pointers
-   and do not need to be "extern C". */
+/* In d-lang.cc.  */
 tree d_truthvalue_conversion (tree);
 void d_add_global_declaration (tree);
 

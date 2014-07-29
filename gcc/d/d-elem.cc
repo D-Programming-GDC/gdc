@@ -367,10 +367,10 @@ CmpExp::toElem (IRState *irs)
 	{
 	  // %% is this properly optimized away?
 	  if (code == ORDERED_EXPR)
-	    return convert (boolean_type_node, integer_one_node);
+	    return convert (bool_type_node, integer_one_node);
 
 	  if (code == UNORDERED_EXPR)
-	    return convert (boolean_type_node, integer_zero_node);
+	    return convert (bool_type_node, integer_zero_node);
 	}
 
       result = build_boolop (code, e1->toElem (irs), e2->toElem (irs));
@@ -409,7 +409,7 @@ OrOrExp::toElem (IRState *irs)
   else
     {
       return build3 (COND_EXPR, type->toCtype(),
-		     build1 (TRUTH_NOT_EXPR, boolean_type_node,
+		     build1 (TRUTH_NOT_EXPR, bool_type_node,
 			     convert_for_condition (e1->toElem (irs), e1->type)),
 		     e2->toElemDtor (irs), void_node);
     }
@@ -1494,7 +1494,7 @@ elem *
 NotExp::toElem (IRState *irs)
 {
   // Need to convert to boolean type or this will fail.
-  tree t = build1 (TRUTH_NOT_EXPR, boolean_type_node,
+  tree t = build1 (TRUTH_NOT_EXPR, bool_type_node,
 		   convert_for_condition (e1->toElem (irs), e1->type));
   return d_convert (type->toCtype(), t);
 }
