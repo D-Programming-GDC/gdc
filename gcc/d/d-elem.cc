@@ -2148,6 +2148,10 @@ NewExp::toElem (IRState *irs)
       StructDeclaration *sd = stype->sym;
       tree new_call;
 
+      // Cannot new an opaque struct.
+      if (sd->size(loc) == 0)
+	return d_convert(type->toCtype(), integer_zero_node);
+
       if (allocator)
 	new_call = d_build_call (allocator, NULL_TREE, newargs);
       else
