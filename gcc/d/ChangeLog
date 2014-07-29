@@ -1,5 +1,8 @@
 2014-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-elem.cc(NewExp::toElem): Check for opaque structs before
+	continuing to generate the new expression.
+
 	* d-lang.h.cc(d_vtbl_ptr_type_node): Renamed to vtbl_ptr_type_node.
 	(d_boolean_type_node): Renamed to bool_type_node.
 	(d_char_type_node): Renamed to char8_type_node.
