@@ -367,10 +367,10 @@ CmpExp::toElem (IRState *irs)
 	{
 	  // %% is this properly optimized away?
 	  if (code == ORDERED_EXPR)
-	    return convert (boolean_type_node, integer_one_node);
+	    return convert (bool_type_node, integer_one_node);
 
 	  if (code == UNORDERED_EXPR)
-	    return convert (boolean_type_node, integer_zero_node);
+	    return convert (bool_type_node, integer_zero_node);
 	}
 
       result = build_boolop (code, e1->toElem (irs), e2->toElem (irs));
@@ -392,7 +392,7 @@ AndAndExp::toElem (IRState *irs)
     {
       return build3 (COND_EXPR, type->toCtype(),
 		     convert_for_condition (e1->toElem (irs), e1->type),
-		     e2->toElemDtor (irs), d_void_zero_node);
+		     e2->toElemDtor (irs), void_zero_node);
     }
 }
 
@@ -409,9 +409,9 @@ OrOrExp::toElem (IRState *irs)
   else
     {
       return build3 (COND_EXPR, type->toCtype(),
-		     build1 (TRUTH_NOT_EXPR, boolean_type_node,
+		     build1 (TRUTH_NOT_EXPR, bool_type_node,
 			     convert_for_condition (e1->toElem (irs), e1->type)),
-		     e2->toElemDtor (irs), d_void_zero_node);
+		     e2->toElemDtor (irs), void_zero_node);
     }
 }
 
@@ -1436,7 +1436,7 @@ DeleteExp::toElem (IRState *irs)
     {
       // Might need to run destructor on array contents
       Type *telem = tb1->nextOf()->baseElemOf();
-      tree ti = d_null_pointer;
+      tree ti = null_pointer_node;
       tree args[2];
 
       if (telem->ty == Tstruct)
@@ -1494,7 +1494,7 @@ elem *
 NotExp::toElem (IRState *irs)
 {
   // Need to convert to boolean type or this will fail.
-  tree t = build1 (TRUTH_NOT_EXPR, boolean_type_node,
+  tree t = build1 (TRUTH_NOT_EXPR, bool_type_node,
 		   convert_for_condition (e1->toElem (irs), e1->type));
   return d_convert (type->toCtype(), t);
 }
@@ -1650,7 +1650,7 @@ CallExp::toElem (IRState *irs)
 	{
 	  e1b->error ("need 'this' to access member %s", fd->toChars());
 	  // Continue processing...
-	  object = d_null_pointer;
+	  object = null_pointer_node;
 	}
     }
   else
@@ -1890,8 +1890,8 @@ AssertExp::toElem (IRState *irs)
 	  if (cd->isCOMclass())
 	    {
 	      return build3 (COND_EXPR, void_type_node,
-			     build_boolop (NE_EXPR, arg, d_null_pointer),
-			     d_void_zero_node, assert_call);
+			     build_boolop (NE_EXPR, arg, null_pointer_node),
+			     void_zero_node, assert_call);
 	    }
 	  else if (cd->isInterfaceDeclaration())
 	    arg = convert_expr (arg, tb1, build_object_type());
@@ -1901,8 +1901,8 @@ AssertExp::toElem (IRState *irs)
 
 	  // This does a null pointer check before calling _d_invariant
 	  return build3 (COND_EXPR, void_type_node,
-			 build_boolop (NE_EXPR, arg, d_null_pointer),
-			 invc ? invc : d_void_zero_node, assert_call);
+			 build_boolop (NE_EXPR, arg, null_pointer_node),
+			 invc ? invc : void_zero_node, assert_call);
 	}
       else
 	{
@@ -1925,12 +1925,12 @@ AssertExp::toElem (IRState *irs)
 	    }
 	  result = build3 (COND_EXPR, void_type_node,
 			   convert_for_condition (e1_t, e1->type),
-			   invc ? invc : d_void_zero_node, assert_call);
+			   invc ? invc : void_zero_node, assert_call);
 	  return result;
 	}
     }
 
-  return d_void_zero_node;
+  return void_zero_node;
 }
 
 elem *
@@ -2191,7 +2191,7 @@ NewExp::toElem (IRState *irs)
 
 	  // Elem size is unknown.
 	  if (tarray->next->size() == 0)
-	    return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+	    return d_array_value (type->toCtype(), size_int (0), null_pointer_node);
 
 	  libcall = tarray->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
 	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
@@ -2354,7 +2354,7 @@ TupleExp::toElem (IRState *irs)
     }
 
   if (exp == NULL_TREE)
-    exp = d_void_zero_node;
+    exp = void_zero_node;
 
   return exp;
 }
@@ -2378,7 +2378,7 @@ ArrayLiteralExp::toElem (IRState *irs)
   if (elements->dim == 0)
     {
       if (tb->ty == Tarray)
-	return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+	return d_array_value (type->toCtype(), size_int (0), null_pointer_node);
       else
 	return build_constructor (tsa, NULL);
     }
@@ -2613,7 +2613,7 @@ NullExp::toElem (IRState *)
   switch (base_ty)
     {
     case Tarray:
-	  null_exp = d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+	  null_exp = d_array_value (type->toCtype(), size_int (0), null_pointer_node);
 	  break;
 
     case Taarray:
@@ -2628,7 +2628,7 @@ NullExp::toElem (IRState *)
 	}
 
     case Tdelegate:
-	  null_exp = build_delegate_cst (d_null_pointer, d_null_pointer, type);
+	  null_exp = build_delegate_cst (null_pointer_node, null_pointer_node, type);
 	  break;
 
     default:

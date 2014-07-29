@@ -293,9 +293,9 @@ convert_expr (tree exp, Type *etype, Type *totype)
 		tree t = totype->toCtype();
 		exp = maybe_make_temp (exp);
 		return build3 (COND_EXPR, t,
-			       build_boolop (NE_EXPR, exp, d_null_pointer),
+			       build_boolop (NE_EXPR, exp, null_pointer_node),
 			       build_nop (t, build_offset (exp, size_int (offset))),
-			       build_nop (t, d_null_pointer));
+			       build_nop (t, null_pointer_node));
 	      }
 
 	    // d_convert will make a no-op cast
@@ -315,7 +315,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	if (cdto->isCOMclass() || cdfrom->cpp != cdto->cpp)
 	  {
 	    warning (OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
-	    result = d_convert (totype->toCtype(), d_null_pointer);
+	    result = d_convert (totype->toCtype(), null_pointer_node);
 	    // Make sure the expression is still evaluated if necessary
 	    if (TREE_SIDE_EFFECTS (exp))
 	      result = compound_expr (exp, result);
@@ -1788,12 +1788,12 @@ d_bounds_condition (tree index, tree upr, bool inclusive)
   tree uindex = d_convert (d_unsigned_type (TREE_TYPE (index)), index);
 
   // Build condition to test that INDEX < UPR.
-  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node, uindex, upr);
+  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, bool_type_node, uindex, upr);
 
   // Build condition to test that INDEX >= 0.
   if (!TYPE_UNSIGNED (TREE_TYPE (index)))
-    condition = build2 (TRUTH_ANDIF_EXPR, boolean_type_node, condition,
-			build2 (GE_EXPR, boolean_type_node, index, integer_zero_node));
+    condition = build2 (TRUTH_ANDIF_EXPR, bool_type_node, condition,
+			build2 (GE_EXPR, bool_type_node, index, integer_zero_node));
 
   return condition;
 }
@@ -2958,7 +2958,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 	{
 	  // Should instead error on line that references 'thisfd'.
 	  thisfd->error ("nested function missing body");
-	  return d_null_pointer;
+	  return null_pointer_node;
 	}
 
       // Special case for __ensure and __require.
@@ -2985,7 +2985,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
       if (!func->vthis)
 	{
 	  sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
-	  return d_null_pointer;
+	  return null_pointer_node;
 	}
 
       // Make sure we can get the frame pointer to the outer function.
@@ -3022,7 +3022,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 	    {
 	    Lnoframe:
 	      func->error ("cannot get frame pointer to %s", sym->toChars());
-	      return d_null_pointer;
+	      return null_pointer_node;
 	    }
 
 	  dsym = dsym->toParent2();
@@ -3033,7 +3033,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
   if (ffo->creates_frame || ffo->static_chain)
     return get_framedecl (func, parentfd);
 
-  return d_null_pointer;
+  return null_pointer_node;
 }
 
 // Return the parent function of a nested class CD.
@@ -3115,7 +3115,7 @@ build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd)
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
 
-  tree vthis_value = d_null_pointer;
+  tree vthis_value = null_pointer_node;
 
   if (cd)
     {
@@ -3141,7 +3141,7 @@ build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd)
 	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
 	    vthis_value = get_decl_tree (fdo->vthis, fd);
 	  else
-	    vthis_value = d_null_pointer;
+	    vthis_value = null_pointer_node;
 	}
       else
 	gcc_unreachable();
@@ -3164,7 +3164,7 @@ build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd)
 	      || fdo->hasNestedFrameRefs())
 	    vthis_value = get_frame_for_symbol (fd, sd);
 	  else
-	    vthis_value = d_null_pointer;
+	    vthis_value = null_pointer_node;
 	}
       else
 	gcc_unreachable();
@@ -3396,7 +3396,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
   else
     {
       inner->error ("forward reference to frame of %s", outer->toChars());
-      return d_null_pointer;
+      return null_pointer_node;
     }
 }
 
@@ -3446,7 +3446,7 @@ layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl)
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
 	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				   get_identifier ("__vptr"), d_vtbl_ptr_type_node);
+				   get_identifier ("__vptr"), vtbl_ptr_type_node);
 	  DECL_ARTIFICIAL (field) = 1;
 	  DECL_IGNORED_P (field) = inherited_p;
 

@@ -1,3 +1,36 @@
+2014-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.h.cc(d_vtbl_ptr_type_node): Renamed to vtbl_ptr_type_node.
+	(d_boolean_type_node): Renamed to bool_type_node.
+	(d_char_type_node): Renamed to char8_type_node.
+	(d_wchar_type_node): Renamed to char16_type_node.
+	(d_dchar_type_node): Renamed to char32_type_node.
+	(d_ifloat_type_node): Renamed to ifloat_type_node.
+	(d_idouble_type_node): Renamed to idouble_type_node.
+	(d_ireal_type_node): Renamed to ireal_type_node.
+	(byte_type_node, ubyte_type_node): New macros for fixed integral
+	types in D.
+	(short_type_node, ushort_type_node): Likewise.
+	(int_type_node, uint_type_node): Likewise.
+	(long_type_node, ulong_type_node): Likewise.
+	(cent_type_node, ucent_type_node): Likewise.
+	* d-builtins.c(d_init_builtins): Initialise all D specific type nodes.
+	* d-codegen.cc(d_bounds_condition): Use D-specific type macros instead
+	of backend C types.
+	(layout_aggregate_type): Likewise.
+	(build_integer_cst): Likewise.
+	(build_boolop): Likewise.
+	* d-convert.cc(d_build_truthvalue_op): Likewise.
+	(d_truthvalue_conversion): Likewise.
+	* d-ctype.cc(Type::toCtype): Likewise.
+	* d-decls.cc(FuncDeclaration::toSymbol): Likewise.
+	* d-elem.cc(CmpExp::toElem): Likewise.
+	(OrOrExp::toElem): Likewise.
+	(NotExp::toElem): Likewise.
+	* d-lang.cc(d_type_for_mode): Likewise.
+	(d_type_for_size): Likewise.
+	(d_signed_or_unsigned_type): Likewise.
+
 2014-07-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-ctype.cc(TypeFunction::toCtype): Only check for ref return for

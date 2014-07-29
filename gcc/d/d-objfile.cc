@@ -308,25 +308,25 @@ ClassDeclaration::toObjFile (int)
 				  size_int (offset)));
     }
   else
-    dt_cons (&dt, d_null_pointer);
+    dt_cons (&dt, null_pointer_node);
 
   // base*
   if (baseClass)
     dt_cons (&dt, build_address (baseClass->toSymbol()->Stree));
   else
-    dt_cons (&dt, d_null_pointer);
+    dt_cons (&dt, null_pointer_node);
 
   // dtor*
   if (dtor)
     dt_cons (&dt, build_address (dtor->toSymbol()->Stree));
   else
-    dt_cons (&dt, d_null_pointer);
+    dt_cons (&dt, null_pointer_node);
 
   // invariant*
   if (inv)
     dt_cons (&dt, build_address (inv->toSymbol()->Stree));
   else
-    dt_cons (&dt, d_null_pointer);
+    dt_cons (&dt, null_pointer_node);
 
   // flags
   ClassFlags::Type flags = ClassFlags::hasOffTi;
@@ -368,17 +368,17 @@ Lhaspointers:
   if (aggDelete)
     dt_cons (&dt, build_address (aggDelete->toSymbol()->Stree));
   else
-    dt_cons (&dt, d_null_pointer);
+    dt_cons (&dt, null_pointer_node);
 
   // offTi[]
   dt_cons (&dt, d_array_value (Type::tuns8->arrayOf()->toCtype(),
-			       size_int (0), d_null_pointer));
+			       size_int (0), null_pointer_node));
 
   // defaultConstructor*
   if (defaultCtor)
     dt_cons (&dt, build_address (defaultCtor->toSymbol()->Stree));
   else
-    dt_cons (&dt, d_null_pointer);
+    dt_cons (&dt, null_pointer_node);
 
   // xgetRTInfo*
   if (getRTInfo)
@@ -441,7 +441,7 @@ Lhaspointers:
 	  if (fd)
 	    dt_cons (&dt, build_address (fd->toThunkSymbol (b->offset)->Stree));
 	  else
-	    dt_cons (&dt, d_null_pointer);
+	    dt_cons (&dt, null_pointer_node);
 	}
     }
 
@@ -473,7 +473,7 @@ Lhaspointers:
 		  if (fd)
 		    dt_cons (&dt, build_address (fd->toThunkSymbol (bs->offset)->Stree));
 		  else
-		    dt_cons (&dt, d_null_pointer);
+		    dt_cons (&dt, null_pointer_node);
 		}
 	    }
 	}
@@ -534,7 +534,7 @@ Lhaspointers:
 	  dt_cons (&dt, build_address (s->Stree));
 	}
       else
-	dt_cons (&dt, d_null_pointer);
+	dt_cons (&dt, null_pointer_node);
     }
 
   vtblsym->Sdt = dt;
@@ -628,13 +628,13 @@ InterfaceDeclaration::toObjFile (int)
 
   // initializer[]
   dt_cons (&dt, d_array_value (Type::tint8->arrayOf()->toCtype(),
-			       size_int (0), d_null_pointer));
+			       size_int (0), null_pointer_node));
   // name[]
   dt_cons (&dt, d_array_string (toPrettyChars()));
 
   // vtbl[]
   dt_cons (&dt, d_array_value (Type::tvoidptr->arrayOf()->toCtype(),
-			       size_int (0), d_null_pointer));
+			       size_int (0), null_pointer_node));
   // (*vtblInterfaces)[]
   dt_cons (&dt, size_int (vtblInterfaces->dim));
 
@@ -653,13 +653,13 @@ InterfaceDeclaration::toObjFile (int)
 				  size_int (offset)));
     }
   else
-    dt_cons (&dt, d_null_pointer);
+    dt_cons (&dt, null_pointer_node);
 
   // base*, dtor*, invariant*
   gcc_assert (!baseClass);
-  dt_cons (&dt, d_null_pointer);
-  dt_cons (&dt, d_null_pointer);
-  dt_cons (&dt, d_null_pointer);
+  dt_cons (&dt, null_pointer_node);
+  dt_cons (&dt, null_pointer_node);
+  dt_cons (&dt, null_pointer_node);
 
   // flags
   ClassFlags::Type flags = ClassFlags::hasOffTi;
@@ -671,14 +671,14 @@ InterfaceDeclaration::toObjFile (int)
   dt_cons (&dt, size_int (flags));
 
   // deallocator*
-  dt_cons (&dt, d_null_pointer);
+  dt_cons (&dt, null_pointer_node);
 
   // offTi[]
   dt_cons (&dt, d_array_value (Type::tuns8->arrayOf()->toCtype(),
-			       size_int (0), d_null_pointer));
+			       size_int (0), null_pointer_node));
 
   // defaultConstructor*
-  dt_cons (&dt, d_null_pointer);
+  dt_cons (&dt, null_pointer_node);
 
   // xgetRTInfo*
   if (getRTInfo)
@@ -702,7 +702,7 @@ InterfaceDeclaration::toObjFile (int)
 
       // vtbl[]
       dt_cons (&dt, d_array_value (Type::tvoidptr->arrayOf()->toCtype(),
-				   size_int (0), d_null_pointer));
+				   size_int (0), null_pointer_node));
       // 'this' offset.
       dt_cons (&dt, size_int (b->offset));
     }
@@ -1142,7 +1142,7 @@ FuncDeclaration::toObjFile (int)
 
   IRState *irs = current_irstate->startFunction (this);
   // Default chain value is 'null' unless parent found.
-  irs->sthis = d_null_pointer;
+  irs->sthis = null_pointer_node;
 
   tree old_current_function_decl = current_function_decl;
   function *old_cfun = cfun;
@@ -2354,7 +2354,7 @@ build_moduleinfo (Symbol *sym)
   TREE_STATIC (modref) = 1;
 
   vec<constructor_elt, va_gc> *ce = NULL;
-  CONSTRUCTOR_APPEND_ELT (ce, nextfield, d_null_pointer);
+  CONSTRUCTOR_APPEND_ELT (ce, nextfield, null_pointer_node);
   CONSTRUCTOR_APPEND_ELT (ce, modfield, build_address (sym->Stree));
 
   DECL_INITIAL (modref) = build_constructor (tmodref, ce);

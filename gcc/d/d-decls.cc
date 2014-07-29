@@ -357,7 +357,7 @@ FuncDeclaration::toSymbol (void)
       else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
 	{
 	  // void main() implicitly converted to int main().
-	  fntype = build_function_type (integer_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
+	  fntype = build_function_type (int_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
 	}
 
       if (fntype != NULL_TREE)
