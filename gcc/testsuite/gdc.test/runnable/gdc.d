@@ -719,6 +719,58 @@ void test142()
 
 /******************************************/
 
+// Tests for __builtin_volatile_load / __builtin_volatile_store
+import gcc.builtins;
+
+void testVolatile1()
+{
+    int local;
+    __builtin_volatile_store(&local, 42);
+    assert(local == 42);
+}
+
+void testVolatile2()
+{
+    int local = 42;
+    assert(__builtin_volatile_load(&local) == 42);
+    local = 0;
+    assert(__builtin_volatile_load(&local) == 0);
+}
+
+struct NonPOD
+{
+    int x;
+    ~this()
+    {
+        x++;
+    }
+}
+
+struct POD
+{
+    int x, y, z;
+    double x1, y1, z1;
+}
+
+void testVolatile3()
+{
+    assert(!__traits(compiles, __builtin_volatile_load(cast(NonPOD*)0xDEADBEEF)));
+    assert(!__traits(compiles, __builtin_volatile_load(cast(POD*)0xDEADBEEF)));
+    assert(__traits(compiles, __builtin_volatile_load(cast(ubyte*)0xDEADBEEF)));
+    assert(__traits(compiles, __builtin_volatile_load(cast(ushort*)0xDEADBEEF)));
+    assert(__traits(compiles, __builtin_volatile_load(cast(uint*)0xDEADBEEF)));
+    assert(__traits(compiles, __builtin_volatile_load(cast(ulong*)0xDEADBEEF)));
+
+    assert(!__traits(compiles, __builtin_volatile_store(cast(NonPOD*)0xDEADBEEF, NonPOD.init)));
+    assert(!__traits(compiles, __builtin_volatile_store(cast(POD*)0xDEADBEEF, POD.init)));
+    assert(__traits(compiles, __builtin_volatile_store(cast(ubyte*)0xDEADBEEF, ubyte.init)));
+    assert(__traits(compiles, __builtin_volatile_store(cast(ushort*)0xDEADBEEF, ushort.init)));
+    assert(__traits(compiles, __builtin_volatile_store(cast(uint*)0xDEADBEEF, uint.init)));
+    assert(__traits(compiles, __builtin_volatile_store(cast(ulong*)0xDEADBEEF, ulong.init)));
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -738,6 +790,9 @@ void main()
     test131();
     test133();
     test141();
+    testVolatile1();
+    testVolatile2();
+    testVolatile3();
 
     printf("Success!\n");
 }

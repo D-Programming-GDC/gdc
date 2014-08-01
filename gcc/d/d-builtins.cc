@@ -23,6 +23,7 @@
 #include "module.h"
 #include "template.h"
 #include "d-codegen.h"
+#include "id.h"
 
 static GTY(()) vec<tree, va_gc> *gcc_builtins_functions = NULL;
 static GTY(()) vec<tree, va_gc> *gcc_builtins_libfuncs = NULL;
@@ -341,6 +342,81 @@ build_expression (tree cst)
   return NULL;
 }
 
+enum intrinsic_code
+{
+#define DEF_INTRINSIC(CODE, A, N, M, D) CODE,
+#include "d-intrinsics.def"
+#undef DEF_INTRINSIC
+  INTRINSIC_LAST
+};
+
+// Generate frontend representation for T __builtin_volatile_load(T* addr) if(__traits(isIntegral, T))
+
+static TemplateDeclaration *
+build_volatile_load_builtin()
+{
+  Loc loc = Loc();
+  TypeIdentifier *t_type = new TypeIdentifier (loc, Lexer::idPool ("T"));
+
+  // T __builtin_volatile_load(T* addr)
+  Parameters *func_args = new Parameters();
+  func_args->push (new Parameter (0, t_type->pointerTo(), NULL, NULL));
+  TypeFunction *func_type = new TypeFunction (func_args, t_type, false, LINKd);
+  func_type->isnothrow = true;
+  func_type->purity = PUREimpure;
+  func_type->trust = TRUSTsystem;
+
+  FuncDeclaration *func_decl = new FuncDeclaration (loc, loc, Lexer::idPool ("__builtin_volatile_load"), STCextern, func_type);
+  func_decl->builtin = BUILTINyes;
+  Dsymbols *template_members = new Dsymbols();
+  template_members->push (func_decl);
+
+  // __traits(isIntegral, T)
+  Objects *constraint_args = new Objects();
+  constraint_args->push (t_type);
+  Expression *constraint = new TraitsExp (loc, Id::isIntegral, constraint_args);
+  TemplateParameters *tparam_list = new TemplateParameters();
+  tparam_list->push (new TemplateTypeParameter (loc, Lexer::idPool ("T"), NULL, NULL));
+
+  // template(T) {...}
+  return new TemplateDeclaration (loc, Lexer::idPool ("__builtin_volatile_load"), tparam_list, constraint,
+				  template_members, false, false);
+}
+
+// Generate frontend representation for void __builtin_volatile_store(T* addr, T value) if(__traits(isIntegral, T))
+
+static TemplateDeclaration *
+build_volatile_store_builtin()
+{
+  Loc loc = Loc();
+  TypeIdentifier *t_type = new TypeIdentifier (loc, Lexer::idPool ("T"));
+
+  // void __builtin_volatile_store(T* addr, T value)
+  Parameters *func_args = new Parameters();
+  func_args->push (new Parameter (0, t_type->pointerTo(), NULL, NULL));
+  func_args->push (new Parameter (0, t_type, NULL, NULL));
+  TypeFunction *func_type = new TypeFunction (func_args, Type::tvoid, false, LINKd);
+  func_type->isnothrow = true;
+  func_type->purity = PUREimpure;
+  func_type->trust = TRUSTsystem;
+
+  FuncDeclaration *func_decl = new FuncDeclaration (loc, loc, Lexer::idPool ("__builtin_volatile_store"), STCextern, func_type);
+  func_decl->builtin = BUILTINyes;
+  Dsymbols *template_members = new Dsymbols();
+  template_members->push (func_decl);
+
+  // __traits(isIntegral, T)
+  Objects *constraint_args = new Objects();
+  constraint_args->push (t_type);
+  Expression *constraint = new TraitsExp (loc, Id::isIntegral, constraint_args);
+  TemplateParameters *tparam_list = new TemplateParameters();
+  tparam_list->push (new TemplateTypeParameter (loc, Lexer::idPool ("T"), NULL, NULL));
+
+  // template(T) {...}
+  return new TemplateDeclaration (loc, Lexer::idPool ("__builtin_volatile_store"), tparam_list, constraint,
+				  template_members, false, false);
+}
+
 // Helper function for d_gcc_magic_module.
 // Generates all code for gcc.builtins module M.
 
@@ -474,6 +550,9 @@ d_build_builtins_module (Module *m)
 				     build_dtype (lang_hooks.types.type_for_mode (targetm.unwind_word_mode(), 1))));
 
   m->members->push (new LinkDeclaration (LINKc, funcs));
+
+  m->members->push (build_volatile_load_builtin());
+  m->members->push (build_volatile_store_builtin());
 }
 
 // Map extern(C) declarations in member M to GCC library

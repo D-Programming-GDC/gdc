@@ -2746,6 +2746,7 @@ expand_intrinsic (tree callexp)
 {
   CallExpr ce (callexp);
   tree callee = ce.callee();
+  tree volatile_type;
 
   if (POINTER_TYPE_P (TREE_TYPE (callee)))
     callee = TREE_OPERAND (callee, 0);
@@ -2842,6 +2843,22 @@ expand_intrinsic (tree callexp)
 	  op1 = ce.nextArg();
 	  op2 = ce.nextArg();
 	  return expand_intrinsic_vastart (callexp, op1, op2);
+
+	case INTRINSIC_VOLATILE_LOAD:
+	  op1 = ce.nextArg();
+	  volatile_type = build_qualified_type (TREE_TYPE (callexp), TYPE_QUAL_VOLATILE);
+	  callexp = indirect_ref (volatile_type, op1);
+	  TREE_THIS_VOLATILE (callexp) = true;
+	  return callexp;
+
+	case INTRINSIC_VOLATILE_STORE:
+	  op1 = ce.nextArg();
+	  op2 = ce.nextArg();
+	  volatile_type = build_qualified_type (TREE_TYPE (op2), TYPE_QUAL_VOLATILE);
+	  callexp = indirect_ref (volatile_type, op1);
+	  TREE_THIS_VOLATILE (callexp) = true;
+	  callexp = modify_expr (volatile_type, callexp, op2);
+	  return callexp;
 
 	default:
 	  gcc_unreachable();
