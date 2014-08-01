@@ -1,3 +1,12 @@
+2014-08-01  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-builtins.cc(build_volatile_load_builtin): New function.
+	(build_volatile_store_builtin): New function.
+	(d_build_builtins_module): Implement __builtin_volatile_load
+	and __builtin_volatile_store.
+	* d-codegen.cc(expand_intrinsic): Likewise.
+	* d-intrinsics.def: Likewise.
+
 2014-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(NewExp::toElem): Check for opaque structs before

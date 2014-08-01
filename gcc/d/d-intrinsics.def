@@ -42,6 +42,7 @@
 #define CORE_VARARG     "core.stdc.stdarg"
 #define CORE_MATH	"core.math"
 #define STD_MATH	"std.math"
+#define GCC_BUILTINS	"gcc.builtins"
 
 // Signature decorations
 #define FN_SAFE_PURE_NOTHROW	"FNaNbNf"   // @safe pure nothrow function
@@ -116,12 +117,16 @@ DEF_D_INTRINSIC (VA_ARG, VA_ARG, "va_arg", CORE_VARARG, "void(ref va_list ap, re
 DEF_D_INTRINSIC (C_VA_ARG, C_VA_ARG, "va_arg", CORE_VARARG, "T(ref va_list ap)")
 DEF_D_INTRINSIC (VASTART, VASTART, "va_start", CORE_VARARG, "void(out va_list ap, ref T parmn)")
 
+// volatile load/store intrinsics (actually in gcc.builtins)
+DEF_D_INTRINSIC (VOLATILE_LOAD, VOLATILE_LOAD, "__builtin_volatile_load", GCC_BUILTINS, "nothrow @system T(T*)")
+DEF_D_INTRINSIC (VOLATILE_STORE, VOLATILE_STORE, "__builtin_volatile_store", GCC_BUILTINS, "nothrow @system void(T*, T)")
 
 // Remove helper macros
 #undef DEF_D_INTRINSIC
 #undef CORE_BITOP
 #undef CORE_VARARG
 #undef CORE_MATH
+#undef GCC_BUILTINS
 #undef STD_MATH
 #undef FN_SAFE_PURE_NOTHROW
 #undef FN_PURE_NOTHROW
