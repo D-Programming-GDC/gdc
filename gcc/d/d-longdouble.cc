@@ -360,18 +360,35 @@ longdouble::operator != (const longdouble& r)
 int
 longdouble::format (char *buf, unsigned buf_size) const
 {
-  // %% restricting the precision of significant digits to 18.
+  // %% Restricting the precision of significant digits to 18.
   real_to_decimal (buf, &rv(), buf_size, 18, 1);
   return strlen (buf);
 }
 
-// Format longdouble value into hex string BUF of size BUF_SIZE.
+// Format longdouble value into hex string BUF of size BUF_SIZE,
+// converting the result to uppercase if FMT requests it.
 
 int
-longdouble::formatHex (char *buf, unsigned buf_size) const
+longdouble::formatHex (char fmt, char *buf, unsigned buf_size) const
 {
   real_to_hexadecimal (buf, &rv(), buf_size, 0, 1);
-  return strlen (buf);
+  int buflen;
+
+  switch (fmt)
+    {
+    case 'A':
+      buflen = strlen (buf);
+      for (int i = 0; i < buflen; i++)
+	buf[i] = TOUPPER(buf[i]);
+
+      return buflen;
+
+    case 'a':
+      return strlen (buf);
+
+    default:
+      gcc_unreachable();
+    }
 }
 
 // Dump value of longdouble for debugging purposes.
