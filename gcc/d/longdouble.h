@@ -93,7 +93,7 @@ struct longdouble
   bool operator != (const longdouble& r);
 
   int format (char *buf, unsigned buf_size) const;
-  int formatHex (char *buf, unsigned buf_size) const;
+  int formatHex (char fmt, char *buf, unsigned buf_size) const;
 
   // for debugging:
   void dump (void);
@@ -156,10 +156,10 @@ template<typename T> inline bool operator != (T x, longdouble ld) { return ldoub
 
 
 inline size_t
-ld_sprint (char* str, int fmt, longdouble x)
+ld_sprint (char* str, char fmt, longdouble x)
 {
   if (fmt == 'a' || fmt == 'A')
-    return x.formatHex (str, 32);
+    return x.formatHex (fmt, str, 32);
 
   return x.format (str, 32);
 }
