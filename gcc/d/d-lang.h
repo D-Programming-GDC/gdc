@@ -109,7 +109,6 @@ extern GTY(()) binding_level *global_binding_level;
 
 enum d_tree_index
 {
-  DTI_NULL_PTR,
   DTI_VTBL_PTR_TYPE,
 
   DTI_BOOL_TYPE,
