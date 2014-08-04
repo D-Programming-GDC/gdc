@@ -1648,6 +1648,9 @@ d_handle_forceinline_attribute (tree *node, tree name,
       DECL_DECLARED_INLINE_P (*node) = 1;
       DECL_NO_INLINE_WARNING_P (*node) = 1;
       DECL_DISREGARD_INLINE_LIMITS (*node) = 1;
+      TREE_PUBLIC (*node) = 0;
+      DECL_WEAK (*node) = 0;
+      DECL_COMDAT (*node) = 0;
     }
   else
     {
