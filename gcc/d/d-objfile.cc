@@ -192,7 +192,8 @@ StructDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo (NULL);
+  if (!getUDA("notypeinfo", userAttribDecl))
+    type->getTypeInfo (NULL);
 
   // Generate static initialiser
   toInitializer();
@@ -251,7 +252,8 @@ ClassDeclaration::toObjFile (int)
   d_finish_symbol (sinit);
 
   // Put out the TypeInfo
-  type->getTypeInfo (NULL);
+  if (!getUDA("notypeinfo", userAttribDecl))
+    type->getTypeInfo (NULL);
 
   // must be ClassInfo.size
   size_t offset = CLASSINFO_SIZE;
@@ -602,7 +604,8 @@ InterfaceDeclaration::toObjFile (int)
   toSymbol();
 
   // Put out the TypeInfo
-  type->getTypeInfo (NULL);
+  if (!getUDA("notypeinfo", userAttribDecl))
+    type->getTypeInfo (NULL);
   type->vtinfo->toObjFile (0);
 
   /* Put out the ClassInfo.
@@ -731,7 +734,8 @@ EnumDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo (NULL);
+  if (!getUDA("notypeinfo", userAttribDecl))
+    type->getTypeInfo (NULL);
 
   TypeEnum *tc = (TypeEnum *) type;
   if (tc->sym->members && !type->isZeroInit())
@@ -856,7 +860,8 @@ TypedefDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo (NULL);
+  if (!getUDA("notypeinfo", userAttribDecl))
+    type->getTypeInfo (NULL);
 
   TypeTypedef *tc = (TypeTypedef *) type;
   if (tc->sym->init && !type->isZeroInit())

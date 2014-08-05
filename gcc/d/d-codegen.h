@@ -113,6 +113,7 @@ extern tree d_array_type (Type *d_type, uinteger_t size);
 extern tree insert_type_attribute (tree type, const char *attrname, tree value = NULL_TREE);
 extern void insert_decl_attribute (tree type, const char *attrname, tree value = NULL_TREE);
 extern tree build_attributes (Expressions *in_attrs);
+extern StructLiteralExp *getUDA (const char* name, UserAttributeDeclaration *declattrs);
 extern tree insert_type_modifiers (tree type, unsigned mod);
 
 extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);

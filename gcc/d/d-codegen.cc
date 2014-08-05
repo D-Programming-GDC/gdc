@@ -788,6 +788,22 @@ insert_decl_attribute (tree decl, const char *attrname, tree value)
 }
 
 bool
+d_fe_attribute_p (const char* name)
+{
+  static StringTable* table;
+
+  if(table == NULL)
+    {
+      // Build the table of frontend only attributes exposed to the language.
+      table = new StringTable();
+      table->_init(2);
+      table->insert("notypeinfo", strlen("notypeinfo"));
+    }
+
+  return table->lookup(name, strlen(name)) != NULL;
+}
+
+bool
 d_attribute_p (const char* name)
 {
   static StringTable* table;
@@ -817,7 +833,62 @@ d_attribute_p (const char* name)
 	}
     }
 
+  if (d_fe_attribute_p (name))
+    return true;
   return table->lookup(name, strlen(name)) != NULL;
+}
+
+StructLiteralExp *
+getUDA (const char* name, UserAttributeDeclaration *declattrs)
+{
+  if (!declattrs)
+    return NULL;
+
+  Expressions *in_attrs = declattrs->getAttributes();
+  if (!in_attrs)
+    return NULL;
+
+  expandTuples(in_attrs);
+
+  for (size_t i = 0; i < in_attrs->dim; i++)
+    {
+      Expression *attr = (*in_attrs)[i]->optimize (WANTexpand);
+      Dsymbol *sym = attr->type->toDsymbol (0);
+
+      if (!sym)
+	continue;
+
+      Dsymbol *mod = (Dsymbol*) sym->getModule();
+      if (!(strcmp(mod->toChars(), "attribute") == 0
+          && mod->parent != NULL
+          && strcmp(mod->parent->toChars(), "gcc") == 0
+          && !mod->parent->parent))
+        continue;
+
+      if (attr->op == TOKcall)
+	attr = attr->ctfeInterpret();
+
+      gcc_assert(attr->op == TOKstructliteral);
+      Expressions *elem = ((StructLiteralExp*) attr)->elements;
+
+      if ((*elem)[0]->op == TOKnull)
+	{
+	  error ("expected string attribute, not null");
+	  return NULL;
+	}
+
+      gcc_assert((*elem)[0]->op == TOKstring);
+      StringExp *nameExp = (StringExp*) (*elem)[0];
+      gcc_assert(nameExp->sz == 1);
+      const char* uname = (const char*) nameExp->string;
+
+      if (strcmp (name, uname) == 0)
+      {
+        return (StructLiteralExp*) attr;
+      }
+    }
+
+  return NULL;
 }
 
 // Return chain of all GCC attributes found in list IN_ATTRS.
@@ -869,6 +940,9 @@ build_attributes (Expressions *in_attrs)
         error ("unknown attribute %s", name);
         return error_mark_node;
       }
+
+      if (d_fe_attribute_p (name))
+        continue;
 
       tree args = NULL_TREE;
 
