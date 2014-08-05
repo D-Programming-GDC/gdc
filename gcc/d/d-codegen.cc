@@ -796,9 +796,10 @@ d_fe_attribute_p (const char* name)
     {
       // Build the table of frontend only attributes exposed to the language.
       table = new StringTable();
-      table->_init(2);
+      table->_init(3);
       table->insert("notypeinfo", strlen("notypeinfo"));
       table->insert("nocode", strlen("nocode"));
+      table->insert("noinit", strlen("noinit"));
     }
 
   return table->lookup(name, strlen(name)) != NULL;

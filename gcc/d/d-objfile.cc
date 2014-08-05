@@ -196,11 +196,13 @@ StructDeclaration::toObjFile (int)
     type->getTypeInfo (NULL);
 
   // Generate static initialiser
-  toInitializer();
-  toDt (&sinit->Sdt);
-
-  sinit->Sreadonly = true;
-  d_finish_symbol (sinit);
+  if (!getUDA("notypeinfo", userAttribDecl))
+    {
+      toInitializer();
+      toDt (&sinit->Sdt);
+      sinit->Sreadonly = true;
+      d_finish_symbol (sinit);
+    }
 
   // Put out the members
   for (size_t i = 0; i < members->dim; i++)
@@ -244,12 +246,15 @@ ClassDeclaration::toObjFile (int)
   // Generate C symbols
   toSymbol();
   toVtblSymbol();
-  sinit = toInitializer();
 
   // Generate static initialiser
-  toDt (&sinit->Sdt);
-  sinit->Sreadonly = true;
-  d_finish_symbol (sinit);
+  if (!getUDA("noinit", userAttribDecl))
+    {
+      sinit = toInitializer();
+      toDt (&sinit->Sdt);
+      sinit->Sreadonly = true;
+      d_finish_symbol (sinit);
+    }
 
   // Put out the TypeInfo
   if (!getUDA("notypeinfo", userAttribDecl))
@@ -738,7 +743,7 @@ EnumDeclaration::toObjFile (int)
     type->getTypeInfo (NULL);
 
   TypeEnum *tc = (TypeEnum *) type;
-  if (tc->sym->members && !type->isZeroInit())
+  if (tc->sym->members && !type->isZeroInit() && !getUDA("noinit", userAttribDecl))
     {
       // Generate static initialiser
       toInitializer();
@@ -864,7 +869,7 @@ TypedefDeclaration::toObjFile (int)
     type->getTypeInfo (NULL);
 
   TypeTypedef *tc = (TypeTypedef *) type;
-  if (tc->sym->init && !type->isZeroInit())
+  if (tc->sym->init && !type->isZeroInit() && !getUDA("notypeinfo", userAttribDecl))
     {
       // Generate static initialiser
       toInitializer();
