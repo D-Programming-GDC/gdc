@@ -798,6 +798,7 @@ d_fe_attribute_p (const char* name)
       table = new StringTable();
       table->_init(2);
       table->insert("notypeinfo", strlen("notypeinfo"));
+      table->insert("nocode", strlen("nocode"));
     }
 
   return table->lookup(name, strlen(name)) != NULL;

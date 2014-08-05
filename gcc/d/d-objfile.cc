@@ -1114,6 +1114,8 @@ FuncDeclaration::toObjFile (int)
 {
   if (!global.params.useUnitTests && isUnitTestDeclaration())
     return;
+  if (getUDA("nocode", userAttribDecl))
+    return;
 
   // Already generated the function.
   if (semanticRun >= PASSobj)
