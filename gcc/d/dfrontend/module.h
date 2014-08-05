@@ -82,6 +82,7 @@ public:
     unsigned numlines;  // number of lines in source file
     int isDocFile;      // if it is a documentation input file, not D source
     int needmoduleinfo;
+    int nomoduleinfo;   // don't emit moduleinfo
 
     int selfimports;            // 0: don't know, 1: does not, 2: does
     int selfImports();          // returns !=0 if module imports itself

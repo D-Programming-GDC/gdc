@@ -1174,6 +1174,16 @@ void PragmaDeclaration::semantic(Scope *sc)
 #endif
         }
     }
+#if IN_GCC
+    else if (ident == Id::GNU_no_moduleinfo)
+    {
+        if (args && args->dim > 0)
+             error(Loc(), "takes no parameters");
+
+        sc->module->nomoduleinfo = true;
+        goto Lnodecl;
+    }
+#endif
     else if (global.params.ignoreUnsupportedPragmas)
     {
         if (global.params.verbose)

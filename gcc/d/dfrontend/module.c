@@ -58,6 +58,7 @@ Module::Module(const char *filename, Identifier *ident, int doDocComment, int do
     members = NULL;
     isDocFile = 0;
     needmoduleinfo = 0;
+    nomoduleinfo = 0;
     selfimports = 0;
     insearch = 0;
     decldefs = NULL;

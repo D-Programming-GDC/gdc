@@ -270,6 +270,11 @@ Msgtable msgtable[] =
     { "startaddress" },
     { "mangle" },
 
+#ifdef IN_GCC
+    // GDC-specific pragmas.
+    { "GNU_no_moduleinfo" },
+#endif
+
     // For special functions
     { "tohash", "toHash" },
     { "tostring", "toString" },
