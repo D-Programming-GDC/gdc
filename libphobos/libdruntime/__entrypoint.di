@@ -33,9 +33,12 @@ extern(C):
    what the linker script says.
 */
 
-size_t _tlsstart = 3;
-size_t _tlsend = void;
-
+version(linux) {}
+else
+{
+    size_t _tlsstart = 3;
+    size_t _tlsend = void;
+}
 
 /* The D main() function supplied by the user's program
 

@@ -16,6 +16,9 @@ public import core.time; // for Duration
 import core.exception : onOutOfMemoryError;
 static import rt.tlsgc;
 
+version (GNU)
+    import gcc.builtins;
+
 // this should be true for most architectures
 version( GNU_StackGrowsDown )
     version = StackGrowsDown;
@@ -126,23 +129,6 @@ version( Windows )
         extern (Windows) alias uint function(void*) btex_fptr;
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
 
-        version (MinGW)
-        {
-            import gcc.builtins;
-
-            // NOTE: The memory between the addresses of _tls_start and _tls_end
-            //       is the storage for thread-local data in MinGW.  Both of
-            //       these are defined in tlssup.c.
-            extern (C)
-            {
-                extern int _tls_start;
-                extern int _tls_end;
-            }
-
-            alias _tls_start _tlsstart;
-            alias _tls_end _tlsend;
-        }
-
         //
         // Entry point for Windows threads
         //
@@ -246,12 +232,6 @@ else version( Posix )
         version( GNU )
         {
             import gcc.builtins;
-
-            extern (C)
-            {
-                extern size_t _tlsstart;
-                extern size_t _tlsend;
-            }
         }
 
         //
@@ -276,12 +256,6 @@ else version( Posix )
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt.tlsgc.init();
-            version (GNU)
-            {
-                auto pstart = cast(void*) &_tlsstart;
-                auto pend   = cast(void*) &_tlsend;
-                obj.m_tls = pstart[0 .. pend - pstart];
-            }
 
             obj.m_isRunning = true;
             Thread.setThis( obj );
@@ -1202,13 +1176,6 @@ private:
     {
         m_call = Call.NO;
         m_curr = &m_main;
-
-        version (GNU)
-        {
-            auto pstart = cast(void*) &_tlsstart;
-            auto pend   = cast(void*) &_tlsend;
-            m_tls = pstart[0 .. pend - pstart];
-        }
     }
 
 
@@ -1370,10 +1337,6 @@ private:
     Context             m_main;
     Context*            m_curr;
     bool                m_lock;
-    version (GNU)
-    {
-        void[]          m_tls;  // spans implicit thread local storage
-    }
     rt.tlsgc.Data*      m_tlsgcdata;
 
     version( Windows )
@@ -1668,37 +1631,6 @@ private:
 }
 
 // These must be kept in sync with core/thread.di
-version (GNU)
-{
-  version (D_LP64)
-  {
-    version (Windows)
-        static assert(__traits(classInstanceSize, Thread) == 312);
-    else version (OSX)
-        static assert(__traits(classInstanceSize, Thread) == 320);
-    else version (Solaris)
-        static assert(__traits(classInstanceSize, Thread) == 176);
-    else version (Posix)
-        static assert(__traits(classInstanceSize, Thread) == 184);
-    else
-        static assert(0, "Platform not supported.");
-  }
-  else
-  {
-    static assert((void*).sizeof == 4); // 32-bit
-
-    version (Windows)
-        static assert(__traits(classInstanceSize, Thread) == 128);
-    else version (OSX)
-        static assert(__traits(classInstanceSize, Thread) == 128);
-    else version (Posix)
-        static assert(__traits(classInstanceSize, Thread) ==  92);
-    else
-        static assert(0, "Platform not supported.");
-
-  }
-}
-else
 version (D_LP64)
 {
     version (Windows)
@@ -1890,13 +1822,6 @@ extern (C) Thread thread_attachThis()
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    version (GNU)
-    {
-        auto pstart = cast(void*) &_tlsstart;
-        auto pend   = cast(void*) &_tlsend;
-        thisThread.m_tls = pstart[0 .. pend - pstart];
-    }
-
     Thread.add( thisThread );
     Thread.add( thisContext );
     if( Thread.sm_main !is null )
@@ -1946,12 +1871,6 @@ version( Windows )
         {
             thisThread.m_hndl = GetCurrentThreadHandle();
             thisThread.m_tlsgcdata = rt.tlsgc.init();
-            version (GNU)
-            {
-                auto pstart = cast(void*) &_tlsstart;
-                auto pend   = cast(void*) &_tlsend;
-                thisThread.m_tls = pstart[0 .. pend - pstart];
-            }
             Thread.setThis( thisThread );
         }
         else
@@ -1960,16 +1879,6 @@ version( Windows )
             impersonate_thread(addr,
             {
                 thisThread.m_tlsgcdata = rt.tlsgc.init();
-                version (GNU)
-                {
-                    auto pstart = cast(void*) &_tlsstart;
-                    auto pend   = cast(void*) &_tlsend;
-                    auto pos    = GetTlsDataAddress( thisThread.m_hndl );
-                    if( pos ) // on x64, threads without TLS happen to exist
-                        thisThread.m_tls = pos[0 .. pend - pstart];
-                    else
-                        thisThread.m_tls = [];
-                }
                 Thread.setThis( thisThread );
             });
         }
@@ -2603,8 +2512,6 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
             // would make portability annoying because it only makes sense on Windows.
             scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
         }
-        version (GNU)
-            scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
 
         if (t.m_tlsgcdata !is null)
             rt.tlsgc.scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
@@ -4506,7 +4413,6 @@ private:
 }
 
 // These must be kept in sync with core/thread.di
-version (GNU) {} else
 version (D_LP64)
 {
     version (Windows)
