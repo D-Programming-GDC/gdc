@@ -2321,57 +2321,19 @@ build_unittest_function (const char *name, vec<FuncDeclaration *> functions)
 void
 build_moduleinfo (Symbol *sym)
 {
-  // Generate:
-  //  struct ModuleReference
-  //  {
-  //    void *next;
-  //    ModuleReference m;
-  //  }
+  gcc_assert (targetm_common.have_named_sections);
+  tree type = build_object_type()->toCtype();
+  tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (concat ("__mod_ref_", sym->Sident, NULL)), type);
+  d_add_global_declaration (decl);
+  set_decl_location (decl, current_module_decl);
 
-  // struct ModuleReference in moduleinit.d
-  Type *type = build_object_type();
-  tree tmodref = build_two_field_type (ptr_type_node, type->toCtype(),
-				       NULL, "next", "mod");
-  tree nextfield = TYPE_FIELDS (tmodref);
-  tree modfield = TREE_CHAIN (nextfield);
+  DECL_VISIBILITY (decl) = VISIBILITY_HIDDEN;
+  TREE_PUBLIC (decl) = 1;
+  TREE_STATIC (decl) = 1;
+  DECL_INITIAL (decl) = build_address (sym->Stree);
+  TREE_STATIC (DECL_INITIAL (decl)) = 1;
 
-  // extern (C) ModuleReference *_Dmodule_ref;
-  tree dmodule_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
-				 get_identifier ("_Dmodule_ref"),
-				 build_pointer_type (tmodref));
-  d_keep (dmodule_ref);
-  DECL_EXTERNAL (dmodule_ref) = 1;
-  TREE_PUBLIC (dmodule_ref) = 1;
-
-  // private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };
-  tree modref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, tmodref);
-  d_keep (modref);
-
-  get_unique_name (modref, "__mod_ref");
-  set_decl_location (modref, current_module_decl);
-
-  DECL_ARTIFICIAL (modref) = 1;
-  DECL_IGNORED_P (modref) = 1;
-  TREE_PUBLIC (modref) = 0;
-  TREE_STATIC (modref) = 1;
-
-  vec<constructor_elt, va_gc> *ce = NULL;
-  CONSTRUCTOR_APPEND_ELT (ce, nextfield, null_pointer_node);
-  CONSTRUCTOR_APPEND_ELT (ce, modfield, build_address (sym->Stree));
-
-  DECL_INITIAL (modref) = build_constructor (tmodref, ce);
-  TREE_STATIC (DECL_INITIAL (modref)) = 1;
-  rest_of_decl_compilation (modref, 1, 0);
-
-  // Generate:
-  //  void ___modinit()  // a static constructor
-  //  {
-  //    modref.next = _Dmodule_ref;
-  //    _Dmodule_ref = &modref;
-  //  }
-  tree m1 = vmodify_expr (component_ref (modref, nextfield), dmodule_ref);
-  tree m2 = vmodify_expr (dmodule_ref, build_address (modref));
-
-  build_simple_function ("*__modinit", vcompound_expr (m1, m2), true);
+  set_decl_section_name (decl, "dminfo");
+  rest_of_decl_compilation (decl, 1, 0);
 }
 
