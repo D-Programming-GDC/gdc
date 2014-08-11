@@ -166,7 +166,7 @@ d/id.h: d/id.c
 d/verstr.h: d/VERSION
 	cat $^ > $@
 
-d/d-confdefs.h: d/Make-lang.in
+d/d-confdefs.h: d/Make-lang.in $(srcdir)/d/target-ver-syms.sh
 	$(srcdir)/d/target-ver-syms.sh $(target) > $@
 
 d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H) d/d-confdefs.h
@@ -323,6 +323,7 @@ d.uninstall:
 
 d.mostlyclean:
 	-rm -f d/*$(objext)
+	-rm -f d/d-confdefs.h
 	-rm -f d/*$(coverageexts)
 	-rm -f $(D_GENERATED_SRCS)
 # shouldn't this do something?
