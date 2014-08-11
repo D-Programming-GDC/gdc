@@ -32,6 +32,9 @@ defaultlib=
 Driver Joined
 Default library to use instead of phobos
 
+shared
+D
+
 fassert
 D
 Permit the use of the assert keyword
