@@ -28,7 +28,7 @@ import gcc.builtins;
  */
 private template __sync_op_and(string op1, string op2)
 {
-    const __sync_op_and = `
+    enum __sync_op_and = `
 T __sync_` ~ op1 ~ `_and_` ~ op2 ~ `(T)(const ref shared T ptr, T value)
 {
     static if (T.sizeof == byte.sizeof)
