@@ -13,6 +13,7 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+import core.runtime;
 version(Win64) {}
 else
 {
@@ -62,6 +63,66 @@ public import std.digest.crc;
 public import std.digest.sha;
 public import std.digest.md;
 
+}
+
+bool tester()
+{
+        void printErr(in char[] buf)
+        {
+            .fprintf(core.stdc.stdio.stderr, "%.*s", cast(int)buf.length, buf.ptr);
+        }
+
+        size_t failed = 0;
+
+        // std.stdio tests are buggy and need to be run first
+        // (forking causes problems if std.parallelism threads are active)
+        foreach (m; ModuleInfo)
+        {
+            if (m && m.name && m.name == "std.stdio")
+            {
+                auto fp = m.unitTest;
+
+                if (fp)
+                {
+                    try
+                    {
+                        fp();
+                    }
+                    catch( Throwable e )
+                    {
+                        e.toString(&printErr); printErr("\n");
+                        failed++;
+                    }
+                }
+            }
+        }
+
+        foreach (m; ModuleInfo)
+        {
+            if (m && !(m.name && m.name == "std.stdio"))
+            {
+                auto fp = m.unitTest;
+
+                if (fp)
+                {
+                    try
+                    {
+                        fp();
+                    }
+                    catch( Throwable e )
+                    {
+                        e.toString(&printErr); printErr("\n");
+                        failed++;
+                    }
+                }
+            }
+        }
+        return failed == 0;
+}
+
+shared static this()
+{
+    Runtime.moduleUnitTester = &tester;
 }
 
 int main(char[][] args)

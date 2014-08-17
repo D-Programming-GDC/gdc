@@ -279,7 +279,7 @@ else
 endif
 
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -Wl,-static -lgdruntime_t -Wl,-Bdynamic $(LIBS)
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -ldl -L./ -Wl,-static -lgdruntime_t -Wl,-Bdynamic $(LIBS)
 
 unittest-pic: $(DRUNTIME_T_SO) unittest.pic.o
 	$(GDC) -o $@ $(CFLAGS) unittest.pic.o -nophoboslib -L./ -lgdruntime_t $(LIBS)
