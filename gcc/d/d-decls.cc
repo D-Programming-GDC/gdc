@@ -274,8 +274,6 @@ TypeInfoDeclaration::toSymbol (void)
       // given TypeInfo.  It is the actual data, not a reference
       gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
-      TREE_CONSTANT (csym->Stree) = true;
-      TREE_READONLY (csym->Stree) = true;
       relayout_decl (csym->Stree);
       TREE_USED (csym->Stree) = 1;
 
