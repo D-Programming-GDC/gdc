@@ -1776,12 +1776,12 @@ mark_needed (tree decl)
 
   if (TREE_CODE (decl) == FUNCTION_DECL)
     {
-      struct cgraph_node *node = cgraph_get_create_node (decl);
+      struct cgraph_node *node = cgraph_node::get_create (decl);
       node->forced_by_abi = true;
     }
   else if (TREE_CODE (decl) == VAR_DECL)
     {
-      struct varpool_node *node = varpool_node_for_decl (decl);
+      struct varpool_node *node = varpool_node::get_create (decl);
       node->forced_by_abi = true;
     }
 }
@@ -1900,12 +1900,12 @@ d_finish_function (FuncDeclaration *fd)
     }
 
   // Build cgraph for function.
-  struct cgraph_node *node = cgraph_get_create_node (decl);
+  struct cgraph_node *node = cgraph_node::get_create (decl);
 
   // For nested functions update the cgraph to reflect unnesting,
   // which is handled by the front-end.
   if (node->origin)
-    cgraph_unnest_node (node);
+    node->unnest();
 
   cgraph_finalize_function (decl, true);
 }
@@ -2073,8 +2073,7 @@ make_alias_for_thunk (tree function)
   if (!flag_syntax_only)
     {
       cgraph_node *aliasn;
-      aliasn = cgraph_same_body_alias (cgraph_get_create_node (function),
-				       alias, function);
+      aliasn = cgraph_node::create_same_body_alias (alias, function);
       DECL_ASSEMBLER_NAME (function);
       gcc_assert (aliasn != NULL);
     }
@@ -2108,14 +2107,14 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
       && targetm_common.have_named_sections)
     {
       tree fn = target_decl;
-      struct symtab_node *symbol = symtab_get_node (target_decl);
+      struct symtab_node *symbol = symtab_node::get (target_decl);
 
       if (symbol != NULL && symbol->alias)
 	{
 	  if (symbol->analyzed)
-	    fn = symtab_alias_ultimate_target (symtab_get_node (target_decl))->decl;
+	    fn = symtab_node::get (target_decl)->ultimate_alias_target()->decl;
 	  else
-	    fn = symtab_get_node (target_decl)->alias_target;
+	    fn = symtab_node::get (target_decl)->alias_target;
 	}
       resolve_unique_section (fn, 0, flag_function_sections);
 
@@ -2125,8 +2124,8 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
 
 	  /* Output the thunk into the same section as function.  */
 	  set_decl_section_name (thunk_decl, DECL_SECTION_NAME (fn));
-	  symtab_get_node (thunk_decl)->implicit_section
-	    = symtab_get_node (fn)->implicit_section;
+	  symtab_node::get (thunk_decl)->implicit_section
+	    = symtab_node::get (fn)->implicit_section;
 	}
     }
 
@@ -2147,14 +2146,14 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
 
   cgraph_node *funcn, *thunk_node;
 
-  funcn = cgraph_get_create_node (target_decl);
+  funcn = cgraph_node::get_create (target_decl);
   gcc_assert (funcn);
-  thunk_node = cgraph_add_thunk (funcn, thunk_decl, thunk_decl,
-				 this_adjusting, fixed_offset,
-				 virtual_value, 0, alias);
+  thunk_node = funcn->create_thunk (thunk_decl, thunk_decl,
+				    this_adjusting, fixed_offset,
+				    virtual_value, 0, alias);
 
   if (DECL_ONE_ONLY (target_decl))
-    symtab_add_to_same_comdat_group (thunk_node, funcn);
+    thunk_node->add_to_same_comdat_group (funcn);
 
   if (!targetm.asm_out.can_output_mi_thunk (thunk_decl, fixed_offset,
 					    virtual_value, alias))
