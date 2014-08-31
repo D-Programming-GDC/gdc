@@ -22,7 +22,7 @@ for arg in "$@"; do
             if test -z "$d_gccsrc" && test -d "$arg" && test -d "$arg/gcc"; then
                 d_gccsrc="$arg";
             else
-                echo "error: invalid option '$arg'"
+                echo "error: '$arg' is not a valid option or path"
                 exit 1
             fi ;;
     esac
@@ -34,10 +34,14 @@ if grep version_string $d_gccsrc/gcc/version.c | grep -q '"3.4'; then
     gcc_ver=3.4
 elif grep version_string $d_gccsrc/gcc/version.c | grep -q '"4.0'; then
     gcc_ver=4.0
-elif grep -q -E '^4\.[0-9]+[^0-9]|$' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.[0-9]+[^0-9]' $d_gccsrc/gcc/BASE-VER; then
     gcc_ver=$(grep -oh -E '^4\.[0-9]+|$' $d_gccsrc/gcc/BASE-VER)
+elif grep -q -E '^[5-9]\.[0-9]+[^0-9]' $d_gccsrc/gcc/BASE-VER; then
+    gcc_ver=$(grep -oh -E '^[5-9]\.[0-9]+|$' $d_gccsrc/gcc/BASE-VER)
+else echo "cannot get gcc version"
+    exit 1
 fi
-
+echo "found gcc version $gcc_ver"
 gcc_patch_key=${gcc_ver}.x
 
 # 1. Determine if this version of GCC is supported
