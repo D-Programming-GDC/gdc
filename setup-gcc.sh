@@ -34,10 +34,10 @@ if grep version_string $d_gccsrc/gcc/version.c | grep -q '"3.4'; then
     gcc_ver=3.4
 elif grep version_string $d_gccsrc/gcc/version.c | grep -q '"4.0'; then
     gcc_ver=4.0
-elif grep -q -E '^4\.[0-9]+[^0-9]' $d_gccsrc/gcc/BASE-VER; then
+elif grep -q -E '^4\.[1-9]+([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
     gcc_ver=$(grep -oh -E '^4\.[0-9]+|$' $d_gccsrc/gcc/BASE-VER)
-elif grep -q -E '^[5-9]\.[0-9]+[^0-9]' $d_gccsrc/gcc/BASE-VER; then
-    gcc_ver=$(grep -oh -E '^[5-9]\.[0-9]+|$' $d_gccsrc/gcc/BASE-VER)
+elif grep -q -E '^5\.[0-9]+([^0-9]|$)' $d_gccsrc/gcc/BASE-VER; then
+    gcc_ver=5
 else echo "cannot get gcc version"
     exit 1
 fi
