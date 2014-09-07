@@ -2376,7 +2376,6 @@ ArrayLiteralExp::toElem (IRState *irs)
   Type *etype = tb->nextOf();
   tree tsa = d_array_type (etype, elements->dim);
   tree result = NULL_TREE;
-  bool constant_p = tb->isImmutable();
 
   // Handle empty array literals.
   if (elements->dim == 0)
@@ -2399,9 +2398,6 @@ ArrayLiteralExp::toElem (IRState *irs)
       elem = maybe_make_temp (elem);
       CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
 			      convert_expr (elem, e->type, etype));
-
-      if (constant_p && !e->isConst())
-	constant_p = false;
     }
 
   tree ctor = build_constructor (tsa, elms);
@@ -2410,10 +2406,6 @@ ArrayLiteralExp::toElem (IRState *irs)
   // Nothing else to do for static arrays.
   if (tb->ty == Tsarray)
     return d_convert (type->toCtype(), ctor);
-
-  // Don't allocate immutable arrays on the heap.
-  if (tb->ty == Tarray && constant_p)
-    return d_array_value (type->toCtype(), size_int (elements->dim), build_address (ctor));
 
   args[0] = build_typeinfo (etype->arrayOf());
   args[1] = build_integer_cst (elements->dim, size_type_node);
