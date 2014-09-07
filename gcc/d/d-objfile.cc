@@ -1907,7 +1907,7 @@ d_finish_function (FuncDeclaration *fd)
   if (node->origin)
     node->unnest();
 
-  cgraph_finalize_function (decl, true);
+  cgraph_node::finalize_function (decl, true);
 }
 
 // Wrapup all global declarations and start the final compilation.
@@ -1916,10 +1916,10 @@ void
 d_finish_compilation (tree *vec, int len)
 {
   // Complete all generated thunks.
-  cgraph_process_same_body_aliases();
+  symtab->process_same_body_aliases();
 
-  StringTable *symtab = new StringTable;
-  symtab->_init();
+  StringTable *table = new StringTable;
+  table->_init();
 
   // Process all file scopes in this compilation, and the external_scope,
   // through wrapup_global_declarations.
@@ -1933,9 +1933,9 @@ d_finish_compilation (tree *vec, int len)
       if ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
 	  || TREE_CODE (decl) == FUNCTION_DECL)
 	{
-	  // Don't emit, assembler name already in symtab.
+	  // Don't emit, assembler name already in symbol table.
 	  tree name = DECL_ASSEMBLER_NAME (decl);
-	  if (!symtab->insert (IDENTIFIER_POINTER (name), IDENTIFIER_LENGTH (name)))
+	  if (!table->insert (IDENTIFIER_POINTER (name), IDENTIFIER_LENGTH (name)))
 	    needed = 0;
 	  else
 	    needed = 1;
@@ -1947,7 +1947,7 @@ d_finish_compilation (tree *vec, int len)
 
   // We're done parsing; proceed to optimize and emit assembly.
   if (!global.errors && !errorcount)
-    finalize_compilation_unit();
+    symtab->finalize_compilation_unit();
 
   // Now, issue warnings about static, but not defined, functions.
   check_global_declarations (vec, len);
