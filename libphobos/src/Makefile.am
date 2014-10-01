@@ -56,14 +56,12 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 # GDC LibPhobos
 
 MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
-	  std/bitmanip.o std/compiler.o \
-	  std/container.o std/complex.o std/concurrency.o \
+	  std/bitmanip.o std/compiler.o std/complex.o std/concurrency.o \
 	  std/conv.o std/cstream.o std/csv.o \
 	  std/datetime.o std/demangle.o std/encoding.o \
 	  std/exception.o std/format.o \
 	  std/functional.o std/getopt.o std/json.o \
-	  std/math.o std/mathspecial.o \
-	  std/metastrings.o std/numeric.o \
+	  std/math.o std/mathspecial.o std/numeric.o \
 	  std/outbuffer.o std/parallelism.o std/signals.o \
 	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
 	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
@@ -73,13 +71,16 @@ MAIN_OBJS=std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
 	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \
 	  std/c/string.o std/c/time.o std/c/wcharh.o \
+	  std/container/array.o std/container/binaryheap.o \
+	  std/container/dlist.o std/container/package.o \
+	  std/container/rbtree.o std/container/slist.o std/container/util.o \
 	  std/digest/digest.o std/digest/crc.o std/digest/md.o \
 	  std/digest/ripemd.o std/digest/sha.o \
 	  std/internal/digest/sha_SSSE3.o \
 	  std/internal/math/biguintcore.o std/internal/math/biguintnoasm.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
 	  std/internal/math/errorfunction.o std/internal/processinit.o \
-	  std/internal/uni.o std/internal/uni_tab.o \
+	  std/internal/scopebuffer.o \
 	  std/internal/unicode_comp.o std/internal/unicode_decomp.o \
 	  std/internal/unicode_grapheme.o std/internal/unicode_norm.o \
 	  std/internal/unicode_tables.o \

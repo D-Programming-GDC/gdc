@@ -26,18 +26,21 @@
 
 #include "mars.h"
 #include "arraytypes.h"
+#include "aggregate.h"
 
-/* used in module.c */
+// Functions defined in the glue interface, but used in the frontend.
+
+// Used in module.c
 extern void d_gcc_magic_module (Module *);
 
-/* used in interpret.c */
-extern Expression *d_gcc_eval_builtin (Loc, FuncDeclaration *, Expressions *);
 
-/* used in arrayop.c */
-extern int binary(const char *p , const char **tab, int high);
+// Functions defined in the frontend, but used in the glue interface.
 
-/* used in ctfeexpr.c */
-extern Expression *d_gcc_paint_type (Expression *, Type *);
+// Used in init.cc
+FuncDeclaration *search_toString(StructDeclaration *);
+
+// Used in d-lang.cc
+void initTraitsStringTable();
 
 #endif /* GCC_SAFE_DMD */
 

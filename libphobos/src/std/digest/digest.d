@@ -67,7 +67,7 @@ module std.digest.digest;
 import std.exception, std.range, std.traits;
 import std.algorithm : copy;
 import std.typetuple : allSatisfy;
-import std.ascii : LetterCase;
+public import std.ascii : LetterCase;
 
 ///
 unittest
@@ -318,11 +318,12 @@ template DigestType(T)
 {
     static if(isDigest!T)
     {
-        alias ReturnType!(typeof(
+        alias DigestType =
+            ReturnType!(typeof(
             {
                 T dig = void;
                 return dig.finish();
-            })) DigestType;
+            }));
     }
     else
         static assert(false, T.stringof ~ " is not a digest! (fails isDigest!T)");
@@ -883,7 +884,7 @@ class WrapperDigest(T) if(isDigest!T) : Digest
         }
         body
         {
-            enum string msg = "Buffer needs to be at least " ~ digestLength!(T).stringof ~ " bytes "
+            enum string msg = "Buffer needs to be at least " ~ digestLength!(T).stringof ~ " bytes " ~
                 "big, check " ~ typeof(this).stringof ~ ".length!";
             asArray!(digestLength!T)(buf, msg) = _digest.finish();
             return buf[0 .. digestLength!T];
@@ -919,7 +920,7 @@ class WrapperDigest(T) if(isDigest!T) : Digest
             }
             body
             {
-                enum string msg = "Buffer needs to be at least " ~ digestLength!(T).stringof ~ " bytes "
+                enum string msg = "Buffer needs to be at least " ~ digestLength!(T).stringof ~ " bytes " ~
                     "big, check " ~ typeof(this).stringof ~ ".length!";
                 asArray!(digestLength!T)(buf, msg) = _digest.peek();
                 return buf[0 .. digestLength!T];

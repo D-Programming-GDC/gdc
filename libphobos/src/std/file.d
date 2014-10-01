@@ -181,11 +181,11 @@ void[] read(in char[] name, size_t upTo = size_t.max)
 {
     version(Windows)
     {
-        alias TypeTuple!(GENERIC_READ,
+        alias defaults =
+            TypeTuple!(GENERIC_READ,
                 FILE_SHARE_READ, (SECURITY_ATTRIBUTES*).init, OPEN_EXISTING,
                 FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
-                HANDLE.init)
-            defaults;
+                HANDLE.init);
         auto h = CreateFileW(std.utf.toUTF16z(name), defaults);
 
         cenforce(h != INVALID_HANDLE_VALUE, name);
@@ -316,10 +316,10 @@ void write(in char[] name, const void[] buffer)
 {
     version(Windows)
     {
-        alias TypeTuple!(GENERIC_WRITE, 0, null, CREATE_ALWAYS,
+        alias defaults =
+            TypeTuple!(GENERIC_WRITE, 0, null, CREATE_ALWAYS,
                 FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
-                HANDLE.init)
-            defaults;
+                HANDLE.init);
         auto h = CreateFileW(std.utf.toUTF16z(name), defaults);
 
         cenforce(h != INVALID_HANDLE_VALUE, name);
@@ -355,9 +355,9 @@ void append(in char[] name, in void[] buffer)
 {
     version(Windows)
     {
-        alias TypeTuple!(GENERIC_WRITE,0,null,OPEN_ALWAYS,
-                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,HANDLE.init)
-            defaults;
+        alias defaults =
+            TypeTuple!(GENERIC_WRITE,0,null,OPEN_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,HANDLE.init);
 
         auto h = CreateFileW(std.utf.toUTF16z(name), defaults);
 
@@ -687,15 +687,15 @@ void setTimes(in char[] name,
     {
         const ta = SysTimeToFILETIME(accessTime);
         const tm = SysTimeToFILETIME(modificationTime);
-        alias TypeTuple!(GENERIC_WRITE,
+        alias defaults =
+            TypeTuple!(GENERIC_WRITE,
                          0,
                          null,
                          OPEN_EXISTING,
                          FILE_ATTRIBUTE_NORMAL |
                          FILE_ATTRIBUTE_DIRECTORY |
                          FILE_FLAG_BACKUP_SEMANTICS,
-                         HANDLE.init)
-              defaults;
+                         HANDLE.init);
         auto h = CreateFileW(std.utf.toUTF16z(name), defaults);
 
         cenforce(h != INVALID_HANDLE_VALUE, name);
@@ -1754,7 +1754,6 @@ version(StdDdoc)
 
         version (Windows)
         {
-            private this(string path, in WIN32_FIND_DATA* fd);
             private this(string path, in WIN32_FIND_DATAW *fd);
         }
         else version (Posix)
@@ -1887,7 +1886,7 @@ assert(!de2.isFile);
         @property uint linkAttributes();
 
         version(Windows)
-            alias void* stat_t;
+            alias stat_t = void*;
 
         /++
             $(BLUE This function is Posix-Only.)
@@ -1921,23 +1920,6 @@ else version(Windows)
             }
         }
 
-        private this(string path, in WIN32_FIND_DATA* fd)
-        {
-            auto clength = to!int(core.stdc.string.strlen(fd.cFileName.ptr));
-
-            // Convert cFileName[] to unicode
-            const wlength = MultiByteToWideChar(0, 0, fd.cFileName.ptr, clength, null, 0);
-            auto wbuf = new wchar[wlength];
-            const n = MultiByteToWideChar(0, 0, fd.cFileName.ptr, clength, wbuf.ptr, wlength);
-            assert(n == wlength);
-            // toUTF8() returns a new buffer
-            _name = buildPath(path, std.utf.toUTF8(wbuf[0 .. wlength]));
-            _size = (cast(ulong)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
-            _timeCreated = std.datetime.FILETIMEToSysTime(&fd.ftCreationTime);
-            _timeLastAccessed = std.datetime.FILETIMEToSysTime(&fd.ftLastAccessTime);
-            _timeLastModified = std.datetime.FILETIMEToSysTime(&fd.ftLastWriteTime);
-            _attributes = fd.dwFileAttributes;
-        }
         private this(string path, in WIN32_FIND_DATAW *fd)
         {
             size_t clength = std.string.wcslen(fd.cFileName.ptr);
@@ -2389,8 +2371,13 @@ void rmdirRecurse(ref DirEntry de)
     if(!de.isDir)
         throw new FileException(de.name, "Not a directory");
 
-    if(de.isSymlink)
-        remove(de.name);
+    if (de.isSymlink)
+    {
+        version (Windows)
+            rmdir(de.name);
+        else
+            remove(de.name);
+    }
     else
     {
         // all children, recursively depth-first
@@ -2542,27 +2529,6 @@ private struct DirIteratorImpl
             while( std.string.wcscmp(findinfo.cFileName.ptr, ".") == 0
                     || std.string.wcscmp(findinfo.cFileName.ptr, "..") == 0)
                 if(FindNextFileW(_stack.data[$-1].h, findinfo) == FALSE)
-                {
-                    popDirStack();
-                    return false;
-                }
-            _cur = DirEntry(_stack.data[$-1].dirpath, findinfo);
-            return true;
-        }
-
-        bool toNext(bool fetch, WIN32_FIND_DATA* findinfo)
-        {
-            if(fetch)
-            {
-                if(FindNextFileA(_stack.data[$-1].h, findinfo) == FALSE)
-                {
-                    popDirStack();
-                    return false;
-                }
-            }
-            while( core.stdc.string.strcmp(findinfo.cFileName.ptr, ".") == 0
-                    || core.stdc.string.strcmp(findinfo.cFileName.ptr, "..") == 0)
-                if(FindNextFileA(_stack.data[$-1].h, findinfo) == FALSE)
                 {
                     popDirStack();
                     return false;
@@ -2834,7 +2800,7 @@ unittest
         path = The directory to iterate over.
         pattern  = String with wildcards, such as $(RED "*.d"). The supported
                    wildcard strings are described under
-                   $(XREF path, globMatch).
+                   $(XREF _path, globMatch).
         mode = Whether the directory's sub-directories should be iterated
                over depth-first ($(D_PARAM depth)), breadth-first
                ($(D_PARAM breadth)), or not at all ($(D_PARAM shallow)).
@@ -2889,7 +2855,7 @@ unittest
 
     mkdir(path);
     Thread.sleep(dur!"seconds"(2));
-    auto de = dirEntry(path);
+    auto de = DirEntry(path);
     assert(de.name == path);
     assert(de.isDir);
     assert(!de.isFile);
@@ -2939,7 +2905,7 @@ unittest
 
     write(path, "hello world");
     Thread.sleep(dur!"seconds"(2));
-    auto de = dirEntry(path);
+    auto de = DirEntry(path);
     assert(de.name == path);
     assert(!de.isDir);
     assert(de.isFile);
@@ -2992,7 +2958,7 @@ version(linux) unittest
 
     core.sys.posix.unistd.symlink((orig ~ "\0").ptr, (path ~ "\0").ptr);
     Thread.sleep(dur!"seconds"(2));
-    auto de = dirEntry(path);
+    auto de = DirEntry(path);
     assert(de.name == path);
     assert(de.isDir);
     assert(!de.isFile);
@@ -3037,7 +3003,7 @@ version(linux) unittest
 
     core.sys.posix.unistd.symlink((orig ~ "\0").ptr, (path ~ "\0").ptr);
     Thread.sleep(dur!"seconds"(2));
-    auto de = dirEntry(path);
+    auto de = DirEntry(path);
     assert(de.name == path);
     assert(!de.isDir);
     assert(de.isFile);

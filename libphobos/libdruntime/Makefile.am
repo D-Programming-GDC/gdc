@@ -37,6 +37,7 @@ SUFFIXES = .d
 # Used to generate .di headers, now just copy from source.d to import/source.di
 $(IMPDIR):
 	mkdir -p $(IMPDIR)
+	mkdir -p $(IMPDIR)/core/internal
 	mkdir -p $(IMPDIR)/core/stdc
 	mkdir -p $(IMPDIR)/core/sync
 	mkdir -p $(IMPDIR)/core/sys/freebsd/sys
@@ -76,15 +77,15 @@ gcc/cbridge_math.o: gcc/cbridge_math.c
 BASE_OBJS=object_.o
 
 RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
-	     rt/arraybyte.o rt/arraycast.o rt/arraycat.o rt/arraydouble.o \
-	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
-	     rt/cast_.o rt/critical_.o rt/deh.o rt/dmain2.o rt/minfo.o \
-	     rt/memory.o rt/invariant.o rt/lifetime.o \
-	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
+	     rt/arraycast.o rt/arraycat.o rt/cast_.o rt/critical_.o \
+	     rt/deh.o rt/dmain2.o rt/minfo.o rt/memory.o rt/invariant.o \
+	     rt/lifetime.o rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o \
+	     rt/tlsgc.o
 
-CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
-	  core/exception.o core/math.o core/memory.o core/runtime.o \
-	  core/simd.o core/thread.o core/threadasm.o core/time.o core/vararg.o \
+CORE_OBJS=core/atomic.o core/bitop.o core/checkedint.o core/cpuid.o \
+	  core/demangle.o core/exception.o core/math.o core/memory.o \
+	  core/runtime.o core/simd.o core/thread.o core/threadasm.o \
+	  core/time.o core/vararg.o core/internal/traits.o \
 	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
 	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
 	  core/sync/semaphore.o
@@ -92,8 +93,9 @@ CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 GCC_OBJS=gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o gcc/emutls.o \
 	 gcc/libbacktrace.o gcc/unwind/pe.o
 
-UTIL_OBJS=rt/util/array.o rt/util/container.o rt/util/hash.o \
-	  rt/util/string.o rt/util/utf.o
+UTIL_OBJS=rt/util/array.o rt/util/hash.o rt/util/random.o rt/util/string.o \
+	  rt/util/utf.o rt/util/container/array.o rt/util/container/common.o \
+	  rt/util/container/hashtab.o rt/util/container/treap.o
 
 TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
    ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
@@ -114,6 +116,8 @@ RT_STDC_OBJS=core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
 	     core/stdc/stdint.o core/stdc/stddef.o core/stdc/string.o \
 	     core/stdc/time.o core/stdc/wchar_.o
 
+RT_LINUX_OBJS=
+
 RT_FREEBSD_OBJS=core/sys/freebsd/execinfo.o core/sys/freebsd/sys/event.o
 
 RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
@@ -122,10 +126,10 @@ RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
 
 RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
 	      core/sys/posix/signal.o core/sys/posix/sys/ioctl.o \
-	      core/sys/posix/sys/select.o core/sys/posix/sys/socket.o \
-	      core/sys/posix/sys/stat.o core/sys/posix/sys/wait.o \
-	      core/sys/posix/sys/un.o core/sys/posix/sys/utsname.o \
-	      core/sys/posix/sys/utsname.o core/sys/posix/netinet/in_.o
+	      core/sys/posix/sys/resource.o core/sys/posix/sys/select.o \
+	      core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
+	      core/sys/posix/sys/utsname.o core/sys/posix/sys/wait.o \
+	      core/sys/posix/arpa/inet.o core/sys/posix/netinet/in_.o
 
 RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
@@ -134,9 +138,12 @@ RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 D_GC_MODULES=@D_GC_MODULES@
 
 # Regardless of OS, all import headers are generated.
-CORE_IMPORTS=core/atomic.di core/bitop.di core/cpuid.di core/demangle.di \
-	     core/exception.di core/math.di core/memory.di core/runtime.di \
-	     core/simd.di core/time.di core/vararg.di \
+CORE_IMPORTS=core/atomic.di core/bitop.di core/checkedint.di core/cpuid.di \
+	     core/demangle.di core/exception.di core/math.di core/memory.di \
+	     core/runtime.di core/simd.di core/thread.di core/time.di \
+	     core/vararg.di \
+	     \
+	     core/internal/traits.di \
 	     \
 	     core/stdc/complex.di core/stdc/config.di core/stdc/ctype.di \
 	     core/stdc/errno.di core/stdc/fenv.di core/stdc/float_.di \
@@ -241,10 +248,11 @@ install-data-local: libgdruntime.a
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
 	done
-	for i in core core/stdc core/sync core/sys/freebsd \
-	    core/sys/freebsd/sys core/sys/linux core/sys/linux/sys \
-	    core/sys/osx core/sys/osx/mach core/sys/posix \
-	    core/sys/posix/arpa core/sys/posix/net \
+	for i in core core/internal core/stdc core/sync \
+	    core/sys/freebsd core/sys/freebsd/sys \
+	    core/sys/linux core/sys/linux/sys \
+	    core/sys/osx core/sys/osx/mach \
+	    core/sys/posix core/sys/posix/arpa core/sys/posix/net \
 	    core/sys/posix/netinet core/sys/posix/sys \
 	    core/sys/windows; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \

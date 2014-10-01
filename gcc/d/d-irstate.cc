@@ -22,7 +22,7 @@
 
 #include "init.h"
 
-IRState::IRState (void)
+IRState::IRState()
 {
   this->parent = NULL;
   this->func = NULL;
@@ -74,7 +74,7 @@ IRState::startFunction (FuncDeclaration *decl)
 }
 
 void
-IRState::endFunction (void)
+IRState::endFunction()
 {
   gcc_assert (this->scopes_.is_empty());
   current_irstate = (IRState *) this->parent;
@@ -86,18 +86,12 @@ IRState::endFunction (void)
 void
 IRState::addExp (tree e)
 {
-  /* Need to check that this is actually an expression; it
-     could be an integer constant (statement with no effect.)
-     Maybe should filter those out anyway... */
-  if (TREE_TYPE (e) && !VOID_TYPE_P (TREE_TYPE (e)))
-    {
-      if (warn_unused_value
-	  && !TREE_NO_WARNING (e)
-	  && !TREE_SIDE_EFFECTS (e))
-	warning (OPT_Wunused_value, "statement has no effect");
-
-      e = build1 (CONVERT_EXPR, void_type_node, e);
-    }
+  // Need to check that this is actually an expression; it
+  // could be an integer constant (statement with no effect.)
+  if (TREE_TYPE(e) == void_type_node &&
+      TREE_CODE(e) == NOP_EXPR &&
+      TREE_OPERAND(e, 0) == size_zero_node)
+    return;
 
   if (EXPR_P (e) && !EXPR_HAS_LOCATION (e))
     SET_EXPR_LOCATION (e, input_location);
@@ -109,7 +103,7 @@ IRState::addExp (tree e)
 
 
 void
-IRState::pushStatementList (void)
+IRState::pushStatementList()
 {
   tree t = alloc_stmt_list();
   this->statementList_.safe_push (t);
@@ -117,7 +111,7 @@ IRState::pushStatementList (void)
 }
 
 tree
-IRState::popStatementList (void)
+IRState::popStatementList()
 {
   tree t = this->statementList_.pop();
 
@@ -235,7 +229,7 @@ IRState::beginFlow (Statement *stmt)
 }
 
 void
-IRState::endFlow (void)
+IRState::endFlow()
 {
   gcc_assert (!this->loops_.is_empty());
 
@@ -258,7 +252,7 @@ IRState::doLabel (tree label)
 
 
 void
-IRState::startScope (void)
+IRState::startScope()
 {
   unsigned *p_count = new unsigned;
   *p_count = 0;
@@ -268,7 +262,7 @@ IRState::startScope (void)
 }
 
 void
-IRState::endScope (void)
+IRState::endScope()
 {
   unsigned *p_count = this->currentScope();
   while (*p_count)
@@ -279,7 +273,7 @@ IRState::endScope (void)
 
 
 void
-IRState::startBindings (void)
+IRState::startBindings()
 {
   tree block;
 
@@ -293,7 +287,7 @@ IRState::startBindings (void)
 }
 
 void
-IRState::endBindings (void)
+IRState::endBindings()
 {
   tree block = pop_binding_level (1, 0);
   TREE_USED (block) = 1;
@@ -323,7 +317,7 @@ IRState::startCond (Statement *stmt, tree cond)
 // Start a new statement list for the false condition branch.
 
 void
-IRState::startElse (void)
+IRState::startElse()
 {
   Flow *flow = this->currentFlow();
   flow->trueBranch = this->popStatementList();
@@ -333,7 +327,7 @@ IRState::startElse (void)
 // Wrap up our constructed if condition into a COND_EXPR.
 
 void
-IRState::endCond (void)
+IRState::endCond()
 {
   Flow *flow = this->currentFlow();
   tree branch = this->popStatementList();
@@ -366,7 +360,7 @@ IRState::startLoop (Statement *stmt)
 // Emit continue label for loop.
 
 void
-IRState::continueHere (void)
+IRState::continueHere()
 {
   Flow *flow = this->currentFlow();
   this->doLabel (flow->continueLabel);
@@ -418,7 +412,7 @@ IRState::exitLoop (Identifier *ident)
 // Wrap up constructed loop body in a LOOP_EXPR.
 
 void
-IRState::endLoop (void)
+IRState::endLoop()
 {
   // says must contain an EXIT_EXPR -- what about while (1)..goto;? something other thand LOOP_EXPR?
   tree body = this->popStatementList();
@@ -518,7 +512,7 @@ IRState::doCase (tree value, tree label)
 // Wrap up constructed body into a SWITCH_EXPR.
 
 void
-IRState::endCase (void)
+IRState::endCase()
 {
   Flow *flow = this->currentFlow();
   tree body = this->popStatementList();
@@ -550,7 +544,7 @@ IRState::startTry (Statement *stmt)
 // Pops the try body and starts a new statement list for all catches.
 
 void
-IRState::startCatches (void)
+IRState::startCatches()
 {
   Flow *flow = this->currentFlow();
   flow->tryBody = this->popStatementList();
@@ -570,7 +564,7 @@ IRState::startCatch (tree type)
 // Wrap up catch expression into a CATCH_EXPR.
 
 void
-IRState::endCatch (void)
+IRState::endCatch()
 {
   tree body = this->popStatementList();
   this->addExp (build2 (CATCH_EXPR, void_type_node,
@@ -580,7 +574,7 @@ IRState::endCatch (void)
 // Wrap up try/catch into a TRY_CATCH_EXPR.
 
 void
-IRState::endCatches (void)
+IRState::endCatches()
 {
   Flow *flow = this->currentFlow();
   tree catches = this->popStatementList();
@@ -605,7 +599,7 @@ IRState::endCatches (void)
 // Start a new finally expression.
 
 void
-IRState::startFinally (void)
+IRState::startFinally()
 {
   Flow *flow = this->currentFlow();
   flow->tryBody = this->popStatementList();
@@ -616,7 +610,7 @@ IRState::startFinally (void)
 // Wrap-up try/finally into a TRY_FINALLY_EXPR.
 
 void
-IRState::endFinally (void)
+IRState::endFinally()
 {
   Flow *flow = this->currentFlow();
   tree finally = this->popStatementList();

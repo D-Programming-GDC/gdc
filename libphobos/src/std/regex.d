@@ -14,13 +14,12 @@
   void main()
   {
       // Print out all possible dd/mm/yy(yy) dates found in user input.
-      // g - global: find all matches.
-      auto r = regex(r"\b[0-9][0-9]?/[0-9][0-9]?/[0-9][0-9](?:[0-9][0-9])?\b", "g");
+      auto r = regex(r"\b[0-9][0-9]?/[0-9][0-9]?/[0-9][0-9](?:[0-9][0-9])?\b");
       foreach(line; stdin.byLine)
       {
-        // Match returns a range that can be iterated
+        // matchAll() returns a range that can be iterated
         // to get all subsequent matches.
-        foreach(c; match(line, r))
+        foreach(c; matchAll(line, r))
             writeln(c.hit);
       }
   }
@@ -30,15 +29,15 @@
   auto ctr = ctRegex!(`^.*/([^/]+)/?$`);
 
   // It works just like a normal regex:
-  auto m2 = match("foo/bar", ctr);   // First match found here, if any
-  assert(m2);   // Be sure to check if there is a match before examining contents!
-  assert(m2.captures[1] == "bar");   // Captures is a range of submatches: 0 = full match.
+  auto c2 = matchFirst("foo/bar", ctr);   // First match found here, if any
+  assert(!c2.empty);   // Be sure to check if there is a match before examining contents!
+  assert(c2[1] == "bar");   // Captures is a range of submatches: 0 = full match.
 
   ...
 
-  // The result of the match is directly testable with if/assert/while.
+  // The result of the $(D matchAll) is directly testable with if/assert/while.
   // e.g. test if a string consists of letters:
-  assert(match("Letter", `^\p{L}+$`));
+  assert(matchFirst("Letter", `^\p{L}+$`));
 
 
   ---
@@ -253,14 +252,13 @@ Macros:
 
 module std.regex;
 
-import std.internal.uni, std.internal.uni_tab;//Unicode property tables
 import std.array, std.algorithm, std.range,
        std.conv, std.exception, std.traits, std.typetuple,
-       std.utf, std.format, std.typecons, std.bitmanip,
+       std.uni, std.utf, std.format, std.typecons, std.bitmanip,
        std.functional, std.exception;
 
 import core.bitop, core.stdc.string, core.stdc.stdlib;
-static import ascii = std.ascii;
+static import std.ascii;
 import std.string : representation;
 
 debug(std_regex_parser) import std.stdio; //trace parser progress
@@ -271,9 +269,6 @@ debug(std_regex_ctr) import std.stdio; //dump ctRegex generated sources
 debug(std_regex_test) import std.stdio; //trace test suite progress
 
 private:
-
-import std.uni : isAlpha, isWhite;
-
 
 // IR bit pattern: 0b1_xxxxx_yy
 // where yy indicates class of instruction, xxxxx for actual operation code
@@ -755,15 +750,16 @@ enum maxCharsetUsed = 6;
 
 enum maxCachedTries = 8;
 
-alias Trie = CodepointTrie!8;
+alias CodepointSetTrie!(13, 8) Trie;
+alias codepointSetTrie!(13, 8) makeTrie;
 
-Trie[const(CodepointSet)] trieCache;
+Trie[CodepointSet] trieCache;
 
 //accessor with caching
-@trusted Trie getTrie(in CodepointSet set)
+@trusted Trie getTrie(CodepointSet set)
 {// @@@BUG@@@ 6357 almost all properties of AA are not @safe
     if(__ctfe || maxCachedTries == 0)
-        return Trie(set);
+        return makeTrie(set);
     else
     {
         auto p = set in trieCache;
@@ -774,23 +770,23 @@ Trie[const(CodepointSet)] trieCache;
             // flush entries in trieCache
             trieCache = null;
         }
-        return (trieCache[set] = Trie(set));
+        return (trieCache[set] = makeTrie(set));
     }
 }
 
 //property for \w character class
 @property CodepointSet wordCharacter()
 {
-    return memoizeExpr!("CodepointSet.init.add(unicodeAlphabetic).add(unicodeMn).add(unicodeMc)
-        .add(unicodeMe).add(unicodeNd).add(unicodePc)")();
+    return memoizeExpr!("unicode.Alphabetic | unicode.Mn | unicode.Mc
+        | unicode.Me | unicode.Nd | unicode.Pc")();
 }
 
 @property Trie wordTrie()
 {
-    return memoizeExpr!("Trie(wordCharacter)")();
+    return memoizeExpr!("makeTrie(wordCharacter)")();
 }
 
-auto memoizeExpr(string expr)()
+@trusted auto memoizeExpr(string expr)()
 {
     if(__ctfe)
         return mixin(expr);
@@ -805,66 +801,29 @@ auto memoizeExpr(string expr)()
     return slot;
 }
 
+auto caseEnclose(CodepointSet set)
+{
+    auto cased = set & unicode.LC;
+    foreach (dchar ch; cased.byCodepoint)
+    {
+        foreach(c; simpleCaseFoldings(ch))
+            set |= c;
+    }
+    return set;
+}
+
 /+
     fetch codepoint set corresponding to a name (InBlock or binary property)
 +/
-@trusted const(CodepointSet) getUnicodeSet(in char[] name, bool negated,  bool casefold)
+@trusted CodepointSet getUnicodeSet(in char[] name, bool negated,  bool casefold)
 {
-    alias ucmp = comparePropertyName;
-    CodepointSet s;
-
-    //unicode property
-    //helper: direct access with a sanity check
-    if(ucmp(name, "L") == 0 || ucmp(name, "Letter") == 0)
-    {
-        s.add(unicodeLu).add(unicodeLl).add(unicodeLt)
-            .add(unicodeLo).add(unicodeLm);
-    }
-    else if(ucmp(name,"LC") == 0 || ucmp(name,"Cased Letter") == 0)
-    {
-        s.add(unicodeLl).add(unicodeLu).add(unicodeLt);//Title case
-    }
-    else if(ucmp(name, "M") == 0 || ucmp(name, "Mark") == 0)
-    {
-        s.add(unicodeMn).add(unicodeMc).add(unicodeMe);
-    }
-    else if(ucmp(name, "P") == 0 || ucmp(name, "Punctuation") == 0)
-    {
-        s.add(unicodePc).add(unicodePd).add(unicodePs).add(unicodePe)
-            .add(unicodePi).add(unicodePf).add(unicodePo);
-    }
-    else if(ucmp(name, "S") == 0 || ucmp(name, "Symbol") == 0)
-    {
-        s.add(unicodeSm).add(unicodeSc).add(unicodeSk).add(unicodeSo);
-    }
-    else if(ucmp(name, "Z") == 0 || ucmp(name, "Separator") == 0)
-    {
-        s.add(unicodeZs).add(unicodeZl).add(unicodeZp);
-    }
-    else if(ucmp(name, "C") == 0 || ucmp(name, "Other") == 0)
-    {
-        s.add(unicodeCo).add(unicodeLo).add(unicodeNo)
-            .add(unicodeSo).add(unicodePo);
-    }
-    else if(ucmp(name, "any") == 0)
-        s.add(Interval(0,0x10FFFF));
-    else if(ucmp(name, "ascii") == 0)
-        s.add(Interval(0,0x7f));
-    else
-    {
-        auto range = assumeSorted!((x,y) => ucmp(x.name, y.name) < 0)(unicodeProperties);
-        //creating empty Codepointset is a workaround
-        auto eq = range.lowerBound(UnicodeProperty(cast(string)name,CodepointSet.init)).length;
-        enforce(eq != range.length && ucmp(name,range[eq].name) == 0,
-            "invalid property name");
-        s = range[eq].set.dup;
-    }
-
+    CodepointSet s = unicode(name);
+    //FIXME: caseEnclose for new uni as Set | CaseEnclose(SET && LC)
     if(casefold)
-        s = caseEnclose(s);
+       s = caseEnclose(s);
     if(negated)
-        s.negate();
-    return cast(const CodepointSet)s;
+        s = s.inverted;
+    return s;
 }
 
 //basic stack, just in case it gets used anywhere else then Parser
@@ -883,7 +842,7 @@ auto memoizeExpr(string expr)()
         auto val = data[$ - 1];
         data = data[0 .. $ - 1];
         if(!__ctfe)
-            data.assumeSafeAppend();
+            cast(void)data.assumeSafeAppend();
         return val;
     }
 
@@ -920,7 +879,7 @@ struct Parser(R)
     uint nesting = 0;
     uint lookaroundNest = 0;
     uint counterDepth = 0; //current depth of nested counted repetitions
-    const(CodepointSet)[] charsets;  //
+    CodepointSet[] charsets;  //
     const(Trie)[] tries; //
     uint[] backrefed; //bitarray for groups
 
@@ -951,6 +910,14 @@ struct Parser(R)
         if(n/32 >= backrefed.length)
             backrefed.length = n/32 + 1;
         backrefed[n / 32] |= 1 << (n & 31);
+    }
+
+    bool isOpenGroup(uint n)
+    {
+        // walk the fixup stack and see if there are groups labeled 'n'
+        // fixup '0' is reserved for alternations
+        return fixupStack.data[1..$].
+            canFind!(fix => ir[fix].code == IR.GroupStart && ir[fix].data == n)();
     }
 
     @property dchar current(){ return _current; }
@@ -1002,7 +969,7 @@ struct Parser(R)
     uint parseDecimal()
     {
         uint r = 0;
-        while(ascii.isDigit(current))
+        while(std.ascii.isDigit(current))
         {
             if(r >= (uint.max/10))
                 error("Overflow in decimal number");
@@ -1090,7 +1057,7 @@ struct Parser(R)
                             error("Expected alpha starting a named group");
                         name ~= current;
                         while(next() && (isAlpha(current) ||
-                            current == '_' || ascii.isDigit(current)))
+                            current == '_' || std.ascii.isDigit(current)))
                         {
                             name ~= current;
                         }
@@ -1102,7 +1069,7 @@ struct Parser(R)
                         auto t = NamedGroup(name, nglob);
                         auto d = assumeSorted!"a.name < b.name"(dict);
                         auto ind = d.lowerBound(t).length;
-                        insertInPlaceAlt(dict, ind, t);
+                        insertInPlace(dict, ind, t);
                         put(Bytecode(IR.GroupStart, nglob));
                         break;
                     case '<':
@@ -1191,7 +1158,7 @@ struct Parser(R)
                     len = cast(uint)ir.length - fix - (ir[fix].length - 1);
                     orStart = fix + ir[fix].length;
                 }
-                insertInPlaceAlt(ir, orStart, Bytecode(IR.OrStart, 0), Bytecode(IR.Option, len));
+                insertInPlace(ir, orStart, Bytecode(IR.OrStart, 0), Bytecode(IR.Option, len));
                 assert(ir[orStart].code == IR.OrStart);
                 put(Bytecode(IR.GotoEndOr, 0));
                 fixupStack.push(orStart); //fixup for StartOR
@@ -1258,14 +1225,14 @@ struct Parser(R)
             break;
         case '{':
             enforce(next(), "Unexpected end of regex pattern");
-            enforce(ascii.isDigit(current), "First number required in repetition");
+            enforce(std.ascii.isDigit(current), "First number required in repetition");
             min = parseDecimal();
             if(current == '}')
                 max = min;
             else if(current == ',')
             {
                 next();
-                if(ascii.isDigit(current))
+                if(std.ascii.isDigit(current))
                     max = parseDecimal();
                 else if(current == '}')
                     max = infinite;
@@ -1283,7 +1250,7 @@ struct Parser(R)
         default:
             if(replace)
             {
-                copyForwardAlt(ir[offset + 1 .. $],ir[offset .. $ - 1]);
+                copy(ir[offset + 1 .. $], ir[offset .. $ - 1]);
                 ir.length -= 1;
             }
             return;
@@ -1304,7 +1271,7 @@ struct Parser(R)
                 if(replace)
                     ir[offset] = op;
                 else
-                    insertInPlaceAlt(ir, offset, op);
+                    insertInPlace(ir, offset, op);
                 put(Bytecode(greedy ? IR.RepeatEnd : IR.RepeatQEnd, len));
                 put(Bytecode.init); //hotspot
                 putRaw(1);
@@ -1321,7 +1288,7 @@ struct Parser(R)
                 if(replace)
                     ir[offset] = op;
                 else
-                    insertInPlaceAlt(ir, offset, op);
+                    insertInPlace(ir, offset, op);
                 offset += 1;//so it still points to the repeated block
                 put(Bytecode(greedy ? IR.RepeatEnd : IR.RepeatQEnd, len));
                 put(Bytecode.init); //hotspot
@@ -1332,7 +1299,7 @@ struct Parser(R)
             }
             else if(replace)
             {
-                copyForwardAlt(ir[offset+1 .. $],ir[offset .. $-1]);
+                copy(ir[offset+1 .. $], ir[offset .. $-1]);
                 ir.length -= 1;
             }
             put(Bytecode(greedy ? IR.InfiniteStart : IR.InfiniteQStart, len));
@@ -1348,7 +1315,7 @@ struct Parser(R)
             if(replace)
                 ir[offset] = op;
             else
-                insertInPlaceAlt(ir, offset, op);
+                insertInPlace(ir, offset, op);
             //IR.InfinteX is always a hotspot
             put(Bytecode(greedy ? IR.InfiniteEnd : IR.InfiniteQEnd, len));
             put(Bytecode.init); //merge index
@@ -1386,13 +1353,13 @@ struct Parser(R)
             next();
             break;
         default:
+            //FIXME: getCommonCasing in new std uni
             if(re_flags & RegexOption.casefold)
             {
-                dchar[5] data;
-                auto range = getCommonCasing(current, data);
+                auto range = simpleCaseFoldings(current);
                 assert(range.length <= 5);
                 if(range.length == 1)
-                    put(Bytecode(IR.Char, range[0]));
+                    put(Bytecode(IR.Char, range.front));
                 else
                     foreach(v; range)
                         put(Bytecode(IR.OrChar, v, cast(uint)range.length));
@@ -1453,13 +1420,12 @@ struct Parser(R)
         {
             if(re_flags & RegexOption.casefold)
             {
-                dchar[5] chars;
-                auto range = getCommonCasing(ch, chars);
+                auto range = simpleCaseFoldings(ch);
                 foreach(v; range)
-                    set.add(v);
+                    set |= v;
             }
             else
-                set.add(ch);
+                set |= ch;
         }
 
         static Operator twinSymbolOperator(dchar symbol)
@@ -1523,14 +1489,14 @@ struct Parser(R)
                     state = State.CharDash;
                     break;
                 case '\\':
-                    set.add(last);
+                    set |= last;
                     state = State.Escape;
                     break;
                 case '[':
                     op = Operator.Union;
                     goto case;
                 case ']':
-                    set.add(last);
+                    set |= last;
                     break L_CharTermLoop;
                 default:
                     addWithFlags(set, last, re_flags);
@@ -1546,7 +1512,39 @@ struct Parser(R)
                     next();//skip second twin char
                     break L_CharTermLoop;
                 }
-                goto case State.Char;// it's not a twin lets re-run normal logic
+                //~~~WORKAROUND~~~
+                //It's a copy of State.Char, should be goto case but see @@@BUG12603
+                switch(current)
+                {
+                case '|':
+                case '~':
+                case '&':
+                    // then last is treated as normal char and added as implicit union
+                    state = State.PotentialTwinSymbolOperator;
+                    addWithFlags(set, last, re_flags);
+                    last = current;
+                    break;
+                case '-': // still need more info
+                    state = State.CharDash;
+                    break;
+                case '\\':
+                    set |= last;
+                    state = State.Escape;
+                    break;
+                case '[':
+                    op = Operator.Union;
+                    goto case;
+                case ']':
+                    set |= last;
+                    break L_CharTermLoop;
+                default:
+                    addWithFlags(set, last, re_flags);
+                    state = State.Char;
+                    last = current;
+                }
+                break;
+                //~~~END OF WORKAROUND~~~
+                //goto case State.Char;// it's not a twin lets re-run normal logic
             case State.Escape:
                 // xxx \ current xxx
                 switch(current)
@@ -1603,19 +1601,19 @@ struct Parser(R)
                     state = State.Char;
                     break;
                 case 'd':
-                    set.add(unicodeNd);
+                    set.add(unicode.Nd);
                     state = State.Start;
                     break;
                 case 'D':
-                    set.add(unicodeNd.dup.negate());
+                    set.add(unicode.Nd.inverted);
                     state = State.Start;
                     break;
                 case 's':
-                    set.add(unicodeWhite_Space);
+                    set.add(unicode.White_Space);
                     state = State.Start;
                     break;
                 case 'S':
-                    set.add(unicodeWhite_Space.dup.negate());
+                    set.add(unicode.White_Space.inverted);
                     state = State.Start;
                     break;
                 case 'w':
@@ -1623,7 +1621,7 @@ struct Parser(R)
                     state = State.Start;
                     break;
                 case 'W':
-                    set.add(wordCharacter.dup.negate());
+                    set.add(wordCharacter.inverted);
                     state = State.Start;
                     break;
                 default:
@@ -1658,7 +1656,7 @@ struct Parser(R)
                             addWithFlags(set, ch, re_flags);
                     }
                     else
-                        set.add(Interval(last, current));
+                        set.add(last, current + 1);
                     state = State.Start;
                 }
                 break;
@@ -1704,7 +1702,7 @@ struct Parser(R)
                     error("invalid escape sequence");
                 }
                 enforce(last <= end,"inverted range");
-                set.add(Interval(last,end));
+                set.add(last, end + 1);
                 state = State.Start;
                 break;
             }
@@ -1727,7 +1725,7 @@ struct Parser(R)
             switch(op)
             {
             case Operator.Negate:
-                stack.top.negate();
+                stack.top = stack.top.inverted;
                 break;
             case Operator.Union:
                 auto s = stack.pop();//2nd operand
@@ -1742,7 +1740,7 @@ struct Parser(R)
             case Operator.SymDifference:
                 auto s = stack.pop();//2nd operand
                 enforce(!stack.empty, "no operand for '~~'");
-                stack.top.symmetricSub(s);
+                stack.top ~= s;
                 break;
             case Operator.Intersection:
                 auto s = stack.pop();//2nd operand
@@ -1821,27 +1819,38 @@ struct Parser(R)
         charsetToIr(vstack.top);
     }
     //try to generate optimal IR code for this CodepointSet
-    @trusted void charsetToIr(in CodepointSet set)
+    @trusted void charsetToIr(CodepointSet set)
     {//@@@BUG@@@ writeln is @system
-        uint chars = set.chars;
+        uint chars = cast(uint)set.length;
         if(chars < Bytecode.maxSequence)
         {
             switch(chars)
             {
                 case 1:
-                    put(Bytecode(IR.Char, set.ivals[0]));
+                    put(Bytecode(IR.Char, set.byCodepoint.front));
                     break;
                 case 0:
                     error("empty CodepointSet not allowed");
                     break;
                 default:
-                    foreach(ch; set[])
+                    foreach(ch; set.byCodepoint)
                         put(Bytecode(IR.OrChar, ch, chars));
             }
         }
         else
         {
-            if(set.ivals.length > maxCharsetUsed)
+            import std.algorithm : countUntil;
+            auto ivals = set.byInterval;
+            auto n = charsets.countUntil(set);
+            if(n >= 0)
+            {
+                if(ivals.length*2 > maxCharsetUsed)
+                    put(Bytecode(IR.Trie, cast(uint)n));
+                else
+                    put(Bytecode(IR.CodepointSet, cast(uint)n));
+                return;
+            }
+            if(ivals.length*2 > maxCharsetUsed)
             {
                 auto t  = getTrie(set);
                 put(Bytecode(IR.Trie, cast(uint)tries.length));
@@ -1872,21 +1881,21 @@ struct Parser(R)
 
         case 'd':
             next();
-            charsetToIr(unicodeNd);
+            charsetToIr(unicode.Nd);
             break;
         case 'D':
             next();
-            charsetToIr(unicodeNd.dup.negate());
+            charsetToIr(unicode.Nd.inverted);
             break;
         case 'b':   next(); put(Bytecode(IR.Wordboundary, 0)); break;
         case 'B':   next(); put(Bytecode(IR.Notwordboundary, 0)); break;
         case 's':
             next();
-            charsetToIr(unicodeWhite_Space);
+            charsetToIr(unicode.White_Space);
             break;
         case 'S':
             next();
-            charsetToIr(unicodeWhite_Space.dup.negate());
+            charsetToIr(unicode.White_Space.inverted);
             break;
         case 'w':
             next();
@@ -1894,7 +1903,7 @@ struct Parser(R)
             break;
         case 'W':
             next();
-            charsetToIr(wordCharacter.dup.negate());
+            charsetToIr(wordCharacter.inverted);
             break;
         case 'p': case 'P':
             auto CodepointSet = parseUnicodePropertySpec(current == 'P');
@@ -1921,20 +1930,18 @@ struct Parser(R)
             break;
         case '1': .. case '9':
             uint nref = cast(uint)current - '0';
-            uint maxBackref;
-            foreach(v; groupStack.data)
-                maxBackref += v;
-            uint localLimit = maxBackref - groupStack.top;
+            uint maxBackref = sum(groupStack.data);
             enforce(nref < maxBackref, "Backref to unseen group");
             //perl's disambiguation rule i.e.
             //get next digit only if there is such group number
-            while(nref < maxBackref && next() && ascii.isDigit(current))
+            while(nref < maxBackref && next() && std.ascii.isDigit(current))
             {
                 nref = nref * 10 + current - '0';
             }
             if(nref >= maxBackref)
                 nref /= 10;
-
+            enforce(!isOpenGroup(nref), "Backref to open group");
+            uint localLimit = maxBackref - groupStack.top;
             if(nref >= localLimit)
             {
                 put(Bytecode(IR.Backref, nref-localLimit));
@@ -1953,9 +1960,8 @@ struct Parser(R)
 
     //parse and return a CodepointSet for \p{...Property...} and \P{...Property..},
     //\ - assumed to be processed, p - is current
-    const(CodepointSet) parseUnicodePropertySpec(bool negated)
+    CodepointSet parseUnicodePropertySpec(bool negated)
     {
-        alias ucmp = comparePropertyName;
         enum MAX_PROPERTY = 128;
         char[MAX_PROPERTY] result;
         uint k = 0;
@@ -1964,7 +1970,7 @@ struct Parser(R)
         {
             while(k < MAX_PROPERTY && next() && current !='}' && current !=':')
                 if(current != '-' && current != ' ' && current != '_')
-                    result[k++] = cast(char)ascii.toLower(current);
+                    result[k++] = cast(char)std.ascii.toLower(current);
             enforce(k != MAX_PROPERTY, "invalid property name");
             enforce(current == '}', "} expected ");
         }
@@ -2008,7 +2014,7 @@ struct Parser(R)
 public struct Regex(Char)
 {
     //temporary workaround for identifier lookup
-    const(CodepointSet)[] charsets; //
+    CodepointSet[] charsets; //
     Bytecode[] ir;      //compiled bytecode of pattern
 
     /++
@@ -2092,7 +2098,7 @@ private:
     uint hotspotTableSize; //number of entries in merge table
     uint threadCount;
     uint flags;         //global regex flags
-    const(Trie)[]  tries; //
+    public const(Trie)[]  tries; //
     uint[] backrefed; //bit array of backreferenced submatches
     Kickstart!Char kickstart;
 
@@ -2282,7 +2288,8 @@ unittest
 @trusted uint lookupNamedGroup(String)(NamedGroup[] dict, String name)
 {//equal is @system?
     auto fnd = assumeSorted!"cmp(a,b) < 0"(map!"a.name"(dict)).lowerBound(name).length;
-    enforce(equal(dict[fnd].name, name), text("no submatch named ", name));
+    enforce(fnd < dict.length && equal(dict[fnd].name, name),
+        text("no submatch named ", name));
     return dict[fnd].group;
 }
 
@@ -2355,13 +2362,13 @@ int quickTestFwd(RegEx)(uint pc, dchar front, const ref RegEx re)
 @trusted public struct SampleGenerator(Char)
 {
     import std.random;
-    const(Regex!Char) re;
+    Regex!Char re;
     Appender!(char[]) app;
     uint limit, seed;
     Xorshift gen;
     //generator for pattern r, with soft maximum of threshold elements
     //and a given random seed
-    this(in Regex!Char r, uint threshold, uint randomSeed)
+    this(ref Regex!Char r, uint threshold, uint randomSeed)
     {
         re = r;
         limit = threshold;
@@ -2645,7 +2652,7 @@ private:
         auto t = worklist[$-1];
         worklist.length -= 1;
         if(!__ctfe)
-            worklist.assumeSafeAppend();
+            cast(void)worklist.assumeSafeAppend();
         return t;
     }
 
@@ -2656,7 +2663,7 @@ private:
     }
 
 public:
-    @trusted this(const ref Regex!Char re, uint[] memory)
+    @trusted this(ref Regex!Char re, uint[] memory)
     {
         assert(memory.length == 256);
         fChar = uint.max;
@@ -2747,11 +2754,19 @@ public:
                     }
                     else
                     {
+
                         static if(charSize == 1)
                             static immutable codeBounds = [0x0, 0x7F, 0x80, 0x7FF, 0x800, 0xFFFF, 0x10000, 0x10FFFF];
                         else //== 2
                             static immutable codeBounds = [0x0, 0xFFFF, 0x10000, 0x10FFFF];
-                        auto srange = assumeSorted!"a <= b"(set.ivals);
+                        uint[] arr = new uint[set.byInterval.length * 2];
+                        size_t ofs = 0;
+                        foreach(ival; set.byInterval)
+                        {
+                            arr[ofs++] = ival.a;
+                            arr[ofs++] = ival.b;
+                        }
+                        auto srange = assumeSorted!"a <= b"(arr);
                         for(uint i = 0; i < codeBounds.length/2; i++)
                         {
                             auto start = srange.lowerBound(codeBounds[2*i]).length;
@@ -2762,10 +2777,10 @@ public:
                     }
                     if(numS == 0 || t.idx + s[numS-1] > n_length)
                         goto L_StopThread;
-                    auto  chars = set.chars;
+                    auto  chars = set.length;
                     if(chars > charsetThreshold)
                         goto L_StopThread;
-                    foreach(ch; set[])
+                    foreach(ch; set.byCodepoint)
                     {
                         //avoid surrogate pairs
                         if(0xD800 <= ch && ch <= 0xDFFF)
@@ -3810,7 +3825,7 @@ template BacktrackingMatcher(bool CTregex)
             //helper function, saves engine state
             void pushState(uint pc, uint counter)
             {
-                if(stateSize + matches.length > stackAvail)
+                if(stateSize + trackers.length + matches.length > stackAvail)
                 {
                     newStack();
                     lastState = 0;
@@ -3820,6 +3835,11 @@ template BacktrackingMatcher(bool CTregex)
                 lastState += stateSize;
                 memory[lastState .. lastState + 2 * matches.length] = (cast(size_t[])matches)[];
                 lastState += 2*matches.length;
+                if(trackers.length)
+                {
+                    memory[lastState .. lastState + trackers.length] = trackers[];
+                    lastState += trackers.length;
+                }
                 debug(std_regex_matcher)
                     writefln("Saved(pc=%s) front: %s src: %s",
                         pc, front, s[index..s.lastIndex]);
@@ -3830,9 +3850,14 @@ template BacktrackingMatcher(bool CTregex)
             {
                 if(!lastState)
                     return prevStack();
+                if (trackers.length)
+                {
+                    lastState -= trackers.length;
+                    trackers[] = memory[lastState .. lastState + trackers.length];
+                }
                 lastState -= 2*matches.length;
                 auto pm = cast(size_t[])matches;
-                pm[] = memory[lastState .. lastState+2*matches.length];
+                pm[] = memory[lastState .. lastState + 2 * matches.length];
                 lastState -= stateSize;
                 State* state = cast(State*)&memory[lastState];
                 index = state.index;
@@ -3887,7 +3912,7 @@ template BacktrackingMatcher(bool CTregex)
 //generate code for TypeTuple(S, S+1, S+2, ... E)
 @system string ctGenSeq(int S, int E)
 {
-    string s = "alias TypeTuple!(";
+    string s = "alias Sequence = TypeTuple!(";
     if(S < E)
         s ~= to!string(S);
     for(int i = S+1; i < E;i++)
@@ -3895,7 +3920,7 @@ template BacktrackingMatcher(bool CTregex)
         s ~= ", ";
         s ~= to!string(i);
     }
-    return s ~") Sequence;";
+    return s ~");";
 }
 
 //alias to TypeTuple(S, S+1, S+2, ... E)
@@ -3929,10 +3954,10 @@ struct CtContext
         total_matches = re.ngroup;
     }
 
-    CtContext lookaround()
+    CtContext lookaround(uint s, uint e)
     {
         CtContext ct;
-        ct.total_matches = total_matches;
+        ct.total_matches = e - s;
         ct.match = 1;
         return ct;
     }
@@ -3947,6 +3972,12 @@ struct CtContext
                     stackPop(counter);"
             : "
                     counter = 0;";
+        if(infNesting)
+        {
+            text ~= ctSub(`
+                    stackPop(trackers[0..$$]);
+                    `, curInfLoop + 1);
+        }
         if(match < total_matches)
         {
             text ~= ctSub("
@@ -3964,7 +3995,7 @@ struct CtContext
     string saveCode(uint pc, string count_expr="counter")
     {
         string text = ctSub("
-                    if(stackAvail < $$*(Group!(DataIndex)).sizeof/size_t.sizeof + $$)
+                    if(stackAvail < $$*(Group!(DataIndex)).sizeof/size_t.sizeof + trackers.length + $$)
                     {
                         newStack();
                         lastState = 0;
@@ -3975,6 +4006,12 @@ struct CtContext
         else
             text ~= ctSub("
                     stackPush(matches[$$..$]);", reserved);
+        if(infNesting)
+        {
+            text ~= ctSub(`
+                    stackPush(trackers[0..$$]);
+                    `, curInfLoop + 1);
+        }
         text ~= counter ? ctSub("
                     stackPush($$);", count_expr) : "";
         text ~= ctSub("
@@ -4050,7 +4087,7 @@ struct CtContext
             string bwdCreate = "bwdMatcher(matcher, mem)";
             uint start = IRL!(IR.LookbehindStart);
             uint end = IRL!(IR.LookbehindStart)+len+IRL!(IR.LookaheadEnd);
-            CtContext context = lookaround(); //split off new context
+            CtContext context = lookaround(ir[1].raw, ir[2].raw); //split off new context
             auto slice = ir[start .. end];
             r.code ~= ctSub(`
             case $$: //fake lookaround "atom"
@@ -4159,18 +4196,18 @@ struct CtContext
         {
         case IR.InfiniteStart, IR.InfiniteQStart:
             r ~= ctSub( `
-                    tracker_$$ = DataIndex.max;
+                    trackers[$$] = DataIndex.max;
                     goto case $$;`, curInfLoop, fixup);
             ir = ir[ir[0].length..$];
             break;
         case IR.InfiniteEnd:
             testCode = ctQuickTest(ir[IRL!(IR.InfiniteEnd) .. $],addr + 1);
             r ~= ctSub( `
-                    if(tracker_$$ == index)
+                    if(trackers[$$] == index)
                     {//source not consumed
                         goto case $$;
                     }
-                    tracker_$$ = index;
+                    trackers[$$] = index;
 
                     $$
                     {
@@ -4186,25 +4223,25 @@ struct CtContext
             break;
         case IR.InfiniteQEnd:
             testCode = ctQuickTest(ir[IRL!(IR.InfiniteEnd) .. $],addr + 1);
+            auto altCode = testCode.length ? ctSub("else goto case $$;", fixup) : "";
             r ~= ctSub( `
-                    if(tracker_$$ == index)
+                    if(trackers[$$] == index)
                     {//source not consumed
                         goto case $$;
                     }
-                    tracker_$$ = index;
+                    trackers[$$] = index;
 
                     $$
                     {
                         $$
                         goto case $$;
                     }
-                    else
-                        goto case $$;
+                    $$
                 case $$://restore state and go inside loop
                     $$
-                    goto case $$;`, curInfLoop, addr+2, curInfLoop,
-                    testCode, saveCode(addr+1),
-                    addr+2, fixup, addr+1, restoreCode(), fixup);
+                    goto case $$;`, curInfLoop, addr+2,
+                    curInfLoop, testCode, saveCode(addr+1),
+                    addr+2, altCode, addr+1, restoreCode(), fixup);
             ir = ir[ir[0].length..$];
             break;
         case IR.RepeatStart, IR.RepeatQStart:
@@ -4287,6 +4324,8 @@ struct CtContext
             {
                 pc++;
             }
+            else if(ir[pc].code == IR.Backref)
+                break;
             else
             {
                 auto code = ctAtomCode(ir[pc..$], -1);
@@ -4504,9 +4543,6 @@ struct CtContext
             counter = 0;
             lastState = 0;
             auto start = s._index;`;
-        for(int i = 0; i < nInfLoops; i++)
-            r ~= ctSub(`
-            size_t tracker_$$;`, i);
         r ~= `
             goto StartLoop;
             debug(std_regex_matcher) writeln("Try CT matching  starting at ",s[index..s.lastIndex]);
@@ -5207,14 +5243,13 @@ enum OneShot { Fwd, Bwd };
                     auto matcher = fwdMatcher(re.ir[t.pc .. end], subCounters.get(t.pc, 0));
                 else
                     auto matcher = bwdMatcher(re.ir[t.pc .. end], subCounters.get(t.pc, 0));
-                matcher.re.ngroup = re.ir[t.pc+2].raw - re.ir[t.pc+1].raw;
+                matcher.re.ngroup = me - ms;
                 matcher.backrefed = backrefed.empty ? t.matches : backrefed;
                 //backMatch
-                bool nomatch = (matcher.matchOneShot(t.matches, IRL!(IR.LookbehindStart))
-                    == MatchResult.Match) ^ positive;
+                auto mRes = matcher.matchOneShot(t.matches.ptr[ms .. me], IRL!(IR.LookbehindStart));
                 freelist = matcher.freelist;
                 subCounters[t.pc] = matcher.genCounter;
-                if(nomatch)
+                if((mRes == MatchResult.Match) ^ positive)
                 {
                     recycle(t);
                     t = worklist.fetch();
@@ -5238,13 +5273,12 @@ enum OneShot { Fwd, Bwd };
                     auto matcher = fwdMatcher(re.ir[t.pc .. end], subCounters.get(t.pc, 0));
                 matcher.re.ngroup = me - ms;
                 matcher.backrefed = backrefed.empty ? t.matches : backrefed;
-                bool nomatch = (matcher.matchOneShot(t.matches, IRL!(IR.LookaheadStart))
-                    == MatchResult.Match) ^ positive;
+                auto mRes = matcher.matchOneShot(t.matches.ptr[ms .. me], IRL!(IR.LookaheadStart));
                 freelist = matcher.freelist;
                 subCounters[t.pc] = matcher.genCounter;
                 s.reset(index);
                 next();
-                if(nomatch)
+                if((mRes == MatchResult.Match) ^ positive)
                 {
                     recycle(t);
                     t = worklist.fetch();
@@ -5259,9 +5293,7 @@ enum OneShot { Fwd, Bwd };
             case IR.NeglookaheadEnd:
             case IR.LookbehindEnd:
             case IR.NeglookbehindEnd:
-                t.pc = re.ir[t.pc].indexOfPair(t.pc);
-                uint ms = re.ir[t.pc+1].raw, me = re.ir[t.pc+2].raw;
-                finish(t, matches.ptr[ms..me]);
+                finish(t, matches.ptr[0 .. re.ngroup]);
                 recycle(t);
                 //cut off low priority threads
                 recycle(clist);
@@ -5365,10 +5397,9 @@ enum OneShot { Fwd, Bwd };
         {
             writefln("---------------single shot match ----------------- ");
         }
-            alias eval evalFn;
+        alias evalFn = eval;
         assert(clist == (ThreadList!DataIndex).init || startPc == RestartPc); // incorrect after a partial match
         assert(nlist == (ThreadList!DataIndex).init || startPc == RestartPc);
-            startPc = startPc;
         if(!atEnd)//if no char
         {
             debug(std_regex_matcher)
@@ -5494,30 +5525,6 @@ enum OneShot { Fwd, Bwd };
     to $(D match) or iteration over $(D RegexMatch) range.
 
     First element of range is the whole match.
-
-    Example, showing basic operations on $(D Captures):
-    ----
-    import std.regex;
-    import std.range;
-
-    void main()
-    {
-        auto m = match("@abc#", regex(`(\w)(\w)(\w)`));
-        auto c = m.captures;
-        assert(c.pre == "@"); // Part of input preceeding match
-        assert(c.post == "#"); // Immediately after match
-        assert(c.hit == c[0] && c.hit == "abc"); // The whole match
-        assert(c[2] =="b");
-        assert(c.front == "abc");
-        c.popFront();
-        assert(c.front == "a");
-        assert(c.back == "c");
-        c.popBack();
-        assert(c.back == "b");
-        popFrontN(c, 2);
-        assert(c.empty);
-    }
-    ----
 +/
 @trusted public struct Captures(R, DIndex = size_t)
     if(isSomeString!R)
@@ -5648,8 +5655,7 @@ public:
         import std.regex;
         import std.range;
 
-        auto m = match("a = 42;", regex(`(?P<var>\w+)\s*=\s*(?P<value>\d+);`));
-        auto c = m.captures;
+        auto c = matchFirst("a = 42;", regex(`(?P<var>\w+)\s*=\s*(?P<value>\d+);`));
         assert(c["var"] == "a");
         assert(c["value"] == "42");
         popFrontN(c, 2);
@@ -5672,14 +5678,14 @@ public:
     @property ref captures(){ return this; }
 }
 
-unittest//verify example
+///
+unittest
 {
-    auto m = match("@abc#", regex(`(\w)(\w)(\w)`));
-    auto c = m.captures;
-    assert(c.pre == "@");// part of input preceeding match
-    assert(c.post == "#"); // immediately after match
-    assert(c.hit == c[0] && c.hit == "abc");// the whole match
-    assert(c[2] =="b");
+    auto c = matchFirst("@abc#", regex(`(\w)(\w)(\w)`));
+    assert(c.pre == "@"); // Part of input preceding match
+    assert(c.post == "#"); // Immediately after match
+    assert(c.hit == c[0] && c.hit == "abc"); // The whole match
+    assert(c[2] == "b");
     assert(c.front == "abc");
     c.popFront();
     assert(c.front == "a");
@@ -5771,7 +5777,7 @@ public:
         Functionality for processing subsequent matches of global regexes via range interface:
         ---
         import std.regex;
-        auto m = match("Hello, world!", regex(`\w+`, "g"));
+        auto m = matchAll("Hello, world!", regex(`\w+`));
         assert(m.front.hit == "Hello");
         m.popFront();
         assert(m.front.hit == "world");
@@ -6472,7 +6478,7 @@ L_Replace_Loop:
             format = format[offset .. $];
             break;
         case State.Dollar:
-            if(ascii.isDigit(format[0]))
+            if(std.ascii.isDigit(format[0]))
             {
                 uint digit = parse!uint(format);
                 enforce(ignoreBadSubs || digit < captures.length, text("invalid submatch number ", digit));
@@ -6481,7 +6487,7 @@ L_Replace_Loop:
             }
             else if(format[0] == '{')
             {
-                auto x = find!(a => !ascii.isAlpha(a))(format[1..$]);
+                auto x = find!(a => !std.ascii.isAlpha(a))(format[1..$]);
                 enforce(!x.empty && x[0] == '}', "no matching '}' in replacement format");
                 auto name = format[1 .. $ - x.length];
                 format = x[1..$];
@@ -6871,16 +6877,16 @@ unittest
         TestVectors(  `[-+*/\p{in-mathematical-operators}]{2}`,    "a+\u2212",    "y",    "$&",    "+\u2212"),
         TestVectors(  `\p{Ll}+`,                      "XabcD",    "y",  "$&",      "abc"),
         TestVectors(  `\p{Lu}+`,                      "абвГДЕ",   "y",  "$&",      "ГДЕ"),
-        TestVectors(  `^\p{Currency Symbol}\p{Sc}`    "$₤",       "y",  "$&",      "$₤"),
-        TestVectors(  `\p{Common}\p{Thai}`            "!ฆ",       "y",  "$&",      "!ฆ"),
+        TestVectors(  `^\p{Currency Symbol}\p{Sc}`,   "$₤",       "y",  "$&",      "$₤"),
+        TestVectors(  `\p{Common}\p{Thai}`,           "!ฆ",       "y",  "$&",      "!ฆ"),
         TestVectors(  `[\d\s]*\D`,  "12 \t3\U00001680\u0F20_2",   "y",  "$&", "12 \t3\U00001680\u0F20_"),
         TestVectors(  `[c-wф]фф`, "ффф", "y", "$&", "ффф"),
 //case insensitive:
-        TestVectors(   `^abcdEf$`,           "AbCdEF"               "y",   "$&", "AbCdEF",      "i"),
+        TestVectors(   `^abcdEf$`,           "AbCdEF",              "y",   "$&", "AbCdEF",      "i"),
         TestVectors(   `Русский язык`,    "рУсскИй ЯзЫк",           "y",   "$&", "рУсскИй ЯзЫк",     "i"),
         TestVectors(   `ⒶⒷⓒ` ,        "ⓐⓑⒸ",                   "y",   "$&", "ⓐⓑⒸ",      "i"),
         TestVectors(   "\U00010400{2}",  "\U00010428\U00010400 ",   "y",   "$&", "\U00010428\U00010400", "i"),
-        TestVectors(   `[adzУ-Я]{4}`,    "DzюА"                     "y",   "$&", "DzЮа", "i"),
+        TestVectors(   `[adzУ-Я]{4}`,    "DzюЯ",                   "y",   "$&", "DzюЯ", "i"),
         TestVectors(   `\p{L}\p{Lu}{10}`, "абвгдеЖЗИКЛ",            "y",   "$&", "абвгдеЖЗИКЛ", "i"),
         TestVectors(   `(?:Dåb){3}`,  "DåbDÅBdÅb",                  "y",   "$&", "DåbDÅBdÅb", "i"),
 //escapes:
@@ -7010,17 +7016,18 @@ unittest
         version(std_regex_ct1)
         {
             pragma(msg, "Testing 1st part of ctRegex");
-            alias Tests = Sequence!(0, 90);
+            alias Tests = Sequence!(0, 155);
         }
         else version(std_regex_ct2)
         {
             pragma(msg, "Testing 2nd part of ctRegex");
-            alias Tests = Sequence!(90, 165);
+            alias Tests = Sequence!(155, 174);
         }
+        //FIXME: #174-178 contains CTFE parser bug
         else version(std_regex_ct3)
         {
             pragma(msg, "Testing 3rd part of ctRegex");
-            alias Tests = Sequence!(185, 220);
+            alias Tests = Sequence!(178, 220);
         }
         else version(std_regex_ct4)
         {
@@ -7041,7 +7048,7 @@ unittest
             else
             {
                 //BUG: tv[v] is fine but tvd is not known at compile time?!
-                enum r = ctRegex!(tv[v].pattern, tv[v].flags);
+                auto r = ctRegex!(tv[v].pattern, tv[v].flags);
                 auto nr = regex(tvd.pattern, tvd.flags);
                 assert(equal(r.ir, nr.ir),
                     text("!C-T regex! failed to compile pattern #", a ,": ", tvd.pattern));
@@ -7066,6 +7073,13 @@ unittest
     ct_tests();
     run_tests!bmatch(); //backtracker
     run_tests!match(); //thompson VM
+}
+
+unittest
+{
+    // test parser optimization of identical character classes
+    auto n = regex("[a-z]/[a-z]/[a-z]").charsets.length;
+    assert(n == 1, text(n));
 }
 
 unittest
@@ -7116,6 +7130,7 @@ unittest
     assert(equal(mx.captures, [ "B", "B"]));
     enum cx2 = ctRegex!"(A|B)*";
     assert(match("BAAA",cx2));
+
     enum cx3 = ctRegex!("a{3,4}","i");
     auto mx3 = match("AaA",cx3);
     assert(mx3);
@@ -7439,6 +7454,15 @@ unittest
     assert(match("aaaa", re).hit == "aaaa");
 }
 
+//bugzilla 10798
+unittest
+{
+    auto cr = ctRegex!("[abcd--c]*");
+    auto m  = "abc".match(cr);
+    assert(m);
+    assert(m.hit == "ab");
+}
+
 // bugzilla 10913
 unittest
 {
@@ -7481,6 +7505,66 @@ unittest
     assert(regex(`(?P<v1>\w+)`).namedCaptures.equal(["v1"]));
     assert(regex(`(?P<__>\w+)`).namedCaptures.equal(["__"]));
     assert(regex(`(?P<я>\w+)`).namedCaptures.equal(["я"]));
+}
+
+// bugzilla 12076
+unittest
+{
+    auto RE = ctRegex!(r"(?<!x[a-z]+)\s([a-z]+)");
+    string s = "one two";
+    auto m = match(s, RE);
+}
+
+// bugzilla 12105
+unittest
+{
+    auto r = ctRegex!`.*?(?!a)`;
+    assert("aaab".matchFirst(r).hit == "aaa");
+    auto r2 = ctRegex!`.*(?!a)`;
+    assert("aaab".matchFirst(r2).hit == "aaab");
+}
+
+//bugzilla 11784
+unittest
+{
+    assert("abcdefghijklmnopqrstuvwxyz"
+        .matchFirst("[a-z&&[^aeiuo]]").hit == "b");
+}
+
+//bugzilla 12366
+unittest
+{
+     auto re = ctRegex!(`^((?=(xx+?)\2+$)((?=\2+$)(?=(x+)(\4+$))\5){2})*x?$`);
+     assert("xxxxxxxx".match(re).empty);
+     assert(!"xxxx".match(re).empty);
+}
+
+// bugzilla 12582
+unittest
+{
+    auto r = regex(`(?P<a>abc)`);
+    assert(collectException("abc".matchFirst(r)["b"]));
+}
+
+// bugzilla 12691
+unittest
+{
+    assert(bmatch("e@", "^([a-z]|)*$").empty);
+    assert(bmatch("e@", ctRegex!`^([a-z]|)*$`).empty);
+}
+
+//bugzilla  12713
+unittest
+{
+    assertThrown(regex("[[a-z]([a-z]|(([[a-z])))"));
+}
+
+//bugzilla 12747
+unittest
+{
+    assertThrown(regex(`^x(\1)`));
+    assertThrown(regex(`^(x(\1))`));
+    assertThrown(regex(`^((x)(?=\1))`));
 }
 
 }//version(unittest)

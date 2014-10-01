@@ -164,7 +164,7 @@ tree d_truthvalue_conversion (tree);
 void d_add_global_declaration (tree);
 
 class Module;
-Module *d_gcc_get_output_module (void);
+Module *d_gcc_get_output_module();
 
 struct lang_type *build_d_type_lang_specific (Type *t);
 struct lang_decl *build_d_decl_lang_specific (Declaration *d);
@@ -176,20 +176,20 @@ tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
 extern const char *iprefix;
 extern const char *multilib_dir;
 extern void add_import_paths (bool stdinc);
-extern void add_phobos_versyms (void);
+extern void add_phobos_versyms();
 
 /* In d-lang.cc */
 extern tree d_pushdecl (tree);
-extern void push_binding_level (void);
+extern void push_binding_level();
 extern tree pop_binding_level (int, int);
 
-extern void init_global_binding_level (void);
+extern void init_global_binding_level();
 extern void set_decl_binding_chain (tree decl_chain);
 
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);
 
-extern void d_init_exceptions (void);
+extern void d_init_exceptions();
 
 extern void d_keep (tree t);
 extern void d_free (tree t);
@@ -201,10 +201,10 @@ extern void set_block (tree);
 extern const attribute_spec d_builtins_attribute_table[];
 extern const attribute_spec d_format_attribute_table[];
 tree d_builtin_function (tree);
-void d_init_builtins (void);
+void d_init_builtins();
 void d_register_builtin_type (tree, const char *);
-void d_backend_init (void);
-void d_backend_term (void);
+void d_backend_init();
+void d_backend_term();
 
 class Expression;
 extern Expression *build_expression (tree cst);

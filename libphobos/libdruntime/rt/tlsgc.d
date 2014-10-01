@@ -10,6 +10,10 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+ * work with the GDC compiler.
+ */
 module rt.tlsgc;
 
 import core.stdc.stdlib;
@@ -28,7 +32,7 @@ struct Data
  * Initialization hook, called FROM each thread. No assumptions about
  * module initialization state should be made.
  */
-Data* init()
+void* init()
 {
     auto data = cast(Data*).malloc(Data.sizeof);
     *data = Data.init;
@@ -43,33 +47,33 @@ Data* init()
  * Finalization hook, called FOR each thread. No assumptions about
  * module initialization state should be made.
  */
-void destroy(Data* data)
+void destroy(void* data)
 {
     // do module specific finalization
 
     .free(data);
 }
 
-alias void delegate(void* pstart, void* pend) ScanDg;
+alias void delegate(void* pstart, void* pend) nothrow ScanDg;
 
 /**
  * GC scan hook, called FOR each thread. Can be used to scan
  * additional thread local memory.
  */
-void scan(Data* data, scope ScanDg dg)
+void scan(void* data, scope ScanDg dg) nothrow
 {
     // do module specific marking
 }
 
-alias int delegate(void* addr) IsMarkedDg;
+alias int delegate(void* addr) nothrow IsMarkedDg;
 
 /**
  * GC sweep hook, called FOR each thread. Can be used to free
  * additional thread local memory or associated data structures. Note
  * that only memory allocated from the GC can have marks.
  */
-void processGCMarks(Data* data, scope IsMarkedDg dg)
+void processGCMarks(void* data, scope IsMarkedDg dg) nothrow
 {
     // do module specific sweeping
-    rt.lifetime.processGCMarks(*data.blockInfoCache, dg);
+    rt.lifetime.processGCMarks(*(cast(Data*)data).blockInfoCache, dg);
 }

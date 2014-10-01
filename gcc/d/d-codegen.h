@@ -21,61 +21,25 @@
 #include "d-irstate.h"
 #include "d-objfile.h"
 
-enum LibCall
+// D library function flags.
+
+enum LibCallFlag
 {
-  LIBCALL_NONE = -1,
-  LIBCALL_INVARIANT,
-
-  LIBCALL_AADELX, LIBCALL_AAEQUAL,
-  LIBCALL_AAGETRVALUEX, LIBCALL_AAGETX,
-  LIBCALL_AAINX,
-
-  LIBCALL_ADCMP2, LIBCALL_ADEQ2,
-
-  LIBCALL_ALLOCMEMORY,
-  LIBCALL_ARRAY_BOUNDS,
-
-  LIBCALL_ARRAYAPPENDT, LIBCALL_ARRAYAPPENDCTX,
-  LIBCALL_ARRAYAPPENDCD, LIBCALL_ARRAYAPPENDWD,
-  LIBCALL_ARRAYASSIGN,
-  LIBCALL_ARRAYCAST,
-  LIBCALL_ARRAYCATT, LIBCALL_ARRAYCATNT,
-  LIBCALL_ARRAYCOPY,
-  LIBCALL_ARRAYCTOR,
-  LIBCALL_ARRAYLITERALTX,
-  LIBCALL_ARRAYSETASSIGN, LIBCALL_ARRAYSETCTOR,
-  LIBCALL_ARRAYSETLENGTHT, LIBCALL_ARRAYSETLENGTHIT,
-
-  LIBCALL_ASSERT,
-  LIBCALL_ASSERT_MSG,
-
-  LIBCALL_ASSOCARRAYLITERALTX,
-
-  LIBCALL_CALLFINALIZER,
-  LIBCALL_CALLINTERFACEFINALIZER,
-
-  LIBCALL_DELARRAY, LIBCALL_DELARRAYT,
-  LIBCALL_DELCLASS, LIBCALL_DELINTERFACE,
-  LIBCALL_DELMEMORY,
-
-  LIBCALL_DYNAMIC_CAST,
-  LIBCALL_HIDDEN_FUNC,
-  LIBCALL_INTERFACE_CAST,
-
-  LIBCALL_NEWARRAYT, LIBCALL_NEWARRAYIT,
-  LIBCALL_NEWARRAYMTX, LIBCALL_NEWARRAYMITX,
-  LIBCALL_NEWCLASS, LIBCALL_NEWITEMT,
-  LIBCALL_NEWITEMIT,
-
-  LIBCALL_SWITCH_DSTRING, LIBCALL_SWITCH_ERROR,
-  LIBCALL_SWITCH_STRING, LIBCALL_SWITCH_USTRING,
-
-  LIBCALL_THROW,
-  LIBCALL_UNITTEST,
-  LIBCALL_UNITTEST_MSG,
-  LIBCALL_count
+  LCFnone     = 0,
+  LCFthrows   = 1 << 1,
+  LCFmalloc   = 1 << 2,
+  LCFvarargs  = 1 << 4,
 };
 
+// List of codes for internally recognised D library functions.
+
+enum LibCall
+{
+#define DEF_D_RUNTIME(CODE, N, P, T, F) LIBCALL_ ## CODE,
+#include "runtime.def"
+#undef DEF_D_RUNTIME
+  LIBCALL_count
+};
 
 struct FuncFrameInfo
 {
@@ -117,7 +81,7 @@ extern tree insert_type_modifiers (tree type, unsigned mod);
 
 extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);
 
-extern tree build_exception_object (void);
+extern tree build_exception_object();
 extern tree build_float_modulus (tree type, tree t1, tree t2);
 
 extern tree indirect_ref (tree type, tree exp);
@@ -158,6 +122,7 @@ extern tree void_okay_p (tree t);
 
 // Various expressions
 extern tree build_binary_op (tree_code code, tree type, tree arg0, tree arg1);
+extern tree build_binop_assignment(tree_code code, Expression *e1, Expression *e2);
 extern tree build_array_index (tree ptr, tree index);
 extern tree build_offset_op (tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
@@ -171,23 +136,24 @@ extern tree d_build_call_nary (tree callee, int n_args, ...);
 extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
-extern tree build_frame_type (FuncDeclaration *func);
-extern FuncFrameInfo *get_frameinfo (FuncDeclaration *fd);
-extern tree get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer);
+extern tree build_frame_type(FuncDeclaration *func);
+extern void build_closure(FuncDeclaration *fd, IRState *irs);
+extern FuncFrameInfo *get_frameinfo(FuncDeclaration *fd);
+extern tree get_framedecl(FuncDeclaration *inner, FuncDeclaration *outer);
 
-extern tree build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd);
+extern tree build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd);
 
 // Static chain for nested functions
-extern tree get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym);
+extern tree get_frame_for_symbol(FuncDeclaration *func, Dsymbol *sym);
 
 // Local variables
-extern void build_local_var (VarDeclaration *vd, FuncDeclaration *fd);
-extern tree build_local_temp (tree type);
-extern tree create_temporary_var (tree type);
-extern tree maybe_temporary_var (tree exp, tree *out_var);
-extern void expand_decl (tree decl);
+extern void build_local_var(VarDeclaration *vd, FuncDeclaration *fd);
+extern tree build_local_temp(tree type);
+extern tree create_temporary_var(tree type);
+extern tree maybe_temporary_var(tree exp, tree *out_var);
+extern void expand_decl(tree decl);
 
-extern tree get_decl_tree (Declaration *decl, FuncDeclaration *func);
+extern tree get_decl_tree(Declaration *decl, FuncDeclaration *func);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree make_temp (tree t);
@@ -195,9 +161,7 @@ extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
 // Array operations
-extern bool unhandled_arrayop_p (BinExp *exp);
-
-extern bool array_bounds_check (void);
+extern bool array_bounds_check();
 extern tree d_checked_index (Loc loc, tree index, tree upr, bool inclusive);
 extern tree d_bounds_condition (tree index, tree upr, bool inclusive);
 
@@ -254,7 +218,7 @@ lang_ddecl (tree t)
 
 // Returns D frontend type 'Object' which all classes are derived from.
 inline Type *
-build_object_type (void)
+build_object_type()
 {
   if (ClassDeclaration::object)
     return ClassDeclaration::object->type;
@@ -353,15 +317,6 @@ extern IRState *current_irstate;
 
 // Various helpers that need extra state
 
-class WrappedExp : public Expression
-{
-public:
-  tree exp_node;
-  WrappedExp (Loc loc, TOK op, tree exp_node, Type *type);
-  void toCBuffer (OutBuffer *buf, HdrGenState *hgs);
-  elem *toElem (IRState *irs);
-};
-
 struct AggLayout
 {
   AggLayout (AggregateDeclaration *indecl, tree intype)
@@ -389,7 +344,7 @@ class ArrayScope
 class AddrOfExpr
 {
  public:
-  AddrOfExpr (void)
+  AddrOfExpr()
   { this->var_ = NULL_TREE; }
 
   tree set (tree exp)
@@ -409,10 +364,10 @@ class CallExpr
     : ce_(ce), argi_(0)
   { }
 
-  tree callee (void)
+  tree callee()
   { return CALL_EXPR_FN (this->ce_); }
 
-  tree nextArg (void)
+  tree nextArg()
   {
     tree result = this->argi_ < call_expr_nargs (this->ce_)
       ? CALL_EXPR_ARG (this->ce_, this->argi_) : NULL_TREE;
@@ -421,7 +376,7 @@ class CallExpr
   }
 
  private:
-  CallExpr (void)
+  CallExpr()
   { }
 
   tree ce_;

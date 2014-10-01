@@ -29,18 +29,20 @@
 #include "mars.h"
 #include "mtype.h"
 #include "cond.h"
+#include "hdrgen.h"
 #include "id.h"
+#include "doc.h"
 #include "json.h"
 #include "module.h"
 #include "scope.h"
 #include "root.h"
 #include "dfrontend/target.h"
 
-static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
-static tree d_handle_forceinline_attribute (tree *, tree, tree, int, bool *);
-static tree d_handle_flatten_attribute (tree *, tree, tree, int, bool *);
-static tree d_handle_target_attribute (tree *, tree, tree, int, bool *);
-static tree d_handle_noclone_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_noinline_attribute(tree *, tree, tree, int, bool *);
+static tree d_handle_forceinline_attribute(tree *, tree, tree, int, bool *);
+static tree d_handle_flatten_attribute(tree *, tree, tree, int, bool *);
+static tree d_handle_target_attribute(tree *, tree, tree, int, bool *);
+static tree d_handle_noclone_attribute(tree *, tree, tree, int, bool *);
 
 
 static char lang_name[6] = "GNU D";
@@ -66,7 +68,6 @@ static const attribute_spec d_attribute_table[] =
 #undef LANG_HOOKS_INIT_TS
 #undef LANG_HOOKS_INIT_OPTIONS
 #undef LANG_HOOKS_INIT_OPTIONS_STRUCT
-#undef LANG_HOOKS_INITIALIZE_DIAGNOSTICS
 #undef LANG_HOOKS_OPTION_LANG_MASK
 #undef LANG_HOOKS_HANDLE_OPTION
 #undef LANG_HOOKS_POST_OPTIONS
@@ -90,7 +91,6 @@ static const attribute_spec d_attribute_table[] =
 #define LANG_HOOKS_INIT_TS			d_init_ts
 #define LANG_HOOKS_INIT_OPTIONS			d_init_options
 #define LANG_HOOKS_INIT_OPTIONS_STRUCT		d_init_options_struct
-#define LANG_HOOKS_INITIALIZE_DIAGNOSTICS	d_initialize_diagnostics
 #define LANG_HOOKS_OPTION_LANG_MASK		d_option_lang_mask
 #define LANG_HOOKS_HANDLE_OPTION		d_handle_option
 #define LANG_HOOKS_POST_OPTIONS			d_post_options
@@ -145,28 +145,27 @@ static bool std_inc = true;
 
 /* Common initialization before calling option handlers.  */
 static void
-d_init_options (unsigned int, cl_decoded_option *decoded_options)
+d_init_options(unsigned int, cl_decoded_option *decoded_options)
 {
   // Set default values
   global.init();
 
   global.compiler.vendor = lang_name;
 
-  global.params.argv0 = xstrdup (decoded_options[0].arg);
-  global.params.link = 1;
-  global.params.useAssert = 1;
-  global.params.useInvariants = 1;
-  global.params.useIn = 1;
-  global.params.useOut = 1;
+  global.params.argv0 = xstrdup(decoded_options[0].arg);
+  global.params.link = true;
+  global.params.useAssert = true;
+  global.params.useInvariants = true;
+  global.params.useIn = true;
+  global.params.useOut = true;
   global.params.useArrayBounds = 2;
-  global.params.useSwitchError = 1;
-  global.params.useInline = 0;
+  global.params.useSwitchError = true;
+  global.params.useInline = false;
   global.params.warnings = 0;
-  global.params.obj = 1;
-  global.params.quiet = 1;
+  global.params.obj = true;
   global.params.useDeprecated = 1;
-  global.params.betterC = 0;
-  global.params.allInst = 0;
+  global.params.betterC = false;
+  global.params.allInst = false;
 
   global.params.linkswitches = new Strings();
   global.params.libfiles = new Strings();
@@ -182,7 +181,7 @@ d_init_options (unsigned int, cl_decoded_option *decoded_options)
 
 /* Initialize options structure OPTS.  */
 static void
-d_init_options_struct (gcc_options *opts)
+d_init_options_struct(gcc_options *opts)
 {
   // GCC options
   opts->x_flag_exceptions = 1;
@@ -204,18 +203,9 @@ d_init_options_struct (gcc_options *opts)
   opts->x_flag_wrapv = 1;
 }
 
-static void
-d_initialize_diagnostics (diagnostic_context *context)
-{
-  // We don't need any of these in error messages.
-  context->show_caret = false;
-  context->show_option_requested = false;
-  context->show_column = false;
-}
-
 /* Return language mask for option parsing.  */
 static unsigned int
-d_option_lang_mask (void)
+d_option_lang_mask()
 {
   return CL_D;
 }
@@ -224,17 +214,17 @@ static void
 d_add_builtin_version(const char* ident)
 {
   if (strcmp (ident, "linux") == 0)
-    global.params.isLinux = 1;
+    global.params.isLinux = true;
   else if (strcmp (ident, "OSX") == 0)
-    global.params.isOSX = 1;
+    global.params.isOSX = true;
   else if (strcmp (ident, "Windows") == 0)
-    global.params.isWindows = 1;
+    global.params.isWindows = true;
   else if (strcmp (ident, "FreeBSD") == 0)
-    global.params.isFreeBSD = 1;
+    global.params.isFreeBSD = true;
   else if (strcmp (ident, "OpenBSD") == 0)
-    global.params.isOpenBSD = 1;
+    global.params.isOpenBSD = true;
   else if (strcmp (ident, "Solaris") == 0)
-    global.params.isSolaris = 1;
+    global.params.isSolaris = true;
   else if (strcmp (ident, "X86_64") == 0)
     global.params.is64bit = true;
 
@@ -242,16 +232,17 @@ d_add_builtin_version(const char* ident)
 }
 
 static bool
-d_init (void)
+d_init()
 {
   if(POINTER_SIZE == 64)
-    global.params.isLP64 = 1;
+    global.params.isLP64 = true;
 
   Type::init();
   Id::initialize();
   Module::init();
   Expression::init();
   initPrecedence();
+  initTraitsStringTable();
 
   d_backend_init();
 
@@ -312,7 +303,7 @@ d_init (void)
     VersionCondition::addPredefinedGlobalIdent ("unittest");
   if (global.params.useAssert)
     VersionCondition::addPredefinedGlobalIdent("assert");
-  if (global.params.noboundscheck)
+  if (!global.params.useArrayBounds)
     VersionCondition::addPredefinedGlobalIdent("D_NoBoundsChecks");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
@@ -325,7 +316,7 @@ d_init (void)
 }
 
 void
-d_init_ts (void)
+d_init_ts()
 {
   MARK_TS_TYPED (IASM_EXPR);
   MARK_TS_TYPED (FLOAT_MOD_EXPR);
@@ -383,7 +374,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fbounds_check:
-      global.params.noboundscheck = !value;
+      global.params.useArrayBounds = value ? 2 : 0;
+      flag_bounds_check = value;
       break;
 
     case OPT_fdebug:
@@ -422,17 +414,21 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fdoc_dir_:
-      global.params.doDocComments = 1;
+      global.params.doDocComments = true;
       global.params.docdir = arg;
       break;
 
     case OPT_fdoc_file_:
-      global.params.doDocComments = 1;
+      global.params.doDocComments = true;
       global.params.docname = arg;
       break;
 
     case OPT_fdoc_inc_:
       global.params.ddocfiles->push (arg);
+      break;
+
+    case OPT_fd_vgc:
+      global.params.vgc = value;
       break;
 
     case OPT_fd_verbose:
@@ -465,12 +461,12 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fintfc_dir_:
-      global.params.doHdrGeneration = 1;
+      global.params.doHdrGeneration = true;
       global.params.hdrdir = arg;
       break;
 
     case OPT_fintfc_file_:
-      global.params.doHdrGeneration = 1;
+      global.params.doHdrGeneration = true;
       global.params.hdrname = arg;
       break;
 
@@ -520,7 +516,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useOut = !value;
       global.params.useAssert = !value;
       // release mode doesn't turn off bounds checking for safe functions.
-      global.params.useArrayBounds = !value ? 2 : 1;
+      if (global.params.useArrayBounds != 0)
+	global.params.useArrayBounds = !value ? 2 : 1;
       flag_bounds_check = !value;
       global.params.useSwitchError = !value;
       break;
@@ -546,8 +543,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fXf_:
-      global.params.doXGeneration = 1;
-      global.params.xfilename = arg;
+      global.params.doJsonGeneration = true;
+      global.params.jsonfilename = arg;
       break;
 
     case OPT_imultilib:
@@ -612,10 +609,6 @@ d_post_options (const char ** fn)
   if (num_in_fnames > 1)
     flag_unit_at_a_time = 1;
 
-  /* Array bounds checking. */
-  if (global.params.noboundscheck)
-    flag_bounds_check = global.params.useArrayBounds = 0;
-
   /* Error about use of deprecated features. */
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
     global.params.useDeprecated = 0;
@@ -624,10 +617,10 @@ d_post_options (const char ** fn)
     flag_excess_precision_cmdline = EXCESS_PRECISION_STANDARD;
 
   if (global.params.useUnitTests)
-    global.params.useAssert = 1;
+    global.params.useAssert = true;
 
   global.params.symdebug = write_symbols != NO_DEBUG;
-  //global.params.useInline = flag_inline_functions;
+  global.params.useInline = flag_inline_functions;
   global.params.obj = !flag_syntax_only;
   // Has no effect yet.
   global.params.pic = flag_pic != 0;
@@ -646,7 +639,7 @@ d_add_global_declaration (tree decl)
 
 // Write out globals.
 static void
-d_write_global_declarations (void)
+d_write_global_declarations()
 {
   if (vec_safe_length (global_declarations) != 0)
     {
@@ -708,7 +701,7 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 
 
 Module *
-d_gcc_get_output_module (void)
+d_gcc_get_output_module()
 {
   return output_module;
 }
@@ -823,7 +816,7 @@ deps_write (Module *m)
 }
 
 void
-d_parse_file (void)
+d_parse_file()
 {
   if (global.params.verbose)
     {
@@ -952,7 +945,7 @@ d_parse_file (void)
 
       if (m->isDocFile)
 	{
-	  m->gendocfile();
+	  gendocfile(m);
 	  // Remove m from list of modules
 	  modules.remove (i);
 	  i--;
@@ -978,7 +971,7 @@ d_parse_file (void)
 	  if (global.params.verbose)
 	    fprintf (global.stdmsg, "import    %s\n", m->toChars());
 
-	  m->genhdrfile();
+	  genhdrfile(m);
 	}
     }
 
@@ -1013,8 +1006,19 @@ d_parse_file (void)
   if (global.errors)
     goto had_errors;
 
+  // Do deferred semantic analysis
   Module::dprogress = 1;
   Module::runDeferredSemantic();
+
+  if (Module::deferred.dim)
+    {
+      for (size_t i = 0; i < Module::deferred.dim; i++)
+	{
+	  Dsymbol *sd = Module::deferred[i];
+	  sd->error("unable to resolve forward reference in definition");
+	}
+      goto had_errors;
+    }
 
   // Do pass 2 semantic analysis
   for (size_t i = 0; i < modules.dim; i++)
@@ -1089,13 +1093,13 @@ d_parse_file (void)
     output_modules.append (&modules);
 
   // Generate output files
-  if (global.params.doXGeneration)
+  if (global.params.doJsonGeneration)
     {
       OutBuffer buf;
       json_generate(&buf, &modules);
 
       // Write buf to file
-      const char *name = global.params.xfilename;
+      const char *name = global.params.jsonfilename;
 
       if (name && name[0] == '-' && name[1] == 0)
 	{
@@ -1125,6 +1129,15 @@ d_parse_file (void)
 	}
     }
 
+  if (global.params.doDocComments && !global.errors && !errorcount)
+    {
+      for (size_t i = 0; i < modules.dim; i++)
+	{
+	  Module *m = modules[i];
+	  gendocfile(m);
+	}
+    }
+
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
@@ -1140,12 +1153,6 @@ d_parse_file (void)
 	    entrypoint->genobjfile (false);
 
 	  m->genobjfile (false);
-	}
-
-      if (!global.errors && !errorcount)
-	{
-	  if (global.params.doDocComments)
-	    m->gendocfile();
 	}
     }
 
@@ -1164,7 +1171,7 @@ d_parse_file (void)
 }
 
 static tree
-d_type_for_mode (machine_mode mode, int unsignedp)
+d_type_for_mode(machine_mode mode, int unsignedp)
 {
   if (mode == QImode)
     return unsignedp ? ubyte_type_node : byte_type_node;
@@ -1179,125 +1186,125 @@ d_type_for_mode (machine_mode mode, int unsignedp)
     return unsignedp ? ulong_type_node : long_type_node;
 
 #if HOST_BITS_PER_WIDE_INT >= 64
-  if (mode == TYPE_MODE (cent_type_node))
+  if (mode == TYPE_MODE(cent_type_node))
     return unsignedp ? ucent_type_node : cent_type_node;
 #endif
 
-  if (mode == TYPE_MODE (float_type_node))
+  if (mode == TYPE_MODE(float_type_node))
     return float_type_node;
 
-  if (mode == TYPE_MODE (double_type_node))
+  if (mode == TYPE_MODE(double_type_node))
     return double_type_node;
 
-  if (mode == TYPE_MODE (long_double_type_node))
+  if (mode == TYPE_MODE(long_double_type_node))
     return long_double_type_node;
 
-  if (mode == TYPE_MODE (build_pointer_type (char8_type_node)))
-    return build_pointer_type (char8_type_node);
+  if (mode == TYPE_MODE(build_pointer_type(char8_type_node)))
+    return build_pointer_type(char8_type_node);
 
-  if (mode == TYPE_MODE (build_pointer_type (int_type_node)))
-    return build_pointer_type (int_type_node);
+  if (mode == TYPE_MODE(build_pointer_type(int_type_node)))
+    return build_pointer_type(int_type_node);
 
-  if (COMPLEX_MODE_P (mode))
+  if (COMPLEX_MODE_P(mode))
     {
       machine_mode inner_mode;
       tree inner_type;
 
-      if (mode == TYPE_MODE (complex_float_type_node))
+      if (mode == TYPE_MODE(complex_float_type_node))
 	return complex_float_type_node;
-      if (mode == TYPE_MODE (complex_double_type_node))
+      if (mode == TYPE_MODE(complex_double_type_node))
 	return complex_double_type_node;
-      if (mode == TYPE_MODE (complex_long_double_type_node))
+      if (mode == TYPE_MODE(complex_long_double_type_node))
 	return complex_long_double_type_node;
 
-      inner_mode = (machine_mode) GET_MODE_INNER (mode);
-      inner_type = d_type_for_mode (inner_mode, unsignedp);
+      inner_mode = (machine_mode) GET_MODE_INNER(mode);
+      inner_type = d_type_for_mode(inner_mode, unsignedp);
       if (inner_type != NULL_TREE)
-	return build_complex_type (inner_type);
+	return build_complex_type(inner_type);
     }
-  else if (VECTOR_MODE_P (mode))
+  else if (VECTOR_MODE_P(mode))
     {
-      machine_mode inner_mode = (machine_mode) GET_MODE_INNER (mode);
-      tree inner_type = d_type_for_mode (inner_mode, unsignedp);
+      machine_mode inner_mode = (machine_mode) GET_MODE_INNER(mode);
+      tree inner_type = d_type_for_mode(inner_mode, unsignedp);
       if (inner_type != NULL_TREE)
-	return build_vector_type_for_mode (inner_type, mode);
+	return build_vector_type_for_mode(inner_type, mode);
     }
 
   return 0;
 }
 
 static tree
-d_type_for_size (unsigned bits, int unsignedp)
+d_type_for_size(unsigned bits, int unsignedp)
 {
-  if (bits <= TYPE_PRECISION (byte_type_node))
+  if (bits <= TYPE_PRECISION(byte_type_node))
     return unsignedp ? ubyte_type_node : byte_type_node;
 
-  if (bits <= TYPE_PRECISION (short_type_node))
+  if (bits <= TYPE_PRECISION(short_type_node))
     return unsignedp ? ushort_type_node : short_type_node;
 
-  if (bits <= TYPE_PRECISION (int_type_node))
+  if (bits <= TYPE_PRECISION(int_type_node))
     return unsignedp ? uint_type_node : int_type_node;
 
-  if (bits <= TYPE_PRECISION (long_type_node))
+  if (bits <= TYPE_PRECISION(long_type_node))
     return unsignedp ? ulong_type_node : long_type_node;
 
   return 0;
 }
 
 static tree
-d_signed_or_unsigned_type (int unsignedp, tree type)
+d_signed_or_unsigned_type(int unsignedp, tree type)
 {
-  if (!INTEGRAL_TYPE_P (type)
-      || TYPE_UNSIGNED (type) == (unsigned) unsignedp)
+  if (!INTEGRAL_TYPE_P(type)
+      || TYPE_UNSIGNED(type) == (unsigned) unsignedp)
     return type;
 
 #if HOST_BITS_PER_WIDE_INT >= 64
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (cent_type_node))
+  if (TYPE_PRECISION(type) == TYPE_PRECISION(cent_type_node))
     return unsignedp ? ucent_type_node : cent_type_node;
 #endif
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (long_type_node))
+  if (TYPE_PRECISION(type) == TYPE_PRECISION(long_type_node))
     return unsignedp ? ulong_type_node : long_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (int_type_node))
+  if (TYPE_PRECISION(type) == TYPE_PRECISION(int_type_node))
     return unsignedp ? uint_type_node : int_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (short_type_node))
+  if (TYPE_PRECISION(type) == TYPE_PRECISION(short_type_node))
     return unsignedp ? ushort_type_node : short_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (byte_type_node))
+  if (TYPE_PRECISION(type) == TYPE_PRECISION(byte_type_node))
     return unsignedp ? ubyte_type_node : byte_type_node;
 
   return type;
 }
 
 tree
-d_unsigned_type (tree type)
+d_unsigned_type(tree type)
 {
-  return d_signed_or_unsigned_type (1, type);
+  return d_signed_or_unsigned_type(1, type);
 }
 
 tree
-d_signed_type (tree type)
+d_signed_type(tree type)
 {
-  return d_signed_or_unsigned_type (0, type);
+  return d_signed_or_unsigned_type(0, type);
 }
 
 // Type promotion for variable arguments.
 // This is needed for varargs to work on certain targets.
 
 static tree
-d_type_promotes_to (tree type)
+d_type_promotes_to(tree type)
 {
-  tree ptype = targetm.promoted_type (type);
+  tree ptype = targetm.promoted_type(type);
   if (ptype)
     return ptype;
 
-  if (TYPE_MAIN_VARIANT (type) == float_type_node)
+  if (TYPE_MAIN_VARIANT(type) == float_type_node)
     return double_type_node;
 
-  if (INTEGRAL_TYPE_P (type)
-      && (TYPE_PRECISION (type) <= TYPE_PRECISION (integer_type_node)))
+  if (INTEGRAL_TYPE_P(type)
+      && (TYPE_PRECISION(type) <= TYPE_PRECISION(integer_type_node)))
     {
       // Preserve unsignedness if not really getting any wider.
-      if (TYPE_UNSIGNED (type)
-	  && (TYPE_PRECISION (type) == TYPE_PRECISION (integer_type_node)))
+      if (TYPE_UNSIGNED(type)
+	  && (TYPE_PRECISION(type) == TYPE_PRECISION(integer_type_node)))
 	return unsigned_type_node;
 
       return integer_type_node;
@@ -1311,7 +1318,7 @@ struct binding_level *current_binding_level;
 struct binding_level *global_binding_level;
 
 static binding_level *
-alloc_binding_level (void)
+alloc_binding_level()
 {
   return ggc_cleared_alloc<binding_level>();
 }
@@ -1321,7 +1328,7 @@ alloc_binding_level (void)
    otherwise support the backend. */
 
 void
-push_binding_level (void)
+push_binding_level()
 {
   binding_level *new_level = alloc_binding_level();
   new_level->level_chain = current_binding_level;
@@ -1403,7 +1410,7 @@ pop_binding_level (int keep, int routinebody)
 // loops forever.
 
 static bool
-d_global_bindings_p (void)
+d_global_bindings_p()
 {
   if (current_binding_level == global_binding_level)
     return true;
@@ -1412,7 +1419,7 @@ d_global_bindings_p (void)
 }
 
 void
-init_global_binding_level (void)
+init_global_binding_level()
 {
   global_binding_level = alloc_binding_level();
   current_binding_level = global_binding_level;
@@ -1447,7 +1454,7 @@ set_decl_binding_chain (tree decl_chain)
 // Supports dbx and stabs.
 
 static tree
-d_getdecls (void)
+d_getdecls()
 {
   if (current_binding_level)
     return current_binding_level->names;
@@ -1574,7 +1581,7 @@ tree d_eh_personality_decl;
 
 /* Return the GDC personality function decl.  */
 static tree
-d_eh_personality (void)
+d_eh_personality()
 {
   if (!d_eh_personality_decl)
     {
@@ -1600,7 +1607,7 @@ d_build_eh_type_type (tree type)
 }
 
 void
-d_init_exceptions (void)
+d_init_exceptions()
 {
   using_eh_for_cleanups();
 }

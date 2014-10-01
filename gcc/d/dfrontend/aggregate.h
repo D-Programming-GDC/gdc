@@ -1,12 +1,13 @@
 
-// Compiler implementation of the D programming language
-// Copyright (c) 1999-2013 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
+/* Compiler implementation of the D programming language
+ * Copyright (c) 1999-2014 by Digital Mars
+ * All Rights Reserved
+ * written by Walter Bright
+ * http://www.digitalmars.com
+ * Distributed under the Boost Software License, Version 1.0.
+ * http://www.boost.org/LICENSE_1_0.txt
+ * https://github.com/D-Programming-Language/dmd/blob/master/src/aggregate.h
+ */
 
 #ifndef DMD_AGGREGATE_H
 #define DMD_AGGREGATE_H
@@ -53,19 +54,30 @@ enum StructPOD
     ISPODfwd,           // POD not yet computed
 };
 
+FuncDeclaration *hasIdentityOpAssign(AggregateDeclaration *ad, Scope *sc);
+FuncDeclaration *buildOpAssign(StructDeclaration *sd, Scope *sc);
+bool needOpEquals(StructDeclaration *sd);
+FuncDeclaration *buildOpEquals(StructDeclaration *sd, Scope *sc);
+FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc);
+FuncDeclaration *buildXopCmp(StructDeclaration *sd, Scope *sc);
+FuncDeclaration *buildXtoHash(StructDeclaration *ad, Scope *sc);
+FuncDeclaration *buildCpCtor(StructDeclaration *sd, Scope *sc);
+FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc);
+FuncDeclaration *buildDtor(AggregateDeclaration *ad, Scope *sc);
+FuncDeclaration *buildInv(AggregateDeclaration *ad, Scope *sc);
+
 class AggregateDeclaration : public ScopeDsymbol
 {
 public:
     Type *type;
     StorageClass storage_class;
     PROT protection;
-    Type *handle;               // 'this' type
     unsigned structsize;        // size of struct
     unsigned alignsize;         // size of struct for alignment purposes
     VarDeclarations fields;     // VarDeclaration fields
     Sizeok sizeok;         // set when structsize contains valid data
     Dsymbol *deferred;          // any deferred semantic2() or semantic3() symbol
-    bool isdeprecated;          // !=0 if deprecated
+    bool isdeprecated;          // true if deprecated
 
     Dsymbol *enclosing;         /* !=NULL if is nested
                                  * pointing to the dsymbol that directly enclosing it.
@@ -96,7 +108,6 @@ public:
     void setScope(Scope *sc);
     void semantic2(Scope *sc);
     void semantic3(Scope *sc);
-    void inlineScan();
     unsigned size(Loc loc);
     static void alignmember(structalign_t salign, unsigned size, unsigned *poffset);
     static unsigned placeField(unsigned *nextoffset,
@@ -106,28 +117,14 @@ public:
     int firstFieldInUnion(int indx); // first field in union that includes indx
     int numFieldsInUnion(int firstIndex); // #fields in union starting at index
     bool isDeprecated();         // is aggregate deprecated?
-    FuncDeclaration *buildDtor(Scope *sc);
-    FuncDeclaration *buildInv(Scope *sc);
     bool isNested();
     void makeNested();
     bool isExport();
-    void searchCtor();
-
-    void emitComment(Scope *sc);
-    void toDocBuffer(OutBuffer *buf, Scope *sc);
-
-    FuncDeclaration *hasIdentityOpAssign(Scope *sc);
-    FuncDeclaration *hasIdentityOpEquals(Scope *sc);
-
-    const char *mangle(bool isv = false);
-
-    // For access checking
-    virtual PROT getAccess(Dsymbol *smember);   // determine access to smember
-    int isFriendOf(AggregateDeclaration *cd);
-    int hasPrivateAccess(Dsymbol *smember);     // does smember have private access to members of this class?
-    void accessCheck(Loc loc, Scope *sc, Dsymbol *smember);
+    Dsymbol *searchCtor();
 
     PROT prot();
+
+    Type *handleType() { return type; } // 'this' type
 
     // Back end
     Symbol *stag;               // tag symbol for debug data
@@ -151,14 +148,15 @@ class StructDeclaration : public AggregateDeclaration
 {
 public:
     int zeroInit;               // !=0 if initialize with 0 fill
-    int hasIdentityAssign;      // !=0 if has identity opAssign
-    int hasIdentityEquals;      // !=0 if has identity opEquals
+    bool hasIdentityAssign;     // true if has identity opAssign
+    bool hasIdentityEquals;     // true if has identity opEquals
     FuncDeclaration *cpctor;    // generated copy-constructor, if any
     FuncDeclarations postblits; // Array of postblit functions
     FuncDeclaration *postblit;  // aggregate postblit
 
     FuncDeclaration *xeq;       // TypeInfo_Struct.xopEquals
     FuncDeclaration *xcmp;      // TypeInfo_Struct.xopCmp
+    FuncDeclaration *xhash;     // TypeInfo_Struct.xtoHash
     static FuncDeclaration *xerreq;      // object.xopEquals
     static FuncDeclaration *xerrcmp;     // object.xopCmp
 
@@ -172,26 +170,16 @@ public:
     StructDeclaration(Loc loc, Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
+    void semanticTypeInfoMembers();
     Dsymbol *search(Loc, Identifier *ident, int flags = IgnoreNone);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    const char *mangle(bool isv = false);
     const char *kind();
     void finalizeSize(Scope *sc);
+    bool fit(Loc loc, Scope *sc, Expressions *elements, Type *stype);
     bool fill(Loc loc, Expressions *elements, bool ctorinit);
     bool isPOD();
-    int needOpAssign();
-    int needOpEquals();
-    FuncDeclaration *buildOpAssign(Scope *sc);
-    FuncDeclaration *buildPostBlit(Scope *sc);
-    FuncDeclaration *buildCpCtor(Scope *sc);
-    FuncDeclaration *buildOpEquals(Scope *sc);
-    FuncDeclaration *buildXopEquals(Scope *sc);
-    FuncDeclaration *buildXopCmp(Scope *sc);
-    void toDocBuffer(OutBuffer *buf, Scope *sc);
 
-    PROT getAccess(Dsymbol *smember);   // determine access to smember
-
-    void toObjFile(int multiobj);                       // compile to .obj file
+    void toObjFile(bool multiobj);                       // compile to .obj file
     void toDt(dt_t **pdt);
     void toDebug();                     // to symbolic debug info
 
@@ -221,13 +209,14 @@ struct BaseClass
                                         // making up the vtbl[]
 
     size_t baseInterfaces_dim;
-    BaseClass *baseInterfaces;          // if BaseClass is an interface, these
-                                        // are a copy of the InterfaceDeclaration::interfaces
+    // if BaseClass is an interface, these
+    // are a copy of the InterfaceDeclaration::interfaces
+    BaseClass *baseInterfaces;
 
     BaseClass();
     BaseClass(Type *type, PROT protection);
 
-    int fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newinstance);
+    bool fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newinstance);
     void copyBaseInterfaces(BaseClasses *);
 };
 
@@ -279,13 +268,12 @@ public:
                                         // their own vtbl[]
 
     TypeInfoClassDeclaration *vclassinfo;       // the ClassInfo object for this ClassDeclaration
-    int com;                            // !=0 if this is a COM class (meaning
-                                        // it derives from IUnknown)
-    int cpp;                            // !=0 if this is a C++ interface
-    int isscope;                        // !=0 if this is an auto class
-    int isabstract;                     // !=0 if abstract class
+    bool com;                           // true if this is a COM class (meaning it derives from IUnknown)
+    bool cpp;                           // true if this is a C++ interface
+    bool isscope;                       // true if this is a scope class
+    bool isabstract;                    // true if abstract class
     int inuse;                          // to prevent recursive attempts
-    Semantic doAncestorsSemantic;  // Before searching symbol, whole ancestors should finish
+    Semantic doAncestorsSemantic;       // Before searching symbol, whole ancestors should finish
                                         // calling semantic() at least once, due to fill symtab
                                         // and do addMember(). [== Semantic(Start,In,Done)]
 
@@ -293,33 +281,29 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    int isBaseOf2(ClassDeclaration *cd);
+    bool isBaseOf2(ClassDeclaration *cd);
 
     #define OFFSET_RUNTIME 0x76543210
-    virtual int isBaseOf(ClassDeclaration *cd, int *poffset);
+    virtual bool isBaseOf(ClassDeclaration *cd, int *poffset);
 
-    virtual int isBaseInfoComplete();
+    bool isBaseInfoComplete();
     Dsymbol *search(Loc, Identifier *ident, int flags = IgnoreNone);
     ClassDeclaration *searchBase(Loc, Identifier *ident);
-    int isFuncHidden(FuncDeclaration *fd);
+    bool isFuncHidden(FuncDeclaration *fd);
     FuncDeclaration *findFunc(Identifier *ident, TypeFunction *tf);
     void interfaceSemantic(Scope *sc);
-    int isCOMclass();
-    virtual int isCOMinterface();
-    int isCPPclass();
-    virtual int isCPPinterface();
+    bool isCOMclass();
+    virtual bool isCOMinterface();
+    bool isCPPclass();
+    virtual bool isCPPinterface();
     bool isAbstract();
     virtual int vtblOffset();
     const char *kind();
-    const char *mangle(bool isv = false);
-    void toDocBuffer(OutBuffer *buf, Scope *sc);
-
-    PROT getAccess(Dsymbol *smember);   // determine access to smember
 
     void addLocalClass(ClassDeclarations *);
 
     // Back end
-    void toObjFile(int multiobj);                       // compile to .obj file
+    void toObjFile(bool multiobj);                       // compile to .obj file
     void toDebug();
     unsigned baseVtblOffset(BaseClass *bc);
     Symbol *toSymbol();
@@ -339,15 +323,14 @@ public:
     InterfaceDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
-    int isBaseOf(ClassDeclaration *cd, int *poffset);
-    int isBaseOf(BaseClass *bc, int *poffset);
+    bool isBaseOf(ClassDeclaration *cd, int *poffset);
+    bool isBaseOf(BaseClass *bc, int *poffset);
     const char *kind();
-    int isBaseInfoComplete();
     int vtblOffset();
-    int isCPPinterface();
-    virtual int isCOMinterface();
+    bool isCPPinterface();
+    bool isCOMinterface();
 
-    void toObjFile(int multiobj);                       // compile to .obj file
+    void toObjFile(bool multiobj);                       // compile to .obj file
     Symbol *toSymbol();
 
     InterfaceDeclaration *isInterfaceDeclaration() { return this; }

@@ -77,6 +77,10 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<filename> Include a Ddoc macro file
 
+fd-vgc
+D
+List all hidden GC allocations
+
 fd-verbose
 D
 Print information about D language processing to stdout

@@ -16,10 +16,8 @@
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-
-   Modified by Iain Buclaw, February 2011
-*/
+ * work with the GDC compiler.
+ */
 module core.vararg;
 
 version( GNU )
@@ -31,7 +29,7 @@ else version( X86 )
     /**
      * The base vararg list type.
      */
-    alias void* va_list;
+    alias char* va_list;
 
     /**
      * This function initializes the supplied argument pointer for subsequent
@@ -39,7 +37,7 @@ else version( X86 )
      *
      * Params:
      *  ap      = The argument pointer to initialize.
-     *  paramn  = The identifier of the rightmost parameter in the function
+     *  parmn  = The identifier of the rightmost parameter in the function
      *            parameter list.
      */
     void va_start(T)( out va_list ap, ref T parmn )

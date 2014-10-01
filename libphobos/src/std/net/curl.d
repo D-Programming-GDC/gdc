@@ -20,6 +20,10 @@ Networking client functionality as provided by $(WEB _curl.haxx.se/libcurl,
 libcurl). The libcurl library must be installed on the system in order to use
 this module.
 
+Windows x86 note:
+A DMD compatible libcurl static library can be downloaded from the dlang.org
+$(LINK2 http://dlang.org/download.html, download page).
+
 Compared to using libcurl directly this module allows simpler client code for
 common uses, requires no unsafe operations, and integrates better with the rest
 of the language. Futhermore it provides <a href="std_range.html">$(D range)</a>
@@ -123,7 +127,7 @@ http.perform();
 First, an instance of the reference-counted HTTP struct is created. Then the
 custom delegates are set. These will be called whenever the HTTP instance
 receives a header and a data buffer, respectively. In this simple example, the
-headers are writting to stdout and the data is ignored. If the request should be
+headers are written to stdout and the data is ignored. If the request should be
 stopped before it has finished then return something less than data.length from
 the onReceive callback. See $(LREF onReceiveHeader)/$(LREF onReceive) for more
 information. Finally the HTTP request is effected by calling perform(), which is
@@ -139,7 +143,7 @@ License: <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
 Authors: Jonas Drewsen. Some of the SMTP code contributed by Jimmy Cao.
 
 Credits: The functionally is based on $(WEB _curl.haxx.se/libcurl, libcurl).
-         LibCurl is licensed under an MIT/X derivate license.
+         LibCurl is licensed under an MIT/X derivative license.
 */
 /*
          Copyright Jonas Drewsen 2011 - 2012.
@@ -165,6 +169,8 @@ import std.string;
 import std.traits;
 import std.typecons;
 import std.typetuple;
+
+public import etc.c.curl : CurlOption;
 
 version(unittest)
 {
@@ -868,7 +874,7 @@ private auto _decodeContent(T)(ubyte[] content, string encoding)
     }
 }
 
-alias std.string.KeepTerminator KeepTerminator;
+alias KeepTerminator = std.string.KeepTerminator;
 /++
 struct ByLineBuffer(Char)
 {
@@ -1583,10 +1589,10 @@ private mixin template Protocol()
 
     /// Value to return from $(D onSend)/$(D onReceive) delegates in order to
     /// pause a request
-    alias CurlReadFunc.pause requestPause;
+    alias requestPause = CurlReadFunc.pause;
 
     /// Value to return from onSend delegate in order to abort a request
-    alias CurlReadFunc.abort requestAbort;
+    alias requestAbort = CurlReadFunc.abort;
 
     static uint defaultAsyncStringBufferSize = 100;
 
@@ -1662,7 +1668,7 @@ private mixin template Protocol()
     }
 
     /// Type of proxy
-    alias etc.c.curl.CurlProxy CurlProxy;
+    alias CurlProxy = etc.c.curl.CurlProxy;
 
     /** Proxy type
      *  See: $(WEB curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTPROXY, _proxy_type)
@@ -2013,8 +2019,8 @@ private bool decodeLineInto(Terminator, Char = char)(ref const(ubyte)[] basesrc,
   * http.url = "http://upload.wikimedia.org/wikipedia/commons/"
   *            "5/53/Wikipedia-logo-en-big.png";
   * http.onReceive = (ubyte[] data) { return data.length; };
-  * http.onProgress = (double dltotal, double dlnow,
-  *                    double ultotal, double ulnow)
+  * http.onProgress = (size_t dltotal, size_t dlnow,
+  *                    size_t ultotal, size_t ulnow)
   * {
   *     writeln("Progress ", dltotal, ", ", dlnow, ", ", ultotal, ", ", ulnow);
   *     return 0;
@@ -2030,7 +2036,7 @@ struct HTTP
     mixin Protocol;
 
     /// Authentication method equal to $(ECXREF curl, CurlAuth)
-    alias CurlAuth AuthMethod;
+    alias AuthMethod = CurlAuth;
 
     static private uint defaultMaxRedirects = 10;
 
@@ -2125,7 +2131,7 @@ struct HTTP
 
         $(WEB www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.25, _RFC2616 Section 14.25)
     */
-    alias CurlTimeCond TimeCond;
+    alias TimeCond = CurlTimeCond;
 
     /**
        Constructor taking the url as parameter.
@@ -2247,10 +2253,10 @@ struct HTTP
     {
         /// Value to return from $(D onSend)/$(D onReceive) delegates in order to
         /// pause a request
-        alias CurlReadFunc.pause requestPause;
+        alias requestPause = CurlReadFunc.pause;
 
         /// Value to return from onSend delegate in order to abort a request
-        alias CurlReadFunc.abort requestAbort;
+        alias requestAbort = CurlReadFunc.abort;
 
         /**
            True if the instance is stopped. A stopped instance is not usable.
@@ -2291,7 +2297,7 @@ struct HTTP
         @property void proxyPort(ushort port);
 
         /// Type of proxy
-        alias etc.c.curl.CurlProxy CurlProxy;
+        alias CurlProxy = etc.c.curl.CurlProxy;
 
         /** Proxy type
          *  See: $(WEB curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTPROXY, _proxy_type)
@@ -2894,10 +2900,10 @@ struct FTP
     {
         /// Value to return from $(D onSend)/$(D onReceive) delegates in order to
         /// pause a request
-        alias CurlReadFunc.pause requestPause;
+        alias requestPause = CurlReadFunc.pause;
 
         /// Value to return from onSend delegate in order to abort a request
-        alias CurlReadFunc.abort requestAbort;
+        alias requestAbort = CurlReadFunc.abort;
 
         /**
            True if the instance is stopped. A stopped instance is not usable.
@@ -2938,7 +2944,7 @@ struct FTP
         @property void proxyPort(ushort port);
 
         /// Type of proxy
-        alias etc.c.curl.CurlProxy CurlProxy;
+        alias CurlProxy = etc.c.curl.CurlProxy;
 
         /** Proxy type
          *  See: $(WEB curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTPROXY, _proxy_type)
@@ -3234,10 +3240,10 @@ struct SMTP
     {
         /// Value to return from $(D onSend)/$(D onReceive) delegates in order to
         /// pause a request
-        alias CurlReadFunc.pause requestPause;
+        alias requestPause = CurlReadFunc.pause;
 
         /// Value to return from onSend delegate in order to abort a request
-        alias CurlReadFunc.abort requestAbort;
+        alias requestAbort = CurlReadFunc.abort;
 
         /**
            True if the instance is stopped. A stopped instance is not usable.
@@ -3278,7 +3284,7 @@ struct SMTP
         @property void proxyPort(ushort port);
 
         /// Type of proxy
-        alias etc.c.curl.CurlProxy CurlProxy;
+        alias CurlProxy = etc.c.curl.CurlProxy;
 
         /** Proxy type
          *  See: $(WEB curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTPROXY, _proxy_type)
@@ -3471,7 +3477,7 @@ class CurlTimeoutException : CurlException
 }
 
 /// Equal to $(ECXREF curl, CURLcode)
-alias CURLcode CurlCode;
+alias CurlCode = CURLcode;
 
 /**
   Wrapper to provide a better interface to libcurl than using the plain C API.
@@ -3497,8 +3503,8 @@ struct Curl
         curl_global_cleanup();
     }
 
-    alias void[] OutData;
-    alias ubyte[] InData;
+    alias OutData = void[];
+    alias InData = ubyte[];
     bool stopped;
 
     // A handle should not be used by two threads simultaneously
@@ -3513,8 +3519,8 @@ struct Curl
     private int delegate(size_t dltotal, size_t dlnow,
                          size_t ultotal, size_t ulnow) _onProgress;
 
-    alias CurlReadFunc.pause requestPause;
-    alias CurlReadFunc.abort requestAbort;
+    alias requestPause = CurlReadFunc.pause;
+    alias requestAbort = CurlReadFunc.abort;
 
     /**
        Initialize the instance by creating a working curl handle.
@@ -3551,14 +3557,21 @@ struct Curl
                                  opensocketfunction, noprogress,
                                  progressdata, progressfunction,
                                  debugdata, debugfunction,
-                                 ssl_ctx_function, interleavedata,
+                                 interleavedata,
                                  interleavefunction, chunk_data,
                                  chunk_bgn_function, chunk_end_function,
                                  fnmatch_data, fnmatch_function,
-                                 ssh_keydata, cookiejar, postfields);
+                                 cookiejar, postfields);
             foreach(option; tt)
                 copy.clear(option);
         }
+
+        // The options are only supported by libcurl when it has been built
+        // against certain versions of OpenSSL - if your libcurl uses an old
+        // OpenSSL, or uses an entirely different SSL engine, attempting to
+        // clear these normally will raise an exception
+        copy.clearIfSupported(CurlOption.ssl_ctx_function);
+        copy.clearIfSupported(CurlOption.ssh_keydata);
 
         // Enable for curl version > 7.21.7
         static if (LIBCURL_VERSION_MAJOR >= 7 &&
@@ -3680,6 +3693,22 @@ struct Curl
     }
 
     /**
+       Clear a pointer option. Does not raise an exception if the underlying
+       libcurl does not support the option. Use sparingly.
+       Params:
+       option = A $(ECXREF curl, CurlOption) as found in the curl documentation
+    */
+    void clearIfSupported(CurlOption option)
+    {
+        throwOnStopped();
+        auto rval = curl_easy_setopt(this.handle, option, null);
+        if (rval != CurlError.unknown_telnet_option)
+        {
+            _check(rval);
+        }
+    }
+
+    /**
        perform the curl request by doing the HTTP,FTP etc. as it has
        been setup beforehand.
     */
@@ -3751,7 +3780,7 @@ struct Curl
     {
         _onReceiveHeader = (in char[] od)
         {
-            throwOnStopped("Receive header callback called on "
+            throwOnStopped("Receive header callback called on "~
                            "cleaned up Curl instance");
             callback(od);
         };
@@ -3869,7 +3898,7 @@ struct Curl
     {
         _onSocketOption = (curl_socket_t sock, CurlSockType st)
         {
-            throwOnStopped("Socket option callback called on "
+            throwOnStopped("Socket option callback called on "~
                            "cleaned up Curl instance");
             return callback(sock, st);
         };
@@ -3911,7 +3940,7 @@ struct Curl
     {
         _onProgress = (size_t dlt, size_t dln, size_t ult, size_t uln)
         {
-            throwOnStopped("Progress callback called on cleaned "
+            throwOnStopped("Progress callback called on cleaned "~
                            "up Curl instance");
             return callback(dlt, dln, ult, uln);
         };
@@ -4189,9 +4218,9 @@ private static size_t _receiveAsyncLines(Terminator, Unit)
                 // onReceive. Can be up to a max of 4 bytes.
                 enforceEx!CurlException(data.length <= 4,
                                         format(
-                                        "Too many bytes left not decoded %s"
-                                        " > 4. Maybe the charset specified in"
-                                        " headers does not match "
+                                        "Too many bytes left not decoded %s"~
+                                        " > 4. Maybe the charset specified in"~
+                                        " headers does not match "~
                                         "the actual content downloaded?",
                                         data.length));
                 leftOverBytes ~= data;

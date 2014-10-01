@@ -23,98 +23,98 @@
 // This function implements all reasonable scalar conversions.
 
 static tree
-d_convert_basic (tree type, tree expr)
+d_convert_basic(tree type, tree expr)
 {
   tree e = expr;
-  tree_code code = TREE_CODE (type);
+  tree_code code = TREE_CODE(type);
 
   if (type == error_mark_node
       || expr == error_mark_node
-      || TREE_TYPE (expr) == error_mark_node)
+      || TREE_TYPE(expr) == error_mark_node)
     return error_mark_node;
 
   const char *invalid_conv_diag
-    = targetm.invalid_conversion (TREE_TYPE (expr), type);
+    = targetm.invalid_conversion(TREE_TYPE(expr), type);
 
   if (invalid_conv_diag)
     {
-      error ("%s", invalid_conv_diag);
+      error("%s", invalid_conv_diag);
       return error_mark_node;
     }
 
-  if (type == TREE_TYPE (expr))
+  if (type == TREE_TYPE(expr))
     return expr;
 
-  if (TREE_CODE (type) == ARRAY_TYPE
-      && TREE_CODE (TREE_TYPE (expr)) == ARRAY_TYPE
-      && TYPE_DOMAIN (type) == TYPE_DOMAIN (TREE_TYPE (expr)))
+  if (TREE_CODE(type) == ARRAY_TYPE
+      && TREE_CODE(TREE_TYPE(expr)) == ARRAY_TYPE
+      && TYPE_DOMAIN(type) == TYPE_DOMAIN(TREE_TYPE(expr)))
     return expr;
 
-  tree ret = targetm.convert_to_type (type, expr);
+  tree ret = targetm.convert_to_type(type, expr);
   if (ret)
     return ret;
 
-  STRIP_TYPE_NOPS (e);
-  tree etype = TREE_TYPE (e);
+  STRIP_TYPE_NOPS(e);
+  tree etype = TREE_TYPE(e);
 
-  if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (TREE_TYPE (expr)))
-    return fold_convert (type, expr);
-  if (TREE_CODE (TREE_TYPE (expr)) == ERROR_MARK)
+  if (TYPE_MAIN_VARIANT(type) == TYPE_MAIN_VARIANT(TREE_TYPE(expr)))
+    return fold_convert(type, expr);
+  if (TREE_CODE(TREE_TYPE(expr)) == ERROR_MARK)
     return error_mark_node;
-  if (TREE_CODE (TREE_TYPE (expr)) == VOID_TYPE)
+  if (TREE_CODE(TREE_TYPE(expr)) == VOID_TYPE)
     {
-      error ("void value not ignored as it ought to be");
+      error("void value not ignored as it ought to be");
       return error_mark_node;
     }
 
   switch (code)
     {
     case VOID_TYPE:
-      return fold_convert (type, e);
+      return fold_convert(type, e);
 
     case INTEGER_TYPE:
     case ENUMERAL_TYPE:
-      if (TREE_CODE (etype) == POINTER_TYPE
-	  || TREE_CODE (etype) == REFERENCE_TYPE)
+      if (TREE_CODE(etype) == POINTER_TYPE
+	  || TREE_CODE(etype) == REFERENCE_TYPE)
 	{
-	  if (integer_zerop (e))
-	    return build_int_cst (type, 0);
+	  if (integer_zerop(e))
+	    return build_int_cst(type, 0);
 
 	  // Convert to an unsigned integer of the correct width first, and
 	  // from there widen/truncate to the required type.
-	  tree utype = lang_hooks.types.type_for_size (TYPE_PRECISION (etype), 1);
-	  ret = fold_build1 (CONVERT_EXPR, utype, e);
-	  return fold_convert (type, ret);
+	  tree utype = lang_hooks.types.type_for_size(TYPE_PRECISION(etype), 1);
+	  ret = fold_build1(CONVERT_EXPR, utype, e);
+	  return fold_convert(type, ret);
 	}
 
-      ret = convert_to_integer (type, e);
+      ret = convert_to_integer(type, e);
       goto maybe_fold;
 
     case BOOLEAN_TYPE:
-      return fold_convert (type, d_truthvalue_conversion (expr));
+      return fold_convert(type, d_truthvalue_conversion(expr));
 
     case POINTER_TYPE:
     case REFERENCE_TYPE:
-      ret = convert_to_pointer (type, e);
+      ret = convert_to_pointer(type, e);
       goto maybe_fold;
 
     case REAL_TYPE:
-      ret = convert_to_real (type, e);
+      ret = convert_to_real(type, e);
       goto maybe_fold;
 
     case COMPLEX_TYPE:
-      ret = convert_to_complex (type, e);
+      ret = convert_to_complex(type, e);
       goto maybe_fold;
 
     case VECTOR_TYPE:
-      ret = convert_to_vector (type, e);
+      ret = convert_to_vector(type, e);
       goto maybe_fold;
 
     case RECORD_TYPE:
     case UNION_TYPE:
-      if (lang_hooks.types_compatible_p (type, TREE_TYPE (expr)))
+      if (lang_hooks.types_compatible_p(type, TREE_TYPE(expr)))
 	{
-	  ret = build1 (VIEW_CONVERT_EXPR, type, expr);
+	  ret = build1(VIEW_CONVERT_EXPR, type, expr);
 	  goto maybe_fold;
 	}
       break;
@@ -123,12 +123,12 @@ d_convert_basic (tree type, tree expr)
       break;
 
     maybe_fold:
-      if (!TREE_CONSTANT (ret))
-	ret = fold (ret);
+      if (!TREE_CONSTANT(ret))
+	ret = fold(ret);
       return ret;
     }
 
-  error ("conversion to non-scalar type requested");
+  error("conversion to non-scalar type requested");
   return error_mark_node;
 }
 

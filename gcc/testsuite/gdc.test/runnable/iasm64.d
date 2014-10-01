@@ -6599,6 +6599,55 @@ L1:     pop     RAX;
 
 /****************************************************/
 
+void test12849()
+{
+    ulong a = 0xff00ff00ff00ff00L;
+    ulong result;
+    ulong expected = 0b10101010;
+    asm
+    {
+        pxor XMM0, XMM0;
+        movq XMM0, a;
+        pmovmskb RAX, XMM0;
+        mov result, RAX;
+    }
+    assert (result == expected);
+}
+
+/****************************************************/
+
+void test12968()
+{
+    int x;
+    ubyte* p;
+    static ubyte data[] =
+    [
+        0x48, 0x89, 0xF8,
+        0x4C, 0x87, 0xC2,
+        0xC3
+    ];
+
+    asm
+    {
+        call	L1			;
+
+        mov RAX, RDI;
+        xchg RDX, R8;
+        ret;
+
+L1:     pop     RAX;
+        mov     p[RBP],RAX;
+    }
+
+    foreach (ref i, b; data)
+    {
+        //printf("data[%d] = 0x%02x, should be 0x%02x\n", i, p[i], b);
+        assert(p[i] == b);
+    }
+}
+
+/****************************************************/
+
 int main()
 {
     printf("Testing iasm64.d\n");
@@ -6668,6 +6717,8 @@ int main()
     test9866();
     testxadd();
     test9965();
+    test12849();
+    test12968();
 
     printf("Success\n");
     return 0;

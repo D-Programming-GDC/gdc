@@ -2,23 +2,21 @@
  * D header file for C99.
  *
  * Copyright: Copyright Digital Mars 2000 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   Distributed under the
+ *    <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License 1.0</a>.
+ *    (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
  * Authors:   Walter Bright, Hauke Duden
  * Standards: ISO/IEC 9899:1999 (E)
- */
-
-/*          Copyright Digital Mars 2000 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
+ * Source: $(DRUNTIMESRC core/stdc/_stdarg.d)
  */
 
 /* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
+ * work with the GDC compiler.
  */
 module core.stdc.stdarg;
 
 @system:
+//@nogc:    // Not yet, need to make TypeInfo's member functions @nogc first
 
 version( GNU )
 {
@@ -72,10 +70,9 @@ version( GNU )
         TypeInfo arg1, arg2;
         if (!ti.argTypes(arg1, arg2))
         {
-            bool inXMMregister(TypeInfo arg)
+            bool inXMMregister(TypeInfo arg) pure nothrow @safe
             {
-                auto s = arg.toString();
-                return (s == "double" || s == "float" || s == "idouble" || s == "ifloat");
+                return (arg.flags & 2) != 0;
             }
 
             TypeInfo_Vector v1 = arg1 ? cast(TypeInfo_Vector)arg1 : null;
@@ -215,7 +212,7 @@ else version( X86 )
     /*********************
      * The argument pointer type.
      */
-    alias void* va_list;
+    alias char* va_list;
 
     /**********
      * Initialize ap.
@@ -284,7 +281,7 @@ else version (Windows) // Win64
     /*********************
      * The argument pointer type.
      */
-    alias void* va_list;
+    alias char* va_list;
 
     /**********
      * Initialize ap.
@@ -332,7 +329,7 @@ else version (Windows) // Win64
         //auto p = cast(void*)(cast(size_t)ap + talign - 1) & ~(talign - 1);
         auto p = ap;
         auto tsize = ti.tsize;
-        ap = cast(void*)(cast(size_t)p + ((size_t.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+        ap = cast(va_list)(cast(size_t)p + ((size_t.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
         void* q = (tsize > size_t.sizeof) ? *cast(void**)p : p;
         parmn[0..tsize] = q[0..tsize];
     }
@@ -363,13 +360,14 @@ else version (X86_64)
     }
 
     // Layout of this struct must match __gnuc_va_list for C ABI compatibility
-    struct __va_list
+    struct __va_list_tag
     {
         uint offset_regs = 6 * 8;            // no regs
         uint offset_fpregs = 6 * 8 + 8 * 16; // no fp regs
         void* stack_args;
         void* reg_args;
     }
+    alias __va_list = __va_list_tag;
 
     align(16) struct __va_argsave_t
     {
@@ -382,7 +380,7 @@ else version (X86_64)
      * Making it an array of 1 causes va_list to be passed as a pointer in
      * function argument lists
      */
-    alias void* va_list;
+    alias va_list = __va_list*;
 
     void va_start(T)(out va_list ap, ref T parmn)
     {
@@ -542,10 +540,9 @@ else version (X86_64)
         TypeInfo arg1, arg2;
         if (!ti.argTypes(arg1, arg2))
         {
-            bool inXMMregister(TypeInfo arg)
+            bool inXMMregister(TypeInfo arg) pure nothrow @safe
             {
-                auto s = arg.toString();
-                return (s == "double" || s == "float" || s == "idouble" || s == "ifloat");
+                return (arg.flags & 2) != 0;
             }
 
             TypeInfo_Vector v1 = arg1 ? cast(TypeInfo_Vector)arg1 : null;

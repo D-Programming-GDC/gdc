@@ -1686,44 +1686,7 @@ void test101()
 
 /***************************************************/
 
-version(X86)
-{
-int x103;
-
-void external(...)
-{
-    printf("external: %d\n", *cast (int *) _argptr);
-    x103 = *cast (int *) _argptr;
-}
-
-class C103
-{
-    void method ()
-    {
-	void internal (...)
-	{
-	    printf("internal: %d\n", *cast (int *)_argptr);
-	    x103 = *cast (int *) _argptr;
-	}
-
-	internal (43);
-	assert(x103 == 43);
-    }
-}
-
-void test103()
-{
-    external(42);
-    assert(x103 == 42);
-    (new C103).method ();
-}
-}
-else version(X86_64)
-{
-    pragma(msg, "Not ported to x86-64 compatible varargs, yet.");
-    void test103() {}
-}
-else version(GNU)
+version(GNU)
 {
 int x103;
 
@@ -1762,6 +1725,43 @@ void test103()
     assert(x103 == 42);
     (new C103).method ();
 }
+}
+else version(X86)
+{
+int x103;
+
+void external(...)
+{
+    printf("external: %d\n", *cast (int *) _argptr);
+    x103 = *cast (int *) _argptr;
+}
+
+class C103
+{
+    void method ()
+    {
+	void internal (...)
+	{
+	    printf("internal: %d\n", *cast (int *)_argptr);
+	    x103 = *cast (int *) _argptr;
+	}
+
+	internal (43);
+	assert(x103 == 43);
+    }
+}
+
+void test103()
+{
+    external(42);
+    assert(x103 == 42);
+    (new C103).method ();
+}
+}
+else version(X86_64)
+{
+    pragma(msg, "Not ported to x86-64 compatible varargs, yet.");
+    void test103() {}
 }
 else
     static assert(false, "Unknown platform");
@@ -2139,6 +2139,42 @@ void test129()
     int[] a = [ 1, 2, 3 ];
     auto r = retro129(a);
     auto i = begin129(r);
+}
+
+/***************************************************/
+// 12725
+
+struct R12725(R : E[], E)
+{
+}
+
+int begin12725(F)(R12725!(F) range)
+{
+    return 0;
+}
+
+void test12725()
+{
+    R12725!(int[], int) r;
+    auto i = begin12725(r);
+}
+
+/***************************************************/
+// 12728
+
+struct Matrix12728(T, uint m, uint n = m, ubyte f = 0)
+{
+    void foo(uint r)(auto ref in Matrix12728!(T, n, r) b)
+    {
+    }
+}
+
+void test12728()
+{
+    alias Matrix4 = Matrix12728!(float, 4);
+
+    Matrix4 m;
+    m.foo(m);
 }
 
 /***************************************************/
@@ -4209,19 +4245,14 @@ int bug3809()
 {
     version(GNU)
     {
-        version(X86) asm
-        {
-            "nop;" : :  :;
-        }
-        else version(X86_64) asm
-        {
-            "nop;" : : :;
-        }
-        else version(ARM) asm
-        {
-            "nop;" : : :;
-        }
-        else static assert(false, "ASM code not implemented for this architecture");
+        version(X86)
+            asm { "nop"; }
+        else version(X86_64)
+            asm { "nop"; }
+        else version(ARM)
+            asm { "nop"; }
+        else
+            static assert(false, "ASM code not implemented for this architecture");
     }
     else
     {
@@ -5917,6 +5948,23 @@ void test7436()
 }
 
 /***************************************************/
+// 12138
+
+struct S12138
+{
+    int num;
+    this(int n) { num = n; }
+    ~this() { num = 0; }
+}
+
+void test12138()
+{
+label:
+    auto s = S12138(10);
+    assert(s.num == 10);
+}
+
+/***************************************************/
 
 int main()
 {
@@ -6207,6 +6255,7 @@ int main()
     test10633();
     test10642();
     test7436();
+    test12138();
 
     writefln("Success");
     return 0;

@@ -1487,6 +1487,22 @@ void test71()
 
 /*******************************************/
 
+size_t getLength(int[] arr) { return arr.length; }
+
+void test13237()
+{
+	int[] arr = [0];
+	immutable size_t len = getLength(arr);
+
+	arr.length--;
+
+	assert(len == 1); // ok
+	if (len) { auto l = len; }
+	assert(len == 1); // len cannot be changed, but produces Assertion failure with "-O -inline"
+}
+
+/*******************************************/
+
 void main()
 {
     test1();
@@ -1553,6 +1569,7 @@ void main()
     test69();
     test70();
     test71();
+    test13237();
 
     printf("Success\n");
 }
