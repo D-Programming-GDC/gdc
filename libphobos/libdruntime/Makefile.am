@@ -242,12 +242,6 @@ install-data-local: libgdruntime.a
 	for i in __entrypoint.di object.di; do \
 	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
 	done
-	for i in core; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(srcdir)/$$i/*.di; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
 	for i in core core/internal core/stdc core/sync \
 	    core/sys/freebsd core/sys/freebsd/sys \
 	    core/sys/linux core/sys/linux/sys \
