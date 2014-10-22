@@ -177,6 +177,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
 
   // extra D-specific options
   flag_emit_templates = TEnormal;
+  bounds_check_set_manually = false;
 }
 
 /* Initialize options structure OPTS.  */
@@ -376,7 +377,20 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fbounds_check:
       global.params.useArrayBounds = value ? 2 : 0;
       flag_bounds_check = value;
+      bounds_check_set_manually = true;
       break;
+
+    case OPT_fbounds_check_:
+      if (strcmp (arg, "safe") == 0)
+	{
+	  global.params.useArrayBounds = 1;
+	  flag_bounds_check = false;
+	  bounds_check_set_manually = true;
+	}
+      else
+	{
+	  error ("bad argument for -fbounds-check");
+	}
 
     case OPT_fdebug:
       global.params.debuglevel = value ? 1 : 0;
@@ -516,9 +530,11 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useOut = !value;
       global.params.useAssert = !value;
       // release mode doesn't turn off bounds checking for safe functions.
-      if (global.params.useArrayBounds != 0)
+      if (!bounds_check_set_manually)
+      {
 	global.params.useArrayBounds = !value ? 2 : 1;
-      flag_bounds_check = !value;
+	flag_bounds_check = !value;
+      }
       global.params.useSwitchError = !value;
       break;
 

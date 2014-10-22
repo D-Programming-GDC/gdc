@@ -23,6 +23,8 @@ D
 Variable
 int flag_emit_templates
 
+Variable
+int bounds_check_set_manually
 
 debuglib=
 Driver Joined
@@ -40,6 +42,10 @@ Permit the use of the assert keyword
 fbounds-check
 D
 Generate code to check bounds before indexing arrays
+
+fbounds-check=
+D Joined
+-fbounds-check,-fno-bounds-check,-fbounds-check=safe Generate code to check bounds before indexing arrays
 
 fbuiltin
 D Var(flag_no_builtin, 0)
