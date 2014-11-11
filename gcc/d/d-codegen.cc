@@ -3076,7 +3076,7 @@ d_nested_struct (StructDeclaration *sd)
 // instance of OCD or a class that has OCD as a base.
 
 static tree
-find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
+find_this_tree(FuncDeclaration *func, ClassDeclaration *ocd)
 {
   while (func)
     {
@@ -3086,11 +3086,11 @@ find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
       if (cd != NULL)
 	{
 	  if (ocd == cd)
-	    return get_decl_tree (func->vthis, func);
-	  else if (ocd->isBaseOf (cd, NULL))
-	    return convert_expr (get_decl_tree (func->vthis, func), cd->type, ocd->type);
+	    return get_decl_tree(func->vthis, func);
+	  else if (ocd->isBaseOf(cd, NULL))
+	    return convert_expr(get_decl_tree(func->vthis, func), cd->type, ocd->type);
 
-	  func = d_nested_class (cd);
+	  func = d_nested_class(cd);
 	}
       else
 	{
@@ -3110,61 +3110,51 @@ find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
 // Retrieve the outer class/struct 'this' value of DECL from the function FD.
 
 tree
-build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd)
+build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd)
 {
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
 
+  // If an aggregate nested in a function has no methods and there are no
+  // other nested functions, any static chain created here will never be
+  // translated.  Use a null pointer for the link in this case.
   tree vthis_value = null_pointer_node;
 
-  if (cd)
+  if (cd != NULL || sd != NULL)
     {
-      Dsymbol *outer = cd->toParent2();
+      Dsymbol *outer = decl->toParent2();
+
+      // If the parent is a templated struct, the outer context is instead
+      // the enclosing symbol of where the instantiation happened.
+      if (outer->isStructDeclaration())
+	{
+	  gcc_assert(outer->parent && outer->parent->isTemplateInstance());
+	  outer = ((TemplateInstance *) outer->parent)->enclosing;
+	}
+
+      // For outer classes, get a suitable 'this' value.
+      // For outer functions, get a suitable frame/closure pointer.
       ClassDeclaration *cdo = outer->isClassDeclaration();
       FuncDeclaration *fdo = outer->isFuncDeclaration();
 
       if (cdo)
 	{
-	  vthis_value = find_this_tree (fd, cdo);
-	  gcc_assert (vthis_value != NULL_TREE);
+	  vthis_value = find_this_tree(fd, cdo);
+	  gcc_assert(vthis_value != NULL_TREE);
 	}
       else if (fdo)
 	{
-	  // If a class nested in a function has no methods and there
-	  // are no other nested functions, any static chain created
-	  // here will never be translated.  Use a null pointer for the
-	  // link in this case.
-	  FuncFrameInfo *ffo = get_frameinfo (fdo);
+	  FuncFrameInfo *ffo = get_frameinfo(fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = get_frame_for_symbol (fd, cd);
-	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
-	    vthis_value = get_decl_tree (fdo->vthis, fd);
-	  else
-	    vthis_value = null_pointer_node;
-	}
-      else
-	gcc_unreachable();
-    }
-  else if (sd)
-    {
-      Dsymbol *outer = sd->toParent2();
-      ClassDeclaration *cdo = outer->isClassDeclaration();
-      FuncDeclaration *fdo = outer->isFuncDeclaration();
-
-      if (cdo)
-	{
-	  vthis_value = find_this_tree (fd, cdo);
-	  gcc_assert (vthis_value != NULL_TREE);
-	}
-      else if (fdo)
-	{
-	  FuncFrameInfo *ffo = get_frameinfo (fdo);
-	  if (ffo->creates_frame || ffo->static_chain
-	      || fdo->hasNestedFrameRefs())
-	    vthis_value = get_frame_for_symbol (fd, sd);
-	  else
-	    vthis_value = null_pointer_node;
+	    vthis_value = get_frame_for_symbol(fd, decl);
+	  else if (cd != NULL)
+	    {
+	      // Classes nested in methods are allowed to access any outer
+	      // class fields, use the function chain in this case.
+	      if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
+		vthis_value = get_decl_tree(fdo->vthis, fd);
+	    }
 	}
       else
 	gcc_unreachable();
