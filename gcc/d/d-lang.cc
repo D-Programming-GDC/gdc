@@ -1167,20 +1167,20 @@ static tree
 d_type_for_mode (machine_mode mode, int unsignedp)
 {
   if (mode == QImode)
-    return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
+    return unsignedp ? ubyte_type_node : byte_type_node;
 
   if (mode == HImode)
-    return unsignedp ? unsigned_intHI_type_node : intHI_type_node;
+    return unsignedp ? ushort_type_node : short_type_node;
 
   if (mode == SImode)
-    return unsignedp ? unsigned_intSI_type_node : intSI_type_node;
+    return unsignedp ? uint_type_node : int_type_node;
 
   if (mode == DImode)
-    return unsignedp ? unsigned_intDI_type_node : intDI_type_node;
+    return unsignedp ? ulong_type_node : long_type_node;
 
 #if HOST_BITS_PER_WIDE_INT >= 64
-  if (mode == TYPE_MODE (intTI_type_node))
-    return unsignedp ? unsigned_intTI_type_node : intTI_type_node;
+  if (mode == TYPE_MODE (cent_type_node))
+    return unsignedp ? ucent_type_node : cent_type_node;
 #endif
 
   if (mode == TYPE_MODE (float_type_node))
@@ -1192,11 +1192,11 @@ d_type_for_mode (machine_mode mode, int unsignedp)
   if (mode == TYPE_MODE (long_double_type_node))
     return long_double_type_node;
 
-  if (mode == TYPE_MODE (build_pointer_type (char_type_node)))
-    return build_pointer_type (char_type_node);
+  if (mode == TYPE_MODE (build_pointer_type (char8_type_node)))
+    return build_pointer_type (char8_type_node);
 
-  if (mode == TYPE_MODE (build_pointer_type (integer_type_node)))
-    return build_pointer_type (integer_type_node);
+  if (mode == TYPE_MODE (build_pointer_type (int_type_node)))
+    return build_pointer_type (int_type_node);
 
   if (COMPLEX_MODE_P (mode))
     {
@@ -1209,9 +1209,6 @@ d_type_for_mode (machine_mode mode, int unsignedp)
 	return complex_double_type_node;
       if (mode == TYPE_MODE (complex_long_double_type_node))
 	return complex_long_double_type_node;
-
-      if (mode == TYPE_MODE (complex_integer_type_node) && !unsignedp)
-	return complex_integer_type_node;
 
       inner_mode = (machine_mode) GET_MODE_INNER (mode);
       inner_type = d_type_for_mode (inner_mode, unsignedp);
@@ -1232,17 +1229,17 @@ d_type_for_mode (machine_mode mode, int unsignedp)
 static tree
 d_type_for_size (unsigned bits, int unsignedp)
 {
-  if (bits <= TYPE_PRECISION (intQI_type_node))
-    return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
+  if (bits <= TYPE_PRECISION (byte_type_node))
+    return unsignedp ? ubyte_type_node : byte_type_node;
 
-  if (bits <= TYPE_PRECISION (intHI_type_node))
-    return unsignedp ? unsigned_intHI_type_node : intHI_type_node;
+  if (bits <= TYPE_PRECISION (short_type_node))
+    return unsignedp ? ushort_type_node : short_type_node;
 
-  if (bits <= TYPE_PRECISION (intSI_type_node))
-    return unsignedp ? unsigned_intSI_type_node : intSI_type_node;
+  if (bits <= TYPE_PRECISION (int_type_node))
+    return unsignedp ? uint_type_node : int_type_node;
 
-  if (bits <= TYPE_PRECISION (intDI_type_node))
-    return unsignedp ? unsigned_intDI_type_node : intDI_type_node;
+  if (bits <= TYPE_PRECISION (long_type_node))
+    return unsignedp ? ulong_type_node : long_type_node;
 
   return 0;
 }
@@ -1255,17 +1252,17 @@ d_signed_or_unsigned_type (int unsignedp, tree type)
     return type;
 
 #if HOST_BITS_PER_WIDE_INT >= 64
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (intTI_type_node))
-    return unsignedp ? unsigned_intTI_type_node : intTI_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (cent_type_node))
+    return unsignedp ? ucent_type_node : cent_type_node;
 #endif
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (intDI_type_node))
-    return unsignedp ? unsigned_intDI_type_node : intDI_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (intSI_type_node))
-    return unsignedp ? unsigned_intSI_type_node : intSI_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (intHI_type_node))
-    return unsignedp ? unsigned_intHI_type_node : intHI_type_node;
-  if (TYPE_PRECISION (type) == TYPE_PRECISION (intQI_type_node))
-    return unsignedp ? unsigned_intQI_type_node : intQI_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (long_type_node))
+    return unsignedp ? ulong_type_node : long_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (int_type_node))
+    return unsignedp ? uint_type_node : int_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (short_type_node))
+    return unsignedp ? ushort_type_node : short_type_node;
+  if (TYPE_PRECISION (type) == TYPE_PRECISION (byte_type_node))
+    return unsignedp ? ubyte_type_node : byte_type_node;
 
   return type;
 }

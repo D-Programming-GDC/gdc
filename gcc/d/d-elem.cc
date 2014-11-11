@@ -367,10 +367,10 @@ CmpExp::toElem (IRState *irs)
 	{
 	  // %% is this properly optimized away?
 	  if (code == ORDERED_EXPR)
-	    return convert (boolean_type_node, integer_one_node);
+	    return convert (bool_type_node, integer_one_node);
 
 	  if (code == UNORDERED_EXPR)
-	    return convert (boolean_type_node, integer_zero_node);
+	    return convert (bool_type_node, integer_zero_node);
 	}
 
       result = build_boolop (code, e1->toElem (irs), e2->toElem (irs));
@@ -392,7 +392,7 @@ AndAndExp::toElem (IRState *irs)
     {
       return build3 (COND_EXPR, type->toCtype(),
 		     convert_for_condition (e1->toElem (irs), e1->type),
-		     e2->toElemDtor (irs), d_void_zero_node);
+		     e2->toElemDtor (irs), void_zero_node);
     }
 }
 
@@ -409,9 +409,9 @@ OrOrExp::toElem (IRState *irs)
   else
     {
       return build3 (COND_EXPR, type->toCtype(),
-		     build1 (TRUTH_NOT_EXPR, boolean_type_node,
+		     build1 (TRUTH_NOT_EXPR, bool_type_node,
 			     convert_for_condition (e1->toElem (irs), e1->type)),
-		     e2->toElemDtor (irs), d_void_zero_node);
+		     e2->toElemDtor (irs), void_zero_node);
     }
 }
 
@@ -543,14 +543,13 @@ PowExp::toElem (IRState *irs)
 }
 
 elem *
-CatExp::toElem (IRState *irs)
+CatExp::toElem(IRState *irs)
 {
-  Type *etype;
-
   // One of the operands may be an element instead of an array.
   // Logic copied from CatExp::semantic
   Type *tb1 = e1->type->toBasetype();
   Type *tb2 = e2->type->toBasetype();
+  Type *etype;
 
   if (tb1->ty == Tarray || tb1->ty == Tsarray)
     etype = tb1->nextOf();
@@ -559,74 +558,70 @@ CatExp::toElem (IRState *irs)
 
   // Flatten multiple concatenations
   unsigned n_operands = 2;
-  {
-    Expression *e = e1;
-    while (e->op == TOKcat)
-      {
-	e = ((CatExp *) e)->e1;
-	n_operands += 1;
-      }
-  }
+  for (Expression *ex = e1; ex->op == TOKcat;)
+    {
+      if (ex->op == TOKcat)
+	{
+	  ex = ((CatExp *) ex)->e1;
+	  n_operands++;
+	}
+    }
 
-  unsigned n_args = (1 + (n_operands > 2 ? 1 : 0) + n_operands);
-
+  unsigned n_args = (n_operands > 2 ? (2 + (n_operands * 2)) : 3);
   tree *args = new tree[n_args];
-  args[0] = build_typeinfo (type);
+
+  args[0] = build_typeinfo(type);
 
   if (n_operands > 2)
-    args[1] = build_integer_cst (n_operands, Type::tuns32->toCtype());
+    args[1] = build_integer_cst(n_operands, Type::tuns32->toCtype());
 
   unsigned ai = n_args - 1;
   CatExp *ce = this;
-  vec<tree, va_gc> *elem_vars = NULL;
+  vec<tree, va_gc> *elemvars = NULL;
 
-  while (ce)
+  // Loop through each concatenation from right to left.
+  // Dynamic arrays are not passed directly over varargs, instead they are
+  // split between length and ptr values.
+  for (Expression *oe = ce->e2; oe != NULL;
+       (ce->e1->op != TOKcat
+	? (oe = ce->e1)
+	: (ce = (CatExp *)ce->e1, oe = ce->e2)))
     {
-      Expression *oe = ce->e2;
-      while (1)
+      tree arg;
+      if (d_types_same(oe->type->toBasetype(), etype->toBasetype()))
 	{
-	  tree array_exp;
-	  if (d_types_same (oe->type->toBasetype(), etype->toBasetype()))
-	    {
-	      tree elem_var = NULL_TREE;
-	      tree expr = maybe_temporary_var (oe->toElem (irs), &elem_var);
-	      array_exp = d_array_value (oe->type->arrayOf()->toCtype(),
-					 size_int (1), build_address (expr));
+	  // Convert single element to an array.
+	  tree var = NULL_TREE;
+	  tree expr = maybe_temporary_var(oe->toElem(irs), &var);
+	  arg = d_array_value(oe->type->arrayOf()->toCtype(),
+			      size_int(1), build_address(expr));
 
-	      if (elem_var)
-		vec_safe_push (elem_vars, elem_var);
-	    }
-	  else
-	    array_exp = d_array_convert (oe);
-
-	  args[ai--] = array_exp;
-
-	  if (ce != NULL)
-	    {
-	      if (ce->e1->op != TOKcat)
-		{
-		  // Finish with atomtic lhs
-		  oe = ce->e1;
-		  ce = NULL;
-		}
-	      else
-		{
-		  // Continue with lhs CatExp
-		  ce = (CatExp *) ce->e1;
-		  break;
-		}
-	    }
-	  else
-	    goto all_done;
+	  if (var != NULL_TREE)
+	    vec_safe_push (elemvars, var);
 	}
+      else
+	arg = d_array_convert(oe);
+
+      if (n_operands > 2)
+	{
+	  // Filling the array backwards, so .ptr is pushed first.
+	  arg = maybe_make_temp(arg);
+	  args[ai--] = d_array_ptr(arg);
+	  args[ai--] = d_array_length(arg);
+	}
+      else
+	args[ai--] = maybe_make_temp(arg);
+
+      // Finished pushing all arrays.
+      if (oe == ce->e1)
+	break;
     }
- all_done:
 
-  tree result = build_libcall (n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
-			       n_args, args, type->toCtype());
+  tree result = build_libcall(n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
+			      n_args, args, type->toCtype());
 
-  for (size_t i = 0; i < vec_safe_length (elem_vars); ++i)
-    result = bind_expr ((*elem_vars)[i], result);
+  for (size_t i = 0; i < vec_safe_length (elemvars); ++i)
+    result = bind_expr ((*elemvars)[i], result);
 
   return result;
 }
@@ -1436,7 +1431,7 @@ DeleteExp::toElem (IRState *irs)
     {
       // Might need to run destructor on array contents
       Type *telem = tb1->nextOf()->baseElemOf();
-      tree ti = d_null_pointer;
+      tree ti = null_pointer_node;
       tree args[2];
 
       if (telem->ty == Tstruct)
@@ -1494,7 +1489,7 @@ elem *
 NotExp::toElem (IRState *irs)
 {
   // Need to convert to boolean type or this will fail.
-  tree t = build1 (TRUTH_NOT_EXPR, boolean_type_node,
+  tree t = build1 (TRUTH_NOT_EXPR, bool_type_node,
 		   convert_for_condition (e1->toElem (irs), e1->type));
   return d_convert (type->toCtype(), t);
 }
@@ -1650,7 +1645,7 @@ CallExp::toElem (IRState *irs)
 	{
 	  e1b->error ("need 'this' to access member %s", fd->toChars());
 	  // Continue processing...
-	  object = d_null_pointer;
+	  object = null_pointer_node;
 	}
     }
   else
@@ -1890,8 +1885,8 @@ AssertExp::toElem (IRState *irs)
 	  if (cd->isCOMclass())
 	    {
 	      return build3 (COND_EXPR, void_type_node,
-			     build_boolop (NE_EXPR, arg, d_null_pointer),
-			     d_void_zero_node, assert_call);
+			     build_boolop (NE_EXPR, arg, null_pointer_node),
+			     void_zero_node, assert_call);
 	    }
 	  else if (cd->isInterfaceDeclaration())
 	    arg = convert_expr (arg, tb1, build_object_type());
@@ -1901,8 +1896,8 @@ AssertExp::toElem (IRState *irs)
 
 	  // This does a null pointer check before calling _d_invariant
 	  return build3 (COND_EXPR, void_type_node,
-			 build_boolop (NE_EXPR, arg, d_null_pointer),
-			 invc ? invc : d_void_zero_node, assert_call);
+			 build_boolop (NE_EXPR, arg, null_pointer_node),
+			 invc ? invc : void_zero_node, assert_call);
 	}
       else
 	{
@@ -1925,12 +1920,12 @@ AssertExp::toElem (IRState *irs)
 	    }
 	  result = build3 (COND_EXPR, void_type_node,
 			   convert_for_condition (e1_t, e1->type),
-			   invc ? invc : d_void_zero_node, assert_call);
+			   invc ? invc : void_zero_node, assert_call);
 	  return result;
 	}
     }
 
-  return d_void_zero_node;
+  return void_zero_node;
 }
 
 elem *
@@ -2148,6 +2143,10 @@ NewExp::toElem (IRState *irs)
       StructDeclaration *sd = stype->sym;
       tree new_call;
 
+      // Cannot new an opaque struct.
+      if (sd->size(loc) == 0)
+	return d_convert(type->toCtype(), integer_zero_node);
+
       if (allocator)
 	new_call = d_build_call (allocator, NULL_TREE, newargs);
       else
@@ -2191,7 +2190,7 @@ NewExp::toElem (IRState *irs)
 
 	  // Elem size is unknown.
 	  if (tarray->next->size() == 0)
-	    return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+	    return d_array_value (type->toCtype(), size_int (0), null_pointer_node);
 
 	  libcall = tarray->next->isZeroInit() ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
 	  args[0] = type->getTypeInfo(NULL)->toElem (irs);
@@ -2354,7 +2353,7 @@ TupleExp::toElem (IRState *irs)
     }
 
   if (exp == NULL_TREE)
-    exp = d_void_zero_node;
+    exp = void_zero_node;
 
   return exp;
 }
@@ -2372,13 +2371,12 @@ ArrayLiteralExp::toElem (IRState *irs)
   Type *etype = tb->nextOf();
   tree tsa = d_array_type (etype, elements->dim);
   tree result = NULL_TREE;
-  bool constant_p = tb->isImmutable();
 
   // Handle empty array literals.
   if (elements->dim == 0)
     {
       if (tb->ty == Tarray)
-	return d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+	return d_array_value (type->toCtype(), size_int (0), null_pointer_node);
       else
 	return build_constructor (tsa, NULL);
     }
@@ -2395,9 +2393,6 @@ ArrayLiteralExp::toElem (IRState *irs)
       elem = maybe_make_temp (elem);
       CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
 			      convert_expr (elem, e->type, etype));
-
-      if (constant_p && !e->isConst())
-	constant_p = false;
     }
 
   tree ctor = build_constructor (tsa, elms);
@@ -2406,10 +2401,6 @@ ArrayLiteralExp::toElem (IRState *irs)
   // Nothing else to do for static arrays.
   if (tb->ty == Tsarray)
     return d_convert (type->toCtype(), ctor);
-
-  // Don't allocate immutable arrays on the heap.
-  if (tb->ty == Tarray && constant_p)
-    return d_array_value (type->toCtype(), size_int (elements->dim), build_address (ctor));
 
   args[0] = build_typeinfo (etype->arrayOf());
   args[1] = build_integer_cst (elements->dim, size_type_node);
@@ -2613,7 +2604,7 @@ NullExp::toElem (IRState *)
   switch (base_ty)
     {
     case Tarray:
-	  null_exp = d_array_value (type->toCtype(), size_int (0), d_null_pointer);
+	  null_exp = d_array_value (type->toCtype(), size_int (0), null_pointer_node);
 	  break;
 
     case Taarray:
@@ -2628,7 +2619,7 @@ NullExp::toElem (IRState *)
 	}
 
     case Tdelegate:
-	  null_exp = build_delegate_cst (d_null_pointer, d_null_pointer, type);
+	  null_exp = build_delegate_cst (null_pointer_node, null_pointer_node, type);
 	  break;
 
     default:

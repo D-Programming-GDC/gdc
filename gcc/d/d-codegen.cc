@@ -293,9 +293,9 @@ convert_expr (tree exp, Type *etype, Type *totype)
 		tree t = totype->toCtype();
 		exp = maybe_make_temp (exp);
 		return build3 (COND_EXPR, t,
-			       build_boolop (NE_EXPR, exp, d_null_pointer),
+			       build_boolop (NE_EXPR, exp, null_pointer_node),
 			       build_nop (t, build_offset (exp, size_int (offset))),
-			       build_nop (t, d_null_pointer));
+			       build_nop (t, null_pointer_node));
 	      }
 
 	    // d_convert will make a no-op cast
@@ -315,7 +315,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	if (cdto->isCOMclass() || cdfrom->cpp != cdto->cpp)
 	  {
 	    warning (OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
-	    result = d_convert (totype->toCtype(), d_null_pointer);
+	    result = d_convert (totype->toCtype(), null_pointer_node);
 	    // Make sure the expression is still evaluated if necessary
 	    if (TREE_SIDE_EFFECTS (exp))
 	      result = compound_expr (exp, result);
@@ -1788,12 +1788,12 @@ d_bounds_condition (tree index, tree upr, bool inclusive)
   tree uindex = d_convert (d_unsigned_type (TREE_TYPE (index)), index);
 
   // Build condition to test that INDEX < UPR.
-  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, boolean_type_node, uindex, upr);
+  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, bool_type_node, uindex, upr);
 
   // Build condition to test that INDEX >= 0.
   if (!TYPE_UNSIGNED (TREE_TYPE (index)))
-    condition = build2 (TRUTH_ANDIF_EXPR, boolean_type_node, condition,
-			build2 (GE_EXPR, boolean_type_node, index, integer_zero_node));
+    condition = build2 (TRUTH_ANDIF_EXPR, bool_type_node, condition,
+			build2 (GE_EXPR, bool_type_node, index, integer_zero_node));
 
   return condition;
 }
@@ -2958,7 +2958,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 	{
 	  // Should instead error on line that references 'thisfd'.
 	  thisfd->error ("nested function missing body");
-	  return d_null_pointer;
+	  return null_pointer_node;
 	}
 
       // Special case for __ensure and __require.
@@ -2985,7 +2985,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
       if (!func->vthis)
 	{
 	  sym->error ("is a nested function and cannot be accessed from %s", func->toChars());
-	  return d_null_pointer;
+	  return null_pointer_node;
 	}
 
       // Make sure we can get the frame pointer to the outer function.
@@ -3022,7 +3022,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
 	    {
 	    Lnoframe:
 	      func->error ("cannot get frame pointer to %s", sym->toChars());
-	      return d_null_pointer;
+	      return null_pointer_node;
 	    }
 
 	  dsym = dsym->toParent2();
@@ -3033,7 +3033,7 @@ get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
   if (ffo->creates_frame || ffo->static_chain)
     return get_framedecl (func, parentfd);
 
-  return d_null_pointer;
+  return null_pointer_node;
 }
 
 // Return the parent function of a nested class CD.
@@ -3076,7 +3076,7 @@ d_nested_struct (StructDeclaration *sd)
 // instance of OCD or a class that has OCD as a base.
 
 static tree
-find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
+find_this_tree(FuncDeclaration *func, ClassDeclaration *ocd)
 {
   while (func)
     {
@@ -3086,11 +3086,11 @@ find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
       if (cd != NULL)
 	{
 	  if (ocd == cd)
-	    return get_decl_tree (func->vthis, func);
-	  else if (ocd->isBaseOf (cd, NULL))
-	    return convert_expr (get_decl_tree (func->vthis, func), cd->type, ocd->type);
+	    return get_decl_tree(func->vthis, func);
+	  else if (ocd->isBaseOf(cd, NULL))
+	    return convert_expr(get_decl_tree(func->vthis, func), cd->type, ocd->type);
 
-	  func = d_nested_class (cd);
+	  func = d_nested_class(cd);
 	}
       else
 	{
@@ -3110,61 +3110,51 @@ find_this_tree (FuncDeclaration *func, ClassDeclaration *ocd)
 // Retrieve the outer class/struct 'this' value of DECL from the function FD.
 
 tree
-build_vthis (AggregateDeclaration *decl, FuncDeclaration *fd)
+build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd)
 {
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
 
-  tree vthis_value = d_null_pointer;
+  // If an aggregate nested in a function has no methods and there are no
+  // other nested functions, any static chain created here will never be
+  // translated.  Use a null pointer for the link in this case.
+  tree vthis_value = null_pointer_node;
 
-  if (cd)
+  if (cd != NULL || sd != NULL)
     {
-      Dsymbol *outer = cd->toParent2();
+      Dsymbol *outer = decl->toParent2();
+
+      // If the parent is a templated struct, the outer context is instead
+      // the enclosing symbol of where the instantiation happened.
+      if (outer->isStructDeclaration())
+	{
+	  gcc_assert(outer->parent && outer->parent->isTemplateInstance());
+	  outer = ((TemplateInstance *) outer->parent)->enclosing;
+	}
+
+      // For outer classes, get a suitable 'this' value.
+      // For outer functions, get a suitable frame/closure pointer.
       ClassDeclaration *cdo = outer->isClassDeclaration();
       FuncDeclaration *fdo = outer->isFuncDeclaration();
 
       if (cdo)
 	{
-	  vthis_value = find_this_tree (fd, cdo);
-	  gcc_assert (vthis_value != NULL_TREE);
+	  vthis_value = find_this_tree(fd, cdo);
+	  gcc_assert(vthis_value != NULL_TREE);
 	}
       else if (fdo)
 	{
-	  // If a class nested in a function has no methods and there
-	  // are no other nested functions, any static chain created
-	  // here will never be translated.  Use a null pointer for the
-	  // link in this case.
-	  FuncFrameInfo *ffo = get_frameinfo (fdo);
+	  FuncFrameInfo *ffo = get_frameinfo(fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = get_frame_for_symbol (fd, cd);
-	  else if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
-	    vthis_value = get_decl_tree (fdo->vthis, fd);
-	  else
-	    vthis_value = d_null_pointer;
-	}
-      else
-	gcc_unreachable();
-    }
-  else if (sd)
-    {
-      Dsymbol *outer = sd->toParent2();
-      ClassDeclaration *cdo = outer->isClassDeclaration();
-      FuncDeclaration *fdo = outer->isFuncDeclaration();
-
-      if (cdo)
-	{
-	  vthis_value = find_this_tree (fd, cdo);
-	  gcc_assert (vthis_value != NULL_TREE);
-	}
-      else if (fdo)
-	{
-	  FuncFrameInfo *ffo = get_frameinfo (fdo);
-	  if (ffo->creates_frame || ffo->static_chain
-	      || fdo->hasNestedFrameRefs())
-	    vthis_value = get_frame_for_symbol (fd, sd);
-	  else
-	    vthis_value = d_null_pointer;
+	    vthis_value = get_frame_for_symbol(fd, decl);
+	  else if (cd != NULL)
+	    {
+	      // Classes nested in methods are allowed to access any outer
+	      // class fields, use the function chain in this case.
+	      if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
+		vthis_value = get_decl_tree(fdo->vthis, fd);
+	    }
 	}
       else
 	gcc_unreachable();
@@ -3396,7 +3386,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
   else
     {
       inner->error ("forward reference to frame of %s", outer->toChars());
-      return d_null_pointer;
+      return null_pointer_node;
     }
 }
 
@@ -3446,7 +3436,7 @@ layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl)
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
 	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
-				   get_identifier ("__vptr"), d_vtbl_ptr_type_node);
+				   get_identifier ("__vptr"), vtbl_ptr_type_node);
 	  DECL_ARTIFICIAL (field) = 1;
 	  DECL_IGNORED_P (field) = inherited_p;
 

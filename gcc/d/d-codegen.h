@@ -140,7 +140,7 @@ extern tree convert_for_condition (tree expr, Type *type);
 extern tree d_array_convert (Expression *exp);
 
 // Simple constants
-extern tree build_integer_cst (dinteger_t value, tree type = integer_type_node);
+extern tree build_integer_cst (dinteger_t value, tree type = int_type_node);
 extern tree build_float_cst (const real_t& value, Type *totype);
 
 // Dynamic arrays
@@ -308,7 +308,7 @@ build_vconvert (tree t, tree e)
 inline tree
 build_boolop (tree_code code, tree arg0, tree arg1)
 {
-  return fold_build2_loc (input_location, code, boolean_type_node, arg0, arg1);
+  return fold_build2_loc (input_location, code, bool_type_node, arg0, arg1);
 }
 
 inline tree

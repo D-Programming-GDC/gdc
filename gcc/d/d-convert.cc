@@ -224,7 +224,7 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
 	op1 = d_convert_basic (result_type, op1);
     }
 
-  return build2 (code, boolean_type_node, op0, op1);
+  return build2 (code, bool_type_node, op0, op1);
 }
 
 
@@ -237,9 +237,9 @@ d_truthvalue_conversion (tree expr)
     {
     case EQ_EXPR:   case NE_EXPR:   case LE_EXPR:
     case GE_EXPR:   case LT_EXPR:   case GT_EXPR:
-      if (TREE_TYPE (expr) == boolean_type_node)
+      if (TREE_TYPE (expr) == bool_type_node)
 	return expr;
-      return build2 (TREE_CODE (expr), boolean_type_node,
+      return build2 (TREE_CODE (expr), bool_type_node,
 		     TREE_OPERAND (expr, 0), TREE_OPERAND (expr, 1));
 
     case TRUTH_ANDIF_EXPR:
@@ -247,16 +247,16 @@ d_truthvalue_conversion (tree expr)
     case TRUTH_AND_EXPR:
     case TRUTH_OR_EXPR:
     case TRUTH_XOR_EXPR:
-      if (TREE_TYPE (expr) == boolean_type_node)
+      if (TREE_TYPE (expr) == bool_type_node)
 	return expr;
-      return build2 (TREE_CODE (expr), boolean_type_node,
+      return build2 (TREE_CODE (expr), bool_type_node,
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
 
     case TRUTH_NOT_EXPR:
-      if (TREE_TYPE (expr) == boolean_type_node)
+      if (TREE_TYPE (expr) == bool_type_node)
 	return expr;
-      return build1 (TREE_CODE (expr), boolean_type_node,
+      return build1 (TREE_CODE (expr), bool_type_node,
 		     d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
 
     case ERROR_MARK:
@@ -279,7 +279,7 @@ d_truthvalue_conversion (tree expr)
 	break;
 
       if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 0)))
-	return build2 (COMPOUND_EXPR, boolean_type_node,
+	return build2 (COMPOUND_EXPR, bool_type_node,
 		       TREE_OPERAND (expr, 0), boolean_true_node);
       else
 	return boolean_true_node;
@@ -302,14 +302,14 @@ d_truthvalue_conversion (tree expr)
       // These don't change whether an object is zero or nonzero, but
       // we can't ignore them if their second arg has side-effects.
       if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1)))
-	return build2 (COMPOUND_EXPR, boolean_type_node, TREE_OPERAND (expr, 1),
+	return build2 (COMPOUND_EXPR, bool_type_node, TREE_OPERAND (expr, 1),
 		       d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
       else
 	return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
 
     case COND_EXPR:
       // Distribute the conversion into the arms of a COND_EXPR.
-      return fold_build3 (COND_EXPR, boolean_type_node, TREE_OPERAND (expr, 0),
+      return fold_build3 (COND_EXPR, bool_type_node, TREE_OPERAND (expr, 0),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 2)));
 
@@ -344,18 +344,18 @@ d_truthvalue_conversion (tree expr)
       // two objects.
       if (TREE_TYPE (TREE_OPERAND (expr, 0))
 	  == TREE_TYPE (TREE_OPERAND (expr, 1)))
-	return fold_build2 (NE_EXPR, boolean_type_node,
+	return fold_build2 (NE_EXPR, bool_type_node,
 			    TREE_OPERAND (expr, 0), TREE_OPERAND (expr, 1));
-      return fold_build2 (NE_EXPR, boolean_type_node,
+      return fold_build2 (NE_EXPR, bool_type_node,
 			  TREE_OPERAND (expr, 0),
 			  fold_convert (TREE_TYPE (TREE_OPERAND (expr, 0)),
 					TREE_OPERAND (expr, 1)));
 
     case BIT_AND_EXPR:
       if (integer_onep (TREE_OPERAND (expr, 1))
-	  && TREE_TYPE (expr) != boolean_type_node)
+	  && TREE_TYPE (expr) != bool_type_node)
 	// Using convert here would cause infinite recursion.
-	return build1 (NOP_EXPR, boolean_type_node, expr);
+	return build1 (NOP_EXPR, bool_type_node, expr);
       break;
 
     case MODIFY_EXPR:
