@@ -358,7 +358,7 @@ check-d: check-gdc
 lang_checks += check-gdc
 lang_checks_parallelized += check-gdc
 # For description see comment above check_gcc_parallelize in gcc/Makefile.in.
-check_gdc_parallelize = d_do_test.exp=runnable/*
+check_gdc_parallelize = 10
 
 d/pkgvars: Makefile
 	@rm -f $@

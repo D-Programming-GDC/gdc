@@ -20,45 +20,35 @@
 
 #include "config.h"
 
-// GMP is C++-aware, so we cannot included it in an extern "C" block.
-#include "gmp.h"
-
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
 #include "tree.h"
+#include "stringpool.h"
+#include "stor-layout.h"
+#include "varasm.h"
+#include "attribs.h"
 #include "tm_p.h"
 #include "tree-pretty-print.h"
 #include "tree-dump.h"
-#include "ggc.h"
-#include "flags.h"
+#include "tree-iterator.h"
 #include "diagnostic.h"
-#include "tree-inline.h"
+#include "plugin.h"
 
-#include "real.h"
 #include "langhooks.h"
 #include "langhooks-def.h"
 #include "toplev.h"
-#include "attribs.h"
 #include "target.h"
-#include "libfuncs.h"
+#include "common/common-target.h"
 #include "convert.h"
 #include "opts.h"
 
-#include "cgraph.h"
-#include "stor-layout.h"
-#include "stringpool.h"
-#include "tree-iterator.h"
-#include "tree-ssa-alias.h"
-#include "internal-fn.h"
+#include "function.h"
 #include "gimple-expr.h"
 #include "is-a.h"
-#include "gimple.h"
 #include "gimplify.h"
-#include "varasm.h"
-#include "vec.h"
-
-#include "common/common-target.h"
+#include "ipa-ref.h"
+#include "cgraph.h"
 
 #ifdef optimize
 #undef optimize
