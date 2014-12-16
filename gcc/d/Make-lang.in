@@ -97,7 +97,7 @@ ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
 # Create the compiler driver for D.
 GDC_OBJS = $(GCC_OBJS) d/d-spec.o
 gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)
-	$(CXX) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 	$(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
 	$(EXTRA_GCC_LIBS) $(LIBS)
 
@@ -201,7 +201,7 @@ d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H)
 d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
     $(CONFIG_H) $(OPTS_H)
 	(SHLIB='$(SHLIB)'; \
-	$(CXX) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
+	$(COMPILER) -c $(ALL_COMPILER_FLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
 		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 D_BORROWED_C_OBJS = attribs.o
