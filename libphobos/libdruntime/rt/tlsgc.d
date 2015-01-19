@@ -14,13 +14,14 @@ module rt.tlsgc;
 
 import core.stdc.stdlib;
 
-static import rt.lifetime;
+static import rt.lifetime, rt.sections;
 
 /**
  * Per thread record to store thread associated data for garbage collection.
  */
 struct Data
 {
+    typeof(rt.sections.initTLSRanges()) tlsRanges;
     rt.lifetime.BlkInfo** blockInfoCache;
 }
 
@@ -34,6 +35,7 @@ Data* init()
     *data = Data.init;
 
     // do module specific initialization
+    data.tlsRanges = rt.sections.initTLSRanges();
     data.blockInfoCache = &rt.lifetime.__blkcache_storage;
 
     return data;
@@ -46,6 +48,7 @@ Data* init()
 void destroy(Data* data)
 {
     // do module specific finalization
+    rt.sections.finiTLSRanges(data.tlsRanges);
 
     .free(data);
 }
@@ -59,6 +62,7 @@ alias void delegate(void* pstart, void* pend) ScanDg;
 void scan(Data* data, scope ScanDg dg)
 {
     // do module specific marking
+    rt.sections.scanTLSRanges(data.tlsRanges, dg);
 }
 
 alias int delegate(void* addr) IsMarkedDg;

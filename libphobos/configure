@@ -626,6 +626,11 @@ BUILD_LIBIBERTY
 CFLAGS_FOR_BUILD
 CC_FOR_BUILD
 GDC
+IS_LINUX_FALSE
+IS_LINUX_TRUE
+SO_EXT
+ENABLE_SHARED_FALSE
+ENABLE_SHARED_TRUE
 RANLIB
 AR
 ac_ct_CXX
@@ -719,6 +724,7 @@ enable_multilib
 enable_thread_lib
 enable_unix
 enable_druntime_gc
+enable_shared_phobos
 with_system_zlib
 enable_phobos_config_dir
 with_cross_host
@@ -1354,6 +1360,7 @@ Optional Features:
   --enable-unix           enables Unix runtime (default: yes, for Unix
                           targets)
   --enable-druntime-gc    enable D runtime garbage collector (default: yes)
+  --enable-shared-phobos        provide a shared libgphobos2
   --enable-phobos-config-dir=<dir>
                           use source file fragments in <dir>
   --disable-libbacktrace  Do not use libbacktrace for backtraces
@@ -4090,6 +4097,28 @@ else
 fi
 
 
+# Check whether --enable-shared-phobos was given.
+if test "${enable_shared_phobos+set}" = set; then :
+  enableval=$enable_shared_phobos; ENABLE_SHARED=true
+else
+  ENABLE_SHARED=false
+fi
+
+ if $ENABLE_SHARED; then
+  ENABLE_SHARED_TRUE=
+  ENABLE_SHARED_FALSE='#'
+else
+  ENABLE_SHARED_TRUE='#'
+  ENABLE_SHARED_FALSE=
+fi
+
+
+SO_EXT="so"
+case "$host" in
+  mingw*) SO_EXT="dll";;
+esac
+
+
 
 # Check whether --with-system-zlib was given.
 if test "${with_system_zlib+set}" = set; then :
@@ -4116,6 +4145,19 @@ else
 fi
 
 d_target_os=`echo $target_os | sed 's/^\(A-Za-z_+\)/\1/'`
+
+is_linux=false
+case "$target_os" in
+  linux*) is_linux=true;;
+esac
+ if $is_linux; then
+  IS_LINUX_TRUE=
+  IS_LINUX_FALSE='#'
+else
+  IS_LINUX_TRUE='#'
+  IS_LINUX_FALSE=
+fi
+
 
 GDC=$CC
 GDC=`echo $CC | sed s/xgcc/gdc/`
@@ -5338,6 +5380,14 @@ else
   am__EXEEXT_FALSE=
 fi
 
+if test -z "${ENABLE_SHARED_TRUE}" && test -z "${ENABLE_SHARED_FALSE}"; then
+  as_fn_error "conditional \"ENABLE_SHARED\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${IS_LINUX_TRUE}" && test -z "${IS_LINUX_FALSE}"; then
+  as_fn_error "conditional \"IS_LINUX\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${BACKTRACE_SUPPORTED_TRUE}" && test -z "${BACKTRACE_SUPPORTED_FALSE}"; then
   as_fn_error "conditional \"BACKTRACE_SUPPORTED\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5

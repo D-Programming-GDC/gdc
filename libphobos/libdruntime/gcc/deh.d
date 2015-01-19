@@ -26,6 +26,11 @@ import gcc.builtins;
 import core.memory;
 import core.stdc.stdlib;
 
+// Not used in GDC but declaration required by rt/sections.d
+struct FuncTable
+{
+}
+
 extern(C)
 {
   int _d_isbaseof(ClassInfo, ClassInfo);
@@ -42,7 +47,7 @@ version(GNU_SEH_Exceptions)
         ExceptionCollidedUnwind
     }
 
-    //Pointer types. We're lazy, exact definition in MinGW/winnt.h
+    // Pointer types. We're lazy, exact definition in MinGW/winnt.h
     alias PEXCEPTION_RECORD = void*;
     alias PCONTEXT = void*;
     alias PDISPATCHER_CONTEXT = void*;

@@ -232,7 +232,10 @@ RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
 	     rt/cast_.o rt/critical_.o rt/deh.o rt/dmain2.o rt/minfo.o \
 	     rt/memory.o rt/invariant.o rt/lifetime.o \
-	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
+	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o \
+	     rt/sections.o rt/sections_freebsd.o rt/sections_linux.o \
+	     rt/sections_osx.o rt/sections_solaris.o rt/sections_win32.o \
+	     rt/sections_win64.o
 
 CORE_OBJS = core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 	  core/exception.o core/math.o core/memory.o core/runtime.o \

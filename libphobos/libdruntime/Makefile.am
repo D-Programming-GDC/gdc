@@ -21,16 +21,38 @@ ACLOCAL_AMFLAGS = -I . -I ..
 
 OUR_CFLAGS=@DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
 D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) -I ./$(host_alias) -I .
+D_EXTRA_SHARED_DFLAGS=
 ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
+if IS_LINUX
+  D_EXTRA_SHARED_DFLAGS += -fversion=Shared
+endif
 IMPDIR = import
+
+DRUNTIME_SO = libgdruntime.$(SO_EXT)
+DRUNTIME_T_SO = libgdruntime_t.$(SO_EXT)
+DRUNTIME_LIBS = libgdruntime.a
+if ENABLE_SHARED
+  DRUNTIME_LIBS += $(DRUNTIME_SO)
+endif
+DRUNTIME_TEST = unittest
+if ENABLE_SHARED
+  DRUNTIME_TEST += unittest-pic
+endif
+
+SHARED_OBJECT=
+if IS_LINUX
+  SHARED_OBJECT += __sharedlib.o
+endif
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
 
-all-local: libgdruntime.a
+all-local: $(DRUNTIME_LIBS)
 
 SUFFIXES = .d
 
+%.pic.o : %.d
+	$(GDC) -o $@ $(ALL_DFLAGS) $(D_EXTRA_SHARED_DFLAGS) -fPIC -c $<
 %.o : %.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 
@@ -54,11 +76,17 @@ $(IMPDIR)/%.di: %.d $(IMPDIR)
 
 # %.o : %.c
 # Use .c.o to override Automake
-.c.o:
+%.c.o: %.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
-.S.o:
+%.c.pic.o: %.c
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fPIC -c $<
+
+%.S.o: %.S
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
+%.S.pic.o: %.S
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fPIC -c $<
 
 %.t.o : %.d
 	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
@@ -66,12 +94,23 @@ $(IMPDIR)/%.di: %.d $(IMPDIR)
 %.t.o : %.o
 	cp $< $@
 
+%.pic.t.o : %.d
+	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_EXTRA_DFLAGS) $(D_EXTRA_SHARED_DFLAGS) $(MULTIFLAGS) -fPIC -c $<
+
+%.pic.t.o : %.pic.o
+	cp $< $@
+
+__sharedlib.o : __sharedlib.c
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fPIC -c $<
 
 #--------------------------------------#
 # GDC Runtime
 
 gcc/cbridge_math.o: gcc/cbridge_math.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
+
+gcc/cbridge_math.pic.o: gcc/cbridge_math.c
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fPIC -fno-strict-aliasing -c $<
 
 BASE_OBJS=object_.o
 
@@ -80,11 +119,14 @@ RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arrayfloat.o rt/arrayint.o rt/arrayreal.o rt/arrayshort.o \
 	     rt/cast_.o rt/critical_.o rt/deh.o rt/dmain2.o rt/minfo.o \
 	     rt/memory.o rt/invariant.o rt/lifetime.o \
-	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o
+	     rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o rt/tlsgc.o \
+	     rt/sections.o rt/sections_freebsd.o rt/sections_linux.o \
+	     rt/sections_osx.o rt/sections_solaris.o rt/sections_win32.o \
+	     rt/sections_mingw.o rt/sections_win64.o
 
 CORE_OBJS=core/atomic.o core/bitop.o core/cpuid.o core/demangle.o \
 	  core/exception.o core/math.o core/memory.o core/runtime.o \
-	  core/simd.o core/thread.o core/threadasm.o core/time.o core/vararg.o \
+	  core/simd.o core/thread.o core/threadasm.S.o core/time.o core/vararg.o \
 	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
 	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
 	  core/sync/semaphore.o
@@ -109,7 +151,7 @@ DRUNTIME_OBJS+=$(BASE_OBJS) $(RUNTIME_OBJS) $(UTIL_OBJS) \
 
 # OS specific
 RT_STDC_OBJS=core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
-	     core/stdc/errno_.o core/stdc/math.o core/stdc/signal.o \
+	     core/stdc/errno_.c.o core/stdc/math.o core/stdc/signal.o \
 	     core/stdc/stdarg.o core/stdc/stdio.o core/stdc/stdlib.o \
 	     core/stdc/stdint.o core/stdc/stddef.o core/stdc/string.o \
 	     core/stdc/time.o core/stdc/wchar_.o
@@ -125,7 +167,7 @@ RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
 	      core/sys/posix/sys/select.o core/sys/posix/sys/socket.o \
 	      core/sys/posix/sys/stat.o core/sys/posix/sys/wait.o \
 	      core/sys/posix/sys/un.o core/sys/posix/sys/utsname.o \
-	      core/sys/posix/sys/utsname.o core/sys/posix/netinet/in_.o
+	      core/sys/posix/netinet/in_.o
 
 RT_WINDOWS_OBJS=core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
@@ -198,8 +240,9 @@ GCC_IMPORTS=gcc/atomics.di gcc/attribute.di gcc/backtrace.di \
 	    gcc/builtins.di gcc/libbacktrace.di
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
+ALL_DRUNTIME_PIC_OBJS = $(subst .o,.pic.o,$(ALL_DRUNTIME_OBJS))
 
-libgdruntime.a : $(ALL_DRUNTIME_OBJS) \
+libgdruntime.a : $(ALL_DRUNTIME_OBJS) $(SHARED_OBJECT) \
 		 $(subst core/,$(IMPDIR)/core/,$(CORE_IMPORTS)) \
 		 $(subst gcc/,$(IMPDIR)/gcc/,$(GCC_IMPORTS))
 if BACKTRACE_SUPPORTED
@@ -210,6 +253,15 @@ else
 endif
 	$(RANLIB) $@
 
+$(DRUNTIME_SO) : $(ALL_DRUNTIME_PIC_OBJS) $(SHARED_OBJECT) \
+		 $(subst core/,$(IMPDIR)/core/,$(CORE_IMPORTS)) \
+		 $(subst gcc/,$(IMPDIR)/gcc/,$(GCC_IMPORTS))
+if BACKTRACE_SUPPORTED
+	$(GDC) -o $@ -Wl,--whole-archive $(LIBBACKTRACE_LIB) -Wl,--no-whole-archive -shared -nophoboslib -ldl $(ALL_DRUNTIME_PIC_OBJS)
+else
+	$(GDC) -o $@ -shared -nophoboslib -ldl $(ALL_DRUNTIME_PIC_OBJS)
+endif
+
 libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
 if BACKTRACE_SUPPORTED
 	cp -f $(LIBBACKTRACE_LIB) $@
@@ -219,18 +271,34 @@ else
 endif
 	$(RANLIB) $@
 
+$(DRUNTIME_T_SO) : $(ALL_DRUNTIME_PIC_OBJS:.o=.t.o)
+if BACKTRACE_SUPPORTED
+	$(GDC) -o $@ -Wl,--whole-archive $(LIBBACKTRACE_LIB) -Wl,--no-whole-archive -shared -nophoboslib -ldl $(ALL_DRUNTIME_PIC_OBJS:.o=.t.o)
+else
+	$(GDC) -o $@ -shared -nophoboslib -ldl $(ALL_DRUNTIME_PIC_OBJS:.o=.t.o)
+endif
+
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -ldl -L./ -Wl,-static -lgdruntime_t -Wl,-Bdynamic $(LIBS)
+
+unittest-pic: $(DRUNTIME_T_SO) unittest.pic.o
+	$(GDC) -o $@ $(CFLAGS) unittest.pic.o -nophoboslib -L./ -lgdruntime_t $(LIBS)
 
 #--------------------------------------#
 # Install, doc, etc targets
 
-install-exec-local: libgdruntime.a
+install-exec-local: $(DRUNTIME_LIBS)
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
+if ENABLE_SHARED
+	$(INSTALL) $(DRUNTIME_SO) $(DESTDIR)$(toolexeclibdir)
+endif
+if IS_LINUX
+	$(INSTALL) __sharedlib.o $(DESTDIR)$(toolexeclibdir)
+endif
 	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
-install-data-local: libgdruntime.a
+install-data-local: $(DRUNTIME_LIBS)
 	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
 	for i in __entrypoint.di object.di; do \
 	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
@@ -266,13 +334,26 @@ install-data-local: libgdruntime.a
 clean-local:
 	rm -f $(ALL_DRUNTIME_OBJS)
 	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
+	rm -f $(ALL_DRUNTIME_PIC_OBJS)
+	rm -f $(ALL_DRUNTIME_PIC_OBJS:.o=.t.o)
 	rm -f $(CORE_IMPORTS)
 	rm -f $(GCC_IMPORTS)
 	rm -rf $(IMPDIR)
 	rm -f libgdruntime.a
+	rm -f $(DRUNTIME_SO)
+	rm -f unittest.o
+	rm -f unittest
+	rm -f unittest.pic.o
+	rm -f unittest-pic
+	rm -f __sharedlib.o
+	rm -f libgdruntime_t.a
+	rm -f $(DRUNTIME_T_SO)
 
-check-local: unittest
+check-local: $(DRUNTIME_TEST)
 	./unittest
+if ENABLE_SHARED
+	LD_LIBRARY_PATH=. ./unittest-pic
+endif
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and

@@ -69,7 +69,17 @@
 #ifndef LIBPHOBOS_PROFILE
 #define LIBPHOBOS_PROFILE LIBPHOBOS
 #endif
+#ifndef LIBDRUNTIME
+#define LIBDRUNTIME "gdruntime"
+#endif
 
+static int shared_option = 0;
+/* What do with libgphobos:
+   -1 means we should not link in libgphobos
+   0  means we should link in libgphobos if it is needed
+   1  means libgphobos is needed and should be linked in.
+   2  means libgphobos is needed and should be linked statically.  */
+static int library = 0;
 
 void
 lang_specific_driver (cl_decoded_option **in_decoded_options,
@@ -83,13 +93,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
   /* Used by -debuglib */
   int saw_debug_flag = 0;
-
-  /* What do with libgphobos:
-     -1 means we should not link in libgphobos
-     0  means we should link in libgphobos if it is needed
-     1  means libgphobos is needed and should be linked in.
-     2  means libgphobos is needed and should be linked statically.  */
-  int library = 0;
 
   /* If nonzero, use the standard D runtime library when linking with
      standard libraries. */
@@ -188,6 +191,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  added = 1; // force argument rebuild
 	  phobos = 0;
 	  args[i] |= SKIPOPT;
+	  break;
+
+	case OPT_shared: //Generating a shared library
+	  shared_option = 1;
 	  break;
 
 	case OPT_defaultlib_:
@@ -367,7 +374,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* There is one extra argument added here for the runtime
      library: -lgphobos.  The -pthread argument is added by
      setting need_thread. */
-  num_args = argc + added + need_math + shared_libgcc + (library > 0) * 4 + 2;
+  num_args = argc + added + need_math + shared_libgcc + shared_option + (library > 0) * 4 + 2 + (library == 2 ? 1 : 0);
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
@@ -440,6 +447,14 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 				  &new_decoded_options[j++]);
     }
 
+#ifdef TARGET_SHLIB_O
+  if (shared_option || library >= 0)
+    {
+      generate_option (OPT_l, "__sharedlib.o", 1, CL_DRIVER,
+		       &new_decoded_options[j++]);
+    }
+#endif
+
   /* If we are not linking, add a -o option.  This is because we need
      the driver to pass all .d files to cc1d.  Without a -o option the
      driver will invoke cc1d separately for each input file.  */
@@ -476,10 +491,19 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	}
 #endif
 
+      if (library <= 1 && !static_link)
+	{
+	  generate_option (OPT_l, LIBDRUNTIME, 1,
+			   CL_DRIVER, &new_decoded_options[j]);
+	  added_libraries++;
+	  j++;
+	}
+
       generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
 		       CL_DRIVER, &new_decoded_options[j]);
       added_libraries++;
       j++;
+
 
 #ifdef HAVE_LD_STATIC_DYNAMIC
       if (library > 1 && !static_link)
@@ -561,8 +585,14 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 
-int lang_specific_pre_link (void)  /* Not used for D.  */
+int lang_specific_pre_link (void)
 {
+#ifdef TARGET_SHLIB_O
+  if (shared_option || library >= 0)
+    {
+      return do_spec ("%:replace-outfile(-l__sharedlib.o __sharedlib%O%s)");
+    }
+#endif
   return 0;
 }
 

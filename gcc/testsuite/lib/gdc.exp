@@ -115,6 +115,11 @@ proc gdc_link_flags { paths } {
           append flags "-L${gccpath}/libphobos/src "
           append ld_library_path ":${gccpath}/libphobos/src"
       }
+      if { [file exists "${gccpath}/libphobos/libdruntime/libgdruntime.a"] \
+           || [file exists "${gccpath}/libphobos/libdruntime/libgdruntime.${shlib_ext}"] } {
+          append flags "-B${gccpath}/libphobos/libdruntime "
+          append ld_library_path ":${gccpath}/libphobos/libdruntime"
+      }
       if [file exists "${gccpath}/libiberty/libiberty.a"] {
           append flags "-L${gccpath}/libiberty "
       }
@@ -126,6 +131,11 @@ proc gdc_link_flags { paths } {
       if { $libphobos != "" } {
           append flags "-L${libphobos} "
           append ld_library_path ":${libphobos}"
+      }
+      set libdruntime [lookfor_file ${tool_root_dir} libdruntime]
+      if { $libpdruntime != "" } {
+          append flags "-B${libdruntime} "
+          append ld_library_path ":${libdruntime}"
       }
       set libiberty [lookfor_file ${tool_root_dir} libiberty]
       if { $libiberty != "" } {

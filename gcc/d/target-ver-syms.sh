@@ -41,6 +41,7 @@ freebsd* | k*bsd*-gnu)
   ;;
 linux*)
   echo "#define TARGET_LINUX     1"
+  echo "#define TARGET_SHLIB_O   1"
   ;;
 openbsd*)
   echo "#define TARGET_OPENBSD   1"

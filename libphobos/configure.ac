@@ -126,6 +126,17 @@ AC_ARG_ENABLE(druntime-gc,
                  [enable D runtime garbage collector (default: yes)]),
   :,[enable_druntime_gc=yes])
 
+AC_ARG_ENABLE(shared-phobos,
+  [  --enable-shared-phobos        provide a shared libgphobos2],
+  [ENABLE_SHARED=true], [ENABLE_SHARED=false])
+AM_CONDITIONAL([ENABLE_SHARED], [$ENABLE_SHARED])
+
+SO_EXT="so"
+case "$host" in
+  mingw*) SO_EXT="dll";;
+esac
+AC_SUBST(SO_EXT)
+
 dnl switch between system zlib and gcc's zlib
 AC_ARG_WITH(system-zlib,
   AS_HELP_STRING([--with-system-zlib],
@@ -147,6 +158,12 @@ else
 fi
 
 d_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`
+
+is_linux=false
+case "$target_os" in
+  linux*) is_linux=true;;
+esac
+AM_CONDITIONAL([IS_LINUX], [$is_linux])
 
 GDC=$CC
 GDC=`echo $CC | sed s/xgcc/gdc/`

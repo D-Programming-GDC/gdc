@@ -20,18 +20,33 @@ AUTOMAKE_OPTIONS = 1.9.4 foreign no-dependencies
 ACLOCAL_AMFLAGS = -I. -I..
 
 OUR_CFLAGS=@DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
+D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I$(srcdir) -I$(srcdir)/../libdruntime -I../libdruntime/$(host_alias) -I../libdruntime
 ALL_DFLAGS=$(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
 
-all-local: libgphobos2.a
+PHOBOS_SO = libgphobos2.$(SO_EXT)
+DRUNTIME_SO = libgdruntime.$(SO_EXT)
+PHOBOS_T_SO = libgphobos2_t.$(SO_EXT)
+PHOBOS_LIBS = libgphobos2.a
+if ENABLE_SHARED
+  PHOBOS_LIBS += $(PHOBOS_SO)
+endif
+PHOBOS_TEST = unittest
+if ENABLE_SHARED
+  PHOBOS_TEST += unittest-pic
+endif
+
+all-local: $(PHOBOS_LIBS)
 
 SUFFIXES = .d
 
 %.o : %.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
+
+%.pic.o : %.d
+	$(GDC) -o $@ $(ALL_DFLAGS) -fPIC -c $<
 
 # %.o : %.c
 zlib/%.o: $(top_srcdir)/../zlib/%.c
@@ -39,16 +54,28 @@ zlib/%.o: $(top_srcdir)/../zlib/%.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 # Use .c.o to override Automake
-.c.o:
+%.c.o: %.c
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
-.S.o:
+%.c.pic.o: %.c
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fPIC -c $<
+
+%.S.o: %.S
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+
+%.S.pic.o: %.S
+	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fPIC -c $<
 
 %.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
+	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
+	cp $< $@
+
+%.pic.t.o : %.d
+	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -fPIC -c $<
+
+%.pic.t.o : %.pic.o
 	cp $< $@
 
 
@@ -98,7 +125,7 @@ ZLIB_OBJS=@ZLIB_OBJS@
 OS_OBJS=std/file.o std/mmfile.o std/path.o std/process.o \
 	std/socket.o std/socketstream.o
 
-LINUX_OBJS=std/c/linux/linux.o std/c/linux/socket.o
+LINUX_OBJS=std/c/linux/socket.o
 
 OSX_OBJS=std/c/osx/socket.o
 
@@ -113,25 +140,37 @@ WINDOWS_OBJS=std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
 D_EXTRA_OBJS=@D_EXTRA_OBJS@
 
 ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
-
+ALL_PHOBOS_PIC_OBJS = $(subst .o,.pic.o,$(D_EXTRA_OBJS) $(MAIN_OBJS))
 
 libgphobos2.a : $(ALL_PHOBOS_OBJS) ../libdruntime/libgdruntime.a
 	cp ../libdruntime/libgdruntime.a libgphobos2.a
 	$(AR) -q $@ $(ALL_PHOBOS_OBJS)
 	$(RANLIB) $@
 
+$(PHOBOS_SO) : $(ALL_PHOBOS_PIC_OBJS) ../libdruntime/$(DRUNTIME_SO)
+	$(GDC) -o $@ -shared -B../libdruntime -nophoboslib -lgdruntime -lz -lcurl $(ALL_PHOBOS_PIC_OBJS)
+
 libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
+$(PHOBOS_T_SO) : $(ALL_PHOBOS_PIC_OBJS:.o=.t.o) ../libdruntime/$(DRUNTIME_SO)
+	$(GDC) -o $@ -shared -B../libdruntime -nophoboslib -lgdruntime -lz -lcurl $(ALL_PHOBOS_PIC_OBJS:.o=.t.o)
+
 unittest: libgphobos2.a libgphobos2_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -B../libdruntime -nophoboslib -Wl,-static -lgphobos2_t -lgdruntime -Wl,-Bdynamic $(LIBS) -ldl
+
+unittest-pic: $(PHOBOS_T_SO) unittest.pic.o
+	$(GDC) -o $@ $(CFLAGS) unittest.pic.o -L./ -nophoboslib -B../libdruntime -lgphobos2_t -lgdruntime $(LIBS)
 
 #--------------------------------------#
 # Install, doc, etc targets
 
 install-exec-local: libgphobos2.a
 	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
+if ENABLE_SHARED
+	$(INSTALL) $(PHOBOS_SO) $(DESTDIR)$(toolexeclibdir)
+endif
 	$(INSTALL) libgphobos2.a $(DESTDIR)$(toolexeclibdir)
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgphobos2.a
 
@@ -151,13 +190,21 @@ install-data-local: libgphobos2.a
 clean-local:
 	rm -f $(ALL_PHOBOS_OBJS)
 	rm -f $(ALL_PHOBOS_OBJS:.o=.t.o)
+	rm -f $(ALL_PHOBOS_PIC_OBJS)
+	rm -f $(ALL_PHOBOS_PIC_OBJS:.o=.t.o)
 	rm -f unittest.o
 	rm -f unittest$(EXEEXT)
+	rm -f unittest.pic.o
+	rm -f unittest-pic$(EXEEXT)
 	rm -f libgphobos2.a
 	rm -f libgphobos2_t.a
+	rm -f $(PHOBOS_SO)
+	rm -f $(PHOBOS_T_SO)
 
-check-local: unittest
-	./unittest
+check-local: $(PHOBOS_TEST)
+if ENABLE_SHARED
+	LD_LIBRARY_PATH=".:../libdruntime" ./unittest-pic
+endif
 
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS

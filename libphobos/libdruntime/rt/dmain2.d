@@ -19,6 +19,7 @@ module rt.dmain2;
 private
 {
     import rt.memory;
+    import rt.sections;
     import rt.util.string;
     import core.stdc.stddef;
     import core.stdc.stdlib;
@@ -163,6 +164,7 @@ extern (C) int rt_init()
 
     try
     {
+        initSections();
         gc_init();
         initStaticDataGC();
         rt_moduleCtor();
@@ -193,6 +195,7 @@ extern (C) int rt_term()
         thread_joinAll();
         rt_moduleDtor();
         gc_term();
+        finiSections();
         return 1;
     }
     catch (Throwable t)
