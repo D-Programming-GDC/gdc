@@ -27,20 +27,17 @@
 
 #include "dfrontend/target.h"
 
-extern FuncDeclaration *search_toHash(StructDeclaration *sd);
-extern FuncDeclaration *search_toString(StructDeclaration *sd);
-
 
 // Append VAL to constructor PDT.  Create a new constructor
 // of generic type if PDT is not already pointing to one.
 
 dt_t **
-dt_cons (dt_t **pdt, tree val)
+dt_cons(dt_t **pdt, tree val)
 {
   if (*pdt == NULL_TREE)
-    *pdt = build_constructor (d_unknown_type_node, NULL);
+    *pdt = build_constructor(d_unknown_type_node, NULL);
 
-  CONSTRUCTOR_APPEND_ELT (CONSTRUCTOR_ELTS (*pdt), 0, val);
+  CONSTRUCTOR_APPEND_ELT(CONSTRUCTOR_ELTS(*pdt), 0, val);
   return pdt;
 }
 
@@ -48,16 +45,16 @@ dt_cons (dt_t **pdt, tree val)
 // values of DT to PDT.
 
 dt_t **
-dt_chainon (dt_t **pdt, dt_t *dt)
+dt_chainon(dt_t **pdt, dt_t *dt)
 {
-  vec<constructor_elt, va_gc> *elts = CONSTRUCTOR_ELTS (dt);
+  vec<constructor_elt, va_gc> *elts = CONSTRUCTOR_ELTS(dt);
   tree value;
   size_t i;
 
-  gcc_assert (*pdt != dt);
+  gcc_assert(*pdt != dt);
 
-  FOR_EACH_CONSTRUCTOR_VALUE (elts, i, value)
-    dt_cons (pdt, value);
+  FOR_EACH_CONSTRUCTOR_VALUE(elts, i, value)
+    dt_cons(pdt, value);
 
   return pdt;
 }
@@ -65,11 +62,11 @@ dt_chainon (dt_t **pdt, dt_t *dt)
 // Add zero padding of size SIZE onto end of PDT.
 
 dt_t **
-dt_zeropad (dt_t **pdt, size_t size)
+dt_zeropad(dt_t **pdt, size_t size)
 {
-  tree type = d_array_type (Type::tuns8, size);
-  gcc_assert (size != 0);
-  return dt_cons (pdt, build_constructor (type, NULL));
+  tree type = d_array_type(Type::tuns8, size);
+  gcc_assert(size != 0);
+  return dt_cons(pdt, build_constructor(type, NULL));
 }
 
 // It is necessary to give static array data its original
@@ -81,13 +78,13 @@ dt_zeropad (dt_t **pdt, size_t size)
 // be a CONSTRUCTOR, or the CCP pass may use it incorrectly.
 
 static tree
-dt_container2 (dt_t *dt)
+dt_container2(dt_t *dt)
 {
   // Generate type on the fly
   vec<constructor_elt, va_gc> *elts = NULL;
   tree fields = NULL_TREE;
 
-  tree aggtype = make_node (RECORD_TYPE);
+  tree aggtype = make_node(RECORD_TYPE);
   tree offset = size_zero_node;
 
   if (dt != NULL_TREE)
@@ -95,37 +92,36 @@ dt_container2 (dt_t *dt)
       tree value;
       size_t i;
 
-      FOR_EACH_CONSTRUCTOR_VALUE (CONSTRUCTOR_ELTS (dt), i, value)
+      FOR_EACH_CONSTRUCTOR_VALUE(CONSTRUCTOR_ELTS(dt), i, value)
 	{
-	  tree field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE (value));
-	  tree size = TYPE_SIZE_UNIT (TREE_TYPE (value));
+	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE(value));
+	  tree size = TYPE_SIZE_UNIT(TREE_TYPE(value));
 
-	  DECL_CONTEXT (field) = aggtype;
-	  DECL_FIELD_OFFSET (field) = offset;
-	  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
-	  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (value)));
-	  DECL_ARTIFICIAL (field) = 1;
-	  DECL_IGNORED_P (field) = 1;
+	  DECL_CONTEXT(field) = aggtype;
+	  DECL_FIELD_OFFSET(field) = offset;
+	  DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
+	  SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN(TREE_TYPE(value)));
+	  DECL_ARTIFICIAL(field) = 1;
+	  DECL_IGNORED_P(field) = 1;
 
-	  layout_decl (field, 0);
-	  fields = chainon (fields, field);
-	  CONSTRUCTOR_APPEND_ELT (elts, field, value);
-	  offset = size_binop (PLUS_EXPR, offset, size);
+	  layout_decl(field, 0);
+	  fields = chainon(fields, field);
+	  CONSTRUCTOR_APPEND_ELT(elts, field, value);
+	  offset = size_binop(PLUS_EXPR, offset, size);
 	}
     }
   else
-    dt = build_constructor (aggtype, NULL);
+    dt = build_constructor(aggtype, NULL);
 
-  TYPE_FIELDS (aggtype) = fields;
-  TYPE_SIZE (aggtype) = size_binop (MULT_EXPR, offset, size_int (BITS_PER_UNIT));
-  TYPE_SIZE_UNIT (aggtype) = offset;
-  compute_record_mode (aggtype);
+  TYPE_FIELDS(aggtype) = fields;
+  TYPE_SIZE(aggtype) = size_binop(MULT_EXPR, offset, size_int(BITS_PER_UNIT));
+  TYPE_SIZE_UNIT(aggtype) = offset;
+  compute_record_mode(aggtype);
 
-  TREE_TYPE (dt) = aggtype;
-  CONSTRUCTOR_ELTS (dt) = elts;
-  TREE_READONLY (dt) = 1;
-  TREE_STATIC (dt) = 1;
-  TREE_CONSTANT (dt) = 1;
+  TREE_TYPE(dt) = aggtype;
+  CONSTRUCTOR_ELTS(dt) = elts;
+  TREE_STATIC(dt) = 1;
+  TREE_CONSTANT(dt) = 1;
 
   return dt;
 }
@@ -134,7 +130,7 @@ dt_container2 (dt_t *dt)
 // DT and append to the dt_t node list PDT.
 
 dt_t **
-dt_container (dt_t **pdt, Type *type, dt_t *dt)
+dt_container(dt_t **pdt, Type *type, dt_t *dt)
 {
   Type *tb = type->toBasetype();
 
@@ -147,57 +143,62 @@ dt_container (dt_t **pdt, Type *type, dt_t *dt)
       size_t i;
 
       if (dt == NULL)
-	dt = dt_container2 (dt);
+	dt = dt_container2(dt);
       else
 	{
-	  gcc_assert (CONSTRUCTOR_NELTS (dt) == tsa->dim->toInteger());
+	  gcc_assert(CONSTRUCTOR_NELTS(dt) == tsa->dim->toInteger());
 
-	  FOR_EACH_CONSTRUCTOR_VALUE (CONSTRUCTOR_ELTS (dt), i, value)
-	    CONSTRUCTOR_APPEND_ELT (elts, size_int (i), value);
+	  FOR_EACH_CONSTRUCTOR_VALUE(CONSTRUCTOR_ELTS(dt), i, value)
+	    CONSTRUCTOR_APPEND_ELT(elts, size_int(i), value);
 
-	  CONSTRUCTOR_ELTS (dt) = elts;
+	  CONSTRUCTOR_ELTS(dt) = elts;
 	}
 
-      TREE_TYPE (dt) = type->toCtype();
-      TREE_CONSTANT (dt) = 1;
-      TREE_READONLY (dt) = 1;
-      TREE_STATIC (dt) = 1;
+      TREE_TYPE(dt) = type->toCtype();
+      TREE_CONSTANT(dt) = 1;
+      TREE_STATIC(dt) = 1;
 
-      return dt_cons (pdt, dt);
+      return dt_cons(pdt, dt);
     }
   else if (tb->ty == Tstruct)
     {
-      dt = dt_container2 (dt);
-      TREE_TYPE (dt) = type->toCtype();
-      return dt_cons (pdt, dt);
+      dt = dt_container2(dt);
+      TREE_TYPE(dt) = type->toCtype();
+      return dt_cons(pdt, dt);
+    }
+  else if (tb->ty == Tclass)
+    {
+      dt = dt_container2(dt);
+      TREE_TYPE(dt) = TREE_TYPE(type->toCtype());
+      return dt_cons(pdt, dt);
     }
 
-  return dt_cons (pdt, dtvector_to_tree (dt));
+  return dt_cons(pdt, dtvector_to_tree(dt));
 }
 
 // Return a new CONSTRUCTOR whose values are in a dt_t
 // list pointed to by DT.
 
 tree
-dtvector_to_tree (dt_t *dt)
+dtvector_to_tree(dt_t *dt)
 {
-  if (dt && CONSTRUCTOR_NELTS (dt) == 1)
-    return CONSTRUCTOR_ELT (dt, 0)->value;
+  if (dt && CONSTRUCTOR_NELTS(dt) == 1)
+    return CONSTRUCTOR_ELT(dt, 0)->value;
 
-  return dt_container2 (dt);
+  return dt_container2(dt);
 }
 
 // Put out __vptr and __monitor of class CD into PDT.
 
 dt_t **
-build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd)
+build_vptr_monitor(dt_t **pdt, ClassDeclaration *cd)
 {
-  gcc_assert (cd != NULL);
+  gcc_assert(cd != NULL);
   Symbol *s = cd->toVtblSymbol();
-  dt_cons (pdt, build_address (s->Stree));
+  dt_cons(pdt, build_address(s->Stree));
 
   if (!cd->cpp)
-    dt_cons (pdt, size_int (0));
+    dt_cons(pdt, size_int(0));
 
   return pdt;
 }
@@ -207,14 +208,14 @@ build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd)
 // Build constructors for front-end Initialisers to be written to data segment.
 
 dt_t *
-Initializer::toDt (void)
+Initializer::toDt()
 {
   gcc_unreachable();
   return NULL_TREE;
 }
 
 dt_t *
-VoidInitializer::toDt (void)
+VoidInitializer::toDt()
 {
   // void initialisers are set to 0, just because we need something
   // to set them to in the static data segment.
@@ -224,14 +225,14 @@ VoidInitializer::toDt (void)
 }
 
 dt_t *
-StructInitializer::toDt (void)
+StructInitializer::toDt()
 {
   ::error ("StructInitializer::toDt: we shouldn't emit this (%s)", toChars());
   gcc_unreachable();
 }
 
 dt_t *
-ArrayInitializer::toDt (void)
+ArrayInitializer::toDt()
 {
   Type *tb = type->toBasetype();
   if (tb->ty == Tvector)
@@ -309,7 +310,7 @@ ArrayInitializer::toDt (void)
 }
 
 dt_t *
-ExpInitializer::toDt (void)
+ExpInitializer::toDt()
 {
   tree dt = NULL_TREE;
   exp = exp->optimize (WANTvalue);
@@ -593,7 +594,7 @@ AddrExp::toDt (dt_t **pdt)
 }
 
 dt_t **
-ClassReferenceExp::toDt (dt_t **pdt)
+ClassReferenceExp::toDt(dt_t **pdt)
 {
   InterfaceDeclaration *to = ((TypeClass *) type)->sym->isInterfaceDeclaration();
 
@@ -603,32 +604,32 @@ ClassReferenceExp::toDt (dt_t **pdt)
       // We must add offset to symbol.
       ClassDeclaration *from = originalClass();
       int off = 0;
-      int isbase = to->isBaseOf (from, &off);
-      gcc_assert (isbase);
+      int isbase = to->isBaseOf(from, &off);
+      gcc_assert(isbase);
 
-      return toDtI (pdt, off);
+      return toDtI(pdt, off);
     }
 
-  return toDtI (pdt, 0);
+  return toDtI(pdt, 0);
 }
 
 dt_t **
-ClassReferenceExp::toDtI (dt_t **pdt, int off)
+ClassReferenceExp::toDtI(dt_t **pdt, int off)
 {
-  tree dt = build_address (toSymbol()->Stree);
+  tree dt = build_address(toSymbol()->Stree);
 
   if (off != 0)
-    dt = build_offset (dt, size_int (off));
+    dt = build_offset(dt, size_int(off));
 
-  return dt_cons (pdt, dt);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
-ClassReferenceExp::toInstanceDt (dt_t **pdt)
+ClassReferenceExp::toInstanceDt(dt_t **pdt)
 {
   ClassDeclaration *cd = originalClass();
   Dts dts;
-  dts.setDim (value->elements->dim);
+  dts.setDim(value->elements->dim);
   dts.zero();
 
   for (size_t i = 0; i < value->elements->dim; i++)
@@ -637,7 +638,7 @@ ClassReferenceExp::toInstanceDt (dt_t **pdt)
       if (!e)
 	continue;
       tree dt = NULL_TREE;
-      e->toDt (&dt);
+      e->toDt(&dt);
       dts[i] = dt;
     }
 
@@ -645,10 +646,13 @@ ClassReferenceExp::toInstanceDt (dt_t **pdt)
    *  void **vptr;
    *  monitor_t monitor;
    */
-  build_vptr_monitor (pdt, cd);
+  tree cdt = NULL_TREE;
+  build_vptr_monitor(&cdt, cd);
 
   // Put out rest of class fields.
-  return toDt2 (pdt, cd, &dts);
+  toDt2(&cdt, cd, &dts);
+
+  return dt_container(pdt, cd->type, cdt);
 }
 
 // Generates the data for the static initializer of class variable.
@@ -657,24 +661,30 @@ ClassReferenceExp::toInstanceDt (dt_t **pdt)
 // this function, being alike to ClassDeclaration::toDt2, recursively builds the dt for all base classes.
 
 dt_t **
-ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
+ClassReferenceExp::toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 {
   // Note equivalence of this implementation to class's
   size_t offset;
 
   if (cd->baseClass)
     {
-      toDt2 (pdt, cd->baseClass, dts);
+      toDt2(pdt, cd->baseClass, dts);
       offset = cd->baseClass->structsize;
     }
   else
-    offset = Target::ptrsize * 2;
+    {
+      // Allow room for __vptr and __monitor.
+      if (cd->cpp)
+	offset = Target::ptrsize;
+      else
+	offset = Target::ptrsize * 2;
+    }
 
   for (size_t i = 0; i < cd->fields.dim; i++)
     {
       VarDeclaration *v = cd->fields[i];
-      int index = findFieldIndexByName (v);
-      gcc_assert (index != -1);
+      int index = findFieldIndexByName(v);
+      gcc_assert(index != -1);
 
       tree fdt = (*dts)[index];
 
@@ -690,23 +700,23 @@ ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 	      if (!init->isVoidInitializer())
 		{
 		  if (ei && tb->ty == Tsarray)
-		    ((TypeSArray *) tb)->toDtElem (&dt, ei->exp);
+		    ((TypeSArray *) tb)->toDtElem(&dt, ei->exp);
 		  else
 		    dt = init->toDt();
 		}
 	    }
 	  else if (v->offset >= offset)
-	    v->type->toDt (&dt);
+	    v->type->toDt(&dt);
 
 	  if (dt != NULL_TREE)
 	    {
 	      if (v->offset < offset)
-		error ("duplicated union initialization for %s", v->toChars());
+		error("duplicated union initialization for %s", v->toChars());
 	      else
 		{
 		  if (offset < v->offset)
-		    dt_zeropad (pdt, v->offset - offset);
-		  dt_chainon (pdt, dt);
+		    dt_zeropad(pdt, v->offset - offset);
+		  dt_chainon(pdt, dt);
 		  offset = v->offset + v->type->size();
 		}
 	    }
@@ -715,18 +725,18 @@ ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
       if (fdt != NULL_TREE)
 	{
 	  if (v->offset < offset)
-	    error ("duplicate union initialization for %s", v->toChars());
+	    error("duplicate union initialization for %s", v->toChars());
 	  else
 	    {
-	      size_t sz = int_size_in_bytes (TREE_TYPE (CONSTRUCTOR_ELT (fdt, 0)->value));
+	      size_t sz = int_size_in_bytes(TREE_TYPE(CONSTRUCTOR_ELT(fdt, 0)->value));
 	      size_t vsz = v->type->size();
 	      size_t voffset = v->offset;
 	      size_t dim = 1;
 
 	      if (sz > vsz)
 		{
-		  gcc_assert (v->type->ty == Tsarray && vsz == 0);
-		  error ("zero length array %s has non-zero length initializer", v->toChars());
+		  gcc_assert(v->type->ty == Tsarray && vsz == 0);
+		  error("zero length array %s has non-zero length initializer", v->toChars());
 		}
 
 	      for (Type *vt = v->type->toBasetype();
@@ -736,22 +746,22 @@ ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 		  dim *= tsa->dim->toInteger();
 		}
 
-	      gcc_assert (sz == vsz || sz * dim <= vsz);
+	      gcc_assert(sz == vsz || sz * dim <= vsz);
 
 	      for (size_t i = 0; i < dim; i++)
 		{
 		  if (offset < voffset)
-		    dt_zeropad (pdt, voffset - offset);
+		    dt_zeropad(pdt, voffset - offset);
 
 		  if (fdt == NULL_TREE)
 		    {
 		      if (v->init)
 			fdt = v->init->toDt();
 		      else
-			v->type->toDt (&fdt);
+			v->type->toDt(&fdt);
 		    }
 
-		  dt_chainon (pdt, fdt);
+		  dt_chainon(pdt, fdt);
 		  fdt = NULL_TREE;
 
 		  offset = voffset + sz;
@@ -772,14 +782,14 @@ ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 
       for (ClassDeclaration *cd2 = originalClass(); 1; cd2 = cd2->baseClass)
 	{
-	  gcc_assert (cd2);
-	  unsigned csymoffset = cd2->baseVtblOffset (b);
+	  gcc_assert(cd2);
+	  unsigned csymoffset = cd2->baseVtblOffset(b);
 	  if (csymoffset != (unsigned) ~0)
 	    {
-	      tree dt = build_address (cd2->toSymbol()->Stree);
+	      tree dt = build_address(cd2->toSymbol()->Stree);
 	      if (offset < (size_t) b->offset)
-		dt_zeropad (pdt, b->offset - offset);
-	      dt_cons (pdt, build_offset (dt, size_int (csymoffset)));
+		dt_zeropad(pdt, b->offset - offset);
+	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
 	      break;
 	    }
 	}
@@ -788,7 +798,7 @@ ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
     }
 
   if (offset < cd->structsize)
-    dt_zeropad (pdt, cd->structsize - offset);
+    dt_zeropad(pdt, cd->structsize - offset);
 
   return pdt;
 }
@@ -798,30 +808,39 @@ ClassReferenceExp::toDt2 (dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 // Generate the data for the static initialiser.
 
 void
-ClassDeclaration::toDt (dt_t **pdt)
+ClassDeclaration::toDt(dt_t **pdt)
 {
   /* Put out:
    *  void **vptr;
    *  monitor_t monitor;
    */
-  build_vptr_monitor (pdt, this);
+  tree cdt = NULL_TREE;
+  build_vptr_monitor(&cdt, this);
 
   // Put out rest of class fields.
-  toDt2 (pdt, this);
+  toDt2(&cdt, this);
+
+  dt_container(pdt, type, cdt);
 }
 
 void
-ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
+ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 {
   size_t offset;
 
   if (baseClass)
     {
-      baseClass->toDt2 (pdt, cd);
+      baseClass->toDt2(pdt, cd);
       offset = baseClass->structsize;
     }
   else
-    offset = Target::ptrsize * 2;
+    {
+      // Allow room for __vptr and __monitor
+      if (cd->cpp)
+	offset = Target::ptrsize;
+      else
+	offset = Target::ptrsize * 2;
+    }
 
   // Note equivalence of this loop to struct's
   for (size_t i = 0; i < fields.dim; i++)
@@ -837,23 +856,23 @@ ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
 	  if (!init->isVoidInitializer())
 	    {
 	      if (ei && tb->ty == Tsarray)
-		((TypeSArray *) tb)->toDtElem (&dt, ei->exp);
+		((TypeSArray *) tb)->toDtElem(&dt, ei->exp);
 	      else
 		dt = init->toDt();
 	    }
 	}
       else if (v->offset >= offset)
-	v->type->toDt (&dt);
+	v->type->toDt(&dt);
 
       if (dt != NULL_TREE)
 	{
 	  if (v->offset < offset)
-	    error ("duplicated union initialization for %s", v->toChars());
+	    error("duplicated union initialization for %s", v->toChars());
 	  else
 	    {
 	      if (offset < v->offset)
-		dt_zeropad (pdt, v->offset - offset);
-	      dt_chainon (pdt, dt);
+		dt_zeropad(pdt, v->offset - offset);
+	      dt_chainon(pdt, dt);
 	      offset = v->offset + v->type->size();
 	    }
 	}
@@ -868,14 +887,14 @@ ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
 
       for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
 	{
-	  gcc_assert (cd2);
-	  unsigned csymoffset = cd2->baseVtblOffset (b);
+	  gcc_assert(cd2);
+	  unsigned csymoffset = cd2->baseVtblOffset(b);
 	  if (csymoffset != (unsigned) ~0)
 	    {
-	      tree dt = build_address (cd2->toSymbol()->Stree);
+	      tree dt = build_address(cd2->toSymbol()->Stree);
 	      if (offset < (size_t) b->offset)
-		dt_zeropad (pdt, b->offset - offset);
-	      dt_cons (pdt, build_offset (dt, size_int (csymoffset)));
+		dt_zeropad(pdt, b->offset - offset);
+	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
 	      break;
 	    }
 	}
@@ -884,19 +903,19 @@ ClassDeclaration::toDt2 (dt_t **pdt, ClassDeclaration *cd)
     }
 
   if (offset < structsize)
-    dt_zeropad (pdt, structsize - offset);
+    dt_zeropad(pdt, structsize - offset);
 }
 
 void
-StructDeclaration::toDt (dt_t **pdt)
+StructDeclaration::toDt(dt_t **pdt)
 {
-  StructLiteralExp *sle = new StructLiteralExp (loc, this, NULL);
+  StructLiteralExp *sle = new StructLiteralExp(loc, this, NULL);
 
   if (!fill(loc, sle->elements, true))
     gcc_unreachable();
 
   sle->type = type;
-  sle->toDt (pdt);
+  sle->toDt(pdt);
 }
 
 /* ================================================================ */
@@ -986,17 +1005,6 @@ TypeStruct::toDt (dt_t **pdt)
   return pdt;
 }
 
-dt_t **
-TypeTypedef::toDt (dt_t **pdt)
-{
-  if (sym->init)
-    dt_chainon (pdt, sym->init->toDt());
-  else
-    sym->basetype->toDt (pdt);
-
-  return pdt;
-}
-
 /* ================================================================ */
 
 // Verify the runtime TypeInfo sizes.
@@ -1037,7 +1045,7 @@ TypeInfoConstDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->mutableOf();
   tm = tm->merge();
-  tm->getTypeInfo (NULL);
+  tm->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Const
   build_vptr_monitor (pdt, Type::typeinfoconst);
@@ -1058,7 +1066,7 @@ TypeInfoInvariantDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->mutableOf();
   tm = tm->merge();
-  tm->getTypeInfo (NULL);
+  tm->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Invariant
   build_vptr_monitor (pdt, Type::typeinfoinvariant);
@@ -1079,7 +1087,7 @@ TypeInfoSharedDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->unSharedOf();
   tm = tm->merge();
-  tm->getTypeInfo (NULL);
+  tm->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Shared
   build_vptr_monitor (pdt, Type::typeinfoshared);
@@ -1100,7 +1108,7 @@ TypeInfoWildDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->mutableOf();
   tm = tm->merge();
-  tm->getTypeInfo (NULL);
+  tm->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Wild
   build_vptr_monitor (pdt, Type::typeinfowild);
@@ -1109,46 +1117,6 @@ TypeInfoWildDeclaration::toDt (dt_t **pdt)
   dt_cons (pdt, build_address (tm->vtinfo->toSymbol()->Stree));
 }
 
-
-void
-TypeInfoTypedefDeclaration::toDt (dt_t **pdt)
-{
-  verify_structsize (Type::typeinfotypedef, 7 * Target::ptrsize);
-
-  /* Put out:
-   *  void **vptr;
-   *  monitor_t monitor;
-   *  TypeInfo base;
-   *  char[] name;
-   *  void[] m_init;
-   */
-  gcc_assert (tinfo->ty == Ttypedef);
-
-  TypedefDeclaration *sd = ((TypeTypedef *) tinfo)->sym;
-  sd->basetype = sd->basetype->merge();
-  // Generate vtinfo.
-  sd->basetype->getTypeInfo (NULL);
-  gcc_assert (sd->basetype->vtinfo);
-
-  // vtbl and monitor for TypeInfo_Typedef
-  build_vptr_monitor (pdt, Type::typeinfotypedef);
-
-  // Typeinfo for basetype.
-  dt_cons (pdt, build_address (sd->basetype->vtinfo->toSymbol()->Stree));
-
-  // Name of the typedef declaration.
-  dt_cons (pdt, d_array_string (sd->toPrettyChars()));
-
-  // Default initialiser for typedef.
-  tree tarray = Type::tvoid->arrayOf()->toCtype();
-  if (tinfo->isZeroInit() || !sd->init)
-    dt_cons (pdt, d_array_value (tarray, size_int (0), null_pointer_node));
-  else
-    {
-      tree sinit = build_address (sd->toInitializer()->Stree);
-      dt_cons (pdt, d_array_value (tarray, size_int (sd->type->size()), sinit));
-    }
-}
 
 void
 TypeInfoEnumDeclaration::toDt (dt_t **pdt)
@@ -1173,7 +1141,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
   // TypeInfo for enum members.
   if (sd->memtype)
     {
-      sd->memtype->getTypeInfo (NULL);
+      sd->memtype->genTypeInfo(NULL);
       dt_cons (pdt, build_address (sd->memtype->vtinfo->toSymbol()->Stree));
     }
   else
@@ -1209,7 +1177,7 @@ TypeInfoPointerDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tpointer);
 
   TypePointer *tc = (TypePointer *) tinfo;
-  tc->next->getTypeInfo (NULL);
+  tc->next->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Pointer
   build_vptr_monitor (pdt, Type::typeinfopointer);
@@ -1231,7 +1199,7 @@ TypeInfoArrayDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tarray);
 
   TypeDArray *tc = (TypeDArray *) tinfo;
-  tc->next->getTypeInfo (NULL);
+  tc->next->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Array
   build_vptr_monitor (pdt, Type::typeinfoarray);
@@ -1254,7 +1222,7 @@ TypeInfoStaticArrayDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tsarray);
 
   TypeSArray *tc = (TypeSArray *) tinfo;
-  tc->next->getTypeInfo (NULL);
+  tc->next->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_StaticArray
   build_vptr_monitor (pdt, Type::typeinfostaticarray);
@@ -1279,7 +1247,7 @@ TypeInfoVectorDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tvector);
 
   TypeVector *tc = (TypeVector *) tinfo;
-  tc->basetype->getTypeInfo (NULL);
+  tc->basetype->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Vector
   build_vptr_monitor (pdt, Type::typeinfovector);
@@ -1291,7 +1259,7 @@ TypeInfoVectorDeclaration::toDt (dt_t **pdt)
 void
 TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
 {
-  verify_structsize (Type::typeinfoassociativearray, 5 * Target::ptrsize);
+  verify_structsize (Type::typeinfoassociativearray, 4 * Target::ptrsize);
 
   /* Put out:
    *  void **vptr;
@@ -1303,9 +1271,8 @@ TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
   gcc_assert (tinfo->ty == Taarray);
 
   TypeAArray *tc = (TypeAArray *) tinfo;
-  tc->next->getTypeInfo (NULL);
-  tc->index->getTypeInfo (NULL);
-  tc->getImpl()->type->getTypeInfo (NULL);
+  tc->next->genTypeInfo(NULL);
+  tc->index->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_AssociativeArray
   build_vptr_monitor (pdt, Type::typeinfoassociativearray);
@@ -1315,9 +1282,6 @@ TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
 
   // TypeInfo for index of type.
   dt_cons (pdt, build_address (tc->index->vtinfo->toSymbol()->Stree));
-
-  // TypeInfo impl;
-  dt_cons (pdt, build_address (tc->getImpl()->type->vtinfo->toSymbol()->Stree));
 }
 
 void
@@ -1335,7 +1299,7 @@ TypeInfoFunctionDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->deco);
 
   TypeFunction *tc = (TypeFunction *) tinfo;
-  tc->next->getTypeInfo (NULL);
+  tc->next->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Function
   build_vptr_monitor (pdt, Type::typeinfofunction);
@@ -1362,7 +1326,7 @@ TypeInfoDelegateDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->deco);
 
   TypeDelegate *tc = (TypeDelegate *) tinfo;
-  tc->next->nextOf()->getTypeInfo (NULL);
+  tc->next->nextOf()->genTypeInfo(NULL);
 
   // vtbl and monitor for TypeInfo_Delegate
   build_vptr_monitor (pdt, Type::typeinfodelegate);
@@ -1422,7 +1386,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
     dt_cons (pdt, build_address (sd->toInitializer()->Stree));
 
   // hash_t function(in void*) xtoHash;
-  FuncDeclaration *fdx = search_toHash(sd);
+  FuncDeclaration *fdx = sd->xhash;
   if (fdx)
     {
       TypeFunction *tf = (TypeFunction *) fdx->type;
@@ -1484,7 +1448,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
       // TypeInfo m_arg1;
       if (sd->arg1type)
 	{
-	  sd->arg1type->getTypeInfo (NULL);
+	  sd->arg1type->genTypeInfo(NULL);
 	  dt_cons (pdt, build_address (sd->arg1type->vtinfo->toSymbol()->Stree));
 	}
       else
@@ -1493,7 +1457,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
       // TypeInfo m_arg2;
       if (sd->arg2type)
 	{
-	  sd->arg2type->getTypeInfo (NULL);
+	  sd->arg2type->genTypeInfo(NULL);
 	  dt_cons (pdt, build_address (sd->arg2type->vtinfo->toSymbol()->Stree));
 	}
       else
@@ -1564,7 +1528,7 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
   for (size_t i = 0; i < tu->arguments->dim; i++)
     {
       Parameter *arg = (*tu->arguments)[i];
-      Expression *e = arg->type->getTypeInfo (NULL);
+      Expression *e = arg->type->getTypeInfo(NULL);
       e = e->optimize (WANTvalue);
       e->toDt (&dt);
     }

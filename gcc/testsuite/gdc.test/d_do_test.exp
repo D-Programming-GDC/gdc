@@ -39,6 +39,16 @@ proc gdc-convert-args { args } {
     if [regexp -- {-inline} $args] {
         lappend out "-finline-functions"
     }
+    if [regexp -- {-boundscheck} $args] {
+        if [regexp -- {-boundscheck=safeonly} $args] {
+            lappend out "-fbounds-check=safe"
+        } elseif [regexp -- {-boundscheck=off} $args] {
+            lappend out "-fno-bounds-check"
+        } else {
+            lappend out "-fbounds-check"
+        }
+        
+    }
     if [regexp -- {-property} $args] {
         lappend out "-fproperty"
     }

@@ -1,3 +1,135 @@
+2015-01-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in: Update for D frontend changes.
+	* d-asmstmt.cc: Remove file.
+	* d-builtins.cc(build_dtype): No longer set struct handle.
+	(d_gcc_paint_type): Move to Target::paintAsType.
+	* d-codegen.cc(convert_expr): No longer call getImpl on associative
+	array conversions.  Add case for converting void pointers to delegates.
+	(unhandled_arrayop_p): Remove.
+	(build_two_field_type): Use layout_type instead of building
+	TYPE_STUB_DECL and calling rest_of_decl_compilation.
+	(build_binop_assignment): New function.
+	(libcall_ids): Remove static variable.
+	(get_libcall): New function.
+	(maybe_set_intrinsic): Remove druntime library call handling.
+	(expand_intrinsic_vaarg): Dereference ref va_list parameters.
+	(build_closure): New function.
+	(WrappedExp::WrappedExp): Move to frontend sources.
+	(WrappedExp::toCBuffer): Ditto.
+	* d-codegen.h(LibCallFlag): New enum.
+	(LibCall): Use runtime.def macro to define members.
+	* d-ctype.cc(Type::toCParamtype): Remove function.
+	(TypeTypedef::toCParamtype): Ditto.
+	(TypeClass::toSymbol): Ditto.
+	(TypeFunction::retStyle): Move to retStyle.
+	(TypeSArray::toCParamtype): Ditto.
+	(Type::toSymbol): Ditto.
+	(Type::totym): Ditto.
+	(TypeFunction::totym): Ditto.
+	* d-decls.cc(Dsymbol::toSymbolX): Update for frontend changes.
+	(Dsymbol::toImport): Ditto.
+	(VarDeclaration::toSymbol): Ditto.
+	(FuncDeclaration::toSymbol): Ditto.
+	(InterfaceDeclaration::toSymbol): Use TREE_READONLY instead of
+	(EnumDeclaration::toDebug): Only call rest_of_type_compilation on
+	ENUMERAL_TYPE types.
+	TREE_CONSTANT to declare that the symbol cannot be modified.
+	(ClassDeclaration::toVtblSymbol): Ditto.
+	(AggregateDeclaration::toInitializer): Ditto.
+	(EnumDeclaration::toInitializer): Ditto.
+	(TypedefDeclaration::toInitializer): Remove function.
+	(TypedefDeclaration::toDebug): Ditto.
+	(Dsymbol::cvMember): Remove stub function.
+	(EnumDeclaration::cvMember): Ditto.
+	(FuncDeclaration::cvMember): Ditto.
+	(VarDeclaration::cvMember): Ditto.
+	(TypedefDeclaration::cvMember): Ditto.
+	* d-elem.cc(XorExp::toElem): Remove call to unhandled_arrayop_p.
+	(OrExp::toElem): Ditto.
+	(AndExp::toElem): Ditto.
+	(UshrExp::toElem): Ditto.
+	(ShrExp::toElem): Ditto.
+	(ShlExp::toElem): Ditto.
+	(ModExp::toElem): Ditto.
+	(DivExp::toElem): Ditto.
+	(MulExp::toElem): Ditto.
+	(MinExp::toElem): Ditto.
+	(AddExp::toElem): Ditto.
+	(XorAssignExp::toElem): Ditto.
+	(OrAssignExp::toElem): Ditto.
+	(AndAssignExp::toElem): Ditto.
+	(UshrAssignExp::toElem): Ditto.
+	(ShrAssignExp::toElem): Ditto.
+	(ShlAssignExp::toElem): Ditto.
+	(ModAssignExp::toElem): Ditto.
+	(DivAssignExp::toElem): Ditto.
+	(MulAssignExp::toElem): Ditto.
+	(PowAssignExp::toElem): Ditto.
+	(MinAssignExp::toElem): Ditto.
+	(AddAssignExp::toElem): Ditto.
+	(BinExp::toElemBin): Move to build_binop_assignment.
+	(AssignExp::toElem): Update for frontend changes.
+	(DelegatePtrExp::toElem): New function.
+	(DelegateFuncptrExp::toElem): New function.
+	(DelegateExp::toElem): Update for frontend changes.
+	(FuncExp::toElem): Ditto.
+	(NewExp::toElem): Ditto.
+	(StringExp::toElem): Don't set TREE_READONLY on string literals.
+	(AssocArrayLiteralExp::toElem): Remove codegen rewrite for new
+	associative array implementation.
+	* d-glue.cc(Global::isSpeculativeGagging): Remove function.
+	(Dsymbol::ungagSpeculative): Ditto.
+	(Ungag::~Ungag): Ditto.
+	(Loc::toChars): Update for new column diagnostic support.
+	(Loc::Loc): Ditto.
+	(Loc::equals): Ditto.
+	(error): Ditto.
+	(binary): Remove function.
+	(asmSemantic): New function.
+	(retStyle): New function.
+	(FuncDeclaration::isBuiltin): Rename to isBuiltin.
+	* d-intrinsics.def: Rename to intrinsics.def.
+	* d-irstate.cc(IRState::addExp): Remove old warning to catch statements
+	with no side effects.  Now handled in frontend.
+	* d-lang.cc(d_init_options): Update for frontend changes.
+	(d_initialize_diagnostics): Remove function.
+	(d_add_builtin_version): Update for frontend changes.
+	(d_init): Ditto.
+	(d_handle_option): Ditto.
+	(d_post_options): Ditto.
+	(d_parse_file): Ditto.
+	* d-objfile.cc(Nspace::toObjFile): New function.
+	(StructDeclaration::toObjFile): Update for frontend changes.
+	(TypedefDeclaration::toObjFile): Remove function.
+	(TemplateInstance::toObjFile): Update for frontend changes.
+	(TemplateMixin::toObjFile): Ditto.
+	(unnest_function): New function.
+	(output_declaration_p): Update for frontend changes.
+	(FuncDeclaration::toObjFile): Ditto.
+	(FuncDeclaration::buildClosure): Move to buildClosure.
+	(get_linemap): Update for frontend changes.
+	(build_simple_function): Ditto.
+	(build_call_function): Ditto.
+	* d-target.cc(Target::va_listType): New function.
+	(Target::paintAsType): Ditto.
+	* d-todt.cc(dt_container2): Do not set TREE_READONLY on initialisers.
+	(dt_container): Ditto.
+	(ClassReferenceExp::toDt2): Update for C++ class support.
+	(ClassReferenceExp::toInstanceDt): Ditto.
+	(TypeTypedef::toDt): Remove function.
+	(TypeInfoTypedefDeclaration::toDt): Ditto.
+	(TypeInfoAssociativeArrayDeclaration::toDt): Update typeinfo size.
+	(TypeInfoAssociativeArrayDeclaration::toDt): Remove reference to impl
+	field in TypeInfo struct.
+	(TypeInfoStructDeclaration::toDt): Update for frontend changes.
+	* d-typinf.cc(Type::getTypeInfo): Update for frontend changes.
+	(TypeTypedef::getTypeInfoDeclaration): Remove function.
+	(createTypeInfoArray): Remove function.
+	* runtime.def: New file.
+	* toir.cc(IRVisitor::visit::DtorExpStatement): Remove function.
+	(IRVisitor::visit::ExtAsmStatement): Update for frontend changes.
+
 2015-01-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(UshrAssignExp::toElem): Remove integer promotion on left

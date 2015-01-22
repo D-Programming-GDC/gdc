@@ -1,12 +1,11 @@
 
-// Copyright (c) 1999-2013 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
-
+/* Copyright (c) 1999-2014 by Digital Mars
+ * All Rights Reserved, written by Walter Bright
+ * http://www.digitalmars.com
+ * Distributed under the Boost Software License, Version 1.0.
+ * (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
+ * https://github.com/D-Programming-Language/dmd/blob/master/src/root/stringtable.c
+ */
 
 #include <stdio.h>
 #include <stdint.h>                     // uint{8|16|32}_t
@@ -70,6 +69,15 @@ hash_t calcHash(const char *str, size_t len)
     }
 }
 
+static int hashCmp(hash_t lhs, hash_t rhs)
+{
+    if (lhs == rhs)
+        return 0;
+    else if (lhs < rhs)
+        return -1;
+    return 1;
+}
+
 void StringValue::ctor(const char *p, size_t length)
 {
     this->length = length;
@@ -130,7 +138,7 @@ void **StringTable::search(const char *s, size_t len)
     //printf("\thash = %d, u = %d\n",hash,u);
     while (*se)
     {
-        cmp = (*se)->hash - hash;
+        cmp = hashCmp((*se)->hash, hash);
         if (cmp == 0)
         {
             cmp = (*se)->value.len() - len;

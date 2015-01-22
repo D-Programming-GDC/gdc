@@ -1,11 +1,10 @@
-
-// Copyright (c) 1999-2011 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
+/* Copyright (c) 2011-2014 by Digital Mars
+ * All Rights Reserved, written by Walter Bright
+ * http://www.digitalmars.com
+ * Distributed under the Boost Software License, Version 1.0.
+ * (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
+ * https://github.com/D-Programming-Language/dmd/blob/master/src/root/array.h
+ */
 
 #ifndef ARRAY_H
 #define ARRAY_H
@@ -19,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "object.h"
 #ifdef IN_GCC
 // rmem uses functions poisoned by GCC.
 void *mem_malloc(size_t size);
@@ -27,7 +27,6 @@ void mem_free(void *p);
 #else
 #include "rmem.h"
 #endif
-#include "object.h"
 
 template <typename TYPE>
 struct Array
@@ -275,21 +274,6 @@ struct Array
         a->setDim(dim);
         memcpy(a->data, data, dim * sizeof(*data));
         return a;
-    }
-
-    typedef int (*Array_apply_ft_t)(TYPE, void *);
-    int apply(Array_apply_ft_t fp, void *param)
-    {
-        for (size_t i = 0; i < dim; i++)
-        {   TYPE e = (*this)[i];
-
-            if (e)
-            {
-                if (e->apply(fp, param))
-                    return 1;
-            }
-        }
-        return 0;
     }
 };
 

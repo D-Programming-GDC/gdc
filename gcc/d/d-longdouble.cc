@@ -53,7 +53,7 @@ real_properties real_limits[longdouble::NumModes];
 // Initialise D floating point property values.
 
 void
-longdouble::init (void)
+longdouble::init()
 {
   gcc_assert (sizeof (longdouble) >= sizeof (real_value));
 
@@ -112,13 +112,13 @@ longdouble::init (void)
 // Return the hidden real_value from the longdouble type.
 
 const real_value &
-longdouble::rv (void) const
+longdouble::rv() const
 {
   return *(const real_value *) this;
 }
 
 real_value &
-longdouble::rv (void)
+longdouble::rv()
 {
   return *(real_value *) this;
 }
@@ -176,7 +176,7 @@ longdouble::set (real_value& r)
 }
 
 longdouble::operator
-real_value& (void)
+real_value&()
 {
   return rv();
 }
@@ -202,13 +202,13 @@ longdouble::set (double d)
 // These functions should never be called.
 
 longdouble::operator
-float (void)
+float()
 {
   gcc_unreachable();
 }
 
 longdouble::operator
-double (void)
+double()
 {
   gcc_unreachable();
 }
@@ -222,7 +222,7 @@ longdouble::set (bool d)
 }
 
 longdouble::operator
-bool (void)
+bool()
 {
   return rv().cl != rvc_zero;
 }
@@ -234,20 +234,20 @@ void longdouble::set (int16_t d) { from_int (Type::tfloat32, d); }
 void longdouble::set (int32_t d) { from_int (Type::tfloat64, d); }
 void longdouble::set (int64_t d) { from_int (Type::tfloat80, d); }
 
-longdouble::operator int8_t (void)  { return to_int (Type::tint8); }
-longdouble::operator int16_t (void) { return to_int (Type::tint16); }
-longdouble::operator int32_t (void) { return to_int (Type::tint32); }
-longdouble::operator int64_t (void) { return to_int (Type::tint64); }
+longdouble::operator int8_t()  { return to_int (Type::tint8); }
+longdouble::operator int16_t() { return to_int (Type::tint16); }
+longdouble::operator int32_t() { return to_int (Type::tint32); }
+longdouble::operator int64_t() { return to_int (Type::tint64); }
 
 void longdouble::set (uint8_t d)  { from_uint (Type::tfloat32, d); }
 void longdouble::set (uint16_t d) { from_uint (Type::tfloat32, d); }
 void longdouble::set (uint32_t d) { from_uint (Type::tfloat64, d); }
 void longdouble::set (uint64_t d) { from_uint (Type::tfloat80, d); }
 
-longdouble::operator uint8_t (void)  { return to_uint (Type::tuns8); }
-longdouble::operator uint16_t (void) { return to_uint (Type::tuns16); }
-longdouble::operator uint32_t (void) { return to_uint (Type::tuns32); }
-longdouble::operator uint64_t (void) { return to_uint (Type::tuns64); }
+longdouble::operator uint8_t()  { return to_uint (Type::tuns8); }
+longdouble::operator uint16_t() { return to_uint (Type::tuns16); }
+longdouble::operator uint32_t() { return to_uint (Type::tuns32); }
+longdouble::operator uint64_t() { return to_uint (Type::tuns64); }
 
 // Overload numeric operators for longdouble types.
 
@@ -311,7 +311,7 @@ longdouble::operator % (const longdouble& r)
 }
 
 longdouble
-longdouble::operator - (void)
+longdouble::operator -()
 {
   real_value x = real_value_negate (&rv());
   return ldouble (x);
@@ -394,7 +394,7 @@ longdouble::formatHex (char fmt, char *buf, unsigned buf_size) const
 // Dump value of longdouble for debugging purposes.
 
 void
-longdouble::dump (void)
+longdouble::dump()
 {
   char buf[128];
   format (buf, sizeof (buf));

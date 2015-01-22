@@ -46,7 +46,7 @@ typedef tree_node dt_t;
 
 struct Symbol
 {
-  Symbol (void);
+  Symbol();
 
   const char *Sident;
   const char *prettyIdent;
@@ -71,7 +71,7 @@ struct Symbol
 
 struct Thunk
 {
-  Thunk (void)
+  Thunk()
   { offset = 0; symbol = NULL; }
 
   int offset;
@@ -126,7 +126,7 @@ extern void d_comdat_linkage (tree decl);
 
 extern void d_finish_symbol (Symbol *sym);
 extern void d_finish_function (FuncDeclaration *f);
-extern void d_finish_module (void);
+extern void d_finish_module();
 extern void d_finish_compilation (tree *vec, int len);
 
 extern void build_type_decl (tree t, Dsymbol *dsym);
@@ -134,7 +134,7 @@ extern void build_type_decl (tree t, Dsymbol *dsym);
 extern Modules output_modules;
 extern bool output_module_p (Module *mod);
 
-extern void write_deferred_thunks (void);
+extern void write_deferred_thunks();
 extern void use_thunk (tree thunk_decl, tree target_decl, int offset);
 extern void finish_thunk (tree thunk_decl, tree target_decl, int offset);
 

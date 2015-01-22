@@ -8,9 +8,9 @@ int magicVariable()
   version(GNU)
   {
     version(X86)
-      asm { "nop;" ::: ;}
+      asm { "nop"; }
     else version(X86_64)
-      asm { "nop;" ::: ;}
+      asm { "nop"; }
     else
       static assert("");
   }
@@ -126,9 +126,9 @@ int containsAsm() {
        version(GNU)
        {
          version(X86)
-           asm { "nop;" ::: ;}
+           asm { "nop"; }
          else version(X86_64)
-           asm { "nop;" ::: ;}
+           asm { "nop"; }
          else
            static assert("");
        }

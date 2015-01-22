@@ -9,8 +9,7 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_dll.d)
  */
 
-/*
- * NOTE: This file has been patched from the original DMD distribution to
+/* NOTE: This file has been patched from the original DMD distribution to
  * work with the GDC compiler.
  */
 module core.sys.windows.dll;
@@ -311,7 +310,7 @@ public:
      *
      * _tls_index is initialized by the compiler to 0, so we can use this as a test.
      */
-    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex )
+    bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_callbacks_a, int* tlsindex ) nothrow
     {
         version (Win64)
             return true;                // fixed
@@ -348,6 +347,8 @@ public:
         dll_aux.LdrpTlsListEntry* entry = dll_aux.addTlsListEntry( peb, tlsstart, tlsend, tls_callbacks_a, tlsindex );
         if( !entry )
             return false;
+
+        scope (failure) assert(0); // enforce nothrow, Bugzilla 13561
 
         if( !enumProcessThreads(
             function (uint id, void* context) nothrow {

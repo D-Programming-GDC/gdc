@@ -48,7 +48,7 @@ void fECPa() {
         }
         h();
     }
-    static assert( is(typeof(&g!()) == void delegate() pure nothrow @safe));
+    static assert( is(typeof(&g!()) == void delegate() pure nothrow @nogc @safe));
     static assert(!is(typeof(&g!()) == void delegate()));
 }
 
@@ -60,6 +60,22 @@ void fECPb() {
     }
     static assert(!is(typeof(&g!()) == void delegate() pure));
     static assert( is(typeof(&g!()) == void delegate()));
+}
+
+/***************************************************/
+// 5635
+
+pure bool foo5635(R = int)(string x)
+{
+    bool result = false;
+    foreach (dchar d; x)
+        result = true;
+    return result;
+}
+
+void test5635()
+{
+    foo5635("hi");
 }
 
 /***************************************************/
@@ -82,6 +98,69 @@ void test6351()
 {
     void delegate(int[] a...) deleg6351 = (int[] a...){};
     alias bug6351!(deleg6351) baz6531;
+}
+
+/***************************************************/
+// 6359
+
+void    impure6359()      nothrow @safe @nogc {}
+void throwable6359() pure         @safe @nogc {}
+void    system6359() pure nothrow       @nogc {}
+void    gcable6359() pure nothrow @safe       {}
+
+int global6359;
+
+void f6359() pure nothrow @safe @nogc
+{
+    static assert(!__traits(compiles,    impure6359()));
+    static assert(!__traits(compiles, throwable6359()));
+    static assert(!__traits(compiles,    system6359()));
+    static assert(!__traits(compiles,    gcable6359()));
+    static assert(!__traits(compiles,    global6359++));
+
+  //static assert(!__traits(compiles, {    impure6359(); }())); // BUG: blocked by issue 9148.
+    static assert(!__traits(compiles, { throwable6359(); }()));
+    static assert(!__traits(compiles, {    system6359(); }()));
+    static assert(!__traits(compiles, {    gcable6359(); }()));
+    static assert(!__traits(compiles, {    global6359++; }()));
+}
+
+void g6359()() pure nothrow @safe @nogc
+{
+    static assert(!__traits(compiles,    impure6359()));
+    static assert(!__traits(compiles, throwable6359()));
+    static assert(!__traits(compiles,    system6359()));
+    static assert(!__traits(compiles,    gcable6359()));
+    static assert(!__traits(compiles,    global6359++));
+
+  //static assert(!__traits(compiles, {    impure6359(); }())); // BUG: blocked by issue 9148.
+    static assert(!__traits(compiles, { throwable6359(); }()));
+    static assert(!__traits(compiles, {    system6359(); }()));
+    static assert(!__traits(compiles, {    gcable6359(); }()));
+    static assert(!__traits(compiles, {    global6359++; }()));
+}
+
+// attribute inference is not affected by the expressions inside __traits(compiles)
+void h6359()()
+{
+    static assert( __traits(compiles,    impure6359()));
+    static assert( __traits(compiles, throwable6359()));
+    static assert( __traits(compiles,    system6359()));
+    static assert( __traits(compiles,    gcable6359()));
+    static assert( __traits(compiles,    global6359++));
+
+    static assert( __traits(compiles, {    impure6359(); }()));
+    static assert( __traits(compiles, { throwable6359(); }()));
+    static assert( __traits(compiles, {    system6359(); }()));
+    static assert( __traits(compiles, {    gcable6359(); }()));
+  //static assert( __traits(compiles, {    global6359++; }())); // BUG: blocked by issue 9148.
+}
+
+void test6359() pure nothrow @safe @nogc
+{
+    f6359();
+    g6359();
+    h6359();
 }
 
 /***************************************************/
@@ -176,9 +255,9 @@ extern(C) void testC8504() {}
 
 void test8504()
 {
-    static assert(typeof(foo8504!()).stringof == "pure nothrow @safe void()");
-    static assert(typeof(foo8504!()).mangleof == "FNaNbNfZv");
-    static assert(foo8504!().mangleof == "_D13testInference12__T7foo8504Z7foo8504FNaNbNfZv");
+    static assert(typeof(foo8504!()).stringof == "pure nothrow @nogc @safe void()");
+    static assert(typeof(foo8504!()).mangleof == "FNaNbNiNfZv");
+    static assert(foo8504!().mangleof == "_D13testInference12__T7foo8504Z7foo8504FNaNbNiNfZv");
 
     auto fp1 = toDelegate8504a(&testC8504);
     auto fp2 = toDelegate8504b(&testC8504);
@@ -242,14 +321,14 @@ struct S5933
     double foo()(double a) { return a * a; }
 }
 // outside function
-static assert(typeof(foo5933!()).stringof == "pure nothrow @safe int(int a)");
-static assert(typeof(S5933.init.foo!()).stringof == "pure nothrow @safe double(double a)");
+static assert(typeof(foo5933!()).stringof == "pure nothrow @nogc @safe int(int a)");
+static assert(typeof(S5933.init.foo!()).stringof == "pure nothrow @nogc @safe double(double a)");
 
 void test5933()
 {
     // inside function
-    static assert(typeof(foo5933!()).stringof == "pure nothrow @safe int(int a)");
-    static assert(typeof(S5933.init.foo!()).stringof == "pure nothrow @safe double(double a)");
+    static assert(typeof(foo5933!()).stringof == "pure nothrow @nogc @safe int(int a)");
+    static assert(typeof(S5933.init.foo!()).stringof == "pure nothrow @nogc @safe double(double a)");
 }
 
 /***************************************************/
@@ -375,6 +454,87 @@ pure void test10296()
 }
 
 /***************************************************/
+// 12025
+
+struct Foo12025
+{
+    int[5] bar;
+}
+
+void test12025a() pure
+{
+    enum n1 = typeof(Foo12025.bar).length;  // OK
+    enum n2 =        Foo12025.bar .length;  // OK <- error
+
+    auto x1 = typeof(Foo12025.bar).length;  // OK
+    auto x2 =        Foo12025.bar .length;  // OK <- error
+}
+
+void test12025b() pure
+{
+    static int[5] bar;
+
+    enum n1 = typeof(bar).length;  // OK
+    enum n2 =        bar .length;  // OK <- error
+
+    auto x1 = typeof(bar).length;  // OK
+    auto x2 =        bar .length;  // OK <- error
+}
+
+/***************************************************/
+// 12542
+
+int logOf12542(T)(T n)
+{
+    if (n)
+        return 1 + logOf12542(n/2);
+    return 0;
+}
+
+void test12542() @safe nothrow pure 
+{
+    int log = logOf12542(9);
+}
+
+/***************************************************/
+// 12704
+
+void foo12704() @system;
+alias FP12704 = typeof(function() { foo12704(); });
+static assert(is(FP12704 == void function() @system));
+
+/***************************************************/
+// 12970
+
+@system { @safe void f12970a() {} }
+@system { void f12970b() @safe {} }
+static assert(is(typeof(&f12970a) == void function() @safe));
+static assert(is(typeof(&f12970b) == void function() @safe));
+
+@system { @trusted void f12970c() {} }
+@system { void f12970d() @trusted {} }
+static assert(is(typeof(&f12970c) == void function() @trusted));
+static assert(is(typeof(&f12970d) == void function() @trusted));
+
+@safe { @system void f12970e() {} }
+@safe { void f12970f() @system {} }
+static assert(is(typeof(&f12970e) == void function() @system));
+static assert(is(typeof(&f12970f) == void function() @system));
+
+@safe { @trusted void f12970g() {} }
+@safe { void f12970h() @trusted {} }
+static assert(is(typeof(&f12970g) == void function() @trusted));
+static assert(is(typeof(&f12970h) == void function() @trusted));
+
+@trusted { @safe void f12970i() {} }
+@trusted { void f12970j() @safe {} }
+static assert(is(typeof(&f12970i) == void function() @safe));
+static assert(is(typeof(&f12970j) == void function() @safe));
+
+@trusted { @system void f12970k() {} }
+@trusted { void f12970l() @system {} }
+static assert(is(typeof(&f12970k) == void function() @system));
+static assert(is(typeof(&f12970l) == void function() @system));
 
 // Add more tests regarding inferences later.
 

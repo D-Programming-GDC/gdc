@@ -222,7 +222,6 @@ build_dtype (tree t)
       sdecl->sizeok = SIZEOKdone;
       sdecl->type = new TypeStruct (sdecl);
       sdecl->type->ctype = t;
-      sdecl->handle = sdecl->type;
       sdecl->type->merge();
 
       // Does not seem necessary to convert fields, but the
@@ -567,87 +566,6 @@ d_gcc_magic_module (Module *m)
     }
 }
 
-// Perform a reinterpret cast of EXPR to type TYPE for use in CTFE.
-// The front end should have already ensured that EXPR is a constant,
-// so we just lower the value to GCC and return the converted CST.
-
-Expression *
-d_gcc_paint_type (Expression *expr, Type *type)
-{
-  /* We support up to 512-bit values.  */
-  unsigned char buffer[64];
-  tree cst;
-
-  Type *tb = type->toBasetype();
-
-  if (expr->type->isintegral())
-    cst = build_integer_cst (expr->toInteger(), expr->type->toCtype());
-  else if (expr->type->isfloating())
-    cst = build_float_cst (expr->toReal(), expr->type);
-  else if (expr->op == TOKarrayliteral)
-    {
-      // Build array as VECTOR_CST, assumes EXPR is constant.
-      Expressions *elements = ((ArrayLiteralExp *) expr)->elements;
-      vec<constructor_elt, va_gc> *elms = NULL;
-
-      vec_safe_reserve (elms, elements->dim);
-      for (size_t i = 0; i < elements->dim; i++)
-	{
-	  Expression *e = (*elements)[i];
-	  if (e->type->isintegral())
-	    {
-	      tree value = build_integer_cst (e->toInteger(), e->type->toCtype());
-	      CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
-	    }
-	  else if (e->type->isfloating())
-	    {
-	      tree value = build_float_cst (e->toReal(), e->type);
-	      CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
-	    }
-	  else
-	    gcc_unreachable();
-	}
-
-      // Build vector type.
-      int nunits = ((TypeSArray *) expr->type)->dim->toUInteger();
-      Type *telem = expr->type->nextOf();
-      tree vectype = build_vector_type (telem->toCtype(), nunits);
-
-      cst = build_vector_from_ctor (vectype, elms);
-    }
-  else
-    gcc_unreachable();
-
-  // Encode CST to buffer.
-  int len = native_encode_expr (cst, buffer, sizeof (buffer));
-
-  if (tb->ty == Tsarray)
-    {
-      // Interpret value as a vector of the same size,
-      // then return the array literal.
-      int nunits = ((TypeSArray *) type)->dim->toUInteger();
-      Type *elem = type->nextOf();
-      tree vectype = build_vector_type (elem->toCtype(), nunits);
-
-      cst = native_interpret_expr (vectype, buffer, len);
-
-      Expression *e = build_expression (cst);
-      gcc_assert (e != NULL && e->op == TOKvector);
-
-      return ((VectorExp *) e)->e1;
-    }
-  else
-    {
-      // Normal interpret cast.
-      cst = native_interpret_expr (type->toCtype(), buffer, len);
-
-      Expression *e = build_expression (cst);
-      gcc_assert (e != NULL);
-
-      return e;
-    }
-}
-
 /* Used to help initialize the builtin-types.def table.  When a type of
    the correct size doesn't exist, use error_mark_node instead of NULL.
    The later results in segfaults even when a decl using the type doesn't
@@ -681,7 +599,7 @@ enum built_in_attribute
 static GTY(()) tree built_in_attributes[(int) ATTR_LAST];
 
 static void
-d_init_attributes (void)
+d_init_attributes()
 {
   /* Fill in the built_in_attributes array.  */
 #define DEF_ATTR_NULL_TREE(ENUM)                \
@@ -828,7 +746,7 @@ def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
 // Build builtin functions and types for the D language frontend.
 
 void
-d_init_builtins (void)
+d_init_builtins()
 {
   tree va_list_ref_type_node;
   tree va_list_arg_type_node;
@@ -1463,7 +1381,7 @@ ignore_attribute (tree * ARG_UNUSED (node), tree ARG_UNUSED (name),
 // Backend init.
 
 void
-d_backend_init (void)
+d_backend_init()
 {
   init_global_binding_level();
 
@@ -1485,7 +1403,7 @@ d_backend_init (void)
 // Backend term.
 
 void
-d_backend_term (void)
+d_backend_term()
 {
 }
 

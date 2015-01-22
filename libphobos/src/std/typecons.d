@@ -14,11 +14,11 @@ Synopsis:
 
 ----
 // value tuples
-alias Tuple!(float, "x", float, "y", float, "z") Coord;
+alias Coord = Tuple!(float, "x", float, "y", float, "z");
 Coord c;
 c[1] = 1;       // access by index
 c.z = 1;        // access by given name
-alias Tuple!(string, string) DicEntry; // names can be omitted
+alias DicEntry = Tuple!(string, string); // names can be omitted
 
 // Rebindable references to const and immutable objects
 void bar()
@@ -60,9 +60,10 @@ Example:
 struct Unique(T)
 {
 static if (is(T:Object))
-    alias T RefT;
+    alias RefT = T;
 else
-    alias T * RefT;
+    alias RefT = T*;
+
 public:
 /+ Doesn't work yet
     /**
@@ -170,7 +171,7 @@ unittest
         ~this() { writefln("    Bar destructor"); }
         int val() const { return 4; }
     }
-    alias Unique!(Bar) UBar;
+    alias UBar = Unique!(Bar);
     UBar g(UBar u)
     {
         return u;
@@ -194,7 +195,7 @@ unittest
         ~this() { writefln("    Bar destructor"); }
         int val() const { return 3; }
     }
-    alias Unique!(Foo) UFoo;
+    alias UFoo = Unique!(Foo);
 
     UFoo f(UFoo u)
     {
@@ -246,7 +247,7 @@ members. The method above is still applicable to all fields.
 Example:
 
 ----
-alias Tuple!(int, "index", string, "value") Entry;
+alias Entry = Tuple!(int, "index", string, "value");
 Entry e;
 e.index = 4;
 e.value = "Hello";
@@ -277,19 +278,21 @@ template Tuple(Specs...)
     {
         static if (Specs.length == 0)
         {
-            alias TypeTuple!() parseSpecs;
+            alias parseSpecs = TypeTuple!();
         }
         else static if (is(Specs[0]))
         {
             static if (is(typeof(Specs[1]) : string))
             {
-                alias TypeTuple!(FieldSpec!(Specs[0 .. 2]),
-                                 parseSpecs!(Specs[2 .. $])) parseSpecs;
+                alias parseSpecs =
+                    TypeTuple!(FieldSpec!(Specs[0 .. 2]),
+                               parseSpecs!(Specs[2 .. $]));
             }
             else
             {
-                alias TypeTuple!(FieldSpec!(Specs[0]),
-                                 parseSpecs!(Specs[1 .. $])) parseSpecs;
+                alias parseSpecs =
+                    TypeTuple!(FieldSpec!(Specs[0]),
+                               parseSpecs!(Specs[1 .. $]));
             }
         }
         else
@@ -301,19 +304,19 @@ template Tuple(Specs...)
 
     template FieldSpec(T, string s = "")
     {
-        alias T Type;
-        alias s name;
+        alias Type = T;
+        alias name = s;
     }
 
-    alias parseSpecs!Specs fieldSpecs;
+    alias fieldSpecs = parseSpecs!Specs;
 
     // Used with staticMap.
-    template extractType(alias spec) { alias spec.Type extractType; }
-    template extractName(alias spec) { alias spec.name extractName; }
+    alias extractType(alias spec) = spec.Type;
+    alias extractName(alias spec) = spec.name;
 
     // Generates named fields as follows:
-    //    alias Identity!(field[0]) name_0;
-    //    alias Identity!(field[1]) name_1;
+    //    alias name_0 = Identity!(field[0]);
+    //    alias name_1 = Identity!(field[1]);
     //      :
     // NOTE: field[k] is an expression (which yields a symbol of a
     //       variable) and can't be aliased directly.
@@ -324,10 +327,10 @@ template Tuple(Specs...)
         {
             import std.string : format;
 
-            decl ~= format("alias Identity!(field[%s]) _%s;", i, i);
+            decl ~= format("alias _%s = Identity!(field[%s]);", i, i);
             if (name.length != 0)
             {
-                decl ~= format("alias _%s %s;", i, name);
+                decl ~= format("alias %s = _%s;", name, i);
             }
         }
         return decl;
@@ -335,38 +338,51 @@ template Tuple(Specs...)
 
     // Returns Specs for a subtuple this[from .. to] preserving field
     // names if any.
-    template sliceSpecs(size_t from, size_t to)
-    {
-        alias staticMap!(expandSpec,
-                         fieldSpecs[from .. to]) sliceSpecs;
-    }
+    alias sliceSpecs(size_t from, size_t to) =
+        staticMap!(expandSpec, fieldSpecs[from .. to]);
 
     template expandSpec(alias spec)
     {
         static if (spec.name.length == 0)
         {
-            alias TypeTuple!(spec.Type) expandSpec;
+            alias expandSpec = TypeTuple!(spec.Type);
         }
         else
         {
-            alias TypeTuple!(spec.Type, spec.name) expandSpec;
+            alias expandSpec = TypeTuple!(spec.Type, spec.name);
         }
     }
 
-    template areCompatibleTuples(Tup1, Tup2, string op)
+    enum areCompatibleTuples(Tup1, Tup2, string op) = isTuple!Tup2 && is(typeof(
     {
-        enum areCompatibleTuples = isTuple!Tup2 && is(typeof(
+        Tup1 tup1 = void;
+        Tup2 tup2 = void;
+        static assert(tup1.field.length == tup2.field.length);
+        foreach (i, _; Tup1.Types)
         {
-            Tup1 tup1 = void;
-            Tup2 tup2 = void;
-            static assert(tup1.field.length == tup2.field.length);
-            foreach (i, _; Tup1.Types)
-            {
-                auto lhs = typeof(tup1.field[i]).init;
-                auto rhs = typeof(tup2.field[i]).init;
-                auto result = mixin("lhs "~op~" rhs");
-            }
-        }));
+            auto lhs = typeof(tup1.field[i]).init;
+            auto rhs = typeof(tup2.field[i]).init;
+            auto result = mixin("lhs "~op~" rhs");
+        }
+    }));
+
+    enum areBuildCompatibleTuples(Tup1, Tup2) = isTuple!Tup2 && is(typeof(
+    {
+        static assert(Tup1.Types.length == Tup2.Types.length);
+        foreach (i, _; Tup1.Types)
+            static assert(isBuildable!(Tup1.Types[i], Tup2.Types[i]));
+    }));
+
+    /+ Returns $(D true) iff a $(D T) can be initialized from a $(D U). +/
+    enum isBuildable(T, U) =  is(typeof(
+    {
+        U u = U.init;
+        T t = u;
+    }));
+    /+ Helper for partial instanciation +/
+    template isBuildableFrom(U)
+    {
+        enum isBuildableFrom(T) = isBuildable!(T, U);
     }
 
     struct Tuple
@@ -374,7 +390,18 @@ template Tuple(Specs...)
         /**
          * The type of the tuple's components.
          */
-        alias staticMap!(extractType, fieldSpecs) Types;
+        alias Types = staticMap!(extractType, fieldSpecs);
+
+        /**
+         * The names of the tuple's components. Unnamed fields have empty names.
+         *
+         * Examples:
+         * ----
+         * alias Fields = Tuple!(int, "id", string, float);
+         * static assert(Fields.fieldNames == TypeTuple!("id", "", ""));
+         * ----
+         */
+        alias fieldNames = staticMap!(extractName, fieldSpecs);
 
         /**
          * Use $(D t.expand) for a tuple $(D t) to expand it into its
@@ -417,17 +444,18 @@ template Tuple(Specs...)
         alias field = expand;
 
         /**
-         * Constructor taking one value for each field. Each argument must be
-         * implicitly assignable to the respective element of the target.
+         * Constructor taking one value for each field.
          */
-        this(Types values)
+        static if (Types.length > 0)
         {
-            field[] = values[];
+            this(Types values)
+            {
+                field[] = values[];
+            }
         }
 
         /**
-         * Constructor taking a compatible array. The array element type must
-         * be implicitly assignable to each element of the target.
+         * Constructor taking a compatible array.
          *
          * Examples:
          * ----
@@ -436,8 +464,7 @@ template Tuple(Specs...)
          * ----
          */
         this(U, size_t n)(U[n] values)
-        if (n == Types.length &&
-            is(typeof({ foreach (i, _; Types) field[i] = values[i]; })))
+        if (n == Types.length && allSatisfy!(isBuildableFrom!U, Types))
         {
             foreach (i, _; Types)
             {
@@ -446,12 +473,10 @@ template Tuple(Specs...)
         }
 
         /**
-         * Constructor taking a compatible tuple. Each element of the source
-         * must be implicitly assignable to the respective element of the
-         * target.
+         * Constructor taking a compatible tuple.
          */
         this(U)(U another)
-        if (areCompatibleTuples!(typeof(this), U, "="))
+        if (areBuildCompatibleTuples!(typeof(this), U))
         {
             field[] = another.field[];
         }
@@ -549,6 +574,14 @@ template Tuple(Specs...)
             return *cast(typeof(return)*) &(field[from]);
         }
 
+        size_t toHash() const nothrow @trusted
+        {
+            size_t h = 0;
+            foreach (i, T; Types)
+                h += typeid(T).getHash(cast(const void*)&field[i]);
+            return h;
+        }
+
         /**
          * Converts to string.
          */
@@ -584,19 +617,67 @@ template Tuple(Specs...)
     }
 }
 
-private template isPrintable(T)
-{
-    enum isPrintable = is(typeof({
+private enum bool isPrintable(T) =
+    is(typeof({
         import std.format : formattedWrite;
 
         Appender!string w;
         formattedWrite(w, "%s", T.init);
     }));
+
+private alias Identity(alias T) = T;
+
+/**
+    Return a copy of a Tuple with its fields in reverse order.
+ */
+ReverseTupleType!T reverse(T)(T t)
+    if (isTuple!T)
+{
+    import std.typetuple : Reverse;
+    // @@@BUG@@@ Cannot be an internal function due to forward reference issues.
+
+    // @@@BUG@@@ 9929 Need 'this' when calling template with expanded tuple
+    // return tuple(Reverse!(t.expand));
+
+    typeof(return) result;
+    auto tup = t.expand;
+    result.expand = Reverse!tup;
+    return result;
 }
 
-private template Identity(alias T)
+///
+unittest
 {
-    alias T Identity;
+    auto tup = tuple(1, "2");
+    assert(tup.reverse == tuple("2", 1));
+}
+
+/* Get a Tuple type with the reverse specification of Tuple T. */
+private template ReverseTupleType(T)
+    if (isTuple!T)
+{
+    static if (is(T : Tuple!A, A...))
+        alias ReverseTupleType = Tuple!(ReverseTupleSpecs!A);
+}
+
+/* Reverse the Specs of a Tuple. */
+private template ReverseTupleSpecs(T...)
+{
+    static if (T.length > 1)
+    {
+        static if (is(typeof(T[$-1]) : string))
+        {
+            alias ReverseTupleSpecs = TypeTuple!(T[$-2], T[$-1], ReverseTupleSpecs!(T[0 .. $-2]));
+        }
+        else
+        {
+            alias ReverseTupleSpecs = TypeTuple!(T[$-1], ReverseTupleSpecs!(T[0 .. $-1]));
+        }
+    }
+    else
+    {
+        alias ReverseTupleSpecs = T;
+    }
 }
 
 unittest
@@ -743,13 +824,31 @@ unittest
     {
         const int x = 1;
         auto t1 = tuple(x);
-        alias Tuple!(const(int)) T;
+        alias T = Tuple!(const(int));
         auto t2 = T(1);
     }
     // 9431
     {
         alias T = Tuple!(int[1][]);
         auto t = T([[10]]);
+    }
+    // 7666
+    {
+        auto tup = tuple(1, "2");
+        assert(tup.reverse == tuple("2", 1));
+    }
+    {
+        Tuple!(int, "x", string, "y") tup = tuple(1, "2");
+        auto rev = tup.reverse;
+        assert(rev == tuple("2", 1));
+        assert(rev.x == 1 && rev.y == "2");
+    }
+    {
+        Tuple!(wchar, dchar, int, "x", string, "y", char, byte, float) tup;
+        tup = tuple('a', 'b', 3, "4", 'c', cast(byte)0x0D, 0.00);
+        auto rev = tup.reverse;
+        assert(rev == tuple(0.00, cast(byte)0x0D, 'c', "4", 3, 'b', 'a'));
+        assert(rev.x == 3 && rev.y == "4");
     }
 }
 unittest
@@ -870,6 +969,39 @@ unittest
     Tuple!(immutable(Foo)[]) a;
 }
 
+unittest
+{
+    //Test non-assignable
+    static struct S
+    {
+        int* p;
+    }
+    alias IS = immutable S;
+    static assert(!isAssignable!IS);
+
+    auto s = IS.init;
+
+    alias TIS = Tuple!IS;
+    TIS a = tuple(s);
+    TIS b = a;
+
+    alias TISIS = Tuple!(IS, IS);
+    TISIS d = tuple(s, s);
+    IS[2] ss;
+    TISIS e = TISIS(ss);
+}
+
+// Bugzilla #9819
+unittest
+{
+    alias T = Tuple!(int, "x", double, "foo");
+    static assert(T.fieldNames[0] == "x");
+    static assert(T.fieldNames[1] == "foo");
+
+    alias Fields = Tuple!(int, "id", string, float);
+    static assert(Fields.fieldNames == TypeTuple!("id", "", ""));
+}
+
 /**
 Returns a $(D Tuple) object instantiated and initialized according to
 the arguments.
@@ -957,15 +1089,15 @@ break the soundness of D's type system and does not incur any of the
 risks usually associated with $(D cast).
 
  */
-template Rebindable(T) if (is(T == class) || is(T == interface) || isArray!T)
+template Rebindable(T) if (is(T == class) || is(T == interface) || isDynamicArray!T)
 {
     static if (!is(T X == const U, U) && !is(T X == immutable U, U))
     {
-        alias T Rebindable;
+        alias Rebindable = T;
     }
-    else static if (isArray!T)
+    else static if (isDynamicArray!T)
     {
-        alias const(ElementType!T)[] Rebindable;
+        alias Rebindable = const(ElementEncodingType!T)[];
     }
     else
     {
@@ -976,29 +1108,29 @@ template Rebindable(T) if (is(T == class) || is(T == interface) || isArray!T)
                 T original;
                 U stripped;
             }
-            void opAssign(T another) pure nothrow
+            void opAssign(T another) @trusted pure nothrow
             {
                 stripped = cast(U) another;
             }
-            void opAssign(Rebindable another) pure nothrow
+            void opAssign(Rebindable another) @trusted pure nothrow
             {
                 stripped = another.stripped;
             }
             static if (is(T == const U))
             {
                 // safely assign immutable to const
-                void opAssign(Rebindable!(immutable U) another) pure nothrow
+                void opAssign(Rebindable!(immutable U) another) @trusted pure nothrow
                 {
                     stripped = another.stripped;
                 }
             }
 
-            this(T initializer) pure nothrow
+            this(T initializer) @safe pure nothrow
             {
                 opAssign(initializer);
             }
 
-            @property ref inout(T) get() inout pure nothrow
+            @property ref inout(T) get() @trusted inout pure nothrow
             {
                 return original;
             }
@@ -1013,7 +1145,7 @@ Convenience function for creating a $(D Rebindable) using automatic type
 inference.
 */
 Rebindable!T rebindable(T)(T obj)
-if (is(T == class) || is(T == interface) || isArray!T)
+if (is(T == class) || is(T == interface) || isDynamicArray!T)
 {
     typeof(return) ret;
     ret = obj;
@@ -1096,6 +1228,21 @@ unittest
     const arrConst = arr;
     assert(rebindable(arr) == arr);
     assert(rebindable(arrConst) == arr);
+
+    // Issue 7654
+    immutable(char[]) s7654;
+    Rebindable!(typeof(s7654)) r7654 = s7654;
+
+    foreach (T; TypeTuple!(char, wchar, char, int))
+    {
+        static assert(is(Rebindable!(immutable(T[])) == immutable(T)[]));
+        static assert(is(Rebindable!(const(T[])) == const(T)[]));
+        static assert(is(Rebindable!(T[]) == T[]));
+    }
+
+    // Issue 12046
+    static assert(!__traits(compiles, Rebindable!(int[1])));
+    static assert(!__traits(compiles, Rebindable!(const int[1])));
 }
 
 /**
@@ -1157,38 +1304,6 @@ unittest
     static assert(passNormalY || passAbnormalY && double.alignof <= int.alignof);
 }
 
-/*--*
-First-class reference type
-*/
-struct Ref(T)
-{
-    private T * _p;
-    this(ref T value) { _p = &value; }
-    ref T opDot() { return *_p; }
-    /*ref*/ T opImplicitCastTo() { return *_p; }
-    @property ref T value() { return *_p; }
-
-    void opAssign(T value)
-    {
-        *_p = value;
-    }
-    void opAssign(T * value)
-    {
-        _p = value;
-    }
-}
-
-unittest
-{
-    Ref!(int) x;
-    int y = 42;
-    x = &y;
-    assert(x.value == 42);
-    x = 5;
-    assert(x.value == 5);
-    assert(y == 5);
-}
-
 /**
 Defines a value paired with a distinctive "null" state that denotes
 the absence of a value. If default constructed, a $(D
@@ -1223,7 +1338,7 @@ Constructor initializing $(D this) with $(D value).
 /**
 Returns $(D true) if and only if $(D this) is in the null state.
  */
-    @property bool isNull() const pure nothrow @safe
+    @property bool isNull() const @safe pure nothrow
     {
         return _isNull;
     }
@@ -1251,7 +1366,7 @@ succeeds, $(D this) becomes non-null.
 Gets the value. $(D this) must not be in the null state.
 This function is also called for the implicit conversion to $(D T).
  */
-    @property ref inout(T) get() inout pure nothrow @safe
+    @property ref inout(T) get() inout @safe pure nothrow
     {
         enum message = "Called `get' on null Nullable!" ~ T.stringof ~ ".";
         assert(!isNull, message);
@@ -1326,7 +1441,7 @@ unittest
 unittest
 {
     // Ensure Nullable can be used in pure/nothrow/@safe environment.
-    function() pure nothrow @safe
+    function() @safe pure nothrow
     {
         Nullable!int n;
         assert(n.isNull);
@@ -1598,7 +1713,7 @@ unittest
 unittest
 {
     // Ensure Nullable can be used in pure/nothrow/@safe environment.
-    function() pure nothrow @safe
+    function() @safe pure nothrow
     {
         Nullable!(int, int.min) n;
         assert(n.isNull);
@@ -1667,7 +1782,7 @@ struct NullableRef(T)
 /**
 Constructor binding $(D this) with $(D value).
  */
-    this(T* value) pure nothrow @safe
+    this(T* value) @safe pure nothrow
     {
         _value = value;
     }
@@ -1675,7 +1790,7 @@ Constructor binding $(D this) with $(D value).
 /**
 Binds the internal state to $(D value).
  */
-    void bind(T* value) pure nothrow @safe
+    void bind(T* value) @safe pure nothrow
     {
         _value = value;
     }
@@ -1683,7 +1798,7 @@ Binds the internal state to $(D value).
 /**
 Returns $(D true) if and only if $(D this) is in the null state.
  */
-    @property bool isNull() const pure nothrow @safe
+    @property bool isNull() const @safe pure nothrow
     {
         return _value is null;
     }
@@ -1691,7 +1806,7 @@ Returns $(D true) if and only if $(D this) is in the null state.
 /**
 Forces $(D this) to the null state.
  */
-    void nullify() pure nothrow @safe
+    void nullify() @safe pure nothrow
     {
         _value = null;
     }
@@ -1711,7 +1826,7 @@ Assigns $(D value) to the internally-held state.
 Gets the value. $(D this) must not be in the null state.
 This function is also called for the implicit conversion to $(D T).
  */
-    @property ref inout(T) get() inout pure nothrow @safe
+    @property ref inout(T) get() inout @safe pure nothrow
     {
         enum message = "Called `get' on null NullableRef!" ~ T.stringof ~ ".";
         assert(!isNull, message);
@@ -1762,7 +1877,7 @@ unittest
 unittest
 {
     // Ensure NullableRef can be used in pure/nothrow/@safe environment.
-    function() pure nothrow @safe
+    function() @safe pure nothrow
     {
         auto storage = new int;
         *storage = 19902;
@@ -1862,11 +1977,7 @@ void main()
 See_Also:
   AutoImplement, generateEmptyFunction
  */
-template BlackHole(Base)
-{
-    alias AutoImplement!(Base, generateEmptyFunction, isAbstractFunction)
-            BlackHole;
-}
+alias BlackHole(Base) = AutoImplement!(Base, generateEmptyFunction, isAbstractFunction);
 
 unittest
 {
@@ -1896,6 +2007,18 @@ unittest
         assert(c.realValue.isNaN); // NaN
         c.doSomething();
     }
+
+    // Bugzilla 12058
+    interface Foo
+    {
+        inout(Object) foo() inout;
+    }
+    BlackHole!Foo o;
+
+    // Bugzilla 12464
+    import std.stream;
+    import std.typecons;
+    BlackHole!OutputStream dout;
 }
 
 
@@ -1923,18 +2046,10 @@ void main()
 }
 --------------------
 
-BUGS:
-  Nothrow functions cause program to abort in release mode because the trap is
-  implemented with $(D assert(0)) for nothrow functions.
-
 See_Also:
   AutoImplement, generateAssertTrap
  */
-template WhiteHole(Base)
-{
-    alias AutoImplement!(Base, generateAssertTrap, isAbstractFunction)
-            WhiteHole;
-}
+alias WhiteHole(Base) = AutoImplement!(Base, generateAssertTrap, isAbstractFunction);
 
 // / ditto
 class NotImplementedError : Error
@@ -1947,8 +2062,8 @@ class NotImplementedError : Error
 
 unittest
 {
+    import std.exception : assertThrown;
     // nothrow
-    debug // see the BUGS above
     {
         interface I_1
         {
@@ -1956,11 +2071,8 @@ unittest
             void bar() nothrow;
         }
         auto o = new WhiteHole!I_1;
-        uint trap;
-        try { o.foo(); } catch (Error e) { ++trap; }
-        assert(trap == 1);
-        try { o.bar(); } catch (Error e) { ++trap; }
-        assert(trap == 2);
+        assertThrown!NotImplementedError(o.foo());
+        assertThrown!NotImplementedError(o.bar());
     }
     // doc example
     {
@@ -2036,10 +2148,7 @@ string generateLogger(C, alias fun)() @property
 
 --------------------
 // Sees if fun returns something.
-template hasValue(alias fun)
-{
-    enum bool hasValue = !is(ReturnType!(fun) == void);
-}
+enum bool hasValue(alias fun) = !is(ReturnType!(fun) == void);
 --------------------
 
 
@@ -2068,9 +2177,8 @@ $(UL
  */
 class AutoImplement(Base, alias how, alias what = isAbstractFunction) : Base
 {
-    private alias AutoImplement_Helper!(
-            "autoImplement_helper_", "Base", Base, how, what )
-             autoImplement_helper_;
+    private alias autoImplement_helper_ =
+        AutoImplement_Helper!("autoImplement_helper_", "Base", Base, how, what);
     mixin(autoImplement_helper_.code);
 }
 
@@ -2092,15 +2200,15 @@ private static:
     {
         static if (lst.length > 0)
         {
-            alias staticFilter!(pred, lst[1 .. $]) tail;
+            alias tail = staticFilter!(pred, lst[1 .. $]);
             //
             static if (pred!(lst[0]))
-                alias TypeTuple!(lst[0], tail) staticFilter;
+                alias staticFilter = TypeTuple!(lst[0], tail);
             else
-                alias tail staticFilter;
+                alias staticFilter = tail;
         }
         else
-            alias TypeTuple!() staticFilter;
+            alias staticFilter = TypeTuple!();
     }
 
     // Returns function overload sets in the class C, filtered with pred.
@@ -2110,19 +2218,19 @@ private static:
         {
             static if (names.length > 0)
             {
-                alias staticFilter!(pred, MemberFunctionsTuple!(C, names[0])) methods;
-                alias Impl!(names[1 .. $]) next;
+                alias methods = staticFilter!(pred, MemberFunctionsTuple!(C, names[0]));
+                alias next = Impl!(names[1 .. $]);
 
                 static if (methods.length > 0)
-                    alias TypeTuple!(OverloadSet!(names[0], methods), next) Impl;
+                    alias Impl = TypeTuple!(OverloadSet!(names[0], methods), next);
                 else
-                    alias next Impl;
+                    alias Impl = next;
             }
             else
-                alias TypeTuple!() Impl;
+                alias Impl = TypeTuple!();
         }
 
-        alias Impl!(__traits(allMembers, C)) enumerateOverloads;
+        alias enumerateOverloads = Impl!(__traits(allMembers, C));
     }
 
     //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
@@ -2130,27 +2238,23 @@ private static:
     //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
 
     // Add a non-final check to the cherrypickMethod.
-    template canonicalPicker(fun.../+[BUG 4217]+/)
-    {
-        enum bool canonicalPicker = !__traits(isFinalFunction, fun[0]) &&
-                                    cherrypickMethod!(fun);
-    }
+    enum bool canonicalPicker(fun.../+[BUG 4217]+/) =
+        !__traits(isFinalFunction, fun[0]) && cherrypickMethod!(fun);
 
     /*
      * A tuple of overload sets, each item of which consists of functions to be
      * implemented by the generated code.
      */
-    alias enumerateOverloads!(Base, canonicalPicker) targetOverloadSets;
+    alias targetOverloadSets = enumerateOverloads!(Base, canonicalPicker);
 
     /*
      * A tuple of the super class' constructors.  Used for forwarding
      * constructor calls.
      */
     static if (__traits(hasMember, Base, "__ctor"))
-        alias OverloadSet!("__ctor", __traits(getOverloads, Base, "__ctor"))
-                ctorOverloadSet;
+        alias ctorOverloadSet = OverloadSet!("__ctor", __traits(getOverloads, Base, "__ctor"));
     else
-        alias OverloadSet!("__ctor") ctorOverloadSet; // empty
+        alias ctorOverloadSet = OverloadSet!("__ctor"); // empty
 
 
     //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
@@ -2195,10 +2299,9 @@ private static:
         {
             mixin populate!(name, methods[0 .. $ - 1]);
             //
-            alias methods[$ - 1] target;
+            alias target = methods[$ - 1];
             enum ith = methods.length - 1;
-            mixin( "alias FuncInfo!(target) " ~
-                        INTERNAL_FUNCINFO_ID!(name, ith) ~ ";" );
+            mixin("alias " ~ INTERNAL_FUNCINFO_ID!(name, ith) ~ " = FuncInfo!target;");
         }
     }
 
@@ -2262,10 +2365,8 @@ private static:
     // Generated code
     //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
 
-    alias MemberFunctionGenerator!( ConstructorGeneratingPolicy!() )
-            ConstructorGenerator;
-    alias MemberFunctionGenerator!( MethodGeneratingPolicy!() )
-            MethodGenerator;
+    alias ConstructorGenerator = MemberFunctionGenerator!(ConstructorGeneratingPolicy!());
+    alias MethodGenerator      = MemberFunctionGenerator!(MethodGeneratingPolicy!());
 
     public enum string code =
         ConstructorGenerator.generateCode!(  ctorOverloadSet ) ~ "\n" ~
@@ -2280,9 +2381,9 @@ private static:
 }
 
 //debug = SHOW_GENERATED_CODE;
-version(unittest) import core.vararg;
 unittest
 {
+    import core.vararg;
     // no function to implement
     {
         interface I_1 {}
@@ -2404,7 +2505,7 @@ Used by MemberFunctionGenerator.
 package template OverloadSet(string nam, T...)
 {
     enum string name = nam;
-    alias T contents;
+    alias contents = T;
 }
 
 /*
@@ -2412,13 +2513,13 @@ Used by MemberFunctionGenerator.
  */
 package template FuncInfo(alias func, /+[BUG 4217 ?]+/ T = typeof(&func))
 {
-    alias         ReturnType!(T) RT;
-    alias ParameterTypeTuple!(T) PT;
+    alias RT =         ReturnType!T;
+    alias PT = ParameterTypeTuple!T;
 }
 package template FuncInfo(Func)
 {
-    alias         ReturnType!(Func) RT;
-    alias ParameterTypeTuple!(Func) PT;
+    alias RT =         ReturnType!Func;
+    alias PT = ParameterTypeTuple!Func;
 }
 
 /*
@@ -2466,24 +2567,21 @@ private static:
     // preferred identifier for i-th parameter variable
     static if (__traits(hasMember, Policy, "PARAMETER_VARIABLE_ID"))
     {
-        alias Policy.PARAMETER_VARIABLE_ID PARAMETER_VARIABLE_ID;
+        alias PARAMETER_VARIABLE_ID = Policy.PARAMETER_VARIABLE_ID;
     }
     else
     {
-        template PARAMETER_VARIABLE_ID(size_t i)
-        {
-            enum string PARAMETER_VARIABLE_ID = format("a%s", i);
-                // default: a0, a1, ...
-        }
+        enum string PARAMETER_VARIABLE_ID(size_t i) = format("a%s", i);
+            // default: a0, a1, ...
     }
 
     // Returns a tuple consisting of 0,1,2,...,n-1.  For static foreach.
     template CountUp(size_t n)
     {
         static if (n > 0)
-            alias TypeTuple!(CountUp!(n - 1), n - 1) CountUp;
+            alias CountUp = TypeTuple!(CountUp!(n - 1), n - 1);
         else
-            alias TypeTuple!() CountUp;
+            alias CountUp = TypeTuple!();
     }
 
 
@@ -2503,7 +2601,7 @@ private static:
         foreach (i_; CountUp!(0 + overloads.length)) // workaround
         {
             enum i = 0 + i_; // workaround
-            alias overloads[i] oset;
+            alias oset = overloads[i];
 
             code ~= generateCodeForOverloadSet!(oset);
 
@@ -2512,9 +2610,10 @@ private static:
                 // The generated function declarations may hide existing ones
                 // in the base class (cf. HiddenFuncError), so we put an alias
                 // declaration here to reveal possible hidden functions.
-                code ~= format("alias %s.%s %s;\n",
+                code ~= format("alias %s = %s.%s;\n",
+                            oset.name,
                             Policy.BASE_CLASS_ID, // [BUG 2540] super.
-                            oset.name, oset.name );
+                            oset.name);
             }
         }
         return code;
@@ -2549,10 +2648,13 @@ private static:
 
         string code; // the result
 
+        auto paramsRes = generateParameters!(myFuncInfo, func)();
+        code ~= paramsRes.imports;
+
         /*** Function Declarator ***/
         {
-            alias FunctionTypeOf!(func) Func;
-            alias FunctionAttribute FA;
+            alias Func = FunctionTypeOf!(func);
+            alias FA = FunctionAttribute;
             enum atts     = functionAttributes!(func);
             enum realName = isCtor ? "this" : name;
 
@@ -2593,6 +2695,7 @@ private static:
                 string postc = "";
                 if (is(Func ==    shared)) postc ~= " shared";
                 if (is(Func ==     const)) postc ~= " const";
+                if (is(Func ==     inout)) postc ~= " inout";
                 if (is(Func == immutable)) postc ~= " immutable";
                 return postc;
             }
@@ -2605,7 +2708,7 @@ private static:
                     functionLinkage!(func),
                     returnType,
                     realName,
-                    generateParameters!(myFuncInfo, func)(),
+                    paramsRes.params,
                     postAtts, storageClass );
         }
 
@@ -2617,10 +2720,10 @@ private static:
             /* Declare keywords: args, self and parent. */
             string preamble;
 
-            preamble ~= "alias TypeTuple!(" ~ enumerateParameters!(nparams) ~ ") args;\n";
+            preamble ~= "alias args = TypeTuple!(" ~ enumerateParameters!(nparams) ~ ");\n";
             if (!isCtor)
             {
-                preamble ~= "alias " ~ name ~ " self;\n";
+                preamble ~= "alias self = " ~ name ~ ";\n";
                 if (WITH_BASE_CLASS && !__traits(isAbstractFunction, func))
                     //preamble ~= "alias super." ~ name ~ " parent;\n"; // [BUG 2540]
                     preamble ~= "auto parent = &super." ~ name ~ ";\n";
@@ -2641,16 +2744,19 @@ private static:
     }
 
     /*
-     * Returns D code which declares function parameters.
+     * Returns D code which declares function parameters,
+     * and optionally any imports (e.g. core.vararg)
      * "ref int a0, real a1, ..."
      */
-    private string generateParameters(string myFuncInfo, func...)()
+    static struct GenParams { string imports, params; }
+    private GenParams generateParameters(string myFuncInfo, func...)()
     {
-        alias ParameterStorageClass STC;
-        alias ParameterStorageClassTuple!(func) stcs;
+        alias STC = ParameterStorageClass;
+        alias stcs = ParameterStorageClassTuple!(func);
         enum nparams = stcs.length;
 
-        string params = ""; // the result
+        string imports = ""; // any imports required
+        string params = ""; // parameters
 
         foreach (i, stc; stcs)
         {
@@ -2670,12 +2776,14 @@ private static:
         }
 
         // Add some ellipsis part if needed.
-        final switch (variadicFunctionStyle!(func))
+        auto style = variadicFunctionStyle!(func);
+        final switch (style)
         {
             case Variadic.no:
                 break;
 
             case Variadic.c, Variadic.d:
+                imports ~= "import core.vararg;\n";
                 // (...) or (a, b, ...)
                 params ~= (nparams == 0) ? "..." : ", ...";
                 break;
@@ -2685,7 +2793,7 @@ private static:
                 break;
         }
 
-        return params;
+        return typeof(return)(imports, params);
     }
 
     // Returns D code which enumerates n parameter variables using comma as the
@@ -2726,21 +2834,11 @@ template generateEmptyFunction(C, func.../+[BUG 4217]+/)
 }
 
 /// ditto
-template generateAssertTrap(C, func.../+[BUG 4217]+/)
+template generateAssertTrap(C, func...)
 {
-    static if (functionAttributes!(func) & FunctionAttribute.nothrow_) //XXX
-    {
-        pragma(msg, "Warning: WhiteHole!(", C, ") used assert(0) instead "
-                "of Error for the auto-implemented nothrow function ",
-                C, ".", __traits(identifier, func));
-        enum string generateAssertTrap =
-            `assert(0, "` ~ C.stringof ~ "." ~ __traits(identifier, func)
-                    ~ ` is not implemented");`;
-    }
-    else
-        enum string generateAssertTrap =
-            `throw new NotImplementedError("` ~ C.stringof ~ "."
-                    ~ __traits(identifier, func) ~ `");`;
+    enum string generateAssertTrap =
+        `throw new NotImplementedError("` ~ C.stringof ~ "."
+                ~ __traits(identifier, func) ~ `");`;
 }
 
 private
@@ -2934,7 +3032,7 @@ if (Targets.length >= 1 && allSatisfy!(isMutable, Targets))
                 }
                 static @property mod()
                 {
-                    alias TypeTuple!(TargetMembers[i].type)[0] type;
+                    alias type = TypeTuple!(TargetMembers[i].type)[0];
                     string r;
                     static if (is(type == immutable))       r ~= " immutable";
                     else
@@ -3409,7 +3507,7 @@ unittest
     alias int F2() pure nothrow;
     static assert(is(DerivedFunctionType!(F1, F2) == F2));
     alias int F3() @safe;
-    alias int F23() pure nothrow @safe;
+    alias int F23() @safe pure nothrow;
     static assert(is(DerivedFunctionType!(F2, F3) == F23));
 
     // return type covariance
@@ -3452,17 +3550,17 @@ unittest
     static assert(is(DerivedFunctionType!(F17, F18) == void));
 }
 
-private template staticIota(int beg, int end)
+package template staticIota(int beg, int end)
 {
     static if (beg + 1 >= end)
     {
         static if (beg >= end)
         {
-            alias TypeTuple!() staticIota;
+            alias staticIota = TypeTuple!();
         }
         else
         {
-            alias TypeTuple!(+beg) staticIota;
+            alias staticIota = TypeTuple!(+beg);
         }
     }
     else
@@ -3482,7 +3580,7 @@ private template mixinAll(mixins...)
         }
         else
         {
-            alias mixins[0] it;
+            alias it = mixins[0];
             mixin it;
         }
     }
@@ -3495,10 +3593,7 @@ private template mixinAll(mixins...)
 
 private template Bind(alias Template, args1...)
 {
-    template Bind(args2...)
-    {
-        alias Bind = Template!(args1, args2);
-    }
+    alias Bind(args2...) = Template!(args1, args2);
 }
 
 
@@ -3797,7 +3892,7 @@ unittest
        U u;
     }
 
-    alias RefCounted!S SRC;
+    alias SRC = RefCounted!S;
 }
 
 // 6436
@@ -3946,6 +4041,23 @@ mixin template Proxy(alias a)
                 auto ref opDispatch(this X, Args...)(auto ref Args args){ return mixin("a."~name~"!T(args)"); }
             }
         }
+    }
+
+    static if (isArray!(typeof(a)))
+    {
+        auto opDollar() const { return a.length; }
+    }
+    else static if (is(typeof(a.opDollar!0)))
+    {
+        auto ref opDollar(size_t pos)() { return a.opDollar!pos(); }
+    }
+    else static if (is(typeof(a.opDollar) == function))
+    {
+        auto ref opDollar() { return a.opDollar(); }
+    }
+    else static if (is(typeof(a.opDollar)))
+    {
+        alias opDollar = a.opDollar;
     }
 }
 unittest
@@ -4154,21 +4266,64 @@ unittest
 }
 
 /**
-Library typedef.
- */
-template Typedef(T)
-{
-    alias .Typedef!(T, T.init) Typedef;
-}
+$(B Typedef) allows the creation of a unique type which is
+based on an existing type. Unlike the $(D alias) feature,
+$(B Typedef) ensures the two types are not considered as equals.
 
-/// ditto
-struct Typedef(T, T init, string cookie=null)
+Example:
+----
+alias MyInt = Typedef!int;
+static void takeInt(int) { }
+static void takeMyInt(MyInt) { }
+
+int i;
+takeInt(i);    // ok
+takeMyInt(i);  // fails
+
+MyInt myInt;
+takeInt(myInt);    // fails
+takeMyInt(myInt);  // ok
+----
+
+Params:
+
+init = Optional initial value for the new type. For example:
+
+----
+alias MyInt = Typedef!(int, 10);
+MyInt myInt;
+assert(myInt == 10);  // default-initialized to 10
+----
+
+cookie = Optional, used to create multiple unique types which are
+based on the same origin type $(D T). For example:
+
+----
+alias TypeInt1 = Typedef!int;
+alias TypeInt2 = Typedef!int;
+
+// The two Typedefs are the same type.
+static assert(is(TypeInt1 == TypeInt2));
+
+alias TypeFloat1 = Typedef!(float, float.init, "a");
+alias TypeFloat2 = Typedef!(float, float.init, "b");
+
+// The two Typedefs are _not_ the same type.
+static assert(!is(TypeFloat1 == TypeFloat2));
+----
+ */
+struct Typedef(T, T init = T.init, string cookie=null)
 {
     private T Typedef_payload = init;
 
     this(T init)
     {
         Typedef_payload = init;
+    }
+
+    this(Typedef tdef)
+    {
+        this(tdef.Typedef_payload);
     }
 
     mixin Proxy!Typedef_payload;
@@ -4190,13 +4345,50 @@ unittest
 
     static assert(typeof(z).init == 1.0);
 
-    alias Typedef!(int, 0, "dollar") Dollar;
-    alias Typedef!(int, 0, "yen") Yen;
+    alias Dollar = Typedef!(int, 0, "dollar");
+    alias Yen    = Typedef!(int, 0, "yen");
     static assert(!is(Dollar == Yen));
 
     Typedef!(int[3]) sa;
     static assert(sa.length == 3);
     static assert(typeof(sa).length == 3);
+
+    Typedef!(int[3]) dollar1;
+    assert(dollar1[0..$] is dollar1[0..3]);
+
+    Typedef!(int[]) dollar2;
+    dollar2.length = 3;
+    assert(dollar2[0..$] is dollar2[0..3]);
+
+    static struct Dollar1
+    {
+        static struct DollarToken {}
+        enum opDollar = DollarToken.init;
+        auto opSlice(size_t, DollarToken) { return 1; }
+        auto opSlice(size_t, size_t) { return 2; }
+    }
+
+    Typedef!Dollar1 drange1;
+    assert(drange1[0..$] == 1);
+    assert(drange1[0..1] == 2);
+
+    static struct Dollar2
+    {
+        size_t opDollar(size_t pos)() { return pos == 0 ? 1 : 100; }
+        size_t opIndex(size_t i, size_t j) { return i + j; }
+    }
+
+    Typedef!Dollar2 drange2;
+    assert(drange2[$, $] == 101);
+
+    static struct Dollar3
+    {
+        size_t opDollar() { return 123; }
+        size_t opIndex(size_t i) { return i; }
+    }
+
+    Typedef!Dollar3 drange3;
+    assert(drange3[$] == 123);
 }
 
 unittest
@@ -4206,7 +4398,7 @@ unittest
     import std.bitmanip;
     static import core.stdc.config;
 
-    alias Typedef!(core.stdc.config.c_ulong) c_ulong;
+    alias c_ulong = Typedef!(core.stdc.config.c_ulong);
 
     static struct Foo
     {
@@ -4217,6 +4409,14 @@ unittest
     }
 }
 
+unittest // Issue 12596
+{
+    import std.typecons;
+    alias TD = Typedef!int;
+    TD x = TD(1);
+    TD y = TD(x);
+    assert(x == y);
+}
 
 /**
 Allocates a $(D class) object right inside the current scope,
@@ -4232,8 +4432,8 @@ template scoped(T)
 {
     // _d_newclass now use default GC alignment (looks like (void*).sizeof * 2 for
     // small objects). We will just use the maximum of filed alignments.
-    alias classInstanceAlignment!T alignment;
-    alias _alignUp!alignment aligned;
+    alias alignment = classInstanceAlignment!T;
+    alias aligned = _alignUp!alignment;
 
     static struct Scoped
     {

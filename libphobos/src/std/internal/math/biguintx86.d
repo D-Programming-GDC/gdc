@@ -51,6 +51,9 @@
 module std.internal.math.biguintx86;
 
 @system:
+pure:
+nothrow:
+
 /*
   Naked asm is used throughout, because:
   (a) it frees up the EBP register
@@ -91,7 +94,7 @@ unittest
 
 public:
 
-alias uint BigDigit; // A Bignum is an array of BigDigits. Usually the machine word size.
+alias BigDigit = uint; // A Bignum is an array of BigDigits. Usually the machine word size.
 
 // Limits for when to switch between multiplication algorithms.
 enum : int { KARATSUBALIMIT = 18 }; // Minimum value for which Karatsuba is worthwhile.
@@ -139,7 +142,7 @@ L_unrolled:
         ~ indexedLoopUnroll( 8,
         "mov EAX, [@*4-8*4+EDX+ECX*4];"
         ~ ( op == '+' ? "adc" : "sbb" ) ~ " EAX, [@*4-8*4+ESI+ECX*4];"
-        "mov [@*4-8*4+EDI+ECX*4], EAX;")
+        ~ "mov [@*4-8*4+EDI+ECX*4], EAX;")
         ~ "}");
 asm {
         setc AL; // save carry
@@ -156,7 +159,7 @@ L_residual:
         ~ indexedLoopUnroll( 1,
         "mov EAX, [@*4+EDX+ECX*4];"
         ~ ( op == '+' ? "adc" : "sbb" ) ~ " EAX, [@*4+ESI+ECX*4];"
-        "mov [@*4+EDI+ECX*4], EAX;") ~ "}");
+        ~ "mov [@*4+EDI+ECX*4], EAX;") ~ "}");
 asm {
         setc AL; // save carry
         add ECX, 1;

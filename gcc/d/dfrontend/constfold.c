@@ -1,12 +1,13 @@
 
-// Compiler implementation of the D programming language
-// Copyright (c) 1999-2012 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
+/* Compiler implementation of the D programming language
+ * Copyright (c) 1999-2014 by Digital Mars
+ * All Rights Reserved
+ * written by Walter Bright
+ * http://www.digitalmars.com
+ * Distributed under the Boost Software License, Version 1.0.
+ * http://www.boost.org/LICENSE_1_0.txt
+ * https://github.com/D-Programming-Language/dmd/blob/master/src/constfold.c
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,35 +41,24 @@ Expression *expType(Type *type, Expression *e)
 
 /* ================================== isConst() ============================== */
 
-int Expression::isConst()
+int isConst(Expression *e)
 {
-    //printf("Expression::isConst(): %s\n", toChars());
+    //printf("Expression::isConst(): %s\n", e->toChars());
+    switch(e->op)
+    {
+        case TOKint64:
+        case TOKfloat64:
+        case TOKcomplex80:
+            return 1;
+        case TOKnull:
+            return 0;
+        case TOKsymoff:
+            return 2;
+        default:
+            return 0;
+    }
+    assert(0);
     return 0;
-}
-
-int IntegerExp::isConst()
-{
-    return 1;
-}
-
-int RealExp::isConst()
-{
-    return 1;
-}
-
-int ComplexExp::isConst()
-{
-    return 1;
-}
-
-int NullExp::isConst()
-{
-    return 0;
-}
-
-int SymOffExp::isConst()
-{
-    return 2;
 }
 
 /* =============================== constFold() ============================== */
@@ -144,12 +134,12 @@ Expression *Add(Type *type, Expression *e1, Expression *e2)
         // This rigamarole is necessary so that -0.0 doesn't get
         // converted to +0.0 by doing an extraneous add with +0.0
         complex_t c1;
-        real_t r1;
-        real_t i1;
+        real_t r1 = ldouble (0.0);
+        real_t i1 = ldouble (0.0);
 
         complex_t c2;
-        real_t r2;
-        real_t i2;
+        real_t r2 = ldouble (0.0);
+        real_t i2 = ldouble (0.0);
 
         complex_t v;
         int x;
@@ -229,12 +219,12 @@ Expression *Min(Type *type, Expression *e1, Expression *e2)
         // This rigamarole is necessary so that -0.0 doesn't get
         // converted to +0.0 by doing an extraneous add with +0.0
         complex_t c1;
-        real_t r1;
-        real_t i1;
+        real_t r1 = ldouble (0.0);
+        real_t i1 = ldouble (0.0);
 
         complex_t c2;
-        real_t r2;
-        real_t i2;
+        real_t r2 = ldouble (0.0);
+        real_t i2 = ldouble (0.0);
 
         complex_t v;
         int x;
@@ -677,7 +667,7 @@ Expression *Xor(Type *type, Expression *e1, Expression *e2)
 Expression *Equal(TOK op, Type *type, Expression *e1, Expression *e2)
 {   Expression *e;
     Loc loc = e1->loc;
-    int cmp;
+    int cmp = 0;
     real_t r1;
     real_t r2;
 
@@ -1260,7 +1250,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
             e = (*ale->elements)[(size_t)i];
             e->type = type;
             e->loc = loc;
-            if (e->hasSideEffect())
+            if (hasSideEffect(e))
                 e = EXP_CANT_INTERPRET;
         }
     }
@@ -1279,7 +1269,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
             {   e = (*ale->elements)[(size_t)i];
                 e->type = type;
                 e->loc = loc;
-                if (e->hasSideEffect())
+                if (hasSideEffect(e))
                     e = EXP_CANT_INTERPRET;
             }
         }
@@ -1300,7 +1290,7 @@ Expression *Index(Type *type, Expression *e1, Expression *e2)
             {   e = (*ae->values)[i];
                 e->type = type;
                 e->loc = loc;
-                if (e->hasSideEffect())
+                if (hasSideEffect(e))
                     e = EXP_CANT_INTERPRET;
                 break;
             }
@@ -1353,7 +1343,7 @@ Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr)
     }
     else if (e1->op == TOKarrayliteral &&
             lwr->op == TOKint64 && upr->op == TOKint64 &&
-            !e1->hasSideEffect())
+            !hasSideEffect(e1))
     {   ArrayLiteralExp *es1 = (ArrayLiteralExp *)e1;
         uinteger_t ilwr = lwr->toInteger();
         uinteger_t iupr = upr->toInteger();
@@ -1377,7 +1367,7 @@ Expression *Slice(Type *type, Expression *e1, Expression *lwr, Expression *upr)
     return e;
 }
 
-/* Set a slice of char array literal 'existingAE' from a string 'newval'.
+/* Set a slice of char/integer array literal 'existingAE' from a string 'newval'.
  * existingAE[firstIndex..firstIndex+newval.length] = newval.
  */
 void sliceAssignArrayLiteralFromString(ArrayLiteralExp *existingAE, StringExp *newval, size_t firstIndex)
@@ -1714,11 +1704,13 @@ Expression *Cat(Type *type, Expression *e1, Expression *e2)
             e->type = type;
     }
     else if ((e1->op == TOKarrayliteral || e1->op == TOKnull) &&
+        e1->type->toBasetype()->nextOf() &&
         e1->type->toBasetype()->nextOf()->equals(e2->type))
     {
         ArrayLiteralExp *es1;
         if (e1->op == TOKarrayliteral)
-        {   es1 = (ArrayLiteralExp *)e1;
+        {
+            es1 = (ArrayLiteralExp *)e1;
             es1 = new ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
             es1->elements->push(e2);
         }
@@ -1795,4 +1787,3 @@ Expression *Ptr(Type *type, Expression *e1)
     }
     return EXP_CANT_INTERPRET;
 }
-

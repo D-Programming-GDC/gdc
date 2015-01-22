@@ -175,7 +175,7 @@ template isSeedable(Rng)
         }));
 }
 
-unittest
+@safe pure nothrow unittest
 {
     struct NoRng
     {
@@ -271,7 +271,7 @@ The parameters of this distribution. The random number is $(D_PARAM x
             (cast(ulong)a * (m-1) + c) % m == (c < a ? c - a + m : c - a));
 
     // Check for maximum range
-    private static ulong gcd(ulong a, ulong b)
+    private static ulong gcd(ulong a, ulong b) @safe pure nothrow
     {
         while (b)
         {
@@ -282,7 +282,7 @@ The parameters of this distribution. The random number is $(D_PARAM x
         return a;
     }
 
-    private static ulong primeFactorsOnly(ulong n)
+    private static ulong primeFactorsOnly(ulong n) @safe pure nothrow
     {
         ulong result = 1;
         ulong iter = 2;
@@ -298,7 +298,7 @@ The parameters of this distribution. The random number is $(D_PARAM x
         return result * n;
     }
 
-    unittest
+    @safe pure nothrow unittest
     {
         static assert(primeFactorsOnly(100) == 10);
         //writeln(primeFactorsOnly(11));
@@ -310,7 +310,7 @@ The parameters of this distribution. The random number is $(D_PARAM x
     }
 
     private static bool properLinearCongruentialParameters(ulong m,
-            ulong a, ulong c)
+            ulong a, ulong c) @safe pure nothrow
     {
         if (m == 0)
         {
@@ -344,7 +344,7 @@ The parameters of this distribution. The random number is $(D_PARAM x
 Constructs a $(D_PARAM LinearCongruentialEngine) generator seeded with
 $(D x0).
  */
-    this(UIntType x0)
+    this(UIntType x0) @safe pure
     {
         seed(x0);
     }
@@ -352,7 +352,7 @@ $(D x0).
 /**
    (Re)seeds the generator.
 */
-    void seed(UIntType x0 = 1)
+    void seed(UIntType x0 = 1) @safe pure
     {
         static if (c == 0)
         {
@@ -366,7 +366,7 @@ $(D x0).
 /**
    Advances the random sequence.
 */
-    void popFront()
+    void popFront() @safe pure nothrow
     {
         static if (m)
         {
@@ -402,13 +402,13 @@ $(D x0).
 /**
    Returns the current number in the random sequence.
 */
-    @property UIntType front()
+    @property UIntType front() const @safe pure nothrow
     {
         return _x;
     }
 
 ///
-    @property typeof(this) save()
+    @property typeof(this) save() @safe pure nothrow
     {
         return this;
     }
@@ -421,7 +421,7 @@ Always $(D false) (random generators are infinite ranges).
 /**
    Compares against $(D_PARAM rhs) for equality.
  */
-    bool opEquals(ref const LinearCongruentialEngine rhs) const
+    bool opEquals(ref const LinearCongruentialEngine rhs) const @safe pure nothrow
     {
         return _x == rhs._x;
     }
@@ -449,9 +449,9 @@ rnd0.seed(unpredictableSeed);
 n = rnd0.front; // different across runs
 ----
  */
-alias LinearCongruentialEngine!(uint, 16807, 0, 2147483647) MinstdRand0;
+alias MinstdRand0 = LinearCongruentialEngine!(uint, 16807, 0, 2147483647);
 /// ditto
-alias LinearCongruentialEngine!(uint, 48271, 0, 2147483647) MinstdRand;
+alias MinstdRand = LinearCongruentialEngine!(uint, 48271, 0, 2147483647);
 
 unittest
 {
@@ -526,41 +526,42 @@ struct MersenneTwisterEngine(UIntType, size_t w, size_t n, size_t m, size_t r,
                              UIntType c, size_t l)
     if(isUnsigned!UIntType)
 {
-    ///Mark this as a Rng
-    enum bool isUniformRandom = true;
-/**
-Parameter for the generator.
-*/
-    enum size_t wordSize = w;
-    enum size_t stateSize = n;
-    enum size_t shiftSize = m;
-    enum size_t maskBits = r;
-    enum UIntType xorMask = a;
-    enum UIntType temperingU = u;
-    enum size_t temperingS = s;
-    enum UIntType temperingB = b;
-    enum size_t temperingT = t;
-    enum UIntType temperingC = c;
-    enum size_t temperingL = l;
-
-    /// Smallest generated value (0).
-    enum UIntType min = 0;
-    /// Largest generated value.
-    enum UIntType max =
-        w == UIntType.sizeof * 8 ? UIntType.max : (1u << w) - 1;
-    /// The default seed value.
-    enum UIntType defaultSeed = 5489u;
-
+    static assert(0 < w && w <= UIntType.sizeof * 8);
     static assert(1 <= m && m <= n);
     static assert(0 <= r && 0 <= u && 0 <= s && 0 <= t && 0 <= l);
     static assert(r <= w && u <= w && s <= w && t <= w && l <= w);
     static assert(0 <= a && 0 <= b && 0 <= c);
+
+    ///Mark this as a Rng
+    enum bool isUniformRandom = true;
+
+/**
+Parameters for the generator.
+*/
+    enum size_t   wordSize   = w;
+    enum size_t   stateSize  = n; /// ditto
+    enum size_t   shiftSize  = m; /// ditto
+    enum size_t   maskBits   = r; /// ditto
+    enum UIntType xorMask    = a; /// ditto
+    enum UIntType temperingU = u; /// ditto
+    enum size_t   temperingS = s; /// ditto
+    enum UIntType temperingB = b; /// ditto
+    enum size_t   temperingT = t; /// ditto
+    enum UIntType temperingC = c; /// ditto
+    enum size_t   temperingL = l; /// ditto
+
+    /// Smallest generated value (0).
+    enum UIntType min = 0;
+    /// Largest generated value.
+    enum UIntType max = UIntType.max >> (UIntType.sizeof * 8u - w);
     static assert(a <= max && b <= max && c <= max);
+    /// The default seed value.
+    enum UIntType defaultSeed = 5489u;
 
 /**
    Constructs a MersenneTwisterEngine object.
 */
-    this(UIntType value)
+    this(UIntType value) @safe pure nothrow
     {
         seed(value);
     }
@@ -571,7 +572,7 @@ Parameter for the generator.
    This seed function gives 2^32 starting points. To allow the RNG to be started in any one of its
    internal states use the seed overload taking an InputRange.
 */
-    void seed()(UIntType value = defaultSeed)
+    void seed()(UIntType value = defaultSeed) @safe pure nothrow
     {
         static if (w == UIntType.sizeof * 8)
         {
@@ -621,7 +622,7 @@ Parameter for the generator.
         mti = n;
         if(range.empty && j < n)
         {
-            throw new Exception(format("MersenneTwisterEngine.seed: Input range didn't provide enough"
+            throw new Exception(format("MersenneTwisterEngine.seed: Input range didn't provide enough"~
                 " elements: Need %s elemnets.", n));
         }
 
@@ -631,7 +632,7 @@ Parameter for the generator.
 /**
    Advances the generator.
 */
-    void popFront()
+    void popFront() @safe pure nothrow
     {
         if (mti == size_t.max) seed();
         enum UIntType
@@ -682,14 +683,14 @@ Parameter for the generator.
 /**
    Returns the current random value.
  */
-    @property UIntType front()
+    @property UIntType front() @safe pure nothrow
     {
         if (mti == size_t.max) seed();
         return _y;
     }
 
 ///
-    @property typeof(this) save()
+    @property typeof(this) save() @safe pure nothrow
     {
         return this;
     }
@@ -723,11 +724,12 @@ gen.seed(unpredictableSeed);
 n = gen.front; // different across runs
 ----
  */
-alias MersenneTwisterEngine!(uint, 32, 624, 397, 31, 0x9908b0df, 11, 7,
-                             0x9d2c5680, 15, 0xefc60000, 18)
-    Mt19937;
+alias Mt19937 = MersenneTwisterEngine!(uint, 32, 624, 397, 31,
+                                       0x9908b0df, 11, 7,
+                                       0x9d2c5680, 15,
+                                       0xefc60000, 18);
 
-unittest
+nothrow unittest
 {
     static assert(isUniformRNG!Mt19937);
     static assert(isUniformRNG!(Mt19937, uint));
@@ -750,7 +752,7 @@ unittest
     gen.seed(map!((a) => unpredictableSeed)(repeat(0)));
 }
 
-unittest
+@safe pure nothrow unittest
 {
     uint a, b;
     {
@@ -778,6 +780,17 @@ unittest
         version(none) { assert(gen1 !is gen2); }
         assert(gen1.take(100).array() == gen2.take(100).array());
     }
+}
+
+@safe pure nothrow unittest //11690
+{
+    alias MT(UIntType, uint w) = MersenneTwisterEngine!(UIntType, w, 624, 397, 31,
+                                                        0x9908b0df, 11, 7,
+                                                        0x9d2c5680, 15,
+                                                        0xefc60000, 18);
+
+    foreach (R; TypeTuple!(MT!(uint, 32), MT!(ulong, 32), MT!(ulong, 48), MT!(ulong, 64)))
+        auto a = R();
 }
 
 
@@ -844,7 +857,7 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
      * Constructs a $(D XorshiftEngine) generator seeded with $(D_PARAM x0).
      */
     @safe
-    this(UIntType x0)
+    nothrow this(UIntType x0) pure
     {
         seed(x0);
     }
@@ -854,7 +867,7 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
      * (Re)seeds the generator.
      */
     @safe
-    nothrow void seed(UIntType x0)
+    nothrow void seed(UIntType x0) pure
     {
         // Initialization routine from MersenneTwisterEngine.
         foreach (i, e; seeds_)
@@ -871,7 +884,7 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
      * Returns the current number in the random sequence.
      */
     @property @safe
-    nothrow UIntType front()
+    nothrow UIntType front() const pure
     {
         static if (bits == 192)
             return value_;
@@ -884,7 +897,7 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
      * Advances the random sequence.
      */
     @safe
-    nothrow void popFront()
+    nothrow void popFront() pure
     {
         UIntType temp;
 
@@ -945,8 +958,8 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
     /**
      * Captures a range state.
      */
-    @property
-    typeof(this) save()
+    @property @safe
+    nothrow typeof(this) save() pure
     {
         return this;
     }
@@ -956,7 +969,7 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
      * Compares against $(D_PARAM rhs) for equality.
      */
     @safe
-    nothrow bool opEquals(ref const XorshiftEngine rhs) const
+    nothrow bool opEquals(ref const XorshiftEngine rhs) const pure
     {
         return seeds_ == rhs.seeds_;
     }
@@ -964,7 +977,7 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
 
   private:
     @safe
-    static nothrow void sanitizeSeeds(ref UIntType[size] seeds)
+    static nothrow void sanitizeSeeds(ref UIntType[size] seeds) pure
     {
         for (uint i; i < seeds.length; i++)
         {
@@ -974,7 +987,7 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
     }
 
 
-    unittest
+    @safe pure nothrow unittest
     {
         static if (size  ==  4)  // Other bits too
         {
@@ -1003,13 +1016,13 @@ struct XorshiftEngine(UIntType, UIntType bits, UIntType a, UIntType b, UIntType 
  * num = rnd.front; // different across runs
  * -----
  */
-alias XorshiftEngine!(uint, 32,  13, 17, 15)  Xorshift32;
-alias XorshiftEngine!(uint, 64,  10, 13, 10) Xorshift64;   /// ditto
-alias XorshiftEngine!(uint, 96,  10, 5,  26) Xorshift96;   /// ditto
-alias XorshiftEngine!(uint, 128, 11, 8,  19) Xorshift128;  /// ditto
-alias XorshiftEngine!(uint, 160, 2,  1,  4)  Xorshift160;  /// ditto
-alias XorshiftEngine!(uint, 192, 2,  1,  4)  Xorshift192;  /// ditto
-alias Xorshift128 Xorshift;                                /// ditto
+alias Xorshift32  = XorshiftEngine!(uint, 32,  13, 17, 15) ;
+alias Xorshift64  = XorshiftEngine!(uint, 64,  10, 13, 10); /// ditto
+alias Xorshift96  = XorshiftEngine!(uint, 96,  10, 5,  26); /// ditto
+alias Xorshift128 = XorshiftEngine!(uint, 128, 11, 8,  19); /// ditto
+alias Xorshift160 = XorshiftEngine!(uint, 160, 2,  1,  4);  /// ditto
+alias Xorshift192 = XorshiftEngine!(uint, 192, 2,  1,  4);  /// ditto
+alias Xorshift    = Xorshift128;                            /// ditto
 
 
 unittest
@@ -1030,7 +1043,7 @@ unittest
         [0UL, 246875399, 3690007200, 1264581005, 3906711041, 1866187943, 2481925219, 2464530826, 1604040631, 3653403911]
     ];
 
-    alias TypeTuple!(Xorshift32, Xorshift64, Xorshift96, Xorshift128, Xorshift160, Xorshift192) XorshiftTypes;
+    alias XorshiftTypes = TypeTuple!(Xorshift32, Xorshift64, Xorshift96, Xorshift128, Xorshift160, Xorshift192);
 
     foreach (I, Type; XorshiftTypes)
     {
@@ -1130,7 +1143,7 @@ nice random numbers, and (2) you don't care for the minutiae of the
 method being used.
  */
 
-alias Mt19937 Random;
+alias Random = Mt19937;
 
 unittest
 {
@@ -1218,9 +1231,9 @@ unittest
 auto uniform(string boundaries = "[)",
         T1, T2, UniformRandomNumberGenerator)
 (T1 a, T2 b, ref UniformRandomNumberGenerator urng)
-if (isFloatingPoint!(CommonType!(T1, T2)))
+if (isFloatingPoint!(CommonType!(T1, T2)) && isUniformRNG!UniformRandomNumberGenerator)
 {
-    alias Unqual!(CommonType!(T1, T2)) NumberType;
+    alias NumberType = Unqual!(CommonType!(T1, T2));
     static if (boundaries[0] == '(')
     {
         NumberType _a = nextafter(cast(NumberType) a, NumberType.infinity);
@@ -1312,7 +1325,8 @@ Hence, our condition to reroll is
 +/
 auto uniform(string boundaries = "[)", T1, T2, RandomGen)
 (T1 a, T2 b, ref RandomGen rng)
-if (isIntegral!(CommonType!(T1, T2)) || isSomeChar!(CommonType!(T1, T2)))
+if ((isIntegral!(CommonType!(T1, T2)) || isSomeChar!(CommonType!(T1, T2))) &&
+     isUniformRNG!RandomGen)
 {
     alias ResultType = Unqual!(CommonType!(T1, T2));
     static if (boundaries[0] == '(')
@@ -1331,10 +1345,16 @@ if (isIntegral!(CommonType!(T1, T2)) || isSomeChar!(CommonType!(T1, T2)))
         enforce(lower <= b,
                 text("std.random.uniform(): invalid bounding interval ",
                         boundaries[0], a, ", ", b, boundaries[1]));
-        if (b == ResultType.max && lower == ResultType.min)
+        /* Cannot use this next optimization with dchar, as dchar
+         * only partially uses its full bit range
+         */
+        static if (!is(ResultType == dchar))
         {
-            // Special case - all bits are occupied
-            return std.random.uniform!ResultType(rng);
+            if (b == ResultType.max && lower == ResultType.min)
+            {
+                // Special case - all bits are occupied
+                return std.random.uniform!ResultType(rng);
+            }
         }
         auto upperDist = unsigned(b - lower) + 1u;
     }
@@ -1383,6 +1403,20 @@ unittest
         size_t i = 50;
         while (--i && uniform(lo, hi) == init) {}
         assert(i > 0);
+
+        /* Test case with closed boundaries covering whole range
+         * of integral type
+         */
+        static if (isIntegral!T || isSomeChar!T)
+        {
+            foreach (immutable _; 0 .. 100)
+            {
+                auto u = uniform!"[]"(T.min, T.max);
+                static assert(is(typeof(u) == T));
+                assert(T.min <= u, "Lower bound violation for uniform!\"[]\" with " ~ T.stringof);
+                assert(u <= T.max, "Upper bound violation for uniform!\"[]\" with " ~ T.stringof);
+            }
+        }
     }
 
     auto reproRng = Xorshift(239842);
@@ -1462,20 +1496,30 @@ passed, uses the default $(D rndGen).
  */
 auto uniform(T, UniformRandomNumberGenerator)
 (ref UniformRandomNumberGenerator urng)
-if (!is(T == enum) && (isIntegral!T || isSomeChar!T))
+if (!is(T == enum) && (isIntegral!T || isSomeChar!T) && isUniformRNG!UniformRandomNumberGenerator)
 {
-    auto r = urng.front;
-    urng.popFront();
-    static if (T.sizeof <= r.sizeof)
+    /* dchar does not use its full bit range, so we must
+     * revert to the uniform with specified bounds
+     */
+    static if (is(T == dchar))
     {
-        return cast(T) r;
+        return uniform!"[]"(T.min, T.max);
     }
     else
     {
-        static assert(T.sizeof == 8 && r.sizeof == 4);
-        T r1 = urng.front | (cast(T)r << 32);
+        auto r = urng.front;
         urng.popFront();
-        return r1;
+        static if (T.sizeof <= r.sizeof)
+        {
+            return cast(T) r;
+        }
+        else
+        {
+            static assert(T.sizeof == 8 && r.sizeof == 4);
+            T r1 = urng.front | (cast(T)r << 32);
+            urng.popFront();
+            return r1;
+        }
     }
 }
 
@@ -1495,6 +1539,14 @@ unittest
         size_t i = 50;
         while (--i && uniform!T() == init) {}
         assert(i > 0);
+
+        foreach (immutable _; 0 .. 100)
+        {
+            auto u = uniform!T();
+            static assert(is(typeof(u) == T));
+            assert(T.min <= u, "Lower bound violation for uniform!" ~ T.stringof);
+            assert(u <= T.max, "Upper bound violation for uniform!" ~ T.stringof);
+        }
     }
 }
 
@@ -1504,7 +1556,7 @@ generator is passed, uses the default $(D rndGen).
  */
 auto uniform(E, UniformRandomNumberGenerator)
 (ref UniformRandomNumberGenerator urng)
-if (is(E == enum))
+if (is(E == enum) && isUniformRNG!UniformRandomNumberGenerator)
 {
     static immutable E[EnumMembers!E.length] members = [EnumMembers!E];
     return members[std.random.uniform(0, members.length, urng)];
@@ -1517,6 +1569,13 @@ if (is(E == enum))
     return uniform!E(rndGen);
 }
 
+///
+unittest
+{
+    enum Fruit { apple, mango, pear }
+    auto randFruit = uniform!Fruit();
+}
+
 unittest
 {
     enum Fruit { Apple = 12, Mango = 29, Pear = 72 }
@@ -1525,6 +1584,109 @@ unittest
         foreach(f; [uniform!Fruit(), rndGen.uniform!Fruit()])
         {
             assert(f == Fruit.Apple || f == Fruit.Mango || f == Fruit.Pear);
+        }
+    }
+}
+
+/**
+ * Generates a uniformly-distributed floating point number of type
+ * $(D T) in the range [0, 1$(RPAREN).  If no random number generator is
+ * specified, the default RNG $(D rndGen) will be used as the source
+ * of randomness.
+ *
+ * $(D uniform01) offers a faster generation of random variates than
+ * the equivalent $(D uniform!"[)"(0.0, 1.0)) and so may be preferred
+ * for some applications.
+ */
+T uniform01(T = double)()
+    if (isFloatingPoint!T)
+{
+    return uniform01!T(rndGen);
+}
+
+/// ditto
+T uniform01(T = double, UniformRNG)(ref UniformRNG rng)
+    if (isFloatingPoint!T && isUniformRNG!UniformRNG)
+out (result)
+{
+    assert(0 <= result);
+    assert(result < 1);
+}
+body
+{
+    alias R = typeof(rng.front);
+    static if (isIntegral!R)
+    {
+        enum T factor = 1 / (T(1) + rng.max - rng.min);
+    }
+    else static if (isFloatingPoint!R)
+    {
+        enum T factor = 1 / (rng.max - rng.min);
+    }
+    else
+    {
+        static assert(false);
+    }
+
+    while (true)
+    {
+        immutable T u = (rng.front - rng.min) * factor;
+        rng.popFront();
+        static if (isIntegral!R)
+        {
+            /* if RNG variates are integral, we're guaranteed
+             * by the definition of factor that u < 1.
+             */
+            return u;
+        }
+        else
+        {
+            /* Otherwise we have to check, just in case a
+             * floating-point RNG returns a variate that is
+             * exactly equal to its maximum
+             */
+            if (u < 1)
+            {
+                return u;
+            }
+        }
+    }
+
+    // Shouldn't ever get here.
+    assert(false);
+}
+
+unittest
+{
+    import std.typetuple;
+    foreach (UniformRNG; PseudoRngTypes)
+    {
+
+        foreach (T; TypeTuple!(float, double, real))
+        {
+            UniformRNG rng = UniformRNG(unpredictableSeed);
+
+            auto a = uniform01();
+            assert(is(typeof(a) == double));
+            assert(0 <= a && a < 1);
+
+            auto b = uniform01(rng);
+            assert(is(typeof(a) == double));
+            assert(0 <= b && b < 1);
+
+            auto c = uniform01!T();
+            assert(is(typeof(c) == T));
+            assert(0 <= c && c < 1);
+
+            auto d = uniform01!T(rng);
+            assert(is(typeof(d) == T));
+            assert(0 <= d && d < 1);
+
+            T init = uniform01!T(rng);
+            size_t i = 50;
+            while (--i && uniform01!T(rng) == init) {}
+            assert(i > 0);
+            assert(i < 50);
         }
     }
 }
@@ -1678,7 +1840,7 @@ if (isNumeric!Num)
 private size_t diceImpl(Rng, Range)(ref Rng rng, Range proportions)
 if (isForwardRange!Range && isNumeric!(ElementType!Range) && isForwardRange!Rng)
 {
-    double sum = reduce!("(assert(b >= 0), a + b)")(0.0, proportions.save);
+    double sum = reduce!((a,b) { assert(b >= 0); return a + b; })(0.0, proportions.save);
     enforce(sum > 0, "Proportions in a dice cannot sum to zero");
     immutable point = uniform(0.0, sum, rng);
     assert(point < sum);
@@ -2254,10 +2416,12 @@ Variable names are chosen to match those in Vitter's paper.
             while (true)
             {
                 // Step D2: set values of x and u.
-                for (x = _available * (1-_Vprime), s = cast(size_t) trunc(x);
-                     s >= qu1;
-                     x = _available * (1-_Vprime), s = cast(size_t) trunc(x))
+                while(1)
                 {
+                    x = _available * (1-_Vprime);
+                    s = cast(size_t) trunc(x);
+                    if (s < qu1)
+                        break;
                     _Vprime = newVprime(_toSelect);
                 }
 

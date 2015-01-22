@@ -561,7 +561,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 
-int lang_specific_pre_link (void)  /* Not used for D.  */
+int lang_specific_pre_link()  /* Not used for D.  */
 {
   return 0;
 }

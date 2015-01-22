@@ -20,13 +20,14 @@ Distributed under the Boost Software License, Version 1.0.
 */
 module std.functional;
 
-import std.traits, std.typecons, std.typetuple;
-// for making various functions visible in *naryFun
-import std.algorithm, std.conv, std.exception, std.math, std.range, std.string;
+import std.traits, std.typetuple;
 
 /**
 Transforms a string representing an expression into a unary
-function. The string must use symbol name $(D a) as the parameter.
+function. The string must either use symbol name $(D a) as
+the parameter or provide the symbol via the $(D parmName) argument.
+If $(D fun) is not a string, $(D unaryFun) aliases itself away to
+$(D fun).
 
 Example:
 
@@ -36,31 +37,29 @@ assert(isEven(2) && !isEven(1));
 ----
 */
 
-template unaryFun(alias fun, bool byRef = false, string parmName = "a")
+template unaryFun(alias fun, string parmName = "a")
 {
     static if (is(typeof(fun) : string))
     {
-        static if (byRef)
+        import std.traits, std.typecons, std.typetuple;
+        import std.algorithm, std.conv, std.exception, std.math, std.range, std.string;
+        auto unaryFun(ElementType)(auto ref ElementType __a)
         {
-            auto unaryFun(ElementType)(ref ElementType __a)
-            {
-                mixin("alias __a "~parmName~";");
-                mixin("return (" ~ fun ~ ");");
-            }
-        }
-        else
-        {
-            auto unaryFun(ElementType)(ElementType __a)
-            {
-                mixin("alias __a "~parmName~";");
-                mixin("return (" ~ fun ~ ");");
-            }
+            mixin("alias " ~ parmName ~ " = __a ;");
+            return mixin(fun);
         }
     }
     else
     {
-        alias fun unaryFun;
+        alias unaryFun = fun;
     }
+}
+
+/+ Undocumented, will be removed December 2014+/
+deprecated("Parameter byRef is obsolete. Please call unaryFun!(fun, parmName) directly.")
+template unaryFun(alias fun, bool byRef, string parmName = "a")
+{
+    alias unaryFun = unaryFun!(fun, parmName);
 }
 
 unittest
@@ -80,15 +79,18 @@ unittest
 
 /**
 Transforms a string representing an expression into a Boolean binary
-predicate. The string must use symbol names $(D a) and $(D b) as the
-compared elements.
+predicate. The string must either use symbol names $(D a) and $(D b)
+as the parameters or provide the symbols via the $(D parm1Name) and
+$(D parm2Name) arguments.
+If $(D fun) is not a string, $(D binaryFun) aliases itself away to
+$(D fun).
 
    Example:
 
 ----
-alias binaryFun!("a < b") less;
+alias less = binaryFun!("a < b");
 assert(less(1, 2) && !less(2, 1));
-alias binaryFun!("a > b") greater;
+alias greater = binaryFun!("a > b");
 assert(!greater("1", "2") && greater("2", "1"));
 ----
 */
@@ -98,23 +100,25 @@ template binaryFun(alias fun, string parm1Name = "a",
 {
     static if (is(typeof(fun) : string))
     {
+        import std.traits, std.typecons, std.typetuple;
+        import std.algorithm, std.conv, std.exception, std.math, std.range, std.string;
         auto binaryFun(ElementType1, ElementType2)
-            (ElementType1 __a, ElementType2 __b)
+            (auto ref ElementType1 __a, auto ref ElementType2 __b)
         {
-            mixin("alias __a "~parm1Name~";");
-            mixin("alias __b "~parm2Name~";");
-            mixin("return (" ~ fun ~ ");");
+            mixin("alias "~parm1Name~" = __a ;");
+            mixin("alias "~parm2Name~" = __b ;");
+            return mixin(fun);
         }
     }
     else
     {
-        alias fun binaryFun;
+        alias binaryFun = fun;
     }
 }
 
 unittest
 {
-    alias binaryFun!(q{a < b}) less;
+    alias less = binaryFun!(q{a < b});
     assert(less(1, 2) && !less(2, 1));
     assert(less("1", "2") && !less("2", "1"));
 
@@ -133,17 +137,54 @@ unittest
    Predicate that returns $(D_PARAM a < b).
 */
 //bool less(T)(T a, T b) { return a < b; }
-//alias binaryFun!(q{a < b}) less;
+//alias less = binaryFun!(q{a < b});
 
 /*
    Predicate that returns $(D_PARAM a > b).
 */
-//alias binaryFun!(q{a > b}) greater;
+//alias greater = binaryFun!(q{a > b});
 
 /*
    Predicate that returns $(D_PARAM a == b).
 */
-//alias binaryFun!(q{a == b}) equalTo;
+//alias equalTo = binaryFun!(q{a == b});
+
+/**
+   N-ary predicate that reverses the order of arguments, e.g., given
+   $(D pred(a, b, c)), returns $(D pred(c, b, a)).
+*/
+template reverseArgs(alias pred)
+{
+    auto reverseArgs(Args...)(auto ref Args args)
+        if (is(typeof(pred(Reverse!args))))
+    {
+        return pred(Reverse!args);
+    }
+}
+
+unittest
+{
+    alias gt = reverseArgs!(binaryFun!("a < b"));
+    assert(gt(2, 1) && !gt(1, 1));
+    int x = 42;
+    bool xyz(int a, int b) { return a * x < b / x; }
+    auto foo = &xyz;
+    foo(4, 5);
+    alias zyx = reverseArgs!(foo);
+    assert(zyx(5, 4) == foo(4, 5));
+
+    int abc(int a, int b, int c) { return a * b + c; }
+    alias cba = reverseArgs!abc;
+    assert(abc(91, 17, 32) == cba(32, 17, 91));
+
+    int a(int a) { return a * 2; }
+    alias _a = reverseArgs!a;
+    assert(a(2) == _a(2));
+
+    int b() { return 4; }
+    alias _b = reverseArgs!b;
+    assert(b() == _b());
+}
 
 /**
    Binary predicate that reverses the order of arguments, e.g., given
@@ -160,13 +201,13 @@ template binaryReverseArgs(alias pred)
 
 unittest
 {
-    alias binaryReverseArgs!(binaryFun!("a < b")) gt;
+    alias gt = binaryReverseArgs!(binaryFun!("a < b"));
     assert(gt(2, 1) && !gt(1, 1));
     int x = 42;
     bool xyz(int a, int b) { return a * x < b / x; }
     auto foo = &xyz;
     foo(4, 5);
-    alias binaryReverseArgs!(foo) zyx;
+    alias zyx = binaryReverseArgs!(foo);
     assert(zyx(5, 4) == foo(4, 5));
 }
 
@@ -189,37 +230,37 @@ template not(alias pred)
         else static if (T.length == 2)
             return !binaryFun!pred(args);
         else
-            static assert(false, "not unimplemented for multiple arguments");
+            static assert(false, "not implemented for multiple arguments");
     }
 }
 
 /**
-Curries $(D fun) by tying its first argument to a particular value.
+Partially evaluates $(D fun) by tying its first argument to a particular value.
 
 Example:
 
 ----
 int fun(int a, int b) { return a + b; }
-alias curry!(fun, 5) fun5;
+alias partial!(fun, 5) fun5;
 assert(fun5(6) == 11);
 ----
 
 Note that in most cases you'd use an alias instead of a value
-assignment. Using an alias allows you to curry template functions
-without committing to a particular type of the function.
+assignment. Using an alias allows you to partially evaluate template
+functions without committing to a particular type of the function.
  */
-template curry(alias fun, alias arg)
+template partial(alias fun, alias arg)
 {
     static if (is(typeof(fun) == delegate) || is(typeof(fun) == function))
     {
-        ReturnType!fun curry(ParameterTypeTuple!fun[1..$] args2)
+        ReturnType!fun partial(ParameterTypeTuple!fun[1..$] args2)
         {
             return fun(arg, args2);
         }
     }
     else
     {
-        auto curry(Ts...)(Ts args2)
+        auto partial(Ts...)(Ts args2)
         {
             static if (is(typeof(fun(arg, args2))))
             {
@@ -242,37 +283,44 @@ template curry(alias fun, alias arg)
     }
 }
 
-// tests for currying callables
+/**
+Deprecated alias for $(D partial), kept for backwards compatibility
+ */
+
+deprecated("Please use std.functional.partial instead")
+alias curry = partial;
+
+// tests for partially evaluating callables
 unittest
 {
     static int f1(int a, int b) { return a + b; }
-    assert(curry!(f1, 5)(6) == 11);
+    assert(partial!(f1, 5)(6) == 11);
 
     int f2(int a, int b) { return a + b; }
     int x = 5;
-    assert(curry!(f2, x)(6) == 11);
+    assert(partial!(f2, x)(6) == 11);
     x = 7;
-    assert(curry!(f2, x)(6) == 13);
-    static assert(curry!(f2, 5)(6) == 11);
+    assert(partial!(f2, x)(6) == 13);
+    static assert(partial!(f2, 5)(6) == 11);
 
     auto dg = &f2;
-    auto f3 = &curry!(dg, x);
+    auto f3 = &partial!(dg, x);
     assert(f3(6) == 13);
 
     static int funOneArg(int a) { return a; }
-    assert(curry!(funOneArg, 1)() == 1);
+    assert(partial!(funOneArg, 1)() == 1);
 
     static int funThreeArgs(int a, int b, int c) { return a + b + c; }
-    alias curry!(funThreeArgs, 1) funThreeArgs1;
+    alias funThreeArgs1 = partial!(funThreeArgs, 1);
     assert(funThreeArgs1(2, 3) == 6);
     static assert(!is(typeof(funThreeArgs1(2))));
 
     enum xe = 5;
-    alias curry!(f2, xe) fe;
+    alias fe = partial!(f2, xe);
     static assert(fe(6) == 11);
 }
 
-// tests for currying templated/overloaded callables
+// tests for partially evaluating templated/overloaded callables
 unittest
 {
     static auto add(A, B)(A x, B y)
@@ -280,17 +328,17 @@ unittest
         return x + y;
     }
 
-    alias curry!(add, 5) add5;
+    alias add5 = partial!(add, 5);
     assert(add5(6) == 11);
     static assert(!is(typeof(add5())));
     static assert(!is(typeof(add5(6, 7))));
 
-    // taking address of templated curry needs explicit type
+    // taking address of templated partial evaluation needs explicit type
     auto dg = &add5!(int);
     assert(dg(6) == 11);
 
     int x = 5;
-    alias curry!(add, x) addX;
+    alias addX = partial!(add, x);
     assert(addX(6) == 11);
 
     static struct Callable
@@ -300,9 +348,9 @@ unittest
         double opCall(double a, double b) { return a + b; }
     }
     Callable callable;
-    assert(curry!(Callable, "5")("6") == "56");
-    assert(curry!(callable, 5)(6) == 30);
-    assert(curry!(callable, 7.0)(3.0) == 7.0 + 3.0);
+    assert(partial!(Callable, "5")("6") == "56");
+    assert(partial!(callable, 5)(6) == 30);
+    assert(partial!(callable, 7.0)(3.0) == 7.0 + 3.0);
 
     static struct TCallable
     {
@@ -312,15 +360,15 @@ unittest
         }
     }
     TCallable tcallable;
-    assert(curry!(tcallable, 5)(6) == 11);
-    static assert(!is(typeof(curry!(tcallable, "5")(6))));
+    assert(partial!(tcallable, 5)(6) == 11);
+    static assert(!is(typeof(partial!(tcallable, "5")(6))));
 
     static A funOneArg(A)(A a) { return a; }
-    alias curry!(funOneArg, 1) funOneArg1;
+    alias funOneArg1 = partial!(funOneArg, 1);
     assert(funOneArg1() == 1);
 
     static auto funThreeArgs(A, B, C)(A a, B b, C c) { return a + b + c; }
-    alias curry!(funThreeArgs, 1) funThreeArgs1;
+    alias funThreeArgs1 = partial!(funThreeArgs, 1);
     assert(funThreeArgs1(2, 3) == 6);
     static assert(!is(typeof(funThreeArgs1(1))));
 
@@ -340,43 +388,51 @@ $(XREF typecons, Tuple) with one element per passed-in function. Upon
 invocation, the returned tuple is the adjoined results of all
 functions.
 
-Example:
-
-----
-static bool f1(int a) { return a != 0; }
-static int f2(int a) { return a / 2; }
-auto x = adjoin!(f1, f2)(5);
-assert(is(typeof(x) == Tuple!(bool, int)));
-assert(x[0] == true && x[1] == 2);
-----
+Note: In the special case where where only a single function is provided
+($(D F.length == 1)), adjoin simply aliases to the single passed function
+($(D F[0])).
 */
-template adjoin(F...) if (F.length)
+template adjoin(F...) if (F.length == 1)
 {
-    auto adjoin(V...)(V a)
+    alias adjoin = F[0];
+}
+/// ditto
+template adjoin(F...) if (F.length > 1)
+{
+    auto adjoin(V...)(auto ref V a)
     {
-        static if (F.length == 1)
-        {
-            return F[0](a);
-        }
-        else static if (F.length == 2)
+        import std.typecons : tuple;
+        static if (F.length == 2)
         {
             return tuple(F[0](a), F[1](a));
         }
+        else static if (F.length == 3)
+        {
+            return tuple(F[0](a), F[1](a), F[2](a));
+        }
         else
         {
-            alias typeof(F[0](a)) Head;
-            Tuple!(Head, typeof(.adjoin!(F[1..$])(a)).Types) result = void;
-            foreach (i, Unused; result.Types)
-            {
-                emplace(&result[i], F[i](a));
-            }
-            return result;
+            import std.string : format;
+            import std.range : iota;
+            return mixin (q{tuple(%(F[%s](a)%|, %))}.format(iota(0, F.length)));
         }
     }
 }
 
+///
 unittest
 {
+    import std.functional, std.typecons;
+    static bool f1(int a) { return a != 0; }
+    static int f2(int a) { return a / 2; }
+    auto x = adjoin!(f1, f2)(5);
+    assert(is(typeof(x) == Tuple!(bool, int)));
+    assert(x[0] == true && x[1] == 2);
+}
+
+unittest
+{
+    import std.typecons;
     static bool F1(int a) { return a != 0; }
     auto x1 = adjoin!(F1)(5);
     static int F2(int a) { return a / 2; }
@@ -388,7 +444,7 @@ unittest
     assert(x3[0] && x3[1] == 2 && x3[2] == 2);
 
     bool F4(int a) { return a != x1; }
-    alias adjoin!(F4) eff4;
+    alias eff4 = adjoin!(F4);
     static struct S
     {
         bool delegate(int) store;
@@ -398,6 +454,25 @@ unittest
     s.store = (int a) { return eff4(a); };
     auto x4 = s.fun();
     assert(x4 == 43);
+}
+
+unittest
+{
+    import std.typetuple : staticMap;
+    import std.typecons : Tuple, tuple;
+    alias funs = staticMap!(unaryFun, "a", "a * 2", "a * 3", "a * a", "-a");
+    alias afun = adjoin!funs;
+    assert(afun(5) == tuple(5, 10, 15, 25, -5));
+
+    static class C{}
+    alias IC = immutable(C);
+    IC foo(){return typeof(return).init;}
+    Tuple!(IC, IC, IC, IC) ret1 = adjoin!(foo, foo, foo, foo)();
+
+    static struct S{int* p;}
+    alias IS = immutable(S);
+    IS bar(){return typeof(return).init;}
+    enum Tuple!(IS, IS, IS, IS) ret2 = adjoin!(bar, bar, bar, bar)();
 }
 
 // /*private*/ template NaryFun(string fun, string letter, V...)
@@ -412,7 +487,7 @@ unittest
 //             ~NaryFun!(fun, [letter[0] + 1], V[1..$]).args;
 //         enum code = args ~ "return "~fun~";";
 //     }
-//     alias void Result;
+//     alias Result = void;
 // }
 
 // unittest
@@ -435,7 +510,7 @@ unittest
 
 // unittest
 // {
-//     alias naryFun!("a + b") test;
+//     alias test = naryFun!("a + b");
 //     test(1, 2);
 // }
 
@@ -458,13 +533,13 @@ template compose(fun...)
 {
     static if (fun.length == 1)
     {
-        alias unaryFun!(fun[0]) compose;
+        alias compose = unaryFun!(fun[0]);
     }
     else static if (fun.length == 2)
     {
         // starch
-        alias unaryFun!(fun[0]) fun0;
-        alias unaryFun!(fun[1]) fun1;
+        alias fun0 = unaryFun!(fun[0]);
+        alias fun1 = unaryFun!(fun[1]);
 
         // protein: the core composition operation
         typeof({ E a; return fun0(fun1(a)); }()) compose(E)(E a)
@@ -475,7 +550,7 @@ template compose(fun...)
     else
     {
         // protein: assembling operations
-        alias compose!(fun[0], compose!(fun[1 .. $])) compose;
+        alias compose = compose!(fun[0], compose!(fun[1 .. $]));
     }
 }
 
@@ -494,13 +569,11 @@ template compose(fun...)
 int[] a = pipe!(readText, split, map!(to!(int)))("file.txt");
 ----
  */
-template pipe(fun...)
-{
-    alias compose!(Reverse!(fun)) pipe;
-}
+alias pipe(fun...) = compose!(Reverse!(fun));
 
 unittest
 {
+    import std.conv : to;
     string foo(int a) { return to!(string)(a); }
     int bar(string a) { return to!(int)(a) + 1; }
     double baz(int a) { return a + 0.5; }
@@ -529,7 +602,7 @@ double transmogrify(int a, string b)
 {
    ... expensive computation ...
 }
-alias memoize!transmogrify fastTransmogrify;
+alias fastTransmogrify = memoize!transmogrify;
 unittest
 {
     auto slow = transmogrify(2, "hello");
@@ -550,7 +623,7 @@ Example:
 ----
 ulong fib(ulong n)
 {
-    alias memoize!fib mfib;
+    alias mfib = memoize!fib;
     return n < 2 ? 1 : mfib(n - 2) + mfib(n - 1);
 }
 ...
@@ -563,7 +636,7 @@ Example:
 ----
 ulong fact(ulong n)
 {
-    alias memoize!fact mfact;
+    alias mfact = memoize!fact;
     return n < 2 ? 1 : n * mfact(n - 1);
 }
 ...
@@ -577,9 +650,9 @@ Example:
 ----
 ulong factImpl(ulong n)
 {
-    return n < 2 ? 1 : n * mfact(n - 1);
+    return n < 2 ? 1 : n * factImpl(n - 1);
 }
-alias memoize!factImpl fact;
+alias fact = memoize!factImpl;
 ...
 assert(fact(10) == 3628800);
 ----
@@ -590,15 +663,17 @@ table is found to be $(D maxSize), the table is simply cleared.
 Example:
 ----
 // Memoize no more than 128 values of transmogrify
-alias memoize!(transmogrify, 128) fastTransmogrify;
+alias fastTransmogrify = memoize!(transmogrify, 128);
 ----
 */
 template memoize(alias fun, uint maxSize = uint.max)
 {
-    ReturnType!fun memoize(ParameterTypeTuple!fun args)
+    private alias Args = ParameterTypeTuple!fun;
+    ReturnType!fun memoize(Args args)
     {
-        static ReturnType!fun[Tuple!(typeof(args))] memo;
-        auto t = tuple(args);
+        import std.typecons : Tuple, tuple;
+        static ReturnType!fun[Tuple!Args] memo;
+        auto t = Tuple!Args(args);
         auto p = t in memo;
         if (p) return *p;
         static if (maxSize != uint.max)
@@ -614,21 +689,22 @@ template memoize(alias fun, uint maxSize = uint.max)
 
 unittest
 {
-    alias memoize!(function double(double x) { return sqrt(x); }) msqrt;
+    import core.math;
+    alias msqrt = memoize!(function double(double x) { return sqrt(x); });
     auto y = msqrt(2.0);
     assert(y == msqrt(2.0));
     y = msqrt(4.0);
     assert(y == sqrt(4.0));
 
-    // alias memoize!rgb2cmyk mrgb2cmyk;
+    // alias mrgb2cmyk = memoize!rgb2cmyk;
     // auto z = mrgb2cmyk([43, 56, 76]);
     // assert(z == mrgb2cmyk([43, 56, 76]));
 
-    //alias memoize!fib mfib;
+    //alias mfib = memoize!fib;
 
     static ulong fib(ulong n)
     {
-        alias memoize!fib mfib;
+        alias mfib = memoize!fib;
         return n < 2 ? 1 : mfib(n - 2) + mfib(n - 1);
     }
 
@@ -637,13 +713,25 @@ unittest
 
     static ulong fact(ulong n)
     {
-        alias memoize!fact mfact;
+        alias mfact = memoize!fact;
         return n < 2 ? 1 : n * mfact(n - 1);
     }
     assert(fact(10) == 3628800);
+
+    // Issue 12568
+    static uint len2(const string s) { // Error
+    alias mLen2 = memoize!len2;
+    if (s.length == 0)
+        return 0;
+    else
+        return 1 + mLen2(s[1 .. $]);
+    }
 }
 
-private struct DelegateFaker(F) {
+private struct DelegateFaker(F)
+{
+    import std.typecons;
+
     // for @safe
     static F castToF(THIS)(THIS x) @trusted
     {
@@ -688,7 +776,7 @@ private struct DelegateFaker(F) {
         }
     }
     // Type information used by the generated code.
-    alias FuncInfo!(F) FuncInfo_doIt;
+    alias FuncInfo_doIt = FuncInfo!(F);
 
     // Generate the member function doIt().
     mixin( std.typecons.MemberFunctionGenerator!(GeneratingPolicy!())
@@ -732,7 +820,7 @@ auto toDelegate(F)(auto ref F fp) if (isCallable!(F))
     }
     else
     {
-        alias typeof(&(new DelegateFaker!(F)).doIt) DelType;
+        alias DelType = typeof(&(new DelegateFaker!(F)).doIt);
 
         static struct DelegateFields {
             union {
@@ -828,7 +916,7 @@ unittest {
         static assert(is(typeof(dg_trusted) == int delegate() @trusted));
         static assert(is(typeof(dg_system) == int delegate() @system));
         static assert(is(typeof(dg_pure_nothrow) == int delegate() pure nothrow));
-        //static assert(is(typeof(dg_pure_nothrow_safe) == int delegate() pure nothrow @safe));
+        //static assert(is(typeof(dg_pure_nothrow_safe) == int delegate() @safe pure nothrow));
 
         assert(dg_ref() == refvar);
         assert(dg_pure() == 1);

@@ -28,6 +28,7 @@
 #include "init.h"
 #include "module.h"
 #include "template.h"
+#include "nspace.h"
 #include "dfrontend/target.h"
 
 static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
@@ -45,7 +46,7 @@ static vec<FuncDeclaration *> static_dtor_list;
 
 // Construct a new Symbol.
 
-Symbol::Symbol (void)
+Symbol::Symbol()
 {
   this->Sident = NULL;
   this->prettyIdent = NULL;
@@ -63,7 +64,7 @@ Symbol::Symbol (void)
 
 
 void
-Dsymbol::toObjFile (int)
+Dsymbol::toObjFile(bool)
 {
   // Emit the imported symbol to debug.
   Import *imp = this->isImport();
@@ -137,13 +138,13 @@ Dsymbol::toObjFile (int)
 	{
 	  Declaration *d = ((DsymbolExp *) o)->s->isDeclaration();
 	  if (d)
-	    d->toObjFile (0);
+	    d->toObjFile(false);
 	}
     }
 }
 
 void
-AttribDeclaration::toObjFile (int)
+AttribDeclaration::toObjFile(bool)
 {
   Dsymbols *d = include (NULL, NULL);
 
@@ -153,12 +154,12 @@ AttribDeclaration::toObjFile (int)
   for (size_t i = 0; i < d->dim; i++)
     {
       Dsymbol *s = (*d)[i];
-      s->toObjFile (0);
+      s->toObjFile(false);
     }
 }
 
 void
-PragmaDeclaration::toObjFile (int)
+PragmaDeclaration::toObjFile(bool)
 {
   if (!global.params.ignoreUnsupportedPragmas)
     {
@@ -168,11 +169,24 @@ PragmaDeclaration::toObjFile (int)
 	 warning (loc, "pragma(startaddress) not implemented");
     }
 
-  AttribDeclaration::toObjFile (0);
+  AttribDeclaration::toObjFile(false);
 }
 
 void
-StructDeclaration::toObjFile (int)
+Nspace::toObjFile(bool)
+{
+  if (isError(this) || !members)
+    return;
+
+  for (size_t i = 0; i < members->dim; i++)
+    {
+      Dsymbol *s = (*members)[i];
+      s->toObjFile(false);
+    }
+}
+
+void
+StructDeclaration::toObjFile(bool)
 {
   if (type->ty == Terror)
     {
@@ -192,7 +206,7 @@ StructDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo (NULL);
+  type->genTypeInfo(NULL);
 
   // Generate static initialiser
   toInitializer();
@@ -207,19 +221,22 @@ StructDeclaration::toObjFile (int)
       Dsymbol *member = (*members)[i];
       // There might be static ctors in the members, and they cannot
       // be put in separate object files.
-      member->toObjFile (0);
+      member->toObjFile(false);
     }
 
-  // Put out xopEquals and xopCmp
+  // Put out xopEquals, xopCmp and xopHash
   if (xeq && xeq != xerreq)
-    xeq->toObjFile (0);
+    xeq->toObjFile(false);
 
   if (xcmp && xcmp != xerrcmp)
-    xcmp->toObjFile (0);
+    xcmp->toObjFile(false);
+
+  if (xhash)
+    xhash->toObjFile(false);
 }
 
 void
-ClassDeclaration::toObjFile (int)
+ClassDeclaration::toObjFile(bool)
 {
   if (type->ty == Terror)
     {
@@ -237,7 +254,7 @@ ClassDeclaration::toObjFile (int)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *member = (*members)[i];
-      member->toObjFile (0);
+      member->toObjFile(false);
     }
 
   // Generate C symbols
@@ -251,7 +268,7 @@ ClassDeclaration::toObjFile (int)
   d_finish_symbol (sinit);
 
   // Put out the TypeInfo
-  type->getTypeInfo (NULL);
+  type->genTypeInfo(NULL);
 
   // must be ClassInfo.size
   size_t offset = CLASSINFO_SIZE;
@@ -518,9 +535,9 @@ Lhaspointers:
 		  if (tf->ty == Tfunction)
 		    {
 		      deprecation ("use of %s%s hidden by %s is deprecated. "
-				   "Use 'alias %s.%s %s;' to introduce base class overload set.",
+				   "Use 'alias %s = %s.%s;' to introduce base class overload set.",
 				   fd->toPrettyChars(), Parameter::argsTypesToChars(tf->parameters, tf->varargs), toChars(),
-				   fd->parent->toChars(), fd->toChars(), fd->toChars());
+				   fd->toChars(), fd->parent->toChars(), fd->toChars());
 		    }
 		  else
 		    deprecation ("use of %s hidden by %s is deprecated", fd->toPrettyChars(), toChars());
@@ -577,7 +594,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
 }
 
 void
-InterfaceDeclaration::toObjFile (int)
+InterfaceDeclaration::toObjFile(bool)
 {
   if (type->ty == Terror)
     {
@@ -595,15 +612,15 @@ InterfaceDeclaration::toObjFile (int)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *member = (*members)[i];
-      member->toObjFile (0);
+      member->toObjFile(false);
     }
 
   // Generate C symbols
   toSymbol();
 
   // Put out the TypeInfo
-  type->getTypeInfo (NULL);
-  type->vtinfo->toObjFile (0);
+  type->genTypeInfo(NULL);
+  type->vtinfo->toObjFile(false);
 
   /* Put out the ClassInfo.
    * The layout is:
@@ -713,7 +730,7 @@ InterfaceDeclaration::toObjFile (int)
 }
 
 void
-EnumDeclaration::toObjFile (int)
+EnumDeclaration::toObjFile(bool)
 {
   if (semanticRun >= PASSobj)
     return;
@@ -731,7 +748,7 @@ EnumDeclaration::toObjFile (int)
     toDebug();
 
   // Generate TypeInfo
-  type->getTypeInfo (NULL);
+  type->genTypeInfo(NULL);
 
   TypeEnum *tc = (TypeEnum *) type;
   if (tc->sym->members && !type->isZeroInit())
@@ -746,7 +763,7 @@ EnumDeclaration::toObjFile (int)
 }
 
 void
-VarDeclaration::toObjFile (int)
+VarDeclaration::toObjFile(bool)
 {
   if (type->ty == Terror)
     {
@@ -756,7 +773,7 @@ VarDeclaration::toObjFile (int)
 
   if (aliassym)
     {
-      toAlias()->toObjFile (0);
+      toAlias()->toObjFile(false);
       return;
     }
 
@@ -814,10 +831,9 @@ VarDeclaration::toObjFile (int)
     }
   else
     {
-      // This is needed for VarDeclarations in mixins that are to be
-      // local variables of a function.  Otherwise, it would be
-      // enough to make a check for isVarDeclaration() in
-      // DeclarationExp::toElem.
+      // This is needed for VarDeclarations in mixins that are to be local
+      // variables of a function.  Otherwise, it would be enough to make
+      // a check for isVarDeclaration() in DeclarationExp::toElem.
       if (!isDataseg() && !isMember())
 	{
 	  IRState *irs = current_irstate;
@@ -844,33 +860,23 @@ VarDeclaration::toObjFile (int)
 }
 
 void
-TypedefDeclaration::toObjFile (int)
+TemplateInstance::toObjFile(bool)
 {
-  if (type->ty == Terror)
+  if (isError (this)|| !members)
+    return;
+
+  if (!needsCodegen())
+    return;
+
+  for (size_t i = 0; i < members->dim; i++)
     {
-      error ("had semantic errors when compiling");
-      return;
-    }
-
-  if (global.params.symdebug)
-    toDebug();
-
-  // Generate TypeInfo
-  type->getTypeInfo (NULL);
-
-  TypeTypedef *tc = (TypeTypedef *) type;
-  if (tc->sym->init && !type->isZeroInit())
-    {
-      // Generate static initialiser
-      toInitializer();
-      sinit->Sdt = tc->sym->init->toDt();
-      sinit->Sreadonly = true;
-      d_finish_symbol (sinit);
+      Dsymbol *s = (*members)[i];
+      s->toObjFile(false);
     }
 }
 
 void
-TemplateInstance::toObjFile (int)
+TemplateMixin::toObjFile(bool)
 {
   if (isError (this)|| !members)
     return;
@@ -878,18 +884,12 @@ TemplateInstance::toObjFile (int)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *s = (*members)[i];
-      s->toObjFile (0);
+      s->toObjFile(false);
     }
 }
 
 void
-TemplateMixin::toObjFile (int)
-{
-  TemplateInstance::toObjFile (0);
-}
-
-void
-TypeInfoDeclaration::toObjFile (int)
+TypeInfoDeclaration::toObjFile(bool)
 {
   Symbol *s = toSymbol();
   toDt (&s->Sdt);
@@ -1027,6 +1027,18 @@ Module::genmoduleinfo()
   build_moduleinfo (msym);
 }
 
+// For nested functions in particular, unnest DECL in the cgraph,
+// as all static chain passing is handled by the front-end.
+
+static void
+unnest_function(tree decl)
+{
+  struct cgraph_node *node = cgraph_get_create_node (decl);
+
+  if (node->origin)
+    cgraph_unnest_node (node);
+}
+
 // Returns true if we want to compile the declaration DSYM.
 
 static bool
@@ -1073,26 +1085,32 @@ output_declaration_p (Dsymbol *dsym)
 	      gcc_assert (global.errors);
 	      return false;
 	    }
-	}
 
-      // Nested functions may not have its toObjFile called before the outer
-      // function is finished.  GCC requires that nested functions be finished
-      // first so we need to arrange for toObjFile to be called earlier.
-      // If the parent never gets emitted, then neither will fd.
-      Dsymbol *outer = fd->toParent2();
-      if (outer && outer->isFuncDeclaration())
-	{
-	  FuncDeclaration *fouter = (FuncDeclaration *) outer;
-
-	  if (fouter->semanticRun < PASSobj)
+	  FuncDeclaration *fdp = fd->toParent2()->isFuncDeclaration();
+	  if (fdp && fdp->semanticRun < PASSobj)
 	    {
-	      fouter->deferred.push (fd);
-	      return false;
+	      // Parent failed to compile, but errors were gagged.
+	      if (fdp->semantic3Errors)
+		return false;
+
+	      if (UnitTestDeclaration *udp = fdp->isUnitTestDeclaration())
+		{
+		  udp->deferredNested.push(fd);
+		  return false;
+		}
 	    }
 	}
 
-      if (!fd->needsCodegen())
-	return false;
+      for (FuncDeclaration *fdp = fd; fdp != NULL;)
+	{
+      	  if (!fdp->isInstantiated() && fdp->inNonRoot())
+    	    return false;
+
+      	  if (!fdp->isNested())
+	    break;
+
+	  fdp = fdp->toParent2()->isFuncDeclaration();
+	}
     }
 
   if (flag_emit_templates == TEnone)
@@ -1105,37 +1123,44 @@ output_declaration_p (Dsymbol *dsym)
 // down to assembler language output.
 
 void
-FuncDeclaration::toObjFile (int)
+FuncDeclaration::toObjFile(bool)
 {
-  if (!global.params.useUnitTests && isUnitTestDeclaration())
-    return;
-
   // Already generated the function.
   if (semanticRun >= PASSobj)
     return;
 
-  if (!output_declaration_p (this))
+  // Not emitting unittest functions.
+  if (!global.params.useUnitTests && this->isUnitTestDeclaration())
     return;
 
   tree fndecl = toSymbol()->Stree;
 
+  // Do this even if we are not emitting the body.
+  // Such as when when -fno-emit-templates is in effect.
+  unnest_function(fndecl);
+
   if (!fbody)
     {
-      if (!isNested())
-	{
-	  // %% Should set this earlier...
-	  DECL_EXTERNAL (fndecl) = 1;
-	  TREE_PUBLIC (fndecl) = 1;
-	}
       rest_of_decl_compilation (fndecl, 1, 0);
       return;
     }
+
+  if (!output_declaration_p(this))
+    return;
 
   if (global.errors)
     return;
 
   // Start generating code for this function.
-  gcc_assert(semanticRun == PASSsemantic3done);
+  gcc_assert(this->semanticRun == PASSsemantic3done);
+  this->semanticRun = PASSobj;
+
+  // Nested functions may not have its toObjFile called before the outer
+  // function is finished.  GCC requires that nested functions be finished
+  // first so we need to arrange for toObjFile to be called earlier.
+  FuncDeclaration *fdp = this->toParent2()->isFuncDeclaration();
+  if (fdp && fdp->semanticRun < PASSobj)
+    fdp->toObjFile(false);
 
   if (global.params.verbose)
     fprintf (global.stdmsg, "function  %s\n", this->toPrettyChars());
@@ -1240,7 +1265,7 @@ FuncDeclaration::toObjFile (int)
     }
 
   // May change irs->sthis.
-  this->buildClosure (irs);
+  build_closure(this, irs);
 
   if (vresult)
     build_local_var (vresult, this);
@@ -1348,13 +1373,20 @@ FuncDeclaration::toObjFile (int)
   if (!errorcount && !global.errors)
     d_finish_function (this);
 
-  semanticRun = PASSobj;
-
   // Process all deferred nested functions.
-  for (size_t i = 0; i < this->deferred.dim; ++i)
+  for (size_t i = 0; i < irs->deferred.length(); ++i)
     {
-      FuncDeclaration *fd = this->deferred[i];
-      fd->toObjFile (0);
+      FuncDeclaration *fd = irs->deferred[i];
+      fd->toObjFile(false);
+    }
+
+  if (UnitTestDeclaration *ud = this->isUnitTestDeclaration())
+    {
+      for (size_t i = 0; i < ud->deferredNested.dim; ++i)
+	{
+	  FuncDeclaration *fd = ud->deferredNested[i];
+	  fd->toObjFile(false);
+	}
     }
 
   current_function_decl = old_current_function_decl;
@@ -1363,80 +1395,10 @@ FuncDeclaration::toObjFile (int)
   irs->endFunction();
 }
 
-
-// Closures are implemented by taking the local variables that
-// need to survive the scope of the function, and copying them
-// into a gc allocated chuck of memory. That chunk, called the
-// closure here, is inserted into the linked list of stack
-// frames instead of the usual stack frame.
-
-// If a closure is not required, but FUNC still needs a frame to lower
-// nested refs, then instead build custom static chain decl on stack.
+//
 
 void
-FuncDeclaration::buildClosure (IRState *irs)
-{
-  FuncFrameInfo *ffi = get_frameinfo (this);
-
-  if (!ffi->creates_frame)
-    return;
-
-  tree type = build_frame_type (this);
-  gcc_assert(COMPLETE_TYPE_P (type));
-
-  tree decl, decl_ref;
-
-  if (ffi->is_closure)
-    {
-      decl = build_local_temp (build_pointer_type (type));
-      DECL_NAME (decl) = get_identifier ("__closptr");
-      decl_ref = build_deref (decl);
-
-      // Allocate memory for closure.
-      tree arg = convert (Type::tsize_t->toCtype(),
-			  TYPE_SIZE_UNIT (type));
-      tree init = build_libcall (LIBCALL_ALLOCMEMORY, 1, &arg);
-
-      DECL_INITIAL (decl) = build_nop (TREE_TYPE (decl), init);
-    }
-  else
-    {
-      decl = build_local_temp (type);
-      DECL_NAME (decl) = get_identifier ("__frame");
-      decl_ref = decl;
-    }
-
-  DECL_IGNORED_P (decl) = 0;
-  expand_decl (decl);
-
-  // Set the first entry to the parent closure/frame, if any.
-  tree chain_field = component_ref (decl_ref, TYPE_FIELDS (type));
-  tree chain_expr = vmodify_expr (chain_field, irs->sthis);
-  irs->addExp (chain_expr);
-
-  // Copy parameters that are referenced nonlocally.
-  for (size_t i = 0; i < closureVars.dim; i++)
-    {
-      VarDeclaration *v = closureVars[i];
-
-      if (!v->isParameter())
-	continue;
-
-      Symbol *vsym = v->toSymbol();
-
-      tree field = component_ref (decl_ref, vsym->SframeField);
-      tree expr = vmodify_expr (field, vsym->Stree);
-      irs->addExp (expr);
-    }
-
-  if (!ffi->is_closure)
-    decl = build_address (decl);
-
-  irs->sthis = decl;
-}
-
-void
-Module::genobjfile (int)
+Module::genobjfile(bool)
 {
   // Normally would create an ObjFile here, but gcc is limited to one object
   // file per pass and there may be more than one module per object file.
@@ -1448,7 +1410,7 @@ Module::genobjfile (int)
       for (size_t i = 0; i < members->dim; i++)
 	{
 	  Dsymbol *dsym = (*members)[i];
-	  dsym->toObjFile (0);
+	  dsym->toObjFile(false);
 	}
     }
 
@@ -1510,7 +1472,7 @@ output_module_p (Module *m)
 }
 
 void
-d_finish_module (void)
+d_finish_module()
 {
   /* If the target does not directly support static constructors,
      static_ctor_list contains a list of all static constructors defined
@@ -1538,7 +1500,7 @@ get_linemap (const Loc loc)
 
   linemap_add (line_table, LC_ENTER, 0, loc.filename, loc.linnum);
   linemap_line_start (line_table, loc.linnum, 0);
-  gcc_location = linemap_position_for_column (line_table, 0);
+  gcc_location = linemap_position_for_column (line_table, loc.charnum);
   linemap_add (line_table, LC_LEAVE, 0, NULL, 0);
 
   return gcc_location;
@@ -2011,7 +1973,7 @@ static vec<DeferredThunk *> deferred_thunks;
 // Process all deferred thunks in list DEFERRED_THUNKS.
 
 void
-write_deferred_thunks (void)
+write_deferred_thunks()
 {
   for (size_t i = 0; i < deferred_thunks.length(); i++)
     {
@@ -2189,7 +2151,7 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   TypeFunction *func_type = new TypeFunction (0, Type::tvoid, 0, LINKc);
   FuncDeclaration *func = new FuncDeclaration (mod->loc, mod->loc,
 					       Lexer::idPool (name), STCstatic, func_type);
-  func->loc = Loc (mod, 1);
+  func->loc = Loc(mod, 1, 0);
   func->linkage = func_type->linkage;
   func->parent = mod;
   func->protection = PROTprivate;
@@ -2206,9 +2168,9 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   TREE_USED (func_decl) = 1;
 
   // %% Maybe remove the identifier
-  WrappedExp *body = new WrappedExp (mod->loc, TOKcomma, expr, Type::tvoid);
+  WrappedExp *body = new WrappedExp (mod->loc, expr, Type::tvoid);
   func->fbody = new ExpStatement (mod->loc, body);
-  func->toObjFile (0);
+  func->toObjFile(false);
 
   return func;
 }
@@ -2229,7 +2191,7 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   Module *mod = current_module_decl;
   if (!mod)
     mod = d_gcc_get_output_module();
-  set_input_location (Loc (mod, 1));
+  set_input_location(Loc(mod, 1, 0));
 
   // Shouldn't front end build these?
   for (size_t i = 0; i < functions.length(); i++)

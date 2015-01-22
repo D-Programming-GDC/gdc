@@ -207,20 +207,16 @@ private bool atomicCasUbyte(ref ubyte stuff, ubyte testVal, ubyte newVal)
 /*--------------------- Generic helper functions, etc.------------------------*/
 private template MapType(R, functions...)
 {
-    static if(functions.length == 0)
-    {
-        alias typeof(unaryFun!(functions[0])(ElementType!R.init)) MapType;
-    }
-    else
-    {
-        alias typeof(adjoin!(staticMap!(unaryFun, functions))
-                     (ElementType!R.init)) MapType;
-    }
+    static assert(functions.length);
+
+    ElementType!R e = void;
+    alias MapType =
+        typeof(adjoin!(staticMap!(unaryFun, functions))(e));
 }
 
 private template ReduceType(alias fun, R, E)
 {
-    alias typeof(binaryFun!fun(E.init, ElementType!R.init)) ReduceType;
+    alias ReduceType = typeof(binaryFun!fun(E.init, ElementType!R.init));
 }
 
 private template noUnsharedAliasing(T)
@@ -242,17 +238,17 @@ private template isSafeTask(F)
 
 unittest
 {
-    alias void function() @safe F1;
-    alias void function() F2;
-    alias void function(uint, string) @trusted F3;
-    alias void function(uint, char[]) F4;
+    alias F1 = void function() @safe;
+    alias F2 = void function();
+    alias F3 = void function(uint, string) @trusted;
+    alias F4 = void function(uint, char[]);
 
     static assert( isSafeTask!F1);
     static assert(!isSafeTask!F2);
     static assert( isSafeTask!F3);
     static assert(!isSafeTask!F4);
 
-    alias uint[] function(uint, string) pure @trusted F5;
+    alias F5 = uint[] function(uint, string) pure @trusted;
     static assert( isSafeTask!F5);
 }
 
@@ -300,7 +296,7 @@ private enum TaskStatus : ubyte
 
 private template AliasReturn(alias fun, T...)
 {
-    alias typeof({ T args; return fun(args); }) AliasReturn;
+    alias AliasReturn = typeof({ T args; return fun(args); });
 }
 
 // Should be private, but std.algorithm.reduce is used in the zero-thread case
@@ -309,13 +305,13 @@ template reduceAdjoin(functions...)
 {
     static if(functions.length == 1)
     {
-        alias binaryFun!(functions[0]) reduceAdjoin;
+        alias reduceAdjoin = binaryFun!(functions[0]);
     }
     else
     {
         T reduceAdjoin(T, U)(T lhs, U rhs)
         {
-            alias staticMap!(binaryFun, functions) funs;
+            alias funs = staticMap!(binaryFun, functions);
 
             foreach(i, Unused; typeof(lhs.expand))
             {
@@ -331,13 +327,13 @@ private template reduceFinish(functions...)
 {
     static if(functions.length == 1)
     {
-        alias binaryFun!(functions[0]) reduceFinish;
+        alias reduceFinish = binaryFun!(functions[0]);
     }
     else
     {
         T reduceFinish(T)(T lhs, T rhs)
         {
-            alias staticMap!(binaryFun, functions) funs;
+            alias funs = staticMap!(binaryFun, functions);
 
             foreach(i, Unused; typeof(lhs.expand))
             {
@@ -347,15 +343,6 @@ private template reduceFinish(functions...)
             return lhs;
         }
     }
-}
-
-private template isAssignable(T)
-{
-    enum isAssignable = is(typeof({
-        T a;
-        T b;
-        a = b;
-    }));
 }
 
 private template isRoundRobin(R : RoundRobinBuffer!(C1, C2), C1, C2)
@@ -474,11 +461,11 @@ struct Task(alias fun, Args...)
     */
     static if(__traits(isSame, fun, run))
     {
-        alias _args[1..$] args;
+        alias args = _args[1..$];
     }
     else
     {
-        alias _args args;
+        alias args = _args;
     }
 
 
@@ -514,7 +501,7 @@ struct Task(alias fun, Args...)
     The return type of the function called by this $(D Task).  This can be
     $(D void).
     */
-    alias typeof(fun(_args)) ReturnType;
+    alias ReturnType = typeof(fun(_args));
 
     static if(!is(ReturnType == void))
     {
@@ -545,9 +532,9 @@ struct Task(alias fun, Args...)
         enforce(this.pool !is null, "Job not submitted yet.");
     }
 
-    private this(Args args)
+    static if(Args.length > 0)
     {
-        static if(args.length > 0)
+        private this(Args args)
         {
             _args = args;
         }
@@ -1405,7 +1392,7 @@ private:
 public:
     // This is used in parallel_algorithm but is too unstable to document
     // as public API.
-    size_t defaultWorkUnitSize(size_t rangeLen) const pure nothrow @safe
+    size_t defaultWorkUnitSize(size_t rangeLen) const @safe pure nothrow
     {
         if(this.size == 0)
         {
@@ -1534,7 +1521,7 @@ public:
     ParallelForeach!R parallel(R)(R range, size_t workUnitSize)
     {
         enforce(workUnitSize > 0, "workUnitSize must be > 0.");
-        alias ParallelForeach!R RetType;
+        alias RetType = ParallelForeach!R;
         return RetType(this, range, workUnitSize);
     }
 
@@ -1640,16 +1627,9 @@ public:
         auto amap(Args...)(Args args)
         if(isRandomAccessRange!(Args[0]))
         {
-            static if(functions.length == 1)
-            {
-                alias unaryFun!(functions[0]) fun;
-            }
-            else
-            {
-                alias adjoin!(staticMap!(unaryFun, functions)) fun;
-            }
+            alias fun = adjoin!(staticMap!(unaryFun, functions));
 
-            alias args[0] range;
+            alias range = args[0];
             immutable len = range.length;
 
             static if(
@@ -1658,11 +1638,11 @@ public:
                 is(MapType!(Args[0], functions) : ElementType!(Args[$ - 1]))
                 )
             {
-                alias args[$ - 1] buf;
-                alias args[0..$ - 1] args2;
-                alias Args[0..$ - 1] Args2;
+                alias buf = args[$ - 1];
+                alias args2 = args[0..$ - 1];
+                alias Args2 = Args[0..$ - 1];
                 enforce(buf.length == len,
-                        text("Can't use a user supplied buffer that's the wrong "
+                        text("Can't use a user supplied buffer that's the wrong ",
                              "size.  (Expected  :", len, " Got:  ", buf.length));
             }
             else static if(randAssignable!(Args[$ - 1]) && Args.length > 1)
@@ -1672,8 +1652,8 @@ public:
             else
             {
                 auto buf = uninitializedArray!(MapType!(Args[0], functions)[])(len);
-                alias args args2;
-                alias Args Args2;
+                alias args2 = args;
+                alias Args2 = Args;
             }
 
             if(!len) return buf;
@@ -1689,7 +1669,7 @@ public:
                 auto workUnitSize = defaultWorkUnitSize(range.length);
             }
 
-            alias typeof(range) R;
+            alias R = typeof(range);
 
             if(workUnitSize > len)
             {
@@ -1731,9 +1711,21 @@ public:
 
                     immutable end = min(len, start + workUnitSize);
 
-                    foreach(i; start..end)
+                    static if (hasSlicing!R)
                     {
-                        buf[i] = fun(range[i]);
+                        auto subrange = range[start..end];
+                        foreach(i; start..end)
+                        {
+                            buf[i] = fun(subrange.front);
+                            subrange.popFront();
+                        }
+                    }
+                    else
+                    {
+                        foreach(i; start..end)
+                        {
+                            buf[i] = fun(range[i]);
+                        }
                     }
                 }
             }
@@ -1821,14 +1813,7 @@ public:
         {
             enforce(workUnitSize == size_t.max || workUnitSize <= bufSize,
                     "Work unit size must be smaller than buffer size.");
-            static if(functions.length == 1)
-            {
-                alias unaryFun!(functions[0]) fun;
-            }
-            else
-            {
-                alias adjoin!(staticMap!(unaryFun, functions)) fun;
-            }
+            alias fun = adjoin!(staticMap!(unaryFun, functions));
 
             static final class Map
             {
@@ -1841,7 +1826,7 @@ public:
                 is(typeof(source.bufPos)) &&
                 is(typeof(source.doBufSwap()));
 
-                alias MapType!(S, functions) E;
+                alias E = MapType!(S, functions);
                 E[] buf1, buf2;
                 S source;
                 TaskPool pool;
@@ -1852,7 +1837,7 @@ public:
 
             static if(isRandomAccessRange!S)
             {
-                alias S FromType;
+                alias FromType = S;
 
                 void popSource()
                 {
@@ -1885,7 +1870,7 @@ public:
                                  );
                 }
 
-                alias typeof(source.buf1) FromType;
+                alias FromType = typeof(source.buf1);
                 FromType from;
 
                 // Just swap our input buffer with source's output buffer.
@@ -1912,7 +1897,7 @@ public:
             }
             else
             {
-                alias ElementType!S[] FromType;
+                alias FromType = ElementType!S[];
 
                 // The temporary array that data is copied to before being
                 // mapped.
@@ -1937,7 +1922,7 @@ public:
             {
                 size_t _length;
 
-                public @property size_t length() const pure nothrow @safe
+                public @property size_t length() const @safe pure nothrow
                 {
                     return _length;
                 }
@@ -2091,7 +2076,7 @@ public:
     Given a $(D source) range that is expensive to iterate over, returns an
     input range that asynchronously buffers the contents of
     $(D source) into a buffer of $(D bufSize) elements in a worker thread,
-    while making prevously buffered elements from a second buffer, also of size
+    while making previously buffered elements from a second buffer, also of size
     $(D bufSize), available via the range interface of the returned
     object.  The returned range has a length iff $(D hasLength!S).
     $(D asyncBuf) is useful, for example, when performing expensive operations
@@ -2104,7 +2089,7 @@ public:
     void main()
     {
         // Fetch lines of a file in a background thread
-        // while processing prevously fetched lines,
+        // while processing previously fetched lines,
         // dealing with byLine's buffer recycling by
         // eagerly duplicating every line.
         auto lines = File("foo.txt").byLine();
@@ -2138,7 +2123,7 @@ public:
             // the heap.
 
             // The element type of S.
-            alias ElementType!S E;  // Needs to be here b/c of forward ref bugs.
+            alias E = ElementType!S;  // Needs to be here b/c of forward ref bugs.
 
         private:
             E[] buf1, buf2;
@@ -2153,7 +2138,7 @@ public:
                 size_t _length;
 
                 // Available if hasLength!S.
-                public @property size_t length() const pure nothrow @safe
+                public @property size_t length() const @safe pure nothrow
                 {
                     return _length;
                 }
@@ -2296,7 +2281,7 @@ public:
     Examples:
     ---
     // Fetch lines of a file in a background
-    // thread while processing prevously fetched
+    // thread while processing previously fetched
     // lines, without duplicating any lines.
     auto file = File("foo.txt");
 
@@ -2428,19 +2413,19 @@ public:
         ///
         auto reduce(Args...)(Args args)
         {
-            alias reduceAdjoin!functions fun;
-            alias reduceFinish!functions finishFun;
+            alias fun = reduceAdjoin!functions;
+            alias finishFun = reduceFinish!functions;
 
             static if(isIntegral!(Args[$ - 1]))
             {
                 size_t workUnitSize = cast(size_t) args[$ - 1];
-                alias args[0..$ - 1] args2;
-                alias Args[0..$ - 1] Args2;
+                alias args2 = args[0..$ - 1];
+                alias Args2 = Args[0..$ - 1];
             }
             else
             {
-                alias args args2;
-                alias Args Args2;
+                alias args2 = args;
+                alias Args2 = Args;
             }
 
             auto makeStartValue(Type)(Type e)
@@ -2466,8 +2451,8 @@ public:
             static if(args2.length == 2)
             {
                 static assert(isInputRange!(Args2[1]));
-                alias args2[1] range;
-                alias args2[0] seed;
+                alias range = args2[1];
+                alias seed = args2[0];
                 enum explicitSeed = true;
 
                 static if(!is(typeof(workUnitSize)))
@@ -2478,7 +2463,7 @@ public:
             else
             {
                 static assert(args2.length == 1);
-                alias args2[0] range;
+                alias range = args2[0];
 
                 static if(!is(typeof(workUnitSize)))
                 {
@@ -2493,8 +2478,8 @@ public:
                 range.popFront();
             }
 
-            alias typeof(seed) E;
-            alias typeof(range) R;
+            alias E = typeof(seed);
+            alias R = typeof(range);
 
             E reduceOnRange(R range, size_t lowerBound, size_t upperBound)
             {
@@ -2596,7 +2581,7 @@ public:
             immutable size_t nWorkUnits = (len / workUnitSize) + ((len % workUnitSize == 0) ? 0 : 1);
             assert(nWorkUnits * workUnitSize >= len);
 
-            alias Task!(run, typeof(&reduceOnRange), R, size_t, size_t) RTask;
+            alias RTask = Task!(run, typeof(&reduceOnRange), R, size_t, size_t);
             RTask[] tasks;
 
             // Can't use alloca() due to Bug 3753.  Use a fixed buffer
@@ -2965,7 +2950,7 @@ public:
 
     The proper way to instantiate this object is to call
     $(D WorkerLocalStorage.toRange).  Once instantiated, this object behaves
-    as a finite random-access range with assignable, lvalue elemends and
+    as a finite random-access range with assignable, lvalue elements and
     a length equal to the number of worker threads in the $(D TaskPool) that
     created it plus 1.
      */
@@ -3078,7 +3063,7 @@ public:
     a call to $(D Task.workForce), $(D Task.yieldForce) or $(D Task.spinForce)
     causes them to be executed.
 
-    Use only if you have waitied on every $(D Task) and therefore know the
+    Use only if you have waited on every $(D Task) and therefore know the
     queue is empty, or if you speculatively executed some tasks and no longer
     need the results.
      */
@@ -3366,7 +3351,7 @@ private void submitAndExecute(
 {
     immutable nThreads = pool.size + 1;
 
-    alias typeof(scopedTask(doIt)) PTask;
+    alias PTask = typeof(scopedTask(doIt));
     import core.stdc.stdlib;
     import core.stdc.string : memcpy;
 
@@ -3625,7 +3610,7 @@ enum string parallelApplyMixinInputRange = q{
 
         static if(hasLvalueElements!R)
         {
-            alias ElementType!R*[] Temp;
+            alias Temp = ElementType!R*[];
             Temp temp;
 
             // Returns:  The previous value of nPopped.
@@ -3655,7 +3640,7 @@ enum string parallelApplyMixinInputRange = q{
         else
         {
 
-            alias ElementType!R[] Temp;
+            alias Temp = ElementType!R[];
             Temp temp;
 
             // Returns:  The previous value of nPopped.
@@ -3788,17 +3773,17 @@ private struct ParallelForeach(R)
     TaskPool pool;
     R range;
     size_t workUnitSize;
-    alias ElementType!R E;
+    alias E = ElementType!R;
 
     static if(hasLvalueElements!R)
     {
-        alias int delegate(ref E) NoIndexDg;
-        alias int delegate(size_t, ref E) IndexDg;
+        alias NoIndexDg = int delegate(ref E);
+        alias IndexDg = int delegate(size_t, ref E);
     }
     else
     {
-        alias int delegate(E) NoIndexDg;
-        alias int delegate(size_t, E) IndexDg;
+        alias NoIndexDg = int delegate(E);
+        alias IndexDg = int delegate(size_t, E);
     }
 
     int opApply(scope NoIndexDg dg)
@@ -3837,8 +3822,8 @@ private struct RoundRobinBuffer(C1, C2)
 {
     // No need for constraints because they're already checked for in asyncBuf.
 
-    alias ParameterTypeTuple!(C1.init)[0] Array;
-    alias typeof(Array.init[0]) T;
+    alias Array = ParameterTypeTuple!(C1.init)[0];
+    alias T = typeof(Array.init[0]);
 
     T[][] bufs;
     size_t index;
@@ -3898,7 +3883,7 @@ private struct RoundRobinBuffer(C1, C2)
         primed = false;
     }
 
-    bool empty() @property const pure nothrow @safe
+    bool empty() @property const @safe pure nothrow
     {
         return _empty;
     }

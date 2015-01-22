@@ -444,19 +444,6 @@ public:
   }
 
   //
-  void visit(DtorExpStatement *s)
-  {
-    FuncDeclaration *fd = this->irs_->func;
-    gcc_assert(fd != NULL);
-
-    // Do not call destructor if var is returned via NRVO.
-    bool nodtor = (fd->nrvo_can && fd->nrvo_var == s->var);
-
-    if (!nodtor)
-      this->visit((ExpStatement *)s);
-  }
-
-  //
   void visit(CompoundStatement *s)
   {
     if (s->statements == NULL)
@@ -640,21 +627,6 @@ public:
     sorry("D inline assembler statements are not supported in GDC.");
   }
 
-  //
-  void visit(ImportStatement *s)
-  {
-    if (s->imports == NULL)
-      return;
-
-    for (size_t i = 0; i < s->imports->dim; i++)
-      {
-	Dsymbol *dsym = (*s->imports)[i];
-
-	if (dsym != NULL)
-	  dsym->toObjFile(0);
-      }
-  }
-
   // Build a GCC extended assembler expression, whose components are
   // an INSN string, some OUTPUTS, some INPUTS, and some CLOBBERS.
   void visit(ExtAsmStatement *s)
@@ -663,6 +635,7 @@ public:
     tree outputs = NULL_TREE;
     tree inputs = NULL_TREE;
     tree clobbers = NULL_TREE;
+    tree labels = NULL_TREE;
 
     this->irs_->doLineNote(s->loc);
 
@@ -695,7 +668,7 @@ public:
     // Collect all clobber arguments.
     if (s->clobbers)
       {
-	for(size_t i = 0; i < s->clobbers->dim; i++)
+	for (size_t i = 0; i < s->clobbers->dim; i++)
 	  {
 	    StringExp *clobber = (StringExp *)(*s->clobbers)[i];
 	    tree val = build_string(clobber->len, (char *)clobber->string);
@@ -703,10 +676,28 @@ public:
 	  }
       }
 
-    // TODO: Add frontend support for 'goto asm'.
+    // Collect all goto labels, these should have been already checked
+    // by the front-end, so pass down the label symbol to the backend.
+    if (s->labels)
+      {
+	for (size_t i = 0; i < s->labels->dim; i++)
+	  {
+	    Identifier *ident = (*s->labels)[i];
+	    GotoStatement *gs = (*s->gotos)[i];
+
+	    gcc_assert(gs->label->statement != NULL);
+	    gcc_assert(gs->tf == gs->label->statement->tf);
+
+	    tree name = build_string(ident->len, ident->string);
+	    tree label = this->irs_->getLabelTree(gs->label);
+
+	    labels = chainon(labels, build_tree_list(name, label));
+	  }
+      }
+
     tree exp = build5(ASM_EXPR, void_type_node,
 		      build_string(insn->len, (char *)insn->string),
-		      outputs, inputs, clobbers, NULL_TREE);
+		      outputs, inputs, clobbers, labels);
     SET_EXPR_LOCATION(exp, input_location);
 
     // If the extended syntax was not used, mark the ASM_EXPR.
@@ -719,6 +710,20 @@ public:
     this->irs_->addExp(exp);
   }
 
+  //
+  void visit(ImportStatement *s)
+  {
+    if (s->imports == NULL)
+      return;
+
+    for (size_t i = 0; i < s->imports->dim; i++)
+      {
+	Dsymbol *dsym = (*s->imports)[i];
+
+	if (dsym != NULL)
+	  dsym->toObjFile(0);
+      }
+  }
 };
 
 

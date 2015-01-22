@@ -1,10 +1,10 @@
 // PERMUTE_ARGS:
 
-struct S { uint[0x100000] arr; }    // Bugzilla 11233
+/******************************************/
 
 static int bigarray[100][100];
 
-int main(char[][] args)
+void test1()
 {
   for (int i = 0; i < 100; i += 1)
   {
@@ -14,5 +14,49 @@ int main(char[][] args)
       bigarray[i][j] = 0;
     }
   }
-  return 0;
+}
+
+/******************************************/
+// 11233
+
+struct S11233
+{
+    uint[0x100000] arr;
+}
+
+/******************************************/
+// 11672
+
+void test11672()
+{
+    struct V { float f; }
+    struct S
+    {
+        V[3] v = V(1);
+    }
+
+    S s;
+    assert(s.v == [V(1), V(1), V(1)]); /* was [V(1), V(nan), V(nan)] */
+}
+
+/******************************************/
+// 12509
+
+struct A12509
+{
+    int member;
+}
+struct B12509
+{
+    A12509[0x10000] array;
+}
+
+/******************************************/
+
+int main()
+{
+    test1();
+    test11672();
+
+    return 0;
 }
