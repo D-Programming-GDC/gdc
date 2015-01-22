@@ -77,9 +77,14 @@ d_convert_basic (tree type, tree expr)
       if (TREE_CODE (etype) == POINTER_TYPE
 	  || TREE_CODE (etype) == REFERENCE_TYPE)
 	{
-	  // Convert to an unsigned integer of the correct width first.
+	  if (integer_zerop (e))
+	    return build_int_cst (type, 0);
+
+	  // Convert to an unsigned integer of the correct width first, and
+	  // from there widen/truncate to the required type.
 	  tree utype = lang_hooks.types.type_for_size (TYPE_PRECISION (etype), 1);
-	  e = fold_build1 (CONVERT_EXPR, utype, e);
+	  ret = fold_build1 (CONVERT_EXPR, utype, e);
+	  return fold_convert (type, ret);
 	}
 
       ret = convert_to_integer (type, e);
