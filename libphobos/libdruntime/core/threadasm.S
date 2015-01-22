@@ -23,8 +23,9 @@
  * library as requiring an executable stack, making it impossible to
  * dynamically load druntime on several Linux platforms where this is
  * forbidden due to security policies.
+ * Use %progbits instead of @progbits to support ARM and X86.
  */
-.section .note.GNU-stack,"",@progbits
+.section .note.GNU-stack,"",%progbits
 #endif
 
 /************************************************************************************

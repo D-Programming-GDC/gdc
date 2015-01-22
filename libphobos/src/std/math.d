@@ -4150,7 +4150,7 @@ private:
     }
 
     // Read from the control register
-    static ushort getControlState() @trusted nothrow @nogc
+    static ControlState getControlState() @trusted nothrow @nogc
     {
         version (D_InlineAsm_X86)
         {
@@ -4203,7 +4203,7 @@ private:
     }
 
     // Set the control register
-    static void setControlState(ushort newState) @trusted nothrow @nogc
+    static void setControlState(ControlState newState) @trusted nothrow @nogc
     {
         version (InlineAsm_X86_Any)
         {
