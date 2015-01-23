@@ -1,12 +1,13 @@
 
-// Compiler implementation of the D programming language
-// Copyright (c) 1999-2012 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
+/* Compiler implementation of the D programming language
+ * Copyright (c) 1999-2014 by Digital Mars
+ * All Rights Reserved
+ * written by Walter Bright
+ * http://www.digitalmars.com
+ * Distributed under the Boost Software License, Version 1.0.
+ * http://www.boost.org/LICENSE_1_0.txt
+ * https://github.com/D-Programming-Language/dmd/blob/master/src/cppmangle.c
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -25,6 +26,7 @@
 #include "enum.h"
 #include "import.h"
 #include "aggregate.h"
+#include "target.h"
 
 #if IN_GCC || TARGET_LINUX || TARGET_OSX || TARGET_FREEBSD || TARGET_OPENBSD || TARGET_SOLARIS
 
@@ -74,19 +76,6 @@ class CppMangleVisitor : public Visitor
                 return 1;
             }
         }
-        components.push(p);
-        return 0;
-    }
-
-    int exist(RootObject *p)
-    {
-        for (size_t i = 0; i < components.dim; i++)
-        {
-            if (p == components[i])
-            {
-                return 1;
-            }
-        }
         return 0;
     }
 
@@ -103,15 +92,13 @@ class CppMangleVisitor : public Visitor
 
     void prefix_name(Dsymbol *s)
     {
-        if (!substitute(s))
-        {
-            Dsymbol *p = s->toParent();
-            if (p && !p->isModule())
-            {
-                prefix_name(p);
-            }
-            source_name(s);
-        }
+        if (substitute(s))
+            return;
+        Dsymbol *p = s->toParent();
+        if (p && !p->isModule())
+            prefix_name(p);
+        source_name(s);
+        store(s);
     }
 
 public:
@@ -123,8 +110,7 @@ public:
 
     char *finish()
     {
-        buf.writeByte(0);
-        return (char *)buf.extractData();
+        return buf.extractString();
     }
 
     void cpp_mangle_name(Dsymbol *s)
@@ -165,10 +151,11 @@ public:
          * C++ analog.
          * u <source-name>
          */
-        if (!substitute(t))
-        {   assert(t->deco);
-            buf.printf("u%d%s", strlen(t->deco), t->deco);
-        }
+        if (substitute(t))
+            return;
+        assert(t->deco);
+        buf.printf("u%d%s", strlen(t->deco), t->deco);
+        store(t);
     }
 
     void visit(TypeBasic *t)
@@ -210,10 +197,15 @@ public:
             case Tint32:    c = 'i';        break;
             case Tuns32:    c = 'j';        break;
             case Tfloat32:  c = 'f';        break;
+#ifdef IN_GCC
             case Tint64:    c = 'x';        break;
             case Tuns64:    c = 'y';        break;
+#else
+            case Tint64:    c = (Target::longsize == 8 ? 'l' : 'x'); break;
+            case Tuns64:    c = (Target::longsize == 8 ? 'm' : 'y'); break;
+#endif
             case Tfloat64:  c = 'd';        break;
-            case Tfloat80:  c = 'e';        break;
+            case Tfloat80:  c = (Target::realsize - Target::realpad == 16) ? 'g' : 'e'; break;
             case Tbool:     c = 'b';        break;
             case Tchar:     c = 'c';        break;
             case Twchar:    c = 't';        break;
@@ -232,6 +224,7 @@ public:
         {
             if (substitute(t))
                 return;
+            store(t);
         }
 
         if (t->isConst())
@@ -246,20 +239,20 @@ public:
 
     void visit(TypeVector *t)
     {
-        if (!substitute(t))
-        {
-            buf.writestring("U8__vector");
-            t->basetype->accept(this);
-        }
+        if (substitute(t))
+            return;
+        buf.writestring("U8__vector");
+        t->basetype->accept(this);
+        store(t);
     }
 
     void visit(TypeSArray *t)
     {
-        if (!substitute(t))
-        {
-            buf.printf("A%llu_", t->dim ? t->dim->toInteger() : 0);
-            t->next->accept(this);
-        }
+        if (substitute(t))
+            return;
+        buf.printf("A%llu_", t->dim ? t->dim->toInteger() : 0);
+        t->next->accept(this);
+        store(t);
     }
 
     void visit(TypeDArray *t)
@@ -274,26 +267,20 @@ public:
 
     void visit(TypePointer *t)
     {
-        if (!exist(t))
-        {
-            buf.writeByte('P');
-            t->next->accept(this);
-            store(t);
-        }
-        else
-            substitute(t);
+        if (substitute(t))
+            return;
+        buf.writeByte('P');
+        t->next->accept(this);
+        store(t);
     }
 
     void visit(TypeReference *t)
     {
-        if (!exist(t))
-        {
-            buf.writeByte('R');
-            t->next->accept(this);
-            store(t);
-        }
-        else
-            substitute(t);
+        if (substitute(t))
+            return;
+        buf.writeByte('R');
+        t->next->accept(this);
+        store(t);
     }
 
     void visit(TypeFunction *t)
@@ -320,18 +307,15 @@ public:
             TypeFunctions for non-static member functions, and non-static
             member functions of different classes.
          */
-        if (!exist(t))
-        {
-            buf.writeByte('F');
-            if (t->linkage == LINKc)
-                buf.writeByte('Y');
-            t->next->accept(this);
-            argsCppMangle(t->parameters, t->varargs);
-            buf.writeByte('E');
-            store(t);
-        }
-        else
-            substitute(t);
+        if (substitute(t))
+            return;
+        buf.writeByte('F');
+        if (t->linkage == LINKc)
+            buf.writeByte('Y');
+        t->next->accept(this);
+        argsCppMangle(t->parameters, t->varargs);
+        buf.writeByte('E');
+        store(t);
     }
 
     void visit(TypeDelegate *t)
@@ -341,56 +325,45 @@ public:
 
     void visit(TypeStruct *t)
     {
-        if (!exist(t))
+        if (substitute(t))
+            return;
+        if (t->isConst())
+            buf.writeByte('K');
+        if (!substitute(t->sym))
         {
-            if (t->isConst())
-                buf.writeByte('K');
-
-            if (!substitute(t->sym))
-                cpp_mangle_name(t->sym);
-
-            if (t->isConst())
-                store(t);
+            cpp_mangle_name(t->sym);
+            store(t->sym);
         }
-        else
-            substitute(t);
+        if (t->isConst())
+            store(t);
     }
 
     void visit(TypeEnum *t)
     {
-        if (!exist(t))
+        if (substitute(t))
+            return;
+        if (t->isConst())
+            buf.writeByte('K');
+        if (!substitute(t->sym))
         {
-            if (t->isConst())
-                buf.writeByte('K');
-
-            if (!substitute(t->sym))
-                cpp_mangle_name(t->sym);
-
-            if (t->isConst())
-                store(t);
+            cpp_mangle_name(t->sym);
+            store(t->sym);
         }
-        else
-            substitute(t);
-    }
-
-    void visit(TypeTypedef *t)
-    {
-        visit((Type *)t);
+        if (t->isConst())
+            store(t);
     }
 
     void visit(TypeClass *t)
     {
-        if (!exist(t))
+        if (substitute(t))
+            return;
+        buf.writeByte('P');
+        if (!substitute(t->sym))
         {
-            buf.writeByte('P');
-
-            if (!substitute(t->sym))
-                cpp_mangle_name(t->sym);
-
-            store(t);
+            cpp_mangle_name(t->sym);
+            store(t->sym);
         }
-        else
-            substitute(t);
+        store(t);
     }
 
     struct ArgsCppMangleCtx

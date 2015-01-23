@@ -1,0 +1,232 @@
+// runtime.def -- D frontend for GCC.
+// Copyright (C) 2014 Free Software Foundation, Inc.
+
+// GCC is free software; you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free
+// Software Foundation; either version 3, or (at your option) any later
+// version.
+
+// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with GCC; see the file COPYING3.  If not see
+// <http://www.gnu.org/licenses/>.
+
+// Definitions for the D runtime functions.
+// Most are extern(C) - for those that are not, correct mangling must be ensured.
+
+// Define all D runtime functions.
+// The first parameter:
+//  CODE - The enum code used to refer this function.
+// The second parameter:
+//  NAME - The name of the function.
+// The third parameter:
+//  PARAMS - The parameter type list of the function.
+// The fourth parameter:
+//  TYPE - The return type of the function.
+// The fifth parameter:
+//  FLAGS - Flags to describe attributes of the function.
+
+// Helper macros.
+#define CONST(T)    (T)->constOf()
+#define ARRAY(T)    (T)->arrayOf()
+#define POINTER(T)  (T)->pointerTo()
+#define ARRAYPTR(T) POINTER(ARRAY(T))
+
+#define STRING	    ARRAY(Type::tchar)
+#define WSTRING	    ARRAY(Type::twchar)
+#define DSTRING	    ARRAY(Type::tdchar)
+#define DCHAR	    Type::tdchar
+#define SIZE_T	    Type::tsize_t
+#define BYTE	    Type::tint8
+#define INT	    Type::tint32
+#define UINT	    Type::tuns32
+#define BOOL	    Type::tbool
+#define VOID	    Type::tvoid
+#define VOIDPTR	    Type::tvoidptr
+#define TYPEINFO    Type::dtypeinfo->type
+#define CLASSINFO   Type::typeinfoclass->type
+#define OBJECT	    ClassDeclaration::object->type
+
+// Parameter type helper macros.
+#define P0()		    0
+#define P1(T1)		    1, T1
+#define P2(T1, T2)	    2, T1, T2
+#define P3(T1, T2, T3)	    3, T1, T2, T3
+#define P4(T1, T2, T3, T4)  4, T1, T2, T3, T4
+
+// Flag helper macros
+#define FN_NONE	    LCFnone
+#define FN_THROWS   LCFthrows
+#define FN_MALLOC   LCFmalloc
+#define FN_VARARGS  LCFvarargs
+
+
+// Used when an assert() contract fails.
+DEF_D_RUNTIME(ASSERT, "_d_assert", P2(STRING, UINT), VOID, FN_THROWS)
+DEF_D_RUNTIME(ASSERT_MSG, "_d_assert_msg", P3(STRING, STRING, UINT), VOID, FN_THROWS)
+
+// Used when an assert() contract fails in a unittest function.
+DEF_D_RUNTIME(UNITTEST, "_d_unittest", P2(STRING, UINT), VOID, FN_THROWS)
+DEF_D_RUNTIME(UNITTEST_MSG, "_d_unittest_msg", P3(STRING, STRING, UINT), VOID, FN_THROWS)
+
+// Used when an array index outside the bounds of its range.
+DEF_D_RUNTIME(ARRAY_BOUNDS, "_d_arraybounds", P2(STRING, UINT), VOID, FN_THROWS)
+
+// Used when new'ing a class.
+DEF_D_RUNTIME(NEWCLASS, "_d_newclass", P1(CONST(CLASSINFO)), OBJECT, FN_NONE)
+
+// Used when calling delete on a class or interface.
+DEF_D_RUNTIME(DELCLASS, "_d_delclass", P1(VOIDPTR), VOID, FN_NONE)
+DEF_D_RUNTIME(DELINTERFACE, "_d_delinterface", P1(VOIDPTR), VOID, FN_NONE)
+
+// Same as deleting a class, but used for stack-allocated classes.
+DEF_D_RUNTIME(CALLFINALIZER, "_d_callfinalizer", P1(VOIDPTR), VOID, FN_NONE)
+DEF_D_RUNTIME(CALLINTERFACEFINALIZER, "_d_callinterfacefinalizer", P1(VOIDPTR), VOID, FN_NONE)
+
+// Used for casting to a class or interface.
+DEF_D_RUNTIME(DYNAMIC_CAST, "_d_dynamic_cast", P2(OBJECT, CLASSINFO), OBJECT, FN_NONE)
+DEF_D_RUNTIME(INTERFACE_CAST, "_d_interface_cast", P2(OBJECT, CLASSINFO), OBJECT, FN_NONE)
+
+// Used when new'ing a pointer.  The 'i' variant is for when the initialiser is non-zero.
+DEF_D_RUNTIME(NEWITEMT, "_d_newitemT", P1(CONST(TYPEINFO)), VOIDPTR, FN_NONE)
+DEF_D_RUNTIME(NEWITEMIT, "_d_newitemiT", P1(CONST(TYPEINFO)), VOIDPTR, FN_NONE)
+
+// Used when calling delete on a pointer.
+DEF_D_RUNTIME(DELMEMORY, "_d_delmemory", P1(POINTER(VOIDPTR)), VOID, FN_NONE)
+
+// Used when new'ing an array.  The 'i' variant is for when the initialiser is
+// non-zero, and the 'm' variant is when initialising a multi-dimensional array.
+DEF_D_RUNTIME(NEWARRAYT, "_d_newarrayT", P2(CONST(TYPEINFO), SIZE_T), ARRAY(VOID), FN_NONE)
+DEF_D_RUNTIME(NEWARRAYIT, "_d_newarrayiT", P2(CONST(TYPEINFO), SIZE_T), ARRAY(VOID), FN_NONE)
+DEF_D_RUNTIME(NEWARRAYMTX, "_d_newarraymTX", P3(CONST(TYPEINFO), SIZE_T, SIZE_T), ARRAY(VOID), FN_NONE)
+DEF_D_RUNTIME(NEWARRAYMITX, "_d_newarraymiTX", P3(CONST(TYPEINFO), SIZE_T, SIZE_T), ARRAY(VOID), FN_NONE)
+
+// Used for allocating array literal expressions on heap.
+DEF_D_RUNTIME(ARRAYLITERALTX, "_d_arrayliteralTX", P2(CONST(TYPEINFO), SIZE_T), VOIDPTR, FN_NONE)
+
+// Used when calling delete on an array.
+DEF_D_RUNTIME(DELARRAYT, "_d_delarray_t", P2(ARRAYPTR(VOID), CONST(TYPEINFO)), VOID, FN_NONE)
+
+// Used for value equality (x == y) and comparisons (x < y) of non-trivial arrays.
+// Such as an array of structs or classes.
+DEF_D_RUNTIME(ADEQ2, "_adEq2", P3(ARRAY(VOID), ARRAY(VOID), CONST(TYPEINFO)), INT, FN_NONE)
+DEF_D_RUNTIME(ADCMP2, "_adCmp2", P3(ARRAY(VOID), ARRAY(VOID), CONST(TYPEINFO)), INT, FN_NONE)
+
+// Used when casting from one array type to another where the index type
+// sizes differ.  Such as from int[] to short[].
+DEF_D_RUNTIME(ARRAYCAST, "_d_arraycast", P3(SIZE_T, SIZE_T, ARRAY(VOID)), ARRAY(VOID), FN_NONE)
+
+// Used for (arr.length = n) expressions.  The 'i' variant is for when the
+// initialiser is non-zero.
+DEF_D_RUNTIME(ARRAYSETLENGTHT, "_d_arraysetlengthT", P3(CONST(TYPEINFO), SIZE_T, ARRAYPTR(VOID)), ARRAY(VOID), FN_NONE)
+DEF_D_RUNTIME(ARRAYSETLENGTHIT, "_d_arraysetlengthiT", P3(CONST(TYPEINFO), SIZE_T, ARRAYPTR(VOID)), ARRAY(VOID), FN_NONE)
+
+// Used for allocating closures on heap.
+DEF_D_RUNTIME(ALLOCMEMORY, "_d_allocmemory", P1(SIZE_T), VOIDPTR, FN_MALLOC)
+
+// Used for copying an array into a slice, adds an enforcment that the source
+// and destination are equal in size and do not overlap.
+DEF_D_RUNTIME(ARRAYCOPY, "_d_arraycopy", P3(SIZE_T, ARRAY(VOID), ARRAY(VOID)), ARRAY(VOID), FN_NONE)
+
+// Used for array assignments from an existing array.
+// The 'set' variant is for when the assignment value is a single element.
+DEF_D_RUNTIME(ARRAYASSIGN, "_d_arrayassign", P3(CONST(TYPEINFO), ARRAY(VOID), ARRAY(VOID)), ARRAY(VOID), FN_NONE)
+DEF_D_RUNTIME(ARRAYSETASSIGN, "_d_arraysetassign", P4(VOIDPTR, VOIDPTR, SIZE_T, CONST(TYPEINFO)), VOIDPTR, FN_NONE)
+
+// Used for constructing a new array from an existing array.
+// The 'set' variant is for when the constructor value is a single element.
+DEF_D_RUNTIME(ARRAYCTOR, "_d_arrayctor", P3(CONST(TYPEINFO), ARRAY(VOID), ARRAY(VOID)), ARRAY(VOID), FN_NONE)
+DEF_D_RUNTIME(ARRAYSETCTOR, "_d_arraysetctor", P4(VOIDPTR, VOIDPTR, SIZE_T, CONST(TYPEINFO)), VOIDPTR, FN_NONE)
+
+// Used for concatenating two or more arrays together.  Then 'n' variant is
+// for when there is more than two arrays to handle.
+DEF_D_RUNTIME(ARRAYCATT, "_d_arraycatT", P3(CONST(TYPEINFO), ARRAY(BYTE), ARRAY(BYTE)), ARRAY(BYTE), FN_NONE)
+DEF_D_RUNTIME(ARRAYCATNT, "_d_arraycatnT", P2(CONST(TYPEINFO), UINT), ARRAY(VOID), FN_VARARGS)
+
+// Used for appending a single element to an array.
+DEF_D_RUNTIME(ARRAYAPPENDCTX, "_d_arrayappendcTX", P3(CONST(TYPEINFO), ARRAYPTR(BYTE), SIZE_T), ARRAY(BYTE), FN_NONE)
+
+// Same as appending a single element to an array, but specific for when the
+// source is a UTF-32 character, and the destination is a UTF-8 or 16 array.
+DEF_D_RUNTIME(ARRAYAPPENDCD, "_d_arrayappendcd", P2(ARRAYPTR(BYTE), DCHAR), ARRAY(VOID), FN_NONE)
+DEF_D_RUNTIME(ARRAYAPPENDWD, "_d_arrayappendwd", P2(ARRAYPTR(BYTE), DCHAR), ARRAY(VOID), FN_NONE)
+
+// Used for appending an existing array to another.
+DEF_D_RUNTIME(ARRAYAPPENDT, "_d_arrayappendT", P3(TYPEINFO, ARRAYPTR(BYTE), ARRAY(BYTE)), ARRAY(VOID), FN_NONE)
+
+// Used for allocating a new associative array.
+DEF_D_RUNTIME(ASSOCARRAYLITERALTX, "_d_assocarrayliteralTX", P3(CONST(TYPEINFO), ARRAY(VOID), ARRAY(VOID)), VOIDPTR, FN_NONE)
+
+// Used for value equality of two associative arrays.
+DEF_D_RUNTIME(AAEQUAL, "_aaEqual", P3(CONST(TYPEINFO), AA, AA), INT, FN_NONE)
+
+// Used to determine is a key exists in an associative array.
+DEF_D_RUNTIME(AAINX, "_aaInX", P3(AA, CONST(TYPEINFO), VOIDPTR), VOIDPTR, FN_NONE)
+
+// Used to retrieve a value from an associative array index by a key.
+// The 'Rvalue' variant returns null if the key is not found, where as aaGetX
+// will create new key entry for assignment.
+DEF_D_RUNTIME(AAGETX, "_aaGetX", P4(POINTER(AA), CONST(TYPEINFO), SIZE_T, VOIDPTR), VOIDPTR, FN_NONE)
+DEF_D_RUNTIME(AAGETRVALUEX, "_aaGetRvalueX", P4(AA, CONST(TYPEINFO), SIZE_T, VOIDPTR), VOIDPTR, FN_NONE)
+
+// Used when calling delete on a key entry in an associative array.
+DEF_D_RUNTIME(AADELX, "_aaDelX", P3(AA, CONST(TYPEINFO), VOIDPTR), BOOL, FN_NONE)
+
+// Used for throw() expressions.
+DEF_D_RUNTIME(THROW, "_d_throw", P1(OBJECT), VOID, FN_THROWS)
+
+// When invariant() contracts are turned on, used after testing whether a
+// class != null for validating the state of a class.
+DEF_D_RUNTIME(INVARIANT, "_D9invariant12_d_invariantFC6ObjectZv", P1(OBJECT), VOID, FN_NONE)
+
+// Used when performing a switch/cases on a string.  The 'u' and 'd' variants
+// are for UTF-16 and UTF-32 strings respectively.
+DEF_D_RUNTIME(SWITCH_STRING, "_d_switch_string", P2(ARRAY(STRING), STRING), INT, FN_NONE)
+DEF_D_RUNTIME(SWITCH_USTRING, "_d_switch_ustring", P2(ARRAY(WSTRING), WSTRING), INT, FN_NONE)
+DEF_D_RUNTIME(SWITCH_DSTRING, "_d_switch_dstring", P2(ARRAY(DSTRING), DSTRING), INT, FN_NONE)
+
+// Used when throwing an error that a switch statement has no default case,
+// and yet none of the existing cases matched.
+DEF_D_RUNTIME(SWITCH_ERROR, "_d_switch_error", P2(STRING, UINT), VOID, FN_THROWS)
+
+// Used as the symbol to instead put in a class vtable if a method doesn't
+// override, but instead conflicts with another method found in a base class.
+DEF_D_RUNTIME(HIDDEN_FUNC, "_d_hidden_func", P1(VOIDPTR), VOID, FN_THROWS)
+
+// Remove helper macros
+#undef CONST
+#undef ARRAY
+#undef POINTER
+#undef ARRAYPTR
+
+#undef STRING
+#undef WSTRING
+#undef DSTRING
+#undef DCHAR
+#undef SIZE_T
+#undef BYTE
+#undef INT
+#undef UINT
+#undef BOOL
+#undef VOID
+#undef VOIDPTR
+#undef TYPEINFO
+#undef CLASSINFO
+#undef OBJECT
+
+#undef FPARAMS
+#undef P0
+#undef P1
+#undef P2
+#undef P3
+#undef P4
+
+#undef FN_NONE
+#undef FN_THROWS
+#undef FN_MALLOC
+#undef FN_VARARGS
+

@@ -2,16 +2,16 @@
  * This module provides OS specific helper function for threads support
  *
  * Copyright: Copyright Digital Mars 2010 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
+ * Source:    $(DRUNTIMESRC core/sys/windows/_threadaux.d)
  * Authors:   Rainer Schuetze
  */
 
-/*          Copyright Digital Mars 2010 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
+/* NOTE: This file has been patched from the original DMD distribution to
+ * work with the GDC compiler.
  */
-
 module core.sys.windows.threadaux;
 
 version( Windows )
@@ -64,7 +64,7 @@ private:
             long    CreateTime;
             long    UserTime;
             long    KernelTime;
-            UNICODE_STRING 	ImageName;
+            UNICODE_STRING      ImageName;
             int     BasePriority;
             PTID    /*Unique*/ProcessId;
             PTID    InheritedFromUniqueProcessId;

@@ -25,7 +25,7 @@ longdouble Port::ldbl_infinity;
 longdouble Port::ldbl_max;
 
 void
-Port::init (void)
+Port::init()
 {
   char buf[128];
   machine_mode mode = TYPE_MODE (long_double_type_node);

@@ -51,7 +51,7 @@ struct Label
   LevelKind kind;
   unsigned level;
 
-  Label (void)
+  Label()
     : label(NULL), block(NULL), from(NULL),
       kind(level_block), level(0)
   { }
@@ -105,8 +105,8 @@ struct IRState
  public:
   IRState *parent;
 
-  IRState (void);
-  ~IRState (void);
+  IRState ();
+  ~IRState ();
 
   // ** Functions
   FuncDeclaration *func;
@@ -115,16 +115,18 @@ struct IRState
   // Static chain of function, for D2, this is a closure.
   tree sthis;
 
+  vec<FuncDeclaration *> deferred;
+
   IRState *startFunction (FuncDeclaration *decl);
-  void endFunction (void);
+  void endFunction();
 
   // Variables that are in scope that will need destruction later.
   vec<VarDeclaration *> varsInScope;
 
   // ** Statement Lists
   void addExp (tree e);
-  void pushStatementList (void);
-  tree popStatementList (void);
+  void pushStatementList();
+  tree popStatementList();
 
   // ** Labels
   // It is only valid to call this while the function in which the label is defined
@@ -140,9 +142,9 @@ struct IRState
   Flow *getLoopForLabel (Identifier *ident, bool want_continue = false);
   Flow *beginFlow (Statement *stmt);
 
-  void endFlow (void);
+  void endFlow();
 
-  Flow *currentFlow (void)
+  Flow *currentFlow()
   {
     gcc_assert (!this->loops_.is_empty());
     return this->loops_.last();
@@ -163,17 +165,17 @@ struct IRState
      where the variable is declared and ends at it's containing scope.
    */
 
-  void startScope (void);
-  void endScope (void);
+  void startScope();
+  void endScope();
 
-  unsigned *currentScope (void)
+  unsigned *currentScope()
   {
     gcc_assert (!this->scopes_.is_empty());
     return this->scopes_.last();
   }
 
-  void startBindings (void);
-  void endBindings (void);
+  void startBindings();
+  void endBindings();
 
   // Update current source file location to LOC.
   void doLineNote (const Loc& loc)
@@ -183,15 +185,15 @@ struct IRState
 
   // ** Conditional statements.
   void startCond (Statement *stmt, tree t_cond);
-  void startElse (void);
-  void endCond (void);
+  void startElse();
+  void endCond();
 
   // ** Loop statements.
   void startLoop (Statement *stmt);
-  void continueHere (void);
+  void continueHere();
   void setContinueLabel (tree lbl);
   void exitIfFalse (tree t_cond);
-  void endLoop (void);
+  void endLoop();
   void continueLoop (Identifier *ident);
   void exitLoop (Identifier *ident);
 
@@ -208,16 +210,16 @@ struct IRState
   void startCase (Statement *stmt, tree t_cond, int has_vars = 0);
   void checkSwitchCase (Statement *stmt, int default_flag = 0);
   void doCase (tree t_value, tree t_label);
-  void endCase (void);
+  void endCase();
 
   // ** Exception handling.
   void startTry (Statement *stmt);
-  void startCatches (void);
+  void startCatches();
   void startCatch (tree t_type);
-  void endCatch (void);
-  void endCatches (void);
-  void startFinally (void);
-  void endFinally (void);
+  void endCatch();
+  void endCatches();
+  void startFinally();
+  void endFinally();
 
   // ** Return statement.
   void doReturn (tree t_value);

@@ -124,25 +124,11 @@ version (Windows)
     version (DMC_RUNTIME) { } else
     {
         import core.stdc.stdint;
-        extern(C)
-        {
-            int _fileno(FILE* stream);
-            HANDLE _get_osfhandle(int fd);
-            int _open_osfhandle(HANDLE osfhandle, int flags);
-            FILE* _fdopen(int fd, const (char)* mode);
-            int _close(int fd);
-        }
         enum
         {
             STDIN_FILENO  = 0,
             STDOUT_FILENO = 1,
             STDERR_FILENO = 2,
-        }
-        enum
-        {
-            _O_RDONLY = 0x0000,
-            _O_APPEND = 0x0004,
-            _O_TEXT   = 0x4000,
         }
     }
 }
@@ -285,6 +271,9 @@ stderr  = The standard error stream of the child process.
 env     = Additional environment variables for the child process.
 config  = Flags that control process creation. See $(LREF Config)
           for an overview of available flags.
+workDir = The working directory for the new process.
+          By default the child process inherits the parent's working
+          directory.
 
 Returns:
 A $(LREF Pid) object that corresponds to the spawned process.
@@ -300,18 +289,20 @@ Pid spawnProcess(in char[][] args,
                  File stdout = std.stdio.stdout,
                  File stderr = std.stdio.stderr,
                  const string[string] env = null,
-                 Config config = Config.none)
+                 Config config = Config.none,
+                 in char[] workDir = null)
     @trusted // TODO: Should be @safe
 {
     version (Windows)    auto  args2 = escapeShellArguments(args);
     else version (Posix) alias args2 = args;
-    return spawnProcessImpl(args2, stdin, stdout, stderr, env, config);
+    return spawnProcessImpl(args2, stdin, stdout, stderr, env, config, workDir);
 }
 
 /// ditto
 Pid spawnProcess(in char[][] args,
                  const string[string] env,
-                 Config config = Config.none)
+                 Config config = Config.none,
+                 in char[] workDir = null)
     @trusted // TODO: Should be @safe
 {
     return spawnProcess(args,
@@ -319,7 +310,8 @@ Pid spawnProcess(in char[][] args,
                         std.stdio.stdout,
                         std.stdio.stderr,
                         env,
-                        config);
+                        config,
+                        workDir);
 }
 
 /// ditto
@@ -328,20 +320,22 @@ Pid spawnProcess(in char[] program,
                  File stdout = std.stdio.stdout,
                  File stderr = std.stdio.stderr,
                  const string[string] env = null,
-                 Config config = Config.none)
+                 Config config = Config.none,
+                 in char[] workDir = null)
     @trusted
 {
     return spawnProcess((&program)[0 .. 1],
-                        stdin, stdout, stderr, env, config);
+                        stdin, stdout, stderr, env, config, workDir);
 }
 
 /// ditto
 Pid spawnProcess(in char[] program,
                  const string[string] env,
-                 Config config = Config.none)
+                 Config config = Config.none,
+                 in char[] workDir = null)
     @trusted
 {
-    return spawnProcess((&program)[0 .. 1], env, config);
+    return spawnProcess((&program)[0 .. 1], env, config, workDir);
 }
 
 /*
@@ -356,7 +350,8 @@ private Pid spawnProcessImpl(in char[][] args,
                              File stdout,
                              File stderr,
                              const string[string] env,
-                             Config config)
+                             Config config,
+                             in char[] workDir)
     @trusted // TODO: Should be @safe
 {
     import core.exception: RangeError;
@@ -372,7 +367,7 @@ private Pid spawnProcessImpl(in char[][] args,
     {
         name = searchPathFor(name);
         if (name is null)
-            throw new ProcessException(text("Executable file not found: ", name));
+            throw new ProcessException(text("Executable file not found: ", args[0]));
     }
 
     // Convert program name and arguments to C-style strings.
@@ -383,6 +378,25 @@ private Pid spawnProcessImpl(in char[][] args,
 
     // Prepare environment.
     auto envz = createEnv(env, !(config & Config.newEnv));
+
+    // Open the working directory.
+    // We use open in the parent and fchdir in the child
+    // so that most errors (directory doesn't exist, not a directory)
+    // can be propagated as exceptions before forking.
+    int workDirFD = 0;
+    scope(exit) if (workDirFD > 0) close(workDirFD);
+    if (workDir)
+    {
+        import core.sys.posix.fcntl;
+        workDirFD = open(toStringz(workDir), O_RDONLY);
+        if (workDirFD < 0)
+            throw ProcessException.newFromErrno("Failed to open working directory");
+        stat_t s;
+        if (fstat(workDirFD, &s) < 0)
+            throw ProcessException.newFromErrno("Failed to stat working directory");
+        if (!S_ISDIR(s.st_mode))
+            throw new ProcessException("Not a directory: " ~ cast(string)workDir);
+    }
 
     // Get the file descriptors of the streams.
     // These could potentially be invalid, but that is OK.  If so, later calls
@@ -397,6 +411,21 @@ private Pid spawnProcessImpl(in char[][] args,
     if (id == 0)
     {
         // Child process
+
+        // Set the working directory.
+        if (workDirFD)
+        {
+            if (fchdir(workDirFD) < 0)
+            {
+                // Fail. It is dangerous to run a program
+                // in an unexpected working directory.
+                core.sys.posix.stdio.perror("spawnProcess(): " ~
+                    "Failed to set working directory");
+                core.sys.posix.unistd._exit(1);
+                assert(0);
+            }
+            close(workDirFD);
+        }
 
         // Redirect streams and close the old file descriptors.
         // In the case that stderr is redirected to stdout, we need
@@ -462,13 +491,15 @@ private Pid spawnProcessImpl(in char[] commandLine,
                              File stdout,
                              File stderr,
                              const string[string] env,
-                             Config config)
+                             Config config,
+                             in char[] workDir)
     @trusted
 {
     import core.exception: RangeError;
 
     if (commandLine.empty) throw new RangeError("Command line is empty");
     auto commandz = toUTFz!(wchar*)(commandLine);
+    auto workDirz = workDir is null ? null : toUTFz!(wchar*)(workDir);
 
     // Prepare environment.
     auto envz = createEnv(env, !(config & Config.newEnv));
@@ -483,13 +514,9 @@ private Pid spawnProcessImpl(in char[] commandLine,
     static void prepareStream(ref File file, DWORD stdHandle, string which,
                               out int fileDescriptor, out HANDLE handle)
     {
-        fileDescriptor = _fileno(file.getFP());
+        fileDescriptor = file.isOpen ? file.fileno() : -1;
         if (fileDescriptor < 0)   handle = GetStdHandle(stdHandle);
-        else
-        {
-            version (DMC_RUNTIME) handle = _fdToHandle(fileDescriptor);
-            else    /* MSVCRT */  handle = _get_osfhandle(fileDescriptor);
-        }
+        else                      handle = file.windowsHandle;
 
         DWORD dwFlags;
         if (GetHandleInformation(handle, &dwFlags))
@@ -519,7 +546,7 @@ private Pid spawnProcessImpl(in char[] commandLine,
         CREATE_UNICODE_ENVIRONMENT |
         ((config & Config.suppressConsole) ? CREATE_NO_WINDOW : 0);
     if (!CreateProcessW(null, commandz, null, null, true, dwCreationFlags,
-                        envz, null, &startinfo, &pi))
+                        envz, workDirz, &startinfo, &pi))
         throw ProcessException.newFromLastError("Failed to spawn new process");
 
     // figure out if we should close any of the streams
@@ -808,6 +835,31 @@ unittest // Error handling in spawnProcess()
     assertThrown!ProcessException(spawnProcess("./rgiuhrifuheiohnmnvqweoijwf"));
 }
 
+unittest // Specifying a working directory.
+{
+    TestScript prog = "echo foo>bar";
+
+    auto directory = uniqueTempPath();
+    mkdir(directory);
+    scope(exit) rmdirRecurse(directory);
+
+    auto pid = spawnProcess([prog.path], null, Config.none, directory);
+    wait(pid);
+    assert(exists(buildPath(directory, "bar")));
+}
+
+unittest // Specifying a bad working directory.
+{
+    TestScript prog = "echo";
+
+    auto directory = uniqueTempPath();
+    assertThrown!ProcessException(spawnProcess([prog.path], null, Config.none, directory));
+
+    std.file.write(directory, "foo");
+    scope(exit) remove(directory);
+    assertThrown!ProcessException(spawnProcess([prog.path], null, Config.none, directory));
+}
+
 
 /**
 A variation on $(LREF spawnProcess) that runs the given _command through
@@ -839,13 +891,18 @@ Pid spawnShell(in char[] command,
                File stdout = std.stdio.stdout,
                File stderr = std.stdio.stderr,
                const string[string] env = null,
-               Config config = Config.none)
+               Config config = Config.none,
+               in char[] workDir = null)
     @trusted // TODO: Should be @safe
 {
     version (Windows)
     {
-        auto args = escapeShellArguments(userShell, shellSwitch)
-                    ~ " " ~ command;
+        // CMD does not parse its arguments like other programs.
+        // It does not use CommandLineToArgvW.
+        // Instead, it treats the first and last quote specially.
+        // See CMD.EXE /? for details.
+        auto args = escapeShellFileName(userShell)
+                    ~ ` ` ~ shellSwitch ~ ` "` ~ command ~ `"`;
     }
     else version (Posix)
     {
@@ -854,13 +911,14 @@ Pid spawnShell(in char[] command,
         args[1] = shellSwitch;
         args[2] = command;
     }
-    return spawnProcessImpl(args, stdin, stdout, stderr, env, config);
+    return spawnProcessImpl(args, stdin, stdout, stderr, env, config, workDir);
 }
 
 /// ditto
 Pid spawnShell(in char[] command,
                const string[string] env,
-               Config config = Config.none)
+               Config config = Config.none,
+               in char[] workDir = null)
     @trusted // TODO: Should be @safe
 {
     return spawnShell(command,
@@ -868,7 +926,8 @@ Pid spawnShell(in char[] command,
                       std.stdio.stdout,
                       std.stdio.stderr,
                       env,
-                      config);
+                      config,
+                      workDir);
 }
 
 unittest
@@ -884,10 +943,27 @@ unittest
     auto env = ["foo" : "bar"];
     assert (wait(spawnShell(cmd~redir, env)) == 0);
     auto f = File(tmpFile, "a");
+    version(Win64) f.seek(0, SEEK_END); // MSVCRT probably seeks to the end when writing, not before
     assert (wait(spawnShell(cmd, std.stdio.stdin, f, std.stdio.stderr, env)) == 0);
     f.close();
     auto output = std.file.readText(tmpFile);
     assert (output == "bar\nbar\n" || output == "bar\r\nbar\r\n");
+}
+
+version (Windows)
+unittest
+{
+    TestScript prog = "echo %0 %*";
+    auto outputFn = uniqueTempPath();
+    scope(exit) if (exists(outputFn)) remove(outputFn);
+    auto args = [`a b c`, `a\b\c\`, `a"b"c"`];
+    auto result = executeShell(
+        escapeShellCommand([prog.path] ~ args)
+        ~ " > " ~
+        escapeShellFileName(outputFn));
+    assert(result.status == 0);
+    auto args2 = outputFn.readText().strip().parseCommandLine()[1..$];
+    assert(args == args2, text(args2));
 }
 
 
@@ -1183,7 +1259,7 @@ A non-blocking version of $(LREF wait).
 
 If the process associated with $(D pid) has already terminated,
 $(D tryWait) has the exact same effect as $(D wait).
-In this case, it returns a struct where the $(D terminated) field
+In this case, it returns a tuple where the $(D terminated) field
 is set to $(D true) and the $(D status) field has the same
 interpretation as the return value of $(D wait).
 
@@ -1197,10 +1273,7 @@ get the exit code, but also to avoid the process becoming a "zombie"
 when it finally terminates.  (See $(LREF wait) for details).
 
 Returns:
-A $(D struct) which contains the fields $(D bool terminated)
-and $(D int status).  (This will most likely change to become a
-$(D std.typecons.Tuple!(bool,"terminated",int,"status")) in the future,
-but a compiler bug currently prevents this.)
+An $(D std.typecons.Tuple!(bool, "terminated", int, "status")).
 
 Throws:
 $(LREF ProcessException) on failure.
@@ -1227,14 +1300,10 @@ by the time we reach the end of the scope.
 */
 auto tryWait(Pid pid) @safe
 {
-    struct TryWaitResult
-    {
-        bool terminated;
-        int status;
-    }
+    import std.typecons : Tuple;
     assert(pid !is null, "Called tryWait on a null Pid.");
     auto code = pid.performWait(false);
-    return TryWaitResult(pid._processID == Pid.terminated, code);
+    return Tuple!(bool, "terminated", int, "status")(pid._processID == Pid.terminated, code);
 }
 // unittest: This function is tested together with kill() below.
 
@@ -1304,13 +1373,10 @@ void kill(Pid pid, int codeOrSignal)
     version (Windows)
     {
         if (codeOrSignal < 0) throw new ProcessException("Invalid exit code");
-        version (Win32)
-        {
-            // On Windows XP, TerminateProcess() appears to terminate the
-            // *current* process if it is passed an invalid handle...
-            if (pid.osHandle == INVALID_HANDLE_VALUE)
-                throw new ProcessException("Invalid process handle");
-        }
+        // On Windows, TerminateProcess() appears to terminate the
+        // *current* process if it is passed an invalid handle...
+        if (pid.osHandle == INVALID_HANDLE_VALUE)
+            throw new ProcessException("Invalid process handle");
         if (!TerminateProcess(pid.osHandle, codeOrSignal))
             throw ProcessException.newFromLastError();
     }
@@ -1420,69 +1486,24 @@ Pipe pipe() @trusted //TODO: @safe
             0);
     }
 
-    // Create file descriptors from the handles
-    version (DMC_RUNTIME)
+    scope(failure)
     {
-        auto readFD  = _handleToFD(readHandle, FHND_DEVICE);
-        auto writeFD = _handleToFD(writeHandle, FHND_DEVICE);
-    }
-    else // MSVCRT
-    {
-        auto readFD  = _open_osfhandle(readHandle, _O_RDONLY);
-        auto writeFD = _open_osfhandle(writeHandle, _O_APPEND);
-    }
-    version (DMC_RUNTIME) alias .close _close;
-    if (readFD == -1 || writeFD == -1)
-    {
-        // Close file descriptors, then throw.
-        if (readFD >= 0) _close(readFD);
-        else CloseHandle(readHandle);
-        if (writeFD >= 0) _close(writeFD);
-        else CloseHandle(writeHandle);
-        throw new StdioException("Error creating pipe");
+        CloseHandle(readHandle);
+        CloseHandle(writeHandle);
     }
 
-    // Create FILE pointers from the file descriptors
-    Pipe p;
-    version (DMC_RUNTIME)
+    try
     {
-        // This is a re-implementation of DMC's fdopen, but without the
-        // mucking with the file descriptor.  POSIX standard requires the
-        // new fdopen'd file to retain the given file descriptor's
-        // position.
-        FILE * local_fdopen(int fd, const(char)* mode)
-        {
-            auto fp = core.stdc.stdio.fopen("NUL", mode);
-            if(!fp) return null;
-            FLOCK(fp);
-            auto iob = cast(_iobuf*)fp;
-            .close(iob._file);
-            iob._file = fd;
-            iob._flag &= ~_IOTRAN;
-            FUNLOCK(fp);
-            return fp;
-        }
-
-        auto readFP  = local_fdopen(readFD, "r");
-        auto writeFP = local_fdopen(writeFD, "a");
+        Pipe p;
+        p._read .windowsHandleOpen(readHandle , "r");
+        p._write.windowsHandleOpen(writeHandle, "a");
+        return p;
     }
-    else // MSVCRT
+    catch (Exception e)
     {
-        auto readFP  = _fdopen(readFD, "r");
-        auto writeFP = _fdopen(writeFD, "a");
+        throw new StdioException("Error attaching pipe (" ~ e.msg ~ ")",
+            0);
     }
-    if (readFP == null || writeFP == null)
-    {
-        // Close streams, then throw.
-        if (readFP != null) fclose(readFP);
-        else _close(readFD);
-        if (writeFP != null) fclose(writeFP);
-        else _close(writeFD);
-        throw new StdioException("Cannot open pipe");
-    }
-    p._read = File(readFP, null);
-    p._write = File(writeFP, null);
-    return p;
 }
 
 
@@ -1563,6 +1584,9 @@ env      = Additional environment variables for the child process.
 config   = Flags that control process creation. See $(LREF Config)
            for an overview of available flags, and note that the
            $(D retainStd...) flags have no effect in this function.
+workDir  = The working directory for the new process.
+           By default the child process inherits the parent's working
+           directory.
 
 Returns:
 A $(LREF ProcessPipes) object which contains $(XREF stdio,File)
@@ -1591,30 +1615,33 @@ foreach (line; pipes.stderr.byLine) errors ~= line.idup;
 ProcessPipes pipeProcess(in char[][] args,
                          Redirect redirect = Redirect.all,
                          const string[string] env = null,
-                         Config config = Config.none)
+                         Config config = Config.none,
+                         in char[] workDir = null)
     @trusted //TODO: @safe
 {
-    return pipeProcessImpl!spawnProcess(args, redirect, env, config);
+    return pipeProcessImpl!spawnProcess(args, redirect, env, config, workDir);
 }
 
 /// ditto
 ProcessPipes pipeProcess(in char[] program,
                          Redirect redirect = Redirect.all,
                          const string[string] env = null,
-                         Config config = Config.none)
+                         Config config = Config.none,
+                         in char[] workDir = null)
     @trusted
 {
-    return pipeProcessImpl!spawnProcess(program, redirect, env, config);
+    return pipeProcessImpl!spawnProcess(program, redirect, env, config, workDir);
 }
 
 /// ditto
 ProcessPipes pipeShell(in char[] command,
                        Redirect redirect = Redirect.all,
                        const string[string] env = null,
-                       Config config = Config.none)
+                       Config config = Config.none,
+                       in char[] workDir = null)
     @safe
 {
-    return pipeProcessImpl!spawnShell(command, redirect, env, config);
+    return pipeProcessImpl!spawnShell(command, redirect, env, config, workDir);
 }
 
 // Implementation of the pipeProcess() family of functions.
@@ -1622,7 +1649,8 @@ private ProcessPipes pipeProcessImpl(alias spawnFunc, Cmd)
                                     (Cmd command,
                                      Redirect redirectFlags,
                                      const string[string] env = null,
-                                     Config config = Config.none)
+                                     Config config = Config.none,
+                                     in char[] workDir = null)
     @trusted //TODO: @safe
 {
     File childStdin, childStdout, childStderr;
@@ -1689,7 +1717,7 @@ private ProcessPipes pipeProcessImpl(alias spawnFunc, Cmd)
 
     config &= ~(Config.retainStdin | Config.retainStdout | Config.retainStderr);
     pipes._pid = spawnFunc(command, childStdin, childStdout, childStderr,
-                           env, config);
+                           env, config, workDir);
     return pipes;
 }
 
@@ -1770,7 +1798,7 @@ unittest
     pp.stdin.flush();
     assert (wait(pp.pid) == 1);
 
-    pp = pipeShell(prog.path~" AAAAA BBB",
+    pp = pipeShell(escapeShellCommand(prog.path, "AAAAA", "BBB"),
                    Redirect.stdin | Redirect.stdoutToStderr | Redirect.stderr);
     pp.stdin.writeln("ab");
     pp.stdin.flush();
@@ -1906,12 +1934,12 @@ config    = Flags that control process creation. See $(LREF Config)
             $(D retainStd...) flags have no effect in this function.
 maxOutput = The maximum number of bytes of output that should be
             captured.
+workDir   = The working directory for the new process.
+            By default the child process inherits the parent's working
+            directory.
 
 Returns:
-A $(D struct) which contains the fields $(D int status) and
-$(D string output).  (This will most likely change to become a
-$(D std.typecons.Tuple!(int,"status",string,"output")) in the future,
-but a compiler bug currently prevents this.)
+An $(D std.typecons.Tuple!(int, "status", string, "output")).
 
 POSIX_specific:
 If the process is terminated by a signal, the $(D status) field of
@@ -1925,30 +1953,33 @@ $(XREF stdio,StdioException) on failure to capture output.
 auto execute(in char[][] args,
              const string[string] env = null,
              Config config = Config.none,
-             size_t maxOutput = size_t.max)
+             size_t maxOutput = size_t.max,
+             in char[] workDir = null)
     @trusted //TODO: @safe
 {
-    return executeImpl!pipeProcess(args, env, config, maxOutput);
+    return executeImpl!pipeProcess(args, env, config, maxOutput, workDir);
 }
 
 /// ditto
 auto execute(in char[] program,
              const string[string] env = null,
              Config config = Config.none,
-             size_t maxOutput = size_t.max)
+             size_t maxOutput = size_t.max,
+             in char[] workDir = null)
     @trusted //TODO: @safe
 {
-    return executeImpl!pipeProcess(program, env, config, maxOutput);
+    return executeImpl!pipeProcess(program, env, config, maxOutput, workDir);
 }
 
 /// ditto
 auto executeShell(in char[] command,
                   const string[string] env = null,
                   Config config = Config.none,
-                  size_t maxOutput = size_t.max)
+                  size_t maxOutput = size_t.max,
+                  in char[] workDir = null)
     @trusted //TODO: @safe
 {
-    return executeImpl!pipeShell(command, env, config, maxOutput);
+    return executeImpl!pipeShell(command, env, config, maxOutput, workDir);
 }
 
 // Does the actual work for execute() and executeShell().
@@ -1956,10 +1987,13 @@ private auto executeImpl(alias pipeFunc, Cmd)(
     Cmd commandLine,
     const string[string] env = null,
     Config config = Config.none,
-    size_t maxOutput = size_t.max)
+    size_t maxOutput = size_t.max,
+    in char[] workDir = null)
 {
+    import std.typecons : Tuple;
+
     auto p = pipeFunc(commandLine, Redirect.stdout | Redirect.stderrToStdout,
-                      env, config);
+                      env, config, workDir);
 
     auto a = appender!(ubyte[])();
     enum size_t defaultChunkSize = 4096;
@@ -1980,8 +2014,7 @@ private auto executeImpl(alias pipeFunc, Cmd)(
     // Exhaust the stream, if necessary.
     foreach (ubyte[] chunk; p.stdout.byChunk(defaultChunkSize)) { }
 
-    struct ProcessOutput { int status; string output; }
-    return ProcessOutput(wait(p.pid), cast(string) a.data);
+    return Tuple!(int, "status", string, "output")(wait(p.pid), cast(string) a.data);
 }
 
 unittest
@@ -2015,6 +2048,19 @@ unittest
     auto r3 = executeShell("exit 123");
     assert (r3.status == 123);
     assert (r3.output.empty);
+}
+
+unittest
+{
+    import std.typecons : Tuple;
+    void foo() //Just test the compilation
+    {
+        auto ret1 = execute(["dummy", "arg"]);
+        auto ret2 = executeShell("dummy arg");
+        static assert(is(typeof(ret1) == typeof(ret2)));
+
+        Tuple!(int, string) ret3 = execute(["dummy", "arg"]);
+    }
 }
 
 
@@ -2144,7 +2190,9 @@ version (unittest)
 private string uniqueTempPath()
 {
     import std.file, std.uuid;
-    return buildPath(tempDir(), randomUUID().toString());
+    // Path should contain spaces to test escaping whitespace
+    return buildPath(tempDir(), "std.process temporary file " ~
+        randomUUID().toString());
 }
 
 
@@ -2198,7 +2246,25 @@ characters (NUL on all platforms, as well as CR and LF on Windows).
 string escapeShellCommand(in char[][] args...)
     //TODO: @safe pure nothrow
 {
-    return escapeShellCommandString(escapeShellArguments(args));
+    if (args.empty)
+        return null;
+    version (Windows)
+    {
+        // Do not ^-escape the first argument (the program path),
+        // as the shell parses it differently from parameters.
+        // ^-escaping a program path that contains spaces will fail.
+        string result = escapeShellFileName(args[0]);
+        if (args.length > 1)
+        {
+            result ~= " " ~ escapeShellCommandString(
+                escapeShellArguments(args[1..$]));
+        }
+        return result;
+    }
+    version (Posix)
+    {
+        return escapeShellCommandString(escapeShellArguments(args));
+    }
 }
 
 unittest
@@ -2211,29 +2277,29 @@ unittest
     TestVector[] tests =
     [
         {
-            args    : ["foo"],
-            windows : `^"foo^"`,
-            posix   : `'foo'`
+            args    : ["foo bar"],
+            windows : `"foo bar"`,
+            posix   : `'foo bar'`
         },
         {
-            args    : ["foo", "hello"],
-            windows : `^"foo^" ^"hello^"`,
-            posix   : `'foo' 'hello'`
+            args    : ["foo bar", "hello"],
+            windows : `"foo bar" ^"hello^"`,
+            posix   : `'foo bar' 'hello'`
         },
         {
-            args    : ["foo", "hello world"],
-            windows : `^"foo^" ^"hello world^"`,
-            posix   : `'foo' 'hello world'`
+            args    : ["foo bar", "hello world"],
+            windows : `"foo bar" ^"hello world^"`,
+            posix   : `'foo bar' 'hello world'`
         },
         {
-            args    : ["foo", "hello", "world"],
-            windows : `^"foo^" ^"hello^" ^"world^"`,
-            posix   : `'foo' 'hello' 'world'`
+            args    : ["foo bar", "hello", "world"],
+            windows : `"foo bar" ^"hello^" ^"world^"`,
+            posix   : `'foo bar' 'hello' 'world'`
         },
         {
-            args    : ["foo", `'"^\`],
-            windows : `^"foo^" ^"'\^"^^\\^"`,
-            posix   : `'foo' ''\''"^\'`
+            args    : ["foo bar", `'"^\`],
+            windows : `"foo bar" ^"'\^"^^\\^"`,
+            posix   : `'foo bar' ''\''"^\'`
         },
     ];
 
@@ -2406,6 +2472,17 @@ version(Windows) version(unittest)
     extern (Windows) wchar_t**  CommandLineToArgvW(wchar_t*, int*);
     extern (C) size_t wcslen(in wchar *);
 
+    string[] parseCommandLine(string line)
+    {
+        LPWSTR lpCommandLine = (to!(wchar[])(line) ~ "\0"w).ptr;
+        int numArgs;
+        LPWSTR* args = CommandLineToArgvW(lpCommandLine, &numArgs);
+        scope(exit) LocalFree(args);
+        return args[0..numArgs]
+            .map!(arg => to!string(arg[0..wcslen(arg)]))
+            .array();
+    }
+
     unittest
     {
         string[] testStrings = [
@@ -2427,13 +2504,9 @@ version(Windows) version(unittest)
         foreach (s; testStrings)
         {
             auto q = escapeWindowsArgument(s);
-            LPWSTR lpCommandLine = (to!(wchar[])("Dummy.exe " ~ q) ~ "\0"w).ptr;
-            int numArgs;
-            LPWSTR* args = CommandLineToArgvW(lpCommandLine, &numArgs);
-            scope(exit) LocalFree(args);
-            assert(numArgs==2, s ~ " => " ~ q ~ " #" ~ text(numArgs-1));
-            auto arg = to!string(args[1][0..wcslen(args[1])]);
-            assert(arg == s, s ~ " => " ~ q ~ " => " ~ arg);
+            auto args = parseCommandLine("Dummy.exe " ~ q);
+            assert(args.length==2, s ~ " => " ~ q ~ " #" ~ text(args.length-1));
+            assert(args[1] == s, s ~ " => " ~ q ~ " => " ~ args[1]);
         }
     }
 }
@@ -2975,8 +3048,8 @@ private void toAStringz(in string[] a, const(char)**az)
 
 // Incorporating idea (for spawnvp() on Posix) from Dave Fladebo
 
-alias std.c.process._P_WAIT P_WAIT;
-alias std.c.process._P_NOWAIT P_NOWAIT;
+alias P_WAIT = std.c.process._P_WAIT;
+alias P_NOWAIT = std.c.process._P_NOWAIT;
 
 int spawnvp(int mode, string pathname, string[] argv)
 {
@@ -3052,11 +3125,11 @@ Lerror:
 }   // _spawnvp
 private
 {
-    alias WIFSTOPPED stopped;
-    alias WIFSIGNALED signaled;
-    alias WTERMSIG termsig;
-    alias WIFEXITED exited;
-    alias WEXITSTATUS exitstatus;
+    alias stopped = WIFSTOPPED;
+    alias signaled = WIFSIGNALED;
+    alias termsig = WTERMSIG;
+    alias exited = WIFEXITED;
+    alias exitstatus = WEXITSTATUS;
 }   // private
 }   // version (Posix)
 
@@ -3176,7 +3249,7 @@ else
  * writefln("Current process id: %s", getpid());
  * ---
  */
-alias core.thread.getpid getpid;
+alias getpid = core.thread.getpid;
 
 /**
    Runs $(D_PARAM cmd) in a shell and returns its standard output. If
@@ -3362,15 +3435,11 @@ version (Windows)
 {
     import core.sys.windows.windows;
 
-    extern (Windows)
-    HINSTANCE ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
-
-
     pragma(lib,"shell32.lib");
 
     void browse(string url)
     {
-        ShellExecuteA(null, "open", toStringz(url), null, null, SW_SHOWNORMAL);
+        ShellExecuteW(null, "open", toUTF16z(url), null, null, SW_SHOWNORMAL);
     }
 }
 else version (OSX)

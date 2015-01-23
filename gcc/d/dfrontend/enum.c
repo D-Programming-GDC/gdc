@@ -1,11 +1,13 @@
 
-// Copyright (c) 1999-2013 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
+/* Compiler implementation of the D programming language
+ * Copyright (c) 1999-2014 by Digital Mars
+ * All Rights Reserved
+ * written by Walter Bright
+ * http://www.digitalmars.com
+ * Distributed under the Boost Software License, Version 1.0.
+ * http://www.boost.org/LICENSE_1_0.txt
+ * https://github.com/D-Programming-Language/dmd/blob/master/src/enum.c
+ */
 
 #include <stdio.h>
 #include <assert.h>
@@ -72,7 +74,7 @@ void EnumDeclaration::setScope(Scope *sc)
     ScopeDsymbol::setScope(sc);
 }
 
-int EnumDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
+int EnumDeclaration::addMember(Scope *sc, ScopeDsymbol *sds, int memnum)
 {
 #if 0
     printf("EnumDeclaration::addMember() %s\n", toChars());
@@ -85,11 +87,11 @@ int EnumDeclaration::addMember(Scope *sc, ScopeDsymbol *sd, int memnum)
 
     /* Anonymous enum members get added to enclosing scope.
      */
-    ScopeDsymbol *scopesym = isAnonymous() ? sd : this;
+    ScopeDsymbol *scopesym = isAnonymous() ? sds : this;
 
     if (!isAnonymous())
     {
-        ScopeDsymbol::addMember(sc, sd, memnum);
+        ScopeDsymbol::addMember(sc, sds, memnum);
 
         if (!symtab)
             symtab = new DsymbolTable();
@@ -171,7 +173,7 @@ void EnumDeclaration::semantic(Scope *sc)
             if (!sym->memtype || !sym->members || !sym->symtab || sym->scope)
             {
                 // memtype is forward referenced, so try again later
-                scope = scx ? scx : new Scope(*sc);
+                scope = scx ? scx : sc->copy();
                 scope->setNoFree();
                 scope->module->addDeferredSemantic(this);
                 Module::dprogress = dprogress_save;
@@ -304,7 +306,7 @@ Expression *EnumDeclaration::getMaxMinValue(Loc loc, Identifier *id)
         goto Lerrors;
     }
     if (*pval)
-        return *pval;
+        goto Ldone;
 
     if (scope)
         semantic(scope);
@@ -358,7 +360,16 @@ Expression *EnumDeclaration::getMaxMinValue(Loc loc, Identifier *id)
                 *pval = e;
         }
     }
-    return *pval;
+Ldone:
+  {
+    Expression *e = *pval;
+    if (e->op != TOKerror)
+    {
+        e = e->copy();
+        e->loc = loc;
+    }
+    return e;
+  }
 
 Lerrors:
     *pval = new ErrorExp();
@@ -513,6 +524,7 @@ EnumMember::EnumMember(Loc loc, Identifier *id, Expression *value, Type *type)
 {
     this->ed = NULL;
     this->value = value;
+    this->origValue = value;
     this->type = type;
     this->loc = loc;
     this->vd = NULL;
@@ -534,9 +546,13 @@ Dsymbol *EnumMember::syntaxCopy(Dsymbol *s)
         em->loc = loc;
         em->value = e;
         em->type = t;
+        em->origValue = origValue ? origValue->syntaxCopy() : NULL;
     }
     else
+    {
         em = new EnumMember(loc, ident, e, t);
+        em->origValue = origValue ? origValue->syntaxCopy() : NULL;
+    }
     return em;
 }
 
@@ -599,6 +615,8 @@ void EnumMember::semantic(Scope *sc)
         e = e->semantic(sc);
         e = resolveProperties(sc, e);
         e = e->ctfeInterpret();
+        if (e->op == TOKerror)
+            goto Lerrors;
         if (first && !ed->memtype && !ed->isAnonymous())
         {
             ed->memtype = e->type;
@@ -613,6 +631,10 @@ void EnumMember::semantic(Scope *sc)
         {
             e = e->implicitCastTo(sc, ed->memtype);
             e = e->ctfeInterpret();
+
+            // save origValue for better json output
+            origValue = e;
+
             if (!ed->isAnonymous())
                 e = e->castTo(sc, ed->type);
         }
@@ -621,6 +643,9 @@ void EnumMember::semantic(Scope *sc)
             e = e->implicitCastTo(sc, type);
             e = e->ctfeInterpret();
             assert(ed->isAnonymous());
+
+            // save origValue for better json output
+            origValue = e;
         }
         value = e;
     }
@@ -638,6 +663,10 @@ void EnumMember::semantic(Scope *sc)
         Expression *e = new IntegerExp(loc, 0, Type::tint32);
         e = e->implicitCastTo(sc, t);
         e = e->ctfeInterpret();
+
+        // save origValue for better json output
+        origValue = e;
+
         if (!ed->isAnonymous())
             e = e->castTo(sc, ed->type);
         value = e;
@@ -667,7 +696,7 @@ void EnumMember::semantic(Scope *sc)
         Expression *eprev = emprev->value;
         Type *tprev = eprev->type->equals(ed->type) ? ed->memtype : eprev->type;
 
-        Expression *emax = tprev->getProperty(Loc(), Id::max, 0);
+        Expression *emax = tprev->getProperty(ed->loc, Id::max, 0);
         emax = emax->semantic(sc);
         emax = emax->ctfeInterpret();
 
@@ -689,6 +718,17 @@ void EnumMember::semantic(Scope *sc)
         e = e->castTo(sc, eprev->type);
         e = e->ctfeInterpret();
 
+        // save origValue (without cast) for better json output
+        if (e->op != TOKerror)  // avoid duplicate diagnostics
+        {
+            assert(emprev->origValue);
+            origValue = new AddExp(loc, emprev->origValue, new IntegerExp(loc, 1, Type::tint32));
+            origValue = origValue->semantic(sc);
+            origValue = origValue->ctfeInterpret();
+        }
+
+        if (e->op == TOKerror)
+            goto Lerrors;
         if (e->type->isfloating())
         {
             // Check that e != eprev (not always true for floats)
@@ -704,6 +744,7 @@ void EnumMember::semantic(Scope *sc)
         value = e;
     }
 
+    assert(origValue);
     semanticRun = PASSsemanticdone;
 }
 

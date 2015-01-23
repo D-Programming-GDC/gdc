@@ -2,21 +2,17 @@
  * D header file for C99.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Sean Kelly
+ * Source:    $(DRUNTIMESRC core/stdc/_stdint.d)
  * Standards: ISO/IEC 9899:1999 (E)
  */
 
-/*          Copyright Sean Kelly 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
-
 /* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
-*/
-
+ * work with the GDC compiler.
+ */
 module core.stdc.stdint;
 
 version(GNU) import gcc.builtins;
@@ -32,6 +28,7 @@ T _typify(T)(T val) @safe pure nothrow { return val; }
 extern (C):
 @trusted: // Types and constants only.
 nothrow:
+@nogc:
 
 alias int8_t  = byte ;
 alias int16_t = short;

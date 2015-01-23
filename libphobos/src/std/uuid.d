@@ -108,7 +108,7 @@ import std.conv, std.digest.md, std.digest.sha, std.random, std.range, std.strin
 public struct UUID
 {
     private:
-        @safe nothrow pure char toChar(size_t i) const
+        @safe pure nothrow char toChar(size_t i) const
         {
             if(i <= 9)
                 return cast(char)('0' + i);
@@ -116,7 +116,7 @@ public struct UUID
                 return cast(char)('a' + (i-10));
         }
 
-        @safe nothrow pure char[36] _toString() const
+        @safe pure nothrow char[36] _toString() const
         {
             char[36] result;
 
@@ -625,7 +625,7 @@ public struct UUID
         /**
          * Swap the data of this UUID with the data of rhs.
          */
-        @safe nothrow pure void swap(ref UUID rhs)
+        @safe pure nothrow void swap(ref UUID rhs)
         {
             auto bck = data;
             data = rhs.data;
@@ -1114,6 +1114,14 @@ unittest
  *     as long as these characters do not contain [0-9a-fA-F])
  * )
  *
+ * Note:
+ * Like most parsers, it consumes its argument. This means:
+ * -------------------------
+ * string s = "8AB3060E-2CBA-4F23-b74c-B52Db3BDFB46";
+ * parseUUID(s);
+ * assert(s == "");
+ * -------------------------
+ *
  * Throws:
  * $(LREF UUIDParsingException) if the input is invalid
  *
@@ -1316,8 +1324,8 @@ UUID parseUUID(Range)(ref Range uuidRange) if(isInputRange!Range
             }
         }
     }
-    alias TestRange!false TestInputRange;
-    alias TestRange!true TestForwardRange;
+    alias TestInputRange = TestRange!false;
+    alias TestForwardRange = TestRange!true;
 
     assert(isInputRange!TestInputRange);
     assert(is(ElementType!TestInputRange == dchar));
@@ -1475,7 +1483,7 @@ enum x500Namespace = UUID("6ba7b814-9dad-11d1-80b4-00c04fd430c8");
  * writeln(found);
  * -------------------
  */
-enum uuidRegex = r"[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}"
+enum uuidRegex = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}"~
     "-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}";
 
 ///
@@ -1484,11 +1492,11 @@ unittest
     import std.algorithm;
     import std.regex;
 
-    string test = "Lorem ipsum dolor sit amet, consetetur "
-    "6ba7b814-9dad-11d1-80b4-00c04fd430c8 sadipscing \n"
-    "elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore \r\n"
-    "magna aliquyam erat, sed diam voluptua. "
-    "8ab3060e-2cba-4f23-b74c-b52db3bdfb46 At vero eos et accusam et "
+    string test = "Lorem ipsum dolor sit amet, consetetur "~
+    "6ba7b814-9dad-11d1-80b4-00c04fd430c8 sadipscing \n"~
+    "elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore \r\n"~
+    "magna aliquyam erat, sed diam voluptua. "~
+    "8ab3060e-2cba-4f23-b74c-b52db3bdfb46 At vero eos et accusam et "~
     "justo duo dolores et ea rebum.";
 
     auto r = regex(uuidRegex, "g");
@@ -1530,12 +1538,20 @@ public class UUIDParsingException : Exception
     private this(string input, size_t pos, Reason why = Reason.unknown, string msg = "",
         Throwable next = null, string file = __FILE__, size_t line = __LINE__) pure @trusted
     {
-        input = input;
-        position = pos;
-        reason = why;
+        this.input = input;
+        this.position = pos;
+        this.reason = why;
         string message = format("An error occured in the UUID parser: %s\n" ~
           " * Input:\t'%s'\n * Position:\t%s", msg, replace(replace(input,
           "\r", "\\r"), "\n", "\\n"), pos);
         super(message, file, line, next);
     }
+}
+
+unittest
+{
+    auto ex = new UUIDParsingException("foo", 10, UUIDParsingException.Reason.tooMuch);
+    assert(ex.input == "foo");
+    assert(ex.position == 10);
+    assert(ex.reason == UUIDParsingException.Reason.tooMuch);
 }

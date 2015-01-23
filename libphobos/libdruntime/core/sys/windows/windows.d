@@ -3,18 +3,14 @@
  *  States and other countries.
  *
  * Copyright: Copyright Digital Mars 2000 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Walter Bright, Sean Kelly, Alex Rønne Petersen
+ * Source:    $(DRUNTIMESRC core/sys/windows/_windows.d)
  */
 
-/*          Copyright Digital Mars 2000 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
-
-/*
- * NOTE: This file has been patched from the original DMD distribution to
+/* NOTE: This file has been patched from the original DMD distribution to
  * work with the GDC compiler.
  */
 module core.sys.windows.windows;
@@ -22,6 +18,7 @@ module core.sys.windows.windows;
 version (Windows):
 extern (Windows):
 nothrow:
+//@nogc:
 
     alias uint ULONG;
     alias ULONG *PULONG;
@@ -151,7 +148,8 @@ else // Win32
     alias WORD    ATOM;
 
 version (all)
-{   // Properly prototyped versions
+{
+    // Properly prototyped versions
     alias INT_PTR function(HWND, UINT, WPARAM, LPARAM) DLGPROC;
     alias VOID function(HWND, UINT, UINT_PTR, DWORD) TIMERPROC;
     alias BOOL function(HDC, LPARAM, int) GRAYSTRINGPROC;
@@ -186,7 +184,7 @@ else
     alias FARPROC DRAWSTATEPROC;
 }
 
-extern (D) pure
+extern (D) pure @nogc
 {
 WORD HIWORD(long x) { return cast(WORD)((x >> 16) & 0xFFFF); }
 WORD LOWORD(long x) { return cast(WORD)x; }
@@ -471,7 +469,7 @@ struct WIN32_FILE_ATTRIBUTE_DATA
 }
 alias WIN32_FILE_ATTRIBUTE_DATA* LPWIN32_FILE_ATTRIBUTE_DATA;
 
-export
+export @nogc
 {
 BOOL SetCurrentDirectoryA(LPCSTR lpPathName);
 BOOL SetCurrentDirectoryW(LPCWSTR lpPathName);
@@ -505,8 +503,7 @@ BOOL   FindNextFileA(HANDLE hFindFile, WIN32_FIND_DATA* lpFindFileData);
 BOOL   FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW* lpFindFileData);
 BOOL   GetExitCodeThread(HANDLE hThread, DWORD *lpExitCode);
 BOOL   GetExitCodeProcess(HANDLE hProcess, DWORD *lpExitCode);
-DWORD  GetLastError();
-void   SetLastError(DWORD dwErrCode);
+DWORD  GetLastError() @trusted;
 DWORD  GetFileAttributesA(in char *lpFileName);
 DWORD  GetFileAttributesW(in wchar *lpFileName);
 BOOL   GetFileAttributesExA(LPCSTR, GET_FILEEX_INFO_LEVELS, PVOID);
@@ -543,6 +540,8 @@ struct MEMORYSTATUS {
 };
 alias MEMORYSTATUS *LPMEMORYSTATUS;
 
+@nogc
+{
 HMODULE LoadLibraryA(LPCSTR lpLibFileName);
 HMODULE LoadLibraryW(LPCWSTR lpLibFileName);
 FARPROC GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
@@ -550,6 +549,7 @@ DWORD GetVersion();
 BOOL FreeLibrary(HMODULE hLibModule);
 void FreeLibraryAndExitThread(HMODULE hLibModule, DWORD dwExitCode);
 BOOL DisableThreadLibraryCalls(HMODULE hLibModule);
+}
 
 //
 // Registry Specific Access Rights.
@@ -661,12 +661,13 @@ enum
     MB_MISCMASK =                 0x0000C000,
 }
 
-
+@nogc
+{
 int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType);
 int MessageBoxW(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType);
 int MessageBoxExA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType, WORD wLanguageId);
 int MessageBoxExW(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType, WORD wLanguageId);
-
+}
 
 enum : HKEY
 {
@@ -704,6 +705,8 @@ enum
     REG_LEGAL_OPTION = (REG_OPTION_RESERVED | REG_OPTION_NON_VOLATILE | REG_OPTION_VOLATILE | REG_OPTION_CREATE_LINK | REG_OPTION_BACKUP_RESTORE | REG_OPTION_OPEN_LINK),
 }
 
+@nogc
+{
 export LONG RegDeleteKeyA(in HKEY hKey, LPCSTR lpSubKey);
 export LONG RegDeleteKeyW(in HKEY hKey, LPCWSTR lpSubKey);
 export LONG RegDeleteValueA(in HKEY hKey, LPCSTR lpValueName);
@@ -752,6 +755,7 @@ export LONG RegOpenCurrentUser(REGSAM samDesired, PHKEY phkResult);
 
 export LONG RegConnectRegistryA(LPCSTR lpMachineName, HKEY hKey, PHKEY phkResult);
 export LONG RegConnectRegistryW(LPCWSTR lpMachineName, HKEY hKey, PHKEY phkResult);
+}
 
 struct MEMORY_BASIC_INFORMATION {
     PVOID BaseAddress;
@@ -855,7 +859,7 @@ enum
     FILE_GENERIC_EXECUTE =      cast(int)(STANDARD_RIGHTS_EXECUTE | FILE_READ_ATTRIBUTES |                 FILE_EXECUTE |  SYNCHRONIZE),
 }
 
-export
+export @nogc
 {
  BOOL  FreeResource(HGLOBAL hResData);
  LPVOID LockResource(HGLOBAL hResData);
@@ -926,6 +930,8 @@ enum
     TIME_ZONE_ID_DAYLIGHT = 2,
 }
 
+@nogc
+{
 export void GetSystemTime(SYSTEMTIME* lpSystemTime);
 export BOOL GetFileTime(HANDLE hFile, FILETIME *lpCreationTime, FILETIME *lpLastAccessTime, FILETIME *lpLastWriteTime);
 export void GetSystemTimeAsFileTime(FILETIME* lpSystemTimeAsFileTime);
@@ -950,6 +956,7 @@ export BOOL SetSystemTimeAdjustment(DWORD dwTimeAdjustment, BOOL bTimeAdjustment
 export BOOL GetSystemTimeAdjustment(DWORD* lpTimeAdjustment, DWORD* lpTimeIncrement, BOOL* lpTimeAdjustmentDisabled);
 export DWORD FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, void* *Arguments);
 export DWORD FormatMessageW(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPWSTR lpBuffer, DWORD nSize, void* *Arguments);
+}
 
 enum
 {
@@ -1160,10 +1167,12 @@ enum
 //    SUBLANGID     - extract sublanguage id from a language id.
 //
 
+pure @nogc
+{
 int MAKELANGID(int p, int s) { return ((cast(WORD)s) << 10) | cast(WORD)p; }
 WORD PRIMARYLANGID(int lgid) { return cast(WORD)(lgid & 0x3ff); }
 WORD SUBLANGID(int lgid)     { return cast(WORD)(lgid >> 10); }
-
+}
 
 version (Win64)
 {
@@ -1553,14 +1562,19 @@ struct SYSTEM_INFO
 
 alias SYSTEM_INFO* LPSYSTEM_INFO;
 
+@nogc
+{
 export void GetSystemInfo(LPSYSTEM_INFO lpSystemInfo);
 export void GetNativeSystemInfo(LPSYSTEM_INFO lpSystemInfo);
+}
 
 enum : DWORD
 {
     MAX_COMPUTERNAME_LENGTH = 15,
 }
 
+@nogc
+{
 export BOOL GetComputerNameA(LPSTR lpBuffer, LPDWORD nSize);
 export BOOL GetComputerNameW(LPWSTR lpBuffer, LPDWORD nSize);
 export BOOL SetComputerNameA(LPCSTR lpComputerName);
@@ -1588,12 +1602,13 @@ export DWORD WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds);
 export DWORD WaitForMultipleObjects(DWORD nCount, HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
 export void Sleep(DWORD dwMilliseconds);
 export BOOL SwitchToThread();
+}
 
 // Synchronization
 
 version (MinGW)
 {
-    extern(C)
+    extern(C) @nogc
     {
         LONG _InterlockedIncrement(LPLONG lpAddend);
         LONG _InterlockedDecrement(LPLONG lpAddend);
@@ -1616,7 +1631,7 @@ version (MinGW)
 }
 else
 {
-    export
+    export @nogc
     {
         LONG InterlockedIncrement(LPLONG lpAddend);
         LONG InterlockedDecrement(LPLONG lpAddend);
@@ -1633,9 +1648,11 @@ else
 }
 
 
-
+@nogc
+{
 export BOOL QueryPerformanceCounter(long* lpPerformanceCount);
 export BOOL QueryPerformanceFrequency(long* lpFrequency);
+}
 
 enum
 {
@@ -2104,7 +2121,7 @@ enum
     DCX_VALIDATE =         0x00200000,
 }
 
-export
+export @nogc
 {
  BOOL UpdateWindow(HWND hWnd);
  HWND SetActiveWindow(HWND hWnd);
@@ -2147,7 +2164,7 @@ enum
     RDW_NOFRAME =             0x0800,
 }
 
-export
+export @nogc
 {
  BOOL GetClientRect(HWND hWnd, LPRECT lpRect);
  BOOL GetWindowRect(HWND hWnd, LPRECT lpRect);
@@ -2394,7 +2411,7 @@ struct PIXELFORMATDESCRIPTOR
 }
 alias PIXELFORMATDESCRIPTOR* PPIXELFORMATDESCRIPTOR, LPPIXELFORMATDESCRIPTOR;
 
-export
+export @nogc
 {
  BOOL   RoundRect(HDC, int, int, int, int, int, int);
  BOOL   ResizePalette(HPALETTE, UINT);
@@ -2462,18 +2479,21 @@ struct POINT
 alias POINT* PPOINT, NPPOINT, LPPOINT;
 
 
-export
+export @nogc
 {
  BOOL    MoveToEx(HDC, int, int, LPPOINT);
  BOOL    TextOutA(HDC, int, int, LPCSTR, int);
  BOOL    TextOutW(HDC, int, int, LPCWSTR, int);
 }
 
+@nogc
+{
 export void PostQuitMessage(int nExitCode);
 export LRESULT DefWindowProcA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 export LRESULT DefWindowProcW(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 export HMODULE GetModuleHandleA(LPCSTR lpModuleName);
 export HMODULE GetModuleHandleW(LPCWSTR lpModuleName);
+}
 
 alias LRESULT function (HWND, UINT, WPARAM, LPARAM) WNDPROC;
 
@@ -2638,7 +2658,7 @@ enum
     CS_IME =              0x00010000,
 }
 
-export
+export @nogc
 {
  HICON LoadIconA(HINSTANCE hInstance, LPCSTR lpIconName);
  HICON LoadIconW(HINSTANCE hInstance, LPCWSTR lpIconName);
@@ -2719,6 +2739,8 @@ enum : HWND
     HWND_DESKTOP = cast(HWND)0,
 }
 
+@nogc
+{
 export ATOM RegisterClassA(in WNDCLASSA *lpWndClass);
 export ATOM RegisterClassExA(in WNDCLASSEXA *lpWndClass);
 export ATOM RegisterClassW(in WNDCLASSW *lpWndClass);
@@ -2787,6 +2809,28 @@ HWND CreateWindowW(
     return CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 
+export BOOL DestroyWindow(HWND hWnd);
+export BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
+}
+
+enum : uint
+{
+    SWP_ASYNCWINDOWPOS = 0x4000,
+    SWP_DEFERERASE = 0x2000,
+    SWP_DRAWFRAME = 0x0020,
+    SWP_FRAMECHANGED = 0x0020,
+    SWP_HIDEWINDOW = 0x0080,
+    SWP_NOACTIVATE = 0x0010,
+    SWP_NOCOPYBITS = 0x0100,
+    SWP_NOMOVE = 0x0002,
+    SWP_NOOWNERZORDER = 0x0200,
+    SWP_NOREDRAW = 0x0008,
+    SWP_NOREPOSITION = 0x0200,
+    SWP_NOSENDCHANGING = 0x0400,
+    SWP_NOSIZE = 0x0001,
+    SWP_NOZORDER = 0x0004,
+    SWP_SHOWWINDOW = 0x0040,
+}
 
 /*
  * Message structure
@@ -2801,7 +2845,7 @@ struct MSG {
 }
 alias MSG* PMSG, NPMSG, LPMSG;
 
-export
+export @nogc
 {
  BOOL GetMessageA(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
  BOOL GetMessageW(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
@@ -2819,14 +2863,17 @@ According to MSDN about a value returned by GetEnvironmentString:
 So return type of GetEnvironmentStrings is changed from LPWCH (as in *.h file)
 to LPCWCH. FreeEnvironmentStrings's argument type is changed correspondingly.
 */
+@nogc
+{
 export LPCWCH GetEnvironmentStringsW();
 export BOOL FreeEnvironmentStringsW(LPCWCH lpszEnvironmentBlock);
 export DWORD GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize);
 export BOOL  SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue);
 export DWORD ExpandEnvironmentStringsA(LPCSTR lpSrc, LPSTR lpDst, DWORD nSize);
 export DWORD ExpandEnvironmentStringsW(LPCWSTR lpSrc, LPWSTR lpDst, DWORD nSize);
+}
 
-export
+export @nogc
 {
  BOOL IsValidCodePage(UINT CodePage);
  UINT GetACP();
@@ -2844,6 +2891,8 @@ enum : UINT
     CP_UTF8 = 65001
 }
 
+@nogc
+{
 export HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName);
 export HANDLE CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName);
 
@@ -2856,10 +2905,12 @@ export BOOL UnmapViewOfFile(LPCVOID lpBaseAddress);
 
 export  HGDIOBJ   GetStockObject(int);
 export BOOL ShowWindow(HWND hWnd, int nCmdShow);
+}
 
 /* Stock Logical Objects */
 enum
-{   WHITE_BRUSH =         0,
+{
+    WHITE_BRUSH =         0,
     LTGRAY_BRUSH =        1,
     GRAY_BRUSH =          2,
     DKGRAY_BRUSH =        3,
@@ -2884,7 +2935,8 @@ enum
  * ShowWindow() Commands
  */
 enum
-{   SW_HIDE =             0,
+{
+    SW_HIDE =             0,
     SW_SHOWNORMAL =       1,
     SW_NORMAL =           1,
     SW_SHOWMINIMIZED =    2,
@@ -2924,13 +2976,14 @@ struct TEXTMETRICA
     BYTE        tmCharSet;
 }
 
-export  BOOL   GetTextMetricsA(HDC, TEXTMETRICA*);
+export @nogc BOOL   GetTextMetricsA(HDC, TEXTMETRICA*);
 
 /*
  * Scroll Bar Constants
  */
 enum
-{   SB_HORZ =             0,
+{
+    SB_HORZ =             0,
     SB_VERT =             1,
     SB_CTL =              2,
     SB_BOTH =             3,
@@ -2940,7 +2993,8 @@ enum
  * Scroll Bar Commands
  */
 enum
-{   SB_LINEUP =           0,
+{
+    SB_LINEUP =           0,
     SB_LINELEFT =         0,
     SB_LINEDOWN =         1,
     SB_LINERIGHT =        1,
@@ -2957,27 +3011,47 @@ enum
     SB_ENDSCROLL =        8,
 }
 
+@nogc
+{
 export int SetScrollPos(HWND hWnd, int nBar, int nPos, BOOL bRedraw);
 export int GetScrollPos(HWND hWnd, int nBar);
 export BOOL SetScrollRange(HWND hWnd, int nBar, int nMinPos, int nMaxPos, BOOL bRedraw);
 export BOOL GetScrollRange(HWND hWnd, int nBar, LPINT lpMinPos, LPINT lpMaxPos);
 export BOOL ShowScrollBar(HWND hWnd, int wBar, BOOL bShow);
 export BOOL EnableScrollBar(HWND hWnd, UINT wSBflags, UINT wArrows);
+}
 
 /*
  * LockWindowUpdate API
  */
 
+@nogc
+{
 export BOOL LockWindowUpdate(HWND hWndLock);
 export BOOL ScrollWindow(HWND hWnd, int XAmount, int YAmount, RECT* lpRect, RECT* lpClipRect);
 export BOOL ScrollDC(HDC hDC, int dx, int dy, RECT* lprcScroll, RECT* lprcClip, HRGN hrgnUpdate, LPRECT lprcUpdate);
 export int ScrollWindowEx(HWND hWnd, int dx, int dy, RECT* prcScroll, RECT* prcClip, HRGN hrgnUpdate, LPRECT prcUpdate, UINT flags);
+}
+
+/*
+ * Key State API
+ */
+
+@nogc
+{
+export SHORT GetKeyState(int vKey);
+export SHORT GetAsyncKeyState(int vKey);
+export BOOL GetKeyboardState(PBYTE lpKeyState);
+export BOOL SetKeyboardState(LPBYTE lpKeyState);
+export UINT MapVirtualKey(UINT uCode, UINT uMapType);
+}
 
 /*
  * Virtual Keys, Standard Set
  */
 enum
-{   VK_LBUTTON =        0x01,
+{
+    VK_LBUTTON =        0x01,
     VK_RBUTTON =        0x02,
     VK_CANCEL =         0x03,
     VK_MBUTTON =        0x04, /* NOT contiguous with L & RBUTTON */
@@ -3092,7 +3166,7 @@ enum
     VK_OEM_CLEAR =      0xFE,
 }
 
-export LRESULT SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+export @nogc LRESULT SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 
 alias UINT function (HWND, UINT, WPARAM, LPARAM) LPOFNHOOKPROC;
 
@@ -3144,6 +3218,8 @@ struct OPENFILENAMEW {
 }
 alias OPENFILENAMEW *LPOPENFILENAMEW;
 
+@nogc
+{
 BOOL          GetOpenFileNameA(LPOPENFILENAMEA);
 BOOL          GetOpenFileNameW(LPOPENFILENAMEW);
 
@@ -3152,6 +3228,7 @@ BOOL          GetSaveFileNameW(LPOPENFILENAMEW);
 
 short         GetFileTitleA(LPCSTR, LPSTR, WORD);
 short         GetFileTitleW(LPCWSTR, LPWSTR, WORD);
+}
 
 enum
 {
@@ -3173,12 +3250,14 @@ struct BITMAP
 }
 alias BITMAP* PBITMAP, NPBITMAP, LPBITMAP;
 
-
+@nogc
+{
 export  HDC       CreateCompatibleDC(HDC);
 
 export  int     GetObjectA(HGDIOBJ, int, LPVOID);
 export  int     GetObjectW(HGDIOBJ, int, LPVOID);
 export  BOOL   DeleteDC(HDC);
+}
 
 struct LOGFONTA
 {
@@ -3199,6 +3278,8 @@ struct LOGFONTA
 }
 alias LOGFONTA* PLOGFONTA, NPLOGFONTA, LPLOGFONTA;
 
+@nogc
+{
 export HMENU LoadMenuA(HINSTANCE hInstance, LPCSTR lpMenuName);
 export HMENU LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName);
 
@@ -3236,6 +3317,7 @@ export HWND ChildWindowFromPoint(HWND hWndParent, POINT Point);
 
 export BOOL TrackPopupMenu(HMENU hMenu, UINT uFlags, int x, int y,
     int nReserved, HWND hWnd, RECT *prcRect);
+}
 
 align (2) struct DLGTEMPLATE {
     DWORD style;
@@ -3259,9 +3341,9 @@ alias  DLGTEMPLATE *LPCDLGTEMPLATEW;
 alias LPCDLGTEMPLATEA LPCDLGTEMPLATE;
 
 
-export int DialogBoxParamA(HINSTANCE hInstance, LPCSTR lpTemplateName,
+export @nogc int DialogBoxParamA(HINSTANCE hInstance, LPCSTR lpTemplateName,
     HWND hWndParent, DLGPROC lpDialogFunc, LPARAM dwInitParam);
-export int DialogBoxIndirectParamA(HINSTANCE hInstance,
+export @nogc int DialogBoxIndirectParamA(HINSTANCE hInstance,
     LPCDLGTEMPLATEA hDialogTemplate, HWND hWndParent, DLGPROC lpDialogFunc,
     LPARAM dwInitParam);
 
@@ -3306,6 +3388,8 @@ enum
     SND_ALIAS_START =   0,     /* alias base */
 }
 
+@nogc
+{
 export  BOOL   PlaySoundA(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound);
 export  BOOL   PlaySoundW(LPCWSTR pszSound, HMODULE hmod, DWORD fdwSound);
 
@@ -3315,9 +3399,10 @@ export  int     GetMetaRgn(HDC, HRGN);
 export  HGDIOBJ   GetCurrentObject(HDC, UINT);
 export  BOOL    GetCurrentPositionEx(HDC, LPPOINT);
 export  int     GetDeviceCaps(HDC, int);
+}
 
 struct LOGPEN
-  {
+{
     UINT        lopnStyle;
     POINT       lopnWidth;
     COLORREF    lopnColor;
@@ -3352,6 +3437,8 @@ enum
     PS_TYPE_MASK =        0x000F0000,
 }
 
+@nogc
+{
 export  HPALETTE   CreatePalette(LOGPALETTE *);
 export  HPEN      CreatePen(int, int, COLORREF);
 export  HPEN      CreatePenIndirect(LOGPEN *);
@@ -3394,8 +3481,9 @@ export BOOL CheckRadioButton(HWND hDlg, int nIDFirstButton, int nIDLastButton,
 export UINT IsDlgButtonChecked(HWND hDlg, int nIDButton);
 
 export HWND SetFocus(HWND hWnd);
+}
 
-extern (C)
+extern (C) @nogc
 {
     export int wsprintfA(LPSTR, LPCSTR, ...);
     export int wsprintfW(LPWSTR, LPCWSTR, ...);
@@ -3412,9 +3500,12 @@ enum : uint
     WAIT_FAILED =           uint.max,
 }
 
+@nogc
+{
 export HANDLE CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCTSTR lpName);
 export HANDLE OpenSemaphoreA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCTSTR lpName);
 export BOOL ReleaseSemaphore(HANDLE hSemaphore, LONG lReleaseCount, LPLONG lpPreviousCount);
+}
 
 struct COORD {
     SHORT X;
@@ -3585,6 +3676,8 @@ enum
     ENABLE_WRAP_AT_EOL_OUTPUT =  0x0002,
 }
 
+@nogc
+{
 BOOL PeekConsoleInputA(HANDLE hConsoleInput, PINPUT_RECORD lpBuffer, DWORD nLength, LPDWORD lpNumberOfEventsRead);
 BOOL PeekConsoleInputW(HANDLE hConsoleInput, PINPUT_RECORD lpBuffer, DWORD nLength, LPDWORD lpNumberOfEventsRead);
 BOOL ReadConsoleInputA(HANDLE hConsoleInput, PINPUT_RECORD lpBuffer, DWORD nLength, LPDWORD lpNumberOfEventsRead);
@@ -3620,7 +3713,6 @@ BOOL ScrollConsoleScreenBufferA(HANDLE hConsoleOutput, in SMALL_RECT *lpScrollRe
 BOOL ScrollConsoleScreenBufferW(HANDLE hConsoleOutput, in SMALL_RECT *lpScrollRectangle, in SMALL_RECT *lpClipRectangle, COORD dwDestinationOrigin, in CHAR_INFO *lpFill);
 BOOL SetConsoleWindowInfo(HANDLE hConsoleOutput, BOOL bAbsolute, in SMALL_RECT *lpConsoleWindow);
 BOOL SetConsoleTextAttribute(HANDLE hConsoleOutput, WORD wAttributes);
-alias BOOL function(DWORD CtrlType) PHANDLER_ROUTINE;
 BOOL SetConsoleCtrlHandler(PHANDLER_ROUTINE HandlerRoutine, BOOL Add);
 BOOL GenerateConsoleCtrlEvent( DWORD dwCtrlEvent, DWORD dwProcessGroupId);
 BOOL AllocConsole();
@@ -3638,6 +3730,9 @@ UINT GetConsoleCP();
 BOOL SetConsoleCP( UINT wCodePageID);
 UINT GetConsoleOutputCP();
 BOOL SetConsoleOutputCP(UINT wCodePageID);
+}
+
+alias BOOL function(DWORD CtrlType) PHANDLER_ROUTINE;
 
 enum
 {
@@ -3728,6 +3823,7 @@ enum
     SM_CMETRICS =             75,
 }
 
+@nogc
 int GetSystemMetrics(int nIndex);
 
 enum : DWORD
@@ -3735,10 +3831,13 @@ enum : DWORD
     STILL_ACTIVE = (0x103),
 }
 
+@nogc
+{
 DWORD TlsAlloc();
 LPVOID TlsGetValue(DWORD);
 BOOL TlsSetValue(DWORD, LPVOID);
 BOOL TlsFree(DWORD);
+}
 
 struct STARTUPINFO
 {
@@ -3797,7 +3896,7 @@ struct PROCESS_INFORMATION
 
 alias PROCESS_INFORMATION *LPPROCESS_INFORMATION;
 
-export
+export @nogc
 {
     BOOL CreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine,
         LPSECURITY_ATTRIBUTES lpProcessAttributes,
@@ -3826,6 +3925,9 @@ enum
 }
 
 // shellapi.h
+
+@nogc
+{
 HINSTANCE ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
 HINSTANCE ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
 
@@ -3837,6 +3939,7 @@ BOOL SetHandleInformation(HANDLE hObject, DWORD dwMask, DWORD dwFlags);
 BOOL TerminateProcess(HANDLE hProcess, UINT uExitCode);
 LPWSTR* CommandLineToArgvW(LPCWSTR lpCmdLine, int* pNumArgs);
 LPWSTR GetCommandLineW();
+}
 
 enum
 {
@@ -3846,23 +3949,29 @@ enum
 
 enum CREATE_UNICODE_ENVIRONMENT = 0x400;
 
+@nogc
+{
 BOOL LockFile(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dwFileOffsetHigh, DWORD nNumberOfBytesToLockLow, DWORD nNumberOfBytesToLockHigh);
 BOOL UnlockFile(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dwFileOffsetHigh, DWORD nNumberOfBytesToUnlockLow, DWORD nNumberOfBytesToUnlockHigh);
 BOOL LockFileEx(HANDLE hFile, DWORD dwFlags, DWORD dwReserved, DWORD nNumberOfBytesToLockLow, DWORD nNumberOfBytesToLockHigh, LPOVERLAPPED lpOverlapped);
 BOOL UnlockFileEx(HANDLE hFile, DWORD dwReserved, DWORD nNumberOfBytesToUnlockLow, DWORD nNumberOfBytesToUnlockHigh, LPOVERLAPPED lpOverlapped);
+}
+
 enum LOCKFILE_FAIL_IMMEDIATELY = 1;
 enum LOCKFILE_EXCLUSIVE_LOCK   = 2;
 
+@nogc
+{
 BOOL IsDebuggerPresent();
 
 LPSTR lstrcatA(LPSTR lpString1, LPCSTR lpString2);
 LPWSTR lstrcatW(LPWSTR lpString1, LPCWSTR lpString2);
 
-int lstrcmp(LPCSTR lpString1, LPCSTR lpString2);
-int lstrcmp(LPCWSTR lpString1,LPCWSTR lpString2);
+int lstrcmpA(LPCSTR lpString1, LPCSTR lpString2);
+int lstrcmpW(LPCWSTR lpString1,LPCWSTR lpString2);
 
-int lstrcmpi(LPCSTR lpString1, LPCSTR lpString2);
-int lstrcmpi(LPCWSTR lpString1,LPCWSTR lpString2);
+int lstrcmpiA(LPCSTR lpString1, LPCSTR lpString2);
+int lstrcmpiW(LPCWSTR lpString1,LPCWSTR lpString2);
 
 LPSTR lstrcpyA(LPSTR lpString1, LPCSTR lpString2);
 LPWSTR lstrcpyW(LPWSTR lpString1, LPCWSTR lpString2);
@@ -3872,3 +3981,4 @@ LPWSTR lstrcpynW(LPWSTR lpString1, LPCWSTR lpString2, int iMaxLength);
 
 int lstrlenA(LPCSTR lpString);
 int lstrlenW(LPCWSTR lpString);
+}

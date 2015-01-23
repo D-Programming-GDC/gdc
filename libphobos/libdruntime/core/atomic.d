@@ -13,6 +13,10 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+
+/* NOTE: This file has been patched from the original DMD distribution to
+ * work with the GDC compiler.
+ */
 module core.atomic;
 
 version( D_InlineAsm_X86 )
@@ -69,7 +73,7 @@ version( CoreDdoc )
      *  The result of the operation.
      */
     HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
-        if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
+        if( __traits( compiles, mixin( "*cast(T*)&val" ~ op ~ "mod" ) ) )
     {
         return HeadUnshared!(T).init;
     }
@@ -155,7 +159,7 @@ version( CoreDdoc )
 else version( AsmX86_32 )
 {
     HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
-        if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
+        if( __traits( compiles, mixin( "*cast(T*)&val" ~ op ~ "mod" ) ) )
     in
     {
         // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
@@ -343,22 +347,12 @@ else version( AsmX86_32 )
         }
 
 
-        // NOTE: While x86 loads have acquire semantics for stores, it appears
-        //       that independent loads may be reordered by some processors
-        //       (notably the AMD64).  This implies that the hoist-load barrier
-        //       op requires an ordering instruction, which also extends this
-        //       requirement to acquire ops (though hoist-store should not need
-        //       one if support is added for this later).  However, since no
-        //       modern architectures will reorder dependent loads to occur
-        //       before the load they depend on (except the Alpha), raw loads
-        //       are actually a possible means of ordering specific sequences
-        //       of loads in some instances.
-        //
-        //       For reference, the old behavior (acquire semantics for loads)
-        //       required a memory barrier if: ms == MemoryOrder.seq || isSinkOp!(ms)
+        // NOTE: x86 loads implicitly have acquire semantics so a memory
+        //       barrier is only necessary on releases.
         template needsLoadBarrier( MemoryOrder ms )
         {
-            enum bool needsLoadBarrier = ms != MemoryOrder.raw;
+            enum bool needsLoadBarrier = ms == MemoryOrder.seq ||
+                                               isSinkOp!(ms);
         }
 
 
@@ -633,7 +627,7 @@ else version( AsmX86_32 )
 else version( AsmX86_64 )
 {
     HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
-        if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
+        if( __traits( compiles, mixin( "*cast(T*)&val" ~ op ~ "mod" ) ) )
     in
     {
         // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
@@ -814,22 +808,12 @@ else version( AsmX86_64 )
         }
 
 
-        // NOTE: While x86 loads have acquire semantics for stores, it appears
-        //       that independent loads may be reordered by some processors
-        //       (notably the AMD64).  This implies that the hoist-load barrier
-        //       op requires an ordering instruction, which also extends this
-        //       requirement to acquire ops (though hoist-store should not need
-        //       one if support is added for this later).  However, since no
-        //       modern architectures will reorder dependent loads to occur
-        //       before the load they depend on (except the Alpha), raw loads
-        //       are actually a possible means of ordering specific sequences
-        //       of loads in some instances.
-        //
-        //       For reference, the old behavior (acquire semantics for loads)
-        //       required a memory barrier if: ms == MemoryOrder.seq || isSinkOp!(ms)
+        // NOTE: x86 loads implicitly have acquire semantics so a memory
+        //       barrier is only necessary on releases.
         template needsLoadBarrier( MemoryOrder ms )
         {
-            enum bool needsLoadBarrier = ms != MemoryOrder.raw;
+            enum bool needsLoadBarrier = ms == MemoryOrder.seq ||
+                                               isSinkOp!(ms);
         }
 
 
@@ -1087,8 +1071,8 @@ else version( GNU )
     import gcc.atomics;
     import gcc.builtins;
 
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod )
-        if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
+        if( __traits( compiles, mixin( "*cast(T*)&val" ~ op ~ "mod" ) ) )
     {
         // binary operators
         //
@@ -1215,22 +1199,12 @@ else version( GNU )
         }
 
 
-        // NOTE: While x86 loads have acquire semantics for stores, it appears
-        //       that independent loads may be reordered by some processors
-        //       (notably the AMD64).  This implies that the hoist-load barrier
-        //       op requires an ordering instruction, which also extends this
-        //       requirement to acquire ops (though hoist-store should not need
-        //       one if support is added for this later).  However, since no
-        //       modern architectures will reorder dependent loads to occur
-        //       before the load they depend on (except the Alpha), raw loads
-        //       are actually a possible means of ordering specific sequences
-        //       of loads in some instances.
-        //
-        //       For reference, the old behavior (acquire semantics for loads)
-        //       required a memory barrier if: ms == MemoryOrder.seq || isSinkOp!(ms)
+        // NOTE: x86 loads implicitly have acquire semantics so a memory
+        //       barrier is only necessary on releases.
         template needsLoadBarrier( MemoryOrder ms )
         {
-            enum bool needsLoadBarrier = ms != MemoryOrder.raw;
+            enum bool needsLoadBarrier = ms == MemoryOrder.seq ||
+                                               isSinkOp!(ms);
         }
 
 

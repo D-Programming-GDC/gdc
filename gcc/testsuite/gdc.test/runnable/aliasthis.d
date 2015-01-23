@@ -946,39 +946,6 @@ void test6711()
         i = 42;
     }
     assert(c.i == 42);
-
-    struct Foo
-    {
-        string[string] strs;
-        alias strs this;
-    }
-
-    struct Bar
-    {
-        Foo f;
-        alias f this;
-    }
-
-    void test(T)()
-    {
-        T f;
-        f = ["first" : "a", "second" : "b"];
-        with (f)
-        {
-            assert(length == 2);
-            rehash;
-            auto vs = values;
-            assert(vs == ["a", "b"] || vs == ["b", "a"]);
-            auto ks = keys;
-            assert(ks == ["first", "second"] || ks == ["second", "first"]);
-            foreach (k; byKey) { }
-            foreach (v; byValue) { }
-            assert(get("a", "default") == "default");
-        }
-    }
-
-    test!Foo;
-    test!Bar;
 }
 
 /**********************************************/
@@ -1301,11 +1268,11 @@ void test8735()
     // 9709 case
     alias A = Tuple9709!(1,int,"foo");
     A a;
-    static assert(A[0] == 1);
+    //static assert(A[0] == 1);
     static assert(a[0] == 1);
     //static assert(is(A[1] == int));
     //static assert(is(a[1] == int));
-    static assert(A[2] == "foo");
+    //static assert(A[2] == "foo");
     static assert(a[2] == "foo");
 }
 
@@ -1620,6 +1587,32 @@ void test11261()
 }
 
 /***************************************************/
+// 11333
+
+alias id11333(a...) = a;
+
+struct Unit11333
+{
+    enum value = Unit11333.init.tupleof;
+    alias value this;
+}
+
+void test11333()
+{
+    void foo() {}
+
+    id11333!() unit;
+    unit = unit; // ok
+    foo(unit);   // ok
+
+    unit = Unit11333.value; // ok
+    foo(Unit11333.value);   // ok
+
+    Unit11333 unit2;
+    unit = unit2; // ok <- segfault
+}
+
+/***************************************************/
 // 11800
 
 struct A11800
@@ -1758,6 +1751,7 @@ int main()
     test10004();
     test10180();
     test10456();
+    test11333();
     test11800();
 
     printf("Success\n");

@@ -32,10 +32,10 @@ struct longdouble
     NumModes
   };
 
-  static void init (void);
+  static void init();
 
-  const real_value& rv (void) const;
-  real_value& rv (void);
+  const real_value& rv() const;
+  real_value& rv();
 
   // No constructor to be able to use this class in a union.
   template<typename T> longdouble& operator = (T x)
@@ -59,21 +59,21 @@ struct longdouble
   void set (bool d);
 
   // Rvalue operators.
-  operator float (void);
-  operator double (void);
-  operator real_value& (void);
+  operator float();
+  operator double();
+  operator real_value&();
 
-  operator int8_t (void);
-  operator int16_t (void);
-  operator int32_t (void);
-  operator int64_t (void);
+  operator int8_t();
+  operator int16_t();
+  operator int32_t();
+  operator int64_t();
 
-  operator uint8_t (void);
-  operator uint16_t (void);
-  operator uint32_t (void);
-  operator uint64_t (void);
+  operator uint8_t();
+  operator uint16_t();
+  operator uint32_t();
+  operator uint64_t();
 
-  operator bool (void);
+  operator bool();
 
   // Arithmetic operators.
   longdouble operator + (const longdouble& r);
@@ -82,7 +82,7 @@ struct longdouble
   longdouble operator / (const longdouble& r);
   longdouble operator % (const longdouble& r);
 
-  longdouble operator - (void);
+  longdouble operator -();
 
   // Comparison operators.
   bool operator < (const longdouble& r);
@@ -96,7 +96,7 @@ struct longdouble
   int formatHex (char fmt, char *buf, unsigned buf_size) const;
 
   // for debugging:
-  void dump (void);
+  void dump();
 
  private:
   longdouble from_int (Type *type, int64_t d);

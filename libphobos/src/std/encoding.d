@@ -647,12 +647,12 @@ template EncoderInstance(E)
 /** Defines various character sets. */
 enum AsciiChar : ubyte { init }
 /// Ditto
-alias immutable(AsciiChar)[] AsciiString;
+alias AsciiString = immutable(AsciiChar)[];
 
 template EncoderInstance(CharType : AsciiChar)
 {
-    alias AsciiChar E;
-    alias AsciiString EString;
+    alias E = AsciiChar;
+    alias EString = AsciiString;
 
     @property string encodingName()
     {
@@ -730,12 +730,12 @@ enum Latin1Char : ubyte { init }
 Defines an Latin1-encoded string (as an array of $(D
 immutable(Latin1Char))).
  */
-alias immutable(Latin1Char)[] Latin1String; ///
+alias Latin1String = immutable(Latin1Char)[]; ///
 
 template EncoderInstance(CharType : Latin1Char)
 {
-    alias Latin1Char E;
-    alias Latin1String EString;
+    alias E = Latin1Char;
+    alias EString = Latin1String;
 
     @property string encodingName()
     {
@@ -806,12 +806,12 @@ enum Windows1252Char : ubyte { init }
 Defines an Windows1252-encoded string (as an array of $(D
 immutable(Windows1252Char))).
  */
-alias immutable(Windows1252Char)[] Windows1252String; ///
+alias Windows1252String = immutable(Windows1252Char)[]; ///
 
 template EncoderInstance(CharType : Windows1252Char)
 {
-    alias Windows1252Char E;
-    alias Windows1252String EString;
+    alias E = Windows1252Char;
+    alias EString = Windows1252String;
 
     @property string encodingName()
     {
@@ -819,9 +819,9 @@ template EncoderInstance(CharType : Windows1252Char)
     }
 
     immutable wstring charMap =
-        "\u20AC\uFFFD\u201A\u0192\u201E\u2026\u2020\u2021"
-        "\u02C6\u2030\u0160\u2039\u0152\uFFFD\u017D\uFFFD"
-        "\uFFFD\u2018\u2019\u201C\u201D\u2022\u2103\u2014"
+        "\u20AC\uFFFD\u201A\u0192\u201E\u2026\u2020\u2021"~
+        "\u02C6\u2030\u0160\u2039\u0152\uFFFD\u017D\uFFFD"~
+        "\uFFFD\u2018\u2019\u201C\u201D\u2022\u2103\u2014"~
         "\u02DC\u2122\u0161\u203A\u0153\uFFFD\u017E\u0178"
     ;
 
@@ -907,8 +907,8 @@ template EncoderInstance(CharType : Windows1252Char)
 
 template EncoderInstance(CharType : char)
 {
-    alias char E;
-    alias immutable(char)[] EString;
+    alias E = char;
+    alias EString = immutable(char)[];
 
     @property string encodingName()
     {
@@ -1073,8 +1073,8 @@ template EncoderInstance(CharType : char)
 
 template EncoderInstance(CharType : wchar)
 {
-    alias wchar E;
-    alias immutable(wchar)[] EString;
+    alias E = wchar;
+    alias EString = immutable(wchar)[];
 
     @property string encodingName()
     {
@@ -1170,8 +1170,8 @@ template EncoderInstance(CharType : wchar)
 
 template EncoderInstance(CharType : dchar)
 {
-    alias dchar E;
-    alias immutable(dchar)[] EString;
+    alias E = dchar;
+    alias EString = immutable(dchar)[];
 
     @property string encodingName()
     {
@@ -1242,8 +1242,8 @@ Returns true if c is a valid code point
  since these are valid code points (even though they are not valid
  characters).
 
- Supercedes:
- This function supercedes $(D std.utf.startsValidDchar()).
+ Supersedes:
+ This function supersedes $(D std.utf.startsValidDchar()).
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1284,7 +1284,7 @@ unittest
 }
 
 /**
- Returns true iff it is possible to represent the specifed codepoint
+ Returns true iff it is possible to represent the specified codepoint
  in the encoding.
 
  The type of encoding cannot be deduced. Therefore, it is necessary to
@@ -1341,10 +1341,10 @@ unittest
 /**
  Returns true if the string is encoded correctly
 
- Supercedes:
- This function supercedes std.utf.validate(), however note that this
+ Supersedes:
+ This function supersedes std.utf.validate(), however note that this
  function returns a bool indicating whether the input was valid or not,
- wheras the older funtion would throw an exception.
+ whereas the older function would throw an exception.
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1507,8 +1507,8 @@ unittest
  The input to this function MUST be validly encoded.
  This is enforced by the function's in-contract.
 
- Supercedes:
- This function supercedes std.utf.toUTFindex().
+ Supersedes:
+ This function supersedes std.utf.toUTFindex().
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1543,9 +1543,9 @@ unittest
  The input to this function MUST be validly encoded.
  This is enforced by the function's in-contract.
 
- Supercedes:
- This function supercedes std.utf.decode(), however, note that the
- function codePoints() supercedes it more conveniently.
+ Supersedes:
+ This function supersedes std.utf.decode(), however, note that the
+ function codePoints() supersedes it more conveniently.
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1650,9 +1650,9 @@ body
  The type of the output cannot be deduced. Therefore, it is necessary to
  explicitly specify the encoding as a template parameter.
 
- Supercedes:
- This function supercedes std.utf.encode(), however, note that the
- function codeUnits() supercedes it more conveniently.
+ Supersedes:
+ This function supersedes std.utf.encode(), however, note that the
+ function codeUnits() supersedes it more conveniently.
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1682,9 +1682,9 @@ body
  The type of the output cannot be deduced. Therefore, it is necessary to
  explicitly specify the encoding as a template parameter.
 
- Supercedes:
- This function supercedes std.utf.encode(), however, note that the
- function codeUnits() supercedes it more conveniently.
+ Supersedes:
+ This function supersedes std.utf.encode(), however, note that the
+ function codeUnits() supersedes it more conveniently.
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1719,9 +1719,9 @@ body
 //  * The type of the output cannot be deduced. Therefore, it is necessary to
 //  * explicitly specify the encoding as a template parameter.
 //  *
-//  * Supercedes:
-//  * This function supercedes std.utf.encode(), however, note that the
-//  * function codeUnits() supercedes it more conveniently.
+//  * Supersedes:
+//  * This function supersedes std.utf.encode(), however, note that the
+//  * function codeUnits() supersedes it more conveniently.
 //  *
 //  * Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 //  *
@@ -1820,9 +1820,9 @@ unittest
  The type of the output cannot be deduced. Therefore, it is necessary to
  explicitly specify the encoding as a template parameter.
 
- Supercedes:
- This function supercedes std.utf.encode(), however, note that the
- function codeUnits() supercedes it more conveniently.
+ Supersedes:
+ This function supersedes std.utf.encode(), however, note that the
+ function codeUnits() supersedes it more conveniently.
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1852,8 +1852,8 @@ body
  at each iteration with the offset into the string at which the code point
  begins.
 
- Supercedes:
- This function supercedes std.utf.decode().
+ Supersedes:
+ This function supersedes std.utf.decode().
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1903,8 +1903,8 @@ unittest
  The type of the output cannot be deduced. Therefore, it is necessary to
  explicitly specify the encoding type in the template parameter.
 
- Supercedes:
- This function supercedes std.utf.encode().
+ Supersedes:
+ This function supersedes std.utf.encode().
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -1968,10 +1968,10 @@ size_t encode(Tgt, Src, R)(in Src[] s, R range)
  The input to this function MUST be validly encoded.
  This is enforced by the function's in-contract.
 
- Supercedes:
- This function supercedes std.utf.toUTF8(), std.utf.toUTF16() and
+ Supersedes:
+ This function supersedes std.utf.toUTF8(), std.utf.toUTF16() and
  std.utf.toUTF32()
- (but note that to!() supercedes it more conveniently).
+ (but note that to!() supersedes it more conveniently).
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
 
@@ -2083,8 +2083,8 @@ unittest
  The input to this function MUST be validly encoded.
  This is enforced by the function's in-contract.
 
- Supercedes:
- This function supercedes std.utf.toUTF8(), std.utf.toUTF16() and
+ Supersedes:
+ This function supersedes std.utf.toUTF8(), std.utf.toUTF16() and
  std.utf.toUTF32().
 
  Standards: Unicode 5.0, ASCII, ISO-8859-1, WINDOWS-1252
@@ -2463,7 +2463,7 @@ class EncodingSchemeASCII : EncodingScheme
                 "ISO_646.irv:1991",
                 "US-ASCII",
                 "cp367",
-                "csASCII"
+                "csASCII",
                 "iso-ir-6",
                 "us"
             ];

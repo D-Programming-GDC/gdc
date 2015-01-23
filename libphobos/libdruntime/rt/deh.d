@@ -9,6 +9,9 @@
  * Source: $(DRUNTIMESRC src/rt/deh.d)
  */
 
+/* NOTE: This file has been patched from the original DMD distribution to
+ * work with the GDC compiler.
+ */
 module rt.deh;
 
 extern (C)

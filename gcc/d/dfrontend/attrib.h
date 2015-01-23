@@ -1,12 +1,13 @@
 
-// Compiler implementation of the D programming language
-// Copyright (c) 1999-2012 by Digital Mars
-// All Rights Reserved
-// written by Walter Bright
-// http://www.digitalmars.com
-// License for redistribution is by either the Artistic License
-// in artistic.txt, or the GNU General Public License in gnu.txt.
-// See the included readme.txt for details.
+/* Compiler implementation of the D programming language
+ * Copyright (c) 1999-2014 by Digital Mars
+ * All Rights Reserved
+ * written by Walter Bright
+ * http://www.digitalmars.com
+ * Distributed under the Boost Software License, Version 1.0.
+ * http://www.boost.org/LICENSE_1_0.txt
+ * https://github.com/D-Programming-Language/dmd/blob/master/src/attrib.h
+ */
 
 #ifndef DMD_ATTRIB_H
 #define DMD_ATTRIB_H
@@ -33,21 +34,19 @@ public:
     Dsymbols *decl;     // array of Dsymbol's
 
     AttribDeclaration(Dsymbols *decl);
-    virtual Dsymbols *include(Scope *sc, ScopeDsymbol *s);
+    virtual Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
     int apply(Dsymbol_apply_ft_t fp, void *param);
-    int addMember(Scope *sc, ScopeDsymbol *s, int memnum);
-    void setScopeNewSc(Scope *sc,
+    static Scope *createNewScope(Scope *sc,
         StorageClass newstc, LINK linkage, PROT protection, int explictProtection,
         structalign_t structalign);
-    void semanticNewSc(Scope *sc,
-        StorageClass newstc, LINK linkage, PROT protection, int explictProtection,
-        structalign_t structalign);
+    virtual Scope *newScope(Scope *sc);
+    int addMember(Scope *sc, ScopeDsymbol *sds, int memnum);
+    void setScope(Scope *sc);
+    void importAll(Scope *sc);
     void semantic(Scope *sc);
     void semantic2(Scope *sc);
     void semantic3(Scope *sc);
-    void inlineScan();
     void addComment(const utf8_t *comment);
-    void emitComment(Scope *sc);
     const char *kind();
     bool oneMember(Dsymbol **ps, Identifier *ident);
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
@@ -58,7 +57,7 @@ public:
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     AttribDeclaration *isAttribDeclaration() { return this; }
 
-    void toObjFile(int multiobj);                       // compile to .obj file
+    void toObjFile(bool multiobj);                       // compile to .obj file
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -69,8 +68,7 @@ public:
 
     StorageClassDeclaration(StorageClass stc, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void setScope(Scope *sc);
-    void semantic(Scope *sc);
+    Scope *newScope(Scope *sc);
     bool oneMember(Dsymbol **ps, Identifier *ident);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
@@ -98,9 +96,7 @@ public:
 
     LinkDeclaration(LINK p, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void setScope(Scope *sc);
-    void semantic(Scope *sc);
-    void semantic3(Scope *sc);
+    Scope *newScope(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     char *toChars();
     void accept(Visitor *v) { v->visit(this); }
@@ -113,13 +109,8 @@ public:
 
     ProtDeclaration(PROT p, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void importAll(Scope *sc);
-    void setScope(Scope *sc);
-    void semantic(Scope *sc);
-    void emitComment(Scope *sc);
+    Scope *newScope(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-
-    static void protectionToCBuffer(OutBuffer *buf, PROT protection);
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -130,8 +121,7 @@ public:
 
     AlignDeclaration(unsigned sa, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void setScope(Scope *sc);
-    void semantic(Scope *sc);
+    Scope *newScope(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -161,10 +151,9 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
     void setScope(Scope *sc);
-    bool oneMember(Dsymbol **ps, Identifier *ident);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     const char *kind();
-    void toObjFile(int multiobj);                       // compile to .obj file
+    void toObjFile(bool multiobj);                       // compile to .obj file
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -177,11 +166,9 @@ public:
     ConditionalDeclaration(Condition *condition, Dsymbols *decl, Dsymbols *elsedecl);
     Dsymbol *syntaxCopy(Dsymbol *s);
     bool oneMember(Dsymbol **ps, Identifier *ident);
-    void emitComment(Scope *sc);
-    Dsymbols *include(Scope *sc, ScopeDsymbol *s);
+    Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
     void addComment(const utf8_t *comment);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void importAll(Scope *sc);
     void setScope(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -189,13 +176,13 @@ public:
 class StaticIfDeclaration : public ConditionalDeclaration
 {
 public:
-    ScopeDsymbol *sd;
+    ScopeDsymbol *sds;
     int addisdone;
 
     StaticIfDeclaration(Condition *condition, Dsymbols *decl, Dsymbols *elsedecl);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    Dsymbols *include(Scope *sc, ScopeDsymbol *s);
-    int addMember(Scope *sc, ScopeDsymbol *s, int memnum);
+    Dsymbols *include(Scope *sc, ScopeDsymbol *sds);
+    int addMember(Scope *sc, ScopeDsymbol *sds, int memnum);
     void semantic(Scope *sc);
     void importAll(Scope *sc);
     void setScope(Scope *sc);
@@ -210,12 +197,13 @@ class CompileDeclaration : public AttribDeclaration
 public:
     Expression *exp;
 
-    ScopeDsymbol *sd;
+    ScopeDsymbol *sds;
     int compiled;
 
     CompileDeclaration(Loc loc, Expression *exp);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    int addMember(Scope *sc, ScopeDsymbol *sd, int memnum);
+    int addMember(Scope *sc, ScopeDsymbol *sds, int memnum);
+    void setScope(Scope *sc);
     void compileIt(Scope *sc);
     void semantic(Scope *sc);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
@@ -234,6 +222,7 @@ public:
 
     UserAttributeDeclaration(Expressions *atts, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
+    Scope *newScope(Scope *sc);
     void semantic(Scope *sc);
     void semantic2(Scope *sc);
     void setScope(Scope *sc);

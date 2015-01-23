@@ -35,7 +35,7 @@
 // Create the symbol with tree for struct initialisers.
 
 Symbol *
-SymbolDeclaration::toSymbol (void)
+SymbolDeclaration::toSymbol()
 {
   return dsym->toInitializer();
 }
@@ -47,7 +47,7 @@ SymbolDeclaration::toSymbol (void)
 Symbol *
 Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 {
-  const char *symbol = mangle();
+  const char *symbol = mangle(this);
   unsigned prefixlen = strlen (prefix);
   size_t sz = (2 + strlen (symbol) + sizeof (size_t) * 3 + prefixlen + strlen (suffix) + 1);
   Symbol *s = new Symbol();
@@ -65,7 +65,7 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 
 
 Symbol *
-Dsymbol::toSymbol (void)
+Dsymbol::toSymbol()
 {
   fprintf (global.stdmsg, "Dsymbol::toSymbol() '%s', kind = '%s'\n", toChars(), kind());
   gcc_unreachable();          // BUG: implement
@@ -76,7 +76,7 @@ Dsymbol::toSymbol (void)
 // then build the chain of NAMESPACE_DECLs.
 
 Symbol *
-Dsymbol::toImport (void)
+Dsymbol::toImport()
 {
   if (!isym)
     {
@@ -94,7 +94,7 @@ Dsymbol::toImport (void)
 	  isym->Stree = decl;
 	  d_keep (decl);
 
-	  Loc loc = (m->md != NULL) ? m->md->loc : Loc (m, 1);
+	  Loc loc = (m->md != NULL) ? m->md->loc : Loc(m, 1, 0);
 	  set_decl_location (decl, loc);
 
 	  if (output_module_p (m))
@@ -136,7 +136,7 @@ Dsymbol::toImport (Symbol *sym)
 // Create the symbol with VAR_DECL tree for static variables.
 
 Symbol *
-VarDeclaration::toSymbol (void)
+VarDeclaration::toSymbol()
 {
   if (!csym)
     {
@@ -156,7 +156,7 @@ VarDeclaration::toSymbol (void)
 
       if (isDataseg())
 	{
-	  csym->Sident = mangle();
+	  csym->Sident = mangle(this);
 	  csym->prettyIdent = toPrettyChars();
 	}
       else
@@ -214,10 +214,6 @@ VarDeclaration::toSymbol (void)
 	    TREE_READONLY (decl) = 1;
 	  else
 	    csym->Sreadonly = true;
-
-	  // Const doesn't seem to matter for aggregates, so prevent problems.
-	  if (isConst() && isDataseg())
-	    TREE_CONSTANT (decl) = 1;
 	}
 
       // Propagate volatile.
@@ -254,7 +250,7 @@ VarDeclaration::toSymbol (void)
 // Create the symbol with tree for classinfo decls.
 
 Symbol *
-ClassInfoDeclaration::toSymbol (void)
+ClassInfoDeclaration::toSymbol()
 {
   return cd->toSymbol();
 }
@@ -262,7 +258,7 @@ ClassInfoDeclaration::toSymbol (void)
 // Create the symbol with tree for typeinfo decls.
 
 Symbol *
-TypeInfoDeclaration::toSymbol (void)
+TypeInfoDeclaration::toSymbol()
 {
   if (!csym)
     {
@@ -288,7 +284,7 @@ TypeInfoDeclaration::toSymbol (void)
 // Create the symbol with tree for typeinfoclass decls.
 
 Symbol *
-TypeInfoClassDeclaration::toSymbol (void)
+TypeInfoClassDeclaration::toSymbol()
 {
   gcc_assert (tinfo->ty == Tclass);
   TypeClass *tc = (TypeClass *) tinfo;
@@ -299,7 +295,7 @@ TypeInfoClassDeclaration::toSymbol (void)
 // Create the symbol with tree for function aliases.
 
 Symbol *
-FuncAliasDeclaration::toSymbol (void)
+FuncAliasDeclaration::toSymbol()
 {
   return funcalias->toSymbol();
 }
@@ -307,7 +303,7 @@ FuncAliasDeclaration::toSymbol (void)
 // Create the symbol with FUNCTION_DECL tree for functions.
 
 Symbol *
-FuncDeclaration::toSymbol (void)
+FuncDeclaration::toSymbol()
 {
   if (!csym)
     {
@@ -317,8 +313,15 @@ FuncDeclaration::toSymbol (void)
       tree fntype = NULL_TREE;
       tree vindex = NULL_TREE;
 
+      // Run full semantic on symbols we need to know about during compilation.
+      if (inferRetType && type && !type->nextOf() && !functionSemantic())
+	{
+	  csym->Stree = error_mark_node;
+	  return csym;
+	}
+
       // Save mangle/debug names for making thunks.
-      csym->Sident = mangleExact();
+      csym->Sident = mangleExact(this);
       csym->prettyIdent = toPrettyChars();
 
       tree id = get_identifier (this->isMain()
@@ -343,7 +346,7 @@ FuncDeclaration::toSymbol (void)
 	  // Do this even if there is no debug info.  It is needed to make
 	  // sure member functions are not called statically
 	  AggregateDeclaration *agg_decl = isMember2();
-	  tree handle = agg_decl->handle->toCtype();
+	  tree handle = agg_decl->handleType()->toCtype();
 
 	  // If handle is a pointer type, get record type.
 	  if (!agg_decl->isStructDeclaration())
@@ -391,7 +394,7 @@ FuncDeclaration::toSymbol (void)
 	  DECL_NO_INLINE_WARNING_P (fndecl) = 1;
 	}
       // Don't know what to do with this.
-      else if (flag_inline_functions && canInline (0, 1, 0))
+      else if (flag_inline_functions)
 	{
 	  DECL_DECLARED_INLINE_P (fndecl) = 1;
 	  DECL_NO_INLINE_WARNING_P (fndecl) = 1;
@@ -419,18 +422,6 @@ FuncDeclaration::toSymbol (void)
       // Storage class attributes
       if (storage_class & STCstatic)
 	TREE_STATIC (fndecl) = 1;
-
-      // Assert contracts in functions cause implicit side effects that could
-      // cause wrong codegen if pure/nothrow is thrown in the equation.
-      if (!global.params.useAssert)
-	{
-	  // Cannot mark as pure as in 'no side effects' if the function either
-	  // returns by ref, or has an internal state 'this'.
-	  // Note, pure D functions don't imply nothrow.
-	  if (isPure() == PUREstrong && vthis == NULL
-	      && ftype->isnothrow && ftype->retStyle() == RETstack)
-	    DECL_PURE_P (fndecl) = 1;
-	}
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
@@ -543,7 +534,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 // Create the "ClassInfo" symbol for classes.
 
 Symbol *
-ClassDeclaration::toSymbol (void)
+ClassDeclaration::toSymbol()
 {
   if (!csym)
     {
@@ -560,7 +551,7 @@ ClassDeclaration::toSymbol (void)
 
       DECL_ARTIFICIAL (decl) = 1;
       // ClassInfo cannot be const data, because we use the monitor on it.
-      TREE_CONSTANT (decl) = 0;
+      TREE_READONLY (decl) = 0;
     }
 
   return csym;
@@ -569,7 +560,7 @@ ClassDeclaration::toSymbol (void)
 // Create the "InterfaceInfo" symbol for interfaces.
 
 Symbol *
-InterfaceDeclaration::toSymbol (void)
+InterfaceDeclaration::toSymbol()
 {
   if (!csym)
     {
@@ -585,7 +576,7 @@ InterfaceDeclaration::toSymbol (void)
       set_decl_location (decl, this);
 
       DECL_ARTIFICIAL (decl) = 1;
-      TREE_CONSTANT (decl) = 1;
+      TREE_READONLY (decl) = 1;
     }
 
   return csym;
@@ -594,7 +585,7 @@ InterfaceDeclaration::toSymbol (void)
 // Create the "ModuleInfo" symbol for a given module.
 
 Symbol *
-Module::toSymbol (void)
+Module::toSymbol()
 {
   if (!csym)
     {
@@ -611,7 +602,6 @@ Module::toSymbol (void)
 
       DECL_ARTIFICIAL (decl) = 1;
       // Not readonly, moduleinit depends on this.
-      TREE_CONSTANT (decl) = 0;
       TREE_READONLY (decl) = 0;
     }
 
@@ -619,7 +609,7 @@ Module::toSymbol (void)
 }
 
 Symbol *
-StructLiteralExp::toSymbol (void)
+StructLiteralExp::toSymbol()
 {
   if (!sym)
     {
@@ -648,7 +638,7 @@ StructLiteralExp::toSymbol (void)
 }
 
 Symbol *
-ClassReferenceExp::toSymbol (void)
+ClassReferenceExp::toSymbol()
 {
   if (!value->sym)
     {
@@ -685,7 +675,7 @@ ClassReferenceExp::toSymbol (void)
 // needed directly (like for rtti comparisons), make it directly accessible.
 
 Symbol *
-ClassDeclaration::toVtblSymbol (void)
+ClassDeclaration::toVtblSymbol()
 {
   if (!vtblsym)
     {
@@ -703,10 +693,9 @@ ClassDeclaration::toVtblSymbol (void)
       setup_symbol_storage (this, decl, true);
       set_decl_location (decl, this);
 
-      TREE_READONLY (decl) = 1;
-      TREE_CONSTANT (decl) = 1;
-      TREE_ADDRESSABLE (decl) = 1;
-      DECL_ARTIFICIAL (decl) = 1;
+      TREE_READONLY(decl) = 1;
+      TREE_ADDRESSABLE(decl) = 1;
+      DECL_ARTIFICIAL(decl) = 1;
 
       DECL_CONTEXT (decl) = d_decl_context (this);
       DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;
@@ -726,7 +715,7 @@ ClassDeclaration::toVtblSymbol (void)
 // are in the toObjFile phase.
 
 Symbol *
-AggregateDeclaration::toInitializer (void)
+AggregateDeclaration::toInitializer()
 {
   if (!sinit)
     {
@@ -755,36 +744,8 @@ AggregateDeclaration::toInitializer (void)
 
       TREE_ADDRESSABLE (sinit->Stree) = 1;
       TREE_READONLY (sinit->Stree) = 1;
-      TREE_CONSTANT (sinit->Stree) = 1;
       DECL_ARTIFICIAL (sinit->Stree) = 1;
       // These initialisers are always global.
-      DECL_CONTEXT (sinit->Stree) = NULL_TREE;
-    }
-
-  return sinit;
-}
-
-// Create the static initializer for the typedef variable.
-
-Symbol *
-TypedefDeclaration::toInitializer (void)
-{
-  if (!sinit)
-    sinit = toSymbolX ("__init", 0, 0, "Z");
-
-  if (!sinit->Stree && current_module_decl)
-    {
-      sinit->Stree = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-				 get_identifier (sinit->prettyIdent), type->toCtype());
-      SET_DECL_ASSEMBLER_NAME (sinit->Stree, get_identifier (sinit->Sident));
-      d_keep (sinit->Stree);
-
-      setup_symbol_storage (this, sinit->Stree, true);
-      set_decl_location (sinit->Stree, this);
-
-      TREE_CONSTANT (sinit->Stree) = 1;
-      TREE_READONLY (sinit->Stree) = 1;
-      DECL_ARTIFICIAL (sinit->Stree) = 1;
       DECL_CONTEXT (sinit->Stree) = NULL_TREE;
     }
 
@@ -794,7 +755,7 @@ TypedefDeclaration::toInitializer (void)
 // Create the static initializer for the enum.
 
 Symbol *
-EnumDeclaration::toInitializer (void)
+EnumDeclaration::toInitializer()
 {
   if (!sinit)
     {
@@ -815,7 +776,6 @@ EnumDeclaration::toInitializer (void)
       setup_symbol_storage (this, sinit->Stree, true);
       set_decl_location (sinit->Stree, this);
 
-      TREE_CONSTANT (sinit->Stree) = 1;
       TREE_READONLY (sinit->Stree) = 1;
       DECL_ARTIFICIAL (sinit->Stree) = 1;
       DECL_CONTEXT (sinit->Stree) = NULL_TREE;
@@ -828,7 +788,7 @@ EnumDeclaration::toInitializer (void)
 //
 
 void
-ClassDeclaration::toDebug (void)
+ClassDeclaration::toDebug()
 {
   tree rec_type = TREE_TYPE (type->toCtype());
   build_type_decl (rec_type, this);
@@ -836,7 +796,7 @@ ClassDeclaration::toDebug (void)
 }
 
 void
-EnumDeclaration::toDebug (void)
+EnumDeclaration::toDebug()
 {
   TypeEnum *tc = (TypeEnum *) type;
   if (!tc->sym->defaultval || type->isZeroInit())
@@ -844,22 +804,17 @@ EnumDeclaration::toDebug (void)
 
   tree ctype = type->toCtype();
 
-  if (TREE_CODE (ctype) == ENUMERAL_TYPE)
-    build_type_decl (ctype, this);
-
   // The ctype is not necessarily enum, which doesn't sit well with
-  // rest_of_type_compilation.  Can call this on structs though.
-  if (RECORD_OR_UNION_TYPE_P (ctype) || TREE_CODE (ctype) == ENUMERAL_TYPE)
-    rest_of_type_compilation (ctype, 1);
+  // rest_of_type_compilation.
+  if (TREE_CODE (ctype) == ENUMERAL_TYPE)
+    {
+      build_type_decl (ctype, this);
+      rest_of_type_compilation (ctype, 1);
+    }
 }
 
 void
-TypedefDeclaration::toDebug (void)
-{
-}
-
-void
-StructDeclaration::toDebug (void)
+StructDeclaration::toDebug()
 {
   tree ctype = type->toCtype();
   build_type_decl (ctype, this);
@@ -870,55 +825,25 @@ StructDeclaration::toDebug (void)
 // Stubs unused in GDC, but required for D front-end.
 
 Symbol *
-Module::toModuleAssert (void)
+Module::toModuleAssert()
 {
   return NULL;
 }
 
 Symbol *
-Module::toModuleUnittest (void)
+Module::toModuleUnittest()
 {
   return NULL;
 }
 
 Symbol *
-Module::toModuleArray (void)
+Module::toModuleArray()
 {
   return NULL;
 }
 
 Symbol *
 TypeAArray::aaGetSymbol (const char *, int)
-{
-  return 0;
-}
-
-int
-Dsymbol::cvMember (unsigned char *)
-{
-  return 0;
-}
-
-int
-EnumDeclaration::cvMember (unsigned char *)
-{
-  return 0;
-}
-
-int
-FuncDeclaration::cvMember (unsigned char *)
-{
-  return 0;
-}
-
-int
-VarDeclaration::cvMember (unsigned char *)
-{
-  return 0;
-}
-
-int
-TypedefDeclaration::cvMember (unsigned char *)
 {
   return 0;
 }

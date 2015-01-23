@@ -24,7 +24,7 @@
 #include "dfrontend/target.h"
 
 type *
-Type::toCtype (void)
+Type::toCtype()
 {
   if (!ctype)
     {
@@ -162,52 +162,7 @@ Type::toCtype (void)
 }
 
 type *
-Type::toCParamtype (void)
-{
-  return toCtype();
-}
-
-type *
-TypeTypedef::toCtype (void)
-{
-  if (!ctype)
-    {
-      if (!isNaked())
-	{
-	  ctype = castMod(0)->toCtype();
-	  ctype = insert_type_modifiers (ctype, mod);
-	}
-      else
-	{
-	  tree basetype = sym->basetype->toCtype();
-	  const char *name = toChars();
-
-	  tree ident = get_identifier (name);
-	  tree type_node = build_variant_type_copy (basetype);
-	  tree type_decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type_node);
-	  TYPE_NAME (type_node) = type_decl;
-
-	  if (sym->userAttribDecl)
-	    {
-	      Expressions *attrs = sym->userAttribDecl->getAttributes();
-	      decl_attributes (&type_node, build_attributes (attrs), 0);
-	    }
-
-	  ctype = type_node;
-	}
-    }
-
-  return ctype;
-}
-
-type *
-TypeTypedef::toCParamtype (void)
-{
-  return toCtype();
-}
-
-type *
-TypeEnum::toCtype (void)
+TypeEnum::toCtype()
 {
   if (!ctype)
     {
@@ -278,7 +233,7 @@ TypeEnum::toCtype (void)
 }
 
 type *
-TypeStruct::toCtype (void)
+TypeStruct::toCtype()
 {
   if (!ctype)
     {
@@ -315,14 +270,8 @@ TypeStruct::toCtype (void)
   return ctype;
 }
 
-Symbol *
-TypeClass::toSymbol (void)
-{
-  return sym->toSymbol();
-}
-
 type *
-TypeFunction::toCtype (void)
+TypeFunction::toCtype()
 {
   if (!ctype)
     {
@@ -407,21 +356,8 @@ TypeFunction::toCtype (void)
   return ctype;
 }
 
-RET
-TypeFunction::retStyle (void)
-{
-  /* Return by reference or pointer. */
-  if (isref || next->ty == Tclass || next->ty == Tpointer)
-    return RETregs;
-
-  /* Need the ctype to determine this, but this is called from
-     the front end before semantic processing is finished.  An
-     accurate value is not currently needed anyway. */
-  return RETstack;
-}
-
 type *
-TypeVector::toCtype (void)
+TypeVector::toCtype()
 {
   if (!ctype)
     {
@@ -454,7 +390,7 @@ TypeVector::toCtype (void)
 }
 
 type *
-TypeSArray::toCtype (void)
+TypeSArray::toCtype()
 {
   if (!ctype)
     {
@@ -482,13 +418,7 @@ TypeSArray::toCtype (void)
 }
 
 type *
-TypeSArray::toCParamtype (void)
-{
-  return toCtype();
-}
-
-type *
-TypeDArray::toCtype (void)
+TypeDArray::toCtype()
 {
   if (!ctype)
     {
@@ -513,7 +443,7 @@ TypeDArray::toCtype (void)
 }
 
 type *
-TypeAArray::toCtype (void)
+TypeAArray::toCtype()
 {
   if (!ctype)
     {
@@ -544,7 +474,7 @@ TypeAArray::toCtype (void)
 }
 
 type *
-TypePointer::toCtype (void)
+TypePointer::toCtype()
 {
   if (!ctype)
   {
@@ -563,7 +493,7 @@ TypePointer::toCtype (void)
 }
 
 type *
-TypeDelegate::toCtype (void)
+TypeDelegate::toCtype()
 {
   if (!ctype)
     {
@@ -596,7 +526,7 @@ TypeDelegate::toCtype (void)
 }
 
 type *
-TypeClass::toCtype (void)
+TypeClass::toCtype()
 {
   if (!ctype)
     {
@@ -651,26 +581,5 @@ TypeClass::toCtype (void)
     }
 
   return ctype;
-}
-
-
-// These are not used for code generation in glue.
-
-Symbol *
-Type::toSymbol (void)
-{
-  return NULL;
-}
-
-unsigned
-Type::totym (void)
-{
-  return 0;
-}
-
-unsigned
-TypeFunction::totym (void)
-{
-  return 0;
 }
 

@@ -291,7 +291,6 @@ import std.algorithm : copy, count, equal, filter, filterBidirectional,
     findSplitBefore, group, isSorted, joiner, move, map, max, min, sort, swap,
     until;
 import std.traits;
-import std.typecons : Tuple, tuple;
 import std.typetuple : allSatisfy, staticMap, TypeTuple;
 
 // For testing only.  This code is included in a string literal to be included
@@ -442,13 +441,13 @@ enum dummyRanges = q{
                 return arr.length;
             }
 
-            alias length opDollar;
+            alias opDollar = length;
         }
     }
 
     enum dummyLength = 10;
 
-    alias TypeTuple!(
+    alias AllDummyRanges = TypeTuple!(
         DummyRange!(ReturnBy.Reference, Length.Yes, RangeType.Forward),
         DummyRange!(ReturnBy.Reference, Length.Yes, RangeType.Bidirectional),
         DummyRange!(ReturnBy.Reference, Length.Yes, RangeType.Random),
@@ -461,7 +460,7 @@ enum dummyRanges = q{
         DummyRange!(ReturnBy.Value, Length.No, RangeType.Input),
         DummyRange!(ReturnBy.Value, Length.No, RangeType.Forward),
         DummyRange!(ReturnBy.Value, Length.No, RangeType.Bidirectional)
-    ) AllDummyRanges;
+    );
 
 };
 
@@ -522,7 +521,7 @@ template isInputRange(R)
     enum bool isInputRange = is(typeof(
     (inout int = 0)
     {
-        R r = void;       // can define a range object
+        R r = R.init;     // can define a range object
         if (r.empty) {}   // can test for empty
         r.popFront();     // can invoke popFront()
         auto h = r.front; // can get the front of the range
@@ -576,11 +575,15 @@ package void doPut(R, E)(ref R r, auto ref E e)
         r.front = e;
         r.popFront();
     }
+    else static if (is(typeof(r(e))))
+    {
+        r(e);
+    }
     else
     {
-        static assert(is(typeof(r(e))),
+        import std.string;
+        static assert (false,
             format("Cannot nativaly put a %s into a %s.", E.stringof, R.stringof));
-        r(e);
     }
 }
 
@@ -616,8 +619,9 @@ are attempted in order, and the first to compile "wins" and gets
 evaluated.
 
 In this table "doPut" is a method that places $(D e) into $(D r), using the
-correct primitive: $(D r.put(e)) if $(D R) defines $(D put), $(D r.front = e) if $(D r) is an input
-range (followed by $(D r.popFront())), or $(D r(e)) otherwise.
+correct primitive: $(D r.put(e)) if $(D R) defines $(D put), $(D r.front = e)
+if $(D r) is an input range (followed by $(D r.popFront())), or $(D r(e))
+otherwise.
 
 $(BOOKTABLE ,
     $(TR
@@ -643,7 +647,7 @@ $(BOOKTABLE ,
     )
 )
 
-Tip: $(D put) should $(I not) be used "UFCS-style", eg $(D r.put(e)).
+Tip: $(D put) should $(I not) be used "UFCS-style", e.g. $(D r.put(e)).
 Doing this may call $(D R.put) directly, by-passing any transformation
 feature provided by $(D Range.put). $(D put(r, e)) is prefered.
  +/
@@ -696,7 +700,10 @@ void put(R, E)(ref R r, E e)
         }
     }
     else
+    {
+        import std.string;
         static assert (false, format("Cannot put a %s into a %s.", E.stringof, R.stringof));
+    }
 }
 
 //Helper function to handle chars as quickly and as elegantly as possible
@@ -743,7 +750,10 @@ if (isSomeChar!E)
         encode!(C, R)(e, r);
     }
     else
+    {
+        import std.string;
         static assert (false, format("Cannot put a %s into a %s.", E.stringof, R.stringof));
+    }
 }
 
 pure unittest
@@ -859,6 +869,7 @@ unittest
 unittest
 {
     import std.conv : to;
+    import std.typecons : tuple;
 
     static struct PutC(C)
     {
@@ -1050,29 +1061,34 @@ template isOutputRange(R, E)
     enum bool isOutputRange = is(typeof(
     (inout int = 0)
     {
-        R r = void;
-        E e = void;
+        R r = R.init;
+        E e = E.init;
         put(r, e);
     }));
+}
+
+///
+unittest
+{
+    void myprint(in char[] s) { }
+    static assert(isOutputRange!(typeof(&myprint), char));
+
+    static assert(!isOutputRange!(char[], char));
+    static assert( isOutputRange!(dchar[], wchar));
+    static assert( isOutputRange!(dchar[], dchar));
 }
 
 unittest
 {
     import std.stdio : writeln;
 
-    void myprint(in char[] s) { writeln('[', s, ']'); }
-    static assert(isOutputRange!(typeof(&myprint), char));
-
     auto app = appender!string();
     string s;
     static assert( isOutputRange!(Appender!string, string));
     static assert( isOutputRange!(Appender!string*, string));
     static assert(!isOutputRange!(Appender!string, int));
-    static assert(!isOutputRange!(char[], char));
     static assert(!isOutputRange!(wchar[], wchar));
     static assert( isOutputRange!(dchar[], char));
-    static assert( isOutputRange!(dchar[], wchar));
-    static assert( isOutputRange!(dchar[], dchar));
     static assert( isOutputRange!(dchar[], string));
     static assert( isOutputRange!(dchar[], wstring));
     static assert( isOutputRange!(dchar[], dstring));
@@ -1119,7 +1135,7 @@ template isForwardRange(R)
     enum bool isForwardRange = isInputRange!R && is(typeof(
     (inout int = 0)
     {
-        R r1 = void;
+        R r1 = R.init;
         static assert (is(typeof(r1.save) == R));
     }));
 }
@@ -1159,7 +1175,7 @@ template isBidirectionalRange(R)
     enum bool isBidirectionalRange = isForwardRange!R && is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
         r.popBack();
         auto t = r.back;
         auto w = r.front;
@@ -1242,7 +1258,7 @@ template isRandomAccessRange(R)
     {
         static assert(isBidirectionalRange!R ||
                       isForwardRange!R && isInfinite!R);
-        R r = void;
+        R r = R.init;
         auto e = r[1];
         static assert(is(typeof(e) == typeof(r.front)));
         static assert(!isNarrowString!R);
@@ -1285,7 +1301,7 @@ unittest
         void popBack();
         ref int opIndex(uint);
         @property size_t length();
-        alias length opDollar;
+        alias opDollar = length;
         //int opSlice(uint, uint);
     }
     static assert(!isRandomAccessRange!(A));
@@ -1303,8 +1319,6 @@ unittest
     {
         @disable this();
 
-        @disable static @property R init();
-
         @property bool empty() const { return false; }
         @property int front() const { return 0; }
         void popFront() {}
@@ -1316,7 +1330,7 @@ unittest
 
         int opIndex(size_t n) const { return 0; }
         @property size_t length() const { return 0; }
-        alias length opDollar;
+        alias opDollar = length;
 
         void put(int e){  }
     }
@@ -1339,23 +1353,24 @@ template hasMobileElements(R)
     enum bool hasMobileElements = is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
         return moveFront(r);
     }))
     && (!isBidirectionalRange!R || is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
         return moveBack(r);
     })))
     && (!isRandomAccessRange!R || is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
         return moveAt(r, 0);
     })));
 }
 
+///
 unittest
 {
     static struct HasPostblit
@@ -1381,31 +1396,35 @@ $(D void).
 template ElementType(R)
 {
     static if (is(typeof(R.init.front.init) T))
-        alias T ElementType;
+        alias ElementType = T;
     else
-        alias void ElementType;
+        alias ElementType = void;
 }
 
 ///
 unittest
 {
     // Standard arrays: returns the type of the elements of the array
-    static assert(is(ElementType!(byte[]) == byte));
     static assert(is(ElementType!(int[]) == int));
 
     // Accessing .front retrieves the decoded dchar
     static assert(is(ElementType!(char[])  == dchar)); // rvalue
-    static assert(is(ElementType!(wchar[]) == dchar)); // rvalue
     static assert(is(ElementType!(dchar[]) == dchar)); // lvalue
 
     // Ditto
     static assert(is(ElementType!(string) == dchar));
-    static assert(is(ElementType!(wstring) == dchar));
     static assert(is(ElementType!(dstring) == immutable(dchar)));
 
     // For ranges it gets the type of .front.
     auto range = iota(0, 10);
     static assert(is(ElementType!(typeof(range)) == int));
+}
+
+unittest
+{
+    static assert(is(ElementType!(byte[]) == byte));
+    static assert(is(ElementType!(wchar[]) == dchar)); // rvalue
+    static assert(is(ElementType!(wstring) == dchar));
 }
 
 unittest
@@ -1460,10 +1479,10 @@ $(D ElementType).
  */
 template ElementEncodingType(R)
 {
-    static if (isNarrowString!R)
-        alias typeof(*lvalueOf!R.ptr) ElementEncodingType;
+    static if (is(StringTypeOf!R) && is(R : E[], E))
+        alias ElementEncodingType = E;
     else
-        alias ElementType!R ElementEncodingType;
+        alias ElementEncodingType = ElementType!R;
 }
 
 ///
@@ -1471,19 +1490,22 @@ unittest
 {
     // internally the range stores the encoded type
     static assert(is(ElementEncodingType!(char[])  == char));
-    static assert(is(ElementEncodingType!(wchar[]) == wchar));
-    static assert(is(ElementEncodingType!(dchar[]) == dchar));
 
-    // ditto
-    static assert(is(ElementEncodingType!(string)  == immutable(char)));
     static assert(is(ElementEncodingType!(wstring) == immutable(wchar)));
-    static assert(is(ElementEncodingType!(dstring) == immutable(dchar)));
 
     static assert(is(ElementEncodingType!(byte[]) == byte));
-    static assert(is(ElementEncodingType!(int[])  == int));
 
     auto range = iota(0, 10);
     static assert(is(ElementEncodingType!(typeof(range)) == int));
+}
+
+unittest
+{
+    static assert(is(ElementEncodingType!(wchar[]) == wchar));
+    static assert(is(ElementEncodingType!(dchar[]) == dchar));
+    static assert(is(ElementEncodingType!(string)  == immutable(char)));
+    static assert(is(ElementEncodingType!(dstring) == immutable(dchar)));
+    static assert(is(ElementEncodingType!(int[])  == int));
 }
 
 unittest
@@ -1528,18 +1550,18 @@ template hasSwappableElements(R)
     enum bool hasSwappableElements = isForwardRange!R && is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
         swap(r.front, r.front);             // can swap elements of the range
     }));
 }
 
+///
 unittest
 {
     static assert(!hasSwappableElements!(const int[]));
     static assert(!hasSwappableElements!(const(int)[]));
     static assert(!hasSwappableElements!(inout(int)[]));
     static assert( hasSwappableElements!(int[]));
-  //static assert( hasSwappableElements!(char[]));
 }
 
 /**
@@ -1559,13 +1581,14 @@ template hasAssignableElements(R)
     enum bool hasAssignableElements = isForwardRange!R && is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
         static assert(isForwardRange!(R)); // range is forward
         auto e = r.front;
         r.front = e;                       // can assign elements of the range
     }));
 }
 
+///
 unittest
 {
     static assert(!hasAssignableElements!(const int[]));
@@ -1584,11 +1607,12 @@ template hasLvalueElements(R)
     (inout int = 0)
     {
         void checkRef(ref ElementType!R stuff) {}
-        R r = void;
+        R r = R.init;
         static assert(is(typeof(checkRef(r.front))));
     }));
 }
 
+///
 unittest
 {
     static assert( hasLvalueElements!(int[]));
@@ -1599,7 +1623,10 @@ unittest
 
     auto c = chain([1, 2, 3], [4, 5, 6]);
     static assert( hasLvalueElements!(typeof(c)));
+}
 
+unittest
+{
     // bugfix 6336
     struct S { immutable int value; }
     static assert( isInputRange!(S[]));
@@ -1626,11 +1653,12 @@ template hasLength(R)
     enum bool hasLength = !isNarrowString!R && is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
         static assert(is(typeof(r.length) : ulong));
     }));
 }
 
+///
 unittest
 {
     static assert(!hasLength!(char[]));
@@ -1668,6 +1696,7 @@ template isInfinite(R)
         enum bool isInfinite = false;
 }
 
+///
 unittest
 {
     static assert(!isInfinite!(int[]));
@@ -1726,7 +1755,7 @@ template hasSlicing(R)
     enum bool hasSlicing = isForwardRange!R && !isNarrowString!R && is(typeof(
     (inout int = 0)
     {
-        R r = void;
+        R r = R.init;
 
         static if(isInfinite!R)
             typeof(take(r, 1)) s = r[1 .. 2];
@@ -1757,6 +1786,7 @@ template hasSlicing(R)
     }));
 }
 
+///
 unittest
 {
     static assert( hasSlicing!(int[]));
@@ -1878,14 +1908,6 @@ unittest
 Iterates a bidirectional range backwards. The original range can be
 accessed by using the $(D source) property. Applying retro twice to
 the same range yields the original range.
-
-Example:
-----
-int[] a = [ 1, 2, 3, 4, 5 ];
-assert(equal(retro(a), [ 5, 4, 3, 2, 1 ][]));
-assert(retro(a).source is a);
-assert(retro(retro(a)) is a);
-----
  */
 auto retro(Range)(Range r)
 if (isBidirectionalRange!(Unqual!Range))
@@ -1899,14 +1921,14 @@ if (isBidirectionalRange!(Unqual!Range))
     {
         static struct Result()
         {
-            private alias Unqual!Range R;
+            private alias R = Unqual!Range;
 
             // User code can get and set source, too
             R source;
 
             static if (hasLength!R)
             {
-                private alias CommonType!(size_t, typeof(source.length)) IndexType;
+                private alias IndexType = CommonType!(size_t, typeof(source.length));
 
                 IndexType retroIndex(IndexType n)
                 {
@@ -1915,7 +1937,7 @@ if (isBidirectionalRange!(Unqual!Range))
             }
 
         public:
-            alias R Source;
+            alias Source = R;
 
             @property bool empty() { return source.empty; }
             @property auto save()
@@ -1990,12 +2012,22 @@ if (isBidirectionalRange!(Unqual!Range))
                     return source.length;
                 }
 
-                alias length opDollar;
+                alias opDollar = length;
             }
         }
 
         return Result!()(r);
     }
+}
+
+
+///
+unittest
+{
+    int[] a = [ 1, 2, 3, 4, 5 ];
+    assert(equal(retro(a), [ 5, 4, 3, 2, 1 ][]));
+    assert(retro(a).source is a);
+    assert(retro(retro(a)) is a);
 }
 
 unittest
@@ -2019,10 +2051,12 @@ unittest
     test([ 1, 2, 3, 4, 5 ], [ 5, 4, 3, 2, 1 ]);
     test([ 1, 2, 3, 4, 5, 6 ], [ 6, 5, 4, 3, 2, 1 ]);
 
-   // static assert(is(Retro!(immutable int[])));
    immutable foo = [1,2,3].idup;
-   retro(foo);
+   auto r = retro(foo);
+}
 
+unittest
+{
     foreach(DummyType; AllDummyRanges) {
         static if (!isBidirectionalRange!DummyType) {
             static assert(!__traits(compiles, Retro!DummyType));
@@ -2112,7 +2146,7 @@ if (isInputRange!(Unqual!Range))
     {
         static struct Result
         {
-            private alias Unqual!Range R;
+            private alias R = Unqual!Range;
             public R source;
             private size_t _n;
 
@@ -2296,7 +2330,7 @@ if (isInputRange!(Unqual!Range))
                     return (source.length + _n - 1) / _n;
                 }
 
-                alias length opDollar;
+                alias opDollar = length;
             }
         }
         return Result(r, n);
@@ -2470,8 +2504,8 @@ if (Ranges.length > 0 &&
         static struct Result
         {
         private:
-            alias staticMap!(Unqual, Ranges) R;
-            alias CommonType!(staticMap!(.ElementType, R)) RvalueElementType;
+            alias R = staticMap!(Unqual, Ranges);
+            alias RvalueElementType = CommonType!(staticMap!(.ElementType, R));
             private template sameET(A)
             {
                 enum sameET = is(.ElementType!A == RvalueElementType);
@@ -2486,7 +2520,7 @@ if (Ranges.length > 0 &&
             }
             else
             {
-                alias RvalueElementType ElementType;
+                alias ElementType = RvalueElementType;
             }
             static if (allSameType && allSatisfy!(hasLvalueElements, R))
             {
@@ -2661,7 +2695,7 @@ if (Ranges.length > 0 &&
                     return result;
                 }
 
-                alias length opDollar;
+                alias opDollar = length;
             }
 
             static if (allSatisfy!(isRandomAccessRange, R))
@@ -2881,13 +2915,6 @@ continues again from $(D r1). For example, if two ranges are involved,
 it alternately yields elements off the two ranges. $(D roundRobin)
 stops after it has consumed all ranges (skipping over the ones that
 finish early).
-
-Example:
-----
-int[] a = [ 1, 2, 3, 4];
-int[] b = [ 10, 20 ];
-assert(equal(roundRobin(a, b), [1, 10, 2, 20, 3, 4]));
-----
  */
 auto roundRobin(Rs...)(Rs rs)
 if (Rs.length > 1 && allSatisfy!(isInputRange, staticMap!(Unqual, Rs)))
@@ -2941,15 +2968,15 @@ if (Rs.length > 1 && allSatisfy!(isInputRange, staticMap!(Unqual, Rs)))
             static string makeSwitchIncrementCounter()
             {
                 string result =
-                    "auto next = _current == Rs.length - 1 ? 0 : _current + 1;\n"
+                    "auto next = _current == Rs.length - 1 ? 0 : _current + 1;\n"~
                     "switch (next) {\n";
                 foreach (i, R; Rs)
                 {
                     auto si = to!string(i);
                     auto si_1 = to!string(i ? i - 1 : Rs.length - 1);
-                    result ~= "case "~si~": "
-                        "if (!source["~si~"].empty) { _current = "~si~"; return; }\n"
-                        "if ("~si~" == _current) { _current = _current.max; return; }\n"
+                    result ~= "case "~si~": "~
+                        "if (!source["~si~"].empty) { _current = "~si~"; return; }\n"~
+                        "if ("~si~" == _current) { _current = _current.max; return; }\n"~
                         "goto case "~to!string((i + 1) % Rs.length)~";\n";
                 }
                 return result ~ "default: assert(0); }";
@@ -2982,13 +3009,14 @@ if (Rs.length > 1 && allSatisfy!(isInputRange, staticMap!(Unqual, Rs)))
                 return result;
             }
 
-            alias length opDollar;
+            alias opDollar = length;
         }
     }
 
     return Result(rs, 0);
 }
 
+///
 unittest
 {
     int[] a = [ 1, 2, 3 ];
@@ -3002,14 +3030,6 @@ Iterates a random-access range starting from a given point and
 progressively extending left and right from that point. If no initial
 point is given, iteration starts from the middle of the
 range. Iteration spans the entire range.
-
-Example:
-----
-int[] a = [ 1, 2, 3, 4, 5 ];
-assert(equal(radial(a), [ 3, 4, 2, 5, 1 ]));
-a = [ 1, 2, 3, 4 ];
-assert(equal(radial(a), [ 2, 3, 1, 4 ]));
-----
  */
 auto radial(Range, I)(Range r, I startingIndex)
 if (isRandomAccessRange!(Unqual!Range) && hasLength!(Unqual!Range) && isIntegral!I)
@@ -3023,6 +3043,15 @@ auto radial(R)(R r)
 if (isRandomAccessRange!(Unqual!R) && hasLength!(Unqual!R))
 {
     return .radial(r, (r.length - !r.empty) / 2);
+}
+
+///
+unittest
+{
+    int[] a = [ 1, 2, 3, 4, 5 ];
+    assert(equal(radial(a), [ 3, 4, 2, 5, 1 ]));
+    a = [ 1, 2, 3, 4 ];
+    assert(equal(radial(a), [ 2, 3, 1, 4 ]));
 }
 
 unittest
@@ -3073,15 +3102,6 @@ unittest
 Lazily takes only up to $(D n) elements of a range. This is
 particularly useful when using with infinite ranges. If the range
 offers random access and $(D length), $(D Take) offers them as well.
-
-Example:
-----
-int[] arr1 = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
-auto s = take(arr1, 5);
-assert(s.length == 5);
-assert(s[4] == 5);
-assert(equal(s, [ 1, 2, 3, 4, 5 ][]));
-----
  */
 struct Take(Range)
 if (isInputRange!(Unqual!Range) &&
@@ -3089,14 +3109,14 @@ if (isInputRange!(Unqual!Range) &&
     //take for slicing infinite ranges.
     !((!isInfinite!(Unqual!Range) && hasSlicing!(Unqual!Range)) || is(Range T == Take!T)))
 {
-    private alias Unqual!Range R;
+    private alias R = Unqual!Range;
 
     // User accessible in read and write
     public R source;
 
     private size_t _maxAvailable;
 
-    alias R Source;
+    alias Source = R;
 
     @property bool empty()
     {
@@ -3154,7 +3174,18 @@ if (isInputRange!(Unqual!Range) &&
             return _maxAvailable;
         }
 
-        alias length opDollar;
+        alias opDollar = length;
+
+        //Note: Due to Take/hasSlicing circular dependency,
+        //This needs to be a restrained template.
+        auto opSlice()(size_t i, size_t j)
+        if (hasSlicing!R)
+        {
+            assert(i <= j, "Invalid slice bounds");
+            assert(j - i <= length, "Attempting to slice past the end of a "
+                ~ Take.stringof);
+            return source[i .. j - i];
+        }
     }
     else static if (hasLength!R)
     {
@@ -3163,7 +3194,7 @@ if (isInputRange!(Unqual!Range) &&
             return min(_maxAvailable, source.length);
         }
 
-        alias length opDollar;
+        alias opDollar = length;
     }
 
     static if (isRandomAccessRange!R)
@@ -3245,7 +3276,7 @@ template Take(R)
 if (isInputRange!(Unqual!R) &&
     ((!isInfinite!(Unqual!R) && hasSlicing!(Unqual!R)) || is(R T == Take!T)))
 {
-    alias R Take;
+    alias Take = R;
 }
 
 // take for finite ranges with slicing
@@ -3256,6 +3287,16 @@ if (isInputRange!(Unqual!R) && !isInfinite!(Unqual!R) && hasSlicing!(Unqual!R))
     // @@@BUG@@@
     //return input[0 .. min(n, $)];
     return input[0 .. min(n, input.length)];
+}
+
+///
+unittest
+{
+    int[] arr1 = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+    auto s = take(arr1, 5);
+    assert(s.length == 5);
+    assert(s[4] == 5);
+    assert(equal(s, [ 1, 2, 3, 4, 5 ][]));
 }
 
 // take(take(r, n1), n2)
@@ -3300,7 +3341,7 @@ unittest
     foreach(DummyType; AllDummyRanges) {
         DummyType dummy;
         auto t = take(dummy, 5);
-        alias typeof(t) T;
+        alias T = typeof(t);
 
         static if (isRandomAccessRange!DummyType) {
             static assert(isRandomAccessRange!T);
@@ -3357,6 +3398,13 @@ unittest
     static assert(isBidirectionalRange!TR2);
 }
 
+unittest //12731
+{
+    auto a = repeat(1);
+    auto s = a[1 .. 5];
+    s = s[1 .. 3];
+}
+
 /**
 Similar to $(LREF take), but assumes that $(D range) has at least $(D
 n) elements. Consequently, the result of $(D takeExactly(range, n))
@@ -3402,7 +3450,7 @@ if (isInputRange!R)
             }
             void popFront() { _input.popFront(); --_n; }
             @property size_t length() const { return _n; }
-            alias length opDollar;
+            alias opDollar = length;
 
             static if (isForwardRange!R)
                 @property auto save()
@@ -3437,6 +3485,7 @@ if (isInputRange!R)
     }
 }
 
+///
 unittest
 {
     auto a = [ 1, 2, 3, 4, 5 ];
@@ -3447,7 +3496,12 @@ unittest
     assert(b.length == 3);
     assert(b.front == 1);
     assert(b.back == 3);
+}
 
+unittest
+{
+    auto a = [ 1, 2, 3, 4, 5 ];
+    auto b = takeExactly(a, 3);
     auto c = takeExactly(b, 2);
 
     auto d = filter!"a > 0"(a);
@@ -3458,7 +3512,11 @@ unittest
     assert(e.front == 1);
 
     assert(equal(takeExactly(e, 3), [1, 2, 3]));
+}
 
+unittest
+{
+    auto a = [ 1, 2, 3, 4, 5 ];
     //Test that take and takeExactly are the same for ranges which define length
     //but aren't sliceable.
     struct L
@@ -3520,21 +3578,6 @@ Returns a range with at most one element; for example, $(D
 takeOne([42, 43, 44])) returns a range consisting of the integer $(D
 42). Calling $(D popFront()) off that range renders it empty.
 
-----
-auto s = takeOne([42, 43, 44]);
-static assert(isRandomAccessRange!(typeof(s)));
-assert(s.length == 1);
-assert(!s.empty);
-assert(s.front == 42);
-s.front() = 43;
-assert(s.front == 43);
-assert(s.back == 43);
-assert(s[0] == 43);
-s.popFront();
-assert(s.length == 0);
-assert(s.empty);
-----
-
 In effect $(D takeOne(r)) is somewhat equivalent to $(D take(r, 1)) but in
 certain interfaces it is important to know statically that the range may only
 have at most one element.
@@ -3562,7 +3605,7 @@ auto takeOne(R)(R source) if (isInputRange!R)
             @property auto save() { return Result(_source.save, empty); }
             @property auto ref back() { assert(!empty); return _source.front; }
             @property size_t length() const { return !empty; }
-            alias length opDollar;
+            alias opDollar = length;
             auto ref opIndex(size_t n) { assert(n < length); return _source.front; }
             auto opSlice(size_t m, size_t n)
             {
@@ -3577,6 +3620,7 @@ auto takeOne(R)(R source) if (isInputRange!R)
     }
 }
 
+///
 unittest
 {
     auto s = takeOne([42, 43, 44]);
@@ -3597,13 +3641,6 @@ unittest
     Returns an empty range which is statically known to be empty and is
     guaranteed to have $(D length) and be random access regardless of $(D R)'s
     capabilities.
-
-    Examples:
---------------------
-auto range = takeNone!(int[])();
-assert(range.length == 0);
-assert(range.empty);
---------------------
   +/
 auto takeNone(R)()
     if(isInputRange!R)
@@ -3611,12 +3648,16 @@ auto takeNone(R)()
     return typeof(takeOne(R.init)).init;
 }
 
+///
 unittest
 {
     auto range = takeNone!(int[])();
     assert(range.length == 0);
     assert(range.empty);
+}
 
+unittest
+{
     enum ctfe = takeNone!(int[])();
     static assert(ctfe.length == 0);
     static assert(ctfe.empty);
@@ -3627,13 +3668,6 @@ unittest
     Creates an empty range from the given range in $(BIGOH 1). If it can, it
     will return the same range type. If not, it will return
     $(D takeExactly(range, 0)).
-
-    Examples:
---------------------
-assert(takeNone([42, 27, 19]).empty);
-assert(takeNone("dlang.org").empty);
-assert(takeNone(filter!"true"([42, 27, 19])).empty);
---------------------
   +/
 auto takeNone(R)(R range)
     if(isInputRange!R)
@@ -3659,7 +3693,7 @@ auto takeNone(R)(R range)
     return retval;
 }
 
-//Verify Examples.
+///
 unittest
 {
     assert(takeNone([42, 27, 19]).empty);
@@ -3669,20 +3703,24 @@ unittest
 
 unittest
 {
-    string genInput()
+    struct Dummy
     {
-        return "@property bool empty() { return _arr.empty; }" ~
-                "@property auto front() { return _arr.front; }" ~
-                "void popFront() { _arr.popFront(); }" ~
-                "static assert(isInputRange!(typeof(this)));";
+        mixin template genInput()
+        {
+            @property bool empty() { return _arr.empty; }
+            @property auto front() { return _arr.front; }
+            void popFront() { _arr.popFront(); }
+            static assert(isInputRange!(typeof(this)));
+        }
     }
+    alias genInput = Dummy.genInput;
 
     static struct NormalStruct
     {
         //Disabled to make sure that the takeExactly version is used.
         @disable this();
         this(int[] arr) { _arr = arr; }
-        mixin(genInput());
+        mixin genInput;
         int[] _arr;
     }
 
@@ -3690,7 +3728,7 @@ unittest
     {
         @disable this();
         this(int[] arr) { _arr = arr; }
-        mixin(genInput());
+        mixin genInput;
         @property auto save() { return this; }
         auto opSlice(size_t i, size_t j) { return typeof(this)(_arr[i .. j]); }
         @property size_t length() { return _arr.length; }
@@ -3699,7 +3737,7 @@ unittest
 
     static struct InitStruct
     {
-        mixin(genInput());
+        mixin genInput;
         int[] _arr;
     }
 
@@ -3707,7 +3745,7 @@ unittest
     {
         this(int[] arr) { _arr = arr; }
         @disable this();
-        mixin(genInput());
+        mixin genInput;
         auto takeNone() { return typeof(this)(null); }
         int[] _arr;
     }
@@ -3715,14 +3753,14 @@ unittest
     static class NormalClass
     {
         this(int[] arr) {_arr = arr;}
-        mixin(genInput());
+        mixin genInput;
         int[] _arr;
     }
 
     static class SliceClass
     {
         this(int[] arr) { _arr = arr; }
-        mixin(genInput());
+        mixin genInput;
         @property auto save() { return new typeof(this)(_arr); }
         auto opSlice(size_t i, size_t j) { return new typeof(this)(_arr[i .. j]); }
         @property size_t length() { return _arr.length; }
@@ -3732,37 +3770,33 @@ unittest
     static class TakeNoneClass
     {
         this(int[] arr) { _arr = arr; }
-        mixin(genInput());
+        mixin genInput;
         auto takeNone() { return new typeof(this)(null); }
         int[] _arr;
     }
 
     import std.string : format;
 
-    foreach(range; TypeTuple!(`[1, 2, 3, 4, 5]`,
-                              `"hello world"`,
-                              `"hello world"w`,
-                              `"hello world"d`,
-                              `SliceStruct([1, 2, 3])`,
+    foreach(range; TypeTuple!([1, 2, 3, 4, 5],
+                              "hello world",
+                              "hello world"w,
+                              "hello world"d,
+                              SliceStruct([1, 2, 3]),
                               //@@@BUG@@@ 8339 forces this to be takeExactly
-                              //`InitStruct([1, 2, 3])`,
-                              `TakeNoneStruct([1, 2, 3])`))
+                              //`InitStruct([1, 2, 3]),
+                              TakeNoneStruct([1, 2, 3])))
     {
-        mixin(format("enum a = takeNone(%s).empty;", range));
-        assert(a, typeof(range).stringof);
-        mixin(format("assert(takeNone(%s).empty);", range));
-        mixin(format("static assert(is(typeof(%s) == typeof(takeNone(%s))), typeof(%s).stringof);",
-                     range, range, range));
+        static assert(takeNone(range).empty, typeof(range).stringof);
+        assert(takeNone(range).empty);
+        static assert(is(typeof(range) == typeof(takeNone(range))), typeof(range).stringof);
     }
 
-    foreach(range; TypeTuple!(`NormalStruct([1, 2, 3])`,
-                              `InitStruct([1, 2, 3])`))
+    foreach(range; TypeTuple!(NormalStruct([1, 2, 3]),
+                              InitStruct([1, 2, 3])))
     {
-        mixin(format("enum a = takeNone(%s).empty;", range));
-        assert(a, typeof(range).stringof);
-        mixin(format("assert(takeNone(%s).empty);", range));
-        mixin(format("static assert(is(typeof(takeExactly(%s, 0)) == typeof(takeNone(%s))), typeof(%s).stringof);",
-                     range, range, range));
+        static assert(takeNone(range).empty, typeof(range).stringof);
+        assert(takeNone(range).empty);
+        static assert(is(typeof(takeExactly(range, 0)) == typeof(takeNone(range))), typeof(range).stringof);
     }
 
     //Don't work in CTFE.
@@ -3797,34 +3831,6 @@ unittest
     Note: $(D drop) and $(D dropBack) will only pop $(I up to)
     $(D n) elements but will stop if the range is empty first.
 
-    Examples:
---------------------
-assert([0, 2, 1, 5, 0, 3].drop(3) == [5, 0, 3]);
-assert("hello world".drop(6) == "world");
-assert("hello world".drop(50).empty);
-assert("hello world".take(6).drop(3).equal("lo "));
---------------------
-
---------------------
-//Remove all but the first two elements
-auto a = DList!int(0, 1, 9, 9, 9);
-a.remove(a[].drop(2));
-assert(a[].equal(a[].take(2)));
---------------------
-
---------------------
-assert([0, 2, 1, 5, 0, 3].dropBack(3) == [0, 2, 1]);
-assert("hello world".dropBack(6) == "hello");
-assert("hello world".dropBack(50).empty);
-assert("hello world".drop(4).dropBack(4).equal("o w"));
---------------------
-
---------------------
-//insert before the last two elements
-auto a = DList!int(0, 1, 2, 5, 6);
-a.insertAfter(a[].dropBack(2), [3, 4]);
-assert(a[].equal(iota(0, 7)));
---------------------
   +/
 R drop(R)(R range, size_t n)
     if(isInputRange!R)
@@ -3840,7 +3846,7 @@ R dropBack(R)(R range, size_t n)
     return range;
 }
 
-//Verify Examples
+///
 unittest
 {
     assert([0, 2, 1, 5, 0, 3].drop(3) == [5, 0, 3]);
@@ -3848,6 +3854,15 @@ unittest
     assert("hello world".drop(50).empty);
     assert("hello world".take(6).drop(3).equal("lo "));
 }
+
+unittest
+{
+    assert([0, 2, 1, 5, 0, 3].dropBack(3) == [0, 2, 1]);
+    assert("hello world".dropBack(6) == "hello");
+    assert("hello world".dropBack(50).empty);
+    assert("hello world".drop(4).dropBack(4).equal("o w"));
+}
+
 unittest
 {
     import std.container : DList;
@@ -3857,18 +3872,13 @@ unittest
     a.remove(a[].drop(2));
     assert(a[].equal(a[].take(2)));
 }
+
 unittest
 {
     assert(drop("", 5).empty);
     assert(equal(drop(filter!"true"([0, 2, 1, 5, 0, 3]), 3), [5, 0, 3]));
 }
-unittest
-{
-    assert([0, 2, 1, 5, 0, 3].dropBack(3) == [0, 2, 1]);
-    assert("hello world".dropBack(6) == "hello");
-    assert("hello world".dropBack(50).empty);
-    assert("hello world".drop(4).dropBack(4).equal("o w"));
-}
+
 unittest
 {
     import std.container : DList;
@@ -3906,22 +3916,20 @@ R dropBackExactly(R)(R range, size_t n)
     return range;
 }
 
+///
 unittest
 {
-    //RA+slicing
     auto a = [1, 2, 3];
-    assert(a.dropExactly(1) == [2, 3]);
-    assert(a.dropBackExactly(1) == [1, 2]);
+    assert(a.dropExactly(2) == [3]);
+    assert(a.dropBackExactly(2) == [1]);
 
-    //UTF string
     string s = "日本語";
-    assert(s.dropExactly(1) == "本語");
-    assert(s.dropBackExactly(1) == "日本");
+    assert(s.dropExactly(2) == "語");
+    assert(s.dropBackExactly(2) == "日");
 
-    //Bidirectional
     auto bd = filterBidirectional!"true"([1, 2, 3]);
-    assert(bd.dropExactly(1).equal([2, 3]));
-    assert(bd.dropBackExactly(1).equal([1, 2]));
+    assert(bd.dropExactly(2).equal([3]));
+    assert(bd.dropBackExactly(2).equal([1]));
 }
 
 /++
@@ -3933,12 +3941,6 @@ unittest
 
     $(D dropBackOne) provides the same functionality but instead calls
     $(D range.popBack()).
-
-    Example:
-----
-auto dl = DList!int(9, 1, 2, 3, 9);
-assert(dl[].dropOne().dropBackOne().equal([1, 2, 3]));
-----
 +/
 R dropOne(R)(R range)
     if (isInputRange!R)
@@ -3954,26 +3956,22 @@ R dropBackOne(R)(R range)
     return range;
 }
 
+///
 unittest
 {
     import std.container : DList;
 
     auto dl = DList!int(9, 1, 2, 3, 9);
     assert(dl[].dropOne().dropBackOne().equal([1, 2, 3]));
-}
-unittest
-{
-    //RA+slicing
+
     auto a = [1, 2, 3];
     assert(a.dropOne() == [2, 3]);
     assert(a.dropBackOne() == [1, 2]);
 
-    //UTF string
     string s = "日本語";
     assert(s.dropOne() == "本語");
     assert(s.dropBackOne() == "日本");
 
-    //Bidirectional
     auto bd = filterBidirectional!"true"([1, 2, 3]);
     assert(bd.dropOne().equal([2, 3]));
     assert(bd.dropBackOne().equal([1, 2]));
@@ -3992,23 +3990,6 @@ unittest
 
     $(D popBackN) will behave the same but instead removes elements from
     the back of the (bidirectional) range instead of the front.
-
-    Example:
-----
-int[] a = [ 1, 2, 3, 4, 5 ];
-a.popFrontN(2);
-assert(a == [ 3, 4, 5 ]);
-a.popFrontN(7);
-assert(a == [ ]);
-----
-
-----
-int[] a = [ 1, 2, 3, 4, 5 ];
-a.popBackN(2);
-assert(a == [ 1, 2, 3 ]);
-a.popBackN(7);
-assert(a == [ ]);
-----
 */
 size_t popFrontN(Range)(ref Range r, size_t n)
     if (isInputRange!Range)
@@ -4076,6 +4057,7 @@ size_t popBackN(Range)(ref Range r, size_t n)
     return n;
 }
 
+///
 unittest
 {
     int[] a = [ 1, 2, 3, 4, 5 ];
@@ -4084,6 +4066,8 @@ unittest
     a.popFrontN(7);
     assert(a == [ ]);
 }
+
+///
 unittest
 {
     auto LL = iota(1L, 7L);
@@ -4091,6 +4075,8 @@ unittest
     assert(equal(LL, [3L, 4L, 5L, 6L]));
     assert(r == 2);
 }
+
+///
 unittest
 {
     int[] a = [ 1, 2, 3, 4, 5 ];
@@ -4099,6 +4085,8 @@ unittest
     a.popBackN(7);
     assert(a == [ ]);
 }
+
+///
 unittest
 {
     auto LL = iota(1L, 7L);
@@ -4155,23 +4143,21 @@ void popBackExactly(Range)(ref Range r, size_t n)
             r.popBack();
 }
 
+///
 unittest
 {
-    //RA+slicing
     auto a = [1, 2, 3];
     a.popFrontExactly(1);
     assert(a == [2, 3]);
     a.popBackExactly(1);
     assert(a == [2]);
 
-    //UTF string
     string s = "日本語";
     s.popFrontExactly(1);
     assert(s == "本語");
     s.popBackExactly(1);
     assert(s == "本");
 
-    //Bidirectional
     auto bd = filterBidirectional!"true"([1, 2, 3]);
     bd.popFrontExactly(1);
     assert(bd.equal([2, 3]));
@@ -4186,7 +4172,20 @@ Models an infinite bidirectional and random access range, with slicing.
 */
 struct Repeat(T)
 {
-    private T _value;
+private:
+    //Store a non-qualified T when possible: This is to make Repeat assignable
+    static if ((is(T == class) || is(T == interface)) && (is(T == const) || is(T == immutable)))
+    {
+        import std.typecons;
+        alias UT = Rebindable!T;
+    }
+    else static if (is(T : Unqual!T) && is(Unqual!T : T))
+        alias UT = Unqual!T;
+    else
+        alias UT = T;
+    UT _value;
+
+public:
     @property inout(T) front() inout { return _value; }
     @property inout(T) back() inout { return _value; }
     enum bool empty = false;
@@ -4250,6 +4249,21 @@ unittest
     assert(equal(5.repeat(4), 5.repeat().take(4)));
 }
 
+unittest //12007
+{
+    static class C{}
+    Repeat!(immutable int) ri;
+    ri = ri.save;
+    Repeat!(immutable C) rc;
+    rc = rc.save;
+
+    import std.algorithm;
+    immutable int[] A = [1,2,3];
+    immutable int[] B = [4,5,6];
+
+    auto AB = cartesianProduct(A,B);
+}
+
 /**
 Repeats the given forward range ad infinitum. If the original range is
 infinite (fact that would make $(D Cycle) the identity application),
@@ -4258,11 +4272,6 @@ itself. If the original range has random access, $(D Cycle) offers
 random access and also offers a constructor taking an initial position
 $(D index). $(D Cycle) works with static arrays in addition to ranges,
 mostly for performance reasons.
-
-Example:
-----
-assert(equal(take(cycle([1, 2][]), 5), [ 1, 2, 1, 2, 1 ][]));
-----
 
 Tip: This is a great way to implement simple circular buffers.
 */
@@ -4277,20 +4286,19 @@ struct Cycle(R)
         this(R input, size_t index = 0)
         {
             _original = input;
-            _index = index;
+            _index = index % _original.length;
         }
 
         @property auto ref front()
         {
-            return _original[_index % _original.length];
+            return _original[_index];
         }
 
-        static if (is(typeof((cast(const R)_original)[0])) &&
-                   is(typeof((cast(const R)_original).length)))
+        static if (is(typeof((cast(const R)_original)[_index])))
         {
             @property auto ref front() const
             {
-                return _original[_index % _original.length];
+                return _original[_index];
             }
         }
 
@@ -4298,7 +4306,7 @@ struct Cycle(R)
         {
             @property auto front(ElementType!R val)
             {
-                _original[_index % _original.length] = val;
+                _original[_index] = val;
             }
         }
 
@@ -4307,6 +4315,8 @@ struct Cycle(R)
         void popFront()
         {
             ++_index;
+            if (_index >= _original.length)
+                _index = 0;
         }
 
         auto ref opIndex(size_t n)
@@ -4314,7 +4324,7 @@ struct Cycle(R)
             return _original[(n + _index) % _original.length];
         }
 
-        static if (is(typeof((cast(const R)_original)[0])) &&
+        static if (is(typeof((cast(const R)_original)[_index])) &&
                    is(typeof((cast(const R)_original).length)))
         {
             auto ref opIndex(size_t n) const
@@ -4393,7 +4403,8 @@ struct Cycle(R)
         void popFront()
         {
             _current.popFront();
-            if (_current.empty) _current = _original;
+            if (_current.empty)
+                _current = _original.save;
         }
 
         @property Cycle save()
@@ -4424,12 +4435,12 @@ nothrow:
     this(ref R input, size_t index = 0)
     {
         _ptr = input.ptr;
-        _index = index;
+        _index = index % R.length;
     }
 
     @property ref inout(ElementType) front() inout
     {
-        return _ptr[_index % R.length];
+        return _ptr[_index];
     }
 
     enum bool empty = false;
@@ -4437,6 +4448,8 @@ nothrow:
     void popFront()
     {
         ++_index;
+        if (_index >= R.length)
+            _index = 0;
     }
 
     ref inout(ElementType) opIndex(size_t n) inout
@@ -4465,7 +4478,8 @@ nothrow:
 
     inout(typeof(this)) opSlice(size_t i, DollarToken) inout
     {
-        return Cycle(*cast(R*)_ptr, _index + i);
+        // cast: Issue 12177 workaround
+        return cast(typeof(return))Cycle(*cast(R*)_ptr, _index + i);
     }
 }
 
@@ -4474,6 +4488,12 @@ Cycle!R cycle(R)(R input)
     if (isForwardRange!R && !isInfinite!R)
 {
     return Cycle!R(input);
+}
+
+///
+unittest
+{
+    assert(equal(take(cycle([1, 2][]), 5), [ 1, 2, 1, 2, 1 ][]));
 }
 
 /// Ditto
@@ -4497,7 +4517,6 @@ Cycle!R cycle(R)(ref R input, size_t index = 0)
 
 unittest
 {
-    assert(equal(take(cycle([1, 2][]), 5), [ 1, 2, 1, 2, 1 ][]));
     static assert(isForwardRange!(Cycle!(uint[])));
 
     // Make sure ref is getting propagated properly.
@@ -4589,7 +4608,49 @@ unittest // For infinite ranges
     assert (c == i);
 }
 
-private template lengthType(R) { alias typeof((inout int = 0){ R r = void; return r.length; }()) lengthType; }
+unittest
+{
+    int[5] arr = [0, 1, 2, 3, 4];
+    auto cleS = cycle(arr);   //Static
+    auto cleD = cycle(arr[]); //Dynamic
+    assert(equal(cleS[5 .. 10], arr[]));
+    assert(equal(cleD[5 .. 10], arr[]));
+
+    //n is a multiple of 5 worth about 3/4 of size_t.max
+    auto n = size_t.max/4 + size_t.max/2;
+    n -= n % 5;
+
+    //Test index overflow
+    foreach (_ ; 0 .. 10)
+    {
+        cleS = cleS[n .. $];
+        cleD = cleD[n .. $];
+        assert(equal(cleS[5 .. 10], arr[]));
+        assert(equal(cleD[5 .. 10], arr[]));
+    }
+}
+
+unittest
+{
+    int[1] arr = [0];
+    auto cleS = cycle(arr);
+    cleS = cleS[10 .. $];
+    assert(equal(cleS[5 .. 10], 0.repeat(5)));
+    assert(cleS.front == 0);
+}
+
+unittest //10845
+{
+    auto a = inputRangeObject(iota(3).filter!"true");
+    assert(equal(cycle(a).take(10), [0, 1, 2, 0, 1, 2, 0, 1, 2, 0]));
+}
+
+unittest // 12177
+{
+    auto a = recurrence!q{a[n - 1] ~ a[n - 2]}("1", "0");
+}
+
+private alias lengthType(R) = typeof(R.init.length.init);
 
 /**
    Iterate several ranges in lockstep. The element type is a proxy tuple
@@ -4613,21 +4674,16 @@ private template lengthType(R) { alias typeof((inout int = 0){ R r = void; retur
    Zip) is extremely powerful because it allows manipulating several
    ranges in lockstep. For example, the following code sorts two arrays
    in parallel:
-
-   ----
-   int[] a = [ 1, 2, 3 ];
-   string[] b = [ "a", "b", "c" ];
-   sort!("a[0] > b[0]")(zip(a, b));
-   assert(a == [ 3, 2, 1 ]);
-   assert(b == [ "c", "b", "a" ]);
-   ----
 */
 struct Zip(Ranges...)
     if (Ranges.length && allSatisfy!(isInputRange, Ranges))
 {
+    import std.string : format; //for generic mixins
+    import std.typecons : Tuple;
+
     alias R = Ranges;
     R ranges;
-    alias Tuple!(staticMap!(.ElementType, R)) ElementType;
+    alias ElementType = Tuple!(staticMap!(.ElementType, R));
     StoppingPolicy stoppingPolicy = StoppingPolicy.shortest;
 
 /**
@@ -4636,11 +4692,8 @@ struct Zip(Ranges...)
  */
     this(R rs, StoppingPolicy s = StoppingPolicy.shortest)
     {
+        ranges[] = rs[];
         stoppingPolicy = s;
-        foreach (i, Unused; R)
-        {
-            ranges[i] = rs[i];
-        }
     }
 
 /**
@@ -4688,24 +4741,21 @@ struct Zip(Ranges...)
     }
 
     static if (allSatisfy!(isForwardRange, R))
+    {
         @property Zip save()
         {
-            Zip result = this;
-            foreach (i, Unused; R)
-            {
-                result.ranges[i] = result.ranges[i].save;
-            }
-            return result;
+            //Zip(ranges[0].save, ranges[1].save, ..., stoppingPolicy)
+            return mixin (q{Zip(%(ranges[%s]%|, %), stoppingPolicy)}.format(iota(0, R.length)));
         }
+    }
 
-    private void emplaceIfCan(T)(T* addr)
+    private .ElementType!(R[i]) tryGetInit(size_t i)()
     {
-        import std.conv : emplace;
-
-        static if(__traits(compiles, emplace(addr)))
-            emplace(addr);
-        else
+        alias E = .ElementType!(R[i]);
+        static if (!is(typeof({static E i;})))
             throw new Exception("Range with non-default constructable elements exhausted.");
+        else
+            return E.init;
     }
 
 /**
@@ -4713,29 +4763,16 @@ struct Zip(Ranges...)
 */
     @property ElementType front()
     {
-        import std.conv : emplace;
-
-        ElementType result = void;
-        foreach (i, Unused; R)
-        {
-            auto addr = cast(Unqual!(typeof(result[i]))*) &result[i];
-            if (ranges[i].empty)
-            {
-                emplaceIfCan(addr);
-            }
-            else
-            {
-                emplace(addr, ranges[i].front);
-            }
-        }
-        return result;
+        @property tryGetFront(size_t i)(){return ranges[i].empty ? tryGetInit!i() : ranges[i].front;}
+        //ElementType(tryGetFront!0, tryGetFront!1, ...)
+        return mixin(q{ElementType(%(tryGetFront!%s, %))}.format(iota(0, R.length)));
     }
 
-    static if (allSatisfy!(hasAssignableElements, R))
-    {
 /**
    Sets the front of all iterated ranges.
 */
+    static if (allSatisfy!(hasAssignableElements, R))
+    {
         @property void front(ElementType v)
         {
             foreach (i, Unused; R)
@@ -4755,22 +4792,9 @@ struct Zip(Ranges...)
     {
         ElementType moveFront()
         {
-            import std.conv : emplace;
-
-            ElementType result = void;
-            foreach (i, Unused; R)
-            {
-                auto addr = cast(Unqual!(typeof(result[i]))*) &result[i];
-                if (!ranges[i].empty)
-                {
-                    emplace(addr, .moveFront(ranges[i]));
-                }
-                else
-                {
-                    emplaceIfCan(addr);
-                }
-            }
-            return result;
+            @property tryMoveFront(size_t i)(){return ranges[i].empty ? tryGetInit!i() : .moveFront(ranges[i]);}
+            //ElementType(tryMoveFront!0, tryMoveFront!1, ...)
+            return mixin(q{ElementType(%(tryMoveFront!%s, %))}.format(iota(0, R.length)));
         }
     }
 
@@ -4781,22 +4805,11 @@ struct Zip(Ranges...)
     {
         @property ElementType back()
         {
-            import std.conv : emplace;
+            //TODO: Fixme! BackElement != back of all ranges in case of jagged-ness
 
-            ElementType result = void;
-            foreach (i, Unused; R)
-            {
-                auto addr = cast(Unqual!(typeof(result[i]))*) &result[i];
-                if (!ranges[i].empty)
-                {
-                    emplace(addr, ranges[i].back);
-                }
-                else
-                {
-                    emplaceIfCan(addr);
-                }
-            }
-            return result;
+            @property tryGetBack(size_t i)(){return ranges[i].empty ? tryGetInit!i() : ranges[i].back;}
+            //ElementType(tryGetBack!0, tryGetBack!1, ...)
+            return mixin(q{ElementType(%(tryGetBack!%s, %))}.format(iota(0, R.length)));
         }
 
 /**
@@ -4806,22 +4819,11 @@ struct Zip(Ranges...)
         {
             ElementType moveBack()
             {
-                import std.conv : emplace;
+                //TODO: Fixme! BackElement != back of all ranges in case of jagged-ness
 
-                ElementType result = void;
-                foreach (i, Unused; R)
-                {
-                    auto addr = cast(Unqual!(typeof(result[i]))*) &result[i];
-                    if (!ranges[i].empty)
-                    {
-                        emplace(addr, .moveBack(ranges[i]));
-                    }
-                    else
-                    {
-                        emplaceIfCan(addr);
-                    }
-                }
-                return result;
+                @property tryMoveBack(size_t i)(){return ranges[i].empty ? tryGetInit!i() : .moveFront(ranges[i]);}
+                //ElementType(tryMoveBack!0, tryMoveBack!1, ...)
+                return mixin(q{ElementType(%(tryMoveBack!%s, %))}.format(iota(0, R.length)));
             }
         }
 
@@ -4832,6 +4834,9 @@ struct Zip(Ranges...)
         {
             @property void back(ElementType v)
             {
+                //TODO: Fixme! BackElement != back of all ranges in case of jagged-ness.
+                //Not sure the call is even legal for StoppingPolicy.longest
+
                 foreach (i, Unused; R)
                 {
                     if (!ranges[i].empty)
@@ -4875,12 +4880,14 @@ struct Zip(Ranges...)
         }
     }
 
-    static if (allSatisfy!(isBidirectionalRange, R))
 /**
    Calls $(D popBack) for all controlled ranges.
 */
+    static if (allSatisfy!(isBidirectionalRange, R))
+    {
         void popBack()
         {
+            //TODO: Fixme! In case of jaggedness, this is wrong.
             import std.exception : enforce;
 
             final switch (stoppingPolicy)
@@ -4907,6 +4914,7 @@ struct Zip(Ranges...)
                 break;
             }
         }
+    }
 
 /**
    Returns the length of this range. Defined only if all ranges define
@@ -4916,25 +4924,22 @@ struct Zip(Ranges...)
     {
         @property auto length()
         {
-            CommonType!(staticMap!(lengthType, R)) result = ranges[0].length;
-            if (stoppingPolicy == StoppingPolicy.requireSameLength)
-                return result;
-            foreach (i, Unused; R[1 .. $])
+            static if (Ranges.length == 1)
+                return ranges[0].length;
+            else
             {
+                if (stoppingPolicy == StoppingPolicy.requireSameLength)
+                    return ranges[0].length;
+
+                //[min|max](ranges[0].length, ranges[1].length, ...)
                 if (stoppingPolicy == StoppingPolicy.shortest)
-                {
-                    result = min(ranges[i + 1].length, result);
-                }
+                    return mixin(q{min(%(ranges[%s].length%|, %))}.format(iota(0, R.length)));
                 else
-                {
-                    assert(stoppingPolicy == StoppingPolicy.longest);
-                    result = max(ranges[i + 1].length, result);
-                }
+                    return mixin(q{max(%(ranges[%s].length%|, %))}.format(iota(0, R.length)));
             }
-            return result;
         }
 
-        alias length opDollar;
+        alias opDollar = length;
     }
 
 /**
@@ -4942,48 +4947,42 @@ struct Zip(Ranges...)
    slicing.
 */
     static if (allSatisfy!(hasSlicing, R))
+    {
         auto opSlice(size_t from, size_t to)
         {
-            import std.conv : emplace;
-
             //Slicing an infinite range yields the type Take!R
             //For finite ranges, the type Take!R aliases to R
-            Zip!(staticMap!(Take, R)) result = void;
-            emplace(&result.stoppingPolicy, stoppingPolicy);
-            foreach (i, Unused; R)
-            {
-                emplace(&result.ranges[i], ranges[i][from .. to]);
-            }
-            return result;
-        }
+            alias ZipResult = Zip!(staticMap!(Take, R));
 
-    static if (allSatisfy!(isRandomAccessRange, R))
-    {
+            //ZipResult(ranges[0][from .. to], ranges[1][from .. to], ..., stoppingPolicy)
+            return mixin (q{ZipResult(%(ranges[%s][from .. to]%|, %), stoppingPolicy)}.format(iota(0, R.length)));
+        }
+    }
+
 /**
    Returns the $(D n)th element in the composite range. Defined if all
    ranges offer random access.
 */
+    static if (allSatisfy!(isRandomAccessRange, R))
+    {
         ElementType opIndex(size_t n)
         {
-            import std.conv : emplace;
+            //TODO: Fixme! This may create an out of bounds access
+            //for StoppingPolicy.longest
 
-            ElementType result = void;
-            foreach (i, Range; R)
-            {
-                auto addr = cast(Unqual!(typeof(result[i]))*) &result[i];
-                emplace(addr, ranges[i][n]);
-            }
-            return result;
+            //ElementType(ranges[0][n], ranges[1][n], ...)
+            return mixin (q{ElementType(%(ranges[%s][n]%|, %))}.format(iota(0, R.length)));
         }
 
-        static if (allSatisfy!(hasAssignableElements, R))
-        {
 /**
    Assigns to the $(D n)th element in the composite range. Defined if
    all ranges offer random access.
 */
+        static if (allSatisfy!(hasAssignableElements, R))
+        {
             void opIndexAssign(ElementType v, size_t n)
             {
+                //TODO: Fixme! Not sure the call is even legal for StoppingPolicy.longest
                 foreach (i, Range; R)
                 {
                     ranges[i][n] = v[i];
@@ -4999,15 +4998,11 @@ struct Zip(Ranges...)
         {
             ElementType moveAt(size_t n)
             {
-                import std.conv : emplace;
+                //TODO: Fixme! This may create an out of bounds access
+                //for StoppingPolicy.longest
 
-                ElementType result = void;
-                foreach (i, Range; R)
-                {
-                    auto addr = cast(Unqual!(typeof(result[i]))*) &result[i];
-                    emplace(addr, .moveAt(ranges[i], n));
-                }
-                return result;
+                //ElementType(.moveAt(ranges[0], n), .moveAt(ranges[1], n), ..., )
+                return mixin (q{ElementType(%(.moveAt(ranges[%s], n)%|, %))}.format(iota(0, R.length)));
             }
         }
     }
@@ -5018,6 +5013,16 @@ auto zip(Ranges...)(Ranges ranges)
     if (Ranges.length && allSatisfy!(isInputRange, Ranges))
 {
     return Zip!Ranges(ranges);
+}
+
+///
+unittest
+{
+    int[] a = [ 1, 2, 3 ];
+    string[] b = [ "a", "b", "c" ];
+    sort!("a[0] > b[0]")(zip(a, b));
+    assert(a == [ 3, 2, 1 ]);
+    assert(b == [ "c", "b", "a" ]);
 }
 
 /// Ditto
@@ -5044,6 +5049,7 @@ enum StoppingPolicy
 unittest
 {
     import std.exception : assertThrown, assertNotThrown;
+    import std.typecons : tuple;
 
     int[] a = [ 1, 2, 3 ];
     float[] b = [ 1.0, 2.0, 3.0 ];
@@ -5060,7 +5066,9 @@ unittest
     assert(b == [2.0, 1.0, 3.0]);
 
     z = zip(StoppingPolicy.requireSameLength, a, b);
-    assertNotThrown((z.popBack(), z.popBack(), z.popBack()));
+    assertNotThrown(z.popBack());
+    assertNotThrown(z.popBack());
+    assertNotThrown(z.popBack());
     assert(z.empty);
     assertThrown(z.popBack());
 
@@ -5083,7 +5091,7 @@ unittest
     auto stuff = tuple(tuple(a1, a2),
             tuple(filter!"a"(a1), filter!"a"(a2)));
 
-    alias Zip!(immutable(int)[], immutable(float)[]) FOO;
+    alias FOO = Zip!(immutable(int)[], immutable(float)[]);
 
     foreach(t; stuff.expand) {
         auto arr1 = t[0];
@@ -5096,7 +5104,7 @@ unittest
             auto zSame = zip(StoppingPolicy.requireSameLength, arr1, arr2);
             foreach(elem; zSame) {}
             assert(0);
-        } catch { /* It's supposed to throw.*/ }
+        } catch (Throwable) { /* It's supposed to throw.*/ }
 
         auto zLongest = zip(StoppingPolicy.longest, arr1, arr2);
         assert(!zLongest.ranges[0].empty);
@@ -5162,8 +5170,10 @@ unittest
     assert(a == [1, 2, 3, 4, 5]);
     assert(b == [6, 5, 2, 1, 3]);
 }
-unittest
+
+@safe pure unittest
 {
+    import std.typecons : tuple;
     auto LL = iota(1L, 1000L);
     auto z = zip(LL, [4]);
 
@@ -5175,7 +5185,7 @@ unittest
 }
 
 // Text for Issue 11196
-unittest
+@safe pure unittest
 {
     import std.exception : assertThrown;
 
@@ -5183,6 +5193,21 @@ unittest
     static assert(__traits(compiles, zip((S[5]).init[])));
     auto z = zip(StoppingPolicy.longest, cast(S[]) null, new int[1]);
     assertThrown(zip(StoppingPolicy.longest, cast(S[]) null, new int[1]).front);
+}
+
+@safe pure unittest //12007
+{
+    static struct R
+    {
+        enum empty = false;
+        void popFront(){}
+        int front(){return 1;} @property
+        R save(){return this;} @property
+        void opAssign(R) @disable;
+    }
+    R r;
+    auto z = zip(r, r);
+    auto zz = z.save;
 }
 
 /*
@@ -5258,23 +5283,13 @@ private string lockstepMixin(Ranges...)(bool withIndex)
    $(D foreach) loop, it will be silently accepted but any modifications
    to the variable will not be propagated to the underlying range.
 
-   Examples:
-   ---
-   auto arr1 = [1,2,3,4,5];
-   auto arr2 = [6,7,8,9,10];
-
-   foreach(ref a, ref b; lockstep(arr1, arr2))
-   {
-       a += b;
-   }
-
-   assert(arr1 == [7,9,11,13,15]);
-
    // Lockstep also supports iterating with an index variable:
+   Example:
+   -------
    foreach(index, a, b; lockstep(arr1, arr2)) {
        writefln("Index %s:  a = %s, b = %s", index, a, b);
    }
-   ---
+   -------
 */
 struct Lockstep(Ranges...)
     if (Ranges.length > 1 && allSatisfy!(isInputRange, Ranges))
@@ -5302,7 +5317,7 @@ private:
 // single range.
 template Lockstep(Range)
 {
-    alias Range Lockstep;
+    alias Lockstep = Range;
 }
 
 /// Ditto
@@ -5319,6 +5334,20 @@ Lockstep!(Ranges) lockstep(Ranges...)(Ranges ranges, StoppingPolicy s)
         return Lockstep!Ranges(ranges, s);
     else
         return ranges[0];
+}
+
+///
+unittest
+{
+   auto arr1 = [1,2,3,4,5];
+   auto arr2 = [6,7,8,9,10];
+
+   foreach(ref a, ref b; lockstep(arr1, arr2))
+   {
+       a += b;
+   }
+
+   assert(arr1 == [7,9,11,13,15]);
 }
 
 unittest
@@ -5370,7 +5399,7 @@ unittest
     try {
         foreach(a, b; ls) {}
         assert(0);
-    } catch {}
+    } catch (Exception) {}
 
     // Just make sure 1-range case instantiates.  This hangs the compiler
     // when no explicit stopping policy is specified due to Bug 4652.
@@ -5513,20 +5542,14 @@ unittest
 
    The state of the sequence is stored as a $(D Tuple) so it can be
    heterogeneous.
-
-   Example:
-   ----
-   // a[0] = 1, a[1] = 2, a[n] = a[0] + n * a[1]
-   auto odds = sequence!("a[0] + n * a[1]")(1, 2);
-   ----
 */
 struct Sequence(alias fun, State)
 {
 private:
     import std.functional : binaryFun;
 
-    alias binaryFun!(fun, "a", "n") compute;
-    alias typeof(compute(State.init, cast(size_t) 1)) ElementType;
+    alias compute = binaryFun!(fun, "a", "n");
+    alias ElementType = typeof(compute(State.init, cast(size_t) 1));
     State _state;
     size_t _n;
     ElementType _cache;
@@ -5584,15 +5607,28 @@ public:
 }
 
 /// Ditto
-Sequence!(fun, Tuple!(State)) sequence(alias fun, State...)(State args)
+auto sequence(alias fun, State...)(State args)
 {
-    return typeof(return)(tuple(args));
+    import std.typecons : Tuple, tuple;
+    alias Return = Sequence!(fun, Tuple!State);
+    return Return(tuple(args));
+}
+
+///
+unittest
+{
+    auto odds = sequence!("a[0] + n * a[1]")(1, 2);
+    assert(odds.front == 1);
+    odds.popFront();
+    assert(odds.front == 3);
+    odds.popFront();
+    assert(odds.front == 5);
 }
 
 unittest
 {
-    auto y = Sequence!("a[0] + n * a[1]", Tuple!(int, int))
-        (tuple(0, 4));
+    import std.typecons : Tuple, tuple;
+    auto y = Sequence!("a[0] + n * a[1]", Tuple!(int, int))(tuple(0, 4));
     static assert(isForwardRange!(typeof(y)));
 
     //@@BUG
@@ -5607,19 +5643,6 @@ unittest
         assert(odds[0] == currentOdd);
         odds.popFront();
     }
-}
-
-
-
-unittest
-{
-    // documentation example
-    auto odds = sequence!("a[0] + n * a[1]")(1, 2);
-    assert(odds.front == 1);
-    odds.popFront();
-    assert(odds.front == 3);
-    odds.popFront();
-    assert(odds.front == 5);
 }
 
 unittest
@@ -5655,17 +5678,6 @@ unittest
    Throws:
    $(D Exception) if $(D begin != end && step == 0), an exception is
    thrown.
-
-   Example:
-   ----
-   auto r = iota(0, 10, 1);
-   assert(equal(r, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][]));
-   r = iota(0, 11, 3);
-   assert(equal(r, [0, 3, 6, 9][]));
-   assert(r[2] == 6);
-   auto rf = iota(0.0, 0.5, 0.1);
-   assert(approxEqual(rf, [0.0, 0.1, 0.2, 0.3, 0.4]));
-   ----
 */
 auto iota(B, E, S)(B begin, E end, S step)
 if ((isIntegral!(CommonType!(B, E)) || isPointer!(CommonType!(B, E)))
@@ -5673,9 +5685,9 @@ if ((isIntegral!(CommonType!(B, E)) || isPointer!(CommonType!(B, E)))
 {
     import std.conv : unsigned;
 
-    alias CommonType!(Unqual!B, Unqual!E) Value;
-    alias Unqual!S StepType;
-    alias typeof(unsigned((end - begin) / step)) IndexType;
+    alias Value = CommonType!(Unqual!B, Unqual!E);
+    alias StepType = Unqual!S;
+    alias IndexType = typeof(unsigned((end - begin) / step));
 
     static struct Result
     {
@@ -5750,7 +5762,7 @@ if ((isIntegral!(CommonType!(B, E)) || isPointer!(CommonType!(B, E)))
             }
         }
 
-        alias length opDollar;
+        alias opDollar = length;
     }
 
     return Result(begin, end, step);
@@ -5769,8 +5781,8 @@ if (isIntegral!(CommonType!(B, E)) || isPointer!(CommonType!(B, E)))
 {
     import std.conv : unsigned;
 
-    alias CommonType!(Unqual!B, Unqual!E) Value;
-    alias typeof(unsigned(end - begin)) IndexType;
+    alias Value = CommonType!(Unqual!B, Unqual!E);
+    alias IndexType = typeof(unsigned(end - begin));
 
     static struct Result
     {
@@ -5820,7 +5832,7 @@ if (isIntegral!(CommonType!(B, E)) || isPointer!(CommonType!(B, E)))
             return unsigned(pastLast - current);
         }
 
-        alias length opDollar;
+        alias opDollar = length;
     }
 
     return Result(begin, end);
@@ -5837,7 +5849,7 @@ auto iota(E)(E end)
 auto iota(B, E, S)(B begin, E end, S step)
 if (isFloatingPoint!(CommonType!(B, E, S)))
 {
-    alias Unqual!(CommonType!(B, E, S)) Value;
+    alias Value = Unqual!(CommonType!(B, E, S));
     static struct Result
     {
         private Value start, step;
@@ -5910,10 +5922,23 @@ if (isFloatingPoint!(CommonType!(B, E, S)))
             return count - index;
         }
 
-        alias length opDollar;
+        alias opDollar = length;
     }
 
     return Result(begin, end, step);
+}
+
+///
+unittest
+{
+   import std.math : approxEqual;
+   auto r = iota(0, 10, 1);
+   assert(equal(r, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][]));
+   r = iota(0, 11, 3);
+   assert(equal(r, [0, 3, 6, 9][]));
+   assert(r[2] == 6);
+   auto rf = iota(0.0, 0.5, 0.1);
+   assert(approxEqual(rf, [0.0, 0.1, 0.2, 0.3, 0.4]));
 }
 
 unittest
@@ -6119,22 +6144,13 @@ enum TransverseOptions
 /**
    Given a range of ranges, iterate transversally through the first
    elements of each of the enclosed ranges.
-
-   Example:
-   ----
-   int[][] x = new int[][2];
-   x[0] = [1, 2];
-   x[1] = [3, 4];
-   auto ror = frontTransversal(x);
-   assert(equal(ror, [ 1, 3 ][]));
-   ---
 */
 struct FrontTransversal(Ror,
         TransverseOptions opt = TransverseOptions.assumeJagged)
 {
-    alias Unqual!(Ror)               RangeOfRanges;
-    alias .ElementType!RangeOfRanges RangeType;
-    alias .ElementType!RangeType     ElementType;
+    alias RangeOfRanges = Unqual!(Ror);
+    alias RangeType     = .ElementType!RangeOfRanges;
+    alias ElementType   = .ElementType!RangeType;
 
     private void prime()
     {
@@ -6333,6 +6349,16 @@ FrontTransversal!(RangeOfRanges, opt) frontTransversal(
     return typeof(return)(rr);
 }
 
+///
+unittest
+{
+   int[][] x = new int[][2];
+   x[0] = [1, 2];
+   x[1] = [3, 4];
+   auto ror = frontTransversal(x);
+   assert(equal(ror, [ 1, 3 ][]));
+}
+
 unittest {
     static assert(is(FrontTransversal!(immutable int[][])));
 
@@ -6396,22 +6422,13 @@ unittest {
    Given a range of ranges, iterate transversally through the the $(D
    n)th element of each of the enclosed ranges. All elements of the
    enclosing range must offer random access.
-
-   Example:
-   ----
-   int[][] x = new int[][2];
-   x[0] = [1, 2];
-   x[1] = [3, 4];
-   auto ror = transversal(x, 1);
-   assert(equal(ror, [ 2, 4 ][]));
-   ---
 */
 struct Transversal(Ror,
         TransverseOptions opt = TransverseOptions.assumeJagged)
 {
-    private alias Unqual!Ror RangeOfRanges;
-    private alias ElementType!RangeOfRanges InnerRange;
-    private alias ElementType!InnerRange E;
+    private alias RangeOfRanges = Unqual!Ror;
+    private alias InnerRange = ElementType!RangeOfRanges;
+    private alias E = ElementType!InnerRange;
 
     private void prime()
     {
@@ -6592,7 +6609,7 @@ struct Transversal(Ror,
                 return _input.length;
             }
 
-            alias length opDollar;
+            alias opDollar = length;
         }
 
 /**
@@ -6621,6 +6638,16 @@ Transversal!(RangeOfRanges, opt) transversal
 (RangeOfRanges rr, size_t n)
 {
     return typeof(return)(rr, n);
+}
+
+///
+unittest
+{
+   int[][] x = new int[][2];
+   x[0] = [1, 2];
+   x[1] = [3, 4];
+   auto ror = transversal(x, 1);
+   assert(equal(ror, [ 2, 4 ][]));
 }
 
 unittest
@@ -6663,7 +6690,7 @@ unittest
     }
 
     // Test w/o ref return.
-    alias DummyRange!(ReturnBy.Value, Length.Yes, RangeType.Random) D;
+    alias D = DummyRange!(ReturnBy.Value, Length.Yes, RangeType.Random);
     auto drs = [D.init, D.init];
     foreach(num; 0..10) {
         auto t = transversal!(TransverseOptions.enforceNotJagged)(drs, num);
@@ -6682,7 +6709,7 @@ unittest
 
 struct Transposed(RangeOfRanges)
 {
-    //alias typeof(map!"a.front"(RangeOfRanges.init)) ElementType;
+    //alias ElementType = typeof(map!"a.front"(RangeOfRanges.init));
 
     this(RangeOfRanges input)
     {
@@ -6731,6 +6758,7 @@ auto transposed(RangeOfRanges)(RangeOfRanges rr)
     return Transposed!RangeOfRanges(rr);
 }
 
+///
 unittest
 {
     int[][] x = new int[][2];
@@ -6755,20 +6783,6 @@ may also repeat elements.
 $(D Source) must be a random access range.  The returned range will be
 bidirectional or random-access if $(D Indices) is bidirectional or
 random-access, respectively.
-
-Examples:
----
-auto source = [1, 2, 3, 4, 5];
-auto indices = [4, 3, 1, 2, 0, 4];
-auto ind = indexed(source, indices);
-assert(equal(ind, [5, 4, 2, 3, 1, 5]));
-
-// When elements of indices are duplicated and Source has lvalue elements,
-// these are aliased in ind.
-ind[0]++;
-assert(ind[0] == 6);
-assert(ind[5] == 6);
----
 */
 struct Indexed(Source, Indices)
     if(isRandomAccessRange!Source && isInputRange!Indices &&
@@ -6884,7 +6898,7 @@ struct Indexed(Source, Indices)
             return _indices.length;
         }
 
-        alias length opDollar;
+        alias opDollar = length;
     }
 
     static if(isRandomAccessRange!Indices)
@@ -6972,10 +6986,19 @@ Indexed!(Source, Indices) indexed(Source, Indices)(Source source, Indices indice
     return typeof(return)(source, indices);
 }
 
+///
+unittest
+{
+    auto source = [1, 2, 3, 4, 5];
+    auto indices = [4, 3, 1, 2, 0, 4];
+    auto ind = indexed(source, indices);
+    assert(equal(ind, [5, 4, 2, 3, 1, 5]));
+    assert(equal(retro(ind), [5, 1, 3, 2, 4, 5]));
+}
+
 unittest
 {
     {
-        // Test examples.
         auto ind = indexed([1, 2, 3, 4, 5], [1, 3, 4]);
         assert(ind.physicalIndex(0) == 1);
     }
@@ -6983,15 +7006,16 @@ unittest
     auto source = [1, 2, 3, 4, 5];
     auto indices = [4, 3, 1, 2, 0, 4];
     auto ind = indexed(source, indices);
-    assert(equal(ind, [5, 4, 2, 3, 1, 5]));
-    assert(equal(retro(ind), [5, 1, 3, 2, 4, 5]));
 
     // When elements of indices are duplicated and Source has lvalue elements,
     // these are aliased in ind.
     ind[0]++;
     assert(ind[0] == 6);
     assert(ind[5] == 6);
+}
 
+unittest
+{
     foreach(DummyType; AllDummyRanges)
     {
         auto d = DummyType.init;
@@ -7008,18 +7032,6 @@ $(D source) range. $(D Source) must be a forward range.
 If $(D !isInfinite!Source) and $(D source.walkLength) is not evenly
 divisible by $(D chunkSize), the back element of this range will contain
 fewer than $(D chunkSize) elements.
-
-Examples:
----
-auto source = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-auto chunks = chunks(source, 4);
-assert(chunks[0] == [1, 2, 3, 4]);
-assert(chunks[1] == [5, 6, 7, 8]);
-assert(chunks[2] == [9, 10]);
-assert(chunks.back == chunks[2]);
-assert(chunks.front == chunks[0]);
-assert(chunks.length == 3);
----
 */
 struct Chunks(Source)
     if (isForwardRange!Source)
@@ -7223,6 +7235,7 @@ if (isForwardRange!Source)
     return typeof(return)(source, chunkSize);
 }
 
+///
 unittest
 {
     auto source = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -7234,7 +7247,12 @@ unittest
     assert(chunks.front == chunks[0]);
     assert(chunks.length == 3);
     assert(equal(retro(array(chunks)), array(retro(chunks))));
+}
 
+unittest
+{
+    auto source = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    auto chunks = chunks(source, 4);
     auto chunks2 = chunks.save;
     chunks.popFront();
     assert(chunks[0] == [5, 6, 7, 8]);
@@ -7501,12 +7519,12 @@ auto only(Values...)(auto ref Values values)
 ///
 unittest
 {
+    import std.uni;
     assert(equal(only('♡'), "♡"));
     assert([1, 2, 3, 4].findSplitBefore(only(3))[0] == [1, 2]);
 
     assert(only("one", "two", "three").joiner(" ").equal("one two three"));
 
-    import std.uni;
     string title = "The D Programming Language";
     assert(filter!isUpper(title).map!only().join(".") == "T.D.P.L");
 }
@@ -7545,6 +7563,7 @@ unittest
 // Tests the single-element result
 unittest
 {
+    import std.typecons : tuple;
     foreach (x; tuple(1, '1', 1.0, "1", [1]))
     {
         auto a = only(x);
@@ -7566,7 +7585,7 @@ unittest
         b.popBack();
         assert(b.empty && b.length == 0 && b[].empty);
 
-        alias typeof(a) A;
+        alias A = typeof(a);
         static assert(isInputRange!A);
         static assert(isForwardRange!A);
         static assert(isBidirectionalRange!A);
@@ -7672,7 +7691,7 @@ unittest
 
     static struct Test { int* a; }
     immutable(Test) test;
-    only(test, test); // Works with mutable indirection
+    cast(void)only(test, test); // Works with mutable indirection
 }
 
 /**
@@ -7692,6 +7711,24 @@ ElementType!R moveFront(R)(R r)
         static assert(0,
                 "Cannot move front of a range with a postblit and an rvalue front.");
     }
+}
+
+///
+unittest
+{
+    auto a = [ 1, 2, 3 ];
+    assert(moveFront(a) == 1);
+
+    // define a perfunctory input range
+    struct InputRange
+    {
+        @property bool empty() { return false; }
+        @property int front() { return 42; }
+        void popFront() {}
+        int moveFront() { return 43; }
+    }
+    InputRange r;
+    assert(moveFront(r) == 43);
 }
 
 unittest
@@ -7724,11 +7761,12 @@ ElementType!R moveBack(R)(R r)
     }
 }
 
+///
 unittest
 {
     struct TestRange
     {
-        int payload;
+        int payload = 5;
         @property bool empty() { return false; }
         @property TestRange save() { return this; }
         @property ref int front() { return payload; }
@@ -7739,6 +7777,7 @@ unittest
     static assert(isBidirectionalRange!TestRange);
     TestRange r;
     auto x = moveBack(r);
+    assert(x == 5);
 }
 
 /**
@@ -7760,21 +7799,18 @@ ElementType!R moveAt(R, I)(R r, I i) if (isIntegral!I)
     }
 }
 
+///
 unittest
 {
-    auto a = [ 1, 2, 3 ];
-    assert(moveFront(a) == 1);
-    // define a perfunctory input range
-    struct InputRange
+    auto a = [1,2,3,4];
+    foreach(idx, it; a)
     {
-        @property bool empty() { return false; }
-        @property int front() { return 42; }
-        void popFront() {}
-        int moveFront() { return 43; }
+        assert(it == moveAt(a, idx));
     }
-    InputRange r;
-    assert(moveFront(r) == 43);
+}
 
+unittest
+{
     foreach(DummyType; AllDummyRanges) {
         auto d = DummyType.init;
         assert(moveFront(d) == 1);
@@ -7891,7 +7927,7 @@ interface RandomAccessFinite(E) : BidirectionalRange!(E) {
     @property size_t length();
 
     ///
-    alias length opDollar;
+    alias opDollar = length;
 
     // Can't support slicing until issues with requiring slicing for all
     // finite random access ranges are fully resolved.
@@ -7984,33 +8020,33 @@ class OutputRangeObject(R, E...) : staticMap!(OutputRange, E) {
 
 /**Returns the interface type that best matches $(D R).*/
 template MostDerivedInputRange(R) if (isInputRange!(Unqual!R)) {
-    private alias ElementType!R E;
+    private alias E = ElementType!R;
 
     static if (isRandomAccessRange!R) {
         static if (isInfinite!R) {
-            alias RandomAccessInfinite!E MostDerivedInputRange;
+            alias MostDerivedInputRange = RandomAccessInfinite!E;
         } else static if (hasAssignableElements!R) {
-            alias RandomFiniteAssignable!E MostDerivedInputRange;
+            alias MostDerivedInputRange = RandomFiniteAssignable!E;
         } else {
-            alias RandomAccessFinite!E MostDerivedInputRange;
+            alias MostDerivedInputRange = RandomAccessFinite!E;
         }
     } else static if (isBidirectionalRange!R) {
         static if (hasAssignableElements!R) {
-            alias BidirectionalAssignable!E MostDerivedInputRange;
+            alias MostDerivedInputRange = BidirectionalAssignable!E;
         } else {
-            alias BidirectionalRange!E MostDerivedInputRange;
+            alias MostDerivedInputRange = BidirectionalRange!E;
         }
     } else static if (isForwardRange!R) {
         static if (hasAssignableElements!R) {
-            alias ForwardAssignable!E MostDerivedInputRange;
+            alias MostDerivedInputRange = ForwardAssignable!E;
         } else {
-            alias ForwardRange!E MostDerivedInputRange;
+            alias MostDerivedInputRange = ForwardRange!E;
         }
     } else {
         static if (hasAssignableElements!R) {
-            alias InputAssignable!E MostDerivedInputRange;
+            alias MostDerivedInputRange = InputAssignable!E;
         } else {
-            alias InputRange!E MostDerivedInputRange;
+            alias MostDerivedInputRange = InputRange!E;
         }
     }
 }
@@ -8021,15 +8057,15 @@ template MostDerivedInputRange(R) if (isInputRange!(Unqual!R)) {
  */
 template InputRangeObject(R) if (isInputRange!(Unqual!R)) {
     static if (is(R : InputRange!(ElementType!R))) {
-        alias R InputRangeObject;
+        alias InputRangeObject = R;
     } else static if (!is(Unqual!R == R)) {
-        alias InputRangeObject!(Unqual!R) InputRangeObject;
+        alias InputRangeObject = InputRangeObject!(Unqual!R);
     } else {
 
         ///
         class InputRangeObject : MostDerivedInputRange!(R) {
             private R _range;
-            private alias ElementType!R E;
+            private alias E = ElementType!R;
 
             this(R range) {
                 this._range = range;
@@ -8092,7 +8128,7 @@ template InputRangeObject(R) if (isInputRange!(Unqual!R)) {
                         return _range.length;
                     }
 
-                    alias length opDollar;
+                    alias opDollar = length;
 
                     // Can't support slicing until all the issues with
                     // requiring slicing support for finite random access
@@ -8239,6 +8275,11 @@ template isTwoWayCompatible(alias fn, T1, T2)
 enum SearchPolicy
 {
     /**
+       Searches in a linear fashion.
+    */
+    linear,
+
+    /**
        Searches with a step that is grows linearly (1, 2, 3,...)
        leading to a quadratic search schedule (indexes tried are 0, 1,
        3, 6, 10, 15, 21, 28,...) Once the search overshoots its target,
@@ -8284,51 +8325,21 @@ enum SearchPolicy
         }
 
 /**
-   Represents a sorted random-access range. In addition to the regular
-   range primitives, supports fast operations using binary search. To
-   obtain a $(D SortedRange) from an unsorted range $(D r), use
-   $(XREF algorithm, sort) which sorts $(D r) in place and returns the
-   corresponding $(D SortedRange). To construct a $(D SortedRange)
-   from a range $(D r) that is known to be already sorted, use
-   $(LREF assumeSorted) described below.
-
-   Example:
-
-   ----
-   auto a = [ 1, 2, 3, 42, 52, 64 ];
-   auto r = assumeSorted(a);
-   assert(r.contains(3));
-   assert(!r.contains(32));
-   auto r1 = sort!"a > b"(a);
-   assert(r1.contains(3));
-   assert(!r1.contains(32));
-   assert(r1.release() == [ 64, 52, 42, 3, 2, 1 ]);
-   ----
-
-   $(D SortedRange) could accept ranges weaker than random-access, but it
-   is unable to provide interesting functionality for them. Therefore,
-   $(D SortedRange) is currently restricted to random-access ranges.
-
-   No copy of the original range is ever made. If the underlying range is
-   changed concurrently with its corresponding $(D SortedRange) in ways
-   that break its sortedness, $(D SortedRange) will work erratically.
-
-   Example:
-
-   ----
-   auto a = [ 1, 2, 3, 42, 52, 64 ];
-   auto r = assumeSorted(a);
-   assert(r.contains(42));
-   swap(a[3], a[5]);                      // illegal to break sortedness of original range
-   assert(!r.contains(42));                // passes although it shouldn't
-   ----
+Represents a sorted range. In addition to the regular range
+primitives, supports additional operations that take advantage of the
+ordering, such as merge and binary search. To obtain a $(D
+SortedRange) from an unsorted range $(D r), use $(XREF algorithm,
+sort) which sorts $(D r) in place and returns the corresponding $(D
+SortedRange). To construct a $(D SortedRange) from a range $(D r) that
+is known to be already sorted, use $(LREF assumeSorted) described
+below.
 */
 struct SortedRange(Range, alias pred = "a < b")
-if (isRandomAccessRange!Range && hasLength!Range)
+if (isInputRange!Range)
 {
     private import std.functional : binaryFun;
 
-    private alias binaryFun!pred predFun;
+    private alias predFun = binaryFun!pred;
     private bool geq(L, R)(L lhs, R rhs)
     {
         return !predFun(lhs, rhs);
@@ -8342,8 +8353,19 @@ if (isRandomAccessRange!Range && hasLength!Range)
     // Undocummented because a clearer way to invoke is by calling
     // assumeSorted.
     this(Range input)
+    out
+    {
+        // moved out of the body as a workaround for Issue 12661
+        dbgVerifySorted();
+    }
+    body
     {
         this._input = input;
+    }
+
+    // Assertion only.
+    private void dbgVerifySorted()
+    {
         if(!__ctfe)
         debug
         {
@@ -8351,15 +8373,25 @@ if (isRandomAccessRange!Range && hasLength!Range)
             import std.conv : text;
             import std.random : MinstdRand, uniform;
 
-            // Check the sortedness of the input
-            if (this._input.length < 2) return;
-            immutable size_t msb = bsr(this._input.length) + 1;
-            assert(msb > 0 && msb <= this._input.length);
-            immutable step = this._input.length / msb;
-            static MinstdRand gen;
-            immutable start = uniform(0, step, gen);
-            auto st = stride(this._input, step);
-            assert(isSorted!pred(st), text(st));
+            static if (isRandomAccessRange!Range)
+            {
+                // Check the sortedness of the input
+                if (this._input.length < 2) return;
+                immutable size_t msb = bsr(this._input.length) + 1;
+                assert(msb > 0 && msb <= this._input.length);
+                immutable step = this._input.length / msb;
+                static MinstdRand gen;
+                immutable start = uniform(0, step, gen);
+                auto st = stride(this._input, step);
+                static if (is(typeof(text(st))))
+                {
+                    assert(isSorted!pred(st), text(st));
+                }
+                else
+                {
+                    assert(isSorted!pred(st));
+                }
+            }
         }
     }
 
@@ -8370,6 +8402,7 @@ if (isRandomAccessRange!Range && hasLength!Range)
     }
 
     /// Ditto
+    static if (isForwardRange!Range)
     @property auto save()
     {
         // Avoid the constructor
@@ -8379,7 +8412,7 @@ if (isRandomAccessRange!Range && hasLength!Range)
     }
 
     /// Ditto
-    @property auto front()
+    @property auto ref front()
     {
         return _input.front;
     }
@@ -8391,22 +8424,26 @@ if (isRandomAccessRange!Range && hasLength!Range)
     }
 
     /// Ditto
-    @property auto back()
+    static if (isBidirectionalRange!Range)
     {
-        return _input.back;
+        @property auto ref back()
+        {
+            return _input.back;
+        }
+
+        /// Ditto
+        void popBack()
+        {
+            _input.popBack();
+        }
     }
 
     /// Ditto
-    void popBack()
-    {
-        _input.popBack();
-    }
-
-    /// Ditto
-    auto opIndex(size_t i)
-    {
-        return _input[i];
-    }
+    static if (isRandomAccessRange!Range)
+        auto ref opIndex(size_t i)
+        {
+            return _input[i];
+        }
 
     /// Ditto
     static if (hasSlicing!Range)
@@ -8419,12 +8456,14 @@ if (isRandomAccessRange!Range && hasLength!Range)
         }
 
     /// Ditto
-    @property size_t length()          //const
+    static if (hasLength!Range)
     {
-        return _input.length;
+        @property size_t length()          //const
+        {
+            return _input.length;
+        }
+        alias opDollar = length;
     }
-
-    alias length opDollar;
 
 /**
    Releases the controlled range and returns it.
@@ -8438,7 +8477,7 @@ if (isRandomAccessRange!Range && hasLength!Range)
     // of the range and then 1 for the rest, returns the index at
     // which the first 1 appears. Used internally by the search routines.
     private size_t getTransitionIndex(SearchPolicy sp, alias test, V)(V v)
-    if (sp == SearchPolicy.binarySearch)
+    if (sp == SearchPolicy.binarySearch && isRandomAccessRange!Range)
     {
         size_t first = 0, count = _input.length;
         while (count > 0)
@@ -8459,7 +8498,8 @@ if (isRandomAccessRange!Range && hasLength!Range)
 
     // Specialization for trot and gallop
     private size_t getTransitionIndex(SearchPolicy sp, alias test, V)(V v)
-    if (sp == SearchPolicy.trot || sp == SearchPolicy.gallop)
+    if ((sp == SearchPolicy.trot || sp == SearchPolicy.gallop)
+        && isRandomAccessRange!Range)
     {
         if (empty || test(front, v)) return 0;
         immutable count = length;
@@ -8491,7 +8531,8 @@ if (isRandomAccessRange!Range && hasLength!Range)
 
     // Specialization for trotBackwards and gallopBackwards
     private size_t getTransitionIndex(SearchPolicy sp, alias test, V)(V v)
-    if (sp == SearchPolicy.trotBackwards || sp == SearchPolicy.gallopBackwards)
+    if ((sp == SearchPolicy.trotBackwards || sp == SearchPolicy.gallopBackwards)
+        && isRandomAccessRange!Range)
     {
         immutable count = length;
         if (empty || !test(back, v)) return count;
@@ -8522,7 +8563,7 @@ if (isRandomAccessRange!Range && hasLength!Range)
 
 // lowerBound
 /**
-   This function uses binary search with policy $(D sp) to find the
+   This function uses a search with policy $(D sp) to find the
    largest left subrange on which $(D pred(x, value)) is $(D true) for
    all $(D x) (e.g., if $(D pred) is "less than", returns the portion of
    the range with elements strictly smaller than $(D value)). The search
@@ -8538,32 +8579,52 @@ if (isRandomAccessRange!Range && hasLength!Range)
    ----
 */
     auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, V)(V value)
-    if (isTwoWayCompatible!(predFun, ElementType!Range, V))
+    if (isTwoWayCompatible!(predFun, ElementType!Range, V)
+         && hasSlicing!Range)
     {
         return this[0 .. getTransitionIndex!(sp, geq)(value)];
     }
 
 // upperBound
 /**
-   This function uses binary search with policy $(D sp) to find the
-   largest right subrange on which $(D pred(value, x)) is $(D true)
-   for all $(D x) (e.g., if $(D pred) is "less than", returns the
-   portion of the range with elements strictly greater than $(D
-   value)). The search schedule and its complexity are documented in
-   $(LREF SearchPolicy).  See also STL's
-   $(WEB sgi.com/tech/stl/lower_bound.html,upper_bound).
+This function searches with policy $(D sp) to find the largest right
+subrange on which $(D pred(value, x)) is $(D true) for all $(D x)
+(e.g., if $(D pred) is "less than", returns the portion of the range
+with elements strictly greater than $(D value)). The search schedule
+and its complexity are documented in $(LREF SearchPolicy).
 
-   Example:
-   ----
-   auto a = assumeSorted([ 1, 2, 3, 3, 3, 4, 4, 5, 6 ]);
-   auto p = a.upperBound(3);
-   assert(equal(p, [4, 4, 5, 6]));
-   ----
+For ranges that do not offer random access, $(D SearchPolicy.linear)
+is the only policy allowed (and it must be specified explicitly lest it exposes
+user code to unexpected inefficiencies). For random-access searches, all
+policies are allowed, and $(D SearchPolicy.binarySearch) is the default.
+
+See_Also: STL's $(WEB sgi.com/tech/stl/lower_bound.html,upper_bound).
+
+Example:
+----
+auto a = assumeSorted([ 1, 2, 3, 3, 3, 4, 4, 5, 6 ]);
+auto p = a.upperBound(3);
+assert(equal(p, [4, 4, 5, 6]));
+----
 */
     auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, V)(V value)
     if (isTwoWayCompatible!(predFun, ElementType!Range, V))
     {
-        return this[getTransitionIndex!(sp, gt)(value) .. length];
+        static assert(hasSlicing!Range || sp == SearchPolicy.linear,
+            "Specify SearchPolicy.linear explicitly for "
+            ~ typeof(this).stringof);
+        static if (sp == SearchPolicy.linear)
+        {
+            for (; !_input.empty && !predFun(value, _input.front);
+                 _input.popFront())
+            {
+            }
+            return this;
+        }
+        else
+        {
+            return this[getTransitionIndex!(sp, gt)(value) .. length];
+        }
     }
 
 // equalRange
@@ -8588,7 +8649,8 @@ if (isRandomAccessRange!Range && hasLength!Range)
    ----
 */
     auto equalRange(V)(V value)
-    if (isTwoWayCompatible!(predFun, ElementType!Range, V))
+    if (isTwoWayCompatible!(predFun, ElementType!Range, V)
+        && isRandomAccessRange!Range)
     {
         size_t first = 0, count = _input.length;
         while (count > 0)
@@ -8644,8 +8706,10 @@ assert(equal(r[2], [ 4, 4, 5, 6 ]));
 ----
 */
     auto trisect(V)(V value)
-    if (isTwoWayCompatible!(predFun, ElementType!Range, V))
+    if (isTwoWayCompatible!(predFun, ElementType!Range, V)
+        && isRandomAccessRange!Range)
     {
+        import std.typecons : tuple;
         size_t first = 0, count = _input.length;
         while (count > 0)
         {
@@ -8692,6 +8756,7 @@ sgi.com/tech/stl/binary_search.html, binary_search).
  */
 
     bool contains(V)(V value)
+    if (isRandomAccessRange!Range)
     {
         size_t first = 0, count = _input.length;
         while (count > 0)
@@ -8718,7 +8783,7 @@ sgi.com/tech/stl/binary_search.html, binary_search).
     }
 }
 
-// Doc examples
+///
 unittest
 {
     auto a = [ 1, 2, 3, 42, 52, 64 ];
@@ -8729,6 +8794,24 @@ unittest
     assert(r1.contains(3));
     assert(!r1.contains(32));
     assert(r1.release() == [ 64, 52, 42, 3, 2, 1 ]);
+}
+
+/**
+$(D SortedRange) could accept ranges weaker than random-access, but it
+is unable to provide interesting functionality for them. Therefore,
+$(D SortedRange) is currently restricted to random-access ranges.
+
+No copy of the original range is ever made. If the underlying range is
+changed concurrently with its corresponding $(D SortedRange) in ways
+that break its sortedness, $(D SortedRange) will work erratically.
+*/
+unittest
+{
+    auto a = [ 1, 2, 3, 42, 52, 64 ];
+    auto r = assumeSorted(a);
+    assert(r.contains(42));
+    swap(a[3], a[5]);         // illegal to break sortedness of original range
+    assert(!r.contains(42));  // passes although it shouldn't
 }
 
 unittest
@@ -8820,6 +8903,21 @@ unittest
     auto s = assumeSorted(arr);
 }
 
+// Test on an input range
+unittest
+{
+    import std.stdio, std.file, std.path, std.conv;
+    auto name = buildPath(tempDir(), "test.std.range." ~ text(__LINE__));
+    auto f = File(name, "w");
+    // write a sorted range of lines to the file
+    f.write("abc\ndef\nghi\njkl");
+    f.close();
+    f.open(name, "r");
+    auto r = assumeSorted(f.byLine());
+    auto r1 = r.upperBound!(SearchPolicy.linear)("def");
+    assert(r1.front == "ghi", r1.front);
+}
+
 /**
 Assumes $(D r) is sorted by predicate $(D pred) and returns the
 corresponding $(D SortedRange!(pred, R)) having $(D r) as support. To
@@ -8834,7 +8932,7 @@ almost-sorted range is likely to pass it). To check for sortedness at
 cost $(BIGOH n), use $(XREF algorithm,isSorted).
  */
 auto assumeSorted(alias pred = "a < b", R)(R r)
-if (isRandomAccessRange!(Unqual!R))
+if (isInputRange!(Unqual!R))
 {
     return SortedRange!(Unqual!R, pred)(r);
 }
@@ -9112,12 +9210,7 @@ assert(buffer2 == [11, 12, 13, 14, 15]);
     }
     else
     {
-        private static void _testSave(R)(R* range)
-        {
-            (*range).save;
-        }
-
-        static if(isSafe!(_testSave!R))
+        static if(isSafe!((R* r) => (*r).save))
         {
             @property auto save() @trusted
             {
@@ -9155,7 +9248,7 @@ assert(buffer2 == [11, 12, 13, 14, 15]);
         private static string _genSave() @safe pure nothrow
         {
             return `import std.conv;` ~
-                   `alias typeof((*_range).save) S;` ~
+                   `alias S = typeof((*_range).save);` ~
                    `static assert(isForwardRange!S, S.stringof ~ " is not a forward range.");` ~
                    `auto mem = new void[S.sizeof];` ~
                    `emplace!S(mem, cast(S)(*_range).save);` ~
@@ -9315,7 +9408,7 @@ assert(buffer2 == [11, 12, 13, 14, 15]);
         private static string _genOpSlice() @safe pure nothrow
         {
             return `import std.conv;` ~
-                   `alias typeof((*_range)[begin .. end]) S;` ~
+                   `alias S = typeof((*_range)[begin .. end]);` ~
                    `static assert(hasSlicing!S, S.stringof ~ " is not sliceable.");` ~
                    `auto mem = new void[S.sizeof];` ~
                    `emplace!S(mem, cast(S)(*_range)[begin .. end]);` ~
@@ -9732,3 +9825,18 @@ unittest    // bug 9060
     static void foo(R)(R r) { until!(x => x > 7)(r); }
     foo(r);
 }
+
+/*********************************
+ * An OutputRange that discards the data it receives.
+ */
+struct NullSink
+{
+    void put(E)(E){}
+}
+
+unittest
+{
+    import std.algorithm;
+    [4, 5, 6].map!(x => x * 2).copy(NullSink());
+}
+
