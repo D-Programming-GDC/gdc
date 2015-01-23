@@ -1203,6 +1203,14 @@ FuncDeclaration::toObjFile (int)
       DECL_ARTIFICIAL (parm_decl) = 1;
       TREE_READONLY (parm_decl) = 1;
 
+      if (vthis->type == Type::tvoidptr)
+	{
+	  // Replace generic pointer with backend closure type (this wins for gdb).
+	  tree frame_type = get_frameinfo (this)->closure_rec;
+	  gcc_assert (frame_type != NULL_TREE);
+	  TREE_TYPE (parm_decl) = build_pointer_type (frame_type);
+	}
+
       set_decl_location (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
       irs->sthis = parm_decl;

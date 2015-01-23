@@ -757,8 +757,16 @@ UshrAssignExp::toElem (IRState *irs)
   if (unhandled_arrayop_p (this))
     return error_mark_node;
 
+  // Front-end integer promotions don't work here.
+  while (e1->op == TOKcast)
+    {
+      CastExp *ce = (CastExp *) e1;
+      gcc_assert(d_types_same(ce->type, ce->to));
+      e1 = ce->e1;
+    }
+
   tree exp = toElemBin (irs, UNSIGNED_RSHIFT_EXPR);
-  return convert_expr (exp, e1->type, type);
+  return convert_expr(exp, e1->type, type);
 }
 
 elem *
