@@ -1,3 +1,8 @@
+2015-01-24  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-builtins.cc(d_build_builtins_module): Mark builtin functions
+	as @nogc.
+
 2015-01-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in: Update for D frontend changes.
