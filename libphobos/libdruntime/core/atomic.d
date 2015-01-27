@@ -1255,7 +1255,7 @@ else version( GNU )
     }
 
 
-    void atomicFence() nothrow
+    void atomicFence() nothrow @nogc
     {
         __sync_synchronize();
     }
