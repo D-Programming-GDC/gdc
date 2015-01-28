@@ -639,6 +639,9 @@ LDFLAGS
 CFLAGS
 CC
 multi_basedir
+MAINT
+MAINTAINER_MODE_FALSE
+MAINTAINER_MODE_TRUE
 am__untar
 am__tar
 AMTAR
@@ -715,6 +718,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_maintainer_mode
 enable_multilib
 enable_thread_lib
 enable_unix
@@ -1347,6 +1351,8 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-maintainer-mode  enable make rules and dependencies not useful
+			  (and sometimes confusing) to the casual installer
   --enable-multilib       build many library versions (default)
   --enable-thread-lib=<arg>
                           specify linker option for the system thread library
@@ -2814,6 +2820,29 @@ am__tar='$${TAR-tar} chof - "$$tardir"' am__untar='$${TAR-tar} xf -'
 
 
 
+
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable maintainer-specific portions of Makefiles" >&5
+$as_echo_n "checking whether to enable maintainer-specific portions of Makefiles... " >&6; }
+    # Check whether --enable-maintainer-mode was given.
+if test "${enable_maintainer_mode+set}" = set; then :
+  enableval=$enable_maintainer_mode; USE_MAINTAINER_MODE=$enableval
+else
+  USE_MAINTAINER_MODE=no
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $USE_MAINTAINER_MODE" >&5
+$as_echo "$USE_MAINTAINER_MODE" >&6; }
+   if test $USE_MAINTAINER_MODE = yes; then
+  MAINTAINER_MODE_TRUE=
+  MAINTAINER_MODE_FALSE='#'
+else
+  MAINTAINER_MODE_TRUE='#'
+  MAINTAINER_MODE_FALSE=
+fi
+
+  MAINT=$MAINTAINER_MODE_TRUE
 
 
 # Default to --enable-multilib
@@ -5338,6 +5367,10 @@ else
   am__EXEEXT_FALSE=
 fi
 
+if test -z "${MAINTAINER_MODE_TRUE}" && test -z "${MAINTAINER_MODE_FALSE}"; then
+  as_fn_error "conditional \"MAINTAINER_MODE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${BACKTRACE_SUPPORTED_TRUE}" && test -z "${BACKTRACE_SUPPORTED_FALSE}"; then
   as_fn_error "conditional \"BACKTRACE_SUPPORTED\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5

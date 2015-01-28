@@ -4,12 +4,12 @@ relevant documentation about the GDC front end.
 
 --- gcc/config/rs6000/rs6000.c
 +++ gcc/config/rs6000/rs6000.c
-@@ -25424,7 +25424,8 @@ rs6000_output_function_epilogue (FILE *file,
- 	 either, so for now use 0.  */
+@@ -25518,7 +25518,8 @@ rs6000_output_function_epilogue (FILE *file,
        if (lang_GNU_C ()
  	  || ! strcmp (language_string, "GNU GIMPLE")
--	  || ! strcmp (language_string, "GNU Go"))
-+	  || ! strcmp (language_string, "GNU Go")
+ 	  || ! strcmp (language_string, "GNU Go")
+-	  || ! strcmp (language_string, "libgccjit"))
++	  || ! strcmp (language_string, "libgccjit")
 +	  || ! strcmp (language_string, "GNU D"))
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")

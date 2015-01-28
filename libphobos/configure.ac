@@ -32,6 +32,7 @@ AM_INIT_AUTOMAKE([1.9.3 foreign no-dependencies])
 AH_TEMPLATE(PACKAGE, [Name of package])
 AH_TEMPLATE(VERSION, [Version number of package])
 
+AM_MAINTAINER_MODE
 AM_ENABLE_MULTILIB(, ..)
 
 # libphobos is usually a symlink to gcc/d/phobos, so libphobos/..
