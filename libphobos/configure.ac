@@ -455,11 +455,6 @@ case "$d_target_os" in
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     DCFG_UNIX=Windows
-	     ;;
-    *)       if test "$enable_unix" != "yes"; then
-	         DCFG_UNIX=NoSystem
-	     fi
 	     ;;
 esac
 
@@ -467,11 +462,7 @@ if test "$enable_unix" = "yes"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
   D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-  DPHOBOS_CONFIGURE_UNIX
 fi
-dnl can these be moved to acinclude.m4?
-AC_SUBST(DCFG_UNIX)
-AC_SUBST(DCFG_POSIX)
 
 if test -z "$DFLAGS"; then
     DFLAGS="-Wall -g -frelease -O2"
