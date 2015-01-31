@@ -260,7 +260,7 @@ These official OS versions are not implemented:
 +	if (OPTION_GLIBC)					\
 +	  {							\
 +	    builtin_define ("GNU_GLibc");			\
-+	    builtin_define ("CRuntime_GLibc");			\
++	    builtin_define ("CRuntime_Glibc");			\
 +	  }							\
 +	else if (OPTION_UCLIBC)					\
 +	  {							\
