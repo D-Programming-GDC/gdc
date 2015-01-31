@@ -504,6 +504,7 @@ BOOL   FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW* lpFindFileData);
 BOOL   GetExitCodeThread(HANDLE hThread, DWORD *lpExitCode);
 BOOL   GetExitCodeProcess(HANDLE hProcess, DWORD *lpExitCode);
 DWORD  GetLastError() @trusted;
+void   SetLastError(DWORD dwErrCode);
 DWORD  GetFileAttributesA(in char *lpFileName);
 DWORD  GetFileAttributesW(in wchar *lpFileName);
 BOOL   GetFileAttributesExA(LPCSTR, GET_FILEEX_INFO_LEVELS, PVOID);
