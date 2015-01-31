@@ -199,7 +199,7 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/checkedint.di core/cpuid.di \
 	     core/sys/windows/windows.di
 
 GCC_IMPORTS=gcc/atomics.di gcc/attribute.di gcc/backtrace.di \
-	    gcc/builtins.di gcc/libbacktrace.di
+	    gcc/builtins.di gcc/config.di gcc/libbacktrace.di
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
@@ -256,10 +256,6 @@ install-data-local: libgdruntime.a
 	    for f in $(IMPDIR)/$$i/*.di; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
-	done
-	for i in phobos-ver-syms; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR); \
-	    $(INSTALL_HEADER) $$i $(DESTDIR)$(gdc_include_dir)/$(host_alias)/$(MULTISUBDIR); \
 	done
 
 clean-local:

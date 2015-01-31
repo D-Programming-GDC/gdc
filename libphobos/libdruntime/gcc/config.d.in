@@ -1,5 +1,5 @@
 /* GDC -- D front-end for GCC
-   Copyright (C) 2013 Free Software Foundation, Inc.
+   Copyright (C) 2015 Free Software Foundation, Inc.
 
    GCC is free software; you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free
@@ -16,15 +16,17 @@
    <http://www.gnu.org/licenses/>.
 */
 
-module gcc.gthreads;
+module gcc.config;
 
-import gcc.config;
+// Does platform define __ARM_EABI_UNWINDER__
+enum GNU_ARM_EABI_Unwinder = @DCFG_ARM_EABI_UNWINDER@;
 
-static if (GNU_Thread_Model == ThreadModel.Posix)
-  public import gcc.gthreads.posix;
-else static if (GNU_Thread_Model == ThreadModel.Single)
-  public import gcc.gthreads.single;
-else static if (GNU_Thread_Model == ThreadModel.Win32)
-  public import gcc.gthreads.win32;
-else
-  static assert(false, "Thread model not supported.");
+// Map from thread model to thread interface.
+enum ThreadModel
+{
+    Single,
+    Posix,
+    Win32,
+}
+
+enum ThreadModel GNU_Thread_Model = ThreadModel.@DCFG_THREAD_MODEL@;

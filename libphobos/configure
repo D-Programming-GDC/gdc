@@ -4807,14 +4807,14 @@ $as_echo "$d_thread_model" >&6; }
 # Map from thread model to thread interface.
 
 case $d_thread_model in
-    aix)    DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
-    lynx)   DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
-    posix)  DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
-    single) DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
-    win32)  DCFG_THREAD_MODEL="GNU_Thread_Win32" ;;
+    aix)    DCFG_THREAD_MODEL="Posix" ;;
+    lynx)   DCFG_THREAD_MODEL="Posix" ;;
+    posix)  DCFG_THREAD_MODEL="Posix" ;;
+    single) DCFG_THREAD_MODEL="Single" ;;
+    win32)  DCFG_THREAD_MODEL="Win32" ;;
     # TODO: These targets need porting.
     dce|mipssde|rtems|tpf|vxworks)
-	    DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
+	    DCFG_THREAD_MODEL="Single" ;;
     *)	    as_fn_error "Thread implementation '$d_thread_model' not recognised" "$LINENO" 5 ;;
 esac
 
@@ -5077,12 +5077,12 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-   DCFG_ARM_EABI_UNWINDER=""
+   DCFG_ARM_EABI_UNWINDER=false
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/generic.o"
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-   DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
+   DCFG_ARM_EABI_UNWINDER=true
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
@@ -5226,8 +5226,7 @@ fi
 ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile"
 
 
-#TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d"
+ac_config_files="$ac_config_files Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5950,7 +5949,7 @@ do
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "libdruntime/Makefile") CONFIG_FILES="$CONFIG_FILES libdruntime/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
+    "libdruntime/gcc/config.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/config.d" ;;
     "libdruntime/gcc/libbacktrace.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/libbacktrace.d" ;;
 
   *) as_fn_error "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

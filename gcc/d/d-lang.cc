@@ -311,7 +311,6 @@ d_init()
 
   /* Insert all library-configured identifiers and import paths.  */
   add_import_paths(std_inc);
-  add_phobos_versyms();
 
   return 1;
 }

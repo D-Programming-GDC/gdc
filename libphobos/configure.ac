@@ -416,10 +416,10 @@ AC_TRY_COMPILE([#include <unwind.h>],[
 #endif
 ],
   [AC_MSG_RESULT([no])
-   DCFG_ARM_EABI_UNWINDER=""
+   DCFG_ARM_EABI_UNWINDER=false
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/generic.o"],
   [AC_MSG_RESULT([yes])
-   DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
+   DCFG_ARM_EABI_UNWINDER=true
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
@@ -532,5 +532,4 @@ _EOF
    AS_UNSET([ml_norecursion])
 ])
 
-#TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d])
+AC_OUTPUT([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d])
