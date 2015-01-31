@@ -250,7 +250,7 @@ These official OS versions are not implemented:
  #else
 --- gcc/config/linux.h	2013-07-04 20:28:59.561658533 +0200
 +++ gcc/config/linux.h	2013-07-04 18:30:36.000000000 +0200
-@@ -49,6 +49,20 @@ see the files COPYING3 and COPYING.RUNTI
+@@ -49,6 +49,28 @@ see the files COPYING3 and COPYING.RUNTI
  	builtin_assert ("system=posix");			\
      } while (0)
  
@@ -258,11 +258,19 @@ These official OS versions are not implemented:
 +#define TARGET_GENERIC_LINUX_OS_D_BUILTINS()			\
 +    do {							\
 +	if (OPTION_GLIBC)					\
-+	  builtin_define ("GNU_GLibc");				\
++	  {							\
++	    builtin_define ("GNU_GLibc");			\
++	    builtin_define ("CRuntime_Glibc");			\
++	  }							\
 +	else if (OPTION_UCLIBC)					\
-+	  builtin_define ("GNU_UCLibc");			\
++	  {							\
++	    builtin_define ("GNU_UCLibc");			\
++	  }							\
 +	else if (OPTION_BIONIC)					\
-+	  builtin_define ("GNU_Bionic");			\
++	  {							\
++	    builtin_define ("GNU_Bionic");			\
++	    builtin_define ("CRuntime_Bionic");			\
++	  }							\
 +								\
 +	builtin_define ("linux");				\
 +	builtin_define ("Posix");				\
