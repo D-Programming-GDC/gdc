@@ -71,9 +71,6 @@ $(IMPDIR)/%.di: %.d $(IMPDIR)
 #--------------------------------------#
 # GDC Runtime
 
-gcc/cbridge_math.o: gcc/cbridge_math.c
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
-
 BASE_OBJS=object_.o
 
 RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \

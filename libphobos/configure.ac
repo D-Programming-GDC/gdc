@@ -436,9 +436,6 @@ case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
 esac
 
-DCFG_CBRIDGE_STDIO=
-AC_SUBST(DCFG_CBRIDGE_STDIO)
-
 if test -n "$d_have_unix" && test "$enable_unix" = auto ; then
   enable_unix=yes
 fi
@@ -450,29 +447,19 @@ case "$d_target_os" in
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
 	     ;;
     freebsd*|k*bsd*-gnu)
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
-    linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
+    linux*)  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
              ;;
-    cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
-	     ;;
-    mingw*)  #DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
+    mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     #DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     DCFG_UNIX=Windows
 	     ;;
     *)       if test "$enable_unix" != "yes"; then
 	         DCFG_UNIX=NoSystem
 	     fi
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
 esac
 

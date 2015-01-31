@@ -111,7 +111,6 @@ CXX = @CXX@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DCFG_ARM_EABI_UNWINDER = @DCFG_ARM_EABI_UNWINDER@
-DCFG_CBRIDGE_STDIO = @DCFG_CBRIDGE_STDIO@
 DCFG_POSIX = @DCFG_POSIX@
 DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
 DCFG_UNIX = @DCFG_UNIX@
@@ -225,6 +224,9 @@ IMPDIR = import
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
 SUFFIXES = .d
+
+#--------------------------------------#
+# GDC Runtime
 BASE_OBJS = object_.o
 RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arraycast.o rt/arraycat.o rt/cast_.o rt/critical_.o \
@@ -619,12 +621,6 @@ $(IMPDIR)/%.di: %.d $(IMPDIR)
 
 %.t.o : %.o
 	cp $< $@
-
-#--------------------------------------#
-# GDC Runtime
-
-gcc/cbridge_math.o: gcc/cbridge_math.c
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -fno-strict-aliasing -c $<
 
 libgdruntime.a : $(ALL_DRUNTIME_OBJS) \
 		 $(subst core/,$(IMPDIR)/core/,$(CORE_IMPORTS)) \
