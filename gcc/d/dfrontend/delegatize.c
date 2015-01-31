@@ -34,11 +34,10 @@ bool walkPostorder(Expression *e, StoppableVisitor *v);
 void lambdaSetParent(Expression *e, Scope *sc);
 void lambdaCheckForNestedRef(Expression *e, Scope *sc);
 
-Expression *toDelegate(Expression *e, Scope *sc)
+Expression *toDelegate(Expression *e, Type* t, Scope *sc)
 {
-    //printf("Expression::toDelegate(t = %s) %s\n", e->type->toChars(), e->toChars());
+    //printf("Expression::toDelegate(t = %s) %s\n", t->toChars(), e->toChars());
     Loc loc = e->loc;
-    Type *t = e->type;
 
     TypeFunction *tf = new TypeFunction(NULL, t, 0, LINKd);
     if (t->hasWild())
