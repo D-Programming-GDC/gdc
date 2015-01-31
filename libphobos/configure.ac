@@ -483,8 +483,6 @@ if test "$enable_unix" = "yes"; then
   DPHOBOS_CONFIGURE_UNIX
 fi
 dnl can these be moved to acinclude.m4?
-AC_SUBST(DCFG_MMAP)
-AC_SUBST(DCFG_GETPWNAM_R)
 AC_SUBST(DCFG_UNIX)
 AC_SUBST(DCFG_POSIX)
 
@@ -557,4 +555,4 @@ _EOF
 ])
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d])
+AC_OUTPUT([Makefile libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d])

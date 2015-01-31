@@ -601,8 +601,6 @@ DFLAGSX
 DFLAGS
 DCFG_POSIX
 DCFG_UNIX
-DCFG_GETPWNAM_R
-DCFG_MMAP
 DCFG_CBRIDGE_STDIO
 DCFG_ARM_EABI_UNWINDER
 DRUNTIME_OBJS
@@ -5160,8 +5158,6 @@ fi
 
 
 
-
-
 if test -z "$DFLAGS"; then
     DFLAGS="-Wall -g -frelease -O2"
 fi
@@ -5260,7 +5256,7 @@ ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile"
 
 
 #TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d"
+ac_config_files="$ac_config_files Makefile libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5983,7 +5979,6 @@ do
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "libdruntime/Makefile") CONFIG_FILES="$CONFIG_FILES libdruntime/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "src/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES src/phobos-ver-syms" ;;
     "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
     "libdruntime/gcc/libbacktrace.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/libbacktrace.d" ;;
 
