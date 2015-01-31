@@ -141,7 +141,7 @@ install-data-local: libgphobos2.a
 	    std std/c std/c/freebsd \
 	    std/c/linux std/c/osx std/c/windows \
 	    std/internal std/internal/math std/internal/windows \
-	    std/digest std/internal/digest \
+	    std/container std/digest std/internal/digest \
 	    std/net std/windows; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    for f in $(srcdir)/$$i/*.d; do \

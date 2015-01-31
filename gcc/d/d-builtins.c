@@ -369,6 +369,7 @@ d_build_builtins_module (Module *m)
       // @trusted.  The purity of a builtin can vary depending on compiler
       // flags set upon initialisation, or by the -foptions passed, such as
       // flag_unsafe_math_optimizations.
+      // Builtins never use the GC and are always marked as @nogc.
       dtf->isnothrow = TREE_NOTHROW (decl) || !DECL_ASSEMBLER_NAME_SET_P (decl);
       dtf->purity = DECL_PURE_P (decl) ?   PUREstrong :
 	TREE_READONLY (decl) ? PUREconst :
@@ -378,6 +379,7 @@ d_build_builtins_module (Module *m)
       dtf->trust = !DECL_ASSEMBLER_NAME_SET_P (decl) ? TRUSTsafe :
 	TREE_NOTHROW (decl) ? TRUSTtrusted :
 	TRUSTsystem;
+      dtf->isnogc = true;
 
       FuncDeclaration *func = new FuncDeclaration (Loc(), Loc(), Lexer::idPool (name),
 						   STCextern, dtf);
@@ -667,6 +669,8 @@ enum d_builtin_type
 #define DEF_FUNCTION_TYPE_VAR_3(NAME, RETURN, ARG1, ARG2, ARG3) NAME,
 #define DEF_FUNCTION_TYPE_VAR_4(NAME, RETURN, ARG1, ARG2, ARG3, ARG4) NAME,
 #define DEF_FUNCTION_TYPE_VAR_5(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG6) NAME,
+#define DEF_FUNCTION_TYPE_VAR_8(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) NAME,
+#define DEF_FUNCTION_TYPE_VAR_12(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12) NAME,
 #define DEF_POINTER_TYPE(NAME, TYPE) NAME,
 #include "builtin-types.def"
 #undef DEF_PRIMITIVE_TYPE
@@ -685,6 +689,8 @@ enum d_builtin_type
 #undef DEF_FUNCTION_TYPE_VAR_3
 #undef DEF_FUNCTION_TYPE_VAR_4
 #undef DEF_FUNCTION_TYPE_VAR_5
+#undef DEF_FUNCTION_TYPE_VAR_8
+#undef DEF_FUNCTION_TYPE_VAR_12
 #undef DEF_POINTER_TYPE
   BT_LAST
 };
@@ -919,6 +925,14 @@ d_init_builtins()
   def_fn_type (ENUM, RETURN, 1, 4, ARG1, ARG2, ARG3, ARG4);
 #define DEF_FUNCTION_TYPE_VAR_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
   def_fn_type (ENUM, RETURN, 1, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
+#define DEF_FUNCTION_TYPE_VAR_8(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
+				ARG6, ARG7, ARG8)			    \
+  def_fn_type (ENUM, RETURN, 1, 8, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,      \
+	       ARG7, ARG8);
+#define DEF_FUNCTION_TYPE_VAR_12(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
+				 ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12) \
+  def_fn_type (ENUM, RETURN, 1, 12, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,      \
+	       ARG7, ARG8, ARG9, ARG10, ARG11, ARG12);
 #define DEF_POINTER_TYPE(ENUM, TYPE) \
   builtin_types[(int) ENUM] = build_pointer_type (builtin_types[(int) TYPE]);
 
@@ -939,6 +953,8 @@ d_init_builtins()
 #undef DEF_FUNCTION_TYPE_VAR_3
 #undef DEF_FUNCTION_TYPE_VAR_4
 #undef DEF_FUNCTION_TYPE_VAR_5
+#undef DEF_FUNCTION_TYPE_VAR_8
+#undef DEF_FUNCTION_TYPE_VAR_12
 #undef DEF_POINTER_TYPE
   builtin_types[(int) BT_LAST] = NULL_TREE;
 
