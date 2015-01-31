@@ -715,6 +715,7 @@ version( MinGW )
     int   __mingw_vsnprintf(char* s, size_t n, in char* format, va_list arg);
     alias __mingw_vsnprintf _vsnprintf;
     alias __mingw_vsnprintf vsnprintf;
+    int _open_osfhandle(intptr_t osfhandle, int flags);
 }
 else version( Win32 )
 {

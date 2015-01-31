@@ -117,10 +117,11 @@ version (DIGITAL_MARS_STDIO)
 }
 else version (MINGW_IO)
 {
-    extern (C)
+    extern (C) nothrow @nogc
     {
         int setmode(int, int);
         intptr_t _get_osfhandle(int fd);
+        FILE* _fdopen(int, const (char)*);
     }
 
     void flockfile(FILE* fp) { }
@@ -144,7 +145,13 @@ else version (MINGW_IO)
     alias FUNLOCK = funlockfile;
 
     alias _setmode = setmode;
-    enum _O_BINARY = 0x8000;
+    enum
+    {
+        _O_RDONLY = 0x0000,
+        _O_APPEND = 0x0008,
+        _O_TEXT   = 0x4000,
+        _O_BINARY = 0x8000,
+    }
     int _fileno(FILE* f) { return f._file; }
     alias fileno = _fileno;
 }
