@@ -599,11 +599,6 @@ D_GC_MODULES
 srcdir
 DFLAGSX
 DFLAGS
-DCFG_POSIX
-DCFG_UNIX
-DCFG_GETPWNAM_R
-DCFG_MMAP
-DCFG_CBRIDGE_STDIO
 DCFG_ARM_EABI_UNWINDER
 DRUNTIME_OBJS
 D_EXTRA_OBJS
@@ -4812,14 +4807,14 @@ $as_echo "$d_thread_model" >&6; }
 # Map from thread model to thread interface.
 
 case $d_thread_model in
-    aix)    DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
-    lynx)   DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
-    posix)  DCFG_THREAD_MODEL="GNU_Thread_Posix" ;;
-    single) DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
-    win32)  DCFG_THREAD_MODEL="GNU_Thread_Win32" ;;
+    aix)    DCFG_THREAD_MODEL="Posix" ;;
+    lynx)   DCFG_THREAD_MODEL="Posix" ;;
+    posix)  DCFG_THREAD_MODEL="Posix" ;;
+    single) DCFG_THREAD_MODEL="Single" ;;
+    win32)  DCFG_THREAD_MODEL="Win32" ;;
     # TODO: These targets need porting.
     dce|mipssde|rtems|tpf|vxworks)
-	    DCFG_THREAD_MODEL="GNU_Thread_Single" ;;
+	    DCFG_THREAD_MODEL="Single" ;;
     *)	    as_fn_error "Thread implementation '$d_thread_model' not recognised" "$LINENO" 5 ;;
 esac
 
@@ -5082,12 +5077,12 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-   DCFG_ARM_EABI_UNWINDER=""
+   DCFG_ARM_EABI_UNWINDER=false
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/generic.o"
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-   DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
+   DCFG_ARM_EABI_UNWINDER=true
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
@@ -5106,9 +5101,6 @@ case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
 esac
 
-DCFG_CBRIDGE_STDIO=
-
-
 if test -n "$d_have_unix" && test "$enable_unix" = auto ; then
   enable_unix=yes
 fi
@@ -5120,29 +5112,14 @@ case "$d_target_os" in
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
 	     ;;
     freebsd*|k*bsd*-gnu)
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
-    linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
+    linux*)  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
              ;;
-    cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
-	     ;;
-    mingw*)  #DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
+    mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     #DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
-	     DCFG_UNIX=Windows
-	     ;;
-    *)       if test "$enable_unix" != "yes"; then
-	         DCFG_UNIX=NoSystem
-	     fi
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
 esac
 
@@ -5150,17 +5127,7 @@ if test "$enable_unix" = "yes"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
   D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-
-# Add "linux" module for compatibility even if not Linux
-D_EXTRA_OBJS="std/c/linux/linux.o $D_EXTRA_OBJS"
-DCFG_UNIX="Unix"
-DCFG_POSIX="Posix"
-
 fi
-
-
-
-
 
 if test -z "$DFLAGS"; then
     DFLAGS="-Wall -g -frelease -O2"
@@ -5259,8 +5226,7 @@ fi
 ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile"
 
 
-#TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-ac_config_files="$ac_config_files Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d"
+ac_config_files="$ac_config_files Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5983,8 +5949,7 @@ do
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "libdruntime/Makefile") CONFIG_FILES="$CONFIG_FILES libdruntime/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "src/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES src/phobos-ver-syms" ;;
-    "libdruntime/phobos-ver-syms") CONFIG_FILES="$CONFIG_FILES libdruntime/phobos-ver-syms" ;;
+    "libdruntime/gcc/config.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/config.d" ;;
     "libdruntime/gcc/libbacktrace.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/libbacktrace.d" ;;
 
   *) as_fn_error "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

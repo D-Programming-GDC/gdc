@@ -176,7 +176,6 @@ tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers)
 extern const char *iprefix;
 extern const char *multilib_dir;
 extern void add_import_paths (bool stdinc);
-extern void add_phobos_versyms();
 
 /* In d-lang.cc */
 extern tree d_pushdecl (tree);

@@ -416,10 +416,10 @@ AC_TRY_COMPILE([#include <unwind.h>],[
 #endif
 ],
   [AC_MSG_RESULT([no])
-   DCFG_ARM_EABI_UNWINDER=""
+   DCFG_ARM_EABI_UNWINDER=false
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/generic.o"],
   [AC_MSG_RESULT([yes])
-   DCFG_ARM_EABI_UNWINDER="GNU_ARM_EABI_Unwinder"
+   DCFG_ARM_EABI_UNWINDER=true
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
@@ -436,9 +436,6 @@ case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
 esac
 
-DCFG_CBRIDGE_STDIO=
-AC_SUBST(DCFG_CBRIDGE_STDIO)
-
 if test -n "$d_have_unix" && test "$enable_unix" = auto ; then
   enable_unix=yes
 fi
@@ -450,29 +447,14 @@ case "$d_target_os" in
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
 	     ;;
     freebsd*|k*bsd*-gnu)
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
-    linux*)  #D_EXTRA_OBJS="$D_EXTRA_OBJS std/c/linux/linux.o"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
+    linux*)  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
              ;;
-    cygwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
-	     ;;
-    mingw*)  #DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
+    mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
 	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
 	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     #DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
-	     DCFG_UNIX=Windows
-	     ;;
-    *)       if test "$enable_unix" != "yes"; then
-	         DCFG_UNIX=NoSystem
-	     fi
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/cbridge_stdio.o"
-	     DCFG_CBRIDGE_STDIO="GNU_CBridge_Stdio"
 	     ;;
 esac
 
@@ -480,13 +462,7 @@ if test "$enable_unix" = "yes"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
   D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-  DPHOBOS_CONFIGURE_UNIX
 fi
-dnl can these be moved to acinclude.m4?
-AC_SUBST(DCFG_MMAP)
-AC_SUBST(DCFG_GETPWNAM_R)
-AC_SUBST(DCFG_UNIX)
-AC_SUBST(DCFG_POSIX)
 
 if test -z "$DFLAGS"; then
     DFLAGS="-Wall -g -frelease -O2"
@@ -556,5 +532,4 @@ _EOF
    AS_UNSET([ml_norecursion])
 ])
 
-#TODO: Should be possible to get rid of libdruntime/phobos-ver-syms
-AC_OUTPUT([Makefile src/phobos-ver-syms libdruntime/phobos-ver-syms libdruntime/gcc/libbacktrace.d])
+AC_OUTPUT([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d])

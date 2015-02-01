@@ -1,5 +1,5 @@
 /* GDC -- D front-end for GCC
-   Copyright (C) 2011, 2012 Free Software Foundation, Inc.
+   Copyright (C) 2015 Free Software Foundation, Inc.
 
    GCC is free software; you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free
@@ -16,16 +16,17 @@
    <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
+module gcc.config;
 
-void * _d_gnu_cbridge_stdin;
-void * _d_gnu_cbridge_stdout;
-void * _d_gnu_cbridge_stderr;
+// Does platform define __ARM_EABI_UNWINDER__
+enum GNU_ARM_EABI_Unwinder = @DCFG_ARM_EABI_UNWINDER@;
 
-void _d_gnu_cbridge_init_stdio()
+// Map from thread model to thread interface.
+enum ThreadModel
 {
-    _d_gnu_cbridge_stdin = stdin;
-    _d_gnu_cbridge_stdout = stdout;
-    _d_gnu_cbridge_stderr = stderr;
+    Single,
+    Posix,
+    Win32,
 }
 
+enum ThreadModel GNU_Thread_Model = ThreadModel.@DCFG_THREAD_MODEL@;
