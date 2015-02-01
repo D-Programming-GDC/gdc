@@ -169,13 +169,8 @@ Module *d_gcc_get_output_module();
 struct lang_type *build_d_type_lang_specific (Type *t);
 struct lang_decl *build_d_decl_lang_specific (Declaration *d);
 
-/* In asmstmt.cc */
-tree d_build_asm_stmt (tree insn_tmpl, tree outputs, tree inputs, tree clobbers);
-
 /* In d-incpath.cc */
-extern const char *iprefix;
-extern const char *multilib_dir;
-extern void add_import_paths (bool stdinc);
+extern void add_import_paths(const char *iprefix, const char *imultilib, bool stdinc);
 
 /* In d-lang.cc */
 extern tree d_pushdecl (tree);

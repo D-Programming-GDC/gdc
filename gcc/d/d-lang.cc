@@ -43,6 +43,8 @@ static tree d_handle_flatten_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_target_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_noclone_attribute(tree *, tree, tree, int, bool *);
 
+static const char *iprefix_dir = NULL;
+static const char *imultilib_dir = NULL;
 
 static char lang_name[6] = "GNU D";
 
@@ -309,7 +311,7 @@ d_init()
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_import_paths(std_inc);
+  add_import_paths(iprefix_dir, imultilib_dir, std_inc);
 
   return 1;
 }
@@ -562,11 +564,11 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_imultilib:
-      multilib_dir = arg;
+      imultilib_dir = arg;
       break;
 
     case OPT_iprefix:
-      iprefix = arg;
+      iprefix_dir = arg;
       break;
 
     case OPT_I:

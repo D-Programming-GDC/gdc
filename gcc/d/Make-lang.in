@@ -23,15 +23,6 @@ target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
 D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
 D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdc|sed '$(program_transform_name)')
 
-# This should be configured
-ifeq ($(host), $(target))
-  D_include_dir = `echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include/d/$(version)
-  gcc_d_include_dir = $(libsubdir)/$(unlibsubdir)/..$(D_include_dir)
-else
-  gcc_d_include_dir = $(libsubdir)/include/d
-endif
-
-
 # Common headers between D frontend and glue
 D_DMD_H := \
     d/dfrontend/aav.h d/dfrontend/array.h d/dfrontend/aggregate.h \
@@ -58,19 +49,13 @@ D_TREE_H = $(TREE_H) $(D_DMD_H) d/intrinsics.def d/runtime.def d/d-tree.def \
     $(VARRAY_H) $(SYSTEM_H) $(CONFIG_H) $(TARGET_H) $(GGC_H) \
     $(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h
 
-gcc_d_target_include_dir=$(gcc_d_include_dir)/$(target_noncanonical)
-
 # Name of phobos library
 D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos2\"
-
-# May be adjusted in d-incpath.cc
-PHOBOS_DIRS = -DD_PHOBOS_DIR=\"$(gcc_d_include_dir)\"
-PHOBOS_DIRS += -DD_PHOBOS_TARGET_DIR=\"$(gcc_d_target_include_dir)\"
 
 # Actual names to use when installing a cross-compiler.
 D_CROSS_NAME = $(D_INSTALL_NAME)
 
-D d: cc1d$(exeext) d/pkgvars
+D d: cc1d$(exeext)
 
 # Tell GNU make to ignore these if they exist.
 .PHONY: D d
@@ -169,7 +154,7 @@ d/verstr.h: d/VERSION
 	cat $^ > $@
 
 d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H)
-	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(PHOBOS_DIRS) -DGCC_SAFE_DMD=1 -o $@ -c $<
+	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o $@ -c $<
 
 
 d/id.gen.o: d/id.c $(D_DMD_H)
@@ -358,13 +343,3 @@ lang_checks_parallelized += check-gdc
 # For description see comment above check_gcc_parallelize in gcc/Makefile.in.
 check_gdc_parallelize = 10
 
-d/pkgvars: Makefile
-	@rm -f $@
-	@echo "build=$(build)" >> $@
-	@echo "host=$(host)" >> $@
-	@echo "target=$(target)" >> $@
-	@echo "target_alias=$(target_noncanonical)" >> $@
-	@echo "gcc_version=$(version)" >> $@
-	@echo "srcdir=$(srcdir)" >> $@
-	@echo "prefix=$(prefix)" >> $@
-	@echo "exeext=$(exeext)" >> $@
