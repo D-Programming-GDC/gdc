@@ -16,18 +16,21 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "d-system.h"
+
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
 extern "C" {
+#endif
 #include "options.h"
 #include "cppdefault.h"
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
 }//extern "C"
+#endif
 
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-confdefs.h"
 
-extern "C" {
 #include "cond.h"
-}//extern "C"
 
 // Global options removed from d-lang.cc
 const char *iprefix = NULL;

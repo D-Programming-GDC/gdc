@@ -22,7 +22,10 @@
 
 // GMP is C++-aware, so we cannot included it in an extern "C" block.
 #include "gmp.h"
+
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
 extern "C" {
+#endif
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
@@ -52,7 +55,10 @@ extern "C" {
 
 #include "common/common-target.h"
 
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
 } //extern "C"
+#endif
+
 #ifdef optimize
 #undef optimize
 #endif

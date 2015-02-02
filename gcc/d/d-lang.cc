@@ -20,11 +20,15 @@
 */
 
 #include "d-system.h"
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
 extern "C" {
+#endif
 #include "options.h"
 #include "cppdefault.h"
 #include "debug.h"
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
 }//extern "C"
+#endif
 
 #include "d-lang.h"
 #include "d-codegen.h"

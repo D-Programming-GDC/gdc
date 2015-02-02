@@ -79,16 +79,12 @@ D d: cc1d$(exeext) d/pkgvars
 
 D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
 
-#ALL_COMPILERFLAGS includes these flags, but they're not valid for c++
-#so they should be filtered out.
-GDC_OLD_CFLAGS = -Wstrict-prototypes -Wmissing-prototypes -Wold-style-definition -Wc++-compat
-GDC_ALL_COMPILERFLAGS = $(filter-out $(GDC_OLD_CFLAGS), $(ALL_COMPILERFLAGS))
-ALL_D_COMPILER_FLAGS = $(GDC_ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
+ALL_D_COMPILER_FLAGS = $(ALL_CPPFLAGS) $(ALL_CXXFLAGS) \
                         $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES)
 
 # D Frontend has slightly relaxed warnings compared to rest of GDC.
 DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing
-DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(GDC_ALL_COMPILERFLAGS)) $(DMD_WARN_CFLAGS)
+DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_CXXFLAGS)) $(DMD_WARN_CFLAGS)
 
 # %% Ditto
 ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
@@ -151,7 +147,8 @@ d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
 	$(CXX) $(ALL_D_COMPILER_FLAGS) -o d/$*.glue.o -c $<
 
 d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
-	$(CXX) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
+	$(COMPILER) $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(D_INCLUDES) \
+	    -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
 
 d/impcvgen: d/impcnvgen.dmdgen.o
 	$(CXX_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
@@ -201,7 +198,7 @@ d/d-builtins.cglue.o: d/d-builtins.c $(D_TREE_H)
 d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
     $(CONFIG_H) $(OPTS_H)
 	(SHLIB='$(SHLIB)'; \
-	$(COMPILER) -c $(ALL_COMPILER_FLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(DRIVER_DEFINES) \
 		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 D_BORROWED_C_OBJS = attribs.o

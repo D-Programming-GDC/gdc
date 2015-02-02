@@ -20,9 +20,7 @@
 #include "d-irstate.h"
 #include "d-codegen.h"
 
-extern "C" {
 #include "init.h"
-}//extern "C"
 
 IRBase::IRBase (void)
 {

@@ -56,10 +56,14 @@ extern "C" void __cdecl _assert(void *e, void *f, unsigned line)
 #endif
 
 #ifdef IN_GCC
-extern "C" {
 #include "config.h"
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
+extern "C" {
+#endif
 #include "errors.h"
+#if defined(__cplusplus) && !defined(ENABLE_BUILD_WITH_CXX)
 } //extern "C"
+#endif
 #else
 /**************************************
  * Print error message and exit.
