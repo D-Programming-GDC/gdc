@@ -24,7 +24,6 @@
 
 #include "d-lang.h"
 #include "d-codegen.h"
-#include "d-confdefs.h"
 
 #include "mars.h"
 #include "mtype.h"
