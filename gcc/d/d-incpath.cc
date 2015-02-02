@@ -24,20 +24,15 @@
 
 #include "cond.h"
 
-// Global options removed from d-lang.cc
-const char *iprefix = NULL;
-const char *multilib_dir = NULL;
-
-
 // Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
 // append all the names to the import search path.
 
 static void
-add_env_var_paths (const char *env_var)
+add_env_var_paths(const char *env_var)
 {
   char *p, *q, *path;
 
-  q = getenv (env_var);
+  q = getenv(env_var);
 
   if (!q)
     return;
@@ -49,15 +44,15 @@ add_env_var_paths (const char *env_var)
 	q++;
 
       if (p == q)
-	path = xstrdup (".");
+	path = xstrdup(".");
       else
 	{
-	  path = XNEWVEC (char, q - p + 1);
-	  memcpy (path, p, q - p);
+	  path = XNEWVEC(char, q - p + 1);
+	  memcpy(path, p, q - p);
 	  path[q - p] = '\0';
 	}
 
-      global.params.imppath->push (path);
+      global.params.imppath->push(path);
     }
 }
 
@@ -67,14 +62,14 @@ add_env_var_paths (const char *env_var)
 // IPREFIX and search them first.
 
 static char *
-prefixed_path (const char *path)
+prefixed_path(const char *path, const char *iprefix)
 {
   // based on incpath.c
   size_t len;
 
   if (cpp_relocated() && (len = cpp_PREFIX_len) != 0)
   {
-    if (!strncmp (path, cpp_PREFIX, len))
+    if (!strncmp(path, cpp_PREFIX, len))
       {
 	static const char *relocated_prefix;
 	/* If this path starts with the configure-time prefix,
@@ -87,24 +82,24 @@ prefixed_path (const char *path)
 	    char *dummy;
 	    /* Make relative prefix expects the first argument
 	       to be a program, not a directory.  */
-	    dummy = concat (gcc_exec_prefix, "dummy", NULL);
+	    dummy = concat(gcc_exec_prefix, "dummy", NULL);
 	    relocated_prefix
-	      = make_relative_prefix (dummy,
-				      cpp_EXEC_PREFIX,
-				      cpp_PREFIX);
-	    free (dummy);
+	      = make_relative_prefix(dummy,
+				     cpp_EXEC_PREFIX,
+				     cpp_PREFIX);
+	    free(dummy);
 	  }
-	return concat (relocated_prefix, path + len, NULL);
+	return concat(relocated_prefix, path + len, NULL);
       }
   }
 
   if (iprefix && (len = cpp_GCC_INCLUDE_DIR_len) != 0)
     {
-      if (!strncmp (path, cpp_GCC_INCLUDE_DIR, len))
-	return concat (iprefix, path + len, NULL);
+      if (!strncmp(path, cpp_GCC_INCLUDE_DIR, len))
+	return concat(iprefix, path + len, NULL);
     }
 
-  return xstrdup (path);
+  return xstrdup(path);
 }
 
 
@@ -112,7 +107,7 @@ prefixed_path (const char *path)
 // canonical version of the filename.
 
 static char *
-make_absolute (char *path)
+make_absolute(char *path)
 {
 #if defined (HAVE_DOS_BASED_FILE_SYSTEM)
   /* Remove unnecessary trailing slashes.  On some versions of MS
@@ -120,22 +115,22 @@ make_absolute (char *path)
      On newer versions, stat() does not recognize a directory that ends
      in a '\\' or '/', unless it is a drive root dir, such as "c:/",
      where it is obligatory.  */
-  int pathlen = strlen (path);
+  int pathlen = strlen(path);
   char *end = path + pathlen - 1;
   /* Preserve the lead '/' or lead "c:/".  */
   char *start = path + (pathlen > 2 && path[1] == ':' ? 3 : 1);
 
-  for (; end > start && IS_DIR_SEPARATOR (*end); end--)
+  for (; end > start && IS_DIR_SEPARATOR(*end); end--)
     *end = 0;
 #endif
 
-  return lrealpath (path);
+  return lrealpath(path);
 }
 
 /* Add PATHS to the global import lookup path.  */
 
 static void
-add_import_path (Strings *paths)
+add_import_path(Strings *paths)
 {
   if (paths)
     {
@@ -145,15 +140,15 @@ add_import_path (Strings *paths)
       for (size_t i = 0; i < paths->dim; i++)
 	{
 	  const char *path = (*paths)[i];
-	  char *target_dir = make_absolute (CONST_CAST (char *, path));
+	  char *target_dir = make_absolute(CONST_CAST(char *, path));
 
-	  if (!FileName::exists (target_dir))
+	  if (!FileName::exists(target_dir))
 	    {
-	      free (target_dir);
+	      free(target_dir);
 	      continue;
 	    }
 
-	  global.path->push (target_dir);
+	  global.path->push(target_dir);
 	}
     }
 }
@@ -161,7 +156,7 @@ add_import_path (Strings *paths)
 /* Add PATHS to the global file import lookup path.  */
 
 static void
-add_fileimp_path (Strings *paths)
+add_fileimp_path(Strings *paths)
 {
   if (paths)
     {
@@ -171,15 +166,15 @@ add_fileimp_path (Strings *paths)
       for (size_t i = 0; i < paths->dim; i++)
 	{
 	  const char *path = (*paths)[i];
-	  char *target_dir = make_absolute (CONST_CAST (char *, path));
+	  char *target_dir = make_absolute(CONST_CAST(char *, path));
 
-	  if (!FileName::exists (target_dir))
+	  if (!FileName::exists(target_dir))
 	    {
-	      free (target_dir);
+	      free(target_dir);
 	      continue;
 	    }
 
-	  global.filePath->push (target_dir);
+	  global.filePath->push(target_dir);
 	}
     }
 }
@@ -189,42 +184,76 @@ add_fileimp_path (Strings *paths)
 // if STDINC, also include standard library paths.
 
 void
-add_import_paths (bool stdinc)
+add_import_paths(const char *iprefix, const char *imultilib, bool stdinc)
 {
   if (stdinc)
     {
-      char *phobos_dir = prefixed_path (D_PHOBOS_DIR);
-      char *target_dir = prefixed_path (D_PHOBOS_TARGET_DIR);
+      for (const default_include *p = cpp_include_defaults; p->fname; p++)
+	{
+	  char *import_path;
 
-      if (multilib_dir)
-	target_dir = concat (target_dir, "/", multilib_dir, NULL);
+	  // Ignore C++
+	  if (p->cplusplus)
+	    continue;
 
-      global.params.imppath->shift (phobos_dir);
-      global.params.imppath->shift (target_dir);
+	  if (!p->add_sysroot)
+	    import_path = prefixed_path(p->fname, iprefix);
+	  else
+	    import_path = xstrdup(p->fname);
+
+	  // Add D-specific suffix.
+	  import_path = concat(import_path, "/d", NULL);
+
+	  // Ignore duplicate entries.
+	  bool found = false;
+	  for (size_t i = 0; i < global.params.imppath->dim; i++)
+	    {
+	      if (strcmp(import_path, (*global.params.imppath)[i]) == 0)
+		{
+		  found = true;
+		  break;
+		}
+	    }
+
+	  if (found)
+	    {
+	      free(import_path);
+	      continue;
+	    }
+
+	  // Multilib support.
+	  if (imultilib)
+	    {
+	      char *target_path = concat(import_path, "/", imultilib, NULL);
+	      global.params.imppath->shift(target_path);
+	    }
+
+	  global.params.imppath->shift(import_path);
+	}
     }
 
   // Language-dependent environment variables may add to the include chain.
-  add_env_var_paths ("D_IMPORT_PATH");
+  add_env_var_paths("D_IMPORT_PATH");
 
-  // Build import search path
+  // Add import search paths
   if (global.params.imppath)
     {
       for (size_t i = 0; i < global.params.imppath->dim; i++)
 	{
 	  const char *path = (*global.params.imppath)[i];
 	  if (path)
-	    add_import_path (FileName::splitPath (path));
+	    add_import_path(FileName::splitPath(path));
 	}
     }
 
-  // Build string import search path
+  // Add string import search paths
   if (global.params.fileImppath)
     {
       for (size_t i = 0; i < global.params.fileImppath->dim; i++)
 	{
 	  const char *path = (*global.params.fileImppath)[i];
 	  if (path)
-	    add_fileimp_path (FileName::splitPath (path));
+	    add_fileimp_path(FileName::splitPath(path));
 	}
     }
 }
