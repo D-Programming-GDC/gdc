@@ -21,8 +21,6 @@
 #include "coretypes.h"
 #include "tm.h"
 
-#include "d-confdefs.h"
-
 #include "gcc.h"
 #include "opts.h"
 

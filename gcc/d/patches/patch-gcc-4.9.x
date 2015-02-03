@@ -2,9 +2,47 @@ This implements D language support in the GCC back end, and adds
 relevant documentation about the GDC front end.
 ---
 
+--- gcc/config/darwin.h
++++ gcc/config/darwin.h
+@@ -49,6 +49,10 @@
+ /* Suppress g++ attempt to link in the math library automatically. */
+ #define MATH_LIBRARY ""
+ 
++/* Suppress gdc attempt to link in the thread and time library automatically. */
++#define THREAD_LIBRARY ""
++#define TIME_LIBRARY ""
++
+ /* We have atexit.  */
+ 
+ #define HAVE_ATEXIT
+--- gcc/config/i386/cygming.h
++++ gcc/config/i386/cygming.h
+@@ -170,6 +170,10 @@
+ 
+ #undef MATH_LIBRARY
+ #define MATH_LIBRARY ""
++#undef THREAD_LIBRARY
++#define THREAD_LIBRARY ""
++#undef TIME_LIBRARY
++#define TIME_LIBRARY ""
+ 
+ #undef TARGET_LIBC_HAS_FUNCTION
+ #define TARGET_LIBC_HAS_FUNCTION no_c99_libc_has_function
+--- gcc/config/linux-android.h
++++ gcc/config/linux-android.h
+@@ -57,3 +57,9 @@
+ 
+ #define ANDROID_ENDFILE_SPEC \
+   "%{shared: crtend_so%O%s;: crtend_android%O%s}"
++
++/* Suppress gdc attempt to link in the thread and time library automatically. */
++#if ANDROID_DEFAULT
++# define THREAD_LIBRARY ""
++# define TIME_LIBRARY ""
++#endif
 --- gcc/config/rs6000/rs6000.c
 +++ gcc/config/rs6000/rs6000.c
-@@ -24791,7 +24791,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -25077,7 +25077,8 @@
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
@@ -35,7 +73,7 @@ relevant documentation about the GDC front end.
  current official meaning is ``GNU Compiler Collection'', which refers
 --- gcc/doc/install.texi
 +++ gcc/doc/install.texi
-@@ -1423,12 +1423,12 @@ their runtime libraries should be built.  For a list of valid values for
+@@ -1423,12 +1423,12 @@
  grep language= */config-lang.in
  @end smallexample
  Currently, you can use any of the following:
@@ -52,7 +90,7 @@ relevant documentation about the GDC front end.
  Specify that a particular subset of compilers and their runtime
 --- gcc/doc/invoke.texi
 +++ gcc/doc/invoke.texi
-@@ -1210,6 +1210,15 @@ called @dfn{specs}.
+@@ -1213,6 +1213,15 @@
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -68,7 +106,7 @@ relevant documentation about the GDC front end.
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1245,6 +1254,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1248,6 +1257,7 @@
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -78,7 +116,7 @@ relevant documentation about the GDC front end.
  java
 --- gcc/doc/sourcebuild.texi
 +++ gcc/doc/sourcebuild.texi
-@@ -109,6 +109,9 @@ The Objective-C and Objective-C++ runtime library.
+@@ -109,6 +109,9 @@
  @item libquadmath
  The runtime support library for quad-precision math operations.
  
@@ -90,7 +128,7 @@ relevant documentation about the GDC front end.
  
 --- gcc/doc/standards.texi
 +++ gcc/doc/standards.texi
-@@ -282,6 +282,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
+@@ -282,6 +282,16 @@
  As of the GCC 4.7.1 release, GCC supports the Go 1 language standard,
  described at @uref{http://golang.org/doc/go1.html}.
  
@@ -109,7 +147,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- gcc/dwarf2out.c
 +++ gcc/dwarf2out.c
-@@ -4616,6 +4616,15 @@ is_ada (void)
+@@ -4613,6 +4613,15 @@
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -125,7 +163,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  */
  
  static void
-@@ -19295,6 +19304,8 @@ gen_compile_unit_die (const char *filename)
+@@ -19296,6 +19305,8 @@
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -134,7 +172,7 @@ relevant documentation about the GDC front end.
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
-@@ -20236,7 +20247,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -20237,7 +20248,7 @@
  
    if (ns_context != context_die)
      {
@@ -143,7 +181,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, ns_context);
-@@ -20259,7 +20270,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -20260,7 +20271,7 @@
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -152,7 +190,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -20316,7 +20327,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
+@@ -20317,7 +20328,7 @@
        break;
  
      case CONST_DECL:
@@ -161,7 +199,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -20786,7 +20797,7 @@ dwarf2out_decl (tree decl)
+@@ -20787,7 +20798,7 @@
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -172,7 +210,7 @@ relevant documentation about the GDC front end.
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 --- gcc/gcc.c
 +++ gcc/gcc.c
-@@ -1028,6 +1028,7 @@ static const struct compiler default_compilers[] =
+@@ -1034,6 +1034,7 @@
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},
