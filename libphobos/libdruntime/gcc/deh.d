@@ -22,6 +22,7 @@ module gcc.deh;
 import gcc.unwind;
 import gcc.unwind.pe;
 import gcc.builtins;
+import gcc.config;
 
 import core.memory;
 import core.stdc.stdlib;
@@ -53,7 +54,7 @@ version(GNU_SEH_Exceptions)
 }
 
 // This is the primary exception class we report -- "GNUCD__\0".
-version (GNU_ARM_EABI_Unwinder)
+static if (GNU_ARM_EABI_Unwinder)
 {
   const _Unwind_Exception_Class __gdc_exception_class
     = ['G', 'N', 'U', 'C', 'D', '_', '_', '\0'];
@@ -95,7 +96,7 @@ struct d_exception_header
 
   static assert(unwindHeader.offsetof - object.offsetof == object.sizeof);
 
-  version (GNU_ARM_EABI_Unwinder)
+  static if (GNU_ARM_EABI_Unwinder)
   {
     // Nothing here yet.
   }
@@ -212,7 +213,7 @@ parse_lsda_header (_Unwind_Context *context, ubyte *p,
   info.ttype_encoding = *p++;
   if (info.ttype_encoding != DW_EH_PE_omit)
     {
-      version (GNU_ARM_EABI_Unwinder)
+      static if (GNU_ARM_EABI_Unwinder)
       {
 	// Older ARM EABI toolchains set this value incorrectly, so use a
 	// hardcoded OS-specific format.
@@ -253,7 +254,7 @@ save_caught_exception(_Unwind_Exception *ue_header,
 		      _Unwind_Ptr landing_pad,
 		      ubyte *action_record)
 {
-  version (GNU_ARM_EABI_Unwinder)
+  static if (GNU_ARM_EABI_Unwinder)
   {
     ue_header.barrier_cache.sp = _Unwind_GetGR(context, UNWIND_STACK_REG);
     ue_header.barrier_cache.bitpattern[1] = cast(_uw) handler_switch_value;
@@ -277,7 +278,7 @@ restore_caught_exception(_Unwind_Exception *ue_header,
 			 ref ubyte *language_specific_data,
 			 ref _Unwind_Ptr landing_pad)
 {
-  version (GNU_ARM_EABI_Unwinder)
+  static if (GNU_ARM_EABI_Unwinder)
   {
     handler_switch_value = cast(int) ue_header.barrier_cache.bitpattern[1];
     language_specific_data = cast(ubyte *) ue_header.barrier_cache.bitpattern[2];
@@ -333,57 +334,60 @@ else version (GNU_SjLj_Exceptions)
 
   private int __builtin_eh_return_data_regno(int x) { return x; }
 }
-else version (GNU_ARM_EABI_Unwinder)
-{
-  extern(C) _Unwind_Reason_Code
-  __gdc_personality_v0(_Unwind_State state,
-		       _Unwind_Exception* ue_header,
-		       _Unwind_Context* context)
-  {
-    _Unwind_Action actions;
-
-    switch (state & _US_ACTION_MASK)
-      {
-      case _US_VIRTUAL_UNWIND_FRAME:
-	actions = _UA_SEARCH_PHASE;
-	break;
-
-      case _US_UNWIND_FRAME_STARTING:
-	actions = _UA_CLEANUP_PHASE;
-	if (!(state & _US_FORCE_UNWIND)
-	    && ue_header.barrier_cache.sp == _Unwind_GetGR (context, UNWIND_STACK_REG))
-	  actions |= _UA_HANDLER_FRAME;
-	break;
-
-      case _US_UNWIND_FRAME_RESUME:
-	if (__gnu_unwind_frame (ue_header, context) != _URC_OK)
-	  return _URC_FAILURE;
-	return _URC_CONTINUE_UNWIND;
-
-      default:
-	abort();
-      }
-    actions |= state & _US_FORCE_UNWIND;
-
-    // We don't know which runtime we're working with, so can't check this.
-    // However the ABI routines hide this from us, and we don't actually need to knowa
-    bool foreign_exception = false;
-
-    return __gdc_personality_impl (1, actions, foreign_exception, ue_header, context);
-  }
-}
 else
 {
-  extern(C) _Unwind_Reason_Code
-  __gdc_personality_v0(int iversion,
-		       _Unwind_Action actions,
-		       _Unwind_Exception_Class exception_class,
-		       _Unwind_Exception *ue_header,
-		       _Unwind_Context *context)
+  static if (GNU_ARM_EABI_Unwinder)
   {
-    return __gdc_personality_impl (iversion, actions,
-				   exception_class != __gdc_exception_class,
-				   ue_header, context);
+    extern(C) _Unwind_Reason_Code
+    __gdc_personality_v0(_Unwind_State state,
+			 _Unwind_Exception* ue_header,
+			 _Unwind_Context* context)
+    {
+      _Unwind_Action actions;
+
+      switch (state & _US_ACTION_MASK)
+	{
+	case _US_VIRTUAL_UNWIND_FRAME:
+	  actions = _UA_SEARCH_PHASE;
+	  break;
+
+	case _US_UNWIND_FRAME_STARTING:
+	  actions = _UA_CLEANUP_PHASE;
+	  if (!(state & _US_FORCE_UNWIND)
+	      && ue_header.barrier_cache.sp == _Unwind_GetGR (context, UNWIND_STACK_REG))
+	    actions |= _UA_HANDLER_FRAME;
+	  break;
+
+	case _US_UNWIND_FRAME_RESUME:
+	  if (__gnu_unwind_frame (ue_header, context) != _URC_OK)
+	    return _URC_FAILURE;
+	  return _URC_CONTINUE_UNWIND;
+
+	default:
+	  abort();
+	}
+      actions |= state & _US_FORCE_UNWIND;
+
+      // We don't know which runtime we're working with, so can't check this.
+      // However the ABI routines hide this from us, and we don't actually need to knowa
+      bool foreign_exception = false;
+
+      return __gdc_personality_impl (1, actions, foreign_exception, ue_header, context);
+    }
+  }
+  else
+  {
+    extern(C) _Unwind_Reason_Code
+    __gdc_personality_v0(int iversion,
+			 _Unwind_Action actions,
+			 _Unwind_Exception_Class exception_class,
+			 _Unwind_Exception *ue_header,
+			 _Unwind_Context *context)
+    {
+      return __gdc_personality_impl (iversion, actions,
+				     exception_class != __gdc_exception_class,
+				     ue_header, context);
+    }
   }
 }
 
@@ -411,7 +415,7 @@ __gdc_personality_impl(int iversion,
   int handler_switch_value;
   int ip_before_insn = 0;
 
-  version (GNU_ARM_EABI_Unwinder)
+  static if (GNU_ARM_EABI_Unwinder)
   {
     // The dwarf unwinder assumes the context structure holds things like the
     // function and LSDA pointers.  The ARM implementation caches these in
@@ -448,7 +452,7 @@ __gdc_personality_impl(int iversion,
   // If no LSDA, then there are no handlers or cleanups.
   if (! language_specific_data)
     {
-      version (GNU_ARM_EABI_Unwinder)
+      static if (GNU_ARM_EABI_Unwinder)
 	if (__gnu_unwind_frame (ue_header, context) != _URC_OK)
 	  return _URC_FAILURE;
       return _URC_CONTINUE_UNWIND;
@@ -606,7 +610,7 @@ __gdc_personality_impl(int iversion,
  do_something:
   if (found_type == Found.nothing)
     {
-      version (GNU_ARM_EABI_Unwinder)
+      static if (GNU_ARM_EABI_Unwinder)
 	if (__gnu_unwind_frame (ue_header, context) != _URC_OK)
 	  return _URC_FAILURE;
       return _URC_CONTINUE_UNWIND;
@@ -616,7 +620,7 @@ __gdc_personality_impl(int iversion,
     {
       if (found_type == Found.cleanup)
 	{
-	  version (GNU_ARM_EABI_Unwinder)
+	  static if (GNU_ARM_EABI_Unwinder)
 	    if (__gnu_unwind_frame (ue_header, context) != _URC_OK)
 	      return _URC_FAILURE;
 	  return _URC_CONTINUE_UNWIND;
@@ -653,7 +657,7 @@ __gdc_personality_impl(int iversion,
 	  parse_lsda_header (context, language_specific_data, &info);
 	  info.ttype_base = base_of_encoded_value (info.ttype_encoding, context);
 
-	  version (GNU_ARM_EABI_Unwinder)
+	  static if (GNU_ARM_EABI_Unwinder)
 	    ue_header.barrier_cache.bitpattern[1] = info.ttype_base;
 	  else
 	    xh.catchTemp = info.ttype_base;

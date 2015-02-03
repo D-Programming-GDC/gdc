@@ -18,7 +18,9 @@
 
 module gcc.unwind;
 
-version (GNU_ARM_EABI_Unwinder)
+import gcc.config;
+
+static if (GNU_ARM_EABI_Unwinder)
     public import gcc.unwind.arm;
 else
     public import gcc.unwind.generic;

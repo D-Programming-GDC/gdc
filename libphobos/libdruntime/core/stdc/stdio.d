@@ -564,23 +564,6 @@ else version( Android )
     shared stdout = &__sF[1];
     shared stderr = &__sF[2];
 }
-else version( GNU_CBridge_Stdio )
-{
-    extern FILE * _d_gnu_cbridge_stdin;
-    extern FILE * _d_gnu_cbridge_stdout;
-    extern FILE * _d_gnu_cbridge_stderr;
-    
-    extern void _d_gnu_cbridge_init_stdio();
-
-    shared static this()
-    {
-        _d_gnu_cbridge_init_stdio();
-    }
-
-    alias _d_gnu_cbridge_stdin stdin;
-    alias _d_gnu_cbridge_stdout stdout;
-    alias _d_gnu_cbridge_stderr stderr;
-}
 else
 {
     static assert( false, "Unsupported platform" );
