@@ -3,17 +3,8 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the `C' library (-lC). */
-#undef HAVE_LIBC
-
-/* Define to 1 if you have the `m' library (-lm). */
-#undef HAVE_LIBM
-
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
-
-/* Define to 1 if you have the `snprintf' function. */
-#undef HAVE_SNPRINTF
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -33,26 +24,8 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
-/* Global timezone variable */
-#undef HAVE_TIMEZONE
-
-/* Extra fields in struct tm */
-#undef HAVE_TM_GMTOFF_AND_ZONE
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
-
-/* Define to 1 if you have the `vsnprintf' function. */
-#undef HAVE_VSNPRINTF
-
-/* Define to 1 if you have the `_snprintf' function. */
-#undef HAVE__SNPRINTF
-
-/* Another global timezone variable */
-#undef HAVE__TIMEZONE
-
-/* Define to 1 if you have the `_vsnprintf' function. */
-#undef HAVE__VSNPRINTF
 
 /* Name of package */
 #undef PACKAGE
