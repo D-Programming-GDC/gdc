@@ -28,10 +28,6 @@ compilers="cc1d\$(exeext)"
 
 target_libs="target-libphobos target-zlib target-libbacktrace"
 
-# The D frontend is written in C++, so we need to build the C++
-# compiler during stage 1.
-lang_requires_boot_languages=c++
-
 gtfiles="\$(srcdir)/d/d-builtins.c \$(srcdir)/d/d-lang.h"
 
 # Do not build by default.

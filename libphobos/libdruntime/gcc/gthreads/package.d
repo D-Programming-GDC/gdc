@@ -18,9 +18,13 @@
 
 module gcc.gthreads;
 
-version (GNU_Thread_Posix)
+import gcc.config;
+
+static if (GNU_Thread_Model == ThreadModel.Posix)
   public import gcc.gthreads.posix;
-else version (GNU_Thread_Single)
+else static if (GNU_Thread_Model == ThreadModel.Single)
   public import gcc.gthreads.single;
-else version (GNU_Thread_Win32)
+else static if (GNU_Thread_Model == ThreadModel.Win32)
   public import gcc.gthreads.win32;
+else
+  static assert(false, "Thread model not supported.");
