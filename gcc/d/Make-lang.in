@@ -135,7 +135,7 @@ D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
-d/%.dmd.o: $(srcdir)/d/dfrontend/%.c $(D_DMD_H) d/d-confdefs.h
+d/%.dmd.o: $(srcdir)/d/dfrontend/%.c $(D_DMD_H)
 	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmd.o -c $<
 
 # For generator programs.
@@ -172,16 +172,13 @@ d/id.h: d/id.c
 d/verstr.h: d/VERSION
 	cat $^ > $@
 
-d/d-confdefs.h: d/Make-lang.in
-	$(srcdir)/d/target-ver-syms.sh $(target) > $@
-
-d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H) d/d-confdefs.h
+d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H)
 	$(COMPILER) $(ALL_D_COMPILER_FLAGS) $(PHOBOS_DIRS) -DGCC_SAFE_DMD=1 -o $@ -c $<
 
 
 d/id.gen.o: d/id.c $(D_DMD_H)
 d/impcnvtab.gen.o: d/impcnvtab.c $(D_DMD_H)
-d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) d/d-confdefs.h options.h
+d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) options.h
 d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
 d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
 d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
