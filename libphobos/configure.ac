@@ -1,5 +1,5 @@
 # GDC -- D front-end for GCC
-# Copyright (C) 2004 David Friedman
+# Copyright (C) 2011-2015 Free Software Foundation, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,92 +24,50 @@ AC_CONFIG_SRCDIR(libdruntime/gcc/builtins.d)
 AC_CONFIG_SRCDIR(libdruntime/gcc/attribute.d)
 AC_CONFIG_HEADERS(config.h)
 
+AM_ENABLE_MULTILIB(, ..)
+
 AC_CANONICAL_SYSTEM
 target_alias=${target_alias-$target}
 AC_SUBST(target_alias)
+
+if test "$build" != "$host"; then
+  # We are being configured with some form of cross compiler.
+  GCC_NO_EXECUTABLES
+fi
 
 AM_INIT_AUTOMAKE([1.9.3 foreign no-dependencies])
 AH_TEMPLATE(PACKAGE, [Name of package])
 AH_TEMPLATE(VERSION, [Version number of package])
 
-AM_MAINTAINER_MODE
-AM_ENABLE_MULTILIB(, ..)
-
-# libphobos is usually a symlink to gcc/d/phobos, so libphobos/..
-# is not the toplevel GCC directory.  gcc/d may also be a symlink.
-# Find the correct top-level directory by removing "/libphobos"
-# from $srcdir.
-dnl NOTE: This assumes that AM_ENABLE_MULTILIB uses $multi_basedir
-if test ! -r "$multi_basedir/config-ml.in"; then
-    better_dir=`echo "$srcdir" | sed -e 's|/libphobos||'`
-    if test -r "$better_dir/config-ml.in"; then
-	multi_basedir=$better_dir
-    fi
-fi
-
-if test "$build" != "$host"; then
-  # We are being configured with some form of cross compiler.
-  #GLIBCXX_IS_NATIVE=false
-  GCC_NO_EXECUTABLES
-  d_cross_comp=yes
-else
-  d_cross_comp=
-fi
-
-dnl Copied from libstdc++-v3/acinclude.m4.  Indeed, multilib will not work
-dnl correctly without this.
-# We're almost certainly being configured before anything else which uses
-# C++, so all of our AC_PROG_* discoveries will be cached.  It's vital that
-# we not cache the value of CXX that we "discover" here, because it's set
-# to something unique for us and libjava.  Other target libraries need to
-# find CXX for themselves.  We yank the rug out from under the normal AC_*
-# process by sneakily renaming the cache variable.  This also lets us debug
-# the value of "our" CXX in postmortems.
-#
-# We must also force CXX to /not/ be a precious variable, otherwise the
-# wrong (non-multilib-adjusted) value will be used in multilibs.  This
-# little trick also affects CPPFLAGS, CXXFLAGS, and LDFLAGS.  And as a side
-# effect, CXXFLAGS is no longer automagically subst'd, so we have to do
-# that ourselves.  Un-preciousing AC_PROG_CC also affects CC and CFLAGS.
-#
-# -fno-builtin must be present here so that a non-conflicting form of
-# std::exit can be guessed by AC_PROG_CXX, and used in later tests.
-
-m4_define([ac_cv_prog_CXX],[glibcxx_cv_prog_CXX])
-m4_rename([_AC_ARG_VAR_PRECIOUS],[glibcxx_PRECIOUS])
+m4_rename([_AC_ARG_VAR_PRECIOUS],[glibd_PRECIOUS])
 m4_define([_AC_ARG_VAR_PRECIOUS],[])
-save_CXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS -fno-builtin"
-# --- Extra hack for Phobos ---
-# AC_PROG_CC, if not "cross-compiling", tries to run a simple C program.
-# However, a given multilib variant may not be executable on the current
-# system.  Example:  Building for x86_64 on IA-32.  This is technically
-# cross-compiling, but we don't want cross-compiling directory layouts
-# and we still need link tests.  Solution is to make autoconf think it
-# is cross compiling only when it tests the compilers.
-d_save_cross_compiling=$cross_compiling
-cross_compiling=yes
 AC_PROG_CC
-AC_PROG_CXX
-cross_compiling=$d_save_cross_compiling
-CXXFLAGS="$save_CXXFLAGS"
-#m4_rename([glibcxx_PRECIOUS],[_AC_ARG_VAR_PRECIOUS])
-AC_SUBST(CFLAGS)
-AC_SUBST(CXXFLAGS)
-dnl -- End of copy from libstdc++-v3/acinclude.m4
+m4_rename_force([glibd_PRECIOUS],[_AC_ARG_VAR_PRECIOUS])
 
-dnl These should be inherited in the recursive make, but ensure they are
-dnl defined:
-test "$AR" || AR=ar
-AC_SUBST(AR)
-if test "$RANLIB"; then :
-  AC_SUBST(RANLIB)
-else
-  AC_PROG_RANLIB
-fi
+AC_SUBST(CFLAGS)
+
+AM_MAINTAINER_MODE
+
+AC_PROG_RANLIB
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
-dnl AC_PROG_LIBTOOL
+
+dnl This should be inherited in the recursive make, but ensure it is defined.
+test "$AR" || AR=ar
+AC_SUBST(AR)
+
+AC_SUBST(enable_shared)
+AC_SUBST(enable_static)
+
+CC_FOR_BUILD=${CC_FOR_BUILD:-gcc}
+AC_SUBST(CC_FOR_BUILD)
+
+AC_SUBST(CFLAGS_FOR_BUILD)
+
+dnl libphobos/libdruntime configure switches start here.
+AC_ARG_WITH([cross-host],
+  AC_HELP_STRING([--with-cross-host=HOST],
+                 [configuring with a cross compiler]))
 
 AC_ARG_ENABLE(thread-lib,
   AC_HELP_STRING([--enable-thread-lib=<arg>],
@@ -125,21 +83,20 @@ dnl switch between gc and gcstub
 AC_ARG_ENABLE(druntime-gc,
   AC_HELP_STRING([--enable-druntime-gc],
                  [enable D runtime garbage collector (default: yes)]),
-  :,[enable_druntime_gc=yes])
+  [enable_druntime_gc=no],[enable_druntime_gc=yes])
 
 dnl switch between system zlib and gcc's zlib
 AC_ARG_WITH(system-zlib,
   AS_HELP_STRING([--with-system-zlib],
                  [use installed libz (default: no)]),
-  :,[system_zlib=no])
+  [system_zlib=yes],[system_zlib=no])
 
-AC_ARG_ENABLE(phobos-config-dir,
-  AC_HELP_STRING([--enable-phobos-config-dir=<dir>],
-		 [use source file fragments in <dir>]),
-[if test -z "${enableval}"; then
-  AC_MSG_ERROR([must specify a value for --enable-phobos-config-dir])
-fi],
-:)
+AC_ARG_ENABLE(werror, [AS_HELP_STRING([--enable-werror],
+                                      [turns on -Werror @<:@default=yes@:>@])])
+if test "x$enable_werror" != "xno"; then
+    WERROR="-Werror"
+fi
+AC_SUBST(WERROR)
 
 if test ${multilib} = yes; then
   multilib_arg="--enable-multilib"
@@ -171,73 +128,54 @@ AC_MSG_CHECKING([D GCC version])
 d_gcc_ver=`$GDC -dumpversion`
 AC_MSG_RESULT($d_gcc_ver)
 
-# Need to export this variables for multilib
-export CC_FOR_BUILD
-export CFLAGS_FOR_BUILD
-AC_SUBST(CC_FOR_BUILD)
-AC_SUBST(CFLAGS_FOR_BUILD)
+phobos_toolexecdir=no
+phobos_toolexeclibdir=no
 
-# Find build libiberty which is needed by x3
-# Should not have to go up too many directories
+AC_MSG_CHECKING([for --enable-version-specific-runtime-libs])
+AC_ARG_ENABLE([version-specific-runtime-libs],
+  AC_HELP_STRING([--enable-version-specific-runtime-libs],
+                 [Specify that runtime libraries should be installed in a compiler-specific directory]),
+  [case "$enableval" in
+    yes) version_specific_libs=yes ;;
+    no)  version_specific_libs=no ;;
+    *)   AC_MSG_ERROR([Unknown argument to enable/disable version-specific libs]);;
+   esac],
+  [version_specific_libs=no])
+AC_MSG_RESULT($version_specific_libs)
 
-d_libiberty_dir=../..
-while test "$d_count" != 'xxx'; do
-    BUILD_LIBIBERTY=$d_libiberty_dir/build-${build_alias}/libiberty/libiberty.a
-    if test -f $BUILD_LIBIBERTY; then
-	break
-    fi
-    # GCC 3.x does not use the 'build-' dir, so we have so search
-    # for plain 'libiberty' with some kind of check it is not a target dir
-    BUILD_LIBIBERTY=$d_libiberty_dir/libiberty/libiberty.a
-    if test -f $BUILD_LIBIBERTY && test -d $d_libiberty_dir/gcc; then
-	break
-    fi
-
-    d_libiberty_dir=../$d_libiberty_dir
-    d_count="x$d_count"
-done
-
-if test ! -f "$BUILD_LIBIBERTY"; then
-    AC_MSG_ERROR([cannot find libiberty.a for build])
-fi
-
-#used in druntime, so srcdir is 'libphobos/libdruntime'
-LIBIBERTY_H_PATH='$(srcdir)/../../include'
-BUILD_LIBIBERTY="../$BUILD_LIBIBERTY"
-
-AC_SUBST(BUILD_LIBIBERTY)
-AC_SUBST(LIBIBERTY_H_PATH)
-
-gdc_include_dir='${libdir}/gcc/${target_alias}'/${d_gcc_ver}/include/d
-AC_SUBST(gdc_include_dir)
-
-AC_ARG_WITH([cross-host],
-  AC_HELP_STRING([--with-cross-host=HOST],
-	       [configuring with a cross compiler]))
-if test -n "$with_cross_host" &&
-   test x"$with_cross_host" != x"no"; then
-  phobos_toolexecdir='${exec_prefix}/${host_alias}'
-  phobos_toolexeclibdir='${toolexecdir}/lib'
+# Version-specific runtime libs processing.
+if test $version_specific_libs = yes; then
+    phobos_toolexecdir='${libdir}/gcc/${host_alias}'
+    phobos_toolexeclibdir='${toolexecdir}/${gcc_version}$(MULTISUBDIR)'
 else
-  phobos_toolexecdir='${libdir}/gcc/${host_alias}'
-  phobos_toolexeclibdir='${libdir}'
+    # Calculate phobos_toolexecdir, phobos_toolexeclibdir
+    # Install a library built with a cross compiler in tooldir, not libdir.
+    if test -n "$with_cross_host" && test x"$with_cross_host" != x"no"; then
+        phobos_toolexecdir='${exec_prefix}/${host_alias}'
+        phobos_toolexeclibdir='${toolexecdir}/lib'
+    else
+        phobos_toolexecdir='${libdir}/gcc/${host_alias}'
+        phobos_toolexeclibdir='${libdir}'
+    fi
+    multi_os_directory=`$GDC -print-multi-os-directory`
+    case $multi_os_directory in
+        .) ;; # Avoid trailing /.
+        *) phobos_toolexeclibdir=${phobos_toolexeclibdir}/${multi_os_directory} ;;
+    esac
 fi
-# The norm would be to use $GDC -print-multi-os-directory, but
-# that would require modifying config-ml.in
-multi_os_directory=`$CC -print-multi-os-directory`
-case $multi_os_directory in
-  .) ;; # Avoid trailing /.
-  *) phobos_toolexeclibdir=$phobos_toolexeclibdir/$multi_os_directory ;;
-esac
 AC_SUBST(phobos_toolexecdir)
 AC_SUBST(phobos_toolexeclibdir)
+
+# Default case for install directory for D sources files.
+gdc_include_dir='${libdir}/gcc/${target_alias}'/${d_gcc_ver}/include/d
+AC_SUBST(gdc_include_dir)
 
 dnl Checks for header files.
 # Sanity check for the cross-compilation case:
 AC_CHECK_HEADER(stdio.h,:,
   [AC_MSG_ERROR([cannot find stdio.h.])])
 
-
+dnl libbacktrace support
 HAVE_DLADDR=false
 AC_CHECK_FUNC(dladdr, HAVE_DLADDR=true)
 AC_SUBST(HAVE_DLADDR)
@@ -305,6 +243,7 @@ AC_SUBST(BACKTRACE_SUPPORTED)
 AC_SUBST(BACKTRACE_USES_MALLOC)
 AC_SUBST(BACKTRACE_SUPPORTS_THREADS)
 
+dnl Thread model.
 AC_MSG_CHECKING([for thread model used by GDC])
 d_thread_model=`$GDC -v 2>&1 | sed -n 's/^Thread model: //p'`
 AC_MSG_RESULT([$d_thread_model])
@@ -312,68 +251,10 @@ AC_MSG_RESULT([$d_thread_model])
 # Map from thread model to thread interface.
 DRUNTIME_CONFIGURE_THREADS([$d_thread_model])
 
-dnl AC_HEADER_STDC
-# TODO...
-
 D_EXTRA_OBJS=
 AC_SUBST(D_EXTRA_OBJS)
 DRUNTIME_OBJS=
 AC_SUBST(DRUNTIME_OBJS)
-
-if test "$with_newlib" = no; then
-
-AC_CHECK_LIB(m,cos)
-
-case "$d_target_os" in
-  aix*) AC_CHECK_LIB(C,sqrtf) ;;
-esac
-
-case "$target_os" in
-  linux*|k*bsd*-gnu)
-    case "$target_cpu" in
-	powerpc*)
-	    # Libc without nldbl not supported...
-	    AC_CHECK_FUNC(__nldbl_printf,d_have_nldbl_funcs=1,:)
-	    if test "$d_have_nldbl_funcs" = 1; then
-		:
-	    fi
-	    ;;
-    esac
-esac
-
-save_CFLAGS=$CFLAGS
-dnl Check for BSD(?) specific fields in struct tm
-dnl Maybe test fields separately
-AC_MSG_CHECKING([for tm_gmtoff])
-AC_TRY_COMPILE([#include <time.h>],[
-struct tm t;
-t.tm_gmtoff = t.tm_gmtoff;
-t.tm_zone = t.tm_zone;],
-  [AC_MSG_RESULT([yes])
-   AC_DEFINE(HAVE_TM_GMTOFF_AND_ZONE,1,[Extra fields in struct tm])],
-  [AC_MSG_RESULT([no])])
-
-dnl The '* 42' is to ensure a type error occurs if timezone is not a
-dnl number.  Simple assignment will not do this.
-AC_MSG_CHECKING([for timezone])
-AC_TRY_COMPILE([#include <time.h>],[
-time_t t = timezone * 42;],
-  [AC_MSG_RESULT([yes])
-   AC_DEFINE(HAVE_TIMEZONE,1,[Global timezone variable])],
-  [AC_MSG_RESULT([no])])
-
-AC_MSG_CHECKING([for _timezone])
-AC_TRY_COMPILE([#include <time.h>],[
-time_t t = _timezone * 42;],
-  [AC_MSG_RESULT([yes])
-   AC_DEFINE(HAVE__TIMEZONE,1,[Another global timezone variable])],
-  [AC_MSG_RESULT([no])])
-
-AC_CHECK_FUNCS(snprintf _snprintf,break,[AC_MSG_ERROR([No variant of snprintf.])])
-AC_CHECK_FUNCS(vsnprintf _vsnprintf,break,[AC_MSG_ERROR([No variant of vsnprintf.])])
-
-# end of 'if $with_newlib...'
-fi
 
 AC_MSG_CHECKING([for ARM unwinder])
 AC_TRY_COMPILE([#include <unwind.h>],[
@@ -391,11 +272,11 @@ AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
 case "$d_thread_model" in
   posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/posix.o"
-	 ;;
+         ;;
   win32) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/win32.o"
-	 ;;
+         ;;
   *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/single.o"
-	 ;;
+         ;;
 esac
 
 case "$d_target_os" in
@@ -408,20 +289,20 @@ fi
 
 case "$d_target_os" in
     aix*)    d_is_aix=1
-	     ;;
+             ;;
     darwin*) DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_OSX_OBJS)"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
-	     ;;
+             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
+             ;;
     freebsd*|k*bsd*-gnu)
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
-	     ;;
+             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
+             ;;
     linux*)  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
              ;;
     mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
-	     DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
-	     D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
-	     ;;
+             DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
+             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
+             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
+             ;;
 esac
 
 if test "$enable_unix" = "yes"; then
@@ -431,32 +312,25 @@ if test "$enable_unix" = "yes"; then
 fi
 
 if test -z "$DFLAGS"; then
-    DFLAGS="-Wall -g -frelease -O2"
+    DFLAGS="-Wall \$(WERROR) -g -frelease -O2"
 fi
 AC_SUBST(DFLAGS)
 
 if test -z "$DFLAGSX"; then
-    DFLAGSX="-Wall -g -fno-release -funittest"
+    DFLAGSX="-Wall \$(WERROR) -g -fno-release -funittest"
 fi
 AC_SUBST(DFLAGSX)
 
-dnl TODO: change this to using pthreads? if so, define usepthreads
-dnl and configure semaphore
-
-
-# phobose_use_pthreads was here...
-
+# Create all directories ready to start building.
 d_subdirs=`( cd $srcdir && find . -type d ) | sed -e 's/^.\///'`
-d_subdirs="$d_subdirs gcc"
+d_subdirs="$d_subdirs"
 for i in $d_subdirs; do
-	mkdir -p $i;
+    mkdir -p $i;
 done
-
 AC_SUBST(srcdir)
 
 
 # Garbage collection configuration
-
 D_GC_MODULES=
 
 if test "$enable_druntime_gc" = "yes"; then
@@ -467,7 +341,7 @@ fi
 
 AC_SUBST(D_GC_MODULES)
 
-
+# Use gcc or system zlib
 ZLIB_OBJS=
 if test "$system_zlib" = yes; then
     AC_CHECK_LIB(z, deflate, ZLIB_OBJS=, ZLIB_OBJS="\$(Z_OBJS)")
@@ -476,7 +350,6 @@ else
 fi
 AC_SUBST(ZLIB_OBJS)
 
-# Copied from libstdc++-v3/configure.ac
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
 # that multilib installs will end up installed in the correct place.
 # The testsuite needs it for multilib-aware ABI baseline files.
