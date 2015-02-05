@@ -1,6 +1,15 @@
 2015-02-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* config-lang.in: Remove lang_requires_boot_languages.
+	* d-incpath.cc(iprefix): Remove global variable.
+	(multilib_dir): Ditto.
+	(prefixed_path): Add iprefix parameter.
+	(add_import_paths): Add iprefix and imultilib parameter.
+	Use cpp_include_defaults to get list of import paths.
+	* d-lang.cc(iprefix_dir): New static variable to cache -iprefix switch.
+	(imultilib_dir): New static variable to cache -imultilib switch.
+	(d_init): Pass iprefix_dir and imultilib_dir to add_import_paths.
+	(d_handle_option): Use new static variables.
 
 2015-02-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
