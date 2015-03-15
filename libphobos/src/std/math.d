@@ -3773,7 +3773,7 @@ private:
             }
             else version (ARM_SoftFloat)
             {
-                return 0;
+                result = 0;
             }
             else version (ARM) asm
             {
@@ -4188,7 +4188,7 @@ private:
             else version (ARM)
             {
                 version (ARM_SoftFloat)
-                   return 0;
+                   cont = 0;
                 else asm
                 {
                     "vmrs %0, FPSCR;" : "=r" cont;
