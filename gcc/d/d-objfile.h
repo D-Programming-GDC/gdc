@@ -100,6 +100,7 @@ struct ModuleInfo
   auto_vec<VarDeclaration *> sharedctorgates;
 
   auto_vec<FuncDeclaration *> unitTests;
+  auto_vec<VarDeclaration *> tlsVars;
 };
 
 extern ModuleInfo *current_module_info;

@@ -283,7 +283,8 @@ else version( Posix )
         {
             import gcc.builtins;
 
-            extern (C)
+            version (GNU_EMUTLS) {}
+            else extern (C)
             {
                 extern size_t _tlsstart;
                 extern size_t _tlsend;
@@ -312,7 +313,8 @@ else version( Posix )
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt_tlsgc_init();
-            version (GNU)
+            version (GNU_EMUTLS) {}
+            else version (GNU)
             {
                 auto pstart = cast(void*) &_tlsstart;
                 auto pend   = cast(void*) &_tlsend;
@@ -1243,7 +1245,8 @@ private:
         m_call = Call.NO;
         m_curr = &m_main;
 
-        version (GNU)
+        version (GNU_EMUTLS) {}
+        else version (GNU)
         {
             auto pstart = cast(void*) &_tlsstart;
             auto pend   = cast(void*) &_tlsend;
@@ -1436,7 +1439,8 @@ private:
     Context             m_main;
     Context*            m_curr;
     bool                m_lock;
-    version (GNU)
+    version (GNU_EMUTLS) {}
+    else version (GNU)
     {
         void[]          m_tls;  // spans implicit thread local storage
     }
@@ -1905,7 +1909,8 @@ extern (C) Thread thread_attachThis()
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    version (GNU)
+    version (GNU_EMUTLS) {}
+    else version (GNU)
     {
         auto pstart = cast(void*) &_tlsstart;
         auto pend   = cast(void*) &_tlsend;
@@ -1961,7 +1966,8 @@ version( Windows )
         {
             thisThread.m_hndl = GetCurrentThreadHandle();
             thisThread.m_tlsgcdata = rt_tlsgc_init();
-            version (GNU)
+            version (GNU_EMUTLS) {}
+            else version (GNU)
             {
                 auto pstart = cast(void*) &_tlsstart;
                 auto pend   = cast(void*) &_tlsend;
@@ -1975,7 +1981,8 @@ version( Windows )
             impersonate_thread(addr,
             {
                 thisThread.m_tlsgcdata = rt_tlsgc_init();
-                version (GNU)
+                version (GNU_EMUTLS) {}
+                else version (GNU)
                 {
                     auto pstart = cast(void*) &_tlsstart;
                     auto pend   = cast(void*) &_tlsend;
@@ -2640,7 +2647,19 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
             // would make portability annoying because it only makes sense on Windows.
             scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
         }
-        version (GNU)
+        version (GNU_EMUTLS)
+        {
+            try
+            {
+                foreach(m; ModuleInfo)
+                {
+                    if (m.scanTLS)
+                        m.scanTLS((p1, p2) => scan(ScanType.tls, p1, p2));
+                }
+            }
+            catch(Exception) {} // Can't throw as long as our delegate doesn't throw
+        }
+        else version (GNU)
             scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
 
         if (t.m_tlsgcdata !is null)
