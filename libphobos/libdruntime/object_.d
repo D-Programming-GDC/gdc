@@ -1605,6 +1605,11 @@ struct ModuleInfo
     uint _flags;
     uint _index; // index into _moduleinfo_array[]
 
+    version(GNU_EMUTLS)
+    {
+        void function(scope void delegate(void* tlsStart, void* tlsEnd) nothrow) nothrow scanTLS;
+    }
+
     version (all)
     {
         deprecated("ModuleInfo cannot be copy-assigned because it is a variable-sized struct.")

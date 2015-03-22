@@ -32,6 +32,7 @@
 #include "dfrontend/target.h"
 
 static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
+static Symbol *build_emutls_function (vec<VarDeclaration *> tlsVars);
 static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
 static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
 static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
@@ -50,6 +51,7 @@ ModuleInfo::ModuleInfo (void)
   this->shareddtors = vNULL;
   this->sharedctorgates = vNULL;
   this->unitTests = vNULL;
+  this->tlsVars = vNULL;
 }
 
 ModuleInfo::~ModuleInfo (void)
@@ -62,6 +64,7 @@ ModuleInfo::~ModuleInfo (void)
   this->shareddtors.release();
   this->sharedctorgates.release();
   this->unitTests.release();
+  this->tlsVars.release();
 }
 
 // static constructors (not D static constructors)
@@ -832,6 +835,12 @@ VarDeclaration::toObjFile(bool)
     }
   else if (isDataseg() && !(storage_class & STCextern))
     {
+      if (isThreadlocal())
+	{
+	  ModuleInfo *mi = current_module_info;
+	  mi->tlsVars.safe_push (this);
+	}
+
       Symbol *s = toSymbol();
       size_t sz = type->size();
 
@@ -985,6 +994,22 @@ Module::genmoduleinfo()
    */
   dt_cons (&dt, build_integer_cst (flags, Type::tuns32->toCtype()));
   dt_cons (&dt, build_integer_cst (0, Type::tuns32->toCtype()));
+
+  /*
+   * emutls scan function
+   */
+  if (!targetm.have_tls)
+    {
+      if (current_module_info->tlsVars.is_empty())
+	{
+	  dt_cons (&dt, null_pointer_node);
+	}
+      else
+	{
+	  Symbol *emutls = build_emutls_function (current_module_info->tlsVars);
+	  dt_cons (&dt, build_address (emutls->Stree));
+	}
+    }
 
   /* Order of appearance, depending on flags
    *  void function() tlsctor;
@@ -2226,6 +2251,64 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   return NULL;
 }
 
+// Build and emit a function that takes a scope
+// delegate parameter and calls it once for every TLS variable in the
+// module.
+
+static Symbol *
+build_emutls_function (vec<VarDeclaration *> tlsVars)
+{
+  Module *mod = current_module_decl;
+
+  if (!mod)
+    mod = d_gcc_get_output_module();
+
+  const char *name = "__modtlsscan";
+
+  // void __modtlsscan(scope void delegate(void*, void*) nothrow dg) nothrow
+  // {
+  //     dg(&$tlsVars[0]$, &$tlsVars[0]$ + $tlsVars[0]$.sizeof);
+  //     dg(&$tlsVars[1]$, &$tlsVars[1]$ + $tlsVars[0]$.sizeof);
+  //     ...
+  // }
+
+  Parameters *del_args = new Parameters();
+  del_args->push (new Parameter (0, Type::tvoidptr, NULL, NULL));
+  del_args->push (new Parameter (0, Type::tvoidptr, NULL, NULL));
+
+  TypeFunction *del_func_type = new TypeFunction (del_args, Type::tvoid, 0, LINKd, STCnothrow);
+  Parameters *args = new Parameters();
+  Parameter *dg_arg = new Parameter (STCscope, new TypeDelegate (del_func_type),
+				     Lexer::idPool ("dg"), NULL);
+  args->push (dg_arg);
+  TypeFunction *func_type = new TypeFunction (args, Type::tvoid, 0, LINKd, STCnothrow);
+  FuncDeclaration *func = new FuncDeclaration (mod->loc, mod->loc,
+					       Lexer::idPool (name), STCstatic, func_type);
+  func->loc = Loc (mod, 1, 0);
+  func->linkage = func_type->linkage;
+  func->parent = mod;
+  func->protection = PROTprivate;
+
+  func->semantic (mod->scope);
+  Statements *body = new Statements();
+  for (size_t i = 0; i < tlsVars.length(); i++)
+    {
+      VarDeclaration *var = tlsVars[i];
+      Expression *addr = (new VarExp (mod->loc, var))->addressOf();
+      Expression *addr2 = new SymOffExp (mod->loc, var, var->type->size());
+      Expressions* addrs = new Expressions();
+      addrs->push (addr);
+      addrs->push (addr2);
+
+      Expression *call = CallExp::create (mod->loc, new IdentifierExp (Loc(), dg_arg->ident), addrs);
+      body->push (new ExpStatement (mod->loc, call));
+    }
+  func->fbody = new CompoundStatement (mod->loc, body);
+  func->semantic3 (mod->scope);
+  func->toObjFile (false);
+
+  return func->toSymbol();
+}
 
 // Same as build_call_function, but includes a gate to
 // protect static ctors in templates getting called multiple times.

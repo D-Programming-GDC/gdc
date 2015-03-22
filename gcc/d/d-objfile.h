@@ -104,6 +104,7 @@ struct ModuleInfo
   vec<VarDeclaration *> sharedctorgates;
 
   vec<FuncDeclaration *> unitTests;
+  vec<VarDeclaration *> tlsVars;
 };
 
 extern ModuleInfo *current_module_info;

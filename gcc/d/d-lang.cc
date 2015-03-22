@@ -280,6 +280,9 @@ d_init()
   else if(targetm_common.except_unwind_info (&global_options) == UI_DWARF2)
     VersionCondition::addPredefinedGlobalIdent ("GNU_DWARF2_Exceptions");
 
+  if(!targetm.have_tls)
+    VersionCondition::addPredefinedGlobalIdent ("GNU_EMUTLS");
+
 #ifdef STACK_GROWS_DOWNWARD
   VersionCondition::addPredefinedGlobalIdent ("GNU_StackGrowsDown");
 #endif
