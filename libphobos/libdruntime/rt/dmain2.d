@@ -31,7 +31,8 @@ version (Windows)
     private import core.stdc.wchar_;
     private import core.sys.windows.windows;
 
-    pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
+    version (GNU) {}
+    else pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
 }
 
 version (FreeBSD)

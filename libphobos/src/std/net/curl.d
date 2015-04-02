@@ -194,7 +194,8 @@ version(unittest)
 }
 version(StdDdoc) import std.stdio;
 
-version (Windows) pragma(lib, "curl");
+version (GNU) {}
+else version (Windows) pragma(lib, "curl");
 extern (C) void exit(int);
 
 // Default data timeout for Protocols
