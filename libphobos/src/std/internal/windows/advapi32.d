@@ -14,7 +14,8 @@ version(Windows):
 
 private import core.sys.windows.windows;
 
-pragma(lib, "advapi32.lib");
+version(GNU) {}
+else pragma(lib, "advapi32.lib");
 
 immutable bool isWow64;
 

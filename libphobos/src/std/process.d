@@ -3435,7 +3435,8 @@ version (Windows)
 {
     import core.sys.windows.windows;
 
-    pragma(lib,"shell32.lib");
+    version (GNU) {}
+    else pragma(lib,"shell32.lib");
 
     void browse(string url)
     {

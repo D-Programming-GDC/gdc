@@ -130,8 +130,6 @@ int gthread_key_create(gthread_key_t* key, void function(void*) dtor)
     }
   else
     return GetLastError();
-
-  return 0;
 }
 
 int gthread_key_delete(gthread_key_t key)
