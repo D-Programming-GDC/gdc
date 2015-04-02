@@ -54,8 +54,12 @@ import std.exception : assumeUnique, enforce, collectException;
 
 version(Windows)
 {
-    pragma (lib, "ws2_32.lib");
-    pragma (lib, "wsock32.lib");
+    version(GNU) {}
+    else
+    {
+        pragma (lib, "ws2_32.lib");
+        pragma (lib, "wsock32.lib");
+    }
 
     private import std.c.windows.windows, std.c.windows.winsock, std.windows.syserror;
     private alias _ctimeval = std.c.windows.winsock.timeval;
