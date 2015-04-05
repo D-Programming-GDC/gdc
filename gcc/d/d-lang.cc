@@ -42,6 +42,7 @@ static tree d_handle_forceinline_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_flatten_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_target_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_noclone_attribute(tree *, tree, tree, int, bool *);
+static tree d_handle_section_attribute(tree *, tree, tree, int, bool *);
 
 static const char *iprefix_dir = NULL;
 static const char *imultilib_dir = NULL;
@@ -60,6 +61,8 @@ static const attribute_spec d_attribute_table[] =
 				d_handle_target_attribute, false },
     { "noclone",                0, 0, true, false, false,
 				d_handle_noclone_attribute, false },
+    { "section",                1, 1, true,  false, false,
+				d_handle_section_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1746,6 +1749,69 @@ d_handle_noclone_attribute (tree *node, tree name,
   else
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle a "section" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
+			    int ARG_UNUSED (flags), bool *no_add_attrs)
+{
+  tree decl = *node;
+
+  if (targetm_common.have_named_sections)
+    {
+      user_defined_section_attribute = true;
+
+      if ((TREE_CODE (decl) == FUNCTION_DECL
+	   || TREE_CODE (decl) == VAR_DECL)
+	  && TREE_CODE (TREE_VALUE (args)) == STRING_CST)
+	{
+	  if (TREE_CODE (decl) == VAR_DECL
+	      && current_function_decl != NULL_TREE
+	      && !TREE_STATIC (decl))
+	    {
+	      error_at (DECL_SOURCE_LOCATION (decl),
+			"section attribute cannot be specified for "
+			"local variables");
+	      *no_add_attrs = true;
+	    }
+
+	  /* The decl may have already been given a section attribute
+	     from a previous declaration.  Ensure they match.  */
+	  else if (DECL_SECTION_NAME (decl) != NULL_TREE
+		   && strcmp (TREE_STRING_POINTER (DECL_SECTION_NAME (decl)),
+			      TREE_STRING_POINTER (TREE_VALUE (args))) != 0)
+	    {
+	      error ("section of %q+D conflicts with previous declaration",
+		     *node);
+	      *no_add_attrs = true;
+	    }
+	  else if (TREE_CODE (decl) == VAR_DECL
+		   && !targetm.have_tls && targetm.emutls.tmpl_section
+		   && DECL_THREAD_LOCAL_P (decl))
+	    {
+	      error ("section of %q+D cannot be overridden", *node);
+	      *no_add_attrs = true;
+	    }
+	  else
+	    DECL_SECTION_NAME (decl) = TREE_VALUE (args);
+	}
+      else
+	{
+	  error ("section attribute not allowed for %q+D", *node);
+	  *no_add_attrs = true;
+	}
+    }
+  else
+    {
+      error_at (DECL_SOURCE_LOCATION (*node),
+		"section attributes are not supported for this target");
       *no_add_attrs = true;
     }
 
