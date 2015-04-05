@@ -1,3 +1,7 @@
+2015-04-05  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-lang.cc(d_handle_section_attribute): New function.
+
 2015-03-21  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_init): Add GNU_EMUTLS version.
