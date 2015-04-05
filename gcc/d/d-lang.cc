@@ -43,6 +43,7 @@ static tree d_handle_flatten_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_target_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_noclone_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_section_attribute(tree *, tree, tree, int, bool *);
+static tree d_handle_alias_attribute (tree *, tree, tree, int, bool *);
 
 static const char *iprefix_dir = NULL;
 static const char *imultilib_dir = NULL;
@@ -63,6 +64,8 @@ static const attribute_spec d_attribute_table[] =
 				d_handle_noclone_attribute, false },
     { "section",                1, 1, true,  false, false,
 				d_handle_section_attribute, false },
+    { "alias",                  1, 1, true,  false, false,
+				d_handle_alias_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1815,6 +1818,65 @@ d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
     }
 
   return NULL_TREE;
+}
+
+/* Handle an "alias" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+d_handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
+			  tree args, int ARG_UNUSED (flags),
+			  bool *no_add_attrs ATTRIBUTE_UNUSED)
+{
+  tree decl = *node;
+
+  if (TREE_CODE (decl) != FUNCTION_DECL
+      && TREE_CODE (decl) != VAR_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+  else if ((TREE_CODE (decl) == FUNCTION_DECL && DECL_INITIAL (decl))
+      || (TREE_CODE (decl) != FUNCTION_DECL
+	  && TREE_PUBLIC (decl) && !DECL_EXTERNAL (decl))
+      /* A static variable declaration is always a tentative definition,
+	 but the alias is a non-tentative definition which overrides.  */
+      || (TREE_CODE (decl) != FUNCTION_DECL
+	  && ! TREE_PUBLIC (decl) && DECL_INITIAL (decl)))
+    {
+      error ("%q+D defined both normally and as %qE attribute", decl, name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+  else if (decl_function_context (decl))
+    {
+      error ("%q+D alias functions must be global", name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+  else
+    {
+      tree id;
+
+      id = TREE_VALUE (args);
+      if (TREE_CODE (id) != STRING_CST)
+	{
+	  error ("attribute %qE argument not a string", name);
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
+      id = get_identifier (TREE_STRING_POINTER (id));
+      /* This counts as a use of the object pointed to.  */
+      TREE_USED (id) = 1;
+
+      if (TREE_CODE (decl) == FUNCTION_DECL)
+	DECL_INITIAL (decl) = error_mark_node;
+      else
+	TREE_STATIC (decl) = 1;
+
+      return NULL_TREE;
+    }
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
