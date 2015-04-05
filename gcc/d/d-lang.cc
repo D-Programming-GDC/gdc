@@ -44,6 +44,7 @@ static tree d_handle_target_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_noclone_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_section_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_alias_attribute (tree *, tree, tree, int, bool *);
+static tree d_handle_weak_attribute (tree *, tree, tree, int, bool *) ;
 
 static const char *iprefix_dir = NULL;
 static const char *imultilib_dir = NULL;
@@ -66,6 +67,8 @@ static const attribute_spec d_attribute_table[] =
 				d_handle_section_attribute, false },
     { "alias",                  1, 1, true,  false, false,
 				d_handle_alias_attribute, false },
+    { "weak",                   0, 0, true,  false, false,
+				d_handle_weak_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
@@ -1877,6 +1880,41 @@ d_handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
 
       return NULL_TREE;
     }
+}
+
+/* Handle a "weak" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+d_handle_weak_attribute (tree *node, tree name,
+		         tree ARG_UNUSED (args),
+		         int ARG_UNUSED (flags),
+		         bool * ARG_UNUSED (no_add_attrs))
+{
+  if (TREE_CODE (*node) == FUNCTION_DECL
+      && DECL_DECLARED_INLINE_P (*node))
+    {
+      warning (OPT_Wattributes, "inline function %q+D declared weak", *node);
+      *no_add_attrs = true;
+    }
+  else if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (*node)))
+    {
+      error ("indirect function %q+D cannot be declared weak", *node);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+  else if (TREE_CODE (*node) == FUNCTION_DECL
+	   || TREE_CODE (*node) == VAR_DECL)
+    {
+      struct symtab_node *n = symtab_node::get (*node);
+      if (n && n->refuse_visibility_changes)
+	error ("%+D declared weak after being used", *node);
+      declare_weak (*node);
+    }
+  else
+    warning (OPT_Wattributes, "%qE attribute ignored", name);
+
+  return NULL_TREE;
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

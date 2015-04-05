@@ -4,6 +4,7 @@
 	* d-builtins.cc(handle_alias_attribute): Move to d-lang.cc to
 	support attribute(alias) in user code.
 	* d-lang.cc(d_handle_alias_attribute): Ditto.
+	* d-lang.cc(d_handle_weak_attribute): New function.
 
 2015-03-21  Johannes Pfau  <johannespfau@gmail.com>
 
