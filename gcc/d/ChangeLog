@@ -1,3 +1,16 @@
+2015-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(output_declaration_p): Remove check for semanticRun.
+	(FuncDeclaration::toObjFile): Name bool parameter force_p, allow it to
+	override the initial output_declaration_p check.  Force run all
+	semantic passes for symbols that it routine is generating code for.
+	(d_finish_function): Don't mark TREE_STATIC on functions that are
+	really DECL_EXTERN.
+	(finish_thunk): Force thunks referencing external methods to be
+	expanded to gimple.
+	* d-decls.cc(FuncDeclaration::toThunkSymbol): Call toObjFile on all
+	thunk target functions.
+
 2015-04-05  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_handle_section_attribute): New function.
