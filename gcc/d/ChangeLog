@@ -1,3 +1,13 @@
+2015-04-05  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-lang.cc(d_handle_section_attribute): New function.
+	* d-builtins.cc(handle_alias_attribute): Move to d-lang.cc to
+	support attribute(alias) in user code.
+	* d-lang.cc(d_handle_alias_attribute): Ditto.
+	* d-lang.cc(d_handle_weak_attribute): New function.
+	* d-decls.cc(FuncDeclaration::toSymbol): Do not set
+	DECL_DECLARED_INLINE_P prematurely.
+
 2015-03-21  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-lang.cc(d_init): Add GNU_EMUTLS version.

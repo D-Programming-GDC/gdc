@@ -393,12 +393,6 @@ FuncDeclaration::toSymbol()
 	  DECL_DECLARED_INLINE_P (fndecl) = 1;
 	  DECL_NO_INLINE_WARNING_P (fndecl) = 1;
 	}
-      // Don't know what to do with this.
-      else if (flag_inline_functions)
-	{
-	  DECL_DECLARED_INLINE_P (fndecl) = 1;
-	  DECL_NO_INLINE_WARNING_P (fndecl) = 1;
-	}
 
       if (naked)
 	{
