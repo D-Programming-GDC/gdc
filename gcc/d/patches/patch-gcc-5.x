@@ -128,7 +128,7 @@ relevant documentation about the GDC front end.
  
 --- gcc/doc/standards.texi
 +++ gcc/doc/standards.texi
-@@ -282,6 +282,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
+@@ -280,6 +280,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
  As of the GCC 4.7.1 release, GCC supports the Go 1 language standard,
  described at @uref{http://golang.org/doc/go1.html}.
  
@@ -142,7 +142,7 @@ relevant documentation about the GDC front end.
 +releases closely, and any given GCC release will support the current
 +language as of the date that the release was frozen.
 +
- @section References for other languages
+ @section References for Other Languages
  
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- gcc/dwarf2out.c
