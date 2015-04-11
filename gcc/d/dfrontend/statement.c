@@ -5070,10 +5070,13 @@ Statement *ExtAsmStatement::semantic(Scope *sc)
 {
     // Fold the instruction template string.
     insn = insn->semantic(sc);
-    insn->optimize(WANTvalue);
+    insn->ctfeInterpret();
 
     if (insn->op != TOKstring || ((StringExp *) insn)->sz != 1)
-        error("instruction template must be a constant char string");
+        insn->error("instruction template must be a constant char string");
+
+    if (labels && outputargs)
+        error("extended asm statements with labels cannot have output constraints");
 
     // Analyse all input and output operands.
     if (args)
@@ -5082,31 +5085,28 @@ Statement *ExtAsmStatement::semantic(Scope *sc)
         {
             Expression *e = (*args)[i];
             e = e->semantic(sc);
+            // Check argument is a valid lvalue/rvalue.
             if (i < outputargs)
                 e = e->modifiableLvalue(sc, NULL);
             else
-                e = e->optimize(WANTvalue);
+                e->rvalue();
             (*args)[i] = e;
 
             e = (*constraints)[i];
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue);
-            if (e->op != TOKstring || ((StringExp *) e)->sz != 1)
-                error ("constraint must be a constant char string");
+            assert(e->op == TOKstring && ((StringExp *) e)->sz == 1);
             (*constraints)[i] = e;
         }
     }
 
-    // Fold all clobbers.
+    // Analyse all clobbers.
     if (clobbers)
     {
         for (size_t i = 0; i < clobbers->dim; i++)
         {
             Expression *e = (*clobbers)[i];
             e = e->semantic(sc);
-            e = e->optimize(WANTvalue);
-            if (e->op != TOKstring || ((StringExp *) e)->sz != 1)
-                error("clobber specification must be a constant char string");
+            assert(e->op == TOKstring && ((StringExp *) e)->sz == 1);
             (*clobbers)[i] = e;
         }
     }
