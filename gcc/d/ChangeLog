@@ -1,3 +1,8 @@
+2015-04-11  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-objfile.cc(setup_symbol_storage): Mark functions without
+	body as DECL_EXTERNAL.
+
 2015-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(get_decl_tree): Get correct non-local 'this' decl by

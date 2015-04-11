@@ -1720,7 +1720,8 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	}
 
       VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;
-      if (!local_p || (vd && vd->storage_class & STCextern))
+      FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;
+      if (!local_p || (vd && vd->storage_class & STCextern) || (fd && !fd->fbody))
 	{
 	  DECL_EXTERNAL (decl) = 1;
 	  TREE_STATIC (decl) = 0;
@@ -1739,7 +1740,6 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	D_DECL_ONE_ONLY (decl) = 1;
 
       // Do this by default, but allow private templates to override
-      FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;
       if (public_p || !fd || !fd->isNested())
 	TREE_PUBLIC (decl) = 1;
 
