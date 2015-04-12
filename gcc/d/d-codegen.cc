@@ -196,25 +196,45 @@ get_decl_tree (Declaration *decl, FuncDeclaration *func)
       else if (vd->parent != func && vd->isThisDeclaration() && func->isThis())
 	{
 	  // Get the non-local 'this' value by going through parent link
-	  // of nested classes.
+	  // of nested classes, this routine pretty much undoes what
+	  // getRightThis in the frontend removes from codegen.
 	  AggregateDeclaration *ad = func->isThis();
 	  tree this_tree = func->vthis->toSymbol()->Stree;
 
-	  while (ad->isNested())
+	  while (true)
 	    {
 	      Dsymbol *outer = ad->toParent2();
+	      // Get the this->this parent link.
 	      tree vthis_field = ad->vthis->toSymbol()->Stree;
 	      this_tree = component_ref (build_deref (this_tree), vthis_field);
 
 	      ad = outer->isAggregateDeclaration();
-	      if (ad == NULL)
-		{
-		  gcc_assert (outer == vd->parent);
-		  return this_tree;
-		}
-	    }
+	      if (ad != NULL)
+		continue;
 
-	  gcc_unreachable();
+	      FuncDeclaration *fd = outer->isFuncDeclaration();
+	      if (fd && fd->isThis())
+		{
+		  ad = fd->isThis();
+
+		  // If outer function creates a closure, then the 'this' value
+		  // would be the closure pointer, and the real 'this' the first
+		  // field of that closure.
+		  FuncFrameInfo *ff = get_frameinfo (fd);
+		  if (ff->creates_frame)
+		    {
+		      this_tree = build_nop (build_pointer_type (ff->frame_rec), this_tree);
+		      this_tree = indirect_ref (ad->type->toCtype(), this_tree);
+		    }
+
+		  // Continue looking for the right 'this'
+		  if (fd != vd->parent)
+		    continue;
+		}
+
+	      gcc_assert (outer == vd->parent);
+	      return this_tree;
+	    }
 	}
     }
 

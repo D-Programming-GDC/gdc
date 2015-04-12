@@ -1,3 +1,8 @@
+2015-04-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(get_decl_tree): Check and generate correct code for when
+	a non-local 'this' is accessed through a closure pointer.
+
 2015-04-11  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-objfile.cc(setup_symbol_storage): Mark functions without
