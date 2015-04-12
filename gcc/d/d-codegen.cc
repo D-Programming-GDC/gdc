@@ -89,7 +89,7 @@ build_local_var (VarDeclaration *vd, FuncDeclaration *fd)
   DECL_CONTEXT (var) = fd->toSymbol()->Stree;
 
   // Compiler generated symbols
-  if (vd == fd->vresult || vd == fd->v_argptr || vd == fd->v_arguments_var)
+  if (vd == fd->vresult || vd == fd->v_argptr)
     DECL_ARTIFICIAL (var) = 1;
 
   if (sym->SframeField)
