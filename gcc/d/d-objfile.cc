@@ -1096,10 +1096,6 @@ output_declaration_p (Dsymbol *dsym)
 
   if (fd != NULL)
     {
-      // If have already started emitting, continue doing so.
-      if (fd->semanticRun >= PASSobj)
-	return true;
-
       if (fd->isNested())
 	{
 	  // Typically, an error occurred whilst compiling
@@ -1146,7 +1142,7 @@ output_declaration_p (Dsymbol *dsym)
 // down to assembler language output.
 
 void
-FuncDeclaration::toObjFile(bool)
+FuncDeclaration::toObjFile(bool force_p)
 {
   // Already generated the function.
   if (semanticRun >= PASSobj)
@@ -1168,8 +1164,15 @@ FuncDeclaration::toObjFile(bool)
       return;
     }
 
-  if (!output_declaration_p(this))
+  if (!force_p && !output_declaration_p(this))
     return;
+
+  // Ensure all semantic passes have ran.
+  if (semanticRun < PASSsemantic3)
+    {
+      functionSemantic3();
+      Module::runDeferredSemantic3();
+    }
 
   if (global.errors)
     return;
@@ -1717,7 +1720,8 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	}
 
       VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;
-      if (!local_p || (vd && vd->storage_class & STCextern))
+      FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;
+      if (!local_p || (vd && vd->storage_class & STCextern) || (fd && !fd->fbody))
 	{
 	  DECL_EXTERNAL (decl) = 1;
 	  TREE_STATIC (decl) = 0;
@@ -1736,7 +1740,6 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	D_DECL_ONE_ONLY (decl) = 1;
 
       // Do this by default, but allow private templates to override
-      FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;
       if (public_p || !fd || !fd->isNested())
 	TREE_PUBLIC (decl) = 1;
 
@@ -1876,20 +1879,21 @@ d_finish_function (FuncDeclaration *fd)
 
   gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
 
-  if (DECL_SAVED_TREE (decl) != NULL_TREE)
+  if (output_declaration_p (fd))
     {
-      TREE_STATIC (decl) = 1;
-      DECL_EXTERNAL (decl) = 0;
-    }
+      if (DECL_SAVED_TREE (decl) != NULL_TREE)
+	{
+	  TREE_STATIC (decl) = 1;
+	  DECL_EXTERNAL (decl) = 0;
+	}
 
-  d_add_global_declaration (decl);
-
-  if (!targetm.have_ctors_dtors)
-    {
-      if (DECL_STATIC_CONSTRUCTOR (decl))
-	static_ctor_list.safe_push (fd);
-      if (DECL_STATIC_DESTRUCTOR (decl))
-	static_dtor_list.safe_push (fd);
+      if (!targetm.have_ctors_dtors)
+	{
+	  if (DECL_STATIC_CONSTRUCTOR (decl))
+	    static_ctor_list.safe_push (fd);
+	  if (DECL_STATIC_DESTRUCTOR (decl))
+	    static_dtor_list.safe_push (fd);
+	}
     }
 
   // Build cgraph for function.
@@ -1900,6 +1904,7 @@ d_finish_function (FuncDeclaration *fd)
   if (node->origin)
     cgraph_unnest_node (node);
 
+  d_add_global_declaration (decl);
   cgraph_finalize_function (decl, true);
 }
 
@@ -2147,11 +2152,17 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
   if (DECL_ONE_ONLY (target_decl))
     symtab_add_to_same_comdat_group (thunk_node, funcn);
 
-  if (!targetm.asm_out.can_output_mi_thunk (thunk_decl, fixed_offset,
-					    virtual_value, alias))
+  /* Target assemble_mi_thunk doesn't work across section boundaries
+     on many targets, instead force thunk to be expanded in gimple.  */
+  if (DECL_EXTERNAL (target_decl))
     {
-      /* if varargs... */
-      sorry ("backend for this target machine does not support thunks");
+      if (!stdarg_p (TREE_TYPE (thunk_decl)))
+	{
+	  /* Put generic thunk into COMDAT.  */
+	  d_comdat_linkage (thunk_decl);
+	  cgraph_create_edge (thunk_node, funcn, NULL, 0, CGRAPH_FREQ_BASE);
+	  expand_thunk2 (thunk_node, false, true);
+	}
     }
 }
 

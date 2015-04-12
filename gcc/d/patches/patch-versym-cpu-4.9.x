@@ -42,12 +42,13 @@ for all supported architectures. And these where appropriate:
 ** SPARC_SoftFloat
 ---
 
+diff --git gcc/config/aarch64/aarch64.h gcc/config/aarch64/aarch64.h
 --- gcc/config/aarch64/aarch64.h
 +++ gcc/config/aarch64/aarch64.h
-@@ -61,6 +61,14 @@
- 	builtin_define ("__ARM_FEATURE_CRYPTO");	\
+@@ -62,6 +62,13 @@
      } while (0)
  
+ 
 +/* Target CPU builtins for D.  */
 +#define TARGET_CPU_D_BUILTINS()				\
 +  do							\
@@ -55,10 +56,10 @@ for all supported architectures. And these where appropriate:
 +      builtin_define ("AArch64");			\
 +      builtin_define ("D_HardFloat");			\
 +    } while (0)
-+
- 
  
  /* Target machine storage layout.  */
+ 
+diff --git gcc/config/alpha/alpha.h gcc/config/alpha/alpha.h
 --- gcc/config/alpha/alpha.h
 +++ gcc/config/alpha/alpha.h
 @@ -72,6 +72,23 @@ along with GCC; see the file COPYING3.  If not see
@@ -85,9 +86,10 @@ for all supported architectures. And these where appropriate:
  #ifndef SUBTARGET_LANGUAGE_CPP_BUILTINS
  #define SUBTARGET_LANGUAGE_CPP_BUILTINS()		\
    do							\
+diff --git gcc/config/arm/arm.h gcc/config/arm/arm.h
 --- gcc/config/arm/arm.h
 +++ gcc/config/arm/arm.h
-@@ -164,6 +164,31 @@ extern char arm_arch_name[];
+@@ -169,6 +169,31 @@ extern char arm_arch_name[];
  	  builtin_define ("__ARM_ARCH_EXT_IDIV__");	\
      } while (0)
  
@@ -119,9 +121,10 @@ for all supported architectures. And these where appropriate:
  #include "config/arm/arm-opts.h"
  
  enum target_cpus
+diff --git gcc/config/i386/i386.h gcc/config/i386/i386.h
 --- gcc/config/i386/i386.h
 +++ gcc/config/i386/i386.h
-@@ -616,6 +616,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -618,6 +618,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -146,6 +149,7 @@ for all supported architectures. And these where appropriate:
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
+diff --git gcc/config/ia64/ia64.h gcc/config/ia64/ia64.h
 --- gcc/config/ia64/ia64.h
 +++ gcc/config/ia64/ia64.h
 @@ -40,6 +40,13 @@ do {						\
@@ -162,6 +166,7 @@ for all supported architectures. And these where appropriate:
  #ifndef SUBTARGET_EXTRA_SPECS
  #define SUBTARGET_EXTRA_SPECS
  #endif
+diff --git gcc/config/mips/mips.h gcc/config/mips/mips.h
 --- gcc/config/mips/mips.h
 +++ gcc/config/mips/mips.h
 @@ -574,6 +574,54 @@ struct mips_cpu_info {
@@ -219,6 +224,7 @@ for all supported architectures. And these where appropriate:
  /* Default target_flags if no switches are specified  */
  
  #ifndef TARGET_DEFAULT
+diff --git gcc/config/pa/pa.h gcc/config/pa/pa.h
 --- gcc/config/pa/pa.h
 +++ gcc/config/pa/pa.h
 @@ -185,6 +185,20 @@ do {								\
@@ -242,9 +248,10 @@ for all supported architectures. And these where appropriate:
  /* An old set of OS defines for various BSD-like systems.  */
  #define TARGET_OS_CPP_BUILTINS()				\
    do								\
+diff --git gcc/config/rs6000/rs6000.h gcc/config/rs6000/rs6000.h
 --- gcc/config/rs6000/rs6000.h
 +++ gcc/config/rs6000/rs6000.h
-@@ -702,6 +702,28 @@ extern unsigned char rs6000_recip_bits[];
+@@ -703,6 +703,28 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -273,6 +280,7 @@ for all supported architectures. And these where appropriate:
  /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
     we're compiling for.  Some configurations may need to override it.  */
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
+diff --git gcc/config/s390/s390.h gcc/config/s390/s390.h
 --- gcc/config/s390/s390.h
 +++ gcc/config/s390/s390.h
 @@ -114,6 +114,22 @@ enum processor_flags
@@ -298,6 +306,7 @@ for all supported architectures. And these where appropriate:
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT             (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP | MASK_OPT_HTM)
  #else
+diff --git gcc/config/sh/sh.h gcc/config/sh/sh.h
 --- gcc/config/sh/sh.h
 +++ gcc/config/sh/sh.h
 @@ -31,6 +31,22 @@ extern int code_for_indirect_jump_scratch;
@@ -323,6 +332,7 @@ for all supported architectures. And these where appropriate:
  /* Value should be nonzero if functions must have frame pointers.
     Zero means the frame pointer need not be set up (and parms may be accessed
     via the stack pointer) in functions that seem suitable.  */
+diff --git gcc/config/sparc/sparc.h gcc/config/sparc/sparc.h
 --- gcc/config/sparc/sparc.h
 +++ gcc/config/sparc/sparc.h
 @@ -27,6 +27,31 @@ along with GCC; see the file COPYING3.  If not see

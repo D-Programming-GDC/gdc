@@ -1,30 +1,7 @@
 This implements building of libphobos library in GCC.
 ---
 
---- a/configure
-+++ b/configure
-@@ -2787,7 +2787,8 @@ target_libraries="target-libgcc \
- 		${libgcj} \
- 		target-libobjc \
- 		target-libada \
--		target-libgo"
-+		target-libgo \
-+		target-libphobos"
- 
- # these tools are built using the target libraries, and are intended to
- # run only in the target environment
---- a/configure.ac
-+++ b/configure.ac
-@@ -169,7 +169,8 @@ target_libraries="target-libgcc \
- 		${libgcj} \
- 		target-libobjc \
- 		target-libada \
--		target-libgo"
-+		target-libgo \
-+		target-libphobos"
- 
- # these tools are built using the target libraries, and are intended to
- # run only in the target environment
+diff --git a/Makefile.def b/Makefile.def
 --- a/Makefile.def
 +++ b/Makefile.def
 @@ -135,6 +135,7 @@ target_modules = { module= libquadmath; };
@@ -53,6 +30,7 @@ This implements building of libphobos library in GCC.
  
  // Toplevel bootstrap
  bootstrap_stage = { id=1 ; };
+diff --git a/Makefile.in b/Makefile.in
 --- a/Makefile.in
 +++ b/Makefile.in
 @@ -940,6 +940,7 @@ configure-target:  \
@@ -720,3 +698,29 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-winsup: maybe-all-target-newlib maybe-all-target-libgloss
+diff --git a/configure b/configure
+--- a/configure
++++ b/configure
+@@ -2787,7 +2787,8 @@ target_libraries="target-libgcc \
+ 		${libgcj} \
+ 		target-libobjc \
+ 		target-libada \
+-		target-libgo"
++		target-libgo \
++		target-libphobos"
+ 
+ # these tools are built using the target libraries, and are intended to
+ # run only in the target environment
+diff --git a/configure.ac b/configure.ac
+--- a/configure.ac
++++ b/configure.ac
+@@ -169,7 +169,8 @@ target_libraries="target-libgcc \
+ 		${libgcj} \
+ 		target-libobjc \
+ 		target-libada \
+-		target-libgo"
++		target-libgo \
++		target-libphobos"
+ 
+ # these tools are built using the target libraries, and are intended to
+ # run only in the target environment
