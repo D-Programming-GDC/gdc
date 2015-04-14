@@ -2152,6 +2152,13 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
   if (DECL_ONE_ONLY (target_decl))
     symtab_add_to_same_comdat_group (thunk_node, funcn);
 
+  if (!targetm.asm_out.can_output_mi_thunk (thunk_decl, fixed_offset,
+					    virtual_value, alias))
+    {
+      /* if varargs... */
+      sorry ("backend for this target machine does not support thunks");
+    }
+
   /* Target assemble_mi_thunk doesn't work across section boundaries
      on many targets, instead force thunk to be expanded in gimple.  */
   if (DECL_EXTERNAL (target_decl))
