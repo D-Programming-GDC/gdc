@@ -1330,12 +1330,6 @@ FuncDeclaration::toObjFile(bool force_p)
   if (v_argptr)
     irs->pushStatementList();
 
-  if (v_arguments_var)
-    {
-      gcc_assert (v_arguments_var->init->isVoidInitializer());
-      build_local_var (v_arguments_var, this);
-    }
-
   /* The fabled D named return value optimisation.
      Implemented by overriding all the RETURN_EXPRs and replacing all
      occurrences of VAR with the RESULT_DECL for the function.
