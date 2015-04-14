@@ -453,6 +453,7 @@ FuncDeclaration::toThunkSymbol (int offset)
   Thunk *thunk;
 
   toSymbol();
+  toObjFile(true);
 
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there

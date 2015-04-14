@@ -193,6 +193,29 @@ get_decl_tree (Declaration *decl, FuncDeclaration *func)
 
     	  return component_ref (build_deref (frame_ref), vsym->SframeField);
     	}
+      else if (vd->parent != func && vd->isThisDeclaration() && func->isThis())
+	{
+	  // Get the non-local 'this' value by going through parent link
+	  // of nested classes.
+	  AggregateDeclaration *ad = func->isThis();
+	  tree this_tree = func->vthis->toSymbol()->Stree;
+
+	  while (ad->isNested())
+	    {
+	      Dsymbol *outer = ad->toParent2();
+	      tree vthis_field = ad->vthis->toSymbol()->Stree;
+	      this_tree = component_ref (build_deref (this_tree), vthis_field);
+
+	      ad = outer->isAggregateDeclaration();
+	      if (ad == NULL)
+		{
+		  gcc_assert (outer == vd->parent);
+		  return this_tree;
+		}
+	    }
+
+	  gcc_unreachable();
+	}
     }
 
   // Static var or auto var that the back end will handle for us
