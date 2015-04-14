@@ -2439,8 +2439,8 @@ int main()
     test32();
     test33();
     test34();
-    //test35();     // XBUG: Closure handling.
-    //test36();     // XBUG: Closure handling.
+    test35();
+    test36();
     test37();
     test38();
     test39();
