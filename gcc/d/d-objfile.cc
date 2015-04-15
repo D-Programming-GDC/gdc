@@ -203,9 +203,6 @@ StructDeclaration::toObjFile(bool)
   if (!output_declaration_p (this))
     return;
 
-  if (global.params.symdebug)
-    toDebug();
-
   // Generate TypeInfo
   type->genTypeInfo(NULL);
 
@@ -247,9 +244,6 @@ ClassDeclaration::toObjFile(bool)
 
   if (!members)
     return;
-
-  if (global.params.symdebug)
-    toDebug();
 
   // Put out the members
   for (size_t i = 0; i < members->dim; i++)
@@ -606,9 +600,6 @@ InterfaceDeclaration::toObjFile(bool)
   if (!members)
     return;
 
-  if (global.params.symdebug)
-    toDebug();
-
   // Put out the members
   for (size_t i = 0; i < members->dim; i++)
     {
@@ -744,9 +735,6 @@ EnumDeclaration::toObjFile(bool)
 
   if (isAnonymous())
     return;
-
-  if (global.params.symdebug)
-    toDebug();
 
   // Generate TypeInfo
   type->genTypeInfo(NULL);

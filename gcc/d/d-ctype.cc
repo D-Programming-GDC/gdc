@@ -226,6 +226,7 @@ TypeEnum::toCtype()
 
 	  TYPE_VALUES (ctype) = enum_values;
 	  build_type_decl (ctype, sym);
+	  rest_of_type_compilation (ctype, 1);
 	}
     }
 
@@ -264,6 +265,7 @@ TypeStruct::toCtype()
 
 	  build_type_decl (ctype, sym);
 	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
+	  rest_of_type_compilation (ctype, 1);
 	}
     }
 
@@ -581,6 +583,7 @@ TypeClass::toCtype()
 
 	  build_type_decl (basetype, sym);
 	  TYPE_CONTEXT (basetype) = d_decl_context (sym);
+	  rest_of_type_compilation (basetype, 1);
 	}
     }
 
