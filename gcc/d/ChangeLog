@@ -2,6 +2,9 @@
 
 	* d-codegen.cc(d_build_call): Set CALL_EXPR_RETURN_SLOT_OPT on calls to
 	functions that return an aggregate or array that returns in memory.
+	(build_memref): New function.
+	(get_object_method): Use build_memref instead of building a
+	POINTER_PLUS_EXPR for vtable dereferences.
 	* d-objfile.cc(FuncDeclaration::toObjFile): Support NRVO on
 	ARRAY_TYPE's that may not return in registers.
 

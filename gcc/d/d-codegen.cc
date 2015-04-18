@@ -1273,8 +1273,8 @@ get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type
       tree fntype = TREE_TYPE (func->toSymbol()->Stree);
 
       vtbl_ref = component_ref (vtbl_ref, field);
-      vtbl_ref = build_offset (vtbl_ref, size_int (Target::ptrsize * func->vtblIndex));
-      vtbl_ref = indirect_ref (build_pointer_type (fntype), vtbl_ref);
+      vtbl_ref = build_memref (build_pointer_type (fntype), vtbl_ref,
+			       size_int (Target::ptrsize * func->vtblIndex));
 
       return build_method_call (vtbl_ref, thisexp, type);
     }
@@ -1701,6 +1701,13 @@ build_offset (tree ptr_node, tree byte_offset)
 {
   tree ofs = fold_convert (Type::tsize_t->toCtype(), byte_offset);
   return fold_build2 (POINTER_PLUS_EXPR, TREE_TYPE (ptr_node), ptr_node, ofs);
+}
+
+tree
+build_memref (tree type, tree ptr, tree byte_offset)
+{
+  tree ofs = fold_convert (type, byte_offset);
+  return fold_build2 (MEM_REF, type, ptr, ofs);
 }
 
 
