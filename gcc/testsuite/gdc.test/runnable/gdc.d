@@ -514,6 +514,55 @@ void test51()
 
 /******************************************/
 
+// Bug 52
+
+class C52
+{
+    C52 a;
+
+    this()
+    {
+        printf("Construct: this=%p\n", cast(void*)this);
+        a = this;
+    }
+
+    bool check()
+    {
+        printf("Check: this=%p a=%p\n", cast(void*)this, cast(void*)a);
+        return this is a;
+    }
+}
+
+auto test52a()
+{
+    import std.conv, std.traits;
+
+    struct Scoped
+    {
+        void[__traits (classInstanceSize, C52) ] Scoped_store = void;
+
+        inout(C52) Scoped_payload() inout
+        {
+            void* alignedStore = cast(void*) Scoped_store.ptr;
+            return cast(inout (C52)) alignedStore;
+        }
+        alias Scoped_payload this;
+    }
+
+    Scoped result;
+    emplace!(Unqual!C52)(result.Scoped_store);
+    assert(result.Scoped_payload().check);
+    return result;
+}
+
+void test52()
+{
+    auto a1 = test52a();
+    assert(a1.Scoped_payload().check);
+}
+
+/******************************************/
+
 // Bug 57
 
 struct S57
@@ -730,6 +779,7 @@ void main()
     test36();
     test43();
     test51();
+    test52();
     test57();
     test66();
     test77();
