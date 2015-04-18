@@ -323,7 +323,7 @@ TypeFunction::toCtype()
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
 
-	  if (ret_type != void_type_node)
+	  if (this->next && !this->isref)
 	    {
 	      Type *tn = next->baseElemOf();
 	      if (tn->ty == Tstruct)

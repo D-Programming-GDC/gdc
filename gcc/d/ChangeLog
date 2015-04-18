@@ -7,6 +7,8 @@
 	POINTER_PLUS_EXPR for vtable dereferences.
 	* d-objfile.cc(FuncDeclaration::toObjFile): Support NRVO on
 	ARRAY_TYPE's that may not return in registers.
+	* d-ctype.cc(TypeFunction::toCtype): Don't mark TREE_ADDRESSABLE when
+	returning non-POD types by reference.
 
 2015-04-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 

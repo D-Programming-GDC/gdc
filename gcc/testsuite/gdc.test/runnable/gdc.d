@@ -768,6 +768,37 @@ void test142()
 
 /******************************************/
 
+// Bug 179
+
+struct S179a
+{
+    @disable this(this);
+}
+
+struct S179b
+{
+    S179a s1;
+    void connect() { printf("this=%p\n", &this); }
+}
+
+class C179
+{
+    private S179b s2;
+    ref S179b value() @property
+    {
+        printf("this=%p\n", &s2);
+        return s2;
+    }
+}
+
+void test179()
+{
+    C179 a = new C179;
+    a.value.connect();
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -788,6 +819,7 @@ void main()
     test131();
     test133();
     test141();
+    test179();
 
     printf("Success!\n");
 }
