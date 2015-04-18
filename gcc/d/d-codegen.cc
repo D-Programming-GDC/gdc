@@ -2093,6 +2093,10 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
   tree result = d_build_call_list (TREE_TYPE (ctype), callee, arg_list);
   result = expand_intrinsic (result);
 
+  if (!tf->isref && TREE_CODE (result) == CALL_EXPR
+      && aggregate_value_p (TREE_TYPE (result), result))
+    CALL_EXPR_RETURN_SLOT_OPT (result) = true;
+
   return maybe_compound_expr (saved_args, result);
 }
 

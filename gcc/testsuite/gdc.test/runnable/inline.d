@@ -548,9 +548,9 @@ int main()
     test11201();
     test11223();
     test11314();
-    //test11224();      // XBUG: NRVO unimplemented.
+    test11224();
     test11322();
-    //test11394();      // XBUG: NRVO unimplemented.
+    test11394();
 
     printf("Success\n");
     return 0;
