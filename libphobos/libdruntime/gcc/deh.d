@@ -30,7 +30,7 @@ import core.stdc.stdlib;
 extern(C)
 {
   int _d_isbaseof(ClassInfo, ClassInfo);
-  void _d_createTrace(Object *);
+  void _d_createTrace(Object *, void *);
 }
 
 version(GNU_SEH_Exceptions)
@@ -75,21 +75,20 @@ else
 
 // A D exception object consists of a header, which is a wrapper
 // around an unwind object header with additional D specific
-// information, followed by the exception object itself.
+// information, prefixed by the exception object itself.
 
 struct d_exception_header
 {
-  // The object being thrown.  Like GCJ, the compiled code expects this to 
+  // The object being thrown.  Like GCJ, the compiled code expects this to
   // be immediately before the generic exception header.
-  // (See build_exception_object)
-  enum UNWIND_PAD = (Object.alignof < _Unwind_Exception.alignof)
-    ? _Unwind_Exception.alignof - Object.alignof : 0;
+  enum UNWIND_PAD = (Throwable.alignof < _Unwind_Exception.alignof)
+    ? _Unwind_Exception.alignof - Throwable.alignof : 0;
 
   // Because of a lack of __aligned__ style attribute, our object
   // and the unwind object are the first two fields.
   ubyte[UNWIND_PAD] pad;
 
-  Object object;
+  Throwable object;
 
   // The generic exception header.
   _Unwind_Exception unwindHeader;
@@ -108,6 +107,9 @@ struct d_exception_header
     ubyte *languageSpecificData;
     _Unwind_Ptr catchTemp;
   }
+
+  // Stack other thrown exceptions in current thread through here.
+  d_exception_header *nextException;
 }
 
 private d_exception_header *
@@ -143,14 +145,56 @@ __gdc_exception_cleanup(_Unwind_Reason_Code code, _Unwind_Exception *exc)
 }
 
 
+// Each thread in a D program has access to a globalExceptions object.
+
+private struct globalExceptions
+{
+  d_exception_header *thrownExceptions;
+}
+
+globalExceptions __globalExceptions;
+
+// Called before starting a catch.  Returns the exception object.
+
+extern(C) void *
+__gdc_begin_catch(void *exc_ptr)
+{
+  _Unwind_Exception *exceptionObject = cast(_Unwind_Exception *) exc_ptr;
+  d_exception_header *header = get_exception_header_from_ue(exceptionObject);
+  globalExceptions *globals = &__globalExceptions;
+
+  // Something went wrong when stacking up chained headers...
+  if (header != globals.thrownExceptions)
+    __gdc_terminate();
+
+  void *objectp = cast(void *) header.object;
+
+  // Handling for this exception is complete.
+  globals.thrownExceptions = header.nextException;
+  _Unwind_DeleteException (&header.unwindHeader);
+
+  return objectp;
+}
+
 // Perform a throw, D style. Throw will unwind through this call,
 // so there better not be any handlers or exception thrown here.
 
 extern(C) void
-_d_throw(Object object)
+_d_throw(Object o)
 {
+  globalExceptions *globals = &__globalExceptions;
+  Throwable object = cast(Throwable) o;
+
+  // Did not receive a Throwable object.
+  if (object is null)
+    __gdc_terminate();
+
   // FIXME: OOM errors will throw recursively.
   d_exception_header *xh = new d_exception_header();
+
+  // Stack up our thrown exceptions in reverse.
+  xh.nextException = globals.thrownExceptions;
+  globals.thrownExceptions = xh;
 
   xh.object = object;
 
@@ -162,7 +206,7 @@ _d_throw(Object object)
   xh.unwindHeader.exception_cleanup = & __gdc_exception_cleanup;
 
   // Runtime now expects us to do this first before unwinding.
-  _d_createTrace (cast(Object *) xh.object);
+  _d_createTrace (cast(Object *) xh.object, null);
 
   // We're happy with setjmp/longjmp exceptions or region-based
   // exception handlers: entry points are provided here for both.
@@ -661,6 +705,52 @@ __gdc_personality_impl(int iversion,
 	    ue_header.barrier_cache.bitpattern[1] = info.ttype_base;
 	  else
 	    xh.catchTemp = info.ttype_base;
+	}
+
+      // D Note: If there are any in-flight exceptions being thrown,
+      // chain our current object onto the end of the prevous object.
+      while (xh.nextException)
+	{
+	  d_exception_header *ph = xh.nextException;
+
+	  ubyte *ph_language_specific_data;
+	  int ph_handler_switch_value;
+	  _Unwind_Ptr ph_landing_pad;
+	  restore_caught_exception (&ph.unwindHeader, ph_handler_switch_value,
+				    ph_language_specific_data, ph_landing_pad);
+
+          // Stop if thrown exceptions are unrelated.
+	  if (language_specific_data != ph_language_specific_data)
+	    break;
+
+	  Error e = cast(Error) xh.object;
+	  if (e !is null && (cast(Error) ph.object) is null)
+	    {
+	      // We found an Error, bypass the exception chain.
+	      e.bypassedException = ph.object;
+	    }
+	  else
+	    {
+	      // Add our object onto the end of the existing chain.
+	      Throwable n = ph.object;
+	      while (n.next)
+		n = n.next;
+	      n.next = xh.object;
+
+	      // Update our exception object.
+	      xh.object = ph.object;
+	      if (ph_handler_switch_value != handler_switch_value)
+		{
+		  handler_switch_value = ph_handler_switch_value;
+
+		  save_caught_exception (ue_header, context, handler_switch_value,
+					 language_specific_data, landing_pad,
+					 action_record);
+		}
+	    }
+	  // Exceptions chained, can now throw away the previous header.
+	  xh.nextException = ph.nextException;
+	  _Unwind_DeleteException (&ph.unwindHeader);
 	}
     }
 

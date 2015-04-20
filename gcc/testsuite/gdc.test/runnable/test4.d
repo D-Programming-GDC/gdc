@@ -1552,7 +1552,7 @@ int main()
     test51();
     test52();
     test53();
-    //test54();     // BUG: EH chaining unimplemented.
+    test54();
     test55();
     test56();
     test57();
