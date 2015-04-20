@@ -226,6 +226,7 @@ TypeEnum::toCtype()
 
 	  TYPE_VALUES (ctype) = enum_values;
 	  build_type_decl (ctype, sym);
+	  rest_of_type_compilation (ctype, 1);
 	}
     }
 
@@ -264,6 +265,7 @@ TypeStruct::toCtype()
 
 	  build_type_decl (ctype, sym);
 	  TYPE_CONTEXT (ctype) = d_decl_context (sym);
+	  rest_of_type_compilation (ctype, 1);
 	}
     }
 
@@ -321,7 +323,7 @@ TypeFunction::toCtype()
 	  TYPE_LANG_SPECIFIC (ctype) = build_d_type_lang_specific (this);
 	  d_keep (ctype);
 
-	  if (ret_type != void_type_node)
+	  if (this->next && !this->isref)
 	    {
 	      Type *tn = next->baseElemOf();
 	      if (tn->ty == Tstruct)
@@ -581,6 +583,7 @@ TypeClass::toCtype()
 
 	  build_type_decl (basetype, sym);
 	  TYPE_CONTEXT (basetype) = d_decl_context (sym);
+	  rest_of_type_compilation (basetype, 1);
 	}
     }
 

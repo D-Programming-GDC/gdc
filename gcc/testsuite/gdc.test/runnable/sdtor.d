@@ -3391,7 +3391,7 @@ int main()
     test55();
     test56();
     test57();
-    //test58();         // XBUG: NRVO unimplemented.
+    test58();
     test59();
     test5737();
     test6119();
@@ -3418,9 +3418,9 @@ int main()
     test9720();
     test9899();
     test9907();
-    //test9985();       // XBUG: NRVO unimplemented.
+    test9985();
     test9994();
-    //test10094();      // XBUG: NRVO unimplemented.
+    test10094();
     test10244();
     test10694();
     test10789();
@@ -3428,11 +3428,11 @@ int main()
     test11197();
     test7474();
     test11505();
-    //test12045();      // XBUG: NRVO unimplemented.
+    test12045();
     test12591();
     test12660();
     test12686();
-    //test13089();      // XBUG: NRVO unimplemented.
+    test13089();
     test11763();
     test13303();
 
