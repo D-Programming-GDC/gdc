@@ -234,9 +234,6 @@ StructDeclaration::toObjFile(bool)
   if (!output_declaration_p (this))
     return;
 
-  if (global.params.symdebug)
-    toDebug();
-
   // Generate TypeInfo
   type->genTypeInfo(NULL);
 
@@ -278,9 +275,6 @@ ClassDeclaration::toObjFile(bool)
 
   if (!members)
     return;
-
-  if (global.params.symdebug)
-    toDebug();
 
   // Put out the members
   for (size_t i = 0; i < members->dim; i++)
@@ -637,9 +631,6 @@ InterfaceDeclaration::toObjFile(bool)
   if (!members)
     return;
 
-  if (global.params.symdebug)
-    toDebug();
-
   // Put out the members
   for (size_t i = 0; i < members->dim; i++)
     {
@@ -775,9 +766,6 @@ EnumDeclaration::toObjFile(bool)
 
   if (isAnonymous())
     return;
-
-  if (global.params.symdebug)
-    toDebug();
 
   // Generate TypeInfo
   type->genTypeInfo(NULL);
@@ -1333,8 +1321,16 @@ FuncDeclaration::toObjFile(bool force_p)
   /* The fabled D named return value optimisation.
      Implemented by overriding all the RETURN_EXPRs and replacing all
      occurrences of VAR with the RESULT_DECL for the function.
-     This is only worth doing for functions that return in memory.  */
-  nrvo_can = nrvo_can && aggregate_value_p (return_type, fndecl);
+     This is only worth doing for functions that can return in memory.  */
+  if (nrvo_can)
+    {
+      if (!AGGREGATE_TYPE_P (return_type))
+	nrvo_can = 0;
+      else if (TREE_CODE (return_type) == ARRAY_TYPE)
+	nrvo_can = TYPE_MODE (return_type) == BLKmode;
+      else
+	nrvo_can = aggregate_value_p (return_type, fndecl);
+    }
 
   if (nrvo_can && nrvo_var)
     {
@@ -1343,6 +1339,11 @@ FuncDeclaration::toObjFile(bool force_p)
 
       // Copy name from VAR to RESULT.
       DECL_NAME (result_decl) = DECL_NAME (var);
+      // Don't forget that we take it's address.
+      TREE_ADDRESSABLE (TREE_TYPE (fndecl)) = 1;
+      TREE_ADDRESSABLE (var) = 1;
+      TREE_ADDRESSABLE (result_decl) = 1;
+
       SET_DECL_VALUE_EXPR (var, result_decl);
       DECL_HAS_VALUE_EXPR_P (var) = 1;
 

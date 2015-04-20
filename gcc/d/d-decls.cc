@@ -780,43 +780,6 @@ EnumDeclaration::toInitializer()
 }
 
 
-//
-
-void
-ClassDeclaration::toDebug()
-{
-  tree rec_type = TREE_TYPE (type->toCtype());
-  build_type_decl (rec_type, this);
-  rest_of_type_compilation (rec_type, 1);
-}
-
-void
-EnumDeclaration::toDebug()
-{
-  TypeEnum *tc = (TypeEnum *) type;
-  if (!tc->sym->defaultval || type->isZeroInit())
-    return;
-
-  tree ctype = type->toCtype();
-
-  // The ctype is not necessarily enum, which doesn't sit well with
-  // rest_of_type_compilation.
-  if (TREE_CODE (ctype) == ENUMERAL_TYPE)
-    {
-      build_type_decl (ctype, this);
-      rest_of_type_compilation (ctype, 1);
-    }
-}
-
-void
-StructDeclaration::toDebug()
-{
-  tree ctype = type->toCtype();
-  build_type_decl (ctype, this);
-  rest_of_type_compilation (ctype, 1);
-}
-
-
 // Stubs unused in GDC, but required for D front-end.
 
 Symbol *

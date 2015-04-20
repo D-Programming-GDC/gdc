@@ -181,7 +181,6 @@ public:
 
     void toObjFile(bool multiobj);                       // compile to .obj file
     void toDt(dt_t **pdt);
-    void toDebug();                     // to symbolic debug info
 
     StructDeclaration *isStructDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -304,7 +303,6 @@ public:
 
     // Back end
     void toObjFile(bool multiobj);                       // compile to .obj file
-    void toDebug();
     unsigned baseVtblOffset(BaseClass *bc);
     Symbol *toSymbol();
     Symbol *toVtblSymbol();
