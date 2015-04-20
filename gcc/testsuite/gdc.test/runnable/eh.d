@@ -763,10 +763,10 @@ int main()
     test6();
     test7();
 
-    //bug1513();        // XBUG: EH chaining unimplemented.
-    //doublecollide();  // XBUG: EH chaining unimplemented.
-    //collideMixed();   // XBUG: EH chaining unimplemented.
-    //multicollide();   // XBUG: EH chaining unimplemented.
+    bug1513();
+    doublecollide();
+    collideMixed();
+    multicollide();
     test9568();
 
     //test8();          // XBUG: Cannot goto into catch bug to prevent GCC middle-end ICE.
