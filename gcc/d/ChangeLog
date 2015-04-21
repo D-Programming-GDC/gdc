@@ -1,3 +1,10 @@
+2015-04-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(build_exception_object): Remove.
+	* runtime.def(BEGIN_CATCH): Declare runtime function __gdc_begin_catch.
+	* toir.cc(IRVisitor::visit::TryCatchStatement): Use LIBCALL_BEGIN_CATCH
+	to get the correct exception object for handler.
+
 2015-04-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_build_call): Set CALL_EXPR_RETURN_SLOT_OPT on calls to

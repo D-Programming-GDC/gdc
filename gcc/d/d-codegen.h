@@ -81,7 +81,6 @@ extern tree insert_type_modifiers (tree type, unsigned mod);
 
 extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);
 
-extern tree build_exception_object();
 extern tree build_float_modulus (tree type, tree t1, tree t2);
 
 extern tree indirect_ref (tree type, tree exp);

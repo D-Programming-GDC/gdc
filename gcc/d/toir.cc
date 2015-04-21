@@ -573,8 +573,14 @@ public:
 
 	    if (vcatch->var)
 	      {
-		tree object = convert_expr(build_exception_object(),
-					   build_object_type(), vcatch->type);
+		// Get D's internal exception Object, different
+		// from the generic exception pointer.
+		tree ehptr = d_build_call_nary(builtin_decl_explicit(BUILT_IN_EH_POINTER),
+					       1, integer_zero_node);
+		tree object = build_libcall(LIBCALL_BEGIN_CATCH, 1, &ehptr);
+		object = build1(NOP_EXPR, build_object_type()->toCtype(), object);
+		object = convert_expr(object, build_object_type(), vcatch->type);
+
 		tree var = vcatch->var->toSymbol()->Stree;
 		tree init = build_vinit(var, object);
 

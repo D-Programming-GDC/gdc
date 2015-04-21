@@ -178,6 +178,7 @@ DEF_D_RUNTIME(AADELX, "_aaDelX", P3(AA, CONST(TYPEINFO), VOIDPTR), BOOL, FN_NONE
 
 // Used for throw() expressions.
 DEF_D_RUNTIME(THROW, "_d_throw", P1(OBJECT), VOID, FN_THROWS)
+DEF_D_RUNTIME(BEGIN_CATCH, "__gdc_begin_catch", P1(VOIDPTR), VOIDPTR, FN_NONE)
 
 // When invariant() contracts are turned on, used after testing whether a
 // class != null for validating the state of a class.

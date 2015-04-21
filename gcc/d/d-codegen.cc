@@ -2667,29 +2667,6 @@ build_typeinfo (Type *t)
   return tinfo;
 }
 
-// Build and return D's internal exception Object.
-// Different from the generic exception pointer.
-
-tree
-build_exception_object()
-{
-  tree obj_type = build_object_type()->toCtype();
-
-  if (TREE_CODE (TREE_TYPE (obj_type)) == REFERENCE_TYPE)
-    obj_type = TREE_TYPE (obj_type);
-
-  // Like Java, the actual D exception object is one
-  // pointer behind the exception header
-  tree eh = d_build_call_nary (builtin_decl_explicit (BUILT_IN_EH_POINTER),
-			       1, integer_zero_node);
-
-  // treat exception header as (Object *)
-  eh = build1 (NOP_EXPR, build_pointer_type (obj_type), eh);
-  eh = build_offset_op (MINUS_EXPR, eh, TYPE_SIZE_UNIT (TREE_TYPE (eh)));
-
-  return build1 (INDIRECT_REF, obj_type, eh);
-}
-
 // Build LABEL_DECL at location LOC for IDENT given.
 
 tree
