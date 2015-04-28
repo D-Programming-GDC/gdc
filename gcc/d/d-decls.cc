@@ -16,21 +16,25 @@
 // <http://www.gnu.org/licenses/>.
 
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/mars.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/attrib.h"
+#include "dfrontend/enum.h"
+#include "dfrontend/init.h"
+#include "dfrontend/module.h"
+#include "dfrontend/statement.h"
+#include "dfrontend/ctfe.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-
-#include "mars.h"
-#include "aggregate.h"
-#include "attrib.h"
-#include "enum.h"
+#include "d-objfile.h"
 #include "id.h"
-#include "init.h"
-#include "module.h"
-#include "statement.h"
-#include "ctfe.h"
-
-#include "dfrontend/target.h"
 
 // Create the symbol with tree for struct initialisers.
 

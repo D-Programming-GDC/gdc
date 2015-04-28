@@ -15,21 +15,30 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/attrib.h"
+#include "dfrontend/enum.h"
+#include "dfrontend/import.h"
+#include "dfrontend/init.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/module.h"
+#include "dfrontend/statement.h"
+#include "dfrontend/template.h"
+#include "dfrontend/nspace.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "debug.h"
 
 #include "d-lang.h"
+#include "d-objfile.h"
+#include "d-irstate.h"
 #include "d-codegen.h"
-
-#include "attrib.h"
-#include "enum.h"
 #include "id.h"
-#include "import.h"
-#include "init.h"
-#include "module.h"
-#include "template.h"
-#include "nspace.h"
-#include "dfrontend/target.h"
 
 static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
 static Symbol *build_emutls_function (vec<VarDeclaration *> tlsVars);
@@ -1120,7 +1129,7 @@ output_declaration_p (Dsymbol *dsym)
 	}
     }
 
-  if (flag_emit_templates == TEnone)
+  if (!flag_emit_templates)
     return !D_DECL_IS_TEMPLATE (dsym->toSymbol()->Stree);
 
   return true;
@@ -1705,7 +1714,7 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
 	    {
 	      D_DECL_ONE_ONLY (decl) = 1;
 	      D_DECL_IS_TEMPLATE (decl) = 1;
-	      local_p = flag_emit_templates != TEnone
+	      local_p = flag_emit_templates
 		&& output_module_p (ti->instantiatingModule);
 	      break;
 	    }

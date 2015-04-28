@@ -15,14 +15,18 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/lexer.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/aggregate.h"
+
 #include "d-system.h"
-
-#include "lexer.h"
-#include "mtype.h"
-#include "longdouble.h"
-
 #include "d-lang.h"
 #include "d-codegen.h"
+#include "longdouble.h"
 
 
 // Return backend machine_mode for frontend mode MODE.

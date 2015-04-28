@@ -18,20 +18,6 @@
 #ifndef GCC_DCMPLR_IRSTATE_H
 #define GCC_DCMPLR_IRSTATE_H
 
-// Due to the inlined functions, "dc-gcc-includes.h" needs to
-// be included before this header is included.
-
-#include "mars.h"
-#include "root.h"
-#include "lexer.h"
-#include "mtype.h"
-#include "declaration.h"
-#include "statement.h"
-#include "expression.h"
-#include "aggregate.h"
-
-#include "d-objfile.h"
-
 // The kinds of levels we recognize.
 enum LevelKind
 {

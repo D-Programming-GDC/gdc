@@ -18,9 +18,6 @@
 #ifndef GCC_DCMPLR_CODEGEN_H
 #define GCC_DCMPLR_CODEGEN_H
 
-#include "d-irstate.h"
-#include "d-objfile.h"
-
 // D library function flags.
 
 enum LibCallFlag

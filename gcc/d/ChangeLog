@@ -1,3 +1,22 @@
+2015-04-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc, d-convert.cc, d-ctype.cc, d-decls.cc, d-elem.cc,
+	d-glue.cc, d-incpath.cc, d-irstate.cc, d-longdouble.cc, d-port.cc,
+	d-target.cc, d-typinf.cc, toir.cc: Re-order included headers.
+	* d-codegen.h, d-dmd-gcc.h, d-irstate.h, d-lang.h, d-objfile.cc,
+	d-system.h: Remove all includes from headers.
+	* d-codegen.cc: Re-order included headers.
+	(build_attributes): Use ctfeInterpret instead of optimize.
+	* d-lang.cc: Re-order included headers.
+	(d_init_options): Don't use tristate enum for flag_emit_templates.
+	(d_handle_option): Likewise.
+	* d-objfile.cc: Re-order included headers.
+	(output_declaration_p): Update check for flag_emit_templates.
+	(setup_symbol_storage): Likewise.
+	* d-todt.cc: Re-order included headers.
+	(ExpInitializer::toDt): Use ctfeInterpret instead of optimize.
+	(TypeInfoTupleDeclaration::toDt): Likewise.
+
 2015-04-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(build_exception_object): Remove.

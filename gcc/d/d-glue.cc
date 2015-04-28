@@ -15,15 +15,21 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/mars.h"
+#include "dfrontend/module.h"
+#include "dfrontend/scope.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/statement.h"
+
 #include "d-system.h"
 #include "d-lang.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
-
-#include "mars.h"
-#include "module.h"
-#include "scope.h"
-#include "declaration.h"
 
 Global global;
 

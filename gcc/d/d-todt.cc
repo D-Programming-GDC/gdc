@@ -15,18 +15,25 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/enum.h"
+#include "dfrontend/init.h"
+#include "dfrontend/scope.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/expression.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/ctfe.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-
-#include "enum.h"
+#include "d-objfile.h"
+#include "d-dmd-gcc.h"
 #include "id.h"
-#include "init.h"
-#include "scope.h"
-#include "ctfe.h"
-
-#include "dfrontend/target.h"
-
 
 // Append VAL to constructor PDT.  Create a new constructor
 // of generic type if PDT is not already pointing to one.
@@ -313,7 +320,7 @@ dt_t *
 ExpInitializer::toDt()
 {
   tree dt = NULL_TREE;
-  exp = exp->optimize (WANTvalue);
+  exp = exp->ctfeInterpret();
   exp->toDt (&dt);
   return dt;
 }
@@ -1529,7 +1536,7 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
     {
       Parameter *arg = (*tu->arguments)[i];
       Expression *e = arg->type->getTypeInfo(NULL);
-      e = e->optimize (WANTvalue);
+      e = e->ctfeInterpret();
       e->toDt (&dt);
     }
 

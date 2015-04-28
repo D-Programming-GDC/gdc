@@ -18,10 +18,6 @@
 #ifndef GCC_DCMPLR_DC_SYSTEM_H
 #define GCC_DCMPLR_DC_SYSTEM_H
 
-#include "config.h"
-
-#include "system.h"
-#include "coretypes.h"
 #include "tm.h"
 #include "hash-set.h"
 #include "machmode.h"
@@ -57,9 +53,5 @@
 #include "gimplify.h"
 #include "ipa-ref.h"
 #include "cgraph.h"
-
-#ifdef optimize
-#undef optimize
-#endif
 
 #endif

@@ -15,13 +15,20 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/attrib.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/enum.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-
-#include "attrib.h"
-#include "enum.h"
-#include "dfrontend/target.h"
+#include "d-objfile.h"
 
 type *
 Type::toCtype()

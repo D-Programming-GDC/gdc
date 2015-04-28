@@ -204,6 +204,4 @@ class Expression;
 extern Expression *build_expression (tree cst);
 extern Type *build_dtype(tree type);
 
-#include "d-dmd-gcc.h"
-
 #endif

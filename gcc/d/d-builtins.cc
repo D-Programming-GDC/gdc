@@ -16,13 +16,21 @@
    <http://www.gnu.org/licenses/>.
 */
 
-#include "d-system.h"
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
 
+#include "dfrontend/attrib.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/module.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/template.h"
+
+#include "d-system.h"
 #include "d-lang.h"
-#include "attrib.h"
-#include "module.h"
-#include "template.h"
 #include "d-codegen.h"
+#include "d-objfile.h"
 
 static GTY(()) vec<tree, va_gc> *gcc_builtins_functions = NULL;
 static GTY(()) vec<tree, va_gc> *gcc_builtins_libfuncs = NULL;

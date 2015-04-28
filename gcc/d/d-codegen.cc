@@ -15,16 +15,25 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/attrib.h"
+#include "dfrontend/template.h"
+#include "dfrontend/init.h"
+#include "dfrontend/module.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/statement.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "d-lang.h"
+#include "d-objfile.h"
+#include "d-irstate.h"
 #include "d-codegen.h"
-
-#include "attrib.h"
-#include "template.h"
-#include "init.h"
 #include "id.h"
-#include "module.h"
-#include "dfrontend/target.h"
 
 
 Module *current_module_decl;
@@ -869,7 +878,7 @@ build_attributes (Expressions *in_attrs)
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
-      Expression *attr = (*in_attrs)[i]->optimize (WANTexpand);
+      Expression *attr = (*in_attrs)[i];
       Dsymbol *sym = attr->type->toDsymbol (0);
 
       if (!sym)

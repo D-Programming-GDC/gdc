@@ -15,14 +15,22 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#include "d-system.h"
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
+#include "dfrontend/expression.h"
+#include "dfrontend/module.h"
+#include "dfrontend/statement.h"
+#include "dfrontend/ctfe.h"
+
+#include "d-system.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-
+#include "d-objfile.h"
+#include "d-irstate.h"
 #include "id.h"
-#include "module.h"
-#include "ctfe.h"
 
 elem *
 Expression::toElem (IRState *)

@@ -17,6 +17,23 @@
 
 // d-lang.cc: Implementation of back-end callbacks and data structures
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/mars.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/cond.h"
+#include "dfrontend/hdrgen.h"
+#include "dfrontend/doc.h"
+#include "dfrontend/json.h"
+#include "dfrontend/module.h"
+#include "dfrontend/scope.h"
+#include "dfrontend/statement.h"
+#include "dfrontend/root.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "options.h"
 #include "cppdefault.h"
@@ -24,18 +41,10 @@
 
 #include "d-lang.h"
 #include "d-codegen.h"
-
-#include "mars.h"
-#include "mtype.h"
-#include "cond.h"
-#include "hdrgen.h"
+#include "d-objfile.h"
+#include "d-irstate.h"
+#include "d-dmd-gcc.h"
 #include "id.h"
-#include "doc.h"
-#include "json.h"
-#include "module.h"
-#include "scope.h"
-#include "root.h"
-#include "dfrontend/target.h"
 
 static tree d_handle_noinline_attribute(tree *, tree, tree, int, bool *);
 static tree d_handle_forceinline_attribute(tree *, tree, tree, int, bool *);
@@ -186,7 +195,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  flag_emit_templates = TEnormal;
+  flag_emit_templates = 1;
   bounds_check_set_manually = false;
 }
 
@@ -466,7 +475,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      flag_emit_templates = value ? TEallinst : TEnone;
+      flag_emit_templates = value ? 1 : 0;
       global.params.allInst = value;
       break;
 
