@@ -1,3 +1,11 @@
+2015-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in(D_GLUE_OBJS): Add d-attribs.o.  Remove d-gt.o.
+	* d-attribs.c: New file.
+	* d-builtins.cc: Move attribute handler functions to d-attribs.c
+	* d-lang.cc: Likewise.  Added include for gtype-d.h from d-gt.cc.
+	* d-gt.cc: Remove file.
+
 2015-04-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc, d-convert.cc, d-ctype.cc, d-decls.cc, d-elem.cc,

@@ -110,13 +110,12 @@ D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
 D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 
 # D Glue sources
-D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
-              d/d-objfile.glue.o d/d-irstate.glue.o \
+D_GLUE_OBJS = d/d-attribs.cglue.o d/d-lang.glue.o d/d-decls.glue.o \
+              d/d-codegen.glue.o d/d-objfile.glue.o d/d-irstate.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-longdouble.glue.o \
-              d/d-gt.cglue.o d/d-builtins.glue.o \
-              d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
-              d/toir.glue.o d/d-typinf.glue.o d/d-port.glue.o \
-              d/d-target.glue.o d/d-glue.glue.o
+              d/d-builtins.glue.o d/d-incpath.glue.o d/d-ctype.glue.o \
+              d/d-elem.glue.o d/toir.glue.o d/d-typinf.glue.o \
+              d/d-port.glue.o d/d-target.glue.o d/d-glue.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
@@ -133,7 +132,7 @@ d/%.gen.o: d/%.c
 d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
 	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -o d/$*.glue.o -c $<
 
-d/%.cglue.o: $(srcdir)/d/%.cc $(D_TREE_H)
+d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
 	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
 
 d/impcvgen: d/impcnvgen.dmdgen.o
@@ -159,6 +158,7 @@ d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H)
 
 d/id.gen.o: d/id.c $(D_DMD_H)
 d/impcnvtab.gen.o: d/impcnvtab.c $(D_DMD_H)
+d/d-attribs.cglue.o: d/d-attribs.c $(D_TREE_H)
 d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) options.h
 d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
 d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
@@ -171,7 +171,6 @@ d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
 d/d-typinf.glue.o: d/d-typinf.cc $(D_TREE_H)
 d/d-longdouble.glue.o: d/d-longdouble.cc d/longdouble.h $(D_TREE_H)
 d/d-port.glue.o: d/d-port.cc d/dfrontend/port.h $(D_TREE_H)
-d/d-gt.cglue.o: d/d-gt.cc $(D_TREE_H)
 d/d-builtins.glue.o: d/d-builtins.cc $(D_TREE_H)
 
 

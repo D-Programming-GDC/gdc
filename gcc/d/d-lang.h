@@ -192,8 +192,10 @@ extern void set_block (tree);
 
 
 /* In d-builtins.cc */
-extern const attribute_spec d_builtins_attribute_table[];
-extern const attribute_spec d_format_attribute_table[];
+extern const attribute_spec d_langhook_attribute_table[];
+extern const attribute_spec d_langhook_common_attribute_table[];
+extern const attribute_spec d_langhook_format_attribute_table[];
+
 tree d_builtin_function (tree);
 void d_init_builtins();
 void d_register_builtin_type (tree, const char *);
