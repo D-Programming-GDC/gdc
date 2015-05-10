@@ -178,6 +178,10 @@ Don't recognize built-in functions that do not begin with
 @cindex @option{-fno-emit-moduleinfo}
 Turns off generation of module information and related functions.
 
+@item -fno-rtti
+@cindex @option{-fno-rtti}
+Turns off generation of runtime type information.
+
 @item -fd-verbose
 @cindex @option{-fd-verbose}
 Print information about D language processing to stdout.

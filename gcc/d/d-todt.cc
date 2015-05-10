@@ -894,7 +894,7 @@ ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 	      tree dt = build_address(cd2->toSymbol()->Stree);
 	      if (offset < (size_t) b->offset)
 		dt_zeropad(pdt, b->offset - offset);
-	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
+	      dt_cons(pdt, global.params.noTypeinfo ? null_pointer_node : build_offset(dt, size_int(csymoffset)));
 	      break;
 	    }
 	}

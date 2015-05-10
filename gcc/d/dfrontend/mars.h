@@ -201,6 +201,8 @@ struct Param
     const char *resfile;
     const char *exefile;
     const char *mapfile;
+    // Language features which can be disabled
+    const char* noTypeinfo;   // != null => disable Typeinfo
 };
 
 struct Compiler

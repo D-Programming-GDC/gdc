@@ -176,6 +176,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.useDeprecated = 1;
   global.params.betterC = false;
   global.params.allInst = false;
+  global.params.noTypeinfo = NULL;
 
   global.params.linkswitches = new Strings();
   global.params.libfiles = new Strings();
@@ -472,6 +473,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_femit_moduleinfo:
       global.params.betterC = !value;
+      break;
+
+    case OPT_frtti:
+      global.params.noTypeinfo = value ? NULL : "%s: TypeInfo disabled using -fno-rtti switch.";
       break;
 
     case OPT_fignore_unknown_pragmas:

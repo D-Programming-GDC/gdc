@@ -3836,6 +3836,12 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
 
         assert(size);
 
+        if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+        {
+            error(e->loc, global.params.noTypeinfo, "Can't use reverse");
+            return new ErrorExp();
+        }
+
         static FuncDeclaration *adReverse_fd = NULL;
         if (!adReverse_fd) {
             Parameters* args = new Parameters;
@@ -3858,6 +3864,12 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         static FuncDeclaration *fd = NULL;
         Expression *ec;
         Expressions *arguments;
+
+        if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+        {
+            error(e->loc, global.params.noTypeinfo, "Can't use sort");
+            goto Lerror;
+        }
 
         if (!fd) {
             Parameters* args = new Parameters;
@@ -4667,6 +4679,12 @@ Type *TypeAArray::semantic(Loc loc, Scope *sc)
     //printf("TypeAArray::semantic() %s index->ty = %d\n", toChars(), index->ty);
     if (deco)
         return this;
+
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+    {
+        error(loc, global.params.noTypeinfo, "Can't use AAs");
+        return Type::terror;
+    }
 
     this->loc = loc;
     this->sc = sc;
@@ -8252,6 +8270,12 @@ L1:
 
         if (ident == Id::classinfo)
         {
+            if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+            {
+                error(e->loc, global.params.noTypeinfo, "Can't use classinfo");
+                return new ErrorExp();
+            }
+
             assert(Type::typeinfoclass);
             Type *t = Type::typeinfoclass->type;
             if (e->op == TOKtype || e->op == TOKdottype)

@@ -88,6 +88,7 @@ Type::getInternalTypeInfo (Scope *sc)
 void
 Type::genTypeInfo(Scope *sc)
 {
+  gcc_assert (!global.params.noTypeinfo);
   if (!Type::dtypeinfo)
     {
       error(Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt");

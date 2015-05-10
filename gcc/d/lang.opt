@@ -142,6 +142,9 @@ femit-moduleinfo
 D
 Generate ModuleInfo struct for output module
 
+frtti
+D
+
 fonly=
 D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument
