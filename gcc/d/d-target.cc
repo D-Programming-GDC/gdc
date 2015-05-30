@@ -34,6 +34,7 @@
 #include "d-codegen.h"
 
 int Target::ptrsize;
+int Target::c_longsize;
 int Target::realsize;
 int Target::realpad;
 int Target::realalignsize;
@@ -68,6 +69,7 @@ Target::init()
     gcc_unreachable();
 
   ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
+  c_longsize = int_size_in_bytes(long_integer_type_node);
 
   CLASSINFO_SIZE = 19 * ptrsize;
 }
