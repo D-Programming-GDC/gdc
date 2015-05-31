@@ -50,6 +50,7 @@
 #include "gimple-expr.h"
 #include "gimplify.h"
 #include "debug.h"
+#include "hash-set.h"
 
 #include "d-lang.h"
 #include "d-codegen.h"
@@ -781,8 +782,8 @@ is_system_module(Module *m)
   return false;
 }
 
-static bool
-write_one_dep(const char* fn, OutBuffer* ob)
+bool
+d_write_one_dep(const char* const& fn, OutBuffer* ob)
 {
   ob->writestring ("  ");
   ob->writestring (fn);
@@ -794,43 +795,34 @@ static void
 deps_write (Module *m)
 {
   OutBuffer *ob = global.params.makeDeps;
-  FileName *fn;
 
   // Write out object name.
-  fn = m->objfile->name;
+  FileName *fn = m->objfile->name;
   ob->writestring (fn->str);
   ob->writestring (":");
 
-  Array<FileName*> dependencies;
+  hash_set<const char*> dependencies;
 
-  // First dependency is source file for module.
-  dependencies.push(m->srcfile->name);
+  Modules to_explore;
+  to_explore.push(m);
+  while (to_explore.dim)
+  {
+    Module* depmod = to_explore.pop();
 
-  // Write out file dependencies.
-  for (size_t i = 0; i < m->aimports.dim; i++)
-    {
-      Module *mi = m->aimports[i];
-
-      // Ignore self references.
-      if (mi == m)
-	continue;
-
-      if (global.params.makeDepsStyle == 2)
-        if(is_system_module(mi))
-          continue;
-
-      dependencies.push(mi->srcfile->name);
-    }
-
-  for (size_t i = 0; i < dependencies.dim; i++)
-    {
-      if(i > 0 && dependencies[i] == dependencies[i-1])
+    if (global.params.makeDepsStyle == 2)
+      if (is_system_module(depmod))
         continue;
 
-      // All checks done, write out file path/name.
-      fn = dependencies[i];
-      write_one_dep(fn->str, ob);
-    }
+    if (dependencies.contains(depmod->srcfile->name->str))
+      continue;
+
+    dependencies.add(depmod->srcfile->name->str);
+
+    for (size_t i = 0; i < depmod->aimports.dim; i++)
+      to_explore.push(depmod->aimports[i]);
+  }
+
+  dependencies.traverse<OutBuffer*, &d_write_one_dep>(ob);
 
   ob->writenl();
 }
