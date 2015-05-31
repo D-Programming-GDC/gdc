@@ -752,6 +752,35 @@ genCmain (Scope *sc)
   rootmodule = sc->module;
 }
 
+static bool
+is_system_module(Module *m)
+{
+  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
+  ModuleDeclaration *md = m->md;
+
+  if(!md)
+    return false;
+
+  if (md->packages)
+    {
+      if (strcmp ((*md->packages)[0]->string, "core") == 0)
+        return true;
+      if (strcmp ((*md->packages)[0]->string, "std") == 0)
+        return true;
+      if (strcmp ((*md->packages)[0]->string, "gcc") == 0)
+        return true;
+    }
+  else if (md->id && md->packages == NULL)
+    {
+      if (strcmp (md->id->string, "object") == 0)
+        return true;
+      if (strcmp (md->id->string, "__entrypoint") == 0)
+        return true;
+    }
+
+  return false;
+}
+
 static void
 deps_write (Module *m)
 {
@@ -784,27 +813,8 @@ deps_write (Module *m)
 	continue;
 
       if (global.params.makeDepsStyle == 2)
-	{
-	  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
-	  ModuleDeclaration *md = mi->md;
-
-	  if (md && md->packages)
-	    {
-	      if (strcmp ((*md->packages)[0]->string, "core") == 0)
-		continue;
-	      if (strcmp ((*md->packages)[0]->string, "std") == 0)
-		continue;
-	      if (strcmp ((*md->packages)[0]->string, "gcc") == 0)
-		continue;
-	    }
-	  else if (md && md->id && md->packages == NULL)
-	    {
-	      if (strcmp (md->id->string, "object") == 0)
-		continue;
-	      if (strcmp (md->id->string, "__entrypoint") == 0)
-		continue;
-	    }
-	}
+        if(is_system_module(mi))
+          continue;
 
       // All checks done, write out file path/name.
       fn = mi->srcfile->name;
