@@ -495,3 +495,61 @@ _fiber_switchContext:
     // 'return' to complete switch
     ret;
 #endif
+/************************************************************************************
+ * i386- and x86_64-apple-darwin (OS X) ASM BITS
+ ************************************************************************************/
+#if defined(__i386__) && defined(__APPLE__)
+.globl _fiber_switchContext
+_fiber_switchContext:
+	// save current stack state
+	push %ebp
+	mov  %esp, %ebp
+	push %edi
+	push %esi
+	push %ebx
+	push %eax
+
+	// store oldp again with more accurate address
+	mov 8(%ebp), %eax
+	mov %esp, (%eax)
+	// load newp to begin context switch
+	mov 12(%ebp), %esp
+
+	// load saved state from new stack
+	pop %eax
+	pop %ebx
+	pop %esi
+	pop %edi
+	pop %ebp
+
+	// 'return' to complete switch
+	ret
+#endif
+#if defined(__x86_64__) && defined(__APPLE__)
+.globl _fiber_switchContext
+_fiber_switchContext:
+	// Save current stack state.save current stack state
+	push %rbp
+	mov  %rsp, %rbp
+	push %rbx
+	push %r12
+	push %r13
+	push %r14
+	push %r15
+
+	// store oldp again with more accurate address
+	mov %rsp, (%rdi)
+	// load newp to begin context switch
+	mov %rsi, %rsp
+
+	// load saved state from new stack
+	pop %r15
+	pop %r14
+	pop %r13
+	pop %r12
+	pop %rbx
+	pop %rbp
+
+	// 'return' to complete switch
+	ret
+#endif
