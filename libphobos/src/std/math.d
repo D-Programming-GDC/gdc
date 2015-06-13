@@ -3712,11 +3712,11 @@ private:
     {
         enum : int
         {
-            INEXACT_MASK   = 0x00001000,
-            UNDERFLOW_MASK = 0x00000800,
-            OVERFLOW_MASK  = 0x00000400,
-            DIVBYZERO_MASK = 0x00000200,
-            INVALID_MASK   = 0x00000100
+            INEXACT_MASK   = 0x10,
+            UNDERFLOW_MASK = 0x08,
+            OVERFLOW_MASK  = 0x04,
+            DIVBYZERO_MASK = 0x02,
+            INVALID_MASK   = 0x01
         }
     }
     else version(SPARC)
@@ -3824,7 +3824,8 @@ private:
             }
             else version (ARM)
             {
-                uint old = getIeeeFlags();
+                uint old = void;
+                asm { "vmrs %0, FPSCR" : "=r" (old); }
                 old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
                 asm {"vmsr FPSCR, %0;" : : "r" (old);} 
             }
@@ -3942,8 +3943,8 @@ struct FloatingPointControl
         enum : RoundingMode
         {
             roundToNearest = 0x000000,
-            roundDown      = 0x400000,
-            roundUp        = 0x800000,
+            roundDown      = 0x800000,
+            roundUp        = 0x400000,
             roundToZero    = 0xC00000
         }
     }
