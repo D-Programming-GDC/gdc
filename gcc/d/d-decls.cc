@@ -187,7 +187,10 @@ VarDeclaration::toSymbol()
       else if (isDataseg())
 	{
 	  if (this->mangleOverride)
-	    set_user_assembler_name (decl, this->mangleOverride);
+            {
+              tree mangle = get_identifier (this->mangleOverride);
+              SET_DECL_ASSEMBLER_NAME (decl, mangle);
+            }
 	  else
 	    {
 	      tree mangle = get_identifier (csym->Sident);
@@ -373,7 +376,10 @@ FuncDeclaration::toSymbol()
 	}
 
       if (this->mangleOverride)
-	set_user_assembler_name (fndecl, this->mangleOverride);
+        {
+          tree mangle = get_identifier (this->mangleOverride);
+          SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
+        }
       else
 	{
 	  tree mangle = get_identifier (csym->Sident);
