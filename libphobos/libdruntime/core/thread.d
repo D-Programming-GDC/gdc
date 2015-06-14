@@ -3240,6 +3240,21 @@ private
             version = AlignFiberStackTo16Byte;
             version = AsmExternal;
         }
+        else version (OSX)
+        {
+            version(X86)
+            {
+                version = AsmX86_Posix;
+                version = AlignFiberStackTo16Byte;
+                version = AsmExternal;
+            }
+            else version(X86_64)
+            {
+                version = AsmX86_64_Posix;
+                version = AlignFiberStackTo16Byte;
+                version = AsmExternal;
+            }
+        }
     }
     else version( PPC )
     {
