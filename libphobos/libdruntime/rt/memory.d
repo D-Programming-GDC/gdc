@@ -83,7 +83,20 @@ private
     }
     else version( OSX )
     {
-        extern (C) void _d_osx_image_init();
+        import core.sys.osx.mach.dyld;
+        import core.sys.osx.mach.getsect;
+
+        struct Section
+        {
+            immutable(char)* segment;
+            immutable(char)* section;
+        }
+
+        immutable Section[3] dataSections = [
+            Section(SEG_DATA, SECT_DATA),
+            Section(SEG_DATA, SECT_BSS),
+            Section(SEG_DATA, SECT_COMMON)
+        ];
     }
     else version( FreeBSD )
     {
@@ -141,7 +154,25 @@ void initStaticDataGC()
     }
     else version( OSX )
     {
-        _d_osx_image_init();
+        static extern(C) void scanSections(in mach_header* hdr, intptr_t slide)
+        {
+            foreach (s; dataSections)
+            {
+                // Should probably be decided at runtime by actual image bitness
+                // (mach_header.magic) rather than at build-time?
+                version (D_LP64)
+                    auto sec = getsectbynamefromheader_64(
+                        cast(mach_header_64*)hdr, s.segment, s.section);
+                else
+                    auto sec = getsectbynamefromheader(hdr, s.segment, s.section);
+
+                if (sec !is null && sec.size > 0)
+                    GC.addRange(cast(void*)(sec.addr + slide),
+                                cast(size_t)sec.size);
+            }
+        }
+
+        _dyld_register_func_for_add_image(&scanSections);
     }
     else version( FreeBSD )
     {
