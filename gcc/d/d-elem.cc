@@ -2348,6 +2348,12 @@ ArrayLiteralExp::toElem (IRState *irs)
   if (tb->ty == Tsarray)
     return d_convert (type->toCtype(), ctor);
 
+  if (global.params.noTypeinfo)
+    {
+      error (global.params.noTypeinfo, "Can't use array literal");
+      return error_mark_node;
+    }
+
   args[0] = build_typeinfo (etype->arrayOf());
   args[1] = build_integer_cst (elements->dim, size_type_node);
 

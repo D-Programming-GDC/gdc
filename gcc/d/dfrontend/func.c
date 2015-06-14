@@ -1324,6 +1324,12 @@ void FuncDeclaration::semantic3(Scope *sc)
             if (f->linkage == LINKd)
             {
                 // Declare _arguments[]
+                if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+                {
+                    error(global.params.noTypeinfo, "Can't use runtime variadic arguments");
+                    return;
+                }
+
                 v_arguments = new VarDeclaration(Loc(), Type::typeinfotypelist->type, Id::_arguments_typeinfo, NULL);
                 v_arguments->storage_class |= STCtemp | STCparameter;
                 v_arguments->semantic(sc2);
@@ -2109,7 +2115,15 @@ void FuncDeclaration::semantic3(Scope *sc)
                         if (isStatic())
                         {
                             // The monitor is in the ClassInfo
-                            vsync = new DotIdExp(loc, new DsymbolExp(loc, cd), Id::classinfo);
+                            if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+                            {
+                                error(global.params.noTypeinfo, "Can't use synchronized");
+                                vsync = new ErrorExp();
+                            }
+                            else
+                            {
+                                vsync = new DotIdExp(loc, new DsymbolExp(loc, cd), Id::classinfo);
+                            }
                         }
                         else
                         {

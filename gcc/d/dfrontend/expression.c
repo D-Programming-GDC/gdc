@@ -4223,6 +4223,12 @@ Expression *AssocArrayLiteralExp::semantic(Scope *sc)
     type = new TypeAArray(tvalue, tkey);
     type = type->semantic(loc, sc);
 
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe) && keys->dim)
+    {
+        error(global.params.noTypeinfo, "Can't use AA literal");
+        return new ErrorExp();
+    }
+
     semanticTypeInfo(sc, type);
 
     return this;
@@ -5080,6 +5086,12 @@ Lagain:
 
     //printf("NewExp: '%s'\n", toChars());
     //printf("NewExp:type '%s'\n", type->toChars());
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe) && !onstack && !allocator)
+    {
+        error(global.params.noTypeinfo, "Can't use new");
+        return new ErrorExp();
+    }
+
     semanticTypeInfo(sc, type);
 
     return this;
@@ -6069,6 +6081,12 @@ Expression *TypeidExp::semantic(Scope *sc)
     {
         //printf("ta %p ea %p sa %p\n", ta, ea, sa);
         error("no type for typeid(%s)", ea ? ea->toChars() : (sa ? sa->toChars() : ""));
+        return new ErrorExp();
+    }
+
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+    {
+        error(global.params.noTypeinfo, "Can't use typeid");
         return new ErrorExp();
     }
 
@@ -9585,6 +9603,12 @@ Expression *DeleteExp::semantic(Scope *sc)
 
         case Tarray:
         {
+            if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+            {
+                error(global.params.noTypeinfo, "Can't use delete");
+                return new ErrorExp();
+            }
+
             Type *tv = tb->nextOf()->baseElemOf();
             if (tv->ty == Tstruct)
             {
@@ -10681,6 +10705,12 @@ Expression *IndexExp::semantic(Scope *sc)
 
         case Taarray:
         {
+            if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+            {
+                error(global.params.noTypeinfo, "Can't use AAs");
+                return new ErrorExp();
+            }
+    
             TypeAArray *taa = (TypeAArray *)t1;
             /* We can skip the implicit conversion if they differ only by
              * constness (Bugzilla 2684, see also bug 2954b)
@@ -11611,6 +11641,13 @@ Expression *AssignExp::semantic(Scope *sc)
 
         Type *tn = ale->e1->type->toBasetype()->nextOf();
         checkDefCtor(ale->loc, tn);
+
+        if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+        {
+            error(global.params.noTypeinfo, "Can't set .length");
+            return new ErrorExp();
+        }
+
         semanticTypeInfo(sc, tn);
     }
     else if (e1->op == TOKslice)
@@ -11804,6 +11841,24 @@ Expression *AssignExp::semantic(Scope *sc)
         error("cannot modify compiler-generated variable __ctfe");
     }
 
+
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe) && e1->op == TOKslice && op != TOKblit)
+    {
+        SliceExp *se = (SliceExp *) e1;
+        Type *stype = se->e1->type->toBasetype();
+        Type *etype = stype->nextOf()->toBasetype();
+
+        bool postblit = etype->baseElemOf()->ty == Tstruct && (((TypeStruct *) etype->baseElemOf())->sym)->postblit;
+        if (postblit
+            && ((e2->op != TOKslice && e2->isLvalue())
+            || (e2->op == TOKslice && ((UnaExp *) e2)->e1->isLvalue())
+            || (e2->op == TOKcast && ((UnaExp *) e2)->e1->isLvalue())))
+        {
+            error(global.params.noTypeinfo, "Can't slice");
+            return new ErrorExp();
+        }
+    }
+
     type = e1->type;
     assert(type);
     return op == TOKassign ? reorderSettingAAElem(sc) : this;
@@ -11929,6 +11984,11 @@ Expression *CatAssignExp::semantic(Scope *sc)
        )
     {
         // Append array
+        if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+        {
+            error(global.params.noTypeinfo, "Can't append to array");
+            return new ErrorExp();
+        }
         e1->checkPostblit(sc, tb1next);
         e2 = e2->castTo(sc, e1->type);
     }
@@ -12338,6 +12398,12 @@ Expression *CatExp::semantic(Scope *sc)
     //printf("CatExp::semantic() %s\n", toChars());
     if (type)
         return this;
+
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+    {
+        error(global.params.noTypeinfo, "Can't use concatenation");
+        return new ErrorExp();
+    }
 
     if (Expression *ex = binSemanticProp(sc))
         return ex;
@@ -13198,6 +13264,12 @@ Expression *InExp::semantic(Scope *sc)
     if (type)
         return this;
 
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+    {
+        error(global.params.noTypeinfo, "Can't use AAs");
+        return new ErrorExp();
+    }
+
     if (Expression *ex = binSemanticProp(sc))
         return ex;
     Expression *e = op_overload(sc);
@@ -13245,6 +13317,12 @@ RemoveExp::RemoveExp(Loc loc, Expression *e1, Expression *e2)
 
 Expression *RemoveExp::semantic(Scope *sc)
 {
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+    {
+        error(global.params.noTypeinfo, "Can't use remove");
+        return new ErrorExp();
+    }
+
     if (Expression *ex = binSemantic(sc))
         return ex;
     return this;
@@ -13303,6 +13381,21 @@ Expression *CmpExp::semantic(Scope *sc)
     if (Expression *ex = typeCombine(this, sc))
         return ex;
 
+    if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+    {
+        if (t1->ty == Taarray && t2->ty == Taarray)
+        {
+            error(global.params.noTypeinfo, "Can't compare AAs");
+            return new ErrorExp();
+        }
+        else if ((t1->ty == Tsarray || t1->ty == Tarray)
+                    && (t2->ty == Tsarray || t2->ty == Tarray))
+        {
+            error(global.params.noTypeinfo, "Can't compare arrays");
+            return new ErrorExp();
+        }
+    }
+
     type = Type::tboolean;
 
     // Special handling for array comparisons
@@ -13311,6 +13404,12 @@ Expression *CmpExp::semantic(Scope *sc)
     if ((t1->ty == Tarray || t1->ty == Tsarray || t1->ty == Tpointer) &&
         (t2->ty == Tarray || t2->ty == Tsarray || t2->ty == Tpointer))
     {
+        if (global.params.noTypeinfo && !(sc->flags & SCOPEctfe))
+        {
+            error(global.params.noTypeinfo, "Can't compare arrays");
+            return new ErrorExp();
+        }
+
         Type *t1next = t1->nextOf();
         Type *t2next = t2->nextOf();
         if (t1next->implicitConvTo(t2next) < MATCHconst &&

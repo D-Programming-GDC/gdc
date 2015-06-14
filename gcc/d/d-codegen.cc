@@ -360,6 +360,8 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	  }
 
 	// The offset can only be determined at runtime, do dynamic cast
+	if (global.params.noTypeinfo)
+	  error (global.params.noTypeinfo, "Can't use dynamic cast");
 	tree args[2];
 	args[0] = exp;
 	args[1] = build_address(cdto->toSymbol()->Stree);
