@@ -1295,8 +1295,6 @@ FuncDeclaration::toObjFile(bool force_p)
     {
       if (!AGGREGATE_TYPE_P (return_type))
 	nrvo_can = 0;
-      else if (TREE_CODE (return_type) == ARRAY_TYPE)
-	nrvo_can = TYPE_MODE (return_type) == BLKmode;
       else
 	nrvo_can = aggregate_value_p (return_type, fndecl);
     }
