@@ -3226,19 +3226,37 @@ private
             version = AlignFiberStackTo16Byte;
         }
     }
-    else version (GNU_InlineAsm)
+    else version( X86 )
     {
-        version (MinGW64)
-        {
-            version = GNU_AsmX86_64_Windows;
-            version = AlignFiberStackTo16Byte;
-            version = AsmExternal;
-        }
-        else version (MinGW)
+        version = AsmExternal;
+
+        version (MinGW)
         {
             version = GNU_AsmX86_Windows;
             version = AlignFiberStackTo16Byte;
+        }
+        else version( Posix )
+        {
+            version = AsmX86_Posix;
+            version( OSX )
+                version = AlignFiberStackTo16Byte;
+        }
+    }
+    else version( X86_64 )
+    {
+        version( D_X32 )
+        {
+            // let X32 be handled by ucontext swapcontext
+        }
+        else
+        {
             version = AsmExternal;
+            version = AlignFiberStackTo16Byte;
+
+            version (MinGW64)
+                version = GNU_AsmX86_64_Windows;
+            else version( Posix )
+                version = AsmX86_64_Posix;
         }
     }
     else version( PPC )
