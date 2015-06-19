@@ -49,6 +49,8 @@ $(IMPDIR):
 	mkdir -p $(IMPDIR)/core/sys/posix/sys
 	mkdir -p $(IMPDIR)/core/sys/windows
 	mkdir -p $(IMPDIR)/gcc
+	mkdir -p $(IMPDIR)/gcc/unwind
+	mkdir -p $(IMPDIR)/gcc/gthreads
 
 $(IMPDIR)/%.di: %.d $(IMPDIR)
 	cp $< $@
@@ -199,7 +201,10 @@ CORE_IMPORTS=core/atomic.di core/bitop.di core/checkedint.di core/cpuid.di \
 	     core/sys/windows/windows.di
 
 GCC_IMPORTS=gcc/atomics.di gcc/attribute.di gcc/backtrace.di \
-	    gcc/builtins.di gcc/config.di gcc/libbacktrace.di
+	    gcc/builtins.di gcc/config.di gcc/libbacktrace.di \
+	    gcc/unwind/arm.di gcc/unwind/generic.di gcc/unwind/package.di \
+	    gcc/unwind/pe.di gcc/gthreads/package.di gcc/gthreads/posix.di \
+	    gcc/gthreads/single.di gcc/gthreads/win32.di
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
@@ -251,7 +256,7 @@ install-data-local: libgdruntime.a
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
 	done
-	for i in gcc; do \
+	for i in gcc gcc/unwind gcc/gthreads; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    for f in $(IMPDIR)/$$i/*.di; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \

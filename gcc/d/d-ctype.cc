@@ -333,6 +333,8 @@ TypeFunction::toCtype()
 		  if (!ts->sym->isPOD())
 		    TREE_ADDRESSABLE (ctype) = 1;
 		}
+	      else if (aggregate_value_p(TREE_TYPE (ctype), ctype))
+		TREE_ADDRESSABLE (ctype) = 1;
 	    }
 
 	  switch (linkage)
