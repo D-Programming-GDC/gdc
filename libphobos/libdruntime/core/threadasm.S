@@ -28,6 +28,15 @@
 .section .note.GNU-stack,"",%progbits
 #endif
 
+/* Let preprocessor tell us if C symbols have a prefix: __USER_LAEBL_PREFIX__ */
+#ifdef __USER_LABEL_PREFIX__
+#define GLUE2(a, b) a ## b
+#define GLUE(a, b) GLUE2(a, b)
+#define CSYM(name) GLUE(__USER_LABEL_PREFIX__, name)
+#else
+#define CSYM(name) name
+#endif
+
 /************************************************************************************
  * POWER PC ASM BITS
  ************************************************************************************/
@@ -495,3 +504,64 @@ _fiber_switchContext:
     // 'return' to complete switch
     ret;
 #endif
+/************************************************************************************
+ * i386- and x86_64-apple-darwin POSIX ASM BITS
+ ************************************************************************************/
+// if POSIX boils down to this (reference http://nadeausoftware.com)
+#if !defined(_WIN32) && (defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)))
+.text
+.p2align 4
+.globl CSYM(fiber_switchContext)
+CSYM(fiber_switchContext):
+
+#if defined(__i386__)
+	// save current stack state
+	push %ebp
+	mov  %esp, %ebp
+	push %edi
+	push %esi
+	push %ebx
+	push %eax
+
+	// store oldp again with more accurate address
+	mov 8(%ebp), %eax
+	mov %esp, (%eax)
+	// load newp to begin context switch
+	mov 12(%ebp), %esp
+
+	// load saved state from new stack
+	pop %eax
+	pop %ebx
+	pop %esi
+	pop %edi
+	pop %ebp
+
+	// 'return' to complete switch
+	ret
+#elif defined(__x86_64__)
+	// Save current stack state.save current stack state
+	push %rbp
+	mov  %rsp, %rbp
+	push %rbx
+	push %r12
+	push %r13
+	push %r14
+	push %r15
+
+	// store oldp again with more accurate address
+	mov %rsp, (%rdi)
+	// load newp to begin context switch
+	mov %rsi, %rsp
+
+	// load saved state from new stack
+	pop %r15
+	pop %r14
+	pop %r13
+	pop %r12
+	pop %rbx
+	pop %rbp
+
+	// 'return' to complete switch
+	ret
+#endif	// __x86_64__
+#endif	// posix
