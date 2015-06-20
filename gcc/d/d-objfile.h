@@ -18,12 +18,6 @@
 #ifndef GCC_DCMPLR_OBFILE_H
 #define GCC_DCMPLR_OBFILE_H
 
-#include "config.h"
-#include "coretypes.h"
-
-#include "root.h"
-#include "mtype.h"
-
 // These must match the values in object_.d
 enum ModuleInfoFlags
 {
@@ -104,13 +98,6 @@ struct ModuleInfo
 };
 
 extern ModuleInfo *current_module_info;
-
-enum TemplateEmission
-{
-  TEnone,
-  TEnormal,
-  TEallinst,
-};
 
 extern location_t get_linemap (const Loc loc);
 extern void set_input_location (const Loc& loc);

@@ -15,16 +15,25 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/attrib.h"
+#include "dfrontend/template.h"
+#include "dfrontend/init.h"
+#include "dfrontend/module.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/statement.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "d-lang.h"
+#include "d-objfile.h"
+#include "d-irstate.h"
 #include "d-codegen.h"
-
-#include "attrib.h"
-#include "template.h"
-#include "init.h"
 #include "id.h"
-#include "module.h"
-#include "dfrontend/target.h"
 
 
 Module *current_module_decl;
@@ -48,7 +57,7 @@ d_decl_context (Dsymbol *dsym)
       AggregateDeclaration *ad = parent->isAggregateDeclaration();
       if (ad != NULL)
 	{
-	  tree context = ad->type->toCtype();
+	  tree context = build_ctype(ad->type);
 	  // Want the underlying RECORD_TYPE.
 	  if (ad->isClassDeclaration())
 	    context = TREE_TYPE (context);
@@ -224,7 +233,7 @@ get_decl_tree (Declaration *decl, FuncDeclaration *func)
 		  if (ff->creates_frame)
 		    {
 		      this_tree = build_nop (build_pointer_type (ff->frame_rec), this_tree);
-		      this_tree = indirect_ref (ad->type->toCtype(), this_tree);
+		      this_tree = indirect_ref (build_ctype(ad->type), this_tree);
 		    }
 
 		  // Continue looking for the right 'this'
@@ -304,7 +313,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	if (totype->size() == etype->size())
 	  {
 	    // Allowed to cast to structs with same type size.
-	    result = build_vconvert(totype->toCtype(), exp);
+	    result = build_vconvert(build_ctype(totype), exp);
 	  }
 	else
 	  {
@@ -332,7 +341,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	    // always results in null as there is no runtime information,
 	    // and no way one can derive from the other.
 	    warning(OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
-	    result = d_convert(totype->toCtype(), null_pointer_node);
+	    result = d_convert(build_ctype(totype), null_pointer_node);
 
 	    // Make sure the expression is still evaluated if necessary
 	    if (TREE_SIDE_EFFECTS(exp))
@@ -347,7 +356,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	    // Cast to an implemented interface: Handle at compile time.
 	    if (offset)
 	      {
-		tree t = totype->toCtype();
+		tree t = build_ctype(totype);
 		exp = maybe_make_temp(exp);
 		return build3(COND_EXPR, t,
 			      build_boolop(NE_EXPR, exp, null_pointer_node),
@@ -373,7 +382,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
     case Tsarray:
       if (tbtype->ty == Tpointer)
 	{
-	  result = build_nop (totype->toCtype(), build_address (exp));
+	  result = build_nop (build_ctype(totype), build_address (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -381,7 +390,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	  dinteger_t esize = ebtype->nextOf()->size();
 	  dinteger_t tsize = tbtype->nextOf()->size();
 
-	  tree ptrtype = tbtype->nextOf()->pointerTo()->toCtype();
+	  tree ptrtype = build_ctype(tbtype->nextOf()->pointerTo());
 
 	  if ((dim * esize) % tsize != 0)
 	    {
@@ -392,20 +401,20 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	  dim = (dim * esize) / tsize;
 
 	  // Assumes casting to dynamic array of same type or void
-	  return d_array_value (totype->toCtype(), size_int (dim),
+	  return d_array_value (build_ctype(totype), size_int (dim),
 				build_nop (ptrtype, build_address (exp)));
 	}
       else if (tbtype->ty == Tsarray)
 	{
 	  // D apparently allows casting a static array to any static array type
-	  return build_vconvert (totype->toCtype(), exp);
+	  return build_vconvert (build_ctype(totype), exp);
 	}
       else if (tbtype->ty == Tstruct)
 	{
 	  // And allows casting a static array to any struct type too.
 	  // %% type sizes should have already been checked by the frontend.
 	  gcc_assert (totype->size() == etype->size());
-	  result = build_vconvert (totype->toCtype(), exp);
+	  result = build_vconvert (build_ctype(totype), exp);
 	}
       else
 	{
@@ -418,7 +427,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
-	  return d_convert (totype->toCtype(), d_array_ptr (exp));
+	  return d_convert (build_ctype(totype), d_array_ptr (exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -431,25 +440,25 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	  if (sz_src == sz_dst)
 	    {
 	      // Convert from void[] or elements are the same size -- don't change length
-	      return build_vconvert (totype->toCtype(), exp);
+	      return build_vconvert (build_ctype(totype), exp);
 	    }
 	  else
 	    {
 	      unsigned mult = 1;
 	      tree args[3];
 
-	      args[0] = build_integer_cst (sz_dst, Type::tsize_t->toCtype());
-	      args[1] = build_integer_cst (sz_src * mult, Type::tsize_t->toCtype());
+	      args[0] = build_integer_cst (sz_dst, build_ctype(Type::tsize_t));
+	      args[1] = build_integer_cst (sz_src * mult, build_ctype(Type::tsize_t));
 	      args[2] = exp;
 
-	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, totype->toCtype());
+	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, build_ctype(totype));
 	    }
 	}
       else if (tbtype->ty == Tsarray)
 	{
 	  // %% Strings are treated as dynamic arrays D2.
 	  if (ebtype->isString() && tbtype->isString())
-	    return indirect_ref (totype->toCtype(), d_array_ptr (exp));
+	    return indirect_ref (build_ctype(totype), d_array_ptr (exp));
 	}
       else
 	{
@@ -461,28 +470,28 @@ convert_expr (tree exp, Type *etype, Type *totype)
 
     case Taarray:
       if (tbtype->ty == Taarray)
-	return build_vconvert (totype->toCtype(), exp);
+	return build_vconvert (build_ctype(totype), exp);
       // Can convert associative arrays to void pointers.
       else if (tbtype->ty == Tpointer && tbtype->nextOf()->ty == Tvoid)
-	return build_vconvert (totype->toCtype(), exp);
+	return build_vconvert (build_ctype(totype), exp);
       // else, default conversion, which should product an error
       break;
 
     case Tpointer:
       // Can convert void pointers to associative arrays too...
       if (tbtype->ty == Taarray && ebtype->nextOf()->ty == Tvoid)
-	return build_vconvert (totype->toCtype(), exp);
+	return build_vconvert (build_ctype(totype), exp);
       break;
 
     case Tnull:
       if (tbtype->ty == Tarray)
 	{
-	  tree ptrtype = tbtype->nextOf()->pointerTo()->toCtype();
-	  return d_array_value(totype->toCtype(), size_int(0),
+	  tree ptrtype = build_ctype(tbtype->nextOf()->pointerTo());
+	  return d_array_value(build_ctype(totype), size_int(0),
 			       build_nop(ptrtype, exp));
 	}
       else if (tbtype->ty == Taarray)
-	  return build_vconvert (totype->toCtype(), exp);
+	  return build_vconvert (build_ctype(totype), exp);
       else if (tbtype->ty == Tdelegate)
 	  return build_delegate_cst(exp, null_pointer_node, totype);
       break;
@@ -491,18 +500,18 @@ convert_expr (tree exp, Type *etype, Type *totype)
       if (tbtype->ty == Tsarray)
 	{
 	  if (tbtype->size() == ebtype->size())
-	    return build_vconvert (totype->toCtype(), exp);
+	    return build_vconvert (build_ctype(totype), exp);
 	}
       break;
 
     default:
-      exp = fold_convert (etype->toCtype(), exp);
+      exp = fold_convert (build_ctype(etype), exp);
       gcc_assert (TREE_CODE (exp) != STRING_CST);
       break;
     }
 
   return result ? result :
-    convert (totype->toCtype(), exp);
+    convert (build_ctype(totype), exp);
 }
 
 
@@ -530,11 +539,11 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;
 	  uinteger_t count = sa_type->dim->toUInteger();
 
-	  tree ctor = build_constructor (totype->toCtype(), NULL);
+	  tree ctor = build_constructor (build_ctype(totype), NULL);
 	  if (count)
 	    {
 	      vec<constructor_elt, va_gc> *ce = NULL;
-	      tree index = build2 (RANGE_EXPR, Type::tsize_t->toCtype(),
+	      tree index = build2 (RANGE_EXPR, build_ctype(Type::tsize_t),
 				   integer_zero_node, build_integer_cst (count - 1));
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
 
@@ -561,7 +570,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
       if (integer_zerop (expr))
 	{
 	  StructDeclaration *sd = ((TypeStruct *) tbtype)->sym;
-	  tree var = build_local_temp (totype->toCtype());
+	  tree var = build_local_temp (build_ctype(totype));
 
 	  tree init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
 					 build_address (var), expr,
@@ -704,7 +713,7 @@ decl_reference_p (Declaration *decl)
 tree
 declaration_type (Declaration *decl)
 {
-  tree decl_type = decl->type->toCtype();
+  tree decl_type = build_ctype(decl->type);
 
   if (decl_reference_p (decl))
     decl_type = build_reference_type (decl_type);
@@ -712,7 +721,7 @@ declaration_type (Declaration *decl)
     {
       TypeFunction *tf = new TypeFunction (NULL, decl->type, false, LINKd);
       TypeDelegate *t = new TypeDelegate (tf);
-      decl_type = t->merge()->toCtype();
+      decl_type = build_ctype(t->merge());
     }
   else if (decl->isThisDeclaration())
     decl_type = insert_type_modifiers (decl_type, MODconst);
@@ -744,7 +753,7 @@ arg_reference_p (Parameter *arg)
 tree
 type_passed_as (Parameter *arg)
 {
-  tree arg_type = arg->type->toCtype();
+  tree arg_type = build_ctype(arg->type);
 
   if (arg_reference_p (arg))
     arg_type = build_reference_type (arg_type);
@@ -752,7 +761,7 @@ type_passed_as (Parameter *arg)
     {
       TypeFunction *tf = new TypeFunction (NULL, arg->type, false, LINKd);
       TypeDelegate *t = new TypeDelegate (tf);
-      arg_type = t->merge()->toCtype();
+      arg_type = build_ctype(t->merge());
     }
 
   return arg_type;
@@ -764,7 +773,7 @@ tree
 d_array_type (Type *d_type, uinteger_t size)
 {
   tree index_type_node;
-  tree type_node = d_type->toCtype();
+  tree type_node = build_ctype(d_type);
 
   if (size > 0)
     {
@@ -869,7 +878,7 @@ build_attributes (Expressions *in_attrs)
 
   for (size_t i = 0; i < in_attrs->dim; i++)
     {
-      Expression *attr = (*in_attrs)[i]->optimize (WANTexpand);
+      Expression *attr = (*in_attrs)[i];
       Dsymbol *sym = attr->type->toDsymbol (0);
 
       if (!sym)
@@ -989,7 +998,7 @@ build_float_cst (const real_t& value, Type *totype)
 
   gcc_assert (tb != NULL);
 
-  tree type_node = tb->toCtype();
+  tree type_node = build_ctype(tb);
   real_convert (&new_value.rv(), TYPE_MODE (type_node), &value.rv());
 
   // Value grew as a result of the conversion. %% precision bug ??
@@ -1068,7 +1077,7 @@ d_array_string (const char *str)
 
   TREE_TYPE (str_tree) = d_array_type (Type::tchar, len);
 
-  return d_array_value (Type::tchar->arrayOf()->toCtype(),
+  return d_array_value (build_ctype(Type::tchar->arrayOf()),
 			size_int (len), build_address (str_tree));
 }
 
@@ -1101,7 +1110,7 @@ tree
 build_class_binfo (tree super, ClassDeclaration *cd)
 {
   tree binfo = make_tree_binfo (1);
-  tree ctype = cd->type->toCtype();
+  tree ctype = build_ctype(cd->type);
 
   // Want RECORD_TYPE, not REFERENCE_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
@@ -1123,7 +1132,7 @@ tree
 build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
 {
   tree binfo = make_tree_binfo (cd->baseclasses->dim);
-  tree ctype = cd->type->toCtype();
+  tree ctype = build_ctype(cd->type);
 
   // Want RECORD_TYPE, not REFERENCE_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
@@ -1177,7 +1186,7 @@ build_delegate_cst (tree method, tree object, Type *type)
   else
     gcc_assert (base_type->ty == Tdelegate);
 
-  tree ctype = base_type ? base_type->toCtype() : NULL_TREE;
+  tree ctype = base_type ? build_ctype(base_type) : NULL_TREE;
   tree ctor = make_node (CONSTRUCTOR);
   tree obj_field = NULL_TREE;
   tree func_field = NULL_TREE;
@@ -1562,7 +1571,7 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
 	}
       else
 	{
-	  tree stype = vd->type->toCtype();
+	  tree stype = build_ctype(vd->type);
 	  machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
 
 	  if (vd->type->isintegral())
@@ -1699,7 +1708,7 @@ build_offset_op (tree_code op, tree ptr, tree idx)
 tree
 build_offset (tree ptr_node, tree byte_offset)
 {
-  tree ofs = fold_convert (Type::tsize_t->toCtype(), byte_offset);
+  tree ofs = fold_convert (build_ctype(Type::tsize_t), byte_offset);
   return fold_build2 (POINTER_PLUS_EXPR, TREE_TYPE (ptr_node), ptr_node, ofs);
 }
 
@@ -1717,7 +1726,7 @@ tree
 void_okay_p (tree t)
 {
   tree type = TREE_TYPE (t);
-  tree totype = Type::tuns8->pointerTo()->toCtype();
+  tree totype = build_ctype(Type::tuns8->pointerTo());
 
   if (VOID_TYPE_P (TREE_TYPE (type)))
     return convert (totype, t);
@@ -1812,7 +1821,7 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   // Build assignment expression. Stabilize lhs for assignment.
   lhs = stabilize_reference(lhs);
 
-  rhs = build_binary_op(code, e1->type->toCtype(),
+  rhs = build_binary_op(code, build_ctype(e1->type),
 			convert_expr(lhs, e1b->type, e1->type), rhs);
 
   tree expr = modify_expr(lhs, convert_expr(rhs, e1->type, e1b->type));
@@ -2119,13 +2128,13 @@ d_assert_call (Loc loc, LibCall libcall, tree msg)
     {
       args[0] = msg;
       args[1] = d_array_string (loc.filename ? loc.filename : "");
-      args[2] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
+      args[2] = build_integer_cst (loc.linnum, build_ctype(Type::tuns32));
       nargs = 3;
     }
   else
     {
       args[0] = d_array_string (loc.filename ? loc.filename : "");
-      args[1] = build_integer_cst (loc.linnum, Type::tuns32->toCtype());
+      args[1] = build_integer_cst (loc.linnum, build_ctype(Type::tuns32));
       args[2] = NULL_TREE;
       nargs = 2;
     }
@@ -2218,7 +2227,7 @@ build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
   for (int i = n_args - 1; i >= 0; i--)
     arg_list = tree_cons (NULL_TREE, args[i], arg_list);
 
-  tree result = d_build_call_list (type->toCtype(), callee, arg_list);
+  tree result = d_build_call_list (build_ctype(type), callee, arg_list);
 
   // Assumes caller knows what it is doing.
   if (force_type != NULL_TREE)
@@ -2493,7 +2502,7 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 	      decl->csym->Stree = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
 					      NULL_TREE, NULL_TREE);
 	      DECL_NAME (decl->csym->Stree) = get_identifier (tname);
-	      TREE_TYPE (decl->csym->Stree) = decl->type->toCtype();
+	      TREE_TYPE (decl->csym->Stree) = build_ctype(decl->type);
 	      d_keep (decl->csym->Stree);
 	    }
 
@@ -3028,7 +3037,7 @@ build_closure(FuncDeclaration *fd, IRState *irs)
       decl_ref = build_deref(decl);
 
       // Allocate memory for closure.
-      tree arg = convert(Type::tsize_t->toCtype(), TYPE_SIZE_UNIT(type));
+      tree arg = convert(build_ctype(Type::tsize_t), TYPE_SIZE_UNIT(type));
       tree init = build_libcall(LIBCALL_ALLOCMEMORY, 1, &arg);
 
       DECL_INITIAL(decl) = build_nop(TREE_TYPE(decl), init);
@@ -3229,7 +3238,7 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
       else
 	{
 	  // This is the base class (Object) or interface.
-	  tree objtype = TREE_TYPE(cd->type->toCtype());
+	  tree objtype = TREE_TYPE(build_ctype(cd->type));
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
@@ -3257,7 +3266,7 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
 
   if (decl->fields.dim)
     {
-      tree fcontext = decl->type->toCtype();
+      tree fcontext = build_ctype(decl->type);
 
       if (POINTER_TYPE_P(fcontext))
 	fcontext = TREE_TYPE(fcontext);
@@ -3304,7 +3313,7 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
 	{
 	  BaseClass *bc = (*cd->vtblInterfaces)[i];
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
-				  Type::tvoidptr->pointerTo()->toCtype());
+				  build_ctype(Type::tvoidptr->pointerTo()));
 	  DECL_ARTIFICIAL(field) = 1;
 	  DECL_IGNORED_P(field) = 1;
 	  insert_aggregate_field(al, field, bc->offset);

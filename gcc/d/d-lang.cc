@@ -17,6 +17,23 @@
 
 // d-lang.cc: Implementation of back-end callbacks and data structures
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/mars.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/cond.h"
+#include "dfrontend/hdrgen.h"
+#include "dfrontend/doc.h"
+#include "dfrontend/json.h"
+#include "dfrontend/module.h"
+#include "dfrontend/scope.h"
+#include "dfrontend/statement.h"
+#include "dfrontend/root.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "options.h"
 #include "cppdefault.h"
@@ -24,53 +41,15 @@
 
 #include "d-lang.h"
 #include "d-codegen.h"
-
-#include "mars.h"
-#include "mtype.h"
-#include "cond.h"
-#include "hdrgen.h"
+#include "d-objfile.h"
+#include "d-irstate.h"
+#include "d-dmd-gcc.h"
 #include "id.h"
-#include "doc.h"
-#include "json.h"
-#include "module.h"
-#include "scope.h"
-#include "root.h"
-#include "dfrontend/target.h"
-
-static tree d_handle_noinline_attribute(tree *, tree, tree, int, bool *);
-static tree d_handle_forceinline_attribute(tree *, tree, tree, int, bool *);
-static tree d_handle_flatten_attribute(tree *, tree, tree, int, bool *);
-static tree d_handle_target_attribute(tree *, tree, tree, int, bool *);
-static tree d_handle_noclone_attribute(tree *, tree, tree, int, bool *);
-static tree d_handle_section_attribute(tree *, tree, tree, int, bool *);
-static tree d_handle_alias_attribute (tree *, tree, tree, int, bool *);
-static tree d_handle_weak_attribute (tree *, tree, tree, int, bool *) ;
 
 static const char *iprefix_dir = NULL;
 static const char *imultilib_dir = NULL;
 
 static char lang_name[6] = "GNU D";
-
-static const attribute_spec d_attribute_table[] =
-{
-    { "noinline",               0, 0, true,  false, false,
-				d_handle_noinline_attribute, false },
-    { "forceinline",            0, 0, true,  false, false,
-				d_handle_forceinline_attribute, false },
-    { "flatten",                0, 0, true,  false, false,
-				d_handle_flatten_attribute, false },
-    { "target",                 1, -1, true, false, false,
-				d_handle_target_attribute, false },
-    { "noclone",                0, 0, true, false, false,
-				d_handle_noclone_attribute, false },
-    { "section",                1, 1, true,  false, false,
-				d_handle_section_attribute, false },
-    { "alias",                  1, 1, true,  false, false,
-				d_handle_alias_attribute, false },
-    { "weak",                   0, 0, true,  false, false,
-				d_handle_weak_attribute, false },
-    { NULL,                     0, 0, false, false, false, NULL, false }
-};
 
 /* Lang Hooks */
 #undef LANG_HOOKS_NAME
@@ -105,9 +84,9 @@ static const attribute_spec d_attribute_table[] =
 #define LANG_HOOKS_HANDLE_OPTION		d_handle_option
 #define LANG_HOOKS_POST_OPTIONS			d_post_options
 #define LANG_HOOKS_PARSE_FILE			d_parse_file
-#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE       d_builtins_attribute_table
-#define LANG_HOOKS_ATTRIBUTE_TABLE              d_attribute_table
-#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_format_attribute_table
+#define LANG_HOOKS_COMMON_ATTRIBUTE_TABLE       d_langhook_common_attribute_table
+#define LANG_HOOKS_ATTRIBUTE_TABLE              d_langhook_attribute_table
+#define LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE	d_langhook_format_attribute_table
 #define LANG_HOOKS_GET_ALIAS_SET		d_get_alias_set
 #define LANG_HOOKS_TYPES_COMPATIBLE_P		d_types_compatible_p
 #define LANG_HOOKS_BUILTIN_FUNCTION		d_builtin_function
@@ -186,7 +165,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.fileImppath = new Strings();
 
   // extra D-specific options
-  flag_emit_templates = TEnormal;
+  flag_emit_templates = 1;
   bounds_check_set_manually = false;
 }
 
@@ -466,7 +445,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_femit_templates:
-      flag_emit_templates = value ? TEallinst : TEnone;
+      flag_emit_templates = value ? 1 : 0;
       global.params.allInst = value;
       break;
 
@@ -737,7 +716,7 @@ d_gcc_get_output_module()
 static void
 d_nametype (Type *t)
 {
-  tree type = t->toCtype();
+  tree type = build_ctype(t);
   tree ident = get_identifier (t->toChars());
   tree decl = build_decl (BUILTINS_LOCATION, TYPE_DECL, ident, type);
   TYPE_NAME (type) = decl;
@@ -1641,282 +1620,7 @@ d_init_exceptions()
 }
 
 
-/* Handle a "noinline" attribute.  */
-
-static tree
-d_handle_noinline_attribute (tree *node, tree name,
-			     tree ARG_UNUSED (args),
-			     int ARG_UNUSED (flags), bool *no_add_attrs)
-{
-  Type *t = lang_dtype (TREE_TYPE (*node));
-
-  if (t->ty == Tfunction)
-    DECL_UNINLINABLE (*node) = 1;
-  else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
-
-  return NULL_TREE;
-}
-
-/* Handle a "forceinline" attribute.  */
-
-static tree
-d_handle_forceinline_attribute (tree *node, tree name,
-				tree ARG_UNUSED (args),
-				int ARG_UNUSED (flags),
-				bool *no_add_attrs)
-{
-  Type *t = lang_dtype (TREE_TYPE (*node));
-
-  if (t->ty == Tfunction)
-    {
-      tree attributes = DECL_ATTRIBUTES (*node);
-
-      // Push attribute always_inline.
-      if (! lookup_attribute ("always_inline", attributes))
-	DECL_ATTRIBUTES (*node) = tree_cons (get_identifier ("always_inline"),
-					     NULL_TREE, attributes);
-
-      DECL_DECLARED_INLINE_P (*node) = 1;
-      DECL_NO_INLINE_WARNING_P (*node) = 1;
-      DECL_DISREGARD_INLINE_LIMITS (*node) = 1;
-    }
-  else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
-
-  return NULL_TREE;
-}
-
-/* Handle a "flatten" attribute.  */
-
-static tree
-d_handle_flatten_attribute (tree *node, tree name,
-			    tree args ATTRIBUTE_UNUSED,
-			    int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
-{
-  Type *t = lang_dtype (TREE_TYPE (*node));
-
-  if (t->ty != Tfunction)
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
-
-  return NULL_TREE;
-}
-
-/* Handle a "target" attribute.  */
-
-static tree
-d_handle_target_attribute (tree *node, tree name, tree args, int flags,
-			   bool *no_add_attrs)
-{
-  Type *t = lang_dtype (TREE_TYPE (*node));
-
-  /* Ensure we have a function type.  */
-  if (t->ty != Tfunction)
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
-  else if (! targetm.target_option.valid_attribute_p (*node, name, args, flags))
-    *no_add_attrs = true;
-
-  return NULL_TREE;
-}
-
-/* Handle a "noclone" attribute.  */
-
-static tree
-d_handle_noclone_attribute (tree *node, tree name,
-				tree ARG_UNUSED (args),
-				int ARG_UNUSED (flags),
-				bool *no_add_attrs)
-{
-  Type *t = lang_dtype (TREE_TYPE (*node));
-
-  if (t->ty == Tfunction)
-    {
-      tree attributes = DECL_ATTRIBUTES (*node);
-
-      // Push attribute noclone.
-      if (! lookup_attribute ("noclone", attributes))
-	DECL_ATTRIBUTES (*node) = tree_cons (get_identifier ("noclone"),
-					     NULL_TREE, attributes);
-    }
-  else
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-    }
-
-  return NULL_TREE;
-}
-
-/* Handle a "section" attribute; arguments as in
-   struct attribute_spec.handler.  */
-
-static tree
-d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
-			    int ARG_UNUSED (flags), bool *no_add_attrs)
-{
-  tree decl = *node;
-
-  if (targetm_common.have_named_sections)
-    {
-      user_defined_section_attribute = true;
-
-      if ((TREE_CODE (decl) == FUNCTION_DECL
-	   || TREE_CODE (decl) == VAR_DECL)
-	  && TREE_CODE (TREE_VALUE (args)) == STRING_CST)
-	{
-	  if (TREE_CODE (decl) == VAR_DECL
-	      && current_function_decl != NULL_TREE
-	      && !TREE_STATIC (decl))
-	    {
-	      error_at (DECL_SOURCE_LOCATION (decl),
-			"section attribute cannot be specified for "
-			"local variables");
-	      *no_add_attrs = true;
-	    }
-
-	  /* The decl may have already been given a section attribute
-	     from a previous declaration.  Ensure they match.  */
-	  else if (DECL_SECTION_NAME (decl) != NULL
-		   && strcmp (DECL_SECTION_NAME (decl),
-			      TREE_STRING_POINTER (TREE_VALUE (args))) != 0)
-	    {
-	      error ("section of %q+D conflicts with previous declaration",
-		     *node);
-	      *no_add_attrs = true;
-	    }
-	  else if (TREE_CODE (decl) == VAR_DECL
-		   && !targetm.have_tls && targetm.emutls.tmpl_section
-		   && DECL_THREAD_LOCAL_P (decl))
-	    {
-	      error ("section of %q+D cannot be overridden", *node);
-	      *no_add_attrs = true;
-	    }
-	  else
-	    set_decl_section_name (decl,
-				   TREE_STRING_POINTER (TREE_VALUE (args)));
-	}
-      else
-	{
-	  error ("section attribute not allowed for %q+D", *node);
-	  *no_add_attrs = true;
-	}
-    }
-  else
-    {
-      error_at (DECL_SOURCE_LOCATION (*node),
-		"section attributes are not supported for this target");
-      *no_add_attrs = true;
-    }
-
-  return NULL_TREE;
-}
-
-/* Handle an "alias" attribute; arguments as in
-   struct attribute_spec.handler.  */
-
-static tree
-d_handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
-			  tree args, int ARG_UNUSED (flags),
-			  bool *no_add_attrs ATTRIBUTE_UNUSED)
-{
-  tree decl = *node;
-
-  if (TREE_CODE (decl) != FUNCTION_DECL
-      && TREE_CODE (decl) != VAR_DECL)
-    {
-      warning (OPT_Wattributes, "%qE attribute ignored", name);
-      *no_add_attrs = true;
-      return NULL_TREE;
-    }
-  else if ((TREE_CODE (decl) == FUNCTION_DECL && DECL_INITIAL (decl))
-      || (TREE_CODE (decl) != FUNCTION_DECL
-	  && TREE_PUBLIC (decl) && !DECL_EXTERNAL (decl))
-      /* A static variable declaration is always a tentative definition,
-	 but the alias is a non-tentative definition which overrides.  */
-      || (TREE_CODE (decl) != FUNCTION_DECL
-	  && ! TREE_PUBLIC (decl) && DECL_INITIAL (decl)))
-    {
-      error ("%q+D defined both normally and as %qE attribute", decl, name);
-      *no_add_attrs = true;
-      return NULL_TREE;
-    }
-  else if (decl_function_context (decl))
-    {
-      error ("%q+D alias functions must be global", name);
-      *no_add_attrs = true;
-      return NULL_TREE;
-    }
-  else
-    {
-      tree id;
-
-      id = TREE_VALUE (args);
-      if (TREE_CODE (id) != STRING_CST)
-	{
-	  error ("attribute %qE argument not a string", name);
-	  *no_add_attrs = true;
-	  return NULL_TREE;
-	}
-      id = get_identifier (TREE_STRING_POINTER (id));
-      /* This counts as a use of the object pointed to.  */
-      TREE_USED (id) = 1;
-
-      if (TREE_CODE (decl) == FUNCTION_DECL)
-	DECL_INITIAL (decl) = error_mark_node;
-      else
-	TREE_STATIC (decl) = 1;
-
-      return NULL_TREE;
-    }
-}
-
-/* Handle a "weak" attribute; arguments as in
-   struct attribute_spec.handler.  */
-
-static tree
-d_handle_weak_attribute (tree *node, tree name,
-		         tree ARG_UNUSED (args),
-		         int ARG_UNUSED (flags),
-		         bool * ARG_UNUSED (no_add_attrs))
-{
-  if (TREE_CODE (*node) == FUNCTION_DECL
-      && DECL_DECLARED_INLINE_P (*node))
-    {
-      warning (OPT_Wattributes, "inline function %q+D declared weak", *node);
-      *no_add_attrs = true;
-    }
-  else if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (*node)))
-    {
-      error ("indirect function %q+D cannot be declared weak", *node);
-      *no_add_attrs = true;
-      return NULL_TREE;
-    }
-  else if (TREE_CODE (*node) == FUNCTION_DECL
-	   || TREE_CODE (*node) == VAR_DECL)
-    {
-      struct symtab_node *n = symtab_node::get (*node);
-      if (n && n->refuse_visibility_changes)
-	error ("%+D declared weak after being used", *node);
-      declare_weak (*node);
-    }
-  else
-    warning (OPT_Wattributes, "%qE attribute ignored", name);
-
-  return NULL_TREE;
-}
-
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
 
 #include "gt-d-d-lang.h"
+#include "gtype-d.h"

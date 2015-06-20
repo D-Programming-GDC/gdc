@@ -15,18 +15,25 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/enum.h"
+#include "dfrontend/init.h"
+#include "dfrontend/scope.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/expression.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/ctfe.h"
+#include "dfrontend/target.h"
+
 #include "d-system.h"
 #include "d-lang.h"
 #include "d-codegen.h"
-
-#include "enum.h"
+#include "d-objfile.h"
+#include "d-dmd-gcc.h"
 #include "id.h"
-#include "init.h"
-#include "scope.h"
-#include "ctfe.h"
-
-#include "dfrontend/target.h"
-
 
 // Append VAL to constructor PDT.  Create a new constructor
 // of generic type if PDT is not already pointing to one.
@@ -154,7 +161,7 @@ dt_container(dt_t **pdt, Type *type, dt_t *dt)
 	  CONSTRUCTOR_ELTS(dt) = elts;
 	}
 
-      TREE_TYPE(dt) = type->toCtype();
+      TREE_TYPE(dt) = build_ctype(type);
       TREE_CONSTANT(dt) = 1;
       TREE_STATIC(dt) = 1;
 
@@ -163,13 +170,13 @@ dt_container(dt_t **pdt, Type *type, dt_t *dt)
   else if (tb->ty == Tstruct)
     {
       dt = dt_container2(dt);
-      TREE_TYPE(dt) = type->toCtype();
+      TREE_TYPE(dt) = build_ctype(type);
       return dt_cons(pdt, dt);
     }
   else if (tb->ty == Tclass)
     {
       dt = dt_container2(dt);
-      TREE_TYPE(dt) = TREE_TYPE(type->toCtype());
+      TREE_TYPE(dt) = TREE_TYPE(build_ctype(type));
       return dt_cons(pdt, dt);
     }
 
@@ -220,7 +227,7 @@ VoidInitializer::toDt()
   // void initialisers are set to 0, just because we need something
   // to set them to in the static data segment.
   tree dt = NULL_TREE;
-  dt_cons (&dt, build_constructor (type->toCtype(), NULL));
+  dt_cons (&dt, build_constructor (build_ctype(type), NULL));
   return dt;
 }
 
@@ -313,7 +320,7 @@ dt_t *
 ExpInitializer::toDt()
 {
   tree dt = NULL_TREE;
-  exp = exp->optimize (WANTvalue);
+  exp = exp->ctfeInterpret();
   exp->toDt (&dt);
   return dt;
 }
@@ -355,7 +362,7 @@ NullExp::toDt (dt_t **pdt)
 {
   gcc_assert (type);
 
-  tree dt = build_constructor (type->toCtype(), NULL);
+  tree dt = build_constructor (build_ctype(type), NULL);
   return dt_cons (pdt, dt);
 }
 
@@ -1151,7 +1158,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
   dt_cons (pdt, d_array_string (sd->toPrettyChars()));
 
   // Default initialiser for enum.
-  tree tarray = Type::tvoid->arrayOf()->toCtype();
+  tree tarray = build_ctype(Type::tvoid->arrayOf());
   if (!sd->members || tinfo->isZeroInit())
     {
       // zero initialiser, or the same as the base type.
@@ -1529,7 +1536,7 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
     {
       Parameter *arg = (*tu->arguments)[i];
       Expression *e = arg->type->getTypeInfo(NULL);
-      e = e->optimize (WANTvalue);
+      e = e->ctfeInterpret();
       e->toDt (&dt);
     }
 

@@ -15,14 +15,18 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/lexer.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/aggregate.h"
+
 #include "d-system.h"
-
-#include "lexer.h"
-#include "mtype.h"
-#include "longdouble.h"
-
 #include "d-lang.h"
 #include "d-codegen.h"
+#include "longdouble.h"
 
 
 // Return backend machine_mode for frontend mode MODE.
@@ -129,7 +133,7 @@ longdouble::rv()
 longdouble
 longdouble::from_int (Type *type, int64_t d)
 {
-  tree t = type->toCtype();
+  tree t = build_ctype(type);
   real_from_integer (&rv(), TYPE_MODE (t), d, SIGNED);
   return *this;
 }
@@ -140,7 +144,7 @@ longdouble::from_int (Type *type, int64_t d)
 longdouble
 longdouble::from_uint (Type *type, uint64_t d)
 {
-  tree t = type->toCtype();
+  tree t = build_ctype(type);
   real_from_integer (&rv(), TYPE_MODE (t), d, UNSIGNED);
   return *this;
 }
@@ -154,7 +158,7 @@ longdouble::to_int (Type *type) const
   if (REAL_VALUE_ISNAN (rv()))
     return 0;
 
-  tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
+  tree t = fold_build1 (FIX_TRUNC_EXPR, build_ctype(type),
 			build_float_cst (*this, Type::tfloat64));
   return TREE_INT_CST_LOW (t);
 }

@@ -18,9 +18,6 @@
 #ifndef GCC_DCMPLR_CODEGEN_H
 #define GCC_DCMPLR_CODEGEN_H
 
-#include "d-irstate.h"
-#include "d-objfile.h"
-
 // D library function flags.
 
 enum LibCallFlag
@@ -55,6 +52,7 @@ struct FuncFrameInfo
 
 // Visitor routines for barrier between frontend and glue.
 void build_ir(Statement *s, IRState *irs);
+tree build_ctype(Type *t);
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);
