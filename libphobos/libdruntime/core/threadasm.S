@@ -509,12 +509,11 @@ _fiber_switchContext:
  ************************************************************************************/
 // if POSIX boils down to this (reference http://nadeausoftware.com)
 #if !defined(_WIN32) && (defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)))
+#if defined(__i386__)
 .text
 .p2align 4
 .globl CSYM(fiber_switchContext)
 CSYM(fiber_switchContext):
-
-#if defined(__i386__)
 	// save current stack state
 	push %ebp
 	mov  %esp, %ebp
@@ -539,6 +538,10 @@ CSYM(fiber_switchContext):
 	// 'return' to complete switch
 	ret
 #elif defined(__x86_64__)
+.text
+.p2align 4
+.globl CSYM(fiber_switchContext)
+CSYM(fiber_switchContext):
 	// Save current stack state.save current stack state
 	push %rbp
 	mov  %rsp, %rbp
