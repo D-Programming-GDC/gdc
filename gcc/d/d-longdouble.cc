@@ -133,7 +133,7 @@ longdouble::rv()
 longdouble
 longdouble::from_int (Type *type, int64_t d)
 {
-  tree t = type->toCtype();
+  tree t = build_ctype(type);
   real_from_integer (&rv(), TYPE_MODE (t), d, SIGNED);
   return *this;
 }
@@ -144,7 +144,7 @@ longdouble::from_int (Type *type, int64_t d)
 longdouble
 longdouble::from_uint (Type *type, uint64_t d)
 {
-  tree t = type->toCtype();
+  tree t = build_ctype(type);
   real_from_integer (&rv(), TYPE_MODE (t), d, UNSIGNED);
   return *this;
 }
@@ -158,7 +158,7 @@ longdouble::to_int (Type *type) const
   if (REAL_VALUE_ISNAN (rv()))
     return 0;
 
-  tree t = fold_build1 (FIX_TRUNC_EXPR, type->toCtype(),
+  tree t = fold_build1 (FIX_TRUNC_EXPR, build_ctype(type),
 			build_float_cst (*this, Type::tfloat64));
   return TREE_INT_CST_LOW (t);
 }

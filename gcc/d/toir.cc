@@ -76,13 +76,13 @@ public:
     this->irs_->startCond(s, ifcond);
 
     if (s->ifbody)
-      build_ir(s->ifbody, this->irs_);
+      s->ifbody->accept(this);
 
     // Now build the 'else' branch, which may have nested 'else if' parts.
     if (s->elsebody)
       {
 	this->irs_->startElse();
-	build_ir(s->elsebody, this->irs_);
+	s->elsebody->accept(this);
       }
 
     this->irs_->endCond();
@@ -111,7 +111,7 @@ public:
     this->irs_->startLoop(s);
 
     if (s->body)
-      build_ir(s->body, this->irs_);
+      s->body->accept(this);
 
     this->irs_->continueHere();
 
@@ -131,7 +131,7 @@ public:
     this->irs_->doLineNote(s->loc);
 
     if (s->init)
-      build_ir(s->init, this->irs_);
+      s->init->accept(this);
 
     this->irs_->startLoop(s);
 
@@ -144,7 +144,7 @@ public:
       }
 
     if (s->body)
-      build_ir(s->body, this->irs_);
+      s->body->accept(this);
 
     this->irs_->continueHere();
 
@@ -224,9 +224,9 @@ public:
 	this->irs_->doLabel(label);
 
 	if (this->irs_->isReturnLabel(s->ident) && fd->fensure != NULL)
-	  build_ir(fd->fensure, this->irs_);
+	  fd->fensure->accept(this);
 	else if (s->statement)
-	  build_ir(s->statement, this->irs_);
+	  s->statement->accept(this);
 
 	if (s->fwdrefs)
 	  {
@@ -291,7 +291,7 @@ public:
 	sym->Sreadonly = true;
 	d_finish_symbol(sym);
 
-	args[0] = d_array_value(condtype->arrayOf()->toCtype(),
+	args[0] = d_array_value(build_ctype(condtype->arrayOf()),
 				size_int(s->cases->dim),
 				build_address(sym->Stree));
 	args[1] = condition;
@@ -324,7 +324,7 @@ public:
 	for (size_t i = 0; i < s->cases->dim; i++)
 	  {
 	    CaseStatement *cs = (*s->cases)[i];
-	    tree case_cond = build2(EQ_EXPR, condtype->toCtype(), condition,
+	    tree case_cond = build2(EQ_EXPR, build_ctype(condtype), condition,
 				    cs->exp->toElemDtor(this->irs_));
 	    this->irs_->startCond(s, case_cond);
 	    this->irs_->doJump(NULL, cs->cblock);
@@ -339,7 +339,7 @@ public:
     this->irs_->startCase(s, condition, s->hasVars);
 
     if (s->body)
-      build_ir(s->body, this->irs_);
+      s->body->accept(this);
 
     this->irs_->endCase();
   }
@@ -352,13 +352,13 @@ public:
     if (s->exp->type->isscalar())
       caseval = s->exp->toElem(this->irs_);
     else
-      caseval = build_integer_cst(s->index, Type::tint32->toCtype());
+      caseval = build_integer_cst(s->index, build_ctype(Type::tint32));
 
     this->irs_->checkSwitchCase(s);
     this->irs_->doCase(caseval, s->cblock);
 
     if (s->statement)
-      build_ir(s->statement, this->irs_);
+      s->statement->accept(this);
   }
 
   //
@@ -368,7 +368,7 @@ public:
     this->irs_->doCase(NULL_TREE, s->cblock);
 
     if (s->statement)
-      build_ir(s->statement, this->irs_);
+      s->statement->accept(this);
   }
 
   // Implements 'goto default' by jumping to the label associated with
@@ -414,7 +414,7 @@ public:
     if (fd->isMain() && type->toBasetype()->ty == Tvoid)
       type = Type::tint32;
 
-    tree decl = DECL_RESULT(fd->toSymbol()->Stree);
+    tree decl = DECL_RESULT (fd->toSymbol()->Stree);
 
     if (fd->nrvo_can && fd->nrvo_var)
       {
@@ -433,7 +433,7 @@ public:
 	if (tf->isref)
 	  value = build_address(value);
 
-	tree assign = build2(INIT_EXPR, TREE_TYPE(decl), decl, value);
+	tree assign = build2(INIT_EXPR, TREE_TYPE (decl), decl, value);
 
 	this->irs_->doReturn(assign);
       }
@@ -462,7 +462,7 @@ public:
 	Statement *statement = (*s->statements)[i];
 
 	if (statement != NULL)
-	  build_ir(statement, this->irs_);
+	  statement->accept(this);
       }
   }
 
@@ -484,7 +484,7 @@ public:
 	if (statement != NULL)
 	  {
 	    this->irs_->setContinueLabel(d_build_label(s->loc, NULL));
-	    build_ir(statement, this->irs_);
+	    statement->accept(this);
 	    this->irs_->continueHere();
 	  }
       }
@@ -501,7 +501,7 @@ public:
       return;
 
     this->irs_->startScope();
-    build_ir(s->statement, this->irs_);
+    s->statement->accept(this);
     this->irs_->endScope();
   }
 
@@ -523,7 +523,7 @@ public:
       }
 
     if (s->body)
-      build_ir(s->body, this->irs_);
+      s->body->accept(this);
 
     this->irs_->endScope();
   }
@@ -565,7 +565,7 @@ public:
     this->irs_->startTry(s);
 
     if (s->body)
-      build_ir(s->body, this->irs_);
+      s->body->accept(this);
 
     this->irs_->startCatches();
 
@@ -575,7 +575,7 @@ public:
 	  {
 	    Catch *vcatch = (*s->catches)[i];
 
-	    this->irs_->startCatch(vcatch->type->toCtype());
+	    this->irs_->startCatch(build_ctype(vcatch->type));
 	    this->irs_->doLineNote(vcatch->loc);
 	    this->irs_->startScope();
 
@@ -586,7 +586,7 @@ public:
 		tree ehptr = d_build_call_nary(builtin_decl_explicit(BUILT_IN_EH_POINTER),
 					       1, integer_zero_node);
 		tree object = build_libcall(LIBCALL_BEGIN_CATCH, 1, &ehptr);
-		object = build1(NOP_EXPR, build_object_type()->toCtype(), object);
+		object = build1(NOP_EXPR, build_ctype(build_object_type()), object);
 		object = convert_expr(object, build_object_type(), vcatch->type);
 
 		tree var = vcatch->var->toSymbol()->Stree;
@@ -597,7 +597,7 @@ public:
 	      }
 
 	    if (vcatch->handler)
-	      build_ir(vcatch->handler, this->irs_);
+	      vcatch->handler->accept(this);
 
 	    this->irs_->endScope();
 	    this->irs_->endCatch();
@@ -614,12 +614,12 @@ public:
     this->irs_->startTry(s);
 
     if (s->body)
-      build_ir(s->body, this->irs_);
+      s->body->accept(this);
 
     this->irs_->startFinally();
 
     if (s->finalbody)
-      build_ir(s->finalbody, this->irs_);
+      s->finalbody->accept(this);
 
     this->irs_->endFinally();
   }
@@ -712,14 +712,14 @@ public:
     tree exp = build5(ASM_EXPR, void_type_node,
 		      build_string(insn->len, (char *)insn->string),
 		      outputs, inputs, clobbers, labels);
-    SET_EXPR_LOCATION(exp, input_location);
+    SET_EXPR_LOCATION (exp, input_location);
 
     // If the extended syntax was not used, mark the ASM_EXPR.
     if (s->args == NULL && s->clobbers == NULL)
-      ASM_INPUT_P(exp) = 1;
+      ASM_INPUT_P (exp) = 1;
 
     // Asm statements without outputs are treated as volatile.
-    ASM_VOLATILE_P(exp) = (s->outputargs == 0);
+    ASM_VOLATILE_P (exp) = (s->outputargs == 0);
 
     this->irs_->addExp(exp);
   }

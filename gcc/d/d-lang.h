@@ -186,7 +186,6 @@ extern tree d_signed_type (tree);
 extern void d_init_exceptions();
 
 extern void d_keep (tree t);
-extern void d_free (tree t);
 
 extern void set_block (tree);
 

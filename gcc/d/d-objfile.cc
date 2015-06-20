@@ -305,7 +305,7 @@ ClassDeclaration::toObjFile(bool)
 
   // initializer[]
   gcc_assert (structsize >= 8 || (cpp && structsize >= 4));
-  dt_cons (&dt, d_array_value (Type::tint8->arrayOf()->toCtype(),
+  dt_cons (&dt, d_array_value (build_ctype(Type::tint8->arrayOf()),
 			       size_int (structsize),
 			       build_address (sinit->Stree)));
   // name[]
@@ -315,7 +315,7 @@ ClassDeclaration::toObjFile(bool)
   dt_cons (&dt, d_array_string (name));
 
   // vtbl[]
-  dt_cons (&dt, d_array_value (Type::tvoidptr->arrayOf()->toCtype(),
+  dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
 			       size_int (vtbl.dim),
 			       build_address (vtblsym->Stree)));
   // (*vtblInterfaces)[]
@@ -392,7 +392,7 @@ Lhaspointers:
     dt_cons (&dt, null_pointer_node);
 
   // offTi[]
-  dt_cons (&dt, d_array_value (Type::tuns8->arrayOf()->toCtype(),
+  dt_cons (&dt, d_array_value (build_ctype(Type::tuns8->arrayOf()),
 			       size_int (0), null_pointer_node));
 
   // defaultConstructor*
@@ -645,13 +645,13 @@ InterfaceDeclaration::toObjFile(bool)
   build_vptr_monitor (&dt, Type::typeinfoclass);
 
   // initializer[]
-  dt_cons (&dt, d_array_value (Type::tint8->arrayOf()->toCtype(),
+  dt_cons (&dt, d_array_value (build_ctype(Type::tint8->arrayOf()),
 			       size_int (0), null_pointer_node));
   // name[]
   dt_cons (&dt, d_array_string (toPrettyChars()));
 
   // vtbl[]
-  dt_cons (&dt, d_array_value (Type::tvoidptr->arrayOf()->toCtype(),
+  dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
 			       size_int (0), null_pointer_node));
   // (*vtblInterfaces)[]
   dt_cons (&dt, size_int (vtblInterfaces->dim));
@@ -692,7 +692,7 @@ InterfaceDeclaration::toObjFile(bool)
   dt_cons (&dt, null_pointer_node);
 
   // offTi[]
-  dt_cons (&dt, d_array_value (Type::tuns8->arrayOf()->toCtype(),
+  dt_cons (&dt, d_array_value (build_ctype(Type::tuns8->arrayOf()),
 			       size_int (0), null_pointer_node));
 
   // defaultConstructor*
@@ -719,7 +719,7 @@ InterfaceDeclaration::toObjFile(bool)
       dt_cons (&dt, build_address (id->toSymbol()->Stree));
 
       // vtbl[]
-      dt_cons (&dt, d_array_value (Type::tvoidptr->arrayOf()->toCtype(),
+      dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
 				   size_int (0), null_pointer_node));
       // 'this' offset.
       dt_cons (&dt, size_int (b->offset));
@@ -958,8 +958,8 @@ Module::genmoduleinfo()
    *  uint flags;
    *  uint index;
    */
-  dt_cons (&dt, build_integer_cst (flags, Type::tuns32->toCtype()));
-  dt_cons (&dt, build_integer_cst (0, Type::tuns32->toCtype()));
+  dt_cons (&dt, build_integer_cst (flags, build_ctype(Type::tuns32)));
+  dt_cons (&dt, build_integer_cst (0, build_ctype(Type::tuns32)));
 
   /*
    * emutls scan function
@@ -2385,7 +2385,7 @@ build_moduleinfo (Symbol *sym)
 
   // struct ModuleReference in moduleinit.d
   Type *type = build_object_type();
-  tree tmodref = build_two_field_type (ptr_type_node, type->toCtype(),
+  tree tmodref = build_two_field_type (ptr_type_node, build_ctype(type),
 				       NULL, "next", "mod");
   tree nextfield = TYPE_FIELDS (tmodref);
   tree modfield = TREE_CHAIN (nextfield);

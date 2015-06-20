@@ -52,6 +52,7 @@ struct FuncFrameInfo
 
 // Visitor routines for barrier between frontend and glue.
 void build_ir(Statement *s, IRState *irs);
+tree build_ctype(Type *t);
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);

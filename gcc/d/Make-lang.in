@@ -113,7 +113,7 @@ D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 D_GLUE_OBJS = d/d-attribs.cglue.o d/d-lang.glue.o d/d-decls.glue.o \
               d/d-codegen.glue.o d/d-objfile.glue.o d/d-irstate.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-longdouble.glue.o \
-              d/d-builtins.glue.o d/d-incpath.glue.o d/d-ctype.glue.o \
+              d/d-builtins.glue.o d/d-incpath.glue.o d/types.glue.o \
               d/d-elem.glue.o d/toir.glue.o d/d-typinf.glue.o \
               d/d-port.glue.o d/d-target.glue.o d/d-glue.glue.o
 
@@ -163,7 +163,7 @@ d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) options.h
 d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
 d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
 d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
-d/d-ctype.glue.o: d/d-ctype.cc $(D_TREE_H)
+d/types.glue.o: d/types.cc $(D_TREE_H)
 d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
 d/toir.glue.o: d/toir.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
@@ -174,11 +174,11 @@ d/d-port.glue.o: d/d-port.cc d/dfrontend/port.h $(D_TREE_H)
 d/d-builtins.glue.o: d/d-builtins.cc $(D_TREE_H)
 
 
-d/d-spec.o: $(srcdir)/d/d-spec.cc $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
+d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
     $(CONFIG_H) $(OPTS_H)
 	(SHLIB='$(SHLIB)'; \
 	$(COMPILER) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
-		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.cc)
+		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 D_BORROWED_C_OBJS = attribs.o
 

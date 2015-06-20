@@ -72,7 +72,7 @@ unsigned
 Target::alignsize(Type *type)
 {
   gcc_assert(type->isTypeBasic());
-  return TYPE_ALIGN_UNIT(type->toCtype());
+  return TYPE_ALIGN_UNIT(build_ctype(type));
 }
 
 
@@ -92,7 +92,7 @@ Target::fieldalign(Type *type)
 #ifdef ADJUST_FIELD_ALIGN
   if (type->isTypeBasic())
     {
-      TREE_TYPE(field) = type->toCtype();
+      TREE_TYPE(field) = build_ctype(type);
       DECL_ALIGN(field) = ADJUST_FIELD_ALIGN(field, DECL_ALIGN(field));
     }
 #endif
@@ -170,7 +170,7 @@ Target::paintAsType(Expression *expr, Type *type)
   Type *tb = type->toBasetype();
 
   if (expr->type->isintegral())
-    cst = build_integer_cst(expr->toInteger(), expr->type->toCtype());
+    cst = build_integer_cst(expr->toInteger(), build_ctype(expr->type));
   else if (expr->type->isfloating())
     cst = build_float_cst(expr->toReal(), expr->type);
   else if (expr->op == TOKarrayliteral)
@@ -185,7 +185,7 @@ Target::paintAsType(Expression *expr, Type *type)
 	  Expression *e = (*elements)[i];
 	  if (e->type->isintegral())
 	    {
-	      tree value = build_integer_cst(e->toInteger(), e->type->toCtype());
+	      tree value = build_integer_cst(e->toInteger(), build_ctype(e->type));
 	      CONSTRUCTOR_APPEND_ELT(elms, size_int(i), value);
 	    }
 	  else if (e->type->isfloating())
@@ -200,7 +200,7 @@ Target::paintAsType(Expression *expr, Type *type)
       // Build vector type.
       int nunits = ((TypeSArray *) expr->type)->dim->toUInteger();
       Type *telem = expr->type->nextOf();
-      tree vectype = build_vector_type(telem->toCtype(), nunits);
+      tree vectype = build_vector_type(build_ctype(telem), nunits);
 
       cst = build_vector_from_ctor(vectype, elms);
     }
@@ -216,7 +216,7 @@ Target::paintAsType(Expression *expr, Type *type)
       // then return the array literal.
       int nunits = ((TypeSArray *) type)->dim->toUInteger();
       Type *elem = type->nextOf();
-      tree vectype = build_vector_type(elem->toCtype(), nunits);
+      tree vectype = build_vector_type(build_ctype(elem), nunits);
 
       cst = native_interpret_expr(vectype, buffer, len);
 
@@ -228,7 +228,7 @@ Target::paintAsType(Expression *expr, Type *type)
   else
     {
       // Normal interpret cast.
-      cst = native_interpret_expr(type->toCtype(), buffer, len);
+      cst = native_interpret_expr(build_ctype(type), buffer, len);
 
       Expression *e = build_expression(cst);
       gcc_assert(e != NULL);

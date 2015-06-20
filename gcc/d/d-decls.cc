@@ -145,12 +145,12 @@ VarDeclaration::toSymbol()
   if (!csym)
     {
       // For field declaration, it is possible for toSymbol to be called
-      // before the parent's toCtype()
+      // before the parent's build_ctype()
       if (isField())
 	{
 	  AggregateDeclaration *parent_decl = toParent()->isAggregateDeclaration();
 	  gcc_assert (parent_decl);
-	  parent_decl->type->toCtype();
+	  build_ctype(parent_decl->type);
 	  gcc_assert (csym);
 	  return csym;
 	}
@@ -338,7 +338,7 @@ FuncDeclaration::toSymbol()
 
       csym->Stree = fndecl;
 
-      TREE_TYPE (fndecl) = ftype->toCtype();
+      TREE_TYPE (fndecl) = build_ctype(ftype);
       DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
       d_keep (fndecl);
 
@@ -353,7 +353,7 @@ FuncDeclaration::toSymbol()
 	  // Do this even if there is no debug info.  It is needed to make
 	  // sure member functions are not called statically
 	  AggregateDeclaration *agg_decl = isMember2();
-	  tree handle = agg_decl->handleType()->toCtype();
+	  tree handle = build_ctype(agg_decl->handleType());
 
 	  // If handle is a pointer type, get record type.
 	  if (!agg_decl->isStructDeclaration())
@@ -623,7 +623,7 @@ StructLiteralExp::toSymbol()
       sym = new Symbol();
 
       // Build reference symbol.
-      tree ctype = type->toCtype();
+      tree ctype = build_ctype(type);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, ctype);
       get_unique_name (decl, "*");
       set_decl_location (decl, loc);
@@ -692,7 +692,7 @@ ClassDeclaration::toVtblSymbol()
 	 VAR_DECL.  The back end seems to accept this. */
       Type *vtbltype = Type::tvoidptr->sarrayOf (vtbl.dim);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (vtblsym->prettyIdent), vtbltype->toCtype());
+			      get_identifier (vtblsym->prettyIdent), build_ctype(vtbltype));
       SET_DECL_ASSEMBLER_NAME (decl, get_identifier (vtblsym->Sident));
       vtblsym->Stree = decl;
       d_keep (decl);
@@ -715,7 +715,7 @@ ClassDeclaration::toVtblSymbol()
 // Because this is called from the front end (mtype.cc:TypeStruct::defaultInit()),
 // we need to hold off using back-end stuff until the toobjfile phase.
 
-// Specifically, it is not safe create a VAR_DECL with a type from toCtype()
+// Specifically, it is not safe create a VAR_DECL with a type from build_ctype()
 // because there may be unresolved recursive references.
 // StructDeclaration::toObjFile calls toInitializer without ever calling
 // SymbolDeclaration::toSymbol, so we just need to keep checking if we
@@ -737,9 +737,9 @@ AggregateDeclaration::toInitializer()
     {
       tree stype;
       if (isStructDeclaration())
-	stype = type->toCtype();
+	stype = build_ctype(type);
       else
-	stype = TREE_TYPE (type->toCtype());
+	stype = TREE_TYPE (build_ctype(type));
 
       sinit->Stree = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 				 get_identifier (sinit->prettyIdent), stype);
@@ -776,7 +776,7 @@ EnumDeclaration::toInitializer()
   if (!sinit->Stree && current_module_decl)
     {
       sinit->Stree = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-				 get_identifier (sinit->prettyIdent), type->toCtype());
+				 get_identifier (sinit->prettyIdent), build_ctype(type));
       SET_DECL_ASSEMBLER_NAME (sinit->Stree, get_identifier (sinit->Sident));
       d_keep (sinit->Stree);
 

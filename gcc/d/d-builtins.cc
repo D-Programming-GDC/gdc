@@ -55,7 +55,7 @@ tree d_global_trees[DTI_MAX];
 
 // Build D frontend type from tree T type given.
 
-// This will set ctype directly for complex types to save toCtype() the work.
+// This will set ctype directly for complex types to save build_ctype() the work.
 // For others, it is not useful or, in the cast of (C char) -> (D char), will
 // cause errors.  This also means char * ...
 

@@ -716,7 +716,7 @@ d_gcc_get_output_module()
 static void
 d_nametype (Type *t)
 {
-  tree type = t->toCtype();
+  tree type = build_ctype(t);
   tree ident = get_identifier (t->toChars());
   tree decl = build_decl (BUILTINS_LOCATION, TYPE_DECL, ident, type);
   TYPE_NAME (type) = decl;

@@ -161,7 +161,7 @@ dt_container(dt_t **pdt, Type *type, dt_t *dt)
 	  CONSTRUCTOR_ELTS(dt) = elts;
 	}
 
-      TREE_TYPE(dt) = type->toCtype();
+      TREE_TYPE(dt) = build_ctype(type);
       TREE_CONSTANT(dt) = 1;
       TREE_STATIC(dt) = 1;
 
@@ -170,13 +170,13 @@ dt_container(dt_t **pdt, Type *type, dt_t *dt)
   else if (tb->ty == Tstruct)
     {
       dt = dt_container2(dt);
-      TREE_TYPE(dt) = type->toCtype();
+      TREE_TYPE(dt) = build_ctype(type);
       return dt_cons(pdt, dt);
     }
   else if (tb->ty == Tclass)
     {
       dt = dt_container2(dt);
-      TREE_TYPE(dt) = TREE_TYPE(type->toCtype());
+      TREE_TYPE(dt) = TREE_TYPE(build_ctype(type));
       return dt_cons(pdt, dt);
     }
 
@@ -227,7 +227,7 @@ VoidInitializer::toDt()
   // void initialisers are set to 0, just because we need something
   // to set them to in the static data segment.
   tree dt = NULL_TREE;
-  dt_cons (&dt, build_constructor (type->toCtype(), NULL));
+  dt_cons (&dt, build_constructor (build_ctype(type), NULL));
   return dt;
 }
 
@@ -362,7 +362,7 @@ NullExp::toDt (dt_t **pdt)
 {
   gcc_assert (type);
 
-  tree dt = build_constructor (type->toCtype(), NULL);
+  tree dt = build_constructor (build_ctype(type), NULL);
   return dt_cons (pdt, dt);
 }
 
@@ -1158,7 +1158,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
   dt_cons (pdt, d_array_string (sd->toPrettyChars()));
 
   // Default initialiser for enum.
-  tree tarray = Type::tvoid->arrayOf()->toCtype();
+  tree tarray = build_ctype(Type::tvoid->arrayOf());
   if (!sd->members || tinfo->isZeroInit())
     {
       // zero initialiser, or the same as the base type.

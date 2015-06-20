@@ -356,9 +356,6 @@ public:
     static void error(Loc loc, const char *format, ...);
     static void warning(Loc loc, const char *format, ...);
 
-    // For backend
-    virtual type *toCtype();
-
     // For eliminating dynamic_cast
     virtual TypeBasic *isTypeBasic();
     virtual void accept(Visitor *v) { v->visit(this); }
@@ -462,7 +459,6 @@ public:
     dt_t **toDt(dt_t **pdt);
     TypeInfoDeclaration *getTypeInfoDeclaration();
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -504,7 +500,6 @@ public:
     bool needsDestruction();
     bool needsNested();
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -530,7 +525,6 @@ public:
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -562,7 +556,6 @@ public:
     // Back end
     Symbol *aaGetSymbol(const char *func, int flags);
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -582,7 +575,6 @@ public:
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -673,7 +665,6 @@ public:
 
     Type *substWildTo(unsigned mod);
     MATCH callMatch(Type *tthis, Expressions *toargs, int flag = 0);
-    type *toCtype();
 
     Expression *defaultInit(Loc loc);
     void accept(Visitor *v) { v->visit(this); }
@@ -698,7 +689,6 @@ public:
     Expression *dotExp(Scope *sc, Expression *e, Identifier *ident, int flag);
     int hasPointers();
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -829,7 +819,6 @@ public:
     unsigned char deduceWild(Type *t, bool isRef);
     Type *toHeadMutable();
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -870,7 +859,6 @@ public:
     int hasPointers();
     Type *nextOf();
 
-    type *toCtype();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -902,8 +890,6 @@ public:
     TypeInfoDeclaration *getTypeInfoDeclaration();
     int hasPointers();
     int builtinTypeInfo();
-
-    type *toCtype();
 
     void accept(Visitor *v) { v->visit(this); }
 };
