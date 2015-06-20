@@ -3253,7 +3253,7 @@ private
             version = AsmExternal;
             version = AlignFiberStackTo16Byte;
 
-            version (MinGW64)
+            version ( MinGW )
                 version = GNU_AsmX86_64_Windows;
             else version( Posix )
                 version = AsmX86_64_Posix;
