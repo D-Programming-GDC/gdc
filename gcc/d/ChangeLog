@@ -4,6 +4,8 @@
 	protected for the benefit of debug code.
 	* d-elem.cc(ArrayLiteralExp::toElem): Only set a value at the given
 	index in the array constructor if it is non-zero.
+	(AssignExp::toElem): Use memset it assigning/initialising an array with
+	all zeroes.
 
 2015-05-03  Iain Buclaw  <ibuclaw@gdcproject.org>
 

@@ -880,6 +880,7 @@ AssignExp::toElem(IRState *irs)
 	  // Set a range of elements to one value.
 	  tree t1 = maybe_make_temp(e1->toElem(irs));
 	  tree t2 = e2->toElem(irs);
+	  tree result;
 
 	  if (postblit && op != TOKblit)
 	    {
@@ -897,7 +898,18 @@ AssignExp::toElem(IRState *irs)
 	      return compound_expr(aoe.finish(call), t1);
 	    }
 
-	  tree result = irs->doArraySet(d_array_ptr(t1), t2, d_array_length(t1));
+	  if (integer_zerop(t2))
+	    {
+	      tree size = fold_build2(MULT_EXPR, size_type_node,
+				      d_convert(size_type_node, d_array_length(t1)),
+				      size_int(etype->size()));
+
+	      result = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMSET), 3,
+					 d_array_ptr(t1), integer_zero_node, size);
+	    }
+	  else
+	    result = irs->doArraySet(d_array_ptr(t1), t2, d_array_length(t1));
+
 	  return compound_expr(result, t1);
 	}
       else
