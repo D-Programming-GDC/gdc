@@ -76,7 +76,7 @@ ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
 # Create the compiler driver for D.
 GDC_OBJS = $(GCC_OBJS) d/d-spec.o
 gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)
-	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	+$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 	$(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
 	$(EXTRA_GCC_LIBS) $(LIBS)
 
@@ -187,7 +187,7 @@ d_OBJS = $(D_BORROWED_C_OBJS) $(D_GLUE_OBJS)
 D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_DMD_OBJS) $(d_OBJS)
 
 cc1d$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
-	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	+$(LLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(BACKENDLIBS)
 
 
