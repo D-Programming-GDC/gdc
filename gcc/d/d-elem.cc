@@ -2344,9 +2344,12 @@ ArrayLiteralExp::toElem (IRState *irs)
       Expression *e = (*elements)[i];
       tree elem = e->toElem (irs);
 
-      elem = maybe_make_temp (elem);
-      CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
-			      convert_expr (elem, e->type, etype));
+      if (!integer_zerop (elem))
+	{
+	  elem = maybe_make_temp (elem);
+	  CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
+				  convert_expr (elem, e->type, etype));
+	}
     }
 
   tree ctor = build_constructor (tsa, elms);
