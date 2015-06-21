@@ -328,17 +328,6 @@ extern void layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl);
 extern void insert_aggregate_field (AggLayout *al, tree field, size_t offset);
 extern void finish_aggregate_type (AggLayout *al, UserAttributeDeclaration *declattrs);
 
-class ArrayScope
-{
- public:
-  ArrayScope (VarDeclaration *ini_v, const Loc& loc);
-  tree setArrayExp (tree e, Type *t);
-  tree finish (tree e);
-
- private:
-  VarDeclaration *var_;
-};
-
 class AddrOfExpr
 {
  public:

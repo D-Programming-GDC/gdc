@@ -926,8 +926,7 @@ AssignExp::toElem(IRState *irs)
 				      size_int(etype->size()));
 
 	      tree result = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCPY), 3,
-					      d_array_ptr(t1),
-					      d_array_ptr(t2), size);
+					      d_array_ptr(t1), d_array_ptr(t2), size);
 	      return compound_expr(result, t1);
 	    }
 	  else if (postblit && op != TOKblit)
@@ -1099,69 +1098,39 @@ IndexExp::toElem (IRState *irs)
     }
   else
     {
-      // Build an array index expression.  ArrayScope may build a BIND_EXPR
-      // if temporaries were created for bounds checking.
-      ArrayScope arrscope (lengthVar, loc);
+      // Get the data pointer and length for static and dynamic arrays.
+      tree array = maybe_make_temp(e1->toElem(irs));
+      tree ptr = convert_expr(array, tb1, tb1->nextOf()->pointerTo());
 
-      // The expression that holds the array data.
-      tree t1 = e1->toElem (irs);
-      // The expression that indexes the array data.
-      tree t2 = e2->toElem (irs);
-      // The base pointer to the elements.
-      tree ptrexp;
+      tree length = NULL_TREE;
+      if (tb1->ty != Tpointer)
+	length = get_array_length(array, tb1);
+      else
+	gcc_assert(lengthVar == NULL);
 
-      switch (tb1->ty)
+      // The __dollar variable just becomes a placeholder for the actual length.
+      if (lengthVar)
 	{
-	case Tarray:
-	case Tsarray:
-	  t1 = arrscope.setArrayExp (t1, e1->type);
+	  lengthVar->csym = new Symbol;
+	  lengthVar->csym->Stree = length;
+	}
 
+      // Generate the index.
+      tree index = e2->toElem(irs);
+      if (tb1->ty == Tarray || tb1->ty == Tsarray)
+	{
 	  // If it's a static array and the index is constant,
 	  // the front end has already checked the bounds.
 	  if (array_bounds_check() && !(tb1->ty == Tsarray && e2->isConst()))
-	    {
-	      // Implement bounds check as a conditional expression:
-	      // array [inbounds(index) ? index : { throw ArrayBoundsError}]
-	      tree length;
-
-	      // First, set up the index expression to only be evaluated once.
-	      tree index = maybe_make_temp (t2);
-
-	      if (tb1->ty == Tarray)
-		{
-		  t1 = maybe_make_temp (t1);
-		  length = d_array_length (t1);
-		}
-	      else
-		length = ((TypeSArray *) tb1)->dim->toElem (irs);
-
-	      t2 = d_checked_index (loc, index, length, false);
-	    }
-
-	  if (tb1->ty == Tarray)
-	    ptrexp = d_array_ptr (t1);
-	  else
-	    ptrexp = build_address (t1);
-
-	  // This conversion is required for static arrays and is
-	  // just-to-be-safe for dynamic arrays.
-	  ptrexp = convert (build_ctype(tb1->nextOf()->pointerTo()), ptrexp);
-	  break;
-
-	case Tpointer:
-	  // Ignores ArrayScope.
-	  ptrexp = t1;
-	  break;
-
-	default:
-	  gcc_unreachable();
+	    index = d_checked_index(loc, maybe_make_temp(index), length, false);
 	}
+      else
+	gcc_assert(tb1->ty == Tpointer);
 
-      ptrexp = void_okay_p (ptrexp);
-      t2 = arrscope.finish (t2);
-
-      return indirect_ref (TREE_TYPE (TREE_TYPE (ptrexp)),
-			   build_array_index (ptrexp, t2));
+      // Index the .ptr
+      ptr = void_okay_p(ptr);
+      return indirect_ref(TREE_TYPE (TREE_TYPE (ptr)),
+			  build_array_index(ptr, index));
     }
 }
 
@@ -1206,125 +1175,95 @@ elem *
 SliceExp::toElem (IRState *irs)
 {
   Type *tb = type->toBasetype();
+  Type *tb1 = e1->type->toBasetype();
   gcc_assert (tb->ty == Tarray || tb->ty == Tsarray);
 
   // Use convert-to-dynamic-array code if possible
-  if (e1->type->toBasetype()->ty == Tsarray && !upr && !lwr)
-    return convert_expr (e1->toElem (irs), e1->type, type);
-
-  Type *tb1 = e1->type->toBasetype();
-
-  tree orig_array_expr, orig_pointer_expr;
-  tree len_expr, ptr_expr;
-  tree array_len_expr = NULL_TREE;
-  tree lwr_tree = NULL_TREE;
-  tree upr_tree = NULL_TREE;
-
-  ArrayScope aryscp (lengthVar, loc);
-
-  orig_array_expr = aryscp.setArrayExp (e1->toElem (irs), e1->type);
-  orig_array_expr = maybe_make_temp (orig_array_expr);
-  // specs don't say bounds if are checked for error or clipped to current size
-
-  // Get the data pointer for static and dynamic arrays
-  orig_pointer_expr = convert_expr (orig_array_expr, tb1,
-				    tb1->nextOf()->pointerTo());
-
-  ptr_expr = orig_pointer_expr;
-
-  // orig_array_expr is already a SAVE_EXPR if necessary, so
-  // we don't make array_len_expr a SAVE_EXPR which is, at most,
-  // a COMPONENT_REF on top of orig_array_expr.
-  if (tb1->ty == Tarray)
-    array_len_expr = d_array_length (orig_array_expr);
-  else if (tb1->ty == Tsarray)
-    array_len_expr = ((TypeSArray *) tb1)->dim->toElem (irs);
-
-  if (lwr)
+  if(!lwr)
     {
-      lwr_tree = lwr->toElem (irs);
+      tree t1 = e1->toElem (irs);
+      if (e1->type->toBasetype()->ty == Tsarray)
+	t1 = convert_expr (t1, e1->type, type);
 
-      if (!integer_zerop (lwr_tree))
-	{
-	  lwr_tree = maybe_make_temp (lwr_tree);
-	  // Adjust .ptr offset
-	  ptr_expr = build_array_index (void_okay_p (ptr_expr), lwr_tree);
-	  ptr_expr = build_nop (TREE_TYPE (orig_pointer_expr), ptr_expr);
-	}
-      else
-	lwr_tree = NULL_TREE;
+      return t1;
+    }
+  else
+    gcc_assert(upr != NULL);
+
+  // Get the data pointer and length for static and dynamic arrays.
+  tree array = maybe_make_temp(e1->toElem(irs));
+  tree ptr = convert_expr(array, tb1, tb1->nextOf()->pointerTo());
+  tree length = NULL_TREE;
+
+  // Our array is already a SAVE_EXPR if necessary, so we don't make length
+  // a SAVE_EXPR which is, at most, a COMPONENT_REF on top of array.
+  if (tb1->ty != Tpointer)
+    length = get_array_length(array, tb1);
+  else
+    gcc_assert(lengthVar == NULL);
+
+  // The __dollar variable just becomes a placeholder for the actual length.
+  if (lengthVar)
+    {
+      lengthVar->csym = new Symbol();
+      lengthVar->csym->Stree = length;
     }
 
-  if (upr)
-    {
-      upr_tree = upr->toElem (irs);
-      upr_tree = maybe_make_temp (upr_tree);
+  // Generate lower bound.
+  tree lwr_tree = maybe_make_temp(lwr->toElem(irs));
 
-      if (array_bounds_check())
-	{
-	  // %% && ! is zero
-	  if (array_len_expr)
-	    {
-	      len_expr = d_checked_index (loc, upr_tree, array_len_expr, true);
-	    }
-	  else
-	    {
-	      // Still need to check bounds lwr <= upr for pointers.
-	      gcc_assert (tb1->ty == Tpointer);
-	      len_expr = upr_tree;
-	    }
-	  if (lwr_tree)
-	    {
-	      // Enforces lwr <= upr. No need to check lwr <= length as
-	      // we've already ensured that upr <= length.
-	      tree lwr_bounds_check = d_checked_index (loc, lwr_tree, upr_tree, true);
-	      len_expr = compound_expr (lwr_bounds_check, len_expr);
-	    }
-	}
+  if (!integer_zerop(lwr_tree))
+    {
+      // Adjust the .ptr offset.
+      tree ptrtype = TREE_TYPE (ptr);
+      ptr = build_array_index(void_okay_p(ptr), lwr_tree);
+      ptr = build_nop(ptrtype, ptr);
+    }
+  else
+    lwr_tree = NULL_TREE;
+
+  // Nothing more to do for static arrays.
+  if (tb->ty == Tsarray)
+    return indirect_ref(build_ctype(type), ptr);
+  else
+    gcc_assert(tb->ty == Tarray);
+
+  // Generate upper bound with bounds checking.
+  tree upr_tree = maybe_make_temp(upr->toElem(irs));
+  tree newlength;
+
+  if (array_bounds_check())
+    {
+      if (length)
+	newlength = d_checked_index(loc, upr_tree, length, true);
       else
 	{
-	  len_expr = upr_tree;
+	  // Still need to check bounds lwr <= upr for pointers.
+	  gcc_assert(tb1->ty == Tpointer);
+	  newlength = upr_tree;
 	}
 
+      // Enforces lwr <= upr. No need to check lwr <= length as
+      // we've already ensured that upr <= length.
       if (lwr_tree)
 	{
-	  // %% Need to ensure lwr always gets evaluated first, as it may be a function call.
-	  // Does (-lwr + upr) rather than (upr - lwr)
-	  len_expr = build2 (PLUS_EXPR, TREE_TYPE (len_expr),
-			     build1 (NEGATE_EXPR, TREE_TYPE (lwr_tree), lwr_tree), len_expr);
+	  tree lwr_bounds = d_checked_index(loc, lwr_tree, upr_tree, true);
+	  newlength = compound_expr(lwr_bounds, newlength);
 	}
     }
   else
+    newlength = upr_tree;
+
+  // Need to ensure lwr always gets evaluated first, as it may be a function call.
+  // Does (-lwr + upr) rather than (upr - lwr)
+  if (lwr_tree)
     {
-      // If this is the case, than there is no lower bound specified and
-      // there is no need to subtract.
-      switch (tb1->ty)
-	{
-	case Tarray:
-	  len_expr = d_array_length (orig_array_expr);
-	  break;
-
-	case Tsarray:
-	  len_expr = ((TypeSArray *) tb1)->dim->toElem (irs);
-	  break;
-
-	default:
-	  error ("Attempt to take length of something that was not an array");
-	  return error_mark_node;
-	}
+      newlength = build2(PLUS_EXPR, TREE_TYPE (newlength),
+			 build1(NEGATE_EXPR, TREE_TYPE (lwr_tree), lwr_tree), newlength);
     }
 
-  tree exp;
-
-  if (tb->ty == Tarray)
-    exp = d_array_value (build_ctype(type), len_expr, ptr_expr);
-  else
-    {
-      gcc_assert (lwr && tb->ty == Tsarray);
-      exp = indirect_ref (build_ctype(type), ptr_expr);
-    }
-
-  return aryscp.finish (exp);
+  tree result = d_array_value(build_ctype(type), newlength, ptr);
+  return compound_expr(array, result);
 }
 
 elem *
