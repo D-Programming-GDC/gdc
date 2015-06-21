@@ -1745,6 +1745,12 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
       if (public_p || !fd || !fd->isNested())
 	TREE_PUBLIC (decl) = 1;
 
+      // Used by debugger.
+      if (rd && rd->protection == PROTprivate)
+	TREE_PRIVATE (decl) = 1;
+      else if (rd && rd->protection == PROTprotected)
+	TREE_PROTECTED (decl) = 1;
+
       if (D_DECL_ONE_ONLY (decl))
 	d_comdat_linkage (decl);
     }
