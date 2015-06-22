@@ -1,3 +1,10 @@
+2015-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(d_build_call): Only apply CALL_EXPR_RETURN_SLOT_OPT to
+	calls returning an aggregate.
+	* types.cc(TypeVisitor::visit(TypeFunction)): Only apply
+	TREE_ADDRESSABLE to function types returning an aggregate.
+
 2015-06-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc(setup_symbol_storage): Mark declarations as private or

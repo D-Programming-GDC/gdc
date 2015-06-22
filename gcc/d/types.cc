@@ -316,7 +316,11 @@ public:
 	    if (!ts->sym->isPOD())
 	      TREE_ADDRESSABLE (t->ctype) = 1;
 	  }
-	else if (aggregate_value_p(TREE_TYPE (t->ctype), t->ctype))
+
+	// Aggregate types that don't return in registers are eligable for
+	// returning via slot optimisation.
+	if (AGGREGATE_TYPE_P (TREE_TYPE (t->ctype))
+	    && aggregate_value_p(TREE_TYPE (t->ctype), t->ctype))
 	  TREE_ADDRESSABLE (t->ctype) = 1;
       }
 
