@@ -258,21 +258,21 @@ EqualExp::toElem (IRState *irs)
 }
 
 elem *
-InExp::toElem (IRState *irs)
+InExp::toElem(IRState *irs)
 {
   Type *tb2 = e2->type->toBasetype();
-  AddrOfExpr aoe;
-  gcc_assert (tb2->ty == Taarray);
+  gcc_assert(tb2->ty == Taarray);
 
   Type *tkey = ((TypeAArray *) tb2)->index->toBasetype();
+  tree key = convert_expr(e1->toElem(irs), e1->type, tkey);
   tree args[3];
 
-  args[0] = e2->toElem (irs);
-  args[1] = build_typeinfo (tkey);
-  args[2] = aoe.set (convert_expr (e1->toElem (irs), e1->type, tkey));
+  args[0] = e2->toElem(irs);
+  args[1] = build_typeinfo(tkey);
+  args[2] = build_address(key);
 
-  return convert (build_ctype(type),
-		  aoe.finish (build_libcall (LIBCALL_AAINX, 3, args)));
+  tree call = build_libcall(LIBCALL_AAINX, 3, args);
+  return convert(build_ctype(type), call);
 }
 
 elem *
@@ -751,75 +751,69 @@ needsPostblit (Type *t)
 }
 
 elem *
-CatAssignExp::toElem (IRState *irs)
+CatAssignExp::toElem(IRState *irs)
 {
   Type *tb1 = e1->type->toBasetype();
   Type *tb2 = e2->type->toBasetype();
   Type *etype = tb1->nextOf()->toBasetype();
-  AddrOfExpr aoe;
-  tree result;
 
   if (tb1->ty == Tarray && tb2->ty == Tdchar
       && (etype->ty == Tchar || etype->ty == Twchar))
     {
       // Append a dchar to a char[] or wchar[]
       tree args[2];
-      LibCall libcall;
+      args[0] = build_address(e1->toElem(irs));
+      args[1] = e2->toElem(irs);
 
-      args[0] = aoe.set (e1->toElem (irs));
-      args[1] = e2->toElem (irs);
-      libcall = etype->ty == Tchar ? LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
-
-      result = build_libcall (libcall, 2, args, build_ctype(type));
+      LibCall libcall = etype->ty == Tchar ? LIBCALL_ARRAYAPPENDCD : LIBCALL_ARRAYAPPENDWD;
+      return build_libcall(libcall, 2, args, build_ctype(type));
     }
   else
     {
-      gcc_assert (tb1->ty == Tarray || tb2->ty == Tsarray);
+      gcc_assert(tb1->ty == Tarray || tb2->ty == Tsarray);
 
       if ((tb2->ty == Tarray || tb2->ty == Tsarray)
-	  && d_types_same (etype, tb2->nextOf()->toBasetype()))
+	  && d_types_same(etype, tb2->nextOf()->toBasetype()))
 	{
 	  // Append an array
 	  tree args[3];
 
-	  args[0] = build_typeinfo (type);
-	  args[1] = build_address (e1->toElem (irs));
-	  args[2] = d_array_convert (e2);
+	  args[0] = build_typeinfo(type);
+	  args[1] = build_address(e1->toElem(irs));
+	  args[2] = d_array_convert(e2);
 
-	  result = build_libcall (LIBCALL_ARRAYAPPENDT, 3, args, build_ctype(type));
+	  return build_libcall(LIBCALL_ARRAYAPPENDT, 3, args, build_ctype(type));
 	}
-      else if (d_types_same (etype, tb2))
+      else if (d_types_same(etype, tb2))
 	{
 	  // Append an element
 	  tree args[3];
 
-	  args[0] = build_typeinfo (type);
-	  args[1] = build_address (e1->toElem (irs));
+	  args[0] = build_typeinfo(type);
+	  args[1] = build_address(e1->toElem(irs));
 	  args[2] = size_one_node;
 
-	  result = build_libcall (LIBCALL_ARRAYAPPENDCTX, 3, args, build_ctype(type));
-	  result = make_temp (result);
+	  tree result = build_libcall(LIBCALL_ARRAYAPPENDCTX, 3, args, build_ctype(type));
+	  result = make_temp(result);
 
 	  // Assign e2 to last element
-	  tree off_exp = d_array_length (result);
-	  off_exp = build2 (MINUS_EXPR, TREE_TYPE (off_exp), off_exp, size_one_node);
-	  off_exp = maybe_make_temp (off_exp);
+	  tree off_exp = d_array_length(result);
+	  off_exp = build2(MINUS_EXPR, TREE_TYPE (off_exp), off_exp, size_one_node);
+	  off_exp = maybe_make_temp(off_exp);
 
-	  tree ptr_exp = d_array_ptr (result);
-	  ptr_exp = void_okay_p (ptr_exp);
-	  ptr_exp = build_array_index (ptr_exp, off_exp);
+	  tree ptr_exp = d_array_ptr(result);
+	  ptr_exp = void_okay_p(ptr_exp);
+	  ptr_exp = build_array_index(ptr_exp, off_exp);
 
 	  // Evaluate expression before appending
-	  tree e2e = e2->toElem (irs);
-	  e2e = maybe_make_temp (e2e);
-	  result = modify_expr (build_ctype(etype), build_deref (ptr_exp), e2e);
-	  result = compound_expr (e2e, result);
+	  tree e2e = e2->toElem(irs);
+	  e2e = maybe_make_temp(e2e);
+	  result = modify_expr(build_ctype(etype), build_deref(ptr_exp), e2e);
+	  return compound_expr(e2e, result);
 	}
       else
 	gcc_unreachable();
     }
-
-  return aoe.finish (result);
 }
 
 elem *
@@ -884,18 +878,17 @@ AssignExp::toElem(IRState *irs)
 
 	  if (postblit && op != TOKblit)
 	    {
-	      AddrOfExpr aoe;
 	      tree args[4];
 	      LibCall libcall;
 
 	      args[0] = d_array_ptr(t1);
-	      args[1] = aoe.set(t2);
+	      args[1] = build_address(t2);
 	      args[2] = d_array_length(t1);
 	      args[3] = build_typeinfo(etype);
 	      libcall = (op == TOKconstruct) ? LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
 
 	      tree call = build_libcall(libcall, 4, args);
-	      return compound_expr(aoe.finish(call), t1);
+	      return compound_expr(call, t1);
 	    }
 
 	  if (integer_zerop(t2))
@@ -1058,43 +1051,44 @@ PostExp::toElem(IRState *irs)
 }
 
 elem *
-IndexExp::toElem (IRState *irs)
+IndexExp::toElem(IRState *irs)
 {
   Type *tb1 = e1->type->toBasetype();
 
   if (tb1->ty == Taarray)
     {
+      // Get the key for the associative array.
       Type *tkey = ((TypeAArray *) tb1)->index->toBasetype();
-      AddrOfExpr aoe;
-      tree args[4];
+      tree key = convert_expr(e2->toElem(irs), e2->type, tkey);
       LibCall libcall;
-      tree index;
+      tree args[4];
 
       if (modifiable)
 	{
 	  libcall = LIBCALL_AAGETX;
-	  args[0] = build_address (e1->toElem (irs));
+	  args[0] = build_address(e1->toElem(irs));
 	}
       else
 	{
 	  libcall = LIBCALL_AAGETRVALUEX;
-	  args[0] = e1->toElem (irs);
+	  args[0] = e1->toElem(irs);
 	}
 
-      args[1] = build_typeinfo (tkey);
-      args[2] = build_integer_cst (tb1->nextOf()->size(), build_ctype(Type::tsize_t));
-      args[3] = aoe.set (convert_expr (e2->toElem (irs), e2->type, tkey));
+      args[1] = build_typeinfo(tkey);
+      args[2] = build_integer_cst(tb1->nextOf()->size(), build_ctype(Type::tsize_t));
+      args[3] = build_address(key);
 
-      index = aoe.finish (build_libcall (libcall, 4, args, build_ctype(type->pointerTo())));
+      // Index the associative array.
+      tree result = build_libcall(libcall, 4, args, build_ctype(type->pointerTo()));
 
-      if (array_bounds_check() && !skipboundscheck)
+      if (!skipboundscheck && array_bounds_check())
 	{
-	  index = make_temp (index);
-	  index = build3 (COND_EXPR, TREE_TYPE (index), d_truthvalue_conversion (index),
-			  index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
+	  result = make_temp(result);
+	  result = build3(COND_EXPR, TREE_TYPE (result), d_truthvalue_conversion(result),
+			  result, d_assert_call(loc, LIBCALL_ARRAY_BOUNDS));
 	}
 
-      return indirect_ref (build_ctype(type), index);
+      return indirect_ref(build_ctype(type), result);
     }
   else
     {
@@ -1346,27 +1340,25 @@ DeleteExp::toElem (IRState *irs)
 }
 
 elem *
-RemoveExp::toElem (IRState *irs)
+RemoveExp::toElem(IRState *irs)
 {
-  Expression *array = e1;
-  Expression *index = e2;
   // Check that the array is actually an associative array
-  if (array->type->toBasetype()->ty == Taarray)
+  if (e1->type->toBasetype()->ty == Taarray)
     {
-      Type *a_type = array->type->toBasetype();
-      Type *tkey = ((TypeAArray *) a_type)->index->toBasetype();
-      AddrOfExpr aoe;
+      Type *tb = e1->type->toBasetype();
+      Type *tkey = ((TypeAArray *) tb)->index->toBasetype();
+      tree index = convert_expr(e2->toElem(irs), e2->type, tkey);
       tree args[3];
 
-      args[0] = array->toElem (irs);
-      args[1] = build_typeinfo (tkey);
-      args[2] = aoe.set (convert_expr (index->toElem (irs), index->type, tkey));
+      args[0] = e1->toElem(irs);
+      args[1] = build_typeinfo(tkey);
+      args[2] = build_address(index);
 
-      return aoe.finish (build_libcall (LIBCALL_AADELX, 3, args));
+      return build_libcall(LIBCALL_AADELX, 3, args);
     }
   else
     {
-      error ("%s is not an associative array", array->toChars());
+      error("%s is not an associative array", e1->toChars());
       return error_mark_node;
     }
 }

@@ -255,9 +255,8 @@ public:
     TYPE_PACKED (t->ctype) = (t->sym->alignsize == 1);
     compute_record_mode(t->ctype);
 
-    AggLayout al = AggLayout(t->sym, t->ctype);
-    layout_aggregate_type(&al, t->sym);
-    finish_aggregate_type(&al, t->sym->userAttribDecl);
+    layout_aggregate_type(t->sym, t->ctype, t->sym);
+    finish_aggregate_type(t->sym, t->ctype, t->sym->userAttribDecl);
 
     build_type_decl(t->ctype, t->sym);
     TYPE_CONTEXT (t->ctype) = d_decl_context(t->sym);
@@ -451,9 +450,8 @@ public:
     TYPE_LANG_SPECIFIC (basetype) = TYPE_LANG_SPECIFIC (t->ctype);
 
     // Add the fields of each base class
-    AggLayout al = AggLayout(t->sym, basetype);
-    layout_aggregate_type(&al, t->sym);
-    finish_aggregate_type(&al, t->sym->userAttribDecl);
+    layout_aggregate_type(t->sym, basetype, t->sym);
+    finish_aggregate_type(t->sym, basetype, t->sym->userAttribDecl);
 
     // Type is final, there are no derivations.
     if (t->sym->storage_class & STCfinal)
