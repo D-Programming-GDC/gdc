@@ -2110,6 +2110,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
   result = expand_intrinsic (result);
 
   if (!tf->isref && TREE_CODE (result) == CALL_EXPR
+      && AGGREGATE_TYPE_P (TREE_TYPE (result))
       && aggregate_value_p (TREE_TYPE (result), result))
     CALL_EXPR_RETURN_SLOT_OPT (result) = true;
 
@@ -2519,10 +2520,9 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 // others require a little extra work around them.
 
 tree
-expand_intrinsic (tree callexp)
+expand_intrinsic(tree callexp)
 {
-  CallExpr ce (callexp);
-  tree callee = ce.callee();
+  tree callee = CALL_EXPR_FN (callexp);
 
   if (POINTER_TYPE_P (TREE_TYPE (callee)))
     callee = TREE_OPERAND (callee, 0);
@@ -2538,87 +2538,87 @@ expand_intrinsic (tree callexp)
 	{
 	case INTRINSIC_BSF:
 	  // Builtin count_trailing_zeros matches behaviour of bsf
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_op (BUILT_IN_CTZL, callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_op(BUILT_IN_CTZL, callexp, op1);
 
 	case INTRINSIC_BSR:
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_bsr (callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_bsr(callexp, op1);
 
 	case INTRINSIC_BTC:
 	case INTRINSIC_BTR:
 	case INTRINSIC_BTS:
-	  op1 = ce.nextArg();
-	  op2 = ce.nextArg();
-	  return expand_intrinsic_bt (intrinsic, callexp, op1, op2);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  return expand_intrinsic_bt(intrinsic, callexp, op1, op2);
 
 	case INTRINSIC_BSWAP:
 	  // Backend provides builtin bswap32.
 	  // Assumes first argument and return type is uint.
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_op (BUILT_IN_BSWAP32, callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_op(BUILT_IN_BSWAP32, callexp, op1);
 
 	  // Math intrinsics just map to their GCC equivalents.
 	case INTRINSIC_COS:
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_op (BUILT_IN_COSL, callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_op(BUILT_IN_COSL, callexp, op1);
 
 	case INTRINSIC_SIN:
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_op (BUILT_IN_SINL, callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_op(BUILT_IN_SINL, callexp, op1);
 
 	case INTRINSIC_RNDTOL:
 	  // Not sure if llroundl stands as a good replacement for the
 	  // expected behaviour of rndtol.
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_op (BUILT_IN_LLROUNDL, callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_op(BUILT_IN_LLROUNDL, callexp, op1);
 
 	case INTRINSIC_SQRT:
 	case INTRINSIC_SQRTF:
 	case INTRINSIC_SQRTL:
 	  // Have float, double and real variants of sqrt.
-	  op1 = ce.nextArg();
+	  op1 = CALL_EXPR_ARG (callexp, 0);
 	  type = TYPE_MAIN_VARIANT (TREE_TYPE (op1));
 	  // op1 is an integral type - use double precision.
 	  if (INTEGRAL_TYPE_P (type))
-	    op1 = convert (double_type_node, op1);
+	    op1 = convert(double_type_node, op1);
 
 	  if (intrinsic == INTRINSIC_SQRT)
-	    return expand_intrinsic_op (BUILT_IN_SQRT, callexp, op1);
+	    return expand_intrinsic_op(BUILT_IN_SQRT, callexp, op1);
 	  else if (intrinsic == INTRINSIC_SQRTF)
-	    return expand_intrinsic_op (BUILT_IN_SQRTF, callexp, op1);
+	    return expand_intrinsic_op(BUILT_IN_SQRTF, callexp, op1);
 	  else if (intrinsic == INTRINSIC_SQRTL)
-	    return expand_intrinsic_op (BUILT_IN_SQRTL, callexp, op1);
+	    return expand_intrinsic_op(BUILT_IN_SQRTL, callexp, op1);
 
 	  gcc_unreachable();
 	  break;
 
 	case INTRINSIC_LDEXP:
-	  op1 = ce.nextArg();
-	  op2 = ce.nextArg();
-	  return expand_intrinsic_op2 (BUILT_IN_LDEXPL, callexp, op1, op2);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  return expand_intrinsic_op2(BUILT_IN_LDEXPL, callexp, op1, op2);
 
 	case INTRINSIC_FABS:
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_op (BUILT_IN_FABSL, callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_op(BUILT_IN_FABSL, callexp, op1);
 
 	case INTRINSIC_RINT:
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_op (BUILT_IN_RINTL, callexp, op1);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_op(BUILT_IN_RINTL, callexp, op1);
 
 	case INTRINSIC_VA_ARG:
-	  op1 = ce.nextArg();
-	  op2 = ce.nextArg();
-	  return expand_intrinsic_vaarg (callexp, op1, op2);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  return expand_intrinsic_vaarg(callexp, op1, op2);
 
 	case INTRINSIC_C_VA_ARG:
-	  op1 = ce.nextArg();
-	  return expand_intrinsic_vaarg (callexp, op1, NULL_TREE);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_intrinsic_vaarg(callexp, op1, NULL_TREE);
 
 	case INTRINSIC_VASTART:
-	  op1 = ce.nextArg();
-	  op2 = ce.nextArg();
-	  return expand_intrinsic_vastart (callexp, op1, op2);
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  return expand_intrinsic_vastart(callexp, op1, op2);
 
 	default:
 	  gcc_unreachable();
@@ -3222,19 +3222,19 @@ WrappedExp::toElem (IRState *)
   return this->e1;
 }
 
-// Write out all fields for aggregate DECL.  For classes, write
+// Write out all fields for aggregate BASE.  For classes, write
 // out base class fields first, and adds all interfaces last.
 
 void
-layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
+layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base)
 {
-  ClassDeclaration *cd = decl->isClassDeclaration();
-  bool inherited_p = (al->decl != decl);
+  ClassDeclaration *cd = base->isClassDeclaration();
+  bool inherited_p = (decl != base);
 
   if (cd != NULL)
     {
       if (cd->baseClass)
-	layout_aggregate_type(al, cd->baseClass);
+	layout_aggregate_type(decl, type, cd->baseClass);
       else
 	{
 	  // This is the base class (Object) or interface.
@@ -3246,11 +3246,11 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
 	  DECL_ARTIFICIAL(field) = 1;
 	  DECL_IGNORED_P(field) = inherited_p;
 
-	  insert_aggregate_field(al, field, 0);
+	  insert_aggregate_field(decl, type, field, 0);
 
 	  DECL_VIRTUAL_P(field) = 1;
 	  DECL_FCONTEXT(field) = objtype;
-	  TYPE_VFIELD(al->type) = field;
+	  TYPE_VFIELD(type) = field;
 
 	  if (!cd->cpp)
 	    {
@@ -3259,23 +3259,23 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
 	      DECL_FCONTEXT(field) = objtype;
 	      DECL_ARTIFICIAL(field) = 1;
 	      DECL_IGNORED_P(field) = inherited_p;
-	      insert_aggregate_field(al, field, Target::ptrsize);
+	      insert_aggregate_field(decl, type, field, Target::ptrsize);
 	    }
 	}
     }
 
-  if (decl->fields.dim)
+  if (base->fields.dim)
     {
-      tree fcontext = build_ctype(decl->type);
+      tree fcontext = build_ctype(base->type);
 
       if (POINTER_TYPE_P(fcontext))
 	fcontext = TREE_TYPE(fcontext);
 
-      for (size_t i = 0; i < decl->fields.dim; i++)
+      for (size_t i = 0; i < base->fields.dim; i++)
 	{
 	  // D anonymous unions just put the fields into the outer struct...
 	  // Does this cause problems?
-	  VarDeclaration *var = decl->fields[i];
+	  VarDeclaration *var = base->fields[i];
 	  gcc_assert(var && var->isField());
 
 	  tree ident = var->ident ? get_identifier(var->ident->string) : NULL_TREE;
@@ -3285,7 +3285,7 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
 	  var->csym = new Symbol;
 	  var->csym->Stree = field;
 
-	  DECL_CONTEXT(field) = al->type;
+	  DECL_CONTEXT(field) = type;
 	  DECL_FCONTEXT(field) = fcontext;
 	  DECL_FIELD_OFFSET(field) = size_int(var->offset);
 	  DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
@@ -3303,7 +3303,7 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
 	      gcc_assert(DECL_SIZE(field) != NULL_TREE);
 	    }
 
-	  TYPE_FIELDS(al->type) = chainon(TYPE_FIELDS(al->type), field);
+	  TYPE_FIELDS(type) = chainon(TYPE_FIELDS(type), field);
 	}
     }
 
@@ -3316,120 +3316,62 @@ layout_aggregate_type(AggLayout *al, AggregateDeclaration *decl)
 				  build_ctype(Type::tvoidptr->pointerTo()));
 	  DECL_ARTIFICIAL(field) = 1;
 	  DECL_IGNORED_P(field) = 1;
-	  insert_aggregate_field(al, field, bc->offset);
+	  insert_aggregate_field(decl, type, field, bc->offset);
 	}
     }
 }
 
-// Add a compiler generated field DECL at OFFSET into aggregate.
+// Add a compiler generated field FIELD at OFFSET into aggregate.
 
 void
-insert_aggregate_field (AggLayout *al, tree decl, size_t offset)
+insert_aggregate_field(AggregateDeclaration *decl, tree type, tree field, size_t offset)
 {
-  DECL_CONTEXT (decl) = al->type;
-  SET_DECL_OFFSET_ALIGN (decl, TYPE_ALIGN (TREE_TYPE (decl)));
-  DECL_FIELD_OFFSET (decl) = size_int (offset);
-  DECL_FIELD_BIT_OFFSET (decl) = bitsize_zero_node;
+  DECL_CONTEXT (field) = type;
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
+  DECL_FIELD_OFFSET (field) = size_int(offset);
+  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
 
   // Must set this or we crash with DWARF debugging.
-  set_decl_location (decl, al->decl->loc);
+  set_decl_location(field, decl->loc);
 
-  TREE_THIS_VOLATILE (decl) = TYPE_VOLATILE (TREE_TYPE (decl));
+  TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
 
-  layout_decl (decl, 0);
-  TYPE_FIELDS(al->type) = chainon (TYPE_FIELDS (al->type), decl);
+  layout_decl(field, 0);
+  TYPE_FIELDS(type) = chainon(TYPE_FIELDS (type), field);
 }
 
 // Wrap-up and compute finalised aggregate type.  Writing out
 // any GCC attributes that were applied to the type declaration.
 
 void
-finish_aggregate_type (AggLayout *al, UserAttributeDeclaration *declattrs)
+finish_aggregate_type(AggregateDeclaration *decl, tree type, UserAttributeDeclaration *declattrs)
 {
-  unsigned structsize = al->decl->structsize;
-  unsigned alignsize = al->decl->alignsize;
+  unsigned structsize = decl->structsize;
+  unsigned alignsize = decl->alignsize;
 
-  TYPE_SIZE (al->type) = NULL_TREE;
+  TYPE_SIZE (type) = NULL_TREE;
 
   if (declattrs)
     {
       Expressions *attrs = declattrs->getAttributes();
-      decl_attributes (&al->type, build_attributes (attrs),
-		       ATTR_FLAG_TYPE_IN_PLACE);
+      decl_attributes(&type, build_attributes(attrs),
+		      ATTR_FLAG_TYPE_IN_PLACE);
     }
 
-  TYPE_SIZE (al->type) = bitsize_int (structsize * BITS_PER_UNIT);
-  TYPE_SIZE_UNIT (al->type) = size_int (structsize);
-  TYPE_ALIGN (al->type) = alignsize * BITS_PER_UNIT;
-  TYPE_PACKED (al->type) = (alignsize == 1);
+  TYPE_SIZE (type) = bitsize_int(structsize * BITS_PER_UNIT);
+  TYPE_SIZE_UNIT (type) = size_int(structsize);
+  TYPE_ALIGN (type) = alignsize * BITS_PER_UNIT;
+  TYPE_PACKED (type) = (alignsize == 1);
 
-  compute_record_mode (al->type);
+  compute_record_mode(type);
 
   // Set up variants.
-  for (tree x = TYPE_MAIN_VARIANT (al->type); x; x = TYPE_NEXT_VARIANT (x))
+  for (tree x = TYPE_MAIN_VARIANT (type); x; x = TYPE_NEXT_VARIANT (x))
     {
-      TYPE_FIELDS (x) = TYPE_FIELDS (al->type);
-      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (al->type);
-      TYPE_ALIGN (x) = TYPE_ALIGN (al->type);
-      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (al->type);
+      TYPE_FIELDS (x) = TYPE_FIELDS (type);
+      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (type);
+      TYPE_ALIGN (x) = TYPE_ALIGN (type);
+      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (type);
     }
-}
-
-// Routines for getting an index or slice of an array where '$' was used
-// in the slice.  A temp var INI_V would have been created that needs to
-// be bound into it's own scope.
-
-ArrayScope::ArrayScope (VarDeclaration *ini_v, const Loc& loc) :
-  var_(ini_v)
-{
-  /* If STCconst, the temp var is not required.  */
-  if (this->var_ && !(this->var_->storage_class & STCconst))
-    {
-      /* Need to set the location or the expand_decl in the BIND_EXPR will
-	 cause the line numbering for the statement to be incorrect. */
-      /* The variable itself is not included in the debugging information. */
-      this->var_->loc = loc;
-      Symbol *s = this->var_->toSymbol();
-      tree decl = s->Stree;
-      DECL_CONTEXT (decl) = current_function_decl;
-    }
-  else
-    this->var_ = NULL;
-}
-
-// Set index expression E of type T as the initialiser for
-// the temp var decl to be used.
-
-tree
-ArrayScope::setArrayExp (tree e, Type *t)
-{
-  if (this->var_)
-    {
-      tree v = this->var_->toSymbol()->Stree;
-      if (t->toBasetype()->ty != Tsarray)
-	e = maybe_make_temp (e);
-      DECL_INITIAL (v) = get_array_length (e, t);
-    }
-  return e;
-}
-
-// Wrap-up temp var into a BIND_EXPR.
-
-tree
-ArrayScope::finish (tree e)
-{
-  if (this->var_)
-    {
-      Symbol *s = this->var_->toSymbol();
-      tree t = s->Stree;
-      if (TREE_CODE (t) == VAR_DECL)
-	{
-	  gcc_assert (!s->SframeField);
-	  return bind_expr (t, e);
-	}
-      else
-	gcc_unreachable();
-    }
-  return e;
 }
 

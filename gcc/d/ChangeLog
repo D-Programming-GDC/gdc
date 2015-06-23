@@ -1,3 +1,38 @@
+2015-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(d_build_call): Only apply CALL_EXPR_RETURN_SLOT_OPT to
+	calls returning an aggregate.
+	(expand_intrinsic): Use CALL_EXPR_FN and CALL_EXPR_ARG directly.
+	(layout_aggregate_type): Update signature.
+	(insert_aggregate_field): Likewise.
+	(finish_aggregate_type): Likewise.
+	* d-codegen.h(AggLayout): Remove helper class.
+	(AddrOfExpr): Remove helper class.
+	(CallExpr): Remove helper class.
+	* d-elem.cc(InExp::toElem): Use build_address directly.
+	(CatAssignExp::toElem): Likewise.
+	(IndexExp::toElem): Likewise.
+	(RemoveExp::toElem): Likewise.
+	* types.cc(TypeVisitor::visit(TypeFunction)): Only apply
+	TREE_ADDRESSABLE to function types returning an aggregate.
+	(TypeVisitor::visit(TypeStruct)): Update for layout_aggregate_type and
+	finish_aggregate_type changes.
+	(TypeVisitor::visit(TypeClass)): Likewise.
+
+2015-06-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc(setup_symbol_storage): Mark declarations as private or
+	protected for the benefit of debug code.
+	* d-elem.cc(ArrayLiteralExp::toElem): Only set a value at the given
+	index in the array constructor if it is non-zero.
+	(AssignExp::toElem): Use memset it assigning/initialising an array with
+	all zeroes.
+	(IndexExp::toElem): Simplify codegen to use a placeholder variable for
+	the dollar length.
+	(SliceExp::toElem): Likewise.
+	* d-codegen.cc(ArrayScope): Remove helper class.
+	* Make-lang.in (cc1d$(exeext)): Use link mutex.
+
 2015-05-03  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in(D_GLUE_OBJS): Rename d-ctype.cc to types.cc.
