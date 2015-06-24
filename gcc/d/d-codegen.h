@@ -18,9 +18,6 @@
 #ifndef GCC_DCMPLR_CODEGEN_H
 #define GCC_DCMPLR_CODEGEN_H
 
-#include "d-irstate.h"
-#include "d-objfile.h"
-
 // D library function flags.
 
 enum LibCallFlag
@@ -55,6 +52,7 @@ struct FuncFrameInfo
 
 // Visitor routines for barrier between frontend and glue.
 void build_ir(Statement *s, IRState *irs);
+tree build_ctype(Type *t);
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);
@@ -188,6 +186,11 @@ extern tree expand_intrinsic (tree callexp);
 
 extern tree build_typeinfo (Type *t);
 
+// Record layout
+extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
+extern void insert_aggregate_field(AggregateDeclaration *decl, tree type, tree field, size_t offset);
+extern void finish_aggregate_type(AggregateDeclaration *decl, tree type, UserAttributeDeclaration *declattrs);
+
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.
 inline bool
@@ -314,74 +317,6 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 // Globals.
 extern Module *current_module_decl;
 extern IRState *current_irstate;
-
-// Various helpers that need extra state
-
-struct AggLayout
-{
-  AggLayout (AggregateDeclaration *indecl, tree intype)
-    : decl (indecl), type (intype) { }
-
-  AggregateDeclaration *decl;
-  tree type;
-};
-
-extern void layout_aggregate_type (AggLayout *al, AggregateDeclaration *decl);
-extern void insert_aggregate_field (AggLayout *al, tree field, size_t offset);
-extern void finish_aggregate_type (AggLayout *al, UserAttributeDeclaration *declattrs);
-
-class ArrayScope
-{
- public:
-  ArrayScope (VarDeclaration *ini_v, const Loc& loc);
-  tree setArrayExp (tree e, Type *t);
-  tree finish (tree e);
-
- private:
-  VarDeclaration *var_;
-};
-
-class AddrOfExpr
-{
- public:
-  AddrOfExpr()
-  { this->var_ = NULL_TREE; }
-
-  tree set (tree exp)
-  { return build_address (maybe_temporary_var (exp, &this->var_)); }
-
-  tree finish (tree e2)
-  { return this->var_ ? bind_expr (this->var_, e2) : e2; }
-
- private:
-  tree var_;
-};
-
-class CallExpr
-{
- public:
-  CallExpr (tree ce)
-    : ce_(ce), argi_(0)
-  { }
-
-  tree callee()
-  { return CALL_EXPR_FN (this->ce_); }
-
-  tree nextArg()
-  {
-    tree result = this->argi_ < call_expr_nargs (this->ce_)
-      ? CALL_EXPR_ARG (this->ce_, this->argi_) : NULL_TREE;
-    this->argi_++;
-    return result;
-  }
-
- private:
-  CallExpr()
-  { }
-
-  tree ce_;
-  int argi_;
-};
 
 #endif
 

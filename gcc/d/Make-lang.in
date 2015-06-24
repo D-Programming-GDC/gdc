@@ -76,7 +76,7 @@ ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
 # Create the compiler driver for D.
 GDC_OBJS = $(GCC_OBJS) d/d-spec.o
 gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)
-	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	+$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 	$(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
 	$(EXTRA_GCC_LIBS) $(LIBS)
 
@@ -110,13 +110,12 @@ D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
 D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
 
 # D Glue sources
-D_GLUE_OBJS = d/d-lang.glue.o d/d-decls.glue.o d/d-codegen.glue.o \
-              d/d-objfile.glue.o d/d-irstate.glue.o \
+D_GLUE_OBJS = d/d-attribs.cglue.o d/d-lang.glue.o d/d-decls.glue.o \
+              d/d-codegen.glue.o d/d-objfile.glue.o d/d-irstate.glue.o \
               d/d-convert.glue.o d/d-todt.glue.o d/d-longdouble.glue.o \
-              d/d-gt.cglue.o d/d-builtins.glue.o \
-              d/d-incpath.glue.o d/d-ctype.glue.o d/d-elem.glue.o \
-              d/toir.glue.o d/d-typinf.glue.o d/d-port.glue.o \
-              d/d-target.glue.o d/d-glue.glue.o
+              d/d-builtins.glue.o d/d-incpath.glue.o d/types.glue.o \
+              d/d-elem.glue.o d/toir.glue.o d/d-typinf.glue.o \
+              d/d-port.glue.o d/d-target.glue.o d/d-glue.glue.o
 
 # ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
 # Not all DMD sources depend on d-dmd-gcc.h
@@ -130,14 +129,10 @@ d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
 d/%.gen.o: d/%.c
 	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS)  -o d/$*.gen.o -c $<
 
-# Can't use .cc files in gcc-4.8 for gtfiles, so need to rename to .c
-d/d-builtins.glue.o: $(srcdir)/d/d-builtins.c $(D_TREE_H)
-	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -o d/d-builtins.glue.o -c $<
-
 d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
 	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -o d/$*.glue.o -c $<
 
-d/%.cglue.o: $(srcdir)/d/%.cc $(D_TREE_H)
+d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
 	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
 
 d/impcvgen: d/impcnvgen.dmdgen.o
@@ -163,11 +158,12 @@ d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H)
 
 d/id.gen.o: d/id.c $(D_DMD_H)
 d/impcnvtab.gen.o: d/impcnvtab.c $(D_DMD_H)
+d/d-attribs.cglue.o: d/d-attribs.c $(D_TREE_H)
 d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) options.h
 d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
 d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
 d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
-d/d-ctype.glue.o: d/d-ctype.cc $(D_TREE_H)
+d/types.glue.o: d/types.cc $(D_TREE_H)
 d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
 d/toir.glue.o: d/toir.cc $(D_TREE_H)
 d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
@@ -175,15 +171,14 @@ d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
 d/d-typinf.glue.o: d/d-typinf.cc $(D_TREE_H)
 d/d-longdouble.glue.o: d/d-longdouble.cc d/longdouble.h $(D_TREE_H)
 d/d-port.glue.o: d/d-port.cc d/dfrontend/port.h $(D_TREE_H)
-d/d-gt.cglue.o: d/d-gt.cc $(D_TREE_H)
-d/d-builtins.glue.o: d/d-builtins.c $(D_TREE_H)
+d/d-builtins.glue.o: d/d-builtins.cc $(D_TREE_H)
 
 
-d/d-spec.o: $(srcdir)/d/d-spec.cc $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
+d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
     $(CONFIG_H) $(OPTS_H)
 	(SHLIB='$(SHLIB)'; \
 	$(COMPILER) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
-		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.cc)
+		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
 
 D_BORROWED_C_OBJS = attribs.o
 
@@ -192,7 +187,7 @@ d_OBJS = $(D_BORROWED_C_OBJS) $(D_GLUE_OBJS)
 D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_DMD_OBJS) $(d_OBJS)
 
 cc1d$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
-	$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
+	+$(LLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(BACKENDLIBS)
 
 

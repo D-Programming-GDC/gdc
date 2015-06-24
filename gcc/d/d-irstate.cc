@@ -15,12 +15,20 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
+#include "dfrontend/init.h"
+#include "dfrontend/aggregate.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/statement.h"
+
 #include "d-system.h"
 #include "d-lang.h"
+#include "d-objfile.h"
 #include "d-irstate.h"
 #include "d-codegen.h"
-
-#include "init.h"
 
 IRState::IRState()
 {

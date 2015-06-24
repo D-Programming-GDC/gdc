@@ -15,13 +15,17 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#include "d-system.h"
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
 
-#include "module.h"
-#include "mtype.h"
-#include "scope.h"
-#include "declaration.h"
-#include "aggregate.h"
+#include "dfrontend/module.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/scope.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/aggregate.h"
+
+#include "d-system.h"
 
 
 /*******************************************
