@@ -1,3 +1,5 @@
+[![Build Status](https://semaphoreci.com/api/v1/projects/3938c9ef-a0bf-497f-876c-3e722c051ace/464583/badge.svg)](https://semaphoreci.com/d-programming-gdc/gdc)
+
 ### What is GDC?
 
 GDC is a GPL implementation of the D compiler which integrates the open source D front end with GCC.
