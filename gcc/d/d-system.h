@@ -18,13 +18,6 @@
 #ifndef GCC_DCMPLR_DC_SYSTEM_H
 #define GCC_DCMPLR_DC_SYSTEM_H
 
-#include "config.h"
-
-// GMP is C++-aware, so we cannot included it in an extern "C" block.
-#include "gmp.h"
-
-#include "system.h"
-#include "coretypes.h"
 #include "tm.h"
 #include "tree.h"
 #include "tm_p.h"
@@ -59,9 +52,5 @@
 #include "vec.h"
 
 #include "common/common-target.h"
-
-#ifdef optimize
-#undef optimize
-#endif
 
 #endif

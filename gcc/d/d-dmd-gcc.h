@@ -24,10 +24,6 @@
 
 #ifndef GCC_SAFE_DMD
 
-#include "mars.h"
-#include "arraytypes.h"
-#include "aggregate.h"
-
 // Functions defined in the glue interface, but used in the frontend.
 
 // Used in module.c

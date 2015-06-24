@@ -15,9 +15,12 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+
 #include "d-system.h"
 #include "d-lang.h"
-
 
 // Creates an expression whose value is that of EXPR, converted to type TYPE.
 // This function implements all reasonable scalar conversions.

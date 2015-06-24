@@ -15,9 +15,13 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-#include "d-system.h"
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
 
-#include "port.h"
+#include "dfrontend/port.h"
+
+#include "d-system.h"
 
 longdouble Port::ldbl_nan;
 longdouble Port::snan;
