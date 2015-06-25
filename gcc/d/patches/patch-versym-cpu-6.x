@@ -87,9 +87,9 @@ for all supported architectures. And these where appropriate:
    do							\
 --- gcc/config/arm/arm.h
 +++ gcc/config/arm/arm.h
-@@ -172,6 +172,31 @@ extern char arm_arch_name[];
- 	  builtin_define ("__ARM_ASM_SYNTAX_UNIFIED__");\
-     } while (0)
+@@ -47,6 +47,31 @@ extern char arm_arch_name[];
+ /* Target CPU builtins.  */
+ #define TARGET_CPU_CPP_BUILTINS() arm_cpu_cpp_builtins (pfile)
  
 +/* Target CPU builtins for D.  */
 +#define TARGET_CPU_D_BUILTINS()				\
@@ -121,7 +121,7 @@ for all supported architectures. And these where appropriate:
  enum target_cpus
 --- gcc/config/i386/i386.h
 +++ gcc/config/i386/i386.h
-@@ -645,6 +645,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -647,6 +647,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -275,9 +275,9 @@ for all supported architectures. And these where appropriate:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- gcc/config/s390/s390.h
 +++ gcc/config/s390/s390.h
-@@ -114,6 +114,22 @@ enum processor_flags
-     }									\
-   while (0)
+@@ -113,6 +113,22 @@ enum processor_flags
+ /* Target CPU builtins.  */
+ #define TARGET_CPU_CPP_BUILTINS() s390_cpu_cpp_builtins (pfile)
  
 +/* Target CPU builtins for D.  */
 +#define TARGET_CPU_D_BUILTINS()				\
@@ -296,8 +296,8 @@ for all supported architectures. And these where appropriate:
 +  while (0)
 +
  #ifdef DEFAULT_TARGET_64BIT
- #define TARGET_DEFAULT             (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP | MASK_OPT_HTM)
- #else
+ #define TARGET_DEFAULT     (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP	\
+                             | MASK_OPT_HTM | MASK_OPT_VX)
 --- gcc/config/sh/sh.h
 +++ gcc/config/sh/sh.h
 @@ -31,6 +31,22 @@ extern int code_for_indirect_jump_scratch;

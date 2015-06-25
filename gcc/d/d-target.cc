@@ -1,5 +1,5 @@
 // d-target.cc -- D frontend for GCC.
-// Copyright (C) 2013 Software Foundation, Inc.
+// Copyright (C) 2013-2015 Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -23,7 +23,15 @@
 #include "dfrontend/mtype.h"
 #include "dfrontend/target.h"
 
-#include "d-system.h"
+#include "alias.h"
+#include "flags.h"
+#include "symtab.h"
+#include "tree.h"
+#include "fold-const.h"
+#include "diagnostic.h"
+#include "tm.h"
+#include "tm_p.h"
+
 #include "d-lang.h"
 #include "d-codegen.h"
 

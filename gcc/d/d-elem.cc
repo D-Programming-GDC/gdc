@@ -1,5 +1,5 @@
 // d-elem.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -25,7 +25,14 @@
 #include "dfrontend/statement.h"
 #include "dfrontend/ctfe.h"
 
-#include "d-system.h"
+#include "alias.h"
+#include "flags.h"
+#include "symtab.h"
+#include "tree.h"
+#include "fold-const.h"
+#include "diagnostic.h"
+#include "stor-layout.h"
+
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"

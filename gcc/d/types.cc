@@ -26,7 +26,20 @@
 #include "dfrontend/target.h"
 #include "dfrontend/visitor.h"
 
-#include "d-system.h"
+#include "alias.h"
+#include "flags.h"
+#include "symtab.h"
+#include "tree.h"
+#include "fold-const.h"
+#include "diagnostic.h"
+#include "tm.h"
+#include "function.h"
+#include "toplev.h"
+#include "target.h"
+#include "stringpool.h"
+#include "stor-layout.h"
+#include "attribs.h"
+
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
@@ -424,7 +437,11 @@ public:
     tree objtype = build_ctype(Type::tvoidptr);
     // Delegate function types are like method types, in that
     // they pass around a hidden internal state.
-    tree funtype = build_method_type(void_type_node, nexttype);
+    // Unlike method types, the hidden state is a generic pointer.
+    tree argtypes = TYPE_ARG_TYPES (nexttype);
+    argtypes = tree_cons (NULL_TREE, ptr_type_node, argtypes);
+
+    tree funtype = build_function_type(TREE_TYPE (nexttype), argtypes);
 
     TYPE_ATTRIBUTES (funtype) = TYPE_ATTRIBUTES (nexttype);
     TYPE_LANG_SPECIFIC (funtype) = TYPE_LANG_SPECIFIC (nexttype);
