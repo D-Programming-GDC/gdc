@@ -70,7 +70,7 @@ These official OS versions are not implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- gcc/config/darwin.h
 +++ gcc/config/darwin.h
-@@ -923,4 +923,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
+@@ -919,4 +919,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
     providing an osx-version-min of this unless overridden by the User.  */
  #define DEF_MIN_OSX_VERSION "10.4"
  
@@ -147,7 +147,7 @@ These official OS versions are not implemented:
    LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC, \
 --- gcc/config/i386/mingw-w64.h
 +++ gcc/config/i386/mingw-w64.h
-@@ -84,3 +84,10 @@ along with GCC; see the file COPYING3.  If not see
+@@ -89,3 +89,10 @@ along with GCC; see the file COPYING3.  If not see
    %{static:-Bstatic} %{!static:-Bdynamic} \
    %{shared|mdll: " SUB_LINK_ENTRY " --enable-auto-image-base} \
    %(shared_libgcc_undefs)"
@@ -250,7 +250,7 @@ These official OS versions are not implemented:
  #else
 --- gcc/config/linux.h
 +++ gcc/config/linux.h
-@@ -49,6 +49,28 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+@@ -53,6 +53,28 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
  	builtin_assert ("system=posix");			\
      } while (0)
  
@@ -277,8 +277,8 @@ These official OS versions are not implemented:
 +    } while (0)
 +
  /* Determine which dynamic linker to use depending on whether GLIBC or
-    uClibc or Bionic is the default C library and whether
-    -muclibc or -mglibc or -mbionic has been passed to change the default.  */
+    uClibc or Bionic or musl is the default C library and whether
+    -muclibc or -mglibc or -mbionic or -mmusl has been passed to change
 --- gcc/config/mips/linux-common.h
 +++ gcc/config/mips/linux-common.h
 @@ -27,6 +27,15 @@ along with GCC; see the file COPYING3.  If not see
@@ -349,7 +349,7 @@ These official OS versions are not implemented:
  
 --- gcc/config/rs6000/linux.h
 +++ gcc/config/rs6000/linux.h
-@@ -53,6 +53,17 @@
+@@ -57,6 +57,17 @@
      }						\
    while (0)
  
@@ -369,7 +369,7 @@ These official OS versions are not implemented:
  
 --- gcc/config/rs6000/linux64.h
 +++ gcc/config/rs6000/linux64.h
-@@ -336,6 +336,17 @@ extern int dot_symbols;
+@@ -369,6 +369,17 @@ extern int dot_symbols;
      }							\
    while (0)
  
@@ -385,5 +385,5 @@ These official OS versions are not implemented:
 +  while (0)
 +
  #undef  CPP_OS_DEFAULT_SPEC
- #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux) %(include_extra)"
  
