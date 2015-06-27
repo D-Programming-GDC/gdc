@@ -1,5 +1,5 @@
 // d-codegen.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -28,7 +28,20 @@
 #include "dfrontend/statement.h"
 #include "dfrontend/target.h"
 
-#include "d-system.h"
+#include "alias.h"
+#include "flags.h"
+#include "symtab.h"
+#include "tree.h"
+#include "fold-const.h"
+#include "diagnostic.h"
+#include "tm.h"
+#include "function.h"
+#include "langhooks.h"
+#include "target.h"
+#include "stringpool.h"
+#include "stor-layout.h"
+#include "attribs.h"
+
 #include "d-lang.h"
 #include "d-objfile.h"
 #include "d-irstate.h"
@@ -2404,11 +2417,6 @@ expand_intrinsic_vaarg(tree callee, tree arg1, tree arg2)
   tree type;
 
   STRIP_NOPS(arg1);
-
-  if (TREE_CODE(arg1) == ADDR_EXPR)
-    arg1 = TREE_OPERAND(arg1, 0);
-  else if (TREE_CODE(TREE_TYPE(arg1)) == REFERENCE_TYPE)
-    arg1 = build_deref(arg1);
 
   if (arg2 == NULL_TREE)
     type = TREE_TYPE(callee);

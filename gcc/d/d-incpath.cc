@@ -1,5 +1,5 @@
 // d-incpath.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -23,7 +23,11 @@
 #include "dfrontend/aggregate.h"
 #include "dfrontend/declaration.h"
 
-#include "d-system.h"
+#include "alias.h"
+#include "flags.h"
+#include "symtab.h"
+#include "tree.h"
+#include "diagnostic.h"
 #include "options.h"
 #include "cppdefault.h"
 

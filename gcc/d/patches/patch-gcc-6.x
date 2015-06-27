@@ -51,7 +51,7 @@ relevant documentation about the GDC front end.
 +	  || ! strcmp (language_string, "GNU D"))
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
- 	       || ! strcmp (language_string, "GNU Fortran"))
+ 	       || lang_GNU_Fortran ())
 --- gcc/doc/frontends.texi
 +++ gcc/doc/frontends.texi
 @@ -9,6 +9,7 @@
@@ -161,9 +161,9 @@ relevant documentation about the GDC front end.
 +  return lang == DW_LANG_D;
 +}
 +
- /* Remove the specified attribute if present.  */
-  
- static void
+ /* Remove the specified attribute if present.  Return TRUE if removal
+    was successful.  */
+ 
 @@ -20256,6 +20266,8 @@ gen_compile_unit_die (const char *filename)
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)

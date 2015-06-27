@@ -21,11 +21,21 @@
 	METHOD_TYPE to be strictly compatible with delegates.
 	* d-codegen.cc(convert_for_argument): Use correct accessors for array
 	.ptr and .length properties.
+	(expand_intrinsic_vaarg): Don't remove the va_list pointer reference,
+	as the backend now assumes this is what the front-end sets up.
 	(d_build_call): Remove assert as delegates and nested functions are no
 	longer represented as METHOD_TYPE.
 	(build_vthis_type): New function.
 	* toir.cc(IRVisitor::visit(ExtAsmStatement)): Support named labels by
 	calling resolve_asm_operand_names.
+	* d-builtins.cc(d_backend_init): Remove.
+	(d_backend_term): Remove.
+	* d-lang.cc(d_write_global_declarations): Remove langhook.
+	(d_init): Move d_backend_init implementation here.
+	(d_parse_file): Move d_write_global_declarations implementation here.
+	(d_finish_compilation): Remove calls to finalize_compilation_unit,
+	check_global_declarations, and emit_debug_global_declarations.
+	(d-system.h): Remove file.  Move all includes into local sources.
 
 2015-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
