@@ -15,6 +15,9 @@
 	* types.cc(TypeVisitor::visit(TypeDelegate)): Don't build a METHOD_TYPE
 	for delegates, as that requires knowing the underlying record type for
 	the 'this' object parameter.
+	(TypeVisitor::visit(TypeEnum): Don't call rest_of_type_compilation.
+	(TypeVisitor::visit(TypeClass): Likewise.
+	(TypeVisitor::visit(TypeStruct): Likewise.
 	* d-decls.cc(TypeInfoDeclaration::toSymbol): Assert class is a pointer
 	type, not a reference type.
 	(FuncDeclaration::toSymbol): Don't convert nested functions into a
@@ -26,6 +29,8 @@
 	(d_build_call): Remove assert as delegates and nested functions are no
 	longer represented as METHOD_TYPE.
 	(build_vthis_type): New function.
+	(d_decl_context): Don't set static/__gshared declaration context as
+	anything other than the enclosing module of the declaration.
 	* toir.cc(IRVisitor::visit(ExtAsmStatement)): Support named labels by
 	calling resolve_asm_operand_names.
 	* d-builtins.cc(d_backend_init): Remove.
