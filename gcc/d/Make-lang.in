@@ -1,7 +1,7 @@
 # -*- mode: makefile -*-
 
 # GDC -- D front-end for GCC
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2015 Free Software Foundation, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,179 +17,118 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-target_os=$(shell echo $(target) | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)/\3/')
+# This file provides the language dependent support in the main Makefile.
 
-# Actual names to use when installing a native compiler.
+# Installation name.
+
 D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
 D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdc|sed '$(program_transform_name)')
-
-# Common headers between D frontend and glue
-D_DMD_H := \
-    d/dfrontend/aav.h d/dfrontend/array.h d/dfrontend/aggregate.h \
-    d/dfrontend/aliasthis.h d/dfrontend/arraytypes.h d/dfrontend/attrib.h \
-    d/dfrontend/complex_t.h d/dfrontend/cond.h d/dfrontend/ctfe.h \
-    d/dfrontend/declaration.h d/dfrontend/doc.h d/dfrontend/dsymbol.h \
-    d/dfrontend/enum.h d/dfrontend/expression.h d/dfrontend/file.h \
-    d/dfrontend/filename.h d/dfrontend/hdrgen.h d/dfrontend/identifier.h \
-    d/dfrontend/import.h d/dfrontend/init.h d/dfrontend/intrange.h \
-    d/dfrontend/json.h d/dfrontend/lexer.h d/dfrontend/macro.h \
-    d/dfrontend/mars.h d/dfrontend/module.h d/dfrontend/mtype.h \
-    d/dfrontend/nspace.h d/dfrontend/object.h d/dfrontend/outbuffer.h \
-    d/dfrontend/parse.h d/dfrontend/port.h d/dfrontend/rmem.h \
-    d/dfrontend/root.h d/dfrontend/scope.h d/dfrontend/speller.h \
-    d/dfrontend/statement.h d/dfrontend/staticassert.h \
-    d/dfrontend/stringtable.h d/dfrontend/target.h \
-    d/dfrontend/template.h d/dfrontend/utf.h \
-    d/dfrontend/version.h d/dfrontend/visitor.h \
-    d/d-dmd-gcc.h d/longdouble.h d/id.h d/verstr.h
-
-D_TREE_H = $(TREE_H) $(D_DMD_H) d/intrinsics.def d/runtime.def d/d-tree.def \
-    d/d-lang.h d/d-codegen.h d/d-objfile.h d/d-irstate.h \
-    d/d-dmd-gcc.h d/d-system.h d/longdouble.h coretypes.h function.h \
-    $(VARRAY_H) $(SYSTEM_H) $(CONFIG_H) $(TARGET_H) $(GGC_H) \
-    $(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h
 
 # Name of phobos library
 D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos2\"
 
-# Actual names to use when installing a cross-compiler.
-D_CROSS_NAME = $(D_INSTALL_NAME)
-
-D d: cc1d$(exeext)
+# The name for selecting d in LANGUAGES.
+d: cc1d$(exeext)
 
 # Tell GNU make to ignore these if they exist.
-.PHONY: D d
+.PHONY: d
 
+# Include the dfrontend and build directories for headers.
 D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
 
-ALL_D_COMPILER_FLAGS = $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
-                        $(INCLUDES) $(D_INCLUDES) $(D_EXTRA_DEFINES)
-
-# D Frontend has slightly relaxed warnings compared to rest of GDC.
-DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing -Wuninitialized
-DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_COMPILERFLAGS)) $(DMD_WARN_CFLAGS)
-
-# %% Ditto
-ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) \
-                        -Id -I$(srcdir)/d/dfrontend -I$(srcdir)/d $(D_EXTRA_DEFINES)
-
 # Create the compiler driver for D.
+CFLAGS-d/d-spec.o += $(DRIVER_DEFINES) $(D_LIBPHOBOS)
+
 GDC_OBJS = $(GCC_OBJS) d/d-spec.o
 gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)
 	+$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
 	$(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
 	$(EXTRA_GCC_LIBS) $(LIBS)
 
-# Create a version of the g++ driver which calls the cross-compiler.
+# Create a version of the gdc driver which calls the cross-compiler.
 gdc-cross$(exeext): gdc$(exeext)
 	-rm -f gdc-cross$(exeext)
 	cp gdc$(exeext) gdc-cross$(exeext)
 
+# Filter out pedantic and virtual overload warnings.
+d-warn = $(filter-out -pedantic -Woverloaded-virtual, $(STRICT_WARN))
 
-# D Frontend sources
+# D Frontend has slightly relaxed warnings compared to rest of GDC.
+DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing -Wuninitialized
+DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_COMPILERFLAGS)) $(DMD_WARN_CFLAGS)
+
+ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) $(D_INCLUDES)
+
+# D Frontend object files.
 D_DMD_OBJS := \
-    d/argtypes.dmd.o d/aav.dmd.o d/access.dmd.o d/aliasthis.dmd.o \
-    d/apply.dmd.o d/arrayop.dmd.o d/attrib.dmd.o \
-    d/canthrow.dmd.o d/cast.dmd.o d/class.dmd.o \
-    d/clone.dmd.o d/cond.dmd.o d/constfold.dmd.o d/cppmangle.dmd.o \
-    d/ctfeexpr.dmd.o d/declaration.dmd.o d/delegatize.dmd.o d/doc.dmd.o \
-    d/dsymbol.dmd.o d/entity.dmd.o d/enum.dmd.o \
-    d/expression.dmd.o d/file.dmd.o d/filename.dmd.o d/func.dmd.o \
-    d/hdrgen.dmd.o d/identifier.dmd.o d/imphint.dmd.o d/import.dmd.o \
-    d/init.dmd.o d/inline.dmd.o d/interpret.dmd.o d/intrange.dmd.o \
-    d/json.dmd.o d/lexer.dmd.o d/macro.dmd.o d/mangle.dmd.o \
-    d/mtype.dmd.o d/module.dmd.o d/nogc.dmd.o d/nspace.dmd.o \
-    d/object.dmd.o d/opover.dmd.o d/optimize.dmd.o d/outbuffer.dmd.o \
-    d/parse.dmd.o d/rmem.dmd.o d/sapply.dmd.o d/scope.dmd.o \
-    d/sideeffect.dmd.o d/speller.dmd.o d/statement.dmd.o \
-    d/staticassert.dmd.o d/stringtable.dmd.o d/struct.dmd.o \
-    d/template.dmd.o d/traits.dmd.o d/unittests.dmd.o \
-    d/utf.dmd.o d/version.dmd.o
+    d/argtypes.o d/aav.o d/access.o d/aliasthis.o \
+    d/apply.o d/arrayop.o d/attrib.o \
+    d/canthrow.o d/cast.o d/class.o \
+    d/clone.o d/cond.o d/constfold.o d/cppmangle.o \
+    d/ctfeexpr.o d/declaration.o d/delegatize.o d/doc.o \
+    d/dsymbol.o d/entity.o d/enum.o \
+    d/expression.o d/file.o d/filename.o d/func.o \
+    d/hdrgen.o d/identifier.o d/imphint.o d/import.o \
+    d/init.o d/inline.o d/interpret.o d/intrange.o \
+    d/json.o d/lexer.o d/macro.o d/mangle.o \
+    d/mtype.o d/module.o d/nogc.o d/nspace.o \
+    d/object.o d/opover.o d/optimize.o d/outbuffer.o \
+    d/parse.o d/rmem.o d/sapply.o d/scope.o \
+    d/sideeffect.o d/speller.o d/statement.o \
+    d/staticassert.o d/stringtable.o d/struct.o \
+    d/template.o d/traits.o d/unittests.o \
+    d/utf.o d/version.o
 
+# D Frontend generated files.
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
-D_GENERATED_OBJS = d/id.gen.o d/impcnvtab.gen.o
+D_GENERATED_OBJS = d/id.o d/impcnvtab.o
 
-# D Glue sources
-D_GLUE_OBJS = d/d-attribs.cglue.o d/d-lang.glue.o d/d-decls.glue.o \
-              d/d-codegen.glue.o d/d-objfile.glue.o d/d-irstate.glue.o \
-              d/d-convert.glue.o d/d-todt.glue.o d/d-longdouble.glue.o \
-              d/d-builtins.glue.o d/d-incpath.glue.o d/types.glue.o \
-              d/d-elem.glue.o d/toir.glue.o d/d-typinf.glue.o \
-              d/d-port.glue.o d/d-target.glue.o d/d-glue.glue.o
+# D Glue object files.
+D_GLUE_OBJS = d/d-attribs.o d/d-lang.o d/d-decls.o \
+              d/d-codegen.o d/d-objfile.o d/d-irstate.o \
+              d/d-convert.o d/d-todt.o d/d-longdouble.o \
+              d/d-builtins.o d/d-incpath.o d/types.o \
+              d/d-elem.o d/toir.o d/d-typinf.o \
+              d/d-port.o d/d-target.o d/d-glue.o
 
-# ALL_D_COMPILER_FLAGS causes issues -- c++ <complex.h> instead of C <complex.h>
-# Not all DMD sources depend on d-dmd-gcc.h
-d/%.dmd.o: $(srcdir)/d/dfrontend/%.c $(D_DMD_H)
-	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmd.o -c $<
-
-# For generator programs.
-d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
-	$(COMPILER_FOR_BUILD) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
-
-d/%.gen.o: d/%.c
-	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS)  -o d/$*.gen.o -c $<
-
-d/%.glue.o: $(srcdir)/d/%.cc $(D_TREE_H)
-	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -o d/$*.glue.o -c $<
-
-d/%.cglue.o: $(srcdir)/d/%.c $(D_TREE_H)
-	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o d/$*.cglue.o -c $<
+# Generated programs.
+d/idgen: d/idgen.dmdgen.o
+	$(COMPILER_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
 
 d/impcvgen: d/impcnvgen.dmdgen.o
 	$(COMPILER_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
 
-d/idgen: d/idgen.dmdgen.o
-	$(COMPILER_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
+# Generated sources.
+d/id.c: d/idgen
+	cd d && ./idgen
+
+# idgen also generates id.h; just verify id.h exists.
+d/id.h: d/id.c
 
 d/impcnvtab.c: d/impcvgen
 	cd d && ./impcvgen
 
-d/id.c: d/idgen
-	cd d && ./idgen
-# idgen also generates id.h; just verify id.h exists
-d/id.h: d/id.c
-
 d/verstr.h: d/VERSION
 	cat $^ > $@
 
-d/d-incpath.glue.o: d/d-incpath.cc $(D_TREE_H)
-	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -DGCC_SAFE_DMD=1 -o $@ -c $<
+# Override build rules for D frontend.
+d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h
+	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.o -c $<
 
+d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
+	$(COMPILER_FOR_BUILD) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
 
-d/id.gen.o: d/id.c $(D_DMD_H)
-d/impcnvtab.gen.o: d/impcnvtab.c $(D_DMD_H)
-d/d-attribs.cglue.o: d/d-attribs.c $(D_TREE_H)
-d/d-lang.glue.o: d/d-lang.cc $(D_TREE_H) options.h
-d/d-irstate.glue.o: d/d-irstate.cc $(D_TREE_H)
-d/d-codegen.glue.o: d/d-codegen.cc $(D_TREE_H)
-d/d-decls.glue.o: d/d-decls.cc $(D_TREE_H)
-d/types.glue.o: d/types.cc $(D_TREE_H)
-d/d-elem.glue.o: d/d-elem.cc $(D_TREE_H)
-d/toir.glue.o: d/toir.cc $(D_TREE_H)
-d/d-convert.glue.o: d/d-convert.cc $(D_TREE_H)
-d/d-todt.glue.o: d/d-todt.cc $(D_TREE_H)
-d/d-typinf.glue.o: d/d-typinf.cc $(D_TREE_H)
-d/d-longdouble.glue.o: d/d-longdouble.cc d/longdouble.h $(D_TREE_H)
-d/d-port.glue.o: d/d-port.cc d/dfrontend/port.h $(D_TREE_H)
-d/d-builtins.glue.o: d/d-builtins.cc $(D_TREE_H)
+CFLAGS-d/id.o += $(D_INCLUDES)
+CFLAGS-d/impcnvtab.o += $(D_INCLUDES)
 
+# All language-specific object files for D.
+D_ALL_OBJS = $(D_DMD_OBJS) $(D_GENERATED_OBJS) $(D_GLUE_OBJS)
 
-d/d-spec.o: $(srcdir)/d/d-spec.c $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) \
-    $(CONFIG_H) $(OPTS_H)
-	(SHLIB='$(SHLIB)'; \
-	$(COMPILER) -c $(ALL_D_COMPILER_FLAGS) $(DRIVER_DEFINES) \
-		$(D_LIBPHOBOS) $(INCLUDES) -o $@ $(srcdir)/d/d-spec.c)
+d_OBJS = $(D_ALL_OBJS) d/d-spec.o
 
-D_BORROWED_C_OBJS = attribs.o
-
-d_OBJS = $(D_BORROWED_C_OBJS) $(D_GLUE_OBJS)
-
-D_ALL_OBJS = $(D_GENERATED_OBJS) $(D_DMD_OBJS) $(d_OBJS)
-
-cc1d$(exeext): $(D_ALL_OBJS) $(BACKEND) $(LIBDEPS)
+cc1d$(exeext): $(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBDEPS)
 	+$(LLINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
-		$(D_ALL_OBJS) $(BACKEND) $(LIBS) $(BACKENDLIBS)
-
+		$(D_ALL_OBJS) attribs.o $(BACKEND) $(LIBS) $(BACKENDLIBS)
 
 # Documentation.
 
@@ -224,44 +163,44 @@ $(build_htmldir)/d/index.html: $(D_TEXI_FILES)
 gdc.pod: d/gdc.texi
 	-$(TEXI2POD) -D gdc < $< > $@
 
-# Build hooks:
+# Build hooks.
 
-d.all.build: gdc$(exeext) cc1d$(exeext)
 d.all.cross: gdc-cross$(exeext)
 d.start.encap: gdc$(exeext)
 d.rest.encap:
 d.info: doc/gdc.info
-d.srcinfo: doc/gdc.info
-	-cp -p $^ $(srcdir)/doc
-d.srcextra:
 d.dvi: doc/gdc.dvi
 d.pdf: doc/gdc.pdf
 d.html: $(build_htmldir)/d/index.html
+d.srcinfo: doc/gdc.info
+	-cp -p $^ $(srcdir)/doc
+d.srcextra:
+
+d.tags: force
+	cd $(srcdir)/d; \
+	etags -o TAGS.sub *.c *.cc *.h dfrontend/*.h dfrontend/*.c; \
+	etags --include TAGS.sub --include ../TAGS.sub
+
 d.man: doc/gdc.1
 d.srcman: doc/gdc.1
 	cp -p $^ $(srcdir)/doc
 
+# Install hooks.
 
-# Install hooks:
-
-d.install-normal:
-d.install-plugin:
 d.install-common: installdirs
 	-rm -f $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	$(INSTALL_PROGRAM) gdc$(exeext) $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-chmod a+x $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
-	-if [ -f cc1d$(exeext) ] ; then \
-	  if [ -f gdc-cross$(exeext) ] ; then \
-	    if [ -d $(DESTDIR)$(gcc_tooldir)/bin/. ] ; then \
-	      rm -f $(DESTDIR)$(gcc_tooldir)/bin/gdc$(exeext); \
-	      $(INSTALL_PROGRAM) gdc-cross$(exeext) $(DESTDIR)$(gcc_tooldir)/bin/gdc$(exeext); \
-	    else true; fi; \
+	-if test -f cc1d$(exeext); then \
+	  if test -f gdc-cross$(exeext); then \
+	    :; \
 	  else \
 	    rm -f $(DESTDIR)$(bindir)/$(D_TARGET_INSTALL_NAME)$(exeext); \
 	    ( cd $(DESTDIR)$(bindir) && \
 	      $(LN) $(D_INSTALL_NAME)$(exeext) $(D_TARGET_INSTALL_NAME)$(exeext) ); \
-	  fi ; \
+	  fi; \
 	fi
+
+d.install-plugin:
 
 d.install-info: $(DESTDIR)$(infodir)/gdc.info
 
@@ -302,22 +241,22 @@ $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext): doc/gdc.1 installdirs
 d.uninstall:
 	-rm -rf $(DESTDIR)$(bindir)/$(D_INSTALL_NAME)$(exeext)
 	-rm -rf $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext)
+	-rm -rf $(DESTDIR)$(bindir)/$(D_TARGET_INSTALL_NAME)$(exeext)
+	-rm -rf $(DESTDIR)$(infodir)/gdc.info*
+
+# Clean hooks.
 
 d.mostlyclean:
 	-rm -f d/*$(objext)
 	-rm -f d/*$(coverageexts)
-	-rm -f $(D_GENERATED_SRCS)
-# shouldn't this do something?
+	-rm -f $(D_GENERATED_SRCS) verstr.h
+	-rm -f d/gdc$(exeext) gdc-cross$(exeext) d/cc1d$(exeext)
 d.clean:
 d.distclean:
-	-rm -f d/config.status
-	-rm -f d/Makefile
-d.extraclean:
 d.maintainer-clean:
+	-rm -f $(docobjdir)/gdc.1
 
-
-# Stage hooks:
-# The main makefile has already created stage?/d.
+# Stage hooks.
 
 d.stage1: stage1-start
 	-mv d/*$(objext) stage1/d
@@ -336,9 +275,6 @@ d.stagefeedback: stagefeedback-start
 # check targets.  However, our DejaGNU framework requires 'check-gdc' as its
 # entry point.  We feed the former to the latter here.
 check-d: check-gdc
-# List of targets that can use the generic check- rule and its // variant.
 lang_checks += check-gdc
 lang_checks_parallelized += check-gdc
-# For description see comment above check_gcc_parallelize in gcc/Makefile.in.
 check_gdc_parallelize = 10
-
