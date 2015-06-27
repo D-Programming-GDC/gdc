@@ -442,7 +442,7 @@ public:
     // Need to set t->ctype right away in case of self-references to
     // the type during this call.
     tree basetype = make_node(RECORD_TYPE);
-    t->ctype = build_reference_type(basetype);
+    t->ctype = build_pointer_type(basetype);
     d_keep(t->ctype);
 
     // Note that this is set on both the reference type and record type.

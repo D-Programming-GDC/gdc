@@ -10,6 +10,10 @@
 	(D_BORROWED_C_OBJS): Remove.
 	(CFLAGS-d/id.o): Declare extra CFLAGS for building generated sources.
 	(CFLAGS-d/impcnvtab.o): Likewise.
+	* types.cc(TypeVisitor::visit(TypeClass)): Build a pointer type for
+	classes, not a reference type.
+	* d-decls.cc(TypeInfoDeclaration::toSymbol): Assert class is a pointer
+	type, not a reference type.
 
 2015-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 

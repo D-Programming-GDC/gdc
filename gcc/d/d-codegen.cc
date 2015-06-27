@@ -1112,7 +1112,7 @@ build_class_binfo (tree super, ClassDeclaration *cd)
   tree binfo = make_tree_binfo (1);
   tree ctype = build_ctype(cd->type);
 
-  // Want RECORD_TYPE, not REFERENCE_TYPE
+  // Want RECORD_TYPE, not POINTER_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = integer_zero_node;
@@ -1134,7 +1134,7 @@ build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
   tree binfo = make_tree_binfo (cd->baseclasses->dim);
   tree ctype = build_ctype(cd->type);
 
-  // Want RECORD_TYPE, not REFERENCE_TYPE
+  // Want RECORD_TYPE, not POINTER_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = size_int (offset * Target::ptrsize);

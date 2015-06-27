@@ -275,7 +275,7 @@ TypeInfoDeclaration::toSymbol()
 
       // This variable is the static initialization for the
       // given TypeInfo.  It is the actual data, not a reference
-      gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
+      gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == POINTER_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
       relayout_decl (csym->Stree);
       TREE_USED (csym->Stree) = 1;
