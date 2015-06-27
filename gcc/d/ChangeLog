@@ -12,8 +12,20 @@
 	(CFLAGS-d/impcnvtab.o): Likewise.
 	* types.cc(TypeVisitor::visit(TypeClass)): Build a pointer type for
 	classes, not a reference type.
+	* types.cc(TypeVisitor::visit(TypeDelegate)): Don't build a METHOD_TYPE
+	for delegates, as that requires knowing the underlying record type for
+	the 'this' object parameter.
 	* d-decls.cc(TypeInfoDeclaration::toSymbol): Assert class is a pointer
 	type, not a reference type.
+	(FuncDeclaration::toSymbol): Don't convert nested functions into a
+	METHOD_TYPE to be strictly compatible with delegates.
+	* d-codegen.cc(convert_for_argument): Use correct accessors for array
+	.ptr and .length properties.
+	(d_build_call): Remove assert as delegates and nested functions are no
+	longer represented as METHOD_TYPE.
+	(build_vthis_type): New function.
+	* toir.cc(IRVisitor::visit(ExtAsmStatement)): Support named labels by
+	calling resolve_asm_operand_names.
 
 2015-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 

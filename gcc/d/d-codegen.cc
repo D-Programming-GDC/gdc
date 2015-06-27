@@ -611,55 +611,59 @@ convert_for_argument (tree exp_tree, Expression *expr, Parameter *arg)
 // Return truth-value conversion of expression EXPR from value type TYPE.
 
 tree
-convert_for_condition (tree expr, Type *type)
+convert_for_condition(tree expr, Type *type)
 {
   tree result = NULL_TREE;
-  tree obj, func, tmp;
 
   switch (type->toBasetype()->ty)
     {
     case Taarray:
       // Shouldn't this be...
       //  result = _aaLen (&expr);
-      result = component_ref (expr, TYPE_FIELDS (TREE_TYPE (expr)));
+      result = component_ref(expr, TYPE_FIELDS (TREE_TYPE (expr)));
       break;
 
     case Tarray:
+    {
       // Checks (length || ptr) (i.e ary !is null)
-      tmp = maybe_make_temp (expr);
-      obj = delegate_object (tmp);
-      func = delegate_method (tmp);
-      if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
+      expr = maybe_make_temp(expr);
+      tree len = d_array_length(expr);
+      tree ptr = d_array_ptr(expr);
+      if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
 	{
-	  result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj,
-			   d_convert (TREE_TYPE (obj), func));
+	  result = build2(BIT_IOR_EXPR, TREE_TYPE (len), len,
+			  d_convert(TREE_TYPE (len), ptr));
 	}
       else
 	{
-	  obj = d_truthvalue_conversion (obj);
-	  func = d_truthvalue_conversion (func);
+	  len = d_truthvalue_conversion(len);
+	  ptr = d_truthvalue_conversion(ptr);
 	  // probably not worth using TRUTH_OROR ...
-	  result = build2 (TRUTH_OR_EXPR, TREE_TYPE (obj), obj, func);
+	  result = build2(TRUTH_OR_EXPR, TREE_TYPE (len), len, ptr);
 	}
       break;
+    }
 
     case Tdelegate:
+    {
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
+      tree obj, func;
       if (D_METHOD_CALL_EXPR (expr))
-	extract_from_method_call (expr, obj, func);
+	extract_from_method_call(expr, obj, func);
       else
 	{
-	  tmp = maybe_make_temp (expr);
-	  obj = delegate_object (tmp);
-	  func = delegate_method (tmp);
+	  expr = maybe_make_temp(expr);
+	  obj = delegate_object(expr);
+	  func = delegate_method(expr);
 	}
 
-      obj = d_truthvalue_conversion (obj);
-      func = d_truthvalue_conversion (func);
+      obj = d_truthvalue_conversion(obj);
+      func = d_truthvalue_conversion(func);
       // probably not worth using TRUTH_ORIF ...
-      result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
+      result = build2(BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
       break;
+    }
 
     default:
       result = expr;
@@ -2014,12 +2018,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       saved_args = callee;
     }
 
-  if (TREE_CODE (ctype) == FUNCTION_TYPE)
-    {
-      if (object != NULL_TREE)
-	gcc_unreachable();
-    }
-  else if (object == NULL_TREE)
+  if (TREE_CODE (ctype) != FUNCTION_TYPE && object == NULL_TREE)
     {
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)
@@ -2691,6 +2690,28 @@ d_build_label (Loc loc, Identifier *ident)
     set_decl_location (decl, loc);
 
   return decl;
+}
+
+// Build a function type whose first argument is a pointer to BASETYPE,
+// which is to be used for the 'vthis' parameter for TYPE.
+// The base type may be a record for member functions, or a void for
+// nested functions and delegates.
+
+tree
+build_vthis_type(tree basetype, tree type)
+{
+  gcc_assert (TREE_CODE (type) == FUNCTION_TYPE);
+
+  tree argtypes = tree_cons(NULL_TREE, build_pointer_type(basetype),
+			    TYPE_ARG_TYPES (type));
+  tree fntype = build_function_type(TREE_TYPE (type), argtypes);
+
+  if (RECORD_OR_UNION_TYPE_P (basetype))
+    TYPE_METHOD_BASETYPE (fntype) = TYPE_MAIN_VARIANT (basetype);
+  else
+    gcc_assert(VOID_TYPE_P (basetype));
+
+  return fntype;
 }
 
 // If SYM is a nested function, return the static chain to be

@@ -424,7 +424,8 @@ public:
     tree objtype = build_ctype(Type::tvoidptr);
     // Delegate function types are like method types, in that
     // they pass around a hidden internal state.
-    tree funtype = build_method_type(void_type_node, nexttype);
+    // Unlike method types, the hidden state is a generic pointer.
+    tree funtype = build_vthis_type(void_type_node, nexttype);
 
     TYPE_ATTRIBUTES (funtype) = TYPE_ATTRIBUTES (nexttype);
     TYPE_LANG_SPECIFIC (funtype) = TYPE_LANG_SPECIFIC (nexttype);

@@ -709,8 +709,11 @@ public:
 	  }
       }
 
-    tree exp = build5(ASM_EXPR, void_type_node,
-		      build_string(insn->len, (char *)insn->string),
+    // Should also do some extra validation on all input and output operands.
+    tree string = build_string(insn->len, (char *)insn->string);
+    string = resolve_asm_operand_names(string, outputs, inputs, labels);
+
+    tree exp = build5(ASM_EXPR, void_type_node, string,
 		      outputs, inputs, clobbers, labels);
     SET_EXPR_LOCATION (exp, input_location);
 

@@ -53,5 +53,6 @@
 #include "gimplify.h"
 #include "ipa-ref.h"
 #include "cgraph.h"
+#include "stmt.h"
 
 #endif

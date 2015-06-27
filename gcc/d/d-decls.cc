@@ -344,9 +344,9 @@ FuncDeclaration::toSymbol()
 
       if (isNested())
 	{
-	  // Even if D-style nested functions are not implemented, add an
-	  // extra argument to be compatible with delegates.
-	  fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
+	  // Add an extra argument for the frame/closure pointer,
+	  // also needed to be compatible with delegates.
+	  fntype = build_vthis_type(void_type_node, TREE_TYPE (fndecl));
 	}
       else if (isThis())
 	{
@@ -359,7 +359,7 @@ FuncDeclaration::toSymbol()
 	  if (!agg_decl->isStructDeclaration())
 	    handle = TREE_TYPE (handle);
 
-	  fntype = build_method_type (handle, TREE_TYPE (fndecl));
+	  fntype = build_vthis_type(handle, TREE_TYPE (fndecl));
 
 	  if (isVirtual() && vtblIndex != -1)
 	    vindex = size_int (vtblIndex);
