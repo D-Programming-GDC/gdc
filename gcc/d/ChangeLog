@@ -1,3 +1,11 @@
+2015-06-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* intrinsics.def: Added ADDS, ADDSL, ADDU, ADDUL, SUBS, SUBSL, NEGS,
+	NEGSL, MULS, MULSL, MULU, and MULUL intrinsic definitions.
+	* d-codegen.cc(expand_intrinsic_arith): New function.
+	(expand_intrinsic): Add cases for core.checkedint functions adds, addu,
+	subs, subu, negs, muls, and mulu intrinsics.
+
 2015-06-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in(D_DMD_H): Remove.
