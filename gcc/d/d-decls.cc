@@ -1,5 +1,5 @@
 // d-decls.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -30,7 +30,16 @@
 #include "dfrontend/ctfe.h"
 #include "dfrontend/target.h"
 
-#include "d-system.h"
+#include "alias.h"
+#include "flags.h"
+#include "symtab.h"
+#include "tree.h"
+#include "fold-const.h"
+#include "diagnostic.h"
+#include "target.h"
+#include "stringpool.h"
+#include "stor-layout.h"
+
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
@@ -275,7 +284,7 @@ TypeInfoDeclaration::toSymbol()
 
       // This variable is the static initialization for the
       // given TypeInfo.  It is the actual data, not a reference
-      gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
+      gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == POINTER_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
       relayout_decl (csym->Stree);
       TREE_USED (csym->Stree) = 1;
@@ -344,9 +353,9 @@ FuncDeclaration::toSymbol()
 
       if (isNested())
 	{
-	  // Even if D-style nested functions are not implemented, add an
-	  // extra argument to be compatible with delegates.
-	  fntype = build_method_type (void_type_node, TREE_TYPE (fndecl));
+	  // Add an extra argument for the frame/closure pointer,
+	  // also needed to be compatible with delegates.
+	  fntype = build_vthis_type(void_type_node, TREE_TYPE (fndecl));
 	}
       else if (isThis())
 	{
@@ -359,7 +368,7 @@ FuncDeclaration::toSymbol()
 	  if (!agg_decl->isStructDeclaration())
 	    handle = TREE_TYPE (handle);
 
-	  fntype = build_method_type (handle, TREE_TYPE (fndecl));
+	  fntype = build_vthis_type(handle, TREE_TYPE (fndecl));
 
 	  if (isVirtual() && vtblIndex != -1)
 	    vindex = size_int (vtblIndex);

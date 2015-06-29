@@ -1,5 +1,5 @@
 // d-codegen.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -28,7 +28,20 @@
 #include "dfrontend/statement.h"
 #include "dfrontend/target.h"
 
-#include "d-system.h"
+#include "alias.h"
+#include "flags.h"
+#include "symtab.h"
+#include "tree.h"
+#include "fold-const.h"
+#include "diagnostic.h"
+#include "tm.h"
+#include "function.h"
+#include "langhooks.h"
+#include "target.h"
+#include "stringpool.h"
+#include "stor-layout.h"
+#include "attribs.h"
+
 #include "d-lang.h"
 #include "d-objfile.h"
 #include "d-irstate.h"
@@ -46,9 +59,26 @@ tree
 d_decl_context (Dsymbol *dsym)
 {
   Dsymbol *parent = dsym;
+  Declaration *decl = dsym->isDeclaration();
 
   while ((parent = parent->toParent2()))
     {
+      // We've reached the top-level module namespace.
+      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
+      // but only for extern(D) symbols.
+      if (parent->isModule())
+	{
+	  if (decl != NULL && decl->linkage != LINKd)
+	    return NULL_TREE;
+
+	  return parent->toImport()->Stree;
+	}
+
+      // Declarations marked as 'static' or '__gshared' are never
+      // part of any context except at module level.
+      if (decl != NULL && decl->isDataseg())
+	continue;
+
       // Nested functions.
       if (parent->isFuncDeclaration())
 	return parent->toSymbol()->Stree;
@@ -63,18 +93,6 @@ d_decl_context (Dsymbol *dsym)
 	    context = TREE_TYPE (context);
 
 	  return context;
-	}
-
-      // We've reached the top-level module namespace.
-      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
-      // but only for extern(D) symbols.
-      if (parent->isModule())
-	{
-	  Declaration *decl = dsym->isDeclaration();
-	  if (decl != NULL && decl->linkage != LINKd)
-	    return NULL_TREE;
-
-	  return parent->toImport()->Stree;
 	}
     }
 
@@ -611,55 +629,59 @@ convert_for_argument (tree exp_tree, Expression *expr, Parameter *arg)
 // Return truth-value conversion of expression EXPR from value type TYPE.
 
 tree
-convert_for_condition (tree expr, Type *type)
+convert_for_condition(tree expr, Type *type)
 {
   tree result = NULL_TREE;
-  tree obj, func, tmp;
 
   switch (type->toBasetype()->ty)
     {
     case Taarray:
       // Shouldn't this be...
       //  result = _aaLen (&expr);
-      result = component_ref (expr, TYPE_FIELDS (TREE_TYPE (expr)));
+      result = component_ref(expr, TYPE_FIELDS (TREE_TYPE (expr)));
       break;
 
     case Tarray:
+    {
       // Checks (length || ptr) (i.e ary !is null)
-      tmp = maybe_make_temp (expr);
-      obj = delegate_object (tmp);
-      func = delegate_method (tmp);
-      if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
+      expr = maybe_make_temp(expr);
+      tree len = d_array_length(expr);
+      tree ptr = d_array_ptr(expr);
+      if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
 	{
-	  result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj,
-			   d_convert (TREE_TYPE (obj), func));
+	  result = build2(BIT_IOR_EXPR, TREE_TYPE (len), len,
+			  d_convert(TREE_TYPE (len), ptr));
 	}
       else
 	{
-	  obj = d_truthvalue_conversion (obj);
-	  func = d_truthvalue_conversion (func);
+	  len = d_truthvalue_conversion(len);
+	  ptr = d_truthvalue_conversion(ptr);
 	  // probably not worth using TRUTH_OROR ...
-	  result = build2 (TRUTH_OR_EXPR, TREE_TYPE (obj), obj, func);
+	  result = build2(TRUTH_OR_EXPR, TREE_TYPE (len), len, ptr);
 	}
       break;
+    }
 
     case Tdelegate:
+    {
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
+      tree obj, func;
       if (D_METHOD_CALL_EXPR (expr))
-	extract_from_method_call (expr, obj, func);
+	extract_from_method_call(expr, obj, func);
       else
 	{
-	  tmp = maybe_make_temp (expr);
-	  obj = delegate_object (tmp);
-	  func = delegate_method (tmp);
+	  expr = maybe_make_temp(expr);
+	  obj = delegate_object(expr);
+	  func = delegate_method(expr);
 	}
 
-      obj = d_truthvalue_conversion (obj);
-      func = d_truthvalue_conversion (func);
+      obj = d_truthvalue_conversion(obj);
+      func = d_truthvalue_conversion(func);
       // probably not worth using TRUTH_ORIF ...
-      result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
+      result = build2(BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
       break;
+    }
 
     default:
       result = expr;
@@ -1112,7 +1134,7 @@ build_class_binfo (tree super, ClassDeclaration *cd)
   tree binfo = make_tree_binfo (1);
   tree ctype = build_ctype(cd->type);
 
-  // Want RECORD_TYPE, not REFERENCE_TYPE
+  // Want RECORD_TYPE, not POINTER_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = integer_zero_node;
@@ -1134,7 +1156,7 @@ build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
   tree binfo = make_tree_binfo (cd->baseclasses->dim);
   tree ctype = build_ctype(cd->type);
 
-  // Want RECORD_TYPE, not REFERENCE_TYPE
+  // Want RECORD_TYPE, not POINTER_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = size_int (offset * Target::ptrsize);
@@ -2014,12 +2036,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       saved_args = callee;
     }
 
-  if (TREE_CODE (ctype) == FUNCTION_TYPE)
-    {
-      if (object != NULL_TREE)
-	gcc_unreachable();
-    }
-  else if (object == NULL_TREE)
+  if (TREE_CODE (ctype) != FUNCTION_TYPE && object == NULL_TREE)
     {
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)
@@ -2406,11 +2423,6 @@ expand_intrinsic_vaarg(tree callee, tree arg1, tree arg2)
 
   STRIP_NOPS(arg1);
 
-  if (TREE_CODE(arg1) == ADDR_EXPR)
-    arg1 = TREE_OPERAND(arg1, 0);
-  else if (TREE_CODE(TREE_TYPE(arg1)) == REFERENCE_TYPE)
-    arg1 = build_deref(arg1);
-
   if (arg2 == NULL_TREE)
     type = TREE_TYPE(callee);
   else
@@ -2691,6 +2703,28 @@ d_build_label (Loc loc, Identifier *ident)
     set_decl_location (decl, loc);
 
   return decl;
+}
+
+// Build a function type whose first argument is a pointer to BASETYPE,
+// which is to be used for the 'vthis' parameter for TYPE.
+// The base type may be a record for member functions, or a void for
+// nested functions and delegates.
+
+tree
+build_vthis_type(tree basetype, tree type)
+{
+  gcc_assert (TREE_CODE (type) == FUNCTION_TYPE);
+
+  tree argtypes = tree_cons(NULL_TREE, build_pointer_type(basetype),
+			    TYPE_ARG_TYPES (type));
+  tree fntype = build_function_type(TREE_TYPE (type), argtypes);
+
+  if (RECORD_OR_UNION_TYPE_P (basetype))
+    TYPE_METHOD_BASETYPE (fntype) = TYPE_MAIN_VARIANT (basetype);
+  else
+    gcc_assert(VOID_TYPE_P (basetype));
+
+  return fntype;
 }
 
 // If SYM is a nested function, return the static chain to be
