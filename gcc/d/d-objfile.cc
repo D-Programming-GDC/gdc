@@ -1723,7 +1723,7 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
   Declaration *rd = dsym->isDeclaration();
 
   if (public_p
-      || (TREE_CODE (decl) == VAR_DECL && (rd && rd->isDataseg()))
+      || (VAR_P (decl) && (rd && rd->isDataseg()))
       || (TREE_CODE (decl) == FUNCTION_DECL))
     {
       bool local_p = output_module_p (dsym->getModule());
@@ -1805,7 +1805,7 @@ mark_needed (tree decl)
       struct cgraph_node *node = cgraph_node::get_create (decl);
       node->forced_by_abi = true;
     }
-  else if (TREE_CODE (decl) == VAR_DECL)
+  else if (VAR_P (decl))
     {
       struct varpool_node *node = varpool_node::get_create (decl);
       node->forced_by_abi = true;
@@ -1950,7 +1950,7 @@ d_finish_compilation (tree *vec, int len)
       // Determine if a global var/function is needed.
       int needed = wrapup_global_declarations (&decl, 1);
 
-      if ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
+      if ((VAR_P (decl) && TREE_STATIC (decl))
 	  || TREE_CODE (decl) == FUNCTION_DECL)
 	{
 	  // Don't emit, assembler name already in symbol table.

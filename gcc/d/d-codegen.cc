@@ -566,7 +566,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
 
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
-	      if (TREE_CODE (value) == VAR_DECL)
+	      if (VAR_P (value))
 		{
 		  value = DECL_INITIAL (value);
 		  gcc_assert (value);
