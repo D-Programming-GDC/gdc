@@ -2361,7 +2361,7 @@ expand_intrinsic_bsr (tree callee, tree arg)
   return fold_convert (TREE_TYPE (callee), exp);
 }
 
-// Expand the front-end built-in function INTRINSIC, which is either a
+// Expand a front-end intrinsic call to INTRINSIC, which is either a
 // call to bt, btc, btr, or bts.  These intrinsics take two arguments,
 // ARG1 and ARG2, and the original call expression is held in CALLEE.
 
@@ -2403,6 +2403,42 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2
   arg1 = vmodify_expr (arg1, fold_build2 (code, TREE_TYPE (arg1), arg1, arg2));
 
   return compound_expr (exp, compound_expr (arg1, tval));
+}
+
+// Expand a front-end instrinsic call to CODE, which is one of the checkedint
+// intrinsics adds, addu, subs, subu, negs, muls, or mulu.
+// These intrinsics take three arguments, ARG1, ARG2, and OVERFLOW, with
+// exception to negs which takes two arguments, but is re-written as a call
+// to subs(0, ARG2, OVERFLOW).
+// The original call expression is held in CALLEE.
+
+static tree
+expand_intrinsic_arith(built_in_function code, tree callee, tree arg1,
+		       tree arg2, tree overflow)
+{
+  tree result = build_local_temp(TREE_TYPE (callee));
+
+  STRIP_NOPS(overflow);
+  gcc_assert(TREE_CODE (overflow) == ADDR_EXPR);
+  overflow = TREE_OPERAND (overflow, 0);
+
+  // Expands to a __builtin_{add,sub,mul}_overflow.
+  tree args[3];
+  args[0] = arg1;
+  args[1] = arg2;
+  args[2] = build_address(result);
+
+  tree fn = builtin_decl_explicit(code);
+  tree exp = build_call_array(TREE_TYPE (overflow),
+			      build_address(fn), 3, args);
+
+  // Assign returned result to overflow parameter, however if
+  // overflow is already true, maintain it's value.
+  exp = fold_build2 (BIT_IOR_EXPR, TREE_TYPE (overflow), overflow, exp);
+  overflow = vmodify_expr(overflow, exp);
+
+  // Return the value of result.
+  return compound_expr(overflow, result);
 }
 
 // Expand a front-end built-in call to va_arg, whose arguments are
@@ -2543,7 +2579,7 @@ expand_intrinsic(tree callexp)
       && DECL_BUILT_IN_CLASS (callee) == BUILT_IN_FRONTEND)
     {
       intrinsic_code intrinsic = (intrinsic_code) DECL_FUNCTION_CODE (callee);
-      tree op1, op2;
+      tree op1, op2, op3;
       tree type;
 
       switch (intrinsic)
@@ -2631,6 +2667,44 @@ expand_intrinsic(tree callexp)
 	  op1 = CALL_EXPR_ARG (callexp, 0);
 	  op2 = CALL_EXPR_ARG (callexp, 1);
 	  return expand_intrinsic_vastart(callexp, op1, op2);
+
+	case INTRINSIC_ADDS:
+	case INTRINSIC_ADDSL:
+	case INTRINSIC_ADDU:
+	case INTRINSIC_ADDUL:
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  op3 = CALL_EXPR_ARG (callexp, 2);
+	  return expand_intrinsic_arith(BUILT_IN_ADD_OVERFLOW,
+					callexp, op1, op2, op3);
+
+	case INTRINSIC_SUBS:
+	case INTRINSIC_SUBSL:
+	case INTRINSIC_SUBU:
+	case INTRINSIC_SUBUL:
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  op3 = CALL_EXPR_ARG (callexp, 2);
+	  return expand_intrinsic_arith(BUILT_IN_SUB_OVERFLOW,
+					callexp, op1, op2, op3);
+
+	case INTRINSIC_MULS:
+	case INTRINSIC_MULSL:
+	case INTRINSIC_MULU:
+	case INTRINSIC_MULUL:
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  op3 = CALL_EXPR_ARG (callexp, 2);
+	  return expand_intrinsic_arith(BUILT_IN_MUL_OVERFLOW,
+					callexp, op1, op2, op3);
+
+	case INTRINSIC_NEGS:
+	case INTRINSIC_NEGSL:
+	  op1 = fold_convert (TREE_TYPE (callexp), integer_zero_node);
+	  op2 = CALL_EXPR_ARG (callexp, 0);
+	  op3 = CALL_EXPR_ARG (callexp, 1);
+	  return expand_intrinsic_arith(BUILT_IN_SUB_OVERFLOW,
+					callexp, op1, op2, op3);
 
 	default:
 	  gcc_unreachable();
