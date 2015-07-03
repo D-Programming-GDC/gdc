@@ -130,8 +130,9 @@ Dsymbol::toObjFile(bool)
 	      Dsymbol *dsym = aliasdecl->toAlias();
 	      Identifier *alias = imp->aliases[i];
 
-	      // Skip over importing of aliases and templates.
-	      if (dsym == aliasdecl || !dsym->isDeclaration())
+              // Skip over importing non-decls, templates, and tuples.
+	      if (dsym == aliasdecl || !dsym->isDeclaration()
+		  || dsym->isTupleDeclaration())
 		continue;
 
 	      tree decl = dsym->toImport()->Stree;

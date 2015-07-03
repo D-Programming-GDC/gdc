@@ -5,6 +5,8 @@
 	* d-objfile.cc(build_type_decl): Add TYPE_DECLs to global declarations,
 	don't call rest_of_decl_declaration.
 	(d_finish_compilation): Call rest_of_decl_declaration on TYPE_DECLs.
+	(Dsymbol::toObjFile): Don't try to handle tuples when emitting import
+	declarations to debug.
 
 2015-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
