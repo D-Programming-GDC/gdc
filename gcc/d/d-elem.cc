@@ -2212,7 +2212,7 @@ StringExp::toElem (IRState *)
 {
   Type *tb = type->toBasetype();
   // Assuming this->string is null terminated
-  dinteger_t dim = len + (tb->ty == Tpointer);
+  dinteger_t dim = len + (tb->ty != Tsarray);
 
   tree value = build_string (dim * sz, (char *) string);
 
