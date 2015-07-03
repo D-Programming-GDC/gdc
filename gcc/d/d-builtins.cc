@@ -41,6 +41,7 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
+#include "id.h"
 
 static GTY(()) vec<tree, va_gc> *gcc_builtins_functions = NULL;
 static GTY(()) vec<tree, va_gc> *gcc_builtins_libfuncs = NULL;
@@ -49,11 +50,11 @@ static GTY(()) vec<tree, va_gc> *gcc_builtins_types = NULL;
 // Necessary for built-in struct types
 struct builtin_sym
 {
-  builtin_sym (Dsymbol *d, Type *t, tree c)
+  builtin_sym (StructDeclaration *d, Type *t, tree c)
     : decl(d), dtype(t), ctype(c)
     { }
 
-  Dsymbol *decl;
+  StructDeclaration *decl;
   Type *dtype;
   tree ctype;
 };
@@ -75,11 +76,6 @@ build_dtype (tree t)
   Type *d;
   unsigned type_size;
   bool is_unsigned;
-
-  const char *structname;
-  char structname_buf[64];
-  static int struct_serial;
-  StructDeclaration *sdecl;
 
   Type *d_func_type;
   tree t_arg_types;
@@ -204,33 +200,32 @@ build_dtype (tree t)
 	}
 
       if (TYPE_NAME (t))
-	structname = IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (t)));
-      else
 	{
-	  snprintf (structname_buf, sizeof (structname_buf),
-		    "__bi_type_%d", ++struct_serial);
-	  structname = structname_buf;
+	  tree structname = DECL_NAME (TYPE_NAME (t));
+	  Identifier *ident = Lexer::idPool(IDENTIFIER_POINTER (structname));
+
+	  // The object and gcc.builtins module will not exist when this is
+	  // called.  Use a stub 'object' module parent in the meantime.
+	  // If gcc.builtins is later imported, the parent will be overridden.
+	  static Module *stubmod = new Module("object.d", Id::object, 0, 0);
+
+	  StructDeclaration *sdecl = new StructDeclaration(Loc(), ident);
+	  sdecl->parent = stubmod;
+	  sdecl->structsize = int_size_in_bytes(t);
+	  sdecl->alignsize = TYPE_ALIGN_UNIT (t);
+	  sdecl->sizeok = SIZEOKdone;
+	  sdecl->type = new TypeStruct(sdecl);
+	  sdecl->type->ctype = t;
+	  sdecl->type->merge();
+
+	  // Does not seem necessary to convert fields, but the members field
+	  // must be non-null for the above size setting to stick.
+	  sdecl->members = new Dsymbols;
+	  d = sdecl->type;
+	  builtin_converted_decls.safe_push(new builtin_sym(sdecl, d, t));
+	  return d;
 	}
-
-      sdecl = new StructDeclaration (Loc(), Lexer::idPool (structname));
-      // The gcc.builtins module may not exist yet, so cannot set
-      // sdecl->parent here. If it is va_list, the parent needs to
-      // be set to the object module which will not exist when
-      // this is called.
-      sdecl->structsize = int_size_in_bytes (t);
-      sdecl->alignsize = TYPE_ALIGN_UNIT (t);
-      sdecl->sizeok = SIZEOKdone;
-      sdecl->type = new TypeStruct (sdecl);
-      sdecl->type->ctype = t;
-      sdecl->type->merge();
-
-      // Does not seem necessary to convert fields, but the
-      // members field must be non-null for the above size
-      // setting to stick.
-      sdecl->members = new Dsymbols;
-      d = sdecl->type;
-      builtin_converted_decls.safe_push (new builtin_sym (sdecl, d, t));
-      return sdecl->type;
+      break;
 
     case FUNCTION_TYPE:
       d_func_type = build_dtype (TREE_TYPE (t));
@@ -422,20 +417,11 @@ d_build_builtins_module (Module *m)
 
   for (size_t i = 0; i < builtin_converted_decls.length(); ++i)
     {
-      Dsymbol *sym = builtin_converted_decls[i]->decl;
-      // va_list is a pain.  It can be referenced without importing
-      // gcc.builtins so it really needs to go in the object module.
-      if (!sym->parent)
-	{
-	  Declaration *decl = sym->isDeclaration();
-	  if (!decl || decl->type != Type::tvalist)
-	    {
-	      // Currently, there is no need to run semantic, but we do
-	      // want to output inits, etc.
-	      sym->parent = m;
-	      funcs->push (sym);
-	    }
-	}
+      // Currently, there is no need to run semantic, but we do
+      // want to output inits, etc.
+      StructDeclaration *sym = builtin_converted_decls[i]->decl;
+      sym->parent = m;
+      funcs->push(sym);
     }
 
   // va_list should already be built, so no need to convert to D type again.
@@ -511,17 +497,21 @@ maybe_set_builtin_1 (Dsymbol *m)
 	  if (fd->ident != Lexer::idPool (name))
 	    continue;
 
-	  if (Type::tvalist->ty == Tsarray)
+	  // As per C ABI, in gcc.builtins module va_list is passed by reference.
+	  TypeFunction *tf = (TypeFunction *) fd->type;
+	  for (size_t i = 0; i < tf->parameters->dim; i++)
 	    {
-	      // As per C ABI, in gcc.builtins module va_list is passed by reference.
-	      TypeFunction *dtf = (TypeFunction *) build_dtype (TREE_TYPE (decl));
-	      TypeFunction *tf = (TypeFunction *) fd->type;
-	      for (size_t i = 0; i < dtf->parameters->dim; i++)
+	      Type *type = (*tf->parameters)[i]->type;
+	      if (type->ty == Tsarray)
+		(*tf->parameters)[i]->storageClass |= STCref;
+	      else if (type->ty == Tident && Type::tvalist->ty == Tsarray)
 		{
-		  if ((*dtf->parameters)[i]->type == Type::tvalist)
+		  Identifier *ident = ((TypeIdentifier *) type)->ident;
+		  if (ident == Lexer::idPool("va_list"))
 		    (*tf->parameters)[i]->storageClass |= STCref;
 		}
 	    }
+
 	  fd->csym = new Symbol;
 	  fd->csym->Sident = name;
 	  fd->csym->Stree = decl;
