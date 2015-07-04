@@ -2166,19 +2166,6 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
       /* if varargs... */
       sorry ("backend for this target machine does not support thunks");
     }
-
-  /* Target assemble_mi_thunk doesn't work across section boundaries
-     on many targets, instead force thunk to be expanded in gimple.  */
-  if (DECL_EXTERNAL (target_decl))
-    {
-      if (!stdarg_p (TREE_TYPE (thunk_decl)))
-	{
-	  /* Put generic thunk into COMDAT.  */
-	  d_comdat_linkage (thunk_decl);
-	  cgraph_create_edge (thunk_node, funcn, NULL, 0, CGRAPH_FREQ_BASE);
-	  expand_thunk2 (thunk_node, false, true);
-	}
-    }
 }
 
 // Build and emit a function named NAME, whose function body is in EXPR.
