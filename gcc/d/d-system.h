@@ -47,4 +47,8 @@
 
 #include "common/common-target.h"
 
+/* True if NODE designates a variable declaration.  */
+#define VAR_P(NODE) \
+  (TREE_CODE (NODE) == VAR_DECL)
+
 #endif

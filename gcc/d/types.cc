@@ -234,8 +234,8 @@ public:
 			ATTR_FLAG_TYPE_IN_PLACE);
       }
 
+    TYPE_CONTEXT (t->ctype) = d_decl_context(t->sym);
     build_type_decl(t->ctype, t->sym);
-    rest_of_type_compilation(t->ctype, 1);
   }
 
   //
@@ -258,9 +258,8 @@ public:
     layout_aggregate_type(t->sym, t->ctype, t->sym);
     finish_aggregate_type(t->sym, t->ctype, t->sym->userAttribDecl);
 
-    build_type_decl(t->ctype, t->sym);
     TYPE_CONTEXT (t->ctype) = d_decl_context(t->sym);
-    rest_of_type_compilation(t->ctype, 1);
+    build_type_decl(t->ctype, t->sym);
   }
 
   //
@@ -442,7 +441,7 @@ public:
     // Need to set t->ctype right away in case of self-references to
     // the type during this call.
     tree basetype = make_node(RECORD_TYPE);
-    t->ctype = build_reference_type(basetype);
+    t->ctype = build_pointer_type(basetype);
     d_keep(t->ctype);
 
     // Note that this is set on both the reference type and record type.
@@ -481,9 +480,8 @@ public:
 	  }
       }
 
-    build_type_decl(basetype, t->sym);
     TYPE_CONTEXT (basetype) = d_decl_context(t->sym);
-    rest_of_type_compilation(basetype, 1);
+    build_type_decl(basetype, t->sym);
   }
 };
 

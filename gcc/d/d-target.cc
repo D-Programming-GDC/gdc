@@ -1,5 +1,5 @@
 // d-target.cc -- D frontend for GCC.
-// Copyright (C) 2013 Software Foundation, Inc.
+// Copyright (C) 2013-2015 Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free

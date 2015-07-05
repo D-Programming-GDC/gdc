@@ -1,5 +1,5 @@
 // d-elem.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -1946,7 +1946,7 @@ NewExp::toElem(IRState *irs)
 
       tree new_call;
       tree setup_exp = NULL_TREE;
-      // type->ctype is a REFERENCE_TYPE; we want the RECORD_TYPE
+      // type->ctype is a POINTER_TYPE; we want the RECORD_TYPE
       tree rec_type = TREE_TYPE(build_ctype(tclass));
 
       // Call allocator (custom allocator or _d_newclass).
@@ -2206,7 +2206,7 @@ StringExp::toElem (IRState *)
 {
   Type *tb = type->toBasetype();
   // Assuming this->string is null terminated
-  dinteger_t dim = len + (tb->ty == Tpointer);
+  dinteger_t dim = len + (tb->ty != Tsarray);
 
   tree value = build_string (dim * sz, (char *) string);
 
