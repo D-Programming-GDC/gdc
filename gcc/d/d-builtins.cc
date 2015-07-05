@@ -1,5 +1,5 @@
 /* d-builtins.c -- D frontend for GCC.
-   Copyright (C) 2011-2013 Free Software Foundation, Inc.
+   Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
    GCC is free software; you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free
@@ -991,34 +991,5 @@ d_builtin_function (tree decl)
   return decl;
 }
 
-
-// Backend init.
-
-void
-d_backend_init()
-{
-  init_global_binding_level();
-
-  // This allows the code in d-builtins.c to not have to worry about
-  // converting (C signed char *) to (D char *) for string arguments of
-  // built-in functions.
-  // Parameters are (signed_char = false, short_double = false).
-  build_common_tree_nodes (false, false);
-
-  d_init_builtins();
-
-  if (flag_exceptions)
-    d_init_exceptions();
-
-  // This is the C main, not the D main.
-  main_identifier_node = get_identifier ("main");
-}
-
-// Backend term.
-
-void
-d_backend_term()
-{
-}
 
 #include "gt-d-d-builtins.h"

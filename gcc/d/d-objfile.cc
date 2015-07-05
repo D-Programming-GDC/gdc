@@ -1,5 +1,5 @@
 // d-objfile.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -1942,17 +1942,6 @@ d_finish_compilation (tree *vec, int len)
       if (needed)
 	mark_needed (decl);
     }
-
-  // We're done parsing; proceed to optimize and emit assembly.
-  if (!global.errors && !errorcount)
-    symtab->finalize_compilation_unit();
-
-  // Now, issue warnings about static, but not defined, functions.
-  check_global_declarations (vec, len);
-
-  // After cgraph has had a chance to emit everything that's going to
-  // be emitted, output debug information for globals.
-  emit_debug_global_declarations (vec, len);
 }
 
 // Build TYPE_DECL for the declaration DSYM.

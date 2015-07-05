@@ -234,8 +234,8 @@ public:
 			ATTR_FLAG_TYPE_IN_PLACE);
       }
 
+    TYPE_CONTEXT (t->ctype) = d_decl_context(t->sym);
     build_type_decl(t->ctype, t->sym);
-    rest_of_type_compilation(t->ctype, 1);
   }
 
   //
@@ -258,9 +258,8 @@ public:
     layout_aggregate_type(t->sym, t->ctype, t->sym);
     finish_aggregate_type(t->sym, t->ctype, t->sym->userAttribDecl);
 
-    build_type_decl(t->ctype, t->sym);
     TYPE_CONTEXT (t->ctype) = d_decl_context(t->sym);
-    rest_of_type_compilation(t->ctype, 1);
+    build_type_decl(t->ctype, t->sym);
   }
 
   //
@@ -480,9 +479,8 @@ public:
 	  }
       }
 
-    build_type_decl(basetype, t->sym);
     TYPE_CONTEXT (basetype) = d_decl_context(t->sym);
-    rest_of_type_compilation(basetype, 1);
+    build_type_decl(basetype, t->sym);
   }
 };
 

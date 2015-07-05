@@ -1,5 +1,5 @@
 // d-codegen.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -46,9 +46,26 @@ tree
 d_decl_context (Dsymbol *dsym)
 {
   Dsymbol *parent = dsym;
+  Declaration *decl = dsym->isDeclaration();
 
   while ((parent = parent->toParent2()))
     {
+      // We've reached the top-level module namespace.
+      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
+      // but only for extern(D) symbols.
+      if (parent->isModule())
+	{
+	  if (decl != NULL && decl->linkage != LINKd)
+	    return NULL_TREE;
+
+	  return parent->toImport()->Stree;
+	}
+
+      // Declarations marked as 'static' or '__gshared' are never
+      // part of any context except at module level.
+      if (decl != NULL && decl->isDataseg())
+	continue;
+
       // Nested functions.
       if (parent->isFuncDeclaration())
 	return parent->toSymbol()->Stree;
@@ -63,18 +80,6 @@ d_decl_context (Dsymbol *dsym)
 	    context = TREE_TYPE (context);
 
 	  return context;
-	}
-
-      // We've reached the top-level module namespace.
-      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
-      // but only for extern(D) symbols.
-      if (parent->isModule())
-	{
-	  Declaration *decl = dsym->isDeclaration();
-	  if (decl != NULL && decl->linkage != LINKd)
-	    return NULL_TREE;
-
-	  return parent->toImport()->Stree;
 	}
     }
 
