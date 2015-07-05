@@ -1,5 +1,5 @@
 // d-lang.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -102,12 +102,10 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_PUSHDECL
 #undef LANG_HOOKS_GETDECLS
 #undef LANG_HOOKS_GLOBAL_BINDINGS_P
-#undef LANG_HOOKS_WRITE_GLOBALS
 
 #define LANG_HOOKS_PUSHDECL			d_pushdecl
 #define LANG_HOOKS_GETDECLS			d_getdecls
 #define LANG_HOOKS_GLOBAL_BINDINGS_P		d_global_bindings_p
-#define LANG_HOOKS_WRITE_GLOBALS		d_write_global_declarations
 
 /* Lang Hooks for types */
 #undef LANG_HOOKS_TYPE_FOR_MODE
@@ -234,7 +232,22 @@ d_init()
   initPrecedence();
   initTraitsStringTable();
 
-  d_backend_init();
+  // Backend init.
+  init_global_binding_level();
+
+  // This allows the code in d-builtins.c to not have to worry about
+  // converting (C signed char *) to (D char *) for string arguments of
+  // built-in functions.
+  // Parameters are (signed_char = false, short_double = false).
+  build_common_tree_nodes (false, false);
+
+  d_init_builtins();
+
+  if (flag_exceptions)
+    d_init_exceptions();
+
+  // This is the C main, not the D main.
+  main_identifier_node = get_identifier ("main");
 
   longdouble::init();
   Target::init();
@@ -635,27 +648,6 @@ d_post_options (const char ** fn)
   return false;
 }
 
-// Array of all global declarations to pass back to the middle-end.
-static GTY(()) vec<tree, va_gc> *global_declarations;
-
-void
-d_add_global_declaration (tree decl)
-{
-  vec_safe_push (global_declarations, decl);
-}
-
-// Write out globals.
-static void
-d_write_global_declarations()
-{
-  if (vec_safe_length (global_declarations) != 0)
-    {
-      d_finish_compilation (global_declarations->address(),
-			    global_declarations->length());
-    }
-}
-
-
 // Gimplification of D specific expression trees.
 int
 d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
@@ -820,6 +812,15 @@ deps_write (Module *m)
     }
 
   ob->writenl();
+}
+
+// Array of all global declarations to pass back to the middle-end.
+static GTY(()) vec<tree, va_gc> *global_declarations;
+
+void
+d_add_global_declaration (tree decl)
+{
+  vec_safe_push (global_declarations, decl);
 }
 
 void
@@ -1172,7 +1173,13 @@ d_parse_file()
   errorcount += (global.errors + global.warnings);
 
   d_finish_module();
-  d_backend_term();
+
+  // Write out globals.
+  if (vec_safe_length (global_declarations) != 0)
+    {
+      d_finish_compilation (global_declarations->address(),
+			    global_declarations->length());
+    }
 
   output_module = NULL;
 }
@@ -1393,7 +1400,7 @@ pop_binding_level (int keep, int routinebody)
       /* Warnings for unused variables.  */
       for (tree t = nreverse (vars); t != NULL_TREE; t = TREE_CHAIN (t))
 	{
-	  if (TREE_CODE (t) == VAR_DECL
+	  if (VAR_P (t)
 	      && (!TREE_USED (t) /*|| !DECL_READ_P (t)*/) // %% TODO
 	      && !TREE_NO_WARNING (t)
 	      && DECL_NAME (t)
@@ -1519,7 +1526,7 @@ d_types_compatible_p (tree t1, tree t2)
 static void
 d_finish_incomplete_decl (tree decl)
 {
-  if (TREE_CODE (decl) == VAR_DECL)
+  if (VAR_P (decl))
     {
       /* D allows zero-length declarations.  Such a declaration ends up with
 	 DECL_SIZE (t) == NULL_TREE which is what the backend function

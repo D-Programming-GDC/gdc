@@ -1,5 +1,5 @@
 // d-decls.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -275,7 +275,7 @@ TypeInfoDeclaration::toSymbol()
 
       // This variable is the static initialization for the
       // given TypeInfo.  It is the actual data, not a reference
-      gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == REFERENCE_TYPE);
+      gcc_assert (TREE_CODE (TREE_TYPE (csym->Stree)) == POINTER_TYPE);
       TREE_TYPE (csym->Stree) = TREE_TYPE (TREE_TYPE (csym->Stree));
       relayout_decl (csym->Stree);
       TREE_USED (csym->Stree) = 1;

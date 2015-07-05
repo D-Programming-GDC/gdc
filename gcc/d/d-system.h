@@ -52,5 +52,6 @@
 #include "vec.h"
 
 #include "common/common-target.h"
+#include "stmt.h"
 
 #endif

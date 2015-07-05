@@ -1,5 +1,5 @@
 // d-codegen.cc -- D frontend for GCC.
-// Copyright (C) 2011-2013 Free Software Foundation, Inc.
+// Copyright (C) 2011-2015 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -46,9 +46,26 @@ tree
 d_decl_context (Dsymbol *dsym)
 {
   Dsymbol *parent = dsym;
+  Declaration *decl = dsym->isDeclaration();
 
   while ((parent = parent->toParent2()))
     {
+      // We've reached the top-level module namespace.
+      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
+      // but only for extern(D) symbols.
+      if (parent->isModule())
+	{
+	  if (decl != NULL && decl->linkage != LINKd)
+	    return NULL_TREE;
+
+	  return parent->toImport()->Stree;
+	}
+
+      // Declarations marked as 'static' or '__gshared' are never
+      // part of any context except at module level.
+      if (decl != NULL && decl->isDataseg())
+	continue;
+
       // Nested functions.
       if (parent->isFuncDeclaration())
 	return parent->toSymbol()->Stree;
@@ -63,18 +80,6 @@ d_decl_context (Dsymbol *dsym)
 	    context = TREE_TYPE (context);
 
 	  return context;
-	}
-
-      // We've reached the top-level module namespace.
-      // Set DECL_CONTEXT as the NAMESPACE_DECL of the enclosing module,
-      // but only for extern(D) symbols.
-      if (parent->isModule())
-	{
-	  Declaration *decl = dsym->isDeclaration();
-	  if (decl != NULL && decl->linkage != LINKd)
-	    return NULL_TREE;
-
-	  return parent->toImport()->Stree;
 	}
     }
 
@@ -548,7 +553,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
 
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
-	      if (TREE_CODE (value) == VAR_DECL)
+	      if (VAR_P (value))
 		{
 		  value = DECL_INITIAL (value);
 		  gcc_assert (value);
@@ -611,55 +616,59 @@ convert_for_argument (tree exp_tree, Expression *expr, Parameter *arg)
 // Return truth-value conversion of expression EXPR from value type TYPE.
 
 tree
-convert_for_condition (tree expr, Type *type)
+convert_for_condition(tree expr, Type *type)
 {
   tree result = NULL_TREE;
-  tree obj, func, tmp;
 
   switch (type->toBasetype()->ty)
     {
     case Taarray:
       // Shouldn't this be...
       //  result = _aaLen (&expr);
-      result = component_ref (expr, TYPE_FIELDS (TREE_TYPE (expr)));
+      result = component_ref(expr, TYPE_FIELDS (TREE_TYPE (expr)));
       break;
 
     case Tarray:
+    {
       // Checks (length || ptr) (i.e ary !is null)
-      tmp = maybe_make_temp (expr);
-      obj = delegate_object (tmp);
-      func = delegate_method (tmp);
-      if (TYPE_MODE (TREE_TYPE (obj)) == TYPE_MODE (TREE_TYPE (func)))
+      expr = maybe_make_temp(expr);
+      tree len = d_array_length(expr);
+      tree ptr = d_array_ptr(expr);
+      if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
 	{
-	  result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj,
-			   d_convert (TREE_TYPE (obj), func));
+	  result = build2(BIT_IOR_EXPR, TREE_TYPE (len), len,
+			  d_convert(TREE_TYPE (len), ptr));
 	}
       else
 	{
-	  obj = d_truthvalue_conversion (obj);
-	  func = d_truthvalue_conversion (func);
+	  len = d_truthvalue_conversion(len);
+	  ptr = d_truthvalue_conversion(ptr);
 	  // probably not worth using TRUTH_OROR ...
-	  result = build2 (TRUTH_OR_EXPR, TREE_TYPE (obj), obj, func);
+	  result = build2(TRUTH_OR_EXPR, TREE_TYPE (len), len, ptr);
 	}
       break;
+    }
 
     case Tdelegate:
+    {
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
+      tree obj, func;
       if (D_METHOD_CALL_EXPR (expr))
-	extract_from_method_call (expr, obj, func);
+	extract_from_method_call(expr, obj, func);
       else
 	{
-	  tmp = maybe_make_temp (expr);
-	  obj = delegate_object (tmp);
-	  func = delegate_method (tmp);
+	  expr = maybe_make_temp(expr);
+	  obj = delegate_object(expr);
+	  func = delegate_method(expr);
 	}
 
-      obj = d_truthvalue_conversion (obj);
-      func = d_truthvalue_conversion (func);
+      obj = d_truthvalue_conversion(obj);
+      func = d_truthvalue_conversion(func);
       // probably not worth using TRUTH_ORIF ...
-      result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
+      result = build2(BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
       break;
+    }
 
     default:
       result = expr;
@@ -1112,7 +1121,7 @@ build_class_binfo (tree super, ClassDeclaration *cd)
   tree binfo = make_tree_binfo (1);
   tree ctype = build_ctype(cd->type);
 
-  // Want RECORD_TYPE, not REFERENCE_TYPE
+  // Want RECORD_TYPE, not POINTER_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = integer_zero_node;
@@ -1134,7 +1143,7 @@ build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
   tree binfo = make_tree_binfo (cd->baseclasses->dim);
   tree ctype = build_ctype(cd->type);
 
-  // Want RECORD_TYPE, not REFERENCE_TYPE
+  // Want RECORD_TYPE, not POINTER_TYPE
   BINFO_TYPE (binfo) = TREE_TYPE (ctype);
   BINFO_INHERITANCE_CHAIN (binfo) = super;
   BINFO_OFFSET (binfo) = size_int (offset * Target::ptrsize);
@@ -2014,12 +2023,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       saved_args = callee;
     }
 
-  if (TREE_CODE (ctype) == FUNCTION_TYPE)
-    {
-      if (object != NULL_TREE)
-	gcc_unreachable();
-    }
-  else if (object == NULL_TREE)
+  if (TREE_CODE (ctype) != FUNCTION_TYPE && object == NULL_TREE)
     {
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)
@@ -2344,7 +2348,7 @@ expand_intrinsic_bsr (tree callee, tree arg)
   return fold_convert (TREE_TYPE (callee), exp);
 }
 
-// Expand the front-end built-in function INTRINSIC, which is either a
+// Expand a front-end intrinsic call to INTRINSIC, which is either a
 // call to bt, btc, btr, or bts.  These intrinsics take two arguments,
 // ARG1 and ARG2, and the original call expression is held in CALLEE.
 
