@@ -1,3 +1,16 @@
+2015-06-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in(D_DMD_H): Remove.
+	(D_TREE_H): Likewise.
+	(CFLAGS-d/d-spec.o): Declare extra CFLAGS for building driver.
+	(d-warn): Declare default warning flags for compiler.
+	(D_DMD_OBJS): Remove 'dmd' from the object file suffix.
+	(D_GLUE_OBJS): Remove 'cglue' and 'glue' from object file suffix.
+	(D_GENERATED_OBJS): Remove 'gen' from the object file suffix.
+	(D_BORROWED_C_OBJS): Remove.
+	(CFLAGS-d/id.o): Declare extra CFLAGS for building generated sources.
+	(CFLAGS-d/impcnvtab.o): Likewise.
+
 2015-06-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(d_build_call): Only apply CALL_EXPR_RETURN_SLOT_OPT to
