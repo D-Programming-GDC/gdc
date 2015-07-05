@@ -108,8 +108,9 @@ Dsymbol::toObjFile(bool)
 	      Dsymbol *dsym = aliasdecl->toAlias();
 	      Identifier *alias = imp->aliases[i];
 
-	      // Skip over importing of aliases and templates.
-	      if (dsym == aliasdecl || !dsym->isDeclaration())
+              // Skip over importing non-decls, templates, and tuples.
+	      if (dsym == aliasdecl || !dsym->isDeclaration()
+		  || dsym->isTupleDeclaration())
 		continue;
 
 	      tree decl = dsym->toImport()->Stree;
@@ -1701,7 +1702,7 @@ setup_symbol_storage (Dsymbol *dsym, tree decl, bool public_p)
   Declaration *rd = dsym->isDeclaration();
 
   if (public_p
-      || (TREE_CODE (decl) == VAR_DECL && (rd && rd->isDataseg()))
+      || (VAR_P (decl) && (rd && rd->isDataseg()))
       || (TREE_CODE (decl) == FUNCTION_DECL))
     {
       bool local_p = output_module_p (dsym->getModule());
@@ -1783,7 +1784,7 @@ mark_needed (tree decl)
       struct cgraph_node *node = cgraph_node::get_create (decl);
       node->forced_by_abi = true;
     }
-  else if (TREE_CODE (decl) == VAR_DECL)
+  else if (VAR_P (decl))
     {
       struct varpool_node *node = varpool_node::get_create (decl);
       node->forced_by_abi = true;
@@ -1928,7 +1929,7 @@ d_finish_compilation (tree *vec, int len)
       // Determine if a global var/function is needed.
       int needed = wrapup_global_declarations (&decl, 1);
 
-      if ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
+      if ((VAR_P (decl) && TREE_STATIC (decl))
 	  || TREE_CODE (decl) == FUNCTION_DECL)
 	{
 	  // Don't emit, assembler name already in symbol table.
@@ -1937,43 +1938,47 @@ d_finish_compilation (tree *vec, int len)
 	    needed = 0;
 	  else
 	    needed = 1;
-	}
 
-      if (needed)
-	mark_needed (decl);
+	  if (needed)
+	    mark_needed (decl);
+	}
+      else if (TREE_CODE (decl) == TYPE_DECL)
+	{
+	  bool toplevel = !DECL_CONTEXT (decl);
+	  rest_of_decl_compilation (decl, toplevel, 0);
+	}
     }
 }
 
 // Build TYPE_DECL for the declaration DSYM.
 
 void
-build_type_decl (tree t, Dsymbol *dsym)
+build_type_decl (tree type, Dsymbol *dsym)
 {
-  if (TYPE_STUB_DECL (t))
+  if (TYPE_STUB_DECL (type))
     return;
 
-  gcc_assert (!POINTER_TYPE_P (t));
+  gcc_assert(!POINTER_TYPE_P (type));
 
-  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
-			  get_identifier (dsym->ident->string), t);
+  tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL,
+			 get_identifier(dsym->ident->string), type);
 
-  DECL_CONTEXT (decl) = d_decl_context (dsym);
-  set_decl_location (decl, dsym);
+  DECL_CONTEXT (decl) = d_decl_context(dsym);
+  set_decl_location(decl, dsym);
 
-  TYPE_CONTEXT (t) = DECL_CONTEXT (decl);
-  TYPE_NAME (t) = decl;
+  TYPE_CONTEXT (type) = DECL_CONTEXT (decl);
+  TYPE_NAME (type) = decl;
 
-  if (TREE_CODE (t) == ENUMERAL_TYPE || TREE_CODE (t) == RECORD_TYPE
-      || TREE_CODE (t) == UNION_TYPE)
+  if (TREE_CODE (type) == ENUMERAL_TYPE || TREE_CODE (type) == RECORD_TYPE
+      || TREE_CODE (type) == UNION_TYPE)
     {
       /* Not sure if there is a need for separate TYPE_DECLs in
 	 TYPE_NAME and TYPE_STUB_DECL. */
-      TYPE_STUB_DECL (t) = decl;
+      TYPE_STUB_DECL (type) = decl;
       DECL_ARTIFICIAL (decl) = 1;
     }
 
-  bool toplevel = !DECL_CONTEXT (TYPE_NAME (t));
-  rest_of_decl_compilation (TYPE_NAME (t), toplevel, 0);
+  d_add_global_declaration(decl);
 }
 
 // Can't output thunks while a function is being compiled.

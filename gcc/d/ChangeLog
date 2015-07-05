@@ -1,3 +1,39 @@
+2015-07-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(StringExp::toElem): Zero-terminate all string literals
+	types, except for static arrays.
+	* d-objfile.cc(build_type_decl): Add TYPE_DECLs to global declarations,
+	don't call rest_of_decl_declaration.
+	(d_finish_compilation): Call rest_of_decl_declaration on TYPE_DECLs.
+	(Dsymbol::toObjFile): Don't try to handle tuples when emitting import
+	declarations to debug.
+	* d-builtins.cc(builtin_sym): Use StructDeclaration for decl field.
+	(build_dtype): Don't handle anonymous structs.  Create a stub parent
+	module for the declaration symbol.
+	(d_build_builtins_module): Always override the parent module of
+	converted struct declarations.
+	(maybe_set_builtin_1): Convert all static array parameters to ref
+	parameters, not just va_list.
+
+2015-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c(d_handle_section_attribute): Use VAR_P throughout.
+	(d_handle_weak_attribute) Use VAR_OR_FUNCTION_DECL_P.
+	* d-codegen.cc(convert_for_assignment) Use VAR_P.
+	* d-lang.cc(pop_binding_level): Likewise.
+	(d_types_compatible_p): Likewise.
+	* d-objfile.cc(setup_symbol_storage): Likewise.
+	(mark_needed): Likewise.
+	(d_finish_compilation): Likewise.
+
+2015-06-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* intrinsics.def: Added ADDS, ADDSL, ADDU, ADDUL, SUBS, SUBSL, NEGS,
+	NEGSL, MULS, MULSL, MULU, and MULUL intrinsic definitions.
+	* d-codegen.cc(expand_intrinsic_arith): New function.
+	(expand_intrinsic): Add cases for core.checkedint functions adds, addu,
+	subs, subu, negs, muls, and mulu intrinsics.
+
 2015-06-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in(D_DMD_H): Remove.

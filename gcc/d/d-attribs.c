@@ -577,11 +577,10 @@ d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
     {
       user_defined_section_attribute = true;
 
-      if ((TREE_CODE (decl) == FUNCTION_DECL
-	   || TREE_CODE (decl) == VAR_DECL)
+      if (VAR_OR_FUNCTION_DECL_P (decl)
 	  && TREE_CODE (TREE_VALUE (args)) == STRING_CST)
 	{
-	  if (TREE_CODE (decl) == VAR_DECL
+	  if (VAR_P (decl)
 	      && current_function_decl != NULL_TREE
 	      && !TREE_STATIC (decl))
 	    {
@@ -601,7 +600,7 @@ d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
 		     *node);
 	      *no_add_attrs = true;
 	    }
-	  else if (TREE_CODE (decl) == VAR_DECL
+	  else if (VAR_P (decl)
 		   && !targetm.have_tls && targetm.emutls.tmpl_section
 		   && DECL_THREAD_LOCAL_P (decl))
 	    {
@@ -702,8 +701,7 @@ d_handle_weak_attribute (tree *node, tree name,
       warning (OPT_Wattributes, "inline function %q+D declared weak", *node);
       *no_add_attrs = true;
     }
-  else if (TREE_CODE (*node) == FUNCTION_DECL
-	   || TREE_CODE (*node) == VAR_DECL)
+  else if (VAR_OR_FUNCTION_DECL_P (*node))
     {
       struct symtab_node *n = symtab_node::get (*node);
       if (n && n->refuse_visibility_changes)

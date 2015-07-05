@@ -1400,7 +1400,7 @@ pop_binding_level (int keep, int routinebody)
       /* Warnings for unused variables.  */
       for (tree t = nreverse (vars); t != NULL_TREE; t = TREE_CHAIN (t))
 	{
-	  if (TREE_CODE (t) == VAR_DECL
+	  if (VAR_P (t)
 	      && (!TREE_USED (t) /*|| !DECL_READ_P (t)*/) // %% TODO
 	      && !TREE_NO_WARNING (t)
 	      && DECL_NAME (t)
@@ -1526,7 +1526,7 @@ d_types_compatible_p (tree t1, tree t2)
 static void
 d_finish_incomplete_decl (tree decl)
 {
-  if (TREE_CODE (decl) == VAR_DECL)
+  if (VAR_P (decl))
     {
       /* D allows zero-length declarations.  Such a declaration ends up with
 	 DECL_SIZE (t) == NULL_TREE which is what the backend function
