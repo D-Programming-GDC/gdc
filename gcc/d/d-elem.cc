@@ -1945,7 +1945,7 @@ NewExp::toElem(IRState *irs)
 
       tree new_call;
       tree setup_exp = NULL_TREE;
-      // type->ctype is a REFERENCE_TYPE; we want the RECORD_TYPE
+      // type->ctype is a POINTER_TYPE; we want the RECORD_TYPE
       tree rec_type = TREE_TYPE(build_ctype(tclass));
 
       // Call allocator (custom allocator or _d_newclass).
