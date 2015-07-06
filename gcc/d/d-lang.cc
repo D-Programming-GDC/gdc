@@ -102,10 +102,12 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_PUSHDECL
 #undef LANG_HOOKS_GETDECLS
 #undef LANG_HOOKS_GLOBAL_BINDINGS_P
+#undef LANG_HOOKS_WRITE_GLOBALS
 
 #define LANG_HOOKS_PUSHDECL			d_pushdecl
 #define LANG_HOOKS_GETDECLS			d_getdecls
 #define LANG_HOOKS_GLOBAL_BINDINGS_P		d_global_bindings_p
+#define LANG_HOOKS_WRITE_GLOBALS		d_write_global_declarations
 
 /* Lang Hooks for types */
 #undef LANG_HOOKS_TYPE_FOR_MODE
@@ -823,6 +825,17 @@ d_add_global_declaration (tree decl)
   vec_safe_push (global_declarations, decl);
 }
 
+// Write out globals.
+static void
+d_write_global_declarations()
+{
+  if (vec_safe_length (global_declarations) != 0)
+    {
+      d_finish_compilation (global_declarations->address(),
+			    global_declarations->length());
+    }
+}
+
 void
 d_parse_file()
 {
@@ -1173,13 +1186,6 @@ d_parse_file()
   errorcount += (global.errors + global.warnings);
 
   d_finish_module();
-
-  // Write out globals.
-  if (vec_safe_length (global_declarations) != 0)
-    {
-      d_finish_compilation (global_declarations->address(),
-			    global_declarations->length());
-    }
 
   output_module = NULL;
 }

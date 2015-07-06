@@ -1956,6 +1956,17 @@ d_finish_compilation (tree *vec, int len)
 	  rest_of_decl_compilation (decl, toplevel, 0);
 	}
     }
+
+  // We're done parsing; proceed to optimize and emit assembly.
+  if (!global.errors && !errorcount)
+    finalize_compilation_unit();
+
+  // Now, issue warnings about static, but not defined, functions.
+  check_global_declarations (vec, len);
+
+  // After cgraph has had a chance to emit everything that's going to
+  // be emitted, output debug information for globals.
+  emit_debug_global_declarations (vec, len);
 }
 
 // Build TYPE_DECL for the declaration DSYM.
