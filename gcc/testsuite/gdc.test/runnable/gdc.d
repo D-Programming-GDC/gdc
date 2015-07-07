@@ -799,6 +799,17 @@ void test179()
 
 /******************************************/
 
+// Bug 194
+
+auto test194(ref bool overflow)
+{
+    import core.checkedint;
+
+    return adds(1, 1, overflow);
+}
+
+/******************************************/
+
 void main()
 {
     test2();
