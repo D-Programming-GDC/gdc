@@ -2419,8 +2419,7 @@ expand_intrinsic_arith(built_in_function code, tree callee, tree arg1,
   tree result = build_local_temp(TREE_TYPE (callee));
 
   STRIP_NOPS(overflow);
-  gcc_assert(TREE_CODE (overflow) == ADDR_EXPR);
-  overflow = TREE_OPERAND (overflow, 0);
+  overflow = build_deref(overflow);
 
   // Expands to a __builtin_{add,sub,mul}_overflow.
   tree args[3];
