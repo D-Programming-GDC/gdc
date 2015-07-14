@@ -34,8 +34,6 @@
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"
-#include "tm.h"
-#include "function.h"
 #include "langhooks.h"
 #include "target.h"
 #include "stringpool.h"
@@ -553,7 +551,6 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 
       if (d_types_same (telem, ebtype))
 	{
-	  // %% what about implicit converions...?
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;
 	  uinteger_t count = sa_type->dim->toUInteger();
 
@@ -581,23 +578,13 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	}
     }
 
+  // D Front end uses IntegerExp (0) to mean zero-init a structure.
   if (tbtype->ty == Tstruct && ebtype->isintegral())
     {
-      // D Front end uses IntegerExp (0) to mean zero-init a structure.
-      // Use memset to fill struct.
-      if (integer_zerop (expr))
-	{
-	  StructDeclaration *sd = ((TypeStruct *) tbtype)->sym;
-	  tree var = build_local_temp (build_ctype(totype));
-
-	  tree init = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMSET), 3,
-					 build_address (var), expr,
-					 size_int (sd->structsize));
-
-	  return compound_expr (init, var);
-	}
-      else
+      if (!integer_zerop (expr))
 	gcc_unreachable();
+
+      return expr;
     }
 
   return convert_expr (expr, etype, totype);
@@ -2125,11 +2112,6 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 
   tree result = d_build_call_list (TREE_TYPE (ctype), callee, arg_list);
   result = expand_intrinsic (result);
-
-  if (!tf->isref && TREE_CODE (result) == CALL_EXPR
-      && AGGREGATE_TYPE_P (TREE_TYPE (result))
-      && aggregate_value_p (TREE_TYPE (result), result))
-    CALL_EXPR_RETURN_SLOT_OPT (result) = true;
 
   return maybe_compound_expr (saved_args, result);
 }
