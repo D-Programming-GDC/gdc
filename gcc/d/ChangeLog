@@ -1,3 +1,13 @@
+2015-07-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(convert_for_assignment): Remove handling of zero
+	initialising a structure using memset.
+	(d_build_call): Removing handling of setting of return slot
+	optimisation on in call expression.
+	* d-elem.cc(AssignExp::toElem): Emit a memset to zero initialise
+	structures here.  Set return slot optimisation on construction of
+	static arrays and structs only.
+
 2015-07-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(expand_intrinsic_arith): Use build_deref to handle

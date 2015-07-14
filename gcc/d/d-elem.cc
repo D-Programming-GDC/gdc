@@ -972,13 +972,21 @@ AssignExp::toElem(IRState *irs)
     {
       tree t1 = e1->toElem(irs);
       tree t2 = convert_for_assignment(e2->toElem(irs), e2->type, e1->type);
-      tree result = modify_expr(build_ctype(type), t1, t2);
+
+      if (op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
+	  && aggregate_value_p(TREE_TYPE (t2), t2))
+	CALL_EXPR_RETURN_SLOT_OPT (t2) = true;
 
       if (e2->op == TOKint64)
 	{
-	  // Maybe set-up hidden pointer to outer scope context.
+	  // Use memset to fill struct.
 	  StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
 
+	  tree result = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMSET), 3,
+					 build_address(t1), t2,
+					 size_int(sd->structsize));
+
+	  // Maybe set-up hidden pointer to outer scope context.
 	  if (sd->isNested())
 	    {
 	      tree vthis_field = sd->vthis->toSymbol()->Stree;
@@ -987,8 +995,11 @@ AssignExp::toElem(IRState *irs)
 	      tree vthis_exp = modify_expr(component_ref(t1, vthis_field), vthis_value);
 	      result = compound_expr(result, vthis_exp);
 	    }
+
+	  return compound_expr(result, t1);
 	}
-      return result;
+
+      return modify_expr(build_ctype(type), t1, t2);
     }
 
   if (tb1->ty == Tsarray)
@@ -1019,6 +1030,15 @@ AssignExp::toElem(IRState *irs)
 	  tree result = build_libcall(libcall, 3, args);
 	  return compound_expr(result, t1);
 	}
+
+      tree t1 = e1->toElem(irs);
+      tree t2 = convert_for_assignment(e2->toElem(irs), e2->type, e1->type);
+
+      if (op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
+	  && aggregate_value_p(TREE_TYPE (t2), t2))
+	CALL_EXPR_RETURN_SLOT_OPT (t2) = true;
+
+      return modify_expr(build_ctype(type), t1, t2);
     }
 
   // Simple assignment
@@ -1105,7 +1125,7 @@ IndexExp::toElem(IRState *irs)
       // The __dollar variable just becomes a placeholder for the actual length.
       if (lengthVar)
 	{
-	  lengthVar->csym = new Symbol;
+	  lengthVar->csym = new Symbol();
 	  lengthVar->csym->Stree = length;
 	}
 
