@@ -107,7 +107,13 @@ fi
 d_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`
 
 GDC=$CC
-GDC=`echo $CC | sed s/xgcc/gdc/`
+# FIXME: This is not really reliable. CC can include complete paths,
+# arguments, etc which may contain 'gcc'
+if test -n "${with_target_subdir}"; then
+  GDC=`echo $CC | sed 's/xgcc/gdc/'`
+else
+  GDC=`echo $CC | sed 's/gcc/gdc/'`
+fi
 
 AC_MSG_CHECKING([If $GDC can compile D sources])
 echo "int function(int) test;" > actest.d
