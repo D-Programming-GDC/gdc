@@ -360,6 +360,11 @@ else
 fi
 AC_SUBST(ZLIB_OBJS)
 
+dnl Test for the -ldl library.
+DL_LIBS=
+AC_CHECK_LIB([dl], [dlopen], DL_LIBS=-ldl)
+AC_SUBST(DL_LIBS)
+
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
 # that multilib installs will end up installed in the correct place.
 # The testsuite needs it for multilib-aware ABI baseline files.

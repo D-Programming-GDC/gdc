@@ -126,7 +126,7 @@ libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
 unittest: libgphobos2.a libgphobos2_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) $(DL_LIBS)
 
 #--------------------------------------#
 # Install, doc, etc targets
