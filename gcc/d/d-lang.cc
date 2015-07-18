@@ -1078,6 +1078,7 @@ d_parse_file()
 	{
 	  File deps (global.params.moduleDepsFile);
 	  deps.setbuffer ((void *) ob->data, ob->offset);
+	  deps.ref = 1;
 	  writeFile(Loc(), &deps);
 	}
       else
@@ -1097,6 +1098,7 @@ d_parse_file()
 	{
 	  File deps (global.params.makeDepsFile);
 	  deps.setbuffer ((void *) ob->data, ob->offset);
+	  deps.ref = 1;
 	  writeFile(Loc(), &deps);
 	}
       else
