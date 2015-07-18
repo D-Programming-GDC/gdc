@@ -721,6 +721,7 @@ enable_druntime_gc
 with_system_zlib
 enable_werror
 enable_version_specific_runtime_libs
+with_libbacktrace
 enable_libbacktrace
 '
       ac_precious_vars='build_alias
@@ -1368,6 +1369,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cross-host=HOST  configuring with a cross compiler
   --with-system-zlib      use installed libz (default: no)
+  --with-libbacktrace=PATH specify directory containing libbacktrace object files
 
 Some influential environment variables:
   CC          C compiler command
@@ -4319,7 +4321,21 @@ BACKTRACE_USES_MALLOC=false
 BACKTRACE_SUPPORTS_THREADS=false
 LIBBACKTRACE_LIB=""
 
-CPPFLAGS+=" -I../libbacktrace "
+with_libbacktrace=no
+
+# Check whether --with-libbacktrace was given.
+if test "${with_libbacktrace+set}" = set; then :
+  withval=$with_libbacktrace; with_libbacktrace=$withval
+else
+  with_libbacktrace=no
+fi
+
+
+if test "x$with_libbacktrace" != xno; then
+  CPPFLAGS+=" -I$with_libbacktrace "
+else
+  CPPFLAGS+=" -I../libbacktrace "
+fi
 
 # Check whether --enable-libbacktrace was given.
 if test "${enable_libbacktrace+set}" = set; then :
@@ -4420,7 +4436,11 @@ fi
 
 
 if $BACKTRACE_SUPPORTED; then
-  LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  if test "x$with_libbacktrace" != xno; then
+    LIBBACKTRACE_LIB="$with_libbacktrace/.libs/libbacktrace.a"
+  else
+    LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  fi
 else
   LIBBACKTRACE_LIB=""
 fi

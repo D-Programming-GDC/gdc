@@ -195,7 +195,16 @@ BACKTRACE_USES_MALLOC=false
 BACKTRACE_SUPPORTS_THREADS=false
 LIBBACKTRACE_LIB=""
 
-CPPFLAGS+=" -I../libbacktrace "
+with_libbacktrace=no
+AC_ARG_WITH(libbacktrace,
+[  --with-libbacktrace=PATH specify directory containing libbacktrace object files],
+[with_libbacktrace=$withval], [with_libbacktrace=no])
+
+if test "x$with_libbacktrace" != xno; then
+  CPPFLAGS+=" -I$with_libbacktrace "
+else
+  CPPFLAGS+=" -I../libbacktrace "
+fi
 
 AC_ARG_ENABLE(libbacktrace,
  [  --disable-libbacktrace  Do not use libbacktrace for backtraces],
@@ -243,7 +252,11 @@ fi
 AM_CONDITIONAL([BACKTRACE_SUPPORTED], [$BACKTRACE_SUPPORTED])
 
 if $BACKTRACE_SUPPORTED; then
-  LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  if test "x$with_libbacktrace" != xno; then
+    LIBBACKTRACE_LIB="$with_libbacktrace/.libs/libbacktrace.a"
+  else
+    LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  fi
 else
   LIBBACKTRACE_LIB=""
 fi
