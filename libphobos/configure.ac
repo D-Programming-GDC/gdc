@@ -30,9 +30,13 @@ AC_CANONICAL_SYSTEM
 target_alias=${target_alias-$target}
 AC_SUBST(target_alias)
 
-if test "$build" != "$host"; then
-  # We are being configured with some form of cross compiler.
-  GCC_NO_EXECUTABLES
+# Note: with_target_subdir is set by toplevel configure script.
+# If it's empty this configure script was called manually.
+if test -n "${with_target_subdir}"; then
+  if test "$build" != "$host"; then
+    # We are being configured with some form of cross compiler.
+    GCC_NO_EXECUTABLES
+  fi
 fi
 
 AM_INIT_AUTOMAKE([1.9.3 foreign no-dependencies])
