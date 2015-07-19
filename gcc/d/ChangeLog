@@ -1,3 +1,8 @@
+2015-07-19  Sebastien Alaiwan <sebastien.alaiwan@gmail.com>
+
+	* d-lang.cc(d_parse_file): Set ref flag on the module and make deps
+	file handle.
+
 2015-07-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(convert_for_assignment): Remove handling of zero
