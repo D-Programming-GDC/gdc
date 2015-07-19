@@ -24,6 +24,32 @@
 D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
 D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdc|sed '$(program_transform_name)')
 
+# Common headers between D frontend and glue
+D_DMD_H := \
+    d/dfrontend/aav.h d/dfrontend/array.h d/dfrontend/aggregate.h \
+    d/dfrontend/aliasthis.h d/dfrontend/arraytypes.h d/dfrontend/attrib.h \
+    d/dfrontend/complex_t.h d/dfrontend/cond.h d/dfrontend/ctfe.h \
+    d/dfrontend/declaration.h d/dfrontend/doc.h d/dfrontend/dsymbol.h \
+    d/dfrontend/enum.h d/dfrontend/expression.h d/dfrontend/file.h \
+    d/dfrontend/filename.h d/dfrontend/hdrgen.h d/dfrontend/identifier.h \
+    d/dfrontend/import.h d/dfrontend/init.h d/dfrontend/intrange.h \
+    d/dfrontend/json.h d/dfrontend/lexer.h d/dfrontend/macro.h \
+    d/dfrontend/mars.h d/dfrontend/module.h d/dfrontend/mtype.h \
+    d/dfrontend/nspace.h d/dfrontend/object.h d/dfrontend/outbuffer.h \
+    d/dfrontend/parse.h d/dfrontend/port.h d/dfrontend/rmem.h \
+    d/dfrontend/root.h d/dfrontend/scope.h d/dfrontend/speller.h \
+    d/dfrontend/statement.h d/dfrontend/staticassert.h \
+    d/dfrontend/stringtable.h d/dfrontend/target.h \
+    d/dfrontend/template.h d/dfrontend/utf.h \
+    d/dfrontend/version.h d/dfrontend/visitor.h \
+    d/d-dmd-gcc.h d/longdouble.h d/id.h d/verstr.h
+
+D_TREE_H = $(TREE_H) $(D_DMD_H) d/intrinsics.def d/runtime.def d/d-tree.def \
+    d/d-lang.h d/d-codegen.h d/d-objfile.h d/d-irstate.h \
+    d/d-dmd-gcc.h d/d-system.h d/longdouble.h coretypes.h function.h \
+    $(VARRAY_H) $(SYSTEM_H) $(CONFIG_H) $(TARGET_H) $(GGC_H) \
+    $(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h
+
 # Name of phobos library
 D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos2\"
 
@@ -117,14 +143,18 @@ d/impcnvtab.c: d/impcvgen
 d/verstr.h: d/VERSION
 	cat $^ > $@
 
+d/id.o: d/id.c $(D_DMD_H)
+d/impcnvtab.o: d/impcnvtab.c $(D_DMD_H)
+d/d-lang.o: d/d-lang.cc $(D_TREE_H) options.h
+
 # Override build rules for D frontend.
-d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h
+d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h $(D_DMD_H)
 	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.o -c $<
 
 d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
 	$(COMPILER_FOR_BUILD) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
 
-d/%.o: $(srcdir)/d/%.cc $(CONFIG_H)
+d/%.o: $(srcdir)/d/%.cc $(CONFIG_H) $(D_TREE_H)
 	$(COMPILER) $(ALL_D_COMPILER_FLAGS) -o d/$*.o -c $<
 
 CFLAGS-d/id.o += $(D_INCLUDES)
