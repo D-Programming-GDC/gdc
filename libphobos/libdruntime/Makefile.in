@@ -111,6 +111,7 @@ DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
+DL_LIBS = @DL_LIBS@
 DRUNTIME_OBJS = @DRUNTIME_OBJS@ $(BASE_OBJS) $(RUNTIME_OBJS) \
 	$(UTIL_OBJS) $(subst ti_,rt/typeinfo/ti_,$(TI))
 D_EXTRA_OBJS = @D_EXTRA_OBJS@
@@ -635,7 +636,7 @@ libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
 	$(RANLIB) $@
 
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) $(DL_LIBS)
 
 #--------------------------------------#
 # Install, doc, etc targets

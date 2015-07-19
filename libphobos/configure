@@ -594,6 +594,7 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+DL_LIBS
 ZLIB_OBJS
 D_GC_MODULES
 srcdir
@@ -720,6 +721,7 @@ enable_druntime_gc
 with_system_zlib
 enable_werror
 enable_version_specific_runtime_libs
+with_libbacktrace
 enable_libbacktrace
 '
       ac_precious_vars='build_alias
@@ -1367,6 +1369,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cross-host=HOST  configuring with a cross compiler
   --with-system-zlib      use installed libz (default: no)
+  --with-libbacktrace=PATH specify directory containing libbacktrace object files
 
 Some influential environment variables:
   CC          C compiler command
@@ -2337,9 +2340,13 @@ test -n "$target_alias" &&
 target_alias=${target_alias-$target}
 
 
-if test "$build" != "$host"; then
-  # We are being configured with some form of cross compiler.
-  GCC_NO_EXECUTABLES
+# Note: with_target_subdir is set by toplevel configure script.
+# If it's empty this configure script was called manually.
+if test -n "${with_target_subdir}"; then
+  if test "$build" != "$host"; then
+    # We are being configured with some form of cross compiler.
+    GCC_NO_EXECUTABLES
+  fi
 fi
 
 am__api_version='1.11'
@@ -3815,7 +3822,13 @@ fi
 d_target_os=`echo $target_os | sed 's/^\(A-Za-z_+\)/\1/'`
 
 GDC=$CC
-GDC=`echo $CC | sed s/xgcc/gdc/`
+# FIXME: This is not really reliable. CC can include complete paths,
+# arguments, etc which may contain 'gcc'
+if test -n "${with_target_subdir}"; then
+  GDC=`echo $CC | sed 's/xgcc/gdc/'`
+else
+  GDC=`echo $CC | sed 's/gcc/gdc/'`
+fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking If $GDC can compile D sources" >&5
 $as_echo_n "checking If $GDC can compile D sources... " >&6; }
@@ -4308,7 +4321,21 @@ BACKTRACE_USES_MALLOC=false
 BACKTRACE_SUPPORTS_THREADS=false
 LIBBACKTRACE_LIB=""
 
-CPPFLAGS+=" -I../libbacktrace "
+with_libbacktrace=no
+
+# Check whether --with-libbacktrace was given.
+if test "${with_libbacktrace+set}" = set; then :
+  withval=$with_libbacktrace; with_libbacktrace=$withval
+else
+  with_libbacktrace=no
+fi
+
+
+if test "x$with_libbacktrace" != xno; then
+  CPPFLAGS+=" -I$with_libbacktrace "
+else
+  CPPFLAGS+=" -I../libbacktrace "
+fi
 
 # Check whether --enable-libbacktrace was given.
 if test "${enable_libbacktrace+set}" = set; then :
@@ -4409,7 +4436,11 @@ fi
 
 
 if $BACKTRACE_SUPPORTED; then
-  LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  if test "x$with_libbacktrace" != xno; then
+    LIBBACKTRACE_LIB="$with_libbacktrace/.libs/libbacktrace.a"
+  else
+    LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  fi
 else
   LIBBACKTRACE_LIB=""
 fi
@@ -4596,6 +4627,49 @@ fi
 else
     ZLIB_OBJS="\$(Z_OBJS)"
 fi
+
+
+DL_LIBS=
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dlopen in -ldl" >&5
+$as_echo_n "checking for dlopen in -ldl... " >&6; }
+if test "${ac_cv_lib_dl_dlopen+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dlopen ();
+int
+main ()
+{
+return dlopen ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_dl_dlopen=yes
+else
+  ac_cv_lib_dl_dlopen=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dl_dlopen" >&5
+$as_echo "$ac_cv_lib_dl_dlopen" >&6; }
+if test "x$ac_cv_lib_dl_dlopen" = x""yes; then :
+  DL_LIBS=-ldl
+fi
+
 
 
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so

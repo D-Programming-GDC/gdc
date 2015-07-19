@@ -229,7 +229,7 @@ endif
 	$(RANLIB) $@
 
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) $(DL_LIBS)
 
 #--------------------------------------#
 # Install, doc, etc targets
