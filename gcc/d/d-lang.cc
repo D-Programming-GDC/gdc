@@ -781,27 +781,30 @@ is_system_module(Module *m)
   return false;
 }
 
+static bool
+write_one_dep(const char* fn, OutBuffer* ob)
+{
+  ob->writestring ("  ");
+  ob->writestring (fn);
+  ob->writestring ("\\\n");
+  return true;
+}
+
 static void
 deps_write (Module *m)
 {
   OutBuffer *ob = global.params.makeDeps;
-  size_t size, column = 0, colmax = 72;
   FileName *fn;
 
   // Write out object name.
   fn = m->objfile->name;
-  size = strlen (fn->str);
   ob->writestring (fn->str);
-  column = size;
+  ob->writestring (":");
 
-  ob->writestring (": ");
-  column += 2;
+  Array<FileName*> dependencies;
 
   // First dependency is source file for module.
-  fn = m->srcfile->name;
-  size = strlen (fn->str);
-  ob->writestring (fn->str);
-  column += size;
+  dependencies.push(m->srcfile->name);
 
   // Write out file dependencies.
   for (size_t i = 0; i < m->aimports.dim; i++)
@@ -816,21 +819,17 @@ deps_write (Module *m)
         if(is_system_module(mi))
           continue;
 
+      dependencies.push(mi->srcfile->name);
+    }
+
+  for (size_t i = 0; i < dependencies.dim; i++)
+    {
+      if(i > 0 && dependencies[i] == dependencies[i-1])
+        continue;
+
       // All checks done, write out file path/name.
-      fn = mi->srcfile->name;
-      size = strlen (fn->str);
-      column += size;
-      if (column > colmax)
-	{
-	  ob->writestring (" \\\n ");
-	  column = 1 + size;
-	}
-      else
-	{
-	  ob->writestring (" ");
-	  column++;
-	}
-      ob->writestring (fn->str);
+      fn = dependencies[i];
+      write_one_dep(fn->str, ob);
     }
 
   ob->writenl();
