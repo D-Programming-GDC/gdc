@@ -1,3 +1,10 @@
+2015-07-20  Sebastien Alaiwan <sebastien.alaiwan@gmail.com>
+
+	* d-lang.cc(is_system_module): Extract function.
+	(write_one_dep): Extract function.
+	(deps_write): Eliminate duplicated dependencies, include
+	indirect and private dependencies.
+
 2015-07-19  Sebastien Alaiwan <sebastien.alaiwan@gmail.com>
 
 	* d-lang.cc(d_parse_file): Set ref flag on the module and make deps
