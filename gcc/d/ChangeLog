@@ -42,6 +42,24 @@
 	(IRState::doReturn): Likewise.
 	(IRState::doJump): Likewise.
 
+	* d-attribs.c: Adjust includes for flags.h changes.
+	* d-builtins.cc: Likewise.
+	* d-codegen.cc: Likewise.
+	* d-convert.cc: Likewise.
+	* d-elem.cc: Likewise.
+	* d-decls.cc: Likewise.
+	* d-glue.cc: Likewise.
+	* d-incpath.cc: Likewise.
+	* d-irstate.cc: Likewise.
+	* d-lang.cc: Likewise.
+	* d-longdouble.cc: Likewise.
+	* d-objfile.cc: Likewise.
+	* d-port.cc: Likewise.
+	* d-target.cc: Likewise.
+	* d-todt.cc: Likewise.
+	* toir.cc: Likewise.
+	* types.cc: Likewise.
+
 2015-07-20  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
 	* d-lang.cc(is_system_module): Extract function.

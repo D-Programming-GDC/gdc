@@ -36,7 +36,6 @@
 
 #include "opts.h"
 #include "alias.h"
-#include "flags.h"
 #include "symtab.h"
 #include "tree.h"
 #include "diagnostic.h"

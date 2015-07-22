@@ -3,7 +3,7 @@ This implements building of libphobos library in GCC.
 
 --- a/configure
 +++ b/configure
-@@ -2759,7 +2759,8 @@ target_libraries="target-libgcc \
+@@ -2762,7 +2762,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
  		target-libobjc \
  		target-libada \
@@ -27,7 +27,7 @@ This implements building of libphobos library in GCC.
  # run only in the target environment
 --- a/Makefile.def
 +++ b/Makefile.def
-@@ -150,6 +150,7 @@ target_modules = { module= libquadmath; };
+@@ -152,6 +152,7 @@ target_modules = { module= libquadmath; };
  target_modules = { module= libgfortran; };
  target_modules = { module= libobjc; };
  target_modules = { module= libgo; };
@@ -35,7 +35,7 @@ This implements building of libphobos library in GCC.
  target_modules = { module= libtermcap; no_check=true;
                     missing=mostlyclean;
                     missing=clean;
-@@ -540,6 +541,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
+@@ -543,6 +544,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
  dependencies = { module=all-target-libgo; on=all-target-libbacktrace; };
  dependencies = { module=all-target-libgo; on=all-target-libffi; };
  dependencies = { module=all-target-libgo; on=all-target-libatomic; };
@@ -44,7 +44,7 @@ This implements building of libphobos library in GCC.
  dependencies = { module=configure-target-libjava; on=configure-target-zlib; };
  dependencies = { module=configure-target-libjava; on=configure-target-boehm-gc; };
  dependencies = { module=configure-target-libjava; on=configure-target-libffi; };
-@@ -603,6 +606,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
+@@ -606,6 +609,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
  languages = { language=obj-c++;	gcc-check-target=check-obj-c++; };
  languages = { language=go;	gcc-check-target=check-go;
  				lib-check-target=check-target-libgo; };
@@ -199,7 +199,7 @@ This implements building of libphobos library in GCC.
      maybe-install-strip-target-libtermcap \
      maybe-install-strip-target-winsup \
      maybe-install-strip-target-libgloss \
-@@ -41334,6 +41352,463 @@ maintainer-clean-target-libgo:
+@@ -41340,6 +41358,464 @@ maintainer-clean-target-libgo:
  
  
  
@@ -215,8 +215,8 @@ This implements building of libphobos library in GCC.
 +	@r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	echo "Checking multilib configuration for libphobos..."; \
-+	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libphobos ; \
-+	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libphobos/multilib.tmp 2> /dev/null ; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libphobos; \
++	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/libphobos/multilib.tmp 2> /dev/null; \
 +	if test -r $(TARGET_SUBDIR)/libphobos/multilib.out; then \
 +	  if cmp -s $(TARGET_SUBDIR)/libphobos/multilib.tmp $(TARGET_SUBDIR)/libphobos/multilib.out; then \
 +	    rm -f $(TARGET_SUBDIR)/libphobos/multilib.tmp; \
@@ -228,7 +228,7 @@ This implements building of libphobos library in GCC.
 +	  mv $(TARGET_SUBDIR)/libphobos/multilib.tmp $(TARGET_SUBDIR)/libphobos/multilib.out; \
 +	fi; \
 +	test ! -f $(TARGET_SUBDIR)/libphobos/Makefile || exit 0; \
-+	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libphobos ; \
++	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/libphobos; \
 +	$(NORMAL_TARGET_EXPORTS)  \
 +	echo Configuring in $(TARGET_SUBDIR)/libphobos; \
 +	cd "$(TARGET_SUBDIR)/libphobos" || exit 1; \
@@ -237,12 +237,13 @@ This implements building of libphobos library in GCC.
 +	  *) topdir=`echo $(TARGET_SUBDIR)/libphobos/ | \
 +		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
 +	esac; \
-+	srcdiroption="--srcdir=$${topdir}/libphobos"; \
-+	libsrcdir="$$s/libphobos"; \
++	module_srcdir=libphobos; \
 +	rm -f no-such-file || : ; \
-+	CONFIG_SITE=no-such-file $(SHELL) $${libsrcdir}/configure \
++	CONFIG_SITE=no-such-file $(SHELL) \
++	  $$s/$$module_srcdir/configure \
++	  --srcdir=$${topdir}/$$module_srcdir \
 +	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
-+	  --target=${target_alias} $${srcdiroption}  \
++	  --target=${target_alias}  \
 +	  || exit 1
 +@endif target-libphobos
 +
@@ -264,7 +265,7 @@ This implements building of libphobos library in GCC.
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS)  \
 +	(cd $(TARGET_SUBDIR)/libphobos && \
-+	  $(MAKE) $(BASE_FLAGS_TO_PASS) $(EXTRA_TARGET_FLAGS)  \
++	  $(MAKE) $(BASE_FLAGS_TO_PASS) $(EXTRA_TARGET_FLAGS)   \
 +		$(TARGET-target-libphobos))
 +@endif target-libphobos
 +
@@ -327,11 +328,11 @@ This implements building of libphobos library in GCC.
 +info-target-libphobos: \
 +    configure-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing info in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing info in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -353,11 +354,11 @@ This implements building of libphobos library in GCC.
 +dvi-target-libphobos: \
 +    configure-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing dvi in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing dvi in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -379,11 +380,11 @@ This implements building of libphobos library in GCC.
 +pdf-target-libphobos: \
 +    configure-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing pdf in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing pdf in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -405,11 +406,11 @@ This implements building of libphobos library in GCC.
 +html-target-libphobos: \
 +    configure-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing html in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing html in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -431,11 +432,11 @@ This implements building of libphobos library in GCC.
 +TAGS-target-libphobos: \
 +    configure-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing TAGS in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing TAGS in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -458,11 +459,11 @@ This implements building of libphobos library in GCC.
 +    configure-target-libphobos \
 +    info-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing install-info in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing install-info in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -485,11 +486,11 @@ This implements building of libphobos library in GCC.
 +    configure-target-libphobos \
 +    pdf-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing install-pdf in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing install-pdf in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -512,11 +513,11 @@ This implements building of libphobos library in GCC.
 +    configure-target-libphobos \
 +    html-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing install-html in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing install-html in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -538,11 +539,11 @@ This implements building of libphobos library in GCC.
 +installcheck-target-libphobos: \
 +    configure-target-libphobos 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing installcheck in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing installcheck in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -563,11 +564,11 @@ This implements building of libphobos library in GCC.
 +
 +mostlyclean-target-libphobos: 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing mostlyclean in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing mostlyclean in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -588,11 +589,11 @@ This implements building of libphobos library in GCC.
 +
 +clean-target-libphobos: 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing clean in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing clean in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -613,11 +614,11 @@ This implements building of libphobos library in GCC.
 +
 +distclean-target-libphobos: 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing distclean in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing distclean in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -638,11 +639,11 @@ This implements building of libphobos library in GCC.
 +
 +maintainer-clean-target-libphobos: 
 +	@: $(MAKE); $(unstage)
-+	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0 ; \
++	@[ -f $(TARGET_SUBDIR)/libphobos/Makefile ] || exit 0; \
 +	r=`${PWD_COMMAND}`; export r; \
 +	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
 +	$(NORMAL_TARGET_EXPORTS) \
-+	echo "Doing maintainer-clean in $(TARGET_SUBDIR)/libphobos" ; \
++	echo "Doing maintainer-clean in $(TARGET_SUBDIR)/libphobos"; \
 +	for flag in $(EXTRA_TARGET_FLAGS); do \
 +	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
 +	done; \
@@ -663,7 +664,7 @@ This implements building of libphobos library in GCC.
  .PHONY: configure-target-libtermcap maybe-configure-target-libtermcap
  maybe-configure-target-libtermcap:
  @if gcc-bootstrap
-@@ -47364,6 +47839,14 @@ check-gcc-go:
+@@ -47370,6 +47846,14 @@ check-gcc-go:
  	(cd gcc && $(MAKE) $(GCC_FLAGS_TO_PASS) check-go);
  check-go: check-gcc-go check-target-libgo
  
@@ -678,7 +679,7 @@ This implements building of libphobos library in GCC.
  
  # The gcc part of install-no-fixedincludes, which relies on an intimate
  # knowledge of how a number of gcc internal targets (inter)operate.  Delegate.
-@@ -49500,6 +49983,7 @@ configure-target-libquadmath: stage_last
+@@ -49506,6 +49990,7 @@ configure-target-libquadmath: stage_last
  configure-target-libgfortran: stage_last
  configure-target-libobjc: stage_last
  configure-target-libgo: stage_last
@@ -686,7 +687,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: stage_last
  configure-target-winsup: stage_last
  configure-target-libgloss: stage_last
-@@ -49534,6 +50018,7 @@ configure-target-libquadmath: maybe-all-gcc
+@@ -49540,6 +50025,7 @@ configure-target-libquadmath: maybe-all-gcc
  configure-target-libgfortran: maybe-all-gcc
  configure-target-libobjc: maybe-all-gcc
  configure-target-libgo: maybe-all-gcc
@@ -694,7 +695,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-gcc
  configure-target-winsup: maybe-all-gcc
  configure-target-libgloss: maybe-all-gcc
-@@ -50327,6 +50812,8 @@ configure-target-libgo: maybe-all-target-libstdc++-v3
+@@ -50341,6 +50827,8 @@ configure-target-libgo: maybe-all-target-libstdc++-v3
  all-target-libgo: maybe-all-target-libbacktrace
  all-target-libgo: maybe-all-target-libffi
  all-target-libgo: maybe-all-target-libatomic
@@ -703,7 +704,7 @@ This implements building of libphobos library in GCC.
  configure-target-libjava: maybe-configure-target-zlib
  configure-target-libjava: maybe-configure-target-boehm-gc
  configure-target-libjava: maybe-configure-target-libffi
-@@ -50444,6 +50931,7 @@ configure-target-libquadmath: maybe-all-target-libgcc
+@@ -50458,6 +50946,7 @@ configure-target-libquadmath: maybe-all-target-libgcc
  configure-target-libgfortran: maybe-all-target-libgcc
  configure-target-libobjc: maybe-all-target-libgcc
  configure-target-libgo: maybe-all-target-libgcc
@@ -711,7 +712,7 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-target-libgcc
  configure-target-winsup: maybe-all-target-libgcc
  configure-target-libgloss: maybe-all-target-libgcc
-@@ -50487,6 +50975,8 @@ configure-target-libobjc: maybe-all-target-newlib maybe-all-target-libgloss
+@@ -50501,6 +50990,8 @@ configure-target-libobjc: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-libgo: maybe-all-target-newlib maybe-all-target-libgloss
  
