@@ -787,24 +787,28 @@ type_passed_as (Parameter *arg)
   return arg_type;
 }
 
-// Returns an array of type TYPE_NODE which has SIZE number of elements.
+// Returns an array of type D_TYPE which has SIZE number of elements.
 
 tree
-d_array_type (Type *d_type, uinteger_t size)
+d_array_type(Type *d_type, uinteger_t size)
 {
   tree index_type_node;
   tree type_node = build_ctype(d_type);
 
   if (size > 0)
     {
-      index_type_node = size_int (size - 1);
-      index_type_node = build_index_type (index_type_node);
+      index_type_node = size_int(size - 1);
+      index_type_node = build_index_type(index_type_node);
     }
   else
-    index_type_node = build_range_type (sizetype, size_zero_node,
-					NULL_TREE);
+    {
+      tree type = lang_hooks.types.type_for_size(TYPE_PRECISION (sizetype),
+						 TYPE_UNSIGNED (sizetype));
 
-  tree array_type = build_array_type (type_node, index_type_node);
+      index_type_node = build_range_type(type, size_zero_node, NULL_TREE);
+    }
+
+  tree array_type = build_array_type(type_node, index_type_node);
 
   if (size == 0)
     {
@@ -1657,86 +1661,82 @@ build_deref (tree exp)
 // Builds pointer offset expression PTR[INDEX]
 
 tree
-build_array_index (tree ptr, tree index)
+build_array_index(tree ptr, tree index)
 {
-  tree result_type_node = TREE_TYPE (ptr);
-  tree elem_type_node = TREE_TYPE (result_type_node);
-  tree size_exp;
+  tree ptr_type = TREE_TYPE (ptr);
+  tree target_type = TREE_TYPE (ptr_type);
 
-  tree prod_result_type;
-  prod_result_type = sizetype;
+  tree type = lang_hooks.types.type_for_size(TYPE_PRECISION (sizetype),
+					     TYPE_UNSIGNED (sizetype));
 
   // array element size
-  size_exp = size_in_bytes (elem_type_node);
+  tree size_exp = size_in_bytes(target_type);
 
-  if (integer_zerop (size_exp))
+  if (integer_zerop(size_exp))
     {
       // Test for void case...
-      if (TYPE_MODE (elem_type_node) == TYPE_MODE (void_type_node))
-	index = fold_convert (prod_result_type, index);
+      if (TYPE_MODE (target_type) == TYPE_MODE (void_type_node))
+	index = fold_convert(type, index);
       else
 	{
 	  // FIXME: should catch this earlier.
-	  error ("invalid use of incomplete type %qD", TYPE_NAME (elem_type_node));
-	  result_type_node = error_mark_node;
+	  error("invalid use of incomplete type %qD", TYPE_NAME (target_type));
+	  ptr_type = error_mark_node;
 	}
     }
-  else if (integer_onep (size_exp))
+  else if (integer_onep(size_exp))
     {
       // ...or byte case -- No need to multiply.
-      index = fold_convert (prod_result_type, index);
+      index = fold_convert(type, index);
     }
   else
     {
-      if (TYPE_PRECISION (TREE_TYPE (index)) != TYPE_PRECISION (sizetype)
-	  || TYPE_UNSIGNED (TREE_TYPE (index)) != TYPE_UNSIGNED (sizetype))
-	{
-	  tree type = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
-						      TYPE_UNSIGNED (sizetype));
-	  index = d_convert (type, index);
-	}
-      index = fold_convert (prod_result_type,
-			    fold_build2 (MULT_EXPR, TREE_TYPE (size_exp),
-					 index, d_convert (TREE_TYPE (index), size_exp)));
+      index = d_convert(type, index);
+      index = fold_build2(MULT_EXPR, TREE_TYPE (index),
+			  index, d_convert(TREE_TYPE (index), size_exp));
+      index = fold_convert(type, index);
     }
 
   // backend will ICE otherwise
-  if (error_operand_p (result_type_node))
-    return result_type_node;
+  if (error_operand_p(ptr_type))
+    return ptr_type;
 
-  if (integer_zerop (index))
+  if (integer_zerop(index))
     return ptr;
 
-  return build2 (POINTER_PLUS_EXPR, result_type_node, ptr, index);
+  return build2(POINTER_PLUS_EXPR, ptr_type, ptr, index);
 }
 
-// Builds pointer offset expression *(PTR OP IDX)
+// Builds pointer offset expression *(PTR OP INDEX)
 // OP could be a plus or minus expression.
 
 tree
-build_offset_op (tree_code op, tree ptr, tree idx)
+build_offset_op(tree_code op, tree ptr, tree index)
 {
-  gcc_assert (op == MINUS_EXPR || op == PLUS_EXPR);
+  gcc_assert(op == MINUS_EXPR || op == PLUS_EXPR);
+
+  tree type = lang_hooks.types.type_for_size(TYPE_PRECISION (sizetype),
+					     TYPE_UNSIGNED (sizetype));
+  index = fold_convert(type, index);
 
   if (op == MINUS_EXPR)
-    idx = fold_build1 (NEGATE_EXPR, sizetype, idx);
+    index = fold_build1(NEGATE_EXPR, type, index);
 
-  return build2 (POINTER_PLUS_EXPR, TREE_TYPE (ptr), ptr,
-		 fold_convert (sizetype, idx));
+  return build2(POINTER_PLUS_EXPR, TREE_TYPE (ptr), ptr, index);
 }
 
 tree
-build_offset (tree ptr_node, tree byte_offset)
+build_offset(tree ptr_node, tree byte_offset)
 {
-  tree ofs = fold_convert (build_ctype(Type::tsize_t), byte_offset);
-  return fold_build2 (POINTER_PLUS_EXPR, TREE_TYPE (ptr_node), ptr_node, ofs);
+  tree ofs = fold_convert(build_ctype(Type::tsize_t), byte_offset);
+  return fold_build2(POINTER_PLUS_EXPR, TREE_TYPE (ptr_node), ptr_node, ofs);
 }
 
 tree
-build_memref (tree type, tree ptr, tree byte_offset)
+build_memref(tree type, tree ptr, tree byte_offset)
 {
-  tree ofs = fold_convert (type, byte_offset);
-  return fold_build2 (MEM_REF, type, ptr, ofs);
+  tree ofs = fold_convert(type, byte_offset);
+  return fold_build2(MEM_REF, type, ptr, ofs);
 }
 
 

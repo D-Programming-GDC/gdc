@@ -11,6 +11,10 @@
 	* d-builtins.cc(d_init_builtins): Build imaginary types as distinct
 	floating point type nodes.
 	* d-codegen.cc(build_float_modulus): Update to handle imaginary types.
+	(d_array_type): Use the front-end equivalent of sizetype to represent
+	the index type of arrays.
+	(build_array_index): Likewise.
+	(build_offset_op): Likewise.
 
 2015-07-20  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
