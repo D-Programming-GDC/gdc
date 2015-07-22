@@ -270,36 +270,36 @@ get_decl_tree (Declaration *decl, FuncDeclaration *func)
 // Return expression EXP, whose type has been converted to TYPE.
 
 tree
-d_convert (tree type, tree exp)
+d_convert(tree type, tree exp)
 {
   // Check this first before passing to lang_dtype.
-  if (error_operand_p (type) || error_operand_p (exp))
+  if (error_operand_p(type) || error_operand_p(exp))
     return error_mark_node;
 
-  Type *totype = lang_dtype (type);
-  Type *etype = lang_dtype (TREE_TYPE (exp));
+  Type *totype = lang_dtype(type);
+  Type *etype = lang_dtype(TREE_TYPE (exp));
 
   if (totype && etype)
-    return convert_expr (exp, etype, totype);
+    return convert_expr(exp, etype, totype);
 
-  return convert (type, exp);
+  return convert(type, exp);
 }
 
 // Return expression EXP, whose type has been convert from ETYPE to TOTYPE.
 
 tree
-convert_expr (tree exp, Type *etype, Type *totype)
+convert_expr(tree exp, Type *etype, Type *totype)
 {
   tree result = NULL_TREE;
 
-  gcc_assert (etype && totype);
+  gcc_assert(etype && totype);
   Type *ebtype = etype->toBasetype();
   Type *tbtype = totype->toBasetype();
 
-  if (d_types_same (etype, totype))
+  if (d_types_same(etype, totype))
     return exp;
 
-  if (error_operand_p (exp))
+  if (error_operand_p(exp))
     return exp;
 
   switch (ebtype->ty)
@@ -307,18 +307,18 @@ convert_expr (tree exp, Type *etype, Type *totype)
     case Tdelegate:
       if (tbtype->ty == Tdelegate)
 	{
-	  exp = maybe_make_temp (exp);
-	  return build_delegate_cst (delegate_method (exp), delegate_object (exp), totype);
+	  exp = maybe_make_temp(exp);
+	  return build_delegate_cst(delegate_method(exp), delegate_object(exp), totype);
 	}
       else if (tbtype->ty == Tpointer)
 	{
 	  // The front-end converts <delegate>.ptr to cast (void *)<delegate>.
 	  // Maybe should only allow void* ?
-	  exp = delegate_object (exp);
+	  exp = delegate_object(exp);
 	}
       else
 	{
-	  error ("can't convert a delegate expression to %s", totype->toChars());
+	  error("can't convert a delegate expression to %s", totype->toChars());
 	  return error_mark_node;
 	}
       break;
@@ -363,7 +363,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	    if (TREE_SIDE_EFFECTS(exp))
 	      result = compound_expr(exp, result);
 
-	    return result;
+	    break;
 	  }
 
 	if (cdto->isBaseOf(cdfrom, &offset) && offset != OFFSET_RUNTIME)
@@ -398,7 +398,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
     case Tsarray:
       if (tbtype->ty == Tpointer)
 	{
-	  result = build_nop (build_ctype(totype), build_address (exp));
+	  result = build_nop(build_ctype(totype), build_address(exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -410,32 +410,32 @@ convert_expr (tree exp, Type *etype, Type *totype)
 
 	  if ((dim * esize) % tsize != 0)
 	    {
-	      error ("cannot cast %s to %s since sizes don't line up",
-		     etype->toChars(), totype->toChars());
+	      error("cannot cast %s to %s since sizes don't line up",
+		    etype->toChars(), totype->toChars());
 	      return error_mark_node;
 	    }
 	  dim = (dim * esize) / tsize;
 
 	  // Assumes casting to dynamic array of same type or void
-	  return d_array_value (build_ctype(totype), size_int (dim),
-				build_nop (ptrtype, build_address (exp)));
+	  return d_array_value(build_ctype(totype), size_int(dim),
+			       build_nop(ptrtype, build_address(exp)));
 	}
       else if (tbtype->ty == Tsarray)
 	{
 	  // D apparently allows casting a static array to any static array type
-	  return build_vconvert (build_ctype(totype), exp);
+	  return build_vconvert(build_ctype(totype), exp);
 	}
       else if (tbtype->ty == Tstruct)
 	{
 	  // And allows casting a static array to any struct type too.
 	  // %% type sizes should have already been checked by the frontend.
-	  gcc_assert (totype->size() == etype->size());
-	  result = build_vconvert (build_ctype(totype), exp);
+	  gcc_assert(totype->size() == etype->size());
+	  result = build_vconvert(build_ctype(totype), exp);
 	}
       else
 	{
-	  error ("cannot cast expression of type %s to type %s",
-		 etype->toChars(), totype->toChars());
+	  error("cannot cast expression of type %s to type %s",
+		etype->toChars(), totype->toChars());
 	  return error_mark_node;
 	}
       break;
@@ -443,7 +443,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
     case Tarray:
       if (tbtype->ty == Tpointer)
 	{
-	  return d_convert (build_ctype(totype), d_array_ptr (exp));
+	  return d_convert(build_ctype(totype), d_array_ptr(exp));
 	}
       else if (tbtype->ty == Tarray)
 	{
@@ -456,47 +456,47 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	  if (sz_src == sz_dst)
 	    {
 	      // Convert from void[] or elements are the same size -- don't change length
-	      return build_vconvert (build_ctype(totype), exp);
+	      return build_vconvert(build_ctype(totype), exp);
 	    }
 	  else
 	    {
 	      unsigned mult = 1;
 	      tree args[3];
 
-	      args[0] = build_integer_cst (sz_dst, build_ctype(Type::tsize_t));
-	      args[1] = build_integer_cst (sz_src * mult, build_ctype(Type::tsize_t));
+	      args[0] = build_integer_cst(sz_dst, build_ctype(Type::tsize_t));
+	      args[1] = build_integer_cst(sz_src * mult, build_ctype(Type::tsize_t));
 	      args[2] = exp;
 
-	      return build_libcall (LIBCALL_ARRAYCAST, 3, args, build_ctype(totype));
+	      return build_libcall(LIBCALL_ARRAYCAST, 3, args, build_ctype(totype));
 	    }
 	}
       else if (tbtype->ty == Tsarray)
 	{
 	  // %% Strings are treated as dynamic arrays D2.
 	  if (ebtype->isString() && tbtype->isString())
-	    return indirect_ref (build_ctype(totype), d_array_ptr (exp));
+	    return indirect_ref(build_ctype(totype), d_array_ptr(exp));
 	}
       else
 	{
-	  error ("cannot cast expression of type %s to %s",
-		 etype->toChars(), totype->toChars());
+	  error("cannot cast expression of type %s to %s",
+		etype->toChars(), totype->toChars());
 	  return error_mark_node;
 	}
       break;
 
     case Taarray:
       if (tbtype->ty == Taarray)
-	return build_vconvert (build_ctype(totype), exp);
+	return build_vconvert(build_ctype(totype), exp);
       // Can convert associative arrays to void pointers.
       else if (tbtype->ty == Tpointer && tbtype->nextOf()->ty == Tvoid)
-	return build_vconvert (build_ctype(totype), exp);
+	return build_vconvert(build_ctype(totype), exp);
       // else, default conversion, which should product an error
       break;
 
     case Tpointer:
       // Can convert void pointers to associative arrays too...
       if (tbtype->ty == Taarray && ebtype->nextOf()->ty == Tvoid)
-	return build_vconvert (build_ctype(totype), exp);
+	return build_vconvert(build_ctype(totype), exp);
       break;
 
     case Tnull:
@@ -507,7 +507,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
 			       build_nop(ptrtype, exp));
 	}
       else if (tbtype->ty == Taarray)
-	  return build_vconvert (build_ctype(totype), exp);
+	  return build_vconvert(build_ctype(totype), exp);
       else if (tbtype->ty == Tdelegate)
 	  return build_delegate_cst(exp, null_pointer_node, totype);
       break;
@@ -516,18 +516,29 @@ convert_expr (tree exp, Type *etype, Type *totype)
       if (tbtype->ty == Tsarray)
 	{
 	  if (tbtype->size() == ebtype->size())
-	    return build_vconvert (build_ctype(totype), exp);
+	    return build_vconvert(build_ctype(totype), exp);
 	}
       break;
 
     default:
-      exp = fold_convert (build_ctype(etype), exp);
-      gcc_assert (TREE_CODE (exp) != STRING_CST);
+      // All casts between imaginary and non-imaginary result in 0.0,
+      // except for casts between complex and imaginary types.
+      if (!ebtype->iscomplex() && !tbtype->iscomplex()
+	  && (ebtype->isimaginary() != tbtype->isimaginary()))
+	{
+	  warning(OPT_Wcast_result, "cast from %s to %s will produce zero result",
+		  ebtype->toChars(), tbtype->toChars());
+
+	  return compound_expr(exp, build_zero_cst(build_ctype(tbtype)));
+	}
+
+      exp = fold_convert(build_ctype(etype), exp);
+      gcc_assert(TREE_CODE (exp) != STRING_CST);
       break;
     }
 
   return result ? result :
-    convert (build_ctype(totype), exp);
+    convert(build_ctype(totype), exp);
 }
 
 

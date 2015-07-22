@@ -1,11 +1,21 @@
-2015-07-20  Sebastien Alaiwan <sebastien.alaiwan@gmail.com>
+2015-07-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(convert_expr): Warn about casts between imaginary
+	and non-imaginary types.
+	* d-convert(d_convert_basic): Rename to convert, handle conversions
+	between complex and imaginary types.
+	(convert): Remove.
+	(d_build_truthvalue_op): Update to call convert.
+	(d_truthvalue_conversion): Likewise.
+
+2015-07-20  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
 	* d-lang.cc(is_system_module): Extract function.
 	(write_one_dep): Extract function.
 	(deps_write): Eliminate duplicated dependencies, include
 	indirect and private dependencies.
 
-2015-07-19  Sebastien Alaiwan <sebastien.alaiwan@gmail.com>
+2015-07-19  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
 	* d-lang.cc(d_parse_file): Set ref flag on the module and make deps
 	file handle.
