@@ -1387,42 +1387,32 @@ d_has_side_effects (tree exp)
 tree
 build_address (tree exp)
 {
-  tree t, ptrtype;
+  tree ptrtype;
   tree type = TREE_TYPE (exp);
   d_mark_addressable (exp);
 
-  // Gimplify doesn't like &(* (ptr-to-array-type)) with static arrays
-  if (TREE_CODE (exp) == INDIRECT_REF)
+  /* Just convert string literals (char[]) to C-style strings (char *), otherwise
+     the latter method (char[]*) causes conversion problems during gimplification. */
+  if (TREE_CODE (exp) == STRING_CST)
+    ptrtype = build_pointer_type (TREE_TYPE (type));
+  /* Special case for va_list. The backends will be expecting a pointer to vatype,
+   * but some targets use an array. So fix it.  */
+  else if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node))
     {
-      t = TREE_OPERAND (exp, 0);
-      ptrtype = build_pointer_type (type);
-      t = build_nop (ptrtype, t);
-    }
-  else
-    {
-      /* Just convert string literals (char[]) to C-style strings (char *), otherwise
-	 the latter method (char[]*) causes conversion problems during gimplification. */
-      if (TREE_CODE (exp) == STRING_CST)
+      if (TREE_CODE (TYPE_MAIN_VARIANT (type)) == ARRAY_TYPE)
 	ptrtype = build_pointer_type (TREE_TYPE (type));
-      /* Special case for va_list. The backends will be expecting a pointer to vatype,
-       * but some targets use an array. So fix it.  */
-      else if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node))
-	{
-	  if (TREE_CODE (TYPE_MAIN_VARIANT (type)) == ARRAY_TYPE)
-	    ptrtype = build_pointer_type (TREE_TYPE (type));
-	  else
-	    ptrtype = build_pointer_type (type);
-	}
       else
 	ptrtype = build_pointer_type (type);
-
-      t = build1 (ADDR_EXPR, ptrtype, exp);
     }
+  else
+    ptrtype = build_pointer_type (type);
+
+  tree ret = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
 
   if (TREE_CODE (exp) == FUNCTION_DECL)
-    TREE_NO_TRAMPOLINE (t) = 1;
+    TREE_NO_TRAMPOLINE (ret) = 1;
 
-  return t;
+  return ret;
 }
 
 tree
@@ -1631,31 +1621,146 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
   return tmemcmp;
 }
 
+// Builds OBJ.FIELD component reference.
+
+tree
+component_ref(tree obj, tree field)
+{
+  return fold_build3_loc(input_location, COMPONENT_REF,
+			 TREE_TYPE (field), obj, field, NULL_TREE);
+}
+
+// Build a modify expression, with variants for overriding
+// the type, and when it's value is not used.
+
+tree
+modify_expr(tree dst, tree src)
+{
+  return fold_build2_loc(input_location, MODIFY_EXPR,
+			 TREE_TYPE (dst), dst, src);
+}
+
+tree
+modify_expr(tree type, tree dst, tree src)
+{
+  return fold_build2_loc(input_location, MODIFY_EXPR,
+			 type, dst, src);
+}
+
+tree
+vmodify_expr(tree dst, tree src)
+{
+  return fold_build2_loc(input_location, MODIFY_EXPR,
+			 void_type_node, dst, src);
+}
+
+tree
+build_vinit(tree dst, tree src)
+{
+  return fold_build2_loc(input_location, INIT_EXPR,
+			 void_type_node, dst, src);
+}
+
+// Return EXP represented as TYPE.
+
+tree
+build_nop(tree type, tree exp)
+{
+  return fold_build1_loc(input_location, NOP_EXPR, type, exp);
+}
+
+tree
+build_vconvert(tree type, tree exp)
+{
+  return indirect_ref(type, build_address(exp));
+}
+
+// Build a boolean ARG0 op ARG1 expression.
+
+tree
+build_boolop(tree_code code, tree arg0, tree arg1)
+{
+  return fold_build2_loc(input_location, code,
+			 bool_type_node, arg0, arg1);
+}
+
+// Compound ARG0 and ARG1 together.
+
+tree
+compound_expr(tree arg0, tree arg1)
+{
+  return fold_build2_loc(input_location, COMPOUND_EXPR,
+			 TREE_TYPE (arg1), arg0, arg1);
+}
+
+tree
+vcompound_expr(tree arg0, tree arg1)
+{
+  return fold_build2_loc(input_location, COMPOUND_EXPR,
+			 void_type_node, arg0, arg1);
+}
+
+// Build a return expression.
+
+tree
+return_expr(tree ret)
+{
+  return fold_build1_loc(input_location, RETURN_EXPR,
+			 void_type_node, ret);
+}
+
+// Return the real part of CE, which should be a complex expression.
+
+tree
+real_part(tree ce)
+{
+  return fold_build1_loc(input_location, REALPART_EXPR,
+			 TREE_TYPE (TREE_TYPE (ce)), ce);
+}
+
+// Return the imaginary part of CE, which should be a complex expression.
+
+tree
+imaginary_part(tree ce)
+{
+  return fold_build1_loc(input_location, IMAGPART_EXPR,
+			 TREE_TYPE (TREE_TYPE (ce)), ce);
+}
+
+// Build a complex expression of type TYPE using RE and IM.
+
+tree
+complex_expr(tree type, tree re, tree im)
+{
+  return fold_build2_loc(input_location, COMPLEX_EXPR,
+			 type, re, im);
+}
+
 // Cast EXP (which should be a pointer) to TYPE * and then indirect.  The
 // back-end requires this cast in many cases.
 
 tree
-indirect_ref (tree type, tree exp)
+indirect_ref(tree type, tree exp)
 {
   if (TREE_CODE (TREE_TYPE (exp)) == REFERENCE_TYPE)
-    return build1 (INDIRECT_REF, type, exp);
+    return fold_build1(INDIRECT_REF, type, exp);
 
-  return build1 (INDIRECT_REF, type,
-		 build_nop (build_pointer_type (type), exp));
+  exp = build_nop(build_pointer_type(type), exp);
+
+  return build_deref(exp);
 }
 
 // Returns indirect reference of EXP, which must be a pointer type.
 
 tree
-build_deref (tree exp)
+build_deref(tree exp)
 {
-  tree type = TREE_TYPE (exp);
-  gcc_assert (POINTER_TYPE_P (type));
+  gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
 
   if (TREE_CODE (exp) == ADDR_EXPR)
     return TREE_OPERAND (exp, 0);
 
-  return build1 (INDIRECT_REF, TREE_TYPE (type), exp);
+  return build_fold_indirect_ref(exp);
 }
 
 // Builds pointer offset expression PTR[INDEX]
@@ -1704,7 +1809,7 @@ build_array_index(tree ptr, tree index)
   if (integer_zerop(index))
     return ptr;
 
-  return build2(POINTER_PLUS_EXPR, ptr_type, ptr, index);
+  return fold_build2(POINTER_PLUS_EXPR, ptr_type, ptr, index);
 }
 
 // Builds pointer offset expression *(PTR OP INDEX)
@@ -1722,7 +1827,7 @@ build_offset_op(tree_code op, tree ptr, tree index)
   if (op == MINUS_EXPR)
     index = fold_build1(NEGATE_EXPR, type, index);
 
-  return build2(POINTER_PLUS_EXPR, TREE_TYPE (ptr), ptr, index);
+  return fold_build2(POINTER_PLUS_EXPR, TREE_TYPE (ptr), ptr, index);
 }
 
 tree
@@ -1743,13 +1848,13 @@ build_memref(tree type, tree ptr, tree byte_offset)
 // Implicitly converts void* T to byte* as D allows { void[] a; &a[3]; }
 
 tree
-void_okay_p (tree t)
+void_okay_p(tree t)
 {
   tree type = TREE_TYPE (t);
   tree totype = build_ctype(Type::tuns8->pointerTo());
 
   if (VOID_TYPE_P (TREE_TYPE (type)))
-    return convert (totype, t);
+    return fold_convert(totype, t);
 
   return t;
 }
@@ -1758,53 +1863,52 @@ void_okay_p (tree t)
 // and ARG1. Perform relevant conversions needs for correct code operations.
 
 tree
-build_binary_op (tree_code code, tree type, tree arg0, tree arg1)
+build_binary_op(tree_code code, tree type, tree arg0, tree arg1)
 {
   tree t0 = TREE_TYPE (arg0);
   tree t1 = TREE_TYPE (arg1);
+  tree ret = NULL_TREE;
 
   bool unsignedp = TYPE_UNSIGNED (t0) || TYPE_UNSIGNED (t1);
 
-  tree t = NULL_TREE;
-
   // Deal with float mod expressions immediately.
   if (code == FLOAT_MOD_EXPR)
-    return build_float_modulus (TREE_TYPE (arg0), arg0, arg1);
+    return build_float_modulus(TREE_TYPE (arg0), arg0, arg1);
 
   if (POINTER_TYPE_P (t0) && INTEGRAL_TYPE_P (t1))
-    return build_nop (type, build_offset_op (code, arg0, arg1));
+    return build_nop(type, build_offset_op(code, arg0, arg1));
 
   if (INTEGRAL_TYPE_P (t0) && POINTER_TYPE_P (t1))
-    return build_nop (type, build_offset_op (code, arg1, arg0));
+    return build_nop(type, build_offset_op(code, arg1, arg0));
 
   if (POINTER_TYPE_P (t0) && POINTER_TYPE_P (t1))
     {
       // Need to convert pointers to integers because tree-vrp asserts
       // against (ptr MINUS ptr).
-      tree ptrtype = lang_hooks.types.type_for_mode (ptr_mode, TYPE_UNSIGNED (type));
-      arg0 = d_convert (ptrtype, arg0);
-      arg1 = d_convert (ptrtype, arg1);
+      tree ptrtype = lang_hooks.types.type_for_mode(ptr_mode, TYPE_UNSIGNED (type));
+      arg0 = d_convert(ptrtype, arg0);
+      arg1 = d_convert(ptrtype, arg1);
 
-      t = build2 (code, ptrtype, arg0, arg1);
+      ret = fold_build2(code, ptrtype, arg0, arg1);
     }
   else if (INTEGRAL_TYPE_P (type) && (TYPE_UNSIGNED (type) != unsignedp))
     {
-      tree inttype = unsignedp ? d_unsigned_type (type) : d_signed_type (type);
-      t = build2 (code, inttype, arg0, arg1);
+      tree inttype = unsignedp ? d_unsigned_type(type) : d_signed_type(type);
+      ret = fold_build2(code, inttype, arg0, arg1);
     }
   else
     {
       // Front-end does not do this conversion and GCC does not
       // always do it right.
       if (COMPLEX_FLOAT_TYPE_P (t0) && !COMPLEX_FLOAT_TYPE_P (t1))
-	arg1 = d_convert (t0, arg1);
+	arg1 = d_convert(t0, arg1);
       else if (COMPLEX_FLOAT_TYPE_P (t1) && !COMPLEX_FLOAT_TYPE_P (t0))
-	arg0 = d_convert (t1, arg0);
+	arg0 = d_convert(t1, arg0);
 
-      t = build2 (code, type, arg0, arg1);
+      ret = fold_build2(code, type, arg0, arg1);
     }
 
-  return d_convert (type, t);
+  return d_convert(type, ret);
 }
 
 // Build a binary expression of code CODE, assigning the result into E1.
@@ -2736,9 +2840,12 @@ build_float_modulus (tree type, tree arg0, tree arg1)
     }
 
   if (COMPLEX_FLOAT_TYPE_P (type))
-    return build2 (COMPLEX_EXPR, type,
-		   d_build_call_nary (fmodfn, 2, real_part (arg0), arg1),
-		   d_build_call_nary (fmodfn, 2, imaginary_part (arg0), arg1));
+    {
+      tree re = d_build_call_nary(fmodfn, 2, real_part(arg0), arg1);
+      tree im = d_build_call_nary(fmodfn, 2, imaginary_part(arg0), arg1);
+
+      return complex_expr(type, re, im);
+    }
 
   if (SCALAR_FLOAT_TYPE_P (type))
     return d_build_call_nary (fmodfn, 2, arg0, arg1);
