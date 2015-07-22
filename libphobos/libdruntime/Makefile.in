@@ -676,7 +676,10 @@ clean-local:
 	rm -f $(CORE_IMPORTS)
 	rm -f $(GCC_IMPORTS)
 	rm -rf $(IMPDIR)
+	rm -f unittest.o
+	rm -f unittest$(EXEEXT)
 	rm -f libgdruntime.a
+	rm -f libgdruntime_t.a
 
 check-local: unittest
 	./unittest
