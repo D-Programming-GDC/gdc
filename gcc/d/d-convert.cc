@@ -35,8 +35,8 @@
 // Creates an expression whose value is that of EXPR, converted to type TYPE.
 // This function implements all reasonable scalar conversions.
 
-static tree
-d_convert_basic(tree type, tree expr)
+tree
+convert(tree type, tree expr)
 {
   tree e = expr;
   tree_code code = TREE_CODE(type);
@@ -112,11 +112,19 @@ d_convert_basic(tree type, tree expr)
       goto maybe_fold;
 
     case REAL_TYPE:
+      if (TREE_CODE (etype) == COMPLEX_TYPE && D_TYPE_IMAGINARY_FLOAT (type))
+	e = build1(IMAGPART_EXPR, TREE_TYPE (etype), e);
+
       ret = convert_to_real(type, e);
       goto maybe_fold;
 
     case COMPLEX_TYPE:
-      ret = convert_to_complex(type, e);
+      if (TREE_CODE (etype) == REAL_TYPE && D_TYPE_IMAGINARY_FLOAT (etype))
+	ret = build2(COMPLEX_EXPR, type,
+		     build_zero_cst(TREE_TYPE (type)),
+		     convert(TREE_TYPE (type), expr));
+      else
+	ret = convert_to_complex(type, e);
       goto maybe_fold;
 
     case VECTOR_TYPE:
@@ -143,54 +151,6 @@ d_convert_basic(tree type, tree expr)
 
   error("conversion to non-scalar type requested");
   return error_mark_node;
-}
-
-tree
-convert (tree type, tree expr)
-{
-  tree_code code = TREE_CODE (type);
-  tree etype = TREE_TYPE (expr);
-
-  switch (code)
-    {
-    case REAL_TYPE:
-      if (TREE_CODE (etype) == REAL_TYPE)
-	{
-	  // Casts between real and imaginary result in 0.0
-	  if ((D_TYPE_IMAGINARY_FLOAT (type) && !D_TYPE_IMAGINARY_FLOAT (etype))
-	      || (!D_TYPE_IMAGINARY_FLOAT (type) && D_TYPE_IMAGINARY_FLOAT (etype)))
-	    {
-	      warning (OPT_Wcast_result, "cast from %qT to %qT will produce nil result",
-		       etype, type);
-
-	      return build2 (COMPOUND_EXPR, type,
-			     build1 (CONVERT_EXPR, void_type_node, expr),
-			     build_zero_cst (type));
-	    }
-	}
-      else if (TREE_CODE (etype) == COMPLEX_TYPE)
-	{
-	  // creal.re, creal.im implemented by cast to real or ireal
-	  if (D_TYPE_IMAGINARY_FLOAT (type))
-	    expr = build1 (IMAGPART_EXPR, TREE_TYPE (etype), expr);
-	}
-      break;
-
-    case COMPLEX_TYPE:
-      if (TREE_CODE (etype) == REAL_TYPE)
-	{
-	  if (D_TYPE_IMAGINARY_FLOAT (etype))
-	    return build2 (COMPLEX_EXPR, type,
-			   build_zero_cst (TREE_TYPE (type)),
-			   d_convert_basic (TREE_TYPE (type), expr));
-	}
-      break;
-
-    default:
-      break;
-    }
-
-  return d_convert_basic (type, expr);
 }
 
 
@@ -237,9 +197,9 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
   if (result_type)
     {
       if (TREE_TYPE (op0) != result_type)
-	op0 = d_convert_basic (result_type, op0);
+	op0 = convert (result_type, op0);
       if (TREE_TYPE (op1) != result_type)
-	op1 = d_convert_basic (result_type, op1);
+	op1 = convert (result_type, op1);
     }
 
   return build2 (code, bool_type_node, op0, op1);
@@ -411,13 +371,13 @@ d_truthvalue_conversion (tree expr)
 
       tree promoted_type = targetm.promoted_type (type);
       if (promoted_type)
-	expr = d_convert_basic (promoted_type, expr);
+	expr = convert (promoted_type, expr);
 
       // Without this, the backend tries to load a float reg with and integer
       // value with fails (on i386 and rs6000, at least).
       if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
-    	return d_build_truthvalue_op (NE_EXPR, expr,
-    				      d_convert_basic (TREE_TYPE (expr), integer_zero_node));
+	return d_build_truthvalue_op (NE_EXPR, expr,
+				      convert (TREE_TYPE (expr), integer_zero_node));
 
       return d_build_truthvalue_op (NE_EXPR, expr, integer_zero_node);
     }
