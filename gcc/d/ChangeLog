@@ -15,6 +15,7 @@
 	the index type of arrays.
 	(build_array_index): Likewise.
 	(build_offset_op): Likewise.
+	(expand_intrinsic): Only get the inner callee if it's an address.
 
 2015-07-20  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 

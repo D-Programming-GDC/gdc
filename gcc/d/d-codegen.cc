@@ -2564,7 +2564,7 @@ expand_intrinsic(tree callexp)
 {
   tree callee = CALL_EXPR_FN (callexp);
 
-  if (POINTER_TYPE_P (TREE_TYPE (callee)))
+  if (TREE_CODE (callee) == ADDR_EXPR)
     callee = TREE_OPERAND (callee, 0);
 
   if (TREE_CODE (callee) == FUNCTION_DECL
