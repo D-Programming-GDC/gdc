@@ -2718,11 +2718,14 @@ build_float_modulus (tree type, tree arg0, tree arg1)
   if (COMPLEX_FLOAT_TYPE_P (basetype))
     basetype = TREE_TYPE (basetype);
 
-  if (TYPE_MAIN_VARIANT (basetype) == double_type_node)
+  if (TYPE_MAIN_VARIANT (basetype) == double_type_node
+      || TYPE_MAIN_VARIANT (basetype) == idouble_type_node)
     fmodfn = builtin_decl_explicit (BUILT_IN_FMOD);
-  else if (TYPE_MAIN_VARIANT (basetype) == float_type_node)
+  else if (TYPE_MAIN_VARIANT (basetype) == float_type_node
+	   || TYPE_MAIN_VARIANT (basetype) == ifloat_type_node)
     fmodfn = builtin_decl_explicit (BUILT_IN_FMODF);
-  else if (TYPE_MAIN_VARIANT (basetype) == long_double_type_node)
+  else if (TYPE_MAIN_VARIANT (basetype) == long_double_type_node
+	   || TYPE_MAIN_VARIANT (basetype) == ireal_type_node)
     fmodfn = builtin_decl_explicit (BUILT_IN_FMODL);
 
   if (!fmodfn)

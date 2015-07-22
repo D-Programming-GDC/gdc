@@ -8,6 +8,10 @@
 	(d_build_truthvalue_op): Update to call convert.
 	(d_truthvalue_conversion): Likewise.
 
+	* d-builtins.cc(d_init_builtins): Build imaginary types as distinct
+	floating point type nodes.
+	* d-codegen.cc(build_float_modulus): Update to handle imaginary types.
+
 2015-07-20  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
 	* d-lang.cc(is_system_module): Extract function.
