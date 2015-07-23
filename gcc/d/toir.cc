@@ -28,7 +28,7 @@
 #include "dfrontend/visitor.h"
 
 #include "alias.h"
-#include "flags.h"
+#include "options.h"
 #include "symtab.h"
 #include "tree.h"
 #include "stmt.h"

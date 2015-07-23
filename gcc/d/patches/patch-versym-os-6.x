@@ -70,7 +70,7 @@ These official OS versions are not implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- gcc/config/darwin.h
 +++ gcc/config/darwin.h
-@@ -919,4 +919,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
+@@ -923,4 +923,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
     providing an osx-version-min of this unless overridden by the User.  */
  #define DEF_MIN_OSX_VERSION "10.4"
  

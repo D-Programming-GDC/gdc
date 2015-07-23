@@ -24,7 +24,6 @@
 #include "dfrontend/aggregate.h"
 
 #include "alias.h"
-#include "flags.h"
 #include "symtab.h"
 #include "tree.h"
 #include "fold-const.h"

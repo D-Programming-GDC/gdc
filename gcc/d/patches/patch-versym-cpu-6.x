@@ -44,7 +44,7 @@ for all supported architectures. And these where appropriate:
 
 --- gcc/config/aarch64/aarch64.h
 +++ gcc/config/aarch64/aarch64.h
-@@ -95,6 +95,14 @@
+@@ -99,6 +99,14 @@
  	builtin_define ("__ARM_FEATURE_CRYPTO");	\
      } while (0)
  
@@ -121,7 +121,7 @@ for all supported architectures. And these where appropriate:
  enum target_cpus
 --- gcc/config/i386/i386.h
 +++ gcc/config/i386/i386.h
-@@ -647,6 +647,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -651,6 +651,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -164,7 +164,7 @@ for all supported architectures. And these where appropriate:
  #endif
 --- gcc/config/mips/mips.h
 +++ gcc/config/mips/mips.h
-@@ -593,6 +593,54 @@ struct mips_cpu_info {
+@@ -594,6 +594,54 @@ struct mips_cpu_info {
      }									\
    while (0)
  
@@ -244,7 +244,7 @@ for all supported architectures. And these where appropriate:
    do								\
 --- gcc/config/rs6000/rs6000.h
 +++ gcc/config/rs6000/rs6000.h
-@@ -703,6 +703,28 @@ extern unsigned char rs6000_recip_bits[];
+@@ -730,6 +730,28 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
