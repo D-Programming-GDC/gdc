@@ -38,6 +38,7 @@
 #include "options.h"
 #include "cppdefault.h"
 #include "debug.h"
+#include "hash-set.h"
 
 #include "d-lang.h"
 #include "d-codegen.h"
@@ -742,76 +743,76 @@ genCmain (Scope *sc)
   rootmodule = sc->module;
 }
 
+static bool
+is_system_module(Module *m)
+{
+  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
+  ModuleDeclaration *md = m->md;
+
+  if(!md)
+    return false;
+
+  if (md->packages)
+    {
+      if (strcmp ((*md->packages)[0]->string, "core") == 0)
+        return true;
+      if (strcmp ((*md->packages)[0]->string, "std") == 0)
+        return true;
+      if (strcmp ((*md->packages)[0]->string, "gcc") == 0)
+        return true;
+    }
+  else if (md->id && md->packages == NULL)
+    {
+      if (strcmp (md->id->string, "object") == 0)
+        return true;
+      if (strcmp (md->id->string, "__entrypoint") == 0)
+        return true;
+    }
+
+  return false;
+}
+
+bool
+d_write_one_dep(const char* const& fn, OutBuffer* ob)
+{
+  ob->writestring ("  ");
+  ob->writestring (fn);
+  ob->writestring ("\\\n");
+  return true;
+}
+
 static void
 deps_write (Module *m)
 {
   OutBuffer *ob = global.params.makeDeps;
-  size_t size, column = 0, colmax = 72;
-  FileName *fn;
 
   // Write out object name.
-  fn = m->objfile->name;
-  size = strlen (fn->str);
+  FileName *fn = m->objfile->name;
   ob->writestring (fn->str);
-  column = size;
+  ob->writestring (":");
 
-  ob->writestring (": ");
-  column += 2;
+  hash_set<const char*> dependencies;
 
-  // First dependency is source file for module.
-  fn = m->srcfile->name;
-  size = strlen (fn->str);
-  ob->writestring (fn->str);
-  column += size;
+  Modules to_explore;
+  to_explore.push(m);
+  while (to_explore.dim)
+  {
+    Module* depmod = to_explore.pop();
 
-  // Write out file dependencies.
-  for (size_t i = 0; i < m->aimports.dim; i++)
-    {
-      Module *mi = m->aimports[i];
+    if (global.params.makeDepsStyle == 2)
+      if (is_system_module(depmod))
+        continue;
 
-      // Ignore self references.
-      if (mi == m)
-	continue;
+    if (dependencies.contains(depmod->srcfile->name->str))
+      continue;
 
-      if (global.params.makeDepsStyle == 2)
-	{
-	  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
-	  ModuleDeclaration *md = mi->md;
+    dependencies.add(depmod->srcfile->name->str);
 
-	  if (md && md->packages)
-	    {
-	      if (strcmp ((*md->packages)[0]->string, "core") == 0)
-		continue;
-	      if (strcmp ((*md->packages)[0]->string, "std") == 0)
-		continue;
-	      if (strcmp ((*md->packages)[0]->string, "gcc") == 0)
-		continue;
-	    }
-	  else if (md && md->id && md->packages == NULL)
-	    {
-	      if (strcmp (md->id->string, "object") == 0)
-		continue;
-	      if (strcmp (md->id->string, "__entrypoint") == 0)
-		continue;
-	    }
-	}
+    for (size_t i = 0; i < depmod->aimports.dim; i++)
+      to_explore.push(depmod->aimports[i]);
+  }
 
-      // All checks done, write out file path/name.
-      fn = mi->srcfile->name;
-      size = strlen (fn->str);
-      column += size;
-      if (column > colmax)
-	{
-	  ob->writestring (" \\\n ");
-	  column = 1 + size;
-	}
-      else
-	{
-	  ob->writestring (" ");
-	  column++;
-	}
-      ob->writestring (fn->str);
-    }
+  dependencies.traverse<OutBuffer*, &d_write_one_dep>(ob);
 
   ob->writenl();
 }

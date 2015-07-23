@@ -1068,7 +1068,6 @@ else version( AsmX86_64 )
 }
 else version( GNU )
 {
-    import gcc.atomics;
     import gcc.builtins;
 
     HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
@@ -1142,122 +1141,125 @@ else version( GNU )
             {
                 static assert(is(T : float));
 
-                res = __sync_bool_compare_and_swap!int(cast(shared int*) here, *cast(int*) &ifThis, *cast(int*) &writeThis);
+                res = __atomic_compare_exchange_4(cast(void*) here, cast(void*) &ifThis, *cast(int*) &writeThis,
+                                                  false, MemoryOrder.seq, MemoryOrder.seq);
             }
             else static if(T.sizeof == long.sizeof)
             {
                 static assert(is(T : double));
 
-                res = __sync_bool_compare_and_swap!long(cast(shared long*) here, *cast(long*) &ifThis, *cast(long*) &writeThis);
+                res = __atomic_compare_exchange_8(cast(void*) here, cast(void*) &ifThis, *cast(long*) &writeThis,
+                                                  false, MemoryOrder.seq, MemoryOrder.seq);
             }
             else
             {
                 static assert(false, "Cannot atomically store 80-bit reals.");
             }
         }
-        else static if (is(T P == U*, U) || _passAsSizeT!T)
+        else static if (is(T P == U*, U) || is(T == class) || is(T == interface))
         {
-            res = __sync_bool_compare_and_swap!size_t(cast(shared size_t*) here, *cast(size_t*) &ifThis, *cast(size_t*) &writeThis);
+            version (D_LP64)
+                res = __atomic_compare_exchange_8(cast(void*) here, cast(void*) &ifThis, *cast(ulong*) &writeThis,
+                                                  false, MemoryOrder.seq, MemoryOrder.seq);
+            else
+                res = __atomic_compare_exchange_4(cast(void*) here, cast(void*) &ifThis, *cast(uint*) &writeThis,
+                                                  false, MemoryOrder.seq, MemoryOrder.seq);
         }
-        else static if (T.sizeof == bool.sizeof)
+        else static if (T.sizeof == byte.sizeof)
         {
-            res = __sync_bool_compare_and_swap!ubyte(cast(shared ubyte*) here, ifThis ? 1 : 0, writeThis ? 1 : 0) ? 1 : 0;
+            res = __atomic_compare_exchange_1(cast(void*) here, cast(void*) &ifThis, writeThis,
+                                              false, MemoryOrder.seq, MemoryOrder.seq);
+        }
+        else static if (T.sizeof == short.sizeof)
+        {
+            res = __atomic_compare_exchange_2(cast(void*) here, cast(void*) &ifThis, writeThis,
+                                              false, MemoryOrder.seq, MemoryOrder.seq);
+        }
+        else static if (T.sizeof == int.sizeof)
+        {
+            res = __atomic_compare_exchange_4(cast(void*) here, cast(void*) &ifThis, writeThis,
+                                              false, MemoryOrder.seq, MemoryOrder.seq);
+        }
+        else static if (T.sizeof == long.sizeof)
+        {
+            res = __atomic_compare_exchange_8(cast(void*) here, cast(void*) &ifThis, writeThis,
+                                              false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else
-        {
-            res = __sync_bool_compare_and_swap!T(here, cast(T)ifThis, cast(T)writeThis);
-        }
+            static assert(0, "Invalid template type specified.");
 
         return res;
     }
 
 
+    // Memory model types for the __atomic* builtins.
     enum MemoryOrder
     {
-        raw,
-        acq,
-        rel,
-        seq,
+        raw = 0,
+        acq = 2,
+        rel = 3,
+        seq = 5,
     }
 
     deprecated("Please use MemoryOrder instead.")
     alias MemoryOrder msync;
 
-    private
-    {
-        template isHoistOp(MemoryOrder ms)
-        {
-            enum bool isHoistOp = ms == MemoryOrder.acq ||
-                                  ms == MemoryOrder.seq;
-        }
-
-
-        template isSinkOp(MemoryOrder ms)
-        {
-            enum bool isSinkOp = ms == MemoryOrder.rel ||
-                                 ms == MemoryOrder.seq;
-        }
-
-
-        // NOTE: x86 loads implicitly have acquire semantics so a memory
-        //       barrier is only necessary on releases.
-        template needsLoadBarrier( MemoryOrder ms )
-        {
-            enum bool needsLoadBarrier = ms == MemoryOrder.seq ||
-                                               isSinkOp!(ms);
-        }
-
-
-        // NOTE: x86 stores implicitly have release semantics so a memory
-        //       barrier is only necessary on acquires.
-        template needsStoreBarrier( MemoryOrder ms )
-        {
-            const bool needsStoreBarrier = ms == MemoryOrder.seq ||
-                                                 isHoistOp!(ms);
-        }
-
-        template _passAsSizeT( T )
-        {
-            // GCC currently does not support atomic load/store for pointers, thus
-            // we have to manually cast them to size_t.
-            static if (is(T P == U*, U)) // pointer
-            {
-                enum _passAsSizeT = true;
-            }
-            else static if (is(T == interface) || is (T == class))
-            {
-                enum _passAsSizeT = true;
-            }
-            else
-            {
-                enum _passAsSizeT = false;
-            }
-        }
-    }
-
 
     HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val )
-    if(!__traits(isFloating, T)) {
-        static if (needsLoadBarrier!ms)
-            __sync_synchronize();
+    if(!__traits(isFloating, T))
+    {
+        static assert (ms != MemoryOrder.rel, "Invalid MemoryOrder for atomicLoad");
 
-        return cast(HeadUnshared!T) val;
+        static if (T.sizeof == byte.sizeof)
+        {
+            return cast(HeadUnshared!T) __atomic_load_1(cast(void*) &val, ms);
+        }
+        else static if (T.sizeof == short.sizeof)
+        {
+            return cast(HeadUnshared!T) __atomic_load_2(cast(void*) &val, ms);
+        }
+        else static if (T.sizeof == int.sizeof)
+        {
+            return cast(HeadUnshared!T) __atomic_load_4(cast(void*) &val, ms);
+        }
+        else static if (T.sizeof == long.sizeof)
+        {
+            return cast(HeadUnshared!T) __atomic_load_8(cast(void*) &val, ms);
+        }
+        else
+            static assert(0, "Invalid template type specified.");
     }
 
 
     void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V1)( ref shared T val, V1 newval )
         if( __traits( compiles, { val = newval; } ) )
     {
-        static if (needsLoadBarrier!ms)
-            __sync_synchronize();
+        static assert(ms != MemoryOrder.acq, "Invalid MemoryOrder for atomicStore");
 
-        val = newval;
+        static if (T.sizeof == byte.sizeof)
+        {
+            __atomic_store_1(cast(void*) &val, *cast(byte*) &newval, ms);
+        }
+        else static if (T.sizeof == short.sizeof)
+        {
+            __atomic_store_2(cast(void*) &val, *cast(short*) &newval, ms);
+        }
+        else static if (T.sizeof == int.sizeof)
+        {
+            __atomic_store_4(cast(void*) &val, *cast(int*) &newval, ms);
+        }
+        else static if (T.sizeof == long.sizeof)
+        {
+            __atomic_store_8(cast(void*) &val, *cast(long*) &newval, ms);
+        }
+        else
+            static assert(0, "Invalid template type specified.");
     }
 
 
     void atomicFence() nothrow @nogc
     {
-        __sync_synchronize();
+        __atomic_thread_fence(MemoryOrder.seq);
     }
 }
 

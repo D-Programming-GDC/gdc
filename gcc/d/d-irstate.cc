@@ -255,7 +255,7 @@ IRState::doLabel (tree label)
      The only excemption to this is in LabelStatement::toIR, in which
      all computed labels are marked regardless.  */
   if (TREE_USED (label))
-    this->addExp (build1 (LABEL_EXPR, void_type_node, label));
+    this->addExp (fold_build1 (LABEL_EXPR, void_type_node, label));
 }
 
 
@@ -339,7 +339,7 @@ IRState::endCond()
 {
   Flow *flow = this->currentFlow();
   tree branch = this->popStatementList();
-  tree false_branch = NULL_TREE;
+  tree false_branch = void_node;
 
   if (flow->trueBranch == NULL_TREE)
     flow->trueBranch = branch;
@@ -634,7 +634,7 @@ IRState::endFinally()
 void
 IRState::doReturn (tree value)
 {
-  this->addExp (build1 (RETURN_EXPR, void_type_node, value));
+  this->addExp (return_expr (value));
 }
 
 // Emit goto expression to LABEL.
@@ -645,7 +645,7 @@ IRState::doJump (Statement *stmt, tree label)
   if (stmt)
     this->doLineNote (stmt->loc);
 
-  this->addExp (build1 (GOTO_EXPR, void_type_node, label));
+  this->addExp (fold_build1 (GOTO_EXPR, void_type_node, label));
   TREE_USED (label) = 1;
 }
 
