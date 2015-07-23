@@ -23,8 +23,6 @@
 #include "dfrontend/mtype.h"
 #include "dfrontend/aggregate.h"
 
-#include "alias.h"
-#include "symtab.h"
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"

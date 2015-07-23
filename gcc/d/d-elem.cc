@@ -25,8 +25,6 @@
 #include "dfrontend/statement.h"
 #include "dfrontend/ctfe.h"
 
-#include "alias.h"
-#include "symtab.h"
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"

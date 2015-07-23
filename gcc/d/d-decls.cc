@@ -30,8 +30,6 @@
 #include "dfrontend/ctfe.h"
 #include "dfrontend/target.h"
 
-#include "alias.h"
-#include "symtab.h"
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"

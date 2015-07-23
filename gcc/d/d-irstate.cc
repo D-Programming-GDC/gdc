@@ -24,8 +24,6 @@
 #include "dfrontend/declaration.h"
 #include "dfrontend/statement.h"
 
-#include "alias.h"
-#include "symtab.h"
 #include "tree.h"
 #include "tree-iterator.h"
 #include "fold-const.h"

@@ -19,8 +19,6 @@
 #include "system.h"
 #include "coretypes.h"
 
-#include "alias.h"
-#include "symtab.h"
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"

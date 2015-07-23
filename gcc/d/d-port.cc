@@ -21,8 +21,6 @@
 
 #include "dfrontend/port.h"
 
-#include "alias.h"
-#include "symtab.h"
 #include "tree.h"
 #include "stor-layout.h"
 

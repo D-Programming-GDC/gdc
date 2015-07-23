@@ -26,10 +26,8 @@
 #include "dfrontend/declaration.h"
 #include "dfrontend/statement.h"
 
-#include "alias.h"
-#include "options.h"
-#include "symtab.h"
 #include "tree.h"
+#include "options.h"
 #include "fold-const.h"
 #include "diagnostic.h"
 

@@ -23,8 +23,6 @@
 #include "dfrontend/aggregate.h"
 #include "dfrontend/declaration.h"
 
-#include "alias.h"
-#include "symtab.h"
 #include "tree.h"
 #include "diagnostic.h"
 #include "options.h"
