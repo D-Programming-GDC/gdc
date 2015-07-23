@@ -630,9 +630,9 @@ MinExp::toElem(IRState *irs)
       t2 = build1(NEGATE_EXPR, TREE_TYPE(t2), t2);
 
       if (e1->type->isreal())
-	return build2(COMPLEX_EXPR, build_ctype(type), t1, t2);
+	return complex_expr(build_ctype(type), t1, t2);
       else
-	return build2(COMPLEX_EXPR, build_ctype(type), t2, t1);
+	return complex_expr(build_ctype(type), t2, t1);
     }
 
   // The front end has already taken care of pointer-int and pointer-pointer
@@ -652,9 +652,9 @@ AddExp::toElem(IRState *irs)
       tree t2 = e2->toElem(irs);
 
       if (e1->type->isreal())
-	return build2(COMPLEX_EXPR, build_ctype(type), t1, t2);
+	return complex_expr(build_ctype(type), t1, t2);
       else
-	return build2(COMPLEX_EXPR, build_ctype(type), t2, t1);
+	return complex_expr(build_ctype(type), t2, t1);
     }
 
   // The front end has already taken care of (pointer + integer)
@@ -1393,30 +1393,30 @@ RemoveExp::toElem(IRState *irs)
 }
 
 elem *
-NotExp::toElem (IRState *irs)
+NotExp::toElem(IRState *irs)
 {
   // Need to convert to boolean type or this will fail.
-  tree t = build1 (TRUTH_NOT_EXPR, bool_type_node,
-		   convert_for_condition (e1->toElem (irs), e1->type));
-  return d_convert (build_ctype(type), t);
+  tree t = fold_build1(TRUTH_NOT_EXPR, bool_type_node,
+		       convert_for_condition(e1->toElem(irs), e1->type));
+  return d_convert(build_ctype(type), t);
 }
 
 elem *
-ComExp::toElem (IRState *irs)
+ComExp::toElem(IRState *irs)
 {
   TY ty1 = e1->type->toBasetype()->ty;
-  gcc_assert (ty1 != Tarray && ty1 != Tsarray);
+  gcc_assert(ty1 != Tarray && ty1 != Tsarray);
 
-  return build1 (BIT_NOT_EXPR, build_ctype(type), e1->toElem (irs));
+  return fold_build1(BIT_NOT_EXPR, build_ctype(type), e1->toElem(irs));
 }
 
 elem *
-NegExp::toElem (IRState *irs)
+NegExp::toElem(IRState *irs)
 {
   TY ty1 = e1->type->toBasetype()->ty;
-  gcc_assert (ty1 != Tarray && ty1 != Tsarray);
+  gcc_assert(ty1 != Tarray && ty1 != Tsarray);
 
-  return build1 (NEGATE_EXPR, build_ctype(type), e1->toElem (irs));
+  return fold_build1(NEGATE_EXPR, build_ctype(type), e1->toElem(irs));
 }
 
 elem *
