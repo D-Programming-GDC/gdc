@@ -1,6 +1,61 @@
 This implements building of libphobos library in GCC.
 ---
 
+--- a/config-ml.in
++++ b/config-ml.in
+@@ -513,6 +513,7 @@ multi-do:
+ 				exec_prefix="$(exec_prefix)" \
+ 				GCJFLAGS="$(GCJFLAGS) $${flags}" \
+ 				GOCFLAGS="$(GOCFLAGS) $${flags}" \
++				GDCFLAGS="$(GDCFLAGS) $${flags}" \
+ 				CXXFLAGS="$(CXXFLAGS) $${flags}" \
+ 				LIBCFLAGS="$(LIBCFLAGS) $${flags}" \
+ 				LIBCXXFLAGS="$(LIBCXXFLAGS) $${flags}" \
+@@ -746,7 +747,7 @@ if [ -n "${multidirs}" ] && [ -z "${ml_norecursion}" ]; then
+         break
+       fi
+     done
+-    ml_config_env='CC="${CC_}$flags" CXX="${CXX_}$flags" F77="${F77_}$flags" GCJ="${GCJ_}$flags" GFORTRAN="${GFORTRAN_}$flags" GOC="${GOC_}$flags"'
++    ml_config_env='CC="${CC_}$flags" CXX="${CXX_}$flags" F77="${F77_}$flags" GCJ="${GCJ_}$flags" GFORTRAN="${GFORTRAN_}$flags" GOC="${GOC_}$flags" GDC="${GDC_}$flags"'
+ 
+     if [ "${with_target_subdir}" = "." ]; then
+ 	CC_=$CC' '
+@@ -755,6 +756,7 @@ if [ -n "${multidirs}" ] && [ -z "${ml_norecursion}" ]; then
+ 	GCJ_=$GCJ' '
+ 	GFORTRAN_=$GFORTRAN' '
+ 	GOC_=$GOC' '
++	GDC_=$GDC' '
+     else
+ 	# Create a regular expression that matches any string as long
+ 	# as ML_POPDIR.
+@@ -831,6 +833,18 @@ if [ -n "${multidirs}" ] && [ -z "${ml_norecursion}" ]; then
+ 	  esac
+ 	done
+ 
++	GDC_=
++	for arg in ${GDC}; do
++	  case $arg in
++	  -[BIL]"${ML_POPDIR}"/*)
++	    GDC_="${GDC_}"`echo "X${arg}" | sed -n "s/X\\(-[BIL]${popdir_rx}\\).*/\\1/p"`/${ml_dir}`echo "X${arg}" | sed -n "s/X-[BIL]${popdir_rx}\\(.*\\)/\\1/p"`' ' ;;
++	  "${ML_POPDIR}"/*)
++	    GDC_="${GDC_}"`echo "X${arg}" | sed -n "s/X\\(${popdir_rx}\\).*/\\1/p"`/${ml_dir}`echo "X${arg}" | sed -n "s/X${popdir_rx}\\(.*\\)/\\1/p"`' ' ;;
++	  *)
++	    GDC_="${GDC_}${arg} " ;;
++	  esac
++	done
++
+ 	if test "x${LD_LIBRARY_PATH+set}" = xset; then
+ 	  LD_LIBRARY_PATH_=
+ 	  for arg in `echo "$LD_LIBRARY_PATH" | tr ':' ' '`; do
+--- a/config/multi.m4
++++ b/config/multi.m4
+@@ -65,4 +65,5 @@ CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
+ CC="$CC"
+ CXX="$CXX"
+ GFORTRAN="$GFORTRAN"
+-GCJ="$GCJ"])])dnl
++GCJ="$GCJ"
++GDC="$GDC"])])dnl
 --- a/configure
 +++ b/configure
 @@ -581,6 +581,7 @@ LD_FOR_TARGET
