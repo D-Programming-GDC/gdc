@@ -25,6 +25,47 @@ This implements building of libphobos library in GCC.
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
+@@ -1343,6 +1344,7 @@ if test "${build}" != "${host}" ; then
+   GCJ_FOR_BUILD=${GCJ_FOR_BUILD-gcj}
+   GFORTRAN_FOR_BUILD=${GFORTRAN_FOR_BUILD-gfortran}
+   GOC_FOR_BUILD=${GOC_FOR_BUILD-gccgo}
++  GDC_FOR_BUILD=${GDC_FOR_BUILD-gdc}
+   DLLTOOL_FOR_BUILD=${DLLTOOL_FOR_BUILD-dlltool}
+   LD_FOR_BUILD=${LD_FOR_BUILD-ld}
+   NM_FOR_BUILD=${NM_FOR_BUILD-nm}
+@@ -1357,6 +1359,7 @@ else
+   GCJ_FOR_BUILD="\$(GCJ)"
+   GFORTRAN_FOR_BUILD="\$(GFORTRAN)"
+   GOC_FOR_BUILD="\$(GOC)"
++  GDC_FOR_BUILD="\$(GDC)"
+   DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
+   LD_FOR_BUILD="\$(LD)"
+   NM_FOR_BUILD="\$(NM)"
+@@ -3296,6 +3299,7 @@ AC_SUBST(DLLTOOL_FOR_BUILD)
+ AC_SUBST(GCJ_FOR_BUILD)
+ AC_SUBST(GFORTRAN_FOR_BUILD)
+ AC_SUBST(GOC_FOR_BUILD)
++AC_SUBST(GDC_FOR_BUILD)
+ AC_SUBST(LDFLAGS_FOR_BUILD)
+ AC_SUBST(LD_FOR_BUILD)
+ AC_SUBST(NM_FOR_BUILD)
+@@ -3406,6 +3410,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(GCC_FOR_TARGET, gcc, ${CC_FOR_TARGET})
+ NCN_STRICT_CHECK_TARGET_TOOLS(GCJ_FOR_TARGET, gcj)
+ NCN_STRICT_CHECK_TARGET_TOOLS(GFORTRAN_FOR_TARGET, gfortran)
+ NCN_STRICT_CHECK_TARGET_TOOLS(GOC_FOR_TARGET, gccgo)
++NCN_STRICT_CHECK_TARGET_TOOLS(GDC_FOR_TARGET, gdc)
+ 
+ ACX_CHECK_INSTALLED_TARGET_TOOL(AR_FOR_TARGET, ar)
+ ACX_CHECK_INSTALLED_TARGET_TOOL(AS_FOR_TARGET, as)
+@@ -3441,6 +3446,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_TARGET, GFORTRAN,
+ 		[gcc/gfortran -B$$r/$(HOST_SUBDIR)/gcc/], fortran)
+ GCC_TARGET_TOOL(gccgo, GOC_FOR_TARGET, GOC,
+ 		[gcc/gccgo -B$$r/$(HOST_SUBDIR)/gcc/], go)
++GCC_TARGET_TOOL(gdc, GDC_FOR_TARGET, GDC,
++		[gcc/gdc -B$$r/$(HOST_SUBDIR)/gcc/], d)
+ GCC_TARGET_TOOL(ld, LD_FOR_TARGET, LD, [ld/ld-new])
+ GCC_TARGET_TOOL(lipo, LIPO_FOR_TARGET, LIPO)
+ GCC_TARGET_TOOL(nm, NM_FOR_TARGET, NM, [binutils/nm-new])
 --- a/Makefile.def
 +++ b/Makefile.def
 @@ -152,6 +152,7 @@ target_modules = { module= libquadmath; };
@@ -35,7 +76,15 @@ This implements building of libphobos library in GCC.
  target_modules = { module= libtermcap; no_check=true;
                     missing=mostlyclean;
                     missing=clean;
-@@ -543,6 +544,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
+@@ -278,6 +279,7 @@ flags_to_pass = { flag= CXXFLAGS_FOR_TARGET ; };
+ flags_to_pass = { flag= DLLTOOL_FOR_TARGET ; };
+ flags_to_pass = { flag= FLAGS_FOR_TARGET ; };
+ flags_to_pass = { flag= GCJ_FOR_TARGET ; };
++flags_to_pass = { flag= GDC_FOR_TARGET ; };
+ flags_to_pass = { flag= GFORTRAN_FOR_TARGET ; };
+ flags_to_pass = { flag= GOC_FOR_TARGET ; };
+ flags_to_pass = { flag= GOCFLAGS_FOR_TARGET ; };
+@@ -543,6 +545,8 @@ dependencies = { module=configure-target-libgo; on=all-target-libstdc++-v3; };
  dependencies = { module=all-target-libgo; on=all-target-libbacktrace; };
  dependencies = { module=all-target-libgo; on=all-target-libffi; };
  dependencies = { module=all-target-libgo; on=all-target-libatomic; };
@@ -44,7 +93,7 @@ This implements building of libphobos library in GCC.
  dependencies = { module=configure-target-libjava; on=configure-target-zlib; };
  dependencies = { module=configure-target-libjava; on=configure-target-boehm-gc; };
  dependencies = { module=configure-target-libjava; on=configure-target-libffi; };
-@@ -606,6 +609,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
+@@ -606,6 +610,8 @@ languages = { language=objc;	gcc-check-target=check-objc;
  languages = { language=obj-c++;	gcc-check-target=check-obj-c++; };
  languages = { language=go;	gcc-check-target=check-go;
  				lib-check-target=check-target-libgo; };
@@ -721,3 +770,61 @@ This implements building of libphobos library in GCC.
  configure-target-libtermcap: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-winsup: maybe-all-target-newlib maybe-all-target-libgloss
+--- a/Makefile.tpl
++++ b/Makefile.tpl
+@@ -160,6 +160,7 @@ BUILD_EXPORTS = \
+ 	GFORTRAN="$(GFORTRAN_FOR_BUILD)"; export GFORTRAN; \
+ 	GOC="$(GOC_FOR_BUILD)"; export GOC; \
+ 	GOCFLAGS="$(GOCFLAGS_FOR_BUILD)"; export GOCFLAGS; \
++	GDC="$(GDC_FOR_BUILD)"; export GDC; \
+ 	DLLTOOL="$(DLLTOOL_FOR_BUILD)"; export DLLTOOL; \
+ 	LD="$(LD_FOR_BUILD)"; export LD; \
+ 	LDFLAGS="$(LDFLAGS_FOR_BUILD)"; export LDFLAGS; \
+@@ -197,6 +198,7 @@ HOST_EXPORTS = \
+ 	GCJ="$(GCJ)"; export GCJ; \
+ 	GFORTRAN="$(GFORTRAN)"; export GFORTRAN; \
+ 	GOC="$(GOC)"; export GOC; \
++	GDC="$(GDC)"; export GDC; \
+ 	AR="$(AR)"; export AR; \
+ 	AS="$(AS)"; export AS; \
+ 	CC_FOR_BUILD="$(CC_FOR_BUILD)"; export CC_FOR_BUILD; \
+@@ -283,6 +285,7 @@ BASE_TARGET_EXPORTS = \
+ 	GCJ="$(GCJ_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GCJ; \
+ 	GFORTRAN="$(GFORTRAN_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GFORTRAN; \
+ 	GOC="$(GOC_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GOC; \
++	GDC="$(GDC_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GDC; \
+ 	DLLTOOL="$(DLLTOOL_FOR_TARGET)"; export DLLTOOL; \
+ 	LD="$(COMPILER_LD_FOR_TARGET)"; export LD; \
+ 	LDFLAGS="$(LDFLAGS_FOR_TARGET)"; export LDFLAGS; \
+@@ -350,6 +353,7 @@ DLLTOOL_FOR_BUILD = @DLLTOOL_FOR_BUILD@
+ GCJ_FOR_BUILD = @GCJ_FOR_BUILD@
+ GFORTRAN_FOR_BUILD = @GFORTRAN_FOR_BUILD@
+ GOC_FOR_BUILD = @GOC_FOR_BUILD@
++GDC_FOR_BUILD = @GDC_FOR_BUILD@
+ LDFLAGS_FOR_BUILD = @LDFLAGS_FOR_BUILD@
+ LD_FOR_BUILD = @LD_FOR_BUILD@
+ NM_FOR_BUILD = @NM_FOR_BUILD@
+@@ -480,6 +484,7 @@ RAW_CXX_FOR_TARGET=$(STAGE_CC_WRAPPER) @RAW_CXX_FOR_TARGET@
+ GCJ_FOR_TARGET=$(STAGE_CC_WRAPPER) @GCJ_FOR_TARGET@
+ GFORTRAN_FOR_TARGET=$(STAGE_CC_WRAPPER) @GFORTRAN_FOR_TARGET@
+ GOC_FOR_TARGET=$(STAGE_CC_WRAPPER) @GOC_FOR_TARGET@
++GDC_FOR_TARGET=$(STAGE_CC_WRAPPER) @GDC_FOR_TARGET@
+ DLLTOOL_FOR_TARGET=@DLLTOOL_FOR_TARGET@
+ LD_FOR_TARGET=@LD_FOR_TARGET@
+ 
+@@ -605,6 +610,7 @@ EXTRA_HOST_FLAGS = \
+ 	'GCJ=$(GCJ)' \
+ 	'GFORTRAN=$(GFORTRAN)' \
+ 	'GOC=$(GOC)' \
++	'GDC=$(GDC)' \
+ 	'LD=$(LD)' \
+ 	'LIPO=$(LIPO)' \
+ 	'NM=$(NM)' \
+@@ -661,6 +667,7 @@ EXTRA_TARGET_FLAGS = \
+ 	'GFORTRAN=$$(GFORTRAN_FOR_TARGET) $$(XGCC_FLAGS_FOR_TARGET) $$(TFLAGS)' \
+ 	'GOC=$$(GOC_FOR_TARGET) $$(XGCC_FLAGS_FOR_TARGET) $$(TFLAGS)' \
+ 	'GOCFLAGS=$$(GOCFLAGS_FOR_TARGET)' \
++	'GDC=$$(GDC_FOR_TARGET) $$(XGCC_FLAGS_FOR_TARGET) $$(TFLAGS)' \
+ 	'LD=$(COMPILER_LD_FOR_TARGET)' \
+ 	'LDFLAGS=$$(LDFLAGS_FOR_TARGET)' \
+ 	'LIBCFLAGS=$$(LIBCFLAGS_FOR_TARGET)' \
