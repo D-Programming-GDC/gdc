@@ -230,78 +230,25 @@ build_object_type()
   return Type::terror;
 }
 
-inline tree
-component_ref (tree v, tree f)
-{
-  return build3_loc (input_location, COMPONENT_REF, TREE_TYPE (f), v, f, NULL_TREE);
-}
+// Common codegen helpers.
+tree component_ref(tree obj, tree field);
+tree modify_expr(tree dst, tree src);
+tree modify_expr(tree type, tree dst, tree src);
+tree vmodify_expr(tree dst, tree src);
+tree build_vinit(tree dst, tree src);
 
-inline tree
-modify_expr (tree dst, tree src)
-{
-  return build2_loc (input_location, MODIFY_EXPR, TREE_TYPE (dst), dst, src);
-}
+tree build_nop(tree t, tree e);
+tree build_vconvert(tree t, tree e);
+tree build_boolop(tree_code code, tree arg0, tree arg1);
 
-inline tree
-modify_expr (tree type, tree dst, tree src)
-{
-  return build2_loc (input_location, MODIFY_EXPR, type, dst, src);
-}
-
-inline tree
-vmodify_expr (tree dst, tree src)
-{
-  return build2_loc (input_location, MODIFY_EXPR, void_type_node, dst, src);
-}
-
-inline tree
-build_vinit (tree dst, tree src)
-{
-  return build2_loc (input_location, INIT_EXPR, void_type_node, dst, src);
-}
-
-inline tree
-build_nop (tree t, tree e)
-{
-  return build1_loc (input_location, NOP_EXPR, t, e);
-}
-
-inline tree
-build_vconvert (tree t, tree e)
-{
-  return indirect_ref (t, build_address (e));
-}
-
-inline tree
-build_boolop (tree_code code, tree arg0, tree arg1)
-{
-  return build2_loc (input_location, code, bool_type_node, arg0, arg1);
-}
-
-inline tree
-compound_expr (tree arg0, tree arg1)
-{
-  return build2_loc (input_location, COMPOUND_EXPR, TREE_TYPE (arg1), arg0, arg1);
-}
-
-inline tree
-vcompound_expr (tree arg0, tree arg1)
-{
-  return build2_loc (input_location, COMPOUND_EXPR, void_type_node, arg0, arg1);
-}
+tree compound_expr(tree arg0, tree arg1);
+tree vcompound_expr(tree arg0, tree arg1);
+tree return_expr(tree ret);
 
 // Routines for built in structured types
-inline tree
-real_part (tree c)
-{
-  return build1_loc (input_location, REALPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c);
-}
-
-inline tree
-imaginary_part (tree c)
-{
-  return build1_loc (input_location, IMAGPART_EXPR, TREE_TYPE (TREE_TYPE (c)), c);
-}
+tree real_part(tree c);
+tree imaginary_part(tree c);
+tree complex_expr(tree type, tree r, tree i);
 
 // Helpers for call
 inline bool

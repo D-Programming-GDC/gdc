@@ -1396,7 +1396,7 @@ FuncDeclaration::toObjFile(bool force_p)
     {
       /* For empty functions: Without this, there is a segfault when inlined.
 	 Seen on build=ppc-linux but not others (why?).  */
-      tree ret = build1 (RETURN_EXPR, void_type_node, NULL_TREE);
+      tree ret = return_expr (NULL_TREE);
       append_to_statement_list_force (ret, &body);
     }
 

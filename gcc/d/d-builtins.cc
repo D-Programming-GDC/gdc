@@ -817,22 +817,22 @@ d_init_builtins()
   TREE_SET_CODE (bool_type_node, BOOLEAN_TYPE);
 
   char8_type_node = make_unsigned_type(8);
-  TYPE_STRING_FLAG(char8_type_node) = 1;
+  TYPE_STRING_FLAG (char8_type_node) = 1;
 
   char16_type_node = make_unsigned_type(16);
-  TYPE_STRING_FLAG(char16_type_node) = 1;
+  TYPE_STRING_FLAG (char16_type_node) = 1;
 
   char32_type_node = make_unsigned_type(32);
-  TYPE_STRING_FLAG(char32_type_node) = 1;
+  TYPE_STRING_FLAG (char32_type_node) = 1;
 
   // Imaginary types.
-  ifloat_type_node = build_variant_type_copy(float_type_node);
+  ifloat_type_node = build_distinct_type_copy(float_type_node);
   D_TYPE_IMAGINARY_FLOAT (ifloat_type_node) = 1;
 
-  idouble_type_node = build_variant_type_copy(double_type_node);
+  idouble_type_node = build_distinct_type_copy(double_type_node);
   D_TYPE_IMAGINARY_FLOAT (idouble_type_node) = 1;
 
-  ireal_type_node = build_variant_type_copy(long_double_type_node);
+  ireal_type_node = build_distinct_type_copy(long_double_type_node);
   D_TYPE_IMAGINARY_FLOAT (ireal_type_node) = 1;
 
   /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
