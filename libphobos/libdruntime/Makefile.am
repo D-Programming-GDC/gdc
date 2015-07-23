@@ -229,7 +229,7 @@ endif
 	$(RANLIB) $@
 
 unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) -ldl
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) $(DL_LIBS)
 
 #--------------------------------------#
 # Install, doc, etc targets
@@ -269,7 +269,10 @@ clean-local:
 	rm -f $(CORE_IMPORTS)
 	rm -f $(GCC_IMPORTS)
 	rm -rf $(IMPDIR)
+	rm -f unittest.o
+	rm -f unittest$(EXEEXT)
 	rm -f libgdruntime.a
+	rm -f libgdruntime_t.a
 
 check-local: unittest
 	./unittest

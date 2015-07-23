@@ -30,9 +30,13 @@ AC_CANONICAL_SYSTEM
 target_alias=${target_alias-$target}
 AC_SUBST(target_alias)
 
-if test "$build" != "$host"; then
-  # We are being configured with some form of cross compiler.
-  GCC_NO_EXECUTABLES
+# Note: with_target_subdir is set by toplevel configure script.
+# If it's empty this configure script was called manually.
+if test -n "${with_target_subdir}"; then
+  if test "$build" != "$host"; then
+    # We are being configured with some form of cross compiler.
+    GCC_NO_EXECUTABLES
+  fi
 fi
 
 AM_INIT_AUTOMAKE([1.9.3 foreign no-dependencies])
@@ -107,7 +111,13 @@ fi
 d_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`
 
 GDC=$CC
-GDC=`echo $CC | sed s/xgcc/gdc/`
+# FIXME: This is not really reliable. CC can include complete paths,
+# arguments, etc which may contain 'gcc'
+if test -n "${with_target_subdir}"; then
+  GDC=`echo $CC | sed 's/xgcc/gdc/'`
+else
+  GDC=`echo $CC | sed 's/gcc/gdc/'`
+fi
 
 AC_MSG_CHECKING([If $GDC can compile D sources])
 echo "int function(int) test;" > actest.d
@@ -185,7 +195,16 @@ BACKTRACE_USES_MALLOC=false
 BACKTRACE_SUPPORTS_THREADS=false
 LIBBACKTRACE_LIB=""
 
-CPPFLAGS+=" -I../libbacktrace "
+with_libbacktrace=no
+AC_ARG_WITH(libbacktrace,
+[  --with-libbacktrace=PATH specify directory containing libbacktrace object files],
+[with_libbacktrace=$withval], [with_libbacktrace=no])
+
+if test "x$with_libbacktrace" != xno; then
+  CPPFLAGS+=" -I$with_libbacktrace "
+else
+  CPPFLAGS+=" -I../libbacktrace "
+fi
 
 AC_ARG_ENABLE(libbacktrace,
  [  --disable-libbacktrace  Do not use libbacktrace for backtraces],
@@ -233,7 +252,11 @@ fi
 AM_CONDITIONAL([BACKTRACE_SUPPORTED], [$BACKTRACE_SUPPORTED])
 
 if $BACKTRACE_SUPPORTED; then
-  LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  if test "x$with_libbacktrace" != xno; then
+    LIBBACKTRACE_LIB="$with_libbacktrace/.libs/libbacktrace.a"
+  else
+    LIBBACKTRACE_LIB="../../libbacktrace/.libs/libbacktrace.a"
+  fi
 else
   LIBBACKTRACE_LIB=""
 fi
@@ -349,6 +372,11 @@ else
     ZLIB_OBJS="\$(Z_OBJS)"
 fi
 AC_SUBST(ZLIB_OBJS)
+
+dnl Test for the -ldl library.
+DL_LIBS=
+AC_CHECK_LIB([dl], [dlopen], DL_LIBS=-ldl)
+AC_SUBST(DL_LIBS)
 
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
 # that multilib installs will end up installed in the correct place.

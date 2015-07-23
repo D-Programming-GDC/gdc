@@ -19,7 +19,7 @@
 /* This module is intended to provide some basic support for lock-free
    concurrent programming via the GCC builtins if the platform supports it.  */
 
-module gcc.atomics;
+deprecated module gcc.atomics;
 
 import gcc.builtins;
 

@@ -1,4 +1,55 @@
-2015-07-19  Sebastien Alaiwan <sebastien.alaiwan@gmail.com>
+2015-07-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(convert_expr): Warn about casts between imaginary
+	and non-imaginary types.
+	* d-convert(d_convert_basic): Rename to convert, handle conversions
+	between complex and imaginary types.
+	(convert): Remove.
+	(d_build_truthvalue_op): Update to call convert.
+	(d_truthvalue_conversion): Likewise.
+
+	* d-builtins.cc(d_init_builtins): Build imaginary types as distinct
+	floating point type nodes.
+	* d-codegen.cc(build_float_modulus): Update to handle imaginary types.
+	(d_array_type): Use the front-end equivalent of sizetype to represent
+	the index type of arrays.
+	(build_array_index): Likewise.
+	(build_offset_op): Likewise.
+	(expand_intrinsic): Only get the inner callee if it's an address.
+
+	* d-codegen.h(component_ref, modify_expr, vmodify_expr, build_vinit)
+	(build_nop, build_vconvert, build_boolop, compound_expr)
+	(vcompound_expr, real_part, imaginary_part): Move to d-codegen.cc,
+	use fold build functions for codegen.
+	* d-codeden.cc(build_address): Use build_fold_addr_expr_with_type,
+	remove special handling of taking an address of an indirect ref.
+	(return_expr): New function.
+	(complex_expr): New function.
+	(indirect_ref): Use fold build functions for codegen.
+	(build_deref): Likewise.
+	(build_array_index): Likewise.
+	(build_offset_op): Likewise.
+	(void_okay_p): Likewise.
+	(build_binary_op): Likewise.
+	(build_float_modulus): Likewise.
+	* d-objfile.cc(FuncDeclaration::toObjFile): Likewise.
+	* d-elem.cc(MinExp::toElem): Likewise.
+	(AddExp::toElem): Likewise.
+	(NotExp::toElem): Likewise.
+	(ComExp::toElem): Likwise.
+	(NegExp::toElem): Likewise.
+	* d-irstate.cc(IRState::doLabel): Likewise.
+	(IRState::doReturn): Likewise.
+	(IRState::doJump): Likewise.
+
+2015-07-20  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
+
+	* d-lang.cc(is_system_module): Extract function.
+	(write_one_dep): Extract function.
+	(deps_write): Eliminate duplicated dependencies, include
+	indirect and private dependencies.
+
+2015-07-19  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
 	* d-lang.cc(d_parse_file): Set ref flag on the module and make deps
 	file handle.
@@ -38,8 +89,8 @@
 2015-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-attribs.c(d_handle_section_attribute): Use VAR_P throughout.
-	(d_handle_weak_attribute) Use VAR_OR_FUNCTION_DECL_P.
-	* d-codegen.cc(convert_for_assignment) Use VAR_P.
+	(d_handle_weak_attribute): Use VAR_OR_FUNCTION_DECL_P.
+	* d-codegen.cc(convert_for_assignment): Use VAR_P.
 	* d-lang.cc(pop_binding_level): Likewise.
 	(d_types_compatible_p): Likewise.
 	* d-objfile.cc(setup_symbol_storage): Likewise.
