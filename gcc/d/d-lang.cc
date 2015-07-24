@@ -38,7 +38,6 @@
 #include "options.h"
 #include "cppdefault.h"
 #include "debug.h"
-#include "pointer-set.h"
 
 #include "d-lang.h"
 #include "d-codegen.h"
@@ -772,14 +771,12 @@ is_system_module(Module *m)
   return false;
 }
 
-bool
-d_write_one_dep(const void* fn, void* ob_ptr)
+static void
+write_one_dep(char const* fn, OutBuffer* ob)
 {
-  OutBuffer *ob = (OutBuffer *)ob_ptr;
   ob->writestring ("  ");
-  ob->writestring ((const char*)fn);
+  ob->writestring (fn);
   ob->writestring ("\\\n");
-  return true;
 }
 
 static void
@@ -792,7 +789,8 @@ deps_write (Module *m)
   ob->writestring (fn->str);
   ob->writestring (":");
 
-  pointer_set_t *dependencies = pointer_set_create();
+  StringTable dependencies;
+  dependencies._init();
 
   Modules to_explore;
   to_explore.push(m);
@@ -804,18 +802,17 @@ deps_write (Module *m)
       if (is_system_module(depmod))
         continue;
 
-    if (pointer_set_contains (dependencies, depmod->srcfile->name->str))
-      continue;
+    const char* str = depmod->srcfile->name->str;
 
-    pointer_set_insert (dependencies, depmod->srcfile->name->str);
+    if (!dependencies.insert(str, strlen(str)))
+      continue;
 
     for (size_t i = 0; i < depmod->aimports.dim; i++)
       to_explore.push(depmod->aimports[i]);
+
+    write_one_dep(str, ob);
   }
 
-  pointer_set_traverse (dependencies, &d_write_one_dep, ob);
-
-  pointer_set_destroy (dependencies);
   ob->writenl();
 }
 
