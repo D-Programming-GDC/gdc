@@ -1,3 +1,7 @@
+2015-07-24  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
+
+	* (deps_write): Use StringTable instead of hash_set of string pointers.
+
 2015-07-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-attribs.h: Adjust includes.

@@ -780,13 +780,12 @@ is_system_module(Module *m)
   return false;
 }
 
-bool
-d_write_one_dep(const char* const& fn, OutBuffer* ob)
+static void
+write_one_dep(char const* fn, OutBuffer* ob)
 {
   ob->writestring ("  ");
   ob->writestring (fn);
   ob->writestring ("\\\n");
-  return true;
 }
 
 static void
@@ -799,7 +798,8 @@ deps_write (Module *m)
   ob->writestring (fn->str);
   ob->writestring (":");
 
-  hash_set<const char*> dependencies;
+  StringTable dependencies;
+  dependencies._init();
 
   Modules to_explore;
   to_explore.push(m);
@@ -811,16 +811,16 @@ deps_write (Module *m)
       if (is_system_module(depmod))
         continue;
 
-    if (dependencies.contains(depmod->srcfile->name->str))
-      continue;
+    const char* str = depmod->srcfile->name->str;
 
-    dependencies.add(depmod->srcfile->name->str);
+    if (!dependencies.insert(str, strlen(str)))
+      continue;
 
     for (size_t i = 0; i < depmod->aimports.dim; i++)
       to_explore.push(depmod->aimports[i]);
-  }
 
-  dependencies.traverse<OutBuffer*, &d_write_one_dep>(ob);
+    write_one_dep(str, ob);
+  }
 
   ob->writenl();
 }
