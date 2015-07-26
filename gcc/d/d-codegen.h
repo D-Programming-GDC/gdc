@@ -124,6 +124,7 @@ extern tree build_array_index (tree ptr, tree index);
 extern tree build_offset_op (tree_code op, tree ptr, tree idx);
 extern tree build_offset (tree ptr_node, tree byte_offset);
 extern tree build_memref (tree type, tree ptr, tree byte_offset);
+extern tree build_array_set(tree ptr, tree length, tree value);
 
 // Function calls
 extern tree d_build_call (FuncDeclaration *fd, tree object, Expressions *args);

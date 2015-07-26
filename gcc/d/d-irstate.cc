@@ -436,61 +436,6 @@ IRState::endLoop()
 }
 
 
-// Create a tree node to set multiple elements to a single value
-
-tree
-IRState::doArraySet(tree ptr, tree value, tree count)
-{
-  tree t;
-
-  pushStatementList();
-  startBindings();
-
-  // Build temporary locals for count and ptr, and maybe value.
-  t = build_local_temp (size_type_node);
-  DECL_INITIAL (t) = count;
-  count = t;
-  expand_decl (count);
-
-  t = build_local_temp (TREE_TYPE (ptr));
-  DECL_INITIAL (t) = ptr;
-  ptr = t;
-  expand_decl (ptr);
-
-  if (d_has_side_effects (value))
-    {
-      t = build_local_temp (TREE_TYPE (value));
-      DECL_INITIAL (t) = value;
-      value = t;
-      expand_decl (value);
-    }
-
-  // Build loop to initialise { .length=count, .ptr=ptr } with value.
-  //
-  //   while (count != 0)
-  //   {
-  //     *ptr = value;
-  //     ptr += (*ptr).sizeof;
-  //     count -= 1;
-  //   }
-  tree pesize = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (ptr)));
-  tree count_zero = d_convert (TREE_TYPE (count), integer_zero_node);
-  tree count_one = d_convert (TREE_TYPE (count), integer_one_node);
-
-  startLoop (NULL);
-  continueHere();
-  exitIfFalse (build_boolop (NE_EXPR, count, count_zero));
-
-  addExp (vmodify_expr (build_deref (ptr), value));
-  addExp (vmodify_expr (ptr, build_offset (ptr, pesize)));
-  addExp (build2 (POSTDECREMENT_EXPR, TREE_TYPE (count), count, count_one));
-
-  endLoop();
-  endBindings();
-
-  return popStatementList();
-}
-
 // Routines for building statement lists around switches.  STMT is the body
 // of the switch statement, COND is the condition to the switch. If HAS_VARS
 // is true, then the switch statement has been converted to an if-then-else.
