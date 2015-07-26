@@ -1849,9 +1849,7 @@ tree
 build_array_set(tree ptr, tree length, tree value)
 {
   tree stmt_list = alloc_stmt_list();
-  tree block = make_node(BLOCK);
   push_binding_level();
-  current_binding_level->this_block = block;
 
   // Build temporary locals for length and ptr, and maybe value.
   tree t = build_local_temp(size_type_node);
@@ -1893,7 +1891,7 @@ build_array_set(tree ptr, tree length, tree value)
   append_to_statement_list_force(loop_body, &stmt_list);
 
   // Wrap up expression.
-  block = pop_binding_level(1, 0);
+  tree block = pop_binding_level(false);
 
   return build3(BIND_EXPR, void_type_node,
 		BLOCK_VARS (block), stmt_list, block);
