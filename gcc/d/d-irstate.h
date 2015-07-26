@@ -153,15 +153,6 @@ struct IRState
   void startScope();
   void endScope();
 
-  unsigned *currentScope()
-  {
-    gcc_assert (!this->scopes_.is_empty());
-    return this->scopes_.last();
-  }
-
-  void startBindings();
-  void endBindings();
-
   // Update current source file location to LOC.
   void doLineNote (const Loc& loc)
   { set_input_location (loc); }
@@ -208,7 +199,6 @@ struct IRState
 
  protected:
   auto_vec<tree> statementList_;
-  auto_vec<unsigned *> scopes_;
   auto_vec<Flow *> loops_;
   auto_vec<Label *> labels_;
 };

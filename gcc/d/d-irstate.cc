@@ -90,7 +90,7 @@ IRState::startFunction (FuncDeclaration *decl)
 void
 IRState::endFunction()
 {
-  gcc_assert (this->scopes_.is_empty());
+  gcc_assert(this->statementList_.is_empty());
   current_irstate = (IRState *) this->parent;
 }
 
@@ -268,53 +268,18 @@ IRState::doLabel (tree label)
 void
 IRState::startScope()
 {
-  unsigned *p_count = new unsigned;
-  *p_count = 0;
-
-  this->scopes_.safe_push (p_count);
-  this->startBindings();
+  push_binding_level();
+  pushStatementList();
 }
 
 void
 IRState::endScope()
 {
-  unsigned *p_count = this->currentScope();
-  while (*p_count)
-    this->endBindings();
+  tree block = pop_binding_level(false);
+  tree body = popStatementList();
 
-  this->scopes_.pop();
-}
-
-
-void
-IRState::startBindings()
-{
-  tree block;
-
-  push_binding_level();
-  block = make_node (BLOCK);
-  current_binding_level->this_block = block;
-
-  this->pushStatementList();
-
-  ++(*this->currentScope());
-}
-
-void
-IRState::endBindings()
-{
-  tree block = pop_binding_level (1, 0);
-  TREE_USED (block) = 1;
-
-  tree body = this->popStatementList();
-  this->addExp (build3 (BIND_EXPR, void_type_node,
-			BLOCK_VARS (block), body, block));
-
-  // The popped level/block is not automatically recorded
-  current_binding_level->blocks = block_chainon (current_binding_level->blocks, block);
-
-  --(*this->currentScope());
-  gcc_assert (*(int *) this->currentScope() >= 0);
+  addExp(build3(BIND_EXPR, void_type_node,
+		BLOCK_VARS (block), body, block));
 }
 
 

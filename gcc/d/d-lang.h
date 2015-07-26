@@ -87,18 +87,9 @@ struct GTY(()) binding_level
   /* A chain of declarations. These are in the reverse of the order supplied. */
   tree names;
 
-  /* A pointer to the end of the names chain. Only needed to facilitate
-     a quick test if a decl is in the list by checking if its TREE_CHAIN
-     is not NULL or it is names_end (in pushdecl_nocheck()). */
-  tree names_end;
-
   /* For each level (except the global one), a chain of BLOCK nodes for
      all the levels that were entered and exited one level down. */
   tree blocks;
-
-  /* The BLOCK node for this level, if one has been preallocated.
-     If NULL_TREE, the BLOCK is allocated (if needed) when the level is popped. */
-  tree this_block;
 
   /* The binding level this one is contained in. */
   binding_level *level_chain;
@@ -175,7 +166,7 @@ extern void add_import_paths(const char *iprefix, const char *imultilib, bool st
 /* In d-lang.cc */
 extern tree d_pushdecl (tree);
 extern void push_binding_level();
-extern tree pop_binding_level (int, int);
+extern tree pop_binding_level(bool functionbody);
 
 extern void init_global_binding_level();
 extern void set_decl_binding_chain (tree decl_chain);
@@ -186,8 +177,6 @@ extern tree d_signed_type (tree);
 extern void d_init_exceptions();
 
 extern void d_keep (tree t);
-
-extern void set_block (tree);
 
 
 /* In d-builtins.cc */

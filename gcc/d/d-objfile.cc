@@ -1276,10 +1276,9 @@ FuncDeclaration::toObjFile(bool force_p)
   DECL_ARGUMENTS (fndecl) = param_list;
   rest_of_decl_compilation (fndecl, 1, 0);
   DECL_INITIAL (fndecl) = error_mark_node;
-  push_binding_level();
 
   irs->pushStatementList();
-  irs->startScope();
+  push_binding_level();
   irs->doLineNote (loc);
 
   // If this is a member function that nested (possibly indirectly) in another
@@ -1360,23 +1359,19 @@ FuncDeclaration::toObjFile(bool force_p)
       irs->addExp (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 
-  irs->endScope();
-
-  DECL_SAVED_TREE (fndecl) = irs->popStatementList();
-
-  /* In tree-nested.c, init_tmp_var expects a statement list to come
-     from somewhere.  popStatementList returns expressions when
-     there is a single statement.  This code creates a statemnt list
-     unconditionally because the DECL_SAVED_TREE will always be a
-     BIND_EXPR. */
-  tree saved_tree = DECL_SAVED_TREE (fndecl);
-  tree body = BIND_EXPR_BODY (saved_tree);
+  // Backend expects a statement list to come from somewhere, however
+  // popStatementList returns expressions when there is a single statement.
+  // So here we create a statement list unconditionally.
+  tree block = pop_binding_level(true);
+  tree body = irs->popStatementList();
+  tree bind = build3(BIND_EXPR, void_type_node,
+		     BLOCK_VARS (block), body, block);
 
   if (TREE_CODE (body) != STATEMENT_LIST)
     {
       tree stmtlist = alloc_stmt_list();
       append_to_statement_list_force (body, &stmtlist);
-      BIND_EXPR_BODY (saved_tree) = stmtlist;
+      BIND_EXPR_BODY (bind) = stmtlist;
     }
   else if (!STATEMENT_LIST_HEAD (body))
     {
@@ -1386,9 +1381,7 @@ FuncDeclaration::toObjFile(bool force_p)
       append_to_statement_list_force (ret, &body);
     }
 
-  tree block = pop_binding_level (1, 1);
-  DECL_INITIAL (fndecl) = block;
-  BLOCK_SUPERCONTEXT (DECL_INITIAL (fndecl)) = fndecl;
+  DECL_SAVED_TREE (fndecl) = bind;
 
   if (!errorcount && !global.errors)
     {

@@ -5,6 +5,21 @@
 	* d-elem.cc(AssignExp::toElem): Use build_array_set.
 	(StructLiteralExp::toElem): Likewise.
 
+	* d-codegen.cc(build_array_set): Don't set this_block, update call to
+	pop_binding_level.
+	* d-irstate.cc(IRState::endFunction): Update assert.
+	(IRState::startScope): Move IRState::startBindings here, clean-up.
+	(IRState::endScope): Move IRState::endBindings here, clean-up.
+	(IRState::startBindings): Remove function.
+	(IRState::endBindings): Likewise.
+	(IRState::currentScope): Likewise.
+	(IRState::scopes_): Remove.
+	* d-lang.cc(pop_binding_level): Update signature, clean-up.
+	(d_pushdecl): Don't set names_end.
+	(binding_level::names_end): Remove.
+	(binding_level::this_block): Remove.
+	(FuncDeclaration::toObjFile): Clean-up.
+
 2015-07-24  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
 	* d-lang.cc(deps_write): Use StringTable instead of hash_set of string
