@@ -36,31 +36,25 @@
 #include "d-irstate.h"
 #include "d-codegen.h"
 
-IRState::IRState()
-{
-  this->parent = NULL;
-  this->func = NULL;
-  this->mod = NULL;
-  this->sthis = NULL_TREE;
-}
-
 IRState *
 IRState::startFunction (FuncDeclaration *decl)
 {
-  IRState *new_irs = new IRState();
-  new_irs->parent = current_irstate;
-  new_irs->func = decl;
+  cfun->language = ggc_cleared_alloc<language_function>();
+
+  current_irstate = new IRState();
+  current_irstate->func = decl;
+  // Default chain value is 'null' unless parent found.
+  current_irstate->sthis = null_pointer_node;
 
   for (Dsymbol *p = decl->parent; p; p = p->parent)
     {
       if (p->isModule())
 	{
-	  new_irs->mod = p->isModule();
+	  current_irstate->mod = p->isModule();
 	  break;
 	}
     }
 
-  current_irstate = (IRState *) new_irs;
   ModuleInfo *mi = current_module_info;
 
   if (decl->isSharedStaticCtorDeclaration())
@@ -84,14 +78,16 @@ IRState::startFunction (FuncDeclaration *decl)
   else if (decl->isUnitTestDeclaration())
     mi->unitTests.safe_push (decl);
 
-  return new_irs;
+  return current_irstate;
 }
 
 void
 IRState::endFunction()
 {
   gcc_assert(this->statementList_.is_empty());
-  current_irstate = (IRState *) this->parent;
+
+  ggc_free (cfun->language);
+  cfun->language = NULL;
 }
 
 

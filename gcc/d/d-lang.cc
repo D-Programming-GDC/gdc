@@ -854,8 +854,6 @@ d_parse_file()
 	d_nametype (Type::basic[ty]);
     }
 
-  current_irstate = new IRState();
-
   // Create Modules
   Modules modules;
   modules.reserve (num_in_fnames);

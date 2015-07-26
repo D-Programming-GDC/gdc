@@ -20,33 +20,34 @@
 #ifndef GCC_DCMPLR_DC_LANG_H
 #define GCC_DCMPLR_DC_LANG_H
 
+// Forward type declarations to avoid including unnecessary headers.
+class Declaration;
+class Type;
+struct IRState;
+
 /* Nothing is added to tree_identifier; */
 struct GTY(()) lang_identifier
 {
   struct tree_identifier common;
 };
 
-/* This is required to be defined, but we do not use it. */
+/* Global state pertinent to the current function. */
 struct GTY(()) language_function
 {
-  int unused;
+  IRState * GTY((skip)) irs;
 };
 
 /* The D front end types have not been integrated into the GCC garbage
    collection system.  Handle this by using the "skip" attribute. */
-class Declaration;
-typedef Declaration *DeclarationGTYP;
 struct GTY(()) lang_decl
 {
-  DeclarationGTYP GTY((skip)) d_decl;
+  Declaration * GTY((skip)) d_decl;
 };
 
 /* The lang_type field is not set for every GCC type. */
-class Type;
-typedef Type *TypeGTYP;
 struct GTY(()) lang_type
 {
-  TypeGTYP GTY((skip)) d_type;
+  Type * GTY((skip)) d_type;
 };
 
 /* Another required, but unused declaration.  This could be simplified, since

@@ -265,7 +265,7 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 // Globals.
 extern Module *current_module_decl;
-extern IRState *current_irstate;
+#define current_irstate (cfun->language->irs)
 
 #endif
 
