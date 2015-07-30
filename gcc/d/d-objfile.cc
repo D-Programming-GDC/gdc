@@ -106,15 +106,12 @@ Dsymbol::toObjFile(bool)
       if (imp->isstatic)
 	return;
 
-      IRState *irs = current_irstate;
-      Module *mod = current_module_decl;
-      tree context;
-
       // Get the context of this import, this should never be null.
-      if (irs->func != NULL)
-	context = irs->func->toSymbol()->Stree;
+      tree context;
+      if (cfun != NULL)
+	context = current_irstate->func->toSymbol()->Stree;
       else
-	context = mod->toImport()->Stree;
+	context = current_module_decl->toImport()->Stree;
 
       if (imp->ident == NULL)
 	{
@@ -1206,10 +1203,6 @@ FuncDeclaration::toObjFile(bool force_p)
   if (global.params.verbose)
     fprintf (global.stdmsg, "function  %s\n", this->toPrettyChars());
 
-  IRState *irs = current_irstate->startFunction (this);
-  // Default chain value is 'null' unless parent found.
-  irs->sthis = null_pointer_node;
-
   tree old_current_function_decl = current_function_decl;
   function *old_cfun = cfun;
   current_function_decl = fndecl;
@@ -1225,6 +1218,8 @@ FuncDeclaration::toObjFile(bool force_p)
 
   allocate_struct_function (fndecl, false);
   set_function_end_locus (endloc);
+
+  IRState *irs = IRState::startFunction (this);
 
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
@@ -1428,10 +1423,10 @@ FuncDeclaration::toObjFile(bool force_p)
 	}
     }
 
+  irs->endFunction();
+
   current_function_decl = old_current_function_decl;
   set_cfun (old_cfun);
-
-  irs->endFunction();
 }
 
 //

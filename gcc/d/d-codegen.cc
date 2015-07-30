@@ -37,6 +37,7 @@
 #include "stringpool.h"
 #include "stor-layout.h"
 #include "attribs.h"
+#include "function.h"
 
 #include "d-lang.h"
 #include "d-objfile.h"
@@ -46,7 +47,6 @@
 
 
 Module *current_module_decl;
-IRState *current_irstate;
 
 
 // Return the DECL_CONTEXT for symbol DSYM.
@@ -2167,7 +2167,7 @@ d_build_call (FuncDeclaration *fd, tree object, Expressions *args)
 tree
 d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
 {
-  IRState *irs = current_irstate;
+  IRState *irs = cfun ? current_irstate : NULL;
   tree ctype = TREE_TYPE (callable);
   tree callee = callable;
   tree saved_args = NULL_TREE;

@@ -89,10 +89,6 @@ struct Flow
 struct IRState
 {
  public:
-  IRState *parent;
-
-  IRState();
-
   // ** Functions
   FuncDeclaration *func;
   Module *mod;
@@ -102,7 +98,7 @@ struct IRState
 
   auto_vec<FuncDeclaration *> deferred;
 
-  IRState *startFunction (FuncDeclaration *decl);
+  static IRState *startFunction (FuncDeclaration *decl);
   void endFunction();
 
   // Variables that are in scope that will need destruction later.
