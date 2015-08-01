@@ -28,7 +28,7 @@
 #
 
 AC_PREREQ(2.64)
-AC_INIT(libphobos, version-unused)
+AC_INIT(package-unused, version-unused,, libphobos)
 AC_CONFIG_SRCDIR(std/algorithm.d)
 AC_CONFIG_SRCDIR(libdruntime/gcc/builtins.d)
 AC_CONFIG_SRCDIR(libdruntime/gcc/attribute.d)
@@ -40,9 +40,16 @@ AC_CANONICAL_SYSTEM
 target_alias=${target_alias-$target}
 AC_SUBST(target_alias)
 
-AM_INIT_AUTOMAKE([1.9.3 no-define foreign no-dependencies no-dist -Wall -Wno-portability])
-AH_TEMPLATE(PACKAGE, [Name of package])
-AH_TEMPLATE(VERSION, [Version number of package])
+# 1.11.1: Require that version of automake.
+# foreign: Don't require README, INSTALL, NEWS, etc.
+# no-define: Don't define PACKAGE and VERSION.
+# no-dependencies: Don't generate automatic dependencies.
+#    (because it breaks when using bootstrap-lean, since some of the
+#    headers are gone at "make install" time).
+# -Wall: Issue all automake warnings.
+# -Wno-portability: Don't warn about constructs supported by GNU make.
+#    (because GCC requires GNU make anyhow).
+AM_INIT_AUTOMAKE([1.11.1 foreign no-dist no-define no-dependencies -Wall -Wno-portability])
 
 m4_rename([_AC_ARG_VAR_PRECIOUS],[glibd_PRECIOUS])
 m4_define([_AC_ARG_VAR_PRECIOUS],[])
@@ -395,4 +402,5 @@ _EOF
    AS_UNSET([ml_norecursion])
 ])
 
-AC_OUTPUT([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d])
+AC_CONFIG_FILES([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d])
+AC_OUTPUT
