@@ -1,3 +1,14 @@
+2015-08-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in(DMD_COMPILE): Declare as COMPILE with WARN_CXXFLAGS
+	replaced with DMD_WARN_CXXFLAGS.
+	(DMDGEN_COMPILE): Declare as DMD_COMPILE but with COMPILER replaced
+	with COMPILER_FOR_BUILD.
+	(d/idgen): Use LINKER_FOR_BUILD.
+	(d/impcvgen): Likewise.
+	(d/%.o): Use DMD_COMPILE and POSTCOMPILE.
+	(d/%.dmdgen.o): Use DMDGEN_COMPILE and POSTCOMPILE.
+
 2015-07-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(current_irstate): Remove.
