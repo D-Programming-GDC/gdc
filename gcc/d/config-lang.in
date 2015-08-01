@@ -26,7 +26,11 @@ language="d"
 
 compilers="cc1d\$(exeext)"
 
-target_libs="target-libphobos target-zlib target-libbacktrace"
+if eval test x\${enable_libphobos} "=" xno ; then
+    target_libs=""
+else
+    target_libs="target-libphobos target-zlib target-libbacktrace"
+fi
 
 gtfiles="\$(srcdir)/d/d-builtins.cc \$(srcdir)/d/d-lang.cc \$(srcdir)/d/d-lang.h"
 
