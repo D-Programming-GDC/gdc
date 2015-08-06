@@ -1,5 +1,16 @@
 2015-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc(build_closure): Update signature, update all callers.
+	(build_vthis): Likewise.
+	(get_frame_for_symbol): Likewise.
+	(build_local_var): Likewise.
+	(get_decl_tree): Likewise.
+	* d-irstate.h(IRState): Move func, mod, sthis, deferred,
+	statementList, and varsInScope fields to...
+	* d-tree.h(language_function): Here, updated all uses.
+
+2015-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* Make-lang.in(D_GLUE_OBJS): Remove d-irstate.o.
 	* d-tree.h(d_label_use_entry): New structure.
 	(d_label_entry): New structure.

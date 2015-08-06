@@ -997,7 +997,7 @@ AssignExp::toElem(IRState *irs)
 	  if (sd->isNested())
 	    {
 	      tree vthis_field = sd->vthis->toSymbol()->Stree;
-	      tree vthis_value = build_vthis(sd, irs->func);
+	      tree vthis_value = build_vthis(sd);
 
 	      tree vthis_exp = modify_expr(component_ref(t1, vthis_field), vthis_value);
 	      result = compound_expr(result, vthis_exp);
@@ -1445,7 +1445,7 @@ PtrExp::toElem (IRState *irs)
       if (!decl_reference_p (sym_exp->var))
 	{
 	  rec_type = sym_exp->var->type->toBasetype();
-	  rec_tree = get_decl_tree (sym_exp->var, irs->func);
+	  rec_tree = get_decl_tree (sym_exp->var);
 	  the_offset = sym_exp->offset;
 	}
     }
@@ -1541,10 +1541,10 @@ CallExp::toElem (IRState *irs)
       if (fd->isNested())
 	{
 	  // Maybe re-evaluate symbol storage treating 'fd' as public.
-	  if (call_by_alias_p (irs->func, fd))
+	  if (call_by_alias_p (cfun->language->function, fd))
 	    setup_symbol_storage (fd, callee, true);
 
-	  object = get_frame_for_symbol (irs->func, fd);
+	  object = get_frame_for_symbol (fd);
 	}
       else if (fd->needThis())
 	{
@@ -1583,9 +1583,9 @@ CallExp::toElem (IRState *irs)
 elem *
 Expression::toElemDtor (IRState *irs)
 {
-  size_t starti = irs->varsInScope.length();
+  size_t starti = cfun->language->vars_in_scope.length();
   tree exp = toElem (irs);
-  size_t endi = irs->varsInScope.length();
+  size_t endi = cfun->language->vars_in_scope.length();
 
   // Codegen can be improved by determining if no exceptions can be thrown
   // between the ctor and dtor, and eliminating the ctor and dtor.
@@ -1595,10 +1595,10 @@ Expression::toElemDtor (IRState *irs)
   tree tdtors = NULL_TREE;
   for (size_t i = starti; i != endi; ++i)
     {
-      VarDeclaration *vd = irs->varsInScope[i];
+      VarDeclaration *vd = cfun->language->vars_in_scope[i];
       if (vd)
 	{
-	  irs->varsInScope[i] = NULL;
+	  cfun->language->vars_in_scope[i] = NULL;
 	  tree td = vd->edtor->toElem (irs);
 	  // Execute in reverse order.
 	  tdtors = maybe_compound_expr (tdtors, td);
@@ -1659,8 +1659,8 @@ DelegateExp::toElem (IRState *irs)
       Dsymbol *owner = func->toParent();
       while (!owner->isTemplateInstance() && owner->toParent())
 	owner = owner->toParent();
-      if (owner->isTemplateInstance() || owner == irs->mod)
-	irs->deferred.safe_push(func);
+      if (owner->isTemplateInstance() || owner == cfun->language->module)
+	cfun->language->deferred_fns.safe_push(func);
     }
 
   if (t->ty == Tclass || t->ty == Tstruct)
@@ -1681,7 +1681,7 @@ DelegateExp::toElem (IRState *irs)
 	  if (e1->op == TOKnull)
 	    this_tree = e1->toElem (irs);
 	  else
-	    this_tree = get_frame_for_symbol (irs->func, func);
+	    this_tree = get_frame_for_symbol (func);
 	}
       else
 	{
@@ -1726,7 +1726,7 @@ DotVarExp::toElem (IRState *irs)
       else if (var_decl)
 	{
 	  if (!var_decl->isField())
-	    return get_decl_tree (var_decl, irs->func);
+	    return get_decl_tree (var_decl);
 	  else
 	    {
 	      tree this_tree = e1->toElem (irs);
@@ -1757,7 +1757,7 @@ AssertExp::toElem (IRState *irs)
       LibCall libcall;
 
       // Build _d_assert call.
-      if (irs->func->isUnitTestDeclaration())
+      if (cfun->language->function->isUnitTestDeclaration())
 	{
 	  if (msg)
 	    {
@@ -1834,7 +1834,7 @@ AssertExp::toElem (IRState *irs)
 }
 
 elem *
-DeclarationExp::toElem (IRState *irs)
+DeclarationExp::toElem (IRState *)
 {
   VarDeclaration *vd = declaration->isVarDeclaration();
 
@@ -1845,7 +1845,7 @@ DeclarationExp::toElem (IRState *irs)
 	{
 	  // Put variable on list of things needing destruction
 	  if (vd->edtor && !vd->noscope)
-	    irs->varsInScope.safe_push (vd);
+	    cfun->language->vars_in_scope.safe_push (vd);
 	}
     }
 
@@ -1864,7 +1864,7 @@ DeclarationExp::toElem (IRState *irs)
 
 
 elem *
-FuncExp::toElem (IRState *irs)
+FuncExp::toElem (IRState *)
 {
   Type *ftype = type->toBasetype();
 
@@ -1876,14 +1876,14 @@ FuncExp::toElem (IRState *irs)
     }
 
   // Emit after current function body has finished.
-  if (irs->func)
-    irs->deferred.safe_push(fd);
+  if (cfun != NULL)
+    cfun->language->deferred_fns.safe_push(fd);
 
   // If nested, this will be a trampoline...
   if (fd->isNested())
     {
       return build_method_call (build_address (fd->toSymbol()->Stree),
-				get_frame_for_symbol (irs->func, fd), type);
+				get_frame_for_symbol (fd), type);
     }
 
   return build_nop (build_ctype(type), build_address (fd->toSymbol()->Stree));
@@ -1897,7 +1897,7 @@ HaltExp::toElem (IRState *)
 }
 
 elem *
-SymbolExp::toElem (IRState *irs)
+SymbolExp::toElem (IRState *)
 {
   tree exp;
 
@@ -1913,7 +1913,7 @@ SymbolExp::toElem (IRState *irs)
       if (var->ident == Id::ctfe)
 	return integer_zero_node;
 
-      exp = get_decl_tree (var, irs->func);
+      exp = get_decl_tree (var);
       TREE_USED (exp) = 1;
 
       // For variables that are references (currently only out/inout arguments;
@@ -1933,7 +1933,7 @@ SymbolExp::toElem (IRState *irs)
     {
       size_t offset = ((SymOffExp *) this)->offset;
 
-      exp = get_decl_tree (var, irs->func);
+      exp = get_decl_tree (var);
       TREE_USED (exp) = 1;
 
       if (decl_reference_p (var))
@@ -2019,7 +2019,7 @@ NewExp::toElem(IRState *irs)
 		}
 	    }
 	  else
-	    vthis_value = build_vthis(cd, irs->func);
+	    vthis_value = build_vthis(cd);
 
 	  if (vthis_value)
 	    {
@@ -2067,7 +2067,7 @@ NewExp::toElem(IRState *irs)
 	  // Set vthis for nested structs.
 	  if (sd->isNested())
 	    {
-	      tree vthis_value = build_vthis(sd, irs->func);
+	      tree vthis_value = build_vthis(sd);
 	      tree vthis_field = component_ref(indirect_ref(build_ctype(stype), new_call),
 					       sd->vthis->toSymbol()->Stree);
 	      new_call = compound_expr(modify_expr(vthis_field, vthis_value), new_call);
@@ -2479,7 +2479,7 @@ StructLiteralExp::toElem(IRState *irs)
     {
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;
-      tree vthis_value = build_vthis(sd, irs->func);
+      tree vthis_value = build_vthis(sd);
       CONSTRUCTOR_APPEND_ELT(ce, vthis_field, vthis_value);
       gcc_assert(sinit == NULL);
     }
@@ -2541,20 +2541,20 @@ NullExp::toElem(IRState *)
 }
 
 elem *
-ThisExp::toElem (IRState *irs)
+ThisExp::toElem (IRState *)
 {
   tree this_tree = NULL_TREE;
-  FuncDeclaration *fd = irs->func;
+  FuncDeclaration *fd = cfun ? cfun->language->function : NULL;
 
   if (var)
     {
       gcc_assert(var->isVarDeclaration());
-      this_tree = get_decl_tree (var, fd);
+      this_tree = get_decl_tree (var);
     }
   else
     {
       gcc_assert (fd && fd->vthis);
-      this_tree = get_decl_tree (fd->vthis, fd);
+      this_tree = get_decl_tree (fd->vthis);
     }
 
   if (type->ty == Tstruct)

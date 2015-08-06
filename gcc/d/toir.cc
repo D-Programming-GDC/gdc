@@ -101,8 +101,8 @@ public:
   // Return TRUE if IDENT is the current function return label.
   bool is_return_label(Identifier *ident)
   {
-    if (this->irs_->func->returnLabel)
-      return this->irs_->func->returnLabel->ident == ident;
+    if (this->func_->returnLabel)
+      return this->func_->returnLabel->ident == ident;
 
     return false;
   }
@@ -720,7 +720,7 @@ public:
 	ExpInitializer *ie = s->wthis->init->isExpInitializer();
 	gcc_assert(ie != NULL);
 
-	build_local_var(s->wthis, this->func_);
+	build_local_var(s->wthis);
 	tree init = ie->exp->toElemDtor(this->irs_);
 	add_stmt(init);
       }
@@ -798,7 +798,7 @@ public:
 		tree var = vcatch->var->toSymbol()->Stree;
 		tree init = build_vinit(var, object);
 
-		build_local_var(vcatch->var, this->func_);
+		build_local_var(vcatch->var);
 		add_stmt(init);
 	      }
 

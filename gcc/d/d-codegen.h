@@ -150,24 +150,24 @@ extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
 extern tree build_frame_type(FuncDeclaration *func);
-extern void build_closure(FuncDeclaration *fd, IRState *irs);
+extern void build_closure(FuncDeclaration *fd);
 extern FuncFrameInfo *get_frameinfo(FuncDeclaration *fd);
 extern tree get_framedecl(FuncDeclaration *inner, FuncDeclaration *outer);
 
-extern tree build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd);
+extern tree build_vthis(AggregateDeclaration *decl);
 extern tree build_vthis_type(tree basetype, tree type);
 
 // Static chain for nested functions
-extern tree get_frame_for_symbol(FuncDeclaration *func, Dsymbol *sym);
+extern tree get_frame_for_symbol(Dsymbol *sym);
 
 // Local variables
-extern void build_local_var(VarDeclaration *vd, FuncDeclaration *fd);
+extern void build_local_var(VarDeclaration *vd);
 extern tree build_local_temp(tree type);
 extern tree create_temporary_var(tree type);
 extern tree maybe_temporary_var(tree exp, tree *out_var);
 extern void expand_decl(tree decl);
 
-extern tree get_decl_tree(Declaration *decl, FuncDeclaration *func);
+extern tree get_decl_tree(Declaration *decl);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree make_temp (tree t);

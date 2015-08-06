@@ -162,7 +162,7 @@ void
 push_stmt_list()
 {
   tree t = alloc_stmt_list();
-  current_irstate->statementList_.safe_push(t);
+  vec_safe_push(cfun->language->stmt_list, t);
   d_keep(t);
 }
 
@@ -170,7 +170,7 @@ push_stmt_list()
 tree
 pop_stmt_list()
 {
-  tree t = current_irstate->statementList_.pop();
+  tree t = cfun->language->stmt_list->pop();
 
   // If the statement list is completely empty, just return it.  This is
   // just as good small as build_empty_stmt, with the advantage that
@@ -208,10 +208,8 @@ add_stmt(tree t)
   if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
     SET_EXPR_LOCATION (t, input_location);
 
-  tree stmt_list = current_irstate->statementList_.pop();
-
+  tree stmt_list = cfun->language->stmt_list->last();
   append_to_statement_list_force(t, &stmt_list);
-  current_irstate->statementList_.safe_push(stmt_list);
 }
 
 //
@@ -219,20 +217,21 @@ IRState *
 start_function(FuncDeclaration *decl)
 {
   cfun->language = ggc_cleared_alloc<language_function>();
+  cfun->language->function = decl;
+
+  // Default chain value is 'null' unless parent found.
+  cfun->language->static_chain = null_pointer_node;
+
+  // Find module for this function
+  for (Dsymbol *p = decl->parent; p != NULL; p = p->parent)
+    {
+      cfun->language->module = p->isModule();
+      if (cfun->language->module)
+	break;
+    }
+  gcc_assert(cfun->language->module != NULL);
 
   current_irstate = new IRState();
-  current_irstate->func = decl;
-  // Default chain value is 'null' unless parent found.
-  current_irstate->sthis = null_pointer_node;
-
-  for (Dsymbol *dsym = decl->parent; dsym != NULL; dsym = dsym->parent)
-    {
-      if (dsym->isModule())
-       {
-         current_irstate->mod = (Module *) dsym;
-         break;
-       }
-    }
 
   // Check if we have a static this or unitest function.
   ModuleInfo *mi = current_module_info;
@@ -245,14 +244,14 @@ start_function(FuncDeclaration *decl)
     {
       VarDeclaration *vgate = ((SharedStaticDtorDeclaration *) decl)->vgate;
       if (vgate != NULL)
-       mi->sharedctorgates.safe_push(vgate);
+	mi->sharedctorgates.safe_push(vgate);
       mi->shareddtors.safe_push(decl);
     }
   else if (decl->isStaticDtorDeclaration())
     {
       VarDeclaration *vgate = ((StaticDtorDeclaration *) decl)->vgate;
       if (vgate != NULL)
-       mi->ctorgates.safe_push(vgate);
+	mi->ctorgates.safe_push(vgate);
       mi->dtors.safe_push(decl);
     }
   else if (decl->isUnitTestDeclaration())
@@ -264,7 +263,7 @@ start_function(FuncDeclaration *decl)
 void
 end_function()
 {
-  gcc_assert(current_irstate->statementList_.is_empty());
+  gcc_assert(vec_safe_is_empty(cfun->language->stmt_list));
 
   ggc_free(cfun->language);
   cfun->language = NULL;
@@ -317,13 +316,15 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
-// Add local variable VD into the current body of function fd.
+// Add local variable VD into the current function body.
 
 void
-build_local_var (VarDeclaration *vd, FuncDeclaration *fd)
+build_local_var (VarDeclaration *vd)
 {
   gcc_assert (!vd->isDataseg() && !vd->isMember());
+  gcc_assert (current_function_decl != NULL_TREE);
 
+  FuncDeclaration *fd = cfun->language->function;
   Symbol *sym = vd->toSymbol();
   tree var = sym->Stree;
 
@@ -331,7 +332,7 @@ build_local_var (VarDeclaration *vd, FuncDeclaration *fd)
 
   set_input_location (vd->loc);
   d_pushdecl (var);
-  DECL_CONTEXT (var) = fd->toSymbol()->Stree;
+  DECL_CONTEXT (var) = current_function_decl;
 
   // Compiler generated symbols
   if (vd == fd->vresult || vd == fd->v_argptr)
@@ -340,7 +341,7 @@ build_local_var (VarDeclaration *vd, FuncDeclaration *fd)
   if (sym->SframeField)
     {
       // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var, get_decl_tree (vd, fd));
+      SET_DECL_VALUE_EXPR (var, get_decl_tree (vd));
       DECL_HAS_VALUE_EXPR_P (var) = 1;
     }
 }
@@ -413,16 +414,17 @@ expand_decl (tree decl)
     }
 }
 
-// Return the correct decl to be used for variable DECL accessed from
-// function FUNC.  Could be a VAR_DECL, or a FIELD_DECL from a closure.
+// Return the correct decl to be used for variable DECL accessed from the
+// current function.  Could be a VAR_DECL, or a FIELD_DECL from a closure.
 
 tree
-get_decl_tree (Declaration *decl, FuncDeclaration *func)
+get_decl_tree (Declaration *decl)
 {
   VarDeclaration *vd = decl->isVarDeclaration();
 
   if (vd)
     {
+      FuncDeclaration *func = cfun->language->function;
       Symbol *vsym = vd->toSymbol();
       if (vsym->SnamedResult != NULL_TREE)
 	{
@@ -2279,7 +2281,7 @@ array_bounds_check()
   if (result == 1)
     {
       // For D2 safe functions only
-      FuncDeclaration *func = current_irstate->func;
+      FuncDeclaration *func = cfun->language->function;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
@@ -3314,14 +3316,15 @@ build_vthis_type(tree basetype, tree type)
 }
 
 // If SYM is a nested function, return the static chain to be
-// used when calling that function from FUNC.
+// used when calling that function from the current function.
 
 // If SYM is a nested class or struct, return the static chain
-// to be used when creating an instance of the class from FUNC.
+// to be used when creating an instance of the class from CFUN.
 
 tree
-get_frame_for_symbol (FuncDeclaration *func, Dsymbol *sym)
+get_frame_for_symbol (Dsymbol *sym)
 {
+  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
   FuncDeclaration *thisfd = sym->isFuncDeclaration();
   FuncDeclaration *parentfd = NULL;
 
@@ -3450,8 +3453,10 @@ d_nested_struct (StructDeclaration *sd)
 // instance of OCD or a class that has OCD as a base.
 
 static tree
-find_this_tree(FuncDeclaration *func, ClassDeclaration *ocd)
+find_this_tree(ClassDeclaration *ocd)
 {
+  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
+
   while (func)
     {
       AggregateDeclaration *ad = func->isThis();
@@ -3460,9 +3465,9 @@ find_this_tree(FuncDeclaration *func, ClassDeclaration *ocd)
       if (cd != NULL)
 	{
 	  if (ocd == cd)
-	    return get_decl_tree(func->vthis, func);
+	    return get_decl_tree(func->vthis);
 	  else if (ocd->isBaseOf(cd, NULL))
-	    return convert_expr(get_decl_tree(func->vthis, func), cd->type, ocd->type);
+	    return convert_expr(get_decl_tree(func->vthis), cd->type, ocd->type);
 
 	  func = d_nested_class(cd);
 	}
@@ -3481,10 +3486,11 @@ find_this_tree(FuncDeclaration *func, ClassDeclaration *ocd)
   return NULL_TREE;
 }
 
-// Retrieve the outer class/struct 'this' value of DECL from the function FD.
+// Retrieve the outer class/struct 'this' value of DECL from
+// the current function.
 
 tree
-build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd)
+build_vthis(AggregateDeclaration *decl)
 {
   ClassDeclaration *cd = decl->isClassDeclaration();
   StructDeclaration *sd = decl->isStructDeclaration();
@@ -3513,7 +3519,7 @@ build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd)
 
       if (cdo)
 	{
-	  vthis_value = find_this_tree(fd, cdo);
+	  vthis_value = find_this_tree(cdo);
 	  gcc_assert(vthis_value != NULL_TREE);
 	}
       else if (fdo)
@@ -3521,13 +3527,13 @@ build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd)
 	  FuncFrameInfo *ffo = get_frameinfo(fdo);
 	  if (ffo->creates_frame || ffo->static_chain
 	      || fdo->hasNestedFrameRefs())
-	    vthis_value = get_frame_for_symbol(fd, decl);
+	    vthis_value = get_frame_for_symbol(decl);
 	  else if (cd != NULL)
 	    {
 	      // Classes nested in methods are allowed to access any outer
 	      // class fields, use the function chain in this case.
 	      if (fdo->vthis && fdo->vthis->type != Type::tvoidptr)
-		vthis_value = get_decl_tree(fdo->vthis, fd);
+		vthis_value = get_decl_tree(fdo->vthis);
 	    }
 	}
       else
@@ -3638,7 +3644,7 @@ build_frame_type (FuncDeclaration *func)
 // nested refs, then instead build custom static chain decl on stack.
 
 void
-build_closure(FuncDeclaration *fd, IRState *irs)
+build_closure(FuncDeclaration *fd)
 {
   FuncFrameInfo *ffi = get_frameinfo(fd);
 
@@ -3674,7 +3680,7 @@ build_closure(FuncDeclaration *fd, IRState *irs)
 
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));
-  tree chain_expr = vmodify_expr(chain_field, irs->sthis);
+  tree chain_expr = vmodify_expr(chain_field, cfun->language->static_chain);
   add_stmt(chain_expr);
 
   // Copy parameters that are referenced nonlocally.
@@ -3695,7 +3701,7 @@ build_closure(FuncDeclaration *fd, IRState *irs)
   if (!ffi->is_closure)
     decl = build_address (decl);
 
-  irs->sthis = decl;
+  cfun->language->static_chain = decl;
 }
 
 // Return the frame of FD.  This could be a static chain or a closure
@@ -3792,7 +3798,7 @@ get_frameinfo(FuncDeclaration *fd)
 tree
 get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 {
-  tree result = current_irstate->sthis;
+  tree result = cfun->language->static_chain;
   FuncDeclaration *fd = inner;
 
   while (fd && fd != outer)

@@ -21,8 +21,11 @@
 
 // Forward type declarations to avoid including unnecessary headers.
 class Declaration;
+class FuncDeclaration;
+class Module;
 class Statement;
 class Type;
+class VarDeclaration;
 struct IRState;
 
 // The kinds of scopes we recognise.
@@ -120,6 +123,23 @@ struct GTY(()) lang_identifier
 struct GTY(()) language_function
 {
   IRState * GTY((skip)) irs;
+
+  // Our function and enclosing module.
+  FuncDeclaration * GTY((skip)) function;
+  Module * GTY((skip)) module;
+
+  // Static chain of function, for D2, this is a closure.
+  tree static_chain;
+
+  // Stack of statement lists being collected while we are
+  // compiling the function.
+  vec<tree, va_gc> *stmt_list;
+
+  // Any nested functions that were deferred during codegen.
+  vec<FuncDeclaration *> GTY((skip)) deferred_fns;
+
+  // Variables that are in scope that will need destruction later.
+  vec<VarDeclaration *> GTY((skip)) vars_in_scope;
 
   // Table of all used or defined labels in the function.
   hash_map<Statement *, d_label_entry> *labels;

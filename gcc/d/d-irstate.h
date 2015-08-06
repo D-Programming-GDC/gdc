@@ -32,21 +32,6 @@
 
 struct IRState
 {
- public:
-  // ** Functions
-  FuncDeclaration *func;
-  Module *mod;
-
-  // Static chain of function, for D2, this is a closure.
-  tree sthis;
-
-  auto_vec<FuncDeclaration *> deferred;
-
-  // Variables that are in scope that will need destruction later.
-  auto_vec<VarDeclaration *> varsInScope;
-
- //protected:
-  auto_vec<tree> statementList_;
 };
 
 

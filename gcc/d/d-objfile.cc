@@ -110,7 +110,7 @@ Dsymbol::toObjFile(bool)
       // Get the context of this import, this should never be null.
       tree context;
       if (cfun != NULL)
-	context = current_irstate->func->toSymbol()->Stree;
+	context = current_function_decl;
       else
 	context = current_module_decl->toImport()->Stree;
 
@@ -856,7 +856,7 @@ VarDeclaration::toObjFile(bool)
       // a check for isVarDeclaration() in DeclarationExp::toElem.
       if (!isDataseg() && !isMember())
 	{
-	  build_local_var (this, toParent2()->isFuncDeclaration());
+	  build_local_var (this);
 
 	  if (init)
 	    {
@@ -1245,7 +1245,7 @@ FuncDeclaration::toObjFile(bool force_p)
 
       set_decl_location (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
-      irs->sthis = parm_decl;
+      cfun->language->static_chain = parm_decl;
     }
 
   // _arguments parameter.
@@ -1293,17 +1293,17 @@ FuncDeclaration::toObjFile(bool force_p)
 	  ad = d->isAggregateDeclaration();
 	  if (ad == NULL)
 	    {
-	      irs->sthis = this_tree;
+	      cfun->language->static_chain = this_tree;
 	      break;
 	    }
 	}
     }
 
-  // May change irs->sthis.
-  build_closure(this, irs);
+  // May change cfun->static_chain
+  build_closure(this);
 
   if (vresult)
-    build_local_var (vresult, this);
+    build_local_var (vresult);
 
   if (v_argptr)
     push_stmt_list();
@@ -1343,11 +1343,11 @@ FuncDeclaration::toObjFile(bool force_p)
   if (v_argptr)
     {
       tree body = pop_stmt_list();
-      tree var = get_decl_tree (v_argptr, this);
+      tree var = get_decl_tree (v_argptr);
       var = build_address (var);
 
       tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
-      build_local_var (v_argptr, this);
+      build_local_var (v_argptr);
       add_stmt(init_exp);
 
       tree cleanup = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_END), 1, var);
@@ -1408,9 +1408,9 @@ FuncDeclaration::toObjFile(bool force_p)
     d_finish_function (this);
 
   // Process all deferred nested functions.
-  for (size_t i = 0; i < irs->deferred.length(); ++i)
+  for (size_t i = 0; i < cfun->language->deferred_fns.length(); ++i)
     {
-      FuncDeclaration *fd = irs->deferred[i];
+      FuncDeclaration *fd = cfun->language->deferred_fns[i];
       fd->toObjFile(false);
     }
 
