@@ -39,6 +39,7 @@
 #include "attribs.h"
 #include "function.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-objfile.h"
 #include "d-irstate.h"
@@ -127,7 +128,8 @@ pop_stmt_list()
   return t;
 }
 
-// T is an expression statment.  Add it to the statement-tree.
+// T is an expression statement.  Add it to the statement-tree.
+
 void
 add_stmt(tree t)
 {

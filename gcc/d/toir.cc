@@ -34,6 +34,7 @@
 #include "fold-const.h"
 #include "diagnostic.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"

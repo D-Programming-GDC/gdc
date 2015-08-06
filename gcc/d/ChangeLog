@@ -1,3 +1,10 @@
+2015-08-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* config-lang.in(gtfiles): Replace d-lang.h for d-tree.h
+	* d-lang.h: Move all GTY structures to d-tree.h, updated all source
+	header dependencies.
+	* d-tree.h: New file.
+
 2015-08-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* toir.cc(IRVisitor::start_condition): Don't cache condition.

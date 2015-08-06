@@ -30,7 +30,7 @@
 #include "diagnostic.h"
 #include "tm.h"
 
-#include "d-lang.h"
+#include "d-tree.h"
 #include "d-objfile.h"
 #include "d-irstate.h"
 #include "d-codegen.h"

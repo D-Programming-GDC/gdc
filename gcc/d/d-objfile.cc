@@ -51,6 +51,7 @@
 #include "debug.h"
 #include "tree-pretty-print.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-objfile.h"
 #include "d-irstate.h"
