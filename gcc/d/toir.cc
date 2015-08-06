@@ -37,13 +37,11 @@
 #include "d-tree.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
-#include "d-irstate.h"
 #include "id.h"
 
 
 // Implements the visitor interface to build the GCC trees of all Statement
-// AST classes emitted from the D Front-end, where IRS_ holds the state of
-// the current function being compiled.
+// AST classes emitted from the D Front-end.
 // All visit methods accept one parameter S, which holds the frontend AST
 // of the statement to compile.  They also don't return any value, instead
 // generated code are pushed to add_stmt(), which appends them to the
@@ -52,7 +50,6 @@
 class IRVisitor : public Visitor
 {
   FuncDeclaration *func_;
-  IRState *irs_;
 
   // Stack of labels which are targets for "break" and "continue",
   // linked through TREE_CHAIN.
@@ -60,10 +57,9 @@ class IRVisitor : public Visitor
   tree continue_label_;
 
 public:
-  IRVisitor(FuncDeclaration *fd, IRState *irs)
+  IRVisitor(FuncDeclaration *fd)
   {
     this->func_ = fd;
-    this->irs_ = irs;
     this->break_label_ = NULL_TREE;
     this->continue_label_ = NULL_TREE;
   }
@@ -186,7 +182,7 @@ public:
 
     // Build the outer 'if' condition, which may produce temporaries
     // requiring scope destruction.
-    tree ifcond = convert_for_condition(s->condition->toElemDtor(this->irs_),
+    tree ifcond = convert_for_condition(s->condition->toElemDtor(NULL),
 					s->condition->type);
     tree ifbody = void_node;
     tree elsebody = void_node;
@@ -248,7 +244,7 @@ public:
     // Build the outer 'while' condition, which may produce temporaries
     // requiring scope destruction.
     set_input_location(s->condition->loc);
-    tree exitcond = convert_for_condition(s->condition->toElemDtor(this->irs_),
+    tree exitcond = convert_for_condition(s->condition->toElemDtor(NULL),
 					  s->condition->type);
     add_stmt(build1(EXIT_EXPR, void_type_node,
 		    build1(TRUTH_NOT_EXPR, TREE_TYPE (exitcond), exitcond)));
@@ -273,7 +269,7 @@ public:
     if (s->condition)
       {
 	set_input_location(s->condition->loc);
-	tree exitcond = convert_for_condition(s->condition->toElemDtor(this->irs_),
+	tree exitcond = convert_for_condition(s->condition->toElemDtor(NULL),
 					      s->condition->type);
 	add_stmt(build1(EXIT_EXPR, void_type_node,
 			build1(TRUTH_NOT_EXPR, TREE_TYPE (exitcond), exitcond)));
@@ -290,7 +286,7 @@ public:
       {
 	// Force side effects?
 	set_input_location(s->increment->loc);
-	add_stmt(s->increment->toElemDtor(this->irs_));
+	add_stmt(s->increment->toElemDtor(NULL));
       }
 
     tree body = this->end_scope();
@@ -394,7 +390,7 @@ public:
     this->start_scope(level_switch);
     tree lbreak = this->push_break_label(s);
 
-    tree condition = s->condition->toElemDtor(this->irs_);
+    tree condition = s->condition->toElemDtor(NULL);
     Type *condtype = s->condition->type->toBasetype();
 
     // A switch statement on a string gets turned into a library call,
@@ -476,7 +472,7 @@ public:
 	    if (s->hasVars)
 	      {
 		tree ifcase = build2(EQ_EXPR, build_ctype(condtype), condition,
-				     cs->exp->toElemDtor(this->irs_));
+				     cs->exp->toElemDtor(NULL));
 		tree ifbody = fold_build1(GOTO_EXPR, void_type_node, caselabel);
 		tree cond = build3(COND_EXPR, void_type_node,
 				   ifcase, ifbody, void_node);
@@ -538,7 +534,7 @@ public:
       {
 	tree casevalue;
 	if (s->exp->type->isscalar())
-	  casevalue = s->exp->toElem(this->irs_);
+	  casevalue = s->exp->toElem(NULL);
 	else
 	  casevalue = build_integer_cst(s->index, build_ctype(Type::tint32));
 
@@ -625,7 +621,7 @@ public:
     else
       {
 	// Convert for initialising the DECL_RESULT.
-	tree value = convert_expr(s->exp->toElemDtor(this->irs_),
+	tree value = convert_expr(s->exp->toElemDtor(NULL),
 				  s->exp->type, type);
 
 	// If we are returning a reference, take the address.
@@ -644,7 +640,7 @@ public:
       {
 	set_input_location(s->loc);
 	// Expression may produce temporaries requiring scope destruction.
-	tree exp = s->exp->toElemDtor(this->irs_);
+	tree exp = s->exp->toElemDtor(NULL);
 	add_stmt(exp);
       }
   }
@@ -721,7 +717,7 @@ public:
 	gcc_assert(ie != NULL);
 
 	build_local_var(s->wthis);
-	tree init = ie->exp->toElemDtor(this->irs_);
+	tree init = ie->exp->toElemDtor(NULL);
 	add_stmt(init);
       }
 
@@ -738,7 +734,7 @@ public:
   {
     ClassDeclaration *cd = s->exp->type->toBasetype()->isClassHandle();
     InterfaceDeclaration *id = cd->isInterfaceDeclaration();
-    tree arg = s->exp->toElemDtor(this->irs_);
+    tree arg = s->exp->toElemDtor(NULL);
 
     if (!flag_exceptions)
       {
@@ -886,7 +882,7 @@ public:
 
 	    tree id = name ? build_string(name->len, name->string) : NULL_TREE;
 	    tree str = build_string(constr->len, (char *)constr->string);
-	    tree val = arg->toElem(this->irs_);
+	    tree val = arg->toElem(NULL);
 
 	    if (i < s->outputargs)
 	      {
@@ -971,9 +967,9 @@ public:
 // statement AST class S.  IRS holds the state of the current function.
 
 void
-build_ir(FuncDeclaration *fd, IRState *irs)
+build_ir(FuncDeclaration *fd)
 {
-  IRVisitor v = IRVisitor(fd, irs);
+  IRVisitor v = IRVisitor(fd);
   fd->fbody->accept(&v);
 }
 

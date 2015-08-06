@@ -42,7 +42,6 @@
 #include "d-tree.h"
 #include "d-lang.h"
 #include "d-objfile.h"
-#include "d-irstate.h"
 #include "d-codegen.h"
 #include "id.h"
 
@@ -213,7 +212,7 @@ add_stmt(tree t)
 }
 
 //
-IRState *
+void
 start_function(FuncDeclaration *decl)
 {
   cfun->language = ggc_cleared_alloc<language_function>();
@@ -230,8 +229,6 @@ start_function(FuncDeclaration *decl)
 	break;
     }
   gcc_assert(cfun->language->module != NULL);
-
-  current_irstate = new IRState();
 
   // Check if we have a static this or unitest function.
   ModuleInfo *mi = current_module_info;
@@ -256,8 +253,6 @@ start_function(FuncDeclaration *decl)
     }
   else if (decl->isUnitTestDeclaration())
     mi->unitTests.safe_push(decl);
-
-  return current_irstate;
 }
 
 void
@@ -921,11 +916,11 @@ d_array_convert (Expression *exp)
   TY ty = exp->type->toBasetype()->ty;
 
   if (ty == Tarray)
-    return exp->toElem (current_irstate);
+    return exp->toElem(NULL);
   else if (ty == Tsarray)
     {
       Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
-      return convert_expr (exp->toElem (current_irstate), exp->type, totype);
+      return convert_expr (exp->toElem(NULL), exp->type, totype);
     }
 
   // Invalid type passed.
@@ -1172,7 +1167,7 @@ build_attributes (Expressions *in_attrs)
 	      aet = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = ae->toElem (current_irstate);
+	    aet = ae->toElem(NULL);
 
 	  args = chainon (args, build_tree_list (0, aet));
         }
@@ -2211,13 +2206,13 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   if (e1b->op == TOKcomma)
     {
       CommaExp *ce = (CommaExp *) e1b;
-      lexpr = ce->e1->toElem(current_irstate);
-      lhs = ce->e2->toElem(current_irstate);
+      lexpr = ce->e1->toElem(NULL);
+      lhs = ce->e2->toElem(NULL);
     }
   else
-    lhs = e1b->toElem(current_irstate);
+    lhs = e1b->toElem(NULL);
 
-  tree rhs = e2->toElem(current_irstate);
+  tree rhs = e2->toElem(NULL);
 
   // Build assignment expression. Stabilize lhs for assignment.
   lhs = stabilize_reference(lhs);
@@ -2392,7 +2387,6 @@ d_build_call (FuncDeclaration *fd, tree object, Expressions *args)
 tree
 d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
 {
-  IRState *irs = cfun ? current_irstate : NULL;
   tree ctype = TREE_TYPE (callable);
   tree callee = callable;
   tree saved_args = NULL_TREE;
@@ -2452,7 +2446,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  if (arg->op == TOKcomma)
 	    {
 	      CommaExp *ce = (CommaExp *) arg;
-	      tree tce = ce->e1->toElem (irs);
+	      tree tce = ce->e1->toElem(NULL);
 	      saved_args = maybe_vcompound_expr (saved_args, tce);
 	      (*arguments)[i] = ce->e2;
 	      goto Lagain;
@@ -2472,19 +2466,19 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  if (i < dvarargs)
 	    {
 	      // The hidden _arguments parameter
-	      targ = arg->toElem (irs);
+	      targ = arg->toElem(NULL);
 	    }
 	  else if (i - dvarargs < nparams && i >= dvarargs)
 	    {
 	      // Actual arguments for declared formal arguments
 	      Parameter *parg = Parameter::getNth (tf->parameters, i - dvarargs);
-	      targ = convert_for_argument (arg->toElem (irs), arg, parg);
+	      targ = convert_for_argument (arg->toElem(NULL), arg, parg);
 	    }
 	  else
 	    {
 	      // Not all targets support passing unpromoted types, so
 	      // promote anyway.
-	      targ = arg->toElem (irs);
+	      targ = arg->toElem(NULL);
 	      tree ptype = lang_hooks.types.type_promotes_to (TREE_TYPE (targ));
 
 	      if (ptype != TREE_TYPE (targ))
@@ -3136,7 +3130,7 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 tree
 build_typeinfo (Type *t)
 {
-  tree tinfo = t->getInternalTypeInfo (NULL)->toElem (current_irstate);
+  tree tinfo = t->getInternalTypeInfo (NULL)->toElem(NULL);
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (tinfo)));
   return tinfo;
 }

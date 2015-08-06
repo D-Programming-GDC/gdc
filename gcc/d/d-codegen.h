@@ -51,7 +51,7 @@ struct FuncFrameInfo
 };
 
 // Visitor routines for barrier between frontend and glue.
-void build_ir(FuncDeclaration *fd, IRState *irs);
+void build_ir(FuncDeclaration *fd);
 tree build_ctype(Type *t);
 
 // Code generation routines.
@@ -62,7 +62,7 @@ extern void push_stmt_list();
 extern tree pop_stmt_list();
 extern void add_stmt(tree t);
 
-extern IRState *start_function(FuncDeclaration *decl);
+extern void start_function(FuncDeclaration *decl);
 extern void end_function();
 
 extern tree d_decl_context (Dsymbol *dsym);
@@ -279,7 +279,6 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 // Globals.
 extern Module *current_module_decl;
-#define current_irstate (cfun->language->irs)
 
 #endif
 

@@ -26,7 +26,6 @@ class Module;
 class Statement;
 class Type;
 class VarDeclaration;
-struct IRState;
 
 // The kinds of scopes we recognise.
 enum level_kind
@@ -122,8 +121,6 @@ struct GTY(()) lang_identifier
 // Global state pertinent to the current function.
 struct GTY(()) language_function
 {
-  IRState * GTY((skip)) irs;
-
   // Our function and enclosing module.
   FuncDeclaration * GTY((skip)) function;
   Module * GTY((skip)) module;

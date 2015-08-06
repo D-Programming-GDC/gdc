@@ -54,7 +54,6 @@
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
-#include "d-irstate.h"
 #include "d-dmd-gcc.h"
 #include "id.h"
 

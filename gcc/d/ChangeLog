@@ -5,9 +5,12 @@
 	(get_frame_for_symbol): Likewise.
 	(build_local_var): Likewise.
 	(get_decl_tree): Likewise.
+	(start_function): Likewise.
 	* d-irstate.h(IRState): Move func, mod, sthis, deferred,
 	statementList, and varsInScope fields to...
 	* d-tree.h(language_function): Here, updated all uses.
+	* d-irstate.h: Remove file.
+	(IRState): Remove all uses everywhere.
 
 2015-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 

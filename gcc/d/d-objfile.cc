@@ -54,7 +54,6 @@
 #include "d-tree.h"
 #include "d-lang.h"
 #include "d-objfile.h"
-#include "d-irstate.h"
 #include "d-codegen.h"
 #include "id.h"
 
@@ -864,7 +863,7 @@ VarDeclaration::toObjFile(bool)
 		{
 		  ExpInitializer *vinit = init->isExpInitializer();
 		  Expression *ie = vinit->toExpression();
-		  tree exp = ie->toElem (current_irstate);
+		  tree exp = ie->toElem(NULL);
 		  add_stmt(exp);
 		}
 	      else if (size (loc) != 0)
@@ -1219,7 +1218,7 @@ FuncDeclaration::toObjFile(bool force_p)
   allocate_struct_function (fndecl, false);
   set_function_end_locus (endloc);
 
-  IRState *irs = start_function(this);
+  start_function(this);
 
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
@@ -1338,7 +1337,7 @@ FuncDeclaration::toObjFile(bool force_p)
       nrvsym->SnamedResult = result_decl;
     }
 
-  build_ir (this, irs);
+  build_ir (this);
 
   if (v_argptr)
     {
