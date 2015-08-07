@@ -28,6 +28,7 @@
 #include "dfrontend/visitor.h"
 
 #include "tree.h"
+#include "tree-iterator.h"
 #include "options.h"
 #include "stmt.h"
 #include "fold-const.h"
@@ -45,15 +46,379 @@
 // the current function being compiled.
 // All visit methods accept one parameter S, which holds the frontend AST
 // of the statement to compile.  They also don't return any value, instead
-// generated code are pushed to IRState::addExp(), which appends them to
-// the statement list in the current_binding_level.
+// generated code are pushed to add_stmt(), which appends them to the
+// statement list in the current_binding_level.
 
 class IRVisitor : public Visitor
 {
+  FuncDeclaration *func_;
   IRState *irs_;
 
 public:
-  IRVisitor(IRState *irs) : irs_(irs) {}
+  IRVisitor(FuncDeclaration *fd, IRState *irs) : func_(fd), irs_(irs) {}
+
+  // Definitions for scope code:
+  // "Scope": A container for binding contours.  Each user-declared function
+  // has a toplevel scope.  Every ScopeStatement creates a new scope.
+  //
+  // "Binding contour": Same as GCC's definition, whatever that is.
+  // Each user-declared variable will have a binding contour that begins
+  // where the variable is declared and ends at it's containing scope.
+  void start_scope()
+  {
+    push_binding_level();
+    push_stmt_list();
+  }
+
+  // Leave scope pushed by start_scope.
+  void end_scope()
+  {
+    tree block = pop_binding_level(false);
+    tree body = pop_stmt_list();
+
+    add_stmt(build3(BIND_EXPR, void_type_node,
+		    BLOCK_VARS (block), body, block));
+  }
+
+  // Get or build the LABEL_DECL for the given LABEL symbol.
+  tree get_label_tree(LabelDsymbol *label)
+  {
+    static hash_map<Statement *, tree> labels;
+
+    if (!label->statement)
+      return NULL_TREE;
+
+    tree &label_decl = labels.get_or_insert(label->statement);
+    if (label_decl == NULL_TREE)
+      {
+        label_decl = d_build_label(label->statement->loc, label->ident);
+        TREE_USED (label_decl) = 1;
+      }
+
+    return label_decl;
+  }
+
+  // Build a new label structure to hold intermediate information on where
+  // LABEL is declared so we can check whether all jumps at future points
+  // in code satisfy EH boundaries.
+  // If FROM has a value, then the label was forward referenced, and we
+  // need to record the location of the originating jump.
+  Label *get_label_block(LabelDsymbol *label, Statement *from)
+  {
+    Label *l = new Label();
+
+    for (int i = this->irs_->loops_.length() - 1; i >= 0; i--)
+      {
+	Flow *flow = this->irs_->loops_[i];
+
+	// Anything that isn't an EH block is considered transparent.
+	if (flow->kind != level_block
+	    && flow->kind != level_switch)
+	  {
+	    l->block = flow->statement;
+	    l->kind = flow->kind;
+	    l->level = i + 1;
+	    break;
+	  }
+      }
+
+    if (from)
+      l->from = from;
+
+    l->label = label;
+    return l;
+  }
+
+  // Find and return the Flow scope relating to the break or continue
+  // label of the current loop.  If IDENT has a value, then we are
+  // looking for a named break or continue label in code.
+  // Unless WANT_CONTINUE, search for a break label.
+  Flow *get_loop_for_label(Identifier *ident, bool want_continue)
+  {
+    if (ident)
+      {
+	// The break label for a loop may actually be some levels up;
+	// eg: on a try/finally wrapping a loop.
+	LabelStatement *lstmt = this->func_->searchLabel(ident)->statement;
+	gcc_assert(lstmt != NULL);
+	Statement *stmt = lstmt->statement->getRelatedLabeled();
+
+	for (int i = this->irs_->loops_.length() - 1; i >= 0; i--)
+	  {
+	    Flow *flow = this->irs_->loops_[i];
+
+	    if (flow->statement->getRelatedLabeled() == stmt)
+	      {
+		if (want_continue)
+		  gcc_assert(flow->statement->hasContinue());
+		return flow;
+	      }
+	  }
+
+	return NULL;
+      }
+
+    for (int i = this->irs_->loops_.length() - 1; i >= 0; i--)
+      {
+	Flow *flow = this->irs_->loops_[i];
+
+	if ((!want_continue && flow->statement->hasBreak())
+	    || flow->statement->hasContinue())
+	  return flow;
+      }
+
+    return NULL;
+  }
+
+  // Return TRUE if IDENT is the current function return label.
+  bool is_return_label(Identifier *ident)
+  {
+    if (this->irs_->func->returnLabel)
+      return this->irs_->func->returnLabel->ident == ident;
+
+    return false;
+  }
+
+  // Emit a LABEL expression.
+  void do_label(tree label)
+  {
+    // Don't write out label unless it is marked as used by the frontend.
+    // This makes auto-vectorization possible in conditional loops.
+    // The only excemption to this is in the LabelStatement visitor,
+    // in which all computed labels are marked regardless.
+    if (TREE_USED (label))
+      add_stmt(build1(LABEL_EXPR, void_type_node, label));
+  }
+
+  // Emit a goto expression to LABEL.
+  void do_jump(Statement *stmt, tree label)
+  {
+    if (stmt)
+      set_input_location(stmt->loc);
+
+    add_stmt(fold_build1(GOTO_EXPR, void_type_node, label));
+    TREE_USED (label) = 1;
+  }
+
+  // Emit a goto to the continue label IDENT of a loop.
+  void continue_loop(Identifier *ident)
+  {
+    Flow *flow = this->get_loop_for_label(ident, true);
+    gcc_assert(flow);
+    this->do_jump(NULL, flow->continueLabel);
+  }
+
+  // Emit a goto to the exit label IDENT of a loop.
+  void exit_loop(Identifier *ident)
+  {
+    Flow *flow = this->get_loop_for_label(ident, false);
+    gcc_assert(flow);
+
+    if (!flow->exitLabel)
+      flow->exitLabel = d_build_label(flow->statement->loc, NULL);
+
+    this->do_jump(NULL, flow->exitLabel);
+  }
+
+  // Routines for building statement lists around if/else conditions.
+  // STMT contains the statement to be executed if COND is true.
+  void start_condition(Statement *stmt, tree cond)
+  {
+    Flow *flow = this->irs_->beginFlow(stmt);
+    flow->condition = cond;
+  }
+
+  // Start a new statement list for the false condition branch.
+  void start_else()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    flow->trueBranch = pop_stmt_list();
+    push_stmt_list();
+  }
+
+  // Wrap up our constructed if condition into a COND_EXPR.
+  void end_condition()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    tree branch = pop_stmt_list();
+    tree false_branch = void_node;
+
+    if (flow->trueBranch == NULL_TREE)
+      flow->trueBranch = branch;
+    else
+      false_branch = branch;
+
+    set_input_location(flow->statement->loc);
+    tree stmt = build3(COND_EXPR, void_type_node,
+		       flow->condition, flow->trueBranch, false_branch);
+    this->irs_->endFlow();
+    add_stmt(stmt);
+  }
+
+  // Routines for building statement lists around try/catch/finally.
+  // Start a try statement, STMT is the body of the try expression.
+  void start_try(Statement *stmt)
+  {
+    Flow *flow = this->irs_->beginFlow(stmt);
+    flow->kind = level_try;
+  }
+
+  // Pops the try body and starts a new statement list for all catches.
+  void start_catches()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    flow->tryBody = pop_stmt_list();
+    flow->kind = level_catch;
+    push_stmt_list();
+  }
+
+  // Start a new catch expression for exception type TYPE.
+  void start_catch(Type *type)
+  {
+    this->irs_->currentFlow()->catchType = build_ctype(type);
+    push_stmt_list();
+  }
+
+  // Wrap up catch expression into a CATCH_EXPR.
+  void end_catch()
+  {
+    tree body = pop_stmt_list();
+    add_stmt(build2(CATCH_EXPR, void_type_node,
+		    this->irs_->currentFlow()->catchType, body));
+  }
+
+  // Wrap up try/catch into a TRY_CATCH_EXPR.
+  void end_catches()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    tree catches = pop_stmt_list();
+
+    // Backend expects all catches in a TRY_CATCH_EXPR to be enclosed in a
+    // statement list, however pop_stmt_list may optimise away the list
+    // if there is only a single catch to push.
+    if (TREE_CODE (catches) != STATEMENT_LIST)
+      {
+        tree stmt_list = alloc_stmt_list();
+        append_to_statement_list_force(catches, &stmt_list);
+        d_keep(stmt_list);
+        catches = stmt_list;
+      }
+
+    set_input_location(flow->statement->loc);
+    add_stmt(build2(TRY_CATCH_EXPR, void_type_node,
+		    flow->tryBody, catches));
+    this->irs_->endFlow();
+  }
+
+  // Start a new finally expression.
+  void start_finally()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    flow->tryBody = pop_stmt_list();
+    flow->kind = level_finally;
+    push_stmt_list();
+  }
+
+  // Wrap-up try/finally into a TRY_FINALLY_EXPR.
+  void end_finally()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    tree finally = pop_stmt_list();
+
+    set_input_location(flow->statement->loc);
+    add_stmt(build2(TRY_FINALLY_EXPR, void_type_node,
+		    flow->tryBody, finally));
+    this->irs_->endFlow();
+  }
+
+  // Routines for building statement lists around for/while loops.
+  // STMT is the body of the loop.
+  void start_loop(Statement *stmt)
+  {
+    Flow *flow = this->irs_->beginFlow(stmt);
+    // should be end for 'do' loop
+    flow->continueLabel = d_build_label(stmt->loc, NULL);
+  }
+
+  // Emit continue label for loop.
+  void continue_label()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    this->do_label(flow->continueLabel);
+  }
+
+  // Set LBL as the continue label for the current loop.
+  // Used in unrolled loop statements.
+  void set_continue_label(tree label)
+  {
+    Flow *flow = this->irs_->currentFlow();
+    flow->continueLabel = label;
+  }
+
+  // Emit exit loop condition.
+  void exit_if_false(tree cond)
+  {
+    add_stmt(build1(EXIT_EXPR, void_type_node,
+		    build1(TRUTH_NOT_EXPR, TREE_TYPE (cond), cond)));
+  }
+
+  // Wrap up constructed loop body in a LOOP_EXPR.
+  void end_loop()
+  {
+    tree body = pop_stmt_list();
+    tree loop = build1(LOOP_EXPR, void_type_node, body);
+    add_stmt(loop);
+    this->irs_->endFlow();
+  }
+
+  // Routines for building statement lists around switches.  STMT is the body
+  // of the switch statement, COND is the condition to the switch. If HAS_VARS
+  // is true, then the switch statement has been converted to an if-then-else.
+  void start_case(Statement *stmt, tree cond, int has_vars)
+  {
+    Flow *flow = this->irs_->beginFlow(stmt);
+    flow->condition = cond;
+    flow->kind = level_switch;
+    // Need a dummy value so the tree is not NULL
+    if (has_vars)
+      flow->hasVars = integer_one_node;
+  }
+
+  // Emit a case statement for VALUE.
+  void add_case(tree value, tree label)
+  {
+    // SwitchStatement has already taken care of label jumps.
+    if (this->irs_->currentFlow()->hasVars)
+      this->do_label(label);
+    else
+      {
+	tree case_label = build_case_label(value, NULL_TREE, label);
+	add_stmt(case_label);
+      }
+  }
+
+  // Wrap up constructed body into a SWITCH_EXPR.
+  void end_case()
+  {
+    Flow *flow = this->irs_->currentFlow();
+    tree body = pop_stmt_list();
+    tree condtype = TREE_TYPE (flow->condition);
+
+    // Switch was converted to if-then-else expression
+    if (flow->hasVars)
+      add_stmt(body);
+    else
+      {
+	tree stmt = build3(SWITCH_EXPR, condtype,
+			   flow->condition, body, NULL_TREE);
+	add_stmt(stmt);
+      }
+
+    this->irs_->endFlow();
+  }
+
+
+  // Visitor interfaces.
 
   // This should be overridden by each statement class.
   void visit(Statement *)
@@ -71,14 +436,14 @@ public:
   // if(...) { ... } else { ... }
   void visit(IfStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->startScope();
+    set_input_location(s->loc);
+    this->start_scope();
 
     // Build the outer 'if' condition, which may produce temporaries
     // requiring scope destruction.
     tree ifcond = convert_for_condition(s->condition->toElemDtor(this->irs_),
 					s->condition->type);
-    this->irs_->startCond(s, ifcond);
+    this->start_condition(s, ifcond);
 
     if (s->ifbody)
       s->ifbody->accept(this);
@@ -86,12 +451,12 @@ public:
     // Now build the 'else' branch, which may have nested 'else if' parts.
     if (s->elsebody)
       {
-	this->irs_->startElse();
+	this->start_else();
 	s->elsebody->accept(this);
       }
 
-    this->irs_->endCond();
-    this->irs_->endScope();
+    this->end_condition();
+    this->end_scope();
   }
 
   // Should there be any pragma(...) statements requiring code generation,
@@ -112,55 +477,54 @@ public:
   // 
   void visit(DoStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->startLoop(s);
+    set_input_location(s->loc);
+    this->start_loop(s);
 
     if (s->body)
       s->body->accept(this);
 
-    this->irs_->continueHere();
+    this->continue_label();
 
     // Build the outer 'while' condition, which may produce temporaries
     // requiring scope destruction.
-    this->irs_->doLineNote(s->condition->loc);
+    set_input_location(s->condition->loc);
     tree exitcond = convert_for_condition(s->condition->toElemDtor(this->irs_),
 					  s->condition->type);
-    this->irs_->exitIfFalse(exitcond);
-
-    this->irs_->endLoop();
+    this->exit_if_false(exitcond);
+    this->end_loop();
   }
 
   // for(...) { ... }
   void visit(ForStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
+    set_input_location(s->loc);
 
     if (s->init)
       s->init->accept(this);
 
-    this->irs_->startLoop(s);
+    this->start_loop(s);
 
     if (s->condition)
       {
-	this->irs_->doLineNote(s->condition->loc);
+	set_input_location(s->condition->loc);
 	tree exitcond = convert_for_condition(s->condition->toElemDtor(this->irs_),
 					      s->condition->type);
-	this->irs_->exitIfFalse(exitcond);
+	this->exit_if_false(exitcond);
       }
 
     if (s->body)
       s->body->accept(this);
 
-    this->irs_->continueHere();
+    this->continue_label();
 
     if (s->increment)
       {
 	// Force side effects?
-	this->irs_->doLineNote(s->increment->loc);
-	this->irs_->addExp(s->increment->toElemDtor(this->irs_));
+	set_input_location(s->increment->loc);
+	add_stmt(s->increment->toElemDtor(this->irs_));
       }
 
-    this->irs_->endLoop();
+    this->end_loop();
   }
 
   // The frontend lowers foreach(...) statements as for(...) loops.
@@ -183,16 +547,16 @@ public:
   // If IDENT for the Statement is not null, then the label is user defined.
   void visit(BreakStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->exitLoop(s->ident);
+    set_input_location(s->loc);
+    this->exit_loop(s->ident);
   }
 
   // Jump to the associated continue label for the current loop.
   // If IDENT for the Statement is not null, then the label is user defined.
   void visit(ContinueStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->continueLoop(s->ident);
+    set_input_location(s->loc);
+    this->continue_loop(s->ident);
   }
 
   //
@@ -202,49 +566,128 @@ public:
     gcc_assert(s->tf == s->label->statement->tf);
 
     // This makes the 'undefined label' error show up on the correct line.
-    // The extra doLineNote in doJump shouldn't cause a problem.
-    this->irs_->doLineNote(s->loc);
-    this->irs_->checkGoto(s, s->label);
+    // The extra set_input_location in do_jump shouldn't cause a problem.
+    set_input_location(s->loc);
+
+    // Need to error if the goto is jumping into a try or catch block.
+    Statement *block = NULL;
+    unsigned level = this->irs_->loops_.length();
+    int found = 0;
+
+    if (level)
+      block = this->irs_->currentFlow()->statement;
+
+    for (size_t i = 0; i < this->irs_->labels_.length(); i++)
+      {
+	Label *linfo = this->irs_->labels_[i];
+	gcc_assert(linfo);
+
+	if (s->label != linfo->label)
+	  continue;
+
+	// No need checking for finally, should have already been handled.
+	if (linfo->kind == level_try
+	    && level <= linfo->level && block != linfo->block)
+	  s->error("cannot goto into try block");
+
+	// It is illegal for goto to be used to skip initializations,
+	// so this should include all gotos into catches...
+	if (linfo->kind == level_catch && block != linfo->block)
+	  s->error("cannot goto into catch block");
+
+	found = 1;
+	break;
+      }
+
+    // Push forward referenced gotos.
+    if (!found)
+      {
+	Label *lblock = this->get_label_block(s->label, s);
+
+	if (!s->label->statement->fwdrefs)
+	  s->label->statement->fwdrefs = new Blocks();
+
+	s->label->statement->fwdrefs->push(lblock);
+      }
 
     // If no label found, there was an error.
-    tree label = this->irs_->getLabelTree(s->label);
+    tree label = this->get_label_tree(s->label);
 
     if (label != NULL_TREE)
-      this->irs_->doJump(s, label);
+      this->do_jump(s, label);
   }
 
   //
   void visit(LabelStatement *s)
   {
-    FuncDeclaration *fd = this->irs_->func;
-    LabelDsymbol *sym = this->irs_->isReturnLabel(s->ident)
-      ? fd->returnLabel : fd->searchLabel(s->ident);
+    LabelDsymbol *sym;
+
+    if (this->is_return_label(s->ident))
+      sym = this->func_->returnLabel;
+    else
+      sym = this->func_->searchLabel(s->ident);
 
     // If no label found, there was an error
-    tree label = this->irs_->getLabelTree(sym);
+    tree label = this->get_label_tree(sym);
+    if (label == NULL_TREE)
+      return;
 
-    if (label != NULL_TREE)
+    // Save the block that the label is declared in for analysis later.
+    Label *lblock = this->get_label_block(sym, NULL);
+    this->irs_->labels_.safe_push (lblock);
+
+    this->do_label(label);
+
+    if (this->is_return_label(s->ident) && this->func_->fensure != NULL)
+      this->func_->fensure->accept(this);
+    else if (s->statement)
+      s->statement->accept(this);
+
+    // Check all forward references, and error if the goto
+    // is jumping into a try or catch block.
+    if (s->fwdrefs)
       {
-	this->irs_->pushLabel(sym);
-	this->irs_->doLabel(label);
-
-	if (this->irs_->isReturnLabel(s->ident) && fd->fensure != NULL)
-	  fd->fensure->accept(this);
-	else if (s->statement)
-	  s->statement->accept(this);
-
-	if (s->fwdrefs)
+	for (size_t i = 0; i < s->fwdrefs->dim; i++)
 	  {
-	    this->irs_->checkPreviousGoto(s->fwdrefs);
-	    s->fwdrefs = NULL;
+	    Label *ref = (*s->fwdrefs)[i];
+	    int found = 0;
+
+	    gcc_assert(ref && ref->from);
+	    Statement *fwdref = ref->from;
+
+	    for (size_t i = 0; i < this->irs_->labels_.length(); i++)
+	      {
+		Label *linfo = this->irs_->labels_[i];
+		gcc_assert(linfo);
+
+		if (ref->label != linfo->label)
+		  continue;
+
+		// No need checking for finally, should have already been handled.
+		if (linfo->kind == level_try
+		    && ref->level <= linfo->level && ref->block != linfo->block)
+		  fwdref->error("cannot goto into try block");
+		// It is illegal for goto to be used to skip initializations,
+		// so this should include all gotos into catches...
+		if (linfo->kind == level_catch
+		    && (ref->block != linfo->block || ref->kind != linfo->kind))
+		  fwdref->error("cannot goto into catch block");
+
+		found = 1;
+		break;
+	      }
+
+	    gcc_assert(found);
 	  }
+
+	s->fwdrefs = NULL;
       }
   }
 
   //
   void visit(SwitchStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
+    set_input_location(s->loc);
 
     tree condition = s->condition->toElemDtor(this->irs_);
     Type *condtype = s->condition->type->toBasetype();
@@ -331,36 +774,38 @@ public:
 	    CaseStatement *cs = (*s->cases)[i];
 	    tree case_cond = build2(EQ_EXPR, build_ctype(condtype), condition,
 				    cs->exp->toElemDtor(this->irs_));
-	    this->irs_->startCond(s, case_cond);
-	    this->irs_->doJump(NULL, cs->cblock);
-	    this->irs_->endCond();
+	    this->start_condition(s, case_cond);
+	    this->do_jump(NULL, cs->cblock);
+	    this->end_condition();
 	  }
 
 	if (s->sdefault)
-	  this->irs_->doJump(NULL, s->sdefault->cblock);
+	  this->do_jump(NULL, s->sdefault->cblock);
       }
 
     // Emit body.
-    this->irs_->startCase(s, condition, s->hasVars);
+    this->start_case(s, condition, s->hasVars);
 
     if (s->body)
       s->body->accept(this);
 
-    this->irs_->endCase();
+    this->end_case();
   }
 
   //
   void visit(CaseStatement *s)
   {
     tree caseval;
-
     if (s->exp->type->isscalar())
       caseval = s->exp->toElem(this->irs_);
     else
       caseval = build_integer_cst(s->index, build_ctype(Type::tint32));
 
-    this->irs_->checkSwitchCase(s);
-    this->irs_->doCase(caseval, s->cblock);
+    Flow *flow = this->irs_->currentFlow();
+    if (flow->kind != level_switch && flow->kind != level_block)
+      s->error("case cannot be in different try block level from switch");
+
+    this->add_case(caseval, s->cblock);
 
     if (s->statement)
       s->statement->accept(this);
@@ -369,8 +814,11 @@ public:
   //
   void visit(DefaultStatement *s)
   {
-    this->irs_->checkSwitchCase(s, 1);
-    this->irs_->doCase(NULL_TREE, s->cblock);
+    Flow *flow = this->irs_->currentFlow();
+    if (flow->kind != level_switch && flow->kind != level_block)
+      s->error("default cannot be in different try block level from switch");
+
+    this->add_case(NULL_TREE, s->cblock);
 
     if (s->statement)
       s->statement->accept(this);
@@ -381,7 +829,7 @@ public:
   // Assumes CBLOCK has been set in SwitchStatement visitor.
   void visit(GotoDefaultStatement *s)
   {
-    this->irs_->doJump(s, s->sw->sdefault->cblock);
+    this->do_jump(s, s->sw->sdefault->cblock);
   }
 
   // Implements 'goto case' by jumping to the label associated with the
@@ -389,44 +837,44 @@ public:
   // Assumes CBLOCK has been set in SwitchStatement visitor.
   void visit(GotoCaseStatement *s)
   {
-    this->irs_->doJump(s, s->cs->cblock);
+    this->do_jump(s, s->cs->cblock);
   }
 
   // Throw a SwitchError exception, called when a switch statement has
   // no DefaultStatement, yet none of the cases match.
   void visit(SwitchErrorStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->addExp(d_assert_call(s->loc, LIBCALL_SWITCH_ERROR));
+    set_input_location(s->loc);
+    add_stmt(d_assert_call(s->loc, LIBCALL_SWITCH_ERROR));
   }
 
   //
   void visit(ReturnStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
+    set_input_location(s->loc);
 
     if (s->exp == NULL || s->exp->type->toBasetype()->ty == Tvoid)
       {
 	// Return has no value.
-	this->irs_->doReturn(NULL_TREE);
+	add_stmt(return_expr(NULL_TREE));
 	return;
       }
 
-    FuncDeclaration *fd = this->irs_->func;
-    TypeFunction *tf = (TypeFunction *)fd->type;
-    Type *type = fd->tintro ? fd->tintro->nextOf() : tf->nextOf();
+    TypeFunction *tf = (TypeFunction *)this->func_->type;
+    Type *type = this->func_->tintro != NULL
+      ? this->func_->tintro->nextOf() : tf->nextOf();
 
-    if (fd->isMain() && type->toBasetype()->ty == Tvoid)
+    if (this->func_->isMain() && type->toBasetype()->ty == Tvoid)
       type = Type::tint32;
 
-    tree decl = DECL_RESULT (fd->toSymbol()->Stree);
+    tree decl = DECL_RESULT (this->func_->toSymbol()->Stree);
 
-    if (fd->nrvo_can && fd->nrvo_var)
+    if (this->func_->nrvo_can && this->func_->nrvo_var)
       {
 	// Just refer to the DECL_RESULT; this is a nop, but differs
 	// from using NULL_TREE in that it indicates that we care about
 	// the value of the DECL_RESULT.
-	this->irs_->doReturn(decl);
+	add_stmt(return_expr(decl));
       }
     else
       {
@@ -439,8 +887,7 @@ public:
 	  value = build_address(value);
 
 	tree assign = build2(INIT_EXPR, TREE_TYPE (decl), decl, value);
-
-	this->irs_->doReturn(assign);
+	add_stmt(return_expr(assign));
       }
   }
 
@@ -449,10 +896,10 @@ public:
   {
     if (s->exp)
       {
-	this->irs_->doLineNote(s->loc);
+	set_input_location(s->loc);
 	// Expression may produce temporaries requiring scope destruction.
 	tree exp = s->exp->toElemDtor(this->irs_);
-	this->irs_->addExp(exp);
+	add_stmt(exp);
       }
   }
 
@@ -479,8 +926,8 @@ public:
     if (s->statements == NULL)
       return;
 
-    this->irs_->startLoop(s);
-    this->irs_->continueHere();
+    this->start_loop(s);
+    this->continue_label();
 
     for (size_t i = 0; i < s->statements->dim; i++)
       {
@@ -488,14 +935,14 @@ public:
 
 	if (statement != NULL)
 	  {
-	    this->irs_->setContinueLabel(d_build_label(s->loc, NULL));
+	    this->set_continue_label(d_build_label(s->loc, NULL));
 	    statement->accept(this);
-	    this->irs_->continueHere();
+	    this->continue_label();
 	  }
       }
 
-    this->irs_->exitLoop(NULL);
-    this->irs_->endLoop();
+    this->exit_loop(NULL);
+    this->end_loop();
   }
 
   // Start a new scope and visit all nested statements, wrapping
@@ -505,16 +952,16 @@ public:
     if (s->statement == NULL)
       return;
 
-    this->irs_->startScope();
+    this->start_scope();
     s->statement->accept(this);
-    this->irs_->endScope();
+    this->end_scope();
   }
 
   //
   void visit(WithStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->startScope();
+    set_input_location(s->loc);
+    this->start_scope();
 
     if (s->wthis)
       {
@@ -522,15 +969,15 @@ public:
 	ExpInitializer *ie = s->wthis->init->isExpInitializer();
 	gcc_assert(ie != NULL);
 
-	build_local_var(s->wthis, this->irs_->func);
+	build_local_var(s->wthis, this->func_);
 	tree init = ie->exp->toElemDtor(this->irs_);
-	this->irs_->addExp(init);
+	add_stmt(init);
       }
 
     if (s->body)
       s->body->accept(this);
 
-    this->irs_->endScope();
+    this->end_scope();
   }
 
   // Implements 'throw Object'.  Frontend already checks that the object
@@ -559,20 +1006,20 @@ public:
     else
       arg = convert_expr(arg, s->exp->type, build_object_type());
 
-    this->irs_->doLineNote(s->loc);
-    this->irs_->addExp(build_libcall(LIBCALL_THROW, 1, &arg));
+    set_input_location(s->loc);
+    add_stmt(build_libcall(LIBCALL_THROW, 1, &arg));
   }
 
   //
   void visit(TryCatchStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->startTry(s);
+    set_input_location(s->loc);
+    this->start_try(s);
 
     if (s->body)
       s->body->accept(this);
 
-    this->irs_->startCatches();
+    this->start_catches();
 
     if (s->catches)
       {
@@ -580,9 +1027,9 @@ public:
 	  {
 	    Catch *vcatch = (*s->catches)[i];
 
-	    this->irs_->startCatch(build_ctype(vcatch->type));
-	    this->irs_->doLineNote(vcatch->loc);
-	    this->irs_->startScope();
+	    this->start_catch(vcatch->type);
+	    set_input_location(vcatch->loc);
+	    this->start_scope();
 
 	    if (vcatch->var)
 	      {
@@ -597,36 +1044,36 @@ public:
 		tree var = vcatch->var->toSymbol()->Stree;
 		tree init = build_vinit(var, object);
 
-		build_local_var(vcatch->var, this->irs_->func);
-		this->irs_->addExp(init);
+		build_local_var(vcatch->var, this->func_);
+		add_stmt(init);
 	      }
 
 	    if (vcatch->handler)
 	      vcatch->handler->accept(this);
 
-	    this->irs_->endScope();
-	    this->irs_->endCatch();
+	    this->end_scope();
+	    this->end_catch();
 	  }
       }
 
-    this->irs_->endCatches();
+    this->end_catches();
   }
 
   //
   void visit(TryFinallyStatement *s)
   {
-    this->irs_->doLineNote(s->loc);
-    this->irs_->startTry(s);
+    set_input_location(s->loc);
+    this->start_try(s);
 
     if (s->body)
       s->body->accept(this);
 
-    this->irs_->startFinally();
+    this->start_finally();
 
     if (s->finalbody)
       s->finalbody->accept(this);
 
-    this->irs_->endFinally();
+    this->end_finally();
   }
 
   // The frontend lowers synchronized(...) statements as a call to
@@ -656,7 +1103,7 @@ public:
     tree clobbers = NULL_TREE;
     tree labels = NULL_TREE;
 
-    this->irs_->doLineNote(s->loc);
+    set_input_location(s->loc);
 
     // Collect all arguments, which may be input or output operands.
     if (s->args)
@@ -708,7 +1155,7 @@ public:
 	    gcc_assert(gs->tf == gs->label->statement->tf);
 
 	    tree name = build_string(ident->len, ident->string);
-	    tree label = this->irs_->getLabelTree(gs->label);
+	    tree label = this->get_label_tree(gs->label);
 
 	    labels = chainon(labels, build_tree_list(name, label));
 	  }
@@ -729,7 +1176,7 @@ public:
     // Asm statements without outputs are treated as volatile.
     ASM_VOLATILE_P (exp) = (s->outputargs == 0);
 
-    this->irs_->addExp(exp);
+    add_stmt(exp);
   }
 
   //
@@ -753,10 +1200,10 @@ public:
 // statement AST class S.  IRS holds the state of the current function.
 
 void
-build_ir(Statement *s, IRState *irs)
+build_ir(FuncDeclaration *fd, IRState *irs)
 {
-  IRVisitor v = IRVisitor(irs);
-  s->accept(&v);
+  IRVisitor v = IRVisitor(fd, irs);
+  fd->fbody->accept(&v);
 }
 
 

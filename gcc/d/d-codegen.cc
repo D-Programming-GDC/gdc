@@ -48,6 +48,118 @@
 
 Module *current_module_decl;
 
+// Create an empty statement tree rooted at T.
+void
+push_stmt_list()
+{
+  tree t = alloc_stmt_list();
+  current_irstate->statementList_.safe_push(t);
+  d_keep(t);
+}
+
+// Finish the statement tree rooted at T.
+tree
+pop_stmt_list()
+{
+  tree t = current_irstate->statementList_.pop();
+
+  // If the statement list is completely empty, just return it.  This is
+  // just as good small as build_empty_stmt, with the advantage that
+  // statement lists are merged when they appended to one another.
+  // So using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
+  // statements.
+  if (TREE_SIDE_EFFECTS (t))
+    {
+      // If the statement list contained exactly one statement, then
+      // extract it immediately.
+      tree_stmt_iterator i = tsi_start (t);
+
+      if (tsi_one_before_end_p (i))
+	{
+	  tree u = tsi_stmt (i);
+	  tsi_delink (&i);
+	  free_stmt_list (t);
+	  t = u;
+	}
+    }
+
+  return t;
+}
+
+// T is an expression statment.  Add it to the statement-tree.
+void
+add_stmt(tree t)
+{
+  // Ignore (void) 0; expression statements received from the frontend.
+  // Likewise void_node is used when contracts become nops in release code.
+  if (t == void_node || integer_zerop(t))
+    return;
+
+  if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
+    SET_EXPR_LOCATION (t, input_location);
+
+  tree stmt_list = current_irstate->statementList_.pop();
+
+  append_to_statement_list_force(t, &stmt_list);
+  current_irstate->statementList_.safe_push(stmt_list);
+}
+
+//
+IRState *
+start_function(FuncDeclaration *decl)
+{
+  cfun->language = ggc_cleared_alloc<language_function>();
+
+  current_irstate = new IRState();
+  current_irstate->func = decl;
+  // Default chain value is 'null' unless parent found.
+  current_irstate->sthis = null_pointer_node;
+
+  for (Dsymbol *dsym = decl->parent; dsym != NULL; dsym = dsym->parent)
+    {
+      if (dsym->isModule())
+       {
+         current_irstate->mod = (Module *) dsym;
+         break;
+       }
+    }
+
+  // Check if we have a static this or unitest function.
+  ModuleInfo *mi = current_module_info;
+
+  if (decl->isSharedStaticCtorDeclaration())
+    mi->sharedctors.safe_push(decl);
+  else if (decl->isStaticCtorDeclaration())
+    mi->ctors.safe_push(decl);
+  else if (decl->isSharedStaticDtorDeclaration())
+    {
+      VarDeclaration *vgate = ((SharedStaticDtorDeclaration *) decl)->vgate;
+      if (vgate != NULL)
+       mi->sharedctorgates.safe_push(vgate);
+      mi->shareddtors.safe_push(decl);
+    }
+  else if (decl->isStaticDtorDeclaration())
+    {
+      VarDeclaration *vgate = ((StaticDtorDeclaration *) decl)->vgate;
+      if (vgate != NULL)
+       mi->ctorgates.safe_push(vgate);
+      mi->dtors.safe_push(decl);
+    }
+  else if (decl->isUnitTestDeclaration())
+    mi->unitTests.safe_push(decl);
+
+  return current_irstate;
+}
+
+void
+end_function()
+{
+  gcc_assert(current_irstate->statementList_.is_empty());
+
+  ggc_free(cfun->language);
+  cfun->language = NULL;
+}
+
 
 // Return the DECL_CONTEXT for symbol DSYM.
 
@@ -186,7 +298,7 @@ expand_decl (tree decl)
   if (DECL_INITIAL (decl))
     {
       tree exp = build_vinit (decl, DECL_INITIAL (decl));
-      current_irstate->addExp (exp);
+      add_stmt(exp);
       DECL_INITIAL (decl) = NULL_TREE;
     }
 }
@@ -3317,7 +3429,7 @@ build_closure(FuncDeclaration *fd, IRState *irs)
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));
   tree chain_expr = vmodify_expr(chain_field, irs->sthis);
-  irs->addExp(chain_expr);
+  add_stmt(chain_expr);
 
   // Copy parameters that are referenced nonlocally.
   for (size_t i = 0; i < fd->closureVars.dim; i++)
@@ -3331,7 +3443,7 @@ build_closure(FuncDeclaration *fd, IRState *irs)
 
       tree field = component_ref (decl_ref, vsym->SframeField);
       tree expr = vmodify_expr (field, vsym->Stree);
-      irs->addExp (expr);
+      add_stmt(expr);
     }
 
   if (!ffi->is_closure)

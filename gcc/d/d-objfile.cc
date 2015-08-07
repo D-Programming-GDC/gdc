@@ -855,7 +855,6 @@ VarDeclaration::toObjFile(bool)
       // a check for isVarDeclaration() in DeclarationExp::toElem.
       if (!isDataseg() && !isMember())
 	{
-	  IRState *irs = current_irstate;
 	  build_local_var (this, toParent2()->isFuncDeclaration());
 
 	  if (init)
@@ -864,8 +863,8 @@ VarDeclaration::toObjFile(bool)
 		{
 		  ExpInitializer *vinit = init->isExpInitializer();
 		  Expression *ie = vinit->toExpression();
-		  tree exp = ie->toElem (irs);
-		  irs->addExp (exp);
+		  tree exp = ie->toElem (current_irstate);
+		  add_stmt(exp);
 		}
 	      else if (size (loc) != 0)
 		{
@@ -1219,7 +1218,7 @@ FuncDeclaration::toObjFile(bool force_p)
   allocate_struct_function (fndecl, false);
   set_function_end_locus (endloc);
 
-  IRState *irs = IRState::startFunction (this);
+  IRState *irs = start_function(this);
 
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
@@ -1272,9 +1271,9 @@ FuncDeclaration::toObjFile(bool force_p)
   rest_of_decl_compilation (fndecl, 1, 0);
   DECL_INITIAL (fndecl) = error_mark_node;
 
-  irs->pushStatementList();
+  push_stmt_list();
   push_binding_level();
-  irs->doLineNote (loc);
+  set_input_location (loc);
 
   // If this is a member function that nested (possibly indirectly) in another
   // function, construct an expession for this member function's static chain
@@ -1306,7 +1305,7 @@ FuncDeclaration::toObjFile(bool force_p)
     build_local_var (vresult, this);
 
   if (v_argptr)
-    irs->pushStatementList();
+    push_stmt_list();
 
   /* The fabled D named return value optimisation.
      Implemented by overriding all the RETURN_EXPRs and replacing all
@@ -1338,27 +1337,27 @@ FuncDeclaration::toObjFile(bool force_p)
       nrvsym->SnamedResult = result_decl;
     }
 
-  build_ir (fbody, irs);
+  build_ir (this, irs);
 
   if (v_argptr)
     {
-      tree body = irs->popStatementList();
+      tree body = pop_stmt_list();
       tree var = get_decl_tree (v_argptr, this);
       var = build_address (var);
 
       tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
       build_local_var (v_argptr, this);
-      irs->addExp (init_exp);
+      add_stmt(init_exp);
 
       tree cleanup = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_END), 1, var);
-      irs->addExp (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
+      add_stmt(build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 
   // Backend expects a statement list to come from somewhere, however
   // popStatementList returns expressions when there is a single statement.
   // So here we create a statement list unconditionally.
   tree block = pop_binding_level(true);
-  tree body = irs->popStatementList();
+  tree body = pop_stmt_list();
   tree bind = build3(BIND_EXPR, void_type_node,
 		     BLOCK_VARS (block), body, block);
 
@@ -1423,7 +1422,7 @@ FuncDeclaration::toObjFile(bool force_p)
 	}
     }
 
-  irs->endFunction();
+  end_function();
 
   current_function_decl = old_current_function_decl;
   set_cfun (old_cfun);

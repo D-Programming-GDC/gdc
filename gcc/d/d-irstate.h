@@ -98,31 +98,12 @@ struct IRState
 
   auto_vec<FuncDeclaration *> deferred;
 
-  static IRState *startFunction (FuncDeclaration *decl);
-  void endFunction();
-
   // Variables that are in scope that will need destruction later.
   auto_vec<VarDeclaration *> varsInScope;
 
-  // ** Statement Lists
-  void addExp (tree e);
-  void pushStatementList();
-  tree popStatementList();
-
-  // ** Labels
-  // It is only valid to call this while the function in which the label is defined
-  // is being compiled.
-  tree getLabelTree (LabelDsymbol *label);
-  Label *getLabelBlock (LabelDsymbol *label, Statement *from = NULL);
-
-  bool isReturnLabel (Identifier *ident)
-  { return this->func->returnLabel ? ident == this->func->returnLabel->ident : 0; }
-
   // ** Loops (and case statements)
   // These routines don't generate code.  They are for tracking labeled loops.
-  Flow *getLoopForLabel (Identifier *ident, bool want_continue = false);
   Flow *beginFlow (Statement *stmt);
-
   void endFlow();
 
   Flow *currentFlow()
@@ -133,67 +114,7 @@ struct IRState
 
   void doLabel (tree t_label);
 
-  // ** "Binding contours"
-
-  /* Definitions for IRState scope code:
-     "Scope": A container for binding contours.  Each user-declared
-     function has a toplevel scope.  Every ScopeStatement creates
-     a new scope. (And for now, until the emitLocalVar crash is
-     solved, this also creates a default binding contour.)
-
-     "Binding contour": Same as GCC's definition, whatever that is.
-     Each user-declared variable will have a binding contour that begins
-     where the variable is declared and ends at it's containing scope.
-   */
-
-  void startScope();
-  void endScope();
-
-  // Update current source file location to LOC.
-  void doLineNote (const Loc& loc)
-  { set_input_location (loc); }
-
-  // ** Instruction stream manipulation
-
-  // ** Conditional statements.
-  void startCond (Statement *stmt, tree t_cond);
-  void startElse();
-  void endCond();
-
-  // ** Loop statements.
-  void startLoop (Statement *stmt);
-  void continueHere();
-  void setContinueLabel (tree lbl);
-  void exitIfFalse (tree t_cond);
-  void endLoop();
-  void continueLoop (Identifier *ident);
-  void exitLoop (Identifier *ident);
-
-  // ** Goto/Label statement evaluation
-  void doJump (Statement *stmt, tree t_label);
-  void pushLabel (LabelDsymbol *l);
-  void checkGoto (Statement *stmt, LabelDsymbol *label);
-  void checkPreviousGoto (Blocks *refs);
-
-  // ** Switch statements.
-  void startCase (Statement *stmt, tree t_cond, int has_vars = 0);
-  void checkSwitchCase (Statement *stmt, int default_flag = 0);
-  void doCase (tree t_value, tree t_label);
-  void endCase();
-
-  // ** Exception handling.
-  void startTry (Statement *stmt);
-  void startCatches();
-  void startCatch (tree t_type);
-  void endCatch();
-  void endCatches();
-  void startFinally();
-  void endFinally();
-
-  // ** Return statement.
-  void doReturn (tree t_value);
-
- protected:
+ //protected:
   auto_vec<tree> statementList_;
   auto_vec<Flow *> loops_;
   auto_vec<Label *> labels_;

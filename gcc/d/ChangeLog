@@ -1,3 +1,35 @@
+2015-08-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(push_stmt_list): New function.
+	(pop_stmt_list): New function.
+	(add_stmt): New function.
+	(start_function): New function.
+	(end_function): New function.
+	(expand_decl): Update to use new interface.
+	(build_closure): Likewise.
+	* d-elem.cc(DeclarationExp::toElem): Likewise.
+	* d-objfile.cc(VarDeclaration::toObjFile): Likewise.
+	(FuncDeclaration::toObjFile): Likewise.
+	* toir.cc(IRVisitor::start_scope): Moved from d-irstate.cc, updated
+	all callers in IRVisitor.
+	(IRVisitor::end_scope): Likewise.
+	(IRVisitor::is_return_label): Likewise.
+	(IRVisitor::do_label): Likewise.
+	(IRVisitor::do_jump): Likewise.
+	(IRVisitor::start_condition): Likewise.
+	(IRVisitor::start_else): Likewise.
+	(IRVisitor::end_condition): Likewise.
+	(IRVisitor::start_catches): Likewise.
+	(IRVisitor::start_catch): Likewise.
+	(IRVisitor::end_catch): Likewise.
+	(IRVisitor::end_catches): Likewise.
+	(IRVisitor::start_finally): Likewise.
+	(IRVisitor::end_finally): Likewise.
+	(IRVisitor::end_loop): Likewise.
+	(IRVisitor::start_case): Likewise.
+	(IRVisitor::end_case): Likewise.
+	(build_ir): Update signature.
+
 2015-08-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in(DMD_COMPILE): Declare as COMPILE with WARN_CXXFLAGS

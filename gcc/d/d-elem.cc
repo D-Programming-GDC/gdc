@@ -1848,9 +1848,9 @@ DeclarationExp::toElem (IRState *irs)
 	}
     }
 
-  irs->pushStatementList();
+  push_stmt_list();
   declaration->toObjFile (0);
-  tree t = irs->popStatementList();
+  tree t = pop_stmt_list();
 
   /* Construction of an array for typesafe-variadic function arguments
      can cause an empty STMT_LIST here.  This can causes problems
