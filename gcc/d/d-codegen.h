@@ -55,8 +55,8 @@ void build_ir(FuncDeclaration *fd, IRState *irs);
 tree build_ctype(Type *t);
 
 // Code generation routines.
-extern void push_binding_level();
-extern tree pop_binding_level(bool functionbody);
+extern void push_binding_level(level_kind kind);
+extern tree pop_binding_level();
 
 extern void push_stmt_list();
 extern tree pop_stmt_list();
@@ -98,7 +98,11 @@ extern tree maybe_compound_expr (tree arg0, tree arg1);
 extern tree maybe_vcompound_expr (tree arg0, tree arg1);
 
 extern tree bind_expr (tree var_chain, tree body);
-extern tree d_build_label (Loc loc, Identifier *ident);
+
+extern tree define_label(Statement *s, Identifier *ident = NULL);
+extern tree lookup_label(Statement *s, Identifier *ident = NULL);
+extern tree lookup_bc_label(Statement *s, bc_kind);
+extern void check_goto(Statement *from, Statement *to);
 
 // Type conversion.
 // 'd_convert' just to give it a different name from the extern "C" convert.

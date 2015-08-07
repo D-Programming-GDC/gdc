@@ -48,7 +48,6 @@
 #include "gimple-expr.h"
 #include "gimplify.h"
 #include "debug.h"
-#include "hash-set.h"
 #include "function.h"
 
 #include "d-tree.h"
@@ -1500,7 +1499,7 @@ d_keep (tree t)
   d_keep_list = tree_cons (NULL_TREE, t, d_keep_list);
 }
 
-tree d_eh_personality_decl;
+static GTY(()) tree d_eh_personality_decl;
 
 /* Return the GDC personality function decl.  */
 static tree

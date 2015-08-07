@@ -49,20 +49,73 @@
 
 Module *current_module_decl;
 
+
+// Update data for defined and undefined labels when leaving a scope.
+
+bool
+pop_binding_label(Statement * const &, d_label_entry *ent, binding_level *bl)
+{
+  binding_level *obl = bl->level_chain;
+
+  if (ent->level == bl)
+    {
+      if (bl->kind == level_try)
+	ent->in_try_scope = true;
+      else if (bl->kind == level_catch)
+	ent->in_catch_scope = true;
+
+      ent->level = obl;
+    }
+  else if (ent->fwdrefs)
+    {
+      for (d_label_use_entry *ref = ent->fwdrefs; ref; ref = ref->next)
+	ref->level = obl;
+    }
+
+  return true;
+}
+
+// At the end of a function, all labels declared within the function
+// go out of scope.  BLOCK is the top-level block for the function.
+
+bool
+pop_label(Statement * const &s, d_label_entry *ent, tree block)
+{
+  if (!ent->bc_label)
+    {
+      // Put the labels into the "variables" of the top-level block,
+      // so debugger can see them.
+      if (DECL_NAME (ent->label))
+	{
+	  gcc_assert(DECL_INITIAL (ent->label) != NULL_TREE);
+	  DECL_CHAIN (ent->label) = BLOCK_VARS (block);
+	  BLOCK_VARS (block) = ent->label;
+	}
+    }
+
+  cfun->language->labels->remove(s);
+
+  return true;
+}
+
 // The D front-end does not use the 'binding level' system for a symbol table,
-// It is only needed to get debugging information for local variables and
-// otherwise support the backend.
+// however it has been the goto structure for tracking code flow.
+// Primarily it is only needed to get debugging information for local variables
+// and otherwise support the backend.
 
 void
-push_binding_level()
+push_binding_level(level_kind kind)
 {
+  // Add it to the front of currently active scopes stack.
   binding_level *new_level = ggc_cleared_alloc<binding_level>();
   new_level->level_chain = current_binding_level;
+  new_level->kind = kind;
+
   current_binding_level = new_level;
 }
 
 tree
-pop_binding_level(bool functionbody)
+pop_binding_level()
 {
   binding_level *level = current_binding_level;
   current_binding_level = level->level_chain;
@@ -75,15 +128,29 @@ pop_binding_level(bool functionbody)
   for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
     BLOCK_SUPERCONTEXT (t) = block;
 
-  // Dispose of the block that we just made inside some higher level.
-  if (functionbody)
+  if (level->kind == level_function)
     {
+      // Dispose of the block that we just made inside some higher level.
       DECL_INITIAL (current_function_decl) = block;
       BLOCK_SUPERCONTEXT (block) = current_function_decl;
+
+      // Pop all the labels declared in the function.
+      if (cfun->language->labels)
+	cfun->language->labels->traverse<tree, &pop_label>(block);
     }
   else
-    current_binding_level->blocks
-      = block_chainon(current_binding_level->blocks, block);
+    {
+      // Any uses of undefined labels, and any defined labels, now operate
+      // under constraints of next binding contour.
+      if (cfun && cfun->language->labels)
+	{
+	  cfun->language->labels->traverse<binding_level *, &pop_binding_label>
+	    (level);
+	}
+
+      current_binding_level->blocks
+	= block_chainon(current_binding_level->blocks, block);
+    }
 
   TREE_USED (block) = 1;
   return block;
@@ -135,7 +202,7 @@ add_stmt(tree t)
 {
   // Ignore (void) 0; expression statements received from the frontend.
   // Likewise void_node is used when contracts become nops in release code.
-  if (t == void_node || integer_zerop(t))
+  if (t == void_node || IS_EMPTY_STMT (t))
     return;
 
   if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
@@ -2003,7 +2070,7 @@ build_memref(tree type, tree ptr, tree byte_offset)
 tree
 build_array_set(tree ptr, tree length, tree value)
 {
-  push_binding_level();
+  push_binding_level(level_block);
   push_stmt_list();
 
   // Build temporary locals for length and ptr, and maybe value.
@@ -2047,7 +2114,7 @@ build_array_set(tree ptr, tree length, tree value)
 
   // Wrap up expression.
   tree stmt_list = pop_stmt_list();
-  tree block = pop_binding_level(false);
+  tree block = pop_binding_level();
 
   return build3(BIND_EXPR, void_type_node,
 		BLOCK_VARS (block), stmt_list, block);
@@ -3072,21 +3139,156 @@ build_typeinfo (Type *t)
   return tinfo;
 }
 
-// Build LABEL_DECL at location LOC for IDENT given.
+// Check that a new jump at FROM to a label at TO is OK.
+
+void
+check_goto(Statement *from, Statement *to)
+{
+  d_label_entry *ent = cfun->language->labels->get(to);
+  gcc_assert(ent != NULL);
+
+  // If the label hasn't been defined yet, defer checking.
+  if (! DECL_INITIAL (ent->label))
+    {
+      d_label_use_entry *fwdref = ggc_alloc<d_label_use_entry>();
+      fwdref->level = current_binding_level;
+      fwdref->statement = from;
+      fwdref->next = ent->fwdrefs;
+      ent->fwdrefs = fwdref;
+      return;
+    }
+
+  if (ent->in_try_scope)
+    from->error("cannot goto into try block");
+  else if (ent->in_catch_scope)
+    from->error("cannot goto into catch block");
+}
+
+// Check that a previously seen jumps to a newly defined label is OK.
+
+static void
+check_previous_goto(Statement *s, d_label_use_entry *fwdref)
+{
+  for (binding_level *b = current_binding_level; b ; b = b->level_chain)
+    {
+      if (b == fwdref->level)
+	break;
+
+      if (b->kind == level_try || b->kind == level_catch)
+	{
+	  if (s->isLabelStatement())
+	    {
+	      if (b->kind == level_try)
+		fwdref->statement->error("cannot goto into try block");
+	      else
+		fwdref->statement->error("cannot goto into catch block");
+	    }
+	  else if (s->isCaseStatement())
+	    s->error("case cannot be in different try block level from switch");
+	  else if (s->isDefaultStatement())
+	    s->error("default cannot be in different try block level from switch");
+	  else
+	    gcc_unreachable();
+	}
+    }
+}
+
+// Get or build LABEL_DECL using the IDENT and statement block S given.
 
 tree
-d_build_label (Loc loc, Identifier *ident)
+lookup_label(Statement *s, Identifier *ident)
 {
-  tree decl = build_decl (UNKNOWN_LOCATION, LABEL_DECL,
-			  ident ? get_identifier (ident->string) : NULL_TREE, void_type_node);
-  DECL_CONTEXT (decl) = current_function_decl;
-  DECL_MODE (decl) = VOIDmode;
+  // You can't use labels at global scope.
+  if (cfun == NULL)
+    {
+      error("label %s referenced outside of any function",
+	    ident ? ident->string : "(unnamed)");
+      return NULL_TREE;
+    }
+
+  // Create the label htab for the function on demand.
+  if (!cfun->language->labels)
+    cfun->language->labels = hash_map<Statement *, d_label_entry>::create_ggc(13);
+
+  d_label_entry *ent = cfun->language->labels->get(s);
+  if (ent != NULL)
+    return ent->label;
+  else
+    {
+      tree name = ident ? get_identifier(ident->string) : NULL_TREE;
+      tree decl = build_decl(input_location, LABEL_DECL, name, void_type_node);
+      DECL_CONTEXT (decl) = current_function_decl;
+      DECL_MODE (decl) = VOIDmode;
+
+      // Create new empty slot.
+      ent = ggc_cleared_alloc<d_label_entry>();
+      ent->statement = s;
+      ent->label = decl;
+
+      bool existed = cfun->language->labels->put(s, *ent);
+      gcc_assert(!existed);
+
+      return decl;
+    }
+}
+
+// Get the LABEL_DECL to represent a break or continue for the
+// statement S given.  BC indicates which.
+
+tree
+lookup_bc_label(Statement *s, bc_kind bc)
+{
+  tree vec = lookup_label(s);
+
+  // The break and continue labels are put into a TREE_VEC.
+  if (TREE_CODE (vec) == LABEL_DECL)
+    {
+      d_label_entry *ent = cfun->language->labels->get(s);
+      gcc_assert(ent != NULL);
+
+      vec = make_tree_vec(2);
+      TREE_VEC_ELT (vec, bc_break) = ent->label;
+
+      // Build the continue label.
+      tree label = build_decl(input_location, LABEL_DECL,
+			      NULL_TREE, void_type_node);
+      DECL_CONTEXT (label) = current_function_decl;
+      DECL_MODE (label) = VOIDmode;
+      TREE_VEC_ELT (vec, bc_continue) = label;
+
+      ent->label = vec;
+      ent->bc_label = true;
+    }
+
+  return TREE_VEC_ELT (vec, bc);
+}
+
+// Define a label, specifying the location in the source file.
+// Return the LABEL_DECL node for the label.
+
+tree
+define_label(Statement *s, Identifier *ident)
+{
+  tree label = lookup_label(s, ident);
+  gcc_assert(DECL_INITIAL (label) == NULL_TREE);
+
+  d_label_entry *ent = cfun->language->labels->get(s);
+  gcc_assert(ent != NULL);
+
+  // Mark label as having been defined.
+  DECL_INITIAL (label) = error_mark_node;
 
   // Not setting this doesn't seem to cause problems (unlike VAR_DECLs).
-  if (loc.filename)
-    set_decl_location (decl, loc);
+  if (s->loc.filename)
+    set_decl_location (label, s->loc);
 
-  return decl;
+  ent->level = current_binding_level;
+
+  for (d_label_use_entry *ref = ent->fwdrefs; ref ; ref = ref->next)
+    check_previous_goto(ent->statement, ref);
+  ent->fwdrefs = NULL;
+
+  return label;
 }
 
 // Build a function type whose first argument is a pointer to BASETYPE,

@@ -1,3 +1,45 @@
+2015-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in(D_GLUE_OBJS): Remove d-irstate.o.
+	* d-tree.h(d_label_use_entry): New structure.
+	(d_label_entry): New structure.
+	(binding_level): Add level_kind field.
+	(language_function): Add hash table field for labels.
+	(D_LABEL_VARIABLE_CASE): New macro.
+	* d-codegen.cc(pop_binding_label): New function.
+	(pop_label): New function.
+	(push_binding_level): Update signature.
+	(pop_binding_level): Update signature.  Handle declared or used labels.
+	(build_array_set): Update for push/pop binding changes.
+	(check_goto): New function.
+	(check_previous_goto): New function.
+	(d_lookup_label): Remove function.
+	(lookup_label): New function.
+	(lookup_bc_label): New function.
+	(define_label): New function.
+	* d-objfile(FuncDeclaration::toObjFile): Update for push/pop binding
+	changes.
+	* toir.cc(IRVisitor): Add break and continue label fields.
+	(IRVisitor::IRVisitor): Initialize here.
+	(IRVisitor::start_scope): Update signature.
+	(IRVisitor::end_scope): Return the finished scope, updated all callers.
+	(IRVisitor::push_break_label): New function.
+	(IRVisitor::pop_break_label): New function.
+	(IRVisitor::push_continue_label): New function.
+	(IRVisitor::pop_continue_label): New function.
+	(IRVisitor::start_condition): Remove function.
+	(IRVisitor::start_else): Remove function.
+	(IRVisitor::end_condition): Remove function.
+	(IRVisitor::start_catches): Remove function.
+	(IRVisitor::start_catch): Remove function.
+	(IRVisitor::end_catch): Remove function.
+	(IRVisitor::end_catches): Remove function.
+	(IRVisitor::start_finally): Remove function.
+	(IRVisitor::end_finally): Remove function.
+	(IRVisitor::start_case): Remove function.
+	(IRVisitor::end_case): Remove function.
+	* d-irstate.cc: Remove.
+
 2015-08-06  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* config-lang.in(gtfiles): Replace d-lang.h for d-tree.h

@@ -66,9 +66,7 @@ typedef Array<class GotoStatement *> GotoStatements;
 
 typedef Array<class TemplateInstance *> TemplateInstances;
 
-#ifdef IN_GCC
-typedef Array<struct Label *> Blocks;
-#else
+#ifndef IN_GCC
 typedef Array<struct block *> Blocks;
 #endif
 

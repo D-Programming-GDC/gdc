@@ -18,47 +18,6 @@
 #ifndef GCC_DCMPLR_IRSTATE_H
 #define GCC_DCMPLR_IRSTATE_H
 
-// The kinds of levels we recognize.
-enum LevelKind
-{
-  level_block = 0,    // An ordinary block scope.
-  level_switch,       // A switch-block
-  level_try,          // A try-block.
-  level_catch,        // A catch-block.
-  level_finally,      // A finally-block.
-};
-
-
-struct Label
-{
-  LabelDsymbol *label;
-  Statement *block;
-  Statement *from;
-  LevelKind kind;
-  unsigned level;
-
-  Label()
-    : label(NULL), block(NULL), from(NULL),
-      kind(level_block), level(0)
-  { }
-};
-
-struct Flow
-{
-  Statement *statement;
-  LevelKind kind;
-  tree exitLabel;
-  tree continueLabel;
-  // D2 specific, != 0 if switch uses Lvalues for cases.
-  bool hasVars;
-
-  Flow (Statement *stmt)
-    : statement(stmt), kind(level_block), exitLabel(NULL_TREE),
-      continueLabel(NULL_TREE), hasVars(false)
-  { }
-};
-
-
 // IRState contains the core functionality of code generation utilities.
 //
 // Currently, each function gets its own IRState when emitting code.  There is
@@ -86,23 +45,8 @@ struct IRState
   // Variables that are in scope that will need destruction later.
   auto_vec<VarDeclaration *> varsInScope;
 
-  // ** Loops (and case statements)
-  // These routines don't generate code.  They are for tracking labeled loops.
-  Flow *beginFlow (Statement *stmt);
-  void endFlow();
-
-  Flow *currentFlow()
-  {
-    gcc_assert (!this->loops_.is_empty());
-    return this->loops_.last();
-  }
-
-  void doLabel (tree t_label);
-
  //protected:
   auto_vec<tree> statementList_;
-  auto_vec<Flow *> loops_;
-  auto_vec<Label *> labels_;
 };
 
 

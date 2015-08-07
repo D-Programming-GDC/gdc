@@ -21,13 +21,34 @@
 
 // Forward type declarations to avoid including unnecessary headers.
 class Declaration;
+class Statement;
 class Type;
 struct IRState;
 
-// The D front-end does not use the 'binding level' system for a symbol table,
-// It is only needed to get debugging information for local variables and
-// otherwise support the backend.
-struct GTY(()) binding_level
+// The kinds of scopes we recognise.
+enum level_kind
+{
+  level_block = 0,	// An ordinary block scope.
+  level_try,		// A try-block.
+  level_catch,		// A catch-block.
+  level_finally,	// A finally-block.
+  level_cond,		// An if-condition.
+  level_switch,		// A switch-block.
+  level_loop,		// A for, do-while, or unrolled-loop block.
+  level_with,		// A with-block.
+  level_function,	// The block representing an entire function.
+};
+
+// For use with break and continue statements.
+enum bc_kind
+{
+  bc_break    = 0,
+  bc_continue = 1,
+};
+
+// The datatype used to implement D scope.  It is needed primarily to support
+// the backend, but also helps debugging information for local variables.
+struct GTY((chain_next ("%h.level_chain"))) binding_level
 {
   // A chain of declarations. These are in the reverse of the order supplied.
   tree names;
@@ -38,10 +59,55 @@ struct GTY(()) binding_level
 
   // The binding level this one is contained in.
   binding_level *level_chain;
+
+  // The kind of scope this object represents.
+  ENUM_BITFIELD (level_kind) kind : 4;
 };
 
 extern GTY(()) binding_level *current_binding_level;
 extern GTY(()) binding_level *global_binding_level;
+
+
+// Used only for jumps to as-yet undefined labels, since jumps to
+// defined labels can have their validity checked immediately.
+struct GTY((chain_next ("%h.next"))) d_label_use_entry
+{
+  d_label_use_entry *next;
+
+  // The statement block associated with the jump.
+  Statement * GTY((skip)) statement;
+
+  // The binding level to which this entry is *currently* attached.
+  // This is initially the binding level in which the goto appeared,
+  // but is modified as scopes are closed.
+  binding_level *level;
+};
+
+struct GTY(()) d_label_entry
+{
+  // The label decl itself.
+  tree label;
+
+  // The statement block associated with the label.
+  Statement * GTY((skip)) statement;
+
+  // The binding level to which this entry is *currently* attached.
+  // This is initially the binding level in which the label is defined,
+  // but is modified as scopes are closed.
+  binding_level *level;
+
+  // A list of forward references of the label.
+  d_label_use_entry *fwdrefs;
+
+  // The following bits are set after the label is defined, and are
+  // updated as scopes are popped.  They indicate that a backward jump
+  // to the label will illegally enter a scope of the given flavor.
+  bool in_try_scope;
+  bool in_catch_scope;
+
+  // If set, the label we reference represents a break/continue pair.
+  bool bc_label;
+};
 
 
 // Nothing is added to tree_identifier.
@@ -54,6 +120,9 @@ struct GTY(()) lang_identifier
 struct GTY(()) language_function
 {
   IRState * GTY((skip)) irs;
+
+  // Table of all used or defined labels in the function.
+  hash_map<Statement *, d_label_entry> *labels;
 };
 
 // The D front end types have not been integrated into the GCC garbage
@@ -100,6 +169,10 @@ lang_tree_node
 // is not affected by -femit-templates.
 #define D_DECL_IS_TEMPLATE(NODE) \
   (DECL_LANG_FLAG_1 (NODE))
+
+// True if the decl is a variable case label decl.
+#define D_LABEL_VARIABLE_CASE(NODE) \
+  (DECL_LANG_FLAG_2 (LABEL_DECL_CHECK (NODE)))
 
 enum d_tree_index
 {

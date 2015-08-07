@@ -1273,7 +1273,7 @@ FuncDeclaration::toObjFile(bool force_p)
   DECL_INITIAL (fndecl) = error_mark_node;
 
   push_stmt_list();
-  push_binding_level();
+  push_binding_level(level_function);
   set_input_location (loc);
 
   // If this is a member function that nested (possibly indirectly) in another
@@ -1357,7 +1357,7 @@ FuncDeclaration::toObjFile(bool force_p)
   // Backend expects a statement list to come from somewhere, however
   // popStatementList returns expressions when there is a single statement.
   // So here we create a statement list unconditionally.
-  tree block = pop_binding_level(true);
+  tree block = pop_binding_level();
   tree body = pop_stmt_list();
   tree bind = build3(BIND_EXPR, void_type_node,
 		     BLOCK_VARS (block), body, block);
