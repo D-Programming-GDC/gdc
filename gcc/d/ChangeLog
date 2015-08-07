@@ -1,5 +1,21 @@
 2015-08-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* toir.cc(IRVisitor::start_condition): Don't cache condition.
+	(IRVisitor::start_else): Return the then body, updated all callers.
+	(IRVisitor::end_condition): Update signature.
+	(IRVisitor::start_catches): Return the try body, updated all callers.
+	(IRVisitor::start_catch): Don't cache catch type.
+	(IRVisitor::end_catch): Update signature.
+	(IRVisitor::end_catches): Update signature.
+	(IRVisitor::start_finally): Return the try body, updated all callers.
+	(IRVisitor::end_finally): Update signature.
+	(IRVisitor::start_case): Don't cache the condition.
+	(IRVisitor::end_case): Update signature.
+	* d-codegen.cc(convert_for_assignment): Use size_type_node for index.
+	* d-irstate.cc(IRState::beginFlow): Remove call to push_stmt_list.
+
+2015-08-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.cc(push_stmt_list): New function.
 	(pop_stmt_list): New function.
 	(add_stmt): New function.

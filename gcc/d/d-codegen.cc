@@ -721,7 +721,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	    {
 	      vec<constructor_elt, va_gc> *ce = NULL;
 	      tree index = build2 (RANGE_EXPR, build_ctype(Type::tsize_t),
-				   integer_zero_node, build_integer_cst (count - 1));
+				   size_zero_node, build_integer_cst (count - 1));
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
 
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
@@ -2001,49 +2001,50 @@ build_memref(tree type, tree ptr, tree byte_offset)
 tree
 build_array_set(tree ptr, tree length, tree value)
 {
-  tree stmt_list = alloc_stmt_list();
   push_binding_level();
+  push_stmt_list();
 
   // Build temporary locals for length and ptr, and maybe value.
   tree t = build_local_temp(size_type_node);
-  append_to_statement_list_force(build_vinit(t, length), &stmt_list);
+  add_stmt(build_vinit(t, length));
   length = t;
 
   t = build_local_temp(TREE_TYPE (ptr));
-  append_to_statement_list_force(build_vinit(t, ptr), &stmt_list);
+  add_stmt(build_vinit(t, ptr));
   ptr = t;
 
   if (d_has_side_effects(value))
     {
       t = build_local_temp(TREE_TYPE (value));
-      append_to_statement_list_force(build_vinit(t, value), &stmt_list);
+      add_stmt(build_vinit(t, value));
       value = t;
     }
 
   // Build loop to initialise { .length=length, .ptr=ptr } with value.
-  tree loop_body = alloc_stmt_list();
+  push_stmt_list();
 
   // if (length == 0) break
   t = build_boolop(NE_EXPR, length, d_convert(TREE_TYPE (length), integer_zero_node));
   t = build1(EXIT_EXPR, void_type_node, build1(TRUTH_NOT_EXPR, TREE_TYPE (t), t));
-  append_to_statement_list_force(t, &loop_body);
+  add_stmt(t);
   // *ptr = value
   t = vmodify_expr(build_deref(ptr), value);
-  append_to_statement_list_force(t, &loop_body);
+  add_stmt(t);
   // ptr += (*ptr).sizeof
   t = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (ptr)));
   t = vmodify_expr(ptr, build_offset(ptr, t));
-  append_to_statement_list_force(t, &loop_body);
+  add_stmt(t);
   // length -= 1
   t = build2(POSTDECREMENT_EXPR, TREE_TYPE (length), length,
 	     d_convert(TREE_TYPE (length), integer_one_node));
-  append_to_statement_list_force(t, &loop_body);
+  add_stmt(t);
 
   // Finish loop.
-  loop_body = build1(LOOP_EXPR, void_type_node, loop_body);
-  append_to_statement_list_force(loop_body, &stmt_list);
+  tree loop_body = pop_stmt_list();
+  add_stmt(build1(LOOP_EXPR, void_type_node, loop_body));
 
   // Wrap up expression.
+  tree stmt_list = pop_stmt_list();
   tree block = pop_binding_level(false);
 
   return build3(BIND_EXPR, void_type_node,

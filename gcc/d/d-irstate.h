@@ -48,28 +48,13 @@ struct Flow
   Statement *statement;
   LevelKind kind;
   tree exitLabel;
-  union
-  {
-    struct
-    {
-      tree continueLabel;
-      tree hasVars;         // D2 specific, != NULL_TREE if switch uses Lvalues for cases.
-    };
-    struct
-    {
-      tree condition;       // Only need this if it is not okay to convert an IfStatement's
-      tree trueBranch;      // condition after converting it's branches...
-    };
-    struct
-    {
-      tree tryBody;
-      tree catchType;
-    };
-  };
+  tree continueLabel;
+  // D2 specific, != 0 if switch uses Lvalues for cases.
+  bool hasVars;
 
   Flow (Statement *stmt)
     : statement(stmt), kind(level_block), exitLabel(NULL_TREE),
-      continueLabel(NULL_TREE), hasVars(NULL_TREE)
+      continueLabel(NULL_TREE), hasVars(false)
   { }
 };
 

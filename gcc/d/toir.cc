@@ -221,36 +221,39 @@ public:
   }
 
   // Routines for building statement lists around if/else conditions.
-  // STMT contains the statement to be executed if COND is true.
-  void start_condition(Statement *stmt, tree cond)
+  // STMT contains the statement to be executed.
+  void start_condition(Statement *stmt)
   {
-    Flow *flow = this->irs_->beginFlow(stmt);
-    flow->condition = cond;
-  }
-
-  // Start a new statement list for the false condition branch.
-  void start_else()
-  {
-    Flow *flow = this->irs_->currentFlow();
-    flow->trueBranch = pop_stmt_list();
+    this->irs_->beginFlow(stmt);
     push_stmt_list();
   }
 
+  // Pops and returns the 'then' body, starting a new statement list
+  // for the 'else' condition branch.
+  tree start_else()
+  {
+    tree ifbody = pop_stmt_list();
+    push_stmt_list();
+    return ifbody;
+  }
+
   // Wrap up our constructed if condition into a COND_EXPR.
-  void end_condition()
+  void end_condition(tree ifcond, tree ifbody)
   {
     Flow *flow = this->irs_->currentFlow();
-    tree branch = pop_stmt_list();
-    tree false_branch = void_node;
+    tree elsebody;
 
-    if (flow->trueBranch == NULL_TREE)
-      flow->trueBranch = branch;
+    if (ifbody == NULL_TREE)
+      {
+	ifbody = pop_stmt_list();
+	elsebody = void_node;
+      }
     else
-      false_branch = branch;
+      elsebody = pop_stmt_list();
 
     set_input_location(flow->statement->loc);
     tree stmt = build3(COND_EXPR, void_type_node,
-		       flow->condition, flow->trueBranch, false_branch);
+		       ifcond, ifbody, elsebody);
     this->irs_->endFlow();
     add_stmt(stmt);
   }
@@ -261,34 +264,37 @@ public:
   {
     Flow *flow = this->irs_->beginFlow(stmt);
     flow->kind = level_try;
+    push_stmt_list();
   }
 
-  // Pops the try body and starts a new statement list for all catches.
-  void start_catches()
+  // Pops and returns the try body and starts a new statement list for all catches.
+  tree start_catches()
   {
+    tree try_body = pop_stmt_list();
+
     Flow *flow = this->irs_->currentFlow();
-    flow->tryBody = pop_stmt_list();
     flow->kind = level_catch;
     push_stmt_list();
+
+    return try_body;
   }
 
   // Start a new catch expression for exception type TYPE.
-  void start_catch(Type *type)
+  tree start_catch(Type *type)
   {
-    this->irs_->currentFlow()->catchType = build_ctype(type);
     push_stmt_list();
+    return build_ctype(type);
   }
 
-  // Wrap up catch expression into a CATCH_EXPR.
-  void end_catch()
+  // Wrap up catch expression for type CATCH_TYPE into a CATCH_EXPR.
+  void end_catch(tree catch_type)
   {
     tree body = pop_stmt_list();
-    add_stmt(build2(CATCH_EXPR, void_type_node,
-		    this->irs_->currentFlow()->catchType, body));
+    add_stmt(build2(CATCH_EXPR, void_type_node, catch_type, body));
   }
 
   // Wrap up try/catch into a TRY_CATCH_EXPR.
-  void end_catches()
+  void end_catches(tree try_body)
   {
     Flow *flow = this->irs_->currentFlow();
     tree catches = pop_stmt_list();
@@ -306,28 +312,31 @@ public:
 
     set_input_location(flow->statement->loc);
     add_stmt(build2(TRY_CATCH_EXPR, void_type_node,
-		    flow->tryBody, catches));
+		    try_body, catches));
     this->irs_->endFlow();
   }
 
-  // Start a new finally expression.
-  void start_finally()
+  // Pops and returns the try body and starts a new finally expression.
+  tree start_finally()
   {
+    tree try_body = pop_stmt_list();
+
     Flow *flow = this->irs_->currentFlow();
-    flow->tryBody = pop_stmt_list();
     flow->kind = level_finally;
     push_stmt_list();
+
+    return try_body;
   }
 
   // Wrap-up try/finally into a TRY_FINALLY_EXPR.
-  void end_finally()
+  void end_finally(tree try_body)
   {
     Flow *flow = this->irs_->currentFlow();
     tree finally = pop_stmt_list();
 
     set_input_location(flow->statement->loc);
     add_stmt(build2(TRY_FINALLY_EXPR, void_type_node,
-		    flow->tryBody, finally));
+		    try_body, finally));
     this->irs_->endFlow();
   }
 
@@ -338,6 +347,7 @@ public:
     Flow *flow = this->irs_->beginFlow(stmt);
     // should be end for 'do' loop
     flow->continueLabel = d_build_label(stmt->loc, NULL);
+    push_stmt_list();
   }
 
   // Emit continue label for loop.
@@ -372,16 +382,14 @@ public:
   }
 
   // Routines for building statement lists around switches.  STMT is the body
-  // of the switch statement, COND is the condition to the switch. If HAS_VARS
-  // is true, then the switch statement has been converted to an if-then-else.
-  void start_case(Statement *stmt, tree cond, int has_vars)
+  // of the switch statement.  If HAS_VARS is true, then the switch statement
+  // has been converted to an if-then-else.
+  void start_case(Statement *stmt, bool has_vars)
   {
     Flow *flow = this->irs_->beginFlow(stmt);
-    flow->condition = cond;
     flow->kind = level_switch;
-    // Need a dummy value so the tree is not NULL
-    if (has_vars)
-      flow->hasVars = integer_one_node;
+    flow->hasVars = has_vars;
+    push_stmt_list();
   }
 
   // Emit a case statement for VALUE.
@@ -398,19 +406,19 @@ public:
   }
 
   // Wrap up constructed body into a SWITCH_EXPR.
-  void end_case()
+  // CASE_COND is the condition to the switch.
+  void end_case(tree case_cond)
   {
     Flow *flow = this->irs_->currentFlow();
-    tree body = pop_stmt_list();
-    tree condtype = TREE_TYPE (flow->condition);
+    tree case_body = pop_stmt_list();
 
     // Switch was converted to if-then-else expression
     if (flow->hasVars)
-      add_stmt(body);
+      add_stmt(case_body);
     else
       {
-	tree stmt = build3(SWITCH_EXPR, condtype,
-			   flow->condition, body, NULL_TREE);
+	tree stmt = build3(SWITCH_EXPR, TREE_TYPE (case_cond),
+			   case_cond, case_body, NULL_TREE);
 	add_stmt(stmt);
       }
 
@@ -443,19 +451,20 @@ public:
     // requiring scope destruction.
     tree ifcond = convert_for_condition(s->condition->toElemDtor(this->irs_),
 					s->condition->type);
-    this->start_condition(s, ifcond);
+    this->start_condition(s);
 
     if (s->ifbody)
       s->ifbody->accept(this);
 
     // Now build the 'else' branch, which may have nested 'else if' parts.
+    tree ifbody = NULL_TREE;
     if (s->elsebody)
       {
-	this->start_else();
+	ifbody = this->start_else();
 	s->elsebody->accept(this);
       }
 
-    this->end_condition();
+    this->end_condition(ifcond, ifbody);
     this->end_scope();
   }
 
@@ -774,9 +783,9 @@ public:
 	    CaseStatement *cs = (*s->cases)[i];
 	    tree case_cond = build2(EQ_EXPR, build_ctype(condtype), condition,
 				    cs->exp->toElemDtor(this->irs_));
-	    this->start_condition(s, case_cond);
+	    this->start_condition(s);
 	    this->do_jump(NULL, cs->cblock);
-	    this->end_condition();
+	    this->end_condition(case_cond, NULL_TREE);
 	  }
 
 	if (s->sdefault)
@@ -784,12 +793,12 @@ public:
       }
 
     // Emit body.
-    this->start_case(s, condition, s->hasVars);
+    this->start_case(s, s->hasVars);
 
     if (s->body)
       s->body->accept(this);
 
-    this->end_case();
+    this->end_case(condition);
   }
 
   //
@@ -1019,16 +1028,16 @@ public:
     if (s->body)
       s->body->accept(this);
 
-    this->start_catches();
+    tree try_body = this->start_catches();
 
     if (s->catches)
       {
 	for (size_t i = 0; i < s->catches->dim; i++)
 	  {
 	    Catch *vcatch = (*s->catches)[i];
-
-	    this->start_catch(vcatch->type);
 	    set_input_location(vcatch->loc);
+
+	    tree catch_type = this->start_catch(vcatch->type);
 	    this->start_scope();
 
 	    if (vcatch->var)
@@ -1052,11 +1061,11 @@ public:
 	      vcatch->handler->accept(this);
 
 	    this->end_scope();
-	    this->end_catch();
+	    this->end_catch(catch_type);
 	  }
       }
 
-    this->end_catches();
+    this->end_catches(try_body);
   }
 
   //
@@ -1068,12 +1077,12 @@ public:
     if (s->body)
       s->body->accept(this);
 
-    this->start_finally();
+    tree try_body = this->start_finally();
 
     if (s->finalbody)
       s->finalbody->accept(this);
 
-    this->end_finally();
+    this->end_finally(try_body);
   }
 
   // The frontend lowers synchronized(...) statements as a call to

@@ -40,7 +40,6 @@ IRState::beginFlow (Statement *stmt)
 {
   Flow *flow = new Flow (stmt);
   this->loops_.safe_push (flow);
-  push_stmt_list();
   return flow;
 }
 
