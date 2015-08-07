@@ -48,6 +48,47 @@
 
 Module *current_module_decl;
 
+// The D front-end does not use the 'binding level' system for a symbol table,
+// It is only needed to get debugging information for local variables and
+// otherwise support the backend.
+
+void
+push_binding_level()
+{
+  binding_level *new_level = ggc_cleared_alloc<binding_level>();
+  new_level->level_chain = current_binding_level;
+  current_binding_level = new_level;
+}
+
+tree
+pop_binding_level(bool functionbody)
+{
+  binding_level *level = current_binding_level;
+  current_binding_level = level->level_chain;
+
+  tree block = make_node(BLOCK);
+  BLOCK_VARS (block) = level->names;
+  BLOCK_SUBBLOCKS (block) = level->blocks;
+
+  // In each subblock, record that this is its superior.
+  for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
+    BLOCK_SUPERCONTEXT (t) = block;
+
+  // Dispose of the block that we just made inside some higher level.
+  if (functionbody)
+    {
+      DECL_INITIAL (current_function_decl) = block;
+      BLOCK_SUPERCONTEXT (block) = current_function_decl;
+    }
+  else
+    current_binding_level->blocks
+      = block_chainon(current_binding_level->blocks, block);
+
+  TREE_USED (block) = 1;
+  return block;
+}
+
+
 // Create an empty statement tree rooted at T.
 void
 push_stmt_list()

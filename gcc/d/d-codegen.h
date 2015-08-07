@@ -55,12 +55,15 @@ void build_ir(FuncDeclaration *fd, IRState *irs);
 tree build_ctype(Type *t);
 
 // Code generation routines.
+extern void push_binding_level();
+extern tree pop_binding_level(bool functionbody);
+
 extern void push_stmt_list();
 extern tree pop_stmt_list();
 extern void add_stmt(tree t);
+
 extern IRState *start_function(FuncDeclaration *decl);
 extern void end_function();
-
 
 extern tree d_decl_context (Dsymbol *dsym);
 

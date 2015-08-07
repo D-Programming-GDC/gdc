@@ -166,11 +166,6 @@ extern void add_import_paths(const char *iprefix, const char *imultilib, bool st
 
 /* In d-lang.cc */
 extern tree d_pushdecl (tree);
-extern void push_binding_level();
-extern tree pop_binding_level(bool functionbody);
-
-extern void init_global_binding_level();
-extern void set_decl_binding_chain (tree decl_chain);
 
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);

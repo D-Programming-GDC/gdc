@@ -7,6 +7,14 @@
 	(end_function): New function.
 	(expand_decl): Update to use new interface.
 	(build_closure): Likewise.
+	(push_binding_level): Moved from d-lang.cc.
+	(pop_binding_level): Likewise.
+	* d-lang.cc(d_init): Inline call to init_global_binding_level.
+	(alloc_binding_level): Remove function.
+	(push_binding_level): Remove function.
+	(pop_binding_level): Remove function.
+	(init_global_binding_level): Remove function.
+	(set_decl_binding_chain): Remove function.
 	* d-elem.cc(DeclarationExp::toElem): Likewise.
 	* d-objfile.cc(VarDeclaration::toObjFile): Likewise.
 	(FuncDeclaration::toObjFile): Likewise.
