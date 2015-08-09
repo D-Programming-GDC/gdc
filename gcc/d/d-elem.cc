@@ -901,7 +901,7 @@ AssignExp::toElem(IRState *irs)
 					 d_array_ptr(t1), integer_zero_node, size);
 	    }
 	  else
-	    result = irs->doArraySet(d_array_ptr(t1), t2, d_array_length(t1));
+	    result = build_array_set(d_array_ptr(t1), d_array_length(t1), t2);
 
 	  return compound_expr(result, t1);
 	}
@@ -2454,7 +2454,7 @@ StructLiteralExp::toElem(IRState *irs)
 
 	      tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
 					build_address(exp_tree));
-	      tree set_exp = irs->doArraySet(ptr_tree, exp->toElem(irs), size);
+	      tree set_exp = build_array_set(ptr_tree, size, exp->toElem(irs));
 	      exp_tree = compound_expr(set_exp, exp_tree);
 	    }
 	}

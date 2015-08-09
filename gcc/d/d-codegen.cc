@@ -37,7 +37,6 @@
 
 
 Module *current_module_decl;
-IRState *current_irstate;
 
 
 // Return the DECL_CONTEXT for symbol DSYM.
@@ -1834,6 +1833,60 @@ build_memref(tree type, tree ptr, tree byte_offset)
 }
 
 
+// Create a tree node to set multiple elements to a single value
+
+tree
+build_array_set(tree ptr, tree length, tree value)
+{
+  tree stmt_list = alloc_stmt_list();
+  push_binding_level();
+
+  // Build temporary locals for length and ptr, and maybe value.
+  tree t = build_local_temp(size_type_node);
+  append_to_statement_list_force(build_vinit(t, length), &stmt_list);
+  length = t;
+
+  t = build_local_temp(TREE_TYPE (ptr));
+  append_to_statement_list_force(build_vinit(t, ptr), &stmt_list);
+  ptr = t;
+
+  if (d_has_side_effects(value))
+    {
+      t = build_local_temp(TREE_TYPE (value));
+      append_to_statement_list_force(build_vinit(t, value), &stmt_list);
+      value = t;
+    }
+
+  // Build loop to initialise { .length=length, .ptr=ptr } with value.
+  tree loop_body = alloc_stmt_list();
+
+  // if (length == 0) break
+  t = build_boolop(NE_EXPR, length, d_convert(TREE_TYPE (length), integer_zero_node));
+  t = build1(EXIT_EXPR, void_type_node, build1(TRUTH_NOT_EXPR, TREE_TYPE (t), t));
+  append_to_statement_list_force(t, &loop_body);
+  // *ptr = value
+  t = vmodify_expr(build_deref(ptr), value);
+  append_to_statement_list_force(t, &loop_body);
+  // ptr += (*ptr).sizeof
+  t = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (ptr)));
+  t = vmodify_expr(ptr, build_offset(ptr, t));
+  append_to_statement_list_force(t, &loop_body);
+  // length -= 1
+  t = build2(POSTDECREMENT_EXPR, TREE_TYPE (length), length,
+	     d_convert(TREE_TYPE (length), integer_one_node));
+  append_to_statement_list_force(t, &loop_body);
+
+  // Finish loop.
+  loop_body = build1(LOOP_EXPR, void_type_node, loop_body);
+  append_to_statement_list_force(loop_body, &stmt_list);
+
+  // Wrap up expression.
+  tree block = pop_binding_level(false);
+
+  return build3(BIND_EXPR, void_type_node,
+		BLOCK_VARS (block), stmt_list, block);
+}
+
 // Implicitly converts void* T to byte* as D allows { void[] a; &a[3]; }
 
 tree
@@ -2104,7 +2157,7 @@ d_build_call (FuncDeclaration *fd, tree object, Expressions *args)
 tree
 d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
 {
-  IRState *irs = current_irstate;
+  IRState *irs = cfun ? current_irstate : NULL;
   tree ctype = TREE_TYPE (callable);
   tree callee = callable;
   tree saved_args = NULL_TREE;

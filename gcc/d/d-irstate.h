@@ -89,10 +89,6 @@ struct Flow
 struct IRState
 {
  public:
-  IRState *parent;
-
-  IRState();
-
   // ** Functions
   FuncDeclaration *func;
   Module *mod;
@@ -102,7 +98,7 @@ struct IRState
 
   auto_vec<FuncDeclaration *> deferred;
 
-  IRState *startFunction (FuncDeclaration *decl);
+  static IRState *startFunction (FuncDeclaration *decl);
   void endFunction();
 
   // Variables that are in scope that will need destruction later.
@@ -153,15 +149,6 @@ struct IRState
   void startScope();
   void endScope();
 
-  unsigned *currentScope()
-  {
-    gcc_assert (!this->scopes_.is_empty());
-    return this->scopes_.last();
-  }
-
-  void startBindings();
-  void endBindings();
-
   // Update current source file location to LOC.
   void doLineNote (const Loc& loc)
   { set_input_location (loc); }
@@ -181,9 +168,6 @@ struct IRState
   void endLoop();
   void continueLoop (Identifier *ident);
   void exitLoop (Identifier *ident);
-
-  // ** Array initialiser loop expression.
-  tree doArraySet (tree ptr, tree value, tree count);
 
   // ** Goto/Label statement evaluation
   void doJump (Statement *stmt, tree t_label);
@@ -211,7 +195,6 @@ struct IRState
 
  protected:
   auto_vec<tree> statementList_;
-  auto_vec<unsigned *> scopes_;
   auto_vec<Flow *> loops_;
   auto_vec<Label *> labels_;
 };
