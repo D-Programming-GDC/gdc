@@ -125,10 +125,10 @@ D_GLUE_OBJS = d/d-attribs.o d/d-lang.o d/d-decls.o \
 
 # Generated programs.
 d/idgen: d/idgen.dmdgen.o
-	$(COMPILER_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
+	$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
 
 d/impcvgen: d/impcnvgen.dmdgen.o
-	$(COMPILER_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
+	$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
 
 # Generated sources.
 d/id.c: d/idgen
