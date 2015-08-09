@@ -120,15 +120,12 @@ Dsymbol::toObjFile(bool)
       if (imp->isstatic)
 	return;
 
-      IRState *irs = current_irstate;
-      Module *mod = current_module_decl;
-      tree context;
-
       // Get the context of this import, this should never be null.
-      if (irs->func != NULL)
-	context = irs->func->toSymbol()->Stree;
+      tree context;
+      if (cfun != NULL)
+	context = current_irstate->func->toSymbol()->Stree;
       else
-	context = mod->toImport()->Stree;
+	context = current_module_decl->toImport()->Stree;
 
       if (imp->ident == NULL)
 	{
@@ -1220,10 +1217,6 @@ FuncDeclaration::toObjFile(bool force_p)
   if (global.params.verbose)
     fprintf (global.stdmsg, "function  %s\n", this->toPrettyChars());
 
-  IRState *irs = current_irstate->startFunction (this);
-  // Default chain value is 'null' unless parent found.
-  irs->sthis = null_pointer_node;
-
   tree old_current_function_decl = current_function_decl;
   function *old_cfun = cfun;
   current_function_decl = fndecl;
@@ -1239,6 +1232,8 @@ FuncDeclaration::toObjFile(bool force_p)
 
   allocate_struct_function (fndecl, false);
   set_function_end_locus (endloc);
+
+  IRState *irs = IRState::startFunction (this);
 
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
@@ -1290,10 +1285,9 @@ FuncDeclaration::toObjFile(bool force_p)
   DECL_ARGUMENTS (fndecl) = param_list;
   rest_of_decl_compilation (fndecl, 1, 0);
   DECL_INITIAL (fndecl) = error_mark_node;
-  push_binding_level();
 
   irs->pushStatementList();
-  irs->startScope();
+  push_binding_level();
   irs->doLineNote (loc);
 
   // If this is a member function that nested (possibly indirectly) in another
@@ -1374,23 +1368,19 @@ FuncDeclaration::toObjFile(bool force_p)
       irs->addExp (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 
-  irs->endScope();
-
-  DECL_SAVED_TREE (fndecl) = irs->popStatementList();
-
-  /* In tree-nested.c, init_tmp_var expects a statement list to come
-     from somewhere.  popStatementList returns expressions when
-     there is a single statement.  This code creates a statemnt list
-     unconditionally because the DECL_SAVED_TREE will always be a
-     BIND_EXPR. */
-  tree saved_tree = DECL_SAVED_TREE (fndecl);
-  tree body = BIND_EXPR_BODY (saved_tree);
+  // Backend expects a statement list to come from somewhere, however
+  // popStatementList returns expressions when there is a single statement.
+  // So here we create a statement list unconditionally.
+  tree block = pop_binding_level(true);
+  tree body = irs->popStatementList();
+  tree bind = build3(BIND_EXPR, void_type_node,
+		     BLOCK_VARS (block), body, block);
 
   if (TREE_CODE (body) != STATEMENT_LIST)
     {
       tree stmtlist = alloc_stmt_list();
       append_to_statement_list_force (body, &stmtlist);
-      BIND_EXPR_BODY (saved_tree) = stmtlist;
+      BIND_EXPR_BODY (bind) = stmtlist;
     }
   else if (!STATEMENT_LIST_HEAD (body))
     {
@@ -1400,9 +1390,7 @@ FuncDeclaration::toObjFile(bool force_p)
       append_to_statement_list_force (ret, &body);
     }
 
-  tree block = pop_binding_level (1, 1);
-  DECL_INITIAL (fndecl) = block;
-  BLOCK_SUPERCONTEXT (DECL_INITIAL (fndecl)) = fndecl;
+  DECL_SAVED_TREE (fndecl) = bind;
 
   if (!errorcount && !global.errors)
     {
@@ -1449,10 +1437,10 @@ FuncDeclaration::toObjFile(bool force_p)
 	}
     }
 
+  irs->endFunction();
+
   current_function_decl = old_current_function_decl;
   set_cfun (old_cfun);
-
-  irs->endFunction();
 }
 
 //

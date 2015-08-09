@@ -855,8 +855,6 @@ d_parse_file()
 	d_nametype (Type::basic[ty]);
     }
 
-  current_irstate = new IRState();
-
   // Create Modules
   Modules modules;
   modules.reserve (num_in_fnames);
@@ -1358,71 +1356,30 @@ push_binding_level()
 }
 
 tree
-pop_binding_level (int keep, int routinebody)
+pop_binding_level(bool functionbody)
 {
   binding_level *level = current_binding_level;
-  tree block, decls;
-
   current_binding_level = level->level_chain;
-  decls = level->names;
 
-  if (level->this_block)
-    block = level->this_block;
-  else if (keep || routinebody)
-    block = make_node (BLOCK);
-  else
-    block = NULL_TREE;
+  tree block = make_node(BLOCK);
+  BLOCK_VARS (block) = level->names;
+  BLOCK_SUBBLOCKS (block) = level->blocks;
 
-  if (block)
-    {
-      BLOCK_VARS (block) = routinebody ? NULL_TREE : decls;
-      BLOCK_SUBBLOCKS (block) = level->blocks;
-    }
-  /* In each subblock, record that this is its superior. */
+  // In each subblock, record that this is its superior.
   for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
     BLOCK_SUPERCONTEXT (t) = block;
 
-  /* Dispose of the block that we just made inside some higher level. */
-  if (routinebody)
-    DECL_INITIAL (current_function_decl) = block;
-  else if (block)
+  // Dispose of the block that we just made inside some higher level.
+  if (functionbody)
     {
-      // Original logic was: If this block was created by this poplevel
-      // call and not and earlier set_block, insert it into the parent's
-      // list of blocks.  Blocks created with set_block have to be
-      // inserted with insert_block.
-      if (!level->this_block)
-	current_binding_level->blocks = chainon (current_binding_level->blocks, block);
+      DECL_INITIAL (current_function_decl) = block;
+      BLOCK_SUPERCONTEXT (block) = current_function_decl;
     }
-  /* If we did not make a block for the level just exited, any blocks made for inner
-     levels (since they cannot be recorded as subblocks in that level) must be
-     carried forward so they will later become subblocks of something else. */
-  else if (level->blocks)
-    current_binding_level->blocks = chainon (current_binding_level->blocks, level->blocks);
+  else
+    current_binding_level->blocks
+      = block_chainon(current_binding_level->blocks, block);
 
-  if (block)
-    {
-      TREE_USED (block) = 1;
-      tree vars = copy_list (BLOCK_VARS (block));
-
-      /* Warnings for unused variables.  */
-      for (tree t = nreverse (vars); t != NULL_TREE; t = TREE_CHAIN (t))
-	{
-	  if (VAR_P (t)
-	      && (!TREE_USED (t) /*|| !DECL_READ_P (t)*/) // %% TODO
-	      && !TREE_NO_WARNING (t)
-	      && DECL_NAME (t)
-	      && !DECL_ARTIFICIAL (t))
-	    {
-	      if (!TREE_USED (t))
-		warning_at (DECL_SOURCE_LOCATION (t),
-			    OPT_Wunused_variable, "unused variable %q+D", t);
-	      else if (DECL_CONTEXT (t) == current_function_decl)
-		warning_at (DECL_SOURCE_LOCATION (t),
-			    OPT_Wunused_but_set_variable, "variable %qD set but not used", t);
-	    }
-	}
-    }
+  TREE_USED (block) = 1;
   return block;
 }
 
@@ -1455,11 +1412,9 @@ d_pushdecl (tree decl)
   if (DECL_CONTEXT (decl) == NULL_TREE)
     DECL_CONTEXT (decl) = current_function_decl;
 
-  // Put decls on list in reverse order. We will reverse them later if necessary.
+  // Put decls on list in reverse order.
   TREE_CHAIN (decl) = current_binding_level->names;
   current_binding_level->names = decl;
-  if (!TREE_CHAIN (decl))
-    current_binding_level->names_end = decl;
 
   return decl;
 }
