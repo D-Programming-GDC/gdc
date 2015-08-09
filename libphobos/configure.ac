@@ -16,6 +16,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # Process this file with autoreconf to produce a configure script.
+# This requires that you have your environment set-up to use explicit
+# versions of automake and autoconf.
+#
+#    export ACLOCAL=/usr/bin/aclocal-1.11
+#    export AUTOMAKE=/usr/bin/automake-1.11
+#    export AUTOM4TE=/usr/bin/autom4te2.64
+#    export AUTOCONF=/usr/bin/autoconf2.64
+#
+#    autoreconf2.64
+#
 
 AC_PREREQ(2.64)
 AC_INIT(libphobos, version-unused)
@@ -30,16 +40,7 @@ AC_CANONICAL_SYSTEM
 target_alias=${target_alias-$target}
 AC_SUBST(target_alias)
 
-# Note: with_target_subdir is set by toplevel configure script.
-# If it's empty this configure script was called manually.
-if test -n "${with_target_subdir}"; then
-  if test "$build" != "$host"; then
-    # We are being configured with some form of cross compiler.
-    GCC_NO_EXECUTABLES
-  fi
-fi
-
-AM_INIT_AUTOMAKE([1.9.3 foreign no-dependencies])
+AM_INIT_AUTOMAKE([1.9.3 no-define foreign no-dependencies no-dist -Wall -Wno-portability])
 AH_TEMPLATE(PACKAGE, [Name of package])
 AH_TEMPLATE(VERSION, [Version number of package])
 
@@ -110,13 +111,8 @@ fi
 
 d_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`
 
-GDC=$CC
-# FIXME: This is not really reliable. CC can include complete paths,
-# arguments, etc which may contain 'gcc'
-if test -n "${with_target_subdir}"; then
-  GDC=`echo $CC | sed 's/xgcc/gdc/'`
-else
-  GDC=`echo $CC | sed 's/gcc/gdc/'`
+if test -z "$GDC"; then
+  AC_CHECK_PROG(GDC, gdc, gdc, , , gdc)
 fi
 
 AC_MSG_CHECKING([If $GDC can compile D sources])

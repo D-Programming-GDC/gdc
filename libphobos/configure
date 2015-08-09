@@ -2162,6 +2162,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
 ac_config_headers="$ac_config_headers config.h"
 
 
@@ -2339,15 +2342,6 @@ test -n "$target_alias" &&
 
 target_alias=${target_alias-$target}
 
-
-# Note: with_target_subdir is set by toplevel configure script.
-# If it's empty this configure script was called manually.
-if test -n "${with_target_subdir}"; then
-  if test "$build" != "$host"; then
-    # We are being configured with some form of cross compiler.
-    GCC_NO_EXECUTABLES
-  fi
-fi
 
 am__api_version='1.11'
 
@@ -2790,15 +2784,6 @@ fi
  VERSION='version-unused'
 
 
-cat >>confdefs.h <<_ACEOF
-#define PACKAGE "$PACKAGE"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define VERSION "$VERSION"
-_ACEOF
-
 # Some tools Automake needs.
 
 ACLOCAL=${ACLOCAL-"${am_missing_run}aclocal-${am__api_version}"}
@@ -3162,12 +3147,10 @@ done
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#include <stdio.h>
+
 int
 main ()
 {
-FILE *f = fopen ("conftest.out", "w");
- return ferror (f) || fclose (f) != 0;
 
   ;
   return 0;
@@ -3821,13 +3804,61 @@ fi
 
 d_target_os=`echo $target_os | sed 's/^\(A-Za-z_+\)/\1/'`
 
-GDC=$CC
-# FIXME: This is not really reliable. CC can include complete paths,
-# arguments, etc which may contain 'gcc'
-if test -n "${with_target_subdir}"; then
-  GDC=`echo $CC | sed 's/xgcc/gdc/'`
+if test -z "$GDC"; then
+  # Extract the first word of "gdc", so it can be a program name with args.
+set dummy gdc; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_prog_GDC+set}" = set; then :
+  $as_echo_n "(cached) " >&6
 else
-  GDC=`echo $CC | sed 's/gcc/gdc/'`
+  if test -n "$GDC"; then
+  ac_cv_prog_GDC="$GDC" # Let the user override the test.
+else
+  ac_prog_rejected=no
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    if test "$as_dir/$ac_word$ac_exec_ext" = "gdc"; then
+       ac_prog_rejected=yes
+       continue
+     fi
+    ac_cv_prog_GDC="gdc"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+if test $ac_prog_rejected = yes; then
+  # We found a bogon in the path, so make sure we never use it.
+  set dummy $ac_cv_prog_GDC
+  shift
+  if test $# != 0; then
+    # We chose a different compiler from the bogus one.
+    # However, it has the same basename, so the bogon will be chosen
+    # first if we set GDC to just the basename; use the full file name.
+    shift
+    ac_cv_prog_GDC="$as_dir/$ac_word${1+' '}$@"
+  fi
+fi
+fi
+fi
+GDC=$ac_cv_prog_GDC
+if test -n "$GDC"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GDC" >&5
+$as_echo "$GDC" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking If $GDC can compile D sources" >&5
@@ -5392,6 +5423,10 @@ ac_configure_args="${multilib_arg} ${ac_configure_args}"
 multi_basedir="$multi_basedir"
 CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
 CC="$CC"
+CXX="$CXX"
+GFORTRAN="$GFORTRAN"
+GCJ="$GCJ"
+GDC="$GDC"
 
 _ACEOF
 
