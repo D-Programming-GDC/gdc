@@ -30,31 +30,25 @@
 #include "d-irstate.h"
 #include "d-codegen.h"
 
-IRState::IRState()
-{
-  this->parent = NULL;
-  this->func = NULL;
-  this->mod = NULL;
-  this->sthis = NULL_TREE;
-}
-
 IRState *
 IRState::startFunction (FuncDeclaration *decl)
 {
-  IRState *new_irs = new IRState();
-  new_irs->parent = current_irstate;
-  new_irs->func = decl;
+  cfun->language = ggc_alloc_cleared_language_function();
+
+  current_irstate = new IRState();
+  current_irstate->func = decl;
+  // Default chain value is 'null' unless parent found.
+  current_irstate->sthis = null_pointer_node;
 
   for (Dsymbol *p = decl->parent; p; p = p->parent)
     {
       if (p->isModule())
 	{
-	  new_irs->mod = p->isModule();
+	  current_irstate->mod = p->isModule();
 	  break;
 	}
     }
 
-  current_irstate = (IRState *) new_irs;
   ModuleInfo *mi = current_module_info;
 
   if (decl->isSharedStaticCtorDeclaration())
@@ -78,14 +72,16 @@ IRState::startFunction (FuncDeclaration *decl)
   else if (decl->isUnitTestDeclaration())
     mi->unitTests.safe_push (decl);
 
-  return new_irs;
+  return current_irstate;
 }
 
 void
 IRState::endFunction()
 {
-  gcc_assert (this->scopes_.is_empty());
-  current_irstate = (IRState *) this->parent;
+  gcc_assert(this->statementList_.is_empty());
+
+  ggc_free (cfun->language);
+  cfun->language = NULL;
 }
 
 
@@ -262,53 +258,18 @@ IRState::doLabel (tree label)
 void
 IRState::startScope()
 {
-  unsigned *p_count = new unsigned;
-  *p_count = 0;
-
-  this->scopes_.safe_push (p_count);
-  this->startBindings();
+  push_binding_level();
+  pushStatementList();
 }
 
 void
 IRState::endScope()
 {
-  unsigned *p_count = this->currentScope();
-  while (*p_count)
-    this->endBindings();
+  tree block = pop_binding_level(false);
+  tree body = popStatementList();
 
-  this->scopes_.pop();
-}
-
-
-void
-IRState::startBindings()
-{
-  tree block;
-
-  push_binding_level();
-  block = make_node (BLOCK);
-  current_binding_level->this_block = block;
-
-  this->pushStatementList();
-
-  ++(*this->currentScope());
-}
-
-void
-IRState::endBindings()
-{
-  tree block = pop_binding_level (1, 0);
-  TREE_USED (block) = 1;
-
-  tree body = this->popStatementList();
-  this->addExp (build3 (BIND_EXPR, void_type_node,
-			BLOCK_VARS (block), body, block));
-
-  // The popped level/block is not automatically recorded
-  current_binding_level->blocks = block_chainon (current_binding_level->blocks, block);
-
-  --(*this->currentScope());
-  gcc_assert (*(int *) this->currentScope() >= 0);
+  addExp(build3(BIND_EXPR, void_type_node,
+		BLOCK_VARS (block), body, block));
 }
 
 
@@ -429,61 +390,6 @@ IRState::endLoop()
   this->endFlow();
 }
 
-
-// Create a tree node to set multiple elements to a single value
-
-tree
-IRState::doArraySet(tree ptr, tree value, tree count)
-{
-  tree t;
-
-  pushStatementList();
-  startBindings();
-
-  // Build temporary locals for count and ptr, and maybe value.
-  t = build_local_temp (size_type_node);
-  DECL_INITIAL (t) = count;
-  count = t;
-  expand_decl (count);
-
-  t = build_local_temp (TREE_TYPE (ptr));
-  DECL_INITIAL (t) = ptr;
-  ptr = t;
-  expand_decl (ptr);
-
-  if (d_has_side_effects (value))
-    {
-      t = build_local_temp (TREE_TYPE (value));
-      DECL_INITIAL (t) = value;
-      value = t;
-      expand_decl (value);
-    }
-
-  // Build loop to initialise { .length=count, .ptr=ptr } with value.
-  //
-  //   while (count != 0)
-  //   {
-  //     *ptr = value;
-  //     ptr += (*ptr).sizeof;
-  //     count -= 1;
-  //   }
-  tree pesize = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (ptr)));
-  tree count_zero = d_convert (TREE_TYPE (count), integer_zero_node);
-  tree count_one = d_convert (TREE_TYPE (count), integer_one_node);
-
-  startLoop (NULL);
-  continueHere();
-  exitIfFalse (build_boolop (NE_EXPR, count, count_zero));
-
-  addExp (vmodify_expr (build_deref (ptr), value));
-  addExp (vmodify_expr (ptr, build_offset (ptr, pesize)));
-  addExp (build2 (POSTDECREMENT_EXPR, TREE_TYPE (count), count, count_one));
-
-  endLoop();
-  endBindings();
-
-  return popStatementList();
-}
 
 // Routines for building statement lists around switches.  STMT is the body
 // of the switch statement, COND is the condition to the switch. If HAS_VARS

@@ -214,7 +214,6 @@ top_srcdir = @top_srcdir@
 OUR_CFLAGS = @DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
 D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) -I ./$(host_alias) -I .
 ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
-IMPDIR = import
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
 SUFFIXES = .d
@@ -274,77 +273,6 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
 RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
 		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
 		core/sys/windows/windows.o
-
-
-# Regardless of OS, all import headers are generated.
-CORE_IMPORTS = core/atomic.di core/bitop.di core/checkedint.di core/cpuid.di \
-	     core/demangle.di core/exception.di core/math.di core/memory.di \
-	     core/runtime.di core/simd.di core/thread.di core/time.di \
-	     core/vararg.di \
-	     \
-	     core/internal/traits.di \
-	     \
-	     core/stdc/complex.di core/stdc/config.di core/stdc/ctype.di \
-	     core/stdc/errno.di core/stdc/fenv.di core/stdc/float_.di \
-	     core/stdc/inttypes.di core/stdc/limits.di core/stdc/locale.di \
-	     core/stdc/math.di core/stdc/signal.di core/stdc/stdarg.di \
-	     core/stdc/stddef.di core/stdc/stdint.di core/stdc/stdio.di \
-	     core/stdc/stdlib.di core/stdc/string.di core/stdc/tgmath.di \
-	     core/stdc/time.di core/stdc/wchar_.di core/stdc/wctype.di \
-	     \
-	     core/sync/barrier.di core/sync/condition.di core/sync/config.di \
-	     core/sync/exception.di core/sync/mutex.di core/sync/rwmutex.di \
-	     core/sync/semaphore.di \
-	     \
-	     core/sys/freebsd/dlfcn.di core/sys/freebsd/execinfo.di \
-	     core/sys/freebsd/sys/elf32.di core/sys/freebsd/sys/elf64.di \
-	     core/sys/freebsd/sys/elf_common.di core/sys/freebsd/sys/elf.di \
-	     core/sys/freebsd/sys/event.di core/sys/freebsd/sys/link_elf.di \
-	     \
-	     core/sys/linux/config.di core/sys/linux/dlfcn.di \
-	     core/sys/linux/elf.di core/sys/linux/epoll.di \
-	     core/sys/linux/errno.di core/sys/linux/execinfo.di \
-	     core/sys/linux/link.di core/sys/linux/termios.di \
-	     core/sys/linux/sys/inotify.di core/sys/linux/sys/mman.di \
-	     core/sys/linux/sys/signalfd.di core/sys/linux/sys/xattr.di \
-	     \
-	     core/sys/osx/execinfo.di core/sys/osx/mach/dyld.di \
-	     core/sys/osx/mach/getsect.di core/sys/osx/mach/kern_return.di \
-	     core/sys/osx/mach/loader.di core/sys/osx/mach/port.di \
-	     core/sys/osx/mach/semaphore.di core/sys/osx/mach/thread_act.di \
-	     core/sys/osx/pthread.di \
-	     \
-	     core/sys/posix/arpa/inet.di core/sys/posix/config.di \
-	     core/sys/posix/dirent.di core/sys/posix/dlfcn.di \
-	     core/sys/posix/fcntl.di core/sys/posix/grp.di \
-	     core/sys/posix/inttypes.di core/sys/posix/netdb.di \
-	     core/sys/posix/poll.di core/sys/posix/pthread.di \
-	     core/sys/posix/pwd.di core/sys/posix/sched.di \
-	     core/sys/posix/semaphore.di core/sys/posix/setjmp.di \
-	     core/sys/posix/signal.di core/sys/posix/stdio.di \
-	     core/sys/posix/stdlib.di core/sys/posix/syslog.di \
-	     core/sys/posix/termios.di core/sys/posix/time.di \
-	     core/sys/posix/ucontext.di core/sys/posix/unistd.di \
-	     core/sys/posix/utime.di core/sys/posix/net/if_.di \
-	     core/sys/posix/netinet/in_.di core/sys/posix/netinet/tcp.di \
-	     core/sys/posix/sys/ioctl.di core/sys/posix/sys/ipc.di \
-	     core/sys/posix/sys/mman.di core/sys/posix/sys/resource.di \
-	     core/sys/posix/sys/select.di core/sys/posix/sys/shm.di \
-	     core/sys/posix/sys/socket.di core/sys/posix/sys/stat.di \
-	     core/sys/posix/sys/statvfs.di core/sys/posix/sys/time.di \
-	     core/sys/posix/sys/types.di core/sys/posix/sys/uio.di \
-	     core/sys/posix/sys/un.di core/sys/posix/sys/utsname.di \
-	     core/sys/posix/sys/wait.di \
-	     \
-	     core/sys/windows/dbghelp.di core/sys/windows/dll.di \
-	     core/sys/windows/stacktrace.di core/sys/windows/threadaux.di \
-	     core/sys/windows/windows.di
-
-GCC_IMPORTS = gcc/atomics.di gcc/attribute.di gcc/backtrace.di \
-	    gcc/builtins.di gcc/config.di gcc/libbacktrace.di \
-	    gcc/unwind/arm.di gcc/unwind/generic.di gcc/unwind/package.di \
-	    gcc/unwind/pe.di gcc/gthreads/package.di gcc/gthreads/posix.di \
-	    gcc/gthreads/single.di gcc/gthreads/win32.di
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
@@ -518,27 +446,6 @@ all-local: libgdruntime.a
 %.o : %.d
 	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
 
-# Used to generate .di headers, now just copy from source.d to import/source.di
-$(IMPDIR):
-	mkdir -p $(IMPDIR)
-	mkdir -p $(IMPDIR)/core/internal
-	mkdir -p $(IMPDIR)/core/stdc
-	mkdir -p $(IMPDIR)/core/sync
-	mkdir -p $(IMPDIR)/core/sys/freebsd/sys
-	mkdir -p $(IMPDIR)/core/sys/linux/sys
-	mkdir -p $(IMPDIR)/core/sys/osx/mach
-	mkdir -p $(IMPDIR)/core/sys/posix/arpa
-	mkdir -p $(IMPDIR)/core/sys/posix/net
-	mkdir -p $(IMPDIR)/core/sys/posix/netinet
-	mkdir -p $(IMPDIR)/core/sys/posix/sys
-	mkdir -p $(IMPDIR)/core/sys/windows
-	mkdir -p $(IMPDIR)/gcc
-	mkdir -p $(IMPDIR)/gcc/unwind
-	mkdir -p $(IMPDIR)/gcc/gthreads
-
-$(IMPDIR)/%.di: %.d $(IMPDIR)
-	cp $< $@
-
 # %.o : %.c
 # Use .c.o to override Automake
 .c.o:
@@ -553,9 +460,7 @@ $(IMPDIR)/%.di: %.d $(IMPDIR)
 %.t.o : %.o
 	cp $< $@
 
-libgdruntime.a : $(ALL_DRUNTIME_OBJS) \
-		 $(subst core/,$(IMPDIR)/core/,$(CORE_IMPORTS)) \
-		 $(subst gcc/,$(IMPDIR)/gcc/,$(GCC_IMPORTS))
+libgdruntime.a : $(ALL_DRUNTIME_OBJS)
 @BACKTRACE_SUPPORTED_TRUE@	cp -f $(LIBBACKTRACE_LIB) $@
 @BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS)
 @BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
@@ -591,13 +496,20 @@ install-data-local: libgdruntime.a
 	    core/sys/posix/netinet core/sys/posix/sys \
 	    core/sys/windows; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(IMPDIR)/$$i/*.di; do \
+	    for f in $(srcdir)/$$i/*.d; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
 	done
 	for i in gcc gcc/unwind gcc/gthreads; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(IMPDIR)/$$i/*.di; do \
+	    for f in $(srcdir)/$$i/*.d; do \
+		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    done; \
+	done
+# Install files build generated by configure script
+	for i in gcc; do \
+	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
+	    for f in $$i/*.d; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
 	done
@@ -605,9 +517,6 @@ install-data-local: libgdruntime.a
 clean-local:
 	rm -f $(ALL_DRUNTIME_OBJS)
 	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
-	rm -f $(CORE_IMPORTS)
-	rm -f $(GCC_IMPORTS)
-	rm -rf $(IMPDIR)
 	rm -f unittest.o
 	rm -f unittest$(EXEEXT)
 	rm -f libgdruntime.a

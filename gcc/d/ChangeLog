@@ -1,6 +1,53 @@
+2015-08-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in(DMD_COMPILE): Declare as COMPILE with WARN_CXXFLAGS
+	replaced with DMD_WARN_CXXFLAGS.
+	(DMDGEN_COMPILE): Declare as DMD_COMPILE but with COMPILER replaced
+	with COMPILER_FOR_BUILD.
+	(d/idgen): Use LINKER_FOR_BUILD.
+	(d/impcvgen): Likewise.
+	(d/%.o): Use DMD_COMPILE and POSTCOMPILE.
+	(d/%.dmdgen.o): Use DMDGEN_COMPILE and POSTCOMPILE.
+
+2015-07-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(current_irstate): Remove.
+	(d_build_call): Check cfun before dereferencing.
+	* d-codegen.h(current_irstate): Redefine as macro.
+	* d-irstate.cc(IRState::IRState): Remove.
+	(IRState::startFunction): Initialize language-specific cfun field.
+	(IRState::endFunction): Free language-specific cfun field.
+	* d-lang.cc(d_parse_file): Don't initialize current_irstate.
+	* d-lang.h(language_function): Add irs field.
+	* d-objfile.cc(Dsymbol::toObjFile): Check cfun.
+	(FuncDeclaration::toObjFile): Adjust start and end calls.
+
+2015-07-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-irstate.cc(IRState::doArraySet): Remove function.
+	* d-codegen.cc(build_array_set): New function.
+	* d-elem.cc(AssignExp::toElem): Use build_array_set.
+	(StructLiteralExp::toElem): Likewise.
+
+	* d-codegen.cc(build_array_set): Don't set this_block, update call to
+	pop_binding_level.
+	* d-irstate.cc(IRState::endFunction): Update assert.
+	(IRState::startScope): Move IRState::startBindings here, clean-up.
+	(IRState::endScope): Move IRState::endBindings here, clean-up.
+	(IRState::startBindings): Remove function.
+	(IRState::endBindings): Likewise.
+	(IRState::currentScope): Likewise.
+	(IRState::scopes_): Remove.
+	* d-lang.cc(pop_binding_level): Update signature, clean-up.
+	(d_pushdecl): Don't set names_end.
+	(binding_level::names_end): Remove.
+	(binding_level::this_block): Remove.
+	(FuncDeclaration::toObjFile): Clean-up.
+
 2015-07-24  Sebastien Alaiwan  <sebastien.alaiwan@gmail.com>
 
-	* (deps_write): Use StringTable instead of hash_set of string pointers.
+	* d-lang.cc(deps_write): Use StringTable instead of hash_set of string
+	pointers.
 
 2015-07-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 

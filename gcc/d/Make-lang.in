@@ -54,10 +54,9 @@ gdc-cross$(exeext): gdc$(exeext)
 d-warn = $(filter-out -pedantic -Woverloaded-virtual, $(STRICT_WARN))
 
 # D Frontend has slightly relaxed warnings compared to rest of GDC.
-DMD_WARN_CFLAGS = -Wno-deprecated -Wstrict-aliasing -Wuninitialized
-DMD_CXXFLAGS = $(filter-out $(WARN_CXXFLAGS), $(ALL_COMPILERFLAGS)) $(DMD_WARN_CFLAGS)
-
-ALL_DMD_COMPILER_FLAGS = $(DMD_CXXFLAGS) $(ALL_CPPFLAGS) $(D_INCLUDES)
+DMD_WARN_CXXFLAGS = -Wno-deprecated -Wstrict-aliasing -Wuninitialized
+DMD_COMPILE = $(subst $(WARN_CXXFLAGS), $(DMD_WARN_CXXFLAGS), $(COMPILE))
+DMDGEN_COMPILE = $(subst $(COMPILER), $(COMPILER_FOR_BUILD), $(DMD_COMPILE))
 
 # D Frontend object files.
 D_DMD_OBJS := \
@@ -93,10 +92,10 @@ D_GLUE_OBJS = d/d-attribs.o d/d-lang.o d/d-decls.o \
 
 # Generated programs.
 d/idgen: d/idgen.dmdgen.o
-	$(COMPILER_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
+	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
 
 d/impcvgen: d/impcnvgen.dmdgen.o
-	$(COMPILER_FOR_BUILD) $(ALL_D_COMPILER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
+	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
 
 # Generated sources.
 d/id.c: d/idgen
@@ -113,10 +112,12 @@ d/verstr.h: d/VERSION
 
 # Override build rules for D frontend.
 d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h
-	$(COMPILER) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.o -c $<
+	$(DMD_COMPILE) $(D_INCLUDES) $<
+	$(POSTCOMPILE)
 
 d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
-	$(COMPILER_FOR_BUILD) $(ALL_DMD_COMPILER_FLAGS) -o d/$*.dmdgen.o -c $<
+	$(DMDGEN_COMPILE) $(D_INCLUDES) $<
+	$(POSTCOMPILE)
 
 CFLAGS-d/id.o += $(D_INCLUDES)
 CFLAGS-d/impcnvtab.o += $(D_INCLUDES)
