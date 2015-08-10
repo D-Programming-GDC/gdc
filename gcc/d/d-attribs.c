@@ -39,6 +39,7 @@
 #include "varasm.h"
 #include "attribs.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 

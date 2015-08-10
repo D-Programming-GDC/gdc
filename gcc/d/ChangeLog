@@ -1,3 +1,122 @@
+2015-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(build_closure): Update signature, update all callers.
+	(build_vthis): Likewise.
+	(get_frame_for_symbol): Likewise.
+	(build_local_var): Likewise.
+	(get_decl_tree): Likewise.
+	(start_function): Likewise.
+	* d-irstate.h(IRState): Move func, mod, sthis, deferred,
+	statementList, and varsInScope fields to...
+	* d-tree.h(language_function): Here, updated all uses.
+	* d-irstate.h: Remove file.
+	(IRState): Remove all uses everywhere.
+
+2015-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in(D_GLUE_OBJS): Remove d-irstate.o.
+	* d-tree.h(d_label_use_entry): New structure.
+	(d_label_entry): New structure.
+	(binding_level): Add level_kind field.
+	(language_function): Add hash table field for labels.
+	(D_LABEL_VARIABLE_CASE): New macro.
+	* d-codegen.cc(pop_binding_label): New function.
+	(pop_label): New function.
+	(push_binding_level): Update signature.
+	(pop_binding_level): Update signature.  Handle declared or used labels.
+	(build_array_set): Update for push/pop binding changes.
+	(check_goto): New function.
+	(check_previous_goto): New function.
+	(d_lookup_label): Remove function.
+	(lookup_label): New function.
+	(lookup_bc_label): New function.
+	(define_label): New function.
+	* d-objfile(FuncDeclaration::toObjFile): Update for push/pop binding
+	changes.
+	* toir.cc(IRVisitor): Add break and continue label fields.
+	(IRVisitor::IRVisitor): Initialize here.
+	(IRVisitor::start_scope): Update signature.
+	(IRVisitor::end_scope): Return the finished scope, updated all callers.
+	(IRVisitor::push_break_label): New function.
+	(IRVisitor::pop_break_label): New function.
+	(IRVisitor::push_continue_label): New function.
+	(IRVisitor::pop_continue_label): New function.
+	(IRVisitor::start_condition): Remove function.
+	(IRVisitor::start_else): Remove function.
+	(IRVisitor::end_condition): Remove function.
+	(IRVisitor::start_catches): Remove function.
+	(IRVisitor::start_catch): Remove function.
+	(IRVisitor::end_catch): Remove function.
+	(IRVisitor::end_catches): Remove function.
+	(IRVisitor::start_finally): Remove function.
+	(IRVisitor::end_finally): Remove function.
+	(IRVisitor::start_case): Remove function.
+	(IRVisitor::end_case): Remove function.
+	* d-irstate.cc: Remove.
+
+2015-08-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* config-lang.in(gtfiles): Replace d-lang.h for d-tree.h
+	* d-lang.h: Move all GTY structures to d-tree.h, updated all source
+	header dependencies.
+	* d-tree.h: New file.
+
+2015-08-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* toir.cc(IRVisitor::start_condition): Don't cache condition.
+	(IRVisitor::start_else): Return the then body, updated all callers.
+	(IRVisitor::end_condition): Update signature.
+	(IRVisitor::start_catches): Return the try body, updated all callers.
+	(IRVisitor::start_catch): Don't cache catch type.
+	(IRVisitor::end_catch): Update signature.
+	(IRVisitor::end_catches): Update signature.
+	(IRVisitor::start_finally): Return the try body, updated all callers.
+	(IRVisitor::end_finally): Update signature.
+	(IRVisitor::start_case): Don't cache the condition.
+	(IRVisitor::end_case): Update signature.
+	* d-codegen.cc(convert_for_assignment): Use size_type_node for index.
+	* d-irstate.cc(IRState::beginFlow): Remove call to push_stmt_list.
+
+2015-08-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(push_stmt_list): New function.
+	(pop_stmt_list): New function.
+	(add_stmt): New function.
+	(start_function): New function.
+	(end_function): New function.
+	(expand_decl): Update to use new interface.
+	(build_closure): Likewise.
+	(push_binding_level): Moved from d-lang.cc.
+	(pop_binding_level): Likewise.
+	* d-lang.cc(d_init): Inline call to init_global_binding_level.
+	(alloc_binding_level): Remove function.
+	(push_binding_level): Remove function.
+	(pop_binding_level): Remove function.
+	(init_global_binding_level): Remove function.
+	(set_decl_binding_chain): Remove function.
+	* d-elem.cc(DeclarationExp::toElem): Likewise.
+	* d-objfile.cc(VarDeclaration::toObjFile): Likewise.
+	(FuncDeclaration::toObjFile): Likewise.
+	* toir.cc(IRVisitor::start_scope): Moved from d-irstate.cc, updated
+	all callers in IRVisitor.
+	(IRVisitor::end_scope): Likewise.
+	(IRVisitor::is_return_label): Likewise.
+	(IRVisitor::do_label): Likewise.
+	(IRVisitor::do_jump): Likewise.
+	(IRVisitor::start_condition): Likewise.
+	(IRVisitor::start_else): Likewise.
+	(IRVisitor::end_condition): Likewise.
+	(IRVisitor::start_catches): Likewise.
+	(IRVisitor::start_catch): Likewise.
+	(IRVisitor::end_catch): Likewise.
+	(IRVisitor::end_catches): Likewise.
+	(IRVisitor::start_finally): Likewise.
+	(IRVisitor::end_finally): Likewise.
+	(IRVisitor::end_loop): Likewise.
+	(IRVisitor::start_case): Likewise.
+	(IRVisitor::end_case): Likewise.
+	(build_ir): Update signature.
+
 2015-08-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in(DMD_COMPILE): Declare as COMPILE with WARN_CXXFLAGS

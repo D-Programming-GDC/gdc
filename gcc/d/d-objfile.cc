@@ -51,9 +51,9 @@
 #include "debug.h"
 #include "tree-pretty-print.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-objfile.h"
-#include "d-irstate.h"
 #include "d-codegen.h"
 #include "id.h"
 
@@ -109,7 +109,7 @@ Dsymbol::toObjFile(bool)
       // Get the context of this import, this should never be null.
       tree context;
       if (cfun != NULL)
-	context = current_irstate->func->toSymbol()->Stree;
+	context = current_function_decl;
       else
 	context = current_module_decl->toImport()->Stree;
 
@@ -855,8 +855,7 @@ VarDeclaration::toObjFile(bool)
       // a check for isVarDeclaration() in DeclarationExp::toElem.
       if (!isDataseg() && !isMember())
 	{
-	  IRState *irs = current_irstate;
-	  build_local_var (this, toParent2()->isFuncDeclaration());
+	  build_local_var (this);
 
 	  if (init)
 	    {
@@ -864,8 +863,8 @@ VarDeclaration::toObjFile(bool)
 		{
 		  ExpInitializer *vinit = init->isExpInitializer();
 		  Expression *ie = vinit->toExpression();
-		  tree exp = ie->toElem (irs);
-		  irs->addExp (exp);
+		  tree exp = ie->toElem(NULL);
+		  add_stmt(exp);
 		}
 	      else if (size (loc) != 0)
 		{
@@ -1219,7 +1218,7 @@ FuncDeclaration::toObjFile(bool force_p)
   allocate_struct_function (fndecl, false);
   set_function_end_locus (endloc);
 
-  IRState *irs = IRState::startFunction (this);
+  start_function(this);
 
   tree parm_decl = NULL_TREE;
   tree param_list = NULL_TREE;
@@ -1245,7 +1244,7 @@ FuncDeclaration::toObjFile(bool force_p)
 
       set_decl_location (parm_decl, vthis);
       param_list = chainon (param_list, parm_decl);
-      irs->sthis = parm_decl;
+      cfun->language->static_chain = parm_decl;
     }
 
   // _arguments parameter.
@@ -1272,9 +1271,9 @@ FuncDeclaration::toObjFile(bool force_p)
   rest_of_decl_compilation (fndecl, 1, 0);
   DECL_INITIAL (fndecl) = error_mark_node;
 
-  irs->pushStatementList();
-  push_binding_level();
-  irs->doLineNote (loc);
+  push_stmt_list();
+  push_binding_level(level_function);
+  set_input_location (loc);
 
   // If this is a member function that nested (possibly indirectly) in another
   // function, construct an expession for this member function's static chain
@@ -1293,20 +1292,20 @@ FuncDeclaration::toObjFile(bool force_p)
 	  ad = d->isAggregateDeclaration();
 	  if (ad == NULL)
 	    {
-	      irs->sthis = this_tree;
+	      cfun->language->static_chain = this_tree;
 	      break;
 	    }
 	}
     }
 
-  // May change irs->sthis.
-  build_closure(this, irs);
+  // May change cfun->static_chain
+  build_closure(this);
 
   if (vresult)
-    build_local_var (vresult, this);
+    build_local_var (vresult);
 
   if (v_argptr)
-    irs->pushStatementList();
+    push_stmt_list();
 
   /* The fabled D named return value optimisation.
      Implemented by overriding all the RETURN_EXPRs and replacing all
@@ -1338,27 +1337,27 @@ FuncDeclaration::toObjFile(bool force_p)
       nrvsym->SnamedResult = result_decl;
     }
 
-  build_ir (fbody, irs);
+  build_ir (this);
 
   if (v_argptr)
     {
-      tree body = irs->popStatementList();
-      tree var = get_decl_tree (v_argptr, this);
+      tree body = pop_stmt_list();
+      tree var = get_decl_tree (v_argptr);
       var = build_address (var);
 
       tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START), 2, var, parm_decl);
-      build_local_var (v_argptr, this);
-      irs->addExp (init_exp);
+      build_local_var (v_argptr);
+      add_stmt(init_exp);
 
       tree cleanup = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_END), 1, var);
-      irs->addExp (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
+      add_stmt(build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
     }
 
   // Backend expects a statement list to come from somewhere, however
   // popStatementList returns expressions when there is a single statement.
   // So here we create a statement list unconditionally.
-  tree block = pop_binding_level(true);
-  tree body = irs->popStatementList();
+  tree block = pop_binding_level();
+  tree body = pop_stmt_list();
   tree bind = build3(BIND_EXPR, void_type_node,
 		     BLOCK_VARS (block), body, block);
 
@@ -1408,9 +1407,9 @@ FuncDeclaration::toObjFile(bool force_p)
     d_finish_function (this);
 
   // Process all deferred nested functions.
-  for (size_t i = 0; i < irs->deferred.length(); ++i)
+  for (size_t i = 0; i < cfun->language->deferred_fns.length(); ++i)
     {
-      FuncDeclaration *fd = irs->deferred[i];
+      FuncDeclaration *fd = cfun->language->deferred_fns[i];
       fd->toObjFile(false);
     }
 
@@ -1423,7 +1422,7 @@ FuncDeclaration::toObjFile(bool force_p)
 	}
     }
 
-  irs->endFunction();
+  end_function();
 
   current_function_decl = old_current_function_decl;
   set_cfun (old_cfun);

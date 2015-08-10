@@ -29,6 +29,7 @@
 #include "tm.h"
 #include "tm_p.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 

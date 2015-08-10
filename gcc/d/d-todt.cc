@@ -34,7 +34,7 @@
 #include "toplev.h"
 #include "stor-layout.h"
 
-#include "d-lang.h"
+#include "d-tree.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
 #include "d-dmd-gcc.h"
