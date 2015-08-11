@@ -1,3 +1,8 @@
+2015-08-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc(HaltExp::toElem): Use __builtin_trap to halt execution,
+	rather than the library abort() call.
+
 2015-08-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc(build_closure): Update signature, update all callers.
