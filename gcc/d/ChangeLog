@@ -1,3 +1,10 @@
+2015-08-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	(needsInvariant): New function.
+	(AssertExp::toElem): Check if there are any invariants found in the
+	class object's vtable, and only call the invariant if the classinfo
+	doesn't match at runtime.
+
 2015-08-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc(HaltExp::toElem): Use __builtin_trap to halt execution,

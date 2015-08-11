@@ -1746,6 +1746,41 @@ DotVarExp::toElem (IRState *)
   return error_mark_node;
 }
 
+// Determine if type is an aggregate that contains or inherits an invariant.
+static FuncDeclaration *
+needsInvariant(Type *t)
+{
+  if (global.params.useInvariants)
+    {
+      t = t->toBasetype();
+
+      // If type is a struct, return its invariant.
+      if (t->ty == Tpointer && t->nextOf()->ty == Tstruct)
+	{
+	  StructDeclaration *sd = ((TypeStruct *) t->nextOf())->sym;
+	  return sd->inv;
+	}
+
+      // If type is a class, search all base classes for an invariant.
+      if (t->ty == Tclass)
+	{
+	  ClassDeclaration *cd = ((TypeClass *) t)->sym;
+
+	  // Interfaces and C++ classes don't have invariants.
+	  if (cd->isInterfaceDeclaration() || cd->isCPPclass())
+	    return NULL;
+
+	  for (; cd != NULL; cd = cd->baseClass)
+	    {
+	      if (cd->inv)
+		return cd->inv;
+	    }
+	}
+    }
+
+  return NULL;
+}
+
 elem *
 AssertExp::toElem (IRState *)
 {
@@ -1784,7 +1819,6 @@ AssertExp::toElem (IRState *)
 	{
 	  ClassDeclaration *cd = tb1->isClassHandle();
 	  tree arg = e1->toElem(NULL);
-	  tree invc = NULL_TREE;
 
 	  if (cd->isCOMclass())
 	    {
@@ -1795,13 +1829,26 @@ AssertExp::toElem (IRState *)
 	  else if (cd->isInterfaceDeclaration())
 	    arg = convert_expr (arg, tb1, build_object_type());
 
-	  if (global.params.useInvariants && !cd->isCPPclass())
-	    invc = build_libcall (LIBCALL_INVARIANT, 1, &arg);
+	  tree invc = build_libcall (LIBCALL_INVARIANT, 1, &arg);
+	  if (!needsInvariant(tb1))
+	    {
+	      // Wrap call to _d_invariant inside the following check:
+	      // if (typeid(arg) != typeid(tb1))
+	      //   _d_invariant(arg);
+	      tree tinfo = build_ctype(Type::typeinfoclass->type);
+	      tree tidtype = tb1->getTypeInfo(NULL)->toElem(NULL);
+	      tree tidarg = indirect_ref(build_pointer_type(tinfo), arg);
+	      tidarg = indirect_ref(tinfo, tidarg);
+
+	      invc = build3(COND_EXPR, void_type_node,
+			    build_boolop(EQ_EXPR, tidarg, tidtype),
+			    void_node, invc);
+	    }
 
 	  // This does a null pointer check before calling _d_invariant
 	  return build3 (COND_EXPR, void_type_node,
 			 build_boolop (NE_EXPR, arg, null_pointer_node),
-			 invc ? invc : void_node, assert_call);
+			 invc, assert_call);
 	}
       else
 	{
@@ -1811,16 +1858,12 @@ AssertExp::toElem (IRState *)
 	  tree invc = NULL_TREE;
 	  tree e1_t = e1->toElem(NULL);
 
-	  if (global.params.useInvariants
-	      && tb1->ty == Tpointer && tb1->nextOf()->ty == Tstruct)
+	  FuncDeclaration *inv = needsInvariant(tb1);
+	  if (inv != NULL)
 	    {
-	      FuncDeclaration *inv = ((TypeStruct *) tb1->nextOf())->sym->inv;
-	      if (inv != NULL)
-		{
-		  Expressions args;
-		  e1_t = maybe_make_temp (e1_t);
-		  invc = d_build_call (inv, e1_t, &args);
-		}
+	      Expressions args;
+	      e1_t = maybe_make_temp (e1_t);
+	      invc = d_build_call (inv, e1_t, &args);
 	    }
 	  result = build3 (COND_EXPR, void_type_node,
 			   convert_for_condition (e1_t, e1->type),
