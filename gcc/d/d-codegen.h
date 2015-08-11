@@ -51,10 +51,20 @@ struct FuncFrameInfo
 };
 
 // Visitor routines for barrier between frontend and glue.
-void build_ir(Statement *s, IRState *irs);
+void build_ir(FuncDeclaration *fd);
 tree build_ctype(Type *t);
 
 // Code generation routines.
+extern void push_binding_level(level_kind kind);
+extern tree pop_binding_level();
+
+extern void push_stmt_list();
+extern tree pop_stmt_list();
+extern void add_stmt(tree t);
+
+extern void start_function(FuncDeclaration *decl);
+extern void end_function();
+
 extern tree d_decl_context (Dsymbol *dsym);
 
 extern tree d_mark_addressable (tree exp);
@@ -88,7 +98,11 @@ extern tree maybe_compound_expr (tree arg0, tree arg1);
 extern tree maybe_vcompound_expr (tree arg0, tree arg1);
 
 extern tree bind_expr (tree var_chain, tree body);
-extern tree d_build_label (Loc loc, Identifier *ident);
+
+extern tree define_label(Statement *s, Identifier *ident = NULL);
+extern tree lookup_label(Statement *s, Identifier *ident = NULL);
+extern tree lookup_bc_label(Statement *s, bc_kind);
+extern void check_goto(Statement *from, Statement *to);
 
 // Type conversion.
 // 'd_convert' just to give it a different name from the extern "C" convert.
@@ -136,23 +150,24 @@ extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
 extern tree build_frame_type(FuncDeclaration *func);
-extern void build_closure(FuncDeclaration *fd, IRState *irs);
+extern void build_closure(FuncDeclaration *fd);
 extern FuncFrameInfo *get_frameinfo(FuncDeclaration *fd);
 extern tree get_framedecl(FuncDeclaration *inner, FuncDeclaration *outer);
 
-extern tree build_vthis(AggregateDeclaration *decl, FuncDeclaration *fd);
+extern tree build_vthis(AggregateDeclaration *decl);
+extern tree build_vthis_type(tree basetype, tree type);
 
 // Static chain for nested functions
-extern tree get_frame_for_symbol(FuncDeclaration *func, Dsymbol *sym);
+extern tree get_frame_for_symbol(Dsymbol *sym);
 
 // Local variables
-extern void build_local_var(VarDeclaration *vd, FuncDeclaration *fd);
+extern void build_local_var(VarDeclaration *vd);
 extern tree build_local_temp(tree type);
 extern tree create_temporary_var(tree type);
 extern tree maybe_temporary_var(tree exp, tree *out_var);
 extern void expand_decl(tree decl);
 
-extern tree get_decl_tree(Declaration *decl, FuncDeclaration *func);
+extern tree get_decl_tree(Declaration *decl);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree make_temp (tree t);
@@ -264,7 +279,6 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 // Globals.
 extern Module *current_module_decl;
-#define current_irstate (cfun->language->irs)
 
 #endif
 

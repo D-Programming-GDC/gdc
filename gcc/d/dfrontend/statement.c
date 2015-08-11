@@ -3281,7 +3281,9 @@ CaseStatement::CaseStatement(Loc loc, Expression *exp, Statement *s)
     this->exp = exp;
     this->statement = s;
     index = 0;
+#ifndef IN_GCC
     cblock = NULL;
+#endif
 }
 
 Statement *CaseStatement::syntaxCopy()
@@ -3471,9 +3473,6 @@ DefaultStatement::DefaultStatement(Loc loc, Statement *s)
     : Statement(loc)
 {
     this->statement = s;
-#ifdef IN_GCC
-    cblock = NULL;
-#endif
 }
 
 Statement *DefaultStatement::syntaxCopy()
@@ -4918,8 +4917,10 @@ LabelStatement::LabelStatement(Loc loc, Identifier *ident, Statement *statement)
     this->os = NULL;
     this->gotoTarget = NULL;
     this->lastVar = NULL;
+#ifndef IN_GCC
     this->lblock = NULL;
     this->fwdrefs = NULL;
+#endif
 }
 
 Statement *LabelStatement::syntaxCopy()

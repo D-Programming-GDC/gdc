@@ -27,6 +27,7 @@
 #include "options.h"
 #include "cppdefault.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 

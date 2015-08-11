@@ -27,6 +27,7 @@
 #include "dfrontend/mtype.h"
 
 #include "d-system.h"
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 

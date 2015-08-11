@@ -24,7 +24,7 @@
 #include "dfrontend/aggregate.h"
 
 #include "d-system.h"
-#include "d-lang.h"
+#include "d-tree.h"
 #include "d-codegen.h"
 #include "longdouble.h"
 
