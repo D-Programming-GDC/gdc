@@ -24,9 +24,6 @@ import gcc.unwind.pe;
 import gcc.builtins;
 import gcc.config;
 
-import core.memory;
-import core.stdc.stdlib;
-
 extern(C)
 {
   int _d_isbaseof(ClassInfo, ClassInfo);
@@ -125,7 +122,7 @@ private void
 __gdc_terminate()
 {
   // Replaces std::terminate and terminating with a specific handler
-  abort();
+  __builtin_trap();
 }
 
 // This is called by the unwinder.
@@ -408,7 +405,7 @@ else
 	  return _URC_CONTINUE_UNWIND;
 
 	default:
-	  abort();
+	  __builtin_trap();
 	}
       actions |= state & _US_FORCE_UNWIND;
 

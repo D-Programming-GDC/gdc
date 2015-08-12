@@ -22,12 +22,11 @@
 module gcc.unwind.generic;
 
 private import gcc.builtins;
-private import core.stdc.stdlib; // for abort
 
 /* This is derived from the C++ ABI for IA-64.  Where we diverge
    for cross-architecture compatibility are noted with "@@@".  */
 
-extern (C):
+extern(C):
 
 /* Level 1: Base ABI  */
 
@@ -35,9 +34,9 @@ extern (C):
    inefficient for 32-bit and smaller machines.  */
 alias _Unwind_Word = __builtin_unwind_uint;
 alias _Unwind_Sword = __builtin_unwind_int;
-version (IA64)
+version(IA64)
 {
-  version (HPUX)
+  version(HPUX)
     alias _Unwind_Ptr = __builtin_machine_uint;
   else
     alias _Unwind_Ptr = __builtin_pointer_uint;
@@ -110,55 +109,55 @@ enum
 struct _Unwind_Context;
 
 /* Raise an exception, passing along the given exception object.  */
-_Unwind_Reason_Code _Unwind_RaiseException (_Unwind_Exception *);
+_Unwind_Reason_Code _Unwind_RaiseException(_Unwind_Exception *);
 
 /* Raise an exception for forced unwinding.  */
 
 extern(C) alias _Unwind_Stop_Fn
-    = _Unwind_Reason_Code function (int, _Unwind_Action,
-				    _Unwind_Exception_Class,
-				    _Unwind_Exception *,
-				    _Unwind_Context *, void *);
+    = _Unwind_Reason_Code function(int, _Unwind_Action,
+				   _Unwind_Exception_Class,
+				   _Unwind_Exception *,
+				   _Unwind_Context *, void *);
 
-_Unwind_Reason_Code _Unwind_ForcedUnwind (_Unwind_Exception *, _Unwind_Stop_Fn, void *);
+_Unwind_Reason_Code _Unwind_ForcedUnwind(_Unwind_Exception *, _Unwind_Stop_Fn, void *);
 
 /* Helper to invoke the exception_cleanup routine.  */
-void _Unwind_DeleteException (_Unwind_Exception *);
+void _Unwind_DeleteException(_Unwind_Exception *);
 
 /* Resume propagation of an existing exception.  This is used after
    e.g. executing cleanup code, and not to implement rethrowing.  */
-void _Unwind_Resume (_Unwind_Exception *);
+void _Unwind_Resume(_Unwind_Exception *);
 
 /* @@@ Resume propagation of an FORCE_UNWIND exception, or to rethrow
    a normal exception that was handled.  */
-_Unwind_Reason_Code _Unwind_Resume_or_Rethrow (_Unwind_Exception *);
+_Unwind_Reason_Code _Unwind_Resume_or_Rethrow(_Unwind_Exception *);
 
 /* @@@ Use unwind data to perform a stack backtrace.  The trace callback
    is called for every stack frame in the call chain, but no cleanup
    actions are performed.  */
 extern(C) alias _Unwind_Trace_Fn
-    = _Unwind_Reason_Code function (_Unwind_Context *, void *);
+    = _Unwind_Reason_Code function(_Unwind_Context *, void *);
 
-_Unwind_Reason_Code _Unwind_Backtrace (_Unwind_Trace_Fn, void *);
+_Unwind_Reason_Code _Unwind_Backtrace(_Unwind_Trace_Fn, void *);
 
 /* These functions are used for communicating information about the unwind
    context (i.e. the unwind descriptors and the user register state) between
    the unwind library and the personality routine and landing pad.  Only
    selected registers may be manipulated.  */
 
-_Unwind_Word _Unwind_GetGR (_Unwind_Context *, int);
-void _Unwind_SetGR (_Unwind_Context *, int, _Unwind_Word);
+_Unwind_Word _Unwind_GetGR(_Unwind_Context *, int);
+void _Unwind_SetGR(_Unwind_Context *, int, _Unwind_Word);
 
-_Unwind_Ptr _Unwind_GetIP (_Unwind_Context *);
-_Unwind_Ptr _Unwind_GetIPInfo (_Unwind_Context *, int *);
-void _Unwind_SetIP (_Unwind_Context *, _Unwind_Ptr);
+_Unwind_Ptr _Unwind_GetIP(_Unwind_Context *);
+_Unwind_Ptr _Unwind_GetIPInfo(_Unwind_Context *, int *);
+void _Unwind_SetIP(_Unwind_Context *, _Unwind_Ptr);
 
 /* @@@ Retrieve the CFA of the given context.  */
-_Unwind_Word _Unwind_GetCFA (_Unwind_Context *);
+_Unwind_Word _Unwind_GetCFA(_Unwind_Context *);
 
-void *_Unwind_GetLanguageSpecificData (_Unwind_Context *);
+void *_Unwind_GetLanguageSpecificData(_Unwind_Context *);
 
-_Unwind_Ptr _Unwind_GetRegionStart (_Unwind_Context *);
+_Unwind_Ptr _Unwind_GetRegionStart(_Unwind_Context *);
 
 
 /* The personality routine is the function in the C++ (or other language)
@@ -176,55 +175,55 @@ _Unwind_Ptr _Unwind_GetRegionStart (_Unwind_Context *);
    lack of code to handle the different data format.  */
 
 extern(C) alias _Unwind_Personality_Fn
-    = _Unwind_Reason_Code function (int, _Unwind_Action,
-				    _Unwind_Exception_Class,
-				    _Unwind_Exception *,
-				    _Unwind_Context *);
+    = _Unwind_Reason_Code function(int, _Unwind_Action,
+				   _Unwind_Exception_Class,
+				   _Unwind_Exception *,
+				   _Unwind_Context *);
 
 /* @@@ The following alternate entry points are for setjmp/longjmp
    based unwinding.  */
 
 struct SjLj_Function_Context;
-extern void _Unwind_SjLj_Register (SjLj_Function_Context *);
-extern void _Unwind_SjLj_Unregister (SjLj_Function_Context *);
+extern void _Unwind_SjLj_Register(SjLj_Function_Context *);
+extern void _Unwind_SjLj_Unregister(SjLj_Function_Context *);
 
-_Unwind_Reason_Code _Unwind_SjLj_RaiseException (_Unwind_Exception *);
-_Unwind_Reason_Code _Unwind_SjLj_ForcedUnwind (_Unwind_Exception *, _Unwind_Stop_Fn, void *);
-void _Unwind_SjLj_Resume (_Unwind_Exception *);
-_Unwind_Reason_Code _Unwind_SjLj_Resume_or_Rethrow (_Unwind_Exception *);
+_Unwind_Reason_Code _Unwind_SjLj_RaiseException(_Unwind_Exception *);
+_Unwind_Reason_Code _Unwind_SjLj_ForcedUnwind(_Unwind_Exception *, _Unwind_Stop_Fn, void *);
+void _Unwind_SjLj_Resume(_Unwind_Exception *);
+_Unwind_Reason_Code _Unwind_SjLj_Resume_or_Rethrow(_Unwind_Exception *);
 
 /* @@@ The following provide access to the base addresses for text
    and data-relative addressing in the LDSA.  In order to stay link
    compatible with the standard ABI for IA-64, we inline these.  */
 
-version (IA64)
+version(IA64)
 {
   _Unwind_Ptr
-  _Unwind_GetDataRelBase (_Unwind_Context *_C)
+  _Unwind_GetDataRelBase(_Unwind_Context *_C)
   {
     /* The GP is stored in R1.  */
-    return _Unwind_GetGR (_C, 1);
+    return _Unwind_GetGR(_C, 1);
   }
 
   _Unwind_Ptr
-  _Unwind_GetTextRelBase (_Unwind_Context *)
+  _Unwind_GetTextRelBase(_Unwind_Context *)
   {
-    abort ();
+    __builtin_trap();
     return 0;
   }
 
   /* @@@ Retrieve the Backing Store Pointer of the given context.  */
-  _Unwind_Word _Unwind_GetBSP (_Unwind_Context *);
+  _Unwind_Word _Unwind_GetBSP(_Unwind_Context *);
 }
 else
 {
-  _Unwind_Ptr _Unwind_GetDataRelBase (_Unwind_Context *);
-  _Unwind_Ptr _Unwind_GetTextRelBase (_Unwind_Context *);
+  _Unwind_Ptr _Unwind_GetDataRelBase(_Unwind_Context *);
+  _Unwind_Ptr _Unwind_GetTextRelBase(_Unwind_Context *);
 }
 
 /* @@@ Given an address, return the entry point of the function that
    contains it.  */
-extern void * _Unwind_FindEnclosingFunction (void *pc);
+extern void * _Unwind_FindEnclosingFunction(void *pc);
 
 
 /* leb128 type numbers have a potentially unlimited size.
@@ -247,6 +246,6 @@ else static if (long.sizeof >= (void*).sizeof)
 }
 else
 {
-  static assert (0, "What type shall we use for _sleb128_t?");
+  static assert(0, "What type shall we use for _sleb128_t?");
 }
 
