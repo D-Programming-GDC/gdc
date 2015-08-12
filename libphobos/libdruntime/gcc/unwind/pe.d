@@ -21,7 +21,7 @@
 module gcc.unwind.pe;
 
 import gcc.unwind;
-private import core.stdc.stdlib : abort;
+import gcc.builtins;
 
 /* Pointer encodings, from dwarf2.h.  */
 enum
@@ -48,13 +48,13 @@ enum
   DW_EH_PE_indirect = 0x80
 }
 
-version (NO_SIZE_OF_ENCODED_VALUE) {}
+version(NO_SIZE_OF_ENCODED_VALUE) {}
 else
 {
   /* Given an encoding, return the number of bytes the format occupies.
      This is only defined for fixed-size encodings, and so does not
      include leb128.  */
-  uint size_of_encoded_value (ubyte encoding)
+  uint size_of_encoded_value(ubyte encoding)
   {
       if (encoding == DW_EH_PE_omit)
 	return 0;
@@ -74,7 +74,7 @@ else
   }
 }
 
-version (NO_BASE_OF_ENCODED_VALUE) {}
+version(NO_BASE_OF_ENCODED_VALUE) {}
 else
 {
   /* Given an encoding and an _Unwind_Context, return the base to which
@@ -83,7 +83,7 @@ else
      not available.  */
 
   _Unwind_Ptr
-  base_of_encoded_value (ubyte encoding, _Unwind_Context *context)
+  base_of_encoded_value(ubyte encoding, _Unwind_Context *context)
   {
     if (encoding == DW_EH_PE_omit)
       return cast(_Unwind_Ptr) 0;
@@ -96,13 +96,13 @@ else
 	return cast(_Unwind_Ptr) 0;
 
       case DW_EH_PE_textrel:
-	return _Unwind_GetTextRelBase (context);
+	return _Unwind_GetTextRelBase(context);
       case DW_EH_PE_datarel:
-	return _Unwind_GetDataRelBase (context);
+	return _Unwind_GetDataRelBase(context);
       case DW_EH_PE_funcrel:
-	return _Unwind_GetRegionStart (context);
+	return _Unwind_GetRegionStart(context);
       }
-    assert (0);
+    assert(0);
   }
 }
 
@@ -112,7 +112,7 @@ else
    pointers should not be leb128 encoded on that target.  */
 
 ubyte *
-read_uleb128 (ubyte *p, _uleb128_t *val)
+read_uleb128(ubyte *p, _uleb128_t *val)
 {
   uint shift = 0;
   ubyte a_byte;
@@ -134,7 +134,7 @@ read_uleb128 (ubyte *p, _uleb128_t *val)
 /* Similar, but read a signed leb128 value.  */
 
 ubyte *
-read_sleb128 (ubyte *p, _sleb128_t *val)
+read_sleb128(ubyte *p, _sleb128_t *val)
 {
   uint shift = 0;
   ubyte a_byte;
@@ -162,8 +162,8 @@ read_sleb128 (ubyte *p, _sleb128_t *val)
    by base_of_encoded_value for this encoding in the appropriate context.  */
 
 ubyte *
-read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
-                              ubyte *p, _Unwind_Ptr *val)
+read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
+                             ubyte *p, _Unwind_Ptr *val)
 {
   union unaligned
     {
@@ -199,7 +199,7 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
         case DW_EH_PE_uleb128:
           {
             _uleb128_t tmp;
-            p = read_uleb128 (p, &tmp);
+            p = read_uleb128(p, &tmp);
             result = cast(_Unwind_Internal_Ptr) tmp;
           }
           break;
@@ -207,7 +207,7 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
         case DW_EH_PE_sleb128:
           {
             _sleb128_t tmp;
-            p = read_sleb128 (p, &tmp);
+            p = read_sleb128(p, &tmp);
             result = cast(_Unwind_Internal_Ptr) tmp;
           }
           break;
@@ -239,7 +239,7 @@ read_encoded_value_with_base (ubyte encoding, _Unwind_Ptr base,
           break;
 
         default:
-          abort ();
+          __builtin_trap();
         }
 
       if (result != 0)
@@ -262,11 +262,11 @@ else
      rather than providing it directly.  */
 
   ubyte *
-  read_encoded_value (_Unwind_Context *context, ubyte encoding,
-		      ubyte *p, _Unwind_Ptr *val)
+  read_encoded_value(_Unwind_Context *context, ubyte encoding,
+		     ubyte *p, _Unwind_Ptr *val)
   {
-    return read_encoded_value_with_base (encoding,
-		  base_of_encoded_value (encoding, context),
+    return read_encoded_value_with_base(encoding,
+		  base_of_encoded_value(encoding, context),
 		  p, val);
   }
 }
