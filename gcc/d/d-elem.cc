@@ -1885,8 +1885,7 @@ FuncExp::toElem (IRState *)
 elem *
 HaltExp::toElem (IRState *)
 {
-  // Needs improvement.  Avoid library calls if possible..
-  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_ABORT), 0);
+  return d_build_call_nary (builtin_decl_explicit (BUILT_IN_TRAP), 0);
 }
 
 elem *
