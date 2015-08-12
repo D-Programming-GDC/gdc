@@ -27,6 +27,7 @@
 #include "dfrontend/visitor.h"
 
 #include "d-system.h"
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"

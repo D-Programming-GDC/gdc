@@ -45,7 +45,7 @@ D_DMD_H := \
     d/d-dmd-gcc.h d/longdouble.h d/id.h d/verstr.h
 
 D_TREE_H = $(TREE_H) $(D_DMD_H) d/intrinsics.def d/runtime.def d/d-tree.def \
-    d/d-lang.h d/d-codegen.h d/d-objfile.h d/d-irstate.h \
+    d/d-lang.h d/d-codegen.h d/d-objfile.h d/d-tree.h \
     d/d-dmd-gcc.h d/d-system.h d/longdouble.h coretypes.h function.h \
     $(VARRAY_H) $(SYSTEM_H) $(CONFIG_H) $(TARGET_H) $(GGC_H) \
     $(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h
@@ -117,7 +117,7 @@ D_GENERATED_OBJS = d/id.o d/impcnvtab.o
 
 # D Glue object files.
 D_GLUE_OBJS = d/d-attribs.o d/d-lang.o d/d-decls.o \
-              d/d-codegen.o d/d-objfile.o d/d-irstate.o \
+              d/d-codegen.o d/d-objfile.o \
               d/d-convert.o d/d-todt.o d/d-longdouble.o \
               d/d-builtins.o d/d-incpath.o d/types.o \
               d/d-elem.o d/toir.o d/d-typinf.o \

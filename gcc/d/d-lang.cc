@@ -39,10 +39,10 @@
 #include "cppdefault.h"
 #include "debug.h"
 
+#include "d-tree.h"
 #include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
-#include "d-irstate.h"
 #include "d-dmd-gcc.h"
 #include "id.h"
 
@@ -131,6 +131,10 @@ static Module *rootmodule = NULL;
 
 /* Zero disables all standard directories for headers.  */
 static bool std_inc = true;
+
+/* The current and global binding level in effect.  */
+struct binding_level *current_binding_level;
+struct binding_level *global_binding_level;
 
 /* Common initialization before calling option handlers.  */
 static void
@@ -235,7 +239,8 @@ d_init()
   initTraitsStringTable();
 
   // Backend init.
-  init_global_binding_level();
+  global_binding_level = ggc_alloc_cleared_binding_level();
+  current_binding_level = global_binding_level;
 
   // This allows the code in d-builtins.c to not have to worry about
   // converting (C signed char *) to (D char *) for string arguments of
@@ -1334,56 +1339,6 @@ d_type_promotes_to(tree type)
 }
 
 
-struct binding_level *current_binding_level;
-struct binding_level *global_binding_level;
-
-static binding_level *
-alloc_binding_level()
-{
-  return ggc_alloc_cleared_binding_level();
-}
-
-/* The D front-end does not use the 'binding level' system for a symbol table,
-   It is only needed to get debugging information for local variables and
-   otherwise support the backend. */
-
-void
-push_binding_level()
-{
-  binding_level *new_level = alloc_binding_level();
-  new_level->level_chain = current_binding_level;
-  current_binding_level = new_level;
-}
-
-tree
-pop_binding_level(bool functionbody)
-{
-  binding_level *level = current_binding_level;
-  current_binding_level = level->level_chain;
-
-  tree block = make_node(BLOCK);
-  BLOCK_VARS (block) = level->names;
-  BLOCK_SUBBLOCKS (block) = level->blocks;
-
-  // In each subblock, record that this is its superior.
-  for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
-    BLOCK_SUPERCONTEXT (t) = block;
-
-  // Dispose of the block that we just made inside some higher level.
-  if (functionbody)
-    {
-      DECL_INITIAL (current_function_decl) = block;
-      BLOCK_SUPERCONTEXT (block) = current_function_decl;
-    }
-  else
-    current_binding_level->blocks
-      = block_chainon(current_binding_level->blocks, block);
-
-  TREE_USED (block) = 1;
-  return block;
-}
-
-
 // This is called by the backend before parsing.  Need to make this do
 // something or lang_hooks.clear_binding_stack (lhd_clear_binding_stack)
 // loops forever.
@@ -1395,13 +1350,6 @@ d_global_bindings_p()
     return true;
 
   return !global_binding_level;
-}
-
-void
-init_global_binding_level()
-{
-  global_binding_level = alloc_binding_level();
-  current_binding_level = global_binding_level;
 }
 
 tree
@@ -1419,16 +1367,7 @@ d_pushdecl (tree decl)
   return decl;
 }
 
-void
-set_decl_binding_chain (tree decl_chain)
-{
-  gcc_assert (current_binding_level);
-  current_binding_level->names = decl_chain;
-}
-
-
 // Return the list of declarations of the current level.
-// Supports dbx and stabs.
 
 static tree
 d_getdecls()

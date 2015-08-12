@@ -28,7 +28,7 @@ compilers="cc1d\$(exeext)"
 
 target_libs="target-libphobos target-zlib target-libbacktrace"
 
-gtfiles="\$(srcdir)/d/d-builtins.h \$(srcdir)/d/d-lang.h"
+gtfiles="\$(srcdir)/d/d-tree.h \$(srcdir)/d/d-builtins.h \$(srcdir)/d/d-lang.h"
 
 # Do not build by default.
 build_by_default="no"
