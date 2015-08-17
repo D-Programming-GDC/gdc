@@ -190,9 +190,6 @@ d_init_options_struct(gcc_options *opts)
   // Keep in synch with existing -fbounds-check flag.
   opts->x_flag_bounds_check = global.params.useArrayBounds;
 
-  // Honour left to right code evaluation.
-  opts->x_flag_evaluation_order = 1;
-
   // D says that signed overflow is precisely defined.
   opts->x_flag_wrapv = 1;
 }
