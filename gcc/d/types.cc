@@ -186,6 +186,7 @@ public:
       }
 
     t->ctype = make_node(ENUMERAL_TYPE);
+    ENUM_IS_SCOPED (t->ctype) = 1;
     TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
     d_keep(t->ctype);
 
