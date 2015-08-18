@@ -451,6 +451,9 @@ public:
 
     condition = fold(condition);
 
+    // default label for final switch
+    tree final_label = NULL_TREE;
+
     // Build LABEL_DECLs now so they can be refered to by goto case.
     // Also checking the jump from the switch to the label is allowed.
     if (s->cases)
@@ -491,12 +494,41 @@ public:
 
 	    check_goto(s, s->sdefault);
 	  }
+	else if (s->isFinal)
+	  {
+	    final_label = build_decl(input_location, LABEL_DECL,
+				     get_identifier("default"), void_type_node);
+	    DECL_CONTEXT (final_label) = current_function_decl;
+	    DECL_MODE (final_label) = VOIDmode;
+
+	    // The default label is the last 'else' block.
+	    if (s->hasVars)
+	      this->do_jump(NULL, final_label);
+	  }
       }
 
     // Switch body goes in its own statement list.
     push_stmt_list();
     if (s->body)
       s->body->accept(this);
+
+    // If we're a final switch, add a unreachable default handler
+    // for optimization
+    if (s->cases && !s->sdefault && s->isFinal)
+      {
+	// Emit the default case label.
+	if (s->hasVars)
+	  this->do_label(final_label);
+	else
+	  {
+	    tree caselabel = build_case_label(NULL_TREE, NULL_TREE, final_label);
+	    add_stmt(caselabel);
+	  }
+
+	// Now do the body.
+	tree body = d_build_call_nary (builtin_decl_explicit (BUILT_IN_UNREACHABLE), 0);
+	add_stmt(body);
+      }
 
     tree casebody = pop_stmt_list();
 
