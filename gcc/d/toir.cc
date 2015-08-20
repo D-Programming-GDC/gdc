@@ -162,8 +162,9 @@ public:
   // Visitor interfaces.
 
   // This should be overridden by each statement class.
-  void visit(Statement *)
+  void visit(Statement *s)
   {
+    set_input_location(s->loc);
     gcc_unreachable();
   }
 
@@ -222,8 +223,9 @@ public:
   // The frontend lowers while(...) statements as for(...) loops.
   // This visitor is not strictly required other than to enforce that
   // these kinds of statements never reach here.
-  void visit(WhileStatement *)
+  void visit(WhileStatement *s)
   {
+    set_input_location(s->loc);
     gcc_unreachable();
   }
 
@@ -299,16 +301,18 @@ public:
   // The frontend lowers foreach(...) statements as for(...) loops.
   // This visitor is not strictly required other than to enforce that
   // these kinds of statements never reach here.
-  void visit(ForeachStatement *)
+  void visit(ForeachStatement *s)
   {
+    set_input_location(s->loc);
     gcc_unreachable();
   }
 
   // The frontend lowers foreach(...[x..y]) statements as for(...) loops.
   // This visitor is not strictly required other than to enforce that
   // these kinds of statements never reach here.
-  void visit(ForeachRangeStatement *)
+  void visit(ForeachRangeStatement *s)
   {
+    set_input_location(s->loc);
     gcc_unreachable();
   }
 
@@ -846,16 +850,18 @@ public:
   // monitor/critical enter and exit wrapped around try/finally.
   // This visitor is not strictly required other than to enforce that
   // these kinds of statements never reach here.
-  void visit(SynchronizedStatement *)
+  void visit(SynchronizedStatement *s)
   {
+    set_input_location(s->loc);
     gcc_unreachable();
   }
 
   // D Inline Assembler is not implemented, as would require a writing
   // an assembly parser for each supported target.  Instead we leverage
   // GCC extended assembler using the ExtAsmStatement class.
-  void visit(AsmStatement *)
+  void visit(AsmStatement *s)
   {
+    set_input_location(s->loc);
     sorry("D inline assembler statements are not supported in GDC.");
   }
 
