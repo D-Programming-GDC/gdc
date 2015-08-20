@@ -22,7 +22,7 @@
 # Installation name.
 
 D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
-D_TARGET_INSTALL_NAME = $(target_alias)-$(shell echo gdc|sed '$(program_transform_name)')
+D_TARGET_INSTALL_NAME = $(target_noncanonical)-$(shell echo gdc|sed '$(program_transform_name)')
 
 # Common headers between D frontend and glue
 D_DMD_H := \
