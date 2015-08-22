@@ -320,9 +320,11 @@ case "$d_target_os" in
              D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OSX_OBJS)"
              ;;
     freebsd*|k*bsd*-gnu)
+             DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_FREEBSD_OBJS)"
              D_EXTRA_OBJS="$D_EXTRA_OBJS \$(FREEBSD_OBJS)"
              ;;
-    linux*)  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
+    linux*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_LINUX_OBJS)"
+             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(LINUX_OBJS)"
              ;;
     mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
              DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
