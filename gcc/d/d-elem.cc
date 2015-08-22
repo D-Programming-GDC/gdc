@@ -1777,7 +1777,7 @@ AssertExp::toElem (IRState *)
 	    libcall = LIBCALL_ASSERT;
 	}
 
-      tree assert_call = d_assert_call (loc, libcall, tmsg);
+      tree assert_call = d_assert_call(loc, libcall, tmsg);
 
       // Build condition that we are asserting in this contract.
       if (tb1->ty == Tclass)
@@ -1788,20 +1788,23 @@ AssertExp::toElem (IRState *)
 
 	  if (cd->isCOMclass())
 	    {
-	      return build3 (COND_EXPR, void_type_node,
-			     build_boolop (NE_EXPR, arg, null_pointer_node),
-			     void_node, assert_call);
+	      return build3(COND_EXPR, void_type_node,
+			    build_boolop(NE_EXPR, arg, null_pointer_node),
+			    void_node, assert_call);
 	    }
 	  else if (cd->isInterfaceDeclaration())
-	    arg = convert_expr (arg, tb1, build_object_type());
+	    arg = convert_expr(arg, tb1, build_object_type());
 
 	  if (global.params.useInvariants && !cd->isCPPclass())
-	    invc = build_libcall (LIBCALL_INVARIANT, 1, &arg);
+	    {
+	      arg = maybe_make_temp(arg);
+	      invc = build_libcall(LIBCALL_INVARIANT, 1, &arg);
+	    }
 
 	  // This does a null pointer check before calling _d_invariant
-	  return build3 (COND_EXPR, void_type_node,
-			 build_boolop (NE_EXPR, arg, null_pointer_node),
-			 invc ? invc : void_node, assert_call);
+	  return build3(COND_EXPR, void_type_node,
+			build_boolop(NE_EXPR, arg, null_pointer_node),
+			invc ? invc : void_node, assert_call);
 	}
       else
 	{
@@ -1818,13 +1821,13 @@ AssertExp::toElem (IRState *)
 	      if (inv != NULL)
 		{
 		  Expressions args;
-		  e1_t = maybe_make_temp (e1_t);
-		  invc = d_build_call (inv, e1_t, &args);
+		  e1_t = maybe_make_temp(e1_t);
+		  invc = d_build_call(inv, e1_t, &args);
 		}
 	    }
-	  result = build3 (COND_EXPR, void_type_node,
-			   convert_for_condition (e1_t, e1->type),
-			   invc ? invc : void_node, assert_call);
+	  result = build3(COND_EXPR, void_type_node,
+			  convert_for_condition(e1_t, e1->type),
+			  invc ? invc : void_node, assert_call);
 	  return result;
 	}
     }
