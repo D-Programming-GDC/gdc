@@ -54,7 +54,10 @@ private
 
     // backtrace
     version(GNU)
+    {
+        import gcc.builtins;
         import gcc.backtrace;
+    }
 
     version( linux )
         import core.sys.linux.execinfo;
@@ -517,6 +520,8 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                         else
                         version( D_InlineAsm_X86_64 )
                             asm { naked; mov RAX, RBP; ret; }
+                        else version (GNU)
+                            return cast(void**) __builtin_frame_address(0);
                         else
                             return null;
                     }
