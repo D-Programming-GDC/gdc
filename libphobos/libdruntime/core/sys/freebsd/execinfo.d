@@ -8,6 +8,9 @@
  */
 module core.sys.freebsd.execinfo;
 
+version (GNU) {} // use gcc.backtrace
+else:
+
 version (FreeBSD):
 extern (C):
 nothrow:

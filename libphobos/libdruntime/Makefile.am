@@ -91,7 +91,7 @@ RT_STDC_OBJS=core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
 
 RT_LINUX_OBJS=
 
-RT_FREEBSD_OBJS=core/sys/freebsd/execinfo.o core/sys/freebsd/sys/event.o
+RT_FREEBSD_OBJS=core/sys/freebsd/sys/event.o
 
 RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
 	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o \
