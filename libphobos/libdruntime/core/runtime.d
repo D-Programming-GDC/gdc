@@ -707,7 +707,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         auto s = new StackTrace(FIRSTFRAME, cast(CONTEXT*)ptr);
         return s;
     }
-    else static if( __traits( compiles, new GDCBacktrace(0) ) )
+    else static if( __traits( compiles, new UnwindBacktrace(0) ) )
     {
         version(Posix)
         {
@@ -721,7 +721,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         {
             static enum FIRSTFRAME = 0;
         }
-        return new GDCBacktrace(FIRSTFRAME);
+        return new UnwindBacktrace(FIRSTFRAME);
     }
     else
     {
