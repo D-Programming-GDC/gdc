@@ -520,11 +520,18 @@ class CppMangleVisitor : public Visitor
             td = new TypeDelegate(td);
             t = t->merge();
         }
-        if (t->ty == Tsarray)
+#ifdef IN_GCC
+        if (t->ty == Tsarray && Type::tvalist->ty == Tsarray)
         {
-            // Mangle static arrays as pointers
-            t = t->nextOf()->pointerTo();
+            // Could be a va_list, which we mangle as a pointer.
+            Type *tb = t->toBasetype()->mutableOf();
+            if (tb == Type::tvalist)
+            {
+                tb = t->nextOf()->pointerTo();
+                t = tb->castMod(t->mod);
+            }
         }
+#endif
 
         /* If it is a basic, enum or struct type,
          * then don't mark it const
