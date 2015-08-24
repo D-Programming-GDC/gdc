@@ -785,13 +785,14 @@ public:
 	    this->start_scope(level_catch);
 
 	    tree catchtype = build_ctype(vcatch->type);
+
+	    // Get D's internal exception Object, different from the generic
+	    // exception pointer returned from gcc runtime.
+	    tree ehptr = d_build_call_nary(builtin_decl_explicit(BUILT_IN_EH_POINTER),
+					   1, integer_zero_node);
+	    tree object = build_libcall(LIBCALL_BEGIN_CATCH, 1, &ehptr);
 	    if (vcatch->var)
 	      {
-		// Get D's internal exception Object, different
-		// from the generic exception pointer.
-		tree ehptr = d_build_call_nary(builtin_decl_explicit(BUILT_IN_EH_POINTER),
-					       1, integer_zero_node);
-		tree object = build_libcall(LIBCALL_BEGIN_CATCH, 1, &ehptr);
 		object = build1(NOP_EXPR, build_ctype(build_object_type()), object);
 		object = convert_expr(object, build_object_type(), vcatch->type);
 
@@ -800,6 +801,12 @@ public:
 
 		build_local_var(vcatch->var);
 		add_stmt(init);
+	      }
+	    else
+	      {
+		// Still need to emit a call to __gdc_begin_catch() to remove
+		// the object from the uncaught exceptions list.
+		add_stmt(object);
 	      }
 
 	    if (vcatch->handler)
