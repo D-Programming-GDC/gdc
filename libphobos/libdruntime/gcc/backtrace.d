@@ -341,13 +341,13 @@ else
      * everywhere where this code works. We keep it anyway till libbacktrace
      * is well-tested.
      */
-    public class GDCBacktrace : Throwable.TraceInfo
+    public class UnwindBacktrace : Throwable.TraceInfo
     {
         this(int firstFrame = FIRSTFRAME)
         {
             _firstFrame = firstFrame;
-            _callstack = gdcBacktrace();
-            _framelist = gdcBacktraceSymbols(_callstack);
+            _callstack = getBacktrace();
+            _framelist = getBacktraceSymbols(_callstack);
         }
 
         override int opApply( scope int delegate(ref const(char[])) dg ) const
@@ -384,7 +384,7 @@ else
 
     private:
         BTSymbolData     _framelist;
-        GDCBacktraceData _callstack;
+        UnwindBacktraceData _callstack;
         int              _firstFrame = 0;
     }
 
@@ -394,7 +394,7 @@ else
 
         static enum MAXFRAMES = 128;
 
-        struct GDCBacktraceData
+        struct UnwindBacktraceData
         {
             void*[MAXFRAMES] callstack;
             int numframes = 0;
@@ -408,7 +408,7 @@ else
 
         static extern (C) _Unwind_Reason_Code unwindCB(_Unwind_Context *ctx, void *d)
         {
-            GDCBacktraceData* bt = cast(GDCBacktraceData*)d;
+            UnwindBacktraceData* bt = cast(UnwindBacktraceData*)d;
             if(bt.numframes >= MAXFRAMES)
                 return _URC_NO_REASON;
 
@@ -417,14 +417,14 @@ else
             return _URC_NO_REASON;
         }
 
-        GDCBacktraceData gdcBacktrace()
+        UnwindBacktraceData getBacktrace()
         {
-            GDCBacktraceData stackframe;
+            UnwindBacktraceData stackframe;
             _Unwind_Backtrace(&unwindCB, &stackframe);
             return stackframe;
         }
 
-        BTSymbolData gdcBacktraceSymbols(GDCBacktraceData data)
+        BTSymbolData getBacktraceSymbols(UnwindBacktraceData data)
         {
             BTSymbolData symData;
 

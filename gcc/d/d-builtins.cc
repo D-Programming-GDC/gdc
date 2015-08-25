@@ -491,21 +491,6 @@ maybe_set_builtin_1(Dsymbol *m)
 	  if (fd->ident != Lexer::idPool(name))
 	    continue;
 
-	  // As per C ABI, in gcc.builtins module va_list is passed by reference.
-	  TypeFunction *tf = (TypeFunction *) fd->type;
-	  for (size_t i = 0; i < tf->parameters->dim; i++)
-	    {
-	      Type *type = (*tf->parameters)[i]->type;
-	      if (type->ty == Tsarray)
-		(*tf->parameters)[i]->storageClass |= STCref;
-	      else if (type->ty == Tident && Type::tvalist->ty == Tsarray)
-		{
-		  Identifier *ident = ((TypeIdentifier *) type)->ident;
-		  if (ident == Lexer::idPool("va_list"))
-		    (*tf->parameters)[i]->storageClass |= STCref;
-		}
-	    }
-
 	  fd->csym = new Symbol;
 	  fd->csym->Sident = name;
 	  fd->csym->Stree = decl;
@@ -743,10 +728,9 @@ d_init_builtins()
 
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
     {
-      // It might seem natural to make the reference type a pointer,
-      // but this will not work in D.  There is no implicit casting
-      // from an array to a pointer.
-      va_list_arg_type_node = build_reference_type(va_list_type_node);
+      // It might seem natural to make the argument type a pointer, but there
+      // is no implicit casting from arrays to pointers in D.
+      va_list_arg_type_node = va_list_type_node;
       va_list_ref_type_node = va_list_arg_type_node;
     }
   else
