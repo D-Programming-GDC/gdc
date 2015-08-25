@@ -1441,10 +1441,10 @@ PtrExp::toElem (IRState *)
   else if (e1->op == TOKsymoff)
     {
       SymOffExp *sym_exp = (SymOffExp *) e1;
-      if (!decl_reference_p (sym_exp->var))
+      if (declaration_type_kind(sym_exp->var) != type_reference)
 	{
 	  rec_type = sym_exp->var->type->toBasetype();
-	  rec_tree = get_decl_tree (sym_exp->var);
+	  rec_tree = get_decl_tree(sym_exp->var);
 	  the_offset = sym_exp->offset;
 	}
     }
@@ -1919,13 +1919,13 @@ SymbolExp::toElem (IRState *)
 
       // For variables that are references (currently only out/inout arguments;
       // objects don't count), evaluating the variable means we want what it refers to.
-      if (decl_reference_p (var))
-	exp = indirect_ref (build_ctype(var->type), exp);
+      if (declaration_type_kind(var) == type_reference)
+	exp = indirect_ref(build_ctype(var->type), exp);
 
       // The frontend sometimes emits different types for the expression and var.
       // Convert to the expressions type, but don't convert FuncDeclaration as
       // type->ctype sometimes isn't the correct type for functions!
-      if (!var->type->equals (type) && !var->isFuncDeclaration())
+      if (!d_types_same(var->type, type) && !var->isFuncDeclaration())
 	exp = build1 (VIEW_CONVERT_EXPR, build_ctype(type), exp);
 
       return exp;
@@ -1937,10 +1937,10 @@ SymbolExp::toElem (IRState *)
       exp = get_decl_tree (var);
       TREE_USED (exp) = 1;
 
-      if (decl_reference_p (var))
-	gcc_assert (POINTER_TYPE_P (TREE_TYPE (exp)));
+      if (declaration_type_kind(var) == type_reference)
+	gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
       else
-	exp = build_address (exp);
+	exp = build_address(exp);
 
       if (!offset)
 	return d_convert (build_ctype(type), exp);
