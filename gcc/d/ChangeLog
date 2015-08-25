@@ -1,3 +1,23 @@
+2015-08-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc(maybe_set_builtin_1): Remove va_list handling.
+	(d_init_builtins): Don't represent static array va_list as reference.
+	* d-codegen.cc(convert_for_argument): Handle va_list as a static array.
+	(declaration_type): Likewise.
+	(type_passed_as): Likewise.
+	(decl_reference_p): Renamed to declaration_type_kind, update to return
+	how type is represented internally, updated all callers.
+	(arg_reference_p): Renamed to argument_type_kind, update to return how
+	type is represented internally, updated all callers.
+	* d-codegen.h(type_kind): Declare.
+
+2015-08-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* toir.cc(IRVisitor::visit(TryCatchStatement)): Always emit call to
+	LIBCALL_BEGIN_CATCH at the start of the catch.
+	* d-elem.cc(AssertExp::toElem): Stabilize reference to class object
+	before passing it to _d_invariant.
+
 2015-08-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* toir.cc(IRVisitor::visit): Set input location in all visitors that

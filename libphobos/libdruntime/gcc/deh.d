@@ -147,6 +147,7 @@ __gdc_exception_cleanup(_Unwind_Reason_Code code, _Unwind_Exception *exc)
 private struct globalExceptions
 {
   d_exception_header *thrownExceptions;
+  d_exception_header *firstFreeException;
 }
 
 globalExceptions __globalExceptions;
@@ -170,6 +171,10 @@ __gdc_begin_catch(void *exc_ptr)
   globals.thrownExceptions = header.nextException;
   _Unwind_DeleteException (&header.unwindHeader);
 
+  // Now put the header in our freelist.
+  header.nextException = globals.firstFreeException;
+  globals.firstFreeException = header;
+
   return objectp;
 }
 
@@ -186,8 +191,21 @@ _d_throw(Object o)
   if (object is null)
     __gdc_terminate();
 
-  // FIXME: OOM errors will throw recursively.
-  d_exception_header *xh = new d_exception_header();
+  // If possible, avoid always allocating new memory for exception headers.
+  d_exception_header *xh = void;
+
+  if (!globals.firstFreeException)
+    {
+      // If this causes OOM, exception will be thrown recursively, so perhaps
+      // there should be an emergency pool in this event.
+      xh = new d_exception_header();
+    }
+  else
+    {
+      xh = globals.firstFreeException;
+      globals.firstFreeException = xh.nextException;
+      *xh = d_exception_header.init;
+    }
 
   // Stack up our thrown exceptions in reverse.
   xh.nextException = globals.thrownExceptions;
@@ -748,6 +766,11 @@ __gdc_personality_impl(int iversion,
 	  // Exceptions chained, can now throw away the previous header.
 	  xh.nextException = ph.nextException;
 	  _Unwind_DeleteException (&ph.unwindHeader);
+
+	  // Now put the header in our freelist.
+	  globalExceptions *globals = &__globalExceptions;
+	  ph.nextException = globals.firstFreeException;
+	  globals.firstFreeException = ph;
 	}
     }
 

@@ -811,19 +811,32 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
 
 tree
-convert_for_argument (tree exp_tree, Expression *expr, Parameter *arg)
+convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
 {
-  if (arg_reference_p (arg))
+  switch (argument_type_kind(arg))
     {
-      // Front-end already sometimes automatically takes the address
+    case type_reference:
+      // Front-end sometimes automatically takes the address.
       if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
-	exp_tree = build_address (exp_tree);
+	exp_tree = build_address(exp_tree);
 
-      return convert (type_passed_as (arg), exp_tree);
+      return convert(type_passed_as(arg), exp_tree);
+
+    case type_va_pointer:
+      // Do nothing if the va_list has already been decayed to a pointer.
+      if (POINTER_TYPE_P (TREE_TYPE (exp_tree)))
+	return exp_tree;
+      else
+	return build_address(exp_tree);
+
+    case type_lazy:
+    case type_normal:
+      // Lazy arguments: expr should already be a delegate
+      return exp_tree;
+
+    default:
+      gcc_unreachable();
     }
-
-  // Lazy arguments: expr should already be a delegate
-  return exp_tree;
 }
 
 // Perform default promotions for data used in expressions.
@@ -917,20 +930,28 @@ d_array_convert (Expression *exp)
   gcc_unreachable();
 }
 
-// Return TRUE if declaration DECL is a reference type.
+// Return the kind of type the declaration DECL should be stored as.
 
-bool
-decl_reference_p (Declaration *decl)
+type_kind
+declaration_type_kind(Declaration *decl)
 {
-  Type *base_type = decl->type->toBasetype();
+  Type *tb = decl->type->toBasetype();
 
-  if (base_type->ty == Treference)
-    return true;
+  // Compatibility with C ABI, if the va_list is passed as a pointer.
+  // However for ever other case, static arrays are passed around by value.
+  if (decl->isParameter() && Type::tvalist->ty == Tsarray
+      && d_types_same(tb, Type::tvalist))
+    return type_va_pointer;
 
-  if (decl->storage_class & (STCout | STCref))
-    return true;
+  // Declaration is a reference type.
+  if (tb->ty == Treference || decl->storage_class & (STCout | STCref))
+    return type_reference;
 
-  return false;
+  // Declaration is a lazy parameter.
+  if (decl->storage_class & STClazy)
+    return type_lazy;
+
+  return type_normal;
 }
 
 // Returns the real type for declaration DECL.
@@ -938,39 +959,65 @@ decl_reference_p (Declaration *decl)
 // Lazy decls are converted into delegates.
 
 tree
-declaration_type (Declaration *decl)
+declaration_type(Declaration *decl)
 {
-  tree decl_type = build_ctype(decl->type);
-
-  if (decl_reference_p (decl))
-    decl_type = build_reference_type (decl_type);
-  else if (decl->storage_class & STClazy)
+  switch (declaration_type_kind(decl))
     {
-      TypeFunction *tf = new TypeFunction (NULL, decl->type, false, LINKd);
-      TypeDelegate *t = new TypeDelegate (tf);
-      decl_type = build_ctype(t->merge());
-    }
-  else if (decl->isThisDeclaration())
-    decl_type = insert_type_modifiers (decl_type, MODconst);
+    case type_reference:
+      {
+	tree decl_type = build_ctype(decl->type);
+	return build_reference_type(decl_type);
+      }
 
-  return decl_type;
+    case type_lazy:
+      {
+	TypeFunction *tf = new TypeFunction(NULL, decl->type, false, LINKd);
+	TypeDelegate *t = new TypeDelegate(tf);
+	return build_ctype(t->merge());
+      }
+
+    case type_va_pointer:
+      {
+	Type *valist = decl->type->nextOf()->pointerTo();
+	valist = valist->castMod(decl->type->mod);
+	return build_ctype(valist);
+      }
+
+    case type_normal:
+      {
+	tree decl_type = build_ctype(decl->type);
+	if (decl->isThisDeclaration())
+	  decl_type = insert_type_modifiers(decl_type, MODconst);
+
+	return decl_type;
+      }
+
+    default:
+      gcc_unreachable();
+    }
 }
 
-// These should match the Declaration versions above
-// Return TRUE if parameter ARG is a reference type.
+// Return the kind of type the parameter ARG should be passed as.
 
-bool
-arg_reference_p (Parameter *arg)
+type_kind
+argument_type_kind(Parameter *arg)
 {
-  Type *base_type = arg->type->toBasetype();
+  Type *tb = arg->type->toBasetype();
 
-  if (base_type->ty == Treference)
-    return true;
+  // Compatibility with C ABI, if the va_list is passed as a pointer.
+  // However for ever other case, static arrays are passed around by value.
+  if (Type::tvalist->ty == Tsarray && d_types_same(tb, Type::tvalist))
+    return type_va_pointer;
 
-  if (arg->storageClass & (STCout | STCref))
-    return true;
+  // Parameter is a reference type.
+  if (tb->ty == Treference || arg->storageClass & (STCout | STCref))
+    return type_reference;
 
-  return false;
+  // Parameter is a lazy parameter.
+  if (arg->storageClass & STClazy)
+    return type_lazy;
+
+  return type_normal;
 }
 
 // Returns the real type for parameter ARG.
@@ -978,20 +1025,36 @@ arg_reference_p (Parameter *arg)
 // Lazy parameters are converted into delegates.
 
 tree
-type_passed_as (Parameter *arg)
+type_passed_as(Parameter *arg)
 {
-  tree arg_type = build_ctype(arg->type);
-
-  if (arg_reference_p (arg))
-    arg_type = build_reference_type (arg_type);
-  else if (arg->storageClass & STClazy)
+  switch (argument_type_kind(arg))
     {
-      TypeFunction *tf = new TypeFunction (NULL, arg->type, false, LINKd);
-      TypeDelegate *t = new TypeDelegate (tf);
-      arg_type = build_ctype(t->merge());
-    }
+    case type_reference:
+      {
+	tree arg_type = build_ctype(arg->type);
+	return build_reference_type(arg_type);
+      }
 
-  return arg_type;
+    case type_lazy:
+      {
+	TypeFunction *tf = new TypeFunction(NULL, arg->type, false, LINKd);
+	TypeDelegate *t = new TypeDelegate(tf);
+	return build_ctype(t->merge());
+      }
+
+    case type_va_pointer:
+      {
+	Type *valist = arg->type->nextOf()->pointerTo();
+	valist = valist->castMod(arg->type->mod);
+	return build_ctype(valist);
+      }
+
+    case type_normal:
+      return build_ctype(arg->type);
+
+    default:
+      gcc_unreachable();
+    }
 }
 
 // Returns an array of type D_TYPE which has SIZE number of elements.
