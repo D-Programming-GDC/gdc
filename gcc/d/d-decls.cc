@@ -216,7 +216,7 @@ VarDeclaration::toSymbol()
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a variable in an imported module.
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
-	  && !decl_reference_p (this))
+	  && declaration_type_kind(this) != type_reference)
 	{
 	  if (!TREE_STATIC (decl))
 	    TREE_READONLY (decl) = 1;
