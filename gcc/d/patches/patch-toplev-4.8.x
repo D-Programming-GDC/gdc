@@ -892,17 +892,17 @@ index 5b62ecc..5303b98 100644
 +GCJ="$GCJ"
 +GDC="$GDC"])])dnl
 diff --git a/configure b/configure
-index ca2e095..3b596c7 100755
+index ca2e095..615f53a 100755
 --- a/configure
 +++ b/configure
-@@ -566,6 +566,7 @@ COMPILER_NM_FOR_TARGET
- COMPILER_LD_FOR_TARGET
- COMPILER_AS_FOR_TARGET
- FLAGS_FOR_TARGET
+@@ -579,6 +579,7 @@ LD_FOR_TARGET
+ DLLTOOL_FOR_TARGET
+ AS_FOR_TARGET
+ AR_FOR_TARGET
 +GDC_FOR_TARGET
- RAW_CXX_FOR_TARGET
- WINDMC_FOR_TARGET
- WINDRES_FOR_TARGET
+ GOC_FOR_TARGET
+ GFORTRAN_FOR_TARGET
+ GCJ_FOR_TARGET
 @@ -612,6 +613,7 @@ RANLIB_FOR_BUILD
  NM_FOR_BUILD
  LD_FOR_BUILD
@@ -911,7 +911,24 @@ index ca2e095..3b596c7 100755
  GOC_FOR_BUILD
  GFORTRAN_FOR_BUILD
  GCJ_FOR_BUILD
-@@ -2781,7 +2783,8 @@ target_libraries="target-libgcc \
+@@ -821,6 +823,7 @@ GCC_FOR_TARGET
+ GCJ_FOR_TARGET
+ GFORTRAN_FOR_TARGET
+ GOC_FOR_TARGET
++GDC_FOR_TARGET
+ AR_FOR_TARGET
+ AS_FOR_TARGET
+ DLLTOOL_FOR_TARGET
+@@ -1586,6 +1589,8 @@ Some influential environment variables:
+               GFORTRAN for the target
+   GOC_FOR_TARGET
+               GOC for the target
++  GDC_FOR_TARGET
++              GDC for the target
+   AR_FOR_TARGET
+               AR for the target
+   AS_FOR_TARGET
+@@ -2781,7 +2786,8 @@ target_libraries="target-libgcc \
  		${libgcj} \
  		target-libobjc \
  		target-libada \
@@ -921,7 +938,7 @@ index ca2e095..3b596c7 100755
  
  # these tools are built using the target libraries, and are intended to
  # run only in the target environment
-@@ -3866,6 +3869,7 @@ if test "${build}" != "${host}" ; then
+@@ -3866,6 +3872,7 @@ if test "${build}" != "${host}" ; then
    GCJ_FOR_BUILD=${GCJ_FOR_BUILD-gcj}
    GFORTRAN_FOR_BUILD=${GFORTRAN_FOR_BUILD-gfortran}
    GOC_FOR_BUILD=${GOC_FOR_BUILD-gccgo}
@@ -929,7 +946,7 @@ index ca2e095..3b596c7 100755
    DLLTOOL_FOR_BUILD=${DLLTOOL_FOR_BUILD-dlltool}
    LD_FOR_BUILD=${LD_FOR_BUILD-ld}
    NM_FOR_BUILD=${NM_FOR_BUILD-nm}
-@@ -3880,6 +3884,7 @@ else
+@@ -3880,6 +3887,7 @@ else
    GCJ_FOR_BUILD="\$(GCJ)"
    GFORTRAN_FOR_BUILD="\$(GFORTRAN)"
    GOC_FOR_BUILD="\$(GOC)"
@@ -937,7 +954,7 @@ index ca2e095..3b596c7 100755
    DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
    LD_FOR_BUILD="\$(LD)"
    NM_FOR_BUILD="\$(NM)"
-@@ -7700,6 +7705,7 @@ done
+@@ -7700,6 +7708,7 @@ done
  
  
  
@@ -945,7 +962,175 @@ index ca2e095..3b596c7 100755
  # Generate default definitions for YACC, M4, LEX and other programs that run
  # on the build machine.  These are used if the Makefile can't locate these
  # programs in objdir.
-@@ -14126,6 +14132,51 @@ $as_echo "pre-installed" >&6; }
+@@ -10915,6 +10924,167 @@ fi
+ 
+ 
+ 
++if test -n "$GDC_FOR_TARGET"; then
++  ac_cv_prog_GDC_FOR_TARGET=$GDC_FOR_TARGET
++elif test -n "$ac_cv_prog_GDC_FOR_TARGET"; then
++  GDC_FOR_TARGET=$ac_cv_prog_GDC_FOR_TARGET
++fi
++
++if test -n "$ac_cv_prog_GDC_FOR_TARGET"; then
++  for ncn_progname in gdc; do
++    # Extract the first word of "${ncn_progname}", so it can be a program name with args.
++set dummy ${ncn_progname}; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if test "${ac_cv_prog_GDC_FOR_TARGET+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$GDC_FOR_TARGET"; then
++  ac_cv_prog_GDC_FOR_TARGET="$GDC_FOR_TARGET" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++    ac_cv_prog_GDC_FOR_TARGET="${ncn_progname}"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++GDC_FOR_TARGET=$ac_cv_prog_GDC_FOR_TARGET
++if test -n "$GDC_FOR_TARGET"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GDC_FOR_TARGET" >&5
++$as_echo "$GDC_FOR_TARGET" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++
++  done
++fi
++
++if test -z "$ac_cv_prog_GDC_FOR_TARGET" && test -n "$with_build_time_tools"; then
++  for ncn_progname in gdc; do
++    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${ncn_progname} in $with_build_time_tools" >&5
++$as_echo_n "checking for ${ncn_progname} in $with_build_time_tools... " >&6; }
++    if test -x $with_build_time_tools/${ncn_progname}; then
++      ac_cv_prog_GDC_FOR_TARGET=$with_build_time_tools/${ncn_progname}
++      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++      break
++    else
++      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++    fi
++  done
++fi
++
++if test -z "$ac_cv_prog_GDC_FOR_TARGET"; then
++  for ncn_progname in gdc; do
++    if test -n "$ncn_target_tool_prefix"; then
++      # Extract the first word of "${ncn_target_tool_prefix}${ncn_progname}", so it can be a program name with args.
++set dummy ${ncn_target_tool_prefix}${ncn_progname}; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if test "${ac_cv_prog_GDC_FOR_TARGET+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$GDC_FOR_TARGET"; then
++  ac_cv_prog_GDC_FOR_TARGET="$GDC_FOR_TARGET" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++    ac_cv_prog_GDC_FOR_TARGET="${ncn_target_tool_prefix}${ncn_progname}"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++GDC_FOR_TARGET=$ac_cv_prog_GDC_FOR_TARGET
++if test -n "$GDC_FOR_TARGET"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GDC_FOR_TARGET" >&5
++$as_echo "$GDC_FOR_TARGET" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++
++    fi
++    if test -z "$ac_cv_prog_GDC_FOR_TARGET" && test $build = $target ; then
++      # Extract the first word of "${ncn_progname}", so it can be a program name with args.
++set dummy ${ncn_progname}; ac_word=$2
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
++$as_echo_n "checking for $ac_word... " >&6; }
++if test "${ac_cv_prog_GDC_FOR_TARGET+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  if test -n "$GDC_FOR_TARGET"; then
++  ac_cv_prog_GDC_FOR_TARGET="$GDC_FOR_TARGET" # Let the user override the test.
++else
++as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++    for ac_exec_ext in '' $ac_executable_extensions; do
++  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
++    ac_cv_prog_GDC_FOR_TARGET="${ncn_progname}"
++    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++  done
++IFS=$as_save_IFS
++
++fi
++fi
++GDC_FOR_TARGET=$ac_cv_prog_GDC_FOR_TARGET
++if test -n "$GDC_FOR_TARGET"; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GDC_FOR_TARGET" >&5
++$as_echo "$GDC_FOR_TARGET" >&6; }
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++fi
++
++
++    fi
++    test -n "$ac_cv_prog_GDC_FOR_TARGET" && break
++  done
++fi
++
++if test -z "$ac_cv_prog_GDC_FOR_TARGET" ; then
++  set dummy gdc
++  if test $build = $target ; then
++    GDC_FOR_TARGET="$2"
++  else
++    GDC_FOR_TARGET="${ncn_target_tool_prefix}$2"
++  fi
++else
++  GDC_FOR_TARGET="$ac_cv_prog_GDC_FOR_TARGET"
++fi
++
++
++
+ cat > conftest.c << \EOF
+ #ifdef __GNUC__
+   gcc_yay;
+@@ -14126,6 +14296,51 @@ $as_echo "pre-installed" >&6; }
    fi
  fi
  
@@ -998,7 +1183,7 @@ index ca2e095..3b596c7 100755
  $as_echo_n "checking where to find the target ld... " >&6; }
  if test "x${build}" != "x${host}" ; then
 diff --git a/configure.ac b/configure.ac
-index 2000f33..e3eb0f4 100644
+index 2000f33..c5da978 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -168,7 +168,8 @@ target_libraries="target-libgcc \
@@ -1035,7 +1220,15 @@ index 2000f33..e3eb0f4 100644
  AC_SUBST(LDFLAGS_FOR_BUILD)
  AC_SUBST(LD_FOR_BUILD)
  AC_SUBST(NM_FOR_BUILD)
-@@ -3179,6 +3183,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_TARGET, GFORTRAN,
+@@ -3145,6 +3149,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(GCC_FOR_TARGET, gcc, ${CC_FOR_TARGET})
+ NCN_STRICT_CHECK_TARGET_TOOLS(GCJ_FOR_TARGET, gcj)
+ NCN_STRICT_CHECK_TARGET_TOOLS(GFORTRAN_FOR_TARGET, gfortran)
+ NCN_STRICT_CHECK_TARGET_TOOLS(GOC_FOR_TARGET, gccgo)
++NCN_STRICT_CHECK_TARGET_TOOLS(GDC_FOR_TARGET, gdc)
+ 
+ ACX_CHECK_INSTALLED_TARGET_TOOL(AR_FOR_TARGET, ar)
+ ACX_CHECK_INSTALLED_TARGET_TOOL(AS_FOR_TARGET, as)
+@@ -3179,6 +3184,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_TARGET, GFORTRAN,
  		[gcc/gfortran -B$$r/$(HOST_SUBDIR)/gcc/], fortran)
  GCC_TARGET_TOOL(gccgo, GOC_FOR_TARGET, GOC,
  		[gcc/gccgo -B$$r/$(HOST_SUBDIR)/gcc/], go)
