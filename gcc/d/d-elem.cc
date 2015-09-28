@@ -1694,55 +1694,55 @@ DelegateExp::toElem (IRState *)
 }
 
 elem *
-DotVarExp::toElem (IRState *)
+DotVarExp::toElem(IRState *)
 {
-  FuncDeclaration *func_decl;
-  VarDeclaration *var_decl;
-  Type *obj_basetype = e1->type->toBasetype();
+  Type *tb = e1->type->toBasetype();
 
-  switch (obj_basetype->ty)
+  switch (tb->ty)
     {
     case Tpointer:
-      if (obj_basetype->nextOf()->toBasetype()->ty != Tstruct)
+      if (tb->nextOf()->toBasetype()->ty != Tstruct)
 	break;
       // drop through
 
     case Tstruct:
     case Tclass:
-      func_decl = var->isFuncDeclaration();
-      var_decl = var->isVarDeclaration();
-      if (func_decl)
+    {
+      FuncDeclaration *fd = var->isFuncDeclaration();
+      VarDeclaration *vd = var->isVarDeclaration();
+      if (fd != NULL)
       {
 	// if Tstruct, objInstanceMethod will use the address of e1
-	if (func_decl->isThis())
-	  return get_object_method (e1->toElem(NULL), e1, func_decl, type);
+	if (fd->isThis())
+	  return get_object_method(e1->toElem(NULL), e1, fd, type);
 	else
 	  {
 	    // Static method; ignore the object instance
-	    return build_address (func_decl->toSymbol()->Stree);
+	    return build_address(fd->toSymbol()->Stree);
     	  }
       }
-      else if (var_decl)
+      else if (vd)
 	{
-	  if (!var_decl->isField())
-	    return get_decl_tree (var_decl);
+	  if (!vd->isField())
+	    return get_decl_tree(vd);
 	  else
 	    {
 	      tree this_tree = e1->toElem(NULL);
-	      if (obj_basetype->ty != Tstruct)
-		this_tree = build_deref (this_tree);
-	      return component_ref (this_tree, var_decl->toSymbol()->Stree);
+	      if (tb->ty != Tstruct)
+		this_tree = build_deref(this_tree);
+	      return component_ref(this_tree, vd->toSymbol()->Stree);
 	    }
 	}
       else
-	error ("%s is not a field, but a %s", var->toChars(), var->kind());
+	error("%s is not a field, but a %s", var->toChars(), var->kind());
       break;
+    }
 
     default:
       break;
     }
 
-  error ("Don't know how to handle %s", toChars());
+  error("Don't know how to handle %s", toChars());
   return error_mark_node;
 }
 

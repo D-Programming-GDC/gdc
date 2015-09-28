@@ -1,3 +1,22 @@
+2015-10-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc(build_two_field_type): Use DECL_FIELD_CONTEXT to access
+	field context decl.
+	(build_frame_type): Likewise.
+	(lookup_anon_field): New function.
+	(component_ref): Use it.
+	(fixup_anonymous_offset): New function.
+	(layout_aggregate_members): New function.
+	(layout_aggregate_type): Move generation of fields into
+	layout_aggregate_members.
+	(insert_aggregate_field): Update signature, update all callers.
+	(finish_aggregate_type): Likewise.
+	* d-todt.cc(dt_container2): Use DECL_FIELD_CONTEXT to access field
+	context decl.
+	* types.cc(TypeVisitor::visit(TypeStruct)): Likewise.
+	(TypeVisitor::visit(TypeClass)): Likewise.
+	* d-tree.h(ANON_AGGR_TYPE_P): New type macro.
+
 2015-08-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc(maybe_set_builtin_1): Remove va_list handling.

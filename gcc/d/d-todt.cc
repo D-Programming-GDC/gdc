@@ -109,7 +109,7 @@ dt_container2(dt_t *dt)
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE(value));
 	  tree size = TYPE_SIZE_UNIT(TREE_TYPE(value));
 
-	  DECL_CONTEXT(field) = aggtype;
+	  DECL_FIELD_CONTEXT(field) = aggtype;
 	  DECL_FIELD_OFFSET(field) = offset;
 	  DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
 	  SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN(TREE_TYPE(value)));

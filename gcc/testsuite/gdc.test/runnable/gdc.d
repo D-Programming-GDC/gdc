@@ -810,6 +810,50 @@ auto test194(ref bool overflow)
 
 /******************************************/
 
+// Bug 198
+
+struct S198
+{
+    union
+    {
+        float[3] v;
+        struct
+        {
+            float x;
+            float y;
+            float z;
+        }
+    }
+
+    this(float x_, float y_, float z_)
+    {
+        x = x_;
+        y = y_;
+        z = z_;
+    }
+
+    ref S198 opOpAssign(string op)(S198 operand)
+    if (op == "+")
+    {
+        x += operand.x;
+        y += operand.y;
+        z += operand.z;
+        return this;
+    }
+}
+
+auto test198()
+{
+    S198 sum = S198(0, 0, 0);
+
+    foreach(size_t v; 0 .. 3)
+        sum += S198(1, 2, 3);
+
+    assert(sum.v == [3, 6, 9]);
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -831,6 +875,7 @@ void main()
     test133();
     test141();
     test179();
+    test198();
 
     printf("Success!\n");
 }
