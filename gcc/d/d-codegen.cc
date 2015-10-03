@@ -1604,8 +1604,8 @@ build_two_field_type(tree t1, tree t2, Type *type, const char *n1, const char *n
   tree f0 = build_decl(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n1), t1);
   tree f1 = build_decl(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n2), t2);
 
-  DECL_CONTEXT(f0) = rectype;
-  DECL_CONTEXT(f1) = rectype;
+  DECL_FIELD_CONTEXT(f0) = rectype;
+  DECL_FIELD_CONTEXT(f1) = rectype;
   TYPE_FIELDS(rectype) = chainon(f0, f1);
   if (type != NULL)
     TYPE_NAME(rectype) = get_identifier(type->toChars());
@@ -1901,13 +1901,54 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
   return tmemcmp;
 }
 
-// Builds OBJ.FIELD component reference.
+// Given the TYPE of an anonymous field inside T, return the
+// FIELD_DECL for the field.  If not found return NULL_TREE.
+// Because anonymous types can nest, we must also search all
+// anonymous fields that are directly reachable.
+
+static tree
+lookup_anon_field(tree t, tree type)
+{
+  t = TYPE_MAIN_VARIANT (t);
+
+  for (tree field = TYPE_FIELDS (t); field; field = DECL_CHAIN (field))
+    {
+      if (DECL_NAME (field) == NULL_TREE)
+	{
+	  // If we find it directly, return the field.
+	  if (type == TYPE_MAIN_VARIANT (TREE_TYPE (field)))
+	    return field;
+
+	  // Otherwise, it could be nested, search harder.
+	  if (ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	    {
+	      tree subfield = lookup_anon_field(TREE_TYPE (field), type);
+	      if (subfield)
+		return subfield;
+	    }
+	}
+    }
+
+  return NULL_TREE;
+}
+
+// Builds OBJECT.FIELD component reference.
 
 tree
-component_ref(tree obj, tree field)
+component_ref(tree object, tree field)
 {
+  gcc_assert (TREE_CODE (field) == FIELD_DECL);
+
+  // If the FIELD is from an anonymous aggregate, generate a reference
+  // to the anonymous data member, and recur to find FIELD.
+  if (ANON_AGGR_TYPE_P (DECL_CONTEXT (field)))
+    {
+      tree anonymous_field = lookup_anon_field(TREE_TYPE (object), DECL_CONTEXT (field));
+      object = component_ref(object, anonymous_field);
+    }
+
   return fold_build3_loc(input_location, COMPONENT_REF,
-			 TREE_TYPE (field), obj, field, NULL_TREE);
+			 TREE_TYPE (field), object, field, NULL_TREE);
 }
 
 // Build a modify expression, with variants for overriding
@@ -3616,7 +3657,7 @@ build_frame_type (FuncDeclaration *func)
 
   tree ptr_field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       get_identifier ("__chain"), ptr_type_node);
-  DECL_CONTEXT (ptr_field) = frame_rec_type;
+  DECL_FIELD_CONTEXT (ptr_field) = frame_rec_type;
   TYPE_READONLY (frame_rec_type) = 1;
 
   tree fields = chainon (NULL_TREE, ptr_field);
@@ -3671,7 +3712,7 @@ build_frame_type (FuncDeclaration *func)
 			       declaration_type (v));
       s->SframeField = field;
       set_decl_location (field, v);
-      DECL_CONTEXT (field) = frame_rec_type;
+      DECL_FIELD_CONTEXT (field) = frame_rec_type;
       fields = chainon (fields, field);
       TREE_USED (s->Stree) = 1;
 
@@ -3905,6 +3946,140 @@ WrappedExp::toElem (IRState *)
   return this->e1;
 }
 
+// For all decls in the FIELDS chain, adjust their field offset by OFFSET.
+// This is done as the frontend puts fields into the outer struct, and so
+// their offset is from the beginning of the aggregate.
+// We want the offset to be from the beginning of the anonymous aggregate.
+
+static void
+fixup_anonymous_offset(tree fields, tree offset)
+{
+  while (fields != NULL_TREE)
+    {
+      // Traverse all nested anonymous aggregates to update their offset.
+      // Set the anonymous decl offset to it's first member.
+      tree ftype = TREE_TYPE (fields);
+      if (TYPE_NAME (ftype) && anon_aggrname_p(TYPE_IDENTIFIER (ftype)))
+	{
+	  tree vfields = TYPE_FIELDS (ftype);
+	  fixup_anonymous_offset(vfields, offset);
+	  DECL_FIELD_OFFSET (fields) = DECL_FIELD_OFFSET (vfields);
+	}
+      else
+	{
+	  tree voffset = DECL_FIELD_OFFSET (fields);
+	  DECL_FIELD_OFFSET (fields) = size_binop(MINUS_EXPR, voffset, offset);
+	}
+
+      fields = DECL_CHAIN (fields);
+    }
+}
+
+// Iterate over all MEMBERS of an aggregate, and add them as fields to CONTEXT.
+// If INHERITED_P is true, then the members derive from a base class.
+// Returns the number of fields found.
+
+static size_t
+layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
+{
+  size_t fields = 0;
+
+  for (size_t i = 0; i < members->dim; i++)
+    {
+      Dsymbol *sym = (*members)[i];
+      VarDeclaration *var = sym->isVarDeclaration();
+
+      if (var && var->isField())
+	{
+	  // Insert the field declaration at it's given offset.
+	  tree ident = var->ident ? get_identifier(var->ident->string) : NULL_TREE;
+	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, ident,
+				  declaration_type(var));
+	  DECL_ARTIFICIAL (field) = inherited_p;
+	  DECL_IGNORED_P (field) = inherited_p;
+	  insert_aggregate_field(var->loc, context, field, var->offset);
+
+	  if (var->size(var->loc))
+	    {
+	      gcc_assert(DECL_MODE (field) != VOIDmode);
+	      gcc_assert(DECL_SIZE (field) != NULL_TREE);
+	    }
+
+	  var->csym = new Symbol;
+	  var->csym->Stree = field;
+	  fields += 1;
+	  continue;
+	}
+
+      // Anonymous struct/union are treated as flat attributes by the front-end.
+      // However, we need to keep the record layout intact when building the type.
+      AnonDeclaration *ad = sym->isAnonDeclaration();
+      if (ad != NULL)
+	{
+	  // Use a counter to create anonymous type names.
+	  static int anon_cnt = 0;
+	  char buf[32];
+	  sprintf(buf, anon_aggrname_format(), anon_cnt++);
+
+	  tree ident = get_identifier(buf);
+	  tree type = make_node(ad->isunion ? UNION_TYPE : RECORD_TYPE);
+	  ANON_AGGR_TYPE_P (type) = 1;
+	  d_keep(type);
+
+	  // Build the type declaration.
+	  tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, ident, type);
+	  DECL_CONTEXT (decl) = context;
+	  DECL_ARTIFICIAL (decl) = 1;
+	  set_decl_location(decl, ad);
+
+	  TYPE_CONTEXT (type) = context;
+	  TYPE_NAME (type) = decl;
+	  TYPE_STUB_DECL (type) = decl;
+
+	  // Recursively iterator over the anonymous members.
+	  fields += layout_aggregate_members(ad->decl, type, inherited_p);
+
+	  // Remove from the anon fields the base offset of this anonymous aggregate.
+	  // Undoes what is set-up in setFieldOffset, but doesn't affect accesses.
+	  tree offset = size_int(ad->anonoffset);
+	  fixup_anonymous_offset(TYPE_FIELDS (type), offset);
+
+	  finish_aggregate_type(ad->anonstructsize, ad->anonalignsize, type, NULL);
+
+	  // And make the corresponding data member.
+	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL, type);
+	  insert_aggregate_field(ad->loc, context, field, ad->anonoffset);
+	  continue;
+	}
+
+      // Other kinds of attributes don't create a scope.
+      AttribDeclaration *attrib = sym->isAttribDeclaration();
+      if (attrib != NULL)
+	{
+	  Dsymbols *decl = attrib->include(NULL, NULL);
+
+	  if (decl != NULL)
+	    {
+	      fields += layout_aggregate_members(decl, context, inherited_p);
+	      continue;
+	    }
+	}
+
+      // Same with template mixins and namespaces.
+      if (sym->isTemplateMixin() || sym->isNspace())
+	{
+	  ScopeDsymbol *scopesym = sym->isScopeDsymbol();
+	  if (scopesym->members)
+	    {
+	      fields += layout_aggregate_members(scopesym->members, context, inherited_p);
+	      continue;
+	    }
+	}
+    }
+
+  return fields;
+}
+
 // Write out all fields for aggregate BASE.  For classes, write
 // out base class fields first, and adds all interfaces last.
 
@@ -3921,72 +4096,39 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
       else
 	{
 	  // This is the base class (Object) or interface.
-	  tree objtype = TREE_TYPE(build_ctype(cd->type));
+	  tree objtype = TREE_TYPE (build_ctype(cd->type));
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
 				  get_identifier("__vptr"), vtbl_ptr_type_node);
-	  DECL_ARTIFICIAL(field) = 1;
-	  DECL_IGNORED_P(field) = inherited_p;
-
-	  insert_aggregate_field(decl, type, field, 0);
-
-	  DECL_VIRTUAL_P(field) = 1;
-	  DECL_FCONTEXT(field) = objtype;
-	  TYPE_VFIELD(type) = field;
+	  DECL_VIRTUAL_P (field) = 1;
+	  TYPE_VFIELD (type) = field;
+	  DECL_FCONTEXT (field) = objtype;
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = inherited_p;
+	  insert_aggregate_field(decl->loc, type, field, 0);
 
 	  if (!cd->cpp)
 	    {
 	      field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
 				 get_identifier("__monitor"), ptr_type_node);
-	      DECL_FCONTEXT(field) = objtype;
-	      DECL_ARTIFICIAL(field) = 1;
-	      DECL_IGNORED_P(field) = inherited_p;
-	      insert_aggregate_field(decl, type, field, Target::ptrsize);
+	      DECL_ARTIFICIAL (field) = 1;
+	      DECL_IGNORED_P (field) = inherited_p;
+	      insert_aggregate_field(decl->loc, type, field, Target::ptrsize);
 	    }
 	}
     }
 
   if (base->fields.dim)
     {
-      tree fcontext = build_ctype(base->type);
+      size_t fields = layout_aggregate_members(base->members, type, inherited_p);
+      gcc_assert(fields == base->fields.dim);
 
-      if (POINTER_TYPE_P(fcontext))
-	fcontext = TREE_TYPE(fcontext);
-
+      // Make sure that all fields have been created.
       for (size_t i = 0; i < base->fields.dim; i++)
 	{
-	  // D anonymous unions just put the fields into the outer struct...
-	  // Does this cause problems?
 	  VarDeclaration *var = base->fields[i];
-	  gcc_assert(var && var->isField());
-
-	  tree ident = var->ident ? get_identifier(var->ident->string) : NULL_TREE;
-	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, ident,
-				  declaration_type(var));
-	  set_decl_location(field, var);
-	  var->csym = new Symbol;
-	  var->csym->Stree = field;
-
-	  DECL_CONTEXT(field) = type;
-	  DECL_FCONTEXT(field) = fcontext;
-	  DECL_FIELD_OFFSET(field) = size_int(var->offset);
-	  DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
-
-	  DECL_ARTIFICIAL(field) = inherited_p;
-	  DECL_IGNORED_P(field) = inherited_p;
-	  SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN(TREE_TYPE(field)));
-
-	  TREE_THIS_VOLATILE(field) = TYPE_VOLATILE(TREE_TYPE(field));
-	  layout_decl(field, 0);
-
-	  if (var->size(var->loc))
-	    {
-	      gcc_assert(DECL_MODE(field) != VOIDmode);
-	      gcc_assert(DECL_SIZE(field) != NULL_TREE);
-	    }
-
-	  TYPE_FIELDS(type) = chainon(TYPE_FIELDS(type), field);
+	  gcc_assert(var->csym != NULL);
 	}
     }
 
@@ -3997,9 +4139,9 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	  BaseClass *bc = (*cd->vtblInterfaces)[i];
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
 				  build_ctype(Type::tvoidptr->pointerTo()));
-	  DECL_ARTIFICIAL(field) = 1;
-	  DECL_IGNORED_P(field) = 1;
-	  insert_aggregate_field(decl, type, field, bc->offset);
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = 1;
+	  insert_aggregate_field(decl->loc, type, field, bc->offset);
 	}
     }
 }
@@ -4007,31 +4149,29 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 // Add a compiler generated field FIELD at OFFSET into aggregate.
 
 void
-insert_aggregate_field(AggregateDeclaration *decl, tree type, tree field, size_t offset)
+insert_aggregate_field(Loc loc, tree type, tree field, size_t offset)
 {
-  DECL_CONTEXT (field) = type;
+  DECL_FIELD_CONTEXT (field) = type;
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
   DECL_FIELD_OFFSET (field) = size_int(offset);
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
 
   // Must set this or we crash with DWARF debugging.
-  set_decl_location(field, decl->loc);
+  set_decl_location(field, loc);
 
   TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
 
   layout_decl(field, 0);
-  TYPE_FIELDS(type) = chainon(TYPE_FIELDS (type), field);
+  TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), field);
 }
 
 // Wrap-up and compute finalised aggregate type.  Writing out
 // any GCC attributes that were applied to the type declaration.
 
 void
-finish_aggregate_type(AggregateDeclaration *decl, tree type, UserAttributeDeclaration *declattrs)
+finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
+		      UserAttributeDeclaration *declattrs)
 {
-  unsigned structsize = decl->structsize;
-  unsigned alignsize = decl->alignsize;
-
   TYPE_SIZE (type) = NULL_TREE;
 
   if (declattrs)
