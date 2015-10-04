@@ -244,6 +244,6 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
 #define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
-#define d_unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+#define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
 
 #endif

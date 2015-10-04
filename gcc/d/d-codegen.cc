@@ -1901,6 +1901,57 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
   return tmemcmp;
 }
 
+// Build a constructor for a variable of aggregate type TYPE using the
+// initializer INIT, an ordered flat list of fields and values provided
+// by the frontend.
+// The returned constructor should be a value that matches the layout of TYPE.
+
+tree
+build_struct_literal(tree type, tree init)
+{
+  // If the initializer was empty, use default zero initialization.
+  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
+    return build_constructor(type, NULL);
+
+  vec<constructor_elt, va_gc> *ve = NULL;
+
+  // Walk through each field, matching our initializer list
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    {
+      gcc_assert(!vec_safe_is_empty(CONSTRUCTOR_ELTS (init)));
+      constructor_elt *ce = &(*CONSTRUCTOR_ELTS (init))[0];
+      tree value = NULL_TREE;
+
+      // Found the next field to initialize, consume the value and
+      // pop it from the init list.
+      if (ce->index == field)
+	{
+	  value = ce->value;
+	  CONSTRUCTOR_ELTS (init)->ordered_remove(0);
+	}
+      else if (DECL_NAME (field) == NULL_TREE)
+	{
+	  // Search all nesting aggregates, if nothing is found, then
+	  // this will return an empty initializer to fill the hole.
+	  if (ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	    value = build_struct_literal(TREE_TYPE (field), init);
+	}
+
+      if (value != NULL_TREE)
+	{
+	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
+	  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
+	    break;
+	}
+    }
+
+  // Ensure that we have consumed all values.
+  gcc_assert(vec_safe_is_empty(CONSTRUCTOR_ELTS (init))
+	     || ANON_AGGR_TYPE_P (type));
+
+  return build_constructor(type, ve);
+}
+
 // Given the TYPE of an anonymous field inside T, return the
 // FIELD_DECL for the field.  If not found return NULL_TREE.
 // Because anonymous types can nest, we must also search all
@@ -3988,27 +4039,62 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
     {
       Dsymbol *sym = (*members)[i];
       VarDeclaration *var = sym->isVarDeclaration();
-
-      if (var && var->isField())
+      if (var != NULL)
 	{
-	  // Insert the field declaration at it's given offset.
-	  tree ident = var->ident ? get_identifier(var->ident->string) : NULL_TREE;
-	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, ident,
-				  declaration_type(var));
-	  DECL_ARTIFICIAL (field) = inherited_p;
-	  DECL_IGNORED_P (field) = inherited_p;
-	  insert_aggregate_field(var->loc, context, field, var->offset);
+	  // Skip fields that have already been added.
+	  if (!inherited_p && var->csym != NULL)
+	    continue;
 
-	  if (var->size(var->loc))
+	  // If this variable was really a tuple, add all tuple fields.
+	  if (var->aliassym)
 	    {
-	      gcc_assert(DECL_MODE (field) != VOIDmode);
-	      gcc_assert(DECL_SIZE (field) != NULL_TREE);
+	      TupleDeclaration *td = var->aliassym->isTupleDeclaration();
+	      Dsymbols tmembers;
+	      // No other way to coerce the underlying type out of the tuple.
+	      // Runtime checks should have already been done by the frontend.
+	      for (size_t j = 0; j < td->objects->dim; j++)
+		{
+		  RootObject *ro = (*td->objects)[j];
+		  gcc_assert(ro->dyncast() == DYNCAST_EXPRESSION);
+		  Expression *e = (Expression *) ro;
+		  gcc_assert(e->op == TOKdsymbol);
+		  DsymbolExp *se = (DsymbolExp *) e;
+
+		  tmembers.push(se->s);
+		}
+
+	      fields += layout_aggregate_members(&tmembers, context, inherited_p);
+	      continue;
 	    }
 
-	  var->csym = new Symbol;
-	  var->csym->Stree = field;
-	  fields += 1;
-	  continue;
+	  // Insert the field declaration at it's given offset.
+	  if (var->isField())
+	    {
+	      tree ident = var->ident ? get_identifier(var->ident->string) : NULL_TREE;
+	      tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, ident,
+				      declaration_type(var));
+	      DECL_ARTIFICIAL (field) = inherited_p;
+	      DECL_IGNORED_P (field) = inherited_p;
+	      insert_aggregate_field(var->loc, context, field, var->offset);
+
+	      // Because the front-end shares field decls across classes, don't
+	      // create the corresponding backend symbol unless we are adding
+	      // it to the aggregate it is defined in.
+	      if (!inherited_p)
+		{
+		  var->csym = new Symbol();
+		  var->csym->Stree = field;
+		}
+
+	      if (var->size(var->loc))
+		{
+		  gcc_assert(DECL_MODE (field) != VOIDmode);
+		  gcc_assert(DECL_SIZE (field) != NULL_TREE);
+		}
+
+	      fields += 1;
+	      continue;
+	    }
 	}
 
       // Anonymous struct/union are treated as flat attributes by the front-end.
@@ -4125,10 +4211,13 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
       gcc_assert(fields == base->fields.dim);
 
       // Make sure that all fields have been created.
-      for (size_t i = 0; i < base->fields.dim; i++)
+      if (!inherited_p)
 	{
-	  VarDeclaration *var = base->fields[i];
-	  gcc_assert(var->csym != NULL);
+	  for (size_t i = 0; i < base->fields.dim; i++)
+	    {
+	      VarDeclaration *var = base->fields[i];
+	      gcc_assert(var->csym != NULL);
+	    }
 	}
     }
 

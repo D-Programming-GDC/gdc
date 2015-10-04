@@ -2409,7 +2409,7 @@ AssocArrayLiteralExp::toElem (IRState *)
 elem *
 StructLiteralExp::toElem(IRState *)
 {
-  vec<constructor_elt, va_gc> *ce = NULL;
+  vec<constructor_elt, va_gc> *ve = NULL;
   Type *tb = type->toBasetype();
 
   gcc_assert(tb->ty == Tstruct);
@@ -2462,6 +2462,7 @@ StructLiteralExp::toElem(IRState *)
 
 	      tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
 					build_address(exp_tree));
+	      ptr_tree = void_okay_p(ptr_tree);
 	      tree set_exp = build_array_set(ptr_tree, size, exp->toElem(NULL));
 	      exp_tree = compound_expr(set_exp, exp_tree);
 	    }
@@ -2469,11 +2470,7 @@ StructLiteralExp::toElem(IRState *)
       else
 	exp_tree = convert_expr(exp->toElem(NULL), exp->type, fld->type);
 
-      CONSTRUCTOR_APPEND_ELT(ce, fld->toSymbol()->Stree, exp_tree);
-
-      // Unions only have one field that gets assigned.
-      if (sd->isUnionDeclaration())
-	break;
+      CONSTRUCTOR_APPEND_ELT (ve, fld->toSymbol()->Stree, exp_tree);
     }
 
   if (sd->isNested() && dim != sd->fields.dim)
@@ -2481,11 +2478,11 @@ StructLiteralExp::toElem(IRState *)
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;
       tree vthis_value = build_vthis(sd);
-      CONSTRUCTOR_APPEND_ELT(ce, vthis_field, vthis_value);
+      CONSTRUCTOR_APPEND_ELT (ve, vthis_field, vthis_value);
       gcc_assert(sinit == NULL);
     }
 
-  tree ctor = build_constructor(build_ctype(type), ce);
+  tree ctor = build_struct_literal(build_ctype(type), build_constructor(unknown_type_node, ve));
   tree var = (sym != NULL)
     ? build_deref(sym->Stree) : build_local_temp(TREE_TYPE(ctor));
   tree init = NULL_TREE;

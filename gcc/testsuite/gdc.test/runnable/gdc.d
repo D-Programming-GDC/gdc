@@ -812,7 +812,7 @@ auto test194(ref bool overflow)
 
 // Bug 198
 
-struct S198
+struct S198a
 {
     union
     {
@@ -832,7 +832,7 @@ struct S198
         z = z_;
     }
 
-    ref S198 opOpAssign(string op)(S198 operand)
+    ref S198a opOpAssign(string op)(S198a operand)
     if (op == "+")
     {
         x += operand.x;
@@ -842,12 +842,40 @@ struct S198
     }
 }
 
+struct S198b
+{
+    @property get()
+    {
+        union Buf
+        {
+            void[0] result;
+        }
+        const Buf buf = { };
+        return buf.result;
+    }
+}
+
+struct S198c
+{
+    @property get()
+    {
+        union Buf
+        {
+            TypeInfo info;
+            void[0] result;
+        }
+        const Buf buf = { };
+        return buf.result;
+    }
+}
+
+
 auto test198()
 {
-    S198 sum = S198(0, 0, 0);
+    S198a sum = S198a(0, 0, 0);
 
     foreach(size_t v; 0 .. 3)
-        sum += S198(1, 2, 3);
+        sum += S198a(1, 2, 3);
 
     assert(sum.v == [3, 6, 9]);
 }

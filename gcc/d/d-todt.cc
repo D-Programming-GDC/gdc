@@ -47,7 +47,7 @@ dt_t **
 dt_cons(dt_t **pdt, tree val)
 {
   if (*pdt == NULL_TREE)
-    *pdt = build_constructor(d_unknown_type_node, NULL);
+    *pdt = build_constructor(unknown_type_node, NULL);
 
   CONSTRUCTOR_APPEND_ELT(CONSTRUCTOR_ELTS(*pdt), 0, val);
   return pdt;
