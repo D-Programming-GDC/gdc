@@ -555,7 +555,7 @@ ClassDeclaration::toSymbol()
       csym = toSymbolX ("__Class", 0, 0, "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (csym->prettyIdent), d_unknown_type_node);
+			      get_identifier (csym->prettyIdent), unknown_type_node);
       SET_DECL_ASSEMBLER_NAME (decl, get_identifier (csym->Sident));
       csym->Stree = decl;
       d_keep (decl);
@@ -581,7 +581,7 @@ InterfaceDeclaration::toSymbol()
       csym = toSymbolX ("__Interface", 0, 0, "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (csym->prettyIdent), d_unknown_type_node);
+			      get_identifier (csym->prettyIdent), unknown_type_node);
       SET_DECL_ASSEMBLER_NAME (decl, get_identifier (csym->Sident));
       csym->Stree = decl;
       d_keep (decl);
@@ -606,7 +606,7 @@ Module::toSymbol()
       csym = toSymbolX ("__ModuleInfo", 0, 0, "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (csym->prettyIdent), d_unknown_type_node);
+			      get_identifier (csym->prettyIdent), unknown_type_node);
       SET_DECL_ASSEMBLER_NAME (decl, get_identifier (csym->Sident));
       csym->Stree = decl;
       d_keep (decl);
@@ -659,7 +659,7 @@ ClassReferenceExp::toSymbol()
       value->sym = new Symbol();
 
       // Build reference symbol.
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, d_unknown_type_node);
+      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, unknown_type_node);
       char *ident;
 
       ASM_FORMAT_PRIVATE_NAME (ident, "*", DECL_UID (decl));
