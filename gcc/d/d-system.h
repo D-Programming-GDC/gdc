@@ -51,4 +51,17 @@
 #define VAR_P(NODE) \
   (TREE_CODE (NODE) == VAR_DECL)
 
+// GCC backported macros
+
+/* The IDENTIFIER_NODE associated with the TYPE_NAME field.  */
+#define TYPE_IDENTIFIER(NODE) \
+  (TYPE_NAME (NODE) && DECL_P (TYPE_NAME (NODE)) \
+   ? DECL_NAME (TYPE_NAME (NODE)) : TYPE_NAME (NODE))
+
+#define ANON_AGGRNAME_PREFIX "__anon_"
+#define ANON_AGGRNAME_P(ID_NODE) \
+  (!strncmp (IDENTIFIER_POINTER (ID_NODE), ANON_AGGRNAME_PREFIX, \
+	     sizeof (ANON_AGGRNAME_PREFIX) - 1))
+#define ANON_AGGRNAME_FORMAT "__anon_%d"
+
 #endif

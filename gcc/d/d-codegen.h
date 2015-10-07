@@ -83,6 +83,7 @@ extern tree d_mark_read (tree exp);
 extern tree build_address (tree exp);
 
 extern tree build_struct_memcmp (tree_code code, StructDeclaration *sd, tree arg0, tree arg1);
+extern tree build_struct_literal(tree type, tree init);
 
 // Routines to handle variables that are references.
 extern type_kind declaration_type_kind(Declaration *decl);
@@ -214,8 +215,8 @@ extern tree build_typeinfo (Type *t);
 
 // Record layout
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
-extern void insert_aggregate_field(AggregateDeclaration *decl, tree type, tree field, size_t offset);
-extern void finish_aggregate_type(AggregateDeclaration *decl, tree type, UserAttributeDeclaration *declattrs);
+extern void insert_aggregate_field(Loc loc, tree type, tree field, size_t offset);
+extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
 
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.

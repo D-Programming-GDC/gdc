@@ -42,7 +42,7 @@ dt_t **
 dt_cons(dt_t **pdt, tree val)
 {
   if (*pdt == NULL_TREE)
-    *pdt = build_constructor(d_unknown_type_node, NULL);
+    *pdt = build_constructor(unknown_type_node, NULL);
 
   CONSTRUCTOR_APPEND_ELT(CONSTRUCTOR_ELTS(*pdt), 0, val);
   return pdt;
@@ -104,7 +104,7 @@ dt_container2(dt_t *dt)
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE(value));
 	  tree size = TYPE_SIZE_UNIT(TREE_TYPE(value));
 
-	  DECL_CONTEXT(field) = aggtype;
+	  DECL_FIELD_CONTEXT(field) = aggtype;
 	  DECL_FIELD_OFFSET(field) = offset;
 	  DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
 	  SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN(TREE_TYPE(value)));

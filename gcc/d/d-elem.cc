@@ -1688,55 +1688,55 @@ DelegateExp::toElem (IRState *)
 }
 
 elem *
-DotVarExp::toElem (IRState *)
+DotVarExp::toElem(IRState *)
 {
-  FuncDeclaration *func_decl;
-  VarDeclaration *var_decl;
-  Type *obj_basetype = e1->type->toBasetype();
+  Type *tb = e1->type->toBasetype();
 
-  switch (obj_basetype->ty)
+  switch (tb->ty)
     {
     case Tpointer:
-      if (obj_basetype->nextOf()->toBasetype()->ty != Tstruct)
+      if (tb->nextOf()->toBasetype()->ty != Tstruct)
 	break;
       // drop through
 
     case Tstruct:
     case Tclass:
-      func_decl = var->isFuncDeclaration();
-      var_decl = var->isVarDeclaration();
-      if (func_decl)
+    {
+      FuncDeclaration *fd = var->isFuncDeclaration();
+      VarDeclaration *vd = var->isVarDeclaration();
+      if (fd != NULL)
       {
 	// if Tstruct, objInstanceMethod will use the address of e1
-	if (func_decl->isThis())
-	  return get_object_method (e1->toElem(NULL), e1, func_decl, type);
+	if (fd->isThis())
+	  return get_object_method(e1->toElem(NULL), e1, fd, type);
 	else
 	  {
 	    // Static method; ignore the object instance
-	    return build_address (func_decl->toSymbol()->Stree);
+	    return build_address(fd->toSymbol()->Stree);
     	  }
       }
-      else if (var_decl)
+      else if (vd)
 	{
-	  if (!var_decl->isField())
-	    return get_decl_tree (var_decl);
+	  if (!vd->isField())
+	    return get_decl_tree(vd);
 	  else
 	    {
 	      tree this_tree = e1->toElem(NULL);
-	      if (obj_basetype->ty != Tstruct)
-		this_tree = build_deref (this_tree);
-	      return component_ref (this_tree, var_decl->toSymbol()->Stree);
+	      if (tb->ty != Tstruct)
+		this_tree = build_deref(this_tree);
+	      return component_ref(this_tree, vd->toSymbol()->Stree);
 	    }
 	}
       else
-	error ("%s is not a field, but a %s", var->toChars(), var->kind());
+	error("%s is not a field, but a %s", var->toChars(), var->kind());
       break;
+    }
 
     default:
       break;
     }
 
-  error ("Don't know how to handle %s", toChars());
+  error("Don't know how to handle %s", toChars());
   return error_mark_node;
 }
 
@@ -2403,7 +2403,7 @@ AssocArrayLiteralExp::toElem (IRState *)
 elem *
 StructLiteralExp::toElem(IRState *)
 {
-  vec<constructor_elt, va_gc> *ce = NULL;
+  vec<constructor_elt, va_gc> *ve = NULL;
   Type *tb = type->toBasetype();
 
   gcc_assert(tb->ty == Tstruct);
@@ -2456,6 +2456,7 @@ StructLiteralExp::toElem(IRState *)
 
 	      tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
 					build_address(exp_tree));
+	      ptr_tree = void_okay_p(ptr_tree);
 	      tree set_exp = build_array_set(ptr_tree, size, exp->toElem(NULL));
 	      exp_tree = compound_expr(set_exp, exp_tree);
 	    }
@@ -2463,11 +2464,7 @@ StructLiteralExp::toElem(IRState *)
       else
 	exp_tree = convert_expr(exp->toElem(NULL), exp->type, fld->type);
 
-      CONSTRUCTOR_APPEND_ELT(ce, fld->toSymbol()->Stree, exp_tree);
-
-      // Unions only have one field that gets assigned.
-      if (sd->isUnionDeclaration())
-	break;
+      CONSTRUCTOR_APPEND_ELT (ve, fld->toSymbol()->Stree, exp_tree);
     }
 
   if (sd->isNested() && dim != sd->fields.dim)
@@ -2475,11 +2472,11 @@ StructLiteralExp::toElem(IRState *)
       // Maybe setup hidden pointer to outer scope context.
       tree vthis_field = sd->vthis->toSymbol()->Stree;
       tree vthis_value = build_vthis(sd);
-      CONSTRUCTOR_APPEND_ELT(ce, vthis_field, vthis_value);
+      CONSTRUCTOR_APPEND_ELT (ve, vthis_field, vthis_value);
       gcc_assert(sinit == NULL);
     }
 
-  tree ctor = build_constructor(build_ctype(type), ce);
+  tree ctor = build_struct_literal(build_ctype(type), build_constructor(unknown_type_node, ve));
   tree var = (sym != NULL)
     ? build_deref(sym->Stree) : build_local_temp(TREE_TYPE(ctor));
   tree init = NULL_TREE;
