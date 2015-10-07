@@ -174,7 +174,11 @@ lang_tree_node
 
 // True if the type is an imaginary float type.
 #define D_TYPE_IMAGINARY_FLOAT(NODE) \
-  (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
+  (TYPE_LANG_FLAG_0 (TREE_CHECK ((NODE), REAL_TYPE)))
+
+// True if the type is an anonymous record or union.
+#define ANON_AGGR_TYPE_P(NODE) \
+  (TYPE_LANG_FLAG_1 (RECORD_OR_UNION_CHECK (NODE)))
 
 // True if the symbol should be made "link one only".  This is used to
 // defer calling make_decl_one_only() before the decl has been prepared.
@@ -240,6 +244,6 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define ifloat_type_node		d_global_trees[DTI_IFLOAT_TYPE]
 #define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
-#define d_unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+#define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
 
 #endif

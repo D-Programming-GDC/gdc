@@ -251,14 +251,17 @@ public:
 
     // Must set up the overall size, etc. before determining the context or
     // laying out fields as those types may make references to this type.
-    TYPE_SIZE (t->ctype) = bitsize_int(t->sym->structsize * BITS_PER_UNIT);
-    TYPE_SIZE_UNIT (t->ctype) = size_int(t->sym->structsize);
-    TYPE_ALIGN (t->ctype) = t->sym->alignsize * BITS_PER_UNIT;
-    TYPE_PACKED (t->ctype) = (t->sym->alignsize == 1);
+    unsigned structsize = t->sym->structsize;
+    unsigned alignsize = t->sym->alignsize;
+
+    TYPE_SIZE (t->ctype) = bitsize_int(structsize * BITS_PER_UNIT);
+    TYPE_SIZE_UNIT (t->ctype) = size_int(structsize);
+    TYPE_ALIGN (t->ctype) = alignsize * BITS_PER_UNIT;
+    TYPE_PACKED (t->ctype) = (alignsize == 1);
     compute_record_mode(t->ctype);
 
     layout_aggregate_type(t->sym, t->ctype, t->sym);
-    finish_aggregate_type(t->sym, t->ctype, t->sym->userAttribDecl);
+    finish_aggregate_type(structsize, alignsize, t->ctype, t->sym->userAttribDecl);
 
     TYPE_CONTEXT (t->ctype) = d_decl_context(t->sym);
     build_type_decl(t->ctype, t->sym);
@@ -401,7 +404,7 @@ public:
     t->ctype = make_node(RECORD_TYPE);
     tree ptr = build_decl(BUILTINS_LOCATION, FIELD_DECL,
 			  get_identifier("ptr"), ptr_type_node);
-    DECL_CONTEXT (ptr) = t->ctype;
+    DECL_FIELD_CONTEXT (ptr) = t->ctype;
     TYPE_FIELDS (t->ctype) = ptr;
     TYPE_NAME (t->ctype) = get_identifier(t->toChars());
     TYPE_TRANSPARENT_AGGR (t->ctype) = 1;
@@ -452,7 +455,7 @@ public:
 
     // Add the fields of each base class
     layout_aggregate_type(t->sym, basetype, t->sym);
-    finish_aggregate_type(t->sym, basetype, t->sym->userAttribDecl);
+    finish_aggregate_type(t->sym->structsize, t->sym->alignsize, basetype, t->sym->userAttribDecl);
 
     // Type is final, there are no derivations.
     if (t->sym->storage_class & STCfinal)

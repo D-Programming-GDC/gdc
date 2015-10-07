@@ -1809,7 +1809,7 @@ d_finish_symbol (Symbol *sym)
       if (DECL_INITIAL (decl) == NULL_TREE)
 	{
 	  tree sinit = dtvector_to_tree (sym->Sdt);
-	  if (TREE_TYPE (decl) == d_unknown_type_node)
+	  if (TREE_TYPE (decl) == unknown_type_node)
 	    {
 	      TREE_TYPE (decl) = TREE_TYPE (sinit);
 	      TYPE_NAME (TREE_TYPE (decl)) = get_identifier (sym->Sident);
