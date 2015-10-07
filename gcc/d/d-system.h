@@ -54,4 +54,11 @@
 #include "common/common-target.h"
 #include "stmt.h"
 
+// GCC backported macros
+
+/* The IDENTIFIER_NODE associated with the TYPE_NAME field.  */
+#define TYPE_IDENTIFIER(NODE) \
+  (TYPE_NAME (NODE) && DECL_P (TYPE_NAME (NODE)) \
+   ? DECL_NAME (TYPE_NAME (NODE)) : TYPE_NAME (NODE))
+
 #endif

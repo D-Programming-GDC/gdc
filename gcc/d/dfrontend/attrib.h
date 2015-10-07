@@ -132,6 +132,9 @@ public:
     bool isunion;
     structalign_t alignment;
     int sem;                    // 1 if successful semantic()
+    unsigned anonoffset;        // offset of the first member
+    unsigned anonstructsize;    // size of anonymous struct
+    unsigned anonalignsize;     // size of anonymous struct for alignment purposes
 
     AnonDeclaration(Loc loc, bool isunion, Dsymbols *decl);
     Dsymbol *syntaxCopy(Dsymbol *s);
@@ -139,6 +142,7 @@ public:
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     const char *kind();
+    AnonDeclaration *isAnonDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };
 
