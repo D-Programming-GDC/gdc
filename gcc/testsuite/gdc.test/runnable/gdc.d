@@ -810,6 +810,29 @@ auto test194(ref bool overflow)
 
 /******************************************/
 
+// Bug 196
+
+class C196
+{
+    int a;
+}
+
+struct S196
+{
+    int a;
+}
+
+void test196()
+{
+    __gshared c = new C196();
+    __gshared s = new S196(0);
+    c.a = 1;
+    s.a = 1;
+}
+
+
+/******************************************/
+
 // Bug 198
 
 struct S198a
@@ -903,6 +926,7 @@ void main()
     test133();
     test141();
     test179();
+    test196();
     test198();
 
     printf("Success!\n");
