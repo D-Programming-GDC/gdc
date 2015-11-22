@@ -930,7 +930,7 @@ void PragmaDeclaration::semantic(Scope *sc)
                 error("string expected for library name, not '%s'", e->toChars());
             else
             {
-                char *name = (char *)mem.malloc(se->len + 1);
+                char *name = (char *)mem.xmalloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
                 if (global.params.verbose)
@@ -947,7 +947,7 @@ void PragmaDeclaration::semantic(Scope *sc)
                     ob->writestring((char *) name);
                     ob->writenl();
                 }
-                mem.free(name);
+                mem.xfree(name);
             }
         }
         goto Lnodecl;
@@ -1093,7 +1093,7 @@ Ldecl:
             {
                 StringExp *e = (*args)[0]->toStringExp();
 
-                char *name = (char *)mem.malloc(e->len + 1);
+                char *name = (char *)mem.xmalloc(e->len + 1);
                 memcpy(name, e->string, e->len);
                 name[e->len] = 0;
 

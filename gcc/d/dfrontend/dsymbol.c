@@ -227,7 +227,7 @@ const char *Dsymbol::toPrettyChars(bool QualifyTypes)
     for (p = this; p; p = p->parent)
         len += strlen(QualifyTypes ? p->toPrettyCharsHelper() : p->toChars()) + 1;
 
-    s = (char *)mem.malloc(len);
+    s = (char *)mem.xmalloc(len);
     q = s + len - 1;
     *q = 0;
     for (p = this; p; p = p->parent)
@@ -415,7 +415,7 @@ Dsymbol *Dsymbol::search(Loc loc, Identifier *ident, int flags)
  * Search for symbol with correct spelling.
  */
 
-void *symbol_search_fp(void *arg, const char *seed)
+void *symbol_search_fp(void *arg, const char *seed, int* cost)
 {
     /* If not in the lexer's string table, it certainly isn't in the symbol table.
      * Doing this first is a lot faster.
@@ -429,6 +429,7 @@ void *symbol_search_fp(void *arg, const char *seed)
     Identifier *id = (Identifier *)sv->ptrvalue;
     assert(id);
 
+    *cost = 0;
     Dsymbol *s = (Dsymbol *)arg;
     Module::clearCache();
     return (void *)s->search(Loc(), id, IgnoreErrors | IgnoreAmbiguous);
@@ -1091,7 +1092,7 @@ void ScopeDsymbol::importScope(Dsymbol *s, PROT protection)
             }
         }
         imports->push(s);
-        prots = (PROT *)mem.realloc(prots, imports->dim * sizeof(prots[0]));
+        prots = (PROT *)mem.xrealloc(prots, imports->dim * sizeof(prots[0]));
         prots[imports->dim - 1] = protection;
     }
 }

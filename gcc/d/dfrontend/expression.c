@@ -1894,7 +1894,7 @@ Expression *Expression::copy()
 #endif
         assert(0);
     }
-    e = (Expression *)mem.malloc(size);
+    e = (Expression *)mem.xmalloc(size);
     //printf("Expression::copy(op = %d) e = %p\n", op, e);
     return (Expression *)memcpy((void*)e, (void*)this, size);
 }
@@ -2794,7 +2794,7 @@ char *RealExp::toChars()
         strcat(buffer, "i");
 
     assert(strlen(buffer) < BUFFER_LEN);
-    return mem.strdup(buffer);
+    return mem.xstrdup(buffer);
 }
 
 dinteger_t RealExp::toInteger()
@@ -2942,7 +2942,7 @@ char *ComplexExp::toChars()
     ld_sprint(buf2, 'g', cimagl(value));
     sprintf(buffer, "(%s+%si)", buf1, buf2);
     assert(strlen(buffer) < BUFFER_LEN);
-    return mem.strdup(buffer);
+    return mem.xstrdup(buffer);
 }
 
 dinteger_t ComplexExp::toInteger()
@@ -3606,7 +3606,7 @@ StringExp *NullExp::toStringExp()
 {
     if (implicitConvTo(Type::tstring))
     {
-        StringExp *se = new StringExp(loc, (char*)mem.calloc(1, 1), 0);
+        StringExp *se = new StringExp(loc, (char*)mem.xcalloc(1, 1), 0);
         se->type = Type::tstring;
         return se;
     }

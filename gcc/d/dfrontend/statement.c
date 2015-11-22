@@ -3042,11 +3042,11 @@ Statement *PragmaStatement::semantic(Scope *sc)
                 error("string expected for library name, not '%s'", e->toChars());
             else if (global.params.verbose)
             {
-                char *name = (char *)mem.malloc(se->len + 1);
+                char *name = (char *)mem.xmalloc(se->len + 1);
                 memcpy(name, se->string, se->len);
                 name[se->len] = 0;
                 fprintf(global.stdmsg, "library   %s\n", name);
-                mem.free(name);
+                mem.xfree(name);
             }
         }
 #endif

@@ -106,7 +106,7 @@ Module::Module(const char *filename, Identifier *ident, int doDocComment, int do
         FileName::exists(filename) == 1)
     {
         FileName::free(srcfilename);
-        srcfilename = FileName::removeExt(filename);    // just does a mem.strdup(filename)
+        srcfilename = FileName::removeExt(filename);    // just does a mem.xstrdup(filename)
     }
     else if (!FileName::equalsExt(srcfilename, global.mars_ext) &&
         !FileName::equalsExt(srcfilename, global.hdr_ext) &&
