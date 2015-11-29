@@ -24,6 +24,7 @@
 #include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
 #include "dfrontend/enum.h"
+#include "dfrontend/globals.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
 #include "dfrontend/statement.h"
@@ -78,7 +79,6 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 Symbol *
 Dsymbol::toSymbol()
 {
-  fprintf (global.stdmsg, "Dsymbol::toSymbol() '%s', kind = '%s'\n", toChars(), kind());
   gcc_unreachable();          // BUG: implement
   return NULL;
 }
@@ -107,7 +107,7 @@ VarDeclaration::toSymbol()
       if (isDataseg())
 	{
 	  csym->Sident = mangle(this);
-	  csym->prettyIdent = toPrettyChars();
+	  csym->prettyIdent = toPrettyChars(true);
 	}
       else
 	csym->Sident = ident->string;
@@ -275,7 +275,7 @@ FuncDeclaration::toSymbol()
 
       // Save mangle/debug names for making thunks.
       csym->Sident = mangleExact(this);
-      csym->prettyIdent = toPrettyChars();
+      csym->prettyIdent = toPrettyChars(true);
 
       tree id = get_identifier (this->isMain()
 				? csym->prettyIdent : ident->string);
@@ -712,7 +712,7 @@ EnumDeclaration::toInitializer()
     {
       Identifier *ident_save = ident;
       if (!ident)
-	ident = Lexer::uniqueId("__enum");
+	ident = Identifier::generateId("__enum");
       sinit = toSymbolX ("__init", 0, 0, "Z");
       ident = ident_save;
     }
@@ -733,32 +733,5 @@ EnumDeclaration::toInitializer()
     }
 
   return sinit;
-}
-
-
-// Stubs unused in GDC, but required for D front-end.
-
-Symbol *
-Module::toModuleAssert()
-{
-  return NULL;
-}
-
-Symbol *
-Module::toModuleUnittest()
-{
-  return NULL;
-}
-
-Symbol *
-Module::toModuleArray()
-{
-  return NULL;
-}
-
-Symbol *
-TypeAArray::aaGetSymbol (const char *, int)
-{
-  return 0;
 }
 

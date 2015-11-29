@@ -62,6 +62,8 @@ typedef Array<class ScopeStatement *> ScopeStatements;
 
 typedef Array<class GotoCaseStatement *> GotoCaseStatements;
 
+typedef Array<class ReturnStatement *> ReturnStatements;
+
 typedef Array<class GotoStatement *> GotoStatements;
 
 typedef Array<class TemplateInstance *> TemplateInstances;
@@ -74,8 +76,6 @@ typedef Array<struct Symbol *> Symbols;
 
 #ifdef IN_GCC
 typedef Array<union tree_node *> Dts;
-#else
-typedef Array<struct dt_t *> Dts;
 #endif
 
 #endif

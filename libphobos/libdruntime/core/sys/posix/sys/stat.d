@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -21,8 +21,7 @@ public import core.stdc.stddef;          // for size_t
 public import core.sys.posix.sys.types; // for off_t, mode_t
 
 version (Posix):
-extern (C):
-nothrow:
+extern (C) nothrow @nogc:
 
 //
 // Required
@@ -173,7 +172,7 @@ version( linux )
                 time_t      st_ctime;
                 ulong_t     st_ctimensec;
             }
-            slong_t     __unused[3];
+            slong_t[3]     __unused;
         }
     }
     else version (MIPS_O32)
@@ -614,7 +613,7 @@ else version( OSX )
         uint        st_flags;
         uint        st_gen;
         int         st_lspare;
-        long        st_qspare[2];
+        long[2]     st_qspare;
     }
 
     enum S_IRUSR    = 0x100;  // octal 0400
@@ -735,9 +734,21 @@ else version (Solaris)
             gid_t st_gid;
             dev_t st_rdev;
             off_t st_size;
-            timestruc_t st_atim;
-            timestruc_t st_mtim;
-            timestruc_t st_ctim;
+            union
+            {
+                timestruc_t st_atim;
+                time_t      st_atime;
+            }
+            union
+            {
+                timestruc_t st_mtim;
+                time_t      st_mtime;
+            }
+            union
+            {
+                timestruc_t st_ctim;
+                time_t      st_ctime;
+            }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -760,9 +771,21 @@ else version (Solaris)
             c_long[2] st_pad2;
             off_t st_size;
             c_long st_pad3;
-            timestruc_t st_atim;
-            timestruc_t st_mtim;
-            timestruc_t st_ctim;
+            union
+            {
+                timestruc_t st_atim;
+                time_t      st_atime;
+            }
+            union
+            {
+                timestruc_t st_mtim;
+                time_t      st_mtime;
+            }
+            union
+            {
+                timestruc_t st_ctim;
+                time_t      st_ctime;
+            }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -782,9 +805,21 @@ else version (Solaris)
             c_long[2] st_pad2;
             off64_t st_size;
             c_long st_pad3;
-            timestruc_t st_atim;
-            timestruc_t st_mtim;
-            timestruc_t st_ctim;
+            union
+            {
+                timestruc_t st_atim;
+                time_t      st_atime;
+            }
+            union
+            {
+                timestruc_t st_mtim;
+                time_t      st_mtime;
+            }
+            union
+            {
+                timestruc_t st_ctim;
+                time_t      st_ctime;
+            }
             blksize_t st_blksize;
             blkcnt64_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -889,19 +924,19 @@ else version( Android )
 
     private
     {
-        extern (D) bool S_ISTYPE( mode_t mode, uint mask )
+        extern (D) bool S_ISTYPE( uint mode, uint mask )
         {
             return ( mode & S_IFMT ) == mask;
         }
     }
 
-    extern (D) bool S_ISBLK( mode_t mode )  { return S_ISTYPE( mode, S_IFBLK );  }
-    extern (D) bool S_ISCHR( mode_t mode )  { return S_ISTYPE( mode, S_IFCHR );  }
-    extern (D) bool S_ISDIR( mode_t mode )  { return S_ISTYPE( mode, S_IFDIR );  }
-    extern (D) bool S_ISFIFO( mode_t mode ) { return S_ISTYPE( mode, S_IFIFO );  }
-    extern (D) bool S_ISREG( mode_t mode )  { return S_ISTYPE( mode, S_IFREG );  }
-    extern (D) bool S_ISLNK( mode_t mode )  { return S_ISTYPE( mode, S_IFLNK );  }
-    extern (D) bool S_ISSOCK( mode_t mode ) { return S_ISTYPE( mode, S_IFSOCK ); }
+    extern (D) bool S_ISBLK( uint mode )  { return S_ISTYPE( mode, S_IFBLK );  }
+    extern (D) bool S_ISCHR( uint mode )  { return S_ISTYPE( mode, S_IFCHR );  }
+    extern (D) bool S_ISDIR( uint mode )  { return S_ISTYPE( mode, S_IFDIR );  }
+    extern (D) bool S_ISFIFO( uint mode ) { return S_ISTYPE( mode, S_IFIFO );  }
+    extern (D) bool S_ISREG( uint mode )  { return S_ISTYPE( mode, S_IFREG );  }
+    extern (D) bool S_ISLNK( uint mode )  { return S_ISTYPE( mode, S_IFLNK );  }
+    extern (D) bool S_ISSOCK( uint mode ) { return S_ISTYPE( mode, S_IFSOCK ); }
 }
 else
 {
@@ -921,7 +956,7 @@ version( linux )
 {
   static if( __USE_LARGEFILE64 )
   {
-    int   fstat64(int, stat_t*);
+    int   fstat64(int, stat_t*) @trusted;
     alias fstat64 fstat;
 
     int   lstat64(in char*, stat_t*);
@@ -932,7 +967,7 @@ version( linux )
   }
   else
   {
-    int   fstat(int, stat_t*);
+    int   fstat(int, stat_t*) @trusted;
     int   lstat(in char*, stat_t*);
     int   stat(in char*, stat_t*);
   }
@@ -941,7 +976,7 @@ else version (Solaris)
 {
     version (D_LP64)
     {
-        int fstat(int, stat_t*);
+        int fstat(int, stat_t*) @trusted;
         int lstat(in char*, stat_t*);
         int stat(in char*, stat_t*);
 
@@ -956,7 +991,7 @@ else version (Solaris)
     {
         static if (__USE_LARGEFILE64)
         {
-            int   fstat64(int, stat_t*);
+            int   fstat64(int, stat_t*) @trusted;
             alias fstat64 fstat;
 
             int   lstat64(in char*, stat_t*);
@@ -967,7 +1002,7 @@ else version (Solaris)
         }
         else
         {
-            int fstat(int, stat_t*);
+            int fstat(int, stat_t*) @trusted;
             int lstat(in char*, stat_t*);
             int stat(in char*, stat_t*);
         }
@@ -975,7 +1010,7 @@ else version (Solaris)
 }
 else version( Posix )
 {
-    int   fstat(int, stat_t*);
+    int   fstat(int, stat_t*) @trusted;
     int   lstat(in char*, stat_t*);
     int   stat(in char*, stat_t*);
 }

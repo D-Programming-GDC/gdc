@@ -16,7 +16,7 @@
 // <http://www.gnu.org/licenses/>.
 
 // Definitions for the D runtime functions.
-// Most are extern(C) - for those that are not, correct mangling must be ensured.
+// Most are extern(C) - for those that are not, ensure to use correct mangling.
 
 // Define all D runtime functions.
 // The first parameter:
@@ -94,6 +94,7 @@ DEF_D_RUNTIME(NEWITEMIT, "_d_newitemiT", P1(CONST(TYPEINFO)), VOIDPTR, ECF_NONE)
 
 // Used when calling delete on a pointer.
 DEF_D_RUNTIME(DELMEMORY, "_d_delmemory", P1(POINTER(VOIDPTR)), VOID, ECF_NONE)
+DEF_D_RUNTIME(DELSTRUCT, "_d_delstruct", P2(POINTER(VOIDPTR), TYPEINFO), VOID, ECF_NONE)
 
 // Used when new'ing an array.  The 'i' variant is for when the initialiser is
 // non-zero, and the 'm' variant is when initialising a multi-dimensional array.
@@ -132,6 +133,8 @@ DEF_D_RUNTIME(ARRAYCOPY, "_d_arraycopy", P3(SIZE_T, ARRAY(VOID), ARRAY(VOID)), A
 // Used for array assignments from an existing array.
 // The 'set' variant is for when the assignment value is a single element.
 DEF_D_RUNTIME(ARRAYASSIGN, "_d_arrayassign", P3(CONST(TYPEINFO), ARRAY(VOID), ARRAY(VOID)), ARRAY(VOID), ECF_NONE)
+DEF_D_RUNTIME(ARRAYASSIGN_L, "_d_arrayassign_l", P4(CONST(TYPEINFO), ARRAY(VOID), ARRAY(VOID), VOIDPTR), ARRAY(VOID), ECF_NONE)
+DEF_D_RUNTIME(ARRAYASSIGN_R, "_d_arrayassign_r", P4(CONST(TYPEINFO), ARRAY(VOID), ARRAY(VOID), VOIDPTR), ARRAY(VOID), ECF_NONE)
 DEF_D_RUNTIME(ARRAYSETASSIGN, "_d_arraysetassign", P4(VOIDPTR, VOIDPTR, SIZE_T, CONST(TYPEINFO)), VOIDPTR, ECF_NONE)
 
 // Used for constructing a new array from an existing array.
@@ -165,9 +168,9 @@ DEF_D_RUNTIME(AAEQUAL, "_aaEqual", P3(CONST(TYPEINFO), AA, AA), INT, ECF_NONE)
 DEF_D_RUNTIME(AAINX, "_aaInX", P3(AA, CONST(TYPEINFO), VOIDPTR), VOIDPTR, ECF_NONE)
 
 // Used to retrieve a value from an associative array index by a key.
-// The 'Rvalue' variant returns null if the key is not found, where as aaGetX
+// The 'Rvalue' variant returns null if the key is not found, where as aaGetY
 // will create new key entry for assignment.
-DEF_D_RUNTIME(AAGETX, "_aaGetX", P4(POINTER(AA), CONST(TYPEINFO), SIZE_T, VOIDPTR), VOIDPTR, ECF_NONE)
+DEF_D_RUNTIME(AAGETY, "_aaGetY", P4(POINTER(AA), CONST(TYPEINFO), SIZE_T, VOIDPTR), VOIDPTR, ECF_NONE)
 DEF_D_RUNTIME(AAGETRVALUEX, "_aaGetRvalueX", P4(AA, CONST(TYPEINFO), SIZE_T, VOIDPTR), VOIDPTR, ECF_NONE)
 
 // Used when calling delete on a key entry in an associative array.

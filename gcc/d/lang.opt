@@ -34,18 +34,32 @@ defaultlib=
 Driver Joined
 Default library to use instead of phobos.
 
+-verbose
+D Alias(v)
+
 fassert
 D
 ; Documented in Java
 
-; For D: defaults to on
 fbounds-check
 D
-Generate code to check bounds before indexing arrays.
+; Documented in common.opt
 
 fbounds-check=
-D Joined
--fbounds-check,-fno-bounds-check,-fbounds-check=safe	Generate code to check bounds before indexing arrays.
+D Joined RejectNegative Enum(bounds_check) Var(flag_bounds_check)
+-fbounds-check=[on|safeonly|off]	Turn array bounds checks on, in @safe code only, or off.
+
+Enum
+Name(bounds_check) Type(int) UnknownError(unknown array bounds setting %qs)
+
+EnumValue
+Enum(bounds_check) String(off) Value(0)
+
+EnumValue
+Enum(bounds_check) String(safeonly) Value(1)
+
+EnumValue
+Enum(bounds_check) String(on) Value(2)
 
 fbuiltin
 D Var(flag_no_builtin, 0)
@@ -84,16 +98,20 @@ D Joined RejectNegative
 -fdoc-inc=<filename>	Include a Ddoc macro file.
 
 fd-vgc
-D
-List all hidden GC allocations.
+D Alias(ftransition=nogc)
+Deprecated in favor of -ftransition=nogc
 
 fd-verbose
-D
-Print information about D language processing to stdout.
+D Alias(v)
+Deprecated in favor of --verbose
 
 fd-vtls
-D
-List all variables going into thread local storage.
+D Alias(ftransition=tls)
+Deprecated in favor of -ftransition=tls.
+
+femit-moduleinfo
+D Alias(fmoduleinfo)
+Deprecated in favor of -fmoduleinfo.
 
 femit-templates
 D
@@ -138,7 +156,7 @@ fmake-mdeps=
 D Joined RejectNegative
 Like -fmake-deps=<file> but ignore system modules.
 
-femit-moduleinfo
+fmoduleinfo
 D
 Generate ModuleInfo struct for output module.
 
@@ -157,6 +175,18 @@ Enforce property syntax.
 frelease
 D
 Compile release version.
+
+ftransition=field
+D RejectNegative
+List all non-mutable fields which occupy an object instance.
+
+ftransition=nogc
+D RejectNegative
+List all hidden GC allocations.
+
+ftransition=tls
+D RejectNegative
+List all variables going into thread local storage.
 
 funittest
 D
@@ -192,7 +222,7 @@ D Joined Separate
 
 J
 D Joined Separate
-; Documented in Fortran
+; Different from documented use in Fortran.
 
 nophoboslib
 Driver
@@ -205,6 +235,10 @@ D
 static-libphobos
 Driver
 Link the standard D library statically in the compilation.
+
+v
+D
+; Documented in C
 
 Wall
 D

@@ -20,15 +20,19 @@
 #include "coretypes.h"
 
 #include "dfrontend/aggregate.h"
+#include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
 #include "dfrontend/target.h"
 
 #include "tree.h"
 #include "fold-const.h"
+#include "stor-layout.h"
 #include "diagnostic.h"
 #include "stor-layout.h"
 #include "tm.h"
 #include "tm_p.h"
+#include "target.h"
+#include "common/common-target.h"
 
 #include "d-tree.h"
 #include "d-lang.h"
@@ -244,5 +248,59 @@ Target::paintAsType(Expression *expr, Type *type)
 
       return e;
     }
+}
+
+// Check imported module M for any special processing.
+// Modules we look out for are:
+//  - gcc.builtins: For all gcc builtins.
+//  - core.stdc.*: For all gcc library builtins.
+
+void
+Target::loadModule(Module *m)
+{
+  ModuleDeclaration *md = m->md;
+  if (!md || !md->packages || !md->id)
+    return;
+
+  if (md->packages->dim == 1)
+    {
+      if (!strcmp((*md->packages)[0]->string, "gcc")
+	  && !strcmp(md->id->string, "builtins"))
+	d_build_builtins_module(m);
+    }
+  else if (md->packages->dim == 2)
+    {
+      if (!strcmp((*md->packages)[0]->string, "core")
+	  && !strcmp((*md->packages)[1]->string, "stdc"))
+	builtin_modules.push(m);
+    }
+}
+
+// Check whether the given Type is a supported for this target.
+
+int
+Target::checkVectorType(int sz, Type *type)
+{
+  // Size must be greater than zero, and a power of two.
+  if (sz <= 0 || sz & (sz - 1))
+    return 2;
+
+  // __vector(void[]) is treated same as __vector(ubyte[])
+  if (type == Type::tvoid)
+    type = Type::tuns8;
+
+  // No support for non-trivial types.
+  if (!type->isTypeBasic())
+    return 3;
+
+  // If there is no hardware support, check if we an safely emulate it.
+  tree ctype = build_ctype(type);
+  machine_mode mode = TYPE_MODE (ctype);
+
+  if (!targetm.vector_mode_supported_p(mode)
+      && !targetm.scalar_mode_supported_p(mode))
+    return 3;
+
+  return 0;
 }
 

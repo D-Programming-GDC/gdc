@@ -61,7 +61,8 @@ public:
     m->isym->Stree = decl;
     d_keep(decl);
 
-    Loc loc = (m->md != NULL) ? m->md->loc : Loc(m, 1, 0);
+    Loc loc = (m->md != NULL) ? m->md->loc
+      : Loc(m->srcfile->toChars(), 1, 0);
     set_decl_location(decl, loc);
 
     if (!output_module_p(m))

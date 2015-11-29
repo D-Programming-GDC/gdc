@@ -47,6 +47,8 @@ extern tree d_signed_type (tree);
 extern void d_init_exceptions();
 extern void d_keep (tree t);
 
+extern Modules builtin_modules;
+
 // In d-builtins.cc.
 extern const attribute_spec d_langhook_attribute_table[];
 extern const attribute_spec d_langhook_common_attribute_table[];
@@ -55,6 +57,8 @@ extern const attribute_spec d_langhook_format_attribute_table[];
 tree d_builtin_function (tree);
 void d_init_builtins();
 void d_register_builtin_type (tree, const char *);
+void d_build_builtins_module(Module *);
+void d_maybe_set_builtin(Module *);
 void d_backend_init();
 void d_backend_term();
 

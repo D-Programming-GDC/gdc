@@ -62,10 +62,10 @@ DMDGEN_COMPILE = $(subst $(COMPILER), $(COMPILER_FOR_BUILD), $(DMD_COMPILE))
 D_DMD_OBJS := \
     d/argtypes.o d/aav.o d/access.o d/aliasthis.o \
     d/apply.o d/arrayop.o d/attrib.o \
-    d/canthrow.o d/cast.o d/class.o \
+    d/canthrow.o d/cast.o d/checkedint.o d/class.o \
     d/clone.o d/cond.o d/constfold.o d/cppmangle.o \
     d/ctfeexpr.o d/declaration.o d/delegatize.o d/doc.o \
-    d/dsymbol.o d/entity.o d/enum.o \
+    d/dsymbol.o d/entity.o d/enum.o d/escape.o \
     d/expression.o d/file.o d/filename.o d/func.o \
     d/hdrgen.o d/identifier.o d/imphint.o d/import.o \
     d/init.o d/inline.o d/interpret.o d/intrange.o \
@@ -75,7 +75,7 @@ D_DMD_OBJS := \
     d/parse.o d/rmem.o d/sapply.o d/scope.o \
     d/sideeffect.o d/speller.o d/statement.o \
     d/staticassert.o d/stringtable.o d/struct.o \
-    d/template.o d/traits.o d/unittests.o \
+    d/template.o d/tokens.o d/traits.o d/unittests.o \
     d/utf.o d/version.o
 
 # D Frontend generated files.
