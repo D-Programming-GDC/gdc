@@ -1,7 +1,8 @@
 module core.sys.windows.com;
 version (Windows):
 
-pragma(lib,"uuid");
+version (GNU) {}
+else pragma(lib,"uuid");
 
 import core.atomic;
 import core.sys.windows.windows;

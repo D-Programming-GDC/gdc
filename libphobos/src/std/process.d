@@ -75,6 +75,8 @@ Authors:
     $(WEB thecybershadow.net, Vladimir Panteleev)
 Copyright:
     Copyright (c) 2013, the authors. All rights reserved.
+License:
+   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Source:
     $(PHOBOSSRC std/_process.d)
 Macros:
@@ -99,19 +101,19 @@ version (Windows)
     import std.utf;
     import std.windows.syserror;
 }
-import std.algorithm;
-import std.array;
+
+import std.range.primitives;
 import std.conv;
 import std.exception;
 import std.path;
 import std.stdio;
-import std.string;
 import std.internal.processinit;
+import std.internal.cstring;
 
 
 // When the DMC runtime is used, we have to use some custom functions
 // to convert between Windows file handles and FILE*s.
-version (Win32) version (DigitalMars) version = DMC_RUNTIME;
+version (Win32) version (CRuntime_DigitalMars) version = DMC_RUNTIME;
 
 
 // Some of the following should be moved to druntime.
@@ -355,6 +357,9 @@ private Pid spawnProcessImpl(in char[][] args,
     @trusted // TODO: Should be @safe
 {
     import core.exception: RangeError;
+    import std.path : isDirSeparator;
+    import std.algorithm : any;
+    import std.string : toStringz;
 
     if (args.empty) throw new RangeError();
     const(char)[] name = args[0];
@@ -383,12 +388,12 @@ private Pid spawnProcessImpl(in char[][] args,
     // We use open in the parent and fchdir in the child
     // so that most errors (directory doesn't exist, not a directory)
     // can be propagated as exceptions before forking.
-    int workDirFD = 0;
-    scope(exit) if (workDirFD > 0) close(workDirFD);
-    if (workDir)
+    int workDirFD = -1;
+    scope(exit) if (workDirFD >= 0) close(workDirFD);
+    if (workDir.length)
     {
         import core.sys.posix.fcntl;
-        workDirFD = open(toStringz(workDir), O_RDONLY);
+        workDirFD = open(workDir.tempCString(), O_RDONLY);
         if (workDirFD < 0)
             throw ProcessException.newFromErrno("Failed to open working directory");
         stat_t s;
@@ -398,12 +403,14 @@ private Pid spawnProcessImpl(in char[][] args,
             throw new ProcessException("Not a directory: " ~ cast(string)workDir);
     }
 
+    int getFD(ref File f) { return core.stdc.stdio.fileno(f.getFP()); }
+
     // Get the file descriptors of the streams.
     // These could potentially be invalid, but that is OK.  If so, later calls
     // to dup2() and close() will just silently fail without causing any harm.
-    auto stdinFD  = core.stdc.stdio.fileno(stdin.getFP());
-    auto stdoutFD = core.stdc.stdio.fileno(stdout.getFP());
-    auto stderrFD = core.stdc.stdio.fileno(stderr.getFP());
+    auto stdinFD  = getFD(stdin);
+    auto stdoutFD = getFD(stdout);
+    auto stderrFD = getFD(stderr);
 
     auto id = fork();
     if (id < 0)
@@ -413,7 +420,7 @@ private Pid spawnProcessImpl(in char[][] args,
         // Child process
 
         // Set the working directory.
-        if (workDirFD)
+        if (workDirFD >= 0)
         {
             if (fchdir(workDirFD) < 0)
             {
@@ -466,11 +473,14 @@ private Pid spawnProcessImpl(in char[][] args,
     else
     {
         // Parent process:  Close streams and return.
-        if (stdinFD  > STDERR_FILENO && !(config & Config.retainStdin))
+        if (!(config & Config.retainStdin ) && stdinFD  > STDERR_FILENO
+                                            && stdinFD  != getFD(std.stdio.stdin ))
             stdin.close();
-        if (stdoutFD > STDERR_FILENO && !(config & Config.retainStdout))
+        if (!(config & Config.retainStdout) && stdoutFD > STDERR_FILENO
+                                            && stdoutFD != getFD(std.stdio.stdout))
             stdout.close();
-        if (stderrFD > STDERR_FILENO && !(config & Config.retainStderr))
+        if (!(config & Config.retainStderr) && stderrFD > STDERR_FILENO
+                                            && stderrFD != getFD(std.stdio.stderr))
             stderr.close();
         return new Pid(id);
     }
@@ -498,8 +508,6 @@ private Pid spawnProcessImpl(in char[] commandLine,
     import core.exception: RangeError;
 
     if (commandLine.empty) throw new RangeError("Command line is empty");
-    auto commandz = toUTFz!(wchar*)(commandLine);
-    auto workDirz = workDir is null ? null : toUTFz!(wchar*)(workDir);
 
     // Prepare environment.
     auto envz = createEnv(env, !(config & Config.newEnv));
@@ -509,12 +517,14 @@ private Pid spawnProcessImpl(in char[] commandLine,
     startinfo.cb = startinfo.sizeof;
     startinfo.dwFlags = STARTF_USESTDHANDLES;
 
+    static int getFD(ref File f) { return f.isOpen ? f.fileno : -1; }
+
     // Extract file descriptors and HANDLEs from the streams and make the
     // handles inheritable.
     static void prepareStream(ref File file, DWORD stdHandle, string which,
                               out int fileDescriptor, out HANDLE handle)
     {
-        fileDescriptor = file.isOpen ? file.fileno() : -1;
+        fileDescriptor = getFD(file);
         if (fileDescriptor < 0)   handle = GetStdHandle(stdHandle);
         else                      handle = file.windowsHandle;
 
@@ -545,16 +555,19 @@ private Pid spawnProcessImpl(in char[] commandLine,
     DWORD dwCreationFlags =
         CREATE_UNICODE_ENVIRONMENT |
         ((config & Config.suppressConsole) ? CREATE_NO_WINDOW : 0);
-    if (!CreateProcessW(null, commandz, null, null, true, dwCreationFlags,
-                        envz, workDirz, &startinfo, &pi))
+    if (!CreateProcessW(null, commandLine.tempCStringW().buffPtr, null, null, true, dwCreationFlags,
+                        envz, workDir.length ? workDir.tempCStringW() : null, &startinfo, &pi))
         throw ProcessException.newFromLastError("Failed to spawn new process");
 
     // figure out if we should close any of the streams
-    if (stdinFD  > STDERR_FILENO && !(config & Config.retainStdin))
+    if (!(config & Config.retainStdin ) && stdinFD  > STDERR_FILENO
+                                        && stdinFD  != getFD(std.stdio.stdin ))
         stdin.close();
-    if (stdoutFD > STDERR_FILENO && !(config & Config.retainStdout))
+    if (!(config & Config.retainStdout) && stdoutFD > STDERR_FILENO
+                                        && stdoutFD != getFD(std.stdio.stdout))
         stdout.close();
-    if (stderrFD > STDERR_FILENO && !(config & Config.retainStderr))
+    if (!(config & Config.retainStderr) && stderrFD > STDERR_FILENO
+                                        && stderrFD != getFD(std.stdio.stderr))
         stderr.close();
 
     // close the thread handle in the process info structure
@@ -634,7 +647,8 @@ private LPVOID createEnv(const string[string] childEnv,
                          bool mergeWithParentEnv)
 {
     if (mergeWithParentEnv && childEnv.length == 0) return null;
-
+    import std.array : appender;
+    import std.uni : toUpper;
     auto envz = appender!(wchar[])();
     void put(string var, string val)
     {
@@ -677,6 +691,8 @@ version (Posix)
 private string searchPathFor(in char[] executable)
     @trusted //TODO: @safe nothrow
 {
+    import std.algorithm : splitter;
+
     auto pathz = core.stdc.stdlib.getenv("PATH");
     if (pathz == null)  return null;
 
@@ -692,13 +708,14 @@ private string searchPathFor(in char[] executable)
 // Checks whether the file exists and can be executed by the
 // current user.
 version (Posix)
-private bool isExecutable(in char[] path) @trusted //TODO: @safe nothrow
+private bool isExecutable(in char[] path) @trusted nothrow @nogc //TODO: @safe
 {
-    return (access(toStringz(path), X_OK) == 0);
+    return (access(path.tempCString(), X_OK) == 0);
 }
 
 version (Posix) unittest
 {
+    import std.algorithm;
     auto unamePath = searchPathFor("uname");
     assert (!unamePath.empty);
     assert (unamePath[0] == '/');
@@ -719,11 +736,7 @@ private void setCLOEXEC(int fd, bool on)
         else    flags &= ~(cast(typeof(flags)) FD_CLOEXEC);
         flags = fcntl(fd, F_SETFD, flags);
     }
-    if (flags == -1)
-    {
-        throw new StdioException("Failed to "~(on ? "" : "un")
-                                 ~"set close-on-exec flag on file descriptor");
-    }
+    assert (flags != -1 || .errno == EBADF);
 }
 
 unittest // Command line arguments in spawnProcess().
@@ -790,6 +803,7 @@ unittest // Environment variables in spawnProcess().
 
 unittest // Stream redirection in spawnProcess().
 {
+    import std.string;
     version (Windows) TestScript prog =
        "set /p INPUT=
         echo %INPUT% output %~1
@@ -860,6 +874,39 @@ unittest // Specifying a bad working directory.
     assertThrown!ProcessException(spawnProcess([prog.path], null, Config.none, directory));
 }
 
+unittest // Specifying empty working directory.
+{
+    TestScript prog = "";
+
+    string directory = "";
+    assert(directory.ptr && !directory.length);
+    spawnProcess([prog.path], null, Config.none, directory).wait();
+}
+
+unittest // Reopening the standard streams (issue 13258)
+{
+    import std.string;
+    void fun()
+    {
+        spawnShell("echo foo").wait();
+        spawnShell("echo bar").wait();
+    }
+
+    auto tmpFile = uniqueTempPath();
+    scope(exit) if (exists(tmpFile)) remove(tmpFile);
+
+    {
+        auto oldOut = std.stdio.stdout;
+        scope(exit) std.stdio.stdout = oldOut;
+
+        std.stdio.stdout = File(tmpFile, "w");
+        fun();
+        std.stdio.stdout.close();
+    }
+
+    auto lines = readText(tmpFile).splitLines();
+    assert(lines == ["foo", "bar"]);
+}
 
 /**
 A variation on $(LREF spawnProcess) that runs the given _command through
@@ -953,6 +1000,7 @@ unittest
 version (Windows)
 unittest
 {
+    import std.string;
     TestScript prog = "echo %0 %*";
     auto outputFn = uniqueTempPath();
     scope(exit) if (exists(outputFn)) remove(outputFn);
@@ -1046,7 +1094,7 @@ final class Pid
     This is a number that uniquely identifies the process on the operating
     system, for at least as long as the process is running.  Once $(LREF wait)
     has been called on the $(LREF Pid), this method will return an
-    invalid process ID.
+    invalid (negative) process ID.
     */
     @property int processID() const @safe pure nothrow
     {
@@ -1511,11 +1559,11 @@ Pipe pipe() @trusted //TODO: @safe
 struct Pipe
 {
     /// The read end of the pipe.
-    @property File readEnd() @trusted /*TODO: @safe nothrow*/ { return _read; }
+    @property File readEnd() @safe nothrow { return _read; }
 
 
     /// The write end of the pipe.
-    @property File writeEnd() @trusted /*TODO: @safe nothrow*/ { return _write; }
+    @property File writeEnd() @safe nothrow { return _write; }
 
 
     /**
@@ -1528,8 +1576,11 @@ struct Pipe
     Note that if either end of the pipe has been passed to a child process,
     it will only be closed in the parent process.  (What happens in the
     child process is platform dependent.)
+
+    Throws:
+    $(XREF exception,ErrnoException) if an error occurs.
     */
-    void close() @trusted //TODO: @safe nothrow
+    void close() @safe
     {
         _read.close();
         _write.close();
@@ -1541,6 +1592,7 @@ private:
 
 unittest
 {
+    import std.string;
     auto p = pipe();
     p.writeEnd.writeln("Hello World");
     p.writeEnd.flush();
@@ -1600,6 +1652,7 @@ $(XREF stdio,StdioException) on failure to redirect any of the streams.$(BR)
 
 Example:
 ---
+// my_application writes to stdout and might write to stderr
 auto pipes = pipeProcess("my_application", Redirect.stdout | Redirect.stderr);
 scope(exit) wait(pipes.pid);
 
@@ -1610,6 +1663,28 @@ foreach (line; pipes.stdout.byLine) output ~= line.idup;
 // Store lines of errors.
 string[] errors;
 foreach (line; pipes.stderr.byLine) errors ~= line.idup;
+
+
+// sendmail expects to read from stdin
+pipes = pipeProcess(["/usr/bin/sendmail", "-t"], Redirect.stdin);
+pipes.stdin.writeln("To: you");
+pipes.stdin.writeln("From: me");
+pipes.stdin.writeln("Subject: dlang");
+pipes.stdin.writeln("");
+pipes.stdin.writeln(message);
+
+// a single period tells sendmail we are finished
+pipes.stdin.writeln(".");
+
+// but at this point sendmail might not see it, we need to flush
+pipes.stdin.flush();
+
+// sendmail happens to exit on ".", but some you have to close the file:
+pipes.stdin.close();
+
+// otherwise this wait will wait forever
+wait(pipes.pid);
+
 ---
 */
 ProcessPipes pipeProcess(in char[][] args,
@@ -1617,7 +1692,7 @@ ProcessPipes pipeProcess(in char[][] args,
                          const string[string] env = null,
                          Config config = Config.none,
                          in char[] workDir = null)
-    @trusted //TODO: @safe
+    @safe
 {
     return pipeProcessImpl!spawnProcess(args, redirect, env, config, workDir);
 }
@@ -1628,7 +1703,7 @@ ProcessPipes pipeProcess(in char[] program,
                          const string[string] env = null,
                          Config config = Config.none,
                          in char[] workDir = null)
-    @trusted
+    @safe
 {
     return pipeProcessImpl!spawnProcess(program, redirect, env, config, workDir);
 }
@@ -1755,6 +1830,7 @@ enum Redirect
 
 unittest
 {
+    import std.string;
     version (Windows) TestScript prog =
        "call :sub %~1 %~2 0
         call :sub %~1 %~2 1
@@ -1849,7 +1925,7 @@ struct ProcessPipes
     $(OBJECTREF Error) if the child process' standard input stream hasn't
     been redirected.
     */
-    @property File stdin() @trusted //TODO: @safe nothrow
+    @property File stdin() @safe nothrow
     {
         if ((_redirectFlags & Redirect.stdin) == 0)
             throw new Error("Child process' standard input stream hasn't "
@@ -1865,7 +1941,7 @@ struct ProcessPipes
     $(OBJECTREF Error) if the child process' standard output stream hasn't
     been redirected.
     */
-    @property File stdout() @trusted //TODO: @safe nothrow
+    @property File stdout() @safe nothrow
     {
         if ((_redirectFlags & Redirect.stdout) == 0)
             throw new Error("Child process' standard output stream hasn't "
@@ -1881,7 +1957,7 @@ struct ProcessPipes
     $(OBJECTREF Error) if the child process' standard error stream hasn't
     been redirected.
     */
-    @property File stderr() @trusted //TODO: @safe nothrow
+    @property File stderr() @safe nothrow
     {
         if ((_redirectFlags & Redirect.stderr) == 0)
             throw new Error("Child process' standard error stream hasn't "
@@ -1990,7 +2066,10 @@ private auto executeImpl(alias pipeFunc, Cmd)(
     size_t maxOutput = size_t.max,
     in char[] workDir = null)
 {
+    import std.string;
     import std.typecons : Tuple;
+    import std.array : appender;
+    import std.algorithm : min;
 
     auto p = pipeFunc(commandLine, Redirect.stdout | Redirect.stderrToStdout,
                       env, config, workDir);
@@ -2019,6 +2098,7 @@ private auto executeImpl(alias pipeFunc, Cmd)(
 
 unittest
 {
+    import std.string;
     // To avoid printing the newline characters, we use the echo|set trick on
     // Windows, and printf on POSIX (neither echo -n nor echo \c are portable).
     version (Windows) TestScript prog =
@@ -2039,6 +2119,7 @@ unittest
 
 unittest
 {
+    import std.string;
     auto r1 = executeShell("echo foo");
     assert (r1.status == 0);
     assert (r1.output.chomp() == "foo");
@@ -2079,16 +2160,16 @@ class ProcessException : Exception
                                          size_t line = __LINE__)
     {
         import core.stdc.errno;
-        import std.c.string;
+        import core.stdc.string;
         version (linux)
         {
             char[1024] buf;
             auto errnoMsg = to!string(
-                std.c.string.strerror_r(errno, buf.ptr, buf.length));
+                core.stdc.string.strerror_r(errno, buf.ptr, buf.length));
         }
         else
         {
-            auto errnoMsg = to!string(std.c.string.strerror(errno));
+            auto errnoMsg = to!string(core.stdc.string.strerror(errno));
         }
         auto msg = customMsg.empty ? errnoMsg
                                    : customMsg ~ " (" ~ errnoMsg ~ ')';
@@ -2119,10 +2200,11 @@ On POSIX, $(D userShell) returns the contents of the SHELL environment
 variable, if it exists and is non-empty.  Otherwise, it returns
 $(D "/bin/sh").
 */
-@property string userShell() @safe //TODO: nothrow
+@property string userShell() @safe
 {
-    version (Windows)    return environment.get("COMSPEC", "cmd.exe");
-    else version (Posix) return environment.get("SHELL", "/bin/sh");
+    version (Windows)      return environment.get("COMSPEC", "cmd.exe");
+    else version (Android) return environment.get("SHELL", "/system/bin/sh");
+    else version (Posix)   return environment.get("SHELL", "/bin/sh");
 }
 
 
@@ -2133,10 +2215,10 @@ version (Windows) private immutable string shellSwitch = "/C";
 
 
 /// Returns the process ID number of the current process.
-@property int thisProcessID() @trusted //TODO: @safe nothrow
+@property int thisProcessID() @trusted nothrow //TODO: @safe
 {
     version (Windows)    return GetCurrentProcessId();
-    else version (Posix) return getpid();
+    else version (Posix) return core.sys.posix.unistd.getpid();
 }
 
 
@@ -2159,14 +2241,15 @@ private struct TestScript
         else version (Posix)
         {
             auto ext = "";
-            auto firstLine = "#!/bin/sh";
+            version(Android) auto firstLine = "#!" ~ userShell;
+            else auto firstLine = "#!/bin/sh";
         }
         path = uniqueTempPath()~ext;
         std.file.write(path, firstLine~std.ascii.newline~code~std.ascii.newline);
         version (Posix)
         {
             import core.sys.posix.sys.stat;
-            chmod(toStringz(path), octal!777);
+            chmod(path.tempCString(), octal!777);
         }
     }
 
@@ -2243,8 +2326,7 @@ Throws:
 $(OBJECTREF Exception) if any part of the command line contains unescapable
 characters (NUL on all platforms, as well as CR and LF on Windows).
 */
-string escapeShellCommand(in char[][] args...)
-    //TODO: @safe pure nothrow
+string escapeShellCommand(in char[][] args...) @safe pure
 {
     if (args.empty)
         return null;
@@ -2283,7 +2365,7 @@ unittest
         },
         {
             args    : ["foo bar", "hello"],
-            windows : `"foo bar" ^"hello^"`,
+            windows : `"foo bar" hello`,
             posix   : `'foo bar' 'hello'`
         },
         {
@@ -2293,7 +2375,7 @@ unittest
         },
         {
             args    : ["foo bar", "hello", "world"],
-            windows : `"foo bar" ^"hello^" ^"world^"`,
+            windows : `"foo bar" hello world`,
             posix   : `'foo bar' 'hello' 'world'`
         },
         {
@@ -2310,8 +2392,7 @@ unittest
             assert(escapeShellCommand(test.args) == test.posix  );
 }
 
-private string escapeShellCommandString(string command)
-    //TODO: @safe pure nothrow
+private string escapeShellCommandString(string command) @safe pure
 {
     version (Windows)
         return escapeWindowsShellCommand(command);
@@ -2319,9 +2400,9 @@ private string escapeShellCommandString(string command)
         return command;
 }
 
-private string escapeWindowsShellCommand(in char[] command)
-    //TODO: @safe pure nothrow (prevented by Appender)
+private string escapeWindowsShellCommand(in char[] command) @safe pure
 {
+    import std.array : appender;
     auto result = appender!string();
     result.reserve(command.length);
 
@@ -2415,18 +2496,21 @@ private char[] escapeWindowsArgumentImpl(alias allocator)(in char[] arg)
     // * http://msdn.microsoft.com/en-us/library/windows/desktop/bb776391(v=vs.85).aspx
     // * http://blogs.msdn.com/b/oldnewthing/archive/2010/09/17/10063629.aspx
 
-    // Calculate the total string size.
+    // Check if the string needs to be escaped,
+    // and calculate the total string size.
 
     // Trailing backslashes must be escaped
     bool escaping = true;
+    bool needEscape = false;
     // Result size = input size + 2 for surrounding quotes + 1 for the
     // backslash for each escaped character.
     size_t size = 1 + arg.length + 1;
 
-    foreach_reverse (c; arg)
+    foreach_reverse (char c; arg)
     {
         if (c == '"')
         {
+            needEscape = true;
             escaping = true;
             size++;
         }
@@ -2437,8 +2521,24 @@ private char[] escapeWindowsArgumentImpl(alias allocator)(in char[] arg)
                 size++;
         }
         else
+        {
+            if (c == ' ' || c == '\t')
+                needEscape = true;
             escaping = false;
+        }
     }
+
+    // Empty arguments need to be specified as ""
+    if (!arg.length)
+        needEscape = true;
+    else
+    // Arguments ending with digits need to be escaped,
+    // to disambiguate with 1>file redirection syntax
+    if (std.ascii.isDigit(arg[$-1]))
+        needEscape = true;
+
+    if (!needEscape)
+        return allocator(arg.length)[] = arg;
 
     // Construct result string.
 
@@ -2446,7 +2546,7 @@ private char[] escapeWindowsArgumentImpl(alias allocator)(in char[] arg)
     size_t p = size;
     buf[--p] = '"';
     escaping = true;
-    foreach_reverse (c; arg)
+    foreach_reverse (char c; arg)
     {
         if (c == '"')
             escaping = true;
@@ -2468,12 +2568,15 @@ version(Windows) version(unittest)
 {
     import core.sys.windows.windows;
     import core.stdc.stddef;
+    import std.array;
 
     extern (Windows) wchar_t**  CommandLineToArgvW(wchar_t*, int*);
     extern (C) size_t wcslen(in wchar *);
 
     string[] parseCommandLine(string line)
     {
+        import std.algorithm : map;
+        import std.array : array;
         LPWSTR lpCommandLine = (to!(wchar[])(line) ~ "\0"w).ptr;
         int numArgs;
         LPWSTR* args = CommandLineToArgvW(lpCommandLine, &numArgs);
@@ -2494,7 +2597,7 @@ version(Windows) version(unittest)
             `C:\Program Files\`,
         ];
 
-        enum CHARS = `_x\" *&^`; // _ is placeholder for nothing
+        enum CHARS = `_x\" *&^` ~ "\t"; // _ is placeholder for nothing
         foreach (c1; CHARS)
         foreach (c2; CHARS)
         foreach (c3; CHARS)
@@ -2528,14 +2631,14 @@ private char[] escapePosixArgumentImpl(alias allocator)(in char[] arg)
     // return `'` ~ std.array.replace(arg, `'`, `'\''`) ~ `'`;
 
     size_t size = 1 + arg.length + 1;
-    foreach (c; arg)
+    foreach (char c; arg)
         if (c == '\'')
             size += 3;
 
     auto buf = allocator(size);
     size_t p = 0;
     buf[p++] = '\'';
-    foreach (c; arg)
+    foreach (char c; arg)
         if (c == '\'')
         {
             buf[p..p+4] = `'\''`;
@@ -2559,7 +2662,19 @@ string escapeShellFileName(in char[] fileName) @trusted pure nothrow
     // preparation - see below.
 
     version (Windows)
+    {
+        // If a file starts with &, it can cause cmd.exe to misinterpret
+        // the file name as the stream redirection syntax:
+        //     command > "&foo.txt"
+        // gets interpreted as
+        //     command >&foo.txt
+        // Prepend .\ to disambiguate.
+
+        if (fileName.length && fileName[0] == '&')
+            return cast(string)(`".\` ~ fileName ~ '"');
+
         return cast(string)('"' ~ fileName ~ '"');
+    }
     else
         return escapePosixArgument(fileName);
 }
@@ -2583,7 +2698,7 @@ unittest
     // rdmd --main -unittest -version=unittest_burnin process.d
 
     auto helper = absolutePath("std_process_unittest_helper");
-    assert(shell(helper ~ " hello").split("\0")[1..$] == ["hello"], "Helper malfunction");
+    assert(executeShell(helper ~ " hello").output.split("\0")[1..$] == ["hello"], "Helper malfunction");
 
     void test(string[] s, string fn)
     {
@@ -2592,19 +2707,23 @@ unittest
 
         e = escapeShellCommand(helper ~ s);
         {
-            scope(failure) writefln("shell() failed.\nExpected:\t%s\nEncoded:\t%s", s, [e]);
-            g = shell(e).split("\0")[1..$];
+            scope(failure) writefln("executeShell() failed.\nExpected:\t%s\nEncoded:\t%s", s, [e]);
+            auto result = executeShell(e);
+            assert(result.status == 0, "std_process_unittest_helper failed");
+            g = result.output.split("\0")[1..$];
         }
-        assert(s == g, format("shell() test failed.\nExpected:\t%s\nGot:\t\t%s\nEncoded:\t%s", s, g, [e]));
+        assert(s == g, format("executeShell() test failed.\nExpected:\t%s\nGot:\t\t%s\nEncoded:\t%s", s, g, [e]));
 
         e = escapeShellCommand(helper ~ s) ~ ">" ~ escapeShellFileName(fn);
         {
-            scope(failure) writefln("system() failed.\nExpected:\t%s\nFilename:\t%s\nEncoded:\t%s", s, [fn], [e]);
-            system(e);
+            scope(failure) writefln("executeShell() with redirect failed.\nExpected:\t%s\nFilename:\t%s\nEncoded:\t%s", s, [fn], [e]);
+            auto result = executeShell(e);
+            assert(result.status == 0, "std_process_unittest_helper failed");
+            assert(!result.output.length, "No output expected, got:\n" ~ result.output);
             g = readText(fn).split("\0")[1..$];
         }
         remove(fn);
-        assert(s == g, format("system() test failed.\nExpected:\t%s\nGot:\t\t%s\nEncoded:\t%s", s, g, [e]));
+        assert(s == g, format("executeShell() with redirect test failed.\nExpected:\t%s\nGot:\t\t%s\nEncoded:\t%s", s, g, [e]));
     }
 
     while (true)
@@ -2640,7 +2759,7 @@ unittest
         }
 
         // generate filename
-        string fn = "test_";
+        string fn;
         foreach (l; 0..uniform(1, 10))
         {
             dchar c;
@@ -2663,6 +2782,7 @@ unittest
 
             fn ~= c;
         }
+        fn = fn[0..$/2] ~ "_testfile_" ~ fn[$/2..$];
 
         test(args, fn);
     }
@@ -2691,7 +2811,9 @@ static:
     ---
 
     Throws:
-    $(OBJECTREF Exception) if the environment variable does not exist.
+    $(OBJECTREF Exception) if the environment variable does not exist,
+    or $(XREF utf,UTFException) if the variable contains invalid UTF-16
+    characters (Windows only).
 
     See_also:
     $(LREF environment.get), which doesn't throw on failure.
@@ -2723,8 +2845,12 @@ static:
         // empty.
     }
     ---
+
+    Throws:
+    $(XREF utf,UTFException) if the variable contains invalid UTF-16
+    characters (Windows only).
     */
-    string get(in char[] name, string defaultValue = null) @safe //TODO: nothrow
+    string get(in char[] name, string defaultValue = null) @safe
     {
         string value;
         auto found = getImpl(name, value);
@@ -2749,7 +2875,7 @@ static:
     {
         version (Posix)
         {
-            if (core.sys.posix.stdlib.setenv(toStringz(name), toStringz(value), 1) != -1)
+            if (core.sys.posix.stdlib.setenv(name.tempCString(), value.tempCString(), 1) != -1)
             {
                 return value;
             }
@@ -2764,7 +2890,7 @@ static:
         else version (Windows)
         {
             enforce(
-                SetEnvironmentVariableW(toUTF16z(name), toUTF16z(value)),
+                SetEnvironmentVariableW(name.tempCStringW(), value.tempCStringW()),
                 sysErrorString(GetLastError())
             );
             return value;
@@ -2778,10 +2904,10 @@ static:
     If the variable isn't in the environment, this function returns
     successfully without doing anything.
     */
-    void remove(in char[] name) @trusted // TODO: @safe nothrow
+    void remove(in char[] name) @trusted nothrow @nogc // TODO: @safe
     {
-        version (Windows)    SetEnvironmentVariableW(toUTF16z(name), null);
-        else version (Posix) core.sys.posix.stdlib.unsetenv(toStringz(name));
+        version (Windows)    SetEnvironmentVariableW(name.tempCStringW(), null);
+        else version (Posix) core.sys.posix.stdlib.unsetenv(name.tempCString());
         else static assert(0);
     }
 
@@ -2821,6 +2947,7 @@ static:
         }
         else version (Windows)
         {
+            import std.uni : toUpper;
             auto envBlock = GetEnvironmentStringsW();
             enforce(envBlock, "Failed to retrieve environment variables.");
             scope(exit) FreeEnvironmentStringsW(envBlock);
@@ -2833,6 +2960,13 @@ static:
 
                 start = i+1;
                 while (envBlock[i] != '\0') ++i;
+
+                // Ignore variables with empty names. These are used internally
+                // by Windows to keep track of each drive's individual current
+                // directory.
+                if (!name.length)
+                    continue;
+
                 // Just like in POSIX systems, environment variables may be
                 // defined more than once in an environment block on Windows,
                 // and it is just as much of a security issue there.  Moreso,
@@ -2855,12 +2989,12 @@ private:
     }
 
     // Retrieves the environment variable, returns false on failure.
-    bool getImpl(in char[] name, out string value) @trusted //TODO: nothrow
+    bool getImpl(in char[] name, out string value) @trusted
     {
         version (Windows)
         {
-            const namez = toUTF16z(name);
-            immutable len = varLength(namez);
+            const namezTmp = name.tempCStringW();
+            immutable len = varLength(namezTmp);
             if (len == 0) return false;
             if (len == 1)
             {
@@ -2869,13 +3003,13 @@ private:
             }
 
             auto buf = new WCHAR[len];
-            GetEnvironmentVariableW(namez, buf.ptr, to!DWORD(buf.length));
+            GetEnvironmentVariableW(namezTmp, buf.ptr, to!DWORD(buf.length));
             value = toUTF8(buf[0 .. $-1]);
             return true;
         }
         else version (Posix)
         {
-            const vz = core.sys.posix.stdlib.getenv(toStringz(name));
+            const vz = core.sys.posix.stdlib.getenv(name.tempCString());
             if (vz == null) return false;
             auto v = vz[0 .. strlen(vz)];
 
@@ -2922,13 +3056,22 @@ unittest
         // Wine has some bugs related to environment variables:
         //  - Wine allows the existence of an env. variable with the name
         //    "\0", but GetEnvironmentVariable refuses to retrieve it.
+        //    As of 2.067 we filter these out anyway (see comment in toAA).
         //  - If an env. variable has zero length, i.e. is "\0",
         //    GetEnvironmentVariable should return 1.  Instead it returns
         //    0, indicating the variable doesn't exist.
-        version (Windows) if (n.length == 0 || v.length == 0) continue;
+        version (Windows) if (v.length == 0) continue;
 
         assert (v == environment[n]);
     }
+
+    // ... and back again.
+    foreach (n, v; aa)
+        environment[n] = v;
+
+    // Complete the roundtrip
+    auto aa2 = environment.toAA();
+    assert(aa == aa2);
 }
 
 
@@ -2946,7 +3089,7 @@ Macros:
 WIKI=Phobos/StdProcess
 
 Copyright: Copyright Digital Mars 2007 - 2009.
-License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu),
            $(WEB thecybershadow.net, Vladimir Panteleev)
@@ -2961,11 +3104,9 @@ Distributed under the Boost Software License, Version 1.0.
 
 
 import core.stdc.stdlib;
-import std.c.stdlib;
 import core.stdc.errno;
 import core.thread;
-import std.c.process;
-import std.c.string;
+import core.stdc.string;
 
 version (Windows)
 {
@@ -2985,8 +3126,8 @@ version (unittest)
 /**
    Execute $(D command) in a _command shell.
 
-   $(RED This function is scheduled for deprecation.  Please use
-   $(LREF spawnShell) or $(LREF executeShell) instead.)
+   $(RED Deprecated. Please use $(LREF spawnShell) or $(LREF executeShell)
+         instead. This function will be removed in August 2015.)
 
    Returns: If $(D command) is null, returns nonzero if the _command
    interpreter is found, and zero otherwise. If $(D command) is not
@@ -2994,19 +3135,18 @@ version (unittest)
    in turn signal an error in command's execution).
 
    Note: On Unix systems, the homonym C function (which is accessible
-   to D programs as $(LINK2 std_c_process.html, std.c._system))
+   to D programs as $(LINK2 core_stdc_stdlib.html, core.stdc.stdlib._system))
    returns a code in the same format as $(LUCKY waitpid, waitpid),
    meaning that C programs must use the $(D WEXITSTATUS) macro to
    extract the actual exit code from the $(D system) call. D's $(D
    system) automatically extracts the exit status.
 
 */
-
+deprecated("Please use wait(spawnShell(command)) or executeShell(command) instead")
 int system(string command)
 {
-    if (!command.ptr) return std.c.process.system(null);
-    const commandz = toStringz(command);
-    immutable status = std.c.process.system(commandz);
+    if (!command.ptr) return core.stdc.stdlib.system(null);
+    immutable status = core.stdc.stdlib.system(command.tempCString());
     if (status == -1) return status;
     version (Posix)
     {
@@ -3024,6 +3164,7 @@ int system(string command)
 
 private void toAStringz(in string[] a, const(char)**az)
 {
+    import std.string : toStringz;
     foreach(string s; a)
     {
         *az++ = toStringz(s);
@@ -3042,15 +3183,18 @@ private void toAStringz(in string[] a, const(char)**az)
 //
 //      toAStringz(argv, argv_);
 //
-//      return std.c.process.spawnvp(mode, toStringz(pathname), argv_);
+//      return spawnvp(mode, pathname.tempCString(), argv_);
 //    }
 //}
 
 // Incorporating idea (for spawnvp() on Posix) from Dave Fladebo
 
-alias P_WAIT = std.c.process._P_WAIT;
-alias P_NOWAIT = std.c.process._P_NOWAIT;
+enum { _P_WAIT, _P_NOWAIT, _P_OVERLAY };
+version(Windows) extern(C) int spawnvp(int, in char *, in char **);
+alias P_WAIT = _P_WAIT;
+alias P_NOWAIT = _P_NOWAIT;
 
+deprecated("Please use spawnProcess instead")
 int spawnvp(int mode, string pathname, string[] argv)
 {
     auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
@@ -3059,11 +3203,11 @@ int spawnvp(int mode, string pathname, string[] argv)
 
     version (Posix)
     {
-        return _spawnvp(mode, toStringz(pathname), argv_);
+        return _spawnvp(mode, pathname.tempCString(), argv_);
     }
     else version (Windows)
     {
-        return std.c.process.spawnvp(mode, toStringz(pathname), argv_);
+        return spawnvp(mode, pathname.tempCString(), argv_);
     }
     else
         static assert(0, "spawnvp not implemented for this OS.");
@@ -3073,6 +3217,8 @@ version (Posix)
 {
 private import core.sys.posix.unistd;
 private import core.sys.posix.sys.wait;
+
+deprecated("Please use spawnProcess instead")
 int _spawnvp(int mode, in char *pathname, in char **argv)
 {
     int retval = 0;
@@ -3080,7 +3226,7 @@ int _spawnvp(int mode, in char *pathname, in char **argv)
 
     if(!pid)
     {   // child
-        std.c.process.execvp(pathname, argv);
+        core.sys.posix.unistd.execvp(pathname, argv);
         goto Lerror;
     }
     else if(pid > 0)
@@ -3135,36 +3281,134 @@ private
 
 /* ========================================================== */
 
-/**
- * Replace the current process by executing a command, $(D pathname), with
- * the arguments in $(D argv).
- *
- * $(RED These functions are scheduled for deprecation.  Please use
- * $(LREF spawnShell) instead (or, alternatively, the homonymous C
- * functions declared in $(D std.c.process).))
- *
- * Typically, the first element of $(D argv) is
- * the command being executed, i.e. $(D argv[0] == pathname). The 'p'
- * versions of $(D exec) search the PATH environment variable for $(D
- * pathname). The 'e' versions additionally take the new process'
- * environment variables as an array of strings of the form key=value.
- *
- * Does not return on success (the current process will have been
- * replaced). Returns -1 on failure with no indication of the
- * underlying error.
- */
+version (StdDdoc)
+{
+    /**
+    Replaces the current process by executing a command, $(D pathname), with
+    the arguments in $(D argv).
 
-int execv(in string pathname, in string[] argv)
+    $(RED Deprecated on Windows.  From August 2015, these functions will
+    only be available on POSIX platforms. The reason is that they never
+    did what the documentation claimed they did, nor is it technically
+    possible to implement such behaviour on Windows. See below for more
+    information.)
+
+    Typically, the first element of $(D argv) is
+    the command being executed, i.e. $(D argv[0] == pathname). The 'p'
+    versions of $(D exec) search the PATH environment variable for $(D
+    pathname). The 'e' versions additionally take the new process'
+    environment variables as an array of strings of the form key=value.
+
+    Does not return on success (the current process will have been
+    replaced). Returns -1 on failure with no indication of the
+    underlying error.
+
+    Windows_specific:
+    These functions are only supported on POSIX platforms, as the Windows
+    operating systems do not provide the ability to overwrite the current
+    process image with another. In single-threaded programs it is possible
+    to approximate the effect of $(D execv*) by using $(LREF spawnProcess)
+    and terminating the current process once the child process has returned.
+    For example:
+    ---
+    auto commandLine = [ "program", "arg1", "arg2" ];
+    version (Posix)
+    {
+        execv(commandLine[0], commandLine);
+        throw new Exception("Failed to execute program");
+    }
+    else version (Windows)
+    {
+        import core.stdc.stdlib: _exit;
+        _exit(wait(spawnProcess(commandLine)));
+    }
+    ---
+    This is, however, NOT equivalent to POSIX' $(D execv*).  For one thing, the
+    executed program is started as a separate process, with all this entails.
+    Secondly, in a multithreaded program, other threads will continue to do
+    work while the current thread is waiting for the child process to complete.
+
+    A better option may sometimes be to terminate the current program immediately
+    after spawning the child process.  This is the behaviour exhibited by the
+    $(LINK2 http://msdn.microsoft.com/en-us/library/431x4c1w.aspx,$(D __exec))
+    functions in Microsoft's C runtime library, and it is how D's now-deprecated
+    Windows $(D execv*) functions work. Example:
+    ---
+    auto commandLine = [ "program", "arg1", "arg2" ];
+    version (Posix)
+    {
+        execv(commandLine[0], commandLine);
+        throw new Exception("Failed to execute program");
+    }
+    else version (Windows)
+    {
+        spawnProcess(commandLine);
+        import core.stdc.stdlib: _exit;
+        _exit(0);
+    }
+    ---
+    */
+    int execv(in string pathname, in string[] argv);
+    ///ditto
+    int execve(in string pathname, in string[] argv, in string[] envp);
+    /// ditto
+    int execvp(in string pathname, in string[] argv);
+    /// ditto
+    int execvpe(in string pathname, in string[] argv, in string[] envp);
+}
+else
+{
+    private enum execvForwarderDefs = q{
+        int execv(in string pathname, in string[] argv)
+        {
+            return execv_(pathname, argv);
+        }
+        int execve(in string pathname, in string[] argv, in string[] envp)
+        {
+            return execve_(pathname, argv, envp);
+        }
+        int execvp(in string pathname, in string[] argv)
+        {
+            return execvp_(pathname, argv);
+        }
+        int execvpe(in string pathname, in string[] argv, in string[] envp)
+        {
+            return execvpe_(pathname, argv, envp);
+        }
+    };
+    version (Posix)
+    {
+        mixin (execvForwarderDefs);
+    }
+    else version (Windows)
+    {
+        private enum execvDeprecationMsg =
+            "Please consult the API documentation for more information: "
+            ~"http://dlang.org/phobos/std_process.html#.execv";
+        mixin (`deprecated ("`~execvDeprecationMsg~`") {` ~ execvForwarderDefs ~ `}`);
+    }
+    else static assert (false, "Unsupported platform");
+}
+
+// Move these C declarations to druntime if we decide to keep the D wrappers
+extern(C)
+{
+    int execv(in char *, in char **);
+    int execve(in char *, in char **, in char **);
+    int execvp(in char *, in char **);
+    version(Windows) int execvpe(in char *, in char **, in char **);
+}
+
+private int execv_(in string pathname, in string[] argv)
 {
     auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
 
     toAStringz(argv, argv_);
 
-    return std.c.process.execv(toStringz(pathname), argv_);
+    return execv(pathname.tempCString(), argv_);
 }
 
-/** ditto */
-int execve(in string pathname, in string[] argv, in string[] envp)
+private int execve_(in string pathname, in string[] argv, in string[] envp)
 {
     auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
     auto envp_ = cast(const(char)**)alloca((char*).sizeof * (1 + envp.length));
@@ -3172,24 +3416,23 @@ int execve(in string pathname, in string[] argv, in string[] envp)
     toAStringz(argv, argv_);
     toAStringz(envp, envp_);
 
-    return std.c.process.execve(toStringz(pathname), argv_, envp_);
+    return execve(pathname.tempCString(), argv_, envp_);
 }
 
-/** ditto */
-int execvp(in string pathname, in string[] argv)
+private int execvp_(in string pathname, in string[] argv)
 {
     auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
 
     toAStringz(argv, argv_);
 
-    return std.c.process.execvp(toStringz(pathname), argv_);
+    return execvp(pathname.tempCString(), argv_);
 }
 
-/** ditto */
-int execvpe(in string pathname, in string[] argv, in string[] envp)
+private int execvpe_(in string pathname, in string[] argv, in string[] envp)
 {
 version(Posix)
 {
+    import std.array : split;
     // Is pathname rooted?
     if(pathname[0] == '/')
     {
@@ -3199,7 +3442,7 @@ version(Posix)
     else
     {
         // No, so must traverse PATHs, looking for first match
-        string[]    envPaths    =   std.array.split(
+        string[]    envPaths    =   split(
             to!string(core.stdc.stdlib.getenv("PATH")), ":");
         int         iRet        =   0;
 
@@ -3229,7 +3472,7 @@ else version(Windows)
     toAStringz(argv, argv_);
     toAStringz(envp, envp_);
 
-    return std.c.process.execvpe(toStringz(pathname), argv_, envp_);
+    return execvpe(pathname.tempCString(), argv_, envp_);
 }
 else
 {
@@ -3241,14 +3484,15 @@ else
  * Returns the process ID of the calling process, which is guaranteed to be
  * unique on the system. This call is always successful.
  *
- * $(RED This function is scheduled for deprecation.  Please use
- * $(LREF thisProcessID) instead.)
+ * $(RED Deprecated.  Please use $(LREF thisProcessID) instead.
+ *       This function will be removed in August 2015.)
  *
  * Example:
  * ---
  * writefln("Current process id: %s", getpid());
  * ---
  */
+deprecated("Please use thisProcessID instead")
 alias getpid = core.thread.getpid;
 
 /**
@@ -3256,8 +3500,8 @@ alias getpid = core.thread.getpid;
    the process could not be started or exits with an error code,
    throws ErrnoException.
 
-   $(RED This function is scheduled for deprecation.  Please use
-   $(LREF executeShell) instead.)
+   $(RED Deprecated.  Please use $(LREF executeShell) instead.
+         This function will be removed in August 2015.)
 
    Example:
 
@@ -3272,10 +3516,12 @@ alias getpid = core.thread.getpid;
    ... use f ...
    ----
 */
+deprecated("Please use executeShell instead")
 string shell(string cmd)
 {
     version(Windows)
     {
+        import std.array : appender;
         // Generate a random filename
         auto a = appender!string();
         foreach (ref e; 0 .. 8)
@@ -3309,7 +3555,7 @@ string shell(string cmd)
         static assert(0, "shell not implemented for this OS.");
 }
 
-unittest
+deprecated unittest
 {
     auto x = shell("echo wyda");
     // @@@ This fails on wine
@@ -3325,18 +3571,20 @@ unittest
 
 /**
 Gets the value of environment variable $(D name) as a string. Calls
-$(LINK2 std_c_stdlib.html#_getenv, std.c.stdlib._getenv)
+$(LINK2 core_stdc_stdlib.html#_getenv, core.stdc.stdlib._getenv)
 internally.
 
-   $(RED This function is scheduled for deprecation.  Please use
-   $(LREF environment.get) instead.)
+$(RED Deprecated. Please use $(LREF environment.opIndex) or
+      $(LREF environment.get) instead.  This function will be
+      removed in August 2015.)
 */
 
-string getenv(in char[] name)
+deprecated("Please use environment.opIndex or environment.get instead")
+string getenv(in char[] name) nothrow
 {
     // Cache the last call's result
     static string lastResult;
-    auto p = core.stdc.stdlib.getenv(toStringz(name));
+    auto p = core.stdc.stdlib.getenv(name.tempCString());
     if (!p) return null;
     auto value = p[0 .. strlen(p)];
     if (value == lastResult) return lastResult;
@@ -3347,33 +3595,37 @@ string getenv(in char[] name)
 Sets the value of environment variable $(D name) to $(D value). If the
 value was written, or the variable was already present and $(D
 overwrite) is false, returns normally. Otherwise, it throws an
-exception. Calls $(LINK2 std_c_stdlib.html#_setenv,
-std.c.stdlib._setenv) internally.
+exception. Calls $(LINK2 core_sys_posix_stdlib.html#_setenv,
+core.sys.posix.stdlib._setenv) internally.
 
-   $(RED This function is scheduled for deprecation.  Please use
-   $(LREF environment.opIndexAssign) instead.)
+$(RED Deprecated. Please use $(LREF environment.opIndexAssign) instead.
+      This function will be removed in August 2015.)
 */
-version(StdDdoc) void setenv(in char[] name, in char[] value, bool overwrite);
-else version(Posix) void setenv(in char[] name, in char[] value, bool overwrite)
+version(StdDdoc) deprecated void setenv(in char[] name, in char[] value, bool overwrite);
+else version(Posix)
+    deprecated("Please use environment.opIndexAssign instead.")
+    void setenv(in char[] name, in char[] value, bool overwrite)
 {
     errnoEnforce(
-        std.c.stdlib.setenv(toStringz(name), toStringz(value), overwrite) == 0);
+        core.sys.posix.stdlib.setenv(name.tempCString(), value.tempCString(), overwrite) == 0);
 }
 
 /**
 Removes variable $(D name) from the environment. Calls $(LINK2
-std_c_stdlib.html#_unsetenv, std.c.stdlib._unsetenv) internally.
+core_sys_posix_stdlib.html#_unsetenv, core.sys.posix.stdlib._unsetenv) internally.
 
-   $(RED This function is scheduled for deprecation.  Please use
-   $(LREF environment.remove) instead.)
+$(RED Deprecated. Please use $(LREF environment.remove) instead.
+      This function will be removed in August 2015.)
 */
-version(StdDdoc) void unsetenv(in char[] name);
-else version(Posix) void unsetenv(in char[] name)
+version(StdDdoc) deprecated void unsetenv(in char[] name);
+else version(Posix)
+    deprecated("Please use environment.remove instead")
+    void unsetenv(in char[] name)
 {
-    errnoEnforce(std.c.stdlib.unsetenv(toStringz(name)) == 0);
+    errnoEnforce(core.sys.posix.stdlib.unsetenv(name.tempCString()) == 0);
 }
 
-version (Posix) unittest
+version (Posix) deprecated unittest
 {
     setenv("wyda", "geeba", true);
     assert(getenv("wyda") == "geeba");
@@ -3382,45 +3634,6 @@ version (Posix) unittest
     unsetenv("wyda");
     assert(getenv("wyda") is null);
 }
-
-/* ////////////////////////////////////////////////////////////////////////// */
-
-version(MainTest)
-{
-    int main(string[] args)
-    {
-        if(args.length < 2)
-        {
-            printf("Must supply executable (and optional arguments)\n");
-
-            return 1;
-        }
-        else
-        {
-            string[]    dummy_env;
-
-            dummy_env ~= "VAL0=value";
-            dummy_env ~= "VAL1=value";
-
-/+
-            foreach(string arg; args)
-            {
-                printf("%.*s\n", arg);
-            }
-+/
-
-//          int i = execv(args[1], args[1 .. args.length]);
-//          int i = execvp(args[1], args[1 .. args.length]);
-            int i = execvpe(args[1], args[1 .. args.length], dummy_env);
-
-            printf("exec??() has returned! Error code: %d; errno: %d\n", i, /* errno */-1);
-
-            return 0;
-        }
-    }
-}
-
-/* ////////////////////////////////////////////////////////////////////////// */
 
 
 version(StdDdoc)
@@ -3440,7 +3653,7 @@ version (Windows)
 
     void browse(string url)
     {
-        ShellExecuteW(null, "open", toUTF16z(url), null, null, SW_SHOWNORMAL);
+        ShellExecuteW(null, "open", url.tempCStringW(), null, null, SW_SHOWNORMAL);
     }
 }
 else version (OSX)
@@ -3457,13 +3670,13 @@ else version (OSX)
         if (browser)
         {   browser = strdup(browser);
             args[0] = browser;
-            args[1] = toStringz(url);
+            args[1] = url.tempCString();
             args[2] = null;
         }
         else
         {
             args[0] = "open".ptr;
-            args[1] = toStringz(url);
+            args[1] = url.tempCString();
             args[2] = null;
         }
 
@@ -3497,7 +3710,7 @@ else version (Posix)
             //args[0] = "x-www-browser".ptr;  // doesn't work on some systems
             args[0] = "xdg-open".ptr;
 
-        args[1] = toStringz(url);
+        args[1] = url.tempCString();
         args[2] = null;
 
         auto childpid = fork();

@@ -327,7 +327,6 @@ case "$d_target_os" in
     mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
              DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
              D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
-             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
              ;;
     *solaris*)
 	    D_EXTRA_OBJS="$D_EXTRA_OBJS \$(RT_SOLARIS_OBJS)"
@@ -336,7 +335,6 @@ esac
 if test "$enable_unix" = "yes"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
-  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 fi
 
 if test -z "$DFLAGS"; then

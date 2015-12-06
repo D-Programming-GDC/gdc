@@ -27,11 +27,10 @@
  * "as is" without express or implied warranty.
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
- */
 module std.stream;
 
+
+import std.internal.cstring;
 
 /* Class structure:
  *  InputStream       interface for reading
@@ -390,7 +389,7 @@ interface OutputStream {
 
 // not really abstract, but its instances will do nothing useful
 class Stream : InputStream, OutputStream {
-  private import std.string, std.digest.crc, std.c.stdlib, std.c.stdio;
+  private import std.string, std.digest.crc, core.stdc.stdlib, core.stdc.stdio;
 
   // stream abilities
   bool readable = false;        /// Indicates whether this stream can be read from.
@@ -706,7 +705,8 @@ class Stream : InputStream, OutputStream {
       }
       if (fmt.length == 0 || i == fmt.length) {
         i = 0;
-        if (arguments[j] is typeid(char[])) {
+        if (arguments[j] is typeid(string) || arguments[j] is typeid(char[])
+            || arguments[j] is typeid(const(char)[])) {
           fmt = va_arg!(string)(args);
           j++;
           continue;
@@ -1174,6 +1174,8 @@ class Stream : InputStream, OutputStream {
     // by Walter's permission
     char[1024] buffer;
     char* p = buffer.ptr;
+    // Can't use `tempCString()` here as it will result in compilation error:
+    // "cannot mix core.std.stdlib.alloca() and exception handling".
     auto f = toStringz(format);
     size_t psize = buffer.length;
     size_t count;
@@ -1202,28 +1204,12 @@ class Stream : InputStream, OutputStream {
 
   // writes data to stream using printf() syntax,
   // returns number of bytes written
-  version (GNU)
-  size_t printf(const(char)[] format, ...) {
-      return vprintf(format, _argptr);
-  }
-  else version (Win64)
-  size_t printf(const(char)[] format, ...) {
-    return vprintf(format, _argptr);
-  }
-  else version (X86_64)
   size_t printf(const(char)[] format, ...) {
     va_list ap;
-    va_start(ap, __va_argsave);
+    va_start(ap, format);
     auto result = vprintf(format, ap);
     va_end(ap);
     return result;
-  }
-  else
-  size_t printf(const(char)[] format, ...) {
-    va_list ap;
-    ap = cast(va_list) &format;
-    ap += format.sizeof;
-    return vprintf(format, ap);
   }
 
   private void doFormatCallback(dchar c) {
@@ -1443,6 +1429,23 @@ class Stream : InputStream, OutputStream {
   final protected void assertSeekable() {
     if (!seekable)
       throw new SeekException("Stream is not seekable");
+  }
+
+  unittest { // unit test for Issue 3363
+    import std.stdio;
+    immutable fileName = std.file.deleteme ~ "-issue3363.txt";
+    auto w = File(fileName, "w");
+    scope (exit) remove(fileName.ptr);
+    w.write("one two three");
+    w.close();
+    auto r = File(fileName, "r");
+    const(char)[] constChar;
+    string str;
+    char[] chars;
+    r.readf("%s %s %s", &constChar, &str, &chars);
+    assert (constChar == "one", constChar);
+    assert (str == "two", str);
+    assert (chars == "three", chars);
   }
 
   unittest { //unit tests for Issue 1668
@@ -1898,7 +1901,7 @@ enum FileMode {
 }
 
 version (Windows) {
-  private import std.c.windows.windows;
+  private import core.sys.windows.windows;
   extern (Windows) {
     void FlushFileBuffers(HANDLE hFile);
     DWORD  GetFileType(HANDLE hFile);
@@ -1977,12 +1980,12 @@ class File: Stream {
     readable = cast(bool)(mode & FileMode.In);
     writeable = cast(bool)(mode & FileMode.Out);
     version (Windows) {
-      hFile = CreateFileW(std.utf.toUTF16z(filename), access, share,
+      hFile = CreateFileW(filename.tempCStringW(), access, share,
                           null, createMode, 0, null);
       isopen = hFile != INVALID_HANDLE_VALUE;
     }
     version (Posix) {
-      hFile = core.sys.posix.fcntl.open(toStringz(filename), access | createMode, share);
+      hFile = core.sys.posix.fcntl.open(filename.tempCString(), access | createMode, share);
       isopen = hFile != -1;
     }
     if (!isopen)
@@ -2134,9 +2137,12 @@ class File: Stream {
 
   // run a few tests
   unittest {
+    import std.internal.cstring : tempCString;
+
     File file = new File;
     int i = 666;
-    file.create("stream.$$$");
+    auto stream_file = std.file.deleteme ~ "-stream.$$$";
+    file.create(stream_file);
     // should be ok to write
     assert(file.writeable);
     file.writeLine("Testing stream.d:");
@@ -2152,7 +2158,7 @@ class File: Stream {
     file.close();
     // no operations are allowed when file is closed
     assert(!file.readable && !file.writeable && !file.seekable);
-    file.open("stream.$$$");
+    file.open(stream_file);
     // should be ok to read
     assert(file.readable);
     assert(file.available == file.size);
@@ -2178,7 +2184,7 @@ class File: Stream {
     // we must be at the end of file
     assert(file.eof);
     file.close();
-    file.open("stream.$$$",FileMode.OutNew | FileMode.In);
+    file.open(stream_file,FileMode.OutNew | FileMode.In);
     file.writeLine("Testing stream.d:");
     file.writeLine("Another line");
     file.writeLine("");
@@ -2203,7 +2209,7 @@ class File: Stream {
     assert( lines[2] == "");
     assert( lines[3] == "That was blank");
     file.close();
-    remove("stream.$$$");
+    remove(stream_file.tempCString());
   }
 }
 
@@ -2251,9 +2257,12 @@ class BufferedFile: BufferedStream {
 
   // run a few tests same as File
   unittest {
+    import std.internal.cstring : tempCString;
+
     BufferedFile file = new BufferedFile;
     int i = 666;
-    file.create("stream.$$$");
+    auto stream_file = std.file.deleteme ~ "-stream.$$$";
+    file.create(stream_file);
     // should be ok to write
     assert(file.writeable);
     file.writeLine("Testing stream.d:");
@@ -2270,7 +2279,7 @@ class BufferedFile: BufferedStream {
     file.close();
     // no operations are allowed when file is closed
     assert(!file.readable && !file.writeable && !file.seekable);
-    file.open("stream.$$$");
+    file.open(stream_file);
     // should be ok to read
     assert(file.readable);
     // test getc/ungetc and size
@@ -2295,7 +2304,7 @@ class BufferedFile: BufferedStream {
     // we must be at the end of file
     assert(file.eof);
     file.close();
-    remove("stream.$$$");
+    remove(stream_file.tempCString());
   }
 
 }
@@ -2847,7 +2856,8 @@ class MmFileStream : TArrayStream!(MmFile) {
 }
 
 unittest {
-  MmFile mf = new MmFile("testing.txt",MmFile.Mode.readWriteNew,100,null);
+  auto test_file = std.file.deleteme ~ "-testing.txt";
+  MmFile mf = new MmFile(test_file,MmFile.Mode.readWriteNew,100,null);
   MmFileStream m;
   m = new MmFileStream (mf);
   m.writeString ("Hello, world");
@@ -2867,13 +2877,13 @@ unittest {
   m.writeString ("Foo foo foo foo foo foo foo");
   assert (m.position == 42);
   m.close();
-  mf = new MmFile("testing.txt");
+  mf = new MmFile(test_file);
   m = new MmFileStream (mf);
   assert (!m.writeable);
   char[] str = m.readString(12);
   assert (str == "Hello, wield");
   m.close();
-  std.file.remove("testing.txt");
+  std.file.remove(test_file);
 }
 
 
