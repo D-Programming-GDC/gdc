@@ -4,16 +4,12 @@ class C
 void foo(const C c, const(char)[] s, const int* q, const(int*) p)
 {
 }
-
 void bar(in void* p)
 {
 }
-
 void f(void function() f2);
-
 class C2;
 void foo2(const C2 c);
-
 struct Foo3
 {
 	int k;
@@ -32,7 +28,6 @@ class C3
 	{
 		return 0;
 	}
-
 }
 T foo3(T)()
 {
@@ -75,7 +70,7 @@ interface I4(T) if ((int[1]).length == 1)
 }
 template MyClass4(T) if (is(typeof(T.subtype)))
 {
-	alias T.subtype HelperSymbol;
+	alias HelperSymbol = T.subtype;
 	class MyClass4
 	{
 	}
@@ -104,4 +99,94 @@ void foo11217()(in int[] arr)
 }
 void foo11217()(inout int[] arr)
 {
+}
+void test13275()
+{
+	if (auto n = 1)
+	{
+	}
+	if (const n = 1)
+	{
+	}
+	if (immutable n = 1)
+	{
+	}
+	if (shared n = 1)
+	{
+	}
+	if (const shared n = 1)
+	{
+	}
+	if (int n = 1)
+	{
+	}
+	if (const int n = 1)
+	{
+	}
+	if (immutable int n = 1)
+	{
+	}
+	if (shared int n = 1)
+	{
+	}
+	if (const shared int n = 1)
+	{
+	}
+	if (const(int) n = 1)
+	{
+	}
+	if (immutable(int) n = 1)
+	{
+	}
+	if (shared(int) n = 1)
+	{
+	}
+	if (shared const(int) n = 1)
+	{
+	}
+	foreach (e; [1, 2])
+	{
+	}
+	foreach (const e; [1, 2])
+	{
+	}
+	foreach (immutable e; [1, 2])
+	{
+	}
+	foreach (shared e; [1, 2])
+	{
+	}
+	foreach (const shared e; [1, 2])
+	{
+	}
+	foreach (int e; [1, 2])
+	{
+	}
+	foreach (const int e; [1, 2])
+	{
+	}
+	foreach (immutable int e; [1, 2])
+	{
+	}
+	foreach (shared int e; [1, 2])
+	{
+	}
+	foreach (const shared int e; [1, 2])
+	{
+	}
+	foreach (int e; [1, 2])
+	{
+	}
+	foreach (const(int) e; [1, 2])
+	{
+	}
+	foreach (immutable(int) e; [1, 2])
+	{
+	}
+	foreach (shared(int) e; [1, 2])
+	{
+	}
+	foreach (shared const(int) e; [1, 2])
+	{
+	}
 }

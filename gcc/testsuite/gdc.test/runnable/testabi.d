@@ -232,12 +232,12 @@ void D_test1( )
                 if( ~r & 1 )
                 {
                 pass = false;
-                printf( "Test1   out %.*s \tFail\n", ALL_S[i].length, ALL_S[i].ptr );
+                printf( "Test1   out %s \tFail\n", ALL_S[i].ptr );
                 }
                 if( ~r & 2 )
                 {
                 pass = false;
-                printf( "Test1 inout %.*s \tFail\n", ALL_S[i].length, ALL_S[i].ptr );
+                printf( "Test1 inout %s \tFail\n", ALL_S[i].ptr );
                 }
         }
         assert( pass );

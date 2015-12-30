@@ -1354,6 +1354,26 @@ void test4444()
 }
 
 /***************************************/
+// 13864
+
+struct Tuple13864(T...)
+{
+    T expand;
+    alias expand this;
+}
+auto tuple13864(T...)(T args)
+{
+    return Tuple13864!T(args);
+}
+
+void test13864()
+{
+    int[] x = [2,3,4];
+    auto y = x[tuple13864(0).expand];
+    assert(y == 2);
+}
+
+/***************************************/
 // 4884
 
 struct A4884(T...)
@@ -1448,6 +1468,64 @@ void doStuff6530(T...)(T args)
 void test6530()
 {
     doStuff6530(1, 2, 3);
+}
+
+/***************************************/
+
+import core.stdc.stdarg;
+
+extern(C)
+void func9495(int a, string format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    auto a1 = va_arg!int(ap);
+    auto a2 = va_arg!int(ap);
+    auto a3 = va_arg!int(ap);
+    assert(a1 == 0x11111111);
+    assert(a2 == 0x22222222);
+    assert(a3 == 0x33333333);
+    va_end(ap);
+}
+
+void test9495()
+{
+    func9495(0, "", 0x11111111, 0x22222222, 0x33333333);
+}
+
+/***************************************/
+
+void copya(int a, string format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+
+    va_list ap2;
+    va_copy(ap2, ap);
+
+    auto a1 = va_arg!int(ap);
+    auto a2 = va_arg!int(ap);
+    auto a3 = va_arg!int(ap);
+
+    assert(a1 == 0x11111111);
+    assert(a2 == 0x22222222);
+    assert(a3 == 0x33333333);
+
+    auto b1 = va_arg!int(ap2);
+    auto b2 = va_arg!int(ap2);
+    auto b3 = va_arg!int(ap2);
+
+    assert(b1 == 0x11111111);
+    assert(b2 == 0x22222222);
+    assert(b3 == 0x33333333);
+
+    va_end(ap);
+    va_end(ap2);
+}
+
+void testCopy()
+{
+    copya(0, "", 0x11111111, 0x22222222, 0x33333333);
 }
 
 /***************************************/
@@ -1555,6 +1633,27 @@ void foo10279(int[][] strs...) @trusted { }
 void bar10279() @safe { foo10279(); }
 
 /***************************************/
+// 13508
+
+struct S13508
+{
+    this(T)(T[] t...) {}
+}
+
+template make13508(T)
+{
+    T make13508(Args...)(Args args)
+    {
+        return T(args);
+    }
+}
+
+void test13508() @safe @nogc
+{
+    S13508 s = make13508!S13508(5);
+}
+
+/***************************************/
 // 10414
 
 void foo10414(void delegate()[] ...) { }
@@ -1568,6 +1667,28 @@ void test10414()
         { bar10414(); },
         { bar10414(); },
     );
+}
+
+/***************************************/
+
+import core.stdc.stdarg;
+
+struct S14179
+{
+    const(char)* filename;
+    uint linnum;
+    uint charnum;
+}
+
+extern(C++) const(char)* func14179(S14179 x, const(char)* string, ...)
+{
+    return string;
+}
+
+void test14179()
+{
+    const(char)* s = "hello";
+    assert(func14179(S14179(), s) == s);
 }
 
 /***************************************/
@@ -1657,6 +1778,7 @@ int main()
     test63();
     test1411();
     test4444();
+    test13864();
     test4884();
     test4920();
     test4940();
@@ -1666,6 +1788,9 @@ int main()
     test7263();
     test9017();
     test10414();
+    test9495();
+    testCopy();
+    test14179();
 
     printf("Success\n");
     return 0;
