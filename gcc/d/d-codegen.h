@@ -18,16 +18,6 @@
 #ifndef GCC_DCMPLR_CODEGEN_H
 #define GCC_DCMPLR_CODEGEN_H
 
-// D library function flags.
-
-enum LibCallFlag
-{
-  LCFnone     = 0,
-  LCFthrows   = 1 << 1,
-  LCFmalloc   = 1 << 2,
-  LCFvarargs  = 1 << 4,
-};
-
 // List of codes for internally recognised D library functions.
 
 enum LibCall
