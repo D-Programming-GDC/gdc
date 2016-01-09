@@ -1,84 +1,84 @@
 2013-02-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* Make-lang.in(GDC_EXTENDED_ASM_SYNTAX): Remove macro.
+	* Make-lang.in (GDC_EXTENDED_ASM_SYNTAX): Remove macro.
 
 2013-02-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* d-lang.h(D_DECL_IS_CONTRACT): Remove macro.
-	* d-decls.cc(FuncDeclaration::toSymbol): Likewise.
+	* d-lang.h (D_DECL_IS_CONTRACT): Remove macro.
+	* d-decls.cc (FuncDeclaration::toSymbol): Likewise.
 
 2013-02-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-	* d-lang.cc(d_gcc_is_target_win32): Remove.
+	* d-lang.cc (d_gcc_is_target_win32): Remove.
 	(d_add_builtin_version): New function to handle define_builtin
 	callback from backend.
-	* d-codegen.cc(IRState::maybeExpandSpecialCall): Remove intrinsic bt.
+	* d-codegen.cc (IRState::maybeExpandSpecialCall): Remove intrinsic bt.
 
 	* d-builtins.c: Merge with d-builtins2.cc.
 	* d-builtins2.cc: Remove.
 
 2013-02-07  Johannes Pfau  <johannespfau@gmail.com>
 
-	* d-lang.cc(d_init): Use gcc's config system for predefined OS versions.
+	* d-lang.cc (d_init): Use gcc's config system for predefined OS versions.
 	* setup-gcc.sh: Likewise.
 	* target-ver-syms.sh: Likewise.
 
 2013-02-05  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-builtins2.cc(gcc_type_to_d_type): Remove STRUCTTHISREF condition.
-	* d-decls.cc(FuncDeclaration::toSymbol): Likewise.
-	* d-elem.cc(ThisExp::toElem): Likewise.
-	* d-ctype.cc(TypeSArray::toCtype): Remove SARRAYVALUE condition.
-	* d-codegen.cc(IRState::isDeclarationReferenceType): Likewise.
+	* d-builtins2.cc (gcc_type_to_d_type): Remove STRUCTTHISREF condition.
+	* d-decls.cc (FuncDeclaration::toSymbol): Likewise.
+	* d-elem.cc (ThisExp::toElem): Likewise.
+	* d-ctype.cc (TypeSArray::toCtype): Remove SARRAYVALUE condition.
+	* d-codegen.cc (IRState::isDeclarationReferenceType): Likewise.
 	(IRState::isArgumentReferenceType): Likewise.
 
 2013-02-01  Johannes Pfau  <johannespfau@gmail.com>
 
-	* d-lang.cc(d_init): Use gcc's config system for predefined CPU versions.
+	* d-lang.cc (d_init): Use gcc's config system for predefined CPU versions.
 	(d_init): Fix definition of D_LP64 version.
 	* setup-gcc.sh: Likewise.
 	* target-ver-syms.sh: Likewise.
 
 2012-12-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-decls.cc(FuncDeclaration::toSymbol): Don't optimise PUREconst
+	* d-decls.cc (FuncDeclaration::toSymbol): Don't optimise PUREconst
 	calls.
 
 2012-10-27  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::buildAssignOp): Handle case where LHS type is
+	* d-codegen.cc (IRState::buildAssignOp): Handle case where LHS type is
 	not compatible with expression type.
 
 2012-10-26  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-decls.cc(ClassDeclaration::toSymbol): Use empty RECORD_TYPE to
+	* d-decls.cc (ClassDeclaration::toSymbol): Use empty RECORD_TYPE to
 	build internal symbol.
 	(Module::toSymbol): Likewise.
-	* d-objfile.cc(outdata): Set type size from constructor if not
+	* d-objfile.cc (outdata): Set type size from constructor if not
 	COMPLETE_TYPE_P.  Assert that DECL_INITIAL is never bigger than
 	TYPE_SIZE.
 
 2012-10-25  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::getFrameInfo): Use vthis to determine whether
+	* d-codegen.cc (IRState::getFrameInfo): Use vthis to determine whether
 	function is nested.
 
 2012-10-21  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-builtins2.cc(gcc_type_to_d_type): Remove special case for
+	* d-builtins2.cc (gcc_type_to_d_type): Remove special case for
 	double/long double types.
 	(d_gcc_magic_builtins_module): Cleanup generation of builtin types.
 	Add __builtin_unwind_int and __builtin_unwind_uint.
 
 2012-10-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-objfile.cc(ObjectFile::outputThunk): Mark thunk as DECL_WEAK
+	* d-objfile.cc (ObjectFile::outputThunk): Mark thunk as DECL_WEAK
 	rather than using weakref attribute.
 
 2012-10-14  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* d-bi-attrs.h: Remove file.
-	* d-builtins.c(d_attribute_table): Define table of machine independant
+	* d-builtins.c (d_attribute_table): Define table of machine independant
 	attributes for gcc builtins.
 	(d_format_attribute_table): Define table of format attributes for gcc
 	builtins.
@@ -90,94 +90,94 @@
 	handle_sentinel_attribute, handle_type_generic_attribute,
 	handle_fnspec_attribute, handle_transaction_pure_attribute,
 	ignore_attribute): Moved common attribute handlers from d-bi-attrs.h.
-	* d-lang.cc(LANG_HOOKS_ATTRIBUTE_TABLE): Use instead of
+	* d-lang.cc (LANG_HOOKS_ATTRIBUTE_TABLE): Use instead of
 	LANG_HOOKS_COMMON_ATTRIBUTE_TABLE.
 	(d_attribute_table): Renamed from d_common_attribute_table.
 	(d_format_attribute_table): Renamed from
 	d_common_format_attribute_table.
 	(d_init_ts): Renamed from d_common_init_ts.
 
-	* d-builtins2.cc(d_bi_init): Determine D frontend type for size_t.
-	* d-objfile.cc(ObjectFile::hasModule): Remove old compatibility
+	* d-builtins2.cc (d_bi_init): Determine D frontend type for size_t.
+	* d-objfile.cc (ObjectFile::hasModule): Remove old compatibility
 	macros.
 
 2012-10-08  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-glue.cc(VectorExp::toElem): Handle non-constant array literals as
+	* d-glue.cc (VectorExp::toElem): Handle non-constant array literals as
 	vector expressions.
 
 2012-10-04  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-glue.cc(VectorExp::toElem): Handle both array literal as well as
+	* d-glue.cc (VectorExp::toElem): Handle both array literal as well as
 	single element constructors for vector expressions.
 
 2012-09-27  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-convert.cc(convert): Remove assert.
+	* d-convert.cc (convert): Remove assert.
 
 2012-09-22  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::maybeCompound): Use IRState::compound.
+	* d-codegen.cc (IRState::maybeCompound): Use IRState::compound.
 	(IRState::maybeVoidCompound): Use IRState::voidCompound.
 	(IRState::call): Check TREE_SIDE_EFFECTS to determine order of
 	evaluation in function calls.  Evaluate callee before arguments if has
 	side effects.
-	* d-decls.cc(FuncDeclaration::toSymbol): Don't set any pure/nothrow
+	* d-decls.cc (FuncDeclaration::toSymbol): Don't set any pure/nothrow
 	attributes if asserts are generated in code.
-	* d-incpath(add_fileimp_path): Fix ICE using -J option.
-	* d-objfile.cc(Obj::moduleinfo): Clean-up.
+	* d-incpath (add_fileimp_path): Fix ICE using -J option.
+	* d-objfile.cc (Obj::moduleinfo): Clean-up.
 
 2012-09-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-lang.cc(d_initialize_diagnostics): New function, disable unneeded
+	* d-lang.cc (d_initialize_diagnostics): New function, disable unneeded
 	diagnostic options.
 	(d_handle_option): Remove OPT_fdebug_c.
-	* d-spec.c(lang_specific_driver): Remove OPT_fod_, OPT_fop.
+	* d-spec.c (lang_specific_driver): Remove OPT_fod_, OPT_fop.
 	* lang.opt: Remove -fdebug-c, -fod, and -fop compiler options.
 
 2012-09-17  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.h(CtorEltMaker::cons): Adjust call to VEC_safe_push.
-	* d-objfile.cc(ObjectFile::stripVarDecl): Clean-up.
+	* d-codegen.h (CtorEltMaker::cons): Adjust call to VEC_safe_push.
+	* d-objfile.cc (ObjectFile::stripVarDecl): Clean-up.
 
 2012-09-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::isCallByAlias): New function.
+	* d-codegen.cc (IRState::isCallByAlias): New function.
 	(IRState::call): Use IRState::isCallByAlias.
-	* d-objfile.cc(ObjectFile::setupSymbolStorage): Mark
+	* d-objfile.cc (ObjectFile::setupSymbolStorage): Mark
 	force_static_public symbols as public.
 
-	* d-spec.c(lang_specific_driver): Update for GCC-4.8.
+	* d-spec.c (lang_specific_driver): Update for GCC-4.8.
 	* lang.opt: Fix spelling of option -static-libphobos
 
-	* d-codegen.cc(IRState::maybeExpandSpecialCall): Do not handle inp*
+	* d-codegen.cc (IRState::maybeExpandSpecialCall): Do not handle inp*
 	and outp* port intrinsic functions.
 	(IRState::maybeSetUpBuiltin): Likewise.
 	(IRState::expandPortIntrinsic): Remove.
 
 2012-09-10  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(AggLayout::doFields): Propagate volatile out of type.
+	* d-codegen.cc (AggLayout::doFields): Propagate volatile out of type.
 	(AggLayout::addField): Likewise.
-	* d-decls.cc(VarDeclaration::toSymbol): Likewise.
+	* d-decls.cc (VarDeclaration::toSymbol): Likewise.
 
 2012-09-06  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.h(IRState::vconvert): Don't use VIEW_CONVERT_EXPR.
-	* d-glue.cc(TypeEnum::toCtype): Mark TYPE_PACKED if flag_short_enums.
+	* d-codegen.h (IRState::vconvert): Don't use VIEW_CONVERT_EXPR.
+	* d-glue.cc (TypeEnum::toCtype): Mark TYPE_PACKED if flag_short_enums.
 	(TypeClass::toCtype): Mark TREE_ADDRESSABLE to ensure class is always
 	passed in memory.
 
-	* d-tree.def(UNSIGNED_RSHIFT_EXPR): Define new tree expression.
+	* d-tree.def (UNSIGNED_RSHIFT_EXPR): Define new tree expression.
 	(FLOAT_MOD_EXPR): Define new tree expression.
-	* d-lang.cc(d_common_init_ts): New function.
+	* d-lang.cc (d_common_init_ts): New function.
 	(d_write_global_declarations): Call check_global_declarations after
 	finalize_compilation_unit.
 	(d_gimplify_expr): Handle UNSIGNED_RSHIFT_EXPR, IASM_EXPR.
-	* d-codegen.cc(IRState::arrayOpNotImplemented): New function.
+	* d-codegen.cc (IRState::arrayOpNotImplemented): New function.
 	(IRState::buildOp): New function.
 	(IRState::buildAssignOp): New function.
-	* d-glue.cc(build_bool_binop): Remove function, mostly move to
+	* d-glue.cc (build_bool_binop): Remove function, mostly move to
 	CmpExp::toElem.
 	(build_math_op): Remove function, mostly move to IRState::buildOp.
 	(build_assign_math_op): Remove function, mostly move to
@@ -195,12 +195,12 @@
 	(MinAssignExp::toElem, AddAssignExp::toElem): Use
 	IRState::arrayOpNotImplemented, IRState::buildAssignOp.
 
-	* d-codegen.cc(libcall_ids): Remove _adCmpChar.
+	* d-codegen.cc (libcall_ids): Remove _adCmpChar.
 	(IRState::getLibCallDecl): Remove LIBCALL_ADCMPCHAR.
-	* d-glue.cc(CmpExp::toElem): Don't call LIBCALL_ADCMPCHAR.
+	* d-glue.cc (CmpExp::toElem): Don't call LIBCALL_ADCMPCHAR.
 
 	* lang.opt: Define Wcast-result.
-	* d-codegen.cc(IRState::convertTo): Warn about null result, but only
+	* d-codegen.cc (IRState::convertTo): Warn about null result, but only
 	if -Wcast-result.
 	(IRState::hwi2toli): Move to header.
 	(IRState::realPart): Likewise.
@@ -208,7 +208,7 @@
 	(IRState::toElemLvalue): Clean-up tree args array.
 	(IRState::doArraySet): New function.
 	(IRState::arraySetExpr): New function.
-	* d-glue.cc(EqualExp::toElem): Clean-up tree args array.
+	* d-glue.cc (EqualExp::toElem): Clean-up tree args array.
 	(CatAssignExp::toElem): Likewise.
 	(AssignExp::toElem): Likewise.
 	(DeleteExp::toElem): Likewise.
@@ -219,12 +219,12 @@
 	(do_array_set): Move to IRState::doArraySet.
 	(array_set_expr): Move to IRState::arraySetExpr.
 
-	* d-lang.h(D_TYPE_IMAGINARY_FLOAT): Define.
+	* d-lang.h (D_TYPE_IMAGINARY_FLOAT): Define.
 	(d_convert_basic): Remove.
-	* d-builtins.c(d_init_builtins): Mark imaginary types as
+	* d-builtins.c (d_init_builtins): Mark imaginary types as
 	D_TYPE_IMAGINARY_FLOAT.
-	* d-builtins2.cc(gcc_type_to_d_type): Use convert.
-	* d-codegen.cc(IRState::emitLocalVar): Call pushdecl earlier so
+	* d-builtins2.cc (gcc_type_to_d_type): Use convert.
+	* d-codegen.cc (IRState::emitLocalVar): Call pushdecl earlier so
 	catches CONST_DECLs.
 	(IRState::convertTo): Remove handling of conversions between
 	imaginary/real, imaginary/complex, complex/imaginary types, use
@@ -234,67 +234,67 @@
 	(IRState::call): Likewise.
 	(IRState::libCall): Likewise.
 	(IRState::maybeExpandSpecialCall): Likewise.
-	* d-convert.cc(d_convert_basic): Mark static.
+	* d-convert.cc (d_convert_basic): Mark static.
 	(convert): Handle correct conversions between imaginary/real,
 	imaginary/complex, complex/imaginary types.
-	* d-glue.cc(InExp::toElem): Use convert.
+	* d-glue.cc (InExp::toElem): Use convert.
 	(BoolExp::toElem): Likewise.
 	(FuncDeclaration::buildClosure): Likewise.
 
-	* d-builtins.c(def_fn_type): Use build_varargs_function_type_array and
+	* d-builtins.c (def_fn_type): Use build_varargs_function_type_array and
 	build_function_type_array to create built-in functions.
 	(d_init_builtins): Use lang_hooks.types.type_for_size.
-	* d-builtins2.cc(d_gcc_magic_builtins_module): Use
+	* d-builtins2.cc (d_gcc_magic_builtins_module): Use
 	lang_hooks.types.type_for_mode.
-	* d-codegen.cc(IRState::pointerIntSum): Use
+	* d-codegen.cc (IRState::pointerIntSum): Use
 	lang_hooks.types.type_for_size.
 	(IRState::call): Use lang_hooks.types.type_promotes_to.
 	(IRState::maybeExpandSpecialCall): Likewise.
-	* d-glue.cc(build_math_op): Use lang_hooks.types.type_for_mode.
-	* d-lang.cc(d_type_for_mode): Mark static.
+	* d-glue.cc (build_math_op): Use lang_hooks.types.type_for_mode.
+	* d-lang.cc (d_type_for_mode): Mark static.
 	(d_type_for_size): Likewise.
 	(d_type_promotes_to): Likewise.
 
 2012-08-31  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-glue.cc(FuncDeclaration::toObjFile): Flatten nested levels and
+	* d-glue.cc (FuncDeclaration::toObjFile): Flatten nested levels and
 	loops in function, delay printing function name in verbose mode until
 	we know the function is being compiled.
 
-	* d-codegen.cc(IRState::buildFrameForFunction): New function.
+	* d-codegen.cc (IRState::buildFrameForFunction): New function.
 	(IRState::buildChain): Use IRState::buildFrameForFunction to get the
 	frame record type.
 	(IRState::getFrameInfo): Likewise.
-	* d-glue.cc(FuncDeclaration::buildClosure): Likewise.
+	* d-glue.cc (FuncDeclaration::buildClosure): Likewise.
 
 2012-08-30  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* asmstmt.cc(ExtAsmStatement::toCBuffer): Mark unused parameter as
+	* asmstmt.cc (ExtAsmStatement::toCBuffer): Mark unused parameter as
 	ATTRIBUTE_UNUSED.
-	* d-codegen.cc(WrappedExp::toCBuffer): Likewise.
-	* d-objfile.cc(ObjectFile::setupSymbolStorage): Revert to previous
+	* d-codegen.cc (WrappedExp::toCBuffer): Likewise.
+	* d-objfile.cc (ObjectFile::setupSymbolStorage): Revert to previous
 	behaviour of setting symbol storage.
 
-	* d-codegen.cc(IRState::expandDecl): Use IRState::vinit.
+	* d-codegen.cc (IRState::expandDecl): Use IRState::vinit.
 	(IRState::binding): Likewise.
 	(IRState::var): Handle all declarations, not just vars.
-	* d-glue.cc(PtrExp::toElem): Simplify use of IRState::var.
+	* d-glue.cc (PtrExp::toElem): Simplify use of IRState::var.
 	(SymbolExp::toElem ): Likewise.
 	(ThisExp::toElem): Likewise.
 
-	* d-lang.cc(d_init): Remove 'Thumb' identifier for ARM as 16bit
+	* d-lang.cc (d_init): Remove 'Thumb' identifier for ARM as 16bit
 	platforms aren't supported.
 	(GNU_LongDouble128): Remove identifier as long double size is
 	determined from type information.
 
-	* d-decls.cc(TypeInfoDeclaration::toSymbol): Mark all typeinfo decls
+	* d-decls.cc (TypeInfoDeclaration::toSymbol): Mark all typeinfo decls
 	as 'used'.
-	* d-glue.cc(one_elem_array): Remove.
+	* d-glue.cc (one_elem_array): Remove.
 	(CatExp::toElem): Inline use of one_elem_array, clean-up.
-	* d-objfile.cc(ObjectFile::setupSymbolStorage): Update to better
+	* d-objfile.cc (ObjectFile::setupSymbolStorage): Update to better
 	handle use of declarations marked with comdat, extern or static.
 	(ObjectFile::doSimpleFunction): Mark function as 'used'.
-	* dt.cc(dt2node): Clean-up indentation.
+	* dt.cc (dt2node): Clean-up indentation.
 
 	* Make-lang.in: Fix issue with cross-compiler configuration.
 
@@ -309,8 +309,8 @@
 
 2012-08-23  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-builtins2.cc(eval_builtin): Use builtin_decl_explicit.
-	* d-codegen.cc(IRState::emitLocalVar): Use warning.
+	* d-builtins2.cc (eval_builtin): Use builtin_decl_explicit.
+	* d-codegen.cc (IRState::emitLocalVar): Use warning.
 	(IRState::convertTo): Likewise.
 	(IRState::addressOf): Use IRState::markAddressable.
 	(IRState::markAddressable): New function.
@@ -319,26 +319,26 @@
 	(IRState::maybeExpandSpecialCall): Use builtin_decl_explicit.
 	(IRState::floatMod): Likewise.
 	(IRState::exceptionObject): Likewise.
-	* d-glue.cc(IdentityExp::toElem): Likewise.
+	* d-glue.cc (IdentityExp::toElem): Likewise.
 	(EqualExp::toElem): Likewise.
 	(PowExp::toElem): Likewise.
 	(AssignExp::toElem): Likewise.
 	(HaltExp::toElem): Likewise.
 	(ArrayLiteralExp::toElem): Likewise.
 	(FuncDeclaration::toObjFile): Likewise.
-	* d-lang.cc(d_mark_addressable): Remove function.
+	* d-lang.cc (d_mark_addressable): Remove function.
 	(d_mark_exp_read): Remove function.
-	* d-lang.h(d_warning): Remove macro.
+	* d-lang.h (d_warning): Remove macro.
 	(d_built_in_decls): Remove macro.
-	* d-objfile.cc(Obj::includelib): Use warning.
+	* d-objfile.cc (Obj::includelib): Use warning.
 	(Obj::startaddress): Likewise.
 
 2012-08-22  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-lang.cc(binary): Moved function from frontend.
-	* d-codegen.cc(IRState::extractMethodCallExpr): Update for new C++ VEC
+	* d-lang.cc (binary): Moved function from frontend.
+	* d-codegen.cc (IRState::extractMethodCallExpr): Update for new C++ VEC
 	template in GCC.
-	* d-bi-attrs.h(parse_optimize_options): Likewise.
+	* d-bi-attrs.h (parse_optimize_options): Likewise.
 	* d-dmd-gcc.h: Remove ifdef __cplusplus, use GCC_SAFE_DMD.
 	* d-gcc-includes.h: Remove ifdef __cplusplus.
 	* d-lang.h: Likewise.
@@ -348,32 +348,32 @@
 
 2012-08-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::convertTo): Fix to allow conversion between
+	* d-codegen.cc (IRState::convertTo): Fix to allow conversion between
 	void* and associative arrays.
 	(IRState::convertForArgument): Use d_convert_basic.
 	(IRState::call): Don't use d_convert_basic, now handled by
 	convertForArgument.
-	* d-gcc-real.cc(real_t::real_t): Increase real type mode to be greater
+	* d-gcc-real.cc (real_t::real_t): Increase real type mode to be greater
 	than integer type size to prevent overflow in conversions.
-	* d-glue.cc(CastExp::toElem): Don't get implicit AA type.
+	* d-glue.cc (CastExp::toElem): Don't get implicit AA type.
 
 2012-08-17  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* dfrontend: Update to D frontend version 2.060
 
-	* d-codegen.cc(libcall_ids): New library functions.
+	* d-codegen.cc (libcall_ids): New library functions.
 	(IRState::getLibCallDecl): Implement new library function signatures.
-	* d-codegen.h(LibCall::LIBCALL_NEWITEMT): New enum value.
+	* d-codegen.h (LibCall::LIBCALL_NEWITEMT): New enum value.
 	(LibCall::LIBCALL_NEWITEMIT): Likewise.
-	* d-decls.cc(FuncDeclaration::toSymbol): Small readability cleanup.
-	* d-glue.cc(NewExp::toElem): Use new library functions.
+	* d-decls.cc (FuncDeclaration::toSymbol): Small readability cleanup.
+	* d-glue.cc (NewExp::toElem): Use new library functions.
 	(StructLiteralExp::toElem): Update for new frontend.
 	(ReturnStatement::toIR): Likewise.
-	* d-incpath.cc(add_import_path): New signature.
+	* d-incpath.cc (add_import_path): New signature.
 	(add_fileimp_path): Likewise.
 	(add_import_paths): Pass split Strings to helper functions.
-	* d-lang.cc(d_parse_file): Use Obj::init and Obj::term.
-	* d-objfile.cc(objmod): New variable.
+	* d-lang.cc (d_parse_file): Use Obj::init and Obj::term.
+	* d-objfile.cc (objmod): New variable.
 	(Obj::init): New function.
 	(Obj::term): Likewise.
 	(Obj::includelib): Likewise.
@@ -381,15 +381,15 @@
 	(Obj::allowZeroSize): Likewise.
 	(Obj::moduleinfo): Likewise.
 	(Obj::export_symbol): Likewise.
-	* symbol.h(Obj): New struct to allow object oriented interface to glue
+	* symbol.h (Obj): New struct to allow object oriented interface to glue
 	code from frontend.
 
-	* d-builtins2.cc(d_gcc_magic_stdarg_check): Add new va_arg magic
+	* d-builtins2.cc (d_gcc_magic_stdarg_check): Add new va_arg magic
 	function that stores the next value through a passed parameter.
 	Remove workaround for inout signature as va_list is always passed by
 	reference to intrinsic templates.
 	(d_gcc_magic_module): Assign module directly to global IRState.
-	* d-codegen.cc(IRState::builtinsModule): Remove static declaration.
+	* d-codegen.cc (IRState::builtinsModule): Remove static declaration.
 	(IRState::intrinsicModule): Likewise.
 	(IRState::intrinsicCoreModule): Likewise.
 	(IRState::mathModule): Likewise.
@@ -401,14 +401,14 @@
 	(IRState::maybeExpandSpecialCall): Clean-up va_start and va_arg
 	implementations.
 	(IRState::maybeSetUpBuiltin): Handle new va_arg function.
-	* d-codegen.h(Intrinsic::INTRINSIC_VA_ARG): New enum definition.
+	* d-codegen.h (Intrinsic::INTRINSIC_VA_ARG): New enum definition.
 	(IRState::setBuiltinsModule): Remove.
 	(IRState::setIntrinsicModule): Likewise.
 	(IRState::setMathModule): Likewise.
 	(IRState::setCStdArg): Likewise.
-	* d-glue.cc(CatExp::toElem): Use flag_split_darrays.
-	* d-irstate.cc(IRBase::startFunction): Set varsInScope.
-	* d-lang.cc(d_init_options): Set modules that require special
+	* d-glue.cc (CatExp::toElem): Use flag_split_darrays.
+	* d-irstate.cc (IRBase::startFunction): Set varsInScope.
+	* d-lang.cc (d_init_options): Set modules that require special
 	handling.
 	(d_handle_option): Don't handle OPT_fsplit_dynamic_arrays.
 	* lang.opt: fsplit-dynamic-arrays mapped to variable
@@ -416,13 +416,13 @@
 
 2012-08-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-glue.cc(IdentityExp::toElem): Re-order precendence of type
+	* d-glue.cc (IdentityExp::toElem): Re-order precendence of type
 	checking. Treat static arrays as D arrays in identity comparisons.
 	(EqualExp::toElem): Use adEq2 over built-in memcmp for equality
 	comparisons for static and dynamic arrays.
 	(TypeStruct::toCtype): Remove old platform specific workaround.
 
-	* d-builtins2.cc(bi_lib_list): New decl to hold list of GCC library
+	* d-builtins2.cc (bi_lib_list): New decl to hold list of GCC library
 	built-ins.
 	(d_bi_init): Add decls to bi_list_list if recognising built-ins.
 	(d_gcc_magic_builtins_module): Rename built-in type C long to
@@ -433,18 +433,18 @@
 	contain GCC library built-ins.
 	(d_gcc_magic_module): Search all core.stdc modules for possible GCC
 	library built-ins.
-	* d-codegen.h(IRState::useBuiltins): Remove.
-	* d-lang.cc(d_init_options): Don't set IRState::useBuiltins.
+	* d-codegen.h (IRState::useBuiltins): Remove.
+	* d-lang.cc (d_init_options): Don't set IRState::useBuiltins.
 	(d_handle_option): Likewise.
 	* lang.opt: Re-order D frontend compiler options.
 
-	* d-codegen.cc(IRState::buildChain): Override chainLink and chainFunc
+	* d-codegen.cc (IRState::buildChain): Override chainLink and chainFunc
 	for function if static chain is passed via hidden 'this' and no frame
 	is created.
 	(IRState::getFrameInfo): Pass static chain around nested functions in
 	the same way as closures for better performance.
 
-	* d-codegen.cc(libcall_ids): Re-order list in ascii collating order,
+	* d-codegen.cc (libcall_ids): Re-order list in ascii collating order,
 	add new library routines to lookup, rename all non-vararg functions to
 	match DMD ABI implementation.
 	(LibCall): Re-order enum and rename values to match libcall_ids.
@@ -453,9 +453,9 @@
 	add implementation of new library routines.
 	(IRState::maybeSetLibCallDecl): New function to set internal symbol
 	for special D RT library functions.
-	* d-decls.cc(FuncDeclaration::toSymbol): Use
+	* d-decls.cc (FuncDeclaration::toSymbol): Use
 	IRState::maybeSetLibCallDecl.
-	* d-glue.cc(InExp::toElem): Use new LibCall name.
+	* d-glue.cc (InExp::toElem): Use new LibCall name.
 	(CatAssignExp::toElem): Likewise.
 	(IndexExp::toElem): Likewise.
 	(DeleteExp::toElem): Likewise.
@@ -465,14 +465,14 @@
 	(AssocArrayLiteralExp::toElem): Likewise.
 	(NullExp::toElem): Use IRState::convertTo.
 
-	* d-codegen.cc(needs_temp): Remove.
+	* d-codegen.cc (needs_temp): Remove.
 	(IRState::makeTemp): New function.
 	(IRState::maybeMakeTemp): Re-implement to use isFreeOfSideEffects.
 	(IRState::isFreeOfSideEffects): Re-implement to allow better CSE.
 	(IRState::call): Use IRState::makeTemp.
 
-	* d-builtins2.cc(gcc_type_to_d_type): Use d_convert_basic.
-	* d-codegen.cc(IRState::emitLocalVar): Use IRState::vinit.
+	* d-builtins2.cc (gcc_type_to_d_type): Use d_convert_basic.
+	* d-codegen.cc (IRState::emitLocalVar): Use IRState::vinit.
 	(IRState::convertTo): New function for tree conversions.
 	(IRState::convertTo): Use IRState::convertTo.
 	(IRState::convertForCondition): Likewise.
@@ -481,9 +481,9 @@
 	(IRState::pointerOffsetOp): Likewise.
 	(IRState::pvoidOkay): Likewise.
 	(IRState::boundsCond): Likewise.
-	* d-convert.cc(convert): New function to be called from C.
+	* d-convert.cc (convert): New function to be called from C.
 	(d_build_truthvalue_op): Use d_convert_basic.
-	* d-glue.cc(convert): Remove.
+	* d-glue.cc (convert): Remove.
 	(build_bool_binop): Use IRState::convertTo.
 	(build_math_op): Likewise.
 	(CmpExp::toElem): Likewise.
@@ -494,75 +494,75 @@
 	(NotExp::toElem): Likewise.
 	(CallExp::toElem): Likewise.
 	(SymbolExp::toElem): Likewise.
-	* dt.cc(dt2tree_list_of_elems): Use d_convert_basic.
+	* dt.cc (dt2tree_list_of_elems): Use d_convert_basic.
 
 2012-07-26  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-gcc-real.cc(real_t::real_t): Use d_float64 for constructor.
+	* d-gcc-real.cc (real_t::real_t): Use d_float64 for constructor.
 	(real_t::isConst0): Remove.
 	(real_t::isConst1): Likewise.
 	(real_t::isConst2): Likewise.
 	(real_t::isConstMinus1): Likewise.
 	(real_t::isConstHalf): Likewise.
-	* d-gcc-real.h(longdouble): New typedef for real_t.
+	* d-gcc-real.h (longdouble): New typedef for real_t.
 	(ldouble): New template for ldouble conversions.
 	(ld_sprint): New function for ldouble to string formatting.
-	* d-codegen.cc(IRState::hwi2toli): Handle maximum 64bit value case.
+	* d-codegen.cc (IRState::hwi2toli): Handle maximum 64bit value case.
 
 2012-07-18  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::delegateVal): Remove ENABLE_CHECKING code.
+	* d-codegen.cc (IRState::delegateVal): Remove ENABLE_CHECKING code.
 	(IRState::objectInstanceMethod): Remove special case to avoid calling
 	DotTypeExp::toElem.
-	* d-glue.cc(CommaExp::toElem): Likewise.
+	* d-glue.cc (CommaExp::toElem): Likewise.
 	(DotTypeExp::toElem): Implement function.
 	(StructLiteralExp::toElem): Assert instead that basetype is a struct.
-	* d-gcc-reah.cc(real_t::real_t): New overload for 'double' type.
+	* d-gcc-reah.cc (real_t::real_t): New overload for 'double' type.
 	(real_t::format): Change function type to int, return size of buffer
 	from function.
 	(real_t::formatHex): Likewise.
-	* d-builtins2.cc(d_gcc_magic_stdarg_check): Update signature, remove
+	* d-builtins2.cc (d_gcc_magic_stdarg_check): Update signature, remove
 	check for is_c_std_arg.
 	(d_gcc_magic_stdarg_module): Likewise.
 	(d_gcc_magic_module): Remove check for core.vararg.
-	* d-codegen.cc(INTRINSIC_STD_VA_ARG): Remove.
+	* d-codegen.cc (INTRINSIC_STD_VA_ARG): Remove.
 	(IRState::maybeSetUpBuiltin): Don't handle INTRINSIC_STD_VA_ARG.
 
 2012-07-13  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-decls.cc(Dsymbol::toSymbolX): Remove use of PRIuSIZE format macro.
+	* d-decls.cc (Dsymbol::toSymbolX): Remove use of PRIuSIZE format macro.
 	(FuncDeclaration::toThunkSymbol): Likewise.
 
 2012-07-12  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-lang.h(D_DECL_IS_CONTRACT): New macro.
-	* d-decls.cc(FuncDeclaration::toSymbol): Mark in and out contracts as
+	* d-lang.h (D_DECL_IS_CONTRACT): New macro.
+	* d-decls.cc (FuncDeclaration::toSymbol): Mark in and out contracts as
 	D_DECL_IS_CONTRACT.
 	(FuncDeclaration::toThunkSymbol): D thunks no longer private by
 	design. Alter mangling of thunk symbols to be unique across the entire
 	compilation unit.
-	* d-objfile.cc(ObjectFile::makeDeclOneOnly): Catch public contracts to
+	* d-objfile.cc (ObjectFile::makeDeclOneOnly): Catch public contracts to
 	mark them as one-only.
 	(ObjectFile::outputThunk): Mark weakref thunks as private.
 
 2012-07-10  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* Make-lang.in: Remove unused borrowed objects.
-	* d-builtins2.cc(d_bi_builtin_func): Don't add builtin if
+	* d-builtins2.cc (d_bi_builtin_func): Don't add builtin if
 	-fno-builtin was given.
-	* d-codegen.cc(IRState::emitTemplates): Remove static declaration.
+	* d-codegen.cc (IRState::emitTemplates): Remove static declaration.
 	(IRState::splitDynArrayVarArgs): Likewise.
 	(IRState::useInlineAsm): Likewise.
 	(IRState::useBuiltins): Likewise.
 	(d_gcc_force_templates): Update to use global gen.
-	* d-codegen.h(emitTemplates): Remove static attribute.
+	* d-codegen.h (emitTemplates): Remove static attribute.
 	(splitDynArrayVarArgs): Likewise.
 	(useBuiltins): Likewise.
 	(useInlineAsm): Remove member.
 	(stdInc): Define new member.
-	* d-incpath.cc(std_inc): Remove global.
+	* d-incpath.cc (std_inc): Remove global.
 	(add_import_paths): Update function signature.
-	* d-lang.cc(d_init_options): Default splitDynArrayVarArgs to false.
+	* d-lang.cc (d_init_options): Default splitDynArrayVarArgs to false.
 	(d_init): Update call to add_import_paths.
 	(d_handle_option): Remove OPT_fd_inline_asm, add
 	OPT_fsplit_dynamic_arrays.
@@ -570,110 +570,110 @@
 
 2012-07-08  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-builtins2.cc(d_gcc_type_align): Update function signature. Use
+	* d-builtins2.cc (d_gcc_type_align): Update function signature. Use
 	type align size to determine the known align size of a decl.
-	* d-dmd-gcc.h(d_gcc_type_align): Update function signature.
-	* symbol.h(Symbol): New member, Salignment.
-	* symbol.cc(Symbol::Symbol): Initialise Salignment.
-	* d-decls.cc(VarDeclaration::toSymbol): Set Salignment if there is an
+	* d-dmd-gcc.h (d_gcc_type_align): Update function signature.
+	* symbol.h (Symbol): New member, Salignment.
+	* symbol.cc (Symbol::Symbol): Initialise Salignment.
+	* d-decls.cc (VarDeclaration::toSymbol): Set Salignment if there is an
 	alignment in effect on the decl.
 	(AggregateDeclaration::toInitializer): Likewise.
-	* d-objfile.cc(ObjectFile::outputStaticSymbol): Set DECL_ALIGN if
+	* d-objfile.cc (ObjectFile::outputStaticSymbol): Set DECL_ALIGN if
 	Salignment was given for static decl.
 
 2012-07-07  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-builtins2.cc(d_gcc_magic_builtins_module): Add check for
+	* d-builtins2.cc (d_gcc_magic_builtins_module): Add check for
 	DECL_ASSEMBLER_NAME_SET_P when testing for builtins that can be
 	markable as pure in the D frontend.
 
-	* d-codegen.cc(IRState::integerConstant): Hide use of
+	* d-codegen.cc (IRState::integerConstant): Hide use of
 	HOST_BITS_PER_WIDE_INT macros.
 	(IRState::hwi2toli): Likewise.
 	(IRState::getTargetSizeConst): Likewise.
 
-	* d-builtins.c(d_global_trees): Move declaration here.
+	* d-builtins.c (d_global_trees): Move declaration here.
 	(lookup_C_type_name): Rename to lookup_ctype_name.
 	(d_init_builtins): Move set-up of d_global_trees here.
 	(gcc_d_backend_init): Move function from d-glue.cc and refactored.
 	(gcc_d_backend_term): Likewise.
-	* d-builtins2.cc(d_bi_init): Set-up D frontend sizes here.
-	* d-glue.cc(gcc_d_backend_init): Removed.
+	* d-builtins2.cc (d_bi_init): Set-up D frontend sizes here.
+	* d-glue.cc (gcc_d_backend_init): Removed.
 	(gcc_d_backend_term): Likewise.
 
-	* d-incpath.cc(add_phobos_versyms): New function to scan
+	* d-incpath.cc (add_phobos_versyms): New function to scan
 	phobos-vers-syms file.
 	(register_import_chains): Renamed to add_import_paths.
-	* d-lang.cc(d_init): Call add_phobos_versyms and add_import_paths.
+	* d-lang.cc (d_init): Call add_phobos_versyms and add_import_paths.
 	(d_parse_int): Don't use strtol to get number from argument string.
 
-	* d-incpath.cc(maybe_fixup_phobos_target): Remove.
+	* d-incpath.cc (maybe_fixup_phobos_target): Remove.
 	(register_import_chains): Remove use of maybe_fixup_phobos_target.
-	* d-lang.cc(maybe_fixup_os_versym): Remove
+	* d-lang.cc (maybe_fixup_os_versym): Remove
 	(d_init): Remove use of maybe_fixup_os_versym.
 
-	* d-lang.cc(saved_reg_names): Remove.
+	* d-lang.cc (saved_reg_names): Remove.
 	(d_init): Remove use of saved_reg_names.
 	(d_post_options): Likewise.
 
 2012-07-05  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-glue.cc(StructLiteralExp::toElem): Stop after first assignment for
+	* d-glue.cc (StructLiteralExp::toElem): Stop after first assignment for
 	constructors built for union types.
 
 2012-07-01  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* symbol.h(deferredNestedFuncs): Renamed from otherNestedFuncs, use as
+	* symbol.h (deferredNestedFuncs): Renamed from otherNestedFuncs, use as
 	value type rather than pointer.
 	(thunks): Use as value type rather than pointer.
-	* d-decls.cc(FuncDeclaration::toSymbol): Remove check for
+	* d-decls.cc (FuncDeclaration::toSymbol): Remove check for
 	deferredNestedFuncs being NULL.
 	(FuncDeclaration::toThunkSymbol): Remove check for thunks being NULL.
-	* d-glue.cc(DelegateExp::toElem): Remove check for deferredNestedFuncs
+	* d-glue.cc (DelegateExp::toElem): Remove check for deferredNestedFuncs
 	being NULL.
 	(FuncDeclaration::toObjFile): Likewise.
-	* d-objfile.cc(ObjectFile::shouldEmit): Add nested functions to
+	* d-objfile.cc (ObjectFile::shouldEmit): Add nested functions to
 	deferredNestedFuncs of their parent function incase parent is actually
 	emitted later in during compilation.
-	* d-builtins2.cc(d_gcc_type_align): Explicit alignment of variables
+	* d-builtins2.cc (d_gcc_type_align): Explicit alignment of variables
 	takes precedence over default alignment.
 	* d-gcc-includes.h: Re-order list of includes.
 
 2012-06-26  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::twoFieldType): Use rest_of_decl_compilation.
+	* d-codegen.cc (IRState::twoFieldType): Use rest_of_decl_compilation.
 	* d-gcc-includes.h: Remove last of poisoned backend headers.
-	* d-glue.cc(FuncDeclaration::toObjFile): Use fprintf for diagnostic
+	* d-glue.cc (FuncDeclaration::toObjFile): Use fprintf for diagnostic
 	message.  Use rest_of_decl_compilation directly.
 	(SynchronizedStatement::toIR): Likewise.
 	(TypeFunction::toCtype): Remove old version1 macro.
-	* d-lang.cc(d_parse_file): Remove dependency on backend header. Use
+	* d-lang.cc (d_parse_file): Remove dependency on backend header. Use
 	fprintf for diagnostic messages.
 	(nametype): Use rest_of_decl_compilation directly.
 	(d_handle_option): Remove version 1 option.
 	* dmd-script: Likewise.
 	* lang.opt: Likewise.
-	* d-objfile.cc(ObjectFile::outputStaticSymbol): Use
+	* d-objfile.cc (ObjectFile::outputStaticSymbol): Use
 	rest_of_decl_compilation directly.
 	(ObjectFile::declareType): Likewise.
 	(obj_moduleinfo): Likewise.
 	(obj_tlssections): Likewise.
 	(ObjectFile::outputThunk): Implement new method of thunk generation
 	for external symbols using weakref.
-	* d-objfile.h(rodc): Remove.
+	* d-objfile.h (rodc): Remove.
 
 2012-06-25  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-builtins.c(d_init_builtins): Use build_tree_list to initialise
+	* d-builtins.c (d_init_builtins): Use build_tree_list to initialise
 	void_list_node.
-	* d-glue.cc(ArrayLiteralExp::toElem): Always generate code for
+	* d-glue.cc (ArrayLiteralExp::toElem): Always generate code for
 	arrayliteralTp.
 	(TypeFunction::toCtype): Chain on void_list_node to the end of the
 	function type parameters.  Fixes function signatures in debugging.
 
 2012-06-23  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* Make-lang.in(d_OBJS): Add so IN_GCC_FRONTEND is defined when
+	* Make-lang.in (d_OBJS): Add so IN_GCC_FRONTEND is defined when
 	building gdc sources.
 	* d-builtins.c: Remove poisoned headers.
 	* d-codegen.cc: Likewise.
@@ -685,24 +685,24 @@
 	* d-objfile.cc: Remove poisoned headers.
 	* gdc_alloca.h: Use liberty.h instead of handling include of alloca.
 
-	* d-decls.cc(Dsymbol::toSymbolX): Use snprintf rather than sprintf.
+	* d-decls.cc (Dsymbol::toSymbolX): Use snprintf rather than sprintf.
 	(FuncDeclaration::toSymbol): Likewise.
-	* d-gcc-real.cc(real_t::init): Likewise.
-	* symbol.cc(Symbol::Symbol): Use NULL_TREE to initialise tree.
+	* d-gcc-real.cc (real_t::init): Likewise.
+	* symbol.cc (Symbol::Symbol): Use NULL_TREE to initialise tree.
 	(symbol_calloc): Use xstrdup to copy string.
 
 	* Make-lang.in: Remove D language version 1 from build
 	(_GNU_SOURCE): Removed macro from build.
 	(ELFOBJ): Likewise.
 	(D_VA_LIST_TYPE_VOIDPTR): Likewise.
-	* asmstmt.cc(ExtAsmStatement::semantic): Removed use of V2 macro.
-	* d-builtins2.cc(d_gcc_builtin_va_list_d_type): Removed use of
+	* asmstmt.cc (ExtAsmStatement::semantic): Removed use of V2 macro.
+	* d-builtins2.cc (d_gcc_builtin_va_list_d_type): Removed use of
 	D_VA_LIST_TYPE_VOIDPTR macro.
 	(gcc_type_to_d_type): Likewise.
 	(d_gcc_magic_stdarg_check): Likewise.
 	(d_gcc_magic_builtins_module): Removed use of V2 macro, and V1
 	encapsulated code.
-	* d-codegen.cc(IRState::convertTo): Likewise.
+	* d-codegen.cc (IRState::convertTo): Likewise.
 	(IRState::toDArray): Likewise.
 	(IRState::typesCompatible): Likewise.
 	(IRState::arrayBoundsCheck): Likewise.
@@ -720,9 +720,9 @@
 	(IRState::startCase): Likewise.
 	(IRState::doCase): Likewise.
 	(IRState::endCase): Likewise.
-	* d-decls.cc(VarDeclaration::toSymbol): Likewise
+	* d-decls.cc (VarDeclaration::toSymbol): Likewise
 	(FuncDeclaration::toSymbol): Likewise.
-	* d-glue.cc(CondExp::toElem): Likewise.
+	* d-glue.cc (CondExp::toElem): Likewise.
 	(build_bool_binop): Likewise.
 	(EqualExp::toElem): Likewise.
 	(CmpExp::toElem): Likewise.
@@ -744,61 +744,61 @@
 	(IfStatement::toIR): Likewise.
 	(ForStatement::toIR): Likewise.
 	(ExpStatement::toIR): Likewise.
-	* d-irstate.cc(IRBase::startFunction): Likewise.
-	* d-lang.cc(d_init_options_struct): Likewise.
+	* d-irstate.cc (IRBase::startFunction): Likewise.
+	* d-lang.cc (d_init_options_struct): Likewise.
 	(d_handle_option): Likewise.
 	(d_parse_file): Likewise.
 
 2012-06-21  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* Make-lang.in: Remove d-asm-i386.h
-	* asmstmt.cc(d_build_asm_stmt): Update signature, use build5.
+	* asmstmt.cc (d_build_asm_stmt): Update signature, use build5.
 	(getFrameRelativeValue): Remove.
 	(d_format_priv_asm_label): Likewise.
 	(d_have_inline_asm): Likewise.
 	(AsmProcessor): Likewise.
 	(AsmStatement::toIR): Update sorry message.
-	* d-codegen.cc(IRState::expandPortIntrinsic): Update call to
+	* d-codegen.cc (IRState::expandPortIntrinsic): Update call to
 	d_build_asm_stmt.
 	(IRState::doAsm): Likewise.
-	* d-decls.cc(FuncDeclaration::toSymbol): Remove check for inline asm.
-	* d-glue.cc(FuncDeclaration::toObjFile): Likewise.
+	* d-decls.cc (FuncDeclaration::toSymbol): Remove check for inline asm.
+	* d-glue.cc (FuncDeclaration::toObjFile): Likewise.
 	(LabelStatement::toIR): Likewise.
-	* d-lang.cc(VersionCondition::addPredefinedGlobalIdent): Remove D
+	* d-lang.cc (VersionCondition::addPredefinedGlobalIdent): Remove D
 	Inline Asm version identifiers.
-	* d-lang.h(d_build_asm_stmt): Update signature.
+	* d-lang.h (d_build_asm_stmt): Update signature.
 
 2012-06-19  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-decls.cc(FuncDeclaration::toSymbol): Mark in/out contracts as
+	* d-decls.cc (FuncDeclaration::toSymbol): Mark in/out contracts as
 	TREE_PUBLIC to allow calling cross-module.
-	* d-lang.cc(d_parse_file): Update for 2.059.
+	* d-lang.cc (d_parse_file): Update for 2.059.
 
 2012-06-16  Iain Buclaw  <ibuclaw@ubuntu.com>
 
 	* dfrontend: Merged with DMD 2.059.
-	* d-builtins2.cc(gcc_type_to_d_type): Use new frontend value.
-	* d-codegen.cc(IRState::getLibCallDecl): Fix return type of _aaDelp.
+	* d-builtins2.cc (gcc_type_to_d_type): Use new frontend value.
+	* d-codegen.cc (IRState::getLibCallDecl): Fix return type of _aaDelp.
 	(IRState::getVThis): Use frontend provided member to determine if
 	function has nested references.
-	* d-decl.cc(FuncDeclaration::toSymbol): Weakly pure functions don't
+	* d-decl.cc (FuncDeclaration::toSymbol): Weakly pure functions don't
 	guarantee no vops.
-	* d-gcc-real.cc(max_float_mode): Remove.
+	* d-gcc-real.cc (max_float_mode): Remove.
 	(real_t::convert): Catch imaginary types in conversion.
-	* d-glue.cc(EqualExp::toElem): Use memcmp for struct comparisons.
+	* d-glue.cc (EqualExp::toElem): Use memcmp for struct comparisons.
 	(CatAssignExp::toElem): Rework order of logic to allow appending
 	delegates to an array.
 	(DelegateExp::toElem): Implement handling of lambda functions.
 	(FuncExp::toElem): Ditto.
 	(AssocArrayLiteralExp::toElem): Implement handling of AssociativeArray
 	types sent to backend.
-	* d-objfile.cc(lmtab): Remove.
+	* d-objfile.cc (lmtab): Remove.
 	(cvtLocToloc_t): Update implementation.
 	(outdata): Now assert that we don't receive error nodes.
 
 2012-06-05  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-decls.cc(FuncDeclaration::toSymbol): Make better use of 'pure' and
+	* d-decls.cc (FuncDeclaration::toSymbol): Make better use of 'pure' and
 	'pure const' functions in GCC codegen.
 	* d-bi-attrs.h: Added TM_ATTR* masks.
 	(handle_tm_wrap_attribute, handle_tm_attribute, tm_attr_to_mask,
@@ -807,7 +807,7 @@
 
 2012-06-04  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-objfile.cc(ObjectFile::outputThunk): Output thunks moved back to
+	* d-objfile.cc (ObjectFile::outputThunk): Output thunks moved back to
 	the frontend, as backend does not emit them for DECL_EXTERNAL functions.
 
 2012-05-29  Daniel Green  <venix1@gmail.com>
@@ -818,14 +818,14 @@
 
 2012-05-29  Iain Buclaw  <ibuclaw@ubuntu.com>
 
-	* d-codegen.cc(IRState::endCase): Remove parameter from function. Use
+	* d-codegen.cc (IRState::endCase): Remove parameter from function. Use
 	condition type as the SWITCH_EXPR type, rather than use of void.
-	* d-codegen.h(IRState::endCase): Update signature.
-	* d-glue.cc(SwitchStatement::toIR): Update call to endCase.
+	* d-codegen.h (IRState::endCase): Update signature.
+	* d-glue.cc (SwitchStatement::toIR): Update call to endCase.
 
 2012-05-28  Daniel Green  <venix1@gmail.com>
 
-	* d-builtins.c(DEF_ATTR_STRING): Define and undefine along with other
+	* d-builtins.c (DEF_ATTR_STRING): Define and undefine along with other
 	macros.
 	* d-lang.cc (d_write_global_declartions): Use
 	finalize_compilation_unit. GCC 2012-04-30
@@ -849,3 +849,9 @@
 	(DtorExpStatement::toIR): Don't call destructor if var is returned as
 	the nrvo variable.
 
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
