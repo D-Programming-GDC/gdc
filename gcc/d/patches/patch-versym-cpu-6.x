@@ -42,11 +42,11 @@ for all supported architectures. And these where appropriate:
 ** SPARC_SoftFloat
 ---
 
---- gcc/config/aarch64/aarch64.h
-+++ gcc/config/aarch64/aarch64.h
-@@ -99,6 +99,14 @@
- 	builtin_define ("__ARM_FEATURE_CRYPTO");	\
-     } while (0)
+--- a/gcc/config/aarch64/aarch64.h
++++ b/gcc/config/aarch64/aarch64.h
+@@ -26,6 +26,14 @@
+ #define TARGET_CPU_CPP_BUILTINS()	\
+   aarch64_cpu_cpp_builtins (pfile)
  
 +/* Target CPU builtins for D.  */
 +#define TARGET_CPU_D_BUILTINS()				\
@@ -58,9 +58,9 @@ for all supported architectures. And these where appropriate:
 +
  
  
- /* Target machine storage layout.  */
---- gcc/config/alpha/alpha.h
-+++ gcc/config/alpha/alpha.h
+ #define REGISTER_TARGET_PRAGMAS() aarch64_register_pragmas ()
+--- a/gcc/config/alpha/alpha.h
++++ b/gcc/config/alpha/alpha.h
 @@ -72,6 +72,23 @@ along with GCC; see the file COPYING3.  If not see
  	SUBTARGET_LANGUAGE_CPP_BUILTINS();		\
  } while (0)
@@ -85,8 +85,8 @@ for all supported architectures. And these where appropriate:
  #ifndef SUBTARGET_LANGUAGE_CPP_BUILTINS
  #define SUBTARGET_LANGUAGE_CPP_BUILTINS()		\
    do							\
---- gcc/config/arm/arm.h
-+++ gcc/config/arm/arm.h
+--- a/gcc/config/arm/arm.h
++++ b/gcc/config/arm/arm.h
 @@ -47,6 +47,31 @@ extern char arm_arch_name[];
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() arm_cpu_cpp_builtins (pfile)
@@ -119,9 +119,9 @@ for all supported architectures. And these where appropriate:
  #include "config/arm/arm-opts.h"
  
  enum target_cpus
---- gcc/config/i386/i386.h
-+++ gcc/config/i386/i386.h
-@@ -651,6 +651,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+--- a/gcc/config/i386/i386.h
++++ b/gcc/config/i386/i386.h
+@@ -660,6 +660,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -146,8 +146,8 @@ for all supported architectures. And these where appropriate:
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
---- gcc/config/ia64/ia64.h
-+++ gcc/config/ia64/ia64.h
+--- a/gcc/config/ia64/ia64.h
++++ b/gcc/config/ia64/ia64.h
 @@ -40,6 +40,13 @@ do {						\
  	  builtin_define("__BIG_ENDIAN__");	\
  } while (0)
@@ -162,9 +162,9 @@ for all supported architectures. And these where appropriate:
  #ifndef SUBTARGET_EXTRA_SPECS
  #define SUBTARGET_EXTRA_SPECS
  #endif
---- gcc/config/mips/mips.h
-+++ gcc/config/mips/mips.h
-@@ -594,6 +594,54 @@ struct mips_cpu_info {
+--- a/gcc/config/mips/mips.h
++++ b/gcc/config/mips/mips.h
+@@ -622,6 +622,54 @@ struct mips_cpu_info {
      }									\
    while (0)
  
@@ -219,8 +219,8 @@ for all supported architectures. And these where appropriate:
  /* Default target_flags if no switches are specified  */
  
  #ifndef TARGET_DEFAULT
---- gcc/config/pa/pa.h
-+++ gcc/config/pa/pa.h
+--- a/gcc/config/pa/pa.h
++++ b/gcc/config/pa/pa.h
 @@ -185,6 +185,20 @@ do {								\
         builtin_define("_PA_RISC1_0");				\
  } while (0)
@@ -242,9 +242,9 @@ for all supported architectures. And these where appropriate:
  /* An old set of OS defines for various BSD-like systems.  */
  #define TARGET_OS_CPP_BUILTINS()				\
    do								\
---- gcc/config/rs6000/rs6000.h
-+++ gcc/config/rs6000/rs6000.h
-@@ -730,6 +730,28 @@ extern unsigned char rs6000_recip_bits[];
+--- a/gcc/config/rs6000/rs6000.h
++++ b/gcc/config/rs6000/rs6000.h
+@@ -764,6 +764,28 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -273,9 +273,9 @@ for all supported architectures. And these where appropriate:
  /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
     we're compiling for.  Some configurations may need to override it.  */
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
---- gcc/config/s390/s390.h
-+++ gcc/config/s390/s390.h
-@@ -113,6 +113,22 @@ enum processor_flags
+--- a/gcc/config/s390/s390.h
++++ b/gcc/config/s390/s390.h
+@@ -177,6 +177,22 @@ enum processor_flags
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() s390_cpu_cpp_builtins (pfile)
  
@@ -298,8 +298,8 @@ for all supported architectures. And these where appropriate:
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT     (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP	\
                              | MASK_OPT_HTM | MASK_OPT_VX)
---- gcc/config/sh/sh.h
-+++ gcc/config/sh/sh.h
+--- a/gcc/config/sh/sh.h
++++ b/gcc/config/sh/sh.h
 @@ -31,6 +31,22 @@ extern int code_for_indirect_jump_scratch;
  
  #define TARGET_CPU_CPP_BUILTINS() sh_cpu_cpp_builtins (pfile)
@@ -323,8 +323,8 @@ for all supported architectures. And these where appropriate:
  /* Value should be nonzero if functions must have frame pointers.
     Zero means the frame pointer need not be set up (and parms may be accessed
     via the stack pointer) in functions that seem suitable.  */
---- gcc/config/sparc/sparc.h
-+++ gcc/config/sparc/sparc.h
+--- a/gcc/config/sparc/sparc.h
++++ b/gcc/config/sparc/sparc.h
 @@ -27,6 +27,31 @@ along with GCC; see the file COPYING3.  If not see
  
  #define TARGET_CPU_CPP_BUILTINS() sparc_target_macros ()

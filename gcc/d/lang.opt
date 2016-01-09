@@ -28,195 +28,195 @@ int bounds_check_set_manually
 
 debuglib=
 Driver Joined
-Debug library to use instead of phobos
+Debug library to use instead of phobos.
 
 defaultlib=
 Driver Joined
-Default library to use instead of phobos
+Default library to use instead of phobos.
 
 fassert
 D
-Permit the use of the assert keyword
+; Documented in Java
 
 ; For D: defaults to on
 fbounds-check
 D
-Generate code to check bounds before indexing arrays
+Generate code to check bounds before indexing arrays.
 
 fbounds-check=
 D Joined
--fbounds-check,-fno-bounds-check,-fbounds-check=safe Generate code to check bounds before indexing arrays
+-fbounds-check,-fno-bounds-check,-fbounds-check=safe	Generate code to check bounds before indexing arrays.
 
 fbuiltin
 D Var(flag_no_builtin, 0)
-Recognize built-in functions
+; Documented in C
 
 fdebug
 D
-Compile in debug code
+Compile in debug code.
 
 fdebug=
 D Joined RejectNegative
--fdebug,-fdebug=<level>,-fdebug=<ident> Compile in debug code, code <= level, or code identified by ident
+-fdebug,-fdebug=<level>,-fdebug=<ident>	Compile in debug code, code <= 'level', or code identified by 'ident'.
 
 fdeps
 D
-Print information about module dependencies
+Print information about module dependencies.
 
 fdeps=
 D Joined RejectNegative
--fdeps=<filename> Write module dependencies to filename
+-fdeps=<filename>	Write module dependencies to 'filename'.
 
 fdoc
 D
-Generate documentation
+Generate documentation.
 
 fdoc-dir=
 D Joined RejectNegative
--fdoc-dir=<docdir> Write documentation file to docdir directory
+-fdoc-dir=<docdir>	Write documentation file to 'docdir' directory.
 
 fdoc-file=
 D Joined RejectNegative
--fdoc-file=<filename> Write documentation file to filename
+-fdoc-file=<filename>	Write documentation file to 'filename'.
 
 fdoc-inc=
 D Joined RejectNegative
--fdoc-inc=<filename> Include a Ddoc macro file
+-fdoc-inc=<filename>	Include a Ddoc macro file.
 
 fd-vgc
 D
-List all hidden GC allocations
+List all hidden GC allocations.
 
 fd-verbose
 D
-Print information about D language processing to stdout
+Print information about D language processing to stdout.
 
 fd-vtls
 D
-List all variables going into thread local storage
+List all variables going into thread local storage.
 
 femit-templates
 D
-Generate code for all template instantiations
+Generate code for all template instantiations.
 
 fignore-unknown-pragmas
 D
-Ignore unsupported pragmas
+Ignore unsupported pragmas.
 
 fin
 D
-Generate runtime code for in() contracts
+Generate runtime code for in() contracts.
 
 fintfc
-Generate D interface files
+Generate D interface files.
 
 fintfc-dir=
 D Joined RejectNegative
--fintfc-dir=<dir> Write D interface files to directory <dir>
+-fintfc-dir=<dir>	Write D interface files to directory 'dir'.
 
 fintfc-file=
 D Joined RejectNegative
--fintfc-file=<filename> Write D interface file to <filename>
+-fintfc-file=<filename>	Write D interface file to 'filename'.
 
 finvariants
 D
-Generate runtime code for invariant()'s
+Generate runtime code for invariant()'s.
 
 fmake-deps
 D
-Print information about module makefile dependencies
+Print information about module makefile dependencies.
 
 fmake-deps=
 D Joined RejectNegative
--fmake-deps=<file> Write makefile dependency output to the given file
+-fmake-deps=<file>	Write makefile dependency output to the given file.
 
 fmake-mdeps
 D
-Like -fmake-deps but ignore system modules
+Like -fmake-deps but ignore system modules.
 
 fmake-mdeps=
 D Joined RejectNegative
-Like -fmake-deps=<file> but ignore system modules
+Like -fmake-deps=<file> but ignore system modules.
 
 femit-moduleinfo
 D
-Generate ModuleInfo struct for output module
+Generate ModuleInfo struct for output module.
 
 fonly=
 D Joined RejectNegative
-Process all modules specified on the command line, but only generate code for the module specified by the argument
+Process all modules specified on the command line, but only generate code for the module specified by the argument.
 
 fout
 D
-Generate runtime code for out() contracts
+Generate runtime code for out() contracts.
 
 fproperty
 D
-Enforce property syntax
+Enforce property syntax.
 
 frelease
 D
-Compile release version
+Compile release version.
 
 funittest
 D
-Compile in unittest code
+Compile in unittest code.
 
 fversion=
 D Joined RejectNegative
--fversion=<level|ident> Compile in version code >= <level> or identified by <ident>
+-fversion=<level|ident>	Compile in version code >= 'level' or identified by 'ident'.
 
 fXf=
 D Joined RejectNegative
--fXf=<filename> Write JSON file to <filename>
+-fXf=<filename>	Write JSON file to 'filename'.
 
 imultilib
 D Joined Separate
--imultilib <dir>	Set <dir> to be the multilib include subdirectory
+; Documented in C
 
 iprefix
 D Joined Separate
--iprefix <path>	Specify <path> as a prefix for next two options
+; Documented in C
 
 isysroot
 D Joined Separate
--isysroot <dir>	Set <dir> to be the system root directory
+; Documented in C
 
 isystem
 D Joined Separate
--isystem <dir>	Add <dir> to the start of the system include path
+; Documented in C
 
 I
 D Joined Separate
--I <dir>	Add <dir> to the end of the main include path
+; Documented in C
 
 J
 D Joined Separate
--J<directory>	Put MODULE files in 'directory'
+; Documented in Fortran
 
 nophoboslib
 Driver
-Do not link the standard D library in the compilation
+Do not link the standard D library in the compilation.
 
 nostdinc
 D
-Do not search standard system include directories (those specified with -isystem will still be used)
+; Documented in C
 
 static-libphobos
 Driver
-Link the standard D library statically in the compilation
+Link the standard D library statically in the compilation.
 
 Wall
 D
-; Documented in c.opt
+; Documented in C
 
 Wcast-result
 D Warning Var(warn_cast_result)
-Warn about casts that will produce a null or nil result
+Warn about casts that will produce a null result.
 
 Wdeprecated
 D
-; Documented in c.opt
+; Documented in C
 
 Werror
 D
@@ -224,5 +224,5 @@ D
 
 Wunknown-pragmas
 D
-; Documented in c.opt
+; Documented in C
 

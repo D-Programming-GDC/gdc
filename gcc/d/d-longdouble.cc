@@ -33,26 +33,6 @@
 #include "longdouble.h"
 
 
-// Return backend machine_mode for frontend mode MODE.
-
-static machine_mode
-machineMode (longdouble::Mode mode)
-{
-  switch (mode)
-    {
-    case longdouble::Float:
-      return TYPE_MODE (float_type_node);
-
-    case longdouble::Double:
-      return TYPE_MODE (double_type_node);
-
-    case longdouble::LongDouble:
-      return TYPE_MODE (long_double_type_node);
-
-    default:
-      gcc_unreachable();
-    }
-}
 
 real_properties real_limits[longdouble::NumModes];
 
@@ -63,57 +43,73 @@ real_properties real_limits[longdouble::NumModes];
 void
 longdouble::init()
 {
-  gcc_assert (sizeof (longdouble) >= sizeof (real_value));
+  gcc_assert(sizeof(longdouble) >= sizeof(real_value));
 
-  for (int i = (int) Float; i < (int) NumModes; i++)
+  for (int i = longdouble::Float; i < longdouble::NumModes; i++)
     {
       real_properties& p = real_limits[i];
-
-      machine_mode mode = machineMode ((Mode) i);
-      const real_format& rf = *REAL_MODE_FORMAT (mode);
       char buf[128];
+      const real_format *rf;
+
+      // Get backend real mode format.
+      switch (i)
+	{
+	case longdouble::Float:
+	  rf = REAL_MODE_FORMAT (TYPE_MODE (float_type_node));
+	  break;
+
+	case longdouble::Double:
+	  rf = REAL_MODE_FORMAT (TYPE_MODE (double_type_node));
+	  break;
+
+	case longdouble::LongDouble:
+	  rf = REAL_MODE_FORMAT (TYPE_MODE (long_double_type_node));
+	  break;
+	}
 
       /* .max:
 	 The largest representable value that's not infinity.  */
-      get_max_float (&rf, buf, sizeof (buf));
-      real_from_string (&p.maxval.rv(), buf);
+      get_max_float(rf, buf, sizeof(buf));
+      real_from_string(&p.maxval.rv(), buf);
 
       /* .min, .min_normal:
 	 The smallest representable normalized value that's not 0.  */
-      snprintf (buf, sizeof (buf), "0x1p%d", rf.emin - 1);
-      real_from_string (&p.minval.rv(), buf);
+      snprintf(buf, sizeof(buf), "0x1p%d", rf->emin - 1);
+      real_from_string(&p.minval.rv(), buf);
 
       /* .epsilon:
 	 The smallest increment to the value 1.  */
-      if (rf.pnan < rf.p)
-	snprintf (buf, sizeof (buf), "0x1p%d", rf.emin - rf.p);
+      if (rf->pnan < rf->p)
+	snprintf(buf, sizeof(buf), "0x1p%d", rf->emin - rf->p);
       else
-	snprintf (buf, sizeof (buf), "0x1p%d", 1 - rf.p);
-      real_from_string (&p.epsilonval.rv(), buf);
+	snprintf(buf, sizeof(buf), "0x1p%d", 1 - rf->p);
+      real_from_string(&p.epsilonval.rv(), buf);
 
       /* .dig:
 	 The number of decimal digits of precision.  */
-      p.dig = (rf.p - 1) * M_LOG10_2;
+      p.dig = (rf->p - 1) * M_LOG10_2;
 
       /* .mant_dig:
 	 The number of bits in mantissa.  */
-      p.mant_dig = rf.p;
+      p.mant_dig = rf->p;
 
       /* .max_10_exp:
 	 The maximum int value such that 10**value is representable.  */
-      p.max_10_exp = rf.emax * M_LOG10_2;
+      p.max_10_exp = rf->emax * M_LOG10_2;
 
       /* .min_10_exp:
-	 The minimum int value such that 10**value is representable as a normalized value.  */
-      p.min_10_exp = (rf.emin - 1) * M_LOG10_2;
+	 The minimum int value such that 10**value is representable as a
+	 normalized value.  */
+      p.min_10_exp = (rf->emin - 1) * M_LOG10_2;
 
       /* .max_exp:
 	 The maximum int value such that 2** (value-1) is representable.  */
-      p.max_exp = rf.emax;
+      p.max_exp = rf->emax;
 
       /* .min_exp:
-	 The minimum int value such that 2** (value-1) is representable as a normalized value.  */
-      p.min_exp = rf.emin;
+	 The minimum int value such that 2** (value-1) is representable as a
+	 normalized value.  */
+      p.min_exp = rf->emin;
     }
 }
 
@@ -135,10 +131,10 @@ longdouble::rv()
 // Conversion is done at precision mode of TYPE.
 
 longdouble
-longdouble::from_int (Type *type, int64_t d)
+longdouble::from_int(Type *type, int64_t d)
 {
   tree t = build_ctype(type);
-  real_from_integer (&rv(), TYPE_MODE (t), d, SIGNED);
+  real_from_integer(&rv(), TYPE_MODE (t), d, SIGNED);
   return *this;
 }
 
@@ -146,10 +142,10 @@ longdouble::from_int (Type *type, int64_t d)
 // Conversion is done at precision mode of TYPE.
 
 longdouble
-longdouble::from_uint (Type *type, uint64_t d)
+longdouble::from_uint(Type *type, uint64_t d)
 {
   tree t = build_ctype(type);
-  real_from_integer (&rv(), TYPE_MODE (t), d, UNSIGNED);
+  real_from_integer(&rv(), TYPE_MODE (t), d, UNSIGNED);
   return *this;
 }
 
@@ -157,30 +153,30 @@ longdouble::from_uint (Type *type, uint64_t d)
 // Conversion is done at precision mode of TYPE.
 
 int64_t
-longdouble::to_int (Type *type) const
+longdouble::to_int(Type *type) const
 {
   if (REAL_VALUE_ISNAN (rv()))
     return 0;
 
-  tree t = fold_build1 (FIX_TRUNC_EXPR, build_ctype(type),
-			build_float_cst (*this, Type::tfloat64));
+  tree t = fold_build1(FIX_TRUNC_EXPR, build_ctype(type),
+		       build_float_cst(*this, Type::tfloat64));
   return TREE_INT_CST_LOW (t);
 }
 
 // Same as longdouble::to_int, but returns a uint64_t.
 
 uint64_t
-longdouble::to_uint (Type *type) const
+longdouble::to_uint(Type *type) const
 {
-  return (uint64_t) to_int (type);
+  return (uint64_t) to_int(type);
 }
 
 // Helper functions which set longdouble to value D.
 
 void
-longdouble::set (real_value& r)
+longdouble::set(real_value& r)
 {
-  real_convert (&rv(), TYPE_MODE (long_double_type_node), &r);
+  real_convert(&rv(), TYPE_MODE (long_double_type_node), &r);
 }
 
 longdouble::operator
@@ -192,19 +188,19 @@ real_value&()
 // Conversion routines between longdouble and host float types.
 
 void
-longdouble::set (float d)
+longdouble::set(float d)
 {
   char buf[32];
-  snprintf(buf, sizeof (buf), "%f", d);
-  real_from_string3 (&rv(), buf, TYPE_MODE (double_type_node));
+  snprintf(buf, sizeof(buf), "%f", d);
+  real_from_string3(&rv(), buf, TYPE_MODE (double_type_node));
 }
 
 void
-longdouble::set (double d)
+longdouble::set(double d)
 {
   char buf[32];
-  snprintf(buf, sizeof (buf), "%lf", d);
-  real_from_string3 (&rv(), buf, TYPE_MODE (long_double_type_node));
+  snprintf(buf, sizeof(buf), "%lf", d);
+  real_from_string3(&rv(), buf, TYPE_MODE (long_double_type_node));
 }
 
 // These functions should never be called.
@@ -224,7 +220,7 @@ double()
 // For conversion between boolean, only need to check if is zero.
 
 void
-longdouble::set (bool d)
+longdouble::set(bool d)
 {
   rv() = (d == false) ? dconst0 : dconst1;
 }
@@ -237,25 +233,25 @@ bool()
 
 // Conversion routines between longdouble and integer types.
 
-void longdouble::set (int8_t d)  { from_int (Type::tfloat32, d); }
-void longdouble::set (int16_t d) { from_int (Type::tfloat32, d); }
-void longdouble::set (int32_t d) { from_int (Type::tfloat64, d); }
-void longdouble::set (int64_t d) { from_int (Type::tfloat80, d); }
+void longdouble::set(int8_t d)  { from_int(Type::tfloat32, d); }
+void longdouble::set(int16_t d) { from_int(Type::tfloat32, d); }
+void longdouble::set(int32_t d) { from_int(Type::tfloat64, d); }
+void longdouble::set(int64_t d) { from_int(Type::tfloat80, d); }
 
-longdouble::operator int8_t()  { return to_int (Type::tint8); }
-longdouble::operator int16_t() { return to_int (Type::tint16); }
-longdouble::operator int32_t() { return to_int (Type::tint32); }
-longdouble::operator int64_t() { return to_int (Type::tint64); }
+longdouble::operator int8_t()  { return to_int(Type::tint8); }
+longdouble::operator int16_t() { return to_int(Type::tint16); }
+longdouble::operator int32_t() { return to_int(Type::tint32); }
+longdouble::operator int64_t() { return to_int(Type::tint64); }
 
-void longdouble::set (uint8_t d)  { from_uint (Type::tfloat32, d); }
-void longdouble::set (uint16_t d) { from_uint (Type::tfloat32, d); }
-void longdouble::set (uint32_t d) { from_uint (Type::tfloat64, d); }
-void longdouble::set (uint64_t d) { from_uint (Type::tfloat80, d); }
+void longdouble::set(uint8_t d)  { from_uint(Type::tfloat32, d); }
+void longdouble::set(uint16_t d) { from_uint(Type::tfloat32, d); }
+void longdouble::set(uint32_t d) { from_uint(Type::tfloat64, d); }
+void longdouble::set(uint64_t d) { from_uint(Type::tfloat80, d); }
 
-longdouble::operator uint8_t()  { return to_uint (Type::tuns8); }
-longdouble::operator uint16_t() { return to_uint (Type::tuns16); }
-longdouble::operator uint32_t() { return to_uint (Type::tuns32); }
-longdouble::operator uint64_t() { return to_uint (Type::tuns64); }
+longdouble::operator uint8_t()  { return to_uint(Type::tuns8); }
+longdouble::operator uint16_t() { return to_uint(Type::tuns16); }
+longdouble::operator uint32_t() { return to_uint(Type::tuns32); }
+longdouble::operator uint64_t() { return to_uint(Type::tuns64); }
 
 // Overload numeric operators for longdouble types.
 
@@ -263,32 +259,32 @@ longdouble
 longdouble::operator + (const longdouble& r)
 {
   real_value x;
-  REAL_ARITHMETIC (x, PLUS_EXPR, rv(), r.rv());
-  return ldouble (x);
+  real_arithmetic(&x, PLUS_EXPR, &rv(), &r.rv());
+  return ldouble(x);
 }
 
 longdouble
 longdouble::operator - (const longdouble& r)
 {
   real_value x;
-  REAL_ARITHMETIC (x, MINUS_EXPR, rv(), r.rv());
-  return ldouble (x);
+  real_arithmetic(&x, MINUS_EXPR, &rv(), &r.rv());
+  return ldouble(x);
 }
 
 longdouble
 longdouble::operator * (const longdouble& r)
 {
   real_value x;
-  REAL_ARITHMETIC (x, MULT_EXPR, rv(), r.rv());
-  return ldouble (x);
+  real_arithmetic(&x, MULT_EXPR, &rv(), &r.rv());
+  return ldouble(x);
 }
 
 longdouble
 longdouble::operator / (const longdouble& r)
 {
   real_value x;
-  REAL_ARITHMETIC (x, RDIV_EXPR, rv(), r.rv());
-  return ldouble (x);
+  real_arithmetic(&x, RDIV_EXPR, &rv(), &r.rv());
+  return ldouble(x);
 }
 
 longdouble
@@ -299,8 +295,8 @@ longdouble::operator % (const longdouble& r)
   if (r.rv().cl == rvc_zero || REAL_VALUE_ISINF (rv()))
     {
       real_value rvt;
-      real_nan (&rvt, "", 1, TYPE_MODE (long_double_type_node));
-      return ldouble (rvt);
+      real_nan(&rvt, "", 1, TYPE_MODE (long_double_type_node));
+      return ldouble(rvt);
     }
 
   if (rv().cl == rvc_zero)
@@ -310,19 +306,19 @@ longdouble::operator % (const longdouble& r)
     return *this;
 
   // Need to check for NaN?
-  REAL_ARITHMETIC (q, RDIV_EXPR, rv(), r.rv());
-  real_arithmetic (&q, FIX_TRUNC_EXPR, &q, NULL);
-  REAL_ARITHMETIC (q, MULT_EXPR, q, r.rv());
-  REAL_ARITHMETIC (x, MINUS_EXPR, rv(), q);
+  real_arithmetic(&q, RDIV_EXPR, &rv(), &r.rv());
+  real_arithmetic(&q, FIX_TRUNC_EXPR, &q, NULL);
+  real_arithmetic(&q, MULT_EXPR, &q, &r.rv());
+  real_arithmetic(&x, MINUS_EXPR, &rv(), &q);
 
-  return ldouble (x);
+  return ldouble(x);
 }
 
 longdouble
 longdouble::operator -()
 {
-  real_value x = real_value_negate (&rv());
-  return ldouble (x);
+  real_value x = real_value_negate(&rv());
+  return ldouble(x);
 }
 
 // Overload equality operators for longdouble types.
@@ -330,69 +326,69 @@ longdouble::operator -()
 bool
 longdouble::operator < (const longdouble& r)
 {
-  return real_compare (LT_EXPR, &rv(), &r.rv());
+  return real_compare(LT_EXPR, &rv(), &r.rv());
 }
 
 bool
 longdouble::operator > (const longdouble& r)
 {
-  return real_compare (GT_EXPR, &rv(), &r.rv());
+  return real_compare(GT_EXPR, &rv(), &r.rv());
 }
 
 bool
 longdouble::operator <= (const longdouble& r)
 {
-  return real_compare (LE_EXPR, &rv(), &r.rv());
+  return real_compare(LE_EXPR, &rv(), &r.rv());
 }
 
 bool
 longdouble::operator >= (const longdouble& r)
 {
-  return real_compare (GE_EXPR, &rv(), &r.rv());
+  return real_compare(GE_EXPR, &rv(), &r.rv());
 }
 
 bool
 longdouble::operator == (const longdouble& r)
 {
-  return real_compare (EQ_EXPR, &rv(), &r.rv());
+  return real_compare(EQ_EXPR, &rv(), &r.rv());
 }
 
 bool
 longdouble::operator != (const longdouble& r)
 {
-  return real_compare (NE_EXPR, &rv(), &r.rv());
+  return real_compare(NE_EXPR, &rv(), &r.rv());
 }
 
 // Format longdouble value into decimal string BUF of size BUF_SIZE.
 
 int
-longdouble::format (char *buf, unsigned buf_size) const
+longdouble::format(char *buf, unsigned buf_size) const
 {
   // %% Restricting the precision of significant digits to 18.
-  real_to_decimal (buf, &rv(), buf_size, 18, 1);
-  return strlen (buf);
+  real_to_decimal(buf, &rv(), buf_size, 18, 1);
+  return strlen(buf);
 }
 
 // Format longdouble value into hex string BUF of size BUF_SIZE,
 // converting the result to uppercase if FMT requests it.
 
 int
-longdouble::formatHex (char fmt, char *buf, unsigned buf_size) const
+longdouble::formatHex(char fmt, char *buf, unsigned buf_size) const
 {
-  real_to_hexadecimal (buf, &rv(), buf_size, 0, 1);
+  real_to_hexadecimal(buf, &rv(), buf_size, 0, 1);
   int buflen;
 
   switch (fmt)
     {
     case 'A':
-      buflen = strlen (buf);
+      buflen = strlen(buf);
       for (int i = 0; i < buflen; i++)
 	buf[i] = TOUPPER(buf[i]);
 
       return buflen;
 
     case 'a':
-      return strlen (buf);
+      return strlen(buf);
 
     default:
       gcc_unreachable();
@@ -405,7 +401,7 @@ void
 longdouble::dump()
 {
   char buf[128];
-  format (buf, sizeof (buf));
-  fprintf (global.stdmsg, "%s\n", buf);
+  format(buf, sizeof(buf));
+  fprintf(global.stdmsg, "%s\n", buf);
 }
 

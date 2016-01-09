@@ -31,8 +31,8 @@ These official OS versions are not implemented:
 * SysV4
 ---
 
---- gcc/config/alpha/linux.h
-+++ gcc/config/alpha/linux.h
+--- a/gcc/config/alpha/linux.h
++++ b/gcc/config/alpha/linux.h
 @@ -33,6 +33,16 @@ along with GCC; see the file COPYING3.  If not see
  	  builtin_define ("_GNU_SOURCE");			\
      } while (0)
@@ -50,8 +50,8 @@ These official OS versions are not implemented:
  #undef LIB_SPEC
  #define LIB_SPEC \
    "%{pthread:-lpthread} \
---- gcc/config/arm/linux-eabi.h
-+++ gcc/config/arm/linux-eabi.h
+--- a/gcc/config/arm/linux-eabi.h
++++ b/gcc/config/arm/linux-eabi.h
 @@ -30,6 +30,15 @@
      }						\
    while (false)
@@ -68,11 +68,11 @@ These official OS versions are not implemented:
  /* We default to a soft-float ABI so that binaries can run on all
     target hardware.  If you override this to use the hard-float ABI then
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
---- gcc/config/darwin.h
-+++ gcc/config/darwin.h
-@@ -923,4 +923,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
-    providing an osx-version-min of this unless overridden by the User.  */
- #define DEF_MIN_OSX_VERSION "10.4"
+--- a/gcc/config/darwin.h
++++ b/gcc/config/darwin.h
+@@ -933,4 +933,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
+    fall-back default.  */
+ #define DEF_MIN_OSX_VERSION "10.5"
  
 +#define TARGET_OS_D_BUILTINS()					\
 +    do {							\
@@ -81,8 +81,8 @@ These official OS versions are not implemented:
 +    } while (0)
 +
  #endif /* CONFIG_DARWIN_H */
---- gcc/config/freebsd.h
-+++ gcc/config/freebsd.h
+--- a/gcc/config/freebsd.h
++++ b/gcc/config/freebsd.h
 @@ -32,6 +32,13 @@ along with GCC; see the file COPYING3.  If not see
  #undef  TARGET_OS_CPP_BUILTINS
  #define TARGET_OS_CPP_BUILTINS() FBSD_TARGET_OS_CPP_BUILTINS()
@@ -97,8 +97,8 @@ These official OS versions are not implemented:
  #undef  CPP_SPEC
  #define CPP_SPEC FBSD_CPP_SPEC
  
---- gcc/config/gnu.h
-+++ gcc/config/gnu.h
+--- a/gcc/config/gnu.h
++++ b/gcc/config/gnu.h
 @@ -39,3 +39,11 @@ along with GCC.  If not, see <http://www.gnu.org/licenses/>.
  	builtin_assert ("system=unix");		\
  	builtin_assert ("system=posix");	\
@@ -111,8 +111,8 @@ These official OS versions are not implemented:
 +	builtin_define ("Hurd");				\
 +	builtin_define ("Posix");				\
 +    } while (0)
---- gcc/config/i386/cygwin.h
-+++ gcc/config/i386/cygwin.h
+--- a/gcc/config/i386/cygwin.h
++++ b/gcc/config/i386/cygwin.h
 @@ -29,6 +29,13 @@ along with GCC; see the file COPYING3.  If not see
      }								\
    while (0)
@@ -127,8 +127,8 @@ These official OS versions are not implemented:
  #undef CPP_SPEC
  #define CPP_SPEC "%(cpp_cpu) %{posix:-D_POSIX_SOURCE} \
    %{!ansi:-Dunix} \
---- gcc/config/i386/linux-common.h
-+++ gcc/config/i386/linux-common.h
+--- a/gcc/config/i386/linux-common.h
++++ b/gcc/config/i386/linux-common.h
 @@ -27,6 +27,15 @@ along with GCC; see the file COPYING3.  If not see
      }                                          \
    while (0)
@@ -145,8 +145,8 @@ These official OS versions are not implemented:
  #undef CC1_SPEC
  #define CC1_SPEC \
    LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC, \
---- gcc/config/i386/mingw-w64.h
-+++ gcc/config/i386/mingw-w64.h
+--- a/gcc/config/i386/mingw-w64.h
++++ b/gcc/config/i386/mingw-w64.h
 @@ -89,3 +89,10 @@ along with GCC; see the file COPYING3.  If not see
    %{static:-Bstatic} %{!static:-Bdynamic} \
    %{shared|mdll: " SUB_LINK_ENTRY " --enable-auto-image-base} \
@@ -158,8 +158,8 @@ These official OS versions are not implemented:
 +      TARGET_GENERIC_MINGW_OS_D_BUILTINS();			\
 +      builtin_define ("GNU_MinGW64");				\
 +    } while (0)
---- gcc/config/i386/mingw32.h
-+++ gcc/config/i386/mingw32.h
+--- a/gcc/config/i386/mingw32.h
++++ b/gcc/config/i386/mingw32.h
 @@ -53,6 +53,18 @@ along with GCC; see the file COPYING3.  If not see
      }								\
    while (0)
@@ -179,8 +179,8 @@ These official OS versions are not implemented:
  #ifndef TARGET_USE_PTHREAD_BY_DEFAULT
  #define SPEC_PTHREAD1 "pthread"
  #define SPEC_PTHREAD2 "!no-pthread"
---- gcc/config/kfreebsd-gnu.h
-+++ gcc/config/kfreebsd-gnu.h
+--- a/gcc/config/kfreebsd-gnu.h
++++ b/gcc/config/kfreebsd-gnu.h
 @@ -29,6 +29,14 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
@@ -196,8 +196,8 @@ These official OS versions are not implemented:
  #define GNU_USER_DYNAMIC_LINKER        GLIBC_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER32      GLIBC_DYNAMIC_LINKER32
  #define GNU_USER_DYNAMIC_LINKER64      GLIBC_DYNAMIC_LINKER64
---- gcc/config/knetbsd-gnu.h
-+++ gcc/config/knetbsd-gnu.h
+--- a/gcc/config/knetbsd-gnu.h
++++ b/gcc/config/knetbsd-gnu.h
 @@ -30,6 +30,16 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
@@ -215,8 +215,8 @@ These official OS versions are not implemented:
  
  #undef GNU_USER_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
---- gcc/config/kopensolaris-gnu.h
-+++ gcc/config/kopensolaris-gnu.h
+--- a/gcc/config/kopensolaris-gnu.h
++++ b/gcc/config/kopensolaris-gnu.h
 @@ -30,5 +30,15 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
@@ -233,8 +233,8 @@ These official OS versions are not implemented:
 +
  #undef GNU_USER_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
---- gcc/config/linux-android.h
-+++ gcc/config/linux-android.h
+--- a/gcc/config/linux-android.h
++++ b/gcc/config/linux-android.h
 @@ -25,6 +25,12 @@
  	  builtin_define ("__ANDROID__");			\
      } while (0)
@@ -248,8 +248,8 @@ These official OS versions are not implemented:
  #if ANDROID_DEFAULT
  # define NOANDROID "mno-android"
  #else
---- gcc/config/linux.h
-+++ gcc/config/linux.h
+--- a/gcc/config/linux.h
++++ b/gcc/config/linux.h
 @@ -53,6 +53,28 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
  	builtin_assert ("system=posix");			\
      } while (0)
@@ -279,8 +279,8 @@ These official OS versions are not implemented:
  /* Determine which dynamic linker to use depending on whether GLIBC or
     uClibc or Bionic or musl is the default C library and whether
     -muclibc or -mglibc or -mbionic or -mmusl has been passed to change
---- gcc/config/mips/linux-common.h
-+++ gcc/config/mips/linux-common.h
+--- a/gcc/config/mips/linux-common.h
++++ b/gcc/config/mips/linux-common.h
 @@ -27,6 +27,15 @@ along with GCC; see the file COPYING3.  If not see
      ANDROID_TARGET_OS_CPP_BUILTINS();				\
    } while (0)
@@ -297,8 +297,8 @@ These official OS versions are not implemented:
  #undef  LINK_SPEC
  #define LINK_SPEC							\
    LINUX_OR_ANDROID_LD (GNU_USER_TARGET_LINK_SPEC,			\
---- gcc/config/netbsd.h
-+++ gcc/config/netbsd.h
+--- a/gcc/config/netbsd.h
++++ b/gcc/config/netbsd.h
 @@ -29,6 +29,14 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
@@ -314,8 +314,8 @@ These official OS versions are not implemented:
  /* CPP_SPEC parts common to all NetBSD targets.  */
  #define NETBSD_CPP_SPEC				\
    "%{posix:-D_POSIX_SOURCE} \
---- gcc/config/openbsd.h
-+++ gcc/config/openbsd.h
+--- a/gcc/config/openbsd.h
++++ b/gcc/config/openbsd.h
 @@ -84,6 +84,14 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
@@ -331,9 +331,9 @@ These official OS versions are not implemented:
  /* TARGET_OS_CPP_BUILTINS() common to all OpenBSD ELF targets.  */
  #define OPENBSD_OS_CPP_BUILTINS_ELF()		\
    do						\
---- gcc/config/rs6000/aix.h
-+++ gcc/config/rs6000/aix.h
-@@ -115,6 +115,13 @@
+--- a/gcc/config/rs6000/aix.h
++++ b/gcc/config/rs6000/aix.h
+@@ -129,6 +129,13 @@
      }						\
    while (0)
  
@@ -347,8 +347,8 @@ These official OS versions are not implemented:
  /* Define appropriate architecture macros for preprocessor depending on
     target switches.  */
  
---- gcc/config/rs6000/linux.h
-+++ gcc/config/rs6000/linux.h
+--- a/gcc/config/rs6000/linux.h
++++ b/gcc/config/rs6000/linux.h
 @@ -57,6 +57,17 @@
      }						\
    while (0)
@@ -367,9 +367,9 @@ These official OS versions are not implemented:
  #undef	CPP_OS_DEFAULT_SPEC
  #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
  
---- gcc/config/rs6000/linux64.h
-+++ gcc/config/rs6000/linux64.h
-@@ -369,6 +369,17 @@ extern int dot_symbols;
+--- a/gcc/config/rs6000/linux64.h
++++ b/gcc/config/rs6000/linux64.h
+@@ -388,6 +388,17 @@ extern int dot_symbols;
      }							\
    while (0)
  

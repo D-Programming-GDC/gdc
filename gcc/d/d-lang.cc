@@ -1377,7 +1377,7 @@ d_getdecls()
   if (current_binding_level)
     return current_binding_level->names;
 
-    return NULL_TREE;
+  return NULL_TREE;
 }
 
 

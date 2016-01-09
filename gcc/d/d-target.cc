@@ -26,6 +26,7 @@
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"
+#include "stor-layout.h"
 #include "tm.h"
 #include "tm_p.h"
 
