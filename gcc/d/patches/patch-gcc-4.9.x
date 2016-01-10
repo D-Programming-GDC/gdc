@@ -3,8 +3,8 @@ relevant documentation about the GDC front end.
 ---
 
 diff --git gcc/config/darwin.h gcc/config/darwin.h
---- gcc/config/darwin.h
-+++ gcc/config/darwin.h
+--- a/gcc/config/darwin.h
++++ b/gcc/config/darwin.h
 @@ -49,6 +49,10 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
  /* Suppress g++ attempt to link in the math library automatically. */
  #define MATH_LIBRARY ""
@@ -17,8 +17,8 @@ diff --git gcc/config/darwin.h gcc/config/darwin.h
  
  #define HAVE_ATEXIT
 diff --git gcc/config/i386/cygming.h gcc/config/i386/cygming.h
---- gcc/config/i386/cygming.h
-+++ gcc/config/i386/cygming.h
+--- a/gcc/config/i386/cygming.h
++++ b/gcc/config/i386/cygming.h
 @@ -170,6 +170,10 @@ along with GCC; see the file COPYING3.  If not see
  
  #undef MATH_LIBRARY
@@ -31,8 +31,8 @@ diff --git gcc/config/i386/cygming.h gcc/config/i386/cygming.h
  #undef TARGET_LIBC_HAS_FUNCTION
  #define TARGET_LIBC_HAS_FUNCTION no_c99_libc_has_function
 diff --git gcc/config/linux-android.h gcc/config/linux-android.h
---- gcc/config/linux-android.h
-+++ gcc/config/linux-android.h
+--- a/gcc/config/linux-android.h
++++ b/gcc/config/linux-android.h
 @@ -57,3 +57,9 @@
  
  #define ANDROID_ENDFILE_SPEC \
@@ -44,8 +44,8 @@ diff --git gcc/config/linux-android.h gcc/config/linux-android.h
 +# define TIME_LIBRARY ""
 +#endif
 diff --git gcc/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
---- gcc/config/rs6000/rs6000.c
-+++ gcc/config/rs6000/rs6000.c
+--- a/gcc/config/rs6000/rs6000.c
++++ b/gcc/config/rs6000/rs6000.c
 @@ -25077,7 +25077,8 @@ rs6000_output_function_epilogue (FILE *file,
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
@@ -57,8 +57,8 @@ diff --git gcc/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU Fortran"))
 diff --git gcc/doc/frontends.texi gcc/doc/frontends.texi
---- gcc/doc/frontends.texi
-+++ gcc/doc/frontends.texi
+--- a/gcc/doc/frontends.texi
++++ b/gcc/doc/frontends.texi
 @@ -9,6 +9,7 @@
  @cindex GNU Compiler Collection
  @cindex GNU C Compiler
@@ -77,8 +77,8 @@ diff --git gcc/doc/frontends.texi gcc/doc/frontends.texi
  The abbreviation @dfn{GCC} has multiple meanings in common use.  The
  current official meaning is ``GNU Compiler Collection'', which refers
 diff --git gcc/doc/install.texi gcc/doc/install.texi
---- gcc/doc/install.texi
-+++ gcc/doc/install.texi
+--- a/gcc/doc/install.texi
++++ b/gcc/doc/install.texi
 @@ -1423,12 +1423,12 @@ their runtime libraries should be built.  For a list of valid values for
  grep language= */config-lang.in
  @end smallexample
@@ -95,8 +95,8 @@ diff --git gcc/doc/install.texi gcc/doc/install.texi
  @item --enable-stage1-languages=@var{lang1},@var{lang2},@dots{}
  Specify that a particular subset of compilers and their runtime
 diff --git gcc/doc/invoke.texi gcc/doc/invoke.texi
---- gcc/doc/invoke.texi
-+++ gcc/doc/invoke.texi
+--- a/gcc/doc/invoke.texi
++++ b/gcc/doc/invoke.texi
 @@ -1213,6 +1213,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
@@ -122,8 +122,8 @@ diff --git gcc/doc/invoke.texi gcc/doc/invoke.texi
  go
  java
 diff --git gcc/doc/sourcebuild.texi gcc/doc/sourcebuild.texi
---- gcc/doc/sourcebuild.texi
-+++ gcc/doc/sourcebuild.texi
+--- a/gcc/doc/sourcebuild.texi
++++ b/gcc/doc/sourcebuild.texi
 @@ -109,6 +109,9 @@ The Objective-C and Objective-C++ runtime library.
  @item libquadmath
  The runtime support library for quad-precision math operations.
@@ -135,8 +135,8 @@ diff --git gcc/doc/sourcebuild.texi gcc/doc/sourcebuild.texi
  The Stack protector runtime library.
  
 diff --git gcc/doc/standards.texi gcc/doc/standards.texi
---- gcc/doc/standards.texi
-+++ gcc/doc/standards.texi
+--- a/gcc/doc/standards.texi
++++ b/gcc/doc/standards.texi
 @@ -282,6 +282,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
  As of the GCC 4.7.1 release, GCC supports the Go 1 language standard,
  described at @uref{http://golang.org/doc/go1.html}.
@@ -155,8 +155,8 @@ diff --git gcc/doc/standards.texi gcc/doc/standards.texi
  
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 diff --git gcc/dwarf2out.c gcc/dwarf2out.c
---- gcc/dwarf2out.c
-+++ gcc/dwarf2out.c
+--- a/gcc/dwarf2out.c
++++ b/gcc/dwarf2out.c
 @@ -4613,6 +4613,15 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
@@ -219,8 +219,8 @@ diff --git gcc/dwarf2out.c gcc/dwarf2out.c
        if (TREE_STATIC (decl) && decl_function_context (decl))
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 diff --git gcc/gcc.c gcc/gcc.c
---- gcc/gcc.c
-+++ gcc/gcc.c
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
 @@ -1034,6 +1034,7 @@ static const struct compiler default_compilers[] =
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
