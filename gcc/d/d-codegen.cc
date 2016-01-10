@@ -1838,8 +1838,12 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
   tree_code tcode = (code == EQ_EXPR) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
   tree tmemcmp = NULL_TREE;
 
-  // Let backend take care of empty struct or union comparisons.
-  if (!sd->fields.dim || sd->isUnionDeclaration())
+  // We can skip the compare if the structs are empty
+  if (sd->fields.dim == 0)
+    return build_boolop(code, integer_zero_node, integer_zero_node);
+
+  // Let backend take care of union comparisons.
+  if (sd->isUnionDeclaration())
     {
       tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
 				   build_address (t1), build_address (t2),
@@ -2031,6 +2035,30 @@ build_vinit(tree dst, tree src)
 {
   return fold_build2_loc(input_location, INIT_EXPR,
 			 void_type_node, dst, src);
+}
+
+// Returns true if TYPE contains no actual data, just various
+// possible combinations of empty aggregates.
+
+bool
+empty_aggregate_p(tree type)
+{
+  if (!AGGREGATE_TYPE_P (type))
+    return false;
+
+  // Want the element type for arrays.
+  if (TREE_CODE (type) == ARRAY_TYPE)
+    return empty_aggregate_p(TREE_TYPE (type));
+
+  // Recursively check all fields.
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    {
+      if (TREE_CODE (field) == FIELD_DECL
+	  && !empty_aggregate_p(TREE_TYPE (field)))
+	return false;
+    }
+
+  return true;
 }
 
 // Return EXP represented as TYPE.
@@ -2638,6 +2666,14 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 
 	      if (ptype != TREE_TYPE (targ))
 		targ = convert (ptype, targ);
+	    }
+
+	  // Don't pass empty aggregates by value.
+	  if (empty_aggregate_p(TREE_TYPE (targ)) && !TREE_ADDRESSABLE (targ)
+	      && TREE_CODE (targ) != CONSTRUCTOR)
+	    {
+	      tree t = build_constructor(TREE_TYPE (targ), NULL);
+	      targ = build2(COMPOUND_EXPR, TREE_TYPE (t), targ, t);
 	    }
 
 	  // Evaluate the argument before passing to the function.

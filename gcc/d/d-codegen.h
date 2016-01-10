@@ -51,8 +51,8 @@ struct FuncFrameInfo
 };
 
 // Visitor routines for barrier between frontend and glue.
-void build_ir(FuncDeclaration *fd);
-tree build_ctype(Type *t);
+extern void build_ir(FuncDeclaration *fd);
+extern tree build_ctype(Type *t);
 
 // Code generation routines.
 extern void push_binding_level(level_kind kind);
@@ -208,6 +208,8 @@ extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, Aggrega
 extern void insert_aggregate_field(Loc loc, tree type, tree field, size_t offset);
 extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
 
+extern bool empty_aggregate_p(tree type);
+
 // Type management for D frontend types.
 // Returns TRUE if T1 and T2 are mutably the same type.
 inline bool
@@ -248,24 +250,24 @@ build_object_type()
 }
 
 // Common codegen helpers.
-tree component_ref(tree obj, tree field);
-tree modify_expr(tree dst, tree src);
-tree modify_expr(tree type, tree dst, tree src);
-tree vmodify_expr(tree dst, tree src);
-tree build_vinit(tree dst, tree src);
+extern tree component_ref(tree obj, tree field);
+extern tree modify_expr(tree dst, tree src);
+extern tree modify_expr(tree type, tree dst, tree src);
+extern tree vmodify_expr(tree dst, tree src);
+extern tree build_vinit(tree dst, tree src);
 
-tree build_nop(tree t, tree e);
-tree build_vconvert(tree t, tree e);
-tree build_boolop(tree_code code, tree arg0, tree arg1);
+extern tree build_nop(tree t, tree e);
+extern tree build_vconvert(tree t, tree e);
+extern tree build_boolop(tree_code code, tree arg0, tree arg1);
 
-tree compound_expr(tree arg0, tree arg1);
-tree vcompound_expr(tree arg0, tree arg1);
-tree return_expr(tree ret);
+extern tree compound_expr(tree arg0, tree arg1);
+extern tree vcompound_expr(tree arg0, tree arg1);
+extern tree return_expr(tree ret);
 
 // Routines for built in structured types
-tree real_part(tree c);
-tree imaginary_part(tree c);
-tree complex_expr(tree type, tree r, tree i);
+extern tree real_part(tree c);
+extern tree imaginary_part(tree c);
+extern tree complex_expr(tree type, tree r, tree i);
 
 // Helpers for call
 inline bool
