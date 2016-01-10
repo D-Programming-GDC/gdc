@@ -2724,30 +2724,39 @@ static FuncDeclaration *libcall_decls[LIBCALL_count];
 static FuncDeclaration *
 get_libcall(const char *name, Type *type, int flags, int nparams, ...)
 {
-  // Add parameter types.
+  // Add parameter types, using 'void' as the last parameter type
+  // to mean this function accepts a variable list of arguments.
   Parameters *args = new Parameters;
-  args->setDim(nparams);
+  bool varargs = false;
 
   va_list ap;
   va_start (ap, nparams);
   for (int i = 0; i < nparams; i++)
-    (*args)[i] = new Parameter(0, va_arg(ap, Type *), NULL, NULL);
+    {
+      Type *ptype = va_arg(ap, Type *);
+      if (ptype != Type::tvoid)
+	args->push(new Parameter(0, ptype, NULL, NULL));
+      else
+	{
+	  varargs = true;
+	  break;
+	}
+    }
   va_end(ap);
 
   // Build extern(C) function.
   FuncDeclaration *decl = FuncDeclaration::genCfunc(args, type, name);
 
-  // Apply flags to the decl.
+  // Set any attributes on the function, such as malloc or noreturn.
   tree t = decl->toSymbol()->Stree;
+  set_call_expr_flags(t, flags);
   DECL_ARTIFICIAL(t) = 1;
 
-  // Whether the function accepts a variable list of arguments.
-  TypeFunction *tf = (TypeFunction *) decl->type;
-  tf->varargs = (flags & LCFvarargs);
-  // Whether the function does not return except through catching a thrown exception.
-  TREE_THIS_VOLATILE(t) = (flags & LCFthrows);
-  // Whether the function performs a malloc-like operation.
-  DECL_IS_MALLOC(t) = (flags & LCFmalloc);
+  if (varargs)
+    {
+      TypeFunction *tf = (TypeFunction *) decl->type;
+      tf->varargs = true;
+    }
 
   return decl;
 }

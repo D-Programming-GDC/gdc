@@ -47,8 +47,7 @@ echo "found gcc version $gcc_ver"
 gcc_patch_key=${gcc_ver}.x
 
 # 1. Determine if this version of GCC is supported
-gcc_patch_fn=d/patches/patch-gcc-$gcc_patch_key
-if test ! -f gcc/"$gcc_patch_fn"; then
+if test ! -f "gcc/d/patches/patch-gcc-$gcc_patch_key"; then
     echo "This version of GCC ($gcc_ver) is not supported."
     exit 1
 fi
@@ -96,15 +95,15 @@ fi
 #
 # You will need the autogen package to do this. (http://autogen.sf.net/)
 cd $d_gccsrc && \
-  patch -p1 < gcc/d/patches/patch-toplev-$gcc_patch_key && \
+  patch -p1 -i gcc/d/patches/patch-toplev-$gcc_patch_key && \
   cd $top || exit 1
 
 
 # 4. Patch the gcc subdirectory
-cd $d_gccsrc/gcc && \
-  patch -p1 < "$gcc_patch_fn" && \
-  patch -p1 < "d/patches/patch-versym-cpu-$gcc_patch_key" && \
-  patch -p1 < "d/patches/patch-versym-os-$gcc_patch_key" && \
+cd $d_gccsrc && \
+  patch -p1 -i gcc/d/patches/patch-gcc-$gcc_patch_key && \
+  patch -p1 -i gcc/d/patches/patch-versym-cpu-$gcc_patch_key && \
+  patch -p1 -i gcc/d/patches/patch-versym-os-$gcc_patch_key && \
   cd $top || exit 1
 
 
