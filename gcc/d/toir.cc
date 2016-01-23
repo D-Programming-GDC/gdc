@@ -941,9 +941,59 @@ public:
 	  }
       }
 
-    // Should also do some extra validation on all input and output operands.
+    // Do some extra validation on all input and output operands.
     tree string = build_string(insn->len, (char *)insn->string);
     string = resolve_asm_operand_names(string, outputs, inputs, labels);
+
+    if (s->args)
+      {
+	unsigned noutputs = s->outputargs;
+	unsigned ninputs = (s->args->dim - noutputs);
+	const char **oconstraints = XALLOCAVEC (const char *, noutputs);
+	bool allows_mem, allows_reg, is_inout;
+	size_t i;
+	tree t;
+
+	for (i = 0, t = outputs; t != NULL_TREE; t = TREE_CHAIN (t), i++)
+	  {
+	    tree output = TREE_VALUE (t);
+	    const char *constraint
+	      = TREE_STRING_POINTER (TREE_VALUE (TREE_PURPOSE (t)));
+
+	    oconstraints[i] = constraint;
+
+	    if (parse_output_constraint(&constraint, i, ninputs, noutputs,
+					&allows_mem, &allows_reg, &is_inout))
+	      {
+		// If the output argument is going to end up in memory.
+		if (!allows_reg)
+		  d_mark_addressable(output);
+	      }
+	    else
+	      output = error_mark_node;
+
+	    TREE_VALUE (t) = output;
+	  }
+
+	for (i = 0, t = inputs; t != NULL_TREE; t = TREE_CHAIN (t), i++)
+	  {
+	    tree input = TREE_VALUE (t);
+	    const char *constraint
+	      = TREE_STRING_POINTER (TREE_VALUE (TREE_PURPOSE (t)));
+
+	    if (parse_input_constraint(&constraint, i, ninputs, noutputs, 0,
+				       oconstraints, &allows_mem, &allows_reg))
+	      {
+		// If the input argument is going to end up in memory.
+		if (!allows_reg && allows_mem)
+		  d_mark_addressable(input);
+	      }
+	    else
+	      input = error_mark_node;
+
+	    TREE_VALUE (t) = input;
+	  }
+      }
 
     tree exp = build5(ASM_EXPR, void_type_node, string,
 		      outputs, inputs, clobbers, labels);
