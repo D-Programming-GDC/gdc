@@ -653,10 +653,43 @@ d_post_options (const char ** fn)
   return false;
 }
 
+// Return TRUE if an operand OP of a given TYPE being copied has no data.
+// The middle-end does a similar check with zero sized types.
+static bool
+empty_modify_p(tree type, tree op)
+{
+  tree_code code = TREE_CODE (op);
+  switch (code)
+    {
+    case COMPOUND_EXPR:
+      return empty_modify_p(type, TREE_OPERAND (op, 1));
+
+    case CONSTRUCTOR:
+      // Non-empty construcors are valid.
+      if (CONSTRUCTOR_NELTS (op) != 0 || TREE_CLOBBER_P (op))
+	return false;
+      break;
+
+    case CALL_EXPR:
+      // Leave nrvo alone because it isn't a copy.
+      if (CALL_EXPR_RETURN_SLOT_OPT (op))
+	return false;
+      break;
+
+    default:
+      // If the operand doesn't have a simple form.
+      if (!is_gimple_lvalue(op) && !INDIRECT_REF_P (op))
+	return false;
+      break;
+    }
+
+  return empty_aggregate_p(type);
+}
+
 // Gimplification of D specific expression trees.
 int
-d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
-		 gimple_seq *post_p ATTRIBUTE_UNUSED)
+d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
+		gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
   tree_code code = TREE_CODE (*expr_p);
   switch (code)
@@ -669,13 +702,30 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	  tree op0 = TREE_OPERAND (*expr_p, 0);
 	  tree op1 = TREE_OPERAND (*expr_p, 1);
 
-	  if (!error_operand_p (op0) && !error_operand_p (op1)
+	  if (!error_operand_p(op0) && !error_operand_p(op1)
 	      && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
 		  || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
-	      && !useless_type_conversion_p (TREE_TYPE (op1), TREE_TYPE (op0)))
+	      && !useless_type_conversion_p(TREE_TYPE (op1), TREE_TYPE (op0)))
 	    {
-	      TREE_OPERAND (*expr_p, 1) = build1 (VIEW_CONVERT_EXPR,
-						  TREE_TYPE (op0), op1);
+	      TREE_OPERAND (*expr_p, 1) = build1(VIEW_CONVERT_EXPR,
+						 TREE_TYPE (op0), op1);
+	    }
+	  else if (empty_modify_p(TREE_TYPE (op0), op1))
+	    {
+	      // Remove any copies of empty aggregates.  Also drop volatile
+	      // loads on the RHS to avoid infinite recursion from
+	      // gimplify_expr trying to load the value.
+	      gimplify_expr(&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
+			    is_gimple_lvalue, fb_lvalue);
+	      if (TREE_SIDE_EFFECTS (op1))
+		{
+		  if (TREE_THIS_VOLATILE (op1)
+		      && (REFERENCE_CLASS_P (op1) || DECL_P (op1)))
+		    op1 = build_fold_addr_expr (op1);
+
+		  gimplify_and_add (op1, pre_p);
+		}
+	      *expr_p = TREE_OPERAND (*expr_p, 0);
 	    }
 	  return GS_OK;
 	}
