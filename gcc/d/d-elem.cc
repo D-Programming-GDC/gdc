@@ -85,6 +85,10 @@ IdentityExp::toElem (IRState *)
     }
   else if (tb1->ty == Tstruct)
     {
+      // We can skip the compare if the structs are empty
+      if (((TypeStruct *) tb1)->sym->fields.dim == 0)
+	return build_boolop(code, integer_zero_node, integer_zero_node);
+
       tree t1 = e1->toElem(NULL);
       tree t2 = e2->toElem(NULL);
 
@@ -132,6 +136,10 @@ EqualExp::toElem (IRState *)
 
   if (tb1->ty == Tstruct)
     {
+      // We can skip the compare if the structs are empty
+      if (((TypeStruct *) tb1)->sym->fields.dim == 0)
+	return build_boolop(code, integer_zero_node, integer_zero_node);
+
       // Do bit compare of structs
       tree tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
 					build_address (e1->toElem(NULL)),
@@ -2407,6 +2415,10 @@ StructLiteralExp::toElem(IRState *)
   Type *tb = type->toBasetype();
 
   gcc_assert(tb->ty == Tstruct);
+
+  // Handle empty struct literals.
+  if (sd->fields.dim == 0)
+    return build_constructor(build_ctype(type), NULL);
 
   if (sinit)
     {

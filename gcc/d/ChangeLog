@@ -1,3 +1,20 @@
+2016-01-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* toir.cc (IRVisitor::visit (ExtAsmStatement): Do validation of input
+	and output constraints, marking operands as addressable if requested.
+
+2016-01-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (empty_aggregate_p): New function.
+	(d_build_call): Don't pass empty aggregates by value.
+	(build_struct_memcmp): Don't compare empty aggregates by value.
+	* d-elem.cc (IdentityExp::toElem): Likewise.
+	(EqualExp::toElem): Likewise.
+	* (StructLiteralExp::toElem): Don't create temporaries or initialize
+	holes for empty	aggregates.
+	* d-lang.cc (empty_modify_p): New function.
+	(d_gimplify_expr): Remove assignments that involve empty aggregates.
+
 2016-01-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (d_builtin_type): Define DEF_FUNCTION_TYPE_9,
