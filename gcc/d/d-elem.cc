@@ -938,13 +938,13 @@ AssignExp::toElem(IRState *)
 	    }
 	  else if (postblit && op != TOKblit)
 	    {
-	      // Generate _d_arrayassign() or _d_arrayctor()
+	      // Generate _d_arrayassign(ti, from, to) or _d_arrayctor(ti, from, to)
 	      tree args[3];
 	      LibCall libcall;
 
 	      args[0] = build_typeinfo(etype);
-	      args[1] = maybe_make_temp(d_array_convert(e1));
-	      args[2] = d_array_convert(e2);
+	      args[1] = maybe_make_temp(d_array_convert(e2));
+	      args[2] = d_array_convert(e1);
 	      libcall = (op == TOKconstruct) ? LIBCALL_ARRAYCTOR : LIBCALL_ARRAYASSIGN;
 
 	      return build_libcall(libcall, 3, args, build_ctype(type));
@@ -1031,14 +1031,14 @@ AssignExp::toElem(IRState *)
       
       if (postblit && op != TOKblit)
 	{
-	  // Generate _d_arrayassign() or _d_arrayctor()
+	  // Generate _d_arrayassign(ti, from, to) or _d_arrayctor(ti, from, to)
 	  tree t1 = e1->toElem(NULL);
 	  tree args[3];
 	  LibCall libcall;
 
 	  args[0] = build_typeinfo(etype);
-	  args[1] = d_array_convert(e1);
-	  args[2] = d_array_convert(e2);
+	  args[1] = d_array_convert(e2);
+	  args[2] = d_array_convert(e1);
 	  libcall = (op == TOKconstruct) ? LIBCALL_ARRAYCTOR : LIBCALL_ARRAYASSIGN;
 
 	  tree result = build_libcall(libcall, 3, args);
