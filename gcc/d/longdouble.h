@@ -106,10 +106,7 @@ struct longdouble
 
   // Including gcc/real.h presents too many problems, so
   // just statically allocate enough space for REAL_VALUE_TYPE.
-#define REALSZ (16 + sizeof (long))/sizeof (long) + 1
-
-  int exp[3];
-  long sig[REALSZ];
+  long realvalue[(2 + (16 + sizeof(long)) / sizeof(long))];
 };
 
 // "volatile" is not required.
