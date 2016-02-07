@@ -72,7 +72,9 @@ extern tree d_mark_used (tree exp);
 extern tree d_mark_read (tree exp);
 extern tree build_address (tree exp);
 
-extern tree build_struct_memcmp (tree_code code, StructDeclaration *sd, tree arg0, tree arg1);
+extern bool identity_compare_p(StructDeclaration *sd);
+extern tree build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2);
+extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd, tree length, tree t1, tree t2);
 extern tree build_struct_literal(tree type, tree init);
 
 // Routines to handle variables that are references.

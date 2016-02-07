@@ -91,37 +91,11 @@ IdentityExp::toElem (IRState *)
     }
   else if (tb1->ty == Tstruct)
     {
-      // We can skip the compare if the structs are empty
-      if (((TypeStruct *) tb1)->sym->fields.dim == 0)
-	return build_boolop(code, integer_zero_node, integer_zero_node);
-
       tree t1 = e1->toElem(NULL);
       tree t2 = e2->toElem(NULL);
+      gcc_assert(d_types_same(tb1, tb2));
 
-      if (TYPE_MODE (TREE_TYPE (t1)) != BLKmode)
-	{
-	  // Bitwise comparison of small structs not returned in memory may
-	  // not work due to data holes loosing its zero padding upon return.
-	  // Instead do field-by-field comparison of the two structs.
-	  StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
-	  gcc_assert (d_types_same (tb1, tb2));
-
-	  // Make temporaries to prevent multiple evaluations.
-	  t1 = maybe_make_temp (t1);
-	  t2 = maybe_make_temp (t2);
-
-	  return build_struct_memcmp (code, sd, t1, t2);
-	}
-      else
-	{
-	  // Do bit compare of structs.
-	  tree size = build_integer_cst (e1->type->size());
-
-	  tree tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-					    build_address (t1), build_address (t2), size);
-
-	  return build_boolop (code, tmemcmp, integer_zero_node);
-	}
+      return build_struct_comparison(code, ((TypeStruct *) tb1)->sym, t1, t2);
     }
   else
     {
@@ -140,33 +114,20 @@ EqualExp::toElem (IRState *)
 
   tree_code code = (op == TOKequal) ? EQ_EXPR : NE_EXPR;
 
-  if (tb1->ty == Tstruct)
-    {
-      // We can skip the compare if the structs are empty
-      if (((TypeStruct *) tb1)->sym->fields.dim == 0)
-	return build_boolop(code, integer_zero_node, integer_zero_node);
-
-      // Do bit compare of structs
-      tree tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-					build_address (e1->toElem(NULL)),
-					build_address (e2->toElem(NULL)),
-					build_integer_cst (e1->type->size()));
-
-      return build2 (code, build_ctype(type), tmemcmp, integer_zero_node);
-    }
-  else if ((tb1->ty == Tsarray || tb1->ty == Tarray)
-	   && (tb2->ty == Tsarray || tb2->ty == Tarray))
+  if ((tb1->ty == Tsarray || tb1->ty == Tarray)
+      && (tb2->ty == Tsarray || tb2->ty == Tarray))
     {
       Type *t1elem = tb1->nextOf()->toBasetype();
       Type *t2elem = tb1->nextOf()->toBasetype();
 
-      if ((t1elem->isintegral() || t1elem->ty == Tvoid) && t1elem->ty == t2elem->ty)
+      // Check if comparisons of arrays can be optimized using memcmp.
+      //    e1.length OP e2.length && memcmp(e1.ptr, e2.ptr, size) OP 0;
+      // Where 'size' can be either:
+      //    For dynamic arrays: e1.length * (e1[0]).sizeof
+      //    For static arrays:  e1.sizeof
+      if ((t1elem->isintegral() || t1elem->ty == Tvoid || t1elem->ty == Tstruct)
+	  && t1elem->ty == t2elem->ty)
 	{
-	  // Optimise comparisons of arrays of basic types.
-	  // For arrays of integers/characters, and void[], replace _adEq2 call with:
-	  //     e1 == e2  =>  e1.length == e2.length && memcmp (e1.ptr, e2.ptr, size) == 0;
-	  //     e1 != e2  =>  e1.length != e2.length || memcmp (e1.ptr, e2.ptr, size) != 0;
-	  // 'size' is e1.length * sizeof(e1[0]) for dynamic arrays, or sizeof(e1) for static arrays.
 	  tree t1 = e1->toElem(NULL);
 	  tree t2 = e2->toElem(NULL);
 	  // Length, for comparison.
@@ -176,39 +137,51 @@ EqualExp::toElem (IRState *)
 	  tree t1size, t2size;
 
 	  // Make temporaries to prevent multiple evaluations.
-	  tree t1saved = make_temp (t1);
-	  tree t2saved = make_temp (t2);
+	  tree t1saved = make_temp(t1);
+	  tree t2saved = make_temp(t2);
 
 	  if (tb1->ty == Tarray)
 	    {
-	      t1len = d_array_length (t1saved);
-	      t1ptr = d_array_ptr (t1saved);
-	      t1size = build2 (MULT_EXPR, size_type_node, t1len, size_int (t1elem->size()));
+	      t1len = d_array_length(t1saved);
+	      t1ptr = d_array_ptr(t1saved);
+	      t1size = build2(MULT_EXPR, size_type_node, t1len, size_int(t1elem->size()));
 	    }
 	  else
 	    {
-	      t1len = size_int (((TypeSArray *) tb1)->dim->toInteger());
-	      t1ptr = build_address (t1saved);
-	      t1size = size_int (tb1->size());
+	      t1len = size_int(((TypeSArray *) tb1)->dim->toInteger());
+	      t1ptr = build_address(t1saved);
+	      t1size = size_int(tb1->size());
 	    }
 
 	  if (tb2->ty == Tarray)
 	    {
-	      t2len = d_array_length (t2saved);
-	      t2ptr = d_array_ptr (t2saved);
-	      t2size = build2 (MULT_EXPR, size_type_node, t2len, size_int (t2elem->size()));
+	      t2len = d_array_length(t2saved);
+	      t2ptr = d_array_ptr(t2saved);
+	      t2size = build2(MULT_EXPR, size_type_node, t2len, size_int(t2elem->size()));
 	    }
 	  else
 	    {
-	      t2len = size_int (((TypeSArray *) tb2)->dim->toInteger());
-	      t2ptr = build_address (t2saved);
-	      t2size = size_int (tb2->size());
+	      t2len = size_int(((TypeSArray *) tb2)->dim->toInteger());
+	      t2ptr = build_address(t2saved);
+	      t2size = size_int(tb2->size());
 	    }
 
-	  tree tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-					    t1ptr, t2ptr, (tb2->ty == Tsarray) ? t2size : t1size);
+	  tree result;
 
-	  tree result = build2 (code, build_ctype(type), tmemcmp, integer_zero_node);
+	  if (t1elem->ty != Tstruct || identity_compare_p(((TypeStruct *) t1elem)->sym))
+	    {
+	      // Compare arrays using memcmp.
+	      tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
+					       t1ptr, t2ptr, (tb2->ty == Tsarray) ? t2size : t1size);
+
+	      result = build2(code, build_ctype(type), tmemcmp, integer_zero_node);
+	    }
+	  else
+	    {
+	      // Elem type is a struct with alignment holes, compare inline.
+	      result = build_array_struct_comparison(code, ((TypeStruct *) t1elem)->sym,
+						     t1len, t1ptr, t2ptr);
+	    }
 
 	  if (tb1->ty == Tsarray && tb2->ty == Tsarray)
 	    gcc_assert (tb1->size() == tb2->size());
@@ -246,6 +219,14 @@ EqualExp::toElem (IRState *)
 
 	  return result;
 	}
+    }
+  else if (tb1->ty == Tstruct)
+    {
+      tree t1 = e1->toElem(NULL);
+      tree t2 = e2->toElem(NULL);
+      gcc_assert(d_types_same(tb1, tb2));
+
+      return build_struct_comparison(code, ((TypeStruct *) tb1)->sym, t1, t2);
     }
   else if (tb1->ty == Taarray && tb2->ty == Taarray)
     {
@@ -2095,7 +2076,6 @@ NewExp::toElem(IRState *)
 	  se->sym = new Symbol();
 	  se->sym->Stree = new_call;
 	  se->type = sd->type;
-	  se->fillHoles = 0;
 
 	  result = compound_expr(se->toElem(NULL), new_call);
 	}
@@ -2495,21 +2475,13 @@ StructLiteralExp::toElem(IRState *)
     }
 
   tree ctor = build_struct_literal(build_ctype(type), build_constructor(unknown_type_node, ve));
-  tree var = (sym != NULL)
-    ? build_deref(sym->Stree) : build_local_temp(TREE_TYPE(ctor));
-  tree init = NULL_TREE;
-
-  if (fillHoles)
+  if (sym != NULL)
     {
-      // Initialize all alignment 'holes' to zero.
-      init = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMSET), 3,
-			       build_address(var), size_zero_node,
-			       size_int(sd->structsize));
+      tree var = build_deref(sym->Stree);
+      return compound_expr(modify_expr(var, ctor), var);
     }
 
-  init = maybe_compound_expr(init, modify_expr(var, ctor));
-
-  return compound_expr(init, var);
+  return ctor;
 }
 
 elem *
