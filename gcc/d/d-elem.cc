@@ -2480,6 +2480,17 @@ StructLiteralExp::toElem(IRState *)
       tree var = build_deref(sym->Stree);
       return compound_expr(modify_expr(var, ctor), var);
     }
+  else if (sd->isUnionDeclaration())
+    {
+      // Initialize all alignment 'holes' to zero.
+      tree var = build_local_temp(TREE_TYPE (ctor));
+      tree init = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMSET), 3,
+				    build_address(var), size_zero_node,
+				    size_int(sd->structsize));
+
+      init = compound_expr(init, modify_expr(var, ctor));
+      return compound_expr(init, var);
+    }
 
   return ctor;
 }
