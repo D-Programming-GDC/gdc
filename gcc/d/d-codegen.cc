@@ -1818,12 +1818,52 @@ d_mark_read (tree exp)
   return exp;
 }
 
-// Build equality expression between two RECORD_TYPES T1 and T2.
-// CODE is the EQ_EXPR or NE_EXPR comparison.
-// SD is the front-end struct type.
+// Return TRUE if the struct SD is suitable for comparison using memcmp.
+// This is because we don't guarantee that padding is zero-initialized for
+// a stack variable, so we can't use memcmp to compare struct values.
 
-tree
-build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
+bool
+identity_compare_p(StructDeclaration *sd)
+{
+  if (sd->isUnionDeclaration())
+    return true;
+
+  unsigned offset = 0;
+
+  for (size_t i = 0; i < sd->fields.dim; i++)
+    {
+      VarDeclaration *vd = sd->fields[i];
+
+      // Check inner data structures.
+      if (vd->type->ty == Tstruct)
+	{
+	  TypeStruct *ts = (TypeStruct *) vd->type;
+	  if (!identity_compare_p(ts->sym))
+	    return false;
+	}
+
+      if (offset <= vd->offset)
+	{
+	  // There's a hole in the struct.
+	  if (offset != vd->offset)
+	    return false;
+
+	  offset += vd->type->size();
+	}
+    }
+
+  // Any trailing padding may not be zero.
+  if (offset < sd->structsize)
+    return false;
+
+  return true;
+}
+
+// Lower a field-by-field equality expression between T1 and T2 of type SD.
+// CODE is the EQ_EXPR or NE_EXPR comparison.
+
+static tree
+lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
 {
   tree_code tcode = (code == EQ_EXPR) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
   tree tmemcmp = NULL_TREE;
@@ -1855,7 +1895,7 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
 	{
 	  // Compare inner data structures.
 	  StructDeclaration *decl = ((TypeStruct *) vd->type)->sym;
-	  tcmp = build_struct_memcmp (code, decl, t1ref, t2ref);
+	  tcmp = lower_struct_comparison(code, decl, t1ref, t2ref);
 	}
       else
 	{
@@ -1873,26 +1913,141 @@ build_struct_memcmp (tree_code code, StructDeclaration *sd, tree t1, tree t2)
 	      //   *((T*) &t1) == *((T*) &t2)
 	      tree tmode = lang_hooks.types.type_for_mode (mode, 1);
 
-	      t1ref = build_vconvert (tmode, t1ref);
-	      t2ref = build_vconvert (tmode, t2ref);
+	      t1ref = build_vconvert(tmode, t1ref);
+	      t2ref = build_vconvert(tmode, t2ref);
 
-	      tcmp = build_boolop (code, t1ref, t2ref);
+	      tcmp = build_boolop(code, t1ref, t2ref);
 	    }
 	  else
 	    {
 	      // Simple memcmp between types.
-	      tcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-					build_address (t1ref), build_address (t2ref),
-					TYPE_SIZE_UNIT (stype));
+	      tcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
+				       build_address(t1ref), build_address(t2ref),
+				       TYPE_SIZE_UNIT (stype));
 
-	      tcmp = build_boolop (code, tcmp, integer_zero_node);
+	      tcmp = build_boolop(code, tcmp, integer_zero_node);
 	    }
 	}
 
-      tmemcmp = (tmemcmp) ? build_boolop (tcode, tmemcmp, tcmp) : tcmp;
+      tmemcmp = (tmemcmp) ? build_boolop(tcode, tmemcmp, tcmp) : tcmp;
     }
 
   return tmemcmp;
+}
+
+
+// Build an equality expression between two RECORD_TYPES T1 and T2 of type SD.
+// If possible, use memcmp, otherwise field-by-field comparison is done.
+// CODE is the EQ_EXPR or NE_EXPR comparison.
+
+tree
+build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
+{
+  // We can skip the compare if the structs are empty
+  if (sd->fields.dim == 0)
+    return build_boolop(code, integer_zero_node, integer_zero_node);
+
+  // Bitwise comparison of structs not returned in memory may not work
+  // due to data holes loosing its zero padding upon return.
+  // As a heuristic, small structs are not compared using memcmp either.
+  if (TYPE_MODE (TREE_TYPE (t1)) != BLKmode || !identity_compare_p(sd))
+    {
+      // Make temporaries to prevent multiple evaluations.
+      t1 = maybe_make_temp(t1);
+      t2 = maybe_make_temp(t2);
+
+      return lower_struct_comparison(code, sd, t1, t2);
+    }
+  else
+    {
+      // Do bit compare of structs.
+      tree size = build_integer_cst(sd->structsize);
+      tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
+				       build_address(t1), build_address(t2), size);
+
+      return build_boolop(code, tmemcmp, integer_zero_node);
+    }
+}
+
+// Build an equality expression between two ARRAY_TYPES of size LENGTH.
+// The pointer references are T1 and T2, and the element type is SD.
+// CODE is the EQ_EXPR or NE_EXPR comparison.
+
+tree
+build_array_struct_comparison(tree_code code, StructDeclaration *sd,
+			      tree length, tree t1, tree t2)
+{
+  tree_code tcode = (code == EQ_EXPR) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
+
+  // Build temporary for the result of the comparison.
+  // Initialize as either 0 or 1 depending on operation.
+  tree result = build_local_temp(bool_type_node);
+  tree init = build_boolop(code, integer_zero_node, integer_zero_node);
+  add_stmt(build_vinit(result, init));
+
+  // Cast pointer-to-array to pointer-to-struct.
+  tree ptrtype = build_ctype(sd->type->pointerTo());
+  tree lentype = TREE_TYPE (length);
+
+  push_binding_level(level_block);
+  push_stmt_list();
+
+  // Build temporary locals for length and pointers.
+  tree t = build_local_temp(size_type_node);
+  add_stmt(build_vinit(t, length));
+  length = t;
+
+  t = build_local_temp(ptrtype);
+  add_stmt(build_vinit(t, d_convert(ptrtype, t1)));
+  t1 = t;
+
+  t = build_local_temp(ptrtype);
+  add_stmt(build_vinit(t, d_convert(ptrtype, t2)));
+  t2 = t;
+
+  // Build loop for comparing each element.
+  push_stmt_list();
+
+  // Exit logic for the loop.
+  //	if (length == 0 || result OP 0) break
+  t = build_boolop(EQ_EXPR, length, d_convert(lentype, integer_zero_node));
+  t = build_boolop(TRUTH_ORIF_EXPR, t, build_boolop(code, result, boolean_false_node));
+  t = build1(EXIT_EXPR, void_type_node, t);
+  add_stmt(t);
+
+  // Do comparison, caching the value.
+  //	result = result OP (*t1 == *t2)
+  t = build_struct_comparison(code, sd, build_deref(t1), build_deref(t2));
+  t = build_boolop(tcode, result, t);
+  t = vmodify_expr(result, t);
+  add_stmt(t);
+
+  // Move both pointers to next element position.
+  //	t1++, t2++;
+  tree size = d_convert(ptrtype, TYPE_SIZE_UNIT (TREE_TYPE (ptrtype)));
+  t = build2(POSTINCREMENT_EXPR, ptrtype, t1, size);
+  add_stmt(t);
+  t = build2(POSTINCREMENT_EXPR, ptrtype, t2, size);
+  add_stmt(t);
+
+  // Decrease loop counter.
+  //	length -= 1
+  t = build2(POSTDECREMENT_EXPR, lentype, length,
+	     d_convert(lentype, integer_one_node));
+  add_stmt(t);
+
+  // Pop statements and finish loop.
+  tree body = pop_stmt_list();
+  add_stmt(build1(LOOP_EXPR, void_type_node, body));
+
+  // Wrap it up into a bind expression.
+  tree stmt_list = pop_stmt_list();
+  tree block = pop_binding_level();
+
+  body = build3(BIND_EXPR, void_type_node,
+		BLOCK_VARS (block), stmt_list, block);
+
+  return compound_expr(body, result);
 }
 
 // Build a constructor for a variable of aggregate type TYPE using the
@@ -2240,6 +2395,9 @@ build_memref(tree type, tree ptr, tree byte_offset)
 tree
 build_array_set(tree ptr, tree length, tree value)
 {
+  tree ptrtype = TREE_TYPE (ptr);
+  tree lentype = TREE_TYPE (length);
+
   push_binding_level(level_block);
   push_stmt_list();
 
@@ -2248,7 +2406,7 @@ build_array_set(tree ptr, tree length, tree value)
   add_stmt(build_vinit(t, length));
   length = t;
 
-  t = build_local_temp(TREE_TYPE (ptr));
+  t = build_local_temp(ptrtype);
   add_stmt(build_vinit(t, ptr));
   ptr = t;
 
@@ -2262,27 +2420,34 @@ build_array_set(tree ptr, tree length, tree value)
   // Build loop to initialise { .length=length, .ptr=ptr } with value.
   push_stmt_list();
 
-  // if (length == 0) break
-  t = build_boolop(NE_EXPR, length, d_convert(TREE_TYPE (length), integer_zero_node));
-  t = build1(EXIT_EXPR, void_type_node, build1(TRUTH_NOT_EXPR, TREE_TYPE (t), t));
-  add_stmt(t);
-  // *ptr = value
-  t = vmodify_expr(build_deref(ptr), value);
-  add_stmt(t);
-  // ptr += (*ptr).sizeof
-  t = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (ptr)));
-  t = vmodify_expr(ptr, build_offset(ptr, t));
-  add_stmt(t);
-  // length -= 1
-  t = build2(POSTDECREMENT_EXPR, TREE_TYPE (length), length,
-	     d_convert(TREE_TYPE (length), integer_one_node));
+  // Exit logic for the loop.
+  //	if (length == 0) break
+  t = build_boolop(EQ_EXPR, length, d_convert(lentype, integer_zero_node));
+  t = build1(EXIT_EXPR, void_type_node, t);
   add_stmt(t);
 
-  // Finish loop.
+  // Assign value to the current pointer position.
+  //	*ptr = value
+  t = vmodify_expr(build_deref(ptr), value);
+  add_stmt(t);
+
+  // Move pointer to next element position.
+  //	ptr++;
+  tree size = TYPE_SIZE_UNIT (TREE_TYPE (ptrtype));
+  t = build2(POSTINCREMENT_EXPR, ptrtype, ptr, d_convert(ptrtype, size));
+  add_stmt(t);
+
+  // Decrease loop counter.
+  //	length -= 1
+  t = build2(POSTDECREMENT_EXPR, lentype, length,
+	     d_convert(lentype, integer_one_node));
+  add_stmt(t);
+
+  // Pop statements and finish loop.
   tree loop_body = pop_stmt_list();
   add_stmt(build1(LOOP_EXPR, void_type_node, loop_body));
 
-  // Wrap up expression.
+  // Wrap it up into a bind expression.
   tree stmt_list = pop_stmt_list();
   tree block = pop_binding_level();
 
