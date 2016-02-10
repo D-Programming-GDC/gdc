@@ -58,7 +58,7 @@ CondExp::toElem()
       t2 = convert_expr (t2, e2->type, type);
     }
 
-  return build3 (COND_EXPR, build_ctype(type), cond, t1, t2);
+  return build_condition(build_ctype(type), cond, t1, t2);
 }
 
 elem *
@@ -393,9 +393,9 @@ AndAndExp::toElem()
     }
   else
     {
-      return build3(COND_EXPR, build_ctype(type),
-		    convert_for_condition(e1->toElem(), e1->type),
-		    e2->toElemDtor(), void_node);
+      return build_condition(build_ctype(type),
+			     convert_for_condition(e1->toElem(), e1->type),
+			     e2->toElemDtor(), void_node);
     }
 }
 
@@ -411,10 +411,10 @@ OrOrExp::toElem()
     }
   else
     {
-      return build3(COND_EXPR, build_ctype(type),
-		    build1(TRUTH_NOT_EXPR, bool_type_node,
-			   convert_for_condition(e1->toElem(), e1->type)),
-		    e2->toElemDtor(), void_node);
+      tree cond = build1(TRUTH_NOT_EXPR, bool_type_node,
+			 convert_for_condition(e1->toElem(), e1->type));
+      return build_condition(build_ctype(type), cond,
+			     e2->toElemDtor(), void_node);
     }
 }
 
@@ -956,7 +956,7 @@ AssignExp::toElem()
 	  t1 = TREE_OPERAND(t1, 0);
 	  t2 = build_address(t2);
 
-	  return modify_expr(build_ctype(type), t1, t2);
+	  return indirect_ref(build_ctype(type), modify_expr(t1, t2));
 	}
     }
 
@@ -1099,8 +1099,8 @@ IndexExp::toElem()
       if (!skipboundscheck && array_bounds_check())
 	{
 	  result = make_temp(result);
-	  result = build3(COND_EXPR, TREE_TYPE (result), d_truthvalue_conversion(result),
-			  result, d_assert_call(loc, LIBCALL_ARRAY_BOUNDS));
+	  result = build_condition(TREE_TYPE (result), d_truthvalue_conversion(result),
+				   result, d_assert_call(loc, LIBCALL_ARRAY_BOUNDS));
 	}
 
       return indirect_ref(build_ctype(type), result);
@@ -1777,9 +1777,8 @@ AssertExp::toElem()
 
 	  if (cd->isCOMclass())
 	    {
-	      return build3(COND_EXPR, void_type_node,
-			    build_boolop(NE_EXPR, arg, null_pointer_node),
-			    void_node, assert_call);
+	      return build_vcondition(build_boolop(NE_EXPR, arg, null_pointer_node),
+				      void_node, assert_call);
 	    }
 	  else if (cd->isInterfaceDeclaration())
 	    arg = convert_expr(arg, tb1, build_object_type());
@@ -1791,9 +1790,8 @@ AssertExp::toElem()
 	    }
 
 	  // This does a null pointer check before calling _d_invariant
-	  return build3(COND_EXPR, void_type_node,
-			build_boolop(NE_EXPR, arg, null_pointer_node),
-			invc ? invc : void_node, assert_call);
+	  return build_vcondition(build_boolop(NE_EXPR, arg, null_pointer_node),
+				  invc ? invc : void_node, assert_call);
 	}
       else
 	{
@@ -1814,9 +1812,8 @@ AssertExp::toElem()
 		  invc = d_build_call(inv, e1_t, &args);
 		}
 	    }
-	  result = build3(COND_EXPR, void_type_node,
-			  convert_for_condition(e1_t, e1->type),
-			  invc ? invc : void_node, assert_call);
+	  result = build_vcondition(convert_for_condition(e1_t, e1->type),
+				    invc ? invc : void_node, assert_call);
 	  return result;
 	}
     }

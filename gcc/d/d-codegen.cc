@@ -589,12 +589,15 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	    // Cast to an implemented interface: Handle at compile time.
 	    if (offset)
 	      {
-		tree t = build_ctype(totype);
+		tree type = build_ctype(totype);
 		exp = maybe_make_temp(exp);
-		return build3(COND_EXPR, t,
-			      build_boolop(NE_EXPR, exp, null_pointer_node),
-			      build_nop(t, build_offset(exp, size_int(offset))),
-			      build_nop(t, null_pointer_node));
+
+		tree cond = build_boolop(NE_EXPR, exp, null_pointer_node);
+		tree object = build_offset(exp, size_int(offset));
+
+		return build_condition(build_ctype(totype), cond,
+				       build_nop(type, object),
+				       build_nop(type, null_pointer_node));
 	      }
 
 	    // d_convert will make a no-op cast
@@ -2239,6 +2242,35 @@ build_boolop(tree_code code, tree arg0, tree arg1)
 			 bool_type_node, arg0, arg1);
 }
 
+// Return a COND_EXPR.  ARG0, ARG1, and ARG2 are the three
+// arguments to the conditional expression.
+
+tree
+build_condition(tree type, tree arg0, tree arg1, tree arg2)
+{
+  if (arg1 == void_node)
+    arg1 = build_empty_stmt(input_location);
+
+  if (arg2 == void_node)
+    arg2 = build_empty_stmt(input_location);
+
+  return fold_build3_loc(input_location, COND_EXPR,
+			 type, arg0, arg1, arg2);
+}
+
+tree
+build_vcondition(tree arg0, tree arg1, tree arg2)
+{
+  if (arg1 == void_node)
+    arg1 = build_empty_stmt(input_location);
+
+  if (arg2 == void_node)
+    arg2 = build_empty_stmt(input_location);
+
+  return fold_build3_loc(input_location, COND_EXPR,
+			 void_type_node, arg0, arg1, arg2);
+}
+
 // Compound ARG0 and ARG1 together.
 
 tree
@@ -2585,9 +2617,9 @@ d_checked_index (Loc loc, tree index, tree upr, bool inclusive)
   if (!array_bounds_check())
     return index;
 
-  return build3 (COND_EXPR, TREE_TYPE (index),
-		 d_bounds_condition (index, upr, inclusive),
-		 index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
+  return build_condition(TREE_TYPE (index),
+			 d_bounds_condition (index, upr, inclusive),
+			 index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
 }
 
 // Builds the condition [INDEX < UPR] and optionally [INDEX >= 0]
@@ -3118,8 +3150,8 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2
   exp = fold_build2 (BIT_AND_EXPR, type, arg1, arg2);
 
   // cond ? -1 : 0;
-  exp = fold_build3 (COND_EXPR, TREE_TYPE (callee), d_truthvalue_conversion (exp),
-                    integer_minus_one_node, integer_zero_node);
+  exp = build_condition(TREE_TYPE (callee), d_truthvalue_conversion (exp),
+			integer_minus_one_node, integer_zero_node);
 
   // Update the bit as needed.
   code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
