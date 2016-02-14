@@ -863,7 +863,7 @@ VarDeclaration::toObjFile(bool)
 		{
 		  ExpInitializer *vinit = init->isExpInitializer();
 		  Expression *ie = vinit->toExpression();
-		  tree exp = ie->toElem(NULL);
+		  tree exp = ie->toElem();
 		  add_stmt(exp);
 		}
 	      else if (size (loc) != 0)
