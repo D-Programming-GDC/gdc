@@ -929,11 +929,11 @@ d_array_convert (Expression *exp)
   TY ty = exp->type->toBasetype()->ty;
 
   if (ty == Tarray)
-    return exp->toElem(NULL);
+    return exp->toElem();
   else if (ty == Tsarray)
     {
       Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
-      return convert_expr (exp->toElem(NULL), exp->type, totype);
+      return convert_expr (exp->toElem(), exp->type, totype);
     }
 
   // Invalid type passed.
@@ -1230,7 +1230,7 @@ build_attributes (Expressions *in_attrs)
 	      aet = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = ae->toElem(NULL);
+	    aet = ae->toElem();
 
 	  args = chainon (args, build_tree_list (0, aet));
         }
@@ -2554,13 +2554,13 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   if (e1b->op == TOKcomma)
     {
       CommaExp *ce = (CommaExp *) e1b;
-      lexpr = ce->e1->toElem(NULL);
-      lhs = ce->e2->toElem(NULL);
+      lexpr = ce->e1->toElem();
+      lhs = ce->e2->toElem();
     }
   else
-    lhs = e1b->toElem(NULL);
+    lhs = e1b->toElem();
 
-  tree rhs = e2->toElem(NULL);
+  tree rhs = e2->toElem();
 
   // Build assignment expression. Stabilize lhs for assignment.
   lhs = stabilize_reference(lhs);
@@ -2794,7 +2794,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  if (arg->op == TOKcomma)
 	    {
 	      CommaExp *ce = (CommaExp *) arg;
-	      tree tce = ce->e1->toElem(NULL);
+	      tree tce = ce->e1->toElem();
 	      saved_args = maybe_vcompound_expr (saved_args, tce);
 	      (*arguments)[i] = ce->e2;
 	      goto Lagain;
@@ -2814,19 +2814,19 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  if (i < dvarargs)
 	    {
 	      // The hidden _arguments parameter
-	      targ = arg->toElem(NULL);
+	      targ = arg->toElem();
 	    }
 	  else if (i - dvarargs < nparams && i >= dvarargs)
 	    {
 	      // Actual arguments for declared formal arguments
 	      Parameter *parg = Parameter::getNth (tf->parameters, i - dvarargs);
-	      targ = convert_for_argument (arg->toElem(NULL), arg, parg);
+	      targ = convert_for_argument (arg->toElem(), arg, parg);
 	    }
 	  else
 	    {
 	      // Not all targets support passing unpromoted types, so
 	      // promote anyway.
-	      targ = arg->toElem(NULL);
+	      targ = arg->toElem();
 	      tree ptype = lang_hooks.types.type_promotes_to (TREE_TYPE (targ));
 
 	      if (ptype != TREE_TYPE (targ))
@@ -3495,7 +3495,7 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 tree
 build_typeinfo (Type *t)
 {
-  tree tinfo = t->getInternalTypeInfo (NULL)->toElem(NULL);
+  tree tinfo = t->getInternalTypeInfo (NULL)->toElem();
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (tinfo)));
   return tinfo;
 }
@@ -4202,7 +4202,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 // Build and return expression tree for WrappedExp.
 
 elem *
-WrappedExp::toElem (IRState *)
+WrappedExp::toElem()
 {
   return this->e1;
 }

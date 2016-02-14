@@ -54,7 +54,7 @@ public:
     Symbol* toSymbol();
     dt_t **toInstanceDt(dt_t **pdt);
     dt_t **toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts);
-    elem *toElem(IRState *irs);
+    elem *toElem();
     void accept(Visitor *v) { v->visit(this); }
 };
 
