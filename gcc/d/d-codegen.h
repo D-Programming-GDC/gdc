@@ -261,6 +261,8 @@ extern tree build_vinit(tree dst, tree src);
 extern tree build_nop(tree t, tree e);
 extern tree build_vconvert(tree t, tree e);
 extern tree build_boolop(tree_code code, tree arg0, tree arg1);
+extern tree build_condition(tree type, tree arg0, tree arg1, tree arg2);
+extern tree build_vcondition(tree arg0, tree arg1, tree arg2);
 
 extern tree compound_expr(tree arg0, tree arg1);
 extern tree vcompound_expr(tree arg0, tree arg1);

@@ -206,7 +206,7 @@ public:
 
     // Wrap up our constructed if condition into a COND_EXPR.
     set_input_location(s->loc);
-    tree cond = build3(COND_EXPR, void_type_node, ifcond, ifbody, elsebody);
+    tree cond = build_vcondition(ifcond, ifbody, elsebody);
     add_stmt(cond);
 
     // Finish the if-then scope.
@@ -248,8 +248,9 @@ public:
     set_input_location(s->condition->loc);
     tree exitcond = convert_for_condition(s->condition->toElemDtor(),
 					  s->condition->type);
-    add_stmt(build1(EXIT_EXPR, void_type_node,
-		    build1(TRUTH_NOT_EXPR, TREE_TYPE (exitcond), exitcond)));
+    add_stmt(build_vcondition(exitcond, void_node,
+			      build1(GOTO_EXPR, void_type_node, lbreak)));
+    TREE_USED (lbreak) = 1;
 
     tree body = this->end_scope();
     set_input_location(s->loc);
@@ -273,8 +274,9 @@ public:
 	set_input_location(s->condition->loc);
 	tree exitcond = convert_for_condition(s->condition->toElemDtor(),
 					      s->condition->type);
-	add_stmt(build1(EXIT_EXPR, void_type_node,
-			build1(TRUTH_NOT_EXPR, TREE_TYPE (exitcond), exitcond)));
+	add_stmt(build_vcondition(exitcond, void_node,
+				  build1(GOTO_EXPR, void_type_node, lbreak)));
+	TREE_USED (lbreak) = 1;
       }
 
     if (s->body)
@@ -478,8 +480,7 @@ public:
 		tree ifcase = build2(EQ_EXPR, build_ctype(condtype), condition,
 				     cs->exp->toElemDtor());
 		tree ifbody = fold_build1(GOTO_EXPR, void_type_node, caselabel);
-		tree cond = build3(COND_EXPR, void_type_node,
-				   ifcase, ifbody, void_node);
+		tree cond = build_vcondition(ifcase, ifbody, void_node);
 		TREE_USED (caselabel) = 1;
 		D_LABEL_VARIABLE_CASE (caselabel) = 1;
 		add_stmt(cond);

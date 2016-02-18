@@ -1,3 +1,13 @@
+2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_condition): New function.  Update all callers
+	that generate a COND_EXPR that returns a value to use it.
+	(build_vcondition): New function.  Update all callers that generate a
+	void COND_EXPR to use it.
+	* toir.cc (IRVisitor::visit(DoStatement)): Build a COND_EXPR instead
+	of an EXIT_EXPR to break from the loop.
+	(IRVisitor::visit(ForStatement)): Likewise.
+
 2016-02-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-elem.cc: Remove redundant IRState parameter from all lowering
