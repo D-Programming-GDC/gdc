@@ -1468,10 +1468,13 @@ AddrExp::toElem()
 {
   tree exp;
 
+  // Optimizer can convert const symbol into a struct literal.
+  // Taking the address of a struct literal is otherwise illegal.
   if (e1->op == TOKstructliteral)
     {
       StructLiteralExp *sle = ((StructLiteralExp *) e1)->origin;
-      exp = build_address (sle->toElem());
+      gcc_assert(sle != NULL);
+      exp = build_address (sle->toSymbol()->Stree);
     }
   else
     exp = build_address (e1->toElem());
@@ -1484,7 +1487,6 @@ CallExp::toElem()
 {
   Type *tb = e1->type->toBasetype();
   Expression *e1b = e1;
-  tree object = NULL_TREE;
 
   // Calls to delegates can sometimes look like this:
   if (e1b->op == TOKcomma)
@@ -1496,7 +1498,19 @@ CallExp::toElem()
       gcc_assert (var->isFuncDeclaration() && !var->needThis());
     }
 
+  if (e1b->op == TOKdotvar && tb->ty != Tdelegate)
+    {
+      DotVarExp *dve = (DotVarExp *) e1b;
+      // Don't modify the static initializer for struct literals.
+      if (dve->e1->op == TOKstructliteral)
+	{
+	  StructLiteralExp *sle = (StructLiteralExp *) dve->e1;
+	  sle->sinit = NULL;
+	}
+    }
+
   tree callee = e1b->toElem();
+  tree object = NULL_TREE;
   TypeFunction *tf = NULL;
 
   if (D_METHOD_CALL_EXPR (callee))
