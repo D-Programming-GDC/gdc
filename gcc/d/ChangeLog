@@ -2,6 +2,8 @@
 
 	* intrinsics.def: Split signature macros into three groups.
 	Attributes, types, and helper generators.
+	* d-elem.cc (needsPostblit): Change signature to return boolean,
+	updated all callers.
 
 2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 

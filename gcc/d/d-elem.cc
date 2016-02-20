@@ -730,7 +730,7 @@ PowAssignExp::toElem()
 
 // Determine if type is an array of structs that need a postblit.
 
-static StructDeclaration *
+static bool
 needsPostblit (Type *t)
 {
   t = t->baseElemOf();
@@ -739,10 +739,10 @@ needsPostblit (Type *t)
     {
       StructDeclaration *sd = ((TypeStruct *) t)->sym;
       if (sd->postblit)
-	return sd;
+	return true;
     }
 
-  return NULL;
+  return false;
 }
 
 elem *
@@ -858,7 +858,8 @@ AssignExp::toElem()
 
       // Determine if we need to do postblit.
       bool postblit = false;
-      if (needsPostblit(etype) != NULL
+
+      if (needsPostblit(etype)
 	  && ((e2->op != TOKslice && e2->isLvalue())
 	      || (e2->op == TOKslice && ((UnaExp *) e2)->e1->isLvalue())
 	      || (e2->op == TOKcast && ((UnaExp *) e2)->e1->isLvalue())))
@@ -1004,7 +1005,8 @@ AssignExp::toElem()
 
       // Determine if we need to do postblit.
       bool postblit = false;
-      if (needsPostblit(etype) != NULL
+
+      if (needsPostblit(etype)
 	  && ((e2->op != TOKslice && e2->isLvalue())
 	      || (e2->op == TOKslice && ((UnaExp *) e2)->e1->isLvalue())
 	      || (e2->op == TOKcast && ((UnaExp *) e2)->e1->isLvalue())))
