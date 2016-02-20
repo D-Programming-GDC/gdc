@@ -756,7 +756,7 @@ public:
     else if (cd->com || (id != NULL && id->com))
       s->error("cannot throw COM objects");
     else
-      arg = convert_expr(arg, s->exp->type, build_object_type());
+      arg = build_nop(build_ctype(build_object_type()), arg);
 
     set_input_location(s->loc);
     add_stmt(build_libcall(LIBCALL_THROW, 1, &arg));
@@ -794,8 +794,7 @@ public:
 	    tree object = build_libcall(LIBCALL_BEGIN_CATCH, 1, &ehptr);
 	    if (vcatch->var)
 	      {
-		object = build1(NOP_EXPR, build_ctype(build_object_type()), object);
-		object = convert_expr(object, build_object_type(), vcatch->type);
+		object = build_nop(build_ctype(vcatch->type), object);
 
 		tree var = vcatch->var->toSymbol()->Stree;
 		tree init = build_vinit(var, object);

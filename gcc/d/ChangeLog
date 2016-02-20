@@ -6,6 +6,10 @@
 	updated all callers.
 	(AssignExp::toElem): Don't assign destination to a temporary in
 	arraycopy call.
+	* toir.cc (IRVisior::visit(ThrowStatement)): Use NOP_EXPR cast to
+	convert thrown exception to Object.
+	(IRVisitor::visit(TryCatchStatement)): Use NOP_EXPR cast to convert
+	caught Object to thrown exception.
 
 2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
