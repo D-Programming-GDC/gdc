@@ -1341,30 +1341,11 @@ d_signed_type(tree type)
   return d_signed_or_unsigned_type(0, type);
 }
 
-// Type promotion for variable arguments.
-// This is needed for varargs to work on certain targets.
+// All promotions for variable arguments are handled by the frontend.
 
 static tree
 d_type_promotes_to(tree type)
 {
-  tree ptype = targetm.promoted_type(type);
-  if (ptype)
-    return ptype;
-
-  if (TYPE_MAIN_VARIANT(type) == float_type_node)
-    return double_type_node;
-
-  if (INTEGRAL_TYPE_P(type)
-      && (TYPE_PRECISION(type) <= TYPE_PRECISION(integer_type_node)))
-    {
-      // Preserve unsignedness if not really getting any wider.
-      if (TYPE_UNSIGNED(type)
-	  && (TYPE_PRECISION(type) == TYPE_PRECISION(integer_type_node)))
-	return unsigned_type_node;
-
-      return integer_type_node;
-    }
-
   return type;
 }
 

@@ -2760,17 +2760,17 @@ call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee)
 // OBJECT is the 'this' reference passed and ARGS are the arguments to FD.
 
 tree
-d_build_call (FuncDeclaration *fd, tree object, Expressions *args)
+d_build_call(FuncDeclaration *fd, tree object, Expressions *args)
 {
-  return d_build_call (get_function_type (fd->type),
-		       build_address (fd->toSymbol()->Stree), object, args);
+  return d_build_call(get_function_type(fd->type),
+		      build_address(fd->toSymbol()->Stree), object, args);
 }
 
 // Builds a CALL_EXPR of type TF to CALLABLE. OBJECT holds the 'this' pointer,
 // ARGUMENTS are evaluated in left to right order, saved and promoted before passing.
 
 tree
-d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
+d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *arguments)
 {
   tree ctype = TREE_TYPE (callable);
   tree callee = callable;
@@ -2781,16 +2781,16 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
   if (POINTER_TYPE_P (ctype))
     ctype = TREE_TYPE (ctype);
   else
-    callee = build_address (callable);
+    callee = build_address(callable);
 
-  gcc_assert (function_type_p (ctype));
-  gcc_assert (tf != NULL);
-  gcc_assert (tf->ty == Tfunction);
+  gcc_assert(function_type_p(ctype));
+  gcc_assert(tf != NULL);
+  gcc_assert(tf->ty == Tfunction);
 
   // Evaluate the callee before calling it.
   if (TREE_SIDE_EFFECTS (callee))
     {
-      callee = maybe_make_temp (callee);
+      callee = maybe_make_temp(callee);
       saved_args = callee;
     }
 
@@ -2799,7 +2799,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
-	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
+	  error("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
 	  return error_mark_node;
 	}
 
@@ -2813,10 +2813,10 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
     {
       if (TREE_SIDE_EFFECTS (object))
 	{
-	  object = maybe_make_temp (object);
-	  saved_args = maybe_vcompound_expr (saved_args, object);
+	  object = maybe_make_temp(object);
+	  saved_args = maybe_vcompound_expr(saved_args, object);
 	}
-      arg_list = build_tree_list (NULL_TREE, object);
+      arg_list = build_tree_list(NULL_TREE, object);
     }
 
   if (arguments)
@@ -2826,13 +2826,13 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	{
 	Lagain:
 	  Expression *arg = (*arguments)[i];
-	  gcc_assert (arg->op != TOKtuple);
+	  gcc_assert(arg->op != TOKtuple);
 
 	  if (arg->op == TOKcomma)
 	    {
 	      CommaExp *ce = (CommaExp *) arg;
 	      tree tce = ce->e1->toElem();
-	      saved_args = maybe_vcompound_expr (saved_args, tce);
+	      saved_args = maybe_vcompound_expr(saved_args, tce);
 	      (*arguments)[i] = ce->e2;
 	      goto Lagain;
 	    }
@@ -2840,7 +2840,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 
       // if _arguments[] is the first argument.
       size_t dvarargs = (tf->linkage == LINKd && tf->varargs == 1);
-      size_t nparams = Parameter::dim (tf->parameters);
+      size_t nparams = Parameter::dim(tf->parameters);
 
       // Assumes arguments->dim <= formal_args->dim if (!this->varargs)
       for (size_t i = 0; i < arguments->dim; ++i)
@@ -2856,19 +2856,11 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  else if (i - dvarargs < nparams && i >= dvarargs)
 	    {
 	      // Actual arguments for declared formal arguments
-	      Parameter *parg = Parameter::getNth (tf->parameters, i - dvarargs);
-	      targ = convert_for_argument (arg->toElem(), arg, parg);
+	      Parameter *parg = Parameter::getNth(tf->parameters, i - dvarargs);
+	      targ = convert_for_argument(arg->toElem(), arg, parg);
 	    }
 	  else
-	    {
-	      // Not all targets support passing unpromoted types, so
-	      // promote anyway.
-	      targ = arg->toElem();
-	      tree ptype = lang_hooks.types.type_promotes_to (TREE_TYPE (targ));
-
-	      if (ptype != TREE_TYPE (targ))
-		targ = convert (ptype, targ);
-	    }
+	    targ = arg->toElem();
 
 	  // Don't pass empty aggregates by value.
 	  if (empty_aggregate_p(TREE_TYPE (targ)) && !TREE_ADDRESSABLE (targ)
@@ -2882,17 +2874,17 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  // Needed for left to right evaluation.
 	  if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (targ))
 	    {
-	      targ = maybe_make_temp (targ);
-	      saved_args = maybe_vcompound_expr (saved_args, targ);
+	      targ = maybe_make_temp(targ);
+	      saved_args = maybe_vcompound_expr(saved_args, targ);
 	    }
-	  arg_list = chainon (arg_list, build_tree_list (0, targ));
+	  arg_list = chainon(arg_list, build_tree_list(0, targ));
 	}
     }
 
-  tree result = d_build_call_list (TREE_TYPE (ctype), callee, arg_list);
-  result = expand_intrinsic (result);
+  tree result = d_build_call_list(TREE_TYPE (ctype), callee, arg_list);
+  result = expand_intrinsic(result);
 
-  return maybe_compound_expr (saved_args, result);
+  return maybe_compound_expr(saved_args, result);
 }
 
 // Builds a call to AssertError or AssertErrorMsg.
@@ -3238,12 +3230,7 @@ expand_intrinsic_vaarg(tree callee, tree arg1, tree arg2)
       type = TREE_TYPE(arg2);
     }
 
-  // Silently convert promoted types.
-  tree ptype = lang_hooks.types.type_promotes_to(type);
-  tree exp = build1(VA_ARG_EXPR, ptype, arg1);
-
-  if (type != ptype)
-    exp = fold_convert(type, exp);
+  tree exp = build1(VA_ARG_EXPR, type, arg1);
 
   if (arg2 != NULL_TREE)
     exp = vmodify_expr(arg2, exp);
@@ -3266,8 +3253,8 @@ expand_intrinsic_vastart (tree callee, tree arg1, tree arg2)
   STRIP_NOPS (arg2);
   gcc_assert (TREE_CODE (arg1) == ADDR_EXPR && TREE_CODE (arg2) == ADDR_EXPR);
 
-  arg2 = TREE_OPERAND (arg2, 0);
   // Assuming nobody tries to change the return type.
+  arg2 = TREE_OPERAND (arg2, 0);
   return expand_intrinsic_op2 (BUILT_IN_VA_START, callee, arg1, arg2);
 }
 
