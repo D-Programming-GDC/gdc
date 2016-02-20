@@ -10,6 +10,7 @@
 	convert thrown exception to Object.
 	(IRVisitor::visit(TryCatchStatement)): Use NOP_EXPR cast to convert
 	caught Object to thrown exception.
+	* d-codegen.cc (void_okay_p): Lazily build the convert to type.
 
 2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
