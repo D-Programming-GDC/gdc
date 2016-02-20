@@ -14,6 +14,12 @@
 	* d-lang.cc (parse_int): Remove function.
 	(d_handle_option): Use integral_argument to parse numbers.
 
+	* d-codegen.cc (lower_struct_comparison): Built custom type if
+	lang_hooks.types.type_for_mode returns nothing.
+	* d-lang.cc (d_type_for_mode): Always support cent/ucent modes.
+	(d_type_for_size): Add support for cent/ucent precision types.
+	(d_signed_or_unsigned_type): Always support cent/ucent precisions.
+
 2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_condition): New function.  Update all callers

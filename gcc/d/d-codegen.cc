@@ -1888,11 +1888,11 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   // Let backend take care of union comparisons.
   if (sd->isUnionDeclaration())
     {
-      tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-				   build_address (t1), build_address (t2),
-				   size_int (sd->structsize));
+      tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
+				  build_address(t1), build_address(t2),
+				  size_int(sd->structsize));
 
-      return build_boolop (code, tmemcmp, integer_zero_node);
+      return build_boolop(code, tmemcmp, integer_zero_node);
     }
 
   for (size_t i = 0; i < sd->fields.dim; i++)
@@ -1900,8 +1900,8 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
       VarDeclaration *vd = sd->fields[i];
       tree sfield = vd->toSymbol()->Stree;
 
-      tree t1ref = component_ref (t1, sfield);
-      tree t2ref = component_ref (t2, sfield);
+      tree t1ref = component_ref(t1, sfield);
+      tree t2ref = component_ref(t2, sfield);
       tree tcmp;
 
       if (vd->type->ty == Tstruct)
@@ -1913,18 +1913,21 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
       else
 	{
 	  tree stype = build_ctype(vd->type);
-	  machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
+	  machine_mode mode = int_mode_for_mode(TYPE_MODE (stype));
 
 	  if (vd->type->isintegral())
 	    {
 	      // Integer comparison, no special handling required.
-	      tcmp = build_boolop (code, t1ref, t2ref);
+	      tcmp = build_boolop(code, t1ref, t2ref);
 	    }
 	  else if (mode != BLKmode)
 	    {
 	      // Compare field bits as their corresponding integer type.
 	      //   *((T*) &t1) == *((T*) &t2)
-	      tree tmode = lang_hooks.types.type_for_mode (mode, 1);
+	      tree tmode = lang_hooks.types.type_for_mode(mode, 1);
+
+	      if (tmode == NULL_TREE)
+		tmode = make_unsigned_type(GET_MODE_BITSIZE (mode));
 
 	      t1ref = build_vconvert(tmode, t1ref);
 	      t2ref = build_vconvert(tmode, t2ref);
