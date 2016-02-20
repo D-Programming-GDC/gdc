@@ -1432,7 +1432,7 @@ PtrExp::toElem()
   else if (e1->op == TOKsymoff)
     {
       SymOffExp *sym_exp = (SymOffExp *) e1;
-      if (declaration_type_kind(sym_exp->var) != type_reference)
+      if (!declaration_reference_p(sym_exp->var))
 	{
 	  rec_type = sym_exp->var->type->toBasetype();
 	  rec_tree = get_decl_tree(sym_exp->var);
@@ -1921,7 +1921,7 @@ SymbolExp::toElem()
 
       // For variables that are references (currently only out/inout arguments;
       // objects don't count), evaluating the variable means we want what it refers to.
-      if (declaration_type_kind(var) == type_reference)
+      if (declaration_reference_p(var))
 	exp = indirect_ref(build_ctype(var->type), exp);
 
       // The frontend sometimes emits different types for the expression and var.
@@ -1939,7 +1939,7 @@ SymbolExp::toElem()
       exp = get_decl_tree (var);
       TREE_USED (exp) = 1;
 
-      if (declaration_type_kind(var) == type_reference)
+      if (declaration_reference_p(var))
 	gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
       else
 	exp = build_address(exp);

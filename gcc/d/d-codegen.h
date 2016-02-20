@@ -28,16 +28,6 @@ enum LibCall
   LIBCALL_count
 };
 
-// If a type is internally represented as something else.
-
-enum type_kind
-{
-  type_normal,
-  type_reference,   // Passed by reference.
-  type_va_pointer,  // VA list that is passed as a pointer.
-  type_lazy,	    // Converted into a delegate.
-};
-
 struct FuncFrameInfo
 {
   bool creates_frame;	    // Function creates nested frame.
@@ -78,9 +68,9 @@ extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 extern tree build_struct_literal(tree type, tree init);
 
 // Routines to handle variables that are references.
-extern type_kind declaration_type_kind(Declaration *decl);
+extern bool declaration_reference_p (Declaration *decl);
 extern tree declaration_type (Declaration *decl);
-extern type_kind argument_type_kind(Parameter *arg);
+extern bool argument_reference_p (Parameter *arg);
 extern tree type_passed_as (Parameter *arg);
 
 extern tree d_array_type (Type *d_type, uinteger_t size);
