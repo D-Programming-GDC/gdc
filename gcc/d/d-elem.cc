@@ -937,8 +937,8 @@ AssignExp::toElem()
 	      tree args[3];
 
 	      args[0] = build_integer_cst(etype->size(), build_ctype(Type::tsize_t));
-	      args[1] = d_array_convert(e2);
-	      args[2] = maybe_make_temp(d_array_convert(e1));
+	      args[1] = maybe_make_temp(d_array_convert(e2));
+	      args[2] = d_array_convert(e1);
 
 	      return build_libcall(LIBCALL_ARRAYCOPY, 3, args, build_ctype(type));
 	    }
