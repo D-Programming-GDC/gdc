@@ -30,6 +30,16 @@
 	(CallExp::toElem): Don't pass generated static struct literal symbol
 	as the object parameter for DotVar call expressions.
 
+	* d-codegen.cc (type_va_array): New function.
+	(declaration_type_kind): Remove function.
+	(declaration_reference_p): New function, update all callers of
+	declaration_type_kind.
+	(argument_type_kind): Remove function.
+	(argument_reference_p): New function, update all callers of
+	argument_type_kind.
+	(build_address): Remove special handling of static array va_list.
+	* d-codegen.h (type_kind): Remove enum.
+
 2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_condition): New function.  Update all callers

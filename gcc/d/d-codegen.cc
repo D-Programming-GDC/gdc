@@ -821,35 +821,46 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
   return convert_expr (expr, etype, totype);
 }
 
+// Return TRUE if TYPE is a static array va_list.  This is for compatibility
+// with the C ABI, where va_list static arrays are passed by reference.
+// However for ever other case in D, static arrays are passed by value.
+
+static bool
+type_va_array(Type *type)
+{
+  if (Type::tvalist->ty == Tsarray)
+    {
+      Type *tb = type->toBasetype();
+      if (d_types_same(tb, Type::tvalist))
+	return true;
+    }
+
+  return false;
+}
+
+
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
 
 tree
 convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
 {
-  switch (argument_type_kind(arg))
+  if (type_va_array(arg->type))
     {
-    case type_reference:
+      // Do nothing if the va_list has already been decayed to a pointer.
+      if (!POINTER_TYPE_P (TREE_TYPE (exp_tree)))
+	return build_address(exp_tree);
+    }
+  else if (argument_reference_p(arg))
+    {
       // Front-end sometimes automatically takes the address.
       if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
 	exp_tree = build_address(exp_tree);
 
       return convert(type_passed_as(arg), exp_tree);
-
-    case type_va_pointer:
-      // Do nothing if the va_list has already been decayed to a pointer.
-      if (POINTER_TYPE_P (TREE_TYPE (exp_tree)))
-	return exp_tree;
-      else
-	return build_address(exp_tree);
-
-    case type_lazy:
-    case type_normal:
-      // Lazy arguments: expr should already be a delegate
-      return exp_tree;
-
-    default:
-      gcc_unreachable();
     }
+
+  // Lazy arguments: expr should already be a delegate
+  return exp_tree;
 }
 
 // Perform default promotions for data used in expressions.
@@ -943,28 +954,18 @@ d_array_convert (Expression *exp)
   gcc_unreachable();
 }
 
-// Return the kind of type the declaration DECL should be stored as.
+// Return TRUE if declaration DECL is a reference type.
 
-type_kind
-declaration_type_kind(Declaration *decl)
+bool
+declaration_reference_p(Declaration *decl)
 {
   Type *tb = decl->type->toBasetype();
 
-  // Compatibility with C ABI, if the va_list is passed as a pointer.
-  // However for ever other case, static arrays are passed around by value.
-  if (decl->isParameter() && Type::tvalist->ty == Tsarray
-      && d_types_same(tb, Type::tvalist))
-    return type_va_pointer;
-
   // Declaration is a reference type.
   if (tb->ty == Treference || decl->storage_class & (STCout | STCref))
-    return type_reference;
+    return true;
 
-  // Declaration is a lazy parameter.
-  if (decl->storage_class & STClazy)
-    return type_lazy;
-
-  return type_normal;
+  return false;
 }
 
 // Returns the real type for declaration DECL.
@@ -974,63 +975,49 @@ declaration_type_kind(Declaration *decl)
 tree
 declaration_type(Declaration *decl)
 {
-  switch (declaration_type_kind(decl))
+  // Lazy declarations are converted to delegates.
+  if (decl->storage_class & STClazy)
     {
-    case type_reference:
-      {
-	tree decl_type = build_ctype(decl->type);
-	return build_reference_type(decl_type);
-      }
-
-    case type_lazy:
-      {
-	TypeFunction *tf = new TypeFunction(NULL, decl->type, false, LINKd);
-	TypeDelegate *t = new TypeDelegate(tf);
-	return build_ctype(t->merge());
-      }
-
-    case type_va_pointer:
-      {
-	Type *valist = decl->type->nextOf()->pointerTo();
-	valist = valist->castMod(decl->type->mod);
-	return build_ctype(valist);
-      }
-
-    case type_normal:
-      {
-	tree decl_type = build_ctype(decl->type);
-	if (decl->isThisDeclaration())
-	  decl_type = insert_type_modifiers(decl_type, MODconst);
-
-	return decl_type;
-      }
-
-    default:
-      gcc_unreachable();
+      TypeFunction *tf = new TypeFunction(NULL, decl->type, false, LINKd);
+      TypeDelegate *t = new TypeDelegate(tf);
+      return build_ctype(t->merge());
     }
+
+  // Static array va_list have array->pointer conversions applied.
+  if (decl->isParameter() && type_va_array(decl->type))
+    {
+      Type *valist = decl->type->nextOf()->pointerTo();
+      valist = valist->castMod(decl->type->mod);
+      return build_ctype(valist);
+    }
+
+  tree type = build_ctype(decl->type);
+
+  // Parameter is passed by reference.
+  if (declaration_reference_p(decl))
+    return build_reference_type(type);
+
+  // The 'this' parameter is always const.
+  if (decl->isThisDeclaration())
+    return insert_type_modifiers(type, MODconst);
+
+  return type;
 }
 
-// Return the kind of type the parameter ARG should be passed as.
+// These should match the Declaration versions above
+// Return TRUE if parameter ARG is a reference type.
 
-type_kind
-argument_type_kind(Parameter *arg)
+bool
+argument_reference_p(Parameter *arg)
 {
-  Type *tb = arg->type->toBasetype();
 
-  // Compatibility with C ABI, if the va_list is passed as a pointer.
-  // However for ever other case, static arrays are passed around by value.
-  if (Type::tvalist->ty == Tsarray && d_types_same(tb, Type::tvalist))
-    return type_va_pointer;
+  Type *tb = arg->type->toBasetype();
 
   // Parameter is a reference type.
   if (tb->ty == Treference || arg->storageClass & (STCout | STCref))
-    return type_reference;
+    return true;
 
-  // Parameter is a lazy parameter.
-  if (arg->storageClass & STClazy)
-    return type_lazy;
-
-  return type_normal;
+  return false;
 }
 
 // Returns the real type for parameter ARG.
@@ -1040,34 +1027,29 @@ argument_type_kind(Parameter *arg)
 tree
 type_passed_as(Parameter *arg)
 {
-  switch (argument_type_kind(arg))
+  // Lazy parameters are converted to delegates.
+  if (arg->storageClass & STClazy)
     {
-    case type_reference:
-      {
-	tree arg_type = build_ctype(arg->type);
-	return build_reference_type(arg_type);
-      }
-
-    case type_lazy:
-      {
-	TypeFunction *tf = new TypeFunction(NULL, arg->type, false, LINKd);
-	TypeDelegate *t = new TypeDelegate(tf);
-	return build_ctype(t->merge());
-      }
-
-    case type_va_pointer:
-      {
-	Type *valist = arg->type->nextOf()->pointerTo();
-	valist = valist->castMod(arg->type->mod);
-	return build_ctype(valist);
-      }
-
-    case type_normal:
-      return build_ctype(arg->type);
-
-    default:
-      gcc_unreachable();
+      TypeFunction *tf = new TypeFunction(NULL, arg->type, false, LINKd);
+      TypeDelegate *t = new TypeDelegate(tf);
+      return build_ctype(t->merge());
     }
+
+  // Static array va_list have array->pointer conversions applied.
+  if (type_va_array(arg->type))
+    {
+      Type *valist = arg->type->nextOf()->pointerTo();
+      valist = valist->castMod(arg->type->mod);
+      return build_ctype(valist);
+    }
+
+  tree type = build_ctype(arg->type);
+
+  // Parameter is passed by reference.
+  if (argument_reference_p(arg))
+    return build_reference_type(type);
+
+  return type;
 }
 
 // Returns an array of type D_TYPE which has SIZE number of elements.
@@ -1668,27 +1650,28 @@ d_has_side_effects (tree exp)
 // Returns the address of the expression EXP.
 
 tree
-build_address (tree exp)
+build_address(tree exp)
 {
   tree ptrtype;
   tree type = TREE_TYPE (exp);
-  d_mark_addressable (exp);
+  d_mark_addressable(exp);
 
-  /* Just convert string literals (char[]) to C-style strings (char *), otherwise
-     the latter method (char[]*) causes conversion problems during gimplification. */
   if (TREE_CODE (exp) == STRING_CST)
-    ptrtype = build_pointer_type (TREE_TYPE (type));
-  /* Special case for va_list. The backends will be expecting a pointer to vatype,
-   * but some targets use an array. So fix it.  */
-  else if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node))
     {
-      if (TREE_CODE (TYPE_MAIN_VARIANT (type)) == ARRAY_TYPE)
-	ptrtype = build_pointer_type (TREE_TYPE (type));
-      else
-	ptrtype = build_pointer_type (type);
+      // Just convert string literals (char[]) to C-style strings (char *),
+      // otherwise the latter method (char[]*) causes conversion problems
+      // during gimplification.
+      ptrtype = build_pointer_type(TREE_TYPE (type));
+    }
+  else if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node)
+	   && TREE_CODE (TYPE_MAIN_VARIANT (type)) == ARRAY_TYPE)
+    {
+      // Special case for va_list.  Backend will be expects a pointer to va_list,
+      // but some targets use an array type.  So decay the array to pointer.
+      ptrtype = build_pointer_type(TREE_TYPE (type));
     }
   else
-    ptrtype = build_pointer_type (type);
+    ptrtype = build_pointer_type(type);
 
   tree ret = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
 
