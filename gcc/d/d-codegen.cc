@@ -2503,10 +2503,12 @@ tree
 void_okay_p(tree t)
 {
   tree type = TREE_TYPE (t);
-  tree totype = build_ctype(Type::tuns8->pointerTo());
 
   if (VOID_TYPE_P (TREE_TYPE (type)))
-    return fold_convert(totype, t);
+    {
+      tree totype = build_ctype(Type::tuns8->pointerTo());
+      return fold_convert(totype, t);
+    }
 
   return t;
 }

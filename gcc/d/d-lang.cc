@@ -342,40 +342,7 @@ d_init_ts()
   MARK_TS_TYPED (UNSIGNED_RSHIFT_EXPR);
 }
 
-
-static bool
-parse_int (const char *arg, int *value_ret)
-{
-  /* Common case of a single digit.  */
-  if (arg[1] == '\0')
-    *value_ret = arg[0] - '0';
-  else
-    {
-      HOST_WIDE_INT v = 0;
-      unsigned int base = 10, c = 0;
-      int overflow = 0;
-      for (const char *p = arg; *p != '\0'; p++)
-	{
-	  c = *p;
-
-	  if (ISDIGIT (c))
-	    c = hex_value (c);
-	  else
-	    return false;
-
-	  v = v * base + c;
-	  overflow |= (v > INT_MAX);
-	}
-
-      if (overflow)
-	return false;
-
-      *value_ret = v;
-    }
-
-  return true;
-}
-
+//
 static bool
 d_handle_option (size_t scode, const char *arg, int value,
 		 int kind ATTRIBUTE_UNUSED,
@@ -384,7 +351,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 {
   opt_code code = (opt_code) scode;
   bool result = true;
-  int level;
 
   switch (code)
     {
@@ -417,17 +383,21 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fdebug_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (!parse_int (arg, &level))
-	    goto Lerror_d;
-	  DebugCondition::setGlobalLevel (level);
+	  int level = integral_argument(arg);
+	  if (level != -1)
+	    {
+	      DebugCondition::setGlobalLevel(level);
+	      break;
+	    }
 	}
-      else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
-	DebugCondition::addGlobalIdent (arg);
-      else
+
+      if (Lexer::isValidIdentifier(CONST_CAST (char *, arg)))
 	{
-    Lerror_d:
-	  error ("bad argument for -fdebug");
+	  DebugCondition::addGlobalIdent(arg);
+	  break;
 	}
+
+      error ("bad argument for -fdebug '%s'", arg);
       break;
 
     case OPT_fdeps:
@@ -563,17 +533,21 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fversion_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (!parse_int (arg, &level))
-	    goto Lerror_v;
-	  VersionCondition::setGlobalLevel (level);
+	  int level = integral_argument(arg);
+	  if (level != -1)
+	    {
+	      VersionCondition::setGlobalLevel (level);
+	      break;
+	    }
 	}
-      else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
-	VersionCondition::addGlobalIdent (arg);
-      else
+
+      if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
-    Lerror_v:
-	  error ("bad argument for -fversion");
+	  VersionCondition::addGlobalIdent (arg);
+	  break;
 	}
+
+      error ("bad argument for -fversion '%s'", arg);
       break;
 
     case OPT_fXf_:
