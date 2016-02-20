@@ -1,3 +1,8 @@
+2016-02-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* intrinsics.def: Split signature macros into three groups.
+	Attributes, types, and helper generators.
+
 2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_condition): New function.  Update all callers
