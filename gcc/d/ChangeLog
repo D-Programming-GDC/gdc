@@ -1,7 +1,7 @@
 2016-02-22  Eugene Wissner <belka@caraus.de>
 
-	* d-lang.cc (d_init): gcc-6-20160214 removed the second parameter
-	(short_double = false) of build_common_tree_nodes.
+	* d-lang.cc (d_init): Remove short_double parameter from
+	build_common_tree_nodes.
 
 2016-02-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
