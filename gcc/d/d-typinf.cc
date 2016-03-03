@@ -133,7 +133,7 @@ Type::genTypeInfo(Scope *sc)
 		}
 	    }
 	  else
-	    t->vtinfo->toObjFile(0);
+	    t->vtinfo->toObjFile();
 	}
     }
   // Types aren't merged, but we can share the vtinfo's

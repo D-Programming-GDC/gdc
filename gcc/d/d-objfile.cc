@@ -106,7 +106,7 @@ gcc_attribute_p(Dsymbol *dsym)
 }
 
 void
-Dsymbol::toObjFile(bool)
+Dsymbol::toObjFile()
 {
   // Emit the imported symbol to debug.
   Import *imp = this->isImport();
@@ -178,13 +178,13 @@ Dsymbol::toObjFile(bool)
 	{
 	  Declaration *d = ((DsymbolExp *) o)->s->isDeclaration();
 	  if (d)
-	    d->toObjFile(false);
+	    d->toObjFile();
 	}
     }
 }
 
 void
-AttribDeclaration::toObjFile(bool)
+AttribDeclaration::toObjFile()
 {
   Dsymbols *d = include (NULL, NULL);
 
@@ -194,12 +194,12 @@ AttribDeclaration::toObjFile(bool)
   for (size_t i = 0; i < d->dim; i++)
     {
       Dsymbol *s = (*d)[i];
-      s->toObjFile(false);
+      s->toObjFile();
     }
 }
 
 void
-PragmaDeclaration::toObjFile(bool)
+PragmaDeclaration::toObjFile()
 {
   if (!global.params.ignoreUnsupportedPragmas)
     {
@@ -209,11 +209,11 @@ PragmaDeclaration::toObjFile(bool)
 	 warning (loc, "pragma(startaddress) not implemented");
     }
 
-  AttribDeclaration::toObjFile(false);
+  AttribDeclaration::toObjFile();
 }
 
 void
-Nspace::toObjFile(bool)
+Nspace::toObjFile()
 {
   if (isError(this) || !members)
     return;
@@ -221,12 +221,12 @@ Nspace::toObjFile(bool)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *s = (*members)[i];
-      s->toObjFile(false);
+      s->toObjFile();
     }
 }
 
 void
-StructDeclaration::toObjFile(bool)
+StructDeclaration::toObjFile()
 {
   if (type->ty == Terror)
     {
@@ -259,22 +259,22 @@ StructDeclaration::toObjFile(bool)
       Dsymbol *member = (*members)[i];
       // There might be static ctors in the members, and they cannot
       // be put in separate object files.
-      member->toObjFile(false);
+      member->toObjFile();
     }
 
   // Put out xopEquals, xopCmp and xopHash
   if (xeq && xeq != xerreq)
-    xeq->toObjFile(false);
+    xeq->toObjFile();
 
   if (xcmp && xcmp != xerrcmp)
-    xcmp->toObjFile(false);
+    xcmp->toObjFile();
 
   if (xhash)
-    xhash->toObjFile(false);
+    xhash->toObjFile();
 }
 
 void
-ClassDeclaration::toObjFile(bool)
+ClassDeclaration::toObjFile()
 {
   if (type->ty == Terror)
     {
@@ -289,7 +289,7 @@ ClassDeclaration::toObjFile(bool)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *member = (*members)[i];
-      member->toObjFile(false);
+      member->toObjFile();
     }
 
   // Generate C symbols
@@ -629,7 +629,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
 }
 
 void
-InterfaceDeclaration::toObjFile(bool)
+InterfaceDeclaration::toObjFile()
 {
   if (type->ty == Terror)
     {
@@ -644,7 +644,7 @@ InterfaceDeclaration::toObjFile(bool)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *member = (*members)[i];
-      member->toObjFile(false);
+      member->toObjFile();
     }
 
   // Generate C symbols
@@ -652,7 +652,7 @@ InterfaceDeclaration::toObjFile(bool)
 
   // Put out the TypeInfo
   type->genTypeInfo(NULL);
-  type->vtinfo->toObjFile(false);
+  type->vtinfo->toObjFile();
 
   /* Put out the ClassInfo.
    * The layout is:
@@ -762,7 +762,7 @@ InterfaceDeclaration::toObjFile(bool)
 }
 
 void
-EnumDeclaration::toObjFile(bool)
+EnumDeclaration::toObjFile()
 {
   if (semanticRun >= PASSobj)
     return;
@@ -792,7 +792,7 @@ EnumDeclaration::toObjFile(bool)
 }
 
 void
-VarDeclaration::toObjFile(bool)
+VarDeclaration::toObjFile()
 {
   if (type->ty == Terror)
     {
@@ -802,7 +802,7 @@ VarDeclaration::toObjFile(bool)
 
   if (aliassym)
     {
-      toAlias()->toObjFile(false);
+      toAlias()->toObjFile();
       return;
     }
 
@@ -894,7 +894,7 @@ VarDeclaration::toObjFile(bool)
 }
 
 void
-TemplateInstance::toObjFile(bool)
+TemplateInstance::toObjFile()
 {
   if (isError (this)|| !members)
     return;
@@ -905,12 +905,12 @@ TemplateInstance::toObjFile(bool)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *s = (*members)[i];
-      s->toObjFile(false);
+      s->toObjFile();
     }
 }
 
 void
-TemplateMixin::toObjFile(bool)
+TemplateMixin::toObjFile()
 {
   if (isError (this)|| !members)
     return;
@@ -918,12 +918,12 @@ TemplateMixin::toObjFile(bool)
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *s = (*members)[i];
-      s->toObjFile(false);
+      s->toObjFile();
     }
 }
 
 void
-TypeInfoDeclaration::toObjFile(bool)
+TypeInfoDeclaration::toObjFile()
 {
   Symbol *s = toSymbol();
   toDt (&s->Sdt);
@@ -1081,7 +1081,7 @@ Module::genmoduleinfo()
 // down to assembler language output.
 
 void
-FuncDeclaration::toObjFile(bool)
+FuncDeclaration::toObjFile()
 {
   // Already generated the function.
   if (this->semanticRun >= PASSobj)
@@ -1162,7 +1162,7 @@ FuncDeclaration::toObjFile(bool)
   // first so we need to arrange for toObjFile to be called earlier.
   FuncDeclaration *fdp = this->toParent2()->isFuncDeclaration();
   if (fdp && fdp->semanticRun < PASSobj)
-    fdp->toObjFile(false);
+    fdp->toObjFile();
 
   if (global.params.verbose)
     fprintf (global.stdmsg, "function  %s\n", this->toPrettyChars());
@@ -1375,7 +1375,7 @@ FuncDeclaration::toObjFile(bool)
   for (size_t i = 0; i < cfun->language->deferred_fns.length(); ++i)
     {
       FuncDeclaration *fd = cfun->language->deferred_fns[i];
-      fd->toObjFile(false);
+      fd->toObjFile();
     }
 
   if (UnitTestDeclaration *ud = this->isUnitTestDeclaration())
@@ -1383,7 +1383,7 @@ FuncDeclaration::toObjFile(bool)
       for (size_t i = 0; i < ud->deferredNested.dim; ++i)
 	{
 	  FuncDeclaration *fd = ud->deferredNested[i];
-	  fd->toObjFile(false);
+	  fd->toObjFile();
 	}
     }
 
@@ -1408,7 +1408,7 @@ Module::genobjfile(bool)
       for (size_t i = 0; i < members->dim; i++)
 	{
 	  Dsymbol *dsym = (*members)[i];
-	  dsym->toObjFile(false);
+	  dsym->toObjFile();
 	}
     }
 
@@ -2193,7 +2193,7 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   // %% Maybe remove the identifier
   WrappedExp *body = new WrappedExp (mod->loc, expr, Type::tvoid);
   func->fbody = new ExpStatement (mod->loc, body);
-  func->toObjFile(false);
+  func->toObjFile();
 
   return func;
 }
@@ -2284,7 +2284,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
     }
   func->fbody = new CompoundStatement (mod->loc, body);
   func->semantic3 (mod->scope);
-  func->toObjFile (false);
+  func->toObjFile();
 
   return func->toSymbol();
 }

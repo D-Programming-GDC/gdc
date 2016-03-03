@@ -291,7 +291,7 @@ public:
     void checkNestedReference(Scope *sc, Loc loc);
     Dsymbol *toAlias();
     Symbol *toSymbol();
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
     // Eliminate need for dynamic_cast
     VarDeclaration *isVarDeclaration() { return (VarDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -340,7 +340,7 @@ public:
     char *toChars();
 
     Symbol *toSymbol();
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
     virtual void toDt(dt_t **pdt);
 
     TypeInfoDeclaration *isTypeInfoDeclaration() { return this; }
@@ -698,7 +698,7 @@ public:
 
     Symbol *toSymbol();
     Symbol *toThunkSymbol(int offset);  // thunk version
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
 
     FuncDeclaration *isFuncDeclaration() { return this; }
 

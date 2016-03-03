@@ -12,6 +12,9 @@
 	(d_finish_function): Don't send DECL_ABSTRACT_P functions to backend.
 	(d_finish_compilation): Mark all symbols as needed.
 
+	* d-objfile.cc: Remove redundant bool parameter from all lowering
+	routines for symbols, update all callers.
+
 2016-02-22  Eugene Wissner <belka@caraus.de>
 
 	* d-lang.cc (d_init): Remove short_double parameter from
