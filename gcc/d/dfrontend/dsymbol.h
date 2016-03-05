@@ -228,9 +228,6 @@ public:
     virtual Symbol *toSymbol();                 // to backend symbol
     virtual void toObjFile();                       // compile to .obj file
 
-    Symbol *toImport();                         // to backend import symbol
-    static Symbol *toImport(Symbol *s);         // to backend import symbol
-
     Symbol *toSymbolX(const char *prefix, int sclass, TYPE *t, const char *suffix);     // helper
 
     // Eliminate need for dynamic_cast

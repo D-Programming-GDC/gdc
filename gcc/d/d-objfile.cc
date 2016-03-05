@@ -126,7 +126,7 @@ Dsymbol::toObjFile()
       if (cfun != NULL)
 	context = current_function_decl;
       else
-	context = current_module_decl->toImport()->Stree;
+	context = build_import_decl(current_module_decl);
 
       if (imp->ident == NULL)
 	{
@@ -134,33 +134,31 @@ Dsymbol::toObjFile()
 	  for (size_t i = 0; i < imp->names.dim; i++)
 	    {
 	      AliasDeclaration *aliasdecl = imp->aliasdecls[i];
-	      Dsymbol *dsym = aliasdecl->toAlias();
-	      Identifier *alias = imp->aliases[i];
+	      tree decl = build_import_decl(aliasdecl);
 
-              // Skip over importing non-decls, templates, and tuples.
-	      if (dsym == aliasdecl || !dsym->isDeclaration()
-		  || dsym->isTupleDeclaration())
+              // Skip over unhandled imports.
+	      if (decl == NULL_TREE)
 		continue;
 
-	      tree decl = dsym->toImport()->Stree;
-	      set_decl_location (decl, imp);
+	      set_decl_location(decl, imp);
 
+	      Identifier *alias = imp->aliases[i];
 	      tree name = (alias != NULL)
-		? get_identifier (alias->string) : NULL_TREE;
+		? get_identifier(alias->string) : NULL_TREE;
 
-	      (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
+	      (*debug_hooks->imported_module_or_decl)(decl, name, context, false);
 	    }
 	}
       else
 	{
 	  // Importing the entire module.
-	  tree decl = imp->mod->toImport()->Stree;
-	  set_input_location (imp);
+	  tree decl = build_import_decl(imp->mod);
+	  set_input_location(imp);
 
 	  tree name = (imp->aliasId != NULL)
-	    ? get_identifier (imp->aliasId->string) : NULL_TREE;
+	    ? get_identifier(imp->aliasId->string) : NULL_TREE;
 
-	  (*debug_hooks->imported_module_or_decl) (decl, name, context, false);
+	  (*debug_hooks->imported_module_or_decl)(decl, name, context, false);
 	}
 
       return;
