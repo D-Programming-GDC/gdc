@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2015 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -35,6 +35,7 @@ enum LINK;
 enum TOK;
 enum MATCH;
 enum PURE;
+enum PINLINE;
 
 #define STCundefined    0LL
 #define STCstatic       1LL
@@ -85,6 +86,7 @@ enum PURE;
 #define STCnogc          0x40000000000LL // @nogc
 #define STCvolatile      0x80000000000LL // destined for volatile in the back end
 #define STCreturn        0x100000000000LL // 'return ref' for function parameters
+#define STCinference     0x200000000000LL // do attribute inference
 
 const StorageClass STCStorageClass = (STCauto | STCscope | STCstatic | STCextern | STCconst | STCfinal |
     STCabstract | STCsynchronized | STCdeprecated | STCoverride | STClazy | STCalias |
@@ -195,7 +197,6 @@ public:
     Dsymbol *aliassym;
     Dsymbol *overnext;          // next in overload list
     Dsymbol *import;            // !=NULL if unresolved internal alias for selective import
-    int inSemantic;
 
     AliasDeclaration(Loc loc, Identifier *ident, Type *type);
     AliasDeclaration(Loc loc, Identifier *ident, Dsymbol *s);
@@ -577,6 +578,8 @@ public:
     FuncDeclaration *fdrequire;         // function that does the in contract
     FuncDeclaration *fdensure;          // function that does the out contract
 
+    const char *mangleString;           // mangled symbol created from mangleExact()
+
     Identifier *outId;                  // identifier for out statement
     VarDeclaration *vresult;            // variable corresponding to outId
     LabelDsymbol *returnLabel;          // where the return goes
@@ -598,6 +601,7 @@ public:
     bool naked;                         // true if naked
     ILS inlineStatusStmt;
     ILS inlineStatusExp;
+    PINLINE inlining;
 
     CompiledCtfeFunction *ctfeCode;     // Compiled code for interpreter
     int inlineNest;                     // !=0 if nested inline
@@ -668,6 +672,7 @@ public:
     const char *toPrettyChars(bool QualifyTypes = false);
     const char *toFullSignature();  // for diagnostics, e.g. 'int foo(int x, int y) pure'
     bool isMain();
+    bool isCMain();
     bool isWinMain();
     bool isDllMain();
     bool isExport();

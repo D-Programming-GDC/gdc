@@ -1,3 +1,43 @@
+2016-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update to D front-end version 2.068.
+	* d-codegen.cc (insert_type_modifiers): Don't build TYPE_QUAL_VOLATILE
+	types.  Set TYPE_SHARED instead.
+	(insert_aggregate_field): Propagate TYPE_SHARED to TREE_ADDRESSABLE.
+	(array_bounds_check): Use BOUNDSCHECK interface.
+	* d-lang.cc (d_init_options): Likewise.
+	(d_init): Likewise.
+	(d_handle_option): Likewise.
+	(d_post_options): Likewise.
+	* d-decls.cc (VarDeclaration::toSymbol): Propagate TYPE_SHARED_to
+	TREE_ADDRESSABLE.
+	* d-objfile.cc (ClassDeclaration::toObjFile): Make overload shadowing
+	an error.  Remove call to _d_hidden_func.
+	(TypeInfoDeclaration::toObjFile): Updated template emission rules.
+	(FuncDeclaration::toObjFile): Likewise.
+	* d-port.cc (Port::readwordLE): New function.
+	(Port::readwordBE): New function.
+	(Port::readlongLE): New function.
+	(Port::readlongBE): New function.
+	* d-todt.cc (dt_container2): Handle error_mark_node.
+	(dt_container): Likewise.
+	(TypeInfoStructDeclaration::toDt): Updated template emission rules.
+	* d-typinf.cc (genTypeInfo): Likewise.
+	(getTypeInfo): Remove function.
+	(getTypeInfoType): New function.
+	(isSpeculativeType): New function.
+	* d-tree.h (TYPE_SHARED): New macro.
+	* expr.cc (ExprVisitor::visit(CondExp)): Don't generate dtors in
+	condition expression.
+	(ExprVisitor::visit(AssignExp)): Update for frontend changes.
+	(ExprVisitor::visit(DeleteExp)): Likewise.
+	(ExprVisitor::visit(CallExp)): Likewise.
+	(ExprVisitor::visit(DelegateExp)): Likewise.
+	(ExprVisitor::visit(TypeidExp)): New function.
+	* lang.opt (bounds_check_set_manually): Remove variable.
+	(ftransition=complex): New option.
+	* runtime.def (HIDDEN_FUNC): Remove runtime function.
+
 2016-06-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_alignment_field): New function.

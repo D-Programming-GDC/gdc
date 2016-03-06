@@ -14,9 +14,6 @@ Authors:   $(WEB digitalmars.com, Walter Bright),
            $(WEB erdani.org, Andrei Alexandrescu),
            Alex Rønne Petersen
  */
-/* NOTE: This file has been patched from the original DMD distribution to
-   work with the GDC compiler.
- */
 module std.stdio;
 
 public import core.stdc.stdio;
@@ -43,34 +40,35 @@ else version (CRuntime_DigitalMars)
     version = DIGITAL_MARS_STDIO;
 }
 
-version (linux)
+version (CRuntime_Glibc)
 {
     // Specific to the way Gnu C does stdio
     version = GCC_IO;
+    version = HAS_GETDELIM;
 }
 
 version (OSX)
 {
     version = GENERIC_IO;
+    version = HAS_GETDELIM;
 }
 
 version (FreeBSD)
 {
     version = GENERIC_IO;
+    version = HAS_GETDELIM;
 }
 
 version (Solaris)
 {
     version = GENERIC_IO;
+    version = NO_GETDELIM;
 }
 
-version (Android)
+version (CRuntime_Bionic)
 {
     version = GENERIC_IO;
-}
-version (MinGW)
-{
-    version = MINGW_IO;
+    version = NO_GETDELIM;
 }
 
 version(Windows)
@@ -114,46 +112,6 @@ version (DIGITAL_MARS_STDIO)
 
     alias _setmode = setmode;
     enum _O_BINARY = 0x8000;
-    int _fileno(FILE* f) { return f._file; }
-    alias fileno = _fileno;
-}
-else version (MINGW_IO)
-{
-    extern (C) nothrow @nogc
-    {
-        int setmode(int, int);
-        intptr_t _get_osfhandle(int fd);
-        FILE* _fdopen(int, const (char)*);
-    }
-
-    void flockfile(FILE* fp) { }
-
-    void funlockfile(FILE* fp) { }
-
-    int fputc_unlocked(int c, _iobuf* fp) { return fputc(c, cast(shared) fp); }
-    int fputwc_unlocked(int c, _iobuf* fp)
-    {
-        return fputwc(cast(wchar_t)c, cast(shared) fp);
-    }
-    int fgetc_unlocked(_iobuf* fp) { return fgetc(cast(shared) fp); }
-    int fgetwc_unlocked(_iobuf* fp) { return fgetwc(cast(shared) fp); }
-
-    alias FPUTC = fputc_unlocked;
-    alias FPUTWC = fputwc_unlocked;
-    alias FGETC = fgetc_unlocked;
-    alias FGETWC = fgetwc_unlocked;
-
-    alias FLOCK = flockfile;
-    alias FUNLOCK = funlockfile;
-
-    alias _setmode = setmode;
-    enum
-    {
-        _O_RDONLY = 0x0000,
-        _O_APPEND = 0x0008,
-        _O_TEXT   = 0x4000,
-        _O_BINARY = 0x8000,
-    }
     int _fileno(FILE* f) { return f._file; }
     alias fileno = _fileno;
 }
@@ -208,8 +166,6 @@ else version (GCC_IO)
         int fgetwc_unlocked(_iobuf*);
         void flockfile(FILE*);
         void funlockfile(FILE*);
-        ptrdiff_t getline(char**, size_t*, FILE*);
-        ptrdiff_t getdelim (char**, size_t*, int, FILE*);
 
         private size_t fwrite_unlocked(const(void)* ptr,
                 size_t size, size_t n, _iobuf *stream);
@@ -258,6 +214,13 @@ else version (GENERIC_IO)
 else
 {
     static assert(0, "unsupported C I/O system");
+}
+
+version(HAS_GETDELIM) extern(C) nothrow @nogc
+{
+    ptrdiff_t getdelim(char**, size_t*, int, FILE*);
+    // getline() always comes together with getdelim()
+    ptrdiff_t getline(char**, size_t*, FILE*);
 }
 
 //------------------------------------------------------------------------------
@@ -374,12 +337,14 @@ struct File
 {
     import std.traits : isScalarType, isArray;
     import std.range.primitives : ElementEncodingType;
+    enum Orientation { unknown, narrow, wide }
 
     private struct Impl
     {
         FILE * handle = null; // Is null iff this Impl is closed by another File
         uint refs = uint.max / 2;
         bool isPopened; // true iff the stream has been created by popen()
+        Orientation orientation;
     }
     private Impl* _p;
     private string _name;
@@ -394,6 +359,7 @@ struct File
         _p.handle = handle;
         _p.refs = refs;
         _p.isPopened = isPopened;
+        _p.orientation = Orientation.unknown;
         _name = name;
     }
 
@@ -420,6 +386,20 @@ Throws: $(D ErrnoException) if the file could not be opened.
                         text("Cannot open file `", name, "' in mode `",
                                 stdioOpenmode, "'")),
                 name);
+
+        // MSVCRT workaround (issue 14422)
+        version (MICROSOFT_STDIO)
+        {
+            bool append, update;
+            foreach (c; stdioOpenmode)
+                if (c == 'a')
+                    append = true;
+                else
+                if (c == '+')
+                    update = true;
+            if (append && !update)
+                seek(size);
+        }
     }
 
     ~this() @safe
@@ -714,6 +694,8 @@ _clearerr) for the file handle.
     }
 
 /**
+Flushes the C $(D FILE) buffers.
+
 Calls $(WEB cplusplus.com/reference/clibrary/cstdio/_fflush.html, _fflush)
 for the file handle.
 
@@ -742,6 +724,33 @@ Throws: $(D Exception) if the file is not opened or if the call to $(D fflush) f
     }
 
 /**
+Forces any data buffered by the OS to be written to disk.
+Call $(LREF flush) before calling this function to flush the C $(D FILE) buffers first.
+
+This function calls
+$(WEB msdn.microsoft.com/en-us/library/windows/desktop/aa364439%28v=vs.85%29.aspx,
+$(D FlushFileBuffers)) on Windows and
+$(WEB pubs.opengroup.org/onlinepubs/7908799/xsh/fsync.html,
+$(D fsync)) on POSIX for the file handle.
+
+Throws: $(D Exception) if the file is not opened or if the OS call fails.
+ */
+    void sync() @trusted
+    {
+        import std.exception : enforce, errnoEnforce;
+
+        enforce(isOpen, "Attempting to sync() an unopened file");
+
+        version (Windows)
+            wenforce(FlushFileBuffers(windowsHandle), "FlushFileBuffers failed");
+        else
+        {
+            import core.sys.posix.unistd : fsync;
+            errnoEnforce(fsync(fileno) == 0, "fsync failed");
+        }
+    }
+
+/**
 Calls $(WEB cplusplus.com/reference/clibrary/cstdio/fread.html, fread) for the
 file handle. The number of items to read and the size of
 each item is inferred from the size and type of the input array, respectively.
@@ -757,9 +766,10 @@ $(D rawRead) always reads in binary mode on Windows.
  */
     T[] rawRead(T)(T[] buffer)
     {
-        import std.exception : enforce, errnoEnforce;
+        import std.exception : Exception, errnoEnforce;
 
-        enforce(buffer.length, "rawRead must take a non-empty buffer");
+        if (!buffer.length)
+            throw new Exception("rawRead must take a non-empty buffer");
         version(Windows)
         {
             immutable fd = ._fileno(_p.handle);
@@ -775,10 +785,15 @@ $(D rawRead) always reads in binary mode on Windows.
                 scope(exit) __fhnd_info[fd] = info;
             }
         }
-        immutable result =
+        immutable freadResult =
             fread(buffer.ptr, T.sizeof, buffer.length, _p.handle);
-        errnoEnforce(!error);
-        return result ? buffer[0 .. result] : null;
+        assert (freadResult <= buffer.length); // fread return guarantee
+        if (freadResult != buffer.length) // error or eof
+        {
+            errnoEnforce(!error);
+            return buffer[0 .. freadResult];
+        }
+        return buffer;
     }
 
     unittest
@@ -896,7 +911,7 @@ Throws: $(D Exception) if the file is not opened.
         {
             import std.conv : text;
 
-            version (Android)
+            version (CRuntime_Bionic)
                 auto bigOffset = int.max - 100;
             else
                 auto bigOffset = cast(ulong) int.max + 100;
@@ -1457,7 +1472,14 @@ for every line.
         static if (is(C == char))
         {
             enforce(_p && _p.handle, "Attempt to read from an unopened file.");
-            return readlnImpl(_p.handle, buf, terminator);
+            if (_p.orientation == Orientation.unknown)
+            {
+                import core.stdc.wchar_ : fwide;
+                auto w = fwide(_p.handle, 0);
+                if (w < 0) _p.orientation = Orientation.narrow;
+                else if (w > 0) _p.orientation = Orientation.wide;
+            }
+            return readlnImpl(_p.handle, buf, terminator, _p.orientation);
         }
         else
         {
@@ -1636,13 +1658,12 @@ Allows to directly use range operations on lines of a file.
     private:
         import std.typecons;
 
-        /* Ref-counting stops the source range's ByLineImpl
+        /* Ref-counting stops the source range's Impl
          * from getting out of sync after the range is copied, e.g.
          * when accessing range.front, then using std.range.take,
          * then accessing range.front again. */
-        alias Impl = RefCounted!(ByLineImpl!(Char, Terminator),
-            RefCountedAutoInitialize.no);
-        Impl impl;
+        alias PImpl = RefCounted!(Impl, RefCountedAutoInitialize.no);
+        PImpl impl;
 
         static if (isScalarType!Terminator)
             enum defTerm = '\n';
@@ -1653,7 +1674,7 @@ Allows to directly use range operations on lines of a file.
         this(File f, KeepTerminator kt = KeepTerminator.no,
                 Terminator terminator = defTerm)
         {
-            impl = Impl(f, kt, terminator);
+            impl = PImpl(f, kt, terminator);
         }
 
         @property bool empty()
@@ -1670,78 +1691,67 @@ Allows to directly use range operations on lines of a file.
         {
             impl.refCountedPayload.popFront();
         }
-    }
 
-    private struct ByLineImpl(Char, Terminator)
-    {
     private:
-        File file;
-        Char[] line;
-        Terminator terminator;
-        KeepTerminator keepTerminator;
-
-    public:
-        this(File f, KeepTerminator kt, Terminator terminator)
+        struct Impl
         {
-            file = f;
-            this.terminator = terminator;
-            keepTerminator = kt;
-            popFront();
-        }
+        private:
+            File file;
+            Char[] line;
+            Char[] buffer;
+            Terminator terminator;
+            KeepTerminator keepTerminator;
 
-        // Range primitive implementations.
-        @property bool empty()
-        {
-            if (line !is null) return false;
-            if (!file.isOpen) return true;
-
-            // First read ever, must make sure stream is not empty. We
-            // do so by reading a character and putting it back. Doing
-            // so is guaranteed to work on all files opened in all
-            // buffering modes.
-            auto fp = file.getFP();
-            auto c = fgetc(fp);
-            if (c == -1)
+        public:
+            this(File f, KeepTerminator kt, Terminator terminator)
             {
-                file.detach();
-                return true;
+                file = f;
+                this.terminator = terminator;
+                keepTerminator = kt;
+                popFront();
             }
-            ungetc(c, fp) == c
-                || assert(false, "Bug in cstdlib implementation");
-            return false;
-        }
 
-        @property Char[] front()
-        {
-            return line;
-        }
-
-        void popFront()
-        {
-            import std.algorithm : endsWith;
-
-            assert(file.isOpen);
-            assumeSafeAppend(line);
-            file.readln(line, terminator);
-            if (line.empty)
+            // Range primitive implementations.
+            @property bool empty()
             {
-                file.detach();
-                line = null;
+                return line is null;
             }
-            else if (keepTerminator == KeepTerminator.no
-                    && std.algorithm.endsWith(line, terminator))
+
+            @property Char[] front()
             {
-                static if (isScalarType!Terminator)
-                    enum tlen = 1;
-                else static if (isArray!Terminator)
+                return line;
+            }
+
+            void popFront()
+            {
+                import std.algorithm : endsWith;
+                assert(file.isOpen);
+                line = buffer;
+                file.readln(line, terminator);
+                if (line.length > buffer.length)
                 {
-                    static assert(
-                        is(Unqual!(ElementEncodingType!Terminator) == Char));
-                    const tlen = terminator.length;
+                    buffer = line;
                 }
-                else
-                    static assert(false);
-                line = line.ptr[0 .. line.length - tlen];
+                if (line.empty)
+                {
+                    file.detach();
+                    line = null;
+                }
+                else if (keepTerminator == KeepTerminator.no
+                        && std.algorithm.endsWith(line, terminator))
+                {
+                    static if (isScalarType!Terminator)
+                        enum tlen = 1;
+                    else static if (isArray!Terminator)
+                    {
+                        static assert(
+                            is(Unqual!(ElementEncodingType!Terminator) == Char));
+                        const tlen = terminator.length;
+                    }
+                    else
+                        static assert(false);
+                    line = line.ptr[0 .. line.length - tlen];
+                }
             }
         }
     }
@@ -1822,6 +1832,22 @@ the contents may well have changed).
         return ByLine!(Char, Terminator)(this, keepTerminator, terminator);
     }
 
+    unittest
+    {
+        auto deleteme = testFilename();
+        std.file.write(deleteme, "hi");
+        scope(success) std.file.remove(deleteme);
+
+        import std.typetuple;
+        foreach (T; TypeTuple!(char, wchar, dchar))
+        {
+            auto blc = File(deleteme).byLine!(T, T);
+            assert(blc.front == "hi");
+            // check front is cached
+            assert(blc.front is blc.front);
+        }
+    }
+
     private struct ByLineCopy(Char, Terminator)
     {
     private:
@@ -1859,14 +1885,14 @@ the contents may well have changed).
 
     private struct ByLineCopyImpl(Char, Terminator)
     {
-        ByLineImpl!(Unqual!Char, Terminator) impl;
+        ByLine!(Unqual!Char, Terminator).Impl impl;
         bool gotFront;
         Char[] line;
 
     public:
         this(File f, KeepTerminator kt, Terminator terminator)
         {
-            impl = ByLineImpl!(Unqual!Char, Terminator)(f, kt, terminator);
+            impl = ByLine!(Unqual!Char, Terminator).Impl(f, kt, terminator);
         }
 
         @property bool empty()
@@ -2045,7 +2071,7 @@ $(XREF file,readText)
             auto file = File(deleteme, "w+");
             scope(success) std.file.remove(deleteme);
         }
-        else version(Android)
+        else version(CRuntime_Bionic)
         {
             static import std.file;
 
@@ -2240,6 +2266,20 @@ import std.algorithm, std.stdio;
 void main()
 {
     stdin.byChunk(1024 * 1024).copy(stdout.lockingTextWriter());
+}
+---
+
+$(XREF_PACK algorithm,iteration,joiner) can be used to join chunks together into
+a single range lazily.
+Example:
+---
+import std.algorithm, std.stdio;
+void main()
+{
+    //Range of ranges
+    static assert(is(typeof(stdin.byChunk(4096).front) == ubyte[]));
+    //Range of elements
+    static assert(is(typeof(stdin.byChunk(4096).joiner.front) == ubyte));
 }
 ---
 
@@ -2950,7 +2990,7 @@ void writeln(T...)(T args)
     {
         import std.exception : enforce;
 
-        enforce(fputc('\n', .stdout._p.handle) == '\n');
+        enforce(fputc('\n', .trustedStdout._p.handle) == '\n');
     }
     else static if (T.length == 1 &&
                     is(typeof(args[0]) : const(char)[]) &&
@@ -2980,7 +3020,7 @@ void writeln(T...)(T args)
     }
 }
 
-unittest
+@safe unittest
 {
     // Just make sure the call compiles
     if (false) writeln();
@@ -3805,7 +3845,7 @@ Initialize with a message and an error code.
             import core.stdc.string : strerror_r;
 
             char[256] buf = void;
-            version (linux)
+            version (CRuntime_Glibc)
             {
                 auto s = core.stdc.string.strerror_r(errno, buf.ptr, buf.length);
             }
@@ -3910,7 +3950,7 @@ unittest
 
 // Private implementation of readln
 version (DIGITAL_MARS_STDIO)
-private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
+private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator, File.Orientation /*ignored*/)
 {
     import core.memory;
     import core.stdc.string : memcpy;
@@ -4055,7 +4095,7 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
 }
 
 version (MICROSOFT_STDIO)
-private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
+private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator, File.Orientation /*ignored*/)
 {
     import core.memory;
     import std.array : appender, uninitializedArray;
@@ -4093,89 +4133,15 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
     return buf.length;
 }
 
-version (MINGW_IO)
-private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
-{
-    FLOCK(fps);
-    scope(exit) FUNLOCK(fps);
-    auto fp = cast(_iobuf*)fps;
-    if (fwide(fps, 0) > 0)
-    {   /* Stream is in wide characters
-         * Read them and convert to chars.
-         */
-        version (Windows)
-        {
-            buf.length = 0;
-            for (int c; (c = FGETWC(fp)) != -1; )
-            {
-                if ((c & ~0x7F) == 0)
-                {   buf ~= c;
-                    if (c == terminator)
-                        break;
-                }
-                else
-                {
-                    if (c >= 0xD800 && c <= 0xDBFF)
-                    {
-                        int c2 = void;
-                        if ((c2 = FGETWC(fp)) != -1 ||
-                                c2 < 0xDC00 && c2 > 0xDFFF)
-                        {
-                            StdioException("unpaired UTF-16 surrogate");
-                        }
-                        c = ((c - 0xD7C0) << 10) + (c2 - 0xDC00);
-                    }
-                    std.utf.encode(buf, c);
-                }
-            }
-            if (ferror(cast(shared)fp))
-                StdioException();
-            return buf.length;
-        }
-        else version (Posix)
-        {
-            buf.length = 0;
-            for (int c; (c = FGETWC(fp)) != -1; )
-            {
-                if ((c & ~0x7F) == 0)
-                    buf ~= cast(char)c;
-                else
-                    std.utf.encode(buf, cast(dchar)c);
-                if (c == terminator)
-                    break;
-            }
-            if (ferror(fps))
-                StdioException();
-            return buf.length;
-        }
-        else
-        {
-            static assert(0);
-        }
-    }
-
-    // Narrow stream
-    buf.length = 0;
-    for (int c; (c = FGETC(fp)) != -1; )
-    {
-        buf ~= cast(char)c;
-        if (c == terminator)
-            break;
-    }
-    if (ferror(fps))
-        StdioException();
-    return buf.length;
-}
-
-version (GCC_IO)
-private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
+version (HAS_GETDELIM)
+private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator, File.Orientation orientation)
 {
     import core.memory;
     import core.stdc.stdlib : free;
     import core.stdc.wchar_ : fwide;
     import std.utf : encode;
 
-    if (fwide(fps, 0) > 0)
+    if (orientation == File.Orientation.wide)
     {
         /* Stream is in wide characters.
          * Read them and convert to chars.
@@ -4234,10 +4200,20 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
         }
     }
 
-    char *lineptr = null;
-    size_t n = 0;
+    static char *lineptr = null;
+    static size_t n = 0;
+    scope(exit)
+    {
+        if (n > 128 * 1024)
+        {
+            // Bound memory used by readln
+            free(lineptr);
+            lineptr = null;
+            n = 0;
+        }
+    }
+
     auto s = getdelim(&lineptr, &n, terminator, fps);
-    scope(exit) free(lineptr);
     if (s < 0)
     {
         if (ferror(fps))
@@ -4245,10 +4221,9 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
         buf.length = 0;                // end of file
         return 0;
     }
-    buf = buf.ptr[0 .. GC.sizeOf(buf.ptr)];
-    if (s <= buf.length)
+    if (s <= buf.length || s <= GC.sizeOf(buf.ptr))
     {
-        buf.length = s;
+        buf = buf.ptr[0 .. s];
         buf[] = lineptr[0 .. s];
     }
     else
@@ -4258,8 +4233,8 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
     return s;
 }
 
-version (GENERIC_IO)
-private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
+version (NO_GETDELIM)
+private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator, File.Orientation orientation)
 {
     import core.stdc.wchar_ : fwide;
     import std.utf : encode;
@@ -4267,7 +4242,7 @@ private size_t readlnImpl(FILE* fps, ref char[] buf, dchar terminator = '\n')
     FLOCK(fps);
     scope(exit) FUNLOCK(fps);
     auto fp = cast(_iobuf*)fps;
-    if (fwide(fps, 0) > 0)
+    if (orientation == File.Orientation.wide)
     {
         /* Stream is in wide characters.
          * Read them and convert to chars.

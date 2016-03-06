@@ -190,9 +190,9 @@ VarDeclaration::toSymbol()
 	    csym->Sreadonly = true;
 	}
 
-      // Propagate volatile.
-      if (TYPE_VOLATILE (TREE_TYPE (decl)))
-	TREE_THIS_VOLATILE (decl) = 1;
+      // Propagate shared.
+      if (TYPE_SHARED (TREE_TYPE (decl)))
+	TREE_ADDRESSABLE (decl) = 1;
 
       // Mark compiler generated temporaries as artificial.
       if (storage_class & STCtemp)

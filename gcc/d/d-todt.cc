@@ -25,6 +25,7 @@
 #include "dfrontend/aggregate.h"
 #include "dfrontend/expression.h"
 #include "dfrontend/declaration.h"
+#include "dfrontend/template.h"
 #include "dfrontend/ctfe.h"
 #include "dfrontend/target.h"
 
@@ -106,6 +107,9 @@ dt_container2(dt_t *dt)
 
       FOR_EACH_CONSTRUCTOR_VALUE(CONSTRUCTOR_ELTS(dt), i, value)
 	{
+	  if (value == error_mark_node)
+	    return error_mark_node;
+
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE(value));
 	  tree size = TYPE_SIZE_UNIT(TREE_TYPE(value));
 
@@ -166,22 +170,27 @@ dt_container(dt_t **pdt, Type *type, dt_t *dt)
 	  CONSTRUCTOR_ELTS(dt) = elts;
 	}
 
-      TREE_TYPE(dt) = build_ctype(type);
-      TREE_CONSTANT(dt) = 1;
-      TREE_STATIC(dt) = 1;
+      if (dt != error_mark_node)
+	{
+	  TREE_TYPE(dt) = build_ctype(type);
+	  TREE_CONSTANT(dt) = 1;
+	  TREE_STATIC(dt) = 1;
+	}
 
       return dt_cons(pdt, dt);
     }
   else if (tb->ty == Tstruct)
     {
       dt = dt_container2(dt);
-      TREE_TYPE(dt) = build_ctype(type);
+      if (dt != error_mark_node)
+	TREE_TYPE(dt) = build_ctype(type);
       return dt_cons(pdt, dt);
     }
   else if (tb->ty == Tclass)
     {
       dt = dt_container2(dt);
-      TREE_TYPE(dt) = TREE_TYPE(build_ctype(type));
+      if (dt != error_mark_node)
+	TREE_TYPE(dt) = TREE_TYPE(build_ctype(type));
       return dt_cons(pdt, dt);
     }
 
@@ -1084,6 +1093,31 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
   if (!sd->members)
     return;
 
+  // Send member functions to backend here.
+  TemplateInstance *ti = sd->isInstantiated();
+  if (ti && !ti->needsCodegen())
+    {
+      gcc_assert(ti->minst || sd->requestTypeInfo);
+
+      if (sd->xeq && sd->xeq != StructDeclaration::xerreq)
+	sd->xeq->toObjFile();
+
+      if (sd->xcmp && sd->xcmp != StructDeclaration::xerrcmp)
+	sd->xcmp->toObjFile();
+
+      if (FuncDeclaration *ftostr = search_toString(sd))
+	ftostr->toObjFile();
+
+      if (sd->xhash)
+	sd->xhash->toObjFile();
+
+      if (sd->postblit)
+	sd->postblit->toObjFile();
+
+      if (sd->dtor)
+	sd->dtor->toObjFile();
+    }
+
   // Name of the struct declaration.
   dt_cons (pdt, d_array_string (sd->toPrettyChars()));
 
@@ -1237,9 +1271,9 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
   for (size_t i = 0; i < tu->arguments->dim; i++)
     {
       Parameter *arg = (*tu->arguments)[i];
-      Expression *e = getTypeInfo(arg->type, NULL);
-      e = e->ctfeInterpret();
-      dt_cons(&dt, build_expr(e, true));
+      genTypeInfo(arg->type, NULL);
+      Symbol *s = arg->type->vtinfo->toSymbol();
+      dt_cons(&dt, build_address (s->Stree));
     }
 
   Symbol *s = new Symbol();

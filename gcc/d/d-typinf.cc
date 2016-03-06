@@ -22,6 +22,7 @@
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
 #include "dfrontend/scope.h"
+#include "dfrontend/template.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/aggregate.h"
 
@@ -101,13 +102,9 @@ genTypeInfo(Type *type, Scope *sc)
 	{
 	  if (sc)
 	    {
-	      if (!sc->func || !sc->func->inNonRoot())
-		{
-		  // Find module that will go all the way to an object file
-		  Module *m = sc->module->importedFrom;
-		  m->members->push(t->vtinfo);
-		  semanticTypeInfo(sc, t);
-		}
+	      // Find module that will go all the way to an object file
+	      Module *m = sc->module->importedFrom;
+	      m->members->push(t->vtinfo);
 	    }
 	  else
 	    t->vtinfo->toObjFile();
@@ -120,15 +117,97 @@ genTypeInfo(Type *type, Scope *sc)
   gcc_assert(type->vtinfo != NULL);
 }
 
-Expression *
-getTypeInfo(Type *type, Scope *sc)
+Type *
+getTypeInfoType(Type *type, Scope *sc)
 {
   gcc_assert(type->ty != Terror);
   genTypeInfo(type, sc);
-  Expression *e = VarExp::create(Loc(), type->vtinfo);
-  e = e->addressOf();
-  // do this so we don't get redundant dereference
-  e->type = type->vtinfo->type;
-  return e;
+  return type->vtinfo->type;
+}
+
+// Bugzilla 14425: TypeInfo_Struct would refer the members of struct
+// (e.g. opEquals via xopEquals field), so if it's instantiated in
+// speculative context, TypeInfo creation should also be stopped to
+// avoid 'unresolved symbol' linker errors.
+
+bool
+isSpeculativeType(Type *t)
+{
+  class SpeculativeTypeVisitor : public Visitor
+  {
+  public:
+    bool result;
+
+    SpeculativeTypeVisitor() : result(false) {}
+
+    void visit(Type *t)
+    {
+      Type *tb = t->toBasetype();
+      if (tb != t)
+	tb->accept(this);
+    }
+
+    void visit(TypeNext *t)
+    {
+      if (t->next)
+	t->next->accept(this);
+    }
+
+    void visit(TypeBasic *) { }
+
+    void visit(TypeVector *t)
+    {
+      t->basetype->accept(this);
+    }
+
+    void visit(TypeAArray *t)
+    {
+      t->index->accept(this);
+      visit((TypeNext *)t);
+    }
+
+    void visit(TypeFunction *t)
+    {
+      visit((TypeNext *)t);
+      // Currently TypeInfo_Function doesn't store parameter types.
+    }
+
+    void visit(TypeStruct *t)
+    {
+      StructDeclaration *sd = t->sym;
+      if (TemplateInstance *ti = sd->isInstantiated())
+	{
+	  if (!ti->needsCodegen())
+	    {
+	      if (ti->minst || sd->requestTypeInfo)
+		return;
+
+	      result |= true;
+	      return;
+	    }
+	}
+    }
+
+    void visit(TypeClass *) { }
+
+    void visit(TypeTuple *t)
+    {
+      if (t->arguments)
+	{
+	  for (size_t i = 0; i < t->arguments->dim; i++)
+	    {
+	      Type *tprm = (*t->arguments)[i]->type;
+	      if (tprm)
+		tprm->accept(this);
+	      if (result)
+		return;
+	    }
+	}
+    }
+  };
+
+  SpeculativeTypeVisitor v;
+  t->accept(&v);
+  return v.result;
 }
 

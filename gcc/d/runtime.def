@@ -194,10 +194,6 @@ DEF_D_RUNTIME(SWITCH_DSTRING, "_d_switch_dstring", P2(ARRAY(DSTRING), DSTRING), 
 // and yet none of the existing cases matched.
 DEF_D_RUNTIME(SWITCH_ERROR, "_d_switch_error", P2(STRING, UINT), VOID, ECF_NORETURN)
 
-// Used as the symbol to instead put in a class vtable if a method doesn't
-// override, but instead conflicts with another method found in a base class.
-DEF_D_RUNTIME(HIDDEN_FUNC, "_d_hidden_func", P1(VOIDPTR), VOID, ECF_NORETURN)
-
 // Remove helper macros
 #undef CONST
 #undef ARRAY
