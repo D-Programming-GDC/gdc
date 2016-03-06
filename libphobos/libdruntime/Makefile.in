@@ -212,7 +212,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 OUR_CFLAGS = @DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
-D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) -I ./$(host_alias) -I .
+D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) -I .
 ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -220,17 +220,18 @@ SUFFIXES = .d
 
 #--------------------------------------#
 # GDC Runtime
-BASE_OBJS = object_.o
+BASE_OBJS = object.o
 RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
 	     rt/arraycast.o rt/arraycat.o rt/cast_.o rt/critical_.o \
-	     rt/deh.o rt/dmain2.o rt/minfo.o rt/memory.o rt/invariant.o \
-	     rt/lifetime.o rt/monitor_.o rt/obj.o rt/qsort.o rt/switch_.o \
-	     rt/tlsgc.o
+	     rt/config.o rt/deh.o rt/dmain2.o rt/minfo.o rt/memory.o \
+	     rt/invariant.o rt/lifetime.o rt/monitor_.o rt/obj.o rt/qsort.o \
+	     rt/switch_.o rt/tlsgc.o
 
 CORE_OBJS = core/atomic.o core/bitop.o core/checkedint.o core/cpuid.o \
 	  core/demangle.o core/exception.o core/math.o core/memory.o \
 	  core/runtime.o core/simd.o core/thread.o core/threadasm.o \
-	  core/time.o core/vararg.o core/internal/traits.o \
+	  core/time.o core/vararg.o core/internal/convert.o \
+	  core/internal/hash.o core/internal/traits.o \
 	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
 	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
 	  core/sync/semaphore.o
@@ -239,7 +240,8 @@ GCC_OBJS = gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o \
 	 gcc/libbacktrace.o gcc/unwind/pe.o
 
 UTIL_OBJS = rt/util/array.o rt/util/hash.o rt/util/random.o rt/util/string.o \
-	  rt/util/utf.o rt/util/container/array.o rt/util/container/common.o \
+	  rt/util/typeinfo.o rt/util/utf.o \
+	  rt/util/container/array.o rt/util/container/common.o \
 	  rt/util/container/hashtab.o rt/util/container/treap.o
 
 TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
@@ -252,12 +254,12 @@ TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
 
 # OS specific
 RT_STDC_OBJS = core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
-	     core/stdc/errno_.o core/stdc/math.o core/stdc/signal.o \
-	     core/stdc/stdarg.o core/stdc/stdio.o core/stdc/stdlib.o \
-	     core/stdc/stdint.o core/stdc/stddef.o core/stdc/string.o \
-	     core/stdc/time.o core/stdc/wchar_.o
+	     core/stdc/errno_.o core/stdc/fenv.o core/stdc/math.o \
+	     core/stdc/signal.o core/stdc/stdarg.o core/stdc/stdio.o \
+	     core/stdc/stdlib.o core/stdc/stdint.o core/stdc/stddef.o \
+	     core/stdc/string.o core/stdc/time.o core/stdc/wchar_.o
 
-RT_LINUX_OBJS = 
+RT_LINUX_OBJS = core/sys/linux/stdio.o core/sys/linux/tipc.o
 RT_FREEBSD_OBJS = core/sys/freebsd/execinfo.o core/sys/freebsd/sys/event.o
 RT_OSX_OBJS = core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
 	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o \
@@ -270,9 +272,13 @@ RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
 	      core/sys/posix/sys/utsname.o core/sys/posix/sys/wait.o \
 	      core/sys/posix/arpa/inet.o core/sys/posix/netinet/in_.o
 
-RT_WINDOWS_OBJS = core/sys/windows/dbghelp.o core/sys/windows/dll.o \
-		core/sys/windows/stacktrace.o core/sys/windows/threadaux.o \
-		core/sys/windows/windows.o
+RT_SOLARIS_OBJS = core/sys/solaris/sys/priocntl.o core/sys/solaris/sys/types.o \
+		core/sys/solaris/sys/procset.o
+
+RT_WINDOWS_OBJS = core/sys/windows/com.o core/sys/windows/dbghelp.o \
+		core/sys/windows/dll.o core/sys/windows/stacktrace.o \
+		core/sys/windows/stat.o core/sys/windows/threadaux.o \
+		core/sys/windows/windows.o core/sys/windows/winsock2.o
 
 ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
 
@@ -485,15 +491,16 @@ install-exec-local: libgdruntime.a
 
 install-data-local: libgdruntime.a
 	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
-	for i in __entrypoint.di object.di; do \
+	for i in __entrypoint.di object.d; do \
 	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
 	done
 	for i in core core/internal core/stdc core/sync \
 	    core/sys/freebsd core/sys/freebsd/sys \
 	    core/sys/linux core/sys/linux/sys \
-	    core/sys/osx core/sys/osx/mach \
+	    core/sys/osx core/sys/osx/mach core/sys/osx/sys \
 	    core/sys/posix core/sys/posix/arpa core/sys/posix/net \
 	    core/sys/posix/netinet core/sys/posix/sys \
+	    core/sys/solaris core/sys/solaris/sys \
 	    core/sys/windows; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    for f in $(srcdir)/$$i/*.d; do \

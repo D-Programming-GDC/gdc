@@ -36,8 +36,6 @@ class TypeInfoClassDeclaration;
 class VarDeclaration;
 #ifdef IN_GCC
 typedef union tree_node dt_t;
-#else
-struct dt_t;
 #endif
 
 enum Sizeok
@@ -61,7 +59,6 @@ FuncDeclaration *buildOpEquals(StructDeclaration *sd, Scope *sc);
 FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc);
 FuncDeclaration *buildXopCmp(StructDeclaration *sd, Scope *sc);
 FuncDeclaration *buildXtoHash(StructDeclaration *ad, Scope *sc);
-FuncDeclaration *buildCpCtor(StructDeclaration *sd, Scope *sc);
 FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc);
 FuncDeclaration *buildDtor(AggregateDeclaration *ad, Scope *sc);
 FuncDeclaration *buildInv(AggregateDeclaration *ad, Scope *sc);
@@ -71,13 +68,14 @@ class AggregateDeclaration : public ScopeDsymbol
 public:
     Type *type;
     StorageClass storage_class;
-    PROT protection;
+    Prot protection;
     unsigned structsize;        // size of struct
     unsigned alignsize;         // size of struct for alignment purposes
     VarDeclarations fields;     // VarDeclaration fields
     Sizeok sizeok;         // set when structsize contains valid data
     Dsymbol *deferred;          // any deferred semantic2() or semantic3() symbol
     bool isdeprecated;          // true if deprecated
+    bool mutedeprecation;       // true while analysing RTInfo to avoid deprecation message
 
     Dsymbol *enclosing;         /* !=NULL if is nested
                                  * pointing to the dsymbol that directly enclosing it.
@@ -117,22 +115,25 @@ public:
     int firstFieldInUnion(int indx); // first field in union that includes indx
     int numFieldsInUnion(int firstIndex); // #fields in union starting at index
     bool isDeprecated();         // is aggregate deprecated?
+    bool muteDeprecationMessage(); // disable deprecation message on Dsymbol?
     bool isNested();
     void makeNested();
     bool isExport();
     Dsymbol *searchCtor();
 
-    PROT prot();
+    Prot prot();
 
     Type *handleType() { return type; } // 'this' type
 
     // Back end
     Symbol *stag;               // tag symbol for debug data
     Symbol *sinit;
-    Symbol *toInitializer();
 
     AggregateDeclaration *isAggregateDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    Symbol *toInitializer();
+#endif
 };
 
 struct StructFlags
@@ -150,7 +151,6 @@ public:
     int zeroInit;               // !=0 if initialize with 0 fill
     bool hasIdentityAssign;     // true if has identity opAssign
     bool hasIdentityEquals;     // true if has identity opEquals
-    FuncDeclaration *cpctor;    // generated copy-constructor, if any
     FuncDeclarations postblits; // Array of postblit functions
     FuncDeclaration *postblit;  // aggregate postblit
 
@@ -172,18 +172,18 @@ public:
     void semantic(Scope *sc);
     void semanticTypeInfoMembers();
     Dsymbol *search(Loc, Identifier *ident, int flags = IgnoreNone);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     const char *kind();
     void finalizeSize(Scope *sc);
     bool fit(Loc loc, Scope *sc, Expressions *elements, Type *stype);
     bool fill(Loc loc, Expressions *elements, bool ctorinit);
     bool isPOD();
 
-    void toObjFile();                       // compile to .obj file
-    void toDt(dt_t **pdt);
-
     StructDeclaration *isStructDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    void toObjFile();                       // compile to .obj file
+    void toDt(dt_t **pdt);
+#endif
 };
 
 class UnionDeclaration : public StructDeclaration
@@ -200,7 +200,7 @@ public:
 struct BaseClass
 {
     Type *type;                         // (before semantic processing)
-    PROT protection;               // protection for the base interface
+    Prot protection;               // protection for the base interface
 
     ClassDeclaration *base;
     unsigned offset;                    // 'this' pointer offset
@@ -213,7 +213,7 @@ struct BaseClass
     BaseClass *baseInterfaces;
 
     BaseClass();
-    BaseClass(Type *type, PROT protection);
+    BaseClass(Type *type, Prot protection);
 
     bool fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newinstance);
     void copyBaseInterfaces(BaseClasses *);
@@ -239,6 +239,7 @@ struct ClassFlags
         hasTypeInfo = 0x20,
         isAbstract = 0x40,
         isCPPclass = 0x80,
+        hasDtor = 0x100,
     };
 };
 
@@ -279,7 +280,6 @@ public:
     ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses, bool inObject = false);
     Dsymbol *syntaxCopy(Dsymbol *s);
     void semantic(Scope *sc);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     bool isBaseOf2(ClassDeclaration *cd);
 
     #define OFFSET_RUNTIME 0x76543210
@@ -302,17 +302,18 @@ public:
     void addLocalClass(ClassDeclarations *);
 
     // Back end
+    Symbol *vtblsym;
+
+    ClassDeclaration *isClassDeclaration() { return (ClassDeclaration *)this; }
+    void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
     void toObjFile();                       // compile to .obj file
     unsigned baseVtblOffset(BaseClass *bc);
     Symbol *toSymbol();
     Symbol *toVtblSymbol();
     void toDt(dt_t **pdt);
     void toDt2(dt_t **pdt, ClassDeclaration *cd);
-
-    Symbol *vtblsym;
-
-    ClassDeclaration *isClassDeclaration() { return (ClassDeclaration *)this; }
-    void accept(Visitor *v) { v->visit(this); }
+#endif
 };
 
 class InterfaceDeclaration : public ClassDeclaration
@@ -328,11 +329,12 @@ public:
     bool isCPPinterface();
     bool isCOMinterface();
 
-    void toObjFile();                       // compile to .obj file
-    Symbol *toSymbol();
-
     InterfaceDeclaration *isInterfaceDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    void toObjFile();                       // compile to .obj file
+    Symbol *toSymbol();
+#endif
 };
 
 #endif /* DMD_AGGREGATE_H */

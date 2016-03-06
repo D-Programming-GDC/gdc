@@ -18,6 +18,7 @@
 
 class Expression;
 class Type;
+class Module;
 
 struct Target
 {
@@ -27,6 +28,7 @@ struct Target
     static int realalignsize;   // alignment for reals
     static bool reverseCppOverloads; // with dmc, overloaded functions are grouped and in reverse order
     static int c_longsize;           // size of a C 'long' or 'unsigned long' type
+    static int c_long_doublesize;    // size of a C 'long double'
 
     static void init();
     static unsigned alignsize(Type* type);
@@ -34,6 +36,8 @@ struct Target
     static unsigned critsecsize();
     static Type *va_listType();  // get type of va_list
     static Expression *paintAsType(Expression *e, Type *type);
+    static int checkVectorType(int sz, Type *type);
+    static void loadModule(Module *m);
 };
 
 #endif

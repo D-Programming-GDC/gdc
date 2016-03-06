@@ -19,14 +19,7 @@
 #include <string.h>
 
 #include "object.h"
-#ifdef IN_GCC
-// rmem uses functions poisoned by GCC.
-void *mem_malloc(size_t size);
-void *mem_realloc(void *p, size_t size);
-void mem_free(void *p);
-#else
 #include "rmem.h"
-#endif
 
 template <typename TYPE>
 struct Array
@@ -50,32 +43,19 @@ struct Array
     ~Array()
     {
         if (data != &smallarray[0])
-#ifdef IN_GCC
-            mem_free(data);
-#else
-            mem.free(data);
-#endif
+            mem.xfree(data);
     }
 
     char *toChars()
     {
-#ifdef IN_GCC
-        char **buf = (char **)mem_malloc(dim * sizeof(char *));
-#else
-        char **buf = (char **)mem.malloc(dim * sizeof(char *));
-#endif
-        assert(buf);
+        char **buf = (char **)mem.xmalloc(dim * sizeof(char *));
         size_t len = 2;
         for (size_t u = 0; u < dim; u++)
         {
             buf[u] = ((RootObject *)data[u])->toChars();
             len += strlen(buf[u]) + 1;
         }
-#ifdef IN_GCC
-        char *str = (char *)mem_malloc(len);
-#else
-        char *str = (char *)mem.malloc(len);
-#endif
+        char *str = (char *)mem.xmalloc(len);
 
         str[0] = '[';
         char *p = str + 1;
@@ -89,11 +69,7 @@ struct Array
         }
         *p++ = ']';
         *p = 0;
-#ifdef IN_GCC
-        mem_free(buf);
-#else
-        mem.free(buf);
-#endif
+        mem.xfree(buf);
         return str;
     }
 
@@ -110,30 +86,18 @@ struct Array
                 }
                 else
                 {   allocdim = nentries;
-#ifdef IN_GCC
-                    data = (TYPE *)mem_malloc(allocdim * sizeof(*data));
-#else
-                    data = (TYPE *)mem.malloc(allocdim * sizeof(*data));
-#endif
+                    data = (TYPE *)mem.xmalloc(allocdim * sizeof(*data));
                 }
             }
             else if (allocdim == SMALLARRAYCAP)
             {
                 allocdim = dim + nentries;
-#ifdef IN_GCC
-                data = (TYPE *)mem_malloc(allocdim * sizeof(*data));
-#else
-                data = (TYPE *)mem.malloc(allocdim * sizeof(*data));
-#endif
+                data = (TYPE *)mem.xmalloc(allocdim * sizeof(*data));
                 memcpy(data, &smallarray[0], dim * sizeof(*data));
             }
             else
             {   allocdim = dim + nentries;
-#ifdef IN_GCC
-                data = (TYPE *)mem_realloc(data, allocdim * sizeof(*data));
-#else
-                data = (TYPE *)mem.realloc(data, allocdim * sizeof(*data));
-#endif
+                data = (TYPE *)mem.xrealloc(data, allocdim * sizeof(*data));
             }
         }
     }
@@ -156,18 +120,10 @@ struct Array
                 if (dim <= SMALLARRAYCAP)
                 {
                     memcpy(&smallarray[0], data, dim * sizeof(*data));
-#ifdef IN_GCC
-                    mem_free(data);
-#else
-                    mem.free(data);
-#endif
+                    mem.xfree(data);
                 }
                 else
-#ifdef IN_GCC
-                    data = (TYPE *)mem_realloc(data, dim * sizeof(*data));
-#else
-                    data = (TYPE *)mem.realloc(data, dim * sizeof(*data));
-#endif
+                    data = (TYPE *)mem.xrealloc(data, dim * sizeof(*data));
             }
             allocdim = dim;
         }
@@ -207,7 +163,11 @@ struct Array
     {
         struct ArraySort
         {
-            static int Array_sort_compare(const void *x, const void *y)
+            static int
+    #if _WIN32
+              __cdecl
+    #endif
+            Array_sort_compare(const void *x, const void *y)
             {
                 RootObject *ox = *(RootObject **)const_cast<void *>(x);
                 RootObject *oy = *(RootObject **)const_cast<void *>(y);

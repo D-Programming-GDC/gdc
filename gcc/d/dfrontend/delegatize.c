@@ -21,6 +21,7 @@
 #include "aggregate.h"
 #include "scope.h"
 #include "init.h"
+#include "tokens.h"
 
 /********************************************
  * Convert from expression to delegate that returns the expression,
@@ -32,7 +33,7 @@
 
 bool walkPostorder(Expression *e, StoppableVisitor *v);
 void lambdaSetParent(Expression *e, Scope *sc);
-void lambdaCheckForNestedRef(Expression *e, Scope *sc);
+bool lambdaCheckForNestedRef(Expression *e, Scope *sc);
 
 Expression *toDelegate(Expression *e, Type* t, Scope *sc)
 {
@@ -48,8 +49,11 @@ Expression *toDelegate(Expression *e, Type* t, Scope *sc)
     sc = sc->push();
     sc->parent = fld;           // set current function to be the delegate
     lambdaSetParent(e, sc);
-    lambdaCheckForNestedRef(e, sc);
+    bool r = lambdaCheckForNestedRef(e, sc);
     sc = sc->pop();
+
+    if (!r)
+        return new ErrorExp();
 
     Statement *s;
     if (t->ty == Tvoid)
@@ -108,14 +112,20 @@ void lambdaSetParent(Expression *e, Scope *sc)
 
 /*******************************************
  * Look for references to variables in a scope enclosing the new function literal.
+ * Returns false if error occurs.
  */
-void lambdaCheckForNestedRef(Expression *e, Scope *sc)
+bool lambdaCheckForNestedRef(Expression *e, Scope *sc)
 {
     class LambdaCheckForNestedRef : public StoppableVisitor
     {
-        Scope *sc;
     public:
-        LambdaCheckForNestedRef(Scope *sc) : sc(sc) {}
+        Scope *sc;
+        bool result;
+
+        LambdaCheckForNestedRef(Scope *sc)
+            : sc(sc), result(true)
+        {
+        }
 
         void visit(Expression *)
         {
@@ -125,21 +135,21 @@ void lambdaCheckForNestedRef(Expression *e, Scope *sc)
         {
             VarDeclaration *v = e->var->isVarDeclaration();
             if (v)
-                v->checkNestedReference(sc, Loc());
+                result = v->checkNestedReference(sc, Loc());
         }
 
         void visit(VarExp *e)
         {
             VarDeclaration *v = e->var->isVarDeclaration();
             if (v)
-                v->checkNestedReference(sc, Loc());
+                result = v->checkNestedReference(sc, Loc());
         }
 
         void visit(ThisExp *e)
         {
             VarDeclaration *v = e->var->isVarDeclaration();
             if (v)
-                v->checkNestedReference(sc, Loc());
+                result = v->checkNestedReference(sc, Loc());
         }
 
         void visit(DeclarationExp *e)
@@ -147,7 +157,9 @@ void lambdaCheckForNestedRef(Expression *e, Scope *sc)
             VarDeclaration *v = e->declaration->isVarDeclaration();
             if (v)
             {
-                v->checkNestedReference(sc, Loc());
+                result = v->checkNestedReference(sc, Loc());
+                if (!result)
+                    return;
 
                 /* Some expressions cause the frontend to create a temporary.
                  * For example, structs with cpctors replace the original
@@ -161,13 +173,14 @@ void lambdaCheckForNestedRef(Expression *e, Scope *sc)
                 if (v->init && v->init->isExpInitializer())
                 {
                     Expression *ie = v->init->toExpression();
-                    lambdaCheckForNestedRef(ie, sc);
+                    result = lambdaCheckForNestedRef(ie, sc);
                 }
             }
         }
     };
 
-    LambdaCheckForNestedRef lcnr(sc);
-    walkPostorder(e, &lcnr);
+    LambdaCheckForNestedRef v(sc);
+    walkPostorder(e, &v);
+    return v.result;
 }
 

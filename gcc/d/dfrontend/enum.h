@@ -18,11 +18,11 @@
 
 #include "root.h"
 #include "dsymbol.h"
+#include "tokens.h"
 
 class Identifier;
 class Type;
 class Expression;
-struct HdrGenState;
 class VarDeclaration;
 
 class EnumDeclaration : public ScopeDsymbol
@@ -38,14 +38,12 @@ public:
      */
     Type *type;                 // the TypeEnum
     Type *memtype;              // type of the members
-    PROT protection;
+    Prot protection;
 
-private:
     Expression *maxval;
     Expression *minval;
     Expression *defaultval;     // default initializer
 
-public:
     bool isdeprecated;
     bool added;
     int inuse;
@@ -56,23 +54,23 @@ public:
     void setScope(Scope *sc);
     void semantic(Scope *sc);
     bool oneMember(Dsymbol **ps, Identifier *ident);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     Type *getType();
     const char *kind();
     Dsymbol *search(Loc, Identifier *ident, int flags = IgnoreNone);
     bool isDeprecated();                // is Dsymbol deprecated?
-    PROT prot();
+    Prot prot();
     Expression *getMaxMinValue(Loc loc, Identifier *id);
     Expression *getDefaultValue(Loc loc);
     Type *getMemtype(Loc loc);
 
     EnumDeclaration *isEnumDeclaration() { return this; }
 
-    void toObjFile();                       // compile to .obj file
-
     Symbol *sinit;
-    Symbol *toInitializer();
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    void toObjFile();                       // compile to .obj file
+    Symbol *toInitializer();
+#endif
 };
 
 
@@ -95,7 +93,6 @@ public:
 
     EnumMember(Loc loc, Identifier *id, Expression *value, Type *type);
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     const char *kind();
     void semantic(Scope *sc);
     Expression *getVarExp(Loc loc, Scope *sc);

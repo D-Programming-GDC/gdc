@@ -211,7 +211,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 OUR_CFLAGS = @DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I$(srcdir) -I$(srcdir)/../libdruntime -I./libdruntime/$(host_alias)
+D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I$(srcdir) -I$(srcdir)/../libdruntime
 ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 toolexecdir = $(phobos_toolexecdir)
 toolexeclibdir = $(phobos_toolexeclibdir)
@@ -219,36 +219,53 @@ SUFFIXES = .d
 
 #--------------------------------------#
 # GDC LibPhobos
-MAIN_OBJS = std/algorithm.o std/array.o std/ascii.o std/base64.o std/bigint.o \
+MAIN_OBJS = std/array.o std/ascii.o std/base64.o std/bigint.o \
 	  std/bitmanip.o std/compiler.o std/complex.o std/concurrency.o \
 	  std/conv.o std/cstream.o std/csv.o \
 	  std/datetime.o std/demangle.o std/encoding.o \
-	  std/exception.o std/format.o \
+	  std/exception.o std/file.o std/format.o \
 	  std/functional.o std/getopt.o std/json.o \
-	  std/math.o std/mathspecial.o std/numeric.o \
-	  std/outbuffer.o std/parallelism.o std/signals.o \
+	  std/math.o std/mathspecial.o std/mmfile.o \
+	  std/numeric.o std/outbuffer.o std/parallelism.o \
+	  std/path.o std/process.o std/signals.o \
+	  std/socket.o std/socketstream.o \
 	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
-	  std/string.o std/syserror.o std/system.o std/random.o std/range.o \
-	  std/regex.o std/traits.o std/typecons.o \
-	  std/typetuple.o std/uni.o std/uri.o std/utf.o \
+	  std/string.o std/syserror.o std/system.o std/random.o \
+	  std/traits.o std/typecons.o std/typetuple.o \
+	  std/uni.o std/uri.o std/utf.o \
 	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
+	  std/algorithm/comparison.o std/algorithm/internal.o \
+	  std/algorithm/iteration.o std/algorithm/mutation.o \
+	  std/algorithm/package.o std/algorithm/searching.o \
+	  std/algorithm/setops.o std/algorithm/sorting.o \
 	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
 	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \
 	  std/c/string.o std/c/time.o std/c/wcharh.o \
 	  std/container/array.o std/container/binaryheap.o \
 	  std/container/dlist.o std/container/package.o \
-	  std/container/rbtree.o std/container/slist.o std/container/util.o \
+	  std/container/rbtree.o std/container/slist.o \
+	  std/container/util.o \
 	  std/digest/digest.o std/digest/crc.o std/digest/md.o \
 	  std/digest/ripemd.o std/digest/sha.o \
-	  std/internal/digest/sha_SSSE3.o \
+	  std/experimental/logger/core.o \
+	  std/experimental/logger/filelogger.o \
+	  std/experimental/logger/multilogger.o \
+	  std/experimental/logger/nulllogger.o \
+	  std/experimental/logger/package.o \
+	  std/internal/cstring.o std/internal/digest/sha_SSSE3.o \
 	  std/internal/math/biguintcore.o std/internal/math/biguintnoasm.o \
 	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
-	  std/internal/math/errorfunction.o std/internal/processinit.o \
-	  std/internal/scopebuffer.o \
+	  std/internal/math/errorfunction.o std/internal/test/dummyrange.o \
+	  std/internal/processinit.o std/internal/scopebuffer.o \
 	  std/internal/unicode_comp.o std/internal/unicode_decomp.o \
 	  std/internal/unicode_grapheme.o std/internal/unicode_norm.o \
 	  std/internal/unicode_tables.o \
 	  std/net/curl.o std/net/isemail.o \
+	  std/range/interfaces.o std/range/package.o std/range/primitives.o \
+	  std/regex/package.o std/regex/internal/backtracking.o \
+	  std/regex/internal/generator.o std/regex/internal/ir.o \
+	  std/regex/internal/kickstart.o std/regex/internal/parser.o \
+	  std/regex/internal/tests.o std/regex/internal/thompson.o \
 	  etc/c/curl.o etc/c/zlib.o
 
 Z_OBJS = zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
@@ -258,14 +275,9 @@ Z_OBJS = zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 
 
 # modules which require some kind of operating system
-OS_OBJS = std/file.o std/mmfile.o std/path.o std/process.o \
-	std/socket.o std/socketstream.o
-
 LINUX_OBJS = std/c/linux/linux.o std/c/linux/socket.o
 OSX_OBJS = std/c/osx/socket.o
 FREEBSD_OBJS = std/c/freebsd/socket.o
-
-# std.c.linux.linux, std.loader, gcc.cbridge*
 WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
 	     std/c/windows/windows.o std/c/windows/winsock.o \
 	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
@@ -482,12 +494,13 @@ install-exec-local: libgphobos2.a
 	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgphobos2.a
 
 install-data-local: libgphobos2.a
-	for i in etc/c \
-	    std std/c std/c/freebsd \
+	for i in etc/c std std/c std/c/freebsd \
 	    std/c/linux std/c/osx std/c/windows \
-	    std/internal std/internal/math std/internal/windows \
-	    std/container std/digest std/internal/digest \
-	    std/net std/windows; do \
+	    std/algorithm std/experimental/logger \
+	    std/container std/digest std/internal \
+	    std/internal/digest std/internal/math \
+	    std/internal/windows std/net std/range \
+	    std/regex std/regex/internal std/windows; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    for f in $(srcdir)/$$i/*.d; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \

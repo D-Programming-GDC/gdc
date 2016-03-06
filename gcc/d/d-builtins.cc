@@ -199,7 +199,7 @@ build_dtype(tree type)
       if (TYPE_NAME (type))
 	{
 	  tree structname = DECL_NAME (TYPE_NAME (type));
-	  Identifier *ident = Lexer::idPool(IDENTIFIER_POINTER (structname));
+	  Identifier *ident = Identifier::idPool(IDENTIFIER_POINTER (structname));
 
 	  // The object and gcc.builtins module will not exist when this is
 	  // called.  Use a stub 'object' module parent in the meantime.
@@ -335,10 +335,10 @@ build_expression(tree cst)
   return NULL;
 }
 
-// Helper function for d_gcc_magic_module.
+// Helper function for Target::loadModule.
 // Generates all code for gcc.builtins module M.
 
-static void
+void
 d_build_builtins_module(Module *m)
 {
   Dsymbols *funcs = new Dsymbols;
@@ -376,7 +376,7 @@ d_build_builtins_module(Module *m)
 	TRUSTsystem;
       dtf->isnogc = true;
 
-      FuncDeclaration *func = new FuncDeclaration(Loc(), Loc(), Lexer::idPool(name),
+      FuncDeclaration *func = new FuncDeclaration(Loc(), Loc(), Identifier::idPool(name),
 						   STCextern, dtf);
       func->csym = new Symbol;
       func->csym->Sident = name;
@@ -395,7 +395,7 @@ d_build_builtins_module(Module *m)
       if (!dt)
 	continue;
 
-      funcs->push(new AliasDeclaration(Loc(), Lexer::idPool(name), dt));
+      funcs->push(new AliasDeclaration(Loc(), Identifier::idPool(name), dt));
     }
 
   // Iterate through the target-specific builtin types for va_list.
@@ -411,7 +411,7 @@ d_build_builtins_module(Module *m)
 	  if (!dt)
 	    continue;
 
-	  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool(name), dt));
+	  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool(name), dt));
 	}
     }
 
@@ -425,45 +425,45 @@ d_build_builtins_module(Module *m)
     }
 
   // va_list should already be built, so no need to convert to D type again.
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_va_list"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_va_list"),
 				   Type::tvalist));
 
   // Provide access to target-specific integer types.
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_clong"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_clong"),
 				   build_dtype(long_integer_type_node)));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_culong"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_culong"),
 				   build_dtype(long_unsigned_type_node)));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_machine_byte"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_byte"),
 				   build_dtype(lang_hooks.types.type_for_mode(byte_mode, 0))));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_machine_ubyte"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_ubyte"),
 				   build_dtype(lang_hooks.types.type_for_mode(byte_mode, 1))));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_machine_int"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_int"),
 				   build_dtype(lang_hooks.types.type_for_mode(word_mode, 0))));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_machine_uint"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_uint"),
 				   build_dtype(lang_hooks.types.type_for_mode(word_mode, 1))));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_pointer_int"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_pointer_int"),
 				   build_dtype(lang_hooks.types.type_for_mode(ptr_mode, 0))));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_pointer_uint"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_pointer_uint"),
 				   build_dtype(lang_hooks.types.type_for_mode(ptr_mode, 1))));
 
   // _Unwind_Word has it's own target specific mode.
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_unwind_int"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_unwind_int"),
 				   build_dtype(lang_hooks.types.type_for_mode(targetm.unwind_word_mode(), 0))));
 
-  funcs->push(new AliasDeclaration(Loc(), Lexer::idPool("__builtin_unwind_uint"),
+  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_unwind_uint"),
 				   build_dtype(lang_hooks.types.type_for_mode(targetm.unwind_word_mode(), 1))));
 
   m->members->push(new LinkDeclaration(LINKc, funcs));
 }
 
-// Map extern(C) declarations in member M to GCC library
+// Find and map extern(C) declarations in member M to GCC library
 // builtins by overriding the backend internal symbol.
 
 static void
@@ -494,7 +494,7 @@ maybe_set_builtin_1(Dsymbol *m)
 	  gcc_assert(DECL_ASSEMBLER_NAME_SET_P (decl));
 
 	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
-	  if (fd->ident != Lexer::idPool(name))
+	  if (fd->ident != Identifier::idPool(name))
 	    continue;
 
 	  fd->csym = new Symbol;
@@ -506,40 +506,18 @@ maybe_set_builtin_1(Dsymbol *m)
     }
 }
 
-static void
-maybe_set_builtin(Module *m)
+// Helper function for Target::loadModule.
+// Map extern(C) declarations in member M to GCC library
+// builtins by overriding the backend internal symbol.
+
+void
+d_maybe_set_builtin(Module *m)
 {
   Dsymbols *members = m->members;
   for (size_t i = 0; i < members->dim; i++)
     {
       Dsymbol *sym = (*members)[i];
       maybe_set_builtin_1(sym);
-    }
-}
-
-// Check imported module M for any special processing.
-// Modules we look out for are:
-//  - gcc.builtins: For all gcc builtins.
-//  - core.stdc.*: For all gcc library builtins.
-
-void
-d_gcc_magic_module(Module *m)
-{
-  ModuleDeclaration *md = m->md;
-  if (!md || !md->packages || !md->id)
-    return;
-
-  if (md->packages->dim == 1)
-    {
-      if (!strcmp((*md->packages)[0]->string, "gcc")
-	  && !strcmp(md->id->string, "builtins"))
-	d_build_builtins_module(m);
-    }
-  else if (md->packages->dim == 2)
-    {
-      if (!strcmp((*md->packages)[0]->string, "core")
-	  && !strcmp((*md->packages)[1]->string, "stdc"))
-	maybe_set_builtin(m);
     }
 }
 

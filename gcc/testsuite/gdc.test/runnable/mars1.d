@@ -1,5 +1,5 @@
 
-import std.c.stdio;
+import core.stdc.stdio;
 
 void testgoto()
 {
@@ -432,6 +432,27 @@ void test12095(int k)
     !e ? !e || vfunc() : k || assert(0);
 }
 
+
+////////////////////////////////////////////////////////////////////////
+
+
+bool test3918a( float t, real u )
+{
+	printf("%f\n", u );
+	return t && u;
+}
+
+bool test3918b( real t, float u )
+{
+	printf("%f\n", t );
+	return t && u;
+}
+
+void test3918()
+{
+	assert(test3918a(float.nan, real.nan));
+	assert(test3918b(real.nan, float.nan));
+}
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -1166,6 +1187,22 @@ void test13190()
 
 ////////////////////////////////////////////////////////////////////////
 
+double foo13485(double c, double d)
+{
+    // This must not be optimized to c += (d + d)
+    c += d;
+    c += d;
+    return c;
+}
+
+void test13485()
+{
+    enum double d = 0X1P+1023;
+    assert(foo13485(-d, d) == d);
+}
+
+////////////////////////////////////////////////////////////////////////
+
 void test12833a(int a)
 {
     long x = cast(long)a;
@@ -1217,6 +1254,32 @@ void test12057()
 
 ////////////////////////////////////////////////////////////////////////
  
+long modulo24 (long ticks)
+{
+    ticks %= 864000000000;
+    if (ticks < 0)
+        ticks += 864000000000;
+    return ticks;
+}
+
+void test13784()
+{
+    assert (modulo24(-141600000000) == 722400000000);
+}
+
+
+////////////////////////////////////////////////////////////////////////
+
+struct S13969 {
+    int x, y;
+}
+
+int test13969(const S13969* f) {
+    return 0 % ((f.y > 0) ? f.x / f.y : f.x / -f.y);
+}
+
+////////////////////////////////////////////////////////////////////////
+ 
 int main()
 {
     testgoto();
@@ -1234,6 +1297,7 @@ int main()
     test8658();
     testfastudiv();
     testfastdiv();
+    test3918();
     test12051();
     testdocond();
     testnegcom();
@@ -1246,6 +1310,7 @@ int main()
     testshrshl();
     test13383();
     test13190();
+    test13485();
     test10639();
     test10715();
     test10678();
@@ -1254,6 +1319,7 @@ int main()
     test12833();
     test9449();
     test12057();
+    test13784();
     printf("Success\n");
     return 0;
 }

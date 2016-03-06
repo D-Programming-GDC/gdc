@@ -37,7 +37,6 @@ struct Scope;
 class Expression;
 class AliasDeclaration;
 class FuncDeclaration;
-struct HdrGenState;
 class Parameter;
 enum MATCH;
 enum PASS;
@@ -79,7 +78,7 @@ public:
     bool literal;               // this template declaration is a literal
     bool ismixin;               // template declaration is only to be used as a mixin
     bool isstatic;              // this is static template declaration
-    PROT protection;
+    Prot protection;
 
     TemplatePrevious *previous;         // threaded list of previous instantiation attempts on stack
 
@@ -88,12 +87,11 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     bool overloadInsert(Dsymbol *s);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     bool hasStaticCtorOrDtor();
     const char *kind();
     char *toChars();
 
-    PROT prot();
+    Prot prot();
 
     bool evaluateConstraint(TemplateInstance *ti, Scope *sc, Scope *paramscope, Objects *dedtypes, FuncDeclaration *fd);
 
@@ -106,8 +104,6 @@ public:
     TemplateInstance *findExistingInstance(TemplateInstance *tithis, Expressions *fargs);
     TemplateInstance *addInstance(TemplateInstance *ti);
     void removeInstance(TemplateInstance *handle);
-
-    TemplateInstance *getInstantiating(Scope *sc);
 
     TemplateDeclaration *isTemplateDeclaration() { return this; }
 
@@ -144,8 +140,6 @@ public:
      */
     bool dependent;
 
-    Declaration *sparam;
-
     TemplateParameter(Loc loc, Identifier *ident);
 
     virtual TemplateTypeParameter  *isTemplateTypeParameter();
@@ -155,26 +149,22 @@ public:
     virtual TemplateTupleParameter *isTemplateTupleParameter();
 
     virtual TemplateParameter *syntaxCopy() = 0;
-    virtual void declareParameter(Scope *sc) = 0;
-    virtual void semantic(Scope *sc, TemplateParameters *parameters) = 0;
+    virtual bool declareParameter(Scope *sc) = 0;
+    virtual bool semantic(Scope *sc, TemplateParameters *parameters) = 0;
     virtual void print(RootObject *oarg, RootObject *oded) = 0;
-    virtual void toCBuffer(OutBuffer *buf, HdrGenState *hgs) = 0;
     virtual RootObject *specialization() = 0;
-    virtual RootObject *defaultArg(Loc loc, Scope *sc) = 0;
+    virtual RootObject *defaultArg(Loc instLoc, Scope *sc) = 0;
     virtual bool hasDefaultArg() = 0;
-
-    /* If TemplateParameter's match as far as overloading goes.
-     */
-    virtual int overloadMatch(TemplateParameter *) = 0;
 
     /* Match actual argument against parameter.
      */
-    virtual MATCH matchArg(Loc loc, Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
+    virtual MATCH matchArg(Loc instLoc, Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     virtual MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam) = 0;
 
     /* Create dummy argument based on parameter.
      */
     virtual void *dummyArg() = 0;
+    virtual void accept(Visitor *v) { v->visit(this); }
 };
 
 /* Syntax:
@@ -192,16 +182,15 @@ public:
 
     TemplateTypeParameter *isTemplateTypeParameter();
     TemplateParameter *syntaxCopy();
-    void declareParameter(Scope *sc);
-    void semantic(Scope *sc, TemplateParameters *parameters);
+    bool declareParameter(Scope *sc);
+    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     RootObject *specialization();
-    RootObject *defaultArg(Loc loc, Scope *sc);
+    RootObject *defaultArg(Loc instLoc, Scope *sc);
     bool hasDefaultArg();
-    int overloadMatch(TemplateParameter *);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 /* Syntax:
@@ -214,7 +203,7 @@ public:
 
     TemplateThisParameter *isTemplateThisParameter();
     TemplateParameter *syntaxCopy();
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 /* Syntax:
@@ -233,16 +222,15 @@ public:
 
     TemplateValueParameter *isTemplateValueParameter();
     TemplateParameter *syntaxCopy();
-    void declareParameter(Scope *sc);
-    void semantic(Scope *sc, TemplateParameters *parameters);
+    bool declareParameter(Scope *sc);
+    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     RootObject *specialization();
-    RootObject *defaultArg(Loc loc, Scope *sc);
+    RootObject *defaultArg(Loc instLoc, Scope *sc);
     bool hasDefaultArg();
-    int overloadMatch(TemplateParameter *);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 /* Syntax:
@@ -261,16 +249,15 @@ public:
 
     TemplateAliasParameter *isTemplateAliasParameter();
     TemplateParameter *syntaxCopy();
-    void declareParameter(Scope *sc);
-    void semantic(Scope *sc, TemplateParameters *parameters);
+    bool declareParameter(Scope *sc);
+    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     RootObject *specialization();
-    RootObject *defaultArg(Loc loc, Scope *sc);
+    RootObject *defaultArg(Loc instLoc, Scope *sc);
     bool hasDefaultArg();
-    int overloadMatch(TemplateParameter *);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 /* Syntax:
@@ -283,17 +270,16 @@ public:
 
     TemplateTupleParameter *isTemplateTupleParameter();
     TemplateParameter *syntaxCopy();
-    void declareParameter(Scope *sc);
-    void semantic(Scope *sc, TemplateParameters *parameters);
+    bool declareParameter(Scope *sc);
+    bool semantic(Scope *sc, TemplateParameters *parameters);
     void print(RootObject *oarg, RootObject *oded);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     RootObject *specialization();
-    RootObject *defaultArg(Loc loc, Scope *sc);
+    RootObject *defaultArg(Loc instLoc, Scope *sc);
     bool hasDefaultArg();
-    int overloadMatch(TemplateParameter *);
     MATCH matchArg(Loc loc, Scope *sc, Objects *tiargs, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     MATCH matchArg(Scope *sc, RootObject *oarg, size_t i, TemplateParameters *parameters, Objects *dedtypes, Declaration **psparam);
     void *dummyArg();
+    void accept(Visitor *v) { v->visit(this); }
 };
 
 /* Given:
@@ -319,7 +305,6 @@ public:
     Dsymbol *enclosing;                 // if referencing local symbols, this is the context
     Dsymbol *aliasdecl;                 // !=NULL if instance is an alias for its sole member
     TemplateInstance *inst;             // refer to existing instance
-    TemplateInstance *tinst;            // enclosing template instance
     ScopeDsymbol *argsym;               // argument symbol table
     int nest;                           // for recursion detection
     bool semantictiargsdone;            // has semanticTiargs() been done?
@@ -332,8 +317,9 @@ public:
 
     // Used to determine the instance needs code generation.
     // Note that these are inaccurate until semantic analysis phase completed.
-    Module *instantiatingModule;        // the top module that instantiated this instance
-    bool speculative;                   // if the instantiation is speculative
+    TemplateInstance *tinst;            // enclosing template instance
+    TemplateInstance *tnext;            // non-first instantiated instances
+    Module *minst;                      // the top module that instantiated this instance
 
     TemplateInstance(Loc loc, Identifier *temp_id);
     TemplateInstance(Loc loc, TemplateDeclaration *tempdecl, Objects *tiargs);
@@ -343,8 +329,6 @@ public:
     void semantic(Scope *sc);
     void semantic2(Scope *sc);
     void semantic3(Scope *sc);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void toCBufferTiargs(OutBuffer *buf, HdrGenState *hgs);
     Dsymbol *toAlias();                 // resolve real symbol
     const char *kind();
     bool oneMember(Dsymbol **ps, Identifier *ident);
@@ -356,7 +340,6 @@ public:
     hash_t hashCode();
 
     bool needsCodegen();
-    void toObjFile();                       // compile to .obj file
 
     // Internal
     bool findTempDecl(Scope *sc, WithScopeSymbol **pwithsym);
@@ -374,6 +357,9 @@ public:
 
     TemplateInstance *isTemplateInstance() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    void toObjFile();                       // compile to .obj file
+#endif
 };
 
 class TemplateMixin : public TemplateInstance
@@ -392,14 +378,14 @@ public:
     bool hasPointers();
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     char *toChars();
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-
-    void toObjFile();                       // compile to .obj file
 
     bool findTempDecl(Scope *sc);
 
     TemplateMixin *isTemplateMixin() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    void toObjFile();                       // compile to .obj file
+#endif
 };
 
 Expression *isExpression(RootObject *o);
@@ -407,12 +393,11 @@ Dsymbol *isDsymbol(RootObject *o);
 Type *isType(RootObject *o);
 Tuple *isTuple(RootObject *o);
 Parameter *isParameter(RootObject *o);
-int arrayObjectIsError(Objects *args);
-int isError(RootObject *o);
+bool arrayObjectIsError(Objects *args);
+bool isError(RootObject *o);
 Type *getType(RootObject *o);
 Dsymbol *getDsymbol(RootObject *o);
 
-void ObjectToCBuffer(OutBuffer *buf, HdrGenState *hgs, RootObject *oarg);
 RootObject *objectSyntaxCopy(RootObject *o);
 
 #endif /* DMD_TEMPLATE_H */

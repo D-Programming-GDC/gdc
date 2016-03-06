@@ -277,8 +277,8 @@ __gshared ModuleGroup _moduleGroup;
 
 int moduleinfos_apply(scope int delegate(immutable(ModuleInfo*)) dg)
 {
-    int ret = 0;
-
+  version (GNU)
+  {
     foreach (m; _moduleGroup._modules)
     {
         // TODO: Should null ModuleInfo be allowed?
@@ -288,6 +288,22 @@ int moduleinfos_apply(scope int delegate(immutable(ModuleInfo*)) dg)
                 return res;
         }
     }
+  }
+  else
+  {
+    foreach (ref sg; SectionGroup)
+    {
+        foreach (m; sg.modules)
+        {
+            // TODO: Should null ModuleInfo be allowed?
+            if (m !is null)
+            {
+                if (auto res = dg(m))
+                    return res;
+            }
+        }
+    }
+  }
     return 0;
 }
 
@@ -299,25 +315,67 @@ extern (C)
 {
 void rt_moduleCtor()
 {
+  version (GNU)
+  {
     _moduleGroup = ModuleGroup(getModuleInfos());
     _moduleGroup.sortCtors();
     _moduleGroup.runCtors();
+  }
+  else
+  {
+    foreach (ref sg; SectionGroup)
+    {
+        sg.moduleGroup.sortCtors();
+        sg.moduleGroup.runCtors();
+    }
+  }
 }
 
 void rt_moduleTlsCtor()
 {
+  version (GNU)
+  {
     _moduleGroup.runTlsCtors();
+  }
+  else
+  {
+    foreach (ref sg; SectionGroup)
+    {
+        sg.moduleGroup.runTlsCtors();
+    }
+  }
 }
 
 void rt_moduleTlsDtor()
 {
+  version (GNU)
+  {
     _moduleGroup.runTlsDtors();
+  }
+  else
+  {
+    foreach_reverse (ref sg; SectionGroup)
+    {
+        sg.moduleGroup.runTlsDtors();
+    }
+  }
 }
 
 void rt_moduleDtor()
 {
+  version (GNU)
+  {
     _moduleGroup.runDtors();
     _moduleGroup.free();
+  }
+  else
+  {
+    foreach_reverse (ref sg; SectionGroup)
+    {
+        sg.moduleGroup.runDtors();
+        sg.moduleGroup.free();
+    }
+  }
 }
 
 version (Win32)
@@ -359,58 +417,16 @@ version (GNU)
     }
 
     extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
-}
-else version (Win32)
-{
-    // Windows: this gets initialized by minit.asm
-    // Posix: this gets initialized in _moduleCtor()
-    extern(C) __gshared ModuleInfo*[] _moduleinfo_array;
-    extern(C) void _minit();
-}
-else version (Win64)
-{
-    extern (C)
-    {
-        extern __gshared void* _minfo_beg;
-        extern __gshared void* _minfo_end;
 
-        // Dummy so Win32 code can still call it
-        extern(C) void _minit() { }
+    immutable(ModuleInfo*)[] getModuleInfos()
+    out (result)
+    {
+        foreach(m; result)
+            assert(m !is null);
     }
-}
-else version (OSX)
-{
-    extern (C) __gshared ModuleInfo*[] _moduleinfo_array;
-}
-else version (Posix)
-{
-    // This linked list is created by a compiler generated function inserted
-    // into the .ctor list by the compiler.
-    struct ModuleReference
+    body
     {
-        ModuleReference* next;
-        ModuleInfo*      mod;
-    }
-
-    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
-}
-else
-{
-    static assert(0);
-}
-
-immutable(ModuleInfo*)[] getModuleInfos()
-out (result)
-{
-    foreach(m; result)
-        assert(m !is null);
-}
-body
-{
-    ModuleInfo*[] result = void;
-
-    version (GNU)
-    {
+        ModuleInfo*[] result = void;
         size_t len;
         ModuleReference *mr;
 
@@ -422,75 +438,8 @@ body
         {   result[len] = mr.mod;
             len++;
         }
+        return cast(immutable)result;
     }
-    else version (OSX)
-    {
-        // _moduleinfo_array is set by src.rt.memory_osx.onAddImage()
-        // but we need to throw out any null pointers
-        auto p = _moduleinfo_array.ptr;
-        auto pend = _moduleinfo_array.ptr + _moduleinfo_array.length;
-
-        // count non-null pointers
-        size_t cnt;
-        for (; p < pend; ++p)
-            if (*p !is null) ++cnt;
-
-        result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
-
-        p = _moduleinfo_array.ptr;
-        cnt = 0;
-        for (; p < pend; ++p)
-            if (*p !is null) result[cnt++] = *p;
-    }
-    // all other Posix variants (FreeBSD, Solaris, Linux)
-    else version (Posix)
-    {
-        size_t len;
-        ModuleReference *mr;
-
-        for (mr = _Dmodule_ref; mr; mr = mr.next)
-            len++;
-        result = (cast(ModuleInfo**).malloc(len * size_t.sizeof))[0 .. len];
-        len = 0;
-        for (mr = _Dmodule_ref; mr; mr = mr.next)
-        {   result[len] = mr.mod;
-            len++;
-        }
-    }
-    else version (Win32)
-    {
-        // _minit directly alters the global _moduleinfo_array
-        _minit();
-        result = _moduleinfo_array;
-    }
-    else version (Win64)
-    {
-        auto m = (cast(ModuleInfo**)&_minfo_beg)[1 .. &_minfo_end - &_minfo_beg];
-        /* Because of alignment inserted by the linker, various null pointers
-         * are there. We need to filter them out.
-         */
-        auto p = m.ptr;
-        auto pend = m.ptr + m.length;
-
-        // count non-null pointers
-        size_t cnt;
-        for (; p < pend; ++p)
-        {
-            if (*p !is null) ++cnt;
-        }
-
-        result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
-
-        p = m.ptr;
-        cnt = 0;
-        for (; p < pend; ++p)
-            if (*p !is null) result[cnt++] = *p;
-    }
-    else
-    {
-        static assert(0);
-    }
-    return cast(immutable)result;
 }
 }
 
@@ -552,7 +501,7 @@ unittest
         }
 
         immutable ModuleInfo mi;
-        size_t pad[8];
+        size_t[8] pad;
         alias mi this;
     }
 
@@ -713,7 +662,7 @@ unittest
     }
 }
 
-version (Win64)
+version (CRuntime_Microsoft)
 {
     // Dummy so Win32 code can still call it
     extern(C) void _minit() { }

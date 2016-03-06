@@ -327,14 +327,14 @@ case "$d_target_os" in
     mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
              DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
              D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
-             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
              ;;
+    *solaris*)
+	    D_EXTRA_OBJS="$D_EXTRA_OBJS \$(RT_SOLARIS_OBJS)"
 esac
 
 if test "$enable_unix" = "yes"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
-  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 fi
 
 if test -z "$DFLAGS"; then
@@ -360,7 +360,8 @@ AC_SUBST(srcdir)
 D_GC_MODULES=
 
 if test "$enable_druntime_gc" = "yes"; then
-    D_GC_MODULES="gc/bits.o gc/gc.o gc/os.o gc/proxy.o gc/stats.o"
+    D_GC_MODULES="gc/bits.o gc/config.o gc/gc.o gc/os.o \
+		  gc/pooltable.o gc/proxy.o gc/stats.o"
 else
     D_GC_MODULES="gcstub/gc.o"
 fi

@@ -1701,6 +1701,108 @@ struct S12038
 }
 
 /***************************************************/
+// 13490
+
+struct S13490
+{
+    int i;
+    alias i this;
+}
+
+struct T13490
+{
+    S13490[] a1, a2;
+}
+
+void test13490()
+{
+    T13490 t;
+
+    (true ? t.a1 : t.a2) ~= S13490(1);
+    assert(t.a1 == [S13490(1)]);
+    assert(t.a2 == []);
+
+    (false ? t.a1 : t.a2) ~= S13490(2);
+    assert(t.a1 == [S13490(1)]);
+    assert(t.a2 == [S13490(2)]);
+}
+
+/***************************************************/
+// 11355
+
+struct A11355
+{
+    static int postblit;
+    this(this) { ++postblit; }
+}
+
+struct B11355
+{
+    A11355 a;
+    alias a this;
+}
+
+B11355 make11355()
+{
+    return B11355();
+}
+void test11355()
+{
+    A11355 a1 = make11355();
+    assert(A11355.postblit == 1);
+}
+
+/***************************************************/
+// 13009
+
+struct T13009
+{
+    void put(char c) {}
+}
+
+struct S13009
+{
+    T13009 t;
+
+    @property
+    T13009 getT()
+    {
+        return t;
+    }
+
+    @property
+    inout(T13009) getT() inout
+    {
+        return t;
+    }
+
+    alias getT this;
+}
+
+void test13009()
+{
+    alias MS   =                    S13009;
+    alias CS   =              const(S13009);
+    alias WS   =        inout(      S13009);
+    alias WCS  =        inout(const S13009);
+    alias SMS  = shared(            S13009);
+    alias SCS  = shared(      const S13009);
+    alias SWS  = shared(inout       S13009);
+    alias SWCS = shared(inout const S13009);
+    alias IS   =          immutable(S13009);
+
+    alias MSput  = MS .put;
+    alias CSput  = CS .put;
+    alias WSput  = WS .put;
+    alias WCSput = WCS.put;
+    static assert(!__traits(compiles, { alias SMSput  = SMS .put; }));
+    static assert(!__traits(compiles, { alias SCSput  = SCS .put; }));
+    static assert(!__traits(compiles, { alias SWSput  = SWS .put; }));
+    static assert(!__traits(compiles, { alias SWCSput = SWCS.put; }));
+    alias ISput  = IS .put;
+}
+
+/***************************************************/
 
 int main()
 {
@@ -1753,6 +1855,8 @@ int main()
     test10456();
     test11333();
     test11800();
+    test13490();
+    test11355();
 
     printf("Success\n");
     return 0;

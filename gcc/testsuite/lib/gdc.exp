@@ -83,13 +83,19 @@ proc gdc_include_flags { paths } {
     if { $gccpath != "" } {
         if [file exists "${gccpath}/libphobos/libdruntime"] {
             append flags "-I${gccpath}/libphobos/libdruntime "
-            append flags "-I${gccpath}/libphobos/libdruntime/import "
-            append flags "-I${gccpath}/libphobos/libdruntime/$target "
         }
     }
-
-    append flags "-I${srcdir}/../../libphobos/src "
     append flags "-I${srcdir}/../../libphobos/libdruntime "
+    append flags "-I${srcdir}/../../libphobos/src "
+
+    # For the tests that mix C++ and D, we should try and handle this better.
+    if { $gccpath != "" } {
+        if [file exists "${gccpath}/libstdc++-v3/include"] {
+            append flags "-I${gccpath}/libstdc++-v3/include "
+            append flags "-I${gccpath}/libstdc++-v3/include/$target "
+        }
+    }
+    append flags "-I${srcdir}/../../libstdc++-v3/libsupc++"
 }
 
 #

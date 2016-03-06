@@ -4,7 +4,7 @@
 module test42;
 
 import std.stdio;
-import std.c.stdio;
+import core.stdc.stdio;
 import std.string;
 import core.memory;
 
@@ -1573,12 +1573,12 @@ void test94()
 
 struct X95
 {
-   import std.c.stdio;
+   import core.stdc.stdio;
 }
 
 void test95()
 {
-   X95.std.c.stdio.printf("hello\n");
+   X95.core.stdc.stdio.printf("hello\n");
 }
 
 /***************************************************/

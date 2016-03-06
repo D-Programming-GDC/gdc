@@ -20,6 +20,7 @@
 #include "coretypes.h"
 
 #include "dfrontend/mars.h"
+#include "dfrontend/errors.h"
 #include "dfrontend/module.h"
 #include "dfrontend/scope.h"
 #include "dfrontend/aggregate.h"
@@ -42,7 +43,6 @@ void
 Global::init()
 {
   this->mars_ext = "d";
-  this->sym_ext  = "d";
   this->hdr_ext  = "di";
   this->doc_ext  = "html";
   this->ddoc_ext = "ddoc";
@@ -61,6 +61,8 @@ Global::init()
   this->compiler.vendor = "GNU D";
   this->stdmsg = stdout;
   this->main_d = "__main.d";
+
+  this->errorLimit = 20;
 
   memset(&this->params, 0, sizeof(Param));
 }
@@ -113,11 +115,11 @@ Loc::toChars()
   return buf.extractString();
 }
 
-Loc::Loc(Module *mod, unsigned linnum, unsigned charnum)
+Loc::Loc(const char *filename, unsigned linnum, unsigned charnum)
 {
   this->linnum = linnum;
   this->charnum = charnum;
-  this->filename = mod ? mod->srcfile->toChars() : NULL;
+  this->filename = filename;
 }
 
 bool
@@ -139,21 +141,6 @@ void
 error(Loc loc, const char *format, ...)
 {
   va_list ap;
-  va_start(ap, format);
-  verror(loc, format, ap);
-  va_end(ap);
-}
-
-void
-error(const char *filename, unsigned linnum, unsigned charnum, const char *format, ...)
-{
-  Loc loc;
-  va_list ap;
-
-  loc.filename = CONST_CAST(char *, filename);
-  loc.linnum = linnum;
-  loc.charnum = charnum;
-
   va_start(ap, format);
   verror(loc, format, ap);
   va_end(ap);
@@ -408,5 +395,13 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
     e = build_expression(result);
 
   return e;
+}
+
+// Return backend .init symbol
+
+Symbol *
+toInitializer(AggregateDeclaration *ad)
+{
+  return ad->toInitializer();
 }
 

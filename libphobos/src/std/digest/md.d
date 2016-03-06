@@ -1,6 +1,10 @@
 /**
-<script type="text/javascript">inhibitQuickIndex = 1</script>
+ * Computes MD5 hashes of arbitrary data. MD5 hashes are 16 byte quantities that are like a
+ * checksum or CRC, but are more robust.
+ *
+$(SCRIPT inhibitQuickIndex = 1;)
 
+$(DIVC quickindex,
 $(BOOKTABLE ,
 $(TR $(TH Category) $(TH Functions)
 )
@@ -12,17 +16,15 @@ $(TR $(TDNW OOP API) $(TD $(MYREF MD5Digest))
 $(TR $(TDNW Helpers) $(TD $(MYREF md5Of))
 )
 )
+)
 
- * Computes MD5 hashes of arbitrary data. MD5 hashes are 16 byte quantities that are like a
- * checksum or CRC, but are more robust.
- *
  * This module conforms to the APIs defined in $(D std.digest.digest). To understand the
  * differences between the template and the OOP API, see $(D std.digest.digest).
  *
  * This module publicly imports $(D std.digest.digest) and can be used as a stand-alone
  * module.
  *
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  *
  * CTFE:
  * Digests do not work in CTFE
@@ -38,15 +40,12 @@ $(TR $(TDNW Helpers) $(TD $(MYREF md5Of))
  *
  * Macros:
  * WIKI = Phobos/StdMd5
- * MYREF = <font face='Consolas, "Bitstream Vera Sans Mono", "Andale Mono", Monaco, "DejaVu Sans Mono", "Lucida Console", monospace'><a href="#$1">$1</a>&nbsp;</font>
  */
 
 /* md5.d - RSA Data Security, Inc., MD5 message-digest algorithm
  * Derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm.
  */
 module std.digest.md;
-
-import std.bitmanip, std.exception, std.string;
 
 public import std.digest.digest;
 
@@ -85,7 +84,7 @@ unittest
 }
 
 //rotateLeft rotates x left n bits
-private nothrow pure uint rotateLeft(uint x, uint n)
+private uint rotateLeft(uint x, uint n) @safe pure nothrow @nogc
 {
     // With recently added optimization to DMD (commit 32ea0206 at 07/28/11), this is translated to rol.
     // No assembler required.
@@ -112,7 +111,7 @@ struct MD5
         ];
 
         // F, G, H and I are basic MD5 functions
-        static nothrow pure
+        static @safe pure nothrow @nogc
         {
             uint F(uint x, uint y, uint z) { return (x & y) | (~x & z); }
             uint G(uint x, uint y, uint z) { return (x & z) | (y & ~z); }
@@ -125,28 +124,32 @@ struct MD5
          * FF, GG, HH, and II transformations for rounds 1, 2, 3, and 4.
          * Rotation is separate from addition to prevent recomputation.
          */
-        static nothrow pure void FF(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+        static void FF(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+            @safe pure nothrow @nogc
         {
             a += F (b, c, d) + x + ac;
             a = rotateLeft(a, s);
             a += b;
         }
 
-        static nothrow pure void GG(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+        static void GG(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+            @safe pure nothrow @nogc
         {
             a += G (b, c, d) + x + ac;
             a = rotateLeft(a, s);
             a += b;
         }
 
-        static nothrow pure void HH(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+        static void HH(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+            @safe pure nothrow @nogc
         {
             a += H (b, c, d) + x + ac;
             a = rotateLeft(a, s);
             a += b;
         }
 
-        static nothrow pure void II(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+        static void II(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
+            @safe pure nothrow @nogc
         {
             a += I (b, c, d) + x + ac;
             a = rotateLeft(a, s);
@@ -178,7 +181,7 @@ struct MD5
             S44 = 21,
         }
 
-        private nothrow pure void transform(const(ubyte[64])* block)
+        private void transform(const(ubyte[64])* block) pure nothrow @nogc
         {
             uint a = _state[0],
                  b = _state[1],
@@ -295,7 +298,7 @@ struct MD5
          * dig.put(buf); //buffer
          * ----
          */
-        @trusted nothrow pure void put(scope const(ubyte)[] data...)
+        void put(scope const(ubyte)[] data...) @trusted pure nothrow @nogc
         {
             uint i, index, partLen;
             auto inputLen = data.length;
@@ -347,7 +350,7 @@ struct MD5
          * digest.put(0);
          * --------
          */
-        @trusted nothrow pure void start()
+        void start() @safe pure nothrow @nogc
         {
             this = MD5.init;
         }
@@ -356,8 +359,10 @@ struct MD5
          * Returns the finished MD5 hash. This also calls $(LREF start) to
          * reset the internal state.
           */
-        @trusted nothrow pure ubyte[16] finish()
+        ubyte[16] finish() @trusted pure nothrow @nogc
         {
+            import std.bitmanip : nativeToLittleEndian;
+
             ubyte[16] data = void;
             ubyte[8] bits = void;
             uint index, padLen;
@@ -552,7 +557,10 @@ unittest
     assert(result[0 .. 16] == result2 && result2 == cast(ubyte[])x"c3fcd3d76192e4007dfb496cca67e13b");
 
     debug
+    {
+        import std.exception;
         assertThrown!Error(md5.finish(result[0 .. 15]));
+    }
 
     assert(md5.length == 16);
 
