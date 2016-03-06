@@ -44,6 +44,7 @@ int Target::realsize;
 int Target::realpad;
 int Target::realalignsize;
 bool Target::reverseCppOverloads;
+int Target::classinfosize;
 
 
 void
@@ -76,7 +77,7 @@ Target::init()
   ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
   c_longsize = int_size_in_bytes(long_integer_type_node);
 
-  CLASSINFO_SIZE = 19 * ptrsize;
+  classinfosize = 19 * ptrsize;
 }
 
 // Return GCC memory alignment size for type TYPE.

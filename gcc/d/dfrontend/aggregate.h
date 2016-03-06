@@ -219,13 +219,6 @@ struct BaseClass
     void copyBaseInterfaces(BaseClasses *);
 };
 
-#ifdef IN_GCC
-extern int CLASSINFO_SIZE;              // value of ClassInfo.size
-#else
-#define CLASSINFO_SIZE_64  0x98         // value of ClassInfo.size
-#define CLASSINFO_SIZE  (0x3C+12+4)     // value of ClassInfo.size
-#endif
-
 struct ClassFlags
 {
     typedef unsigned Type;
