@@ -312,21 +312,6 @@ public:
 #endif
 };
 
-class ClassInfoDeclaration : public VarDeclaration
-{
-public:
-    ClassDeclaration *cd;
-
-    ClassInfoDeclaration(ClassDeclaration *cd);
-    Dsymbol *syntaxCopy(Dsymbol *);
-    void semantic(Scope *sc);
-
-    void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toSymbol();
-#endif
-};
-
 class TypeInfoDeclaration : public VarDeclaration
 {
 public:

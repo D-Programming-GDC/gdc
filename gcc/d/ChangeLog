@@ -5,6 +5,7 @@
 	* d-target.cc (Target::classinfosize): New variable, replaces all uses
 	of global CLASSINFO_SIZE.
 	(Target::init): Initialize it.
+	* d-decls.cc (ClassInfoDeclaration::toSymbol): Remove function.
 
 2016-03-05  Iain Buclaw  <ibuclaw@gdcproject.org>
 
