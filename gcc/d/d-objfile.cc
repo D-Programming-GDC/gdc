@@ -312,7 +312,7 @@ ClassDeclaration::toObjFile()
   genTypeInfo(type, NULL);
 
   // must be ClassInfo.size
-  size_t offset = CLASSINFO_SIZE;
+  size_t offset = Target::classinfosize;
   if (Type::typeinfoclass->structsize != offset)
     {
       error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
@@ -496,7 +496,7 @@ Lhaspointers:
 
       if (id->vtblOffset())
 	{
-	  tree size = size_int (CLASSINFO_SIZE + i * (4 * Target::ptrsize));
+	  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
 	  dt_cons (&dt, build_offset (build_address (csym->Stree), size));
 	}
 
@@ -529,7 +529,7 @@ Lhaspointers:
 
 	      if (id->vtblOffset())
 		{
-		  tree size = size_int (CLASSINFO_SIZE + i * (4 * Target::ptrsize));
+		  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
 		  dt_cons (&dt, build_offset (build_address (cd->toSymbol()->Stree), size));
 		}
 
@@ -614,7 +614,7 @@ Lhaspointers:
 unsigned
 ClassDeclaration::baseVtblOffset (BaseClass *bc)
 {
-  unsigned csymoffset = CLASSINFO_SIZE;
+  unsigned csymoffset = Target::classinfosize;
   csymoffset += vtblInterfaces->dim * (4 * Target::ptrsize);
 
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
@@ -705,7 +705,7 @@ InterfaceDeclaration::toObjFile()
   if (vtblInterfaces->dim)
     {
       // must be ClassInfo.size
-      size_t offset = CLASSINFO_SIZE;
+      size_t offset = Target::classinfosize;
       if (Type::typeinfoclass->structsize != offset)
 	{
 	  error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");

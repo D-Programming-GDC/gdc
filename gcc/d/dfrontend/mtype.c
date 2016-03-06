@@ -53,9 +53,6 @@
 
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
-#ifdef IN_GCC
-int CLASSINFO_SIZE;
-#endif
 
 Symbol *toInitializer(AggregateDeclaration *ad);
 Expression *getTypeInfo(Type *t, Scope *sc);

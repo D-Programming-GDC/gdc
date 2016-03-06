@@ -200,14 +200,6 @@ VarDeclaration::toSymbol()
   return csym;
 }
 
-// Create the symbol with tree for classinfo decls.
-
-Symbol *
-ClassInfoDeclaration::toSymbol()
-{
-  return cd->toSymbol();
-}
-
 // Create the symbol with tree for typeinfo decls.
 
 Symbol *
