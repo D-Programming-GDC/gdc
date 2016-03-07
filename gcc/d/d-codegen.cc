@@ -579,12 +579,15 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	    // Cast to an implemented interface: Handle at compile time.
 	    if (offset)
 	      {
-		tree t = build_ctype(totype);
+		tree type = build_ctype(totype);
 		exp = maybe_make_temp(exp);
-		return build3(COND_EXPR, t,
-			      build_boolop(NE_EXPR, exp, null_pointer_node),
-			      build_nop(t, build_offset(exp, size_int(offset))),
-			      build_nop(t, null_pointer_node));
+
+		tree cond = build_boolop(NE_EXPR, exp, null_pointer_node);
+		tree object = build_offset(exp, size_int(offset));
+
+		return build_condition(build_ctype(totype), cond,
+				       build_nop(type, object),
+				       build_nop(type, null_pointer_node));
 	      }
 
 	    // d_convert will make a no-op cast
@@ -808,35 +811,46 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
   return convert_expr (expr, etype, totype);
 }
 
+// Return TRUE if TYPE is a static array va_list.  This is for compatibility
+// with the C ABI, where va_list static arrays are passed by reference.
+// However for ever other case in D, static arrays are passed by value.
+
+static bool
+type_va_array(Type *type)
+{
+  if (Type::tvalist->ty == Tsarray)
+    {
+      Type *tb = type->toBasetype();
+      if (d_types_same(tb, Type::tvalist))
+	return true;
+    }
+
+  return false;
+}
+
+
 // Return a TREE representation of EXPR converted to represent parameter type ARG.
 
 tree
 convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
 {
-  switch (argument_type_kind(arg))
+  if (type_va_array(arg->type))
     {
-    case type_reference:
+      // Do nothing if the va_list has already been decayed to a pointer.
+      if (!POINTER_TYPE_P (TREE_TYPE (exp_tree)))
+	return build_address(exp_tree);
+    }
+  else if (argument_reference_p(arg))
+    {
       // Front-end sometimes automatically takes the address.
       if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
 	exp_tree = build_address(exp_tree);
 
       return convert(type_passed_as(arg), exp_tree);
-
-    case type_va_pointer:
-      // Do nothing if the va_list has already been decayed to a pointer.
-      if (POINTER_TYPE_P (TREE_TYPE (exp_tree)))
-	return exp_tree;
-      else
-	return build_address(exp_tree);
-
-    case type_lazy:
-    case type_normal:
-      // Lazy arguments: expr should already be a delegate
-      return exp_tree;
-
-    default:
-      gcc_unreachable();
     }
+
+  // Lazy arguments: expr should already be a delegate
+  return exp_tree;
 }
 
 // Perform default promotions for data used in expressions.
@@ -919,39 +933,29 @@ d_array_convert (Expression *exp)
   TY ty = exp->type->toBasetype()->ty;
 
   if (ty == Tarray)
-    return exp->toElem(NULL);
+    return exp->toElem();
   else if (ty == Tsarray)
     {
       Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
-      return convert_expr (exp->toElem(NULL), exp->type, totype);
+      return convert_expr (exp->toElem(), exp->type, totype);
     }
 
   // Invalid type passed.
   gcc_unreachable();
 }
 
-// Return the kind of type the declaration DECL should be stored as.
+// Return TRUE if declaration DECL is a reference type.
 
-type_kind
-declaration_type_kind(Declaration *decl)
+bool
+declaration_reference_p(Declaration *decl)
 {
   Type *tb = decl->type->toBasetype();
 
-  // Compatibility with C ABI, if the va_list is passed as a pointer.
-  // However for ever other case, static arrays are passed around by value.
-  if (decl->isParameter() && Type::tvalist->ty == Tsarray
-      && d_types_same(tb, Type::tvalist))
-    return type_va_pointer;
-
   // Declaration is a reference type.
   if (tb->ty == Treference || decl->storage_class & (STCout | STCref))
-    return type_reference;
+    return true;
 
-  // Declaration is a lazy parameter.
-  if (decl->storage_class & STClazy)
-    return type_lazy;
-
-  return type_normal;
+  return false;
 }
 
 // Returns the real type for declaration DECL.
@@ -961,63 +965,49 @@ declaration_type_kind(Declaration *decl)
 tree
 declaration_type(Declaration *decl)
 {
-  switch (declaration_type_kind(decl))
+  // Lazy declarations are converted to delegates.
+  if (decl->storage_class & STClazy)
     {
-    case type_reference:
-      {
-	tree decl_type = build_ctype(decl->type);
-	return build_reference_type(decl_type);
-      }
-
-    case type_lazy:
-      {
-	TypeFunction *tf = new TypeFunction(NULL, decl->type, false, LINKd);
-	TypeDelegate *t = new TypeDelegate(tf);
-	return build_ctype(t->merge());
-      }
-
-    case type_va_pointer:
-      {
-	Type *valist = decl->type->nextOf()->pointerTo();
-	valist = valist->castMod(decl->type->mod);
-	return build_ctype(valist);
-      }
-
-    case type_normal:
-      {
-	tree decl_type = build_ctype(decl->type);
-	if (decl->isThisDeclaration())
-	  decl_type = insert_type_modifiers(decl_type, MODconst);
-
-	return decl_type;
-      }
-
-    default:
-      gcc_unreachable();
+      TypeFunction *tf = new TypeFunction(NULL, decl->type, false, LINKd);
+      TypeDelegate *t = new TypeDelegate(tf);
+      return build_ctype(t->merge());
     }
+
+  // Static array va_list have array->pointer conversions applied.
+  if (decl->isParameter() && type_va_array(decl->type))
+    {
+      Type *valist = decl->type->nextOf()->pointerTo();
+      valist = valist->castMod(decl->type->mod);
+      return build_ctype(valist);
+    }
+
+  tree type = build_ctype(decl->type);
+
+  // Parameter is passed by reference.
+  if (declaration_reference_p(decl))
+    return build_reference_type(type);
+
+  // The 'this' parameter is always const.
+  if (decl->isThisDeclaration())
+    return insert_type_modifiers(type, MODconst);
+
+  return type;
 }
 
-// Return the kind of type the parameter ARG should be passed as.
+// These should match the Declaration versions above
+// Return TRUE if parameter ARG is a reference type.
 
-type_kind
-argument_type_kind(Parameter *arg)
+bool
+argument_reference_p(Parameter *arg)
 {
-  Type *tb = arg->type->toBasetype();
 
-  // Compatibility with C ABI, if the va_list is passed as a pointer.
-  // However for ever other case, static arrays are passed around by value.
-  if (Type::tvalist->ty == Tsarray && d_types_same(tb, Type::tvalist))
-    return type_va_pointer;
+  Type *tb = arg->type->toBasetype();
 
   // Parameter is a reference type.
   if (tb->ty == Treference || arg->storageClass & (STCout | STCref))
-    return type_reference;
+    return true;
 
-  // Parameter is a lazy parameter.
-  if (arg->storageClass & STClazy)
-    return type_lazy;
-
-  return type_normal;
+  return false;
 }
 
 // Returns the real type for parameter ARG.
@@ -1027,34 +1017,29 @@ argument_type_kind(Parameter *arg)
 tree
 type_passed_as(Parameter *arg)
 {
-  switch (argument_type_kind(arg))
+  // Lazy parameters are converted to delegates.
+  if (arg->storageClass & STClazy)
     {
-    case type_reference:
-      {
-	tree arg_type = build_ctype(arg->type);
-	return build_reference_type(arg_type);
-      }
-
-    case type_lazy:
-      {
-	TypeFunction *tf = new TypeFunction(NULL, arg->type, false, LINKd);
-	TypeDelegate *t = new TypeDelegate(tf);
-	return build_ctype(t->merge());
-      }
-
-    case type_va_pointer:
-      {
-	Type *valist = arg->type->nextOf()->pointerTo();
-	valist = valist->castMod(arg->type->mod);
-	return build_ctype(valist);
-      }
-
-    case type_normal:
-      return build_ctype(arg->type);
-
-    default:
-      gcc_unreachable();
+      TypeFunction *tf = new TypeFunction(NULL, arg->type, false, LINKd);
+      TypeDelegate *t = new TypeDelegate(tf);
+      return build_ctype(t->merge());
     }
+
+  // Static array va_list have array->pointer conversions applied.
+  if (type_va_array(arg->type))
+    {
+      Type *valist = arg->type->nextOf()->pointerTo();
+      valist = valist->castMod(arg->type->mod);
+      return build_ctype(valist);
+    }
+
+  tree type = build_ctype(arg->type);
+
+  // Parameter is passed by reference.
+  if (argument_reference_p(arg))
+    return build_reference_type(type);
+
+  return type;
 }
 
 // Returns an array of type D_TYPE which has SIZE number of elements.
@@ -1220,7 +1205,7 @@ build_attributes (Expressions *in_attrs)
 	      aet = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = ae->toElem(NULL);
+	    aet = ae->toElem();
 
 	  args = chainon (args, build_tree_list (0, aet));
         }
@@ -1655,27 +1640,28 @@ d_has_side_effects (tree exp)
 // Returns the address of the expression EXP.
 
 tree
-build_address (tree exp)
+build_address(tree exp)
 {
   tree ptrtype;
   tree type = TREE_TYPE (exp);
-  d_mark_addressable (exp);
+  d_mark_addressable(exp);
 
-  /* Just convert string literals (char[]) to C-style strings (char *), otherwise
-     the latter method (char[]*) causes conversion problems during gimplification. */
   if (TREE_CODE (exp) == STRING_CST)
-    ptrtype = build_pointer_type (TREE_TYPE (type));
-  /* Special case for va_list. The backends will be expecting a pointer to vatype,
-   * but some targets use an array. So fix it.  */
-  else if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node))
     {
-      if (TREE_CODE (TYPE_MAIN_VARIANT (type)) == ARRAY_TYPE)
-	ptrtype = build_pointer_type (TREE_TYPE (type));
-      else
-	ptrtype = build_pointer_type (type);
+      // Just convert string literals (char[]) to C-style strings (char *),
+      // otherwise the latter method (char[]*) causes conversion problems
+      // during gimplification.
+      ptrtype = build_pointer_type(TREE_TYPE (type));
+    }
+  else if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node)
+	   && TREE_CODE (TYPE_MAIN_VARIANT (type)) == ARRAY_TYPE)
+    {
+      // Special case for va_list.  Backend will be expects a pointer to va_list,
+      // but some targets use an array type.  So decay the array to pointer.
+      ptrtype = build_pointer_type(TREE_TYPE (type));
     }
   else
-    ptrtype = build_pointer_type (type);
+    ptrtype = build_pointer_type(type);
 
   tree ret = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
 
@@ -1875,11 +1861,11 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   // Let backend take care of union comparisons.
   if (sd->isUnionDeclaration())
     {
-      tmemcmp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_MEMCMP), 3,
-				   build_address (t1), build_address (t2),
-				   size_int (sd->structsize));
+      tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
+				  build_address(t1), build_address(t2),
+				  size_int(sd->structsize));
 
-      return build_boolop (code, tmemcmp, integer_zero_node);
+      return build_boolop(code, tmemcmp, integer_zero_node);
     }
 
   for (size_t i = 0; i < sd->fields.dim; i++)
@@ -1887,8 +1873,8 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
       VarDeclaration *vd = sd->fields[i];
       tree sfield = vd->toSymbol()->Stree;
 
-      tree t1ref = component_ref (t1, sfield);
-      tree t2ref = component_ref (t2, sfield);
+      tree t1ref = component_ref(t1, sfield);
+      tree t2ref = component_ref(t2, sfield);
       tree tcmp;
 
       if (vd->type->ty == Tstruct)
@@ -1900,18 +1886,21 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
       else
 	{
 	  tree stype = build_ctype(vd->type);
-	  machine_mode mode = int_mode_for_mode (TYPE_MODE (stype));
+	  machine_mode mode = int_mode_for_mode(TYPE_MODE (stype));
 
 	  if (vd->type->isintegral())
 	    {
 	      // Integer comparison, no special handling required.
-	      tcmp = build_boolop (code, t1ref, t2ref);
+	      tcmp = build_boolop(code, t1ref, t2ref);
 	    }
 	  else if (mode != BLKmode)
 	    {
 	      // Compare field bits as their corresponding integer type.
 	      //   *((T*) &t1) == *((T*) &t2)
-	      tree tmode = lang_hooks.types.type_for_mode (mode, 1);
+	      tree tmode = lang_hooks.types.type_for_mode(mode, 1);
+
+	      if (tmode == NULL_TREE)
+		tmode = make_unsigned_type(GET_MODE_BITSIZE (mode));
 
 	      t1ref = build_vconvert(tmode, t1ref);
 	      t2ref = build_vconvert(tmode, t2ref);
@@ -2229,6 +2218,35 @@ build_boolop(tree_code code, tree arg0, tree arg1)
 			 bool_type_node, arg0, arg1);
 }
 
+// Return a COND_EXPR.  ARG0, ARG1, and ARG2 are the three
+// arguments to the conditional expression.
+
+tree
+build_condition(tree type, tree arg0, tree arg1, tree arg2)
+{
+  if (arg1 == void_node)
+    arg1 = build_empty_stmt(input_location);
+
+  if (arg2 == void_node)
+    arg2 = build_empty_stmt(input_location);
+
+  return fold_build3_loc(input_location, COND_EXPR,
+			 type, arg0, arg1, arg2);
+}
+
+tree
+build_vcondition(tree arg0, tree arg1, tree arg2)
+{
+  if (arg1 == void_node)
+    arg1 = build_empty_stmt(input_location);
+
+  if (arg2 == void_node)
+    arg2 = build_empty_stmt(input_location);
+
+  return fold_build3_loc(input_location, COND_EXPR,
+			 void_type_node, arg0, arg1, arg2);
+}
+
 // Compound ARG0 and ARG1 together.
 
 tree
@@ -2461,10 +2479,12 @@ tree
 void_okay_p(tree t)
 {
   tree type = TREE_TYPE (t);
-  tree totype = build_ctype(Type::tuns8->pointerTo());
 
   if (VOID_TYPE_P (TREE_TYPE (type)))
-    return fold_convert(totype, t);
+    {
+      tree totype = build_ctype(Type::tuns8->pointerTo());
+      return fold_convert(totype, t);
+    }
 
   return t;
 }
@@ -2544,13 +2564,13 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   if (e1b->op == TOKcomma)
     {
       CommaExp *ce = (CommaExp *) e1b;
-      lexpr = ce->e1->toElem(NULL);
-      lhs = ce->e2->toElem(NULL);
+      lexpr = ce->e1->toElem();
+      lhs = ce->e2->toElem();
     }
   else
-    lhs = e1b->toElem(NULL);
+    lhs = e1b->toElem();
 
-  tree rhs = e2->toElem(NULL);
+  tree rhs = e2->toElem();
 
   // Build assignment expression. Stabilize lhs for assignment.
   lhs = stabilize_reference(lhs);
@@ -2575,9 +2595,9 @@ d_checked_index (Loc loc, tree index, tree upr, bool inclusive)
   if (!array_bounds_check())
     return index;
 
-  return build3 (COND_EXPR, TREE_TYPE (index),
-		 d_bounds_condition (index, upr, inclusive),
-		 index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
+  return build_condition(TREE_TYPE (index),
+			 d_bounds_condition (index, upr, inclusive),
+			 index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
 }
 
 // Builds the condition [INDEX < UPR] and optionally [INDEX >= 0]
@@ -2713,17 +2733,17 @@ call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee)
 // OBJECT is the 'this' reference passed and ARGS are the arguments to FD.
 
 tree
-d_build_call (FuncDeclaration *fd, tree object, Expressions *args)
+d_build_call(FuncDeclaration *fd, tree object, Expressions *args)
 {
-  return d_build_call (get_function_type (fd->type),
-		       build_address (fd->toSymbol()->Stree), object, args);
+  return d_build_call(get_function_type(fd->type),
+		      build_address(fd->toSymbol()->Stree), object, args);
 }
 
 // Builds a CALL_EXPR of type TF to CALLABLE. OBJECT holds the 'this' pointer,
 // ARGUMENTS are evaluated in left to right order, saved and promoted before passing.
 
 tree
-d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *arguments)
+d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *arguments)
 {
   tree ctype = TREE_TYPE (callable);
   tree callee = callable;
@@ -2734,16 +2754,16 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
   if (POINTER_TYPE_P (ctype))
     ctype = TREE_TYPE (ctype);
   else
-    callee = build_address (callable);
+    callee = build_address(callable);
 
-  gcc_assert (function_type_p (ctype));
-  gcc_assert (tf != NULL);
-  gcc_assert (tf->ty == Tfunction);
+  gcc_assert(function_type_p(ctype));
+  gcc_assert(tf != NULL);
+  gcc_assert(tf->ty == Tfunction);
 
   // Evaluate the callee before calling it.
   if (TREE_SIDE_EFFECTS (callee))
     {
-      callee = maybe_make_temp (callee);
+      callee = maybe_make_temp(callee);
       saved_args = callee;
     }
 
@@ -2752,7 +2772,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
-	  error ("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
+	  error("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
 	  return error_mark_node;
 	}
 
@@ -2766,10 +2786,10 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
     {
       if (TREE_SIDE_EFFECTS (object))
 	{
-	  object = maybe_make_temp (object);
-	  saved_args = maybe_vcompound_expr (saved_args, object);
+	  object = maybe_make_temp(object);
+	  saved_args = maybe_vcompound_expr(saved_args, object);
 	}
-      arg_list = build_tree_list (NULL_TREE, object);
+      arg_list = build_tree_list(NULL_TREE, object);
     }
 
   if (arguments)
@@ -2779,13 +2799,13 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	{
 	Lagain:
 	  Expression *arg = (*arguments)[i];
-	  gcc_assert (arg->op != TOKtuple);
+	  gcc_assert(arg->op != TOKtuple);
 
 	  if (arg->op == TOKcomma)
 	    {
 	      CommaExp *ce = (CommaExp *) arg;
-	      tree tce = ce->e1->toElem(NULL);
-	      saved_args = maybe_vcompound_expr (saved_args, tce);
+	      tree tce = ce->e1->toElem();
+	      saved_args = maybe_vcompound_expr(saved_args, tce);
 	      (*arguments)[i] = ce->e2;
 	      goto Lagain;
 	    }
@@ -2793,7 +2813,7 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 
       // if _arguments[] is the first argument.
       size_t dvarargs = (tf->linkage == LINKd && tf->varargs == 1);
-      size_t nparams = Parameter::dim (tf->parameters);
+      size_t nparams = Parameter::dim(tf->parameters);
 
       // Assumes arguments->dim <= formal_args->dim if (!this->varargs)
       for (size_t i = 0; i < arguments->dim; ++i)
@@ -2804,24 +2824,16 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  if (i < dvarargs)
 	    {
 	      // The hidden _arguments parameter
-	      targ = arg->toElem(NULL);
+	      targ = arg->toElem();
 	    }
 	  else if (i - dvarargs < nparams && i >= dvarargs)
 	    {
 	      // Actual arguments for declared formal arguments
-	      Parameter *parg = Parameter::getNth (tf->parameters, i - dvarargs);
-	      targ = convert_for_argument (arg->toElem(NULL), arg, parg);
+	      Parameter *parg = Parameter::getNth(tf->parameters, i - dvarargs);
+	      targ = convert_for_argument(arg->toElem(), arg, parg);
 	    }
 	  else
-	    {
-	      // Not all targets support passing unpromoted types, so
-	      // promote anyway.
-	      targ = arg->toElem(NULL);
-	      tree ptype = lang_hooks.types.type_promotes_to (TREE_TYPE (targ));
-
-	      if (ptype != TREE_TYPE (targ))
-		targ = convert (ptype, targ);
-	    }
+	    targ = arg->toElem();
 
 	  // Don't pass empty aggregates by value.
 	  if (empty_aggregate_p(TREE_TYPE (targ)) && !TREE_ADDRESSABLE (targ)
@@ -2835,17 +2847,17 @@ d_build_call (TypeFunction *tf, tree callable, tree object, Expressions *argumen
 	  // Needed for left to right evaluation.
 	  if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (targ))
 	    {
-	      targ = maybe_make_temp (targ);
-	      saved_args = maybe_vcompound_expr (saved_args, targ);
+	      targ = maybe_make_temp(targ);
+	      saved_args = maybe_vcompound_expr(saved_args, targ);
 	    }
-	  arg_list = chainon (arg_list, build_tree_list (0, targ));
+	  arg_list = chainon(arg_list, build_tree_list(0, targ));
 	}
     }
 
-  tree result = d_build_call_list (TREE_TYPE (ctype), callee, arg_list);
-  result = expand_intrinsic (result);
+  tree result = d_build_call_list(TREE_TYPE (ctype), callee, arg_list);
+  result = expand_intrinsic(result);
 
-  return maybe_compound_expr (saved_args, result);
+  return maybe_compound_expr(saved_args, result);
 }
 
 // Builds a call to AssertError or AssertErrorMsg.
@@ -3108,8 +3120,8 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2
   exp = fold_build2 (BIT_AND_EXPR, type, arg1, arg2);
 
   // cond ? -1 : 0;
-  exp = fold_build3 (COND_EXPR, TREE_TYPE (callee), d_truthvalue_conversion (exp),
-                    integer_minus_one_node, integer_zero_node);
+  exp = build_condition(TREE_TYPE (callee), d_truthvalue_conversion (exp),
+			integer_minus_one_node, integer_zero_node);
 
   // Update the bit as needed.
   code = (intrinsic == INTRINSIC_BTC) ? BIT_XOR_EXPR :
@@ -3196,12 +3208,7 @@ expand_intrinsic_vaarg(tree callee, tree arg1, tree arg2)
       type = TREE_TYPE(arg2);
     }
 
-  // Silently convert promoted types.
-  tree ptype = lang_hooks.types.type_promotes_to(type);
-  tree exp = build1(VA_ARG_EXPR, ptype, arg1);
-
-  if (type != ptype)
-    exp = fold_convert(type, exp);
+  tree exp = build1(VA_ARG_EXPR, type, arg1);
 
   if (arg2 != NULL_TREE)
     exp = vmodify_expr(arg2, exp);
@@ -3224,8 +3231,8 @@ expand_intrinsic_vastart (tree callee, tree arg1, tree arg2)
   STRIP_NOPS (arg2);
   gcc_assert (TREE_CODE (arg1) == ADDR_EXPR && TREE_CODE (arg2) == ADDR_EXPR);
 
-  arg2 = TREE_OPERAND (arg2, 0);
   // Assuming nobody tries to change the return type.
+  arg2 = TREE_OPERAND (arg2, 0);
   return expand_intrinsic_op2 (BUILT_IN_VA_START, callee, arg1, arg2);
 }
 
@@ -3490,7 +3497,7 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 tree
 build_typeinfo (Type *t)
 {
-  tree tinfo = t->getInternalTypeInfo (NULL)->toElem(NULL);
+  tree tinfo = t->getInternalTypeInfo (NULL)->toElem();
   gcc_assert (POINTER_TYPE_P (TREE_TYPE (tinfo)));
   return tinfo;
 }
@@ -4175,7 +4182,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 // Build and return expression tree for WrappedExp.
 
 elem *
-WrappedExp::toElem (IRState *)
+WrappedExp::toElem()
 {
   return this->e1;
 }

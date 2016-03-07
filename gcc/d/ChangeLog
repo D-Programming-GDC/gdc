@@ -1,3 +1,60 @@
+2016-02-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* intrinsics.def: Split signature macros into three groups.
+	Attributes, types, and helper generators.
+	* d-elem.cc (needsPostblit): Change signature to return boolean,
+	updated all callers.
+	(AssignExp::toElem): Don't assign destination to a temporary in
+	arraycopy call.
+	* toir.cc (IRVisior::visit(ThrowStatement)): Use NOP_EXPR cast to
+	convert thrown exception to Object.
+	(IRVisitor::visit(TryCatchStatement)): Use NOP_EXPR cast to convert
+	caught Object to thrown exception.
+	* d-codegen.cc (void_okay_p): Lazily build the convert to type.
+	* d-lang.cc (parse_int): Remove function.
+	(d_handle_option): Use integral_argument to parse numbers.
+
+	* d-codegen.cc (lower_struct_comparison): Built custom type if
+	lang_hooks.types.type_for_mode returns nothing.
+	* d-lang.cc (d_type_for_mode): Always support cent/ucent modes.
+	(d_type_for_size): Add support for cent/ucent precision types.
+	(d_signed_or_unsigned_type): Always support cent/ucent precisions.
+
+	* d-codegen.cc (d_build_call): Remove type promotion handling for
+	variadic arguments.
+	(expand_intrinsic_vaarg): Likewise.
+	* d-lang.cc (d_type_promotes_to): Likewise.
+
+	* d-elem.cc (AddrExp::toElem): Take address of the static const symbol
+	for the struct literal,  not the const constructor.
+	(CallExp::toElem): Don't pass generated static struct literal symbol
+	as the object parameter for DotVar call expressions.
+
+	* d-codegen.cc (type_va_array): New function.
+	(declaration_type_kind): Remove function.
+	(declaration_reference_p): New function, update all callers of
+	declaration_type_kind.
+	(argument_type_kind): Remove function.
+	(argument_reference_p): New function, update all callers of
+	argument_type_kind.
+	(build_address): Remove special handling of static array va_list.
+	* d-codegen.h (type_kind): Remove enum.
+
+2016-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_condition): New function.  Update all callers
+	that generate a COND_EXPR that returns a value to use it.
+	(build_vcondition): New function.  Update all callers that generate a
+	void COND_EXPR to use it.
+	* toir.cc (IRVisitor::visit(DoStatement)): Build a COND_EXPR instead
+	of an EXIT_EXPR to break from the loop.
+	(IRVisitor::visit(ForStatement)): Likewise.
+
+2016-02-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-elem.cc: Remove redundant IRState parameter from all lowering
+	routines for expressions, update all callers.
+
 2016-02-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_array_set): Use POSTINCREMENT_EXPR to adjust
