@@ -127,12 +127,9 @@ public:
   // symbol generation routines, the compiler will throw an error.
   void visit(Declaration *d)
   {
-    if (!d->csym)
-      d->toSymbol();
-
     tree decl = make_node(IMPORTED_DECL);
     TREE_TYPE (decl) = void_type_node;
-    IMPORTED_DECL_ASSOCIATED_DECL (decl) = d->csym->Stree;
+    IMPORTED_DECL_ASSOCIATED_DECL (decl) = d->toSymbol()->Stree;
     d_keep(decl);
 
     d->isym = new Symbol();
