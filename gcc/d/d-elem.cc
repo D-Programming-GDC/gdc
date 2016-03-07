@@ -1848,7 +1848,7 @@ DeclarationExp::toElem()
     }
 
   push_stmt_list();
-  declaration->toObjFile (0);
+  declaration->toObjFile();
   tree t = pop_stmt_list();
 
   /* Construction of an array for typesafe-variadic function arguments

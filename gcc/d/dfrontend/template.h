@@ -356,7 +356,7 @@ public:
     hash_t hashCode();
 
     bool needsCodegen();
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
 
     // Internal
     bool findTempDecl(Scope *sc, WithScopeSymbol **pwithsym);
@@ -394,7 +394,7 @@ public:
     char *toChars();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
 
     bool findTempDecl(Scope *sc);
 

@@ -529,7 +529,7 @@ FuncExp::toDt (dt_t **pdt)
     }
 
   tree dt = build_address (fd->toSymbol()->Stree);
-  fd->toObjFile (0);
+  fd->toObjFile();
 
   return dt_cons (pdt, dt);
 }

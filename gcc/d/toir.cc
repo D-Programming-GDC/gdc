@@ -1014,7 +1014,7 @@ public:
 	Dsymbol *dsym = (*s->imports)[i];
 
 	if (dsym != NULL)
-	  dsym->toObjFile(0);
+	  dsym->toObjFile();
       }
   }
 };

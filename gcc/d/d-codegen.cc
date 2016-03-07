@@ -273,7 +273,7 @@ d_decl_context (Dsymbol *dsym)
 	  if (decl != NULL && decl->linkage != LINKd)
 	    return NULL_TREE;
 
-	  return parent->toImport()->Stree;
+	  return build_import_decl(parent);
 	}
 
       // Declarations marked as 'static' or '__gshared' are never

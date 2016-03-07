@@ -179,7 +179,7 @@ public:
     bool fill(Loc loc, Expressions *elements, bool ctorinit);
     bool isPOD();
 
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
     void toDt(dt_t **pdt);
 
     StructDeclaration *isStructDeclaration() { return this; }
@@ -302,7 +302,7 @@ public:
     void addLocalClass(ClassDeclarations *);
 
     // Back end
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
     unsigned baseVtblOffset(BaseClass *bc);
     Symbol *toSymbol();
     Symbol *toVtblSymbol();
@@ -328,7 +328,7 @@ public:
     bool isCPPinterface();
     bool isCOMinterface();
 
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
     Symbol *toSymbol();
 
     InterfaceDeclaration *isInterfaceDeclaration() { return this; }
