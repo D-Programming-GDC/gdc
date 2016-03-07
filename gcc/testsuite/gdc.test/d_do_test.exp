@@ -36,7 +36,7 @@ proc gdc-convert-args { args } {
             lappend out "-fno-bounds-check"
 
         } elseif [string match "-boundscheck=safeonly" $arg] {
-            lappend out "-fbounds-check=safe"
+            lappend out "-fbounds-check=safeonly"
 
         } elseif [string match "-c" $arg] {
             lappend out "-c"

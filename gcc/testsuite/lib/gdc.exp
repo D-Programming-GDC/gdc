@@ -124,6 +124,12 @@ proc gdc_link_flags { paths } {
       if [file exists "${gccpath}/libiberty/libiberty.a"] {
           append flags "-L${gccpath}/libiberty "
       }
+      # For the tests that mix C++ and D, we should try and handle this better.
+      if { [file exists "${gccpath}/libstdc++-v3/src/.libs/libstdc++.a"] \
+           || [file exists "${gccpath}/libstdc++-v3/src/.libs/libstdc++.${shlib_ext}"] } {
+          append flags "-L${gccpath}/libstdc++-v3/src/.libs "
+          append ld_library_path ":${gccpath}/libstdc++-v3/src/.libs"
+      }
       append ld_library_path [gcc-set-multilib-library-path $GDC_UNDER_TEST]
     } else {
       global tool_root_dir
