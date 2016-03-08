@@ -87,7 +87,7 @@ D_GLUE_OBJS = d/d-attribs.o d/d-lang.o d/d-decls.o \
               d/d-codegen.o d/d-objfile.o \
               d/d-convert.o d/d-todt.o d/d-longdouble.o \
               d/d-builtins.o d/d-incpath.o d/types.o \
-              d/d-elem.o d/toir.o d/d-typinf.o \
+              d/d-elem.o d/imports.o d/toir.o d/d-typinf.o \
               d/d-port.o d/d-target.o d/d-glue.o
 
 # Generated programs.

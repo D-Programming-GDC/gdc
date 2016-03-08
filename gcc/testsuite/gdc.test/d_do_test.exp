@@ -146,7 +146,7 @@ proc dmd2dg { base test } {
     set out_line "// { dg-prune-output .* }"
     puts $fdout $out_line
 
-    # Compilable files are successful if an output it generated.
+    # Compilable files are successful if an output is generated.
     # Fail compilable are successful if an output is not generated.
     # Runnable must compile, link, and return 0 to be successful by default.
     switch [ file dirname $test ] {

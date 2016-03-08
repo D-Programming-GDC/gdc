@@ -68,7 +68,7 @@ public:
 
     EnumDeclaration *isEnumDeclaration() { return this; }
 
-    void toObjFile(bool multiobj);                       // compile to .obj file
+    void toObjFile();                       // compile to .obj file
 
     Symbol *sinit;
     Symbol *toInitializer();

@@ -38,7 +38,7 @@ SUFFIXES = .d
 	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
 
 %.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) -fno-invariants $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
+	$(GDC) -o $@ $(DFLAGSX) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
 
 %.t.o : %.o
 	cp $< $@

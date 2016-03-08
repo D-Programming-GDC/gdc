@@ -332,40 +332,7 @@ d_init_ts()
   MARK_TS_TYPED (UNSIGNED_RSHIFT_EXPR);
 }
 
-
-static bool
-parse_int (const char *arg, int *value_ret)
-{
-  /* Common case of a single digit.  */
-  if (arg[1] == '\0')
-    *value_ret = arg[0] - '0';
-  else
-    {
-      HOST_WIDE_INT v = 0;
-      unsigned int base = 10, c = 0;
-      int overflow = 0;
-      for (const char *p = arg; *p != '\0'; p++)
-	{
-	  c = *p;
-
-	  if (ISDIGIT (c))
-	    c = hex_value (c);
-	  else
-	    return false;
-
-	  v = v * base + c;
-	  overflow |= (v > INT_MAX);
-	}
-
-      if (overflow)
-	return false;
-
-      *value_ret = v;
-    }
-
-  return true;
-}
-
+//
 static bool
 d_handle_option (size_t scode, const char *arg, int value,
 		 int kind ATTRIBUTE_UNUSED,
@@ -374,7 +341,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 {
   opt_code code = (opt_code) scode;
   bool result = true;
-  int level;
 
   switch (code)
     {
@@ -407,17 +373,21 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fdebug_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (!parse_int (arg, &level))
-	    goto Lerror_d;
-	  DebugCondition::setGlobalLevel (level);
+	  int level = integral_argument(arg);
+	  if (level != -1)
+	    {
+	      DebugCondition::setGlobalLevel(level);
+	      break;
+	    }
 	}
-      else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
-	DebugCondition::addGlobalIdent (arg);
-      else
+
+      if (Lexer::isValidIdentifier(CONST_CAST (char *, arg)))
 	{
-    Lerror_d:
-	  error ("bad argument for -fdebug");
+	  DebugCondition::addGlobalIdent(arg);
+	  break;
 	}
+
+      error ("bad argument for -fdebug '%s'", arg);
       break;
 
     case OPT_fdeps:
@@ -553,17 +523,21 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_fversion_:
       if (ISDIGIT (arg[0]))
 	{
-	  if (!parse_int (arg, &level))
-	    goto Lerror_v;
-	  VersionCondition::setGlobalLevel (level);
+	  int level = integral_argument(arg);
+	  if (level != -1)
+	    {
+	      VersionCondition::setGlobalLevel (level);
+	      break;
+	    }
 	}
-      else if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
-	VersionCondition::addGlobalIdent (arg);
-      else
+
+      if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
-    Lerror_v:
-	  error ("bad argument for -fversion");
+	  VersionCondition::addGlobalIdent (arg);
+	  break;
 	}
+
+      error ("bad argument for -fversion '%s'", arg);
       break;
 
     case OPT_fXf_:
@@ -1257,10 +1231,8 @@ d_type_for_mode(machine_mode mode, int unsignedp)
   if (mode == DImode)
     return unsignedp ? ulong_type_node : long_type_node;
 
-#if HOST_BITS_PER_WIDE_INT >= 64
   if (mode == TYPE_MODE(cent_type_node))
     return unsignedp ? ucent_type_node : cent_type_node;
-#endif
 
   if (mode == TYPE_MODE(float_type_node))
     return float_type_node;
@@ -1320,6 +1292,9 @@ d_type_for_size(unsigned bits, int unsignedp)
   if (bits <= TYPE_PRECISION(long_type_node))
     return unsignedp ? ulong_type_node : long_type_node;
 
+  if (bits <= TYPE_PRECISION(cent_type_node))
+    return unsignedp ? ucent_type_node : cent_type_node;
+
   return 0;
 }
 
@@ -1330,16 +1305,18 @@ d_signed_or_unsigned_type(int unsignedp, tree type)
       || TYPE_UNSIGNED(type) == (unsigned) unsignedp)
     return type;
 
-#if HOST_BITS_PER_WIDE_INT >= 64
   if (TYPE_PRECISION(type) == TYPE_PRECISION(cent_type_node))
     return unsignedp ? ucent_type_node : cent_type_node;
-#endif
+
   if (TYPE_PRECISION(type) == TYPE_PRECISION(long_type_node))
     return unsignedp ? ulong_type_node : long_type_node;
+
   if (TYPE_PRECISION(type) == TYPE_PRECISION(int_type_node))
     return unsignedp ? uint_type_node : int_type_node;
+
   if (TYPE_PRECISION(type) == TYPE_PRECISION(short_type_node))
     return unsignedp ? ushort_type_node : short_type_node;
+
   if (TYPE_PRECISION(type) == TYPE_PRECISION(byte_type_node))
     return unsignedp ? ubyte_type_node : byte_type_node;
 
@@ -1358,30 +1335,11 @@ d_signed_type(tree type)
   return d_signed_or_unsigned_type(0, type);
 }
 
-// Type promotion for variable arguments.
-// This is needed for varargs to work on certain targets.
+// All promotions for variable arguments are handled by the frontend.
 
 static tree
 d_type_promotes_to(tree type)
 {
-  tree ptype = targetm.promoted_type(type);
-  if (ptype)
-    return ptype;
-
-  if (TYPE_MAIN_VARIANT(type) == float_type_node)
-    return double_type_node;
-
-  if (INTEGRAL_TYPE_P(type)
-      && (TYPE_PRECISION(type) <= TYPE_PRECISION(integer_type_node)))
-    {
-      // Preserve unsignedness if not really getting any wider.
-      if (TYPE_UNSIGNED(type)
-	  && (TYPE_PRECISION(type) == TYPE_PRECISION(integer_type_node)))
-	return unsigned_type_node;
-
-      return integer_type_node;
-    }
-
   return type;
 }
 

@@ -28,16 +28,6 @@ enum LibCall
   LIBCALL_count
 };
 
-// If a type is internally represented as something else.
-
-enum type_kind
-{
-  type_normal,
-  type_reference,   // Passed by reference.
-  type_va_pointer,  // VA list that is passed as a pointer.
-  type_lazy,	    // Converted into a delegate.
-};
-
 struct FuncFrameInfo
 {
   bool creates_frame;	    // Function creates nested frame.
@@ -53,6 +43,7 @@ struct FuncFrameInfo
 // Visitor routines for barrier between frontend and glue.
 extern void build_ir(FuncDeclaration *fd);
 extern tree build_ctype(Type *t);
+extern tree build_import_decl(Dsymbol *dsym);
 
 // Code generation routines.
 extern void push_binding_level(level_kind kind);
@@ -78,9 +69,9 @@ extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 extern tree build_struct_literal(tree type, tree init);
 
 // Routines to handle variables that are references.
-extern type_kind declaration_type_kind(Declaration *decl);
+extern bool declaration_reference_p (Declaration *decl);
 extern tree declaration_type (Declaration *decl);
-extern type_kind argument_type_kind(Parameter *arg);
+extern bool argument_reference_p (Parameter *arg);
 extern tree type_passed_as (Parameter *arg);
 
 extern tree d_array_type (Type *d_type, uinteger_t size);
@@ -261,6 +252,8 @@ extern tree build_vinit(tree dst, tree src);
 extern tree build_nop(tree t, tree e);
 extern tree build_vconvert(tree t, tree e);
 extern tree build_boolop(tree_code code, tree arg0, tree arg1);
+extern tree build_condition(tree type, tree arg0, tree arg1, tree arg2);
+extern tree build_vcondition(tree arg0, tree arg1, tree arg2);
 
 extern tree compound_expr(tree arg0, tree arg1);
 extern tree vcompound_expr(tree arg0, tree arg1);
