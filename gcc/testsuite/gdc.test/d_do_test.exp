@@ -22,49 +22,76 @@ load_lib gdc-dg.exp
 proc gdc-convert-args { args } {
     set out ""
 
-    if [regexp -- {-c} $args] {
-        lappend out "-c"
-    }
-    if [regexp -- {-d} $args] {
-        if [regexp -- {-de} $args] {
+    foreach arg [split [lindex $args 0] " "] {
+        # List of switches kept in ASCII collated order.
+        if [string match "-allinst" $arg] {
+            lappend out "-femit-templates"
+
+        } elseif { [string match "-boundscheck" $arg]
+                 || [ string match "-boundscheck=on" $arg] } {
+            lappend out "-fbounds-check"
+
+        } elseif { [string match "-boundscheck=off" $arg]
+                   || [string match "-noboundscheck" $arg] } {
+            lappend out "-fno-bounds-check"
+
+        } elseif [string match "-boundscheck=safeonly" $arg] {
+            lappend out "-fbounds-check=safeonly"
+
+        } elseif [string match "-c" $arg] {
+            lappend out "-c"
+
+        } elseif [string match "-d" $arg] {
+            lappend out "-Wno-deprecated"
+
+        } elseif [string match "-de" $arg] {
             lappend out "-Wdeprecated"
             lappend out "-Werror"
-        } else {
-            lappend out "-Wno-deprecated"
-        }
-    }
-    if [regexp -- {-g} $args] {
-        lappend out "-g"
-    }
-    if [regexp -- {-inline} $args] {
-        lappend out "-finline-functions"
-    }
-    if [regexp -- {-boundscheck} $args] {
-        if [regexp -- {-boundscheck=safeonly} $args] {
-            lappend out "-fbounds-check=safe"
-        } elseif [regexp -- {-boundscheck=off} $args] {
-            lappend out "-fno-bounds-check"
-        } else {
-            lappend out "-fbounds-check"
-        }
-        
-    }
-    if [regexp -- {-property} $args] {
-        lappend out "-fproperty"
-    }
-    if [regexp -- {-unittest} $args] {
-        lappend out "-funittest"
-    }
-    if [regexp -- {-w} $args] {
-        if [regexp -- {-wi} $args] {
-            lappend out "-Wall"
+
+        } elseif [string match "-debug" $arg] {
+            lappend out "-fdebug"
+
+        } elseif [string match "-dw" $arg] {
+            lappend out "-Wdeprecated"
             lappend out "-Wno-error"
-        } else {
+
+        } elseif [string match "-fPIC" $arg] {
+            lappend out "-fPIC"
+
+        } elseif { [string match "-g" $arg]
+                   || [string match "-gc" $arg] } {
+            lappend out "-g"
+
+        } elseif [string match "-inline" $arg] {
+            lappend out "-finline-functions"
+
+        } elseif [string match "-O" $arg] {
+            lappend out "-O2"
+
+        } elseif [string match "-property" $arg] {
+            lappend out "-fproperty"
+
+        } elseif [string match "-release" $arg] {
+            lappend out "-frelease"
+
+        } elseif [string match "-unittest" $arg] {
+            lappend out "-funittest"
+
+        } elseif [regexp -- {^-verrors=(\d+)} $arg pattern num] {
+            lappend out "-fmax-errors=$num"
+
+        } elseif [string match "-w" $arg] {
             lappend out "-Wall"
             lappend out "-Werror"
+
+        } elseif [string match "-wi" $arg] {
+            lappend out "-Wall"
+            lappend out "-Wno-error"
+
+        } else {
+            # print "Unhandled Argument: $arg"
         }
     }
-
 
     set i 0
     while { [regexp -start $i -indices -- {-I([\w/-]+)} $args i j] } {
@@ -166,65 +193,64 @@ proc dmd2dg { base test } {
         set out_line $copy_line
 
         # PERMUTE_ARGS.  Must be handled separately
-        if [regexp -- {PERMUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
-            set PERMUTE_ARGS [gdc-convert-args $m0]
+        if [regexp -- {PERMUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
+            set PERMUTE_ARGS [gdc-convert-args $args]
             continue
         }
 
         # COMPILE_SEPARATELY. Not handled.
-        if [string match "COMPILE_SEPARATELY" $copy_line] {
-            set out_line $copy_line
+        if [regexp -- {COMPILE_SEPARATELY} $copy_line] {
+            continue
         }
 
         # POST_SCRIPT. not handled
-        if [string match "POST_SCRIPT" $copy_line] {
-            error "POST_SCRIPT not handled"
-            set out_line $copy_line
+        if [regexp -- {POST_SCRIPT} $copy_line] {
+            continue
         }
 
         # Can be handled with dg directives.
 
         # Handle EXECUTE_ARGS option.
-        if [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line m m0] {
-            foreach arg $m0 {
+        if [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
+            foreach arg $args {
                 lappend EXECUTE_ARGS $arg
             }
             continue
         }
 
         # Handle EXTRA_SOURCES option
-        if [regexp -- {EXTRA_SOURCES\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {EXTRA_SOURCES\s*:\s*(.*)} $copy_line match sources] {
             # Iterate imports and convert
-            foreach import $m0 {
+            foreach import $sources {
                 # print "Import: $base $type/$import"
                 gdc-copy-extra $base "$type/$import"
             }
-            set out_line "// { dg-additional-sources \"$m0\" }"
+            set out_line "// { dg-additional-sources \"$sources\" }"
         }
 
         # Handle EXTRA_CPP_SOURCES option
-        if [regexp -- {EXTRA_CPP_SOURCES\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {EXTRA_CPP_SOURCES\s*:\s*(.*)} $copy_line match sources] {
             # Iterate imports and convert
-            foreach import $m0 {
+            foreach import $sources {
                 # print "Import: $base $type/$import"
                 gdc-copy-extra $base "$type/$import"
             }
-            set out_line "// { dg-additional-sources \"$m0\" }"
+            set out_line "// { dg-additional-sources \"$sources\" }"
         }
 
         # Handle EXTRA_FILES option
-        if [regexp -- {EXTRA_FILES\s*:\s*(.*)} $copy_line m m0] {
+        if [regexp -- {EXTRA_FILES\s*:\s*(.*)} $copy_line match files] {
             # Iterate imports and convert
-            foreach import $m0 {
+            foreach import $files {
                 # print "Import: $base $type/$import"
                 gdc-copy-extra $base "$type/$import"
             }
-            set out_line "// { dg-additional-files \"$m0\" }"
+            set out_line "// { dg-additional-files \"$files\" }"
         }
 
         # REQUIRED_ARGS.
-        if [regexp -- {REQUIRED_ARGS\s*:\s*(.*)} $copy_line m m0] {
-            set out_line "// { dg-additional-options \"[gdc-convert-args $m0]\" }"
+        if [regexp -- {REQUIRED_ARGS\s*:\s*(.*)} $copy_line match args] {
+            set out_line "// { dg-additional-options \"[gdc-convert-args $args]\" }"
         }
         puts $fdout $out_line
     }

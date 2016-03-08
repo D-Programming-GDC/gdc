@@ -29,15 +29,15 @@ class D
   public:
     virtual int bar(int i, int j, int k)
     {
-	printf("this = %p\n", this);
-	assert(this == dthis);
-	printf("D.bar: i = %d\n", i);
-	printf("D.bar: j = %d\n", j);
-	printf("D.bar: k = %d\n", k);
-	assert(i == 9);
-	assert(j == 10);
-	assert(k == 11);
-	return 8;
+    printf("this = %p\n", this);
+    assert(this == dthis);
+    printf("D.bar: i = %d\n", i);
+    printf("D.bar: j = %d\n", j);
+    printf("D.bar: k = %d\n", k);
+    assert(i == 9);
+    assert(j == 10);
+    assert(k == 11);
+    return 8;
     }
 };
 
@@ -127,11 +127,36 @@ typedef struct
     double d;
 } S6;
 
+union S6_2
+{
+    int i;
+    double d;
+};
+
+enum S6_3
+{
+    A, B
+};
+
+
 S6 foo6(void)
 {
     S6 s;
     s.i = 42;
     s.d = 2.5;
+    return s;
+}
+
+S6_2 foo6_2(void)
+{
+    S6_2 s;
+    s.i = 42;
+    return s;
+}
+
+S6_3 foo6_3(void)
+{
+    S6_3 s = A;
     return s;
 }
 
@@ -157,6 +182,53 @@ extern "C" { int foo7()
 
 /**************************************/
 
+struct S13955a
+{
+    float a;
+    double b;
+};
+
+struct S13955b
+{
+    double a;
+    float b;
+};
+
+struct S13955c
+{
+    float a;
+    float b;
+};
+
+struct S13955d
+{
+    double a;
+    double b;
+};
+
+void check13955(S13955a a, S13955b b, S13955c c, S13955d d);
+
+void func13955(S13955a a, S13955b b, S13955c c, S13955d d)
+{
+    check13955(a, b, c, d);
+}
+
+/**************************************/
+
+struct Struct10071
+{
+    void *p;
+    long double r;
+};
+
+size_t offset10071()
+{
+    Struct10071 s;
+    return (char *)&s.r - (char *)&s;
+}
+
+/**************************************/
+
 void foo8(const char *p)
 {
 }
@@ -173,6 +245,7 @@ void foobar9(elem9*, elem9*) { }
 void foo10(const char*, const char*) { }
 void foo10(const int, const int) { }
 void foo10(const char, const char) { }
+void foo10(bool, bool) { }
 
 struct MyStructType { };
 void foo10(const MyStructType s, const MyStructType t) { }
@@ -180,4 +253,205 @@ void foo10(const MyStructType s, const MyStructType t) { }
 enum MyEnumType { onemember };
 void foo10(const MyEnumType s, const MyEnumType t) { }
 
+/**************************************/
 
+namespace N11 { namespace M { void bar11() { } } }
+
+namespace A11 { namespace B { namespace C { void bar() { } } } }
+
+/**************************************/
+
+void myvprintfx(const char* format, va_list);
+
+void myvprintf(const char* format, va_list va)
+{
+    myvprintfx(format, va);
+}
+
+/**************************************/
+
+class C13161
+{
+public:
+        virtual void dummyfunc() {}
+        long long val_5;
+        unsigned val_9;
+};
+
+class Test : public C13161
+{
+public:
+        unsigned val_0;
+        long long val_1;
+};
+
+size_t getoffset13161()
+{
+    Test s;
+    return (char *)&s.val_0 - (char *)&s;
+}
+
+class C13161a
+{
+public:
+        virtual void dummyfunc() {}
+        long double val_5;
+        unsigned val_9;
+};
+
+class Testa : public C13161a
+{
+public:
+        bool val_0;
+};
+
+size_t getoffset13161a()
+{
+    Testa s;
+    return (char *)&s.val_0 - (char *)&s;
+}
+
+/****************************************************/
+
+#if __linux__ || __APPLE__ || __FreeBSD__
+#include <memory>
+#include <vector>
+#include <string>
+
+#if __linux__
+template struct std::allocator<int>;
+template struct std::vector<int>;
+
+void foo15()
+{
+    std::allocator<int>* p;
+    p->deallocate(0, 0);
+}
+
+#endif
+
+// _Z5foo14PSt6vectorIiSaIiEE
+void foo14(std::vector<int, std::allocator<int> > *p) { }
+
+void foo14a(std::basic_string<char> *p) { }
+void foo14b(std::basic_string<int> *p) { }
+void foo14c(std::basic_istream<char> *p) { }
+void foo14d(std::basic_ostream<char> *p) { }
+void foo14e(std::basic_iostream<char> *p) { }
+
+void foo14f(std::char_traits<char>* x, std::basic_string<char> *p, std::basic_string<char> *q) { }
+
+#endif
+
+/**************************************/
+
+struct S13956
+{
+};
+
+void check13956(S13956 arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6);
+
+void func13956(S13956 arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6)
+{
+    check13956(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+/**************************************/
+
+wchar_t f13289_cpp_wchar_t(wchar_t ch)
+{
+    if (ch <= L'z' && ch >= L'a')
+    {
+        return ch - (L'a' - L'A');
+    }
+    else
+    {
+        return ch;
+    }
+}
+
+#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun
+unsigned short f13289_d_wchar(unsigned short ch);
+wchar_t f13289_d_dchar(wchar_t ch);
+#elif _WIN32
+wchar_t f13289_d_wchar(wchar_t ch);
+unsigned int f13289_d_dchar(unsigned int ch);
+#endif
+
+bool f13289_cpp_test()
+{
+#if __linux__ || __APPLE__ || __FreeBSD__ || __OpenBSD__ || __sun
+    if (!(f13289_d_wchar((unsigned short)'c') == (unsigned short)'C')) return false;
+    if (!(f13289_d_wchar((unsigned short)'D') == (unsigned short)'D')) return false;
+    if (!(f13289_d_dchar(L'e') == L'E')) return false;
+    if (!(f13289_d_dchar(L'F') == L'F')) return false;
+    return true;
+#elif _WIN32
+    if (!(f13289_d_wchar(L'c') == L'C')) return false;
+    if (!(f13289_d_wchar(L'D') == L'D')) return false;
+    if (!(f13289_d_dchar((unsigned int)'e') == (unsigned int)'E')) return false;
+    if (!(f13289_d_dchar((unsigned int)'F') == (unsigned int)'F')) return false;
+    return true;
+#else
+    return false;
+#endif
+}
+
+/******************************************/
+
+long double testld(long double ld)
+{
+    assert(ld == 5);
+    return ld + 1;
+}
+
+long testl(long lng)
+{
+    assert(lng == 5);
+    return lng + sizeof(long);
+}
+
+unsigned long testul(unsigned long ul)
+{
+    assert(ul == 5);
+    return ul + sizeof(unsigned long);
+}
+
+/******************************************/
+
+struct S13707
+{
+    void* a;
+    void* b;
+    S13707(void *a, void* b)
+    {
+        this->a = a;
+        this->b = b;
+    }
+};
+
+S13707 func13707()
+{
+    S13707 pt(NULL, NULL);
+    return pt;
+}
+
+/******************************************/
+
+template <int x> struct S13932
+{
+    int member;
+};
+
+void func13932(S13932<-1> s) {}
+
+/******************************************/
+
+namespace N13337 {
+  namespace M13337 {
+    struct S13337 { };
+    void foo13337(S13337 s) { }
+  }
+}
+
+/******************************************/

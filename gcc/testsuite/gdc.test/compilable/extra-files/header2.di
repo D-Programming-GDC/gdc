@@ -57,7 +57,7 @@ interface I4(T) if ((int[1]).length == 1)
 }
 template MyClass4(T) if (is(typeof(T.subtype)))
 {
-	alias T.subtype HelperSymbol;
+	alias HelperSymbol = T.subtype;
 	class MyClass4
 	{
 	}
@@ -87,3 +87,4 @@ void foo11217()(in int[] arr)
 void foo11217()(inout int[] arr)
 {
 }
+void test13275();

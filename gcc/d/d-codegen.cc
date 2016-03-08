@@ -33,6 +33,7 @@
 #include "d-lang.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
+#include "d-dmd-gcc.h"
 #include "id.h"
 
 
@@ -3297,6 +3298,30 @@ maybe_set_intrinsic (FuncDeclaration *decl)
     }
 }
 
+//
+tree
+expand_volatile_load(tree arg1)
+{
+  tree type = TREE_TYPE (arg1);
+  gcc_assert (POINTER_TYPE_P (type));
+
+  tree tvolatile = build_qualified_type(TREE_TYPE (arg1), TYPE_QUAL_VOLATILE);
+  tree result = indirect_ref(tvolatile, arg1);
+  TREE_THIS_VOLATILE (result) = 1;
+
+  return result;
+}
+
+tree
+expand_volatile_store(tree arg1, tree arg2)
+{
+  tree tvolatile = build_qualified_type(TREE_TYPE (arg2), TYPE_QUAL_VOLATILE);
+  tree result = indirect_ref(tvolatile, arg1);
+  TREE_THIS_VOLATILE (result) = 1;
+
+  return modify_expr(tvolatile, result, arg2);
+}
+
 // If CALLEXP is a BUILT_IN_FRONTEND, expand and return inlined
 // compiler generated instructions. Most map onto GCC builtins,
 // others require a little extra work around them.
@@ -3440,6 +3465,15 @@ expand_intrinsic(tree callexp)
 	  return expand_intrinsic_arith(BUILT_IN_SUB_OVERFLOW,
 					callexp, op1, op2, op3);
 
+	case INTRINSIC_VLOAD:
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  return expand_volatile_load(op1);
+
+	case INTRINSIC_VSTORE:
+	  op1 = CALL_EXPR_ARG (callexp, 0);
+	  op2 = CALL_EXPR_ARG (callexp, 1);
+	  return expand_volatile_store(op1, op2);
+
 	default:
 	  gcc_unreachable();
 	}
@@ -3497,8 +3531,8 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 tree
 build_typeinfo (Type *t)
 {
-  tree tinfo = t->getInternalTypeInfo (NULL)->toElem();
-  gcc_assert (POINTER_TYPE_P (TREE_TYPE (tinfo)));
+  tree tinfo = getTypeInfo(t, NULL)->toElem();
+  gcc_assert(POINTER_TYPE_P (TREE_TYPE (tinfo)));
   return tinfo;
 }
 

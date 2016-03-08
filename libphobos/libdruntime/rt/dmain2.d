@@ -40,12 +40,13 @@ version (FreeBSD)
     import core.stdc.fenv;
 }
 
-extern (C) void _STI_monitor_staticctor();
-extern (C) void _STD_monitor_staticdtor();
-extern (C) void _STI_critical_init();
-extern (C) void _STD_critical_term();
+extern (C) void _d_monitor_staticctor();
+extern (C) void _d_monitor_staticdtor();
+extern (C) void _d_critical_init();
+extern (C) void _d_critical_term();
 extern (C) void gc_init();
 extern (C) void gc_term();
+extern (C) void lifetime_init();
 extern (C) void rt_moduleCtor();
 extern (C) void rt_moduleTlsCtor();
 extern (C) void rt_moduleDtor();
@@ -133,6 +134,9 @@ extern (C) string[] rt_args()
     return _d_args;
 }
 
+// make arguments passed to main available for being filtered by runtime initializers
+extern(C) __gshared char[][] _d_main_args = null;
+
 // This variable is only ever set by a debugger on initialization so it should
 // be fine to leave it as __gshared.
 extern (C) __gshared bool rt_trapExceptions = true;
@@ -158,13 +162,14 @@ extern (C) int rt_init()
        rt_init. */
     if (atomicOp!"+="(_initCount, 1) > 1) return 1;
 
-    _STI_monitor_staticctor();
-    _STI_critical_init();
+    _d_monitor_staticctor();
+    _d_critical_init();
 
     try
     {
         gc_init();
         initStaticDataGC();
+        lifetime_init();
         rt_moduleCtor();
         rt_moduleTlsCtor();
         return 1;
@@ -174,8 +179,8 @@ extern (C) int rt_init()
         _initCount = 0;
         printThrowable(t);
     }
-    _STD_critical_term();
-    _STD_monitor_staticdtor();
+    _d_critical_term();
+    _d_monitor_staticdtor();
     return 0;
 }
 
@@ -201,10 +206,57 @@ extern (C) int rt_term()
     }
     finally
     {
-        _STD_critical_term();
-        _STD_monitor_staticdtor();
+        _d_critical_term();
+        _d_monitor_staticdtor();
     }
     return 0;
+}
+
+/**********************************************
+ * Trace handler
+ */
+alias Throwable.TraceInfo function(void* ptr) TraceHandler;
+private __gshared TraceHandler traceHandler = null;
+
+
+/**
+ * Overrides the default trace hander with a user-supplied version.
+ *
+ * Params:
+ *  h = The new trace handler.  Set to null to use the default handler.
+ */
+extern (C) void  rt_setTraceHandler(TraceHandler h)
+{
+    traceHandler = h;
+}
+
+/**
+ * Return the current trace handler
+ */
+extern (C) TraceHandler rt_getTraceHandler()
+{
+    return traceHandler;
+}
+
+/**
+ * This function will be called when an exception is constructed.  The
+ * user-supplied trace handler will be called if one has been supplied,
+ * otherwise no trace will be generated.
+ *
+ * Params:
+ *  ptr = A pointer to the location from which to generate the trace, or null
+ *        if the trace should be generated from within the trace handler
+ *        itself.
+ *
+ * Returns:
+ *  An object describing the current calling context or null if no handler is
+ *  supplied.
+ */
+extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null)
+{
+    if (traceHandler is null)
+        return null;
+    return traceHandler(ptr);
 }
 
 /***********************************
@@ -264,21 +316,18 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
             fldcw   fpucw;
         }
     }
-
-    version (Win64)
+    version (CRuntime_Microsoft)
     {
         auto fp = __iob_func();
         stdin = &fp[0];
         stdout = &fp[1];
         stderr = &fp[2];
 
-        version (MinGW) {}
-        else
-        {
-            // ensure that sprintf generates only 2 digit exponent when writing floating point values
-            _set_output_format(_TWO_DIGIT_EXPONENT);
+        // ensure that sprintf generates only 2 digit exponent when writing floating point values
+        _set_output_format(_TWO_DIGIT_EXPONENT);
 
-            // enable full precision for reals
+        // enable full precision for reals
+        version(Win64)
             asm
             {
                 push    RAX;
@@ -287,6 +336,17 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
                                                // 111111: mask all FP exceptions
                 fldcw   word ptr [RSP];
                 pop     RAX;
+            }
+        else version(Win32)
+        {
+            asm
+            {
+                push    EAX;
+                fstcw   word ptr [ESP];
+                or      [ESP], 0b11_00_111111; // 11: use 64 bit extended-precision
+                // 111111: mask all FP exceptions
+                fldcw   word ptr [ESP];
+                pop     EAX;
             }
         }
     }
@@ -346,21 +406,26 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     else
         static assert(0);
 
-    /* Create a copy of args[] on the stack, and set the global _d_args to refer to it.
-     * Why a copy instead of just using args[] is unclear.
-     * This also means that when this function returns, _d_args will refer to garbage.
+    /* Create a copy of args[] on the stack to be used for main, so that rt_args()
+     * cannot be modified by the user.
+     * Note that when this function returns, _d_args will refer to garbage.
      */
     {
+        _d_args = cast(string[]) args;
         auto buff = cast(char[]*) alloca(args.length * (char[]).sizeof + totalArgsLength);
 
         char[][] argsCopy = buff[0 .. args.length];
         auto argBuff = cast(char*) (buff + args.length);
-        foreach(i, arg; args)
+        size_t j = 0;
+        foreach(arg; args)
         {
-            argsCopy[i] = (argBuff[0 .. arg.length] = arg[]);
-            argBuff += arg.length;
+            if (arg.length < 6 || arg[0..6] != "--DRT-") // skip D runtime options
+            {
+                argsCopy[j++] = (argBuff[0 .. arg.length] = arg[]);
+                argBuff += arg.length;
+            }
         }
-        _d_args = cast(string[]) argsCopy;
+        args = argsCopy[0..j];
     }
 
     bool trapExceptions = rt_trapExceptions;

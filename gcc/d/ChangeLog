@@ -3,6 +3,51 @@
 	* imports.cc (ImportVisitor::visit(Declaration)): Don't assume toSymbol
 	method will cache it's result.
 
+2016-03-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update root library to 2.068.
+	* Make-lang.in (D_DMD_OBJS): Add newdelete.o
+	* d-target.cc (Target::classinfosize): New variable, replaces all uses
+	of global CLASSINFO_SIZE.
+	(Target::init): Initialize it.
+	* d-decls.cc (ClassInfoDeclaration::toSymbol): Remove function.
+
+2016-03-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update to D front-end version 2.067.
+	* Make-lang.in (D_DMD_OBJS): Add new frontend sources.
+	* d-builtins.cc (d_build_builtins_module): Update signature.
+	(maybe_set_builtin): Rename to d_maybe_set_builtin, update signature.
+	(d_gcc_magic_module): Remove function.
+	* d-codegen.cc (expand_volatile_load): New function.
+	(expand_volatile_store): New function.
+	(expand_intrinsic): Handle volatileLoad and volatileStore intrinsics.
+	* d-decls.cc (Module::toModuleAssert): Remove function.
+	(Module::toModuleUnittest): Remove function.
+	(Module::toModuleArray): Remove function.
+	(TypeAArray::aaGetSymbol): Remove function.
+	* d-elem.cc (AssignExp::toElem): Call _d_arrayassign_{l,r} when
+	generating dynamic array assignment.
+	(IndexExp::toElem): Call _aaGetY when indexing an associative array.
+	(SliceExp::toElem): Use known CTFE result to check whether bounds
+	checks are necessary.
+	(DeleteExp::toElem): Call _d_delstruct when deleting a struct pointer.
+	(Expression::toElemDtor): Don't run cleanup of temporary if it's
+	constructor thrown an exception.
+	(NewExp::toElem): Handle special construction of new() arguments.
+	* d-glue.cc (Loc::Loc): Update signature.
+	(error): Likewise.
+	(toInitializer): New function.
+	* d-lang.cc (d_handle_option): Replace deprecated handlers.
+	(d_post_options): Set flag_max_errors.
+	(d_parse_file): Process any modules marked as builtin.
+	* d-objfile.cc (ClassDeclaration::toObjFile): Don't write out ctors
+	in the vtable marked @disable.
+	* d-target.cc (Target::loadModule): New function.
+	(Target::checkVectorType): New function.
+	* d-specs.c (lang_specific_driver): Handle -v option.
+	* lang-specs.h: Pass -v option to to frontend.
+
 2016-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* imports.cc: New file.

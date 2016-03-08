@@ -116,6 +116,7 @@ class Package;
 class Module;
 class WithScopeSymbol;
 class ArrayScopeSymbol;
+class Nspace;
 
 class AggregateDeclaration;
 class StructDeclaration;
@@ -129,7 +130,6 @@ class AliasDeclaration;
 class OverDeclaration;
 class VarDeclaration;
 class SymbolDeclaration;
-class ClassInfoDeclaration;
 class ThisDeclaration;
 
 class TypeInfoDeclaration;
@@ -287,6 +287,21 @@ class ThrownExceptionExp;
 class WrappedExp;
 #endif
 
+class TemplateParameter;
+class TemplateTypeParameter;
+class TemplateThisParameter;
+class TemplateValueParameter;
+class TemplateAliasParameter;
+class TemplateTupleParameter;
+
+class Condition;
+class DVCondition;
+class DebugCondition;
+class VersionCondition;
+class StaticIfCondition;
+
+class Parameter;
+
 class Visitor
 {
 public:
@@ -393,6 +408,7 @@ public:
     virtual void visit(Module *s) { visit((Package *)s); }
     virtual void visit(WithScopeSymbol *s) { visit((ScopeDsymbol *)s); }
     virtual void visit(ArrayScopeSymbol *s) { visit((ScopeDsymbol *)s); }
+    virtual void visit(Nspace *s) { visit((ScopeDsymbol *)s); }
 
     virtual void visit(AggregateDeclaration *s) { visit((ScopeDsymbol *)s); }
     virtual void visit(StructDeclaration *s) { visit((AggregateDeclaration *)s); }
@@ -406,7 +422,6 @@ public:
     virtual void visit(OverDeclaration *s) { visit((Declaration *)s); }
     virtual void visit(VarDeclaration *s) { visit((Declaration *)s); }
     virtual void visit(SymbolDeclaration *s) { visit((Declaration *)s); }
-    virtual void visit(ClassInfoDeclaration *s) { visit((VarDeclaration *)s); }
     virtual void visit(ThisDeclaration *s) { visit((VarDeclaration *)s); }
 
     virtual void visit(TypeInfoDeclaration *s) { visit((VarDeclaration *)s); }
@@ -563,6 +578,21 @@ public:
 #ifdef IN_GCC
     virtual void visit(WrappedExp *e) { visit((Expression *)e); }
 #endif
+
+    virtual void visit(TemplateParameter *) { assert(0); }
+    virtual void visit(TemplateTypeParameter *tp) { visit((TemplateParameter *)tp); }
+    virtual void visit(TemplateThisParameter *tp) { visit((TemplateTypeParameter *)tp); }
+    virtual void visit(TemplateValueParameter *tp) { visit((TemplateParameter *)tp); }
+    virtual void visit(TemplateAliasParameter *tp) { visit((TemplateParameter *)tp); }
+    virtual void visit(TemplateTupleParameter *tp) { visit((TemplateParameter *)tp); }
+
+    virtual void visit(Condition *) { assert(0); }
+    virtual void visit(DVCondition *c) { visit((Condition *)c); }
+    virtual void visit(DebugCondition *c) { visit((DVCondition *)c); }
+    virtual void visit(VersionCondition *c) { visit((DVCondition *)c); }
+    virtual void visit(StaticIfCondition *c) { visit((Condition *)c); }
+
+    virtual void visit(Parameter *) { assert(0); }
 };
 
 class StoppableVisitor : public Visitor

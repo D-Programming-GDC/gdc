@@ -29,11 +29,12 @@
 #include "attrib.h"
 #include "template.h"
 #include "module.h"
+#include "tokens.h"
 
 static Expression *expandInline(FuncDeclaration *fd, FuncDeclaration *parent,
     Expression *eret, Expression *ethis, Expressions *arguments, Statement **ps);
 bool walkPostorder(Expression *e, StoppableVisitor *v);
-int canInline(FuncDeclaration *fd, int hasthis, int hdrscan, int statementsToo);
+bool canInline(FuncDeclaration *fd, int hasthis, int hdrscan, int statementsToo);
 
 /* ========== Compute cost of inlining =============== */
 
@@ -138,7 +139,7 @@ public:
         /* Can't declare variables inside ?: expressions, so
          * we cannot inline if a variable is declared.
          */
-        if (s->arg)
+        if (s->prm)
         {
             cost = COST_MAX;
             return;
@@ -479,7 +480,7 @@ Statement *inlineAsStatement(Statement *s, InlineDoState *ids)
 
         void visit(IfStatement *s)
         {
-            assert(!s->arg);
+            assert(!s->prm);
 
             Expression *condition = s->condition ? doInline(s->condition, ids) : NULL;
             Statement *ifbody = s->ifbody ? inlineAsStatement(s->ifbody, ids) : NULL;
@@ -488,7 +489,7 @@ Statement *inlineAsStatement(Statement *s, InlineDoState *ids)
             Statement *elsebody = s->elsebody ? inlineAsStatement(s->elsebody, ids) : NULL;
             ids->foundReturn = ids->foundReturn && bodyReturn;
 
-            result = new IfStatement(s->loc, s->arg, condition, ifbody, elsebody);
+            result = new IfStatement(s->loc, s->prm, condition, ifbody, elsebody);
         }
 
         void visit(ReturnStatement *s)
@@ -510,7 +511,7 @@ Statement *inlineAsStatement(Statement *s, InlineDoState *ids)
             Expression *condition = s->condition ? doInline(s->condition, ids) : NULL;
             Expression *increment = s->increment ? doInline(s->increment, ids) : NULL;
             Statement *body = s->body ? inlineAsStatement(s->body, ids) : NULL;
-            result = new ForStatement(s->loc, init, condition, increment, body);
+            result = new ForStatement(s->loc, init, condition, increment, body, s->endloc);
         }
 
         void visit(ThrowStatement *s)
@@ -597,7 +598,7 @@ Expression *doInline(Statement *s, InlineDoState *ids)
 
         void visit(IfStatement *s)
         {
-            assert(!s->arg);
+            assert(!s->prm);
             Expression *econd = doInline(s->condition, ids);
             assert(econd);
             Expression *e1 = s->ifbody ? doInline(s->ifbody, ids) : NULL;
@@ -1354,7 +1355,7 @@ public:
         if (e->op == TOKconstruct && e->e2->op == TOKcall)
         {
             CallExp *ce = (CallExp *)e->e2;
-            if (ce->f && ce->f->nrvo_var)   // NRVO
+            if (ce->f && ce->f->nrvo_can && ce->f->nrvo_var)   // NRVO
             {
                 if (e->e1->op == TOKvar)
                 {
@@ -1612,7 +1613,7 @@ void inlineScan(Module *m)
     m->semanticRun = PASSinlinedone;
 }
 
-int canInline(FuncDeclaration *fd, int hasthis, int hdrscan, int statementsToo)
+bool canInline(FuncDeclaration *fd, int hasthis, int hdrscan, int statementsToo)
 {
     int cost;
 
@@ -1623,14 +1624,26 @@ int canInline(FuncDeclaration *fd, int hasthis, int hdrscan, int statementsToo)
 #endif
 
     if (fd->needThis() && !hasthis)
-        return 0;
+        return false;
 
-    if (fd->inlineNest || (fd->semanticRun < PASSsemantic3 && !hdrscan))
+    if (fd->inlineNest)
     {
 #if CANINLINE_LOG
         printf("\t1: no, inlineNest = %d, semanticRun = %d\n", fd->inlineNest, fd->semanticRun);
 #endif
-        return 0;
+        return false;
+    }
+
+    if (fd->semanticRun < PASSsemantic3 && !hdrscan)
+    {
+        if (!fd->fbody)
+            return false;
+        if (!fd->functionSemantic3())
+            return false;
+        Module::runDeferredSemantic3();
+        if (global.errors)
+            return false;
+        assert(fd->semanticRun >= PASSsemantic3done);
     }
 
     switch (statementsToo ? fd->inlineStatusStmt : fd->inlineStatusExp)
@@ -1639,13 +1652,13 @@ int canInline(FuncDeclaration *fd, int hasthis, int hdrscan, int statementsToo)
 #if CANINLINE_LOG
             printf("\t1: yes %s\n", fd->toChars());
 #endif
-            return 1;
+            return true;
 
         case ILSno:
 #if CANINLINE_LOG
             printf("\t1: no %s\n", fd->toChars());
 #endif
-            return 0;
+            return false;
 
         case ILSuninitialized:
             break;
@@ -1748,7 +1761,7 @@ int canInline(FuncDeclaration *fd, int hasthis, int hdrscan, int statementsToo)
 #if CANINLINE_LOG
     printf("\t2: yes %s\n", fd->toChars());
 #endif
-    return 1;
+    return true;
 
 Lno:
     if (!hdrscan)    // Don't modify inlineStatus for header content scan
@@ -1761,7 +1774,7 @@ Lno:
 #if CANINLINE_LOG
     printf("\t2: no %s\n", fd->toChars());
 #endif
-    return 0;
+    return false;
 }
 
 static Expression *expandInline(FuncDeclaration *fd, FuncDeclaration *parent,
@@ -1773,7 +1786,7 @@ static Expression *expandInline(FuncDeclaration *fd, FuncDeclaration *parent,
     TypeFunction *tf = (TypeFunction*)fd->type;
 
 #if LOG || CANINLINE_LOG
-    printf("FuncDeclaration::expandInline('%s')\n", toChars());
+    printf("FuncDeclaration::expandInline('%s')\n", fd->toChars());
 #endif
 
     memset(&ids, 0, sizeof(ids));
@@ -1796,7 +1809,7 @@ static Expression *expandInline(FuncDeclaration *fd, FuncDeclaration *parent,
             /* Inlining:
              *   this.field = foo();   // inside constructor
              */
-            vret = new VarDeclaration(fd->loc, eret->type, Lexer::uniqueId("_satmp"), NULL);
+            vret = new VarDeclaration(fd->loc, eret->type, Identifier::generateId("_satmp"), NULL);
             vret->storage_class |= STCtemp | STCforeach | STCref;
             vret->linkage = LINKd;
             vret->parent = parent;

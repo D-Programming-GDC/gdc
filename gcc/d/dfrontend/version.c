@@ -40,6 +40,18 @@ DebugSymbol::DebugSymbol(Loc loc, unsigned level)
     this->loc = loc;
 }
 
+char *DebugSymbol::toChars()
+{
+    if (ident)
+        return ident->toChars();
+    else
+    {
+        OutBuffer buf;
+        buf.printf("%d", level);
+        return buf.extractString();
+    }
+}
+
 Dsymbol *DebugSymbol::syntaxCopy(Dsymbol *s)
 {
     assert(!s);
@@ -92,17 +104,6 @@ void DebugSymbol::semantic(Scope *sc)
     //printf("DebugSymbol::semantic() %s\n", toChars());
 }
 
-void DebugSymbol::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{
-    buf->writestring("debug = ");
-    if (ident)
-        buf->writestring(ident->toChars());
-    else
-        buf->printf("%u", level);
-    buf->writestring(";");
-    buf->writenl();
-}
-
 const char *DebugSymbol::kind()
 {
     return "debug";
@@ -126,6 +127,18 @@ VersionSymbol::VersionSymbol(Loc loc, unsigned level)
 {
     this->level = level;
     this->loc = loc;
+}
+
+char *VersionSymbol::toChars()
+{
+    if (ident)
+        return ident->toChars();
+    else
+    {
+        OutBuffer buf;
+        buf.printf("%d", level);
+        return buf.extractString();
+    }
 }
 
 Dsymbol *VersionSymbol::syntaxCopy(Dsymbol *s)
@@ -180,20 +193,7 @@ void VersionSymbol::semantic(Scope *sc)
 {
 }
 
-void VersionSymbol::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{
-    buf->writestring("version = ");
-    if (ident)
-        buf->writestring(ident->toChars());
-    else
-        buf->printf("%u", level);
-    buf->writestring(";");
-    buf->writenl();
-}
-
 const char *VersionSymbol::kind()
 {
     return "version";
 }
-
-

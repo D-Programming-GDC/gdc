@@ -26,83 +26,22 @@
 #include "dfrontend/aggregate.h"
 
 
-/*******************************************
- * Get a canonicalized form of the TypeInfo for use with the internal
- * runtime library routines. Canonicalized in that static arrays are
- * represented as dynamic arrays, enums are represented by their
- * underlying type, etc. This reduces the number of TypeInfo's needed,
- * so we can use the custom internal ones more.
- */
-
-Expression *
-Type::getInternalTypeInfo (Scope *sc)
-{
-  TypeInfoDeclaration *tid;
-  Expression *e;
-  Type *t;
-  static TypeInfoDeclaration *internalTI[TMAX];
-
-  t = toBasetype();
-  switch (t->ty)
-    {
-    case Tsarray:
-      break;
-
-    case Tclass:
-      if (((TypeClass *) t)->sym->isInterfaceDeclaration())
-	break;
-      goto Linternal;
-
-    case Tarray:
-      // convert to corresponding dynamic array type
-      t = t->nextOf()->mutableOf()->arrayOf();
-      if (t->nextOf()->ty != Tclass)
-	break;
-      goto Linternal;
-
-    case Tfunction:
-    case Tdelegate:
-    case Tpointer:
-    Linternal:
-      tid = internalTI[t->ty];
-      if (!tid)
-	{
-	  tid = TypeInfoDeclaration::create (t, 1);
-	  internalTI[t->ty] = tid;
-	}
-      e = VarExp::create (Loc(), tid);
-      e = e->addressOf();
-      // do this so we don't get redundant dereference
-      e->type = tid->type;
-      return e;
-
-    default:
-      break;
-    }
-  return t->getTypeInfo(sc);
-}
-
-
-/****************************************************
- * Get the exact TypeInfo.
- */
+// Get the exact TypeInfo for TYPE.
 
 void
-Type::genTypeInfo(Scope *sc)
+genTypeInfo(Type *type, Scope *sc)
 {
   if (!Type::dtypeinfo)
     {
-      error(Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt");
+      type->error(Loc(), "TypeInfo not found. object.d may be incorrectly installed or corrupt");
       fatal();
     }
 
-  gcc_assert(ty != Terror);
-
-  // do this since not all Type's are merge'd
-  Type *t = merge2();
+  // Do this since not all Type's are merge'd
+  Type *t = type->merge2();
   if (!t->vtinfo)
     {
-      // does both 'shared' and 'shared const'
+      // Does both 'shared' and 'shared const'
       if (t->isShared())
 	t->vtinfo = TypeInfoSharedDeclaration::create(t);
       else if (t->isConst())
@@ -111,20 +50,58 @@ Type::genTypeInfo(Scope *sc)
 	t->vtinfo = TypeInfoInvariantDeclaration::create(t);
       else if (t->isWild())
 	t->vtinfo = TypeInfoWildDeclaration::create(t);
+      else if (t->ty == Tpointer)
+	t->vtinfo = TypeInfoPointerDeclaration::create(type);
+      else if (t->ty == Tarray)
+	t->vtinfo = TypeInfoArrayDeclaration::create(type);
+      else if (t->ty == Tsarray)
+	t->vtinfo = TypeInfoStaticArrayDeclaration::create(type);
+      else if (t->ty == Taarray)
+	t->vtinfo = TypeInfoAssociativeArrayDeclaration::create(type);
+      else if (t->ty == Tstruct)
+	t->vtinfo = TypeInfoStructDeclaration::create(type);
+      else if (t->ty == Tvector)
+	t->vtinfo = TypeInfoVectorDeclaration::create(type);
+      else if (t->ty == Tenum)
+	t->vtinfo = TypeInfoEnumDeclaration::create(type);
+      else if (t->ty == Tfunction)
+	t->vtinfo = TypeInfoFunctionDeclaration::create(type);
+      else if (t->ty == Tdelegate)
+	t->vtinfo = TypeInfoDelegateDeclaration::create(type);
+      else if (t->ty == Ttuple)
+	t->vtinfo = TypeInfoTupleDeclaration::create(type);
+      else if (t->ty == Tclass)
+	{
+	  if (((TypeClass *) type)->sym->isInterfaceDeclaration())
+	    t->vtinfo = TypeInfoInterfaceDeclaration::create(type);
+	  else
+	    t->vtinfo = TypeInfoClassDeclaration::create(type);
+	}
       else
-	t->vtinfo = t->getTypeInfoDeclaration();
+        t->vtinfo = TypeInfoDeclaration::create(type, 0);
 
       gcc_assert(t->vtinfo);
-      vtinfo = t->vtinfo;
 
-      /* If this has a custom implementation in std/typeinfo, then
-       * do not generate a COMDAT for it.
-       */
-      if (!t->builtinTypeInfo())
+      // If this has a custom implementation in rt/typeinfo, then
+      // do not generate a COMDAT for it.
+      bool builtinTypeInfo = false;
+      if (t->isTypeBasic() || t->ty == Tclass)
+	builtinTypeInfo = !t->mod;
+      else if (t->ty == Tarray)
+	{
+	  Type *next = t->nextOf();
+	  // Strings are so common, make them builtin.
+	  builtinTypeInfo = !t->mod
+	    && ((next->isTypeBasic() != NULL && !next->mod)
+		|| (next->ty == Tchar && next->mod == MODimmutable)
+		|| (next->ty == Tchar && next->mod == MODconst));
+	}
+
+      if (!builtinTypeInfo)
 	{
 	  if (sc)
 	    {
-	      if (!sc->func || sc->func->isInstantiated() || !sc->func->inNonRoot())
+	      if (!sc->func || !sc->func->inNonRoot())
 		{
 		  // Find module that will go all the way to an object file
 		  Module *m = sc->module->importedFrom;
@@ -137,133 +114,21 @@ Type::genTypeInfo(Scope *sc)
 	}
     }
   // Types aren't merged, but we can share the vtinfo's
-  if (!vtinfo)
-    vtinfo = t->vtinfo;
+  if (!type->vtinfo)
+    type->vtinfo = t->vtinfo;
 
-  gcc_assert(vtinfo != NULL);
+  gcc_assert(type->vtinfo != NULL);
 }
 
 Expression *
-Type::getTypeInfo(Scope *sc)
+getTypeInfo(Type *type, Scope *sc)
 {
-  gcc_assert(this->ty != Terror);
-  this->genTypeInfo(sc);
-  Expression *e = VarExp::create(Loc(), this->vtinfo);
+  gcc_assert(type->ty != Terror);
+  genTypeInfo(type, sc);
+  Expression *e = VarExp::create(Loc(), type->vtinfo);
   e = e->addressOf();
   // do this so we don't get redundant dereference
-  e->type = this->vtinfo->type;
+  e->type = type->vtinfo->type;
   return e;
-}
-
-TypeInfoDeclaration *
-Type::getTypeInfoDeclaration()
-{
-  return TypeInfoDeclaration::create (this, 0);
-}
-
-TypeInfoDeclaration *
-TypePointer::getTypeInfoDeclaration()
-{
-  return TypeInfoPointerDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeDArray::getTypeInfoDeclaration()
-{
-  return TypeInfoArrayDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeSArray::getTypeInfoDeclaration()
-{
-  return TypeInfoStaticArrayDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeAArray::getTypeInfoDeclaration()
-{
-  return TypeInfoAssociativeArrayDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeStruct::getTypeInfoDeclaration()
-{
-  return TypeInfoStructDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeClass::getTypeInfoDeclaration()
-{
-  if (sym->isInterfaceDeclaration())
-    return TypeInfoInterfaceDeclaration::create (this);
-  else
-    return TypeInfoClassDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeVector::getTypeInfoDeclaration()
-{
-  return TypeInfoVectorDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeEnum::getTypeInfoDeclaration()
-{
-  return TypeInfoEnumDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeFunction::getTypeInfoDeclaration()
-{
-  return TypeInfoFunctionDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeDelegate::getTypeInfoDeclaration()
-{
-  return TypeInfoDelegateDeclaration::create (this);
-}
-
-TypeInfoDeclaration *
-TypeTuple::getTypeInfoDeclaration()
-{
-  return TypeInfoTupleDeclaration::create (this);
-}
-
-/* ========================================================================= */
-
-/* These decide if there's an instance for them already in std.typeinfo,
- * because then the compiler doesn't need to build one.
- */
-
-int
-Type::builtinTypeInfo()
-{
-  return 0;
-}
-
-int
-TypeBasic::builtinTypeInfo()
-{
-  return mod ? 0 : 1;
-}
-
-int
-TypeDArray::builtinTypeInfo()
-{
-  // Strings are so common, make them builtin.
-  return !mod
-    && ((next->isTypeBasic() != NULL && !next->mod)
-	|| (next->ty == Tchar && next->mod == MODimmutable)
-	|| (next->ty == Tchar && next->mod == MODconst));
-}
-
-int
-TypeClass::builtinTypeInfo()
-{
-  /* This is statically put out with the ClassInfo, so
-   * claim it is built in so it isn't regenerated by each module.
-   */
-  return mod ? 0 : 1;
 }
 
