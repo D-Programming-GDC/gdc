@@ -77,67 +77,6 @@ Dsymbol::toSymbol()
   return NULL;
 }
 
-// Generate an import symbol for debug.  If this is a module or package symbol,
-// then build the chain of NAMESPACE_DECLs.
-
-Symbol *
-Dsymbol::toImport()
-{
-  if (!isym)
-    {
-      Module *m = this->isModule();
-      if (m != NULL)
-	{
-	  isym = new Symbol();
-	  isym->prettyIdent = this->toPrettyChars();
-
-	  // Build the module namespace, this is considered toplevel,
-	  // regardless if there are parent packages.
-	  tree decl = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
-				  get_identifier (isym->prettyIdent),
-				  void_type_node);
-	  isym->Stree = decl;
-	  d_keep (decl);
-
-	  Loc loc = (m->md != NULL) ? m->md->loc : Loc(m, 1, 0);
-	  set_decl_location (decl, loc);
-
-	  if (output_module_p (m))
-	    DECL_EXTERNAL (decl) = 1;
-
-	  TREE_PUBLIC (decl) = 1;
-	  DECL_CONTEXT (decl) = NULL_TREE;
-	}
-      else
-	{
-	  // Any other kind of symbol should have their csym set.
-	  // If this is an unexpected import, the compiler will throw an error.
-	  if (!csym)
-	    csym = toSymbol();
-
-	  isym = toImport (csym);
-	}
-    }
-
-  return isym;
-}
-
-// Generate an IMPORTED_DECL from symbol SYM.
-
-Symbol *
-Dsymbol::toImport (Symbol *sym)
-{
-  tree decl = make_node (IMPORTED_DECL);
-  TREE_TYPE (decl) = void_type_node;
-  IMPORTED_DECL_ASSOCIATED_DECL (decl) = sym->Stree;
-  d_keep (decl);
-
-  Symbol *s = new Symbol();
-  s->Stree = decl;
-  return s;
-}
-
-
 // Create the symbol with VAR_DECL tree for static variables.
 
 Symbol *
@@ -216,7 +155,7 @@ VarDeclaration::toSymbol()
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a variable in an imported module.
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
-	  && declaration_type_kind(this) != type_reference)
+	  && declaration_reference_p(this))
 	{
 	  if (!TREE_STATIC (decl))
 	    TREE_READONLY (decl) = 1;
@@ -464,7 +403,7 @@ FuncDeclaration::toThunkSymbol (int offset)
   Thunk *thunk;
 
   toSymbol();
-  toObjFile(true);
+  toObjFile();
 
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there

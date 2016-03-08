@@ -32,7 +32,7 @@ class Nspace : public ScopeDsymbol
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     const char *kind();
     void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void toObjFile(bool multiobj);
+    void toObjFile();
     Nspace *isNspace() { return this; }
 };
 
