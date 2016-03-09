@@ -19,6 +19,7 @@
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/init.h"
 #include "dfrontend/cond.h"
 #include "dfrontend/aggregate.h"
 #include "dfrontend/declaration.h"

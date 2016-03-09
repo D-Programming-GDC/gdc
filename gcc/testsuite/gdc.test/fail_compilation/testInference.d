@@ -133,3 +133,75 @@ immutable(void)* g10063(inout int* p) pure
 {
     return f10063(p);
 }
+
+/*
+TEST_OUTPUT:
+---
+fail_compilation/testInference.d(154): Error: pure function 'testInference.bar14049' cannot call impure function 'testInference.foo14049!int.foo14049'
+---
+*/
+auto impure14049() { return 1; }
+
+void foo14049(T)(T val)
+{
+    auto n = () @trusted {
+        return impure14049();
+    }();
+}
+
+void bar14049() pure
+{
+    foo14049(1);
+}
+
+/*
+TEST_OUTPUT:
+---
+fail_compilation/testInference.d(166): Error: pure function 'testInference.f14160' cannot access mutable static data 'g14160'
+---
+*/
+int g14160;
+int* f14160() pure
+{
+    return &g14160; // should be rejected
+}
+
+/*
+TEST_OUTPUT:
+---
+fail_compilation/testInference.d(180): Error: pure function 'testInference.test12422' cannot call impure function 'testInference.test12422.bar12422!().bar12422'
+---
+*/
+int g12422;
+void foo12422() { ++g12422; }
+void test12422() pure
+{
+    void bar12422()() { foo12422(); }
+    bar12422();
+}
+
+/*
+TEST_OUTPUT:
+---
+fail_compilation/testInference.d(196): Error: pure function 'testInference.test13729a' cannot access mutable static data 'g13729'
+fail_compilation/testInference.d(206): Error: pure function 'testInference.test13729b' cannot call impure function 'testInference.test13729b.foo!().foo'
+---
+*/
+int g13729;
+
+void test13729a() pure
+{
+    static void foo()   // typed as impure
+    {
+        g13729++;       // disallowed
+    }
+    foo();
+}
+void test13729b() pure
+{
+    static void foo()() // inferred to impure
+    {
+        g13729++;
+    }
+    foo();              // cannot call impure function
+}

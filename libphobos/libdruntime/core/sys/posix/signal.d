@@ -614,7 +614,7 @@ version( linux )
 
         union _sifields_t
         {
-            int _pad[__SI_PAD_SIZE];
+            int[__SI_PAD_SIZE] _pad;
 
             // kill()
             struct _kill_t
@@ -664,12 +664,12 @@ version( linux )
         } _sifields_t _sifields;
 
     nothrow @nogc:
-        @property ref pid_t si_pid() { return _sifields._kill.si_pid; }
-        @property ref uid_t si_uid() { return _sifields._kill.si_uid; }
-        @property ref void* si_addr() { return _sifields._sigfault.si_addr; }
-        @property ref int si_status() { return _sifields._sigchld.si_status; }
-        @property ref c_long si_band() { return _sifields._sigpoll.si_band; }
-        @property ref sigval si_value() { return _sifields._rt.si_sigval; }
+        @property ref pid_t si_pid() return { return _sifields._kill.si_pid; }
+        @property ref uid_t si_uid() return { return _sifields._kill.si_uid; }
+        @property ref void* si_addr() return { return _sifields._sigfault.si_addr; }
+        @property ref int si_status() return { return _sifields._sigchld.si_status; }
+        @property ref c_long si_band() return { return _sifields._sigpoll.si_band; }
+        @property ref sigval si_value() return { return _sifields._rt.si_sigval; }
     }
 
     enum
@@ -728,7 +728,7 @@ else version( OSX )
         void*   si_addr;
         sigval  si_value;
         int     si_band;
-        uint    pad[7];
+        uint[7] pad;
     }
 
     enum SI_USER    = 0x10001;
@@ -751,10 +751,18 @@ else version( OSX )
 }
 else version( FreeBSD )
 {
+    enum SIG_HOLD = cast(sigfn_t2) 3;
+
     struct sigset_t
     {
-        uint __bits[4];
+        uint[4] __bits;
     }
+
+    enum SA_NOCLDSTOP = 8;
+
+    enum SIG_BLOCK = 1;
+    enum SIG_UNBLOCK = 2;
+    enum SIG_SETMASK = 3;
 
     struct siginfo_t
     {
@@ -798,8 +806,14 @@ else version( FreeBSD )
         }
         __reason _reason;
 
-        @property ref c_long si_band() { return _reason._poll._band; }
+        @property ref c_long si_band() return { return _reason._poll._band; }
     }
+
+    enum SI_USER    = 0x10001;
+    enum SI_QUEUE   = 0x10002;
+    enum SI_TIMER   = 0x10003;
+    enum SI_ASYNCIO = 0x10004;
+    enum SI_MESGQ   = 0x10005;
 
     int kill(pid_t, int);
     int sigaction(int, in sigaction_t*, sigaction_t*);
@@ -819,7 +833,7 @@ else version (Solaris)
 
     struct sigset_t
     {
-        uint __bits[4];
+        uint[4] __bits;
     }
 
     struct siginfo_t
@@ -834,9 +848,9 @@ else version (Solaris)
         union ___data
         {
             version (D_LP64)
-                int si_pad[(256 / int.sizeof) - 4];
+                int[(256 / int.sizeof) - 4] si_pad;
             else
-                int si_pad[(128 / int.sizeof) - 3];
+                int[(128 / int.sizeof) - 3] si_pad;
 
             struct ___proc
             {
@@ -893,8 +907,8 @@ else version (Solaris)
                 short __syscall;
                 char __nsysarg;
                 char __fault;
-                c_long __sysarg[8];
-                int __mstate[10];
+                c_long[8] __sysarg;
+                int[10] __mstate;
             }
 
             ___prof __prof;

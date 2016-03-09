@@ -50,7 +50,7 @@
  *
  * Copyright: Based on the CEPHES math library, which is
  *            Copyright (C) 1994 Stephen L. Moshier (moshier@world.std.com).
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Stephen L. Moshier (original C code). Conversion to D by Don Clugston
  * Source:    $(PHOBOSSRC std/_mathspecial.d)
  */
@@ -172,6 +172,15 @@ unittest {
 real digamma(real x)
 {
     return std.internal.math.gammafunction.digamma(x);
+}
+
+/** Log Minus Digamma function
+ *
+ *  logmdigamma(x) = log(x) - digamma(x)
+ */
+real logmdigamma(real x)
+{
+    return std.internal.math.gammafunction.logmdigamma(x);
 }
 
 /** Incomplete beta integral
@@ -300,7 +309,7 @@ real erfc(real x)
  * The normal (or Gaussian, or bell-shaped) distribution is
  * defined as:
  *
- * normalDist(x) = 1/$(SQRT) $(PI) $(INTEGRATE -$(INFIN), x) exp( - $(POWER t, 2)/2) dt
+ * normalDist(x) = 1/$(SQRT)(2$(PI)) $(INTEGRATE -$(INFIN), x) exp( - $(POWER t, 2)/2) dt
  *   = 0.5 + 0.5 * erf(x/sqrt(2))
  *   = 0.5 * erfc(- x/sqrt(2))
  *

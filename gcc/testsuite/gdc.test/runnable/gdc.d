@@ -189,7 +189,8 @@ void test24()
 
 void test29()
 {
-    import std.string : format, text;
+    import std.string : format;
+    import std.conv : text;
 
     string s;
     for (auto i = 0; i < 100000; i++)

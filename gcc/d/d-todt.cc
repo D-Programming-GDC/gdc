@@ -263,7 +263,7 @@ ArrayInitializer::toDt()
       tree dt = val->toDt();
 
       if (dts[length])
-	error (loc, "duplicate initializations for index %d", length);
+	error (loc, "duplicate initializations for index %zd", length);
       dts[length] = dt;
       length++;
     }
@@ -293,7 +293,7 @@ ArrayInitializer::toDt()
 	    dt_chainon (&dt, sadefault);
 	}
       else if (dim > tadim)
-	error (loc, "too many initializers, %d, for array[%d]", dim, tadim);
+	error (loc, "too many initializers, %zd, for array[%zd]", dim, tadim);
     }
   else
     {
@@ -337,40 +337,40 @@ Expression::toDt (dt_t **pdt)
 }
 
 dt_t **
-IntegerExp::toDt (dt_t **pdt)
+IntegerExp::toDt(dt_t **pdt)
 {
   tree dt = toElem();
-  return dt_cons (pdt, dt);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
-RealExp::toDt (dt_t **pdt)
+RealExp::toDt(dt_t **pdt)
 {
   tree dt = toElem();
-  return dt_cons (pdt, dt);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
-ComplexExp::toDt (dt_t **pdt)
+ComplexExp::toDt(dt_t **pdt)
 {
   tree dt = toElem();
-  return dt_cons (pdt, dt);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
-NullExp::toDt (dt_t **pdt)
+NullExp::toDt(dt_t **pdt)
 {
-  gcc_assert (type);
+  gcc_assert(type);
 
-  tree dt = build_constructor (build_ctype(type), NULL);
-  return dt_cons (pdt, dt);
+  tree dt = build_constructor(build_ctype(type), NULL);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
-StringExp::toDt (dt_t **pdt)
+StringExp::toDt(dt_t **pdt)
 {
   tree dt = toElem();
-  return dt_cons (pdt, dt);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
@@ -988,14 +988,14 @@ TypeSArray::toDtElem (dt_t **pdt, Expression *e)
 	{
 	  // If not already supplied use default initialiser.
 	  if (!e)
-	    e = tnext->defaultInit();
+	    e = defaultInit(Loc());
 
 	  for (size_t i = 0; i < len; i++)
 	    {
 	      if (tbn->ty == Tsarray)
 		((TypeSArray *) tbn)->toDtElem (&dt, e);
 	      else
-    		e->toDt (&dt);
+		e->toDt (&dt);
 	    }
 	}
 
@@ -1052,7 +1052,7 @@ TypeInfoConstDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->mutableOf();
   tm = tm->merge();
-  tm->genTypeInfo(NULL);
+  genTypeInfo(tm, NULL);
 
   // vtbl and monitor for TypeInfo_Const
   build_vptr_monitor (pdt, Type::typeinfoconst);
@@ -1073,7 +1073,7 @@ TypeInfoInvariantDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->mutableOf();
   tm = tm->merge();
-  tm->genTypeInfo(NULL);
+  genTypeInfo(tm, NULL);
 
   // vtbl and monitor for TypeInfo_Invariant
   build_vptr_monitor (pdt, Type::typeinfoinvariant);
@@ -1094,7 +1094,7 @@ TypeInfoSharedDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->unSharedOf();
   tm = tm->merge();
-  tm->genTypeInfo(NULL);
+  genTypeInfo(tm, NULL);
 
   // vtbl and monitor for TypeInfo_Shared
   build_vptr_monitor (pdt, Type::typeinfoshared);
@@ -1115,7 +1115,7 @@ TypeInfoWildDeclaration::toDt (dt_t **pdt)
    */
   Type *tm = tinfo->mutableOf();
   tm = tm->merge();
-  tm->genTypeInfo(NULL);
+  genTypeInfo(tm, NULL);
 
   // vtbl and monitor for TypeInfo_Wild
   build_vptr_monitor (pdt, Type::typeinfowild);
@@ -1148,7 +1148,7 @@ TypeInfoEnumDeclaration::toDt (dt_t **pdt)
   // TypeInfo for enum members.
   if (sd->memtype)
     {
-      sd->memtype->genTypeInfo(NULL);
+      genTypeInfo(sd->memtype, NULL);
       dt_cons (pdt, build_address (sd->memtype->vtinfo->toSymbol()->Stree));
     }
   else
@@ -1184,7 +1184,7 @@ TypeInfoPointerDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tpointer);
 
   TypePointer *tc = (TypePointer *) tinfo;
-  tc->next->genTypeInfo(NULL);
+  genTypeInfo(tc->next, NULL);
 
   // vtbl and monitor for TypeInfo_Pointer
   build_vptr_monitor (pdt, Type::typeinfopointer);
@@ -1206,7 +1206,7 @@ TypeInfoArrayDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tarray);
 
   TypeDArray *tc = (TypeDArray *) tinfo;
-  tc->next->genTypeInfo(NULL);
+  genTypeInfo(tc->next, NULL);
 
   // vtbl and monitor for TypeInfo_Array
   build_vptr_monitor (pdt, Type::typeinfoarray);
@@ -1229,7 +1229,7 @@ TypeInfoStaticArrayDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tsarray);
 
   TypeSArray *tc = (TypeSArray *) tinfo;
-  tc->next->genTypeInfo(NULL);
+  genTypeInfo(tc->next, NULL);
 
   // vtbl and monitor for TypeInfo_StaticArray
   build_vptr_monitor (pdt, Type::typeinfostaticarray);
@@ -1254,7 +1254,7 @@ TypeInfoVectorDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->ty == Tvector);
 
   TypeVector *tc = (TypeVector *) tinfo;
-  tc->basetype->genTypeInfo(NULL);
+  genTypeInfo(tc->basetype, NULL);
 
   // vtbl and monitor for TypeInfo_Vector
   build_vptr_monitor (pdt, Type::typeinfovector);
@@ -1278,8 +1278,8 @@ TypeInfoAssociativeArrayDeclaration::toDt (dt_t  **pdt)
   gcc_assert (tinfo->ty == Taarray);
 
   TypeAArray *tc = (TypeAArray *) tinfo;
-  tc->next->genTypeInfo(NULL);
-  tc->index->genTypeInfo(NULL);
+  genTypeInfo(tc->next, NULL);
+  genTypeInfo(tc->index, NULL);
 
   // vtbl and monitor for TypeInfo_AssociativeArray
   build_vptr_monitor (pdt, Type::typeinfoassociativearray);
@@ -1306,7 +1306,7 @@ TypeInfoFunctionDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->deco);
 
   TypeFunction *tc = (TypeFunction *) tinfo;
-  tc->next->genTypeInfo(NULL);
+  genTypeInfo(tc->next, NULL);
 
   // vtbl and monitor for TypeInfo_Function
   build_vptr_monitor (pdt, Type::typeinfofunction);
@@ -1333,7 +1333,7 @@ TypeInfoDelegateDeclaration::toDt (dt_t **pdt)
   gcc_assert (tinfo->deco);
 
   TypeDelegate *tc = (TypeDelegate *) tinfo;
-  tc->next->nextOf()->genTypeInfo(NULL);
+  genTypeInfo(tc->next->nextOf(), NULL);
 
   // vtbl and monitor for TypeInfo_Delegate
   build_vptr_monitor (pdt, Type::typeinfodelegate);
@@ -1455,7 +1455,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
       // TypeInfo m_arg1;
       if (sd->arg1type)
 	{
-	  sd->arg1type->genTypeInfo(NULL);
+	  genTypeInfo(sd->arg1type, NULL);
 	  dt_cons (pdt, build_address (sd->arg1type->vtinfo->toSymbol()->Stree));
 	}
       else
@@ -1464,7 +1464,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
       // TypeInfo m_arg2;
       if (sd->arg2type)
 	{
-	  sd->arg2type->genTypeInfo(NULL);
+	  genTypeInfo(sd->arg2type, NULL);
 	  dt_cons (pdt, build_address (sd->arg2type->vtinfo->toSymbol()->Stree));
 	}
       else
@@ -1535,7 +1535,7 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
   for (size_t i = 0; i < tu->arguments->dim; i++)
     {
       Parameter *arg = (*tu->arguments)[i];
-      Expression *e = arg->type->getTypeInfo(NULL);
+      Expression *e = getTypeInfo(arg->type, NULL);
       e = e->ctfeInterpret();
       e->toDt (&dt);
     }

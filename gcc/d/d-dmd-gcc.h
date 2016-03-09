@@ -24,12 +24,6 @@
 
 #ifndef GCC_SAFE_DMD
 
-// Functions defined in the glue interface, but used in the frontend.
-
-// Used in module.c
-extern void d_gcc_magic_module (Module *);
-
-
 // Functions defined in the frontend, but used in the glue interface.
 
 // Used in init.cc
@@ -37,6 +31,12 @@ FuncDeclaration *search_toString(StructDeclaration *);
 
 // Used in d-lang.cc
 void initTraitsStringTable();
+
+// Used in d-codegen.cc
+Expression *getTypeInfo(Type *type, Scope *sc);
+
+// Used in d-objfile.cc
+void genTypeInfo(Type *type, Scope *sc);
 
 #endif /* GCC_SAFE_DMD */
 

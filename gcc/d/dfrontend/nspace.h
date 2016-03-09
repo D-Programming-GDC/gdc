@@ -31,9 +31,11 @@ class Nspace : public ScopeDsymbol
     bool hasPointers();
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     const char *kind();
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-    void toObjFile();
     Nspace *isNspace() { return this; }
+    void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    void toObjFile();
+#endif
 };
 
 #endif /* DMD_NSPACE_H */

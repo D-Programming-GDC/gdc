@@ -72,7 +72,6 @@ class ArrayScopeSymbol;
 class SymbolDeclaration;
 class Expression;
 class DeleteDeclaration;
-struct HdrGenState;
 class OverloadSet;
 struct AA;
 #ifdef IN_GCC
@@ -92,7 +91,7 @@ struct Ungag
 const char *mangle(Dsymbol *s);
 const char *mangleExact(FuncDeclaration *fd);
 
-enum PROT
+enum PROTKIND
 {
     PROTundefined,
     PROTnone,           // no access
@@ -103,9 +102,22 @@ enum PROT
     PROTexport,
 };
 
+struct Prot
+{
+    PROTKIND kind;
+    Package *pkg;
+
+    Prot();
+    Prot(PROTKIND kind);
+
+    bool isMoreRestrictiveThan(Prot other);
+    bool operator==(Prot other);
+    bool isSubsetOf(Prot other);
+};
+
 // in hdrgen.c
-void protectionToBuffer(OutBuffer *buf, PROT prot);
-const char *protectionToChars(PROT prot);
+void protectionToBuffer(OutBuffer *buf, Prot prot);
+const char *protectionToChars(PROTKIND kind);
 
 /* State of symbol in winding its way through the passes of the compiler
  */
@@ -142,7 +154,7 @@ public:
     Dsymbol *parent;
     Symbol *csym;               // symbol for code generator
     Symbol *isym;               // import version of csym
-    const utf8_t *comment;     // documentation comment for this Dsymbol
+    const utf8_t *comment;      // documentation comment for this Dsymbol
     Loc loc;                    // where defined
     Scope *scope;               // !=NULL means context to use for semantic()
     bool errors;                // this symbol failed to pass semantic()
@@ -183,6 +195,7 @@ public:
     virtual const char *toPrettyChars(bool QualifyTypes = false);
     virtual const char *kind();
     virtual Dsymbol *toAlias();                 // resolve real symbol
+    virtual Dsymbol *toAlias2();
     virtual int apply(Dsymbol_apply_ft_t fp, void *param);
     virtual int addMember(Scope *sc, ScopeDsymbol *sds, int memnum);
     virtual void setScope(Scope *sc);
@@ -194,7 +207,6 @@ public:
     Dsymbol *search_correct(Identifier *id);
     Dsymbol *searchX(Loc loc, Scope *sc, RootObject *id);
     virtual bool overloadInsert(Dsymbol *s);
-    virtual void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
     virtual unsigned size(Loc loc);
     virtual bool isforwardRef();
     virtual AggregateDeclaration *isThis();     // is a 'this' required to access the member
@@ -204,13 +216,14 @@ public:
     virtual bool isExport();                    // is Dsymbol exported?
     virtual bool isImportedSymbol();            // is Dsymbol imported?
     virtual bool isDeprecated();                // is Dsymbol deprecated?
+    virtual bool muteDeprecationMessage();      // disable deprecation message on Dsymbol?
     virtual bool isOverloadable();
     virtual bool hasOverloads();
     virtual LabelDsymbol *isLabel();            // is this a LabelDsymbol?
     virtual AggregateDeclaration *isMember();   // is this symbol a member of an AggregateDeclaration?
     virtual Type *getType();                    // is this a type?
     virtual bool needThis();                    // need a 'this' pointer?
-    virtual PROT prot();
+    virtual Prot prot();
     virtual Dsymbol *syntaxCopy(Dsymbol *s);    // copy only syntax trees
     virtual bool oneMember(Dsymbol **ps, Identifier *ident);
     static bool oneMembers(Dsymbols *members, Dsymbol **ps, Identifier *ident);
@@ -223,12 +236,6 @@ public:
     virtual void addComment(const utf8_t *comment);
 
     bool inNonRoot();
-
-    // Backend
-    virtual Symbol *toSymbol();                 // to backend symbol
-    virtual void toObjFile();                       // compile to .obj file
-
-    Symbol *toSymbolX(const char *prefix, int sclass, TYPE *t, const char *suffix);     // helper
 
     // Eliminate need for dynamic_cast
     virtual Package *isPackage() { return NULL; }
@@ -274,6 +281,12 @@ public:
     virtual AnonDeclaration *isAnonDeclaration() { return NULL; }
     virtual OverloadSet *isOverloadSet() { return NULL; }
     virtual void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    virtual Symbol *toSymbol();                 // to backend symbol
+    virtual void toObjFile();                   // compile to .obj file
+
+    Symbol *toSymbolX(const char *prefix, int sclass, TYPE *t, const char *suffix);     // helper
+#endif
 };
 
 // Dsymbol that generates a scope
@@ -286,7 +299,7 @@ public:
 
 private:
     Dsymbols *imports;          // imported Dsymbol's
-    PROT *prots;                // array of PROT, one for each import
+    PROTKIND *prots;            // array of PROTKIND, one for each import
 
 public:
     ScopeDsymbol();
@@ -294,7 +307,7 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
     OverloadSet *mergeOverloadSet(OverloadSet *os, Dsymbol *s);
-    void importScope(Dsymbol *s, PROT protection);
+    void importScope(Dsymbol *s, Prot protection);
     bool isforwardRef();
     static void multiplyDefined(Loc loc, Dsymbol *s1, Dsymbol *s2);
     const char *kind();

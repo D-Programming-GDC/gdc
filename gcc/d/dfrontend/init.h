@@ -24,8 +24,6 @@ struct Scope;
 class Type;
 #ifdef IN_GCC
 typedef union tree_node dt_t;
-#else
-struct dt_t;
 #endif
 class AggregateDeclaration;
 class ErrorInitializer;
@@ -33,7 +31,6 @@ class VoidInitializer;
 class StructInitializer;
 class ArrayInitializer;
 class ExpInitializer;
-struct HdrGenState;
 
 enum NeedInterpret { INITnointerpret, INITinterpret };
 
@@ -54,10 +51,7 @@ public:
     // needInterpret is INITinterpret if must be a manifest constant, 0 if not.
     virtual Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret) = 0;
     virtual Expression *toExpression(Type *t = NULL) = 0;
-    virtual void toCBuffer(OutBuffer *buf, HdrGenState *hgs) = 0;
     char *toChars();
-
-    virtual dt_t *toDt();
 
     virtual ErrorInitializer   *isErrorInitializer() { return NULL; }
     virtual VoidInitializer    *isVoidInitializer() { return NULL; }
@@ -65,6 +59,9 @@ public:
     virtual ArrayInitializer   *isArrayInitializer()  { return NULL; }
     virtual ExpInitializer     *isExpInitializer()  { return NULL; }
     virtual void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    virtual dt_t *toDt();
+#endif
 };
 
 class VoidInitializer : public Initializer
@@ -77,12 +74,12 @@ public:
     Initializer *inferType(Scope *sc);
     Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret);
     Expression *toExpression(Type *t = NULL);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-
-    dt_t *toDt();
 
     virtual VoidInitializer *isVoidInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    dt_t *toDt();
+#endif
 };
 
 class ErrorInitializer : public Initializer
@@ -93,7 +90,6 @@ public:
     Initializer *inferType(Scope *sc);
     Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret);
     Expression *toExpression(Type *t = NULL);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
 
     virtual ErrorInitializer *isErrorInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -111,12 +107,12 @@ public:
     Initializer *inferType(Scope *sc);
     Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret);
     Expression *toExpression(Type *t = NULL);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-
-    dt_t *toDt();
 
     StructInitializer *isStructInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    dt_t *toDt();
+#endif
 };
 
 class ArrayInitializer : public Initializer
@@ -136,12 +132,12 @@ public:
     Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret);
     Expression *toExpression(Type *t = NULL);
     Expression *toAssocArrayLiteral();
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-
-    dt_t *toDt();
 
     ArrayInitializer *isArrayInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    dt_t *toDt();
+#endif
 };
 
 class ExpInitializer : public Initializer
@@ -155,12 +151,12 @@ public:
     Initializer *inferType(Scope *sc);
     Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret);
     Expression *toExpression(Type *t = NULL);
-    void toCBuffer(OutBuffer *buf, HdrGenState *hgs);
-
-    dt_t *toDt();
 
     virtual ExpInitializer *isExpInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
+#ifdef IN_GCC
+    dt_t *toDt();
+#endif
 };
 
 #endif

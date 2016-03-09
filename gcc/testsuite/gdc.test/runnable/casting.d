@@ -3,6 +3,15 @@ extern(C) int printf(const char*, ...);
 template Seq(T...) { alias T Seq; }
 
 /***************************************************/
+// 3133
+
+void test3133()
+{
+    short[2] x = [1, 2];
+    auto y = cast(int[1])x;     // no error
+}
+
+/***************************************************/
 // 7504
 
 void test7504() pure nothrow @safe
@@ -87,20 +96,6 @@ void test10497(S10497** s)
 {
     void* ptr;
     *s = cast(S10497*)ptr;
-}
-
-/***************************************************/
-// 10646
-
-void test10646()
-{
-    class C { }
-
-    C[] csd;
-    C[2] css;
-
-    static assert(!__traits(compiles, { auto c1 = cast(C)csd; }));
-    static assert(!__traits(compiles, { auto c2 = cast(C)css; }));
 }
 
 /***************************************************/
@@ -204,17 +199,49 @@ void test11722()
 }
 
 /***************************************************/
+// 14218
+
+void test14218()
+{
+    foreach (To; Seq!( byte,  short,  int,  long,
+                      ubyte, ushort, uint, ulong,
+                       char,  wchar, dchar, bool))
+    {
+        auto x = cast(To)null;
+        assert(x == 0);     // false, '0x00'
+    }
+
+    version (DigitalMars)
+    {
+        // Questionable but currently accepted
+        foreach (To; Seq!( float,  double,  real,
+                           ifloat, idouble, ireal))
+        {
+            auto x = cast(To)null;
+            assert(x == 0);     // 0i
+        }
+
+        // Internal error: backend/el.c in el_long()
+        //foreach (To; Seq!(cfloat, cdouble, creal))
+        //{
+        //    static assert(!__traits(compiles, { auto x = cast(To)null; }));
+        //}
+    }
+}
+
+/***************************************************/
 
 int main()
 {
+    test3133();
     test7504();
     test8119();
     test8645();
-    test10646();
     test10793();
     test10834();
     test10842();
     test11722();
+    test14218();
 
     printf("Success\n");
     return 0;

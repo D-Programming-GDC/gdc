@@ -83,13 +83,19 @@ proc gdc_include_flags { paths } {
     if { $gccpath != "" } {
         if [file exists "${gccpath}/libphobos/libdruntime"] {
             append flags "-I${gccpath}/libphobos/libdruntime "
-            append flags "-I${gccpath}/libphobos/libdruntime/import "
-            append flags "-I${gccpath}/libphobos/libdruntime/$target "
         }
     }
-
-    append flags "-I${srcdir}/../../libphobos/src "
     append flags "-I${srcdir}/../../libphobos/libdruntime "
+    append flags "-I${srcdir}/../../libphobos/src "
+
+    # For the tests that mix C++ and D, we should try and handle this better.
+    if { $gccpath != "" } {
+        if [file exists "${gccpath}/libstdc++-v3/include"] {
+            append flags "-I${gccpath}/libstdc++-v3/include "
+            append flags "-I${gccpath}/libstdc++-v3/include/$target "
+        }
+    }
+    append flags "-I${srcdir}/../../libstdc++-v3/libsupc++"
 }
 
 #
@@ -117,6 +123,12 @@ proc gdc_link_flags { paths } {
       }
       if [file exists "${gccpath}/libiberty/libiberty.a"] {
           append flags "-L${gccpath}/libiberty "
+      }
+      # For the tests that mix C++ and D, we should try and handle this better.
+      if { [file exists "${gccpath}/libstdc++-v3/src/.libs/libstdc++.a"] \
+           || [file exists "${gccpath}/libstdc++-v3/src/.libs/libstdc++.${shlib_ext}"] } {
+          append flags "-L${gccpath}/libstdc++-v3/src/.libs "
+          append ld_library_path ":${gccpath}/libstdc++-v3/src/.libs"
       }
       append ld_library_path [gcc-set-multilib-library-path $GDC_UNDER_TEST]
     } else {

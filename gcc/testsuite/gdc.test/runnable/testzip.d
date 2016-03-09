@@ -3,7 +3,7 @@
 // EXECUTE_ARGS: runnable/extra-files/testzip.zip testzip-out.zip
 // POST_SCRIPT: runnable/extra-files/testzip-postscript.sh
 
-import std.c.stdio;
+import core.stdc.stdio;
 import std.conv;
 import std.stdio;
 import std.file;

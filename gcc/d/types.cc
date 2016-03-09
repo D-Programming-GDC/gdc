@@ -341,7 +341,6 @@ public:
 	break;
 
       default:
-	fprintf(global.stdmsg, "linkage = %d\n", t->linkage);
 	gcc_unreachable();
       }
   }
