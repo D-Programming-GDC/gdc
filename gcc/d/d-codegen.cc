@@ -939,20 +939,46 @@ convert_for_condition(tree expr, Type *type)
 // EXP must be a static array or dynamic array.
 
 tree
-d_array_convert (Expression *exp)
+d_array_convert(Expression *exp)
 {
-  TY ty = exp->type->toBasetype()->ty;
+  Type *tb = exp->type->toBasetype();
 
-  if (ty == Tarray)
+  if (tb->ty == Tarray)
     return exp->toElem();
-  else if (ty == Tsarray)
+  else if (tb->ty == Tsarray)
     {
-      Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
-      return convert_expr (exp->toElem(), exp->type, totype);
+      Type *totype = tb->nextOf()->arrayOf();
+      return convert_expr(exp->toElem(), exp->type, totype);
     }
 
   // Invalid type passed.
   gcc_unreachable();
+}
+
+// Convert EXP to a dynamic array, where ETYPE is the element type.
+// Similar to above, except that EXP is allowed to be an element of an array.
+// Temporary variables that need some kind of BIND_EXPR are pushed to VARS.
+
+tree
+d_array_convert(Type *etype, Expression *exp, vec<tree, va_gc> **vars)
+{
+  Type *tb = exp->type->toBasetype();
+
+  if ((tb->ty != Tarray && tb->ty != Tsarray)
+      || d_types_same(tb, etype->toBasetype()))
+    {
+      // Convert single element to an array.
+      tree var = NULL_TREE;
+      tree expr = maybe_temporary_var(exp->toElem(), &var);
+
+      if (var != NULL_TREE)
+	vec_safe_push(*vars, var);
+
+      return d_array_value(build_ctype(exp->type->arrayOf()),
+			   size_int(1), build_address(expr));
+    }
+  else
+    return d_array_convert(exp);
 }
 
 // Return TRUE if declaration DECL is a reference type.

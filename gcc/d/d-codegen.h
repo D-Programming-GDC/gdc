@@ -107,6 +107,7 @@ extern tree convert_for_assignment (tree expr, Type *exp_type, Type *target_type
 extern tree convert_for_condition (tree expr, Type *type);
 
 extern tree d_array_convert (Expression *exp);
+extern tree d_array_convert (Type *etype, Expression *exp, vec<tree, va_gc> **vars);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = int_type_node);

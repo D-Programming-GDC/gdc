@@ -1,3 +1,15 @@
+2016-03-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_array_convert): New function overload.
+	* d-elem.cc (CatExp::toElem): Call new runtime function _d_arraycatnTX
+	when flattening multiple concatenations.
+	(NewExp::toElem): Update call construction for new signatures of
+	runtime functions _d_newarraymTX and _d_newarraymiTX.
+	* runtime.def (NEWARRAYMTX): Update signature.
+	(NEWARRAYMITX): Likewise,
+	(ARRAYCATNT): Remove runtime function.
+	(ARRAYCATNTX): New runtime function.
+
 2016-03-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* imports.cc (ImportVisitor::visit(Declaration)): Don't assume toSymbol

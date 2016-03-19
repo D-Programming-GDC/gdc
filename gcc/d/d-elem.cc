@@ -533,69 +533,72 @@ CatExp::toElem()
   else
     etype = tb2->nextOf();
 
-  // Flatten multiple concatenations
-  unsigned n_operands = 2;
-  for (Expression *ex = e1; ex->op == TOKcat;)
-    {
-      if (ex->op == TOKcat)
-	{
-	  ex = ((CatExp *) ex)->e1;
-	  n_operands++;
-	}
-    }
-
-  unsigned n_args = (n_operands > 2 ? (2 + (n_operands * 2)) : 3);
-  tree *args = new tree[n_args];
-
-  args[0] = build_typeinfo(type);
-
-  if (n_operands > 2)
-    args[1] = build_integer_cst(n_operands, build_ctype(Type::tuns32));
-
-  unsigned ai = n_args - 1;
-  CatExp *ce = this;
   vec<tree, va_gc> *elemvars = NULL;
+  tree result;
 
-  // Loop through each concatenation from right to left.
-  // Dynamic arrays are not passed directly over varargs, instead they are
-  // split between length and ptr values.
-  for (Expression *oe = ce->e2; oe != NULL;
-       (ce->e1->op != TOKcat
-	? (oe = ce->e1)
-	: (ce = (CatExp *)ce->e1, oe = ce->e2)))
+  if (e1->op == TOKcat)
     {
-      tree arg;
-      if (d_types_same(oe->type->toBasetype(), etype->toBasetype()))
+      // Flatten multiple concatenations to an array.
+      // So the expression ((a ~ b) ~ c) becomes [a, b, c]
+      int ndims = 2;
+      for (Expression *ex = e1; ex->op == TOKcat;)
 	{
-	  // Convert single element to an array.
-	  tree var = NULL_TREE;
-	  tree expr = maybe_temporary_var(oe->toElem(), &var);
-	  arg = d_array_value(build_ctype(oe->type->arrayOf()),
-			      size_int(1), build_address(expr));
-
-	  if (var != NULL_TREE)
-	    vec_safe_push(elemvars, var);
+	  if (ex->op == TOKcat)
+	    {
+	      ex = ((CatExp *) ex)->e1;
+	      ndims++;
+	    }
 	}
-      else
-	arg = d_array_convert(oe);
 
-      if (n_operands > 2)
+      // Store all concatenation args to a temporary byte[][ndims] array.
+      Type *targselem = Type::tint8->arrayOf();
+      tree var = create_temporary_var(d_array_type(targselem, ndims));
+      tree init = build_constructor(TREE_TYPE(var), NULL);
+      vec_safe_push(elemvars, var);
+
+      // Loop through each concatenation from right to left.
+      vec<constructor_elt, va_gc> *elms = NULL;
+      CatExp *ce = this;
+      int dim = ndims - 1;
+
+      for (Expression *oe = ce->e2; oe != NULL;
+	   (ce->e1->op != TOKcat
+	    ? (oe = ce->e1)
+	    : (ce = (CatExp *)ce->e1, oe = ce->e2)))
 	{
-	  // Filling the array backwards, so .ptr is pushed first.
-	  arg = maybe_make_temp(arg);
-	  args[ai--] = d_array_ptr(arg);
-	  args[ai--] = d_array_length(arg);
-	}
-      else
-	args[ai--] = maybe_make_temp(arg);
+	  tree arg = d_array_convert(etype, oe, &elemvars);
+	  tree index = size_int(dim);
+	  CONSTRUCTOR_APPEND_ELT(elms, index, maybe_make_temp(arg));
 
-      // Finished pushing all arrays.
-      if (oe == ce->e1)
-	break;
+	  // Finished pushing all arrays.
+	  if (oe == ce->e1)
+	    break;
+
+	  dim -= 1;
+	}
+      // Check there is no logic bug in constructing byte[][] of arrays.
+      gcc_assert(dim == 0);
+
+      CONSTRUCTOR_ELTS(init) = elms;
+      DECL_INITIAL(var) = init;
+
+      tree args[2];
+      args[0] = build_typeinfo(type);
+      args[1] = d_array_value(build_ctype(targselem->arrayOf()),
+			      size_int(ndims), build_address(var));
+
+      result = build_libcall(LIBCALL_ARRAYCATNTX, 2, args, build_ctype(type));
     }
+  else
+    {
+      // Handle single concatenation (a ~ b)
+      tree args[3];
+      args[0] = build_typeinfo(type);
+      args[1] = d_array_convert(etype, e1, &elemvars);
+      args[2] = d_array_convert(etype, e2, &elemvars);
 
-  tree result = build_libcall(n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
-			      n_args, args, build_ctype(type));
+      result = build_libcall(LIBCALL_ARRAYCATT, 3, args, build_ctype(type));
+    }
 
   for (size_t i = 0; i < vec_safe_length(elemvars); ++i)
     result = bind_expr((*elemvars)[i], result);
@@ -2188,30 +2191,30 @@ NewExp::toElem()
 	  // Multidimensional array allocations.
 	  vec<constructor_elt, va_gc> *elms = NULL;
 	  Type *telem = newtype->toBasetype();
-	  tree dims_var = create_temporary_var(d_array_type(Type::tsize_t, arguments->dim));
-	  tree dims_init = build_constructor(TREE_TYPE(dims_var), NULL);
-	  tree args[3];
+	  tree var = create_temporary_var(d_array_type(Type::tsize_t, arguments->dim));
+	  tree init = build_constructor(TREE_TYPE (var), NULL);
+	  tree args[2];
 
 	  for (size_t i = 0; i < arguments->dim; i++)
 	    {
 	      Expression *arg = (*arguments)[i];
 	      tree index = build_integer_cst(i, size_type_node);
-	      CONSTRUCTOR_APPEND_ELT(elms, index, arg->toElem());
+	      CONSTRUCTOR_APPEND_ELT (elms, index, arg->toElem());
 
 	      gcc_assert(telem->ty == Tarray);
 	      telem = telem->toBasetype()->nextOf();
 	      gcc_assert(telem);
 	    }
 
-	  CONSTRUCTOR_ELTS(dims_init) = elms;
-	  DECL_INITIAL(dims_var) = dims_init;
+	  CONSTRUCTOR_ELTS (init) = elms;
+	  DECL_INITIAL (var) = init;
 
 	  libcall = telem->isZeroInit() ? LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
 	  args[0] = getTypeInfo(type, NULL)->toElem();
-	  args[1] = build_integer_cst(arguments->dim, build_ctype(Type::tint32));
-	  args[2] = build_address(dims_var);
-	  result = build_libcall(libcall, 3, args, build_ctype(tb));
-	  result = bind_expr(dims_var, result);
+	  args[1] = d_array_value(build_ctype(Type::tsize_t->arrayOf()),
+				  size_int(arguments->dim), build_address(var));
+	  result = build_libcall(libcall, 2, args, build_ctype(tb));
+	  result = bind_expr(var, result);
 	}
 
       if (argprefix)
