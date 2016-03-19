@@ -170,9 +170,8 @@ extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
 // Array operations
+extern tree build_bounds_condition(Loc loc, tree index, tree upr, bool inclusive);
 extern bool array_bounds_check();
-extern tree d_checked_index (Loc loc, tree index, tree upr, bool inclusive);
-extern tree d_bounds_condition (tree index, tree upr, bool inclusive);
 
 // Classes
 extern tree build_class_binfo (tree super, ClassDeclaration *cd);
