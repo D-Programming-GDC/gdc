@@ -1002,19 +1002,19 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
 /**
  *
  */
-void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t ndims, size_t* pdim)
+void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t[] dims)
 {
-    debug(PRINTF) printf("_d_newarrayOpT(ndims = %d)\n", ndims);
-    if (ndims == 0)
+    debug(PRINTF) printf("_d_newarrayOpT(ndims = %d)\n", dims.length);
+    if (dims.length == 0)
         return null;
 
-    void[] foo(const TypeInfo ti, size_t* pdim, size_t ndims)
+    void[] foo(const TypeInfo ti, size_t[] dims)
     {
         auto tinext = unqualify(ti.next);
-        auto dim = *pdim;
+        auto dim = dims[0];
 
-        debug(PRINTF) printf("foo(ti = %p, ti.next = %p, dim = %d, ndims = %d\n", ti, ti.next, dim, ndims);
-        if (ndims == 1)
+        debug(PRINTF) printf("foo(ti = %p, ti.next = %p, dim = %d, ndims = %d\n", ti, ti.next, dim, dims.length);
+        if (dims.length == 1)
         {
             auto r = op(ti, dim);
             return *cast(void[]*)(&r);
@@ -1026,15 +1026,15 @@ void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t ndims, size_t* pdim)
         __setArrayAllocLength(info, allocsize, isshared, tinext);
         auto p = __arrayStart(info)[0 .. dim];
 
-        for (size_t i = 0; i < dim; i++)
+        foreach(i; 0..dim)
         {
-            (cast(void[]*)p.ptr)[i] = foo(ti.next, pdim + 1, ndims - 1);
+            (cast(void[]*)p.ptr)[i] = foo(tinext, dims[1..$]);
         }
         return p;
     }
 
-    auto result = foo(ti, pdim, ndims);
-    debug(PRINTF) printf("result = %llx\n", result);
+    auto result = foo(ti, dims);
+    debug(PRINTF) printf("result = %llx\n", result.ptr);
 
     return result;
 }
@@ -1043,15 +1043,15 @@ void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t ndims, size_t* pdim)
 /**
  *
  */
-extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t ndims, size_t* pdim)
+extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims)
 {
-    debug(PRINTF) printf("_d_newarraymTX(ndims = %d)\n", ndims);
+    debug(PRINTF) printf("_d_newarraymT(dims.length = %d)\n", dims.length);
 
-    if (ndims == 0)
+    if (dims.length == 0)
         return null;
     else
     {
-        return _d_newarrayOpT!(_d_newarrayT)(ti, ndims, pdim);
+        return _d_newarrayOpT!(_d_newarrayT)(ti, dims);
     }
 }
 
@@ -1059,15 +1059,15 @@ extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t ndims, size_t* pdim)
 /**
  *
  */
-extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t ndims, size_t* pdim)
+extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims)
 {
-    debug(PRINTF) printf("_d_newarraymiTX(ndims = %d)\n", ndims);
+    debug(PRINTF) printf("_d_newarraymiT(dims.length = %d)\n", dims.length);
 
-    if (ndims == 0)
+    if (dims.length == 0)
         return null;
     else
     {
-        return _d_newarrayOpT!(_d_newarrayiT)(ti, ndims, pdim);
+        return _d_newarrayOpT!(_d_newarrayiT)(ti, dims);
     }
 }
 
@@ -2193,22 +2193,15 @@ body
 /**
  *
  */
-extern (C) void[] _d_arraycatnT(const TypeInfo ti, uint n, ...)
+extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
 {
     size_t length;
-    va_list va;
     auto tinext = unqualify(ti.next);
     auto size = tinext.tsize;   // array element size
-    Array b = void;              // passed argument we are concatenating
 
-    va_start!(uint)(va, n);
-
-    for (auto i = 0; i < n; i++)
-    {
-        b.length = va_arg!(size_t)(va);
-        b.data = va_arg!(byte*)(va);
+    foreach(b; arrs)
         length += b.length;
-    }
+
     if (!length)
         return null;
 
@@ -2218,16 +2211,12 @@ extern (C) void[] _d_arraycatnT(const TypeInfo ti, uint n, ...)
     __setArrayAllocLength(info, allocsize, isshared, tinext);
     void *a = __arrayStart (info);
 
-    va_start!(uint)(va, n);
-
     size_t j = 0;
-    for (auto i = 0; i < n; i++)
+    foreach(b; arrs)
     {
-        b.length = va_arg!(size_t)(va);
-        b.data = va_arg!(byte*)(va);
         if (b.length)
         {
-            memcpy(a + j, b.data, b.length * size);
+            memcpy(a + j, b.ptr, b.length * size);
             j += b.length * size;
         }
     }
