@@ -2623,39 +2623,27 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   return expr;
 }
 
-// Builds an array bounds checking condition, returning INDEX if true,
-// else throws a RangeError exception.
+// Builds a bounds condition checking that INDEX is between 0 and LEN.
+// The condition returns the INDEX if true, or throws a RangeError.
+// If INCLUSIVE, we allow INDEX == LEN to return true also.
 
 tree
-d_checked_index (Loc loc, tree index, tree upr, bool inclusive)
+build_bounds_condition(Loc loc, tree index, tree len, bool inclusive)
 {
   if (!array_bounds_check())
     return index;
 
-  return build_condition(TREE_TYPE (index),
-			 d_bounds_condition (index, upr, inclusive),
-			 index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
-}
+  // Prevent multiple evaluations of the index.
+  index = maybe_make_temp(index);
 
-// Builds the condition [INDEX < UPR] and optionally [INDEX >= 0]
-// if INDEX is a signed type.  For use in array bound checking routines.
-// If INCLUSIVE, we allow equality to return true also.
-// INDEX must be wrapped in a SAVE_EXPR to prevent multiple evaluation.
+  // Generate INDEX >= LEN && throw RangeError.
+  // No need to check whether INDEX >= 0 as the front-end should
+  // have already taken care of implicit casts to unsigned.
+  tree condition = fold_build2(inclusive ? GT_EXPR : GE_EXPR,
+			       bool_type_node, index, len);
+  tree boundserr = d_assert_call(loc, LIBCALL_ARRAY_BOUNDS);
 
-tree
-d_bounds_condition (tree index, tree upr, bool inclusive)
-{
-  tree uindex = d_convert (d_unsigned_type (TREE_TYPE (index)), index);
-
-  // Build condition to test that INDEX < UPR.
-  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, bool_type_node, uindex, upr);
-
-  // Build condition to test that INDEX >= 0.
-  if (!TYPE_UNSIGNED (TREE_TYPE (index)))
-    condition = build2 (TRUTH_ANDIF_EXPR, bool_type_node, condition,
-			build2 (GE_EXPR, bool_type_node, index, integer_zero_node));
-
-  return condition;
+  return build_condition(TREE_TYPE (index), condition, boundserr, index);
 }
 
 // Returns TRUE if array bounds checking code generation is turned on.

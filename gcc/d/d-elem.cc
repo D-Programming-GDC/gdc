@@ -1152,15 +1152,11 @@ IndexExp::toElem()
 
       // Generate the index.
       tree index = e2->toElem();
-      if (tb1->ty == Tarray || tb1->ty == Tsarray)
-	{
-	  // If it's a static array and the index is constant,
-	  // the front end has already checked the bounds.
-	  if (array_bounds_check() && !(tb1->ty == Tsarray && e2->isConst()))
-	    index = d_checked_index(loc, maybe_make_temp(index), length, false);
-	}
-      else
-	gcc_assert(tb1->ty == Tpointer);
+
+      // If it's a static array and the index is constant,
+      // the front end has already checked the bounds.
+      if (tb1->ty != Tpointer && !indexIsInBounds)
+	index = build_bounds_condition(e2->loc, index, length, false);
 
       // Index the .ptr
       ptr = void_okay_p(ptr);
@@ -1267,42 +1263,37 @@ SliceExp::toElem()
   tree upr_tree = maybe_make_temp(upr->toElem());
   tree newlength;
 
-  if (array_bounds_check())
+  if (!this->upperIsInBounds)
     {
-      if (!this->upperIsInBounds)
-	{
-	  if (length)
-	    newlength = d_checked_index(loc, upr_tree, length, true);
-	  else
-	    {
-	      // Still need to check bounds lwr <= upr for pointers.
-	      gcc_assert(tb1->ty == Tpointer);
-	      newlength = upr_tree;
-	    }
-	}
+      if (length)
+	newlength = build_bounds_condition(upr->loc, upr_tree, length, true);
       else
-	newlength = upr_tree;
-
-      if (!this->lowerIsLessThanUpper)
 	{
-	  // Enforces lwr <= upr. No need to check lwr <= length as
-	  // we've already ensured that upr <= length.
-	  if (lwr_tree)
-	    {
-	      tree lwr_bounds = d_checked_index(loc, lwr_tree, upr_tree, true);
-	      newlength = compound_expr(lwr_bounds, newlength);
-	    }
+	  // Still need to check bounds lwr <= upr for pointers.
+	  gcc_assert(tb1->ty == Tpointer);
+	  newlength = upr_tree;
 	}
     }
   else
     newlength = upr_tree;
 
-  // Need to ensure lwr always gets evaluated first, as it may be a function call.
-  // Does (-lwr + upr) rather than (upr - lwr)
   if (lwr_tree)
     {
-      newlength = build2(PLUS_EXPR, TREE_TYPE (newlength),
-			 build1(NEGATE_EXPR, TREE_TYPE (lwr_tree), lwr_tree), newlength);
+      // Enforces lwr <= upr. No need to check lwr <= length as
+      // we've already ensured that upr <= length.
+      if (!this->lowerIsLessThanUpper)
+	{
+	  tree cond = build_bounds_condition(lwr->loc, lwr_tree, upr_tree, true);
+
+	  // When bounds checking is off, the index value is returned directly.
+	  if (cond != lwr_tree)
+	    newlength = compound_expr(cond, newlength);
+	}
+
+      // Need to ensure lwr always gets evaluated first, as it may be a
+      // function call.  Generates (lwr, upr) - lwr.
+      newlength = fold_build2(MINUS_EXPR, TREE_TYPE (newlength),
+			      compound_expr(lwr_tree, newlength), lwr_tree);
     }
 
   tree result = d_array_value(build_ctype(type), newlength, ptr);
