@@ -5,6 +5,8 @@
 	(build_bounds_condition): New function.
 	* d-elem.cc (IndexExp::toElem): Use build_bounds_condition.
 	(SliceExp::toElem): Likewise.
+	(EqualExp::toElem): Convert expressions to dynamic arrays when
+	inlining comparison.  Don't pass zero length arrays to memcmp.
 
 2016-03-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 

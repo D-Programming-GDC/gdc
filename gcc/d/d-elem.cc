@@ -122,84 +122,75 @@ EqualExp::toElem()
       Type *t2elem = tb1->nextOf()->toBasetype();
 
       // Check if comparisons of arrays can be optimized using memcmp.
-      //    e1.length OP e2.length && memcmp(e1.ptr, e2.ptr, size) OP 0;
-      // Where 'size' can be either:
-      //    For dynamic arrays: e1.length * (e1[0]).sizeof
-      //    For static arrays:  e1.sizeof
+      // This will inline EQ expressions as:
+      //    e1.length == e2.length && memcmp(e1.ptr, e2.ptr, size) == 0;
+      // Or when generating a NE expression:
+      //    e1.length != e2.length || memcmp(e1.ptr, e2.ptr, size) != 0;
       if ((t1elem->isintegral() || t1elem->ty == Tvoid || t1elem->ty == Tstruct)
 	  && t1elem->ty == t2elem->ty)
 	{
-	  tree t1 = e1->toElem();
-	  tree t2 = e2->toElem();
-	  // Length, for comparison.
-	  tree t1len, t2len;
-	  // Pointer to data and data size, to pass to memcmp.
-	  tree t1ptr, t2ptr;
-	  tree t1size, t2size;
+	  tree t1 = d_array_convert(e1);
+	  tree t2 = d_array_convert(e2);
+	  tree result;
 
 	  // Make temporaries to prevent multiple evaluations.
 	  tree t1saved = make_temp(t1);
 	  tree t2saved = make_temp(t2);
 
-	  if (tb1->ty == Tarray)
-	    {
-	      t1len = d_array_length(t1saved);
-	      t1ptr = d_array_ptr(t1saved);
-	      t1size = build2(MULT_EXPR, size_type_node, t1len, size_int(t1elem->size()));
-	    }
-	  else
-	    {
-	      t1len = size_int(((TypeSArray *) tb1)->dim->toInteger());
-	      t1ptr = build_address(t1saved);
-	      t1size = size_int(tb1->size());
-	    }
+	  // Length of arrays, for comparisons done before calling memcmp.
+	  tree t1len = d_array_length(t1saved);
+	  tree t2len = d_array_length(t2saved);
 
-	  if (tb2->ty == Tarray)
-	    {
-	      t2len = d_array_length(t2saved);
-	      t2ptr = d_array_ptr(t2saved);
-	      t2size = build2(MULT_EXPR, size_type_node, t2len, size_int(t2elem->size()));
-	    }
-	  else
-	    {
-	      t2len = size_int(((TypeSArray *) tb2)->dim->toInteger());
-	      t2ptr = build_address(t2saved);
-	      t2size = size_int(tb2->size());
-	    }
+	  // Reference to array data.
+	  tree t1ptr = d_array_ptr(t1saved);
+	  tree t2ptr = d_array_ptr(t2saved);
 
-	  tree result;
-
+	  // Compare arrays using memcmp if possible, otherwise for structs,
+	  // each field is compared inline.
 	  if (t1elem->ty != Tstruct || identity_compare_p(((TypeStruct *) t1elem)->sym))
 	    {
-	      // Compare arrays using memcmp.
+	      tree tsize = fold_build2(MULT_EXPR, size_type_node, t1len,
+				       size_int(t1elem->size()));
 	      tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
-					       t1ptr, t2ptr, (tb2->ty == Tsarray) ? t2size : t1size);
-
+					       t1ptr, t2ptr, tsize);
 	      result = build2(code, build_ctype(type), tmemcmp, integer_zero_node);
 	    }
 	  else
 	    {
-	      // Elem type is a struct with alignment holes, compare inline.
 	      result = build_array_struct_comparison(code, ((TypeStruct *) t1elem)->sym,
 						     t1len, t1ptr, t2ptr);
 	    }
 
+	  // Guard array comparison by first testing array length.
+	  // For equality expressions, this becomes:
+	  //    (e1.length == 0 || memcmp)
+	  // Otherwise for inequality:
+	  //    (e1.length != 0 && memcmp)
+	  tree tsizecmp = build2(code, size_type_node, t1len, size_zero_node);
+	  if (op == TOKequal)
+	    result = build_boolop(TRUTH_ORIF_EXPR, tsizecmp, result);
+	  else
+	    result = build_boolop(TRUTH_ANDIF_EXPR, tsizecmp, result);
+
+	  // Finally, check if lengths of both arrays match.  The frontend
+	  // should have already guaranteed that static arrays have same size.
 	  if (tb1->ty == Tsarray && tb2->ty == Tsarray)
-	    gcc_assert (tb1->size() == tb2->size());
+	    gcc_assert(tb1->size() == tb2->size());
 	  else
 	    {
-	      tree_code tcode = (op == TOKequal) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
-	      tree tlencmp = build2 (code, size_type_node, t1len, t2len);
-
-	      result = build_boolop (tcode, tlencmp, result);
+	      tree tlencmp = build2(code, size_type_node, t1len, t2len);
+	      if (op == TOKequal)
+		result = build_boolop(TRUTH_ANDIF_EXPR, tlencmp, result);
+	      else
+		result = build_boolop(TRUTH_ORIF_EXPR, tlencmp, result);
 	    }
 
 	  // Ensure left-to-right order of evaluation.
-	  if (d_has_side_effects (t2))
-	    result = compound_expr (t2saved, result);
+	  if (d_has_side_effects(t2))
+	    result = compound_expr(t2saved, result);
 
-	  if (d_has_side_effects (t1))
-	    result = compound_expr (t1saved, result);
+	  if (d_has_side_effects(t1))
+	    result = compound_expr(t1saved, result);
 
 	  return result;
 	}
