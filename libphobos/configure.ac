@@ -296,15 +296,6 @@ AC_TRY_COMPILE([#include <unwind.h>],[
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
-case "$d_thread_model" in
-  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/posix.o"
-         ;;
-  win32) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/win32.o"
-         ;;
-  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/single.o"
-         ;;
-esac
-
 case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
 esac
