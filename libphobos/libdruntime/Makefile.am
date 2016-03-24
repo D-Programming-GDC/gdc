@@ -127,17 +127,13 @@ else
 endif
 	$(RANLIB) $@
 
-libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
+unittest: libgdruntime.a $(ALL_DRUNTIME_OBJS:.o=.t.o) unittest.o
 if BACKTRACE_SUPPORTED
-	cp -f $(LIBBACKTRACE_LIB) $@
-	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
+	cp -f $(LIBBACKTRACE_LIB) libbacktrace.a
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ $(ALL_DRUNTIME_OBJS:.o=.t.o) -lbacktrace $(LIBS) $(DL_LIBS)
 else
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
+	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ $(ALL_DRUNTIME_OBJS:.o=.t.o) $(LIBS) $(DL_LIBS)
 endif
-	$(RANLIB) $@
-
-unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) $(DL_LIBS)
 
 #--------------------------------------#
 # Install, doc, etc targets
@@ -185,7 +181,6 @@ clean-local:
 	rm -f unittest.o
 	rm -f unittest$(EXEEXT)
 	rm -f libgdruntime.a
-	rm -f libgdruntime_t.a
 
 check-local: unittest
 	./unittest
