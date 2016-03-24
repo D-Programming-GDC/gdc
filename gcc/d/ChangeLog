@@ -1,3 +1,18 @@
+2016-03-29  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-objfile.cc (d_comdat_linkage): Rewrite template duplicate
+	handling to generate only one backend tree for all duplicates.
+	(FuncDeclaration::toObjFile): Likewise.
+	(VarDeclaration::toObjFile): Likewise.
+	* d-decls.cc (FuncDeclaration::toSymbol): Likewise.
+	(VarDeclaration::toSymbol): Likewise.
+	* d-objfile.cc (get_template_storage_info): Extract function from
+	setup_symbol_storage.
+	(setup_symbol_storage): Likewise.
+	* d-tree.h (lang_identifier): Add field for Dsymbol.
+	(IDENTIFIER_LANG_SPECIFIC): New macro.
+	(IDENTIFIER_DSYMBOL): Likewise.
+
 2016-03-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (fill_alignment_field): Call layout_decl on field.

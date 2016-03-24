@@ -27,6 +27,7 @@ class Expression;
 class Module;
 class Statement;
 class Type;
+class Dsymbol;
 
 // The kinds of scopes we recognise.
 enum level_kind
@@ -117,7 +118,14 @@ struct GTY(()) d_label_entry
 struct GTY(()) lang_identifier
 {
   struct tree_identifier common;
+  Dsymbol * GTY((skip)) dsymbol;
 };
+
+#define IDENTIFIER_LANG_SPECIFIC(NODE) \
+  ((struct lang_identifier*) IDENTIFIER_NODE_CHECK (NODE))
+
+#define IDENTIFIER_DSYMBOL(NODE) \
+  (IDENTIFIER_LANG_SPECIFIC (NODE)->dsymbol)
 
 // Global state pertinent to the current function.
 struct GTY(()) language_function
