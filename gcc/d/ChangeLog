@@ -1,3 +1,8 @@
+2016-03-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.h (function_type_p): Remove function.
+	* d-codegen.cc (d_build_call): Use FUNC_OR_METHOD_P macro.
+
 2016-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (d_checked_index): Remove function.

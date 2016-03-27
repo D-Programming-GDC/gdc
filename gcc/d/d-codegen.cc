@@ -2781,7 +2781,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   else
     callee = build_address(callable);
 
-  gcc_assert(function_type_p(ctype));
+  gcc_assert(FUNC_OR_METHOD_TYPE_P (ctype));
   gcc_assert(tf != NULL);
   gcc_assert(tf->ty == Tfunction);
 

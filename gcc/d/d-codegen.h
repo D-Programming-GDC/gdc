@@ -265,12 +265,6 @@ extern tree imaginary_part(tree c);
 extern tree complex_expr(tree type, tree r, tree i);
 
 // Helpers for call
-inline bool
-function_type_p (tree t)
-{
-  return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE);
-}
-
 extern TypeFunction *get_function_type (Type *t);
 extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
