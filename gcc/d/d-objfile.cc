@@ -1507,7 +1507,7 @@ d_finish_module()
 }
 
 location_t
-get_linemap (const Loc loc)
+get_linemap (const Loc& loc)
 {
   location_t gcc_location;
 
