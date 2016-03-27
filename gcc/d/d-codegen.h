@@ -141,7 +141,7 @@ extern tree d_build_call (TypeFunction *tf, tree callable, tree object, Expressi
 extern tree d_build_call_list (tree type, tree callee, tree args);
 extern tree d_build_call_nary (tree callee, int n_args, ...);
 
-extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
+extern tree d_assert_call (const Loc& loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
 extern tree build_frame_type(FuncDeclaration *func);
@@ -170,7 +170,7 @@ extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
 // Array operations
-extern tree build_bounds_condition(Loc loc, tree index, tree upr, bool inclusive);
+extern tree build_bounds_condition(const Loc& loc, tree index, tree upr, bool inclusive);
 extern bool array_bounds_check();
 
 // Classes
@@ -198,7 +198,7 @@ extern tree build_typeinfo (Type *t);
 
 // Record layout
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
-extern void insert_aggregate_field(Loc loc, tree type, tree field, size_t offset);
+extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);
 extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
 
 extern bool empty_aggregate_p(tree type);
@@ -265,17 +265,12 @@ extern tree imaginary_part(tree c);
 extern tree complex_expr(tree type, tree r, tree i);
 
 // Helpers for call
-inline bool
-function_type_p (tree t)
-{
-  return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE);
-}
-
 extern TypeFunction *get_function_type (Type *t);
 extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 
 // Globals.
+extern Modules builtin_modules;
 extern Module *current_module_decl;
 
 #endif

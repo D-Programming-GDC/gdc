@@ -99,7 +99,7 @@ struct ModuleInfo
 
 extern ModuleInfo *current_module_info;
 
-extern location_t get_linemap (const Loc loc);
+extern location_t get_linemap (const Loc& loc);
 extern void set_input_location (const Loc& loc);
 extern void set_input_location (Dsymbol *decl);
 

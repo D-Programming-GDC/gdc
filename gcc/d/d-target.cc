@@ -35,7 +35,6 @@
 #include "common/common-target.h"
 
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-codegen.h"
 
 int Target::ptrsize;

@@ -54,7 +54,6 @@
 #include "tree-pretty-print.h"
 
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
 #include "d-dmd-gcc.h"
@@ -1507,7 +1506,7 @@ d_finish_module()
 }
 
 location_t
-get_linemap (const Loc loc)
+get_linemap (const Loc& loc)
 {
   location_t gcc_location;
 

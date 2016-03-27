@@ -40,7 +40,6 @@
 #include "function.h"
 
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
 #include "d-dmd-gcc.h"
@@ -2628,7 +2627,7 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
 // If INCLUSIVE, we allow INDEX == LEN to return true also.
 
 tree
-build_bounds_condition(Loc loc, tree index, tree len, bool inclusive)
+build_bounds_condition(const Loc& loc, tree index, tree len, bool inclusive)
 {
   if (!array_bounds_check())
     return index;
@@ -2781,7 +2780,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   else
     callee = build_address(callable);
 
-  gcc_assert(function_type_p(ctype));
+  gcc_assert(FUNC_OR_METHOD_TYPE_P (ctype));
   gcc_assert(tf != NULL);
   gcc_assert(tf->ty == Tfunction);
 
@@ -2888,7 +2887,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 // Builds a call to AssertError or AssertErrorMsg.
 
 tree
-d_assert_call (Loc loc, LibCall libcall, tree msg)
+d_assert_call (const Loc& loc, LibCall libcall, tree msg)
 {
   tree args[3];
   int nargs;
@@ -4503,7 +4502,7 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 // Add a compiler generated field FIELD at OFFSET into aggregate.
 
 void
-insert_aggregate_field(Loc loc, tree type, tree field, size_t offset)
+insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
 {
   DECL_FIELD_CONTEXT (field) = type;
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));

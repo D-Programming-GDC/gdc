@@ -30,7 +30,6 @@
 #include "cppdefault.h"
 
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-codegen.h"
 
 // Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
