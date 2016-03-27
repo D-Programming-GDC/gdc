@@ -22,10 +22,11 @@
 // Forward type declarations to avoid including unnecessary headers.
 class Declaration;
 class FuncDeclaration;
+class VarDeclaration;
+class Expression;
 class Module;
 class Statement;
 class Type;
-class VarDeclaration;
 
 // The kinds of scopes we recognise.
 enum level_kind
@@ -245,5 +246,37 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
 #define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+
+// In d-builtins.cc.
+extern const attribute_spec d_langhook_attribute_table[];
+extern const attribute_spec d_langhook_common_attribute_table[];
+extern const attribute_spec d_langhook_format_attribute_table[];
+
+extern tree d_builtin_function (tree);
+extern void d_init_builtins (void);
+extern void d_register_builtin_type (tree, const char *);
+extern void d_build_builtins_module (Module *);
+extern void d_maybe_set_builtin (Module *);
+extern void d_backend_init (void);
+extern void d_backend_term (void);
+extern Expression *build_expression (tree);
+extern Type *build_dtype (tree);
+
+// In d-convert.cc.
+extern tree d_truthvalue_conversion (tree);
+
+// In d-incpath.cc.
+extern void add_import_paths (const char *, const char *, bool);
+
+// In d-lang.cc.
+extern void d_add_global_declaration (tree);
+extern Module *d_gcc_get_output_module (void);
+extern struct lang_type *build_d_type_lang_specific (Type *);
+extern struct lang_decl *build_d_decl_lang_specific (Declaration *);
+extern tree d_pushdecl (tree);
+extern tree d_unsigned_type (tree);
+extern tree d_signed_type (tree);
+extern void d_init_exceptions (void);
+extern void d_keep (tree);
 
 #endif

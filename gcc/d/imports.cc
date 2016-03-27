@@ -30,7 +30,6 @@
 
 #include "d-tree.h"
 #include "d-codegen.h"
-#include "d-lang.h"
 #include "d-objfile.h"
 
 // Implements the visitor interface to build debug trees for all module and

@@ -6,6 +6,9 @@
 	(d_assert_call): Likewise.
 	(insert_aggregate_field): Likewise.
 	* d-objfile.cc (get_linemap): Likewise.
+	* d-lang.h: Remove file, updated all includes.  Moved forward
+	declarations of types and functions to ...
+	* d-tree.h: ... here.
 
 2016-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
