@@ -1749,8 +1749,6 @@ DotTypeExp::toElem()
 elem *
 DelegateExp::toElem()
 {
-  Type *t = e1->type->toBasetype();
-
   if (func->fbody)
     {
       // Add the function as nested function if it belongs to this module

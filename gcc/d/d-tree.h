@@ -181,6 +181,10 @@ lang_tree_node
 #define ANON_AGGR_TYPE_P(NODE) \
   (TYPE_LANG_FLAG_1 (RECORD_OR_UNION_CHECK (NODE)))
 
+// True if the type is the underlying record for a class.
+#define CLASS_TYPE_P(NODE) \
+  (TYPE_LANG_FLAG_2 (TREE_CHECK ((NODE), RECORD_TYPE)))
+
 // True if the symbol should be made "link one only".  This is used to
 // defer calling make_decl_one_only() before the decl has been prepared.
 #define D_DECL_ONE_ONLY(NODE) \

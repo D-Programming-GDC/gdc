@@ -2057,8 +2057,11 @@ build_struct_literal(tree type, tree init)
 	{
 	  // Search all nesting aggregates, if nothing is found, then
 	  // this will return an empty initializer to fill the hole.
-	  if (ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	    value = build_struct_literal(TREE_TYPE (field), init);
+	  else
+	    value = build_constructor(TREE_TYPE (field), NULL);
 	}
 
       if (value != NULL_TREE)
@@ -2095,7 +2098,8 @@ lookup_anon_field(tree t, tree type)
 	    return field;
 
 	  // Otherwise, it could be nested, search harder.
-	  if (ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	    {
 	      tree subfield = lookup_anon_field(TREE_TYPE (field), type);
 	      if (subfield)
@@ -4468,8 +4472,70 @@ insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
   TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), field);
 }
 
-// Wrap-up and compute finalised aggregate type.  Writing out
-// any GCC attributes that were applied to the type declaration.
+// Create an anonymous field of type ubyte[SIZE] at OFFSET.
+// CONTEXT is the record type where the field will be inserted.
+
+static tree
+fill_alignment_field(tree context, tree size, tree offset)
+{
+  tree type = d_array_type(Type::tuns8, tree_to_uhwi(size));
+  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
+
+  // As per insert_aggregate_field.
+  DECL_FIELD_CONTEXT (field) = context;
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
+  DECL_FIELD_OFFSET (field) = offset;
+  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+
+  DECL_ARTIFICIAL (field) = 1;
+  DECL_IGNORED_P (field) = 1;
+
+  return field;
+}
+
+// Insert anonymous fields in the record TYPE for padding out alignment holes.
+
+static void
+fill_alignment_holes(tree type)
+{
+  // Filling alignment holes this way only applies for structs.
+  if (TREE_CODE (type) != RECORD_TYPE
+      || CLASS_TYPE_P (type) || TYPE_PACKED (type))
+    return;
+
+  tree offset = size_zero_node;
+  tree prev = NULL_TREE;
+
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    {
+      tree voffset = DECL_FIELD_OFFSET (field);
+      tree vsize = TYPE_SIZE_UNIT (TREE_TYPE (field));
+
+      // If there is an alignment hole, pad with a static array of type ubyte[].
+      if (prev != NULL_TREE && tree_int_cst_lt(offset, voffset))
+	{
+	  tree psize = size_binop(MINUS_EXPR, voffset, offset);
+	  tree pfield = fill_alignment_field(type, psize, offset);
+
+	  // Insert before the current field position.
+	  DECL_CHAIN (pfield) = DECL_CHAIN (prev);
+	  DECL_CHAIN (prev) = pfield;
+	}
+
+      prev = field;
+      offset = size_binop(PLUS_EXPR, voffset, vsize);
+    }
+
+  // Finally pad out the end of the record.
+  if (tree_int_cst_lt(offset, TYPE_SIZE_UNIT (type)))
+    {
+      tree psize = size_binop(MINUS_EXPR, TYPE_SIZE_UNIT (type), offset);
+      tree pfield = fill_alignment_field(type, psize, offset);
+      TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), pfield);
+    }
+}
+
+// Wrap-up and compute finalised aggregate type.
 
 void
 finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
@@ -4477,6 +4543,7 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
 {
   TYPE_SIZE (type) = NULL_TREE;
 
+  // Write out any GCC attributes that were applied to the type declaration.
   if (declattrs)
     {
       Expressions *attrs = declattrs->getAttributes();
@@ -4484,11 +4551,16 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
 		      ATTR_FLAG_TYPE_IN_PLACE);
     }
 
+  // Set size and alignment as requested by frontend.
   TYPE_SIZE (type) = bitsize_int(structsize * BITS_PER_UNIT);
   TYPE_SIZE_UNIT (type) = size_int(structsize);
   TYPE_ALIGN (type) = alignsize * BITS_PER_UNIT;
   TYPE_PACKED (type) = (alignsize == 1);
 
+  // Add padding to fill in any alignment holes.
+  fill_alignment_holes(type);
+
+  // Set the backend type mode.
   compute_record_mode(type);
 
   // Set up variants.
