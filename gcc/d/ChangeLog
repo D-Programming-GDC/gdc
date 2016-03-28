@@ -1,5 +1,15 @@
 2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-tree.h (CLASS_TYPE_P): New macro.
+	* d-codegen.cc (build_struct_literal): Check RECORD_OR_UNION_TYPE_P
+	before testing ANON_AGGR_TYPE_P.
+	(fill_alignment_field): New function.
+	(fill_alignment_holes): New function.
+	(finish_aggregate_type): Call fill_alignment_holes before computing
+	backend type mode.
+
+2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-tree.h (D_METHOD_CALL_EXPR): Removed `D_' prefix from macro,
 	updated all callers.
 	(D_TYPE_IMAGINARY_FLOAT): Likewise.
