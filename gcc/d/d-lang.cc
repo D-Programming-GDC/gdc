@@ -723,7 +723,7 @@ d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 
 	  *expr_p = convert (TREE_TYPE (*expr_p),
 			     build2 (RSHIFT_EXPR, unstype,
-	 			     convert (unstype, op0), op1));
+				     convert (unstype, op0), op1));
 	  return GS_UNHANDLED;
 	}
 

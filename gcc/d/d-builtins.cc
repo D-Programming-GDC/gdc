@@ -824,13 +824,13 @@ d_init_builtins()
 
   // Imaginary types.
   ifloat_type_node = build_distinct_type_copy(float_type_node);
-  D_TYPE_IMAGINARY_FLOAT (ifloat_type_node) = 1;
+  TYPE_IMAGINARY_FLOAT (ifloat_type_node) = 1;
 
   idouble_type_node = build_distinct_type_copy(double_type_node);
-  D_TYPE_IMAGINARY_FLOAT (idouble_type_node) = 1;
+  TYPE_IMAGINARY_FLOAT (idouble_type_node) = 1;
 
   ireal_type_node = build_distinct_type_copy(long_double_type_node);
-  D_TYPE_IMAGINARY_FLOAT (ireal_type_node) = 1;
+  TYPE_IMAGINARY_FLOAT (ireal_type_node) = 1;
 
   /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
   unknown_type_node = make_node(RECORD_TYPE);

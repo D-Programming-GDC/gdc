@@ -1,5 +1,20 @@
 2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-tree.h (D_METHOD_CALL_EXPR): Removed `D_' prefix from macro,
+	updated all callers.
+	(D_TYPE_IMAGINARY_FLOAT): Likewise.
+	(D_LABEL_VARIABLE_CASE): Likewise.
+	* d-codegen.cc (build_delegate_cst): Always return valid constructor.
+	(get_object_method): Remove function.
+	(build_vindex_ref): New function.
+	* d-elem.cc (FuncExp::toElem): Use the real function pointer type when
+	converting to delegate.
+	(CallExp::toElem): Handle setting up virtual functions directly.
+	(DelegateExp::toElem): Likewise.
+	(DotVarExp::toElem): Remove handling of virtual functions.
+
+2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.h (lang_dtype): Remove function.
 	(lang_ddecl): Remove function.
 	* d-tree.h (TYPE_LANG_FRONTEND): New macro, replace all uses of

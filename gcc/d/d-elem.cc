@@ -1515,6 +1515,10 @@ CallExp::toElem()
   Type *tb = e1->type->toBasetype();
   Expression *e1b = e1;
 
+  tree callee = NULL_TREE;
+  tree object = NULL_TREE;
+  TypeFunction *tf = NULL;
+
   // Calls to delegates can sometimes look like this:
   if (e1b->op == TOKcomma)
     {
@@ -1528,19 +1532,69 @@ CallExp::toElem()
   if (e1b->op == TOKdotvar && tb->ty != Tdelegate)
     {
       DotVarExp *dve = (DotVarExp *) e1b;
+
+      // Is this static method call?
+      bool is_dottype = false;
+      Expression *ex = dve->e1;
+
+      while (1)
+	{
+	  if (ex->op == TOKsuper || ex->op == TOKdottype)
+	    {
+	      // super.member() and type.member() calls directly.
+	      is_dottype = true;
+	      break;
+	    }
+	  else if (ex->op == TOKcast)
+	    {
+	      ex = ((CastExp *) ex)->e1;
+	      continue;
+	    }
+	  break;
+	}
+
       // Don't modify the static initializer for struct literals.
       if (dve->e1->op == TOKstructliteral)
 	{
 	  StructLiteralExp *sle = (StructLiteralExp *) dve->e1;
 	  sle->sinit = NULL;
 	}
+
+      FuncDeclaration *fd = dve->var->isFuncDeclaration();
+      if (fd != NULL)
+	{
+	  // Get the correct callee from the DotVarExp object.
+	  tree fndecl = fd->toSymbol()->Stree;
+
+	  // Static method; ignore the object instance.
+	  if (!fd->isThis())
+	    callee = build_address(fndecl);
+	  else
+	    {
+	      tree thisexp = dve->e1->toElem();
+
+	      // Want reference to 'this' object.
+	      if (dve->e1->type->ty != Tclass && dve->e1->type->ty != Tpointer)
+		thisexp = build_address(thisexp);
+
+	      // Make the callee a virtual call.
+	      if (fd->isVirtual() && !fd->isFinalFunc() && !is_dottype)
+		{
+		  tree fntype = build_pointer_type(TREE_TYPE (fndecl));
+		  fndecl = build_vindex_ref(thisexp, fntype, fd->vtblIndex);
+		}
+	      else
+		fndecl = build_address(fndecl);
+
+	      callee = build_method_call(fndecl, thisexp, fd->type);
+	    }
+	}
     }
 
-  tree callee = e1b->toElem();
-  tree object = NULL_TREE;
-  TypeFunction *tf = NULL;
+  if (callee == NULL_TREE)
+    callee = e1b->toElem();
 
-  if (D_METHOD_CALL_EXPR (callee))
+  if (METHOD_CALL_EXPR (callee))
     {
       // This could be a delegate expression (TY == Tdelegate), but not
       // actually a delegate variable.
@@ -1708,91 +1762,69 @@ DelegateExp::toElem()
 	cfun->language->deferred_fns.safe_push(func);
     }
 
-  if (t->ty == Tclass || t->ty == Tstruct)
-    {
-      if (!func->isThis())
-	{
-	  error ("delegates are only for non-static functions");
-	  return error_mark_node;
-	}
+  tree fndecl;
+  tree object;
 
-      return get_object_method (e1->toElem(), e1, func, type);
+  if (func->isNested())
+    {
+      if (e1->op == TOKnull)
+	object = e1->toElem();
+      else
+	object = get_frame_for_symbol(func);
+
+      fndecl = build_address(func->toSymbol()->Stree);
     }
   else
     {
-      tree this_tree;
-      if (func->isNested())
+      if (!func->isThis())
 	{
-	  if (e1->op == TOKnull)
-	    this_tree = e1->toElem();
-	  else
-	    this_tree = get_frame_for_symbol (func);
-	}
-      else
-	{
-	  gcc_assert (func->isThis());
-	  this_tree = e1->toElem();
+	  error("delegates are only for non-static functions");
+	  return error_mark_node;
 	}
 
-      return build_method_call (build_address (func->toSymbol()->Stree),
-				this_tree, type);
+      object = e1->toElem();
+
+      // Want reference to 'this' object.
+      if (e1->type->ty != Tclass && e1->type->ty != Tpointer)
+	object = build_address(object);
+
+      fndecl = build_address(func->toSymbol()->Stree);
+
+      // Get pointer to function out of the virtual table.
+      if (func->isVirtual() && !func->isFinalFunc()
+	  && e1->op != TOKsuper && e1->op != TOKdottype)
+	fndecl = build_vindex_ref(object, TREE_TYPE (fndecl), func->vtblIndex);
     }
+
+  return build_method_call(fndecl, object, type);
 }
 
 elem *
 DotVarExp::toElem()
 {
-  Type *tb = e1->type->toBasetype();
+  VarDeclaration *vd = var->isVarDeclaration();
 
-  switch (tb->ty)
+  // Could also be a function, but relying on that being taken care of
+  // by the code generator for CallExp.
+  if (vd != NULL)
     {
-    case Tpointer:
-      if (tb->nextOf()->toBasetype()->ty != Tstruct)
-	break;
-      // drop through
-
-    case Tstruct:
-    case Tclass:
-    {
-      FuncDeclaration *fd = var->isFuncDeclaration();
-      VarDeclaration *vd = var->isVarDeclaration();
-      if (fd != NULL)
-      {
-	// if Tstruct, objInstanceMethod will use the address of e1
-	if (fd->isThis())
-	  return get_object_method(e1->toElem(), e1, fd, type);
-	else
-	  {
-	    // Static method; ignore the object instance
-	    return build_address(fd->toSymbol()->Stree);
-    	  }
-      }
-      else if (vd)
-	{
-	  if (!vd->isField())
-	    return get_decl_tree(vd);
-	  else
-	    {
-	      tree this_tree = e1->toElem();
-	      if (tb->ty != Tstruct)
-		this_tree = build_deref(this_tree);
-	      return component_ref(this_tree, vd->toSymbol()->Stree);
-	    }
-	}
+      if (!vd->isField())
+	return get_decl_tree(vd);
       else
 	{
-	  error("%s is not a field, but a %s", var->toChars(), var->kind());
-	  return error_mark_node;
+	  tree object = e1->toElem();
+
+	  if (e1->type->toBasetype()->ty != Tstruct)
+	    object = build_deref(object);
+
+	  return component_ref(object, vd->toSymbol()->Stree);
 	}
-      break;
     }
-
-    default:
-      break;
+  else
+    {
+      error("%s is not a field, but a %s", var->toChars(), var->kind());
+      return error_mark_node;
     }
-
-  error("Don't know how to handle %s", toChars());
-  return error_mark_node;
 }
 
 elem *
@@ -1930,11 +1962,11 @@ FuncExp::toElem()
   // If nested, this will be a trampoline...
   if (fd->isNested())
     {
-      return build_method_call (build_address (fd->toSymbol()->Stree),
-				get_frame_for_symbol (fd), type);
+      return build_method_call(build_address(fd->toSymbol()->Stree),
+			       get_frame_for_symbol(fd), fd->type);
     }
 
-  return build_nop (build_ctype(type), build_address (fd->toSymbol()->Stree));
+  return build_nop(build_ctype(type), build_address(fd->toSymbol()->Stree));
 }
 
 elem *

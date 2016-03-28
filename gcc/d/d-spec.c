@@ -25,7 +25,7 @@
 #include "opts.h"
 
 /* This bit is set if the arguments is a D source file. */
-#define DSOURCE 	(1<<1)
+#define DSOURCE		(1<<1)
 /* This bit is set if they did `-lm' or `-lmath'.  */
 #define MATHLIB		(1<<2)
 /* This bit is set if they did `-lpthread'.  */
