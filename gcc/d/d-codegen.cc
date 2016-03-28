@@ -1490,33 +1490,28 @@ delegate_object (tree exp)
 // METHOD, and hidden object is OBJECT.
 
 tree
-build_delegate_cst (tree method, tree object, Type *type)
+build_delegate_cst(tree method, tree object, Type *type)
 {
-  Type *base_type = type->toBasetype();
+  tree ctor = make_node(CONSTRUCTOR);
+  tree ctype;
 
-  // Called from DotVarExp.  These are just used to make function calls
-  // and not to make Tdelegate variables.  Clearing the type makes sure of this.
-  if (base_type->ty == Tfunction)
-    base_type = NULL;
+  Type *tb = type->toBasetype();
+  if (tb->ty == Tdelegate)
+    ctype = build_ctype(type);
   else
-    gcc_assert (base_type->ty == Tdelegate);
-
-  tree ctype = base_type ? build_ctype(base_type) : NULL_TREE;
-  tree ctor = make_node (CONSTRUCTOR);
-  tree obj_field = NULL_TREE;
-  tree func_field = NULL_TREE;
-  vec<constructor_elt, va_gc> *ce = NULL;
-
-  if (ctype)
     {
-      TREE_TYPE (ctor) = ctype;
-      obj_field = TYPE_FIELDS (ctype);
-      func_field = TREE_CHAIN (obj_field);
+      // Convert a function literal into an anonymous delegate.
+      ctype = build_two_field_type(TREE_TYPE (object), TREE_TYPE (method),
+				   NULL, "object", "func");
     }
-  CONSTRUCTOR_APPEND_ELT (ce, obj_field, object);
-  CONSTRUCTOR_APPEND_ELT (ce, func_field, method);
+
+  vec<constructor_elt, va_gc> *ce = NULL;
+  CONSTRUCTOR_APPEND_ELT (ce, TYPE_FIELDS (ctype), object);
+  CONSTRUCTOR_APPEND_ELT (ce, TREE_CHAIN (TYPE_FIELDS (ctype)), method);
 
   CONSTRUCTOR_ELTS (ctor) = ce;
+  TREE_TYPE (ctor) = ctype;
+
   return ctor;
 }
 

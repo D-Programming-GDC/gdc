@@ -4,6 +4,9 @@
 	updated all callers.
 	(D_TYPE_IMAGINARY_FLOAT): Likewise.
 	(D_LABEL_VARIABLE_CASE): Likewise.
+	* d-codegen.cc (build_delegate_cst): Always return valid constructor.
+	* d-elem.cc (FuncExp::toElem): Use the real function pointer type when
+	converting to delegate.
 
 2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 

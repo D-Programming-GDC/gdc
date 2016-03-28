@@ -1930,11 +1930,11 @@ FuncExp::toElem()
   // If nested, this will be a trampoline...
   if (fd->isNested())
     {
-      return build_method_call (build_address (fd->toSymbol()->Stree),
-				get_frame_for_symbol (fd), type);
+      return build_method_call(build_address(fd->toSymbol()->Stree),
+			       get_frame_for_symbol(fd), fd->type);
     }
 
-  return build_nop (build_ctype(type), build_address (fd->toSymbol()->Stree));
+  return build_nop(build_ctype(type), build_address(fd->toSymbol()->Stree));
 }
 
 elem *
