@@ -1472,7 +1472,7 @@ d_finish_incomplete_decl (tree decl)
 static classify_record
 d_classify_record (tree type)
 {
-  Type *dtype = lang_dtype (type);
+  Type *dtype = TYPE_LANG_FRONTEND (type);
 
   if (dtype && dtype->ty == Tclass)
     {
@@ -1533,7 +1533,7 @@ d_eh_personality()
 static tree
 d_build_eh_type_type (tree type)
 {
-  Type *dtype = lang_dtype (type);
+  Type *dtype = TYPE_LANG_FRONTEND (type);
   Symbol *sym;
 
   if (dtype)
