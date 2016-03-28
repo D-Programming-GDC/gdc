@@ -1536,69 +1536,24 @@ extract_from_method_call (tree t, tree& callee, tree& object)
   callee = CONSTRUCTOR_ELT (t, 1)->value;
 }
 
-// Return correct callee for method FUNC, which is dereferenced from
-// the 'this' pointer OBJEXP.  TYPE is the return type for the method.
-// THISEXP is the tree representation of OBJEXP.
+// Build a dereference into the virtual table for OBJECT to retrieve
+// a function pointer of type FNTYPE at position INDEX.
 
 tree
-get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type *type)
+build_vindex_ref(tree object, tree fntype, size_t index)
 {
-  Type *objtype = objexp->type->toBasetype();
-  bool is_dottype = false;
+  // Interface methods are also in the class's vtable, so we don't
+  // need to convert from a class pointer to an interface pointer.
+  object = maybe_make_temp(object);
 
-  gcc_assert (func->isThis());
+  // The vtable is the first field.
+  tree result = build_deref(object);
+  result = component_ref(result, TYPE_FIELDS (TREE_TYPE (result)));
 
-  Expression *ex = objexp;
+  gcc_assert(POINTER_TYPE_P (fntype));
 
-  while (1)
-    {
-      if (ex->op == TOKsuper || ex->op == TOKdottype)
-	{
-	  // super.member() and type.member() calls directly.
-	  is_dottype = true;
-	  break;
-	}
-      else if (ex->op == TOKcast)
-	{
-	  ex = ((CastExp *) ex)->e1;
-	  continue;
-	}
-      break;
-    }
-
-  // Calls to super are static (func is the super's method)
-  // Structs don't have vtables.
-  // Final and non-virtual methods can be called directly.
-  // DotTypeExp means non-virtual
-
-  if (objexp->op == TOKsuper
-      || objtype->ty == Tstruct || objtype->ty == Tpointer
-      || func->isFinalFunc() || !func->isVirtual() || is_dottype)
-    {
-      if (objtype->ty == Tstruct)
-	thisexp = build_address (thisexp);
-
-      return build_method_call (build_address (func->toSymbol()->Stree),
-				thisexp, type);
-    }
-  else
-    {
-      // Interface methods are also in the class's vtable, so we don't
-      // need to convert from a class pointer to an interface pointer.
-      thisexp = maybe_make_temp (thisexp);
-      tree vtbl_ref = build_deref (thisexp);
-      // The vtable is the first field.
-      tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref));
-      tree fntype = TREE_TYPE (func->toSymbol()->Stree);
-
-      vtbl_ref = component_ref (vtbl_ref, field);
-      vtbl_ref = build_memref (build_pointer_type (fntype), vtbl_ref,
-			       size_int (Target::ptrsize * func->vtblIndex));
-
-      return build_method_call (vtbl_ref, thisexp, type);
-    }
+  return build_memref(fntype, result, size_int(Target::ptrsize * index));
 }
-
 
 // Builds a record type from field types T1 and T2.  TYPE is the D frontend
 // type we are building. N1 and N2 are the names of the two fields.

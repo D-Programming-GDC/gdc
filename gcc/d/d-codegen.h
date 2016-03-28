@@ -185,7 +185,7 @@ extern tree build_delegate_cst (tree method, tree object, Type *type);
 // These are for references to nested functions/methods as opposed to a delegate var.
 extern tree build_method_call (tree callee, tree object, Type *type);
 extern void extract_from_method_call (tree t, tree& callee, tree& object);
-extern tree get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type *type);
+extern tree build_vindex_ref (tree object, tree fndecl, size_t index);
 
 // Built-in and Library functions.
 extern FuncDeclaration *get_libcall (LibCall libcall);
