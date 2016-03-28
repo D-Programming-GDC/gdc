@@ -38,7 +38,6 @@
 #include "fold-const.h"
 #include "diagnostic.h"
 #include "tm.h"
-#include "hard-reg-set.h"
 #include "function.h"
 #include "dumpfile.h"
 #include "cgraph.h"

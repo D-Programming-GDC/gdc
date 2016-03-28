@@ -19,14 +19,14 @@
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
-#include "dfrontend/template.h"
+#include "dfrontend/declaration.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
 #include "dfrontend/statement.h"
 #include "dfrontend/target.h"
+#include "dfrontend/template.h"
 
 #include "tree.h"
 #include "tree-iterator.h"

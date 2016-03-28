@@ -23,24 +23,20 @@
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
+#include "dfrontend/arraytypes.h"
 #include "dfrontend/mtype.h"
 
 #include "tree.h"
 #include "diagnostic.h"
 #include "tm.h"
-#include "hard-reg-set.h"
-#include "function.h"
 #include "cgraph.h"
 #include "toplev.h"
 #include "target.h"
 #include "common/common-target.h"
 #include "stringpool.h"
 #include "varasm.h"
-#include "attribs.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 
 /* Internal attribute handlers for built-in functions.  */
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);

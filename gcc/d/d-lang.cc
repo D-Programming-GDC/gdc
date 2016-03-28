@@ -50,7 +50,6 @@
 #include "gimple-expr.h"
 #include "gimplify.h"
 #include "debug.h"
-#include "function.h"
 
 #include "d-tree.h"
 #include "d-codegen.h"
