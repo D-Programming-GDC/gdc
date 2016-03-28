@@ -25,7 +25,6 @@
 #include "dfrontend/declaration.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
-#include "dfrontend/template.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -36,7 +35,6 @@
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 #include "d-objfile.h"
 #include "id.h"
 

@@ -23,24 +23,20 @@
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
+#include "dfrontend/arraytypes.h"
 #include "dfrontend/mtype.h"
 
 #include "tree.h"
 #include "diagnostic.h"
 #include "tm.h"
-#include "hard-reg-set.h"
-#include "function.h"
 #include "cgraph.h"
 #include "toplev.h"
 #include "target.h"
 #include "common/common-target.h"
 #include "stringpool.h"
 #include "varasm.h"
-#include "attribs.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 
 /* Internal attribute handlers for built-in functions.  */
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);
@@ -465,7 +461,7 @@ d_handle_noinline_attribute (tree *node, tree name,
 			     tree ARG_UNUSED (args),
 			     int ARG_UNUSED (flags), bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     DECL_UNINLINABLE (*node) = 1;
@@ -486,7 +482,7 @@ d_handle_forceinline_attribute (tree *node, tree name,
 				int ARG_UNUSED (flags),
 				bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     {
@@ -517,7 +513,7 @@ d_handle_flatten_attribute (tree *node, tree name,
 			    tree args ATTRIBUTE_UNUSED,
 			    int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty != Tfunction)
     {
@@ -534,7 +530,7 @@ static tree
 d_handle_target_attribute (tree *node, tree name, tree args, int flags,
 			   bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   /* Ensure we have a function type.  */
   if (t->ty != Tfunction)
@@ -556,7 +552,7 @@ d_handle_noclone_attribute (tree *node, tree name,
 				int ARG_UNUSED (flags),
 				bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     {

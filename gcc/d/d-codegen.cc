@@ -19,14 +19,14 @@
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
-#include "dfrontend/template.h"
+#include "dfrontend/declaration.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
 #include "dfrontend/statement.h"
 #include "dfrontend/target.h"
+#include "dfrontend/template.h"
 
 #include "tree.h"
 #include "tree-iterator.h"
@@ -489,12 +489,12 @@ get_decl_tree (Declaration *decl)
 tree
 d_convert(tree type, tree exp)
 {
-  // Check this first before passing to lang_dtype.
+  // Check this first before retrieving frontend type.
   if (error_operand_p(type) || error_operand_p(exp))
     return error_mark_node;
 
-  Type *totype = lang_dtype(type);
-  Type *etype = lang_dtype(TREE_TYPE (exp));
+  Type *totype = TYPE_LANG_FRONTEND (type);
+  Type *etype = TYPE_LANG_FRONTEND (TREE_TYPE (exp));
 
   if (totype && etype)
     return convert_expr(exp, etype, totype);

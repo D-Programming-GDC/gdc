@@ -213,24 +213,6 @@ d_types_same (Type *t1, Type *t2)
   return tb1->equals (tb2);
 }
 
-// Returns D Frontend type for GCC type T.
-inline Type *
-lang_dtype (tree t)
-{
-  gcc_assert (TYPE_P (t));
-  struct lang_type *lt = TYPE_LANG_SPECIFIC (t);
-  return lt ? lt->d_type : NULL;
-}
-
-// Returns D Frontend decl for GCC decl T.
-inline Declaration *
-lang_ddecl (tree t)
-{
-  gcc_assert (DECL_P (t));
-  struct lang_decl *ld = DECL_LANG_SPECIFIC (t);
-  return ld ? ld->d_decl : NULL;
-}
-
 // Returns D frontend type 'Object' which all classes are derived from.
 inline Type *
 build_object_type()

@@ -196,6 +196,16 @@ lang_tree_node
 #define D_LABEL_VARIABLE_CASE(NODE) \
   (DECL_LANG_FLAG_2 (LABEL_DECL_CHECK (NODE)))
 
+// The D frontend Type AST for GCC type NODE.
+#define TYPE_LANG_FRONTEND(NODE) \
+  (TYPE_LANG_SPECIFIC (NODE) \
+   ? TYPE_LANG_SPECIFIC (NODE)->d_type : NULL)
+
+// The D frontend Declaration AST for GCC decl NODE.
+#define DECL_LANG_FRONTEND(NODE) \
+  (DECL_LANG_SPECIFIC (NODE) \
+   ? DECL_LANG_SPECIFIC (NODE)->d_decl : NULL)
+
 enum d_tree_index
 {
   DTI_VTBL_PTR_TYPE,
