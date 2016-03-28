@@ -1540,7 +1540,7 @@ CallExp::toElem()
   tree object = NULL_TREE;
   TypeFunction *tf = NULL;
 
-  if (D_METHOD_CALL_EXPR (callee))
+  if (METHOD_CALL_EXPR (callee))
     {
       // This could be a delegate expression (TY == Tdelegate), but not
       // actually a delegate variable.

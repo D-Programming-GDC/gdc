@@ -340,14 +340,14 @@ convert(tree type, tree expr)
       goto maybe_fold;
 
     case REAL_TYPE:
-      if (TREE_CODE (etype) == COMPLEX_TYPE && D_TYPE_IMAGINARY_FLOAT (type))
+      if (TREE_CODE (etype) == COMPLEX_TYPE && TYPE_IMAGINARY_FLOAT (type))
 	e = build1(IMAGPART_EXPR, TREE_TYPE (etype), e);
 
       ret = convert_to_real(type, e);
       goto maybe_fold;
 
     case COMPLEX_TYPE:
-      if (TREE_CODE (etype) == REAL_TYPE && D_TYPE_IMAGINARY_FLOAT (etype))
+      if (TREE_CODE (etype) == REAL_TYPE && TYPE_IMAGINARY_FLOAT (etype))
 	ret = build2(COMPLEX_EXPR, type,
 		     build_zero_cst(TREE_TYPE (type)),
 		     convert(TREE_TYPE (type), expr));

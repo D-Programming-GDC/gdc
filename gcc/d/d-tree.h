@@ -170,11 +170,11 @@ lang_tree_node
 
 // True if the Tdelegate typed expression is not really a variable,
 // but a literal function / method reference.
-#define D_METHOD_CALL_EXPR(NODE) \
+#define METHOD_CALL_EXPR(NODE) \
   (TREE_LANG_FLAG_0 (NODE))
 
 // True if the type is an imaginary float type.
-#define D_TYPE_IMAGINARY_FLOAT(NODE) \
+#define TYPE_IMAGINARY_FLOAT(NODE) \
   (TYPE_LANG_FLAG_0 (TREE_CHECK ((NODE), REAL_TYPE)))
 
 // True if the type is an anonymous record or union.
@@ -193,7 +193,7 @@ lang_tree_node
   (DECL_LANG_FLAG_1 (NODE))
 
 // True if the decl is a variable case label decl.
-#define D_LABEL_VARIABLE_CASE(NODE) \
+#define LABEL_VARIABLE_CASE(NODE) \
   (DECL_LANG_FLAG_2 (LABEL_DECL_CHECK (NODE)))
 
 // The D frontend Type AST for GCC type NODE.

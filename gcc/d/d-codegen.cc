@@ -909,7 +909,7 @@ convert_for_condition(tree expr, Type *type)
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
       tree obj, func;
-      if (D_METHOD_CALL_EXPR (expr))
+      if (METHOD_CALL_EXPR (expr))
 	extract_from_method_call(expr, obj, func);
       else
 	{
@@ -1527,7 +1527,7 @@ tree
 build_method_call (tree callee, tree object, Type *type)
 {
   tree t = build_delegate_cst (callee, object, type);
-  D_METHOD_CALL_EXPR (t) = 1;
+  METHOD_CALL_EXPR (t) = 1;
   return t;
 }
 
@@ -1536,7 +1536,7 @@ build_method_call (tree callee, tree object, Type *type)
 void
 extract_from_method_call (tree t, tree& callee, tree& object)
 {
-  gcc_assert (D_METHOD_CALL_EXPR (t));
+  gcc_assert (METHOD_CALL_EXPR (t));
   object = CONSTRUCTOR_ELT (t, 0)->value;
   callee = CONSTRUCTOR_ELT (t, 1)->value;
 }
