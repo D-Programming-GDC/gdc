@@ -323,10 +323,10 @@ ensurePathToNameExists(Loc loc, const char *name)
   if (*pt)
     {
       if (FileName::ensurePathExists(pt))
- 	{
- 	  error(loc, "cannot create directory %s", pt);
- 	  fatal();
- 	}
+	{
+	  error(loc, "cannot create directory %s", pt);
+	  fatal();
+	}
     }
 }
 

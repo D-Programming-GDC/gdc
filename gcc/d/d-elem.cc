@@ -1765,7 +1765,7 @@ DotVarExp::toElem()
 	  {
 	    // Static method; ignore the object instance
 	    return build_address(fd->toSymbol()->Stree);
-    	  }
+	  }
       }
       else if (vd)
 	{

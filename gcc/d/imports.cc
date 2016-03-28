@@ -89,13 +89,13 @@ public:
       {
 	tree type = build_ctype(d->type);
 
-    	if (!TYPE_STUB_DECL (type))
-    	  return;
+	if (!TYPE_STUB_DECL (type))
+	  return;
 
-    	tree decl = make_node(IMPORTED_DECL);
-    	TREE_TYPE (decl) = void_type_node;
-    	IMPORTED_DECL_ASSOCIATED_DECL (decl) = TYPE_STUB_DECL (type);
-    	d_keep(decl);
+	tree decl = make_node(IMPORTED_DECL);
+	TREE_TYPE (decl) = void_type_node;
+	IMPORTED_DECL_ASSOCIATED_DECL (decl) = TYPE_STUB_DECL (type);
+	d_keep(decl);
 
 	d->isym = new Symbol();
 	d->isym->Stree = decl;

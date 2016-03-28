@@ -429,12 +429,12 @@ get_decl_tree (Declaration *decl)
 	}
       else if (vsym->SframeField != NULL_TREE)
 	{
-    	  // Get the closure holding the var decl.
-    	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
-    	  tree frame_ref = get_framedecl (func, parent);
+	  // Get the closure holding the var decl.
+	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
+	  tree frame_ref = get_framedecl (func, parent);
 
-    	  return component_ref (build_deref (frame_ref), vsym->SframeField);
-    	}
+	  return component_ref (build_deref (frame_ref), vsym->SframeField);
+	}
       else if (vd->parent != func && vd->isThisDeclaration() && func->isThis())
 	{
 	  // Get the non-local 'this' value by going through parent link

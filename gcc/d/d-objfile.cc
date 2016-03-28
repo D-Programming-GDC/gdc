@@ -452,7 +452,7 @@ Lhaspointers:
     {
       // If class has no pointers.
       if (flags & ClassFlags::noPointers)
-    	dt_cons (&dt, size_int (0));
+	dt_cons (&dt, size_int (0));
       else
 	dt_cons (&dt, size_int (1));
     }
