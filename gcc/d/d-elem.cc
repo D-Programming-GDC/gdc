@@ -81,7 +81,7 @@ IdentityExp::toElem()
       tree t1 = e1->toElem();
       tree t2 = e2->toElem();
       // Assume all padding is at the end of the type.
-      tree size = build_integer_cst(TYPE_PRECISION (build_ctype(e1->type)) / BITS_PER_UNIT);
+      tree size = size_int(TYPE_PRECISION (build_ctype(e1->type)) / BITS_PER_UNIT);
 
       // Do bit compare of floats.
       tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
@@ -930,7 +930,7 @@ AssignExp::toElem()
 	      // Generate _d_arraycopy()
 	      tree args[3];
 
-	      args[0] = build_integer_cst(etype->size(), build_ctype(Type::tsize_t));
+	      args[0] = size_int(etype->size());
 	      args[1] = maybe_make_temp(d_array_convert(e2));
 	      args[2] = d_array_convert(e1);
 
@@ -1106,7 +1106,7 @@ IndexExp::toElem()
 	  args[1] = build_typeinfo(tkey);
 	}
 
-      args[2] = build_integer_cst(tb1->nextOf()->size(), build_ctype(Type::tsize_t));
+      args[2] = size_int(tb1->nextOf()->size());
       args[3] = build_address(key);
 
       // Index the associative array.
@@ -2021,7 +2021,7 @@ SymbolExp::toElem()
       if (!offset)
 	return d_convert (build_ctype(type), exp);
 
-      tree b = build_integer_cst (offset, build_ctype(Type::tsize_t));
+      tree b = size_int(offset);
       return build_nop (build_ctype(type), build_offset (exp, b));
     }
 
@@ -2209,8 +2209,7 @@ NewExp::toElem()
 	  for (size_t i = 0; i < arguments->dim; i++)
 	    {
 	      Expression *arg = (*arguments)[i];
-	      tree index = build_integer_cst(i, size_type_node);
-	      CONSTRUCTOR_APPEND_ELT (elms, index, arg->toElem());
+	      CONSTRUCTOR_APPEND_ELT (elms, size_int(i), arg->toElem());
 
 	      gcc_assert(telem->ty == Tarray);
 	      telem = telem->toBasetype()->nextOf();
@@ -2405,7 +2404,7 @@ ArrayLiteralExp::toElem()
       if (!integer_zerop (elem))
 	{
 	  elem = maybe_make_temp (elem);
-	  CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
+	  CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
 				  convert_expr (elem, e->type, etype));
 	}
     }
@@ -2418,7 +2417,7 @@ ArrayLiteralExp::toElem()
     return d_convert (build_ctype(type), ctor);
 
   args[0] = build_typeinfo (etype->arrayOf());
-  args[1] = build_integer_cst (elements->dim, size_type_node);
+  args[1] = size_int(elements->dim);
 
   // Call _d_arrayliteralTX (ti, dim);
   tree mem = build_libcall (LIBCALL_ARRAYLITERALTX, 2, args, build_ctype(etype->pointerTo()));
@@ -2460,7 +2459,7 @@ AssocArrayLiteralExp::toElem()
       Expression *e = (*keys)[i];
       tree t = e->toElem();
       t = maybe_make_temp(t);
-      CONSTRUCTOR_APPEND_ELT(ke, build_integer_cst(i, size_type_node),
+      CONSTRUCTOR_APPEND_ELT(ke, size_int(i),
 			     convert_expr(t, e->type, ta->index));
     }
   tree akeys = build_constructor(d_array_type(ta->index, keys->dim), ke);
@@ -2472,7 +2471,7 @@ AssocArrayLiteralExp::toElem()
       Expression *e = (*values)[i];
       tree t = e->toElem();
       t = maybe_make_temp(t);
-      CONSTRUCTOR_APPEND_ELT(ve, build_integer_cst(i, size_type_node),
+      CONSTRUCTOR_APPEND_ELT(ve, size_int(i),
 			     convert_expr(t, e->type, ta->next));
     }
   tree avals = build_constructor(d_array_type(ta->next, values->dim), ve);

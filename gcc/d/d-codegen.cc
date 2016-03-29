@@ -683,8 +683,8 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	      unsigned mult = 1;
 	      tree args[3];
 
-	      args[0] = build_integer_cst(sz_dst, build_ctype(Type::tsize_t));
-	      args[1] = build_integer_cst(sz_src * mult, build_ctype(Type::tsize_t));
+	      args[0] = size_int(sz_dst);
+	      args[1] = size_int(sz_src * mult);
 	      args[2] = exp;
 
 	      return build_libcall(LIBCALL_ARRAYCAST, 3, args, build_ctype(totype));
@@ -790,7 +790,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	    {
 	      vec<constructor_elt, va_gc> *ce = NULL;
 	      tree index = build2 (RANGE_EXPR, build_ctype(Type::tsize_t),
-				   size_zero_node, build_integer_cst (count - 1));
+				   size_zero_node, size_int(count - 1));
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
 
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
@@ -1936,7 +1936,7 @@ build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   else
     {
       // Do bit compare of structs.
-      tree size = build_integer_cst(sd->structsize);
+      tree size = size_int(sd->structsize);
       tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
 				       build_address(t1), build_address(t2), size);
 
@@ -2850,13 +2850,13 @@ d_assert_call (const Loc& loc, LibCall libcall, tree msg)
     {
       args[0] = msg;
       args[1] = d_array_string (loc.filename ? loc.filename : "");
-      args[2] = build_integer_cst (loc.linnum, build_ctype(Type::tuns32));
+      args[2] = size_int(loc.linnum);
       nargs = 3;
     }
   else
     {
       args[0] = d_array_string (loc.filename ? loc.filename : "");
-      args[1] = build_integer_cst (loc.linnum, build_ctype(Type::tuns32));
+      args[1] = size_int(loc.linnum);
       args[2] = NULL_TREE;
       nargs = 2;
     }
