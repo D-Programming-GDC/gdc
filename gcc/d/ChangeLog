@@ -1,5 +1,10 @@
 2016-03-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc (fill_alignment_field): Call layout_decl on field.
+	(finish_aggregate_type): Add assertion that TYPE_MODE is equal.
+
+2016-03-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.cc (convert_expr): Replace call build_integer_cst with
 	size_int.
 	(convert_for_assignment): Likewise.

@@ -4304,12 +4304,6 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 		  var->csym->Stree = field;
 		}
 
-	      if (var->size(var->loc))
-		{
-		  gcc_assert(DECL_MODE (field) != VOIDmode);
-		  gcc_assert(DECL_SIZE (field) != NULL_TREE);
-		}
-
 	      fields += 1;
 	      continue;
 	    }
@@ -4487,6 +4481,8 @@ fill_alignment_field(tree context, tree size, tree offset)
   DECL_FIELD_OFFSET (field) = offset;
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
 
+  layout_decl(field, 0);
+
   DECL_ARTIFICIAL (field) = 1;
   DECL_IGNORED_P (field) = 1;
 
@@ -4563,13 +4559,17 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
   // Set the backend type mode.
   compute_record_mode(type);
 
-  // Set up variants.
-  for (tree x = TYPE_MAIN_VARIANT (type); x; x = TYPE_NEXT_VARIANT (x))
+  // Fix up all variants of this aggregate type.
+  for (tree t = TYPE_MAIN_VARIANT (type); t; t = TYPE_NEXT_VARIANT (t))
     {
-      TYPE_FIELDS (x) = TYPE_FIELDS (type);
-      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (type);
-      TYPE_ALIGN (x) = TYPE_ALIGN (type);
-      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (type);
+      if (t == type)
+	continue;
+
+      TYPE_FIELDS (t) = TYPE_FIELDS (type);
+      TYPE_LANG_SPECIFIC (t) = TYPE_LANG_SPECIFIC (type);
+      TYPE_ALIGN (t) = TYPE_ALIGN (type);
+      TYPE_USER_ALIGN (t) = TYPE_USER_ALIGN (type);
+      gcc_assert(TYPE_MODE (t) == TYPE_MODE (type));
     }
 }
 
