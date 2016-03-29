@@ -1490,18 +1490,18 @@ d_classify_record (tree type)
 
 
 struct lang_type *
-build_d_type_lang_specific (Type *t)
+build_lang_type (Type *t)
 {
   struct lang_type *lt = ggc_cleared_alloc<struct lang_type>();
-  lt->d_type = t;
+  lt->type = t;
   return lt;
 }
 
 struct lang_decl *
-build_d_decl_lang_specific (Declaration *d)
+build_lang_decl (Declaration *d)
 {
   struct lang_decl *ld = ggc_cleared_alloc<struct lang_decl>();
-  ld->d_decl = d;
+  ld->decl = d;
   return ld;
 }
 

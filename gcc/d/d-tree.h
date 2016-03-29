@@ -156,13 +156,13 @@ struct GTY(()) language_function
 // collection system.  Handle this by using the "skip" attribute. */
 struct GTY(()) lang_decl
 {
-  Declaration * GTY((skip)) d_decl;
+  Declaration * GTY((skip)) decl;
 };
 
 // The lang_type field is not set for every GCC type.
 struct GTY(()) lang_type
 {
-  Type * GTY((skip)) d_type;
+  Type * GTY((skip)) type;
 };
 
 // Another required, but unused declaration.  This could be simplified, since
@@ -212,12 +212,12 @@ lang_tree_node
 // The D frontend Type AST for GCC type NODE.
 #define TYPE_LANG_FRONTEND(NODE) \
   (TYPE_LANG_SPECIFIC (NODE) \
-   ? TYPE_LANG_SPECIFIC (NODE)->d_type : NULL)
+   ? TYPE_LANG_SPECIFIC (NODE)->type : NULL)
 
 // The D frontend Declaration AST for GCC decl NODE.
 #define DECL_LANG_FRONTEND(NODE) \
   (DECL_LANG_SPECIFIC (NODE) \
-   ? DECL_LANG_SPECIFIC (NODE)->d_decl : NULL)
+   ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
 
 enum d_tree_index
 {
@@ -291,8 +291,8 @@ extern void add_import_paths (const char *, const char *, bool);
 // In d-lang.cc.
 extern void d_add_global_declaration (tree);
 extern Module *d_gcc_get_output_module (void);
-extern struct lang_type *build_d_type_lang_specific (Type *);
-extern struct lang_decl *build_d_decl_lang_specific (Declaration *);
+extern struct lang_type *build_lang_type (Type *);
+extern struct lang_decl *build_lang_decl (Declaration *);
 extern tree d_pushdecl (tree);
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);

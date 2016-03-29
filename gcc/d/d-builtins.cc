@@ -737,8 +737,7 @@ d_init_builtins()
   // Need to avoid errors in gimplification, else, need to not ICE
   // in targetm.canonical_va_list_type
   Type::tvalist->ctype = va_list_type_node;
-  TYPE_LANG_SPECIFIC (va_list_type_node) =
-    build_d_type_lang_specific(Type::tvalist);
+  TYPE_LANG_SPECIFIC (va_list_type_node) = build_lang_type(Type::tvalist);
 
 
   if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
