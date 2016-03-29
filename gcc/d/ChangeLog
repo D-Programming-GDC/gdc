@@ -2,6 +2,9 @@
 
 	* d-builtins.cc (build_dtype): Make function static.
 	* d-lang.cc (d_init_exceptions): Remove function.
+	* d-codegen.h: Move visitor declarations to ...
+	* d-tree.h: ... here.
+	* imports.cc: Update includes.
 
 2016-03-29  Johannes Pfau  <johannespfau@gmail.com>
 

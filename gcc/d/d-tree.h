@@ -20,6 +20,7 @@
 #define GCC_D_TREE_H
 
 // Forward type declarations to avoid including unnecessary headers.
+class Dsymbol;
 class Declaration;
 class FuncDeclaration;
 class VarDeclaration;
@@ -296,5 +297,14 @@ extern tree d_pushdecl (tree);
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);
 extern void d_keep (tree);
+
+// In imports.cc
+extern tree build_import_decl (Dsymbol *);
+
+// In toir.cc
+extern void build_ir (FuncDeclaration *);
+
+// In types.cc
+extern tree build_ctype (Type *);
 
 #endif
