@@ -35,6 +35,7 @@
 #include "langhooks.h"
 #include "target.h"
 #include "stringpool.h"
+#include "varasm.h"
 #include "stor-layout.h"
 #include "attribs.h"
 #include "function.h"
@@ -642,7 +643,11 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	}
       else if (tbtype->ty == Tsarray)
 	{
-	  // D apparently allows casting a static array to any static array type
+	  // Same element type makes this a no-op cast.
+	  if (d_types_same(ebtype->baseElemOf(), tbtype->baseElemOf()))
+	    return build_nop(build_ctype(totype), exp);
+
+	  // D apparently allows casting a static array to any static array type?
 	  return build_vconvert(build_ctype(totype), exp);
 	}
       else if (tbtype->ty == Tstruct)
@@ -2038,22 +2043,16 @@ build_struct_literal(tree type, tree init)
     return build_constructor(type, NULL);
 
   vec<constructor_elt, va_gc> *ve = NULL;
+  bool constant_p = true;
+  bool simple_p = true;
 
   // Walk through each field, matching our initializer list
   for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
     {
-      gcc_assert(!vec_safe_is_empty(CONSTRUCTOR_ELTS (init)));
-      constructor_elt *ce = &(*CONSTRUCTOR_ELTS (init))[0];
-      tree value = NULL_TREE;
+      bool is_initialized = false;
+      tree value;
 
-      // Found the next field to initialize, consume the value and
-      // pop it from the init list.
-      if (ce->index == field)
-	{
-	  value = ce->value;
-	  CONSTRUCTOR_ELTS (init)->ordered_remove(0);
-	}
-      else if (DECL_NAME (field) == NULL_TREE)
+      if (DECL_NAME (field) == NULL_TREE)
 	{
 	  // Search all nesting aggregates, if nothing is found, then
 	  // this will return an empty initializer to fill the hole.
@@ -2062,10 +2061,36 @@ build_struct_literal(tree type, tree init)
 	    value = build_struct_literal(TREE_TYPE (field), init);
 	  else
 	    value = build_constructor(TREE_TYPE (field), NULL);
+
+	  is_initialized = true;
+	}
+      else
+	{
+	  unsigned HOST_WIDE_INT idx;
+	  tree index;
+
+	  // Search for the value to initialize the next field.  Once found,
+	  // pop it from the init list so we don't look at it again.
+	  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (init), idx, index, value)
+	    {
+	      if (index == field)
+		{
+		  CONSTRUCTOR_ELTS (init)->ordered_remove(idx);
+		  is_initialized = true;
+		  break;
+		}
+	    }
 	}
 
-      if (value != NULL_TREE)
+      if (is_initialized)
 	{
+	  gcc_assert(value != NULL_TREE);
+
+	  if (!TREE_CONSTANT (value))
+	    constant_p = false;
+	  if (!initializer_constant_valid_p(value, TREE_TYPE (value)))
+	    simple_p = false;
+
 	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
 	  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
 	    break;
@@ -2076,7 +2101,14 @@ build_struct_literal(tree type, tree init)
   gcc_assert(vec_safe_is_empty(CONSTRUCTOR_ELTS (init))
 	     || ANON_AGGR_TYPE_P (type));
 
-  return build_constructor(type, ve);
+  tree ctor = build_constructor(type, ve);
+
+  if (constant_p)
+    TREE_CONSTANT (ctor) = 1;
+  if (constant_p && simple_p)
+    TREE_STATIC (ctor) = 1;
+
+  return ctor;
 }
 
 // Given the TYPE of an anonymous field inside T, return the
@@ -4248,6 +4280,29 @@ fixup_anonymous_offset(tree fields, tree offset)
     }
 }
 
+// Return true if FIELD is a member of the FIELDS chain.
+
+static bool
+field_member(tree field, tree fields)
+{
+  while (fields != NULL_TREE)
+    {
+      if (fields == field)
+       return true;
+
+      // Traverse all nested anonymous aggregates.
+      tree ftype = TREE_TYPE (fields);
+      if (TYPE_NAME (ftype) && anon_aggrname_p(TYPE_IDENTIFIER (ftype))
+	  && field_member(field, TYPE_FIELDS (ftype)))
+	return true;
+
+      fields = DECL_CHAIN (fields);
+    }
+
+  return false;
+}
+
+
 // Iterate over all MEMBERS of an aggregate, and add them as fields to CONTEXT.
 // If INHERITED_P is true, then the members derive from a base class.
 // Returns the number of fields found.
@@ -4263,10 +4318,6 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
       VarDeclaration *var = sym->isVarDeclaration();
       if (var != NULL)
 	{
-	  // Skip fields that have already been added.
-	  if (!inherited_p && var->csym != NULL)
-	    continue;
-
 	  // If this variable was really a tuple, add all tuple fields.
 	  if (var->aliassym)
 	    {
@@ -4292,20 +4343,32 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	  // Insert the field declaration at it's given offset.
 	  if (var->isField())
 	    {
-	      tree ident = var->ident ? get_identifier(var->ident->string) : NULL_TREE;
-	      tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, ident,
-				      declaration_type(var));
-	      DECL_ARTIFICIAL (field) = inherited_p;
-	      DECL_IGNORED_P (field) = inherited_p;
-	      insert_aggregate_field(var->loc, context, field, var->offset);
-
-	      // Because the front-end shares field decls across classes, don't
-	      // create the corresponding backend symbol unless we are adding
-	      // it to the aggregate it is defined in.
-	      if (!inherited_p)
+	      // The front-end shares the same field decl across classes,
+	      // however because we chain fields onto the end of TYPE_FIELDS for
+	      // each type, we need to create a copy for each derived class.
+	      if (inherited_p)
 		{
-		  var->csym = new Symbol();
-		  var->csym->Stree = field;
+		  tree base = var->toSymbol()->Stree;
+		  tree field = copy_node(base);
+		  vec_safe_push(DECL_OVERRIDES (base), field);
+
+		  DECL_ARTIFICIAL (field) = 1;
+		  DECL_IGNORED_P (field) = 1;
+		  insert_aggregate_field(context, field, var->offset);
+		}
+	      else
+		{
+		  tree field = var->toSymbol()->Stree;
+
+		  // Skip fields that have already been added.
+		  if (field_member(field, TYPE_FIELDS (context)))
+		    continue;
+
+		  // The field should not be part of another aggregate.
+		  gcc_assert(DECL_CHAIN (field) == NULL_TREE);
+
+		  DECL_FCONTEXT (field) = context;
+		  insert_aggregate_field(context, field, var->offset);
 		}
 
 	      fields += 1;
@@ -4350,7 +4413,8 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 
 	  // And make the corresponding data member.
 	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL, type);
-	  insert_aggregate_field(ad->loc, context, field, ad->anonoffset);
+	  set_decl_location(field, ad->loc);
+	  insert_aggregate_field(context, field, ad->anonoffset);
 	  continue;
 	}
 
@@ -4393,6 +4457,10 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 
   if (cd != NULL)
     {
+      // Build all base types before laying out current class.
+      if (decl != base)
+	build_ctype(cd->type);
+
       if (cd->baseClass)
 	layout_aggregate_type(decl, type, cd->baseClass);
       else
@@ -4408,15 +4476,18 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	  DECL_FCONTEXT (field) = objtype;
 	  DECL_ARTIFICIAL (field) = 1;
 	  DECL_IGNORED_P (field) = inherited_p;
-	  insert_aggregate_field(decl->loc, type, field, 0);
+	  set_decl_location(field, decl->loc);
+	  insert_aggregate_field(type, field, 0);
 
 	  if (!cd->cpp)
 	    {
 	      field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
 				 get_identifier("__monitor"), ptr_type_node);
+	      DECL_FCONTEXT (field) = objtype;
 	      DECL_ARTIFICIAL (field) = 1;
 	      DECL_IGNORED_P (field) = inherited_p;
-	      insert_aggregate_field(decl->loc, type, field, Target::ptrsize);
+	      set_decl_location(field, decl->loc);
+	      insert_aggregate_field(type, field, Target::ptrsize);
 	    }
 	}
     }
@@ -4425,16 +4496,6 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
     {
       size_t fields = layout_aggregate_members(base->members, type, inherited_p);
       gcc_assert(fields == base->fields.dim);
-
-      // Make sure that all fields have been created.
-      if (!inherited_p)
-	{
-	  for (size_t i = 0; i < base->fields.dim; i++)
-	    {
-	      VarDeclaration *var = base->fields[i];
-	      gcc_assert(var->csym != NULL);
-	    }
-	}
     }
 
   if (cd && cd->vtblInterfaces)
@@ -4446,7 +4507,8 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 				  build_ctype(Type::tvoidptr->pointerTo()));
 	  DECL_ARTIFICIAL (field) = 1;
 	  DECL_IGNORED_P (field) = 1;
-	  insert_aggregate_field(decl->loc, type, field, bc->offset);
+	  set_decl_location(field, decl->loc);
+	  insert_aggregate_field(type, field, bc->offset);
 	}
     }
 }
@@ -4454,15 +4516,12 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 // Add a compiler generated field FIELD at OFFSET into aggregate.
 
 void
-insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
+insert_aggregate_field(tree type, tree field, size_t offset)
 {
   DECL_FIELD_CONTEXT (field) = type;
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
   DECL_FIELD_OFFSET (field) = size_int(offset);
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
-
-  // Must set this or we crash with DWARF debugging.
-  set_decl_location(field, loc);
 
   TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
 

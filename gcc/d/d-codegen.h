@@ -193,7 +193,7 @@ extern tree build_typeinfo (Type *t);
 
 // Record layout
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
-extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);
+extern void insert_aggregate_field(tree type, tree field, size_t offset);
 extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
 
 extern bool empty_aggregate_p(tree type);

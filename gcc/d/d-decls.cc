@@ -87,19 +87,22 @@ Dsymbol::toSymbol()
 Symbol *
 VarDeclaration::toSymbol()
 {
+  if (!csym && isField())
+    {
+      // For field declaration, it is possible for this to be called
+      // before the parent's type has been built.
+      AggregateDeclaration *ad = toParent()->isAggregateDeclaration();
+      gcc_assert(ad != NULL);
+      build_ctype(ad->type);
+
+      // Also generate the decl type before building the symbol to properly
+      // resolve incomplete classes that use each others type.
+      if (type != ad->type && type->baseElemOf()->ty == Tclass)
+	build_ctype(type);
+    }
+
   if (!csym)
     {
-      // For field declaration, it is possible for toSymbol to be called
-      // before the parent's build_ctype()
-      if (isField())
-	{
-	  AggregateDeclaration *parent_decl = toParent()->isAggregateDeclaration();
-	  gcc_assert (parent_decl);
-	  build_ctype(parent_decl->type);
-	  gcc_assert (csym);
-	  return csym;
-	}
-
       // Use same symbol for VarDeclaration templates with same mangle
       bool local_p, template_p;
       get_template_storage_info(this, &local_p, &template_p);
@@ -133,9 +136,16 @@ VarDeclaration::toSymbol()
       else
 	csym->Sident = ident->string;
 
-      tree_code code = isParameter() ? PARM_DECL
-	: !canTakeAddressOf() ? CONST_DECL
-	: VAR_DECL;
+      // Determine the kind of decl we are building.
+      tree_code code;
+      if (this->isField())
+	code = FIELD_DECL;
+      else if (this->isParameter())
+	code = PARM_DECL;
+      else if (!this->canTakeAddressOf())
+	code = CONST_DECL;
+      else
+	code = VAR_DECL;
 
       tree decl = build_decl (UNKNOWN_LOCATION, code,
 			      get_identifier (ident->string),

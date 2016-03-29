@@ -84,7 +84,7 @@ D_GENERATED_OBJS = d/id.o d/impcnvtab.o
 
 # D Glue object files.
 D_GLUE_OBJS = d/d-attribs.o d/d-lang.o d/d-decls.o \
-              d/d-codegen.o d/d-objfile.o \
+              d/d-codegen.o d/d-init.o d/d-objfile.o \
               d/d-convert.o d/d-todt.o d/d-longdouble.o \
               d/d-builtins.o d/d-incpath.o d/types.o \
               d/expr.o d/imports.o d/toir.o d/d-typinf.o \
