@@ -4088,6 +4088,14 @@ public:
 }
 
 ///
+version (GNU)
+{
+    unittest
+    {
+        pragma(msg, "ieeeFlags test disabled, see LDC Issue #888");
+    }
+}
+else
 unittest
 {
     static void func() {
@@ -4120,7 +4128,17 @@ version(X86_Any)
 }
 else version(ARM)
 {
-    version = IeeeFlagsSupport;
+    version(GNU)
+    {
+        version(ARM_HardFloat)
+            version = IeeeFlagsSupport;
+        else version(ARM_SoftFP)
+            version = IeeeFlagsSupport;
+    }
+    else
+    {
+        version = IeeeFlagsSupport;
+    }
 }
 
 /// Set all of the floating-point status flags to false.
@@ -5194,7 +5212,7 @@ real NaN(ulong payload) @trusted pure nothrow @nogc
     }
 }
 
-@safe pure nothrow @nogc unittest
+pure nothrow @nogc unittest
 {
     static if (floatTraits!(real).realFormat == RealFormat.ieeeDouble)
     {
