@@ -27,6 +27,12 @@ D_TARGET_INSTALL_NAME = $(target_noncanonical)-$(shell echo gdc|sed '$(program_t
 # Name of phobos library
 D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos2\"
 
+# If ZLIBINC is empty we have been configured with --with-system-zlib
+D_ZLIB = -DUSE_SYSTEM_ZLIB=0
+ifeq ($(strip $(ZLIBINC)),)
+  D_ZLIB = -DUSE_SYSTEM_ZLIB=1
+endif
+
 # The name for selecting d in LANGUAGES.
 d: cc1d$(exeext)
 
@@ -37,7 +43,7 @@ d: cc1d$(exeext)
 D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
 
 # Create the compiler driver for D.
-CFLAGS-d/d-spec.o += $(DRIVER_DEFINES) $(D_LIBPHOBOS)
+CFLAGS-d/d-spec.o += $(DRIVER_DEFINES) $(D_LIBPHOBOS) $(D_ZLIB)
 
 GDC_OBJS = $(GCC_OBJS) d/d-spec.o
 gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)

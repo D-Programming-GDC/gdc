@@ -40,8 +40,10 @@
 #define WIN32_SOCK_LIB	(1<<7)
 /* this bit is set if they did `-luuid'.  */
 #define WIN32_UUID_LIB	(1<<8)
+/* this bit is set if they did `-lz'.  */
+#define ZLIB_LIB	(1<<9)
 /* This bit is set when the argument should not be passed to gcc or the backend */
-#define SKIPOPT		(1<<9)
+#define SKIPOPT		(1<<10)
 
 #ifndef MATH_LIBRARY
 #define MATH_LIBRARY "m"
@@ -56,6 +58,10 @@
 
 #ifndef TIME_LIBRARY
 #define TIME_LIBRARY "rt"
+#endif
+
+#ifndef ZLIB_LIBRARY
+#define ZLIB_LIBRARY "z"
 #endif
 
 #ifndef WIN32_SOCK_LIBRARY
@@ -128,6 +134,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* "-luuid" if it appears on the command line.  */
   const cl_decoded_option *saw_win32_uuid = 0;
 
+  /* "-lz" if it appears on the command line.  */
+  const cl_decoded_option *saw_zlib = 0;
+
   /* "-lc" if it appears on the command line.  */
   const cl_decoded_option *saw_libc = 0;
 
@@ -155,6 +164,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
   /* Whether we need the win32 uuid library.  */
   int need_win32_uuid = (WIN32_UUID_LIBRARY[0] != '\0');
+
+  /* Whether we need the zlib library. Passed as a compiler flag by
+     Make-lang.in  */
+  int need_zlib = USE_SYSTEM_ZLIB;
 
   /* True if we saw -static. */
   int static_link = 0;
@@ -274,6 +287,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	    {
 	      args[i] |= WIN32_UUID_LIB;
 	      need_win32_uuid = 0;
+	    }
+	  else if (strcmp (arg, ZLIB_LIBRARY) == 0)
+	    {
+	      args[i] |= ZLIB_LIB;
+	      need_zlib = 0;
 	    }
 	  else if (strcmp (arg, "c") == 0)
 	    args[i] |= WITHLIBC;
@@ -406,7 +424,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
      library: -lgphobos.  The -pthread argument is added by
      setting need_thread. */
   num_args = argc + added + need_math + need_win32_sock + need_win32_uuid
-    + shared_libgcc + (library > 0) * 4 + 2;
+    + need_zlib + shared_libgcc + (library > 0) * 4 + 2;
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
@@ -456,6 +474,12 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	{
 	  --j;
 	  saw_win32_uuid = &decoded_options[i];
+	}
+
+      if (!saw_zlib && (args[i] & ZLIB_LIB) && library > 0)
+	{
+	  --j;
+	  saw_zlib = &decoded_options[i];
 	}
 
       if (!saw_libc && (args[i] & WITHLIBC) && library > 0)
@@ -610,6 +634,15 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   else if (library > 0 && need_win32_uuid)
     {
       generate_option (OPT_l, WIN32_UUID_LIBRARY, 1, CL_DRIVER,
+		       &new_decoded_options[j++]);
+      added_libraries++;
+    }
+
+  if (saw_zlib)
+    new_decoded_options[j++] = *saw_zlib;
+  else if (library > 0 && need_zlib)
+    {
+      generate_option (OPT_l, ZLIB_LIBRARY, 1, CL_DRIVER,
 		       &new_decoded_options[j++]);
       added_libraries++;
     }
