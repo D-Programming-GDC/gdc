@@ -32,6 +32,18 @@ relevant documentation about the GDC front end.
  
  #undef TARGET_LIBC_HAS_FUNCTION
  #define TARGET_LIBC_HAS_FUNCTION no_c99_libc_has_function
+--- a/gcc/config/linux.h
++++ b/gcc/config/linux.h
+@@ -42,6 +42,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define OPTION_MUSL   (linux_libc == LIBC_MUSL)
+ #endif
+ 
++#undef LINKER_LIBRARY
++#define LINKER_LIBRARY "dl"
++
+ #define GNU_USER_TARGET_OS_CPP_BUILTINS()			\
+     do {							\
+ 	if (OPTION_GLIBC)					\
 --- a/gcc/config/linux-android.h
 +++ b/gcc/config/linux-android.h
 @@ -57,3 +57,9 @@

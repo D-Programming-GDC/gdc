@@ -250,7 +250,7 @@ These official OS versions are not implemented:
  #else
 --- a/gcc/config/linux.h
 +++ b/gcc/config/linux.h
-@@ -53,6 +53,28 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+@@ -56,6 +56,28 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
  	builtin_assert ("system=posix");			\
      } while (0)
  

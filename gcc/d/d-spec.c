@@ -32,18 +32,20 @@
 #define WITHTHREAD	(1<<3)
  /* This bit is set if they did `-lrt'.  */
 #define TIMELIB		(1<<4)
+/* this bit is set if they did `-ldl'.  */
+#define LINKER_LIB	(1<<5)
 /* this bit is set if they did `-lstdc++'.  */
-#define WITHLIBCXX	(1<<5)
+#define WITHLIBCXX	(1<<6)
 /* this bit is set if they did `-lc'.  */
-#define WITHLIBC	(1<<6)
+#define WITHLIBC	(1<<7)
 /* this bit is set if they did `-lws2_32'.  */
-#define WIN32_SOCK_LIB	(1<<7)
+#define WIN32_SOCK_LIB	(1<<8)
 /* this bit is set if they did `-luuid'.  */
-#define WIN32_UUID_LIB	(1<<8)
+#define WIN32_UUID_LIB	(1<<9)
 /* this bit is set if they did `-lz'.  */
-#define ZLIB_LIB	(1<<9)
+#define ZLIB_LIB	(1<<10)
 /* This bit is set when the argument should not be passed to gcc or the backend */
-#define SKIPOPT		(1<<10)
+#define SKIPOPT		(1<<11)
 
 #ifndef MATH_LIBRARY
 #define MATH_LIBRARY "m"
@@ -58,6 +60,10 @@
 
 #ifndef TIME_LIBRARY
 #define TIME_LIBRARY "rt"
+#endif
+
+#ifndef LINKER_LIBRARY
+#define LINKER_LIBRARY ""
 #endif
 
 #ifndef ZLIB_LIBRARY
@@ -128,6 +134,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* "-lrt" if it appears on the command line.  */
   const cl_decoded_option *saw_time = 0;
 
+  /* "-ldl" if it appears on the command line.  */
+  const cl_decoded_option *saw_linker_lib = 0;
+
   /* "-lws2_32" if it appears on the command line.  */
   const cl_decoded_option *saw_win32_sock = 0;
 
@@ -158,6 +167,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
   /* By default, we throw on the time library if we have one.  */
   int need_time = (TIME_LIBRARY[0] != '\0');
+
+  /* By default, we throw on the linker library if we have one.  */
+  int need_linker_lib = (LINKER_LIBRARY[0] != '\0');
 
   /* Whether we need the win32 socket library.  */
   int need_win32_sock = (WIN32_SOCK_LIBRARY[0] != '\0');
@@ -277,6 +289,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	    {
 	      args[i] |= TIMELIB;
 	      need_time = 0;
+	    }
+	  else if (strcmp (arg, LINKER_LIBRARY) == 0)
+	    {
+	      args[i] |= LINKER_LIB;
+	      need_linker_lib = 0;
 	    }
 	  else if (strcmp (arg, WIN32_SOCK_LIBRARY) == 0)
 	    {
@@ -424,7 +441,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
      library: -lgphobos.  The -pthread argument is added by
      setting need_thread. */
   num_args = argc + added + need_math + need_win32_sock + need_win32_uuid
-    + need_zlib + shared_libgcc + (library > 0) * 4 + 2;
+    + need_zlib + need_linker_lib + shared_libgcc + (library > 0) * 4 + 2;
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
@@ -462,6 +479,12 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	{
 	  --j;
 	  saw_time = &decoded_options[i];
+	}
+
+      if (!saw_linker_lib && (args[i] & LINKER_LIB) && library > 0)
+	{
+	  --j;
+	  saw_linker_lib = &decoded_options[i];
 	}
 
       if (!saw_win32_sock && (args[i] & WIN32_SOCK_LIB) && library > 0)
@@ -616,6 +639,15 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   else if (library > 0 && need_time)
     {
       generate_option (OPT_l, TIME_LIBRARY, 1, CL_DRIVER,
+		       &new_decoded_options[j++]);
+      added_libraries++;
+    }
+
+  if (saw_linker_lib)
+    new_decoded_options[j++] = *saw_linker_lib;
+  else if (library > 0 && need_linker_lib)
+    {
+      generate_option (OPT_l, LINKER_LIBRARY, 1, CL_DRIVER,
 		       &new_decoded_options[j++]);
       added_libraries++;
     }
