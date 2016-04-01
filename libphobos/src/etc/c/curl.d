@@ -35,9 +35,6 @@
 
 module etc.c.curl;
 
-version (GNU) {}
-else version (Windows) pragma(lib, "curl");
-
 import core.stdc.time;
 import core.stdc.config;
 import std.socket;
