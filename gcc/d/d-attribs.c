@@ -548,9 +548,9 @@ d_handle_target_attribute (tree *node, tree name, tree args, int flags,
 
 static tree
 d_handle_noclone_attribute (tree *node, tree name,
-				tree ARG_UNUSED (args),
-				int ARG_UNUSED (flags),
-				bool *no_add_attrs)
+			    tree ARG_UNUSED (args),
+			    int ARG_UNUSED (flags),
+			    bool *no_add_attrs)
 {
   Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
@@ -641,7 +641,7 @@ d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
 static tree
 d_handle_alias_attribute (tree *node, tree ARG_UNUSED (name),
 			  tree args, int ARG_UNUSED (flags),
-			  bool *no_add_attrs ATTRIBUTE_UNUSED)
+			  bool *no_add_attrs)
 {
   tree decl = *node;
 
@@ -701,7 +701,7 @@ static tree
 d_handle_weak_attribute (tree *node, tree name,
 		         tree ARG_UNUSED (args),
 		         int ARG_UNUSED (flags),
-		         bool * ARG_UNUSED (no_add_attrs))
+		         bool * no_add_attrs)
 {
   if (TREE_CODE (*node) == FUNCTION_DECL
       && DECL_DECLARED_INLINE_P (*node))
