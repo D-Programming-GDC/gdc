@@ -22,24 +22,6 @@ module __entrypoint;
 
 extern(C):
 
-/* The memory between the addresses of _tlsstart and _tlsend is the storage for
-   thread-local data in D 2.0.  Both of these rely on the default linker script
-   of:
-        .tdata : { *(.tdata .tdata.* .gnu.linkonce.td.*) }
-        .tbss  : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) }
-   to group the sections in that order.
-  
-   Sadly, this does not work because ld orders .tdata after .tdata.*, despite
-   what the linker script says.
-*/
-
-version (GNU_EMUTLS) {}
-else 
-{
-    size_t _tlsstart = 3;
-    size_t _tlsend = void;
-}
-
 /* The D main() function supplied by the user's program
 
    It always has `_Dmain` symbol name and uses C calling convention.
