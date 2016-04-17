@@ -109,6 +109,7 @@ extern void set_function_end_locus (const Loc& loc);
 
 extern void get_unique_name (tree decl, const char *prefix = NULL);
 
+extern void get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p);
 extern void setup_symbol_storage (Dsymbol *dsym, tree decl, bool is_public);
 extern void d_comdat_linkage (tree decl);
 
