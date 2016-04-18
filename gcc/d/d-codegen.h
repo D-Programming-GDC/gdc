@@ -107,6 +107,7 @@ extern tree convert_for_assignment (tree expr, Type *exp_type, Type *target_type
 extern tree convert_for_condition (tree expr, Type *type);
 
 extern tree d_array_convert (Expression *exp);
+extern tree d_array_convert (Type *etype, Expression *exp, vec<tree, va_gc> **vars);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = int_type_node);
@@ -140,7 +141,7 @@ extern tree d_build_call (TypeFunction *tf, tree callable, tree object, Expressi
 extern tree d_build_call_list (tree type, tree callee, tree args);
 extern tree d_build_call_nary (tree callee, int n_args, ...);
 
-extern tree d_assert_call (Loc loc, LibCall libcall, tree msg = NULL_TREE);
+extern tree d_assert_call (const Loc& loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
 extern tree build_frame_type(FuncDeclaration *func);
@@ -169,9 +170,8 @@ extern tree maybe_make_temp (tree t);
 extern bool d_has_side_effects (tree t);
 
 // Array operations
+extern tree build_bounds_condition(const Loc& loc, tree index, tree upr, bool inclusive);
 extern bool array_bounds_check();
-extern tree d_checked_index (Loc loc, tree index, tree upr, bool inclusive);
-extern tree d_bounds_condition (tree index, tree upr, bool inclusive);
 
 // Classes
 extern tree build_class_binfo (tree super, ClassDeclaration *cd);
@@ -185,7 +185,7 @@ extern tree build_delegate_cst (tree method, tree object, Type *type);
 // These are for references to nested functions/methods as opposed to a delegate var.
 extern tree build_method_call (tree callee, tree object, Type *type);
 extern void extract_from_method_call (tree t, tree& callee, tree& object);
-extern tree get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type *type);
+extern tree build_vindex_ref (tree object, tree fndecl, size_t index);
 
 // Built-in and Library functions.
 extern FuncDeclaration *get_libcall (LibCall libcall);
@@ -198,7 +198,7 @@ extern tree build_typeinfo (Type *t);
 
 // Record layout
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
-extern void insert_aggregate_field(Loc loc, tree type, tree field, size_t offset);
+extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);
 extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
 
 extern bool empty_aggregate_p(tree type);
@@ -211,24 +211,6 @@ d_types_same (Type *t1, Type *t2)
   Type *tb1 = t1->toBasetype()->immutableOf();
   Type *tb2 = t2->toBasetype()->immutableOf();
   return tb1->equals (tb2);
-}
-
-// Returns D Frontend type for GCC type T.
-inline Type *
-lang_dtype (tree t)
-{
-  gcc_assert (TYPE_P (t));
-  struct lang_type *lt = TYPE_LANG_SPECIFIC (t);
-  return lt ? lt->d_type : NULL;
-}
-
-// Returns D Frontend decl for GCC decl T.
-inline Declaration *
-lang_ddecl (tree t)
-{
-  gcc_assert (DECL_P (t));
-  struct lang_decl *ld = DECL_LANG_SPECIFIC (t);
-  return ld ? ld->d_decl : NULL;
 }
 
 // Returns D frontend type 'Object' which all classes are derived from.
@@ -265,17 +247,12 @@ extern tree imaginary_part(tree c);
 extern tree complex_expr(tree type, tree r, tree i);
 
 // Helpers for call
-inline bool
-function_type_p (tree t)
-{
-  return (TREE_CODE (t) == FUNCTION_TYPE || TREE_CODE (t) == METHOD_TYPE);
-}
-
 extern TypeFunction *get_function_type (Type *t);
 extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 
 // Globals.
+extern Modules builtin_modules;
 extern Module *current_module_decl;
 
 #endif

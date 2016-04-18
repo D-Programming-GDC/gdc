@@ -20,17 +20,12 @@
 #include "coretypes.h"
 
 #include "dfrontend/init.h"
-#include "dfrontend/cond.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
 
 #include "d-system.h"
 #include "options.h"
 #include "cppdefault.h"
 
 #include "d-tree.h"
-#include "d-lang.h"
-#include "d-codegen.h"
 
 // Read ENV_VAR for a PATH_SEPARATOR-separated list of file names; and
 // append all the names to the import search path.

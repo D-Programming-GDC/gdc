@@ -27,7 +27,6 @@
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
 #include "d-dmd-gcc.h"
@@ -76,7 +75,7 @@ IdentityExp::toElem()
       tree t1 = e1->toElem();
       tree t2 = e2->toElem();
       // Assume all padding is at the end of the type.
-      tree size = build_integer_cst(TYPE_PRECISION (build_ctype(e1->type)) / BITS_PER_UNIT);
+      tree size = size_int(TYPE_PRECISION (build_ctype(e1->type)) / BITS_PER_UNIT);
 
       // Do bit compare of floats.
       tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
@@ -116,84 +115,75 @@ EqualExp::toElem()
       Type *t2elem = tb1->nextOf()->toBasetype();
 
       // Check if comparisons of arrays can be optimized using memcmp.
-      //    e1.length OP e2.length && memcmp(e1.ptr, e2.ptr, size) OP 0;
-      // Where 'size' can be either:
-      //    For dynamic arrays: e1.length * (e1[0]).sizeof
-      //    For static arrays:  e1.sizeof
+      // This will inline EQ expressions as:
+      //    e1.length == e2.length && memcmp(e1.ptr, e2.ptr, size) == 0;
+      // Or when generating a NE expression:
+      //    e1.length != e2.length || memcmp(e1.ptr, e2.ptr, size) != 0;
       if ((t1elem->isintegral() || t1elem->ty == Tvoid || t1elem->ty == Tstruct)
 	  && t1elem->ty == t2elem->ty)
 	{
-	  tree t1 = e1->toElem();
-	  tree t2 = e2->toElem();
-	  // Length, for comparison.
-	  tree t1len, t2len;
-	  // Pointer to data and data size, to pass to memcmp.
-	  tree t1ptr, t2ptr;
-	  tree t1size, t2size;
+	  tree t1 = d_array_convert(e1);
+	  tree t2 = d_array_convert(e2);
+	  tree result;
 
 	  // Make temporaries to prevent multiple evaluations.
 	  tree t1saved = make_temp(t1);
 	  tree t2saved = make_temp(t2);
 
-	  if (tb1->ty == Tarray)
-	    {
-	      t1len = d_array_length(t1saved);
-	      t1ptr = d_array_ptr(t1saved);
-	      t1size = build2(MULT_EXPR, size_type_node, t1len, size_int(t1elem->size()));
-	    }
-	  else
-	    {
-	      t1len = size_int(((TypeSArray *) tb1)->dim->toInteger());
-	      t1ptr = build_address(t1saved);
-	      t1size = size_int(tb1->size());
-	    }
+	  // Length of arrays, for comparisons done before calling memcmp.
+	  tree t1len = d_array_length(t1saved);
+	  tree t2len = d_array_length(t2saved);
 
-	  if (tb2->ty == Tarray)
-	    {
-	      t2len = d_array_length(t2saved);
-	      t2ptr = d_array_ptr(t2saved);
-	      t2size = build2(MULT_EXPR, size_type_node, t2len, size_int(t2elem->size()));
-	    }
-	  else
-	    {
-	      t2len = size_int(((TypeSArray *) tb2)->dim->toInteger());
-	      t2ptr = build_address(t2saved);
-	      t2size = size_int(tb2->size());
-	    }
+	  // Reference to array data.
+	  tree t1ptr = d_array_ptr(t1saved);
+	  tree t2ptr = d_array_ptr(t2saved);
 
-	  tree result;
-
+	  // Compare arrays using memcmp if possible, otherwise for structs,
+	  // each field is compared inline.
 	  if (t1elem->ty != Tstruct || identity_compare_p(((TypeStruct *) t1elem)->sym))
 	    {
-	      // Compare arrays using memcmp.
+	      tree tsize = fold_build2(MULT_EXPR, size_type_node, t1len,
+				       size_int(t1elem->size()));
 	      tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
-					       t1ptr, t2ptr, (tb2->ty == Tsarray) ? t2size : t1size);
-
+					       t1ptr, t2ptr, tsize);
 	      result = build2(code, build_ctype(type), tmemcmp, integer_zero_node);
 	    }
 	  else
 	    {
-	      // Elem type is a struct with alignment holes, compare inline.
 	      result = build_array_struct_comparison(code, ((TypeStruct *) t1elem)->sym,
 						     t1len, t1ptr, t2ptr);
 	    }
 
+	  // Guard array comparison by first testing array length.
+	  // For equality expressions, this becomes:
+	  //    (e1.length == 0 || memcmp)
+	  // Otherwise for inequality:
+	  //    (e1.length != 0 && memcmp)
+	  tree tsizecmp = build2(code, size_type_node, t1len, size_zero_node);
+	  if (op == TOKequal)
+	    result = build_boolop(TRUTH_ORIF_EXPR, tsizecmp, result);
+	  else
+	    result = build_boolop(TRUTH_ANDIF_EXPR, tsizecmp, result);
+
+	  // Finally, check if lengths of both arrays match.  The frontend
+	  // should have already guaranteed that static arrays have same size.
 	  if (tb1->ty == Tsarray && tb2->ty == Tsarray)
-	    gcc_assert (tb1->size() == tb2->size());
+	    gcc_assert(tb1->size() == tb2->size());
 	  else
 	    {
-	      tree_code tcode = (op == TOKequal) ? TRUTH_ANDIF_EXPR : TRUTH_ORIF_EXPR;
-	      tree tlencmp = build2 (code, size_type_node, t1len, t2len);
-
-	      result = build_boolop (tcode, tlencmp, result);
+	      tree tlencmp = build2(code, size_type_node, t1len, t2len);
+	      if (op == TOKequal)
+		result = build_boolop(TRUTH_ANDIF_EXPR, tlencmp, result);
+	      else
+		result = build_boolop(TRUTH_ORIF_EXPR, tlencmp, result);
 	    }
 
 	  // Ensure left-to-right order of evaluation.
-	  if (d_has_side_effects (t2))
-	    result = compound_expr (t2saved, result);
+	  if (d_has_side_effects(t2))
+	    result = compound_expr(t2saved, result);
 
-	  if (d_has_side_effects (t1))
-	    result = compound_expr (t1saved, result);
+	  if (d_has_side_effects(t1))
+	    result = compound_expr(t1saved, result);
 
 	  return result;
 	}
@@ -527,69 +517,72 @@ CatExp::toElem()
   else
     etype = tb2->nextOf();
 
-  // Flatten multiple concatenations
-  unsigned n_operands = 2;
-  for (Expression *ex = e1; ex->op == TOKcat;)
-    {
-      if (ex->op == TOKcat)
-	{
-	  ex = ((CatExp *) ex)->e1;
-	  n_operands++;
-	}
-    }
-
-  unsigned n_args = (n_operands > 2 ? (2 + (n_operands * 2)) : 3);
-  tree *args = new tree[n_args];
-
-  args[0] = build_typeinfo(type);
-
-  if (n_operands > 2)
-    args[1] = build_integer_cst(n_operands, build_ctype(Type::tuns32));
-
-  unsigned ai = n_args - 1;
-  CatExp *ce = this;
   vec<tree, va_gc> *elemvars = NULL;
+  tree result;
 
-  // Loop through each concatenation from right to left.
-  // Dynamic arrays are not passed directly over varargs, instead they are
-  // split between length and ptr values.
-  for (Expression *oe = ce->e2; oe != NULL;
-       (ce->e1->op != TOKcat
-	? (oe = ce->e1)
-	: (ce = (CatExp *)ce->e1, oe = ce->e2)))
+  if (e1->op == TOKcat)
     {
-      tree arg;
-      if (d_types_same(oe->type->toBasetype(), etype->toBasetype()))
+      // Flatten multiple concatenations to an array.
+      // So the expression ((a ~ b) ~ c) becomes [a, b, c]
+      int ndims = 2;
+      for (Expression *ex = e1; ex->op == TOKcat;)
 	{
-	  // Convert single element to an array.
-	  tree var = NULL_TREE;
-	  tree expr = maybe_temporary_var(oe->toElem(), &var);
-	  arg = d_array_value(build_ctype(oe->type->arrayOf()),
-			      size_int(1), build_address(expr));
-
-	  if (var != NULL_TREE)
-	    vec_safe_push(elemvars, var);
+	  if (ex->op == TOKcat)
+	    {
+	      ex = ((CatExp *) ex)->e1;
+	      ndims++;
+	    }
 	}
-      else
-	arg = d_array_convert(oe);
 
-      if (n_operands > 2)
+      // Store all concatenation args to a temporary byte[][ndims] array.
+      Type *targselem = Type::tint8->arrayOf();
+      tree var = create_temporary_var(d_array_type(targselem, ndims));
+      tree init = build_constructor(TREE_TYPE(var), NULL);
+      vec_safe_push(elemvars, var);
+
+      // Loop through each concatenation from right to left.
+      vec<constructor_elt, va_gc> *elms = NULL;
+      CatExp *ce = this;
+      int dim = ndims - 1;
+
+      for (Expression *oe = ce->e2; oe != NULL;
+	   (ce->e1->op != TOKcat
+	    ? (oe = ce->e1)
+	    : (ce = (CatExp *)ce->e1, oe = ce->e2)))
 	{
-	  // Filling the array backwards, so .ptr is pushed first.
-	  arg = maybe_make_temp(arg);
-	  args[ai--] = d_array_ptr(arg);
-	  args[ai--] = d_array_length(arg);
-	}
-      else
-	args[ai--] = maybe_make_temp(arg);
+	  tree arg = d_array_convert(etype, oe, &elemvars);
+	  tree index = size_int(dim);
+	  CONSTRUCTOR_APPEND_ELT(elms, index, maybe_make_temp(arg));
 
-      // Finished pushing all arrays.
-      if (oe == ce->e1)
-	break;
+	  // Finished pushing all arrays.
+	  if (oe == ce->e1)
+	    break;
+
+	  dim -= 1;
+	}
+      // Check there is no logic bug in constructing byte[][] of arrays.
+      gcc_assert(dim == 0);
+
+      CONSTRUCTOR_ELTS(init) = elms;
+      DECL_INITIAL(var) = init;
+
+      tree args[2];
+      args[0] = build_typeinfo(type);
+      args[1] = d_array_value(build_ctype(targselem->arrayOf()),
+			      size_int(ndims), build_address(var));
+
+      result = build_libcall(LIBCALL_ARRAYCATNTX, 2, args, build_ctype(type));
     }
+  else
+    {
+      // Handle single concatenation (a ~ b)
+      tree args[3];
+      args[0] = build_typeinfo(type);
+      args[1] = d_array_convert(etype, e1, &elemvars);
+      args[2] = d_array_convert(etype, e2, &elemvars);
 
-  tree result = build_libcall(n_operands > 2 ? LIBCALL_ARRAYCATNT : LIBCALL_ARRAYCATT,
-			      n_args, args, build_ctype(type));
+      result = build_libcall(LIBCALL_ARRAYCATT, 3, args, build_ctype(type));
+    }
 
   for (size_t i = 0; i < vec_safe_length(elemvars); ++i)
     result = bind_expr((*elemvars)[i], result);
@@ -931,7 +924,7 @@ AssignExp::toElem()
 	      // Generate _d_arraycopy()
 	      tree args[3];
 
-	      args[0] = build_integer_cst(etype->size(), build_ctype(Type::tsize_t));
+	      args[0] = size_int(etype->size());
 	      args[1] = maybe_make_temp(d_array_convert(e2));
 	      args[2] = d_array_convert(e1);
 
@@ -1107,7 +1100,7 @@ IndexExp::toElem()
 	  args[1] = build_typeinfo(tkey);
 	}
 
-      args[2] = build_integer_cst(tb1->nextOf()->size(), build_ctype(Type::tsize_t));
+      args[2] = size_int(tb1->nextOf()->size());
       args[3] = build_address(key);
 
       // Index the associative array.
@@ -1143,15 +1136,11 @@ IndexExp::toElem()
 
       // Generate the index.
       tree index = e2->toElem();
-      if (tb1->ty == Tarray || tb1->ty == Tsarray)
-	{
-	  // If it's a static array and the index is constant,
-	  // the front end has already checked the bounds.
-	  if (array_bounds_check() && !(tb1->ty == Tsarray && e2->isConst()))
-	    index = d_checked_index(loc, maybe_make_temp(index), length, false);
-	}
-      else
-	gcc_assert(tb1->ty == Tpointer);
+
+      // If it's a static array and the index is constant,
+      // the front end has already checked the bounds.
+      if (tb1->ty != Tpointer && !indexIsInBounds)
+	index = build_bounds_condition(e2->loc, index, length, false);
 
       // Index the .ptr
       ptr = void_okay_p(ptr);
@@ -1258,42 +1247,37 @@ SliceExp::toElem()
   tree upr_tree = maybe_make_temp(upr->toElem());
   tree newlength;
 
-  if (array_bounds_check())
+  if (!this->upperIsInBounds)
     {
-      if (!this->upperIsInBounds)
-	{
-	  if (length)
-	    newlength = d_checked_index(loc, upr_tree, length, true);
-	  else
-	    {
-	      // Still need to check bounds lwr <= upr for pointers.
-	      gcc_assert(tb1->ty == Tpointer);
-	      newlength = upr_tree;
-	    }
-	}
+      if (length)
+	newlength = build_bounds_condition(upr->loc, upr_tree, length, true);
       else
-	newlength = upr_tree;
-
-      if (!this->lowerIsLessThanUpper)
 	{
-	  // Enforces lwr <= upr. No need to check lwr <= length as
-	  // we've already ensured that upr <= length.
-	  if (lwr_tree)
-	    {
-	      tree lwr_bounds = d_checked_index(loc, lwr_tree, upr_tree, true);
-	      newlength = compound_expr(lwr_bounds, newlength);
-	    }
+	  // Still need to check bounds lwr <= upr for pointers.
+	  gcc_assert(tb1->ty == Tpointer);
+	  newlength = upr_tree;
 	}
     }
   else
     newlength = upr_tree;
 
-  // Need to ensure lwr always gets evaluated first, as it may be a function call.
-  // Does (-lwr + upr) rather than (upr - lwr)
   if (lwr_tree)
     {
-      newlength = build2(PLUS_EXPR, TREE_TYPE (newlength),
-			 build1(NEGATE_EXPR, TREE_TYPE (lwr_tree), lwr_tree), newlength);
+      // Enforces lwr <= upr. No need to check lwr <= length as
+      // we've already ensured that upr <= length.
+      if (!this->lowerIsLessThanUpper)
+	{
+	  tree cond = build_bounds_condition(lwr->loc, lwr_tree, upr_tree, true);
+
+	  // When bounds checking is off, the index value is returned directly.
+	  if (cond != lwr_tree)
+	    newlength = compound_expr(cond, newlength);
+	}
+
+      // Need to ensure lwr always gets evaluated first, as it may be a
+      // function call.  Generates (lwr, upr) - lwr.
+      newlength = fold_build2(MINUS_EXPR, TREE_TYPE (newlength),
+			      compound_expr(lwr_tree, newlength), lwr_tree);
     }
 
   tree result = d_array_value(build_ctype(type), newlength, ptr);
@@ -1525,6 +1509,10 @@ CallExp::toElem()
   Type *tb = e1->type->toBasetype();
   Expression *e1b = e1;
 
+  tree callee = NULL_TREE;
+  tree object = NULL_TREE;
+  TypeFunction *tf = NULL;
+
   // Calls to delegates can sometimes look like this:
   if (e1b->op == TOKcomma)
     {
@@ -1538,19 +1526,69 @@ CallExp::toElem()
   if (e1b->op == TOKdotvar && tb->ty != Tdelegate)
     {
       DotVarExp *dve = (DotVarExp *) e1b;
+
+      // Is this static method call?
+      bool is_dottype = false;
+      Expression *ex = dve->e1;
+
+      while (1)
+	{
+	  if (ex->op == TOKsuper || ex->op == TOKdottype)
+	    {
+	      // super.member() and type.member() calls directly.
+	      is_dottype = true;
+	      break;
+	    }
+	  else if (ex->op == TOKcast)
+	    {
+	      ex = ((CastExp *) ex)->e1;
+	      continue;
+	    }
+	  break;
+	}
+
       // Don't modify the static initializer for struct literals.
       if (dve->e1->op == TOKstructliteral)
 	{
 	  StructLiteralExp *sle = (StructLiteralExp *) dve->e1;
 	  sle->sinit = NULL;
 	}
+
+      FuncDeclaration *fd = dve->var->isFuncDeclaration();
+      if (fd != NULL)
+	{
+	  // Get the correct callee from the DotVarExp object.
+	  tree fndecl = fd->toSymbol()->Stree;
+
+	  // Static method; ignore the object instance.
+	  if (!fd->isThis())
+	    callee = build_address(fndecl);
+	  else
+	    {
+	      tree thisexp = dve->e1->toElem();
+
+	      // Want reference to 'this' object.
+	      if (dve->e1->type->ty != Tclass && dve->e1->type->ty != Tpointer)
+		thisexp = build_address(thisexp);
+
+	      // Make the callee a virtual call.
+	      if (fd->isVirtual() && !fd->isFinalFunc() && !is_dottype)
+		{
+		  tree fntype = build_pointer_type(TREE_TYPE (fndecl));
+		  fndecl = build_vindex_ref(thisexp, fntype, fd->vtblIndex);
+		}
+	      else
+		fndecl = build_address(fndecl);
+
+	      callee = build_method_call(fndecl, thisexp, fd->type);
+	    }
+	}
     }
 
-  tree callee = e1b->toElem();
-  tree object = NULL_TREE;
-  TypeFunction *tf = NULL;
+  if (callee == NULL_TREE)
+    callee = e1b->toElem();
 
-  if (D_METHOD_CALL_EXPR (callee))
+  if (METHOD_CALL_EXPR (callee))
     {
       // This could be a delegate expression (TY == Tdelegate), but not
       // actually a delegate variable.
@@ -1705,8 +1743,6 @@ DotTypeExp::toElem()
 elem *
 DelegateExp::toElem()
 {
-  Type *t = e1->type->toBasetype();
-
   if (func->fbody)
     {
       // Add the function as nested function if it belongs to this module
@@ -1718,91 +1754,69 @@ DelegateExp::toElem()
 	cfun->language->deferred_fns.safe_push(func);
     }
 
-  if (t->ty == Tclass || t->ty == Tstruct)
-    {
-      if (!func->isThis())
-	{
-	  error ("delegates are only for non-static functions");
-	  return error_mark_node;
-	}
+  tree fndecl;
+  tree object;
 
-      return get_object_method (e1->toElem(), e1, func, type);
+  if (func->isNested())
+    {
+      if (e1->op == TOKnull)
+	object = e1->toElem();
+      else
+	object = get_frame_for_symbol(func);
+
+      fndecl = build_address(func->toSymbol()->Stree);
     }
   else
     {
-      tree this_tree;
-      if (func->isNested())
+      if (!func->isThis())
 	{
-	  if (e1->op == TOKnull)
-	    this_tree = e1->toElem();
-	  else
-	    this_tree = get_frame_for_symbol (func);
-	}
-      else
-	{
-	  gcc_assert (func->isThis());
-	  this_tree = e1->toElem();
+	  error("delegates are only for non-static functions");
+	  return error_mark_node;
 	}
 
-      return build_method_call (build_address (func->toSymbol()->Stree),
-				this_tree, type);
+      object = e1->toElem();
+
+      // Want reference to 'this' object.
+      if (e1->type->ty != Tclass && e1->type->ty != Tpointer)
+	object = build_address(object);
+
+      fndecl = build_address(func->toSymbol()->Stree);
+
+      // Get pointer to function out of the virtual table.
+      if (func->isVirtual() && !func->isFinalFunc()
+	  && e1->op != TOKsuper && e1->op != TOKdottype)
+	fndecl = build_vindex_ref(object, TREE_TYPE (fndecl), func->vtblIndex);
     }
+
+  return build_method_call(fndecl, object, type);
 }
 
 elem *
 DotVarExp::toElem()
 {
-  Type *tb = e1->type->toBasetype();
+  VarDeclaration *vd = var->isVarDeclaration();
 
-  switch (tb->ty)
+  // Could also be a function, but relying on that being taken care of
+  // by the code generator for CallExp.
+  if (vd != NULL)
     {
-    case Tpointer:
-      if (tb->nextOf()->toBasetype()->ty != Tstruct)
-	break;
-      // drop through
-
-    case Tstruct:
-    case Tclass:
-    {
-      FuncDeclaration *fd = var->isFuncDeclaration();
-      VarDeclaration *vd = var->isVarDeclaration();
-      if (fd != NULL)
-      {
-	// if Tstruct, objInstanceMethod will use the address of e1
-	if (fd->isThis())
-	  return get_object_method(e1->toElem(), e1, fd, type);
-	else
-	  {
-	    // Static method; ignore the object instance
-	    return build_address(fd->toSymbol()->Stree);
-    	  }
-      }
-      else if (vd)
-	{
-	  if (!vd->isField())
-	    return get_decl_tree(vd);
-	  else
-	    {
-	      tree this_tree = e1->toElem();
-	      if (tb->ty != Tstruct)
-		this_tree = build_deref(this_tree);
-	      return component_ref(this_tree, vd->toSymbol()->Stree);
-	    }
-	}
+      if (!vd->isField())
+	return get_decl_tree(vd);
       else
 	{
-	  error("%s is not a field, but a %s", var->toChars(), var->kind());
-	  return error_mark_node;
+	  tree object = e1->toElem();
+
+	  if (e1->type->toBasetype()->ty != Tstruct)
+	    object = build_deref(object);
+
+	  return component_ref(object, vd->toSymbol()->Stree);
 	}
-      break;
     }
-
-    default:
-      break;
+  else
+    {
+      error("%s is not a field, but a %s", var->toChars(), var->kind());
+      return error_mark_node;
     }
-
-  error("Don't know how to handle %s", toChars());
-  return error_mark_node;
 }
 
 elem *
@@ -1940,11 +1954,11 @@ FuncExp::toElem()
   // If nested, this will be a trampoline...
   if (fd->isNested())
     {
-      return build_method_call (build_address (fd->toSymbol()->Stree),
-				get_frame_for_symbol (fd), type);
+      return build_method_call(build_address(fd->toSymbol()->Stree),
+			       get_frame_for_symbol(fd), fd->type);
     }
 
-  return build_nop (build_ctype(type), build_address (fd->toSymbol()->Stree));
+  return build_nop(build_ctype(type), build_address(fd->toSymbol()->Stree));
 }
 
 elem *
@@ -2001,7 +2015,7 @@ SymbolExp::toElem()
       if (!offset)
 	return d_convert (build_ctype(type), exp);
 
-      tree b = build_integer_cst (offset, build_ctype(Type::tsize_t));
+      tree b = size_int(offset);
       return build_nop (build_ctype(type), build_offset (exp, b));
     }
 
@@ -2182,30 +2196,29 @@ NewExp::toElem()
 	  // Multidimensional array allocations.
 	  vec<constructor_elt, va_gc> *elms = NULL;
 	  Type *telem = newtype->toBasetype();
-	  tree dims_var = create_temporary_var(d_array_type(Type::tsize_t, arguments->dim));
-	  tree dims_init = build_constructor(TREE_TYPE(dims_var), NULL);
-	  tree args[3];
+	  tree var = create_temporary_var(d_array_type(Type::tsize_t, arguments->dim));
+	  tree init = build_constructor(TREE_TYPE (var), NULL);
+	  tree args[2];
 
 	  for (size_t i = 0; i < arguments->dim; i++)
 	    {
 	      Expression *arg = (*arguments)[i];
-	      tree index = build_integer_cst(i, size_type_node);
-	      CONSTRUCTOR_APPEND_ELT(elms, index, arg->toElem());
+	      CONSTRUCTOR_APPEND_ELT (elms, size_int(i), arg->toElem());
 
 	      gcc_assert(telem->ty == Tarray);
 	      telem = telem->toBasetype()->nextOf();
 	      gcc_assert(telem);
 	    }
 
-	  CONSTRUCTOR_ELTS(dims_init) = elms;
-	  DECL_INITIAL(dims_var) = dims_init;
+	  CONSTRUCTOR_ELTS (init) = elms;
+	  DECL_INITIAL (var) = init;
 
 	  libcall = telem->isZeroInit() ? LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
 	  args[0] = getTypeInfo(type, NULL)->toElem();
-	  args[1] = build_integer_cst(arguments->dim, build_ctype(Type::tint32));
-	  args[2] = build_address(dims_var);
-	  result = build_libcall(libcall, 3, args, build_ctype(tb));
-	  result = bind_expr(dims_var, result);
+	  args[1] = d_array_value(build_ctype(Type::tsize_t->arrayOf()),
+				  size_int(arguments->dim), build_address(var));
+	  result = build_libcall(libcall, 2, args, build_ctype(tb));
+	  result = bind_expr(var, result);
 	}
 
       if (argprefix)
@@ -2385,7 +2398,7 @@ ArrayLiteralExp::toElem()
       if (!integer_zerop (elem))
 	{
 	  elem = maybe_make_temp (elem);
-	  CONSTRUCTOR_APPEND_ELT (elms, build_integer_cst (i, size_type_node),
+	  CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
 				  convert_expr (elem, e->type, etype));
 	}
     }
@@ -2398,7 +2411,7 @@ ArrayLiteralExp::toElem()
     return d_convert (build_ctype(type), ctor);
 
   args[0] = build_typeinfo (etype->arrayOf());
-  args[1] = build_integer_cst (elements->dim, size_type_node);
+  args[1] = size_int(elements->dim);
 
   // Call _d_arrayliteralTX (ti, dim);
   tree mem = build_libcall (LIBCALL_ARRAYLITERALTX, 2, args, build_ctype(etype->pointerTo()));
@@ -2440,7 +2453,7 @@ AssocArrayLiteralExp::toElem()
       Expression *e = (*keys)[i];
       tree t = e->toElem();
       t = maybe_make_temp(t);
-      CONSTRUCTOR_APPEND_ELT(ke, build_integer_cst(i, size_type_node),
+      CONSTRUCTOR_APPEND_ELT(ke, size_int(i),
 			     convert_expr(t, e->type, ta->index));
     }
   tree akeys = build_constructor(d_array_type(ta->index, keys->dim), ke);
@@ -2452,7 +2465,7 @@ AssocArrayLiteralExp::toElem()
       Expression *e = (*values)[i];
       tree t = e->toElem();
       t = maybe_make_temp(t);
-      CONSTRUCTOR_APPEND_ELT(ve, build_integer_cst(i, size_type_node),
+      CONSTRUCTOR_APPEND_ELT(ve, size_int(i),
 			     convert_expr(t, e->type, ta->next));
     }
   tree avals = build_constructor(d_array_type(ta->next, values->dim), ve);

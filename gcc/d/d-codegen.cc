@@ -20,18 +20,17 @@
 #include "coretypes.h"
 #include "hashtab.h"
 
+#include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
-#include "dfrontend/template.h"
+#include "dfrontend/declaration.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
-#include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
 #include "dfrontend/statement.h"
 #include "dfrontend/target.h"
+#include "dfrontend/template.h"
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
 #include "d-dmd-gcc.h"
@@ -461,12 +460,12 @@ get_decl_tree (Declaration *decl)
 	}
       else if (vsym->SframeField != NULL_TREE)
 	{
-    	  // Get the closure holding the var decl.
-    	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
-    	  tree frame_ref = get_framedecl (func, parent);
+	  // Get the closure holding the var decl.
+	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
+	  tree frame_ref = get_framedecl (func, parent);
 
-    	  return component_ref (build_deref (frame_ref), vsym->SframeField);
-    	}
+	  return component_ref (build_deref (frame_ref), vsym->SframeField);
+	}
       else if (vd->parent != func && vd->isThisDeclaration() && func->isThis())
 	{
 	  // Get the non-local 'this' value by going through parent link
@@ -521,12 +520,12 @@ get_decl_tree (Declaration *decl)
 tree
 d_convert(tree type, tree exp)
 {
-  // Check this first before passing to lang_dtype.
+  // Check this first before retrieving frontend type.
   if (error_operand_p(type) || error_operand_p(exp))
     return error_mark_node;
 
-  Type *totype = lang_dtype(type);
-  Type *etype = lang_dtype(TREE_TYPE (exp));
+  Type *totype = TYPE_LANG_FRONTEND (type);
+  Type *etype = TYPE_LANG_FRONTEND (TREE_TYPE (exp));
 
   if (totype && etype)
     return convert_expr(exp, etype, totype);
@@ -715,8 +714,8 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	      unsigned mult = 1;
 	      tree args[3];
 
-	      args[0] = build_integer_cst(sz_dst, build_ctype(Type::tsize_t));
-	      args[1] = build_integer_cst(sz_src * mult, build_ctype(Type::tsize_t));
+	      args[0] = size_int(sz_dst);
+	      args[1] = size_int(sz_src * mult);
 	      args[2] = exp;
 
 	      return build_libcall(LIBCALL_ARRAYCAST, 3, args, build_ctype(totype));
@@ -822,7 +821,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	    {
 	      vec<constructor_elt, va_gc> *ce = NULL;
 	      tree index = build2 (RANGE_EXPR, build_ctype(Type::tsize_t),
-				   size_zero_node, build_integer_cst (count - 1));
+				   size_zero_node, size_int(count - 1));
 	      tree value = convert_for_assignment (expr, etype, sa_type->next);
 
 	      // Can't use VAR_DECLs in CONSTRUCTORS.
@@ -941,7 +940,7 @@ convert_for_condition(tree expr, Type *type)
       // Checks (function || object), but what good is it
       // if there is a null function pointer?
       tree obj, func;
-      if (D_METHOD_CALL_EXPR (expr))
+      if (METHOD_CALL_EXPR (expr))
 	extract_from_method_call(expr, obj, func);
       else
 	{
@@ -970,20 +969,46 @@ convert_for_condition(tree expr, Type *type)
 // EXP must be a static array or dynamic array.
 
 tree
-d_array_convert (Expression *exp)
+d_array_convert(Expression *exp)
 {
-  TY ty = exp->type->toBasetype()->ty;
+  Type *tb = exp->type->toBasetype();
 
-  if (ty == Tarray)
+  if (tb->ty == Tarray)
     return exp->toElem();
-  else if (ty == Tsarray)
+  else if (tb->ty == Tsarray)
     {
-      Type *totype = exp->type->toBasetype()->nextOf()->arrayOf();
-      return convert_expr (exp->toElem(), exp->type, totype);
+      Type *totype = tb->nextOf()->arrayOf();
+      return convert_expr(exp->toElem(), exp->type, totype);
     }
 
   // Invalid type passed.
   gcc_unreachable();
+}
+
+// Convert EXP to a dynamic array, where ETYPE is the element type.
+// Similar to above, except that EXP is allowed to be an element of an array.
+// Temporary variables that need some kind of BIND_EXPR are pushed to VARS.
+
+tree
+d_array_convert(Type *etype, Expression *exp, vec<tree, va_gc> **vars)
+{
+  Type *tb = exp->type->toBasetype();
+
+  if ((tb->ty != Tarray && tb->ty != Tsarray)
+      || d_types_same(tb, etype->toBasetype()))
+    {
+      // Convert single element to an array.
+      tree var = NULL_TREE;
+      tree expr = maybe_temporary_var(exp->toElem(), &var);
+
+      if (var != NULL_TREE)
+	vec_safe_push(*vars, var);
+
+      return d_array_value(build_ctype(exp->type->arrayOf()),
+			   size_int(1), build_address(expr));
+    }
+  else
+    return d_array_convert(exp);
 }
 
 // Return TRUE if declaration DECL is a reference type.
@@ -1496,33 +1521,28 @@ delegate_object (tree exp)
 // METHOD, and hidden object is OBJECT.
 
 tree
-build_delegate_cst (tree method, tree object, Type *type)
+build_delegate_cst(tree method, tree object, Type *type)
 {
-  Type *base_type = type->toBasetype();
+  tree ctor = make_node(CONSTRUCTOR);
+  tree ctype;
 
-  // Called from DotVarExp.  These are just used to make function calls
-  // and not to make Tdelegate variables.  Clearing the type makes sure of this.
-  if (base_type->ty == Tfunction)
-    base_type = NULL;
+  Type *tb = type->toBasetype();
+  if (tb->ty == Tdelegate)
+    ctype = build_ctype(type);
   else
-    gcc_assert (base_type->ty == Tdelegate);
-
-  tree ctype = base_type ? build_ctype(base_type) : NULL_TREE;
-  tree ctor = make_node (CONSTRUCTOR);
-  tree obj_field = NULL_TREE;
-  tree func_field = NULL_TREE;
-  vec<constructor_elt, va_gc> *ce = NULL;
-
-  if (ctype)
     {
-      TREE_TYPE (ctor) = ctype;
-      obj_field = TYPE_FIELDS (ctype);
-      func_field = TREE_CHAIN (obj_field);
+      // Convert a function literal into an anonymous delegate.
+      ctype = build_two_field_type(TREE_TYPE (object), TREE_TYPE (method),
+				   NULL, "object", "func");
     }
-  CONSTRUCTOR_APPEND_ELT (ce, obj_field, object);
-  CONSTRUCTOR_APPEND_ELT (ce, func_field, method);
+
+  vec<constructor_elt, va_gc> *ce = NULL;
+  CONSTRUCTOR_APPEND_ELT (ce, TYPE_FIELDS (ctype), object);
+  CONSTRUCTOR_APPEND_ELT (ce, TREE_CHAIN (TYPE_FIELDS (ctype)), method);
 
   CONSTRUCTOR_ELTS (ctor) = ce;
+  TREE_TYPE (ctor) = ctype;
+
   return ctor;
 }
 
@@ -1533,7 +1553,7 @@ tree
 build_method_call (tree callee, tree object, Type *type)
 {
   tree t = build_delegate_cst (callee, object, type);
-  D_METHOD_CALL_EXPR (t) = 1;
+  METHOD_CALL_EXPR (t) = 1;
   return t;
 }
 
@@ -1542,74 +1562,29 @@ build_method_call (tree callee, tree object, Type *type)
 void
 extract_from_method_call (tree t, tree& callee, tree& object)
 {
-  gcc_assert (D_METHOD_CALL_EXPR (t));
+  gcc_assert (METHOD_CALL_EXPR (t));
   object = CONSTRUCTOR_ELT (t, 0)->value;
   callee = CONSTRUCTOR_ELT (t, 1)->value;
 }
 
-// Return correct callee for method FUNC, which is dereferenced from
-// the 'this' pointer OBJEXP.  TYPE is the return type for the method.
-// THISEXP is the tree representation of OBJEXP.
+// Build a dereference into the virtual table for OBJECT to retrieve
+// a function pointer of type FNTYPE at position INDEX.
 
 tree
-get_object_method (tree thisexp, Expression *objexp, FuncDeclaration *func, Type *type)
+build_vindex_ref(tree object, tree fntype, size_t index)
 {
-  Type *objtype = objexp->type->toBasetype();
-  bool is_dottype = false;
+  // Interface methods are also in the class's vtable, so we don't
+  // need to convert from a class pointer to an interface pointer.
+  object = maybe_make_temp(object);
 
-  gcc_assert (func->isThis());
+  // The vtable is the first field.
+  tree result = build_deref(object);
+  result = component_ref(result, TYPE_FIELDS (TREE_TYPE (result)));
 
-  Expression *ex = objexp;
+  gcc_assert(POINTER_TYPE_P (fntype));
 
-  while (1)
-    {
-      if (ex->op == TOKsuper || ex->op == TOKdottype)
-	{
-	  // super.member() and type.member() calls directly.
-	  is_dottype = true;
-	  break;
-	}
-      else if (ex->op == TOKcast)
-	{
-	  ex = ((CastExp *) ex)->e1;
-	  continue;
-	}
-      break;
-    }
-
-  // Calls to super are static (func is the super's method)
-  // Structs don't have vtables.
-  // Final and non-virtual methods can be called directly.
-  // DotTypeExp means non-virtual
-
-  if (objexp->op == TOKsuper
-      || objtype->ty == Tstruct || objtype->ty == Tpointer
-      || func->isFinalFunc() || !func->isVirtual() || is_dottype)
-    {
-      if (objtype->ty == Tstruct)
-	thisexp = build_address (thisexp);
-
-      return build_method_call (build_address (func->toSymbol()->Stree),
-				thisexp, type);
-    }
-  else
-    {
-      // Interface methods are also in the class's vtable, so we don't
-      // need to convert from a class pointer to an interface pointer.
-      thisexp = maybe_make_temp (thisexp);
-      tree vtbl_ref = build_deref (thisexp);
-      // The vtable is the first field.
-      tree field = TYPE_FIELDS (TREE_TYPE (vtbl_ref));
-      tree fntype = TREE_TYPE (func->toSymbol()->Stree);
-
-      vtbl_ref = component_ref (vtbl_ref, field);
-      vtbl_ref = build_memref (build_pointer_type (fntype), vtbl_ref,
-			       size_int (Target::ptrsize * func->vtblIndex));
-
-      return build_method_call (vtbl_ref, thisexp, type);
-    }
+  return build_memref(fntype, result, size_int(Target::ptrsize * index));
 }
-
 
 // Builds a record type from field types T1 and T2.  TYPE is the D frontend
 // type we are building. N1 and N2 are the names of the two fields.
@@ -1992,7 +1967,7 @@ build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   else
     {
       // Do bit compare of structs.
-      tree size = build_integer_cst(sd->structsize);
+      tree size = size_int(sd->structsize);
       tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
 				       build_address(t1), build_address(t2), size);
 
@@ -2113,8 +2088,11 @@ build_struct_literal(tree type, tree init)
 	{
 	  // Search all nesting aggregates, if nothing is found, then
 	  // this will return an empty initializer to fill the hole.
-	  if (ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	    value = build_struct_literal(TREE_TYPE (field), init);
+	  else
+	    value = build_constructor(TREE_TYPE (field), NULL);
 	}
 
       if (value != NULL_TREE)
@@ -2151,7 +2129,8 @@ lookup_anon_field(tree t, tree type)
 	    return field;
 
 	  // Otherwise, it could be nested, search harder.
-	  if (ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	    {
 	      tree subfield = lookup_anon_field(TREE_TYPE (field), type);
 	      if (subfield)
@@ -2628,39 +2607,27 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   return expr;
 }
 
-// Builds an array bounds checking condition, returning INDEX if true,
-// else throws a RangeError exception.
+// Builds a bounds condition checking that INDEX is between 0 and LEN.
+// The condition returns the INDEX if true, or throws a RangeError.
+// If INCLUSIVE, we allow INDEX == LEN to return true also.
 
 tree
-d_checked_index (Loc loc, tree index, tree upr, bool inclusive)
+build_bounds_condition(const Loc& loc, tree index, tree len, bool inclusive)
 {
   if (!array_bounds_check())
     return index;
 
-  return build_condition(TREE_TYPE (index),
-			 d_bounds_condition (index, upr, inclusive),
-			 index, d_assert_call (loc, LIBCALL_ARRAY_BOUNDS));
-}
+  // Prevent multiple evaluations of the index.
+  index = maybe_make_temp(index);
 
-// Builds the condition [INDEX < UPR] and optionally [INDEX >= 0]
-// if INDEX is a signed type.  For use in array bound checking routines.
-// If INCLUSIVE, we allow equality to return true also.
-// INDEX must be wrapped in a SAVE_EXPR to prevent multiple evaluation.
+  // Generate INDEX >= LEN && throw RangeError.
+  // No need to check whether INDEX >= 0 as the front-end should
+  // have already taken care of implicit casts to unsigned.
+  tree condition = fold_build2(inclusive ? GT_EXPR : GE_EXPR,
+			       bool_type_node, index, len);
+  tree boundserr = d_assert_call(loc, LIBCALL_ARRAY_BOUNDS);
 
-tree
-d_bounds_condition (tree index, tree upr, bool inclusive)
-{
-  tree uindex = d_convert (d_unsigned_type (TREE_TYPE (index)), index);
-
-  // Build condition to test that INDEX < UPR.
-  tree condition = build2 (inclusive ? LE_EXPR : LT_EXPR, bool_type_node, uindex, upr);
-
-  // Build condition to test that INDEX >= 0.
-  if (!TYPE_UNSIGNED (TREE_TYPE (index)))
-    condition = build2 (TRUTH_ANDIF_EXPR, bool_type_node, condition,
-			build2 (GE_EXPR, bool_type_node, index, integer_zero_node));
-
-  return condition;
+  return build_condition(TREE_TYPE (index), condition, boundserr, index);
 }
 
 // Returns TRUE if array bounds checking code generation is turned on.
@@ -2798,7 +2765,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   else
     callee = build_address(callable);
 
-  gcc_assert(function_type_p(ctype));
+  gcc_assert(FUNC_OR_METHOD_TYPE_P (ctype));
   gcc_assert(tf != NULL);
   gcc_assert(tf->ty == Tfunction);
 
@@ -2905,7 +2872,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 // Builds a call to AssertError or AssertErrorMsg.
 
 tree
-d_assert_call (Loc loc, LibCall libcall, tree msg)
+d_assert_call (const Loc& loc, LibCall libcall, tree msg)
 {
   tree args[3];
   int nargs;
@@ -2914,13 +2881,13 @@ d_assert_call (Loc loc, LibCall libcall, tree msg)
     {
       args[0] = msg;
       args[1] = d_array_string (loc.filename ? loc.filename : "");
-      args[2] = build_integer_cst (loc.linnum, build_ctype(Type::tuns32));
+      args[2] = size_int(loc.linnum);
       nargs = 3;
     }
   else
     {
       args[0] = d_array_string (loc.filename ? loc.filename : "");
-      args[1] = build_integer_cst (loc.linnum, build_ctype(Type::tuns32));
+      args[1] = size_int(loc.linnum);
       args[2] = NULL_TREE;
       nargs = 2;
     }
@@ -4280,12 +4247,6 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 		  var->csym->Stree = field;
 		}
 
-	      if (var->size(var->loc))
-		{
-		  gcc_assert(DECL_MODE (field) != VOIDmode);
-		  gcc_assert(DECL_SIZE (field) != NULL_TREE);
-		}
-
 	      fields += 1;
 	      continue;
 	    }
@@ -4432,7 +4393,7 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 // Add a compiler generated field FIELD at OFFSET into aggregate.
 
 void
-insert_aggregate_field(Loc loc, tree type, tree field, size_t offset)
+insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
 {
   DECL_FIELD_CONTEXT (field) = type;
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
@@ -4448,8 +4409,72 @@ insert_aggregate_field(Loc loc, tree type, tree field, size_t offset)
   TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), field);
 }
 
-// Wrap-up and compute finalised aggregate type.  Writing out
-// any GCC attributes that were applied to the type declaration.
+// Create an anonymous field of type ubyte[SIZE] at OFFSET.
+// CONTEXT is the record type where the field will be inserted.
+
+static tree
+fill_alignment_field(tree context, tree size, tree offset)
+{
+  tree type = d_array_type(Type::tuns8, tree_to_uhwi(size));
+  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
+
+  // As per insert_aggregate_field.
+  DECL_FIELD_CONTEXT (field) = context;
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
+  DECL_FIELD_OFFSET (field) = offset;
+  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+
+  layout_decl(field, 0);
+
+  DECL_ARTIFICIAL (field) = 1;
+  DECL_IGNORED_P (field) = 1;
+
+  return field;
+}
+
+// Insert anonymous fields in the record TYPE for padding out alignment holes.
+
+static void
+fill_alignment_holes(tree type)
+{
+  // Filling alignment holes this way only applies for structs.
+  if (TREE_CODE (type) != RECORD_TYPE
+      || CLASS_TYPE_P (type) || TYPE_PACKED (type))
+    return;
+
+  tree offset = size_zero_node;
+  tree prev = NULL_TREE;
+
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    {
+      tree voffset = DECL_FIELD_OFFSET (field);
+      tree vsize = TYPE_SIZE_UNIT (TREE_TYPE (field));
+
+      // If there is an alignment hole, pad with a static array of type ubyte[].
+      if (prev != NULL_TREE && tree_int_cst_lt(offset, voffset))
+	{
+	  tree psize = size_binop(MINUS_EXPR, voffset, offset);
+	  tree pfield = fill_alignment_field(type, psize, offset);
+
+	  // Insert before the current field position.
+	  DECL_CHAIN (pfield) = DECL_CHAIN (prev);
+	  DECL_CHAIN (prev) = pfield;
+	}
+
+      prev = field;
+      offset = size_binop(PLUS_EXPR, voffset, vsize);
+    }
+
+  // Finally pad out the end of the record.
+  if (tree_int_cst_lt(offset, TYPE_SIZE_UNIT (type)))
+    {
+      tree psize = size_binop(MINUS_EXPR, TYPE_SIZE_UNIT (type), offset);
+      tree pfield = fill_alignment_field(type, psize, offset);
+      TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), pfield);
+    }
+}
+
+// Wrap-up and compute finalised aggregate type.
 
 void
 finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
@@ -4457,6 +4482,7 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
 {
   TYPE_SIZE (type) = NULL_TREE;
 
+  // Write out any GCC attributes that were applied to the type declaration.
   if (declattrs)
     {
       Expressions *attrs = declattrs->getAttributes();
@@ -4464,20 +4490,29 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
 		      ATTR_FLAG_TYPE_IN_PLACE);
     }
 
+  // Set size and alignment as requested by frontend.
   TYPE_SIZE (type) = bitsize_int(structsize * BITS_PER_UNIT);
   TYPE_SIZE_UNIT (type) = size_int(structsize);
   TYPE_ALIGN (type) = alignsize * BITS_PER_UNIT;
   TYPE_PACKED (type) = (alignsize == 1);
 
+  // Add padding to fill in any alignment holes.
+  fill_alignment_holes(type);
+
+  // Set the backend type mode.
   compute_record_mode(type);
 
-  // Set up variants.
-  for (tree x = TYPE_MAIN_VARIANT (type); x; x = TYPE_NEXT_VARIANT (x))
+  // Fix up all variants of this aggregate type.
+  for (tree t = TYPE_MAIN_VARIANT (type); t; t = TYPE_NEXT_VARIANT (t))
     {
-      TYPE_FIELDS (x) = TYPE_FIELDS (type);
-      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (type);
-      TYPE_ALIGN (x) = TYPE_ALIGN (type);
-      TYPE_USER_ALIGN (x) = TYPE_USER_ALIGN (type);
+      if (t == type)
+	continue;
+
+      TYPE_FIELDS (t) = TYPE_FIELDS (type);
+      TYPE_LANG_SPECIFIC (t) = TYPE_LANG_SPECIFIC (type);
+      TYPE_ALIGN (t) = TYPE_ALIGN (type);
+      TYPE_USER_ALIGN (t) = TYPE_USER_ALIGN (type);
+      gcc_assert(TYPE_MODE (t) == TYPE_MODE (type));
     }
 }
 

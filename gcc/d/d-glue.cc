@@ -29,7 +29,6 @@
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
 
@@ -320,10 +319,10 @@ ensurePathToNameExists(Loc loc, const char *name)
   if (*pt)
     {
       if (FileName::ensurePathExists(pt))
- 	{
- 	  error(loc, "cannot create directory %s", pt);
- 	  fatal();
- 	}
+	{
+	  error(loc, "cannot create directory %s", pt);
+	  fatal();
+	}
     }
 }
 

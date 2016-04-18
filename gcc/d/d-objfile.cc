@@ -38,7 +38,6 @@
 #include "pointer-set.h"
 
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
 #include "d-dmd-gcc.h"
@@ -438,7 +437,7 @@ Lhaspointers:
     {
       // If class has no pointers.
       if (flags & ClassFlags::noPointers)
-    	dt_cons (&dt, size_int (0));
+	dt_cons (&dt, size_int (0));
       else
 	dt_cons (&dt, size_int (1));
     }
@@ -831,13 +830,20 @@ VarDeclaration::toObjFile()
     }
   else if (isDataseg() && !(storage_class & STCextern))
     {
+      Symbol *s = toSymbol();
+
+      // Duplicated VarDeclarations map to the same symbol. Check if this
+      // is the one declaration which will be emitted.
+      tree ident = get_identifier(s->Sident);
+      if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
+	return;
+
       if (isThreadlocal())
 	{
 	  ModuleInfo *mi = current_module_info;
 	  mi->tlsVars.safe_push (this);
 	}
 
-      Symbol *s = toSymbol();
       size_t sz = type->size();
 
       if (init)
@@ -1136,6 +1142,15 @@ FuncDeclaration::toObjFile()
 
   if (global.errors)
     return;
+
+  // Duplicated FuncDeclarations map to the same symbol. Check if this
+  // is the one declaration which will be emitted.
+  if (toSymbol()->Sident)
+    {
+      tree ident = get_identifier(toSymbol()->Sident);
+      if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
+	return;
+    }
 
   tree fndecl = toSymbol()->Stree;
 
@@ -1491,7 +1506,7 @@ d_finish_module()
 }
 
 location_t
-get_linemap (const Loc loc)
+get_linemap (const Loc& loc)
 {
   location_t gcc_location;
 
@@ -1659,30 +1674,29 @@ d_comdat_linkage(tree decl)
     DECL_COMMON (decl) = 1;
 
   DECL_COMDAT (decl) = 1;
+}
 
-  // For GCC <= 4.9 we need to call these to initialize the symtab code
-  if (VAR_P (decl))
-    varpool_node_for_decl(decl);
-  else
-    cgraph_get_create_node(decl);
 
-  symtab_node *node = symtab_get_node(decl);
+// Check if dsym is a template and whether it will be emitted (local_p)
+// or if it's external.
 
-  if (!node->same_comdat_group)
+void
+get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p)
+{
+  *local_p = output_module_p(dsym->getModule());
+  *template_p = false;
+  Dsymbol *sym = dsym->toParent();
+
+  while (sym)
     {
-      // Identical symbols go in the same comdat group.
-      static pointer_map<symtab_node *> comdat_list;
-      bool existed;
-      symtab_node **entry = comdat_list.insert(DECL_COMDAT_GROUP (node->decl),
-						       &existed);
-      if (!existed)
-	*entry = node;
-      else
+      TemplateInstance *ti = sym->isTemplateInstance();
+      if (ti)
 	{
-	  symtab_add_to_same_comdat_group(node, *entry);
-	  // Note that this function is now never emitted.
-	  DECL_ABSTRACT (decl) = 1;
+	  *local_p = output_module_p(ti->minst);
+	  *template_p = true;
+	  break;
 	}
+      sym = sym->toParent();
     }
 }
 
@@ -1698,21 +1712,14 @@ setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
       || (VAR_P (decl) && (rd && rd->isDataseg()))
       || (TREE_CODE (decl) == FUNCTION_DECL))
     {
-      bool local_p = output_module_p(dsym->getModule());
-      Dsymbol *sym = dsym->toParent();
+      bool local_p, template_p;
+      get_template_storage_info(dsym, &local_p, &template_p);
 
-      while (sym)
+      if (template_p)
 	{
-	  TemplateInstance *ti = sym->isTemplateInstance();
-	  if (ti)
-	    {
-	      D_DECL_ONE_ONLY (decl) = 1;
-	      D_DECL_IS_TEMPLATE (decl) = 1;
-	      DECL_ABSTRACT (decl) = !flag_emit_templates;
-	      local_p = output_module_p(ti->minst);
-	      break;
-	    }
-	  sym = sym->toParent();
+	  D_DECL_ONE_ONLY (decl) = 1;
+	  D_DECL_IS_TEMPLATE (decl) = 1;
+	  DECL_ABSTRACT (decl) = !flag_emit_templates;
 	}
 
       VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;

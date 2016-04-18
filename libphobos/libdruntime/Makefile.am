@@ -165,7 +165,7 @@ install-data-local: libgdruntime.a
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    done; \
 	done
-	for i in gcc gcc/unwind gcc/gthreads; do \
+	for i in gcc gcc/unwind; do \
 	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
 	    for f in $(srcdir)/$$i/*.d; do \
 		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
