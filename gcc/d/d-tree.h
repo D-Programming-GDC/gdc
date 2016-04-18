@@ -22,10 +22,12 @@
 // Forward type declarations to avoid including unnecessary headers.
 class Declaration;
 class FuncDeclaration;
+class VarDeclaration;
+class Expression;
 class Module;
 class Statement;
 class Type;
-class VarDeclaration;
+class Dsymbol;
 
 // The kinds of scopes we recognise.
 enum level_kind
@@ -116,7 +118,14 @@ struct GTY(()) d_label_entry
 struct GTY(()) lang_identifier
 {
   struct tree_identifier common;
+  Dsymbol * GTY((skip)) dsymbol;
 };
+
+#define IDENTIFIER_LANG_SPECIFIC(NODE) \
+  ((struct lang_identifier*) IDENTIFIER_NODE_CHECK (NODE))
+
+#define IDENTIFIER_DSYMBOL(NODE) \
+  (IDENTIFIER_LANG_SPECIFIC (NODE)->dsymbol)
 
 // Global state pertinent to the current function.
 struct GTY(()) language_function
@@ -169,16 +178,20 @@ lang_tree_node
 
 // True if the Tdelegate typed expression is not really a variable,
 // but a literal function / method reference.
-#define D_METHOD_CALL_EXPR(NODE) \
+#define METHOD_CALL_EXPR(NODE) \
   (TREE_LANG_FLAG_0 (NODE))
 
 // True if the type is an imaginary float type.
-#define D_TYPE_IMAGINARY_FLOAT(NODE) \
+#define TYPE_IMAGINARY_FLOAT(NODE) \
   (TYPE_LANG_FLAG_0 (TREE_CHECK ((NODE), REAL_TYPE)))
 
 // True if the type is an anonymous record or union.
 #define ANON_AGGR_TYPE_P(NODE) \
   (TYPE_LANG_FLAG_1 (RECORD_OR_UNION_CHECK (NODE)))
+
+// True if the type is the underlying record for a class.
+#define CLASS_TYPE_P(NODE) \
+  (TYPE_LANG_FLAG_2 (TREE_CHECK ((NODE), RECORD_TYPE)))
 
 // True if the symbol should be made "link one only".  This is used to
 // defer calling make_decl_one_only() before the decl has been prepared.
@@ -192,8 +205,18 @@ lang_tree_node
   (DECL_LANG_FLAG_1 (NODE))
 
 // True if the decl is a variable case label decl.
-#define D_LABEL_VARIABLE_CASE(NODE) \
+#define LABEL_VARIABLE_CASE(NODE) \
   (DECL_LANG_FLAG_2 (LABEL_DECL_CHECK (NODE)))
+
+// The D frontend Type AST for GCC type NODE.
+#define TYPE_LANG_FRONTEND(NODE) \
+  (TYPE_LANG_SPECIFIC (NODE) \
+   ? TYPE_LANG_SPECIFIC (NODE)->d_type : NULL)
+
+// The D frontend Declaration AST for GCC decl NODE.
+#define DECL_LANG_FRONTEND(NODE) \
+  (DECL_LANG_SPECIFIC (NODE) \
+   ? DECL_LANG_SPECIFIC (NODE)->d_decl : NULL)
 
 enum d_tree_index
 {
@@ -245,5 +268,37 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
 #define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+
+// In d-builtins.cc.
+extern const attribute_spec d_langhook_attribute_table[];
+extern const attribute_spec d_langhook_common_attribute_table[];
+extern const attribute_spec d_langhook_format_attribute_table[];
+
+extern tree d_builtin_function (tree);
+extern void d_init_builtins (void);
+extern void d_register_builtin_type (tree, const char *);
+extern void d_build_builtins_module (Module *);
+extern void d_maybe_set_builtin (Module *);
+extern void d_backend_init (void);
+extern void d_backend_term (void);
+extern Expression *build_expression (tree);
+extern Type *build_dtype (tree);
+
+// In d-convert.cc.
+extern tree d_truthvalue_conversion (tree);
+
+// In d-incpath.cc.
+extern void add_import_paths (const char *, const char *, bool);
+
+// In d-lang.cc.
+extern void d_add_global_declaration (tree);
+extern Module *d_gcc_get_output_module (void);
+extern struct lang_type *build_d_type_lang_specific (Type *);
+extern struct lang_decl *build_d_decl_lang_specific (Declaration *);
+extern tree d_pushdecl (tree);
+extern tree d_unsigned_type (tree);
+extern tree d_signed_type (tree);
+extern void d_init_exceptions (void);
+extern void d_keep (tree);
 
 #endif

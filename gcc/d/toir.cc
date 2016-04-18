@@ -476,7 +476,7 @@ public:
 		tree ifbody = fold_build1(GOTO_EXPR, void_type_node, caselabel);
 		tree cond = build_vcondition(ifcase, ifbody, void_node);
 		TREE_USED (caselabel) = 1;
-		D_LABEL_VARIABLE_CASE (caselabel) = 1;
+		LABEL_VARIABLE_CASE (caselabel) = 1;
 		add_stmt(cond);
 	      }
 
@@ -491,7 +491,7 @@ public:
 	    if (s->hasVars)
 	      {
 		this->do_jump(NULL, defaultlabel);
-		D_LABEL_VARIABLE_CASE (defaultlabel) = 1;
+		LABEL_VARIABLE_CASE (defaultlabel) = 1;
 	      }
 
 	    check_goto(s, s->sdefault);
@@ -527,7 +527,7 @@ public:
     // Emit the case label.
     tree label = define_label(s);
 
-    if (D_LABEL_VARIABLE_CASE (label))
+    if (LABEL_VARIABLE_CASE (label))
       this->do_label(label);
     else
       {
@@ -552,7 +552,7 @@ public:
     // Emit the default case label.
     tree label = define_label(s);
 
-    if (D_LABEL_VARIABLE_CASE (label))
+    if (LABEL_VARIABLE_CASE (label))
       this->do_label(label);
     else
       {

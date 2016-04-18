@@ -39,10 +39,8 @@
 #include "options.h"
 #include "cppdefault.h"
 #include "debug.h"
-#include "function.h"
 
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
 #include "d-dmd-gcc.h"
@@ -716,7 +714,7 @@ d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 
 	  *expr_p = convert (TREE_TYPE (*expr_p),
 			     build2 (RSHIFT_EXPR, unstype,
-	 			     convert (unstype, op0), op1));
+				     convert (unstype, op0), op1));
 	  return GS_UNHANDLED;
 	}
 
@@ -1468,7 +1466,7 @@ d_finish_incomplete_decl (tree decl)
 static classify_record
 d_classify_record (tree type)
 {
-  Type *dtype = lang_dtype (type);
+  Type *dtype = TYPE_LANG_FRONTEND (type);
 
   if (dtype && dtype->ty == Tclass)
     {
@@ -1529,7 +1527,7 @@ d_eh_personality()
 static tree
 d_build_eh_type_type (tree type)
 {
-  Type *dtype = lang_dtype (type);
+  Type *dtype = TYPE_LANG_FRONTEND (type);
   Symbol *sym;
 
   if (dtype)

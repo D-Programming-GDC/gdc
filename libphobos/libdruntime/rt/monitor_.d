@@ -132,7 +132,6 @@ nothrow:
 
 extern (C) void _d_monitor_staticctor()
 {
-    version (GNU) {} else
     version (Posix)
     {
         pthread_mutexattr_init(&gattr);
@@ -144,7 +143,6 @@ extern (C) void _d_monitor_staticctor()
 extern (C) void _d_monitor_staticdtor()
 {
     destroyMutex(&gmtx);
-    version (GNU) {} else
     version (Posix)
         pthread_mutexattr_destroy(&gattr);
 }
@@ -157,13 +155,32 @@ alias DEvent = void delegate(Object);
 
 version (GNU)
 {
-    import gcc.gthreads;
+    import gcc.config;
+    static if (GNU_Thread_Model == ThreadModel.Single)
+        version = SingleThreaded;
+    // Ignore ThreadModel, we don't want posix threads on windows and
+    // will always use native threading instead.
+}
 
-    alias Mutex = gthread_recursive_mutex_t;
-    alias initMutex = gthread_recursive_mutex_init;
-    alias destroyMutex = gthread_recursive_mutex_destroy;
-    alias lockMutex = gthread_recursive_mutex_lock;
-    alias unlockMutex = gthread_recursive_mutex_unlock;
+version (SingleThreaded)
+{
+    alias Mutex = int;
+
+    void initMutex(Mutex* mtx)
+    {
+    }
+
+    void destroyMutex(Mutex* mtx)
+    {
+    }
+
+    void lockMutex(Mutex* mtx)
+    {
+    }
+
+    void unlockMutex(Mutex* mtx)
+    {
+    }
 }
 else version (Windows)
 {
