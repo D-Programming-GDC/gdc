@@ -24,6 +24,7 @@
 #include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
 #include "dfrontend/enum.h"
+#include "dfrontend/globals.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
 #include "dfrontend/statement.h"
@@ -32,7 +33,6 @@
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
 #include "id.h"
@@ -72,7 +72,6 @@ Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
 Symbol *
 Dsymbol::toSymbol()
 {
-  fprintf (global.stdmsg, "Dsymbol::toSymbol() '%s', kind = '%s'\n", toChars(), kind());
   gcc_unreachable();          // BUG: implement
   return NULL;
 }
@@ -95,13 +94,35 @@ VarDeclaration::toSymbol()
 	  return csym;
 	}
 
-      csym = new Symbol();
+      // Use same symbol for VarDeclaration templates with same mangle
+      bool local_p, template_p;
+      get_template_storage_info(this, &local_p, &template_p);
+      if (!this->mangleOverride && isDataseg () && !(storage_class & STCextern)
+	  && local_p && template_p)
+	{
+	  tree ident = get_identifier(mangle(this));
+	  if (!IDENTIFIER_DSYMBOL (ident))
+	    {
+	      csym = new Symbol();
+	      IDENTIFIER_DSYMBOL (ident) = this;
+	    }
+	  else
+	    {
+	      csym = IDENTIFIER_DSYMBOL (ident)->toSymbol();
+	      return csym;
+	    }
+	}
+      else
+	{
+	  csym = new Symbol();
+	}
+
       csym->Salignment = alignment;
 
       if (isDataseg())
 	{
 	  csym->Sident = mangle(this);
-	  csym->prettyIdent = toPrettyChars();
+	  csym->prettyIdent = toPrettyChars(true);
 	}
       else
 	csym->Sident = ident->string;
@@ -194,14 +215,6 @@ VarDeclaration::toSymbol()
   return csym;
 }
 
-// Create the symbol with tree for classinfo decls.
-
-Symbol *
-ClassInfoDeclaration::toSymbol()
-{
-  return cd->toSymbol();
-}
-
 // Create the symbol with tree for typeinfo decls.
 
 Symbol *
@@ -254,8 +267,6 @@ FuncDeclaration::toSymbol()
 {
   if (!csym)
     {
-      csym = new Symbol();
-
       TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
       tree fntype = NULL_TREE;
       tree vindex = NULL_TREE;
@@ -263,13 +274,40 @@ FuncDeclaration::toSymbol()
       // Run full semantic on symbols we need to know about during compilation.
       if (inferRetType && type && !type->nextOf() && !functionSemantic())
 	{
+	  csym = new Symbol();
 	  csym->Stree = error_mark_node;
 	  return csym;
 	}
 
+      // Use same symbol for FuncDeclaration templates with same mangle
+      if (!this->mangleOverride && this->fbody)
+	{
+	  tree ident = get_identifier(mangleExact(this));
+	  if (!IDENTIFIER_DSYMBOL (ident))
+	    {
+	      csym = new Symbol();
+	      IDENTIFIER_DSYMBOL (ident) = this;
+	    }
+	  else
+	    {
+	      bool local_p, template_p;
+	      get_template_storage_info(this, &local_p, &template_p);
+	      // Non-templated functions shouldn't be defined twice
+	      if (!template_p)
+		ScopeDsymbol::multiplyDefined(loc, this, IDENTIFIER_DSYMBOL (ident));
+
+	      csym = IDENTIFIER_DSYMBOL (ident)->toSymbol();
+	      return csym;
+	    }
+	}
+      else
+	{
+	  csym = new Symbol();
+	}
+
       // Save mangle/debug names for making thunks.
       csym->Sident = mangleExact(this);
-      csym->prettyIdent = toPrettyChars();
+      csym->prettyIdent = toPrettyChars(true);
 
       tree id = get_identifier (this->isMain()
 				? csym->prettyIdent : ident->string);
@@ -704,7 +742,7 @@ EnumDeclaration::toInitializer()
     {
       Identifier *ident_save = ident;
       if (!ident)
-	ident = Lexer::uniqueId("__enum");
+	ident = Identifier::generateId("__enum");
       sinit = toSymbolX ("__init", 0, 0, "Z");
       ident = ident_save;
     }
@@ -725,32 +763,5 @@ EnumDeclaration::toInitializer()
     }
 
   return sinit;
-}
-
-
-// Stubs unused in GDC, but required for D front-end.
-
-Symbol *
-Module::toModuleAssert()
-{
-  return NULL;
-}
-
-Symbol *
-Module::toModuleUnittest()
-{
-  return NULL;
-}
-
-Symbol *
-Module::toModuleArray()
-{
-  return NULL;
-}
-
-Symbol *
-TypeAArray::aaGetSymbol (const char *, int)
-{
-  return 0;
 }
 

@@ -28,7 +28,6 @@
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-lang.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
 
@@ -341,7 +340,6 @@ public:
 	break;
 
       default:
-	fprintf(global.stdmsg, "linkage = %d\n", t->linkage);
 	gcc_unreachable();
       }
   }
@@ -452,6 +450,7 @@ public:
     // Note that this is set on both the reference type and record type.
     TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
     TYPE_LANG_SPECIFIC (basetype) = TYPE_LANG_SPECIFIC (t->ctype);
+    CLASS_TYPE_P (basetype) = 1;
 
     // Add the fields of each base class
     layout_aggregate_type(t->sym, basetype, t->sym);

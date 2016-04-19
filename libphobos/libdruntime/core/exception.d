@@ -15,9 +15,6 @@
  */
 module core.exception;
 
-import core.stdc.stdio;
-
-
 /**
  * Thrown on a range error.
  */
@@ -127,22 +124,22 @@ unittest
  */
 class FinalizeError : Error
 {
-    ClassInfo   info;
+    TypeInfo   info;
 
-    @safe pure nothrow this( ClassInfo ci, Throwable next, string file = __FILE__, size_t line = __LINE__ )
+    @safe pure nothrow this( TypeInfo ci, Throwable next, string file = __FILE__, size_t line = __LINE__ )
     {
         this(ci, file, line, next);
     }
 
-    @safe pure nothrow this( ClassInfo ci, string file = __FILE__, size_t line = __LINE__, Throwable next = null )
+    @safe pure nothrow this( TypeInfo ci, string file = __FILE__, size_t line = __LINE__, Throwable next = null )
     {
         super( "Finalization error", file, line, next );
         info = ci;
     }
 
-    @safe override const string toString()
+    @safe override string toString() const
     {
-        return "An exception was thrown while finalizing an instance of class " ~ info.name;
+        return "An exception was thrown while finalizing an instance of " ~ info.toString();
     }
 }
 
@@ -188,7 +185,6 @@ unittest
     }
 }
 
-
 /**
  * Thrown on hidden function error.
  */
@@ -223,7 +219,7 @@ class OutOfMemoryError : Error
         super( "Memory allocation failed", file, line, next );
     }
 
-    @trusted override const string toString()
+    @trusted override string toString() const
     {
         return msg.length ? (cast()super).toString() : "Memory allocation failed";
     }
@@ -264,7 +260,7 @@ class InvalidMemoryOperationError : Error
         super( "Invalid memory operation", file, line, next );
     }
 
-    @trusted override const string toString()
+    @trusted override string toString() const
     {
         return msg.length ? (cast()super).toString() : "Invalid memory operation";
     }
@@ -375,13 +371,13 @@ Gets/sets assert hander. null means the default handler is used.
 alias AssertHandler = void function(string file, size_t line, string msg) nothrow;
 
 /// ditto
-@property AssertHandler assertHandler() @trusted nothrow
+@property AssertHandler assertHandler() @trusted nothrow @nogc
 {
     return _assertHandler;
 }
 
 /// ditto
-@property void assertHandler(AssertHandler handler) @trusted nothrow
+@property void assertHandler(AssertHandler handler) @trusted nothrow @nogc
 {
     _assertHandler = handler;
 }
@@ -394,7 +390,7 @@ alias AssertHandler = void function(string file, size_t line, string msg) nothro
  * Params:
  *  h = The new assert handler.  Set to null to use the default handler.
  */
-deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow
+deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
 {
     assertHandler = h;
 }
@@ -407,7 +403,8 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow
 
 /**
  * A callback for assert errors in D.  The user-supplied assert handler will
- * be called if one has been supplied, otherwise an AssertError will be thrown.
+ * be called if one has been supplied, otherwise an $(LREF AssertError) will be
+ * thrown.
  *
  * Params:
  *  file = The name of the file that signaled this error.
@@ -423,7 +420,8 @@ extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) 
 
 /**
  * A callback for assert errors in D.  The user-supplied assert handler will
- * be called if one has been supplied, otherwise an AssertError will be thrown.
+ * be called if one has been supplied, otherwise an $(LREF AssertError) will be
+ * thrown.
  *
  * Params:
  *  file = The name of the file that signaled this error.
@@ -458,16 +456,15 @@ extern (C) void onUnittestErrorMsg( string file, size_t line, string msg ) nothr
 // Internal Error Callbacks
 ///////////////////////////////////////////////////////////////////////////////
 
-
 /**
- * A callback for array bounds errors in D.  A RangeError will be thrown.
+ * A callback for array bounds errors in D.  A $(LREF RangeError) will be thrown.
  *
  * Params:
  *  file = The name of the file that signaled this error.
  *  line = The line number on which this error occurred.
  *
  * Throws:
- *  RangeError.
+ *  $(LREF RangeError).
  */
 extern (C) void onRangeError( string file = __FILE__, size_t line = __LINE__ ) @safe pure nothrow
 {
@@ -476,29 +473,36 @@ extern (C) void onRangeError( string file = __FILE__, size_t line = __LINE__ ) @
 
 
 /**
- * A callback for finalize errors in D.  A FinalizeError will be thrown.
+ * A callback for finalize errors in D.  A $(LREF FinalizeError) will be thrown.
  *
  * Params:
- *  info = The ClassInfo instance for the object that failed finalization.
+ *  info = The TypeInfo instance for the object that failed finalization.
  *  e = The exception thrown during finalization.
  *  file = The name of the file that signaled this error.
  *  line = The line number on which this error occurred.
  *
  * Throws:
- *  FinalizeError.
+ *  $(LREF FinalizeError).
  */
-extern (C) void onFinalizeError( ClassInfo info, Throwable e, string file = __FILE__, size_t line = __LINE__ ) @safe pure nothrow
+extern (C) void onFinalizeError( TypeInfo info, Throwable e, string file = __FILE__, size_t line = __LINE__ ) @trusted nothrow
 {
-    throw new FinalizeError( info, file, line, e );
+    // This error is thrown during a garbage collection, so no allocation must occur while 
+    //  generating this object. So we use a preallocated instance
+    __gshared FinalizeError err = new FinalizeError( null );
+    err.info = info;
+    err.next = e;
+    err.file = file;
+    err.line = line;
+    throw err;
 }
 
 
 /**
- * A callback for hidden function errors in D.  A HiddenFuncError will be
+ * A callback for hidden function errors in D.  A $(LREF HiddenFuncError) will be
  * thrown.
  *
  * Throws:
- *  HiddenFuncError.
+ *  $(LREF HiddenFuncError).
  */
 extern (C) void onHiddenFuncError( Object o ) @safe pure nothrow
 {
@@ -507,13 +511,13 @@ extern (C) void onHiddenFuncError( Object o ) @safe pure nothrow
 
 
 /**
- * A callback for out of memory errors in D.  An OutOfMemoryError will be
+ * A callback for out of memory errors in D.  An $(LREF OutOfMemoryError) will be
  * thrown.
  *
  * Throws:
- *  OutOfMemoryError.
+ *  $(LREF OutOfMemoryError).
  */
-extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure nothrow /* dmd @@@BUG11461@@@ */
+extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure nothrow @nogc /* dmd @@@BUG11461@@@ */
 {
     // NOTE: Since an out of memory condition exists, no allocation must occur
     //       while generating this object.
@@ -523,12 +527,12 @@ extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure
 
 /**
  * A callback for invalid memory operations in D.  An
- * InvalidMemoryOperationError will be thrown.
+ * $(LREF InvalidMemoryOperationError) will be thrown.
  *
  * Throws:
- *  InvalidMemoryOperationError.
+ *  $(LREF InvalidMemoryOperationError).
  */
-extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @trusted pure nothrow /* dmd @@@BUG11461@@@ */
+extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @trusted pure nothrow @nogc /* dmd @@@BUG11461@@@ */
 {
     // The same restriction applies as for onOutOfMemoryError. The GC is in an
     // undefined state, thus no allocation must occur while generating this object.
@@ -538,14 +542,14 @@ extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @t
 
 
 /**
- * A callback for switch errors in D.  A SwitchError will be thrown.
+ * A callback for switch errors in D.  A $(LREF SwitchError) will be thrown.
  *
  * Params:
  *  file = The name of the file that signaled this error.
  *  line = The line number on which this error occurred.
  *
  * Throws:
- *  SwitchError.
+ *  $(LREF SwitchError).
  */
 extern (C) void onSwitchError( string file = __FILE__, size_t line = __LINE__ ) @safe pure nothrow
 {
@@ -554,7 +558,7 @@ extern (C) void onSwitchError( string file = __FILE__, size_t line = __LINE__ ) 
 
 
 /**
- * A callback for unicode errors in D.  A UnicodeException will be thrown.
+ * A callback for unicode errors in D.  A $(LREF UnicodeException) will be thrown.
  *
  * Params:
  *  msg = Information about the error.
@@ -563,7 +567,7 @@ extern (C) void onSwitchError( string file = __FILE__, size_t line = __LINE__ ) 
  *  line = The line number on which this error occurred.
  *
  * Throws:
- *  UnicodeException.
+ *  $(LREF UnicodeException).
  */
 extern (C) void onUnicodeError( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__ ) @safe pure
 {

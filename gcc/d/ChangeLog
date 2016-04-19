@@ -1,7 +1,160 @@
+2016-03-29  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-objfile.cc (d_comdat_linkage): Rewrite template duplicate
+	handling to generate only one backend tree for all duplicates.
+	(FuncDeclaration::toObjFile): Likewise.
+	(VarDeclaration::toObjFile): Likewise.
+	* d-decls.cc (FuncDeclaration::toSymbol): Likewise.
+	(VarDeclaration::toSymbol): Likewise.
+	* d-objfile.cc (get_template_storage_info): Extract function from
+	setup_symbol_storage.
+	(setup_symbol_storage): Likewise.
+	* d-tree.h (lang_identifier): Add field for Dsymbol.
+	(IDENTIFIER_LANG_SPECIFIC): New macro.
+	(IDENTIFIER_DSYMBOL): Likewise.
+
+2016-03-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (fill_alignment_field): Call layout_decl on field.
+	(finish_aggregate_type): Add assertion that TYPE_MODE is equal.
+
+2016-03-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (convert_expr): Replace call build_integer_cst with
+	size_int.
+	(convert_for_assignment): Likewise.
+	(build_struct_comparison): Likewise.
+	(d_assert_call): Likewise.
+	* d-elem.cc (IdentityExp::toElem): Likewise.
+	(AssignExp::toElem): Likewise.
+	(IndexExp::toElem): Likewise.
+	(SymbolExp::toElem): Likewise.
+	(NewExp::toElem): Likewise.
+	(ArrayLiteralExp::toElem): Likewise.
+	(AssocArrayLiteralExp::toElem): Likewise.
+
+2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (CLASS_TYPE_P): New macro.
+	* d-codegen.cc (build_struct_literal): Check RECORD_OR_UNION_TYPE_P
+	before testing ANON_AGGR_TYPE_P.
+	(fill_alignment_field): New function.
+	(fill_alignment_holes): New function.
+	(finish_aggregate_type): Call fill_alignment_holes before computing
+	backend type mode.
+
+2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (D_METHOD_CALL_EXPR): Removed `D_' prefix from macro,
+	updated all callers.
+	(D_TYPE_IMAGINARY_FLOAT): Likewise.
+	(D_LABEL_VARIABLE_CASE): Likewise.
+	* d-codegen.cc (build_delegate_cst): Always return valid constructor.
+	(get_object_method): Remove function.
+	(build_vindex_ref): New function.
+	* d-elem.cc (FuncExp::toElem): Use the real function pointer type when
+	converting to delegate.
+	(CallExp::toElem): Handle setting up virtual functions directly.
+	(DelegateExp::toElem): Likewise.
+	(DotVarExp::toElem): Remove handling of virtual functions.
+
+2016-03-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.h (lang_dtype): Remove function.
+	(lang_ddecl): Remove function.
+	* d-tree.h (TYPE_LANG_FRONTEND): New macro, replace all uses of
+	lang_dtype function.
+	(DECL_LANG_FRONTEND): New macro.
+	* d-attribs.c: Update includes.
+	* d-builtins.cc: Likewise.
+	* d-codegen.cc: Likewise.
+	* d-incpath.cc: Likewise.
+	* d-lang.cc: Likewise.
+	* d-objfile.cc: Likewise.
+
+2016-03-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.h (function_type_p): Remove function.
+	* d-codegen.cc (d_build_call): Use FUNC_OR_METHOD_P macro.
+	(build_bounds_condition): Update signature.
+	(d_assert_call): Likewise.
+	(insert_aggregate_field): Likewise.
+	* d-objfile.cc (get_linemap): Likewise.
+	* d-lang.h: Remove file, updated all includes.  Moved forward
+	declarations of types and functions to ...
+	* d-tree.h: ... here.
+
+2016-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_checked_index): Remove function.
+	(d_bounds_condition): Remove function.
+	(build_bounds_condition): New function.
+	* d-elem.cc (IndexExp::toElem): Use build_bounds_condition.
+	(SliceExp::toElem): Likewise.
+	(EqualExp::toElem): Convert expressions to dynamic arrays when
+	inlining comparison.  Don't pass zero length arrays to memcmp.
+
+2016-03-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_array_convert): New function overload.
+	* d-elem.cc (CatExp::toElem): Call new runtime function _d_arraycatnTX
+	when flattening multiple concatenations.
+	(NewExp::toElem): Update call construction for new signatures of
+	runtime functions _d_newarraymTX and _d_newarraymiTX.
+	* runtime.def (NEWARRAYMTX): Update signature.
+	(NEWARRAYMITX): Likewise,
+	(ARRAYCATNT): Remove runtime function.
+	(ARRAYCATNTX): New runtime function.
+
 2016-03-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* imports.cc (ImportVisitor::visit(Declaration)): Don't assume toSymbol
 	method will cache it's result.
+
+2016-03-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update root library to 2.068.
+	* Make-lang.in (D_DMD_OBJS): Add newdelete.o
+	* d-target.cc (Target::classinfosize): New variable, replaces all uses
+	of global CLASSINFO_SIZE.
+	(Target::init): Initialize it.
+	* d-decls.cc (ClassInfoDeclaration::toSymbol): Remove function.
+
+2016-03-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* dfrontend: Update to D front-end version 2.067.
+	* Make-lang.in (D_DMD_OBJS): Add new frontend sources.
+	* d-builtins.cc (d_build_builtins_module): Update signature.
+	(maybe_set_builtin): Rename to d_maybe_set_builtin, update signature.
+	(d_gcc_magic_module): Remove function.
+	* d-codegen.cc (expand_volatile_load): New function.
+	(expand_volatile_store): New function.
+	(expand_intrinsic): Handle volatileLoad and volatileStore intrinsics.
+	* d-decls.cc (Module::toModuleAssert): Remove function.
+	(Module::toModuleUnittest): Remove function.
+	(Module::toModuleArray): Remove function.
+	(TypeAArray::aaGetSymbol): Remove function.
+	* d-elem.cc (AssignExp::toElem): Call _d_arrayassign_{l,r} when
+	generating dynamic array assignment.
+	(IndexExp::toElem): Call _aaGetY when indexing an associative array.
+	(SliceExp::toElem): Use known CTFE result to check whether bounds
+	checks are necessary.
+	(DeleteExp::toElem): Call _d_delstruct when deleting a struct pointer.
+	(Expression::toElemDtor): Don't run cleanup of temporary if it's
+	constructor thrown an exception.
+	(NewExp::toElem): Handle special construction of new() arguments.
+	* d-glue.cc (Loc::Loc): Update signature.
+	(error): Likewise.
+	(toInitializer): New function.
+	* d-lang.cc (d_handle_option): Replace deprecated handlers.
+	(d_post_options): Set flag_max_errors.
+	(d_parse_file): Process any modules marked as builtin.
+	* d-objfile.cc (ClassDeclaration::toObjFile): Don't write out ctors
+	in the vtable marked @disable.
+	* d-target.cc (Target::loadModule): New function.
+	(Target::checkVectorType): New function.
+	* d-specs.c (lang_specific_driver): Handle -v option.
+	* lang-specs.h: Pass -v option to to frontend.
 
 2016-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 

@@ -2,7 +2,7 @@
 // EXTRA_FILES: extra-files/teststdio.txt
 
 import std.stdio;
-import std.c.stdio;
+import core.stdc.stdio;
 
 void main()
 {

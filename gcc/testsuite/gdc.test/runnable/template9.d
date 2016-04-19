@@ -2065,7 +2065,7 @@ class C9083
 
     void func()
     {
-        void templateFunc(T)(ref const T obj)
+        void templateFunc(T)(const T obj)
         {
             enum x1 = isFunction9083!(mixin("x"));  // NG
             enum x2 = isFunction9083!(x);           // NG
@@ -2691,12 +2691,8 @@ void test10083()
     assert(foo10083a(1) == 2);
     assert(foo10083a!int(1) == 2);
     assert(foo10083a!int(1.0) == 1);
-    version (Win64) {}  // workaround
-    else
-    {
     static assert(!__traits(compiles, foo10083a!double(1)));
     static assert(!__traits(compiles, foo10083a!double(1.0)));
-    }
     static assert(!__traits(compiles, foo10083a!real(1)));
     assert(foo10083a!real(1.0) == 1);
     assert(foo10083a!real(1.0L) == 2);
@@ -3393,6 +3389,21 @@ void test12376()
 }
 
 /******************************************/
+// 12447
+
+enum   test12447(string str) = str; // [1]
+string test12447(T...)(T args) if (T.length) { return args[0]; }    // [2]
+
+// With [1]: The template parameter str cannot be be deduced -> no match
+// With [2]: T is deduced to a type tuple (string), then match to the function call.
+static assert(test12447("foo") == "foo");
+
+// With [1]: template parameter str is deduced to "bar", then match.
+// With [2]: T is deduced to an expression tuple ("bar"), but it will make invalid the function signature (T args).
+//           The failure should be masked silently and prefer the 1st version.
+static assert(test12447!("bar") == "bar");
+
+/******************************************/
 // 12651
 
 alias TemplateArgsOf12651(alias T : Base!Args, alias Base, Args...) = Args;
@@ -3815,6 +3826,17 @@ void test13204()
 }
 
 /******************************************/
+// 8462 (dup of 13204)
+
+alias FP8462 = void function(C8462.Type arg);
+
+class C8462
+{
+    enum Type { Foo }
+    alias funcPtrPtr = FP8462*;
+}
+
+/******************************************/
 // 13218
 
 template isCallable13218(T...)
@@ -4138,6 +4160,18 @@ void test13374()
 }
 
 /******************************************/
+// 14109
+
+string f14109() { return "a"; }
+string g14109()() { return "a"; }
+
+struct S14109(string s) { static assert(s == "a"); }
+
+alias X14109 = S14109!(f14109);
+alias Y14109 = S14109!(g14109!());
+static assert(is(X14109 == Y14109));
+
+/******************************************/
 // 13378
 
 struct Vec13378(size_t n, T, string as)
@@ -4207,6 +4241,106 @@ auto f13417(E)(in V13417!(4, E, "ijka"))
 void test13417()
 {
     f13417(V13417!(4, float, "ijka")());
+}
+
+/******************************************/
+// 13484
+
+int foo13484()(void delegate() hi) { return 1; }
+int foo13484(T)(void delegate(T) hi) { return 2; }
+
+void test13484()
+{
+    assert(foo13484({}) == 1);          // works
+    assert(foo13484((float v){}) == 2); // works <- throws error
+}
+
+/******************************************/
+// 13675
+
+enum E13675;
+
+bool foo13675(T : E13675)()
+{
+    return false;
+}
+
+void test13675()
+{
+    if (foo13675!E13675)
+    {}
+}
+
+/******************************************/
+// 13694
+
+auto foo13694(T)(string A,         T[] G ...) { return 1; }
+auto foo13694(T)(string A, long E, T[] G ...) { return 2; }
+
+void test13694()
+{
+    struct S {}
+
+    S v;
+    assert(foo13694("A", v) == 1);      // <- OK
+    assert(foo13694("A", 0, v) == 2);   // <- used to be OK but now fails
+    assert(foo13694!S("A", 0, v) == 2); // <- workaround solution
+}
+
+/******************************************/
+// 13760
+
+void test13760()
+{
+    void func(K, V)(inout(V[K]) aa, inout(V) val) {}
+
+    class C {}
+    C[int] aa;
+    func(aa, new C);
+}
+
+/******************************************/
+// 13714
+
+struct JSONValue13714
+{
+    this(T)(T arg)
+    {
+    }
+    this(T : JSONValue13714)(inout T arg) inout
+    {
+        //store = arg.store;
+    }
+
+    void opAssign(T)(T arg)
+    {
+    }
+}
+
+void test13714()
+{
+    enum DummyStringEnum
+    {
+        foo = "bar"
+    }
+
+    JSONValue13714[string] aa;
+    aa["A"] = DummyStringEnum.foo;
+}
+
+/******************************************/
+// 13807
+
+T f13807(T)(inout(T)[] arr)
+{
+    return T.init;
+}
+
+void test13807()
+{
+    static assert(is(typeof(f13807([1, 2, 3])) == int));    // OK
+    static assert(is(typeof(f13807(["a", "b"])) == string));    // OK <- Error
+    static assert(is(typeof(f13807!string(["a", "b"])) == string)); // OK
 }
 
 /******************************************/
@@ -4314,6 +4448,8 @@ int main()
     test13374();
     test13378();
     test13379();
+    test13484();
+    test13694();
 
     printf("Success\n");
     return 0;

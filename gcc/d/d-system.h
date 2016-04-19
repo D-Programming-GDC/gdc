@@ -51,7 +51,11 @@
 #define VAR_P(NODE) \
   (TREE_CODE (NODE) == VAR_DECL)
 
+
 // GCC backported macros
+
+#define FUNC_OR_METHOD_TYPE_P(NODE) \
+  (TREE_CODE (NODE) == FUNCTION_TYPE || TREE_CODE (NODE) == METHOD_TYPE)
 
 /* The IDENTIFIER_NODE associated with the TYPE_NAME field.  */
 #define TYPE_IDENTIFIER(NODE) \

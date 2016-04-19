@@ -23,13 +23,11 @@
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
+#include "dfrontend/arraytypes.h"
 #include "dfrontend/mtype.h"
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-lang.h"
-#include "d-codegen.h"
 
 /* Internal attribute handlers for built-in functions.  */
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);
@@ -84,13 +82,13 @@ const attribute_spec d_langhook_common_attribute_table[] =
 			      handle_nothrow_attribute, false },
   { "sentinel",               0, 1, false, true, true,
 			      handle_sentinel_attribute, false },
-  { "transaction_pure",	      0, 0, false, true, true,
+  { "transaction_pure",       0, 0, false, true, true,
 			      handle_transaction_pure_attribute, false },
   { "no vops",                0, 0, true,  false, false,
 			      handle_novops_attribute, false },
   { "type generic",           0, 0, false, true, true,
 			      handle_type_generic_attribute, false },
-  { "fn spec",	 	      1, 1, false, true, true,
+  { "fn spec",                1, 1, false, true, true,
 			      handle_fnspec_attribute, false },
   { "*tm regparm",            0, 0, false, true, true,
 			      ignore_attribute, false },
@@ -455,7 +453,7 @@ d_handle_noinline_attribute (tree *node, tree name,
 			     tree ARG_UNUSED (args),
 			     int ARG_UNUSED (flags), bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     DECL_UNINLINABLE (*node) = 1;
@@ -476,7 +474,7 @@ d_handle_forceinline_attribute (tree *node, tree name,
 				int ARG_UNUSED (flags),
 				bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     {
@@ -507,7 +505,7 @@ d_handle_flatten_attribute (tree *node, tree name,
 			    tree args ATTRIBUTE_UNUSED,
 			    int flags ATTRIBUTE_UNUSED, bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty != Tfunction)
     {
@@ -524,7 +522,7 @@ static tree
 d_handle_target_attribute (tree *node, tree name, tree args, int flags,
 			   bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   /* Ensure we have a function type.  */
   if (t->ty != Tfunction)
@@ -546,7 +544,7 @@ d_handle_noclone_attribute (tree *node, tree name,
 				int ARG_UNUSED (flags),
 				bool *no_add_attrs)
 {
-  Type *t = lang_dtype (TREE_TYPE (*node));
+  Type *t = TYPE_LANG_FRONTEND (TREE_TYPE (*node));
 
   if (t->ty == Tfunction)
     {

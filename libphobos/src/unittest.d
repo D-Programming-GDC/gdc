@@ -5,7 +5,7 @@
  * tests on them.  Then, it prints out the arguments passed to main().
  *
  * Copyright: Copyright Digital Mars 2000 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   $(WEB digitalmars.com, Walter Bright)
  *
  *          Copyright Digital Mars 2000 - 2009.
@@ -60,7 +60,7 @@ public import std.digest.crc;
 public import std.digest.sha;
 public import std.digest.md;
 
-int main(char[][] args)
+int main(string[] args)
 {
     // Bring in unit test for module by referencing function in it
 
@@ -72,9 +72,10 @@ int main(char[][] args)
     auto r = regex("");                 // regex
     uint ranseed = std.random.unpredictableSeed;
     thisTid;
-    int a[];
-    a.reverse;                          // adi
-    a.sort;                             // qsort
+    int[] a;
+    import std.algorithm : sort, reverse;
+    reverse(a);                         // adi
+    sort(a);                            // qsort
     Clock.currTime();                   // datetime
     Exception e = new ReadException(""); // stream
     din.eof();                           // cstream
@@ -90,13 +91,13 @@ int main(char[][] args)
 
     printf("args.length = %d\n", args.length);
     for (int i = 0; i < args.length; i++)
-        printf("args[%d] = '%s'\n", i, cast(char *)args[i]);
+        printf("args[%d] = '%.*s'\n", i, args[i].length, args[i].ptr);
 
     int[3] x;
     x[0] = 3;
     x[1] = 45;
     x[2] = -1;
-    x.sort;
+    sort(x[]);
     assert(x[0] == -1);
     assert(x[1] == 3);
     assert(x[2] == 45);

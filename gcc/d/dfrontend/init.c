@@ -24,6 +24,7 @@
 #include "hdrgen.h"
 #include "template.h"
 #include "id.h"
+#include "tokens.h"
 
 /********************************** Initializer *******************************/
 
@@ -40,21 +41,16 @@ Initializers *Initializer::arraySyntaxCopy(Initializers *ai)
         a = new Initializers();
         a->setDim(ai->dim);
         for (size_t i = 0; i < a->dim; i++)
-        {
-            Initializer *e = (*ai)[i];
-            e = e->syntaxCopy();
-            (*a)[i] = e;
-        }
+            (*a)[i] = (*ai)[i]->syntaxCopy();
     }
     return a;
 }
 
 char *Initializer::toChars()
 {
-    HdrGenState hgs;
-
     OutBuffer buf;
-    toCBuffer(&buf, &hgs);
+    HdrGenState hgs;
+    ::toCBuffer(this, &buf, &hgs);
     return buf.extractString();
 }
 
@@ -84,11 +80,6 @@ Initializer *ErrorInitializer::semantic(Scope *sc, Type *t, NeedInterpret needIn
 Expression *ErrorInitializer::toExpression(Type *t)
 {
     return new ErrorExp();
-}
-
-void ErrorInitializer::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{
-    buf->writestring("__error__");
 }
 
 /********************************** VoidInitializer ***************************/
@@ -122,11 +113,6 @@ Expression *VoidInitializer::toExpression(Type *t)
     return NULL;
 }
 
-void VoidInitializer::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{
-    buf->writestring("void");
-}
-
 /********************************** StructInitializer *************************/
 
 StructInitializer::StructInitializer(Loc loc)
@@ -137,17 +123,13 @@ StructInitializer::StructInitializer(Loc loc)
 Initializer *StructInitializer::syntaxCopy()
 {
     StructInitializer *ai = new StructInitializer(loc);
-
     assert(field.dim == value.dim);
     ai->field.setDim(field.dim);
     ai->value.setDim(value.dim);
     for (size_t i = 0; i < field.dim; i++)
     {
         ai->field[i] = field[i];
-
-        Initializer *iz = value[i];
-        iz = iz->syntaxCopy();
-        ai->value[i] = iz;
+        ai->value[i] = value[i]->syntaxCopy();
     }
     return ai;
 }
@@ -281,8 +263,8 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, NeedInterpret needI
         TOK tok = (t->ty == Tdelegate) ? TOKdelegate : TOKfunction;
         /* Rewrite as empty delegate literal { }
          */
-        Parameters *arguments = new Parameters;
-        Type *tf = new TypeFunction(arguments, NULL, 0, LINKd);
+        Parameters *parameters = new Parameters;
+        Type *tf = new TypeFunction(parameters, NULL, 0, LINKd);
         FuncLiteralDeclaration *fd = new FuncLiteralDeclaration(loc, Loc(), tf, tok, NULL);
         fd->fbody = new CompoundStatement(loc, new Statements());
         fd->endloc = loc;
@@ -306,27 +288,6 @@ Expression *StructInitializer::toExpression(Type *t)
     return NULL;
 }
 
-void StructInitializer::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{
-    //printf("StructInitializer::toCBuffer()\n");
-    buf->writeByte('{');
-    for (size_t i = 0; i < field.dim; i++)
-    {
-        if (i > 0)
-            buf->writestring(", ");
-        Identifier *id = field[i];
-        if (id)
-        {
-            buf->writestring(id->toChars());
-            buf->writeByte(':');
-        }
-        Initializer *iz = value[i];
-        if (iz)
-            iz->toCBuffer(buf, hgs);
-    }
-    buf->writeByte('}');
-}
-
 /********************************** ArrayInitializer ************************************/
 
 ArrayInitializer::ArrayInitializer(Loc loc)
@@ -340,22 +301,14 @@ ArrayInitializer::ArrayInitializer(Loc loc)
 Initializer *ArrayInitializer::syntaxCopy()
 {
     //printf("ArrayInitializer::syntaxCopy()\n");
-
     ArrayInitializer *ai = new ArrayInitializer(loc);
-
     assert(index.dim == value.dim);
     ai->index.setDim(index.dim);
     ai->value.setDim(value.dim);
     for (size_t i = 0; i < ai->value.dim; i++)
     {
-        Expression *e = index[i];
-        if (e)
-            e = e->syntaxCopy();
-        ai->index[i] = e;
-
-        Initializer *iz = value[i];
-        iz = iz->syntaxCopy();
-        ai->value[i] = iz;
+        ai->index[i] = index[i] ? index[i]->syntaxCopy() : NULL;
+        ai->value[i] = value[i]->syntaxCopy();
     }
     return ai;
 }
@@ -476,16 +429,16 @@ Initializer *ArrayInitializer::semantic(Scope *sc, Type *t, NeedInterpret needIn
         case Tstruct:   // consider implicit constructor call
         {
             Expression *e;
+            // note: MyStruct foo = [1:2, 3:4] is correct code if MyStruct has a this(int[int])
             if (t->ty == Taarray || isAssociativeArray())
                 e = toAssocArrayLiteral();
             else
                 e = toExpression();
-            if (!e)
+            if (!e) // Bugzilla 13987
             {
                 error(loc, "cannot use array to initialize %s", t->toChars());
                 goto Lerr;
             }
-
             ExpInitializer *ei = new ExpInitializer(e->loc, e);
             return ei->semantic(sc, t, needInterpret);
         }
@@ -725,26 +678,6 @@ Lno:
     return new ErrorExp();
 }
 
-void ArrayInitializer::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{
-    buf->writeByte('[');
-    for (size_t i = 0; i < index.dim; i++)
-    {
-        if (i > 0)
-            buf->writestring(", ");
-        Expression *ex = index[i];
-        if (ex)
-        {
-            ex->toCBuffer(buf, hgs);
-            buf->writeByte(':');
-        }
-        Initializer *iz = value[i];
-        if (iz)
-            iz->toCBuffer(buf, hgs);
-    }
-    buf->writeByte(']');
-}
-
 /********************************** ExpInitializer ************************************/
 
 ExpInitializer::ExpInitializer(Loc loc, Expression *exp)
@@ -921,6 +854,12 @@ Initializer *ExpInitializer::semantic(Scope *sc, Type *t, NeedInterpret needInte
     if (!global.gag && olderrors != global.errors)
         return this; // Failed, suppress duplicate error messages
 
+    if (exp->type->ty == Ttuple && ((TypeTuple *)exp->type)->arguments->dim == 0)
+    {
+        Type *et = exp->type;
+        exp = new TupleExp(exp->loc, new Expressions());
+        exp->type = et;
+    }
     if (exp->op == TOKtype)
     {
         exp->error("initializer must be an expression, not '%s'", exp->toChars());
@@ -946,12 +885,15 @@ Initializer *ExpInitializer::semantic(Scope *sc, Type *t, NeedInterpret needInte
      * Allow this by doing an explicit cast, which will lengthen the string
      * literal.
      */
-    if (exp->op == TOKstring && tb->ty == Tsarray && ti->ty == Tsarray)
+    if (exp->op == TOKstring && tb->ty == Tsarray)
     {
         StringExp *se = (StringExp *)exp;
-        if (!se->committed && se->type->ty == Tsarray &&
-            ((TypeSArray *)se->type)->dim->toInteger() <
-            ((TypeSArray *)t)->dim->toInteger())
+        Type *typeb = se->type->toBasetype();
+        TY tynto = tb->nextOf()->ty;
+        if (!se->committed &&
+            (typeb->ty == Tarray || typeb->ty == Tsarray) &&
+            (tynto == Tchar || tynto == Twchar || tynto == Tdchar) &&
+            se->length((int)tb->nextOf()->size()) < ((TypeSArray *)tb)->dim->toInteger())
         {
             exp = se->castTo(sc, t);
             goto L1;
@@ -1024,9 +966,9 @@ Initializer *ExpInitializer::semantic(Scope *sc, Type *t, NeedInterpret needInte
         }
         exp = exp->implicitCastTo(sc, t);
     }
+L1:
     if (exp->op == TOKerror)
         return this;
-L1:
     if (needInterpret)
         exp = exp->ctfeInterpret();
     else
@@ -1056,9 +998,4 @@ Expression *ExpInitializer::toExpression(Type *t)
         }
     }
     return exp;
-}
-
-void ExpInitializer::toCBuffer(OutBuffer *buf, HdrGenState *hgs)
-{
-    exp->toCBuffer(buf, hgs);
 }

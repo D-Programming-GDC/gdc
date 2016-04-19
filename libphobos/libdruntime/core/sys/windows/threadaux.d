@@ -110,8 +110,8 @@ private:
             int     reserved;
         }
 
-        alias extern(Windows)
-        HRESULT fnNtQuerySystemInformation( uint SystemInformationClass, void* info, uint infoLength, uint* ReturnLength ) nothrow;
+        alias fnNtQuerySystemInformation = extern(Windows)
+        HRESULT function( uint SystemInformationClass, void* info, uint infoLength, uint* ReturnLength ) nothrow;
 
         enum ThreadBasicInformation = 0;
 
@@ -126,8 +126,8 @@ private:
             int    BasePriority;
         }
 
-        alias extern(Windows)
-        int fnNtQueryInformationThread( HANDLE ThreadHandle, uint ThreadInformationClass, void* buf, uint size, uint* ReturnLength ) nothrow;
+        alias fnNtQueryInformationThread = extern(Windows)
+        int function( HANDLE ThreadHandle, uint ThreadInformationClass, void* buf, uint size, uint* ReturnLength ) nothrow;
 
         enum SYNCHRONIZE = 0x00100000;
         enum THREAD_GET_CONTEXT = 8;
@@ -140,7 +140,7 @@ private:
         {
             HANDLE nthnd = GetModuleHandleA( "NTDLL" );
             assert( nthnd, "cannot get module handle for ntdll" );
-            fnNtQueryInformationThread* fn = cast(fnNtQueryInformationThread*) GetProcAddress( nthnd, "NtQueryInformationThread" );
+            fnNtQueryInformationThread fn = cast(fnNtQueryInformationThread) GetProcAddress( nthnd, "NtQueryInformationThread" );
             assert( fn, "cannot find NtQueryInformationThread in ntdll" );
 
             THREAD_BASIC_INFORMATION tbi;
@@ -169,12 +169,12 @@ private:
                 version(GNU_InlineAsm)
                 {
                     void** teb;
-                    asm { "movl %%fs:0x18, %0;" : "=r" teb; }
+                    asm pure nothrow @nogc { "movl %%fs:0x18, %0;" : "=r" teb; }
                     return teb;
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         naked;
                         mov EAX,FS:[0x18];
@@ -187,12 +187,12 @@ private:
                 version(GNU_InlineAsm)
                 {
                     void** teb;
-                    asm { "movq %%gs:0x30, %0;" : "=r" teb; }
+                    asm pure nothrow @nogc { "movq %%gs:0x30, %0;" : "=r" teb; }
                     return teb;
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         naked;
                         mov RAX,0x30;
@@ -233,7 +233,7 @@ private:
         static bool enumProcessThreads( uint procid, bool function( uint id, void* context ) dg, void* context )
         {
             HANDLE hnd = GetModuleHandleA( "NTDLL" );
-            fnNtQuerySystemInformation* fn = cast(fnNtQuerySystemInformation*) GetProcAddress( hnd, "NtQuerySystemInformation" );
+            fnNtQuerySystemInformation fn = cast(fnNtQuerySystemInformation) GetProcAddress( hnd, "NtQuerySystemInformation" );
             if( !fn )
                 return false;
 
@@ -354,4 +354,3 @@ public:
         thread_aux.impersonate_thread(id, &rt_moduleTlsDtor);
     }
 }
-

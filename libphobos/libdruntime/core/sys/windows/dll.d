@@ -25,6 +25,9 @@ version( Windows )
     ///////////////////////////////////////////////////////////////////
     // support fixing implicit TLS for dynamically loaded DLLs on Windows XP
 
+    // in this special case, we have to treat _tlsstart and _tlsend as non-TLS variables
+    //  as they are used to simulate TLS when it is not set up under XP. In this case we must
+    //  not access tls_array[tls_index] as needed for thread local _tlsstart and _tlsend
     extern (C)
     {
         version (MinGW)
@@ -39,9 +42,21 @@ version( Windows )
         }
         else version (Win32)
         {
-            extern __gshared void* _tlsstart;
-            extern __gshared void* _tlsend;
-            extern __gshared void* _tls_callbacks_a;
+            version(CRuntime_DigitalMars)
+            {
+                extern __gshared byte  _tlsstart;
+                extern __gshared byte  _tlsend;
+                extern __gshared void* _tls_callbacks_a;
+            }
+            else version(CRuntime_Microsoft)
+            {
+                extern __gshared byte  _tls_start;
+                extern __gshared byte  _tls_end;
+                extern __gshared void*  __xl_a;
+                alias _tls_start _tlsstart;
+                alias _tls_end   _tlsend;
+                alias __xl_a     _tls_callbacks_a;
+            }
             extern __gshared int   _tls_index;
         }
     }
@@ -70,8 +85,8 @@ private:
             int   tlsindex;
         }
 
-        alias extern(Windows)
-        void* fnRtlAllocateHeap(void* HeapHandle, uint Flags, size_t Size) nothrow;
+        alias fnRtlAllocateHeap = extern(Windows)
+        void* function(void* HeapHandle, uint Flags, size_t Size) nothrow;
 
         // find a code sequence and return the address after the sequence
         static void* findCodeSequence( void* adr, int len, ref ubyte[] pattern ) nothrow
@@ -158,7 +173,7 @@ private:
             if( !pLdrpNumberOfTlsEntries || !pNtdllBaseTag || !pLdrpTlsList )
                 return null;
 
-            fnRtlAllocateHeap* fnAlloc = cast(fnRtlAllocateHeap*) GetProcAddress( hnd, "RtlAllocateHeap" );
+            fnRtlAllocateHeap fnAlloc = cast(fnRtlAllocateHeap) GetProcAddress( hnd, "RtlAllocateHeap" );
             if( !fnAlloc )
                 return null;
 
@@ -195,7 +210,7 @@ private:
             HANDLE hnd = GetModuleHandleA( "NTDLL" );
             assert( hnd, "cannot get module handle for ntdll" );
 
-            fnRtlAllocateHeap* fnAlloc = cast(fnRtlAllocateHeap*) GetProcAddress( hnd, "RtlAllocateHeap" );
+            fnRtlAllocateHeap fnAlloc = cast(fnRtlAllocateHeap) GetProcAddress( hnd, "RtlAllocateHeap" );
             if( !fnAlloc || !pNtdllBaseTag )
                 return false;
 
@@ -327,11 +342,11 @@ public:
         void** peb;
         version (GNU_InlineAsm)
         {
-            asm { "movl %%fs:0x30, %0;" : "=r" peb; }
+            asm pure nothrow @nogc { "movl %%fs:0x30, %0;" : "=r" peb; }
         }
         else
         {
-            asm
+            asm pure nothrow @nogc
             {
                 mov EAX,FS:[0x30];
                 mov peb, EAX;
@@ -467,5 +482,40 @@ public:
                 thread_detachThis();
         }
         return true;
+    }
+
+    /// A simple mixin to provide a $(D DllMain) which calls the necessary
+    /// runtime initialization and termination functions automatically.
+    ///
+    /// Instead of writing a custom $(D DllMain), simply write:
+    ///
+    /// ---
+    /// mixin SimpleDllMain;
+    /// ---
+    mixin template SimpleDllMain()
+    {
+        import core.sys.windows.windows : HINSTANCE;
+
+        extern(Windows)
+        bool DllMain(HINSTANCE hInstance, uint ulReason, void* reserved)
+        {
+            import core.sys.windows.windows;
+            switch(ulReason)
+            {
+                default: assert(0);
+                case DLL_PROCESS_ATTACH:
+                    return dll_process_attach( hInstance, true );
+
+                case DLL_PROCESS_DETACH:
+                    dll_process_detach( hInstance, true );
+                    return true;
+
+                case DLL_THREAD_ATTACH:
+                    return dll_thread_attach( true, true );
+
+                case DLL_THREAD_DETACH:
+                    return dll_thread_detach( true, true );
+            }
+        }
     }
 }

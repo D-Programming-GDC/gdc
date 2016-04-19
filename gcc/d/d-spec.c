@@ -25,7 +25,7 @@
 #include "opts.h"
 
 /* This bit is set if the arguments is a D source file. */
-#define DSOURCE 	(1<<1)
+#define DSOURCE		(1<<1)
 /* This bit is set if they did `-lm' or `-lmath'.  */
 #define MATHLIB		(1<<2)
 /* This bit is set if they did `-lpthread'.  */
@@ -255,6 +255,12 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 	case OPT_g:
 	  saw_debug_flag = 1;
+
+	case OPT_v:
+	  /* If they only gave us `-v', don't try to link in libphobos.  */
+	  if (argc == 2)
+	    library = 0;
+	  break;
 
 	case OPT_x:
 	  if (library == 0

@@ -296,15 +296,6 @@ AC_TRY_COMPILE([#include <unwind.h>],[
    DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/unwind/arm.o"])
 AC_SUBST(DCFG_ARM_EABI_UNWINDER)
 
-case "$d_thread_model" in
-  posix) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/posix.o"
-         ;;
-  win32) DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/win32.o"
-         ;;
-  *)     DRUNTIME_OBJS="$DRUNTIME_OBJS gcc/gthreads/single.o"
-         ;;
-esac
-
 case "$d_target_os" in
   aix*|*bsd*|cygwin*|darwin*|gnu*|linux*|skyos*|*solaris*|sysv*) d_have_unix=1 ;;
 esac
@@ -327,14 +318,14 @@ case "$d_target_os" in
     mingw*)  DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
              DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_WINDOWS_OBJS)"
              D_EXTRA_OBJS="$D_EXTRA_OBJS \$(WINDOWS_OBJS)"
-             D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
              ;;
+    *solaris*)
+	    D_EXTRA_OBJS="$D_EXTRA_OBJS \$(RT_SOLARIS_OBJS)"
 esac
 
 if test "$enable_unix" = "yes"; then
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_STDC_OBJS)"
   DRUNTIME_OBJS="$DRUNTIME_OBJS \$(RT_POSIX_OBJS)"
-  D_EXTRA_OBJS="$D_EXTRA_OBJS \$(OS_OBJS)"
 fi
 
 if test -z "$DFLAGS"; then
@@ -360,7 +351,8 @@ AC_SUBST(srcdir)
 D_GC_MODULES=
 
 if test "$enable_druntime_gc" = "yes"; then
-    D_GC_MODULES="gc/bits.o gc/gc.o gc/os.o gc/proxy.o gc/stats.o"
+    D_GC_MODULES="gc/bits.o gc/config.o gc/gc.o gc/os.o \
+		  gc/pooltable.o gc/proxy.o gc/stats.o"
 else
     D_GC_MODULES="gcstub/gc.o"
 fi

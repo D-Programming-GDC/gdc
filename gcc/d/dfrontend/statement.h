@@ -20,8 +20,8 @@
 
 #include "arraytypes.h"
 #include "dsymbol.h"
-#include "lexer.h"
 #include "visitor.h"
+#include "tokens.h"
 
 struct OutBuffer;
 struct Scope;
@@ -48,11 +48,6 @@ class TryFinallyStatement;
 class CaseStatement;
 class DefaultStatement;
 class LabelStatement;
-struct HdrGenState;
-struct InterState;
-struct CompiledCtfeFunction;
-
-enum TOK;
 
 // Back end
 #ifdef IN_GCC
@@ -62,7 +57,6 @@ struct block;
 #endif
 struct code;
 
-Expression *interpret(Statement *s, InterState *istate);
 bool inferAggregate(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply);
 bool inferApplyArgTypes(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply);
 
@@ -81,8 +75,6 @@ enum BE
     BEerrthrow = 0x80,
     BEany = (BEfallthru | BEthrow | BEreturn | BEgoto | BEhalt),
 };
-
-void toCBuffer(Statement *s, OutBuffer *buf, HdrGenState *hgs);
 
 class Statement : public RootObject
 {
@@ -110,10 +102,6 @@ public:
     bool hasCode();
     virtual Statement *scopeCode(Scope *sc, Statement **sentry, Statement **sexit, Statement **sfinally);
     virtual Statements *flatten(Scope *sc);
-    Expression *interpret(InterState *istate)
-    {
-        return ::interpret(this, istate);
-    }
     virtual Statement *last();
 
     // Avoid dynamic_cast
@@ -262,8 +250,9 @@ class WhileStatement : public Statement
 public:
     Expression *condition;
     Statement *body;
+    Loc endloc;                 // location of closing curly bracket
 
-    WhileStatement(Loc loc, Expression *c, Statement *b);
+    WhileStatement(Loc loc, Expression *c, Statement *b, Loc endloc);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     bool hasBreak();
@@ -294,13 +283,14 @@ public:
     Expression *condition;
     Expression *increment;
     Statement *body;
+    Loc endloc;                 // location of closing curly bracket
 
     // When wrapped in try/finally clauses, this points to the outermost one,
     // which may have an associated label. Internal break/continue statements
     // treat that label as referring to this loop.
     Statement *relatedLabeled;
 
-    ForStatement(Loc loc, Statement *init, Expression *condition, Expression *increment, Statement *body);
+    ForStatement(Loc loc, Statement *init, Expression *condition, Expression *increment, Statement *body, Loc endloc);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     Statement *scopeCode(Scope *sc, Statement **sentry, Statement **sexit, Statement **sfinally);
@@ -314,10 +304,11 @@ public:
 class ForeachStatement : public Statement
 {
 public:
-    TOK op;                // TOKforeach or TOKforeach_reverse
-    Parameters *arguments;      // array of Parameter*'s
+    TOK op;                     // TOKforeach or TOKforeach_reverse
+    Parameters *parameters;     // array of Parameter*'s
     Expression *aggr;
     Statement *body;
+    Loc endloc;                 // location of closing curly bracket
 
     VarDeclaration *key;
     VarDeclaration *value;
@@ -327,7 +318,7 @@ public:
     Statements *cases;          // put breaks, continues, gotos and returns here
     ScopeStatements *gotos;     // forward referenced goto's go here
 
-    ForeachStatement(Loc loc, TOK op, Parameters *arguments, Expression *aggr, Statement *body);
+    ForeachStatement(Loc loc, TOK op, Parameters *parameters, Expression *aggr, Statement *body, Loc endloc);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     bool checkForArgTypes();
@@ -340,16 +331,17 @@ public:
 class ForeachRangeStatement : public Statement
 {
 public:
-    TOK op;                // TOKforeach or TOKforeach_reverse
-    Parameter *arg;             // loop index variable
+    TOK op;                     // TOKforeach or TOKforeach_reverse
+    Parameter *prm;             // loop index variable
     Expression *lwr;
     Expression *upr;
     Statement *body;
+    Loc endloc;                 // location of closing curly bracket
 
     VarDeclaration *key;
 
-    ForeachRangeStatement(Loc loc, TOK op, Parameter *arg,
-        Expression *lwr, Expression *upr, Statement *body);
+    ForeachRangeStatement(Loc loc, TOK op, Parameter *prm,
+        Expression *lwr, Expression *upr, Statement *body, Loc endloc);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     bool hasBreak();
@@ -361,14 +353,14 @@ public:
 class IfStatement : public Statement
 {
 public:
-    Parameter *arg;
+    Parameter *prm;
     Expression *condition;
     Statement *ifbody;
     Statement *elsebody;
 
     VarDeclaration *match;      // for MatchExpression results
 
-    IfStatement(Loc loc, Parameter *arg, Expression *condition, Statement *ifbody, Statement *elsebody);
+    IfStatement(Loc loc, Parameter *prm, Expression *condition, Statement *ifbody, Statement *elsebody);
     Statement *syntaxCopy();
     Statement *semantic(Scope *sc);
     IfStatement *isIfStatement() { return this; }
@@ -524,7 +516,7 @@ class ReturnStatement : public Statement
 {
 public:
     Expression *exp;
-    bool implicit0;             // this is an implicit "return 0;"
+    size_t caseDim;
 
     ReturnStatement(Loc loc, Expression *exp);
     Statement *syntaxCopy();
@@ -683,7 +675,6 @@ public:
     TryFinallyStatement *tf;
     OnScopeStatement *os;
     VarDeclaration *lastVar;
-    FuncDeclaration *fd;
 
     GotoStatement(Loc loc, Identifier *ident);
     Statement *syntaxCopy();
@@ -700,11 +691,12 @@ public:
     Statement *statement;
     TryFinallyStatement *tf;
     OnScopeStatement *os;
-    Statement *gotoTarget;      // interpret
     VarDeclaration *lastVar;
+    Statement *gotoTarget;      // interpret
+
+    bool breaks;                // someone did a 'break ident'
 #ifndef IN_GCC
     block *lblock;              // back end
-
     Blocks *fwdrefs;            // forward references to this LabelStatement
 #endif
 
