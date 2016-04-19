@@ -20,47 +20,6 @@
 #ifndef GCC_DCMPLR_DC_LANG_H
 #define GCC_DCMPLR_DC_LANG_H
 
-// Forward type declarations to avoid including unnecessary headers.
-class Declaration;
-class Expression;
-class Module;
-class Type;
-
-// In d-convert.cc.
-tree d_truthvalue_conversion (tree);
-
-// In d-incpath.cc.
-extern void add_import_paths(const char *iprefix, const char *imultilib, bool stdinc);
-
-// In d-lang.cc.
-void d_add_global_declaration (tree);
-
-Module *d_gcc_get_output_module();
-
-struct lang_type *build_d_type_lang_specific (Type *t);
-struct lang_decl *build_d_decl_lang_specific (Declaration *d);
-extern tree d_pushdecl (tree);
-
-extern tree d_unsigned_type (tree);
-extern tree d_signed_type (tree);
-
-extern void d_init_exceptions();
-extern void d_keep (tree t);
-
-// In d-builtins.cc.
-extern const attribute_spec d_langhook_attribute_table[];
-extern const attribute_spec d_langhook_common_attribute_table[];
-extern const attribute_spec d_langhook_format_attribute_table[];
-
-tree d_builtin_function (tree);
-void d_init_builtins();
-void d_register_builtin_type (tree, const char *);
-void d_backend_init();
-void d_backend_term();
-
-extern Expression *build_expression (tree cst);
-extern Type *build_dtype(tree type);
-
 /* protect from garbage collection */
 extern GTY(()) tree d_keep_list;
 extern GTY(()) tree d_eh_personality_decl;

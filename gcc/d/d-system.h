@@ -68,4 +68,15 @@
 	     sizeof (ANON_AGGRNAME_PREFIX) - 1))
 #define ANON_AGGRNAME_FORMAT "__anon_%d"
 
+/* T is an INTEGER_CST whose numerical value (extended according to
+   TYPE_UNSIGNED) fits in an unsigned HOST_WIDE_INT.  Return that
+   HOST_WIDE_INT.  */
+
+extern inline __attribute__ ((__gnu_inline__)) HOST_WIDE_INT
+tree_to_uhwi (const_tree t)
+{
+  gcc_assert (cst_and_fits_in_hwi (t));
+  return TREE_INT_CST_LOW (t);
+}
+
 #endif
