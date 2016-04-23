@@ -279,10 +279,7 @@ extern void d_init_builtins (void);
 extern void d_register_builtin_type (tree, const char *);
 extern void d_build_builtins_module (Module *);
 extern void d_maybe_set_builtin (Module *);
-extern void d_backend_init (void);
-extern void d_backend_term (void);
 extern Expression *build_expression (tree);
-extern Type *build_dtype (tree);
 
 // In d-convert.cc.
 extern tree d_truthvalue_conversion (tree);
@@ -298,7 +295,6 @@ extern struct lang_decl *build_d_decl_lang_specific (Declaration *);
 extern tree d_pushdecl (tree);
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);
-extern void d_init_exceptions (void);
 extern void d_keep (tree);
 
 #endif

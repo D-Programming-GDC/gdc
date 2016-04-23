@@ -259,7 +259,7 @@ d_init()
   d_init_builtins();
 
   if (flag_exceptions)
-    d_init_exceptions();
+    using_eh_for_cleanups();
 
   // This is the C main, not the D main.
   main_identifier_node = get_identifier ("main");
@@ -1542,12 +1542,6 @@ d_build_eh_type_type (tree type)
   sym = ((TypeClass *) dtype)->sym->toSymbol();
 
   return convert (ptr_type_node, build_address (sym->Stree));
-}
-
-void
-d_init_exceptions()
-{
-  using_eh_for_cleanups();
 }
 
 

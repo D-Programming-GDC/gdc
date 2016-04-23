@@ -65,7 +65,7 @@ tree d_global_trees[DTI_MAX];
 // For others, it is not useful or, in the cast of (C char) -> (D char), will
 // cause errors.  This also means char * ...
 
-Type *
+static Type *
 build_dtype(tree type)
 {
   Type *dtype;
