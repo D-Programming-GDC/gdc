@@ -196,7 +196,7 @@ public:
 
     t->ctype = make_node(ENUMERAL_TYPE);
     ENUM_IS_SCOPED (t->ctype) = 1;
-    TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
+    TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
     d_keep(t->ctype);
 
     if (flag_short_enums)
@@ -256,7 +256,7 @@ public:
     t->ctype = make_node(t->sym->isUnionDeclaration() ? UNION_TYPE : RECORD_TYPE);
     d_keep(t->ctype);
 
-    TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
+    TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
 
     // Must set up the overall size, etc. before determining the context or
     // laying out fields as those types may make references to this type.
@@ -315,7 +315,7 @@ public:
 
     // Function type could be referenced by parameters, so set ctype earlier?
     t->ctype = build_function_type(ret_type, type_list);
-    TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
+    TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
     d_keep(t->ctype);
 
     if (t->next && !t->isref)
@@ -400,7 +400,7 @@ public:
 
     t->ctype = build_two_field_type(lentype, build_pointer_type(ptrtype),
 				    t, "length", "ptr");
-    TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
+    TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
     d_keep(t->ctype);
   }
 
@@ -418,7 +418,7 @@ public:
     TYPE_TRANSPARENT_AGGR (t->ctype) = 1;
     layout_type(t->ctype);
 
-    TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
+    TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
     d_keep(t->ctype);
   }
 
@@ -445,7 +445,7 @@ public:
 
     t->ctype = build_two_field_type(objtype, build_pointer_type(funtype),
 				    t, "object", "func");
-    TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
+    TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
     d_keep(t->ctype);
   }
 
@@ -459,7 +459,7 @@ public:
     d_keep(t->ctype);
 
     // Note that this is set on both the reference type and record type.
-    TYPE_LANG_SPECIFIC (t->ctype) = build_d_type_lang_specific(t);
+    TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
     TYPE_LANG_SPECIFIC (basetype) = TYPE_LANG_SPECIFIC (t->ctype);
     CLASS_TYPE_P (basetype) = 1;
 

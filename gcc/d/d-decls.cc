@@ -175,7 +175,7 @@ VarDeclaration::toSymbol()
 	  setup_symbol_storage (this, decl, false);
 	}
 
-      DECL_LANG_SPECIFIC (decl) = build_d_decl_lang_specific (this);
+      DECL_LANG_SPECIFIC (decl) = build_lang_decl (this);
       d_keep (decl);
       csym->Stree = decl;
 
@@ -323,7 +323,7 @@ FuncDeclaration::toSymbol()
       csym->Stree = fndecl;
 
       TREE_TYPE (fndecl) = build_ctype(ftype);
-      DECL_LANG_SPECIFIC (fndecl) = build_d_decl_lang_specific (this);
+      DECL_LANG_SPECIFIC (fndecl) = build_lang_decl (this);
       d_keep (fndecl);
 
       if (isNested())

@@ -1,3 +1,15 @@
+2016-04-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_dtype): Make function static.
+	* d-lang.cc (d_init_exceptions): Remove function.
+	* d-codegen.h: Move visitor declarations to ...
+	* d-tree.h: ... here.
+	(lang_decl): Remove `d_` prefix from fields.
+	(lang_type): Likewise.
+	* d-lang.cc (build_d_type_lang_specific): Rename to build_lang_type.
+	(build_d_decl_lang_specific): Rename to build_lang_decl.
+	* imports.cc: Update includes.
+
 2016-03-29  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-objfile.cc (d_comdat_linkage): Rewrite template duplicate
