@@ -964,8 +964,6 @@ TypeSArray::toDtElem (dt_t **pdt, Expression *e)
       tree dt = NULL_TREE;
       Type *tnext = next;
       Type *tbn = tnext->toBasetype();
-      if (tbn->ty == Tvector)
-	tbn = ((TypeVector *) tbn)->basetype;
 
       if (e && (e->op == TOKstring || e->op == TOKarrayliteral))
 	{

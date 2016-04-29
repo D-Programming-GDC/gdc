@@ -1,3 +1,8 @@
+2016-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+       * d-todt.cc (TypeSArray::toDtElem): Remove special handling for
+       arrays of vectors.
+
 2016-04-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (build_dtype): Make function static.
