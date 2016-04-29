@@ -1715,7 +1715,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
                 TY keyty = p->type->ty;
                 if (keyty != Tint32 && keyty != Tuns32)
                 {
-                    if (global.params.is64bit)
+                    if (global.params.isLP64)
                     {
                         if (keyty != Tint64 && keyty != Tuns64)
                         {
