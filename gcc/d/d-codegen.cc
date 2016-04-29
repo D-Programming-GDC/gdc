@@ -4550,7 +4550,7 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
   // Set size and alignment as requested by frontend.
   TYPE_SIZE (type) = bitsize_int(structsize * BITS_PER_UNIT);
   TYPE_SIZE_UNIT (type) = size_int(structsize);
-  TYPE_ALIGN (type) = alignsize * BITS_PER_UNIT;
+  SET_TYPE_ALIGN (type, alignsize * BITS_PER_UNIT);
   TYPE_PACKED (type) = (alignsize == 1);
 
   // Add padding to fill in any alignment holes.
@@ -4567,7 +4567,7 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
 
       TYPE_FIELDS (t) = TYPE_FIELDS (type);
       TYPE_LANG_SPECIFIC (t) = TYPE_LANG_SPECIFIC (type);
-      TYPE_ALIGN (t) = TYPE_ALIGN (type);
+      SET_TYPE_ALIGN (t, TYPE_ALIGN (type));
       TYPE_USER_ALIGN (t) = TYPE_USER_ALIGN (type);
       gcc_assert(TYPE_MODE (t) == TYPE_MODE (type));
     }

@@ -1875,7 +1875,7 @@ d_finish_symbol (Symbol *sym)
   // User declared alignment.
   if (sym->Salignment > 0)
     {
-      DECL_ALIGN (decl) = sym->Salignment * BITS_PER_UNIT;
+      SET_DECL_ALIGN (decl, sym->Salignment * BITS_PER_UNIT);
       DECL_USER_ALIGN (decl) = 1;
     }
 

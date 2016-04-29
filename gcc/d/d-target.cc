@@ -96,23 +96,23 @@ Target::fieldalign(Type *type)
 {
   // Work out the correct alignment for the field decl.
   tree field = make_node(FIELD_DECL);
-  DECL_ALIGN(field) = type->alignsize() * BITS_PER_UNIT;
+  SET_DECL_ALIGN(field, type->alignsize() * BITS_PER_UNIT);
 
 #ifdef BIGGEST_FIELD_ALIGNMENT
-  DECL_ALIGN(field)
-    = MIN(DECL_ALIGN(field), (unsigned) BIGGEST_FIELD_ALIGNMENT);
+  SET_DECL_ALIGN(field, MIN(DECL_ALIGN(field),
+			    (unsigned) BIGGEST_FIELD_ALIGNMENT));
 #endif
 #ifdef ADJUST_FIELD_ALIGN
   if (type->isTypeBasic())
     {
       TREE_TYPE(field) = build_ctype(type);
-      DECL_ALIGN(field) = ADJUST_FIELD_ALIGN(field, DECL_ALIGN(field));
+      SET_DECL_ALIGN(field, ADJUST_FIELD_ALIGN(field, DECL_ALIGN(field)));
     }
 #endif
 
   // Also controlled by -fpack-struct=
   if (maximum_field_alignment)
-    DECL_ALIGN(field) = MIN(DECL_ALIGN(field), maximum_field_alignment);
+    SET_DECL_ALIGN(field, MIN(DECL_ALIGN(field), maximum_field_alignment));
 
   return DECL_ALIGN_UNIT(field);
 }

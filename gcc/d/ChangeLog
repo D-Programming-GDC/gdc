@@ -1,7 +1,15 @@
 2016-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
-       * d-todt.cc (TypeSArray::toDtElem): Remove special handling for
-       arrays of vectors.
+	* d-codegen.cc (finish_aggregate_type): Use SET_TYPE_ALIGN.
+	* types.cc (TypeVisitor::visit(TypeStruct)): Likewise.
+	* d-decls.cc (ClassDeclaration::toVtblSymbol): Use SET_DECL_ALIGN.
+	* d-objfile.cc (d_finish_symbol): Likewise.
+	* d-target.cc (Target::fieldalign): Likewise.
+
+2016-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-todt.cc (TypeSArray::toDtElem): Remove special handling for
+	arrays of vectors.
 
 2016-04-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 

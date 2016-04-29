@@ -265,7 +265,7 @@ public:
 
     TYPE_SIZE (t->ctype) = bitsize_int(structsize * BITS_PER_UNIT);
     TYPE_SIZE_UNIT (t->ctype) = size_int(structsize);
-    TYPE_ALIGN (t->ctype) = alignsize * BITS_PER_UNIT;
+    SET_TYPE_ALIGN (t->ctype, alignsize * BITS_PER_UNIT);
     TYPE_PACKED (t->ctype) = (alignsize == 1);
     compute_record_mode(t->ctype);
 

@@ -687,7 +687,7 @@ ClassDeclaration::toVtblSymbol()
       DECL_ARTIFICIAL(decl) = 1;
 
       DECL_CONTEXT (decl) = d_decl_context (this);
-      DECL_ALIGN (decl) = TARGET_VTABLE_ENTRY_ALIGN;
+      SET_DECL_ALIGN (decl, TARGET_VTABLE_ENTRY_ALIGN);
     }
   return vtblsym;
 }
