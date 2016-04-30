@@ -236,6 +236,8 @@ extern tree compound_expr(tree arg0, tree arg1);
 extern tree vcompound_expr(tree arg0, tree arg1);
 extern tree return_expr(tree ret);
 
+extern tree size_mult_expr(tree arg0, tree arg1);
+
 // Routines for built in structured types
 extern tree real_part(tree c);
 extern tree imaginary_part(tree c);

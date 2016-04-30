@@ -943,11 +943,11 @@ d_array_convert(Expression *exp)
   Type *tb = exp->type->toBasetype();
 
   if (tb->ty == Tarray)
-    return exp->toElem();
+    return build_expr(exp);
   else if (tb->ty == Tsarray)
     {
       Type *totype = tb->nextOf()->arrayOf();
-      return convert_expr(exp->toElem(), exp->type, totype);
+      return convert_expr(build_expr(exp), exp->type, totype);
     }
 
   // Invalid type passed.
@@ -968,7 +968,7 @@ d_array_convert(Type *etype, Expression *exp, vec<tree, va_gc> **vars)
     {
       // Convert single element to an array.
       tree var = NULL_TREE;
-      tree expr = maybe_temporary_var(exp->toElem(), &var);
+      tree expr = maybe_temporary_var(build_expr(exp), &var);
 
       if (var != NULL_TREE)
 	vec_safe_push(*vars, var);
@@ -1241,7 +1241,7 @@ build_attributes (Expressions *in_attrs)
 	      aet = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = ae->toElem();
+	    aet = build_expr(ae);
 
 	  args = chainon (args, build_tree_list (0, aet));
         }
@@ -2262,6 +2262,17 @@ return_expr(tree ret)
 			 void_type_node, ret);
 }
 
+//
+
+tree
+size_mult_expr(tree arg0, tree arg1)
+{
+  return fold_build2_loc(input_location, MULT_EXPR, size_type_node,
+			 d_convert(size_type_node, arg0),
+			 d_convert(size_type_node, arg1));
+
+}
+
 // Return the real part of CE, which should be a complex expression.
 
 tree
@@ -2554,13 +2565,13 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   if (e1b->op == TOKcomma)
     {
       CommaExp *ce = (CommaExp *) e1b;
-      lexpr = ce->e1->toElem();
-      lhs = ce->e2->toElem();
+      lexpr = build_expr(ce->e1);
+      lhs = build_expr(ce->e2);
     }
   else
-    lhs = e1b->toElem();
+    lhs = build_expr(e1b);
 
-  tree rhs = e2->toElem();
+  tree rhs = build_expr(e2);
 
   // Build assignment expression. Stabilize lhs for assignment.
   lhs = stabilize_reference(lhs);
@@ -2782,7 +2793,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	  if (arg->op == TOKcomma)
 	    {
 	      CommaExp *ce = (CommaExp *) arg;
-	      tree tce = ce->e1->toElem();
+	      tree tce = build_expr(ce->e1);
 	      saved_args = maybe_vcompound_expr(saved_args, tce);
 	      (*arguments)[i] = ce->e2;
 	      goto Lagain;
@@ -2802,16 +2813,16 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	  if (i < dvarargs)
 	    {
 	      // The hidden _arguments parameter
-	      targ = arg->toElem();
+	      targ = build_expr(arg);
 	    }
 	  else if (i - dvarargs < nparams && i >= dvarargs)
 	    {
 	      // Actual arguments for declared formal arguments
 	      Parameter *parg = Parameter::getNth(tf->parameters, i - dvarargs);
-	      targ = convert_for_argument(arg->toElem(), arg, parg);
+	      targ = convert_for_argument(build_expr(arg), arg, parg);
 	    }
 	  else
-	    targ = arg->toElem();
+	    targ = build_expr(arg);
 
 	  // Don't pass empty aggregates by value.
 	  if (empty_aggregate_p(TREE_TYPE (targ)) && !TREE_ADDRESSABLE (targ)
@@ -3503,7 +3514,7 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 tree
 build_typeinfo (Type *t)
 {
-  tree tinfo = getTypeInfo(t, NULL)->toElem();
+  tree tinfo = build_expr(getTypeInfo(t, NULL));
   gcc_assert(POINTER_TYPE_P (TREE_TYPE (tinfo)));
   return tinfo;
 }
@@ -3713,7 +3724,7 @@ get_frame_for_symbol (Dsymbol *sym)
     }
   else
     {
-      // It's a class (or struct).  NewExp::toElem has already determined its
+      // It's a class (or struct). NewExp codegen has already determined its
       // outer scope is not another class, so it must be a function.
       while (sym && !sym->isFuncDeclaration())
 	sym = sym->toParent2();
@@ -4207,13 +4218,6 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
     }
 }
 
-// Build and return expression tree for WrappedExp.
-
-elem *
-WrappedExp::toElem()
-{
-  return this->e1;
-}
 
 // For all decls in the FIELDS chain, adjust their field offset by OFFSET.
 // This is done as the frontend puts fields into the outer struct, and so
