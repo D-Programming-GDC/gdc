@@ -235,9 +235,6 @@ d_add_builtin_version(const char* ident)
 static bool
 d_init()
 {
-  if(POINTER_SIZE == 64)
-    global.params.isLP64 = true;
-
   Lexer::initLexer();
   Type::init();
   Id::initialize();
