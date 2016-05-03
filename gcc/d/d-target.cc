@@ -51,7 +51,7 @@ Target::init()
 {
   // Map D frontend type and sizes to GCC backend types.
   realsize = int_size_in_bytes(long_double_type_node);
-  realpad = TYPE_PRECISION(long_double_type_node) / BITS_PER_UNIT;
+  realpad = realsize - (TYPE_PRECISION(long_double_type_node) / BITS_PER_UNIT);
   realalignsize = TYPE_ALIGN_UNIT(long_double_type_node);
   reverseCppOverloads = false;
 

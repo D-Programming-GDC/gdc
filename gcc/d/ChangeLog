@@ -1,3 +1,8 @@
+2016-05-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc (Target::init): Target::realpad value should be size
+	minus precision.
+
 2016-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (finish_aggregate_type): Use SET_TYPE_ALIGN.
