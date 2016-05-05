@@ -52,17 +52,7 @@ AC_DEFUN([DRUNTIME_INSTALL_DIRECTORIES],
   toolexecdir=no
   toolexeclibdir=no
 
-  AC_MSG_CHECKING([for --enable-version-specific-runtime-libs])
-  AC_ARG_ENABLE([version-specific-runtime-libs],
-    AC_HELP_STRING([--enable-version-specific-runtime-libs],
-                   [Specify that runtime libraries should be installed in a compiler-specific directory]),
-    [case "$enableval" in
-      yes) version_specific_libs=yes ;;
-      no)  version_specific_libs=no ;;
-      *)   AC_MSG_ERROR([Unknown argument to enable/disable version-specific libs]);;
-     esac],
-    [version_specific_libs=no])
-  AC_MSG_RESULT($version_specific_libs)
+  version_specific_libs=no
 
   # Version-specific runtime libs processing.
   if test $version_specific_libs = yes; then
