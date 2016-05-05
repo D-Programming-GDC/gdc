@@ -31,6 +31,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+# This file contains some common rules for D source compilation
+# used for libdruntime and libphobos
+
 VPATH = @srcdir@
 am__make_dryrun = \
   { \
@@ -68,12 +72,35 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+DIST_COMMON = $(top_srcdir)/d_rules.am $(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.am
+# GC sources
+@DRUNTIME_GC_ENABLE_TRUE@am__append_1 = $(DRUNTIME_DSOURCES_GC)
+@DRUNTIME_GC_ENABLE_FALSE@am__append_2 = $(DRUNTIME_DSOURCES_GCSTUB)
+# OS specific sources
+@DRUNTIME_OS_UNIX_TRUE@am__append_3 = $(DRUNTIME_DSOURCES_POSIX)
+@DRUNTIME_OS_DARWIN_TRUE@am__append_4 = $(DRUNTIME_DSOURCES_OSX)
+@DRUNTIME_OS_BSD_TRUE@am__append_5 = $(DRUNTIME_DSOURCES_FREEBSD)
+@DRUNTIME_OS_LINUX_TRUE@am__append_6 = $(DRUNTIME_DSOURCES_LINUX)
+@DRUNTIME_OS_MINGW_TRUE@am__append_7 = $(DRUNTIME_DSOURCES_WINDOWS)
+@DRUNTIME_OS_SOLARIS_TRUE@am__append_8 = $(DRUNTIME_DSOURCES_SOLARIS)
+check_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
+@ENABLE_SHARED_TRUE@am__append_9 = unittest
+@ENABLE_STATIC_TRUE@am__append_10 = unittest_static
 subdir = libdruntime
-DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/../config/lead-dot.m4 \
 	$(top_srcdir)/../config/multi.m4 \
-	$(top_srcdir)/../config/override.m4 $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/../config/override.m4 \
+	$(top_srcdir)/../libtool.m4 $(top_srcdir)/../ltoptions.m4 \
+	$(top_srcdir)/../ltsugar.m4 $(top_srcdir)/../ltversion.m4 \
+	$(top_srcdir)/../lt~obsolete.m4 $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/m4/gcc_support.m4 $(top_srcdir)/m4/autoconf.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/gdc.m4 \
+	$(top_srcdir)/m4/druntime.m4 \
+	$(top_srcdir)/m4/druntime/libbacktrace.m4 \
+	$(top_srcdir)/m4/druntime/os.m4 \
+	$(top_srcdir)/m4/druntime/libraries.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -81,14 +108,346 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/../mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
+am__install_max = 40
+am__nobase_strip_setup = \
+  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
+am__nobase_strip = \
+  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
+am__nobase_list = $(am__nobase_strip_setup); \
+  for p in $$list; do echo "$$p $$p"; done | \
+  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
+  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
+    if (++n[$$2] == $(am__install_max)) \
+      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
+    END { for (dir in files) print dir, files[dir] }'
+am__base_list = \
+  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
+  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+am__uninstall_files_from_dir = { \
+  test -z "$$files" \
+    || { test ! -d "$$dir" && test ! -f "$$dir" && test ! -r "$$dir"; } \
+    || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
+         $(am__cd) "$$dir" && rm -f $$files; }; \
+  }
+am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
+LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
+libgdruntime_la_DEPENDENCIES = $(BACKTRACE_LIB)
+am__dirstamp = $(am__leading_dot)dirstamp
+am__objects_1 = core/atomic.lo core/bitop.lo core/checkedint.lo \
+	core/cpuid.lo core/demangle.lo core/exception.lo \
+	core/internal/convert.lo core/internal/hash.lo \
+	core/internal/traits.lo core/math.lo core/memory.lo \
+	core/runtime.lo core/simd.lo core/stdc/complex.lo \
+	core/stdc/config.lo core/stdc/ctype.lo core/stdc/errno.lo \
+	core/stdc/fenv.lo core/stdc/float_.lo core/stdc/inttypes.lo \
+	core/stdc/limits.lo core/stdc/locale.lo core/stdc/math.lo \
+	core/stdc/signal.lo core/stdc/stdarg.lo core/stdc/stddef.lo \
+	core/stdc/stdint.lo core/stdc/stdio.lo core/stdc/stdlib.lo \
+	core/stdc/string.lo core/stdc/tgmath.lo core/stdc/time.lo \
+	core/stdc/wchar_.lo core/stdc/wctype.lo core/sync/barrier.lo \
+	core/sync/condition.lo core/sync/config.lo \
+	core/sync/exception.lo core/sync/mutex.lo core/sync/rwmutex.lo \
+	core/sync/semaphore.lo core/thread.lo core/time.lo \
+	core/vararg.lo etc/linux/memoryerror.lo gcc/atomics.lo \
+	gcc/attribute.lo gcc/backtrace.lo gcc/builtins.lo gcc/deh.lo \
+	gcc/unwind/arm.lo gcc/unwind/generic.lo gcc/unwind/package.lo \
+	gcc/unwind/pe.lo object.lo rt/aApply.lo rt/aApplyR.lo \
+	rt/aaA.lo rt/adi.lo rt/arrayassign.lo rt/arraycast.lo \
+	rt/arraycat.lo rt/cast_.lo rt/config.lo rt/critical_.lo \
+	rt/deh.lo rt/dmain2.lo rt/invariant.lo rt/lifetime.lo \
+	rt/memory.lo rt/minfo.lo rt/monitor_.lo rt/obj.lo rt/qsort.lo \
+	rt/switch_.lo rt/tlsgc.lo rt/typeinfo/ti_AC.lo \
+	rt/typeinfo/ti_Acdouble.lo rt/typeinfo/ti_Acfloat.lo \
+	rt/typeinfo/ti_Acreal.lo rt/typeinfo/ti_Adouble.lo \
+	rt/typeinfo/ti_Afloat.lo rt/typeinfo/ti_Ag.lo \
+	rt/typeinfo/ti_Aint.lo rt/typeinfo/ti_Along.lo \
+	rt/typeinfo/ti_Areal.lo rt/typeinfo/ti_Ashort.lo \
+	rt/typeinfo/ti_C.lo rt/typeinfo/ti_byte.lo \
+	rt/typeinfo/ti_cdouble.lo rt/typeinfo/ti_cfloat.lo \
+	rt/typeinfo/ti_char.lo rt/typeinfo/ti_creal.lo \
+	rt/typeinfo/ti_dchar.lo rt/typeinfo/ti_delegate.lo \
+	rt/typeinfo/ti_double.lo rt/typeinfo/ti_float.lo \
+	rt/typeinfo/ti_idouble.lo rt/typeinfo/ti_ifloat.lo \
+	rt/typeinfo/ti_int.lo rt/typeinfo/ti_ireal.lo \
+	rt/typeinfo/ti_long.lo rt/typeinfo/ti_ptr.lo \
+	rt/typeinfo/ti_real.lo rt/typeinfo/ti_short.lo \
+	rt/typeinfo/ti_ubyte.lo rt/typeinfo/ti_uint.lo \
+	rt/typeinfo/ti_ulong.lo rt/typeinfo/ti_ushort.lo \
+	rt/typeinfo/ti_void.lo rt/typeinfo/ti_wchar.lo \
+	rt/util/array.lo rt/util/container/array.lo \
+	rt/util/container/common.lo rt/util/container/hashtab.lo \
+	rt/util/container/treap.lo rt/util/hash.lo rt/util/random.lo \
+	rt/util/string.lo rt/util/typeinfo.lo rt/util/utf.lo
+am__objects_2 = gc/bits.lo gc/config.lo gc/gc.lo gc/os.lo \
+	gc/pooltable.lo gc/proxy.lo gc/stats.lo
+@DRUNTIME_GC_ENABLE_TRUE@am__objects_3 = $(am__objects_2)
+am__objects_4 = gcstub/gc.lo
+@DRUNTIME_GC_ENABLE_FALSE@am__objects_5 = $(am__objects_4)
+am__objects_6 = core/sys/posix/arpa/inet.lo core/sys/posix/config.lo \
+	core/sys/posix/dirent.lo core/sys/posix/dlfcn.lo \
+	core/sys/posix/fcntl.lo core/sys/posix/grp.lo \
+	core/sys/posix/inttypes.lo core/sys/posix/net/if_.lo \
+	core/sys/posix/netdb.lo core/sys/posix/netinet/in_.lo \
+	core/sys/posix/netinet/tcp.lo core/sys/posix/poll.lo \
+	core/sys/posix/pthread.lo core/sys/posix/pwd.lo \
+	core/sys/posix/sched.lo core/sys/posix/semaphore.lo \
+	core/sys/posix/setjmp.lo core/sys/posix/signal.lo \
+	core/sys/posix/stdio.lo core/sys/posix/stdlib.lo \
+	core/sys/posix/sys/ioctl.lo core/sys/posix/sys/ipc.lo \
+	core/sys/posix/sys/mman.lo core/sys/posix/sys/msg.lo \
+	core/sys/posix/sys/resource.lo core/sys/posix/sys/select.lo \
+	core/sys/posix/sys/shm.lo core/sys/posix/sys/socket.lo \
+	core/sys/posix/sys/stat.lo core/sys/posix/sys/statvfs.lo \
+	core/sys/posix/sys/time.lo core/sys/posix/sys/types.lo \
+	core/sys/posix/sys/uio.lo core/sys/posix/sys/un.lo \
+	core/sys/posix/sys/utsname.lo core/sys/posix/sys/wait.lo \
+	core/sys/posix/syslog.lo core/sys/posix/termios.lo \
+	core/sys/posix/time.lo core/sys/posix/ucontext.lo \
+	core/sys/posix/unistd.lo core/sys/posix/utime.lo
+@DRUNTIME_OS_UNIX_TRUE@am__objects_7 = $(am__objects_6)
+am__objects_8 = core/sys/osx/execinfo.lo core/sys/osx/mach/dyld.lo \
+	core/sys/osx/mach/getsect.lo core/sys/osx/mach/kern_return.lo \
+	core/sys/osx/mach/loader.lo core/sys/osx/mach/port.lo \
+	core/sys/osx/mach/semaphore.lo core/sys/osx/mach/thread_act.lo \
+	core/sys/osx/pthread.lo core/sys/osx/sys/cdefs.lo \
+	core/sys/osx/sys/mman.lo
+@DRUNTIME_OS_DARWIN_TRUE@am__objects_9 = $(am__objects_8)
+am__objects_10 = core/sys/freebsd/dlfcn.lo \
+	core/sys/freebsd/execinfo.lo core/sys/freebsd/sys/cdefs.lo \
+	core/sys/freebsd/sys/elf.lo core/sys/freebsd/sys/elf32.lo \
+	core/sys/freebsd/sys/elf64.lo \
+	core/sys/freebsd/sys/elf_common.lo \
+	core/sys/freebsd/sys/event.lo core/sys/freebsd/sys/link_elf.lo \
+	core/sys/freebsd/sys/mman.lo core/sys/freebsd/time.lo
+@DRUNTIME_OS_BSD_TRUE@am__objects_11 = $(am__objects_10)
+am__objects_12 = core/sys/linux/config.lo core/sys/linux/dlfcn.lo \
+	core/sys/linux/elf.lo core/sys/linux/epoll.lo \
+	core/sys/linux/errno.lo core/sys/linux/execinfo.lo \
+	core/sys/linux/link.lo core/sys/linux/stdio.lo \
+	core/sys/linux/sys/inotify.lo core/sys/linux/sys/mman.lo \
+	core/sys/linux/sys/signalfd.lo core/sys/linux/sys/sysinfo.lo \
+	core/sys/linux/sys/xattr.lo core/sys/linux/termios.lo \
+	core/sys/linux/time.lo core/sys/linux/tipc.lo
+@DRUNTIME_OS_LINUX_TRUE@am__objects_13 = $(am__objects_12)
+am__objects_14 = core/sys/windows/com.lo core/sys/windows/dbghelp.lo \
+	core/sys/windows/dll.lo core/sys/windows/stacktrace.lo \
+	core/sys/windows/stat.lo core/sys/windows/threadaux.lo \
+	core/sys/windows/windows.lo core/sys/windows/winsock2.lo
+@DRUNTIME_OS_MINGW_TRUE@am__objects_15 = $(am__objects_14)
+am__objects_16 = core/sys/solaris/dlfcn.lo core/sys/solaris/elf.lo \
+	core/sys/solaris/execinfo.lo core/sys/solaris/libelf.lo \
+	core/sys/solaris/link.lo core/sys/solaris/sys/elf.lo \
+	core/sys/solaris/sys/elf_386.lo \
+	core/sys/solaris/sys/elf_SPARC.lo \
+	core/sys/solaris/sys/elf_amd64.lo \
+	core/sys/solaris/sys/elf_notes.lo \
+	core/sys/solaris/sys/elftypes.lo core/sys/solaris/sys/link.lo \
+	core/sys/solaris/sys/priocntl.lo \
+	core/sys/solaris/sys/procset.lo core/sys/solaris/sys/types.lo
+@DRUNTIME_OS_SOLARIS_TRUE@am__objects_17 = $(am__objects_16)
+am__objects_18 = gcc/config.lo gcc/libbacktrace.lo
+am__objects_19 = $(am__objects_1) $(am__objects_3) $(am__objects_5) \
+	$(am__objects_7) $(am__objects_9) $(am__objects_11) \
+	$(am__objects_13) $(am__objects_15) $(am__objects_17) \
+	$(am__objects_18)
+am__objects_20 = libgdruntime_la-errno_.lo
+am__objects_21 = libgdruntime_la-threadasm.lo
+am__objects_22 = $(am__objects_19) $(am__objects_20) $(am__objects_21)
+am_libgdruntime_la_OBJECTS = $(am__objects_22)
+libgdruntime_la_OBJECTS = $(am_libgdruntime_la_OBJECTS)
+libgdruntime_la_LINK = $(LIBTOOL) --tag=CC \
+	$(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgdruntime_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
+am__DEPENDENCIES_1 = core/atomic.t.lo core/bitop.t.lo \
+	core/checkedint.t.lo core/cpuid.t.lo core/demangle.t.lo \
+	core/exception.t.lo core/internal/convert.t.lo \
+	core/internal/hash.t.lo core/internal/traits.t.lo \
+	core/math.t.lo core/memory.t.lo core/runtime.t.lo \
+	core/simd.t.lo core/stdc/complex.t.lo core/stdc/config.t.lo \
+	core/stdc/ctype.t.lo core/stdc/errno.t.lo core/stdc/fenv.t.lo \
+	core/stdc/float_.t.lo core/stdc/inttypes.t.lo \
+	core/stdc/limits.t.lo core/stdc/locale.t.lo \
+	core/stdc/math.t.lo core/stdc/signal.t.lo \
+	core/stdc/stdarg.t.lo core/stdc/stddef.t.lo \
+	core/stdc/stdint.t.lo core/stdc/stdio.t.lo \
+	core/stdc/stdlib.t.lo core/stdc/string.t.lo \
+	core/stdc/tgmath.t.lo core/stdc/time.t.lo \
+	core/stdc/wchar_.t.lo core/stdc/wctype.t.lo \
+	core/sync/barrier.t.lo core/sync/condition.t.lo \
+	core/sync/config.t.lo core/sync/exception.t.lo \
+	core/sync/mutex.t.lo core/sync/rwmutex.t.lo \
+	core/sync/semaphore.t.lo core/thread.t.lo core/time.t.lo \
+	core/vararg.t.lo etc/linux/memoryerror.t.lo gcc/atomics.t.lo \
+	gcc/attribute.t.lo gcc/backtrace.t.lo gcc/builtins.t.lo \
+	gcc/deh.t.lo gcc/unwind/arm.t.lo gcc/unwind/generic.t.lo \
+	gcc/unwind/package.t.lo gcc/unwind/pe.t.lo object.t.lo \
+	rt/aApply.t.lo rt/aApplyR.t.lo rt/aaA.t.lo rt/adi.t.lo \
+	rt/arrayassign.t.lo rt/arraycast.t.lo rt/arraycat.t.lo \
+	rt/cast_.t.lo rt/config.t.lo rt/critical_.t.lo rt/deh.t.lo \
+	rt/dmain2.t.lo rt/invariant.t.lo rt/lifetime.t.lo \
+	rt/memory.t.lo rt/minfo.t.lo rt/monitor_.t.lo rt/obj.t.lo \
+	rt/qsort.t.lo rt/switch_.t.lo rt/tlsgc.t.lo \
+	rt/typeinfo/ti_AC.t.lo rt/typeinfo/ti_Acdouble.t.lo \
+	rt/typeinfo/ti_Acfloat.t.lo rt/typeinfo/ti_Acreal.t.lo \
+	rt/typeinfo/ti_Adouble.t.lo rt/typeinfo/ti_Afloat.t.lo \
+	rt/typeinfo/ti_Ag.t.lo rt/typeinfo/ti_Aint.t.lo \
+	rt/typeinfo/ti_Along.t.lo rt/typeinfo/ti_Areal.t.lo \
+	rt/typeinfo/ti_Ashort.t.lo rt/typeinfo/ti_C.t.lo \
+	rt/typeinfo/ti_byte.t.lo rt/typeinfo/ti_cdouble.t.lo \
+	rt/typeinfo/ti_cfloat.t.lo rt/typeinfo/ti_char.t.lo \
+	rt/typeinfo/ti_creal.t.lo rt/typeinfo/ti_dchar.t.lo \
+	rt/typeinfo/ti_delegate.t.lo rt/typeinfo/ti_double.t.lo \
+	rt/typeinfo/ti_float.t.lo rt/typeinfo/ti_idouble.t.lo \
+	rt/typeinfo/ti_ifloat.t.lo rt/typeinfo/ti_int.t.lo \
+	rt/typeinfo/ti_ireal.t.lo rt/typeinfo/ti_long.t.lo \
+	rt/typeinfo/ti_ptr.t.lo rt/typeinfo/ti_real.t.lo \
+	rt/typeinfo/ti_short.t.lo rt/typeinfo/ti_ubyte.t.lo \
+	rt/typeinfo/ti_uint.t.lo rt/typeinfo/ti_ulong.t.lo \
+	rt/typeinfo/ti_ushort.t.lo rt/typeinfo/ti_void.t.lo \
+	rt/typeinfo/ti_wchar.t.lo rt/util/array.t.lo \
+	rt/util/container/array.t.lo rt/util/container/common.t.lo \
+	rt/util/container/hashtab.t.lo rt/util/container/treap.t.lo \
+	rt/util/hash.t.lo rt/util/random.t.lo rt/util/string.t.lo \
+	rt/util/typeinfo.t.lo rt/util/utf.t.lo
+am__DEPENDENCIES_2 = gc/bits.t.lo gc/config.t.lo gc/gc.t.lo gc/os.t.lo \
+	gc/pooltable.t.lo gc/proxy.t.lo gc/stats.t.lo
+@DRUNTIME_GC_ENABLE_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
+am__DEPENDENCIES_4 = gcstub/gc.t.lo
+@DRUNTIME_GC_ENABLE_FALSE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_4)
+am__DEPENDENCIES_6 = core/sys/posix/arpa/inet.t.lo \
+	core/sys/posix/config.t.lo core/sys/posix/dirent.t.lo \
+	core/sys/posix/dlfcn.t.lo core/sys/posix/fcntl.t.lo \
+	core/sys/posix/grp.t.lo core/sys/posix/inttypes.t.lo \
+	core/sys/posix/net/if_.t.lo core/sys/posix/netdb.t.lo \
+	core/sys/posix/netinet/in_.t.lo \
+	core/sys/posix/netinet/tcp.t.lo core/sys/posix/poll.t.lo \
+	core/sys/posix/pthread.t.lo core/sys/posix/pwd.t.lo \
+	core/sys/posix/sched.t.lo core/sys/posix/semaphore.t.lo \
+	core/sys/posix/setjmp.t.lo core/sys/posix/signal.t.lo \
+	core/sys/posix/stdio.t.lo core/sys/posix/stdlib.t.lo \
+	core/sys/posix/sys/ioctl.t.lo core/sys/posix/sys/ipc.t.lo \
+	core/sys/posix/sys/mman.t.lo core/sys/posix/sys/msg.t.lo \
+	core/sys/posix/sys/resource.t.lo \
+	core/sys/posix/sys/select.t.lo core/sys/posix/sys/shm.t.lo \
+	core/sys/posix/sys/socket.t.lo core/sys/posix/sys/stat.t.lo \
+	core/sys/posix/sys/statvfs.t.lo core/sys/posix/sys/time.t.lo \
+	core/sys/posix/sys/types.t.lo core/sys/posix/sys/uio.t.lo \
+	core/sys/posix/sys/un.t.lo core/sys/posix/sys/utsname.t.lo \
+	core/sys/posix/sys/wait.t.lo core/sys/posix/syslog.t.lo \
+	core/sys/posix/termios.t.lo core/sys/posix/time.t.lo \
+	core/sys/posix/ucontext.t.lo core/sys/posix/unistd.t.lo \
+	core/sys/posix/utime.t.lo
+@DRUNTIME_OS_UNIX_TRUE@am__DEPENDENCIES_7 = $(am__DEPENDENCIES_6)
+am__DEPENDENCIES_8 = core/sys/osx/execinfo.t.lo \
+	core/sys/osx/mach/dyld.t.lo core/sys/osx/mach/getsect.t.lo \
+	core/sys/osx/mach/kern_return.t.lo \
+	core/sys/osx/mach/loader.t.lo core/sys/osx/mach/port.t.lo \
+	core/sys/osx/mach/semaphore.t.lo \
+	core/sys/osx/mach/thread_act.t.lo core/sys/osx/pthread.t.lo \
+	core/sys/osx/sys/cdefs.t.lo core/sys/osx/sys/mman.t.lo
+@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_9 = $(am__DEPENDENCIES_8)
+am__DEPENDENCIES_10 = core/sys/freebsd/dlfcn.t.lo \
+	core/sys/freebsd/execinfo.t.lo core/sys/freebsd/sys/cdefs.t.lo \
+	core/sys/freebsd/sys/elf.t.lo core/sys/freebsd/sys/elf32.t.lo \
+	core/sys/freebsd/sys/elf64.t.lo \
+	core/sys/freebsd/sys/elf_common.t.lo \
+	core/sys/freebsd/sys/event.t.lo \
+	core/sys/freebsd/sys/link_elf.t.lo \
+	core/sys/freebsd/sys/mman.t.lo core/sys/freebsd/time.t.lo
+@DRUNTIME_OS_BSD_TRUE@am__DEPENDENCIES_11 = $(am__DEPENDENCIES_10)
+am__DEPENDENCIES_12 = core/sys/linux/config.t.lo \
+	core/sys/linux/dlfcn.t.lo core/sys/linux/elf.t.lo \
+	core/sys/linux/epoll.t.lo core/sys/linux/errno.t.lo \
+	core/sys/linux/execinfo.t.lo core/sys/linux/link.t.lo \
+	core/sys/linux/stdio.t.lo core/sys/linux/sys/inotify.t.lo \
+	core/sys/linux/sys/mman.t.lo core/sys/linux/sys/signalfd.t.lo \
+	core/sys/linux/sys/sysinfo.t.lo core/sys/linux/sys/xattr.t.lo \
+	core/sys/linux/termios.t.lo core/sys/linux/time.t.lo \
+	core/sys/linux/tipc.t.lo
+@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_13 = $(am__DEPENDENCIES_12)
+am__DEPENDENCIES_14 = core/sys/windows/com.t.lo \
+	core/sys/windows/dbghelp.t.lo core/sys/windows/dll.t.lo \
+	core/sys/windows/stacktrace.t.lo core/sys/windows/stat.t.lo \
+	core/sys/windows/threadaux.t.lo core/sys/windows/windows.t.lo \
+	core/sys/windows/winsock2.t.lo
+@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_15 = $(am__DEPENDENCIES_14)
+am__DEPENDENCIES_16 = core/sys/solaris/dlfcn.t.lo \
+	core/sys/solaris/elf.t.lo core/sys/solaris/execinfo.t.lo \
+	core/sys/solaris/libelf.t.lo core/sys/solaris/link.t.lo \
+	core/sys/solaris/sys/elf.t.lo \
+	core/sys/solaris/sys/elf_386.t.lo \
+	core/sys/solaris/sys/elf_SPARC.t.lo \
+	core/sys/solaris/sys/elf_amd64.t.lo \
+	core/sys/solaris/sys/elf_notes.t.lo \
+	core/sys/solaris/sys/elftypes.t.lo \
+	core/sys/solaris/sys/link.t.lo \
+	core/sys/solaris/sys/priocntl.t.lo \
+	core/sys/solaris/sys/procset.t.lo \
+	core/sys/solaris/sys/types.t.lo
+@DRUNTIME_OS_SOLARIS_TRUE@am__DEPENDENCIES_17 =  \
+@DRUNTIME_OS_SOLARIS_TRUE@	$(am__DEPENDENCIES_16)
+am__DEPENDENCIES_18 = gcc/config.t.lo gcc/libbacktrace.t.lo
+am__DEPENDENCIES_19 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_7) \
+	$(am__DEPENDENCIES_9) $(am__DEPENDENCIES_11) \
+	$(am__DEPENDENCIES_13) $(am__DEPENDENCIES_15) \
+	$(am__DEPENDENCIES_17) $(am__DEPENDENCIES_18)
+am__DEPENDENCIES_20 = $(am__DEPENDENCIES_19)
+libgdruntime_t_la_DEPENDENCIES = $(am__DEPENDENCIES_20) \
+	$(BACKTRACE_LIB)
+am__objects_23 = libgdruntime_t_la-errno_.lo
+am__objects_24 = libgdruntime_t_la-threadasm.lo
+am_libgdruntime_t_la_OBJECTS = $(am__objects_23) $(am__objects_24)
+libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
+libgdruntime_t_la_LINK = $(LIBTOOL) --tag=CC \
+	$(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgdruntime_t_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
+@ENABLE_SHARED_TRUE@am_libgdruntime_t_la_rpath =
+@ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
+@ENABLE_STATIC_TRUE@am__EXEEXT_2 = unittest_static$(EXEEXT)
+am_unittest_OBJECTS = test_runner.$(OBJEXT)
+unittest_OBJECTS = $(am_unittest_OBJECTS)
+unittest_DEPENDENCIES = libgdruntime_t.la
+am__objects_25 = errno_.$(OBJEXT)
+am__objects_26 = threadasm.$(OBJEXT)
+am_unittest_static_OBJECTS = test_runner.$(OBJEXT) $(am__objects_25) \
+	$(am__objects_26)
+unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
+unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS) \
+	$(BACKTRACE_LIB)
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp =
 am__depfiles_maybe =
-SOURCES =
+CPPASCOMPILE = $(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS)
+LTCPPASCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS)
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
+SOURCES = $(libgdruntime_la_SOURCES) $(libgdruntime_t_la_SOURCES) \
+	$(unittest_SOURCES) $(unittest_static_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+ETAGS = etags
+CTAGS = ctags
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -100,6 +459,8 @@ BACKTRACE_SUPPORTED = @BACKTRACE_SUPPORTED@
 BACKTRACE_SUPPORTS_THREADS = @BACKTRACE_SUPPORTS_THREADS@
 BACKTRACE_USES_MALLOC = @BACKTRACE_USES_MALLOC@
 CC = @CC@
+CCAS = @CCAS@
+CCASFLAGS = @CCASFLAGS@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
 CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
@@ -112,15 +473,14 @@ DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
 DL_LIBS = @DL_LIBS@
-DRUNTIME_OBJS = @DRUNTIME_OBJS@ $(BASE_OBJS) $(RUNTIME_OBJS) \
-	$(UTIL_OBJS) $(subst ti_,rt/typeinfo/ti_,$(TI))
-D_EXTRA_OBJS = @D_EXTRA_OBJS@
-D_GC_MODULES = @D_GC_MODULES@
+DSYMUTIL = @DSYMUTIL@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+FGREP = @FGREP@
 GDC = @GDC@
 GREP = @GREP@
 HAVE_DLADDR = @HAVE_DLADDR@
@@ -129,15 +489,24 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBBACKTRACE_LIB = @LIBBACKTRACE_LIB@
+LIBBACKTRACE_DIR = @LIBBACKTRACE_DIR@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
+LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+NM = @NM@
+NMEDIT = @NMEDIT@
+OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -147,17 +516,18 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 RANLIB = @RANLIB@
+RELEASE_VER = @RELEASE_VER@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
 VERSION = @VERSION@
-WERROR = @WERROR@
-ZLIB_OBJS = @ZLIB_OBJS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__leading_dot = @am__leading_dot@
 am__tar = @am__tar@
 am__untar = @am__untar@
@@ -172,8 +542,6 @@ datadir = @datadir@
 datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
-enable_shared = @enable_shared@
-enable_static = @enable_static@
 exec_prefix = @exec_prefix@
 gdc_include_dir = @gdc_include_dir@
 host = @host@
@@ -194,8 +562,6 @@ mkdir_p = @mkdir_p@
 multi_basedir = @multi_basedir@
 oldincludedir = @oldincludedir@
 pdfdir = @pdfdir@
-phobos_toolexecdir = @phobos_toolexecdir@
-phobos_toolexeclibdir = @phobos_toolexeclibdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
@@ -208,94 +574,207 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
+toolexecdir = @toolexecdir@
+toolexeclibdir = @toolexeclibdir@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-OUR_CFLAGS = @DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
+
+# If there are no sources with known extension (i.e. only D sources)
+# automake forgets to set this
+CCLD = $(CC)
+LTDCOMPILE = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(GDC) $(AM_DFLAGS)
+
+
+# Override executable linking commands: We have to use GDC for linking
+unittest_static_LINK = $(LIBTOOL) --tag=CC \
+	$(unittest_static_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_static_LDFLAGS) \
+	$(LDFLAGS) -o $@
+
+unittest_LINK = $(LIBTOOL) --tag=CC \
+	$(unittest_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_LDFLAGS) \
+	$(LDFLAGS) -o $@
+
+
+# Include D build rules
+
+# Make sure GDC can find libdruntime include files
 D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) -I .
-ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
-toolexecdir = $(phobos_toolexecdir)
-toolexeclibdir = $(phobos_toolexeclibdir)
-SUFFIXES = .d
 
-#--------------------------------------#
-# GDC Runtime
-BASE_OBJS = object.o
-RUNTIME_OBJS = rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
-	     rt/arraycast.o rt/arraycat.o rt/cast_.o rt/critical_.o \
-	     rt/config.o rt/deh.o rt/dmain2.o rt/minfo.o rt/memory.o \
-	     rt/invariant.o rt/lifetime.o rt/monitor_.o rt/obj.o rt/qsort.o \
-	     rt/switch_.o rt/tlsgc.o
-
-CORE_OBJS = core/atomic.o core/bitop.o core/checkedint.o core/cpuid.o \
-	  core/demangle.o core/exception.o core/math.o core/memory.o \
-	  core/runtime.o core/simd.o core/thread.o core/threadasm.o \
-	  core/time.o core/vararg.o core/internal/convert.o \
-	  core/internal/hash.o core/internal/traits.o \
-	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
-	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
-	  core/sync/semaphore.o
-
-GCC_OBJS = gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o \
-	 gcc/libbacktrace.o gcc/unwind/pe.o
-
-UTIL_OBJS = rt/util/array.o rt/util/hash.o rt/util/random.o rt/util/string.o \
-	  rt/util/typeinfo.o rt/util/utf.o \
-	  rt/util/container/array.o rt/util/container/common.o \
-	  rt/util/container/hashtab.o rt/util/container/treap.o
-
-TI = ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
-   ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
-   ti_cdouble.o ti_cfloat.o ti_char.o ti_creal.o ti_dchar.o ti_delegate.o \
-   ti_double.o ti_float.o ti_idouble.o ti_ifloat.o ti_int.o ti_ireal.o \
-   ti_long.o ti_ptr.o ti_real.o ti_short.o ti_ubyte.o ti_uint.o ti_ulong.o \
-   ti_ushort.o ti_void.o ti_wchar.o
+# Install all D and DI files
+ALL_DRUNTIME_INSTALL_DSOURCES = $(DRUNTIME_DSOURCES) $(DRUNTIME_DSOURCES_GC) \
+	$(DRUNTIME_DSOURCES_GCSTUB) $(DRUNTIME_DSOURCES_POSIX) \
+	$(DRUNTIME_DSOURCES_OSX) $(DRUNTIME_DSOURCES_FREEBSD) \
+	$(DRUNTIME_DSOURCES_LINUX) $(DRUNTIME_DSOURCES_WINDOWS) \
+	$(DRUNTIME_DSOURCES_SOLARIS) $(DRUNTIME_DSOURCES_GENERATED) \
+	$(DRUNTIME_DISOURCES)
 
 
-# OS specific
-RT_STDC_OBJS = core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
-	     core/stdc/errno_.o core/stdc/fenv.o core/stdc/math.o \
-	     core/stdc/signal.o core/stdc/stdarg.o core/stdc/stdio.o \
-	     core/stdc/stdlib.o core/stdc/stdint.o core/stdc/stddef.o \
-	     core/stdc/string.o core/stdc/time.o core/stdc/wchar_.o
+# Setup source files depending on configure
+# Generated by configure
+ALL_DRUNTIME_COMPILE_DSOURCES = $(DRUNTIME_DSOURCES) $(am__append_1) \
+	$(am__append_2) $(am__append_3) $(am__append_4) \
+	$(am__append_5) $(am__append_6) $(am__append_7) \
+	$(am__append_8) $(DRUNTIME_DSOURCES_GENERATED)
+# libbacktrace support
+@BACKTRACE_SUPPORTED_TRUE@BACKTRACE_LIB = $(LIBBACKTRACE_DIR)/libbacktrace.la
+ALL_DRUNTIME_SOURCES = $(ALL_DRUNTIME_COMPILE_DSOURCES) $(DRUNTIME_CSOURCES) \
+	$(DRUNTIME_SSOURCES)
 
-RT_LINUX_OBJS = core/sys/linux/stdio.o core/sys/linux/tipc.o
-RT_FREEBSD_OBJS = core/sys/freebsd/execinfo.o core/sys/freebsd/sys/event.o
-RT_OSX_OBJS = core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
-	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o \
-	    core/sys/osx/pthread.o
+DRUNTIME_TEST_LOBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.lo)
+REAL_DRUNTIME_TEST_OBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.o)
+# Workaround issue #
+DRUNTIME_TEST_OBJECTS = $(filter-out rt/util/typeinfo.t.o \
+	core/internal/convert.t.o, $(REAL_DRUNTIME_TEST_OBJECTS)) \
+	rt/util/typeinfo.o core/internal/convert.o
 
-RT_POSIX_OBJS = core/sys/posix/dirent.o core/sys/posix/netdb.o \
-	      core/sys/posix/signal.o core/sys/posix/sys/ioctl.o \
-	      core/sys/posix/sys/resource.o core/sys/posix/sys/select.o \
-	      core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
-	      core/sys/posix/sys/utsname.o core/sys/posix/sys/wait.o \
-	      core/sys/posix/arpa/inet.o core/sys/posix/netinet/in_.o
+@ENABLE_SHARED_TRUE@check_LTLIBRARIES = libgdruntime_t.la
+toolexeclib_LTLIBRARIES = libgdruntime.la
+libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
+libgdruntime_la_LIBTOOLFLAGS = --tag=D
+libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER) \
+    -static
 
-RT_SOLARIS_OBJS = core/sys/solaris/sys/priocntl.o core/sys/solaris/sys/types.o \
-		core/sys/solaris/sys/procset.o
+libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
 
-RT_WINDOWS_OBJS = core/sys/windows/com.o core/sys/windows/dbghelp.o \
-		core/sys/windows/dll.o core/sys/windows/stacktrace.o \
-		core/sys/windows/stat.o core/sys/windows/threadaux.o \
-		core/sys/windows/windows.o core/sys/windows/winsock2.o
+# For static unittest, link objects directly
+unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
+    $(DRUNTIME_SSOURCES)
 
-ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
+unittest_static_LIBTOOLFLAGS = --tag=D
+unittest_static_LDFLAGS = -Xcompiler -nophoboslib
+unittest_static_LDADD = $(DRUNTIME_TEST_OBJECTS) $(BACKTRACE_LIB)
+EXTRA_unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS)
 
-# Work around what appears to be a GNU make bug handling MAKEFLAGS
-# values defined in terms of make variables, as is the case for CC and
-# friends when we are called from the top level Makefile.
-AM_MAKEFLAGS = \
-	"gdc_include_dir=$(gdc_include_dir)"
+# For unittest with dynamic library
+libgdruntime_t_la_SOURCES = $(DRUNTIME_CSOURCES) $(DRUNTIME_SSOURCES)
+libgdruntime_t_la_LIBTOOLFLAGS = --tag=D
+# Automake by default does not generate shared libs for non-installed
+# libraries. Use -rpath to force shared lib generation.
+libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
+libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
+EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
+# For unittest
+unittest_SOURCES = test_runner.d
+unittest_LIBTOOLFLAGS = --tag=D
+unittest_LDFLAGS = -Xcompiler -nophoboslib
+unittest_LDADD = libgdruntime_t.la
+DRUNTIME_DSOURCES_GENERATED = gcc/config.d gcc/libbacktrace.d
+# Source file definitions. Boring stuff, auto-generated with
+# https://gist.github.com/jpf91/8ad1dbc9902d6ad876313f134c6527d1
+# Can't use wildcards here:
+# https://www.gnu.org/software/automake/manual/html_node/Wildcards.html
+DRUNTIME_DISOURCES = __entrypoint.di
+DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
+	core/cpuid.d core/demangle.d core/exception.d core/internal/convert.d \
+	core/internal/hash.d core/internal/traits.d core/math.d core/memory.d \
+	core/runtime.d core/simd.d core/stdc/complex.d core/stdc/config.d \
+	core/stdc/ctype.d core/stdc/errno.d core/stdc/fenv.d \
+	core/stdc/float_.d core/stdc/inttypes.d core/stdc/limits.d \
+	core/stdc/locale.d core/stdc/math.d core/stdc/signal.d \
+	core/stdc/stdarg.d core/stdc/stddef.d core/stdc/stdint.d \
+	core/stdc/stdio.d core/stdc/stdlib.d core/stdc/string.d \
+	core/stdc/tgmath.d core/stdc/time.d core/stdc/wchar_.d \
+	core/stdc/wctype.d core/sync/barrier.d core/sync/condition.d \
+	core/sync/config.d core/sync/exception.d core/sync/mutex.d \
+	core/sync/rwmutex.d core/sync/semaphore.d core/thread.d core/time.d \
+	core/vararg.d etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d \
+	gcc/backtrace.d gcc/builtins.d gcc/deh.d gcc/unwind/arm.d \
+	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
+	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
+	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
+	rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d \
+	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/switch_.d rt/tlsgc.d \
+	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
+	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
+	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
+	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
+	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
+	rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d \
+	rt/typeinfo/ti_dchar.d rt/typeinfo/ti_delegate.d \
+	rt/typeinfo/ti_double.d rt/typeinfo/ti_float.d \
+	rt/typeinfo/ti_idouble.d rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d \
+	rt/typeinfo/ti_ireal.d rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d \
+	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
+	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
+	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
+	rt/util/container/array.d rt/util/container/common.d \
+	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
+	rt/util/random.d rt/util/string.d rt/util/typeinfo.d rt/util/utf.d
 
-# Subdir rules rely on $(FLAGS_TO_PASS)
-FLAGS_TO_PASS = $(AM_MAKEFLAGS)
+DRUNTIME_DSOURCES_GC = gc/bits.d gc/config.d gc/gc.d gc/os.d \
+	gc/pooltable.d gc/proxy.d gc/stats.d
+
+DRUNTIME_DSOURCES_GCSTUB = gcstub/gc.d
+DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/com.d \
+	core/sys/windows/dbghelp.d core/sys/windows/dll.d \
+	core/sys/windows/stacktrace.d core/sys/windows/stat.d \
+	core/sys/windows/threadaux.d core/sys/windows/windows.d \
+	core/sys/windows/winsock2.d
+
+DRUNTIME_DSOURCES_POSIX = core/sys/posix/arpa/inet.d \
+	core/sys/posix/config.d core/sys/posix/dirent.d core/sys/posix/dlfcn.d \
+	core/sys/posix/fcntl.d core/sys/posix/grp.d core/sys/posix/inttypes.d \
+	core/sys/posix/net/if_.d core/sys/posix/netdb.d \
+	core/sys/posix/netinet/in_.d core/sys/posix/netinet/tcp.d \
+	core/sys/posix/poll.d core/sys/posix/pthread.d core/sys/posix/pwd.d \
+	core/sys/posix/sched.d core/sys/posix/semaphore.d \
+	core/sys/posix/setjmp.d core/sys/posix/signal.d core/sys/posix/stdio.d \
+	core/sys/posix/stdlib.d core/sys/posix/sys/ioctl.d \
+	core/sys/posix/sys/ipc.d core/sys/posix/sys/mman.d \
+	core/sys/posix/sys/msg.d core/sys/posix/sys/resource.d \
+	core/sys/posix/sys/select.d core/sys/posix/sys/shm.d \
+	core/sys/posix/sys/socket.d core/sys/posix/sys/stat.d \
+	core/sys/posix/sys/statvfs.d core/sys/posix/sys/time.d \
+	core/sys/posix/sys/types.d core/sys/posix/sys/uio.d \
+	core/sys/posix/sys/un.d core/sys/posix/sys/utsname.d \
+	core/sys/posix/sys/wait.d core/sys/posix/syslog.d \
+	core/sys/posix/termios.d core/sys/posix/time.d \
+	core/sys/posix/ucontext.d core/sys/posix/unistd.d \
+	core/sys/posix/utime.d
+
+DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
+	core/sys/freebsd/execinfo.d core/sys/freebsd/sys/cdefs.d \
+	core/sys/freebsd/sys/elf.d core/sys/freebsd/sys/elf32.d \
+	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
+	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
+	core/sys/freebsd/sys/mman.d core/sys/freebsd/time.d
+
+DRUNTIME_DSOURCES_SOLARIS = core/sys/solaris/dlfcn.d \
+	core/sys/solaris/elf.d core/sys/solaris/execinfo.d \
+	core/sys/solaris/libelf.d core/sys/solaris/link.d \
+	core/sys/solaris/sys/elf.d core/sys/solaris/sys/elf_386.d \
+	core/sys/solaris/sys/elf_SPARC.d core/sys/solaris/sys/elf_amd64.d \
+	core/sys/solaris/sys/elf_notes.d core/sys/solaris/sys/elftypes.d \
+	core/sys/solaris/sys/link.d core/sys/solaris/sys/priocntl.d \
+	core/sys/solaris/sys/procset.d core/sys/solaris/sys/types.d
+
+DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
+	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
+	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
+	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
+	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
+	core/sys/osx/sys/cdefs.d core/sys/osx/sys/mman.d
+
+DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
+	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
+	core/sys/linux/errno.d core/sys/linux/execinfo.d core/sys/linux/link.d \
+	core/sys/linux/stdio.d core/sys/linux/sys/inotify.d \
+	core/sys/linux/sys/mman.d core/sys/linux/sys/signalfd.d \
+	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/xattr.d \
+	core/sys/linux/termios.d core/sys/linux/time.d core/sys/linux/tipc.d
+
+DRUNTIME_SSOURCES = core/threadasm.S
+DRUNTIME_CSOURCES = core/stdc/errno_.c
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .d .S .c .o
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
+.SUFFIXES: .S .c .d .lo .o .obj
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/d_rules.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -316,6 +795,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe);; \
 	esac;
+$(top_srcdir)/d_rules.am:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
@@ -325,17 +805,999 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+
+clean-checkLTLIBRARIES:
+	-test -z "$(check_LTLIBRARIES)" || rm -f $(check_LTLIBRARIES)
+	@list='$(check_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
+install-toolexeclibLTLIBRARIES: $(toolexeclib_LTLIBRARIES)
+	@$(NORMAL_INSTALL)
+	@list='$(toolexeclib_LTLIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(toolexeclibdir)" || exit 1; \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(toolexeclibdir)"; \
+	}
+
+uninstall-toolexeclibLTLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(toolexeclib_LTLIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	for p in $$list; do \
+	  $(am__strip_dir) \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(toolexeclibdir)/$$f'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(toolexeclibdir)/$$f"; \
+	done
+
+clean-toolexeclibLTLIBRARIES:
+	-test -z "$(toolexeclib_LTLIBRARIES)" || rm -f $(toolexeclib_LTLIBRARIES)
+	@list='$(toolexeclib_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
+core/$(am__dirstamp):
+	@$(MKDIR_P) core
+	@: > core/$(am__dirstamp)
+core/atomic.lo: core/$(am__dirstamp)
+core/bitop.lo: core/$(am__dirstamp)
+core/checkedint.lo: core/$(am__dirstamp)
+core/cpuid.lo: core/$(am__dirstamp)
+core/demangle.lo: core/$(am__dirstamp)
+core/exception.lo: core/$(am__dirstamp)
+core/internal/$(am__dirstamp):
+	@$(MKDIR_P) core/internal
+	@: > core/internal/$(am__dirstamp)
+core/internal/convert.lo: core/internal/$(am__dirstamp)
+core/internal/hash.lo: core/internal/$(am__dirstamp)
+core/internal/traits.lo: core/internal/$(am__dirstamp)
+core/math.lo: core/$(am__dirstamp)
+core/memory.lo: core/$(am__dirstamp)
+core/runtime.lo: core/$(am__dirstamp)
+core/simd.lo: core/$(am__dirstamp)
+core/stdc/$(am__dirstamp):
+	@$(MKDIR_P) core/stdc
+	@: > core/stdc/$(am__dirstamp)
+core/stdc/complex.lo: core/stdc/$(am__dirstamp)
+core/stdc/config.lo: core/stdc/$(am__dirstamp)
+core/stdc/ctype.lo: core/stdc/$(am__dirstamp)
+core/stdc/errno.lo: core/stdc/$(am__dirstamp)
+core/stdc/fenv.lo: core/stdc/$(am__dirstamp)
+core/stdc/float_.lo: core/stdc/$(am__dirstamp)
+core/stdc/inttypes.lo: core/stdc/$(am__dirstamp)
+core/stdc/limits.lo: core/stdc/$(am__dirstamp)
+core/stdc/locale.lo: core/stdc/$(am__dirstamp)
+core/stdc/math.lo: core/stdc/$(am__dirstamp)
+core/stdc/signal.lo: core/stdc/$(am__dirstamp)
+core/stdc/stdarg.lo: core/stdc/$(am__dirstamp)
+core/stdc/stddef.lo: core/stdc/$(am__dirstamp)
+core/stdc/stdint.lo: core/stdc/$(am__dirstamp)
+core/stdc/stdio.lo: core/stdc/$(am__dirstamp)
+core/stdc/stdlib.lo: core/stdc/$(am__dirstamp)
+core/stdc/string.lo: core/stdc/$(am__dirstamp)
+core/stdc/tgmath.lo: core/stdc/$(am__dirstamp)
+core/stdc/time.lo: core/stdc/$(am__dirstamp)
+core/stdc/wchar_.lo: core/stdc/$(am__dirstamp)
+core/stdc/wctype.lo: core/stdc/$(am__dirstamp)
+core/sync/$(am__dirstamp):
+	@$(MKDIR_P) core/sync
+	@: > core/sync/$(am__dirstamp)
+core/sync/barrier.lo: core/sync/$(am__dirstamp)
+core/sync/condition.lo: core/sync/$(am__dirstamp)
+core/sync/config.lo: core/sync/$(am__dirstamp)
+core/sync/exception.lo: core/sync/$(am__dirstamp)
+core/sync/mutex.lo: core/sync/$(am__dirstamp)
+core/sync/rwmutex.lo: core/sync/$(am__dirstamp)
+core/sync/semaphore.lo: core/sync/$(am__dirstamp)
+core/thread.lo: core/$(am__dirstamp)
+core/time.lo: core/$(am__dirstamp)
+core/vararg.lo: core/$(am__dirstamp)
+etc/linux/$(am__dirstamp):
+	@$(MKDIR_P) etc/linux
+	@: > etc/linux/$(am__dirstamp)
+etc/linux/memoryerror.lo: etc/linux/$(am__dirstamp)
+gcc/$(am__dirstamp):
+	@$(MKDIR_P) gcc
+	@: > gcc/$(am__dirstamp)
+gcc/atomics.lo: gcc/$(am__dirstamp)
+gcc/attribute.lo: gcc/$(am__dirstamp)
+gcc/backtrace.lo: gcc/$(am__dirstamp)
+gcc/builtins.lo: gcc/$(am__dirstamp)
+gcc/deh.lo: gcc/$(am__dirstamp)
+gcc/unwind/$(am__dirstamp):
+	@$(MKDIR_P) gcc/unwind
+	@: > gcc/unwind/$(am__dirstamp)
+gcc/unwind/arm.lo: gcc/unwind/$(am__dirstamp)
+gcc/unwind/generic.lo: gcc/unwind/$(am__dirstamp)
+gcc/unwind/package.lo: gcc/unwind/$(am__dirstamp)
+gcc/unwind/pe.lo: gcc/unwind/$(am__dirstamp)
+rt/$(am__dirstamp):
+	@$(MKDIR_P) rt
+	@: > rt/$(am__dirstamp)
+rt/aApply.lo: rt/$(am__dirstamp)
+rt/aApplyR.lo: rt/$(am__dirstamp)
+rt/aaA.lo: rt/$(am__dirstamp)
+rt/adi.lo: rt/$(am__dirstamp)
+rt/arrayassign.lo: rt/$(am__dirstamp)
+rt/arraycast.lo: rt/$(am__dirstamp)
+rt/arraycat.lo: rt/$(am__dirstamp)
+rt/cast_.lo: rt/$(am__dirstamp)
+rt/config.lo: rt/$(am__dirstamp)
+rt/critical_.lo: rt/$(am__dirstamp)
+rt/deh.lo: rt/$(am__dirstamp)
+rt/dmain2.lo: rt/$(am__dirstamp)
+rt/invariant.lo: rt/$(am__dirstamp)
+rt/lifetime.lo: rt/$(am__dirstamp)
+rt/memory.lo: rt/$(am__dirstamp)
+rt/minfo.lo: rt/$(am__dirstamp)
+rt/monitor_.lo: rt/$(am__dirstamp)
+rt/obj.lo: rt/$(am__dirstamp)
+rt/qsort.lo: rt/$(am__dirstamp)
+rt/switch_.lo: rt/$(am__dirstamp)
+rt/tlsgc.lo: rt/$(am__dirstamp)
+rt/typeinfo/$(am__dirstamp):
+	@$(MKDIR_P) rt/typeinfo
+	@: > rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_AC.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Acdouble.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Acfloat.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Acreal.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Adouble.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Afloat.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Ag.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Aint.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Along.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Areal.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_Ashort.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_C.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_byte.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_cdouble.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_cfloat.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_char.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_creal.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_dchar.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_delegate.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_double.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_float.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_idouble.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_ifloat.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_int.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_ireal.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_long.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_ptr.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_real.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_short.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_ubyte.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_uint.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_ulong.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_ushort.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_void.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_wchar.lo: rt/typeinfo/$(am__dirstamp)
+rt/util/$(am__dirstamp):
+	@$(MKDIR_P) rt/util
+	@: > rt/util/$(am__dirstamp)
+rt/util/array.lo: rt/util/$(am__dirstamp)
+rt/util/container/$(am__dirstamp):
+	@$(MKDIR_P) rt/util/container
+	@: > rt/util/container/$(am__dirstamp)
+rt/util/container/array.lo: rt/util/container/$(am__dirstamp)
+rt/util/container/common.lo: rt/util/container/$(am__dirstamp)
+rt/util/container/hashtab.lo: rt/util/container/$(am__dirstamp)
+rt/util/container/treap.lo: rt/util/container/$(am__dirstamp)
+rt/util/hash.lo: rt/util/$(am__dirstamp)
+rt/util/random.lo: rt/util/$(am__dirstamp)
+rt/util/string.lo: rt/util/$(am__dirstamp)
+rt/util/typeinfo.lo: rt/util/$(am__dirstamp)
+rt/util/utf.lo: rt/util/$(am__dirstamp)
+gc/$(am__dirstamp):
+	@$(MKDIR_P) gc
+	@: > gc/$(am__dirstamp)
+gc/bits.lo: gc/$(am__dirstamp)
+gc/config.lo: gc/$(am__dirstamp)
+gc/gc.lo: gc/$(am__dirstamp)
+gc/os.lo: gc/$(am__dirstamp)
+gc/pooltable.lo: gc/$(am__dirstamp)
+gc/proxy.lo: gc/$(am__dirstamp)
+gc/stats.lo: gc/$(am__dirstamp)
+gcstub/$(am__dirstamp):
+	@$(MKDIR_P) gcstub
+	@: > gcstub/$(am__dirstamp)
+gcstub/gc.lo: gcstub/$(am__dirstamp)
+core/sys/posix/arpa/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/posix/arpa
+	@: > core/sys/posix/arpa/$(am__dirstamp)
+core/sys/posix/arpa/inet.lo: core/sys/posix/arpa/$(am__dirstamp)
+core/sys/posix/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/posix
+	@: > core/sys/posix/$(am__dirstamp)
+core/sys/posix/config.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/dirent.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/dlfcn.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/fcntl.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/grp.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/inttypes.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/net/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/posix/net
+	@: > core/sys/posix/net/$(am__dirstamp)
+core/sys/posix/net/if_.lo: core/sys/posix/net/$(am__dirstamp)
+core/sys/posix/netdb.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/netinet/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/posix/netinet
+	@: > core/sys/posix/netinet/$(am__dirstamp)
+core/sys/posix/netinet/in_.lo: core/sys/posix/netinet/$(am__dirstamp)
+core/sys/posix/netinet/tcp.lo: core/sys/posix/netinet/$(am__dirstamp)
+core/sys/posix/poll.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/pthread.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/pwd.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/sched.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/semaphore.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/setjmp.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/signal.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/stdio.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/stdlib.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/sys/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/posix/sys
+	@: > core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/ioctl.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/ipc.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/mman.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/msg.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/resource.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/select.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/shm.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/socket.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/stat.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/statvfs.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/time.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/types.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/uio.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/un.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/utsname.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/sys/wait.lo: core/sys/posix/sys/$(am__dirstamp)
+core/sys/posix/syslog.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/termios.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/time.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/ucontext.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/unistd.lo: core/sys/posix/$(am__dirstamp)
+core/sys/posix/utime.lo: core/sys/posix/$(am__dirstamp)
+core/sys/osx/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/osx
+	@: > core/sys/osx/$(am__dirstamp)
+core/sys/osx/execinfo.lo: core/sys/osx/$(am__dirstamp)
+core/sys/osx/mach/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/osx/mach
+	@: > core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/mach/dyld.lo: core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/mach/getsect.lo: core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/mach/kern_return.lo: core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/mach/loader.lo: core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/mach/port.lo: core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/mach/semaphore.lo: core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/mach/thread_act.lo: core/sys/osx/mach/$(am__dirstamp)
+core/sys/osx/pthread.lo: core/sys/osx/$(am__dirstamp)
+core/sys/osx/sys/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/osx/sys
+	@: > core/sys/osx/sys/$(am__dirstamp)
+core/sys/osx/sys/cdefs.lo: core/sys/osx/sys/$(am__dirstamp)
+core/sys/osx/sys/mman.lo: core/sys/osx/sys/$(am__dirstamp)
+core/sys/freebsd/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/freebsd
+	@: > core/sys/freebsd/$(am__dirstamp)
+core/sys/freebsd/dlfcn.lo: core/sys/freebsd/$(am__dirstamp)
+core/sys/freebsd/execinfo.lo: core/sys/freebsd/$(am__dirstamp)
+core/sys/freebsd/sys/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/freebsd/sys
+	@: > core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/cdefs.lo: core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/elf.lo: core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/elf32.lo: core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/elf64.lo: core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/elf_common.lo:  \
+	core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/event.lo: core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/link_elf.lo:  \
+	core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/sys/mman.lo: core/sys/freebsd/sys/$(am__dirstamp)
+core/sys/freebsd/time.lo: core/sys/freebsd/$(am__dirstamp)
+core/sys/linux/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/linux
+	@: > core/sys/linux/$(am__dirstamp)
+core/sys/linux/config.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/dlfcn.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/elf.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/epoll.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/errno.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/execinfo.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/link.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/stdio.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/sys/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/linux/sys
+	@: > core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/sys/inotify.lo: core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/sys/mman.lo: core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/sys/signalfd.lo: core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/sys/sysinfo.lo: core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/sys/xattr.lo: core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/termios.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/time.lo: core/sys/linux/$(am__dirstamp)
+core/sys/linux/tipc.lo: core/sys/linux/$(am__dirstamp)
+core/sys/windows/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/windows
+	@: > core/sys/windows/$(am__dirstamp)
+core/sys/windows/com.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/dbghelp.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/dll.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/stacktrace.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/stat.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/threadaux.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/windows.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winsock2.lo: core/sys/windows/$(am__dirstamp)
+core/sys/solaris/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/solaris
+	@: > core/sys/solaris/$(am__dirstamp)
+core/sys/solaris/dlfcn.lo: core/sys/solaris/$(am__dirstamp)
+core/sys/solaris/elf.lo: core/sys/solaris/$(am__dirstamp)
+core/sys/solaris/execinfo.lo: core/sys/solaris/$(am__dirstamp)
+core/sys/solaris/libelf.lo: core/sys/solaris/$(am__dirstamp)
+core/sys/solaris/link.lo: core/sys/solaris/$(am__dirstamp)
+core/sys/solaris/sys/$(am__dirstamp):
+	@$(MKDIR_P) core/sys/solaris/sys
+	@: > core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/elf.lo: core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/elf_386.lo: core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/elf_SPARC.lo:  \
+	core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/elf_amd64.lo:  \
+	core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/elf_notes.lo:  \
+	core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/elftypes.lo:  \
+	core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/link.lo: core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/priocntl.lo:  \
+	core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/procset.lo: core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/sys/types.lo: core/sys/solaris/sys/$(am__dirstamp)
+gcc/config.lo: gcc/$(am__dirstamp)
+gcc/libbacktrace.lo: gcc/$(am__dirstamp)
+libgdruntime.la: $(libgdruntime_la_OBJECTS) $(libgdruntime_la_DEPENDENCIES) $(EXTRA_libgdruntime_la_DEPENDENCIES) 
+	$(libgdruntime_la_LINK) -rpath $(toolexeclibdir) $(libgdruntime_la_OBJECTS) $(libgdruntime_la_LIBADD) $(LIBS)
+libgdruntime_t.la: $(libgdruntime_t_la_OBJECTS) $(libgdruntime_t_la_DEPENDENCIES) $(EXTRA_libgdruntime_t_la_DEPENDENCIES) 
+	$(libgdruntime_t_la_LINK) $(am_libgdruntime_t_la_rpath) $(libgdruntime_t_la_OBJECTS) $(libgdruntime_t_la_LIBADD) $(LIBS)
+
+clean-checkPROGRAMS:
+	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
+unittest$(EXEEXT): $(unittest_OBJECTS) $(unittest_DEPENDENCIES) $(EXTRA_unittest_DEPENDENCIES) 
+	@rm -f unittest$(EXEEXT)
+	$(unittest_LINK) $(unittest_OBJECTS) $(unittest_LDADD) $(LIBS)
+unittest_static$(EXEEXT): $(unittest_static_OBJECTS) $(unittest_static_DEPENDENCIES) $(EXTRA_unittest_static_DEPENDENCIES) 
+	@rm -f unittest_static$(EXEEXT)
+	$(unittest_static_LINK) $(unittest_static_OBJECTS) $(unittest_static_LDADD) $(LIBS)
+
+mostlyclean-compile:
+	-rm -f *.$(OBJEXT)
+	-rm -f core/atomic.$(OBJEXT)
+	-rm -f core/atomic.lo
+	-rm -f core/bitop.$(OBJEXT)
+	-rm -f core/bitop.lo
+	-rm -f core/checkedint.$(OBJEXT)
+	-rm -f core/checkedint.lo
+	-rm -f core/cpuid.$(OBJEXT)
+	-rm -f core/cpuid.lo
+	-rm -f core/demangle.$(OBJEXT)
+	-rm -f core/demangle.lo
+	-rm -f core/exception.$(OBJEXT)
+	-rm -f core/exception.lo
+	-rm -f core/internal/convert.$(OBJEXT)
+	-rm -f core/internal/convert.lo
+	-rm -f core/internal/hash.$(OBJEXT)
+	-rm -f core/internal/hash.lo
+	-rm -f core/internal/traits.$(OBJEXT)
+	-rm -f core/internal/traits.lo
+	-rm -f core/math.$(OBJEXT)
+	-rm -f core/math.lo
+	-rm -f core/memory.$(OBJEXT)
+	-rm -f core/memory.lo
+	-rm -f core/runtime.$(OBJEXT)
+	-rm -f core/runtime.lo
+	-rm -f core/simd.$(OBJEXT)
+	-rm -f core/simd.lo
+	-rm -f core/stdc/complex.$(OBJEXT)
+	-rm -f core/stdc/complex.lo
+	-rm -f core/stdc/config.$(OBJEXT)
+	-rm -f core/stdc/config.lo
+	-rm -f core/stdc/ctype.$(OBJEXT)
+	-rm -f core/stdc/ctype.lo
+	-rm -f core/stdc/errno.$(OBJEXT)
+	-rm -f core/stdc/errno.lo
+	-rm -f core/stdc/fenv.$(OBJEXT)
+	-rm -f core/stdc/fenv.lo
+	-rm -f core/stdc/float_.$(OBJEXT)
+	-rm -f core/stdc/float_.lo
+	-rm -f core/stdc/inttypes.$(OBJEXT)
+	-rm -f core/stdc/inttypes.lo
+	-rm -f core/stdc/limits.$(OBJEXT)
+	-rm -f core/stdc/limits.lo
+	-rm -f core/stdc/locale.$(OBJEXT)
+	-rm -f core/stdc/locale.lo
+	-rm -f core/stdc/math.$(OBJEXT)
+	-rm -f core/stdc/math.lo
+	-rm -f core/stdc/signal.$(OBJEXT)
+	-rm -f core/stdc/signal.lo
+	-rm -f core/stdc/stdarg.$(OBJEXT)
+	-rm -f core/stdc/stdarg.lo
+	-rm -f core/stdc/stddef.$(OBJEXT)
+	-rm -f core/stdc/stddef.lo
+	-rm -f core/stdc/stdint.$(OBJEXT)
+	-rm -f core/stdc/stdint.lo
+	-rm -f core/stdc/stdio.$(OBJEXT)
+	-rm -f core/stdc/stdio.lo
+	-rm -f core/stdc/stdlib.$(OBJEXT)
+	-rm -f core/stdc/stdlib.lo
+	-rm -f core/stdc/string.$(OBJEXT)
+	-rm -f core/stdc/string.lo
+	-rm -f core/stdc/tgmath.$(OBJEXT)
+	-rm -f core/stdc/tgmath.lo
+	-rm -f core/stdc/time.$(OBJEXT)
+	-rm -f core/stdc/time.lo
+	-rm -f core/stdc/wchar_.$(OBJEXT)
+	-rm -f core/stdc/wchar_.lo
+	-rm -f core/stdc/wctype.$(OBJEXT)
+	-rm -f core/stdc/wctype.lo
+	-rm -f core/sync/barrier.$(OBJEXT)
+	-rm -f core/sync/barrier.lo
+	-rm -f core/sync/condition.$(OBJEXT)
+	-rm -f core/sync/condition.lo
+	-rm -f core/sync/config.$(OBJEXT)
+	-rm -f core/sync/config.lo
+	-rm -f core/sync/exception.$(OBJEXT)
+	-rm -f core/sync/exception.lo
+	-rm -f core/sync/mutex.$(OBJEXT)
+	-rm -f core/sync/mutex.lo
+	-rm -f core/sync/rwmutex.$(OBJEXT)
+	-rm -f core/sync/rwmutex.lo
+	-rm -f core/sync/semaphore.$(OBJEXT)
+	-rm -f core/sync/semaphore.lo
+	-rm -f core/sys/freebsd/dlfcn.$(OBJEXT)
+	-rm -f core/sys/freebsd/dlfcn.lo
+	-rm -f core/sys/freebsd/execinfo.$(OBJEXT)
+	-rm -f core/sys/freebsd/execinfo.lo
+	-rm -f core/sys/freebsd/sys/cdefs.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/cdefs.lo
+	-rm -f core/sys/freebsd/sys/elf.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/elf.lo
+	-rm -f core/sys/freebsd/sys/elf32.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/elf32.lo
+	-rm -f core/sys/freebsd/sys/elf64.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/elf64.lo
+	-rm -f core/sys/freebsd/sys/elf_common.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/elf_common.lo
+	-rm -f core/sys/freebsd/sys/event.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/event.lo
+	-rm -f core/sys/freebsd/sys/link_elf.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/link_elf.lo
+	-rm -f core/sys/freebsd/sys/mman.$(OBJEXT)
+	-rm -f core/sys/freebsd/sys/mman.lo
+	-rm -f core/sys/freebsd/time.$(OBJEXT)
+	-rm -f core/sys/freebsd/time.lo
+	-rm -f core/sys/linux/config.$(OBJEXT)
+	-rm -f core/sys/linux/config.lo
+	-rm -f core/sys/linux/dlfcn.$(OBJEXT)
+	-rm -f core/sys/linux/dlfcn.lo
+	-rm -f core/sys/linux/elf.$(OBJEXT)
+	-rm -f core/sys/linux/elf.lo
+	-rm -f core/sys/linux/epoll.$(OBJEXT)
+	-rm -f core/sys/linux/epoll.lo
+	-rm -f core/sys/linux/errno.$(OBJEXT)
+	-rm -f core/sys/linux/errno.lo
+	-rm -f core/sys/linux/execinfo.$(OBJEXT)
+	-rm -f core/sys/linux/execinfo.lo
+	-rm -f core/sys/linux/link.$(OBJEXT)
+	-rm -f core/sys/linux/link.lo
+	-rm -f core/sys/linux/stdio.$(OBJEXT)
+	-rm -f core/sys/linux/stdio.lo
+	-rm -f core/sys/linux/sys/inotify.$(OBJEXT)
+	-rm -f core/sys/linux/sys/inotify.lo
+	-rm -f core/sys/linux/sys/mman.$(OBJEXT)
+	-rm -f core/sys/linux/sys/mman.lo
+	-rm -f core/sys/linux/sys/signalfd.$(OBJEXT)
+	-rm -f core/sys/linux/sys/signalfd.lo
+	-rm -f core/sys/linux/sys/sysinfo.$(OBJEXT)
+	-rm -f core/sys/linux/sys/sysinfo.lo
+	-rm -f core/sys/linux/sys/xattr.$(OBJEXT)
+	-rm -f core/sys/linux/sys/xattr.lo
+	-rm -f core/sys/linux/termios.$(OBJEXT)
+	-rm -f core/sys/linux/termios.lo
+	-rm -f core/sys/linux/time.$(OBJEXT)
+	-rm -f core/sys/linux/time.lo
+	-rm -f core/sys/linux/tipc.$(OBJEXT)
+	-rm -f core/sys/linux/tipc.lo
+	-rm -f core/sys/osx/execinfo.$(OBJEXT)
+	-rm -f core/sys/osx/execinfo.lo
+	-rm -f core/sys/osx/mach/dyld.$(OBJEXT)
+	-rm -f core/sys/osx/mach/dyld.lo
+	-rm -f core/sys/osx/mach/getsect.$(OBJEXT)
+	-rm -f core/sys/osx/mach/getsect.lo
+	-rm -f core/sys/osx/mach/kern_return.$(OBJEXT)
+	-rm -f core/sys/osx/mach/kern_return.lo
+	-rm -f core/sys/osx/mach/loader.$(OBJEXT)
+	-rm -f core/sys/osx/mach/loader.lo
+	-rm -f core/sys/osx/mach/port.$(OBJEXT)
+	-rm -f core/sys/osx/mach/port.lo
+	-rm -f core/sys/osx/mach/semaphore.$(OBJEXT)
+	-rm -f core/sys/osx/mach/semaphore.lo
+	-rm -f core/sys/osx/mach/thread_act.$(OBJEXT)
+	-rm -f core/sys/osx/mach/thread_act.lo
+	-rm -f core/sys/osx/pthread.$(OBJEXT)
+	-rm -f core/sys/osx/pthread.lo
+	-rm -f core/sys/osx/sys/cdefs.$(OBJEXT)
+	-rm -f core/sys/osx/sys/cdefs.lo
+	-rm -f core/sys/osx/sys/mman.$(OBJEXT)
+	-rm -f core/sys/osx/sys/mman.lo
+	-rm -f core/sys/posix/arpa/inet.$(OBJEXT)
+	-rm -f core/sys/posix/arpa/inet.lo
+	-rm -f core/sys/posix/config.$(OBJEXT)
+	-rm -f core/sys/posix/config.lo
+	-rm -f core/sys/posix/dirent.$(OBJEXT)
+	-rm -f core/sys/posix/dirent.lo
+	-rm -f core/sys/posix/dlfcn.$(OBJEXT)
+	-rm -f core/sys/posix/dlfcn.lo
+	-rm -f core/sys/posix/fcntl.$(OBJEXT)
+	-rm -f core/sys/posix/fcntl.lo
+	-rm -f core/sys/posix/grp.$(OBJEXT)
+	-rm -f core/sys/posix/grp.lo
+	-rm -f core/sys/posix/inttypes.$(OBJEXT)
+	-rm -f core/sys/posix/inttypes.lo
+	-rm -f core/sys/posix/net/if_.$(OBJEXT)
+	-rm -f core/sys/posix/net/if_.lo
+	-rm -f core/sys/posix/netdb.$(OBJEXT)
+	-rm -f core/sys/posix/netdb.lo
+	-rm -f core/sys/posix/netinet/in_.$(OBJEXT)
+	-rm -f core/sys/posix/netinet/in_.lo
+	-rm -f core/sys/posix/netinet/tcp.$(OBJEXT)
+	-rm -f core/sys/posix/netinet/tcp.lo
+	-rm -f core/sys/posix/poll.$(OBJEXT)
+	-rm -f core/sys/posix/poll.lo
+	-rm -f core/sys/posix/pthread.$(OBJEXT)
+	-rm -f core/sys/posix/pthread.lo
+	-rm -f core/sys/posix/pwd.$(OBJEXT)
+	-rm -f core/sys/posix/pwd.lo
+	-rm -f core/sys/posix/sched.$(OBJEXT)
+	-rm -f core/sys/posix/sched.lo
+	-rm -f core/sys/posix/semaphore.$(OBJEXT)
+	-rm -f core/sys/posix/semaphore.lo
+	-rm -f core/sys/posix/setjmp.$(OBJEXT)
+	-rm -f core/sys/posix/setjmp.lo
+	-rm -f core/sys/posix/signal.$(OBJEXT)
+	-rm -f core/sys/posix/signal.lo
+	-rm -f core/sys/posix/stdio.$(OBJEXT)
+	-rm -f core/sys/posix/stdio.lo
+	-rm -f core/sys/posix/stdlib.$(OBJEXT)
+	-rm -f core/sys/posix/stdlib.lo
+	-rm -f core/sys/posix/sys/ioctl.$(OBJEXT)
+	-rm -f core/sys/posix/sys/ioctl.lo
+	-rm -f core/sys/posix/sys/ipc.$(OBJEXT)
+	-rm -f core/sys/posix/sys/ipc.lo
+	-rm -f core/sys/posix/sys/mman.$(OBJEXT)
+	-rm -f core/sys/posix/sys/mman.lo
+	-rm -f core/sys/posix/sys/msg.$(OBJEXT)
+	-rm -f core/sys/posix/sys/msg.lo
+	-rm -f core/sys/posix/sys/resource.$(OBJEXT)
+	-rm -f core/sys/posix/sys/resource.lo
+	-rm -f core/sys/posix/sys/select.$(OBJEXT)
+	-rm -f core/sys/posix/sys/select.lo
+	-rm -f core/sys/posix/sys/shm.$(OBJEXT)
+	-rm -f core/sys/posix/sys/shm.lo
+	-rm -f core/sys/posix/sys/socket.$(OBJEXT)
+	-rm -f core/sys/posix/sys/socket.lo
+	-rm -f core/sys/posix/sys/stat.$(OBJEXT)
+	-rm -f core/sys/posix/sys/stat.lo
+	-rm -f core/sys/posix/sys/statvfs.$(OBJEXT)
+	-rm -f core/sys/posix/sys/statvfs.lo
+	-rm -f core/sys/posix/sys/time.$(OBJEXT)
+	-rm -f core/sys/posix/sys/time.lo
+	-rm -f core/sys/posix/sys/types.$(OBJEXT)
+	-rm -f core/sys/posix/sys/types.lo
+	-rm -f core/sys/posix/sys/uio.$(OBJEXT)
+	-rm -f core/sys/posix/sys/uio.lo
+	-rm -f core/sys/posix/sys/un.$(OBJEXT)
+	-rm -f core/sys/posix/sys/un.lo
+	-rm -f core/sys/posix/sys/utsname.$(OBJEXT)
+	-rm -f core/sys/posix/sys/utsname.lo
+	-rm -f core/sys/posix/sys/wait.$(OBJEXT)
+	-rm -f core/sys/posix/sys/wait.lo
+	-rm -f core/sys/posix/syslog.$(OBJEXT)
+	-rm -f core/sys/posix/syslog.lo
+	-rm -f core/sys/posix/termios.$(OBJEXT)
+	-rm -f core/sys/posix/termios.lo
+	-rm -f core/sys/posix/time.$(OBJEXT)
+	-rm -f core/sys/posix/time.lo
+	-rm -f core/sys/posix/ucontext.$(OBJEXT)
+	-rm -f core/sys/posix/ucontext.lo
+	-rm -f core/sys/posix/unistd.$(OBJEXT)
+	-rm -f core/sys/posix/unistd.lo
+	-rm -f core/sys/posix/utime.$(OBJEXT)
+	-rm -f core/sys/posix/utime.lo
+	-rm -f core/sys/solaris/dlfcn.$(OBJEXT)
+	-rm -f core/sys/solaris/dlfcn.lo
+	-rm -f core/sys/solaris/elf.$(OBJEXT)
+	-rm -f core/sys/solaris/elf.lo
+	-rm -f core/sys/solaris/execinfo.$(OBJEXT)
+	-rm -f core/sys/solaris/execinfo.lo
+	-rm -f core/sys/solaris/libelf.$(OBJEXT)
+	-rm -f core/sys/solaris/libelf.lo
+	-rm -f core/sys/solaris/link.$(OBJEXT)
+	-rm -f core/sys/solaris/link.lo
+	-rm -f core/sys/solaris/sys/elf.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/elf.lo
+	-rm -f core/sys/solaris/sys/elf_386.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/elf_386.lo
+	-rm -f core/sys/solaris/sys/elf_SPARC.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/elf_SPARC.lo
+	-rm -f core/sys/solaris/sys/elf_amd64.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/elf_amd64.lo
+	-rm -f core/sys/solaris/sys/elf_notes.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/elf_notes.lo
+	-rm -f core/sys/solaris/sys/elftypes.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/elftypes.lo
+	-rm -f core/sys/solaris/sys/link.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/link.lo
+	-rm -f core/sys/solaris/sys/priocntl.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/priocntl.lo
+	-rm -f core/sys/solaris/sys/procset.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/procset.lo
+	-rm -f core/sys/solaris/sys/types.$(OBJEXT)
+	-rm -f core/sys/solaris/sys/types.lo
+	-rm -f core/sys/windows/com.$(OBJEXT)
+	-rm -f core/sys/windows/com.lo
+	-rm -f core/sys/windows/dbghelp.$(OBJEXT)
+	-rm -f core/sys/windows/dbghelp.lo
+	-rm -f core/sys/windows/dll.$(OBJEXT)
+	-rm -f core/sys/windows/dll.lo
+	-rm -f core/sys/windows/stacktrace.$(OBJEXT)
+	-rm -f core/sys/windows/stacktrace.lo
+	-rm -f core/sys/windows/stat.$(OBJEXT)
+	-rm -f core/sys/windows/stat.lo
+	-rm -f core/sys/windows/threadaux.$(OBJEXT)
+	-rm -f core/sys/windows/threadaux.lo
+	-rm -f core/sys/windows/windows.$(OBJEXT)
+	-rm -f core/sys/windows/windows.lo
+	-rm -f core/sys/windows/winsock2.$(OBJEXT)
+	-rm -f core/sys/windows/winsock2.lo
+	-rm -f core/thread.$(OBJEXT)
+	-rm -f core/thread.lo
+	-rm -f core/time.$(OBJEXT)
+	-rm -f core/time.lo
+	-rm -f core/vararg.$(OBJEXT)
+	-rm -f core/vararg.lo
+	-rm -f etc/linux/memoryerror.$(OBJEXT)
+	-rm -f etc/linux/memoryerror.lo
+	-rm -f gc/bits.$(OBJEXT)
+	-rm -f gc/bits.lo
+	-rm -f gc/config.$(OBJEXT)
+	-rm -f gc/config.lo
+	-rm -f gc/gc.$(OBJEXT)
+	-rm -f gc/gc.lo
+	-rm -f gc/os.$(OBJEXT)
+	-rm -f gc/os.lo
+	-rm -f gc/pooltable.$(OBJEXT)
+	-rm -f gc/pooltable.lo
+	-rm -f gc/proxy.$(OBJEXT)
+	-rm -f gc/proxy.lo
+	-rm -f gc/stats.$(OBJEXT)
+	-rm -f gc/stats.lo
+	-rm -f gcc/atomics.$(OBJEXT)
+	-rm -f gcc/atomics.lo
+	-rm -f gcc/attribute.$(OBJEXT)
+	-rm -f gcc/attribute.lo
+	-rm -f gcc/backtrace.$(OBJEXT)
+	-rm -f gcc/backtrace.lo
+	-rm -f gcc/builtins.$(OBJEXT)
+	-rm -f gcc/builtins.lo
+	-rm -f gcc/config.$(OBJEXT)
+	-rm -f gcc/config.lo
+	-rm -f gcc/deh.$(OBJEXT)
+	-rm -f gcc/deh.lo
+	-rm -f gcc/libbacktrace.$(OBJEXT)
+	-rm -f gcc/libbacktrace.lo
+	-rm -f gcc/unwind/arm.$(OBJEXT)
+	-rm -f gcc/unwind/arm.lo
+	-rm -f gcc/unwind/generic.$(OBJEXT)
+	-rm -f gcc/unwind/generic.lo
+	-rm -f gcc/unwind/package.$(OBJEXT)
+	-rm -f gcc/unwind/package.lo
+	-rm -f gcc/unwind/pe.$(OBJEXT)
+	-rm -f gcc/unwind/pe.lo
+	-rm -f gcstub/gc.$(OBJEXT)
+	-rm -f gcstub/gc.lo
+	-rm -f rt/aApply.$(OBJEXT)
+	-rm -f rt/aApply.lo
+	-rm -f rt/aApplyR.$(OBJEXT)
+	-rm -f rt/aApplyR.lo
+	-rm -f rt/aaA.$(OBJEXT)
+	-rm -f rt/aaA.lo
+	-rm -f rt/adi.$(OBJEXT)
+	-rm -f rt/adi.lo
+	-rm -f rt/arrayassign.$(OBJEXT)
+	-rm -f rt/arrayassign.lo
+	-rm -f rt/arraycast.$(OBJEXT)
+	-rm -f rt/arraycast.lo
+	-rm -f rt/arraycat.$(OBJEXT)
+	-rm -f rt/arraycat.lo
+	-rm -f rt/cast_.$(OBJEXT)
+	-rm -f rt/cast_.lo
+	-rm -f rt/config.$(OBJEXT)
+	-rm -f rt/config.lo
+	-rm -f rt/critical_.$(OBJEXT)
+	-rm -f rt/critical_.lo
+	-rm -f rt/deh.$(OBJEXT)
+	-rm -f rt/deh.lo
+	-rm -f rt/dmain2.$(OBJEXT)
+	-rm -f rt/dmain2.lo
+	-rm -f rt/invariant.$(OBJEXT)
+	-rm -f rt/invariant.lo
+	-rm -f rt/lifetime.$(OBJEXT)
+	-rm -f rt/lifetime.lo
+	-rm -f rt/memory.$(OBJEXT)
+	-rm -f rt/memory.lo
+	-rm -f rt/minfo.$(OBJEXT)
+	-rm -f rt/minfo.lo
+	-rm -f rt/monitor_.$(OBJEXT)
+	-rm -f rt/monitor_.lo
+	-rm -f rt/obj.$(OBJEXT)
+	-rm -f rt/obj.lo
+	-rm -f rt/qsort.$(OBJEXT)
+	-rm -f rt/qsort.lo
+	-rm -f rt/switch_.$(OBJEXT)
+	-rm -f rt/switch_.lo
+	-rm -f rt/tlsgc.$(OBJEXT)
+	-rm -f rt/tlsgc.lo
+	-rm -f rt/typeinfo/ti_AC.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_AC.lo
+	-rm -f rt/typeinfo/ti_Acdouble.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Acdouble.lo
+	-rm -f rt/typeinfo/ti_Acfloat.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Acfloat.lo
+	-rm -f rt/typeinfo/ti_Acreal.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Acreal.lo
+	-rm -f rt/typeinfo/ti_Adouble.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Adouble.lo
+	-rm -f rt/typeinfo/ti_Afloat.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Afloat.lo
+	-rm -f rt/typeinfo/ti_Ag.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Ag.lo
+	-rm -f rt/typeinfo/ti_Aint.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Aint.lo
+	-rm -f rt/typeinfo/ti_Along.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Along.lo
+	-rm -f rt/typeinfo/ti_Areal.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Areal.lo
+	-rm -f rt/typeinfo/ti_Ashort.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_Ashort.lo
+	-rm -f rt/typeinfo/ti_C.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_C.lo
+	-rm -f rt/typeinfo/ti_byte.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_byte.lo
+	-rm -f rt/typeinfo/ti_cdouble.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_cdouble.lo
+	-rm -f rt/typeinfo/ti_cfloat.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_cfloat.lo
+	-rm -f rt/typeinfo/ti_char.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_char.lo
+	-rm -f rt/typeinfo/ti_creal.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_creal.lo
+	-rm -f rt/typeinfo/ti_dchar.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_dchar.lo
+	-rm -f rt/typeinfo/ti_delegate.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_delegate.lo
+	-rm -f rt/typeinfo/ti_double.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_double.lo
+	-rm -f rt/typeinfo/ti_float.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_float.lo
+	-rm -f rt/typeinfo/ti_idouble.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_idouble.lo
+	-rm -f rt/typeinfo/ti_ifloat.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_ifloat.lo
+	-rm -f rt/typeinfo/ti_int.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_int.lo
+	-rm -f rt/typeinfo/ti_ireal.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_ireal.lo
+	-rm -f rt/typeinfo/ti_long.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_long.lo
+	-rm -f rt/typeinfo/ti_ptr.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_ptr.lo
+	-rm -f rt/typeinfo/ti_real.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_real.lo
+	-rm -f rt/typeinfo/ti_short.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_short.lo
+	-rm -f rt/typeinfo/ti_ubyte.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_ubyte.lo
+	-rm -f rt/typeinfo/ti_uint.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_uint.lo
+	-rm -f rt/typeinfo/ti_ulong.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_ulong.lo
+	-rm -f rt/typeinfo/ti_ushort.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_ushort.lo
+	-rm -f rt/typeinfo/ti_void.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_void.lo
+	-rm -f rt/typeinfo/ti_wchar.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_wchar.lo
+	-rm -f rt/util/array.$(OBJEXT)
+	-rm -f rt/util/array.lo
+	-rm -f rt/util/container/array.$(OBJEXT)
+	-rm -f rt/util/container/array.lo
+	-rm -f rt/util/container/common.$(OBJEXT)
+	-rm -f rt/util/container/common.lo
+	-rm -f rt/util/container/hashtab.$(OBJEXT)
+	-rm -f rt/util/container/hashtab.lo
+	-rm -f rt/util/container/treap.$(OBJEXT)
+	-rm -f rt/util/container/treap.lo
+	-rm -f rt/util/hash.$(OBJEXT)
+	-rm -f rt/util/hash.lo
+	-rm -f rt/util/random.$(OBJEXT)
+	-rm -f rt/util/random.lo
+	-rm -f rt/util/string.$(OBJEXT)
+	-rm -f rt/util/string.lo
+	-rm -f rt/util/typeinfo.$(OBJEXT)
+	-rm -f rt/util/typeinfo.lo
+	-rm -f rt/util/utf.$(OBJEXT)
+	-rm -f rt/util/utf.lo
+
+distclean-compile:
+	-rm -f *.tab.c
+
+.S.o:
+	$(CPPASCOMPILE) -c -o $@ $<
+
+.S.obj:
+	$(CPPASCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.S.lo:
+	$(LTCPPASCOMPILE) -c -o $@ $<
+
+libgdruntime_la-threadasm.lo: core/threadasm.S
+	$(LIBTOOL)  $(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS) -c -o libgdruntime_la-threadasm.lo `test -f 'core/threadasm.S' || echo '$(srcdir)/'`core/threadasm.S
+
+libgdruntime_t_la-threadasm.lo: core/threadasm.S
+	$(LIBTOOL)  $(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS) -c -o libgdruntime_t_la-threadasm.lo `test -f 'core/threadasm.S' || echo '$(srcdir)/'`core/threadasm.S
+
+threadasm.o: core/threadasm.S
+	$(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS) -c -o threadasm.o `test -f 'core/threadasm.S' || echo '$(srcdir)/'`core/threadasm.S
+
+threadasm.obj: core/threadasm.S
+	$(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS) -c -o threadasm.obj `if test -f 'core/threadasm.S'; then $(CYGPATH_W) 'core/threadasm.S'; else $(CYGPATH_W) '$(srcdir)/core/threadasm.S'; fi`
+
+.c.o:
+	$(COMPILE) -c $<
+
+.c.obj:
+	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+
+.c.lo:
+	$(LTCOMPILE) -c -o $@ $<
+
+libgdruntime_la-errno_.lo: core/stdc/errno_.c
+	$(LIBTOOL)  --tag=CC $(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_la-errno_.lo `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
+
+libgdruntime_t_la-errno_.lo: core/stdc/errno_.c
+	$(LIBTOOL)  --tag=CC $(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_t_la-errno_.lo `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
+
+errno_.o: core/stdc/errno_.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o errno_.o `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
+
+errno_.obj: core/stdc/errno_.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o errno_.obj `if test -f 'core/stdc/errno_.c'; then $(CYGPATH_W) 'core/stdc/errno_.c'; else $(CYGPATH_W) '$(srcdir)/core/stdc/errno_.c'; fi`
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
+	-rm -rf core/.libs core/_libs
+	-rm -rf core/internal/.libs core/internal/_libs
+	-rm -rf core/stdc/.libs core/stdc/_libs
+	-rm -rf core/sync/.libs core/sync/_libs
+	-rm -rf core/sys/freebsd/.libs core/sys/freebsd/_libs
+	-rm -rf core/sys/freebsd/sys/.libs core/sys/freebsd/sys/_libs
+	-rm -rf core/sys/linux/.libs core/sys/linux/_libs
+	-rm -rf core/sys/linux/sys/.libs core/sys/linux/sys/_libs
+	-rm -rf core/sys/osx/.libs core/sys/osx/_libs
+	-rm -rf core/sys/osx/mach/.libs core/sys/osx/mach/_libs
+	-rm -rf core/sys/osx/sys/.libs core/sys/osx/sys/_libs
+	-rm -rf core/sys/posix/.libs core/sys/posix/_libs
+	-rm -rf core/sys/posix/arpa/.libs core/sys/posix/arpa/_libs
+	-rm -rf core/sys/posix/net/.libs core/sys/posix/net/_libs
+	-rm -rf core/sys/posix/netinet/.libs core/sys/posix/netinet/_libs
+	-rm -rf core/sys/posix/sys/.libs core/sys/posix/sys/_libs
+	-rm -rf core/sys/solaris/.libs core/sys/solaris/_libs
+	-rm -rf core/sys/solaris/sys/.libs core/sys/solaris/sys/_libs
+	-rm -rf core/sys/windows/.libs core/sys/windows/_libs
+	-rm -rf etc/linux/.libs etc/linux/_libs
+	-rm -rf gc/.libs gc/_libs
+	-rm -rf gcc/.libs gcc/_libs
+	-rm -rf gcc/unwind/.libs gcc/unwind/_libs
+	-rm -rf gcstub/.libs gcstub/_libs
+	-rm -rf rt/.libs rt/_libs
+	-rm -rf rt/typeinfo/.libs rt/typeinfo/_libs
+	-rm -rf rt/util/.libs rt/util/_libs
+	-rm -rf rt/util/container/.libs rt/util/container/_libs
+
+ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
+	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
+	      END { if (nonempty) { for (i in files) print i; }; }'`; \
+	mkid -fID $$unique
 tags: TAGS
-TAGS:
 
+TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+		$(TAGS_FILES) $(LISP)
+	set x; \
+	here=`pwd`; \
+	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
+	      END { if (nonempty) { for (i in files) print i; }; }'`; \
+	shift; \
+	if test -z "$(ETAGS_ARGS)$$*$$unique"; then :; else \
+	  test -n "$$unique" || unique=$$empty_fix; \
+	  if test $$# -gt 0; then \
+	    $(ETAGS) $(ETAGSFLAGS) $(AM_ETAGSFLAGS) $(ETAGS_ARGS) \
+	      "$$@" $$unique; \
+	  else \
+	    $(ETAGS) $(ETAGSFLAGS) $(AM_ETAGSFLAGS) $(ETAGS_ARGS) \
+	      $$unique; \
+	  fi; \
+	fi
 ctags: CTAGS
-CTAGS:
+CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+		$(TAGS_FILES) $(LISP)
+	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
+	      END { if (nonempty) { for (i in files) print i; }; }'`; \
+	test -z "$(CTAGS_ARGS)$$unique" \
+	  || $(CTAGS) $(CTAGSFLAGS) $(AM_CTAGSFLAGS) $(CTAGS_ARGS) \
+	     $$unique
 
+GTAGS:
+	here=`$(am__cd) $(top_builddir) && pwd` \
+	  && $(am__cd) $(top_srcdir) \
+	  && gtags -i $(GTAGS_ARGS) "$$here"
+
+distclean-tags:
+	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) $(check_LTLIBRARIES) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-am
-all-am: Makefile all-local
+all-am: Makefile $(LTLIBRARIES)
 installdirs:
+	for dir in "$(DESTDIR)$(toolexeclibdir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -362,17 +1824,48 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f core/$(am__dirstamp)
+	-rm -f core/internal/$(am__dirstamp)
+	-rm -f core/stdc/$(am__dirstamp)
+	-rm -f core/sync/$(am__dirstamp)
+	-rm -f core/sys/freebsd/$(am__dirstamp)
+	-rm -f core/sys/freebsd/sys/$(am__dirstamp)
+	-rm -f core/sys/linux/$(am__dirstamp)
+	-rm -f core/sys/linux/sys/$(am__dirstamp)
+	-rm -f core/sys/osx/$(am__dirstamp)
+	-rm -f core/sys/osx/mach/$(am__dirstamp)
+	-rm -f core/sys/osx/sys/$(am__dirstamp)
+	-rm -f core/sys/posix/$(am__dirstamp)
+	-rm -f core/sys/posix/arpa/$(am__dirstamp)
+	-rm -f core/sys/posix/net/$(am__dirstamp)
+	-rm -f core/sys/posix/netinet/$(am__dirstamp)
+	-rm -f core/sys/posix/sys/$(am__dirstamp)
+	-rm -f core/sys/solaris/$(am__dirstamp)
+	-rm -f core/sys/solaris/sys/$(am__dirstamp)
+	-rm -f core/sys/windows/$(am__dirstamp)
+	-rm -f etc/linux/$(am__dirstamp)
+	-rm -f gc/$(am__dirstamp)
+	-rm -f gcc/$(am__dirstamp)
+	-rm -f gcc/unwind/$(am__dirstamp)
+	-rm -f gcstub/$(am__dirstamp)
+	-rm -f rt/$(am__dirstamp)
+	-rm -f rt/typeinfo/$(am__dirstamp)
+	-rm -f rt/util/$(am__dirstamp)
+	-rm -f rt/util/container/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-local mostlyclean-am
+clean-am: clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
+	clean-libtool clean-local clean-toolexeclibLTLIBRARIES \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -f Makefile
-distclean-am: clean-am distclean-generic
+distclean-am: clean-am distclean-compile distclean-generic \
+	distclean-tags
 
 dvi: dvi-am
 
@@ -392,7 +1885,7 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-exec-local
+install-exec-am: install-toolexeclibLTLIBRARIES
 
 install-html: install-html-am
 
@@ -420,7 +1913,8 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-generic
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
 pdf: pdf-am
 
@@ -430,107 +1924,67 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-toolexeclibLTLIBRARIES
 
 .MAKE: check-am install-am install-strip
 
-.PHONY: all all-am all-local check check-am check-local clean \
-	clean-generic clean-local distclean distclean-generic dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-data-local install-dvi \
-	install-dvi-am install-exec install-exec-am install-exec-local \
-	install-html install-html-am install-info install-info-am \
-	install-man install-pdf install-pdf-am install-ps \
-	install-ps-am install-strip installcheck installcheck-am \
+.PHONY: CTAGS GTAGS all all-am check check-am check-local clean \
+	clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
+	clean-libtool clean-local clean-toolexeclibLTLIBRARIES ctags \
+	distclean distclean-compile distclean-generic \
+	distclean-libtool distclean-tags dvi dvi-am html html-am info \
+	info-am install install-am install-data install-data-am \
+	install-data-local install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip \
+	install-toolexeclibLTLIBRARIES installcheck installcheck-am \
 	installdirs maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am uninstall \
-	uninstall-am
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags uninstall \
+	uninstall-am uninstall-toolexeclibLTLIBRARIES
 
 
-all-local: libgdruntime.a
+# Compile D into normal object files
+.d.o:
+	$(GDC) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
-%.o : %.d
-	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
+# Compile D sources with libtool
+.d.lo:
+	$(LTDCOMPILE) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
-# %.o : %.c
-# Use .c.o to override Automake
-.c.o:
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+# Unittest rules. Unfortunately we can't use _DFLAGS in automake without
+# explicit D support, so use this hack.
+# Compile D sources with libtool and test flags
+%.t.lo : %.d
+	$(LTDCOMPILE) $(DFLAGSX) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
-.S.o:
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+# Compile objects for static linking with test flags
+# Automake breaks empty rules, so use the shell NOP :
+%.t.o : %.t.lo
+	:
 
-%.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
-
-%.t.o : %.o
-	cp $< $@
-
-libgdruntime.a : $(ALL_DRUNTIME_OBJS)
-@BACKTRACE_SUPPORTED_TRUE@	cp -f $(LIBBACKTRACE_LIB) $@
-@BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS)
-@BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
-	$(RANLIB) $@
-
-libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
-@BACKTRACE_SUPPORTED_TRUE@	cp -f $(LIBBACKTRACE_LIB) $@
-@BACKTRACE_SUPPORTED_TRUE@	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
-@BACKTRACE_SUPPORTED_FALSE@	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
-	$(RANLIB) $@
-
-unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) $(DL_LIBS)
-
-#--------------------------------------#
-# Install, doc, etc targets
-
-install-exec-local: libgdruntime.a
-	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
-	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
-	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
-
-install-data-local: libgdruntime.a
-	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
-	for i in __entrypoint.di object.d; do \
-	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
-	done
-	for i in core core/internal core/stdc core/sync \
-	    core/sys/freebsd core/sys/freebsd/sys \
-	    core/sys/linux core/sys/linux/sys \
-	    core/sys/osx core/sys/osx/mach core/sys/osx/sys \
-	    core/sys/posix core/sys/posix/arpa core/sys/posix/net \
-	    core/sys/posix/netinet core/sys/posix/sys \
-	    core/sys/solaris core/sys/solaris/sys \
-	    core/sys/windows; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(srcdir)/$$i/*.d; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
-	for i in gcc gcc/unwind; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(srcdir)/$$i/*.d; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
-# Install files build generated by configure script
-	for i in gcc; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $$i/*.d; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
-
+# Extra install and clean rules.
+# This does not delete the .libs/.t.o files, but deleting
+# the .lo is good enough to rerun the rules
 clean-local:
-	rm -f $(ALL_DRUNTIME_OBJS)
-	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
-	rm -f unittest.o
-	rm -f unittest$(EXEEXT)
-	rm -f libgdruntime.a
-	rm -f libgdruntime_t.a
+	rm -f $(DRUNTIME_TEST_LOBJECTS)
+	rm -f $(DRUNTIME_TEST_OBJECTS)
 
-check-local: unittest
-	./unittest
+check-local:
+@ENABLE_STATIC_TRUE@	./unittest_static$(EXEEXT)
+@ENABLE_SHARED_TRUE@	./unittest$(EXEEXT)
+
+# Handles generated files as well
+install-data-local:
+	for file in $(ALL_DRUNTIME_INSTALL_DSOURCES); do \
+	  if test -f $$file; then \
+	    $(INSTALL_HEADER) -D $$file $(DESTDIR)$(gdc_include_dir)/$$file ; \
+	  else \
+	    $(INSTALL_HEADER) -D $(srcdir)/$$file \
+	      $(DESTDIR)$(gdc_include_dir)/$$file ; \
+	  fi ; \
+	done
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
