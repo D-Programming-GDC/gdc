@@ -25,6 +25,7 @@ class Declaration;
 class FuncDeclaration;
 class VarDeclaration;
 class Expression;
+class Initializer;
 class Module;
 class Statement;
 class Type;
@@ -152,11 +153,15 @@ struct GTY(()) language_function
   hash_map<Statement *, d_label_entry> *labels;
 };
 
-// The D front end types have not been integrated into the GCC garbage
-// collection system.  Handle this by using the "skip" attribute. */
+// DECL_LANG_SPECIFIC for all kinds of declarations.
 struct GTY(()) lang_decl
 {
+  // The D front end types have not been integrated into the GCC garbage
+  // collection system.  Handle this by using the "skip" attribute.
   Declaration * GTY((skip)) decl;
+
+  // List of declarations that override this decl.
+  vec<tree, va_gc> *overrides;
 };
 
 // The lang_type field is not set for every GCC type.
@@ -218,6 +223,9 @@ lang_tree_node
 #define DECL_LANG_FRONTEND(NODE) \
   (DECL_LANG_SPECIFIC (NODE) \
    ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
+
+#define DECL_OVERRIDES(NODE) \
+  (DECL_LANG_SPECIFIC (NODE)->overrides)
 
 enum d_tree_index
 {
@@ -310,5 +318,9 @@ extern void build_ir (FuncDeclaration *);
 
 // In types.cc
 extern tree build_ctype (Type *);
+
+// In d-init.cc
+extern tree build_cst_expression(Expression *);
+extern tree build_initializer(Type *, Initializer *);
 
 #endif

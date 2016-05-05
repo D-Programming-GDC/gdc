@@ -48,12 +48,12 @@ VarDeclaration *ClassReferenceExp::getFieldAt(unsigned index)
 {
     ClassDeclaration *cd = originalClass();
     unsigned fieldsSoFar = 0;
-    while (index - fieldsSoFar >= cd->fields.dim)
+    while ((value->elements->dim - fieldsSoFar - index) > cd->fields.dim)
     {
         fieldsSoFar += cd->fields.dim;
         cd = cd->baseClass;
     }
-    return cd->fields[index - fieldsSoFar];
+    return cd->fields[cd->fields.dim - (value->elements->dim - fieldsSoFar - index)];
 }
 
 // Return index of the field, or -1 if not found
