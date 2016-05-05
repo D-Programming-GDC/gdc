@@ -66,7 +66,11 @@ endif
 ALL_DRUNTIME_SOURCES = $(ALL_DRUNTIME_COMPILE_DSOURCES) $(DRUNTIME_CSOURCES) \
 	$(DRUNTIME_SSOURCES)
 DRUNTIME_TEST_LOBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.lo)
-DRUNTIME_TEST_OBJECTS  = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.o)
+REAL_DRUNTIME_TEST_OBJECTS  = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.o)
+# Workaround issue #
+DRUNTIME_TEST_OBJECTS  = $(filter-out rt/util/typeinfo.t.o \
+	core/internal/convert.t.o, $(REAL_DRUNTIME_TEST_OBJECTS)) \
+	rt/util/typeinfo.o core/internal/convert.o
 
 
 
