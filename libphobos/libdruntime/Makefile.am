@@ -83,7 +83,7 @@ endif
 toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
 libgdruntime_la_LIBTOOLFLAGS = --tag=D
-libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib
+libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER)
 libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
 
 # For static unittest, link objects directly

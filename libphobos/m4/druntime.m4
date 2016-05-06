@@ -107,3 +107,14 @@ AC_DEFUN([DRUNTIME_GC],
 
   AM_CONDITIONAL([DRUNTIME_GC_ENABLE], [test "$enable_druntime_gc" = "yes"])
 ])
+
+
+# DRUNTIME_VERSION
+# -----------------
+# Substitute the RELEASE_VER variable, read from VERSION
+AC_DEFUN([DRUNTIME_VERSION], [
+  AC_MSG_CHECKING([for phobos source version])
+  RELEASE_VER=`cat $srcdir/VERSION`
+  AC_MSG_RESULT([$RELEASE_VER])])
+  AC_SUBST([RELEASE_VER])
+])
