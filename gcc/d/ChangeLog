@@ -1,3 +1,16 @@
+2016-05-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::ExprVisitor): Update signature.
+	(ExprVisitor::visit(AddrExp)): Handle constant expressions.
+	(ExprVisitor::visit(FuncExp)): Likewise.
+	(ExprVisitor::visit(ComplexExp)): Likewise.
+	(ExprVisitor::visit(StringExp)): Likewise.
+	(ExprVisitor::visit(ArrayLiteralExp)): Likewise.
+	(ExprVisitor::visit(StructLiteralExp)): Likewise.
+	(ExprVisitor::visit(NullExp)): Likewise.
+	(ExprVisitor::visit(ClassReferenceExp)): Likewise.
+	(build_expr): Update signature.
+
 2016-05-05  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_GLUE_OBJS): Add d/expr.o.
