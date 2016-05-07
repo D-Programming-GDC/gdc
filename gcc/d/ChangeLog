@@ -1,3 +1,30 @@
+2016-05-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(BinExp)): New function.
+	(ExprVisitor::visit(XorExp)): Remove function.
+	(ExprVisitor::visit(OrExp)): Likewise.
+	(ExprVisitor::visit(AndExp)): Likewise.
+	(ExprVisitor::visit(UshrExp)): Likewise.
+	(ExprVisitor::visit(ShrExp)): Likewise.
+	(ExprVisitor::visit(ShlExp)): Likewise.
+	(ExprVisitor::visit(ModExp)): Likewise.
+	(ExprVisitor::visit(DivExp)): Likewise.
+	(ExprVisitor::visit(MulExp)): Likewise.
+	(ExprVisitor::visit(MinExp)): Likewise.
+	(ExprVisitor::visit(AddExp)): Likewise.
+	(ExprVisitor::visit(BinAssignExp)): New function.
+	(ExprVisitor::visit(XorAssignExp)): Remove function.
+	(ExprVisitor::visit(OrAssignExp)): Likewise.
+	(ExprVisitor::visit(AndAssignExp)): Likewise.
+	(ExprVisitor::visit(ShrAssignExp)): Likewise.
+	(ExprVisitor::visit(ShlAssignExp)): Likewise.
+	(ExprVisitor::visit(ModAssignExp)): Likewise.
+	(ExprVisitor::visit(DivAssignExp)): Likewise.
+	(ExprVisitor::visit(MulAssignExp)): Likewise.
+	(ExprVisitor::visit(PowAssignExp)): Likewise.
+	(ExprVisitor::visit(MinAssignExp)): Likewise.
+	(ExprVisitor::visit(AddAssignExp)): Likewise.
+
 2016-05-06  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::ExprVisitor): Update signature.
