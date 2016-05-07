@@ -467,69 +467,77 @@ public:
   }
 
   //
-  void visit(XorExp *e)
+  void visit(BinExp *e)
   {
-    this->result_ = build_binary_op(BIT_XOR_EXPR, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
+    tree_code code;
 
-  //
-  void visit(OrExp *e)
-  {
-    this->result_ = build_binary_op(BIT_IOR_EXPR, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
+    switch (e->op)
+      {
+      case TOKadd:
+      case TOKmin:
+	// If the result is complex, then we can shortcut build_binary_op.
+	if ((e->e1->type->isreal() && e->e2->type->isimaginary())
+	    || (e->e1->type->isimaginary() && e->e2->type->isreal()))
+	  {
+	    // Frontend should have already validated types and sizes.
+	    tree t1 = build_expr(e->e1);
+	    tree t2 = build_expr(e->e2);
 
-  //
-  void visit(AndExp *e)
-  {
-    this->result_ = build_binary_op(BIT_AND_EXPR, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
+	    if (e->op == TOKmin)
+	      t2 = build1(NEGATE_EXPR, TREE_TYPE(t2), t2);
 
-  //
-  void visit(UshrExp *e)
-  {
-    this->result_ = build_binary_op(UNSIGNED_RSHIFT_EXPR, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
+	    if (e->e1->type->isreal())
+	      this->result_ = complex_expr(build_ctype(e->type), t1, t2);
+	    else
+	      this->result_ = complex_expr(build_ctype(e->type), t2, t1);
 
-  //
-  void visit(ShrExp *e)
-  {
-    this->result_ = build_binary_op(RSHIFT_EXPR, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
+	    return;
+	  }
+	else
+	  code = (e->op == TOKadd) ? PLUS_EXPR : MINUS_EXPR;
+	break;
 
-  //
-  void visit(ShlExp *e)
-  {
-    this->result_ = build_binary_op(LSHIFT_EXPR, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
+      case TOKmul:
+	code = MULT_EXPR;
+	break;
 
-  //
-  void visit(ModExp *e)
-  {
-    tree_code code = e->e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR;
+      case TOKdiv:
+	code = e->e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR;
+	break;
+
+      case TOKmod:
+	code = e->e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR;
+	break;
+
+      case TOKand:
+	code = BIT_AND_EXPR;
+	break;
+
+      case TOKor:
+	code = BIT_IOR_EXPR;
+	break;
+
+      case TOKxor:
+	code = BIT_XOR_EXPR;
+	break;
+
+      case TOKshl:
+	code = LSHIFT_EXPR;
+	  break;
+
+      case TOKshr:
+	code = RSHIFT_EXPR;
+	break;
+
+      case TOKushr:
+	code = UNSIGNED_RSHIFT_EXPR;
+	break;
+
+      default:
+	gcc_unreachable();
+      }
 
     this->result_ = build_binary_op(code, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
-
-  //
-  void visit(DivExp *e)
-  {
-    tree_code code = e->e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR;
-
-    this->result_ = build_binary_op(code, build_ctype(e->type),
-				    build_expr(e->e1), build_expr(e->e2));
-  }
-
-  //
-  void visit(MulExp *e)
-  {
-    this->result_ = build_binary_op(MULT_EXPR, build_ctype(e->type),
 				    build_expr(e->e1), build_expr(e->e2));
   }
 
@@ -664,74 +672,60 @@ public:
   }
 
   //
-  void visit(MinExp *e)
+  void visit(BinAssignExp *e)
   {
-    // %% faster: check if result is complex
-    if ((e->e1->type->isreal() && e->e2->type->isimaginary())
-	|| (e->e1->type->isimaginary() && e->e2->type->isreal()))
+    tree_code code;
+
+    switch (e->op)
       {
-	// %%TODO: need to check size/modes
-	tree t1 = build_expr(e->e1);
-	tree t2 = build_expr(e->e2);
+      case TOKaddass:
+	code = PLUS_EXPR;
+	break;
 
-	t2 = build1(NEGATE_EXPR, TREE_TYPE(t2), t2);
+      case TOKminass:
+	code = MINUS_EXPR;
+	break;
 
-	if (e->e1->type->isreal())
-	  this->result_ = complex_expr(build_ctype(e->type), t1, t2);
-	else
-	  this->result_ = complex_expr(build_ctype(e->type), t2, t1);
+      case TOKmulass:
+	code = MULT_EXPR;
+	break;
+
+      case TOKdivass:
+	code = e->e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR;
+	break;
+
+      case TOKmodass:
+	code = e->e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR;
+	break;
+
+      case TOKandass:
+	code = BIT_AND_EXPR;
+	break;
+
+      case TOKorass:
+	code = BIT_IOR_EXPR;
+	break;
+
+      case TOKxorass:
+	code = BIT_XOR_EXPR;
+	break;
+
+      case TOKpowass:
+	gcc_unreachable();
+
+      case TOKshlass:
+	code = LSHIFT_EXPR;
+	break;
+
+      case TOKshrass:
+	code = RSHIFT_EXPR;
+	break;
+
+      default:
+	gcc_unreachable();
       }
-    else
-      {
-	// The front end has already taken care of pointer-int
-	// and pointer-pointer conversions.
-	this->result_ = build_binary_op(MINUS_EXPR, build_ctype(e->type),
-					build_expr(e->e1), build_expr(e->e2));
-      }
-  }
 
-  //
-  void visit(AddExp *e)
-  {
-    // %% faster: check if result is complex
-    if ((e->e1->type->isreal() && e->e2->type->isimaginary())
-	|| (e->e1->type->isimaginary() && e->e2->type->isreal()))
-      {
-	// %%TODO: need to check size/modes
-	tree t1 = build_expr(e->e1);
-	tree t2 = build_expr(e->e2);
-
-	if (e->e1->type->isreal())
-	  this->result_ = complex_expr(build_ctype(e->type), t1, t2);
-	else
-	  this->result_ = complex_expr(build_ctype(e->type), t2, t1);
-      }
-    else
-      {
-	// The front end has already taken care of (pointer + integer)
-	this->result_ = build_binary_op(PLUS_EXPR, build_ctype(e->type),
-					build_expr(e->e1), build_expr(e->e2));
-      }
-  }
-
-  //
-  void visit(XorAssignExp *e)
-  {
-    tree exp = build_binop_assignment(BIT_XOR_EXPR, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(OrAssignExp *e)
-  {
-    tree exp = build_binop_assignment(BIT_IOR_EXPR, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(AndAssignExp *e)
-  {
-    tree exp = build_binop_assignment(BIT_AND_EXPR, e->e1, e->e2);
+    tree exp = build_binop_assignment(code, e->e1, e->e2);
     this->result_ = convert_expr(exp, e->e1->type, e->type);
   }
 
@@ -749,49 +743,6 @@ public:
 
     tree exp = build_binop_assignment(UNSIGNED_RSHIFT_EXPR, e1b, e->e2);
     this->result_ = convert_expr(exp, e1b->type, e->type);
-  }
-
-  //
-  void visit(ShrAssignExp *e)
-  {
-    tree exp = build_binop_assignment(RSHIFT_EXPR, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(ShlAssignExp *e)
-  {
-    tree exp = build_binop_assignment(LSHIFT_EXPR, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(ModAssignExp *e)
-  {
-    tree_code code = e->e1->type->isfloating() ? FLOAT_MOD_EXPR : TRUNC_MOD_EXPR;
-    tree exp = build_binop_assignment(code, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(DivAssignExp *e)
-  {
-    tree_code code = e->e1->type->isintegral() ? TRUNC_DIV_EXPR : RDIV_EXPR;
-    tree exp = build_binop_assignment(code, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(MulAssignExp *e)
-  {
-    tree exp = build_binop_assignment(MULT_EXPR, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(PowAssignExp *e)
-  {
-    gcc_unreachable();
   }
 
   //
@@ -864,20 +815,6 @@ public:
 	else
 	  gcc_unreachable();
       }
-  }
-
-  //
-  void visit(MinAssignExp *e)
-  {
-    tree exp = build_binop_assignment(MINUS_EXPR, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
-  }
-
-  //
-  void visit(AddAssignExp *e)
-  {
-    tree exp = build_binop_assignment(PLUS_EXPR, e->e1, e->e2);
-    this->result_ = convert_expr(exp, e->e1->type, e->type);
   }
 
   //
