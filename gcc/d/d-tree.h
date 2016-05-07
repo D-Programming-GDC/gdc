@@ -286,8 +286,8 @@ extern Expression *build_expression (tree);
 extern tree d_truthvalue_conversion (tree);
 
 // In d-expr.cc.
-extern tree build_expr(Expression *);
-extern tree build_expr_dtor(Expression *);
+extern tree build_expr (Expression *, bool = false);
+extern tree build_expr_dtor (Expression *);
 
 // In d-incpath.cc.
 extern void add_import_paths (const char *, const char *, bool);

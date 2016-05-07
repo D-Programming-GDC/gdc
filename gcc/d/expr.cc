@@ -30,6 +30,7 @@
 #include "diagnostic.h"
 #include "tm.h"
 #include "function.h"
+#include "varasm.h"
 #include "stor-layout.h"
 
 #include "d-tree.h"
@@ -47,6 +48,7 @@
 class ExprVisitor : public Visitor
 {
   tree result_;
+  bool constp_;
 
   // Determine if type is an array of structs that need a postblit.
   bool needs_postblit(Type *t)
@@ -64,9 +66,10 @@ class ExprVisitor : public Visitor
   }
 
 public:
-  ExprVisitor()
+  ExprVisitor(bool constp)
   {
     this->result_ = NULL_TREE;
+    this->constp_ = constp;
   }
 
   //
@@ -1588,6 +1591,7 @@ public:
   //
   void visit(AddrExp *e)
   {
+    tree type = build_ctype(e->type);
     tree exp;
 
     // Optimizer can convert const symbol into a struct literal.
@@ -1596,12 +1600,13 @@ public:
       {
 	StructLiteralExp *sle = ((StructLiteralExp *) e->e1)->origin;
 	gcc_assert(sle != NULL);
-	exp = build_address(sle->toSymbol()->Stree);
+	exp = sle->toSymbol()->Stree;
       }
     else
-      exp = build_address(build_expr(e->e1));
+      exp = build_expr(e->e1);
 
-    this->result_ = build_nop(build_ctype(e->type), exp);
+    TREE_CONSTANT (exp) = 0;
+    this->result_ = d_convert(type, build_address(exp));
   }
 
   //
@@ -1983,13 +1988,24 @@ public:
     // Emit after current function body has finished.
     if (cfun != NULL)
       cfun->language->deferred_fns.safe_push(e->fd);
+    else
+      e->fd->toObjFile();
 
     // If nested, this will be a trampoline...
     if (e->fd->isNested())
       {
-	tree func = build_address(e->fd->toSymbol()->Stree);
-	tree object = get_frame_for_symbol(e->fd);
-	this->result_ = build_method_call(func, object, e->fd->type);
+	if (this->constp_)
+	  {
+	    e->error("non-constant nested delegate literal expression %s",
+		     e->toChars());
+	    this->result_ = error_mark_node;
+	  }
+	else
+	  {
+	    tree func = build_address(e->fd->toSymbol()->Stree);
+	    tree object = get_frame_for_symbol(e->fd);
+	    this->result_ = build_method_call(func, object, e->fd->type);
+	  }
       }
     else
       {
@@ -2332,13 +2348,7 @@ public:
     this->result_ = error_mark_node;
   }
 
-  //
-  void visit(RealExp *e)
-  {
-    this->result_ = build_float_cst(e->value, e->type->toBasetype());
-  }
-
-  //
+  // Create an integer literal with the given expression.
   void visit(IntegerExp *e)
   {
     tree ctype = build_ctype(e->type->toBasetype());
@@ -2346,22 +2356,28 @@ public:
   }
 
   //
+  void visit(RealExp *e)
+  {
+    this->result_ = build_float_cst(e->value, e->type->toBasetype());
+  }
+
+  //
   void visit(ComplexExp *e)
   {
-    TypeBasic *tb;
+    Type *tnext;
 
     switch (e->type->toBasetype()->ty)
       {
       case Tcomplex32:
-	tb = (TypeBasic *) Type::tfloat32;
+	tnext = (TypeBasic *) Type::tfloat32;
 	break;
 
       case Tcomplex64:
-	tb = (TypeBasic *) Type::tfloat64;
+	tnext = (TypeBasic *) Type::tfloat64;
 	break;
 
       case Tcomplex80:
-	tb = (TypeBasic *) Type::tfloat80;
+	tnext = (TypeBasic *) Type::tfloat80;
 	break;
 
       default:
@@ -2369,41 +2385,34 @@ public:
       }
 
     this->result_ = build_complex(build_ctype(e->type),
-				  build_float_cst(creall(e->value), tb),
-				  build_float_cst(cimagl(e->value), tb));
+				  build_float_cst(creall(e->value), tnext),
+				  build_float_cst(cimagl(e->value), tnext));
   }
 
-  //
+  // Create a string literal with the given expression.
   void visit(StringExp *e)
   {
     Type *tb = e->type->toBasetype();
-    // Assuming this->string is null terminated
-    dinteger_t dim = e->len + (tb->ty != Tsarray);
 
-    tree value = build_string(dim * e->sz, (char *) e->string);
+    // All strings are null terminated except static arrays.
+    dinteger_t length = (e->len * e->sz) + (tb->ty != Tsarray);
+    tree value = build_string(length, (char *) e->string);
+    tree type = build_ctype(e->type);
 
-    // Array type doesn't match string length if null terminated.
-    TREE_TYPE (value) = d_array_type(tb->nextOf(), e->len);
-    TREE_CONSTANT (value) = 1;
-
-    if (tb->ty == Tarray)
-      this->result_ = d_array_value(build_ctype(e->type), size_int(e->len),
-				    build_address(value));
-    else if (tb->ty == Tpointer)
-      {
-	value = build_address(value);
-	this->result_ = value;
-      }
-    else if (tb->ty == Tsarray)
-      {
-	TREE_TYPE (value) = build_ctype(e->type);
-	this->result_ = value;
-      }
+    if (tb->ty == Tsarray)
+      TREE_TYPE (value) = type;
     else
       {
-	e->error("Invalid type for string constant: %s", e->type->toChars());
-	this->result_ = error_mark_node;
+	// Array type doesn't match string length if null terminated.
+	TREE_TYPE (value) = d_array_type(tb->nextOf(), e->len);
+
+	value = build_address(value);
+	if (tb->ty == Tarray)
+	  value = d_array_value(type, size_int(e->len), value);
       }
+
+    TREE_CONSTANT (value) = 1;
+    this->result_ = d_convert(type, value);
   }
 
   //
@@ -2430,15 +2439,12 @@ public:
   void visit(ArrayLiteralExp *e)
   {
     Type *tb = e->type->toBasetype();
-    gcc_assert(tb->ty == Tarray || tb->ty == Tsarray || tb->ty == Tpointer);
 
     // Convert void[n] to ubyte[n]
     if (tb->ty == Tsarray && tb->nextOf()->toBasetype()->ty == Tvoid)
       tb = Type::tuns8->sarrayOf(((TypeSArray *) tb)->dim->toUInteger());
 
-    Type *etype = tb->nextOf();
-    tree tsa = d_array_type(etype, e->elements->dim);
-    tree result = NULL_TREE;
+    gcc_assert(tb->ty == Tarray || tb->ty == Tsarray || tb->ty == Tpointer);
 
     // Handle empty array literals.
     if (e->elements->dim == 0)
@@ -2447,7 +2453,7 @@ public:
 	  this->result_ = d_array_value(build_ctype(e->type),
 					size_int(0), null_pointer_node);
 	else
-	  this->result_ = build_constructor(tsa, NULL);
+	  this->result_ = build_constructor(d_array_type(tb->nextOf(), 0), NULL);
 
 	return;
       }
@@ -2455,55 +2461,85 @@ public:
     // Build an expression that assigns the expressions in ELEMENTS to a constructor.
     vec<constructor_elt, va_gc> *elms = NULL;
     vec_safe_reserve(elms, e->elements->dim);
+    bool constant_p = true;
+    bool simple_p = true;
+
+    Type *etype = tb->nextOf();
+    tree satype = d_array_type(etype, e->elements->dim);
 
     for (size_t i = 0; i < e->elements->dim; i++)
       {
 	Expression *expr = (*e->elements)[i];
 	tree value = build_expr(expr);
 
-	if (!integer_zerop(value))
+	// Only care about non-zero values, the backend will fill in the rest.
+	if (!initializer_zerop(value))
 	  {
-	    value = maybe_make_temp(value);
+	    if (!TREE_CONSTANT (value))
+	      {
+		value = maybe_make_temp(value);
+		constant_p = false;
+	      }
+
+	    // Initializer is not suitable for static data.
+	    if (!initializer_constant_valid_p(value, TREE_TYPE (value)))
+	      simple_p = false;
+
 	    CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
 				    convert_expr(value, expr->type, etype));
 	  }
       }
 
-    tree ctor = build_constructor(tsa, elms);
-    tree args[2];
+    // Now return the constructor as the correct type.  For static arrays there
+    // is nothing else to do.  For dynamic arrays, return a two field struct.
+    // For pointers, return the address.
+    tree ctor = build_constructor(satype, elms);
+    tree type = build_ctype(e->type);
 
     // Nothing else to do for static arrays.
-    if (tb->ty == Tsarray)
+    if (tb->ty == Tsarray || this->constp_)
       {
-	this->result_ = d_convert(build_ctype(e->type), ctor);
-	return;
+	if (tb->ty != Tsarray)
+	  {
+	    ctor = build_address(ctor);
+	    if (tb->ty == Tarray)
+	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
+	  }
+
+	if (constant_p)
+	  TREE_CONSTANT (ctor) = 1;
+	if (constant_p && simple_p)
+	  TREE_STATIC (ctor) = 1;
+
+	this->result_ = d_convert(type, ctor);
       }
-
-    args[0] = build_typeinfo(etype->arrayOf());
-    args[1] = size_int(e->elements->dim);
-
-    // Call _d_arrayliteralTX (ti, dim);
-    tree mem = build_libcall(LIBCALL_ARRAYLITERALTX, 2, args,
-			     build_ctype(etype->pointerTo()));
-    mem = maybe_make_temp(mem);
-
-    // memcpy (mem, &ctor, size)
-    tree size = size_mult_expr(size_int(e->elements->dim),
-			       size_int(tb->nextOf()->size()));
-
-    result = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCPY), 3,
-			       mem, build_address(ctor), size);
-
-    // Returns array pointed to by MEM.
-    result = maybe_compound_expr(result, mem);
-
-    if (tb->ty == Tarray)
+    else
       {
-	result = d_array_value(build_ctype(e->type),
-			       size_int(e->elements->dim), result);
-      }
+	tree args[2];
 
-    this->result_ = result;
+	args[0] = build_typeinfo(etype->arrayOf());
+	args[1] = size_int(e->elements->dim);
+
+	// Call _d_arrayliteralTX (ti, dim);
+	tree mem = build_libcall(LIBCALL_ARRAYLITERALTX, 2, args,
+				 build_ctype(etype->pointerTo()));
+	mem = maybe_make_temp(mem);
+
+	// memcpy (mem, &ctor, size)
+	tree size = size_mult_expr(size_int(e->elements->dim),
+				   size_int(tb->nextOf()->size()));
+
+	tree result = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCPY), 3,
+					mem, build_address(ctor), size);
+
+	// Returns array pointed to by MEM.
+	result = maybe_compound_expr(result, mem);
+
+	if (tb->ty == Tarray)
+	  result = d_array_value(type, size_int(e->elements->dim), result);
+
+	this->result_ = result;
+      }
   }
 
   //
@@ -2569,22 +2605,17 @@ public:
   //
   void visit(StructLiteralExp *e)
   {
-    vec<constructor_elt, va_gc> *ve = NULL;
-    Type *tb = e->type->toBasetype();
-
-    gcc_assert(tb->ty == Tstruct);
-
     // Handle empty struct literals.
-    if (e->sd->fields.dim == 0)
+    if (e->elements == NULL || e->sd->fields.dim == 0)
       {
 	this->result_ = build_constructor(build_ctype(e->type), NULL);
 	return;
       }
 
+    // Building sinit trees are delayed until after frontend semantic
+    // processing has complete.  Build the static initialiser now.
     if (e->sinit)
       {
-	// Building sinit trees are delayed until after frontend semantic
-	// processing has complete.  Build the static initialiser now.
 	if (e->sinit->Stree == NULL_TREE)
 	  e->sd->toInitializer();
 
@@ -2593,11 +2624,17 @@ public:
 	return;
       }
 
-    // CTFE may fill the hidden pointer by NullExp.
-    size_t dim = e->elements ? e->elements->dim : 0;
-    gcc_assert(dim <= e->sd->fields.dim);
+    // Build a constructor that assigns the expressions in ELEMENTS
+    // at each field index that has been filled in.
+    vec<constructor_elt, va_gc> *ve = NULL;
 
-    for (size_t i = 0; i < dim; i++)
+    // CTFE may fill the hidden pointer by NullExp.
+    gcc_assert(e->elements->dim <= e->sd->fields.dim);
+
+    Type *tb = e->type->toBasetype();
+    gcc_assert(tb->ty == Tstruct);
+
+    for (size_t i = 0; i < e->elements->dim; i++)
       {
 	if (!(*e->elements)[i])
 	  continue;
@@ -2609,32 +2646,24 @@ public:
 	VarDeclaration *field = e->sd->fields[i];
 	Type *ftype = field->type->toBasetype();
 
-	if (ftype->ty == Tsarray)
+	if (ftype->ty == Tsarray && !d_types_same(type, ftype))
 	  {
-	    if (d_types_same(type, ftype))
-	      {
-		// %% This would call _d_newarrayT ... use memcpy?
-		value = convert_expr(build_expr(exp), exp->type, field->type);
-	      }
-	    else
-	      {
-		value = build_local_temp(build_ctype(ftype));
-		Type *etype = ftype;
+	    value = build_local_temp(build_ctype(ftype));
+	    Type *etype = ftype;
 
-		while (etype->ty == Tsarray)
-		  etype = etype->nextOf();
+	    while (etype->ty == Tsarray)
+	      etype = etype->nextOf();
 
-		gcc_assert(ftype->size() % etype->size() == 0);
-		tree size = fold_build2(TRUNC_DIV_EXPR, size_type_node,
-					size_int(ftype->size()),
-					size_int(etype->size()));
+	    gcc_assert(ftype->size() % etype->size() == 0);
+	    tree size = fold_build2(TRUNC_DIV_EXPR, size_type_node,
+				    size_int(ftype->size()),
+				    size_int(etype->size()));
 
-		tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
-					  build_address(value));
-		ptr_tree = void_okay_p(ptr_tree);
-		tree set_exp = build_array_set(ptr_tree, size, build_expr(exp));
-		value = compound_expr(set_exp, value);
-	      }
+	    tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
+				      build_address(value));
+	    ptr_tree = void_okay_p(ptr_tree);
+	    tree set_exp = build_array_set(ptr_tree, size, build_expr(exp));
+	    value = compound_expr(set_exp, value);
 	  }
 	else
 	  value = convert_expr(build_expr(exp), exp->type, field->type);
@@ -2642,17 +2671,27 @@ public:
 	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol()->Stree, value);
       }
 
-    if (e->sd->isNested() && dim != e->sd->fields.dim)
+    // Maybe setup hidden pointer to outer scope context.
+    if (e->sd->isNested() && e->elements->dim != e->sd->fields.dim
+	&& this->constp_ == false)
       {
-	// Maybe setup hidden pointer to outer scope context.
 	tree field = e->sd->vthis->toSymbol()->Stree;
 	tree value = build_vthis(e->sd);
 	CONSTRUCTOR_APPEND_ELT (ve, field, value);
 	gcc_assert(e->sinit == NULL);
       }
 
+    // Build a constructor in the correct shape of the aggregate type.
     tree ctor = build_struct_literal(build_ctype(e->type),
 				     build_constructor(unknown_type_node, ve));
+
+    // Nothing more to do for constant literals.
+    if (this->constp_)
+      {
+	this->result_ = ctor;
+	return;
+      }
+
     if (e->sym != NULL)
       {
 	tree var = build_deref(e->sym->Stree);
@@ -2673,35 +2712,35 @@ public:
       this->result_ = ctor;
   }
 
-  //
+  // Create a 'null' literal with the given expression.
   void visit(NullExp *e)
   {
     Type *tb = e->type->toBasetype();
+    tree value;
 
-    // Make a special case conversion of replacing zero with dynamic array.
-    // Move to convert for convertTo if it shows up elsewhere.
+    // Handle certain special case conversions, where the underlying type is an
+    // aggregate with a nullable interior pointer.
+    // This is the case for dynamic arrays, associative arrays, and delegates.
     if (tb->ty == Tarray)
       {
-	this->result_ = d_array_value(build_ctype(e->type), size_int(0),
-				      null_pointer_node);
+	tree type = build_ctype(e->type);
+	value = d_array_value(type, size_int(0), null_pointer_node);
       }
     else if (tb->ty == Taarray)
       {
-	tree type = build_ctype(e->type);
-	tree field = TYPE_FIELDS (type);
-	tree value = d_convert(TREE_TYPE (field), integer_zero_node);
 	vec<constructor_elt, va_gc> *ce = NULL;
+	tree type = build_ctype(e->type);
 
-	CONSTRUCTOR_APPEND_ELT (ce, field, value);
-	this->result_ = build_constructor(type, ce);
+	CONSTRUCTOR_APPEND_ELT (ce, TYPE_FIELDS (type), null_pointer_node);
+	value = build_constructor(type, ce);
       }
     else if (tb->ty == Tdelegate)
-      {
-	this->result_ = build_delegate_cst(null_pointer_node,
-					   null_pointer_node, e->type);
-      }
+      value = build_delegate_cst(null_pointer_node, null_pointer_node, e->type);
     else
-      this->result_ = d_convert(build_ctype(e->type), integer_zero_node);
+      value = d_convert(build_ctype(e->type), integer_zero_node);
+
+    TREE_CONSTANT (value) = 1;
+    this->result_ = value;
   }
 
   //
@@ -2768,11 +2807,26 @@ public:
   //
   void visit(ClassReferenceExp *e)
   {
-    // ClassReferenceExp builds the RECORD_TYPE,
-    // we want to return a reference to it.
-    tree exp = e->toSymbol()->Stree;
+    // ClassReferenceExp builds the RECORD_TYPE, we want the reference.
+    tree var = build_address(e->toSymbol()->Stree);
 
-    this->result_ = build_address(exp);
+    // If the typeof this literal is an interface, we must add offset to symbol.
+    if (this->constp_)
+      {
+	InterfaceDeclaration *to = ((TypeClass *) e->type)->sym->isInterfaceDeclaration();
+	if (to != NULL)
+	  {
+	    ClassDeclaration *from = e->originalClass();
+	    int offset = 0;
+
+	    gcc_assert(to->isBaseOf(from, &offset) != 0);
+
+	    if (offset != 0)
+	      var = build_offset(var, size_int(offset));
+	  }
+      }
+
+    this->result_ = var;
   }
 
   // Return expression tree for WrappedExp.
@@ -2785,17 +2839,20 @@ public:
 
 // Main entry point for ExprVisitor interface to generate
 // code for the Expression AST class E.
+// If CONST_P is true, then E is a constant expression.
 
-tree build_expr(Expression *e)
+tree
+build_expr(Expression *e, bool const_p)
 {
-  ExprVisitor v;
+  ExprVisitor v = ExprVisitor(const_p);
   e->accept(&v);
   return v.result();
 }
 
 // Same as build_expr, but also calls destructors on any temporaries.
 
-tree build_expr_dtor(Expression *e)
+tree
+build_expr_dtor(Expression *e)
 {
   size_t starti = cfun->language->vars_in_scope.length();
   tree exp = build_expr(e);
