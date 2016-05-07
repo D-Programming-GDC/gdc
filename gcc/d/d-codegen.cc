@@ -643,7 +643,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
       else if (tbtype->ty == Tsarray)
 	{
 	  // D apparently allows casting a static array to any static array type
-	  return build_vconvert(build_ctype(totype), exp);
+	  return build_nop(build_ctype(totype), exp);
 	}
       else if (tbtype->ty == Tstruct)
 	{

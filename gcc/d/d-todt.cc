@@ -344,71 +344,43 @@ Expression::toDt (dt_t **pdt)
 dt_t **
 IntegerExp::toDt(dt_t **pdt)
 {
-  tree dt = build_expr(this);
+  tree dt = build_expr(this, true);
   return dt_cons(pdt, dt);
 }
 
 dt_t **
 RealExp::toDt(dt_t **pdt)
 {
-  tree dt = build_expr(this);
+  tree dt = build_expr(this, true);
   return dt_cons(pdt, dt);
 }
 
 dt_t **
 ComplexExp::toDt(dt_t **pdt)
 {
-  tree dt = build_expr(this);
+  tree dt = build_expr(this, true);
   return dt_cons(pdt, dt);
 }
 
 dt_t **
 NullExp::toDt(dt_t **pdt)
 {
-  gcc_assert(type);
-
-  tree dt = build_constructor(build_ctype(type), NULL);
+  tree dt = build_expr(this, true);
   return dt_cons(pdt, dt);
 }
 
 dt_t **
 StringExp::toDt(dt_t **pdt)
 {
-  tree dt = build_expr(this);
+  tree dt = build_expr(this, true);
   return dt_cons(pdt, dt);
 }
 
 dt_t **
 ArrayLiteralExp::toDt (dt_t **pdt)
 {
-  tree dt = NULL_TREE;
-
-  for (size_t i = 0; i < elements->dim; i++)
-    {
-      Expression *e = (*elements)[i];
-      e->toDt (&dt);
-    }
-
-  Type *tb = type->toBasetype();
-
-  if (tb->ty != Tsarray)
-    {
-      gcc_assert (tb->ty == Tarray || tb->ty == Tpointer);
-
-      // Create symbol, and then refer to it
-      Symbol *s = new Symbol();
-      s->Sdt = dt;
-      d_finish_symbol (s);
-      dt = NULL_TREE;
-
-      if (tb->ty == Tarray)
-	dt_cons (&dt, size_int (elements->dim));
-
-      dt_cons (&dt, build_address (s->Stree));
-    }
-
-  dt_container (pdt, type, dt);
-  return pdt;
+  tree dt = build_expr(this, true);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
@@ -566,28 +538,7 @@ dt_t **
 CastExp::toDt (dt_t **pdt)
 {
   if (e1->type->ty == Tclass && type->ty == Tclass)
-    {
-      TypeClass *tc = (TypeClass *) type;
-      if (tc->sym->isInterfaceDeclaration())
-	{
-	  // Casting from class to interface.
-	  gcc_assert (e1->op == TOKclassreference);
-
-	  ClassReferenceExp *exp = (ClassReferenceExp *) e1;
-	  ClassDeclaration *from = exp->originalClass();
-	  InterfaceDeclaration *to = (InterfaceDeclaration *) tc->sym;
-	  int off = 0;
-	  int isbase = to->isBaseOf (from, &off);
-	  gcc_assert (isbase);
-
-	  return exp->toDtI (pdt, off);
-	}
-      else
-	{
-	  // Casting from class to class.
-	  return e1->toDt (pdt);
-	}
-    }
+    return e1->toDt (pdt);
 
   return UnaExp::toDt (pdt);
 }
@@ -608,31 +559,7 @@ AddrExp::toDt (dt_t **pdt)
 dt_t **
 ClassReferenceExp::toDt(dt_t **pdt)
 {
-  InterfaceDeclaration *to = ((TypeClass *) type)->sym->isInterfaceDeclaration();
-
-  if (to != NULL)
-    {
-      // Static typeof this literal is an interface.
-      // We must add offset to symbol.
-      ClassDeclaration *from = originalClass();
-      int off = 0;
-      int isbase = to->isBaseOf(from, &off);
-      gcc_assert(isbase);
-
-      return toDtI(pdt, off);
-    }
-
-  return toDtI(pdt, 0);
-}
-
-dt_t **
-ClassReferenceExp::toDtI(dt_t **pdt, int off)
-{
-  tree dt = build_address(toSymbol()->Stree);
-
-  if (off != 0)
-    dt = build_offset(dt, size_int(off));
-
+  tree dt = build_expr(this, true);
   return dt_cons(pdt, dt);
 }
 

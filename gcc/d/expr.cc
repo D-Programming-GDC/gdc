@@ -115,8 +115,9 @@ public:
 	&& (tb2->ty == Tsarray || tb2->ty == Tarray))
       {
 	// Convert arrays to D array types.
-	this->result_ = build2(code, build_ctype(e->type),
-			       d_array_convert(e->e1), d_array_convert(e->e2));
+	tree t1 = d_array_convert(e->e1);
+	tree t2 = d_array_convert(e->e2);
+	this->result_ = build2(code, build_ctype(e->type), t1, t2);
       }
     else if (tb1->isfloating())
       {
@@ -131,19 +132,22 @@ public:
       }
     else if (tb1->ty == Tstruct)
       {
+	StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
+
 	gcc_assert(d_types_same(tb1, tb2));
 
-	this->result_ = build_struct_comparison(code, ((TypeStruct *) tb1)->sym,
-						build_expr(e->e1),
-						build_expr(e->e2));
+	this->result_ = build_struct_comparison(code, sd, t1, t2);
       }
     else
       {
 	// For operands of other types, identity is defined as being the
 	// same as equality expressions.
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
 	this->result_ = d_convert(build_ctype(e->type),
-				  build_boolop(code, build_expr(e->e1),
-					       build_expr(e->e2)));
+				  build_boolop(code, t1, t2));
 
       }
   }
@@ -255,11 +259,13 @@ public:
       }
     else if (tb1->ty == Tstruct)
       {
+	StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
+
 	gcc_assert(d_types_same(tb1, tb2));
 
-	this->result_ = build_struct_comparison(code, ((TypeStruct *) tb1)->sym,
-						build_expr(e->e1),
-						build_expr(e->e2));
+	this->result_ = build_struct_comparison(code, sd, t1, t2);
       }
     else if (tb1->ty == Taarray && tb2->ty == Taarray)
       {
@@ -280,10 +286,11 @@ public:
       }
     else
       {
-	tree tcmp = build_boolop(code, build_expr(e->e1),
-				 build_expr(e->e2));
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
 
-	this->result_ = d_convert(build_ctype(e->type), tcmp);
+	this->result_ = d_convert(build_ctype(e->type),
+				  build_boolop(code, t1, t2));
       }
   }
 
@@ -322,28 +329,28 @@ public:
 	break;
 
       case TOKlg:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  LTGT_EXPR : NE_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? LTGT_EXPR : NE_EXPR;
 	break;
 
       case TOKule:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNLE_EXPR : LE_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNLE_EXPR : LE_EXPR;
 	break;
 
       case TOKul:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNLT_EXPR : LT_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNLT_EXPR : LT_EXPR;
 	break;
 
       case TOKuge:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNGE_EXPR : GE_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNGE_EXPR : GE_EXPR;
 	break;
 
       case TOKug:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNGT_EXPR : GT_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNGT_EXPR : GT_EXPR;
 	break;
 
       case TOKle:
@@ -430,8 +437,11 @@ public:
   {
     if (e->e2->type->toBasetype()->ty != Tvoid)
       {
-	tree t1 = convert_for_condition(build_expr(e->e1), e->e1->type);
-	tree t2 = convert_for_condition(build_expr(e->e2), e->e2->type);
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
+
+	t1 = convert_for_condition(t1, e->e1->type);
+	t2 = convert_for_condition(t2, e->e2->type);
 
 	this->result_ = d_convert(build_ctype(e->type),
 				  build_boolop(TRUTH_ANDIF_EXPR, t1, t2));
@@ -830,8 +840,7 @@ public:
 	tree args[3];
 
 	args[0] = build_typeinfo(ale->e1->type);
-	args[1] = convert_expr(build_expr(e->e2),
-			       e->e2->type, Type::tsize_t);
+	args[1] = convert_expr(build_expr(e->e2), e->e2->type, Type::tsize_t);
 	args[2] = build_address(build_expr(ale->e1));
 
 	// Don't want ->toBasetype() for the element type.
@@ -971,7 +980,8 @@ public:
     if (tb1->ty == Tstruct)
       {
 	tree t1 = build_expr(e->e1);
-	tree t2 = convert_for_assignment(build_expr(e->e2), e->e2->type, e->e1->type);
+	tree t2 = convert_for_assignment(build_expr(e->e2),
+					 e->e2->type, e->e1->type);
 
 	if (e->op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
 	    && aggregate_value_p(TREE_TYPE (t2), t2))
@@ -1025,7 +1035,8 @@ public:
 	    || (e->op == TOKblit || e->e1->type->size() == 0))
 	  {
 	    tree t1 = build_expr(e->e1);
-	    tree t2 = convert_for_assignment(build_expr(e->e2), e->e2->type, e->e1->type);
+	    tree t2 = convert_for_assignment(build_expr(e->e2),
+					     e->e2->type, e->e1->type);
 
 	    if (e->op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
 		&& aggregate_value_p(TREE_TYPE (t2), t2))
@@ -1067,7 +1078,8 @@ public:
 
     // Simple assignment
     tree t1 = build_expr(e->e1);
-    tree t2 = convert_for_assignment(build_expr(e->e2), e->e2->type, e->e1->type);
+    tree t2 = convert_for_assignment(build_expr(e->e2),
+				     e->e2->type, e->e1->type);
 
     this->result_ = modify_expr(build_ctype(e->type), t1, t2);
   }
@@ -1321,7 +1333,7 @@ public:
   {
     Type *ebtype = e->e1->type->toBasetype();
     Type *tbtype = e->to->toBasetype();
-    tree result = build_expr(e->e1);
+    tree result = build_expr(e->e1, this->constp_);
 
     // Just evaluate e1 if it has any side effects
     if (tbtype->ty == Tvoid)
@@ -1540,7 +1552,7 @@ public:
 	exp = sle->toSymbol()->Stree;
       }
     else
-      exp = build_expr(e->e1);
+      exp = build_expr(e->e1, this->constp_);
 
     TREE_CONSTANT (exp) = 0;
     this->result_ = d_convert(type, build_address(exp));
@@ -2407,7 +2419,7 @@ public:
     for (size_t i = 0; i < e->elements->dim; i++)
       {
 	Expression *expr = (*e->elements)[i];
-	tree value = build_expr(expr);
+	tree value = build_expr(expr, this->constp_);
 
 	// Only care about non-zero values, the backend will fill in the rest.
 	if (!initializer_zerop(value))
@@ -2436,17 +2448,20 @@ public:
     // Nothing else to do for static arrays.
     if (tb->ty == Tsarray || this->constp_)
       {
-	if (tb->ty != Tsarray)
-	  {
-	    ctor = build_address(ctor);
-	    if (tb->ty == Tarray)
-	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
-	  }
-
 	if (constant_p)
 	  TREE_CONSTANT (ctor) = 1;
 	if (constant_p && simple_p)
 	  TREE_STATIC (ctor) = 1;
+
+	// Can't take the address of the constructor, so create an anonymous
+	// static symbol, and then refer to it.
+	if (tb->ty != Tsarray)
+	  {
+	    ctor = build_artificial_decl(TREE_TYPE (ctor), ctor, "A");
+	    ctor = build_address(ctor);
+	    if (tb->ty == Tarray)
+	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
+	  }
 
 	this->result_ = d_convert(type, ctor);
       }
@@ -2599,11 +2614,15 @@ public:
 	    tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
 				      build_address(value));
 	    ptr_tree = void_okay_p(ptr_tree);
-	    tree set_exp = build_array_set(ptr_tree, size, build_expr(exp));
+	    tree set_exp = build_array_set(ptr_tree, size,
+					   build_expr(exp, this->constp_));
 	    value = compound_expr(set_exp, value);
 	  }
 	else
-	  value = convert_expr(build_expr(exp), exp->type, field->type);
+	  {
+	    value = convert_expr(build_expr(exp, this->constp_),
+				 exp->type, field->type);
+	  }
 
 	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol()->Stree, value);
       }
@@ -2720,7 +2739,7 @@ public:
 	for (size_t i = 0; i < elements->dim; i++)
 	  {
 	    Expression *expr = (*elements)[i];
-	    tree value = d_convert(etype, build_expr(expr));
+	    tree value = d_convert(etype, build_expr(expr, this->constp_));
 	    if (!CONSTANT_CLASS_P (value))
 	      constant_p = false;
 
@@ -2736,7 +2755,7 @@ public:
     else
       {
 	// Build constructor from single value.
-	tree val = d_convert(etype, build_expr(e->e1));
+	tree val = d_convert(etype, build_expr(e->e1, this->constp_));
 	this->result_ = build_vector_from_val(type, val);
       }
   }
