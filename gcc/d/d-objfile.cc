@@ -873,7 +873,7 @@ VarDeclaration::toObjFile()
     {
       // This is needed for VarDeclarations in mixins that are to be local
       // variables of a function.  Otherwise, it would be enough to make
-      // a check for isVarDeclaration() in DeclarationExp::toElem.
+      // a check for isVarDeclaration() in DeclarationExp codegen.
       if (!isDataseg() && !isMember())
 	{
 	  build_local_var (this);
@@ -884,7 +884,7 @@ VarDeclaration::toObjFile()
 		{
 		  ExpInitializer *vinit = init->isExpInitializer();
 		  Expression *ie = vinit->toExpression();
-		  tree exp = ie->toElem();
+		  tree exp = build_expr(ie);
 		  add_stmt(exp);
 		}
 	      else if (size (loc) != 0)
