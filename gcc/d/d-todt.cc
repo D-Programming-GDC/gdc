@@ -344,21 +344,21 @@ Expression::toDt (dt_t **pdt)
 dt_t **
 IntegerExp::toDt(dt_t **pdt)
 {
-  tree dt = toElem();
+  tree dt = build_expr(this);
   return dt_cons(pdt, dt);
 }
 
 dt_t **
 RealExp::toDt(dt_t **pdt)
 {
-  tree dt = toElem();
+  tree dt = build_expr(this);
   return dt_cons(pdt, dt);
 }
 
 dt_t **
 ComplexExp::toDt(dt_t **pdt)
 {
-  tree dt = toElem();
+  tree dt = build_expr(this);
   return dt_cons(pdt, dt);
 }
 
@@ -374,7 +374,7 @@ NullExp::toDt(dt_t **pdt)
 dt_t **
 StringExp::toDt(dt_t **pdt)
 {
-  tree dt = toElem();
+  tree dt = build_expr(this);
   return dt_cons(pdt, dt);
 }
 

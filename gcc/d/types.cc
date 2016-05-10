@@ -168,7 +168,7 @@ public:
       }
   }
 
-  // Valid case for Ttuple is in CommaExp::toElem, in instances when
+  // Valid case for Ttuple is in CommaExp codegen, in instances when
   // a tuple has been expanded as a large chain of comma expressions.
   void visit(TypeTuple *t)
   {
