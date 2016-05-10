@@ -211,8 +211,6 @@ public:
 
     virtual void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    virtual elem *toElem();
-    elem *toElemDtor();
     virtual dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -236,7 +234,6 @@ public:
     dinteger_t getInteger() { return value; }
     void setInteger(dinteger_t value);
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 
@@ -271,7 +268,6 @@ public:
     bool isBool(bool result);
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -292,7 +288,6 @@ public:
     bool isBool(bool result);
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -343,9 +338,6 @@ public:
     Expression *toLvalue(Scope *sc, Expression *e);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class SuperExp : public ThisExp
@@ -369,7 +361,6 @@ public:
     StringExp *toStringExp();
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -401,7 +392,6 @@ public:
     unsigned charAt(uinteger_t i);
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -429,9 +419,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ArrayLiteralExp : public Expression
@@ -451,7 +438,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -470,9 +456,6 @@ public:
     bool isBool(bool result);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 // scrubReturnValue is running
@@ -528,7 +511,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
     Symbol *toSymbol();
 #endif
@@ -545,9 +527,6 @@ public:
     Expression *semantic(Scope *sc);
     bool rvalue();
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ScopeExp : public Expression
@@ -559,9 +538,6 @@ public:
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class TemplateExp : public Expression
@@ -599,9 +575,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class NewAnonClassExp : public Expression
@@ -630,9 +603,6 @@ public:
     SymbolExp(Loc loc, TOK op, int size, Declaration *var, bool hasOverloads);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 // Offset from symbol
@@ -706,7 +676,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -726,9 +695,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class TypeidExp : public Expression
@@ -761,9 +727,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class IsExp : public Expression
@@ -872,9 +835,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class DotIdExp : public UnaExp
@@ -914,9 +874,6 @@ public:
     Expression *toLvalue(Scope *sc, Expression *e);
     Expression *modifiableLvalue(Scope *sc, Expression *e);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class DotTemplateInstanceExp : public UnaExp
@@ -943,9 +900,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class DotTypeExp : public UnaExp
@@ -956,9 +910,6 @@ public:
     DotTypeExp(Loc loc, Expression *e, Dsymbol *sym);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class CallExp : public UnaExp
@@ -983,9 +934,6 @@ public:
     Expression *addDtorHook(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class AddrExp : public UnaExp
@@ -996,7 +944,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -1013,9 +960,6 @@ public:
     Expression *modifiableLvalue(Scope *sc, Expression *e);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class NegExp : public UnaExp
@@ -1025,9 +969,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class UAddExp : public UnaExp
@@ -1046,9 +987,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class NotExp : public UnaExp
@@ -1057,9 +995,6 @@ public:
     NotExp(Loc loc, Expression *e);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class BoolExp : public UnaExp
@@ -1068,9 +1003,6 @@ public:
     BoolExp(Loc loc, Expression *e, Type *type);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class DeleteExp : public UnaExp
@@ -1080,9 +1012,6 @@ public:
     Expression *semantic(Scope *sc);
     Expression *checkToBoolean(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class CastExp : public UnaExp
@@ -1099,7 +1028,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -1115,7 +1043,6 @@ public:
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    elem *toElem();
     dt_t **toDt(dt_t **pdt);
 #endif
 };
@@ -1139,9 +1066,6 @@ public:
     bool isBool(bool result);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ArrayLengthExp : public UnaExp
@@ -1152,9 +1076,6 @@ public:
 
     static Expression *rewriteOpAssign(BinExp *exp);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class IntervalExp : public Expression
@@ -1177,9 +1098,6 @@ public:
     bool isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class DelegateFuncptrExp : public UnaExp
@@ -1190,9 +1108,6 @@ public:
     bool isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 // e1[a0,a1,a2,a3,...]
@@ -1235,9 +1150,6 @@ public:
     bool isBool(bool result);
     Expression *addDtorHook(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class IndexExp : public BinExp
@@ -1258,9 +1170,6 @@ public:
     Expression *markSettingAAElem();
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 /* For both i++ and i--
@@ -1271,9 +1180,6 @@ public:
     PostExp(TOK op, Loc loc, Expression *e);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 /* For both ++i and --i
@@ -1298,9 +1204,6 @@ public:
     Expression *checkToBoolean(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ConstructExp : public AssignExp
@@ -1322,9 +1225,6 @@ class AddAssignExp : public BinAssignExp
 public:
     AddAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class MinAssignExp : public BinAssignExp
@@ -1332,9 +1232,6 @@ class MinAssignExp : public BinAssignExp
 public:
     MinAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class MulAssignExp : public BinAssignExp
@@ -1342,9 +1239,6 @@ class MulAssignExp : public BinAssignExp
 public:
     MulAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class DivAssignExp : public BinAssignExp
@@ -1352,9 +1246,6 @@ class DivAssignExp : public BinAssignExp
 public:
     DivAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ModAssignExp : public BinAssignExp
@@ -1362,9 +1253,6 @@ class ModAssignExp : public BinAssignExp
 public:
     ModAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class AndAssignExp : public BinAssignExp
@@ -1372,9 +1260,6 @@ class AndAssignExp : public BinAssignExp
 public:
     AndAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class OrAssignExp : public BinAssignExp
@@ -1382,9 +1267,6 @@ class OrAssignExp : public BinAssignExp
 public:
     OrAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class XorAssignExp : public BinAssignExp
@@ -1392,9 +1274,6 @@ class XorAssignExp : public BinAssignExp
 public:
     XorAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class PowAssignExp : public BinAssignExp
@@ -1403,9 +1282,6 @@ public:
     PowAssignExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ShlAssignExp : public BinAssignExp
@@ -1413,9 +1289,6 @@ class ShlAssignExp : public BinAssignExp
 public:
     ShlAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ShrAssignExp : public BinAssignExp
@@ -1423,9 +1296,6 @@ class ShrAssignExp : public BinAssignExp
 public:
     ShrAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class UshrAssignExp : public BinAssignExp
@@ -1433,9 +1303,6 @@ class UshrAssignExp : public BinAssignExp
 public:
     UshrAssignExp(Loc loc, Expression *e1, Expression *e2);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class CatAssignExp : public BinAssignExp
@@ -1444,9 +1311,6 @@ public:
     CatAssignExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class AddExp : public BinExp
@@ -1456,9 +1320,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class MinExp : public BinExp
@@ -1468,9 +1329,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class CatExp : public BinExp
@@ -1480,9 +1338,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class MulExp : public BinExp
@@ -1492,9 +1347,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class DivExp : public BinExp
@@ -1504,9 +1356,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ModExp : public BinExp
@@ -1516,9 +1365,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class PowExp : public BinExp
@@ -1528,9 +1374,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ShlExp : public BinExp
@@ -1540,9 +1383,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class ShrExp : public BinExp
@@ -1552,9 +1392,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class UshrExp : public BinExp
@@ -1564,9 +1401,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class AndExp : public BinExp
@@ -1576,9 +1410,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class OrExp : public BinExp
@@ -1588,9 +1419,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class XorExp : public BinExp
@@ -1600,9 +1428,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class OrOrExp : public BinExp
@@ -1612,9 +1437,6 @@ public:
     Expression *semantic(Scope *sc);
     Expression *checkToBoolean(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class AndAndExp : public BinExp
@@ -1624,9 +1446,6 @@ public:
     Expression *semantic(Scope *sc);
     Expression *checkToBoolean(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class CmpExp : public BinExp
@@ -1636,9 +1455,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class InExp : public BinExp
@@ -1648,9 +1464,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 class RemoveExp : public BinExp
@@ -1659,9 +1472,6 @@ public:
     RemoveExp(Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 // == and !=
@@ -1673,9 +1483,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 // is and !is
@@ -1686,9 +1493,6 @@ public:
     IdentityExp(TOK op, Loc loc, Expression *e1, Expression *e2);
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 /****************************************************************/
@@ -1708,9 +1512,6 @@ public:
     Expression *checkToBoolean(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-#endif
 };
 
 /****************************************************************/
@@ -1870,7 +1671,6 @@ public:
     elem *e1;
 
     WrappedExp(Loc loc, elem *e1, Type *type);
-    elem *toElem();
     void accept(Visitor *v) { v->visit(this); }
 };
 

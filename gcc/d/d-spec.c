@@ -455,7 +455,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
       char *out;
 
       base = lbasename (first_d_file);
-      baselen = strlen (base) - 3;
+      baselen = strlen (base) - 2;
       alen = baselen + 3;
       out = XNEWVEC (char, alen);
       memcpy (out, base, baselen);

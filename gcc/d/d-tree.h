@@ -20,6 +20,7 @@
 #define GCC_D_TREE_H
 
 // Forward type declarations to avoid including unnecessary headers.
+class Dsymbol;
 class Declaration;
 class FuncDeclaration;
 class VarDeclaration;
@@ -155,13 +156,13 @@ struct GTY(()) language_function
 // collection system.  Handle this by using the "skip" attribute. */
 struct GTY(()) lang_decl
 {
-  Declaration * GTY((skip)) d_decl;
+  Declaration * GTY((skip)) decl;
 };
 
 // The lang_type field is not set for every GCC type.
 struct GTY(()) lang_type
 {
-  Type * GTY((skip)) d_type;
+  Type * GTY((skip)) type;
 };
 
 // Another required, but unused declaration.  This could be simplified, since
@@ -211,12 +212,12 @@ lang_tree_node
 // The D frontend Type AST for GCC type NODE.
 #define TYPE_LANG_FRONTEND(NODE) \
   (TYPE_LANG_SPECIFIC (NODE) \
-   ? TYPE_LANG_SPECIFIC (NODE)->d_type : NULL)
+   ? TYPE_LANG_SPECIFIC (NODE)->type : NULL)
 
 // The D frontend Declaration AST for GCC decl NODE.
 #define DECL_LANG_FRONTEND(NODE) \
   (DECL_LANG_SPECIFIC (NODE) \
-   ? DECL_LANG_SPECIFIC (NODE)->d_decl : NULL)
+   ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
 
 enum d_tree_index
 {
@@ -279,13 +280,14 @@ extern void d_init_builtins (void);
 extern void d_register_builtin_type (tree, const char *);
 extern void d_build_builtins_module (Module *);
 extern void d_maybe_set_builtin (Module *);
-extern void d_backend_init (void);
-extern void d_backend_term (void);
 extern Expression *build_expression (tree);
-extern Type *build_dtype (tree);
 
 // In d-convert.cc.
 extern tree d_truthvalue_conversion (tree);
+
+// In d-expr.cc.
+extern tree build_expr (Expression *, bool = false);
+extern tree build_expr_dtor (Expression *);
 
 // In d-incpath.cc.
 extern void add_import_paths (const char *, const char *, bool);
@@ -293,12 +295,20 @@ extern void add_import_paths (const char *, const char *, bool);
 // In d-lang.cc.
 extern void d_add_global_declaration (tree);
 extern Module *d_gcc_get_output_module (void);
-extern struct lang_type *build_d_type_lang_specific (Type *);
-extern struct lang_decl *build_d_decl_lang_specific (Declaration *);
+extern struct lang_type *build_lang_type (Type *);
+extern struct lang_decl *build_lang_decl (Declaration *);
 extern tree d_pushdecl (tree);
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);
-extern void d_init_exceptions (void);
 extern void d_keep (tree);
+
+// In imports.cc
+extern tree build_import_decl (Dsymbol *);
+
+// In toir.cc
+extern void build_ir (FuncDeclaration *);
+
+// In types.cc
+extern tree build_ctype (Type *);
 
 #endif

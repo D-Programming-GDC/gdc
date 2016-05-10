@@ -177,7 +177,7 @@ public:
 
     // Build the outer 'if' condition, which may produce temporaries
     // requiring scope destruction.
-    tree ifcond = convert_for_condition(s->condition->toElemDtor(),
+    tree ifcond = convert_for_condition(build_expr_dtor(s->condition),
 					s->condition->type);
     tree ifbody = void_node;
     tree elsebody = void_node;
@@ -240,7 +240,7 @@ public:
     // Build the outer 'while' condition, which may produce temporaries
     // requiring scope destruction.
     set_input_location(s->condition->loc);
-    tree exitcond = convert_for_condition(s->condition->toElemDtor(),
+    tree exitcond = convert_for_condition(build_expr_dtor(s->condition),
 					  s->condition->type);
     add_stmt(build_vcondition(exitcond, void_node,
 			      build1(GOTO_EXPR, void_type_node, lbreak)));
@@ -266,7 +266,7 @@ public:
     if (s->condition)
       {
 	set_input_location(s->condition->loc);
-	tree exitcond = convert_for_condition(s->condition->toElemDtor(),
+	tree exitcond = convert_for_condition(build_expr_dtor(s->condition),
 					      s->condition->type);
 	add_stmt(build_vcondition(exitcond, void_node,
 				  build1(GOTO_EXPR, void_type_node, lbreak)));
@@ -284,7 +284,7 @@ public:
       {
 	// Force side effects?
 	set_input_location(s->increment->loc);
-	add_stmt(s->increment->toElemDtor());
+	add_stmt(build_expr_dtor(s->increment));
       }
 
     tree body = this->end_scope();
@@ -390,7 +390,7 @@ public:
     this->start_scope(level_switch);
     tree lbreak = this->push_break_label(s);
 
-    tree condition = s->condition->toElemDtor();
+    tree condition = build_expr_dtor(s->condition);
     Type *condtype = s->condition->type->toBasetype();
 
     // A switch statement on a string gets turned into a library call,
@@ -472,7 +472,7 @@ public:
 	    if (s->hasVars)
 	      {
 		tree ifcase = build2(EQ_EXPR, build_ctype(condtype), condition,
-				     cs->exp->toElemDtor());
+				     build_expr_dtor(cs->exp));
 		tree ifbody = fold_build1(GOTO_EXPR, void_type_node, caselabel);
 		tree cond = build_vcondition(ifcase, ifbody, void_node);
 		TREE_USED (caselabel) = 1;
@@ -533,7 +533,7 @@ public:
       {
 	tree casevalue;
 	if (s->exp->type->isscalar())
-	  casevalue = s->exp->toElem();
+	  casevalue = build_expr(s->exp);
 	else
 	  casevalue = build_integer_cst(s->index, build_ctype(Type::tint32));
 
@@ -620,7 +620,7 @@ public:
     else
       {
 	// Convert for initialising the DECL_RESULT.
-	tree value = convert_expr(s->exp->toElemDtor(),
+	tree value = convert_expr(build_expr_dtor(s->exp),
 				  s->exp->type, type);
 
 	// If we are returning a reference, take the address.
@@ -639,7 +639,7 @@ public:
       {
 	set_input_location(s->loc);
 	// Expression may produce temporaries requiring scope destruction.
-	tree exp = s->exp->toElemDtor();
+	tree exp = build_expr_dtor(s->exp);
 	add_stmt(exp);
       }
   }
@@ -716,7 +716,7 @@ public:
 	gcc_assert(ie != NULL);
 
 	build_local_var(s->wthis);
-	tree init = ie->exp->toElemDtor();
+	tree init = build_expr_dtor(ie->exp);
 	add_stmt(init);
       }
 
@@ -733,7 +733,7 @@ public:
   {
     ClassDeclaration *cd = s->exp->type->toBasetype()->isClassHandle();
     InterfaceDeclaration *id = cd->isInterfaceDeclaration();
-    tree arg = s->exp->toElemDtor();
+    tree arg = build_expr_dtor(s->exp);
 
     if (!flag_exceptions)
       {
@@ -889,7 +889,7 @@ public:
 
 	    tree id = name ? build_string(name->len, name->string) : NULL_TREE;
 	    tree str = build_string(constr->len, (char *)constr->string);
-	    tree val = arg->toElem();
+	    tree val = build_expr(arg);
 
 	    if (i < s->outputargs)
 	      {
@@ -1020,8 +1020,8 @@ public:
 };
 
 
-// Main entry point for the IRVisitor interface to generate code for the
-// statement AST class S.  IRS holds the state of the current function.
+// Main entry point for the IRVisitor interface to generate
+// code for the statement AST class S.
 
 void
 build_ir(FuncDeclaration *fd)
