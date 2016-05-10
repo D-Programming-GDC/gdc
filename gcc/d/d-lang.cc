@@ -227,9 +227,6 @@ d_add_builtin_version(const char* ident)
 static bool
 d_init()
 {
-  if(POINTER_SIZE == 64)
-    global.params.isLP64 = true;
-
   Lexer::initLexer();
   Type::init();
   Id::initialize();
@@ -251,7 +248,7 @@ d_init()
   d_init_builtins();
 
   if (flag_exceptions)
-    d_init_exceptions();
+    using_eh_for_cleanups();
 
   // This is the C main, not the D main.
   main_identifier_node = get_identifier ("main");
@@ -1486,20 +1483,20 @@ d_classify_record (tree type)
 
 
 struct lang_type *
-build_d_type_lang_specific (Type *t)
+build_lang_type (Type *t)
 {
   unsigned sz = sizeof (lang_type);
   struct lang_type *lt = ggc_alloc_cleared_lang_type (sz);
-  lt->d_type = t;
+  lt->type = t;
   return lt;
 }
 
 struct lang_decl *
-build_d_decl_lang_specific (Declaration *d)
+build_lang_decl (Declaration *d)
 {
   unsigned sz = sizeof (lang_decl);
   struct lang_decl *ld = ggc_alloc_cleared_lang_decl (sz);
-  ld->d_decl = d;
+  ld->decl = d;
   return ld;
 }
 
@@ -1540,12 +1537,6 @@ d_build_eh_type_type (tree type)
   sym = ((TypeClass *) dtype)->sym->toSymbol();
 
   return convert (ptr_type_node, build_address (sym->Stree));
-}
-
-void
-d_init_exceptions()
-{
-  using_eh_for_cleanups();
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

@@ -43,27 +43,26 @@ Target::init()
 {
   // Map D frontend type and sizes to GCC backend types.
   realsize = int_size_in_bytes(long_double_type_node);
-  realpad = TYPE_PRECISION(long_double_type_node) / BITS_PER_UNIT;
+  realpad = realsize - (TYPE_PRECISION(long_double_type_node) / BITS_PER_UNIT);
   realalignsize = TYPE_ALIGN_UNIT(long_double_type_node);
   reverseCppOverloads = false;
 
   // Define what type to use for size_t, ptrdiff_t.
-  size_t wordsize = int_size_in_bytes(size_type_node);
-  if (wordsize == 2)
-    Tsize_t = Tuns16;
-  else if (wordsize == 4)
-    Tsize_t = Tuns32;
-  else if (wordsize == 8)
-    Tsize_t = Tuns64;
+  if (POINTER_SIZE == 64)
+    {
+      global.params.isLP64 = true;
+      Tsize_t = Tuns64;
+      Tptrdiff_t = Tint64;
+    }
   else
-    gcc_unreachable();
+    {
+      Tsize_t = Tuns32;
+      Tptrdiff_t = Tint32;
+    }
 
-  if (POINTER_SIZE == 32)
-    Tptrdiff_t = Tint32;
-  else if (POINTER_SIZE == 64)
-    Tptrdiff_t = Tint64;
-  else
-    gcc_unreachable();
+  Type::tsize_t = Type::basic[Tsize_t];
+  Type::tptrdiff_t = Type::basic[Tptrdiff_t];
+  Type::thash_t = Type::tsize_t;
 
   ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
   c_longsize = int_size_in_bytes(long_integer_type_node);

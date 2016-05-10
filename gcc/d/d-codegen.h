@@ -40,11 +40,6 @@ struct FuncFrameInfo
   };
 };
 
-// Visitor routines for barrier between frontend and glue.
-extern void build_ir(FuncDeclaration *fd);
-extern tree build_ctype(Type *t);
-extern tree build_import_decl(Dsymbol *dsym);
-
 // Code generation routines.
 extern void push_binding_level(level_kind kind);
 extern tree pop_binding_level();
@@ -240,6 +235,8 @@ extern tree build_vcondition(tree arg0, tree arg1, tree arg2);
 extern tree compound_expr(tree arg0, tree arg1);
 extern tree vcompound_expr(tree arg0, tree arg1);
 extern tree return_expr(tree ret);
+
+extern tree size_mult_expr(tree arg0, tree arg1);
 
 // Routines for built in structured types
 extern tree real_part(tree c);
