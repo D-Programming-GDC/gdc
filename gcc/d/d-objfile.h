@@ -111,8 +111,6 @@ extern void set_decl_location (tree t, const Loc& loc);
 extern void set_decl_location (tree t, Dsymbol *decl);
 extern void set_function_end_locus (const Loc& loc);
 
-extern void get_unique_name (tree decl, const char *prefix = NULL);
-
 extern void get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p);
 extern void setup_symbol_storage (Dsymbol *dsym, tree decl, bool is_public);
 extern void d_comdat_linkage (tree decl);
@@ -122,6 +120,7 @@ extern void d_finish_function (FuncDeclaration *f);
 extern void d_finish_module();
 extern void d_finish_compilation (tree *vec, int len);
 
+extern tree build_artificial_decl(tree type, tree init, const char *prefix = NULL);
 extern void build_type_decl (tree t, Dsymbol *dsym);
 
 extern Modules output_modules;
