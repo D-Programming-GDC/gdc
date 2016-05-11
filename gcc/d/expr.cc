@@ -2600,23 +2600,14 @@ public:
 
 	if (ftype->ty == Tsarray && !d_types_same(type, ftype))
 	  {
-	    value = build_local_temp(build_ctype(ftype));
-	    Type *etype = ftype;
+	    // Initialize a static array with a single element.
+	    tree elem = build_expr(exp, this->constp_);
+	    elem = maybe_make_temp(elem);
 
-	    while (etype->ty == Tsarray)
-	      etype = etype->nextOf();
-
-	    gcc_assert(ftype->size() % etype->size() == 0);
-	    tree size = fold_build2(TRUNC_DIV_EXPR, size_type_node,
-				    size_int(ftype->size()),
-				    size_int(etype->size()));
-
-	    tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
-				      build_address(value));
-	    ptr_tree = void_okay_p(ptr_tree);
-	    tree set_exp = build_array_set(ptr_tree, size,
-					   build_expr(exp, this->constp_));
-	    value = compound_expr(set_exp, value);
+	    if (initializer_zerop(elem))
+	      value = build_constructor(build_ctype(ftype), NULL);
+	    else
+	      value = build_array_from_val(ftype, elem);
 	  }
 	else
 	  {

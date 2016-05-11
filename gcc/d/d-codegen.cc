@@ -2474,6 +2474,33 @@ build_array_set(tree ptr, tree length, tree value)
 		BLOCK_VARS (block), stmt_list, block);
 }
 
+
+// Build an array of type TYPE where all the elements are VAL.
+
+tree
+build_array_from_val(Type *type, tree val)
+{
+  gcc_assert(type->ty == Tsarray);
+
+  TypeSArray *satype = (TypeSArray *) type;
+  Type *etype = type->nextOf();
+
+  // Initializing a multidimensional array.
+  if (etype->ty == Tsarray)
+    val = build_array_from_val(etype, val);
+
+  size_t dims = satype->dim->toInteger();
+  vec<constructor_elt, va_gc> *elms = NULL;
+  vec_safe_reserve(elms, dims);
+
+  val = d_convert(build_ctype(etype), val);
+
+  for (size_t i = 0; i < dims; i++)
+    CONSTRUCTOR_APPEND_ELT (elms, size_int(i), val);
+
+  return build_constructor(build_ctype(satype), elms);
+}
+
 // Implicitly converts void* T to byte* as D allows { void[] a; &a[3]; }
 
 tree

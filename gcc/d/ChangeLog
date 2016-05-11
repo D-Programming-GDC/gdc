@@ -1,3 +1,8 @@
+2016-05-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_array_from_val): New function.
+	* expr.cc (ExprVisitor::visit(StructLiteralExp)): Use it.
+
 2016-05-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (convert_expr): Use build_nop to cast between two
