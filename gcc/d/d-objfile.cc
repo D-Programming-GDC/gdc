@@ -1606,26 +1606,6 @@ set_function_end_locus (const Loc& loc)
     cfun->function_end_locus = DECL_SOURCE_LOCATION (cfun->decl);
 }
 
-void
-get_unique_name (tree decl, const char *prefix)
-{
-  const char *name;
-  char *label;
-
-  if (prefix)
-    name = prefix;
-  else if (DECL_NAME (decl))
-    name = IDENTIFIER_POINTER (DECL_NAME (decl));
-  else
-    name = "___s";
-
-  ASM_FORMAT_PRIVATE_NAME (label, name, DECL_UID (decl));
-  SET_DECL_ASSEMBLER_NAME (decl, get_identifier (label));
-
-  if (!DECL_NAME (decl))
-    DECL_NAME (decl) = DECL_ASSEMBLER_NAME (decl);
-}
-
 // Return the COMDAT group into which DECL should be placed.
 
 static tree
@@ -1796,20 +1776,9 @@ d_finish_symbol (Symbol *sym)
 {
   if (!sym->Stree)
     {
-      gcc_assert (!sym->Sident);
-
       tree init = dtvector_to_tree (sym->Sdt);
-      tree var = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, TREE_TYPE (init));
-      get_unique_name (var);
-
-      DECL_INITIAL (var) = init;
-      TREE_STATIC (var) = 1;
-      TREE_PUBLIC (var) = 0;
-      TREE_USED (var) = 1;
-      DECL_IGNORED_P (var) = 1;
-      DECL_ARTIFICIAL (var) = 1;
-
-      sym->Stree = var;
+      sym->Stree = build_artificial_decl(TREE_TYPE (init), init);
+      gcc_assert (!sym->Sident);
     }
 
   tree decl = sym->Stree;
@@ -1965,6 +1934,33 @@ d_finish_compilation(tree *vec, int len)
   // After cgraph has had a chance to emit everything that's going to
   // be emitted, output debug information for globals.
   emit_debug_global_declarations (vec, len);
+}
+
+// Return an anonymous static variable of type TYPE, initialized with
+// INIT, and optionally prefixing the name with PREFIX.
+// At some point the INIT constant should be hashed to remove duplicates.
+
+tree
+build_artificial_decl(tree type, tree init, const char *prefix)
+{
+  tree decl = build_decl(UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, type);
+  const char *name = prefix ? prefix : "___s";
+  char *label;
+
+  ASM_FORMAT_PRIVATE_NAME (label, name, DECL_UID (decl));
+  SET_DECL_ASSEMBLER_NAME (decl, get_identifier(label));
+  DECL_NAME (decl) = DECL_ASSEMBLER_NAME (decl);
+
+  TREE_PUBLIC (decl) = 0;
+  TREE_STATIC (decl) = 1;
+  TREE_USED (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  DECL_ARTIFICIAL (decl) = 1;
+
+  DECL_INITIAL (decl) = init;
+  d_add_global_declaration(decl);
+
+  return decl;
 }
 
 // Build TYPE_DECL for the declaration DSYM.
@@ -2409,16 +2405,9 @@ build_moduleinfo (Symbol *sym)
   TREE_PUBLIC (dmodule_ref) = 1;
 
   // private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };
-  tree modref = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, tmodref);
-  d_keep (modref);
-
-  get_unique_name (modref, "__mod_ref");
+  tree modref = build_artificial_decl (tmodref, NULL_TREE, "__mod_ref");
   set_decl_location (modref, current_module_decl);
-
-  DECL_ARTIFICIAL (modref) = 1;
-  DECL_IGNORED_P (modref) = 1;
-  TREE_PUBLIC (modref) = 0;
-  TREE_STATIC (modref) = 1;
+  d_keep (modref);
 
   vec<constructor_elt, va_gc> *ce = NULL;
   CONSTRUCTOR_APPEND_ELT (ce, nextfield, null_pointer_node);
