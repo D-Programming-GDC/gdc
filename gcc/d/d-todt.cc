@@ -386,152 +386,36 @@ ArrayLiteralExp::toDt (dt_t **pdt)
 dt_t **
 StructLiteralExp::toDt (dt_t **pdt)
 {
-  tree sdt = NULL_TREE;
-  size_t offset = 0;
-
-  gcc_assert (sd->fields.dim - sd->isNested() <= elements->dim);
-
-  for (size_t i = 0; i < elements->dim; i++)
-    {
-      Expression *e = (*elements)[i];
-      if (!e)
-	continue;
-
-      VarDeclaration *vd = NULL;
-      size_t k = 0;
-
-      for (size_t j = i; j < elements->dim; j++)
-	{
-	  VarDeclaration *vd2 = sd->fields[j];
-	  if (vd2->offset < offset || (*elements)[j] == NULL)
-	    continue;
-
-	  // Find the nearest field
-	  if (!vd)
-	    {
-	      vd = vd2;
-	      k = j;
-	    }
-	  else if (vd2->offset < vd->offset)
-	    {
-	      // Each elements should have no overlapping
-	      gcc_assert (!(vd->offset < vd2->offset + vd2->type->size()
-			    && vd2->offset < vd->offset + vd->type->size()));
-	      vd = vd2;
-	      k = j;
-	    }
-	}
-
-      if (vd != NULL)
-	{
-	  if (offset < vd->offset)
-	    dt_zeropad (&sdt, vd->offset - offset);
-
-	  e = (*elements)[k];
-
-	  Type *tb = vd->type->toBasetype();
-	  if (tb->ty == Tsarray)
-	    ((TypeSArray *)tb)->toDtElem (&sdt, e);
-	  else
-	    e->toDt (&sdt);
-
-	  offset = vd->offset + vd->type->size();
-	}
-    }
-
-  if (offset < sd->structsize)
-    dt_zeropad (&sdt, sd->structsize - offset);
-
-  dt_container (pdt, type, sdt);
-  return pdt;
+  tree dt = build_expr(this, true);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
 SymOffExp::toDt (dt_t **pdt)
 {
-  gcc_assert (var);
-
-  if (!(var->isDataseg() || var->isCodeseg())
-      || var->needThis() || var->isThreadlocal())
-    {
-      error ("non-constant expression %s", toChars());
-      return pdt;
-    }
-
-  Symbol *s = var->toSymbol();
-  tree dt = build_offset (build_address (s->Stree), size_int (offset));
-  return dt_cons (pdt, dt);
+  tree dt = build_expr(this, true);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
 VarExp::toDt (dt_t **pdt)
 {
-  VarDeclaration *v = var->isVarDeclaration();
-  SymbolDeclaration *sd = var->isSymbolDeclaration();
-
-  if (v && (v->isConst() || v->isImmutable())
-      && type->toBasetype()->ty != Tsarray && v->init)
-    {
-      if (v->inuse)
-	{
-	  error ("recursive reference %s", toChars());
-	  return pdt;
-	}
-      v->inuse++;
-      dt_chainon (pdt, v->init->toDt());
-      v->inuse--;
-    }
-  else if (sd && sd->dsym)
-    sd->dsym->toDt (pdt);
-  else
-    error ("non-constant expression %s", toChars());
-
-  return pdt;
+  tree dt = build_expr(this, true);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
 FuncExp::toDt (dt_t **pdt)
 {
-  if (fd->tok == TOKreserved && type->ty == Tpointer)
-    {
-      // Change to non-nested.
-      fd->tok = TOKfunction;
-      fd->vthis = NULL;
-    }
-
-  if (fd->isNested())
-    {
-      error ("non-constant nested delegate literal expression %s", toChars());
-      return pdt;
-    }
-
-  tree dt = build_address (fd->toSymbol()->Stree);
-  fd->toObjFile();
-
-  return dt_cons (pdt, dt);
+  tree dt = build_expr(this, true);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
 VectorExp::toDt (dt_t **pdt)
 {
-  tree dt = NULL_TREE;
-
-  for (unsigned i = 0; i < dim; i++)
-    {
-      Expression *elem;
-      if (e1->op == TOKarrayliteral)
-	{
-	  ArrayLiteralExp *ea = (ArrayLiteralExp *) e1;
-	  elem = (*ea->elements)[i];
-	}
-      else
-	elem = e1;
-
-      elem->toDt (&dt);
-    }
-
-  dt_container (pdt, type, dt);
-  return pdt;
+  tree dt = build_expr(this, true);
+  return dt_cons(pdt, dt);
 }
 
 dt_t **
@@ -864,21 +748,22 @@ StructDeclaration::toDt(dt_t **pdt)
 dt_t **
 Type::toDt (dt_t **pdt)
 {
-  Expression *e = defaultInit();
-  return e->toDt (pdt);
+  Expression *e = defaultInitLiteral(Loc());
+  return e->toDt(pdt);
 }
 
 dt_t **
 TypeVector::toDt (dt_t **pdt)
 {
-  gcc_assert (basetype->ty == Tsarray);
-  return ((TypeSArray *) basetype)->toDtElem (pdt, NULL);
+  Expression *e = defaultInitLiteral(Loc());
+  return e->toDt(pdt);
 }
 
 dt_t **
 TypeSArray::toDt (dt_t **pdt)
 {
-  return toDtElem (pdt, NULL);
+  Expression *e = defaultInitLiteral(Loc());
+  return e->toDt(pdt);
 }
 
 dt_t **
