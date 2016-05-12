@@ -2482,23 +2482,22 @@ build_array_from_val(Type *type, tree val)
 {
   gcc_assert(type->ty == Tsarray);
 
-  TypeSArray *satype = (TypeSArray *) type;
-  Type *etype = type->nextOf();
+  tree etype = build_ctype(type->nextOf());
 
   // Initializing a multidimensional array.
-  if (etype->ty == Tsarray)
-    val = build_array_from_val(etype, val);
+  if (TREE_CODE (etype) == ARRAY_TYPE && TREE_TYPE (val) != etype)
+    val = build_array_from_val(type->nextOf(), val);
 
-  size_t dims = satype->dim->toInteger();
+  size_t dims = ((TypeSArray *) type)->dim->toInteger();
   vec<constructor_elt, va_gc> *elms = NULL;
   vec_safe_reserve(elms, dims);
 
-  val = d_convert(build_ctype(etype), val);
+  val = d_convert(etype, val);
 
   for (size_t i = 0; i < dims; i++)
     CONSTRUCTOR_APPEND_ELT (elms, size_int(i), val);
 
-  return build_constructor(build_ctype(satype), elms);
+  return build_constructor(build_ctype(type), elms);
 }
 
 // Implicitly converts void* T to byte* as D allows { void[] a; &a[3]; }
