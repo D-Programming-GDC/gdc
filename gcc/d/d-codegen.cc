@@ -35,6 +35,7 @@
 #include "langhooks.h"
 #include "target.h"
 #include "stringpool.h"
+#include "varasm.h"
 #include "stor-layout.h"
 #include "attribs.h"
 #include "function.h"
@@ -2038,35 +2039,81 @@ build_struct_literal(tree type, tree init)
     return build_constructor(type, NULL);
 
   vec<constructor_elt, va_gc> *ve = NULL;
+  HOST_WIDE_INT offset = 0;
+  bool constant_p = true;
+  bool simple_p = true;
 
   // Walk through each field, matching our initializer list
   for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
     {
-      gcc_assert(!vec_safe_is_empty(CONSTRUCTOR_ELTS (init)));
-      constructor_elt *ce = &(*CONSTRUCTOR_ELTS (init))[0];
-      tree value = NULL_TREE;
+      bool is_initialized = false;
+      tree value;
 
-      // Found the next field to initialize, consume the value and
-      // pop it from the init list.
-      if (ce->index == field)
-	{
-	  value = ce->value;
-	  CONSTRUCTOR_ELTS (init)->ordered_remove(0);
-	}
-      else if (DECL_NAME (field) == NULL_TREE)
+      if (DECL_NAME (field) == NULL_TREE)
 	{
 	  // Search all nesting aggregates, if nothing is found, then
 	  // this will return an empty initializer to fill the hole.
 	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
 	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	    value = build_struct_literal(TREE_TYPE (field), init);
-	  else
-	    value = build_constructor(TREE_TYPE (field), NULL);
+	    {
+	      value = build_struct_literal(TREE_TYPE (field), init);
+
+	      if (!initializer_zerop(value))
+		is_initialized = true;
+	    }
+	}
+      else
+	{
+	  unsigned HOST_WIDE_INT idx;
+	  tree index;
+
+	  // Search for the value to initialize the next field.  Once found,
+	  // pop it from the init list so we don't look at it again.
+	  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (init), idx, index, value)
+	    {
+	      if (index == field)
+		{
+		  CONSTRUCTOR_ELTS (init)->ordered_remove(idx);
+		  is_initialized = true;
+		  break;
+		}
+	    }
 	}
 
-      if (value != NULL_TREE)
+      if (is_initialized)
 	{
+	  HOST_WIDE_INT fieldpos = int_byte_position(field);
+	  gcc_assert(value != NULL_TREE);
+
+	  // Must not initialize fields that overlap.
+	  if (fieldpos >= offset)
+	    offset = fieldpos;
+	  else
+	    {
+	      // Find the nearest user defined type and field.
+	      tree vtype = type;
+	      while (ANON_AGGR_TYPE_P (vtype))
+		vtype = TYPE_CONTEXT (vtype);
+
+	      tree vfield = field;
+	      if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (vfield))
+		  && ANON_AGGR_TYPE_P (TREE_TYPE (vfield)))
+		vfield = TYPE_FIELDS (TREE_TYPE (vfield));
+
+	      // Must not generate errors for compiler generated fields.
+	      gcc_assert(TYPE_NAME (vtype) && DECL_NAME (vfield));
+	      error("overlapping initializer for field %qT.%qD",
+		    TYPE_NAME (vtype), DECL_NAME (vfield));
+	      continue;
+	    }
+
+	  if (!TREE_CONSTANT (value))
+	    constant_p = false;
+	  if (!initializer_constant_valid_p(value, TREE_TYPE (value)))
+	    simple_p = false;
+
 	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
+	  // If all initializers have been assigned, there's nothing else to do.
 	  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
 	    break;
 	}
@@ -2076,7 +2123,14 @@ build_struct_literal(tree type, tree init)
   gcc_assert(vec_safe_is_empty(CONSTRUCTOR_ELTS (init))
 	     || ANON_AGGR_TYPE_P (type));
 
-  return build_constructor(type, ve);
+  tree ctor = build_constructor(type, ve);
+
+  if (constant_p)
+    TREE_CONSTANT (ctor) = 1;
+  if (constant_p && simple_p)
+    TREE_STATIC (ctor) = 1;
+
+  return ctor;
 }
 
 // Given the TYPE of an anonymous field inside T, return the
