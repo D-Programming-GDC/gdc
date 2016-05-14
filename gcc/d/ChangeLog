@@ -1,5 +1,15 @@
 2016-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-todt.cc (Expression::toDt): Remove function and all overrides.
+	Update all callers to use build_expr.
+	* expr.cc (ExprVisitor::visit(SymOffExp)): Move check for non-constant
+	expressions in static initializer data to ...
+	(build_expr): ... here.
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Build array of indexes
+	directly using build_artificial_decl.
+
+2016-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* expr.cc (ExprVisitor::visit(IdentityExp*)): Remove side-effects
 	before comparing two dynamic arrays.
 
@@ -11,7 +21,7 @@
 	(VarExp::toDt): Likewise.
 	(FuncExp::toDt): Likewise.
 	(VectorExp::toDt): Likewise.
-	* expr.cc (ExprVisitor::visit(SymbolExp)): Remove function
+	* expr.cc (ExprVisitor::visit(SymbolExp)): Remove function.
 	(ExprVisitor::visit(SymOffExp)): New function.
 	(ExprVisitor::visit(VarExp)): New function.
 	(ExprVisitor::visit(StructLiteralExp)): Don't return static

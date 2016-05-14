@@ -33,6 +33,7 @@
 #include "stmt.h"
 #include "fold-const.h"
 #include "diagnostic.h"
+#include "toplev.h"
 
 #include "d-tree.h"
 #include "d-codegen.h"
@@ -428,8 +429,8 @@ public:
 
 	// Apparently the backend is supposed to sort and set the indexes
 	// on the case array, have to change them to be useable.
-	Symbol *sym = new Symbol();
-	dt_t **pdt = &sym->Sdt;
+	Type *satype = etype->sarrayOf(s->cases->dim);
+	vec<constructor_elt, va_gc> *elms = NULL;
 
 	s->cases->sort();
 
@@ -441,16 +442,22 @@ public:
 	    if (cs->exp->op != TOKstring)
 	      s->error("case '%s' is not a string", cs->exp->toChars());
 	    else
-	      pdt = cs->exp->toDt(pdt);
+	      {
+		tree exp = build_expr(cs->exp, true);
+		CONSTRUCTOR_APPEND_ELT (elms, size_int(i), exp);
+	      }
 	  }
 
-	sym->Sreadonly = true;
-	d_finish_symbol(sym);
+	// Build static declaration to reference constructor.
+	tree ctor = build_constructor(build_ctype(satype), elms);
+	tree decl = build_artificial_decl(TREE_TYPE (ctor), ctor);
+	TREE_READONLY (decl) = 1;
+	rest_of_decl_compilation(decl, 1, 0);
 
 	tree args[2];
 	args[0] = d_array_value(build_ctype(condtype->arrayOf()),
 				size_int(s->cases->dim),
-				build_address(sym->Stree));
+				build_address(decl));
 	args[1] = condition;
 
 	condition = build_libcall(libcall, 2, args);

@@ -1975,18 +1975,6 @@ public:
   //
   void visit(SymOffExp *e)
   {
-    if (this->constp_)
-      {
-	// Check if initializer is valid constant.
-	if (!(e->var->isDataseg() || e->var->isCodeseg())
-	    || e->var->needThis() || e->var->isThreadlocal())
-	  {
-	    e->error("non-constant expression %s", e->toChars());
-	    this->result_ = error_mark_node;
-	    return;
-	  }
-      }
-
     // Build the address and offset of the symbol.
     size_t soffset = ((SymOffExp *) e)->offset;
     tree result = get_decl_tree(e->var);
@@ -2489,11 +2477,6 @@ public:
     // Nothing else to do for static arrays.
     if (tb->ty == Tsarray || this->constp_)
       {
-	if (constant_p)
-	  TREE_CONSTANT (ctor) = 1;
-	if (constant_p && simple_p)
-	  TREE_STATIC (ctor) = 1;
-
 	// Can't take the address of the constructor, so create an anonymous
 	// static symbol, and then refer to it.
 	if (tb->ty != Tsarray)
@@ -2503,6 +2486,11 @@ public:
 	    if (tb->ty == Tarray)
 	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
 	  }
+
+	if (constant_p)
+	  TREE_CONSTANT (ctor) = 1;
+	if (constant_p && simple_p)
+	  TREE_STATIC (ctor) = 1;
 
 	this->result_ = d_convert(type, ctor);
       }
@@ -2834,7 +2822,16 @@ build_expr(Expression *e, bool const_p)
 {
   ExprVisitor v = ExprVisitor(const_p);
   e->accept(&v);
-  return v.result();
+  tree expr = v.result();
+
+  // Check if initializer expression is valid constant.
+  if (const_p && !initializer_constant_valid_p(expr, TREE_TYPE (expr)))
+    {
+      e->error("non-constant expression %s", e->toChars());
+      return error_mark_node;
+    }
+
+  return expr;
 }
 
 // Same as build_expr, but also calls destructors on any temporaries.

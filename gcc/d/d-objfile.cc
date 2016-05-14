@@ -447,7 +447,7 @@ Lhaspointers:
 
   // xgetRTInfo*
   if (getRTInfo)
-    getRTInfo->toDt (&dt);
+    dt_cons (&dt, build_expr(getRTInfo, true));
   else
     {
       // If class has no pointers.
@@ -744,7 +744,7 @@ InterfaceDeclaration::toObjFile()
 
   // xgetRTInfo*
   if (getRTInfo)
-    getRTInfo->toDt (&dt);
+    dt_cons (&dt, build_expr(getRTInfo, true));
   else
     dt_cons (&dt, size_int (0));
 
@@ -797,7 +797,7 @@ EnumDeclaration::toObjFile()
     {
       // Generate static initialiser
       toInitializer();
-      tc->sym->defaultval->toDt (&sinit->Sdt);
+      DECL_INITIAL (sinit->Stree) = build_expr(tc->sym->defaultval, true);
       d_finish_symbol (sinit);
     }
 
@@ -836,9 +836,7 @@ VarDeclaration::toObjFile()
       gcc_assert (init && !init->isVoidInitializer());
 
       Expression *ie = init->toExpression();
-      tree sinit = NULL_TREE;
-      ie->toDt (&sinit);
-      DECL_INITIAL (decl) = dtvector_to_tree (sinit);
+      DECL_INITIAL (decl) = build_expr(ie, true);
 
       d_pushdecl (decl);
       rest_of_decl_compilation (decl, 1, 0);
