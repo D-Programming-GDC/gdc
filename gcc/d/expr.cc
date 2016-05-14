@@ -21,6 +21,7 @@
 
 #include "dfrontend/aggregate.h"
 #include "dfrontend/expression.h"
+#include "dfrontend/init.h"
 #include "dfrontend/module.h"
 #include "dfrontend/statement.h"
 #include "dfrontend/ctfe.h"
@@ -1970,64 +1971,102 @@ public:
   }
 
   //
-  void visit(SymbolExp *e)
+  void visit(SymOffExp *e)
   {
-    gcc_assert(e->op == TOKvar || e->op == TOKsymoff);
-
-    if (e->op == TOKvar)
+    if (this->constp_)
       {
-	if (e->var->needThis())
+	// Check if initializer is valid constant.
+	if (!(e->var->isDataseg() || e->var->isCodeseg())
+	    || e->var->needThis() || e->var->isThreadlocal())
 	  {
-	    error("need 'this' to access member %s", e->var->ident->string);
+	    e->error("non-constant expression %s", e->toChars());
 	    this->result_ = error_mark_node;
-	  }
-	else if (e->var->ident == Id::ctfe)
-	  {
-	    // __ctfe is always false at runtime
-	    this->result_ = integer_zero_node;
-	  }
-	else
-	  {
-	    tree result = get_decl_tree(e->var);
-	    TREE_USED (result) = 1;
-
-	    // For variables that are references - currently only out/inout
-	    // arguments; objects don't count - evaluating the variable means
-	    // we want what it refers to.
-	    if (declaration_reference_p(e->var))
-	      result = indirect_ref(build_ctype(e->var->type), result);
-
-	    // The frontend sometimes emits different types for the expression
-	    // and var declaration.  So we must force convert to the expressions
-	    // type, but don't convert FuncDeclaration as underlying ctype
-	    // sometimes isn't the correct type for functions!
-	    if (!e->var->isFuncDeclaration()
-		&& !d_types_same(e->var->type, e->type))
-	      result = build1(VIEW_CONVERT_EXPR, build_ctype(e->type), result);
-
-	    this->result_ = result;
+	    return;
 	  }
       }
-    else if (e->op == TOKsymoff)
-      {
-	size_t soffset = ((SymOffExp *) e)->offset;
 
+    // Build the address and offset of the symbol.
+    size_t soffset = ((SymOffExp *) e)->offset;
+    tree result = get_decl_tree(e->var);
+    TREE_USED (result) = 1;
+
+    if (declaration_reference_p(e->var))
+      gcc_assert(POINTER_TYPE_P (TREE_TYPE (result)));
+    else
+      result = build_address(result);
+
+    if (!soffset)
+      result = d_convert(build_ctype(e->type), result);
+    else
+      {
+	tree offset = size_int(soffset);
+	result = build_nop(build_ctype(e->type),
+			   build_offset(result, offset));
+      }
+
+    this->result_ = result;
+  }
+
+  //
+  void visit(VarExp *e)
+  {
+    if (e->var->needThis())
+      {
+	error("need 'this' to access member %s", e->var->ident->string);
+	this->result_ = error_mark_node;
+      }
+    else if (e->var->ident == Id::ctfe)
+      {
+	// __ctfe is always false at runtime
+	this->result_ = integer_zero_node;
+      }
+    else if (this->constp_)
+      {
+	// Want the initializer, not the expression.
+	VarDeclaration *var = e->var->isVarDeclaration();
+	SymbolDeclaration *sd = e->var->isSymbolDeclaration();
+	tree init = NULL_TREE;
+
+	if (var && (var->isConst() || var->isImmutable())
+	    && e->type->toBasetype()->ty != Tsarray && var->init)
+	  {
+	    if (var->inuse)
+	      e->error("recursive reference %s", e->toChars());
+	    else
+	      {
+		var->inuse++;
+		init = var->init->toDt();
+		var->inuse--;
+	      }
+	  }
+	else if (sd && sd->dsym)
+	  sd->dsym->toDt(&init);
+	else
+	  e->error("non-constant expression %s", e->toChars());
+
+	if (init != NULL_TREE)
+	  this->result_ = dtvector_to_tree(init);
+	else
+	  this->result_ = error_mark_node;
+      }
+    else
+      {
 	tree result = get_decl_tree(e->var);
 	TREE_USED (result) = 1;
 
+	// For variables that are references - currently only out/inout
+	// arguments; objects don't count - evaluating the variable means
+	// we want what it refers to.
 	if (declaration_reference_p(e->var))
-	  gcc_assert(POINTER_TYPE_P (TREE_TYPE (result)));
-	else
-	  result = build_address(result);
+	  result = indirect_ref(build_ctype(e->var->type), result);
 
-	if (!soffset)
-	  result = d_convert(build_ctype(e->type), result);
-	else
-	  {
-	    tree offset = size_int(soffset);
-	    result = build_nop(build_ctype(e->type),
-			       build_offset(result, offset));
-	  }
+	// The frontend sometimes emits different types for the expression
+	// and var declaration.  So we must force convert to the expressions
+	// type, but don't convert FuncDeclaration as underlying ctype
+	// sometimes isn't the correct type for functions!
+	if (!e->var->isFuncDeclaration()
+	    && !d_types_same(e->var->type, e->type))
+	  result = build1(VIEW_CONVERT_EXPR, build_ctype(e->type), result);
 
 	this->result_ = result;
       }
@@ -2566,7 +2605,7 @@ public:
 
     // Building sinit trees are delayed until after frontend semantic
     // processing has complete.  Build the static initialiser now.
-    if (e->sinit)
+    if (e->sinit && !this->constp_)
       {
 	if (e->sinit->Stree == NULL_TREE)
 	  e->sd->toInitializer();

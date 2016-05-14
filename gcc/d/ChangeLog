@@ -1,3 +1,17 @@
+2016-05-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (get_decl_tree): First check if cfun is set.
+	* d-todt.cc (StructLiteralExp::toDt): Update call to build_expr.
+	(SymOffExp::toDt): Likewise.
+	(VarExp::toDt): Likewise.
+	(FuncExp::toDt): Likewise.
+	(VectorExp::toDt): Likewise.
+	* expr.cc (ExprVisitor::visit(SymbolExp)): Remove function
+	(ExprVisitor::visit(SymOffExp)): New function.
+	(ExprVisitor::visit(VarExp)): New function.
+	(ExprVisitor::visit(StructLiteralExp)): Don't return static
+	initializer symbol if constant literal requested.
+
 2016-05-13  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_struct_literal): Maybe set TREE_CONSTANT or

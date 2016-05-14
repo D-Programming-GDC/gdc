@@ -416,11 +416,12 @@ expand_decl (tree decl)
 tree
 get_decl_tree (Declaration *decl)
 {
+  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
   VarDeclaration *vd = decl->isVarDeclaration();
 
-  if (vd)
+  // If cfun is NULL, then this is a global static.
+  if (func != NULL && vd != NULL)
     {
-      FuncDeclaration *func = cfun->language->function;
       Symbol *vsym = vd->toSymbol();
       if (vsym->SnamedResult != NULL_TREE)
 	{
