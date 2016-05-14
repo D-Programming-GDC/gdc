@@ -1,3 +1,53 @@
+2016-05-14  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (get_decl_tree): First check if cfun is set.
+	* d-todt.cc (StructLiteralExp::toDt): Update call to build_expr.
+	(SymOffExp::toDt): Likewise.
+	(VarExp::toDt): Likewise.
+	(FuncExp::toDt): Likewise.
+	(VectorExp::toDt): Likewise.
+	* expr.cc (ExprVisitor::visit(SymbolExp)): Remove function
+	(ExprVisitor::visit(SymOffExp)): New function.
+	(ExprVisitor::visit(VarExp)): New function.
+	(ExprVisitor::visit(StructLiteralExp)): Don't return static
+	initializer symbol if constant literal requested.
+
+2016-05-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_struct_literal): Maybe set TREE_CONSTANT or
+	TREE_STATIC on the returned constructor.
+	Allow building struct literals with initializer list out of order.
+	Add check and error when initializer overlaps previous field.
+	Don't explicitly set empty initializers for anonymous aggregates or
+	artificial fields.
+
+2016-05-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_array_from_val): New function.
+	* expr.cc (ExprVisitor::visit(StructLiteralExp)): Use it.
+
+2016-05-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (convert_expr): Use build_nop to cast between two
+	static arrays of the same size.
+	* d-todt.cc (IntegerExp::toDt): Update call to build_expr.
+	(RealExp::toDt): Likewise.
+	(ComplexExp::toDt): Likewise.
+	(StringExp::toDt): Likewise.
+	(NullExp::toDt): Use build_expr to generate initializer.
+	(ArrayLiteralExp::toDt): Likewise.
+	(CastExp::toDt): Likewise.
+	(ClassReferenceExp::toDt): Likewise.
+	(ClassReferenceExp::toDtI): Remove function.
+	* expr.cc (ExprVisitor::visit(CastExp)): Forward constp to the next
+	leaf expression in the tree.
+	(ExprVisitor::visit(AddrExp)): Likewise.
+	(ExprVisitor::visit(FuncExp)): Likewise.
+	(ExprVisitor::visit(ArrayLiteralExp)): Likewise.
+	(ExprVisitor::visit(StructLiteralExp)): Likewise.
+	(ExprVisitor::visit(VectorExp)): Likewise.
+	(ExprVisitor::visit(ClassReferenceExp)): Adjust reference for constp.
+
 2016-05-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (get_unique_name): Remove function.

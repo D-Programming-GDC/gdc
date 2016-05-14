@@ -21,6 +21,7 @@
 
 #include "dfrontend/aggregate.h"
 #include "dfrontend/expression.h"
+#include "dfrontend/init.h"
 #include "dfrontend/module.h"
 #include "dfrontend/statement.h"
 #include "dfrontend/ctfe.h"
@@ -115,8 +116,9 @@ public:
 	&& (tb2->ty == Tsarray || tb2->ty == Tarray))
       {
 	// Convert arrays to D array types.
-	this->result_ = build2(code, build_ctype(e->type),
-			       d_array_convert(e->e1), d_array_convert(e->e2));
+	tree t1 = d_array_convert(e->e1);
+	tree t2 = d_array_convert(e->e2);
+	this->result_ = build2(code, build_ctype(e->type), t1, t2);
       }
     else if (tb1->isfloating())
       {
@@ -131,19 +133,22 @@ public:
       }
     else if (tb1->ty == Tstruct)
       {
+	StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
+
 	gcc_assert(d_types_same(tb1, tb2));
 
-	this->result_ = build_struct_comparison(code, ((TypeStruct *) tb1)->sym,
-						build_expr(e->e1),
-						build_expr(e->e2));
+	this->result_ = build_struct_comparison(code, sd, t1, t2);
       }
     else
       {
 	// For operands of other types, identity is defined as being the
 	// same as equality expressions.
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
 	this->result_ = d_convert(build_ctype(e->type),
-				  build_boolop(code, build_expr(e->e1),
-					       build_expr(e->e2)));
+				  build_boolop(code, t1, t2));
 
       }
   }
@@ -255,11 +260,13 @@ public:
       }
     else if (tb1->ty == Tstruct)
       {
+	StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
+
 	gcc_assert(d_types_same(tb1, tb2));
 
-	this->result_ = build_struct_comparison(code, ((TypeStruct *) tb1)->sym,
-						build_expr(e->e1),
-						build_expr(e->e2));
+	this->result_ = build_struct_comparison(code, sd, t1, t2);
       }
     else if (tb1->ty == Taarray && tb2->ty == Taarray)
       {
@@ -280,10 +287,11 @@ public:
       }
     else
       {
-	tree tcmp = build_boolop(code, build_expr(e->e1),
-				 build_expr(e->e2));
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
 
-	this->result_ = d_convert(build_ctype(e->type), tcmp);
+	this->result_ = d_convert(build_ctype(e->type),
+				  build_boolop(code, t1, t2));
       }
   }
 
@@ -322,28 +330,28 @@ public:
 	break;
 
       case TOKlg:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  LTGT_EXPR : NE_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? LTGT_EXPR : NE_EXPR;
 	break;
 
       case TOKule:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNLE_EXPR : LE_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNLE_EXPR : LE_EXPR;
 	break;
 
       case TOKul:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNLT_EXPR : LT_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNLT_EXPR : LT_EXPR;
 	break;
 
       case TOKuge:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNGE_EXPR : GE_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNGE_EXPR : GE_EXPR;
 	break;
 
       case TOKug:
-	code = tb1->isfloating() && tb2->isfloating() ?
-	  UNGT_EXPR : GT_EXPR;
+	code = tb1->isfloating() && tb2->isfloating()
+	  ? UNGT_EXPR : GT_EXPR;
 	break;
 
       case TOKle:
@@ -430,8 +438,11 @@ public:
   {
     if (e->e2->type->toBasetype()->ty != Tvoid)
       {
-	tree t1 = convert_for_condition(build_expr(e->e1), e->e1->type);
-	tree t2 = convert_for_condition(build_expr(e->e2), e->e2->type);
+	tree t1 = build_expr(e->e1);
+	tree t2 = build_expr(e->e2);
+
+	t1 = convert_for_condition(t1, e->e1->type);
+	t2 = convert_for_condition(t2, e->e2->type);
 
 	this->result_ = d_convert(build_ctype(e->type),
 				  build_boolop(TRUTH_ANDIF_EXPR, t1, t2));
@@ -830,8 +841,7 @@ public:
 	tree args[3];
 
 	args[0] = build_typeinfo(ale->e1->type);
-	args[1] = convert_expr(build_expr(e->e2),
-			       e->e2->type, Type::tsize_t);
+	args[1] = convert_expr(build_expr(e->e2), e->e2->type, Type::tsize_t);
 	args[2] = build_address(build_expr(ale->e1));
 
 	// Don't want ->toBasetype() for the element type.
@@ -971,7 +981,8 @@ public:
     if (tb1->ty == Tstruct)
       {
 	tree t1 = build_expr(e->e1);
-	tree t2 = convert_for_assignment(build_expr(e->e2), e->e2->type, e->e1->type);
+	tree t2 = convert_for_assignment(build_expr(e->e2),
+					 e->e2->type, e->e1->type);
 
 	if (e->op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
 	    && aggregate_value_p(TREE_TYPE (t2), t2))
@@ -1025,7 +1036,8 @@ public:
 	    || (e->op == TOKblit || e->e1->type->size() == 0))
 	  {
 	    tree t1 = build_expr(e->e1);
-	    tree t2 = convert_for_assignment(build_expr(e->e2), e->e2->type, e->e1->type);
+	    tree t2 = convert_for_assignment(build_expr(e->e2),
+					     e->e2->type, e->e1->type);
 
 	    if (e->op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
 		&& aggregate_value_p(TREE_TYPE (t2), t2))
@@ -1067,7 +1079,8 @@ public:
 
     // Simple assignment
     tree t1 = build_expr(e->e1);
-    tree t2 = convert_for_assignment(build_expr(e->e2), e->e2->type, e->e1->type);
+    tree t2 = convert_for_assignment(build_expr(e->e2),
+				     e->e2->type, e->e1->type);
 
     this->result_ = modify_expr(build_ctype(e->type), t1, t2);
   }
@@ -1321,7 +1334,7 @@ public:
   {
     Type *ebtype = e->e1->type->toBasetype();
     Type *tbtype = e->to->toBasetype();
-    tree result = build_expr(e->e1);
+    tree result = build_expr(e->e1, this->constp_);
 
     // Just evaluate e1 if it has any side effects
     if (tbtype->ty == Tvoid)
@@ -1540,7 +1553,7 @@ public:
 	exp = sle->toSymbol()->Stree;
       }
     else
-      exp = build_expr(e->e1);
+      exp = build_expr(e->e1, this->constp_);
 
     TREE_CONSTANT (exp) = 0;
     this->result_ = d_convert(type, build_address(exp));
@@ -1958,64 +1971,102 @@ public:
   }
 
   //
-  void visit(SymbolExp *e)
+  void visit(SymOffExp *e)
   {
-    gcc_assert(e->op == TOKvar || e->op == TOKsymoff);
-
-    if (e->op == TOKvar)
+    if (this->constp_)
       {
-	if (e->var->needThis())
+	// Check if initializer is valid constant.
+	if (!(e->var->isDataseg() || e->var->isCodeseg())
+	    || e->var->needThis() || e->var->isThreadlocal())
 	  {
-	    error("need 'this' to access member %s", e->var->ident->string);
+	    e->error("non-constant expression %s", e->toChars());
 	    this->result_ = error_mark_node;
-	  }
-	else if (e->var->ident == Id::ctfe)
-	  {
-	    // __ctfe is always false at runtime
-	    this->result_ = integer_zero_node;
-	  }
-	else
-	  {
-	    tree result = get_decl_tree(e->var);
-	    TREE_USED (result) = 1;
-
-	    // For variables that are references - currently only out/inout
-	    // arguments; objects don't count - evaluating the variable means
-	    // we want what it refers to.
-	    if (declaration_reference_p(e->var))
-	      result = indirect_ref(build_ctype(e->var->type), result);
-
-	    // The frontend sometimes emits different types for the expression
-	    // and var declaration.  So we must force convert to the expressions
-	    // type, but don't convert FuncDeclaration as underlying ctype
-	    // sometimes isn't the correct type for functions!
-	    if (!e->var->isFuncDeclaration()
-		&& !d_types_same(e->var->type, e->type))
-	      result = build1(VIEW_CONVERT_EXPR, build_ctype(e->type), result);
-
-	    this->result_ = result;
+	    return;
 	  }
       }
-    else if (e->op == TOKsymoff)
-      {
-	size_t soffset = ((SymOffExp *) e)->offset;
 
+    // Build the address and offset of the symbol.
+    size_t soffset = ((SymOffExp *) e)->offset;
+    tree result = get_decl_tree(e->var);
+    TREE_USED (result) = 1;
+
+    if (declaration_reference_p(e->var))
+      gcc_assert(POINTER_TYPE_P (TREE_TYPE (result)));
+    else
+      result = build_address(result);
+
+    if (!soffset)
+      result = d_convert(build_ctype(e->type), result);
+    else
+      {
+	tree offset = size_int(soffset);
+	result = build_nop(build_ctype(e->type),
+			   build_offset(result, offset));
+      }
+
+    this->result_ = result;
+  }
+
+  //
+  void visit(VarExp *e)
+  {
+    if (e->var->needThis())
+      {
+	error("need 'this' to access member %s", e->var->ident->string);
+	this->result_ = error_mark_node;
+      }
+    else if (e->var->ident == Id::ctfe)
+      {
+	// __ctfe is always false at runtime
+	this->result_ = integer_zero_node;
+      }
+    else if (this->constp_)
+      {
+	// Want the initializer, not the expression.
+	VarDeclaration *var = e->var->isVarDeclaration();
+	SymbolDeclaration *sd = e->var->isSymbolDeclaration();
+	tree init = NULL_TREE;
+
+	if (var && (var->isConst() || var->isImmutable())
+	    && e->type->toBasetype()->ty != Tsarray && var->init)
+	  {
+	    if (var->inuse)
+	      e->error("recursive reference %s", e->toChars());
+	    else
+	      {
+		var->inuse++;
+		init = var->init->toDt();
+		var->inuse--;
+	      }
+	  }
+	else if (sd && sd->dsym)
+	  sd->dsym->toDt(&init);
+	else
+	  e->error("non-constant expression %s", e->toChars());
+
+	if (init != NULL_TREE)
+	  this->result_ = dtvector_to_tree(init);
+	else
+	  this->result_ = error_mark_node;
+      }
+    else
+      {
 	tree result = get_decl_tree(e->var);
 	TREE_USED (result) = 1;
 
+	// For variables that are references - currently only out/inout
+	// arguments; objects don't count - evaluating the variable means
+	// we want what it refers to.
 	if (declaration_reference_p(e->var))
-	  gcc_assert(POINTER_TYPE_P (TREE_TYPE (result)));
-	else
-	  result = build_address(result);
+	  result = indirect_ref(build_ctype(e->var->type), result);
 
-	if (!soffset)
-	  result = d_convert(build_ctype(e->type), result);
-	else
-	  {
-	    tree offset = size_int(soffset);
-	    result = build_nop(build_ctype(e->type),
-			       build_offset(result, offset));
-	  }
+	// The frontend sometimes emits different types for the expression
+	// and var declaration.  So we must force convert to the expressions
+	// type, but don't convert FuncDeclaration as underlying ctype
+	// sometimes isn't the correct type for functions!
+	if (!e->var->isFuncDeclaration()
+	    && !d_types_same(e->var->type, e->type))
+	  result = build1(VIEW_CONVERT_EXPR, build_ctype(e->type), result);
 
 	this->result_ = result;
       }
@@ -2407,7 +2458,7 @@ public:
     for (size_t i = 0; i < e->elements->dim; i++)
       {
 	Expression *expr = (*e->elements)[i];
-	tree value = build_expr(expr);
+	tree value = build_expr(expr, this->constp_);
 
 	// Only care about non-zero values, the backend will fill in the rest.
 	if (!initializer_zerop(value))
@@ -2436,17 +2487,20 @@ public:
     // Nothing else to do for static arrays.
     if (tb->ty == Tsarray || this->constp_)
       {
-	if (tb->ty != Tsarray)
-	  {
-	    ctor = build_address(ctor);
-	    if (tb->ty == Tarray)
-	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
-	  }
-
 	if (constant_p)
 	  TREE_CONSTANT (ctor) = 1;
 	if (constant_p && simple_p)
 	  TREE_STATIC (ctor) = 1;
+
+	// Can't take the address of the constructor, so create an anonymous
+	// static symbol, and then refer to it.
+	if (tb->ty != Tsarray)
+	  {
+	    ctor = build_artificial_decl(TREE_TYPE (ctor), ctor, "A");
+	    ctor = build_address(ctor);
+	    if (tb->ty == Tarray)
+	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
+	  }
 
 	this->result_ = d_convert(type, ctor);
       }
@@ -2551,7 +2605,7 @@ public:
 
     // Building sinit trees are delayed until after frontend semantic
     // processing has complete.  Build the static initialiser now.
-    if (e->sinit)
+    if (e->sinit && !this->constp_)
       {
 	if (e->sinit->Stree == NULL_TREE)
 	  e->sd->toInitializer();
@@ -2585,25 +2639,20 @@ public:
 
 	if (ftype->ty == Tsarray && !d_types_same(type, ftype))
 	  {
-	    value = build_local_temp(build_ctype(ftype));
-	    Type *etype = ftype;
+	    // Initialize a static array with a single element.
+	    tree elem = build_expr(exp, this->constp_);
+	    elem = maybe_make_temp(elem);
 
-	    while (etype->ty == Tsarray)
-	      etype = etype->nextOf();
-
-	    gcc_assert(ftype->size() % etype->size() == 0);
-	    tree size = fold_build2(TRUNC_DIV_EXPR, size_type_node,
-				    size_int(ftype->size()),
-				    size_int(etype->size()));
-
-	    tree ptr_tree = build_nop(build_ctype(etype->pointerTo()),
-				      build_address(value));
-	    ptr_tree = void_okay_p(ptr_tree);
-	    tree set_exp = build_array_set(ptr_tree, size, build_expr(exp));
-	    value = compound_expr(set_exp, value);
+	    if (initializer_zerop(elem))
+	      value = build_constructor(build_ctype(ftype), NULL);
+	    else
+	      value = build_array_from_val(ftype, elem);
 	  }
 	else
-	  value = convert_expr(build_expr(exp), exp->type, field->type);
+	  {
+	    value = convert_expr(build_expr(exp, this->constp_),
+				 exp->type, field->type);
+	  }
 
 	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol()->Stree, value);
       }
@@ -2720,7 +2769,7 @@ public:
 	for (size_t i = 0; i < elements->dim; i++)
 	  {
 	    Expression *expr = (*elements)[i];
-	    tree value = d_convert(etype, build_expr(expr));
+	    tree value = d_convert(etype, build_expr(expr, this->constp_));
 	    if (!CONSTANT_CLASS_P (value))
 	      constant_p = false;
 
@@ -2736,7 +2785,7 @@ public:
     else
       {
 	// Build constructor from single value.
-	tree val = d_convert(etype, build_expr(e->e1));
+	tree val = d_convert(etype, build_expr(e->e1, this->constp_));
 	this->result_ = build_vector_from_val(type, val);
       }
   }
