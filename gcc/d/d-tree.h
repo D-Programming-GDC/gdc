@@ -23,6 +23,7 @@
 class Dsymbol;
 class Declaration;
 class FuncDeclaration;
+class TypeInfoDeclaration;
 class VarDeclaration;
 class Expression;
 class Module;
@@ -310,6 +311,10 @@ extern void d_keep (tree);
 
 // In imports.cc
 extern tree build_import_decl (Dsymbol *);
+
+// In rtti.cc
+extern tree build_typeinfo (Type *);
+extern tree layout_typeinfo (TypeInfoDeclaration *);
 
 // In toir.cc
 extern void build_ir (FuncDeclaration *);

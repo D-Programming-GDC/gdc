@@ -1,5 +1,17 @@
 2016-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* Make-lang.in (D_GLUE_OBJS): Remove d-typinf.o, add typeinfo.o.
+	* d-codegen.cc (build_typeinfo): Move to ...
+	* typeinfo.cc: ... here.  New file.
+	* d-objfile.cc (TypeInfoDeclaration::toObjFile): Use layout_typeinfo.
+	* d-todt.cc (verify_structsize): Remove function.
+	(TypeInfoDeclaration::toDt): Remove function and overrides.
+	* d-typinf.cc: Remove file.  Contents moved to typeinfo.cc.
+	* expr.cc (ExprVisitor::visit(DeleteExp)): Use build_typeinfo.
+	(ExprVisitor::visit(NewExp)): Likewise.
+
+2016-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* dfrontend: Update to D front-end version 2.068.
 	* d-codegen.cc (insert_type_modifiers): Don't build TYPE_QUAL_VOLATILE
 	types.  Set TYPE_SHARED instead.

@@ -329,7 +329,6 @@ public:
 #ifdef IN_GCC
     Symbol *toSymbol();
     void toObjFile();                       // compile to .obj file
-    virtual void toDt(dt_t **pdt);
 #endif
 };
 
@@ -340,9 +339,6 @@ public:
     static TypeInfoStructDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoClassDeclaration : public TypeInfoDeclaration
@@ -354,7 +350,6 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
     Symbol *toSymbol();
-    void toDt(dt_t **pdt);
 #endif
 };
 
@@ -365,9 +360,6 @@ public:
     static TypeInfoInterfaceDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoPointerDeclaration : public TypeInfoDeclaration
@@ -377,9 +369,6 @@ public:
     static TypeInfoPointerDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoArrayDeclaration : public TypeInfoDeclaration
@@ -389,9 +378,6 @@ public:
     static TypeInfoArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoStaticArrayDeclaration : public TypeInfoDeclaration
@@ -401,9 +387,6 @@ public:
     static TypeInfoStaticArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoAssociativeArrayDeclaration : public TypeInfoDeclaration
@@ -413,9 +396,6 @@ public:
     static TypeInfoAssociativeArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoEnumDeclaration : public TypeInfoDeclaration
@@ -425,9 +405,6 @@ public:
     static TypeInfoEnumDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoFunctionDeclaration : public TypeInfoDeclaration
@@ -437,9 +414,6 @@ public:
     static TypeInfoFunctionDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoDelegateDeclaration : public TypeInfoDeclaration
@@ -449,9 +423,6 @@ public:
     static TypeInfoDelegateDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoTupleDeclaration : public TypeInfoDeclaration
@@ -461,9 +432,6 @@ public:
     static TypeInfoTupleDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoConstDeclaration : public TypeInfoDeclaration
@@ -473,9 +441,6 @@ public:
     static TypeInfoConstDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoInvariantDeclaration : public TypeInfoDeclaration
@@ -485,9 +450,6 @@ public:
     static TypeInfoInvariantDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoSharedDeclaration : public TypeInfoDeclaration
@@ -497,9 +459,6 @@ public:
     static TypeInfoSharedDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoWildDeclaration : public TypeInfoDeclaration
@@ -509,9 +468,6 @@ public:
     static TypeInfoWildDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoVectorDeclaration : public TypeInfoDeclaration
@@ -521,9 +477,6 @@ public:
     static TypeInfoVectorDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 /**************************************************************/
