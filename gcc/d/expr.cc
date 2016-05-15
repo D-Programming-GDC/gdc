@@ -117,7 +117,9 @@ public:
       {
 	// Convert arrays to D array types.
 	tree t1 = d_array_convert(e->e1);
+	t1 = maybe_make_temp(t1);
 	tree t2 = d_array_convert(e->e2);
+	t2 = maybe_make_temp(t2);
 	this->result_ = build2(code, build_ctype(e->type), t1, t2);
       }
     else if (tb1->isfloating())

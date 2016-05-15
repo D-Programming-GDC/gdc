@@ -1,3 +1,8 @@
+2016-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(IdentityExp*)): Remove side-effects
+	before comparing two dynamic arrays.
+
 2016-05-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (get_decl_tree): First check if cfun is set.
