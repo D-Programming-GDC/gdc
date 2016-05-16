@@ -1962,7 +1962,7 @@ uninstall-am: uninstall-toolexeclibLTLIBRARIES
 # Compile objects for static linking with test flags
 # Automake breaks empty rules, so use the shell NOP :
 %.t.o : %.t.lo
-	:
+	@:
 
 # Extra install and clean rules.
 # This does not delete the .libs/.t.o files, but deleting

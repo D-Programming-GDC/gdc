@@ -25,7 +25,7 @@ LTDCOMPILE = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 # Compile objects for static linking with test flags
 # Automake breaks empty rules, so use the shell NOP :
 %.t.o : %.t.lo
-	:
+	@:
 
 # Override executable linking commands: We have to use GDC for linking
 unittest_static_LINK = $(LIBTOOL) --tag=CC \
