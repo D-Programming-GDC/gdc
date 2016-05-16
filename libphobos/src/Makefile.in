@@ -31,6 +31,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+# This file contains some common rules for D source compilation
+# used for libdruntime and libphobos
+
 VPATH = @srcdir@
 am__make_dryrun = \
   { \
@@ -68,12 +72,30 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+DIST_COMMON = $(top_srcdir)/d_rules.am $(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.am
+# OS specific sources
+@DRUNTIME_OS_DARWIN_TRUE@am__append_1 = $(PHOBOS_DSOURCES_OSX)
+@DRUNTIME_OS_BSD_TRUE@am__append_2 = $(PHOBOS_DSOURCES_FREEBSD)
+@DRUNTIME_OS_LINUX_TRUE@am__append_3 = $(PHOBOS_DSOURCES_LINUX)
+@DRUNTIME_OS_MINGW_TRUE@am__append_4 = $(PHOBOS_DSOURCES_WINDOWS)
+check_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
+@ENABLE_SHARED_TRUE@am__append_5 = unittest
+@ENABLE_STATIC_TRUE@am__append_6 = unittest_static
 subdir = src
-DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/../config/lead-dot.m4 \
 	$(top_srcdir)/../config/multi.m4 \
-	$(top_srcdir)/../config/override.m4 $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/../config/override.m4 \
+	$(top_srcdir)/../libtool.m4 $(top_srcdir)/../ltoptions.m4 \
+	$(top_srcdir)/../ltsugar.m4 $(top_srcdir)/../ltversion.m4 \
+	$(top_srcdir)/../lt~obsolete.m4 $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/m4/gcc_support.m4 $(top_srcdir)/m4/autoconf.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/gdc.m4 \
+	$(top_srcdir)/m4/druntime.m4 \
+	$(top_srcdir)/m4/druntime/libbacktrace.m4 \
+	$(top_srcdir)/m4/druntime/os.m4 \
+	$(top_srcdir)/m4/druntime/libraries.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -81,14 +103,248 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/../mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
+am__install_max = 40
+am__nobase_strip_setup = \
+  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
+am__nobase_strip = \
+  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
+am__nobase_list = $(am__nobase_strip_setup); \
+  for p in $$list; do echo "$$p $$p"; done | \
+  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
+  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
+    if (++n[$$2] == $(am__install_max)) \
+      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
+    END { for (dir in files) print dir, files[dir] }'
+am__base_list = \
+  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
+  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+am__uninstall_files_from_dir = { \
+  test -z "$$files" \
+    || { test ! -d "$$dir" && test ! -f "$$dir" && test ! -r "$$dir"; } \
+    || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
+         $(am__cd) "$$dir" && rm -f $$files; }; \
+  }
+am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
+LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
+am__DEPENDENCIES_1 =
+libgphobos2_la_DEPENDENCIES = ../libdruntime/libgdruntime.la \
+	$(am__DEPENDENCIES_1)
+am__dirstamp = $(am__leading_dot)dirstamp
+am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
+	std/algorithm/comparison.lo std/algorithm/internal.lo \
+	std/algorithm/iteration.lo std/algorithm/mutation.lo \
+	std/algorithm/package.lo std/algorithm/searching.lo \
+	std/algorithm/setops.lo std/algorithm/sorting.lo std/array.lo \
+	std/ascii.lo std/base64.lo std/bigint.lo std/bitmanip.lo \
+	std/compiler.lo std/complex.lo std/concurrency.lo \
+	std/container/array.lo std/container/binaryheap.lo \
+	std/container/dlist.lo std/container/package.lo \
+	std/container/rbtree.lo std/container/slist.lo \
+	std/container/util.lo std/conv.lo std/cstream.lo std/csv.lo \
+	std/datetime.lo std/demangle.lo std/digest/crc.lo \
+	std/digest/digest.lo std/digest/md.lo std/digest/ripemd.lo \
+	std/digest/sha.lo std/encoding.lo std/exception.lo \
+	std/experimental/logger/core.lo \
+	std/experimental/logger/filelogger.lo \
+	std/experimental/logger/multilogger.lo \
+	std/experimental/logger/nulllogger.lo \
+	std/experimental/logger/package.lo std/file.lo std/format.lo \
+	std/functional.lo std/getopt.lo std/internal/cstring.lo \
+	std/internal/digest/sha_SSSE3.lo \
+	std/internal/math/biguintcore.lo \
+	std/internal/math/biguintnoasm.lo \
+	std/internal/math/biguintx86.lo \
+	std/internal/math/errorfunction.lo \
+	std/internal/math/gammafunction.lo std/internal/processinit.lo \
+	std/internal/scopebuffer.lo std/internal/test/dummyrange.lo \
+	std/internal/unicode_comp.lo std/internal/unicode_decomp.lo \
+	std/internal/unicode_grapheme.lo std/internal/unicode_norm.lo \
+	std/internal/unicode_tables.lo \
+	std/internal/windows/advapi32.lo std/json.lo std/math.lo \
+	std/mathspecial.lo std/mmfile.lo std/net/curl.lo \
+	std/net/isemail.lo std/numeric.lo std/outbuffer.lo \
+	std/parallelism.lo std/path.lo std/process.lo std/random.lo \
+	std/range/interfaces.lo std/range/package.lo \
+	std/range/primitives.lo std/regex/internal/backtracking.lo \
+	std/regex/internal/generator.lo std/regex/internal/ir.lo \
+	std/regex/internal/kickstart.lo std/regex/internal/parser.lo \
+	std/regex/internal/tests.lo std/regex/internal/thompson.lo \
+	std/regex/package.lo std/signals.lo std/socket.lo \
+	std/socketstream.lo std/stdint.lo std/stdio.lo \
+	std/stdiobase.lo std/stream.lo std/string.lo std/syserror.lo \
+	std/system.lo std/traits.lo std/typecons.lo std/typelist.lo \
+	std/typetuple.lo std/uni.lo std/uri.lo std/utf.lo std/uuid.lo \
+	std/variant.lo std/windows/charset.lo std/windows/iunknown.lo \
+	std/windows/registry.lo std/windows/syserror.lo std/xml.lo \
+	std/zip.lo std/zlib.lo
+am__objects_2 = std/c/fenv.lo std/c/locale.lo std/c/math.lo \
+	std/c/process.lo std/c/stdarg.lo std/c/stddef.lo \
+	std/c/stdio.lo std/c/stdlib.lo std/c/string.lo std/c/time.lo \
+	std/c/wcharh.lo
+am__objects_3 = std/c/osx/socket.lo
+@DRUNTIME_OS_DARWIN_TRUE@am__objects_4 = $(am__objects_3)
+am__objects_5 = std/c/freebsd/socket.lo
+@DRUNTIME_OS_BSD_TRUE@am__objects_6 = $(am__objects_5)
+am__objects_7 = std/c/linux/linux.lo std/c/linux/linuxextern.lo \
+	std/c/linux/pthread.lo std/c/linux/socket.lo \
+	std/c/linux/termios.lo std/c/linux/tipc.lo
+@DRUNTIME_OS_LINUX_TRUE@am__objects_8 = $(am__objects_7)
+am__objects_9 = std/c/windows/com.lo std/c/windows/stat.lo \
+	std/c/windows/windows.lo std/c/windows/winsock.lo
+@DRUNTIME_OS_MINGW_TRUE@am__objects_10 = $(am__objects_9)
+am__objects_11 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
+	$(am__objects_6) $(am__objects_8) $(am__objects_10)
+am__objects_12 = $(am__objects_11)
+am__objects_13 = libgphobos2_la-adler32.lo libgphobos2_la-compress.lo \
+	libgphobos2_la-crc32.lo libgphobos2_la-deflate.lo \
+	libgphobos2_la-gzclose.lo libgphobos2_la-gzlib.lo \
+	libgphobos2_la-gzread.lo libgphobos2_la-gzwrite.lo \
+	libgphobos2_la-infback.lo libgphobos2_la-inffast.lo \
+	libgphobos2_la-inflate.lo libgphobos2_la-inftrees.lo \
+	libgphobos2_la-trees.lo libgphobos2_la-uncompr.lo \
+	libgphobos2_la-zutil.lo
+@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_14 = $(am__objects_13)
+am_libgphobos2_la_OBJECTS = $(am__objects_12) $(am__objects_14)
+libgphobos2_la_OBJECTS = $(am_libgphobos2_la_OBJECTS)
+libgphobos2_la_LINK = $(LIBTOOL) --tag=CC \
+	$(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgphobos2_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
+am__DEPENDENCIES_2 = etc/c/curl.t.lo etc/c/sqlite3.t.lo \
+	etc/c/zlib.t.lo std/algorithm/comparison.t.lo \
+	std/algorithm/internal.t.lo std/algorithm/iteration.t.lo \
+	std/algorithm/mutation.t.lo std/algorithm/package.t.lo \
+	std/algorithm/searching.t.lo std/algorithm/setops.t.lo \
+	std/algorithm/sorting.t.lo std/array.t.lo std/ascii.t.lo \
+	std/base64.t.lo std/bigint.t.lo std/bitmanip.t.lo \
+	std/compiler.t.lo std/complex.t.lo std/concurrency.t.lo \
+	std/container/array.t.lo std/container/binaryheap.t.lo \
+	std/container/dlist.t.lo std/container/package.t.lo \
+	std/container/rbtree.t.lo std/container/slist.t.lo \
+	std/container/util.t.lo std/conv.t.lo std/cstream.t.lo \
+	std/csv.t.lo std/datetime.t.lo std/demangle.t.lo \
+	std/digest/crc.t.lo std/digest/digest.t.lo std/digest/md.t.lo \
+	std/digest/ripemd.t.lo std/digest/sha.t.lo std/encoding.t.lo \
+	std/exception.t.lo std/experimental/logger/core.t.lo \
+	std/experimental/logger/filelogger.t.lo \
+	std/experimental/logger/multilogger.t.lo \
+	std/experimental/logger/nulllogger.t.lo \
+	std/experimental/logger/package.t.lo std/file.t.lo \
+	std/format.t.lo std/functional.t.lo std/getopt.t.lo \
+	std/internal/cstring.t.lo std/internal/digest/sha_SSSE3.t.lo \
+	std/internal/math/biguintcore.t.lo \
+	std/internal/math/biguintnoasm.t.lo \
+	std/internal/math/biguintx86.t.lo \
+	std/internal/math/errorfunction.t.lo \
+	std/internal/math/gammafunction.t.lo \
+	std/internal/processinit.t.lo std/internal/scopebuffer.t.lo \
+	std/internal/test/dummyrange.t.lo \
+	std/internal/unicode_comp.t.lo \
+	std/internal/unicode_decomp.t.lo \
+	std/internal/unicode_grapheme.t.lo \
+	std/internal/unicode_norm.t.lo \
+	std/internal/unicode_tables.t.lo \
+	std/internal/windows/advapi32.t.lo std/json.t.lo std/math.t.lo \
+	std/mathspecial.t.lo std/mmfile.t.lo std/net/curl.t.lo \
+	std/net/isemail.t.lo std/numeric.t.lo std/outbuffer.t.lo \
+	std/parallelism.t.lo std/path.t.lo std/process.t.lo \
+	std/random.t.lo std/range/interfaces.t.lo \
+	std/range/package.t.lo std/range/primitives.t.lo \
+	std/regex/internal/backtracking.t.lo \
+	std/regex/internal/generator.t.lo std/regex/internal/ir.t.lo \
+	std/regex/internal/kickstart.t.lo \
+	std/regex/internal/parser.t.lo std/regex/internal/tests.t.lo \
+	std/regex/internal/thompson.t.lo std/regex/package.t.lo \
+	std/signals.t.lo std/socket.t.lo std/socketstream.t.lo \
+	std/stdint.t.lo std/stdio.t.lo std/stdiobase.t.lo \
+	std/stream.t.lo std/string.t.lo std/syserror.t.lo \
+	std/system.t.lo std/traits.t.lo std/typecons.t.lo \
+	std/typelist.t.lo std/typetuple.t.lo std/uni.t.lo std/uri.t.lo \
+	std/utf.t.lo std/uuid.t.lo std/variant.t.lo \
+	std/windows/charset.t.lo std/windows/iunknown.t.lo \
+	std/windows/registry.t.lo std/windows/syserror.t.lo \
+	std/xml.t.lo std/zip.t.lo std/zlib.t.lo
+am__DEPENDENCIES_3 = std/c/fenv.t.lo std/c/locale.t.lo std/c/math.t.lo \
+	std/c/process.t.lo std/c/stdarg.t.lo std/c/stddef.t.lo \
+	std/c/stdio.t.lo std/c/stdlib.t.lo std/c/string.t.lo \
+	std/c/time.t.lo std/c/wcharh.t.lo
+am__DEPENDENCIES_4 = std/c/osx/socket.t.lo
+@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_4)
+am__DEPENDENCIES_6 = std/c/freebsd/socket.t.lo
+@DRUNTIME_OS_BSD_TRUE@am__DEPENDENCIES_7 = $(am__DEPENDENCIES_6)
+am__DEPENDENCIES_8 = std/c/linux/linux.t.lo \
+	std/c/linux/linuxextern.t.lo std/c/linux/pthread.t.lo \
+	std/c/linux/socket.t.lo std/c/linux/termios.t.lo \
+	std/c/linux/tipc.t.lo
+@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_9 = $(am__DEPENDENCIES_8)
+am__DEPENDENCIES_10 = std/c/windows/com.t.lo std/c/windows/stat.t.lo \
+	std/c/windows/windows.t.lo std/c/windows/winsock.t.lo
+@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_11 = $(am__DEPENDENCIES_10)
+am__DEPENDENCIES_12 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_7) \
+	$(am__DEPENDENCIES_9) $(am__DEPENDENCIES_11)
+am__DEPENDENCIES_13 = $(am__DEPENDENCIES_12)
+libgphobos2_t_la_DEPENDENCIES = $(am__DEPENDENCIES_13) \
+	$(am__DEPENDENCIES_1) ../libdruntime/libgdruntime.la
+am__objects_15 = libgphobos2_t_la-adler32.lo \
+	libgphobos2_t_la-compress.lo libgphobos2_t_la-crc32.lo \
+	libgphobos2_t_la-deflate.lo libgphobos2_t_la-gzclose.lo \
+	libgphobos2_t_la-gzlib.lo libgphobos2_t_la-gzread.lo \
+	libgphobos2_t_la-gzwrite.lo libgphobos2_t_la-infback.lo \
+	libgphobos2_t_la-inffast.lo libgphobos2_t_la-inflate.lo \
+	libgphobos2_t_la-inftrees.lo libgphobos2_t_la-trees.lo \
+	libgphobos2_t_la-uncompr.lo libgphobos2_t_la-zutil.lo
+@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_16 = $(am__objects_15)
+am_libgphobos2_t_la_OBJECTS = $(am__objects_16)
+libgphobos2_t_la_OBJECTS = $(am_libgphobos2_t_la_OBJECTS)
+libgphobos2_t_la_LINK = $(LIBTOOL) --tag=CC \
+	$(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgphobos2_t_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
+@ENABLE_SHARED_TRUE@am_libgphobos2_t_la_rpath =
+@ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
+@ENABLE_STATIC_TRUE@am__EXEEXT_2 = unittest_static$(EXEEXT)
+am_unittest_OBJECTS = ../libdruntime/test_runner.$(OBJEXT)
+unittest_OBJECTS = $(am_unittest_OBJECTS)
+unittest_DEPENDENCIES = libgphobos2_t.la \
+	../libdruntime/libgdruntime.la
+am__objects_17 = adler32.$(OBJEXT) compress.$(OBJEXT) crc32.$(OBJEXT) \
+	deflate.$(OBJEXT) gzclose.$(OBJEXT) gzlib.$(OBJEXT) \
+	gzread.$(OBJEXT) gzwrite.$(OBJEXT) infback.$(OBJEXT) \
+	inffast.$(OBJEXT) inflate.$(OBJEXT) inftrees.$(OBJEXT) \
+	trees.$(OBJEXT) uncompr.$(OBJEXT) zutil.$(OBJEXT)
+@DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_18 = $(am__objects_17)
+am_unittest_static_OBJECTS = ../libdruntime/test_runner.$(OBJEXT) \
+	$(am__objects_18)
+unittest_static_OBJECTS = $(am_unittest_static_OBJECTS)
+unittest_static_DEPENDENCIES = $(PHOBOS_TEST_OBJECTS) \
+	$(am__DEPENDENCIES_1) ../libdruntime/libgdruntime.la
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp =
 am__depfiles_maybe =
-SOURCES =
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
+SOURCES = $(libgphobos2_la_SOURCES) $(libgphobos2_t_la_SOURCES) \
+	$(unittest_SOURCES) $(unittest_static_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+ETAGS = etags
+CTAGS = ctags
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -100,6 +356,8 @@ BACKTRACE_SUPPORTED = @BACKTRACE_SUPPORTED@
 BACKTRACE_SUPPORTS_THREADS = @BACKTRACE_SUPPORTS_THREADS@
 BACKTRACE_USES_MALLOC = @BACKTRACE_USES_MALLOC@
 CC = @CC@
+CCAS = @CCAS@
+CCASFLAGS = @CCASFLAGS@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
 CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
@@ -112,14 +370,14 @@ DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
 DL_LIBS = @DL_LIBS@
-DRUNTIME_OBJS = @DRUNTIME_OBJS@
-D_EXTRA_OBJS = @D_EXTRA_OBJS@
-D_GC_MODULES = @D_GC_MODULES@
+DSYMUTIL = @DSYMUTIL@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+FGREP = @FGREP@
 GDC = @GDC@
 GREP = @GREP@
 HAVE_DLADDR = @HAVE_DLADDR@
@@ -128,15 +386,24 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBBACKTRACE_LIB = @LIBBACKTRACE_LIB@
+LIBBACKTRACE_DIR = @LIBBACKTRACE_DIR@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
+LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+NM = @NM@
+NMEDIT = @NMEDIT@
+OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -146,17 +413,18 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 RANLIB = @RANLIB@
+RELEASE_VER = @RELEASE_VER@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
 VERSION = @VERSION@
-WERROR = @WERROR@
-ZLIB_OBJS = @ZLIB_OBJS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__leading_dot = @am__leading_dot@
 am__tar = @am__tar@
 am__untar = @am__untar@
@@ -171,8 +439,6 @@ datadir = @datadir@
 datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
-enable_shared = @enable_shared@
-enable_static = @enable_static@
 exec_prefix = @exec_prefix@
 gdc_include_dir = @gdc_include_dir@
 host = @host@
@@ -193,8 +459,6 @@ mkdir_p = @mkdir_p@
 multi_basedir = @multi_basedir@
 oldincludedir = @oldincludedir@
 pdfdir = @pdfdir@
-phobos_toolexecdir = @phobos_toolexecdir@
-phobos_toolexeclibdir = @phobos_toolexeclibdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
@@ -207,98 +471,167 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
+toolexecdir = @toolexecdir@
+toolexeclibdir = @toolexeclibdir@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-OUR_CFLAGS = @DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
-D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I$(srcdir) -I$(srcdir)/../libdruntime
-ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
-toolexecdir = $(phobos_toolexecdir)
-toolexeclibdir = $(phobos_toolexeclibdir)
-SUFFIXES = .d
 
-#--------------------------------------#
-# GDC LibPhobos
-MAIN_OBJS = std/array.o std/ascii.o std/base64.o std/bigint.o \
-	  std/bitmanip.o std/compiler.o std/complex.o std/concurrency.o \
-	  std/conv.o std/cstream.o std/csv.o \
-	  std/datetime.o std/demangle.o std/encoding.o \
-	  std/exception.o std/file.o std/format.o \
-	  std/functional.o std/getopt.o std/json.o \
-	  std/math.o std/mathspecial.o std/mmfile.o \
-	  std/numeric.o std/outbuffer.o std/parallelism.o \
-	  std/path.o std/process.o std/signals.o \
-	  std/socket.o std/socketstream.o \
-	  std/stdio.o std/stdiobase.o std/stdint.o std/stream.o \
-	  std/string.o std/syserror.o std/system.o std/random.o \
-	  std/traits.o std/typecons.o std/typetuple.o \
-	  std/uni.o std/uri.o std/utf.o \
-	  std/uuid.o std/variant.o std/xml.o std/zip.o std/zlib.o \
-	  std/algorithm/comparison.o std/algorithm/internal.o \
-	  std/algorithm/iteration.o std/algorithm/mutation.o \
-	  std/algorithm/package.o std/algorithm/searching.o \
-	  std/algorithm/setops.o std/algorithm/sorting.o \
-	  std/c/fenv.o std/c/locale.o std/c/math.o std/c/process.o \
-	  std/c/stdarg.o std/c/stddef.o std/c/stdio.o std/c/stdlib.o \
-	  std/c/string.o std/c/time.o std/c/wcharh.o \
-	  std/container/array.o std/container/binaryheap.o \
-	  std/container/dlist.o std/container/package.o \
-	  std/container/rbtree.o std/container/slist.o \
-	  std/container/util.o \
-	  std/digest/digest.o std/digest/crc.o std/digest/md.o \
-	  std/digest/ripemd.o std/digest/sha.o \
-	  std/experimental/logger/core.o \
-	  std/experimental/logger/filelogger.o \
-	  std/experimental/logger/multilogger.o \
-	  std/experimental/logger/nulllogger.o \
-	  std/experimental/logger/package.o \
-	  std/internal/cstring.o std/internal/digest/sha_SSSE3.o \
-	  std/internal/math/biguintcore.o std/internal/math/biguintnoasm.o \
-	  std/internal/math/biguintx86.o std/internal/math/gammafunction.o \
-	  std/internal/math/errorfunction.o std/internal/test/dummyrange.o \
-	  std/internal/processinit.o std/internal/scopebuffer.o \
-	  std/internal/unicode_comp.o std/internal/unicode_decomp.o \
-	  std/internal/unicode_grapheme.o std/internal/unicode_norm.o \
-	  std/internal/unicode_tables.o \
-	  std/net/curl.o std/net/isemail.o \
-	  std/range/interfaces.o std/range/package.o std/range/primitives.o \
-	  std/regex/package.o std/regex/internal/backtracking.o \
-	  std/regex/internal/generator.o std/regex/internal/ir.o \
-	  std/regex/internal/kickstart.o std/regex/internal/parser.o \
-	  std/regex/internal/tests.o std/regex/internal/thompson.o \
-	  etc/c/curl.o etc/c/zlib.o
-
-Z_OBJS = zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
-       zlib/gzclose.o zlib/gzlib.o zlib/gzread.o zlib/gzwrite.o \
-       zlib/infback.o zlib/inffast.o zlib/inflate.o zlib/inftrees.o \
-       zlib/trees.o zlib/uncompr.o zlib/zutil.o
+# If there are no sources with known extension (i.e. only D sources)
+# automake forgets to set this
+CCLD = $(CC)
+LTDCOMPILE = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(GDC) $(AM_DFLAGS)
 
 
-# modules which require some kind of operating system
-LINUX_OBJS = std/c/linux/linux.o std/c/linux/socket.o
-OSX_OBJS = std/c/osx/socket.o
-FREEBSD_OBJS = std/c/freebsd/socket.o
-WINDOWS_OBJS = std/c/windows/com.o std/c/windows/stat.o std/c/wcharh.o \
-	     std/c/windows/windows.o std/c/windows/winsock.o \
-	     std/windows/charset.o std/windows/iunknown.o std/windows/registry.o \
-	     std/windows/syserror.o std/internal/windows/advapi32.o
+# Override executable linking commands: We have to use GDC for linking
+unittest_static_LINK = $(LIBTOOL) --tag=CC \
+	$(unittest_static_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_static_LDFLAGS) \
+	$(LDFLAGS) -o $@
 
-ALL_PHOBOS_OBJS = $(D_EXTRA_OBJS) $(MAIN_OBJS) $(ZLIB_OBJS)
-
-# Work around what appears to be a GNU make bug handling MAKEFLAGS
-# values defined in terms of make variables, as is the case for CC and
-# friends when we are called from the top level Makefile.
-AM_MAKEFLAGS = \
-	"gdc_include_dir=$(gdc_include_dir)"
+unittest_LINK = $(LIBTOOL) --tag=CC \
+	$(unittest_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_LDFLAGS) \
+	$(LDFLAGS) -o $@
 
 
-# Subdir rules rely on $(FLAGS_TO_PASS)
-FLAGS_TO_PASS = $(AM_MAKEFLAGS)
+# Include D build rules
+
+# Make sure GDC can find libdruntime and libphobos include files
+D_EXTRA_DFLAGS = -nostdinc -pipe -Wno-deprecated -I $(srcdir) \
+	-I $(top_srcdir)/libdruntime -I ../libdruntime -I .
+
+
+# C flags for zlib compilation
+AM_CFLAGS = @DEFS@ -I. -I$(srcdir)/../libdruntime/gcc -I$(top_srcdir)/../zlib
+
+# Install all D files
+ALL_PHOBOS_INSTALL_DSOURCES = $(PHOBOS_DSOURCES) $(PHOBOS_DSOURCES_STDC) \
+	$(PHOBOS_DSOURCES_FREEBSD) $(PHOBOS_DSOURCES_OSX) \
+	$(PHOBOS_DSOURCES_WINDOWS) $(PHOBOS_DSOURCES_LINUX)
+
+
+# Setup source files depending on configure
+ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES) \
+	$(PHOBOS_DSOURCES_STDC) $(am__append_1) $(am__append_2) \
+	$(am__append_3) $(am__append_4)
+ALL_PHOBOS_SOURCES = $(ALL_PHOBOS_COMPILE_DSOURCES)
+PHOBOS_TEST_LOBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.lo)
+REAL_PHOBOS_TEST_OBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.o)
+# Workaround issue #
+PHOBOS_TEST_OBJECTS = $(filter-out std/net/curl.t.o std/base64.t.o, \
+    $(REAL_PHOBOS_TEST_OBJECTS))
+
+@DRUNTIME_ZLIB_SYSTEM_FALSE@ZLIB_LIB = 
+
+# Main library build definitions
+@DRUNTIME_ZLIB_SYSTEM_TRUE@ZLIB_LIB = -lz
+@DRUNTIME_ZLIB_SYSTEM_FALSE@ZLIB_SRC = $(ZLIB_CSOURCES)
+@DRUNTIME_ZLIB_SYSTEM_TRUE@ZLIB_SRC = 
+@ENABLE_SHARED_TRUE@check_LTLIBRARIES = libgphobos2_t.la
+toolexeclib_LTLIBRARIES = libgphobos2.la
+libgphobos2_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
+libgphobos2_la_LIBTOOLFLAGS = --tag=D
+libgphobos2_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER) -static
+libgphobos2_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
+
+# For static unittest, link objects directly
+unittest_static_SOURCES = ../libdruntime/test_runner.d $(ZLIB_SRC)
+unittest_static_LIBTOOLFLAGS = --tag=D
+unittest_static_LDFLAGS = -Xcompiler -nophoboslib -static-libtool-libs
+unittest_static_LDADD = $(PHOBOS_TEST_OBJECTS) $(ZLIB_LIB) \
+    ../libdruntime/libgdruntime.la
+
+EXTRA_unittest_static_DEPENDENCIES = $(PHOBOS_TEST_OBJECTS)
+
+# For unittest with dynamic library
+libgphobos2_t_la_SOURCES = $(ZLIB_SRC)
+libgphobos2_t_la_LIBTOOLFLAGS = --tag=D
+libgphobos2_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
+libgphobos2_t_la_LIBADD = $(PHOBOS_TEST_LOBJECTS) $(ZLIB_LIB) \
+    ../libdruntime/libgdruntime.la
+
+EXTRA_libgphobos2_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
+
+# For unittest
+unittest_SOURCES = ../libdruntime/test_runner.d
+unittest_LIBTOOLFLAGS = --tag=D
+unittest_LDFLAGS = -Xcompiler -nophoboslib -shared
+unittest_LDADD = libgphobos2_t.la ../libdruntime/libgdruntime.la -lcurl
+
+# Zlib sources when not using system libz
+ZLIB_CSOURCES = $(top_srcdir)/../zlib/adler32.c $(top_srcdir)/../zlib/compress.c \
+	$(top_srcdir)/../zlib/crc32.c $(top_srcdir)/../zlib/deflate.c \
+	$(top_srcdir)/../zlib/gzclose.c $(top_srcdir)/../zlib/gzlib.c \
+	$(top_srcdir)/../zlib/gzread.c $(top_srcdir)/../zlib/gzwrite.c \
+	$(top_srcdir)/../zlib/infback.c $(top_srcdir)/../zlib/inffast.c \
+	$(top_srcdir)/../zlib/inflate.c $(top_srcdir)/../zlib/inftrees.c \
+	$(top_srcdir)/../zlib/trees.c $(top_srcdir)/../zlib/uncompr.c \
+	$(top_srcdir)/../zlib/zutil.c
+
+
+# Source file definitions. Boring stuff, auto-generated with
+# https://gist.github.com/jpf91/8744acebc9dcf1e9d1a35cdff20afbb2
+# Can't use wildcards here:
+# https://www.gnu.org/software/automake/manual/html_node/Wildcards.html
+PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
+	std/algorithm/comparison.d std/algorithm/internal.d \
+	std/algorithm/iteration.d std/algorithm/mutation.d \
+	std/algorithm/package.d std/algorithm/searching.d \
+	std/algorithm/setops.d std/algorithm/sorting.d std/array.d std/ascii.d \
+	std/base64.d std/bigint.d std/bitmanip.d std/compiler.d std/complex.d \
+	std/concurrency.d std/container/array.d std/container/binaryheap.d \
+	std/container/dlist.d std/container/package.d std/container/rbtree.d \
+	std/container/slist.d std/container/util.d std/conv.d std/cstream.d \
+	std/csv.d std/datetime.d std/demangle.d std/digest/crc.d \
+	std/digest/digest.d std/digest/md.d std/digest/ripemd.d \
+	std/digest/sha.d std/encoding.d std/exception.d \
+	std/experimental/logger/core.d std/experimental/logger/filelogger.d \
+	std/experimental/logger/multilogger.d \
+	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
+	std/file.d std/format.d std/functional.d std/getopt.d \
+	std/internal/cstring.d std/internal/digest/sha_SSSE3.d \
+	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
+	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
+	std/internal/math/gammafunction.d std/internal/processinit.d \
+	std/internal/scopebuffer.d std/internal/test/dummyrange.d \
+	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
+	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
+	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
+	std/json.d std/math.d std/mathspecial.d std/mmfile.d std/net/curl.d \
+	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
+	std/path.d std/process.d std/random.d std/range/interfaces.d \
+	std/range/package.d std/range/primitives.d \
+	std/regex/internal/backtracking.d std/regex/internal/generator.d \
+	std/regex/internal/ir.d std/regex/internal/kickstart.d \
+	std/regex/internal/parser.d std/regex/internal/tests.d \
+	std/regex/internal/thompson.d std/regex/package.d std/signals.d \
+	std/socket.d std/socketstream.d std/stdint.d std/stdio.d \
+	std/stdiobase.d std/stream.d std/string.d std/syserror.d std/system.d \
+	std/traits.d std/typecons.d std/typelist.d std/typetuple.d std/uni.d \
+	std/uri.d std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
+	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
+	std/xml.d std/zip.d std/zlib.d
+
+PHOBOS_DSOURCES_STDC = std/c/fenv.d std/c/locale.d std/c/math.d \
+	std/c/process.d std/c/stdarg.d std/c/stddef.d std/c/stdio.d \
+	std/c/stdlib.d std/c/string.d std/c/time.d std/c/wcharh.d
+
+PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
+PHOBOS_DSOURCES_OSX = std/c/osx/socket.d
+PHOBOS_DSOURCES_WINDOWS = std/c/windows/com.d std/c/windows/stat.d \
+	std/c/windows/windows.d std/c/windows/winsock.d
+
+PHOBOS_DSOURCES_LINUX = std/c/linux/linux.d std/c/linux/linuxextern.d \
+	std/c/linux/pthread.d std/c/linux/socket.d std/c/linux/termios.d \
+	std/c/linux/tipc.d
+
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .d .S .c .o
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
+.SUFFIXES: .c .d .lo .o .obj
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/d_rules.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -319,6 +652,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe);; \
 	esac;
+$(top_srcdir)/d_rules.am:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
@@ -328,17 +662,829 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+
+clean-checkLTLIBRARIES:
+	-test -z "$(check_LTLIBRARIES)" || rm -f $(check_LTLIBRARIES)
+	@list='$(check_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
+install-toolexeclibLTLIBRARIES: $(toolexeclib_LTLIBRARIES)
+	@$(NORMAL_INSTALL)
+	@list='$(toolexeclib_LTLIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(toolexeclibdir)" || exit 1; \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(toolexeclibdir)"; \
+	}
+
+uninstall-toolexeclibLTLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(toolexeclib_LTLIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	for p in $$list; do \
+	  $(am__strip_dir) \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(toolexeclibdir)/$$f'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(toolexeclibdir)/$$f"; \
+	done
+
+clean-toolexeclibLTLIBRARIES:
+	-test -z "$(toolexeclib_LTLIBRARIES)" || rm -f $(toolexeclib_LTLIBRARIES)
+	@list='$(toolexeclib_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
+etc/c/$(am__dirstamp):
+	@$(MKDIR_P) etc/c
+	@: > etc/c/$(am__dirstamp)
+etc/c/curl.lo: etc/c/$(am__dirstamp)
+etc/c/sqlite3.lo: etc/c/$(am__dirstamp)
+etc/c/zlib.lo: etc/c/$(am__dirstamp)
+std/algorithm/$(am__dirstamp):
+	@$(MKDIR_P) std/algorithm
+	@: > std/algorithm/$(am__dirstamp)
+std/algorithm/comparison.lo: std/algorithm/$(am__dirstamp)
+std/algorithm/internal.lo: std/algorithm/$(am__dirstamp)
+std/algorithm/iteration.lo: std/algorithm/$(am__dirstamp)
+std/algorithm/mutation.lo: std/algorithm/$(am__dirstamp)
+std/algorithm/package.lo: std/algorithm/$(am__dirstamp)
+std/algorithm/searching.lo: std/algorithm/$(am__dirstamp)
+std/algorithm/setops.lo: std/algorithm/$(am__dirstamp)
+std/algorithm/sorting.lo: std/algorithm/$(am__dirstamp)
+std/$(am__dirstamp):
+	@$(MKDIR_P) std
+	@: > std/$(am__dirstamp)
+std/array.lo: std/$(am__dirstamp)
+std/ascii.lo: std/$(am__dirstamp)
+std/base64.lo: std/$(am__dirstamp)
+std/bigint.lo: std/$(am__dirstamp)
+std/bitmanip.lo: std/$(am__dirstamp)
+std/compiler.lo: std/$(am__dirstamp)
+std/complex.lo: std/$(am__dirstamp)
+std/concurrency.lo: std/$(am__dirstamp)
+std/container/$(am__dirstamp):
+	@$(MKDIR_P) std/container
+	@: > std/container/$(am__dirstamp)
+std/container/array.lo: std/container/$(am__dirstamp)
+std/container/binaryheap.lo: std/container/$(am__dirstamp)
+std/container/dlist.lo: std/container/$(am__dirstamp)
+std/container/package.lo: std/container/$(am__dirstamp)
+std/container/rbtree.lo: std/container/$(am__dirstamp)
+std/container/slist.lo: std/container/$(am__dirstamp)
+std/container/util.lo: std/container/$(am__dirstamp)
+std/conv.lo: std/$(am__dirstamp)
+std/cstream.lo: std/$(am__dirstamp)
+std/csv.lo: std/$(am__dirstamp)
+std/datetime.lo: std/$(am__dirstamp)
+std/demangle.lo: std/$(am__dirstamp)
+std/digest/$(am__dirstamp):
+	@$(MKDIR_P) std/digest
+	@: > std/digest/$(am__dirstamp)
+std/digest/crc.lo: std/digest/$(am__dirstamp)
+std/digest/digest.lo: std/digest/$(am__dirstamp)
+std/digest/md.lo: std/digest/$(am__dirstamp)
+std/digest/ripemd.lo: std/digest/$(am__dirstamp)
+std/digest/sha.lo: std/digest/$(am__dirstamp)
+std/encoding.lo: std/$(am__dirstamp)
+std/exception.lo: std/$(am__dirstamp)
+std/experimental/logger/$(am__dirstamp):
+	@$(MKDIR_P) std/experimental/logger
+	@: > std/experimental/logger/$(am__dirstamp)
+std/experimental/logger/core.lo:  \
+	std/experimental/logger/$(am__dirstamp)
+std/experimental/logger/filelogger.lo:  \
+	std/experimental/logger/$(am__dirstamp)
+std/experimental/logger/multilogger.lo:  \
+	std/experimental/logger/$(am__dirstamp)
+std/experimental/logger/nulllogger.lo:  \
+	std/experimental/logger/$(am__dirstamp)
+std/experimental/logger/package.lo:  \
+	std/experimental/logger/$(am__dirstamp)
+std/file.lo: std/$(am__dirstamp)
+std/format.lo: std/$(am__dirstamp)
+std/functional.lo: std/$(am__dirstamp)
+std/getopt.lo: std/$(am__dirstamp)
+std/internal/$(am__dirstamp):
+	@$(MKDIR_P) std/internal
+	@: > std/internal/$(am__dirstamp)
+std/internal/cstring.lo: std/internal/$(am__dirstamp)
+std/internal/digest/$(am__dirstamp):
+	@$(MKDIR_P) std/internal/digest
+	@: > std/internal/digest/$(am__dirstamp)
+std/internal/digest/sha_SSSE3.lo: std/internal/digest/$(am__dirstamp)
+std/internal/math/$(am__dirstamp):
+	@$(MKDIR_P) std/internal/math
+	@: > std/internal/math/$(am__dirstamp)
+std/internal/math/biguintcore.lo: std/internal/math/$(am__dirstamp)
+std/internal/math/biguintnoasm.lo: std/internal/math/$(am__dirstamp)
+std/internal/math/biguintx86.lo: std/internal/math/$(am__dirstamp)
+std/internal/math/errorfunction.lo: std/internal/math/$(am__dirstamp)
+std/internal/math/gammafunction.lo: std/internal/math/$(am__dirstamp)
+std/internal/processinit.lo: std/internal/$(am__dirstamp)
+std/internal/scopebuffer.lo: std/internal/$(am__dirstamp)
+std/internal/test/$(am__dirstamp):
+	@$(MKDIR_P) std/internal/test
+	@: > std/internal/test/$(am__dirstamp)
+std/internal/test/dummyrange.lo: std/internal/test/$(am__dirstamp)
+std/internal/unicode_comp.lo: std/internal/$(am__dirstamp)
+std/internal/unicode_decomp.lo: std/internal/$(am__dirstamp)
+std/internal/unicode_grapheme.lo: std/internal/$(am__dirstamp)
+std/internal/unicode_norm.lo: std/internal/$(am__dirstamp)
+std/internal/unicode_tables.lo: std/internal/$(am__dirstamp)
+std/internal/windows/$(am__dirstamp):
+	@$(MKDIR_P) std/internal/windows
+	@: > std/internal/windows/$(am__dirstamp)
+std/internal/windows/advapi32.lo:  \
+	std/internal/windows/$(am__dirstamp)
+std/json.lo: std/$(am__dirstamp)
+std/math.lo: std/$(am__dirstamp)
+std/mathspecial.lo: std/$(am__dirstamp)
+std/mmfile.lo: std/$(am__dirstamp)
+std/net/$(am__dirstamp):
+	@$(MKDIR_P) std/net
+	@: > std/net/$(am__dirstamp)
+std/net/curl.lo: std/net/$(am__dirstamp)
+std/net/isemail.lo: std/net/$(am__dirstamp)
+std/numeric.lo: std/$(am__dirstamp)
+std/outbuffer.lo: std/$(am__dirstamp)
+std/parallelism.lo: std/$(am__dirstamp)
+std/path.lo: std/$(am__dirstamp)
+std/process.lo: std/$(am__dirstamp)
+std/random.lo: std/$(am__dirstamp)
+std/range/$(am__dirstamp):
+	@$(MKDIR_P) std/range
+	@: > std/range/$(am__dirstamp)
+std/range/interfaces.lo: std/range/$(am__dirstamp)
+std/range/package.lo: std/range/$(am__dirstamp)
+std/range/primitives.lo: std/range/$(am__dirstamp)
+std/regex/internal/$(am__dirstamp):
+	@$(MKDIR_P) std/regex/internal
+	@: > std/regex/internal/$(am__dirstamp)
+std/regex/internal/backtracking.lo:  \
+	std/regex/internal/$(am__dirstamp)
+std/regex/internal/generator.lo: std/regex/internal/$(am__dirstamp)
+std/regex/internal/ir.lo: std/regex/internal/$(am__dirstamp)
+std/regex/internal/kickstart.lo: std/regex/internal/$(am__dirstamp)
+std/regex/internal/parser.lo: std/regex/internal/$(am__dirstamp)
+std/regex/internal/tests.lo: std/regex/internal/$(am__dirstamp)
+std/regex/internal/thompson.lo: std/regex/internal/$(am__dirstamp)
+std/regex/$(am__dirstamp):
+	@$(MKDIR_P) std/regex
+	@: > std/regex/$(am__dirstamp)
+std/regex/package.lo: std/regex/$(am__dirstamp)
+std/signals.lo: std/$(am__dirstamp)
+std/socket.lo: std/$(am__dirstamp)
+std/socketstream.lo: std/$(am__dirstamp)
+std/stdint.lo: std/$(am__dirstamp)
+std/stdio.lo: std/$(am__dirstamp)
+std/stdiobase.lo: std/$(am__dirstamp)
+std/stream.lo: std/$(am__dirstamp)
+std/string.lo: std/$(am__dirstamp)
+std/syserror.lo: std/$(am__dirstamp)
+std/system.lo: std/$(am__dirstamp)
+std/traits.lo: std/$(am__dirstamp)
+std/typecons.lo: std/$(am__dirstamp)
+std/typelist.lo: std/$(am__dirstamp)
+std/typetuple.lo: std/$(am__dirstamp)
+std/uni.lo: std/$(am__dirstamp)
+std/uri.lo: std/$(am__dirstamp)
+std/utf.lo: std/$(am__dirstamp)
+std/uuid.lo: std/$(am__dirstamp)
+std/variant.lo: std/$(am__dirstamp)
+std/windows/$(am__dirstamp):
+	@$(MKDIR_P) std/windows
+	@: > std/windows/$(am__dirstamp)
+std/windows/charset.lo: std/windows/$(am__dirstamp)
+std/windows/iunknown.lo: std/windows/$(am__dirstamp)
+std/windows/registry.lo: std/windows/$(am__dirstamp)
+std/windows/syserror.lo: std/windows/$(am__dirstamp)
+std/xml.lo: std/$(am__dirstamp)
+std/zip.lo: std/$(am__dirstamp)
+std/zlib.lo: std/$(am__dirstamp)
+std/c/$(am__dirstamp):
+	@$(MKDIR_P) std/c
+	@: > std/c/$(am__dirstamp)
+std/c/fenv.lo: std/c/$(am__dirstamp)
+std/c/locale.lo: std/c/$(am__dirstamp)
+std/c/math.lo: std/c/$(am__dirstamp)
+std/c/process.lo: std/c/$(am__dirstamp)
+std/c/stdarg.lo: std/c/$(am__dirstamp)
+std/c/stddef.lo: std/c/$(am__dirstamp)
+std/c/stdio.lo: std/c/$(am__dirstamp)
+std/c/stdlib.lo: std/c/$(am__dirstamp)
+std/c/string.lo: std/c/$(am__dirstamp)
+std/c/time.lo: std/c/$(am__dirstamp)
+std/c/wcharh.lo: std/c/$(am__dirstamp)
+std/c/osx/$(am__dirstamp):
+	@$(MKDIR_P) std/c/osx
+	@: > std/c/osx/$(am__dirstamp)
+std/c/osx/socket.lo: std/c/osx/$(am__dirstamp)
+std/c/freebsd/$(am__dirstamp):
+	@$(MKDIR_P) std/c/freebsd
+	@: > std/c/freebsd/$(am__dirstamp)
+std/c/freebsd/socket.lo: std/c/freebsd/$(am__dirstamp)
+std/c/linux/$(am__dirstamp):
+	@$(MKDIR_P) std/c/linux
+	@: > std/c/linux/$(am__dirstamp)
+std/c/linux/linux.lo: std/c/linux/$(am__dirstamp)
+std/c/linux/linuxextern.lo: std/c/linux/$(am__dirstamp)
+std/c/linux/pthread.lo: std/c/linux/$(am__dirstamp)
+std/c/linux/socket.lo: std/c/linux/$(am__dirstamp)
+std/c/linux/termios.lo: std/c/linux/$(am__dirstamp)
+std/c/linux/tipc.lo: std/c/linux/$(am__dirstamp)
+std/c/windows/$(am__dirstamp):
+	@$(MKDIR_P) std/c/windows
+	@: > std/c/windows/$(am__dirstamp)
+std/c/windows/com.lo: std/c/windows/$(am__dirstamp)
+std/c/windows/stat.lo: std/c/windows/$(am__dirstamp)
+std/c/windows/windows.lo: std/c/windows/$(am__dirstamp)
+std/c/windows/winsock.lo: std/c/windows/$(am__dirstamp)
+libgphobos2.la: $(libgphobos2_la_OBJECTS) $(libgphobos2_la_DEPENDENCIES) $(EXTRA_libgphobos2_la_DEPENDENCIES) 
+	$(libgphobos2_la_LINK) -rpath $(toolexeclibdir) $(libgphobos2_la_OBJECTS) $(libgphobos2_la_LIBADD) $(LIBS)
+libgphobos2_t.la: $(libgphobos2_t_la_OBJECTS) $(libgphobos2_t_la_DEPENDENCIES) $(EXTRA_libgphobos2_t_la_DEPENDENCIES) 
+	$(libgphobos2_t_la_LINK) $(am_libgphobos2_t_la_rpath) $(libgphobos2_t_la_OBJECTS) $(libgphobos2_t_la_LIBADD) $(LIBS)
+
+clean-checkPROGRAMS:
+	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
+../libdruntime/$(am__dirstamp):
+	@$(MKDIR_P) ../libdruntime
+	@: > ../libdruntime/$(am__dirstamp)
+../libdruntime/test_runner.$(OBJEXT): ../libdruntime/$(am__dirstamp)
+unittest$(EXEEXT): $(unittest_OBJECTS) $(unittest_DEPENDENCIES) $(EXTRA_unittest_DEPENDENCIES) 
+	@rm -f unittest$(EXEEXT)
+	$(unittest_LINK) $(unittest_OBJECTS) $(unittest_LDADD) $(LIBS)
+unittest_static$(EXEEXT): $(unittest_static_OBJECTS) $(unittest_static_DEPENDENCIES) $(EXTRA_unittest_static_DEPENDENCIES) 
+	@rm -f unittest_static$(EXEEXT)
+	$(unittest_static_LINK) $(unittest_static_OBJECTS) $(unittest_static_LDADD) $(LIBS)
+
+mostlyclean-compile:
+	-rm -f *.$(OBJEXT)
+	-rm -f ../libdruntime/test_runner.$(OBJEXT)
+	-rm -f etc/c/curl.$(OBJEXT)
+	-rm -f etc/c/curl.lo
+	-rm -f etc/c/sqlite3.$(OBJEXT)
+	-rm -f etc/c/sqlite3.lo
+	-rm -f etc/c/zlib.$(OBJEXT)
+	-rm -f etc/c/zlib.lo
+	-rm -f std/algorithm/comparison.$(OBJEXT)
+	-rm -f std/algorithm/comparison.lo
+	-rm -f std/algorithm/internal.$(OBJEXT)
+	-rm -f std/algorithm/internal.lo
+	-rm -f std/algorithm/iteration.$(OBJEXT)
+	-rm -f std/algorithm/iteration.lo
+	-rm -f std/algorithm/mutation.$(OBJEXT)
+	-rm -f std/algorithm/mutation.lo
+	-rm -f std/algorithm/package.$(OBJEXT)
+	-rm -f std/algorithm/package.lo
+	-rm -f std/algorithm/searching.$(OBJEXT)
+	-rm -f std/algorithm/searching.lo
+	-rm -f std/algorithm/setops.$(OBJEXT)
+	-rm -f std/algorithm/setops.lo
+	-rm -f std/algorithm/sorting.$(OBJEXT)
+	-rm -f std/algorithm/sorting.lo
+	-rm -f std/array.$(OBJEXT)
+	-rm -f std/array.lo
+	-rm -f std/ascii.$(OBJEXT)
+	-rm -f std/ascii.lo
+	-rm -f std/base64.$(OBJEXT)
+	-rm -f std/base64.lo
+	-rm -f std/bigint.$(OBJEXT)
+	-rm -f std/bigint.lo
+	-rm -f std/bitmanip.$(OBJEXT)
+	-rm -f std/bitmanip.lo
+	-rm -f std/c/fenv.$(OBJEXT)
+	-rm -f std/c/fenv.lo
+	-rm -f std/c/freebsd/socket.$(OBJEXT)
+	-rm -f std/c/freebsd/socket.lo
+	-rm -f std/c/linux/linux.$(OBJEXT)
+	-rm -f std/c/linux/linux.lo
+	-rm -f std/c/linux/linuxextern.$(OBJEXT)
+	-rm -f std/c/linux/linuxextern.lo
+	-rm -f std/c/linux/pthread.$(OBJEXT)
+	-rm -f std/c/linux/pthread.lo
+	-rm -f std/c/linux/socket.$(OBJEXT)
+	-rm -f std/c/linux/socket.lo
+	-rm -f std/c/linux/termios.$(OBJEXT)
+	-rm -f std/c/linux/termios.lo
+	-rm -f std/c/linux/tipc.$(OBJEXT)
+	-rm -f std/c/linux/tipc.lo
+	-rm -f std/c/locale.$(OBJEXT)
+	-rm -f std/c/locale.lo
+	-rm -f std/c/math.$(OBJEXT)
+	-rm -f std/c/math.lo
+	-rm -f std/c/osx/socket.$(OBJEXT)
+	-rm -f std/c/osx/socket.lo
+	-rm -f std/c/process.$(OBJEXT)
+	-rm -f std/c/process.lo
+	-rm -f std/c/stdarg.$(OBJEXT)
+	-rm -f std/c/stdarg.lo
+	-rm -f std/c/stddef.$(OBJEXT)
+	-rm -f std/c/stddef.lo
+	-rm -f std/c/stdio.$(OBJEXT)
+	-rm -f std/c/stdio.lo
+	-rm -f std/c/stdlib.$(OBJEXT)
+	-rm -f std/c/stdlib.lo
+	-rm -f std/c/string.$(OBJEXT)
+	-rm -f std/c/string.lo
+	-rm -f std/c/time.$(OBJEXT)
+	-rm -f std/c/time.lo
+	-rm -f std/c/wcharh.$(OBJEXT)
+	-rm -f std/c/wcharh.lo
+	-rm -f std/c/windows/com.$(OBJEXT)
+	-rm -f std/c/windows/com.lo
+	-rm -f std/c/windows/stat.$(OBJEXT)
+	-rm -f std/c/windows/stat.lo
+	-rm -f std/c/windows/windows.$(OBJEXT)
+	-rm -f std/c/windows/windows.lo
+	-rm -f std/c/windows/winsock.$(OBJEXT)
+	-rm -f std/c/windows/winsock.lo
+	-rm -f std/compiler.$(OBJEXT)
+	-rm -f std/compiler.lo
+	-rm -f std/complex.$(OBJEXT)
+	-rm -f std/complex.lo
+	-rm -f std/concurrency.$(OBJEXT)
+	-rm -f std/concurrency.lo
+	-rm -f std/container/array.$(OBJEXT)
+	-rm -f std/container/array.lo
+	-rm -f std/container/binaryheap.$(OBJEXT)
+	-rm -f std/container/binaryheap.lo
+	-rm -f std/container/dlist.$(OBJEXT)
+	-rm -f std/container/dlist.lo
+	-rm -f std/container/package.$(OBJEXT)
+	-rm -f std/container/package.lo
+	-rm -f std/container/rbtree.$(OBJEXT)
+	-rm -f std/container/rbtree.lo
+	-rm -f std/container/slist.$(OBJEXT)
+	-rm -f std/container/slist.lo
+	-rm -f std/container/util.$(OBJEXT)
+	-rm -f std/container/util.lo
+	-rm -f std/conv.$(OBJEXT)
+	-rm -f std/conv.lo
+	-rm -f std/cstream.$(OBJEXT)
+	-rm -f std/cstream.lo
+	-rm -f std/csv.$(OBJEXT)
+	-rm -f std/csv.lo
+	-rm -f std/datetime.$(OBJEXT)
+	-rm -f std/datetime.lo
+	-rm -f std/demangle.$(OBJEXT)
+	-rm -f std/demangle.lo
+	-rm -f std/digest/crc.$(OBJEXT)
+	-rm -f std/digest/crc.lo
+	-rm -f std/digest/digest.$(OBJEXT)
+	-rm -f std/digest/digest.lo
+	-rm -f std/digest/md.$(OBJEXT)
+	-rm -f std/digest/md.lo
+	-rm -f std/digest/ripemd.$(OBJEXT)
+	-rm -f std/digest/ripemd.lo
+	-rm -f std/digest/sha.$(OBJEXT)
+	-rm -f std/digest/sha.lo
+	-rm -f std/encoding.$(OBJEXT)
+	-rm -f std/encoding.lo
+	-rm -f std/exception.$(OBJEXT)
+	-rm -f std/exception.lo
+	-rm -f std/experimental/logger/core.$(OBJEXT)
+	-rm -f std/experimental/logger/core.lo
+	-rm -f std/experimental/logger/filelogger.$(OBJEXT)
+	-rm -f std/experimental/logger/filelogger.lo
+	-rm -f std/experimental/logger/multilogger.$(OBJEXT)
+	-rm -f std/experimental/logger/multilogger.lo
+	-rm -f std/experimental/logger/nulllogger.$(OBJEXT)
+	-rm -f std/experimental/logger/nulllogger.lo
+	-rm -f std/experimental/logger/package.$(OBJEXT)
+	-rm -f std/experimental/logger/package.lo
+	-rm -f std/file.$(OBJEXT)
+	-rm -f std/file.lo
+	-rm -f std/format.$(OBJEXT)
+	-rm -f std/format.lo
+	-rm -f std/functional.$(OBJEXT)
+	-rm -f std/functional.lo
+	-rm -f std/getopt.$(OBJEXT)
+	-rm -f std/getopt.lo
+	-rm -f std/internal/cstring.$(OBJEXT)
+	-rm -f std/internal/cstring.lo
+	-rm -f std/internal/digest/sha_SSSE3.$(OBJEXT)
+	-rm -f std/internal/digest/sha_SSSE3.lo
+	-rm -f std/internal/math/biguintcore.$(OBJEXT)
+	-rm -f std/internal/math/biguintcore.lo
+	-rm -f std/internal/math/biguintnoasm.$(OBJEXT)
+	-rm -f std/internal/math/biguintnoasm.lo
+	-rm -f std/internal/math/biguintx86.$(OBJEXT)
+	-rm -f std/internal/math/biguintx86.lo
+	-rm -f std/internal/math/errorfunction.$(OBJEXT)
+	-rm -f std/internal/math/errorfunction.lo
+	-rm -f std/internal/math/gammafunction.$(OBJEXT)
+	-rm -f std/internal/math/gammafunction.lo
+	-rm -f std/internal/processinit.$(OBJEXT)
+	-rm -f std/internal/processinit.lo
+	-rm -f std/internal/scopebuffer.$(OBJEXT)
+	-rm -f std/internal/scopebuffer.lo
+	-rm -f std/internal/test/dummyrange.$(OBJEXT)
+	-rm -f std/internal/test/dummyrange.lo
+	-rm -f std/internal/unicode_comp.$(OBJEXT)
+	-rm -f std/internal/unicode_comp.lo
+	-rm -f std/internal/unicode_decomp.$(OBJEXT)
+	-rm -f std/internal/unicode_decomp.lo
+	-rm -f std/internal/unicode_grapheme.$(OBJEXT)
+	-rm -f std/internal/unicode_grapheme.lo
+	-rm -f std/internal/unicode_norm.$(OBJEXT)
+	-rm -f std/internal/unicode_norm.lo
+	-rm -f std/internal/unicode_tables.$(OBJEXT)
+	-rm -f std/internal/unicode_tables.lo
+	-rm -f std/internal/windows/advapi32.$(OBJEXT)
+	-rm -f std/internal/windows/advapi32.lo
+	-rm -f std/json.$(OBJEXT)
+	-rm -f std/json.lo
+	-rm -f std/math.$(OBJEXT)
+	-rm -f std/math.lo
+	-rm -f std/mathspecial.$(OBJEXT)
+	-rm -f std/mathspecial.lo
+	-rm -f std/mmfile.$(OBJEXT)
+	-rm -f std/mmfile.lo
+	-rm -f std/net/curl.$(OBJEXT)
+	-rm -f std/net/curl.lo
+	-rm -f std/net/isemail.$(OBJEXT)
+	-rm -f std/net/isemail.lo
+	-rm -f std/numeric.$(OBJEXT)
+	-rm -f std/numeric.lo
+	-rm -f std/outbuffer.$(OBJEXT)
+	-rm -f std/outbuffer.lo
+	-rm -f std/parallelism.$(OBJEXT)
+	-rm -f std/parallelism.lo
+	-rm -f std/path.$(OBJEXT)
+	-rm -f std/path.lo
+	-rm -f std/process.$(OBJEXT)
+	-rm -f std/process.lo
+	-rm -f std/random.$(OBJEXT)
+	-rm -f std/random.lo
+	-rm -f std/range/interfaces.$(OBJEXT)
+	-rm -f std/range/interfaces.lo
+	-rm -f std/range/package.$(OBJEXT)
+	-rm -f std/range/package.lo
+	-rm -f std/range/primitives.$(OBJEXT)
+	-rm -f std/range/primitives.lo
+	-rm -f std/regex/internal/backtracking.$(OBJEXT)
+	-rm -f std/regex/internal/backtracking.lo
+	-rm -f std/regex/internal/generator.$(OBJEXT)
+	-rm -f std/regex/internal/generator.lo
+	-rm -f std/regex/internal/ir.$(OBJEXT)
+	-rm -f std/regex/internal/ir.lo
+	-rm -f std/regex/internal/kickstart.$(OBJEXT)
+	-rm -f std/regex/internal/kickstart.lo
+	-rm -f std/regex/internal/parser.$(OBJEXT)
+	-rm -f std/regex/internal/parser.lo
+	-rm -f std/regex/internal/tests.$(OBJEXT)
+	-rm -f std/regex/internal/tests.lo
+	-rm -f std/regex/internal/thompson.$(OBJEXT)
+	-rm -f std/regex/internal/thompson.lo
+	-rm -f std/regex/package.$(OBJEXT)
+	-rm -f std/regex/package.lo
+	-rm -f std/signals.$(OBJEXT)
+	-rm -f std/signals.lo
+	-rm -f std/socket.$(OBJEXT)
+	-rm -f std/socket.lo
+	-rm -f std/socketstream.$(OBJEXT)
+	-rm -f std/socketstream.lo
+	-rm -f std/stdint.$(OBJEXT)
+	-rm -f std/stdint.lo
+	-rm -f std/stdio.$(OBJEXT)
+	-rm -f std/stdio.lo
+	-rm -f std/stdiobase.$(OBJEXT)
+	-rm -f std/stdiobase.lo
+	-rm -f std/stream.$(OBJEXT)
+	-rm -f std/stream.lo
+	-rm -f std/string.$(OBJEXT)
+	-rm -f std/string.lo
+	-rm -f std/syserror.$(OBJEXT)
+	-rm -f std/syserror.lo
+	-rm -f std/system.$(OBJEXT)
+	-rm -f std/system.lo
+	-rm -f std/traits.$(OBJEXT)
+	-rm -f std/traits.lo
+	-rm -f std/typecons.$(OBJEXT)
+	-rm -f std/typecons.lo
+	-rm -f std/typelist.$(OBJEXT)
+	-rm -f std/typelist.lo
+	-rm -f std/typetuple.$(OBJEXT)
+	-rm -f std/typetuple.lo
+	-rm -f std/uni.$(OBJEXT)
+	-rm -f std/uni.lo
+	-rm -f std/uri.$(OBJEXT)
+	-rm -f std/uri.lo
+	-rm -f std/utf.$(OBJEXT)
+	-rm -f std/utf.lo
+	-rm -f std/uuid.$(OBJEXT)
+	-rm -f std/uuid.lo
+	-rm -f std/variant.$(OBJEXT)
+	-rm -f std/variant.lo
+	-rm -f std/windows/charset.$(OBJEXT)
+	-rm -f std/windows/charset.lo
+	-rm -f std/windows/iunknown.$(OBJEXT)
+	-rm -f std/windows/iunknown.lo
+	-rm -f std/windows/registry.$(OBJEXT)
+	-rm -f std/windows/registry.lo
+	-rm -f std/windows/syserror.$(OBJEXT)
+	-rm -f std/windows/syserror.lo
+	-rm -f std/xml.$(OBJEXT)
+	-rm -f std/xml.lo
+	-rm -f std/zip.$(OBJEXT)
+	-rm -f std/zip.lo
+	-rm -f std/zlib.$(OBJEXT)
+	-rm -f std/zlib.lo
+
+distclean-compile:
+	-rm -f *.tab.c
+
+.c.o:
+	$(COMPILE) -c $<
+
+.c.obj:
+	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+
+.c.lo:
+	$(LTCOMPILE) -c -o $@ $<
+
+libgphobos2_la-adler32.lo: $(top_srcdir)/../zlib/adler32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-adler32.lo `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c
+
+libgphobos2_la-compress.lo: $(top_srcdir)/../zlib/compress.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-compress.lo `test -f '$(top_srcdir)/../zlib/compress.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/compress.c
+
+libgphobos2_la-crc32.lo: $(top_srcdir)/../zlib/crc32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-crc32.lo `test -f '$(top_srcdir)/../zlib/crc32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/crc32.c
+
+libgphobos2_la-deflate.lo: $(top_srcdir)/../zlib/deflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-deflate.lo `test -f '$(top_srcdir)/../zlib/deflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/deflate.c
+
+libgphobos2_la-gzclose.lo: $(top_srcdir)/../zlib/gzclose.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzclose.lo `test -f '$(top_srcdir)/../zlib/gzclose.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzclose.c
+
+libgphobos2_la-gzlib.lo: $(top_srcdir)/../zlib/gzlib.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzlib.lo `test -f '$(top_srcdir)/../zlib/gzlib.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzlib.c
+
+libgphobos2_la-gzread.lo: $(top_srcdir)/../zlib/gzread.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzread.lo `test -f '$(top_srcdir)/../zlib/gzread.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzread.c
+
+libgphobos2_la-gzwrite.lo: $(top_srcdir)/../zlib/gzwrite.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzwrite.lo `test -f '$(top_srcdir)/../zlib/gzwrite.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzwrite.c
+
+libgphobos2_la-infback.lo: $(top_srcdir)/../zlib/infback.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-infback.lo `test -f '$(top_srcdir)/../zlib/infback.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/infback.c
+
+libgphobos2_la-inffast.lo: $(top_srcdir)/../zlib/inffast.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-inffast.lo `test -f '$(top_srcdir)/../zlib/inffast.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inffast.c
+
+libgphobos2_la-inflate.lo: $(top_srcdir)/../zlib/inflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-inflate.lo `test -f '$(top_srcdir)/../zlib/inflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inflate.c
+
+libgphobos2_la-inftrees.lo: $(top_srcdir)/../zlib/inftrees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-inftrees.lo `test -f '$(top_srcdir)/../zlib/inftrees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inftrees.c
+
+libgphobos2_la-trees.lo: $(top_srcdir)/../zlib/trees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-trees.lo `test -f '$(top_srcdir)/../zlib/trees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/trees.c
+
+libgphobos2_la-uncompr.lo: $(top_srcdir)/../zlib/uncompr.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-uncompr.lo `test -f '$(top_srcdir)/../zlib/uncompr.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/uncompr.c
+
+libgphobos2_la-zutil.lo: $(top_srcdir)/../zlib/zutil.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-zutil.lo `test -f '$(top_srcdir)/../zlib/zutil.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/zutil.c
+
+libgphobos2_t_la-adler32.lo: $(top_srcdir)/../zlib/adler32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-adler32.lo `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c
+
+libgphobos2_t_la-compress.lo: $(top_srcdir)/../zlib/compress.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-compress.lo `test -f '$(top_srcdir)/../zlib/compress.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/compress.c
+
+libgphobos2_t_la-crc32.lo: $(top_srcdir)/../zlib/crc32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-crc32.lo `test -f '$(top_srcdir)/../zlib/crc32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/crc32.c
+
+libgphobos2_t_la-deflate.lo: $(top_srcdir)/../zlib/deflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-deflate.lo `test -f '$(top_srcdir)/../zlib/deflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/deflate.c
+
+libgphobos2_t_la-gzclose.lo: $(top_srcdir)/../zlib/gzclose.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzclose.lo `test -f '$(top_srcdir)/../zlib/gzclose.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzclose.c
+
+libgphobos2_t_la-gzlib.lo: $(top_srcdir)/../zlib/gzlib.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzlib.lo `test -f '$(top_srcdir)/../zlib/gzlib.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzlib.c
+
+libgphobos2_t_la-gzread.lo: $(top_srcdir)/../zlib/gzread.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzread.lo `test -f '$(top_srcdir)/../zlib/gzread.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzread.c
+
+libgphobos2_t_la-gzwrite.lo: $(top_srcdir)/../zlib/gzwrite.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzwrite.lo `test -f '$(top_srcdir)/../zlib/gzwrite.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzwrite.c
+
+libgphobos2_t_la-infback.lo: $(top_srcdir)/../zlib/infback.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-infback.lo `test -f '$(top_srcdir)/../zlib/infback.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/infback.c
+
+libgphobos2_t_la-inffast.lo: $(top_srcdir)/../zlib/inffast.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-inffast.lo `test -f '$(top_srcdir)/../zlib/inffast.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inffast.c
+
+libgphobos2_t_la-inflate.lo: $(top_srcdir)/../zlib/inflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-inflate.lo `test -f '$(top_srcdir)/../zlib/inflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inflate.c
+
+libgphobos2_t_la-inftrees.lo: $(top_srcdir)/../zlib/inftrees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-inftrees.lo `test -f '$(top_srcdir)/../zlib/inftrees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inftrees.c
+
+libgphobos2_t_la-trees.lo: $(top_srcdir)/../zlib/trees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-trees.lo `test -f '$(top_srcdir)/../zlib/trees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/trees.c
+
+libgphobos2_t_la-uncompr.lo: $(top_srcdir)/../zlib/uncompr.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-uncompr.lo `test -f '$(top_srcdir)/../zlib/uncompr.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/uncompr.c
+
+libgphobos2_t_la-zutil.lo: $(top_srcdir)/../zlib/zutil.c
+	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-zutil.lo `test -f '$(top_srcdir)/../zlib/zutil.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/zutil.c
+
+adler32.o: $(top_srcdir)/../zlib/adler32.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o adler32.o `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c
+
+adler32.obj: $(top_srcdir)/../zlib/adler32.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o adler32.obj `if test -f '$(top_srcdir)/../zlib/adler32.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/adler32.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/adler32.c'; fi`
+
+compress.o: $(top_srcdir)/../zlib/compress.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o compress.o `test -f '$(top_srcdir)/../zlib/compress.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/compress.c
+
+compress.obj: $(top_srcdir)/../zlib/compress.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o compress.obj `if test -f '$(top_srcdir)/../zlib/compress.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/compress.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/compress.c'; fi`
+
+crc32.o: $(top_srcdir)/../zlib/crc32.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o crc32.o `test -f '$(top_srcdir)/../zlib/crc32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/crc32.c
+
+crc32.obj: $(top_srcdir)/../zlib/crc32.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o crc32.obj `if test -f '$(top_srcdir)/../zlib/crc32.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/crc32.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/crc32.c'; fi`
+
+deflate.o: $(top_srcdir)/../zlib/deflate.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o deflate.o `test -f '$(top_srcdir)/../zlib/deflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/deflate.c
+
+deflate.obj: $(top_srcdir)/../zlib/deflate.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o deflate.obj `if test -f '$(top_srcdir)/../zlib/deflate.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/deflate.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/deflate.c'; fi`
+
+gzclose.o: $(top_srcdir)/../zlib/gzclose.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzclose.o `test -f '$(top_srcdir)/../zlib/gzclose.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzclose.c
+
+gzclose.obj: $(top_srcdir)/../zlib/gzclose.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzclose.obj `if test -f '$(top_srcdir)/../zlib/gzclose.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/gzclose.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/gzclose.c'; fi`
+
+gzlib.o: $(top_srcdir)/../zlib/gzlib.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzlib.o `test -f '$(top_srcdir)/../zlib/gzlib.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzlib.c
+
+gzlib.obj: $(top_srcdir)/../zlib/gzlib.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzlib.obj `if test -f '$(top_srcdir)/../zlib/gzlib.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/gzlib.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/gzlib.c'; fi`
+
+gzread.o: $(top_srcdir)/../zlib/gzread.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzread.o `test -f '$(top_srcdir)/../zlib/gzread.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzread.c
+
+gzread.obj: $(top_srcdir)/../zlib/gzread.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzread.obj `if test -f '$(top_srcdir)/../zlib/gzread.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/gzread.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/gzread.c'; fi`
+
+gzwrite.o: $(top_srcdir)/../zlib/gzwrite.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzwrite.o `test -f '$(top_srcdir)/../zlib/gzwrite.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzwrite.c
+
+gzwrite.obj: $(top_srcdir)/../zlib/gzwrite.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gzwrite.obj `if test -f '$(top_srcdir)/../zlib/gzwrite.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/gzwrite.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/gzwrite.c'; fi`
+
+infback.o: $(top_srcdir)/../zlib/infback.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o infback.o `test -f '$(top_srcdir)/../zlib/infback.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/infback.c
+
+infback.obj: $(top_srcdir)/../zlib/infback.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o infback.obj `if test -f '$(top_srcdir)/../zlib/infback.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/infback.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/infback.c'; fi`
+
+inffast.o: $(top_srcdir)/../zlib/inffast.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o inffast.o `test -f '$(top_srcdir)/../zlib/inffast.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inffast.c
+
+inffast.obj: $(top_srcdir)/../zlib/inffast.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o inffast.obj `if test -f '$(top_srcdir)/../zlib/inffast.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/inffast.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/inffast.c'; fi`
+
+inflate.o: $(top_srcdir)/../zlib/inflate.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o inflate.o `test -f '$(top_srcdir)/../zlib/inflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inflate.c
+
+inflate.obj: $(top_srcdir)/../zlib/inflate.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o inflate.obj `if test -f '$(top_srcdir)/../zlib/inflate.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/inflate.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/inflate.c'; fi`
+
+inftrees.o: $(top_srcdir)/../zlib/inftrees.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o inftrees.o `test -f '$(top_srcdir)/../zlib/inftrees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inftrees.c
+
+inftrees.obj: $(top_srcdir)/../zlib/inftrees.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o inftrees.obj `if test -f '$(top_srcdir)/../zlib/inftrees.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/inftrees.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/inftrees.c'; fi`
+
+trees.o: $(top_srcdir)/../zlib/trees.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o trees.o `test -f '$(top_srcdir)/../zlib/trees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/trees.c
+
+trees.obj: $(top_srcdir)/../zlib/trees.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o trees.obj `if test -f '$(top_srcdir)/../zlib/trees.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/trees.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/trees.c'; fi`
+
+uncompr.o: $(top_srcdir)/../zlib/uncompr.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o uncompr.o `test -f '$(top_srcdir)/../zlib/uncompr.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/uncompr.c
+
+uncompr.obj: $(top_srcdir)/../zlib/uncompr.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o uncompr.obj `if test -f '$(top_srcdir)/../zlib/uncompr.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/uncompr.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/uncompr.c'; fi`
+
+zutil.o: $(top_srcdir)/../zlib/zutil.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o zutil.o `test -f '$(top_srcdir)/../zlib/zutil.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/zutil.c
+
+zutil.obj: $(top_srcdir)/../zlib/zutil.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o zutil.obj `if test -f '$(top_srcdir)/../zlib/zutil.c'; then $(CYGPATH_W) '$(top_srcdir)/../zlib/zutil.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/../zlib/zutil.c'; fi`
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
+	-rm -rf etc/c/.libs etc/c/_libs
+	-rm -rf std/.libs std/_libs
+	-rm -rf std/algorithm/.libs std/algorithm/_libs
+	-rm -rf std/c/.libs std/c/_libs
+	-rm -rf std/c/freebsd/.libs std/c/freebsd/_libs
+	-rm -rf std/c/linux/.libs std/c/linux/_libs
+	-rm -rf std/c/osx/.libs std/c/osx/_libs
+	-rm -rf std/c/windows/.libs std/c/windows/_libs
+	-rm -rf std/container/.libs std/container/_libs
+	-rm -rf std/digest/.libs std/digest/_libs
+	-rm -rf std/experimental/logger/.libs std/experimental/logger/_libs
+	-rm -rf std/internal/.libs std/internal/_libs
+	-rm -rf std/internal/digest/.libs std/internal/digest/_libs
+	-rm -rf std/internal/math/.libs std/internal/math/_libs
+	-rm -rf std/internal/test/.libs std/internal/test/_libs
+	-rm -rf std/internal/windows/.libs std/internal/windows/_libs
+	-rm -rf std/net/.libs std/net/_libs
+	-rm -rf std/range/.libs std/range/_libs
+	-rm -rf std/regex/.libs std/regex/_libs
+	-rm -rf std/regex/internal/.libs std/regex/internal/_libs
+	-rm -rf std/windows/.libs std/windows/_libs
+
+ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
+	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
+	      END { if (nonempty) { for (i in files) print i; }; }'`; \
+	mkid -fID $$unique
 tags: TAGS
-TAGS:
 
+TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+		$(TAGS_FILES) $(LISP)
+	set x; \
+	here=`pwd`; \
+	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
+	      END { if (nonempty) { for (i in files) print i; }; }'`; \
+	shift; \
+	if test -z "$(ETAGS_ARGS)$$*$$unique"; then :; else \
+	  test -n "$$unique" || unique=$$empty_fix; \
+	  if test $$# -gt 0; then \
+	    $(ETAGS) $(ETAGSFLAGS) $(AM_ETAGSFLAGS) $(ETAGS_ARGS) \
+	      "$$@" $$unique; \
+	  else \
+	    $(ETAGS) $(ETAGSFLAGS) $(AM_ETAGSFLAGS) $(ETAGS_ARGS) \
+	      $$unique; \
+	  fi; \
+	fi
 ctags: CTAGS
-CTAGS:
+CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+		$(TAGS_FILES) $(LISP)
+	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '{ files[$$0] = 1; nonempty = 1; } \
+	      END { if (nonempty) { for (i in files) print i; }; }'`; \
+	test -z "$(CTAGS_ARGS)$$unique" \
+	  || $(CTAGS) $(CTAGSFLAGS) $(AM_CTAGSFLAGS) $(CTAGS_ARGS) \
+	     $$unique
 
+GTAGS:
+	here=`$(am__cd) $(top_builddir) && pwd` \
+	  && $(am__cd) $(top_srcdir) \
+	  && gtags -i $(GTAGS_ARGS) "$$here"
+
+distclean-tags:
+	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) $(check_LTLIBRARIES) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-am
-all-am: Makefile all-local
+all-am: Makefile $(LTLIBRARIES)
 installdirs:
+	for dir in "$(DESTDIR)$(toolexeclibdir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -365,17 +1511,42 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f ../libdruntime/$(am__dirstamp)
+	-rm -f etc/c/$(am__dirstamp)
+	-rm -f std/$(am__dirstamp)
+	-rm -f std/algorithm/$(am__dirstamp)
+	-rm -f std/c/$(am__dirstamp)
+	-rm -f std/c/freebsd/$(am__dirstamp)
+	-rm -f std/c/linux/$(am__dirstamp)
+	-rm -f std/c/osx/$(am__dirstamp)
+	-rm -f std/c/windows/$(am__dirstamp)
+	-rm -f std/container/$(am__dirstamp)
+	-rm -f std/digest/$(am__dirstamp)
+	-rm -f std/experimental/logger/$(am__dirstamp)
+	-rm -f std/internal/$(am__dirstamp)
+	-rm -f std/internal/digest/$(am__dirstamp)
+	-rm -f std/internal/math/$(am__dirstamp)
+	-rm -f std/internal/test/$(am__dirstamp)
+	-rm -f std/internal/windows/$(am__dirstamp)
+	-rm -f std/net/$(am__dirstamp)
+	-rm -f std/range/$(am__dirstamp)
+	-rm -f std/regex/$(am__dirstamp)
+	-rm -f std/regex/internal/$(am__dirstamp)
+	-rm -f std/windows/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-local mostlyclean-am
+clean-am: clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
+	clean-libtool clean-local clean-toolexeclibLTLIBRARIES \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -f Makefile
-distclean-am: clean-am distclean-generic
+distclean-am: clean-am distclean-compile distclean-generic \
+	distclean-tags
 
 dvi: dvi-am
 
@@ -395,7 +1566,7 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-exec-local
+install-exec-am: install-toolexeclibLTLIBRARIES
 
 install-html: install-html-am
 
@@ -423,7 +1594,8 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-generic
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
 pdf: pdf-am
 
@@ -433,90 +1605,67 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-toolexeclibLTLIBRARIES
 
 .MAKE: check-am install-am install-strip
 
-.PHONY: all all-am all-local check check-am check-local clean \
-	clean-generic clean-local distclean distclean-generic dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-data-local install-dvi \
-	install-dvi-am install-exec install-exec-am install-exec-local \
-	install-html install-html-am install-info install-info-am \
-	install-man install-pdf install-pdf-am install-ps \
-	install-ps-am install-strip installcheck installcheck-am \
+.PHONY: CTAGS GTAGS all all-am check check-am check-local clean \
+	clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
+	clean-libtool clean-local clean-toolexeclibLTLIBRARIES ctags \
+	distclean distclean-compile distclean-generic \
+	distclean-libtool distclean-tags dvi dvi-am html html-am info \
+	info-am install install-am install-data install-data-am \
+	install-data-local install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip \
+	install-toolexeclibLTLIBRARIES installcheck installcheck-am \
 	installdirs maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am uninstall \
-	uninstall-am
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags uninstall \
+	uninstall-am uninstall-toolexeclibLTLIBRARIES
 
 
-all-local: libgphobos2.a
+# Compile D into normal object files
+.d.o:
+	$(GDC) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
-%.o : %.d
-	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
+# Compile D sources with libtool
+.d.lo:
+	$(LTDCOMPILE) $(DFLAGS) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
-# %.o : %.c
-zlib/%.o: $(top_srcdir)/../zlib/%.c
-	@test -d zlib || mkdir -p zlib
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+# Unittest rules. Unfortunately we can't use _DFLAGS in automake without
+# explicit D support, so use this hack.
+# Compile D sources with libtool and test flags
+%.t.lo : %.d
+	$(LTDCOMPILE) $(DFLAGSX) $(MULTIFLAGS) $(D_EXTRA_DFLAGS) -c -o $@ $<
 
-# Use .c.o to override Automake
-.c.o:
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
+# Compile objects for static linking with test flags
+# Automake breaks empty rules, so use the shell NOP :
+%.t.o : %.t.lo
+	:
 
-.S.o:
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
-
-%.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
-
-%.t.o : %.o
-	cp $< $@
-
-libgphobos2.a : $(ALL_PHOBOS_OBJS) ../libdruntime/libgdruntime.a
-	cp ../libdruntime/libgdruntime.a libgphobos2.a
-	$(AR) -q $@ $(ALL_PHOBOS_OBJS)
-	$(RANLIB) $@
-
-libgphobos2_t.a : $(ALL_PHOBOS_OBJS:.o=.t.o)
-	$(AR) -r $@ $(ALL_PHOBOS_OBJS:.o=.t.o)
-	$(RANLIB) $@
-
-unittest: libgphobos2.a libgphobos2_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -L../libdruntime -lgphobos2_t -lgdruntime $(LIBS) $(DL_LIBS)
-
-#--------------------------------------#
-# Install, doc, etc targets
-
-install-exec-local: libgphobos2.a
-	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
-	$(INSTALL) libgphobos2.a $(DESTDIR)$(toolexeclibdir)
-	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgphobos2.a
-
-install-data-local: libgphobos2.a
-	for i in etc/c std std/c std/c/freebsd \
-	    std/c/linux std/c/osx std/c/windows \
-	    std/algorithm std/experimental/logger \
-	    std/container std/digest std/internal \
-	    std/internal/digest std/internal/math \
-	    std/internal/windows std/net std/range \
-	    std/regex std/regex/internal std/windows; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(srcdir)/$$i/*.d; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
-
+# Extra install and clean rules.
+# This does not delete the .libs/.t.o files, but deleting
+# the .lo is good enough to rerun the rules
 clean-local:
-	rm -f $(ALL_PHOBOS_OBJS)
-	rm -f $(ALL_PHOBOS_OBJS:.o=.t.o)
-	rm -f unittest.o
-	rm -f unittest$(EXEEXT)
-	rm -f libgphobos2.a
-	rm -f libgphobos2_t.a
+	rm -f $(PHOBOS_TEST_LOBJECTS)
+	rm -f $(PHOBOS_TEST_OBJECTS)
 
-check-local: unittest
-	./unittest
+check-local:
+@ENABLE_STATIC_TRUE@	./unittest_static$(EXEEXT)
+@ENABLE_SHARED_TRUE@	./unittest$(EXEEXT)
+
+# Handles generated files as well
+install-data-local:
+	for file in $(ALL_PHOBOS_INSTALL_DSOURCES); do \
+	  if test -f $$file; then \
+	    $(INSTALL_HEADER) -D $$file $(DESTDIR)$(gdc_include_dir)/$$file ; \
+	  else \
+	    $(INSTALL_HEADER) -D $(srcdir)/$$file \
+	      $(DESTDIR)$(gdc_include_dir)/$$file ; \
+	  fi ; \
+	done
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
