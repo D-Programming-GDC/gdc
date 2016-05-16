@@ -965,9 +965,9 @@ public:
 	Declaration *decl = ((VarExp *) e->e1)->var;
 	if (decl->storage_class & (STCout | STCref))
 	  {
-	    tree t1 = build_expr(e->e1);
 	    tree t2 = convert_for_assignment(build_expr(e->e2),
 					     e->e2->type, e->e1->type);
+	    tree t1 = build_expr(e->e1);
 	    // Want reference to lhs, not indirect ref.
 	    t1 = TREE_OPERAND(t1, 0);
 	    t2 = build_address(t2);
@@ -1899,31 +1899,31 @@ public:
   //
   void visit(DeclarationExp *e)
   {
-    VarDeclaration *vd = e->declaration->isVarDeclaration();
-
-    if (vd != NULL)
-      {
-	if (!vd->isStatic() && !(vd->storage_class & STCmanifest)
-	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
-	  {
-	    // Put variable on list of things needing destruction
-	    if (vd->edtor && !vd->noscope)
-	      cfun->language->vars_in_scope.safe_push(vd);
-	  }
-      }
-
+    // Compile the declaration.
     push_stmt_list();
     e->declaration->toObjFile();
     tree result = pop_stmt_list();
 
     // Construction of an array for typesafe-variadic function arguments
-    // can cause an empty STMT_LIST here.  This can causes problems
-    // during gimplification.
-    if (TREE_CODE (result) == STATEMENT_LIST
-	&& !STATEMENT_LIST_HEAD (result))
+    // can cause an empty STMT_LIST here.
+    // This can causes problems during gimplification.
+    if (TREE_CODE (result) == STATEMENT_LIST && !STATEMENT_LIST_HEAD (result))
       this->result_ = build_empty_stmt(input_location);
     else
       this->result_ = result;
+
+    // Maybe put variable on list of things needing destruction.
+    VarDeclaration *vd = e->declaration->isVarDeclaration();
+    if (vd != NULL)
+      {
+	if (!vd->isStatic() && !(vd->storage_class & STCmanifest)
+	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
+	  {
+	    if (vd->edtor && !vd->noscope)
+	      cfun->language->vars_in_scope.safe_push(vd);
+	  }
+      }
+
   }
 
   //
@@ -2847,8 +2847,9 @@ build_expr_dtor(Expression *e)
   // Codegen can be improved by determining if no exceptions can be thrown
   // between the ctor and dtor, and eliminating the ctor and dtor.
 
-  // Build an expression that calls destructors on all the variables going
-  // going out of the scope starti .. endi.
+  // Build an expression that calls the destructors on all the variables
+  // going out of the scope between starti and endi.
+  // All dtors are executed in reverse order.
   tree tdtors = NULL_TREE;
   for (size_t i = starti; i != endi; ++i)
     {
@@ -2857,8 +2858,7 @@ build_expr_dtor(Expression *e)
 	{
 	  cfun->language->vars_in_scope[i] = NULL;
 	  tree td = build_expr(vd->edtor);
-	  // Execute in reverse order.
-	  tdtors = maybe_compound_expr(tdtors, td);
+	  tdtors = maybe_compound_expr(td, tdtors);
 	}
     }
 
