@@ -1,3 +1,11 @@
+2016-05-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(AssignExp)): Build the rhs constructor
+	before the lhs declaration.
+	(ExprVisitor::visit(DeclarationExp)): Compile the declaration and
+	initializer before pushing it to vars_in_scope.
+	(build_expr_dtor): Compound all dtors in reverse.
+
 2016-05-16  Johannes Pfau  <johannespfau@gmail.com>
 
 	* expr.cc (ExprVisitor::visit(IdentityExp*)): Remove side-effects
