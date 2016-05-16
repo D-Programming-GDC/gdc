@@ -1,3 +1,11 @@
+2016-05-16  Johannes Pfau  <johannespfau@gmail.com>
+
+	* expr.cc (ExprVisitor::visit(IdentityExp*)): Remove side-effects
+	before comparing two floating point types.
+	* d-codegen.cc (build_struct_comparison): Remove side-effects
+	before comparing two values.
+	(build_boolop): Likewise.
+
 2016-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-todt.cc (Expression::toDt): Remove function and all overrides.
