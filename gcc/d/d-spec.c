@@ -62,12 +62,18 @@
 #endif
 
 #ifndef LIBPHOBOS
-#define LIBPHOBOS "gphobos"
+#define LIBPHOBOS "gphobos2"
 #endif
 #ifndef LIBPHOBOS_PROFILE
 #define LIBPHOBOS_PROFILE LIBPHOBOS
 #endif
 
+#ifndef LIBDRUNTIME
+#define LIBDRUNTIME "gdruntime"
+#endif
+#ifndef LIBDRUNTIME_PROFILE
+#define LIBDRUNTIME_PROFILE LIBDRUNTIME
+#endif
 
 void
 lang_specific_driver (cl_decoded_option **in_decoded_options,
@@ -371,7 +377,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* There is one extra argument added here for the runtime
      library: -lgphobos.  The -pthread argument is added by
      setting need_thread. */
-  num_args = argc + added + need_math + shared_libgcc + (library > 0) * 4 + 2;
+  num_args = argc + added + need_math + shared_libgcc + (library > 0) * 5 + 2;
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
@@ -481,6 +487,10 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 #endif
 
       generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
+		       CL_DRIVER, &new_decoded_options[j]);
+      added_libraries++;
+      j++;
+      generate_option (OPT_l, saw_profile_flag ? LIBDRUNTIME_PROFILE : LIBDRUNTIME, 1,
 		       CL_DRIVER, &new_decoded_options[j]);
       added_libraries++;
       j++;

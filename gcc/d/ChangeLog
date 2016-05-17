@@ -1,3 +1,34 @@
+2016-05-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(AssignExp)): Build the rhs constructor
+	before the lhs declaration.
+	(ExprVisitor::visit(DeclarationExp)): Compile the declaration and
+	initializer before pushing it to vars_in_scope.
+	(build_expr_dtor): Compound all dtors in reverse.
+
+2016-05-16  Johannes Pfau  <johannespfau@gmail.com>
+
+	* expr.cc (ExprVisitor::visit(IdentityExp*)): Remove side-effects
+	before comparing two floating point types.
+	* d-codegen.cc (build_struct_comparison): Remove side-effects
+	before comparing two values.
+	(build_boolop): Likewise.
+
+2016-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-todt.cc (Expression::toDt): Remove function and all overrides.
+	Update all callers to use build_expr.
+	* expr.cc (ExprVisitor::visit(SymOffExp)): Move check for non-constant
+	expressions in static initializer data to ...
+	(build_expr): ... here.
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Build array of indexes
+	directly using build_artificial_decl.
+
+2016-05-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(IdentityExp*)): Remove side-effects
+	before comparing two dynamic arrays.
+
 2016-05-14  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (get_decl_tree): First check if cfun is set.
@@ -6,7 +37,7 @@
 	(VarExp::toDt): Likewise.
 	(FuncExp::toDt): Likewise.
 	(VectorExp::toDt): Likewise.
-	* expr.cc (ExprVisitor::visit(SymbolExp)): Remove function
+	* expr.cc (ExprVisitor::visit(SymbolExp)): Remove function.
 	(ExprVisitor::visit(SymOffExp)): New function.
 	(ExprVisitor::visit(VarExp)): New function.
 	(ExprVisitor::visit(StructLiteralExp)): Don't return static
