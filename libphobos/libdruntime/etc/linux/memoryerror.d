@@ -14,7 +14,9 @@
 
 module etc.linux.memoryerror;
 
-version (linux)
+version (GNU)
+{}
+else version (linux)
 {
     version (X86)
         version = MemoryErrorSupported;

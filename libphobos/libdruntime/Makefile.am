@@ -15,186 +15,239 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-OUR_CFLAGS=@DEFS@ -I ../ -I $(srcdir)/gcc -I $(srcdir)/../zlib
+# Include D build rules
+include $(top_srcdir)/d_rules.am
+
+# Make sure GDC can find libdruntime include files
 D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(srcdir) -I .
-ALL_DFLAGS = $(DFLAGS) $(D_EXTRA_DFLAGS) $(MULTIFLAGS)
 
-toolexecdir = $(phobos_toolexecdir)
-toolexeclibdir = $(phobos_toolexeclibdir)
+# Install all D and DI files
+ALL_DRUNTIME_INSTALL_DSOURCES = $(DRUNTIME_DSOURCES) $(DRUNTIME_DSOURCES_GC) \
+	$(DRUNTIME_DSOURCES_GCSTUB) $(DRUNTIME_DSOURCES_POSIX) \
+	$(DRUNTIME_DSOURCES_OSX) $(DRUNTIME_DSOURCES_FREEBSD) \
+	$(DRUNTIME_DSOURCES_LINUX) $(DRUNTIME_DSOURCES_WINDOWS) \
+	$(DRUNTIME_DSOURCES_SOLARIS) $(DRUNTIME_DSOURCES_GENERATED) \
+	$(DRUNTIME_DISOURCES)
 
-all-local: libgdruntime.a
-
-SUFFIXES = .d
-
-%.o : %.d
-	$(GDC) -o $@ $(ALL_DFLAGS) -c $<
-
-# %.o : %.c
-# Use .c.o to override Automake
-.c.o:
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
-
-.S.o:
-	$(CC) -o $@ $(OUR_CFLAGS) $(CFLAGS) -c $<
-
-%.t.o : %.d
-	$(GDC) -o $@ $(DFLAGSX) $(D_EXTRA_DFLAGS) $(MULTIFLAGS) -c $<
-
-%.t.o : %.o
-	cp $< $@
-
-
-#--------------------------------------#
-# GDC Runtime
-
-BASE_OBJS=object.o
-
-RUNTIME_OBJS=rt/aaA.o rt/aApply.o rt/aApplyR.o rt/adi.o rt/arrayassign.o \
-	     rt/arraycast.o rt/arraycat.o rt/cast_.o rt/critical_.o \
-	     rt/config.o rt/deh.o rt/dmain2.o rt/minfo.o rt/memory.o \
-	     rt/invariant.o rt/lifetime.o rt/monitor_.o rt/obj.o rt/qsort.o \
-	     rt/switch_.o rt/tlsgc.o
-
-CORE_OBJS=core/atomic.o core/bitop.o core/checkedint.o core/cpuid.o \
-	  core/demangle.o core/exception.o core/math.o core/memory.o \
-	  core/runtime.o core/simd.o core/thread.o core/threadasm.o \
-	  core/time.o core/vararg.o core/internal/convert.o \
-	  core/internal/hash.o core/internal/traits.o \
-	  core/sync/barrier.o core/sync/condition.o core/sync/config.o \
-	  core/sync/exception.o core/sync/mutex.o core/sync/rwmutex.o \
-	  core/sync/semaphore.o
-
-GCC_OBJS=gcc/atomics.o gcc/backtrace.o gcc/builtins.o gcc/deh.o \
-	 gcc/libbacktrace.o gcc/unwind/pe.o
-
-UTIL_OBJS=rt/util/array.o rt/util/hash.o rt/util/random.o rt/util/string.o \
-	  rt/util/typeinfo.o rt/util/utf.o \
-	  rt/util/container/array.o rt/util/container/common.o \
-	  rt/util/container/hashtab.o rt/util/container/treap.o
-
-TI=ti_AC.o ti_Acdouble.o ti_Acfloat.o ti_Acreal.o ti_Adouble.o ti_Afloat.o \
-   ti_Ag.o ti_Aint.o ti_Along.o ti_Areal.o ti_Ashort.o ti_byte.o ti_C.o \
-   ti_cdouble.o ti_cfloat.o ti_char.o ti_creal.o ti_dchar.o ti_delegate.o \
-   ti_double.o ti_float.o ti_idouble.o ti_ifloat.o ti_int.o ti_ireal.o \
-   ti_long.o ti_ptr.o ti_real.o ti_short.o ti_ubyte.o ti_uint.o ti_ulong.o \
-   ti_ushort.o ti_void.o ti_wchar.o
-
-DRUNTIME_OBJS=@DRUNTIME_OBJS@
-
-DRUNTIME_OBJS+=$(BASE_OBJS) $(RUNTIME_OBJS) $(UTIL_OBJS) \
-	       $(subst ti_,rt/typeinfo/ti_,$(TI))
-
-# OS specific
-RT_STDC_OBJS=core/stdc/config.o core/stdc/ctype.o core/stdc/errno.o \
-	     core/stdc/errno_.o core/stdc/fenv.o core/stdc/math.o \
-	     core/stdc/signal.o core/stdc/stdarg.o core/stdc/stdio.o \
-	     core/stdc/stdlib.o core/stdc/stdint.o core/stdc/stddef.o \
-	     core/stdc/string.o core/stdc/time.o core/stdc/wchar_.o
-
-RT_LINUX_OBJS=core/sys/linux/stdio.o core/sys/linux/tipc.o
-
-RT_FREEBSD_OBJS=core/sys/freebsd/execinfo.o core/sys/freebsd/sys/event.o
-
-RT_OSX_OBJS=core/sys/osx/mach/kern_return.o core/sys/osx/mach/port.o \
-	    core/sys/osx/mach/semaphore.o core/sys/osx/mach/thread_act.o \
-	    core/sys/osx/pthread.o
-
-RT_POSIX_OBJS=core/sys/posix/dirent.o core/sys/posix/netdb.o \
-	      core/sys/posix/signal.o core/sys/posix/sys/ioctl.o \
-	      core/sys/posix/sys/resource.o core/sys/posix/sys/select.o \
-	      core/sys/posix/sys/socket.o core/sys/posix/sys/stat.o \
-	      core/sys/posix/sys/utsname.o core/sys/posix/sys/wait.o \
-	      core/sys/posix/arpa/inet.o core/sys/posix/netinet/in_.o
-
-RT_SOLARIS_OBJS=core/sys/solaris/sys/priocntl.o core/sys/solaris/sys/types.o \
-		core/sys/solaris/sys/procset.o
-
-RT_WINDOWS_OBJS=core/sys/windows/com.o core/sys/windows/dbghelp.o \
-		core/sys/windows/dll.o core/sys/windows/stacktrace.o \
-		core/sys/windows/stat.o core/sys/windows/threadaux.o \
-		core/sys/windows/windows.o core/sys/windows/winsock2.o
-
-D_GC_MODULES=@D_GC_MODULES@
-
-ALL_DRUNTIME_OBJS = $(DRUNTIME_OBJS) $(CORE_OBJS) $(D_GC_MODULES) $(GCC_OBJS)
-
-libgdruntime.a : $(ALL_DRUNTIME_OBJS)
-if BACKTRACE_SUPPORTED
-	cp -f $(LIBBACKTRACE_LIB) $@
-	$(AR) -q $@ $(ALL_DRUNTIME_OBJS)
+# Setup source files depending on configure
+ALL_DRUNTIME_COMPILE_DSOURCES = $(DRUNTIME_DSOURCES)
+# GC sources
+if DRUNTIME_GC_ENABLE
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_GC)
 else
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS)
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_GCSTUB)
 endif
-	$(RANLIB) $@
-
-libgdruntime_t.a : $(ALL_DRUNTIME_OBJS:.o=.t.o)
+# OS specific sources
+if DRUNTIME_OS_UNIX
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_POSIX)
+endif
+if DRUNTIME_OS_DARWIN
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_OSX)
+endif
+if DRUNTIME_OS_BSD
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_FREEBSD)
+endif
+if DRUNTIME_OS_LINUX
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_LINUX)
+endif
+if DRUNTIME_OS_MINGW
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_WINDOWS)
+endif
+if DRUNTIME_OS_SOLARIS
+    ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_SOLARIS)
+endif
+# Generated by configure
+ALL_DRUNTIME_COMPILE_DSOURCES += $(DRUNTIME_DSOURCES_GENERATED)
+# libbacktrace support
 if BACKTRACE_SUPPORTED
-	cp -f $(LIBBACKTRACE_LIB) $@
-	$(AR) -q $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
-else
-	$(AR) -r $@ $(ALL_DRUNTIME_OBJS:.o=.t.o)
+    BACKTRACE_LIB = $(LIBBACKTRACE_DIR)/libbacktrace.la
 endif
-	$(RANLIB) $@
 
-unittest: libgdruntime.a libgdruntime_t.a unittest.o
-	$(GDC) -o $@ $(CFLAGS) unittest.o -nophoboslib -L./ -lgdruntime_t $(LIBS) $(DL_LIBS)
+ALL_DRUNTIME_SOURCES = $(ALL_DRUNTIME_COMPILE_DSOURCES) $(DRUNTIME_CSOURCES) \
+	$(DRUNTIME_SSOURCES)
+DRUNTIME_TEST_LOBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.lo)
+REAL_DRUNTIME_TEST_OBJECTS  = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.o)
+# Workaround issue #
+DRUNTIME_TEST_OBJECTS  = $(filter-out rt/util/typeinfo.t.o \
+	core/internal/convert.t.o, $(REAL_DRUNTIME_TEST_OBJECTS)) \
+	rt/util/typeinfo.o core/internal/convert.o
 
-#--------------------------------------#
-# Install, doc, etc targets
 
-install-exec-local: libgdruntime.a
-	$(mkinstalldirs) $(DESTDIR)$(toolexeclibdir)
-	$(INSTALL) libgdruntime.a $(DESTDIR)$(toolexeclibdir)
-	$(RANLIB) $(DESTDIR)$(toolexeclibdir)/libgdruntime.a
 
-install-data-local: libgdruntime.a
-	$(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)
-	for i in __entrypoint.di object.d; do \
-	    $(INSTALL_HEADER) $(srcdir)/$$i $(DESTDIR)$(gdc_include_dir); \
-	done
-	for i in core core/internal core/stdc core/sync \
-	    core/sys/freebsd core/sys/freebsd/sys \
-	    core/sys/linux core/sys/linux/sys \
-	    core/sys/osx core/sys/osx/mach core/sys/osx/sys \
-	    core/sys/posix core/sys/posix/arpa core/sys/posix/net \
-	    core/sys/posix/netinet core/sys/posix/sys \
-	    core/sys/solaris core/sys/solaris/sys \
-	    core/sys/windows; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(srcdir)/$$i/*.d; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
-	for i in gcc gcc/unwind; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $(srcdir)/$$i/*.d; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
-# Install files build generated by configure script
-	for i in gcc; do \
-	    $(mkinstalldirs) $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    for f in $$i/*.d; do \
-		$(INSTALL_HEADER) $$f $(DESTDIR)$(gdc_include_dir)/$$i; \
-	    done; \
-	done
+# Main library build definitions
+check_PROGRAMS =
+if ENABLE_SHARED
+  check_LTLIBRARIES = libgdruntime_t.la
+  check_PROGRAMS += unittest
+endif
+if ENABLE_STATIC
+  check_PROGRAMS += unittest_static
+endif
 
+toolexeclib_LTLIBRARIES = libgdruntime.la
+libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
+libgdruntime_la_LIBTOOLFLAGS = --tag=D
+libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER) \
+    -static
+libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
+
+# For static unittest, link objects directly
+unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
+    $(DRUNTIME_SSOURCES)
+unittest_static_LIBTOOLFLAGS = --tag=D
+unittest_static_LDFLAGS = -Xcompiler -nophoboslib
+unittest_static_LDADD = $(DRUNTIME_TEST_OBJECTS) $(BACKTRACE_LIB)
+EXTRA_unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS)
+
+# For unittest with dynamic library
+libgdruntime_t_la_SOURCES = $(DRUNTIME_CSOURCES) $(DRUNTIME_SSOURCES)
+libgdruntime_t_la_LIBTOOLFLAGS = --tag=D
+# Automake by default does not generate shared libs for non-installed
+# libraries. Use -rpath to force shared lib generation.
+libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
+libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
+EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
+
+# For unittest
+unittest_SOURCES = test_runner.d
+unittest_LIBTOOLFLAGS = --tag=D
+unittest_LDFLAGS = -Xcompiler -nophoboslib
+unittest_LDADD = libgdruntime_t.la
+
+# Extra install and clean rules.
+# This does not delete the .libs/.t.o files, but deleting
+# the .lo is good enough to rerun the rules
 clean-local:
-	rm -f $(ALL_DRUNTIME_OBJS)
-	rm -f $(ALL_DRUNTIME_OBJS:.o=.t.o)
-	rm -f unittest.o
-	rm -f unittest$(EXEEXT)
-	rm -f libgdruntime.a
-	rm -f libgdruntime_t.a
+	rm -f $(DRUNTIME_TEST_LOBJECTS)
+	rm -f $(DRUNTIME_TEST_OBJECTS)
 
-check-local: unittest
-	./unittest
+check-local:
+if ENABLE_STATIC
+	./unittest_static$(EXEEXT)
+endif
+if ENABLE_SHARED
+	./unittest$(EXEEXT)
+endif
 
-# Work around what appears to be a GNU make bug handling MAKEFLAGS
-# values defined in terms of make variables, as is the case for CC and
-# friends when we are called from the top level Makefile.
-AM_MAKEFLAGS = \
-	"gdc_include_dir=$(gdc_include_dir)"
+# Handles generated files as well
+install-data-local:
+	for file in $(ALL_DRUNTIME_INSTALL_DSOURCES); do \
+	  if test -f $$file; then \
+	    $(INSTALL_HEADER) -D $$file $(DESTDIR)$(gdc_include_dir)/$$file ; \
+	  else \
+	    $(INSTALL_HEADER) -D $(srcdir)/$$file \
+	      $(DESTDIR)$(gdc_include_dir)/$$file ; \
+	  fi ; \
+	done
 
-# Subdir rules rely on $(FLAGS_TO_PASS)
-FLAGS_TO_PASS = $(AM_MAKEFLAGS)
+
+DRUNTIME_DSOURCES_GENERATED = gcc/config.d gcc/libbacktrace.d
+# Source file definitions. Boring stuff, auto-generated with
+# https://gist.github.com/jpf91/8ad1dbc9902d6ad876313f134c6527d1
+# Can't use wildcards here:
+# https://www.gnu.org/software/automake/manual/html_node/Wildcards.html
+DRUNTIME_DISOURCES = __entrypoint.di
+
+DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
+	core/cpuid.d core/demangle.d core/exception.d core/internal/convert.d \
+	core/internal/hash.d core/internal/traits.d core/math.d core/memory.d \
+	core/runtime.d core/simd.d core/stdc/complex.d core/stdc/config.d \
+	core/stdc/ctype.d core/stdc/errno.d core/stdc/fenv.d \
+	core/stdc/float_.d core/stdc/inttypes.d core/stdc/limits.d \
+	core/stdc/locale.d core/stdc/math.d core/stdc/signal.d \
+	core/stdc/stdarg.d core/stdc/stddef.d core/stdc/stdint.d \
+	core/stdc/stdio.d core/stdc/stdlib.d core/stdc/string.d \
+	core/stdc/tgmath.d core/stdc/time.d core/stdc/wchar_.d \
+	core/stdc/wctype.d core/sync/barrier.d core/sync/condition.d \
+	core/sync/config.d core/sync/exception.d core/sync/mutex.d \
+	core/sync/rwmutex.d core/sync/semaphore.d core/thread.d core/time.d \
+	core/vararg.d etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d \
+	gcc/backtrace.d gcc/builtins.d gcc/deh.d gcc/unwind/arm.d \
+	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
+	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
+	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
+	rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d \
+	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/switch_.d rt/tlsgc.d \
+	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
+	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
+	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
+	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
+	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
+	rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d \
+	rt/typeinfo/ti_dchar.d rt/typeinfo/ti_delegate.d \
+	rt/typeinfo/ti_double.d rt/typeinfo/ti_float.d \
+	rt/typeinfo/ti_idouble.d rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d \
+	rt/typeinfo/ti_ireal.d rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d \
+	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
+	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
+	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
+	rt/util/container/array.d rt/util/container/common.d \
+	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
+	rt/util/random.d rt/util/string.d rt/util/typeinfo.d rt/util/utf.d
+
+DRUNTIME_DSOURCES_GC = gc/bits.d gc/config.d gc/gc.d gc/os.d \
+	gc/pooltable.d gc/proxy.d gc/stats.d
+
+DRUNTIME_DSOURCES_GCSTUB = gcstub/gc.d
+
+DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/com.d \
+	core/sys/windows/dbghelp.d core/sys/windows/dll.d \
+	core/sys/windows/stacktrace.d core/sys/windows/stat.d \
+	core/sys/windows/threadaux.d core/sys/windows/windows.d \
+	core/sys/windows/winsock2.d
+
+DRUNTIME_DSOURCES_POSIX = core/sys/posix/arpa/inet.d \
+	core/sys/posix/config.d core/sys/posix/dirent.d core/sys/posix/dlfcn.d \
+	core/sys/posix/fcntl.d core/sys/posix/grp.d core/sys/posix/inttypes.d \
+	core/sys/posix/net/if_.d core/sys/posix/netdb.d \
+	core/sys/posix/netinet/in_.d core/sys/posix/netinet/tcp.d \
+	core/sys/posix/poll.d core/sys/posix/pthread.d core/sys/posix/pwd.d \
+	core/sys/posix/sched.d core/sys/posix/semaphore.d \
+	core/sys/posix/setjmp.d core/sys/posix/signal.d core/sys/posix/stdio.d \
+	core/sys/posix/stdlib.d core/sys/posix/sys/ioctl.d \
+	core/sys/posix/sys/ipc.d core/sys/posix/sys/mman.d \
+	core/sys/posix/sys/msg.d core/sys/posix/sys/resource.d \
+	core/sys/posix/sys/select.d core/sys/posix/sys/shm.d \
+	core/sys/posix/sys/socket.d core/sys/posix/sys/stat.d \
+	core/sys/posix/sys/statvfs.d core/sys/posix/sys/time.d \
+	core/sys/posix/sys/types.d core/sys/posix/sys/uio.d \
+	core/sys/posix/sys/un.d core/sys/posix/sys/utsname.d \
+	core/sys/posix/sys/wait.d core/sys/posix/syslog.d \
+	core/sys/posix/termios.d core/sys/posix/time.d \
+	core/sys/posix/ucontext.d core/sys/posix/unistd.d \
+	core/sys/posix/utime.d
+
+DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
+	core/sys/freebsd/execinfo.d core/sys/freebsd/sys/cdefs.d \
+	core/sys/freebsd/sys/elf.d core/sys/freebsd/sys/elf32.d \
+	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
+	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
+	core/sys/freebsd/sys/mman.d core/sys/freebsd/time.d
+
+DRUNTIME_DSOURCES_SOLARIS = core/sys/solaris/dlfcn.d \
+	core/sys/solaris/elf.d core/sys/solaris/execinfo.d \
+	core/sys/solaris/libelf.d core/sys/solaris/link.d \
+	core/sys/solaris/sys/elf.d core/sys/solaris/sys/elf_386.d \
+	core/sys/solaris/sys/elf_SPARC.d core/sys/solaris/sys/elf_amd64.d \
+	core/sys/solaris/sys/elf_notes.d core/sys/solaris/sys/elftypes.d \
+	core/sys/solaris/sys/link.d core/sys/solaris/sys/priocntl.d \
+	core/sys/solaris/sys/procset.d core/sys/solaris/sys/types.d
+
+DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
+	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
+	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
+	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
+	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
+	core/sys/osx/sys/cdefs.d core/sys/osx/sys/mman.d
+
+DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
+	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
+	core/sys/linux/errno.d core/sys/linux/execinfo.d core/sys/linux/link.d \
+	core/sys/linux/stdio.d core/sys/linux/sys/inotify.d \
+	core/sys/linux/sys/mman.d core/sys/linux/sys/signalfd.d \
+	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/xattr.d \
+	core/sys/linux/termios.d core/sys/linux/time.d core/sys/linux/tipc.d
+
+DRUNTIME_SSOURCES = core/threadasm.S
+
+DRUNTIME_CSOURCES = core/stdc/errno_.c

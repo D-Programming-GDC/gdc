@@ -21,6 +21,9 @@
 
 module gcc.unwind.generic;
 
+import gcc.config;
+static if (!GNU_ARM_EABI_Unwinder):
+
 private import gcc.builtins;
 
 /* This is derived from the C++ ABI for IA-64.  Where we diverge

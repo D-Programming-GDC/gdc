@@ -116,10 +116,15 @@ proc gdc_link_flags { paths } {
     verbose "shared lib extension: $shlib_ext"
 
     if { $gccpath != "" } {
-      if { [file exists "${gccpath}/libphobos/src/libgphobos2.a"] \
-           || [file exists "${gccpath}/libphobos/src/libgphobos2.${shlib_ext}"] } {
-          append flags "-L${gccpath}/libphobos/src "
-          append ld_library_path ":${gccpath}/libphobos/src"
+      if { [file exists "${gccpath}/libphobos/src/.libs/libgphobos2.a"] \
+           || [file exists "${gccpath}/libphobos/src/.libs/libgphobos2.${shlib_ext}"] } {
+          append flags "-L${gccpath}/libphobos/src/.libs "
+          append ld_library_path ":${gccpath}/libphobos/src/.libs"
+      }
+      if { [file exists "${gccpath}/libphobos/libdruntime/.libs/libgdruntime.a"] \
+           || [file exists "${gccpath}/libphobos/libdruntime/.libs/libgdruntime.${shlib_ext}"] } {
+          append flags "-L${gccpath}/libphobos/libdruntime/.libs "
+          append ld_library_path ":${gccpath}/libphobos/libdruntime/.libs"
       }
       if [file exists "${gccpath}/libiberty/libiberty.a"] {
           append flags "-L${gccpath}/libiberty "
@@ -138,6 +143,11 @@ proc gdc_link_flags { paths } {
       if { $libphobos != "" } {
           append flags "-L${libphobos} "
           append ld_library_path ":${libphobos}"
+      }
+      set libdruntime [lookfor_file ${tool_root_dir} libgdruntime]
+      if { $libdruntime != "" } {
+          append flags "-L${libdruntime} "
+          append ld_library_path ":${libdruntime}"
       }
       set libiberty [lookfor_file ${tool_root_dir} libiberty]
       if { $libiberty != "" } {

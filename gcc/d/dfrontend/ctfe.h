@@ -52,7 +52,6 @@ public:
     int findFieldIndexByName(VarDeclaration *v);
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
     Symbol* toSymbol();
     dt_t **toInstanceDt(dt_t **pdt);
     dt_t **toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts);

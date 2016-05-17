@@ -608,7 +608,7 @@ StructLiteralExp::toSymbol()
       sym->Stree = decl;
       this->sinit = sym;
 
-      toDt(&sym->Sdt);
+      DECL_INITIAL (sym->Stree) = build_expr(this, true);
       d_finish_symbol(sym);
     }
 

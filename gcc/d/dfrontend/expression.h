@@ -210,9 +210,6 @@ public:
     }
 
     virtual void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    virtual dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class IntegerExp : public Expression
@@ -233,9 +230,6 @@ public:
     void accept(Visitor *v) { v->visit(this); }
     dinteger_t getInteger() { return value; }
     void setInteger(dinteger_t value);
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 
 private:
     void normalize();
@@ -267,9 +261,6 @@ public:
     complex_t toComplex();
     bool isBool(bool result);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class ComplexExp : public Expression
@@ -287,9 +278,6 @@ public:
     complex_t toComplex();
     bool isBool(bool result);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class IdentifierExp : public Expression
@@ -360,9 +348,6 @@ public:
     bool isBool(bool result);
     StringExp *toStringExp();
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class StringExp : public Expression
@@ -391,9 +376,6 @@ public:
     Expression *modifiableLvalue(Scope *sc, Expression *e);
     unsigned charAt(uinteger_t i);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 // Tuple
@@ -437,9 +419,6 @@ public:
     StringExp *toStringExp();
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class AssocArrayLiteralExp : public Expression
@@ -511,7 +490,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
     Symbol *toSymbol();
 #endif
 };
@@ -617,9 +595,6 @@ public:
     bool isBool(bool result);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 // Variable
@@ -638,9 +613,6 @@ public:
     Expression *modifiableLvalue(Scope *sc, Expression *e);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 // Overload Set
@@ -675,9 +647,6 @@ public:
     char *toChars();
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 // Declaration of a symbol
@@ -943,9 +912,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class PtrExp : public UnaExp
@@ -1027,9 +993,6 @@ public:
     Expression *semantic(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class VectorExp : public UnaExp
@@ -1042,9 +1005,6 @@ public:
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class SliceExp : public UnaExp
