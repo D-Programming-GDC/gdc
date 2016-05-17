@@ -274,7 +274,7 @@ ArrayInitializer::toDt()
   else
     {
       Expression *edefault = tb->nextOf()->defaultInit();
-      edefault->toDt (&sadefault);
+      dt_cons(&sadefault, build_expr(edefault, true));
     }
 
   tree dt = NULL_TREE;
@@ -321,126 +321,13 @@ ExpInitializer::toDt()
 {
   tree dt = NULL_TREE;
   exp = exp->ctfeInterpret();
-  exp->toDt (&dt);
+  dt_cons(&dt, build_expr(exp, true));
   return dt;
 }
 
 /* ================================================================ */
 
 // Build constructors for front-end Expressions to be written to data segment.
-
-dt_t **
-Expression::toDt (dt_t **pdt)
-{
-  error ("non-constant expression %s", toChars());
-  return pdt;
-}
-
-dt_t **
-IntegerExp::toDt(dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-RealExp::toDt(dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-ComplexExp::toDt(dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-NullExp::toDt(dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-StringExp::toDt(dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-ArrayLiteralExp::toDt (dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-StructLiteralExp::toDt (dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-SymOffExp::toDt (dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-VarExp::toDt (dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-FuncExp::toDt (dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-VectorExp::toDt (dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
-
-dt_t **
-CastExp::toDt (dt_t **pdt)
-{
-  if (e1->type->ty == Tclass && type->ty == Tclass)
-    return e1->toDt (pdt);
-
-  return UnaExp::toDt (pdt);
-}
-
-dt_t **
-AddrExp::toDt (dt_t **pdt)
-{
-  if (e1->op == TOKstructliteral)
-    {
-      StructLiteralExp *sl = (StructLiteralExp *) e1;
-      tree dt = build_address (sl->toSymbol()->Stree);
-      return dt_cons (pdt, dt);
-    }
-
-  return UnaExp::toDt (pdt);
-}
-
-dt_t **
-ClassReferenceExp::toDt(dt_t **pdt)
-{
-  tree dt = build_expr(this, true);
-  return dt_cons(pdt, dt);
-}
 
 dt_t **
 ClassReferenceExp::toInstanceDt(dt_t **pdt)
@@ -456,7 +343,7 @@ ClassReferenceExp::toInstanceDt(dt_t **pdt)
       if (!e)
 	continue;
       tree dt = NULL_TREE;
-      e->toDt(&dt);
+      dt_cons(&dt, build_expr(e, true));
       dts[i] = dt;
     }
 
@@ -733,7 +620,7 @@ StructDeclaration::toDt(dt_t **pdt)
     gcc_unreachable();
 
   sle->type = type;
-  sle->toDt(pdt);
+  dt_cons(pdt, build_expr(sle, true));
 }
 
 /* ================================================================ */
@@ -744,21 +631,21 @@ dt_t **
 Type::toDt (dt_t **pdt)
 {
   Expression *e = defaultInitLiteral(Loc());
-  return e->toDt(pdt);
+  return dt_cons(pdt, build_expr(e, true));
 }
 
 dt_t **
 TypeVector::toDt (dt_t **pdt)
 {
   Expression *e = defaultInitLiteral(Loc());
-  return e->toDt(pdt);
+  return dt_cons(pdt, build_expr(e, true));
 }
 
 dt_t **
 TypeSArray::toDt (dt_t **pdt)
 {
   Expression *e = defaultInitLiteral(Loc());
-  return e->toDt(pdt);
+  return dt_cons(pdt, build_expr(e, true));
 }
 
 dt_t **
@@ -788,7 +675,7 @@ TypeSArray::toDtElem (dt_t **pdt, Expression *e)
 	    len /= ((ArrayLiteralExp *) e)->elements->dim;
 
 	  for (size_t i = 0; i < len; i++)
-	    e->toDt (&dt);
+	    dt_cons(&dt, build_expr(e, true));
 
 	  // Single initialiser already constructed, just chain onto pdt.
 	  if (len == 1)
@@ -805,7 +692,7 @@ TypeSArray::toDtElem (dt_t **pdt, Expression *e)
 	      if (tbn->ty == Tsarray)
 		((TypeSArray *) tbn)->toDtElem (&dt, e);
 	      else
-		e->toDt (&dt);
+		dt_cons(&dt, build_expr(e, true));
 	    }
 	}
 
@@ -1283,7 +1170,7 @@ TypeInfoStructDeclaration::toDt (dt_t **pdt)
 
   // xgetRTInfo
   if (sd->getRTInfo)
-    sd->getRTInfo->toDt (pdt);
+    dt_cons(pdt, build_expr(sd->getRTInfo, true));
   else
     {
       // If struct has pointers.
@@ -1347,7 +1234,7 @@ TypeInfoTupleDeclaration::toDt (dt_t **pdt)
       Parameter *arg = (*tu->arguments)[i];
       Expression *e = getTypeInfo(arg->type, NULL);
       e = e->ctfeInterpret();
-      e->toDt (&dt);
+      dt_cons(&dt, build_expr(e, true));
     }
 
   Symbol *s = new Symbol();

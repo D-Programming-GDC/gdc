@@ -111,12 +111,15 @@ public:
 	// Convert arrays to D array types.
 	tree t1 = d_array_convert(e->e1);
 	tree t2 = d_array_convert(e->e2);
-	this->result_ = build2(code, build_ctype(e->type), t1, t2);
+	this->result_ = d_convert(build_ctype(e->type),
+				  build_boolop(code, t1, t2));
       }
     else if (tb1->isfloating())
       {
 	tree t1 = build_expr(e->e1);
+	t1 = maybe_make_temp(t1);
 	tree t2 = build_expr(e->e2);
+	t2 = maybe_make_temp(t2);
 	// Assume all padding is at the end of the type.
 	tree size = size_int(TYPE_PRECISION (TREE_TYPE (t1)) / BITS_PER_UNIT);
 	// Do bit compare of floats.
@@ -955,9 +958,9 @@ public:
 	Declaration *decl = ((VarExp *) e->e1)->var;
 	if (decl->storage_class & (STCout | STCref))
 	  {
-	    tree t1 = build_expr(e->e1);
 	    tree t2 = convert_for_assignment(build_expr(e->e2),
 					     e->e2->type, e->e1->type);
+	    tree t1 = build_expr(e->e1);
 	    // Want reference to lhs, not indirect ref.
 	    t1 = TREE_OPERAND(t1, 0);
 	    t2 = build_address(t2);
@@ -1889,31 +1892,31 @@ public:
   //
   void visit(DeclarationExp *e)
   {
-    VarDeclaration *vd = e->declaration->isVarDeclaration();
-
-    if (vd != NULL)
-      {
-	if (!vd->isStatic() && !(vd->storage_class & STCmanifest)
-	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
-	  {
-	    // Put variable on list of things needing destruction
-	    if (vd->edtor && !vd->noscope)
-	      cfun->language->vars_in_scope.safe_push(vd);
-	  }
-      }
-
+    // Compile the declaration.
     push_stmt_list();
     e->declaration->toObjFile();
     tree result = pop_stmt_list();
 
     // Construction of an array for typesafe-variadic function arguments
-    // can cause an empty STMT_LIST here.  This can causes problems
-    // during gimplification.
-    if (TREE_CODE (result) == STATEMENT_LIST
-	&& !STATEMENT_LIST_HEAD (result))
+    // can cause an empty STMT_LIST here.
+    // This can causes problems during gimplification.
+    if (TREE_CODE (result) == STATEMENT_LIST && !STATEMENT_LIST_HEAD (result))
       this->result_ = build_empty_stmt(input_location);
     else
       this->result_ = result;
+
+    // Maybe put variable on list of things needing destruction.
+    VarDeclaration *vd = e->declaration->isVarDeclaration();
+    if (vd != NULL)
+      {
+	if (!vd->isStatic() && !(vd->storage_class & STCmanifest)
+	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
+	  {
+	    if (vd->edtor && !vd->noscope)
+	      cfun->language->vars_in_scope.safe_push(vd);
+	  }
+      }
+
   }
 
   //
@@ -1966,18 +1969,6 @@ public:
   //
   void visit(SymOffExp *e)
   {
-    if (this->constp_)
-      {
-	// Check if initializer is valid constant.
-	if (!(e->var->isDataseg() || e->var->isCodeseg())
-	    || e->var->needThis() || e->var->isThreadlocal())
-	  {
-	    e->error("non-constant expression %s", e->toChars());
-	    this->result_ = error_mark_node;
-	    return;
-	  }
-      }
-
     // Build the address and offset of the symbol.
     size_t soffset = ((SymOffExp *) e)->offset;
     tree result = get_decl_tree(e->var);
@@ -2480,11 +2471,6 @@ public:
     // Nothing else to do for static arrays.
     if (tb->ty == Tsarray || this->constp_)
       {
-	if (constant_p)
-	  TREE_CONSTANT (ctor) = 1;
-	if (constant_p && simple_p)
-	  TREE_STATIC (ctor) = 1;
-
 	// Can't take the address of the constructor, so create an anonymous
 	// static symbol, and then refer to it.
 	if (tb->ty != Tsarray)
@@ -2494,6 +2480,11 @@ public:
 	    if (tb->ty == Tarray)
 	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
 	  }
+
+	if (constant_p)
+	  TREE_CONSTANT (ctor) = 1;
+	if (constant_p && simple_p)
+	  TREE_STATIC (ctor) = 1;
 
 	this->result_ = d_convert(type, ctor);
       }
@@ -2825,7 +2816,16 @@ build_expr(Expression *e, bool const_p)
 {
   ExprVisitor v = ExprVisitor(const_p);
   e->accept(&v);
-  return v.result();
+  tree expr = v.result();
+
+  // Check if initializer expression is valid constant.
+  if (const_p && !initializer_constant_valid_p(expr, TREE_TYPE (expr)))
+    {
+      e->error("non-constant expression %s", e->toChars());
+      return error_mark_node;
+    }
+
+  return expr;
 }
 
 // Same as build_expr, but also calls destructors on any temporaries.
@@ -2840,8 +2840,9 @@ build_expr_dtor(Expression *e)
   // Codegen can be improved by determining if no exceptions can be thrown
   // between the ctor and dtor, and eliminating the ctor and dtor.
 
-  // Build an expression that calls destructors on all the variables going
-  // going out of the scope starti .. endi.
+  // Build an expression that calls the destructors on all the variables
+  // going out of the scope between starti and endi.
+  // All dtors are executed in reverse order.
   tree tdtors = NULL_TREE;
   for (size_t i = starti; i != endi; ++i)
     {
@@ -2850,8 +2851,7 @@ build_expr_dtor(Expression *e)
 	{
 	  cfun->language->vars_in_scope[i] = NULL;
 	  tree td = build_expr(vd->edtor);
-	  // Execute in reverse order.
-	  tdtors = maybe_compound_expr(tdtors, td);
+	  tdtors = maybe_compound_expr(td, tdtors);
 	}
     }
 

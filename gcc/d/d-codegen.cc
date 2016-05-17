@@ -1928,6 +1928,8 @@ build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
     {
       // Do bit compare of structs.
       tree size = size_int(sd->structsize);
+      t1 = maybe_make_temp(t1);
+      t2 = maybe_make_temp(t2);
       tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
 				       build_address(t1), build_address(t2), size);
 
@@ -2248,6 +2250,8 @@ build_vconvert(tree type, tree exp)
 tree
 build_boolop(tree_code code, tree arg0, tree arg1)
 {
+  arg0 = maybe_make_temp(arg0);
+  arg1 = maybe_make_temp(arg1);
   return fold_build2_loc(input_location, code,
 			 bool_type_node, arg0, arg1);
 }
