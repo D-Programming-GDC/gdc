@@ -74,7 +74,7 @@ endif
 toolexeclib_LTLIBRARIES = libgphobos2.la
 libgphobos2_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
 libgphobos2_la_LIBTOOLFLAGS = --tag=D
-libgphobos2_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER) -static
+libgphobos2_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER)
 libgphobos2_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
 
 # For static unittest, link objects directly

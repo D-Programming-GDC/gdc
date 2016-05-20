@@ -76,7 +76,7 @@ AC_SUBST(CFLAGS_FOR_BUILD)
 LT_INIT
 AM_PROG_LIBTOOL
 WITH_LOCAL_DRUNTIME([LT_LANG([D])], [])
-AM_CONDITIONAL([ENABLE_SHARED], [false])
+AM_CONDITIONAL([ENABLE_SHARED], [test "$enable_shared" = "yes"])
 AM_CONDITIONAL([ENABLE_STATIC], [test "$enable_static" = "yes"])
 
 
