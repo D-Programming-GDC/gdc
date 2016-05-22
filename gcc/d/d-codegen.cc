@@ -2044,7 +2044,6 @@ build_struct_literal(tree type, tree init)
   vec<constructor_elt, va_gc> *ve = NULL;
   HOST_WIDE_INT offset = 0;
   bool constant_p = true;
-  bool simple_p = true;
 
   // Walk through each field, matching our initializer list
   for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
@@ -2112,8 +2111,6 @@ build_struct_literal(tree type, tree init)
 
 	  if (!TREE_CONSTANT (value))
 	    constant_p = false;
-	  if (!initializer_constant_valid_p(value, TREE_TYPE (value)))
-	    simple_p = false;
 
 	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
 	  // If all initializers have been assigned, there's nothing else to do.
@@ -2130,8 +2127,6 @@ build_struct_literal(tree type, tree init)
 
   if (constant_p)
     TREE_CONSTANT (ctor) = 1;
-  if (constant_p && simple_p)
-    TREE_STATIC (ctor) = 1;
 
   return ctor;
 }
@@ -2261,8 +2256,13 @@ build_vconvert(tree type, tree exp)
 tree
 build_boolop(tree_code code, tree arg0, tree arg1)
 {
-  arg0 = maybe_make_temp(arg0);
-  arg1 = maybe_make_temp(arg1);
+  // Aggregate comparisons may get lowered to a call to builtin memcmp,
+  // so need to remove all side effects incase it's address is taken.
+  if (AGGREGATE_TYPE_P (TREE_TYPE (arg0)))
+    arg0 = maybe_make_temp(arg0);
+  if (AGGREGATE_TYPE_P (TREE_TYPE (arg1)))
+    arg1 = maybe_make_temp(arg1);
+
   return fold_build2_loc(input_location, code,
 			 bool_type_node, arg0, arg1);
 }
