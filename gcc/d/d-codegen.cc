@@ -729,9 +729,9 @@ convert_expr(tree exp, Type *etype, Type *totype)
 			       build_nop(ptrtype, exp));
 	}
       else if (tbtype->ty == Taarray)
-	  return build_vconvert(build_ctype(totype), exp);
+	return build_constructor(build_ctype(totype), NULL);
       else if (tbtype->ty == Tdelegate)
-	  return build_delegate_cst(exp, null_pointer_node, totype);
+	return build_delegate_cst(exp, null_pointer_node, totype);
       break;
 
     case Tvector:

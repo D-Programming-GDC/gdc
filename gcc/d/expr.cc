@@ -2705,13 +2705,7 @@ public:
 	value = d_array_value(type, size_int(0), null_pointer_node);
       }
     else if (tb->ty == Taarray)
-      {
-	vec<constructor_elt, va_gc> *ce = NULL;
-	tree type = build_ctype(e->type);
-
-	CONSTRUCTOR_APPEND_ELT (ce, TYPE_FIELDS (type), null_pointer_node);
-	value = build_constructor(type, ce);
-      }
+      value = build_constructor(build_ctype(e->type), NULL);
     else if (tb->ty == Tdelegate)
       value = build_delegate_cst(null_pointer_node, null_pointer_node, e->type);
     else

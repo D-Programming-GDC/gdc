@@ -1,3 +1,9 @@
+2016-05-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (convert_expr): Return empty constructor for null to
+	associative array conversions.
+	* expr.cc (ExprVisitor::visit(NullExp)): Likewise.
+
 2016-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_struct_literal): Don't set TREE_STATIC.
