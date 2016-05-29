@@ -1,3 +1,8 @@
+2016-05-29  Johannes Pfau  <johannespfau@gmail.com>
+
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Set correct type for the
+	string table for switch(string) statements.
+
 2016-05-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (convert_expr): Return empty constructor for null to
