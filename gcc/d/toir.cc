@@ -429,7 +429,7 @@ public:
 
 	// Apparently the backend is supposed to sort and set the indexes
 	// on the case array, have to change them to be useable.
-	Type *satype = etype->sarrayOf(s->cases->dim);
+	Type *satype = condtype->sarrayOf(s->cases->dim);
 	vec<constructor_elt, va_gc> *elms = NULL;
 
 	s->cases->sort();
