@@ -1,3 +1,22 @@
+2016-05-29  Johannes Pfau  <johannespfau@gmail.com>
+
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Set correct type for the
+	string table for switch(string) statements.
+
+2016-05-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (convert_expr): Return empty constructor for null to
+	associative array conversions.
+	* expr.cc (ExprVisitor::visit(NullExp)): Likewise.
+
+2016-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_struct_literal): Don't set TREE_STATIC.
+	(build_boolop): Remove side effects from aggregate types only.
+	* expr.cc (ExprVisitor::visit(ArrayLiteralExp)): Don't check
+	initializer_constant_valid_p until after constructor is built.
+	(ExprVisitor::visit(StructLiteralExp)): Likewise.
+
 2016-05-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(AssignExp)): Build the rhs constructor
