@@ -2434,7 +2434,6 @@ public:
     vec<constructor_elt, va_gc> *elms = NULL;
     vec_safe_reserve(elms, e->elements->dim);
     bool constant_p = true;
-    bool simple_p = true;
 
     Type *etype = tb->nextOf();
     tree satype = d_array_type(etype, e->elements->dim);
@@ -2452,10 +2451,6 @@ public:
 		value = maybe_make_temp(value);
 		constant_p = false;
 	      }
-
-	    // Initializer is not suitable for static data.
-	    if (!initializer_constant_valid_p(value, TREE_TYPE (value)))
-	      simple_p = false;
 
 	    CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
 				    convert_expr(value, expr->type, etype));
@@ -2481,9 +2476,10 @@ public:
 	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
 	  }
 
+	// If the array literal is readonly or static.
 	if (constant_p)
 	  TREE_CONSTANT (ctor) = 1;
-	if (constant_p && simple_p)
+	if (constant_p && initializer_constant_valid_p(ctor, TREE_TYPE (ctor)))
 	  TREE_STATIC (ctor) = 1;
 
 	this->result_ = d_convert(type, ctor);
@@ -2658,6 +2654,11 @@ public:
     // Nothing more to do for constant literals.
     if (this->constp_)
       {
+	// If the struct literal is a valid for static data.
+	if (TREE_CONSTANT (ctor)
+	    && initializer_constant_valid_p(ctor, TREE_TYPE (ctor)))
+	  TREE_STATIC (ctor) = 1;
+
 	this->result_ = ctor;
 	return;
       }
@@ -2697,13 +2698,7 @@ public:
 	value = d_array_value(type, size_int(0), null_pointer_node);
       }
     else if (tb->ty == Taarray)
-      {
-	vec<constructor_elt, va_gc> *ce = NULL;
-	tree type = build_ctype(e->type);
-
-	CONSTRUCTOR_APPEND_ELT (ce, TYPE_FIELDS (type), null_pointer_node);
-	value = build_constructor(type, ce);
-      }
+      value = build_constructor(build_ctype(e->type), NULL);
     else if (tb->ty == Tdelegate)
       value = build_delegate_cst(null_pointer_node, null_pointer_node, e->type);
     else
