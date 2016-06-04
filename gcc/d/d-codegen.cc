@@ -1331,7 +1331,6 @@ build_float_cst (const real_t& value, Type *totype)
 tree
 d_array_length (tree exp)
 {
-  // backend will ICE otherwise
   if (error_operand_p (exp))
     return exp;
 
@@ -1346,7 +1345,6 @@ d_array_length (tree exp)
 tree
 d_array_ptr (tree exp)
 {
-  // backend will ICE otherwise
   if (error_operand_p (exp))
     return exp;
 
@@ -2378,6 +2376,9 @@ indirect_ref(tree type, tree exp)
 tree
 build_deref(tree exp)
 {
+  if (error_operand_p (exp))
+    return exp;
+
   gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
 
   if (TREE_CODE (exp) == ADDR_EXPR)
@@ -2391,6 +2392,9 @@ build_deref(tree exp)
 tree
 build_array_index(tree ptr, tree index)
 {
+  if (error_operand_p(ptr) || error_operand_p(index))
+    return error_mark_node;
+
   tree ptr_type = TREE_TYPE (ptr);
   tree target_type = TREE_TYPE (ptr_type);
 
@@ -2424,10 +2428,6 @@ build_array_index(tree ptr, tree index)
 			  index, d_convert(TREE_TYPE (index), size_exp));
       index = fold_convert(type, index);
     }
-
-  // backend will ICE otherwise
-  if (error_operand_p(ptr_type))
-    return ptr_type;
 
   if (integer_zerop(index))
     return ptr;
