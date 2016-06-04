@@ -1,3 +1,8 @@
+2016-06-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_deref): Handle ERROR_MARK nodes early.
+	(build_array_index): Likewise.
+
 2016-05-29  Johannes Pfau  <johannespfau@gmail.com>
 
 	* toir.cc (IRVisitor::visit(SwitchStatement)): Set correct type for the
