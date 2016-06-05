@@ -2921,8 +2921,20 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	  // Needed for left to right evaluation.
 	  if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (targ))
 	    {
-	      targ = maybe_make_temp(targ);
-	      saved_args = maybe_vcompound_expr(saved_args, targ);
+	      // Push left side of comma expressions into the saved args
+	      // list, so that only the result is maybe made a temporary.
+	      if (TREE_CODE (targ) == COMPOUND_EXPR)
+		{
+		  tree tleft = TREE_OPERAND (targ, 0);
+		  saved_args = maybe_vcompound_expr(saved_args, tleft);
+		  targ = TREE_OPERAND (targ, 1);
+		}
+
+	      if (TREE_SIDE_EFFECTS (targ))
+		{
+		  targ = maybe_make_temp(targ);
+		  saved_args = maybe_vcompound_expr(saved_args, targ);
+		}
 	    }
 	  arg_list = chainon(arg_list, build_tree_list(0, targ));
 	}
