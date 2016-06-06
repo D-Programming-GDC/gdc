@@ -33,6 +33,7 @@ class Expression;
 class Module;
 class Statement;
 class Type;
+class TypeFunction;
 class Dsymbol;
 
 // The kinds of scopes we recognise.
@@ -295,6 +296,7 @@ extern tree d_truthvalue_conversion (tree);
 // In d-expr.cc.
 extern tree build_expr (Expression *, bool = false);
 extern tree build_expr_dtor (Expression *);
+extern tree build_return_dtor (Expression *, Type *, TypeFunction *);
 
 // In d-incpath.cc.
 extern void add_import_paths (const char *, const char *, bool);
