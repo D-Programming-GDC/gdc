@@ -1320,7 +1320,6 @@ build_float_cst (const real_t& value, Type *totype)
 tree
 d_array_length (tree exp)
 {
-  // backend will ICE otherwise
   if (error_operand_p (exp))
     return exp;
 
@@ -1335,7 +1334,6 @@ d_array_length (tree exp)
 tree
 d_array_ptr (tree exp)
 {
-  // backend will ICE otherwise
   if (error_operand_p (exp))
     return exp;
 
@@ -2367,6 +2365,9 @@ indirect_ref(tree type, tree exp)
 tree
 build_deref(tree exp)
 {
+  if (error_operand_p (exp))
+    return exp;
+
   gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
 
   if (TREE_CODE (exp) == ADDR_EXPR)
@@ -2380,6 +2381,9 @@ build_deref(tree exp)
 tree
 build_array_index(tree ptr, tree index)
 {
+  if (error_operand_p(ptr) || error_operand_p(index))
+    return error_mark_node;
+
   tree ptr_type = TREE_TYPE (ptr);
   tree target_type = TREE_TYPE (ptr_type);
 
@@ -2413,10 +2417,6 @@ build_array_index(tree ptr, tree index)
 			  index, d_convert(TREE_TYPE (index), size_exp));
       index = fold_convert(type, index);
     }
-
-  // backend will ICE otherwise
-  if (error_operand_p(ptr_type))
-    return ptr_type;
 
   if (integer_zerop(index))
     return ptr;
@@ -2910,8 +2910,20 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	  // Needed for left to right evaluation.
 	  if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (targ))
 	    {
-	      targ = maybe_make_temp(targ);
-	      saved_args = maybe_vcompound_expr(saved_args, targ);
+	      // Push left side of comma expressions into the saved args
+	      // list, so that only the result is maybe made a temporary.
+	      if (TREE_CODE (targ) == COMPOUND_EXPR)
+		{
+		  tree tleft = TREE_OPERAND (targ, 0);
+		  saved_args = maybe_vcompound_expr(saved_args, tleft);
+		  targ = TREE_OPERAND (targ, 1);
+		}
+
+	      if (TREE_SIDE_EFFECTS (targ))
+		{
+		  targ = maybe_make_temp(targ);
+		  saved_args = maybe_vcompound_expr(saved_args, targ);
+		}
 	    }
 	  arg_list = chainon(arg_list, build_tree_list(0, targ));
 	}

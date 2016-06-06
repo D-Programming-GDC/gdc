@@ -614,27 +614,18 @@ public:
     if (this->func_->isMain() && type->toBasetype()->ty == Tvoid)
       type = Type::tint32;
 
-    tree decl = DECL_RESULT (this->func_->toSymbol()->Stree);
-
     if (this->func_->nrvo_can && this->func_->nrvo_var)
       {
-	// Just refer to the DECL_RESULT; this is a nop, but differs
-	// from using NULL_TREE in that it indicates that we care about
-	// the value of the DECL_RESULT.
+	// Just refer to the DECL_RESULT; this differs from using NULL_TREE in
+	// that it indicates that we care about the value of the DECL_RESULT.
+	tree decl = DECL_RESULT (this->func_->toSymbol()->Stree);
 	add_stmt(return_expr(decl));
       }
     else
       {
 	// Convert for initialising the DECL_RESULT.
-	tree value = convert_expr(build_expr_dtor(s->exp),
-				  s->exp->type, type);
-
-	// If we are returning a reference, take the address.
-	if (tf->isref)
-	  value = build_address(value);
-
-	tree assign = build2(INIT_EXPR, TREE_TYPE (decl), decl, value);
-	add_stmt(return_expr(assign));
+	tree expr = build_return_dtor(s->exp, type, tf);
+	add_stmt(expr);
       }
   }
 
