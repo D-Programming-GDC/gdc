@@ -1,3 +1,12 @@
+2016-06-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_alignment_field): New function.
+	(build_struct_literal): Update signature, updated all callers.
+	Add anonymous fields to fill alignment holes in constructor.
+	(fill_alignment_field): Remove function.
+	(fill_alignment_holes): Remove function.
+	(finish_aggregate_type): Don't add anonymous fields.
+
 2016-06-05  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (d_build_call): Separate parameter to pass from it's

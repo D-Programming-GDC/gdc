@@ -2655,8 +2655,7 @@ public:
       }
 
     // Build a constructor in the correct shape of the aggregate type.
-    tree ctor = build_struct_literal(build_ctype(e->type),
-				     build_constructor(unknown_type_node, ve));
+    tree ctor = build_struct_literal(build_ctype(e->type), ve);
 
     // Nothing more to do for constant literals.
     if (this->constp_)
@@ -2677,7 +2676,7 @@ public:
       }
     else if (e->sd->isUnionDeclaration())
       {
-	// Initialize all alignment 'holes' to zero.
+	// For unions, use memset to fill holes in the object.
 	tree var = build_local_temp(TREE_TYPE (ctor));
 	tree init = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMSET), 3,
 				      build_address(var), size_zero_node,
