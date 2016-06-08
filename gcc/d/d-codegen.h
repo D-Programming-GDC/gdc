@@ -190,8 +190,6 @@ extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree fo
 extern void maybe_set_intrinsic (FuncDeclaration *decl);
 extern tree expand_intrinsic (tree callexp);
 
-extern tree build_typeinfo (Type *t);
-
 // Record layout
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
 extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);

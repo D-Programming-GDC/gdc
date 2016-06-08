@@ -946,8 +946,8 @@ TypeInfoDeclaration::toObjFile()
     return;
 
   Symbol *s = toSymbol();
-  toDt (&s->Sdt);
-  d_finish_symbol (s);
+  DECL_INITIAL (s->Stree) = layout_typeinfo(this);
+  d_finish_symbol(s);
 }
 
 

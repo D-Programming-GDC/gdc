@@ -3661,17 +3661,6 @@ build_float_modulus (tree type, tree arg0, tree arg1)
   gcc_unreachable();
 }
 
-// Returns typeinfo reference for type T.
-
-tree
-build_typeinfo(Type *t)
-{
-  gcc_assert(t->ty != Terror);
-  genTypeInfo(t, NULL);
-  tree tinfo = t->vtinfo->toSymbol()->Stree;
-  return build_address(tinfo);
-}
-
 // Check that a new jump at FROM to a label at TO is OK.
 
 void
