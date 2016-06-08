@@ -23,9 +23,6 @@ D
 Variable
 int flag_emit_templates
 
-Variable
-int bounds_check_set_manually
-
 debuglib=
 Driver Joined
 Debug library to use instead of phobos.
@@ -175,6 +172,10 @@ Enforce property syntax.
 frelease
 D
 Compile release version.
+
+ftransition=complex
+D RejectNegative
+List all usages of complex or imaginary types.
 
 ftransition=field
 D RejectNegative

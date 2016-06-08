@@ -1069,6 +1069,77 @@ void test12778()
 }
 
 /**************************************/
+// 14343
+
+struct S14343a
+{
+    int i;
+    immutable(Object) o;
+
+    S14343a opUnary(string op)() { return this; }
+    void opAssign(S14343a other) {}
+}
+
+struct S14343b
+{
+    int i;
+    immutable(Object) o;
+
+    void opAddAssign(int j) { i += j; }
+    S14343b opPostInc() { ++i; return this; }
+    void opAssign(S14343b other) {}
+}
+
+void test14343()
+{
+    {
+        S14343a s, t;
+
+        t = s;  // OK
+        ++s;    // OK
+        s++;    // OK <- Error: cannot modify struct s S with immutable members
+    }
+    {
+        S14343b s;
+        ++s;
+        assert(s.i == 1);
+        s++;
+        assert(s.i == 2);
+    }
+}
+
+/**************************************/
+// 14344
+
+struct S14344
+{
+    S14344 opBinary(string op)(S14344 v)
+    {
+        static assert(0);
+    }
+    S14344 opAssign()(S14344 v)
+    {
+        static assert(0);
+    }
+}
+
+struct S14344Mix
+{
+    S14344 s;
+    alias s this;
+}
+
+class C14344
+{
+    S14344Mix height() { return S14344Mix(); }
+
+    void update()
+    {
+        S14344 height = this.height;
+    }
+}
+
+/**************************************/
 
 int main()
 {

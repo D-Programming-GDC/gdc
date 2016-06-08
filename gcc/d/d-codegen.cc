@@ -1276,21 +1276,25 @@ insert_type_modifiers (tree type, unsigned mod)
       break;
 
     case MODshared:
-      quals |= TYPE_QUAL_VOLATILE;
       break;
 
     case MODshared | MODconst:
     case MODshared | MODwild:
     case MODshared | MODwildconst:
       quals |= TYPE_QUAL_CONST;
-      quals |= TYPE_QUAL_VOLATILE;
       break;
 
     default:
       gcc_unreachable();
     }
 
-  return build_qualified_type (type, quals);
+  tree qualtype = build_qualified_type (type, quals);
+
+  // Mark whether the type is qualified 'shared'.
+  if (mod & MODshared)
+    TYPE_SHARED (qualtype) = 1;
+
+  return qualtype;
 }
 
 // Build INTEGER_CST of type TYPE with the value VALUE.
@@ -2745,24 +2749,30 @@ build_bounds_condition(const Loc& loc, tree index, tree len, bool inclusive)
 bool
 array_bounds_check()
 {
-  int result = global.params.useArrayBounds;
+  FuncDeclaration *func;
 
-  if (result == 2)
-    return true;
-
-  if (result == 1)
+  switch (global.params.useArrayBounds)
     {
+    case BOUNDSCHECKoff:
+      return false;
+
+    case BOUNDSCHECKon:
+      return true;
+
+    case BOUNDSCHECKsafeonly:
       // For D2 safe functions only
-      FuncDeclaration *func = cfun->language->function;
+      func = cfun->language->function;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
 	  if (tf->trust == TRUSTsafe)
 	    return true;
 	}
-    }
+      return false;
 
-  return false;
+    default:
+      gcc_unreachable();
+    }
 }
 
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.
@@ -3654,11 +3664,12 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 // Returns typeinfo reference for type T.
 
 tree
-build_typeinfo (Type *t)
+build_typeinfo(Type *t)
 {
-  tree tinfo = build_expr(getTypeInfo(t, NULL));
-  gcc_assert(POINTER_TYPE_P (TREE_TYPE (tinfo)));
-  return tinfo;
+  gcc_assert(t->ty != Terror);
+  genTypeInfo(t, NULL);
+  tree tinfo = t->vtinfo->toSymbol()->Stree;
+  return build_address(tinfo);
 }
 
 // Check that a new jump at FROM to a label at TO is OK.
@@ -4606,7 +4617,7 @@ insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
   // Must set this or we crash with DWARF debugging.
   set_decl_location(field, loc);
 
-  TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
+  TREE_ADDRESSABLE (field) = TYPE_SHARED (TREE_TYPE (field));
 
   layout_decl(field, 0);
   TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), field);

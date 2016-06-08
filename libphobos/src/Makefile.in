@@ -167,7 +167,7 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/internal/unicode_grapheme.lo std/internal/unicode_norm.lo \
 	std/internal/unicode_tables.lo \
 	std/internal/windows/advapi32.lo std/json.lo std/math.lo \
-	std/mathspecial.lo std/mmfile.lo std/net/curl.lo \
+	std/mathspecial.lo std/meta.lo std/mmfile.lo std/net/curl.lo \
 	std/net/isemail.lo std/numeric.lo std/outbuffer.lo \
 	std/parallelism.lo std/path.lo std/process.lo std/random.lo \
 	std/range/interfaces.lo std/range/package.lo \
@@ -251,10 +251,10 @@ am__DEPENDENCIES_2 = etc/c/curl.t.lo etc/c/sqlite3.t.lo \
 	std/internal/unicode_norm.t.lo \
 	std/internal/unicode_tables.t.lo \
 	std/internal/windows/advapi32.t.lo std/json.t.lo std/math.t.lo \
-	std/mathspecial.t.lo std/mmfile.t.lo std/net/curl.t.lo \
-	std/net/isemail.t.lo std/numeric.t.lo std/outbuffer.t.lo \
-	std/parallelism.t.lo std/path.t.lo std/process.t.lo \
-	std/random.t.lo std/range/interfaces.t.lo \
+	std/mathspecial.t.lo std/meta.t.lo std/mmfile.t.lo \
+	std/net/curl.t.lo std/net/isemail.t.lo std/numeric.t.lo \
+	std/outbuffer.t.lo std/parallelism.t.lo std/path.t.lo \
+	std/process.t.lo std/random.t.lo std/range/interfaces.t.lo \
 	std/range/package.t.lo std/range/primitives.t.lo \
 	std/regex/internal/backtracking.t.lo \
 	std/regex/internal/generator.t.lo std/regex/internal/ir.t.lo \
@@ -599,10 +599,10 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
 	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
 	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
-	std/json.d std/math.d std/mathspecial.d std/mmfile.d std/net/curl.d \
-	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
-	std/path.d std/process.d std/random.d std/range/interfaces.d \
-	std/range/package.d std/range/primitives.d \
+	std/json.d std/math.d std/mathspecial.d std/meta.d std/mmfile.d \
+	std/net/curl.d std/net/isemail.d std/numeric.d std/outbuffer.d \
+	std/parallelism.d std/path.d std/process.d std/random.d \
+	std/range/interfaces.d std/range/package.d std/range/primitives.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
@@ -808,6 +808,7 @@ std/internal/windows/advapi32.lo:  \
 std/json.lo: std/$(am__dirstamp)
 std/math.lo: std/$(am__dirstamp)
 std/mathspecial.lo: std/$(am__dirstamp)
+std/meta.lo: std/$(am__dirstamp)
 std/mmfile.lo: std/$(am__dirstamp)
 std/net/$(am__dirstamp):
 	@$(MKDIR_P) std/net
@@ -1113,6 +1114,8 @@ mostlyclean-compile:
 	-rm -f std/math.lo
 	-rm -f std/mathspecial.$(OBJEXT)
 	-rm -f std/mathspecial.lo
+	-rm -f std/meta.$(OBJEXT)
+	-rm -f std/meta.lo
 	-rm -f std/mmfile.$(OBJEXT)
 	-rm -f std/mmfile.lo
 	-rm -f std/net/curl.$(OBJEXT)
