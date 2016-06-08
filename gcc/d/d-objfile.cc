@@ -492,6 +492,7 @@ Lhaspointers:
       BaseClass *b = (*vtblInterfaces)[i];
       ClassDeclaration *id = b->base;
 
+      // First entry is struct Interface reference.
       if (id->vtblOffset())
 	{
 	  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
@@ -513,18 +514,18 @@ Lhaspointers:
   // Put out the overriding interface vtbl[]s.
   // This must be mirrored with ClassDeclaration::baseVtblOffset()
   ClassDeclaration *cd;
-  FuncDeclarations bvtbl;
 
   for (cd = this->baseClass; cd; cd = cd->baseClass)
     {
       for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *bs = (*cd->vtblInterfaces)[i];
+	  FuncDeclarations bvtbl;
 
 	  if (bs->fillVtbl (this, &bvtbl, 0))
 	    {
 	      ClassDeclaration *id = bs->base;
-
+	      // First entry is struct Interface reference.
 	      if (id->vtblOffset())
 		{
 		  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
@@ -582,15 +583,13 @@ Lhaspointers:
 		  TypeFunction *tf = (TypeFunction *) fd->type;
 		  if (tf->ty == Tfunction)
 		    {
-		      deprecation ("use of %s%s hidden by %s is deprecated. "
-				   "Use 'alias %s = %s.%s;' to introduce base class overload set.",
-				   fd->toPrettyChars(), parametersTypeToChars(tf->parameters, tf->varargs), toChars(),
-				   fd->toChars(), fd->parent->toChars(), fd->toChars());
+		      error("use of %s%s hidden by %s is deprecated. "
+			    "Use 'alias %s = %s.%s;' to introduce base class overload set.",
+			    fd->toPrettyChars(), parametersTypeToChars(tf->parameters, tf->varargs), toChars(),
+			    fd->toChars(), fd->parent->toChars(), fd->toChars());
 		    }
 		  else
-		    deprecation ("use of %s hidden by %s is deprecated", fd->toPrettyChars(), toChars());
-
-		  s = get_libcall (LIBCALL_HIDDEN_FUNC)->toSymbol();
+		    error("use of %s hidden by %s is deprecated", fd->toPrettyChars(), toChars());
 		  break;
 		}
 	    }
@@ -943,9 +942,12 @@ TemplateMixin::toObjFile()
 void
 TypeInfoDeclaration::toObjFile()
 {
+  if (isSpeculativeType(this->tinfo))
+    return;
+
   Symbol *s = toSymbol();
-  toDt (&s->Sdt);
-  d_finish_symbol (s);
+  DECL_INITIAL (s->Stree) = layout_typeinfo(this);
+  d_finish_symbol(s);
 }
 
 
@@ -1121,27 +1123,31 @@ FuncDeclaration::toObjFile()
 	return;
     }
 
+  if (this->semantic3Errors)
+    return;
+
   if (this->isNested())
     {
-      // Typically, an error occurred whilst compiling
-      if (this->fbody && !this->vthis)
+      FuncDeclaration *fdp = this;
+      while (fdp && fdp->isNested())
 	{
-	  gcc_assert(global.errors);
-	  return;
-	}
+	  fdp = fdp->toParent2()->isFuncDeclaration();
 
-      FuncDeclaration *fdp = this->toParent2()->isFuncDeclaration();
-      if (fdp && fdp->semanticRun < PASSobj)
-	{
+	  if (fdp == NULL)
+	    break;
+
 	  // Parent failed to compile, but errors were gagged.
 	  if (fdp->semantic3Errors)
 	    return;
 
-	  // Defer until outer unittest has been emitted.
 	  if (UnitTestDeclaration *udp = fdp->isUnitTestDeclaration())
 	    {
-	      udp->deferredNested.push(this);
-	      return;
+	      // Defer until outer unittest has been emitted.
+	      if (udp->semanticRun < PASSobj)
+		{
+		  udp->deferredNested.push(this);
+		  return;
+		}
 	    }
 	}
     }

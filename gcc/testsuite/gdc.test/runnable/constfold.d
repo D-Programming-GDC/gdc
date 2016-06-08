@@ -386,9 +386,9 @@ void test1()
 
 void test2()
 {
-    //This test only tests undefined, architecture-dependant behavior.
-    //E.g. the result of converting a float whose value doesn't fit into the integer
-    //leads to an undefined result.
+    // This test only tests undefined, architecture-dependant behavior.
+    // E.g. the result of converting a float whose value doesn't fit into the integer
+    // leads to an undefined result.
     version(GNU)
        return;
 

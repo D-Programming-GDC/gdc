@@ -579,7 +579,9 @@ void test9568()
 }
 
 /****************************************************/
-/+ See XBUG below.
+
+version (DigitalMars)
+{
 void test8a()
 {
   int a;
@@ -632,7 +634,8 @@ void test8()
   test8b();
   test8c();
 }
-+/
+}
+
 /****************************************************/
 
 uint foo9(uint i)
@@ -769,7 +772,7 @@ int main()
     multicollide();
     test9568();
 
-    //test8();          // XBUG: Cannot goto into catch bug to prevent GCC middle-end ICE.
+    version(DigitalMars) test8();
     test9();
     test10964();
     test12989();

@@ -1,4 +1,4 @@
-EXTRA_FILES: imports/ice11513y.d
+// EXTRA_FILES: imports/ice11513y.d
 /*
 TEST_OUTPUT:
 ---

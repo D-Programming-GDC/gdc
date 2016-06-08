@@ -161,7 +161,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.useInvariants = true;
   global.params.useIn = true;
   global.params.useOut = true;
-  global.params.useArrayBounds = 2;
+  global.params.useArrayBounds = BOUNDSCHECKdefault;
   global.params.useSwitchError = true;
   global.params.useInline = false;
   global.params.warnings = 0;
@@ -180,7 +180,6 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
 
   // extra D-specific options
   flag_emit_templates = 1;
-  bounds_check_set_manually = false;
 }
 
 /* Initialize options structure OPTS.  */
@@ -321,7 +320,7 @@ d_init()
     VersionCondition::addPredefinedGlobalIdent ("unittest");
   if (global.params.useAssert)
     VersionCondition::addPredefinedGlobalIdent("assert");
-  if (!global.params.useArrayBounds)
+  if (global.params.useArrayBounds == BOUNDSCHECKoff)
     VersionCondition::addPredefinedGlobalIdent("D_NoBoundsChecks");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
@@ -357,13 +356,13 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fbounds_check:
-      global.params.useArrayBounds = value ? 2 : 0;
-      bounds_check_set_manually = true;
+      global.params.useArrayBounds = value
+	? BOUNDSCHECKon : BOUNDSCHECKoff;
       break;
 
     case OPT_fbounds_check_:
-      global.params.useArrayBounds = value;
-      bounds_check_set_manually = true;
+      global.params.useArrayBounds = (value == 2) ? BOUNDSCHECKon
+	: (value == 1) ? BOUNDSCHECKsafeonly : BOUNDSCHECKoff;
       break;
 
     case OPT_fdebug:
@@ -491,17 +490,16 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_frelease:
+      global.params.release = value;
       global.params.useInvariants = !value;
       global.params.useIn = !value;
       global.params.useOut = !value;
       global.params.useAssert = !value;
-      // release mode doesn't turn off bounds checking for safe functions.
-      if (!bounds_check_set_manually)
-      {
-	global.params.useArrayBounds = !value ? 2 : 1;
-	flag_bounds_check = !value;
-      }
       global.params.useSwitchError = !value;
+      break;
+
+    case OPT_ftransition_complex:
+      global.params.vcomplex = value;
       break;
 
     case OPT_ftransition_field:
@@ -609,6 +607,14 @@ d_post_options (const char ** fn)
   // If we are given more than one input file, we must use unit-at-a-time mode.
   if (num_in_fnames > 1)
     flag_unit_at_a_time = 1;
+
+  // Release mode doesn't turn off bounds checking for safe functions.
+  if (global.params.useArrayBounds == BOUNDSCHECKdefault)
+    {
+      global.params.useArrayBounds = global.params.release
+	? BOUNDSCHECKsafeonly : BOUNDSCHECKon;
+      flag_bounds_check = !global.params.release;
+    }
 
   // Error about use of deprecated features.
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
