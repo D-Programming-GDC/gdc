@@ -1632,9 +1632,13 @@ d_has_side_effects (tree exp)
 tree
 build_address(tree exp)
 {
+  tree result;
   tree ptrtype;
   tree type = TREE_TYPE (exp);
   d_mark_addressable(exp);
+
+  if (error_operand_p (exp))
+    return exp;
 
   if (TREE_CODE (exp) == STRING_CST)
     {
@@ -1653,12 +1657,21 @@ build_address(tree exp)
   else
     ptrtype = build_pointer_type(type);
 
-  tree ret = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      // Rewrite: (e1, e2) => (e1, &e2)
+      result = build_address(TREE_OPERAND (exp, 1));
+      result = compound_expr(TREE_OPERAND (exp, 0), result);
+    }
+  else
+    {
+      result = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
 
-  if (TREE_CODE (exp) == FUNCTION_DECL)
-    TREE_NO_TRAMPOLINE (ret) = 1;
+      if (TREE_CODE (exp) == FUNCTION_DECL)
+	TREE_NO_TRAMPOLINE (result) = 1;
+    }
 
-  return ret;
+  return result;
 }
 
 tree
@@ -2289,6 +2302,16 @@ empty_aggregate_p(tree type)
 tree
 build_nop(tree type, tree exp)
 {
+  if (error_operand_p (exp))
+    return exp;
+
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      // Rewrite: (e1, e2) => (e1, cast(TYPE) e2)
+      tree result = build_nop(type, TREE_OPERAND (exp, 1));
+      return compound_expr(TREE_OPERAND (exp, 0), result);
+    }
+
   return fold_build1_loc(input_location, NOP_EXPR, type, exp);
 }
 
@@ -2412,6 +2435,16 @@ complex_expr(tree type, tree re, tree im)
 tree
 indirect_ref(tree type, tree exp)
 {
+  if (error_operand_p (exp))
+    return exp;
+
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      // Rewrite: (e1, e2) => (e1, *e2)
+      tree result = indirect_ref(type, TREE_OPERAND (exp, 1));
+      return compound_expr(TREE_OPERAND (exp, 0), result);
+    }
+
   if (TREE_CODE (TREE_TYPE (exp)) == REFERENCE_TYPE)
     return fold_build1(INDIRECT_REF, type, exp);
 
@@ -2427,6 +2460,13 @@ build_deref(tree exp)
 {
   if (error_operand_p (exp))
     return exp;
+
+  if (TREE_CODE (exp) == COMPOUND_EXPR)
+    {
+      // Rewrite: (e1, e2) => (e1, *e2)
+      tree result = build_deref(TREE_OPERAND (exp, 1));
+      return compound_expr(TREE_OPERAND (exp, 0), result);
+    }
 
   gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
 
@@ -2876,9 +2916,6 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 {
   tree ctype = TREE_TYPE (callable);
   tree callee = callable;
-  tree saved_args = NULL_TREE;
-
-  tree arg_list = NULL_TREE;
 
   if (POINTER_TYPE_P (ctype))
     ctype = TREE_TYPE (ctype);
@@ -2889,19 +2926,13 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   gcc_assert(tf != NULL);
   gcc_assert(tf->ty == Tfunction);
 
-  // Evaluate the callee before calling it.
-  if (TREE_SIDE_EFFECTS (callee))
-    {
-      callee = maybe_make_temp(callee);
-      saved_args = callee;
-    }
-
   if (TREE_CODE (ctype) != FUNCTION_TYPE && object == NULL_TREE)
     {
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
-	  error("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
+	  error("need 'this' to access member %s",
+		IDENTIFIER_POINTER (DECL_NAME (callable)));
 	  return error_mark_node;
 	}
 
@@ -2909,17 +2940,14 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
       gcc_unreachable();
     }
 
+  // Build the argument list for the call.
+  tree arg_list = NULL_TREE;
+  tree saved_args = NULL_TREE;
+
   // If this is a delegate call or a nested function being called as
   // a delegate, the object should not be NULL.
   if (object != NULL_TREE)
-    {
-      if (TREE_SIDE_EFFECTS (object))
-	{
-	  object = maybe_make_temp(object);
-	  saved_args = maybe_vcompound_expr(saved_args, object);
-	}
-      arg_list = build_tree_list(NULL_TREE, object);
-    }
+    arg_list = build_tree_list(NULL_TREE, object);
 
   if (arguments)
     {
@@ -2972,27 +3000,62 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	      targ = build2(COMPOUND_EXPR, TREE_TYPE (t), targ, t);
 	    }
 
-	  // Evaluate the argument before passing to the function.
-	  // Needed for left to right evaluation.
-	  if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (targ))
-	    {
-	      // Push left side of comma expressions into the saved args
-	      // list, so that only the result is maybe made a temporary.
-	      if (TREE_CODE (targ) == COMPOUND_EXPR)
-		{
-		  tree tleft = TREE_OPERAND (targ, 0);
-		  saved_args = maybe_vcompound_expr(saved_args, tleft);
-		  targ = TREE_OPERAND (targ, 1);
-		}
-
-	      if (TREE_SIDE_EFFECTS (targ))
-		{
-		  targ = maybe_make_temp(targ);
-		  saved_args = maybe_vcompound_expr(saved_args, targ);
-		}
-	    }
 	  arg_list = chainon(arg_list, build_tree_list(0, targ));
 	}
+    }
+
+  // Evaluate the argument before passing to the function.
+  // Needed for left to right evaluation.
+  if (tf->linkage == LINKd)
+    {
+      size_t nsaved_args = 0;
+
+      // First, push left side of comma expressions into the saved args list,
+      // so that only the result is maybe made a temporary.
+      for (tree arg = arg_list; arg != NULL_TREE; arg = TREE_CHAIN (arg))
+	{
+	  tree value = TREE_VALUE (arg);
+
+	  if (TREE_SIDE_EFFECTS (value))
+	    {
+	      if (TREE_CODE (value) == COMPOUND_EXPR)
+		{
+		  tree expr = TREE_OPERAND (value, 0);
+		  saved_args = maybe_vcompound_expr(saved_args, expr);
+		  value = TREE_OPERAND (value, 1);
+		}
+
+	      // Argument needs saving.
+	      if (TREE_SIDE_EFFECTS (value))
+		nsaved_args++;
+
+	      TREE_VALUE (arg) = value;
+	    }
+	}
+
+      // If more than one argument needs saving, then we must enforce the
+      // order of evaluation.
+      if (nsaved_args > 1)
+	{
+	  for (tree arg = arg_list; arg != NULL_TREE; arg = TREE_CHAIN (arg))
+	    {
+	      tree value = TREE_VALUE (arg);
+
+	      if (TREE_SIDE_EFFECTS (value))
+		{
+		  value = maybe_make_temp(value);
+		  saved_args = maybe_vcompound_expr(saved_args, value);
+		  TREE_VALUE (arg) = value;
+		}
+	    }
+	}
+    }
+
+  // Evaluate the callee before calling it.
+  if (saved_args != NULL_TREE && TREE_SIDE_EFFECTS (callee))
+    {
+      callee = maybe_make_temp(callee);
+      saved_args = vcompound_expr(callee, saved_args);
     }
 
   tree result = d_build_call_list(TREE_TYPE (ctype), callee, arg_list);

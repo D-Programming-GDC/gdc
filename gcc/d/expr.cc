@@ -2867,39 +2867,6 @@ build_dtor_list(size_t starti, size_t endi)
 // Separate the value of a compound expression from the left hand side
 // expressions in RESULT.  Returns the result in EXPR and VALUE.
 
-static void
-get_compound_value(tree result, tree *expr, tree *value)
-{
-  if (TREE_CODE (result) == COMPOUND_EXPR)
-    {
-      *expr = TREE_OPERAND (result, 0);
-      *value = (TREE_OPERAND (result, 1));
-    }
-  else if (TREE_CODE (result) == INDIRECT_REF)
-    {
-      // Rewrite: *(e1, e2) => (e1, *e2)
-      tree ref = NULL_TREE;
-      get_compound_value(TREE_OPERAND (result, 0), expr, &ref);
-      *value = build_deref(ref);
-    }
-  else if (TREE_CODE (result) == ADDR_EXPR)
-    {
-      // Rewrite: &(e1, e2) => (e1, &e2)
-      tree val = NULL_TREE;
-      get_compound_value(TREE_OPERAND (result, 0), expr, &val);
-      *value = build_address(val);
-    }
-  else if (TREE_CODE (result) == NOP_EXPR)
-    {
-      // Rewrite: cast(T)(e1, e2) => (e1, cast(T)e2)
-      tree val = NULL_TREE;
-      get_compound_value(TREE_OPERAND (result, 0), expr, &val);
-      *value = build_nop(TREE_TYPE (result), val);
-    }
-  else
-    *value = result;
-}
-
 // Same as build_expr, but also calls destructors on any temporaries.
 
 tree
@@ -2913,45 +2880,40 @@ build_expr_dtor(Expression *e)
 
   if (dtors != NULL_TREE)
     {
-      // Split comma expressions, so that only the value is maybe saved.
       tree expr = NULL_TREE;
-      tree value = NULL_TREE;
-      get_compound_value(t, &expr, &value);
+      tree result;
 
-      // For construction of temporaries, if the constructor throws, then we
-      // don't want to run the destructor on the incomplete object.
-      CallExp *ce = (e->op == TOKcall) ? ((CallExp *) e) : NULL;
-      if (ce != NULL && ce->e1->op == TOKdotvar
-	  && ((DotVarExp *) ce->e1)->var->isCtorDeclaration())
+      // Split comma expressions, so that only the result is maybe saved.
+      if (TREE_CODE (t) == COMPOUND_EXPR)
 	{
-	  // If handling a comma expression, see if a rewrite can be done.
-	  // ((expr, value), dtors) => ((expr, dtors), value)
-	  if (expr == NULL_TREE || TREE_SIDE_EFFECTS (value))
-	    {
-	      // If the value has side-effects, save the entire expression.
-	      value = maybe_make_temp(value);
-	      expr = compound_expr(maybe_vcompound_expr(expr, value), dtors);
-	    }
-	  else
-	    expr = maybe_vcompound_expr(expr, dtors);
-
-	  if (e->type->ty == Tvoid)
-	    return expr;
-
-	  return compound_expr(expr, value);
+	  expr = TREE_OPERAND (t, 0);
+	  result = TREE_OPERAND (t, 1);
 	}
       else
+	result = t;
+
+      if (TREE_SIDE_EFFECTS (result))
 	{
-	  // Wrap expression and dtors in a try/finally expression.
-	  value = maybe_make_temp(value);
-	  expr = build2(TRY_FINALLY_EXPR, void_type_node,
-			maybe_vcompound_expr(expr, value), dtors);
+	  // If the result has side-effects, save the entire expression.
+	  result = maybe_make_temp(result);
 
-	  if (e->type->ty == Tvoid)
-	    return expr;
-
-	  return compound_expr(expr, value);
+	  // For construction of temporaries, if the constructor throws, then we
+	  // don't want to run the destructor on the incomplete object.
+	  CallExp *ce = (e->op == TOKcall) ? ((CallExp *) e) : NULL;
+	  if (ce != NULL && ce->e1->op == TOKdotvar
+	      && ((DotVarExp *) ce->e1)->var->isCtorDeclaration())
+	    expr = compound_expr(maybe_vcompound_expr(expr, result), dtors);
+	  else
+	    {
+	      // Wrap expr and dtors in a try/finally expression.
+	      expr = build2(TRY_FINALLY_EXPR, void_type_node,
+			    maybe_vcompound_expr(expr, result), dtors);
+	    }
 	}
+      else
+	expr = maybe_vcompound_expr(expr, dtors);
+
+      return compound_expr(expr, result);
     }
 
   return t;
@@ -2976,13 +2938,20 @@ build_return_dtor(Expression *e, Type *type, TypeFunction *tf)
 
   if (dtors != NULL_TREE)
     {
-      // Split comma expressions, so that the result is returned directly.
       tree expr = NULL_TREE;
-      tree value = NULL_TREE;
-      get_compound_value(t, &expr, &value);
+      tree result;
+
+      // Split comma expressions, so that the result is returned directly.
+      if (TREE_CODE (t) == COMPOUND_EXPR)
+	{
+	  expr = TREE_OPERAND (t, 0);
+	  result = TREE_OPERAND (t, 1);
+	}
+      else
+	result = t;
 
       // Nest the return expression inside the try/finally expression.
-      tree assign = build2(INIT_EXPR, TREE_TYPE (decl), decl, value);
+      tree assign = build2(INIT_EXPR, TREE_TYPE (decl), decl, result);
 
       return build2(TRY_FINALLY_EXPR, void_type_node,
 		    maybe_vcompound_expr(expr, return_expr(assign)), dtors);
