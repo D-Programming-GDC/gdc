@@ -1,6 +1,6 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2015 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
@@ -35,6 +35,7 @@ enum LINK;
 enum TOK;
 enum MATCH;
 enum PURE;
+enum PINLINE;
 
 #define STCundefined    0LL
 #define STCstatic       1LL
@@ -85,6 +86,7 @@ enum PURE;
 #define STCnogc          0x40000000000LL // @nogc
 #define STCvolatile      0x80000000000LL // destined for volatile in the back end
 #define STCreturn        0x100000000000LL // 'return ref' for function parameters
+#define STCinference     0x200000000000LL // do attribute inference
 
 const StorageClass STCStorageClass = (STCauto | STCscope | STCstatic | STCextern | STCconst | STCfinal |
     STCabstract | STCsynchronized | STCdeprecated | STCoverride | STClazy | STCalias |
@@ -195,7 +197,6 @@ public:
     Dsymbol *aliassym;
     Dsymbol *overnext;          // next in overload list
     Dsymbol *import;            // !=NULL if unresolved internal alias for selective import
-    int inSemantic;
 
     AliasDeclaration(Loc loc, Identifier *ident, Type *type);
     AliasDeclaration(Loc loc, Identifier *ident, Dsymbol *s);
@@ -328,7 +329,6 @@ public:
 #ifdef IN_GCC
     Symbol *toSymbol();
     void toObjFile();                       // compile to .obj file
-    virtual void toDt(dt_t **pdt);
 #endif
 };
 
@@ -339,9 +339,6 @@ public:
     static TypeInfoStructDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoClassDeclaration : public TypeInfoDeclaration
@@ -353,7 +350,6 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
     Symbol *toSymbol();
-    void toDt(dt_t **pdt);
 #endif
 };
 
@@ -364,9 +360,6 @@ public:
     static TypeInfoInterfaceDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoPointerDeclaration : public TypeInfoDeclaration
@@ -376,9 +369,6 @@ public:
     static TypeInfoPointerDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoArrayDeclaration : public TypeInfoDeclaration
@@ -388,9 +378,6 @@ public:
     static TypeInfoArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoStaticArrayDeclaration : public TypeInfoDeclaration
@@ -400,9 +387,6 @@ public:
     static TypeInfoStaticArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoAssociativeArrayDeclaration : public TypeInfoDeclaration
@@ -412,9 +396,6 @@ public:
     static TypeInfoAssociativeArrayDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoEnumDeclaration : public TypeInfoDeclaration
@@ -424,9 +405,6 @@ public:
     static TypeInfoEnumDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoFunctionDeclaration : public TypeInfoDeclaration
@@ -436,9 +414,6 @@ public:
     static TypeInfoFunctionDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoDelegateDeclaration : public TypeInfoDeclaration
@@ -448,9 +423,6 @@ public:
     static TypeInfoDelegateDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoTupleDeclaration : public TypeInfoDeclaration
@@ -460,9 +432,6 @@ public:
     static TypeInfoTupleDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoConstDeclaration : public TypeInfoDeclaration
@@ -472,9 +441,6 @@ public:
     static TypeInfoConstDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoInvariantDeclaration : public TypeInfoDeclaration
@@ -484,9 +450,6 @@ public:
     static TypeInfoInvariantDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoSharedDeclaration : public TypeInfoDeclaration
@@ -496,9 +459,6 @@ public:
     static TypeInfoSharedDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoWildDeclaration : public TypeInfoDeclaration
@@ -508,9 +468,6 @@ public:
     static TypeInfoWildDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class TypeInfoVectorDeclaration : public TypeInfoDeclaration
@@ -520,9 +477,6 @@ public:
     static TypeInfoVectorDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 /**************************************************************/
@@ -577,6 +531,8 @@ public:
     FuncDeclaration *fdrequire;         // function that does the in contract
     FuncDeclaration *fdensure;          // function that does the out contract
 
+    const char *mangleString;           // mangled symbol created from mangleExact()
+
     Identifier *outId;                  // identifier for out statement
     VarDeclaration *vresult;            // variable corresponding to outId
     LabelDsymbol *returnLabel;          // where the return goes
@@ -598,6 +554,7 @@ public:
     bool naked;                         // true if naked
     ILS inlineStatusStmt;
     ILS inlineStatusExp;
+    PINLINE inlining;
 
     CompiledCtfeFunction *ctfeCode;     // Compiled code for interpreter
     int inlineNest;                     // !=0 if nested inline
@@ -668,6 +625,7 @@ public:
     const char *toPrettyChars(bool QualifyTypes = false);
     const char *toFullSignature();  // for diagnostics, e.g. 'int foo(int x, int y) pure'
     bool isMain();
+    bool isCMain();
     bool isWinMain();
     bool isDllMain();
     bool isExport();

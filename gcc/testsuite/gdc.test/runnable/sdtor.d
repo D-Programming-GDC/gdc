@@ -2678,7 +2678,7 @@ void test9985()
     }
     auto p = &(retN());        // OK
     assert(p == &n);
-    alias ref const(int) F1();
+    alias pure nothrow @nogc @safe ref const(int) F1();
     static assert(is(typeof(retN) == F1));
 
     enum const(int) x = 1;
@@ -2687,7 +2687,7 @@ void test9985()
         return x;
     }
     static assert(!__traits(compiles, { auto q = &(retX()); }));
-    alias const(int) F2();
+    alias pure nothrow @nogc @safe const(int) F2();
     static assert(is(typeof(retX) == F2));
 }
 
@@ -3038,6 +3038,70 @@ void test10789()
         assert(S10789.count == 0);
     }
 }
+
+/**********************************/
+// 10972
+
+int test10972()
+{
+    string result;
+
+    struct A
+    {
+        this(this)  { result ~= "pA"; version(none) printf("copied A\n"); }
+        ~this()     { result ~= "dA"; version(none) printf("destroy A\n"); }
+    }
+    struct B
+    {
+        this(this)
+        {
+            result ~= "(pB)"; version(none) printf("B says what?\n");
+            throw new Exception("BOOM!");
+        }
+        ~this() { result ~= "dB"; version(none) printf("destroy B\n"); }
+    }
+    struct S
+    {
+        A a;
+        B b;
+    }
+
+    result = "{";
+    {
+        S s1;
+        result ~= "[";
+        try
+        {
+            S s3 = s1;
+            assert(0);
+        }
+        catch (Exception e)
+        {}
+        result ~= "]";
+    }
+    result ~= "}";
+    assert(result == "{[pA(pB)dA]dBdA}", result);
+
+    result = "{";
+    {
+        S s1;
+        S s2;
+        result ~= "[";
+        try
+        {
+            s2 = s1;
+            assert(0);
+        }
+        catch (Exception e)
+        {}
+        result ~= "]";
+    }
+    result ~= "}";
+    assert(result == "{[pA(pB)dA]dBdAdBdA}", result);
+
+    return 1;
+}
+static assert(test10972()); // CTFE
 
 /**********************************/
 // 11134
@@ -3450,6 +3514,150 @@ void test13586()
 }
 
 /**********************************/
+// 14443
+
+T enforce14443(E : Throwable = Exception, T)(T value)
+{
+    if (!value)
+        throw new E("Enforcement failed");
+    return value;
+}
+
+struct RefCounted14443(T)
+if (!is(T == class) && !(is(T == interface)))
+{
+    struct RefCountedStore
+    {
+        private struct Impl
+        {
+            T _payload;
+            size_t _count;
+        }
+
+        private Impl* _store;
+
+        private void initialize(A...)(auto ref A args)
+        {
+            import core.stdc.stdlib : malloc;
+
+            // enforce is necessary
+            _store = cast(Impl*) enforce14443(malloc(Impl.sizeof));
+
+            // emulate 'emplace'
+            static if (args.length > 0)
+                _store._payload.tupleof = args;
+            else
+                _store._payload = T.init;
+
+            _store._count = 1;
+        }
+
+        @property bool isInitialized() const nothrow @safe
+        {
+            return _store !is null;
+        }
+
+        void ensureInitialized()
+        {
+            if (!isInitialized) initialize();
+        }
+
+    }
+    RefCountedStore _refCounted;
+
+    this(A...)(auto ref A args) if (A.length > 0)
+    {
+        _refCounted.initialize(args);
+    }
+
+    this(this)
+    {
+        if (!_refCounted.isInitialized)
+            return;
+        ++_refCounted._store._count;
+        //printf("RefCounted count = %d (inc)\n", _refCounted._store._count);
+    }
+
+    ~this()
+    {
+        if (!_refCounted.isInitialized)
+            return;
+        assert(_refCounted._store._count > 0);
+        if (--_refCounted._store._count)
+        {
+            //printf("RefCounted count = %u\n", _refCounted._store._count);
+            return;
+        }
+
+        import core.stdc.stdlib : free;
+        free(_refCounted._store);
+        _refCounted._store = null;
+    }
+
+    void opAssign(typeof(this) rhs) { assert(0); }
+    void opAssign(T rhs) { assert(0); }
+
+    @property ref T refCountedPayload()
+    {
+        _refCounted.ensureInitialized();
+        return _refCounted._store._payload;
+    }
+
+    alias refCountedPayload this;
+}
+
+struct Path14443
+{
+    struct Payload
+    {
+        int p;
+    }
+    RefCounted14443!Payload data;
+}
+
+struct PathRange14443
+{
+    Path14443 path;
+    size_t i;
+
+    @property PathElement14443 front()
+    {
+        return PathElement14443(this, path.data.p);
+    }
+}
+
+struct PathElement14443
+{
+    PathRange14443 range;
+
+    this(PathRange14443 range, int)
+    {
+        this.range = range;
+    }
+}
+
+void test14443()
+{
+    auto path = Path14443(RefCounted14443!(Path14443.Payload)(12));
+    assert(path.data.p == 12);
+
+    @property refCount() { return path.data._refCounted._store._count; }
+    assert(refCount == 1);
+
+    {
+        auto _r = PathRange14443(path);
+        assert(refCount == 2);
+        // foreach
+        {
+            auto element = _r.front;
+            assert(refCount == 3);  // fail with 2.067
+        }
+        assert(refCount == 2);
+    }
+    assert(refCount == 1);
+}
+
+/**********************************/
 // 13661, 14022, 14023 - postblit/dtor call on static array assignment
 
 bool test13661()
@@ -3703,6 +3911,199 @@ void test13095()
 }
 
 /**********************************/
+// 14264
+
+void test14264()
+{
+    static int dtor;
+    static struct Foo
+    {
+        ~this() { ++dtor; }
+        T opCast(T:bool)() { return true; }
+    }
+
+    Foo makeFoo()
+    {
+        return Foo();
+    }
+
+    assert(dtor == 0);
+
+    makeFoo();
+    assert(dtor == 1);
+
+    makeFoo;
+    assert(dtor == 2);
+
+    if (makeFoo()) {}
+    assert(dtor == 3);
+
+    if (makeFoo) {}
+    assert(dtor == 4);
+}
+
+/**********************************/
+// 14696
+
+void test14696(int len = 2)
+{
+    string result;
+
+    struct S
+    {
+        int n;
+
+        void* get(void* p = null)
+        {
+            result ~= "get(" ~ cast(char)(n+'0') ~ ").";
+            return null;
+        }
+
+        ~this()
+        {
+            result ~= "dtor(" ~ cast(char)(n+'0') ~ ").";
+        }
+    }
+
+    S makeS(int n)
+    {
+        result ~= "makeS(" ~ cast(char)(n+'0') ~ ").";
+        return S(n);
+    }
+    void foo(void* x, void* y = null)
+    {
+        result ~= "foo.";
+    }
+    void fooThrow(void* x, void* y = null)
+    {
+        result ~= "fooThrow.";
+        throw new Exception("fail!");
+    }
+
+    void check(void delegate() dg, string r, string file = __FILE__, size_t line = __LINE__)
+    {
+        import core.exception;
+
+        result = null;
+        try { dg(); } catch (Exception e) {}
+        if (result != r)
+            throw new AssertError(result, file, line);
+    }
+
+    // temporary in condition
+    check({ foo(len == 2 ?        makeS(1).get() : null); }, "makeS(1).get(1).foo.dtor(1).");
+    check({ foo(len == 2 ? null : makeS(1).get()       ); }, "foo.");
+    check({ foo(len != 2 ?        makeS(1).get() : null); }, "foo.");
+    check({ foo(len != 2 ? null : makeS(1).get()       ); }, "makeS(1).get(1).foo.dtor(1).");
+
+    // temporary in nesting conditions
+    check({ foo(len >= 2 ?        (len == 2 ?        makeS(1).get() : null) : null); }, "makeS(1).get(1).foo.dtor(1).");
+    check({ foo(len >= 2 ?        (len == 2 ? null : makeS(1).get()       ) : null); }, "foo.");
+    check({ foo(len >= 2 ?        (len != 2 ?        makeS(1).get() : null) : null); }, "foo.");
+    check({ foo(len >= 2 ?        (len != 2 ? null : makeS(1).get()       ) : null); }, "makeS(1).get(1).foo.dtor(1).");
+    check({ foo(len >= 2 ? null : (len == 2 ?        makeS(1).get() : null)       ); }, "foo.");
+    check({ foo(len >= 2 ? null : (len == 2 ? null : makeS(1).get()       )       ); }, "foo.");
+    check({ foo(len >= 2 ? null : (len != 2 ?        makeS(1).get() : null)       ); }, "foo.");
+    check({ foo(len >= 2 ? null : (len != 2 ? null : makeS(1).get()       )       ); }, "foo.");
+    check({ foo(len >  2 ?        (len == 2 ?        makeS(1).get() : null) : null); }, "foo.");
+    check({ foo(len >  2 ?        (len == 2 ? null : makeS(1).get()       ) : null); }, "foo.");
+    check({ foo(len >  2 ?        (len != 2 ?        makeS(1).get() : null) : null); }, "foo.");
+    check({ foo(len >  2 ?        (len != 2 ? null : makeS(1).get()       ) : null); }, "foo.");
+    check({ foo(len >  2 ? null : (len == 2 ?        makeS(1).get() : null)       ); }, "makeS(1).get(1).foo.dtor(1).");
+    check({ foo(len >  2 ? null : (len == 2 ? null : makeS(1).get()       )       ); }, "foo.");
+    check({ foo(len >  2 ? null : (len != 2 ?        makeS(1).get() : null)       ); }, "foo.");
+    check({ foo(len >  2 ? null : (len != 2 ? null : makeS(1).get()       )       ); }, "makeS(1).get(1).foo.dtor(1).");
+
+    // temporary in condition and throwing callee
+    // check({ fooThrow(len == 2 ?        makeS(1).get() : null); }, "makeS(1).get(1).fooThrow.dtor(1).");
+    // check({ fooThrow(len == 2 ? null : makeS(1).get()       ); }, "fooThrow.");
+    // check({ fooThrow(len != 2 ?        makeS(1).get() : null); }, "fooThrow.");
+    // check({ fooThrow(len != 2 ? null : makeS(1).get()       ); }, "makeS(1).get(1).fooThrow.dtor(1).");
+
+    // temporary in nesting condititions and throwing callee
+    // check({ fooThrow(len >= 2 ?        (len == 2 ?        makeS(1).get() : null) : null); }, "makeS(1).get(1).fooThrow.dtor(1).");
+    // check({ fooThrow(len >= 2 ?        (len == 2 ? null : makeS(1).get()       ) : null); }, "fooThrow.");
+    // check({ fooThrow(len >= 2 ?        (len != 2 ?        makeS(1).get() : null) : null); }, "fooThrow.");
+    // check({ fooThrow(len >= 2 ?        (len != 2 ? null : makeS(1).get()       ) : null); }, "makeS(1).get(1).fooThrow.dtor(1).");
+    // check({ fooThrow(len >= 2 ? null : (len == 2 ?        makeS(1).get() : null)       ); }, "fooThrow.");
+    // check({ fooThrow(len >= 2 ? null : (len == 2 ? null : makeS(1).get()       )       ); }, "fooThrow.");
+    // check({ fooThrow(len >= 2 ? null : (len != 2 ?        makeS(1).get() : null)       ); }, "fooThrow.");
+    // check({ fooThrow(len >= 2 ? null : (len != 2 ? null : makeS(1).get()       )       ); }, "fooThrow.");
+    // check({ fooThrow(len >  2 ?        (len == 2 ?        makeS(1).get() : null) : null); }, "fooThrow.");
+    // check({ fooThrow(len >  2 ?        (len == 2 ? null : makeS(1).get()       ) : null); }, "fooThrow.");
+    // check({ fooThrow(len >  2 ?        (len != 2 ?        makeS(1).get() : null) : null); }, "fooThrow.");
+    // check({ fooThrow(len >  2 ?        (len != 2 ? null : makeS(1).get()       ) : null); }, "fooThrow.");
+    // check({ fooThrow(len >  2 ? null : (len == 2 ?        makeS(1).get() : null)       ); }, "makeS(1).get(1).fooThrow.dtor(1).");
+    // check({ fooThrow(len >  2 ? null : (len == 2 ? null : makeS(1).get()       )       ); }, "fooThrow.");
+    // check({ fooThrow(len >  2 ? null : (len != 2 ?        makeS(1).get() : null)       ); }, "fooThrow.");
+    // check({ fooThrow(len >  2 ? null : (len != 2 ? null : makeS(1).get()       )       ); }, "makeS(1).get(1).fooThrow.dtor(1).");
+
+    // temporaries in each conditions
+    check({ foo(len == 2 ? makeS(1).get() : null, len == 2 ? makeS(2).get() : null); }, "makeS(1).get(1).makeS(2).get(2).foo.dtor(2).dtor(1).");
+    check({ foo(len == 2 ? makeS(1).get() : null, len != 2 ? makeS(2).get() : null); }, "makeS(1).get(1).foo.dtor(1).");
+    check({ foo(len != 2 ? makeS(1).get() : null, len == 2 ? makeS(2).get() : null); }, "makeS(2).get(2).foo.dtor(2).");
+    check({ foo(len != 2 ? makeS(1).get() : null, len != 2 ? makeS(2).get() : null); }, "foo.");
+
+    // nesting temporaries in conditions
+    check({ foo(len == 2 ? makeS(1).get(len == 2 ? makeS(2).get() : null) : null); }, "makeS(1).makeS(2).get(2).get(1).foo.dtor(2).dtor(1).");
+    check({ foo(len == 2 ? makeS(1).get(len != 2 ? makeS(2).get() : null) : null); }, "makeS(1).get(1).foo.dtor(1).");
+    check({ foo(len != 2 ? makeS(1).get(len == 2 ? makeS(2).get() : null) : null); }, "foo.");
+    check({ foo(len != 2 ? makeS(1).get(len != 2 ? makeS(2).get() : null) : null); }, "foo.");
+}
+
+// 14838
+
+int test14838() pure nothrow @safe
+{
+    int dtor;
+
+    struct S14838(T)
+    {
+        ~this() { ++dtor; }
+    }
+    struct X14838
+    {
+              S14838!int ms;
+        const S14838!int cs;
+
+              S14838!int[2] ma;
+        const S14838!int[2] ca;
+
+              S14838!int[2][2] ma2x2;
+        const S14838!int[2][2] ca2x2;
+
+        // number of S14838 = 1*2 + 2*2 + 4*2 = 14
+    }
+
+    void test(Dg)(scope Dg code)
+    {
+        dtor = 0;
+        code();
+    }
+
+    test(delegate{       S14838!int a; }); assert(dtor == 1);
+    test(delegate{ const S14838!int a; }); assert(dtor == 1);
+
+    test(delegate{       S14838!int[2] a; }); assert(dtor == 2);
+    test(delegate{ const S14838!int[2] a; }); assert(dtor == 2);
+
+    test(delegate{       S14838!int[2][2] a; }); assert(dtor == 4);
+    test(delegate{ const S14838!int[2][2] a; }); assert(dtor == 4);
+
+    test(delegate{       X14838 a; }); assert(dtor == 1 * 14);
+    test(delegate{ const X14838 a; }); assert(dtor == 1 * 14);
+
+    test(delegate{       X14838[2] a; }); assert(dtor == 2 * 14);
+    test(delegate{ const X14838[2] a; }); assert(dtor == 2 * 14);
+
+    test(delegate{       X14838[2][2] a; }); assert(dtor == 4 * 14);
+    test(delegate{ const X14838[2][2] a; }); assert(dtor == 4 * 14);
+
+    return 1;
+}
+static assert(test14838());
+
+/**********************************/
 
 int main()
 {
@@ -3796,6 +4197,7 @@ int main()
     test10244();
     test10694();
     test10789();
+    test10972();
     test11134();
     test11197();
     test7474();
@@ -3809,12 +4211,16 @@ int main()
     test13303();
     test13673();
     test13586();
+    test14443();
     test13661();
     test13661a();
     test14022();
     test14023();
     test13669();
     test13095();
+    test14264();
+    test14696();
+    test14838();
 
     printf("Success\n");
     return 0;

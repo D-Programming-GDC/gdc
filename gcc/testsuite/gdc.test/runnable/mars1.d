@@ -1279,6 +1279,72 @@ int test13969(const S13969* f) {
 }
 
 ////////////////////////////////////////////////////////////////////////
+
+int[] arr14436;
+void test14436()
+{
+    assert(arr14436 == null);
+    arr14436 = [1, 2, 3];
+    assert(arr14436 != null);
+}
+
+////////////////////////////////////////////////////////////////////////
+
+void test14220()
+{
+    auto a = toString(14);
+
+    printf("a.ptr = %p, a.length = %d\n", a.ptr, cast(int)a.length);
+    return;
+}
+
+auto toString(int value)
+{
+    uint mValue = value;
+
+    char[int.sizeof * 3] buffer = void;
+    size_t index = buffer.length;
+
+    do
+    {
+        uint div = cast(int)(mValue / 10);
+        char mod = mValue % 10 + '0';
+        buffer[--index] = mod;        // Line 22
+        mValue = div;
+    } while (mValue);
+
+    //printf("buffer.ptr = %p, index = %d\n", buffer.ptr, cast(int)index);
+    return dup(buffer[index .. $]);
+}
+
+char[] dup(char[] a)
+{
+    //printf("a.ptr = %p, a.length = %d\n", a.ptr, cast(int)a.length);
+    a[0] = 1;       // segfault
+    return a;
+}
+
+////////////////////////////////////////////////////////////////////////
+
+int stripLeft(int str, int dc)
+{
+    while (true)
+    {
+	int a = str;
+        int s = a;
+        str += 1;
+        if (dc) return s;
+    }
+}
+
+void test14829()
+{
+    if (stripLeft(3, 1) != 3) // fails with -O
+	assert(0);
+}
+
+
+////////////////////////////////////////////////////////////////////////
  
 int main()
 {
@@ -1311,6 +1377,7 @@ int main()
     test13383();
     test13190();
     test13485();
+    test14436();
     test10639();
     test10715();
     test10678();
@@ -1320,6 +1387,8 @@ int main()
     test9449();
     test12057();
     test13784();
+    test14220();
+    test14829();
     printf("Success\n");
     return 0;
 }

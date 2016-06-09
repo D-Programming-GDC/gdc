@@ -184,3 +184,49 @@ Port::strtold(const char *buffer, char **)
   return r;
 }
 
+// Fetch a little-endian 16-bit value.
+
+unsigned
+Port::readwordLE(void *buffer)
+{
+  unsigned char *p = (unsigned char*)buffer;
+
+  return ((unsigned) p[1] << 8) | (unsigned) p[0];
+}
+
+// Fetch a big-endian 16-bit value.
+
+unsigned
+Port::readwordBE(void *buffer)
+{
+  unsigned char *p = (unsigned char*)buffer;
+
+  return ((unsigned) p[0] << 8) | (unsigned) p[1];
+}
+
+// Fetch a little-endian 32-bit value.
+
+unsigned
+Port::readlongLE(void *buffer)
+{
+  unsigned char *p = (unsigned char*)buffer;
+
+  return (((unsigned) p[3] << 24)
+          | ((unsigned) p[2] << 16)
+          | ((unsigned) p[1] << 8)
+          | (unsigned) p[0]);
+}
+
+// Fetch a big-endian 32-bit value.
+
+unsigned
+Port::readlongBE(void *buffer)
+{
+  unsigned char *p = (unsigned char*)buffer;
+
+  return (((unsigned) p[0] << 24)
+          | ((unsigned) p[1] << 16)
+          | ((unsigned) p[2] << 8)
+          | (unsigned) p[3]);
+}
+

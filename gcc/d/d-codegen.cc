@@ -1306,21 +1306,25 @@ insert_type_modifiers (tree type, unsigned mod)
       break;
 
     case MODshared:
-      quals |= TYPE_QUAL_VOLATILE;
       break;
 
     case MODshared | MODconst:
     case MODshared | MODwild:
     case MODshared | MODwildconst:
       quals |= TYPE_QUAL_CONST;
-      quals |= TYPE_QUAL_VOLATILE;
       break;
 
     default:
       gcc_unreachable();
     }
 
-  return build_qualified_type (type, quals);
+  tree qualtype = build_qualified_type (type, quals);
+
+  // Mark whether the type is qualified 'shared'.
+  if (mod & MODshared)
+    TYPE_SHARED (qualtype) = 1;
+
+  return qualtype;
 }
 
 // Build INTEGER_CST of type TYPE with the value VALUE.
@@ -2057,21 +2061,48 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
   return compound_expr(body, result);
 }
 
+// Create an anonymous field of type ubyte[T] at OFFSET to fill
+// the alignment hole between OFFSET and FIELDPOS.
+
+static tree
+build_alignment_field(HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
+{
+  tree type = d_array_type(Type::tuns8, fieldpos - offset);
+  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
+
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (type));
+  DECL_FIELD_OFFSET (field) = size_int(offset);
+  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+
+  layout_decl(field, 0);
+
+  DECL_ARTIFICIAL (field) = 1;
+  DECL_IGNORED_P (field) = 1;
+
+  return field;
+}
+
 // Build a constructor for a variable of aggregate type TYPE using the
 // initializer INIT, an ordered flat list of fields and values provided
 // by the frontend.
 // The returned constructor should be a value that matches the layout of TYPE.
 
 tree
-build_struct_literal(tree type, tree init)
+build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 {
   // If the initializer was empty, use default zero initialization.
-  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
+  if (vec_safe_is_empty(init))
     return build_constructor(type, NULL);
 
   vec<constructor_elt, va_gc> *ve = NULL;
   HOST_WIDE_INT offset = 0;
   bool constant_p = true;
+  bool fillholes = true;
+
+  // Filling alignment holes this only applies to structs.
+  if (TREE_CODE (type) != RECORD_TYPE
+      || CLASS_TYPE_P (type) || TYPE_PACKED (type))
+    fillholes = false;
 
   // Walk through each field, matching our initializer list
   for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
@@ -2094,16 +2125,16 @@ build_struct_literal(tree type, tree init)
 	}
       else
 	{
+	  // Search for the value to initialize the next field.  Once found,
+	  // pop it from the init list so we don't look at it again.
 	  unsigned HOST_WIDE_INT idx;
 	  tree index;
 
-	  // Search for the value to initialize the next field.  Once found,
-	  // pop it from the init list so we don't look at it again.
-	  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (init), idx, index, value)
+	  FOR_EACH_CONSTRUCTOR_ELT (init, idx, index, value)
 	    {
 	      if (index == field)
 		{
-		  CONSTRUCTOR_ELTS (init)->ordered_remove(idx);
+		  init->ordered_remove(idx);
 		  is_initialized = true;
 		  break;
 		}
@@ -2115,10 +2146,17 @@ build_struct_literal(tree type, tree init)
 	  HOST_WIDE_INT fieldpos = int_byte_position(field);
 	  gcc_assert(value != NULL_TREE);
 
+	  // Insert anonymous fields in the constructor for padding out
+	  // alignment holes in-place between fields.
+	  if (fillholes && offset < fieldpos)
+	    {
+	      tree pfield = build_alignment_field(offset, fieldpos);
+	      tree pvalue = build_constructor(TREE_TYPE (pfield), NULL);
+	      CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
+	    }
+
 	  // Must not initialize fields that overlap.
-	  if (fieldpos >= offset)
-	    offset = fieldpos;
-	  else
+	  if (fieldpos < offset)
 	    {
 	      // Find the nearest user defined type and field.
 	      tree vtype = type;
@@ -2134,22 +2172,33 @@ build_struct_literal(tree type, tree init)
 	      gcc_assert(TYPE_NAME (vtype) && DECL_NAME (vfield));
 	      error("overlapping initializer for field %qT.%qD",
 		    TYPE_NAME (vtype), DECL_NAME (vfield));
-	      continue;
 	    }
 
 	  if (!TREE_CONSTANT (value))
 	    constant_p = false;
 
 	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
-	  // If all initializers have been assigned, there's nothing else to do.
-	  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
-	    break;
 	}
+
+      // Move offset to the next position in the struct.
+      if (TREE_CODE (type) == RECORD_TYPE)
+	offset = int_byte_position(field) + int_size_in_bytes(TREE_TYPE (field));
+
+      // If all initializers have been assigned, there's nothing else to do.
+      if (vec_safe_is_empty(init))
+	break;
+    }
+
+  // Finally pad out the end of the record.
+  if (fillholes && offset < int_size_in_bytes(type))
+    {
+      tree pfield = build_alignment_field(offset, int_size_in_bytes(type));
+      tree pvalue = build_constructor(TREE_TYPE (pfield), NULL);
+      CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
     }
 
   // Ensure that we have consumed all values.
-  gcc_assert(vec_safe_is_empty(CONSTRUCTOR_ELTS (init))
-	     || ANON_AGGR_TYPE_P (type));
+  gcc_assert(vec_safe_is_empty(init) || ANON_AGGR_TYPE_P (type));
 
   tree ctor = build_constructor(type, ve);
 
@@ -2730,24 +2779,30 @@ build_bounds_condition(const Loc& loc, tree index, tree len, bool inclusive)
 bool
 array_bounds_check()
 {
-  int result = global.params.useArrayBounds;
+  FuncDeclaration *func;
 
-  if (result == 2)
-    return true;
-
-  if (result == 1)
+  switch (global.params.useArrayBounds)
     {
+    case BOUNDSCHECKoff:
+      return false;
+
+    case BOUNDSCHECKon:
+      return true;
+
+    case BOUNDSCHECKsafeonly:
       // For D2 safe functions only
-      FuncDeclaration *func = cfun->language->function;
+      func = cfun->language->function;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
 	  if (tf->trust == TRUSTsafe)
 	    return true;
 	}
-    }
+      return false;
 
-  return false;
+    default:
+      gcc_unreachable();
+    }
 }
 
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.
@@ -3566,16 +3621,6 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 
   // Should have caught this above.
   gcc_unreachable();
-}
-
-// Returns typeinfo reference for type T.
-
-tree
-build_typeinfo (Type *t)
-{
-  tree tinfo = build_expr(getTypeInfo(t, NULL));
-  gcc_assert(POINTER_TYPE_P (TREE_TYPE (tinfo)));
-  return tinfo;
 }
 
 // Check that a new jump at FROM to a label at TO is OK.
@@ -4503,75 +4548,10 @@ insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
   // Must set this or we crash with DWARF debugging.
   set_decl_location(field, loc);
 
-  TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
+  TREE_ADDRESSABLE (field) = TYPE_SHARED (TREE_TYPE (field));
 
   layout_decl(field, 0);
   TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), field);
-}
-
-// Create an anonymous field of type ubyte[SIZE] at OFFSET.
-// CONTEXT is the record type where the field will be inserted.
-
-static tree
-fill_alignment_field(tree context, tree size, tree offset)
-{
-  tree type = d_array_type(Type::tuns8, tree_to_uhwi(size));
-  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
-
-  // As per insert_aggregate_field.
-  DECL_FIELD_CONTEXT (field) = context;
-  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
-  DECL_FIELD_OFFSET (field) = offset;
-  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
-
-  layout_decl(field, 0);
-
-  DECL_ARTIFICIAL (field) = 1;
-  DECL_IGNORED_P (field) = 1;
-
-  return field;
-}
-
-// Insert anonymous fields in the record TYPE for padding out alignment holes.
-
-static void
-fill_alignment_holes(tree type)
-{
-  // Filling alignment holes this way only applies for structs.
-  if (TREE_CODE (type) != RECORD_TYPE
-      || CLASS_TYPE_P (type) || TYPE_PACKED (type))
-    return;
-
-  tree offset = size_zero_node;
-  tree prev = NULL_TREE;
-
-  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
-    {
-      tree voffset = DECL_FIELD_OFFSET (field);
-      tree vsize = TYPE_SIZE_UNIT (TREE_TYPE (field));
-
-      // If there is an alignment hole, pad with a static array of type ubyte[].
-      if (prev != NULL_TREE && tree_int_cst_lt(offset, voffset))
-	{
-	  tree psize = size_binop(MINUS_EXPR, voffset, offset);
-	  tree pfield = fill_alignment_field(type, psize, offset);
-
-	  // Insert before the current field position.
-	  DECL_CHAIN (pfield) = DECL_CHAIN (prev);
-	  DECL_CHAIN (prev) = pfield;
-	}
-
-      prev = field;
-      offset = size_binop(PLUS_EXPR, voffset, vsize);
-    }
-
-  // Finally pad out the end of the record.
-  if (tree_int_cst_lt(offset, TYPE_SIZE_UNIT (type)))
-    {
-      tree psize = size_binop(MINUS_EXPR, TYPE_SIZE_UNIT (type), offset);
-      tree pfield = fill_alignment_field(type, psize, offset);
-      TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), pfield);
-    }
 }
 
 // Wrap-up and compute finalised aggregate type.
@@ -4595,9 +4575,6 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
   TYPE_SIZE_UNIT (type) = size_int(structsize);
   TYPE_ALIGN (type) = alignsize * BITS_PER_UNIT;
   TYPE_PACKED (type) = (alignsize == 1);
-
-  // Add padding to fill in any alignment holes.
-  fill_alignment_holes(type);
 
   // Set the backend type mode.
   compute_record_mode(type);

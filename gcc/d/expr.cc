@@ -23,6 +23,7 @@
 #include "dfrontend/expression.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
+#include "dfrontend/template.h"
 #include "dfrontend/statement.h"
 #include "dfrontend/ctfe.h"
 
@@ -86,8 +87,8 @@ public:
   {
     tree cond = convert_for_condition(build_expr(e->econd),
 				      e->econd->type);
-    tree t1 = build_expr_dtor(e->e1);
-    tree t2 = build_expr_dtor(e->e2);
+    tree t1 = build_expr(e->e1);
+    tree t2 = build_expr(e->e2);
 
     if (e->type->ty != Tvoid)
       {
@@ -866,7 +867,7 @@ public:
 		|| (e->e2->op == TOKcast && ((UnaExp *) e->e2)->e1->isLvalue())))
 	  postblit = true;
 
-	if (e->ismemset)
+	if (e->ismemset & 1)
 	  {
 	    // Set a range of elements to one value.
 	    tree t1 = maybe_make_temp(build_expr(e->e1));
@@ -880,7 +881,8 @@ public:
 		args[0] = d_array_ptr(t1);
 		args[1] = build_address(t2);
 		args[2] = d_array_length(t1);
-		args[3] = build_typeinfo(etype);
+		// So we can call postblits on const/immutable objects.
+		args[3] = build_typeinfo(etype->unSharedOf()->mutableOf());
 
 		LibCall libcall = (e->op == TOKconstruct)
 		  ? LIBCALL_ARRAYSETCTOR : LIBCALL_ARRAYSETASSIGN;
@@ -953,7 +955,7 @@ public:
       }
 
     // Look for reference initializations
-    if (e->op == TOKconstruct && e->e1->op == TOKvar)
+    if (e->op == TOKconstruct && e->e1->op == TOKvar && !(e->ismemset & 2))
       {
 	Declaration *decl = ((VarExp *) e->e1)->var;
 	if (decl->storage_class & (STCout | STCref))
@@ -988,6 +990,7 @@ public:
 	  {
 	    // Use memset to fill struct.
 	    StructDeclaration *sd = ((TypeStruct *) tb1)->sym;
+	    gcc_assert(e->op == TOKblit);
 
 	    tree result = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMSET), 3,
 					    build_address(t1), t2,
@@ -1386,7 +1389,7 @@ public:
 	  {
 	    TypeStruct *ts = (TypeStruct *) telem;
 	    if (ts->sym->dtor)
-	      ti = build_expr(getTypeInfo(tb1->nextOf(), NULL));
+	      ti = build_typeinfo(tb1->nextOf());
 	  }
 
 	// call _delarray_t (&t1, ti);
@@ -1406,7 +1409,7 @@ public:
 	      {
 		tree args[2];
 		args[0] = t1;
-		args[1] = build_expr(getTypeInfo(tnext, NULL));
+		args[1] = build_typeinfo(tnext);
 
 		this->result_ = build_libcall(LIBCALL_DELSTRUCT, 2, args);
 		return;
@@ -1579,26 +1582,6 @@ public:
       {
 	DotVarExp *dve = (DotVarExp *) e1b;
 
-	// Is this static method call?
-	bool is_dottype = false;
-	Expression *ex = dve->e1;
-
-	while (1)
-	  {
-	    if (ex->op == TOKsuper || ex->op == TOKdottype)
-	      {
-		// super.member() and type.member() calls directly.
-		is_dottype = true;
-		break;
-	      }
-	    else if (ex->op == TOKcast)
-	      {
-		ex = ((CastExp *) ex)->e1;
-		continue;
-	      }
-	    break;
-	  }
-
 	// Don't modify the static initializer for struct literals.
 	if (dve->e1->op == TOKstructliteral)
 	  {
@@ -1624,7 +1607,7 @@ public:
 		  thisexp = build_address(thisexp);
 
 		// Make the callee a virtual call.
-		if (fd->isVirtual() && !fd->isFinalFunc() && !is_dottype)
+		if (fd->isVirtual() && !fd->isFinalFunc() && !e->directcall)
 		  {
 		    tree fntype = build_pointer_type(TREE_TYPE (fndecl));
 		    fndecl = build_vindex_ref(thisexp, fntype, fd->vtblIndex);
@@ -1717,10 +1700,7 @@ public:
   //
   void visit(DelegateExp *e)
   {
-    // %% The result will probably just be converted to a CONSTRUCTOR
-    // for a Tdelegate struct.
-
-    if (e->func->fbody)
+    if (e->func->semanticRun == PASSsemantic3done)
       {
 	// Add the function as nested function if it belongs to this module
 	// ie, it is a member of this module, or it is a template instance.
@@ -1795,8 +1775,7 @@ public:
       }
     else
       {
-	error("%s is not a field, but a %s",
-	      e->var->toChars(), e->var->kind());
+	error("%s is not a field, but a %s", e->var->toChars(), e->var->kind());
 	this->result_ = error_mark_node;
       }
   }
@@ -1917,6 +1896,39 @@ public:
 	  }
       }
 
+  }
+
+  //
+  void visit(TypeidExp *e)
+  {
+    if (Type *tid = isType(e->obj))
+      {
+	tree ti = build_typeinfo(tid);
+
+	// If the typeinfo is at an offset.
+	if (tid->vtinfo->offset)
+	  ti = build_offset(ti, size_int(tid->vtinfo->offset));
+
+	this->result_ = build_nop(build_ctype(e->type), ti);
+      }
+    else if (Expression *tid = isExpression(e->obj))
+      {
+	Type *type = tid->type->toBasetype();
+	assert(type->ty == Tclass);
+
+	// Generate **classptr to get the classinfo.
+	tree ci = build_expr(tid);
+	ci = indirect_ref(ptr_type_node, ci);
+	ci = indirect_ref(ptr_type_node, ci);
+
+	// Add extra indirection for interfaces
+	if (((TypeClass *) type)->sym->isInterfaceDeclaration())
+	  ci = indirect_ref(ptr_type_node, ci);
+
+	this->result_ = build_nop(build_ctype(tid->type), ci);
+      }
+    else
+      gcc_unreachable();
   }
 
   //
@@ -2168,7 +2180,7 @@ public:
 	  {
 	    LibCall libcall = htype->isZeroInit()
 	      ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
-	    tree arg = build_expr(getTypeInfo(e->newtype, NULL));
+	    tree arg = build_typeinfo(e->newtype);
 	    new_call = build_libcall(libcall, 1, &arg);
 	  }
 	new_call = maybe_make_temp(new_call);
@@ -2231,7 +2243,7 @@ public:
 
 	    LibCall libcall = tarray->next->isZeroInit()
 	      ? LIBCALL_NEWARRAYT : LIBCALL_NEWARRAYIT;
-	    args[0] = build_expr(getTypeInfo(e->type, NULL));
+	    args[0] = build_typeinfo(e->type);
 	    args[1] = build_expr(arg);
 	    result = build_libcall(libcall, 2, args, build_ctype(tb));
 	  }
@@ -2260,7 +2272,7 @@ public:
 
 	    LibCall libcall = telem->isZeroInit()
 	      ? LIBCALL_NEWARRAYMTX : LIBCALL_NEWARRAYMITX;
-	    args[0] = build_expr(getTypeInfo(e->type, NULL));
+	    args[0] = build_typeinfo(e->type);
 	    args[1] = d_array_value(build_ctype(Type::tsize_t->arrayOf()),
 				    size_int(e->arguments->dim),
 				    build_address(var));
@@ -2286,7 +2298,7 @@ public:
 	LibCall libcall = tpointer->next->isZeroInit(e->loc)
 	  ? LIBCALL_NEWITEMT : LIBCALL_NEWITEMIT;
 
-	tree arg = build_expr(getTypeInfo(e->newtype, NULL));
+	tree arg = build_typeinfo(e->newtype);
 	result = build_libcall(libcall, 1, &arg, build_ctype(tb));
 
 	if (e->arguments && e->arguments->dim == 1)
@@ -2648,8 +2660,7 @@ public:
       }
 
     // Build a constructor in the correct shape of the aggregate type.
-    tree ctor = build_struct_literal(build_ctype(e->type),
-				     build_constructor(unknown_type_node, ve));
+    tree ctor = build_struct_literal(build_ctype(e->type), ve);
 
     // Nothing more to do for constant literals.
     if (this->constp_)
@@ -2670,7 +2681,7 @@ public:
       }
     else if (e->sd->isUnionDeclaration())
       {
-	// Initialize all alignment 'holes' to zero.
+	// For unions, use memset to fill holes in the object.
 	tree var = build_local_temp(TREE_TYPE (ctor));
 	tree init = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMSET), 3,
 				      build_address(var), size_zero_node,

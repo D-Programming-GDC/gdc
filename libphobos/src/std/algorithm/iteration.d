@@ -7,13 +7,15 @@ $(BOOKTABLE Cheat Sheet,
 
 $(TR $(TH Function Name) $(TH Description))
 
-$(T2 aggregate,
-        $(D [[3, 1, 5], [2, 6, 4]].aggregate!max) returns a range containing
-        the elements $(D 5) and $(D 6).)
 $(T2 cache,
         Eagerly evaluates and caches another range's $(D front).)
 $(T2 cacheBidirectional,
         As above, but also provides $(D back) and $(D popBack).)
+$(T2 chunkyBy,
+        $(D chunkyBy!((a,b) => a[1] == b[1])([[1, 1], [1, 2], [2, 2], [2, 1]]))
+        returns a range containing 3 subranges: the first with just
+        $(D [1, 1]); the second with the elements $(D [1, 2]) and $(D [2, 2]);
+        and the third with just $(D [2, 1]).)
 $(T2 each,
         $(D each!writeln([1, 2, 3])) eagerly prints the numbers $(D 1), $(D 2)
         and $(D 3) on their own lines.)
@@ -26,11 +28,6 @@ $(T2 filterBidirectional,
 $(T2 group,
         $(D group([5, 2, 2, 3, 3])) returns a range containing the tuples
         $(D tuple(5, 1)), $(D tuple(2, 2)), and $(D tuple(3, 2)).)
-$(T2 groupBy,
-        $(D groupBy!((a,b) => a[1] == b[1])([[1, 1], [1, 2], [2, 2], [2, 1]]))
-        returns a range containing 3 subranges: the first with just
-        $(D [1, 1]); the second with the elements $(D [1, 2]) and $(D [2, 2]);
-        and the third with just $(D [2, 1]).)
 $(T2 joiner,
         $(D joiner(["hello", "world!"], "; ")) returns a range that iterates
         over the characters $(D "hello; world!"). No new string is created -
@@ -66,10 +63,9 @@ import std.functional; // : unaryFun, binaryFun;
 import std.range.primitives;
 import std.traits;
 
-///
 template aggregate(fun...) if (fun.length >= 1)
 {
-    /**
+    /* --Intentionally not ddoc--
      * Aggregates elements in each subrange of the given range of ranges using
      * the given aggregating function(s).
      * Params:
@@ -90,7 +86,6 @@ template aggregate(fun...) if (fun.length >= 1)
         return ror.map!(reduce!fun);
     }
 
-    ///
     unittest
     {
         import std.algorithm.comparison : equal, max, min;
@@ -134,7 +129,7 @@ $(D cache) does not provide random access primitives,
 as $(D cache) would be unable to cache the random accesses.
 If $(D Range) provides slicing primitives,
 then $(D cache) will provide the same slicing primitives,
-but $(D hasSlicing!Cache) will not yield true (as the $(XREF range,hasSlicing)
+but $(D hasSlicing!Cache) will not yield true (as the $(XREF_PACK _range,primitives,hasSlicing)
 trait also checks for random access).
 +/
 auto cache(Range)(Range range)
@@ -1300,7 +1295,8 @@ defaults to $(D "a == b").
 
 Params:
     pred = Binary predicate for determining equivalence of two elements.
-    r = The $(XREF2 range, isInputRange, input range) to iterate over.
+    r = The $(XREF_PACK_NAMED range,primitives,isInputRange,input range) to
+        iterate over.
 
 Returns: A range of elements of type $(D Tuple!(ElementType!R, uint)),
 representing each consecutively unique element and its respective number of
@@ -1374,8 +1370,8 @@ unittest
     auto g6 = a6.group;
 }
 
-// Used by implementation of groupBy for non-forward input ranges.
-private struct GroupByChunkImpl(alias pred, Range)
+// Used by implementation of chunkBy for non-forward input ranges.
+private struct ChunkByChunkImpl(alias pred, Range)
     if (isInputRange!Range && !isForwardRange!Range)
 {
     alias fun = binaryFun!pred;
@@ -1398,11 +1394,31 @@ private struct GroupByChunkImpl(alias pred, Range)
     void popFront() { r.popFront(); }
 }
 
-// Implementation of groupBy for non-forward input ranges.
-private struct GroupByImpl(alias pred, Range)
+private template ChunkByImplIsUnary(alias pred, Range)
+{
+    static if (is(typeof(binaryFun!pred(ElementType!Range.init,
+                                        ElementType!Range.init)) : bool))
+        enum ChunkByImplIsUnary = false;
+    else static if (is(typeof(
+            unaryFun!pred(ElementType!Range.init) ==
+            unaryFun!pred(ElementType!Range.init))))
+        enum ChunkByImplIsUnary = true;
+    else
+        static assert(0, "chunkBy expects either a binary predicate or "~
+                         "a unary predicate on range elements of type: "~
+                         ElementType!Range.stringof);
+}
+
+// Implementation of chunkBy for non-forward input ranges.
+private struct ChunkByImpl(alias pred, Range)
     if (isInputRange!Range && !isForwardRange!Range)
 {
-    alias fun = binaryFun!pred;
+    enum bool isUnary = ChunkByImplIsUnary!(pred, Range);
+
+    static if (isUnary)
+        alias eq = binaryFun!((a, b) => unaryFun!pred(a) == unaryFun!pred(b));
+    else
+        alias eq = binaryFun!pred;
 
     private Range r;
     private ElementType!Range _prev;
@@ -1414,8 +1430,8 @@ private struct GroupByImpl(alias pred, Range)
         {
             // Check reflexivity if predicate is claimed to be an equivalence
             // relation.
-            assert(pred(r.front, r.front),
-                   "predicate " ~ pred.stringof ~ " is not reflexive");
+            assert(eq(r.front, r.front),
+                   "predicate is not reflexive");
 
             // _prev's type may be a nested struct, so must be initialized
             // directly in the constructor (cannot call savePred()).
@@ -1431,14 +1447,23 @@ private struct GroupByImpl(alias pred, Range)
 
     @property auto front()
     {
-        return GroupByChunkImpl!(pred, Range)(r, _prev);
+        static if (isUnary)
+        {
+            import std.typecons : tuple;
+            return tuple(unaryFun!pred(_prev),
+                         ChunkByChunkImpl!(eq, Range)(r, _prev));
+        }
+        else
+        {
+            return ChunkByChunkImpl!(eq, Range)(r, _prev);
+        }
     }
 
     void popFront()
     {
         while (!r.empty)
         {
-            if (!fun(_prev, r.front))
+            if (!eq(_prev, r.front))
             {
                 _prev = r.front;
                 break;
@@ -1448,11 +1473,18 @@ private struct GroupByImpl(alias pred, Range)
     }
 }
 
-// Single-pass implementation of groupBy for forward ranges.
-private struct GroupByImpl(alias pred, Range)
+// Single-pass implementation of chunkBy for forward ranges.
+private struct ChunkByImpl(alias pred, Range)
     if (isForwardRange!Range)
 {
     import std.typecons : RefCounted;
+
+    enum bool isUnary = ChunkByImplIsUnary!(pred, Range);
+
+    static if (isUnary)
+        alias eq = binaryFun!((a, b) => unaryFun!pred(a) == unaryFun!pred(b));
+    else
+        alias eq = binaryFun!pred;
 
     // Outer range
     static struct Impl
@@ -1482,8 +1514,8 @@ private struct GroupByImpl(alias pred, Range)
             mothership = origin;
 
             // Note: this requires reflexivity.
-            assert(pred(start.front, current.front),
-                   "predicate " ~ pred.stringof ~ " is not reflexive");
+            assert(eq(start.front, current.front),
+                   "predicate is not reflexive");
         }
 
         @property bool empty() { return groupNum == size_t.max; }
@@ -1494,7 +1526,7 @@ private struct GroupByImpl(alias pred, Range)
             current.popFront();
 
             // Note: this requires transitivity.
-            if (current.empty || !pred(start.front, current.front))
+            if (current.empty || !eq(start.front, current.front))
             {
                 if (groupNum == mothership.groupNum)
                 {
@@ -1524,14 +1556,26 @@ private struct GroupByImpl(alias pred, Range)
     }
 
     @property bool empty() { return impl.current.empty; }
-    @property auto front() { return Group(impl); }
+
+    @property auto front()
+    {
+        static if (isUnary)
+        {
+            import std.typecons : tuple;
+            return tuple(unaryFun!pred(impl.current.front), Group(impl));
+        }
+        else
+        {
+            return Group(impl);
+        }
+    }
 
     void popFront()
     {
         // Scan for next group. If we're lucky, one of our Groups would have
         // already set .next to the start of the next group, in which case the
         // loop is skipped.
-        while (!impl.next.empty && pred(impl.current.front, impl.next.front))
+        while (!impl.next.empty && eq(impl.current.front, impl.next.front))
         {
             impl.next.popFront();
         }
@@ -1574,7 +1618,7 @@ unittest
     static assert(isForwardRange!RefFwdRange);
 
     auto testdata = new RefFwdRange([1, 3, 5, 2, 4, 7, 6, 8, 9]);
-    auto groups = testdata.groupBy!((a,b) => (a % 2) == (b % 2));
+    auto groups = testdata.chunkBy!((a,b) => (a % 2) == (b % 2));
     auto outerSave1 = groups.save;
 
     // Sanity test
@@ -1617,14 +1661,17 @@ unittest
  * reflexive ($(D pred(x,x)) is always true), symmetric
  * ($(D pred(x,y) == pred(y,x))), and transitive ($(D pred(x,y) && pred(y,z))
  * implies $(D pred(x,z))). If this is not the case, the range returned by
- * groupBy may assert at runtime or behave erratically.
+ * chunkBy may assert at runtime or behave erratically.
  *
  * Params:
  *  pred = Predicate for determining equivalence.
  *  r = The range to be chunked.
  *
- * Returns: A range of ranges in which all elements in a given subrange are
- * equivalent under the given predicate.
+ * Returns: With a binary predicate, a range of ranges is returned in which
+ * all elements in a given subrange are equivalent under the given predicate.
+ * With a unary predicate, a range of tuples is returned, with the tuple
+ * consisting of the result of the unary predicate for each subrange, and the
+ * subrange itself.
  *
  * Notes:
  *
@@ -1634,23 +1681,13 @@ unittest
  * they appear in the original range.
  *
  * See_also:
- * $(XREF algorithm,group), which collapses adjacent equivalent elements into a
- * single element.
+ * $(LREF group), which collapses adjacent equivalent elements into a single
+ * element.
  */
-auto groupBy(alias pred, Range)(Range r)
+auto chunkBy(alias pred, Range)(Range r)
     if (isInputRange!Range)
 {
-    static if (is(typeof(binaryFun!pred(ElementType!Range.init,
-                                        ElementType!Range.init)) : bool))
-        return GroupByImpl!(pred, Range)(r);
-    else static if (is(typeof(
-            unaryFun!pred(ElementType!Range.init) ==
-            unaryFun!pred(ElementType!Range.init))))
-        return GroupByImpl!((a,b) => pred(a) == pred(b), Range)(r);
-    else
-        static assert(0, "groupBy expects either a binary predicate or "~
-                         "a unary predicate on range elements of type: "~
-                         ElementType!Range.stringof);
+    return ChunkByImpl!(pred, Range)(r);
 }
 
 /// Showing usage with binary predicate:
@@ -1666,13 +1703,13 @@ auto groupBy(alias pred, Range)(Range r)
         [2, 3]
     ];
 
-    auto r1 = data.groupBy!((a,b) => a[0] == b[0]);
+    auto r1 = data.chunkBy!((a,b) => a[0] == b[0]);
     assert(r1.equal!equal([
         [[1, 1], [1, 2]],
         [[2, 2], [2, 3]]
     ]));
 
-    auto r2 = data.groupBy!((a,b) => a[1] == b[1]);
+    auto r2 = data.chunkBy!((a,b) => a[1] == b[1]);
     assert(r2.equal!equal([
         [[1, 1]],
         [[1, 2], [2, 2]],
@@ -1694,7 +1731,7 @@ unittest
     {
         // Grouping by maximum adjacent difference:
         import std.math : abs;
-        auto r3 = [1, 3, 2, 5, 4, 9, 10].groupBy!((a, b) => abs(a-b) < 3);
+        auto r3 = [1, 3, 2, 5, 4, 9, 10].chunkBy!((a, b) => abs(a-b) < 3);
         assert(r3.equal!equal([
             [1, 3, 2],
             [5, 4],
@@ -1707,6 +1744,7 @@ unittest
 /* FIXME: pure @safe nothrow*/ unittest
 {
     import std.algorithm.comparison : equal;
+    import std.typecons : tuple;
 
     // Grouping by particular attribute of each element:
     auto range =
@@ -1720,31 +1758,33 @@ unittest
         [3, 3]
     ];
 
-    auto byX = groupBy!(a => a[0])(range);
+    auto byX = chunkBy!(a => a[0])(range);
     auto expected1 =
     [
-        [[1, 1], [1, 1], [1, 2]],
-        [[2, 2], [2, 3], [2, 3]],
-        [[3, 3]]
+        tuple(1, [[1, 1], [1, 1], [1, 2]]),
+        tuple(2, [[2, 2], [2, 3], [2, 3]]),
+        tuple(3, [[3, 3]])
     ];
     foreach (e; byX)
     {
         assert(!expected1.empty);
-        assert(e.equal(expected1.front));
+        assert(e[0] == expected1.front[0]);
+        assert(e[1].equal(expected1.front[1]));
         expected1.popFront();
     }
 
-    auto byY = groupBy!(a => a[1])(range);
+    auto byY = chunkBy!(a => a[1])(range);
     auto expected2 =
     [
-        [[1, 1], [1, 1]],
-        [[1, 2], [2, 2]],
-        [[2, 3], [2, 3], [3, 3]]
+        tuple(1, [[1, 1], [1, 1]]),
+        tuple(2, [[1, 2], [2, 2]]),
+        tuple(3, [[2, 3], [2, 3], [3, 3]])
     ];
     foreach (e; byY)
     {
         assert(!expected2.empty);
-        assert(e.equal(expected2.front));
+        assert(e[0] == expected2.front[0]);
+        assert(e[1].equal(expected2.front[1]));
         expected2.popFront();
     }
 }
@@ -1752,6 +1792,7 @@ unittest
 /*FIXME: pure @safe nothrow*/ unittest
 {
     import std.algorithm.comparison : equal;
+    import std.typecons : tuple;
 
     struct Item { int x, y; }
 
@@ -1772,11 +1813,11 @@ unittest
         auto arr = [ Item(1,2), Item(1,3), Item(2,3) ];
         static assert(isForwardRange!(typeof(arr)));
 
-        auto byX = groupBy!(a => a.x)(arr);
+        auto byX = chunkBy!(a => a.x)(arr);
         static assert(isForwardRange!(typeof(byX)));
 
-        auto byX_subrange1 = byX.front.save;
-        auto byX_subrange2 = byX.front.save;
+        auto byX_subrange1 = byX.front[1].save;
+        auto byX_subrange2 = byX.front[1].save;
         static assert(isForwardRange!(typeof(byX_subrange1)));
         static assert(isForwardRange!(typeof(byX_subrange2)));
 
@@ -1786,32 +1827,38 @@ unittest
         assert(byX_subrange1.equal([ Item(1,3) ]));
         assert(byX_subrange2.equal([ Item(1,2), Item(1,3) ]));
 
-        auto byY = groupBy!(a => a.y)(arr);
+        auto byY = chunkBy!(a => a.y)(arr);
         static assert(isForwardRange!(typeof(byY)));
 
         auto byY2 = byY.save;
         static assert(is(typeof(byY) == typeof(byY2)));
         byY.popFront();
-        assert(byY.front.equal([ Item(1,3), Item(2,3) ]));
-        assert(byY2.front.equal([ Item(1,2) ]));
+        assert(byY.front[0] == 3);
+        assert(byY.front[1].equal([ Item(1,3), Item(2,3) ]));
+        assert(byY2.front[0] == 2);
+        assert(byY2.front[1].equal([ Item(1,2) ]));
     }
 
     // Test non-forward input ranges.
     {
         auto range = refInputRange([ Item(1,1), Item(1,2), Item(2,2) ]);
-        auto byX = groupBy!(a => a.x)(range);
-        assert(byX.front.equal([ Item(1,1), Item(1,2) ]));
+        auto byX = chunkBy!(a => a.x)(range);
+        assert(byX.front[0] == 1);
+        assert(byX.front[1].equal([ Item(1,1), Item(1,2) ]));
         byX.popFront();
-        assert(byX.front.equal([ Item(2,2) ]));
+        assert(byX.front[0] == 2);
+        assert(byX.front[1].equal([ Item(2,2) ]));
         byX.popFront();
         assert(byX.empty);
         assert(range.empty);
 
         range = refInputRange([ Item(1,1), Item(1,2), Item(2,2) ]);
-        auto byY = groupBy!(a => a.y)(range);
-        assert(byY.front.equal([ Item(1,1) ]));
+        auto byY = chunkBy!(a => a.y)(range);
+        assert(byY.front[0] == 1);
+        assert(byY.front[1].equal([ Item(1,1) ]));
         byY.popFront();
-        assert(byY.front.equal([ Item(1,2), Item(2,2) ]));
+        assert(byY.front[0] == 2);
+        assert(byY.front[1].equal([ Item(1,2), Item(2,2) ]));
         byY.popFront();
         assert(byY.empty);
         assert(range.empty);
@@ -1823,7 +1870,7 @@ version(none) // This requires support for non-equivalence relations
 unittest
 {
     import std.algorithm.comparison : equal;
-    auto r = [1, 2, 3, 4, 5, 6, 7, 8, 9].groupBy!((x, y) => ((x*y) % 3) == 0);
+    auto r = [1, 2, 3, 4, 5, 6, 7, 8, 9].chunkBy!((x, y) => ((x*y) % 3) == 0);
     assert(r.equal!equal([
         [1],
         [2, 3, 4],
@@ -1835,7 +1882,7 @@ unittest
 // Issue 13805
 unittest
 {
-    [""].map!((s) => s).groupBy!((x, y) => true);
+    [""].map!((s) => s).chunkBy!((x, y) => true);
 }
 
 // joiner
@@ -1845,10 +1892,10 @@ is a range. If you do not provide a separator, then the ranges are
 joined directly without anything in between them.
 
 Params:
-    r = An $(XREF2 range, isInputRange, input range) of input ranges to be
-        joined.
-    sep = A $(XREF2 range, isForwardRange, forward range) of element(s) to
-        serve as separators in the joined range.
+    r = An $(XREF_PACK_NAMED range,primitives,isInputRange,input range) of input
+        ranges to be joined.
+    sep = A $(XREF_PACK_NAMED range,primitives,isForwardRange,forward range) of
+        element(s) to serve as separators in the joined range.
 
 Returns:
 An input range of elements in the joined range. This will be a forward range if
@@ -2483,8 +2530,10 @@ template reduce(fun...) if (fun.length >= 1)
         foreach (/+auto ref+/ E e; r) // @@@4707@@@
         {
             foreach (i, f; binfuns)
-                static assert(is(typeof(args[i] = f(args[i], e))),
+            {
+                static assert(!is(typeof(f(args[i], e))) || is(typeof(args[i] = f(args[i], e))),
                     algoFormat("Incompatible function/seed/element: %s/%s/%s", fullyQualifiedName!f, Args[i].stringof, E.stringof));
+            }
 
             static if (mustInitialize) if (initialized == false)
             {
@@ -2807,8 +2856,8 @@ below).
 Params:
     pred = The predicate for comparing each element with the separator,
         defaulting to $(D "a == b").
-    r = The $(XREF2 range, isInputRange, input range) to be split. Must support
-        slicing and $(D .length).
+    r = The $(XREF_PACK_NAMED range,primitives,isInputRange,input range) to be
+        split. Must support slicing and $(D .length).
     s = The element to be treated as the separator between range segments to be
         split.
 
@@ -3088,9 +3137,10 @@ empty elements.
 Params:
     pred = The predicate for comparing each element with the separator,
         defaulting to $(D "a == b").
-    r = The $(XREF2 range, isInputRange, input range) to be split.
-    s = The $(XREF2 range, isForwardRange, forward range) to be treated as the
-        separator between segments of $(D r) to be split.
+    r = The $(XREF_PACK_NAMED range,primitives,isInputRange,input range) to be
+        split.
+    s = The $(XREF_PACK_NAMED range,primitives,isForwardRange,forward range) to
+        be treated as the separator between segments of $(D r) to be split.
 
 Constraints:
     The predicate $(D pred) needs to accept an element of $(D r) and an
@@ -3396,7 +3446,8 @@ empty elements.
 
 Params:
     isTerminator = The predicate for deciding where to split the range.
-    input = The $(XREF2 range, isInputRange, input range) to be split.
+    input = The $(XREF_PACK_NAMED range,primitives,isInputRange,input range) to
+        be split.
 
 Constraints:
     The predicate $(D isTerminator) needs to accept an element of $(D input).
@@ -3642,8 +3693,8 @@ Params:
     s = The string to be split.
 
 Returns:
-    An $(XREF2 range, isInputRange, input range) of slices of the original
-    string split by whitespace.
+    An $(XREF_PACK_NAMED range,primitives,isInputRange,input range) of slices of
+    the original string split by whitespace.
  +/
 auto splitter(C)(C[] s)
 if (isSomeChar!C)
@@ -3824,14 +3875,17 @@ if (isSomeChar!C)
 
 // sum
 /**
-Sums elements of $(D r), which must be a finite $(XREF2 range, isInputRange, input range). Although
+Sums elements of $(D r), which must be a finite
+$(XREF_PACK_NAMED range,primitives,isInputRange,input range). Although
 conceptually $(D sum(r)) is equivalent to $(LREF reduce)!((a, b) => a +
 b)(0, r), $(D sum) uses specialized algorithms to maximize accuracy,
 as follows.
 
 $(UL
-$(LI If $(D $(XREF range, ElementType)!R) is a floating-point type and $(D R) is a
-$(XREF2 range, isRandomAccessRange, random-access range) with length and slicing, then $(D sum) uses the
+$(LI If $(D $(XREF_PACK range,primitives,ElementType)!R) is a floating-point
+type and $(D R) is a
+$(XREF_PACK_NAMED range,primitives,isRandomAccessRange,random-access range) with
+length and slicing, then $(D sum) uses the
 $(WEB en.wikipedia.org/wiki/Pairwise_summation, pairwise summation)
 algorithm.)
 $(LI If $(D ElementType!R) is a floating-point type and $(D R) is a
@@ -4024,12 +4078,13 @@ bidirectional, $(D uniq) also yields a bidirectional range.
 
 Params:
     pred = Predicate for determining equivalence between range elements.
-    r = An $(XREF2 range, isInputRange, input range) of elements to filter.
+    r = An $(XREF_PACK_NAMED range,primitives,isInputRange,input range) of
+        elements to filter.
 
 Returns:
-    An $(XREF2 range, isInputRange, input range) of consecutively unique
-    elements in the original range. If $(D r) is also a forward range or
-    bidirectional range, the returned range will be likewise.
+    An $(XREF_PACK_NAMED range,primitives,isInputRange,input range) of
+    consecutively unique elements in the original range. If $(D r) is also a
+    forward range or bidirectional range, the returned range will be likewise.
 */
 auto uniq(alias pred = "a == b", Range)(Range r)
 if (isInputRange!Range && is(typeof(binaryFun!pred(r.front, r.front)) == bool))

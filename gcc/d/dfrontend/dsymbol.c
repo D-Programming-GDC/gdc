@@ -423,7 +423,7 @@ Dsymbol *Dsymbol::search(Loc loc, Identifier *ident, int flags)
  * Search for symbol with correct spelling.
  */
 
-void *symbol_search_fp(void *arg, const char *seed, int* cost)
+void *symbol_search_fp(void *arg, const char *seed, int *cost)
 {
     /* If not in the lexer's string table, it certainly isn't in the symbol table.
      * Doing this first is a lot faster.
@@ -455,7 +455,6 @@ Dsymbol *Dsymbol::search_correct(Identifier *ident)
  * Returns:
  *      symbol found, NULL if not
  */
-
 Dsymbol *Dsymbol::searchX(Loc loc, Scope *sc, RootObject *id)
 {
     //printf("Dsymbol::searchX(this=%p,%s, ident='%s')\n", this, toChars(), ident->toChars());
@@ -488,10 +487,10 @@ Dsymbol *Dsymbol::searchX(Loc loc, Scope *sc, RootObject *id)
             {
                 sm = s->search_correct(ti->name);
                 if (sm)
-                    ::error(loc, "template identifier '%s' is not a member of '%s %s', did you mean '%s %s'?",
+                    ::error(loc, "template identifier '%s' is not a member of %s '%s', did you mean %s '%s'?",
                           ti->name->toChars(), s->kind(), s->toPrettyChars(), sm->kind(), sm->toChars());
                 else
-                    ::error(loc, "template identifier '%s' is not a member of '%s %s'",
+                    ::error(loc, "template identifier '%s' is not a member of %s '%s'",
                           ti->name->toChars(), s->kind(), s->toPrettyChars());
                 return NULL;
             }
@@ -509,6 +508,8 @@ Dsymbol *Dsymbol::searchX(Loc loc, Scope *sc, RootObject *id)
             break;
         }
 
+        case DYNCAST_TYPE:
+        case DYNCAST_EXPRESSION:
         default:
             assert(0);
     }
@@ -617,7 +618,7 @@ int Dsymbol::apply(Dsymbol_apply_ft_t fp, void *param)
     return (*fp)(this, param);
 }
 
-int Dsymbol::addMember(Scope *sc, ScopeDsymbol *sds, int memnum)
+void Dsymbol::addMember(Scope *sc, ScopeDsymbol *sds)
 {
     //printf("Dsymbol::addMember('%s')\n", toChars());
     //printf("Dsymbol::addMember(this = %p, '%s' scopesym = '%s')\n", this, toChars(), sds->toChars());
@@ -638,9 +639,7 @@ int Dsymbol::addMember(Scope *sc, ScopeDsymbol *sds, int memnum)
             if (ident == Id::__sizeof || ident == Id::__xalignof || ident == Id::mangleof)
                 error(".%s property cannot be redefined", ident->toChars());
         }
-        return 1;
     }
-    return 0;
 }
 
 void Dsymbol::error(const char *format, ...)

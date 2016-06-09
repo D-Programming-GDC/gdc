@@ -1,3 +1,35 @@
+/*
+GCC 5.1 introduced new implementations of std::string and std::list:
+
+https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
+
+This causes e.g. std::string to be actually defined as
+std::__cxx11::string.
+
+On machines with GCC 5.1, this manifests as a linker error when
+running the cppa.d / cppb.cpp test:
+
+cppa.o: In function `_D4cppa6test14FZv':
+cppa.d:(.text._D4cppa6test14FZv+0x11): undefined reference to `foo14a(std::string*)'
+cppa.d:(.text._D4cppa6test14FZv+0x18): undefined reference to `foo14b(std::basic_string<int, std::char_traits<int>, std::allocator<int> >*)'
+cppa.d:(.text._D4cppa6test14FZv+0x3a): undefined reference to `foo14f(std::char_traits<char>*, std::string*, std::string*)'
+cppa.o: In function `_D4cppa7testeh3FZv':
+cppa.d:(.text._D4cppa7testeh3FZv+0x19): undefined reference to `throwle()'
+collect2: error: ld returned 1 exit status
+--- errorlevel 1
+
+When the .cpp file is compiled with g++ 5.3.0, the actual function
+signatures in the cppb.o object file are:
+
+foo14a(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*)
+foo14b(std::__cxx11::basic_string<int, std::char_traits<int>, std::allocator<int> >*)
+foo14f(std::char_traits<char>*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*)
+
+Fortunately, it is easily possible to disable the new feature
+by defining _GLIBCXX_USE_CXX11_ABI as 0 before including any standard
+headers.
+*/
+#define _GLIBCXX_USE_CXX11_ABI 0
 
 #include <stdio.h>
 #include <assert.h>
@@ -453,5 +485,30 @@ namespace N13337 {
     void foo13337(S13337 s) { }
   }
 }
+
+/****************************************/
+// 14195
+
+template <typename T>
+struct Delegate1 {};
+
+template <typename R1>
+struct Delegate1 < R1() > {};
+
+template <typename T1, typename T2>
+struct Delegate2 {};
+
+template < typename R1, typename T1, typename T2, typename R2, typename T3, typename T4 >
+struct Delegate2<R1(T1, T2), R2(T3, T4)> {};
+
+void test14195a(Delegate1<void()> func) {}
+
+void test14195b(Delegate2<int(float, double), int(float, double)> func) {}
+
+/******************************************/
+// 14200
+
+void test14200a(int a) {};
+void test14200b(float a, int b, double c) {};
 
 /******************************************/

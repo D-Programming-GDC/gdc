@@ -394,7 +394,7 @@ private void bailOut(E : Throwable = Exception)(string file, size_t line, in cha
     }
     else
     {
-        static assert("Expected this(string, string, size_t) or this(string, size_t)" ~
+        static assert(0, "Expected this(string, string, size_t) or this(string, size_t)" ~
             " constructor for " ~ __traits(identifier, E));
     }
 }
@@ -507,6 +507,17 @@ deprecated unittest
     S s;
 
     enforce!(S, __FILE__, __LINE__)(s, "");
+}
+
+unittest
+{
+    // Issue 14685
+
+    class E : Exception
+    {
+        this() { super("Not found"); }
+    }
+    static assert(!__traits(compiles, { enforce!E(false); }));
 }
 
 /++
@@ -1114,13 +1125,13 @@ unittest
         union A4
         {
             int b0; //Not aliased
-        };
+        }
         A4 a4;
         union A5
         {
             int b0; //Aliased
             int b1; //Aliased
-        };
+        }
         A5 a5;
     }
 
@@ -1418,7 +1429,7 @@ class ErrnoException : Exception
     this(string msg, string file = null, size_t line = 0) @trusted
     {
         _errno = .errno;
-        version (linux)
+        version (CRuntime_Glibc)
         {
             char[1024] buf = void;
             auto s = core.stdc.string.strerror_r(errno, buf.ptr, buf.length);
@@ -1664,9 +1675,9 @@ Returns: A wrapper $(D struct) that preserves the range interface of $(D input).
 opSlice:
 Infinite ranges with slicing support must return an instance of
 $(XREF range, Take) when sliced with a specific lower and upper
-bound (see $(XREF range_primitives, hasSlicing)); $(D handle) deals with this
-by $(D take)ing 0 from the return value of the handler function and returning
-that when an exception is caught.
+bound (see $(XREF_PACK range,primitives,hasSlicing)); $(D handle) deals with
+this by $(D take)ing 0 from the return value of the handler function and
+returning that when an exception is caught.
 */
 auto handle(E : Throwable, RangePrimitive primitivesToHandle, alias handler, Range)(Range input)
     if (isInputRange!Range)
