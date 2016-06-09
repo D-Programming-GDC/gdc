@@ -584,6 +584,131 @@ void test14267()
 }
 
 /**********************************/
+// 14306
+
+struct MapResult(alias fun)
+{
+    void front()
+    {
+//  while (1) { break; }
+        fun(1);
+    }
+}
+
+void bar(R)(R r)
+{
+    foreach (i; 0..100)
+    {
+        r.front();
+    }
+}
+
+struct S
+{
+    int x;
+    int bump()
+    {
+        while (1) { break; }
+        ++x;
+        return x;
+    }
+}
+
+void fun(ref S s)
+{
+    MapResult!(y => s.bump())().bar;
+//  MapResult!((int x) => s.bump())().bar;
+
+    if (s.x != 100)
+        assert(0);
+}
+
+void test14306()
+{
+    S t;
+    fun(t);
+}
+
+/**********************************/
+// 14754
+
+auto aafunc14754(string k)
+{
+    enum aa = [ "K": "V" ];
+    auto p = k in aa;
+    return null;
+}
+
+struct MapResult14754(alias fun, R)
+{
+    R _input;
+
+    @property auto ref front()
+    {
+        return fun(_input[0]);
+    }
+}
+
+auto array14754(R)(R r)
+{
+    alias E = typeof(r.front);
+    E[] result;
+    result ~= r.front;
+    return result;
+}
+
+auto mapfun14754(R)(R words, string k)
+{
+    return array14754(MapResult14754!(s => aafunc14754(k), R)(words));
+}
+
+void test14754()
+{
+    auto r = mapfun14754([""], "");
+}
+
+/**********************************/
+// 14606
+
+struct S14606
+{
+    this(long stdTime)
+    {
+        _stdTime = stdTime;
+    }
+
+    long _stdTime;
+}
+
+S14606 getS14606()
+{
+    S14606 sysTime = S14606(0);
+    return sysTime;
+}
+
+struct T14606
+{
+    this(string)
+    {
+        uint[3] arr;
+        s = getS14606();
+    }
+
+    S14606 s;
+}
+
+void test14606()
+{
+    auto t = T14606(null);
+}
+
+/**********************************/
+// 14753
+
+pragma(inline)
+void test14753(string) { }
+
+/**********************************/
 
 int main()
 {
@@ -605,6 +730,9 @@ int main()
     test11322();
     test11394();
     test13503();
+    test14306();
+    test14754();
+    test14606();
 
     printf("Success\n");
     return 0;

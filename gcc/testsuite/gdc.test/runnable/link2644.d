@@ -1,7 +1,5 @@
 // PERMUTE_ARGS: -version=X -inline -release -g -O
-// EXTRA_SOURCES: imports/link2644a.d
-// EXTRA_SOURCES: imports/link2644b.d
-// EXTRA_SOURCES: imports/link2644c.d
+// EXTRA_SOURCES: imports/link2644a.d imports/link2644b.d imports/link2644c.d
 // COMPILE_SEPARATELY:
 
 module link2644;

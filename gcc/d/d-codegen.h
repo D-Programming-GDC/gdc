@@ -61,7 +61,7 @@ extern tree build_address (tree exp);
 extern bool identity_compare_p(StructDeclaration *sd);
 extern tree build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2);
 extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd, tree length, tree t1, tree t2);
-extern tree build_struct_literal(tree type, tree init);
+extern tree build_struct_literal(tree type, vec<constructor_elt, va_gc> *init);
 
 // Routines to handle variables that are references.
 extern bool declaration_reference_p (Declaration *decl);
@@ -189,8 +189,6 @@ extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree fo
 
 extern void maybe_set_intrinsic (FuncDeclaration *decl);
 extern tree expand_intrinsic (tree callexp);
-
-extern tree build_typeinfo (Type *t);
 
 // Record layout
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);

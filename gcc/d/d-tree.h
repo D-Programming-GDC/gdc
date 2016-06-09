@@ -23,6 +23,7 @@
 class Dsymbol;
 class Declaration;
 class FuncDeclaration;
+class TypeInfoDeclaration;
 class VarDeclaration;
 class Expression;
 class Module;
@@ -195,6 +196,10 @@ lang_tree_node
 #define CLASS_TYPE_P(NODE) \
   (TYPE_LANG_FLAG_2 (TREE_CHECK ((NODE), RECORD_TYPE)))
 
+// True if the type was declared 'shared'
+#define TYPE_SHARED(NODE) \
+  (TYPE_LANG_FLAG_3 (NODE))
+
 // True if the symbol should be made "link one only".  This is used to
 // defer calling make_decl_one_only() before the decl has been prepared.
 #define D_DECL_ONE_ONLY(NODE) \
@@ -306,6 +311,10 @@ extern void d_keep (tree);
 
 // In imports.cc
 extern tree build_import_decl (Dsymbol *);
+
+// In rtti.cc
+extern tree build_typeinfo (Type *);
+extern tree layout_typeinfo (TypeInfoDeclaration *);
 
 // In toir.cc
 extern void build_ir (FuncDeclaration *);
