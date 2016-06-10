@@ -216,7 +216,7 @@ am__objects_8 = core/sys/osx/execinfo.lo core/sys/osx/mach/dyld.lo \
 	core/sys/osx/mach/loader.lo core/sys/osx/mach/port.lo \
 	core/sys/osx/mach/semaphore.lo core/sys/osx/mach/thread_act.lo \
 	core/sys/osx/pthread.lo core/sys/osx/sys/cdefs.lo \
-	core/sys/osx/sys/mman.lo
+	core/sys/osx/sys/event.lo core/sys/osx/sys/mman.lo
 @DRUNTIME_OS_DARWIN_TRUE@am__objects_9 = $(am__objects_8)
 am__objects_10 = core/sys/freebsd/dlfcn.lo \
 	core/sys/freebsd/execinfo.lo core/sys/freebsd/sys/cdefs.lo \
@@ -309,13 +309,14 @@ am__DEPENDENCIES_1 = core/atomic.t.lo core/bitop.t.lo \
 	rt/typeinfo/ti_ireal.t.lo rt/typeinfo/ti_long.t.lo \
 	rt/typeinfo/ti_ptr.t.lo rt/typeinfo/ti_real.t.lo \
 	rt/typeinfo/ti_short.t.lo rt/typeinfo/ti_ubyte.t.lo \
-	rt/typeinfo/ti_uint.t.lo rt/typeinfo/ti_ulong.t.lo \
-	rt/typeinfo/ti_ushort.t.lo rt/typeinfo/ti_void.t.lo \
-	rt/typeinfo/ti_wchar.t.lo rt/util/array.t.lo \
-	rt/util/container/array.t.lo rt/util/container/common.t.lo \
-	rt/util/container/hashtab.t.lo rt/util/container/treap.t.lo \
-	rt/util/hash.t.lo rt/util/random.t.lo rt/util/string.t.lo \
-	rt/util/typeinfo.t.lo rt/util/utf.t.lo
+	rt/typeinfo/ti_ucent.o rt/typeinfo/ti_uint.t.lo \
+	rt/typeinfo/ti_ulong.t.lo rt/typeinfo/ti_ushort.t.lo \
+	rt/typeinfo/ti_void.t.lo rt/typeinfo/ti_wchar.t.lo \
+	rt/util/array.t.lo rt/util/container/array.t.lo \
+	rt/util/container/common.t.lo rt/util/container/hashtab.t.lo \
+	rt/util/container/treap.t.lo rt/util/hash.t.lo \
+	rt/util/random.t.lo rt/util/string.t.lo rt/util/typeinfo.t.lo \
+	rt/util/utf.t.lo
 am__DEPENDENCIES_2 = gc/bits.t.lo gc/config.t.lo gc/gc.t.lo gc/os.t.lo \
 	gc/pooltable.t.lo gc/proxy.t.lo gc/stats.t.lo
 @DRUNTIME_GC_ENABLE_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
@@ -351,7 +352,8 @@ am__DEPENDENCIES_8 = core/sys/osx/execinfo.t.lo \
 	core/sys/osx/mach/loader.t.lo core/sys/osx/mach/port.t.lo \
 	core/sys/osx/mach/semaphore.t.lo \
 	core/sys/osx/mach/thread_act.t.lo core/sys/osx/pthread.t.lo \
-	core/sys/osx/sys/cdefs.t.lo core/sys/osx/sys/mman.t.lo
+	core/sys/osx/sys/cdefs.t.lo core/sys/osx/sys/event.t.lo \
+	core/sys/osx/sys/mman.t.lo
 @DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_9 = $(am__DEPENDENCIES_8)
 am__DEPENDENCIES_10 = core/sys/freebsd/dlfcn.t.lo \
 	core/sys/freebsd/execinfo.t.lo core/sys/freebsd/sys/cdefs.t.lo \
@@ -700,9 +702,9 @@ DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
 	rt/typeinfo/ti_idouble.d rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d \
 	rt/typeinfo/ti_ireal.d rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d \
 	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
-	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
-	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
-	rt/util/container/array.d rt/util/container/common.d \
+	rt/typeinfo/ti_ucent.o rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d \
+	rt/typeinfo/ti_ushort.d rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d \
+	rt/util/array.d rt/util/container/array.d rt/util/container/common.d \
 	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
 	rt/util/random.d rt/util/string.d rt/util/typeinfo.d rt/util/utf.d
 
@@ -758,7 +760,8 @@ DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
 	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
 	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
 	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
-	core/sys/osx/sys/cdefs.d core/sys/osx/sys/mman.d
+	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
+	core/sys/osx/sys/mman.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
@@ -1089,6 +1092,7 @@ core/sys/osx/sys/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/osx/sys
 	@: > core/sys/osx/sys/$(am__dirstamp)
 core/sys/osx/sys/cdefs.lo: core/sys/osx/sys/$(am__dirstamp)
+core/sys/osx/sys/event.lo: core/sys/osx/sys/$(am__dirstamp)
 core/sys/osx/sys/mman.lo: core/sys/osx/sys/$(am__dirstamp)
 core/sys/freebsd/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/freebsd
@@ -1348,6 +1352,8 @@ mostlyclean-compile:
 	-rm -f core/sys/osx/pthread.lo
 	-rm -f core/sys/osx/sys/cdefs.$(OBJEXT)
 	-rm -f core/sys/osx/sys/cdefs.lo
+	-rm -f core/sys/osx/sys/event.$(OBJEXT)
+	-rm -f core/sys/osx/sys/event.lo
 	-rm -f core/sys/osx/sys/mman.$(OBJEXT)
 	-rm -f core/sys/osx/sys/mman.lo
 	-rm -f core/sys/posix/arpa/inet.$(OBJEXT)

@@ -32,11 +32,9 @@ FuncDeclaration *search_toString(StructDeclaration *);
 // Used in d-lang.cc
 void initTraitsStringTable();
 
-// Used in d-codegen.cc
-Expression *getTypeInfo(Type *type, Scope *sc);
-
 // Used in d-objfile.cc
 void genTypeInfo(Type *type, Scope *sc);
+bool isSpeculativeType(Type *t);
 
 #endif /* GCC_SAFE_DMD */
 

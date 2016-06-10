@@ -253,6 +253,90 @@ void test13515()
 }
 
 /***************************************************/
+// 14409
+
+class B14409 { this(int) {} }
+class C14409 : B14409
+{
+    this(int n)
+    {
+        if (true)
+            super(n);
+        else
+            assert(0);
+    }
+}
+
+/***************************************************/
+// 14376
+
+auto map14376()
+{
+    return MapResult14376!(e => 0)();
+}
+
+struct MapResult14376(alias pred)
+{
+    @property int front() { return pred(0); }
+}
+
+struct S14376
+{
+    typeof(map14376()) x;
+
+    this(int dummy)
+    {
+        if (true)
+            this.x = map14376();
+        else
+            assert(0);
+    }
+}
+
+/***************************************************/
+// 14351
+
+class B14351
+{
+    this(inout int[]) inout { }
+}
+
+class D14351a : B14351
+{
+    this(int[] arr) { super(arr); }
+}
+
+class D14351b : B14351
+{
+    this(const int[] arr) const { super(arr); }
+}
+
+class D14351c : B14351
+{
+    this(inout int[] arr) inout { super(arr); }
+}
+
+/***************************************************/
+// 14944
+
+static int[2] tbl14944;
+
+static this()
+{
+    foreach (ref v; tbl14944)
+    {
+        // This is an initialization of referenced memory
+        // rather than the initialization of the reference.
+        v = 1;
+    }
+}
+
+void test14944()
+{
+    assert(tbl14944[0] == 1);
+}
+
+/***************************************************/
 
 int main()
 {
@@ -260,6 +344,7 @@ int main()
     test9665();
     test11246();
     test13515();
+    test14944();
 
     printf("Success\n");
     return 0;

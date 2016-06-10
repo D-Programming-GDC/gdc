@@ -1,4 +1,4 @@
-EXTRA_FILES: imports/ice11513x.d
+// EXTRA_FILES: imports/ice11513x.d
 /*
 TEST_OUTPUT:
 ---

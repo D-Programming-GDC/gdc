@@ -179,9 +179,9 @@ DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
 	rt/typeinfo/ti_idouble.d rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d \
 	rt/typeinfo/ti_ireal.d rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d \
 	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
-	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
-	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
-	rt/util/container/array.d rt/util/container/common.d \
+	rt/typeinfo/ti_ucent.o rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d \
+	rt/typeinfo/ti_ushort.d rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d \
+	rt/util/array.d rt/util/container/array.d rt/util/container/common.d \
 	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
 	rt/util/random.d rt/util/string.d rt/util/typeinfo.d rt/util/utf.d
 
@@ -238,7 +238,8 @@ DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
 	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
 	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
 	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
-	core/sys/osx/sys/cdefs.d core/sys/osx/sys/mman.d
+	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
+	core/sys/osx/sys/mman.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
