@@ -1,3 +1,15 @@
+2016-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_address): Handle ERROR_MARK and COMPOUND_EXPR.
+	(build_nop): Likewise.
+	(indirect_ref): Likewise.
+	(build_deref): Likewise.
+	(d_build_call): Only create temporaries if more than one argument has
+	side effects.
+	* expr.cc (get_compound_value): Remove function.
+	(build_expr_dtor): Wrap cleanups in a TRY_FINALLY_EXPR only if the
+	expression has side effects.
+
 2016-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_GLUE_OBJS): Remove d-typinf.o, add typeinfo.o.
