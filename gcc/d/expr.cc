@@ -992,9 +992,8 @@ public:
 	tree t2 = convert_for_assignment(build_expr(e->e2),
 					 e->e2->type, e->e1->type);
 
-	if (e->op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
-	    && aggregate_value_p(TREE_TYPE (t2), t2))
-	  CALL_EXPR_RETURN_SLOT_OPT (t2) = true;
+	if (e->op == TOKconstruct && e->e2->op == TOKcall)
+	  d_mark_addressable(t1);
 
 	if (e->e2->op == TOKint64)
 	  {
@@ -1048,9 +1047,8 @@ public:
 	    tree t2 = convert_for_assignment(build_expr(e->e2),
 					     e->e2->type, e->e1->type);
 
-	    if (e->op == TOKconstruct && TREE_CODE (t2) == CALL_EXPR
-		&& aggregate_value_p(TREE_TYPE (t2), t2))
-	      CALL_EXPR_RETURN_SLOT_OPT (t2) = true;
+	    if (e->op == TOKconstruct && e->e2->op == TOKcall)
+	      d_mark_addressable(t1);
 
 	    this->result_ = build_assign(modifycode, t1, t2);
 	  }
@@ -1613,7 +1611,7 @@ public:
 		tree thisexp = build_expr(dve->e1);
 
 		// Want reference to 'this' object.
-		if (dve->e1->type->ty != Tclass && dve->e1->type->ty != Tpointer)
+		if (!POINTER_TYPE_P (TREE_TYPE (thisexp)))
 		  thisexp = build_address(thisexp);
 
 		// Make the callee a virtual call.

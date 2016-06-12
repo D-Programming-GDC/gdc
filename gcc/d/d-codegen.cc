@@ -442,7 +442,6 @@ get_decl_tree (Declaration *decl)
       if (vsym->SnamedResult != NULL_TREE)
 	{
 	  // Get the named return value.
-	  gcc_assert (TREE_CODE (vsym->SnamedResult) == RESULT_DECL);
 	  return vsym->SnamedResult;
 	}
       else if (vsym->SframeField != NULL_TREE)
@@ -862,6 +861,10 @@ type_va_array(Type *type)
 tree
 convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
 {
+  // Lazy arguments: expr should already be a delegate
+  if (arg->storageClass & STClazy)
+    return exp_tree;
+
   if (type_va_array(arg->type))
     {
       // Do nothing if the va_list has already been decayed to a pointer.
@@ -877,7 +880,6 @@ convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
       return convert(type_passed_as(arg), exp_tree);
     }
 
-  // Lazy arguments: expr should already be a delegate
   return exp_tree;
 }
 
@@ -1054,11 +1056,14 @@ declaration_type(Declaration *decl)
 bool
 argument_reference_p(Parameter *arg)
 {
-
   Type *tb = arg->type->toBasetype();
 
   // Parameter is a reference type.
   if (tb->ty == Treference || arg->storageClass & (STCout | STCref))
+    return true;
+
+  tree type = build_ctype(arg->type);
+  if (TREE_ADDRESSABLE (type))
     return true;
 
   return false;
@@ -1627,6 +1632,9 @@ lvalue_p(tree exp)
                       : TREE_OPERAND (exp, 0))
              && lvalue_p(TREE_OPERAND (exp, 2)));
 
+    case TARGET_EXPR:
+      return true;
+
     case COMPOUND_EXPR:
       return lvalue_p(TREE_OPERAND (exp, 1));
 
@@ -1677,6 +1685,30 @@ stabilize_expr(tree *valuep)
     default:
       return NULL_TREE;
     }
+}
+
+// Return a TARGET_EXPR using EXP to initialize a new temporary.
+
+tree
+build_target_expr(tree exp)
+{
+  tree type = TREE_TYPE (exp);
+  tree slot = create_temporary_var(type);
+  tree result = build4(TARGET_EXPR, type, slot, exp, NULL_TREE, NULL_TREE);
+
+  if (EXPR_HAS_LOCATION (exp))
+    SET_EXPR_LOCATION (result, EXPR_LOCATION (exp));
+
+  // If slot must always reside in memory.
+  if (TREE_ADDRESSABLE (type))
+    d_mark_addressable(slot);
+
+  // Always set TREE_SIDE_EFFECTS so that expand_expr does not ignore the
+  // TARGET_EXPR.  If there really turn out to be no side effects, then the
+  // optimizer should be able to remove it.
+  TREE_SIDE_EFFECTS (result) = 1;
+
+  return result;
 }
 
 // Returns the address of the expression EXP.
@@ -1742,6 +1774,11 @@ d_mark_addressable (tree exp)
 
     case CONSTRUCTOR:
       TREE_ADDRESSABLE (exp) = 1;
+      break;
+
+    case TARGET_EXPR:
+      TREE_ADDRESSABLE (exp) = 1;
+      d_mark_addressable(TREE_OPERAND (exp, 0));
       break;
 
     default:
@@ -2279,6 +2316,18 @@ build_assign(tree_code code, tree lhs, tree rhs)
   tree init = stabilize_expr(&lhs);
   init = compound_expr(init, stabilize_expr(&rhs));
 
+  // The LHS assignment is replaces the temporary in TARGET_EXPR_SLOT.
+  if (TREE_CODE (rhs) == TARGET_EXPR)
+    {
+      // If CODE is not INIT_EXPR, can't initialize LHS directly,
+      // since that would cause the LHS to be constructed twice.
+      // So we force the TARGET_EXPR to be expanded without a target.
+      if (code != INIT_EXPR)
+	rhs = compound_expr(rhs, TREE_OPERAND (rhs, 0));
+      else
+	rhs = TARGET_EXPR_INITIAL (rhs);
+    }
+
   tree result = fold_build2_loc(input_location, code,
 				TREE_TYPE (lhs), lhs, rhs);
   return compound_expr(init, result);
@@ -2383,6 +2432,17 @@ compound_expr(tree arg0, tree arg1)
 
   if (arg0 == NULL_TREE || !TREE_SIDE_EFFECTS (arg0))
     return arg1;
+
+  if (TREE_CODE (arg1) == TARGET_EXPR)
+    {
+      // If the rhs is a TARGET_EXPR, then build the compound expression
+      // inside the target_expr's initializer.  This helps the compiler
+      // to eliminate unnecessary temporaries.
+      tree init = compound_expr(arg0, TREE_OPERAND (arg1, 1));
+      TREE_OPERAND (arg1, 1) = init;
+
+      return arg1;
+    }
 
   return fold_build2_loc(input_location, COMPOUND_EXPR,
 			 TREE_TYPE (arg1), arg0, arg1);
@@ -3019,6 +3079,13 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 
   tree result = d_build_call_list(TREE_TYPE (ctype), callee, arg_list);
   result = expand_intrinsic(result);
+
+  if (TREE_CODE (result) == CALL_EXPR
+      && aggregate_value_p(TREE_TYPE (result), result))
+    {
+      CALL_EXPR_RETURN_SLOT_OPT (result) = true;
+      result = build_target_expr(result);
+    }
 
   return compound_expr(saved_args, result);
 }

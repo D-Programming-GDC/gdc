@@ -721,6 +721,16 @@ d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 	}
       break;
 
+    case ADDR_EXPR:
+      op0 = TREE_OPERAND (*expr_p, 0);
+      // Constructors are not lvalues, so make them one.
+      if (TREE_CODE (op0) == CONSTRUCTOR)
+	{
+	  TREE_OPERAND (*expr_p, 0) = build_target_expr(op0);
+	  ret = GS_OK;
+	}
+      break;
+
     case UNSIGNED_RSHIFT_EXPR:
       // Convert op0 to an unsigned type.
       op0 = TREE_OPERAND (*expr_p, 0);

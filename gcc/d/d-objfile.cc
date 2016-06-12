@@ -1305,10 +1305,10 @@ FuncDeclaration::toObjFile()
   if (v_argptr)
     push_stmt_list();
 
-  /* The fabled D named return value optimisation.
-     Implemented by overriding all the RETURN_EXPRs and replacing all
-     occurrences of VAR with the RESULT_DECL for the function.
-     This is only worth doing for functions that can return in memory.  */
+  // The fabled D named return value optimisation.
+  // Implemented by overriding all the RETURN_EXPRs and replacing all
+  // occurrences of VAR with the RESULT_DECL for the function.
+  // This is only worth doing for functions that can return in memory.
   if (nrvo_can)
     {
       if (!AGGREGATE_TYPE_P (return_type))
@@ -1325,9 +1325,14 @@ FuncDeclaration::toObjFile()
       // Copy name from VAR to RESULT.
       DECL_NAME (result_decl) = DECL_NAME (var);
       // Don't forget that we take it's address.
-      TREE_ADDRESSABLE (TREE_TYPE (fndecl)) = 1;
       TREE_ADDRESSABLE (var) = 1;
-      TREE_ADDRESSABLE (result_decl) = 1;
+
+      TREE_TYPE (result_decl) = build_reference_type(TREE_TYPE (result_decl));
+      DECL_BY_REFERENCE (result_decl) = 1;
+      TREE_ADDRESSABLE (result_decl) = 0;
+      relayout_decl(result_decl);
+
+      result_decl = build_deref(result_decl);
 
       SET_DECL_VALUE_EXPR (var, result_decl);
       DECL_HAS_VALUE_EXPR_P (var) = 1;
