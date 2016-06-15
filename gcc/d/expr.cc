@@ -183,8 +183,8 @@ public:
 	    tree result;
 
 	    // Make temporaries to prevent multiple evaluations.
-	    tree t1saved = make_temp(t1);
-	    tree t2saved = make_temp(t2);
+	    tree t1saved = maybe_make_temp(t1);
+	    tree t2saved = maybe_make_temp(t2);
 
 	    // Length of arrays, for comparisons done before calling memcmp.
 	    tree t1len = d_array_length(t1saved);
@@ -202,8 +202,7 @@ public:
 		tree tsize = size_mult_expr(t1len, size_int(t1elem->size()));
 		tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
 						 t1ptr, t2ptr, tsize);
-		result = build2(code, build_ctype(e->type),
-				tmemcmp, integer_zero_node);
+		result = build_boolop(code, tmemcmp, integer_zero_node);
 	      }
 	    else
 	      {
@@ -216,7 +215,7 @@ public:
 	    //    (e1.length == 0 || memcmp)
 	    // Otherwise for inequality:
 	    //    (e1.length != 0 && memcmp)
-	    tree tsizecmp = build2(code, size_type_node, t1len, size_zero_node);
+	    tree tsizecmp = build_boolop(code, t1len, size_zero_node);
 	    if (e->op == TOKequal)
 	      result = build_boolop(TRUTH_ORIF_EXPR, tsizecmp, result);
 	    else
@@ -228,7 +227,7 @@ public:
 	      gcc_assert(tb1->size() == tb2->size());
 	    else
 	      {
-		tree tlencmp = build2(code, size_type_node, t1len, t2len);
+		tree tlencmp = build_boolop(code, t1len, t2len);
 		if (e->op == TOKequal)
 		  result = build_boolop(TRUTH_ANDIF_EXPR, tlencmp, result);
 		else
@@ -236,10 +235,10 @@ public:
 	      }
 
 	    // Ensure left-to-right order of evaluation.
-	    if (d_has_side_effects(t2))
+	    if (TREE_SIDE_EFFECTS (t2))
 	      result = compound_expr(t2saved, result);
 
-	    if (d_has_side_effects(t1))
+	    if (TREE_SIDE_EFFECTS (t1))
 	      result = compound_expr(t1saved, result);
 
 	    this->result_ = result;
@@ -822,10 +821,13 @@ public:
 
 	    // Evaluate expression before appending
 	    tree t2 = build_expr(e->e2);
+	    tree expr = stabilize_expr(&t2);
+
 	    t2 = maybe_make_temp(t2);
 	    result = modify_expr(build_ctype(etype), build_deref(ptrexp), t2);
+	    result = compound_expr(t2, result);
 
-	    this->result_ = compound_expr(t2, result);
+	    this->result_ = maybe_compound_expr(expr, result);
 	  }
 	else
 	  gcc_unreachable();
@@ -2190,7 +2192,6 @@ public:
 	    tree arg = build_typeinfo(e->newtype);
 	    new_call = build_libcall(libcall, 1, &arg);
 	  }
-	new_call = maybe_make_temp(new_call);
 	new_call = build_nop(build_ctype(tb), new_call);
 
 	if (e->member || !e->arguments)
@@ -2199,8 +2200,11 @@ public:
 	    if (sd->isNested())
 	      {
 		tree value = build_vthis(sd);
-		tree field = component_ref(indirect_ref(build_ctype(stype), new_call),
-						 sd->vthis->toSymbol()->Stree);
+		tree field = sd->vthis->toSymbol()->Stree;
+		tree type = build_ctype(stype);
+
+		new_call = maybe_make_temp(new_call);
+		field = component_ref(indirect_ref(type, new_call), field);
 		new_call = compound_expr(modify_expr(field, value), new_call);
 	      }
 
@@ -2213,13 +2217,18 @@ public:
 	else
 	  {
 	    // User supplied initialiser, set-up with a struct literal.
-	    StructLiteralExp *se = StructLiteralExp::create(e->loc, sd,
-							    e->arguments, htype);
-	    se->sym = new Symbol();
-	    se->sym->Stree = new_call;
-	    se->type = sd->type;
-
-	    result = compound_expr(build_expr(se), new_call);
+	    if (e->arguments != NULL && sd->fields.dim != 0)
+	      {
+		StructLiteralExp *se = StructLiteralExp::create(e->loc, sd,
+								e->arguments, htype);
+		new_call = maybe_make_temp(new_call);
+		se->sym = new Symbol();
+		se->type = sd->type;
+		se->sym->Stree = new_call;
+		result = compound_expr(build_expr(se), new_call);
+	      }
+	    else
+	      result = new_call;
 	  }
 
 	if (e->argprefix)
@@ -2453,6 +2462,7 @@ public:
     vec<constructor_elt, va_gc> *elms = NULL;
     vec_safe_reserve(elms, e->elements->dim);
     bool constant_p = true;
+    tree saved_elems = NULL_TREE;
 
     Type *etype = tb->nextOf();
     tree satype = d_array_type(etype, e->elements->dim);
@@ -2466,10 +2476,12 @@ public:
 	if (!initializer_zerop(value))
 	  {
 	    if (!TREE_CONSTANT (value))
-	      {
-		value = maybe_make_temp(value);
-		constant_p = false;
-	      }
+	      constant_p = false;
+
+	    // Split construction of values out of the constructor.
+	    tree init = stabilize_expr(&value);
+	    if (init != NULL_TREE)
+	      saved_elems = maybe_vcompound_expr(saved_elems, init);
 
 	    CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
 				    convert_expr(value, expr->type, etype));
@@ -2501,7 +2513,7 @@ public:
 	if (constant_p && initializer_constant_valid_p(ctor, TREE_TYPE (ctor)))
 	  TREE_STATIC (ctor) = 1;
 
-	this->result_ = d_convert(type, ctor);
+	this->result_ = maybe_compound_expr(saved_elems, d_convert(type, ctor));
       }
     else
       {
@@ -2528,7 +2540,7 @@ public:
 	if (tb->ty == Tarray)
 	  result = d_array_value(type, size_int(e->elements->dim), result);
 
-	this->result_ = result;
+	this->result_ = maybe_compound_expr(saved_elems, result);
       }
   }
 
@@ -2555,7 +2567,6 @@ public:
       {
 	Expression *key = (*e->keys)[i];
 	tree t = build_expr(key);
-	t = maybe_make_temp(t);
 	CONSTRUCTOR_APPEND_ELT(ke, size_int(i),
 			       convert_expr(t, key->type, ta->index));
       }
@@ -2567,7 +2578,6 @@ public:
       {
 	Expression *value = (*e->values)[i];
 	tree t = build_expr(value);
-	t = maybe_make_temp(t);
 	CONSTRUCTOR_APPEND_ELT(ve, size_int(i),
 			       convert_expr(t, value->type, ta->next));
       }
@@ -2617,6 +2627,7 @@ public:
     // Build a constructor that assigns the expressions in ELEMENTS
     // at each field index that has been filled in.
     vec<constructor_elt, va_gc> *ve = NULL;
+    tree saved_elems = NULL_TREE;
 
     // CTFE may fill the hidden pointer by NullExp.
     gcc_assert(e->elements->dim <= e->sd->fields.dim);
@@ -2653,6 +2664,11 @@ public:
 				 exp->type, field->type);
 	  }
 
+	// Split construction of values out of the constructor.
+	tree init = stabilize_expr(&value);
+	if (init != NULL_TREE)
+	  saved_elems = maybe_vcompound_expr(saved_elems, init);
+
 	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol()->Stree, value);
       }
 
@@ -2677,14 +2693,15 @@ public:
 	    && initializer_constant_valid_p(ctor, TREE_TYPE (ctor)))
 	  TREE_STATIC (ctor) = 1;
 
-	this->result_ = ctor;
+	this->result_ = maybe_compound_expr(saved_elems, ctor);
 	return;
       }
 
     if (e->sym != NULL)
       {
 	tree var = build_deref(e->sym->Stree);
-	this->result_ = compound_expr(modify_expr(var, ctor), var);
+	ctor = compound_expr(modify_expr(var, ctor), var);
+	this->result_ = maybe_compound_expr(saved_elems, ctor);
       }
     else if (e->sd->isUnionDeclaration())
       {
@@ -2694,11 +2711,12 @@ public:
 				      build_address(var), size_zero_node,
 				      size_int(e->sd->structsize));
 
+	init = maybe_compound_expr(init, saved_elems);
 	init = compound_expr(init, modify_expr(var, ctor));
 	this->result_  = compound_expr(init, var);
       }
     else
-      this->result_ = ctor;
+      this->result_ = maybe_compound_expr(saved_elems, ctor);
   }
 
   // Create a 'null' literal with the given expression.
@@ -2864,9 +2882,6 @@ build_dtor_list(size_t starti, size_t endi)
   return dtors;
 }
 
-// Separate the value of a compound expression from the left hand side
-// expressions in RESULT.  Returns the result in EXPR and VALUE.
-
 // Same as build_expr, but also calls destructors on any temporaries.
 
 tree
@@ -2875,40 +2890,38 @@ build_expr_dtor(Expression *e)
   // Codegen can be improved by determining if no exceptions can be thrown
   // between the ctor and dtor, and eliminating the ctor and dtor.
   size_t starti = cfun->language->vars_in_scope.length();
-  tree t = build_expr(e);
+  tree result = build_expr(e);
   tree dtors = build_dtor_list(starti, cfun->language->vars_in_scope.length());
 
   if (dtors != NULL_TREE)
     {
-      tree expr = NULL_TREE;
-      tree result;
-
       // Split comma expressions, so that only the result is maybe saved.
-      if (TREE_CODE (t) == COMPOUND_EXPR)
-	{
-	  expr = TREE_OPERAND (t, 0);
-	  result = TREE_OPERAND (t, 1);
-	}
-      else
-	result = t;
+      tree expr = stabilize_expr(&result);
 
+      // When constructing temporaries, if the constructor throws, then
+      // we don't want to run the destructor on the incomplete object.
+      CallExp *ce = (e->op == TOKcall) ? ((CallExp *) e) : NULL;
+      if (ce != NULL && ce->e1->op == TOKdotvar
+	  && ((DotVarExp *) ce->e1)->var->isCtorDeclaration())
+	{
+	  // Extract the object from the ctor call, as it will be the same
+	  // value as the returned result, just maybe without the side effects.
+	  // Rewriting: ctor(&e1) => (ctor(&e1), e1)
+	  expr = maybe_vcompound_expr(expr, result);
+
+	  if (INDIRECT_REF_P (result))
+	    result = build_deref(CALL_EXPR_ARG (TREE_OPERAND (result, 0), 0));
+	  else
+	    result = CALL_EXPR_ARG (result, 0);
+	}
+
+      // If the result has side-effects, save the entire expression.
       if (TREE_SIDE_EFFECTS (result))
 	{
-	  // If the result has side-effects, save the entire expression.
+	  // Wrap expr and dtors in a try/finally expression.
 	  result = maybe_make_temp(result);
-
-	  // For construction of temporaries, if the constructor throws, then we
-	  // don't want to run the destructor on the incomplete object.
-	  CallExp *ce = (e->op == TOKcall) ? ((CallExp *) e) : NULL;
-	  if (ce != NULL && ce->e1->op == TOKdotvar
-	      && ((DotVarExp *) ce->e1)->var->isCtorDeclaration())
-	    expr = compound_expr(maybe_vcompound_expr(expr, result), dtors);
-	  else
-	    {
-	      // Wrap expr and dtors in a try/finally expression.
-	      expr = build2(TRY_FINALLY_EXPR, void_type_node,
-			    maybe_vcompound_expr(expr, result), dtors);
-	    }
+	  expr = build2(TRY_FINALLY_EXPR, void_type_node,
+			maybe_vcompound_expr(expr, result), dtors);
 	}
       else
 	expr = maybe_vcompound_expr(expr, dtors);
@@ -2916,7 +2929,7 @@ build_expr_dtor(Expression *e)
       return compound_expr(expr, result);
     }
 
-  return t;
+  return result;
 }
 
 // Same as build_expr_dtor, but handles the result of E as a return value.
@@ -2926,37 +2939,25 @@ build_return_dtor(Expression *e, Type *type, TypeFunction *tf)
 {
   size_t starti = cfun->language->vars_in_scope.length();
   // Convert for initialising the DECL_RESULT.
-  tree t = convert_expr(build_expr(e), e->type, type);
+  tree result = convert_expr(build_expr(e), e->type, type);
   tree dtors = build_dtor_list(starti, cfun->language->vars_in_scope.length());
 
   // If we are returning a reference, take the address.
   if (tf->isref)
-    t = build_address(t);
+    result = build_address(result);
 
   // The decl to store the return expression.
   tree decl = DECL_RESULT (cfun->decl);
 
+  // Split comma expressions, so that the result is returned directly.
+  tree expr = stabilize_expr(&result);
+  result = build2(INIT_EXPR, TREE_TYPE (decl), decl, result);
+  result = maybe_vcompound_expr(expr, return_expr(result));
+
+  // Nest the return expression inside the try/finally expression.
   if (dtors != NULL_TREE)
-    {
-      tree expr = NULL_TREE;
-      tree result;
+    return build2(TRY_FINALLY_EXPR, void_type_node, result, dtors);
 
-      // Split comma expressions, so that the result is returned directly.
-      if (TREE_CODE (t) == COMPOUND_EXPR)
-	{
-	  expr = TREE_OPERAND (t, 0);
-	  result = TREE_OPERAND (t, 1);
-	}
-      else
-	result = t;
-
-      // Nest the return expression inside the try/finally expression.
-      tree assign = build2(INIT_EXPR, TREE_TYPE (decl), decl, result);
-
-      return build2(TRY_FINALLY_EXPR, void_type_node,
-		    maybe_vcompound_expr(expr, return_expr(assign)), dtors);
-    }
-
-  return return_expr(build2(INIT_EXPR, TREE_TYPE (decl), decl, t));
+  return result;
 }
 
