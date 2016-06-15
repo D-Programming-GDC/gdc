@@ -163,7 +163,7 @@ extern tree get_decl_tree(Declaration *decl);
 // Temporaries (currently just SAVE_EXPRs)
 extern tree make_temp (tree t);
 extern tree maybe_make_temp (tree t);
-extern bool d_has_side_effects (tree t);
+extern tree stabilize_expr (tree *valuep);
 
 // Array operations
 extern tree build_bounds_condition(const Loc& loc, tree index, tree upr, bool inclusive);

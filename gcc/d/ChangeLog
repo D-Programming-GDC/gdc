@@ -1,3 +1,22 @@
+2016-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (add_stmt): Don't add statements without side effects.
+	Push each COMPOUND_EXPR as a separate statement.
+	(build_local_temp): Use input_location.
+	(create_temporary_var): Likewise.
+	(d_has_side_effects): Remove function.
+	Updated all callers to use TREE_SIDE_EFFECTS.
+	(stabilize_expr): New function.
+	Updated all routines that check for COMPOUND_EXPR to use it.
+	* expr.cc (ExprVisitor::visit(EqualExp)): Use maybe_make_temp to save
+	expressions.  Use build_boolop for constructed conditions.
+	(ExprVisitor::visit(CatAssignExp)): Stabilize RHS before assignment.
+	(ExprVisitor::visit(NewExp)): Don't always create SAVE_EXPR.
+	(ExprVisitor::visit(AssocArrayLiteralExp)): Likewise.
+	(ExprVisitor::visit(ArrayLiteralExp)): Evaluate elements before
+	appending to constructor fields.
+	(ExprVisitor::visit(StructLiteralExp)): Likewise.
+
 2016-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-convert.cc (d_build_truthvalue_op): Fold truthvalue operation.

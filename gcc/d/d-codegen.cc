@@ -205,11 +205,27 @@ add_stmt(tree t)
   if (t == void_node || IS_EMPTY_STMT (t))
     return;
 
-  if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
-    SET_EXPR_LOCATION (t, input_location);
+  // At this point, we no longer care about the value of expressions,
+  // so if there's no side-effects, then don't add it.
+  if (!TREE_SIDE_EFFECTS (t))
+    return;
 
-  tree stmt_list = cfun->language->stmt_list->last();
-  append_to_statement_list_force(t, &stmt_list);
+  if (TREE_CODE (t) == COMPOUND_EXPR)
+    {
+      // Push out each comma expressions as separate statements.
+      add_stmt(TREE_OPERAND (t, 0));
+      add_stmt(TREE_OPERAND (t, 1));
+    }
+  else
+    {
+      // Append the expression to the statement list.
+      // Make sure it has a proper location.
+      if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
+	SET_EXPR_LOCATION (t, input_location);
+
+      tree stmt_list = cfun->language->stmt_list->last();
+      append_to_statement_list_force(t, &stmt_list);
+    }
 }
 
 //
@@ -347,7 +363,7 @@ build_local_var (VarDeclaration *vd)
 tree
 build_local_temp (tree type)
 {
-  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
 
   DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
@@ -363,7 +379,7 @@ build_local_temp (tree type)
 tree
 create_temporary_var (tree type)
 {
-  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
   DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_IGNORED_P (decl) = 1;
@@ -1595,50 +1611,46 @@ make_temp (tree exp)
 tree
 maybe_make_temp (tree exp)
 {
-  if (d_has_side_effects (exp))
+  if (TREE_SIDE_EFFECTS (exp))
     return make_temp (exp);
 
   return exp;
 }
 
-// Return TRUE if EXP can not be evaluated multiple times (i.e., in a loop body)
-// without unwanted side effects.
+// VALUEP is an expression we want to pre-evaluate or perform a computation on.
+// The expression returned by this function is the part whose value we don't
+// care about, storing the value in VALUEP.  Callers must ensure that the
+// returned expression is evaluated before VALUEP.
 
-bool
-d_has_side_effects (tree exp)
+tree
+stabilize_expr(tree *valuep)
 {
-  tree t = STRIP_NOPS (exp);
+  if (TREE_CODE (*valuep) == COMPOUND_EXPR)
+    {
+      tree lhs = TREE_OPERAND (*valuep, 0);
+      tree rhs = TREE_OPERAND (*valuep, 1);
 
-  // SAVE_EXPR is safe to reference more than once, but not to
-  // expand in a loop.
-  if (TREE_CODE (t) == SAVE_EXPR)
-    return false;
+      lhs = maybe_compound_expr(lhs, stabilize_expr(&rhs));
+      *valuep = rhs;
 
-  if (DECL_P (t)
-      || CONSTANT_CLASS_P (t))
-    return false;
-
-  if (INDIRECT_REF_P (t)
-      || TREE_CODE (t) == ADDR_EXPR
-      || TREE_CODE (t) == COMPONENT_REF)
-    return d_has_side_effects (TREE_OPERAND (t, 0));
-
-  return TREE_SIDE_EFFECTS (t);
+      return lhs;
+    }
+  else
+    return NULL_TREE;
 }
-
 
 // Returns the address of the expression EXP.
 
 tree
 build_address(tree exp)
 {
-  tree result;
-  tree ptrtype;
-  tree type = TREE_TYPE (exp);
-  d_mark_addressable(exp);
-
   if (error_operand_p (exp))
     return exp;
+
+  tree ptrtype;
+  tree type = TREE_TYPE (exp);
+
+  d_mark_addressable(exp);
 
   if (TREE_CODE (exp) == STRING_CST)
     {
@@ -1657,21 +1669,14 @@ build_address(tree exp)
   else
     ptrtype = build_pointer_type(type);
 
-  if (TREE_CODE (exp) == COMPOUND_EXPR)
-    {
-      // Rewrite: (e1, e2) => (e1, &e2)
-      result = build_address(TREE_OPERAND (exp, 1));
-      result = compound_expr(TREE_OPERAND (exp, 0), result);
-    }
-  else
-    {
-      result = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
+  // Maybe rewrite: (e1, e2) => (e1, &e2)
+  tree init = stabilize_expr(&exp);
+  exp = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
 
-      if (TREE_CODE (exp) == FUNCTION_DECL)
-	TREE_NO_TRAMPOLINE (result) = 1;
-    }
+  if (TREE_CODE (exp) == ADDR_EXPR)
+    TREE_NO_TRAMPOLINE (exp) = 1;
 
-  return result;
+  return maybe_compound_expr(init, exp);
 }
 
 tree
@@ -2228,7 +2233,13 @@ lookup_anon_field(tree t, tree type)
 tree
 component_ref(tree object, tree field)
 {
+  if (error_operand_p(object) || error_operand_p(field))
+    return error_mark_node;
+
   gcc_assert (TREE_CODE (field) == FIELD_DECL);
+
+  // Maybe rewrite: (e1, e2).field => (e1, e2.field)
+  tree init = stabilize_expr(&object);
 
   // If the FIELD is from an anonymous aggregate, generate a reference
   // to the anonymous data member, and recur to find FIELD.
@@ -2238,8 +2249,10 @@ component_ref(tree object, tree field)
       object = component_ref(object, anonymous_field);
     }
 
-  return fold_build3_loc(input_location, COMPONENT_REF,
-			 TREE_TYPE (field), object, field, NULL_TREE);
+  tree result = fold_build3_loc(input_location, COMPONENT_REF,
+				TREE_TYPE (field), object, field, NULL_TREE);
+
+  return maybe_compound_expr(init, result);
 }
 
 // Build a modify expression, with variants for overriding
@@ -2305,14 +2318,11 @@ build_nop(tree type, tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  if (TREE_CODE (exp) == COMPOUND_EXPR)
-    {
-      // Rewrite: (e1, e2) => (e1, cast(TYPE) e2)
-      tree result = build_nop(type, TREE_OPERAND (exp, 1));
-      return compound_expr(TREE_OPERAND (exp, 0), result);
-    }
+  // Maybe rewrite: (e1, e2) => (e1, cast(TYPE) e2)
+  tree init = stabilize_expr(&exp);
+  exp = fold_build1_loc(input_location, NOP_EXPR, type, exp);
 
-  return fold_build1_loc(input_location, NOP_EXPR, type, exp);
+  return maybe_compound_expr(init, exp);
 }
 
 tree
@@ -2333,8 +2343,8 @@ build_boolop(tree_code code, tree arg0, tree arg1)
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg1)))
     arg1 = maybe_make_temp(arg1);
 
-  return fold_build2_loc(input_location, code,
-			 bool_type_node, arg0, arg1);
+  return fold_build2_loc(input_location, code, bool_type_node,
+			 arg0, d_convert(TREE_TYPE (arg0), arg1));
 }
 
 // Return a COND_EXPR.  ARG0, ARG1, and ARG2 are the three
@@ -2438,19 +2448,18 @@ indirect_ref(tree type, tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  if (TREE_CODE (exp) == COMPOUND_EXPR)
-    {
-      // Rewrite: (e1, e2) => (e1, *e2)
-      tree result = indirect_ref(type, TREE_OPERAND (exp, 1));
-      return compound_expr(TREE_OPERAND (exp, 0), result);
-    }
+  // Maybe rewrite: (e1, e2) => (e1, *e2)
+  tree init = stabilize_expr(&exp);
 
   if (TREE_CODE (TREE_TYPE (exp)) == REFERENCE_TYPE)
-    return fold_build1(INDIRECT_REF, type, exp);
+    exp = fold_build1(INDIRECT_REF, type, exp);
+  else
+    {
+      exp = build_nop(build_pointer_type(type), exp);
+      exp = build_deref(exp);
+    }
 
-  exp = build_nop(build_pointer_type(type), exp);
-
-  return build_deref(exp);
+  return maybe_compound_expr(init, exp);
 }
 
 // Returns indirect reference of EXP, which must be a pointer type.
@@ -2461,19 +2470,17 @@ build_deref(tree exp)
   if (error_operand_p (exp))
     return exp;
 
-  if (TREE_CODE (exp) == COMPOUND_EXPR)
-    {
-      // Rewrite: (e1, e2) => (e1, *e2)
-      tree result = build_deref(TREE_OPERAND (exp, 1));
-      return compound_expr(TREE_OPERAND (exp, 0), result);
-    }
+  // Maybe rewrite: (e1, e2) => (e1, *e2)
+  tree init = stabilize_expr(&exp);
 
   gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
 
   if (TREE_CODE (exp) == ADDR_EXPR)
-    return TREE_OPERAND (exp, 0);
+    exp = TREE_OPERAND (exp, 0);
+  else
+    exp = build_fold_indirect_ref(exp);
 
-  return build_fold_indirect_ref(exp);
+  return maybe_compound_expr(init, exp);
 }
 
 // Builds pointer offset expression PTR[INDEX]
@@ -2577,7 +2584,7 @@ build_array_set(tree ptr, tree length, tree value)
   add_stmt(build_vinit(t, ptr));
   ptr = t;
 
-  if (d_has_side_effects(value))
+  if (TREE_SIDE_EFFECTS (value))
     {
       t = build_local_temp(TREE_TYPE (value));
       add_stmt(build_vinit(t, value));
@@ -2730,35 +2737,20 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
       e1b = ce->e1;
     }
 
-  // Prevent multiple evaluations of LHS, but watch out!
-  // The LHS expression could be an assignment, to which
-  // it's operation gets lost during gimplification.
-  tree lexpr = NULL_TREE;
-  tree lhs;
+  // The LHS expression could be an assignment, to which it's operation gets
+  // lost during gimplification.  Stabilize lhs for assignment.
+  tree lhs = build_expr(e1b);
+  tree lexpr = stabilize_expr(&lhs);
 
-  if (e1b->op == TOKcomma)
-    {
-      CommaExp *ce = (CommaExp *) e1b;
-      lexpr = build_expr(ce->e1);
-      lhs = build_expr(ce->e2);
-    }
-  else
-    lhs = build_expr(e1b);
-
-  tree rhs = build_expr(e2);
-
-  // Build assignment expression. Stabilize lhs for assignment.
   lhs = stabilize_reference(lhs);
 
+  tree rhs = build_expr(e2);
   rhs = build_binary_op(code, build_ctype(e1->type),
 			convert_expr(lhs, e1b->type, e1->type), rhs);
 
   tree expr = modify_expr(lhs, convert_expr(rhs, e1->type, e1b->type));
 
-  if (lexpr)
-    expr = compound_expr(lexpr, expr);
-
-  return expr;
+  return maybe_compound_expr(lexpr, expr);
 }
 
 // Builds a bounds condition checking that INDEX is between 0 and LEN.
@@ -3018,12 +3010,9 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 
 	  if (TREE_SIDE_EFFECTS (value))
 	    {
-	      if (TREE_CODE (value) == COMPOUND_EXPR)
-		{
-		  tree expr = TREE_OPERAND (value, 0);
-		  saved_args = maybe_vcompound_expr(saved_args, expr);
-		  value = TREE_OPERAND (value, 1);
-		}
+	      tree expr = stabilize_expr(&value);
+	      if (expr != NULL_TREE)
+		saved_args = maybe_vcompound_expr(saved_args, expr);
 
 	      // Argument needs saving.
 	      if (TREE_SIDE_EFFECTS (value))
