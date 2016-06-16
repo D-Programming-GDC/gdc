@@ -2333,7 +2333,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
     {
       tree var_decl = (gates[i])->toSymbol()->Stree;
       tree value = build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node);
-      tree var_expr = vmodify_expr (var_decl, value);
+      tree var_expr = modify_expr (var_decl, value);
       expr_list = compound_expr (expr_list, var_expr);
     }
 
@@ -2438,8 +2438,8 @@ build_moduleinfo (Symbol *sym)
   //    modref.next = _Dmodule_ref;
   //    _Dmodule_ref = &modref;
   //  }
-  tree m1 = vmodify_expr (component_ref (modref, nextfield), dmodule_ref);
-  tree m2 = vmodify_expr (dmodule_ref, build_address (modref));
+  tree m1 = modify_expr (component_ref (modref, nextfield), dmodule_ref);
+  tree m2 = modify_expr (dmodule_ref, build_address (modref));
 
   build_simple_function ("*__modinit", compound_expr (m1, m2), true);
 }

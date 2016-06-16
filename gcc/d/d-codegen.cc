@@ -2014,7 +2014,7 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
   //	result = result OP (*t1 == *t2)
   t = build_struct_comparison(code, sd, build_deref(t1), build_deref(t2));
   t = build_boolop(tcode, result, t);
-  t = vmodify_expr(result, t);
+  t = modify_expr(result, t);
   add_stmt(t);
 
   // Move both pointers to next element position.
@@ -2266,13 +2266,6 @@ modify_expr(tree type, tree dst, tree src)
 {
   return fold_build2_loc(input_location, MODIFY_EXPR,
 			 type, dst, src);
-}
-
-tree
-vmodify_expr(tree dst, tree src)
-{
-  return fold_build2_loc(input_location, MODIFY_EXPR,
-			 void_type_node, dst, src);
 }
 
 tree
@@ -2590,7 +2583,7 @@ build_array_set(tree ptr, tree length, tree value)
 
   // Assign value to the current pointer position.
   //	*ptr = value
-  t = vmodify_expr(build_deref(ptr), value);
+  t = modify_expr(build_deref(ptr), value);
   add_stmt(t);
 
   // Move pointer to next element position.
@@ -3289,8 +3282,8 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2
     arg2 = fold_build1 (BIT_NOT_EXPR, TREE_TYPE (arg2), arg2);
 
   tval = build_local_temp (TREE_TYPE (callee));
-  exp = vmodify_expr (tval, exp);
-  arg1 = vmodify_expr (arg1, fold_build2 (code, TREE_TYPE (arg1), arg1, arg2));
+  exp = modify_expr (tval, exp);
+  arg1 = modify_expr (arg1, fold_build2 (code, TREE_TYPE (arg1), arg1, arg2));
 
   return compound_expr (exp, compound_expr (arg1, tval));
 }
@@ -3324,7 +3317,7 @@ expand_intrinsic_arith(built_in_function code, tree callee, tree arg1,
   // Assign returned result to overflow parameter, however if
   // overflow is already true, maintain it's value.
   exp = fold_build2 (BIT_IOR_EXPR, TREE_TYPE (overflow), overflow, exp);
-  overflow = vmodify_expr(overflow, exp);
+  overflow = modify_expr(overflow, exp);
 
   // Return the value of result.
   return compound_expr(overflow, result);
@@ -3361,7 +3354,7 @@ expand_intrinsic_vaarg(tree callee, tree arg1, tree arg2)
   tree exp = build1(VA_ARG_EXPR, type, arg1);
 
   if (arg2 != NULL_TREE)
-    exp = vmodify_expr(arg2, exp);
+    exp = modify_expr(arg2, exp);
 
   return exp;
 }
@@ -4214,7 +4207,7 @@ build_closure(FuncDeclaration *fd)
 
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));
-  tree chain_expr = vmodify_expr(chain_field, cfun->language->static_chain);
+  tree chain_expr = modify_expr(chain_field, cfun->language->static_chain);
   add_stmt(chain_expr);
 
   // Copy parameters that are referenced nonlocally.
@@ -4228,7 +4221,7 @@ build_closure(FuncDeclaration *fd)
       Symbol *vsym = v->toSymbol();
 
       tree field = component_ref (decl_ref, vsym->SframeField);
-      tree expr = vmodify_expr (field, vsym->Stree);
+      tree expr = modify_expr (field, vsym->Stree);
       add_stmt(expr);
     }
 

@@ -218,7 +218,6 @@ build_object_type()
 extern tree component_ref(tree obj, tree field);
 extern tree modify_expr(tree dst, tree src);
 extern tree modify_expr(tree type, tree dst, tree src);
-extern tree vmodify_expr(tree dst, tree src);
 extern tree build_vinit(tree dst, tree src);
 
 extern tree build_nop(tree t, tree e);
