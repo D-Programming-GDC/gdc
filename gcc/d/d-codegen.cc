@@ -1595,6 +1595,28 @@ build_two_field_type(tree t1, tree t2, Type *type, const char *n1, const char *n
   return rectype;
 }
 
+// Return TRUE if EXP is a valid lvalue.  Lvalues references cannot be
+// made into temporaries, otherwise any assignments will be lost.
+
+static bool
+lvalue_p(tree exp)
+{
+  const enum tree_code code = TREE_CODE (exp);
+
+  switch (code)
+    {
+    case SAVE_EXPR:
+      return false;
+
+    default:
+      if (TREE_ADDRESSABLE (TREE_TYPE (exp))
+	  || TREE_CODE (TREE_TYPE (exp)) == ARRAY_TYPE)
+	return true;
+
+      return false;
+    }
+}
+
 // Create a SAVE_EXPR if EXP might have unwanted side effects if referenced
 // more than once in an expression.
 
@@ -1603,11 +1625,10 @@ d_save_expr(tree exp)
 {
   if (TREE_SIDE_EFFECTS (exp))
     {
-      if (TREE_CODE (exp) == CALL_EXPR
-	  || TREE_CODE (TREE_TYPE (exp)) != ARRAY_TYPE)
-	return save_expr (exp);
-      else
+      if (lvalue_p(exp))
 	return stabilize_reference (exp);
+
+      return save_expr (exp);
     }
 
   return exp;
