@@ -542,7 +542,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
     case Tdelegate:
       if (tbtype->ty == Tdelegate)
 	{
-	  exp = maybe_make_temp(exp);
+	  exp = d_save_expr(exp);
 	  return build_delegate_cst(delegate_method(exp), delegate_object(exp), totype);
 	}
       else if (tbtype->ty == Tpointer)
@@ -608,7 +608,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	    if (offset)
 	      {
 		tree type = build_ctype(totype);
-		exp = maybe_make_temp(exp);
+		exp = d_save_expr(exp);
 
 		tree cond = build_boolop(NE_EXPR, exp, null_pointer_node);
 		tree object = build_offset(exp, size_int(offset));
@@ -904,7 +904,7 @@ convert_for_condition(tree expr, Type *type)
     case Tarray:
     {
       // Checks (length || ptr) (i.e ary !is null)
-      expr = maybe_make_temp(expr);
+      expr = d_save_expr(expr);
       tree len = d_array_length(expr);
       tree ptr = d_array_ptr(expr);
       if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
@@ -931,7 +931,7 @@ convert_for_condition(tree expr, Type *type)
 	extract_from_method_call(expr, obj, func);
       else
 	{
-	  expr = maybe_make_temp(expr);
+	  expr = d_save_expr(expr);
 	  obj = delegate_object(expr);
 	  func = delegate_method(expr);
 	}
@@ -1564,7 +1564,7 @@ build_vindex_ref(tree object, tree fntype, size_t index)
 {
   // Interface methods are also in the class's vtable, so we don't
   // need to convert from a class pointer to an interface pointer.
-  object = maybe_make_temp(object);
+  object = d_save_expr(object);
 
   // The vtable is the first field.
   tree result = build_deref(object);
@@ -1599,20 +1599,16 @@ build_two_field_type(tree t1, tree t2, Type *type, const char *n1, const char *n
 // more than once in an expression.
 
 tree
-make_temp (tree exp)
-{
-  if (TREE_CODE (exp) == CALL_EXPR
-      || TREE_CODE (TREE_TYPE (exp)) != ARRAY_TYPE)
-    return save_expr (exp);
-  else
-    return stabilize_reference (exp);
-}
-
-tree
-maybe_make_temp (tree exp)
+d_save_expr(tree exp)
 {
   if (TREE_SIDE_EFFECTS (exp))
-    return make_temp (exp);
+    {
+      if (TREE_CODE (exp) == CALL_EXPR
+	  || TREE_CODE (TREE_TYPE (exp)) != ARRAY_TYPE)
+	return save_expr (exp);
+      else
+	return stabilize_reference (exp);
+    }
 
   return exp;
 }
@@ -1630,7 +1626,7 @@ stabilize_expr(tree *valuep)
       tree lhs = TREE_OPERAND (*valuep, 0);
       tree rhs = TREE_OPERAND (*valuep, 1);
 
-      lhs = maybe_compound_expr(lhs, stabilize_expr(&rhs));
+      lhs = compound_expr(lhs, stabilize_expr(&rhs));
       *valuep = rhs;
 
       return lhs;
@@ -1676,7 +1672,7 @@ build_address(tree exp)
   if (TREE_CODE (exp) == ADDR_EXPR)
     TREE_NO_TRAMPOLINE (exp) = 1;
 
-  return maybe_compound_expr(init, exp);
+  return compound_expr(init, exp);
 }
 
 tree
@@ -1950,8 +1946,8 @@ build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   if (TYPE_MODE (TREE_TYPE (t1)) != BLKmode || !identity_compare_p(sd))
     {
       // Make temporaries to prevent multiple evaluations.
-      t1 = maybe_make_temp(t1);
-      t2 = maybe_make_temp(t2);
+      t1 = d_save_expr(t1);
+      t2 = d_save_expr(t2);
 
       return lower_struct_comparison(code, sd, t1, t2);
     }
@@ -1959,8 +1955,8 @@ build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
     {
       // Do bit compare of structs.
       tree size = size_int(sd->structsize);
-      t1 = maybe_make_temp(t1);
-      t2 = maybe_make_temp(t2);
+      t1 = d_save_expr(t1);
+      t2 = d_save_expr(t2);
       tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
 				       build_address(t1), build_address(t2), size);
 
@@ -2252,7 +2248,7 @@ component_ref(tree object, tree field)
   tree result = fold_build3_loc(input_location, COMPONENT_REF,
 				TREE_TYPE (field), object, field, NULL_TREE);
 
-  return maybe_compound_expr(init, result);
+  return compound_expr(init, result);
 }
 
 // Build a modify expression, with variants for overriding
@@ -2322,7 +2318,7 @@ build_nop(tree type, tree exp)
   tree init = stabilize_expr(&exp);
   exp = fold_build1_loc(input_location, NOP_EXPR, type, exp);
 
-  return maybe_compound_expr(init, exp);
+  return compound_expr(init, exp);
 }
 
 tree
@@ -2339,9 +2335,9 @@ build_boolop(tree_code code, tree arg0, tree arg1)
   // Aggregate comparisons may get lowered to a call to builtin memcmp,
   // so need to remove all side effects incase it's address is taken.
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg0)))
-    arg0 = maybe_make_temp(arg0);
+    arg0 = d_save_expr(arg0);
   if (AGGREGATE_TYPE_P (TREE_TYPE (arg1)))
-    arg1 = maybe_make_temp(arg1);
+    arg1 = d_save_expr(arg1);
 
   return fold_build2_loc(input_location, code, bool_type_node,
 			 arg0, d_convert(TREE_TYPE (arg0), arg1));
@@ -2366,30 +2362,22 @@ build_condition(tree type, tree arg0, tree arg1, tree arg2)
 tree
 build_vcondition(tree arg0, tree arg1, tree arg2)
 {
-  if (arg1 == void_node)
-    arg1 = build_empty_stmt(input_location);
-
-  if (arg2 == void_node)
-    arg2 = build_empty_stmt(input_location);
-
-  return fold_build3_loc(input_location, COND_EXPR,
-			 void_type_node, arg0, arg1, arg2);
+  return build_condition(void_type_node, arg0, arg1, arg2);
 }
 
-// Compound ARG0 and ARG1 together.
+// Build a compound expr to join ARG0 and ARG1 together.
 
 tree
 compound_expr(tree arg0, tree arg1)
 {
+  if (arg1 == NULL_TREE)
+    return arg0;
+
+  if (arg0 == NULL_TREE || !TREE_SIDE_EFFECTS (arg0))
+    return arg1;
+
   return fold_build2_loc(input_location, COMPOUND_EXPR,
 			 TREE_TYPE (arg1), arg0, arg1);
-}
-
-tree
-vcompound_expr(tree arg0, tree arg1)
-{
-  return fold_build2_loc(input_location, COMPOUND_EXPR,
-			 void_type_node, arg0, arg1);
 }
 
 // Build a return expression.
@@ -2459,7 +2447,7 @@ indirect_ref(tree type, tree exp)
       exp = build_deref(exp);
     }
 
-  return maybe_compound_expr(init, exp);
+  return compound_expr(init, exp);
 }
 
 // Returns indirect reference of EXP, which must be a pointer type.
@@ -2480,7 +2468,7 @@ build_deref(tree exp)
   else
     exp = build_fold_indirect_ref(exp);
 
-  return maybe_compound_expr(init, exp);
+  return compound_expr(init, exp);
 }
 
 // Builds pointer offset expression PTR[INDEX]
@@ -2750,7 +2738,7 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
 
   tree expr = modify_expr(lhs, convert_expr(rhs, e1->type, e1b->type));
 
-  return maybe_compound_expr(lexpr, expr);
+  return compound_expr(lexpr, expr);
 }
 
 // Builds a bounds condition checking that INDEX is between 0 and LEN.
@@ -2764,7 +2752,7 @@ build_bounds_condition(const Loc& loc, tree index, tree len, bool inclusive)
     return index;
 
   // Prevent multiple evaluations of the index.
-  index = maybe_make_temp(index);
+  index = d_save_expr(index);
 
   // Generate INDEX >= LEN && throw RangeError.
   // No need to check whether INDEX >= 0 as the front-end should
@@ -2822,33 +2810,7 @@ bind_expr (tree var_chain, tree body)
       body = compound_expr (ini, body);
     }
 
-  return make_temp (build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
-}
-
-// Like compound_expr, but ARG0 or ARG1 might be NULL_TREE.
-
-tree
-maybe_compound_expr (tree arg0, tree arg1)
-{
-  if (arg0 == NULL_TREE)
-    return arg1;
-  else if (arg1 == NULL_TREE)
-    return arg0;
-  else
-    return compound_expr (arg0, arg1);
-}
-
-// Like vcompound_expr, but ARG0 or ARG1 might be NULL_TREE.
-
-tree
-maybe_vcompound_expr (tree arg0, tree arg1)
-{
-  if (arg0 == NULL_TREE)
-    return arg1;
-  else if (arg1 == NULL_TREE)
-    return arg0;
-  else
-    return vcompound_expr (arg0, arg1);
+  return d_save_expr(build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
 }
 
 // Returns the TypeFunction class for Type T.
@@ -2954,7 +2916,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	    {
 	      CommaExp *ce = (CommaExp *) arg;
 	      tree tce = build_expr(ce->e1);
-	      saved_args = maybe_vcompound_expr(saved_args, tce);
+	      saved_args = compound_expr(saved_args, tce);
 	      (*arguments)[i] = ce->e2;
 	      goto Lagain;
 	    }
@@ -3012,7 +2974,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	    {
 	      tree expr = stabilize_expr(&value);
 	      if (expr != NULL_TREE)
-		saved_args = maybe_vcompound_expr(saved_args, expr);
+		saved_args = compound_expr(saved_args, expr);
 
 	      // Argument needs saving.
 	      if (TREE_SIDE_EFFECTS (value))
@@ -3032,8 +2994,8 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 
 	      if (TREE_SIDE_EFFECTS (value))
 		{
-		  value = maybe_make_temp(value);
-		  saved_args = maybe_vcompound_expr(saved_args, value);
+		  value = d_save_expr(value);
+		  saved_args = compound_expr(saved_args, value);
 		  TREE_VALUE (arg) = value;
 		}
 	    }
@@ -3043,14 +3005,14 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   // Evaluate the callee before calling it.
   if (saved_args != NULL_TREE && TREE_SIDE_EFFECTS (callee))
     {
-      callee = maybe_make_temp(callee);
-      saved_args = vcompound_expr(callee, saved_args);
+      callee = d_save_expr(callee);
+      saved_args = compound_expr(callee, saved_args);
     }
 
   tree result = d_build_call_list(TREE_TYPE (ctype), callee, arg_list);
   result = expand_intrinsic(result);
 
-  return maybe_compound_expr(saved_args, result);
+  return compound_expr(saved_args, result);
 }
 
 // Builds a call to AssertError or AssertErrorMsg.
