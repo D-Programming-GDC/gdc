@@ -1,3 +1,16 @@
+2016-06-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (make_temp): Rename to d_save_expr.
+	(maybe_make_temp): Remove function.
+	Updated all callers to use d_save_expr().
+	(vcompound_expr): Remove function.
+	Updated all callers to use compound_expr().
+	(maybe_compound_expr): Likewise.
+	(maybe_vcompound_expr): Likewise.
+	(vmodify_expr): Remove function.
+	Updated all callers to use modify_expr().
+	(lvalue_p): New function.
+
 2016-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (add_stmt): Don't add statements without side effects.

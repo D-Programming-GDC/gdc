@@ -2248,7 +2248,7 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
     {
       tree fndecl = (functions[i])->toSymbol()->Stree;
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
-      expr_list = maybe_vcompound_expr (expr_list, call_expr);
+      expr_list = compound_expr (expr_list, call_expr);
     }
 
   if (expr_list)
@@ -2333,8 +2333,8 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
     {
       tree var_decl = (gates[i])->toSymbol()->Stree;
       tree value = build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node);
-      tree var_expr = vmodify_expr (var_decl, value);
-      expr_list = maybe_vcompound_expr (expr_list, var_expr);
+      tree var_expr = modify_expr (var_decl, value);
+      expr_list = compound_expr (expr_list, var_expr);
     }
 
   // Call Ctor Functions
@@ -2342,7 +2342,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
     {
       tree fndecl = (functions[i])->toSymbol()->Stree;
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
-      expr_list = maybe_vcompound_expr (expr_list, call_expr);
+      expr_list = compound_expr (expr_list, call_expr);
     }
 
   if (expr_list)
@@ -2370,7 +2370,7 @@ build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
     {
       tree fndecl = (functions[i])->toSymbol()->Stree;
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
-      expr_list = maybe_vcompound_expr (expr_list, call_expr);
+      expr_list = compound_expr (expr_list, call_expr);
     }
 
   if (expr_list)
@@ -2438,9 +2438,9 @@ build_moduleinfo (Symbol *sym)
   //    modref.next = _Dmodule_ref;
   //    _Dmodule_ref = &modref;
   //  }
-  tree m1 = vmodify_expr (component_ref (modref, nextfield), dmodule_ref);
-  tree m2 = vmodify_expr (dmodule_ref, build_address (modref));
+  tree m1 = modify_expr (component_ref (modref, nextfield), dmodule_ref);
+  tree m2 = modify_expr (dmodule_ref, build_address (modref));
 
-  build_simple_function ("*__modinit", vcompound_expr (m1, m2), true);
+  build_simple_function ("*__modinit", compound_expr (m1, m2), true);
 }
 

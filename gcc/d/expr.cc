@@ -125,9 +125,9 @@ public:
     else if (tb1->isfloating())
       {
 	tree t1 = build_expr(e->e1);
-	t1 = maybe_make_temp(t1);
+	t1 = d_save_expr(t1);
 	tree t2 = build_expr(e->e2);
-	t2 = maybe_make_temp(t2);
+	t2 = d_save_expr(t2);
 	// Assume all padding is at the end of the type.
 	tree size = size_int(TYPE_PRECISION (TREE_TYPE (t1)) / BITS_PER_UNIT);
 	// Do bit compare of floats.
@@ -183,8 +183,8 @@ public:
 	    tree result;
 
 	    // Make temporaries to prevent multiple evaluations.
-	    tree t1saved = maybe_make_temp(t1);
-	    tree t2saved = maybe_make_temp(t2);
+	    tree t1saved = d_save_expr(t1);
+	    tree t2saved = d_save_expr(t2);
 
 	    // Length of arrays, for comparisons done before calling memcmp.
 	    tree t1len = d_array_length(t1saved);
@@ -645,7 +645,7 @@ public:
 	  {
 	    tree arg = d_array_convert(etype, oe, &elemvars);
 	    tree index = size_int(dim);
-	    CONSTRUCTOR_APPEND_ELT(elms, index, maybe_make_temp(arg));
+	    CONSTRUCTOR_APPEND_ELT(elms, index, d_save_expr(arg));
 
 	    // Finished pushing all arrays.
 	    if (oe == ce->e1)
@@ -807,13 +807,13 @@ public:
 
 	    tree result = build_libcall(LIBCALL_ARRAYAPPENDCTX, 3, args,
 					build_ctype(e->type));
-	    result = make_temp(result);
+	    result = d_save_expr(result);
 
 	    // Assign e2 to last element
 	    tree offexp = d_array_length(result);
 	    offexp = build2(MINUS_EXPR, TREE_TYPE (offexp),
 			    offexp, size_one_node);
-	    offexp = maybe_make_temp(offexp);
+	    offexp = d_save_expr(offexp);
 
 	    tree ptrexp = d_array_ptr(result);
 	    ptrexp = void_okay_p(ptrexp);
@@ -823,11 +823,11 @@ public:
 	    tree t2 = build_expr(e->e2);
 	    tree expr = stabilize_expr(&t2);
 
-	    t2 = maybe_make_temp(t2);
+	    t2 = d_save_expr(t2);
 	    result = modify_expr(build_ctype(etype), build_deref(ptrexp), t2);
 	    result = compound_expr(t2, result);
 
-	    this->result_ = maybe_compound_expr(expr, result);
+	    this->result_ = compound_expr(expr, result);
 	  }
 	else
 	  gcc_unreachable();
@@ -879,7 +879,7 @@ public:
 	if (e->ismemset & 1)
 	  {
 	    // Set a range of elements to one value.
-	    tree t1 = maybe_make_temp(build_expr(e->e1));
+	    tree t1 = d_save_expr(build_expr(e->e1));
 	    tree t2 = build_expr(e->e2);
 	    tree result;
 
@@ -921,7 +921,7 @@ public:
 
 	    if (!postblit && !array_bounds_check())
 	      {
-		tree t1 = maybe_make_temp(d_array_convert(e->e1));
+		tree t1 = d_save_expr(d_array_convert(e->e1));
 		tree t2 = d_array_convert(e->e2);
 		tree size = size_mult_expr(d_array_length(t1),
 					   size_int(etype->size()));
@@ -937,7 +937,7 @@ public:
 		tree args[3];
 
 		args[0] = build_typeinfo(etype);
-		args[1] = maybe_make_temp(d_array_convert(e->e2));
+		args[1] = d_save_expr(d_array_convert(e->e2));
 		args[2] = d_array_convert(e->e1);
 
 		LibCall libcall = (e->op == TOKconstruct)
@@ -952,7 +952,7 @@ public:
 		tree args[3];
 
 		args[0] = size_int(etype->size());
-		args[1] = maybe_make_temp(d_array_convert(e->e2));
+		args[1] = d_save_expr(d_array_convert(e->e2));
 		args[2] = d_array_convert(e->e1);
 
 		this->result_ = build_libcall(LIBCALL_ARRAYCOPY, 3, args,
@@ -1150,7 +1150,7 @@ public:
 
 	if (!e->indexIsInBounds && array_bounds_check())
 	  {
-	    result = make_temp(result);
+	    result = d_save_expr(result);
 	    result = build_condition(TREE_TYPE (result),
 				     d_truthvalue_conversion(result), result,
 				     d_assert_call(e->loc, LIBCALL_ARRAY_BOUNDS));
@@ -1161,7 +1161,7 @@ public:
     else
       {
 	// Get the data pointer and length for static and dynamic arrays.
-	tree array = maybe_make_temp(build_expr(e->e1));
+	tree array = d_save_expr(build_expr(e->e1));
 	tree ptr = convert_expr(array, tb1, tb1->nextOf()->pointerTo());
 
 	tree length = NULL_TREE;
@@ -1252,7 +1252,7 @@ public:
       gcc_assert(e->upr != NULL);
 
     // Get the data pointer and length for static and dynamic arrays.
-    tree array = maybe_make_temp(build_expr(e->e1));
+    tree array = d_save_expr(build_expr(e->e1));
     tree ptr = convert_expr(array, tb1, tb1->nextOf()->pointerTo());
     tree length = NULL_TREE;
 
@@ -1271,7 +1271,7 @@ public:
       }
 
     // Generate lower bound.
-    tree lwr_tree = maybe_make_temp(build_expr(e->lwr));
+    tree lwr_tree = d_save_expr(build_expr(e->lwr));
 
     if (!integer_zerop(lwr_tree))
       {
@@ -1293,7 +1293,7 @@ public:
       gcc_assert(tb->ty == Tarray);
 
     // Generate upper bound with bounds checking.
-    tree upr_tree = maybe_make_temp(build_expr(e->upr));
+    tree upr_tree = d_save_expr(build_expr(e->upr));
     tree newlength;
 
     if (!e->upperIsInBounds)
@@ -1650,7 +1650,7 @@ public:
     else if (tb->ty == Tdelegate)
       {
 	// Delegate call, extract .object and .funcptr from var.
-	callee = maybe_make_temp(callee);
+	callee = d_save_expr(callee);
 	tf = get_function_type(tb);
 	object = delegate_object(callee);
 	callee = delegate_method(callee);
@@ -1845,7 +1845,7 @@ public:
 
 	if (global.params.useInvariants && !cd->isCPPclass())
 	  {
-	    arg = maybe_make_temp(arg);
+	    arg = d_save_expr(arg);
 	    invc = build_libcall(LIBCALL_INVARIANT, 1, &arg);
 	  }
 
@@ -1867,7 +1867,7 @@ public:
 	    if (inv != NULL)
 	      {
 		Expressions args;
-		t1 = maybe_make_temp(t1);
+		t1 = d_save_expr(t1);
 		invc = d_build_call(inv, t1, &args);
 	      }
 	  }
@@ -2110,7 +2110,7 @@ public:
 	else if (e->allocator)
 	  {
 	    new_call = d_build_call(e->allocator, NULL_TREE, e->newargs);
-	    new_call = maybe_make_temp(new_call);
+	    new_call = d_save_expr(new_call);
 	    // copy memory...
 	    setup_exp = modify_expr(indirect_ref(rec_type, new_call),
 				    cd->toInitializer()->Stree);
@@ -2148,13 +2148,12 @@ public:
 
 	    if (value != NULL_TREE)
 	      {
-		new_call = maybe_make_temp(new_call);
+		new_call = d_save_expr(new_call);
 		field = component_ref(indirect_ref(rec_type, new_call), field);
-		setup_exp = maybe_compound_expr(setup_exp,
-						modify_expr(field, value));
+		setup_exp = compound_expr(setup_exp, modify_expr(field, value));
 	      }
 	  }
-	new_call = maybe_compound_expr(setup_exp, new_call);
+	new_call = compound_expr(setup_exp, new_call);
 
 	// Call constructor.
 	if (e->member)
@@ -2203,7 +2202,7 @@ public:
 		tree field = sd->vthis->toSymbol()->Stree;
 		tree type = build_ctype(stype);
 
-		new_call = maybe_make_temp(new_call);
+		new_call = d_save_expr(new_call);
 		field = component_ref(indirect_ref(type, new_call), field);
 		new_call = compound_expr(modify_expr(field, value), new_call);
 	      }
@@ -2221,7 +2220,7 @@ public:
 	      {
 		StructLiteralExp *se = StructLiteralExp::create(e->loc, sd,
 								e->arguments, htype);
-		new_call = maybe_make_temp(new_call);
+		new_call = d_save_expr(new_call);
 		se->sym = new Symbol();
 		se->type = sd->type;
 		se->sym->Stree = new_call;
@@ -2319,7 +2318,7 @@ public:
 
 	if (e->arguments && e->arguments->dim == 1)
 	  {
-	    result = make_temp(result);
+	    result = d_save_expr(result);
 	    tree init = modify_expr(build_deref(result),
 				    build_expr((*e->arguments)[0]));
 	    result = compound_expr(init, result);
@@ -2426,7 +2425,7 @@ public:
     for (size_t i = 0; i < e->exps->dim; ++i)
       {
 	Expression *exp = (*e->exps)[i];
-	result = maybe_vcompound_expr(result, build_expr(exp));
+	result = compound_expr(result, build_expr(exp));
       }
 
     if (result == NULL_TREE)
@@ -2481,7 +2480,7 @@ public:
 	    // Split construction of values out of the constructor.
 	    tree init = stabilize_expr(&value);
 	    if (init != NULL_TREE)
-	      saved_elems = maybe_vcompound_expr(saved_elems, init);
+	      saved_elems = compound_expr(saved_elems, init);
 
 	    CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
 				    convert_expr(value, expr->type, etype));
@@ -2513,7 +2512,7 @@ public:
 	if (constant_p && initializer_constant_valid_p(ctor, TREE_TYPE (ctor)))
 	  TREE_STATIC (ctor) = 1;
 
-	this->result_ = maybe_compound_expr(saved_elems, d_convert(type, ctor));
+	this->result_ = compound_expr(saved_elems, d_convert(type, ctor));
       }
     else
       {
@@ -2525,7 +2524,7 @@ public:
 	// Call _d_arrayliteralTX (ti, dim);
 	tree mem = build_libcall(LIBCALL_ARRAYLITERALTX, 2, args,
 				 build_ctype(etype->pointerTo()));
-	mem = maybe_make_temp(mem);
+	mem = d_save_expr(mem);
 
 	// memcpy (mem, &ctor, size)
 	tree size = size_mult_expr(size_int(e->elements->dim),
@@ -2535,12 +2534,12 @@ public:
 					mem, build_address(ctor), size);
 
 	// Returns array pointed to by MEM.
-	result = maybe_compound_expr(result, mem);
+	result = compound_expr(result, mem);
 
 	if (tb->ty == Tarray)
 	  result = d_array_value(type, size_int(e->elements->dim), result);
 
-	this->result_ = maybe_compound_expr(saved_elems, result);
+	this->result_ = compound_expr(saved_elems, result);
       }
   }
 
@@ -2651,7 +2650,7 @@ public:
 	  {
 	    // Initialize a static array with a single element.
 	    tree elem = build_expr(exp, this->constp_);
-	    elem = maybe_make_temp(elem);
+	    elem = d_save_expr(elem);
 
 	    if (initializer_zerop(elem))
 	      value = build_constructor(build_ctype(ftype), NULL);
@@ -2667,7 +2666,7 @@ public:
 	// Split construction of values out of the constructor.
 	tree init = stabilize_expr(&value);
 	if (init != NULL_TREE)
-	  saved_elems = maybe_vcompound_expr(saved_elems, init);
+	  saved_elems = compound_expr(saved_elems, init);
 
 	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol()->Stree, value);
       }
@@ -2693,7 +2692,7 @@ public:
 	    && initializer_constant_valid_p(ctor, TREE_TYPE (ctor)))
 	  TREE_STATIC (ctor) = 1;
 
-	this->result_ = maybe_compound_expr(saved_elems, ctor);
+	this->result_ = compound_expr(saved_elems, ctor);
 	return;
       }
 
@@ -2701,7 +2700,7 @@ public:
       {
 	tree var = build_deref(e->sym->Stree);
 	ctor = compound_expr(modify_expr(var, ctor), var);
-	this->result_ = maybe_compound_expr(saved_elems, ctor);
+	this->result_ = compound_expr(saved_elems, ctor);
       }
     else if (e->sd->isUnionDeclaration())
       {
@@ -2711,12 +2710,12 @@ public:
 				      build_address(var), size_zero_node,
 				      size_int(e->sd->structsize));
 
-	init = maybe_compound_expr(init, saved_elems);
+	init = compound_expr(init, saved_elems);
 	init = compound_expr(init, modify_expr(var, ctor));
 	this->result_  = compound_expr(init, var);
       }
     else
-      this->result_ = maybe_compound_expr(saved_elems, ctor);
+      this->result_ = compound_expr(saved_elems, ctor);
   }
 
   // Create a 'null' literal with the given expression.
@@ -2875,7 +2874,7 @@ build_dtor_list(size_t starti, size_t endi)
 	{
 	  cfun->language->vars_in_scope[i] = NULL;
 	  tree t = build_expr(vd->edtor);
-	  dtors = maybe_compound_expr(t, dtors);
+	  dtors = compound_expr(t, dtors);
 	}
     }
 
@@ -2907,7 +2906,7 @@ build_expr_dtor(Expression *e)
 	  // Extract the object from the ctor call, as it will be the same
 	  // value as the returned result, just maybe without the side effects.
 	  // Rewriting: ctor(&e1) => (ctor(&e1), e1)
-	  expr = maybe_vcompound_expr(expr, result);
+	  expr = compound_expr(expr, result);
 
 	  if (INDIRECT_REF_P (result))
 	    result = build_deref(CALL_EXPR_ARG (TREE_OPERAND (result, 0), 0));
@@ -2919,12 +2918,12 @@ build_expr_dtor(Expression *e)
       if (TREE_SIDE_EFFECTS (result))
 	{
 	  // Wrap expr and dtors in a try/finally expression.
-	  result = maybe_make_temp(result);
+	  result = d_save_expr(result);
 	  expr = build2(TRY_FINALLY_EXPR, void_type_node,
-			maybe_vcompound_expr(expr, result), dtors);
+			compound_expr(expr, result), dtors);
 	}
       else
-	expr = maybe_vcompound_expr(expr, dtors);
+	expr = compound_expr(expr, dtors);
 
       return compound_expr(expr, result);
     }
@@ -2952,7 +2951,7 @@ build_return_dtor(Expression *e, Type *type, TypeFunction *tf)
   // Split comma expressions, so that the result is returned directly.
   tree expr = stabilize_expr(&result);
   result = build2(INIT_EXPR, TREE_TYPE (decl), decl, result);
-  result = maybe_vcompound_expr(expr, return_expr(result));
+  result = compound_expr(expr, return_expr(result));
 
   // Nest the return expression inside the try/finally expression.
   if (dtors != NULL_TREE)
