@@ -824,7 +824,7 @@ public:
 	    tree expr = stabilize_expr(&t2);
 
 	    t2 = d_save_expr(t2);
-	    result = modify_expr(build_ctype(etype), build_deref(ptrexp), t2);
+	    result = modify_expr(build_deref(ptrexp), t2);
 	    result = compound_expr(t2, result);
 
 	    this->result_ = compound_expr(expr, result);
@@ -1018,7 +1018,7 @@ public:
 	    this->result_ = compound_expr(result, t1);
 	  }
 	else
-	  this->result_ = modify_expr(build_ctype(e->type), t1, t2);
+	  this->result_ = modify_expr(t1, t2);
 
 	return;
       }
@@ -1051,7 +1051,7 @@ public:
 		&& aggregate_value_p(TREE_TYPE (t2), t2))
 	      CALL_EXPR_RETURN_SLOT_OPT (t2) = true;
 
-	    this->result_ = modify_expr(build_ctype(e->type), t1, t2);
+	    this->result_ = modify_expr(t1, t2);
 	  }
 	else if (e->op == TOKconstruct)
 	  {
@@ -1090,7 +1090,7 @@ public:
     tree t2 = convert_for_assignment(build_expr(e->e2),
 				     e->e2->type, e->e1->type);
 
-    this->result_ = modify_expr(build_ctype(e->type), t1, t2);
+    this->result_ = modify_expr(t1, t2);
   }
 
   //
@@ -2950,7 +2950,7 @@ build_return_dtor(Expression *e, Type *type, TypeFunction *tf)
 
   // Split comma expressions, so that the result is returned directly.
   tree expr = stabilize_expr(&result);
-  result = build2(INIT_EXPR, TREE_TYPE (decl), decl, result);
+  result = build_init_expr(decl, result);
   result = compound_expr(expr, return_expr(result));
 
   // Nest the return expression inside the try/finally expression.

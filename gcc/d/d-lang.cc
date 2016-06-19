@@ -673,70 +673,75 @@ empty_modify_p(tree type, tree op)
 }
 
 // Gimplification of D specific expression trees.
+
 int
 d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 		gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
   tree_code code = TREE_CODE (*expr_p);
+  enum gimplify_status ret = GS_UNHANDLED;
+  tree op0, op1;
+  tree type;
+
   switch (code)
     {
     case INIT_EXPR:
     case MODIFY_EXPR:
+      op0 = TREE_OPERAND (*expr_p, 0);
+      op1 = TREE_OPERAND (*expr_p, 1);
+
+      if (!error_operand_p(op0) && !error_operand_p(op1)
+	  && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
+	      || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
+	  && !useless_type_conversion_p(TREE_TYPE (op1), TREE_TYPE (op0)))
 	{
 	  // If the back end isn't clever enough to know that the lhs and rhs
 	  // types are the same, add an explicit conversion.
-	  tree op0 = TREE_OPERAND (*expr_p, 0);
-	  tree op1 = TREE_OPERAND (*expr_p, 1);
-
-	  if (!error_operand_p(op0) && !error_operand_p(op1)
-	      && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
-		  || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
-	      && !useless_type_conversion_p(TREE_TYPE (op1), TREE_TYPE (op0)))
-	    {
-	      TREE_OPERAND (*expr_p, 1) = build1(VIEW_CONVERT_EXPR,
-						 TREE_TYPE (op0), op1);
-	    }
-	  else if (empty_modify_p(TREE_TYPE (op0), op1))
-	    {
-	      // Remove any copies of empty aggregates.  Also drop volatile
-	      // loads on the RHS to avoid infinite recursion from
-	      // gimplify_expr trying to load the value.
-	      gimplify_expr(&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
-			    is_gimple_lvalue, fb_lvalue);
-	      if (TREE_SIDE_EFFECTS (op1))
-		{
-		  if (TREE_THIS_VOLATILE (op1)
-		      && (REFERENCE_CLASS_P (op1) || DECL_P (op1)))
-		    op1 = build_fold_addr_expr (op1);
-
-		  gimplify_and_add (op1, pre_p);
-		}
-	      *expr_p = TREE_OPERAND (*expr_p, 0);
-	    }
-	  return GS_OK;
+	  TREE_OPERAND (*expr_p, 1) = build1(VIEW_CONVERT_EXPR,
+					     TREE_TYPE (op0), op1);
+	  ret = GS_OK;
 	}
+      else if (empty_modify_p(TREE_TYPE (op0), op1))
+	{
+	  // Remove any copies of empty aggregates.  Also drop volatile
+	  // loads on the RHS to avoid infinite recursion from
+	  // gimplify_expr trying to load the value.
+	  gimplify_expr(&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
+			is_gimple_lvalue, fb_lvalue);
+	  if (TREE_SIDE_EFFECTS (op1))
+	    {
+	      if (TREE_THIS_VOLATILE (op1)
+		  && (REFERENCE_CLASS_P (op1) || DECL_P (op1)))
+		op1 = build_fold_addr_expr(op1);
+
+	      gimplify_and_add(op1, pre_p);
+	    }
+	  *expr_p = TREE_OPERAND (*expr_p, 0);
+	  ret = GS_OK;
+	}
+      break;
 
     case UNSIGNED_RSHIFT_EXPR:
-	{
-	  // Convert op0 to an unsigned type.
-	  tree op0 = TREE_OPERAND (*expr_p, 0);
-	  tree op1 = TREE_OPERAND (*expr_p, 1);
+      // Convert op0 to an unsigned type.
+      op0 = TREE_OPERAND (*expr_p, 0);
+      op1 = TREE_OPERAND (*expr_p, 1);
 
-	  tree unstype = d_unsigned_type (TREE_TYPE (op0));
+      type = d_unsigned_type(TREE_TYPE (op0));
 
-	  *expr_p = convert (TREE_TYPE (*expr_p),
-			     build2 (RSHIFT_EXPR, unstype,
-				     convert (unstype, op0), op1));
-	  return GS_UNHANDLED;
-	}
+      *expr_p = convert(TREE_TYPE (*expr_p),
+			build2(RSHIFT_EXPR, type, convert(type, op0), op1));
+      ret = GS_OK;
+      break;
 
     case FLOAT_MOD_EXPR:
     case IASM_EXPR:
       gcc_unreachable();
 
     default:
-      return GS_UNHANDLED;
+      break;
     }
+
+  return ret;
 }
 
 

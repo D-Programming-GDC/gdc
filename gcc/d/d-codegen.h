@@ -216,9 +216,8 @@ build_object_type()
 
 // Common codegen helpers.
 extern tree component_ref(tree obj, tree field);
-extern tree modify_expr(tree dst, tree src);
-extern tree modify_expr(tree type, tree dst, tree src);
-extern tree build_vinit(tree dst, tree src);
+extern tree modify_expr(tree lhs, tree rhs);
+extern tree build_init_expr(tree lhs, tree rhs);
 
 extern tree build_nop(tree t, tree e);
 extern tree build_vconvert(tree t, tree e);
