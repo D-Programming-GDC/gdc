@@ -71,7 +71,7 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
 	op1 = convert (result_type, op1);
     }
 
-  return build2 (code, bool_type_node, op0, op1);
+  return fold_build2 (code, bool_type_node, op0, op1);
 }
 
 
@@ -242,13 +242,8 @@ d_truthvalue_conversion (tree expr)
       if (promoted_type)
 	expr = convert (promoted_type, expr);
 
-      // Without this, the backend tries to load a float reg with and integer
-      // value with fails (on i386 and rs6000, at least).
-      if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (expr)))
-	return d_build_truthvalue_op (NE_EXPR, expr,
-				      convert (TREE_TYPE (expr), integer_zero_node));
-
-      return d_build_truthvalue_op (NE_EXPR, expr, integer_zero_node);
+      return d_build_truthvalue_op (NE_EXPR, expr,
+				    build_zero_cst (TREE_TYPE (expr)));
     }
 }
 
