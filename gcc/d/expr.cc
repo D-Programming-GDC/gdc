@@ -977,13 +977,14 @@ public:
 	    t2 = build_address(t2);
 
 	    this->result_ = indirect_ref(build_ctype(e->type),
-					 modify_expr(t1, t2));
+					 build_assign(INIT_EXPR, t1, t2));
 	    return;
 	  }
       }
 
     // Other types of assignments that may require post construction.
     Type *tb1 = e->e1->type->toBasetype();
+    tree_code modifycode = (e->op == TOKconstruct) ? INIT_EXPR : MODIFY_EXPR;
 
     if (tb1->ty == Tstruct)
       {
@@ -1018,7 +1019,7 @@ public:
 	    this->result_ = compound_expr(result, t1);
 	  }
 	else
-	  this->result_ = modify_expr(t1, t2);
+	  this->result_ = build_assign(modifycode, t1, t2);
 
 	return;
       }
@@ -1051,7 +1052,7 @@ public:
 		&& aggregate_value_p(TREE_TYPE (t2), t2))
 	      CALL_EXPR_RETURN_SLOT_OPT (t2) = true;
 
-	    this->result_ = modify_expr(t1, t2);
+	    this->result_ = build_assign(modifycode, t1, t2);
 	  }
 	else if (e->op == TOKconstruct)
 	  {
@@ -1090,7 +1091,7 @@ public:
     tree t2 = convert_for_assignment(build_expr(e->e2),
 				     e->e2->type, e->e1->type);
 
-    this->result_ = modify_expr(t1, t2);
+    this->result_ = build_assign(modifycode, t1, t2);
   }
 
   //
@@ -2912,6 +2913,16 @@ build_expr_dtor(Expression *e)
 	    result = build_deref(CALL_EXPR_ARG (TREE_OPERAND (result, 0), 0));
 	  else
 	    result = CALL_EXPR_ARG (result, 0);
+
+	  return compound_expr(compound_expr(expr, dtors), result);
+	}
+
+      // Extract the LHS from the assignment expression.
+      // Rewriting: (e1 = e2) => ((e1 = e2), e1)
+      if (TREE_CODE (result) == INIT_EXPR || TREE_CODE (result) == MODIFY_EXPR)
+	{
+	  expr = compound_expr(expr, result);
+	  result = TREE_OPERAND (result, 0);
 	}
 
       // If the result has side-effects, save the entire expression.
@@ -2950,7 +2961,7 @@ build_return_dtor(Expression *e, Type *type, TypeFunction *tf)
 
   // Split comma expressions, so that the result is returned directly.
   tree expr = stabilize_expr(&result);
-  result = build_init_expr(decl, result);
+  result = build_assign(INIT_EXPR, decl, result);
   result = compound_expr(expr, return_expr(result));
 
   // Nest the return expression inside the try/finally expression.

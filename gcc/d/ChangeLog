@@ -7,7 +7,9 @@
 	(build_struct_comparison): Stabilize before saving.
 	(modify_expr): Remove overload.  Updated all callers.
 	(build_vinit): Remove function.  Updated all callers to use ...
-	(build_init_expr): ... New function.
+	(build_assign): ... New function.
+	(lvalue_p): Remove tests in default case.
+	* expr.cc (build_expr_dtor): Rewrite assignments to elide a temporary.
 
 2016-06-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
