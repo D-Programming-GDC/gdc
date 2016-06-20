@@ -139,6 +139,19 @@ VarDeclaration::toSymbol()
 
       if (isParameter())
 	{
+	  // Pass non-trivial structs by invisible reference.
+	  if (TREE_ADDRESSABLE (TREE_TYPE (decl)))
+	    {
+	      tree argtype = build_reference_type(TREE_TYPE (decl));
+	      argtype = build_qualified_type(argtype, TYPE_QUAL_RESTRICT);
+	      gcc_assert (!DECL_BY_REFERENCE (decl));
+	      TREE_TYPE (decl) = argtype;
+	      DECL_BY_REFERENCE (decl) = 1;
+	      TREE_ADDRESSABLE (decl) = 0;
+	      relayout_decl (decl);
+	      this->storage_class |= STCref;
+	    }
+
 	  DECL_ARG_TYPE (decl) = TREE_TYPE (decl);
 	  gcc_assert (TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL);
 	}
