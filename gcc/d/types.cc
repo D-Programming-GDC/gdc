@@ -264,6 +264,14 @@ public:
 
     TYPE_CONTEXT (t->ctype) = d_decl_context(t->sym);
     build_type_decl(t->ctype, t->sym);
+
+    // For struct with a copy constructor or a destructor, also set
+    // TREE_ADDRESSABLE.  This will cause it to be passed by reference.
+    if (t->sym->postblit || t->sym->dtor)
+      {
+	for (tree tv = t->ctype; tv != NULL_TREE; tv = TYPE_NEXT_VARIANT (tv))
+	  TREE_ADDRESSABLE (tv) = 1;
+      }
   }
 
   //
@@ -307,24 +315,6 @@ public:
     t->ctype = build_function_type(ret_type, type_list);
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type(t);
     d_keep(t->ctype);
-
-    if (t->next && !t->isref)
-      {
-	Type *tn = t->next->baseElemOf();
-	if (tn->ty == Tstruct)
-	  {
-	    // Non-POD structs must return in memory.
-	    TypeStruct *ts = (TypeStruct *) tn->toBasetype();
-	    if (!ts->sym->isPOD())
-	      TREE_ADDRESSABLE (t->ctype) = 1;
-	  }
-
-	// Aggregate types that don't return in registers are eligable for
-	// returning via slot optimisation.
-	if (AGGREGATE_TYPE_P (TREE_TYPE (t->ctype))
-	    && aggregate_value_p(TREE_TYPE (t->ctype), t->ctype))
-	  TREE_ADDRESSABLE (t->ctype) = 1;
-      }
 
     switch (t->linkage)
       {
@@ -430,7 +420,6 @@ public:
 
     TYPE_ATTRIBUTES (funtype) = TYPE_ATTRIBUTES (nexttype);
     TYPE_LANG_SPECIFIC (funtype) = TYPE_LANG_SPECIFIC (nexttype);
-    TREE_ADDRESSABLE (funtype) = TREE_ADDRESSABLE (nexttype);
 
     t->ctype = build_two_field_type(objtype, build_pointer_type(funtype),
 				    t, "object", "func");
@@ -455,6 +444,10 @@ public:
     // Add the fields of each base class
     layout_aggregate_type(t->sym, basetype, t->sym);
     finish_aggregate_type(t->sym->structsize, t->sym->alignsize, basetype, t->sym->userAttribDecl);
+
+    // Set the TREE_ADDRESSABLE bit, as classes always live in memory.
+    for (tree tv = basetype; tv != NULL_TREE; tv = TYPE_NEXT_VARIANT (tv))
+      TREE_ADDRESSABLE (tv) = 1;
 
     // Type is final, there are no derivations.
     // Not supported for GCC < 4.9
