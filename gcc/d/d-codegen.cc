@@ -420,7 +420,7 @@ expand_decl (tree decl)
   // Nothing, d_pushdecl will add decl to a BIND_EXPR
   if (DECL_INITIAL (decl))
     {
-      tree exp = build_init_expr(decl, DECL_INITIAL (decl));
+      tree exp = build_assign(INIT_EXPR, decl, DECL_INITIAL (decl));
       add_stmt(exp);
       DECL_INITIAL (decl) = NULL_TREE;
     }
@@ -1631,10 +1631,6 @@ lvalue_p(tree exp)
       return lvalue_p(TREE_OPERAND (exp, 1));
 
     default:
-      if (TREE_ADDRESSABLE (TREE_TYPE (exp))
-	  || TREE_CODE (TREE_TYPE (exp)) == ARRAY_TYPE)
-	return true;
-
       return false;
     }
 }
@@ -2000,7 +1996,7 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
   // Initialize as either 0 or 1 depending on operation.
   tree result = build_local_temp(bool_type_node);
   tree init = build_boolop(code, integer_zero_node, integer_zero_node);
-  add_stmt(build_init_expr(result, init));
+  add_stmt(build_assign(INIT_EXPR, result, init));
 
   // Cast pointer-to-array to pointer-to-struct.
   tree ptrtype = build_ctype(sd->type->pointerTo());
@@ -2011,15 +2007,15 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 
   // Build temporary locals for length and pointers.
   tree t = build_local_temp(size_type_node);
-  add_stmt(build_init_expr(t, length));
+  add_stmt(build_assign(INIT_EXPR, t, length));
   length = t;
 
   t = build_local_temp(ptrtype);
-  add_stmt(build_init_expr(t, d_convert(ptrtype, t1)));
+  add_stmt(build_assign(INIT_EXPR, t, d_convert(ptrtype, t1)));
   t1 = t;
 
   t = build_local_temp(ptrtype);
-  add_stmt(build_init_expr(t, d_convert(ptrtype, t2)));
+  add_stmt(build_assign(INIT_EXPR, t, d_convert(ptrtype, t2)));
   t2 = t;
 
   // Build loop for comparing each element.
@@ -2273,21 +2269,25 @@ component_ref(tree object, tree field)
   return compound_expr(init, result);
 }
 
-// Build a modify expression, with variants for overriding
-// the type, and when it's value is not used.
+// Build an assignment expression of lvalue LHS from value RHS.
+// CODE is the code for a binary operator that we use to combine
+// the old value of LHS with RHS to get the new value.
+
+tree
+build_assign(tree_code code, tree lhs, tree rhs)
+{
+  tree init = stabilize_expr(&lhs);
+  init = compound_expr(init, stabilize_expr(&rhs));
+
+  tree result = fold_build2_loc(input_location, code,
+				TREE_TYPE (lhs), lhs, rhs);
+  return compound_expr(init, result);
+}
 
 tree
 modify_expr(tree lhs, tree rhs)
 {
-  return fold_build2_loc(input_location, MODIFY_EXPR,
-			 TREE_TYPE (lhs), lhs, rhs);
-}
-
-tree
-build_init_expr(tree lhs, tree rhs)
-{
-  return fold_build2_loc(input_location, INIT_EXPR,
-			 TREE_TYPE (lhs), lhs, rhs);
+  return build_assign(MODIFY_EXPR, lhs, rhs);
 }
 
 // Returns true if TYPE contains no actual data, just various
@@ -2573,17 +2573,17 @@ build_array_set(tree ptr, tree length, tree value)
 
   // Build temporary locals for length and ptr, and maybe value.
   tree t = build_local_temp(size_type_node);
-  add_stmt(build_init_expr(t, length));
+  add_stmt(build_assign(INIT_EXPR, t, length));
   length = t;
 
   t = build_local_temp(ptrtype);
-  add_stmt(build_init_expr(t, ptr));
+  add_stmt(build_assign(INIT_EXPR, t, ptr));
   ptr = t;
 
   if (TREE_SIDE_EFFECTS (value))
     {
       t = build_local_temp(TREE_TYPE (value));
-      add_stmt(build_init_expr(t, value));
+      add_stmt(build_assign(INIT_EXPR, t, value));
       value = t;
     }
 
@@ -2813,7 +2813,7 @@ bind_expr (tree var_chain, tree body)
 
   if (DECL_INITIAL (var_chain))
     {
-      tree ini = build_init_expr(var_chain, DECL_INITIAL (var_chain));
+      tree ini = build_assign(INIT_EXPR, var_chain, DECL_INITIAL (var_chain));
       DECL_INITIAL (var_chain) = NULL_TREE;
       body = compound_expr (ini, body);
     }
