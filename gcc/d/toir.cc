@@ -795,7 +795,7 @@ public:
 		object = build_nop(build_ctype(vcatch->type), object);
 
 		tree var = vcatch->var->toSymbol()->Stree;
-		tree init = build_vinit(var, object);
+		tree init = build_assign(INIT_EXPR, var, object);
 
 		build_local_var(vcatch->var);
 		add_stmt(init);

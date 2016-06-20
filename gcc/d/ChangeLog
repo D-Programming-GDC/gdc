@@ -1,3 +1,76 @@
+2016-06-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (get_decl_tree): Remove assert for RESULT_DECL.
+	(convert_for_argument): Handle lazy arguments early.
+	(argument_reference_p): Handle types marked TREE_ADDRESSABLE.
+	(lvalue_p): Add case for TARGET_EXPR.
+	(d_mark_addressable): Likewise.
+	(build_assign): Likewise.
+	(compound_expr): Likewise.
+	(build_target_expr): New function.
+	(d_build_call): Always set CALL_EXPR_RETURN_SLOT_OPT for all calls
+	that return an aggregate in memory.
+	* d-decls.cc (VarDeclaration::toSymbol): Handle reference parameters.
+	* d-lang.cc (d_gimplify_expr): Handle taking address of constructor.
+	* d-objfile.cc (FuncDeclaration::toObjFile): Handle reference return.
+	* expr.cc (ExprVisitor::visit(AssignExp)): Mark LHS as addressable if
+	RHS assignment is a returned aggregate.
+	* types.cc (TypeVisitor::visit(TypeStruct)): Mark the RECORD_TYPE of
+	non-trivial structs as TREE_ADDRESSABLE.
+	(TypeVisitor::visit(TypeClass)): Mark all classes as TREE_ADDRESSABLE.
+	(TypeVisitor::visit(TypeFunction)): Don't set TREE_ADDRESSABLE.
+	(TypeVisitor::visit(TypeDelegate)): Likewise.
+
+2016-06-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (lvalue_p): Add more cases to look for.
+	(build_address): Mark expression as addressable after stabilizing.
+	(d_mark_addressable): Remove special cases.
+	(d_mark_used): Add cases for other kinds of DECLs.
+	(build_struct_comparison): Stabilize before saving.
+	(modify_expr): Remove overload.  Updated all callers.
+	(build_vinit): Remove function.  Updated all callers to use ...
+	(build_assign): ... New function.
+	(lvalue_p): Remove tests in default case.
+	* expr.cc (build_expr_dtor): Rewrite assignments to elide a temporary.
+
+2016-06-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (make_temp): Rename to d_save_expr.
+	(maybe_make_temp): Remove function.
+	Updated all callers to use d_save_expr().
+	(vcompound_expr): Remove function.
+	Updated all callers to use compound_expr().
+	(maybe_compound_expr): Likewise.
+	(maybe_vcompound_expr): Likewise.
+	(vmodify_expr): Remove function.
+	Updated all callers to use modify_expr().
+	(lvalue_p): New function.
+
+2016-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (add_stmt): Don't add statements without side effects.
+	Push each COMPOUND_EXPR as a separate statement.
+	(build_local_temp): Use input_location.
+	(create_temporary_var): Likewise.
+	(d_has_side_effects): Remove function.
+	Updated all callers to use TREE_SIDE_EFFECTS.
+	(stabilize_expr): New function.
+	Updated all routines that check for COMPOUND_EXPR to use it.
+	* expr.cc (ExprVisitor::visit(EqualExp)): Use maybe_make_temp to save
+	expressions.  Use build_boolop for constructed conditions.
+	(ExprVisitor::visit(CatAssignExp)): Stabilize RHS before assignment.
+	(ExprVisitor::visit(NewExp)): Don't always create SAVE_EXPR.
+	(ExprVisitor::visit(AssocArrayLiteralExp)): Likewise.
+	(ExprVisitor::visit(ArrayLiteralExp)): Evaluate elements before
+	appending to constructor fields.
+	(ExprVisitor::visit(StructLiteralExp)): Likewise.
+
+2016-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-convert.cc (d_build_truthvalue_op): Fold truthvalue operation.
+	(d_truthvalue_conversion): Use zero constant of expression type.
+
 2016-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_address): Handle ERROR_MARK and COMPOUND_EXPR.
