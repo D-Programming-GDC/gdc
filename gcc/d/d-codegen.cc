@@ -744,7 +744,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
 			       build_nop(ptrtype, exp));
 	}
       else if (tbtype->ty == Taarray)
-	return build_constructor(build_ctype(totype), NULL);
+	return build_zero_constructor(build_ctype(totype));
       else if (tbtype->ty == Tdelegate)
 	return build_delegate_cst(exp, null_pointer_node, totype);
       break;
@@ -802,9 +802,10 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;
 	  uinteger_t count = sa_type->dim->toUInteger();
 
-	  tree ctor = build_constructor (build_ctype(totype), NULL);
+	  tree ctor;
 	  if (count)
 	    {
+	      ctor = build_constructor(build_ctype(totype), NULL);
 	      vec<constructor_elt, va_gc> *ce = NULL;
 	      tree index = build2 (RANGE_EXPR, build_ctype(Type::tsize_t),
 				   size_zero_node, size_int(count - 1));
@@ -819,6 +820,10 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
 
 	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
 	      CONSTRUCTOR_ELTS (ctor) = ce;
+	    }
+	  else
+	    {
+	      ctor = build_zero_constructor(build_ctype(totype));
 	    }
 	  TREE_READONLY (ctor) = 1;
 	  TREE_CONSTANT (ctor) = 1;
@@ -2104,11 +2109,12 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 // the alignment hole between OFFSET and FIELDPOS.
 
 static tree
-build_alignment_field(HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
+build_alignment_field(tree aggr, HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
 {
   tree type = d_array_type(Type::tuns8, fieldpos - offset);
   tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
 
+  DECL_CONTEXT (field) = aggr;
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (type));
   DECL_FIELD_OFFSET (field) = size_int(offset);
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
@@ -2121,6 +2127,78 @@ build_alignment_field(HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
   return field;
 }
 
+// Return the zero initialization value for type.
+// * For RECORD_TYPE initialize all fields to build_zero_constructor.
+// * For UNION_TYPE initialize the largest field to build_zero_constructor.
+// * For ARRAY_TYPE intialize all elements to build_zero_constructor.
+// * For other types, return build_zero_cst which will be a NULL constructor
+//   for other aggregates and a 0 value for all other types.
+
+tree build_zero_constructor(tree type)
+{
+  vec<constructor_elt, va_gc> *ve = NULL;
+  tree ctor = NULL_TREE;
+
+  switch (TREE_CODE (type))
+    {
+    case RECORD_TYPE:
+      {
+	for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+	  {
+	    tree value = build_zero_constructor(TREE_TYPE (field));
+	    CONSTRUCTOR_APPEND_ELT (ve, field, value);
+	  }
+	ctor = build_constructor(type, ve);
+	break;
+      }
+    case UNION_TYPE:
+      {
+	tree largest_field = NULL_TREE;
+	HOST_WIDE_INT max_size = 0;
+	for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+	  {
+	    if (int_size_in_bytes(TREE_TYPE (field)) > max_size)
+	      {
+		max_size = int_size_in_bytes(TREE_TYPE (field));
+		largest_field = field;
+	      }
+	  }
+
+	if (largest_field != NULL_TREE)
+	  {
+	    tree value = build_zero_constructor(TREE_TYPE (largest_field));
+	    CONSTRUCTOR_APPEND_ELT (ve, largest_field, value);
+	  }
+	ctor = build_constructor(type, ve);
+	break;
+      }
+    case ARRAY_TYPE:
+      {
+	// the bounds may not be set for zero sized arrays
+	if (TYPE_SIZE (type) == bitsize_zero_node)
+	  {
+	    ctor = build_constructor(type, NULL);
+	  }
+	else
+	  {
+	    tree arr_index = TYPE_DOMAIN (type);
+	    tree ub = TYPE_MAX_VALUE (arr_index);
+	    tree lb = TYPE_MIN_VALUE (arr_index);
+	    tree range = build2 (RANGE_EXPR, TREE_TYPE (lb), lb, ub);
+	    ctor = build_constructor_single (type, range,
+					     build_zero_constructor(TREE_TYPE (type)));
+	  }
+	break;
+      }
+    default:
+      return build_zero_cst(type);
+  }
+
+  CONSTRUCTOR_NO_CLEARING (ctor) = 1;
+  TREE_CONSTANT (ctor) = 1;
+  return ctor;
+}
+
 // Build a constructor for a variable of aggregate type TYPE using the
 // initializer INIT, an ordered flat list of fields and values provided
 // by the frontend.
@@ -2131,7 +2209,7 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 {
   // If the initializer was empty, use default zero initialization.
   if (vec_safe_is_empty(init))
-    return build_constructor(type, NULL);
+    return build_zero_constructor(type);
 
   vec<constructor_elt, va_gc> *ve = NULL;
   HOST_WIDE_INT offset = 0;
@@ -2183,14 +2261,13 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
       if (is_initialized)
 	{
 	  HOST_WIDE_INT fieldpos = int_byte_position(field);
-	  gcc_assert(value != NULL_TREE);
 
 	  // Insert anonymous fields in the constructor for padding out
 	  // alignment holes in-place between fields.
 	  if (fillholes && offset < fieldpos)
 	    {
-	      tree pfield = build_alignment_field(offset, fieldpos);
-	      tree pvalue = build_constructor(TREE_TYPE (pfield), NULL);
+	      tree pfield = build_alignment_field(type, offset, fieldpos);
+	      tree pvalue = build_zero_constructor(TREE_TYPE (pfield));
 	      CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
 	    }
 
@@ -2213,10 +2290,14 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 		    TYPE_NAME (vtype), DECL_NAME (vfield));
 	    }
 
-	  if (!TREE_CONSTANT (value))
-	    constant_p = false;
+	  // value = NULL_TREE means =void initialized field
+	  if (value != NULL_TREE)
+	    {
+	      if (!TREE_CONSTANT (value))
+		constant_p = false;
 
-	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
+	      CONSTRUCTOR_APPEND_ELT (ve, field, value);
+	    }
 	}
 
       // Move offset to the next position in the struct.
@@ -2231,8 +2312,8 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
   // Finally pad out the end of the record.
   if (fillholes && offset < int_size_in_bytes(type))
     {
-      tree pfield = build_alignment_field(offset, int_size_in_bytes(type));
-      tree pvalue = build_constructor(TREE_TYPE (pfield), NULL);
+      tree pfield = build_alignment_field(type, offset, int_size_in_bytes(type));
+      tree pvalue = build_zero_constructor(TREE_TYPE (pfield));
       CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
     }
 
@@ -2240,6 +2321,7 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
   gcc_assert(vec_safe_is_empty(init) || ANON_AGGR_TYPE_P (type));
 
   tree ctor = build_constructor(type, ve);
+  CONSTRUCTOR_NO_CLEARING (ctor) = 1;
 
   if (constant_p)
     TREE_CONSTANT (ctor) = 1;
@@ -3018,7 +3100,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	  if (empty_aggregate_p(TREE_TYPE (targ)) && !TREE_ADDRESSABLE (targ)
 	      && TREE_CODE (targ) != CONSTRUCTOR)
 	    {
-	      tree t = build_constructor(TREE_TYPE (targ), NULL);
+	      tree t = build_zero_constructor(TREE_TYPE (targ));
 	      targ = build2(COMPOUND_EXPR, TREE_TYPE (t), targ, t);
 	    }
 

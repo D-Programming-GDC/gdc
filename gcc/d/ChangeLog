@@ -1,3 +1,24 @@
+2016-07-05  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-codegen.cc (build_alignment_field): Set DECL_CONTEXT.
+	(build_zero_constructor): New function.
+	(build_struct_literal): Do not clear =void initialized fields.
+	* expr.cc (ExprVisitor::visit(StructLiteralExp)): Likewise.
+	* d-codegen.cc (convert_expr): Explicitly zero initialize using
+	build_zero_constructor.
+	(convert_for_assignment): Likewise.
+	(build_struct_literal): Likewise.
+	(d_build_call): Likewise.
+	(d_build_call): Likewise.
+	* d-todt.cc (dt_zeropad): Likewise.
+	(dt_container2): Likewise.
+	(VoidInitializer::toDt): Likewise.
+	* expr.cc (ExprVisitor::visit(ArrayLiteralExp)): Likewise.
+	(ExprVisitor::visit(AssocArrayLiteralExp)): Likewise.
+	(ExprVisitor::visit(StructLiteralExp)): Likewise.
+	* (ExprVisitor::visit(ArrayLiteralExp)): Handle zero intialized array
+	in frontend.
+
 2016-07-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (FuncDeclaration::toObjFile): Always convert the

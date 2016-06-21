@@ -77,7 +77,7 @@ dt_zeropad(dt_t **pdt, size_t size)
 {
   tree type = d_array_type(Type::tuns8, size);
   gcc_assert(size != 0);
-  return dt_cons(pdt, build_constructor(type, NULL));
+  return dt_cons(pdt, build_zero_constructor(type));
 }
 
 // It is necessary to give static array data its original
@@ -125,7 +125,7 @@ dt_container2(dt_t *dt)
 	}
     }
   else
-    dt = build_constructor(aggtype, NULL);
+    dt = build_zero_constructor(aggtype);
 
   TYPE_FIELDS(aggtype) = fields;
   TYPE_SIZE(aggtype) = size_binop(MULT_EXPR, offset, size_int(BITS_PER_UNIT));
@@ -239,7 +239,7 @@ VoidInitializer::toDt()
   // void initialisers are set to 0, just because we need something
   // to set them to in the static data segment.
   tree dt = NULL_TREE;
-  dt_cons (&dt, build_constructor (build_ctype(type), NULL));
+  dt_cons (&dt, build_zero_constructor (build_ctype(type)));
   return dt;
 }
 
