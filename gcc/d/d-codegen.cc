@@ -2449,7 +2449,7 @@ build_condition(tree type, tree arg0, tree arg1, tree arg2)
 tree
 build_vcondition(tree arg0, tree arg1, tree arg2)
 {
-  return build_condition(void_zero_node, arg0, arg1, arg2);
+  return build_condition(void_type_node, arg0, arg1, arg2);
 }
 
 // Build a compound expr to join ARG0 and ARG1 together.
@@ -3111,6 +3111,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   result = expand_intrinsic(result);
 
   if (TREE_CODE (result) == CALL_EXPR
+      && AGGREGATE_TYPE_P (TREE_TYPE (result))
       && aggregate_value_p(TREE_TYPE (result), result))
     {
       CALL_EXPR_RETURN_SLOT_OPT (result) = true;
