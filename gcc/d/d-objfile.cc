@@ -1317,27 +1317,30 @@ FuncDeclaration::toObjFile()
 	nrvo_can = aggregate_value_p (return_type, fndecl);
     }
 
-  if (nrvo_can && nrvo_var)
+  if (nrvo_can)
     {
-      Symbol *nrvsym = nrvo_var->toSymbol();
-      tree var = nrvsym->Stree;
-
-      // Copy name from VAR to RESULT.
-      DECL_NAME (result_decl) = DECL_NAME (var);
-      // Don't forget that we take it's address.
-      TREE_ADDRESSABLE (var) = 1;
-
       TREE_TYPE (result_decl) = build_reference_type(TREE_TYPE (result_decl));
       DECL_BY_REFERENCE (result_decl) = 1;
       TREE_ADDRESSABLE (result_decl) = 0;
       relayout_decl(result_decl);
 
-      result_decl = build_deref(result_decl);
+      if (nrvo_var)
+	{
+	  Symbol *nrvsym = nrvo_var->toSymbol();
+	  tree var = nrvsym->Stree;
 
-      SET_DECL_VALUE_EXPR (var, result_decl);
-      DECL_HAS_VALUE_EXPR_P (var) = 1;
+	  // Copy name from VAR to RESULT.
+	  DECL_NAME (result_decl) = DECL_NAME (var);
+	  // Don't forget that we take it's address.
+	  TREE_ADDRESSABLE (var) = 1;
 
-      nrvsym->SnamedResult = result_decl;
+	  result_decl = build_deref(result_decl);
+
+	  SET_DECL_VALUE_EXPR (var, result_decl);
+	  DECL_HAS_VALUE_EXPR_P (var) = 1;
+
+	  nrvsym->SnamedResult = result_decl;
+	}
     }
 
   build_ir (this);

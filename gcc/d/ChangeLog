@@ -1,3 +1,21 @@
+2016-07-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (FuncDeclaration::toObjFile): Always convert the
+	DECL_RESULT of NRVO-capable functions into reference decls.
+
+2016-06-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c (handle_nonnull_attribute): Accept the nonnull
+	attribute in type-generic builtins.
+	* d-codegen.cc (d_build_call): Check AGGREGATE_TYPE_P before testing
+	for aggregate_value_p.
+
+2016-06-20  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-lang.cc (d_handle_option): Add new -ftransition=dip25 and
+	-fmax-error-messages switches.
+	* lang.opt: Likewise.
+
 2016-06-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (get_decl_tree): Remove assert for RESULT_DECL.

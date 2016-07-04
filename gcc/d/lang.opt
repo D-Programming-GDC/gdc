@@ -189,6 +189,10 @@ ftransition=tls
 D RejectNegative
 List all variables going into thread local storage.
 
+ftransition=dip25
+D RejectNegative
+Implement http://wiki.dlang.org/DIP25 (experimental)
+
 funittest
 D
 Compile in unittest code.
@@ -261,3 +265,6 @@ Wunknown-pragmas
 D
 ; Documented in C
 
+fmax-error-messages=
+D Joined RejectNegative
+Limit the number of error messages (0 means unlimited)
