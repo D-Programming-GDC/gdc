@@ -3111,6 +3111,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   result = expand_intrinsic(result);
 
   if (TREE_CODE (result) == CALL_EXPR
+      && AGGREGATE_TYPE_P (TREE_TYPE (result))
       && aggregate_value_p(TREE_TYPE (result), result))
     {
       CALL_EXPR_RETURN_SLOT_OPT (result) = true;
