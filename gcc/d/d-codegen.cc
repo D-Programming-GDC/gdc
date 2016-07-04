@@ -2449,7 +2449,7 @@ build_condition(tree type, tree arg0, tree arg1, tree arg2)
 tree
 build_vcondition(tree arg0, tree arg1, tree arg2)
 {
-  return build_condition(void_zero_node, arg0, arg1, arg2);
+  return build_condition(void_type_node, arg0, arg1, arg2);
 }
 
 // Build a compound expr to join ARG0 and ARG1 together.
