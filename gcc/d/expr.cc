@@ -2451,7 +2451,7 @@ public:
 	  this->result_ = d_array_value(build_ctype(e->type),
 					size_int(0), null_pointer_node);
 	else
-	  this->result_ = build_constructor(d_array_type(tb->nextOf(), 0), NULL);
+	  this->result_ = build_zero_constructor(d_array_type(tb->nextOf(), 0));
 
 	return;
       }
@@ -2470,20 +2470,16 @@ public:
 	Expression *expr = (*e->elements)[i];
 	tree value = build_expr(expr, this->constp_);
 
-	// Only care about non-zero values, the backend will fill in the rest.
-	if (!initializer_zerop(value))
-	  {
-	    if (!TREE_CONSTANT (value))
-	      constant_p = false;
+	if (!TREE_CONSTANT (value))
+	  constant_p = false;
 
-	    // Split construction of values out of the constructor.
-	    tree init = stabilize_expr(&value);
-	    if (init != NULL_TREE)
-	      saved_elems = compound_expr(saved_elems, init);
+	// Split construction of values out of the constructor.
+	tree init = stabilize_expr(&value);
+	if (init != NULL_TREE)
+	  saved_elems = compound_expr(saved_elems, init);
 
-	    CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
-				    convert_expr(value, expr->type, etype));
-	  }
+	CONSTRUCTOR_APPEND_ELT (elms, size_int(i),
+				convert_expr(value, expr->type, etype));
       }
 
     // Now return the constructor as the correct type.  For static arrays there
@@ -2553,7 +2549,7 @@ public:
     TypeAArray *ta = (TypeAArray *) tb;
     if (e->keys->dim == 0)
       {
-	this->result_ = build_constructor(build_ctype(ta), NULL);
+	this->result_ = build_zero_constructor(build_ctype(ta));
 	return;
       }
 
@@ -2606,7 +2602,7 @@ public:
     // Handle empty struct literals.
     if (e->elements == NULL || e->sd->fields.dim == 0)
       {
-	this->result_ = build_constructor(build_ctype(e->type), NULL);
+	this->result_ = build_zero_constructor(build_ctype(e->type));
 	return;
       }
 
@@ -2635,15 +2631,18 @@ public:
 
     for (size_t i = 0; i < e->elements->dim; i++)
       {
-	if (!(*e->elements)[i])
-	  continue;
-
 	Expression *exp = (*e->elements)[i];
-	Type *type = exp->type->toBasetype();
-	tree value = NULL_TREE;
-
 	VarDeclaration *field = e->sd->fields[i];
 	Type *ftype = field->type->toBasetype();
+	tree value = NULL_TREE;
+
+	if (!exp)
+	{
+	  CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol()->Stree, NULL_TREE);
+	  continue;
+	}
+
+	Type *type = exp->type->toBasetype();
 
 	if (ftype->ty == Tsarray && !d_types_same(type, ftype))
 	  {
@@ -2652,7 +2651,7 @@ public:
 	    elem = d_save_expr(elem);
 
 	    if (initializer_zerop(elem))
-	      value = build_constructor(build_ctype(ftype), NULL);
+	      value = build_zero_constructor(build_ctype(ftype));
 	    else
 	      value = build_array_from_val(ftype, elem);
 	  }
@@ -2732,7 +2731,7 @@ public:
 	value = d_array_value(type, size_int(0), null_pointer_node);
       }
     else if (tb->ty == Taarray)
-      value = build_constructor(build_ctype(e->type), NULL);
+      value = build_zero_constructor(build_ctype(e->type));
     else if (tb->ty == Tdelegate)
       value = build_delegate_cst(null_pointer_node, null_pointer_node, e->type);
     else
