@@ -347,9 +347,6 @@ public:
     // For eliminating dynamic_cast
     virtual TypeBasic *isTypeBasic();
     virtual void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    virtual dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class TypeError : public Type
@@ -444,9 +441,6 @@ public:
     bool isZeroInit(Loc loc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class TypeArray : public TypeNext
@@ -485,7 +479,6 @@ public:
 
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
     dt_t **toDtElem(dt_t **pdt, Expression *e);
 #endif
 };
@@ -796,9 +789,6 @@ public:
     Type *toHeadMutable();
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class TypeEnum : public Type
