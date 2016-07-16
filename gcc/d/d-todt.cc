@@ -253,79 +253,9 @@ StructInitializer::toDt()
 dt_t *
 ArrayInitializer::toDt()
 {
-  Type *tb = type->toBasetype();
-  if (tb->ty == Tvector)
-    tb = ((TypeVector *) tb)->basetype;
-
-  Type *tn = tb->nextOf()->toBasetype();
-
-  Dts dts;
-  dts.setDim (dim);
-  dts.zero();
-
-  size_t length = 0;
-  for (size_t i = 0; i < index.dim; i++)
-    {
-      Expression *idx = index[i];
-      if (idx)
-	length = idx->toInteger();
-
-      gcc_assert (length < dim);
-      Initializer *val = value[i];
-      tree dt = val->toDt();
-
-      if (dts[length])
-	error (loc, "duplicate initializations for index %zd", length);
-      dts[length] = dt;
-      length++;
-    }
-
-  Expression *edefault;
-  if (tn->ty == Tsarray)
-    edefault = tn->defaultInitLiteral(loc);
-  else
-    edefault = tb->nextOf()->defaultInit();
-
-  tree sadefault = NULL_TREE;
-  dt_cons(&sadefault, build_expr(edefault, true));
-
   tree dt = NULL_TREE;
-  for (size_t i = 0; i < dim; i++)
-    dt_chainon (&dt, dts[i] ? dts[i] : sadefault);
-
-  if (tb->ty == Tsarray)
-    {
-      TypeSArray *ta = (TypeSArray *) tb;
-      size_t tadim = ta->dim->toInteger();
-
-      if (dim < tadim)
-	{
-	  // Pad out the rest of the array.
-	  for (size_t i = dim; i < tadim; i++)
-	    dt_chainon (&dt, sadefault);
-	}
-      else if (dim > tadim)
-	error (loc, "too many initializers, %zd, for array[%zd]", dim, tadim);
-    }
-  else
-    {
-      gcc_assert (tb->ty == Tarray || tb->ty == Tpointer);
-
-      // Create symbol, and then refer to it
-      Symbol *s = new Symbol();
-      s->Sdt = dt;
-      d_finish_symbol (s);
-      dt = NULL_TREE;
-
-      if (tb->ty == Tarray)
-	dt_cons (&dt, size_int (dim));
-
-      dt_cons (&dt, build_address (s->Stree));
-    }
-
-  tree cdt = NULL_TREE;
-  dt_container (&cdt, type, dt);
-  return cdt;
+  dt_cons(&dt, build_expr(this->toExpression(), true));
+  return dt;
 }
 
 dt_t *

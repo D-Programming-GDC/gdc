@@ -1,3 +1,9 @@
+2016-09-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-todc.cc (ArrayInitializer::toDt): Update to use build_expr.
+	* d-codegen.cc (d_array_value): Don't override default const and
+	static bits for array constructors.
+
 2016-09-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (lower_struct_comparison): Don't compare vectors in the
