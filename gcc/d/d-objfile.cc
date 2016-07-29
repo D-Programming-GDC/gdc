@@ -2190,10 +2190,10 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
     }
 }
 
-// Build and emit a function named NAME, whose function body is in EXPR.
+// Build but do not emit a function named NAME, whose function body is in EXPR.
 
 static FuncDeclaration *
-build_simple_function (const char *name, tree expr, bool static_ctor)
+build_simple_function_decl (const char *name, tree expr)
 {
   Module *mod = current_module_decl;
 
@@ -2215,6 +2215,19 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   func->protection = PROTprivate;
   func->semanticRun = PASSsemantic3done;
 
+  // %% Maybe remove the identifier
+  WrappedExp *body = new WrappedExp (mod->loc, expr, Type::tvoid);
+  func->fbody = new ExpStatement (mod->loc, body);
+
+  return func;
+}
+
+// Build and emit a function named NAME, whose function body is in EXPR.
+
+static FuncDeclaration *
+build_simple_function (const char *name, tree expr, bool static_ctor)
+{
+  FuncDeclaration *func = build_simple_function_decl (name, expr);
   tree func_decl = func->toSymbol()->Stree;
 
   if (static_ctor)
@@ -2225,9 +2238,6 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   TREE_PUBLIC (func_decl) = 0;
   TREE_USED (func_decl) = 1;
 
-  // %% Maybe remove the identifier
-  WrappedExp *body = new WrappedExp (mod->loc, expr, Type::tvoid);
-  func->fbody = new ExpStatement (mod->loc, body);
   func->toObjFile();
 
   return func;
