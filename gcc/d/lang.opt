@@ -241,6 +241,10 @@ static-libphobos
 Driver
 Link the standard D library statically in the compilation.
 
+shared-libphobos
+Driver
+Link the standard D library dynamically in the compilation.
+
 v
 D
 ; Documented in C
