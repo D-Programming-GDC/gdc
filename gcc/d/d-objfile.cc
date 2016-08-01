@@ -950,13 +950,12 @@ TypeInfoDeclaration::toObjFile()
   d_finish_symbol(s);
 }
 
+// Build the ModuleInfo symbol for Module m
 
-// Put out instance of ModuleInfo for this Module
-
-void
-Module::genmoduleinfo()
+static Symbol *
+build_moduleinfo_symbol(Module *m)
 {
-  Symbol *msym = toSymbol();
+  Symbol *msym = m->toSymbol();
   tree dt = NULL_TREE;
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
@@ -964,42 +963,42 @@ Module::genmoduleinfo()
   if (Module::moduleinfo == NULL)
     ObjectNotFound (Id::ModuleInfo);
 
-  for (size_t i = 0; i < members->dim; i++)
+  for (size_t i = 0; i < m->members->dim; i++)
     {
-      Dsymbol *member = (*members)[i];
+      Dsymbol *member = (*m->members)[i];
       member->addLocalClass (&aclasses);
     }
 
-  size_t aimports_dim = aimports.dim;
-  for (size_t i = 0; i < aimports.dim; i++)
+  size_t aimports_dim = m->aimports.dim;
+  for (size_t i = 0; i < m->aimports.dim; i++)
     {
-      Module *m = aimports[i];
-      if (!m->needmoduleinfo)
+      Module *mi = m->aimports[i];
+      if (!mi->needmoduleinfo)
 	aimports_dim--;
     }
 
-  sgetmembers = findGetMembers();
+  sgetmembers = m->findGetMembers();
 
   size_t flags = 0;
-  if (sctor)
+  if (m->sctor)
     flags |= MItlsctor;
-  if (sdtor)
+  if (m->sdtor)
     flags |= MItlsdtor;
-  if (ssharedctor)
+  if (m->ssharedctor)
     flags |= MIctor;
-  if (sshareddtor)
+  if (m->sshareddtor)
     flags |= MIdtor;
   if (sgetmembers)
     flags |= MIxgetMembers;
-  if (sictor)
+  if (m->sictor)
     flags |= MIictor;
-  if (stest)
+  if (m->stest)
     flags |= MIunitTest;
   if (aimports_dim)
     flags |= MIimportedModules;
   if (aclasses.dim)
     flags |= MIlocalClasses;
-  if (!needmoduleinfo)
+  if (!m->needmoduleinfo)
     flags |= MIstandalone;
 
   flags |= MIname;
@@ -1040,34 +1039,34 @@ Module::genmoduleinfo()
    *  char[N] name;
    */
   if (flags & MItlsctor)
-    dt_cons (&dt, build_address (sctor->Stree));
+    dt_cons (&dt, build_address (m->sctor->Stree));
 
   if (flags & MItlsdtor)
-    dt_cons (&dt, build_address (sdtor->Stree));
+    dt_cons (&dt, build_address (m->sdtor->Stree));
 
   if (flags & MIctor)
-    dt_cons (&dt, build_address (ssharedctor->Stree));
+    dt_cons (&dt, build_address (m->ssharedctor->Stree));
 
   if (flags & MIdtor)
-    dt_cons (&dt, build_address (sshareddtor->Stree));
+    dt_cons (&dt, build_address (m->sshareddtor->Stree));
 
   if (flags & MIxgetMembers)
     dt_cons (&dt, build_address (sgetmembers->toSymbol()->Stree));
 
   if (flags & MIictor)
-    dt_cons (&dt, build_address (sictor->Stree));
+    dt_cons (&dt, build_address (m->sictor->Stree));
 
   if (flags & MIunitTest)
-    dt_cons (&dt, build_address (stest->Stree));
+    dt_cons (&dt, build_address (m->stest->Stree));
 
   if (flags & MIimportedModules)
     {
       dt_cons (&dt, size_int (aimports_dim));
-      for (size_t i = 0; i < aimports.dim; i++)
+      for (size_t i = 0; i < m->aimports.dim; i++)
 	{
-	  Module *m = aimports[i];
-	  if (m->needmoduleinfo)
-	    dt_cons (&dt, build_address (m->toSymbol()->Stree));
+	  Module *mi = m->aimports[i];
+	  if (mi->needmoduleinfo)
+	    dt_cons (&dt, build_address (mi->toSymbol()->Stree));
 	}
     }
 
@@ -1084,17 +1083,16 @@ Module::genmoduleinfo()
   if (flags & MIname)
     {
       // Put out module name as a 0-terminated C-string, to save bytes
-      const char *name = toPrettyChars();
+      const char *name = m->toPrettyChars();
       size_t namelen = strlen (name) + 1;
       tree strtree = build_string (namelen, name);
       TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
       dt_cons (&dt, strtree);
     }
 
-  csym->Sdt = dt;
-  d_finish_symbol (csym);
-
-  emit_moduleinfo_hooks(msym);
+  m->csym->Sdt = dt;
+  d_finish_symbol (m->csym);
+  return msym;
 }
 
 // Finish up a function declaration and compile it all the way
@@ -2623,10 +2621,10 @@ emit_modref_hooks(Symbol *sym, Dsymbol *mref)
   build_simple_function ("*__modinit", compound_expr (m1, m2), true);
 }
 
-// Output the ModuleInfo and emit hooks to register it with druntime.
+// Output the ModuleInfo for this module and emit hooks to register it with druntime.
 
 void
-emit_moduleinfo_hooks(Symbol *sym)
+Module::genmoduleinfo()
 {
   // Try to find the required types and functions in druntime
   Dsymbol *mref = NULL, *compiler_dso_type = NULL, *dso_registry_func = NULL;
@@ -2650,10 +2648,12 @@ emit_moduleinfo_hooks(Symbol *sym)
   // Prefer _d_dso_registry model if available
   if (compiler_dso_type && dso_registry_func)
     {
+      Symbol* sym = build_moduleinfo_symbol(this);
       emit_dso_registry_hooks(sym, compiler_dso_type, dso_registry_func);
     }
   else if (mref)
     {
+      Symbol* sym = build_moduleinfo_symbol(this);
       emit_modref_hooks(sym, mref);
     }
 }
