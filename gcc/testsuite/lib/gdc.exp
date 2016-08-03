@@ -107,12 +107,14 @@ proc gdc_link_flags { paths } {
     global ld_library_path
     global GDC_UNDER_TEST
     global shlib_ext
+    global SHARED_OPTION
 
     set gccpath ${paths}
     set libio_dir ""
     set flags ""
     set ld_library_path "."
     set shlib_ext [get_shlib_extension]
+    set SHARED_OPTION ""
     verbose "shared lib extension: $shlib_ext"
 
     if { $gccpath != "" } {
@@ -125,6 +127,16 @@ proc gdc_link_flags { paths } {
            || [file exists "${gccpath}/libphobos/libdruntime/.libs/libgdruntime.${shlib_ext}"] } {
           append flags "-L${gccpath}/libphobos/libdruntime/.libs "
           append ld_library_path ":${gccpath}/libphobos/libdruntime/.libs"
+      }
+      # Static linking is default. If only the shared lib is available adjust
+      # flags to always use it. If both are available, set SHARED_OPTION which
+      # will be added to PERMUTE_ARGS
+      if { [file exists "${gccpath}/libphobos/libdruntime/.libs/libgdruntime.${shlib_ext}"] } {
+          if { [file exists "${gccpath}/libphobos/libdruntime/.libs/libgdruntime.a"] } {
+              set SHARED_OPTION "-shared-libphobos"
+          } else {
+              append flags "-shared-libphobos "
+          }
       }
       if [file exists "${gccpath}/libiberty/libiberty.a"] {
           append flags "-L${gccpath}/libiberty "
