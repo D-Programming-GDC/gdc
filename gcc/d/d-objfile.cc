@@ -1742,10 +1742,6 @@ setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
 	  TREE_STATIC (decl) = 1;
 	}
 
-      // Tell backend this is a thread local decl.
-      if (vd && vd->isDataseg() && vd->isThreadlocal())
-	set_decl_tls_model(decl, decl_default_tls_model(decl));
-
       // Do this by default, but allow private templates to override
       if (public_p || !fd || !fd->isNested())
 	TREE_PUBLIC (decl) = 1;
@@ -1758,6 +1754,10 @@ setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
 
       if (D_DECL_ONE_ONLY (decl))
 	d_comdat_linkage(decl);
+
+      // Tell backend this is a thread local decl.
+      if (vd && vd->isDataseg() && vd->isThreadlocal())
+	set_decl_tls_model(decl, decl_default_tls_model(decl));
     }
   else
     {
