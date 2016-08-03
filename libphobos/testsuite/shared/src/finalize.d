@@ -47,8 +47,13 @@ void main(string[] args)
     thr.start();
     thr.join();
 
-    assert(Runtime.unloadLibrary(h));
-    assert(finalizeCounter == 4);
-    assert(nf1._finalizeCounter == 0);
-    assert(nf2._finalizeCounter == 0);
+    auto r = Runtime.unloadLibrary(h);
+    if (!r)
+        assert(0);
+    if (finalizeCounter != 4)
+        assert(0);
+    if (nf1._finalizeCounter)
+        assert(0);
+    if (nf2._finalizeCounter)
+        assert(0);
 }
