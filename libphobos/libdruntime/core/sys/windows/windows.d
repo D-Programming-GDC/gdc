@@ -1651,6 +1651,7 @@ BOOL TryEnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
 void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection) @nogc;
 void DeleteCriticalSection(CRITICAL_SECTION * lpCriticalSection);
 }
+}
 
 
 
