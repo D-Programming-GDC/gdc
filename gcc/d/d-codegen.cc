@@ -4305,14 +4305,10 @@ get_frameinfo(FuncDeclaration *fd)
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->closureVars.dim != 0)
+  if (fd->hasNestedFrameRefs())
     ffi->creates_frame = true;
 
   if (fd->vthis && fd->vthis->type == Type::tvoidptr)
-    ffi->creates_frame = true;
-
-  // Functions with In/Out contracts pass parameters to nested frame.
-  if (fd->fensure || fd->frequire)
     ffi->creates_frame = true;
 
   // D2 maybe setup closure instead.
