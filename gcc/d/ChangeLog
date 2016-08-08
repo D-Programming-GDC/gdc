@@ -1,3 +1,8 @@
+2016-07-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (get_frameinfo): Use hasNestedFrameRefs to determine
+	whether a frame should be created.
+
 2016-07-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (FuncDeclaration::toObjFile): Always convert the
