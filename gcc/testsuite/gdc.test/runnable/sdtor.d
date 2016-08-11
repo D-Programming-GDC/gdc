@@ -3997,6 +3997,8 @@ void test14696(int len = 2)
     check({ foo(len != 2 ? null : makeS(1).get()       ); }, "makeS(1).get(1).foo.dtor(1).");
 
     // temporary in nesting conditions
+    pragma(msg, "Disabled test for GDC-4.9, see GCC bug 71762\n");
+    /+
     check({ foo(len >= 2 ?        (len == 2 ?        makeS(1).get() : null) : null); }, "makeS(1).get(1).foo.dtor(1).");
     check({ foo(len >= 2 ?        (len == 2 ? null : makeS(1).get()       ) : null); }, "foo.");
     check({ foo(len >= 2 ?        (len != 2 ?        makeS(1).get() : null) : null); }, "foo.");
@@ -4013,6 +4015,7 @@ void test14696(int len = 2)
     check({ foo(len >  2 ? null : (len == 2 ? null : makeS(1).get()       )       ); }, "foo.");
     check({ foo(len >  2 ? null : (len != 2 ?        makeS(1).get() : null)       ); }, "foo.");
     check({ foo(len >  2 ? null : (len != 2 ? null : makeS(1).get()       )       ); }, "makeS(1).get(1).foo.dtor(1).");
+    +/
 
     // temporary in condition and throwing callee
     // check({ fooThrow(len == 2 ?        makeS(1).get() : null); }, "makeS(1).get(1).fooThrow.dtor(1).");
