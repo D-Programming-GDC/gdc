@@ -66,18 +66,18 @@ else
 endif
 check_PROGRAMS =
 if ENABLE_SHARED
-    check_LTLIBRARIES = libgphobos2_t.la
+    check_LTLIBRARIES = libgphobos_t.la
     check_PROGRAMS += unittest
 endif
 if ENABLE_STATIC
     check_PROGRAMS += unittest_static
 endif
 
-toolexeclib_LTLIBRARIES = libgphobos2.la
-libgphobos2_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
-libgphobos2_la_LIBTOOLFLAGS = --tag=D
-libgphobos2_la_LDFLAGS = -Xcompiler -nophoboslib $(PHOBOS_VER_FLAG)
-libgphobos2_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
+toolexeclib_LTLIBRARIES = libgphobos.la
+libgphobos_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
+libgphobos_la_LIBTOOLFLAGS = --tag=D
+libgphobos_la_LDFLAGS = -Xcompiler -nophoboslib $(PHOBOS_VER_FLAG)
+libgphobos_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = ../libdruntime/test_runner.d $(ZLIB_SRC)
@@ -88,18 +88,18 @@ unittest_static_LDADD = $(PHOBOS_TEST_OBJECTS) $(ZLIB_LIB) \
 EXTRA_unittest_static_DEPENDENCIES = $(PHOBOS_TEST_OBJECTS)
 
 # For unittest with dynamic library
-libgphobos2_t_la_SOURCES = $(ZLIB_SRC)
-libgphobos2_t_la_LIBTOOLFLAGS = --tag=D
-libgphobos2_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
-libgphobos2_t_la_LIBADD = $(PHOBOS_TEST_LOBJECTS) $(ZLIB_LIB) \
+libgphobos_t_la_SOURCES = $(ZLIB_SRC)
+libgphobos_t_la_LIBTOOLFLAGS = --tag=D
+libgphobos_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
+libgphobos_t_la_LIBADD = $(PHOBOS_TEST_LOBJECTS) $(ZLIB_LIB) \
     ../libdruntime/libgdruntime.la
-EXTRA_libgphobos2_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
+EXTRA_libgphobos_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
 
 # For unittest
 unittest_SOURCES = ../libdruntime/test_runner.d
 unittest_LIBTOOLFLAGS = --tag=D
 unittest_LDFLAGS = -Xcompiler -nophoboslib -shared
-unittest_LDADD = libgphobos2_t.la ../libdruntime/libgdruntime.la -lcurl
+unittest_LDADD = libgphobos_t.la ../libdruntime/libgdruntime.la -lcurl
 
 # Extra install and clean rules.
 # This does not delete the .libs/.t.o files, but deleting

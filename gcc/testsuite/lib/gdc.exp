@@ -118,8 +118,8 @@ proc gdc_link_flags { paths } {
     verbose "shared lib extension: $shlib_ext"
 
     if { $gccpath != "" } {
-      if { [file exists "${gccpath}/libphobos/src/.libs/libgphobos2.a"] \
-           || [file exists "${gccpath}/libphobos/src/.libs/libgphobos2.${shlib_ext}"] } {
+      if { [file exists "${gccpath}/libphobos/src/.libs/libgphobos.a"] \
+           || [file exists "${gccpath}/libphobos/src/.libs/libgphobos.${shlib_ext}"] } {
           append flags "-L${gccpath}/libphobos/src/.libs "
           append ld_library_path ":${gccpath}/libphobos/src/.libs"
       }
@@ -151,7 +151,7 @@ proc gdc_link_flags { paths } {
     } else {
       global tool_root_dir
 
-      set libphobos [lookfor_file ${tool_root_dir} libgphobos2]
+      set libphobos [lookfor_file ${tool_root_dir} libgphobos]
       if { $libphobos != "" } {
           append flags "-L${libphobos} "
           append ld_library_path ":${libphobos}"

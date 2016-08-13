@@ -62,7 +62,7 @@
 #endif
 
 #ifndef LIBPHOBOS
-#define LIBPHOBOS "gphobos2"
+#define LIBPHOBOS "gphobos"
 #endif
 #ifndef LIBPHOBOS_PROFILE
 #define LIBPHOBOS_PROFILE LIBPHOBOS
