@@ -950,13 +950,12 @@ TypeInfoDeclaration::toObjFile()
   d_finish_symbol(s);
 }
 
+// Build the ModuleInfo symbol for Module m
 
-// Put out instance of ModuleInfo for this Module
-
-void
-Module::genmoduleinfo()
+static Symbol *
+build_moduleinfo_symbol(Module *m)
 {
-  Symbol *msym = toSymbol();
+  Symbol *msym = m->toSymbol();
   tree dt = NULL_TREE;
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
@@ -964,42 +963,42 @@ Module::genmoduleinfo()
   if (Module::moduleinfo == NULL)
     ObjectNotFound (Id::ModuleInfo);
 
-  for (size_t i = 0; i < members->dim; i++)
+  for (size_t i = 0; i < m->members->dim; i++)
     {
-      Dsymbol *member = (*members)[i];
+      Dsymbol *member = (*m->members)[i];
       member->addLocalClass (&aclasses);
     }
 
-  size_t aimports_dim = aimports.dim;
-  for (size_t i = 0; i < aimports.dim; i++)
+  size_t aimports_dim = m->aimports.dim;
+  for (size_t i = 0; i < m->aimports.dim; i++)
     {
-      Module *m = aimports[i];
-      if (!m->needmoduleinfo)
+      Module *mi = m->aimports[i];
+      if (!mi->needmoduleinfo)
 	aimports_dim--;
     }
 
-  sgetmembers = findGetMembers();
+  sgetmembers = m->findGetMembers();
 
   size_t flags = 0;
-  if (sctor)
+  if (m->sctor)
     flags |= MItlsctor;
-  if (sdtor)
+  if (m->sdtor)
     flags |= MItlsdtor;
-  if (ssharedctor)
+  if (m->ssharedctor)
     flags |= MIctor;
-  if (sshareddtor)
+  if (m->sshareddtor)
     flags |= MIdtor;
   if (sgetmembers)
     flags |= MIxgetMembers;
-  if (sictor)
+  if (m->sictor)
     flags |= MIictor;
-  if (stest)
+  if (m->stest)
     flags |= MIunitTest;
   if (aimports_dim)
     flags |= MIimportedModules;
   if (aclasses.dim)
     flags |= MIlocalClasses;
-  if (!needmoduleinfo)
+  if (!m->needmoduleinfo)
     flags |= MIstandalone;
 
   flags |= MIname;
@@ -1040,34 +1039,34 @@ Module::genmoduleinfo()
    *  char[N] name;
    */
   if (flags & MItlsctor)
-    dt_cons (&dt, build_address (sctor->Stree));
+    dt_cons (&dt, build_address (m->sctor->Stree));
 
   if (flags & MItlsdtor)
-    dt_cons (&dt, build_address (sdtor->Stree));
+    dt_cons (&dt, build_address (m->sdtor->Stree));
 
   if (flags & MIctor)
-    dt_cons (&dt, build_address (ssharedctor->Stree));
+    dt_cons (&dt, build_address (m->ssharedctor->Stree));
 
   if (flags & MIdtor)
-    dt_cons (&dt, build_address (sshareddtor->Stree));
+    dt_cons (&dt, build_address (m->sshareddtor->Stree));
 
   if (flags & MIxgetMembers)
     dt_cons (&dt, build_address (sgetmembers->toSymbol()->Stree));
 
   if (flags & MIictor)
-    dt_cons (&dt, build_address (sictor->Stree));
+    dt_cons (&dt, build_address (m->sictor->Stree));
 
   if (flags & MIunitTest)
-    dt_cons (&dt, build_address (stest->Stree));
+    dt_cons (&dt, build_address (m->stest->Stree));
 
   if (flags & MIimportedModules)
     {
       dt_cons (&dt, size_int (aimports_dim));
-      for (size_t i = 0; i < aimports.dim; i++)
+      for (size_t i = 0; i < m->aimports.dim; i++)
 	{
-	  Module *m = aimports[i];
-	  if (m->needmoduleinfo)
-	    dt_cons (&dt, build_address (m->toSymbol()->Stree));
+	  Module *mi = m->aimports[i];
+	  if (mi->needmoduleinfo)
+	    dt_cons (&dt, build_address (mi->toSymbol()->Stree));
 	}
     }
 
@@ -1084,17 +1083,16 @@ Module::genmoduleinfo()
   if (flags & MIname)
     {
       // Put out module name as a 0-terminated C-string, to save bytes
-      const char *name = toPrettyChars();
+      const char *name = m->toPrettyChars();
       size_t namelen = strlen (name) + 1;
       tree strtree = build_string (namelen, name);
       TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
       dt_cons (&dt, strtree);
     }
 
-  csym->Sdt = dt;
-  d_finish_symbol (csym);
-
-  build_moduleinfo (msym);
+  m->csym->Sdt = dt;
+  d_finish_symbol (m->csym);
+  return msym;
 }
 
 // Finish up a function declaration and compile it all the way
@@ -1742,10 +1740,6 @@ setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
 	  TREE_STATIC (decl) = 1;
 	}
 
-      // Tell backend this is a thread local decl.
-      if (vd && vd->isDataseg() && vd->isThreadlocal())
-	set_decl_tls_model(decl, decl_default_tls_model(decl));
-
       // Do this by default, but allow private templates to override
       if (public_p || !fd || !fd->isNested())
 	TREE_PUBLIC (decl) = 1;
@@ -1758,6 +1752,10 @@ setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
 
       if (D_DECL_ONE_ONLY (decl))
 	d_comdat_linkage(decl);
+
+      // Tell backend this is a thread local decl.
+      if (vd && vd->isDataseg() && vd->isThreadlocal())
+	set_decl_tls_model(decl, decl_default_tls_model(decl));
     }
   else
     {
@@ -2190,10 +2188,10 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
     }
 }
 
-// Build and emit a function named NAME, whose function body is in EXPR.
+// Build but do not emit a function named NAME, whose function body is in EXPR.
 
 static FuncDeclaration *
-build_simple_function (const char *name, tree expr, bool static_ctor)
+build_simple_function_decl (const char *name, tree expr)
 {
   Module *mod = current_module_decl;
 
@@ -2215,6 +2213,19 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   func->protection = PROTprivate;
   func->semanticRun = PASSsemantic3done;
 
+  // %% Maybe remove the identifier
+  WrappedExp *body = new WrappedExp (mod->loc, expr, Type::tvoid);
+  func->fbody = new ExpStatement (mod->loc, body);
+
+  return func;
+}
+
+// Build and emit a function named NAME, whose function body is in EXPR.
+
+static FuncDeclaration *
+build_simple_function (const char *name, tree expr, bool static_ctor)
+{
+  FuncDeclaration *func = build_simple_function_decl (name, expr);
   tree func_decl = func->toSymbol()->Stree;
 
   if (static_ctor)
@@ -2225,9 +2236,6 @@ build_simple_function (const char *name, tree expr, bool static_ctor)
   TREE_PUBLIC (func_decl) = 0;
   TREE_USED (func_decl) = 1;
 
-  // %% Maybe remove the identifier
-  WrappedExp *body = new WrappedExp (mod->loc, expr, Type::tvoid);
-  func->fbody = new ExpStatement (mod->loc, body);
   func->toObjFile();
 
   return func;
@@ -2400,32 +2408,193 @@ build_unittest_function (const char *name, vec<FuncDeclaration *> functions)
   return fd->toSymbol();
 }
 
-// Generate our module reference and append to _Dmodule_ref.
+// Build a variable used in the dso_registry code. The variable is always
+// visibility = hidden and TREE_PUBLIC. Optionally sets an initializer, makes
+// the variable external and/or comdat.
 
-void
-build_moduleinfo (Symbol *sym)
+static tree
+build_dso_registry_var(const char * name, tree type, tree init, bool comdat_p,
+  bool external_p)
+{
+  tree var = build_decl(BUILTINS_LOCATION, VAR_DECL, get_identifier(name), type);
+  set_decl_location(var, current_module_decl);
+  DECL_VISIBILITY (var) = VISIBILITY_HIDDEN;
+  DECL_VISIBILITY_SPECIFIED (var) = 1;
+  TREE_PUBLIC (var) = 1;
+
+  if (external_p)
+    DECL_EXTERNAL (var) = 1;
+  else
+    TREE_STATIC (var) = 1;
+
+  if (init != NULL_TREE)
+    DECL_INITIAL (var) = init;
+  if (comdat_p)
+    d_comdat_linkage (var);
+
+  rest_of_decl_compilation(var, 1, 0);
+  return var;
+}
+
+// Build and emit a constructor or destructor calling dso_registry_func if
+// dso_initialized is (false in a constructor or true in a destructor).
+
+static void
+emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
+  tree dso_initialized, tree dso_slot, bool ctor_p)
+{
+  const char* func_name = "gdc_dso_dtor";
+  tree init_condition = boolean_false_node;
+  if (ctor_p)
+    {
+      func_name = "gdc_dso_ctor";
+      init_condition = boolean_true_node;
+    }
+
+  // extern extern(C) void* __start_minfo @hidden;
+  // extern extern(C) void* __stop_minfo @hidden;
+  tree start_minfo = build_dso_registry_var("__start_minfo", ptr_type_node,
+    NULL_TREE, false, true);
+  tree stop_minfo = build_dso_registry_var("__stop_minfo", ptr_type_node,
+    NULL_TREE, false, true);
+
+  tree dso_type = build_ctype(compiler_dso_type->isStructDeclaration()->type);
+  tree registry_func = dso_registry_func->isFuncDeclaration()->toSymbol()->Stree;
+
+  // dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
+  vec<constructor_elt, va_gc> *ve = NULL;
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_version"),
+    dso_type), build_int_cst(size_type_node, 1));
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_slot"),
+    dso_type), build_address(dso_slot));
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_minfo_beg"),
+    dso_type), build_address(start_minfo));
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_minfo_end"),
+    dso_type), build_address(stop_minfo));
+  tree dso_data = build_decl(BUILTINS_LOCATION, VAR_DECL, get_identifier("dso"),
+    dso_type);
+  set_decl_location(dso_data, current_module_decl);
+  tree set_dso_expr = modify_expr (dso_data, build_struct_literal(dso_type, ve));
+
+  rest_of_decl_compilation(dso_data, 1, 0);
+
+  // if (!(gdc_dso_initialized == %init_condition))
+  // {
+  //     gdc_dso_initialized = %init_condition;
+  //     CompilerDSOData dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
+  //     _d_dso_registry(&dso);
+  // }
+  tree condition = build_boolop(NE_EXPR, dso_initialized, init_condition);
+  tree assign_expr = modify_expr(dso_initialized, init_condition);
+  assign_expr = compound_expr (set_dso_expr, assign_expr);
+  tree call_expr = d_build_call_nary(registry_func, 1,
+    build_address(dso_data));
+  tree func_body = build_vcondition(condition, compound_expr(assign_expr,
+    call_expr), void_node);
+
+  // extern(C) void gdc_dso_[c/d]tor() @hidden @weak @[con/de]structor
+  FuncDeclaration *func_decl = build_simple_function_decl(func_name, func_body);
+  tree func_tree = func_decl->toSymbol()->Stree;
+
+  // Setup bindings for stack variable dso_data
+  tree block = make_node(BLOCK);
+  BLOCK_VARS (block) = dso_data;
+  TREE_CHAIN (dso_data) = NULL_TREE;
+  DECL_CONTEXT (dso_data) = func_tree;
+  func_body = build3 (BIND_EXPR, void_type_node, BLOCK_VARS (block), func_body, block);
+  ((WrappedExp *)((ExpStatement *)func_decl->fbody)->exp)->e1 = func_body;
+
+  set_decl_location(func_tree, current_module_decl);
+  TREE_PUBLIC (func_tree) = 1;
+  DECL_VISIBILITY (func_tree) = VISIBILITY_HIDDEN;
+  DECL_VISIBILITY_SPECIFIED (func_tree) = 1;
+
+  if (ctor_p)
+    DECL_STATIC_CONSTRUCTOR (func_tree) = 1;
+  else
+    DECL_STATIC_DESTRUCTOR (func_tree) = 1;
+
+  d_comdat_linkage(func_tree);
+  func_decl->toObjFile();
+}
+
+// Build and emit the helper functions for the DSO registry code, including
+// the gdc_dso_slot and gdc_dso_initialized variable and the gdc_dso_ctor
+// and gdc_dso_dtor functions.
+
+static void
+emit_dso_registry_helpers(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func)
+{
+  // extern(C) void* gdc_dso_slot @hidden @weak = null;
+  // extern(C) bool gdc_dso_initialized @hidden @weak = false;
+  tree dso_slot = build_dso_registry_var("gdc_dso_slot", ptr_type_node,
+    null_pointer_node, true, false);
+  tree dso_initialized = build_dso_registry_var("gdc_dso_initialized", boolean_type_node,
+    boolean_false_node, true, false);
+
+  // extern(C) void gdc_dso_ctor() @hidden @weak @ctor
+  // extern(C) void gdc_dso_dtor() @hidden @weak @dtor
+  emit_dso_registry_cdtor(compiler_dso_type, dso_registry_func, dso_initialized,
+    dso_slot, true);
+  emit_dso_registry_cdtor(compiler_dso_type, dso_registry_func, dso_initialized,
+    dso_slot, false);
+}
+
+// Emit code to place sym into the minfo list. Also emit helpers to call
+// _d_dso_registry if necessary.
+
+static void
+emit_dso_registry_hooks(Symbol *sym, Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func)
+{
+  gcc_assert(targetm_common.have_named_sections);
+
+  // Step 1: Place the ModuleInfo into the minfo section.
+  // Do this once for every emitted Module
+  // @section("minfo") void* __mod_ref_%s = &ModuleInfo(module);
+  tree decl = build_decl(BUILTINS_LOCATION, VAR_DECL,
+    get_identifier(concat("__mod_ref_", sym->Sident, NULL)), ptr_type_node);
+  d_keep(decl);
+  set_decl_location(decl, current_module_decl);
+  TREE_PUBLIC (decl) = 1;
+  TREE_STATIC (decl) = 1;
+  DECL_INITIAL (decl) = build_address(sym->Stree);
+  TREE_STATIC (DECL_INITIAL (decl)) = 1;
+
+  // Do not start section with '.' to use the __start_ feature:
+  // https://sourceware.org/binutils/docs-2.26/ld/Orphan-Sections.html
+  set_decl_section_name(decl, "minfo");
+  rest_of_decl_compilation(decl, 1, 0);
+
+  // Step 2: Emit helper functions. These are only required once per
+  // shared library, so it's safe to emit them only one per object file.
+  static bool emitted = false;
+  if (!emitted)
+    {
+      emitted = true;
+      emit_dso_registry_helpers(compiler_dso_type, dso_registry_func);
+    }
+}
+
+// Emit code to add sym to the _Dmodule_ref linked list.
+
+static void
+emit_modref_hooks(Symbol *sym, Dsymbol *mref)
 {
   // Generate:
   //  struct ModuleReference
   //  {
   //    void *next;
-  //    ModuleReference m;
+  //    void* mod;
   //  }
 
   // struct ModuleReference in moduleinit.d
-  Type *type = build_object_type();
-  tree tmodref = build_two_field_type (ptr_type_node, build_ctype(type),
+  tree tmodref = build_two_field_type (ptr_type_node, ptr_type_node,
 				       NULL, "next", "mod");
   tree nextfield = TYPE_FIELDS (tmodref);
   tree modfield = TREE_CHAIN (nextfield);
 
   // extern (C) ModuleReference *_Dmodule_ref;
-  tree dmodule_ref = build_decl (BUILTINS_LOCATION, VAR_DECL,
-				 get_identifier ("_Dmodule_ref"),
-				 build_pointer_type (tmodref));
-  d_keep (dmodule_ref);
-  DECL_EXTERNAL (dmodule_ref) = 1;
-  TREE_PUBLIC (dmodule_ref) = 1;
+  tree dmodule_ref = mref->toSymbol()->Stree;
 
   // private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };
   tree modref = build_artificial_decl (tmodref, NULL_TREE, "__mod_ref");
@@ -2452,3 +2621,39 @@ build_moduleinfo (Symbol *sym)
   build_simple_function ("*__modinit", compound_expr (m1, m2), true);
 }
 
+// Output the ModuleInfo for this module and emit hooks to register it with druntime.
+
+void
+Module::genmoduleinfo()
+{
+  // Try to find the required types and functions in druntime
+  Dsymbol *mref = NULL, *compiler_dso_type = NULL, *dso_registry_func = NULL;
+  // Ignore error if the file can not be found and simply don't emit Moduleinfo
+  unsigned errors = global.startGagging();
+  Module *m = Module::load(Loc(), NULL, Id::sectionsModule);
+  global.endGagging(errors);
+
+  if (m)
+    {
+      m->importedFrom = m;
+      m->importAll (NULL);
+      m->semantic();
+      m->semantic2();
+      m->semantic3();
+      mref = m->search(Loc(), Id::Dmodule_ref, IgnoreErrors);
+      compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, IgnoreErrors);
+      dso_registry_func = m->search(Loc(), Id::dso_registry_func, IgnoreErrors);
+    }
+
+  // Prefer _d_dso_registry model if available
+  if (compiler_dso_type && dso_registry_func)
+    {
+      Symbol* sym = build_moduleinfo_symbol(this);
+      emit_dso_registry_hooks(sym, compiler_dso_type, dso_registry_func);
+    }
+  else if (mref)
+    {
+      Symbol* sym = build_moduleinfo_symbol(this);
+      emit_modref_hooks(sym, mref);
+    }
+}

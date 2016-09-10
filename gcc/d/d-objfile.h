@@ -79,8 +79,6 @@ extern dt_t **build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd);
 
 extern tree dtvector_to_tree (dt_t *dt);
 
-extern void build_moduleinfo (Symbol *sym);
-
 
 struct ModuleInfo
 {

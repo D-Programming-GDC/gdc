@@ -10,13 +10,11 @@
  * Source: $(DRUNTIMESRC src/rt/_minfo.d)
  */
 
-/* NOTE: This file has been patched from the original DMD distribution to
- * work with the GDC compiler.
- */
 module rt.minfo;
 
 import core.stdc.stdlib;  // alloca
 import core.stdc.string;  // memcpy
+import rt.sections;
 
 enum
 {
@@ -269,7 +267,6 @@ private:
     immutable(ModuleInfo)*[] _tlsctors;
 }
 
-__gshared ModuleGroup _moduleGroup;
 
 /********************************************
  * Iterate over all module infos.
@@ -277,20 +274,6 @@ __gshared ModuleGroup _moduleGroup;
 
 int moduleinfos_apply(scope int delegate(immutable(ModuleInfo*)) dg)
 {
-  version (GNU)
-  {
-    foreach (m; _moduleGroup._modules)
-    {
-        // TODO: Should null ModuleInfo be allowed?
-        if (m !is null)
-        {
-            if (auto res = dg(m))
-                return res;
-        }
-    }
-  }
-  else
-  {
     foreach (ref sg; SectionGroup)
     {
         foreach (m; sg.modules)
@@ -303,7 +286,6 @@ int moduleinfos_apply(scope int delegate(immutable(ModuleInfo*)) dg)
             }
         }
     }
-  }
     return 0;
 }
 
@@ -315,67 +297,36 @@ extern (C)
 {
 void rt_moduleCtor()
 {
-  version (GNU)
-  {
-    _moduleGroup = ModuleGroup(getModuleInfos());
-    _moduleGroup.sortCtors();
-    _moduleGroup.runCtors();
-  }
-  else
-  {
     foreach (ref sg; SectionGroup)
     {
         sg.moduleGroup.sortCtors();
         sg.moduleGroup.runCtors();
     }
-  }
 }
 
 void rt_moduleTlsCtor()
 {
-  version (GNU)
-  {
-    _moduleGroup.runTlsCtors();
-  }
-  else
-  {
     foreach (ref sg; SectionGroup)
     {
         sg.moduleGroup.runTlsCtors();
     }
-  }
 }
 
 void rt_moduleTlsDtor()
 {
-  version (GNU)
-  {
-    _moduleGroup.runTlsDtors();
-  }
-  else
-  {
     foreach_reverse (ref sg; SectionGroup)
     {
         sg.moduleGroup.runTlsDtors();
     }
-  }
 }
 
 void rt_moduleDtor()
 {
-  version (GNU)
-  {
-    _moduleGroup.runDtors();
-    _moduleGroup.free();
-  }
-  else
-  {
     foreach_reverse (ref sg; SectionGroup)
     {
         sg.moduleGroup.runDtors();
         sg.moduleGroup.free();
     }
-  }
 }
 
 version (Win32)
@@ -399,46 +350,6 @@ version (Win32)
     void _moduleTlsDtor()
     {
         rt_moduleTlsDtor();
-    }
-}
-
-/********************************************
- * Access compiler generated list of modules.
- */
-
-version (GNU)
-{
-    // This linked list is created by a compiler generated function inserted
-    // into the .ctor list by the compiler.
-    struct ModuleReference
-    {
-        ModuleReference* next;
-        ModuleInfo*      mod;
-    }
-
-    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
-
-    immutable(ModuleInfo*)[] getModuleInfos()
-    out (result)
-    {
-        foreach(m; result)
-            assert(m !is null);
-    }
-    body
-    {
-        ModuleInfo*[] result = void;
-        size_t len;
-        ModuleReference *mr;
-
-        for (mr = _Dmodule_ref; mr; mr = mr.next)
-            len++;
-        result = (cast(ModuleInfo**).malloc(len * size_t.sizeof))[0 .. len];
-        len = 0;
-        for (mr = _Dmodule_ref; mr; mr = mr.next)
-        {   result[len] = mr.mod;
-            len++;
-        }
-        return cast(immutable)result;
     }
 }
 }

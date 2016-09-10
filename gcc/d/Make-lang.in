@@ -25,7 +25,7 @@ D_INSTALL_NAME = $(shell echo gdc|sed '$(program_transform_name)')
 D_TARGET_INSTALL_NAME = $(target_noncanonical)-$(shell echo gdc|sed '$(program_transform_name)')
 
 # Name of phobos library
-D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos2\"
+D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos\"
 
 # The name for selecting d in LANGUAGES.
 d: cc1d$(exeext)
