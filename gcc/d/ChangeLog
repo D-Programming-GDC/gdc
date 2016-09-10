@@ -1,3 +1,30 @@
+2016-09-10  Johannes Pfau  <johannespfau@gmail.com>
+
+	* d-objfile.cc (setup_symbol_storage): Setup TREE_PUBLIC before
+	calling decl_default_tls_model.
+	* d-typeinfo.cc (TypeInfoVisitor::find_field): Move method...
+	* d-codegen.cc (find_aggregate_field): here.
+	* d-objfile.cc (build_simple_function): Extract some code into new
+	function.
+	(build_simple_function_decl): Extracted from build_simple_function.
+	* d-objfile.cc (build_moduleinfo): Split into emit_moduleinfo_hooks
+	and emit_modref_hooks.
+	(build_dso_registry_var): New function.
+	(emit_dso_registry_cdtor): Likewise.
+	(emit_dso_registry_helpers): Likewise.
+	(emit_dso_registry_hooks): Likewise.
+	(emit_moduleinfo_hooks): Only emit hooks if required druntime functions
+	are available.
+	* d-objfile.cc (Module::genmoduleinfo): Rename to
+	build_moduleinfo_symbol.
+	(emit_moduleinfo_hooks): rename to Module::genmoduleinfo.
+	(Module::genmoduleinfo): only call build_moduleinfo_symbol when
+	emitting module info registry code.
+	* d-spec.c (lang_specific_driver): Add -shared-libphobos option,
+	default to static libphobos.
+	* d-lang.opt: Likewise.
+	* d-spec.c: Rename libgphobos2 to libgphobos.
+
 2016-07-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (get_frameinfo): Use hasNestedFrameRefs to determine
