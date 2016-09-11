@@ -365,6 +365,12 @@ Msgtable msgtable[] =
     { "basic_ostream" },
     { "basic_iostream" },
     { "char_traits" },
+
+    // For ModuleInfo generation
+    { "sectionsModule", "rt/sections" },
+    { "Dmodule_ref", "_Dmodule_ref" },
+    { "compiler_dso_type", "CompilerDSOData" },
+    { "dso_registry_func", "_d_dso_registry" }
 };
 
 

@@ -133,7 +133,7 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
 LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-libgphobos2_la_DEPENDENCIES = ../libdruntime/libgdruntime.la \
+libgphobos_la_DEPENDENCIES = ../libdruntime/libgdruntime.la \
 	$(am__DEPENDENCIES_1)
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
@@ -201,119 +201,43 @@ am__objects_9 = std/c/windows/com.lo std/c/windows/stat.lo \
 am__objects_11 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
 	$(am__objects_6) $(am__objects_8) $(am__objects_10)
 am__objects_12 = $(am__objects_11)
-am__objects_13 = libgphobos2_la-adler32.lo libgphobos2_la-compress.lo \
-	libgphobos2_la-crc32.lo libgphobos2_la-deflate.lo \
-	libgphobos2_la-gzclose.lo libgphobos2_la-gzlib.lo \
-	libgphobos2_la-gzread.lo libgphobos2_la-gzwrite.lo \
-	libgphobos2_la-infback.lo libgphobos2_la-inffast.lo \
-	libgphobos2_la-inflate.lo libgphobos2_la-inftrees.lo \
-	libgphobos2_la-trees.lo libgphobos2_la-uncompr.lo \
-	libgphobos2_la-zutil.lo
+am__objects_13 = libgphobos_la-adler32.lo libgphobos_la-compress.lo \
+	libgphobos_la-crc32.lo libgphobos_la-deflate.lo \
+	libgphobos_la-gzclose.lo libgphobos_la-gzlib.lo \
+	libgphobos_la-gzread.lo libgphobos_la-gzwrite.lo \
+	libgphobos_la-infback.lo libgphobos_la-inffast.lo \
+	libgphobos_la-inflate.lo libgphobos_la-inftrees.lo \
+	libgphobos_la-trees.lo libgphobos_la-uncompr.lo \
+	libgphobos_la-zutil.lo
 @DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_14 = $(am__objects_13)
-am_libgphobos2_la_OBJECTS = $(am__objects_12) $(am__objects_14)
-libgphobos2_la_OBJECTS = $(am_libgphobos2_la_OBJECTS)
-libgphobos2_la_LINK = $(LIBTOOL) --tag=CC \
-	$(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
-	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgphobos2_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
-am__DEPENDENCIES_2 = etc/c/curl.t.lo etc/c/sqlite3.t.lo \
-	etc/c/zlib.t.lo std/algorithm/comparison.t.lo \
-	std/algorithm/internal.t.lo std/algorithm/iteration.t.lo \
-	std/algorithm/mutation.t.lo std/algorithm/package.t.lo \
-	std/algorithm/searching.t.lo std/algorithm/setops.t.lo \
-	std/algorithm/sorting.t.lo std/array.t.lo std/ascii.t.lo \
-	std/base64.t.lo std/bigint.t.lo std/bitmanip.t.lo \
-	std/compiler.t.lo std/complex.t.lo std/concurrency.t.lo \
-	std/container/array.t.lo std/container/binaryheap.t.lo \
-	std/container/dlist.t.lo std/container/package.t.lo \
-	std/container/rbtree.t.lo std/container/slist.t.lo \
-	std/container/util.t.lo std/conv.t.lo std/cstream.t.lo \
-	std/csv.t.lo std/datetime.t.lo std/demangle.t.lo \
-	std/digest/crc.t.lo std/digest/digest.t.lo std/digest/md.t.lo \
-	std/digest/ripemd.t.lo std/digest/sha.t.lo std/encoding.t.lo \
-	std/exception.t.lo std/experimental/logger/core.t.lo \
-	std/experimental/logger/filelogger.t.lo \
-	std/experimental/logger/multilogger.t.lo \
-	std/experimental/logger/nulllogger.t.lo \
-	std/experimental/logger/package.t.lo std/file.t.lo \
-	std/format.t.lo std/functional.t.lo std/getopt.t.lo \
-	std/internal/cstring.t.lo std/internal/digest/sha_SSSE3.t.lo \
-	std/internal/math/biguintcore.t.lo \
-	std/internal/math/biguintnoasm.t.lo \
-	std/internal/math/biguintx86.t.lo \
-	std/internal/math/errorfunction.t.lo \
-	std/internal/math/gammafunction.t.lo \
-	std/internal/processinit.t.lo std/internal/scopebuffer.t.lo \
-	std/internal/test/dummyrange.t.lo \
-	std/internal/unicode_comp.t.lo \
-	std/internal/unicode_decomp.t.lo \
-	std/internal/unicode_grapheme.t.lo \
-	std/internal/unicode_norm.t.lo \
-	std/internal/unicode_tables.t.lo \
-	std/internal/windows/advapi32.t.lo std/json.t.lo std/math.t.lo \
-	std/mathspecial.t.lo std/meta.t.lo std/mmfile.t.lo \
-	std/net/curl.t.lo std/net/isemail.t.lo std/numeric.t.lo \
-	std/outbuffer.t.lo std/parallelism.t.lo std/path.t.lo \
-	std/process.t.lo std/random.t.lo std/range/interfaces.t.lo \
-	std/range/package.t.lo std/range/primitives.t.lo \
-	std/regex/internal/backtracking.t.lo \
-	std/regex/internal/generator.t.lo std/regex/internal/ir.t.lo \
-	std/regex/internal/kickstart.t.lo \
-	std/regex/internal/parser.t.lo std/regex/internal/tests.t.lo \
-	std/regex/internal/thompson.t.lo std/regex/package.t.lo \
-	std/signals.t.lo std/socket.t.lo std/socketstream.t.lo \
-	std/stdint.t.lo std/stdio.t.lo std/stdiobase.t.lo \
-	std/stream.t.lo std/string.t.lo std/syserror.t.lo \
-	std/system.t.lo std/traits.t.lo std/typecons.t.lo \
-	std/typelist.t.lo std/typetuple.t.lo std/uni.t.lo std/uri.t.lo \
-	std/utf.t.lo std/uuid.t.lo std/variant.t.lo \
-	std/windows/charset.t.lo std/windows/iunknown.t.lo \
-	std/windows/registry.t.lo std/windows/syserror.t.lo \
-	std/xml.t.lo std/zip.t.lo std/zlib.t.lo
-am__DEPENDENCIES_3 = std/c/fenv.t.lo std/c/locale.t.lo std/c/math.t.lo \
-	std/c/process.t.lo std/c/stdarg.t.lo std/c/stddef.t.lo \
-	std/c/stdio.t.lo std/c/stdlib.t.lo std/c/string.t.lo \
-	std/c/time.t.lo std/c/wcharh.t.lo
-am__DEPENDENCIES_4 = std/c/osx/socket.t.lo
-@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_4)
-am__DEPENDENCIES_6 = std/c/freebsd/socket.t.lo
-@DRUNTIME_OS_BSD_TRUE@am__DEPENDENCIES_7 = $(am__DEPENDENCIES_6)
-am__DEPENDENCIES_8 = std/c/linux/linux.t.lo \
-	std/c/linux/linuxextern.t.lo std/c/linux/pthread.t.lo \
-	std/c/linux/socket.t.lo std/c/linux/termios.t.lo \
-	std/c/linux/tipc.t.lo
-@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_9 = $(am__DEPENDENCIES_8)
-am__DEPENDENCIES_10 = std/c/windows/com.t.lo std/c/windows/stat.t.lo \
-	std/c/windows/windows.t.lo std/c/windows/winsock.t.lo
-@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_11 = $(am__DEPENDENCIES_10)
-am__DEPENDENCIES_12 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
-	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_7) \
-	$(am__DEPENDENCIES_9) $(am__DEPENDENCIES_11)
-am__DEPENDENCIES_13 = $(am__DEPENDENCIES_12)
-libgphobos2_t_la_DEPENDENCIES = $(am__DEPENDENCIES_13) \
+am_libgphobos_la_OBJECTS = $(am__objects_12) $(am__objects_14)
+libgphobos_la_OBJECTS = $(am_libgphobos_la_OBJECTS)
+libgphobos_la_LINK = $(LIBTOOL) --tag=CC $(libgphobos_la_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgphobos_la_LDFLAGS) $(LDFLAGS) -o $@
+libgphobos_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS) \
 	$(am__DEPENDENCIES_1) ../libdruntime/libgdruntime.la
-am__objects_15 = libgphobos2_t_la-adler32.lo \
-	libgphobos2_t_la-compress.lo libgphobos2_t_la-crc32.lo \
-	libgphobos2_t_la-deflate.lo libgphobos2_t_la-gzclose.lo \
-	libgphobos2_t_la-gzlib.lo libgphobos2_t_la-gzread.lo \
-	libgphobos2_t_la-gzwrite.lo libgphobos2_t_la-infback.lo \
-	libgphobos2_t_la-inffast.lo libgphobos2_t_la-inflate.lo \
-	libgphobos2_t_la-inftrees.lo libgphobos2_t_la-trees.lo \
-	libgphobos2_t_la-uncompr.lo libgphobos2_t_la-zutil.lo
+am__objects_15 = libgphobos_t_la-adler32.lo \
+	libgphobos_t_la-compress.lo libgphobos_t_la-crc32.lo \
+	libgphobos_t_la-deflate.lo libgphobos_t_la-gzclose.lo \
+	libgphobos_t_la-gzlib.lo libgphobos_t_la-gzread.lo \
+	libgphobos_t_la-gzwrite.lo libgphobos_t_la-infback.lo \
+	libgphobos_t_la-inffast.lo libgphobos_t_la-inflate.lo \
+	libgphobos_t_la-inftrees.lo libgphobos_t_la-trees.lo \
+	libgphobos_t_la-uncompr.lo libgphobos_t_la-zutil.lo
 @DRUNTIME_ZLIB_SYSTEM_FALSE@am__objects_16 = $(am__objects_15)
-am_libgphobos2_t_la_OBJECTS = $(am__objects_16)
-libgphobos2_t_la_OBJECTS = $(am_libgphobos2_t_la_OBJECTS)
-libgphobos2_t_la_LINK = $(LIBTOOL) --tag=CC \
-	$(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
-	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgphobos2_t_la_LDFLAGS) \
+am_libgphobos_t_la_OBJECTS = $(am__objects_16)
+libgphobos_t_la_OBJECTS = $(am_libgphobos_t_la_OBJECTS)
+libgphobos_t_la_LINK = $(LIBTOOL) --tag=CC \
+	$(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgphobos_t_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
-@ENABLE_SHARED_TRUE@am_libgphobos2_t_la_rpath =
+@ENABLE_SHARED_TRUE@am_libgphobos_t_la_rpath =
 @ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
 @ENABLE_STATIC_TRUE@am__EXEEXT_2 = unittest_static$(EXEEXT)
 am_unittest_OBJECTS = ../libdruntime/test_runner.$(OBJEXT)
 unittest_OBJECTS = $(am_unittest_OBJECTS)
-unittest_DEPENDENCIES = libgphobos2_t.la \
-	../libdruntime/libgdruntime.la
+unittest_DEPENDENCIES = libgphobos_t.la ../libdruntime/libgdruntime.la
 am__objects_17 = adler32.$(OBJEXT) compress.$(OBJEXT) crc32.$(OBJEXT) \
 	deflate.$(OBJEXT) gzclose.$(OBJEXT) gzlib.$(OBJEXT) \
 	gzread.$(OBJEXT) gzwrite.$(OBJEXT) infback.$(OBJEXT) \
@@ -336,7 +260,7 @@ LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libgphobos2_la_SOURCES) $(libgphobos2_t_la_SOURCES) \
+SOURCES = $(libgphobos_la_SOURCES) $(libgphobos_t_la_SOURCES) \
 	$(unittest_SOURCES) $(unittest_static_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -365,11 +289,13 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DCFG_ARM_EABI_UNWINDER = @DCFG_ARM_EABI_UNWINDER@
+DCFG_MINFO_BRACKETING = @DCFG_MINFO_BRACKETING@
 DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
 DL_LIBS = @DL_LIBS@
+DRUNTIME_VER_FLAG = @DRUNTIME_VER_FLAG@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -388,6 +314,10 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBADD_DL = @LIBADD_DL@
+LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
+LIBADD_DLOPEN = @LIBADD_DLOPEN@
+LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
 LIBBACKTRACE_DIR = @LIBBACKTRACE_DIR@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -395,6 +325,8 @@ LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
+LT_DLLOADERS = @LT_DLLOADERS@
+LT_DLPREOPEN = @LT_DLPREOPEN@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
@@ -412,8 +344,8 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PHOBOS_VER_FLAG = @PHOBOS_VER_FLAG@
 RANLIB = @RANLIB@
-RELEASE_VER = @RELEASE_VER@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -517,11 +449,14 @@ ALL_PHOBOS_COMPILE_DSOURCES = $(PHOBOS_DSOURCES) \
 	$(PHOBOS_DSOURCES_STDC) $(am__append_1) $(am__append_2) \
 	$(am__append_3) $(am__append_4)
 ALL_PHOBOS_SOURCES = $(ALL_PHOBOS_COMPILE_DSOURCES)
-PHOBOS_TEST_LOBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.lo)
+REAL_PHOBOS_TEST_LOBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.lo)
 REAL_PHOBOS_TEST_OBJECTS = $(ALL_PHOBOS_COMPILE_DSOURCES:.d=.t.o)
 # Workaround issue #
 PHOBOS_TEST_OBJECTS = $(filter-out std/net/curl.t.o std/base64.t.o, \
     $(REAL_PHOBOS_TEST_OBJECTS))
+
+PHOBOS_TEST_LOBJECTS = $(filter-out std/net/curl.t.lo std/base64.t.lo, \
+    $(REAL_PHOBOS_TEST_LOBJECTS))
 
 @DRUNTIME_ZLIB_SYSTEM_FALSE@ZLIB_LIB = 
 
@@ -529,12 +464,12 @@ PHOBOS_TEST_OBJECTS = $(filter-out std/net/curl.t.o std/base64.t.o, \
 @DRUNTIME_ZLIB_SYSTEM_TRUE@ZLIB_LIB = -lz
 @DRUNTIME_ZLIB_SYSTEM_FALSE@ZLIB_SRC = $(ZLIB_CSOURCES)
 @DRUNTIME_ZLIB_SYSTEM_TRUE@ZLIB_SRC = 
-@ENABLE_SHARED_TRUE@check_LTLIBRARIES = libgphobos2_t.la
-toolexeclib_LTLIBRARIES = libgphobos2.la
-libgphobos2_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
-libgphobos2_la_LIBTOOLFLAGS = --tag=D
-libgphobos2_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER) -static
-libgphobos2_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
+@ENABLE_SHARED_TRUE@check_LTLIBRARIES = libgphobos_t.la
+toolexeclib_LTLIBRARIES = libgphobos.la
+libgphobos_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
+libgphobos_la_LIBTOOLFLAGS = --tag=D
+libgphobos_la_LDFLAGS = -Xcompiler -nophoboslib $(PHOBOS_VER_FLAG)
+libgphobos_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = ../libdruntime/test_runner.d $(ZLIB_SRC)
@@ -546,19 +481,19 @@ unittest_static_LDADD = $(PHOBOS_TEST_OBJECTS) $(ZLIB_LIB) \
 EXTRA_unittest_static_DEPENDENCIES = $(PHOBOS_TEST_OBJECTS)
 
 # For unittest with dynamic library
-libgphobos2_t_la_SOURCES = $(ZLIB_SRC)
-libgphobos2_t_la_LIBTOOLFLAGS = --tag=D
-libgphobos2_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
-libgphobos2_t_la_LIBADD = $(PHOBOS_TEST_LOBJECTS) $(ZLIB_LIB) \
+libgphobos_t_la_SOURCES = $(ZLIB_SRC)
+libgphobos_t_la_LIBTOOLFLAGS = --tag=D
+libgphobos_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
+libgphobos_t_la_LIBADD = $(PHOBOS_TEST_LOBJECTS) $(ZLIB_LIB) \
     ../libdruntime/libgdruntime.la
 
-EXTRA_libgphobos2_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
+EXTRA_libgphobos_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
 
 # For unittest
 unittest_SOURCES = ../libdruntime/test_runner.d
 unittest_LIBTOOLFLAGS = --tag=D
 unittest_LDFLAGS = -Xcompiler -nophoboslib -shared
-unittest_LDADD = libgphobos2_t.la ../libdruntime/libgdruntime.la -lcurl
+unittest_LDADD = libgphobos_t.la ../libdruntime/libgdruntime.la -lcurl
 
 # Zlib sources when not using system libz
 ZLIB_CSOURCES = $(top_srcdir)/../zlib/adler32.c $(top_srcdir)/../zlib/compress.c \
@@ -909,10 +844,10 @@ std/c/windows/com.lo: std/c/windows/$(am__dirstamp)
 std/c/windows/stat.lo: std/c/windows/$(am__dirstamp)
 std/c/windows/windows.lo: std/c/windows/$(am__dirstamp)
 std/c/windows/winsock.lo: std/c/windows/$(am__dirstamp)
-libgphobos2.la: $(libgphobos2_la_OBJECTS) $(libgphobos2_la_DEPENDENCIES) $(EXTRA_libgphobos2_la_DEPENDENCIES) 
-	$(libgphobos2_la_LINK) -rpath $(toolexeclibdir) $(libgphobos2_la_OBJECTS) $(libgphobos2_la_LIBADD) $(LIBS)
-libgphobos2_t.la: $(libgphobos2_t_la_OBJECTS) $(libgphobos2_t_la_DEPENDENCIES) $(EXTRA_libgphobos2_t_la_DEPENDENCIES) 
-	$(libgphobos2_t_la_LINK) $(am_libgphobos2_t_la_rpath) $(libgphobos2_t_la_OBJECTS) $(libgphobos2_t_la_LIBADD) $(LIBS)
+libgphobos.la: $(libgphobos_la_OBJECTS) $(libgphobos_la_DEPENDENCIES) $(EXTRA_libgphobos_la_DEPENDENCIES) 
+	$(libgphobos_la_LINK) -rpath $(toolexeclibdir) $(libgphobos_la_OBJECTS) $(libgphobos_la_LIBADD) $(LIBS)
+libgphobos_t.la: $(libgphobos_t_la_OBJECTS) $(libgphobos_t_la_DEPENDENCIES) $(EXTRA_libgphobos_t_la_DEPENDENCIES) 
+	$(libgphobos_t_la_LINK) $(am_libgphobos_t_la_rpath) $(libgphobos_t_la_OBJECTS) $(libgphobos_t_la_LIBADD) $(LIBS)
 
 clean-checkPROGRAMS:
 	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
@@ -1221,95 +1156,95 @@ distclean-compile:
 .c.lo:
 	$(LTCOMPILE) -c -o $@ $<
 
-libgphobos2_la-adler32.lo: $(top_srcdir)/../zlib/adler32.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-adler32.lo `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c
+libgphobos_la-adler32.lo: $(top_srcdir)/../zlib/adler32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-adler32.lo `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c
 
-libgphobos2_la-compress.lo: $(top_srcdir)/../zlib/compress.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-compress.lo `test -f '$(top_srcdir)/../zlib/compress.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/compress.c
+libgphobos_la-compress.lo: $(top_srcdir)/../zlib/compress.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-compress.lo `test -f '$(top_srcdir)/../zlib/compress.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/compress.c
 
-libgphobos2_la-crc32.lo: $(top_srcdir)/../zlib/crc32.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-crc32.lo `test -f '$(top_srcdir)/../zlib/crc32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/crc32.c
+libgphobos_la-crc32.lo: $(top_srcdir)/../zlib/crc32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-crc32.lo `test -f '$(top_srcdir)/../zlib/crc32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/crc32.c
 
-libgphobos2_la-deflate.lo: $(top_srcdir)/../zlib/deflate.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-deflate.lo `test -f '$(top_srcdir)/../zlib/deflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/deflate.c
+libgphobos_la-deflate.lo: $(top_srcdir)/../zlib/deflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-deflate.lo `test -f '$(top_srcdir)/../zlib/deflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/deflate.c
 
-libgphobos2_la-gzclose.lo: $(top_srcdir)/../zlib/gzclose.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzclose.lo `test -f '$(top_srcdir)/../zlib/gzclose.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzclose.c
+libgphobos_la-gzclose.lo: $(top_srcdir)/../zlib/gzclose.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-gzclose.lo `test -f '$(top_srcdir)/../zlib/gzclose.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzclose.c
 
-libgphobos2_la-gzlib.lo: $(top_srcdir)/../zlib/gzlib.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzlib.lo `test -f '$(top_srcdir)/../zlib/gzlib.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzlib.c
+libgphobos_la-gzlib.lo: $(top_srcdir)/../zlib/gzlib.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-gzlib.lo `test -f '$(top_srcdir)/../zlib/gzlib.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzlib.c
 
-libgphobos2_la-gzread.lo: $(top_srcdir)/../zlib/gzread.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzread.lo `test -f '$(top_srcdir)/../zlib/gzread.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzread.c
+libgphobos_la-gzread.lo: $(top_srcdir)/../zlib/gzread.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-gzread.lo `test -f '$(top_srcdir)/../zlib/gzread.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzread.c
 
-libgphobos2_la-gzwrite.lo: $(top_srcdir)/../zlib/gzwrite.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-gzwrite.lo `test -f '$(top_srcdir)/../zlib/gzwrite.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzwrite.c
+libgphobos_la-gzwrite.lo: $(top_srcdir)/../zlib/gzwrite.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-gzwrite.lo `test -f '$(top_srcdir)/../zlib/gzwrite.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzwrite.c
 
-libgphobos2_la-infback.lo: $(top_srcdir)/../zlib/infback.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-infback.lo `test -f '$(top_srcdir)/../zlib/infback.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/infback.c
+libgphobos_la-infback.lo: $(top_srcdir)/../zlib/infback.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-infback.lo `test -f '$(top_srcdir)/../zlib/infback.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/infback.c
 
-libgphobos2_la-inffast.lo: $(top_srcdir)/../zlib/inffast.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-inffast.lo `test -f '$(top_srcdir)/../zlib/inffast.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inffast.c
+libgphobos_la-inffast.lo: $(top_srcdir)/../zlib/inffast.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-inffast.lo `test -f '$(top_srcdir)/../zlib/inffast.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inffast.c
 
-libgphobos2_la-inflate.lo: $(top_srcdir)/../zlib/inflate.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-inflate.lo `test -f '$(top_srcdir)/../zlib/inflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inflate.c
+libgphobos_la-inflate.lo: $(top_srcdir)/../zlib/inflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-inflate.lo `test -f '$(top_srcdir)/../zlib/inflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inflate.c
 
-libgphobos2_la-inftrees.lo: $(top_srcdir)/../zlib/inftrees.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-inftrees.lo `test -f '$(top_srcdir)/../zlib/inftrees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inftrees.c
+libgphobos_la-inftrees.lo: $(top_srcdir)/../zlib/inftrees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-inftrees.lo `test -f '$(top_srcdir)/../zlib/inftrees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inftrees.c
 
-libgphobos2_la-trees.lo: $(top_srcdir)/../zlib/trees.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-trees.lo `test -f '$(top_srcdir)/../zlib/trees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/trees.c
+libgphobos_la-trees.lo: $(top_srcdir)/../zlib/trees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-trees.lo `test -f '$(top_srcdir)/../zlib/trees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/trees.c
 
-libgphobos2_la-uncompr.lo: $(top_srcdir)/../zlib/uncompr.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-uncompr.lo `test -f '$(top_srcdir)/../zlib/uncompr.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/uncompr.c
+libgphobos_la-uncompr.lo: $(top_srcdir)/../zlib/uncompr.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-uncompr.lo `test -f '$(top_srcdir)/../zlib/uncompr.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/uncompr.c
 
-libgphobos2_la-zutil.lo: $(top_srcdir)/../zlib/zutil.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_la-zutil.lo `test -f '$(top_srcdir)/../zlib/zutil.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/zutil.c
+libgphobos_la-zutil.lo: $(top_srcdir)/../zlib/zutil.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_la-zutil.lo `test -f '$(top_srcdir)/../zlib/zutil.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/zutil.c
 
-libgphobos2_t_la-adler32.lo: $(top_srcdir)/../zlib/adler32.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-adler32.lo `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c
+libgphobos_t_la-adler32.lo: $(top_srcdir)/../zlib/adler32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-adler32.lo `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c
 
-libgphobos2_t_la-compress.lo: $(top_srcdir)/../zlib/compress.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-compress.lo `test -f '$(top_srcdir)/../zlib/compress.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/compress.c
+libgphobos_t_la-compress.lo: $(top_srcdir)/../zlib/compress.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-compress.lo `test -f '$(top_srcdir)/../zlib/compress.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/compress.c
 
-libgphobos2_t_la-crc32.lo: $(top_srcdir)/../zlib/crc32.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-crc32.lo `test -f '$(top_srcdir)/../zlib/crc32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/crc32.c
+libgphobos_t_la-crc32.lo: $(top_srcdir)/../zlib/crc32.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-crc32.lo `test -f '$(top_srcdir)/../zlib/crc32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/crc32.c
 
-libgphobos2_t_la-deflate.lo: $(top_srcdir)/../zlib/deflate.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-deflate.lo `test -f '$(top_srcdir)/../zlib/deflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/deflate.c
+libgphobos_t_la-deflate.lo: $(top_srcdir)/../zlib/deflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-deflate.lo `test -f '$(top_srcdir)/../zlib/deflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/deflate.c
 
-libgphobos2_t_la-gzclose.lo: $(top_srcdir)/../zlib/gzclose.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzclose.lo `test -f '$(top_srcdir)/../zlib/gzclose.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzclose.c
+libgphobos_t_la-gzclose.lo: $(top_srcdir)/../zlib/gzclose.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-gzclose.lo `test -f '$(top_srcdir)/../zlib/gzclose.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzclose.c
 
-libgphobos2_t_la-gzlib.lo: $(top_srcdir)/../zlib/gzlib.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzlib.lo `test -f '$(top_srcdir)/../zlib/gzlib.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzlib.c
+libgphobos_t_la-gzlib.lo: $(top_srcdir)/../zlib/gzlib.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-gzlib.lo `test -f '$(top_srcdir)/../zlib/gzlib.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzlib.c
 
-libgphobos2_t_la-gzread.lo: $(top_srcdir)/../zlib/gzread.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzread.lo `test -f '$(top_srcdir)/../zlib/gzread.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzread.c
+libgphobos_t_la-gzread.lo: $(top_srcdir)/../zlib/gzread.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-gzread.lo `test -f '$(top_srcdir)/../zlib/gzread.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzread.c
 
-libgphobos2_t_la-gzwrite.lo: $(top_srcdir)/../zlib/gzwrite.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-gzwrite.lo `test -f '$(top_srcdir)/../zlib/gzwrite.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzwrite.c
+libgphobos_t_la-gzwrite.lo: $(top_srcdir)/../zlib/gzwrite.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-gzwrite.lo `test -f '$(top_srcdir)/../zlib/gzwrite.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/gzwrite.c
 
-libgphobos2_t_la-infback.lo: $(top_srcdir)/../zlib/infback.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-infback.lo `test -f '$(top_srcdir)/../zlib/infback.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/infback.c
+libgphobos_t_la-infback.lo: $(top_srcdir)/../zlib/infback.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-infback.lo `test -f '$(top_srcdir)/../zlib/infback.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/infback.c
 
-libgphobos2_t_la-inffast.lo: $(top_srcdir)/../zlib/inffast.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-inffast.lo `test -f '$(top_srcdir)/../zlib/inffast.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inffast.c
+libgphobos_t_la-inffast.lo: $(top_srcdir)/../zlib/inffast.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-inffast.lo `test -f '$(top_srcdir)/../zlib/inffast.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inffast.c
 
-libgphobos2_t_la-inflate.lo: $(top_srcdir)/../zlib/inflate.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-inflate.lo `test -f '$(top_srcdir)/../zlib/inflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inflate.c
+libgphobos_t_la-inflate.lo: $(top_srcdir)/../zlib/inflate.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-inflate.lo `test -f '$(top_srcdir)/../zlib/inflate.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inflate.c
 
-libgphobos2_t_la-inftrees.lo: $(top_srcdir)/../zlib/inftrees.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-inftrees.lo `test -f '$(top_srcdir)/../zlib/inftrees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inftrees.c
+libgphobos_t_la-inftrees.lo: $(top_srcdir)/../zlib/inftrees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-inftrees.lo `test -f '$(top_srcdir)/../zlib/inftrees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/inftrees.c
 
-libgphobos2_t_la-trees.lo: $(top_srcdir)/../zlib/trees.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-trees.lo `test -f '$(top_srcdir)/../zlib/trees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/trees.c
+libgphobos_t_la-trees.lo: $(top_srcdir)/../zlib/trees.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-trees.lo `test -f '$(top_srcdir)/../zlib/trees.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/trees.c
 
-libgphobos2_t_la-uncompr.lo: $(top_srcdir)/../zlib/uncompr.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-uncompr.lo `test -f '$(top_srcdir)/../zlib/uncompr.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/uncompr.c
+libgphobos_t_la-uncompr.lo: $(top_srcdir)/../zlib/uncompr.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-uncompr.lo `test -f '$(top_srcdir)/../zlib/uncompr.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/uncompr.c
 
-libgphobos2_t_la-zutil.lo: $(top_srcdir)/../zlib/zutil.c
-	$(LIBTOOL)  --tag=CC $(libgphobos2_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos2_t_la-zutil.lo `test -f '$(top_srcdir)/../zlib/zutil.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/zutil.c
+libgphobos_t_la-zutil.lo: $(top_srcdir)/../zlib/zutil.c
+	$(LIBTOOL)  --tag=CC $(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgphobos_t_la-zutil.lo `test -f '$(top_srcdir)/../zlib/zutil.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/zutil.c
 
 adler32.o: $(top_srcdir)/../zlib/adler32.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o adler32.o `test -f '$(top_srcdir)/../zlib/adler32.c' || echo '$(srcdir)/'`$(top_srcdir)/../zlib/adler32.c

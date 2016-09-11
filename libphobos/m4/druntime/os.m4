@@ -114,6 +114,7 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
 # and set DRUNTIME_OS_ARM_EABI_UNWINDER conditional.
 AC_DEFUN([DRUNTIME_OS_ARM_EABI_UNWINDER],
 [
+  AC_LANG_PUSH([C])
   AC_MSG_CHECKING([for ARM unwinder])
   AC_TRY_COMPILE([#include <unwind.h>],[
   #if __ARM_EABI_UNWINDER__
@@ -126,4 +127,33 @@ AC_DEFUN([DRUNTIME_OS_ARM_EABI_UNWINDER],
      DCFG_ARM_EABI_UNWINDER=true])
   AC_SUBST(DCFG_ARM_EABI_UNWINDER)
   AM_CONDITIONAL([DRUNTIME_OS_ARM_EABI_UNWINDER], [test "$DCFG_ARM_EABI_UNWINDER" = "true"])
+  AC_LANG_POP([C])
+])
+
+
+# DRUNTIME_OS_MINFO_BRACKETING
+# ----------------------------
+# Check if the linker provides __start_minfo and __stop_minfo symbols and
+# substitute DCFG_MINFO_BRACKETING.
+AC_DEFUN([DRUNTIME_OS_MINFO_BRACKETING],
+[
+  AC_LANG_PUSH([C])
+  AC_MSG_CHECKING([for minfo section bracketing])
+  AC_LINK_IFELSE([
+    void* module_info_ptr __attribute__((section ("minfo")));
+    extern void* __start_minfo __attribute__((visibility ("hidden")));
+    extern void* __stop_minfo __attribute__((visibility ("hidden")));
+
+    int main()
+    {
+        // Never run, just to prevent compiler from optimizing access
+        return &__start_minfo == &__stop_minfo;
+    }
+  ],
+    [AC_MSG_RESULT([yes])
+     DCFG_MINFO_BRACKETING=true],
+    [AC_MSG_RESULT([no])
+     DCFG_MINFO_BRACKETING=false])
+  AC_SUBST(DCFG_MINFO_BRACKETING)
+  AC_LANG_POP([C])
 ])

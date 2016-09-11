@@ -65,13 +65,16 @@ endif
 
 ALL_DRUNTIME_SOURCES = $(ALL_DRUNTIME_COMPILE_DSOURCES) $(DRUNTIME_CSOURCES) \
 	$(DRUNTIME_SSOURCES)
-DRUNTIME_TEST_LOBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.lo)
+REAL_DRUNTIME_TEST_LOBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.lo)
 REAL_DRUNTIME_TEST_OBJECTS  = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.o)
 # Workaround issue #
 DRUNTIME_TEST_OBJECTS  = $(filter-out rt/util/typeinfo.t.o \
 	core/internal/convert.t.o, $(REAL_DRUNTIME_TEST_OBJECTS)) \
 	rt/util/typeinfo.o core/internal/convert.o
 
+DRUNTIME_TEST_LOBJECTS  = $(filter-out rt/util/typeinfo.t.lo \
+	core/internal/convert.t.lo, $(REAL_DRUNTIME_TEST_LOBJECTS)) \
+	rt/util/typeinfo.lo core/internal/convert.lo
 
 
 # Main library build definitions
@@ -87,9 +90,8 @@ endif
 toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
 libgdruntime_la_LIBTOOLFLAGS = --tag=D
-libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER) \
-    -static
-libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
+libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib $(DRUNTIME_VER_FLAG)
+libgdruntime_la_LIBADD = $(BACKTRACE_LIB) $(LIBADD_DLOPEN)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
@@ -105,7 +107,8 @@ libgdruntime_t_la_LIBTOOLFLAGS = --tag=D
 # Automake by default does not generate shared libs for non-installed
 # libraries. Use -rpath to force shared lib generation.
 libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
-libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
+libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB) \
+     $(LIBADD_DLOPEN)
 EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest
@@ -167,21 +170,24 @@ DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
 	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
 	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
 	rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d \
-	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/switch_.d rt/tlsgc.d \
-	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
-	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
-	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
-	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
-	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
-	rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d \
-	rt/typeinfo/ti_dchar.d rt/typeinfo/ti_delegate.d \
-	rt/typeinfo/ti_double.d rt/typeinfo/ti_float.d \
-	rt/typeinfo/ti_idouble.d rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d \
-	rt/typeinfo/ti_ireal.d rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d \
-	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
-	rt/typeinfo/ti_ucent.o rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d \
-	rt/typeinfo/ti_ushort.d rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d \
-	rt/util/array.d rt/util/container/array.d rt/util/container/common.d \
+	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
+	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx.d \
+	rt/sections_solaris.d rt/sections_win32.d rt/sections_win64.d \
+	rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d \
+	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
+	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
+	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
+	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
+	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
+	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
+	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
+	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
+	rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d rt/typeinfo/ti_real.d \
+	rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d rt/typeinfo/ti_ucent.d \
+	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
+	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
+	rt/util/container/array.d rt/util/container/common.d \
 	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
 	rt/util/random.d rt/util/string.d rt/util/typeinfo.d rt/util/utf.d
 
@@ -251,4 +257,4 @@ DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 
 DRUNTIME_SSOURCES = core/threadasm.S
 
-DRUNTIME_CSOURCES = core/stdc/errno_.c
+DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
