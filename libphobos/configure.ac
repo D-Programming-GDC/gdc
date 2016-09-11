@@ -75,8 +75,9 @@ AC_SUBST(CFLAGS_FOR_BUILD)
 # Enable libtool
 LT_INIT
 AM_PROG_LIBTOOL
+LT_LIB_DLLOAD
 WITH_LOCAL_DRUNTIME([LT_LANG([D])], [])
-AM_CONDITIONAL([ENABLE_SHARED], [false])
+AM_CONDITIONAL([ENABLE_SHARED], [test "$enable_shared" = "yes"])
 AM_CONDITIONAL([ENABLE_STATIC], [test "$enable_static" = "yes"])
 
 
@@ -88,11 +89,12 @@ DRUNTIME_OS_UNIX
 DRUNTIME_OS_SOURCES
 DRUNTIME_OS_THREAD_MODEL
 DRUNTIME_OS_ARM_EABI_UNWINDER
+DRUNTIME_OS_MINFO_BRACKETING
 DRUNTIME_LIBRARIES_THREAD
 DRUNTIME_LIBRARIES_ZLIB
 DRUNTIME_LIBBACKTRACE_SETUP
 DRUNTIME_INSTALL_DIRECTORIES
-DRUNTIME_VERSION
+DRUNTIME_LIB_VERSIONS
 
 # Set default flags (after DRUNTIME_WERROR!)
 if test -z "$DFLAGS"; then
@@ -130,7 +132,7 @@ AC_SUBST(DL_LIBS)
 # append it here.  Only modify Makefiles that have just been created.
 #
 # Also, get rid of this simulated-VPATH thing that automake does.
-AC_CONFIG_FILES(AC_FOREACH([DIR], src libdruntime, [DIR/Makefile ]),
+AC_CONFIG_FILES(AC_FOREACH([DIR], src libdruntime testsuite, [DIR/Makefile ]),
   [cat > vpsed$$ << \_EOF
 s!`test -f '$<' || echo '$(srcdir)/'`!!
 _EOF

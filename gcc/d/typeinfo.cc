@@ -55,35 +55,10 @@ public:
     this->init_ = NULL;
   }
 
-  // Return the field identified by IDENT inside TYPE.
-  tree find_field(tree ident, tree type)
-  {
-    tree fields = TYPE_FIELDS (type);
-
-    for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
-      {
-	if (DECL_NAME (field) == NULL_TREE)
-	  {
-	    // Search nesting anonymous structs and unions.
-	    if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
-		&& ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	      {
-		tree vfield = this->find_field(ident, TREE_TYPE (field));
-		if (vfield != NULL_TREE)
-		  return vfield;
-	      }
-	  }
-	else if (DECL_NAME (field) == ident)
-	  return field;
-      }
-
-    return NULL_TREE;
-  }
-
   // Find the field identified by NAME and add its VALUE to the constructor.
   void set_field(const char *name, tree value)
   {
-    tree field = this->find_field(get_identifier(name), this->type_);
+    tree field = find_aggregate_field(get_identifier(name), this->type_);
 
     if (field != NULL_TREE)
       CONSTRUCTOR_APPEND_ELT (this->init_, field, value);

@@ -785,3 +785,7 @@ __gdc_personality_impl(int iversion,
   return _URC_INSTALL_CONTEXT;
 }
 
+// Not used in GDC but declaration required by rt/sections.d
+struct FuncTable
+{
+}
