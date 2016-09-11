@@ -605,6 +605,8 @@ LIBOBJS
 DL_LIBS
 srcdir
 DFLAGSX
+PHOBOS_VER_FLAG
+DRUNTIME_VER_FLAG
 gdc_include_dir
 toolexeclibdir
 toolexecdir
@@ -617,6 +619,7 @@ BACKTRACE_SUPPORTED_TRUE
 HAVE_DLADDR
 DRUNTIME_ZLIB_SYSTEM_FALSE
 DRUNTIME_ZLIB_SYSTEM_TRUE
+DCFG_MINFO_BRACKETING
 DRUNTIME_OS_ARM_EABI_UNWINDER_FALSE
 DRUNTIME_OS_ARM_EABI_UNWINDER_TRUE
 DCFG_ARM_EABI_UNWINDER
@@ -643,6 +646,12 @@ ENABLE_STATIC_FALSE
 ENABLE_STATIC_TRUE
 ENABLE_SHARED_FALSE
 ENABLE_SHARED_TRUE
+LIBADD_DL
+LT_DLPREOPEN
+LIBADD_DLD_LINK
+LIBADD_SHL_LOAD
+LIBADD_DLOPEN
+LT_DLLOADERS
 CPP
 OTOOL64
 OTOOL
@@ -751,8 +760,7 @@ PACKAGE_VERSION
 PACKAGE_TARNAME
 PACKAGE_NAME
 PATH_SEPARATOR
-SHELL
-RELEASE_VER'
+SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
@@ -1817,6 +1825,51 @@ $as_echo "$ac_res" >&6; }
   eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
 
 } # ac_fn_c_check_func
+
+# ac_fn_c_check_decl LINENO SYMBOL VAR
+# ------------------------------------
+# Tests whether SYMBOL is declared, setting cache variable VAR accordingly.
+ac_fn_c_check_decl ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  as_decl_name=`echo $2|sed 's/ *(.*//'`
+  as_decl_use=`echo $2|sed -e 's/(/((/' -e 's/)/) 0&/' -e 's/,/) 0& (/g'`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $as_decl_name is declared" >&5
+$as_echo_n "checking whether $as_decl_name is declared... " >&6; }
+if { as_var=$3; eval "test \"\${$as_var+set}\" = set"; }; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main ()
+{
+#ifndef $as_decl_name
+#ifdef __cplusplus
+  (void) $as_decl_use;
+#else
+  (void) $as_decl_name;
+#endif
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  eval "$3=yes"
+else
+  eval "$3=no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+eval ac_res=\$$3
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
+
+} # ac_fn_c_check_decl
 
 # ac_fn_c_check_header_mongrel LINENO HEADER VAR INCLUDES
 # -------------------------------------------------------
@@ -4473,7 +4526,7 @@ fi
 
 
   gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
+  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
 
   ac_ext=d
 ac_compile='$GDC -c $DFLAGS conftest.$ac_ext >&5'
@@ -11142,7 +11195,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11145 "configure"
+#line 11198 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11248,7 +11301,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11251 "configure"
+#line 11304 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11487,9 +11540,330 @@ CC="$lt_save_CC"
 
 
 
+LT_DLLOADERS=
+
+
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+lt_dlload_save_LIBS=$LIBS
+
+LIBADD_DLOPEN=
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing dlopen" >&5
+$as_echo_n "checking for library containing dlopen... " >&6; }
+if test "${ac_cv_search_dlopen+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dlopen ();
+int
+main ()
+{
+return dlopen ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' dl; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_dlopen=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if test "${ac_cv_search_dlopen+set}" = set; then :
+  break
+fi
+done
+if test "${ac_cv_search_dlopen+set}" = set; then :
+
+else
+  ac_cv_search_dlopen=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_dlopen" >&5
+$as_echo "$ac_cv_search_dlopen" >&6; }
+ac_res=$ac_cv_search_dlopen
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+$as_echo "#define HAVE_LIBDL 1" >>confdefs.h
+
+	if test "$ac_cv_search_dlopen" != "none required"; then
+	  LIBADD_DLOPEN=-ldl
+	fi
+	libltdl_cv_lib_dl_dlopen=yes
+	LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dlopen.la"
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#if HAVE_DLFCN_H
+#  include <dlfcn.h>
+#endif
+
+int
+main ()
+{
+dlopen(0, 0);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+$as_echo "#define HAVE_LIBDL 1" >>confdefs.h
+
+	    libltdl_cv_func_dlopen=yes
+	    LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dlopen.la"
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dlopen in -lsvld" >&5
+$as_echo_n "checking for dlopen in -lsvld... " >&6; }
+if test "${ac_cv_lib_svld_dlopen+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lsvld  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dlopen ();
+int
+main ()
+{
+return dlopen ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_svld_dlopen=yes
+else
+  ac_cv_lib_svld_dlopen=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_svld_dlopen" >&5
+$as_echo "$ac_cv_lib_svld_dlopen" >&6; }
+if test "x$ac_cv_lib_svld_dlopen" = x""yes; then :
+
+$as_echo "#define HAVE_LIBDL 1" >>confdefs.h
+
+	        LIBADD_DLOPEN=-lsvld libltdl_cv_func_dlopen=yes
+		LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dlopen.la"
+fi
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+
+if test yes = "$libltdl_cv_func_dlopen" || test yes = "$libltdl_cv_lib_dl_dlopen"
+then
+  lt_save_LIBS=$LIBS
+  LIBS="$LIBS $LIBADD_DLOPEN"
+  for ac_func in dlerror
+do :
+  ac_fn_c_check_func "$LINENO" "dlerror" "ac_cv_func_dlerror"
+if test "x$ac_cv_func_dlerror" = x""yes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_DLERROR 1
+_ACEOF
+
+fi
+done
+
+  LIBS=$lt_save_LIBS
+fi
+
+
+LIBADD_SHL_LOAD=
+ac_fn_c_check_func "$LINENO" "shl_load" "ac_cv_func_shl_load"
+if test "x$ac_cv_func_shl_load" = x""yes; then :
+
+$as_echo "#define HAVE_SHL_LOAD 1" >>confdefs.h
+
+	LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}shl_load.la"
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for shl_load in -ldld" >&5
+$as_echo_n "checking for shl_load in -ldld... " >&6; }
+if test "${ac_cv_lib_dld_shl_load+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldld  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char shl_load ();
+int
+main ()
+{
+return shl_load ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_dld_shl_load=yes
+else
+  ac_cv_lib_dld_shl_load=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dld_shl_load" >&5
+$as_echo "$ac_cv_lib_dld_shl_load" >&6; }
+if test "x$ac_cv_lib_dld_shl_load" = x""yes; then :
+
+$as_echo "#define HAVE_SHL_LOAD 1" >>confdefs.h
+
+	    LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}shl_load.la"
+	    LIBADD_SHL_LOAD=-ldld
+fi
+
+fi
+
+
+
+case $host_os in
+darwin[1567].*)
+# We only want this for pre-Mac OS X 10.4.
+  ac_fn_c_check_func "$LINENO" "_dyld_func_lookup" "ac_cv_func__dyld_func_lookup"
+if test "x$ac_cv_func__dyld_func_lookup" = x""yes; then :
+
+$as_echo "#define HAVE_DYLD 1" >>confdefs.h
+
+	LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dyld.la"
+fi
+
+  ;;
+beos*)
+  LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}load_add_on.la"
+  ;;
+cygwin* | mingw* | pw32*)
+  ac_fn_c_check_decl "$LINENO" "cygwin_conv_path" "ac_cv_have_decl_cygwin_conv_path" "#include <sys/cygwin.h>
+"
+if test "x$ac_cv_have_decl_cygwin_conv_path" = x""yes; then :
+  ac_have_decl=1
+else
+  ac_have_decl=0
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_DECL_CYGWIN_CONV_PATH $ac_have_decl
+_ACEOF
+
+  LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}loadlibrary.la"
+  ;;
+esac
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dld_link in -ldld" >&5
+$as_echo_n "checking for dld_link in -ldld... " >&6; }
+if test "${ac_cv_lib_dld_dld_link+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldld  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dld_link ();
+int
+main ()
+{
+return dld_link ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_dld_dld_link=yes
+else
+  ac_cv_lib_dld_dld_link=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dld_dld_link" >&5
+$as_echo "$ac_cv_lib_dld_dld_link" >&6; }
+if test "x$ac_cv_lib_dld_dld_link" = x""yes; then :
+
+$as_echo "#define HAVE_DLD 1" >>confdefs.h
+
+		LT_DLLOADERS="$LT_DLLOADERS ${lt_dlopen_dir+$lt_dlopen_dir/}dld_link.la"
+fi
+
+
+
+
+LT_DLPREOPEN=
+if test -n "$LT_DLLOADERS"
+then
+  for lt_loader in $LT_DLLOADERS; do
+    LT_DLPREOPEN="$LT_DLPREOPEN-dlpreopen $lt_loader "
+  done
+
+$as_echo "#define HAVE_LIBDLLOADER 1" >>confdefs.h
+
+fi
+
+
+LIBADD_DL="$LIBADD_DLOPEN $LIBADD_SHL_LOAD"
+
+
+LIBS=$lt_dlload_save_LIBS
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+
 
   gdc_save_DFLAGS=$DFLAGS
-  DFLAGS="-nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
+  DFLAGS="-fno-emit-moduleinfo -nostdinc -I $phobos_cv_abs_srcdir/libdruntime  $DFLAGS"
 
 
 # Source file extension for D test sources.
@@ -11967,6 +12341,7 @@ fi
 
 
 
+            lt_prog_compiler_pic_D="$lt_prog_compiler_pic_D -fversion=Shared"
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking if $compiler supports -c -o file.$ac_objext" >&5
 $as_echo_n "checking if $compiler supports -c -o file.$ac_objext... " >&6; }
 if test "${lt_cv_prog_compiler_c_o_D+set}" = set; then :
@@ -13331,7 +13706,7 @@ DFLAGS=$lt_save_DFLAGS
 
   DFLAGS=$gdc_save_DFLAGS
 
- if false; then
+ if test "$enable_shared" = "yes"; then
   ENABLE_SHARED_TRUE=
   ENABLE_SHARED_FALSE='#'
 else
@@ -13526,6 +13901,12 @@ esac
 
 
 
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ARM unwinder" >&5
 $as_echo_n "checking for ARM unwinder... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -13561,6 +13942,54 @@ else
   DRUNTIME_OS_ARM_EABI_UNWINDER_TRUE='#'
   DRUNTIME_OS_ARM_EABI_UNWINDER_FALSE=
 fi
+
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for minfo section bracketing" >&5
+$as_echo_n "checking for minfo section bracketing... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+    void* module_info_ptr __attribute__((section ("minfo")));
+    extern void* __start_minfo __attribute__((visibility ("hidden")));
+    extern void* __stop_minfo __attribute__((visibility ("hidden")));
+
+    int main()
+    {
+        // Never run, just to prevent compiler from optimizing access
+        return &__start_minfo == &__stop_minfo;
+    }
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+     DCFG_MINFO_BRACKETING=true
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+     DCFG_MINFO_BRACKETING=false
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
@@ -13801,11 +14230,19 @@ fi
 
 
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for phobos source version" >&5
-$as_echo_n "checking for phobos source version... " >&6; }
-  RELEASE_VER=`cat $srcdir/VERSION`
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RELEASE_VER" >&5
-$as_echo "$RELEASE_VER" >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for druntime version flag" >&5
+$as_echo_n "checking for druntime version flag... " >&6; }
+  DRUNTIME_VER_FLAG=`cat $srcdir/DRUNTIME_VERSION`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $DRUNTIME_VER_FLAG" >&5
+$as_echo "$DRUNTIME_VER_FLAG" >&6; }
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for phobos version flag" >&5
+$as_echo_n "checking for phobos version flag... " >&6; }
+  PHOBOS_VER_FLAG=`cat $srcdir/PHOBOS_VERSION`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PHOBOS_VER_FLAG" >&5
+$as_echo "$PHOBOS_VER_FLAG" >&6; }
+
+
 
 # Set default flags (after DRUNTIME_WERROR!)
 if test -z "$DFLAGS"; then
@@ -13888,7 +14325,7 @@ fi
 # append it here.  Only modify Makefiles that have just been created.
 #
 # Also, get rid of this simulated-VPATH thing that automake does.
-ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile"
+ac_config_files="$ac_config_files src/Makefile libdruntime/Makefile testsuite/Makefile"
 
 
 ac_config_files="$ac_config_files Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d"
@@ -15006,6 +15443,7 @@ do
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "libdruntime/Makefile") CONFIG_FILES="$CONFIG_FILES libdruntime/Makefile" ;;
+    "testsuite/Makefile") CONFIG_FILES="$CONFIG_FILES testsuite/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "libdruntime/gcc/config.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/config.d" ;;
     "libdruntime/gcc/libbacktrace.d") CONFIG_FILES="$CONFIG_FILES libdruntime/gcc/libbacktrace.d" ;;
@@ -16395,6 +16833,17 @@ _EOF
    { ml_norecursion=; unset ml_norecursion;}
  ;;
     "libdruntime/Makefile":F) cat > vpsed$$ << \_EOF
+s!`test -f '$<' || echo '$(srcdir)/'`!!
+_EOF
+   sed -f vpsed$$ $ac_file > tmp$$
+   mv tmp$$ $ac_file
+   rm vpsed$$
+   echo 'MULTISUBDIR =' >> $ac_file
+   ml_norecursion=yes
+   . ${multi_basedir}/config-ml.in
+   { ml_norecursion=; unset ml_norecursion;}
+ ;;
+    "testsuite/Makefile":F) cat > vpsed$$ << \_EOF
 s!`test -f '$<' || echo '$(srcdir)/'`!!
 _EOF
    sed -f vpsed$$ $ac_file > tmp$$

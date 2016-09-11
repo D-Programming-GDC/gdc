@@ -17,6 +17,7 @@ module rt.dmain2;
 private
 {
     import rt.memory;
+    import rt.sections;
     import rt.util.string;
     import core.atomic;
     import core.stdc.stddef;
@@ -168,6 +169,7 @@ extern (C) int rt_init()
 
     try
     {
+        initSections();
         // this initializes mono time before anything else to allow usage
         // in other druntime systems.
         _d_initMonoTime();
@@ -202,6 +204,7 @@ extern (C) int rt_term()
         thread_joinAll();
         rt_moduleDtor();
         gc_term();
+        finiSections();
         return 1;
     }
     catch (Throwable t)
