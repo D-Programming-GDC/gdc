@@ -280,14 +280,14 @@ ArrayInitializer::toDt()
       length++;
     }
 
-  tree sadefault = NULL_TREE;
+  Expression *edefault;
   if (tn->ty == Tsarray)
-    tn->toDt (&sadefault);
+    edefault = tn->defaultInitLiteral(loc);
   else
-    {
-      Expression *edefault = tb->nextOf()->defaultInit();
-      dt_cons(&sadefault, build_expr(edefault, true));
-    }
+    edefault = tb->nextOf()->defaultInit();
+
+  tree sadefault = NULL_TREE;
+  dt_cons(&sadefault, build_expr(edefault, true));
 
   tree dt = NULL_TREE;
   for (size_t i = 0; i < dim; i++)
@@ -423,7 +423,15 @@ ClassReferenceExp::toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 		}
 	    }
 	  else if (v->offset >= offset)
-	    v->type->toDt(&dt);
+	    {
+	      if (v->type->ty == Tstruct)
+		((TypeStruct *) v->type)->sym->toDt(&dt);
+	      else
+		{
+		  Expression *e = v->type->defaultInitLiteral(loc);
+		  dt_cons(&dt, build_expr(e, true));
+		}
+	    }
 
 	  if (dt != NULL_TREE)
 	    {
@@ -474,8 +482,13 @@ ClassReferenceExp::toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 		    {
 		      if (v->init)
 			fdt = v->init->toDt();
+		      else if (v->type->ty == Tstruct)
+			((TypeStruct *) v->type)->sym->toDt(&fdt);
 		      else
-			v->type->toDt(&fdt);
+			{
+			  Expression *e = v->type->defaultInitLiteral(loc);
+			  dt_cons(&fdt, build_expr(e, true));
+			}
 		    }
 
 		  dt_chainon(pdt, fdt);
@@ -579,7 +592,16 @@ ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 	    }
 	}
       else if (v->offset >= offset)
-	v->type->toDt(&dt);
+	{
+	  if (v->type->ty == Tstruct)
+	    ((TypeStruct *) v->type)->sym->toDt(&dt);
+	  else
+	    {
+	      Expression *e = v->type->defaultInitLiteral(loc);
+	      dt_cons(&dt, build_expr(e, true));
+	    }
+	}
+
 
       if (dt != NULL_TREE)
 	{
@@ -640,27 +662,6 @@ StructDeclaration::toDt(dt_t **pdt)
 // Generate the data for the default initialiser of the type.
 
 dt_t **
-Type::toDt (dt_t **pdt)
-{
-  Expression *e = defaultInitLiteral(Loc());
-  return dt_cons(pdt, build_expr(e, true));
-}
-
-dt_t **
-TypeVector::toDt (dt_t **pdt)
-{
-  Expression *e = defaultInitLiteral(Loc());
-  return dt_cons(pdt, build_expr(e, true));
-}
-
-dt_t **
-TypeSArray::toDt (dt_t **pdt)
-{
-  Expression *e = defaultInitLiteral(Loc());
-  return dt_cons(pdt, build_expr(e, true));
-}
-
-dt_t **
 TypeSArray::toDtElem (dt_t **pdt, Expression *e)
 {
   dinteger_t len = dim->toInteger();
@@ -711,12 +712,5 @@ TypeSArray::toDtElem (dt_t **pdt, Expression *e)
       return dt_container (pdt, this, dt);
     }
 
-  return pdt;
-}
-
-dt_t **
-TypeStruct::toDt (dt_t **pdt)
-{
-  sym->toDt (pdt);
   return pdt;
 }
