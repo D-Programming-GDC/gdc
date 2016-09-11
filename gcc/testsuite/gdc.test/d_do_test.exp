@@ -281,6 +281,7 @@ proc gdc-permute-options { options } {
 
 proc gdc-do-test { } {
     global TORTURE_OPTIONS
+    global SHARED_OPTION
     global srcdir subdir
     global dg-do-what-default
     global verbose
@@ -324,6 +325,9 @@ proc gdc-do-test { } {
         set imports [format "-I%s -I%s/imports" $imports $imports]
         set filename [dmd2dg $base $dir/$name.$ext]
 
+        if {$dir == "runnable"} {
+            append PERMUTE_ARGS " $SHARED_OPTION"
+        }
         set options [gdc-permute-options $PERMUTE_ARGS]
 
         switch $dir {

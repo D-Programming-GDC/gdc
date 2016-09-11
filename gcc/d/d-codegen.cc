@@ -4713,3 +4713,28 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
     }
 }
 
+// Find the field identified by identifier IDENT inside aggregate TYPE.
+tree
+find_aggregate_field(tree ident, tree type)
+{
+  tree fields = TYPE_FIELDS (type);
+
+  for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
+    {
+      if (DECL_NAME (field) == NULL_TREE)
+	{
+	  // Search nesting anonymous structs and unions.
+	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	    {
+	      tree vfield = find_aggregate_field(ident, TREE_TYPE (field));
+	      if (vfield != NULL_TREE)
+		return vfield;
+	    }
+	}
+      else if (DECL_NAME (field) == ident)
+	return field;
+    }
+
+  return NULL_TREE;
+}

@@ -30,3 +30,6 @@ enum ThreadModel
 }
 
 enum ThreadModel GNU_Thread_Model = ThreadModel.@DCFG_THREAD_MODEL@;
+
+// Whether the linker provides __start_minfo and __stop_minfo symbols
+enum Minfo_Bracketing = @DCFG_MINFO_BRACKETING@;

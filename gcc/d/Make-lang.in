@@ -51,7 +51,7 @@ D_TREE_H = $(TREE_H) $(D_DMD_H) d/intrinsics.def d/runtime.def d/d-tree.def \
     $(srcdir)/../include/hashtab.h $(srcdir)/../include/splay-tree.h
 
 # Name of phobos library
-D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos2\"
+D_LIBPHOBOS = -DLIBPHOBOS=\"gphobos\"
 
 # The name for selecting d in LANGUAGES.
 d: cc1d$(exeext)
