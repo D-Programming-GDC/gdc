@@ -13780,7 +13780,7 @@ else
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $druntime_cv_target_os" >&5
 $as_echo "$druntime_cv_target_os" >&6; }
-    if test -z "$phobos_cv_abs_srcdir"; then :
+    if test -z "$druntime_cv_target_os"; then :
   as_fn_error "can't detect target OS" "$LINENO" 5
 fi
 
