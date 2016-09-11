@@ -37,7 +37,7 @@ These official OS versions are not implemented:
  	  builtin_define ("_GNU_SOURCE");			\
      } while (0)
  
-+#undef TARGET_OS_D_BUILTINS 
++#undef TARGET_OS_D_BUILTINS
 +#define TARGET_OS_D_BUILTINS()					\
 +    do {							\
 +	if (OPTION_GLIBC)					\
@@ -70,7 +70,7 @@ These official OS versions are not implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/darwin.h
 +++ b/gcc/config/darwin.h
-@@ -933,4 +933,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
+@@ -934,4 +934,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
     fall-back default.  */
  #define DEF_MIN_OSX_VERSION "10.5"
  
@@ -99,7 +99,7 @@ These official OS versions are not implemented:
  
 --- a/gcc/config/gnu.h
 +++ b/gcc/config/gnu.h
-@@ -39,3 +39,11 @@ along with GCC.  If not, see <http://www.gnu.org/licenses/>.
+@@ -31,3 +31,11 @@ along with GCC.  If not, see <http://www.gnu.org/licenses/>.
  	builtin_assert ("system=unix");		\
  	builtin_assert ("system=posix");	\
      } while (0)
@@ -196,25 +196,6 @@ These official OS versions are not implemented:
  #define GNU_USER_DYNAMIC_LINKER        GLIBC_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER32      GLIBC_DYNAMIC_LINKER32
  #define GNU_USER_DYNAMIC_LINKER64      GLIBC_DYNAMIC_LINKER64
---- a/gcc/config/knetbsd-gnu.h
-+++ b/gcc/config/knetbsd-gnu.h
-@@ -30,6 +30,16 @@ along with GCC; see the file COPYING3.  If not see
-     }						\
-   while (0)
- 
-+#undef TARGET_OS_D_BUILTINS
-+#define TARGET_OS_D_BUILTINS()			\
-+  do						\
-+    {						\
-+      builtin_define ("NetBSD");		\
-+      builtin_define ("Posix");			\
-+      builtin_define ("GNU_GLibc");		\
-+    }						\
-+  while (0)
-+
- 
- #undef GNU_USER_DYNAMIC_LINKER
- #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
 --- a/gcc/config/kopensolaris-gnu.h
 +++ b/gcc/config/kopensolaris-gnu.h
 @@ -30,5 +30,15 @@ along with GCC; see the file COPYING3.  If not see
@@ -369,7 +350,7 @@ These official OS versions are not implemented:
  
 --- a/gcc/config/rs6000/linux64.h
 +++ b/gcc/config/rs6000/linux64.h
-@@ -388,6 +388,17 @@ extern int dot_symbols;
+@@ -391,6 +391,17 @@ extern int dot_symbols;
      }							\
    while (0)
  
