@@ -1,3 +1,13 @@
+2016-09-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (FuncDeclaration::toSymbol): Save current module decl
+	before calling function semantic.
+	* d-objfile.cc (FuncDeclaration::toObjFile): Likewise.
+
+2016-09-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc: Document and reformat file.
+
 2016-09-10  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-objfile.cc (setup_symbol_storage): Setup TREE_PUBLIC before

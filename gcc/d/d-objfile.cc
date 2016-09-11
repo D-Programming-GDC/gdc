@@ -1,5 +1,5 @@
 // d-objfile.cc -- D frontend for GCC.
-// Copyright (C) 2011-2015 Free Software Foundation, Inc.
+// Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -1153,8 +1153,11 @@ FuncDeclaration::toObjFile()
   // Ensure all semantic passes have ran.
   if (semanticRun < PASSsemantic3)
     {
+      Module *old_current_module_decl = current_module_decl;
+      current_module_decl = NULL;
       functionSemantic3();
       Module::runDeferredSemantic3();
+      current_module_decl = old_current_module_decl;
     }
 
   if (global.errors)
