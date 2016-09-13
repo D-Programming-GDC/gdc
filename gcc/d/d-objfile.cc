@@ -859,7 +859,15 @@ VarDeclaration::toObjFile()
 	    s->Sdt = init->toDt();
 	}
       else
-	type->toDt(&s->Sdt);
+	{
+	  if (type->ty == Tstruct)
+	    ((TypeStruct *) type)->sym->toDt(&s->Sdt);
+	  else
+	    {
+	      Expression *e = type->defaultInitLiteral(loc);
+	      dt_cons(&s->Sdt, build_expr(e, true));
+	    }
+	}
 
       // Frontend should have already caught this.
       gcc_assert (sz || type->toBasetype()->ty == Tsarray);

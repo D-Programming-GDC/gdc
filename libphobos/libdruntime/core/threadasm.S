@@ -565,7 +565,7 @@ CSYM(fiber_switchContext):
 
     // 'return' to complete switch
     ret
-#elif defined(__x86_64__)
+#elif defined(__x86_64__) && !defined(__ILP32__)
 .text
 .p2align 4
 .globl CSYM(fiber_switchContext)
@@ -594,5 +594,5 @@ CSYM(fiber_switchContext):
 
     // 'return' to complete switch
     ret
-#endif	// __x86_64__
+#endif	// __x86_64__ && !__ILP32__
 #endif	// posix
