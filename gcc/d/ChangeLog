@@ -1,5 +1,12 @@
 2016-09-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-todt.cc (Type::toDt): Remove function, inline into callers.
+	(TypeVector::toDt): Likewise.
+	(TypeSArray::toDt): Likewise.
+	(TypeStruct::toDt): Likewise.
+
+2016-09-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-decls.cc (FuncDeclaration::toSymbol): Save current module decl
 	before calling function semantic.
 	* d-objfile.cc (FuncDeclaration::toObjFile): Likewise.
