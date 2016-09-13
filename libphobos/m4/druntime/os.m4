@@ -46,7 +46,7 @@ AC_DEFUN([DRUNTIME_OS_DETECT],
   AC_CACHE_CHECK([[for target OS]],
     [[druntime_cv_target_os]],
     [[druntime_cv_target_os=`echo $target_os | sed 's/^\([A-Za-z_]+\)/\1/'`]])
-    AS_IF([[test -z "$phobos_cv_abs_srcdir"]],
+    AS_IF([[test -z "$druntime_cv_target_os"]],
       [AC_MSG_ERROR([[can't detect target OS]])],
       dnl fix vi syntax highlight bug. '
       [])
