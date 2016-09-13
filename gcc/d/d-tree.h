@@ -19,10 +19,25 @@
 #ifndef GCC_D_TREE_H
 #define GCC_D_TREE_H
 
+
 // gengtype doesn't support explicit pointers as template arguments
 #define TREE_H_FuncDeclaration_Ptr FuncDeclaration *
 #define TREE_H_VarDeclaration_Ptr VarDeclaration *
 #define TREE_H_Statement_Ptr Statement *
+
+// Usage of TREE_LANG_FLAG_?:
+// 0: METHOD_CALL_EXPR
+
+// Usage of TYPE_LANG_FLAG_?:
+// 0: TYPE_SHARED
+// 1: TYPE_IMAGINARY_FLOAT (in REAL_TYPE).
+//    ANON_AGGR_TYPE_P (in RECORD_TYPE, UNION_TYPE).
+// 2: CLASS_TYPE_P (in RECORD_TYPE).
+
+// Usage of DECL_LANG_FLAG_?:
+// 0: D_DECL_ONE_ONLY
+// 1: D_DECL_IS_TEMPLATE
+// 2: LABEL_VARIABLE_CASE (in LABEL_DECL)
 
 // Forward type declarations to avoid including unnecessary headers.
 class Dsymbol;
@@ -189,9 +204,13 @@ lang_tree_node
 #define METHOD_CALL_EXPR(NODE) \
   (TREE_LANG_FLAG_0 (NODE))
 
+// True if the type was declared 'shared'
+#define TYPE_SHARED(NODE) \
+  (TYPE_LANG_FLAG_0 (NODE))
+
 // True if the type is an imaginary float type.
 #define TYPE_IMAGINARY_FLOAT(NODE) \
-  (TYPE_LANG_FLAG_0 (TREE_CHECK ((NODE), REAL_TYPE)))
+  (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
 
 // True if the type is an anonymous record or union.
 #define ANON_AGGR_TYPE_P(NODE) \
@@ -200,10 +219,6 @@ lang_tree_node
 // True if the type is the underlying record for a class.
 #define CLASS_TYPE_P(NODE) \
   (TYPE_LANG_FLAG_2 (TREE_CHECK ((NODE), RECORD_TYPE)))
-
-// True if the type was declared 'shared'
-#define TYPE_SHARED(NODE) \
-  (TYPE_LANG_FLAG_3 (NODE))
 
 // True if the symbol should be made "link one only".  This is used to
 // defer calling make_decl_one_only() before the decl has been prepared.
@@ -319,7 +334,7 @@ extern void d_keep (tree);
 // In imports.cc
 extern tree build_import_decl (Dsymbol *);
 
-// In rtti.cc
+// In typeinfo.cc
 extern tree build_typeinfo (Type *);
 extern tree layout_typeinfo (TypeInfoDeclaration *);
 
