@@ -12,6 +12,21 @@ AC_SEARCH_LIBS([dlopen], [dl])
 ])
 
 
+# DRUNTIME_LIBRARIES_PLATFORM
+# -------------------------
+# Check for platform-specific library dependencies.
+AC_DEFUN([DRUNTIME_LIBRARIES_PLATFORM],
+[
+case ${target_os} in
+  mingw32*)
+      AC_SEARCH_LIBS([gethostbyname], [ws2_32])
+    ;;
+  *)
+    ;;
+esac
+])
+
+
 # DRUNTIME_LIBRARIES_THREAD
 # -------------------------
 # Allow specifying the thread library to link with or autodetect
