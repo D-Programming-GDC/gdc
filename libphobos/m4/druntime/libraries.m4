@@ -3,6 +3,15 @@
 #
 
 
+# DRUNTIME_LIBRARIES_DLOPEN
+# -----------------------
+# Check whether -ldl is required for dlopen.
+AC_DEFUN([DRUNTIME_LIBRARIES_DLOPEN],
+[
+AC_SEARCH_LIBS([dlopen], [dl])
+])
+
+
 # DRUNTIME_LIBRARIES_THREAD
 # -------------------------
 # Allow specifying the thread library to link with or autodetect
