@@ -99,7 +99,7 @@ EXTRA_libgphobos_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
 unittest_SOURCES = ../libdruntime/test_runner.d
 unittest_LIBTOOLFLAGS = --tag=D
 unittest_LDFLAGS = -Xcompiler -nophoboslib -shared
-unittest_LDADD = libgphobos_t.la ../libdruntime/libgdruntime.la -lcurl
+unittest_LDADD = libgphobos_t.la ../libdruntime/libgdruntime.la
 
 # Extra install and clean rules.
 # This does not delete the .libs/.t.o files, but deleting
