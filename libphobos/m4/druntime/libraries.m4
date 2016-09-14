@@ -25,6 +25,17 @@ AC_ARG_ENABLE(thread-lib,
 ])
 
 
+# DRUNTIME_LIBRARIES_TIME
+# -----------------------
++# Check whether -lrt is required for sched_yield, nanosleep, or clock_gettime.
+AC_DEFUN([DRUNTIME_LIBRARIES_TIME],
+[
+AC_SEARCH_LIBS([sched_yield], [rt])
+AC_SEARCH_LIBS([nanosleep], [rt])
+AC_SEARCH_LIBS([clock_gettime], [rt])
+])
+
+
 # DRUNTIME_LIBRARIES_ZLIB
 # -----------------------
 # Allow specifying whether to use the system zlib or

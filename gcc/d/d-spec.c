@@ -51,7 +51,7 @@
 #endif
 
 #ifndef TIME_LIBRARY
-#define TIME_LIBRARY "rt"
+#define TIME_LIBRARY ""
 #endif
 
 #ifndef LIBSTDCXX
