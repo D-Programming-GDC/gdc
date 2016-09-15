@@ -2,44 +2,6 @@ This implements D language support in the GCC back end, and adds
 relevant documentation about the GDC front end.
 ---
 
---- a/gcc/config/darwin.h
-+++ b/gcc/config/darwin.h
-@@ -49,6 +49,10 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
- /* Suppress g++ attempt to link in the math library automatically. */
- #define MATH_LIBRARY ""
- 
-+/* Suppress gdc attempt to link in the thread and time library automatically. */
-+#define THREAD_LIBRARY ""
-+#define TIME_LIBRARY ""
-+
- /* We have atexit.  */
- 
- #define HAVE_ATEXIT
---- a/gcc/config/i386/cygming.h
-+++ b/gcc/config/i386/cygming.h
-@@ -170,6 +170,10 @@ along with GCC; see the file COPYING3.  If not see
- 
- #undef MATH_LIBRARY
- #define MATH_LIBRARY ""
-+#undef THREAD_LIBRARY
-+#define THREAD_LIBRARY ""
-+#undef TIME_LIBRARY
-+#define TIME_LIBRARY ""
- 
- #undef TARGET_LIBC_HAS_FUNCTION
- #define TARGET_LIBC_HAS_FUNCTION no_c99_libc_has_function
---- a/gcc/config/linux-android.h
-+++ b/gcc/config/linux-android.h
-@@ -57,3 +57,9 @@
- 
- #define ANDROID_ENDFILE_SPEC \
-   "%{shared: crtend_so%O%s;: crtend_android%O%s}"
-+
-+/* Suppress gdc attempt to link in the thread and time library automatically. */
-+#if ANDROID_DEFAULT
-+# define THREAD_LIBRARY ""
-+# define TIME_LIBRARY ""
-+#endif
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -27207,7 +27207,8 @@ rs6000_output_function_epilogue (FILE *file,

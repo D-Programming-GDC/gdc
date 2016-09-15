@@ -75,7 +75,6 @@ AC_SUBST(CFLAGS_FOR_BUILD)
 # Enable libtool
 LT_INIT
 AM_PROG_LIBTOOL
-LT_LIB_DLLOAD
 WITH_LOCAL_DRUNTIME([LT_LANG([D])], [])
 AM_CONDITIONAL([ENABLE_SHARED], [test "$enable_shared" = "yes"])
 AM_CONDITIONAL([ENABLE_STATIC], [test "$enable_static" = "yes"])
@@ -90,7 +89,10 @@ DRUNTIME_OS_SOURCES
 DRUNTIME_OS_THREAD_MODEL
 DRUNTIME_OS_ARM_EABI_UNWINDER
 DRUNTIME_OS_MINFO_BRACKETING
+DRUNTIME_LIBRARIES_DLOPEN
+DRUNTIME_LIBRARIES_PLATFORM
 DRUNTIME_LIBRARIES_THREAD
+DRUNTIME_LIBRARIES_TIME
 DRUNTIME_LIBRARIES_ZLIB
 DRUNTIME_LIBBACKTRACE_SETUP
 DRUNTIME_INSTALL_DIRECTORIES
@@ -118,11 +120,6 @@ for i in $d_subdirs; do
     mkdir -p $i;
 done
 AC_SUBST(srcdir)
-
-# Test for the -ldl library.
-DL_LIBS=
-AC_CHECK_LIB([dl], [dlopen], DL_LIBS=-ldl)
-AC_SUBST(DL_LIBS)
 
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
 # that multilib installs will end up installed in the correct place.

@@ -3,6 +3,30 @@
 #
 
 
+# DRUNTIME_LIBRARIES_DLOPEN
+# -----------------------
+# Check whether -ldl is required for dlopen.
+AC_DEFUN([DRUNTIME_LIBRARIES_DLOPEN],
+[
+AC_SEARCH_LIBS([dlopen], [dl])
+])
+
+
+# DRUNTIME_LIBRARIES_PLATFORM
+# -------------------------
+# Check for platform-specific library dependencies.
+AC_DEFUN([DRUNTIME_LIBRARIES_PLATFORM],
+[
+case ${target_os} in
+  mingw32*)
+      AC_SEARCH_LIBS([gethostbyname], [ws2_32])
+    ;;
+  *)
+    ;;
+esac
+])
+
+
 # DRUNTIME_LIBRARIES_THREAD
 # -------------------------
 # Allow specifying the thread library to link with or autodetect
@@ -13,6 +37,17 @@ AC_ARG_ENABLE(thread-lib,
   AC_HELP_STRING([--enable-thread-lib=<arg>],
                  [specify linker option for the system thread library (default: autodetect)]),
   [d_thread_lib=$enableval],[d_thread_lib=""])
+])
+
+
+# DRUNTIME_LIBRARIES_TIME
+# -----------------------
++# Check whether -lrt is required for sched_yield, nanosleep, or clock_gettime.
+AC_DEFUN([DRUNTIME_LIBRARIES_TIME],
+[
+AC_SEARCH_LIBS([sched_yield], [rt])
+AC_SEARCH_LIBS([nanosleep], [rt])
+AC_SEARCH_LIBS([clock_gettime], [rt])
 ])
 
 

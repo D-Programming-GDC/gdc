@@ -1,3 +1,7 @@
+2016-09-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-spec.c (TIME_LIBRARY): Set macro default as empty string.
+
 2016-09-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-todt.cc (Type::toDt): Remove function, inline into callers.
