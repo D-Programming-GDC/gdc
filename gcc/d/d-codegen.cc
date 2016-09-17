@@ -1398,12 +1398,7 @@ d_array_value (tree type, tree len, tree data)
   CONSTRUCTOR_APPEND_ELT (ce, len_field, len);
   CONSTRUCTOR_APPEND_ELT (ce, ptr_field, data);
 
-  tree ctor = build_constructor (type, ce);
-  // TREE_STATIC and TREE_CONSTANT can be set by caller if needed
-  TREE_STATIC (ctor) = 0;
-  TREE_CONSTANT (ctor) = 0;
-
-  return ctor;
+  return build_constructor (type, ce);
 }
 
 // Builds a D string value from the C string STR.
