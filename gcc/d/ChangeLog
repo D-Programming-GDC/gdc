@@ -1,3 +1,8 @@
+2016-09-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (lower_struct_comparison): Don't compare vectors in the
+	same way as integers.
+
 2016-09-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-todt.cc (Type::toDt): Remove function, inline into callers.

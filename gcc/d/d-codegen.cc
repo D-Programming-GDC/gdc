@@ -1945,7 +1945,7 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
 	  tree stype = build_ctype(vd->type);
 	  machine_mode mode = int_mode_for_mode(TYPE_MODE (stype));
 
-	  if (vd->type->isintegral())
+	  if (vd->type->ty != Tvector && vd->type->isintegral())
 	    {
 	      // Integer comparison, no special handling required.
 	      tcmp = build_boolop(code, t1ref, t2ref);
