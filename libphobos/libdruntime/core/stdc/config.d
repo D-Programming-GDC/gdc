@@ -62,7 +62,7 @@ else version( Windows )
     alias int   c_long;
     alias uint  c_ulong;
 }
-else
+else version( Posix )
 {
   static if( (void*).sizeof > int.sizeof )
   {

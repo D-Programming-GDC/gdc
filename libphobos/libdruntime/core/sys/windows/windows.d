@@ -80,7 +80,7 @@ version (Win64)
     alias  long * PLONG_PTR;
     alias ulong * PULONG_PTR;
 }
-else // Win32
+else version (Win32)
 {
     alias  int INT_PTR;
     alias uint UINT_PTR;
@@ -136,7 +136,7 @@ else // Win32
 
     version (Win64)
         alias INT_PTR function() FARPROC;
-    else
+    else version (Win32)
         alias int function() FARPROC;
 
     alias UINT_PTR WPARAM;
@@ -509,7 +509,6 @@ BOOL   FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW* lpFindFileData);
 BOOL   GetExitCodeThread(HANDLE hThread, DWORD *lpExitCode);
 BOOL   GetExitCodeProcess(HANDLE hProcess, DWORD *lpExitCode);
 DWORD  GetLastError() @trusted;
-void   SetLastError(DWORD dwErrCode);
 DWORD  GetFileAttributesA(in char *lpFileName);
 DWORD  GetFileAttributesW(in wchar *lpFileName);
 BOOL   GetFileAttributesExA(LPCSTR, GET_FILEEX_INFO_LEVELS, PVOID);
@@ -521,6 +520,7 @@ BOOL   MoveFileA(in char *from, in char *to);
 BOOL   MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName);
 BOOL   ReadFile(HANDLE hFile, void *lpBuffer, DWORD nNumberOfBytesToRead,
     DWORD *lpNumberOfBytesRead, OVERLAPPED *lpOverlapped);
+BOOL   SetEndOfFile(in HANDLE file);
 BOOL   SetFileAttributesA(in LPCSTR lpFileName, DWORD dwFileAttributes);
 BOOL   SetFileAttributesW(in LPCWSTR lpFileName, DWORD dwFileAttributes);
 DWORD  SetFilePointer(HANDLE hFile, LONG lDistanceToMove,
@@ -1315,7 +1315,7 @@ version (Win64)
         DWORD64 LastExceptionFromRip;
     }
 }
-else // Win32
+else version (Win32)
 {
     enum
     {
@@ -1629,29 +1629,30 @@ version (MinGW)
         alias InterlockedCompareExchange = _InterlockedCompareExchange;
     }
 
-    void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-    void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+    void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection) @trusted;
+    void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection) @nogc;
     BOOL TryEnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-    void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+    void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection) @nogc;
     void DeleteCriticalSection(CRITICAL_SECTION * lpCriticalSection);
 }
 else
 {
-    export @nogc
-    {
-        LONG InterlockedIncrement(LPLONG lpAddend);
-        LONG InterlockedDecrement(LPLONG lpAddend);
-        LONG InterlockedExchange(LPLONG Target, LONG Value);
-        LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
-        LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
+export @nogc
+{
+LONG InterlockedIncrement(LPLONG lpAddend);
+LONG InterlockedDecrement(LPLONG lpAddend);
+LONG InterlockedExchange(LPLONG Target, LONG Value);
+LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
+LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
 
-        void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-        void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-        BOOL TryEnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-        void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-        void DeleteCriticalSection(CRITICAL_SECTION * lpCriticalSection);
-    }
+void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection) @trusted;
+void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection) @nogc;
+BOOL TryEnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
+void LeaveCriticalSection(CRITICAL_SECTION * lpCriticalSection) @nogc;
+void DeleteCriticalSection(CRITICAL_SECTION * lpCriticalSection);
 }
+}
+
 
 
 @nogc

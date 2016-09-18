@@ -23,9 +23,6 @@ D
 Variable
 int flag_emit_templates
 
-Variable
-int bounds_check_set_manually
-
 debuglib=
 Driver Joined
 Debug library to use instead of phobos.
@@ -176,6 +173,10 @@ frelease
 D
 Compile release version.
 
+ftransition=complex
+D RejectNegative
+List all usages of complex or imaginary types.
+
 ftransition=field
 D RejectNegative
 List all non-mutable fields which occupy an object instance.
@@ -187,6 +188,10 @@ List all hidden GC allocations.
 ftransition=tls
 D RejectNegative
 List all variables going into thread local storage.
+
+ftransition=dip25
+D RejectNegative
+Implement http://wiki.dlang.org/DIP25 (experimental)
 
 funittest
 D
@@ -236,6 +241,10 @@ static-libphobos
 Driver
 Link the standard D library statically in the compilation.
 
+shared-libphobos
+Driver
+Link the standard D library dynamically in the compilation.
+
 v
 D
 ; Documented in C
@@ -260,3 +269,6 @@ Wunknown-pragmas
 D
 ; Documented in C
 
+fmax-error-messages=
+D Joined RejectNegative
+Limit the number of error messages (0 means unlimited)

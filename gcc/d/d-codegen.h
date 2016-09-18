@@ -61,7 +61,7 @@ extern tree build_address (tree exp);
 extern bool identity_compare_p(StructDeclaration *sd);
 extern tree build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2);
 extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd, tree length, tree t1, tree t2);
-extern tree build_struct_literal(tree type, tree init);
+extern tree build_struct_literal(tree type, vec<constructor_elt, va_gc> *init);
 
 // Routines to handle variables that are references.
 extern bool declaration_reference_p (Declaration *decl);
@@ -82,9 +82,6 @@ extern tree build_float_modulus (tree type, tree t1, tree t2);
 
 extern tree indirect_ref (tree type, tree exp);
 extern tree build_deref (tree exp);
-
-extern tree maybe_compound_expr (tree arg0, tree arg1);
-extern tree maybe_vcompound_expr (tree arg0, tree arg1);
 
 extern tree bind_expr (tree var_chain, tree body);
 
@@ -161,9 +158,9 @@ extern void expand_decl(tree decl);
 extern tree get_decl_tree(Declaration *decl);
 
 // Temporaries (currently just SAVE_EXPRs)
-extern tree make_temp (tree t);
-extern tree maybe_make_temp (tree t);
-extern bool d_has_side_effects (tree t);
+extern tree d_save_expr (tree t);
+extern tree stabilize_expr (tree *valuep);
+extern tree build_target_expr (tree exp);
 
 // Array operations
 extern tree build_bounds_condition(const Loc& loc, tree index, tree upr, bool inclusive);
@@ -190,12 +187,11 @@ extern tree build_libcall (LibCall libcall, unsigned n_args, tree *args, tree fo
 extern void maybe_set_intrinsic (FuncDeclaration *decl);
 extern tree expand_intrinsic (tree callexp);
 
-extern tree build_typeinfo (Type *t);
-
 // Record layout
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
 extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);
 extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
+extern tree find_aggregate_field(tree ident, tree type);
 
 extern bool empty_aggregate_p(tree type);
 
@@ -222,10 +218,8 @@ build_object_type()
 
 // Common codegen helpers.
 extern tree component_ref(tree obj, tree field);
-extern tree modify_expr(tree dst, tree src);
-extern tree modify_expr(tree type, tree dst, tree src);
-extern tree vmodify_expr(tree dst, tree src);
-extern tree build_vinit(tree dst, tree src);
+extern tree modify_expr(tree lhs, tree rhs);
+extern tree build_assign(tree_code code, tree lhs, tree rhs);
 
 extern tree build_nop(tree t, tree e);
 extern tree build_vconvert(tree t, tree e);
@@ -234,7 +228,6 @@ extern tree build_condition(tree type, tree arg0, tree arg1, tree arg2);
 extern tree build_vcondition(tree arg0, tree arg1, tree arg2);
 
 extern tree compound_expr(tree arg0, tree arg1);
-extern tree vcompound_expr(tree arg0, tree arg1);
 extern tree return_expr(tree ret);
 
 extern tree size_mult_expr(tree arg0, tree arg1);

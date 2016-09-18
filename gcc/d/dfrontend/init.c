@@ -186,7 +186,7 @@ Initializer *StructInitializer::semantic(Scope *sc, Type *t, NeedInterpret needI
                 {
                     s = sd->search_correct(id);
                     if (s)
-                        error(loc, "'%s' is not a member of '%s', did you mean '%s %s'?",
+                        error(loc, "'%s' is not a member of '%s', did you mean %s '%s'?",
                               id->toChars(), sd->toChars(), s->kind(), s->toChars());
                     else
                         error(loc, "'%s' is not a member of '%s'", id->toChars(), sd->toChars());
@@ -622,6 +622,35 @@ Expression *ArrayInitializer::toExpression(Type *tx)
         }
     }
 
+    /* Expand any static array initializers that are a single expression
+     * into an array of them
+     */
+    if (t)
+    {
+        Type *tn = t->nextOf()->toBasetype();
+        if (tn->ty == Tsarray)
+        {
+            size_t dim = ((TypeSArray *)tn)->dim->toInteger();
+            Type *te = tn->nextOf()->toBasetype();
+            for (size_t i = 0; i < elements->dim; i++)
+            {
+                Expression *e = (*elements)[i];
+                if (te->equals(e->type))
+                {
+                    Expressions *elements2 = new Expressions();
+                    elements2->setDim(dim);
+                    for (size_t j = 0; j < dim; j++)
+                        (*elements2)[j] = e;
+                    e = new ArrayLiteralExp(e->loc, elements2);
+                    e->type = tn;
+                    (*elements)[i] = e;
+                }
+            }
+        }
+    }
+
+    /* If any elements are errors, then the whole thing is an error
+     */
     for (size_t i = 0; i < edim; i++)
     {
         Expression *e = (*elements)[i];

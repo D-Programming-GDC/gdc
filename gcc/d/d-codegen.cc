@@ -205,11 +205,27 @@ add_stmt(tree t)
   if (t == void_node || IS_EMPTY_STMT (t))
     return;
 
-  if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
-    SET_EXPR_LOCATION (t, input_location);
+  // At this point, we no longer care about the value of expressions,
+  // so if there's no side-effects, then don't add it.
+  if (!TREE_SIDE_EFFECTS (t))
+    return;
 
-  tree stmt_list = cfun->language->stmt_list->last();
-  append_to_statement_list_force(t, &stmt_list);
+  if (TREE_CODE (t) == COMPOUND_EXPR)
+    {
+      // Push out each comma expressions as separate statements.
+      add_stmt(TREE_OPERAND (t, 0));
+      add_stmt(TREE_OPERAND (t, 1));
+    }
+  else
+    {
+      // Append the expression to the statement list.
+      // Make sure it has a proper location.
+      if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
+	SET_EXPR_LOCATION (t, input_location);
+
+      tree stmt_list = cfun->language->stmt_list->last();
+      append_to_statement_list_force(t, &stmt_list);
+    }
 }
 
 //
@@ -347,7 +363,7 @@ build_local_var (VarDeclaration *vd)
 tree
 build_local_temp (tree type)
 {
-  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
 
   DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
@@ -363,7 +379,7 @@ build_local_temp (tree type)
 tree
 create_temporary_var (tree type)
 {
-  tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL, NULL_TREE, type);
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
   DECL_CONTEXT (decl) = current_function_decl;
   DECL_ARTIFICIAL (decl) = 1;
   DECL_IGNORED_P (decl) = 1;
@@ -404,7 +420,7 @@ expand_decl (tree decl)
   // Nothing, d_pushdecl will add decl to a BIND_EXPR
   if (DECL_INITIAL (decl))
     {
-      tree exp = build_vinit (decl, DECL_INITIAL (decl));
+      tree exp = build_assign(INIT_EXPR, decl, DECL_INITIAL (decl));
       add_stmt(exp);
       DECL_INITIAL (decl) = NULL_TREE;
     }
@@ -426,7 +442,6 @@ get_decl_tree (Declaration *decl)
       if (vsym->SnamedResult != NULL_TREE)
 	{
 	  // Get the named return value.
-	  gcc_assert (TREE_CODE (vsym->SnamedResult) == RESULT_DECL);
 	  return vsym->SnamedResult;
 	}
       else if (vsym->SframeField != NULL_TREE)
@@ -526,7 +541,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
     case Tdelegate:
       if (tbtype->ty == Tdelegate)
 	{
-	  exp = maybe_make_temp(exp);
+	  exp = d_save_expr(exp);
 	  return build_delegate_cst(delegate_method(exp), delegate_object(exp), totype);
 	}
       else if (tbtype->ty == Tpointer)
@@ -592,7 +607,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	    if (offset)
 	      {
 		tree type = build_ctype(totype);
-		exp = maybe_make_temp(exp);
+		exp = d_save_expr(exp);
 
 		tree cond = build_boolop(NE_EXPR, exp, null_pointer_node);
 		tree object = build_offset(exp, size_int(offset));
@@ -729,9 +744,9 @@ convert_expr(tree exp, Type *etype, Type *totype)
 			       build_nop(ptrtype, exp));
 	}
       else if (tbtype->ty == Taarray)
-	  return build_vconvert(build_ctype(totype), exp);
+	return build_constructor(build_ctype(totype), NULL);
       else if (tbtype->ty == Tdelegate)
-	  return build_delegate_cst(exp, null_pointer_node, totype);
+	return build_delegate_cst(exp, null_pointer_node, totype);
       break;
 
     case Tvector:
@@ -846,6 +861,10 @@ type_va_array(Type *type)
 tree
 convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
 {
+  // Lazy arguments: expr should already be a delegate
+  if (arg->storageClass & STClazy)
+    return exp_tree;
+
   if (type_va_array(arg->type))
     {
       // Do nothing if the va_list has already been decayed to a pointer.
@@ -861,7 +880,6 @@ convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
       return convert(type_passed_as(arg), exp_tree);
     }
 
-  // Lazy arguments: expr should already be a delegate
   return exp_tree;
 }
 
@@ -888,7 +906,7 @@ convert_for_condition(tree expr, Type *type)
     case Tarray:
     {
       // Checks (length || ptr) (i.e ary !is null)
-      expr = maybe_make_temp(expr);
+      expr = d_save_expr(expr);
       tree len = d_array_length(expr);
       tree ptr = d_array_ptr(expr);
       if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
@@ -915,7 +933,7 @@ convert_for_condition(tree expr, Type *type)
 	extract_from_method_call(expr, obj, func);
       else
 	{
-	  expr = maybe_make_temp(expr);
+	  expr = d_save_expr(expr);
 	  obj = delegate_object(expr);
 	  func = delegate_method(expr);
 	}
@@ -1038,11 +1056,14 @@ declaration_type(Declaration *decl)
 bool
 argument_reference_p(Parameter *arg)
 {
-
   Type *tb = arg->type->toBasetype();
 
   // Parameter is a reference type.
   if (tb->ty == Treference || arg->storageClass & (STCout | STCref))
+    return true;
+
+  tree type = build_ctype(arg->type);
+  if (TREE_ADDRESSABLE (type))
     return true;
 
   return false;
@@ -1276,21 +1297,25 @@ insert_type_modifiers (tree type, unsigned mod)
       break;
 
     case MODshared:
-      quals |= TYPE_QUAL_VOLATILE;
       break;
 
     case MODshared | MODconst:
     case MODshared | MODwild:
     case MODshared | MODwildconst:
       quals |= TYPE_QUAL_CONST;
-      quals |= TYPE_QUAL_VOLATILE;
       break;
 
     default:
       gcc_unreachable();
     }
 
-  return build_qualified_type (type, quals);
+  tree qualtype = build_qualified_type (type, quals);
+
+  // Mark whether the type is qualified 'shared'.
+  if (mod & MODshared)
+    TYPE_SHARED (qualtype) = 1;
+
+  return qualtype;
 }
 
 // Build INTEGER_CST of type TYPE with the value VALUE.
@@ -1331,7 +1356,6 @@ build_float_cst (const real_t& value, Type *totype)
 tree
 d_array_length (tree exp)
 {
-  // backend will ICE otherwise
   if (error_operand_p (exp))
     return exp;
 
@@ -1346,7 +1370,6 @@ d_array_length (tree exp)
 tree
 d_array_ptr (tree exp)
 {
-  // backend will ICE otherwise
   if (error_operand_p (exp))
     return exp;
 
@@ -1375,12 +1398,7 @@ d_array_value (tree type, tree len, tree data)
   CONSTRUCTOR_APPEND_ELT (ce, len_field, len);
   CONSTRUCTOR_APPEND_ELT (ce, ptr_field, data);
 
-  tree ctor = build_constructor (type, ce);
-  // TREE_STATIC and TREE_CONSTANT can be set by caller if needed
-  TREE_STATIC (ctor) = 0;
-  TREE_CONSTANT (ctor) = 0;
-
-  return ctor;
+  return build_constructor (type, ce);
 }
 
 // Builds a D string value from the C string STR.
@@ -1546,7 +1564,7 @@ build_vindex_ref(tree object, tree fntype, size_t index)
 {
   // Interface methods are also in the class's vtable, so we don't
   // need to convert from a class pointer to an interface pointer.
-  object = maybe_make_temp(object);
+  object = d_save_expr(object);
 
   // The vtable is the first field.
   tree result = build_deref(object);
@@ -1577,62 +1595,127 @@ build_two_field_type(tree t1, tree t2, Type *type, const char *n1, const char *n
   return rectype;
 }
 
+// Return TRUE if EXP is a valid lvalue.  Lvalues references cannot be
+// made into temporaries, otherwise any assignments will be lost.
+
+static bool
+lvalue_p(tree exp)
+{
+  const enum tree_code code = TREE_CODE (exp);
+
+  switch (code)
+    {
+    case SAVE_EXPR:
+      return false;
+
+    case ARRAY_REF:
+    case INDIRECT_REF:
+    case VAR_DECL:
+    case PARM_DECL:
+    case RESULT_DECL:
+      return !FUNC_OR_METHOD_TYPE_P (TREE_TYPE (exp));
+
+    case IMAGPART_EXPR:
+    case REALPART_EXPR:
+    case COMPONENT_REF:
+    CASE_CONVERT:
+      return lvalue_p(TREE_OPERAND (exp, 0));
+
+    case COND_EXPR:
+      return (lvalue_p(TREE_OPERAND (exp, 1)
+                      ? TREE_OPERAND (exp, 1)
+                      : TREE_OPERAND (exp, 0))
+             && lvalue_p(TREE_OPERAND (exp, 2)));
+
+    case TARGET_EXPR:
+      return true;
+
+    case COMPOUND_EXPR:
+      return lvalue_p(TREE_OPERAND (exp, 1));
+
+    default:
+      return false;
+    }
+}
+
 // Create a SAVE_EXPR if EXP might have unwanted side effects if referenced
 // more than once in an expression.
 
 tree
-make_temp (tree exp)
+d_save_expr(tree exp)
 {
-  if (TREE_CODE (exp) == CALL_EXPR
-      || TREE_CODE (TREE_TYPE (exp)) != ARRAY_TYPE)
-    return save_expr (exp);
-  else
-    return stabilize_reference (exp);
-}
+  if (TREE_SIDE_EFFECTS (exp))
+    {
+      if (lvalue_p(exp))
+	return stabilize_reference(exp);
 
-tree
-maybe_make_temp (tree exp)
-{
-  if (d_has_side_effects (exp))
-    return make_temp (exp);
+      return save_expr(exp);
+    }
 
   return exp;
 }
 
-// Return TRUE if EXP can not be evaluated multiple times (i.e., in a loop body)
-// without unwanted side effects.
+// VALUEP is an expression we want to pre-evaluate or perform a computation on.
+// The expression returned by this function is the part whose value we don't
+// care about, storing the value in VALUEP.  Callers must ensure that the
+// returned expression is evaluated before VALUEP.
 
-bool
-d_has_side_effects (tree exp)
+tree
+stabilize_expr(tree *valuep)
 {
-  tree t = STRIP_NOPS (exp);
+  const enum tree_code code = TREE_CODE (*valuep);
+  tree lhs;
+  tree rhs;
 
-  // SAVE_EXPR is safe to reference more than once, but not to
-  // expand in a loop.
-  if (TREE_CODE (t) == SAVE_EXPR)
-    return false;
+  switch (code)
+    {
+    case COMPOUND_EXPR:
+      // Given ((e1, ...), eN): store the last RHS 'eN' expression in VALUEP.
+      lhs = TREE_OPERAND (*valuep, 0);
+      rhs = TREE_OPERAND (*valuep, 1);
+      lhs = compound_expr(lhs, stabilize_expr(&rhs));
+      *valuep = rhs;
+      return lhs;
 
-  if (DECL_P (t)
-      || CONSTANT_CLASS_P (t))
-    return false;
-
-  if (INDIRECT_REF_P (t)
-      || TREE_CODE (t) == ADDR_EXPR
-      || TREE_CODE (t) == COMPONENT_REF)
-    return d_has_side_effects (TREE_OPERAND (t, 0));
-
-  return TREE_SIDE_EFFECTS (t);
+    default:
+      return NULL_TREE;
+    }
 }
 
+// Return a TARGET_EXPR using EXP to initialize a new temporary.
+
+tree
+build_target_expr(tree exp)
+{
+  tree type = TREE_TYPE (exp);
+  tree slot = create_temporary_var(type);
+  tree result = build4(TARGET_EXPR, type, slot, exp, NULL_TREE, NULL_TREE);
+
+  if (EXPR_HAS_LOCATION (exp))
+    SET_EXPR_LOCATION (result, EXPR_LOCATION (exp));
+
+  // If slot must always reside in memory.
+  if (TREE_ADDRESSABLE (type))
+    d_mark_addressable(slot);
+
+  // Always set TREE_SIDE_EFFECTS so that expand_expr does not ignore the
+  // TARGET_EXPR.  If there really turn out to be no side effects, then the
+  // optimizer should be able to remove it.
+  TREE_SIDE_EFFECTS (result) = 1;
+
+  return result;
+}
 
 // Returns the address of the expression EXP.
 
 tree
 build_address(tree exp)
 {
+  if (error_operand_p (exp))
+    return exp;
+
   tree ptrtype;
   tree type = TREE_TYPE (exp);
-  d_mark_addressable(exp);
 
   if (TREE_CODE (exp) == STRING_CST)
     {
@@ -1651,12 +1734,16 @@ build_address(tree exp)
   else
     ptrtype = build_pointer_type(type);
 
-  tree ret = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
+  // Maybe rewrite: (e1, e2) => (e1, &e2)
+  tree init = stabilize_expr(&exp);
 
-  if (TREE_CODE (exp) == FUNCTION_DECL)
-    TREE_NO_TRAMPOLINE (ret) = 1;
+  d_mark_addressable(exp);
+  exp = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
 
-  return ret;
+  if (TREE_CODE (exp) == ADDR_EXPR)
+    TREE_NO_TRAMPOLINE (exp) = 1;
+
+  return compound_expr(init, exp);
 }
 
 tree
@@ -1666,55 +1753,29 @@ d_mark_addressable (tree exp)
     {
     case ADDR_EXPR:
     case COMPONENT_REF:
-      /* If D had bit fields, we would need to handle that here */
     case ARRAY_REF:
     case REALPART_EXPR:
     case IMAGPART_EXPR:
-      d_mark_addressable (TREE_OPERAND (exp, 0));
+      d_mark_addressable(TREE_OPERAND (exp, 0));
       break;
 
-      /* %% C++ prevents {& this} .... */
-    case TRUTH_ANDIF_EXPR:
-    case TRUTH_ORIF_EXPR:
-    case COMPOUND_EXPR:
-      d_mark_addressable (TREE_OPERAND (exp, 1));
-      break;
-
-    case COND_EXPR:
-      d_mark_addressable (TREE_OPERAND (exp, 1));
-      d_mark_addressable (TREE_OPERAND (exp, 2));
+    case PARM_DECL:
+    case VAR_DECL:
+    case RESULT_DECL:
+    case CONST_DECL:
+    case FUNCTION_DECL:
+      TREE_ADDRESSABLE (exp) = 1;
       break;
 
     case CONSTRUCTOR:
       TREE_ADDRESSABLE (exp) = 1;
       break;
 
-    case INDIRECT_REF:
-      /* %% this was in Java, not sure for D */
-      /* We sometimes add a cast *(TYPE *)&FOO to handle type and mode
-	 incompatibility problems.  Handle this case by marking FOO.  */
-      if (TREE_CODE (TREE_OPERAND (exp, 0)) == NOP_EXPR
-	  && TREE_CODE (TREE_OPERAND (TREE_OPERAND (exp, 0), 0)) == ADDR_EXPR)
-	{
-	  d_mark_addressable (TREE_OPERAND (TREE_OPERAND (exp, 0), 0));
-	  break;
-	}
-      if (TREE_CODE (TREE_OPERAND (exp, 0)) == ADDR_EXPR)
-	{
-	  d_mark_addressable (TREE_OPERAND (exp, 0));
-	  break;
-	}
+    case TARGET_EXPR:
+      TREE_ADDRESSABLE (exp) = 1;
+      d_mark_addressable(TREE_OPERAND (exp, 0));
       break;
 
-    case VAR_DECL:
-    case CONST_DECL:
-    case PARM_DECL:
-    case RESULT_DECL:
-    case FUNCTION_DECL:
-      TREE_USED (exp) = 1;
-      TREE_ADDRESSABLE (exp) = 1;
-
-      /* drops through */
     default:
       break;
     }
@@ -1731,7 +1792,10 @@ d_mark_used (tree exp)
   switch (TREE_CODE (exp))
     {
     case VAR_DECL:
+    case CONST_DECL:
     case PARM_DECL:
+    case RESULT_DECL:
+    case FUNCTION_DECL:
       TREE_USED (exp) = 1;
       break;
 
@@ -1876,7 +1940,7 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
 	  tree stype = build_ctype(vd->type);
 	  machine_mode mode = int_mode_for_mode(TYPE_MODE (stype));
 
-	  if (vd->type->isintegral())
+	  if (vd->type->ty != Tvector && vd->type->isintegral())
 	    {
 	      // Integer comparison, no special handling required.
 	      tcmp = build_boolop(code, t1ref, t2ref);
@@ -1924,28 +1988,30 @@ build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   if (sd->fields.dim == 0)
     return build_boolop(code, integer_zero_node, integer_zero_node);
 
+  // Make temporaries to prevent multiple evaluations.
+  tree t1init = stabilize_expr(&t1);
+  tree t2init = stabilize_expr(&t2);
+  tree result;
+
+  t1 = d_save_expr(t1);
+  t2 = d_save_expr(t2);
+
   // Bitwise comparison of structs not returned in memory may not work
   // due to data holes loosing its zero padding upon return.
   // As a heuristic, small structs are not compared using memcmp either.
   if (TYPE_MODE (TREE_TYPE (t1)) != BLKmode || !identity_compare_p(sd))
-    {
-      // Make temporaries to prevent multiple evaluations.
-      t1 = maybe_make_temp(t1);
-      t2 = maybe_make_temp(t2);
-
-      return lower_struct_comparison(code, sd, t1, t2);
-    }
+    result = lower_struct_comparison(code, sd, t1, t2);
   else
     {
       // Do bit compare of structs.
       tree size = size_int(sd->structsize);
-      t1 = maybe_make_temp(t1);
-      t2 = maybe_make_temp(t2);
       tree tmemcmp = d_build_call_nary(builtin_decl_explicit(BUILT_IN_MEMCMP), 3,
 				       build_address(t1), build_address(t2), size);
 
-      return build_boolop(code, tmemcmp, integer_zero_node);
+      result = build_boolop(code, tmemcmp, integer_zero_node);
     }
+
+  return compound_expr(compound_expr(t1init, t2init), result);
 }
 
 // Build an equality expression between two ARRAY_TYPES of size LENGTH.
@@ -1962,7 +2028,7 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
   // Initialize as either 0 or 1 depending on operation.
   tree result = build_local_temp(bool_type_node);
   tree init = build_boolop(code, integer_zero_node, integer_zero_node);
-  add_stmt(build_vinit(result, init));
+  add_stmt(build_assign(INIT_EXPR, result, init));
 
   // Cast pointer-to-array to pointer-to-struct.
   tree ptrtype = build_ctype(sd->type->pointerTo());
@@ -1973,15 +2039,15 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 
   // Build temporary locals for length and pointers.
   tree t = build_local_temp(size_type_node);
-  add_stmt(build_vinit(t, length));
+  add_stmt(build_assign(INIT_EXPR, t, length));
   length = t;
 
   t = build_local_temp(ptrtype);
-  add_stmt(build_vinit(t, d_convert(ptrtype, t1)));
+  add_stmt(build_assign(INIT_EXPR, t, d_convert(ptrtype, t1)));
   t1 = t;
 
   t = build_local_temp(ptrtype);
-  add_stmt(build_vinit(t, d_convert(ptrtype, t2)));
+  add_stmt(build_assign(INIT_EXPR, t, d_convert(ptrtype, t2)));
   t2 = t;
 
   // Build loop for comparing each element.
@@ -1998,7 +2064,7 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
   //	result = result OP (*t1 == *t2)
   t = build_struct_comparison(code, sd, build_deref(t1), build_deref(t2));
   t = build_boolop(tcode, result, t);
-  t = vmodify_expr(result, t);
+  t = modify_expr(result, t);
   add_stmt(t);
 
   // Move both pointers to next element position.
@@ -2029,22 +2095,48 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
   return compound_expr(body, result);
 }
 
+// Create an anonymous field of type ubyte[T] at OFFSET to fill
+// the alignment hole between OFFSET and FIELDPOS.
+
+static tree
+build_alignment_field(HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
+{
+  tree type = d_array_type(Type::tuns8, fieldpos - offset);
+  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
+
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (type));
+  DECL_FIELD_OFFSET (field) = size_int(offset);
+  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+
+  layout_decl(field, 0);
+
+  DECL_ARTIFICIAL (field) = 1;
+  DECL_IGNORED_P (field) = 1;
+
+  return field;
+}
+
 // Build a constructor for a variable of aggregate type TYPE using the
 // initializer INIT, an ordered flat list of fields and values provided
 // by the frontend.
 // The returned constructor should be a value that matches the layout of TYPE.
 
 tree
-build_struct_literal(tree type, tree init)
+build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 {
   // If the initializer was empty, use default zero initialization.
-  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
+  if (vec_safe_is_empty(init))
     return build_constructor(type, NULL);
 
   vec<constructor_elt, va_gc> *ve = NULL;
   HOST_WIDE_INT offset = 0;
   bool constant_p = true;
-  bool simple_p = true;
+  bool fillholes = true;
+
+  // Filling alignment holes this only applies to structs.
+  if (TREE_CODE (type) != RECORD_TYPE
+      || CLASS_TYPE_P (type) || TYPE_PACKED (type))
+    fillholes = false;
 
   // Walk through each field, matching our initializer list
   for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
@@ -2067,16 +2159,16 @@ build_struct_literal(tree type, tree init)
 	}
       else
 	{
+	  // Search for the value to initialize the next field.  Once found,
+	  // pop it from the init list so we don't look at it again.
 	  unsigned HOST_WIDE_INT idx;
 	  tree index;
 
-	  // Search for the value to initialize the next field.  Once found,
-	  // pop it from the init list so we don't look at it again.
-	  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (init), idx, index, value)
+	  FOR_EACH_CONSTRUCTOR_ELT (init, idx, index, value)
 	    {
 	      if (index == field)
 		{
-		  CONSTRUCTOR_ELTS (init)->ordered_remove(idx);
+		  init->ordered_remove(idx);
 		  is_initialized = true;
 		  break;
 		}
@@ -2088,10 +2180,17 @@ build_struct_literal(tree type, tree init)
 	  HOST_WIDE_INT fieldpos = int_byte_position(field);
 	  gcc_assert(value != NULL_TREE);
 
+	  // Insert anonymous fields in the constructor for padding out
+	  // alignment holes in-place between fields.
+	  if (fillholes && offset < fieldpos)
+	    {
+	      tree pfield = build_alignment_field(offset, fieldpos);
+	      tree pvalue = build_constructor(TREE_TYPE (pfield), NULL);
+	      CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
+	    }
+
 	  // Must not initialize fields that overlap.
-	  if (fieldpos >= offset)
-	    offset = fieldpos;
-	  else
+	  if (fieldpos < offset)
 	    {
 	      // Find the nearest user defined type and field.
 	      tree vtype = type;
@@ -2107,31 +2206,38 @@ build_struct_literal(tree type, tree init)
 	      gcc_assert(TYPE_NAME (vtype) && DECL_NAME (vfield));
 	      error("overlapping initializer for field %qT.%qD",
 		    TYPE_NAME (vtype), DECL_NAME (vfield));
-	      continue;
 	    }
 
 	  if (!TREE_CONSTANT (value))
 	    constant_p = false;
-	  if (!initializer_constant_valid_p(value, TREE_TYPE (value)))
-	    simple_p = false;
 
 	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
-	  // If all initializers have been assigned, there's nothing else to do.
-	  if (vec_safe_is_empty(CONSTRUCTOR_ELTS (init)))
-	    break;
 	}
+
+      // Move offset to the next position in the struct.
+      if (TREE_CODE (type) == RECORD_TYPE)
+	offset = int_byte_position(field) + int_size_in_bytes(TREE_TYPE (field));
+
+      // If all initializers have been assigned, there's nothing else to do.
+      if (vec_safe_is_empty(init))
+	break;
+    }
+
+  // Finally pad out the end of the record.
+  if (fillholes && offset < int_size_in_bytes(type))
+    {
+      tree pfield = build_alignment_field(offset, int_size_in_bytes(type));
+      tree pvalue = build_constructor(TREE_TYPE (pfield), NULL);
+      CONSTRUCTOR_APPEND_ELT (ve, pfield, pvalue);
     }
 
   // Ensure that we have consumed all values.
-  gcc_assert(vec_safe_is_empty(CONSTRUCTOR_ELTS (init))
-	     || ANON_AGGR_TYPE_P (type));
+  gcc_assert(vec_safe_is_empty(init) || ANON_AGGR_TYPE_P (type));
 
   tree ctor = build_constructor(type, ve);
 
   if (constant_p)
     TREE_CONSTANT (ctor) = 1;
-  if (constant_p && simple_p)
-    TREE_STATIC (ctor) = 1;
 
   return ctor;
 }
@@ -2173,7 +2279,13 @@ lookup_anon_field(tree t, tree type)
 tree
 component_ref(tree object, tree field)
 {
+  if (error_operand_p(object) || error_operand_p(field))
+    return error_mark_node;
+
   gcc_assert (TREE_CODE (field) == FIELD_DECL);
+
+  // Maybe rewrite: (e1, e2).field => (e1, e2.field)
+  tree init = stabilize_expr(&object);
 
   // If the FIELD is from an anonymous aggregate, generate a reference
   // to the anonymous data member, and recur to find FIELD.
@@ -2183,39 +2295,43 @@ component_ref(tree object, tree field)
       object = component_ref(object, anonymous_field);
     }
 
-  return fold_build3_loc(input_location, COMPONENT_REF,
-			 TREE_TYPE (field), object, field, NULL_TREE);
+  tree result = fold_build3_loc(input_location, COMPONENT_REF,
+				TREE_TYPE (field), object, field, NULL_TREE);
+
+  return compound_expr(init, result);
 }
 
-// Build a modify expression, with variants for overriding
-// the type, and when it's value is not used.
+// Build an assignment expression of lvalue LHS from value RHS.
+// CODE is the code for a binary operator that we use to combine
+// the old value of LHS with RHS to get the new value.
 
 tree
-modify_expr(tree dst, tree src)
+build_assign(tree_code code, tree lhs, tree rhs)
 {
-  return fold_build2_loc(input_location, MODIFY_EXPR,
-			 TREE_TYPE (dst), dst, src);
+  tree init = stabilize_expr(&lhs);
+  init = compound_expr(init, stabilize_expr(&rhs));
+
+  // The LHS assignment is replaces the temporary in TARGET_EXPR_SLOT.
+  if (TREE_CODE (rhs) == TARGET_EXPR)
+    {
+      // If CODE is not INIT_EXPR, can't initialize LHS directly,
+      // since that would cause the LHS to be constructed twice.
+      // So we force the TARGET_EXPR to be expanded without a target.
+      if (code != INIT_EXPR)
+	rhs = compound_expr(rhs, TREE_OPERAND (rhs, 0));
+      else
+	rhs = TARGET_EXPR_INITIAL (rhs);
+    }
+
+  tree result = fold_build2_loc(input_location, code,
+				TREE_TYPE (lhs), lhs, rhs);
+  return compound_expr(init, result);
 }
 
 tree
-modify_expr(tree type, tree dst, tree src)
+modify_expr(tree lhs, tree rhs)
 {
-  return fold_build2_loc(input_location, MODIFY_EXPR,
-			 type, dst, src);
-}
-
-tree
-vmodify_expr(tree dst, tree src)
-{
-  return fold_build2_loc(input_location, MODIFY_EXPR,
-			 void_type_node, dst, src);
-}
-
-tree
-build_vinit(tree dst, tree src)
-{
-  return fold_build2_loc(input_location, INIT_EXPR,
-			 void_type_node, dst, src);
+  return build_assign(MODIFY_EXPR, lhs, rhs);
 }
 
 // Returns true if TYPE contains no actual data, just various
@@ -2247,7 +2363,14 @@ empty_aggregate_p(tree type)
 tree
 build_nop(tree type, tree exp)
 {
-  return fold_build1_loc(input_location, NOP_EXPR, type, exp);
+  if (error_operand_p (exp))
+    return exp;
+
+  // Maybe rewrite: (e1, e2) => (e1, cast(TYPE) e2)
+  tree init = stabilize_expr(&exp);
+  exp = fold_build1_loc(input_location, NOP_EXPR, type, exp);
+
+  return compound_expr(init, exp);
 }
 
 tree
@@ -2261,10 +2384,15 @@ build_vconvert(tree type, tree exp)
 tree
 build_boolop(tree_code code, tree arg0, tree arg1)
 {
-  arg0 = maybe_make_temp(arg0);
-  arg1 = maybe_make_temp(arg1);
-  return fold_build2_loc(input_location, code,
-			 bool_type_node, arg0, arg1);
+  // Aggregate comparisons may get lowered to a call to builtin memcmp,
+  // so need to remove all side effects incase it's address is taken.
+  if (AGGREGATE_TYPE_P (TREE_TYPE (arg0)))
+    arg0 = d_save_expr(arg0);
+  if (AGGREGATE_TYPE_P (TREE_TYPE (arg1)))
+    arg1 = d_save_expr(arg1);
+
+  return fold_build2_loc(input_location, code, bool_type_node,
+			 arg0, d_convert(TREE_TYPE (arg0), arg1));
 }
 
 // Return a COND_EXPR.  ARG0, ARG1, and ARG2 are the three
@@ -2286,30 +2414,33 @@ build_condition(tree type, tree arg0, tree arg1, tree arg2)
 tree
 build_vcondition(tree arg0, tree arg1, tree arg2)
 {
-  if (arg1 == void_node)
-    arg1 = build_empty_stmt(input_location);
-
-  if (arg2 == void_node)
-    arg2 = build_empty_stmt(input_location);
-
-  return fold_build3_loc(input_location, COND_EXPR,
-			 void_type_node, arg0, arg1, arg2);
+  return build_condition(void_type_node, arg0, arg1, arg2);
 }
 
-// Compound ARG0 and ARG1 together.
+// Build a compound expr to join ARG0 and ARG1 together.
 
 tree
 compound_expr(tree arg0, tree arg1)
 {
+  if (arg1 == NULL_TREE)
+    return arg0;
+
+  if (arg0 == NULL_TREE || !TREE_SIDE_EFFECTS (arg0))
+    return arg1;
+
+  if (TREE_CODE (arg1) == TARGET_EXPR)
+    {
+      // If the rhs is a TARGET_EXPR, then build the compound expression
+      // inside the target_expr's initializer.  This helps the compiler
+      // to eliminate unnecessary temporaries.
+      tree init = compound_expr(arg0, TREE_OPERAND (arg1, 1));
+      TREE_OPERAND (arg1, 1) = init;
+
+      return arg1;
+    }
+
   return fold_build2_loc(input_location, COMPOUND_EXPR,
 			 TREE_TYPE (arg1), arg0, arg1);
-}
-
-tree
-vcompound_expr(tree arg0, tree arg1)
-{
-  return fold_build2_loc(input_location, COMPOUND_EXPR,
-			 void_type_node, arg0, arg1);
 }
 
 // Build a return expression.
@@ -2365,12 +2496,21 @@ complex_expr(tree type, tree re, tree im)
 tree
 indirect_ref(tree type, tree exp)
 {
+  if (error_operand_p (exp))
+    return exp;
+
+  // Maybe rewrite: (e1, e2) => (e1, *e2)
+  tree init = stabilize_expr(&exp);
+
   if (TREE_CODE (TREE_TYPE (exp)) == REFERENCE_TYPE)
-    return fold_build1(INDIRECT_REF, type, exp);
+    exp = fold_build1(INDIRECT_REF, type, exp);
+  else
+    {
+      exp = build_nop(build_pointer_type(type), exp);
+      exp = build_deref(exp);
+    }
 
-  exp = build_nop(build_pointer_type(type), exp);
-
-  return build_deref(exp);
+  return compound_expr(init, exp);
 }
 
 // Returns indirect reference of EXP, which must be a pointer type.
@@ -2378,12 +2518,20 @@ indirect_ref(tree type, tree exp)
 tree
 build_deref(tree exp)
 {
+  if (error_operand_p (exp))
+    return exp;
+
+  // Maybe rewrite: (e1, e2) => (e1, *e2)
+  tree init = stabilize_expr(&exp);
+
   gcc_assert(POINTER_TYPE_P (TREE_TYPE (exp)));
 
   if (TREE_CODE (exp) == ADDR_EXPR)
-    return TREE_OPERAND (exp, 0);
+    exp = TREE_OPERAND (exp, 0);
+  else
+    exp = build_fold_indirect_ref(exp);
 
-  return build_fold_indirect_ref(exp);
+  return compound_expr(init, exp);
 }
 
 // Builds pointer offset expression PTR[INDEX]
@@ -2391,6 +2539,9 @@ build_deref(tree exp)
 tree
 build_array_index(tree ptr, tree index)
 {
+  if (error_operand_p(ptr) || error_operand_p(index))
+    return error_mark_node;
+
   tree ptr_type = TREE_TYPE (ptr);
   tree target_type = TREE_TYPE (ptr_type);
 
@@ -2424,10 +2575,6 @@ build_array_index(tree ptr, tree index)
 			  index, d_convert(TREE_TYPE (index), size_exp));
       index = fold_convert(type, index);
     }
-
-  // backend will ICE otherwise
-  if (error_operand_p(ptr_type))
-    return ptr_type;
 
   if (integer_zerop(index))
     return ptr;
@@ -2481,17 +2628,17 @@ build_array_set(tree ptr, tree length, tree value)
 
   // Build temporary locals for length and ptr, and maybe value.
   tree t = build_local_temp(size_type_node);
-  add_stmt(build_vinit(t, length));
+  add_stmt(build_assign(INIT_EXPR, t, length));
   length = t;
 
   t = build_local_temp(ptrtype);
-  add_stmt(build_vinit(t, ptr));
+  add_stmt(build_assign(INIT_EXPR, t, ptr));
   ptr = t;
 
-  if (d_has_side_effects(value))
+  if (TREE_SIDE_EFFECTS (value))
     {
       t = build_local_temp(TREE_TYPE (value));
-      add_stmt(build_vinit(t, value));
+      add_stmt(build_assign(INIT_EXPR, t, value));
       value = t;
     }
 
@@ -2506,7 +2653,7 @@ build_array_set(tree ptr, tree length, tree value)
 
   // Assign value to the current pointer position.
   //	*ptr = value
-  t = vmodify_expr(build_deref(ptr), value);
+  t = modify_expr(build_deref(ptr), value);
   add_stmt(t);
 
   // Move pointer to next element position.
@@ -2641,35 +2788,20 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
       e1b = ce->e1;
     }
 
-  // Prevent multiple evaluations of LHS, but watch out!
-  // The LHS expression could be an assignment, to which
-  // it's operation gets lost during gimplification.
-  tree lexpr = NULL_TREE;
-  tree lhs;
+  // The LHS expression could be an assignment, to which it's operation gets
+  // lost during gimplification.  Stabilize lhs for assignment.
+  tree lhs = build_expr(e1b);
+  tree lexpr = stabilize_expr(&lhs);
 
-  if (e1b->op == TOKcomma)
-    {
-      CommaExp *ce = (CommaExp *) e1b;
-      lexpr = build_expr(ce->e1);
-      lhs = build_expr(ce->e2);
-    }
-  else
-    lhs = build_expr(e1b);
-
-  tree rhs = build_expr(e2);
-
-  // Build assignment expression. Stabilize lhs for assignment.
   lhs = stabilize_reference(lhs);
 
+  tree rhs = build_expr(e2);
   rhs = build_binary_op(code, build_ctype(e1->type),
 			convert_expr(lhs, e1b->type, e1->type), rhs);
 
   tree expr = modify_expr(lhs, convert_expr(rhs, e1->type, e1b->type));
 
-  if (lexpr)
-    expr = compound_expr(lexpr, expr);
-
-  return expr;
+  return compound_expr(lexpr, expr);
 }
 
 // Builds a bounds condition checking that INDEX is between 0 and LEN.
@@ -2683,7 +2815,7 @@ build_bounds_condition(const Loc& loc, tree index, tree len, bool inclusive)
     return index;
 
   // Prevent multiple evaluations of the index.
-  index = maybe_make_temp(index);
+  index = d_save_expr(index);
 
   // Generate INDEX >= LEN && throw RangeError.
   // No need to check whether INDEX >= 0 as the front-end should
@@ -2700,24 +2832,30 @@ build_bounds_condition(const Loc& loc, tree index, tree len, bool inclusive)
 bool
 array_bounds_check()
 {
-  int result = global.params.useArrayBounds;
+  FuncDeclaration *func;
 
-  if (result == 2)
-    return true;
-
-  if (result == 1)
+  switch (global.params.useArrayBounds)
     {
+    case BOUNDSCHECKoff:
+      return false;
+
+    case BOUNDSCHECKon:
+      return true;
+
+    case BOUNDSCHECKsafeonly:
       // For D2 safe functions only
-      FuncDeclaration *func = cfun->language->function;
+      func = cfun->language->function;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
 	  if (tf->trust == TRUSTsafe)
 	    return true;
 	}
-    }
+      return false;
 
-  return false;
+    default:
+      gcc_unreachable();
+    }
 }
 
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.
@@ -2730,38 +2868,12 @@ bind_expr (tree var_chain, tree body)
 
   if (DECL_INITIAL (var_chain))
     {
-      tree ini = build_vinit (var_chain, DECL_INITIAL (var_chain));
+      tree ini = build_assign(INIT_EXPR, var_chain, DECL_INITIAL (var_chain));
       DECL_INITIAL (var_chain) = NULL_TREE;
       body = compound_expr (ini, body);
     }
 
-  return make_temp (build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
-}
-
-// Like compound_expr, but ARG0 or ARG1 might be NULL_TREE.
-
-tree
-maybe_compound_expr (tree arg0, tree arg1)
-{
-  if (arg0 == NULL_TREE)
-    return arg1;
-  else if (arg1 == NULL_TREE)
-    return arg0;
-  else
-    return compound_expr (arg0, arg1);
-}
-
-// Like vcompound_expr, but ARG0 or ARG1 might be NULL_TREE.
-
-tree
-maybe_vcompound_expr (tree arg0, tree arg1)
-{
-  if (arg0 == NULL_TREE)
-    return arg1;
-  else if (arg1 == NULL_TREE)
-    return arg0;
-  else
-    return vcompound_expr (arg0, arg1);
+  return d_save_expr(build3 (BIND_EXPR, TREE_TYPE (body), var_chain, body, NULL_TREE));
 }
 
 // Returns the TypeFunction class for Type T.
@@ -2821,9 +2933,6 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 {
   tree ctype = TREE_TYPE (callable);
   tree callee = callable;
-  tree saved_args = NULL_TREE;
-
-  tree arg_list = NULL_TREE;
 
   if (POINTER_TYPE_P (ctype))
     ctype = TREE_TYPE (ctype);
@@ -2834,19 +2943,13 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   gcc_assert(tf != NULL);
   gcc_assert(tf->ty == Tfunction);
 
-  // Evaluate the callee before calling it.
-  if (TREE_SIDE_EFFECTS (callee))
-    {
-      callee = maybe_make_temp(callee);
-      saved_args = callee;
-    }
-
   if (TREE_CODE (ctype) != FUNCTION_TYPE && object == NULL_TREE)
     {
       // Front-end apparently doesn't check this.
       if (TREE_CODE (callable) == FUNCTION_DECL)
 	{
-	  error("need 'this' to access member %s", IDENTIFIER_POINTER (DECL_NAME (callable)));
+	  error("need 'this' to access member %s",
+		IDENTIFIER_POINTER (DECL_NAME (callable)));
 	  return error_mark_node;
 	}
 
@@ -2854,17 +2957,14 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
       gcc_unreachable();
     }
 
+  // Build the argument list for the call.
+  tree arg_list = NULL_TREE;
+  tree saved_args = NULL_TREE;
+
   // If this is a delegate call or a nested function being called as
   // a delegate, the object should not be NULL.
   if (object != NULL_TREE)
-    {
-      if (TREE_SIDE_EFFECTS (object))
-	{
-	  object = maybe_make_temp(object);
-	  saved_args = maybe_vcompound_expr(saved_args, object);
-	}
-      arg_list = build_tree_list(NULL_TREE, object);
-    }
+    arg_list = build_tree_list(NULL_TREE, object);
 
   if (arguments)
     {
@@ -2879,7 +2979,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	    {
 	      CommaExp *ce = (CommaExp *) arg;
 	      tree tce = build_expr(ce->e1);
-	      saved_args = maybe_vcompound_expr(saved_args, tce);
+	      saved_args = compound_expr(saved_args, tce);
 	      (*arguments)[i] = ce->e2;
 	      goto Lagain;
 	    }
@@ -2917,21 +3017,73 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	      targ = build2(COMPOUND_EXPR, TREE_TYPE (t), targ, t);
 	    }
 
-	  // Evaluate the argument before passing to the function.
-	  // Needed for left to right evaluation.
-	  if (tf->linkage == LINKd && TREE_SIDE_EFFECTS (targ))
-	    {
-	      targ = maybe_make_temp(targ);
-	      saved_args = maybe_vcompound_expr(saved_args, targ);
-	    }
 	  arg_list = chainon(arg_list, build_tree_list(0, targ));
 	}
+    }
+
+  // Evaluate the argument before passing to the function.
+  // Needed for left to right evaluation.
+  if (tf->linkage == LINKd)
+    {
+      size_t nsaved_args = 0;
+
+      // First, push left side of comma expressions into the saved args list,
+      // so that only the result is maybe made a temporary.
+      for (tree arg = arg_list; arg != NULL_TREE; arg = TREE_CHAIN (arg))
+	{
+	  tree value = TREE_VALUE (arg);
+
+	  if (TREE_SIDE_EFFECTS (value))
+	    {
+	      tree expr = stabilize_expr(&value);
+	      if (expr != NULL_TREE)
+		saved_args = compound_expr(saved_args, expr);
+
+	      // Argument needs saving.
+	      if (TREE_SIDE_EFFECTS (value))
+		nsaved_args++;
+
+	      TREE_VALUE (arg) = value;
+	    }
+	}
+
+      // If more than one argument needs saving, then we must enforce the
+      // order of evaluation.
+      if (nsaved_args > 1)
+	{
+	  for (tree arg = arg_list; arg != NULL_TREE; arg = TREE_CHAIN (arg))
+	    {
+	      tree value = TREE_VALUE (arg);
+
+	      if (TREE_SIDE_EFFECTS (value))
+		{
+		  value = d_save_expr(value);
+		  saved_args = compound_expr(saved_args, value);
+		  TREE_VALUE (arg) = value;
+		}
+	    }
+	}
+    }
+
+  // Evaluate the callee before calling it.
+  if (saved_args != NULL_TREE && TREE_SIDE_EFFECTS (callee))
+    {
+      callee = d_save_expr(callee);
+      saved_args = compound_expr(callee, saved_args);
     }
 
   tree result = d_build_call_list(TREE_TYPE (ctype), callee, arg_list);
   result = expand_intrinsic(result);
 
-  return maybe_compound_expr(saved_args, result);
+  if (TREE_CODE (result) == CALL_EXPR
+      && AGGREGATE_TYPE_P (TREE_TYPE (result))
+      && aggregate_value_p(TREE_TYPE (result), result))
+    {
+      CALL_EXPR_RETURN_SLOT_OPT (result) = true;
+      result = build_target_expr(result);
+    }
+
+  return compound_expr(saved_args, result);
 }
 
 // Builds a call to AssertError or AssertErrorMsg.
@@ -3208,8 +3360,8 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2
     arg2 = fold_build1 (BIT_NOT_EXPR, TREE_TYPE (arg2), arg2);
 
   tval = build_local_temp (TREE_TYPE (callee));
-  exp = vmodify_expr (tval, exp);
-  arg1 = vmodify_expr (arg1, fold_build2 (code, TREE_TYPE (arg1), arg1, arg2));
+  exp = modify_expr (tval, exp);
+  arg1 = modify_expr (arg1, fold_build2 (code, TREE_TYPE (arg1), arg1, arg2));
 
   return compound_expr (exp, compound_expr (arg1, tval));
 }
@@ -3243,7 +3395,7 @@ expand_intrinsic_arith(built_in_function code, tree callee, tree arg1,
   // Assign returned result to overflow parameter, however if
   // overflow is already true, maintain it's value.
   exp = fold_build2 (BIT_IOR_EXPR, TREE_TYPE (overflow), overflow, exp);
-  overflow = vmodify_expr(overflow, exp);
+  overflow = modify_expr(overflow, exp);
 
   // Return the value of result.
   return compound_expr(overflow, result);
@@ -3280,7 +3432,7 @@ expand_intrinsic_vaarg(tree callee, tree arg1, tree arg2)
   tree exp = build1(VA_ARG_EXPR, type, arg1);
 
   if (arg2 != NULL_TREE)
-    exp = vmodify_expr(arg2, exp);
+    exp = modify_expr(arg2, exp);
 
   return exp;
 }
@@ -3370,11 +3522,10 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 tree
 expand_volatile_load(tree arg1)
 {
-  tree type = TREE_TYPE (arg1);
-  gcc_assert (POINTER_TYPE_P (type));
+  gcc_assert (POINTER_TYPE_P (TREE_TYPE (arg1)));
 
-  tree tvolatile = build_qualified_type(TREE_TYPE (arg1), TYPE_QUAL_VOLATILE);
-  tree result = indirect_ref(tvolatile, arg1);
+  tree type = build_qualified_type(TREE_TYPE (arg1), TYPE_QUAL_VOLATILE);
+  tree result = indirect_ref(type, arg1);
   TREE_THIS_VOLATILE (result) = 1;
 
   return result;
@@ -3383,11 +3534,11 @@ expand_volatile_load(tree arg1)
 tree
 expand_volatile_store(tree arg1, tree arg2)
 {
-  tree tvolatile = build_qualified_type(TREE_TYPE (arg2), TYPE_QUAL_VOLATILE);
-  tree result = indirect_ref(tvolatile, arg1);
+  tree type = build_qualified_type(TREE_TYPE (arg2), TYPE_QUAL_VOLATILE);
+  tree result = indirect_ref(type, arg1);
   TREE_THIS_VOLATILE (result) = 1;
 
-  return modify_expr(tvolatile, result, arg2);
+  return modify_expr(result, arg2);
 }
 
 // If CALLEXP is a BUILT_IN_FRONTEND, expand and return inlined
@@ -3592,16 +3743,6 @@ build_float_modulus (tree type, tree arg0, tree arg1)
 
   // Should have caught this above.
   gcc_unreachable();
-}
-
-// Returns typeinfo reference for type T.
-
-tree
-build_typeinfo (Type *t)
-{
-  tree tinfo = build_expr(getTypeInfo(t, NULL));
-  gcc_assert(POINTER_TYPE_P (TREE_TYPE (tinfo)));
-  return tinfo;
 }
 
 // Check that a new jump at FROM to a label at TO is OK.
@@ -4143,7 +4284,7 @@ build_closure(FuncDeclaration *fd)
 
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));
-  tree chain_expr = vmodify_expr(chain_field, cfun->language->static_chain);
+  tree chain_expr = modify_expr(chain_field, cfun->language->static_chain);
   add_stmt(chain_expr);
 
   // Copy parameters that are referenced nonlocally.
@@ -4157,7 +4298,7 @@ build_closure(FuncDeclaration *fd)
       Symbol *vsym = v->toSymbol();
 
       tree field = component_ref (decl_ref, vsym->SframeField);
-      tree expr = vmodify_expr (field, vsym->Stree);
+      tree expr = modify_expr (field, vsym->Stree);
       add_stmt(expr);
     }
 
@@ -4187,14 +4328,10 @@ get_frameinfo(FuncDeclaration *fd)
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->closureVars.dim != 0)
+  if (fd->hasNestedFrameRefs())
     ffi->creates_frame = true;
 
   if (fd->vthis && fd->vthis->type == Type::tvoidptr)
-    ffi->creates_frame = true;
-
-  // Functions with In/Out contracts pass parameters to nested frame.
-  if (fd->fensure || fd->frequire)
     ffi->creates_frame = true;
 
   // D2 maybe setup closure instead.
@@ -4549,75 +4686,10 @@ insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
   // Must set this or we crash with DWARF debugging.
   set_decl_location(field, loc);
 
-  TREE_THIS_VOLATILE (field) = TYPE_VOLATILE (TREE_TYPE (field));
+  TREE_ADDRESSABLE (field) = TYPE_SHARED (TREE_TYPE (field));
 
   layout_decl(field, 0);
   TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), field);
-}
-
-// Create an anonymous field of type ubyte[SIZE] at OFFSET.
-// CONTEXT is the record type where the field will be inserted.
-
-static tree
-fill_alignment_field(tree context, tree size, tree offset)
-{
-  tree type = d_array_type(Type::tuns8, tree_to_uhwi(size));
-  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
-
-  // As per insert_aggregate_field.
-  DECL_FIELD_CONTEXT (field) = context;
-  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
-  DECL_FIELD_OFFSET (field) = offset;
-  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
-
-  layout_decl(field, 0);
-
-  DECL_ARTIFICIAL (field) = 1;
-  DECL_IGNORED_P (field) = 1;
-
-  return field;
-}
-
-// Insert anonymous fields in the record TYPE for padding out alignment holes.
-
-static void
-fill_alignment_holes(tree type)
-{
-  // Filling alignment holes this way only applies for structs.
-  if (TREE_CODE (type) != RECORD_TYPE
-      || CLASS_TYPE_P (type) || TYPE_PACKED (type))
-    return;
-
-  tree offset = size_zero_node;
-  tree prev = NULL_TREE;
-
-  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
-    {
-      tree voffset = DECL_FIELD_OFFSET (field);
-      tree vsize = TYPE_SIZE_UNIT (TREE_TYPE (field));
-
-      // If there is an alignment hole, pad with a static array of type ubyte[].
-      if (prev != NULL_TREE && tree_int_cst_lt(offset, voffset))
-	{
-	  tree psize = size_binop(MINUS_EXPR, voffset, offset);
-	  tree pfield = fill_alignment_field(type, psize, offset);
-
-	  // Insert before the current field position.
-	  DECL_CHAIN (pfield) = DECL_CHAIN (prev);
-	  DECL_CHAIN (prev) = pfield;
-	}
-
-      prev = field;
-      offset = size_binop(PLUS_EXPR, voffset, vsize);
-    }
-
-  // Finally pad out the end of the record.
-  if (tree_int_cst_lt(offset, TYPE_SIZE_UNIT (type)))
-    {
-      tree psize = size_binop(MINUS_EXPR, TYPE_SIZE_UNIT (type), offset);
-      tree pfield = fill_alignment_field(type, psize, offset);
-      TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), pfield);
-    }
 }
 
 // Wrap-up and compute finalised aggregate type.
@@ -4642,9 +4714,6 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
   SET_TYPE_ALIGN (type, alignsize * BITS_PER_UNIT);
   TYPE_PACKED (type) = (alignsize == 1);
 
-  // Add padding to fill in any alignment holes.
-  fill_alignment_holes(type);
-
   // Set the backend type mode.
   compute_record_mode(type);
 
@@ -4662,3 +4731,28 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
     }
 }
 
+// Find the field identified by identifier IDENT inside aggregate TYPE.
+tree
+find_aggregate_field(tree ident, tree type)
+{
+  tree fields = TYPE_FIELDS (type);
+
+  for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
+    {
+      if (DECL_NAME (field) == NULL_TREE)
+	{
+	  // Search nesting anonymous structs and unions.
+	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
+	    {
+	      tree vfield = find_aggregate_field(ident, TREE_TYPE (field));
+	      if (vfield != NULL_TREE)
+		return vfield;
+	    }
+	}
+      else if (DECL_NAME (field) == ident)
+	return field;
+    }
+
+  return NULL_TREE;
+}

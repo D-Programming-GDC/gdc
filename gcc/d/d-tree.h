@@ -19,15 +19,31 @@
 #ifndef GCC_D_TREE_H
 #define GCC_D_TREE_H
 
+// Usage of TREE_LANG_FLAG_?:
+// 0: METHOD_CALL_EXPR
+
+// Usage of TYPE_LANG_FLAG_?:
+// 0: TYPE_SHARED
+// 1: TYPE_IMAGINARY_FLOAT (in REAL_TYPE).
+//    ANON_AGGR_TYPE_P (in RECORD_TYPE, UNION_TYPE).
+// 2: CLASS_TYPE_P (in RECORD_TYPE).
+
+// Usage of DECL_LANG_FLAG_?:
+// 0: D_DECL_ONE_ONLY
+// 1: D_DECL_IS_TEMPLATE
+// 2: LABEL_VARIABLE_CASE (in LABEL_DECL)
+
 // Forward type declarations to avoid including unnecessary headers.
 class Dsymbol;
 class Declaration;
 class FuncDeclaration;
+class TypeInfoDeclaration;
 class VarDeclaration;
 class Expression;
 class Module;
 class Statement;
 class Type;
+class TypeFunction;
 class Dsymbol;
 
 // The kinds of scopes we recognise.
@@ -182,9 +198,13 @@ lang_tree_node
 #define METHOD_CALL_EXPR(NODE) \
   (TREE_LANG_FLAG_0 (NODE))
 
+// True if the type was declared 'shared'
+#define TYPE_SHARED(NODE) \
+  (TYPE_LANG_FLAG_0 (NODE))
+
 // True if the type is an imaginary float type.
 #define TYPE_IMAGINARY_FLOAT(NODE) \
-  (TYPE_LANG_FLAG_0 (TREE_CHECK ((NODE), REAL_TYPE)))
+  (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
 
 // True if the type is an anonymous record or union.
 #define ANON_AGGR_TYPE_P(NODE) \
@@ -288,6 +308,7 @@ extern tree d_truthvalue_conversion (tree);
 // In d-expr.cc.
 extern tree build_expr (Expression *, bool = false);
 extern tree build_expr_dtor (Expression *);
+extern tree build_return_dtor (Expression *, Type *, TypeFunction *);
 
 // In d-incpath.cc.
 extern void add_import_paths (const char *, const char *, bool);
@@ -304,6 +325,10 @@ extern void d_keep (tree);
 
 // In imports.cc
 extern tree build_import_decl (Dsymbol *);
+
+// In typeinfo.cc
+extern tree build_typeinfo (Type *);
+extern tree layout_typeinfo (TypeInfoDeclaration *);
 
 // In toir.cc
 extern void build_ir (FuncDeclaration *);

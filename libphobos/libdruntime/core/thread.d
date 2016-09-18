@@ -134,23 +134,6 @@ version( Windows )
         extern (Windows) alias uint function(void*) btex_fptr;
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow;
 
-        version (MinGW)
-        {
-            import gcc.builtins;
-
-            // NOTE: The memory between the addresses of _tls_start and _tls_end
-            //       is the storage for thread-local data in MinGW.  Both of
-            //       these are defined in tlssup.c.
-            extern (C)
-            {
-                extern int _tls_start;
-                extern int _tls_end;
-            }
-
-            alias _tls_start _tlsstart;
-            alias _tls_end _tlsend;
-        }
-
         //
         // Entry point for Windows threads
         //
@@ -254,13 +237,6 @@ else version( Posix )
         version( GNU )
         {
             import gcc.builtins;
-
-            version (GNU_EMUTLS) {}
-            else extern (C)
-            {
-                extern size_t _tlsstart;
-                extern size_t _tlsend;
-            }
         }
 
         //
@@ -285,13 +261,6 @@ else version( Posix )
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt_tlsgc_init();
-            version (GNU_EMUTLS) {}
-            else version (GNU)
-            {
-                auto pstart = cast(void*) &_tlsstart;
-                auto pend   = cast(void*) &_tlsend;
-                obj.m_tls = pstart[0 .. pend - pstart];
-            }
 
             atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
             Thread.setThis( obj );
@@ -1338,14 +1307,6 @@ private:
         }
         m_call = Call.NO;
         m_curr = &m_main;
-
-        version (GNU_EMUTLS) {}
-        else version (GNU)
-        {
-            auto pstart = cast(void*) &_tlsstart;
-            auto pend   = cast(void*) &_tlsend;
-            m_tls = pstart[0 .. pend - pstart];
-        }
     }
 
 
@@ -1543,11 +1504,6 @@ private:
     Context             m_main;
     Context*            m_curr;
     bool                m_lock;
-    version (GNU_EMUTLS) {}
-    else version (GNU)
-    {
-        void[]          m_tls;  // spans implicit thread local storage
-    }
     void*               m_tlsgcdata;
 
     version( Windows )
@@ -1633,7 +1589,7 @@ private:
         return cast(Mutex)_locks[1].ptr;
     }
 
-    __gshared byte[__traits(classInstanceSize, Mutex)][2] _locks;
+    __gshared void[__traits(classInstanceSize, Mutex)][2] _locks;
 
     static void initLocks()
     {
@@ -2094,14 +2050,6 @@ extern (C) Thread thread_attachThis()
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    version (GNU_EMUTLS) {}
-    else version (GNU)
-    {
-        auto pstart = cast(void*) &_tlsstart;
-        auto pend   = cast(void*) &_tlsend;
-        thisThread.m_tls = pstart[0 .. pend - pstart];
-    }
-
     Thread.add( thisThread );
     Thread.add( thisContext );
     if( Thread.sm_main !is null )
@@ -2151,13 +2099,6 @@ version( Windows )
         {
             thisThread.m_hndl = GetCurrentThreadHandle();
             thisThread.m_tlsgcdata = rt_tlsgc_init();
-            version (GNU_EMUTLS) {}
-            else version (GNU)
-            {
-                auto pstart = cast(void*) &_tlsstart;
-                auto pend   = cast(void*) &_tlsend;
-                thisThread.m_tls = pstart[0 .. pend - pstart];
-            }
             Thread.setThis( thisThread );
         }
         else
@@ -2166,17 +2107,6 @@ version( Windows )
             impersonate_thread(addr,
             {
                 thisThread.m_tlsgcdata = rt_tlsgc_init();
-                version (GNU_EMUTLS) {}
-                else version (GNU)
-                {
-                    auto pstart = cast(void*) &_tlsstart;
-                    auto pend   = cast(void*) &_tlsend;
-                    auto pos    = GetTlsDataAddress( thisThread.m_hndl );
-                    if( pos ) // on x64, threads without TLS happen to exist
-                        thisThread.m_tls = pos[0 .. pend - pstart];
-                    else
-                        thisThread.m_tls = [];
-                }
                 Thread.setThis( thisThread );
             });
         }
@@ -2873,20 +2803,6 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
             // would make portability annoying because it only makes sense on Windows.
             scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
         }
-        version (GNU_EMUTLS)
-        {
-            try
-            {
-                foreach(m; ModuleInfo)
-                {
-                    if (m.scanTLS)
-                        m.scanTLS((p1, p2) => scan(ScanType.tls, p1, p2));
-                }
-            }
-            catch(Exception) {} // Can't throw as long as our delegate doesn't throw
-        }
-        else version (GNU)
-            scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
 
         if (t.m_tlsgcdata !is null)
             rt_tlsgc_scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
@@ -3127,10 +3043,10 @@ extern(C) void thread_processGCMarks( scope IsMarkedDg isMarked ) nothrow
 extern (C)
 {
 nothrow:
-    version (linux) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
+    version (CRuntime_Glibc) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
     version (FreeBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     version (Solaris) int thr_stksegment(stack_t* stk);
-    version (Android) int pthread_getattr_np(pthread_t thid, pthread_attr_t* attr);
+    version (CRuntime_Bionic) int pthread_getattr_np(pthread_t thid, pthread_attr_t* attr);
 }
 
 
@@ -3181,7 +3097,7 @@ private void* getStackBottom() nothrow
         import core.sys.osx.pthread;
         return pthread_get_stackaddr_np(pthread_self());
     }
-    else version (linux)
+    else version (CRuntime_Glibc)
     {
         pthread_attr_t attr;
         void* addr; size_t size;
@@ -3209,7 +3125,7 @@ private void* getStackBottom() nothrow
         thr_stksegment(&stk);
         return stk.ss_sp;
     }
-    else version (Android)
+    else version (CRuntime_Bionic)
     {
         pthread_attr_t attr;
         void* addr; size_t size;
@@ -4147,23 +4063,23 @@ class Fiber
 
     /**
      * Resets this fiber so that it may be re-used, optionally with a
-     * new function/delegate.  This routine may only be called for
+     * new function/delegate.  This routine should only be called for
      * fibers that have terminated, as doing otherwise could result in
      * scope-dependent functionality that is not executed.
      * Stack-based classes, for example, may not be cleaned up
-     * properly if a fiber is reset before it has terminated.
+     * properly if a fiber is reset before it has terminated. 
      *
      * In:
-     *  This fiber must be in state TERM.
+     *  This fiber must be in state TERM or HOLD.
      */
     final void reset() nothrow
     in
     {
         assert( m_state == State.TERM || m_state == State.HOLD );
-        assert( m_ctxt.tstack == m_ctxt.bstack );
     }
     body
     {
+        m_ctxt.tstack = m_ctxt.bstack;
         m_state = State.HOLD;
         initStack();
         m_unhandled = null;
@@ -4440,7 +4356,7 @@ private:
         {
             version (Posix) import core.sys.posix.sys.mman; // mmap
             version (FreeBSD) import core.sys.freebsd.sys.mman : MAP_ANON;
-            version (linux) import core.sys.linux.sys.mman : MAP_ANON;
+            version (CRuntime_Glibc) import core.sys.linux.sys.mman : MAP_ANON;
             version (OSX) import core.sys.osx.sys.mman : MAP_ANON;
 
             static if( __traits( compiles, mmap ) )
@@ -5210,6 +5126,17 @@ unittest
     expect(fib, "delegate");
 }
 
+// Test unsafe reset in hold state
+unittest
+{
+    auto fib = new Fiber(function {ubyte[2048] buf = void; Fiber.yield();}, 4096);
+    foreach (_; 0 .. 10)
+    {
+        fib.call();
+        assert(fib.state == Fiber.State.HOLD);
+        fib.reset();
+    }
+}
 
 // stress testing GC stack scanning
 unittest
@@ -5388,6 +5315,7 @@ version (FreeBSD) unittest
 
 unittest
 {
-    auto thr = new Thread(function{}, 10).start();
+    // use >PAGESIZE to avoid stack overflow (e.g. in an syscall)
+    auto thr = new Thread(function{}, 4096 + 1).start();
     thr.join();
 }

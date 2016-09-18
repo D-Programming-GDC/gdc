@@ -137,7 +137,8 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
 LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
-libgdruntime_la_DEPENDENCIES = $(BACKTRACE_LIB)
+am__DEPENDENCIES_1 =
+libgdruntime_la_DEPENDENCIES = $(BACKTRACE_LIB) $(am__DEPENDENCIES_1)
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = core/atomic.lo core/bitop.lo core/checkedint.lo \
 	core/cpuid.lo core/demangle.lo core/exception.lo \
@@ -162,14 +163,18 @@ am__objects_1 = core/atomic.lo core/bitop.lo core/checkedint.lo \
 	rt/arraycat.lo rt/cast_.lo rt/config.lo rt/critical_.lo \
 	rt/deh.lo rt/dmain2.lo rt/invariant.lo rt/lifetime.lo \
 	rt/memory.lo rt/minfo.lo rt/monitor_.lo rt/obj.lo rt/qsort.lo \
-	rt/switch_.lo rt/tlsgc.lo rt/typeinfo/ti_AC.lo \
-	rt/typeinfo/ti_Acdouble.lo rt/typeinfo/ti_Acfloat.lo \
-	rt/typeinfo/ti_Acreal.lo rt/typeinfo/ti_Adouble.lo \
-	rt/typeinfo/ti_Afloat.lo rt/typeinfo/ti_Ag.lo \
-	rt/typeinfo/ti_Aint.lo rt/typeinfo/ti_Along.lo \
-	rt/typeinfo/ti_Areal.lo rt/typeinfo/ti_Ashort.lo \
-	rt/typeinfo/ti_C.lo rt/typeinfo/ti_byte.lo \
-	rt/typeinfo/ti_cdouble.lo rt/typeinfo/ti_cfloat.lo \
+	rt/sections.lo rt/sections_android.lo \
+	rt/sections_elf_shared.lo rt/sections_osx.lo \
+	rt/sections_solaris.lo rt/sections_win32.lo \
+	rt/sections_win64.lo rt/switch_.lo rt/tlsgc.lo \
+	rt/typeinfo/ti_AC.lo rt/typeinfo/ti_Acdouble.lo \
+	rt/typeinfo/ti_Acfloat.lo rt/typeinfo/ti_Acreal.lo \
+	rt/typeinfo/ti_Adouble.lo rt/typeinfo/ti_Afloat.lo \
+	rt/typeinfo/ti_Ag.lo rt/typeinfo/ti_Aint.lo \
+	rt/typeinfo/ti_Along.lo rt/typeinfo/ti_Areal.lo \
+	rt/typeinfo/ti_Ashort.lo rt/typeinfo/ti_C.lo \
+	rt/typeinfo/ti_byte.lo rt/typeinfo/ti_cdouble.lo \
+	rt/typeinfo/ti_cent.lo rt/typeinfo/ti_cfloat.lo \
 	rt/typeinfo/ti_char.lo rt/typeinfo/ti_creal.lo \
 	rt/typeinfo/ti_dchar.lo rt/typeinfo/ti_delegate.lo \
 	rt/typeinfo/ti_double.lo rt/typeinfo/ti_float.lo \
@@ -177,13 +182,14 @@ am__objects_1 = core/atomic.lo core/bitop.lo core/checkedint.lo \
 	rt/typeinfo/ti_int.lo rt/typeinfo/ti_ireal.lo \
 	rt/typeinfo/ti_long.lo rt/typeinfo/ti_ptr.lo \
 	rt/typeinfo/ti_real.lo rt/typeinfo/ti_short.lo \
-	rt/typeinfo/ti_ubyte.lo rt/typeinfo/ti_uint.lo \
-	rt/typeinfo/ti_ulong.lo rt/typeinfo/ti_ushort.lo \
-	rt/typeinfo/ti_void.lo rt/typeinfo/ti_wchar.lo \
-	rt/util/array.lo rt/util/container/array.lo \
-	rt/util/container/common.lo rt/util/container/hashtab.lo \
-	rt/util/container/treap.lo rt/util/hash.lo rt/util/random.lo \
-	rt/util/string.lo rt/util/typeinfo.lo rt/util/utf.lo
+	rt/typeinfo/ti_ubyte.lo rt/typeinfo/ti_ucent.lo \
+	rt/typeinfo/ti_uint.lo rt/typeinfo/ti_ulong.lo \
+	rt/typeinfo/ti_ushort.lo rt/typeinfo/ti_void.lo \
+	rt/typeinfo/ti_wchar.lo rt/util/array.lo \
+	rt/util/container/array.lo rt/util/container/common.lo \
+	rt/util/container/hashtab.lo rt/util/container/treap.lo \
+	rt/util/hash.lo rt/util/random.lo rt/util/string.lo \
+	rt/util/typeinfo.lo rt/util/utf.lo
 am__objects_2 = gc/bits.lo gc/config.lo gc/gc.lo gc/os.lo \
 	gc/pooltable.lo gc/proxy.lo gc/stats.lo
 @DRUNTIME_GC_ENABLE_TRUE@am__objects_3 = $(am__objects_2)
@@ -216,7 +222,7 @@ am__objects_8 = core/sys/osx/execinfo.lo core/sys/osx/mach/dyld.lo \
 	core/sys/osx/mach/loader.lo core/sys/osx/mach/port.lo \
 	core/sys/osx/mach/semaphore.lo core/sys/osx/mach/thread_act.lo \
 	core/sys/osx/pthread.lo core/sys/osx/sys/cdefs.lo \
-	core/sys/osx/sys/mman.lo
+	core/sys/osx/sys/event.lo core/sys/osx/sys/mman.lo
 @DRUNTIME_OS_DARWIN_TRUE@am__objects_9 = $(am__objects_8)
 am__objects_10 = core/sys/freebsd/dlfcn.lo \
 	core/sys/freebsd/execinfo.lo core/sys/freebsd/sys/cdefs.lo \
@@ -256,7 +262,8 @@ am__objects_19 = $(am__objects_1) $(am__objects_3) $(am__objects_5) \
 	$(am__objects_7) $(am__objects_9) $(am__objects_11) \
 	$(am__objects_13) $(am__objects_15) $(am__objects_17) \
 	$(am__objects_18)
-am__objects_20 = libgdruntime_la-errno_.lo
+am__objects_20 = libgdruntime_la-errno_.lo \
+	libgdruntime_la-bss_section.lo
 am__objects_21 = libgdruntime_la-threadasm.lo
 am__objects_22 = $(am__objects_19) $(am__objects_20) $(am__objects_21)
 am_libgdruntime_la_OBJECTS = $(am__objects_22)
@@ -265,144 +272,10 @@ libgdruntime_la_LINK = $(LIBTOOL) --tag=CC \
 	$(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
 	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgdruntime_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
-am__DEPENDENCIES_1 = core/atomic.t.lo core/bitop.t.lo \
-	core/checkedint.t.lo core/cpuid.t.lo core/demangle.t.lo \
-	core/exception.t.lo core/internal/convert.t.lo \
-	core/internal/hash.t.lo core/internal/traits.t.lo \
-	core/math.t.lo core/memory.t.lo core/runtime.t.lo \
-	core/simd.t.lo core/stdc/complex.t.lo core/stdc/config.t.lo \
-	core/stdc/ctype.t.lo core/stdc/errno.t.lo core/stdc/fenv.t.lo \
-	core/stdc/float_.t.lo core/stdc/inttypes.t.lo \
-	core/stdc/limits.t.lo core/stdc/locale.t.lo \
-	core/stdc/math.t.lo core/stdc/signal.t.lo \
-	core/stdc/stdarg.t.lo core/stdc/stddef.t.lo \
-	core/stdc/stdint.t.lo core/stdc/stdio.t.lo \
-	core/stdc/stdlib.t.lo core/stdc/string.t.lo \
-	core/stdc/tgmath.t.lo core/stdc/time.t.lo \
-	core/stdc/wchar_.t.lo core/stdc/wctype.t.lo \
-	core/sync/barrier.t.lo core/sync/condition.t.lo \
-	core/sync/config.t.lo core/sync/exception.t.lo \
-	core/sync/mutex.t.lo core/sync/rwmutex.t.lo \
-	core/sync/semaphore.t.lo core/thread.t.lo core/time.t.lo \
-	core/vararg.t.lo etc/linux/memoryerror.t.lo gcc/atomics.t.lo \
-	gcc/attribute.t.lo gcc/backtrace.t.lo gcc/builtins.t.lo \
-	gcc/deh.t.lo gcc/unwind/arm.t.lo gcc/unwind/generic.t.lo \
-	gcc/unwind/package.t.lo gcc/unwind/pe.t.lo object.t.lo \
-	rt/aApply.t.lo rt/aApplyR.t.lo rt/aaA.t.lo rt/adi.t.lo \
-	rt/arrayassign.t.lo rt/arraycast.t.lo rt/arraycat.t.lo \
-	rt/cast_.t.lo rt/config.t.lo rt/critical_.t.lo rt/deh.t.lo \
-	rt/dmain2.t.lo rt/invariant.t.lo rt/lifetime.t.lo \
-	rt/memory.t.lo rt/minfo.t.lo rt/monitor_.t.lo rt/obj.t.lo \
-	rt/qsort.t.lo rt/switch_.t.lo rt/tlsgc.t.lo \
-	rt/typeinfo/ti_AC.t.lo rt/typeinfo/ti_Acdouble.t.lo \
-	rt/typeinfo/ti_Acfloat.t.lo rt/typeinfo/ti_Acreal.t.lo \
-	rt/typeinfo/ti_Adouble.t.lo rt/typeinfo/ti_Afloat.t.lo \
-	rt/typeinfo/ti_Ag.t.lo rt/typeinfo/ti_Aint.t.lo \
-	rt/typeinfo/ti_Along.t.lo rt/typeinfo/ti_Areal.t.lo \
-	rt/typeinfo/ti_Ashort.t.lo rt/typeinfo/ti_C.t.lo \
-	rt/typeinfo/ti_byte.t.lo rt/typeinfo/ti_cdouble.t.lo \
-	rt/typeinfo/ti_cfloat.t.lo rt/typeinfo/ti_char.t.lo \
-	rt/typeinfo/ti_creal.t.lo rt/typeinfo/ti_dchar.t.lo \
-	rt/typeinfo/ti_delegate.t.lo rt/typeinfo/ti_double.t.lo \
-	rt/typeinfo/ti_float.t.lo rt/typeinfo/ti_idouble.t.lo \
-	rt/typeinfo/ti_ifloat.t.lo rt/typeinfo/ti_int.t.lo \
-	rt/typeinfo/ti_ireal.t.lo rt/typeinfo/ti_long.t.lo \
-	rt/typeinfo/ti_ptr.t.lo rt/typeinfo/ti_real.t.lo \
-	rt/typeinfo/ti_short.t.lo rt/typeinfo/ti_ubyte.t.lo \
-	rt/typeinfo/ti_uint.t.lo rt/typeinfo/ti_ulong.t.lo \
-	rt/typeinfo/ti_ushort.t.lo rt/typeinfo/ti_void.t.lo \
-	rt/typeinfo/ti_wchar.t.lo rt/util/array.t.lo \
-	rt/util/container/array.t.lo rt/util/container/common.t.lo \
-	rt/util/container/hashtab.t.lo rt/util/container/treap.t.lo \
-	rt/util/hash.t.lo rt/util/random.t.lo rt/util/string.t.lo \
-	rt/util/typeinfo.t.lo rt/util/utf.t.lo
-am__DEPENDENCIES_2 = gc/bits.t.lo gc/config.t.lo gc/gc.t.lo gc/os.t.lo \
-	gc/pooltable.t.lo gc/proxy.t.lo gc/stats.t.lo
-@DRUNTIME_GC_ENABLE_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
-am__DEPENDENCIES_4 = gcstub/gc.t.lo
-@DRUNTIME_GC_ENABLE_FALSE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_4)
-am__DEPENDENCIES_6 = core/sys/posix/arpa/inet.t.lo \
-	core/sys/posix/config.t.lo core/sys/posix/dirent.t.lo \
-	core/sys/posix/dlfcn.t.lo core/sys/posix/fcntl.t.lo \
-	core/sys/posix/grp.t.lo core/sys/posix/inttypes.t.lo \
-	core/sys/posix/net/if_.t.lo core/sys/posix/netdb.t.lo \
-	core/sys/posix/netinet/in_.t.lo \
-	core/sys/posix/netinet/tcp.t.lo core/sys/posix/poll.t.lo \
-	core/sys/posix/pthread.t.lo core/sys/posix/pwd.t.lo \
-	core/sys/posix/sched.t.lo core/sys/posix/semaphore.t.lo \
-	core/sys/posix/setjmp.t.lo core/sys/posix/signal.t.lo \
-	core/sys/posix/stdio.t.lo core/sys/posix/stdlib.t.lo \
-	core/sys/posix/sys/ioctl.t.lo core/sys/posix/sys/ipc.t.lo \
-	core/sys/posix/sys/mman.t.lo core/sys/posix/sys/msg.t.lo \
-	core/sys/posix/sys/resource.t.lo \
-	core/sys/posix/sys/select.t.lo core/sys/posix/sys/shm.t.lo \
-	core/sys/posix/sys/socket.t.lo core/sys/posix/sys/stat.t.lo \
-	core/sys/posix/sys/statvfs.t.lo core/sys/posix/sys/time.t.lo \
-	core/sys/posix/sys/types.t.lo core/sys/posix/sys/uio.t.lo \
-	core/sys/posix/sys/un.t.lo core/sys/posix/sys/utsname.t.lo \
-	core/sys/posix/sys/wait.t.lo core/sys/posix/syslog.t.lo \
-	core/sys/posix/termios.t.lo core/sys/posix/time.t.lo \
-	core/sys/posix/ucontext.t.lo core/sys/posix/unistd.t.lo \
-	core/sys/posix/utime.t.lo
-@DRUNTIME_OS_UNIX_TRUE@am__DEPENDENCIES_7 = $(am__DEPENDENCIES_6)
-am__DEPENDENCIES_8 = core/sys/osx/execinfo.t.lo \
-	core/sys/osx/mach/dyld.t.lo core/sys/osx/mach/getsect.t.lo \
-	core/sys/osx/mach/kern_return.t.lo \
-	core/sys/osx/mach/loader.t.lo core/sys/osx/mach/port.t.lo \
-	core/sys/osx/mach/semaphore.t.lo \
-	core/sys/osx/mach/thread_act.t.lo core/sys/osx/pthread.t.lo \
-	core/sys/osx/sys/cdefs.t.lo core/sys/osx/sys/mman.t.lo
-@DRUNTIME_OS_DARWIN_TRUE@am__DEPENDENCIES_9 = $(am__DEPENDENCIES_8)
-am__DEPENDENCIES_10 = core/sys/freebsd/dlfcn.t.lo \
-	core/sys/freebsd/execinfo.t.lo core/sys/freebsd/sys/cdefs.t.lo \
-	core/sys/freebsd/sys/elf.t.lo core/sys/freebsd/sys/elf32.t.lo \
-	core/sys/freebsd/sys/elf64.t.lo \
-	core/sys/freebsd/sys/elf_common.t.lo \
-	core/sys/freebsd/sys/event.t.lo \
-	core/sys/freebsd/sys/link_elf.t.lo \
-	core/sys/freebsd/sys/mman.t.lo core/sys/freebsd/time.t.lo
-@DRUNTIME_OS_BSD_TRUE@am__DEPENDENCIES_11 = $(am__DEPENDENCIES_10)
-am__DEPENDENCIES_12 = core/sys/linux/config.t.lo \
-	core/sys/linux/dlfcn.t.lo core/sys/linux/elf.t.lo \
-	core/sys/linux/epoll.t.lo core/sys/linux/errno.t.lo \
-	core/sys/linux/execinfo.t.lo core/sys/linux/link.t.lo \
-	core/sys/linux/stdio.t.lo core/sys/linux/sys/inotify.t.lo \
-	core/sys/linux/sys/mman.t.lo core/sys/linux/sys/signalfd.t.lo \
-	core/sys/linux/sys/sysinfo.t.lo core/sys/linux/sys/xattr.t.lo \
-	core/sys/linux/termios.t.lo core/sys/linux/time.t.lo \
-	core/sys/linux/tipc.t.lo
-@DRUNTIME_OS_LINUX_TRUE@am__DEPENDENCIES_13 = $(am__DEPENDENCIES_12)
-am__DEPENDENCIES_14 = core/sys/windows/com.t.lo \
-	core/sys/windows/dbghelp.t.lo core/sys/windows/dll.t.lo \
-	core/sys/windows/stacktrace.t.lo core/sys/windows/stat.t.lo \
-	core/sys/windows/threadaux.t.lo core/sys/windows/windows.t.lo \
-	core/sys/windows/winsock2.t.lo
-@DRUNTIME_OS_MINGW_TRUE@am__DEPENDENCIES_15 = $(am__DEPENDENCIES_14)
-am__DEPENDENCIES_16 = core/sys/solaris/dlfcn.t.lo \
-	core/sys/solaris/elf.t.lo core/sys/solaris/execinfo.t.lo \
-	core/sys/solaris/libelf.t.lo core/sys/solaris/link.t.lo \
-	core/sys/solaris/sys/elf.t.lo \
-	core/sys/solaris/sys/elf_386.t.lo \
-	core/sys/solaris/sys/elf_SPARC.t.lo \
-	core/sys/solaris/sys/elf_amd64.t.lo \
-	core/sys/solaris/sys/elf_notes.t.lo \
-	core/sys/solaris/sys/elftypes.t.lo \
-	core/sys/solaris/sys/link.t.lo \
-	core/sys/solaris/sys/priocntl.t.lo \
-	core/sys/solaris/sys/procset.t.lo \
-	core/sys/solaris/sys/types.t.lo
-@DRUNTIME_OS_SOLARIS_TRUE@am__DEPENDENCIES_17 =  \
-@DRUNTIME_OS_SOLARIS_TRUE@	$(am__DEPENDENCIES_16)
-am__DEPENDENCIES_18 = gcc/config.t.lo gcc/libbacktrace.t.lo
-am__DEPENDENCIES_19 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_3) \
-	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_7) \
-	$(am__DEPENDENCIES_9) $(am__DEPENDENCIES_11) \
-	$(am__DEPENDENCIES_13) $(am__DEPENDENCIES_15) \
-	$(am__DEPENDENCIES_17) $(am__DEPENDENCIES_18)
-am__DEPENDENCIES_20 = $(am__DEPENDENCIES_19)
-libgdruntime_t_la_DEPENDENCIES = $(am__DEPENDENCIES_20) \
-	$(BACKTRACE_LIB)
-am__objects_23 = libgdruntime_t_la-errno_.lo
+libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS) \
+	$(BACKTRACE_LIB) $(am__DEPENDENCIES_1)
+am__objects_23 = libgdruntime_t_la-errno_.lo \
+	libgdruntime_t_la-bss_section.lo
 am__objects_24 = libgdruntime_t_la-threadasm.lo
 am_libgdruntime_t_la_OBJECTS = $(am__objects_23) $(am__objects_24)
 libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
@@ -416,7 +289,7 @@ libgdruntime_t_la_LINK = $(LIBTOOL) --tag=CC \
 am_unittest_OBJECTS = test_runner.$(OBJEXT)
 unittest_OBJECTS = $(am_unittest_OBJECTS)
 unittest_DEPENDENCIES = libgdruntime_t.la
-am__objects_25 = errno_.$(OBJEXT)
+am__objects_25 = errno_.$(OBJEXT) bss_section.$(OBJEXT)
 am__objects_26 = threadasm.$(OBJEXT)
 am_unittest_static_OBJECTS = test_runner.$(OBJEXT) $(am__objects_25) \
 	$(am__objects_26)
@@ -468,11 +341,13 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DCFG_ARM_EABI_UNWINDER = @DCFG_ARM_EABI_UNWINDER@
+DCFG_MINFO_BRACKETING = @DCFG_MINFO_BRACKETING@
 DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
 DL_LIBS = @DL_LIBS@
+DRUNTIME_VER_FLAG = @DRUNTIME_VER_FLAG@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -491,6 +366,10 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBADD_DL = @LIBADD_DL@
+LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
+LIBADD_DLOPEN = @LIBADD_DLOPEN@
+LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
 LIBBACKTRACE_DIR = @LIBBACKTRACE_DIR@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -498,6 +377,8 @@ LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
+LT_DLLOADERS = @LT_DLLOADERS@
+LT_DLPREOPEN = @LT_DLPREOPEN@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
@@ -515,8 +396,8 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PHOBOS_VER_FLAG = @PHOBOS_VER_FLAG@
 RANLIB = @RANLIB@
-RELEASE_VER = @RELEASE_VER@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -624,21 +505,23 @@ ALL_DRUNTIME_COMPILE_DSOURCES = $(DRUNTIME_DSOURCES) $(am__append_1) \
 ALL_DRUNTIME_SOURCES = $(ALL_DRUNTIME_COMPILE_DSOURCES) $(DRUNTIME_CSOURCES) \
 	$(DRUNTIME_SSOURCES)
 
-DRUNTIME_TEST_LOBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.lo)
+REAL_DRUNTIME_TEST_LOBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.lo)
 REAL_DRUNTIME_TEST_OBJECTS = $(ALL_DRUNTIME_COMPILE_DSOURCES:.d=.t.o)
 # Workaround issue #
 DRUNTIME_TEST_OBJECTS = $(filter-out rt/util/typeinfo.t.o \
 	core/internal/convert.t.o, $(REAL_DRUNTIME_TEST_OBJECTS)) \
 	rt/util/typeinfo.o core/internal/convert.o
 
+DRUNTIME_TEST_LOBJECTS = $(filter-out rt/util/typeinfo.t.lo \
+	core/internal/convert.t.lo, $(REAL_DRUNTIME_TEST_LOBJECTS)) \
+	rt/util/typeinfo.lo core/internal/convert.lo
+
 @ENABLE_SHARED_TRUE@check_LTLIBRARIES = libgdruntime_t.la
 toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
 libgdruntime_la_LIBTOOLFLAGS = --tag=D
-libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -release $(RELEASE_VER) \
-    -static
-
-libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
+libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib $(DRUNTIME_VER_FLAG)
+libgdruntime_la_LIBADD = $(BACKTRACE_LIB) $(LIBADD_DLOPEN)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
@@ -655,7 +538,9 @@ libgdruntime_t_la_LIBTOOLFLAGS = --tag=D
 # Automake by default does not generate shared libs for non-installed
 # libraries. Use -rpath to force shared lib generation.
 libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
-libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
+libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB) \
+     $(LIBADD_DLOPEN)
+
 EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest
@@ -688,18 +573,21 @@ DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
 	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
 	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
 	rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d \
-	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/switch_.d rt/tlsgc.d \
-	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
-	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
-	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
-	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
-	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
-	rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d \
-	rt/typeinfo/ti_dchar.d rt/typeinfo/ti_delegate.d \
-	rt/typeinfo/ti_double.d rt/typeinfo/ti_float.d \
-	rt/typeinfo/ti_idouble.d rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d \
-	rt/typeinfo/ti_ireal.d rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d \
-	rt/typeinfo/ti_real.d rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d \
+	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
+	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx.d \
+	rt/sections_solaris.d rt/sections_win32.d rt/sections_win64.d \
+	rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d \
+	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
+	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
+	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
+	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
+	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
+	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
+	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
+	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
+	rt/typeinfo/ti_long.d rt/typeinfo/ti_ptr.d rt/typeinfo/ti_real.d \
+	rt/typeinfo/ti_short.d rt/typeinfo/ti_ubyte.d rt/typeinfo/ti_ucent.d \
 	rt/typeinfo/ti_uint.d rt/typeinfo/ti_ulong.d rt/typeinfo/ti_ushort.d \
 	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
 	rt/util/container/array.d rt/util/container/common.d \
@@ -758,7 +646,8 @@ DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
 	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
 	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
 	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
-	core/sys/osx/sys/cdefs.d core/sys/osx/sys/mman.d
+	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
+	core/sys/osx/sys/mman.d
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
@@ -769,7 +658,7 @@ DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/termios.d core/sys/linux/time.d core/sys/linux/tipc.d
 
 DRUNTIME_SSOURCES = core/threadasm.S
-DRUNTIME_CSOURCES = core/stdc/errno_.c
+DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
 all: all-am
 
 .SUFFIXES:
@@ -943,6 +832,13 @@ rt/minfo.lo: rt/$(am__dirstamp)
 rt/monitor_.lo: rt/$(am__dirstamp)
 rt/obj.lo: rt/$(am__dirstamp)
 rt/qsort.lo: rt/$(am__dirstamp)
+rt/sections.lo: rt/$(am__dirstamp)
+rt/sections_android.lo: rt/$(am__dirstamp)
+rt/sections_elf_shared.lo: rt/$(am__dirstamp)
+rt/sections_osx.lo: rt/$(am__dirstamp)
+rt/sections_solaris.lo: rt/$(am__dirstamp)
+rt/sections_win32.lo: rt/$(am__dirstamp)
+rt/sections_win64.lo: rt/$(am__dirstamp)
 rt/switch_.lo: rt/$(am__dirstamp)
 rt/tlsgc.lo: rt/$(am__dirstamp)
 rt/typeinfo/$(am__dirstamp):
@@ -962,6 +858,7 @@ rt/typeinfo/ti_Ashort.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_C.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_byte.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_cdouble.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_cent.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_cfloat.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_char.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_creal.lo: rt/typeinfo/$(am__dirstamp)
@@ -978,6 +875,7 @@ rt/typeinfo/ti_ptr.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_real.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_short.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_ubyte.lo: rt/typeinfo/$(am__dirstamp)
+rt/typeinfo/ti_ucent.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_uint.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_ulong.lo: rt/typeinfo/$(am__dirstamp)
 rt/typeinfo/ti_ushort.lo: rt/typeinfo/$(am__dirstamp)
@@ -1089,6 +987,7 @@ core/sys/osx/sys/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/osx/sys
 	@: > core/sys/osx/sys/$(am__dirstamp)
 core/sys/osx/sys/cdefs.lo: core/sys/osx/sys/$(am__dirstamp)
+core/sys/osx/sys/event.lo: core/sys/osx/sys/$(am__dirstamp)
 core/sys/osx/sys/mman.lo: core/sys/osx/sys/$(am__dirstamp)
 core/sys/freebsd/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/freebsd
@@ -1348,6 +1247,8 @@ mostlyclean-compile:
 	-rm -f core/sys/osx/pthread.lo
 	-rm -f core/sys/osx/sys/cdefs.$(OBJEXT)
 	-rm -f core/sys/osx/sys/cdefs.lo
+	-rm -f core/sys/osx/sys/event.$(OBJEXT)
+	-rm -f core/sys/osx/sys/event.lo
 	-rm -f core/sys/osx/sys/mman.$(OBJEXT)
 	-rm -f core/sys/osx/sys/mman.lo
 	-rm -f core/sys/posix/arpa/inet.$(OBJEXT)
@@ -1564,6 +1465,20 @@ mostlyclean-compile:
 	-rm -f rt/obj.lo
 	-rm -f rt/qsort.$(OBJEXT)
 	-rm -f rt/qsort.lo
+	-rm -f rt/sections.$(OBJEXT)
+	-rm -f rt/sections.lo
+	-rm -f rt/sections_android.$(OBJEXT)
+	-rm -f rt/sections_android.lo
+	-rm -f rt/sections_elf_shared.$(OBJEXT)
+	-rm -f rt/sections_elf_shared.lo
+	-rm -f rt/sections_osx.$(OBJEXT)
+	-rm -f rt/sections_osx.lo
+	-rm -f rt/sections_solaris.$(OBJEXT)
+	-rm -f rt/sections_solaris.lo
+	-rm -f rt/sections_win32.$(OBJEXT)
+	-rm -f rt/sections_win32.lo
+	-rm -f rt/sections_win64.$(OBJEXT)
+	-rm -f rt/sections_win64.lo
 	-rm -f rt/switch_.$(OBJEXT)
 	-rm -f rt/switch_.lo
 	-rm -f rt/tlsgc.$(OBJEXT)
@@ -1596,6 +1511,8 @@ mostlyclean-compile:
 	-rm -f rt/typeinfo/ti_byte.lo
 	-rm -f rt/typeinfo/ti_cdouble.$(OBJEXT)
 	-rm -f rt/typeinfo/ti_cdouble.lo
+	-rm -f rt/typeinfo/ti_cent.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_cent.lo
 	-rm -f rt/typeinfo/ti_cfloat.$(OBJEXT)
 	-rm -f rt/typeinfo/ti_cfloat.lo
 	-rm -f rt/typeinfo/ti_char.$(OBJEXT)
@@ -1628,6 +1545,8 @@ mostlyclean-compile:
 	-rm -f rt/typeinfo/ti_short.lo
 	-rm -f rt/typeinfo/ti_ubyte.$(OBJEXT)
 	-rm -f rt/typeinfo/ti_ubyte.lo
+	-rm -f rt/typeinfo/ti_ucent.$(OBJEXT)
+	-rm -f rt/typeinfo/ti_ucent.lo
 	-rm -f rt/typeinfo/ti_uint.$(OBJEXT)
 	-rm -f rt/typeinfo/ti_uint.lo
 	-rm -f rt/typeinfo/ti_ulong.$(OBJEXT)
@@ -1695,14 +1614,26 @@ threadasm.obj: core/threadasm.S
 libgdruntime_la-errno_.lo: core/stdc/errno_.c
 	$(LIBTOOL)  --tag=CC $(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_la-errno_.lo `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
 
+libgdruntime_la-bss_section.lo: rt/bss_section.c
+	$(LIBTOOL)  --tag=CC $(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_la-bss_section.lo `test -f 'rt/bss_section.c' || echo '$(srcdir)/'`rt/bss_section.c
+
 libgdruntime_t_la-errno_.lo: core/stdc/errno_.c
 	$(LIBTOOL)  --tag=CC $(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_t_la-errno_.lo `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
+
+libgdruntime_t_la-bss_section.lo: rt/bss_section.c
+	$(LIBTOOL)  --tag=CC $(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libgdruntime_t_la-bss_section.lo `test -f 'rt/bss_section.c' || echo '$(srcdir)/'`rt/bss_section.c
 
 errno_.o: core/stdc/errno_.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o errno_.o `test -f 'core/stdc/errno_.c' || echo '$(srcdir)/'`core/stdc/errno_.c
 
 errno_.obj: core/stdc/errno_.c
 	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o errno_.obj `if test -f 'core/stdc/errno_.c'; then $(CYGPATH_W) 'core/stdc/errno_.c'; else $(CYGPATH_W) '$(srcdir)/core/stdc/errno_.c'; fi`
+
+bss_section.o: rt/bss_section.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bss_section.o `test -f 'rt/bss_section.c' || echo '$(srcdir)/'`rt/bss_section.c
+
+bss_section.obj: rt/bss_section.c
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bss_section.obj `if test -f 'rt/bss_section.c'; then $(CYGPATH_W) 'rt/bss_section.c'; else $(CYGPATH_W) '$(srcdir)/rt/bss_section.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

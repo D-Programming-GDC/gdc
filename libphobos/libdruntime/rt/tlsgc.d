@@ -10,21 +10,18 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
-/* NOTE: This file has been patched from the original DMD distribution to
- * work with the GDC compiler.
- */
 module rt.tlsgc;
 
 import core.stdc.stdlib;
 
-static import rt.lifetime;
+static import rt.lifetime, rt.sections;
 
 /**
  * Per thread record to store thread associated data for garbage collection.
  */
 struct Data
 {
+    typeof(rt.sections.initTLSRanges()) tlsRanges;
     rt.lifetime.BlkInfo** blockInfoCache;
 }
 
@@ -38,6 +35,7 @@ void* init()
     *data = Data.init;
 
     // do module specific initialization
+    data.tlsRanges = rt.sections.initTLSRanges();
     data.blockInfoCache = &rt.lifetime.__blkcache_storage;
 
     return data;
@@ -50,6 +48,7 @@ void* init()
 void destroy(void* data)
 {
     // do module specific finalization
+    rt.sections.finiTLSRanges((cast(Data*)data).tlsRanges);
 
     .free(data);
 }
@@ -63,6 +62,7 @@ alias void delegate(void* pstart, void* pend) nothrow ScanDg;
 void scan(void* data, scope ScanDg dg) nothrow
 {
     // do module specific marking
+    rt.sections.scanTLSRanges((cast(Data*)data).tlsRanges, dg);
 }
 
 alias int delegate(void* addr) nothrow IsMarkedDg;

@@ -1,5 +1,5 @@
 // d-decls.cc -- D frontend for GCC.
-// Copyright (C) 2011-2015 Free Software Foundation, Inc.
+// Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 // GCC is free software; you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free
@@ -145,6 +145,19 @@ VarDeclaration::toSymbol()
 
       if (isParameter())
 	{
+	  // Pass non-trivial structs by invisible reference.
+	  if (TREE_ADDRESSABLE (TREE_TYPE (decl)))
+	    {
+	      tree argtype = build_reference_type(TREE_TYPE (decl));
+	      argtype = build_qualified_type(argtype, TYPE_QUAL_RESTRICT);
+	      gcc_assert (!DECL_BY_REFERENCE (decl));
+	      TREE_TYPE (decl) = argtype;
+	      DECL_BY_REFERENCE (decl) = 1;
+	      TREE_ADDRESSABLE (decl) = 0;
+	      relayout_decl (decl);
+	      this->storage_class |= STCref;
+	    }
+
 	  DECL_ARG_TYPE (decl) = TREE_TYPE (decl);
 	  gcc_assert (TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL);
 	}
@@ -190,9 +203,9 @@ VarDeclaration::toSymbol()
 	    csym->Sreadonly = true;
 	}
 
-      // Propagate volatile.
-      if (TYPE_VOLATILE (TREE_TYPE (decl)))
-	TREE_THIS_VOLATILE (decl) = 1;
+      // Propagate shared.
+      if (TYPE_SHARED (TREE_TYPE (decl)))
+	TREE_ADDRESSABLE (decl) = 1;
 
       // Mark compiler generated temporaries as artificial.
       if (storage_class & STCtemp)
@@ -278,11 +291,17 @@ FuncDeclaration::toSymbol()
       tree vindex = NULL_TREE;
 
       // Run full semantic on symbols we need to know about during compilation.
-      if (inferRetType && type && !type->nextOf() && !functionSemantic())
+      if (inferRetType && type && !type->nextOf())
 	{
-	  csym = new Symbol();
-	  csym->Stree = error_mark_node;
-	  return csym;
+	  Module *old_current_module_decl = current_module_decl;
+	  current_module_decl = NULL;
+	  if (!functionSemantic())
+	    {
+	      csym = new Symbol();
+	      csym->Stree = error_mark_node;
+	      return csym;
+	    }
+	  current_module_decl = old_current_module_decl;
 	}
 
       // Use same symbol for FuncDeclaration templates with same mangle

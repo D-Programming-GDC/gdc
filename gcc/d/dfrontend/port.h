@@ -59,6 +59,11 @@ struct Port
     static longdouble strtof(const char *p, char **endp);
     static longdouble strtod(const char *p, char **endp);
     static longdouble strtold(const char *p, char **endp);
+
+    static unsigned readlongLE(void* buffer);
+    static unsigned readlongBE(void* buffer);
+    static unsigned readwordLE(void* buffer);
+    static unsigned readwordBE(void* buffer);
 };
 
 #endif

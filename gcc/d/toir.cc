@@ -429,7 +429,7 @@ public:
 
 	// Apparently the backend is supposed to sort and set the indexes
 	// on the case array, have to change them to be useable.
-	Type *satype = etype->sarrayOf(s->cases->dim);
+	Type *satype = condtype->sarrayOf(s->cases->dim);
 	vec<constructor_elt, va_gc> *elms = NULL;
 
 	s->cases->sort();
@@ -621,27 +621,18 @@ public:
     if (this->func_->isMain() && type->toBasetype()->ty == Tvoid)
       type = Type::tint32;
 
-    tree decl = DECL_RESULT (this->func_->toSymbol()->Stree);
-
     if (this->func_->nrvo_can && this->func_->nrvo_var)
       {
-	// Just refer to the DECL_RESULT; this is a nop, but differs
-	// from using NULL_TREE in that it indicates that we care about
-	// the value of the DECL_RESULT.
+	// Just refer to the DECL_RESULT; this differs from using NULL_TREE in
+	// that it indicates that we care about the value of the DECL_RESULT.
+	tree decl = DECL_RESULT (this->func_->toSymbol()->Stree);
 	add_stmt(return_expr(decl));
       }
     else
       {
 	// Convert for initialising the DECL_RESULT.
-	tree value = convert_expr(build_expr_dtor(s->exp),
-				  s->exp->type, type);
-
-	// If we are returning a reference, take the address.
-	if (tf->isref)
-	  value = build_address(value);
-
-	tree assign = build2(INIT_EXPR, TREE_TYPE (decl), decl, value);
-	add_stmt(return_expr(assign));
+	tree expr = build_return_dtor(s->exp, type, tf);
+	add_stmt(expr);
       }
   }
 
@@ -804,7 +795,7 @@ public:
 		object = build_nop(build_ctype(vcatch->type), object);
 
 		tree var = vcatch->var->toSymbol()->Stree;
-		tree init = build_vinit(var, object);
+		tree init = build_assign(INIT_EXPR, var, object);
 
 		build_local_var(vcatch->var);
 		add_stmt(init);

@@ -161,7 +161,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.useInvariants = true;
   global.params.useIn = true;
   global.params.useOut = true;
-  global.params.useArrayBounds = 2;
+  global.params.useArrayBounds = BOUNDSCHECKdefault;
   global.params.useSwitchError = true;
   global.params.useInline = false;
   global.params.warnings = 0;
@@ -180,7 +180,6 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
 
   // extra D-specific options
   flag_emit_templates = 1;
-  bounds_check_set_manually = false;
 }
 
 /* Initialize options structure OPTS.  */
@@ -321,7 +320,7 @@ d_init()
     VersionCondition::addPredefinedGlobalIdent ("unittest");
   if (global.params.useAssert)
     VersionCondition::addPredefinedGlobalIdent("assert");
-  if (!global.params.useArrayBounds)
+  if (global.params.useArrayBounds == BOUNDSCHECKoff)
     VersionCondition::addPredefinedGlobalIdent("D_NoBoundsChecks");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
@@ -357,13 +356,13 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fbounds_check:
-      global.params.useArrayBounds = value ? 2 : 0;
-      bounds_check_set_manually = true;
+      global.params.useArrayBounds = value
+	? BOUNDSCHECKon : BOUNDSCHECKoff;
       break;
 
     case OPT_fbounds_check_:
-      global.params.useArrayBounds = value;
-      bounds_check_set_manually = true;
+      global.params.useArrayBounds = (value == 2) ? BOUNDSCHECKon
+	: (value == 1) ? BOUNDSCHECKsafeonly : BOUNDSCHECKoff;
       break;
 
     case OPT_fdebug:
@@ -491,17 +490,16 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_frelease:
+      global.params.release = value;
       global.params.useInvariants = !value;
       global.params.useIn = !value;
       global.params.useOut = !value;
       global.params.useAssert = !value;
-      // release mode doesn't turn off bounds checking for safe functions.
-      if (!bounds_check_set_manually)
-      {
-	global.params.useArrayBounds = !value ? 2 : 1;
-	flag_bounds_check = !value;
-      }
       global.params.useSwitchError = !value;
+      break;
+
+    case OPT_ftransition_complex:
+      global.params.vcomplex = value;
       break;
 
     case OPT_ftransition_field:
@@ -514,6 +512,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_ftransition_tls:
       global.params.vtls = value;
+      break;
+
+    case OPT_ftransition_dip25:
+      global.params.useDIP25 = value;
       break;
 
     case OPT_funittest:
@@ -583,6 +585,16 @@ d_handle_option (size_t scode, const char *arg, int value,
 	global.params.warnings = 1;
       break;
 
+    case OPT_fmax_error_messages_:
+      {
+	int limit = integral_argument(arg);
+	if (limit == -1)
+	  error ("bad argument for -fmax-error-messages '%s'", arg);
+	else
+	  global.errorLimit = limit;
+	break;
+      }
+
     default:
       break;
     }
@@ -609,6 +621,14 @@ d_post_options (const char ** fn)
   // If we are given more than one input file, we must use unit-at-a-time mode.
   if (num_in_fnames > 1)
     flag_unit_at_a_time = 1;
+
+  // Release mode doesn't turn off bounds checking for safe functions.
+  if (global.params.useArrayBounds == BOUNDSCHECKdefault)
+    {
+      global.params.useArrayBounds = global.params.release
+	? BOUNDSCHECKsafeonly : BOUNDSCHECKon;
+      flag_bounds_check = !global.params.release;
+    }
 
   // Error about use of deprecated features.
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
@@ -667,70 +687,85 @@ empty_modify_p(tree type, tree op)
 }
 
 // Gimplification of D specific expression trees.
+
 int
 d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 		gimple_seq *post_p ATTRIBUTE_UNUSED)
 {
   tree_code code = TREE_CODE (*expr_p);
+  enum gimplify_status ret = GS_UNHANDLED;
+  tree op0, op1;
+  tree type;
+
   switch (code)
     {
     case INIT_EXPR:
     case MODIFY_EXPR:
+      op0 = TREE_OPERAND (*expr_p, 0);
+      op1 = TREE_OPERAND (*expr_p, 1);
+
+      if (!error_operand_p(op0) && !error_operand_p(op1)
+	  && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
+	      || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
+	  && !useless_type_conversion_p(TREE_TYPE (op1), TREE_TYPE (op0)))
 	{
 	  // If the back end isn't clever enough to know that the lhs and rhs
 	  // types are the same, add an explicit conversion.
-	  tree op0 = TREE_OPERAND (*expr_p, 0);
-	  tree op1 = TREE_OPERAND (*expr_p, 1);
-
-	  if (!error_operand_p(op0) && !error_operand_p(op1)
-	      && (AGGREGATE_TYPE_P (TREE_TYPE (op0))
-		  || AGGREGATE_TYPE_P (TREE_TYPE (op1)))
-	      && !useless_type_conversion_p(TREE_TYPE (op1), TREE_TYPE (op0)))
-	    {
-	      TREE_OPERAND (*expr_p, 1) = build1(VIEW_CONVERT_EXPR,
-						 TREE_TYPE (op0), op1);
-	    }
-	  else if (empty_modify_p(TREE_TYPE (op0), op1))
-	    {
-	      // Remove any copies of empty aggregates.  Also drop volatile
-	      // loads on the RHS to avoid infinite recursion from
-	      // gimplify_expr trying to load the value.
-	      gimplify_expr(&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
-			    is_gimple_lvalue, fb_lvalue);
-	      if (TREE_SIDE_EFFECTS (op1))
-		{
-		  if (TREE_THIS_VOLATILE (op1)
-		      && (REFERENCE_CLASS_P (op1) || DECL_P (op1)))
-		    op1 = build_fold_addr_expr (op1);
-
-		  gimplify_and_add (op1, pre_p);
-		}
-	      *expr_p = TREE_OPERAND (*expr_p, 0);
-	    }
-	  return GS_OK;
+	  TREE_OPERAND (*expr_p, 1) = build1(VIEW_CONVERT_EXPR,
+					     TREE_TYPE (op0), op1);
+	  ret = GS_OK;
 	}
+      else if (empty_modify_p(TREE_TYPE (op0), op1))
+	{
+	  // Remove any copies of empty aggregates.  Also drop volatile
+	  // loads on the RHS to avoid infinite recursion from
+	  // gimplify_expr trying to load the value.
+	  gimplify_expr(&TREE_OPERAND (*expr_p, 0), pre_p, post_p,
+			is_gimple_lvalue, fb_lvalue);
+	  if (TREE_SIDE_EFFECTS (op1))
+	    {
+	      if (TREE_THIS_VOLATILE (op1)
+		  && (REFERENCE_CLASS_P (op1) || DECL_P (op1)))
+		op1 = build_fold_addr_expr(op1);
+
+	      gimplify_and_add(op1, pre_p);
+	    }
+	  *expr_p = TREE_OPERAND (*expr_p, 0);
+	  ret = GS_OK;
+	}
+      break;
+
+    case ADDR_EXPR:
+      op0 = TREE_OPERAND (*expr_p, 0);
+      // Constructors are not lvalues, so make them one.
+      if (TREE_CODE (op0) == CONSTRUCTOR)
+	{
+	  TREE_OPERAND (*expr_p, 0) = build_target_expr(op0);
+	  ret = GS_OK;
+	}
+      break;
 
     case UNSIGNED_RSHIFT_EXPR:
-	{
-	  // Convert op0 to an unsigned type.
-	  tree op0 = TREE_OPERAND (*expr_p, 0);
-	  tree op1 = TREE_OPERAND (*expr_p, 1);
+      // Convert op0 to an unsigned type.
+      op0 = TREE_OPERAND (*expr_p, 0);
+      op1 = TREE_OPERAND (*expr_p, 1);
 
-	  tree unstype = d_unsigned_type (TREE_TYPE (op0));
+      type = d_unsigned_type(TREE_TYPE (op0));
 
-	  *expr_p = convert (TREE_TYPE (*expr_p),
-			     build2 (RSHIFT_EXPR, unstype,
-				     convert (unstype, op0), op1));
-	  return GS_UNHANDLED;
-	}
+      *expr_p = convert(TREE_TYPE (*expr_p),
+			build2(RSHIFT_EXPR, type, convert(type, op0), op1));
+      ret = GS_OK;
+      break;
 
     case FLOAT_MOD_EXPR:
     case IASM_EXPR:
       gcc_unreachable();
 
     default:
-      return GS_UNHANDLED;
+      break;
     }
+
+  return ret;
 }
 
 

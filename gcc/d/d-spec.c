@@ -62,7 +62,7 @@
 #endif
 
 #ifndef LIBPHOBOS
-#define LIBPHOBOS "gphobos2"
+#define LIBPHOBOS "gphobos"
 #endif
 #ifndef LIBPHOBOS_PROFILE
 #define LIBPHOBOS_PROFILE LIBPHOBOS
@@ -92,7 +92,8 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
      -1 means we should not link in libgphobos
      0  means we should link in libgphobos if it is needed
      1  means libgphobos is needed and should be linked in.
-     2  means libgphobos is needed and should be linked statically.  */
+     2  means libgphobos is needed and should be linked statically.
+     3  means libgphobos is needed and should be linked dynamically. */
   int library = 0;
 
   /* If nonzero, use the standard D runtime library when linking with
@@ -310,6 +311,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  args[i] |= SKIPOPT;
 	  break;
 
+	case OPT_shared_libphobos:
+	  library = library >= 0 ? 3 : library;
+	  args[i] |= SKIPOPT;
+	  break;
+
 	case OPT_fonly_:
 	  args[i] |= SKIPOPT;
 	  only_source_option = decoded_options[i].orig_option_with_args_text;
@@ -477,8 +483,18 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* Add `-lgphobos' if we haven't already done so.  */
   if (library > 0 && phobos)
     {
+      // Default to static linking
+      if (library == 1)
+        library = 2;
+
 #ifdef HAVE_LD_STATIC_DYNAMIC
-      if (library > 1 && !static_link)
+      if (library == 3 && static_link)
+	{
+	  generate_option (OPT_Wl_, LD_DYNAMIC_OPTION, 1, CL_DRIVER,
+			   &new_decoded_options[j]);
+	  j++;
+	}
+      else if (library == 2 && !static_link)
 	{
 	  generate_option (OPT_Wl_, LD_STATIC_OPTION, 1, CL_DRIVER,
 			   &new_decoded_options[j]);
@@ -496,7 +512,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
       j++;
 
 #ifdef HAVE_LD_STATIC_DYNAMIC
-      if (library > 1 && !static_link)
+      if (library == 3 && static_link)
+	{
+	  generate_option (OPT_Wl_, LD_STATIC_OPTION, 1, CL_DRIVER,
+			   &new_decoded_options[j]);
+	  j++;
+	}
+      else if (library == 2 && !static_link)
 	{
 	  generate_option (OPT_Wl_, LD_DYNAMIC_OPTION, 1, CL_DRIVER,
 			   &new_decoded_options[j]);
