@@ -628,7 +628,7 @@ public:
       {
 	// Just refer to the DECL_RESULT; this differs from using NULL_TREE in
 	// that it indicates that we care about the value of the DECL_RESULT.
-	tree decl = DECL_RESULT (this->func_->toSymbol()->Stree);
+	tree decl = DECL_RESULT (DECL_LANG_TREE (this->func_->toSymbol()));
 	add_stmt(return_expr(decl));
       }
     else
@@ -797,7 +797,7 @@ public:
 	      {
 		object = build_nop(build_ctype(vcatch->type), object);
 
-		tree var = vcatch->var->toSymbol()->Stree;
+		tree var = DECL_LANG_TREE (vcatch->var->toSymbol());
 		tree init = build_assign(INIT_EXPR, var, object);
 
 		build_local_var(vcatch->var);

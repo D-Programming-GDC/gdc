@@ -44,7 +44,6 @@ struct Symbol
 
   const char *Sident;
   const char *prettyIdent;
-  int Salignment;
   bool Sreadonly;
 
   dt_t *Sdt;

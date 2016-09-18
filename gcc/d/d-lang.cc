@@ -1600,7 +1600,7 @@ d_build_eh_type_type (tree type)
   gcc_assert (dtype && dtype->ty == Tclass);
   sym = ((TypeClass *) dtype)->sym->toSymbol();
 
-  return convert (ptr_type_node, build_address (sym->Stree));
+  return convert (ptr_type_node, build_address (DECL_LANG_TREE (sym)));
 }
 
 

@@ -52,12 +52,11 @@ public:
   void visit(Module *m)
   {
     m->isym = new Symbol();
-    m->isym->prettyIdent = m->toPrettyChars();
 
     tree decl = build_decl(UNKNOWN_LOCATION, NAMESPACE_DECL,
-			   get_identifier(m->isym->prettyIdent),
+			   get_identifier(m->toPrettyChars()),
 			   void_type_node);
-    m->isym->Stree = decl;
+    DECL_LANG_TREE (m->isym) = decl;
     d_keep(decl);
 
     Loc loc = (m->md != NULL) ? m->md->loc
@@ -123,7 +122,7 @@ public:
 	d_keep(decl);
 
 	d->isym = new Symbol();
-	d->isym->Stree = decl;
+	DECL_LANG_TREE (d->isym) = decl;
 	return;
       }
   }
@@ -153,11 +152,11 @@ public:
   {
     tree decl = make_node(IMPORTED_DECL);
     TREE_TYPE (decl) = void_type_node;
-    IMPORTED_DECL_ASSOCIATED_DECL (decl) = d->toSymbol()->Stree;
+    IMPORTED_DECL_ASSOCIATED_DECL (decl) = DECL_LANG_TREE (d->toSymbol());
     d_keep(decl);
 
     d->isym = new Symbol();
-    d->isym->Stree = decl;
+    DECL_LANG_TREE (d->isym) = decl;
   }
 };
 
@@ -175,6 +174,6 @@ build_import_decl(Dsymbol *d)
     }
 
   // Not all visitors set 'isym'.
-  return d->isym ? d->isym->Stree : NULL_TREE;
+  return d->isym ? DECL_LANG_TREE (d->isym) : NULL_TREE;
 }
 

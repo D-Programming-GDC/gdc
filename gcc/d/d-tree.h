@@ -191,6 +191,33 @@ struct GTY(()) lang_decl
   (DECL_LANG_SPECIFIC (NODE) \
    ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
 
+#define DECL_LANG_IDENTIFIER(NODE) \
+  (NODE)->Sident
+
+#define DECL_LANG_PRETTY_NAME(NODE) \
+  (NODE)->prettyIdent
+
+#define DECL_LANG_READONLY(NODE) \
+  (NODE)->Sreadonly
+
+#define DECL_LANG_INITIAL(NODE) \
+  (NODE)->Sdt
+
+#define DECL_LANG_TREE(NODE) \
+  (NODE)->Stree
+
+#define DECL_LANG_FRAME_FIELD(NODE) \
+  (NODE)->SframeField
+
+#define DECL_LANG_NRVO(NODE) \
+  (NODE)->SnamedResult
+
+#define DECL_LANG_THUNKS(NODE) \
+  (NODE)->thunks
+
+#define DECL_LANG_FRAMEINFO(NODE) \
+  (NODE)->frameInfo
+
 /* The lang_type field is not set for every GCC type.  */
 
 struct GTY(()) lang_type

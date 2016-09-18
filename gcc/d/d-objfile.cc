@@ -79,7 +79,6 @@ Symbol::Symbol()
   this->prettyIdent = NULL;
 
   this->Sdt = NULL_TREE;
-  this->Salignment = 0;
   this->Sreadonly = false;
 
   this->Stree = NULL_TREE;
@@ -257,9 +256,9 @@ StructDeclaration::toObjFile()
 
   // Generate static initialiser
   toInitializer();
-  toDt (&sinit->Sdt);
+  toDt (&DECL_LANG_INITIAL (sinit));
 
-  sinit->Sreadonly = true;
+  DECL_LANG_READONLY (sinit) = true;
   d_finish_symbol (sinit);
 
   // Put out the members
@@ -307,8 +306,8 @@ ClassDeclaration::toObjFile()
   sinit = toInitializer();
 
   // Generate static initialiser
-  toDt (&sinit->Sdt);
-  sinit->Sreadonly = true;
+  toDt (&DECL_LANG_INITIAL (sinit));
+  DECL_LANG_READONLY (sinit) = true;
   d_finish_symbol (sinit);
 
   // Put out the TypeInfo
@@ -347,7 +346,7 @@ ClassDeclaration::toObjFile()
   gcc_assert (structsize >= 8 || (cpp && structsize >= 4));
   dt_cons (&dt, d_array_value (build_ctype(Type::tint8->arrayOf()),
 			       size_int (structsize),
-			       build_address (sinit->Stree)));
+			       build_address (DECL_LANG_TREE (sinit))));
   // name[]
   const char *name = ident->toChars();
   if (!(strlen (name) > 9 && memcmp (name, "TypeInfo_", 9) == 0))
@@ -357,7 +356,7 @@ ClassDeclaration::toObjFile()
   // vtbl[]
   dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
 			       size_int (vtbl.dim),
-			       build_address (vtblsym->Stree)));
+			       build_address (DECL_LANG_TREE (vtblsym))));
   // (*vtblInterfaces)[]
   dt_cons (&dt, size_int (vtblInterfaces->dim));
 
@@ -365,7 +364,7 @@ ClassDeclaration::toObjFile()
     {
       // Put out offset to where (*vtblInterfaces)[] is put out
       // after the other data members.
-      dt_cons (&dt, build_offset (build_address (csym->Stree),
+      dt_cons (&dt, build_offset (build_address (DECL_LANG_TREE (csym)),
 				  size_int (offset)));
     }
   else
@@ -373,19 +372,19 @@ ClassDeclaration::toObjFile()
 
   // base*
   if (baseClass)
-    dt_cons (&dt, build_address (baseClass->toSymbol()->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (baseClass->toSymbol())));
   else
     dt_cons (&dt, null_pointer_node);
 
   // dtor*
   if (dtor)
-    dt_cons (&dt, build_address (dtor->toSymbol()->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (dtor->toSymbol())));
   else
     dt_cons (&dt, null_pointer_node);
 
   // invariant*
   if (inv)
-    dt_cons (&dt, build_address (inv->toSymbol()->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (inv->toSymbol())));
   else
     dt_cons (&dt, null_pointer_node);
 
@@ -436,7 +435,7 @@ Lhaspointers:
 
   // deallocator*
   if (aggDelete)
-    dt_cons (&dt, build_address (aggDelete->toSymbol()->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (aggDelete->toSymbol())));
   else
     dt_cons (&dt, null_pointer_node);
 
@@ -446,7 +445,7 @@ Lhaspointers:
 
   // defaultConstructor*
   if (defaultCtor && !(defaultCtor->storage_class & STCdisable))
-    dt_cons (&dt, build_address (defaultCtor->toSymbol()->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (defaultCtor->toSymbol())));
   else
     dt_cons (&dt, null_pointer_node);
 
@@ -478,11 +477,11 @@ Lhaspointers:
       b->fillVtbl(this, &b->vtbl, 1);
 
       // ClassInfo
-      dt_cons (&dt, build_address (id->toSymbol()->Stree));
+      dt_cons (&dt, build_address (DECL_LANG_TREE (id->toSymbol())));
 
       // vtbl[]
       dt_cons (&dt, size_int (id->vtbl.dim));
-      dt_cons (&dt, build_offset (build_address (csym->Stree),
+      dt_cons (&dt, build_offset (build_address (DECL_LANG_TREE (csym)),
 				     size_int (offset)));
       // 'this' offset.
       dt_cons (&dt, size_int (b->offset));
@@ -501,7 +500,7 @@ Lhaspointers:
       if (id->vtblOffset())
 	{
 	  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
-	  dt_cons (&dt, build_offset (build_address (csym->Stree), size));
+	  dt_cons (&dt, build_offset (build_address (DECL_LANG_TREE (csym)), size));
 	}
 
       gcc_assert (id->vtbl.dim == b->vtbl.dim);
@@ -510,7 +509,7 @@ Lhaspointers:
 	  gcc_assert (j < b->vtbl.dim);
 	  FuncDeclaration *fd = b->vtbl[j];
 	  if (fd)
-	    dt_cons (&dt, build_address (fd->toThunkSymbol (b->offset)->Stree));
+	    dt_cons (&dt, build_address (fd->toThunkSymbol DECL_LANG_TREE ((b->offset))));
 	  else
 	    dt_cons (&dt, null_pointer_node);
 	}
@@ -534,7 +533,7 @@ Lhaspointers:
 	      if (id->vtblOffset())
 		{
 		  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
-		  dt_cons (&dt, build_offset (build_address (cd->toSymbol()->Stree), size));
+		  dt_cons (&dt, build_offset (build_address (DECL_LANG_TREE (cd->toSymbol())), size));
 		}
 
 	      for (size_t j = id->vtblOffset() ? 1 : 0; j < id->vtbl.dim; j++)
@@ -542,7 +541,7 @@ Lhaspointers:
 		  gcc_assert (j < bvtbl.dim);
 		  FuncDeclaration *fd = bvtbl[j];
 		  if (fd)
-		    dt_cons (&dt, build_address (fd->toThunkSymbol (bs->offset)->Stree));
+		    dt_cons (&dt, build_address (DECL_LANG_TREE (fd->toThunkSymbol (bs->offset))));
 		  else
 		    dt_cons (&dt, null_pointer_node);
 		}
@@ -550,7 +549,7 @@ Lhaspointers:
 	}
     }
 
-  csym->Sdt = dt;
+  DECL_LANG_INITIAL (csym) = dt;
   d_finish_symbol (csym);
 
   // Put out the vtbl[]
@@ -558,7 +557,7 @@ Lhaspointers:
 
   // first entry is ClassInfo reference
   if (vtblOffset())
-    dt_cons (&dt, build_address (csym->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (csym)));
 
   for (size_t i = vtblOffset(); i < vtbl.dim; i++)
     {
@@ -600,14 +599,14 @@ Lhaspointers:
 	    }
 
 	Lcontinue:
-	  dt_cons (&dt, build_address (s->Stree));
+	  dt_cons (&dt, build_address (DECL_LANG_TREE (s)));
 	}
       else
 	dt_cons (&dt, null_pointer_node);
     }
 
-  vtblsym->Sdt = dt;
-  vtblsym->Sreadonly = true;
+  DECL_LANG_INITIAL (vtblsym) = dt;
+  DECL_LANG_READONLY (vtblsym) = true;
   d_finish_symbol (vtblsym);
 
   /* Add this decl to the current binding level.  */
@@ -720,7 +719,7 @@ InterfaceDeclaration::toObjFile()
 	}
       // Put out offset to where (*vtblInterfaces)[] is put out
       // after the other data members.
-      dt_cons (&dt, build_offset (build_address (csym->Stree),
+      dt_cons (&dt, build_offset (build_address (DECL_LANG_TREE (csym)),
 				  size_int (offset)));
     }
   else
@@ -769,7 +768,7 @@ InterfaceDeclaration::toObjFile()
       ClassDeclaration *id = b->base;
 
       // ClassInfo
-      dt_cons (&dt, build_address (id->toSymbol()->Stree));
+      dt_cons (&dt, build_address (DECL_LANG_TREE (id->toSymbol())));
 
       // vtbl[]
       dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
@@ -778,8 +777,8 @@ InterfaceDeclaration::toObjFile()
       dt_cons (&dt, size_int (b->offset));
     }
 
-  csym->Sdt = dt;
-  csym->Sreadonly = true;
+  DECL_LANG_INITIAL (csym) = dt;
+  DECL_LANG_READONLY (csym) = true;
   d_finish_symbol (csym);
 
   /* Add this decl to the current binding level.  */
@@ -811,7 +810,7 @@ EnumDeclaration::toObjFile()
     {
       // Generate static initialiser
       toInitializer();
-      DECL_INITIAL (sinit->Stree) = build_expr(tc->sym->defaultval, true);
+      DECL_INITIAL (DECL_LANG_TREE (sinit)) = build_expr(tc->sym->defaultval, true);
       d_finish_symbol (sinit);
 
       /* Add this decl to the current binding level.  */
@@ -846,7 +845,7 @@ VarDeclaration::toObjFile()
       if (isInstantiated())
 	return;
 
-      tree decl = toSymbol()->Stree;
+      tree decl = DECL_LANG_TREE (toSymbol());
       gcc_assert (init && !init->isVoidInitializer());
       Expression *ie = init->toExpression();
 
@@ -870,7 +869,7 @@ VarDeclaration::toObjFile()
 
       // Duplicated VarDeclarations map to the same symbol. Check if this
       // is the one declaration which will be emitted.
-      tree ident = get_identifier(s->Sident);
+      tree ident = get_identifier(DECL_LANG_IDENTIFIER (s));
       if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
 	return;
 
@@ -893,19 +892,19 @@ VarDeclaration::toObjFile()
 	      && ie->exp->implicitConvTo(tb->nextOf()))
 	    {
 	      TypeSArray *tsa = (TypeSArray *) tb;
-	      tsa->toDtElem (&s->Sdt, ie->exp);
+	      tsa->toDtElem (&DECL_LANG_INITIAL (s), ie->exp);
 	    }
 	  else if (!init->isVoidInitializer())
-	    s->Sdt = init->toDt();
+	    DECL_LANG_INITIAL (s) = init->toDt();
 	}
       else
 	{
 	  if (type->ty == Tstruct)
-	    ((TypeStruct *) type)->sym->toDt(&s->Sdt);
+	    ((TypeStruct *) type)->sym->toDt(&DECL_LANG_INITIAL (s));
 	  else
 	    {
 	      Expression *e = type->defaultInitLiteral(loc);
-	      dt_cons(&s->Sdt, build_expr(e, true));
+	      dt_cons(&DECL_LANG_INITIAL (s), build_expr(e, true));
 	    }
 	}
 
@@ -978,7 +977,7 @@ TypeInfoDeclaration::toObjFile()
     return;
 
   Symbol *s = toSymbol();
-  DECL_INITIAL (s->Stree) = layout_typeinfo(this);
+  DECL_INITIAL (DECL_LANG_TREE (s)) = layout_typeinfo(this);
   d_finish_symbol(s);
 }
 
@@ -1054,7 +1053,7 @@ build_moduleinfo_symbol(Module *m)
       else
 	{
 	  Symbol *emutls = build_emutls_function (current_module_info->tlsVars);
-	  dt_cons (&dt, build_address (emutls->Stree));
+	  dt_cons (&dt, build_address (DECL_LANG_TREE (emutls)));
 	}
     }
 
@@ -1071,25 +1070,25 @@ build_moduleinfo_symbol(Module *m)
    *  char[N] name;
    */
   if (flags & MItlsctor)
-    dt_cons (&dt, build_address (m->sctor->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (m->sctor)));
 
   if (flags & MItlsdtor)
-    dt_cons (&dt, build_address (m->sdtor->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (m->sdtor)));
 
   if (flags & MIctor)
-    dt_cons (&dt, build_address (m->ssharedctor->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (m->ssharedctor)));
 
   if (flags & MIdtor)
-    dt_cons (&dt, build_address (m->sshareddtor->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (m->sshareddtor)));
 
   if (flags & MIxgetMembers)
-    dt_cons (&dt, build_address (sgetmembers->toSymbol()->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (sgetmembers->toSymbol())));
 
   if (flags & MIictor)
-    dt_cons (&dt, build_address (m->sictor->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (m->sictor)));
 
   if (flags & MIunitTest)
-    dt_cons (&dt, build_address (m->stest->Stree));
+    dt_cons (&dt, build_address (DECL_LANG_TREE (m->stest)));
 
   if (flags & MIimportedModules)
     {
@@ -1098,7 +1097,7 @@ build_moduleinfo_symbol(Module *m)
 	{
 	  Module *mi = m->aimports[i];
 	  if (mi->needmoduleinfo)
-	    dt_cons (&dt, build_address (mi->toSymbol()->Stree));
+	    dt_cons (&dt, build_address (DECL_LANG_TREE (mi->toSymbol())));
 	}
     }
 
@@ -1108,7 +1107,7 @@ build_moduleinfo_symbol(Module *m)
       for (size_t i = 0; i < aclasses.dim; i++)
 	{
 	  ClassDeclaration *cd = aclasses[i];
-	  dt_cons (&dt, build_address (cd->toSymbol()->Stree));
+	  dt_cons (&dt, build_address (DECL_LANG_TREE (cd->toSymbol())));
 	}
     }
 
@@ -1122,7 +1121,7 @@ build_moduleinfo_symbol(Module *m)
       dt_cons (&dt, strtree);
     }
 
-  m->csym->Sdt = dt;
+  DECL_LANG_INITIAL (m->csym) = dt;
   d_finish_symbol (m->csym);
   return msym;
 }
@@ -1197,14 +1196,15 @@ FuncDeclaration::toObjFile()
 
   // Duplicated FuncDeclarations map to the same symbol. Check if this
   // is the one declaration which will be emitted.
-  if (toSymbol()->Sident)
+  Symbol *fds = this->toSymbol();
+  if (DECL_LANG_IDENTIFIER (fds))
     {
-      tree ident = get_identifier(toSymbol()->Sident);
+      tree ident = get_identifier(DECL_LANG_IDENTIFIER (fds));
       if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
 	return;
     }
 
-  tree fndecl = toSymbol()->Stree;
+  tree fndecl = DECL_LANG_TREE (fds);
 
   // For nested functions in particular, unnest fndecl in the cgraph, as
   // all static chain passing is handled by the front-end.  Do this even
@@ -1264,7 +1264,7 @@ FuncDeclaration::toObjFile()
   // should not be referenced in any expression.
   if (vthis)
     {
-      parm_decl = vthis->toSymbol()->Stree;
+      parm_decl = DECL_LANG_TREE (vthis->toSymbol());
       DECL_ARTIFICIAL (parm_decl) = 1;
       TREE_READONLY (parm_decl) = 1;
 
@@ -1284,7 +1284,7 @@ FuncDeclaration::toObjFile()
   // _arguments parameter.
   if (v_arguments)
     {
-      parm_decl = v_arguments->toSymbol()->Stree;
+      parm_decl = DECL_LANG_TREE (v_arguments->toSymbol());
       set_decl_location (parm_decl, v_arguments);
       param_list = chainon (param_list, parm_decl);
     }
@@ -1295,7 +1295,7 @@ FuncDeclaration::toObjFile()
   for (size_t i = 0; i < n_parameters; i++)
     {
       VarDeclaration *param = (*parameters)[i];
-      parm_decl = param->toSymbol()->Stree;
+      parm_decl = DECL_LANG_TREE (param->toSymbol());
       set_decl_location (parm_decl, (Dsymbol *) param);
       // chain them in the correct order
       param_list = chainon (param_list, parm_decl);
@@ -1315,12 +1315,12 @@ FuncDeclaration::toObjFile()
   if (isThis())
     {
       AggregateDeclaration *ad = isThis();
-      tree this_tree = vthis->toSymbol()->Stree;
+      tree this_tree = DECL_LANG_TREE (vthis->toSymbol());
 
       while (ad->isNested())
 	{
 	  Dsymbol *d = ad->toParent2();
-	  tree vthis_field = ad->vthis->toSymbol()->Stree;
+	  tree vthis_field = DECL_LANG_TREE (ad->vthis->toSymbol());
 	  this_tree = component_ref (build_deref (this_tree), vthis_field);
 
 	  ad = d->isAggregateDeclaration();
@@ -1363,7 +1363,7 @@ FuncDeclaration::toObjFile()
       if (nrvo_var)
 	{
 	  Symbol *nrvsym = nrvo_var->toSymbol();
-	  tree var = nrvsym->Stree;
+	  tree var = DECL_LANG_TREE (nrvsym);
 
 	  // Copy name from VAR to RESULT.
 	  DECL_NAME (result_decl) = DECL_NAME (var);
@@ -1375,7 +1375,7 @@ FuncDeclaration::toObjFile()
 	  SET_DECL_VALUE_EXPR (var, result_decl);
 	  DECL_HAS_VALUE_EXPR_P (var) = 1;
 
-	  nrvsym->SnamedResult = result_decl;
+	  DECL_LANG_NRVO (nrvsym) = result_decl;
 	}
     }
 
@@ -1837,24 +1837,24 @@ mark_needed (tree decl)
 void
 d_finish_symbol (Symbol *sym)
 {
-  if (!sym->Stree)
+  if (!DECL_LANG_TREE (sym))
     {
-      tree init = dtvector_to_tree (sym->Sdt);
-      sym->Stree = build_artificial_decl(TREE_TYPE (init), init);
-      gcc_assert (!sym->Sident);
+      tree init = dtvector_to_tree (DECL_LANG_INITIAL (sym));
+      DECL_LANG_TREE (sym) = build_artificial_decl(TREE_TYPE (init), init);
+      gcc_assert (!DECL_LANG_IDENTIFIER (sym));
     }
 
-  tree decl = sym->Stree;
+  tree decl = DECL_LANG_TREE (sym);
 
-  if (sym->Sdt)
+  if (DECL_LANG_INITIAL (sym))
     {
       if (DECL_INITIAL (decl) == NULL_TREE)
 	{
-	  tree sinit = dtvector_to_tree (sym->Sdt);
+	  tree sinit = dtvector_to_tree (DECL_LANG_INITIAL (sym));
 	  if (TREE_TYPE (decl) == unknown_type_node)
 	    {
 	      TREE_TYPE (decl) = TREE_TYPE (sinit);
-	      TYPE_NAME (TREE_TYPE (decl)) = get_identifier (sym->Sident);
+	      TYPE_NAME (TREE_TYPE (decl)) = get_identifier (DECL_LANG_IDENTIFIER (sym));
 	    }
 
 	  // No gain setting DECL_INITIAL if the initialiser is all zeros.
@@ -1868,7 +1868,7 @@ d_finish_symbol (Symbol *sym)
   gcc_assert (!error_operand_p (decl));
 
   // If the symbol was marked as readonly in the frontend, set TREE_READONLY.
-  if (sym->Sreadonly)
+  if (DECL_LANG_READONLY (sym))
     TREE_READONLY (decl) = 1;
 
   // We are sending this symbol to object file, can't be extern.
@@ -1885,16 +1885,10 @@ d_finish_symbol (Symbol *sym)
 
       if (tsize < dtsize)
 	internal_error ("Mismatch between declaration '%s' size (%wd) and it's initializer size (%wd).",
-			sym->prettyIdent ? sym->prettyIdent : sym->Sident, tsize, dtsize);
+			DECL_LANG_PRETTY_NAME (sym) ? DECL_LANG_PRETTY_NAME (sym) : DECL_LANG_IDENTIFIER (sym),
+			tsize, dtsize);
     }
 #endif
-
-  // User declared alignment.
-  if (sym->Salignment > 0)
-    {
-      SET_DECL_ALIGN (decl, sym->Salignment * BITS_PER_UNIT);
-      DECL_USER_ALIGN (decl) = 1;
-    }
 
   // %% FIXME: DECL_COMMON so the symbol goes in .tcommon
   if (DECL_THREAD_LOCAL_P (decl)
@@ -1914,7 +1908,7 @@ void
 d_finish_function(FuncDeclaration *fd)
 {
   Symbol *s = fd->toSymbol();
-  tree decl = s->Stree;
+  tree decl = DECL_LANG_TREE (s);
 
   gcc_assert(TREE_CODE (decl) == FUNCTION_DECL);
 
@@ -2218,7 +2212,7 @@ build_simple_function_decl (const char *name, tree expr)
   if (name[0] == '*')
     {
       Symbol *s = mod->toSymbolX (name + 1, 0, 0, "FZv");
-      name = s->Sident;
+      name = DECL_LANG_IDENTIFIER (s);
     }
 
   TypeFunction *func_type = new TypeFunction (0, Type::tvoid, 0, LINKc);
@@ -2243,7 +2237,7 @@ static FuncDeclaration *
 build_simple_function (const char *name, tree expr, bool static_ctor)
 {
   FuncDeclaration *func = build_simple_function_decl (name, expr);
-  tree func_decl = func->toSymbol()->Stree;
+  tree func_decl = DECL_LANG_TREE (func->toSymbol());
 
   if (static_ctor)
     DECL_STATIC_CONSTRUCTOR (func_decl) = 1;
@@ -2279,7 +2273,7 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   // Shouldn't front end build these?
   for (size_t i = 0; i < functions.length(); i++)
     {
-      tree fndecl = (functions[i])->toSymbol()->Stree;
+      tree fndecl = DECL_LANG_TREE ((functions[i])->toSymbol());
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = compound_expr (expr_list, call_expr);
     }
@@ -2364,7 +2358,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
   // Increment gates first.
   for (size_t i = 0; i < gates.length(); i++)
     {
-      tree var_decl = (gates[i])->toSymbol()->Stree;
+      tree var_decl = DECL_LANG_TREE ((gates[i])->toSymbol());
       tree value = build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node);
       tree var_expr = modify_expr (var_decl, value);
       expr_list = compound_expr (expr_list, var_expr);
@@ -2373,7 +2367,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
   // Call Ctor Functions
   for (size_t i = 0; i < functions.length(); i++)
     {
-      tree fndecl = (functions[i])->toSymbol()->Stree;
+      tree fndecl = DECL_LANG_TREE ((functions[i])->toSymbol());
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = compound_expr (expr_list, call_expr);
     }
@@ -2401,7 +2395,7 @@ build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
 
   for (int i = functions.length() - 1; i >= 0; i--)
     {
-      tree fndecl = (functions[i])->toSymbol()->Stree;
+      tree fndecl = DECL_LANG_TREE ((functions[i])->toSymbol());
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = compound_expr (expr_list, call_expr);
     }
@@ -2476,7 +2470,7 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
     NULL_TREE, false, true);
 
   tree dso_type = build_ctype(compiler_dso_type->isStructDeclaration()->type);
-  tree registry_func = dso_registry_func->isFuncDeclaration()->toSymbol()->Stree;
+  tree registry_func = DECL_LANG_TREE (dso_registry_func->isFuncDeclaration()->toSymbol());
 
   // dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
   vec<constructor_elt, va_gc> *ve = NULL;
@@ -2511,7 +2505,7 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
 
   // extern(C) void gdc_dso_[c/d]tor() @hidden @weak @[con/de]structor
   FuncDeclaration *func_decl = build_simple_function_decl(func_name, func_body);
-  tree func_tree = func_decl->toSymbol()->Stree;
+  tree func_tree = DECL_LANG_TREE (func_decl->toSymbol());
 
   // Setup bindings for stack variable dso_data
   tree block = make_node(BLOCK);
@@ -2569,12 +2563,12 @@ emit_dso_registry_hooks(Symbol *sym, Dsymbol *compiler_dso_type, Dsymbol *dso_re
   // Do this once for every emitted Module
   // @section("minfo") void* __mod_ref_%s = &ModuleInfo(module);
   tree decl = build_decl(BUILTINS_LOCATION, VAR_DECL,
-    get_identifier(concat("__mod_ref_", sym->Sident, NULL)), ptr_type_node);
+    get_identifier(concat("__mod_ref_", DECL_LANG_IDENTIFIER (sym), NULL)), ptr_type_node);
   d_keep(decl);
   set_decl_location(decl, current_module_decl);
   TREE_PUBLIC (decl) = 1;
   TREE_STATIC (decl) = 1;
-  DECL_INITIAL (decl) = build_address(sym->Stree);
+  DECL_INITIAL (decl) = build_address(DECL_LANG_TREE (sym));
   TREE_STATIC (DECL_INITIAL (decl)) = 1;
 
   // Do not start section with '.' to use the __start_ feature:
@@ -2611,7 +2605,7 @@ emit_modref_hooks(Symbol *sym, Dsymbol *mref)
   tree modfield = TREE_CHAIN (nextfield);
 
   // extern (C) ModuleReference *_Dmodule_ref;
-  tree dmodule_ref = mref->toSymbol()->Stree;
+  tree dmodule_ref = DECL_LANG_TREE (mref->toSymbol());
 
   // private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };
   tree modref = build_artificial_decl (tmodref, NULL_TREE, "__mod_ref");
@@ -2620,7 +2614,7 @@ emit_modref_hooks(Symbol *sym, Dsymbol *mref)
 
   vec<constructor_elt, va_gc> *ce = NULL;
   CONSTRUCTOR_APPEND_ELT (ce, nextfield, null_pointer_node);
-  CONSTRUCTOR_APPEND_ELT (ce, modfield, build_address (sym->Stree));
+  CONSTRUCTOR_APPEND_ELT (ce, modfield, build_address (DECL_LANG_TREE (sym)));
 
   DECL_INITIAL (modref) = build_constructor (tmodref, ce);
   TREE_STATIC (DECL_INITIAL (modref)) = 1;
