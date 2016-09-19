@@ -31,6 +31,8 @@ class Statement;
 class Type;
 class TypeFunction;
 class Dsymbol;
+struct FuncFrameInfo;
+struct Thunk;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
@@ -184,6 +186,20 @@ struct GTY(()) language_function
 struct GTY(()) lang_decl
 {
   Declaration * GTY((skip)) decl;
+
+  bool readonly;
+
+  tree initial;
+
+  // FIELD_DECL in frame struct that this variable is allocated in.
+  tree frame_field;
+
+  // RESULT_DECL in a function that returns by nrvo.
+  tree named_result;
+
+  // For FuncDeclarations:
+  auto_vec<Thunk *> GTY((skip)) thunks;
+  FuncFrameInfo * GTY((skip)) frame_info;
 };
 
 /* The D frontend Declaration AST for GCC decl NODE.  */
@@ -198,25 +214,33 @@ struct GTY(()) lang_decl
   (NODE)->prettyIdent
 
 #define DECL_LANG_READONLY(NODE) \
-  (NODE)->Sreadonly
+  DECL_LANG_SPECIFIC (NODE->Stree)->readonly
 
 #define DECL_LANG_INITIAL(NODE) \
-  (NODE)->Sdt
+  DECL_LANG_SPECIFIC (NODE->Stree)->initial
 
 #define DECL_LANG_TREE(NODE) \
   (NODE)->Stree
 
+#define SET_DECL_LANG_FRAME_FIELD(NODE, VAL) \
+  DECL_LANG_SPECIFIC (NODE->Stree)->frame_field = VAL
+
 #define DECL_LANG_FRAME_FIELD(NODE) \
-  (NODE)->SframeField
+  (DECL_P (NODE->Stree) \
+   ? DECL_LANG_SPECIFIC (NODE->Stree)->frame_field : NULL)
+
+#define SET_DECL_LANG_NRVO(NODE, VAL) \
+  DECL_LANG_SPECIFIC (NODE->Stree)->named_result = VAL
 
 #define DECL_LANG_NRVO(NODE) \
-  (NODE)->SnamedResult
+  (DECL_P (NODE->Stree) \
+   ? DECL_LANG_SPECIFIC (NODE->Stree)->named_result : NULL)
 
 #define DECL_LANG_THUNKS(NODE) \
-  (NODE)->thunks
+  DECL_LANG_SPECIFIC (NODE->Stree)->thunks
 
 #define DECL_LANG_FRAMEINFO(NODE) \
-  (NODE)->frameInfo
+  DECL_LANG_SPECIFIC (NODE->Stree)->frame_info
 
 /* The lang_type field is not set for every GCC type.  */
 

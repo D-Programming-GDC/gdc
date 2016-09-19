@@ -4238,7 +4238,7 @@ build_frame_type (FuncDeclaration *func)
       tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
 			       declaration_type (v));
-      DECL_LANG_FRAME_FIELD (s) = field;
+      SET_DECL_LANG_FRAME_FIELD (s, field);
       set_decl_location (field, v);
       DECL_FIELD_CONTEXT (field) = frame_rec_type;
       fields = chainon (fields, field);

@@ -78,14 +78,7 @@ Symbol::Symbol()
   this->Sident = NULL;
   this->prettyIdent = NULL;
 
-  this->Sdt = NULL_TREE;
-  this->Sreadonly = false;
-
   this->Stree = NULL_TREE;
-  this->SframeField = NULL_TREE;
-  this->SnamedResult = NULL_TREE;
-
-  this->frameInfo = NULL;
 }
 
 // Returns true if DSYM is from the gcc.attribute module.
@@ -1375,7 +1368,7 @@ FuncDeclaration::toObjFile()
 	  SET_DECL_VALUE_EXPR (var, result_decl);
 	  DECL_HAS_VALUE_EXPR_P (var) = 1;
 
-	  DECL_LANG_NRVO (nrvsym) = result_decl;
+	  SET_DECL_LANG_NRVO (nrvsym, result_decl);
 	}
     }
 

@@ -44,22 +44,9 @@ struct Symbol
 
   const char *Sident;
   const char *prettyIdent;
-  bool Sreadonly;
-
-  dt_t *Sdt;
 
   // Our GNU backend tree for the symbol.
   tree Stree;
-
-  // FIELD_DECL in frame struct that this variable is allocated in.
-  tree SframeField;
-
-  // RESULT_DECL in a function that returns by nrvo.
-  tree SnamedResult;
-
-  // For FuncDeclarations:
-  auto_vec<Thunk *> thunks;
-  FuncFrameInfo *frameInfo;
 };
 
 struct Thunk
