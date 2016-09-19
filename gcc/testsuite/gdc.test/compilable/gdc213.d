@@ -1,3 +1,5 @@
+// PERMUTE_ARGS:
+
 import core.simd;
 
 struct S213
