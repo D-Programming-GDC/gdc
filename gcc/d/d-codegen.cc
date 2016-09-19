@@ -3523,12 +3523,13 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 	  if (decl->csym == NULL)
 	    {
 	      // Store a stub BUILT_IN_FRONTEND decl.
+	      tree fndecl = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+					get_identifier (tname),
+					build_ctype(decl->type));
 	      decl->csym = new Symbol();
-	      DECL_LANG_TREE (decl->csym) = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
-					      NULL_TREE, NULL_TREE);
-	      DECL_NAME (DECL_LANG_TREE (decl->csym)) = get_identifier (tname);
-	      TREE_TYPE (DECL_LANG_TREE (decl->csym)) = build_ctype(decl->type);
-	      d_keep (DECL_LANG_TREE (decl->csym));
+	      DECL_LANG_SPECIFIC (fndecl) = build_lang_decl (decl);
+	      DECL_LANG_TREE (decl->csym) = fndecl;
+	      d_keep (fndecl);
 	    }
 
 	  DECL_BUILT_IN_CLASS (DECL_LANG_TREE (decl->csym)) = BUILT_IN_FRONTEND;
@@ -4548,6 +4549,7 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	      if (!inherited_p)
 		{
 		  var->csym = new Symbol();
+		  DECL_LANG_SPECIFIC (field) = build_lang_decl (var);
 		  DECL_LANG_TREE (var->csym) = field;
 		}
 
