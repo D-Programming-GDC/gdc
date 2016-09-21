@@ -20,6 +20,7 @@
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
 #include "dfrontend/arraytypes.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/enum.h"
@@ -68,6 +69,31 @@ public:
 
     TREE_PUBLIC (decl) = 1;
     DECL_CONTEXT (decl) = NULL_TREE;
+  }
+
+  //
+  void visit(ScopeDsymbol *d)
+  {
+    tree type = NULL_TREE;
+
+    if (d->isEnumDeclaration())
+      type = build_ctype(((EnumDeclaration *) d)->type);
+    if (d->isAggregateDeclaration())
+      type = build_ctype(((AggregateDeclaration *) d)->type);
+
+    if (type != NULL_TREE)
+      {
+	tree decl = make_node(IMPORTED_DECL);
+	TREE_TYPE (decl) = void_type_node;
+	IMPORTED_DECL_ASSOCIATED_DECL (decl) = TYPE_STUB_DECL (type);
+	d_keep(decl);
+
+	d->isym = new Symbol();
+	d->isym->Stree = decl;
+      }
+
+    // For now, ignore importing other kinds of dsymbols.
+    return;
   }
 
   // Alias symbols aren't imported, but their targets are.

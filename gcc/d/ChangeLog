@@ -1,3 +1,18 @@
+2016-09-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* imports.cc (ImportVisitor::visit(ScopeDsymbol)): New visit method.
+
+2016-09-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-todt.cc (ArrayInitializer::toDt): Update to use build_expr.
+	* d-codegen.cc (d_array_value): Don't override default const and
+	static bits for array constructors.
+
+2016-09-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (lower_struct_comparison): Don't compare vectors in the
+	same way as integers.
+
 2016-09-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-todt.cc (Type::toDt): Remove function, inline into callers.
