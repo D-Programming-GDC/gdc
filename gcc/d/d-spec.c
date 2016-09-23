@@ -1,20 +1,21 @@
-/* d-spec.c -- D frontend for GCC.
-   Copyright (C) 2011-2013 Free Software Foundation, Inc.
+/* d-spec.c -- Specific flags and argument handling of the D front end.
+   Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
-   GCC is free software; you can redistribute it and/or modify it under
-   the terms of the GNU General Public License as published by the Free
-   Software Foundation; either version 3, or (at your option) any later
-   version.
+This file is part of GCC.
 
-   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-   WARRANTY; without even the implied warranty of MERCHANTABILITY or
-   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-   for more details.
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
 
-   You should have received a copy of the GNU General Public License
-   along with GCC; see the file COPYING3.  If not see
-   <http://www.gnu.org/licenses/>.
-*/
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
 #include "system.h"
@@ -80,13 +81,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 		      unsigned int *in_decoded_options_count,
 		      int *in_added_libraries)
 {
-  int i, j;
+  unsigned int i, j;
 
   /* If nonzero, the user gave us the `-p' or `-pg' flag.  */
   int saw_profile_flag = 0;
 
-  /* Used by -debuglib */
-  int saw_debug_flag = 0;
+  /* If true, the user gave `-g'.  Used by -debuglib */
+  bool saw_debug_flag = false;
 
   /* What do with libgphobos:
      -1 means we should not link in libgphobos
@@ -95,10 +96,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
      2  means libgphobos is needed and should be linked statically.
      3  means libgphobos is needed and should be linked dynamically. */
   int library = 0;
-
-  /* If nonzero, use the standard D runtime library when linking with
-     standard libraries. */
-  int phobos = 1;
 
   /* The number of arguments being added to what's in argv, other than
      libraries.  We use this to track the number of times we've inserted
@@ -123,33 +120,27 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* "-lstdc++" if it appears on the command line.  */
   const cl_decoded_option *saw_libcxx = 0;
 
-  /* An array used to flag each argument that needs a bit set for
-     DSOURCE, MATHLIB, WITHTHREAD, WITHLIBC or WITHLIBCXX.  */
-  int *args;
+  /* If true, use the standard D runtime library when linking with
+     standard libraries. */
+  bool need_phobos = true;
 
   /* Whether we need the C++ STD library.  */
-  int need_stdcxx = 0;
+  bool need_stdcxx = false;
 
   /* By default, we throw on the math library if we have one.  */
-  int need_math = (MATH_LIBRARY[0] != '\0');
+  bool need_math = (MATH_LIBRARY[0] != '\0');
 
   /* Whether we need the thread library.  */
-  int need_thread = (THREAD_LIBRARY[0] != '\0');
+  bool need_thread = (THREAD_LIBRARY[0] != '\0');
 
   /* By default, we throw on the time library if we have one.  */
-  int need_time = (TIME_LIBRARY[0] != '\0');
+  bool need_time = (TIME_LIBRARY[0] != '\0');
 
   /* True if we saw -static. */
-  int static_link = 0;
+  bool static_link = false;
 
   /* True if we should add -shared-libgcc to the command-line.  */
-  int shared_libgcc = 1;
-
-  /* The total number of arguments with the new stuff.  */
-  int argc;
-
-  /* The argument list.  */
-  cl_decoded_option *decoded_options;
+  bool shared_libgcc = true;
 
   /* What default library to use instead of phobos */
   const char *defaultlib = NULL;
@@ -157,26 +148,30 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* What debug library to use instead of phobos */
   const char *debuglib = NULL;
 
-  /* The number of libraries added in.  */
-  int added_libraries;
-
   /* The total number of arguments with the new stuff.  */
-  int num_args = 1;
+  unsigned int num_args = 1;
 
   /* "-fonly" if it appears on the command line.  */
   const char *only_source_option = 0;
 
   /* Whether the -o option was used.  */
-  int saw_opt_o = 0;
+  bool saw_opt_o = false;
 
   /* The first input file with an extension of .d.  */
   const char *first_d_file = NULL;
 
-  argc = *in_decoded_options_count;
-  decoded_options = *in_decoded_options;
-  added_libraries = *in_added_libraries;
+  /* The total number of arguments with the new stuff.  */
+  unsigned int argc = *in_decoded_options_count;
 
-  args = XCNEWVEC (int, argc);
+  /* The argument list.  */
+  cl_decoded_option *decoded_options = *in_decoded_options;
+
+  /* The number of libraries added in.  */
+  int added_libraries = *in_added_libraries;
+
+  /* An array used to flag each argument that needs a bit set for
+     DSOURCE, MATHLIB, WITHTHREAD, WITHLIBC or WITHLIBCXX.  */
+  int *args = XCNEWVEC (int, argc);
 
   for (i = 1; i < argc; i++)
     {
@@ -190,14 +185,14 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_nophoboslib:
-	  added = 1; // force argument rebuild
-	  phobos = 0;
+	  added = 1;
+	  need_phobos = false;
 	  args[i] |= SKIPOPT;
 	  break;
 
 	case OPT_defaultlib_:
 	  added = 1;
-	  phobos = 0;
+	  need_phobos = false;
 	  args[i] |= SKIPOPT;
 	  if (defaultlib != NULL)
 	    free (CONST_CAST (char *, defaultlib));
@@ -212,7 +207,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 	case OPT_debuglib_:
 	  added = 1;
-	  phobos = 0;
+	  need_phobos = false;
 	  args[i] |= SKIPOPT;
 	  if (debuglib != NULL)
 	    free (CONST_CAST (char *, debuglib));
@@ -230,23 +225,23 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	      || (strcmp (arg, LIBSTDCXX_PROFILE) == 0))
 	    {
 	      args[i] |= WITHLIBCXX;
-	      need_stdcxx = 0;
+	      need_stdcxx = false;
 	    }
 	  else if ((strcmp (arg, MATH_LIBRARY) == 0)
 		   || (strcmp (arg, MATH_LIBRARY_PROFILE) == 0))
 	    {
 	      args[i] |= MATHLIB;
-	      need_math = 0;
+	      need_math = false;
 	    }
 	  else if (strcmp (arg, THREAD_LIBRARY) == 0)
 	    {
 	      args[i] |= WITHTHREAD;
-	      need_thread = 0;
+	      need_thread = false;
 	    }
 	  else if (strcmp (arg, TIME_LIBRARY) == 0)
 	    {
 	      args[i] |= TIMELIB;
-	      need_time = 0;
+	      need_time = false;
 	    }
 	  else if (strcmp (arg, "c") == 0)
 	    args[i] |= WITHLIBC;
@@ -261,7 +256,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_g:
-	  saw_debug_flag = 1;
+	  saw_debug_flag = true;
 
 	case OPT_v:
 	  /* If they only gave us `-v', don't try to link in libphobos.  */
@@ -295,15 +290,15 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_o:
-	  saw_opt_o = 1;
+	  saw_opt_o = true;
 	  break;
 
 	case OPT_static:
-	  static_link = 1;
+	  static_link = true;
 	  break;
 
 	case OPT_static_libgcc:
-	  shared_libgcc = 0;
+	  shared_libgcc = false;
 	  break;
 
 	case OPT_static_libphobos:
@@ -331,13 +326,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 	case OPT_SPECIAL_input_file:
 	    {
-	      int len;
-
 	      if (arg[0] == '\0' || arg[1] == '\0')
 		continue;
 
-	      len = strlen (arg);
 	      /* Record that this is a D source file.  */
+	      int len = strlen (arg);
 	      if (len <= 2 || strcmp (arg + len - 2, ".d") == 0)
 		{
 		  if (first_d_file == NULL)
@@ -359,7 +352,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	      if ((len <= 3 || strcmp (arg + len - 3, ".cc") == 0)
 		  || (len <= 4 || strcmp (arg + len - 4, ".cpp") == 0)
 		  || (len <= 4 || strcmp (arg + len - 4, ".c++") == 0))
-		need_stdcxx = 1;
+		need_stdcxx = true;
 
 	      break;
 	    }
@@ -376,7 +369,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* There's no point adding -shared-libgcc if we don't have a shared
      libgcc.  */
 #ifndef ENABLE_SHARED_LIBGCC
-  shared_libgcc = 0;
+  shared_libgcc = false;
 #endif
 
   /* Make sure to have room for the trailing NULL argument.  */
@@ -461,16 +454,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
      driver will invoke cc1d separately for each input file.  */
   if (library < 0 && first_d_file != NULL && !saw_opt_o)
     {
-      const char *base;
-      int baselen;
-      int alen;
-      char *out;
+      const char *base = lbasename (first_d_file);
+      int baselen = strlen (base) - 2;
+      int alen = baselen + 3;
+      char *out = XNEWVEC (char, alen);
 
-      base = lbasename (first_d_file);
-      baselen = strlen (base) - 2;
-      alen = baselen + 3;
-      out = XNEWVEC (char, alen);
       memcpy (out, base, baselen);
+
       /* The driver will convert .o to some other suffix if appropriate.  */
       out[baselen] = '.';
       out[baselen + 1] = 'o';
@@ -481,7 +471,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
     }
 
   /* Add `-lgphobos' if we haven't already done so.  */
-  if (library > 0 && phobos)
+  if (library > 0 && need_phobos)
     {
       // Default to static linking
       if (library == 1)
