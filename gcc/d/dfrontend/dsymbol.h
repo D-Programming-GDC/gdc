@@ -284,8 +284,6 @@ public:
 #ifdef IN_GCC
     virtual Symbol *toSymbol();                 // to backend symbol
     virtual void toObjFile();                   // compile to .obj file
-
-    Symbol *toSymbolX(const char *prefix, int sclass, TYPE *t, const char *suffix);     // helper
 #endif
 };
 

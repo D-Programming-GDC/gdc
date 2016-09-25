@@ -75,9 +75,7 @@ static vec<FuncDeclaration *> static_dtor_list;
 
 Symbol::Symbol()
 {
-  this->Sident = NULL;
-  this->prettyIdent = NULL;
-
+  this->Sident = NULL_TREE;
   this->Stree = NULL_TREE;
 }
 
@@ -862,7 +860,7 @@ VarDeclaration::toObjFile()
 
       // Duplicated VarDeclarations map to the same symbol. Check if this
       // is the one declaration which will be emitted.
-      tree ident = get_identifier(DECL_LANG_IDENTIFIER (s));
+      tree ident = DECL_LANG_IDENTIFIER (s);
       if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
 	return;
 
@@ -1192,7 +1190,7 @@ FuncDeclaration::toObjFile()
   Symbol *fds = this->toSymbol();
   if (DECL_LANG_IDENTIFIER (fds))
     {
-      tree ident = get_identifier(DECL_LANG_IDENTIFIER (fds));
+      tree ident = DECL_LANG_IDENTIFIER (fds);
       if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
 	return;
     }
@@ -1847,7 +1845,7 @@ d_finish_symbol (Symbol *sym)
 	  if (TREE_TYPE (decl) == unknown_type_node)
 	    {
 	      TREE_TYPE (decl) = TREE_TYPE (sinit);
-	      TYPE_NAME (TREE_TYPE (decl)) = get_identifier (DECL_LANG_IDENTIFIER (sym));
+	      TYPE_NAME (TREE_TYPE (decl)) = DECL_LANG_IDENTIFIER (sym);
 	    }
 
 	  // No gain setting DECL_INITIAL if the initialiser is all zeros.
@@ -1877,7 +1875,7 @@ d_finish_symbol (Symbol *sym)
       dinteger_t dtsize = int_size_in_bytes (TREE_TYPE (DECL_INITIAL (decl)));
 
       if (tsize < dtsize)
-	internal_error ("Mismatch between declaration '%s' size (%wd) and it's initializer size (%wd).",
+	internal_error ("Mismatch between declaration '%qE' size (%wd) and it's initializer size (%wd).",
 			DECL_LANG_PRETTY_NAME (sym) ? DECL_LANG_PRETTY_NAME (sym) : DECL_LANG_IDENTIFIER (sym),
 			tsize, dtsize);
     }
@@ -2204,8 +2202,8 @@ build_simple_function_decl (const char *name, tree expr)
 
   if (name[0] == '*')
     {
-      Symbol *s = mod->toSymbolX (name + 1, 0, 0, "FZv");
-      name = DECL_LANG_IDENTIFIER (s);
+      Symbol *s = make_internal_name (mod, name + 1, "FZv");
+      name = IDENTIFIER_POINTER (DECL_LANG_IDENTIFIER (s));
     }
 
   TypeFunction *func_type = new TypeFunction (0, Type::tvoid, 0, LINKc);
@@ -2555,8 +2553,8 @@ emit_dso_registry_hooks(Symbol *sym, Dsymbol *compiler_dso_type, Dsymbol *dso_re
   // Step 1: Place the ModuleInfo into the minfo section.
   // Do this once for every emitted Module
   // @section("minfo") void* __mod_ref_%s = &ModuleInfo(module);
-  tree decl = build_decl(BUILTINS_LOCATION, VAR_DECL,
-    get_identifier(concat("__mod_ref_", DECL_LANG_IDENTIFIER (sym), NULL)), ptr_type_node);
+  const char *name = concat ("__mod_ref_", IDENTIFIER_POINTER (DECL_LANG_IDENTIFIER (sym)), NULL);
+  tree decl = build_decl(BUILTINS_LOCATION, VAR_DECL, get_identifier (name), ptr_type_node);
   d_keep(decl);
   set_decl_location(decl, current_module_decl);
   TREE_PUBLIC (decl) = 1;

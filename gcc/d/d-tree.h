@@ -33,6 +33,7 @@ class TypeFunction;
 class Dsymbol;
 struct FuncFrameInfo;
 struct Thunk;
+struct Symbol;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
@@ -147,11 +148,19 @@ struct GTY(()) d_label_entry
 struct GTY(()) lang_identifier
 {
   struct tree_identifier common;
+
+  /* The identifier as the user sees it.  */
+  tree pretty_ident;
+
+  /* The frontend Dsymbol associated with this identifier.  */
   Dsymbol * GTY((skip)) dsymbol;
 };
 
 #define IDENTIFIER_LANG_SPECIFIC(NODE) \
   ((struct lang_identifier*) IDENTIFIER_NODE_CHECK (NODE))
+
+#define IDENTIFIER_PRETTY_NAME(NODE) \
+  (IDENTIFIER_LANG_SPECIFIC (NODE)->pretty_ident)
 
 #define IDENTIFIER_DSYMBOL(NODE) \
   (IDENTIFIER_LANG_SPECIFIC (NODE)->dsymbol)
@@ -211,7 +220,7 @@ struct GTY(()) lang_decl
   (NODE)->Sident
 
 #define DECL_LANG_PRETTY_NAME(NODE) \
-  (NODE)->prettyIdent
+  IDENTIFIER_PRETTY_NAME (DECL_LANG_IDENTIFIER (NODE))
 
 #define DECL_LANG_READONLY(NODE) \
   DECL_LANG_SPECIFIC (NODE->Stree)->readonly
@@ -367,6 +376,9 @@ extern Expression *build_expression (tree);
 
 /* In d-convert.cc.  */
 extern tree d_truthvalue_conversion (tree);
+
+/* In d-decls.cc.  */
+extern Symbol *make_internal_name (Dsymbol *, const char *, const char *);
 
 /* In d-expr.cc.  */
 extern tree build_expr (Expression *, bool = false);

@@ -42,10 +42,8 @@ struct Symbol
 {
   Symbol();
 
-  const char *Sident;
-  const char *prettyIdent;
-
   // Our GNU backend tree for the symbol.
+  tree Sident;
   tree Stree;
 };
 

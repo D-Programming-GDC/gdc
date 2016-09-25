@@ -52,28 +52,29 @@ SymbolDeclaration::toSymbol()
 }
 
 
-// Helper for toSymbol.  Generate a mangled identifier for Symbol.
-// We don't bother using sclass and t.
+/* Generate a mangled identifier using NAME and SUFFIX, prefixed by the
+   assembler name for DSYM.  */
 
 Symbol *
-Dsymbol::toSymbolX (const char *prefix, int, type *, const char *suffix)
+make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
 {
-  const char *symbol = mangle(this);
-  unsigned prefixlen = strlen (prefix);
-  size_t sz = (2 + strlen (symbol) + sizeof (size_t) * 3 + prefixlen + strlen (suffix) + 1);
+  const char *prefix = mangle(dsym);
+  unsigned namelen = strlen (name);
+  unsigned buflen = (2 + strlen (prefix) + namelen + strlen (suffix)) * 2;
+  char *buf = (char *) alloca (buflen);
+
+  snprintf (buf, buflen, "_D%s%u%s%s", prefix, namelen, name, suffix);
+  tree ident = get_identifier (buf);
+
+  /* Symbol is not found in user code, but generate a readable name for it
+     anyway for debug and diagnostic reporting.  */
+  snprintf (buf, buflen, "%s.%s", dsym->toPrettyChars(), name);
+  IDENTIFIER_PRETTY_NAME (ident) = get_identifier (buf);
+
   Symbol *s = new Symbol();
-
-  DECL_LANG_IDENTIFIER (s) = XNEWVEC (const char, sz);
-  snprintf (CONST_CAST (char *, DECL_LANG_IDENTIFIER (s)), sz, "_D%s%u%s%s",
-	    symbol, prefixlen, prefix, suffix);
-
-  DECL_LANG_PRETTY_NAME (s) = XNEWVEC (const char, sz);
-  snprintf (CONST_CAST (char *, DECL_LANG_PRETTY_NAME (s)), sz, "%s.%s",
-	    toPrettyChars(), prefix);
-
+  DECL_LANG_IDENTIFIER (s) = ident;
   return s;
 }
-
 
 Symbol *
 Dsymbol::toSymbol()
@@ -139,11 +140,11 @@ VarDeclaration::toSymbol()
 
       if (isDataseg())
 	{
-	  DECL_LANG_IDENTIFIER (csym) = mangle(this);
-	  DECL_LANG_PRETTY_NAME (csym) = toPrettyChars(true);
+	  DECL_LANG_IDENTIFIER (csym) = get_identifier (mangle(this));
+	  DECL_LANG_PRETTY_NAME (csym) = get_identifier (toPrettyChars(true));
 	}
       else
-	DECL_LANG_IDENTIFIER (csym) = ident->string;
+	DECL_LANG_IDENTIFIER (csym) = get_identifier (ident->string);
 
       if (this->alignment > 0)
 	{
@@ -185,7 +186,7 @@ VarDeclaration::toSymbol()
             }
 	  else
 	    {
-	      tree mangle = get_identifier (DECL_LANG_IDENTIFIER (csym));
+	      tree mangle = DECL_LANG_IDENTIFIER (csym);
 
 	      if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
 		mangle = targetm.mangle_decl_assembler_name (decl, mangle);
@@ -343,11 +344,11 @@ FuncDeclaration::toSymbol()
       DECL_LANG_TREE (csym) = fndecl;
 
       // Save mangle/debug names for making thunks.
-      DECL_LANG_IDENTIFIER (csym) = mangleExact(this);
-      DECL_LANG_PRETTY_NAME (csym) = toPrettyChars(true);
+      DECL_LANG_IDENTIFIER (csym) = get_identifier (mangleExact(this));
+      DECL_LANG_PRETTY_NAME (csym) = get_identifier (toPrettyChars(true));
 
-      tree id = get_identifier (this->isMain()
-				? DECL_LANG_PRETTY_NAME (csym) : ident->string);
+      tree id = this->isMain()
+	? DECL_LANG_PRETTY_NAME (csym) : get_identifier (ident->string);
       DECL_NAME (fndecl) = id;
       TREE_TYPE (fndecl) = build_ctype(ftype);
       d_keep (fndecl);
@@ -396,7 +397,7 @@ FuncDeclaration::toSymbol()
         }
       else
 	{
-	  tree mangle = get_identifier (DECL_LANG_IDENTIFIER (csym));
+	  tree mangle = DECL_LANG_IDENTIFIER (csym);
 	  mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
 	  SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
 	}
@@ -501,7 +502,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   if (!thunk->symbol)
     {
-      unsigned sz = strlen (DECL_LANG_IDENTIFIER (csym)) + 14;
+      unsigned sz = strlen (IDENTIFIER_POINTER (DECL_LANG_IDENTIFIER (csym))) + 14;
       sthunk = new Symbol();
 
       tree target_func_decl = DECL_LANG_TREE (csym);
@@ -534,7 +535,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 
       const char *ident = XNEWVEC (const char, sz);
       snprintf (CONST_CAST (char *, ident), sz,
-		"_DT%u%s", offset, DECL_LANG_IDENTIFIER (csym));
+		"_DT%u%s", offset, IDENTIFIER_POINTER (DECL_LANG_IDENTIFIER (csym)));
 
       DECL_NAME (thunk_decl) = get_identifier (ident);
       SET_DECL_ASSEMBLER_NAME (thunk_decl, DECL_NAME (thunk_decl));
@@ -557,12 +558,11 @@ ClassDeclaration::toSymbol()
 {
   if (!csym)
     {
-      csym = toSymbolX ("__Class", 0, 0, "Z");
+      csym = make_internal_name (this, "__Class", "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (DECL_LANG_PRETTY_NAME (csym)),
-			      unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (DECL_LANG_IDENTIFIER (csym)));
+			      DECL_LANG_PRETTY_NAME (csym), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (csym));
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (csym) = decl;
       d_keep (decl);
@@ -585,12 +585,11 @@ InterfaceDeclaration::toSymbol()
 {
   if (!csym)
     {
-      csym = toSymbolX ("__Interface", 0, 0, "Z");
+      csym = make_internal_name (this, "__Interface", "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (DECL_LANG_PRETTY_NAME (csym)),
-			      unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (DECL_LANG_IDENTIFIER (csym)));
+			      DECL_LANG_PRETTY_NAME (csym), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (csym));
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (csym) = decl;
       d_keep (decl);
@@ -612,12 +611,11 @@ Module::toSymbol()
 {
   if (!csym)
     {
-      csym = toSymbolX ("__ModuleInfo", 0, 0, "Z");
+      csym = make_internal_name (this, "__ModuleInfo", "Z");
 
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      get_identifier (DECL_LANG_PRETTY_NAME (csym)),
-			      unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (DECL_LANG_IDENTIFIER (csym)));
+			      DECL_LANG_PRETTY_NAME (csym), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (csym));
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (csym) = decl;
       d_keep (decl);
@@ -670,7 +668,7 @@ ClassReferenceExp::toSymbol()
 
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (value->sym) = decl;
-      DECL_LANG_IDENTIFIER (value->sym) = IDENTIFIER_POINTER (DECL_NAME (decl));
+      DECL_LANG_IDENTIFIER (value->sym) = DECL_NAME (decl);
 
       toInstanceDt(&DECL_LANG_INITIAL (value->sym));
       d_finish_symbol(value->sym);
@@ -690,15 +688,15 @@ ClassDeclaration::toVtblSymbol()
 {
   if (!vtblsym)
     {
-      vtblsym = toSymbolX ("__vtbl", 0, 0, "Z");
+      vtblsym = make_internal_name (this, "__vtbl", "Z");
 
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
       Type *vtbltype = Type::tvoidptr->sarrayOf (vtbl.dim);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (DECL_LANG_PRETTY_NAME (vtblsym)),
-			      build_ctype(vtbltype));
-      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (DECL_LANG_IDENTIFIER (vtblsym)));
+			      DECL_LANG_PRETTY_NAME (vtblsym),
+			      build_ctype (vtbltype));
+      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (vtblsym));
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (vtblsym) = decl;
       d_keep (decl);
@@ -731,20 +729,17 @@ Symbol *
 AggregateDeclaration::toInitializer()
 {
   if (!sinit)
-    sinit = toSymbolX ("__init", 0, 0, "Z");
+    sinit = make_internal_name (this, "__init", "Z");
 
   if (!DECL_LANG_TREE (sinit) && current_module_decl)
     {
-      tree stype;
-      if (isStructDeclaration())
-	stype = build_ctype(type);
-      else
-	stype = TREE_TYPE (build_ctype(type));
+      tree stype = build_ctype (type);
+      if (!this->isStructDeclaration())
+	stype = TREE_TYPE (stype);
 
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (DECL_LANG_PRETTY_NAME (sinit)),
-			      stype);
-      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (DECL_LANG_IDENTIFIER (sinit)));
+			      DECL_LANG_PRETTY_NAME (sinit), stype);
+      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (sinit));
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (sinit) = decl;
       d_keep (decl);
@@ -772,16 +767,16 @@ EnumDeclaration::toInitializer()
       Identifier *ident_save = ident;
       if (!ident)
 	ident = Identifier::generateId("__enum");
-      sinit = toSymbolX ("__init", 0, 0, "Z");
+      sinit = make_internal_name (this, "__init", "Z");
       ident = ident_save;
     }
 
   if (!DECL_LANG_TREE (sinit) && current_module_decl)
     {
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      get_identifier (DECL_LANG_PRETTY_NAME (sinit)),
-			      build_ctype(type));
-      SET_DECL_ASSEMBLER_NAME (decl, get_identifier (DECL_LANG_IDENTIFIER (sinit)));
+			      DECL_LANG_PRETTY_NAME (sinit),
+			      build_ctype (type));
+      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (sinit));
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (sinit) = decl;
       d_keep (decl);
