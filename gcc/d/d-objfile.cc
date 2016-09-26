@@ -1897,18 +1897,10 @@ d_finish_function(FuncDeclaration *fd)
   // If we generated the function, but it's really extern.
   // Such as external inlinable functions or thunk aliases.
   bool extern_p = false;
-  for (FuncDeclaration *fdp = fd; fdp != NULL;)
+
+  if (!fd->isInstantiated() && fd->getModule() && !fd->getModule()->isRoot())
     {
-      if (fdp->inNonRoot())
-	{
-	  extern_p = true;
-	  break;
-	}
-
-      if (!fdp->isNested())
-	break;
-
-      fdp = fdp->toParent2()->isFuncDeclaration();
+      extern_p = true;
     }
 
   if (extern_p)
