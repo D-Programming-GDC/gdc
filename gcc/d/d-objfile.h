@@ -43,7 +43,6 @@ struct Symbol
   Symbol();
 
   // Our GNU backend tree for the symbol.
-  tree Sident;
   tree Stree;
 };
 

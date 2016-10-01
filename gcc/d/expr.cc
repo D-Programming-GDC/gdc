@@ -2612,10 +2612,10 @@ public:
     // processing has complete.  Build the static initialiser now.
     if (e->sinit && !this->constp_)
       {
-	if (DECL_LANG_TREE (e->sinit) == NULL_TREE)
+	if (!VAR_P (DECL_LANG_TREE (e->sinit)))
 	  e->sd->toInitializer();
 
-	gcc_assert(DECL_LANG_TREE (e->sinit) != NULL);
+	gcc_assert(VAR_P (DECL_LANG_TREE (e->sinit)));
 	this->result_ = DECL_LANG_TREE (e->sinit);
 	return;
       }

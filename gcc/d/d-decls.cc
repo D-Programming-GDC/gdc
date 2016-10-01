@@ -72,7 +72,7 @@ make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
   IDENTIFIER_PRETTY_NAME (ident) = get_identifier (buf);
 
   Symbol *s = new Symbol();
-  DECL_LANG_IDENTIFIER (s) = ident;
+  DECL_LANG_TREE (s) = ident;
   return s;
 }
 
@@ -101,29 +101,41 @@ VarDeclaration::toSymbol()
 	  return csym;
 	}
 
-      // Use same symbol for VarDeclaration templates with same mangle
-      bool local_p, template_p;
-      get_template_storage_info(this, &local_p, &template_p);
-      if (!this->mangleOverride && isDataseg () && !(storage_class & STCextern)
-	  && local_p && template_p)
+      tree mangle = NULL_TREE;
+
+      if (!this->isDataseg ())
+	this->csym = new Symbol();
+      else if (this->mangleOverride)
 	{
-	  tree ident = get_identifier(mangle(this));
-	  if (!IDENTIFIER_DSYMBOL (ident))
-	    {
-	      csym = new Symbol();
-	      IDENTIFIER_DSYMBOL (ident) = this;
-	    }
-	  else
-	    {
-	      csym = IDENTIFIER_DSYMBOL (ident)->toSymbol();
-	      return csym;
-	    }
+	  mangle = get_identifier (this->mangleOverride);
+	  this->csym = new Symbol();
 	}
       else
 	{
-	  csym = new Symbol();
-	}
+	  mangle = get_identifier (::mangle (this));
 
+	  // Use same symbol for VarDeclaration templates with same mangle
+	  if (this->storage_class & STCextern)
+	    csym = new Symbol();
+	  else if (!IDENTIFIER_DSYMBOL (mangle))
+	    {
+	      csym = new Symbol();
+	      IDENTIFIER_DSYMBOL (mangle) = this;
+	    }
+	  else
+	    {
+	      Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
+
+	      // Non-templated variables shouldn't be defined twice
+	      bool local_p, template_p;
+	      get_template_storage_info(this, &local_p, &template_p);
+	      if (!template_p)
+		ScopeDsymbol::multiplyDefined(loc, this, other);
+
+	      csym = other->toSymbol();
+	      return csym;
+	    }
+	}
 
       tree_code code = isParameter() ? PARM_DECL
 	: !canTakeAddressOf() ? CONST_DECL
@@ -137,14 +149,6 @@ VarDeclaration::toSymbol()
 
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (this);
       DECL_LANG_TREE (csym) = decl;
-
-      if (isDataseg())
-	{
-	  DECL_LANG_IDENTIFIER (csym) = get_identifier (mangle(this));
-	  DECL_LANG_PRETTY_NAME (csym) = get_identifier (toPrettyChars(true));
-	}
-      else
-	DECL_LANG_IDENTIFIER (csym) = get_identifier (ident->string);
 
       if (this->alignment > 0)
 	{
@@ -179,21 +183,19 @@ VarDeclaration::toSymbol()
 	}
       else if (isDataseg())
 	{
-	  if (this->mangleOverride)
-            {
-              tree mangle = get_identifier (this->mangleOverride);
-              SET_DECL_ASSEMBLER_NAME (decl, mangle);
-            }
-	  else
+	  gcc_assert (mangle != NULL_TREE);
+
+	  if (!this->mangleOverride
+	      && (protection == PROTpublic
+		  || storage_class & (STCstatic | STCextern)))
 	    {
-	      tree mangle = DECL_LANG_IDENTIFIER (csym);
-
-	      if (protection == PROTpublic || storage_class & (STCstatic | STCextern))
-		mangle = targetm.mangle_decl_assembler_name (decl, mangle);
-
-	      SET_DECL_ASSEMBLER_NAME (decl, mangle);
+	      tree target_name = targetm.mangle_decl_assembler_name (decl, mangle);
+	      IDENTIFIER_DSYMBOL (target_name) = IDENTIFIER_DSYMBOL (mangle);
+	      mangle = target_name;
 	    }
 
+	  IDENTIFIER_PRETTY_NAME (mangle) = get_identifier (toPrettyChars (true));
+	  SET_DECL_ASSEMBLER_NAME (decl, mangle);
 	  setup_symbol_storage (this, decl, false);
 	}
 
@@ -311,30 +313,38 @@ FuncDeclaration::toSymbol()
 	  current_module_decl = old_current_module_decl;
 	}
 
-      // Use same symbol for FuncDeclaration templates with same mangle
-      if (!this->mangleOverride && this->fbody)
-	{
-	  tree ident = get_identifier(mangleExact(this));
-	  if (!IDENTIFIER_DSYMBOL (ident))
-	    {
-	      csym = new Symbol();
-	      IDENTIFIER_DSYMBOL (ident) = this;
-	    }
-	  else
-	    {
-	      bool local_p, template_p;
-	      get_template_storage_info(this, &local_p, &template_p);
-	      // Non-templated functions shouldn't be defined twice
-	      if (!template_p)
-		ScopeDsymbol::multiplyDefined(loc, this, IDENTIFIER_DSYMBOL (ident));
+      tree mangle;
 
-	      csym = IDENTIFIER_DSYMBOL (ident)->toSymbol();
-	      return csym;
-	    }
+      if (this->mangleOverride)
+	{
+	  mangle = get_identifier (this->mangleOverride);
+	  this->csym = new Symbol();
 	}
       else
 	{
-	  csym = new Symbol();
+	  mangle = get_identifier (mangleExact (this));
+
+	  // Use same symbol for FuncDeclaration templates with same mangle
+	  if (!this->fbody)
+	    csym = new Symbol();
+	  else if (!IDENTIFIER_DSYMBOL (mangle))
+	    {
+	      csym = new Symbol();
+	      IDENTIFIER_DSYMBOL (mangle) = this;
+	    }
+	  else
+	    {
+	      Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
+
+	      // Non-templated functions shouldn't be defined twice
+	      bool local_p, template_p;
+	      get_template_storage_info(this, &local_p, &template_p);
+	      if (!template_p)
+		ScopeDsymbol::multiplyDefined(loc, this, other);
+
+	      csym = other->toSymbol();
+	      return csym;
+	    }
 	}
 
       tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, NULL_TREE, NULL_TREE);
@@ -343,13 +353,19 @@ FuncDeclaration::toSymbol()
       DECL_LANG_SPECIFIC (fndecl) = build_lang_decl (this);
       DECL_LANG_TREE (csym) = fndecl;
 
-      // Save mangle/debug names for making thunks.
-      DECL_LANG_IDENTIFIER (csym) = get_identifier (mangleExact(this));
-      DECL_LANG_PRETTY_NAME (csym) = get_identifier (toPrettyChars(true));
+      DECL_NAME (fndecl) = this->isMain()
+	? get_identifier (toPrettyChars (true)) : get_identifier (ident->string);
 
-      tree id = this->isMain()
-	? DECL_LANG_PRETTY_NAME (csym) : get_identifier (ident->string);
-      DECL_NAME (fndecl) = id;
+      if (!this->mangleOverride)
+	{
+	  tree target_name = targetm.mangle_decl_assembler_name (fndecl, mangle);
+	  IDENTIFIER_DSYMBOL (target_name) = IDENTIFIER_DSYMBOL (mangle);
+	  mangle = target_name;
+	}
+
+      IDENTIFIER_PRETTY_NAME (mangle) = get_identifier (toPrettyChars (true));
+      SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
+
       TREE_TYPE (fndecl) = build_ctype(ftype);
       d_keep (fndecl);
 
@@ -388,18 +404,6 @@ FuncDeclaration::toSymbol()
 	  TREE_ADDRESSABLE (fntype) = TREE_ADDRESSABLE (TREE_TYPE (fndecl));
 	  TREE_TYPE (fndecl) = fntype;
 	  d_keep (fntype);
-	}
-
-      if (this->mangleOverride)
-        {
-          tree mangle = get_identifier (this->mangleOverride);
-          SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
-        }
-      else
-	{
-	  tree mangle = DECL_LANG_IDENTIFIER (csym);
-	  mangle = targetm.mangle_decl_assembler_name (fndecl, mangle);
-	  SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
 	}
 
       if (vindex)
@@ -502,7 +506,6 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   if (!thunk->symbol)
     {
-      unsigned sz = strlen (IDENTIFIER_POINTER (DECL_LANG_IDENTIFIER (csym))) + 14;
       sthunk = new Symbol();
 
       tree target_func_decl = DECL_LANG_TREE (csym);
@@ -533,9 +536,11 @@ FuncDeclaration::toThunkSymbol (int offset)
       DECL_COMDAT (thunk_decl) = DECL_COMDAT (target_func_decl);
       DECL_WEAK (thunk_decl) = DECL_WEAK (target_func_decl);
 
-      const char *ident = XNEWVEC (const char, sz);
-      snprintf (CONST_CAST (char *, ident), sz,
-		"_DT%u%s", offset, IDENTIFIER_POINTER (DECL_LANG_IDENTIFIER (csym)));
+      tree target_name = DECL_ASSEMBLER_NAME (target_func_decl);
+      unsigned identlen = IDENTIFIER_LENGTH (target_name) + 14;
+      const char *ident = XNEWVEC (const char, identlen);
+      snprintf (CONST_CAST (char *, ident), identlen,
+		"_DT%u%s", offset, IDENTIFIER_POINTER (target_name));
 
       DECL_NAME (thunk_decl) = get_identifier (ident);
       SET_DECL_ASSEMBLER_NAME (thunk_decl, DECL_NAME (thunk_decl));
@@ -560,9 +565,10 @@ ClassDeclaration::toSymbol()
     {
       csym = make_internal_name (this, "__Class", "Z");
 
+      tree ident = DECL_LANG_TREE (csym);
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      DECL_LANG_PRETTY_NAME (csym), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (csym));
+			      IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, ident);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (csym) = decl;
       d_keep (decl);
@@ -587,9 +593,10 @@ InterfaceDeclaration::toSymbol()
     {
       csym = make_internal_name (this, "__Interface", "Z");
 
+      tree ident = DECL_LANG_TREE (csym);
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      DECL_LANG_PRETTY_NAME (csym), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (csym));
+			      IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, ident);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (csym) = decl;
       d_keep (decl);
@@ -613,9 +620,10 @@ Module::toSymbol()
     {
       csym = make_internal_name (this, "__ModuleInfo", "Z");
 
+      tree ident = DECL_LANG_TREE (csym);
       tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      DECL_LANG_PRETTY_NAME (csym), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (csym));
+			      IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (decl, ident);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (csym) = decl;
       d_keep (decl);
@@ -668,7 +676,6 @@ ClassReferenceExp::toSymbol()
 
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (value->sym) = decl;
-      DECL_LANG_IDENTIFIER (value->sym) = DECL_NAME (decl);
 
       toInstanceDt(&DECL_LANG_INITIAL (value->sym));
       d_finish_symbol(value->sym);
@@ -693,10 +700,11 @@ ClassDeclaration::toVtblSymbol()
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
       Type *vtbltype = Type::tvoidptr->sarrayOf (vtbl.dim);
+      tree ident = DECL_LANG_TREE (vtblsym);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      DECL_LANG_PRETTY_NAME (vtblsym),
+			      IDENTIFIER_PRETTY_NAME (ident),
 			      build_ctype (vtbltype));
-      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (vtblsym));
+      SET_DECL_ASSEMBLER_NAME (decl, ident);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (vtblsym) = decl;
       d_keep (decl);
@@ -731,15 +739,16 @@ AggregateDeclaration::toInitializer()
   if (!sinit)
     sinit = make_internal_name (this, "__init", "Z");
 
-  if (!DECL_LANG_TREE (sinit) && current_module_decl)
+  if (!VAR_P (DECL_LANG_TREE (sinit)) && current_module_decl)
     {
       tree stype = build_ctype (type);
       if (!this->isStructDeclaration())
 	stype = TREE_TYPE (stype);
 
+      tree ident = DECL_LANG_TREE (sinit);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      DECL_LANG_PRETTY_NAME (sinit), stype);
-      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (sinit));
+			      IDENTIFIER_PRETTY_NAME (ident), stype);
+      SET_DECL_ASSEMBLER_NAME (decl, ident);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (sinit) = decl;
       d_keep (decl);
@@ -771,12 +780,13 @@ EnumDeclaration::toInitializer()
       ident = ident_save;
     }
 
-  if (!DECL_LANG_TREE (sinit) && current_module_decl)
+  if (!VAR_P (DECL_LANG_TREE (sinit)) && current_module_decl)
     {
+      tree ident = DECL_LANG_TREE (sinit);
       tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      DECL_LANG_PRETTY_NAME (sinit),
+			      IDENTIFIER_PRETTY_NAME (ident),
 			      build_ctype (type));
-      SET_DECL_ASSEMBLER_NAME (decl, DECL_LANG_IDENTIFIER (sinit));
+      SET_DECL_ASSEMBLER_NAME (decl, ident);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
       DECL_LANG_TREE (sinit) = decl;
       d_keep (decl);
