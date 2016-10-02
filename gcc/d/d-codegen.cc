@@ -337,7 +337,7 @@ build_local_var (VarDeclaration *vd)
   gcc_assert (current_function_decl != NULL_TREE);
 
   FuncDeclaration *fd = cfun->language->function;
-  Symbol *sym = vd->toSymbol();
+  tree sym = vd->toSymbol();
   tree var = DECL_LANG_TREE (sym);
 
   gcc_assert (!TREE_STATIC (var));
@@ -438,7 +438,7 @@ get_decl_tree (Declaration *decl)
   // If cfun is NULL, then this is a global static.
   if (func != NULL && vd != NULL)
     {
-      Symbol *vsym = vd->toSymbol();
+      tree vsym = vd->toSymbol();
       if (DECL_LANG_NRVO (vsym))
 	{
 	  // Get the named return value.
@@ -3526,7 +3526,6 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 	      tree fndecl = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
 					get_identifier (tname),
 					build_ctype(decl->type));
-	      decl->csym = new Symbol();
 	      DECL_LANG_SPECIFIC (fndecl) = build_lang_decl (decl);
 	      DECL_LANG_TREE (decl->csym) = fndecl;
 	      d_keep (fndecl);
@@ -4234,7 +4233,7 @@ build_frame_type (FuncDeclaration *func)
   for (size_t i = 0; i < func->closureVars.dim; i++)
     {
       VarDeclaration *v = func->closureVars[i];
-      Symbol *s = v->toSymbol();
+      tree s = v->toSymbol();
       tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
 			       declaration_type (v));
@@ -4317,7 +4316,7 @@ build_closure(FuncDeclaration *fd)
       if (!v->isParameter())
 	continue;
 
-      Symbol *vsym = v->toSymbol();
+      tree vsym = v->toSymbol();
 
       tree field = component_ref (decl_ref, DECL_LANG_FRAME_FIELD (vsym));
       tree expr = modify_expr (field, DECL_LANG_TREE (vsym));
@@ -4336,7 +4335,7 @@ build_closure(FuncDeclaration *fd)
 FuncFrameInfo *
 get_frameinfo(FuncDeclaration *fd)
 {
-  Symbol *fds = fd->toSymbol();
+  tree fds = fd->toSymbol();
   if (DECL_LANG_FRAMEINFO (fds))
     return DECL_LANG_FRAMEINFO (fds);
 
@@ -4548,7 +4547,6 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	      // it to the aggregate it is defined in.
 	      if (!inherited_p)
 		{
-		  var->csym = new Symbol();
 		  DECL_LANG_SPECIFIC (field) = build_lang_decl (var);
 		  DECL_LANG_TREE (var->csym) = field;
 		}

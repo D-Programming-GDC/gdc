@@ -213,7 +213,7 @@ dt_t **
 build_vptr_monitor(dt_t **pdt, ClassDeclaration *cd)
 {
   gcc_assert(cd != NULL);
-  Symbol *s = cd->toVtblSymbol();
+  tree s = cd->toVtblSymbol();
   dt_cons(pdt, build_address(DECL_LANG_TREE (s)));
 
   if (!cd->cpp)

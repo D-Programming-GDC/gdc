@@ -1592,7 +1592,7 @@ static tree
 d_build_eh_type_type (tree type)
 {
   Type *dtype = TYPE_LANG_FRONTEND (type);
-  Symbol *sym;
+  tree sym;
 
   if (dtype)
     dtype = dtype->toBasetype();

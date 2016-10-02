@@ -1166,10 +1166,7 @@ public:
 
 	// The __dollar variable just becomes a placeholder for the actual length.
 	if (e->lengthVar)
-	  {
-	    e->lengthVar->csym = new Symbol();
-	    DECL_LANG_TREE (e->lengthVar->csym) = length;
-	  }
+	  DECL_LANG_TREE (e->lengthVar->csym) = length;
 
 	// Generate the index.
 	tree index = build_expr(e->e2);
@@ -1259,10 +1256,7 @@ public:
 
     // The __dollar variable just becomes a placeholder for the actual length.
     if (e->lengthVar)
-      {
-	e->lengthVar->csym = new Symbol();
-	DECL_LANG_TREE (e->lengthVar->csym) = length;
-      }
+      DECL_LANG_TREE (e->lengthVar->csym) = length;
 
     // Generate lower bound.
     tree lwr_tree = d_save_expr(build_expr(e->lwr));
@@ -2215,7 +2209,6 @@ public:
 		StructLiteralExp *se = StructLiteralExp::create(e->loc, sd,
 								e->arguments, htype);
 		new_call = d_save_expr(new_call);
-		se->sym = new Symbol();
 		se->type = sd->type;
 		DECL_LANG_TREE (se->sym) = new_call;
 		result = compound_expr(build_expr(se), new_call);
@@ -2613,7 +2606,7 @@ public:
     if (e->sinit && !this->constp_)
       {
 	if (!VAR_P (DECL_LANG_TREE (e->sinit)))
-	  e->sd->toInitializer();
+	  e->sinit = e->sd->toInitializer();
 
 	gcc_assert(VAR_P (DECL_LANG_TREE (e->sinit)));
 	this->result_ = DECL_LANG_TREE (e->sinit);

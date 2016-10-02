@@ -41,7 +41,6 @@ class TemplateInstance;
 class TemplateDeclaration;
 class ClassDeclaration;
 class BinExp;
-struct Symbol;          // back end symbol
 class OverloadSet;
 class Initializer;
 class StringExp;
@@ -52,6 +51,9 @@ struct UnionExp;
 #ifdef IN_GCC
 typedef union tree_node dt_t;
 typedef union tree_node elem;
+typedef union tree_node Symbol;
+#else
+struct Symbol;          // back end symbol
 #endif
 
 void initPrecedence();

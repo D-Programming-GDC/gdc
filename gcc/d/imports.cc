@@ -51,8 +51,6 @@ public:
   // of whether there are any parent packages in the module system.
   void visit(Module *m)
   {
-    m->isym = new Symbol();
-
     tree decl = build_decl(UNKNOWN_LOCATION, NAMESPACE_DECL,
 			   get_identifier(m->toPrettyChars()),
 			   void_type_node);
@@ -87,8 +85,7 @@ public:
 	IMPORTED_DECL_ASSOCIATED_DECL (decl) = TYPE_STUB_DECL (type);
 	d_keep(decl);
 
-	d->isym = new Symbol();
-	d->isym->Stree = decl;
+	DECL_LANG_TREE (d->isym) = decl;
       }
 
     // For now, ignore importing other kinds of dsymbols.
@@ -121,7 +118,6 @@ public:
 	IMPORTED_DECL_ASSOCIATED_DECL (decl) = TYPE_STUB_DECL (type);
 	d_keep(decl);
 
-	d->isym = new Symbol();
 	DECL_LANG_TREE (d->isym) = decl;
 	return;
       }
@@ -155,7 +151,6 @@ public:
     IMPORTED_DECL_ASSOCIATED_DECL (decl) = DECL_LANG_TREE (d->toSymbol());
     d_keep(decl);
 
-    d->isym = new Symbol();
     DECL_LANG_TREE (d->isym) = decl;
   }
 };

@@ -59,10 +59,10 @@
 #include "id.h"
 
 static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
-static Symbol *build_emutls_function (vec<VarDeclaration *> tlsVars);
-static Symbol *build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
-static Symbol *build_dtor_function (const char *, vec<FuncDeclaration *>);
-static Symbol *build_unittest_function (const char *, vec<FuncDeclaration *>);
+static tree build_emutls_function (vec<VarDeclaration *> tlsVars);
+static tree build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
+static tree build_dtor_function (const char *, vec<FuncDeclaration *>);
+static tree build_unittest_function (const char *, vec<FuncDeclaration *>);
 
 // Module info.  Assuming only one module per run of the compiler.
 ModuleInfo *current_module_info;
@@ -70,13 +70,6 @@ ModuleInfo *current_module_info;
 // static constructors (not D static constructors)
 static vec<FuncDeclaration *> static_ctor_list;
 static vec<FuncDeclaration *> static_dtor_list;
-
-// Construct a new Symbol.
-
-Symbol::Symbol()
-{
-  this->Stree = NULL_TREE;
-}
 
 // Returns true if DSYM is from the gcc.attribute module.
 
@@ -556,7 +549,7 @@ Lhaspointers:
       if (fd && (fd->fbody || !isAbstract()))
 	{
 	  fd->functionSemantic();
-	  Symbol *s = fd->toSymbol();
+	  tree s = fd->toSymbol();
 
 	  if (!isFuncHidden (fd))
 	    goto Lcontinue;
@@ -855,7 +848,7 @@ VarDeclaration::toObjFile()
     }
   else if (isDataseg() && !(storage_class & STCextern))
     {
-      Symbol *s = toSymbol();
+      tree s = toSymbol();
 
       // Duplicated VarDeclarations map to the same symbol. Check if this
       // is the one declaration which will be emitted.
@@ -966,17 +959,17 @@ TypeInfoDeclaration::toObjFile()
   if (isSpeculativeType(this->tinfo))
     return;
 
-  Symbol *s = toSymbol();
+  tree s = toSymbol();
   DECL_INITIAL (DECL_LANG_TREE (s)) = layout_typeinfo(this);
   d_finish_symbol(s);
 }
 
 // Build the ModuleInfo symbol for Module m
 
-static Symbol *
+static tree
 build_moduleinfo_symbol(Module *m)
 {
-  Symbol *msym = m->toSymbol();
+  tree msym = m->toSymbol();
   tree dt = NULL_TREE;
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
@@ -1042,7 +1035,7 @@ build_moduleinfo_symbol(Module *m)
 	}
       else
 	{
-	  Symbol *emutls = build_emutls_function (current_module_info->tlsVars);
+	  tree emutls = build_emutls_function (current_module_info->tlsVars);
 	  dt_cons (&dt, build_address (DECL_LANG_TREE (emutls)));
 	}
     }
@@ -1186,7 +1179,7 @@ FuncDeclaration::toObjFile()
 
   // Duplicated FuncDeclarations map to the same symbol. Check if this
   // is the one declaration which will be emitted.
-  Symbol *fds = this->toSymbol();
+  tree fds = this->toSymbol();
   tree ident = DECL_ASSEMBLER_NAME (DECL_LANG_TREE (fds));
   if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
     return;
@@ -1349,7 +1342,7 @@ FuncDeclaration::toObjFile()
 
       if (nrvo_var)
 	{
-	  Symbol *nrvsym = nrvo_var->toSymbol();
+	  tree nrvsym = nrvo_var->toSymbol();
 	  tree var = DECL_LANG_TREE (nrvsym);
 
 	  // Copy name from VAR to RESULT.
@@ -1822,7 +1815,7 @@ mark_needed (tree decl)
 // the assembler language output.
 
 void
-d_finish_symbol (Symbol *sym)
+d_finish_symbol (tree sym)
 {
   tree decl = DECL_LANG_TREE (sym);
 
@@ -1893,7 +1886,7 @@ d_finish_symbol (Symbol *sym)
 void
 d_finish_function(FuncDeclaration *fd)
 {
-  Symbol *s = fd->toSymbol();
+  tree s = fd->toSymbol();
   tree decl = DECL_LANG_TREE (s);
 
   gcc_assert(TREE_CODE (decl) == FUNCTION_DECL);
@@ -2197,7 +2190,7 @@ build_simple_function_decl (const char *name, tree expr)
 
   if (name[0] == '*')
     {
-      Symbol *s = make_internal_name (mod, name + 1, "FZv");
+      tree s = make_internal_name (mod, name + 1, "FZv");
       name = IDENTIFIER_POINTER (DECL_LANG_TREE (s));
     }
 
@@ -2274,7 +2267,7 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
 // delegate parameter and calls it once for every TLS variable in the
 // module.
 
-static Symbol *
+static tree
 build_emutls_function (vec<VarDeclaration *> tlsVars)
 {
   Module *mod = current_module_decl;
@@ -2332,7 +2325,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
 // Same as build_call_function, but includes a gate to
 // protect static ctors in templates getting called multiple times.
 
-static Symbol *
+static tree
 build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<VarDeclaration *> gates)
 {
   tree expr_list = NULL_TREE;
@@ -2370,7 +2363,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
 // Same as build_call_function, but calls all functions in
 // the reverse order that the constructors were called in.
 
-static Symbol *
+static tree
 build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
 {
   tree expr_list = NULL_TREE;
@@ -2398,7 +2391,7 @@ build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
 // Same as build_call_function, but returns the Symbol to
 // the function generated.
 
-static Symbol *
+static tree
 build_unittest_function (const char *name, vec<FuncDeclaration *> functions)
 {
   FuncDeclaration *fd = build_call_function (name, functions, false);
@@ -2541,7 +2534,7 @@ emit_dso_registry_helpers(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func
 // _d_dso_registry if necessary.
 
 static void
-emit_dso_registry_hooks(Symbol *sym, Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func)
+emit_dso_registry_hooks(tree sym, Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func)
 {
   gcc_assert(targetm_common.have_named_sections);
 
@@ -2576,7 +2569,7 @@ emit_dso_registry_hooks(Symbol *sym, Dsymbol *compiler_dso_type, Dsymbol *dso_re
 // Emit code to add sym to the _Dmodule_ref linked list.
 
 static void
-emit_modref_hooks(Symbol *sym, Dsymbol *mref)
+emit_modref_hooks(tree sym, Dsymbol *mref)
 {
   // Generate:
   //  struct ModuleReference

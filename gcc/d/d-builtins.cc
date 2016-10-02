@@ -376,7 +376,6 @@ d_build_builtins_module(Module *m)
       FuncDeclaration *func = new FuncDeclaration(Loc(), Loc(),
 						  Identifier::idPool(name),
 						  STCextern, dtf);
-      func->csym = new Symbol;
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (func);
       DECL_LANG_TREE (func->csym) = decl;
       func->builtin = BUILTINyes;
@@ -495,7 +494,6 @@ maybe_set_builtin_1(Dsymbol *m)
 	  if (fd->ident != Identifier::idPool(name))
 	    continue;
 
-	  fd->csym = new Symbol;
 	  DECL_LANG_SPECIFIC (decl) = build_lang_decl (fd);
 	  DECL_LANG_TREE (fd->csym) = decl;
 	  fd->builtin = BUILTINyes;

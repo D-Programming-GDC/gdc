@@ -45,7 +45,7 @@
 
 // Create the symbol with tree for struct initialisers.
 
-Symbol *
+tree
 SymbolDeclaration::toSymbol()
 {
   return dsym->toInitializer();
@@ -55,7 +55,7 @@ SymbolDeclaration::toSymbol()
 /* Generate a mangled identifier using NAME and SUFFIX, prefixed by the
    assembler name for DSYM.  */
 
-Symbol *
+tree
 make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
 {
   const char *prefix = mangle(dsym);
@@ -71,12 +71,10 @@ make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
   snprintf (buf, buflen, "%s.%s", dsym->toPrettyChars(), name);
   IDENTIFIER_PRETTY_NAME (ident) = get_identifier (buf);
 
-  Symbol *s = new Symbol();
-  DECL_LANG_TREE (s) = ident;
-  return s;
+  return ident;
 }
 
-Symbol *
+tree
 Dsymbol::toSymbol()
 {
   gcc_unreachable();          // BUG: implement
@@ -85,7 +83,7 @@ Dsymbol::toSymbol()
 
 // Create the symbol with VAR_DECL tree for static variables.
 
-Symbol *
+tree
 VarDeclaration::toSymbol()
 {
   if (!csym)
@@ -104,24 +102,18 @@ VarDeclaration::toSymbol()
       tree mangle = NULL_TREE;
 
       if (!this->isDataseg ())
-	this->csym = new Symbol();
+	;
       else if (this->mangleOverride)
-	{
-	  mangle = get_identifier (this->mangleOverride);
-	  this->csym = new Symbol();
-	}
+	mangle = get_identifier (this->mangleOverride);
       else
 	{
 	  mangle = get_identifier (::mangle (this));
 
 	  // Use same symbol for VarDeclaration templates with same mangle
 	  if (this->storage_class & STCextern)
-	    csym = new Symbol();
+	    ;
 	  else if (!IDENTIFIER_DSYMBOL (mangle))
-	    {
-	      csym = new Symbol();
-	      IDENTIFIER_DSYMBOL (mangle) = this;
-	    }
+	    IDENTIFIER_DSYMBOL (mangle) = this;
 	  else
 	    {
 	      Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
@@ -144,11 +136,11 @@ VarDeclaration::toSymbol()
       tree decl = build_decl (UNKNOWN_LOCATION, code,
 			      get_identifier (ident->string),
 			      declaration_type (this));
-      DECL_CONTEXT (decl) = d_decl_context (this);
-      set_decl_location (decl, this);
-
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (this);
       DECL_LANG_TREE (csym) = decl;
+
+      DECL_CONTEXT (decl) = d_decl_context (this);
+      set_decl_location (decl, this);
 
       if (this->alignment > 0)
 	{
@@ -245,7 +237,7 @@ VarDeclaration::toSymbol()
 
 // Create the symbol with tree for typeinfo decls.
 
-Symbol *
+tree
 TypeInfoDeclaration::toSymbol()
 {
   if (!csym)
@@ -271,7 +263,7 @@ TypeInfoDeclaration::toSymbol()
 
 // Create the symbol with tree for typeinfoclass decls.
 
-Symbol *
+tree
 TypeInfoClassDeclaration::toSymbol()
 {
   gcc_assert (tinfo->ty == Tclass);
@@ -282,7 +274,7 @@ TypeInfoClassDeclaration::toSymbol()
 
 // Create the symbol with tree for function aliases.
 
-Symbol *
+tree
 FuncAliasDeclaration::toSymbol()
 {
   return funcalias->toSymbol();
@@ -290,7 +282,7 @@ FuncAliasDeclaration::toSymbol()
 
 // Create the symbol with FUNCTION_DECL tree for functions.
 
-Symbol *
+tree
 FuncDeclaration::toSymbol()
 {
   if (!csym)
@@ -306,8 +298,7 @@ FuncDeclaration::toSymbol()
 	  current_module_decl = NULL;
 	  if (!functionSemantic())
 	    {
-	      csym = new Symbol();
-	      DECL_LANG_TREE (csym) = error_mark_node;
+	      csym = error_mark_node;
 	      return csym;
 	    }
 	  current_module_decl = old_current_module_decl;
@@ -316,22 +307,16 @@ FuncDeclaration::toSymbol()
       tree mangle;
 
       if (this->mangleOverride)
-	{
-	  mangle = get_identifier (this->mangleOverride);
-	  this->csym = new Symbol();
-	}
+	mangle = get_identifier (this->mangleOverride);
       else
 	{
 	  mangle = get_identifier (mangleExact (this));
 
 	  // Use same symbol for FuncDeclaration templates with same mangle
 	  if (!this->fbody)
-	    csym = new Symbol();
+	    ;
 	  else if (!IDENTIFIER_DSYMBOL (mangle))
-	    {
-	      csym = new Symbol();
-	      IDENTIFIER_DSYMBOL (mangle) = this;
-	    }
+	    IDENTIFIER_DSYMBOL (mangle) = this;
 	  else
 	    {
 	      Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
@@ -348,10 +333,10 @@ FuncDeclaration::toSymbol()
 	}
 
       tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, NULL_TREE, NULL_TREE);
-      DECL_CONTEXT (fndecl) = d_decl_context (this);
-
       DECL_LANG_SPECIFIC (fndecl) = build_lang_decl (this);
       DECL_LANG_TREE (csym) = fndecl;
+
+      DECL_CONTEXT (fndecl) = d_decl_context (this);
 
       DECL_NAME (fndecl) = this->isMain()
 	? get_identifier (toPrettyChars (true)) : get_identifier (ident->string);
@@ -473,10 +458,10 @@ FuncDeclaration::toSymbol()
 // Create the thunk symbol functions.
 // Thunk is added to class at OFFSET.
 
-Symbol *
+tree
 FuncDeclaration::toThunkSymbol (int offset)
 {
-  Symbol *sthunk;
+  tree sthunk;
   Thunk *thunk;
 
   toSymbol();
@@ -506,8 +491,6 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   if (!thunk->symbol)
     {
-      sthunk = new Symbol();
-
       tree target_func_decl = DECL_LANG_TREE (csym);
       tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (target_func_decl),
 				    FUNCTION_DECL, NULL_TREE, TREE_TYPE (target_func_decl));
@@ -558,7 +541,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 
 // Create the "ClassInfo" symbol for classes.
 
-Symbol *
+tree
 ClassDeclaration::toSymbol()
 {
   if (!csym)
@@ -586,7 +569,7 @@ ClassDeclaration::toSymbol()
 
 // Create the "InterfaceInfo" symbol for interfaces.
 
-Symbol *
+tree
 InterfaceDeclaration::toSymbol()
 {
   if (!csym)
@@ -613,7 +596,7 @@ InterfaceDeclaration::toSymbol()
 
 // Create the "ModuleInfo" symbol for a given module.
 
-Symbol *
+tree
 Module::toSymbol()
 {
   if (!csym)
@@ -639,13 +622,11 @@ Module::toSymbol()
   return csym;
 }
 
-Symbol *
+tree
 StructLiteralExp::toSymbol()
 {
   if (!sym)
     {
-      sym = new Symbol();
-
       // Build reference symbol.
       tree ctype = build_ctype(type);
       tree decl = build_artificial_decl(ctype, NULL_TREE, "S");
@@ -662,13 +643,11 @@ StructLiteralExp::toSymbol()
   return sym;
 }
 
-Symbol *
+tree
 ClassReferenceExp::toSymbol()
 {
   if (!value->sym)
     {
-      value->sym = new Symbol();
-
       // Build reference symbol.
       tree ctype = build_ctype(value->stype);
       tree decl = build_artificial_decl(TREE_TYPE (ctype), NULL_TREE, "C");
@@ -690,7 +669,7 @@ ClassReferenceExp::toSymbol()
 // This is accessible via the ClassData, but since it is frequently
 // needed directly (like for rtti comparisons), make it directly accessible.
 
-Symbol *
+tree
 ClassDeclaration::toVtblSymbol()
 {
   if (!vtblsym)
@@ -733,7 +712,7 @@ ClassDeclaration::toVtblSymbol()
 // SymbolDeclaration::toSymbol, so we just need to keep checking if we
 // are in the toObjFile phase.
 
-Symbol *
+tree
 AggregateDeclaration::toInitializer()
 {
   if (!sinit)
@@ -768,7 +747,7 @@ AggregateDeclaration::toInitializer()
 
 // Create the static initializer for the enum.
 
-Symbol *
+tree
 EnumDeclaration::toInitializer()
 {
   if (!sinit)

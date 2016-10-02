@@ -507,7 +507,7 @@ public:
       {
 	Parameter *arg = (*ti->arguments)[i];
 	genTypeInfo(arg->type, NULL);
-	Symbol *s = arg->type->vtinfo->toSymbol();
+	tree s = arg->type->vtinfo->toSymbol();
 	CONSTRUCTOR_APPEND_ELT (elms, size_int(i), build_address(DECL_LANG_TREE (s)));
       }
     tree ctor = build_constructor(build_ctype(satype), elms);

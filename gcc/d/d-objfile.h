@@ -38,21 +38,13 @@ struct FuncFrameInfo;
 struct Thunk;
 typedef tree_node dt_t;
 
-struct Symbol
-{
-  Symbol();
-
-  // Our GNU backend tree for the symbol.
-  tree Stree;
-};
-
 struct Thunk
 {
   Thunk()
   { offset = 0; symbol = NULL; }
 
   int offset;
-  Symbol *symbol;
+  tree symbol;
 };
 
 extern dt_t **dt_cons (dt_t **pdt, tree val);
@@ -92,7 +84,7 @@ extern void get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *templ
 extern void setup_symbol_storage (Dsymbol *dsym, tree decl, bool is_public);
 extern void d_comdat_linkage (tree decl);
 
-extern void d_finish_symbol (Symbol *sym);
+extern void d_finish_symbol (tree sym);
 extern void d_finish_function (FuncDeclaration *f);
 extern void d_finish_module();
 extern void d_finish_compilation (tree *vec, int len);

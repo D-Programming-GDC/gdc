@@ -33,7 +33,6 @@ class TypeFunction;
 class Dsymbol;
 struct FuncFrameInfo;
 struct Thunk;
-struct Symbol;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
@@ -217,33 +216,33 @@ struct GTY(()) lang_decl
    ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
 
 #define DECL_LANG_READONLY(NODE) \
-  DECL_LANG_SPECIFIC (NODE->Stree)->readonly
+  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->readonly
 
 #define DECL_LANG_INITIAL(NODE) \
-  DECL_LANG_SPECIFIC (NODE->Stree)->initial
+  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->initial
 
 #define DECL_LANG_TREE(NODE) \
-  (NODE)->Stree
+  (NODE)
 
 #define SET_DECL_LANG_FRAME_FIELD(NODE, VAL) \
-  DECL_LANG_SPECIFIC (NODE->Stree)->frame_field = VAL
+  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->frame_field = VAL
 
 #define DECL_LANG_FRAME_FIELD(NODE) \
-  (DECL_P (NODE->Stree) \
-   ? DECL_LANG_SPECIFIC (NODE->Stree)->frame_field : NULL)
+  (DECL_P (DECL_LANG_TREE (NODE)) \
+   ? DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->frame_field : NULL)
 
 #define SET_DECL_LANG_NRVO(NODE, VAL) \
-  DECL_LANG_SPECIFIC (NODE->Stree)->named_result = VAL
+  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->named_result = VAL
 
 #define DECL_LANG_NRVO(NODE) \
-  (DECL_P (NODE->Stree) \
-   ? DECL_LANG_SPECIFIC (NODE->Stree)->named_result : NULL)
+  (DECL_P (DECL_LANG_TREE (NODE)) \
+   ? DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->named_result : NULL)
 
 #define DECL_LANG_THUNKS(NODE) \
-  DECL_LANG_SPECIFIC (NODE->Stree)->thunks
+  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->thunks
 
 #define DECL_LANG_FRAMEINFO(NODE) \
-  DECL_LANG_SPECIFIC (NODE->Stree)->frame_info
+  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->frame_info
 
 /* The lang_type field is not set for every GCC type.  */
 
@@ -372,7 +371,7 @@ extern Expression *build_expression (tree);
 extern tree d_truthvalue_conversion (tree);
 
 /* In d-decls.cc.  */
-extern Symbol *make_internal_name (Dsymbol *, const char *, const char *);
+extern tree make_internal_name (Dsymbol *, const char *, const char *);
 
 /* In d-expr.cc.  */
 extern tree build_expr (Expression *, bool = false);
