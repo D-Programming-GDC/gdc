@@ -213,8 +213,7 @@ dt_t **
 build_vptr_monitor(dt_t **pdt, ClassDeclaration *cd)
 {
   gcc_assert(cd != NULL);
-  tree s = cd->toVtblSymbol();
-  dt_cons(pdt, build_address(DECL_LANG_TREE (s)));
+  dt_cons(pdt, build_address(cd->toVtblSymbol()));
 
   if (!cd->cpp)
     dt_cons(pdt, size_int(0));
@@ -446,7 +445,7 @@ ClassReferenceExp::toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 	  unsigned csymoffset = cd2->baseVtblOffset(b);
 	  if (csymoffset != (unsigned) ~0)
 	    {
-	      tree dt = build_address(DECL_LANG_TREE (cd2->toSymbol()));
+	      tree dt = build_address(cd2->toSymbol());
 	      if (offset < (size_t) b->offset)
 		dt_zeropad(pdt, b->offset - offset);
 	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
@@ -560,7 +559,7 @@ ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 	  unsigned csymoffset = cd2->baseVtblOffset(b);
 	  if (csymoffset != (unsigned) ~0)
 	    {
-	      tree dt = build_address(DECL_LANG_TREE (cd2->toSymbol()));
+	      tree dt = build_address(cd2->toSymbol());
 	      if (offset < (size_t) b->offset)
 		dt_zeropad(pdt, b->offset - offset);
 	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));

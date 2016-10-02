@@ -101,31 +101,32 @@ VarDeclaration::toSymbol()
 
       tree mangle = NULL_TREE;
 
-      if (!this->isDataseg ())
-	;
-      else if (this->mangleOverride)
-	mangle = get_identifier (this->mangleOverride);
-      else
+      if (this->isDataseg ())
 	{
-	  mangle = get_identifier (::mangle (this));
-
-	  // Use same symbol for VarDeclaration templates with same mangle
-	  if (this->storage_class & STCextern)
-	    ;
-	  else if (!IDENTIFIER_DSYMBOL (mangle))
-	    IDENTIFIER_DSYMBOL (mangle) = this;
+	  if (this->mangleOverride)
+	    mangle = get_identifier (this->mangleOverride);
 	  else
 	    {
-	      Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
+	      mangle = get_identifier (::mangle (this));
 
-	      // Non-templated variables shouldn't be defined twice
-	      bool local_p, template_p;
-	      get_template_storage_info(this, &local_p, &template_p);
-	      if (!template_p)
-		ScopeDsymbol::multiplyDefined(loc, this, other);
+	      // Use same symbol for VarDeclaration templates with same mangle
+	      if (this->storage_class & STCextern)
+		;
+	      else if (!IDENTIFIER_DSYMBOL (mangle))
+		IDENTIFIER_DSYMBOL (mangle) = this;
+	      else
+		{
+		  Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
 
-	      csym = other->toSymbol();
-	      return csym;
+		  // Non-templated variables shouldn't be defined twice
+		  bool local_p, template_p;
+		  get_template_storage_info(this, &local_p, &template_p);
+		  if (!template_p)
+		    ScopeDsymbol::multiplyDefined(loc, this, other);
+
+		  csym = other->toSymbol();
+		  return csym;
+		}
 	    }
 	}
 
@@ -133,45 +134,44 @@ VarDeclaration::toSymbol()
 	: !canTakeAddressOf() ? CONST_DECL
 	: VAR_DECL;
 
-      tree decl = build_decl (UNKNOWN_LOCATION, code,
-			      get_identifier (ident->string),
-			      declaration_type (this));
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (this);
-      DECL_LANG_TREE (csym) = decl;
+      csym = build_decl (UNKNOWN_LOCATION, code,
+			 get_identifier (ident->string),
+			 declaration_type (this));
+      DECL_LANG_SPECIFIC (csym) = build_lang_decl (this);
 
-      DECL_CONTEXT (decl) = d_decl_context (this);
-      set_decl_location (decl, this);
+      DECL_CONTEXT (csym) = d_decl_context (this);
+      set_decl_location (csym, this);
 
       if (this->alignment > 0)
 	{
-	  SET_DECL_ALIGN (decl, this->alignment * BITS_PER_UNIT);
-	  DECL_USER_ALIGN (decl) = 1;
+	  SET_DECL_ALIGN (csym, this->alignment * BITS_PER_UNIT);
+	  DECL_USER_ALIGN (csym) = 1;
 	}
 
       if (isParameter())
 	{
 	  // Pass non-trivial structs by invisible reference.
-	  if (TREE_ADDRESSABLE (TREE_TYPE (decl)))
+	  if (TREE_ADDRESSABLE (TREE_TYPE (csym)))
 	    {
-	      tree argtype = build_reference_type(TREE_TYPE (decl));
+	      tree argtype = build_reference_type(TREE_TYPE (csym));
 	      argtype = build_qualified_type(argtype, TYPE_QUAL_RESTRICT);
-	      gcc_assert (!DECL_BY_REFERENCE (decl));
-	      TREE_TYPE (decl) = argtype;
-	      DECL_BY_REFERENCE (decl) = 1;
-	      TREE_ADDRESSABLE (decl) = 0;
-	      relayout_decl (decl);
+	      gcc_assert (!DECL_BY_REFERENCE (csym));
+	      TREE_TYPE (csym) = argtype;
+	      DECL_BY_REFERENCE (csym) = 1;
+	      TREE_ADDRESSABLE (csym) = 0;
+	      relayout_decl (csym);
 	      this->storage_class |= STCref;
 	    }
 
-	  DECL_ARG_TYPE (decl) = TREE_TYPE (decl);
-	  gcc_assert (TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL);
+	  DECL_ARG_TYPE (csym) = TREE_TYPE (csym);
+	  gcc_assert (TREE_CODE (DECL_CONTEXT (csym)) == FUNCTION_DECL);
 	}
       else if (!canTakeAddressOf())
 	{
 	  // Manifest constants have no address in memory.
-	  TREE_CONSTANT (decl) = 1;
-	  TREE_READONLY (decl) = 1;
-	  TREE_STATIC (decl) = 0;
+	  TREE_CONSTANT (csym) = 1;
+	  TREE_READONLY (csym) = 1;
+	  TREE_STATIC (csym) = 0;
 	}
       else if (isDataseg())
 	{
@@ -181,46 +181,46 @@ VarDeclaration::toSymbol()
 	      && (protection == PROTpublic
 		  || storage_class & (STCstatic | STCextern)))
 	    {
-	      tree target_name = targetm.mangle_decl_assembler_name (decl, mangle);
+	      tree target_name = targetm.mangle_decl_assembler_name (csym, mangle);
 	      IDENTIFIER_DSYMBOL (target_name) = IDENTIFIER_DSYMBOL (mangle);
 	      mangle = target_name;
 	    }
 
 	  IDENTIFIER_PRETTY_NAME (mangle) = get_identifier (toPrettyChars (true));
-	  SET_DECL_ASSEMBLER_NAME (decl, mangle);
-	  setup_symbol_storage (this, decl, false);
+	  SET_DECL_ASSEMBLER_NAME (csym, mangle);
+	  setup_symbol_storage (this, csym, false);
 	}
 
-      d_keep (decl);
+      d_keep (csym);
 
       // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
       // called from a variable in an imported module.
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
 	  && declaration_reference_p(this))
 	{
-	  if (!TREE_STATIC (decl))
-	    TREE_READONLY (decl) = 1;
+	  if (!TREE_STATIC (csym))
+	    TREE_READONLY (csym) = 1;
 	  else
 	    DECL_LANG_READONLY (csym) = true;
 	}
 
       // Propagate shared.
-      if (TYPE_SHARED (TREE_TYPE (decl)))
-	TREE_ADDRESSABLE (decl) = 1;
+      if (TYPE_SHARED (TREE_TYPE (csym)))
+	TREE_ADDRESSABLE (csym) = 1;
 
       // Mark compiler generated temporaries as artificial.
       if (storage_class & STCtemp)
-	DECL_ARTIFICIAL (decl) = 1;
+	DECL_ARTIFICIAL (csym) = 1;
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
       if (isImportedSymbol())
 	{
-	  insert_decl_attribute (decl, "dllimport");
-	  DECL_DLLIMPORT_P (decl) = 1;
+	  insert_decl_attribute (csym, "dllimport");
+	  DECL_DLLIMPORT_P (csym) = 1;
 	}
       else if (isExport())
-	insert_decl_attribute (decl, "dllexport");
+	insert_decl_attribute (csym, "dllexport");
 #endif
 
       if (global.params.vtls && isDataseg() && isThreadlocal())
@@ -248,14 +248,14 @@ TypeInfoDeclaration::toSymbol()
 
       // This variable is the static initialization for the
       // given TypeInfo.  It is the actual data, not a reference
-      gcc_assert (TREE_CODE (TREE_TYPE (DECL_LANG_TREE (csym))) == POINTER_TYPE);
-      TREE_TYPE (DECL_LANG_TREE (csym)) = TREE_TYPE (TREE_TYPE (DECL_LANG_TREE (csym)));
-      relayout_decl (DECL_LANG_TREE (csym));
-      TREE_USED (DECL_LANG_TREE (csym)) = 1;
+      gcc_assert (TREE_CODE (TREE_TYPE (csym)) == POINTER_TYPE);
+      TREE_TYPE (csym) = TREE_TYPE (TREE_TYPE (csym));
+      relayout_decl (csym);
+      TREE_USED (csym) = 1;
 
       // Built-in typeinfo will be referenced as one-only.
-      D_DECL_ONE_ONLY (DECL_LANG_TREE (csym)) = 1;
-      d_comdat_linkage (DECL_LANG_TREE (csym));
+      D_DECL_ONE_ONLY (csym) = 1;
+      d_comdat_linkage (csym);
     }
 
   return csym;
@@ -313,52 +313,51 @@ FuncDeclaration::toSymbol()
 	  mangle = get_identifier (mangleExact (this));
 
 	  // Use same symbol for FuncDeclaration templates with same mangle
-	  if (!this->fbody)
-	    ;
-	  else if (!IDENTIFIER_DSYMBOL (mangle))
-	    IDENTIFIER_DSYMBOL (mangle) = this;
-	  else
+	  if (this->fbody)
 	    {
-	      Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
+	      if (!IDENTIFIER_DSYMBOL (mangle))
+		IDENTIFIER_DSYMBOL (mangle) = this;
+	      else
+		{
+		  Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
 
-	      // Non-templated functions shouldn't be defined twice
-	      bool local_p, template_p;
-	      get_template_storage_info(this, &local_p, &template_p);
-	      if (!template_p)
-		ScopeDsymbol::multiplyDefined(loc, this, other);
+		  // Non-templated functions shouldn't be defined twice
+		  bool local_p, template_p;
+		  get_template_storage_info(this, &local_p, &template_p);
+		  if (!template_p)
+		    ScopeDsymbol::multiplyDefined(loc, this, other);
 
-	      csym = other->toSymbol();
-	      return csym;
+		  csym = other->toSymbol();
+		  return csym;
+		}
 	    }
 	}
 
-      tree fndecl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, NULL_TREE, NULL_TREE);
-      DECL_LANG_SPECIFIC (fndecl) = build_lang_decl (this);
-      DECL_LANG_TREE (csym) = fndecl;
+      csym = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, NULL_TREE, NULL_TREE);
+      DECL_LANG_SPECIFIC (csym) = build_lang_decl (this);
+      DECL_CONTEXT (csym) = d_decl_context (this);
 
-      DECL_CONTEXT (fndecl) = d_decl_context (this);
-
-      DECL_NAME (fndecl) = this->isMain()
+      DECL_NAME (csym) = this->isMain()
 	? get_identifier (toPrettyChars (true)) : get_identifier (ident->string);
 
       if (!this->mangleOverride)
 	{
-	  tree target_name = targetm.mangle_decl_assembler_name (fndecl, mangle);
+	  tree target_name = targetm.mangle_decl_assembler_name (csym, mangle);
 	  IDENTIFIER_DSYMBOL (target_name) = IDENTIFIER_DSYMBOL (mangle);
 	  mangle = target_name;
 	}
 
       IDENTIFIER_PRETTY_NAME (mangle) = get_identifier (toPrettyChars (true));
-      SET_DECL_ASSEMBLER_NAME (fndecl, mangle);
+      SET_DECL_ASSEMBLER_NAME (csym, mangle);
 
-      TREE_TYPE (fndecl) = build_ctype(ftype);
-      d_keep (fndecl);
+      TREE_TYPE (csym) = build_ctype(ftype);
+      d_keep (csym);
 
       if (isNested())
 	{
 	  // Add an extra argument for the frame/closure pointer,
 	  // also needed to be compatible with delegates.
-	  fntype = build_vthis_type(void_type_node, TREE_TYPE (fndecl));
+	  fntype = build_vthis_type(void_type_node, TREE_TYPE (csym));
 	}
       else if (isThis())
 	{
@@ -371,7 +370,7 @@ FuncDeclaration::toSymbol()
 	  if (!agg_decl->isStructDeclaration())
 	    handle = TREE_TYPE (handle);
 
-	  fntype = build_vthis_type(handle, TREE_TYPE (fndecl));
+	  fntype = build_vthis_type(handle, TREE_TYPE (csym));
 
 	  if (isVirtual() && vtblIndex != -1)
 	    vindex = size_int (vtblIndex);
@@ -379,74 +378,74 @@ FuncDeclaration::toSymbol()
       else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
 	{
 	  // void main() implicitly converted to int main().
-	  fntype = build_function_type (int_type_node, TYPE_ARG_TYPES (TREE_TYPE (fndecl)));
+	  fntype = build_function_type (int_type_node, TYPE_ARG_TYPES (TREE_TYPE (csym)));
 	}
 
       if (fntype != NULL_TREE)
 	{
-	  TYPE_ATTRIBUTES (fntype) = TYPE_ATTRIBUTES (TREE_TYPE (fndecl));
-	  TYPE_LANG_SPECIFIC (fntype) = TYPE_LANG_SPECIFIC (TREE_TYPE (fndecl));
-	  TREE_ADDRESSABLE (fntype) = TREE_ADDRESSABLE (TREE_TYPE (fndecl));
-	  TREE_TYPE (fndecl) = fntype;
+	  TYPE_ATTRIBUTES (fntype) = TYPE_ATTRIBUTES (TREE_TYPE (csym));
+	  TYPE_LANG_SPECIFIC (fntype) = TYPE_LANG_SPECIFIC (TREE_TYPE (csym));
+	  TREE_ADDRESSABLE (fntype) = TREE_ADDRESSABLE (TREE_TYPE (csym));
+	  TREE_TYPE (csym) = fntype;
 	  d_keep (fntype);
 	}
 
       if (vindex)
 	{
-	  DECL_VINDEX (fndecl) = vindex;
-	  DECL_VIRTUAL_P (fndecl) = 1;
+	  DECL_VINDEX (csym) = vindex;
+	  DECL_VIRTUAL_P (csym) = 1;
 	}
 
       if (isMember2() || isFuncLiteralDeclaration())
 	{
 	  // See grokmethod in cp/decl.c
-	  DECL_DECLARED_INLINE_P (fndecl) = 1;
-	  DECL_NO_INLINE_WARNING_P (fndecl) = 1;
+	  DECL_DECLARED_INLINE_P (csym) = 1;
+	  DECL_NO_INLINE_WARNING_P (csym) = 1;
 	}
 
       if (naked)
 	{
-	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl) = 1;
-	  DECL_UNINLINABLE (fndecl) = 1;
+	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (csym) = 1;
+	  DECL_UNINLINABLE (csym) = 1;
 	}
 
       // These are always compiler generated.
       if (isArrayOp)
 	{
-	  DECL_ARTIFICIAL (fndecl) = 1;
-	  D_DECL_ONE_ONLY (fndecl) = 1;
+	  DECL_ARTIFICIAL (csym) = 1;
+	  D_DECL_ONE_ONLY (csym) = 1;
 	}
       // So are ensure and require contracts.
       if (ident == Id::ensure || ident == Id::require)
 	{
-	  DECL_ARTIFICIAL (fndecl) = 1;
-	  TREE_PUBLIC (fndecl) = 1;
+	  DECL_ARTIFICIAL (csym) = 1;
+	  TREE_PUBLIC (csym) = 1;
 	}
 
       // Storage class attributes
       if (storage_class & STCstatic)
-	TREE_STATIC (fndecl) = 1;
+	TREE_STATIC (csym) = 1;
       if (storage_class & STCfinal)
-	DECL_FINAL_P (fndecl) = 1;
+	DECL_FINAL_P (csym) = 1;
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
       // Have to test for import first
       if (isImportedSymbol())
 	{
-	  insert_decl_attribute (fndecl, "dllimport");
-	  DECL_DLLIMPORT_P (fndecl) = 1;
+	  insert_decl_attribute (csym, "dllimport");
+	  DECL_DLLIMPORT_P (csym) = 1;
 	}
       else if (isExport())
-	insert_decl_attribute (fndecl, "dllexport");
+	insert_decl_attribute (csym, "dllexport");
 #endif
-      set_decl_location (fndecl, this);
-      setup_symbol_storage (this, fndecl, false);
+      set_decl_location (csym, this);
+      setup_symbol_storage (this, csym, false);
 
       if (!ident)
-	TREE_PUBLIC (fndecl) = 0;
+	TREE_PUBLIC (csym) = 0;
 
       // %% Probably should be a little more intelligent about this
-      TREE_USED (fndecl) = 1;
+      TREE_USED (csym) = 1;
 
       maybe_set_intrinsic (this);
     }
@@ -461,7 +460,6 @@ FuncDeclaration::toSymbol()
 tree
 FuncDeclaration::toThunkSymbol (int offset)
 {
-  tree sthunk;
   Thunk *thunk;
 
   toSymbol();
@@ -491,20 +489,18 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   if (!thunk->symbol)
     {
-      tree target_func_decl = DECL_LANG_TREE (csym);
-      tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (target_func_decl),
-				    FUNCTION_DECL, NULL_TREE, TREE_TYPE (target_func_decl));
-      DECL_LANG_SPECIFIC (thunk_decl) = DECL_LANG_SPECIFIC (target_func_decl);
-      DECL_LANG_TREE (sthunk) = thunk_decl;
+      tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (csym),
+				    FUNCTION_DECL, NULL_TREE, TREE_TYPE (csym));
+      DECL_LANG_SPECIFIC (thunk_decl) = DECL_LANG_SPECIFIC (csym);
 
-      TREE_READONLY (thunk_decl) = TREE_READONLY (target_func_decl);
-      TREE_THIS_VOLATILE (thunk_decl) = TREE_THIS_VOLATILE (target_func_decl);
-      TREE_NOTHROW (thunk_decl) = TREE_NOTHROW (target_func_decl);
+      TREE_READONLY (thunk_decl) = TREE_READONLY (csym);
+      TREE_THIS_VOLATILE (thunk_decl) = TREE_THIS_VOLATILE (csym);
+      TREE_NOTHROW (thunk_decl) = TREE_NOTHROW (csym);
 
       DECL_CONTEXT (thunk_decl) = d_decl_context (this);
 
       /* Thunks inherit the public access of the function they are targetting.  */
-      TREE_PUBLIC (thunk_decl) = TREE_PUBLIC (target_func_decl);
+      TREE_PUBLIC (thunk_decl) = TREE_PUBLIC (csym);
       DECL_EXTERNAL (thunk_decl) = 0;
 
       /* Thunks are always addressable.  */
@@ -513,13 +509,13 @@ FuncDeclaration::toThunkSymbol (int offset)
       DECL_ARTIFICIAL (thunk_decl) = 1;
       DECL_DECLARED_INLINE_P (thunk_decl) = 0;
 
-      DECL_VISIBILITY (thunk_decl) = DECL_VISIBILITY (target_func_decl);
+      DECL_VISIBILITY (thunk_decl) = DECL_VISIBILITY (csym);
       /* Needed on some targets to avoid "causes a section type conflict".  */
-      D_DECL_ONE_ONLY (thunk_decl) = D_DECL_ONE_ONLY (target_func_decl);
-      DECL_COMDAT (thunk_decl) = DECL_COMDAT (target_func_decl);
-      DECL_WEAK (thunk_decl) = DECL_WEAK (target_func_decl);
+      D_DECL_ONE_ONLY (thunk_decl) = D_DECL_ONE_ONLY (csym);
+      DECL_COMDAT (thunk_decl) = DECL_COMDAT (csym);
+      DECL_WEAK (thunk_decl) = DECL_WEAK (csym);
 
-      tree target_name = DECL_ASSEMBLER_NAME (target_func_decl);
+      tree target_name = DECL_ASSEMBLER_NAME (csym);
       unsigned identlen = IDENTIFIER_LENGTH (target_name) + 14;
       const char *ident = XNEWVEC (const char, identlen);
       snprintf (CONST_CAST (char *, ident), identlen,
@@ -530,9 +526,9 @@ FuncDeclaration::toThunkSymbol (int offset)
 
       d_keep (thunk_decl);
 
-      use_thunk (thunk_decl, target_func_decl, offset);
+      use_thunk (thunk_decl, csym, offset);
 
-      thunk->symbol = sthunk;
+      thunk->symbol = thunk_decl;
     }
 
   return thunk->symbol;
@@ -546,22 +542,20 @@ ClassDeclaration::toSymbol()
 {
   if (!csym)
     {
-      csym = make_internal_name (this, "__Class", "Z");
+      tree ident = make_internal_name (this, "__Class", "Z");
 
-      tree ident = DECL_LANG_TREE (csym);
-      tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, ident);
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (csym) = decl;
-      d_keep (decl);
+      csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			 IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (csym, ident);
+      DECL_LANG_SPECIFIC (csym) = build_lang_decl (NULL);
+      d_keep (csym);
 
-      setup_symbol_storage (this, decl, true);
-      set_decl_location (decl, this);
+      setup_symbol_storage (this, csym, true);
+      set_decl_location (csym, this);
 
-      DECL_ARTIFICIAL (decl) = 1;
+      DECL_ARTIFICIAL (csym) = 1;
       // ClassInfo cannot be const data, because we use the monitor on it.
-      TREE_READONLY (decl) = 0;
+      TREE_READONLY (csym) = 0;
     }
 
   return csym;
@@ -574,21 +568,18 @@ InterfaceDeclaration::toSymbol()
 {
   if (!csym)
     {
-      csym = make_internal_name (this, "__Interface", "Z");
+      tree ident = make_internal_name (this, "__Interface", "Z");
+      csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			 IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (csym, ident);
+      DECL_LANG_SPECIFIC (csym) = build_lang_decl (NULL);
+      d_keep (csym);
 
-      tree ident = DECL_LANG_TREE (csym);
-      tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, ident);
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (csym) = decl;
-      d_keep (decl);
+      setup_symbol_storage (this, csym, true);
+      set_decl_location (csym, this);
 
-      setup_symbol_storage (this, decl, true);
-      set_decl_location (decl, this);
-
-      DECL_ARTIFICIAL (decl) = 1;
-      TREE_READONLY (decl) = 1;
+      DECL_ARTIFICIAL (csym) = 1;
+      TREE_READONLY (csym) = 1;
     }
 
   return csym;
@@ -601,22 +592,19 @@ Module::toSymbol()
 {
   if (!csym)
     {
-      csym = make_internal_name (this, "__ModuleInfo", "Z");
+      tree ident = make_internal_name (this, "__ModuleInfo", "Z");
+      csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			 IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+      SET_DECL_ASSEMBLER_NAME (csym, ident);
+      DECL_LANG_SPECIFIC (csym) = build_lang_decl (NULL);
+      d_keep (csym);
 
-      tree ident = DECL_LANG_TREE (csym);
-      tree decl = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			      IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (decl, ident);
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (csym) = decl;
-      d_keep (decl);
+      setup_symbol_storage (this, csym, true);
+      set_decl_location (csym, this);
 
-      setup_symbol_storage (this, decl, true);
-      set_decl_location (decl, this);
-
-      DECL_ARTIFICIAL (decl) = 1;
+      DECL_ARTIFICIAL (csym) = 1;
       // Not readonly, moduleinit depends on this.
-      TREE_READONLY (decl) = 0;
+      TREE_READONLY (csym) = 0;
     }
 
   return csym;
@@ -629,14 +617,13 @@ StructLiteralExp::toSymbol()
     {
       // Build reference symbol.
       tree ctype = build_ctype(type);
-      tree decl = build_artificial_decl(ctype, NULL_TREE, "S");
-      set_decl_location(decl, loc);
+      sym = build_artificial_decl(ctype, NULL_TREE, "S");
+      set_decl_location(sym, loc);
 
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (sym) = decl;
+      DECL_LANG_SPECIFIC (sym) = build_lang_decl (NULL);
       this->sinit = sym;
 
-      DECL_INITIAL (DECL_LANG_TREE (sym)) = build_expr(this, true);
+      DECL_INITIAL (sym) = build_expr(this, true);
       d_finish_symbol(sym);
     }
 
@@ -650,11 +637,10 @@ ClassReferenceExp::toSymbol()
     {
       // Build reference symbol.
       tree ctype = build_ctype(value->stype);
-      tree decl = build_artificial_decl(TREE_TYPE (ctype), NULL_TREE, "C");
-      set_decl_location(decl, loc);
+      value->sym = build_artificial_decl(TREE_TYPE (ctype), NULL_TREE, "C");
+      set_decl_location(value->sym, loc);
 
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (value->sym) = decl;
+      DECL_LANG_SPECIFIC (value->sym) = build_lang_decl (NULL);
 
       toInstanceDt(&DECL_LANG_INITIAL (value->sym));
       d_finish_symbol(value->sym);
@@ -674,29 +660,27 @@ ClassDeclaration::toVtblSymbol()
 {
   if (!vtblsym)
     {
-      vtblsym = make_internal_name (this, "__vtbl", "Z");
-
       /* The DECL_INITIAL value will have a different type object from the
 	 VAR_DECL.  The back end seems to accept this. */
       Type *vtbltype = Type::tvoidptr->sarrayOf (vtbl.dim);
-      tree ident = DECL_LANG_TREE (vtblsym);
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      IDENTIFIER_PRETTY_NAME (ident),
-			      build_ctype (vtbltype));
-      SET_DECL_ASSEMBLER_NAME (decl, ident);
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (vtblsym) = decl;
-      d_keep (decl);
 
-      setup_symbol_storage (this, decl, true);
-      set_decl_location (decl, this);
+      tree ident = make_internal_name (this, "__vtbl", "Z");
+      vtblsym = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			    IDENTIFIER_PRETTY_NAME (ident),
+			    build_ctype (vtbltype));
+      SET_DECL_ASSEMBLER_NAME (vtblsym, ident);
+      DECL_LANG_SPECIFIC (vtblsym) = build_lang_decl (NULL);
+      d_keep (vtblsym);
 
-      TREE_READONLY(decl) = 1;
-      TREE_ADDRESSABLE(decl) = 1;
-      DECL_ARTIFICIAL(decl) = 1;
+      setup_symbol_storage (this, vtblsym, true);
+      set_decl_location (vtblsym, this);
 
-      DECL_CONTEXT (decl) = d_decl_context (this);
-      SET_DECL_ALIGN (decl, TARGET_VTABLE_ENTRY_ALIGN);
+      TREE_READONLY(vtblsym) = 1;
+      TREE_ADDRESSABLE(vtblsym) = 1;
+      DECL_ARTIFICIAL(vtblsym) = 1;
+
+      DECL_CONTEXT (vtblsym) = d_decl_context (this);
+      SET_DECL_ALIGN (vtblsym, TARGET_VTABLE_ENTRY_ALIGN);
     }
   return vtblsym;
 }
@@ -718,28 +702,27 @@ AggregateDeclaration::toInitializer()
   if (!sinit)
     sinit = make_internal_name (this, "__init", "Z");
 
-  if (!VAR_P (DECL_LANG_TREE (sinit)) && current_module_decl)
+  if (!VAR_P (sinit) && current_module_decl)
     {
       tree stype = build_ctype (type);
       if (!this->isStructDeclaration())
 	stype = TREE_TYPE (stype);
 
-      tree ident = DECL_LANG_TREE (sinit);
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      IDENTIFIER_PRETTY_NAME (ident), stype);
-      SET_DECL_ASSEMBLER_NAME (decl, ident);
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (sinit) = decl;
-      d_keep (decl);
+      tree ident = sinit;
+      sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			  IDENTIFIER_PRETTY_NAME (ident), stype);
+      SET_DECL_ASSEMBLER_NAME (sinit, ident);
+      DECL_LANG_SPECIFIC (sinit) = build_lang_decl (NULL);
+      d_keep (sinit);
 
-      setup_symbol_storage (this, decl, true);
-      set_decl_location (decl, this);
+      setup_symbol_storage (this, sinit, true);
+      set_decl_location (sinit, this);
 
-      TREE_ADDRESSABLE (decl) = 1;
-      TREE_READONLY (decl) = 1;
-      DECL_ARTIFICIAL (decl) = 1;
+      TREE_ADDRESSABLE (sinit) = 1;
+      TREE_READONLY (sinit) = 1;
+      DECL_ARTIFICIAL (sinit) = 1;
       // These initialisers are always global.
-      DECL_CONTEXT (decl) = NULL_TREE;
+      DECL_CONTEXT (sinit) = NULL_TREE;
     }
 
   return sinit;
@@ -759,23 +742,22 @@ EnumDeclaration::toInitializer()
       ident = ident_save;
     }
 
-  if (!VAR_P (DECL_LANG_TREE (sinit)) && current_module_decl)
+  if (!VAR_P (sinit) && current_module_decl)
     {
-      tree ident = DECL_LANG_TREE (sinit);
-      tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      IDENTIFIER_PRETTY_NAME (ident),
-			      build_ctype (type));
-      SET_DECL_ASSEMBLER_NAME (decl, ident);
-      DECL_LANG_SPECIFIC (decl) = build_lang_decl (NULL);
-      DECL_LANG_TREE (sinit) = decl;
-      d_keep (decl);
+      tree ident = sinit;
+      sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			  IDENTIFIER_PRETTY_NAME (ident),
+			  build_ctype (type));
+      SET_DECL_ASSEMBLER_NAME (sinit, ident);
+      DECL_LANG_SPECIFIC (sinit) = build_lang_decl (NULL);
+      d_keep (sinit);
 
-      setup_symbol_storage (this, decl, true);
-      set_decl_location (decl, this);
+      setup_symbol_storage (this, sinit, true);
+      set_decl_location (sinit, this);
 
-      TREE_READONLY (decl) = 1;
-      DECL_ARTIFICIAL (decl) = 1;
-      DECL_CONTEXT (decl) = NULL_TREE;
+      TREE_READONLY (sinit) = 1;
+      DECL_ARTIFICIAL (sinit) = 1;
+      DECL_CONTEXT (sinit) = NULL_TREE;
     }
 
   return sinit;

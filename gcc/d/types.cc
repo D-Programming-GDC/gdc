@@ -558,7 +558,7 @@ public:
     for (size_t i = 0; i < t->sym->vtbl.dim; i++)
       {
 	FuncDeclaration *fd = t->sym->vtbl[i]->isFuncDeclaration ();
-	tree method = fd ? DECL_LANG_TREE (fd->toSymbol ()) : NULL_TREE;
+	tree method = fd ? fd->toSymbol () : NULL_TREE;
 
 	if (method && DECL_CONTEXT (method) == basetype)
 	  {

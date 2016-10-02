@@ -216,33 +216,30 @@ struct GTY(()) lang_decl
    ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
 
 #define DECL_LANG_READONLY(NODE) \
-  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->readonly
+  DECL_LANG_SPECIFIC (NODE)->readonly
 
 #define DECL_LANG_INITIAL(NODE) \
-  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->initial
-
-#define DECL_LANG_TREE(NODE) \
-  (NODE)
+  DECL_LANG_SPECIFIC (NODE)->initial
 
 #define SET_DECL_LANG_FRAME_FIELD(NODE, VAL) \
-  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->frame_field = VAL
+  DECL_LANG_SPECIFIC (NODE)->frame_field = VAL
 
 #define DECL_LANG_FRAME_FIELD(NODE) \
-  (DECL_P (DECL_LANG_TREE (NODE)) \
-   ? DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->frame_field : NULL)
+  (DECL_P (NODE) \
+   ? DECL_LANG_SPECIFIC (NODE)->frame_field : NULL)
 
 #define SET_DECL_LANG_NRVO(NODE, VAL) \
-  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->named_result = VAL
+  DECL_LANG_SPECIFIC (NODE)->named_result = VAL
 
 #define DECL_LANG_NRVO(NODE) \
-  (DECL_P (DECL_LANG_TREE (NODE)) \
-   ? DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->named_result : NULL)
+  (DECL_P (NODE) \
+   ? DECL_LANG_SPECIFIC (NODE)->named_result : NULL)
 
 #define DECL_LANG_THUNKS(NODE) \
-  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->thunks
+  DECL_LANG_SPECIFIC (NODE)->thunks
 
 #define DECL_LANG_FRAMEINFO(NODE) \
-  DECL_LANG_SPECIFIC (DECL_LANG_TREE (NODE))->frame_info
+  DECL_LANG_SPECIFIC (NODE)->frame_info
 
 /* The lang_type field is not set for every GCC type.  */
 

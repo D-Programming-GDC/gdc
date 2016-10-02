@@ -1006,7 +1006,7 @@ public:
 	    // Maybe set-up hidden pointer to outer scope context.
 	    if (sd->isNested())
 	      {
-		tree field = DECL_LANG_TREE (sd->vthis->toSymbol());
+		tree field = sd->vthis->toSymbol();
 		tree value = build_vthis(sd);
 
 		tree vthis_exp = modify_expr(component_ref(t1, field), value);
@@ -1166,7 +1166,7 @@ public:
 
 	// The __dollar variable just becomes a placeholder for the actual length.
 	if (e->lengthVar)
-	  DECL_LANG_TREE (e->lengthVar->csym) = length;
+	  e->lengthVar->csym = length;
 
 	// Generate the index.
 	tree index = build_expr(e->e2);
@@ -1256,7 +1256,7 @@ public:
 
     // The __dollar variable just becomes a placeholder for the actual length.
     if (e->lengthVar)
-      DECL_LANG_TREE (e->lengthVar->csym) = length;
+      e->lengthVar->csym = length;
 
     // Generate lower bound.
     tree lwr_tree = d_save_expr(build_expr(e->lwr));
@@ -1522,7 +1522,7 @@ public:
 		if (error_operand_p(result))
 		  this->result_ = result;
 		else
-		  this->result_ = component_ref(result, DECL_LANG_TREE (field->toSymbol()));
+		  this->result_ = component_ref(result, field->toSymbol());
 
 		return;
 	      }
@@ -1546,7 +1546,7 @@ public:
       {
 	StructLiteralExp *sle = ((StructLiteralExp *) e->e1)->origin;
 	gcc_assert(sle != NULL);
-	exp = DECL_LANG_TREE (sle->toSymbol());
+	exp = sle->toSymbol();
       }
     else
       exp = build_expr(e->e1, this->constp_);
@@ -1590,7 +1590,7 @@ public:
 	if (fd != NULL)
 	  {
 	    // Get the correct callee from the DotVarExp object.
-	    tree fndecl = DECL_LANG_TREE (fd->toSymbol());
+	    tree fndecl = fd->toSymbol();
 
 	    // Static method; ignore the object instance.
 	    if (!fd->isThis())
@@ -1718,7 +1718,7 @@ public:
 	else
 	  object = get_frame_for_symbol(e->func);
 
-	fndecl = build_address(DECL_LANG_TREE (e->func->toSymbol()));
+	fndecl = build_address(e->func->toSymbol());
       }
     else
       {
@@ -1735,7 +1735,7 @@ public:
 	if (e->e1->type->ty != Tclass && e->e1->type->ty != Tpointer)
 	  object = build_address(object);
 
-	fndecl = build_address(DECL_LANG_TREE (e->func->toSymbol()));
+	fndecl = build_address(e->func->toSymbol());
 
 	// Get pointer to function out of the virtual table.
 	if (e->func->isVirtual() && !e->func->isFinalFunc()
@@ -1767,7 +1767,7 @@ public:
 	    if (e->e1->type->toBasetype()->ty != Tstruct)
 	      object = build_deref(object);
 
-	    this->result_ = component_ref(object, DECL_LANG_TREE (vd->toSymbol()));
+	    this->result_ = component_ref(object, vd->toSymbol());
 	  }
       }
     else
@@ -1957,7 +1957,7 @@ public:
 	  }
 	else
 	  {
-	    tree func = build_address(DECL_LANG_TREE (e->fd->toSymbol()));
+	    tree func = build_address(e->fd->toSymbol());
 	    tree object = get_frame_for_symbol(e->fd);
 	    this->result_ = build_method_call(func, object, e->fd->type);
 	  }
@@ -1965,7 +1965,7 @@ public:
     else
       {
 	this->result_ = build_nop(build_ctype(e->type),
-				  build_address(DECL_LANG_TREE (e->fd->toSymbol())));
+				  build_address(e->fd->toSymbol()));
       }
   }
 
@@ -2093,7 +2093,7 @@ public:
 	    tree stack_var = build_local_temp(rec_type);
 	    expand_decl(stack_var);
 	    new_call = build_address(stack_var);
-	    setup_exp = modify_expr(stack_var, DECL_LANG_TREE (cd->toInitializer()));
+	    setup_exp = modify_expr(stack_var, cd->toInitializer());
 	  }
 	else if (e->allocator)
 	  {
@@ -2101,11 +2101,11 @@ public:
 	    new_call = d_save_expr(new_call);
 	    // copy memory...
 	    setup_exp = modify_expr(indirect_ref(rec_type, new_call),
-				    DECL_LANG_TREE (cd->toInitializer()));
+				    cd->toInitializer());
 	  }
 	else
 	  {
-	    tree arg = build_address(DECL_LANG_TREE (cd->toSymbol()));
+	    tree arg = build_address(cd->toSymbol());
 	    new_call = build_libcall(LIBCALL_NEWCLASS, 1, &arg);
 	  }
 	new_call = build_nop(build_ctype(tb), new_call);
@@ -2113,7 +2113,7 @@ public:
 	// Set vthis for nested classes.
 	if (cd->isNested())
 	  {
-	    tree field = DECL_LANG_TREE (cd->vthis->toSymbol());
+	    tree field = cd->vthis->toSymbol();
 	    tree value = NULL_TREE;
 
 	    if (e->thisexp)
@@ -2187,7 +2187,7 @@ public:
 	    if (sd->isNested())
 	      {
 		tree value = build_vthis(sd);
-		tree field = DECL_LANG_TREE (sd->vthis->toSymbol());
+		tree field = sd->vthis->toSymbol();
 		tree type = build_ctype(stype);
 
 		new_call = d_save_expr(new_call);
@@ -2210,7 +2210,7 @@ public:
 								e->arguments, htype);
 		new_call = d_save_expr(new_call);
 		se->type = sd->type;
-		DECL_LANG_TREE (se->sym) = new_call;
+		se->sym = new_call;
 		result = compound_expr(build_expr(se), new_call);
 	      }
 	    else
@@ -2605,11 +2605,11 @@ public:
     // processing has complete.  Build the static initialiser now.
     if (e->sinit && !this->constp_)
       {
-	if (!VAR_P (DECL_LANG_TREE (e->sinit)))
+	if (!VAR_P (e->sinit))
 	  e->sinit = e->sd->toInitializer();
 
-	gcc_assert(VAR_P (DECL_LANG_TREE (e->sinit)));
-	this->result_ = DECL_LANG_TREE (e->sinit);
+	gcc_assert(VAR_P (e->sinit));
+	this->result_ = e->sinit;
 	return;
       }
 
@@ -2658,14 +2658,14 @@ public:
 	if (init != NULL_TREE)
 	  saved_elems = compound_expr(saved_elems, init);
 
-	CONSTRUCTOR_APPEND_ELT (ve, DECL_LANG_TREE (field->toSymbol()), value);
+	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol(), value);
       }
 
     // Maybe setup hidden pointer to outer scope context.
     if (e->sd->isNested() && e->elements->dim != e->sd->fields.dim
 	&& this->constp_ == false)
       {
-	tree field = DECL_LANG_TREE (e->sd->vthis->toSymbol());
+	tree field = e->sd->vthis->toSymbol();
 	tree value = build_vthis(e->sd);
 	CONSTRUCTOR_APPEND_ELT (ve, field, value);
 	gcc_assert(e->sinit == NULL);
@@ -2688,7 +2688,7 @@ public:
 
     if (e->sym != NULL)
       {
-	tree var = build_deref(DECL_LANG_TREE (e->sym));
+	tree var = build_deref(e->sym);
 	ctor = compound_expr(modify_expr(var, ctor), var);
 	this->result_ = compound_expr(saved_elems, ctor);
       }
@@ -2798,7 +2798,7 @@ public:
   void visit(ClassReferenceExp *e)
   {
     // ClassReferenceExp builds the RECORD_TYPE, we want the reference.
-    tree var = build_address(DECL_LANG_TREE (e->toSymbol()));
+    tree var = build_address(e->toSymbol());
 
     // If the typeof this literal is an interface, we must add offset to symbol.
     if (this->constp_)

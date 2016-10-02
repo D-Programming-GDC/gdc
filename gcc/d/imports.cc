@@ -51,21 +51,20 @@ public:
   // of whether there are any parent packages in the module system.
   void visit(Module *m)
   {
-    tree decl = build_decl(UNKNOWN_LOCATION, NAMESPACE_DECL,
-			   get_identifier(m->toPrettyChars()),
-			   void_type_node);
-    DECL_LANG_TREE (m->isym) = decl;
-    d_keep(decl);
+    m->isym = build_decl(UNKNOWN_LOCATION, NAMESPACE_DECL,
+			 get_identifier(m->toPrettyChars()),
+			 void_type_node);
+    d_keep(m->isym);
 
     Loc loc = (m->md != NULL) ? m->md->loc
       : Loc(m->srcfile->toChars(), 1, 0);
-    set_decl_location(decl, loc);
+    set_decl_location(m->isym, loc);
 
     if (!output_module_p(m))
-      DECL_EXTERNAL (decl) = 1;
+      DECL_EXTERNAL (m->isym) = 1;
 
-    TREE_PUBLIC (decl) = 1;
-    DECL_CONTEXT (decl) = NULL_TREE;
+    TREE_PUBLIC (m->isym) = 1;
+    DECL_CONTEXT (m->isym) = NULL_TREE;
   }
 
   //
@@ -80,12 +79,10 @@ public:
 
     if (type != NULL_TREE)
       {
-	tree decl = make_node(IMPORTED_DECL);
-	TREE_TYPE (decl) = void_type_node;
-	IMPORTED_DECL_ASSOCIATED_DECL (decl) = TYPE_STUB_DECL (type);
-	d_keep(decl);
-
-	DECL_LANG_TREE (d->isym) = decl;
+	d->isym = make_node(IMPORTED_DECL);
+	TREE_TYPE (d->isym) = void_type_node;
+	IMPORTED_DECL_ASSOCIATED_DECL (d->isym) = TYPE_STUB_DECL (type);
+	d_keep(d->isym);
       }
 
     // For now, ignore importing other kinds of dsymbols.
@@ -113,13 +110,10 @@ public:
 	if (!TYPE_STUB_DECL (type))
 	  return;
 
-	tree decl = make_node(IMPORTED_DECL);
-	TREE_TYPE (decl) = void_type_node;
-	IMPORTED_DECL_ASSOCIATED_DECL (decl) = TYPE_STUB_DECL (type);
-	d_keep(decl);
-
-	DECL_LANG_TREE (d->isym) = decl;
-	return;
+	d->isym = make_node(IMPORTED_DECL);
+	TREE_TYPE (d->isym) = void_type_node;
+	IMPORTED_DECL_ASSOCIATED_DECL (d->isym) = TYPE_STUB_DECL (type);
+	d_keep(d->isym);
       }
   }
 
@@ -146,12 +140,10 @@ public:
   // symbol generation routines, the compiler will throw an error.
   void visit(Declaration *d)
   {
-    tree decl = make_node(IMPORTED_DECL);
-    TREE_TYPE (decl) = void_type_node;
-    IMPORTED_DECL_ASSOCIATED_DECL (decl) = DECL_LANG_TREE (d->toSymbol());
-    d_keep(decl);
-
-    DECL_LANG_TREE (d->isym) = decl;
+    d->isym = make_node(IMPORTED_DECL);
+    TREE_TYPE (d->isym) = void_type_node;
+    IMPORTED_DECL_ASSOCIATED_DECL (d->isym) = d->toSymbol();
+    d_keep(d->isym);
   }
 };
 
@@ -169,6 +161,6 @@ build_import_decl(Dsymbol *d)
     }
 
   // Not all visitors set 'isym'.
-  return d->isym ? DECL_LANG_TREE (d->isym) : NULL_TREE;
+  return d->isym ? d->isym : NULL_TREE;
 }
 

@@ -310,7 +310,7 @@ d_decl_context (Dsymbol *dsym)
 
       // Nested functions.
       if (parent->isFuncDeclaration())
-	return DECL_LANG_TREE (parent->toSymbol());
+	return parent->toSymbol();
 
       // Methods of classes or structs.
       AggregateDeclaration *ad = parent->isAggregateDeclaration();
@@ -337,8 +337,7 @@ build_local_var (VarDeclaration *vd)
   gcc_assert (current_function_decl != NULL_TREE);
 
   FuncDeclaration *fd = cfun->language->function;
-  tree sym = vd->toSymbol();
-  tree var = DECL_LANG_TREE (sym);
+  tree var = vd->toSymbol();
 
   gcc_assert (!TREE_STATIC (var));
 
@@ -350,7 +349,7 @@ build_local_var (VarDeclaration *vd)
   if (vd == fd->vresult || vd == fd->v_argptr)
     DECL_ARTIFICIAL (var) = 1;
 
-  if (DECL_LANG_FRAME_FIELD (sym))
+  if (DECL_LANG_FRAME_FIELD (var))
     {
       // Fixes debugging local variables.
       SET_DECL_VALUE_EXPR (var, get_decl_tree (vd));
@@ -459,13 +458,13 @@ get_decl_tree (Declaration *decl)
 	  // of nested classes, this routine pretty much undoes what
 	  // getRightThis in the frontend removes from codegen.
 	  AggregateDeclaration *ad = func->isThis();
-	  tree this_tree = DECL_LANG_TREE (func->vthis->toSymbol());
+	  tree this_tree = func->vthis->toSymbol();
 
 	  while (true)
 	    {
 	      Dsymbol *outer = ad->toParent2();
 	      // Get the this->this parent link.
-	      tree vthis_field = DECL_LANG_TREE (ad->vthis->toSymbol());
+	      tree vthis_field = ad->vthis->toSymbol();
 	      this_tree = component_ref (build_deref (this_tree), vthis_field);
 
 	      ad = outer->isAggregateDeclaration();
@@ -499,7 +498,7 @@ get_decl_tree (Declaration *decl)
     }
 
   // Static var or auto var that the back end will handle for us
-  return DECL_LANG_TREE (decl->toSymbol());
+  return decl->toSymbol();
 }
 
 // Return expression EXP, whose type has been converted to TYPE.
@@ -625,7 +624,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	// The offset can only be determined at runtime, do dynamic cast
 	tree args[2];
 	args[0] = exp;
-	args[1] = build_address(DECL_LANG_TREE (cdto->toSymbol()));
+	args[1] = build_address(cdto->toSymbol());
 
 	return build_libcall(cdfrom->isInterfaceDeclaration()
 			     ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
@@ -1928,7 +1927,7 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   for (size_t i = 0; i < sd->fields.dim; i++)
     {
       VarDeclaration *vd = sd->fields[i];
-      tree sfield = DECL_LANG_TREE (vd->toSymbol());
+      tree sfield = vd->toSymbol();
 
       tree t1ref = component_ref(t1, sfield);
       tree t2ref = component_ref(t2, sfield);
@@ -2941,7 +2940,7 @@ tree
 d_build_call(FuncDeclaration *fd, tree object, Expressions *args)
 {
   return d_build_call(get_function_type(fd->type),
-		      build_address(DECL_LANG_TREE (fd->toSymbol())), object, args);
+		      build_address(fd->toSymbol()), object, args);
 }
 
 // Builds a CALL_EXPR of type TF to CALLABLE. OBJECT holds the 'this' pointer,
@@ -3167,7 +3166,7 @@ get_libcall(const char *name, Type *type, int flags, int nparams, ...)
   FuncDeclaration *decl = FuncDeclaration::genCfunc(args, type, name);
 
   // Set any attributes on the function, such as malloc or noreturn.
-  tree t = DECL_LANG_TREE (decl->toSymbol());
+  tree t = decl->toSymbol();
   set_call_expr_flags(t, flags);
   DECL_ARTIFICIAL(t) = 1;
 
@@ -3221,7 +3220,7 @@ build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
   // Build the call expression to the runtime function.
   FuncDeclaration *decl = get_libcall(libcall);
   Type *type = decl->type->nextOf();
-  tree callee = build_address (DECL_LANG_TREE (decl->toSymbol()));
+  tree callee = build_address (decl->toSymbol());
   tree arg_list = NULL_TREE;
 
   for (int i = n_args - 1; i >= 0; i--)
@@ -3523,16 +3522,15 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 	  if (decl->csym == NULL)
 	    {
 	      // Store a stub BUILT_IN_FRONTEND decl.
-	      tree fndecl = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
-					get_identifier (tname),
-					build_ctype(decl->type));
-	      DECL_LANG_SPECIFIC (fndecl) = build_lang_decl (decl);
-	      DECL_LANG_TREE (decl->csym) = fndecl;
-	      d_keep (fndecl);
+	      decl->csym = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+				       get_identifier (tname),
+				       build_ctype(decl->type));
+	      DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (decl);
+	      d_keep (decl->csym);
 	    }
 
-	  DECL_BUILT_IN_CLASS (DECL_LANG_TREE (decl->csym)) = BUILT_IN_FRONTEND;
-	  DECL_FUNCTION_CODE (DECL_LANG_TREE (decl->csym)) = (built_in_function) code;
+	  DECL_BUILT_IN_CLASS (decl->csym) = BUILT_IN_FRONTEND;
+	  DECL_FUNCTION_CODE (decl->csym) = (built_in_function) code;
 	  decl->builtin = BUILTINyes;
 	  break;
 	}
@@ -4241,7 +4239,7 @@ build_frame_type (FuncDeclaration *func)
       set_decl_location (field, v);
       DECL_FIELD_CONTEXT (field) = frame_rec_type;
       fields = chainon (fields, field);
-      TREE_USED (DECL_LANG_TREE (s)) = 1;
+      TREE_USED (s) = 1;
 
       // Can't do nrvo if the variable is put in a frame.
       if (func->nrvo_can && func->nrvo_var == v)
@@ -4319,7 +4317,7 @@ build_closure(FuncDeclaration *fd)
       tree vsym = v->toSymbol();
 
       tree field = component_ref (decl_ref, DECL_LANG_FRAME_FIELD (vsym));
-      tree expr = modify_expr (field, DECL_LANG_TREE (vsym));
+      tree expr = modify_expr (field, vsym);
       add_stmt(expr);
     }
 
@@ -4548,7 +4546,7 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	      if (!inherited_p)
 		{
 		  DECL_LANG_SPECIFIC (field) = build_lang_decl (var);
-		  DECL_LANG_TREE (var->csym) = field;
+		  var->csym = field;
 		}
 
 	      fields += 1;

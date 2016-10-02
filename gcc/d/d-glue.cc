@@ -378,7 +378,7 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
   if (fd->builtin != BUILTINyes)
     return NULL;
 
-  tree decl = DECL_LANG_TREE (fd->toSymbol());
+  tree decl = fd->toSymbol();
   gcc_assert(DECL_BUILT_IN(decl));
 
   TypeFunction *tf = (TypeFunction *) fd->type;
