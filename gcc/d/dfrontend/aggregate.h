@@ -316,7 +316,6 @@ public:
     void toObjFile();                       // compile to .obj file
     unsigned baseVtblOffset(BaseClass *bc);
     Symbol *toSymbol();
-    Symbol *toVtblSymbol();
     void toDt(dt_t **pdt);
     void toDt2(dt_t **pdt, ClassDeclaration *cd);
 #endif

@@ -22,6 +22,7 @@ along with GCC; see the file COPYING3.  If not see
 
 class Dsymbol;
 class Declaration;
+class ClassDeclaration;
 class FuncDeclaration;
 class TypeInfoDeclaration;
 class VarDeclaration;
@@ -369,6 +370,7 @@ extern tree d_truthvalue_conversion (tree);
 
 /* In d-decls.cc.  */
 extern tree make_internal_name (Dsymbol *, const char *, const char *);
+extern tree get_vtable_decl (ClassDeclaration *);
 
 /* In d-expr.cc.  */
 extern tree build_expr (Expression *, bool = false);

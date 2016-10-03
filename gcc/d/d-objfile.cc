@@ -284,7 +284,7 @@ ClassDeclaration::toObjFile()
 
   // Generate C symbols
   toSymbol();
-  toVtblSymbol();
+  vtblsym = get_vtable_decl (this);
   sinit = toInitializer();
 
   // Generate static initialiser
@@ -587,7 +587,6 @@ Lhaspointers:
     }
 
   DECL_LANG_INITIAL (vtblsym) = dt;
-  DECL_LANG_READONLY (vtblsym) = true;
   d_finish_symbol (vtblsym);
 
   /* Add this decl to the current binding level.  */

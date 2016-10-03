@@ -213,7 +213,7 @@ dt_t **
 build_vptr_monitor(dt_t **pdt, ClassDeclaration *cd)
 {
   gcc_assert(cd != NULL);
-  dt_cons(pdt, build_address(cd->toVtblSymbol()));
+  dt_cons(pdt, build_address(get_vtable_decl (cd)));
 
   if (!cd->cpp)
     dt_cons(pdt, size_int(0));

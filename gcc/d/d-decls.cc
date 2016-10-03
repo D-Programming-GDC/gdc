@@ -745,38 +745,50 @@ ClassReferenceExp::toSymbol()
   return value->sym;
 }
 
-// Create the "vtbl" symbol for ClassDeclaration.
-// This is accessible via the ClassData, but since it is frequently
-// needed directly (like for rtti comparisons), make it directly accessible.
+/* Get the VAR_DECL of the vtable symbol for DECL.  If this does not yet exist,
+   create it.  The vtable is accessible via ClassInfo, but since it is needed
+   frequently (like for rtti comparisons), make it directly accessible.  */
 
 tree
-ClassDeclaration::toVtblSymbol()
+get_vtable_decl (ClassDeclaration *decl)
 {
-  if (!vtblsym)
-    {
-      /* The DECL_INITIAL value will have a different type object from the
-	 VAR_DECL.  The back end seems to accept this. */
-      Type *vtbltype = Type::tvoidptr->sarrayOf (vtbl.dim);
+  if (decl->vtblsym)
+    return decl->vtblsym;
 
-      tree ident = make_internal_name (this, "__vtbl", "Z");
-      vtblsym = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			    IDENTIFIER_PRETTY_NAME (ident),
-			    build_ctype (vtbltype));
-      SET_DECL_ASSEMBLER_NAME (vtblsym, ident);
-      DECL_LANG_SPECIFIC (vtblsym) = build_lang_decl (NULL);
-      d_keep (vtblsym);
+  /* Note: Using a static array type for the VAR_DECL, the DECL_INITIAL value
+     will have a different type.  However the backend seems to accept this.  */
+  Type *vtbltype = Type::tvoidptr->sarrayOf (decl->vtbl.dim);
+  tree ident = make_internal_name (decl, "__vtbl", "Z");
 
-      setup_symbol_storage (this, vtblsym, true);
-      set_decl_location (vtblsym, this);
+  decl->vtblsym = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			      IDENTIFIER_PRETTY_NAME (ident),
+			      build_ctype (vtbltype));
+  set_decl_location (decl->vtblsym, decl);
+  DECL_LANG_SPECIFIC (decl->vtblsym) = build_lang_decl (NULL);
+  SET_DECL_ASSEMBLER_NAME (decl->vtblsym, ident);
 
-      TREE_READONLY(vtblsym) = 1;
-      TREE_ADDRESSABLE(vtblsym) = 1;
-      DECL_ARTIFICIAL(vtblsym) = 1;
+  d_keep (decl->vtblsym);
 
-      DECL_CONTEXT (vtblsym) = d_decl_context (this);
-      SET_DECL_ALIGN (vtblsym, TARGET_VTABLE_ENTRY_ALIGN);
-    }
-  return vtblsym;
+  /* Class is a reference, want the record type.  */
+  DECL_CONTEXT (decl->vtblsym) = TREE_TYPE (build_ctype (decl->type));
+  DECL_ARTIFICIAL (decl->vtblsym) = 1;
+  TREE_STATIC (decl->vtblsym) = 1;
+  TREE_READONLY (decl->vtblsym) = 1;
+  DECL_VIRTUAL_P (decl->vtblsym) = 1;
+  TREE_PUBLIC (decl->vtblsym) = 1;
+
+  SET_DECL_ALIGN (decl->vtblsym, TARGET_VTABLE_ENTRY_ALIGN);
+  DECL_USER_ALIGN (decl->vtblsym) = true;
+
+  /* The vtable has not been defined -- yet.  */
+  DECL_EXTERNAL (decl->vtblsym) = 1;
+
+  /* Could move setting comdat linkage to the caller, who knows whether
+     this vtable is being emitted in this compilation.  */
+  if (decl->isInstantiated ())
+    d_comdat_linkage (decl->vtblsym);
+
+  return decl->vtblsym;
 }
 
 // Create the static initializer for the struct/class.

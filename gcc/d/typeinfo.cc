@@ -78,7 +78,7 @@ public:
   void layout_vtable(ClassDeclaration *cd)
   {
     if (cd != NULL)
-      this->set_field("__vptr", build_address(cd->toVtblSymbol()));
+      this->set_field("__vptr", build_address (get_vtable_decl (cd)));
   }
 
   // Layout of TypeInfo is:
