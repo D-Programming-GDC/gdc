@@ -1031,6 +1031,32 @@ void test210()
 
 /******************************************/
 
+// Bug 242
+
+struct S242
+{
+    enum M = S242();
+    int a = 42;
+
+    auto iter()
+    {
+        this.a = 24;
+        return this;
+    }
+}
+
+S242 test242a()
+{
+    return S242.M.iter;
+}
+
+void test242()
+{
+    assert(test242a() == S242(24));
+}
+
+/******************************************/
+
 void main()
 {
     test2();
