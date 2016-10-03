@@ -1583,7 +1583,7 @@ public:
 	if (dve->e1->op == TOKstructliteral)
 	  {
 	    StructLiteralExp *sle = (StructLiteralExp *) dve->e1;
-	    sle->sinit = NULL;
+	    sle->useStaticInit = false;
 	  }
 
 	FuncDeclaration *fd = dve->var->isFuncDeclaration();
@@ -2603,13 +2603,9 @@ public:
 
     // Building sinit trees are delayed until after frontend semantic
     // processing has complete.  Build the static initialiser now.
-    if (e->sinit && !this->constp_)
+    if (e->useStaticInit && !this->constp_)
       {
-	if (!VAR_P (e->sinit))
-	  e->sinit = e->sd->toInitializer();
-
-	gcc_assert(VAR_P (e->sinit));
-	this->result_ = e->sinit;
+	this->result_ = e->sd->toInitializer();
 	return;
       }
 
@@ -2668,7 +2664,7 @@ public:
 	tree field = e->sd->vthis->toSymbol();
 	tree value = build_vthis(e->sd);
 	CONSTRUCTOR_APPEND_ELT (ve, field, value);
-	gcc_assert(e->sinit == NULL);
+	gcc_assert(e->useStaticInit == false);
       }
 
     // Build a constructor in the correct shape of the aggregate type.

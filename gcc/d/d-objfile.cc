@@ -1164,11 +1164,8 @@ FuncDeclaration::toObjFile()
   // Ensure all semantic passes have ran.
   if (semanticRun < PASSsemantic3)
     {
-      Module *old_current_module_decl = current_module_decl;
-      current_module_decl = NULL;
       functionSemantic3();
       Module::runDeferredSemantic3();
-      current_module_decl = old_current_module_decl;
     }
 
   if (global.errors)

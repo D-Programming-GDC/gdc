@@ -386,16 +386,10 @@ FuncDeclaration::toSymbol()
       tree vindex = NULL_TREE;
 
       // Run full semantic on symbols we need to know about during compilation.
-      if (inferRetType && type && !type->nextOf())
+      if (inferRetType && type && !type->nextOf() && !functionSemantic())
 	{
-	  Module *old_current_module_decl = current_module_decl;
-	  current_module_decl = NULL;
-	  if (!functionSemantic())
-	    {
-	      csym = error_mark_node;
-	      return csym;
-	    }
-	  current_module_decl = old_current_module_decl;
+	  csym = error_mark_node;
+	  return csym;
 	}
 
       tree mangle;
@@ -715,7 +709,6 @@ StructLiteralExp::toSymbol()
       set_decl_location(sym, loc);
 
       DECL_LANG_SPECIFIC (sym) = build_lang_decl (NULL);
-      this->sinit = sym;
 
       DECL_INITIAL (sym) = build_expr(this, true);
       d_finish_symbol(sym);
@@ -738,8 +731,6 @@ ClassReferenceExp::toSymbol()
 
       toInstanceDt(&DECL_LANG_INITIAL (value->sym));
       d_finish_symbol(value->sym);
-
-      value->sinit = value->sym;
     }
 
   return value->sym;
@@ -793,28 +784,16 @@ get_vtable_decl (ClassDeclaration *decl)
 
 // Create the static initializer for the struct/class.
 
-// Because this is called from the front end (mtype.cc:TypeStruct::defaultInit()),
-// we need to hold off using back-end stuff until the toobjfile phase.
-
-// Specifically, it is not safe create a VAR_DECL with a type from build_ctype()
-// because there may be unresolved recursive references.
-// StructDeclaration::toObjFile calls toInitializer without ever calling
-// SymbolDeclaration::toSymbol, so we just need to keep checking if we
-// are in the toObjFile phase.
-
 tree
 AggregateDeclaration::toInitializer()
 {
   if (!sinit)
-    sinit = make_internal_name (this, "__init", "Z");
-
-  if (!VAR_P (sinit) && current_module_decl)
     {
       tree stype = build_ctype (type);
       if (!this->isStructDeclaration())
 	stype = TREE_TYPE (stype);
 
-      tree ident = sinit;
+      tree ident = make_internal_name (this, "__init", "Z");
       sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
 			  IDENTIFIER_PRETTY_NAME (ident), stype);
       SET_DECL_ASSEMBLER_NAME (sinit, ident);
@@ -844,17 +823,13 @@ EnumDeclaration::toInitializer()
       Identifier *ident_save = ident;
       if (!ident)
 	ident = Identifier::generateId("__enum");
-      sinit = make_internal_name (this, "__init", "Z");
+      tree name = make_internal_name (this, "__init", "Z");
       ident = ident_save;
-    }
 
-  if (!VAR_P (sinit) && current_module_decl)
-    {
-      tree ident = sinit;
       sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			  IDENTIFIER_PRETTY_NAME (ident),
+			  IDENTIFIER_PRETTY_NAME (name),
 			  build_ctype (type));
-      SET_DECL_ASSEMBLER_NAME (sinit, ident);
+      SET_DECL_ASSEMBLER_NAME (sinit, name);
       DECL_LANG_SPECIFIC (sinit) = build_lang_decl (NULL);
       d_keep (sinit);
 

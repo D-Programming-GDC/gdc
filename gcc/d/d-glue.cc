@@ -396,11 +396,3 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
   return e;
 }
 
-// Return backend .init symbol
-
-tree
-toInitializer(AggregateDeclaration *ad)
-{
-  return ad->toInitializer();
-}
-
