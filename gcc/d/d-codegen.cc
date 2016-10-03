@@ -2919,6 +2919,9 @@ call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee)
   if (!callee->isNested())
     return false;
 
+  if (caller->toParent() == callee->toParent())
+    return false;
+
   Dsymbol *dsym = callee;
 
   while (dsym)

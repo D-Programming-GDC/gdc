@@ -1653,7 +1653,7 @@ public:
 	  {
 	    // Maybe re-evaluate symbol storage treating 'fd' as public.
 	    if (call_by_alias_p(cfun->language->function, fd))
-	      setup_symbol_storage(fd, callee, true);
+	      TREE_PUBLIC (callee) = 1;
 
 	    object = get_frame_for_symbol(fd);
 	  }
