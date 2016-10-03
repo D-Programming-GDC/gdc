@@ -48,7 +48,6 @@
 #include "stringpool.h"
 #include "varasm.h"
 #include "stor-layout.h"
-#include "attribs.h"
 #include "debug.h"
 #include "tree-pretty-print.h"
 
@@ -1696,96 +1695,6 @@ d_comdat_linkage(tree decl)
     DECL_COMDAT (decl) = 1;
 }
 
-
-// Check if dsym is a template and whether it will be emitted (local_p)
-// or if it's external.
-
-void
-get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p)
-{
-  *local_p = output_module_p(dsym->getModule());
-  *template_p = false;
-  Dsymbol *sym = dsym->toParent();
-
-  while (sym)
-    {
-      TemplateInstance *ti = sym->isTemplateInstance();
-      if (ti)
-	{
-	  *local_p = output_module_p(ti->minst);
-	  *template_p = true;
-	  break;
-	}
-      sym = sym->toParent();
-    }
-}
-
-// Set a DECL's STATIC and EXTERN based on the decl's storage class
-// and if it is to be emitted in this module.
-
-void
-setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
-{
-  Declaration *rd = dsym->isDeclaration();
-
-  if (public_p
-      || (VAR_P (decl) && (rd && rd->isDataseg()))
-      || (TREE_CODE (decl) == FUNCTION_DECL))
-    {
-      bool local_p, template_p;
-      get_template_storage_info(dsym, &local_p, &template_p);
-
-      if (template_p)
-	{
-	  D_DECL_ONE_ONLY (decl) = 1;
-	  D_DECL_IS_TEMPLATE (decl) = 1;
-	}
-
-      VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;
-      FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;
-      if (!local_p || (vd && vd->storage_class & STCextern) || (fd && !fd->fbody))
-	{
-	  DECL_EXTERNAL (decl) = 1;
-	  TREE_STATIC (decl) = 0;
-	}
-      else
-	{
-	  DECL_EXTERNAL (decl) = 0;
-	  TREE_STATIC (decl) = 1;
-	}
-
-      // Do this by default, but allow private templates to override
-      if (public_p || !fd || !fd->isNested())
-	TREE_PUBLIC (decl) = 1;
-
-      // Used by debugger.
-      if (rd && rd->protection == PROTprivate)
-	TREE_PRIVATE (decl) = 1;
-      else if (rd && rd->protection == PROTprotected)
-	TREE_PROTECTED (decl) = 1;
-
-      if (D_DECL_ONE_ONLY (decl))
-	d_comdat_linkage(decl);
-
-      // Tell backend this is a thread local decl.
-      if (vd && vd->isDataseg() && vd->isThreadlocal())
-	set_decl_tls_model(decl, decl_default_tls_model(decl));
-    }
-  else
-    {
-      TREE_STATIC (decl) = 0;
-      DECL_EXTERNAL (decl) = 0;
-      TREE_PUBLIC (decl) = 0;
-    }
-
-  if (rd && rd->userAttribDecl)
-    {
-      Expressions *attrs = rd->userAttribDecl->getAttributes();
-      decl_attributes(&decl, build_attributes(attrs), 0);
-    }
-  else if (DECL_ATTRIBUTES (decl) != NULL)
-    decl_attributes(&decl, DECL_ATTRIBUTES (decl), 0);
-}
 
 // Mark DECL, which is a VAR_DECL or FUNCTION_DECL as a symbol that
 // must be emitted in this, output module.

@@ -80,8 +80,6 @@ extern void set_decl_location (tree t, const Loc& loc);
 extern void set_decl_location (tree t, Dsymbol *decl);
 extern void set_function_end_locus (const Loc& loc);
 
-extern void get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p);
-extern void setup_symbol_storage (Dsymbol *dsym, tree decl, bool is_public);
 extern void d_comdat_linkage (tree decl);
 
 extern void d_finish_symbol (tree sym);
