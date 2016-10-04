@@ -2093,7 +2093,7 @@ public:
 	    tree stack_var = build_local_temp(rec_type);
 	    expand_decl(stack_var);
 	    new_call = build_address(stack_var);
-	    setup_exp = modify_expr(stack_var, cd->toInitializer());
+	    setup_exp = modify_expr(stack_var, aggregate_initializer (cd));
 	  }
 	else if (e->allocator)
 	  {
@@ -2101,7 +2101,7 @@ public:
 	    new_call = d_save_expr(new_call);
 	    // copy memory...
 	    setup_exp = modify_expr(indirect_ref(rec_type, new_call),
-				    cd->toInitializer());
+				    aggregate_initializer (cd));
 	  }
 	else
 	  {
@@ -2605,7 +2605,7 @@ public:
     // processing has complete.  Build the static initialiser now.
     if (e->useStaticInit && !this->constp_)
       {
-	this->result_ = e->sd->toInitializer();
+	this->result_ = aggregate_initializer (e->sd);
 	return;
       }
 

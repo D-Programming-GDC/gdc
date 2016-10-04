@@ -51,7 +51,7 @@
 tree
 SymbolDeclaration::toSymbol()
 {
-  return dsym->toInitializer();
+  return aggregate_initializer (dsym);
 }
 
 
@@ -782,65 +782,98 @@ get_vtable_decl (ClassDeclaration *decl)
   return decl->vtblsym;
 }
 
-// Create the static initializer for the struct/class.
+/* Get the VAR_DECL of the static initializer symbol for the struct/class DECL.
+   If this does not yet exist, create it.  The static initializer data is
+   accessible via TypeInfo, and is also used in 'new class' and default
+   initializing struct literals.  */
 
 tree
-AggregateDeclaration::toInitializer()
+aggregate_initializer (AggregateDeclaration *decl)
 {
-  if (!sinit)
+  if (decl->sinit)
+    return decl->sinit;
+
+  /* Class is a reference, want the record type.  */
+  tree type = build_ctype (decl->type);
+  StructDeclaration *sd = decl->isStructDeclaration();
+  if (!sd)
+    type = TREE_TYPE (type);
+
+  tree ident = make_internal_name (decl, "__init", "Z");
+
+  decl->sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			    IDENTIFIER_PRETTY_NAME (ident), type);
+  set_decl_location (decl->sinit, decl);
+  DECL_LANG_SPECIFIC (decl->sinit) = build_lang_decl (NULL);
+  SET_DECL_ASSEMBLER_NAME (decl->sinit, ident);
+
+  d_keep (decl->sinit);
+
+  DECL_CONTEXT (decl->sinit) = type;
+  DECL_ARTIFICIAL (decl->sinit) = 1;
+  TREE_STATIC (decl->sinit) = 1;
+  TREE_READONLY (decl->sinit) = 1;
+  TREE_PUBLIC (decl->sinit) = 1;
+
+  /* Honor struct alignment set by user.  */
+  if (sd && sd->alignment != STRUCTALIGN_DEFAULT)
     {
-      tree stype = build_ctype (type);
-      if (!this->isStructDeclaration())
-	stype = TREE_TYPE (stype);
-
-      tree ident = make_internal_name (this, "__init", "Z");
-      sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			  IDENTIFIER_PRETTY_NAME (ident), stype);
-      SET_DECL_ASSEMBLER_NAME (sinit, ident);
-      DECL_LANG_SPECIFIC (sinit) = build_lang_decl (NULL);
-      d_keep (sinit);
-
-      setup_symbol_storage (this, sinit, true);
-      set_decl_location (sinit, this);
-
-      TREE_ADDRESSABLE (sinit) = 1;
-      TREE_READONLY (sinit) = 1;
-      DECL_ARTIFICIAL (sinit) = 1;
-      // These initialisers are always global.
-      DECL_CONTEXT (sinit) = NULL_TREE;
+      SET_DECL_ALIGN (decl->sinit, sd->alignment * BITS_PER_UNIT);
+      DECL_USER_ALIGN (decl->sinit) = true;
     }
 
-  return sinit;
+  /* The initializer has not been defined -- yet.  */
+  DECL_EXTERNAL (decl->sinit) = 1;
+
+  /* Could move setting comdat linkage to the caller, who knows whether
+     this initializer is being emitted in this compilation.  */
+  if (decl->isInstantiated ())
+    d_comdat_linkage (decl->sinit);
+
+  return decl->sinit;
 }
 
-// Create the static initializer for the enum.
+/* Get the VAR_DECL of the static initializer symbol for the enum DECL.
+   If this does not yet exist, create it.  The static initializer data is
+   accessible via TypeInfo_Enum, but the field member type is a byte[] that
+   requires a pointer to a symbol reference.  */
 
 tree
-EnumDeclaration::toInitializer()
+enum_initializer (EnumDeclaration *decl)
 {
-  if (!sinit)
-    {
-      Identifier *ident_save = ident;
-      if (!ident)
-	ident = Identifier::generateId("__enum");
-      tree name = make_internal_name (this, "__init", "Z");
-      ident = ident_save;
+  if (decl->sinit)
+    return decl->sinit;
 
-      sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			  IDENTIFIER_PRETTY_NAME (name),
-			  build_ctype (type));
-      SET_DECL_ASSEMBLER_NAME (sinit, name);
-      DECL_LANG_SPECIFIC (sinit) = build_lang_decl (NULL);
-      d_keep (sinit);
+  tree type = build_ctype (decl->type);
 
-      setup_symbol_storage (this, sinit, true);
-      set_decl_location (sinit, this);
+  Identifier *ident_save = decl->ident;
+  if (!decl->ident)
+    decl->ident = Identifier::generateId("__enum");
+  tree ident = make_internal_name (decl, "__init", "Z");
+  decl->ident = ident_save;
 
-      TREE_READONLY (sinit) = 1;
-      DECL_ARTIFICIAL (sinit) = 1;
-      DECL_CONTEXT (sinit) = NULL_TREE;
-    }
+  decl->sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
+			    IDENTIFIER_PRETTY_NAME (ident), type);
+  set_decl_location (decl->sinit, decl);
+  DECL_LANG_SPECIFIC (decl->sinit) = build_lang_decl (NULL);
+  SET_DECL_ASSEMBLER_NAME (decl->sinit, ident);
 
-  return sinit;
+  d_keep (decl->sinit);
+
+  DECL_CONTEXT (decl->sinit) = d_decl_context (decl);
+  DECL_ARTIFICIAL (decl->sinit) = 1;
+  TREE_STATIC (decl->sinit) = 1;
+  TREE_READONLY (decl->sinit) = 1;
+  TREE_PUBLIC (decl->sinit) = 1;
+
+  /* The initializer has not been defined -- yet.  */
+  DECL_EXTERNAL (decl->sinit) = 1;
+
+  /* Could move setting comdat linkage to the caller, who knows whether
+     this initializer is being emitted in this compilation.  */
+  if (decl->isInstantiated ())
+    d_comdat_linkage (decl->sinit);
+
+  return decl->sinit;
 }
 

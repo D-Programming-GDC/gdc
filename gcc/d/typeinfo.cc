@@ -168,28 +168,28 @@ public:
   {
     gcc_assert(d->tinfo->ty == Tenum);
     TypeEnum *ti = (TypeEnum *) d->tinfo;
-    EnumDeclaration *sd = ti->sym;
+    EnumDeclaration *ed = ti->sym;
 
     // The vtable for TypeInfo_Enum.
     this->layout_vtable(Type::typeinfoenum);
 
     // TypeInfo for enum members.
-    if (sd->memtype)
+    if (ed->memtype)
       {
-	genTypeInfo(sd->memtype, NULL);
-	TypeInfoDeclaration *vtinfo = sd->memtype->vtinfo;
+	genTypeInfo(ed->memtype, NULL);
+	TypeInfoDeclaration *vtinfo = ed->memtype->vtinfo;
 	this->set_field("base", build_address(vtinfo->toSymbol()));
       }
 
     // Name of the enum declaration.
-    this->set_field("name", d_array_string(sd->toPrettyChars()));
+    this->set_field("name", d_array_string(ed->toPrettyChars()));
 
     // Default initialiser for enum.
-    if (sd->members && !d->tinfo->isZeroInit())
+    if (ed->members && !d->tinfo->isZeroInit())
       {
 	tree type = build_ctype(Type::tvoid->arrayOf());
-	tree length = size_int(sd->type->size());
-	tree ptr = build_address(sd->toInitializer());
+	tree length = size_int(ed->type->size());
+	tree ptr = build_address(enum_initializer (ed));
 	this->set_field("m_init", d_array_value(type, length, ptr));
       }
   }
@@ -417,7 +417,7 @@ public:
     tree type = build_ctype(Type::tvoid->arrayOf());
     tree length = size_int(sd->structsize);
     tree ptr = (sd->zeroInit) ? null_pointer_node :
-      build_address(sd->toInitializer());
+      build_address(aggregate_initializer (sd));
     this->set_field("m_init", d_array_value(type, length, ptr));
 
     // hash_t function(in void*) xtoHash;

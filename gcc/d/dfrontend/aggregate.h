@@ -140,9 +140,6 @@ public:
 
     AggregateDeclaration *isAggregateDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toInitializer();
-#endif
 };
 
 struct StructFlags

@@ -237,10 +237,9 @@ StructDeclaration::toObjFile()
   genTypeInfo(type, NULL);
 
   // Generate static initialiser
-  toInitializer();
+  sinit = aggregate_initializer (this);
   toDt (&DECL_LANG_INITIAL (sinit));
 
-  DECL_LANG_READONLY (sinit) = true;
   d_finish_symbol (sinit);
 
   // Put out the members
@@ -285,11 +284,10 @@ ClassDeclaration::toObjFile()
   // Generate C symbols
   toSymbol();
   vtblsym = get_vtable_decl (this);
-  sinit = toInitializer();
+  sinit = aggregate_initializer (this);
 
   // Generate static initialiser
   toDt (&DECL_LANG_INITIAL (sinit));
-  DECL_LANG_READONLY (sinit) = true;
   d_finish_symbol (sinit);
 
   // Put out the TypeInfo
@@ -789,7 +787,7 @@ EnumDeclaration::toObjFile()
   if (tc->sym->members && !type->isZeroInit())
     {
       // Generate static initialiser
-      toInitializer();
+      sinit = enum_initializer (this);
       DECL_INITIAL (sinit) = build_expr(tc->sym->defaultval, true);
       d_finish_symbol (sinit);
 
