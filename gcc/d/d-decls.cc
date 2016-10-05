@@ -673,29 +673,38 @@ InterfaceDeclaration::toSymbol()
   return csym;
 }
 
-// Create the "ModuleInfo" symbol for a given module.
+/* Get the VAR_DECL of the ModuleInfo for DECL.  If this does not yet exist,
+   create it.  The ModuleInfo decl is used to keep track of constructors,
+   destructors, unittests, members, classes, and imports for the given module.
+   This is used by the D runtime for module initialization and termination.  */
 
 tree
-Module::toSymbol()
+get_moduleinfo_decl (Module *decl)
 {
-  if (!csym)
-    {
-      tree ident = make_internal_name (this, "__ModuleInfo", "Z");
-      csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			 IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (csym, ident);
-      DECL_LANG_SPECIFIC (csym) = build_lang_decl (NULL);
-      d_keep (csym);
+  if (decl->csym)
+    return decl->csym;
 
-      setup_symbol_storage (this, csym, true);
-      set_decl_location (csym, this);
+  tree ident = make_internal_name (decl, "__ModuleInfo", "Z");
 
-      DECL_ARTIFICIAL (csym) = 1;
-      // Not readonly, moduleinit depends on this.
-      TREE_READONLY (csym) = 0;
-    }
+  decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			   IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+  set_decl_location (decl->csym, decl);
+  DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
+  SET_DECL_ASSEMBLER_NAME (decl->csym, ident);
 
-  return csym;
+  d_keep (decl->csym);
+
+  DECL_CONTEXT (decl->csym) = build_import_decl (decl);
+  DECL_ARTIFICIAL (decl->csym) = 1;
+  TREE_STATIC (decl->csym) = 1;
+  /* Not readonly, moduleinit depends on this.  */
+  TREE_READONLY (decl->csym) = 0;
+  TREE_PUBLIC (decl->csym) = 1;
+
+  /* The moduleinfo decl has not been defined -- yet.  */
+  DECL_EXTERNAL (decl->csym) = 1;
+
+  return decl->csym;
 }
 
 tree

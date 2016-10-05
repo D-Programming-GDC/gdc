@@ -964,7 +964,7 @@ TypeInfoDeclaration::toObjFile()
 static tree
 build_moduleinfo_symbol(Module *m)
 {
-  tree msym = m->toSymbol();
+  tree msym = get_moduleinfo_decl (m);
   tree dt = NULL_TREE;
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
@@ -1075,7 +1075,7 @@ build_moduleinfo_symbol(Module *m)
 	{
 	  Module *mi = m->aimports[i];
 	  if (mi->needmoduleinfo)
-	    dt_cons (&dt, build_address (mi->toSymbol()));
+	    dt_cons (&dt, build_address (get_moduleinfo_decl (mi)));
 	}
     }
 

@@ -372,6 +372,7 @@ extern tree d_truthvalue_conversion (tree);
 
 /* In d-decls.cc.  */
 extern tree make_internal_name (Dsymbol *, const char *, const char *);
+extern tree get_moduleinfo_decl (Module *);
 extern tree get_vtable_decl (ClassDeclaration *);
 extern tree aggregate_initializer (AggregateDeclaration *);
 extern tree enum_initializer (EnumDeclaration *);
