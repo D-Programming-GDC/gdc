@@ -282,7 +282,7 @@ ClassDeclaration::toObjFile()
     }
 
   // Generate C symbols
-  toSymbol();
+  csym = get_classinfo_decl (this);
   vtblsym = get_vtable_decl (this);
   sinit = aggregate_initializer (this);
 
@@ -352,7 +352,7 @@ ClassDeclaration::toObjFile()
 
   // base*
   if (baseClass)
-    dt_cons (&dt, build_address (baseClass->toSymbol()));
+    dt_cons (&dt, build_address (get_classinfo_decl (baseClass)));
   else
     dt_cons (&dt, null_pointer_node);
 
@@ -457,7 +457,7 @@ Lhaspointers:
       b->fillVtbl(this, &b->vtbl, 1);
 
       // ClassInfo
-      dt_cons (&dt, build_address (id->toSymbol()));
+      dt_cons (&dt, build_address (get_classinfo_decl (id)));
 
       // vtbl[]
       dt_cons (&dt, size_int (id->vtbl.dim));
@@ -513,7 +513,7 @@ Lhaspointers:
 	      if (id->vtblOffset())
 		{
 		  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
-		  dt_cons (&dt, build_offset (build_address (cd->toSymbol()), size));
+		  dt_cons (&dt, build_offset (build_address (get_classinfo_decl (cd)), size));
 		}
 
 	      for (size_t j = id->vtblOffset() ? 1 : 0; j < id->vtbl.dim; j++)
@@ -647,7 +647,7 @@ InterfaceDeclaration::toObjFile()
     }
 
   // Generate C symbols
-  toSymbol();
+  this->csym = get_classinfo_decl (this);
 
   // Put out the TypeInfo
   genTypeInfo(type, NULL);
@@ -746,7 +746,7 @@ InterfaceDeclaration::toObjFile()
       ClassDeclaration *id = b->base;
 
       // ClassInfo
-      dt_cons (&dt, build_address (id->toSymbol()));
+      dt_cons (&dt, build_address (get_classinfo_decl (id)));
 
       // vtbl[]
       dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
@@ -756,7 +756,6 @@ InterfaceDeclaration::toObjFile()
     }
 
   DECL_LANG_INITIAL (csym) = dt;
-  DECL_LANG_READONLY (csym) = true;
   d_finish_symbol (csym);
 
   /* Add this decl to the current binding level.  */
@@ -1085,7 +1084,7 @@ build_moduleinfo_symbol(Module *m)
       for (size_t i = 0; i < aclasses.dim; i++)
 	{
 	  ClassDeclaration *cd = aclasses[i];
-	  dt_cons (&dt, build_address (cd->toSymbol()));
+	  dt_cons (&dt, build_address (get_classinfo_decl (cd)));
 	}
     }
 

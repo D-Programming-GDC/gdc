@@ -624,7 +624,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	// The offset can only be determined at runtime, do dynamic cast
 	tree args[2];
 	args[0] = exp;
-	args[1] = build_address(cdto->toSymbol());
+	args[1] = build_address(get_classinfo_decl (cdto));
 
 	return build_libcall(cdfrom->isInterfaceDeclaration()
 			     ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);

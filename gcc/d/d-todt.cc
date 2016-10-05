@@ -433,7 +433,7 @@ ClassReferenceExp::toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts)
     }
 
   // Interface vptr initializations
-  cd->toSymbol();
+  cd->csym = get_classinfo_decl (cd);
 
   for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
     {
@@ -445,7 +445,7 @@ ClassReferenceExp::toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts)
 	  unsigned csymoffset = cd2->baseVtblOffset(b);
 	  if (csymoffset != (unsigned) ~0)
 	    {
-	      tree dt = build_address(cd2->toSymbol());
+	      tree dt = build_address(get_classinfo_decl (cd2));
 	      if (offset < (size_t) b->offset)
 		dt_zeropad(pdt, b->offset - offset);
 	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
@@ -547,7 +547,7 @@ ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
     }
 
   // Interface vptr initializations
-  toSymbol();
+  this->csym = get_classinfo_decl (this);
 
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {
@@ -559,7 +559,7 @@ ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
 	  unsigned csymoffset = cd2->baseVtblOffset(b);
 	  if (csymoffset != (unsigned) ~0)
 	    {
-	      tree dt = build_address(cd2->toSymbol());
+	      tree dt = build_address(get_classinfo_decl (cd2));
 	      if (offset < (size_t) b->offset)
 		dt_zeropad(pdt, b->offset - offset);
 	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));

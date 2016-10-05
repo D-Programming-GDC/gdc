@@ -1598,7 +1598,7 @@ d_build_eh_type_type (tree type)
     dtype = dtype->toBasetype();
 
   gcc_assert (dtype && dtype->ty == Tclass);
-  sym = ((TypeClass *) dtype)->sym->toSymbol();
+  sym = get_classinfo_decl (((TypeClass *) dtype)->sym);
 
   return convert (ptr_type_node, build_address (sym));
 }

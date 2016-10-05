@@ -362,7 +362,7 @@ TypeInfoClassDeclaration::toSymbol()
 {
   gcc_assert (tinfo->ty == Tclass);
   TypeClass *tc = (TypeClass *) tinfo;
-  return tc->sym->toSymbol();
+  return get_classinfo_decl (tc->sym);
 }
 
 
@@ -622,57 +622,6 @@ FuncDeclaration::toThunkSymbol (int offset)
   return thunk->symbol;
 }
 
-
-// Create the "ClassInfo" symbol for classes.
-
-tree
-ClassDeclaration::toSymbol()
-{
-  if (!csym)
-    {
-      tree ident = make_internal_name (this, "__Class", "Z");
-
-      csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			 IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (csym, ident);
-      DECL_LANG_SPECIFIC (csym) = build_lang_decl (NULL);
-      d_keep (csym);
-
-      setup_symbol_storage (this, csym, true);
-      set_decl_location (csym, this);
-
-      DECL_ARTIFICIAL (csym) = 1;
-      // ClassInfo cannot be const data, because we use the monitor on it.
-      TREE_READONLY (csym) = 0;
-    }
-
-  return csym;
-}
-
-// Create the "InterfaceInfo" symbol for interfaces.
-
-tree
-InterfaceDeclaration::toSymbol()
-{
-  if (!csym)
-    {
-      tree ident = make_internal_name (this, "__Interface", "Z");
-      csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			 IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
-      SET_DECL_ASSEMBLER_NAME (csym, ident);
-      DECL_LANG_SPECIFIC (csym) = build_lang_decl (NULL);
-      d_keep (csym);
-
-      setup_symbol_storage (this, csym, true);
-      set_decl_location (csym, this);
-
-      DECL_ARTIFICIAL (csym) = 1;
-      TREE_READONLY (csym) = 1;
-    }
-
-  return csym;
-}
-
 /* Get the VAR_DECL of the ModuleInfo for DECL.  If this does not yet exist,
    create it.  The ModuleInfo decl is used to keep track of constructors,
    destructors, unittests, members, classes, and imports for the given module.
@@ -743,6 +692,46 @@ ClassReferenceExp::toSymbol()
     }
 
   return value->sym;
+}
+
+/* Get the VAR_DECL of the ClassInfo for DECL.  If this does not yet exist,
+   create it.  The ClassInfo decl provides information about the dynamic type
+   of a given class type or object.  */
+
+tree
+get_classinfo_decl (ClassDeclaration *decl)
+{
+  if (decl->csym)
+    return decl->csym;
+
+  InterfaceDeclaration *id = decl->isInterfaceDeclaration();
+  tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
+
+  decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			   IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+  set_decl_location (decl->csym, decl);
+  DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
+  SET_DECL_ASSEMBLER_NAME (decl->csym, ident);
+
+  d_keep (decl->csym);
+
+  /* Class is a reference, want the record type.  */
+  DECL_CONTEXT (decl->csym) = TREE_TYPE (build_ctype (decl->type));
+  DECL_ARTIFICIAL (decl->csym) = 1;
+  TREE_STATIC (decl->csym) = 1;
+  /* ClassInfo cannot be const data, because we use the monitor on it.  */
+  TREE_READONLY (decl->csym) = 0;
+  TREE_PUBLIC (decl->csym) = 1;
+
+  /* The moduleinfo decl has not been defined -- yet.  */
+  DECL_EXTERNAL (decl->csym) = 1;
+
+  /* Could move setting comdat linkage to the caller, who knows whether
+     this classinfo is being emitted in this compilation.  */
+  if (decl->isInstantiated ())
+    d_comdat_linkage (decl->csym);
+
+  return decl->csym;
 }
 
 /* Get the VAR_DECL of the vtable symbol for DECL.  If this does not yet exist,

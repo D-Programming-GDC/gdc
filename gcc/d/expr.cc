@@ -2105,7 +2105,7 @@ public:
 	  }
 	else
 	  {
-	    tree arg = build_address(cd->toSymbol());
+	    tree arg = build_address(get_classinfo_decl (cd));
 	    new_call = build_libcall(LIBCALL_NEWCLASS, 1, &arg);
 	  }
 	new_call = build_nop(build_ctype(tb), new_call);
