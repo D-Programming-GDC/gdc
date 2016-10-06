@@ -46,14 +46,6 @@
 #include "d-objfile.h"
 #include "id.h"
 
-// Create the symbol with tree for struct initialisers.
-
-tree
-SymbolDeclaration::toSymbol()
-{
-  return aggregate_initializer (dsym);
-}
-
 
 /* Generate a mangled identifier using NAME and SUFFIX, prefixed by the
    assembler name for DSYM.  */
@@ -173,6 +165,14 @@ Dsymbol::toSymbol()
 {
   gcc_unreachable();          // BUG: implement
   return NULL;
+}
+
+// Create the symbol with tree for struct initialisers.
+
+tree
+SymbolDeclaration::toSymbol()
+{
+  return aggregate_initializer (dsym);
 }
 
 // Create the symbol with VAR_DECL tree for static variables.
@@ -329,42 +329,65 @@ VarDeclaration::toSymbol()
   return csym;
 }
 
-// Create the symbol with tree for typeinfo decls.
+/* Visitor to create the decl tree for typeinfo decls.  */
+
+class TypeInfoDeclVisitor : public Visitor
+{
+public:
+  TypeInfoDeclVisitor (void) {}
+
+  void visit (TypeInfoDeclaration *tid)
+  {
+    tree ident = get_identifier (tid->ident->string);
+
+    tid->csym = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident,
+			    TREE_TYPE (build_ctype (tid->type)));
+    set_decl_location (tid->csym, tid);
+    DECL_LANG_SPECIFIC (tid->csym) = build_lang_decl (tid);
+    SET_DECL_ASSEMBLER_NAME (tid->csym, ident);
+
+    d_keep (tid->csym);
+
+    DECL_CONTEXT (tid->csym) = d_decl_context (tid);
+    DECL_ARTIFICIAL (tid->csym) = 1;
+    TREE_STATIC (tid->csym) = 1;
+    TREE_READONLY (tid->csym) = 1;
+    TREE_PUBLIC (tid->csym) = 1;
+
+    /* The typeinfo has not been defined -- yet.  */
+    DECL_EXTERNAL (tid->csym) = 1;
+
+    /* Built-in typeinfo will be referenced as one-only.  */
+    gcc_assert (!tid->isInstantiated());
+    d_comdat_linkage (tid->csym);
+  }
+
+  void visit (TypeInfoClassDeclaration *tid)
+  {
+    gcc_assert (tid->tinfo->ty == Tclass);
+    TypeClass *tc = (TypeClass *) tid->tinfo;
+    tid->csym = get_classinfo_decl (tc->sym);
+  }
+};
+
+/* Get the VAR_DECL of the TypeInfo for DECL.  If this does not yet exist,
+   create it.  The TypeInfo decl provides information about the type of a given
+   expression or object.  */
 
 tree
-TypeInfoDeclaration::toSymbol()
+get_typeinfo_decl (TypeInfoDeclaration *decl)
 {
-  if (!csym)
-    {
-      gcc_assert(tinfo->ty != Terror);
+  if (decl->csym)
+    return decl->csym;
 
-      VarDeclaration::toSymbol();
+  gcc_assert (decl->tinfo->ty != Terror);
 
-      // This variable is the static initialization for the
-      // given TypeInfo.  It is the actual data, not a reference
-      gcc_assert (TREE_CODE (TREE_TYPE (csym)) == POINTER_TYPE);
-      TREE_TYPE (csym) = TREE_TYPE (TREE_TYPE (csym));
-      relayout_decl (csym);
-      TREE_USED (csym) = 1;
+  TypeInfoDeclVisitor v = TypeInfoDeclVisitor ();
+  decl->accept (&v);
+  gcc_assert (decl->csym != NULL_TREE);
 
-      // Built-in typeinfo will be referenced as one-only.
-      D_DECL_ONE_ONLY (csym) = 1;
-      d_comdat_linkage (csym);
-    }
-
-  return csym;
+  return decl->csym;
 }
-
-// Create the symbol with tree for typeinfoclass decls.
-
-tree
-TypeInfoClassDeclaration::toSymbol()
-{
-  gcc_assert (tinfo->ty == Tclass);
-  TypeClass *tc = (TypeClass *) tinfo;
-  return get_classinfo_decl (tc->sym);
-}
-
 
 // Create the symbol with tree for function aliases.
 

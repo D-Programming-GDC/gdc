@@ -327,7 +327,6 @@ public:
     TypeInfoDeclaration *isTypeInfoDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    Symbol *toSymbol();
     void toObjFile();                       // compile to .obj file
 #endif
 };
@@ -348,9 +347,6 @@ public:
     static TypeInfoClassDeclaration *create(Type *tinfo);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toSymbol();
-#endif
 };
 
 class TypeInfoInterfaceDeclaration : public TypeInfoDeclaration

@@ -953,7 +953,7 @@ TypeInfoDeclaration::toObjFile()
   if (isSpeculativeType(this->tinfo))
     return;
 
-  tree s = toSymbol();
+  tree s = get_typeinfo_decl (this);
   DECL_INITIAL (s) = layout_typeinfo(this);
   d_finish_symbol(s);
 }

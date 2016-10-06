@@ -104,7 +104,7 @@ public:
     this->layout_vtable(Type::typeinfoconst);
 
     // TypeInfo for the mutable type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Immutable is:
@@ -121,7 +121,7 @@ public:
     this->layout_vtable(Type::typeinfoinvariant);
 
     // TypeInfo for the mutable type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Shared is:
@@ -138,7 +138,7 @@ public:
     this->layout_vtable(Type::typeinfoshared);
 
     // TypeInfo for the unshared type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Inout is:
@@ -155,7 +155,7 @@ public:
     this->layout_vtable(Type::typeinfowild);
 
     // TypeInfo for the mutable type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Enum is:
@@ -178,7 +178,7 @@ public:
       {
 	genTypeInfo(ed->memtype, NULL);
 	TypeInfoDeclaration *vtinfo = ed->memtype->vtinfo;
-	this->set_field("base", build_address(vtinfo->toSymbol()));
+	this->set_field("base", build_address(get_typeinfo_decl (vtinfo)));
       }
 
     // Name of the enum declaration.
@@ -208,7 +208,7 @@ public:
     this->layout_vtable(Type::typeinfopointer);
 
     // TypeInfo for pointer-to type.
-    this->set_field("m_next", build_address(ti->next->vtinfo->toSymbol()));
+    this->set_field("m_next", build_address(get_typeinfo_decl (ti->next->vtinfo)));
   }
 
   // Layout of TypeInfo_Array is:
@@ -225,7 +225,7 @@ public:
     this->layout_vtable(Type::typeinfoarray);
 
     // TypeInfo for array of type.
-    this->set_field("value", build_address(ti->next->vtinfo->toSymbol()));
+    this->set_field("value", build_address(get_typeinfo_decl (ti->next->vtinfo)));
   }
 
   // Layout of TypeInfo_StaticArray is:
@@ -243,7 +243,7 @@ public:
     this->layout_vtable(Type::typeinfostaticarray);
 
     // TypeInfo for array of type.
-    this->set_field("value", build_address(ti->next->vtinfo->toSymbol()));
+    this->set_field("value", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // Static array length.
     this->set_field("len", size_int(ti->dim->toInteger()));
@@ -265,10 +265,10 @@ public:
     this->layout_vtable(Type::typeinfoassociativearray);
 
     // TypeInfo for value of type.
-    this->set_field("value", build_address(ti->next->vtinfo->toSymbol()));
+    this->set_field("value", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // TypeInfo for index of type.
-    this->set_field("key", build_address(ti->index->vtinfo->toSymbol()));
+    this->set_field("key", build_address(get_typeinfo_decl (ti->index->vtinfo)));
   }
 
   // Layout of TypeInfo_Vector is:
@@ -285,7 +285,7 @@ public:
     this->layout_vtable(Type::typeinfovector);
 
     // TypeInfo for equivalent static array.
-    this->set_field("base", build_address(ti->basetype->vtinfo->toSymbol()));
+    this->set_field("base", build_address(get_typeinfo_decl (ti->basetype->vtinfo)));
   }
 
   // Layout of TypeInfo_Function is:
@@ -304,7 +304,7 @@ public:
     this->layout_vtable(Type::typeinfofunction);
 
     // TypeInfo for function return value.
-    this->set_field("next", build_address(ti->next->vtinfo->toSymbol()));
+    this->set_field("next", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // Mangled name of function declaration.
     this->set_field("deco", d_array_string(d->tinfo->deco));
@@ -326,7 +326,7 @@ public:
     this->layout_vtable(Type::typeinfodelegate);
 
     // TypeInfo for delegate return value.
-    this->set_field("next", build_address(ti->next->vtinfo->toSymbol()));
+    this->set_field("next", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // Mangled name of delegate declaration.
     this->set_field("deco", d_array_string(d->tinfo->deco));
@@ -353,7 +353,7 @@ public:
     this->layout_vtable(Type::typeinfointerface);
 
     // TypeInfo for class inheriting the interface.
-    this->set_field("info", build_address(ti->sym->vclassinfo->toSymbol()));
+    this->set_field("info", build_address(get_typeinfo_decl (ti->sym->vclassinfo)));
   }
 
   // Layout of TypeInfo_Struct is:
@@ -470,14 +470,14 @@ public:
 	if (sd->arg1type)
 	  {
 	    genTypeInfo(sd->arg1type, NULL);
-	    this->set_field("m_arg1", build_address(sd->arg1type->vtinfo->toSymbol()));
+	    this->set_field("m_arg1", build_address(get_typeinfo_decl (sd->arg1type->vtinfo)));
 	  }
 
 	// TypeInfo m_arg2;
 	if (sd->arg2type)
 	  {
 	    genTypeInfo(sd->arg2type, NULL);
-	    this->set_field("m_arg2", build_address(sd->arg2type->vtinfo->toSymbol()));
+	    this->set_field("m_arg2", build_address(get_typeinfo_decl (sd->arg2type->vtinfo)));
 	  }
       }
 
@@ -507,7 +507,7 @@ public:
       {
 	Parameter *arg = (*ti->arguments)[i];
 	genTypeInfo(arg->type, NULL);
-	tree s = arg->type->vtinfo->toSymbol();
+	tree s = get_typeinfo_decl (arg->type->vtinfo);
 	CONSTRUCTOR_APPEND_ELT (elms, size_int(i), build_address(s));
       }
     tree ctor = build_constructor(build_ctype(satype), elms);
@@ -542,7 +542,7 @@ build_typeinfo(Type *type)
 {
   gcc_assert(type->ty != Terror);
   genTypeInfo(type, NULL);
-  return build_address(type->vtinfo->toSymbol());
+  return build_address(get_typeinfo_decl (type->vtinfo));
 }
 
 

@@ -431,6 +431,9 @@ expand_decl (tree decl)
 tree
 get_decl_tree (Declaration *decl)
 {
+  if (decl->isTypeInfoDeclaration ())
+    return get_typeinfo_decl ((TypeInfoDeclaration *) decl);
+
   FuncDeclaration *func = cfun ? cfun->language->function : NULL;
   VarDeclaration *vd = decl->isVarDeclaration();
 
