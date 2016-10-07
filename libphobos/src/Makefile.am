@@ -75,13 +75,13 @@ endif
 
 toolexeclib_LTLIBRARIES = libgphobos.la
 libgphobos_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
-libgphobos_la_LIBTOOLFLAGS = --tag=D
+libgphobos_la_LIBTOOLFLAGS =
 libgphobos_la_LDFLAGS = -Xcompiler -nophoboslib $(PHOBOS_VER_FLAG)
 libgphobos_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = ../libdruntime/test_runner.d $(ZLIB_SRC)
-unittest_static_LIBTOOLFLAGS = --tag=D
+unittest_static_LIBTOOLFLAGS =
 unittest_static_LDFLAGS = -Xcompiler -nophoboslib -static-libtool-libs
 unittest_static_LDADD = $(PHOBOS_TEST_OBJECTS) $(ZLIB_LIB) \
     ../libdruntime/libgdruntime.la
@@ -89,7 +89,7 @@ EXTRA_unittest_static_DEPENDENCIES = $(PHOBOS_TEST_OBJECTS)
 
 # For unittest with dynamic library
 libgphobos_t_la_SOURCES = $(ZLIB_SRC)
-libgphobos_t_la_LIBTOOLFLAGS = --tag=D
+libgphobos_t_la_LIBTOOLFLAGS =
 libgphobos_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
 libgphobos_t_la_LIBADD = $(PHOBOS_TEST_LOBJECTS) $(ZLIB_LIB) \
     ../libdruntime/libgdruntime.la
@@ -97,7 +97,7 @@ EXTRA_libgphobos_t_la_DEPENDENCIES = $(PHOBOS_TEST_LOBJECTS)
 
 # For unittest
 unittest_SOURCES = ../libdruntime/test_runner.d
-unittest_LIBTOOLFLAGS = --tag=D
+unittest_LIBTOOLFLAGS =
 unittest_LDFLAGS = -Xcompiler -nophoboslib -shared
 unittest_LDADD = libgphobos_t.la ../libdruntime/libgdruntime.la
 
