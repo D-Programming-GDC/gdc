@@ -268,10 +268,6 @@ am__objects_21 = libgdruntime_la-threadasm.lo
 am__objects_22 = $(am__objects_19) $(am__objects_20) $(am__objects_21)
 am_libgdruntime_la_OBJECTS = $(am__objects_22)
 libgdruntime_la_OBJECTS = $(am_libgdruntime_la_OBJECTS)
-libgdruntime_la_LINK = $(LIBTOOL) --tag=CC \
-	$(libgdruntime_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
-	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgdruntime_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
 libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS) \
 	$(BACKTRACE_LIB) $(am__DEPENDENCIES_1)
 am__objects_23 = libgdruntime_t_la-errno_.lo \
@@ -279,10 +275,6 @@ am__objects_23 = libgdruntime_t_la-errno_.lo \
 am__objects_24 = libgdruntime_t_la-threadasm.lo
 am_libgdruntime_t_la_OBJECTS = $(am__objects_23) $(am__objects_24)
 libgdruntime_t_la_OBJECTS = $(am_libgdruntime_t_la_OBJECTS)
-libgdruntime_t_la_LINK = $(LIBTOOL) --tag=CC \
-	$(libgdruntime_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
-	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(libgdruntime_t_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
 @ENABLE_SHARED_TRUE@am_libgdruntime_t_la_rpath =
 @ENABLE_SHARED_TRUE@am__EXEEXT_1 = unittest$(EXEEXT)
 @ENABLE_STATIC_TRUE@am__EXEEXT_2 = unittest_static$(EXEEXT)
@@ -469,14 +461,36 @@ LTDCOMPILE = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 
 
 # Override executable linking commands: We have to use GDC for linking
-unittest_static_LINK = $(LIBTOOL) --tag=CC \
+# to make sure we link pthreads and other dependencies
+unittest_static_LINK = $(LIBTOOL) --tag=D \
 	$(unittest_static_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
 	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_static_LDFLAGS) \
 	$(LDFLAGS) -o $@
 
-unittest_LINK = $(LIBTOOL) --tag=CC \
+unittest_LINK = $(LIBTOOL) --tag=D \
 	$(unittest_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
 	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_LDFLAGS) \
+	$(LDFLAGS) -o $@
+
+
+# Also override library link commands: This is not strictly
+# required, but we want to record additional dependencies such
+# as pthread in the library
+libgdruntime_la_LINK = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(GDC) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgdruntime_la_LDFLAGS) $(LDFLAGS) -o $@
+
+libgdruntime_t_la_LINK = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(GDC) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgdruntime_t_la_LDFLAGS) $(LDFLAGS) -o $@
+
+libgphobos_la_LINK = $(LIBTOOL) --tag=D $(libgphobos_la_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(GDC) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgphobos_la_LDFLAGS) $(LDFLAGS) -o $@
+
+libgphobos_t_la_LINK = $(LIBTOOL) --tag=D \
+	$(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(libgphobos_t_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
 
 
@@ -519,7 +533,7 @@ DRUNTIME_TEST_LOBJECTS = $(filter-out rt/util/typeinfo.t.lo \
 @ENABLE_SHARED_TRUE@check_LTLIBRARIES = libgdruntime_t.la
 toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
-libgdruntime_la_LIBTOOLFLAGS = --tag=D
+libgdruntime_la_LIBTOOLFLAGS = 
 libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib $(DRUNTIME_VER_FLAG)
 libgdruntime_la_LIBADD = $(BACKTRACE_LIB) $(LIBADD_DLOPEN)
 
@@ -527,14 +541,14 @@ libgdruntime_la_LIBADD = $(BACKTRACE_LIB) $(LIBADD_DLOPEN)
 unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
     $(DRUNTIME_SSOURCES)
 
-unittest_static_LIBTOOLFLAGS = --tag=D
+unittest_static_LIBTOOLFLAGS = 
 unittest_static_LDFLAGS = -Xcompiler -nophoboslib
 unittest_static_LDADD = $(DRUNTIME_TEST_OBJECTS) $(BACKTRACE_LIB)
 EXTRA_unittest_static_DEPENDENCIES = $(DRUNTIME_TEST_OBJECTS)
 
 # For unittest with dynamic library
 libgdruntime_t_la_SOURCES = $(DRUNTIME_CSOURCES) $(DRUNTIME_SSOURCES)
-libgdruntime_t_la_LIBTOOLFLAGS = --tag=D
+libgdruntime_t_la_LIBTOOLFLAGS = 
 # Automake by default does not generate shared libs for non-installed
 # libraries. Use -rpath to force shared lib generation.
 libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
@@ -545,7 +559,7 @@ EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest
 unittest_SOURCES = test_runner.d
-unittest_LIBTOOLFLAGS = --tag=D
+unittest_LIBTOOLFLAGS = 
 unittest_LDFLAGS = -Xcompiler -nophoboslib
 unittest_LDADD = libgdruntime_t.la
 DRUNTIME_DSOURCES_GENERATED = gcc/config.d gcc/libbacktrace.d

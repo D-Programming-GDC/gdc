@@ -28,12 +28,33 @@ LTDCOMPILE = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	@:
 
 # Override executable linking commands: We have to use GDC for linking
-unittest_static_LINK = $(LIBTOOL) --tag=CC \
+# to make sure we link pthreads and other dependencies
+unittest_static_LINK = $(LIBTOOL) --tag=D \
 	$(unittest_static_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
 	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_static_LDFLAGS) \
 	$(LDFLAGS) -o $@
 
-unittest_LINK = $(LIBTOOL) --tag=CC \
+unittest_LINK = $(LIBTOOL) --tag=D \
 	$(unittest_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
 	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(unittest_LDFLAGS) \
+	$(LDFLAGS) -o $@
+
+# Also override library link commands: This is not strictly
+# required, but we want to record additional dependencies such
+# as pthread in the library
+libgdruntime_la_LINK = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(GDC) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgdruntime_la_LDFLAGS) $(LDFLAGS) -o $@
+
+libgdruntime_t_la_LINK = $(LIBTOOL) --tag=D $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(GDC) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgdruntime_t_la_LDFLAGS) $(LDFLAGS) -o $@
+
+libgphobos_la_LINK = $(LIBTOOL) --tag=D $(libgphobos_la_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(GDC) $(AM_CFLAGS) $(CFLAGS) \
+	$(libgphobos_la_LDFLAGS) $(LDFLAGS) -o $@
+
+libgphobos_t_la_LINK = $(LIBTOOL) --tag=D \
+	$(libgphobos_t_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(GDC) $(AM_CFLAGS) $(CFLAGS) $(libgphobos_t_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
