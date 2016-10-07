@@ -29,6 +29,7 @@ class FuncDeclaration;
 class TypeInfoDeclaration;
 class VarDeclaration;
 class Expression;
+class ClassReferenceExp;
 class Module;
 class Statement;
 class Type;
@@ -376,6 +377,7 @@ extern tree get_moduleinfo_decl (Module *);
 extern tree get_typeinfo_decl (TypeInfoDeclaration *);
 extern tree get_classinfo_decl (ClassDeclaration *);
 extern tree get_vtable_decl (ClassDeclaration *);
+extern tree build_new_class_expr (ClassReferenceExp *expr);
 extern tree aggregate_initializer (AggregateDeclaration *);
 extern tree enum_initializer (EnumDeclaration *);
 

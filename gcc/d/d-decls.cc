@@ -679,44 +679,6 @@ get_moduleinfo_decl (Module *decl)
   return decl->csym;
 }
 
-tree
-StructLiteralExp::toSymbol()
-{
-  if (!sym)
-    {
-      // Build reference symbol.
-      tree ctype = build_ctype(type);
-      sym = build_artificial_decl(ctype, NULL_TREE, "S");
-      set_decl_location(sym, loc);
-
-      DECL_LANG_SPECIFIC (sym) = build_lang_decl (NULL);
-
-      DECL_INITIAL (sym) = build_expr(this, true);
-      d_finish_symbol(sym);
-    }
-
-  return sym;
-}
-
-tree
-ClassReferenceExp::toSymbol()
-{
-  if (!value->sym)
-    {
-      // Build reference symbol.
-      tree ctype = build_ctype(value->stype);
-      value->sym = build_artificial_decl(TREE_TYPE (ctype), NULL_TREE, "C");
-      set_decl_location(value->sym, loc);
-
-      DECL_LANG_SPECIFIC (value->sym) = build_lang_decl (NULL);
-
-      toInstanceDt(&DECL_LANG_INITIAL (value->sym));
-      d_finish_symbol(value->sym);
-    }
-
-  return value->sym;
-}
-
 /* Get the VAR_DECL of the ClassInfo for DECL.  If this does not yet exist,
    create it.  The ClassInfo decl provides information about the dynamic type
    of a given class type or object.  */
@@ -801,6 +763,39 @@ get_vtable_decl (ClassDeclaration *decl)
     d_comdat_linkage (decl->vtblsym);
 
   return decl->vtblsym;
+}
+
+/* Get the VAR_DECL of a class instance representing EXPR as static data.
+   If this does not yet exist, create it.  This is used to support initializing
+   a static variable that is of a class type using values known during CTFE.
+   In user code, it is analogous to the following code snippet.
+
+    enum E = new C(1, 2, 3);
+
+   That we write the contents of `C(1, 2, 3)' to static data is only a compiler
+   implementation detail.  The initialization of these symbols could be done at
+   runtime using during as part of the module initialization or shared static
+   constructors phase of runtime start-up - whichever comes after `gc_init()'.
+   And infact that would be the better thing to do here eventually.  */
+
+tree
+build_new_class_expr (ClassReferenceExp *expr)
+{
+  if (expr->value->sym)
+    return expr->value->sym;
+
+  /* Build the reference symbol.  */
+  tree type = build_ctype(expr->value->stype);
+  expr->value->sym = build_artificial_decl(TREE_TYPE (type), NULL_TREE, "C");
+  set_decl_location(expr->value->sym, expr->loc);
+
+  /* If we set DECL_INITIAL directly, wouldn't need to do this.  */
+  DECL_LANG_SPECIFIC (expr->value->sym) = build_lang_decl (NULL);
+  expr->toInstanceDt(&DECL_LANG_INITIAL (expr->value->sym));
+
+  d_finish_symbol(expr->value->sym);
+
+  return expr->value->sym;
 }
 
 /* Get the VAR_DECL of the static initializer symbol for the struct/class DECL.

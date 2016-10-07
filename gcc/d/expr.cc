@@ -1546,7 +1546,18 @@ public:
       {
 	StructLiteralExp *sle = ((StructLiteralExp *) e->e1)->origin;
 	gcc_assert(sle != NULL);
-	exp = sle->toSymbol();
+
+	// Build the reference symbol.
+	if (!sle->sym)
+	  {
+	    sle->sym = build_artificial_decl(build_ctype(sle->type),
+					     build_expr(sle, true), "S");
+	    d_pushdecl(sle->sym);
+	    rest_of_decl_compilation(sle->sym, 1, 0);
+	  }
+
+
+	exp = sle->sym;
       }
     else
       exp = build_expr(e->e1, this->constp_);
@@ -2793,8 +2804,8 @@ public:
   //
   void visit(ClassReferenceExp *e)
   {
-    // ClassReferenceExp builds the RECORD_TYPE, we want the reference.
-    tree var = build_address(e->toSymbol());
+    // build_new_class_expr builds the RECORD_TYPE, we want the reference.
+    tree var = build_address(build_new_class_expr(e));
 
     // If the typeof this literal is an interface, we must add offset to symbol.
     if (this->constp_)

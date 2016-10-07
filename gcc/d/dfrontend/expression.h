@@ -498,9 +498,6 @@ public:
     Expression *addDtorHook(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toSymbol();
-#endif
 };
 
 class DotIdExp;
