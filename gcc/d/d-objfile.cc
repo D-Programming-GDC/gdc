@@ -811,19 +811,23 @@ VarDeclaration::toObjFile()
       if (isInstantiated())
 	return;
 
-      // CONST_DECL was initially intended for enumerals and may
-      // be used for scalars in general but not for aggregates.
-      if (!type->isscalar())
-	return;
-
       tree decl = toSymbol()->Stree;
       gcc_assert (init && !init->isVoidInitializer());
-
       Expression *ie = init->toExpression();
-      DECL_INITIAL (decl) = build_expr(ie, true);
 
-      d_pushdecl (decl);
-      rest_of_decl_compilation (decl, 1, 0);
+      // CONST_DECL was initially intended for enumerals and may be used for
+      // scalars in general, but not for aggregates.  Here a non-constant value
+      // is generated anyway so as the CONST_DECL only serves as a placeholder
+      // for the value, however the DECL itself should never be referenced in
+      // any generated code, or passed to the backend.
+      if (!type->isscalar())
+	DECL_INITIAL (decl) = build_expr(ie, false);
+      else
+	{
+	  DECL_INITIAL (decl) = build_expr(ie, true);
+	  d_pushdecl (decl);
+	  rest_of_decl_compilation (decl, 1, 0);
+	}
     }
   else if (isDataseg() && !(storage_class & STCextern))
     {
@@ -1882,18 +1886,10 @@ d_finish_function(FuncDeclaration *fd)
   // If we generated the function, but it's really extern.
   // Such as external inlinable functions or thunk aliases.
   bool extern_p = false;
-  for (FuncDeclaration *fdp = fd; fdp != NULL;)
+
+  if (!fd->isInstantiated() && fd->getModule() && !fd->getModule()->isRoot())
     {
-      if (fdp->inNonRoot())
-	{
-	  extern_p = true;
-	  break;
-	}
-
-      if (!fdp->isNested())
-	break;
-
-      fdp = fdp->toParent2()->isFuncDeclaration();
+      extern_p = true;
     }
 
   if (extern_p)

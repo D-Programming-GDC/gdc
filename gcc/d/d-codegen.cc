@@ -1764,8 +1764,12 @@ build_address(tree exp)
   else
     ptrtype = build_pointer_type(type);
 
-  // Maybe rewrite: (e1, e2) => (e1, &e2)
+  // Maybe rewrite: &(e1, e2) => (e1, &e2)
   tree init = stabilize_expr(&exp);
+
+  // Can't take the address of a manifest constant, instead use its value.
+  if (TREE_CODE (exp) == CONST_DECL)
+    exp = DECL_INITIAL (exp);
 
   d_mark_addressable(exp);
   exp = build_fold_addr_expr_with_type_loc(input_location, exp, ptrtype);
