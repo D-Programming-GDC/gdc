@@ -96,61 +96,48 @@ get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p)
 // and if it is to be emitted in this module.
 
 static void
-setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
+setup_symbol_storage(Declaration *rd, tree decl)
 {
-  Declaration *rd = dsym->isDeclaration();
+  bool local_p, template_p;
+  get_template_storage_info(rd, &local_p, &template_p);
 
-  if (public_p
-      || (VAR_P (decl) && (rd && rd->isDataseg()))
-      || (TREE_CODE (decl) == FUNCTION_DECL))
+  if (template_p)
     {
-      bool local_p, template_p;
-      get_template_storage_info(dsym, &local_p, &template_p);
+      D_DECL_ONE_ONLY (decl) = 1;
+      D_DECL_IS_TEMPLATE (decl) = 1;
+    }
 
-      if (template_p)
-	{
-	  D_DECL_ONE_ONLY (decl) = 1;
-	  D_DECL_IS_TEMPLATE (decl) = 1;
-	}
-
-      VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;
-      FuncDeclaration *fd = rd ? rd->isFuncDeclaration() : NULL;
-      if (!local_p || (vd && vd->storage_class & STCextern) || (fd && !fd->fbody))
-	{
-	  DECL_EXTERNAL (decl) = 1;
-	  TREE_STATIC (decl) = 0;
-	}
-      else
-	{
-	  DECL_EXTERNAL (decl) = 0;
-	  TREE_STATIC (decl) = 1;
-	}
-
-      // Do this by default, but allow private templates to override
-      if (public_p || !fd || !fd->isNested())
-	TREE_PUBLIC (decl) = 1;
-
-      // Used by debugger.
-      if (rd && rd->protection == PROTprivate)
-	TREE_PRIVATE (decl) = 1;
-      else if (rd && rd->protection == PROTprotected)
-	TREE_PROTECTED (decl) = 1;
-
-      if (D_DECL_ONE_ONLY (decl))
-	d_comdat_linkage(decl);
-
-      // Tell backend this is a thread local decl.
-      if (vd && vd->isDataseg() && vd->isThreadlocal())
-	set_decl_tls_model(decl, decl_default_tls_model(decl));
+  VarDeclaration *vd = rd->isVarDeclaration();
+  FuncDeclaration *fd = rd->isFuncDeclaration();
+  if (!local_p || (vd && vd->storage_class & STCextern) || (fd && !fd->fbody))
+    {
+      DECL_EXTERNAL (decl) = 1;
+      TREE_STATIC (decl) = 0;
     }
   else
     {
-      TREE_STATIC (decl) = 0;
       DECL_EXTERNAL (decl) = 0;
-      TREE_PUBLIC (decl) = 0;
+      TREE_STATIC (decl) = 1;
     }
 
-  if (rd && rd->userAttribDecl)
+  // Do this by default, but allow private templates to override
+  if (!fd || !fd->isNested())
+    TREE_PUBLIC (decl) = 1;
+
+  // Used by debugger.
+  if (rd->protection == PROTprivate)
+    TREE_PRIVATE (decl) = 1;
+  else if (rd->protection == PROTprotected)
+    TREE_PROTECTED (decl) = 1;
+
+  if (D_DECL_ONE_ONLY (decl))
+    d_comdat_linkage(decl);
+
+  // Tell backend this is a thread local decl.
+  if (vd && vd->isDataseg() && vd->isThreadlocal())
+    set_decl_tls_model(decl, decl_default_tls_model(decl));
+
+  if (rd->userAttribDecl)
     {
       Expressions *attrs = rd->userAttribDecl->getAttributes();
       decl_attributes(&decl, build_attributes(attrs), 0);
@@ -282,7 +269,7 @@ VarDeclaration::toSymbol()
 
 	  IDENTIFIER_PRETTY_NAME (mangle) = get_identifier (toPrettyChars (true));
 	  SET_DECL_ASSEMBLER_NAME (csym, mangle);
-	  setup_symbol_storage (this, csym, false);
+	  setup_symbol_storage (this, csym);
 	}
 
       d_keep (csym);
@@ -550,7 +537,7 @@ FuncDeclaration::toSymbol()
 	insert_decl_attribute (csym, "dllexport");
 #endif
       set_decl_location (csym, this);
-      setup_symbol_storage (this, csym, false);
+      setup_symbol_storage (this, csym);
 
       if (!ident)
 	TREE_PUBLIC (csym) = 0;
