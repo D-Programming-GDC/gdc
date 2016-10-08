@@ -36,6 +36,8 @@
 #include "fold-const.h"
 #include "diagnostic.h"
 #include "target.h"
+#include "common/common-target.h"
+#include "cgraph.h"
 #include "stringpool.h"
 #include "varasm.h"
 #include "stor-layout.h"
@@ -551,6 +553,185 @@ FuncDeclaration::toSymbol()
   return csym;
 }
 
+/* Thunk code is based on g++ */
+
+static int thunk_labelno;
+
+/* Create a static alias to function.  */
+
+static tree
+make_alias_for_thunk (tree function)
+{
+  tree alias;
+  char buf[256];
+
+  // Thunks may reference extern functions which cannot be aliased.
+  if (DECL_EXTERNAL (function))
+    return function;
+
+  targetm.asm_out.generate_internal_label (buf, "LTHUNK", thunk_labelno);
+  thunk_labelno++;
+
+  alias = build_decl (DECL_SOURCE_LOCATION (function), FUNCTION_DECL,
+		      get_identifier (buf), TREE_TYPE (function));
+  DECL_LANG_SPECIFIC (alias) = DECL_LANG_SPECIFIC (function);
+  DECL_CONTEXT (alias) = NULL_TREE;
+  TREE_READONLY (alias) = TREE_READONLY (function);
+  TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
+  TREE_PUBLIC (alias) = 0;
+
+  DECL_EXTERNAL (alias) = 0;
+  DECL_ARTIFICIAL (alias) = 1;
+
+  DECL_DECLARED_INLINE_P (alias) = 0;
+  DECL_INITIAL (alias) = error_mark_node;
+  DECL_ARGUMENTS (alias) = copy_list (DECL_ARGUMENTS (function));
+
+  TREE_ADDRESSABLE (alias) = 1;
+  TREE_USED (alias) = 1;
+  SET_DECL_ASSEMBLER_NAME (alias, DECL_NAME (alias));
+
+  if (!flag_syntax_only)
+    {
+      cgraph_node *aliasn;
+      aliasn = cgraph_node::create_same_body_alias (alias, function);
+      gcc_assert (aliasn != NULL);
+    }
+  return alias;
+}
+
+
+static void
+finish_thunk (tree thunk_decl, tree target_decl, int offset)
+{
+  /* Setup how D thunks are outputted.  */
+  int fixed_offset = -offset;
+  bool this_adjusting = true;
+  int virtual_value = 0;
+  tree alias;
+
+  if (TARGET_USE_LOCAL_THUNK_ALIAS_P (target_decl))
+    alias = make_alias_for_thunk (target_decl);
+  else
+    alias = target_decl;
+
+  TREE_ADDRESSABLE (target_decl) = 1;
+  TREE_USED (target_decl) = 1;
+
+  if (flag_syntax_only)
+    {
+      TREE_ASM_WRITTEN (thunk_decl) = 1;
+      return;
+    }
+
+  if (TARGET_USE_LOCAL_THUNK_ALIAS_P (target_decl)
+      && targetm_common.have_named_sections)
+    {
+      tree fn = target_decl;
+      symtab_node *symbol = symtab_node::get (target_decl);
+
+      if (symbol != NULL && symbol->alias)
+	{
+	  if (symbol->analyzed)
+	    fn = symtab_node::get (target_decl)->ultimate_alias_target()->decl;
+	  else
+	    fn = symtab_node::get (target_decl)->alias_target;
+	}
+      resolve_unique_section (fn, 0, flag_function_sections);
+
+      if (DECL_SECTION_NAME (fn) != NULL && DECL_ONE_ONLY (fn))
+	{
+	  resolve_unique_section (thunk_decl, 0, flag_function_sections);
+
+	  /* Output the thunk into the same section as function.  */
+	  set_decl_section_name (thunk_decl, DECL_SECTION_NAME (fn));
+	  symtab_node::get (thunk_decl)->implicit_section
+	    = symtab_node::get (fn)->implicit_section;
+	}
+    }
+
+  /* Set up cloned argument trees for the thunk.  */
+  tree t = NULL_TREE;
+  for (tree a = DECL_ARGUMENTS (target_decl); a; a = DECL_CHAIN (a))
+    {
+      tree x = copy_node (a);
+      DECL_CHAIN (x) = t;
+      DECL_CONTEXT (x) = thunk_decl;
+      SET_DECL_RTL (x, NULL);
+      DECL_HAS_VALUE_EXPR_P (x) = 0;
+      TREE_ADDRESSABLE (x) = 0;
+      t = x;
+    }
+  DECL_ARGUMENTS (thunk_decl) = nreverse (t);
+  TREE_ASM_WRITTEN (thunk_decl) = 1;
+
+  cgraph_node *funcn, *thunk_node;
+
+  funcn = cgraph_node::get_create (target_decl);
+  gcc_assert (funcn);
+  thunk_node = funcn->create_thunk (thunk_decl, thunk_decl,
+				    this_adjusting, fixed_offset,
+				    virtual_value, 0, alias);
+
+  if (DECL_ONE_ONLY (target_decl))
+    thunk_node->add_to_same_comdat_group (funcn);
+
+  /* Target assemble_mi_thunk doesn't work across section boundaries
+     on many targets, instead force thunk to be expanded in gimple.  */
+  if (DECL_EXTERNAL (target_decl))
+    {
+      if (!stdarg_p (TREE_TYPE (thunk_decl)))
+	{
+	  /* Put generic thunk into COMDAT.  */
+	  d_comdat_linkage (thunk_decl);
+	  thunk_node->create_edge (funcn, NULL, 0, CGRAPH_FREQ_BASE);
+	  thunk_node->expand_thunk (false, true);
+	}
+    }
+}
+
+// Can't output thunks while a function is being compiled.
+
+struct DeferredThunk
+{
+  tree decl;
+  tree target;
+  int offset;
+};
+
+static vec<DeferredThunk *> deferred_thunks;
+
+// Process all deferred thunks in list DEFERRED_THUNKS.
+
+void
+write_deferred_thunks()
+{
+  for (size_t i = 0; i < deferred_thunks.length(); i++)
+    {
+      DeferredThunk *t = deferred_thunks[i];
+      finish_thunk (t->decl, t->target, t->offset);
+    }
+
+  deferred_thunks.truncate (0);
+}
+
+// Emit the definition of a D vtable thunk.  If a function
+// is still being compiled, defer emitting.
+
+static void
+use_thunk (tree thunk_decl, tree target_decl, int offset)
+{
+  if (current_function_decl)
+    {
+      DeferredThunk *t = new DeferredThunk;
+      t->decl = thunk_decl;
+      t->target = target_decl;
+      t->offset = offset;
+      deferred_thunks.safe_push (t);
+    }
+  else
+    finish_thunk (thunk_decl, target_decl, offset);
+}
 
 // Create the thunk symbol functions.
 // Thunk is added to class at OFFSET.

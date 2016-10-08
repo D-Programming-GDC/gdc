@@ -94,8 +94,6 @@ extern Modules output_modules;
 extern bool output_module_p (Module *mod);
 
 extern void write_deferred_thunks();
-extern void use_thunk (tree thunk_decl, tree target_decl, int offset);
-extern void finish_thunk (tree thunk_decl, tree target_decl, int offset);
 
 #endif
 
