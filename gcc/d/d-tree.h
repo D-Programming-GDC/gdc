@@ -380,6 +380,7 @@ extern tree d_truthvalue_conversion (tree);
 
 /* In d-decls.cc.  */
 extern tree make_internal_name (Dsymbol *, const char *, const char *);
+extern tree make_thunk (FuncDeclaration *, int);
 extern tree get_moduleinfo_decl (Module *);
 extern tree get_typeinfo_decl (TypeInfoDeclaration *);
 extern tree get_classinfo_decl (ClassDeclaration *);

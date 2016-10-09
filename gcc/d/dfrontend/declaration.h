@@ -670,7 +670,6 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
     Symbol *toSymbol();
-    Symbol *toThunkSymbol(int offset);  // thunk version
     void toObjFile();                       // compile to .obj file
 #endif
 };

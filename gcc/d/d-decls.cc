@@ -603,131 +603,131 @@ make_alias_for_thunk (tree function)
 // Emit the definition of a D vtable thunk.
 
 static void
-finish_thunk (tree thunk_decl, tree target_decl, int offset)
+finish_thunk (tree thunk, tree function)
 {
   /* Setup how D thunks are outputted.  */
-  int fixed_offset = -offset;
+  int fixed_offset = -THUNK_LANG_OFFSET (thunk);
   bool this_adjusting = true;
-  int virtual_value = 0;
   tree alias;
 
-  if (TARGET_USE_LOCAL_THUNK_ALIAS_P (target_decl))
-    alias = make_alias_for_thunk (target_decl);
+  if (TARGET_USE_LOCAL_THUNK_ALIAS_P (function))
+    alias = make_alias_for_thunk (function);
   else
-    alias = target_decl;
+    alias = function;
 
-  TREE_ADDRESSABLE (target_decl) = 1;
-  TREE_USED (target_decl) = 1;
+  TREE_ADDRESSABLE (function) = 1;
+  TREE_USED (function) = 1;
 
   if (flag_syntax_only)
     {
-      TREE_ASM_WRITTEN (thunk_decl) = 1;
+      TREE_ASM_WRITTEN (thunk) = 1;
       return;
     }
 
-  if (TARGET_USE_LOCAL_THUNK_ALIAS_P (target_decl)
+  if (TARGET_USE_LOCAL_THUNK_ALIAS_P (function)
       && targetm_common.have_named_sections)
     {
-      tree fn = target_decl;
-      symtab_node *symbol = symtab_node::get (target_decl);
+      tree fn = function;
+      symtab_node *symbol = symtab_node::get (function);
 
       if (symbol != NULL && symbol->alias)
 	{
 	  if (symbol->analyzed)
-	    fn = symtab_node::get (target_decl)->ultimate_alias_target()->decl;
+	    fn = symtab_node::get (function)->ultimate_alias_target()->decl;
 	  else
-	    fn = symtab_node::get (target_decl)->alias_target;
+	    fn = symtab_node::get (function)->alias_target;
 	}
       resolve_unique_section (fn, 0, flag_function_sections);
 
       if (DECL_SECTION_NAME (fn) != NULL && DECL_ONE_ONLY (fn))
 	{
-	  resolve_unique_section (thunk_decl, 0, flag_function_sections);
+	  resolve_unique_section (thunk, 0, flag_function_sections);
 
 	  /* Output the thunk into the same section as function.  */
-	  set_decl_section_name (thunk_decl, DECL_SECTION_NAME (fn));
-	  symtab_node::get (thunk_decl)->implicit_section
+	  set_decl_section_name (thunk, DECL_SECTION_NAME (fn));
+	  symtab_node::get (thunk)->implicit_section
 	    = symtab_node::get (fn)->implicit_section;
 	}
     }
 
   /* Set up cloned argument trees for the thunk.  */
   tree t = NULL_TREE;
-  for (tree a = DECL_ARGUMENTS (target_decl); a; a = DECL_CHAIN (a))
+  for (tree a = DECL_ARGUMENTS (function); a; a = DECL_CHAIN (a))
     {
       tree x = copy_node (a);
       DECL_CHAIN (x) = t;
-      DECL_CONTEXT (x) = thunk_decl;
+      DECL_CONTEXT (x) = thunk;
       SET_DECL_RTL (x, NULL);
       DECL_HAS_VALUE_EXPR_P (x) = 0;
       TREE_ADDRESSABLE (x) = 0;
       t = x;
     }
-  DECL_ARGUMENTS (thunk_decl) = nreverse (t);
-  TREE_ASM_WRITTEN (thunk_decl) = 1;
+  DECL_ARGUMENTS (thunk) = nreverse (t);
+  TREE_ASM_WRITTEN (thunk) = 1;
 
   cgraph_node *funcn, *thunk_node;
 
-  funcn = cgraph_node::get_create (target_decl);
+  funcn = cgraph_node::get_create (function);
   gcc_assert (funcn);
-  thunk_node = funcn->create_thunk (thunk_decl, thunk_decl,
-				    this_adjusting, fixed_offset,
-				    virtual_value, 0, alias);
+  thunk_node = funcn->create_thunk (thunk, thunk, this_adjusting,
+				    fixed_offset, 0, 0, alias);
 
-  if (DECL_ONE_ONLY (target_decl))
+  if (DECL_ONE_ONLY (function))
     thunk_node->add_to_same_comdat_group (funcn);
 
   /* Target assemble_mi_thunk doesn't work across section boundaries
      on many targets, instead force thunk to be expanded in gimple.  */
-  if (DECL_EXTERNAL (target_decl))
+  if (DECL_EXTERNAL (function))
     {
       /* cgraph::expand_thunk writes over current_function_decl, so if this
 	 could ever be in use by the codegen pass, we want to know about it.  */
       gcc_assert(current_function_decl == NULL_TREE);
 
-      if (!stdarg_p (TREE_TYPE (thunk_decl)))
+      if (!stdarg_p (TREE_TYPE (thunk)))
 	{
 	  /* Put generic thunk into COMDAT.  */
-	  d_comdat_linkage (thunk_decl);
+	  d_comdat_linkage (thunk);
 	  thunk_node->create_edge (funcn, NULL, 0, CGRAPH_FREQ_BASE);
 	  thunk_node->expand_thunk (false, true);
 	}
     }
 }
 
-// Create the thunk symbol functions.
-// Thunk is added to class at OFFSET.
+/* Return a thunk to DECL.  Thunks adjust the incoming `this' pointer by OFFSET.
+   Adjustor thunks are created and pointers to them stored in the method entries
+   in the vtable in order to set the this pointer to the start of the object
+   instance corresponding to the implementing method.  */
 
 tree
-FuncDeclaration::toThunkSymbol (int offset)
+make_thunk (FuncDeclaration *decl, int offset)
 {
-  toSymbol();
-  toObjFile();
+  decl->toSymbol();
+  decl->toObjFile();
 
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there
      is a list of all thunks for a given function. */
   tree thunk;
 
-  for (thunk = DECL_LANG_THUNKS (csym); thunk; thunk = DECL_CHAIN (thunk))
+  for (thunk = DECL_LANG_THUNKS (decl->csym); thunk; thunk = DECL_CHAIN (thunk))
     {
       if (THUNK_LANG_OFFSET (thunk) == offset)
 	return thunk;
     }
 
-  thunk = build_decl (DECL_SOURCE_LOCATION (csym),
-		      FUNCTION_DECL, NULL_TREE, TREE_TYPE (csym));
-  DECL_LANG_SPECIFIC (thunk) = copy_lang_decl (csym);
+  thunk = build_decl (DECL_SOURCE_LOCATION (decl->csym),
+		      FUNCTION_DECL, NULL_TREE, TREE_TYPE (decl->csym));
+  DECL_LANG_SPECIFIC (thunk) = copy_lang_decl (decl->csym);
   THUNK_LANG_OFFSET (thunk) = offset;
 
-  TREE_READONLY (thunk) = TREE_READONLY (csym);
-  TREE_THIS_VOLATILE (thunk) = TREE_THIS_VOLATILE (csym);
-  TREE_NOTHROW (thunk) = TREE_NOTHROW (csym);
+  TREE_READONLY (thunk) = TREE_READONLY (decl->csym);
+  TREE_THIS_VOLATILE (thunk) = TREE_THIS_VOLATILE (decl->csym);
+  TREE_NOTHROW (thunk) = TREE_NOTHROW (decl->csym);
 
-  DECL_CONTEXT (thunk) = d_decl_context (this);
+  DECL_CONTEXT (thunk) = d_decl_context (decl);
 
   /* Thunks inherit the public access of the function they are targetting.  */
-  TREE_PUBLIC (thunk) = TREE_PUBLIC (csym);
+  TREE_PUBLIC (thunk) = TREE_PUBLIC (decl->csym);
   DECL_EXTERNAL (thunk) = 0;
 
   /* Thunks are always addressable.  */
@@ -736,13 +736,13 @@ FuncDeclaration::toThunkSymbol (int offset)
   DECL_ARTIFICIAL (thunk) = 1;
   DECL_DECLARED_INLINE_P (thunk) = 0;
 
-  DECL_VISIBILITY (thunk) = DECL_VISIBILITY (csym);
+  DECL_VISIBILITY (thunk) = DECL_VISIBILITY (decl->csym);
   /* Needed on some targets to avoid "causes a section type conflict".  */
-  D_DECL_ONE_ONLY (thunk) = D_DECL_ONE_ONLY (csym);
-  DECL_COMDAT (thunk) = DECL_COMDAT (csym);
-  DECL_WEAK (thunk) = DECL_WEAK (csym);
+  D_DECL_ONE_ONLY (thunk) = D_DECL_ONE_ONLY (decl->csym);
+  DECL_COMDAT (thunk) = DECL_COMDAT (decl->csym);
+  DECL_WEAK (thunk) = DECL_WEAK (decl->csym);
 
-  tree target_name = DECL_ASSEMBLER_NAME (csym);
+  tree target_name = DECL_ASSEMBLER_NAME (decl->csym);
   unsigned identlen = IDENTIFIER_LENGTH (target_name) + 14;
   const char *ident = XNEWVEC (const char, identlen);
   snprintf (CONST_CAST (char *, ident), identlen,
@@ -753,12 +753,12 @@ FuncDeclaration::toThunkSymbol (int offset)
 
   d_keep (thunk);
 
-  finish_thunk (thunk, csym, offset);
+  finish_thunk (thunk, decl->csym);
 
   /* Add it to the list of thunks associated with the function.  */
   DECL_LANG_THUNKS (thunk) = NULL_TREE;
-  DECL_CHAIN (thunk) = DECL_LANG_THUNKS (csym);
-  DECL_LANG_THUNKS (csym) = thunk;
+  DECL_CHAIN (thunk) = DECL_LANG_THUNKS (decl->csym);
+  DECL_LANG_THUNKS (decl->csym) = thunk;
 
   return thunk;
 }

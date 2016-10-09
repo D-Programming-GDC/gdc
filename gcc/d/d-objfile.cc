@@ -489,7 +489,7 @@ Lhaspointers:
 	  gcc_assert (j < b->vtbl.dim);
 	  FuncDeclaration *fd = b->vtbl[j];
 	  if (fd)
-	    dt_cons (&dt, build_address (fd->toThunkSymbol (b->offset)));
+	    dt_cons (&dt, build_address (make_thunk (fd, b->offset)));
 	  else
 	    dt_cons (&dt, null_pointer_node);
 	}
@@ -521,7 +521,7 @@ Lhaspointers:
 		  gcc_assert (j < bvtbl.dim);
 		  FuncDeclaration *fd = bvtbl[j];
 		  if (fd)
-		    dt_cons (&dt, build_address (fd->toThunkSymbol (bs->offset)));
+		    dt_cons (&dt, build_address (make_thunk (fd, bs->offset)));
 		  else
 		    dt_cons (&dt, null_pointer_node);
 		}
