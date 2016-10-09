@@ -36,7 +36,6 @@ class Type;
 class TypeFunction;
 class Dsymbol;
 struct FuncFrameInfo;
-struct Thunk;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
@@ -209,8 +208,13 @@ struct GTY(()) lang_decl
   // RESULT_DECL in a function that returns by nrvo.
   tree named_result;
 
+  // Chain of DECL_LANG_THUNKS in a function.
+  tree thunks;
+
+  // In a FUNCTION_DECL, this is the THUNK_LANG_OFFSET.
+  int offset;
+
   // For FuncDeclarations:
-  auto_vec<Thunk *> GTY((skip)) thunks;
   FuncFrameInfo * GTY((skip)) frame_info;
 };
 
@@ -241,6 +245,9 @@ struct GTY(()) lang_decl
 
 #define DECL_LANG_THUNKS(NODE) \
   DECL_LANG_SPECIFIC (NODE)->thunks
+
+#define THUNK_LANG_OFFSET(NODE) \
+  DECL_LANG_SPECIFIC (NODE)->offset
 
 #define DECL_LANG_FRAMEINFO(NODE) \
   DECL_LANG_SPECIFIC (NODE)->frame_info
@@ -393,6 +400,7 @@ extern void add_import_paths (const char *, const char *, bool);
 extern Module *d_gcc_get_output_module (void);
 extern struct lang_type *build_lang_type (Type *);
 extern struct lang_decl *build_lang_decl (Declaration *);
+extern struct lang_decl *copy_lang_decl (tree t);
 extern tree d_pushdecl (tree);
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);

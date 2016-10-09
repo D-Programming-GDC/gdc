@@ -701,78 +701,66 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
 tree
 FuncDeclaration::toThunkSymbol (int offset)
 {
-  Thunk *thunk;
-
   toSymbol();
   toObjFile();
 
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there
      is a list of all thunks for a given function. */
-  bool found = false;
+  tree thunk;
 
-  for (size_t i = 0; i < DECL_LANG_THUNKS (csym).length(); i++)
+  for (thunk = DECL_LANG_THUNKS (csym); thunk; thunk = DECL_CHAIN (thunk))
     {
-      thunk = DECL_LANG_THUNKS (csym)[i];
-      if (thunk->offset == offset)
-	{
-	  found = true;
-	  break;
-	}
+      if (THUNK_LANG_OFFSET (thunk) == offset)
+	return thunk;
     }
 
-  if (!found)
-    {
-      thunk = new Thunk();
-      thunk->offset = offset;
-      DECL_LANG_THUNKS (csym).safe_push (thunk);
-    }
+  thunk = build_decl (DECL_SOURCE_LOCATION (csym),
+		      FUNCTION_DECL, NULL_TREE, TREE_TYPE (csym));
+  DECL_LANG_SPECIFIC (thunk) = copy_lang_decl (csym);
+  THUNK_LANG_OFFSET (thunk) = offset;
 
-  if (!thunk->symbol)
-    {
-      tree thunk_decl = build_decl (DECL_SOURCE_LOCATION (csym),
-				    FUNCTION_DECL, NULL_TREE, TREE_TYPE (csym));
-      DECL_LANG_SPECIFIC (thunk_decl) = DECL_LANG_SPECIFIC (csym);
+  TREE_READONLY (thunk) = TREE_READONLY (csym);
+  TREE_THIS_VOLATILE (thunk) = TREE_THIS_VOLATILE (csym);
+  TREE_NOTHROW (thunk) = TREE_NOTHROW (csym);
 
-      TREE_READONLY (thunk_decl) = TREE_READONLY (csym);
-      TREE_THIS_VOLATILE (thunk_decl) = TREE_THIS_VOLATILE (csym);
-      TREE_NOTHROW (thunk_decl) = TREE_NOTHROW (csym);
+  DECL_CONTEXT (thunk) = d_decl_context (this);
 
-      DECL_CONTEXT (thunk_decl) = d_decl_context (this);
+  /* Thunks inherit the public access of the function they are targetting.  */
+  TREE_PUBLIC (thunk) = TREE_PUBLIC (csym);
+  DECL_EXTERNAL (thunk) = 0;
 
-      /* Thunks inherit the public access of the function they are targetting.  */
-      TREE_PUBLIC (thunk_decl) = TREE_PUBLIC (csym);
-      DECL_EXTERNAL (thunk_decl) = 0;
+  /* Thunks are always addressable.  */
+  TREE_ADDRESSABLE (thunk) = 1;
+  TREE_USED (thunk) = 1;
+  DECL_ARTIFICIAL (thunk) = 1;
+  DECL_DECLARED_INLINE_P (thunk) = 0;
 
-      /* Thunks are always addressable.  */
-      TREE_ADDRESSABLE (thunk_decl) = 1;
-      TREE_USED (thunk_decl) = 1;
-      DECL_ARTIFICIAL (thunk_decl) = 1;
-      DECL_DECLARED_INLINE_P (thunk_decl) = 0;
+  DECL_VISIBILITY (thunk) = DECL_VISIBILITY (csym);
+  /* Needed on some targets to avoid "causes a section type conflict".  */
+  D_DECL_ONE_ONLY (thunk) = D_DECL_ONE_ONLY (csym);
+  DECL_COMDAT (thunk) = DECL_COMDAT (csym);
+  DECL_WEAK (thunk) = DECL_WEAK (csym);
 
-      DECL_VISIBILITY (thunk_decl) = DECL_VISIBILITY (csym);
-      /* Needed on some targets to avoid "causes a section type conflict".  */
-      D_DECL_ONE_ONLY (thunk_decl) = D_DECL_ONE_ONLY (csym);
-      DECL_COMDAT (thunk_decl) = DECL_COMDAT (csym);
-      DECL_WEAK (thunk_decl) = DECL_WEAK (csym);
+  tree target_name = DECL_ASSEMBLER_NAME (csym);
+  unsigned identlen = IDENTIFIER_LENGTH (target_name) + 14;
+  const char *ident = XNEWVEC (const char, identlen);
+  snprintf (CONST_CAST (char *, ident), identlen,
+	    "_DT%u%s", offset, IDENTIFIER_POINTER (target_name));
 
-      tree target_name = DECL_ASSEMBLER_NAME (csym);
-      unsigned identlen = IDENTIFIER_LENGTH (target_name) + 14;
-      const char *ident = XNEWVEC (const char, identlen);
-      snprintf (CONST_CAST (char *, ident), identlen,
-		"_DT%u%s", offset, IDENTIFIER_POINTER (target_name));
+  DECL_NAME (thunk) = get_identifier (ident);
+  SET_DECL_ASSEMBLER_NAME (thunk, DECL_NAME (thunk));
 
-      DECL_NAME (thunk_decl) = get_identifier (ident);
-      SET_DECL_ASSEMBLER_NAME (thunk_decl, DECL_NAME (thunk_decl));
+  d_keep (thunk);
 
-      d_keep (thunk_decl);
+  finish_thunk (thunk, csym, offset);
 
-      finish_thunk (thunk_decl, csym, offset);
+  /* Add it to the list of thunks associated with the function.  */
+  DECL_LANG_THUNKS (thunk) = NULL_TREE;
+  DECL_CHAIN (thunk) = DECL_LANG_THUNKS (csym);
+  DECL_LANG_THUNKS (csym) = thunk;
 
-      thunk->symbol = thunk_decl;
-    }
-
-  return thunk->symbol;
+  return thunk;
 }
 
 /* Get the VAR_DECL of the ModuleInfo for DECL.  If this does not yet exist,

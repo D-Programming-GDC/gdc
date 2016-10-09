@@ -35,17 +35,7 @@ enum ModuleInfoFlags
 };
 
 struct FuncFrameInfo;
-struct Thunk;
 typedef tree_node dt_t;
-
-struct Thunk
-{
-  Thunk()
-  { offset = 0; symbol = NULL; }
-
-  int offset;
-  tree symbol;
-};
 
 extern dt_t **dt_cons (dt_t **pdt, tree val);
 extern dt_t **dt_chainon (dt_t **pdt, dt_t *val);

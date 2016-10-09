@@ -1564,6 +1564,15 @@ build_lang_decl (Declaration *d)
   return ld;
 }
 
+struct lang_decl *
+copy_lang_decl (tree t)
+{
+  struct lang_decl *ld = ggc_alloc<struct lang_decl>();
+  memcpy (ld, DECL_LANG_SPECIFIC (t), sizeof (struct lang_decl));
+  return ld;
+}
+
+
 
 // This preserves trees we create from the garbage collector.
 static GTY(()) tree d_keep_list = NULL_TREE;
