@@ -600,6 +600,7 @@ make_alias_for_thunk (tree function)
   return alias;
 }
 
+// Emit the definition of a D vtable thunk.
 
 static void
 finish_thunk (tree thunk_decl, tree target_decl, int offset)
@@ -680,6 +681,10 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
      on many targets, instead force thunk to be expanded in gimple.  */
   if (DECL_EXTERNAL (target_decl))
     {
+      /* cgraph::expand_thunk writes over current_function_decl, so if this
+	 could ever be in use by the codegen pass, we want to know about it.  */
+      gcc_assert(current_function_decl == NULL_TREE);
+
       if (!stdarg_p (TREE_TYPE (thunk_decl)))
 	{
 	  /* Put generic thunk into COMDAT.  */
@@ -688,49 +693,6 @@ finish_thunk (tree thunk_decl, tree target_decl, int offset)
 	  thunk_node->expand_thunk (false, true);
 	}
     }
-}
-
-// Can't output thunks while a function is being compiled.
-
-struct DeferredThunk
-{
-  tree decl;
-  tree target;
-  int offset;
-};
-
-static vec<DeferredThunk *> deferred_thunks;
-
-// Process all deferred thunks in list DEFERRED_THUNKS.
-
-void
-write_deferred_thunks()
-{
-  for (size_t i = 0; i < deferred_thunks.length(); i++)
-    {
-      DeferredThunk *t = deferred_thunks[i];
-      finish_thunk (t->decl, t->target, t->offset);
-    }
-
-  deferred_thunks.truncate (0);
-}
-
-// Emit the definition of a D vtable thunk.  If a function
-// is still being compiled, defer emitting.
-
-static void
-use_thunk (tree thunk_decl, tree target_decl, int offset)
-{
-  if (current_function_decl)
-    {
-      DeferredThunk *t = new DeferredThunk;
-      t->decl = thunk_decl;
-      t->target = target_decl;
-      t->offset = offset;
-      deferred_thunks.safe_push (t);
-    }
-  else
-    finish_thunk (thunk_decl, target_decl, offset);
 }
 
 // Create the thunk symbol functions.
@@ -805,7 +767,7 @@ FuncDeclaration::toThunkSymbol (int offset)
 
       d_keep (thunk_decl);
 
-      use_thunk (thunk_decl, csym, offset);
+      finish_thunk (thunk_decl, csym, offset);
 
       thunk->symbol = thunk_decl;
     }

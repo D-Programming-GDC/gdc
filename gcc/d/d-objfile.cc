@@ -1481,9 +1481,6 @@ Module::genobjfile(bool)
       genmoduleinfo();
     }
 
-  // Finish off any thunks deferred during compilation.
-  write_deferred_thunks();
-
   current_module_info = NULL;
   current_module_decl = NULL;
 }

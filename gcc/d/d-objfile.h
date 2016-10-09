@@ -93,7 +93,5 @@ extern void build_type_decl (tree t, Dsymbol *dsym);
 extern Modules output_modules;
 extern bool output_module_p (Module *mod);
 
-extern void write_deferred_thunks();
-
 #endif
 
