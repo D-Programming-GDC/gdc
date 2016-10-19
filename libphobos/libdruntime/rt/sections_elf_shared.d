@@ -686,7 +686,8 @@ void scanSegments(in ref dl_phdr_info info, DSO* pdso)
             if (phdr.p_flags & PF_W) // writeable data segment
             {
                 auto beg = cast(void*)(info.dlpi_addr + phdr.p_vaddr);
-                pdso._gcRanges.insertBack(beg[0 .. phdr.p_memsz]);
+                auto offset = (cast(size_t)beg) % size_t.sizeof;
+                pdso._gcRanges.insertBack(beg[offset .. phdr.p_memsz]);
             }
             version (Shared) if (phdr.p_flags & PF_X) // code segment
             {
