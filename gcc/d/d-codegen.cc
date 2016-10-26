@@ -2315,14 +2315,14 @@ build_assign(tree_code code, tree lhs, tree rhs)
   tree init = stabilize_expr(&lhs);
   init = compound_expr(init, stabilize_expr(&rhs));
 
-  // The LHS assignment is replaces the temporary in TARGET_EXPR_SLOT.
+  // The LHS assignment replaces the temporary in TARGET_EXPR_SLOT.
   if (TREE_CODE (rhs) == TARGET_EXPR)
     {
       // If CODE is not INIT_EXPR, can't initialize LHS directly,
       // since that would cause the LHS to be constructed twice.
       // So we force the TARGET_EXPR to be expanded without a target.
       if (code != INIT_EXPR)
-	rhs = compound_expr(rhs, TREE_OPERAND (rhs, 0));
+	rhs = compound_expr(rhs, TARGET_EXPR_SLOT (rhs));
       else
 	rhs = TARGET_EXPR_INITIAL (rhs);
     }
@@ -2437,8 +2437,8 @@ compound_expr(tree arg0, tree arg1)
       // If the rhs is a TARGET_EXPR, then build the compound expression
       // inside the target_expr's initializer.  This helps the compiler
       // to eliminate unnecessary temporaries.
-      tree init = compound_expr(arg0, TREE_OPERAND (arg1, 1));
-      TREE_OPERAND (arg1, 1) = init;
+      tree init = compound_expr(arg0, TARGET_EXPR_INITIAL (arg1));
+      TARGET_EXPR_INITIAL (arg1) = init;
 
       return arg1;
     }
@@ -3079,9 +3079,11 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
   tree result = d_build_call_list(TREE_TYPE (ctype), callee, arg_list);
   result = expand_intrinsic(result);
 
+  // Return the value in a temporary slot so that it can be evaluated
+  // multiple times by the caller.
   if (TREE_CODE (result) == CALL_EXPR
       && AGGREGATE_TYPE_P (TREE_TYPE (result))
-      && aggregate_value_p(TREE_TYPE (result), result))
+      && TREE_ADDRESSABLE (TREE_TYPE (result)))
     {
       CALL_EXPR_RETURN_SLOT_OPT (result) = true;
       result = build_target_expr(result);

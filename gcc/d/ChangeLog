@@ -1,3 +1,10 @@
+2016-10-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_build_call): Only convert CALL_EXPRs into a
+	TARGET_EXPR if return type is TREE_ADDRESSABLE.
+	(build_assign): Use TARGET_EXPR accessors.
+	(compound_expr): Likewise.
+
 2016-10-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.h (d_types_same): Return early if types are identical.
