@@ -1,3 +1,9 @@
+2016-10-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(AssignExp)): Don't set TREE_ADDRESSABLE.
+	* d-codegen.cc (build_assign): Handle setting up INIT_EXPR from a
+	value returning via NRVO here instead.
+
 2016-10-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (d_build_call): Only convert CALL_EXPRs into a

@@ -2315,6 +2315,17 @@ build_assign(tree_code code, tree lhs, tree rhs)
   tree init = stabilize_expr(&lhs);
   init = compound_expr(init, stabilize_expr(&rhs));
 
+  // If initializing the LHS using a function that returns via NRVO.
+  if (code == INIT_EXPR && TREE_CODE (rhs) == CALL_EXPR
+      && AGGREGATE_TYPE_P (TREE_TYPE (rhs))
+      && aggregate_value_p (TREE_TYPE (rhs), rhs))
+    {
+      // Mark as addressable here, which should ensure the return slot is the
+      // address of the LHS expression, taken care of by back-end.
+      d_mark_addressable (lhs);
+      CALL_EXPR_RETURN_SLOT_OPT (rhs) = true;
+    }
+
   // The LHS assignment replaces the temporary in TARGET_EXPR_SLOT.
   if (TREE_CODE (rhs) == TARGET_EXPR)
     {
@@ -2324,7 +2335,10 @@ build_assign(tree_code code, tree lhs, tree rhs)
       if (code != INIT_EXPR)
 	rhs = compound_expr(rhs, TARGET_EXPR_SLOT (rhs));
       else
-	rhs = TARGET_EXPR_INITIAL (rhs);
+	{
+	  d_mark_addressable (lhs);
+	  rhs = TARGET_EXPR_INITIAL (rhs);
+	}
     }
 
   tree result = fold_build2_loc(input_location, code,
