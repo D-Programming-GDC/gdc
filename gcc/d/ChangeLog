@@ -1,5 +1,34 @@
 2016-10-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-decls.cc (ClassReferenceExp::toSymbol): Use class record type for
+	static symbol.
+	* d-lang.cc (global_context): New static variable.
+	(global_declarations): New static variable.
+	(d_nametype): Pass built-in types to debug_hooks::type_decl.
+	(d_add_global_declaration): Remove function, update all callers.
+	(get_global_context): New function.
+	(d_pushdecl): Push decls to global, or bindings list here.
+	(StructDeclaration::toObjFile): Send type decl to d_pushdecl.
+	(ClassDeclaration::toObjFile): Likewise.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	(EnumDeclaration::toObjFile): Likewise.
+	(FuncDeclaration::toObjFile): Send finished decl to d_pushdecl.
+	(d_finish_symbol): Likewise.
+	(emit_modref_hooks): Likewise.
+	(d_comdat_linkage): Don't set DECL_COMDAT on non-public decls.
+	(setup_symbol_storage): Don't set DECL_ABSTRACT_P on templates.
+	(d_finish_compilation): Remove check for type decls.
+	(build_type_decl): Don't add to global decl list, just call
+	rest_of_decl_compilation.
+	* expr.cc (ExprVisitor::visit(ArrayLiteralExp)): Send finished decl to
+	d_pushdecl.
+	* toir.cc (IRVisitor::visit(SwitchStatement)): Likewise.
+	(IRVisitor::end_scope): Mark bind expr as having side effects.
+	* typeinfo.cc (TypeInfoVisitor::visit(TypeInfoTupleDeclaration)): Send
+	finished decl to d_pushdecl.
+
+2016-10-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.cc (layout_aggregate_type): Continue searching based on
 	aggregate members, not just fields.
 	* types.cc (TypeVisitor::visit(TypeEnum)): Use void for opaque enums.
