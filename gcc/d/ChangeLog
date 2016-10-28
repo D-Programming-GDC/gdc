@@ -1,3 +1,10 @@
+2016-10-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (layout_aggregate_type): Continue searching based on
+	aggregate members, not just fields.
+	* types.cc (TypeVisitor::visit(TypeEnum)): Use void for opaque enums.
+	(TypeVisitor::visit(TypeStruct)): Don't give opaque structs a size.
+
 2016-10-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(AssignExp)): Don't set TREE_ADDRESSABLE.
