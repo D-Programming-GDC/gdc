@@ -985,9 +985,6 @@ public:
 	tree t2 = convert_for_assignment(build_expr(e->e2),
 					 e->e2->type, e->e1->type);
 
-	if (e->op == TOKconstruct && e->e2->op == TOKcall)
-	  d_mark_addressable(t1);
-
 	if (e->e2->op == TOKint64)
 	  {
 	    // Use memset to fill struct.
@@ -1039,9 +1036,6 @@ public:
 	    tree t1 = build_expr(e->e1);
 	    tree t2 = convert_for_assignment(build_expr(e->e2),
 					     e->e2->type, e->e1->type);
-
-	    if (e->op == TOKconstruct && e->e2->op == TOKcall)
-	      d_mark_addressable(t1);
 
 	    this->result_ = build_assign(modifycode, t1, t2);
 	  }
