@@ -199,9 +199,15 @@ extern bool empty_aggregate_p(tree type);
 inline bool
 d_types_same (Type *t1, Type *t2)
 {
-  Type *tb1 = t1->toBasetype()->immutableOf();
-  Type *tb2 = t2->toBasetype()->immutableOf();
-  return tb1->equals (tb2);
+  if (t1 == t2)
+    return true;
+
+  Type *tb1 = t1->toBasetype();
+  Type *tb2 = t2->toBasetype();
+  if (tb1 == tb2)
+    return true;
+
+  return tb1->immutableOf ()->equals (tb2->immutableOf ());
 }
 
 // Returns D frontend type 'Object' which all classes are derived from.
