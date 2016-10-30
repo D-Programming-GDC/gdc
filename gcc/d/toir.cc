@@ -77,8 +77,10 @@ public:
     if (! BLOCK_VARS (block))
       return body;
 
-    return build3(BIND_EXPR, void_type_node,
-		  BLOCK_VARS (block), body, block);
+    tree bind = build3(BIND_EXPR, void_type_node,
+		       BLOCK_VARS (block), body, block);
+    TREE_SIDE_EFFECTS (bind) = 1;
+    return bind;
   }
 
   // Like end_scope, but also push it into the outer statement-tree.
@@ -445,6 +447,7 @@ public:
 	tree ctor = build_constructor(build_ctype(satype), elms);
 	tree decl = build_artificial_decl(TREE_TYPE (ctor), ctor);
 	TREE_READONLY (decl) = 1;
+	d_pushdecl(decl);
 	rest_of_decl_compilation(decl, 1, 0);
 
 	tree args[2];
