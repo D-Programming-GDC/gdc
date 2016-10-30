@@ -137,6 +137,12 @@ static bool std_inc = true;
 struct binding_level *current_binding_level;
 struct binding_level *global_binding_level;
 
+/* The context to be used for global declarations.  */
+static GTY(()) tree global_context;
+
+/* Array of all global declarations to pass back to the middle-end.  */
+static GTY(()) vec<tree, va_gc> *global_declarations;
+
 /* Common initialization before calling option handlers.  */
 static void
 d_init_options(unsigned int, cl_decoded_option *decoded_options)
@@ -773,7 +779,7 @@ d_nametype (Type *t)
   tree ident = get_identifier (t->toChars());
   tree decl = build_decl (BUILTINS_LOCATION, TYPE_DECL, ident, type);
   TYPE_NAME (type) = decl;
-  rest_of_decl_compilation (decl, 1, 0);
+  debug_hooks->type_decl (decl, 0);
 }
 
 // Generate C main() in response to seeing D main().
@@ -875,20 +881,11 @@ deps_write (Module *m)
   ob->writenl();
 }
 
-// Array of all global declarations to pass back to the middle-end.
-static GTY(()) vec<tree, va_gc> *global_declarations;
-
-void
-d_add_global_declaration(tree decl)
-{
-  vec_safe_push(global_declarations, decl);
-}
-
 // Write out globals.
 static void
 d_write_global_declarations()
 {
-  if (vec_safe_length (global_declarations) != 0)
+  if (vec_safe_length(global_declarations) != 0)
     {
       d_finish_compilation (global_declarations->address(),
 			    global_declarations->length());
@@ -1401,17 +1398,47 @@ d_global_bindings_p()
   return !global_binding_level;
 }
 
+/* Return global_context, but create it first if need be.  */
+
+static tree
+get_global_context (void)
+{
+  if (!global_context)
+    {
+      global_context = build_translation_unit_decl (NULL_TREE);
+      debug_hooks->register_main_translation_unit (global_context);
+    }
+
+  return global_context;
+}
+
+/* Record DECL as belonging to the current lexical scope.  */
+
 tree
 d_pushdecl (tree decl)
 {
-  // Should only be for variables OR, should also use TRANSLATION_UNIT for toplevel...
-  // current_function_decl could be NULL_TREE (top level)...
-  if (DECL_CONTEXT (decl) == NULL_TREE)
-    DECL_CONTEXT (decl) = current_function_decl;
+  /* Set the context of the decl.  If current_function_decl did not help in
+     determining the context, use global scope.  */
+  if (!DECL_CONTEXT (decl))
+    {
+      if (current_function_decl)
+	DECL_CONTEXT (decl) = current_function_decl;
+      else
+	DECL_CONTEXT (decl) = get_global_context ();
+    }
 
-  // Put decls on list in reverse order.
-  TREE_CHAIN (decl) = current_binding_level->names;
-  current_binding_level->names = decl;
+  /* If template is not needed, don't send it to backend.  */
+  if (D_DECL_IS_TEMPLATE (decl) && !flag_emit_templates)
+    return decl;
+
+  /* Put decls on list in reverse order.  */
+  if (TREE_STATIC (decl) || d_global_bindings_p ())
+    vec_safe_push(global_declarations, decl);
+  else
+    {
+      TREE_CHAIN (decl) = current_binding_level->names;
+      current_binding_level->names = decl;
+    }
 
   return decl;
 }

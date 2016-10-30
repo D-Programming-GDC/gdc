@@ -507,11 +507,15 @@ public:
 	CONSTRUCTOR_APPEND_ELT (elms, size_int(i), build_address(s->Stree));
       }
     tree ctor = build_constructor(build_ctype(satype), elms);
+    tree decl = build_artificial_decl(TREE_TYPE (ctor), ctor);
 
     tree type = build_ctype(Type::tvoid->arrayOf());
     tree length = size_int(ti->arguments->dim);
-    tree ptr = build_address(build_artificial_decl(TREE_TYPE (ctor), ctor));
+    tree ptr = build_address(decl);
     this->set_field("elements", d_array_value(type, length, ptr));
+
+    d_pushdecl(decl);
+    rest_of_decl_compilation(decl, 1, 0);
   }
 };
 

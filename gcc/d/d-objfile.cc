@@ -222,6 +222,11 @@ StructDeclaration::toObjFile()
       return;
     }
 
+  /* Add this decl to the current binding level.  */
+  tree ctype = build_ctype(type);
+  if (TYPE_NAME (ctype))
+    d_pushdecl(TYPE_NAME (ctype));
+
   // Anonymous structs/unions only exist as part of others,
   // do not output forward referenced structs's
   if (isAnonymous() || !members)
@@ -588,6 +593,11 @@ Lhaspointers:
   vtblsym->Sdt = dt;
   vtblsym->Sreadonly = true;
   d_finish_symbol (vtblsym);
+
+  /* Add this decl to the current binding level.  */
+  tree ctype = TREE_TYPE (build_ctype(type));
+  if (TYPE_NAME (ctype))
+    d_pushdecl(TYPE_NAME (ctype));
 }
 
 // Get offset of base class's vtbl[] initialiser from start of csym.
@@ -755,6 +765,11 @@ InterfaceDeclaration::toObjFile()
   csym->Sdt = dt;
   csym->Sreadonly = true;
   d_finish_symbol (csym);
+
+  /* Add this decl to the current binding level.  */
+  tree ctype = TREE_TYPE (build_ctype(type));
+  if (TYPE_NAME (ctype))
+    d_pushdecl(TYPE_NAME (ctype));
 }
 
 void
@@ -782,6 +797,11 @@ EnumDeclaration::toObjFile()
       toInitializer();
       DECL_INITIAL (sinit->Stree) = build_expr(tc->sym->defaultval, true);
       d_finish_symbol (sinit);
+
+      /* Add this decl to the current binding level.  */
+      tree ctype = build_ctype(type);
+      if (TREE_CODE (ctype) == ENUMERAL_TYPE && TYPE_NAME (ctype))
+	d_pushdecl(TYPE_NAME (ctype));
     }
 
   semanticRun = PASSobj;
@@ -1182,6 +1202,9 @@ FuncDeclaration::toObjFile()
       rest_of_decl_compilation (fndecl, 1, 0);
       return;
     }
+
+  /* Add this decl to the current binding level.  */
+  d_pushdecl(fndecl);
 
   // Start generating code for this function.
   gcc_assert(this->semanticRun == PASSsemantic3done);
@@ -1677,7 +1700,8 @@ d_comdat_linkage(tree decl)
     // Fallback, cannot have multiple copies.
     DECL_COMMON (decl) = 1;
 
-  DECL_COMDAT (decl) = 1;
+  if (TREE_PUBLIC (decl))
+    DECL_COMDAT (decl) = 1;
 }
 
 
@@ -1723,7 +1747,6 @@ setup_symbol_storage(Dsymbol *dsym, tree decl, bool public_p)
 	{
 	  D_DECL_ONE_ONLY (decl) = 1;
 	  D_DECL_IS_TEMPLATE (decl) = 1;
-	  DECL_ABSTRACT_P (decl) = !flag_emit_templates;
 	}
 
       VarDeclaration *vd = rd ? rd->isVarDeclaration() : NULL;
@@ -1857,8 +1880,6 @@ d_finish_symbol (Symbol *sym)
       DECL_USER_ALIGN (decl) = 1;
     }
 
-  d_add_global_declaration (decl);
-
   // %% FIXME: DECL_COMMON so the symbol goes in .tcommon
   if (DECL_THREAD_LOCAL_P (decl)
       && DECL_ASSEMBLER_NAME (decl) == get_identifier ("_tlsend"))
@@ -1866,6 +1887,9 @@ d_finish_symbol (Symbol *sym)
       DECL_INITIAL (decl) = NULL_TREE;
       DECL_COMMON (decl) = 1;
     }
+
+  /* Add this decl to the current binding level.  */
+  d_pushdecl (decl);
 
   rest_of_decl_compilation (decl, 1, 0);
 }
@@ -1877,10 +1901,6 @@ d_finish_function(FuncDeclaration *fd)
   tree decl = s->Stree;
 
   gcc_assert(TREE_CODE (decl) == FUNCTION_DECL);
-
-  // If function is not needed, don't send it to backend.
-  if (DECL_ABSTRACT_P (decl))
-    return;
 
   // If we generated the function, but it's really extern.
   // Such as external inlinable functions or thunk aliases.
@@ -1910,7 +1930,6 @@ d_finish_function(FuncDeclaration *fd)
 	static_dtor_list.safe_push(fd);
     }
 
-  d_add_global_declaration(decl);
   cgraph_node::finalize_function(decl, true);
 }
 
@@ -1933,11 +1952,6 @@ d_finish_compilation(tree *vec, int len)
       if ((VAR_P (decl) && TREE_STATIC (decl))
 	  || TREE_CODE (decl) == FUNCTION_DECL)
 	mark_needed(decl);
-      else if (TREE_CODE (decl) == TYPE_DECL)
-	{
-	  bool toplevel = !DECL_CONTEXT (decl);
-	  rest_of_decl_compilation(decl, toplevel, 0);
-	}
     }
 
   // We're done parsing; proceed to optimize and emit assembly.
@@ -1974,7 +1988,6 @@ build_artificial_decl(tree type, tree init, const char *prefix)
   DECL_ARTIFICIAL (decl) = 1;
 
   DECL_INITIAL (decl) = init;
-  d_add_global_declaration(decl);
 
   return decl;
 }
@@ -1991,6 +2004,7 @@ build_type_decl (tree type, Dsymbol *dsym)
 
   tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL,
 			 get_identifier(dsym->ident->string), type);
+  DECL_ARTIFICIAL (decl) = 1;
 
   DECL_CONTEXT (decl) = d_decl_context(dsym);
   set_decl_location(decl, dsym);
@@ -1998,16 +2012,12 @@ build_type_decl (tree type, Dsymbol *dsym)
   TYPE_CONTEXT (type) = DECL_CONTEXT (decl);
   TYPE_NAME (type) = decl;
 
-  if (TREE_CODE (type) == ENUMERAL_TYPE || TREE_CODE (type) == RECORD_TYPE
-      || TREE_CODE (type) == UNION_TYPE)
-    {
-      /* Not sure if there is a need for separate TYPE_DECLs in
-	 TYPE_NAME and TYPE_STUB_DECL. */
-      TYPE_STUB_DECL (type) = decl;
-      DECL_ARTIFICIAL (decl) = 1;
-    }
+  /* Not sure if there is a need for separate TYPE_DECLs in
+     TYPE_NAME and TYPE_STUB_DECL. */
+  if (TREE_CODE (type) == ENUMERAL_TYPE || RECORD_OR_UNION_TYPE_P (type))
+    TYPE_STUB_DECL (type) = decl;
 
-  d_add_global_declaration(decl);
+  rest_of_decl_compilation(decl, SCOPE_FILE_SCOPE_P (decl), 0);
 }
 
 // Can't output thunks while a function is being compiled.
@@ -2609,6 +2619,7 @@ emit_modref_hooks(Symbol *sym, Dsymbol *mref)
 
   DECL_INITIAL (modref) = build_constructor (tmodref, ce);
   TREE_STATIC (DECL_INITIAL (modref)) = 1;
+  d_pushdecl (modref);
   rest_of_decl_compilation (modref, 1, 0);
 
   // Generate:
