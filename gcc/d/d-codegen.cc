@@ -4600,11 +4600,11 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
       AttribDeclaration *attrib = sym->isAttribDeclaration();
       if (attrib != NULL)
 	{
-	  Dsymbols *decl = attrib->include(NULL, NULL);
+	  Dsymbols *decls = attrib->include(NULL, NULL);
 
-	  if (decl != NULL)
+	  if (decls != NULL)
 	    {
-	      fields += layout_aggregate_members(decl, context, inherited_p);
+	      fields += layout_aggregate_members(decls, context, inherited_p);
 	      continue;
 	    }
 	}
@@ -4663,7 +4663,7 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	}
     }
 
-  if (base->fields.dim)
+  if (base->members)
     {
       size_t fields = layout_aggregate_members(base->members, type, inherited_p);
       gcc_assert(fields == base->fields.dim);

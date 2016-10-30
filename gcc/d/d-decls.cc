@@ -648,7 +648,8 @@ ClassReferenceExp::toSymbol()
       value->sym = new Symbol();
 
       // Build reference symbol.
-      tree decl = build_artificial_decl(unknown_type_node, NULL_TREE, "C");
+      tree ctype = build_ctype(value->stype);
+      tree decl = build_artificial_decl(TREE_TYPE (ctype), NULL_TREE, "C");
       set_decl_location(decl, loc);
 
       value->sym->Stree = decl;
