@@ -196,25 +196,6 @@ These official OS versions are not implemented:
  #define GNU_USER_DYNAMIC_LINKER        GLIBC_DYNAMIC_LINKER
  #define GNU_USER_DYNAMIC_LINKER32      GLIBC_DYNAMIC_LINKER32
  #define GNU_USER_DYNAMIC_LINKER64      GLIBC_DYNAMIC_LINKER64
---- a/gcc/config/knetbsd-gnu.h
-+++ b/gcc/config/knetbsd-gnu.h
-@@ -30,6 +30,16 @@ along with GCC; see the file COPYING3.  If not see
-     }						\
-   while (0)
- 
-+#undef TARGET_OS_D_BUILTINS
-+#define TARGET_OS_D_BUILTINS()			\
-+  do						\
-+    {						\
-+      builtin_define ("NetBSD");		\
-+      builtin_define ("Posix");			\
-+      builtin_define ("GNU_GLibc");		\
-+    }						\
-+  while (0)
-+
- 
- #undef GNU_USER_DYNAMIC_LINKER
- #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
 --- a/gcc/config/kopensolaris-gnu.h
 +++ b/gcc/config/kopensolaris-gnu.h
 @@ -30,5 +30,15 @@ along with GCC; see the file COPYING3.  If not see
