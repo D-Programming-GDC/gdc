@@ -28,6 +28,7 @@
 #include "dfrontend/ctfe.h"
 
 #include "d-system.h"
+
 #include "d-tree.h"
 #include "d-codegen.h"
 #include "d-objfile.h"
@@ -2486,10 +2487,13 @@ public:
 	// static symbol, and then refer to it.
 	if (tb->ty != Tsarray)
 	  {
-	    ctor = build_artificial_decl(TREE_TYPE (ctor), ctor, "A");
-	    ctor = build_address(ctor);
+	    tree decl = build_artificial_decl(TREE_TYPE (ctor), ctor, "A");
+	    ctor = build_address(decl);
 	    if (tb->ty == Tarray)
 	      ctor = d_array_value(type, size_int(e->elements->dim), ctor);
+
+	    d_pushdecl(decl);
+	    rest_of_decl_compilation(decl, 1, 0);
 	  }
 
 	// If the array literal is readonly or static.

@@ -322,7 +322,6 @@ extern tree build_return_dtor (Expression *, Type *, TypeFunction *);
 extern void add_import_paths (const char *, const char *, bool);
 
 // In d-lang.cc.
-extern void d_add_global_declaration (tree);
 extern Module *d_gcc_get_output_module (void);
 extern struct lang_type *build_lang_type (Type *);
 extern struct lang_decl *build_lang_decl (Declaration *);

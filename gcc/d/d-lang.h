@@ -26,4 +26,6 @@ extern GTY(()) tree d_eh_personality_decl;
 
 // Array of all global declarations to pass back to the middle-end.
 extern GTY(()) vec<tree, va_gc> *global_declarations;
+
+extern GTY(()) tree global_context;
 #endif
