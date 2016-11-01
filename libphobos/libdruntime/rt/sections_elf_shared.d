@@ -622,7 +622,7 @@ nothrow:
         {
             if (phdr.p_type == PT_DYNAMIC)
             {
-                auto p = cast(ElfW!"Dyn"*)(info.dlpi_addr + phdr.p_vaddr);
+                auto p = cast(ElfW!"Dyn"*)(info.dlpi_addr + (phdr.p_vaddr & ~(size_t.sizeof - 1)));
                 dyns = p[0 .. phdr.p_memsz / ElfW!"Dyn".sizeof];
                 break;
             }
@@ -685,12 +685,12 @@ void scanSegments(in ref dl_phdr_info info, DSO* pdso)
         case PT_LOAD:
             if (phdr.p_flags & PF_W) // writeable data segment
             {
-                auto beg = cast(void*)(info.dlpi_addr + phdr.p_vaddr);
+                auto beg = cast(void*)(info.dlpi_addr + (phdr.p_vaddr & ~(size_t.sizeof - 1)));
                 pdso._gcRanges.insertBack(beg[0 .. phdr.p_memsz]);
             }
             version (Shared) if (phdr.p_flags & PF_X) // code segment
             {
-                auto beg = cast(void*)(info.dlpi_addr + phdr.p_vaddr);
+                auto beg = cast(void*)(info.dlpi_addr + (phdr.p_vaddr & ~(size_t.sizeof - 1)));
                 pdso._codeSegments.insertBack(beg[0 .. phdr.p_memsz]);
             }
             break;
@@ -754,7 +754,7 @@ bool findSegmentForAddr(in ref dl_phdr_info info, in void* addr, ElfW!"Phdr"* re
 
     foreach (ref phdr; info.dlpi_phdr[0 .. info.dlpi_phnum])
     {
-        auto beg = cast(void*)(info.dlpi_addr + phdr.p_vaddr);
+        auto beg = cast(void*)(info.dlpi_addr + (phdr.p_vaddr & ~(size_t.sizeof - 1)));
         if (cast(size_t)(addr - beg) < phdr.p_memsz)
         {
             if (result !is null) *result = phdr;
