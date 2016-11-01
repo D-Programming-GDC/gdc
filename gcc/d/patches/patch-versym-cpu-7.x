@@ -164,7 +164,7 @@ for all supported architectures. And these where appropriate:
  #endif
 --- a/gcc/config/mips/mips.h
 +++ b/gcc/config/mips/mips.h
-@@ -622,6 +622,54 @@ struct mips_cpu_info {
+@@ -640,6 +640,54 @@ struct mips_cpu_info {
      }									\
    while (0)
  
@@ -221,7 +221,7 @@ for all supported architectures. And these where appropriate:
  #ifndef TARGET_DEFAULT
 --- a/gcc/config/pa/pa.h
 +++ b/gcc/config/pa/pa.h
-@@ -185,6 +185,20 @@ do {								\
+@@ -179,6 +179,20 @@ do {								\
         builtin_define("_PA_RISC1_0");				\
  } while (0)
  
@@ -244,7 +244,7 @@ for all supported architectures. And these where appropriate:
    do								\
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -764,6 +764,28 @@ extern unsigned char rs6000_recip_bits[];
+@@ -814,6 +814,28 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  

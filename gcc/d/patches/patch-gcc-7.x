@@ -17,7 +17,7 @@ relevant documentation about the GDC front end.
  #define HAVE_ATEXIT
 --- a/gcc/config/i386/cygming.h
 +++ b/gcc/config/i386/cygming.h
-@@ -170,6 +170,10 @@ along with GCC; see the file COPYING3.  If not see
+@@ -181,6 +181,10 @@ along with GCC; see the file COPYING3.  If not see
  
  #undef MATH_LIBRARY
  #define MATH_LIBRARY ""
@@ -42,7 +42,7 @@ relevant documentation about the GDC front end.
 +#endif
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -27207,7 +27207,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -30199,7 +30199,8 @@ rs6000_output_function_epilogue (FILE *file,
        if (lang_GNU_C ()
  	  || ! strcmp (language_string, "GNU GIMPLE")
  	  || ! strcmp (language_string, "GNU Go")
@@ -73,7 +73,7 @@ relevant documentation about the GDC front end.
  current official meaning is ``GNU Compiler Collection'', which refers
 --- a/gcc/doc/install.texi
 +++ b/gcc/doc/install.texi
-@@ -1550,12 +1550,12 @@ their runtime libraries should be built.  For a list of valid values for
+@@ -1566,12 +1566,12 @@ their runtime libraries should be built.  For a list of valid values for
  grep ^language= */config-lang.in
  @end smallexample
  Currently, you can use any of the following:
@@ -90,7 +90,7 @@ relevant documentation about the GDC front end.
  
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1289,6 +1289,15 @@ called @dfn{specs}.
+@@ -1330,6 +1330,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -106,7 +106,7 @@ relevant documentation about the GDC front end.
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1324,6 +1333,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1365,6 +1374,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -128,7 +128,7 @@ relevant documentation about the GDC front end.
  
 --- a/gcc/doc/standards.texi
 +++ b/gcc/doc/standards.texi
-@@ -280,6 +280,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
+@@ -307,6 +307,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
  As of the GCC 4.7.1 release, GCC supports the Go 1 language standard,
  described at @uref{http://golang.org/doc/go1.html}.
  
@@ -147,7 +147,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
-@@ -4842,6 +4842,16 @@ is_ada (void)
+@@ -4807,6 +4807,16 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -164,7 +164,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  Return TRUE if removal
     was successful.  */
  
-@@ -21672,6 +21682,8 @@ gen_compile_unit_die (const char *filename)
+@@ -22110,6 +22120,8 @@ gen_compile_unit_die (const char *filename)
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -173,7 +173,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -23120,7 +23132,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -23585,7 +23597,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
  
    if (ns_context != context_die)
      {
@@ -182,7 +182,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, NULL, ns_context);
-@@ -23143,7 +23155,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -23608,7 +23620,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -191,7 +191,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -23210,7 +23222,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
+@@ -23675,7 +23687,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
        break;
  
      case CONST_DECL:
@@ -200,7 +200,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -23731,7 +23743,7 @@ dwarf2out_decl (tree decl)
+@@ -24220,7 +24232,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -211,7 +211,7 @@ relevant documentation about the GDC front end.
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
-@@ -1287,6 +1287,7 @@ static const struct compiler default_compilers[] =
+@@ -1303,6 +1303,7 @@ static const struct compiler default_compilers[] =
    {".java", "#Java", 0, 0, 0}, {".class", "#Java", 0, 0, 0},
    {".zip", "#Java", 0, 0, 0}, {".jar", "#Java", 0, 0, 0},
    {".go", "#Go", 0, 1, 0},
