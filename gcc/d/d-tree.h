@@ -198,8 +198,6 @@ struct GTY(()) lang_decl
 {
   Declaration * GTY((skip)) decl;
 
-  bool readonly;
-
   tree initial;
 
   // FIELD_DECL in frame struct that this variable is allocated in.
@@ -222,9 +220,6 @@ struct GTY(()) lang_decl
 #define DECL_LANG_FRONTEND(NODE) \
   (DECL_LANG_SPECIFIC (NODE) \
    ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
-
-#define DECL_LANG_READONLY(NODE) \
-  DECL_LANG_SPECIFIC (NODE)->readonly
 
 #define DECL_LANG_INITIAL(NODE) \
   DECL_LANG_SPECIFIC (NODE)->initial

@@ -1733,10 +1733,6 @@ d_finish_symbol (tree decl)
 
   gcc_assert (!error_operand_p (decl));
 
-  // If the symbol was marked as readonly in the frontend, set TREE_READONLY.
-  if (DECL_LANG_READONLY (decl))
-    TREE_READONLY (decl) = 1;
-
   // We are sending this symbol to object file, can't be extern.
   TREE_STATIC (decl) = 1;
   DECL_EXTERNAL (decl) = 0;

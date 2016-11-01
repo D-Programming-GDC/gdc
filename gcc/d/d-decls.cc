@@ -280,12 +280,7 @@ VarDeclaration::toSymbol()
       // called from a variable in an imported module.
       if ((isConst() || isImmutable()) && (storage_class & STCinit)
 	  && declaration_reference_p(this))
-	{
-	  if (!TREE_STATIC (csym))
-	    TREE_READONLY (csym) = 1;
-	  else
-	    DECL_LANG_READONLY (csym) = true;
-	}
+	TREE_READONLY (csym) = 1;
 
       // Propagate shared.
       if (TYPE_SHARED (TREE_TYPE (csym)))
