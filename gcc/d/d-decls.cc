@@ -38,6 +38,7 @@
 #include "target.h"
 #include "common/common-target.h"
 #include "cgraph.h"
+#include "toplev.h"
 #include "stringpool.h"
 #include "varasm.h"
 #include "stor-layout.h"
@@ -55,7 +56,7 @@
 tree
 make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
 {
-  const char *prefix = mangle(dsym);
+  const char *prefix = mangle (dsym);
   unsigned namelen = strlen (name);
   unsigned buflen = (2 + strlen (prefix) + namelen + strlen (suffix)) * 2;
   char *buf = (char *) alloca (buflen);
@@ -65,7 +66,7 @@ make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
 
   /* Symbol is not found in user code, but generate a readable name for it
      anyway for debug and diagnostic reporting.  */
-  snprintf (buf, buflen, "%s.%s", dsym->toPrettyChars(), name);
+  snprintf (buf, buflen, "%s.%s", dsym->toPrettyChars (), name);
   IDENTIFIER_PRETTY_NAME (ident) = get_identifier (buf);
 
   return ident;
@@ -342,7 +343,7 @@ public:
     DECL_EXTERNAL (tid->csym) = 1;
 
     /* Built-in typeinfo will be referenced as one-only.  */
-    gcc_assert (!tid->isInstantiated());
+    gcc_assert (!tid->isInstantiated ());
     d_comdat_linkage (tid->csym);
   }
 
@@ -628,7 +629,7 @@ finish_thunk (tree thunk, tree function)
       if (symbol != NULL && symbol->alias)
 	{
 	  if (symbol->analyzed)
-	    fn = symtab_node::get (function)->ultimate_alias_target()->decl;
+	    fn = symtab_node::get (function)->ultimate_alias_target ()->decl;
 	  else
 	    fn = symtab_node::get (function)->alias_target;
 	}
@@ -676,7 +677,7 @@ finish_thunk (tree thunk, tree function)
     {
       /* cgraph::expand_thunk writes over current_function_decl, so if this
 	 could ever be in use by the codegen pass, we want to know about it.  */
-      gcc_assert(current_function_decl == NULL_TREE);
+      gcc_assert (current_function_decl == NULL_TREE);
 
       if (!stdarg_p (TREE_TYPE (thunk)))
 	{
@@ -696,8 +697,8 @@ finish_thunk (tree thunk, tree function)
 tree
 make_thunk (FuncDeclaration *decl, int offset)
 {
-  decl->toSymbol();
-  decl->toObjFile();
+  decl->toSymbol ();
+  decl->toObjFile ();
 
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there
@@ -802,7 +803,7 @@ get_classinfo_decl (ClassDeclaration *decl)
   if (decl->csym)
     return decl->csym;
 
-  InterfaceDeclaration *id = decl->isInterfaceDeclaration();
+  InterfaceDeclaration *id = decl->isInterfaceDeclaration ();
   tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
 
   decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
@@ -898,15 +899,13 @@ build_new_class_expr (ClassReferenceExp *expr)
     return expr->value->sym;
 
   /* Build the reference symbol.  */
-  tree type = build_ctype(expr->value->stype);
-  expr->value->sym = build_artificial_decl(TREE_TYPE (type), NULL_TREE, "C");
-  set_decl_location(expr->value->sym, expr->loc);
+  tree type = build_ctype (expr->value->stype);
+  expr->value->sym = build_artificial_decl (TREE_TYPE (type), NULL_TREE, "C");
+  set_decl_location (expr->value->sym, expr->loc);
 
-  /* If we set DECL_INITIAL directly, wouldn't need to do this.  */
-  DECL_LANG_SPECIFIC (expr->value->sym) = build_lang_decl (NULL);
-  expr->toInstanceDt(&DECL_LANG_INITIAL (expr->value->sym));
-
-  d_finish_symbol(expr->value->sym);
+  DECL_INITIAL (expr->value->sym) = build_class_instance (expr);
+  d_pushdecl (expr->value->sym);
+  rest_of_decl_compilation (expr->value->sym, 1, 0);
 
   return expr->value->sym;
 }
@@ -924,7 +923,7 @@ aggregate_initializer (AggregateDeclaration *decl)
 
   /* Class is a reference, want the record type.  */
   tree type = build_ctype (decl->type);
-  StructDeclaration *sd = decl->isStructDeclaration();
+  StructDeclaration *sd = decl->isStructDeclaration ();
   if (!sd)
     type = TREE_TYPE (type);
 
@@ -977,7 +976,7 @@ enum_initializer (EnumDeclaration *decl)
 
   Identifier *ident_save = decl->ident;
   if (!decl->ident)
-    decl->ident = Identifier::generateId("__enum");
+    decl->ident = Identifier::generateId ("__enum");
   tree ident = make_internal_name (decl, "__init", "Z");
   decl->ident = ident_save;
 

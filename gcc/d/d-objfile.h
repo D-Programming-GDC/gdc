@@ -38,8 +38,6 @@ struct FuncFrameInfo;
 typedef tree_node dt_t;
 
 extern dt_t **dt_cons (dt_t **pdt, tree val);
-extern dt_t **dt_chainon (dt_t **pdt, dt_t *val);
-extern dt_t **dt_container (dt_t **pdt, Type *type, dt_t *dt);
 extern dt_t **build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd);
 
 extern tree dtvector_to_tree (dt_t *dt);

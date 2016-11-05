@@ -62,7 +62,7 @@ public:
   // Find the field identified by NAME and add its VALUE to the constructor.
   void set_field(const char *name, tree value)
   {
-    tree field = find_aggregate_field(get_identifier(name), this->type_);
+    tree field = find_aggregate_field(this->type_, get_identifier(name));
 
     if (field != NULL_TREE)
       CONSTRUCTOR_APPEND_ELT (this->init_, field, value);

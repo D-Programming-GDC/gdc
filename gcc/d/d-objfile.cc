@@ -2161,16 +2161,20 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
 
   // dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
   vec<constructor_elt, va_gc> *ve = NULL;
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_version"),
-    dso_type), build_int_cst(size_type_node, 1));
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_slot"),
-    dso_type), build_address(dso_slot));
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_minfo_beg"),
-    dso_type), build_address(start_minfo));
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(get_identifier("_minfo_end"),
-    dso_type), build_address(stop_minfo));
-  tree dso_data = build_decl(BUILTINS_LOCATION, VAR_DECL, get_identifier("dso"),
-    dso_type);
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(dso_type,
+						   get_identifier("_version")),
+			  build_int_cst(size_type_node, 1));
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(dso_type,
+						   get_identifier("_slot")),
+			  build_address(dso_slot));
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(dso_type,
+						   get_identifier("_minfo_beg")),
+			  build_address(start_minfo));
+  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(dso_type,
+						   get_identifier("_minfo_end")),
+			  build_address(stop_minfo));
+  tree dso_data = build_decl(BUILTINS_LOCATION, VAR_DECL,
+			     get_identifier("dso"), dso_type);
   set_decl_location(dso_data, current_module_decl);
   tree set_dso_expr = modify_expr (dso_data, build_struct_literal(dso_type, ve));
 

@@ -21,6 +21,7 @@
 
 #include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
+#include "dfrontend/ctfe.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
@@ -2151,18 +2152,16 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
       bool is_initialized = false;
       tree value;
 
-      if (DECL_NAME (field) == NULL_TREE)
+      if (DECL_NAME (field) == NULL_TREE
+	  && RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	  && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	{
 	  // Search all nesting aggregates, if nothing is found, then
 	  // this will return an empty initializer to fill the hole.
-	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
-	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	    {
-	      value = build_struct_literal(TREE_TYPE (field), init);
+	  value = build_struct_literal(TREE_TYPE (field), init);
 
-	      if (!initializer_zerop(value))
-		is_initialized = true;
-	    }
+	  if (!initializer_zerop(value))
+	    is_initialized = true;
 	}
       else
 	{
@@ -2247,6 +2246,74 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
     TREE_CONSTANT (ctor) = 1;
 
   return ctor;
+}
+
+// Return a constructor that matches the layout of the class expression EXP.
+
+tree
+build_class_instance (ClassReferenceExp *exp)
+{
+  ClassDeclaration *cd = exp->originalClass ();
+  tree type = TREE_TYPE (build_ctype (exp->value->stype));
+  vec<constructor_elt, va_gc> *ve = NULL;
+
+  // The set base vtable field.
+  tree vptr = build_address (get_vtable_decl (cd));
+  CONSTRUCTOR_APPEND_ELT (ve, TYPE_FIELDS (type), vptr);
+
+  // Go through the inheritance graph from top to bottom.  This will add all
+  // values to the constructor out of order, however build_struct_literal
+  // will re-order all values before returning the finished literal.
+  for (ClassDeclaration *bcd = cd; bcd != NULL; bcd = bcd->baseClass)
+    {
+      // Generate initial values of all fields owned by current class.
+      // Use both the name and offset to find the right field.
+      for (size_t i = 0; i < bcd->fields.dim; i++)
+	{
+	  int index = exp->findFieldIndexByName (bcd->fields[i]);
+	  gcc_assert (index != -1);
+
+	  Expression *value = (*exp->value->elements)[index];
+	  if (!value)
+	    continue;
+
+	  tree t = bcd->fields[i]->toSymbol ();
+	  tree field = find_aggregate_field (type, DECL_NAME (t),
+					     DECL_FIELD_OFFSET (t));
+	  gcc_assert (field != NULL_TREE);
+
+	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
+	}
+
+      // Anonymous vtable interface fields are layed out immediatedly after
+      // the fields of each class.  The interface offset is used to determine
+      // where to put the classinfo offset reference.
+      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *bc = (*bcd->vtblInterfaces)[i];
+
+	  for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
+	    {
+	      gcc_assert (cd2 != NULL);
+
+	      unsigned csymoffset = cd2->baseVtblOffset (bc);
+	      if (csymoffset != (unsigned) ~0)
+		{
+		  tree csym = build_address (get_classinfo_decl (cd2));
+		  csym = build_offset (csym, size_int (csymoffset));
+
+		  tree field = find_aggregate_field (type, NULL_TREE,
+						     size_int (bc->offset));
+		  gcc_assert (field != NULL_TREE);
+
+		  CONSTRUCTOR_APPEND_ELT (ve, field, csym);
+		  break;
+		}
+	    }
+	}
+    }
+
+  return build_struct_literal (type, ve);
 }
 
 // Given the TYPE of an anonymous field inside T, return the
@@ -4756,27 +4823,32 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
     }
 }
 
-// Find the field identified by identifier IDENT inside aggregate TYPE.
+// Find the field inside aggregate TYPE identified by IDENT at field OFFSET.
+
 tree
-find_aggregate_field(tree ident, tree type)
+find_aggregate_field(tree type, tree ident, tree offset)
 {
   tree fields = TYPE_FIELDS (type);
 
   for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
     {
-      if (DECL_NAME (field) == NULL_TREE)
+      if (DECL_NAME (field) == NULL_TREE
+	  && RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	  && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	{
 	  // Search nesting anonymous structs and unions.
-	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
-	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	    {
-	      tree vfield = find_aggregate_field(ident, TREE_TYPE (field));
-	      if (vfield != NULL_TREE)
-		return vfield;
-	    }
+	  tree vfield = find_aggregate_field(TREE_TYPE (field),
+					     ident, offset);
+	  if (vfield != NULL_TREE)
+	    return vfield;
 	}
-      else if (DECL_NAME (field) == ident)
-	return field;
+      else if (DECL_NAME (field) == ident
+	       && (offset == NULL_TREE
+		   || DECL_FIELD_OFFSET (field) == offset))
+	{
+	  // Found matching field at offset.
+	  return field;
+	}
     }
 
   return NULL_TREE;

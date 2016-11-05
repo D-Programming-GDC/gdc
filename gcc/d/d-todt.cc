@@ -55,7 +55,7 @@ dt_cons(dt_t **pdt, tree val)
 // Concatenate two constructors of dt_t nodes by appending all
 // values of DT to PDT.
 
-dt_t **
+static dt_t **
 dt_chainon(dt_t **pdt, dt_t *dt)
 {
   vec<constructor_elt, va_gc> *elts = CONSTRUCTOR_ELTS(dt);
@@ -72,7 +72,7 @@ dt_chainon(dt_t **pdt, dt_t *dt)
 
 // Add zero padding of size SIZE onto end of PDT.
 
-dt_t **
+static dt_t **
 dt_zeropad(dt_t **pdt, size_t size)
 {
   tree type = d_array_type(Type::tuns8, size);
@@ -143,7 +143,7 @@ dt_container2(dt_t *dt)
 // Build a new CONSTRUCTOR of type TYPE around the values
 // DT and append to the dt_t node list PDT.
 
-dt_t **
+static dt_t **
 dt_container(dt_t **pdt, Type *type, dt_t *dt)
 {
   Type *tb = type->toBasetype();
@@ -264,202 +264,6 @@ ExpInitializer::toDt()
   exp = exp->ctfeInterpret();
   dt_cons(&dt, build_expr(exp, true));
   return dt;
-}
-
-/* ================================================================ */
-
-// Build constructors for front-end Expressions to be written to data segment.
-
-dt_t **
-ClassReferenceExp::toInstanceDt(dt_t **pdt)
-{
-  ClassDeclaration *cd = originalClass();
-  Dts dts;
-  dts.setDim(value->elements->dim);
-  dts.zero();
-
-  for (size_t i = 0; i < value->elements->dim; i++)
-    {
-      Expression *e = (*value->elements)[i];
-      if (!e)
-	continue;
-      tree dt = NULL_TREE;
-      dt_cons(&dt, build_expr(e, true));
-      dts[i] = dt;
-    }
-
-  /* Put out:
-   *  void **vptr;
-   *  monitor_t monitor;
-   */
-  tree cdt = NULL_TREE;
-  build_vptr_monitor(&cdt, cd);
-
-  // Put out rest of class fields.
-  toDt2(&cdt, cd, &dts);
-
-  return dt_container(pdt, cd->type, cdt);
-}
-
-// Generates the data for the static initializer of class variable.
-// DTS is an array of dt fields, which values have been evaluated in compile time.
-// CD - is a ClassDeclaration, for which initializing data is being built
-// this function, being alike to ClassDeclaration::toDt2, recursively builds the dt for all base classes.
-
-dt_t **
-ClassReferenceExp::toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts)
-{
-  // Note equivalence of this implementation to class's
-  size_t offset;
-
-  if (cd->baseClass)
-    {
-      toDt2(pdt, cd->baseClass, dts);
-      offset = cd->baseClass->structsize;
-    }
-  else
-    {
-      // Allow room for __vptr and __monitor.
-      if (cd->cpp)
-	offset = Target::ptrsize;
-      else
-	offset = Target::ptrsize * 2;
-    }
-
-  for (size_t i = 0; i < cd->fields.dim; i++)
-    {
-      VarDeclaration *v = cd->fields[i];
-      int index = findFieldIndexByName(v);
-      gcc_assert(index != -1);
-
-      tree fdt = (*dts)[index];
-
-      if (fdt == NULL_TREE)
-	{
-	  tree dt = NULL_TREE;
-	  Initializer *init = v->init;
-
-	  if (init)
-	    {
-	      ExpInitializer *ei = init->isExpInitializer();
-	      Type *tb = v->type->toBasetype();
-	      if (!init->isVoidInitializer())
-		{
-		  if (ei && tb->ty == Tsarray)
-		    ((TypeSArray *) tb)->toDtElem(&dt, ei->exp);
-		  else
-		    dt = init->toDt();
-		}
-	    }
-	  else if (v->offset >= offset)
-	    {
-	      if (v->type->ty == Tstruct)
-		((TypeStruct *) v->type)->sym->toDt(&dt);
-	      else
-		{
-		  Expression *e = v->type->defaultInitLiteral(loc);
-		  dt_cons(&dt, build_expr(e, true));
-		}
-	    }
-
-	  if (dt != NULL_TREE)
-	    {
-	      if (v->offset < offset)
-		error("duplicated union initialization for %s", v->toChars());
-	      else
-		{
-		  if (offset < v->offset)
-		    dt_zeropad(pdt, v->offset - offset);
-		  dt_chainon(pdt, dt);
-		  offset = v->offset + v->type->size();
-		}
-	    }
-	}
-
-      if (fdt != NULL_TREE)
-	{
-	  if (v->offset < offset)
-	    error("duplicate union initialization for %s", v->toChars());
-	  else
-	    {
-	      size_t sz = int_size_in_bytes(TREE_TYPE(CONSTRUCTOR_ELT(fdt, 0)->value));
-	      size_t vsz = v->type->size();
-	      size_t voffset = v->offset;
-	      size_t dim = 1;
-
-	      if (sz > vsz)
-		{
-		  gcc_assert(v->type->ty == Tsarray && vsz == 0);
-		  error("zero length array %s has non-zero length initializer", v->toChars());
-		}
-
-	      for (Type *vt = v->type->toBasetype();
-		   vt->ty == Tsarray; vt = vt->nextOf()->toBasetype())
-		{
-		  TypeSArray *tsa = (TypeSArray *) vt;
-		  dim *= tsa->dim->toInteger();
-		}
-
-	      gcc_assert(sz == vsz || sz * dim <= vsz);
-
-	      for (size_t i = 0; i < dim; i++)
-		{
-		  if (offset < voffset)
-		    dt_zeropad(pdt, voffset - offset);
-
-		  if (fdt == NULL_TREE)
-		    {
-		      if (v->init)
-			fdt = v->init->toDt();
-		      else if (v->type->ty == Tstruct)
-			((TypeStruct *) v->type)->sym->toDt(&fdt);
-		      else
-			{
-			  Expression *e = v->type->defaultInitLiteral(loc);
-			  dt_cons(&fdt, build_expr(e, true));
-			}
-		    }
-
-		  dt_chainon(pdt, fdt);
-		  fdt = NULL_TREE;
-
-		  offset = voffset + sz;
-		  voffset += vsz / dim;
-		  if (sz == vsz)
-		    break;
-		}
-	    }
-	}
-    }
-
-  // Interface vptr initializations
-  cd->csym = get_classinfo_decl (cd);
-
-  for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
-    {
-      BaseClass *b = (*cd->vtblInterfaces)[i];
-
-      for (ClassDeclaration *cd2 = originalClass(); 1; cd2 = cd2->baseClass)
-	{
-	  gcc_assert(cd2);
-	  unsigned csymoffset = cd2->baseVtblOffset(b);
-	  if (csymoffset != (unsigned) ~0)
-	    {
-	      tree dt = build_address(get_classinfo_decl (cd2));
-	      if (offset < (size_t) b->offset)
-		dt_zeropad(pdt, b->offset - offset);
-	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
-	      break;
-	    }
-	}
-
-      offset = b->offset + Target::ptrsize;
-    }
-
-  if (offset < cd->structsize)
-    dt_zeropad(pdt, cd->structsize - offset);
-
-  return pdt;
 }
 
 /* ================================================================ */

@@ -62,6 +62,8 @@ extern bool identity_compare_p(StructDeclaration *sd);
 extern tree build_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2);
 extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd, tree length, tree t1, tree t2);
 extern tree build_struct_literal(tree type, vec<constructor_elt, va_gc> *init);
+extern tree build_class_instance(ClassReferenceExp *exp);
+
 
 // Routines to handle variables that are references.
 extern bool declaration_reference_p (Declaration *decl);
@@ -191,7 +193,7 @@ extern tree expand_intrinsic (tree callexp);
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
 extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);
 extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
-extern tree find_aggregate_field(tree ident, tree type);
+extern tree find_aggregate_field(tree type, tree ident, tree offset = NULL_TREE);
 
 extern bool empty_aggregate_p(tree type);
 
