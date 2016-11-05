@@ -72,40 +72,20 @@ make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
   return ident;
 }
 
-// Check if dsym is a template and whether it will be emitted (local_p)
-// or if it's external.
-
-static void
-get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p)
-{
-  *local_p = output_module_p(dsym->getModule());
-  *template_p = false;
-  Dsymbol *sym = dsym->toParent();
-
-  while (sym)
-    {
-      TemplateInstance *ti = sym->isTemplateInstance();
-      if (ti)
-	{
-	  *local_p = output_module_p(ti->minst);
-	  *template_p = true;
-	  break;
-	}
-      sym = sym->toParent();
-    }
-}
-
 // Set a DECL's STATIC and EXTERN based on the decl's storage class
 // and if it is to be emitted in this module.
 
 static void
 setup_symbol_storage(Declaration *rd, tree decl)
 {
-  bool local_p, template_p;
-  get_template_storage_info(rd, &local_p, &template_p);
+  // Check if the declaration is a template, and whether it will
+  // be emitted or if it's external.
+  bool local_p = output_module_p(rd->getModule());
 
-  if (template_p)
+  TemplateInstance *ti = rd->isInstantiated();
+  if (ti != NULL)
     {
+      local_p = output_module_p(ti->minst);
       D_DECL_ONE_ONLY (decl) = 1;
       D_DECL_IS_TEMPLATE (decl) = 1;
     }
@@ -203,9 +183,7 @@ VarDeclaration::toSymbol()
 		  Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
 
 		  // Non-templated variables shouldn't be defined twice
-		  bool local_p, template_p;
-		  get_template_storage_info(this, &local_p, &template_p);
-		  if (!template_p)
+		  if (!this->isInstantiated())
 		    ScopeDsymbol::multiplyDefined(loc, this, other);
 
 		  csym = other->toSymbol();
@@ -418,9 +396,7 @@ FuncDeclaration::toSymbol()
 		  Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
 
 		  // Non-templated functions shouldn't be defined twice
-		  bool local_p, template_p;
-		  get_template_storage_info(this, &local_p, &template_p);
-		  if (!template_p)
+		  if (!this->isInstantiated())
 		    ScopeDsymbol::multiplyDefined(loc, this, other);
 
 		  csym = other->toSymbol();
