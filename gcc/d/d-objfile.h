@@ -78,8 +78,5 @@ extern void d_finish_compilation (tree *vec, int len);
 extern tree build_artificial_decl(tree type, tree init, const char *prefix = NULL);
 extern void build_type_decl (tree t, Dsymbol *dsym);
 
-extern Modules output_modules;
-extern bool output_module_p (Module *mod);
-
 #endif
 

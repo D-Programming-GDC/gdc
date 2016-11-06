@@ -80,15 +80,18 @@ setup_symbol_storage(Declaration *rd, tree decl)
 {
   // Check if the declaration is a template, and whether it will
   // be emitted or if it's external.
-  bool local_p = output_module_p(rd->getModule());
-
   TemplateInstance *ti = rd->isInstantiated();
+  bool local_p = false;
+
   if (ti != NULL)
     {
-      local_p = output_module_p(ti->minst);
+      local_p = (ti->minst && ti->minst->isRoot());
       D_DECL_ONE_ONLY (decl) = 1;
       D_DECL_IS_TEMPLATE (decl) = 1;
     }
+  else
+    local_p = (rd->getModule() && rd->getModule()->isRoot());
+
 
   VarDeclaration *vd = rd->isVarDeclaration();
   FuncDeclaration *fd = rd->isFuncDeclaration();

@@ -132,9 +132,6 @@ static const char *fonly_arg;
 
 /* List of modules being compiled.  */
 Modules builtin_modules;
-Modules output_modules;
-
-static Module *output_module = NULL;
 
 static Module *entrypoint = NULL;
 static Module *rootmodule = NULL;
@@ -775,12 +772,6 @@ d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 }
 
 
-Module *
-d_gcc_get_output_module()
-{
-  return output_module;
-}
-
 static void
 d_nametype (Type *t)
 {
@@ -811,7 +802,6 @@ genCmain (Scope *sc)
   m->semantic3();
 
   // We are emitting this straight to object file.
-  output_modules.push (m);
   entrypoint = m;
   rootmodule = sc->module;
 }
@@ -978,21 +968,7 @@ d_parse_file()
       Module *m = new Module(fname, id, global.params.doDocComments,
 			     global.params.doHdrGeneration);
       modules.push(m);
-
-      if (!strcmp(in_fnames[i], main_input_filename))
-	output_module = m;
     }
-
-  // Current_module shouldn't have any implications before genobjfile...
-  // but it does.  We need to know what module in which to insert
-  // TemplateInstances during the semantic pass.  In order for
-  // -femit-templates to work, template instances must be emitted
-  // in every translation unit.  To do this, the TemplateInstaceS have to
-  // have toObjFile called in the module being compiled.
-  // TemplateInstance puts itself somwhere during ::semantic, thus it has
-  // to know the current module.
-
-  gcc_assert(output_module);
 
   // Read files
   for (size_t i = 0; i < modules.dim; i++)
@@ -1038,7 +1014,7 @@ d_parse_file()
       for (size_t i = 0; i < modules.dim; i++)
 	{
 	  Module *m = modules[i];
-	  if (fonly_arg && m != output_module)
+	  if (fonly_arg && m != Module::rootModule)
 	    continue;
 
 	  if (global.params.verbose)
@@ -1173,11 +1149,6 @@ d_parse_file()
 	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
-  if (fonly_arg)
-    output_modules.push(output_module);
-  else
-    output_modules.append(&modules);
-
   // Generate output files
   if (global.params.doJsonGeneration)
     {
@@ -1227,7 +1198,7 @@ d_parse_file()
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
-      if (fonly_arg && m != output_module)
+      if (fonly_arg && m != Module::rootModule)
 	continue;
 
       if (global.params.verbose)
@@ -1258,8 +1229,6 @@ d_parse_file()
       d_finish_compilation(global_declarations->address(),
 			   global_declarations->length());
     }
-
-  output_module = NULL;
 }
 
 static tree

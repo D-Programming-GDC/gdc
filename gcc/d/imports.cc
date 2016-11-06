@@ -60,7 +60,7 @@ public:
       : Loc(m->srcfile->toChars(), 1, 0);
     set_decl_location(m->isym, loc);
 
-    if (!output_module_p(m))
+    if (!m->isRoot())
       DECL_EXTERNAL (m->isym) = 1;
 
     TREE_PUBLIC (m->isym) = 1;

@@ -1188,6 +1188,10 @@ FuncDeclaration::toObjFile()
       return;
     }
 
+  /* This function exists in static storage.
+     (This does not mean `static' in the C sense!)  */
+  TREE_STATIC (fndecl) = 1;
+
   /* Add this decl to the current binding level.  */
   d_pushdecl(fndecl);
 
@@ -1485,32 +1489,6 @@ Module::genobjfile(bool)
   current_module_decl = NULL;
 }
 
-// Support for multiple modules per object file.
-// Returns TRUE if module M is being compiled.
-
-bool
-output_module_p (Module *m)
-{
-  static unsigned search_index = 0;
-
-  if (!m || !output_modules.dim)
-    return false;
-
-  if (output_modules[search_index] == m)
-    return true;
-
-  for (size_t i = 0; i < output_modules.dim; i++)
-    {
-      if (output_modules[i] == m)
-       {
-         search_index = i;
-         return true;
-       }
-    }
-
-  return false;
-}
-
 void
 d_finish_module()
 {
@@ -1781,14 +1759,7 @@ d_finish_function(FuncDeclaration *fd)
 
   // If we generated the function, but it's really extern.
   // Such as external inlinable functions or thunk aliases.
-  bool extern_p = false;
-
   if (!fd->isInstantiated() && fd->getModule() && !fd->getModule()->isRoot())
-    {
-      extern_p = true;
-    }
-
-  if (extern_p)
     {
       TREE_STATIC (decl) = 0;
       DECL_EXTERNAL (decl) = 1;
@@ -1894,7 +1865,7 @@ build_simple_function_decl (const char *name, tree expr)
   Module *mod = current_module_decl;
 
   if (!mod)
-    mod = d_gcc_get_output_module();
+    mod = Module::rootModule;
 
   if (name[0] == '*')
     {
@@ -1954,7 +1925,7 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
 
   Module *mod = current_module_decl;
   if (!mod)
-    mod = d_gcc_get_output_module();
+    mod = Module::rootModule;
   set_input_location(Loc(mod->srcfile->toChars(), 1, 0));
 
   // Shouldn't front end build these?
@@ -1981,7 +1952,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
   Module *mod = current_module_decl;
 
   if (!mod)
-    mod = d_gcc_get_output_module();
+    mod = Module::rootModule;
 
   const char *name = "__modtlsscan";
 
