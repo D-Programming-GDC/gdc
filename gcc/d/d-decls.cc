@@ -72,227 +72,336 @@ make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
   return ident;
 }
 
-// Set a DECL's STATIC and EXTERN based on the decl's storage class
-// and if it is to be emitted in this module.
-
-static void
-setup_symbol_storage(Declaration *rd, tree decl)
-{
-  // Check if the declaration is a template, and whether it will
-  // be emitted or if it's external.
-  TemplateInstance *ti = rd->isInstantiated();
-  bool local_p = false;
-
-  if (ti != NULL)
-    {
-      local_p = (ti->minst && ti->minst->isRoot());
-      D_DECL_ONE_ONLY (decl) = 1;
-      D_DECL_IS_TEMPLATE (decl) = 1;
-    }
-  else
-    local_p = (rd->getModule() && rd->getModule()->isRoot());
-
-
-  VarDeclaration *vd = rd->isVarDeclaration();
-  FuncDeclaration *fd = rd->isFuncDeclaration();
-  if (!local_p || (vd && vd->storage_class & STCextern) || (fd && !fd->fbody))
-    {
-      DECL_EXTERNAL (decl) = 1;
-      TREE_STATIC (decl) = 0;
-    }
-  else
-    {
-      DECL_EXTERNAL (decl) = 0;
-      TREE_STATIC (decl) = 1;
-    }
-
-  // Do this by default, but allow private templates to override
-  if (!fd || !fd->isNested())
-    TREE_PUBLIC (decl) = 1;
-
-  // Used by debugger.
-  if (rd->protection == PROTprivate)
-    TREE_PRIVATE (decl) = 1;
-  else if (rd->protection == PROTprotected)
-    TREE_PROTECTED (decl) = 1;
-
-  if (D_DECL_ONE_ONLY (decl))
-    d_comdat_linkage(decl);
-
-  // Tell backend this is a thread local decl.
-  if (vd && vd->isDataseg() && vd->isThreadlocal())
-    set_decl_tls_model(decl, decl_default_tls_model(decl));
-
-  if (rd->userAttribDecl)
-    {
-      Expressions *attrs = rd->userAttribDecl->getAttributes();
-      decl_attributes(&decl, build_attributes(attrs), 0);
-    }
-  else if (DECL_ATTRIBUTES (decl) != NULL)
-    decl_attributes(&decl, DECL_ATTRIBUTES (decl), 0);
-}
-
+/* Return the decl for the symbol, create it if it doesn't already exist.  */
 
 tree
-Dsymbol::toSymbol()
+get_symbol_decl (Declaration *decl)
 {
-  gcc_unreachable();          // BUG: implement
-  return NULL;
-}
+  if (decl->csym)
+    return decl->csym;
 
-// Create the symbol with tree for struct initialisers.
-
-tree
-SymbolDeclaration::toSymbol()
-{
-  return aggregate_initializer (dsym);
-}
-
-// Create the symbol with VAR_DECL tree for static variables.
-
-tree
-VarDeclaration::toSymbol()
-{
-  if (!csym)
+  /* Deal with placeholder symbols immediately:
+     SymbolDeclaration is used as a shell around an initializer symbol.  */
+  SymbolDeclaration *sd = decl->isSymbolDeclaration ();
+  if (sd)
     {
-      // For field declaration, it is possible for toSymbol to be called
-      // before the parent's build_ctype()
-      if (isField())
+      decl->csym = aggregate_initializer (sd->dsym);
+      return decl->csym;
+    }
+
+  /* FuncAliasDeclaration is used to import functions from another scope.  */
+  FuncAliasDeclaration *fad = decl->isFuncAliasDeclaration ();
+  if (fad)
+    {
+      decl->csym = get_symbol_decl (fad->funcalias);
+      return decl->csym;
+    }
+
+  /* It is possible for a field declaration symbol to be requested
+     before the parent type has been built.  */
+  if (decl->isField ())
+    {
+      AggregateDeclaration *ad = decl->toParent ()->isAggregateDeclaration ();
+      gcc_assert (ad != NULL);
+      build_ctype (ad->type);
+      gcc_assert (decl->csym != NULL);
+      return decl->csym;
+    }
+
+  /* Build the tree for the symbol.  */
+  FuncDeclaration *fd = decl->isFuncDeclaration ();
+  if (fd)
+    {
+      /* Run full semantic on functions we need to know about.  */
+      if (!fd->functionSemantic ())
 	{
-	  AggregateDeclaration *parent_decl = toParent()->isAggregateDeclaration();
-	  gcc_assert (parent_decl);
-	  build_ctype(parent_decl->type);
-	  gcc_assert (csym);
-	  return csym;
+	  decl->csym = error_mark_node;
+	  return decl->csym;
 	}
 
-      tree mangle = NULL_TREE;
+      decl->csym = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
+			      get_identifier (decl->ident->string), NULL_TREE);
 
-      if (this->isDataseg ())
-	{
-	  if (this->mangleOverride)
-	    mangle = get_identifier (this->mangleOverride);
-	  else
-	    {
-	      mangle = get_identifier (::mangle (this));
+      /* Set function type afterwards as there could be self references.  */
+      //gcc_assert (fd->tintro == NULL || fd->tintro == fd->type);
+      //TREE_TYPE (decl->csym) = build_ctype (fd->tintro ? fd->tintro : fd->type);
+      TREE_TYPE (decl->csym) = build_ctype (fd->type);
 
-	      // Use same symbol for VarDeclaration templates with same mangle
-	      if (this->storage_class & STCextern)
-		;
-	      else if (!IDENTIFIER_DSYMBOL (mangle))
-		IDENTIFIER_DSYMBOL (mangle) = this;
-	      else
-		{
-		  Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
+      if (!fd->fbody)
+	DECL_EXTERNAL (decl->csym) = 1;
+    }
+  else
+    {
+      /* Build the variable declaration.  */
+      VarDeclaration *vd = decl->isVarDeclaration ();
+      gcc_assert (vd != NULL);
 
-		  // Non-templated variables shouldn't be defined twice
-		  if (!this->isInstantiated())
-		    ScopeDsymbol::multiplyDefined(loc, this, other);
-
-		  csym = other->toSymbol();
-		  return csym;
-		}
-	    }
-	}
-
-      tree_code code = isParameter() ? PARM_DECL
-	: !canTakeAddressOf() ? CONST_DECL
+      tree_code code = vd->isParameter () ? PARM_DECL
+	: !vd->canTakeAddressOf () ? CONST_DECL
 	: VAR_DECL;
+      decl->csym = build_decl (UNKNOWN_LOCATION, code,
+			      get_identifier (decl->ident->string),
+			      declaration_type (vd));
 
-      csym = build_decl (UNKNOWN_LOCATION, code,
-			 get_identifier (ident->string),
-			 declaration_type (this));
-      DECL_LANG_SPECIFIC (csym) = build_lang_decl (this);
-
-      DECL_CONTEXT (csym) = d_decl_context (this);
-      set_decl_location (csym, this);
-
-      if (this->alignment > 0)
+      /* If any alignment was set on the declaration.  */
+      if (vd->alignment)
 	{
-	  SET_DECL_ALIGN (csym, this->alignment * BITS_PER_UNIT);
-	  DECL_USER_ALIGN (csym) = 1;
+	  SET_DECL_ALIGN (decl->csym, vd->alignment * BITS_PER_UNIT);
+	  DECL_USER_ALIGN (decl->csym) = 1;
 	}
 
-      if (isParameter())
+      if (vd->storage_class & STCextern)
+	DECL_EXTERNAL (decl->csym) = 1;
+    }
+
+  /* Set the declaration mangled identifier if static.  */
+  if (decl->isCodeseg () || decl->isDataseg ())
+    {
+      tree mangled_name;
+
+      if (decl->mangleOverride)
+	mangled_name = get_identifier (decl->mangleOverride);
+      else
+	mangled_name = get_identifier (fd ? mangleExact (fd) : mangle (decl));
+
+      mangled_name = targetm.mangle_decl_assembler_name (decl->csym,
+							 mangled_name);
+      /* The frontend doesn't handle duplicate definitions of unused symbols
+	 with the same mangle.  So a check is done here instead.  */
+      if (!DECL_EXTERNAL (decl->csym))
 	{
-	  // Pass non-trivial structs by invisible reference.
-	  if (TREE_ADDRESSABLE (TREE_TYPE (csym)))
+	  if (IDENTIFIER_DSYMBOL (mangled_name))
 	    {
-	      tree argtype = build_reference_type(TREE_TYPE (csym));
-	      argtype = build_qualified_type(argtype, TYPE_QUAL_RESTRICT);
-	      gcc_assert (!DECL_BY_REFERENCE (csym));
-	      TREE_TYPE (csym) = argtype;
-	      DECL_BY_REFERENCE (csym) = 1;
-	      TREE_ADDRESSABLE (csym) = 0;
-	      relayout_decl (csym);
-	      this->storage_class |= STCref;
+	      Declaration *other = IDENTIFIER_DSYMBOL (mangled_name);
+
+	      /* Non-templated variables shouldn't be defined twice.  */
+	      if (!decl->isInstantiated ())
+		ScopeDsymbol::multiplyDefined (decl->loc, decl, other);
+
+	      decl->csym = get_symbol_decl (other);
+	      return decl->csym;
 	    }
 
-	  DECL_ARG_TYPE (csym) = TREE_TYPE (csym);
-	  gcc_assert (TREE_CODE (DECL_CONTEXT (csym)) == FUNCTION_DECL);
+	  IDENTIFIER_PRETTY_NAME (mangled_name) =
+	    get_identifier (decl->toPrettyChars (true));
+	  IDENTIFIER_DSYMBOL (mangled_name) = decl;
 	}
-      else if (!canTakeAddressOf())
-	{
-	  // Manifest constants have no address in memory.
-	  TREE_CONSTANT (csym) = 1;
-	  TREE_READONLY (csym) = 1;
-	  TREE_STATIC (csym) = 0;
-	}
-      else if (isDataseg())
-	{
-	  gcc_assert (mangle != NULL_TREE);
 
-	  if (!this->mangleOverride
-	      && (protection == PROTpublic
-		  || storage_class & (STCstatic | STCextern)))
+      SET_DECL_ASSEMBLER_NAME (decl->csym, mangled_name);
+    }
+
+  DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (decl);
+  DECL_CONTEXT (decl->csym) = d_decl_context (decl);
+  set_decl_location (decl->csym, decl);
+
+  if (TREE_CODE (decl->csym) == PARM_DECL)
+    {
+      /* Pass non-trivial structs by invisible reference.  */
+      if (TREE_ADDRESSABLE (TREE_TYPE (decl->csym)))
+	{
+	  tree argtype = build_reference_type (TREE_TYPE (decl->csym));
+	  argtype = build_qualified_type (argtype, TYPE_QUAL_RESTRICT);
+	  gcc_assert (!DECL_BY_REFERENCE (decl->csym));
+	  TREE_TYPE (decl->csym) = argtype;
+	  DECL_BY_REFERENCE (decl->csym) = 1;
+	  TREE_ADDRESSABLE (decl->csym) = 0;
+	  relayout_decl (decl->csym);
+	  decl->storage_class |= STCref;
+	}
+
+      DECL_ARG_TYPE (decl->csym) = TREE_TYPE (decl->csym);
+      gcc_assert (TREE_CODE (DECL_CONTEXT (decl->csym)) == FUNCTION_DECL);
+    }
+  else if (TREE_CODE (decl->csym) == CONST_DECL)
+    {
+      /* Manifest constants have no address in memory.  */
+      TREE_CONSTANT (decl->csym) = 1;
+      TREE_READONLY (decl->csym) = 1;
+    }
+  else if (TREE_CODE (decl->csym) == FUNCTION_DECL)
+    {
+      /* The real function type may differ from it's declaration.  */
+      tree fntype = TREE_TYPE (decl->csym);
+      tree newfntype = NULL_TREE;
+
+      if (fd->isNested ())
+	{
+	  /* Add an extra argument for the frame/closure pointer, this is also
+	     required to be compatible with D delegates.  */
+	  newfntype = build_vthis_type (void_type_node, fntype);
+	}
+      else if (fd->isThis ())
+	{
+	  /* Add an extra argument for the 'this' parameter.  The handle type is
+	     used even if there is no debug info.  It is needed to make sure
+	     virtual member functions are not called statically.  */
+	  AggregateDeclaration *ad = fd->isMember2 ();
+	  tree handle = build_ctype (ad->handleType ());
+
+	  /* If handle is a pointer type, get record type.  */
+	  if (!ad->isStructDeclaration ())
+	    handle = TREE_TYPE (handle);
+
+	  newfntype = build_vthis_type (handle, fntype);
+
+	  /* Set the vindex on virtual functions.  */
+	  if (fd->isVirtual () && fd->vtblIndex != -1)
 	    {
-	      tree target_name = targetm.mangle_decl_assembler_name (csym, mangle);
-	      IDENTIFIER_DSYMBOL (target_name) = IDENTIFIER_DSYMBOL (mangle);
-	      mangle = target_name;
+	      DECL_VINDEX (decl->csym) = size_int (fd->vtblIndex);
+	      DECL_VIRTUAL_P (decl->csym) = 1;
 	    }
+	}
+      else if (fd->isMain ())
+	{
+	  /* The main function is named 'D main' to distinguish from C main.  */
+	  DECL_NAME (decl->csym) = get_identifier (fd->toPrettyChars (true));
 
-	  IDENTIFIER_PRETTY_NAME (mangle) = get_identifier (toPrettyChars (true));
-	  SET_DECL_ASSEMBLER_NAME (csym, mangle);
-	  setup_symbol_storage (this, csym);
+	  /* 'void main' is implicitly converted to returning an int.  */
+	  newfntype = build_function_type (int_type_node,
+					   TYPE_ARG_TYPES (fntype));
 	}
 
-      d_keep (csym);
+      if (newfntype != NULL_TREE)
+	{
+	  /* Copy the old attributes from the original type.  */
+	  TYPE_ATTRIBUTES (newfntype) = TYPE_ATTRIBUTES (fntype);
+	  TYPE_LANG_SPECIFIC (newfntype) = TYPE_LANG_SPECIFIC (fntype);
+	  TREE_ADDRESSABLE (newfntype) = TREE_ADDRESSABLE (fntype);
+	  TREE_TYPE (decl->csym) = newfntype;
+	  d_keep (newfntype);
+	}
 
-      // Can't set TREE_STATIC, etc. until we get to toObjFile as this could be
-      // called from a variable in an imported module.
-      if ((isConst() || isImmutable()) && (storage_class & STCinit)
-	  && declaration_reference_p(this))
-	TREE_READONLY (csym) = 1;
+      /* Miscellaneous function flags.  */
+      if (fd->isMember2() || fd->isFuncLiteralDeclaration())
+	{
+	  /* See grokmethod in cp/decl.c.  Maybe we shouldn't be setting inline
+	     flags without reason or proper handling.  */
+	  DECL_DECLARED_INLINE_P (decl->csym) = 1;
+	  DECL_NO_INLINE_WARNING_P (decl->csym) = 1;
+	}
 
-      // Propagate shared.
-      if (TYPE_SHARED (TREE_TYPE (csym)))
-	TREE_ADDRESSABLE (csym) = 1;
+      /* Function was declared 'naked'.  */
+      if (fd->naked)
+	{
+	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (decl->csym) = 1;
+	  DECL_UNINLINABLE (decl->csym) = 1;
+	}
 
-      // Mark compiler generated temporaries as artificial.
-      if (storage_class & STCtemp)
-	DECL_ARTIFICIAL (csym) = 1;
+      /* Vector array operations are always compiler generated.  */
+      if (fd->isArrayOp)
+	{
+	  DECL_ARTIFICIAL (decl->csym) = 1;
+	  D_DECL_ONE_ONLY (decl->csym) = 1;
+	}
+
+      /* And so are ensure and require contracts.  */
+      if (fd->ident == Id::ensure || fd->ident == Id::require)
+	{
+	  DECL_ARTIFICIAL (decl->csym) = 1;
+	  TREE_PUBLIC (decl->csym) = 1;
+	}
+
+      if (decl->storage_class & STCfinal)
+	DECL_FINAL_P (decl->csym) = 1;
+
+      maybe_set_intrinsic (fd);
+    }
+
+  /* Mark compiler generated temporaries as artificial.  */
+  if (decl->storage_class & STCtemp)
+    DECL_ARTIFICIAL (decl->csym) = 1;
+
+  /* Propagate shared on the decl.  */
+  if (TYPE_SHARED (TREE_TYPE (decl->csym)))
+    TREE_ADDRESSABLE (decl->csym) = 1;
+
+  /* Symbol was marked volatile.  */
+  if (decl->storage_class & STCvolatile)
+    TREE_THIS_VOLATILE (decl->csym) = 1;
+
+  /* Protection attributes are used by the debugger.  */
+  if (decl->protection == PROTprivate)
+    TREE_PRIVATE (decl->csym) = 1;
+  else if (decl->protection == PROTprotected)
+    TREE_PROTECTED (decl->csym) = 1;
+
+  /* Likewise, so could the deprecated attribute.  */
+  if (decl->storage_class & STCdeprecated)
+    TREE_DEPRECATED (decl->csym) = 1;
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
-      // Have to test for import first
-      if (isImportedSymbol())
-	{
-	  insert_decl_attribute (csym, "dllimport");
-	  DECL_DLLIMPORT_P (csym) = 1;
-	}
-      else if (isExport())
-	insert_decl_attribute (csym, "dllexport");
+  // Have to test for import first
+  if (decl->isImportedSymbol ())
+    {
+      insert_decl_attribute (decl->csym, "dllimport");
+      DECL_DLLIMPORT_P (decl->csym) = 1;
+    }
+  else if (decl->isExport ())
+    insert_decl_attribute (decl->csym, "dllexport");
 #endif
 
-      if (global.params.vtls && isDataseg() && isThreadlocal())
+  if (decl->isDataseg () || decl->isCodeseg () || decl->isThreadlocal ())
+    {
+      /* Check if the declaration is a template, and whether it will be emitted
+	 in the current compilation or not.  */
+      TemplateInstance *ti = decl->isInstantiated ();
+      if (ti)
 	{
-	  char *p = loc.toChars();
-	  fprintf (global.stdmsg, "%s: %s is thread local\n", p ? p : "", toChars());
+	  D_DECL_ONE_ONLY (decl->csym) = 1;
+	  D_DECL_IS_TEMPLATE (decl->csym) = 1;
+
+	  if (!DECL_EXTERNAL (decl->csym)
+	      && ti->minst && ti->minst->isRoot())
+	    TREE_STATIC (decl->csym) = 1;
+	  else
+	    DECL_EXTERNAL (decl->csym) = 1;
+	}
+      else
+	{
+	  if (!DECL_EXTERNAL (decl->csym)
+	      && decl->getModule() && decl->getModule()->isRoot())
+	    TREE_STATIC (decl->csym) = 1;
+	  else
+	    DECL_EXTERNAL (decl->csym) = 1;
+	}
+
+      /* Set TREE_PUBLIC by default, but allow private template to override.  */
+      if (!fd || !fd->isNested ())
+	TREE_PUBLIC (decl->csym) = 1;
+
+      if (D_DECL_ONE_ONLY (decl->csym))
+	d_comdat_linkage (decl->csym);
+    }
+
+  /* Symbol is going in thread local storage.  */
+  if (decl->isThreadlocal () && !DECL_ARTIFICIAL (decl->csym))
+    {
+      if (global.params.vtls)
+	{
+	  char *p = decl->loc.toChars ();
+	  fprintf (global.stdmsg, "%s: %s is thread local\n",
+		   p ? p : "", decl->toChars ());
 	  if (p)
 	    free (p);
 	}
+
+      set_decl_tls_model (decl->csym, decl_default_tls_model (decl->csym));
     }
 
-  return csym;
+  /* Apply any user attributes that may affect semantic meaning.  */
+  if (decl->userAttribDecl)
+    {
+      Expressions *attrs = decl->userAttribDecl->getAttributes ();
+      decl_attributes (&decl->csym, build_attributes (attrs), 0);
+    }
+  else if (DECL_ATTRIBUTES (decl->csym) != NULL)
+    decl_attributes (&decl->csym, DECL_ATTRIBUTES (decl->csym), 0);
+
+  /* %% Probably should be a little more intelligent about setting this.  */
+  TREE_USED (decl->csym) = 1;
+  d_keep (decl->csym);
+
+  return decl->csym;
 }
 
 /* Visitor to create the decl tree for typeinfo decls.  */
@@ -353,179 +462,6 @@ get_typeinfo_decl (TypeInfoDeclaration *decl)
   gcc_assert (decl->csym != NULL_TREE);
 
   return decl->csym;
-}
-
-// Create the symbol with tree for function aliases.
-
-tree
-FuncAliasDeclaration::toSymbol()
-{
-  return funcalias->toSymbol();
-}
-
-// Create the symbol with FUNCTION_DECL tree for functions.
-
-tree
-FuncDeclaration::toSymbol()
-{
-  if (!csym)
-    {
-      TypeFunction *ftype = (TypeFunction *) (tintro ? tintro : type);
-      tree fntype = NULL_TREE;
-      tree vindex = NULL_TREE;
-
-      // Run full semantic on symbols we need to know about during compilation.
-      if (inferRetType && type && !type->nextOf() && !functionSemantic())
-	{
-	  csym = error_mark_node;
-	  return csym;
-	}
-
-      tree mangle;
-
-      if (this->mangleOverride)
-	mangle = get_identifier (this->mangleOverride);
-      else
-	{
-	  mangle = get_identifier (mangleExact (this));
-
-	  // Use same symbol for FuncDeclaration templates with same mangle
-	  if (this->fbody)
-	    {
-	      if (!IDENTIFIER_DSYMBOL (mangle))
-		IDENTIFIER_DSYMBOL (mangle) = this;
-	      else
-		{
-		  Dsymbol *other = IDENTIFIER_DSYMBOL (mangle);
-
-		  // Non-templated functions shouldn't be defined twice
-		  if (!this->isInstantiated())
-		    ScopeDsymbol::multiplyDefined(loc, this, other);
-
-		  csym = other->toSymbol();
-		  return csym;
-		}
-	    }
-	}
-
-      csym = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL, NULL_TREE, NULL_TREE);
-      DECL_LANG_SPECIFIC (csym) = build_lang_decl (this);
-      DECL_CONTEXT (csym) = d_decl_context (this);
-
-      DECL_NAME (csym) = this->isMain()
-	? get_identifier (toPrettyChars (true)) : get_identifier (ident->string);
-
-      if (!this->mangleOverride)
-	{
-	  tree target_name = targetm.mangle_decl_assembler_name (csym, mangle);
-	  IDENTIFIER_DSYMBOL (target_name) = IDENTIFIER_DSYMBOL (mangle);
-	  mangle = target_name;
-	}
-
-      IDENTIFIER_PRETTY_NAME (mangle) = get_identifier (toPrettyChars (true));
-      SET_DECL_ASSEMBLER_NAME (csym, mangle);
-
-      TREE_TYPE (csym) = build_ctype(ftype);
-      d_keep (csym);
-
-      if (isNested())
-	{
-	  // Add an extra argument for the frame/closure pointer,
-	  // also needed to be compatible with delegates.
-	  fntype = build_vthis_type(void_type_node, TREE_TYPE (csym));
-	}
-      else if (isThis())
-	{
-	  // Do this even if there is no debug info.  It is needed to make
-	  // sure member functions are not called statically
-	  AggregateDeclaration *agg_decl = isMember2();
-	  tree handle = build_ctype(agg_decl->handleType());
-
-	  // If handle is a pointer type, get record type.
-	  if (!agg_decl->isStructDeclaration())
-	    handle = TREE_TYPE (handle);
-
-	  fntype = build_vthis_type(handle, TREE_TYPE (csym));
-
-	  if (isVirtual() && vtblIndex != -1)
-	    vindex = size_int (vtblIndex);
-	}
-      else if (isMain() && ftype->nextOf()->toBasetype()->ty == Tvoid)
-	{
-	  // void main() implicitly converted to int main().
-	  fntype = build_function_type (int_type_node, TYPE_ARG_TYPES (TREE_TYPE (csym)));
-	}
-
-      if (fntype != NULL_TREE)
-	{
-	  TYPE_ATTRIBUTES (fntype) = TYPE_ATTRIBUTES (TREE_TYPE (csym));
-	  TYPE_LANG_SPECIFIC (fntype) = TYPE_LANG_SPECIFIC (TREE_TYPE (csym));
-	  TREE_ADDRESSABLE (fntype) = TREE_ADDRESSABLE (TREE_TYPE (csym));
-	  TREE_TYPE (csym) = fntype;
-	  d_keep (fntype);
-	}
-
-      if (vindex)
-	{
-	  DECL_VINDEX (csym) = vindex;
-	  DECL_VIRTUAL_P (csym) = 1;
-	}
-
-      if (isMember2() || isFuncLiteralDeclaration())
-	{
-	  // See grokmethod in cp/decl.c
-	  DECL_DECLARED_INLINE_P (csym) = 1;
-	  DECL_NO_INLINE_WARNING_P (csym) = 1;
-	}
-
-      if (naked)
-	{
-	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (csym) = 1;
-	  DECL_UNINLINABLE (csym) = 1;
-	}
-
-      // These are always compiler generated.
-      if (isArrayOp)
-	{
-	  DECL_ARTIFICIAL (csym) = 1;
-	  D_DECL_ONE_ONLY (csym) = 1;
-	}
-      // So are ensure and require contracts.
-      if (ident == Id::ensure || ident == Id::require)
-	{
-	  DECL_ARTIFICIAL (csym) = 1;
-	  TREE_PUBLIC (csym) = 1;
-	}
-
-      // Storage class attributes
-      if (storage_class & STCstatic)
-	TREE_STATIC (csym) = 1;
-      if (storage_class & STCfinal)
-	DECL_FINAL_P (csym) = 1;
-
-#if TARGET_DLLIMPORT_DECL_ATTRIBUTES
-      // Have to test for import first
-      if (isImportedSymbol())
-	{
-	  insert_decl_attribute (csym, "dllimport");
-	  DECL_DLLIMPORT_P (csym) = 1;
-	}
-      else if (isExport())
-	insert_decl_attribute (csym, "dllexport");
-#endif
-      set_decl_location (csym, this);
-      setup_symbol_storage (this, csym);
-
-      if (!ident)
-	TREE_PUBLIC (csym) = 0;
-
-      // %% Probably should be a little more intelligent about this
-      TREE_USED (csym) = 1;
-
-      maybe_set_intrinsic (this);
-    }
-
-  return csym;
 }
 
 /* Thunk code is based on g++ */
@@ -676,7 +612,7 @@ finish_thunk (tree thunk, tree function)
 tree
 make_thunk (FuncDeclaration *decl, int offset)
 {
-  decl->toSymbol ();
+  get_symbol_decl (decl);
   decl->toObjFile ();
 
   /* If the thunk is to be static (that is, it is being emitted in this

@@ -358,13 +358,13 @@ ClassDeclaration::toObjFile()
 
   // dtor*
   if (dtor)
-    dt_cons (&dt, build_address (dtor->toSymbol()));
+    dt_cons (&dt, build_address (get_symbol_decl (dtor)));
   else
     dt_cons (&dt, null_pointer_node);
 
   // invariant*
   if (inv)
-    dt_cons (&dt, build_address (inv->toSymbol()));
+    dt_cons (&dt, build_address (get_symbol_decl (inv)));
   else
     dt_cons (&dt, null_pointer_node);
 
@@ -415,7 +415,7 @@ Lhaspointers:
 
   // deallocator*
   if (aggDelete)
-    dt_cons (&dt, build_address (aggDelete->toSymbol()));
+    dt_cons (&dt, build_address (get_symbol_decl (aggDelete)));
   else
     dt_cons (&dt, null_pointer_node);
 
@@ -425,7 +425,7 @@ Lhaspointers:
 
   // defaultConstructor*
   if (defaultCtor && !(defaultCtor->storage_class & STCdisable))
-    dt_cons (&dt, build_address (defaultCtor->toSymbol()));
+    dt_cons (&dt, build_address (get_symbol_decl (defaultCtor)));
   else
     dt_cons (&dt, null_pointer_node);
 
@@ -578,7 +578,7 @@ Lhaspointers:
 	    }
 
 	Lcontinue:
-	  dt_cons (&dt, build_address (fd->toSymbol()));
+	  dt_cons (&dt, build_address (get_symbol_decl (fd)));
 	}
       else
 	dt_cons (&dt, null_pointer_node);
@@ -822,7 +822,7 @@ VarDeclaration::toObjFile()
       if (isInstantiated())
 	return;
 
-      tree decl = toSymbol();
+      tree decl = get_symbol_decl (this);
       gcc_assert (init && !init->isVoidInitializer());
       Expression *ie = init->toExpression();
 
@@ -842,7 +842,7 @@ VarDeclaration::toObjFile()
     }
   else if (isDataseg() && !(storage_class & STCextern))
     {
-      tree s = toSymbol();
+      tree s = get_symbol_decl (this);
 
       // Duplicated VarDeclarations map to the same symbol. Check if this
       // is the one declaration which will be emitted.
@@ -1059,7 +1059,7 @@ build_moduleinfo_symbol(Module *m)
     dt_cons (&dt, build_address (m->sshareddtor));
 
   if (flags & MIxgetMembers)
-    dt_cons (&dt, build_address (sgetmembers->toSymbol()));
+    dt_cons (&dt, build_address (get_symbol_decl (sgetmembers)));
 
   if (flags & MIictor)
     dt_cons (&dt, build_address (m->sictor));
@@ -1170,7 +1170,7 @@ FuncDeclaration::toObjFile()
 
   // Duplicated FuncDeclarations map to the same symbol. Check if this
   // is the one declaration which will be emitted.
-  tree fndecl = this->toSymbol();
+  tree fndecl = get_symbol_decl (this);
   tree ident = DECL_ASSEMBLER_NAME (fndecl);
   if (IDENTIFIER_DSYMBOL (ident) && IDENTIFIER_DSYMBOL (ident) != this)
     return;
@@ -1237,7 +1237,7 @@ FuncDeclaration::toObjFile()
   // should not be referenced in any expression.
   if (vthis)
     {
-      parm_decl = vthis->toSymbol();
+      parm_decl = get_symbol_decl (vthis);
       DECL_ARTIFICIAL (parm_decl) = 1;
       TREE_READONLY (parm_decl) = 1;
 
@@ -1257,7 +1257,7 @@ FuncDeclaration::toObjFile()
   // _arguments parameter.
   if (v_arguments)
     {
-      parm_decl = v_arguments->toSymbol();
+      parm_decl = get_symbol_decl (v_arguments);
       set_decl_location (parm_decl, v_arguments);
       param_list = chainon (param_list, parm_decl);
     }
@@ -1268,7 +1268,7 @@ FuncDeclaration::toObjFile()
   for (size_t i = 0; i < n_parameters; i++)
     {
       VarDeclaration *param = (*parameters)[i];
-      parm_decl = param->toSymbol();
+      parm_decl = get_symbol_decl (param);
       set_decl_location (parm_decl, (Dsymbol *) param);
       // chain them in the correct order
       param_list = chainon (param_list, parm_decl);
@@ -1288,12 +1288,12 @@ FuncDeclaration::toObjFile()
   if (isThis())
     {
       AggregateDeclaration *ad = isThis();
-      tree this_tree = vthis->toSymbol();
+      tree this_tree = get_symbol_decl (vthis);
 
       while (ad->isNested())
 	{
 	  Dsymbol *d = ad->toParent2();
-	  tree vthis_field = ad->vthis->toSymbol();
+	  tree vthis_field = get_symbol_decl (ad->vthis);
 	  this_tree = component_ref (build_deref (this_tree), vthis_field);
 
 	  ad = d->isAggregateDeclaration();
@@ -1335,7 +1335,7 @@ FuncDeclaration::toObjFile()
 
       if (nrvo_var)
 	{
-	  tree var = nrvo_var->toSymbol();
+	  tree var = get_symbol_decl (nrvo_var);
 
 	  // Copy name from VAR to RESULT.
 	  DECL_NAME (result_decl) = DECL_NAME (var);
@@ -1753,7 +1753,7 @@ d_finish_symbol (tree decl)
 void
 d_finish_function(FuncDeclaration *fd)
 {
-  tree decl = fd->toSymbol();
+  tree decl = get_symbol_decl (fd);
 
   gcc_assert(TREE_CODE (decl) == FUNCTION_DECL);
 
@@ -1895,7 +1895,7 @@ static FuncDeclaration *
 build_simple_function (const char *name, tree expr, bool static_ctor)
 {
   FuncDeclaration *func = build_simple_function_decl (name, expr);
-  tree func_decl = func->toSymbol();
+  tree func_decl = get_symbol_decl (func);
 
   if (static_ctor)
     DECL_STATIC_CONSTRUCTOR (func_decl) = 1;
@@ -1931,7 +1931,7 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   // Shouldn't front end build these?
   for (size_t i = 0; i < functions.length(); i++)
     {
-      tree fndecl = (functions[i])->toSymbol();
+      tree fndecl = get_symbol_decl (functions[i]);
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = compound_expr (expr_list, call_expr);
     }
@@ -1998,7 +1998,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
   func->semantic3 (mod->scope);
   func->toObjFile();
 
-  return func->toSymbol();
+  return get_symbol_decl (func);
 }
 
 // Same as build_call_function, but includes a gate to
@@ -2011,12 +2011,12 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
 
   // If there is only one function, just return that
   if (functions.length() == 1 && gates.is_empty())
-    return (functions[0])->toSymbol();
+    return get_symbol_decl (functions[0]);
 
   // Increment gates first.
   for (size_t i = 0; i < gates.length(); i++)
     {
-      tree var_decl = (gates[i])->toSymbol();
+      tree var_decl = get_symbol_decl (gates[i]);
       tree value = build2 (PLUS_EXPR, TREE_TYPE (var_decl), var_decl, integer_one_node);
       tree var_expr = modify_expr (var_decl, value);
       expr_list = compound_expr (expr_list, var_expr);
@@ -2025,7 +2025,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
   // Call Ctor Functions
   for (size_t i = 0; i < functions.length(); i++)
     {
-      tree fndecl = (functions[i])->toSymbol();
+      tree fndecl = get_symbol_decl (functions[i]);
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = compound_expr (expr_list, call_expr);
     }
@@ -2033,7 +2033,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
   if (expr_list)
     {
       FuncDeclaration *fd = build_simple_function (name, expr_list, false);
-      return fd->toSymbol();
+      return get_symbol_decl (fd);
     }
 
   return NULL;
@@ -2049,11 +2049,11 @@ build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
 
   // If there is only one function, just return that
   if (functions.length() == 1)
-    return (functions[0])->toSymbol();
+    return get_symbol_decl (functions[0]);
 
   for (int i = functions.length() - 1; i >= 0; i--)
     {
-      tree fndecl = (functions[i])->toSymbol();
+      tree fndecl = get_symbol_decl (functions[i]);
       tree call_expr = d_build_call_list (void_type_node, build_address (fndecl), NULL_TREE);
       expr_list = compound_expr (expr_list, call_expr);
     }
@@ -2061,7 +2061,7 @@ build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
   if (expr_list)
     {
       FuncDeclaration *fd = build_simple_function (name, expr_list, false);
-      return fd->toSymbol();
+      return get_symbol_decl (fd);
     }
 
   return NULL;
@@ -2074,7 +2074,7 @@ static tree
 build_unittest_function (const char *name, vec<FuncDeclaration *> functions)
 {
   FuncDeclaration *fd = build_call_function (name, functions, false);
-  return fd->toSymbol();
+  return get_symbol_decl (fd);
 }
 
 // Build a variable used in the dso_registry code. The variable is always
@@ -2128,7 +2128,7 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
     NULL_TREE, false, true);
 
   tree dso_type = build_ctype(compiler_dso_type->isStructDeclaration()->type);
-  tree registry_func = dso_registry_func->isFuncDeclaration()->toSymbol();
+  tree registry_func = get_symbol_decl (dso_registry_func->isFuncDeclaration());
 
   // dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
   vec<constructor_elt, va_gc> *ve = NULL;
@@ -2167,7 +2167,7 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
 
   // extern(C) void gdc_dso_[c/d]tor() @hidden @weak @[con/de]structor
   FuncDeclaration *func_decl = build_simple_function_decl(func_name, func_body);
-  tree func_tree = func_decl->toSymbol();
+  tree func_tree = get_symbol_decl (func_decl);
 
   // Setup bindings for stack variable dso_data
   tree block = make_node(BLOCK);
@@ -2267,7 +2267,7 @@ emit_modref_hooks(tree sym, Dsymbol *mref)
   tree modfield = TREE_CHAIN (nextfield);
 
   // extern (C) ModuleReference *_Dmodule_ref;
-  tree dmodule_ref = mref->toSymbol();
+  tree dmodule_ref = get_symbol_decl (mref->isDeclaration ());
 
   // private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };
   tree modref = build_artificial_decl (tmodref, NULL_TREE, "__mod_ref");

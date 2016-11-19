@@ -289,7 +289,6 @@ public:
     VarDeclaration *isVarDeclaration() { return (VarDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    Symbol *toSymbol();
     void toObjFile();                       // compile to .obj file
 #endif
 };
@@ -308,9 +307,6 @@ public:
     // Eliminate need for dynamic_cast
     SymbolDeclaration *isSymbolDeclaration() { return (SymbolDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toSymbol();
-#endif
 };
 
 class TypeInfoDeclaration : public VarDeclaration
@@ -669,7 +665,6 @@ public:
     virtual FuncDeclaration *toAliasFunc() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    Symbol *toSymbol();
     void toObjFile();                       // compile to .obj file
 #endif
 };
@@ -693,9 +688,6 @@ public:
 
     FuncDeclaration *toAliasFunc();
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toSymbol();
-#endif
 };
 
 class FuncLiteralDeclaration : public FuncDeclaration

@@ -142,7 +142,7 @@ public:
   {
     d->isym = make_node(IMPORTED_DECL);
     TREE_TYPE (d->isym) = void_type_node;
-    IMPORTED_DECL_ASSOCIATED_DECL (d->isym) = d->toSymbol();
+    IMPORTED_DECL_ASSOCIATED_DECL (d->isym) = get_symbol_decl (d);
     d_keep(d->isym);
   }
 };

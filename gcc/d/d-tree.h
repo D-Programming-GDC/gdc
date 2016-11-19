@@ -34,7 +34,6 @@ class Module;
 class Statement;
 class Type;
 class TypeFunction;
-class Dsymbol;
 struct FuncFrameInfo;
 
 /* Usage of TREE_LANG_FLAG_?:
@@ -154,8 +153,8 @@ struct GTY(()) lang_identifier
   /* The identifier as the user sees it.  */
   tree pretty_ident;
 
-  /* The frontend Dsymbol associated with this identifier.  */
-  Dsymbol * GTY((skip)) dsymbol;
+  /* The frontend Declaration associated with this identifier.  */
+  Declaration * GTY((skip)) dsymbol;
 };
 
 #define IDENTIFIER_LANG_SPECIFIC(NODE) \
@@ -375,6 +374,7 @@ extern tree d_truthvalue_conversion (tree);
 
 /* In d-decls.cc.  */
 extern tree make_internal_name (Dsymbol *, const char *, const char *);
+extern tree get_symbol_decl (Declaration *);
 extern tree make_thunk (FuncDeclaration *, int);
 extern tree get_moduleinfo_decl (Module *);
 extern tree get_typeinfo_decl (TypeInfoDeclaration *);

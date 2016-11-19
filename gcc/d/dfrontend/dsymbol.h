@@ -283,7 +283,6 @@ public:
     virtual OverloadSet *isOverloadSet() { return NULL; }
     virtual void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    virtual Symbol *toSymbol();                 // to backend symbol
     virtual void toObjFile();                   // compile to .obj file
 #endif
 };

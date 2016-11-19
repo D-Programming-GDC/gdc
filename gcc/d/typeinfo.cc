@@ -427,7 +427,7 @@ public:
 	TypeFunction *tf = (TypeFunction *) fdx->type;
 	gcc_assert(tf->ty == Tfunction);
 
-	this->set_field("xtoHash", build_address(fdx->toSymbol()));
+	this->set_field("xtoHash", build_address (get_symbol_decl (fdx)));
 
 	if (!tf->isnothrow || tf->trust == TRUSTsystem)
 	  warning(fdx->loc, "toHash() must be declared as extern (D) size_t "
@@ -436,16 +436,16 @@ public:
 
     // bool function(in void*, in void*) xopEquals;
     if (sd->xeq)
-      this->set_field("xopEquals", build_address(sd->xeq->toSymbol()));
+      this->set_field("xopEquals", build_address (get_symbol_decl (sd->xeq)));
 
     // int function(in void*, in void*) xopCmp;
     if (sd->xcmp)
-      this->set_field("xopCmp", build_address(sd->xcmp->toSymbol()));
+      this->set_field("xopCmp", build_address (get_symbol_decl (sd->xcmp)));
 
     // string function(const(void)*) xtoString;
     fdx = search_toString(sd);
     if (fdx)
-      this->set_field("xtoString", build_address(fdx->toSymbol()));
+      this->set_field("xtoString", build_address (get_symbol_decl (fdx)));
 
     // StructFlags m_flags;
     StructFlags::Type m_flags = 0;
@@ -455,11 +455,11 @@ public:
 
     // void function(void*) xdtor;
     if (sd->dtor)
-      this->set_field("xdtor", build_address(sd->dtor->toSymbol()));
+      this->set_field("xdtor", build_address (get_symbol_decl (sd->dtor)));
 
     // void function(void*) xpostblit;
     if (sd->postblit && !(sd->postblit->storage_class & STCdisable))
-      this->set_field("xpostblit", build_address(sd->postblit->toSymbol()));
+      this->set_field("xpostblit", build_address (get_symbol_decl (sd->postblit)));
 
     // uint m_align;
     this->set_field("m_align", size_int(ti->alignsize()));

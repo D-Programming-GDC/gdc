@@ -1006,7 +1006,7 @@ public:
 	    // Maybe set-up hidden pointer to outer scope context.
 	    if (sd->isNested())
 	      {
-		tree field = sd->vthis->toSymbol();
+		tree field = get_symbol_decl (sd->vthis);
 		tree value = build_vthis(sd);
 
 		tree vthis_exp = modify_expr(component_ref(t1, field), value);
@@ -1522,7 +1522,7 @@ public:
 		if (error_operand_p(result))
 		  this->result_ = result;
 		else
-		  this->result_ = component_ref(result, field->toSymbol());
+		  this->result_ = component_ref(result, get_symbol_decl (field));
 
 		return;
 	      }
@@ -1601,7 +1601,7 @@ public:
 	if (fd != NULL)
 	  {
 	    // Get the correct callee from the DotVarExp object.
-	    tree fndecl = fd->toSymbol();
+	    tree fndecl = get_symbol_decl (fd);
 
 	    // Static method; ignore the object instance.
 	    if (!fd->isThis())
@@ -1729,7 +1729,7 @@ public:
 	else
 	  object = get_frame_for_symbol(e->func);
 
-	fndecl = build_address(e->func->toSymbol());
+	fndecl = build_address(get_symbol_decl (e->func));
       }
     else
       {
@@ -1746,7 +1746,7 @@ public:
 	if (e->e1->type->ty != Tclass && e->e1->type->ty != Tpointer)
 	  object = build_address(object);
 
-	fndecl = build_address(e->func->toSymbol());
+	fndecl = build_address(get_symbol_decl (e->func));
 
 	// Get pointer to function out of the virtual table.
 	if (e->func->isVirtual() && !e->func->isFinalFunc()
@@ -1778,7 +1778,7 @@ public:
 	    if (e->e1->type->toBasetype()->ty != Tstruct)
 	      object = build_deref(object);
 
-	    this->result_ = component_ref(object, vd->toSymbol());
+	    this->result_ = component_ref(object, get_symbol_decl (vd));
 	  }
       }
     else
@@ -1968,7 +1968,7 @@ public:
 	  }
 	else
 	  {
-	    tree func = build_address(e->fd->toSymbol());
+	    tree func = build_address(get_symbol_decl (e->fd));
 	    tree object = get_frame_for_symbol(e->fd);
 	    this->result_ = build_method_call(func, object, e->fd->type);
 	  }
@@ -1976,7 +1976,7 @@ public:
     else
       {
 	this->result_ = build_nop(build_ctype(e->type),
-				  build_address(e->fd->toSymbol()));
+				  build_address(get_symbol_decl (e->fd)));
       }
   }
 
@@ -2124,7 +2124,7 @@ public:
 	// Set vthis for nested classes.
 	if (cd->isNested())
 	  {
-	    tree field = cd->vthis->toSymbol();
+	    tree field = get_symbol_decl (cd->vthis);
 	    tree value = NULL_TREE;
 
 	    if (e->thisexp)
@@ -2198,7 +2198,7 @@ public:
 	    if (sd->isNested())
 	      {
 		tree value = build_vthis(sd);
-		tree field = sd->vthis->toSymbol();
+		tree field = get_symbol_decl (sd->vthis);
 		tree type = build_ctype(stype);
 
 		new_call = d_save_expr(new_call);
@@ -2665,14 +2665,14 @@ public:
 	if (init != NULL_TREE)
 	  saved_elems = compound_expr(saved_elems, init);
 
-	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol(), value);
+	CONSTRUCTOR_APPEND_ELT (ve, get_symbol_decl (field), value);
       }
 
     // Maybe setup hidden pointer to outer scope context.
     if (e->sd->isNested() && e->elements->dim != e->sd->fields.dim
 	&& this->constp_ == false)
       {
-	tree field = e->sd->vthis->toSymbol();
+	tree field = get_symbol_decl (e->sd->vthis);
 	tree value = build_vthis(e->sd);
 	CONSTRUCTOR_APPEND_ELT (ve, field, value);
 	gcc_assert(e->useStaticInit == false);
