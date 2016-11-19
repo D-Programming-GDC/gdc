@@ -34,7 +34,6 @@ class Module;
 class Statement;
 class Type;
 class TypeFunction;
-struct FuncFrameInfo;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
@@ -143,6 +142,28 @@ struct GTY(()) d_label_entry
   bool bc_label;
 };
 
+/* Frame information for a function declaration.  */
+
+struct GTY(()) tree_frame_info
+{
+    struct tree_common common;
+    tree frame_type;
+};
+
+/* True if the function creates a nested frame.  */
+#define FRAMEINFO_CREATES_FRAME(NODE) \
+  (TREE_LANG_FLAG_0 (FUNCFRAME_INFO_CHECK (NODE)))
+
+/* True if the function has a static chain passed in it's DECL_ARGUMENTS.  */
+#define FRAMEINFO_STATIC_CHAIN(NODE) \
+  (TREE_LANG_FLAG_1 (FUNCFRAME_INFO_CHECK (NODE)))
+
+/* True if the function frame is a closure (initialized on the heap).  */
+#define FRAMEINFO_IS_CLOSURE(NODE) \
+  (TREE_LANG_FLAG_2 (FUNCFRAME_INFO_CHECK (NODE)))
+
+#define FRAMEINFO_TYPE(NODE) \
+  (((tree_frame_info *) FUNCFRAME_INFO_CHECK (NODE))->frame_type)
 
 /* Language-dependent contents of an identifier.  */
 
@@ -158,7 +179,7 @@ struct GTY(()) lang_identifier
 };
 
 #define IDENTIFIER_LANG_SPECIFIC(NODE) \
-  ((struct lang_identifier*) IDENTIFIER_NODE_CHECK (NODE))
+  ((struct lang_identifier *) IDENTIFIER_NODE_CHECK (NODE))
 
 #define IDENTIFIER_PRETTY_NAME(NODE) \
   (IDENTIFIER_LANG_SPECIFIC (NODE)->pretty_ident)
@@ -167,6 +188,7 @@ struct GTY(()) lang_identifier
   (IDENTIFIER_LANG_SPECIFIC (NODE)->dsymbol)
 
 /* Global state pertinent to the current function.  */
+
 struct GTY(()) language_function
 {
   /* Our function and enclosing module.  */
@@ -199,20 +221,20 @@ struct GTY(()) lang_decl
 
   tree initial;
 
-  // FIELD_DECL in frame struct that this variable is allocated in.
+  /* FIELD_DECL in frame struct that this variable is allocated in.  */
   tree frame_field;
 
-  // RESULT_DECL in a function that returns by nrvo.
+  /* RESULT_DECL in a function that returns by nrvo.  */
   tree named_result;
 
-  // Chain of DECL_LANG_THUNKS in a function.
+  /* Chain of DECL_LANG_THUNKS in a function.  */
   tree thunks;
 
-  // In a FUNCTION_DECL, this is the THUNK_LANG_OFFSET.
+  /* In a FUNCTION_DECL, this is the THUNK_LANG_OFFSET.  */
   int offset;
 
-  // For FuncDeclarations:
-  FuncFrameInfo * GTY((skip)) frame_info;
+  /* FUNCFRAME_INFO in a function that has non-local references.  */
+  tree frame_info;
 };
 
 /* The D frontend Declaration AST for GCC decl NODE.  */
@@ -258,16 +280,26 @@ struct GTY(()) lang_type
   (TYPE_LANG_SPECIFIC (NODE) \
    ? TYPE_LANG_SPECIFIC (NODE)->type : NULL)
 
+
+enum d_tree_node_structure_enum
+{
+  TS_D_GENERIC,
+  TS_D_IDENTIFIER,
+  TS_D_FRAMEINFO,
+  LAST_TS_D_ENUM
+};
+
 /* The resulting tree type.  */
 
-union GTY((desc ("TREE_CODE (&%h.generic) == IDENTIFIER_NODE"),
+union GTY((desc ("d_tree_node_structure (&%h)"),
 	   chain_next ("CODE_CONTAINS_STRUCT (TREE_CODE (&%h.generic), TS_COMMON)"
 		       " ? ((union lang_tree_node *) TREE_CHAIN (&%h.generic)) : NULL")))
 lang_tree_node
 {
-  union tree_node GTY((tag ("0"),
-		       desc ("tree_node_structure (&%h)"))) generic;
-  lang_identifier GTY((tag ("1"))) identifier;
+  union tree_node GTY ((tag ("TS_D_GENERIC"),
+			desc ("tree_node_structure (&%h)"))) generic;
+  lang_identifier GTY ((tag ("TS_D_IDENTIFIER"))) identifier;
+  tree_frame_info GTY ((tag ("TS_D_FRAMEINFO"))) frameinfo;
 };
 
 /* True if the Tdelegate typed expression is not really a variable,
@@ -281,7 +313,7 @@ lang_tree_node
 
 /* True if the type is an imaginary float type.  */
 #define TYPE_IMAGINARY_FLOAT(NODE) \
-  (TYPE_LANG_FLAG_1 (TREE_CHECK ((NODE), REAL_TYPE)))
+  (TYPE_LANG_FLAG_1 (REAL_TYPE_CHECK (NODE)))
 
 /* True if the type is an anonymous record or union.  */
 #define ANON_AGGR_TYPE_P(NODE) \
@@ -289,7 +321,7 @@ lang_tree_node
 
 /* True if the type is the underlying record for a class.  */
 #define CLASS_TYPE_P(NODE) \
-  (TYPE_LANG_FLAG_2 (TREE_CHECK ((NODE), RECORD_TYPE)))
+  (TYPE_LANG_FLAG_2 (RECORD_TYPE_CHECK (NODE)))
 
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared.  */
@@ -393,6 +425,7 @@ extern tree build_return_dtor (Expression *, Type *, TypeFunction *);
 extern void add_import_paths (const char *, const char *, bool);
 
 /* In d-lang.cc.  */
+extern d_tree_node_structure_enum d_tree_node_structure (lang_tree_node *);
 extern struct lang_type *build_lang_type (Type *);
 extern struct lang_decl *build_lang_decl (Declaration *);
 extern struct lang_decl *copy_lang_decl (tree t);

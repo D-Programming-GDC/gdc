@@ -47,6 +47,7 @@
 #include "common/common-target.h"
 #include "stringpool.h"
 #include "stor-layout.h"
+#include "print-tree.h"
 #include "gimple-expr.h"
 #include "gimplify.h"
 #include "debug.h"
@@ -83,8 +84,11 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_FINISH_INCOMPLETE_DECL
 #undef LANG_HOOKS_GIMPLIFY_EXPR
 #undef LANG_HOOKS_CLASSIFY_RECORD
+#undef LANG_HOOKS_TREE_SIZE
+#undef LANG_HOOKS_PRINT_XNODE
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
+
 
 #define LANG_HOOKS_NAME				lang_name
 #define LANG_HOOKS_INIT				d_init
@@ -106,6 +110,8 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_FINISH_INCOMPLETE_DECL	d_finish_incomplete_decl
 #define LANG_HOOKS_GIMPLIFY_EXPR		d_gimplify_expr
 #define LANG_HOOKS_CLASSIFY_RECORD		d_classify_record
+#define LANG_HOOKS_TREE_SIZE			d_tree_size
+#define LANG_HOOKS_PRINT_XNODE			d_print_xnode
 #define LANG_HOOKS_EH_PERSONALITY		d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE		d_build_eh_type_type
 
@@ -1514,6 +1520,55 @@ d_classify_record (tree type)
     }
 
   return RECORD_IS_STRUCT;
+}
+
+/* Determine the size of our tcc_constant or tcc_exceptional nodes.  */
+
+static size_t
+d_tree_size (tree_code code)
+{
+  switch (code)
+    {
+    case FUNCFRAME_INFO:
+      return sizeof (tree_frame_info);
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+/*  */
+static void
+d_print_xnode (FILE *file, tree node, int indent)
+{
+  switch (TREE_CODE (node))
+    {
+    case FUNCFRAME_INFO:
+      print_node (file, "frame_type", FRAMEINFO_TYPE (node), indent + 4);
+      break;
+
+    default:
+      break;
+    }
+}
+
+/* Return which tree structure is used by NODE, or TS_D_GENERIC if NODE
+   is one of the language-independent trees.  */
+
+d_tree_node_structure_enum
+d_tree_node_structure (lang_tree_node *t)
+{
+  switch (TREE_CODE (&t->generic))
+    {
+    case IDENTIFIER_NODE:
+      return TS_D_IDENTIFIER;
+
+    case FUNCFRAME_INFO:
+      return TS_D_FRAMEINFO;
+
+    default:
+      return TS_D_GENERIC;
+    }
 }
 
 

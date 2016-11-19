@@ -1244,7 +1244,7 @@ FuncDeclaration::toObjFile()
       if (vthis->type == Type::tvoidptr)
 	{
 	  // Replace generic pointer with backend closure type (this wins for gdb).
-	  tree frame_type = get_frameinfo (this)->closure_rec;
+	  tree frame_type = FRAMEINFO_TYPE (get_frameinfo (this));
 	  gcc_assert (frame_type != NULL_TREE);
 	  TREE_TYPE (parm_decl) = build_pointer_type (frame_type);
 	}

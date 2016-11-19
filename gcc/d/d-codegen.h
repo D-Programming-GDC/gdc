@@ -28,18 +28,6 @@ enum LibCall
   LIBCALL_count
 };
 
-struct FuncFrameInfo
-{
-  bool creates_frame;	    // Function creates nested frame.
-  bool static_chain;	    // Function has static chain passed via PARM_DECL
-  bool is_closure;	    // Frame is a closure (initialised on the heap).
-  union
-  {
-    tree closure_rec;	    // Frame type for static chain
-    tree frame_rec;
-  };
-};
-
 // Code generation routines.
 extern void push_binding_level(level_kind kind);
 extern tree pop_binding_level();
@@ -139,9 +127,8 @@ extern tree d_build_call_nary (tree callee, int n_args, ...);
 extern tree d_assert_call (const Loc& loc, LibCall libcall, tree msg = NULL_TREE);
 
 // Closures and frame generation.
-extern tree build_frame_type(FuncDeclaration *func);
 extern void build_closure(FuncDeclaration *fd);
-extern FuncFrameInfo *get_frameinfo(FuncDeclaration *fd);
+extern tree get_frameinfo(FuncDeclaration *fd);
 extern tree get_framedecl(FuncDeclaration *inner, FuncDeclaration *outer);
 
 extern tree build_vthis(AggregateDeclaration *decl);

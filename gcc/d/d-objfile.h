@@ -34,7 +34,6 @@ enum ModuleInfoFlags
   MIname	    = 0x1000,
 };
 
-struct FuncFrameInfo;
 typedef tree_node dt_t;
 
 extern dt_t **dt_cons (dt_t **pdt, tree val);

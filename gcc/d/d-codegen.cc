@@ -477,17 +477,19 @@ get_decl_tree (Declaration *decl)
 		continue;
 
 	      FuncDeclaration *fd = outer->isFuncDeclaration();
-	      if (fd && fd->isThis())
-		{
-		  ad = fd->isThis();
+	      if (fd != NULL)
+		ad = fd->isThis();
 
+	      if (fd && ad)
+		{
 		  // If outer function creates a closure, then the 'this' value
 		  // would be the closure pointer, and the real 'this' the first
 		  // field of that closure.
-		  FuncFrameInfo *ff = get_frameinfo (fd);
-		  if (ff->creates_frame)
+		  tree ff = get_frameinfo (fd);
+		  if (FRAMEINFO_CREATES_FRAME (ff))
 		    {
-		      this_tree = build_nop (build_pointer_type (ff->frame_rec), this_tree);
+		      this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
+					     this_tree);
 		      this_tree = indirect_ref (build_ctype(ad->type), this_tree);
 		    }
 
@@ -4103,8 +4105,8 @@ get_frame_for_symbol (Dsymbol *sym)
 	}
     }
 
-  FuncFrameInfo *ffo = get_frameinfo (parentfd);
-  if (ffo->creates_frame || ffo->static_chain)
+  tree ffo = get_frameinfo (parentfd);
+  if (FRAMEINFO_CREATES_FRAME (ffo) || FRAMEINFO_STATIC_CHAIN (ffo))
     return get_framedecl (func, parentfd);
 
   return null_pointer_node;
@@ -4221,8 +4223,8 @@ build_vthis(AggregateDeclaration *decl)
 	}
       else if (fdo)
 	{
-	  FuncFrameInfo *ffo = get_frameinfo(fdo);
-	  if (ffo->creates_frame || ffo->static_chain
+	  tree ffo = get_frameinfo(fdo);
+	  if (FRAMEINFO_CREATES_FRAME (ffo) || FRAMEINFO_STATIC_CHAIN (ffo)
 	      || fdo->hasNestedFrameRefs())
 	    vthis_value = get_frame_for_symbol(decl);
 	  else if (cd != NULL)
@@ -4240,16 +4242,14 @@ build_vthis(AggregateDeclaration *decl)
   return vthis_value;
 }
 
-tree
-build_frame_type (FuncDeclaration *func)
+static tree
+build_frame_type (tree ffi, FuncDeclaration *func)
 {
-  FuncFrameInfo *ffi = get_frameinfo (func);
-
-  if (ffi->frame_rec != NULL_TREE)
-    return ffi->frame_rec;
+  if (FRAMEINFO_TYPE (ffi))
+    return FRAMEINFO_TYPE (ffi);
 
   tree frame_rec_type = make_node (RECORD_TYPE);
-  char *name = concat (ffi->is_closure ? "CLOSURE." : "FRAME.",
+  char *name = concat (FRAMEINFO_IS_CLOSURE (ffi) ? "CLOSURE." : "FRAME.",
 		       func->toPrettyChars(), NULL);
   TYPE_NAME (frame_rec_type) = get_identifier (name);
   free (name);
@@ -4261,7 +4261,7 @@ build_frame_type (FuncDeclaration *func)
 
   tree fields = chainon (NULL_TREE, ptr_field);
 
-  if (!ffi->is_closure)
+  if (!FRAMEINFO_IS_CLOSURE (ffi))
     {
       // __ensure and __require never becomes a closure, but could still be referencing
       // parameters of the calling function.  So we add all parameters as nested refs.
@@ -4320,7 +4320,7 @@ build_frame_type (FuncDeclaration *func)
 	func->nrvo_can = 0;
 
       // Because the value needs to survive the end of the scope.
-      if (ffi->is_closure && v->needsAutoDtor())
+      if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsAutoDtor())
 	v->error("has scoped destruction, cannot build closure");
     }
 
@@ -4343,17 +4343,17 @@ build_frame_type (FuncDeclaration *func)
 void
 build_closure(FuncDeclaration *fd)
 {
-  FuncFrameInfo *ffi = get_frameinfo(fd);
+  tree ffi = get_frameinfo (fd);
 
-  if (!ffi->creates_frame)
+  if (!FRAMEINFO_CREATES_FRAME (ffi))
     return;
 
-  tree type = build_frame_type(fd);
+  tree type = FRAMEINFO_TYPE (ffi);
   gcc_assert(COMPLETE_TYPE_P(type));
 
   tree decl, decl_ref;
 
-  if (ffi->is_closure)
+  if (FRAMEINFO_IS_CLOSURE (ffi))
     {
       decl = build_local_temp(build_pointer_type(type));
       DECL_NAME(decl) = get_identifier("__closptr");
@@ -4395,7 +4395,7 @@ build_closure(FuncDeclaration *fd)
       add_stmt(expr);
     }
 
-  if (!ffi->is_closure)
+  if (!FRAMEINFO_IS_CLOSURE (ffi))
     decl = build_address (decl);
 
   cfun->language->static_chain = decl;
@@ -4404,34 +4404,28 @@ build_closure(FuncDeclaration *fd)
 // Return the frame of FD.  This could be a static chain or a closure
 // passed via the hidden 'this' pointer.
 
-FuncFrameInfo *
+tree
 get_frameinfo(FuncDeclaration *fd)
 {
   tree fds = get_symbol_decl (fd);
   if (DECL_LANG_FRAMEINFO (fds))
     return DECL_LANG_FRAMEINFO (fds);
 
-  FuncFrameInfo *ffi = new FuncFrameInfo;
-  ffi->creates_frame = false;
-  ffi->static_chain = false;
-  ffi->is_closure = false;
-  ffi->frame_rec = NULL_TREE;
+  tree ffi = make_node (FUNCFRAME_INFO);
 
   DECL_LANG_FRAMEINFO (fds) = ffi;
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->hasNestedFrameRefs())
-    ffi->creates_frame = true;
-
-  if (fd->vthis && fd->vthis->type == Type::tvoidptr)
-    ffi->creates_frame = true;
+  if (fd->hasNestedFrameRefs()
+      || (fd->vthis && fd->vthis->type == Type::tvoidptr))
+    FRAMEINFO_CREATES_FRAME (ffi) = 1;
 
   // D2 maybe setup closure instead.
   if (fd->needsClosure())
     {
-      ffi->creates_frame = true;
-      ffi->is_closure = true;
+      FRAMEINFO_CREATES_FRAME (ffi) = 1;
+      FRAMEINFO_IS_CLOSURE (ffi) = 1;
     }
   else if (fd->closureVars.dim == 0)
     {
@@ -4442,17 +4436,16 @@ get_frameinfo(FuncDeclaration *fd)
 
       while (ff)
 	{
-	  FuncFrameInfo *ffo = get_frameinfo (ff);
-	  AggregateDeclaration *ad;
+	  tree ffo = get_frameinfo (ff);
 
-	  if (ff != fd && ffo->creates_frame)
+	  if (ff != fd && FRAMEINFO_CREATES_FRAME (ffo))
 	    {
-	      gcc_assert (ffo->frame_rec);
-	      ffi->creates_frame = false;
-	      ffi->static_chain = true;
-	      ffi->is_closure = ffo->is_closure;
-	      gcc_assert (COMPLETE_TYPE_P (ffo->frame_rec));
-	      ffi->frame_rec = ffo->frame_rec;
+	      gcc_assert (FRAMEINFO_TYPE (ffo));
+	      FRAMEINFO_CREATES_FRAME (ffi) = 0;
+	      FRAMEINFO_STATIC_CHAIN (ffi) = 1;
+	      FRAMEINFO_IS_CLOSURE (ffi) = FRAMEINFO_IS_CLOSURE (ffo);
+	      gcc_assert (COMPLETE_TYPE_P (FRAMEINFO_TYPE (ffo)));
+	      FRAMEINFO_TYPE (ffi) = FRAMEINFO_TYPE (ffo);
 	      break;
 	    }
 
@@ -4460,7 +4453,7 @@ get_frameinfo(FuncDeclaration *fd)
 	  if (ff->vthis == NULL)
 	    break;
 
-	  ad = ff->isThis();
+	  AggregateDeclaration *ad = ff->isThis();
 	  if (ad && ad->isNested())
 	    {
 	      while (ad->isNested())
@@ -4479,8 +4472,8 @@ get_frameinfo(FuncDeclaration *fd)
     }
 
   // Build type now as may be referenced from another module.
-  if (ffi->creates_frame)
-    ffi->frame_rec = build_frame_type (fd);
+  if (FRAMEINFO_CREATES_FRAME (ffi))
+    FRAMEINFO_TYPE (ffi) = build_frame_type (ffi, fd);
 
   return ffi;
 }
@@ -4501,7 +4494,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
       StructDeclaration *sd;
 
       // Parent frame link is the first field.
-      if (get_frameinfo (fd)->creates_frame)
+      if (FRAMEINFO_CREATES_FRAME (get_frameinfo (fd)))
 	result = indirect_ref (ptr_type_node, result);
 
       if (fd->isNested())
@@ -4519,11 +4512,11 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 
   // Go get our frame record.
   gcc_assert (fd == outer);
-  tree frame_rec = get_frameinfo (outer)->frame_rec;
+  tree frame_type = FRAMEINFO_TYPE (get_frameinfo (outer));
 
-  if (frame_rec != NULL_TREE)
+  if (frame_type != NULL_TREE)
     {
-      result = build_nop (build_pointer_type (frame_rec), result);
+      result = build_nop (build_pointer_type (frame_type), result);
       return result;
     }
   else
