@@ -1,3 +1,10 @@
+2016-11-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (copy_lang_decl): Rename to d_dup_lang_specific_decl.
+	(LANG_HOOKS_DUP_LANG_SPECIFIC_DECL): Redefine.
+	* d-decls.cc (make_alias_for_thunk): Call dup_lang_specific_decl.
+	(make_thunk): Likewise.
+
 2016-11-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.h (FuncFrameInfo): Remove type.  All users updated to

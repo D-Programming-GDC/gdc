@@ -35,6 +35,7 @@
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"
+#include "langhooks.h"
 #include "target.h"
 #include "common/common-target.h"
 #include "cgraph.h"
@@ -486,6 +487,7 @@ make_alias_for_thunk (tree function)
   alias = build_decl (DECL_SOURCE_LOCATION (function), FUNCTION_DECL,
 		      get_identifier (buf), TREE_TYPE (function));
   DECL_LANG_SPECIFIC (alias) = DECL_LANG_SPECIFIC (function);
+  lang_hooks.dup_lang_specific_decl (alias);
   DECL_CONTEXT (alias) = NULL_TREE;
   TREE_READONLY (alias) = TREE_READONLY (function);
   TREE_THIS_VOLATILE (alias) = TREE_THIS_VOLATILE (function);
@@ -628,7 +630,8 @@ make_thunk (FuncDeclaration *decl, int offset)
 
   thunk = build_decl (DECL_SOURCE_LOCATION (decl->csym),
 		      FUNCTION_DECL, NULL_TREE, TREE_TYPE (decl->csym));
-  DECL_LANG_SPECIFIC (thunk) = copy_lang_decl (decl->csym);
+  DECL_LANG_SPECIFIC (thunk) = DECL_LANG_SPECIFIC (decl->csym);
+  lang_hooks.dup_lang_specific_decl (thunk);
   THUNK_LANG_OFFSET (thunk) = offset;
 
   TREE_READONLY (thunk) = TREE_READONLY (decl->csym);

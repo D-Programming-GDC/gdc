@@ -86,6 +86,7 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_CLASSIFY_RECORD
 #undef LANG_HOOKS_TREE_SIZE
 #undef LANG_HOOKS_PRINT_XNODE
+#undef LANG_HOOKS_DUP_LANG_SPECIFIC_DECL
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
 
@@ -112,6 +113,7 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_CLASSIFY_RECORD		d_classify_record
 #define LANG_HOOKS_TREE_SIZE			d_tree_size
 #define LANG_HOOKS_PRINT_XNODE			d_print_xnode
+#define LANG_HOOKS_DUP_LANG_SPECIFIC_DECL	d_dup_lang_specific_decl
 #define LANG_HOOKS_EH_PERSONALITY		d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE		d_build_eh_type_type
 
@@ -1571,32 +1573,38 @@ d_tree_node_structure (lang_tree_node *t)
     }
 }
 
+/* Allocate and return a lang specific structure for the frontend type.  */
 
 struct lang_type *
 build_lang_type (Type *t)
 {
-  struct lang_type *lt = ggc_cleared_alloc<struct lang_type>();
+  struct lang_type *lt = ggc_cleared_alloc<struct lang_type> ();
   lt->type = t;
   return lt;
 }
 
+/* Allocate and return a lang specific structure for the frontend decl.  */
+
 struct lang_decl *
 build_lang_decl (Declaration *d)
 {
-  struct lang_decl *ld = ggc_cleared_alloc<struct lang_decl>();
+  struct lang_decl *ld = ggc_cleared_alloc<struct lang_decl> ();
   ld->decl = d;
   return ld;
 }
 
-struct lang_decl *
-copy_lang_decl (tree t)
+/* Replace the DECL_LANG_SPECIFIC field of NODE with a copy.  */
+
+static void
+d_dup_lang_specific_decl (tree node)
 {
-  struct lang_decl *ld = ggc_alloc<struct lang_decl>();
-  memcpy (ld, DECL_LANG_SPECIFIC (t), sizeof (struct lang_decl));
-  return ld;
+  if (! DECL_LANG_SPECIFIC (node))
+    return;
+
+  struct lang_decl *ld = ggc_alloc<struct lang_decl> ();
+  memcpy (ld, DECL_LANG_SPECIFIC (node), sizeof (struct lang_decl));
+  DECL_LANG_SPECIFIC (node) = ld;
 }
-
-
 
 // This preserves trees we create from the garbage collector.
 static GTY(()) tree d_keep_list = NULL_TREE;

@@ -428,7 +428,6 @@ extern void add_import_paths (const char *, const char *, bool);
 extern d_tree_node_structure_enum d_tree_node_structure (lang_tree_node *);
 extern struct lang_type *build_lang_type (Type *);
 extern struct lang_decl *build_lang_decl (Declaration *);
-extern struct lang_decl *copy_lang_decl (tree t);
 extern tree d_pushdecl (tree);
 extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);
