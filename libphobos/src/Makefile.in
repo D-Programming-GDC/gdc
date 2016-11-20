@@ -288,7 +288,7 @@ DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
 DL_LIBS = @DL_LIBS@
-DRUNTIME_VER_FLAG = @DRUNTIME_VER_FLAG@
+DRUNTIME_SOVERSION = @DRUNTIME_SOVERSION@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -337,7 +337,7 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PHOBOS_VER_FLAG = @PHOBOS_VER_FLAG@
+PHOBOS_SOVERSION = @PHOBOS_SOVERSION@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -483,7 +483,7 @@ PHOBOS_TEST_LOBJECTS = $(filter-out std/net/curl.t.lo std/base64.t.lo, \
 toolexeclib_LTLIBRARIES = libgphobos.la
 libgphobos_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
 libgphobos_la_LIBTOOLFLAGS = 
-libgphobos_la_LDFLAGS = -Xcompiler -nophoboslib $(PHOBOS_VER_FLAG)
+libgphobos_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(PHOBOS_SOVERSION)
 libgphobos_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
 
 # For static unittest, link objects directly
