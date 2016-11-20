@@ -7,6 +7,8 @@
 
 	* d-todt.cc (ClassDeclaration::toDt): Update.
 	(ClassDeclaration::toDt2): Remove function.
+	(TypeSArray::toDtElem): Remove function.
+	* d-objfile.cc (VarDeclaration::toObjFile): Update.
 
 2016-11-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
