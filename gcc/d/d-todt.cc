@@ -273,109 +273,13 @@ ExpInitializer::toDt()
 void
 ClassDeclaration::toDt(dt_t **pdt)
 {
-  /* Put out:
-   *  void **vptr;
-   *  monitor_t monitor;
-   */
-  tree cdt = NULL_TREE;
-  build_vptr_monitor(&cdt, this);
+  NewExp *ne = new NewExp(this->loc, NULL, NULL, this->type, NULL);
+  ne->type = this->type;
 
-  // Put out rest of class fields.
-  toDt2(&cdt, this);
+  Expression *e = ne->ctfeInterpret();
+  gcc_assert (e->op == TOKclassreference);
 
-  dt_container(pdt, type, cdt);
-}
-
-void
-ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
-{
-  size_t offset;
-
-  if (baseClass)
-    {
-      baseClass->toDt2(pdt, cd);
-      offset = baseClass->structsize;
-    }
-  else
-    {
-      // Allow room for __vptr and __monitor
-      if (cd->cpp)
-	offset = Target::ptrsize;
-      else
-	offset = Target::ptrsize * 2;
-    }
-
-  // Note equivalence of this loop to struct's
-  for (size_t i = 0; i < fields.dim; i++)
-    {
-      VarDeclaration *v = fields[i];
-      Initializer *init = v->init;
-      tree dt = NULL_TREE;
-
-      if (init)
-	{
-	  ExpInitializer *ei = init->isExpInitializer();
-	  Type *tb = v->type->toBasetype();
-	  if (!init->isVoidInitializer())
-	    {
-	      if (ei && tb->ty == Tsarray)
-		((TypeSArray *) tb)->toDtElem(&dt, ei->exp);
-	      else
-		dt = init->toDt();
-	    }
-	}
-      else if (v->offset >= offset)
-	{
-	  if (v->type->ty == Tstruct)
-	    ((TypeStruct *) v->type)->sym->toDt(&dt);
-	  else
-	    {
-	      Expression *e = v->type->defaultInitLiteral(loc);
-	      dt_cons(&dt, build_expr(e, true));
-	    }
-	}
-
-
-      if (dt != NULL_TREE)
-	{
-	  if (v->offset < offset)
-	    error("duplicated union initialization for %s", v->toChars());
-	  else
-	    {
-	      if (offset < v->offset)
-		dt_zeropad(pdt, v->offset - offset);
-	      dt_chainon(pdt, dt);
-	      offset = v->offset + v->type->size();
-	    }
-	}
-    }
-
-  // Interface vptr initializations
-  this->csym = get_classinfo_decl (this);
-
-  for (size_t i = 0; i < vtblInterfaces->dim; i++)
-    {
-      BaseClass *b = (*vtblInterfaces)[i];
-
-      for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
-	{
-	  gcc_assert(cd2);
-	  unsigned csymoffset = cd2->baseVtblOffset(b);
-	  if (csymoffset != (unsigned) ~0)
-	    {
-	      tree dt = build_address(get_classinfo_decl (cd2));
-	      if (offset < (size_t) b->offset)
-		dt_zeropad(pdt, b->offset - offset);
-	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
-	      break;
-	    }
-	}
-
-      offset = b->offset + Target::ptrsize;
-    }
-
-  if (offset < structsize)
-    dt_zeropad(pdt, structsize - offset);
+  dt_cons(pdt, build_class_instance((ClassReferenceExp *) e));
 }
 
 void

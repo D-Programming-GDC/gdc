@@ -3,6 +3,11 @@
 	* d-decls.cc (get_symbol_decl): Don't set alignment if
 	STRUCTALIGN_DEFAULT.
 
+2016-11-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-todt.cc (ClassDeclaration::toDt): Update.
+	(ClassDeclaration::toDt2): Remove function.
+
 2016-11-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (copy_lang_decl): Rename to d_dup_lang_specific_decl.
