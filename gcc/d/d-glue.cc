@@ -378,7 +378,7 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
   if (fd->builtin != BUILTINyes)
     return NULL;
 
-  tree decl = fd->toSymbol()->Stree;
+  tree decl = get_symbol_decl (fd);
   gcc_assert(DECL_BUILT_IN(decl));
 
   TypeFunction *tf = (TypeFunction *) fd->type;
@@ -394,13 +394,5 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
     e = build_expression(result);
 
   return e;
-}
-
-// Return backend .init symbol
-
-Symbol *
-toInitializer(AggregateDeclaration *ad)
-{
-  return ad->toInitializer();
 }
 

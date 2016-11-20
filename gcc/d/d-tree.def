@@ -29,3 +29,6 @@ DEFTREECODE (UNSIGNED_RSHIFT_EXPR, "unsigned_rshift_expr", tcc_binary, 2)
 
 /* Floating point modulus that expands to a call to fmod.  */
 DEFTREECODE (FLOAT_MOD_EXPR, "float_mod_expr", tcc_binary, 2)
+
+/* Used to represent information associated with a function closure.  */
+DEFTREECODE (FUNCFRAME_INFO, "funcframe_info", tcc_exceptional, 0)

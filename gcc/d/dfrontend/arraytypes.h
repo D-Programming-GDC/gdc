@@ -70,9 +70,9 @@ typedef Array<class TemplateInstance *> TemplateInstances;
 
 #ifndef IN_GCC
 typedef Array<struct block *> Blocks;
-#endif
 
 typedef Array<struct Symbol *> Symbols;
+#endif
 
 #ifdef IN_GCC
 typedef Array<union tree_node *> Dts;

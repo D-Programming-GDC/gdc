@@ -62,7 +62,7 @@ public:
   // Find the field identified by NAME and add its VALUE to the constructor.
   void set_field(const char *name, tree value)
   {
-    tree field = find_aggregate_field(get_identifier(name), this->type_);
+    tree field = find_aggregate_field(this->type_, get_identifier(name));
 
     if (field != NULL_TREE)
       CONSTRUCTOR_APPEND_ELT (this->init_, field, value);
@@ -78,7 +78,7 @@ public:
   void layout_vtable(ClassDeclaration *cd)
   {
     if (cd != NULL)
-      this->set_field("__vptr", build_address(cd->toVtblSymbol()->Stree));
+      this->set_field("__vptr", build_address (get_vtable_decl (cd)));
   }
 
   // Layout of TypeInfo is:
@@ -104,7 +104,7 @@ public:
     this->layout_vtable(Type::typeinfoconst);
 
     // TypeInfo for the mutable type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()->Stree));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Immutable is:
@@ -121,7 +121,7 @@ public:
     this->layout_vtable(Type::typeinfoinvariant);
 
     // TypeInfo for the mutable type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()->Stree));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Shared is:
@@ -138,7 +138,7 @@ public:
     this->layout_vtable(Type::typeinfoshared);
 
     // TypeInfo for the unshared type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()->Stree));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Inout is:
@@ -155,7 +155,7 @@ public:
     this->layout_vtable(Type::typeinfowild);
 
     // TypeInfo for the mutable type.
-    this->set_field("base", build_address(tm->vtinfo->toSymbol()->Stree));
+    this->set_field("base", build_address(get_typeinfo_decl (tm->vtinfo)));
   }
 
   // Layout of TypeInfo_Enum is:
@@ -168,28 +168,28 @@ public:
   {
     gcc_assert(d->tinfo->ty == Tenum);
     TypeEnum *ti = (TypeEnum *) d->tinfo;
-    EnumDeclaration *sd = ti->sym;
+    EnumDeclaration *ed = ti->sym;
 
     // The vtable for TypeInfo_Enum.
     this->layout_vtable(Type::typeinfoenum);
 
     // TypeInfo for enum members.
-    if (sd->memtype)
+    if (ed->memtype)
       {
-	genTypeInfo(sd->memtype, NULL);
-	TypeInfoDeclaration *vtinfo = sd->memtype->vtinfo;
-	this->set_field("base", build_address(vtinfo->toSymbol()->Stree));
+	genTypeInfo(ed->memtype, NULL);
+	TypeInfoDeclaration *vtinfo = ed->memtype->vtinfo;
+	this->set_field("base", build_address(get_typeinfo_decl (vtinfo)));
       }
 
     // Name of the enum declaration.
-    this->set_field("name", d_array_string(sd->toPrettyChars()));
+    this->set_field("name", d_array_string(ed->toPrettyChars()));
 
     // Default initialiser for enum.
-    if (sd->members && !d->tinfo->isZeroInit())
+    if (ed->members && !d->tinfo->isZeroInit())
       {
 	tree type = build_ctype(Type::tvoid->arrayOf());
-	tree length = size_int(sd->type->size());
-	tree ptr = build_address(sd->toInitializer()->Stree);
+	tree length = size_int(ed->type->size());
+	tree ptr = build_address(enum_initializer (ed));
 	this->set_field("m_init", d_array_value(type, length, ptr));
       }
   }
@@ -208,7 +208,7 @@ public:
     this->layout_vtable(Type::typeinfopointer);
 
     // TypeInfo for pointer-to type.
-    this->set_field("m_next", build_address(ti->next->vtinfo->toSymbol()->Stree));
+    this->set_field("m_next", build_address(get_typeinfo_decl (ti->next->vtinfo)));
   }
 
   // Layout of TypeInfo_Array is:
@@ -225,7 +225,7 @@ public:
     this->layout_vtable(Type::typeinfoarray);
 
     // TypeInfo for array of type.
-    this->set_field("value", build_address(ti->next->vtinfo->toSymbol()->Stree));
+    this->set_field("value", build_address(get_typeinfo_decl (ti->next->vtinfo)));
   }
 
   // Layout of TypeInfo_StaticArray is:
@@ -243,7 +243,7 @@ public:
     this->layout_vtable(Type::typeinfostaticarray);
 
     // TypeInfo for array of type.
-    this->set_field("value", build_address(ti->next->vtinfo->toSymbol()->Stree));
+    this->set_field("value", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // Static array length.
     this->set_field("len", size_int(ti->dim->toInteger()));
@@ -265,10 +265,10 @@ public:
     this->layout_vtable(Type::typeinfoassociativearray);
 
     // TypeInfo for value of type.
-    this->set_field("value", build_address(ti->next->vtinfo->toSymbol()->Stree));
+    this->set_field("value", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // TypeInfo for index of type.
-    this->set_field("key", build_address(ti->index->vtinfo->toSymbol()->Stree));
+    this->set_field("key", build_address(get_typeinfo_decl (ti->index->vtinfo)));
   }
 
   // Layout of TypeInfo_Vector is:
@@ -285,7 +285,7 @@ public:
     this->layout_vtable(Type::typeinfovector);
 
     // TypeInfo for equivalent static array.
-    this->set_field("base", build_address(ti->basetype->vtinfo->toSymbol()->Stree));
+    this->set_field("base", build_address(get_typeinfo_decl (ti->basetype->vtinfo)));
   }
 
   // Layout of TypeInfo_Function is:
@@ -304,7 +304,7 @@ public:
     this->layout_vtable(Type::typeinfofunction);
 
     // TypeInfo for function return value.
-    this->set_field("next", build_address(ti->next->vtinfo->toSymbol()->Stree));
+    this->set_field("next", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // Mangled name of function declaration.
     this->set_field("deco", d_array_string(d->tinfo->deco));
@@ -326,7 +326,7 @@ public:
     this->layout_vtable(Type::typeinfodelegate);
 
     // TypeInfo for delegate return value.
-    this->set_field("next", build_address(ti->next->vtinfo->toSymbol()->Stree));
+    this->set_field("next", build_address(get_typeinfo_decl (ti->next->vtinfo)));
 
     // Mangled name of delegate declaration.
     this->set_field("deco", d_array_string(d->tinfo->deco));
@@ -353,7 +353,7 @@ public:
     this->layout_vtable(Type::typeinfointerface);
 
     // TypeInfo for class inheriting the interface.
-    this->set_field("info", build_address(ti->sym->vclassinfo->toSymbol()->Stree));
+    this->set_field("info", build_address(get_typeinfo_decl (ti->sym->vclassinfo)));
   }
 
   // Layout of TypeInfo_Struct is:
@@ -417,7 +417,7 @@ public:
     tree type = build_ctype(Type::tvoid->arrayOf());
     tree length = size_int(sd->structsize);
     tree ptr = (sd->zeroInit) ? null_pointer_node :
-      build_address(sd->toInitializer()->Stree);
+      build_address(aggregate_initializer (sd));
     this->set_field("m_init", d_array_value(type, length, ptr));
 
     // hash_t function(in void*) xtoHash;
@@ -427,7 +427,7 @@ public:
 	TypeFunction *tf = (TypeFunction *) fdx->type;
 	gcc_assert(tf->ty == Tfunction);
 
-	this->set_field("xtoHash", build_address(fdx->toSymbol()->Stree));
+	this->set_field("xtoHash", build_address (get_symbol_decl (fdx)));
 
 	if (!tf->isnothrow || tf->trust == TRUSTsystem)
 	  warning(fdx->loc, "toHash() must be declared as extern (D) size_t "
@@ -436,16 +436,16 @@ public:
 
     // bool function(in void*, in void*) xopEquals;
     if (sd->xeq)
-      this->set_field("xopEquals", build_address(sd->xeq->toSymbol()->Stree));
+      this->set_field("xopEquals", build_address (get_symbol_decl (sd->xeq)));
 
     // int function(in void*, in void*) xopCmp;
     if (sd->xcmp)
-      this->set_field("xopCmp", build_address(sd->xcmp->toSymbol()->Stree));
+      this->set_field("xopCmp", build_address (get_symbol_decl (sd->xcmp)));
 
     // string function(const(void)*) xtoString;
     fdx = search_toString(sd);
     if (fdx)
-      this->set_field("xtoString", build_address(fdx->toSymbol()->Stree));
+      this->set_field("xtoString", build_address (get_symbol_decl (fdx)));
 
     // StructFlags m_flags;
     StructFlags::Type m_flags = 0;
@@ -455,11 +455,11 @@ public:
 
     // void function(void*) xdtor;
     if (sd->dtor)
-      this->set_field("xdtor", build_address(sd->dtor->toSymbol()->Stree));
+      this->set_field("xdtor", build_address (get_symbol_decl (sd->dtor)));
 
     // void function(void*) xpostblit;
     if (sd->postblit && !(sd->postblit->storage_class & STCdisable))
-      this->set_field("xpostblit", build_address(sd->postblit->toSymbol()->Stree));
+      this->set_field("xpostblit", build_address (get_symbol_decl (sd->postblit)));
 
     // uint m_align;
     this->set_field("m_align", size_int(ti->alignsize()));
@@ -470,14 +470,14 @@ public:
 	if (sd->arg1type)
 	  {
 	    genTypeInfo(sd->arg1type, NULL);
-	    this->set_field("m_arg1", build_address(sd->arg1type->vtinfo->toSymbol()->Stree));
+	    this->set_field("m_arg1", build_address(get_typeinfo_decl (sd->arg1type->vtinfo)));
 	  }
 
 	// TypeInfo m_arg2;
 	if (sd->arg2type)
 	  {
 	    genTypeInfo(sd->arg2type, NULL);
-	    this->set_field("m_arg2", build_address(sd->arg2type->vtinfo->toSymbol()->Stree));
+	    this->set_field("m_arg2", build_address(get_typeinfo_decl (sd->arg2type->vtinfo)));
 	  }
       }
 
@@ -507,8 +507,8 @@ public:
       {
 	Parameter *arg = (*ti->arguments)[i];
 	genTypeInfo(arg->type, NULL);
-	Symbol *s = arg->type->vtinfo->toSymbol();
-	CONSTRUCTOR_APPEND_ELT (elms, size_int(i), build_address(s->Stree));
+	tree s = get_typeinfo_decl (arg->type->vtinfo);
+	CONSTRUCTOR_APPEND_ELT (elms, size_int(i), build_address(s));
       }
     tree ctor = build_constructor(build_ctype(satype), elms);
     tree decl = build_artificial_decl(TREE_TYPE (ctor), ctor);
@@ -542,8 +542,7 @@ build_typeinfo(Type *type)
 {
   gcc_assert(type->ty != Terror);
   genTypeInfo(type, NULL);
-  tree tinfo = type->vtinfo->toSymbol()->Stree;
-  return build_address(tinfo);
+  return build_address(get_typeinfo_decl (type->vtinfo));
 }
 
 

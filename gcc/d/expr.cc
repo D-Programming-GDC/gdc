@@ -1006,7 +1006,7 @@ public:
 	    // Maybe set-up hidden pointer to outer scope context.
 	    if (sd->isNested())
 	      {
-		tree field = sd->vthis->toSymbol()->Stree;
+		tree field = get_symbol_decl (sd->vthis);
 		tree value = build_vthis(sd);
 
 		tree vthis_exp = modify_expr(component_ref(t1, field), value);
@@ -1166,10 +1166,7 @@ public:
 
 	// The __dollar variable just becomes a placeholder for the actual length.
 	if (e->lengthVar)
-	  {
-	    e->lengthVar->csym = new Symbol();
-	    e->lengthVar->csym->Stree = length;
-	  }
+	  e->lengthVar->csym = length;
 
 	// Generate the index.
 	tree index = build_expr(e->e2);
@@ -1259,10 +1256,7 @@ public:
 
     // The __dollar variable just becomes a placeholder for the actual length.
     if (e->lengthVar)
-      {
-	e->lengthVar->csym = new Symbol();
-	e->lengthVar->csym->Stree = length;
-      }
+      e->lengthVar->csym = length;
 
     // Generate lower bound.
     tree lwr_tree = d_save_expr(build_expr(e->lwr));
@@ -1528,7 +1522,7 @@ public:
 		if (error_operand_p(result))
 		  this->result_ = result;
 		else
-		  this->result_ = component_ref(result, field->toSymbol()->Stree);
+		  this->result_ = component_ref(result, get_symbol_decl (field));
 
 		return;
 	      }
@@ -1552,7 +1546,18 @@ public:
       {
 	StructLiteralExp *sle = ((StructLiteralExp *) e->e1)->origin;
 	gcc_assert(sle != NULL);
-	exp = sle->toSymbol()->Stree;
+
+	// Build the reference symbol.
+	if (!sle->sym)
+	  {
+	    sle->sym = build_artificial_decl(build_ctype(sle->type),
+					     build_expr(sle, true), "S");
+	    d_pushdecl(sle->sym);
+	    rest_of_decl_compilation(sle->sym, 1, 0);
+	  }
+
+
+	exp = sle->sym;
       }
     else
       exp = build_expr(e->e1, this->constp_);
@@ -1589,14 +1594,14 @@ public:
 	if (dve->e1->op == TOKstructliteral)
 	  {
 	    StructLiteralExp *sle = (StructLiteralExp *) dve->e1;
-	    sle->sinit = NULL;
+	    sle->useStaticInit = false;
 	  }
 
 	FuncDeclaration *fd = dve->var->isFuncDeclaration();
 	if (fd != NULL)
 	  {
 	    // Get the correct callee from the DotVarExp object.
-	    tree fndecl = fd->toSymbol()->Stree;
+	    tree fndecl = get_symbol_decl (fd);
 
 	    // Static method; ignore the object instance.
 	    if (!fd->isThis())
@@ -1659,7 +1664,7 @@ public:
 	  {
 	    // Maybe re-evaluate symbol storage treating 'fd' as public.
 	    if (call_by_alias_p(cfun->language->function, fd))
-	      setup_symbol_storage(fd, callee, true);
+	      TREE_PUBLIC (callee) = 1;
 
 	    object = get_frame_for_symbol(fd);
 	  }
@@ -1724,7 +1729,7 @@ public:
 	else
 	  object = get_frame_for_symbol(e->func);
 
-	fndecl = build_address(e->func->toSymbol()->Stree);
+	fndecl = build_address(get_symbol_decl (e->func));
       }
     else
       {
@@ -1741,7 +1746,7 @@ public:
 	if (e->e1->type->ty != Tclass && e->e1->type->ty != Tpointer)
 	  object = build_address(object);
 
-	fndecl = build_address(e->func->toSymbol()->Stree);
+	fndecl = build_address(get_symbol_decl (e->func));
 
 	// Get pointer to function out of the virtual table.
 	if (e->func->isVirtual() && !e->func->isFinalFunc()
@@ -1773,7 +1778,7 @@ public:
 	    if (e->e1->type->toBasetype()->ty != Tstruct)
 	      object = build_deref(object);
 
-	    this->result_ = component_ref(object, vd->toSymbol()->Stree);
+	    this->result_ = component_ref(object, get_symbol_decl (vd));
 	  }
       }
     else
@@ -1963,7 +1968,7 @@ public:
 	  }
 	else
 	  {
-	    tree func = build_address(e->fd->toSymbol()->Stree);
+	    tree func = build_address(get_symbol_decl (e->fd));
 	    tree object = get_frame_for_symbol(e->fd);
 	    this->result_ = build_method_call(func, object, e->fd->type);
 	  }
@@ -1971,7 +1976,7 @@ public:
     else
       {
 	this->result_ = build_nop(build_ctype(e->type),
-				  build_address(e->fd->toSymbol()->Stree));
+				  build_address(get_symbol_decl (e->fd)));
       }
   }
 
@@ -2099,7 +2104,7 @@ public:
 	    tree stack_var = build_local_temp(rec_type);
 	    expand_decl(stack_var);
 	    new_call = build_address(stack_var);
-	    setup_exp = modify_expr(stack_var, cd->toInitializer()->Stree);
+	    setup_exp = modify_expr(stack_var, aggregate_initializer (cd));
 	  }
 	else if (e->allocator)
 	  {
@@ -2107,11 +2112,11 @@ public:
 	    new_call = d_save_expr(new_call);
 	    // copy memory...
 	    setup_exp = modify_expr(indirect_ref(rec_type, new_call),
-				    cd->toInitializer()->Stree);
+				    aggregate_initializer (cd));
 	  }
 	else
 	  {
-	    tree arg = build_address(cd->toSymbol()->Stree);
+	    tree arg = build_address(get_classinfo_decl (cd));
 	    new_call = build_libcall(LIBCALL_NEWCLASS, 1, &arg);
 	  }
 	new_call = build_nop(build_ctype(tb), new_call);
@@ -2119,7 +2124,7 @@ public:
 	// Set vthis for nested classes.
 	if (cd->isNested())
 	  {
-	    tree field = cd->vthis->toSymbol()->Stree;
+	    tree field = get_symbol_decl (cd->vthis);
 	    tree value = NULL_TREE;
 
 	    if (e->thisexp)
@@ -2193,7 +2198,7 @@ public:
 	    if (sd->isNested())
 	      {
 		tree value = build_vthis(sd);
-		tree field = sd->vthis->toSymbol()->Stree;
+		tree field = get_symbol_decl (sd->vthis);
 		tree type = build_ctype(stype);
 
 		new_call = d_save_expr(new_call);
@@ -2215,9 +2220,8 @@ public:
 		StructLiteralExp *se = StructLiteralExp::create(e->loc, sd,
 								e->arguments, htype);
 		new_call = d_save_expr(new_call);
-		se->sym = new Symbol();
 		se->type = sd->type;
-		se->sym->Stree = new_call;
+		se->sym = new_call;
 		result = compound_expr(build_expr(se), new_call);
 	      }
 	    else
@@ -2610,13 +2614,9 @@ public:
 
     // Building sinit trees are delayed until after frontend semantic
     // processing has complete.  Build the static initialiser now.
-    if (e->sinit && !this->constp_)
+    if (e->useStaticInit && !this->constp_)
       {
-	if (e->sinit->Stree == NULL_TREE)
-	  e->sd->toInitializer();
-
-	gcc_assert(e->sinit->Stree != NULL);
-	this->result_ = e->sinit->Stree;
+	this->result_ = aggregate_initializer (e->sd);
 	return;
       }
 
@@ -2665,17 +2665,17 @@ public:
 	if (init != NULL_TREE)
 	  saved_elems = compound_expr(saved_elems, init);
 
-	CONSTRUCTOR_APPEND_ELT (ve, field->toSymbol()->Stree, value);
+	CONSTRUCTOR_APPEND_ELT (ve, get_symbol_decl (field), value);
       }
 
     // Maybe setup hidden pointer to outer scope context.
     if (e->sd->isNested() && e->elements->dim != e->sd->fields.dim
 	&& this->constp_ == false)
       {
-	tree field = e->sd->vthis->toSymbol()->Stree;
+	tree field = get_symbol_decl (e->sd->vthis);
 	tree value = build_vthis(e->sd);
 	CONSTRUCTOR_APPEND_ELT (ve, field, value);
-	gcc_assert(e->sinit == NULL);
+	gcc_assert(e->useStaticInit == false);
       }
 
     // Build a constructor in the correct shape of the aggregate type.
@@ -2695,7 +2695,7 @@ public:
 
     if (e->sym != NULL)
       {
-	tree var = build_deref(e->sym->Stree);
+	tree var = build_deref(e->sym);
 	ctor = compound_expr(modify_expr(var, ctor), var);
 	this->result_ = compound_expr(saved_elems, ctor);
       }
@@ -2804,8 +2804,8 @@ public:
   //
   void visit(ClassReferenceExp *e)
   {
-    // ClassReferenceExp builds the RECORD_TYPE, we want the reference.
-    tree var = build_address(e->toSymbol()->Stree);
+    // build_new_class_expr builds the RECORD_TYPE, we want the reference.
+    tree var = build_address(build_new_class_expr(e));
 
     // If the typeof this literal is an interface, we must add offset to symbol.
     if (this->constp_)
