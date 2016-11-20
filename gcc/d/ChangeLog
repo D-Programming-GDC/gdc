@@ -8,6 +8,10 @@
 	* d-todt.cc (ClassDeclaration::toDt): Update.
 	(ClassDeclaration::toDt2): Remove function.
 	(TypeSArray::toDtElem): Remove function.
+	(dt_chainon): Remove function.
+	(dt_zeropad): Remove function.
+	(dt_container): Remove function.
+	(dt_container2): Rename to dt_container.  All callers updated.
 	* d-objfile.cc (VarDeclaration::toObjFile): Update.
 
 2016-11-20  Iain Buclaw  <ibuclaw@gdcproject.org>

@@ -52,34 +52,6 @@ dt_cons(dt_t **pdt, tree val)
   return pdt;
 }
 
-// Concatenate two constructors of dt_t nodes by appending all
-// values of DT to PDT.
-
-static dt_t **
-dt_chainon(dt_t **pdt, dt_t *dt)
-{
-  vec<constructor_elt, va_gc> *elts = CONSTRUCTOR_ELTS(dt);
-  tree value;
-  size_t i;
-
-  gcc_assert(*pdt != dt);
-
-  FOR_EACH_CONSTRUCTOR_VALUE(elts, i, value)
-    dt_cons(pdt, value);
-
-  return pdt;
-}
-
-// Add zero padding of size SIZE onto end of PDT.
-
-static dt_t **
-dt_zeropad(dt_t **pdt, size_t size)
-{
-  tree type = d_array_type(Type::tuns8, size);
-  gcc_assert(size != 0);
-  return dt_cons(pdt, build_constructor(type, NULL));
-}
-
 // It is necessary to give static array data its original
 // type.  Otherwise, the SRA pass will not find the array
 // elements.
@@ -89,7 +61,7 @@ dt_zeropad(dt_t **pdt, size_t size)
 // be a CONSTRUCTOR, or the CCP pass may use it incorrectly.
 
 static tree
-dt_container2(dt_t *dt)
+dt_container(dt_t *dt)
 {
   // Generate type on the fly
   vec<constructor_elt, va_gc> *elts = NULL;
@@ -140,61 +112,6 @@ dt_container2(dt_t *dt)
   return dt;
 }
 
-// Build a new CONSTRUCTOR of type TYPE around the values
-// DT and append to the dt_t node list PDT.
-
-static dt_t **
-dt_container(dt_t **pdt, Type *type, dt_t *dt)
-{
-  Type *tb = type->toBasetype();
-
-  if (tb->ty == Tsarray)
-    {
-      // Generate static array constructor.
-      TypeSArray *tsa = (TypeSArray *) tb;
-      vec<constructor_elt, va_gc> *elts = NULL;
-      tree value;
-      size_t i;
-
-      if (dt == NULL)
-	dt = dt_container2(dt);
-      else
-	{
-	  gcc_assert(CONSTRUCTOR_NELTS(dt) == tsa->dim->toInteger());
-
-	  FOR_EACH_CONSTRUCTOR_VALUE(CONSTRUCTOR_ELTS(dt), i, value)
-	    CONSTRUCTOR_APPEND_ELT(elts, size_int(i), value);
-
-	  CONSTRUCTOR_ELTS(dt) = elts;
-	}
-
-      if (dt != error_mark_node)
-	{
-	  TREE_TYPE(dt) = build_ctype(type);
-	  TREE_CONSTANT(dt) = 1;
-	  TREE_STATIC(dt) = 1;
-	}
-
-      return dt_cons(pdt, dt);
-    }
-  else if (tb->ty == Tstruct)
-    {
-      dt = dt_container2(dt);
-      if (dt != error_mark_node)
-	TREE_TYPE(dt) = build_ctype(type);
-      return dt_cons(pdt, dt);
-    }
-  else if (tb->ty == Tclass)
-    {
-      dt = dt_container2(dt);
-      if (dt != error_mark_node)
-	TREE_TYPE(dt) = TREE_TYPE(build_ctype(type));
-      return dt_cons(pdt, dt);
-    }
-
-  return dt_cons(pdt, dtvector_to_tree(dt));
-}
-
 // Return a new CONSTRUCTOR whose values are in a dt_t
 // list pointed to by DT.
 
@@ -204,7 +121,7 @@ dtvector_to_tree(dt_t *dt)
   if (dt && CONSTRUCTOR_NELTS(dt) == 1)
     return CONSTRUCTOR_ELT(dt, 0)->value;
 
-  return dt_container2(dt);
+  return dt_container(dt);
 }
 
 // Put out __vptr and __monitor of class CD into PDT.
