@@ -1,3 +1,10 @@
+2016-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_struct_literal): Stop after first field
+	assignment in union constructor.
+	(build_class_instance): Skip void initialized fields.
+	* expr.cc (ExprVisitor::visit(StructLiteralExp)): Likewise.
+
 2016-11-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc (get_symbol_decl): Don't set alignment if
