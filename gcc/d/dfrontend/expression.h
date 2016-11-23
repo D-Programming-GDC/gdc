@@ -41,7 +41,6 @@ class TemplateInstance;
 class TemplateDeclaration;
 class ClassDeclaration;
 class BinExp;
-struct Symbol;          // back end symbol
 class OverloadSet;
 class Initializer;
 class StringExp;
@@ -52,6 +51,9 @@ struct UnionExp;
 #ifdef IN_GCC
 typedef union tree_node dt_t;
 typedef union tree_node elem;
+typedef union tree_node Symbol;
+#else
+struct Symbol;          // back end symbol
 #endif
 
 void initPrecedence();
@@ -466,9 +468,8 @@ public:
                                 // NULL entries for fields to skip
     Type *stype;                // final type of result (can be different from sd's type)
 
-    Symbol *sinit;              // if this is a defaultInitLiteral, this symbol contains the default initializer
+    bool useStaticInit;         // if this is true, use the StructDeclaration's init symbol
     Symbol *sym;                // back end symbol to initialize with literal
-    size_t soffset;             // offset from start of s
     int fillHoles;              // fill alignment 'holes' with zero
     OwnedBy ownedByCtfe;
 
@@ -497,9 +498,6 @@ public:
     Expression *addDtorHook(Scope *sc);
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toSymbol();
-#endif
 };
 
 class DotIdExp;

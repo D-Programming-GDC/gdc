@@ -38,6 +38,7 @@
 #include "tree-iterator.h"
 #include "diagnostic.h"
 #include "plugin.h"
+#include "print-tree.h"
 
 #include "langhooks.h"
 #include "langhooks-def.h"

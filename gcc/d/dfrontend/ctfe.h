@@ -51,11 +51,6 @@ public:
     /// Same as getFieldIndex, but checks for a direct match with the VarDeclaration
     int findFieldIndexByName(VarDeclaration *v);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol* toSymbol();
-    dt_t **toInstanceDt(dt_t **pdt);
-    dt_t **toDt2(dt_t **pdt, ClassDeclaration *cd, Dts *dts);
-#endif
 };
 
 // The various functions are used only to detect compiler CTFE bugs
