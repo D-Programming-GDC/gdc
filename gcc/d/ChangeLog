@@ -1,3 +1,70 @@
+2016-11-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (copy_lang_decl): Rename to d_dup_lang_specific_decl.
+	(LANG_HOOKS_DUP_LANG_SPECIFIC_DECL): Redefine.
+	* d-decls.cc (make_alias_for_thunk): Call dup_lang_specific_decl.
+	(make_thunk): Likewise.
+
+2016-11-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.h (FuncFrameInfo): Remove type.  All users updated to
+	interface with new frame macro accessors.
+	(build_frame_type): Mark as static.
+	(get_frameinfo): Update to return a tree type.
+	* d-lang.cc (LANG_HOOKS_TREE_SIZE): Redefine.
+	(LANG_HOOKS_PRINT_XNODE): Redefine.
+	(d_tree_size): New function.
+	(d_print_xnode): New function.
+	(d_tree_node_structure): New function.
+	* d-tree.def (FUNCFRAME_INFO): New tree_code.
+	* d-tree.h (tree_frame_info): New type.
+	(FRAMEINFO_CREATES_FRAME): New macro accessor.
+	(FRAMEINFO_STATIC_CHAIN): New macro accessor.
+	(FRAMEINFO_IS_CLOSURE): New macro accessor.
+	(FRAMEINFO_TYPE): New macro accessor.
+	(lang_decl): Replace frame_info field with a tree type.
+	(d_tree_node_structure_enum): New type.
+	(lang_tree_node): Update GTY tags.
+
+2016-11-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (setup_symbol_storage): Remove function.
+	(Dsymbol::toSymbol): Remove function and all overrides.  All callers
+	updated to call ...
+	(get_symbol_decl): ... New function.
+
+2016-11-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (output_modules): Remove variable.
+	(output_module): Remove variable.
+	(d_gcc_get_output_module): Remove function.  All callers updated to
+	use Module::rootModule.
+	* d-objfile.cc (FuncDeclaration::toObjFile): Mark all functions being
+	constructed here as TREE_STATIC.
+	(output_module_p): Remove function.  All callers updated to call
+	Module::isRoot.
+
+2016-11-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_template_storage_info): Remove function.
+	(setup_symbol_storage): Use Dsymbol::isInstantiated instead.
+
+2016-11-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_struct_literal): Handle anonymous fields.
+	(build_class_instance): New functions.
+	(find_aggregate_field): Update signature.  All callers updated.
+	* d-todt.cc (dt_chainon): Mark as static.
+	(dt_zeropad): Likewise.
+	(dt_container): Likewise.
+	(ClassReferenceExp::toInstanceDt): Remove function.
+	(ClassReferenceExp::toDt2): Remove function.
+
+2016-11-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (lang_decl): Remove readonly field.
+	(DECL_LANG_READONLY): Remove macro.  All callers updated.
+
 2016-10-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc (ClassReferenceExp::toSymbol): Use class record type for
@@ -51,6 +118,99 @@
 
 	* d-codegen.h (d_types_same): Return early if types are identical.
 
+2016-10-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (FuncDeclaration::toThunkSymbol): Rename to make_thunk.
+	All callers updated.
+	(finish_thunk): Update signature.
+
+2016-10-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.h (Thunk): Remove type, move offset field to ...
+	* d-tree.h (lang_decl): ... here.  Replace Thunk field with a tree.
+	(THUNK_LANG_OFFSET): New macro accessor.
+	* d-lang.cc (copy_lang_decl): New function.
+	* d-decls.cc (FuncDeclaration::toThunkSymbol): Use new thunk macros.
+
+2016-10-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (finish_thunk): Add assert that current_function_decl is
+	never set when function is called.
+	(DeferredThunk): Remove type.
+	(deferred_thunks): Remove variable.
+	(write_deferred_thunks): Remove function.  All callers updated.
+	(use_thunk): Remove function.
+	(FuncDeclaration::toThunkSymbol): Call finish_thunk when done.
+
+2016-10-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (deferred_thunks): Move to d-decls.cc.
+	(write_deferred_thunks): Likewise.
+	(use_thunk): Likewise.  Mark as static.
+	(thunk_labelno): Likewise.
+	(make_alias_for_thunk): Likewise.
+	(finish_thunk): Likewise.
+
+2016-10-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (setup_symbol_storage): Remove unused parameters.
+
+2016-10-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (ClassReferenceExp::toSymbol): Rename to
+	build_new_class_expr.  All callers updated.
+	(StructLiteralExp::toSymbol): Remove function.  Inline into caller ...
+	* expr.cc (ExprVisitor::visit(AddrExpr)): ... here.
+
+2016-10-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (TypeInfoDeclaration::toSymbol): Rename to
+	get_typeinfo_decl.  All callers updated.
+	(TypeInfoDeclVisitor): New visitor helper for get_typeinfo_decl.
+	* d-codegen.cc (get_decl_tree): Add check for building typeinfo decls.
+
+2016-10-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (AggregateDeclaration::toInitializer): Rename to
+	aggregate_initializer.  All callers updated.
+	(EnumDeclaration::toInitializer): Rename to enum_initializer.
+	(Module::toSymbol): Rename to get_moduleinfo_decl.
+	(ClassDeclaration::toSymbol): Rename to get_classinfo_decl.
+	(InterfaceDeclaration::toSymbol): Merge into get_classinfo_decl.
+
+2016-10-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (FuncDeclaration::toSymbol): Remove saving of current
+	module decl before calling semantic.
+	(StructLiteralExp::toSymbol): Don't handle sinit.
+	(ClassReferenceExp::toSymbol): Likewise.
+	(AggregateDeclaration::toInitializer): Likewise.
+	(EnumDeclaration::toInitializer): Likewise.
+	* d-glue.cc (toInitializer): Remove function.
+	* d-objfile.cc (FuncDeclaration::toObjFile): Remove saving of current
+	module decl before calling semantic.
+	* expr.cc (ExprVisitor::visit(CallExpr)): Replace accesses of sinit
+	field with useStaticInit.
+	(ExprVisitor::visit(StructLiteralExp)): Likewise.
+
+2016-10-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (ClassDeclaration::toVtblSymbol): Rename to
+	get_vtable_decl.  All callers updated.
+
+2016-10-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (setup_symbol_storage): Move function to ...
+	* d-decls.cc (setup_symbol_storage): ... here.  Mark as static.
+	(get_template_storage_info): Likewise.
+
+2016-10-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (call_by_alias_p): Check whether caller and callee are
+	nested in the same parent function.
+	* expr.cc (ExprVisitor::visit(CallExp)): Set TREE_PUBLIC directly
+	instead of calling setup_symbol_storage.
+
 2016-10-03  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (VarDeclaration::toObjFile): Always generate
@@ -58,9 +218,88 @@
 	* d-codegen.cc (build_address): Use the DECL_INITIAL directly if
 	taking the address of a CONST_DECL.
 
+2016-10-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (DECL_LANG_TREE): Remove macro.  All callers updated.
+
+2016-10-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.h (Symbol): Remove struct.  Update all functions to return
+	a tree instead.  Remove all new allocations of Symbol.
+	* d-tree.h (DECL_LANG_READONLY): Update accessor.
+	(DECL_LANG_INITIAL): Likewise.
+	(DECL_LANG_TREE): Likewise.
+	(SET_DECL_LANG_FRAME_FIELD): Likewise.
+	(DECL_LANG_FRAME_FIELD): Likewise.
+	(SET_DECL_LANG_NRVO): Likewise.
+	(DECL_LANG_NRVO): Likewise.
+	(DECL_LANG_THUNKS): Likewise.
+	(DECL_LANG_FRAMEINFO): Likewise.
+
+2016-10-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.h (Symbol): Remove symbol identifier field.
+	* d-tree.h (DECL_LANG_IDENTIFIER): Remove macro.  Update callers to
+	instead use DECL_ASSEMBLER_NAME.
+	(DECL_LANG_PRETTY_NAME): Remove macro.
+
 2016-09-26  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-objfile.cc (d_finish_function): Handle template mixins (issue 231).
+
+2016-09-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (Dsymbol::toSymbolX): Remove function, update all callers
+	to use ...
+	(make_internal_name): ... New function.
+	* d-objfile.h (Symbol): Replace char* fields with tree.
+	* d-tree.h (lang_identifier): Add pretty_ident field.
+	(IDENTIFIER_PRETTY_NAME): New macro accessor.
+	(DECL_LANG_PRETTY_NAME): Update to use IDENTIFIER_PRETTY_NAME.
+
+2016-09-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.h (Symbol): Move declaration-specific fields to ...
+	* d-tree.h (lang_decl): ... here.
+	(DECL_LANG_READONLY): Update to reference lang_decl field.
+	(DECL_LANG_INITIAL): Likewise.
+	(DECL_LANG_FRAME_FIELD): Likewise.
+	(DECL_LANG_NRVO): Likewise.
+	(DECL_LANG_THUNKS): Likewise.
+	(DECL_LANG_FRAMEINFO): Likewise.
+	(SET_DECL_LANG_FRAME_FIELD): New setter macro, update all callers.
+	(SET_DECL_LANG_NRVO): Likewise.
+
+2016-09-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (d_build_builtins_module): Set DECL_LANG_SPECIFIC
+	before using any DECL_LANG accessor macros.
+	(maybe_set_builtin_1): Likewise.
+	* d-codegen.cc (maybe_set_intrinsic): Likewise.
+	(layout_aggregate_members): Likewise.
+	d-decls.cc (VarDeclaration::toSymbol): Likewise.
+	(FuncDeclaration::toThunkSymbol): Likewise.
+	(ClassDeclaration::toSymbol): Likewise.
+	(InterfaceDeclaration::toSymbol): Likewise.
+	(Module::toSymbol): Likewise.
+	(StructLiteralExp::toSymbol): Likewise.
+	(ClassReferenceExp::toSymbol): Likewise.
+	(ClassDeclaration::toVtblSymbol): Likewise.
+	(AggregateDeclaration::toInitializer): Likewise.
+	(EnumDeclaration::toInitializer): Likewise.
+
+2016-09-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (DECL_LANG_IDENTIFIER): New macro accessor, use instead of
+	direct field accesses.
+	(DECL_LANG_PRETTY_NAME): Likewise.
+	(DECL_LANG_READONLY): Likewise.
+	(DECL_LANG_INITIAL): Likewise.
+	(DECL_LANG_TREE): Likewise.
+	(DECL_LANG_FRAME_FIELD): Likewise.
+	(DECL_LANG_NRVO): Likewise.
+	(DECL_LANG_THUNKS): Likewise.
+	(DECL_LANG_FRAMEINFO): Likewise.
 
 2016-09-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 

@@ -97,19 +97,3 @@ AC_DEFUN([DRUNTIME_GC],
 
   AM_CONDITIONAL([DRUNTIME_GC_ENABLE], [test "$enable_druntime_gc" = "yes"])
 ])
-
-
-# DRUNTIME_LIB_VERSIONS
-# -----------------
-# Substitute the DRUNTIME_VER_FLAG and PHOBOS_VER_FLAG variables,
-# read from DRUNTIME_VERSION and PHOBOS_VERSION
-AC_DEFUN([DRUNTIME_LIB_VERSIONS], [
-  AC_MSG_CHECKING([for druntime version flag])
-  DRUNTIME_VER_FLAG=`cat $srcdir/DRUNTIME_VERSION`
-  AC_MSG_RESULT([$DRUNTIME_VER_FLAG])
-  AC_SUBST([DRUNTIME_VER_FLAG])
-  AC_MSG_CHECKING([for phobos version flag])
-  PHOBOS_VER_FLAG=`cat $srcdir/PHOBOS_VERSION`
-  AC_MSG_RESULT([$PHOBOS_VER_FLAG])
-  AC_SUBST([PHOBOS_VER_FLAG])
-])
