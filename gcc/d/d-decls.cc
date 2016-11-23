@@ -145,7 +145,7 @@ get_symbol_decl (Declaration *decl)
 			      declaration_type (vd));
 
       /* If any alignment was set on the declaration.  */
-      if (vd->alignment)
+      if (vd->alignment != STRUCTALIGN_DEFAULT)
 	{
 	  DECL_ALIGN (decl->csym) = vd->alignment * BITS_PER_UNIT;
 	  DECL_USER_ALIGN (decl->csym) = 1;
