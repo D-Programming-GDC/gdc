@@ -69,7 +69,6 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
     void toObjFile();                       // compile to .obj file
-    Symbol *toInitializer();
 #endif
 };
 

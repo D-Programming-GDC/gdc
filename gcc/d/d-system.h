@@ -27,6 +27,7 @@
 #include "flags.h"
 #include "diagnostic.h"
 #include "tree-inline.h"
+#include "print-tree.h"
 
 #include "real.h"
 #include "langhooks.h"

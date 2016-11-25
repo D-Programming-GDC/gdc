@@ -22,6 +22,7 @@
 
 #include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
+#include "dfrontend/ctfe.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
@@ -339,8 +340,9 @@ d_decl_context (Dsymbol *dsym)
 	continue;
 
       // Nested functions.
-      if (parent->isFuncDeclaration())
-	return parent->toSymbol()->Stree;
+      FuncDeclaration *fd = parent->isFuncDeclaration();
+      if (fd != NULL)
+	return get_symbol_decl (fd);
 
       // Methods of classes or structs.
       AggregateDeclaration *ad = parent->isAggregateDeclaration();
@@ -367,8 +369,7 @@ build_local_var (VarDeclaration *vd)
   gcc_assert (current_function_decl != NULL_TREE);
 
   FuncDeclaration *fd = cfun->language->function;
-  Symbol *sym = vd->toSymbol();
-  tree var = sym->Stree;
+  tree var = get_symbol_decl (vd);
 
   gcc_assert (!TREE_STATIC (var));
 
@@ -380,7 +381,7 @@ build_local_var (VarDeclaration *vd)
   if (vd == fd->vresult || vd == fd->v_argptr)
     DECL_ARTIFICIAL (var) = 1;
 
-  if (sym->SframeField)
+  if (DECL_LANG_FRAME_FIELD (var))
     {
       // Fixes debugging local variables.
       SET_DECL_VALUE_EXPR (var, get_decl_tree (vd));
@@ -462,25 +463,29 @@ expand_decl (tree decl)
 tree
 get_decl_tree (Declaration *decl)
 {
+  if (decl->isTypeInfoDeclaration ())
+    return get_typeinfo_decl ((TypeInfoDeclaration *) decl);
+
   FuncDeclaration *func = cfun ? cfun->language->function : NULL;
   VarDeclaration *vd = decl->isVarDeclaration();
 
   // If cfun is NULL, then this is a global static.
   if (func != NULL && vd != NULL)
     {
-      Symbol *vsym = vd->toSymbol();
-      if (vsym->SnamedResult != NULL_TREE)
+      tree vsym = get_symbol_decl (vd);
+      if (DECL_LANG_NRVO (vsym))
 	{
 	  // Get the named return value.
-	  return vsym->SnamedResult;
+	  return DECL_LANG_NRVO (vsym);
 	}
-      else if (vsym->SframeField != NULL_TREE)
+      else if (DECL_LANG_FRAME_FIELD (vsym))
 	{
 	  // Get the closure holding the var decl.
 	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
 	  tree frame_ref = get_framedecl (func, parent);
 
-	  return component_ref (build_deref (frame_ref), vsym->SframeField);
+	  return component_ref (build_deref (frame_ref),
+				DECL_LANG_FRAME_FIELD (vsym));
 	}
       else if (vd->parent != func && vd->isThisDeclaration() && func->isThis())
 	{
@@ -488,13 +493,13 @@ get_decl_tree (Declaration *decl)
 	  // of nested classes, this routine pretty much undoes what
 	  // getRightThis in the frontend removes from codegen.
 	  AggregateDeclaration *ad = func->isThis();
-	  tree this_tree = func->vthis->toSymbol()->Stree;
+	  tree this_tree = get_symbol_decl (func->vthis);
 
 	  while (true)
 	    {
 	      Dsymbol *outer = ad->toParent2();
 	      // Get the this->this parent link.
-	      tree vthis_field = ad->vthis->toSymbol()->Stree;
+	      tree vthis_field = get_symbol_decl (ad->vthis);
 	      this_tree = component_ref (build_deref (this_tree), vthis_field);
 
 	      ad = outer->isAggregateDeclaration();
@@ -502,17 +507,19 @@ get_decl_tree (Declaration *decl)
 		continue;
 
 	      FuncDeclaration *fd = outer->isFuncDeclaration();
-	      if (fd && fd->isThis())
-		{
-		  ad = fd->isThis();
+	      if (fd != NULL)
+		ad = fd->isThis();
 
+	      if (fd && ad)
+		{
 		  // If outer function creates a closure, then the 'this' value
 		  // would be the closure pointer, and the real 'this' the first
 		  // field of that closure.
-		  FuncFrameInfo *ff = get_frameinfo (fd);
-		  if (ff->creates_frame)
+		  tree ff = get_frameinfo (fd);
+		  if (FRAMEINFO_CREATES_FRAME (ff))
 		    {
-		      this_tree = build_nop (build_pointer_type (ff->frame_rec), this_tree);
+		      this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
+					     this_tree);
 		      this_tree = indirect_ref (build_ctype(ad->type), this_tree);
 		    }
 
@@ -528,7 +535,7 @@ get_decl_tree (Declaration *decl)
     }
 
   // Static var or auto var that the back end will handle for us
-  return decl->toSymbol()->Stree;
+  return get_symbol_decl (decl);
 }
 
 // Return expression EXP, whose type has been converted to TYPE.
@@ -654,7 +661,7 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	// The offset can only be determined at runtime, do dynamic cast
 	tree args[2];
 	args[0] = exp;
-	args[1] = build_address(cdto->toSymbol()->Stree);
+	args[1] = build_address(get_classinfo_decl (cdto));
 
 	return build_libcall(cdfrom->isInterfaceDeclaration()
 			     ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
@@ -1957,7 +1964,7 @@ lower_struct_comparison(tree_code code, StructDeclaration *sd, tree t1, tree t2)
   for (size_t i = 0; i < sd->fields.dim; i++)
     {
       VarDeclaration *vd = sd->fields[i];
-      tree sfield = vd->toSymbol()->Stree;
+      tree sfield = get_symbol_decl (vd);
 
       tree t1ref = component_ref(t1, sfield);
       tree t2ref = component_ref(t2, sfield);
@@ -2178,18 +2185,16 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
       bool is_initialized = false;
       tree value;
 
-      if (DECL_NAME (field) == NULL_TREE)
+      if (DECL_NAME (field) == NULL_TREE
+	  && RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	  && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	{
 	  // Search all nesting aggregates, if nothing is found, then
 	  // this will return an empty initializer to fill the hole.
-	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
-	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	    {
-	      value = build_struct_literal(TREE_TYPE (field), init);
+	  value = build_struct_literal(TREE_TYPE (field), init);
 
-	      if (!initializer_zerop(value))
-		is_initialized = true;
-	    }
+	  if (!initializer_zerop(value))
+	    is_initialized = true;
 	}
       else
 	{
@@ -2274,6 +2279,74 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
     TREE_CONSTANT (ctor) = 1;
 
   return ctor;
+}
+
+// Return a constructor that matches the layout of the class expression EXP.
+
+tree
+build_class_instance (ClassReferenceExp *exp)
+{
+  ClassDeclaration *cd = exp->originalClass ();
+  tree type = TREE_TYPE (build_ctype (exp->value->stype));
+  vec<constructor_elt, va_gc> *ve = NULL;
+
+  // The set base vtable field.
+  tree vptr = build_address (get_vtable_decl (cd));
+  CONSTRUCTOR_APPEND_ELT (ve, TYPE_FIELDS (type), vptr);
+
+  // Go through the inheritance graph from top to bottom.  This will add all
+  // values to the constructor out of order, however build_struct_literal
+  // will re-order all values before returning the finished literal.
+  for (ClassDeclaration *bcd = cd; bcd != NULL; bcd = bcd->baseClass)
+    {
+      // Generate initial values of all fields owned by current class.
+      // Use both the name and offset to find the right field.
+      for (size_t i = 0; i < bcd->fields.dim; i++)
+	{
+	  int index = exp->findFieldIndexByName (bcd->fields[i]);
+	  gcc_assert (index != -1);
+
+	  Expression *value = (*exp->value->elements)[index];
+	  if (!value)
+	    continue;
+
+	  tree t = get_symbol_decl (bcd->fields[i]);
+	  tree field = find_aggregate_field (type, DECL_NAME (t),
+					     DECL_FIELD_OFFSET (t));
+	  gcc_assert (field != NULL_TREE);
+
+	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
+	}
+
+      // Anonymous vtable interface fields are layed out immediatedly after
+      // the fields of each class.  The interface offset is used to determine
+      // where to put the classinfo offset reference.
+      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *bc = (*bcd->vtblInterfaces)[i];
+
+	  for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
+	    {
+	      gcc_assert (cd2 != NULL);
+
+	      unsigned csymoffset = cd2->baseVtblOffset (bc);
+	      if (csymoffset != (unsigned) ~0)
+		{
+		  tree csym = build_address (get_classinfo_decl (cd2));
+		  csym = build_offset (csym, size_int (csymoffset));
+
+		  tree field = find_aggregate_field (type, NULL_TREE,
+						     size_int (bc->offset));
+		  gcc_assert (field != NULL_TREE);
+
+		  CONSTRUCTOR_APPEND_ELT (ve, field, csym);
+		  break;
+		}
+	    }
+	}
+    }
+
+  return build_struct_literal (type, ve);
 }
 
 // Given the TYPE of an anonymous field inside T, return the
@@ -2949,6 +3022,9 @@ call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee)
   if (!callee->isNested())
     return false;
 
+  if (caller->toParent() == callee->toParent())
+    return false;
+
   Dsymbol *dsym = callee;
 
   while (dsym)
@@ -2970,7 +3046,7 @@ tree
 d_build_call(FuncDeclaration *fd, tree object, Expressions *args)
 {
   return d_build_call(get_function_type(fd->type),
-		      build_address(fd->toSymbol()->Stree), object, args);
+		      build_address(get_symbol_decl (fd)), object, args);
 }
 
 // Builds a CALL_EXPR of type TF to CALLABLE. OBJECT holds the 'this' pointer,
@@ -3196,7 +3272,7 @@ get_libcall(const char *name, Type *type, int flags, int nparams, ...)
   FuncDeclaration *decl = FuncDeclaration::genCfunc(args, type, name);
 
   // Set any attributes on the function, such as malloc or noreturn.
-  tree t = decl->toSymbol()->Stree;
+  tree t = get_symbol_decl (decl);
   set_call_expr_flags(t, flags);
   DECL_ARTIFICIAL(t) = 1;
 
@@ -3250,7 +3326,7 @@ build_libcall (LibCall libcall, unsigned n_args, tree *args, tree force_type)
   // Build the call expression to the runtime function.
   FuncDeclaration *decl = get_libcall(libcall);
   Type *type = decl->type->nextOf();
-  tree callee = build_address (decl->toSymbol()->Stree);
+  tree callee = build_address (get_symbol_decl (decl));
   tree arg_list = NULL_TREE;
 
   for (int i = n_args - 1; i >= 0; i--)
@@ -3557,16 +3633,15 @@ maybe_set_intrinsic (FuncDeclaration *decl)
 	  if (decl->csym == NULL)
 	    {
 	      // Store a stub BUILT_IN_FRONTEND decl.
-	      decl->csym = new Symbol();
-	      decl->csym->Stree = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
-					      NULL_TREE, NULL_TREE);
-	      DECL_NAME (decl->csym->Stree) = get_identifier (tname);
-	      TREE_TYPE (decl->csym->Stree) = build_ctype(decl->type);
-	      d_keep (decl->csym->Stree);
+	      decl->csym = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+				       get_identifier (tname),
+				       build_ctype(decl->type));
+	      DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (decl);
+	      d_keep (decl->csym);
 	    }
 
-	  DECL_BUILT_IN_CLASS (decl->csym->Stree) = BUILT_IN_FRONTEND;
-	  DECL_FUNCTION_CODE (decl->csym->Stree) = (built_in_function) code;
+	  DECL_BUILT_IN_CLASS (decl->csym) = BUILT_IN_FRONTEND;
+	  DECL_FUNCTION_CODE (decl->csym) = (built_in_function) code;
 	  decl->builtin = BUILTINyes;
 	  break;
 	}
@@ -4007,8 +4082,8 @@ get_frame_for_symbol (Dsymbol *sym)
 	}
     }
 
-  FuncFrameInfo *ffo = get_frameinfo (parentfd);
-  if (ffo->creates_frame || ffo->static_chain)
+  tree ffo = get_frameinfo (parentfd);
+  if (FRAMEINFO_CREATES_FRAME (ffo) || FRAMEINFO_STATIC_CHAIN (ffo))
     return get_framedecl (func, parentfd);
 
   return null_pointer_node;
@@ -4125,8 +4200,8 @@ build_vthis(AggregateDeclaration *decl)
 	}
       else if (fdo)
 	{
-	  FuncFrameInfo *ffo = get_frameinfo(fdo);
-	  if (ffo->creates_frame || ffo->static_chain
+	  tree ffo = get_frameinfo(fdo);
+	  if (FRAMEINFO_CREATES_FRAME (ffo) || FRAMEINFO_STATIC_CHAIN (ffo)
 	      || fdo->hasNestedFrameRefs())
 	    vthis_value = get_frame_for_symbol(decl);
 	  else if (cd != NULL)
@@ -4144,16 +4219,14 @@ build_vthis(AggregateDeclaration *decl)
   return vthis_value;
 }
 
-tree
-build_frame_type (FuncDeclaration *func)
+static tree
+build_frame_type (tree ffi, FuncDeclaration *func)
 {
-  FuncFrameInfo *ffi = get_frameinfo (func);
-
-  if (ffi->frame_rec != NULL_TREE)
-    return ffi->frame_rec;
+  if (FRAMEINFO_TYPE (ffi))
+    return FRAMEINFO_TYPE (ffi);
 
   tree frame_rec_type = make_node (RECORD_TYPE);
-  char *name = concat (ffi->is_closure ? "CLOSURE." : "FRAME.",
+  char *name = concat (FRAMEINFO_IS_CLOSURE (ffi) ? "CLOSURE." : "FRAME.",
 		       func->toPrettyChars(), NULL);
   TYPE_NAME (frame_rec_type) = get_identifier (name);
   free (name);
@@ -4165,7 +4238,7 @@ build_frame_type (FuncDeclaration *func)
 
   tree fields = chainon (NULL_TREE, ptr_field);
 
-  if (!ffi->is_closure)
+  if (!FRAMEINFO_IS_CLOSURE (ffi))
     {
       // __ensure and __require never becomes a closure, but could still be referencing
       // parameters of the calling function.  So we add all parameters as nested refs.
@@ -4209,22 +4282,22 @@ build_frame_type (FuncDeclaration *func)
   for (size_t i = 0; i < func->closureVars.dim; i++)
     {
       VarDeclaration *v = func->closureVars[i];
-      Symbol *s = v->toSymbol();
+      tree s = get_symbol_decl (v);
       tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
 			       declaration_type (v));
-      s->SframeField = field;
+      SET_DECL_LANG_FRAME_FIELD (s, field);
       set_decl_location (field, v);
       DECL_FIELD_CONTEXT (field) = frame_rec_type;
       fields = chainon (fields, field);
-      TREE_USED (s->Stree) = 1;
+      TREE_USED (s) = 1;
 
       // Can't do nrvo if the variable is put in a frame.
       if (func->nrvo_can && func->nrvo_var == v)
 	func->nrvo_can = 0;
 
       // Because the value needs to survive the end of the scope.
-      if (ffi->is_closure && v->needsAutoDtor())
+      if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsAutoDtor())
 	v->error("has scoped destruction, cannot build closure");
     }
 
@@ -4247,17 +4320,17 @@ build_frame_type (FuncDeclaration *func)
 void
 build_closure(FuncDeclaration *fd)
 {
-  FuncFrameInfo *ffi = get_frameinfo(fd);
+  tree ffi = get_frameinfo (fd);
 
-  if (!ffi->creates_frame)
+  if (!FRAMEINFO_CREATES_FRAME (ffi))
     return;
 
-  tree type = build_frame_type(fd);
+  tree type = FRAMEINFO_TYPE (ffi);
   gcc_assert(COMPLETE_TYPE_P(type));
 
   tree decl, decl_ref;
 
-  if (ffi->is_closure)
+  if (FRAMEINFO_IS_CLOSURE (ffi))
     {
       decl = build_local_temp(build_pointer_type(type));
       DECL_NAME(decl) = get_identifier("__closptr");
@@ -4292,14 +4365,14 @@ build_closure(FuncDeclaration *fd)
       if (!v->isParameter())
 	continue;
 
-      Symbol *vsym = v->toSymbol();
+      tree vsym = get_symbol_decl (v);
 
-      tree field = component_ref (decl_ref, vsym->SframeField);
-      tree expr = modify_expr (field, vsym->Stree);
+      tree field = component_ref (decl_ref, DECL_LANG_FRAME_FIELD (vsym));
+      tree expr = modify_expr (field, vsym);
       add_stmt(expr);
     }
 
-  if (!ffi->is_closure)
+  if (!FRAMEINFO_IS_CLOSURE (ffi))
     decl = build_address (decl);
 
   cfun->language->static_chain = decl;
@@ -4308,34 +4381,28 @@ build_closure(FuncDeclaration *fd)
 // Return the frame of FD.  This could be a static chain or a closure
 // passed via the hidden 'this' pointer.
 
-FuncFrameInfo *
+tree
 get_frameinfo(FuncDeclaration *fd)
 {
-  Symbol *fds = fd->toSymbol();
-  if (fds->frameInfo)
-    return fds->frameInfo;
+  tree fds = get_symbol_decl (fd);
+  if (DECL_LANG_FRAMEINFO (fds))
+    return DECL_LANG_FRAMEINFO (fds);
 
-  FuncFrameInfo *ffi = new FuncFrameInfo;
-  ffi->creates_frame = false;
-  ffi->static_chain = false;
-  ffi->is_closure = false;
-  ffi->frame_rec = NULL_TREE;
+  tree ffi = make_node (FUNCFRAME_INFO);
 
-  fds->frameInfo = ffi;
+  DECL_LANG_FRAMEINFO (fds) = ffi;
 
   // Nested functions, or functions with nested refs must create
   // a static frame for local variables to be referenced from.
-  if (fd->hasNestedFrameRefs())
-    ffi->creates_frame = true;
-
-  if (fd->vthis && fd->vthis->type == Type::tvoidptr)
-    ffi->creates_frame = true;
+  if (fd->hasNestedFrameRefs()
+      || (fd->vthis && fd->vthis->type == Type::tvoidptr))
+    FRAMEINFO_CREATES_FRAME (ffi) = 1;
 
   // D2 maybe setup closure instead.
   if (fd->needsClosure())
     {
-      ffi->creates_frame = true;
-      ffi->is_closure = true;
+      FRAMEINFO_CREATES_FRAME (ffi) = 1;
+      FRAMEINFO_IS_CLOSURE (ffi) = 1;
     }
   else if (fd->closureVars.dim == 0)
     {
@@ -4346,17 +4413,16 @@ get_frameinfo(FuncDeclaration *fd)
 
       while (ff)
 	{
-	  FuncFrameInfo *ffo = get_frameinfo (ff);
-	  AggregateDeclaration *ad;
+	  tree ffo = get_frameinfo (ff);
 
-	  if (ff != fd && ffo->creates_frame)
+	  if (ff != fd && FRAMEINFO_CREATES_FRAME (ffo))
 	    {
-	      gcc_assert (ffo->frame_rec);
-	      ffi->creates_frame = false;
-	      ffi->static_chain = true;
-	      ffi->is_closure = ffo->is_closure;
-	      gcc_assert (COMPLETE_TYPE_P (ffo->frame_rec));
-	      ffi->frame_rec = ffo->frame_rec;
+	      gcc_assert (FRAMEINFO_TYPE (ffo));
+	      FRAMEINFO_CREATES_FRAME (ffi) = 0;
+	      FRAMEINFO_STATIC_CHAIN (ffi) = 1;
+	      FRAMEINFO_IS_CLOSURE (ffi) = FRAMEINFO_IS_CLOSURE (ffo);
+	      gcc_assert (COMPLETE_TYPE_P (FRAMEINFO_TYPE (ffo)));
+	      FRAMEINFO_TYPE (ffi) = FRAMEINFO_TYPE (ffo);
 	      break;
 	    }
 
@@ -4364,7 +4430,7 @@ get_frameinfo(FuncDeclaration *fd)
 	  if (ff->vthis == NULL)
 	    break;
 
-	  ad = ff->isThis();
+	  AggregateDeclaration *ad = ff->isThis();
 	  if (ad && ad->isNested())
 	    {
 	      while (ad->isNested())
@@ -4383,8 +4449,8 @@ get_frameinfo(FuncDeclaration *fd)
     }
 
   // Build type now as may be referenced from another module.
-  if (ffi->creates_frame)
-    ffi->frame_rec = build_frame_type (fd);
+  if (FRAMEINFO_CREATES_FRAME (ffi))
+    FRAMEINFO_TYPE (ffi) = build_frame_type (ffi, fd);
 
   return ffi;
 }
@@ -4405,7 +4471,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
       StructDeclaration *sd;
 
       // Parent frame link is the first field.
-      if (get_frameinfo (fd)->creates_frame)
+      if (FRAMEINFO_CREATES_FRAME (get_frameinfo (fd)))
 	result = indirect_ref (ptr_type_node, result);
 
       if (fd->isNested())
@@ -4423,11 +4489,11 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 
   // Go get our frame record.
   gcc_assert (fd == outer);
-  tree frame_rec = get_frameinfo (outer)->frame_rec;
+  tree frame_type = FRAMEINFO_TYPE (get_frameinfo (outer));
 
-  if (frame_rec != NULL_TREE)
+  if (frame_type != NULL_TREE)
     {
-      result = build_nop (build_pointer_type (frame_rec), result);
+      result = build_nop (build_pointer_type (frame_type), result);
       return result;
     }
   else
@@ -4523,8 +4589,8 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	      // it to the aggregate it is defined in.
 	      if (!inherited_p)
 		{
-		  var->csym = new Symbol();
-		  var->csym->Stree = field;
+		  DECL_LANG_SPECIFIC (field) = build_lang_decl (var);
+		  var->csym = field;
 		}
 
 	      fields += 1;
@@ -4728,27 +4794,32 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
     }
 }
 
-// Find the field identified by identifier IDENT inside aggregate TYPE.
+// Find the field inside aggregate TYPE identified by IDENT at field OFFSET.
+
 tree
-find_aggregate_field(tree ident, tree type)
+find_aggregate_field(tree type, tree ident, tree offset)
 {
   tree fields = TYPE_FIELDS (type);
 
   for (tree field = fields; field != NULL_TREE; field = TREE_CHAIN (field))
     {
-      if (DECL_NAME (field) == NULL_TREE)
+      if (DECL_NAME (field) == NULL_TREE
+	  && RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
+	  && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
 	{
 	  // Search nesting anonymous structs and unions.
-	  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (field))
-	      && ANON_AGGR_TYPE_P (TREE_TYPE (field)))
-	    {
-	      tree vfield = find_aggregate_field(ident, TREE_TYPE (field));
-	      if (vfield != NULL_TREE)
-		return vfield;
-	    }
+	  tree vfield = find_aggregate_field(TREE_TYPE (field),
+					     ident, offset);
+	  if (vfield != NULL_TREE)
+	    return vfield;
 	}
-      else if (DECL_NAME (field) == ident)
-	return field;
+      else if (DECL_NAME (field) == ident
+	       && (offset == NULL_TREE
+		   || DECL_FIELD_OFFSET (field) == offset))
+	{
+	  // Found matching field at offset.
+	  return field;
+	}
     }
 
   return NULL_TREE;
