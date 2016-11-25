@@ -78,6 +78,10 @@
 	* d-attrib.c (d_handle_section_attribute): No longer set
 	user_defined_section_attribute.
 
+2016-11-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (TypeVisitor::visit(Type)): Update.
+
 2016-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_struct_literal): Stop after first field
