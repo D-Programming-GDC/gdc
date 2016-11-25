@@ -605,8 +605,8 @@ LIBOBJS
 DL_LIBS
 srcdir
 DFLAGSX
-PHOBOS_VER_FLAG
-DRUNTIME_VER_FLAG
+PHOBOS_SOVERSION
+DRUNTIME_SOVERSION
 gdc_include_dir
 toolexeclibdir
 toolexecdir
@@ -14230,17 +14230,9 @@ fi
 
 
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for druntime version flag" >&5
-$as_echo_n "checking for druntime version flag... " >&6; }
-  DRUNTIME_VER_FLAG=`cat $srcdir/DRUNTIME_VERSION`
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $DRUNTIME_VER_FLAG" >&5
-$as_echo "$DRUNTIME_VER_FLAG" >&6; }
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for phobos version flag" >&5
-$as_echo_n "checking for phobos version flag... " >&6; }
-  PHOBOS_VER_FLAG=`cat $srcdir/PHOBOS_VERSION`
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PHOBOS_VER_FLAG" >&5
-$as_echo "$PHOBOS_VER_FLAG" >&6; }
+# Libdruntime / phobos soname version
+DRUNTIME_SOVERSION="68:2:0"
+PHOBOS_SOVERSION="68:2:0"
 
 
 

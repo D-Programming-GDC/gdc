@@ -140,9 +140,6 @@ public:
 
     AggregateDeclaration *isAggregateDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    Symbol *toInitializer();
-#endif
 };
 
 struct StructFlags
@@ -315,8 +312,6 @@ public:
 #ifdef IN_GCC
     void toObjFile();                       // compile to .obj file
     unsigned baseVtblOffset(BaseClass *bc);
-    Symbol *toSymbol();
-    Symbol *toVtblSymbol();
     void toDt(dt_t **pdt);
     void toDt2(dt_t **pdt, ClassDeclaration *cd);
 #endif
@@ -340,7 +335,6 @@ public:
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
     void toObjFile();                       // compile to .obj file
-    Symbol *toSymbol();
 #endif
 };
 

@@ -34,48 +34,9 @@ enum ModuleInfoFlags
   MIname	    = 0x1000,
 };
 
-struct FuncFrameInfo;
-struct Thunk;
 typedef tree_node dt_t;
 
-struct Symbol
-{
-  Symbol ();
-  ~Symbol ();
-
-  const char *Sident;
-  const char *prettyIdent;
-  int Salignment;
-  bool Sreadonly;
-
-  dt_t *Sdt;
-
-  // Our GNU backend tree for the symbol.
-  tree Stree;
-
-  // FIELD_DECL in frame struct that this variable is allocated in.
-  tree SframeField;
-
-  // RESULT_DECL in a function that returns by nrvo.
-  tree SnamedResult;
-
-  // For FuncDeclarations:
-  vec<Thunk *> thunks;
-  FuncFrameInfo *frameInfo;
-};
-
-struct Thunk
-{
-  Thunk()
-  { offset = 0; symbol = NULL; }
-
-  int offset;
-  Symbol *symbol;
-};
-
 extern dt_t **dt_cons (dt_t **pdt, tree val);
-extern dt_t **dt_chainon (dt_t **pdt, dt_t *val);
-extern dt_t **dt_container (dt_t **pdt, Type *type, dt_t *dt);
 extern dt_t **build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd);
 
 extern tree dtvector_to_tree (dt_t *dt);
@@ -109,24 +70,15 @@ extern void set_decl_location (tree t, const Loc& loc);
 extern void set_decl_location (tree t, Dsymbol *decl);
 extern void set_function_end_locus (const Loc& loc);
 
-extern void get_template_storage_info (Dsymbol *dsym, bool *local_p, bool *template_p);
-extern void setup_symbol_storage (Dsymbol *dsym, tree decl, bool is_public);
 extern void d_comdat_linkage (tree decl);
 
-extern void d_finish_symbol (Symbol *sym);
+extern void d_finish_symbol (tree sym);
 extern void d_finish_function (FuncDeclaration *f);
 extern void d_finish_module();
 extern void d_finish_compilation (tree *vec, int len);
 
 extern tree build_artificial_decl(tree type, tree init, const char *prefix = NULL);
 extern void build_type_decl (tree t, Dsymbol *dsym);
-
-extern Modules output_modules;
-extern bool output_module_p (Module *mod);
-
-extern void write_deferred_thunks();
-extern void use_thunk (tree thunk_decl, tree target_decl, int offset);
-extern void finish_thunk (tree thunk_decl, tree target_decl, int offset);
 
 #endif
 

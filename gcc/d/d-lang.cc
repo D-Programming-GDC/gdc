@@ -73,8 +73,12 @@ static char lang_name[6] = "GNU D";
 #undef LANG_HOOKS_FINISH_INCOMPLETE_DECL
 #undef LANG_HOOKS_GIMPLIFY_EXPR
 #undef LANG_HOOKS_CLASSIFY_RECORD
+#undef LANG_HOOKS_TREE_SIZE
+#undef LANG_HOOKS_PRINT_XNODE
+#undef LANG_HOOKS_DUP_LANG_SPECIFIC_DECL
 #undef LANG_HOOKS_EH_PERSONALITY
 #undef LANG_HOOKS_EH_RUNTIME_TYPE
+
 
 #define LANG_HOOKS_NAME				lang_name
 #define LANG_HOOKS_INIT				d_init
@@ -96,6 +100,9 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_FINISH_INCOMPLETE_DECL	d_finish_incomplete_decl
 #define LANG_HOOKS_GIMPLIFY_EXPR		d_gimplify_expr
 #define LANG_HOOKS_CLASSIFY_RECORD		d_classify_record
+#define LANG_HOOKS_TREE_SIZE			d_tree_size
+#define LANG_HOOKS_PRINT_XNODE			d_print_xnode
+#define LANG_HOOKS_DUP_LANG_SPECIFIC_DECL	d_dup_lang_specific_decl
 #define LANG_HOOKS_EH_PERSONALITY		d_eh_personality
 #define LANG_HOOKS_EH_RUNTIME_TYPE		d_build_eh_type_type
 
@@ -124,9 +131,6 @@ static const char *fonly_arg;
 
 /* List of modules being compiled.  */
 Modules builtin_modules;
-Modules output_modules;
-
-static Module *output_module = NULL;
 
 static Module *entrypoint = NULL;
 static Module *rootmodule = NULL;
@@ -767,12 +771,6 @@ d_gimplify_expr(tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 }
 
 
-Module *
-d_gcc_get_output_module()
-{
-  return output_module;
-}
-
 static void
 d_nametype (Type *t)
 {
@@ -803,7 +801,6 @@ genCmain (Scope *sc)
   m->semantic3();
 
   // We are emitting this straight to object file.
-  output_modules.push (m);
   entrypoint = m;
   rootmodule = sc->module;
 }
@@ -981,21 +978,7 @@ d_parse_file()
       Module *m = new Module(fname, id, global.params.doDocComments,
 			     global.params.doHdrGeneration);
       modules.push(m);
-
-      if (!strcmp(in_fnames[i], main_input_filename))
-	output_module = m;
     }
-
-  // Current_module shouldn't have any implications before genobjfile...
-  // but it does.  We need to know what module in which to insert
-  // TemplateInstances during the semantic pass.  In order for
-  // -femit-templates to work, template instances must be emitted
-  // in every translation unit.  To do this, the TemplateInstaceS have to
-  // have toObjFile called in the module being compiled.
-  // TemplateInstance puts itself somwhere during ::semantic, thus it has
-  // to know the current module.
-
-  gcc_assert(output_module);
 
   // Read files
   for (size_t i = 0; i < modules.dim; i++)
@@ -1041,7 +1024,7 @@ d_parse_file()
       for (size_t i = 0; i < modules.dim; i++)
 	{
 	  Module *m = modules[i];
-	  if (fonly_arg && m != output_module)
+	  if (fonly_arg && m != Module::rootModule)
 	    continue;
 
 	  if (global.params.verbose)
@@ -1176,11 +1159,6 @@ d_parse_file()
 	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
-  if (fonly_arg)
-    output_modules.push(output_module);
-  else
-    output_modules.append(&modules);
-
   // Generate output files
   if (global.params.doJsonGeneration)
     {
@@ -1230,7 +1208,7 @@ d_parse_file()
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
-      if (fonly_arg && m != output_module)
+      if (fonly_arg && m != Module::rootModule)
 	continue;
 
       if (global.params.verbose)
@@ -1254,8 +1232,6 @@ d_parse_file()
   errorcount += (global.errors + global.warnings);
 
   d_finish_module();
-
-  output_module = NULL;
 }
 
 static tree
@@ -1544,25 +1520,90 @@ d_classify_record (tree type)
   return RECORD_IS_STRUCT;
 }
 
+/* Determine the size of our tcc_constant or tcc_exceptional nodes.  */
+
+static size_t
+d_tree_size (tree_code code)
+{
+  switch (code)
+    {
+    case FUNCFRAME_INFO:
+      return sizeof (tree_frame_info);
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+/*  */
+static void
+d_print_xnode (FILE *file, tree node, int indent)
+{
+  switch (TREE_CODE (node))
+    {
+    case FUNCFRAME_INFO:
+      print_node (file, "frame_type", FRAMEINFO_TYPE (node), indent + 4);
+      break;
+
+    default:
+      break;
+    }
+}
+
+/* Return which tree structure is used by NODE, or TS_D_GENERIC if NODE
+   is one of the language-independent trees.  */
+
+d_tree_node_structure_enum
+d_tree_node_structure (lang_tree_node *t)
+{
+  switch (TREE_CODE (&t->generic))
+    {
+    case IDENTIFIER_NODE:
+      return TS_D_IDENTIFIER;
+
+    case FUNCFRAME_INFO:
+      return TS_D_FRAMEINFO;
+
+    default:
+      return TS_D_GENERIC;
+    }
+}
+
+/* Allocate and return a lang specific structure for the frontend type.  */
 
 struct lang_type *
 build_lang_type (Type *t)
 {
-  unsigned sz = sizeof (lang_type);
+  unsigned sz = sizeof (struct lang_type);
   struct lang_type *lt = ggc_alloc_cleared_lang_type (sz);
   lt->type = t;
   return lt;
 }
 
+/* Allocate and return a lang specific structure for the frontend decl.  */
+
 struct lang_decl *
 build_lang_decl (Declaration *d)
 {
-  unsigned sz = sizeof (lang_decl);
+  unsigned sz = sizeof (struct lang_decl);
   struct lang_decl *ld = ggc_alloc_cleared_lang_decl (sz);
   ld->decl = d;
   return ld;
 }
 
+/* Replace the DECL_LANG_SPECIFIC field of NODE with a copy.  */
+
+static void
+d_dup_lang_specific_decl (tree node)
+{
+  if (! DECL_LANG_SPECIFIC (node))
+    return;
+
+  unsigned sz = sizeof (struct lang_decl);
+  struct lang_decl *ld = ggc_alloc_lang_decl (sz);
+  memcpy (ld, DECL_LANG_SPECIFIC (node), sizeof (struct lang_decl));
+  DECL_LANG_SPECIFIC (node) = ld;
+}
 
 // This preserves trees we create from the garbage collector.
 tree d_keep_list = NULL_TREE;
@@ -1591,15 +1632,15 @@ static tree
 d_build_eh_type_type (tree type)
 {
   Type *dtype = TYPE_LANG_FRONTEND (type);
-  Symbol *sym;
+  tree sym;
 
   if (dtype)
     dtype = dtype->toBasetype();
 
   gcc_assert (dtype && dtype->ty == Tclass);
-  sym = ((TypeClass *) dtype)->sym->toSymbol();
+  sym = get_classinfo_decl (((TypeClass *) dtype)->sym);
 
-  return convert (ptr_type_node, build_address (sym->Stree));
+  return convert (ptr_type_node, build_address (sym));
 }
 
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

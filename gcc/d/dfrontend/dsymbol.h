@@ -53,7 +53,6 @@ class UnitTestDeclaration;
 class NewDeclaration;
 class VarDeclaration;
 class AttribDeclaration;
-struct Symbol;
 class Package;
 class Module;
 class Import;
@@ -75,8 +74,10 @@ class DeleteDeclaration;
 class OverloadSet;
 struct AA;
 #ifdef IN_GCC
+typedef union tree_node Symbol;
 typedef union tree_node TYPE;
 #else
+struct Symbol;
 struct TYPE;
 #endif
 
@@ -282,10 +283,7 @@ public:
     virtual OverloadSet *isOverloadSet() { return NULL; }
     virtual void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    virtual Symbol *toSymbol();                 // to backend symbol
     virtual void toObjFile();                   // compile to .obj file
-
-    Symbol *toSymbolX(const char *prefix, int sclass, TYPE *t, const char *suffix);     // helper
 #endif
 };
 
