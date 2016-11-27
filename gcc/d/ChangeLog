@@ -1,5 +1,10 @@
 2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* typeinfo.cc (TypeInfoVisitor): Use build_typeinfo instead of
+	get_typeinfo_decl.
+
+2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-decls.cc (layout_moduleinfo_fields): Use finish_aggregate_type
 	instead of layout_type.
 	(layout_classinfo_interfaces): Likewise.
