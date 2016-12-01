@@ -70,9 +70,9 @@ These official OS versions are not implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/darwin.h
 +++ b/gcc/config/darwin.h
-@@ -929,4 +929,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
-    fall-back default.  */
- #define DEF_MIN_OSX_VERSION "10.5"
+@@ -972,4 +972,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
+ #define DEF_LD64 LD64_VERSION
+ #endif
  
 +#define TARGET_OS_D_BUILTINS()					\
 +    do {							\
@@ -314,7 +314,7 @@ These official OS versions are not implemented:
    do						\
 --- a/gcc/config/rs6000/aix.h
 +++ b/gcc/config/rs6000/aix.h
-@@ -129,6 +129,13 @@
+@@ -164,6 +164,13 @@
      }						\
    while (0)
  
