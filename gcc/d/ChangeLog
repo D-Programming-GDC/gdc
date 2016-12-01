@@ -1,3 +1,15 @@
+2016-12-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (ClassDeclaration::toObjFile): Use layout_classinfo to
+	generate TypeInfo for classes.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	* d-todt.cc (build_vptr_monitor): Remove function.
+	* typeinfo.cc (TypeInfoVisitor::set_field): New function.
+	(TypeInfoVisitor::layout_interfaces): New function.
+	(TypeInfoVisitor::layout_interface_vtables): New function.
+	(TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Implement.
+	(layout_classinfo): New function.
+
 2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* typeinfo.cc (TypeInfoVisitor): Use build_typeinfo instead of
