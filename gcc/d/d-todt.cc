@@ -52,34 +52,6 @@ dt_cons(dt_t **pdt, tree val)
   return pdt;
 }
 
-// Concatenate two constructors of dt_t nodes by appending all
-// values of DT to PDT.
-
-static dt_t **
-dt_chainon(dt_t **pdt, dt_t *dt)
-{
-  vec<constructor_elt, va_gc> *elts = CONSTRUCTOR_ELTS(dt);
-  tree value;
-  size_t i;
-
-  gcc_assert(*pdt != dt);
-
-  FOR_EACH_CONSTRUCTOR_VALUE(elts, i, value)
-    dt_cons(pdt, value);
-
-  return pdt;
-}
-
-// Add zero padding of size SIZE onto end of PDT.
-
-static dt_t **
-dt_zeropad(dt_t **pdt, size_t size)
-{
-  tree type = d_array_type(Type::tuns8, size);
-  gcc_assert(size != 0);
-  return dt_cons(pdt, build_constructor(type, NULL));
-}
-
 // It is necessary to give static array data its original
 // type.  Otherwise, the SRA pass will not find the array
 // elements.
@@ -89,7 +61,7 @@ dt_zeropad(dt_t **pdt, size_t size)
 // be a CONSTRUCTOR, or the CCP pass may use it incorrectly.
 
 static tree
-dt_container2(dt_t *dt)
+dt_container(dt_t *dt)
 {
   // Generate type on the fly
   vec<constructor_elt, va_gc> *elts = NULL;
@@ -140,61 +112,6 @@ dt_container2(dt_t *dt)
   return dt;
 }
 
-// Build a new CONSTRUCTOR of type TYPE around the values
-// DT and append to the dt_t node list PDT.
-
-static dt_t **
-dt_container(dt_t **pdt, Type *type, dt_t *dt)
-{
-  Type *tb = type->toBasetype();
-
-  if (tb->ty == Tsarray)
-    {
-      // Generate static array constructor.
-      TypeSArray *tsa = (TypeSArray *) tb;
-      vec<constructor_elt, va_gc> *elts = NULL;
-      tree value;
-      size_t i;
-
-      if (dt == NULL)
-	dt = dt_container2(dt);
-      else
-	{
-	  gcc_assert(CONSTRUCTOR_NELTS(dt) == tsa->dim->toInteger());
-
-	  FOR_EACH_CONSTRUCTOR_VALUE(CONSTRUCTOR_ELTS(dt), i, value)
-	    CONSTRUCTOR_APPEND_ELT(elts, size_int(i), value);
-
-	  CONSTRUCTOR_ELTS(dt) = elts;
-	}
-
-      if (dt != error_mark_node)
-	{
-	  TREE_TYPE(dt) = build_ctype(type);
-	  TREE_CONSTANT(dt) = 1;
-	  TREE_STATIC(dt) = 1;
-	}
-
-      return dt_cons(pdt, dt);
-    }
-  else if (tb->ty == Tstruct)
-    {
-      dt = dt_container2(dt);
-      if (dt != error_mark_node)
-	TREE_TYPE(dt) = build_ctype(type);
-      return dt_cons(pdt, dt);
-    }
-  else if (tb->ty == Tclass)
-    {
-      dt = dt_container2(dt);
-      if (dt != error_mark_node)
-	TREE_TYPE(dt) = TREE_TYPE(build_ctype(type));
-      return dt_cons(pdt, dt);
-    }
-
-  return dt_cons(pdt, dtvector_to_tree(dt));
-}
-
 // Return a new CONSTRUCTOR whose values are in a dt_t
 // list pointed to by DT.
 
@@ -204,7 +121,7 @@ dtvector_to_tree(dt_t *dt)
   if (dt && CONSTRUCTOR_NELTS(dt) == 1)
     return CONSTRUCTOR_ELT(dt, 0)->value;
 
-  return dt_container2(dt);
+  return dt_container(dt);
 }
 
 // Put out __vptr and __monitor of class CD into PDT.
@@ -273,109 +190,13 @@ ExpInitializer::toDt()
 void
 ClassDeclaration::toDt(dt_t **pdt)
 {
-  /* Put out:
-   *  void **vptr;
-   *  monitor_t monitor;
-   */
-  tree cdt = NULL_TREE;
-  build_vptr_monitor(&cdt, this);
+  NewExp *ne = new NewExp(this->loc, NULL, NULL, this->type, NULL);
+  ne->type = this->type;
 
-  // Put out rest of class fields.
-  toDt2(&cdt, this);
+  Expression *e = ne->ctfeInterpret();
+  gcc_assert (e->op == TOKclassreference);
 
-  dt_container(pdt, type, cdt);
-}
-
-void
-ClassDeclaration::toDt2(dt_t **pdt, ClassDeclaration *cd)
-{
-  size_t offset;
-
-  if (baseClass)
-    {
-      baseClass->toDt2(pdt, cd);
-      offset = baseClass->structsize;
-    }
-  else
-    {
-      // Allow room for __vptr and __monitor
-      if (cd->cpp)
-	offset = Target::ptrsize;
-      else
-	offset = Target::ptrsize * 2;
-    }
-
-  // Note equivalence of this loop to struct's
-  for (size_t i = 0; i < fields.dim; i++)
-    {
-      VarDeclaration *v = fields[i];
-      Initializer *init = v->init;
-      tree dt = NULL_TREE;
-
-      if (init)
-	{
-	  ExpInitializer *ei = init->isExpInitializer();
-	  Type *tb = v->type->toBasetype();
-	  if (!init->isVoidInitializer())
-	    {
-	      if (ei && tb->ty == Tsarray)
-		((TypeSArray *) tb)->toDtElem(&dt, ei->exp);
-	      else
-		dt = init->toDt();
-	    }
-	}
-      else if (v->offset >= offset)
-	{
-	  if (v->type->ty == Tstruct)
-	    ((TypeStruct *) v->type)->sym->toDt(&dt);
-	  else
-	    {
-	      Expression *e = v->type->defaultInitLiteral(loc);
-	      dt_cons(&dt, build_expr(e, true));
-	    }
-	}
-
-
-      if (dt != NULL_TREE)
-	{
-	  if (v->offset < offset)
-	    error("duplicated union initialization for %s", v->toChars());
-	  else
-	    {
-	      if (offset < v->offset)
-		dt_zeropad(pdt, v->offset - offset);
-	      dt_chainon(pdt, dt);
-	      offset = v->offset + v->type->size();
-	    }
-	}
-    }
-
-  // Interface vptr initializations
-  this->csym = get_classinfo_decl (this);
-
-  for (size_t i = 0; i < vtblInterfaces->dim; i++)
-    {
-      BaseClass *b = (*vtblInterfaces)[i];
-
-      for (ClassDeclaration *cd2 = cd; 1; cd2 = cd2->baseClass)
-	{
-	  gcc_assert(cd2);
-	  unsigned csymoffset = cd2->baseVtblOffset(b);
-	  if (csymoffset != (unsigned) ~0)
-	    {
-	      tree dt = build_address(get_classinfo_decl (cd2));
-	      if (offset < (size_t) b->offset)
-		dt_zeropad(pdt, b->offset - offset);
-	      dt_cons(pdt, build_offset(dt, size_int(csymoffset)));
-	      break;
-	    }
-	}
-
-      offset = b->offset + Target::ptrsize;
-    }
-
-  if (offset < structsize)
-    dt_zeropad(pdt, structsize - offset);
+  dt_cons(pdt, build_class_instance((ClassReferenceExp *) e));
 }
 
 void
@@ -388,62 +209,4 @@ StructDeclaration::toDt(dt_t **pdt)
 
   sle->type = type;
   dt_cons(pdt, build_expr(sle, true));
-}
-
-/* ================================================================ */
-
-// Generate the data for the default initialiser of the type.
-
-dt_t **
-TypeSArray::toDtElem (dt_t **pdt, Expression *e)
-{
-  dinteger_t len = dim->toInteger();
-
-  if (len)
-    {
-      tree dt = NULL_TREE;
-      Type *tnext = next;
-      Type *tbn = tnext->toBasetype();
-
-      if (e && (e->op == TOKstring || e->op == TOKarrayliteral))
-	{
-	  while (tbn->ty == Tsarray && (!e || tbn != e->type->nextOf()))
-	    {
-	      TypeSArray *tsa = (TypeSArray *) tbn;
-	      len *= tsa->dim->toInteger();
-	      tnext = tbn->nextOf();
-	      tbn = tnext->toBasetype();
-	    }
-
-	  if (e->op == TOKstring)
-	    len /= ((StringExp *) e)->len;
-	  else if (e->op == TOKarrayliteral)
-	    len /= ((ArrayLiteralExp *) e)->elements->dim;
-
-	  for (size_t i = 0; i < len; i++)
-	    dt_cons(&dt, build_expr(e, true));
-
-	  // Single initialiser already constructed, just chain onto pdt.
-	  if (len == 1)
-	    return dt_chainon (pdt, dt);
-	}
-      else
-	{
-	  // If not already supplied use default initialiser.
-	  if (!e)
-	    e = defaultInit(Loc());
-
-	  for (size_t i = 0; i < len; i++)
-	    {
-	      if (tbn->ty == Tsarray)
-		((TypeSArray *) tbn)->toDtElem (&dt, e);
-	      else
-		dt_cons(&dt, build_expr(e, true));
-	    }
-	}
-
-      return dt_container (pdt, this, dt);
-    }
-
-  return pdt;
 }

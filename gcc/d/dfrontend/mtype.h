@@ -478,9 +478,6 @@ public:
     bool needsNested();
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t **toDtElem(dt_t **pdt, Expression *e);
-#endif
 };
 
 // Dynamic array, no dimension

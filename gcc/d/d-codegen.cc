@@ -2143,6 +2143,7 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
   HOST_WIDE_INT offset = 0;
   bool constant_p = true;
   bool fillholes = true;
+  bool finished = false;
 
   // Filling alignment holes this only applies to structs.
   if (TREE_CODE (type) != RECORD_TYPE
@@ -2178,7 +2179,8 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 	      if (index == field)
 		{
 		  init->ordered_remove(idx);
-		  is_initialized = true;
+		  if (!finished)
+		    is_initialized = true;
 		  break;
 		}
 	    }
@@ -2221,6 +2223,11 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 	    constant_p = false;
 
 	  CONSTRUCTOR_APPEND_ELT (ve, field, value);
+
+	  // For unions, only the first field is initialized, any other
+	  // field initializers found for this union are drained and ignored.
+	  if (TREE_CODE (type) == UNION_TYPE)
+	    finished = true;
 	}
 
       // Move offset to the next position in the struct.
@@ -2273,16 +2280,22 @@ build_class_instance (ClassReferenceExp *exp)
       // Use both the name and offset to find the right field.
       for (size_t i = 0; i < bcd->fields.dim; i++)
 	{
-	  int index = exp->findFieldIndexByName (bcd->fields[i]);
+	  VarDeclaration *vfield = bcd->fields[i];
+	  int index = exp->findFieldIndexByName (vfield);
 	  gcc_assert (index != -1);
 
 	  Expression *value = (*exp->value->elements)[index];
 	  if (!value)
 	    continue;
 
-	  tree t = get_symbol_decl (bcd->fields[i]);
-	  tree field = find_aggregate_field (type, DECL_NAME (t),
-					     DECL_FIELD_OFFSET (t));
+	  if (vfield->init && vfield->init->isVoidInitializer ())
+	    continue;
+
+	  // Use find_aggregate_field to get the overridden field decl,
+	  // instead of the field associated with the base class.
+	  tree field = get_symbol_decl (bcd->fields[i]);
+	  field = find_aggregate_field (type, DECL_NAME (field),
+					DECL_FIELD_OFFSET (field));
 	  gcc_assert (field != NULL_TREE);
 
 	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
