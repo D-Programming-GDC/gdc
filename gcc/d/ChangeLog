@@ -1,3 +1,8 @@
+2016-12-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_symbol_decl): Use needsCodegen to determine whether
+	template instance is extern or not.
+
 2016-12-02  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-glue.cc (escapePath): Move to dfrontend.
