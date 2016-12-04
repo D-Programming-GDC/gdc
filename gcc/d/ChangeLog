@@ -1,7 +1,37 @@
+2016-12-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_symbol_decl): Use needsCodegen to determine whether
+	template instance is extern or not.
+
+2016-12-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-glue.cc (escapePath): Move to dfrontend.
+	(readFile): Likewise.
+	(writeFile): Likewise.
+	(ensurePathToNameExists): Likewise.
+
+2016-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_struct_literal): Stop after first field
+	assignment in union constructor.
+	(build_class_instance): Skip void initialized fields.
+	* expr.cc (ExprVisitor::visit(StructLiteralExp)): Likewise.
+
 2016-11-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc (get_symbol_decl): Don't set alignment if
 	STRUCTALIGN_DEFAULT.
+
+2016-11-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-todt.cc (ClassDeclaration::toDt): Update.
+	(ClassDeclaration::toDt2): Remove function.
+	(TypeSArray::toDtElem): Remove function.
+	(dt_chainon): Remove function.
+	(dt_zeropad): Remove function.
+	(dt_container): Remove function.
+	(dt_container2): Rename to dt_container.  All callers updated.
+	* d-objfile.cc (VarDeclaration::toObjFile): Update.
 
 2016-11-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 

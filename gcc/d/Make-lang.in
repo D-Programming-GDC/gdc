@@ -76,7 +76,7 @@ D_DMD_OBJS := \
     d/sideeffect.o d/speller.o d/statement.o \
     d/staticassert.o d/stringtable.o d/struct.o \
     d/template.o d/tokens.o d/traits.o d/unittests.o \
-    d/utf.o d/version.o
+    d/utf.o d/utils.o d/version.o
 
 # D Frontend generated files.
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c

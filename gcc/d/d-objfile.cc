@@ -844,20 +844,19 @@ VarDeclaration::toObjFile()
 
       size_t sz = type->size();
 
-      if (init)
+      if (init && !init->isVoidInitializer())
 	{
 	  // Look for static array that is block initialised.
 	  Type *tb = type->toBasetype();
 	  ExpInitializer *ie = init->isExpInitializer();
 
-	  if (ie && tb->ty == Tsarray
-	      && !tb->nextOf()->equals(ie->exp->type->toBasetype()->nextOf())
-	      && ie->exp->implicitConvTo(tb->nextOf()))
+	  if (ie != NULL && tb->ty == Tsarray
+	      && !d_types_same(tb, ie->exp->type))
 	    {
-	      TypeSArray *tsa = (TypeSArray *) tb;
-	      tsa->toDtElem (&DECL_LANG_INITIAL (s), ie->exp);
+	      tree val = build_expr(ie->exp, true);
+	      dt_cons (&DECL_LANG_INITIAL (s), build_array_from_val (tb, val));
 	    }
-	  else if (!init->isVoidInitializer())
+	  else
 	    DECL_LANG_INITIAL (s) = init->toDt();
 	}
       else
