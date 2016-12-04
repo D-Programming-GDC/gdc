@@ -2626,15 +2626,17 @@ public:
 
     for (size_t i = 0; i < e->elements->dim; i++)
       {
-	if (!(*e->elements)[i])
+	Expression *exp = (*e->elements)[i];
+	if (!exp)
 	  continue;
 
-	Expression *exp = (*e->elements)[i];
-	Type *type = exp->type->toBasetype();
-	tree value = NULL_TREE;
-
 	VarDeclaration *field = e->sd->fields[i];
+	if (field->init && field->init->isVoidInitializer())
+	  continue;
+
+	Type *type = exp->type->toBasetype();
 	Type *ftype = field->type->toBasetype();
+	tree value = NULL_TREE;
 
 	if (ftype->ty == Tsarray && !d_types_same(type, ftype))
 	  {

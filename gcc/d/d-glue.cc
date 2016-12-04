@@ -268,64 +268,6 @@ fatal()
   exit(FATAL_EXIT_CODE);
 }
 
-
-void
-escapePath(OutBuffer *buf, const char *fname)
-{
-  while (1)
-    {
-      switch (*fname)
-	{
-	case 0:
-	  return;
-
-	case '(':
-	case ')':
-	case '\\':
-	  buf->writeByte('\\');
-
-	default:
-	  buf->writeByte(*fname);
-	  break;
-	}
-      fname++;
-    }
-}
-
-void
-readFile(Loc loc, File *f)
-{
-  if (f->read())
-    {
-      error(loc, "Error reading file '%s'", f->name->toChars());
-      fatal();
-    }
-}
-
-void
-writeFile(Loc loc, File *f)
-{
-  if (f->write())
-    {
-      error(loc, "Error writing file '%s'", f->name->toChars());
-      fatal();
-    }
-}
-
-void
-ensurePathToNameExists(Loc loc, const char *name)
-{
-  const char *pt = FileName::path(name);
-  if (*pt)
-    {
-      if (FileName::ensurePathExists(pt))
-	{
-	  error(loc, "cannot create directory %s", pt);
-	  fatal();
-	}
-    }
-}
-
 // Semantically analyze AsmStatement where SC is the scope.
 
 Statement *
