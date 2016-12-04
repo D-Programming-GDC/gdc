@@ -1,3 +1,10 @@
+2016-12-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-glue.cc (escapePath): Move to dfrontend.
+	(readFile): Likewise.
+	(writeFile): Likewise.
+	(ensurePathToNameExists): Likewise.
+
 2016-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_struct_literal): Stop after first field
