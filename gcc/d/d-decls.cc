@@ -351,8 +351,7 @@ get_symbol_decl (Declaration *decl)
 	  D_DECL_ONE_ONLY (decl->csym) = 1;
 	  D_DECL_IS_TEMPLATE (decl->csym) = 1;
 
-	  if (!DECL_EXTERNAL (decl->csym)
-	      && ti->minst && ti->minst->isRoot())
+	  if (!DECL_EXTERNAL (decl->csym) && ti->needsCodegen ())
 	    TREE_STATIC (decl->csym) = 1;
 	  else
 	    DECL_EXTERNAL (decl->csym) = 1;
