@@ -97,11 +97,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
      3  means libgphobos is needed and should be linked dynamically. */
   int library = 0;
 
-  /* The number of arguments being added to what's in argv, other than
-     libraries.  We use this to track the number of times we've inserted
-     -xd/-xnone.  */
-  int added = 0;
-
   /* The new argument list will be contained in this.  */
   cl_decoded_option *new_decoded_options;
 
@@ -185,13 +180,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_nophoboslib:
-	  added = 1;
 	  need_phobos = false;
 	  args[i] |= SKIPOPT;
 	  break;
 
 	case OPT_defaultlib_:
-	  added = 1;
 	  need_phobos = false;
 	  args[i] |= SKIPOPT;
 	  if (defaultlib != NULL)
@@ -206,7 +199,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_debuglib_:
-	  added = 1;
 	  need_phobos = false;
 	  args[i] |= SKIPOPT;
 	  if (debuglib != NULL)
@@ -359,13 +351,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	}
     }
 
-  /* If we know we don't have to do anything, bail now.  */
-  if (!added && library <= 0 && !only_source_option)
-    {
-      free (args);
-      return;
-    }
-
   /* There's no point adding -shared-libgcc if we don't have a shared
      libgcc.  */
 #ifndef ENABLE_SHARED_LIBGCC
@@ -373,10 +358,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 #endif
 
   /* Make sure to have room for the trailing NULL argument.  */
-  /* There is one extra argument added here for the runtime
-     library: -lgphobos.  The -pthread argument is added by
-     setting need_thread. */
-  num_args = argc + added + need_math + shared_libgcc + (library > 0) * 5 + 2;
+  num_args = argc + need_math + shared_libgcc + (library > 0) * 5 + 2;
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
