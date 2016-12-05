@@ -118,10 +118,10 @@ for all supported architectures. And these where appropriate:
 +
  #include "config/arm/arm-opts.h"
  
- enum target_cpus
+ /* The processor for which instructions should be scheduled.  */
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -660,6 +660,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -664,6 +664,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -244,7 +244,7 @@ for all supported architectures. And these where appropriate:
    do								\
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -814,6 +814,28 @@ extern unsigned char rs6000_recip_bits[];
+@@ -815,6 +815,28 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  

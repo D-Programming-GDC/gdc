@@ -25,6 +25,7 @@
 #include "dfrontend/target.h"
 
 #include "tree.h"
+#include "memmodel.h"
 #include "fold-const.h"
 #include "stor-layout.h"
 #include "diagnostic.h"

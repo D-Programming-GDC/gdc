@@ -588,8 +588,6 @@ d_handle_section_attribute (tree *node, tree ARG_UNUSED (name), tree args,
 
   if (targetm_common.have_named_sections)
     {
-      user_defined_section_attribute = true;
-
       if (VAR_OR_FUNCTION_DECL_P (decl)
 	  && TREE_CODE (TREE_VALUE (args)) == STRING_CST)
 	{
