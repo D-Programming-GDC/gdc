@@ -21,8 +21,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
-
-#include "gcc.h"
 #include "opts.h"
 
 /* This bit is set if the arguments is a D source file. */
@@ -185,28 +183,24 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_defaultlib_:
-	  need_phobos = false;
-	  args[i] |= SKIPOPT;
 	  if (defaultlib != NULL)
 	    free (CONST_CAST (char *, defaultlib));
-	  if (arg == NULL)
-	    error ("missing argument to 'defaultlib=' option");
-	  else
+	  if (arg != NULL)
 	    {
+	      need_phobos = false;
+	      args[i] |= SKIPOPT;
 	      defaultlib = XNEWVEC (char, strlen (arg));
 	      strcpy (CONST_CAST (char *, defaultlib), arg);
 	    }
 	  break;
 
 	case OPT_debuglib_:
-	  need_phobos = false;
-	  args[i] |= SKIPOPT;
 	  if (debuglib != NULL)
 	    free (CONST_CAST (char *, debuglib));
-	  if (arg == NULL)
-	    error ("missing argument to 'debuglib=' option");
-	  else
+	  if (arg != NULL)
 	    {
+	      need_phobos = false;
+	      args[i] |= SKIPOPT;
 	      debuglib = XNEWVEC (char, strlen (arg));
 	      strcpy (CONST_CAST (char *, debuglib), arg);
 	    }
