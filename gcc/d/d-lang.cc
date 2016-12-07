@@ -236,8 +236,12 @@ d_add_builtin_version(const char* ident)
     global.params.isOpenBSD = true;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = true;
-  else if (strcmp (ident, "X86_64") == 0)
-    global.params.is64bit = true;
+  else if (strcmp (ident, "AArch64") == 0 || strcmp (ident, "Alpha") == 0
+           || strcmp (ident, "HPPA64") == 0 || strcmp (ident, "IA64") == 0
+           || strcmp (ident, "MIPS64") == 0 || strcmp (ident, "PPC64") == 0
+           || strcmp (ident, "SH64") == 0 || strcmp (ident, "SPARC64") == 0
+           || strcmp (ident, "SystemZ") == 0 || strcmp (ident, "X86_64") == 0)
+     global.params.is64bit = true;
 
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
