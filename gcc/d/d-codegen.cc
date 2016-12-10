@@ -1569,11 +1569,8 @@ extract_from_method_call (tree t, tree& callee, tree& object)
 tree
 build_vindex_ref(tree object, tree fntype, size_t index)
 {
-  // Interface methods are also in the class's vtable, so we don't
-  // need to convert from a class pointer to an interface pointer.
-  object = d_save_expr(object);
-
-  // The vtable is the first field.
+  // The vtable is the first field.  Interface methods are also in the class's
+  // vtable, so we don't need to convert from a class to an interface.
   tree result = build_deref(object);
   result = component_ref(result, TYPE_FIELDS (TREE_TYPE (result)));
 
