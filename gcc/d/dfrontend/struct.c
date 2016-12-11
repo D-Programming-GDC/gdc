@@ -916,6 +916,10 @@ StructDeclaration::StructDeclaration(Loc loc, Identifier *id, bool inObject)
     {
         if (id == Id::ModuleInfo && !Module::moduleinfo)
             Module::moduleinfo = this;
+#ifdef IN_GCC
+        else if (id == Id::Interface && !Type::typeinterface)
+            Type::typeinterface = this;
+#endif
     }
 }
 
