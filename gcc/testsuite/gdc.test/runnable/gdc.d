@@ -1057,6 +1057,51 @@ void test242()
 
 /******************************************/
 
+// Bug 248
+
+class C248b
+{
+    bool isintegral()
+    {
+        return false;
+    }
+}
+
+class C248a
+{
+    int count = 0;
+
+    C248b getMemtype()
+    {
+        count++;
+        return new C248b();
+    }
+}
+
+class C248
+{
+    C248a sym;
+
+    this()
+    {
+        this.sym = new C248a();
+    }
+
+    bool isintegral()
+    {
+        return sym.getMemtype().isintegral();
+    }
+}
+
+void test248()
+{
+    C248 e = new C248();
+    e.isintegral();
+    assert(e.sym.count == 1);
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -1081,6 +1126,7 @@ void main()
     test196();
     test198();
     test210();
+    test248();
 
     printf("Success!\n");
 }

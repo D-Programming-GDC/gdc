@@ -1618,6 +1618,7 @@ public:
 		if (fd->isVirtual() && !fd->isFinalFunc() && !e->directcall)
 		  {
 		    tree fntype = build_pointer_type(TREE_TYPE (fndecl));
+		    thisexp = d_save_expr(thisexp);
 		    fndecl = build_vindex_ref(thisexp, fntype, fd->vtblIndex);
 		  }
 		else
@@ -1746,15 +1747,18 @@ public:
 	if (e->e1->type->ty != Tclass && e->e1->type->ty != Tpointer)
 	  object = build_address(object);
 
-	fndecl = build_address(get_symbol_decl (e->func));
+	fndecl = get_symbol_decl (e->func);
 
 	// Get pointer to function out of the virtual table.
 	if (e->func->isVirtual() && !e->func->isFinalFunc()
 	    && e->e1->op != TOKsuper && e->e1->op != TOKdottype)
 	  {
-	    fndecl = build_vindex_ref(object, TREE_TYPE (fndecl),
-				      e->func->vtblIndex);
+	    tree fntype = build_pointer_type(TREE_TYPE (fndecl));
+	    object = d_save_expr(object);
+	    fndecl = build_vindex_ref(object, fntype, e->func->vtblIndex);
 	  }
+	else
+	  fndecl = build_address(fndecl);
       }
 
     this->result_ = build_method_call(fndecl, object, e->type);
