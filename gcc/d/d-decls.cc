@@ -710,6 +710,101 @@ get_moduleinfo_decl (Module *decl)
   return decl->csym;
 }
 
+/* Return a copy of TYPE but safe to modify in any way.  */
+
+static tree
+copy_struct (tree type)
+{
+  tree newtype = build_distinct_type_copy (type);
+  TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
+
+  for (tree field = TYPE_FIELDS (newtype); field; field = DECL_CHAIN (field))
+    DECL_FIELD_CONTEXT (field) = newtype;
+
+  return newtype;
+}
+
+/* Layout fields that immediately come after the classinfo TYPE for DECL if
+   there's any interfaces or interface vtables to be added.
+   This must be mirrored with ClassDeclaration::baseVtblOffset().  */
+
+static tree
+layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
+{
+  tree orig_type = type;
+
+  if (decl->vtblInterfaces->dim)
+    {
+      tree field;
+
+      type = copy_struct (type);
+
+      /* First layout the static array of Interface, which provides information
+	 about the vtables that follow.  */
+      if (Type::typeinterface)
+	{
+	  field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
+			      d_array_type (Type::typeinterface->type,
+					    decl->vtblInterfaces->dim));
+	  DECL_ARTIFICIAL (field) = 1;
+	  DECL_IGNORED_P (field) = 1;
+	  insert_aggregate_field (decl->loc, type, field,
+				  Type::typeinfoclass->structsize);
+	}
+
+      /* For each interface, layout each vtable.  */
+      for (size_t i = 0; i < decl->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *b = (*decl->vtblInterfaces)[i];
+	  ClassDeclaration *id = b->base;
+	  unsigned offset = decl->baseVtblOffset (b);
+
+	  if (id->vtbl.dim && offset != ~0u)
+	    {
+	      field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
+				  d_array_type (Type::tvoidptr, id->vtbl.dim));
+	      DECL_ARTIFICIAL (field) = 1;
+	      DECL_IGNORED_P (field) = 1;
+	      insert_aggregate_field (decl->loc, type, field, offset);
+	    }
+	}
+    }
+
+  /* Layout the arrays of overriding interface vtables.  */
+  for (ClassDeclaration *bcd = decl->baseClass; bcd; bcd = bcd->baseClass)
+    {
+      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *b = (*bcd->vtblInterfaces)[i];
+	  ClassDeclaration *id = b->base;
+	  unsigned offset = decl->baseVtblOffset (b);
+
+	  if (id->vtbl.dim && offset != ~0u)
+	    {
+	      tree field;
+
+	      if (type == orig_type)
+		type = copy_struct (type);
+
+	      field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
+				  d_array_type (Type::tvoidptr, id->vtbl.dim));
+	      DECL_ARTIFICIAL (field) = 1;
+	      DECL_IGNORED_P (field) = 1;
+	      insert_aggregate_field (decl->loc, type, field, offset);
+	    }
+	}
+    }
+
+  /* Update the type size and record mode for the classinfo type.  */
+  if (type != orig_type)
+    {
+      TYPE_SIZE (type) = NULL_TREE;
+      layout_type (type);
+    }
+
+  return type;
+}
+
 /* Get the VAR_DECL of the ClassInfo for DECL.  If this does not yet exist,
    create it.  The ClassInfo decl provides information about the dynamic type
    of a given class type or object.  */
@@ -723,8 +818,11 @@ get_classinfo_decl (ClassDeclaration *decl)
   InterfaceDeclaration *id = decl->isInterfaceDeclaration ();
   tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
 
+  tree type = TREE_TYPE (build_ctype (Type::typeinfoclass->type));
+  type = layout_classinfo_interfaces (decl, type);
+
   decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			   IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+			   IDENTIFIER_PRETTY_NAME (ident), type);
   set_decl_location (decl->csym, decl);
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
   SET_DECL_ASSEMBLER_NAME (decl->csym, ident);
