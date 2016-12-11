@@ -1,3 +1,8 @@
+2016-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_dtype): Don't build generic function types.
+	(d_build_builtins_module): Remove check.
+
 2016-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (build_vindex_ref): Move saving of object to callers.

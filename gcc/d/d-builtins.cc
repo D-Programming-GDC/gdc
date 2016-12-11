@@ -226,7 +226,7 @@ build_dtype(tree type)
       if (dtype)
 	{
 	  tree argtypes = TYPE_ARG_TYPES (type);
-	  int varargs_p = argtypes != NULL_TREE;
+	  int varargs_p = 1;
 
 	  Parameters *args = new Parameters;
 	  args->reserve(list_length (argtypes));
@@ -257,8 +257,13 @@ build_dtype(tree type)
 		varargs_p = 0;
 	    }
 
-	  dtype = new TypeFunction(args, dtype, varargs_p, LINKc);
-	  return dtype;
+	  // GCC generic and placeholder builtins are marked as variadic, yet
+	  // have no named parameters, and so can't be represented in D.
+	  if (args->dim != 0 || !varargs_p)
+	    {
+	      dtype = new TypeFunction(args, dtype, varargs_p, LINKc);
+	      return dtype;
+	    }
 	}
       break;
 
@@ -348,10 +353,6 @@ d_build_builtins_module(Module *m)
 
       // Cannot create built-in function type for DECL
       if (!dtf)
-	continue;
-
-      // Typically gcc macro functions that can't be represented in D.
-      if (dtf->parameters && dtf->parameters->dim == 0 && dtf->varargs)
 	continue;
 
       // D2 @safe/pure/nothrow functions.
