@@ -124,8 +124,6 @@ get_symbol_decl (Declaration *decl)
 			      get_identifier (decl->ident->string), NULL_TREE);
 
       /* Set function type afterwards as there could be self references.  */
-      //gcc_assert (fd->tintro == NULL || fd->tintro == fd->type);
-      //TREE_TYPE (decl->csym) = build_ctype (fd->tintro ? fd->tintro : fd->type);
       TREE_TYPE (decl->csym) = build_ctype (fd->type);
 
       if (!fd->fbody)
@@ -743,11 +741,9 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	 about the vtables that follow.  */
       if (Type::typeinterface)
 	{
-	  field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
-			      d_array_type (Type::typeinterface->type,
-					    decl->vtblInterfaces->dim));
-	  DECL_ARTIFICIAL (field) = 1;
-	  DECL_IGNORED_P (field) = 1;
+	  field = create_field_decl (d_array_type (Type::typeinterface->type,
+						   decl->vtblInterfaces->dim),
+				     NULL, 1, 1);
 	  insert_aggregate_field (decl->loc, type, field,
 				  Type::typeinfoclass->structsize);
 	}
@@ -761,10 +757,9 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {
-	      field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
-				  d_array_type (Type::tvoidptr, id->vtbl.dim));
-	      DECL_ARTIFICIAL (field) = 1;
-	      DECL_IGNORED_P (field) = 1;
+	      field = create_field_decl (d_array_type (Type::tvoidptr,
+						       id->vtbl.dim),
+					 NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
 	    }
 	}
@@ -781,15 +776,12 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {
-	      tree field;
-
 	      if (type == orig_type)
 		type = copy_struct (type);
 
-	      field = build_decl (UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
-				  d_array_type (Type::tvoidptr, id->vtbl.dim));
-	      DECL_ARTIFICIAL (field) = 1;
-	      DECL_IGNORED_P (field) = 1;
+	      tree field = create_field_decl (d_array_type (Type::tvoidptr,
+							    id->vtbl.dim),
+					      NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
 	    }
 	}
