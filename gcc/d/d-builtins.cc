@@ -73,6 +73,8 @@ build_dtype(tree type)
 
   if (TYPE_READONLY (type))
     mod |= MODconst;
+  if (TYPE_VOLATILE (type))
+    mod |= MODshared;
 
   switch (TREE_CODE (type))
     {
