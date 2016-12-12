@@ -69,21 +69,25 @@ static Type *
 build_dtype(tree type)
 {
   Type *dtype;
+  MOD mod = 0;
+
+  if (TYPE_READONLY (type))
+    mod |= MODconst;
 
   switch (TREE_CODE (type))
     {
     case POINTER_TYPE:
-      // Check for char * first. Needs to be done for chars/string.
-      if (TYPE_MAIN_VARIANT (TREE_TYPE (type)) == char_type_node)
-	return Type::tchar->pointerTo();
-
       dtype = build_dtype(TREE_TYPE (type));
       if (dtype)
 	{
+	  // Check for char * first. Needs to be done for chars/string.
+	  if (TYPE_MAIN_VARIANT (TREE_TYPE (type)) == char_type_node)
+	    return Type::tchar->addMod(dtype->mod)->pointerTo()->addMod(mod);
+
 	  if (dtype->ty == Tfunction)
-	    return new TypePointer(dtype);
-	  else
-	    return dtype->pointerTo();
+	    return (new TypePointer(dtype))->addMod(mod);
+
+	  return dtype->pointerTo()->addMod(mod);
 	}
       break;
 
@@ -94,7 +98,7 @@ build_dtype(tree type)
 	  // Want to assign ctype directly so that the REFERENCE_TYPE
 	  // code can be turned into an InOut argument below.  Can't use
 	  // pointerTo(), because that Type is shared.
-	  dtype = new TypePointer(dtype);
+	  dtype = (new TypePointer(dtype))->addMod(mod);
 	  dtype->ctype = type;
 	  return dtype;
 	}
@@ -102,7 +106,7 @@ build_dtype(tree type)
 
     case BOOLEAN_TYPE:
       // Should be no need for size checking.
-      return Type::tbool;
+      return Type::tbool->addMod(mod);
 
     case INTEGER_TYPE:
     {
@@ -116,7 +120,7 @@ build_dtype(tree type)
 	  if (dtype && dtype->isintegral() && dtype->size() == tsize
 	      && (dtype->isunsigned() ? true : false) == unsignedp
 	      && dtype->ty != Tint128 && dtype->ty != Tuns128)
-	    return dtype;
+	    return dtype->addMod(mod);
 	}
       break;
     }
@@ -128,7 +132,7 @@ build_dtype(tree type)
 	{
 	  dtype = Type::basic[i];
 	  if (dtype && dtype->isreal() && dtype->size() == tsize)
-	    return dtype;
+	    return dtype->addMod(mod);
 	}
       break;
     }
@@ -140,13 +144,13 @@ build_dtype(tree type)
 	{
 	  dtype = Type::basic[i];
 	  if (dtype && dtype->iscomplex() && dtype->size() == tsize)
-	    return dtype;
+	    return dtype->addMod(mod);
 	}
       break;
     }
 
     case VOID_TYPE:
-      return Type::tvoid;
+      return Type::tvoid->addMod(mod);
 
     case ARRAY_TYPE:
       dtype = build_dtype(TREE_TYPE (type));
@@ -160,7 +164,7 @@ build_dtype(tree type)
 	  length = size_binop(PLUS_EXPR, size_one_node,
 			      convert(sizetype, length));
 
-	  dtype = dtype->sarrayOf(TREE_INT_CST_LOW (length));
+	  dtype = dtype->sarrayOf(TREE_INT_CST_LOW (length))->addMod(mod);
 	  dtype->ctype = type;
 	  return dtype;
 	}
@@ -170,7 +174,7 @@ build_dtype(tree type)
       dtype = build_dtype(TREE_TYPE (type));
       if (dtype)
 	{
-	  dtype = dtype->sarrayOf(TYPE_VECTOR_SUBPARTS (type));
+	  dtype = dtype->sarrayOf(TYPE_VECTOR_SUBPARTS (type))->addMod(mod);
 
 	  if (dtype->nextOf()->isTypeBasic() == NULL)
 	    break;
@@ -180,7 +184,7 @@ build_dtype(tree type)
 	  if (tsize != 8 && tsize != 16 && tsize != 32)
 	    break;
 
-	  return new TypeVector(Loc(), dtype);
+	  return (new TypeVector(Loc(), dtype))->addMod(mod);
 	}
       break;
 
@@ -207,7 +211,7 @@ build_dtype(tree type)
 	  sdecl->structsize = int_size_in_bytes(type);
 	  sdecl->alignsize = TYPE_ALIGN_UNIT (type);
 	  sdecl->sizeok = SIZEOKdone;
-	  sdecl->type = new TypeStruct(sdecl);
+	  sdecl->type = (new TypeStruct(sdecl))->addMod(mod);
 	  sdecl->type->ctype = type;
 	  sdecl->type->merge();
 
@@ -259,7 +263,7 @@ build_dtype(tree type)
 	  // GCC generic and placeholder builtins are marked as variadic, yet
 	  // have no named parameters, and so can't be represented in D.
 	  if (args->dim != 0 || !varargs_p)
-	    return new TypeFunction(args, dtype, varargs_p, LINKc);
+	    return (new TypeFunction(args, dtype, varargs_p, LINKc))->addMod(mod);
 	}
       break;
 

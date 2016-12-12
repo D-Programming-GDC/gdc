@@ -1,3 +1,7 @@
+2016-12-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_dtype): Set type modifiers on frontend type.
+
 2016-12-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (build_dtype): Don't set default parameter storage
