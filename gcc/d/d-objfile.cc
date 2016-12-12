@@ -1698,11 +1698,6 @@ d_finish_symbol (tree decl)
       if (DECL_INITIAL (decl) == NULL_TREE)
 	{
 	  tree sinit = dtvector_to_tree (DECL_LANG_INITIAL (decl));
-	  if (TREE_TYPE (decl) == unknown_type_node)
-	    {
-	      TREE_TYPE (decl) = TREE_TYPE (sinit);
-	      TYPE_NAME (TREE_TYPE (decl)) = DECL_ASSEMBLER_NAME (decl);
-	    }
 
 	  // No gain setting DECL_INITIAL if the initialiser is all zeros.
 	  // Let the backend put the symbol in bss instead, if supported.

@@ -5,6 +5,7 @@
 	(get_moduleinfo_decl): Use record type for moduleinfo decl.
 	* d-objfile.cc (build_moduleinfo_symbol): Delay calling
 	get_moduleinfo_decl until after ModuleInfo type is validated.
+	(d_finish_symbol): Remove check for unknown_type_node.
 
 2016-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
