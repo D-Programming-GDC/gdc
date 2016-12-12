@@ -180,8 +180,7 @@ build_dtype(tree type)
 	  if (tsize != 8 && tsize != 16 && tsize != 32)
 	    break;
 
-	  dtype = new TypeVector(Loc(), dtype);
-	  return dtype;
+	  return new TypeVector(Loc(), dtype);
 	}
       break;
 
@@ -225,33 +224,33 @@ build_dtype(tree type)
       dtype = build_dtype(TREE_TYPE (type));
       if (dtype)
 	{
-	  tree argtypes = TYPE_ARG_TYPES (type);
+	  tree parms = TYPE_ARG_TYPES (type);
 	  int varargs_p = 1;
 
 	  Parameters *args = new Parameters;
-	  args->reserve(list_length (argtypes));
+	  args->reserve(list_length (parms));
 
-	  for (tree tl = argtypes; tl != NULL_TREE; tl = TREE_CHAIN (tl))
+	  for (tree parm = parms; parm != NULL_TREE; parm = TREE_CHAIN (parm))
 	    {
-	      tree ta = TREE_VALUE (tl);
-	      if (ta != void_type_node)
+	      tree argtype = TREE_VALUE (parm);
+	      if (argtype != void_type_node)
 		{
-		  Type *d_arg_type;
-		  unsigned io = STCin;
+		  Type *targ;
+		  StorageClass sc = 0;
 
-		  if (TREE_CODE (ta) == REFERENCE_TYPE)
+		  if (TREE_CODE (argtype) == REFERENCE_TYPE)
 		    {
-		      ta = TREE_TYPE (ta);
-		      io = STCref;
+		      argtype = TREE_TYPE (argtype);
+		      sc |= STCref;
 		    }
-		  d_arg_type = build_dtype(ta);
 
-		  if (!d_arg_type)
+		  targ = build_dtype(argtype);
+		  if (!targ)
 		    {
 		      delete args;
 		      return NULL;
 		    }
-		  args->push(new Parameter(io, d_arg_type, NULL, NULL));
+		  args->push(new Parameter(sc, targ, NULL, NULL));
 		}
 	      else
 		varargs_p = 0;
@@ -260,10 +259,7 @@ build_dtype(tree type)
 	  // GCC generic and placeholder builtins are marked as variadic, yet
 	  // have no named parameters, and so can't be represented in D.
 	  if (args->dim != 0 || !varargs_p)
-	    {
-	      dtype = new TypeFunction(args, dtype, varargs_p, LINKc);
-	      return dtype;
-	    }
+	    return new TypeFunction(args, dtype, varargs_p, LINKc);
 	}
       break;
 

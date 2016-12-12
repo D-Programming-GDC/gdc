@@ -1,5 +1,10 @@
 2016-12-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-builtins.cc (build_dtype): Don't set default parameter storage
+	class as const.
+
+2016-12-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-decls.cc (add_moduleinfo_field): New function.
 	(layout_moduleinfo_fields): New function.
 	(get_moduleinfo_decl): Use record type for moduleinfo decl.
