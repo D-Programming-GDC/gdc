@@ -962,8 +962,6 @@ TypeInfoDeclaration::toObjFile()
 static tree
 build_moduleinfo_symbol(Module *m)
 {
-  tree msym = get_moduleinfo_decl (m);
-  tree dt = NULL_TREE;
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
 
@@ -1010,10 +1008,15 @@ build_moduleinfo_symbol(Module *m)
 
   flags |= MIname;
 
+  tree msym = get_moduleinfo_decl (m);
+  TREE_TYPE (msym) = layout_moduleinfo_fields (m, TREE_TYPE (msym));
+
   /* Put out:
    *  uint flags;
    *  uint index;
    */
+  tree dt = NULL_TREE;
+
   dt_cons (&dt, build_integer_cst (flags, build_ctype(Type::tuns32)));
   dt_cons (&dt, build_integer_cst (0, build_ctype(Type::tuns32)));
 
@@ -1097,8 +1100,9 @@ build_moduleinfo_symbol(Module *m)
       dt_cons (&dt, strtree);
     }
 
-  DECL_LANG_INITIAL (m->csym) = dt;
-  d_finish_symbol (m->csym);
+  DECL_LANG_INITIAL (msym) = dt;
+  d_finish_symbol (msym);
+
   return msym;
 }
 
