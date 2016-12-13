@@ -124,11 +124,6 @@ for i in $d_subdirs; do
 done
 AC_SUBST(srcdir)
 
-# Test for the -ldl library.
-DL_LIBS=
-AC_CHECK_LIB([dl], [dlopen], DL_LIBS=-ldl)
-AC_SUBST(DL_LIBS)
-
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
 # that multilib installs will end up installed in the correct place.
 # The testsuite needs it for multilib-aware ABI baseline files.
@@ -150,5 +145,6 @@ _EOF
    AS_UNSET([ml_norecursion])
 ])
 
-AC_CONFIG_FILES([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d])
+AC_CONFIG_FILES([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d
+  src/libgphobos.spec])
 AC_OUTPUT

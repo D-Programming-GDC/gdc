@@ -73,11 +73,13 @@ if ENABLE_STATIC
     check_PROGRAMS += unittest_static
 endif
 
+toolexeclib_DATA = libgphobos.spec
 toolexeclib_LTLIBRARIES = libgphobos.la
 libgphobos_la_SOURCES = $(ALL_PHOBOS_SOURCES) $(ZLIB_SRC)
 libgphobos_la_LIBTOOLFLAGS =
 libgphobos_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(PHOBOS_SOVERSION)
 libgphobos_la_LIBADD = ../libdruntime/libgdruntime.la $(ZLIB_LIB)
+libgphobos_la_DEPENDENCIES = libgphobos.spec
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = ../libdruntime/test_runner.d $(ZLIB_SRC)

@@ -20,6 +20,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
+#include "gcc.h"
 #include "tm.h"
 #include "opts.h"
 
@@ -74,6 +75,18 @@ along with GCC; see the file COPYING3.  If not see
 #define LIBDRUNTIME_PROFILE LIBDRUNTIME
 #endif
 
+/* What do with libgphobos:
+   -1 means we should not link in libgphobos
+   0  means we should link in libgphobos if it is needed
+   1  means libgphobos is needed and should be linked in.
+   2  means libgphobos is needed and should be linked statically.
+   3  means libgphobos is needed and should be linked dynamically. */
+static int library = 0;
+
+/* If true, use the standard D runtime library when linking with
+   standard libraries. */
+static bool need_phobos = true;
+
 void
 lang_specific_driver (cl_decoded_option **in_decoded_options,
 		      unsigned int *in_decoded_options_count,
@@ -86,14 +99,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
   /* If true, the user gave `-g'.  Used by -debuglib */
   bool saw_debug_flag = false;
-
-  /* What do with libgphobos:
-     -1 means we should not link in libgphobos
-     0  means we should link in libgphobos if it is needed
-     1  means libgphobos is needed and should be linked in.
-     2  means libgphobos is needed and should be linked statically.
-     3  means libgphobos is needed and should be linked dynamically. */
-  int library = 0;
 
   /* The new argument list will be contained in this.  */
   cl_decoded_option *new_decoded_options;
@@ -112,10 +117,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
   /* "-lstdc++" if it appears on the command line.  */
   const cl_decoded_option *saw_libcxx = 0;
-
-  /* If true, use the standard D runtime library when linking with
-     standard libraries. */
-  bool need_phobos = true;
 
   /* Whether we need the C++ STD library.  */
   bool need_stdcxx = false;
@@ -563,8 +564,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 
-int lang_specific_pre_link()  /* Not used for D.  */
+int lang_specific_pre_link()
 {
+  if (library > 0 && need_phobos)
+    do_spec ("%:include(libgphobos.spec)");
+
   return 0;
 }
 
