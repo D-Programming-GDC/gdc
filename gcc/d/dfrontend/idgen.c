@@ -75,6 +75,7 @@ Msgtable msgtable[] =
     { "RTInfo" },
     { "Throwable" },
     { "Error" },
+    { "Interface" },
     { "withSym", "__withSym" },
     { "result", "__result" },
     { "returnLabel", "__returnLabel" },

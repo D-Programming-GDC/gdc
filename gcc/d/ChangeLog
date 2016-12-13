@@ -1,3 +1,20 @@
+2016-12-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (add_moduleinfo_field): New function.
+	(layout_moduleinfo_fields): New function.
+	(get_moduleinfo_decl): Use record type for moduleinfo decl.
+	* d-objfile.cc (build_moduleinfo_symbol): Delay calling
+	get_moduleinfo_decl until after ModuleInfo type is validated.
+	(d_finish_symbol): Remove check for unknown_type_node.
+
+2016-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (copy_struct): New function.
+	(layout_classinfo_interfaces): New function.
+	(get_classinfo_decl): Use record type for classinfo decl.
+	* d-codegen.cc (create_field_decl): New function.
+	Use it instead of build_decl when creating a new FIELD_DECL.
+
 2016-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (build_dtype): Don't build generic function types.

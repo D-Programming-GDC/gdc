@@ -180,6 +180,7 @@ extern tree expand_intrinsic (tree callexp);
 extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
 extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);
 extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
+extern tree create_field_decl(tree type, const char *name, int artificial, int ignored);
 extern tree find_aggregate_field(tree type, tree ident, tree offset = NULL_TREE);
 
 extern bool empty_aggregate_p(tree type);
