@@ -26,7 +26,7 @@ ifneq (default,$(MODEL))
 endif
 D_EXTRA_DFLAGS=-nostdinc -I $(abs_top_srcdir)/libdruntime -I $(abs_top_srcdir)/src \
 	-I ../../libdruntime -I $(abs_srcdir)/src
-D_EXTRA_LFLAGS=-L../../src/.libs/ -L../../libdruntime/.libs/
+D_EXTRA_LFLAGS=-L../../src/.libs/ -L../../libdruntime/.libs/ -B../../src/
 LOCAL_DFLAGS=$(GCC_DFLAGS) $(D_EXTRA_DFLAGS) $(D_EXTRA_LFLAGS) -shared-libphobos
 LOCAL_CFLAGS=$(GCC_CFLAGS) -Wl,-rpath-link ../../src/.libs/ -Wl,-rpath-link ../../libdruntime/.libs/
 LD_LIB_PATH=../../src/.libs/:../../libdruntime/.libs/:.
