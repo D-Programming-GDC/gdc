@@ -1371,14 +1371,14 @@ else version( GNU )
             {
                 static assert(is(T : float));
 
-                res = __atomic_compare_exchange_4(cast(void*) here, cast(void*) &ifThis, *cast(int*) &writeThis,
+                res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, *cast(int*) &writeThis,
                                                   false, MemoryOrder.seq, MemoryOrder.seq);
             }
             else static if(T.sizeof == long.sizeof)
             {
                 static assert(is(T : double));
 
-                res = __atomic_compare_exchange_8(cast(void*) here, cast(void*) &ifThis, *cast(long*) &writeThis,
+                res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, *cast(long*) &writeThis,
                                                   false, MemoryOrder.seq, MemoryOrder.seq);
             }
             else
@@ -1389,30 +1389,30 @@ else version( GNU )
         else static if (is(T P == U*, U) || is(T == class) || is(T == interface))
         {
             version (D_LP64)
-                res = __atomic_compare_exchange_8(cast(void*) here, cast(void*) &ifThis, *cast(ulong*) &writeThis,
+                res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, *cast(ulong*) &writeThis,
                                                   false, MemoryOrder.seq, MemoryOrder.seq);
             else
-                res = __atomic_compare_exchange_4(cast(void*) here, cast(void*) &ifThis, *cast(uint*) &writeThis,
+                res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, *cast(uint*) &writeThis,
                                                   false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else static if (T.sizeof == byte.sizeof)
         {
-            res = __atomic_compare_exchange_1(cast(void*) here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_1(here, cast(void*) &ifThis, writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else static if (T.sizeof == short.sizeof)
         {
-            res = __atomic_compare_exchange_2(cast(void*) here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_2(here, cast(void*) &ifThis, writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else static if (T.sizeof == int.sizeof)
         {
-            res = __atomic_compare_exchange_4(cast(void*) here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else static if (T.sizeof == long.sizeof)
         {
-            res = __atomic_compare_exchange_8(cast(void*) here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else
@@ -1442,22 +1442,22 @@ else version( GNU )
 
         static if (T.sizeof == ubyte.sizeof)
         {
-            ubyte value = __atomic_load_1(cast(void*) &val, ms);
+            ubyte value = __atomic_load_1(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
         else static if (T.sizeof == ushort.sizeof)
         {
-            ushort value = __atomic_load_2(cast(void*) &val, ms);
+            ushort value = __atomic_load_2(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
         else static if (T.sizeof == uint.sizeof)
         {
-            uint value = __atomic_load_4(cast(void*) &val, ms);
+            uint value = __atomic_load_4(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
         else static if (T.sizeof == ulong.sizeof)
         {
-            ulong value = __atomic_load_8(cast(void*) &val, ms);
+            ulong value = __atomic_load_8(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
         else
@@ -1472,19 +1472,19 @@ else version( GNU )
 
         static if (T.sizeof == ubyte.sizeof)
         {
-            __atomic_store_1(cast(void*) &val, *cast(ubyte*) &newval, ms);
+            __atomic_store_1(&val, *cast(ubyte*) &newval, ms);
         }
         else static if (T.sizeof == ushort.sizeof)
         {
-            __atomic_store_2(cast(void*) &val, *cast(ushort*) &newval, ms);
+            __atomic_store_2(&val, *cast(ushort*) &newval, ms);
         }
         else static if (T.sizeof == uint.sizeof)
         {
-            __atomic_store_4(cast(void*) &val, *cast(uint*) &newval, ms);
+            __atomic_store_4(&val, *cast(uint*) &newval, ms);
         }
         else static if (T.sizeof == ulong.sizeof)
         {
-            __atomic_store_8(cast(void*) &val, *cast(ulong*) &newval, ms);
+            __atomic_store_8(&val, *cast(ulong*) &newval, ms);
         }
         else
             static assert(0, "Invalid template type specified.");
