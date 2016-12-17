@@ -35,19 +35,22 @@ static GTY(()) vec<tree, va_gc> *gcc_builtins_functions = NULL;
 static GTY(()) vec<tree, va_gc> *gcc_builtins_libfuncs = NULL;
 static GTY(()) vec<tree, va_gc> *gcc_builtins_types = NULL;
 
-// Necessary for built-in struct types
+
+// Record built-in types and their associated decls for re-use in
+// generating the gcc.builtins module.
+
 struct builtin_sym
 {
-  builtin_sym(StructDeclaration *d, Type *t, tree c)
-    : decl(d), dtype(t), ctype(c)
+  builtin_sym(Type *t, tree c, Dsymbol *d = NULL)
+    : dtype(t), ctype(c), decl(d)
     { }
 
-  StructDeclaration *decl;
   Type *dtype;
   tree ctype;
+  Dsymbol *decl;
 };
 
-static vec<builtin_sym *> builtin_converted_decls;
+static vec<builtin_sym> builtin_converted_syms;
 
 // Array of d type/decl nodes.
 tree d_global_trees[DTI_MAX];
@@ -62,21 +65,34 @@ static Type *
 build_dtype(tree type)
 {
   Type *dtype;
+  MOD mod = 0;
+
+  if (TYPE_READONLY (type))
+    mod |= MODconst;
+  if (TYPE_VOLATILE (type))
+    mod |= MODshared;
+
+  for (size_t i = 0; i < builtin_converted_syms.length(); ++i)
+    {
+      tree ti = builtin_converted_syms[i].ctype;
+      if (TYPE_MAIN_VARIANT (ti) == TYPE_MAIN_VARIANT (type))
+	return builtin_converted_syms[i].dtype;
+    }
 
   switch (TREE_CODE (type))
     {
     case POINTER_TYPE:
-      // Check for char * first. Needs to be done for chars/string.
-      if (TYPE_MAIN_VARIANT (TREE_TYPE (type)) == char_type_node)
-	return Type::tchar->pointerTo();
-
       dtype = build_dtype(TREE_TYPE (type));
       if (dtype)
 	{
+	  // Check for char * first. Needs to be done for chars/string.
+	  if (TYPE_MAIN_VARIANT (TREE_TYPE (type)) == char_type_node)
+	    return Type::tchar->addMod(dtype->mod)->pointerTo()->addMod(mod);
+
 	  if (dtype->ty == Tfunction)
-	    return new TypePointer(dtype);
-	  else
-	    return dtype->pointerTo();
+	    return (new TypePointer(dtype))->addMod(mod);
+
+	  return dtype->pointerTo()->addMod(mod);
 	}
       break;
 
@@ -87,15 +103,16 @@ build_dtype(tree type)
 	  // Want to assign ctype directly so that the REFERENCE_TYPE
 	  // code can be turned into an InOut argument below.  Can't use
 	  // pointerTo(), because that Type is shared.
-	  dtype = new TypePointer(dtype);
+	  dtype = (new TypePointer(dtype))->addMod(mod);
 	  dtype->ctype = type;
+	  builtin_converted_syms.safe_push(builtin_sym(dtype, type));
 	  return dtype;
 	}
       break;
 
     case BOOLEAN_TYPE:
       // Should be no need for size checking.
-      return Type::tbool;
+      return Type::tbool->addMod(mod);
 
     case INTEGER_TYPE:
     {
@@ -109,7 +126,7 @@ build_dtype(tree type)
 	  if (dtype && dtype->isintegral() && dtype->size() == tsize
 	      && (dtype->isunsigned() ? true : false) == unsignedp
 	      && dtype->ty != Tint128 && dtype->ty != Tuns128)
-	    return dtype;
+	    return dtype->addMod(mod);
 	}
       break;
     }
@@ -121,7 +138,7 @@ build_dtype(tree type)
 	{
 	  dtype = Type::basic[i];
 	  if (dtype && dtype->isreal() && dtype->size() == tsize)
-	    return dtype;
+	    return dtype->addMod(mod);
 	}
       break;
     }
@@ -133,13 +150,13 @@ build_dtype(tree type)
 	{
 	  dtype = Type::basic[i];
 	  if (dtype && dtype->iscomplex() && dtype->size() == tsize)
-	    return dtype;
+	    return dtype->addMod(mod);
 	}
       break;
     }
 
     case VOID_TYPE:
-      return Type::tvoid;
+      return Type::tvoid->addMod(mod);
 
     case ARRAY_TYPE:
       dtype = build_dtype(TREE_TYPE (type));
@@ -153,8 +170,8 @@ build_dtype(tree type)
 	  length = size_binop(PLUS_EXPR, size_one_node,
 			      convert(sizetype, length));
 
-	  dtype = dtype->sarrayOf(TREE_INT_CST_LOW (length));
-	  dtype->ctype = type;
+	  dtype = dtype->sarrayOf(TREE_INT_CST_LOW (length))->addMod(mod);
+	  builtin_converted_syms.safe_push(builtin_sym(dtype, type));
 	  return dtype;
 	}
       break;
@@ -163,7 +180,7 @@ build_dtype(tree type)
       dtype = build_dtype(TREE_TYPE (type));
       if (dtype)
 	{
-	  dtype = dtype->sarrayOf(TYPE_VECTOR_SUBPARTS (type));
+	  dtype = dtype->sarrayOf(TYPE_VECTOR_SUBPARTS (type))->addMod(mod);
 
 	  if (dtype->nextOf()->isTypeBasic() == NULL)
 	    break;
@@ -173,19 +190,13 @@ build_dtype(tree type)
 	  if (tsize != 8 && tsize != 16 && tsize != 32)
 	    break;
 
-	  dtype = new TypeVector(Loc(), dtype);
+	  dtype = (new TypeVector(Loc(), dtype))->addMod(mod);
+	  builtin_converted_syms.safe_push(builtin_sym(dtype, type));
 	  return dtype;
 	}
       break;
 
     case RECORD_TYPE:
-      for (size_t i = 0; i < builtin_converted_decls.length(); ++i)
-	{
-	  tree ti = builtin_converted_decls[i]->ctype;
-	  if (TYPE_MAIN_VARIANT (ti) == TYPE_MAIN_VARIANT (type))
-	    return builtin_converted_decls[i]->dtype;
-	}
-
       if (TYPE_NAME (type))
 	{
 	  tree structname = DECL_NAME (TYPE_NAME (type));
@@ -201,7 +212,7 @@ build_dtype(tree type)
 	  sdecl->structsize = int_size_in_bytes(type);
 	  sdecl->alignsize = TYPE_ALIGN_UNIT (type);
 	  sdecl->sizeok = SIZEOKdone;
-	  sdecl->type = new TypeStruct(sdecl);
+	  sdecl->type = (new TypeStruct(sdecl))->addMod(mod);
 	  sdecl->type->ctype = type;
 	  sdecl->type->merge();
 
@@ -209,7 +220,7 @@ build_dtype(tree type)
 	  // must be non-null for the above size setting to stick.
 	  sdecl->members = new Dsymbols;
 	  dtype = sdecl->type;
-	  builtin_converted_decls.safe_push(new builtin_sym(sdecl, dtype, type));
+	  builtin_converted_syms.safe_push(builtin_sym(dtype, type, sdecl));
 	  return dtype;
 	}
       break;
@@ -218,40 +229,42 @@ build_dtype(tree type)
       dtype = build_dtype(TREE_TYPE (type));
       if (dtype)
 	{
-	  tree argtypes = TYPE_ARG_TYPES (type);
-	  int varargs_p = argtypes != NULL_TREE;
+	  tree parms = TYPE_ARG_TYPES (type);
+	  int varargs_p = 1;
 
 	  Parameters *args = new Parameters;
-	  args->reserve(list_length (argtypes));
+	  args->reserve(list_length (parms));
 
-	  for (tree tl = argtypes; tl != NULL_TREE; tl = TREE_CHAIN (tl))
+	  for (tree parm = parms; parm != NULL_TREE; parm = TREE_CHAIN (parm))
 	    {
-	      tree ta = TREE_VALUE (tl);
-	      if (ta != void_type_node)
+	      tree argtype = TREE_VALUE (parm);
+	      if (argtype != void_type_node)
 		{
-		  Type *d_arg_type;
-		  unsigned io = STCin;
+		  Type *targ;
+		  StorageClass sc = 0;
 
-		  if (TREE_CODE (ta) == REFERENCE_TYPE)
+		  if (TREE_CODE (argtype) == REFERENCE_TYPE)
 		    {
-		      ta = TREE_TYPE (ta);
-		      io = STCref;
+		      argtype = TREE_TYPE (argtype);
+		      sc |= STCref;
 		    }
-		  d_arg_type = build_dtype(ta);
 
-		  if (!d_arg_type)
+		  targ = build_dtype(argtype);
+		  if (!targ)
 		    {
 		      delete args;
 		      return NULL;
 		    }
-		  args->push(new Parameter(io, d_arg_type, NULL, NULL));
+		  args->push(new Parameter(sc, targ, NULL, NULL));
 		}
 	      else
 		varargs_p = 0;
 	    }
 
-	  dtype = new TypeFunction(args, dtype, varargs_p, LINKc);
-	  return dtype;
+	  // GCC generic and placeholder builtins are marked as variadic, yet
+	  // have no named parameters, and so can't be represented in D.
+	  if (args->dim != 0 || !varargs_p)
+	    return (new TypeFunction(args, dtype, varargs_p, LINKc))->addMod(mod);
 	}
       break;
 
@@ -343,10 +356,6 @@ d_build_builtins_module(Module *m)
       if (!dtf)
 	continue;
 
-      // Typically gcc macro functions that can't be represented in D.
-      if (dtf->parameters && dtf->parameters->dim == 0 && dtf->varargs)
-	continue;
-
       // D2 @safe/pure/nothrow functions.
       // It is assumed that builtins solely provided by the compiler are
       // considered @safe, pure and nothrow.  Builtins that correspond to
@@ -405,13 +414,16 @@ d_build_builtins_module(Module *m)
 	}
     }
 
-  for (size_t i = 0; i < builtin_converted_decls.length(); ++i)
+  for (size_t i = 0; i < builtin_converted_syms.length(); ++i)
     {
       // Currently, there is no need to run semantic, but we do
       // want to output inits, etc.
-      StructDeclaration *sym = builtin_converted_decls[i]->decl;
-      sym->parent = m;
-      funcs->push(sym);
+      Dsymbol *decl = builtin_converted_syms[i].decl;
+      if (decl != NULL)
+	{
+	  decl->parent = m;
+	  funcs->push(decl);
+	}
     }
 
   // va_list should already be built, so no need to convert to D type again.

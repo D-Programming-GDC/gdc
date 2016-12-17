@@ -75,15 +75,13 @@ dt_container(dt_t *dt)
 	  if (value == error_mark_node)
 	    return error_mark_node;
 
-	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, TREE_TYPE(value));
+	  tree field = create_field_decl(TREE_TYPE(value), NULL, 1, 1);
 	  tree size = TYPE_SIZE_UNIT(TREE_TYPE(value));
 
 	  DECL_FIELD_CONTEXT(field) = aggtype;
 	  DECL_FIELD_OFFSET(field) = offset;
 	  DECL_FIELD_BIT_OFFSET(field) = bitsize_zero_node;
 	  SET_DECL_OFFSET_ALIGN(field, TYPE_ALIGN(TREE_TYPE(value)));
-	  DECL_ARTIFICIAL(field) = 1;
-	  DECL_IGNORED_P(field) = 1;
 
 	  layout_decl(field, 0);
 	  fields = chainon(fields, field);

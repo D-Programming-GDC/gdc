@@ -920,13 +920,8 @@ d_parse_file()
 
   // In this mode, the first file name is supposed to be a duplicate
   // of one of the input files.
-  if (fonly_arg)
-    {
-      if (strcmp(fonly_arg, main_input_filename))
-	error("-fonly= argument is different from main input file name");
-      if (strcmp(fonly_arg, in_fnames[0]))
-	error("-fonly= argument is different from first input file name");
-    }
+  if (fonly_arg && strcmp(fonly_arg, in_fnames[0]))
+    error("-fonly= argument is different from first input file name");
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
