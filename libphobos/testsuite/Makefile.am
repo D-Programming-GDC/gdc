@@ -19,7 +19,7 @@
 D_EXTRA_DFLAGS=-nostdinc -pipe -Wno-deprecated -I $(top_srcdir)/libdruntime \
 	-I ../libdruntime
 # Make sure linker can find libdruntime and libphobos libraries
-D_LFLAGS=-L../libdruntime/.libs -L../src/.libs
+D_LFLAGS=-L../libdruntime/.libs -L../src/.libs -B../src
 
 clean-local:
 	make -C shared -f $(abs_srcdir)/shared/Makefile clean

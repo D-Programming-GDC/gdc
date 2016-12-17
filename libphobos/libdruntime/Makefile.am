@@ -91,7 +91,7 @@ toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
 libgdruntime_la_LIBTOOLFLAGS =
 libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(DRUNTIME_SOVERSION)
-libgdruntime_la_LIBADD = $(BACKTRACE_LIB) $(LIBADD_DLOPEN)
+libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
@@ -107,8 +107,7 @@ libgdruntime_t_la_LIBTOOLFLAGS =
 # Automake by default does not generate shared libs for non-installed
 # libraries. Use -rpath to force shared lib generation.
 libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
-libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB) \
-     $(LIBADD_DLOPEN)
+libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
 EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest

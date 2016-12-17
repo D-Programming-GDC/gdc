@@ -137,8 +137,7 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
 LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
-am__DEPENDENCIES_1 =
-libgdruntime_la_DEPENDENCIES = $(BACKTRACE_LIB) $(am__DEPENDENCIES_1)
+libgdruntime_la_DEPENDENCIES = $(BACKTRACE_LIB)
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = core/atomic.lo core/bitop.lo core/checkedint.lo \
 	core/cpuid.lo core/demangle.lo core/exception.lo \
@@ -269,7 +268,7 @@ am__objects_22 = $(am__objects_19) $(am__objects_20) $(am__objects_21)
 am_libgdruntime_la_OBJECTS = $(am__objects_22)
 libgdruntime_la_OBJECTS = $(am_libgdruntime_la_OBJECTS)
 libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS) \
-	$(BACKTRACE_LIB) $(am__DEPENDENCIES_1)
+	$(BACKTRACE_LIB)
 am__objects_23 = libgdruntime_t_la-errno_.lo \
 	libgdruntime_t_la-bss_section.lo
 am__objects_24 = libgdruntime_t_la-threadasm.lo
@@ -338,7 +337,6 @@ DCFG_THREAD_MODEL = @DCFG_THREAD_MODEL@
 DEFS = @DEFS@
 DFLAGS = @DFLAGS@
 DFLAGSX = @DFLAGSX@
-DL_LIBS = @DL_LIBS@
 DRUNTIME_SOVERSION = @DRUNTIME_SOVERSION@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
@@ -393,6 +391,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SPEC_PHOBOS_DEPS = @SPEC_PHOBOS_DEPS@
 STRIP = @STRIP@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
@@ -535,7 +534,7 @@ toolexeclib_LTLIBRARIES = libgdruntime.la
 libgdruntime_la_SOURCES = $(ALL_DRUNTIME_SOURCES)
 libgdruntime_la_LIBTOOLFLAGS = 
 libgdruntime_la_LDFLAGS = -Xcompiler -nophoboslib -version-info $(DRUNTIME_SOVERSION)
-libgdruntime_la_LIBADD = $(BACKTRACE_LIB) $(LIBADD_DLOPEN)
+libgdruntime_la_LIBADD = $(BACKTRACE_LIB)
 
 # For static unittest, link objects directly
 unittest_static_SOURCES = test_runner.d $(DRUNTIME_CSOURCES) \
@@ -552,9 +551,7 @@ libgdruntime_t_la_LIBTOOLFLAGS =
 # Automake by default does not generate shared libs for non-installed
 # libraries. Use -rpath to force shared lib generation.
 libgdruntime_t_la_LDFLAGS = -Xcompiler -nophoboslib -rpath /foo -shared
-libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB) \
-     $(LIBADD_DLOPEN)
-
+libgdruntime_t_la_LIBADD = $(DRUNTIME_TEST_LOBJECTS) $(BACKTRACE_LIB)
 EXTRA_libgdruntime_t_la_DEPENDENCIES = $(DRUNTIME_TEST_LOBJECTS)
 
 # For unittest
