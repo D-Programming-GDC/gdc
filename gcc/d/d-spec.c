@@ -20,38 +20,16 @@ along with GCC; see the file COPYING3.  If not see
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
+#include "gcc.h"
 #include "tm.h"
 #include "opts.h"
 
 /* This bit is set if the arguments is a D source file. */
 #define DSOURCE		(1<<1)
-/* This bit is set if they did `-lm' or `-lmath'.  */
-#define MATHLIB		(1<<2)
-/* This bit is set if they did `-lpthread'.  */
-#define WITHTHREAD	(1<<3)
- /* This bit is set if they did `-lrt'.  */
-#define TIMELIB		(1<<4)
 /* this bit is set if they did `-lstdc++'.  */
-#define WITHLIBCXX	(1<<5)
-/* this bit is set if they did `-lc'.  */
-#define WITHLIBC	(1<<6)
+#define WITHLIBCXX	(1<<2)
 /* This bit is set when the argument should not be passed to gcc or the backend */
-#define SKIPOPT		(1<<8)
-
-#ifndef MATH_LIBRARY
-#define MATH_LIBRARY "m"
-#endif
-#ifndef MATH_LIBRARY_PROFILE
-#define MATH_LIBRARY_PROFILE MATH_LIBRARY
-#endif
-
-#ifndef THREAD_LIBRARY
-#define THREAD_LIBRARY "pthread"
-#endif
-
-#ifndef TIME_LIBRARY
-#define TIME_LIBRARY "rt"
-#endif
+#define SKIPOPT		(1<<3)
 
 #ifndef LIBSTDCXX
 #define LIBSTDCXX "stdc++"
@@ -74,6 +52,18 @@ along with GCC; see the file COPYING3.  If not see
 #define LIBDRUNTIME_PROFILE LIBDRUNTIME
 #endif
 
+/* What do with libgphobos:
+   -1 means we should not link in libgphobos
+   0  means we should link in libgphobos if it is needed
+   1  means libgphobos is needed and should be linked in.
+   2  means libgphobos is needed and should be linked statically.
+   3  means libgphobos is needed and should be linked dynamically. */
+static int library = 0;
+
+/* If true, use the standard D runtime library when linking with
+   standard libraries. */
+static bool need_phobos = true;
+
 void
 lang_specific_driver (cl_decoded_option **in_decoded_options,
 		      unsigned int *in_decoded_options_count,
@@ -87,47 +77,14 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* If true, the user gave `-g'.  Used by -debuglib */
   bool saw_debug_flag = false;
 
-  /* What do with libgphobos:
-     -1 means we should not link in libgphobos
-     0  means we should link in libgphobos if it is needed
-     1  means libgphobos is needed and should be linked in.
-     2  means libgphobos is needed and should be linked statically.
-     3  means libgphobos is needed and should be linked dynamically. */
-  int library = 0;
-
   /* The new argument list will be contained in this.  */
   cl_decoded_option *new_decoded_options;
-
-  /* "-lm" or "-lmath" if it appears on the command line.  */
-  const cl_decoded_option *saw_math = 0;
-
-  /* "-lpthread" if it appears on the command line.  */
-  const cl_decoded_option *saw_thread = 0;
-
-  /* "-lrt" if it appears on the command line.  */
-  const cl_decoded_option *saw_time = 0;
-
-  /* "-lc" if it appears on the command line.  */
-  const cl_decoded_option *saw_libc = 0;
 
   /* "-lstdc++" if it appears on the command line.  */
   const cl_decoded_option *saw_libcxx = 0;
 
-  /* If true, use the standard D runtime library when linking with
-     standard libraries. */
-  bool need_phobos = true;
-
   /* Whether we need the C++ STD library.  */
   bool need_stdcxx = false;
-
-  /* By default, we throw on the math library if we have one.  */
-  bool need_math = (MATH_LIBRARY[0] != '\0');
-
-  /* Whether we need the thread library.  */
-  bool need_thread = (THREAD_LIBRARY[0] != '\0');
-
-  /* By default, we throw on the time library if we have one.  */
-  bool need_time = (TIME_LIBRARY[0] != '\0');
 
   /* True if we saw -static. */
   bool static_link = false;
@@ -213,24 +170,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	      args[i] |= WITHLIBCXX;
 	      need_stdcxx = false;
 	    }
-	  else if ((strcmp (arg, MATH_LIBRARY) == 0)
-		   || (strcmp (arg, MATH_LIBRARY_PROFILE) == 0))
-	    {
-	      args[i] |= MATHLIB;
-	      need_math = false;
-	    }
-	  else if (strcmp (arg, THREAD_LIBRARY) == 0)
-	    {
-	      args[i] |= WITHTHREAD;
-	      need_thread = false;
-	    }
-	  else if (strcmp (arg, TIME_LIBRARY) == 0)
-	    {
-	      args[i] |= TIMELIB;
-	      need_time = false;
-	    }
-	  else if (strcmp (arg, "c") == 0)
-	    args[i] |= WITHLIBC;
 	  else
 	    /* Unrecognized libraries (e.g. -ltango) may require libphobos.  */
 	    library = (library == 0) ? 1 : library;
@@ -326,7 +265,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 		}
 
 	      /* If we don't know that this is a interface file, we might
-		 need to be link against libphobos library.  */
+		 need to link against libphobos library.  */
 	      if (library == 0)
 		{
 		  if (len <= 3 || strcmp (arg + len - 3, ".di") != 0)
@@ -351,8 +290,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   shared_libgcc = false;
 #endif
 
-  /* Make sure to have room for the trailing NULL argument.  */
-  num_args = argc + need_math + shared_libgcc + (library > 0) * 5 + 2;
+  /* Make sure to have room for the trailing NULL argument.
+   * needstdcxx might add -lstdcxx
+   * libphobos adds -Bstatic -lphobos -ldruntime -Bdynamic
+   * only_source adds 1 more arg, also maybe add -o */
+  num_args = argc + need_stdcxx + shared_libgcc + (library > 0) * 4 + 2;
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 
   i = 0;
@@ -371,32 +313,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	}
 
       new_decoded_options[j] = decoded_options[i];
-
-      /* Make sure -lphobos is before the math library, since libphobos
-	 itself uses those math routines.  */
-      if (!saw_math && (args[i] & MATHLIB) && library > 0)
-	{
-	  --j;
-	  saw_math = &decoded_options[i];
-	}
-
-      if (!saw_thread && (args[i] & WITHTHREAD) && library > 0)
-	{
-	  --j;
-	  saw_thread = &decoded_options[i];
-	}
-
-      if (!saw_time && (args[i] & TIMELIB) && library > 0)
-	{
-	  --j;
-	  saw_time = &decoded_options[i];
-	}
-
-      if (!saw_libc && (args[i] & WITHLIBC) && library > 0)
-	{
-	  --j;
-	  saw_libc = &decoded_options[i];
-	}
 
       if (!saw_libcxx && (args[i] & WITHLIBCXX) && library > 0)
 	{
@@ -517,39 +433,6 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
       added_libraries++;
     }
 
-  if (saw_math)
-    new_decoded_options[j++] = *saw_math;
-  else if (library > 0 && need_math)
-    {
-      generate_option (OPT_l,
-		       (saw_profile_flag
-			? MATH_LIBRARY_PROFILE
-			: MATH_LIBRARY),
-		       1, CL_DRIVER, &new_decoded_options[j++]);
-      added_libraries++;
-    }
-
-  if (saw_thread)
-    new_decoded_options[j++] = *saw_thread;
-  else if (library > 0 && need_thread)
-    {
-      generate_option (OPT_l, THREAD_LIBRARY, 1, CL_DRIVER,
-		       &new_decoded_options[j++]);
-      added_libraries++;
-    }
-
-  if (saw_time)
-    new_decoded_options[j++] = *saw_time;
-  else if (library > 0 && need_time)
-    {
-      generate_option (OPT_l, TIME_LIBRARY, 1, CL_DRIVER,
-		       &new_decoded_options[j++]);
-      added_libraries++;
-    }
-
-  if (saw_libc)
-    new_decoded_options[j++] = *saw_libc;
-
   if (shared_libgcc && !static_link)
     {
       generate_option (OPT_shared_libgcc, NULL, 1, CL_DRIVER,
@@ -563,8 +446,11 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 
-int lang_specific_pre_link()  /* Not used for D.  */
+int lang_specific_pre_link()
 {
+  if (library > 0 && need_phobos)
+    do_spec ("%:include(libgphobos.spec)");
+
   return 0;
 }
 

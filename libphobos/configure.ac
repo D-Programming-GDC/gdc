@@ -90,10 +90,25 @@ DRUNTIME_OS_SOURCES
 DRUNTIME_OS_THREAD_MODEL
 DRUNTIME_OS_ARM_EABI_UNWINDER
 DRUNTIME_OS_MINFO_BRACKETING
-DRUNTIME_LIBRARIES_THREAD
-DRUNTIME_LIBRARIES_ZLIB
+
+WITH_LOCAL_DRUNTIME([
+  AC_LANG_PUSH([D])
+  AC_SEARCH_LIBS([malloc], [c])
+  DRUNTIME_LIBRARIES_THREAD
+  AC_SEARCH_LIBS([cosf], [m])
+  AC_SEARCH_LIBS([clock_gettime], [rt])
+  DRUNTIME_LIBRARIES_ZLIB
+  AC_LANG_POP([D])
+], [-nophoboslib])
+
 DRUNTIME_LIBBACKTRACE_SETUP
 DRUNTIME_INSTALL_DIRECTORIES
+
+# Add dependencies for libgphobos.spec file
+LIBS="$LIBS $LIBADD_DLOPEN"
+SPEC_PHOBOS_DEPS="$LIBS"
+AC_SUBST(LIBS)
+AC_SUBST(SPEC_PHOBOS_DEPS)
 
 # Libdruntime / phobos soname version
 DRUNTIME_SOVERSION="68:2:0"
@@ -124,11 +139,6 @@ for i in $d_subdirs; do
 done
 AC_SUBST(srcdir)
 
-# Test for the -ldl library.
-DL_LIBS=
-AC_CHECK_LIB([dl], [dlopen], DL_LIBS=-ldl)
-AC_SUBST(DL_LIBS)
-
 # Multilibs need MULTISUBDIR defined correctly in certain makefiles so
 # that multilib installs will end up installed in the correct place.
 # The testsuite needs it for multilib-aware ABI baseline files.
@@ -150,5 +160,6 @@ _EOF
    AS_UNSET([ml_norecursion])
 ])
 
-AC_CONFIG_FILES([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d])
+AC_CONFIG_FILES([Makefile libdruntime/gcc/config.d libdruntime/gcc/libbacktrace.d
+  src/libgphobos.spec])
 AC_OUTPUT

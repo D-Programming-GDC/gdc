@@ -33,7 +33,7 @@ m4_define([AC_LANG_PROGRAM(D)],
 [module mod;
 $1
 
-int main() {
+extern(C) int main() {
   $2
 }])
 
@@ -49,8 +49,9 @@ m4_define([_AC_LANG_IO_PROGRAM(D)],
 # AC_LANG_CALL(D)(PROLOGUE, FUNCTION)
 # ------------------------------------
 # TODO: Avoid conflicting decl of main?
+# Used by AC_SEARCH_LIBS.
 m4_define([AC_LANG_CALL(D)],
-[AC_LANG_PROGRAM([$1], [$2(); return 0;])])
+[AC_LANG_PROGRAM([$1 extern(C) int $2();], [$2(); return 0;])])
 
 # AC_LANG_FUNC_LINK_TRY(D)(FUNCTION)
 # -----------------------------------
