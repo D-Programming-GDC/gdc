@@ -1558,11 +1558,8 @@ extract_from_method_call (tree t, tree& callee, tree& object)
 tree
 build_vindex_ref(tree object, tree fntype, size_t index)
 {
-  // Interface methods are also in the class's vtable, so we don't
-  // need to convert from a class pointer to an interface pointer.
-  object = d_save_expr(object);
-
-  // The vtable is the first field.
+  // The vtable is the first field.  Interface methods are also in the class's
+  // vtable, so we don't need to convert from a class to an interface.
   tree result = build_deref(object);
   result = component_ref(result, TYPE_FIELDS (TREE_TYPE (result)));
 
@@ -2102,16 +2099,13 @@ static tree
 build_alignment_field(HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
 {
   tree type = d_array_type(Type::tuns8, fieldpos - offset);
-  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE, type);
+  tree field = create_field_decl(type, NULL, 1, 1);
 
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (type));
   DECL_FIELD_OFFSET (field) = size_int(offset);
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
 
   layout_decl(field, 0);
-
-  DECL_ARTIFICIAL (field) = 1;
-  DECL_IGNORED_P (field) = 1;
 
   return field;
 }
@@ -4585,11 +4579,9 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	  // Insert the field declaration at it's given offset.
 	  if (var->isField())
 	    {
-	      tree ident = var->ident ? get_identifier(var->ident->string) : NULL_TREE;
-	      tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, ident,
-				      declaration_type(var));
-	      DECL_ARTIFICIAL (field) = inherited_p;
-	      DECL_IGNORED_P (field) = inherited_p;
+	      tree field = create_field_decl(declaration_type(var),
+					     var->ident ? var->ident->string : NULL,
+					     inherited_p, inherited_p);
 	      insert_aggregate_field(var->loc, context, field, var->offset);
 
 	      // Because the front-end shares field decls across classes, don't
@@ -4642,7 +4634,7 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	  finish_aggregate_type(ad->anonstructsize, ad->anonalignsize, type, NULL);
 
 	  // And make the corresponding data member.
-	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL, type);
+	  tree field = create_field_decl(type, NULL, 0, 0);
 	  insert_aggregate_field(ad->loc, context, field, ad->anonoffset);
 	  continue;
 	}
@@ -4694,21 +4686,15 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	  tree objtype = TREE_TYPE (build_ctype(cd->type));
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
-	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
-				  get_identifier("__vptr"), vtbl_ptr_type_node);
+	  tree field = create_field_decl(vtbl_ptr_type_node, "__vptr", 1, inherited_p);
 	  DECL_VIRTUAL_P (field) = 1;
 	  TYPE_VFIELD (type) = field;
 	  DECL_FCONTEXT (field) = objtype;
-	  DECL_ARTIFICIAL (field) = 1;
-	  DECL_IGNORED_P (field) = inherited_p;
 	  insert_aggregate_field(decl->loc, type, field, 0);
 
 	  if (!cd->cpp)
 	    {
-	      field = build_decl(UNKNOWN_LOCATION, FIELD_DECL,
-				 get_identifier("__monitor"), ptr_type_node);
-	      DECL_ARTIFICIAL (field) = 1;
-	      DECL_IGNORED_P (field) = inherited_p;
+	      field = create_field_decl(ptr_type_node, "__monitor", 1, inherited_p);
 	      insert_aggregate_field(decl->loc, type, field, Target::ptrsize);
 	    }
 	}
@@ -4735,10 +4721,8 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
       for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *bc = (*cd->vtblInterfaces)[i];
-	  tree field = build_decl(UNKNOWN_LOCATION, FIELD_DECL, NULL_TREE,
-				  build_ctype(Type::tvoidptr->pointerTo()));
-	  DECL_ARTIFICIAL (field) = 1;
-	  DECL_IGNORED_P (field) = 1;
+	  tree field = create_field_decl(build_ctype(Type::tvoidptr->pointerTo()),
+					 NULL, 1, 1);
 	  insert_aggregate_field(decl->loc, type, field, bc->offset);
 	}
     }
@@ -4800,6 +4784,20 @@ finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
       TYPE_USER_ALIGN (t) = TYPE_USER_ALIGN (type);
       gcc_assert(TYPE_MODE (t) == TYPE_MODE (type));
     }
+}
+
+// Create a declaration for field NAME of a given TYPE, setting the flags
+// for whether the field is ARTIFICIAL and/or IGNORED.
+
+tree
+create_field_decl (tree type, const char *name, int artificial, int ignored)
+{
+  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+			  name ? get_identifier (name) : NULL_TREE, type);
+  DECL_ARTIFICIAL (decl) = artificial;
+  DECL_IGNORED_P (decl) = ignored;
+
+  return decl;
 }
 
 // Find the field inside aggregate TYPE identified by IDENT at field OFFSET.
