@@ -974,8 +974,6 @@ TypeInfoDeclaration::toObjFile()
 static tree
 build_moduleinfo_symbol(Module *m)
 {
-  tree msym = get_moduleinfo_decl (m);
-  tree dt = NULL_TREE;
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
 
@@ -1022,10 +1020,15 @@ build_moduleinfo_symbol(Module *m)
 
   flags |= MIname;
 
+  tree msym = get_moduleinfo_decl (m);
+  TREE_TYPE (msym) = layout_moduleinfo_fields (m, TREE_TYPE (msym));
+
   /* Put out:
    *  uint flags;
    *  uint index;
    */
+  tree dt = NULL_TREE;
+
   dt_cons (&dt, build_integer_cst (flags, build_ctype(Type::tuns32)));
   dt_cons (&dt, build_integer_cst (0, build_ctype(Type::tuns32)));
 
@@ -1109,8 +1112,9 @@ build_moduleinfo_symbol(Module *m)
       dt_cons (&dt, strtree);
     }
 
-  DECL_LANG_INITIAL (m->csym) = dt;
-  d_finish_symbol (m->csym);
+  DECL_LANG_INITIAL (msym) = dt;
+  d_finish_symbol (msym);
+
   return msym;
 }
 
@@ -1705,11 +1709,6 @@ d_finish_symbol (tree decl)
       if (DECL_INITIAL (decl) == NULL_TREE)
 	{
 	  tree sinit = dtvector_to_tree (DECL_LANG_INITIAL (decl));
-	  if (TREE_TYPE (decl) == unknown_type_node)
-	    {
-	      TREE_TYPE (decl) = TREE_TYPE (sinit);
-	      TYPE_NAME (TREE_TYPE (decl)) = DECL_ASSEMBLER_NAME (decl);
-	    }
 
 	  // No gain setting DECL_INITIAL if the initialiser is all zeros.
 	  // Let the backend put the symbol in bss instead, if supported.
