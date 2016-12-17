@@ -1,3 +1,9 @@
+2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (layout_moduleinfo_fields): Use finish_aggregate_type
+	instead of layout_type.
+	(layout_classinfo_interfaces): Likewise.
+
 2016-12-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (build_dtype): Use static create method for allocating
