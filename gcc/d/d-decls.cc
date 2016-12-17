@@ -124,8 +124,6 @@ get_symbol_decl (Declaration *decl)
 			      get_identifier (decl->ident->string), NULL_TREE);
 
       /* Set function type afterwards as there could be self references.  */
-      //gcc_assert (fd->tintro == NULL || fd->tintro == fd->type);
-      //TREE_TYPE (decl->csym) = build_ctype (fd->tintro ? fd->tintro : fd->type);
       TREE_TYPE (decl->csym) = build_ctype (fd->type);
 
       if (!fd->fbody)
@@ -676,6 +674,100 @@ make_thunk (FuncDeclaration *decl, int offset)
   return thunk;
 }
 
+/* Return a copy of TYPE but safe to modify in any way.  */
+
+static tree
+copy_struct (tree type)
+{
+  tree newtype = build_distinct_type_copy (type);
+  TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
+
+  for (tree field = TYPE_FIELDS (newtype); field; field = DECL_CHAIN (field))
+    DECL_FIELD_CONTEXT (field) = newtype;
+
+  return newtype;
+}
+
+/* Convenience function for layout_moduleinfo_fields.  Adds a field of TYPE to
+   REC_TYPE at OFFSET, incrementing the offset to the next field position.  */
+
+static void
+add_moduleinfo_field (tree type, tree rec_type, size_t& offset)
+{
+  tree field = create_field_decl (type, NULL, 1, 1);
+  insert_aggregate_field (Module::moduleinfo->loc, rec_type, field, offset);
+  offset += int_size_in_bytes (type);
+}
+
+/* Layout fields that immediately come after the moduleinfo TYPE for DECL.
+   Data relating to the module is packed into the type on an as-needed
+   basis, this is done to keep its size to a minimum.  */
+
+tree
+layout_moduleinfo_fields (Module *decl, tree type)
+{
+  size_t offset = Module::moduleinfo->structsize;
+
+  type = copy_struct (type);
+
+  /* First fields added are all the function pointers.  */
+  if (decl->sctor)
+    add_moduleinfo_field (ptr_type_node, type, offset);
+  if (decl->sdtor)
+    add_moduleinfo_field (ptr_type_node, type, offset);
+  if (decl->ssharedctor)
+    add_moduleinfo_field (ptr_type_node, type, offset);
+  if (decl->sshareddtor)
+    add_moduleinfo_field (ptr_type_node, type, offset);
+  if (decl->findGetMembers ())
+    add_moduleinfo_field (ptr_type_node, type, offset);
+  if (decl->sictor)
+    add_moduleinfo_field (ptr_type_node, type, offset);
+  if (decl->stest)
+    add_moduleinfo_field (ptr_type_node, type, offset);
+
+  /* Array of module imports is layed out as a length field, followed by
+     a static array of ModuleInfo pointers.  */
+  size_t aimports_dim = decl->aimports.dim;
+  for (size_t i = 0; i < decl->aimports.dim; i++)
+    {
+      Module *mi = decl->aimports[i];
+      if (!mi->needmoduleinfo)
+	aimports_dim--;
+    }
+
+  if (aimports_dim)
+    {
+      Type *tn = Module::moduleinfo->type->pointerTo ();
+      add_moduleinfo_field (size_type_node, type, offset);
+      add_moduleinfo_field (d_array_type (tn, aimports_dim), type, offset);
+    }
+
+  /* Array of local ClassInfo decls are layed out in the same way.  */
+  ClassDeclarations aclasses;
+  for (size_t i = 0; i < decl->members->dim; i++)
+    {
+      Dsymbol *member = (*decl->members)[i];
+      member->addLocalClass (&aclasses);
+    }
+
+  if (aclasses.dim)
+    {
+      Type *tn = Type::typeinfoclass->type;
+      add_moduleinfo_field (size_type_node, type, offset);
+      add_moduleinfo_field (d_array_type (tn, aclasses.dim), type, offset);
+    }
+
+  /* Lastly, the name of the module is a static char array.  */
+  size_t namelen = strlen (decl->toPrettyChars ()) + 1;
+  add_moduleinfo_field (d_array_type (Type::tchar, namelen), type, offset);
+
+  TYPE_SIZE (type) = NULL_TREE;
+  layout_type (type);
+
+  return type;
+}
+
 /* Get the VAR_DECL of the ModuleInfo for DECL.  If this does not yet exist,
    create it.  The ModuleInfo decl is used to keep track of constructors,
    destructors, unittests, members, classes, and imports for the given module.
@@ -690,7 +782,8 @@ get_moduleinfo_decl (Module *decl)
   tree ident = make_internal_name (decl, "__ModuleInfo", "Z");
 
   decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			   IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+			   IDENTIFIER_PRETTY_NAME (ident),
+			   build_ctype (Module::moduleinfo->type));
   set_decl_location (decl->csym, decl);
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
   SET_DECL_ASSEMBLER_NAME (decl->csym, ident);
@@ -710,6 +803,81 @@ get_moduleinfo_decl (Module *decl)
   return decl->csym;
 }
 
+/* Layout fields that immediately come after the classinfo TYPE for DECL if
+   there's any interfaces or interface vtables to be added.
+   This must be mirrored with ClassDeclaration::baseVtblOffset().  */
+
+static tree
+layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
+{
+  tree orig_type = type;
+
+  if (decl->vtblInterfaces->dim)
+    {
+      tree field;
+
+      type = copy_struct (type);
+
+      /* First layout the static array of Interface, which provides information
+	 about the vtables that follow.  */
+      if (Type::typeinterface)
+	{
+	  field = create_field_decl (d_array_type (Type::typeinterface->type,
+						   decl->vtblInterfaces->dim),
+				     NULL, 1, 1);
+	  insert_aggregate_field (decl->loc, type, field,
+				  Type::typeinfoclass->structsize);
+	}
+
+      /* For each interface, layout each vtable.  */
+      for (size_t i = 0; i < decl->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *b = (*decl->vtblInterfaces)[i];
+	  ClassDeclaration *id = b->base;
+	  unsigned offset = decl->baseVtblOffset (b);
+
+	  if (id->vtbl.dim && offset != ~0u)
+	    {
+	      field = create_field_decl (d_array_type (Type::tvoidptr,
+						       id->vtbl.dim),
+					 NULL, 1, 1);
+	      insert_aggregate_field (decl->loc, type, field, offset);
+	    }
+	}
+    }
+
+  /* Layout the arrays of overriding interface vtables.  */
+  for (ClassDeclaration *bcd = decl->baseClass; bcd; bcd = bcd->baseClass)
+    {
+      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *b = (*bcd->vtblInterfaces)[i];
+	  ClassDeclaration *id = b->base;
+	  unsigned offset = decl->baseVtblOffset (b);
+
+	  if (id->vtbl.dim && offset != ~0u)
+	    {
+	      if (type == orig_type)
+		type = copy_struct (type);
+
+	      tree field = create_field_decl (d_array_type (Type::tvoidptr,
+							    id->vtbl.dim),
+					      NULL, 1, 1);
+	      insert_aggregate_field (decl->loc, type, field, offset);
+	    }
+	}
+    }
+
+  /* Update the type size and record mode for the classinfo type.  */
+  if (type != orig_type)
+    {
+      TYPE_SIZE (type) = NULL_TREE;
+      layout_type (type);
+    }
+
+  return type;
+}
+
 /* Get the VAR_DECL of the ClassInfo for DECL.  If this does not yet exist,
    create it.  The ClassInfo decl provides information about the dynamic type
    of a given class type or object.  */
@@ -723,8 +891,11 @@ get_classinfo_decl (ClassDeclaration *decl)
   InterfaceDeclaration *id = decl->isInterfaceDeclaration ();
   tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
 
+  tree type = TREE_TYPE (build_ctype (Type::typeinfoclass->type));
+  type = layout_classinfo_interfaces (decl, type);
+
   decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			   IDENTIFIER_PRETTY_NAME (ident), unknown_type_node);
+			   IDENTIFIER_PRETTY_NAME (ident), type);
   set_decl_location (decl->csym, decl);
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
   SET_DECL_ASSEMBLER_NAME (decl->csym, ident);
