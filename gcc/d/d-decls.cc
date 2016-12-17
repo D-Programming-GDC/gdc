@@ -658,9 +658,13 @@ copy_struct (tree type)
 {
   tree newtype = build_distinct_type_copy (type);
   TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
+  TYPE_METHODS (newtype) = copy_list (TYPE_METHODS (type));
 
   for (tree field = TYPE_FIELDS (newtype); field; field = DECL_CHAIN (field))
     DECL_FIELD_CONTEXT (field) = newtype;
+
+  for (tree method = TYPE_METHODS (newtype); method; method = DECL_CHAIN (method))
+    DECL_CONTEXT (method) = newtype;
 
   return newtype;
 }
