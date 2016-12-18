@@ -2,6 +2,8 @@
 
 	* typeinfo.cc (TypeInfoVisitor): Use build_typeinfo instead of
 	get_typeinfo_decl.
+	* d-objfile.cc (ClassDeclaration::toObjFile): Use build_constructor to
+	build the vtable, instead of using dt_cons.
 
 2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
