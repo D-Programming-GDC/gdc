@@ -101,13 +101,12 @@ public:
   {
     Type *tm = d->tinfo->mutableOf ();
     tm = tm->merge ();
-    genTypeInfo (tm, NULL);
 
     /* The vtable for TypeInfo_Const.  */
     this->layout_vtable (Type::typeinfoconst);
 
     /* TypeInfo for the mutable type.  */
-    this->set_field ("base", build_address (get_typeinfo_decl (tm->vtinfo)));
+    this->set_field ("base", build_typeinfo (tm));
   }
 
   /* Layout of TypeInfo_Immutable is:
@@ -119,13 +118,12 @@ public:
   {
     Type *tm = d->tinfo->mutableOf ();
     tm = tm->merge ();
-    genTypeInfo (tm, NULL);
 
     /* The vtable for TypeInfo_Invariant.  */
     this->layout_vtable (Type::typeinfoinvariant);
 
     /* TypeInfo for the mutable type.  */
-    this->set_field ("base", build_address (get_typeinfo_decl (tm->vtinfo)));
+    this->set_field ("base", build_typeinfo (tm));
   }
 
   /* Layout of TypeInfo_Shared is:
@@ -137,13 +135,12 @@ public:
   {
     Type *tm = d->tinfo->unSharedOf ();
     tm = tm->merge ();
-    genTypeInfo (tm, NULL);
 
     /* The vtable for TypeInfo_Shared.  */
     this->layout_vtable (Type::typeinfoshared);
 
     /* TypeInfo for the unshared type.  */
-    this->set_field ("base", build_address (get_typeinfo_decl (tm->vtinfo)));
+    this->set_field ("base", build_typeinfo (tm));
   }
 
   /* Layout of TypeInfo_Inout is:
@@ -155,13 +152,12 @@ public:
   {
     Type *tm = d->tinfo->mutableOf ();
     tm = tm->merge ();
-    genTypeInfo (tm, NULL);
 
     /* The vtable for TypeInfo_Inout.  */
     this->layout_vtable (Type::typeinfowild);
 
     /* TypeInfo for the mutable type.  */
-    this->set_field ("base", build_address (get_typeinfo_decl (tm->vtinfo)));
+    this->set_field ("base", build_typeinfo (tm));
   }
 
   /* Layout of TypeInfo_Enum is:
@@ -182,11 +178,7 @@ public:
 
     /* TypeInfo for enum members.  */
     if (ed->memtype)
-      {
-	genTypeInfo (ed->memtype, NULL);
-	TypeInfoDeclaration *vtinfo = ed->memtype->vtinfo;
-	this->set_field ("base", build_address (get_typeinfo_decl (vtinfo)));
-      }
+      this->set_field ("base", build_typeinfo (ed->memtype));
 
     /* Name of the enum declaration.  */
     this->set_field ("name", d_array_string (ed->toPrettyChars ()));
@@ -210,14 +202,12 @@ public:
   {
     gcc_assert (d->tinfo->ty == Tpointer);
     TypePointer *ti = (TypePointer *) d->tinfo;
-    genTypeInfo (ti->next, NULL);
 
     /* The vtable for TypeInfo_Pointer.  */
     this->layout_vtable (Type::typeinfopointer);
 
     /* TypeInfo for pointer-to type.  */
-    tree tidecl = get_typeinfo_decl (ti->next->vtinfo);
-    this->set_field ("m_next", build_address (tidecl));
+    this->set_field ("m_next", build_typeinfo (ti->next));
   }
 
   /* Layout of TypeInfo_Array is:
@@ -229,14 +219,12 @@ public:
   {
     gcc_assert (d->tinfo->ty == Tarray);
     TypeDArray *ti = (TypeDArray *) d->tinfo;
-    genTypeInfo (ti->next, NULL);
 
     /* The vtable for TypeInfo_Array.  */
     this->layout_vtable (Type::typeinfoarray);
 
     /* TypeInfo for array of type.  */
-    tree tidecl = get_typeinfo_decl (ti->next->vtinfo);
-    this->set_field ("value", build_address (tidecl));
+    this->set_field ("value", build_typeinfo (ti->next));
   }
 
   /* Layout of TypeInfo_StaticArray is:
@@ -249,14 +237,12 @@ public:
   {
     gcc_assert (d->tinfo->ty == Tsarray);
     TypeSArray *ti = (TypeSArray *) d->tinfo;
-    genTypeInfo (ti->next, NULL);
 
     /* The vtable for TypeInfo_StaticArray.  */
     this->layout_vtable (Type::typeinfostaticarray);
 
     /* TypeInfo for array of type.  */
-    tree tidecl = get_typeinfo_decl (ti->next->vtinfo);
-    this->set_field ("value", build_address (tidecl));
+    this->set_field ("value", build_typeinfo (ti->next));
 
     /* Static array length.  */
     this->set_field ("len", size_int (ti->dim->toInteger ()));
@@ -270,23 +256,17 @@ public:
 
   void visit (TypeInfoAssociativeArrayDeclaration *d)
   {
-    TypeAArray *ti = (TypeAArray *) d->tinfo;
-    tree tidecl;
-
     gcc_assert (d->tinfo->ty == Taarray);
-    genTypeInfo (ti->next, NULL);
-    genTypeInfo (ti->index, NULL);
+    TypeAArray *ti = (TypeAArray *) d->tinfo;
 
     /* The vtable for TypeInfo_AssociativeArray.  */
     this->layout_vtable (Type::typeinfoassociativearray);
 
     /* TypeInfo for value of type.  */
-    tidecl = get_typeinfo_decl (ti->next->vtinfo);
-    this->set_field ("value", build_address (tidecl));
+    this->set_field ("value", build_typeinfo (ti->next));
 
     /* TypeInfo for index of type.  */
-    tidecl = get_typeinfo_decl (ti->index->vtinfo);
-    this->set_field ("key", build_address (tidecl));
+    this->set_field ("key", build_typeinfo (ti->index));
   }
 
   /* Layout of TypeInfo_Vector is:
@@ -298,14 +278,12 @@ public:
   {
     gcc_assert (d->tinfo->ty == Tvector);
     TypeVector *ti = (TypeVector *) d->tinfo;
-    genTypeInfo (ti->basetype, NULL);
 
     /* The vtable for TypeInfo_Vector.  */
     this->layout_vtable (Type::typeinfovector);
 
     /* TypeInfo for equivalent static array.  */
-    tree tidecl = get_typeinfo_decl (ti->basetype->vtinfo);
-    this->set_field ("base", build_address (tidecl));
+    this->set_field ("base", build_typeinfo (ti->basetype));
   }
 
   /* Layout of TypeInfo_Function is:
@@ -316,17 +294,14 @@ public:
 
   void visit (TypeInfoFunctionDeclaration *d)
   {
-    gcc_assert (d->tinfo->ty == Tfunction);
-    gcc_assert (d->tinfo->deco);
+    gcc_assert (d->tinfo->ty == Tfunction && d->tinfo->deco != NULL);
     TypeFunction *ti = (TypeFunction *) d->tinfo;
-    genTypeInfo (ti->next, NULL);
 
     /* The vtable for TypeInfo_Function.  */
     this->layout_vtable (Type::typeinfofunction);
 
     /* TypeInfo for function return value.  */
-    tree tidecl = get_typeinfo_decl (ti->next->vtinfo);
-    this->set_field ("next", build_address (tidecl));
+    this->set_field ("next", build_typeinfo (ti->next));
 
     /* Mangled name of function declaration.  */
     this->set_field ("deco", d_array_string (d->tinfo->deco));
@@ -340,17 +315,14 @@ public:
 
   void visit (TypeInfoDelegateDeclaration *d)
   {
-    gcc_assert (d->tinfo->ty == Tdelegate);
-    gcc_assert (d->tinfo->deco);
+    gcc_assert (d->tinfo->ty == Tdelegate && d->tinfo->deco != NULL);
     TypeDelegate *ti = (TypeDelegate *) d->tinfo;
-    genTypeInfo (ti->next, NULL);
 
     /* The vtable for TypeInfo_Delegate.  */
     this->layout_vtable (Type::typeinfodelegate);
 
     /* TypeInfo for delegate return value.  */
-    tree tidecl = get_typeinfo_decl (ti->next->vtinfo);
-    this->set_field ("next", build_address (tidecl));
+    this->set_field ("next", build_typeinfo (ti->next));
 
     /* Mangled name of delegate declaration.  */
     this->set_field ("deco", d_array_string (d->tinfo->deco));
@@ -372,6 +344,7 @@ public:
   {
     gcc_assert (d->tinfo->ty == Tclass);
     TypeClass *ti = (TypeClass *) d->tinfo;
+
     if (!ti->sym->vclassinfo)
       ti->sym->vclassinfo = TypeInfoClassDeclaration::create (ti);
 
@@ -496,19 +469,11 @@ public:
       {
 	/* TypeInfo m_arg1;  */
 	if (sd->arg1type)
-	  {
-	    genTypeInfo (sd->arg1type, NULL);
-	    tree tidecl = get_typeinfo_decl (sd->arg1type->vtinfo);
-	    this->set_field ("m_arg1", build_address (tidecl));
-	  }
+	  this->set_field ("m_arg1", build_typeinfo (sd->arg1type));
 
 	/* TypeInfo m_arg2;  */
 	if (sd->arg2type)
-	  {
-	    genTypeInfo (sd->arg2type, NULL);
-	    tree tidecl = get_typeinfo_decl (sd->arg2type->vtinfo);
-	    this->set_field ("m_arg2", build_address (tidecl));
-	  }
+	  this->set_field ("m_arg2", build_typeinfo (sd->arg2type));
       }
 
     /* immutable(void)* xgetRTInfo;  */
@@ -537,9 +502,8 @@ public:
     for (size_t i = 0; i < ti->arguments->dim; i++)
       {
 	Parameter *arg = (*ti->arguments)[i];
-	genTypeInfo (arg->type, NULL);
-	tree s = get_typeinfo_decl (arg->type->vtinfo);
-	CONSTRUCTOR_APPEND_ELT (elms, size_int (i), build_address (s));
+	CONSTRUCTOR_APPEND_ELT (elms, size_int (i),
+				build_typeinfo (arg->type));
       }
     tree ctor = build_constructor (build_ctype (satype), elms);
     tree decl = build_artificial_decl (TREE_TYPE (ctor), ctor);
