@@ -2058,7 +2058,7 @@ void Expression::print()
     fflush(stderr);
 }
 
-char *Expression::toChars()
+const char *Expression::toChars()
 {
     OutBuffer buf;
     HdrGenState hgs;
@@ -5920,7 +5920,7 @@ Expression *FuncExp::semantic(Scope *sc, Expressions *arguments)
     return semantic(sc);
 }
 
-char *FuncExp::toChars()
+const char *FuncExp::toChars()
 {
     return fd->toChars();
 }
@@ -7438,8 +7438,8 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
         }
         else if (ident == Id::stringof)
         {
-            char *p = ie->toChars();
-            e = new StringExp(loc, p, strlen(p));
+            const char *p = ie->toChars();
+            e = new StringExp(loc, (char*)p, strlen(p));
             e = e->semantic(sc);
             return e;
         }

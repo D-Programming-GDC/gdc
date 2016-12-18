@@ -2205,7 +2205,7 @@ void TypeInfoDeclaration::semantic(Scope *sc)
     assert(linkage == LINKc);
 }
 
-char *TypeInfoDeclaration::toChars()
+const char *TypeInfoDeclaration::toChars()
 {
     //printf("TypeInfoDeclaration::toChars() tinfo = %s\n", tinfo->toChars());
     OutBuffer buf;

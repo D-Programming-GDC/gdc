@@ -836,10 +836,14 @@ tree
 layout_classinfo (ClassDeclaration *cd)
 {
   tree type = TREE_TYPE (get_classinfo_decl (cd));
-  TypeInfoClassDeclaration d = TypeInfoClassDeclaration (cd->type);
+  /* The classinfo decl initialized here to accomodate both class and interfaces
+     is thrown away immediately after exiting.  So the use of placement new is
+     deliberate to avoid making more heap allocations than necessary.  */
+  char buf[sizeof (TypeInfoClassDeclaration)];
+  TypeInfoClassDeclaration *d = new (buf) TypeInfoClassDeclaration (cd->type);
 
   TypeInfoVisitor v = TypeInfoVisitor (type);
-  d.accept (&v);
+  d->accept (&v);
   return v.result ();
 }
 

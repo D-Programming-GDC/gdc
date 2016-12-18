@@ -146,7 +146,7 @@ public:
     int dyncast() { return DYNCAST_EXPRESSION; }
 
     void print();
-    char *toChars();
+    const char *toChars();
     virtual void printAST(int ident = 0);
     void error(const char *format, ...);
     void warning(const char *format, ...);
@@ -648,7 +648,7 @@ public:
     Expression *semantic(Scope *sc);
     Expression *semantic(Scope *sc, Expressions *arguments);
     MATCH matchType(Type *to, Scope *sc, FuncExp **pfe, int flag = 0);
-    char *toChars();
+    const char *toChars();
     bool checkValue();
 
     void accept(Visitor *v) { v->visit(this); }
