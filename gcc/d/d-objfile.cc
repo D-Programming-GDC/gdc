@@ -533,31 +533,31 @@ Lhaspointers:
   d_finish_symbol (csym);
 
   // Put out the vtbl[]
-  dt = NULL_TREE;
+  vec<constructor_elt, va_gc> *elms = NULL;
 
   // first entry is ClassInfo reference
   if (vtblOffset())
-    dt_cons (&dt, build_address (csym));
+    CONSTRUCTOR_APPEND_ELT (elms, size_zero_node, build_address (csym));
 
   for (size_t i = vtblOffset(); i < vtbl.dim; i++)
     {
       FuncDeclaration *fd = vtbl[i]->isFuncDeclaration();
 
-      if (fd && (fd->fbody || !isAbstract()))
+      if (!fd || (!fd->fbody && isAbstract ()))
+	continue;
+
+      fd->functionSemantic ();
+
+      if (isFuncHidden (fd))
 	{
-	  fd->functionSemantic();
-
-	  if (!isFuncHidden (fd))
-	    goto Lcontinue;
-
-	  // If fd overlaps with any function in the vtbl[], then
-	  // issue 'hidden' error.
+	  // The function fd is hidden from the view of the class.  If it
+	  // overlaps with any function in the vtbl[], then issue an error.
 	  for (size_t j = 1; j < vtbl.dim; j++)
 	    {
 	      if (j == i)
 		continue;
 
-	      FuncDeclaration *fd2 = vtbl[j]->isFuncDeclaration();
+	      FuncDeclaration *fd2 = vtbl[j]->isFuncDeclaration ();
 	      if (!fd2->ident->equals (fd->ident))
 		continue;
 
@@ -566,25 +566,27 @@ Lhaspointers:
 		  TypeFunction *tf = (TypeFunction *) fd->type;
 		  if (tf->ty == Tfunction)
 		    {
-		      error("use of %s%s hidden by %s is deprecated. "
-			    "Use 'alias %s = %s.%s;' to introduce base class overload set.",
-			    fd->toPrettyChars(), parametersTypeToChars(tf->parameters, tf->varargs), toChars(),
-			    fd->toChars(), fd->parent->toChars(), fd->toChars());
+		      error ("use of %s%s is hidden by %s; use 'alias %s = "
+			     "%s.%s;' to introduce base class overload set.",
+			     fd->toPrettyChars(),
+			     parametersTypeToChars(tf->parameters, tf->varargs),
+			     toChars(), fd->toChars(),
+			     fd->parent->toChars(), fd->toChars());
 		    }
 		  else
-		    error("use of %s hidden by %s is deprecated", fd->toPrettyChars(), toChars());
+		    error("use of %s is hidden by %s",
+			  fd->toPrettyChars(), toChars());
+
 		  break;
 		}
 	    }
-
-	Lcontinue:
-	  dt_cons (&dt, build_address (get_symbol_decl (fd)));
 	}
-      else
-	dt_cons (&dt, null_pointer_node);
+
+      CONSTRUCTOR_APPEND_ELT (elms, size_int (i),
+			      build_address (get_symbol_decl (fd)));
     }
 
-  DECL_LANG_INITIAL (vtblsym) = dt;
+  DECL_INITIAL (vtblsym) = build_constructor (TREE_TYPE (vtblsym), elms);
   d_finish_symbol (vtblsym);
 
   /* Add this decl to the current binding level.  */
