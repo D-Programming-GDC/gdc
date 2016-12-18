@@ -33,6 +33,12 @@ else version( D_InlineAsm_X86_64 )
     enum has64BitCAS = true;
     enum has128BitCAS = true;
 }
+else version (GNU)
+{
+    import gcc.config;
+    enum has64BitCAS = true;
+    enum has128BitCAS = HAVE_LIBATOMIC;
+}
 else
 {
     enum has64BitCAS = false;
@@ -1343,7 +1349,7 @@ else version( GNU )
     }
 
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) pure nothrow @nogc
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, V2 writeThis ) pure nothrow @nogc
         if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
@@ -1415,6 +1421,11 @@ else version( GNU )
             res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
+        else static if( T.sizeof == long.sizeof * 2 && HAVE_LIBATOMIC)
+        {
+            res = __atomic_compare_exchange(T.sizeof, here, cast(void*)&ifThis, cast(void*)&writeThis,
+                                            MemoryOrder.seq, MemoryOrder.seq);
+        }
         else
             static assert(0, "Invalid template type specified.");
 
@@ -1460,6 +1471,12 @@ else version( GNU )
             ulong value = __atomic_load_8(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
+        else static if (T.sizeof == ulong.sizeof * 2 && HAVE_LIBATOMIC)
+        {
+            T value;
+            __atomic_load(T.sizeof, &val, cast(void*)&value, ms);
+            return *cast(HeadUnshared!T*) &value;
+        }
         else
             static assert(0, "Invalid template type specified.");
     }
@@ -1485,6 +1502,10 @@ else version( GNU )
         else static if (T.sizeof == ulong.sizeof)
         {
             __atomic_store_8(&val, *cast(ulong*) &newval, ms);
+        }
+        else static if (T.sizeof == ulong.sizeof * 2 && HAVE_LIBATOMIC)
+        {
+            __atomic_store(T.sizeof, &val, cast(void*)&newval, ms);
         }
         else
             static assert(0, "Invalid template type specified.");
