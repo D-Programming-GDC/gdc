@@ -200,7 +200,7 @@ ClassDeclaration::toDt(dt_t **pdt)
 void
 StructDeclaration::toDt(dt_t **pdt)
 {
-  StructLiteralExp *sle = new StructLiteralExp(loc, this, NULL);
+  StructLiteralExp *sle = StructLiteralExp::create (loc, this, NULL);
 
   if (!fill(loc, sle->elements, true))
     gcc_unreachable();

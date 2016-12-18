@@ -347,7 +347,7 @@ public:
     gcc_assert(d->tinfo->ty == Tclass);
     TypeClass *ti = (TypeClass *) d->tinfo;
     if (!ti->sym->vclassinfo)
-      ti->sym->vclassinfo = new TypeInfoClassDeclaration(ti);
+      ti->sym->vclassinfo = TypeInfoClassDeclaration::create (ti);
 
     // The vtable for TypeInfo_Interface.
     this->layout_vtable(Type::typeinfointerface);
