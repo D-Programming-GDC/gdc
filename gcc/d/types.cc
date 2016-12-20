@@ -107,104 +107,31 @@ public:
 
     switch (t->ty)
       {
-      case Tvoid:
-	t->ctype = void_type_node;
-	break;
-
-      case Tint8:
-	t->ctype = byte_type_node;
-	break;
-
-      case Tuns8:
-	t->ctype = ubyte_type_node;
-	break;
-
-      case Tint16:
-	t->ctype = short_type_node;
-	break;
-
-      case Tuns16:
-	t->ctype = ushort_type_node;
-	break;
-
-      case Tint32:
-	t->ctype = int_type_node;
-	break;
-
-      case Tuns32:
-	t->ctype = uint_type_node;
-	break;
-
-      case Tint64:
-	t->ctype = long_type_node;
-	break;
-
-      case Tuns64:
-	t->ctype = ulong_type_node;
-	break;
-
-      case Tint128:
-	t->ctype = cent_type_node;
-	break;
-
-      case Tuns128:
-	t->ctype = ucent_type_node;
-	break;
-
-      case Tfloat32:
-	t->ctype = float_type_node;
-	break;
-
-      case Tfloat64:
-	t->ctype = double_type_node;
-	break;
-
-      case Tfloat80:
-	t->ctype = long_double_type_node;
-	break;
-
-      case Tcomplex32:
-	t->ctype = complex_float_type_node;
-	break;
-
-      case Tcomplex64:
-	t->ctype = complex_double_type_node;
-	break;
-
-      case Tcomplex80:
-	t->ctype = complex_long_double_type_node;
-	break;
-
-      case Tbool:
-	t->ctype = bool_type_node;
-	break;
-
-      case Tchar:
-	t->ctype = char8_type_node;
-	break;
-
-      case Twchar:
-	t->ctype = char16_type_node;
-	break;
-
-      case Tdchar:
-	t->ctype = char32_type_node;
-	break;
-
-      case Timaginary32:
-	t->ctype = ifloat_type_node;
-	break;
-
-      case Timaginary64:
-	t->ctype = idouble_type_node;
-	break;
-
-      case Timaginary80:
-	t->ctype = ireal_type_node;
-	break;
-
-      default:
-	gcc_unreachable ();
+      case Tvoid:	  t->ctype = void_type_node; break;
+      case Tbool:	  t->ctype = bool_type_node; break;
+      case Tint8:	  t->ctype = byte_type_node; break;
+      case Tuns8:	  t->ctype = ubyte_type_node; break;
+      case Tint16:	  t->ctype = short_type_node; break;
+      case Tuns16:	  t->ctype = ushort_type_node; break;
+      case Tint32:	  t->ctype = int_type_node; break;
+      case Tuns32:	  t->ctype = uint_type_node; break;
+      case Tint64:	  t->ctype = long_type_node; break;
+      case Tuns64:	  t->ctype = ulong_type_node; break;
+      case Tint128:	  t->ctype = cent_type_node; break;
+      case Tuns128:	  t->ctype = ucent_type_node; break;
+      case Tfloat32:	  t->ctype = float_type_node; break;
+      case Tfloat64:	  t->ctype = double_type_node; break;
+      case Tfloat80:	  t->ctype = long_double_type_node; break;
+      case Timaginary32:  t->ctype = ifloat_type_node; break;
+      case Timaginary64:  t->ctype = idouble_type_node; break;
+      case Timaginary80:  t->ctype = ireal_type_node; break;
+      case Tcomplex32:	  t->ctype = complex_float_type_node; break;
+      case Tcomplex64:	  t->ctype = complex_double_type_node; break;
+      case Tcomplex80:	  t->ctype = complex_long_double_type_node; break;
+      case Tchar:	  t->ctype = char8_type_node; break;
+      case Twchar:	  t->ctype = char16_type_node; break;
+      case Tdchar:	  t->ctype = char32_type_node; break;
+      default:		  gcc_unreachable ();
       }
   }
 

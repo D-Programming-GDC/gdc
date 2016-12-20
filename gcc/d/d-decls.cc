@@ -766,8 +766,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
   size_t namelen = strlen (decl->toPrettyChars ()) + 1;
   add_moduleinfo_field (d_array_type (Type::tchar, namelen), type, offset);
 
-  TYPE_SIZE (type) = NULL_TREE;
-  layout_type (type);
+  finish_aggregate_type (offset, Module::moduleinfo->alignsize, type, NULL);
 
   return type;
 }
@@ -814,6 +813,8 @@ get_moduleinfo_decl (Module *decl)
 static tree
 layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 {
+  size_t structsize = Type::typeinfoclass->structsize;
+  size_t alignsize = Type::typeinfoclass->alignsize;
   tree orig_type = type;
 
   if (decl->vtblInterfaces->dim)
@@ -831,6 +832,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 				     NULL, 1, 1);
 	  insert_aggregate_field (decl->loc, type, field,
 				  Type::typeinfoclass->structsize);
+	  structsize += decl->vtblInterfaces->dim * Type::typeinterface->structsize;
 	}
 
       /* For each interface, layout each vtable.  */
@@ -846,6 +848,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 						       id->vtbl.dim),
 					 NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
+	      structsize += id->vtbl.dim * Target::ptrsize;
 	    }
 	}
     }
@@ -868,16 +871,14 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 							    id->vtbl.dim),
 					      NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
+	      structsize += id->vtbl.dim * Target::ptrsize;
 	    }
 	}
     }
 
   /* Update the type size and record mode for the classinfo type.  */
-  if (type != orig_type)
-    {
-      TYPE_SIZE (type) = NULL_TREE;
-      layout_type (type);
-    }
+  if (structsize != Type::typeinfoclass->structsize)
+    finish_aggregate_type (structsize, alignsize, type, NULL);
 
   return type;
 }

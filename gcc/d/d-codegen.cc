@@ -1031,7 +1031,7 @@ declaration_type(Declaration *decl)
   // Lazy declarations are converted to delegates.
   if (decl->storage_class & STClazy)
     {
-      TypeFunction *tf = new TypeFunction(NULL, decl->type, false, LINKd);
+      TypeFunction *tf = TypeFunction::create (NULL, decl->type, false, LINKd);
       TypeDelegate *t = new TypeDelegate(tf);
       return build_ctype(t->merge());
     }
@@ -1086,7 +1086,7 @@ type_passed_as(Parameter *arg)
   // Lazy parameters are converted to delegates.
   if (arg->storageClass & STClazy)
     {
-      TypeFunction *tf = new TypeFunction(NULL, arg->type, false, LINKd);
+      TypeFunction *tf = TypeFunction::create (NULL, arg->type, false, LINKd);
       TypeDelegate *t = new TypeDelegate(tf);
       return build_ctype(t->merge());
     }
@@ -3236,7 +3236,7 @@ get_libcall(const char *name, Type *type, int flags, int nparams, ...)
     {
       Type *ptype = va_arg(ap, Type *);
       if (ptype != Type::tvoid)
-	args->push(new Parameter(0, ptype, NULL, NULL));
+	args->push(Parameter::create (0, ptype, NULL, NULL));
       else
 	{
 	  varargs = true;
@@ -3272,7 +3272,7 @@ get_libcall(LibCall libcall)
   // Build generic AA type void*[void*] for runtime.def
   static Type *AA = NULL;
   if (AA == NULL)
-    AA = new TypeAArray(Type::tvoidptr, Type::tvoidptr);
+    AA = TypeAArray::create (Type::tvoidptr, Type::tvoidptr);
 
   switch (libcall)
     {

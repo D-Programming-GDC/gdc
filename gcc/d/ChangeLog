@@ -1,3 +1,30 @@
+2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* typeinfo.cc (TypeInfoVisitor): Use build_typeinfo instead of
+	get_typeinfo_decl.
+	* d-objfile.cc (ClassDeclaration::toObjFile): Use build_constructor to
+	build the vtable, instead of using dt_cons.
+
+2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (layout_moduleinfo_fields): Use finish_aggregate_type
+	instead of layout_type.
+	(layout_classinfo_interfaces): Likewise.
+
+2016-12-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_dtype): Use static create method for allocating
+	frontend types.
+	* d-codegen.cc (declaration_type): Likewise.
+	(type_passed_as): Likewise.
+	(get_libcall): Likewise.
+	* d-lang.cc (d_parse_file): Likewise.
+	* d-objfile.cc (build_simple_function_decl): Likewise.
+	(build_emutls_function): Likewise.
+	* d-todt.cc (StructDeclaration::toDt): Likewise.
+	* typeinfo.cc (TypeInfoVisitor::visit(TypeInfoInterfaceDeclaration)):
+	Likewise.
+
 2016-12-17  Johannes Pfau  <johannespfau@gmail.com>
 
 	* d-decls.cc (copy_struct): Also copy and update TYPE_METHODS.
@@ -71,6 +98,16 @@
 	(readFile): Likewise.
 	(writeFile): Likewise.
 	(ensurePathToNameExists): Likewise.
+
+2016-12-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc: Include memmodel.h.
+	* d-attrib.c (d_handle_section_attribute): No longer set
+	user_defined_section_attribute.
+
+2016-11-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (TypeVisitor::visit(Type)): Update.
 
 2016-11-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
