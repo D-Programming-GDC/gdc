@@ -205,7 +205,7 @@ build_dtype(tree type)
 	  // The object and gcc.builtins module will not exist when this is
 	  // called.  Use a stub 'object' module parent in the meantime.
 	  // If gcc.builtins is later imported, the parent will be overridden.
-	  static Module *stubmod = new Module("object.d", Id::object, 0, 0);
+	  static Module *stubmod = Module::create ("object.d", Id::object, 0, 0);
 
 	  StructDeclaration *sdecl = new StructDeclaration(Loc(), ident);
 	  sdecl->parent = stubmod;
@@ -255,7 +255,7 @@ build_dtype(tree type)
 		      delete args;
 		      return NULL;
 		    }
-		  args->push(new Parameter(sc, targ, NULL, NULL));
+		  args->push(Parameter::create (sc, targ, NULL, NULL));
 		}
 	      else
 		varargs_p = 0;
@@ -264,7 +264,10 @@ build_dtype(tree type)
 	  // GCC generic and placeholder builtins are marked as variadic, yet
 	  // have no named parameters, and so can't be represented in D.
 	  if (args->dim != 0 || !varargs_p)
-	    return (new TypeFunction(args, dtype, varargs_p, LINKc))->addMod(mod);
+	    {
+	      dtype = TypeFunction::create (args, dtype, varargs_p, LINKc);
+	      return dtype->addMod (mod);
+	    }
 	}
       break;
 
