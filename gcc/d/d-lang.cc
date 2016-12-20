@@ -970,8 +970,8 @@ d_parse_file()
       // At this point, name is the D source file name stripped of
       // its path and extension.
       Identifier *id = Identifier::idPool(name);
-      Module *m = new Module(fname, id, global.params.doDocComments,
-			     global.params.doHdrGeneration);
+      Module *m = Module::create (fname, id, global.params.doDocComments,
+				  global.params.doHdrGeneration);
       modules.push(m);
     }
 
@@ -1184,7 +1184,7 @@ d_parse_file()
 	    }
 
 	  ensurePathToNameExists(Loc(), jsonfilename);
-	  jsonfile = new File(jsonfilename);
+	  jsonfile = File::create (jsonfilename);
 	  jsonfile->setbuffer(buf.data, buf.offset);
 	  jsonfile->ref = 1;
 	  writeFile(Loc(), jsonfile);
