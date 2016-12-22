@@ -96,8 +96,8 @@ Global::increaseErrorCount()
   this->errors++;
 }
 
-char *
-Loc::toChars()
+const char *
+Loc::toChars() const
 {
   OutBuffer buf;
 
@@ -137,7 +137,7 @@ Loc::equals(const Loc& loc)
 // Print a hard error message.
 
 void
-error(Loc loc, const char *format, ...)
+error(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -146,7 +146,7 @@ error(Loc loc, const char *format, ...)
 }
 
 void
-verror(Loc loc, const char *format, va_list ap,
+verror(const Loc& loc, const char *format, va_list ap,
        const char *p1, const char *p2, const char *)
 {
   if (!global.gag)
@@ -180,7 +180,7 @@ verror(Loc loc, const char *format, va_list ap,
 // Doesn't increase error count.
 
 void
-errorSupplemental(Loc loc, const char *format, ...)
+errorSupplemental(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -189,7 +189,7 @@ errorSupplemental(Loc loc, const char *format, ...)
 }
 
 void
-verrorSupplemental(Loc loc, const char *format, va_list ap)
+verrorSupplemental(const Loc& loc, const char *format, va_list ap)
 {
   if (!global.gag)
     {
@@ -204,7 +204,7 @@ verrorSupplemental(Loc loc, const char *format, va_list ap)
 // Print a warning message.
 
 void
-warning(Loc loc, const char *format, ...)
+warning(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -213,7 +213,7 @@ warning(Loc loc, const char *format, ...)
 }
 
 void
-vwarning(Loc loc, const char *format, va_list ap)
+vwarning(const Loc& loc, const char *format, va_list ap)
 {
   if (global.params.warnings && !global.gag)
     {
@@ -232,7 +232,7 @@ vwarning(Loc loc, const char *format, va_list ap)
 // Print a deprecation message.
 
 void
-deprecation(Loc loc, const char *format, ...)
+deprecation(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -241,7 +241,7 @@ deprecation(Loc loc, const char *format, ...)
 }
 
 void
-vdeprecation(Loc loc, const char *format, va_list ap,
+vdeprecation(const Loc& loc, const char *format, va_list ap,
 	      const char *p1, const char *p2)
 {
   if (global.params.useDeprecated == 0)
