@@ -141,8 +141,9 @@ public:
     int imports(Module *m);
 
     bool isRoot() { return this->importedFrom == this; }
-                                // true if the module source file is directly
-                                // listed in command line.
+    // true if the module source file is directly
+    // listed in command line.
+    bool isCoreModule(Identifier *ident);
 
     // Back end
 

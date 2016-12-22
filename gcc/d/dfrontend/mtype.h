@@ -48,7 +48,6 @@ typedef struct TYPE type;
 
 void semanticTypeInfo(Scope *sc, Type *t);
 MATCH deduceType(RootObject *o, Scope *sc, Type *tparam, TemplateParameters *parameters, Objects *dedtypes, unsigned *wm = NULL, size_t inferStart = 0);
-Type *reliesOnTident(Type *t, TemplateParameters *tparams = NULL, size_t iStart = 0);
 StorageClass ModToStc(unsigned mod);
 
 enum ENUMTY
@@ -123,6 +122,15 @@ enum MODFlags
     MODmutable   = 0x10       // type is mutable (only used in wildcard matching)
 };
 typedef unsigned char MOD;
+
+// These tables are for implicit conversion of binary ops;
+// the indices are the type of operand one, followed by operand two.
+extern unsigned char impcnvResult[TMAX][TMAX];
+extern unsigned char impcnvType1[TMAX][TMAX];
+extern unsigned char impcnvType2[TMAX][TMAX];
+
+// If !=0, give warning on implicit conversion
+extern unsigned char impcnvWarn[TMAX][TMAX];
 
 class Type : public RootObject
 {
@@ -223,15 +231,6 @@ public:
     static unsigned char sizeTy[TMAX];
     static StringTable stringtable;
 
-    // These tables are for implicit conversion of binary ops;
-    // the indices are the type of operand one, followed by operand two.
-    static unsigned char impcnvResult[TMAX][TMAX];
-    static unsigned char impcnvType1[TMAX][TMAX];
-    static unsigned char impcnvType2[TMAX][TMAX];
-
-    // If !=0, give warning on implicit conversion
-    static unsigned char impcnvWarn[TMAX][TMAX];
-
     Type(TY ty);
     virtual const char *kind();
     Type *copy();
@@ -243,7 +242,6 @@ public:
     int covariant(Type *t, StorageClass *pstc = NULL);
     const char *toChars();
     char *toPrettyChars(bool QualifyTypes = false);
-    static char needThisPrefix();
     static void init();
 
     #define SIZE_INVALID (~(d_uns64)0)
@@ -596,8 +594,6 @@ enum PURE
     PUREconst = 3,      // parameters are values or const
     PUREstrong = 4,     // parameters are values or immutable
 };
-
-RET retStyle(TypeFunction *tf);
 
 class TypeFunction : public TypeNext
 {

@@ -89,7 +89,6 @@ Declaration::Declaration(Identifier *id)
     protection = Prot(PROTundefined);
     linkage = LINKdefault;
     inuse = 0;
-    sem = SemanticStart;
     mangleOverride = NULL;
 }
 
@@ -816,11 +815,11 @@ void VarDeclaration::semantic(Scope *sc)
     //if (strcmp(toChars(), "mul") == 0) halt();
 #endif
 
-//    if (sem > SemanticStart)
+//    if (semanticRun > PASSinit)
 //      return;
-//    sem = SemanticIn;
+//    semanticRun = PASSsemantic;
 
-    if (sem >= SemanticDone)
+    if (semanticRun >= PASSsemanticdone)
         return;
 
     Scope *scx = NULL;
@@ -1115,7 +1114,7 @@ Lnomatch:
         v2->parent = this->parent;
         v2->isexp = true;
         aliassym = v2;
-        sem = SemanticDone;
+        semanticRun = PASSsemanticdone;
         return;
     }
 
@@ -1538,7 +1537,7 @@ Ldtor:
 #endif
     }
 
-    sem = SemanticDone;
+    semanticRun = PASSsemanticdone;
 
     if (type->toBasetype()->ty == Terror)
         errors = true;
@@ -1553,7 +1552,7 @@ Ldtor:
 
 void VarDeclaration::semantic2(Scope *sc)
 {
-    if (sem < SemanticDone && inuse)
+    if (semanticRun < PASSsemanticdone && inuse)
         return;
 
     //printf("VarDeclaration::semantic2('%s')\n", toChars());
@@ -1646,7 +1645,7 @@ void VarDeclaration::semantic2(Scope *sc)
             }
         }
     }
-    sem = Semantic2Done;
+    semanticRun = PASSsemantic2done;
 }
 
 void VarDeclaration::setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion)
