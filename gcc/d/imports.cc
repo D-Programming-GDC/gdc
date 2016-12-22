@@ -117,16 +117,6 @@ public:
       }
   }
 
-  // Import a member of an enum declaration.
-  void visit(EnumMember *m)
-  {
-    if (m->vd != NULL)
-      {
-	m->vd->accept(this);
-	m->isym = m->vd->isym;
-      }
-  }
-
   // Skip over importing templates and tuples.
   void visit(TemplateDeclaration *)
   {

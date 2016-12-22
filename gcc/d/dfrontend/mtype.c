@@ -6746,6 +6746,12 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
             s = sm->toAlias();
         }
 
+        if (EnumMember *em = s->isEnumMember())
+        {
+            // It's not a type, it's an expression
+            *pe = em->getVarExp(loc, sc);
+            return;
+        }
         if (VarDeclaration *v = s->isVarDeclaration())
         {
             /* This is mostly same with DsymbolExp::semantic(), but we cannot use it
@@ -6783,12 +6789,6 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
             return;
         }
 #endif
-        if (EnumMember *em = s->isEnumMember())
-        {
-            // It's not a type, it's an expression
-            *pe = em->getVarExp(loc, sc);
-            return;
-        }
 
 L1:
         Type *t = s->getType();
@@ -6925,6 +6925,8 @@ Dsymbol *TypeIdentifier::toDsymbol(Scope *sc)
     resolve(loc, sc, &e, &t, &s);
     if (t && t->ty != Tident)
         s = t->toDsymbol(sc);
+    if (e)
+        s = getDsymbol(e);
 
     return s;
 }
@@ -7690,6 +7692,12 @@ L1:
         s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
 
+    EnumMember *em = s->isEnumMember();
+    if (em)
+    {
+        return em->getVarExp(e->loc, sc);
+    }
+
     VarDeclaration *v = s->isVarDeclaration();
     if (v && (!v->type || !v->type->deco))
     {
@@ -7716,12 +7724,6 @@ L1:
     if (s->getType())
     {
         return new TypeExp(e->loc, s->getType());
-    }
-
-    EnumMember *em = s->isEnumMember();
-    if (em)
-    {
-        return em->getVarExp(e->loc, sc);
     }
 
     TemplateMixin *tm = s->isTemplateMixin();
@@ -8359,6 +8361,12 @@ L1:
         s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
 
+    EnumMember *em = s->isEnumMember();
+    if (em)
+    {
+        return em->getVarExp(e->loc, sc);
+    }
+
     VarDeclaration *v = s->isVarDeclaration();
     if (v && (!v->type || !v->type->deco))
     {
@@ -8385,12 +8393,6 @@ L1:
     if (s->getType())
     {
         return new TypeExp(e->loc, s->getType());
-    }
-
-    EnumMember *em = s->isEnumMember();
-    if (em)
-    {
-        return em->getVarExp(e->loc, sc);
     }
 
     TemplateMixin *tm = s->isTemplateMixin();
