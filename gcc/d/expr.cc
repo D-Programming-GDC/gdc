@@ -877,7 +877,7 @@ public:
 		|| (e->e2->op == TOKcast && ((UnaExp *) e->e2)->e1->isLvalue())))
 	  postblit = true;
 
-	if (e->ismemset & 1)
+	if (e->memset & blockAssign)
 	  {
 	    // Set a range of elements to one value.
 	    tree t1 = d_save_expr(build_expr(e->e1));
@@ -965,7 +965,8 @@ public:
       }
 
     // Look for reference initializations
-    if (e->op == TOKconstruct && e->e1->op == TOKvar && !(e->ismemset & 2))
+    if (e->op == TOKconstruct && e->e1->op == TOKvar
+	&& !(e->memset & referenceInit))
       {
 	Declaration *decl = ((VarExp *) e->e1)->var;
 	if (decl->storage_class & (STCout | STCref))
