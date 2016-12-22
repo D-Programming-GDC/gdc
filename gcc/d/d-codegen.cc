@@ -1485,7 +1485,7 @@ build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
   for (size_t i = 0; i < cd->baseclasses->dim; i++, offset++)
     {
       BaseClass *bc = (*cd->baseclasses)[i];
-      BINFO_BASE_APPEND (binfo, build_interface_binfo (binfo, bc->base, offset));
+      BINFO_BASE_APPEND (binfo, build_interface_binfo (binfo, bc->sym, offset));
     }
 
   return binfo;

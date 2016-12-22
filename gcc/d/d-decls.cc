@@ -839,7 +839,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
       for (size_t i = 0; i < decl->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *b = (*decl->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->base;
+	  ClassDeclaration *id = b->sym;
 	  unsigned offset = decl->baseVtblOffset (b);
 
 	  if (id->vtbl.dim && offset != ~0u)
@@ -859,7 +859,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
       for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *b = (*bcd->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->base;
+	  ClassDeclaration *id = b->sym;
 	  unsigned offset = decl->baseVtblOffset (b);
 
 	  if (id->vtbl.dim && offset != ~0u)
