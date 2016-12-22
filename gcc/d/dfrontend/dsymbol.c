@@ -47,7 +47,7 @@ Dsymbol::Dsymbol()
     this->isym = NULL;
     this->loc = Loc();
     this->comment = NULL;
-    this->scope = NULL;
+    this->_scope = NULL;
     this->semanticRun = PASSinit;
     this->errors = false;
     this->depmsg = NULL;
@@ -64,7 +64,7 @@ Dsymbol::Dsymbol(Identifier *ident)
     this->isym = NULL;
     this->loc = Loc();
     this->comment = NULL;
-    this->scope = NULL;
+    this->_scope = NULL;
     this->semanticRun = PASSinit;
     this->errors = false;
     this->depmsg = NULL;
@@ -366,7 +366,7 @@ void Dsymbol::setScope(Scope *sc)
     //printf("Dsymbol::setScope() %p %s, %p stc = %llx\n", this, toChars(), sc, sc->stc);
     if (!sc->nofree)
         sc->setNoFree();                // may need it even after semantic() finishes
-    scope = sc;
+    _scope = sc;
     if (sc->depmsg)
         depmsg = sc->depmsg;
 
@@ -1282,7 +1282,7 @@ Dsymbol *WithScopeSymbol::search(Loc loc, Identifier *ident, int flags)
     // Acts as proxy to the with class declaration
     Dsymbol *s = NULL;
     Expression *eold = NULL;
-    for (Expression *e = withstate->exp; e != eold; e = resolveAliasThis(scope, e))
+    for (Expression *e = withstate->exp; e != eold; e = resolveAliasThis(_scope, e))
     {
         if (e->op == TOKimport)
         {
@@ -1353,7 +1353,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
              */
             VarDeclaration *v = new VarDeclaration(loc, Type::tsize_t, Id::dollar, NULL);
             Expression *e = new IntegerExp(Loc(), td->objects->dim, Type::tsize_t);
-            v->init = new ExpInitializer(Loc(), e);
+            v->_init = new ExpInitializer(Loc(), e);
             v->storage_class |= STCtemp | STCstatic | STCconst;
             v->semantic(sc);
             return v;
@@ -1365,7 +1365,7 @@ Dsymbol *ArrayScopeSymbol::search(Loc loc, Identifier *ident, int flags)
              */
             VarDeclaration *v = new VarDeclaration(loc, Type::tsize_t, Id::dollar, NULL);
             Expression *e = new IntegerExp(Loc(), type->arguments->dim, Type::tsize_t);
-            v->init = new ExpInitializer(Loc(), e);
+            v->_init = new ExpInitializer(Loc(), e);
             v->storage_class |= STCtemp | STCstatic | STCconst;
             v->semantic(sc);
             return v;

@@ -485,8 +485,8 @@ VarDeclaration::toObjFile()
 	return;
 
       tree decl = get_symbol_decl (this);
-      gcc_assert (init && !init->isVoidInitializer());
-      Expression *ie = init->toExpression();
+      gcc_assert (this->_init && !this->_init->isVoidInitializer());
+      Expression *ie = this->_init->toExpression();
 
       // CONST_DECL was initially intended for enumerals and may be used for
       // scalars in general, but not for aggregates.  Here a non-constant value
@@ -520,11 +520,11 @@ VarDeclaration::toObjFile()
 
       size_t sz = type->size();
 
-      if (init && !init->isVoidInitializer())
+      if (this->_init && !this->_init->isVoidInitializer())
 	{
 	  // Look for static array that is block initialised.
 	  Type *tb = type->toBasetype();
-	  ExpInitializer *ie = init->isExpInitializer();
+	  ExpInitializer *ie = this->_init->isExpInitializer();
 
 	  if (ie != NULL && tb->ty == Tsarray
 	      && !d_types_same(tb, ie->exp->type))
@@ -533,7 +533,7 @@ VarDeclaration::toObjFile()
 	      dt_cons (&DECL_LANG_INITIAL (s), build_array_from_val (tb, val));
 	    }
 	  else
-	    DECL_LANG_INITIAL (s) = init->toDt();
+	    DECL_LANG_INITIAL (s) = this->_init->toDt();
 	}
       else
 	{
@@ -559,11 +559,11 @@ VarDeclaration::toObjFile()
 	{
 	  build_local_var (this);
 
-	  if (init)
+	  if (this->_init)
 	    {
-	      if (!init->isVoidInitializer())
+	      if (!this->_init->isVoidInitializer())
 		{
-		  ExpInitializer *vinit = init->isExpInitializer();
+		  ExpInitializer *vinit = this->_init->isExpInitializer();
 		  Expression *ie = vinit->toExpression();
 		  tree exp = build_expr(ie);
 		  add_stmt(exp);
@@ -1642,7 +1642,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
   func->parent = mod;
   func->protection = PROTprivate;
 
-  func->semantic (mod->scope);
+  func->semantic (mod->_scope);
   Statements *body = new Statements();
   for (size_t i = 0; i < tlsVars.length(); i++)
     {
@@ -1657,7 +1657,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
       body->push (ExpStatement::create (mod->loc, call));
     }
   func->fbody = new CompoundStatement (mod->loc, body);
-  func->semantic3 (mod->scope);
+  func->semantic3 (mod->_scope);
   func->toObjFile();
 
   return get_symbol_decl (func);

@@ -197,16 +197,16 @@ public:
         s->condition->accept(this);
         buf->writeByte(')');
         buf->writenl();
-        if (s->body)
-            s->body->accept(this);
+        if (s->_body)
+            s->_body->accept(this);
     }
 
     void visit(DoStatement *s)
     {
         buf->writestring("do");
         buf->writenl();
-        if (s->body)
-            s->body->accept(this);
+        if (s->_body)
+            s->_body->accept(this);
         buf->writestring("while (");
         s->condition->accept(this);
         buf->writestring(");");
@@ -216,10 +216,10 @@ public:
     void visit(ForStatement *s)
     {
         buf->writestring("for (");
-        if (s->init)
+        if (s->_init)
         {
             hgs->forStmtInit++;
-            s->init->accept(this);
+            s->_init->accept(this);
             hgs->forStmtInit--;
         }
         else
@@ -240,7 +240,7 @@ public:
         buf->writeByte('{');
         buf->writenl();
         buf->level++;
-        s->body->accept(this);
+        s->_body->accept(this);
         buf->level--;
         buf->writeByte('}');
         buf->writenl();
@@ -268,8 +268,8 @@ public:
         buf->writeByte('{');
         buf->writenl();
         buf->level++;
-        if (s->body)
-            s->body->accept(this);
+        if (s->_body)
+            s->_body->accept(this);
         buf->level--;
         buf->writeByte('}');
         buf->writenl();
@@ -294,8 +294,8 @@ public:
         buf->writeByte('{');
         buf->writenl();
         buf->level++;
-        if (s->body)
-            s->body->accept(this);
+        if (s->_body)
+            s->_body->accept(this);
         buf->level--;
         buf->writeByte('}');
         buf->writenl();
@@ -372,14 +372,14 @@ public:
             argsToBuffer(s->args);
         }
         buf->writeByte(')');
-        if (s->body)
+        if (s->_body)
         {
             buf->writenl();
             buf->writeByte('{');
             buf->writenl();
             buf->level++;
 
-            s->body->accept(this);
+            s->_body->accept(this);
 
             buf->level--;
             buf->writeByte('}');
@@ -403,21 +403,21 @@ public:
         s->condition->accept(this);
         buf->writeByte(')');
         buf->writenl();
-        if (s->body)
+        if (s->_body)
         {
-            if (!s->body->isScopeStatement())
+            if (!s->_body->isScopeStatement())
             {
                 buf->writeByte('{');
                 buf->writenl();
                 buf->level++;
-                s->body->accept(this);
+                s->_body->accept(this);
                 buf->level--;
                 buf->writeByte('}');
                 buf->writenl();
             }
             else
             {
-                s->body->accept(this);
+                s->_body->accept(this);
             }
         }
     }
@@ -515,10 +515,10 @@ public:
             s->exp->accept(this);
             buf->writeByte(')');
         }
-        if (s->body)
+        if (s->_body)
         {
             buf->writeByte(' ');
-            s->body->accept(this);
+            s->_body->accept(this);
         }
     }
 
@@ -528,16 +528,16 @@ public:
         s->exp->accept(this);
         buf->writestring(")");
         buf->writenl();
-        if (s->body)
-            s->body->accept(this);
+        if (s->_body)
+            s->_body->accept(this);
     }
 
     void visit(TryCatchStatement *s)
     {
         buf->writestring("try");
         buf->writenl();
-        if (s->body)
-            s->body->accept(this);
+        if (s->_body)
+            s->_body->accept(this);
         for (size_t i = 0; i < s->catches->dim; i++)
         {
             Catch *c = (*s->catches)[i];
@@ -552,7 +552,7 @@ public:
         buf->writeByte('{');
         buf->writenl();
         buf->level++;
-        s->body->accept(this);
+        s->_body->accept(this);
         buf->level--;
         buf->writeByte('}');
         buf->writenl();
@@ -1487,14 +1487,14 @@ public:
             visitTemplateParameters(hgs->ddoc ? d->origParameters : d->parameters);
             buf->writeByte(')');
 
-            if (vd->init)
+            if (vd->_init)
             {
                 buf->writestring(" = ");
-                ExpInitializer *ie = vd->init->isExpInitializer();
+                ExpInitializer *ie = vd->_init->isExpInitializer();
                 if (ie && (ie->exp->op == TOKconstruct || ie->exp->op == TOKblit))
                     ((AssignExp *)ie->exp)->e2->accept(this);
                 else
-                    vd->init->accept(this);
+                    vd->_init->accept(this);
             }
             buf->writeByte(';');
             buf->writenl();
@@ -1816,14 +1816,14 @@ public:
             else
                 buf->writestring(v->ident->toChars());
         }
-        if (v->init)
+        if (v->_init)
         {
             buf->writestring(" = ");
-            ExpInitializer *ie = v->init->isExpInitializer();
+            ExpInitializer *ie = v->_init->isExpInitializer();
             if (ie && (ie->exp->op == TOKconstruct || ie->exp->op == TOKblit))
                 ((AssignExp *)ie->exp)->e2->accept(this);
             else
-                v->init->accept(this);
+                v->_init->accept(this);
         }
     }
 
