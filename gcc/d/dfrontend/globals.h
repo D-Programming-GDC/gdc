@@ -285,6 +285,13 @@ enum LINK
     LINKpascal,
 };
 
+enum CPPMANGLE
+{
+    CPPMANGLEdefault,
+    CPPMANGLEstruct,
+    CPPMANGLEclass,
+};
+
 enum DYNCAST
 {
     DYNCAST_OBJECT,
