@@ -338,3 +338,14 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
   return e;
 }
 
+// Stubs for Objective-C support.
+
+Objc_FuncDeclaration::Objc_FuncDeclaration (void)
+     : fdecl(NULL)
+{
+}
+
+Objc_FuncDeclaration::Objc_FuncDeclaration (FuncDeclaration *fdecl)
+     : fdecl(fdecl)
+{
+}

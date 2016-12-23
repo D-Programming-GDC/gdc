@@ -20,6 +20,7 @@
 
 #include "dsymbol.h"
 #include "declaration.h"
+#include "objc.h"
 
 class Identifier;
 class Type;
@@ -289,6 +290,7 @@ public:
     Abstract isabstract;                // 0: fwdref, 1: is abstract class, 2: not abstract
     int inuse;                          // to prevent recursive attempts
     Baseok baseok;                      // set the progress of base classes resolving
+    Objc_ClassDeclaration objc;
 
     ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses, bool inObject = false);
     Dsymbol *syntaxCopy(Dsymbol *s);
