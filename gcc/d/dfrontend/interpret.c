@@ -3158,7 +3158,6 @@ public:
             case TOKneg:    ue = Neg(e->type, e1);  break;
             case TOKtilde:  ue = Com(e->type, e1);  break;
             case TOKnot:    ue = Not(e->type, e1);  break;
-            case TOKtobool: ue = Bool(e->type, e1); break;
             case TOKvector: result = e;             return; // do nothing
             default:        assert(0);
         }

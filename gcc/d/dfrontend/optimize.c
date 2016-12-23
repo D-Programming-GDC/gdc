@@ -314,17 +314,6 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             }
         }
 
-        void visit(BoolExp *e)
-        {
-            if (unaOptimize(e, result))
-                return;
-
-            if (e->e1->isConst() == 1)
-            {
-                ret = Bool(e->type, e->e1).copy();
-            }
-        }
-
         void visit(SymOffExp *e)
         {
             assert(e->var);
@@ -1100,7 +1089,10 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
                     if (e->type->toBasetype()->ty == Tvoid)
                         ret = e->e2;
                     else
-                        ret = new BoolExp(e->loc, e->e2, e->type);
+                    {
+                        ret = new CastExp(e->loc, e->e2, e->type);
+                        ret->type = e->type;
+                    }
                 }
             }
         }
@@ -1141,7 +1133,10 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
                     if (e->type->toBasetype()->ty == Tvoid)
                         ret = e->e2;
                     else
-                        ret = new BoolExp(e->loc, e->e2, e->type);
+                    {
+                        ret = new CastExp(e->loc, e->e2, e->type);
+                        ret->type = e->type;
+                    }
                 }
             }
         }

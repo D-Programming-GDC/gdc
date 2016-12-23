@@ -1340,13 +1340,6 @@ public:
   }
 
   //
-  void visit(BoolExp *e)
-  {
-    // Check, should we instead do truthvalue conversion?
-    this->result_ = d_convert(build_ctype(e->type), build_expr(e->e1));
-  }
-
-  //
   void visit(DeleteExp *e)
   {
     tree t1 = build_expr(e->e1);
