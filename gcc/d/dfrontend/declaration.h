@@ -241,7 +241,7 @@ class VarDeclaration : public Declaration
 public:
     Initializer *_init;
     unsigned offset;
-    bool noscope;                // no auto semantics
+    bool noscope;                // if scope destruction is disabled
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
     bool isargptr;              // if parameter that _argptr points to
     structalign_t alignment;
@@ -279,7 +279,7 @@ public:
     bool isOverlappedWith(VarDeclaration *v);
     bool hasPointers();
     bool canTakeAddressOf();
-    bool needsAutoDtor();
+    bool needsScopeDtor();
     Expression *callScopeDtor(Scope *sc);
     ExpInitializer *getExpInitializer();
     Expression *getConstInitializer(bool needFullType = true);

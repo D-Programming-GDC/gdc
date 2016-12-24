@@ -4327,7 +4327,7 @@ build_frame_type (tree ffi, FuncDeclaration *func)
 	func->nrvo_can = 0;
 
       // Because the value needs to survive the end of the scope.
-      if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsAutoDtor())
+      if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsScopeDtor())
 	v->error("has scoped destruction, cannot build closure");
     }
 

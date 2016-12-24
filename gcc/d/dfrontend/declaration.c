@@ -777,7 +777,7 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     this->_init = init;
     this->loc = loc;
     offset = 0;
-    noscope = 0;
+    noscope = false;
     isargptr = false;
     alignment = 0;
     ctorinit = 0;
@@ -2041,14 +2041,10 @@ bool VarDeclaration::hasPointers()
  * Return true if variable needs to call the destructor.
  */
 
-bool VarDeclaration::needsAutoDtor()
+bool VarDeclaration::needsScopeDtor()
 {
-    //printf("VarDeclaration::needsAutoDtor() %s\n", toChars());
-
-    if (noscope || !edtor)
-        return false;
-
-    return true;
+    //printf("VarDeclaration::needsScopeDtor() %s\n", toChars());
+    return edtor && !noscope;
 }
 
 
@@ -2480,7 +2476,7 @@ TypeInfoTupleDeclaration *TypeInfoTupleDeclaration::create(Type *tinfo)
 ThisDeclaration::ThisDeclaration(Loc loc, Type *t)
    : VarDeclaration(loc, t, Id::This, NULL)
 {
-    noscope = 1;
+    noscope = true;
 }
 
 Dsymbol *ThisDeclaration::syntaxCopy(Dsymbol *s)

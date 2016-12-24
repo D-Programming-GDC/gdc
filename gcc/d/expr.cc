@@ -1897,7 +1897,7 @@ public:
 	if (!vd->isStatic() && !(vd->storage_class & STCmanifest)
 	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
 	  {
-	    if (vd->edtor && !vd->noscope)
+	    if (vd->needsScopeDtor ())
 	      cfun->language->vars_in_scope.safe_push(vd);
 	  }
       }
