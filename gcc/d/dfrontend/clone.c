@@ -236,7 +236,7 @@ FuncDeclaration *buildOpAssign(StructDeclaration *sd, Scope *sc)
 
     FuncDeclaration *fop = new FuncDeclaration(declLoc, Loc(), Id::assign, stc, tf);
     fop->storage_class |= STCinference;
-
+    fop->generated = true;
     Expression *e = NULL;
     if (stc & STCdisable)
     {
@@ -513,7 +513,7 @@ FuncDeclaration *buildXopEquals(StructDeclaration *sd, Scope *sc)
 
     Identifier *id = Id::xopEquals;
     FuncDeclaration *fop = new FuncDeclaration(declLoc, Loc(), id, STCstatic, tf);
-
+    fop->generated = true;
     Expression *e1 = new IdentifierExp(loc, Id::p);
     Expression *e2 = new IdentifierExp(loc, Id::q);
     Expression *e = new EqualExp(TOKequal, loc, e1, e2);
@@ -633,7 +633,7 @@ FuncDeclaration *buildXopCmp(StructDeclaration *sd, Scope *sc)
 
     Identifier *id = Id::xopCmp;
     FuncDeclaration *fop = new FuncDeclaration(declLoc, Loc(), id, STCstatic, tf);
-
+    fop->generated = true;
     Expression *e1 = new IdentifierExp(loc, Id::p);
     Expression *e2 = new IdentifierExp(loc, Id::q);
 #ifdef IN_GCC
@@ -751,6 +751,7 @@ FuncDeclaration *buildXtoHash(StructDeclaration *sd, Scope *sc)
 
     Identifier *id = Id::xtoHash;
     FuncDeclaration *fop = new FuncDeclaration(declLoc, Loc(), id, STCstatic, tf);
+    fop->generated = true;
 
     const char *code =
         "size_t h = 0;"
@@ -904,6 +905,7 @@ FuncDeclaration *buildPostBlit(StructDeclaration *sd, Scope *sc)
         //printf("Building __fieldPostBlit()\n");
         PostBlitDeclaration *dd = new PostBlitDeclaration(declLoc, Loc(), stc, Id::__fieldPostblit);
         dd->storage_class |= STCinference;
+        dd->generated = true;
         dd->fbody = a ? new CompoundStatement(loc, a) : NULL;
         sd->postblits.shift(dd);
         sd->members->push(dd);
