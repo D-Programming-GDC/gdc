@@ -1200,7 +1200,7 @@ Statement *CompoundStatement::semantic(Scope *sc)
                             a->push((*statements)[j]);
                         }
                         Statement *body = new CompoundStatement(Loc(), a);
-                        body = new ScopeStatement(Loc(), body);
+                        body = new ScopeStatement(Loc(), body, Loc());
 
                         Identifier *id = Identifier::generateId("__o");
 
@@ -1411,15 +1411,16 @@ bool UnrolledLoopStatement::hasContinue()
 
 /******************************** ScopeStatement ***************************/
 
-ScopeStatement::ScopeStatement(Loc loc, Statement *s)
+ScopeStatement::ScopeStatement(Loc loc, Statement *s, Loc endloc)
     : Statement(loc)
 {
     this->statement = s;
+    this->endloc = endloc;
 }
 
 Statement *ScopeStatement::syntaxCopy()
 {
-    return new ScopeStatement(loc, statement ? statement->syntaxCopy() : NULL);
+    return new ScopeStatement(loc, statement ? statement->syntaxCopy() : NULL, endloc);
 }
 
 ReturnStatement *ScopeStatement::isReturnStatement()
@@ -1437,6 +1438,7 @@ Statement *ScopeStatement::semantic(Scope *sc)
     {
         sym = new ScopeDsymbol();
         sym->parent = sc->scopesym;
+        sym->endlinnum = endloc.linnum;
         sc = sc->push(sym);
 
         Statements *a = statement->flatten(sc);
@@ -1525,18 +1527,20 @@ bool WhileStatement::hasContinue()
 
 /******************************** DoStatement ***************************/
 
-DoStatement::DoStatement(Loc loc, Statement *b, Expression *c)
+DoStatement::DoStatement(Loc loc, Statement *b, Expression *c, Loc endloc)
     : Statement(loc)
 {
     _body = b;
     condition = c;
+    this->endloc = endloc;
 }
 
 Statement *DoStatement::syntaxCopy()
 {
     return new DoStatement(loc,
         _body ? _body->syntaxCopy() : NULL,
-        condition->syntaxCopy());
+        condition->syntaxCopy(),
+        endloc);
 }
 
 Statement *DoStatement::semantic(Scope *sc)
@@ -1617,7 +1621,7 @@ Statement *ForStatement::semantic(Scope *sc)
         ainit->push(_init), _init = NULL;
         ainit->push(this);
         Statement *s = new CompoundStatement(loc, ainit);
-        s = new ScopeStatement(loc, s);
+        s = new ScopeStatement(loc, s, endloc);
         s = s->semantic(sc);
         if (!s->isErrorStatement())
         {
@@ -1631,6 +1635,7 @@ Statement *ForStatement::semantic(Scope *sc)
 
     ScopeDsymbol *sym = new ScopeDsymbol();
     sym->parent = sc->scopesym;
+    sym->endlinnum = endloc.linnum;
     sc = sc->push(sym);
 
     sc->noctor++;
@@ -1951,7 +1956,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
             st->push(_body->syntaxCopy());
             s = new CompoundStatement(loc, st);
-            s = new ScopeStatement(loc, s);
+            s = new ScopeStatement(loc, s, endloc);
             statements->push(s);
         }
 
@@ -1967,6 +1972,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
 
     sym = new ScopeDsymbol();
     sym->parent = sc->scopesym;
+    sym->endlinnum = endloc.linnum;
     sc = sc->push(sym);
 
     sc->noctor++;
@@ -2104,6 +2110,7 @@ Statement *ForeachStatement::semantic(Scope *sc)
             else
                 tmp = new VarDeclaration(loc, tab->nextOf()->arrayOf(), id, ie);
             tmp->storage_class |= STCtemp;
+            tmp->endlinnum = endloc.linnum;
 
             Expression *tmp_length = new DotIdExp(loc, new VarExp(loc, tmp), Id::length);
 
@@ -2927,13 +2934,14 @@ bool ForeachRangeStatement::hasContinue()
 
 /******************************** IfStatement ***************************/
 
-IfStatement::IfStatement(Loc loc, Parameter *prm, Expression *condition, Statement *ifbody, Statement *elsebody)
+IfStatement::IfStatement(Loc loc, Parameter *prm, Expression *condition, Statement *ifbody, Statement *elsebody, Loc endloc)
     : Statement(loc)
 {
     this->prm = prm;
     this->condition = condition;
     this->ifbody = ifbody;
     this->elsebody = elsebody;
+    this->endloc = endloc;
     this->match = NULL;
 }
 
@@ -2943,7 +2951,8 @@ Statement *IfStatement::syntaxCopy()
         prm ? prm->syntaxCopy() : NULL,
         condition->syntaxCopy(),
         ifbody ? ifbody->syntaxCopy() : NULL,
-        elsebody ? elsebody->syntaxCopy() : NULL);
+        elsebody ? elsebody->syntaxCopy() : NULL,
+        endloc);
 }
 
 Statement *IfStatement::semantic(Scope *sc)
@@ -2956,6 +2965,7 @@ Statement *IfStatement::semantic(Scope *sc)
 
     ScopeDsymbol *sym = new ScopeDsymbol();
     sym->parent = sc->scopesym;
+    sym->endlinnum = endloc.linnum;
     Scope *scd = sc->push(sym);
     if (prm)
     {
@@ -4463,11 +4473,12 @@ bool SynchronizedStatement::hasContinue()
 
 /******************************** WithStatement ***************************/
 
-WithStatement::WithStatement(Loc loc, Expression *exp, Statement *body)
+WithStatement::WithStatement(Loc loc, Expression *exp, Statement *body, Loc endloc)
     : Statement(loc)
 {
     this->exp = exp;
     this->_body = body;
+    this->endloc = endloc;
     wthis = NULL;
 }
 
@@ -4475,7 +4486,7 @@ Statement *WithStatement::syntaxCopy()
 {
     return new WithStatement(loc,
         exp->syntaxCopy(),
-        _body ? _body->syntaxCopy() : NULL);
+        _body ? _body->syntaxCopy() : NULL, endloc);
 }
 
 Statement *WithStatement::semantic(Scope *sc)
@@ -4494,6 +4505,7 @@ Statement *WithStatement::semantic(Scope *sc)
     {
         sym = new WithScopeSymbol(this);
         sym->parent = sc->scopesym;
+        sym->endlinnum = endloc.linnum;
     }
     else if (exp->op == TOKtype)
     {
@@ -4505,6 +4517,7 @@ Statement *WithStatement::semantic(Scope *sc)
         }
         sym = new WithScopeSymbol(this);
         sym->parent = sc->scopesym;
+        sym->endlinnum = endloc.linnum;
     }
     else
     {
@@ -4528,6 +4541,7 @@ Statement *WithStatement::semantic(Scope *sc)
 
             sym = new WithScopeSymbol(this);
             sym->parent = sc->scopesym;
+            sym->endlinnum = endloc.linnum;
         }
         else if (t->ty == Tstruct)
         {
@@ -4547,7 +4561,7 @@ Statement *WithStatement::semantic(Scope *sc)
                 wthis->storage_class |= STCtemp;
                 ExpStatement *es = new ExpStatement(loc, new DeclarationExp(loc, wthis));
                 exp = new VarExp(loc, wthis);
-                Statement *ss = new ScopeStatement(loc, new CompoundStatement(loc, es, this));
+                Statement *ss = new ScopeStatement(loc, new CompoundStatement(loc, es, this), endloc);
                 return ss->semantic(sc);
             }
             Expression *e = exp->addressOf();
@@ -4558,6 +4572,7 @@ Statement *WithStatement::semantic(Scope *sc)
             // Need to set the scope to make use of resolveAliasThis
             sym->setScope(sc);
             sym->parent = sc->scopesym;
+            sym->endlinnum = endloc.linnum;
         }
         else
         {
@@ -4900,7 +4915,7 @@ Statement *OnScopeStatement::scopeCode(Scope *sc, Statement **sentry, Statement 
 
             e = new VarExp(Loc(), v);
             e = new NotExp(Loc(), e);
-            *sfinally = new IfStatement(Loc(), NULL, e, s, NULL);
+            *sfinally = new IfStatement(Loc(), NULL, e, s, NULL, Loc());
 
             break;
         }
@@ -5027,7 +5042,7 @@ Statement *GotoStatement::semantic(Scope *sc)
          * so we can patch it later, and add it to a 'look at this later'
          * list.
          */
-        ScopeStatement *ss = new ScopeStatement(loc, this);
+        ScopeStatement *ss = new ScopeStatement(loc, this, loc);
         sc->fes->gotos->push(ss);       // 'look at this later' list
         return ss;
     }
