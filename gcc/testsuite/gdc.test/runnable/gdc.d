@@ -690,7 +690,7 @@ void test122()
     import std.range : iota;
 
     immutable n = 10000;
-    immutable delta = 1.0 / n;
+    enum delta = 1.0 / n;       // XBUG: was 'immutable delta' https://issues.dlang.org/show_bug.cgi?id=17092
     immutable pi = 4.0 * delta * taskPool.reduce!"a + b"(
         map!((int i) { immutable x = (i - 0.5) * delta; return 1.0 / (1.0 + x * x); })(iota(n)));
 }

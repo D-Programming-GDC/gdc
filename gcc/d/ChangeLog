@@ -36,6 +36,13 @@
 
 2017-12-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* expr.cc (ExprVisitor::needs_dtor): New function.
+	(ExprVisitor::lvalue_p): New function.
+	(ExprVisitor::visit(AssignExp)): Check both for postblit and dtors
+	when generating array assignments.
+
+2017-12-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.cc (convert_expr): Allow upcasting C++ classes.
 	(build_class_instance): Generate initial values of vtable interfaces
 	before class fields.
