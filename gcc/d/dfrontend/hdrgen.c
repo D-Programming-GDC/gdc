@@ -2643,7 +2643,7 @@ public:
         buf->writeByte(')');
     }
 
-    void visit(FileExp *e)
+    void visit(ImportExp *e)
     {
         buf->writestring("import(");
         expToBuffer(e->e1, PREC_assign);
