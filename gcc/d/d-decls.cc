@@ -319,6 +319,27 @@ get_symbol_decl (Declaration *decl)
       if (decl->storage_class & STCfinal)
 	DECL_FINAL_P (decl->csym) = 1;
 
+      /* Declare stub parameters for functions that have no body.  */
+      if (!fd->fbody)
+	{
+	  tree param_list = NULL_TREE;
+	  fntype = TREE_TYPE (decl->csym);
+
+	  for (tree t = TYPE_ARG_TYPES (fntype); t; t = TREE_CHAIN (t))
+	    {
+	      if (t == void_list_node)
+		break;
+
+	      tree param = build_decl (DECL_SOURCE_LOCATION (decl->csym),
+				       PARM_DECL, NULL_TREE, TREE_VALUE (t));
+	      DECL_ARG_TYPE (param) = TREE_TYPE (param);
+	      param_list = chainon (param_list, param);
+	    }
+
+	  DECL_ARGUMENTS (decl->csym) = param_list;
+	}
+
+      /* Check whether this function is expanded by the frontend.  */
       maybe_set_intrinsic (fd);
     }
 
