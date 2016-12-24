@@ -1020,30 +1020,8 @@ void ClassDeclaration::finalizeSize(Scope *sc)
     if (sizeok == SIZEOKfwd)
         return;
 
-    // Allocate instance of each new interface
-    offset = structsize;
-    assert(vtblInterfaces);     // Bugzilla 12984
-    for (size_t i = 0; i < vtblInterfaces->dim; i++)
-    {
-        BaseClass *b = (*vtblInterfaces)[i];
-        unsigned thissize = Target::ptrsize;
-
-        alignmember(STRUCTALIGN_DEFAULT, thissize, &offset);
-        assert(b->offset == 0);
-        b->offset = offset;
-
-        // Take care of single inheritance offsets
-        while (b->baseInterfaces_dim)
-        {
-            b = &b->baseInterfaces[0];
-            b->offset = offset;
-        }
-
-        offset += thissize;
-        if (alignsize < thissize)
-            alignsize = thissize;
-    }
-    structsize = offset;
+    // Add vptr's for any interfaces implemented by this class
+    structsize += setBaseInterfaceOffsets(structsize);
     sizeok = SIZEOKdone;
 
     // Calculate fields[i]->overlapped
@@ -1220,6 +1198,39 @@ void ClassDeclaration::interfaceSemantic(Scope *sc)
         vtblInterfaces->push(b);
         b->copyBaseInterfaces(vtblInterfaces);
     }
+}
+
+unsigned ClassDeclaration::setBaseInterfaceOffsets(unsigned baseOffset)
+{
+    assert(vtblInterfaces);     // Bugzilla 12984
+
+    // set the offset of base interfaces from this (most derived) class/interface.
+    unsigned offset = baseOffset;
+
+    //if (vtblInterfaces->dim) printf("\n%s->finalizeSize()\n", toChars());
+    for (size_t i = 0; i < vtblInterfaces->dim; i++)
+    {
+        BaseClass *b = (*vtblInterfaces)[i];
+        unsigned thissize = Target::ptrsize;
+
+        alignmember(STRUCTALIGN_DEFAULT, thissize, &offset);
+        b->offset = offset;
+        //printf("\tvtblInterfaces[%d] b->sym = %s, offset = %d\n", i, b->sym->toChars(), b->offset);
+
+        // Take care of single inheritance offsets
+        while (b->baseInterfaces_dim)
+        {
+            b = &b->baseInterfaces[0];
+            b->offset = offset;
+            //printf("\tvtblInterfaces[%d] +  sym = %s, offset = %d\n", i, b->sym->toChars(), b->offset);
+        }
+
+        offset += thissize;
+        if (alignsize < thissize)
+            alignsize = thissize;
+    }
+
+    return offset - baseOffset;
 }
 
 /****************************************
@@ -1676,6 +1687,9 @@ void InterfaceDeclaration::finalizeSize(Scope *sc)
 {
     structsize = Target::ptrsize * 2;
     sizeok = SIZEOKdone;
+
+    // set the offset of base interfaces
+    setBaseInterfaceOffsets(0);
 }
 
 /*******************************************
@@ -1697,7 +1711,7 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
     {
         BaseClass *b = cd->interfaces[j];
 
-        //printf("\tbase %s\n", b->sym->toChars());
+        //printf("\tX base %s\n", b->sym->toChars());
         if (this == b->sym)
         {
             //printf("\tfound at offset %d\n", b->offset);
@@ -1711,8 +1725,11 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
         }
         if (isBaseOf(b, poffset))
         {
-            if (j && poffset && cd->isInterfaceDeclaration())
-                *poffset = OFFSET_RUNTIME;
+            if (poffset)
+            {
+                if (j && cd->isInterfaceDeclaration())
+                    *poffset = OFFSET_RUNTIME;
+            }
             return true;
         }
     }
@@ -1725,7 +1742,6 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
     return false;
 }
 
-
 bool InterfaceDeclaration::isBaseOf(BaseClass *bc, int *poffset)
 {
     //printf("%s.InterfaceDeclaration::isBaseOf(bc = '%s')\n", toChars(), bc->sym->toChars());
@@ -1733,20 +1749,18 @@ bool InterfaceDeclaration::isBaseOf(BaseClass *bc, int *poffset)
     {
         BaseClass *b = &bc->baseInterfaces[j];
 
+        //printf("\tY base %s\n", b->sym->toChars());
         if (this == b->sym)
         {
+            //printf("\tfound at offset %d\n", b->offset);
             if (poffset)
             {
                 *poffset = b->offset;
-                if (j && bc->sym->isInterfaceDeclaration())
-                    *poffset = OFFSET_RUNTIME;
             }
             return true;
         }
         if (isBaseOf(b, poffset))
         {
-            if (j && poffset && bc->sym->isInterfaceDeclaration())
-                *poffset = OFFSET_RUNTIME;
             return true;
         }
     }
