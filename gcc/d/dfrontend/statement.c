@@ -4077,7 +4077,7 @@ Statement *ReturnStatement::semantic(Scope *sc)
     sc->callSuper |= CSXreturn;
     if (sc->fieldinit)
     {
-        AggregateDeclaration *ad = fd->isAggregateMember2();
+        AggregateDeclaration *ad = fd->isMember2();
         assert(ad);
         size_t dim = sc->fieldinit_dim;
         for (size_t i = 0; i < dim; i++)
