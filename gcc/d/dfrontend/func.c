@@ -4484,6 +4484,7 @@ FuncLiteralDeclaration::FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type,
     this->tok = tok;
     this->fes = fes;
     this->treq = NULL;
+    this->deferToObj = false;
     //printf("FuncLiteralDeclaration() id = '%s', type = '%s'\n", this->ident->toChars(), type->toChars());
 }
 
