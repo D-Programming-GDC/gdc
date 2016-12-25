@@ -2747,10 +2747,7 @@ public:
     tree result = NULL_TREE;
 
     if (e->var)
-      {
-	gcc_assert(e->var->isVarDeclaration());
-	result = get_decl_tree(e->var);
-      }
+      result = get_decl_tree(e->var);
     else
       {
 	gcc_assert(fd && fd->vthis);
