@@ -857,14 +857,6 @@ public:
     }
 };
 
-const char *mangle(Dsymbol *s)
-{
-    OutBuffer buf;
-    Mangler v(&buf);
-    s->accept(&v);
-    return buf.extractString();
-}
-
 /******************************************************************************
  * Returns exact mangled name of function.
  */
@@ -890,4 +882,10 @@ void mangleToBuffer(Expression *e, OutBuffer *buf)
 {
     Mangler v(buf);
     e->accept(&v);
+}
+
+void mangleToBuffer(Dsymbol *s, OutBuffer *buf)
+{
+    Mangler v(buf);
+    s->accept(&v);
 }
