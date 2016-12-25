@@ -181,6 +181,7 @@ public:
         return ::castTo(this, sc, t);
     }
     virtual Expression *resolveLoc(Loc loc, Scope *sc);
+    virtual bool checkType();
     virtual bool checkValue();
     bool checkScalar();
     bool checkNoBool();
@@ -509,6 +510,7 @@ public:
     TypeExp(Loc loc, Type *type);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    bool checkType();
     bool checkValue();
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -521,6 +523,8 @@ public:
     ScopeExp(Loc loc, ScopeDsymbol *sds);
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
+    bool checkType();
+    bool checkValue();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -533,6 +537,7 @@ public:
     TemplateExp(Loc loc, TemplateDeclaration *td, FuncDeclaration *fd = NULL);
     bool isLvalue();
     Expression *toLvalue(Scope *sc, Expression *e);
+    bool checkType();
     bool checkValue();
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -650,6 +655,7 @@ public:
     Expression *semantic(Scope *sc, Expressions *arguments);
     MATCH matchType(Type *to, Scope *sc, FuncExp **pfe, int flag = 0);
     const char *toChars();
+    bool checkType();
     bool checkValue();
 
     void accept(Visitor *v) { v->visit(this); }
