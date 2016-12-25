@@ -1279,6 +1279,7 @@ public:
             case LINKcpp:           p = "C++";              break;
             case LINKwindows:       p = "Windows";          break;
             case LINKpascal:        p = "Pascal";           break;
+            case LINKobjc:          p = "Objective-C";      break;
             default:
                 assert(0);
                 break;
@@ -3258,6 +3259,7 @@ const char *linkageToChars(LINK linkage)
         case LINKcpp:       return "C++";
         case LINKwindows:   return "Windows";
         case LINKpascal:    return "Pascal";
+        case LINKobjc:      return "Objective-C";
         default:            assert(0);
     }
     return NULL;    // never reached
