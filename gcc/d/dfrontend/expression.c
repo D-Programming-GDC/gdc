@@ -12749,7 +12749,7 @@ Module *loadStdMath()
         if (s->mod)
         {
             s->mod->importAll(NULL);
-            s->mod->semantic();
+            s->mod->semantic(NULL);
         }
         impStdMath = s;
     }

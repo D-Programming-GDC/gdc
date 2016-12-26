@@ -805,9 +805,9 @@ genCmain (Scope *sc)
   Module *m = Module::load (Loc(), NULL, Id::entrypoint);
   m->importedFrom = m;
   m->importAll (NULL);
-  m->semantic();
-  m->semantic2();
-  m->semantic3();
+  m->semantic(NULL);
+  m->semantic2(NULL);
+  m->semantic3(NULL);
 
   // We are emitting this straight to object file.
   entrypoint = m;
@@ -1052,7 +1052,7 @@ d_parse_file()
       if (global.params.verbose)
 	fprintf(global.stdmsg, "semantic  %s\n", m->toChars());
 
-      m->semantic();
+      m->semantic(NULL);
     }
 
   if (global.errors)
@@ -1087,7 +1087,7 @@ d_parse_file()
       if (global.params.verbose)
 	fprintf(global.stdmsg, "semantic2 %s\n", m->toChars());
 
-      m->semantic2();
+      m->semantic2(NULL);
     }
 
   if (global.errors)
@@ -1101,7 +1101,7 @@ d_parse_file()
       if (global.params.verbose)
 	fprintf(global.stdmsg, "semantic3 %s\n", m->toChars());
 
-      m->semantic3();
+      m->semantic3(NULL);
     }
 
   Module::runDeferredSemantic3();
