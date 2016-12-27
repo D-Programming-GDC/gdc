@@ -276,8 +276,7 @@ void AggregateDeclaration::semantic3(Scope *sc)
         ti->semantic(sc);
         ti->semantic2(sc);
         ti->semantic3(sc);
-        Expression *e = new DsymbolExp(Loc(), ti->toAlias(), 0);
-        e = e->semantic(sc3);
+        Expression *e = DsymbolExp::resolve(Loc(), sc3, ti->toAlias(), false);
 
         sc3->endCTFE();
 
