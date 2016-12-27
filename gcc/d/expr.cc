@@ -2096,14 +2096,6 @@ public:
 	if (declaration_reference_p(e->var))
 	  result = indirect_ref(build_ctype(e->var->type), result);
 
-	// The frontend sometimes emits different types for the expression
-	// and var declaration.  So we must force convert to the expressions
-	// type, but don't convert FuncDeclaration as underlying ctype
-	// sometimes isn't the correct type for functions!
-	if (!e->var->isFuncDeclaration()
-	    && !d_types_same(e->var->type, e->type))
-	  result = build1(VIEW_CONVERT_EXPR, build_ctype(e->type), result);
-
 	this->result_ = result;
       }
   }

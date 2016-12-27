@@ -279,7 +279,8 @@ Target::loadModule (Module *m)
     }
 }
 
-/* Check whether the given Type is a supported for this target.  */
+/* Checks whether the target supports a vector type with total size SZ
+   (in bytes) and element type TYPE.  */
 
 int
 Target::checkVectorType (int sz, Type *type)
