@@ -391,7 +391,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	    }
 	}
 
-      if (Lexer::isValidIdentifier(CONST_CAST (char *, arg)))
+      if (Identifier::isValidIdentifier(CONST_CAST (char *, arg)))
 	{
 	  DebugCondition::addGlobalIdent(arg);
 	  break;
@@ -544,7 +544,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	    }
 	}
 
-      if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
+      if (Identifier::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
 	  VersionCondition::addGlobalIdent (arg);
 	  break;
