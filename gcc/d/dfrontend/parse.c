@@ -351,7 +351,6 @@ Dsymbols *Parser::parseDeclDefs(int once, Dsymbol **pLastDecl, PrefixAttributes 
             case TOKcomplex32: case TOKcomplex64: case TOKcomplex80:
             case TOKvoid:
             case TOKalias:
-            case TOKtypedef:
             case TOKidentifier:
             case TOKsuper:
             case TOKtypeof:
@@ -3799,12 +3798,6 @@ Dsymbols *Parser::parseDeclarations(bool autodecl, PrefixAttributes *pAttrs, con
 
         // alias StorageClasses type ident;
     }
-    else if (token.value == TOKtypedef)
-    {
-        error("use alias instead of typedef");
-        tok = token.value;
-        nextToken();
-    }
 
     parseStorageClasses(storage_class, link, structalign, udas);
 
@@ -3917,7 +3910,7 @@ L2:
         else if (!isThis)
             error("no identifier for declarator %s", t->toChars());
 
-        if (tok == TOKtypedef || tok == TOKalias)
+        if (tok == TOKalias)
         {
             Declaration *v;
             Initializer *init = NULL;
@@ -3937,23 +3930,16 @@ L2:
                 nextToken();
                 init = parseInitializer();
             }
-            if (tok == TOKtypedef)
+            if (init)
             {
-                v = new AliasDeclaration(loc, ident, t);    // dummy
+                if (isThis)
+                    error("cannot use syntax 'alias this = %s', use 'alias %s this' instead",
+                          init->toChars(), init->toChars());
+                else
+                    error("alias cannot have initializer");
             }
-            else
-            {
-                if (init)
-                {
-                    if (isThis)
-                        error("cannot use syntax 'alias this = %s', use 'alias %s this' instead",
-                           init->toChars(), init->toChars());
-                    else
-                        error("alias cannot have initializer");
-                }
+            v = new AliasDeclaration(loc, ident, t);
 
-                v = new AliasDeclaration(loc, ident, t);
-            }
             v->storage_class = storage_class;
             if (pAttrs)
             {
@@ -4835,7 +4821,6 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
                 goto Lexp;
             if (peekNext() == TOKlparen)
                 goto Lexp;
-        case TOKtypedef:
         case TOKalias:
         case TOKconst:
         case TOKauto:
@@ -5625,13 +5610,6 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             s = new ThrowStatement(loc, exp);
             break;
         }
-
-        case TOKvolatile:
-            nextToken();
-            s = parseStatement(PSsemi | PScurlyscope);
-            error("volatile statements no longer allowed; use synchronized statements instead");
-            s = new SynchronizedStatement(loc, (Expression *)NULL, s);
-            break;
 
         case TOKasm:
         {
@@ -7105,8 +7083,7 @@ Expression *Parser::parsePrimaryExp()
                     tok = token.value;
                     nextToken();
                     if (tok == TOKequal &&
-                        (token.value == TOKtypedef ||
-                         token.value == TOKstruct ||
+                        (token.value == TOKstruct ||
                          token.value == TOKunion ||
                          token.value == TOKclass ||
                          token.value == TOKsuper ||
@@ -7124,9 +7101,6 @@ Expression *Parser::parsePrimaryExp()
                     {
                         tok2 = token.value;
                         nextToken();
-
-                        if (tok2 == TOKtypedef)
-                            deprecation("typedef is removed");
                     }
                     else
                     {

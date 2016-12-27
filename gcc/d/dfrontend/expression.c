@@ -6228,9 +6228,6 @@ Expression *IsExp::semantic(Scope *sc)
     {
         switch (tok2)
         {
-            case TOKtypedef:
-                goto Lno;
-
             case TOKstruct:
                 if (targ->ty != Tstruct)
                     goto Lno;
