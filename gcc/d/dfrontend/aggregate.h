@@ -91,7 +91,6 @@ public:
     Sizeok sizeok;              // set when structsize contains valid data
     Dsymbol *deferred;          // any deferred semantic2() or semantic3() symbol
     bool isdeprecated;          // true if deprecated
-    bool mutedeprecation;       // true while analysing RTInfo to avoid deprecation message
 
     /* !=NULL if is nested
      * pointing to the dsymbol that directly enclosing it.
@@ -136,7 +135,6 @@ public:
         unsigned *paggsize, unsigned *paggalignsize, bool isunion);
     Type *getType();
     bool isDeprecated();         // is aggregate deprecated?
-    bool muteDeprecationMessage(); // disable deprecation message on Dsymbol?
     bool isNested();
     void makeNested();
     bool isExport();
