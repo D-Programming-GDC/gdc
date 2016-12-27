@@ -834,18 +834,18 @@ is_system_module(Module *m)
 
   if (md->packages)
     {
-      if (strcmp ((*md->packages)[0]->string, "core") == 0)
+      if (strcmp ((*md->packages)[0]->toChars(), "core") == 0)
         return true;
-      if (strcmp ((*md->packages)[0]->string, "std") == 0)
+      if (strcmp ((*md->packages)[0]->toChars(), "std") == 0)
         return true;
-      if (strcmp ((*md->packages)[0]->string, "gcc") == 0)
+      if (strcmp ((*md->packages)[0]->toChars(), "gcc") == 0)
         return true;
     }
   else if (md->id && md->packages == NULL)
     {
-      if (strcmp (md->id->string, "object") == 0)
+      if (strcmp (md->id->toChars(), "object") == 0)
         return true;
-      if (strcmp (md->id->string, "__entrypoint") == 0)
+      if (strcmp (md->id->toChars(), "__entrypoint") == 0)
         return true;
     }
 
@@ -885,7 +885,7 @@ deps_write (Module *m)
 
     const char* str = depmod->srcfile->name->str;
 
-    if (!dependencies.insert(str, strlen(str)))
+    if (!dependencies.insert(str, strlen(str), NULL))
       continue;
 
     for (size_t i = 0; i < depmod->aimports.dim; i++)

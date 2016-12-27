@@ -136,7 +136,8 @@ get_symbol_decl (Declaration *decl)
 	}
 
       decl->csym = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
-			      get_identifier (decl->ident->string), NULL_TREE);
+			      get_identifier (decl->ident->toChars ()),
+			      NULL_TREE);
 
       /* Set function type afterwards as there could be self references.  */
       TREE_TYPE (decl->csym) = build_ctype (fd->type);
@@ -154,7 +155,7 @@ get_symbol_decl (Declaration *decl)
 	: !vd->canTakeAddressOf () ? CONST_DECL
 	: VAR_DECL;
       decl->csym = build_decl (UNKNOWN_LOCATION, code,
-			      get_identifier (decl->ident->string),
+			      get_identifier (decl->ident->toChars ()),
 			      declaration_type (vd));
 
       /* If any alignment was set on the declaration.  */
@@ -426,7 +427,7 @@ public:
 
   void visit (TypeInfoDeclaration *tid)
   {
-    tree ident = get_identifier (tid->ident->string);
+    tree ident = get_identifier (tid->ident->toChars ());
 
     tid->csym = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident,
 			    TREE_TYPE (build_ctype (tid->type)));

@@ -894,7 +894,8 @@ public:
 	    StringExp *constr = (StringExp *)(*s->constraints)[i];
 	    Expression *arg = (*s->args)[i];
 
-	    tree id = name ? build_string(name->len, name->string) : NULL_TREE;
+	    const char *sname = name ? name->toChars() : NULL;
+	    tree id = name ? build_string(strlen(sname), sname) : NULL_TREE;
 	    tree str = build_string(constr->len, (char *)constr->string);
 	    tree val = build_expr(arg);
 
@@ -934,7 +935,8 @@ public:
 	    gcc_assert(gs->label->statement != NULL);
 	    gcc_assert(gs->tf == gs->label->statement->tf);
 
-	    tree name = build_string(ident->len, ident->string);
+	    const char *sident = ident->toChars();
+	    tree name = build_string(strlen(sident), sident);
 	    tree label = lookup_label(gs->label->statement, gs->label->ident);
 	    TREE_USED (label) = 1;
 
