@@ -3987,6 +3987,8 @@ void TypeSArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
     }
     else
     {
+        if ((*pt)->ty != Terror)
+            next = *pt;     // prevent re-running semantic() on 'next'
      Ldefault:
         Type::resolve(loc, sc, pe, pt, ps, intypeid);
     }
@@ -4398,6 +4400,8 @@ void TypeDArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
     }
     else
     {
+        if ((*pt)->ty != Terror)
+            next = *pt;     // prevent re-running semantic() on 'next'
      Ldefault:
         Type::resolve(loc, sc, pe, pt, ps, intypeid);
     }
@@ -9056,6 +9060,8 @@ void TypeSlice::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol 
     }
     else
     {
+        if ((*pt)->ty != Terror)
+            next = *pt;     // prevent re-running semantic() on 'next'
      Ldefault:
         Type::resolve(loc, sc, pe, pt, ps, intypeid);
     }
