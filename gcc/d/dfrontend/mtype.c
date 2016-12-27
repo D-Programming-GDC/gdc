@@ -3719,7 +3719,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
             reverseFd[i] = FuncDeclaration::genCfunc(params, arrty, reverseName[i]);
         }
 
-        Expression *ec = new VarExp(Loc(), reverseFd[i]);
+        Expression *ec = new VarExp(Loc(), reverseFd[i], false);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         Expressions *arguments = new Expressions();
         arguments->push(e);
@@ -3742,7 +3742,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
             sortFd[i] = FuncDeclaration::genCfunc(params, arrty, sortName[i]);
         }
 
-        Expression *ec = new VarExp(Loc(), sortFd[i]);
+        Expression *ec = new VarExp(Loc(), sortFd[i], false);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         Expressions *arguments = new Expressions();
         arguments->push(e);
@@ -3769,7 +3769,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         }
         fd = adReverse_fd;
 
-        ec = new VarExp(Loc(), fd);
+        ec = new VarExp(Loc(), fd, false);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
         arguments->push(e);
@@ -3791,7 +3791,7 @@ Expression *TypeArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
             params->push(new Parameter(0, Type::dtypeinfo->type, NULL, NULL));
             fd = FuncDeclaration::genCfunc(params, Type::tvoid->arrayOf(), "_adSort");
         }
-        ec = new VarExp(Loc(), fd);
+        ec = new VarExp(Loc(), fd, false);
         e = e->castTo(sc, n->arrayOf());        // convert to dynamic array
         arguments = new Expressions();
         arguments->push(e);
@@ -3915,7 +3915,7 @@ void TypeSArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
     {
         // It's really an index expression
         if (Dsymbol *s = getDsymbol(*pe))
-            *pe = new DsymbolExp(loc, s, 1);
+            *pe = new DsymbolExp(loc, s);
         *pe = new ArrayExp(loc, *pe, dim);
     }
     else if (*ps)
@@ -4387,7 +4387,7 @@ void TypeDArray::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
     {
         // It's really a slice expression
         if (Dsymbol *s = getDsymbol(*pe))
-            *pe = new DsymbolExp(loc, s, 1);
+            *pe = new DsymbolExp(loc, s);
         *pe = new ArrayExp(loc, *pe);
     }
     else if (*ps)
@@ -4799,7 +4799,7 @@ Expression *TypeAArray::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
             tf->isnothrow = true;
             tf->isnogc = false;
         }
-        Expression *ev = new VarExp(e->loc, fd_aaLen);
+        Expression *ev = new VarExp(e->loc, fd_aaLen, false);
         e = new CallExp(e->loc, ev, e);
         e->type = ((TypeFunction *)fd_aaLen->type)->next;
     }
@@ -5586,7 +5586,7 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
                     // Replace function literal with a function symbol,
                     // since default arg expression must be copied when used
                     // and copying the literal itself is wrong.
-                    e = new VarExp(e->loc, fe->fd, 0);
+                    e = new VarExp(e->loc, fe->fd, false);
                     e = new AddrExp(e->loc, e);
                     e = e->semantic(argsc);
                 }
@@ -6647,9 +6647,9 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
                     VarDeclaration *v = s->isVarDeclaration();
                     FuncDeclaration *f = s->isFuncDeclaration();
                     if (intypeid || !v && !f)
-                        e = DsymbolExp::resolve(loc, sc, s, false);
+                        e = DsymbolExp::resolve(loc, sc, s, true);
                     else
-                        e = new VarExp(loc, s->isDeclaration());
+                        e = new VarExp(loc, s->isDeclaration(), true);
 
                     resolveExprType(loc, sc, e, i, pe, pt);
                     return;
@@ -6712,7 +6712,7 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
 #if 0
         if (FuncDeclaration *fd = s->isFuncDeclaration())
         {
-            *pe = new DsymbolExp(loc, fd, 1);
+            *pe = new DsymbolExp(loc, fd);
             return;
         }
 #endif
@@ -7881,7 +7881,7 @@ L1:
         if (d->semanticRun == PASSinit && d->_scope)
             d->semantic(d->_scope);
         checkAccess(e->loc, sc, e, d);
-        VarExp *ve = new VarExp(e->loc, d, 1);
+        VarExp *ve = new VarExp(e->loc, d);
         if (d->isVarDeclaration() && d->needThis())
             ve->type = d->type->addMod(e->type->mod);
         return ve;
@@ -7916,8 +7916,9 @@ L1:
 #endif
     }
 
-    DotVarExp *de = new DotVarExp(e->loc, e, d);
-    return de->semantic(sc);
+    e = new DotVarExp(e->loc, e, d);
+    e = e->semantic(sc);
+    return e;
 }
 
 structalign_t TypeStruct::alignment()
@@ -8416,7 +8417,7 @@ L1:
                 sym->vthis->semantic(NULL);
 
             ClassDeclaration *cdp = sym->toParent2()->isClassDeclaration();
-            DotVarExp *de = new DotVarExp(e->loc, e, sym->vthis, 0);
+            DotVarExp *de = new DotVarExp(e->loc, e, sym->vthis);
             de->type = (cdp ? cdp->type : sym->vthis->type)->addMod(e->type->mod);
             return de;
         }
@@ -8587,7 +8588,7 @@ L1:
                         }
                         else
                         {
-                            e = new VarExp(e->loc, d, 1);
+                            e = new VarExp(e->loc, d);
                             return e;
                         }
                     }
@@ -8607,7 +8608,7 @@ L1:
         if (d->semanticRun == PASSinit && d->_scope)
             d->semantic(d->_scope);
         checkAccess(e->loc, sc, e, d);
-        VarExp *ve = new VarExp(e->loc, d, 1);
+        VarExp *ve = new VarExp(e->loc, d);
         if (d->isVarDeclaration() && d->needThis())
             ve->type = d->type->addMod(e->type->mod);
         return ve;
@@ -8627,14 +8628,15 @@ L1:
     if (d->parent && d->toParent()->isModule())
     {
         // (e, d)
-        VarExp *ve = new VarExp(e->loc, d, 1);
+        VarExp *ve = new VarExp(e->loc, d);
         e = new CommaExp(e->loc, e, ve);
         e->type = d->type;
         return e;
     }
 
-    DotVarExp *de = new DotVarExp(e->loc, e, d, d->hasOverloads());
-    return de->semantic(sc);
+    e = new DotVarExp(e->loc, e, d);
+    e = e->semantic(sc);
+    return e;
 }
 
 ClassDeclaration *TypeClass::isClassHandle()
@@ -9017,7 +9019,7 @@ void TypeSlice::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol 
     {
         // It's really a slice expression
         if (Dsymbol *s = getDsymbol(*pe))
-            *pe = new DsymbolExp(loc, s, 1);
+            *pe = new DsymbolExp(loc, s);
         *pe = new ArrayExp(loc, *pe, new IntervalExp(loc, lwr, upr));
     }
     else if (*ps)
