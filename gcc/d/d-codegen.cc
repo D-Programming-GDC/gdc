@@ -4711,28 +4711,33 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	  tree objtype = TREE_TYPE (build_ctype(cd->type));
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
-	  tree field = create_field_decl(vtbl_ptr_type_node, "__vptr", 1, inherited_p);
-	  DECL_VIRTUAL_P (field) = 1;
-	  TYPE_VFIELD (type) = field;
-	  DECL_FCONTEXT (field) = objtype;
-	  insert_aggregate_field(decl->loc, type, field, 0);
-
-	  if (!cd->cpp)
+	  InterfaceDeclaration *id = cd->isInterfaceDeclaration ();
+	  if (!id || id->vtblInterfaces->dim == 0)
 	    {
-	      field = create_field_decl(ptr_type_node, "__monitor", 1, inherited_p);
-	      insert_aggregate_field(decl->loc, type, field, Target::ptrsize);
+	      tree field = create_field_decl (vtbl_ptr_type_node, "__vptr", 1,
+					      inherited_p);
+	      DECL_VIRTUAL_P (field) = 1;
+	      TYPE_VFIELD (type) = field;
+	      DECL_FCONTEXT (field) = objtype;
+	      insert_aggregate_field (decl->loc, type, field, 0);
+	    }
+
+	  if (!id && !cd->cpp)
+	    {
+	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
+					      inherited_p);
+	      insert_aggregate_field (decl->loc, type, field, Target::ptrsize);
 	    }
 	}
-    }
 
-  if (cd && cd->vtblInterfaces)
-    {
-      for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+      if (cd->vtblInterfaces)
 	{
-	  BaseClass *bc = (*cd->vtblInterfaces)[i];
-	  tree field = create_field_decl (build_ctype (Type::tvoidptr->pointerTo ()),
-					  NULL, 1, 1);
-	  insert_aggregate_field (decl->loc, type, field, bc->offset);
+	  for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+	    {
+	      BaseClass *bc = (*cd->vtblInterfaces)[i];
+	      tree field = create_field_decl (vtbl_ptr_type_node, NULL, 1, 1);
+	      insert_aggregate_field (decl->loc, type, field, bc->offset);
+	    }
 	}
     }
 
