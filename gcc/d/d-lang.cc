@@ -522,6 +522,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.vgc = value;
       break;
 
+    case OPT_ftransition_safe:
+      global.params.vsafe = value;
+      break;
+
     case OPT_ftransition_tls:
       global.params.vtls = value;
       break;

@@ -5,8 +5,13 @@
 
 2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_handle_option): Handle -ftransition=safe.
+	* lang.opt (ftransition=safe): Add compiler option.
+
+2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_init_options): Initialize hdrStripPlainFunctions.
-	(d_post_options): Add post handling of flag.
+	(d_post_options): Add post option handling of flag.
 
 2017-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
