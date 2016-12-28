@@ -1833,7 +1833,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
             }
             if (tb->ty == Tstruct)
             {
-//                arg = callCpCtor(sc, arg);
+                //arg = callCpCtor(sc, arg);
             }
 
             // Give error for overloaded function addresses
@@ -5183,6 +5183,8 @@ Lagain:
         cd->size(loc);
         if (cd->sizeok != SIZEOKdone)
             return new ErrorExp();
+        if (!cd->ctor)
+            cd->ctor = cd->searchCtor();
         if (cd->noDefaultCtor && !nargs && !cd->defaultCtor)
         {
             error("default construction is disabled for type %s", cd->type->toChars());
@@ -5344,6 +5346,8 @@ Lagain:
         sd->size(loc);
         if (sd->sizeok != SIZEOKdone)
             return new ErrorExp();
+        if (!sd->ctor)
+            sd->ctor = sd->searchCtor();
         if (sd->noDefaultCtor && !nargs)
         {
             error("default construction is disabled for type %s", sd->type->toChars());
@@ -6347,8 +6351,7 @@ Expression *DeclarationExp::semantic(Scope *sc)
             if ((s->isFuncDeclaration() ||
                  s->isAggregateDeclaration() ||
                  s->isEnumDeclaration() ||
-                 v && v->isDataseg()) &&
-                !sc->func->localsymtab->insert(s))
+                 v && v->isDataseg()) && !sc->func->localsymtab->insert(s))
             {
                 error("declaration %s is already defined in another scope in %s",
                     s->toPrettyChars(), sc->func->toChars());
@@ -8846,6 +8849,8 @@ Lagain:
             sd->size(loc);      // Resolve forward references to construct object
             if (sd->sizeok != SIZEOKdone)
                 return new ErrorExp();
+            if (!sd->ctor)
+                sd->ctor = sd->searchCtor();
 
             // First look for constructor
             if (e1->op == TOKtype && sd->ctor)
@@ -11682,13 +11687,24 @@ Expression *AssignExp::semantic(Scope *sc)
             Type *t2 = e2x->type->toBasetype();
             if (t2->ty == Tstruct && sd == ((TypeStruct *)t2)->sym)
             {
+                sd->size(loc);
+                if (sd->sizeok != SIZEOKdone)
+                    return new ErrorExp();
+                if (!sd->ctor)
+                    sd->ctor = sd->searchCtor();
+
+                // Bugzilla 15661: Look for the form from last of comma chain.
+                Expression *e2y = e2x;
+                while (e2y->op == TOKcomma)
+                    e2y = ((CommaExp *)e2y)->e2;
+
                 CallExp *ce;
                 DotVarExp *dve;
                 if (sd->ctor &&
-                    e2x->op == TOKcall &&
-                    (ce = (CallExp *)e2x, ce->e1->op == TOKdotvar) &&
+                    e2y->op == TOKcall &&
+                    (ce = (CallExp *)e2y, ce->e1->op == TOKdotvar) &&
                     (dve = (DotVarExp *)ce->e1, dve->var->isCtorDeclaration()) &&
-                    e2x->type->implicitConvTo(t1))
+                    e2y->type->implicitConvTo(t1))
                 {
                     /* Look for form of constructor call which is:
                      *    __ctmp.ctor(arguments...)
@@ -11720,7 +11736,11 @@ Expression *AssignExp::semantic(Scope *sc)
                     CallExp *cx = (CallExp *)ce->copy();
                     cx->e1 = dvx;
 
-                    Expression *e = new CommaExp(loc, ae, cx);
+                    Expression *e0;
+                    extractLast(e2x, &e0);
+
+                    Expression *e = combine(ae, cx);
+                    e = combine(e0, e);
                     e = e->semantic(sc);
                     return e;
                 }
@@ -11772,6 +11792,12 @@ Expression *AssignExp::semantic(Scope *sc)
             }
             else if (!e2x->implicitConvTo(t1))
             {
+                sd->size(loc);
+                if (sd->sizeok != SIZEOKdone)
+                    return new ErrorExp();
+                if (!sd->ctor)
+                    sd->ctor = sd->searchCtor();
+
                 if (sd->ctor)
                 {
                     /* Look for implicit constructor call
