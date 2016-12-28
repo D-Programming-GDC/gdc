@@ -178,6 +178,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.warnings = 0;
   global.params.obj = true;
   global.params.useDeprecated = 1;
+  global.params.hdrStripPlainFunctions = true;
   global.params.betterC = false;
   global.params.allInst = false;
 
@@ -657,6 +658,10 @@ d_post_options (const char ** fn)
 
   global.params.symdebug = write_symbols != NO_DEBUG;
   global.params.useInline = flag_inline_functions;
+
+  if (global.params.useInline)
+    global.params.hdrStripPlainFunctions = false;
+
   global.params.obj = !flag_syntax_only;
   // Has no effect yet.
   global.params.pic = flag_pic != 0;
