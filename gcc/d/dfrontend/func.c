@@ -2143,10 +2143,15 @@ void FuncDeclaration::semantic3(Scope *sc)
     //fflush(stdout);
 }
 
+/****************************************************
+ * Resolve forward reference of function signature -
+ * parameter types, return type, and attributes.
+ * Returns false if any errors exist in the signature.
+ */
 bool FuncDeclaration::functionSemantic()
 {
     if (!_scope)
-        return true;
+        return !errors;
 
     if (!originalType)      // semantic not yet run
     {
@@ -2164,6 +2169,9 @@ bool FuncDeclaration::functionSemantic()
     }
 
     // if inferring return type, sematic3 needs to be run
+    // - When the function body contains any errors, we cannot assume
+    //   the inferred return type is valid.
+    //   So, the body errors should become the function signature error.
     if (inferRetType && type && !type->nextOf())
         return functionSemantic3();
 
@@ -2181,15 +2189,19 @@ bool FuncDeclaration::functionSemantic()
             //ad->sizeok = SIZEOKfwd;
         }
         else
-            return functionSemantic3();
+            return functionSemantic3() || !errors;
     }
 
     if (storage_class & STCinference)
-        return functionSemantic3();
+        return functionSemantic3() || !errors;
 
-    return true;
+    return !errors;
 }
 
+/****************************************************
+ * Resolve forward reference of function body.
+ * Returns false if any errors exist in the body.
+ */
 bool FuncDeclaration::functionSemantic3()
 {
     if (semanticRun < PASSsemantic3 && _scope)
@@ -2214,7 +2226,7 @@ bool FuncDeclaration::functionSemantic3()
             return false;
     }
 
-    return true;
+    return !errors && !semantic3Errors;
 }
 
 VarDeclaration *FuncDeclaration::declareThis(Scope *sc, AggregateDeclaration *ad)
