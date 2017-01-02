@@ -68,14 +68,4 @@ typedef Array<class GotoStatement *> GotoStatements;
 
 typedef Array<class TemplateInstance *> TemplateInstances;
 
-#ifndef IN_GCC
-typedef Array<struct block *> Blocks;
-
-typedef Array<struct Symbol *> Symbols;
-#endif
-
-#ifdef IN_GCC
-typedef Array<union tree_node *> Dts;
-#endif
-
 #endif

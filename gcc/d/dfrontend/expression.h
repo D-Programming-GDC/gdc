@@ -68,7 +68,7 @@ TupleDeclaration *isAliasThisTuple(Expression *e);
 int expandAliasThisTuples(Expressions *exps, size_t starti = 0);
 FuncDeclaration *hasThis(Scope *sc);
 Expression *fromConstInitializer(int result, Expression *e);
-bool arrayExpressionSemantic(Expressions *exps, Scope *sc);
+bool arrayExpressionSemantic(Expressions *exps, Scope *sc, bool preserveErrors = false);
 TemplateDeclaration *getFuncTemplateDecl(Dsymbol *s);
 Expression *valueNoDtor(Expression *e);
 int modifyFieldVar(Loc loc, Scope *sc, VarDeclaration *var, Expression *e1);
@@ -464,8 +464,7 @@ class StructLiteralExp : public Expression
 {
 public:
     StructDeclaration *sd;      // which aggregate this is for
-    Expressions *elements;      // parallels sd->fields[] with
-                                // NULL entries for fields to skip
+    Expressions *elements;      // parallels sd->fields[] with NULL entries for fields to skip
     Type *stype;                // final type of result (can be different from sd's type)
 
     bool useStaticInit;         // if this is true, use the StructDeclaration's init symbol

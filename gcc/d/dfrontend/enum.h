@@ -82,9 +82,10 @@ public:
      *  3. type id = value
      */
     Expression *value;
-    Expression *origValue;  // A cast() is injected to 'value' after semantic(),
-                            // but 'origValue' will preserve the original value,
-                            // or previous value + 1 if none was specified.
+    // A cast() is injected to 'value' after semantic(),
+    // but 'origValue' will preserve the original value,
+    // or previous value + 1 if none was specified.
+    Expression *origValue;
     Type *type;
 
     EnumDeclaration *ed;

@@ -451,7 +451,7 @@ Lhaspointers:
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {
       BaseClass *b = (*vtblInterfaces)[i];
-      ClassDeclaration *id = b->base;
+      ClassDeclaration *id = b->sym;
 
       // Fill in vtbl[]
       b->fillVtbl(this, &b->vtbl, 1);
@@ -474,7 +474,7 @@ Lhaspointers:
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {
       BaseClass *b = (*vtblInterfaces)[i];
-      ClassDeclaration *id = b->base;
+      ClassDeclaration *id = b->sym;
 
       // First entry is struct Interface reference.
       if (id->vtblOffset())
@@ -508,7 +508,7 @@ Lhaspointers:
 
 	  if (bs->fillVtbl (this, &bvtbl, 0))
 	    {
-	      ClassDeclaration *id = bs->base;
+	      ClassDeclaration *id = bs->sym;
 	      // First entry is struct Interface reference.
 	      if (id->vtblOffset())
 		{
@@ -608,7 +608,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
       BaseClass *b = (*vtblInterfaces)[i];
       if (b == bc)
 	return csymoffset;
-      csymoffset += b->base->vtbl.dim * Target::ptrsize;
+      csymoffset += b->sym->vtbl.dim * Target::ptrsize;
     }
 
   // Put out the overriding interface vtbl[]s.
@@ -621,7 +621,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
 	    {
 	      if (bc == bs)
 		return csymoffset;
-	      csymoffset += bs->base->vtbl.dim * Target::ptrsize;
+	      csymoffset += bs->sym->vtbl.dim * Target::ptrsize;
 	    }
 	}
     }
@@ -745,7 +745,7 @@ InterfaceDeclaration::toObjFile()
   for (size_t i = 0; i < vtblInterfaces->dim; i++)
     {
       BaseClass *b = (*vtblInterfaces)[i];
-      ClassDeclaration *id = b->base;
+      ClassDeclaration *id = b->sym;
 
       // ClassInfo
       dt_cons (&dt, build_address (get_classinfo_decl (id)));

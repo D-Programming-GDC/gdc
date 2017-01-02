@@ -531,6 +531,15 @@ class CppMangleVisitor : public Visitor
                 t = tb->castMod(t->mod);
             }
         }
+#else
+        if (t->ty == Tsarray)
+        {
+            // Mangle static arrays as pointers
+            t->error(Loc(), "Internal Compiler Error: unable to pass static array to extern(C++) function.");
+            t->error(Loc(), "Use pointer instead.");
+            assert(0);
+            //t = t->nextOf()->pointerTo();
+        }
 #endif
 
         /* If it is a basic, enum or struct type,
@@ -578,11 +587,13 @@ public:
         {
             assert(0);
         }
+        Target::prefixName(&buf, LINKcpp);
         return buf.extractString();
     }
 
     void visit(Type *t)
     {
+#ifdef IN_GCC
         /* Make this the 'vendor extended type' when there is no
          * C++ analog.
          * u <source-name>
@@ -592,6 +603,17 @@ public:
         assert(t->deco);
         buf.printf("u%d%s", strlen(t->deco), t->deco);
         store(t);
+#else
+        if (t->isImmutable() || t->isShared())
+        {
+            t->error(Loc(), "Internal Compiler Error: shared or immutable types can not be mapped to C++ (%s)", t->toChars());
+        }
+        else
+        {
+            t->error(Loc(), "Internal Compiler Error: unsupported type %s\n", t->toChars());
+        }
+        assert(0); //Assert, because this error should be handled in frontend
+#endif
     }
 
     void visit(TypeBasic *t)
@@ -1006,6 +1028,8 @@ public:
             case Tfloat32:  buf.writeByte('M');        break;
             case Tint64:    buf.writestring("_J");     break;
             case Tuns64:    buf.writestring("_K");     break;
+            case Tint128:   buf.writestring("_L");     break;
+            case Tuns128:   buf.writestring("_M");     break;
             case Tfloat64:  buf.writeByte('N');        break;
             case Tbool:     buf.writestring("_N");     break;
             case Tchar:     buf.writeByte('D');        break;

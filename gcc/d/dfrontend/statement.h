@@ -439,9 +439,6 @@ public:
     Statement *statement;
 
     int index;          // which case it is (since we sort this)
-#ifndef IN_GCC
-    block *cblock;      // back end: label for the block
-#endif
 
     CaseStatement(Loc loc, Expression *exp, Statement *s);
     Statement *syntaxCopy();
@@ -696,10 +693,6 @@ public:
     Statement *gotoTarget;      // interpret
 
     bool breaks;                // someone did a 'break ident'
-#ifndef IN_GCC
-    block *lblock;              // back end
-    Blocks *fwdrefs;            // forward references to this LabelStatement
-#endif
 
     LabelStatement(Loc loc, Identifier *ident, Statement *statement);
     Statement *syntaxCopy();

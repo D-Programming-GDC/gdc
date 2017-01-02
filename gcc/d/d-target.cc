@@ -304,3 +304,9 @@ Target::checkVectorType(int sz, Type *type)
   return 0;
 }
 
+/* Apply any target-specific prefixes based on the given linkage.  */
+
+void
+Target::prefixName (OutBuffer *, LINK)
+{
+}

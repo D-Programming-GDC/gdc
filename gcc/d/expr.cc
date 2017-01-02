@@ -53,7 +53,7 @@ class ExprVisitor : public Visitor
   tree result_;
   bool constp_;
 
-  // Determine if type is an array of structs that need a postblit.
+  // Determine if type is a struct that has a postblit.
   bool needs_postblit(Type *t)
   {
     t = t->baseElemOf();
@@ -66,6 +66,29 @@ class ExprVisitor : public Visitor
       }
 
     return false;
+  }
+
+  // Determine if type is a struct that has a destructor.
+  bool needs_dtor(Type *t)
+  {
+    t = t->baseElemOf();
+
+    if (t->ty == Tstruct)
+      {
+	StructDeclaration *sd = ((TypeStruct *) t)->sym;
+	if (sd->dtor)
+	  return true;
+      }
+
+    return false;
+  }
+
+  // Determine if expression is suitable lvalue.
+  bool lvalue_p(Expression *e)
+  {
+    return ((e->op != TOKslice && e->isLvalue())
+	    || (e->op == TOKslice && ((UnaExp *) e)->e1->isLvalue())
+	    || (e->op == TOKcast && ((UnaExp *) e)->e1->isLvalue()));
   }
 
 public:
@@ -869,13 +892,8 @@ public:
 	Type *etype = stype->nextOf()->toBasetype();
 
 	// Determine if we need to run postblit or dtor.
-	bool postblit = false;
-
-	if (this->needs_postblit(etype)
-	    && ((e->e2->op != TOKslice && e->e2->isLvalue())
-		|| (e->e2->op == TOKslice && ((UnaExp *) e->e2)->e1->isLvalue())
-		|| (e->e2->op == TOKcast && ((UnaExp *) e->e2)->e1->isLvalue())))
-	  postblit = true;
+	bool postblit = this->needs_postblit(etype) && this->lvalue_p(e->e2);
+	bool destructor = this->needs_dtor(etype);
 
 	if (e->ismemset & 1)
 	  {
@@ -884,7 +902,7 @@ public:
 	    tree t2 = build_expr(e->e2);
 	    tree result;
 
-	    if (postblit && e->op != TOKblit)
+	    if ((postblit || destructor) && e->op != TOKblit)
 	      {
 		tree args[4];
 
@@ -920,7 +938,7 @@ public:
 	    // Perform a memcpy operation.
 	    gcc_assert(e->e2->type->ty != Tpointer);
 
-	    if (!postblit && !array_bounds_check())
+	    if (!postblit && !destructor && !array_bounds_check())
 	      {
 		tree t1 = d_save_expr(d_array_convert(e->e1));
 		tree t2 = d_array_convert(e->e2);
@@ -931,7 +949,7 @@ public:
 						d_array_ptr(t1), d_array_ptr(t2), size);
 		this->result_ = compound_expr(result, t1);
 	      }
-	    else if (postblit && e->op != TOKblit)
+	    else if ((postblit || destructor) && e->op != TOKblit)
 	      {
 		// Generate:
 		//  _d_arrayassign(ti, from, to) or _d_arrayctor(ti, from, to)
@@ -1028,16 +1046,12 @@ public:
 
 	// Determine if we need to run postblit.
 	bool postblit = this->needs_postblit(etype);
-	bool lvalue_p = false;
-
-	if ((e->e2->op != TOKslice && e->e2->isLvalue())
-	    || (e->e2->op == TOKslice && ((UnaExp *) e->e2)->e1->isLvalue())
-	    || (e->e2->op == TOKcast && ((UnaExp *) e->e2)->e1->isLvalue()))
-	  lvalue_p = true;
+	bool destructor = this->needs_dtor(etype);
+	bool lvalue_p = this->lvalue_p(e->e2);
 
 	// Even if the elements in rhs are all rvalues and don't have to call
 	// postblits, this assignment should call dtors on old assigned elements.
-	if (!postblit
+	if ((!postblit && !destructor)
 	    || (e->op == TOKconstruct && !lvalue_p && postblit)
 	    || (e->op == TOKblit || e->e1->type->size() == 0))
 	  {
@@ -1937,7 +1951,7 @@ public:
 	if (((TypeClass *) type)->sym->isInterfaceDeclaration())
 	  ci = indirect_ref(ptr_type_node, ci);
 
-	this->result_ = build_nop(build_ctype(tid->type), ci);
+	this->result_ = build_nop(build_ctype(e->type), ci);
       }
     else
       gcc_unreachable();

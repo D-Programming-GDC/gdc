@@ -30,6 +30,7 @@
 #include "parse.h"
 #include "rmem.h"
 #include "visitor.h"
+#include "objc.h"
 
 Expression *addInvariant(Loc loc, Scope *sc, AggregateDeclaration *ad, VarDeclaration *vthis, bool direct);
 
@@ -276,6 +277,7 @@ public:
 FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageClass storage_class, Type *type)
     : Declaration(id)
 {
+    objc = Objc_FuncDeclaration(this);
     //printf("FuncDeclaration(id = '%s', type = %p)\n", id->toChars(), type);
     //printf("storage_class = x%x\n", storage_class);
     this->storage_class = storage_class;
@@ -922,7 +924,7 @@ void FuncDeclaration::semantic(Scope *sc)
         for (size_t i = 0; i < cd->interfaces_dim; i++)
         {
             BaseClass *b = cd->interfaces[i];
-            vi = findVtblIndex((Dsymbols *)&b->base->vtbl, (int)b->base->vtbl.dim);
+            vi = findVtblIndex((Dsymbols *)&b->sym->vtbl, (int)b->sym->vtbl.dim);
             switch (vi)
             {
                 case -1:
@@ -935,7 +937,7 @@ void FuncDeclaration::semantic(Scope *sc)
 
                 default:
                 {
-                    FuncDeclaration *fdv = (FuncDeclaration *)b->base->vtbl[vi];
+                    FuncDeclaration *fdv = (FuncDeclaration *)b->sym->vtbl[vi];
                     Type *ti = NULL;
 
                     /* Remember which functions this overrides
@@ -996,7 +998,7 @@ void FuncDeclaration::semantic(Scope *sc)
             Dsymbol *s = NULL;
             for (size_t i = 0; i < cd->baseclasses->dim; i++)
             {
-                s = (*cd->baseclasses)[i]->base->search_correct(ident);
+                s = (*cd->baseclasses)[i]->sym->search_correct(ident);
                 if (s) break;
             }
 
@@ -1014,9 +1016,9 @@ void FuncDeclaration::semantic(Scope *sc)
         for (size_t i = 0; i < cd->interfaces_dim; i++)
         {
             BaseClass *b = cd->interfaces[i];
-            if (b->base)
+            if (b->sym)
             {
-                Dsymbol *s = search_function(b->base, ident);
+                Dsymbol *s = search_function(b->sym, ident);
                 if (s)
                 {
                     FuncDeclaration *f2 = s->isFuncDeclaration();
@@ -1024,7 +1026,7 @@ void FuncDeclaration::semantic(Scope *sc)
                     {
                         f2 = f2->overloadExactMatch(type);
                         if (f2 && f2->isFinalFunc() && f2->prot().kind != PROTprivate)
-                            error("cannot override final function %s.%s", b->base->toChars(), f2->toPrettyChars());
+                            error("cannot override final function %s.%s", b->sym->toChars(), f2->toPrettyChars());
                     }
                 }
             }
@@ -1222,6 +1224,18 @@ Ldone:
 
 void FuncDeclaration::semantic2(Scope *sc)
 {
+    if (semanticRun >= PASSsemantic2done)
+        return;
+    assert(semanticRun <= PASSsemantic2);
+    semanticRun = PASSsemantic2;
+
+    objc_FuncDeclaration_semantic_setSelector(this, sc);
+    objc_FuncDeclaration_semantic_validateSelector(this);
+
+    if (ClassDeclaration *cd = parent->isClassDeclaration())
+    {
+        objc_FuncDeclaration_semantic_checkLinkage(this);
+    }
 }
 
 // Do the semantic analysis on the internals of the function.
@@ -4421,14 +4435,14 @@ bool FuncDeclaration::hasNestedFrameRefs()
     if (closureVars.dim)
         return true;
 
-    /* If a virtual method has contracts, assume its variables are referenced
+    /* If a virtual function has contracts, assume its variables are referenced
      * by those contracts, even if they aren't. Because they might be referenced
      * by the overridden or overriding function's contracts.
      * This can happen because frequire and fensure are implemented as nested functions,
      * and they can be called directly by an overriding function and the overriding function's
-     * context had better match, or Bugzilla 7337 will bite.
+     * context had better match, or Bugzilla 7335 will bite.
      */
-    if ((fdrequire || fdensure) && isVirtualMethod())
+    if (fdrequire || fdensure)
         return true;
 
     if (foverrides.dim && isVirtualMethod())
