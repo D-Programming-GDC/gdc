@@ -1,3 +1,9 @@
+2017-12-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc (Target::cppExceptions): New variable.
+	(Target::init): Initialize it.
+	(Target::prefixName): New function.
+
 2016-12-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (ClassDeclaration::toObjFile): Use layout_classinfo to
