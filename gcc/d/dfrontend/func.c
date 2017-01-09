@@ -86,30 +86,30 @@ public:
     }
     void visit(WhileStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(DoStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(ForStatement *s)
     {
-        if (s->init)
-            visitStmt(s->init);
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_init)
+            visitStmt(s->_init);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(ForeachStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(ForeachRangeStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(IfStatement *s)
     {
@@ -123,8 +123,8 @@ public:
     void visit(StaticAssertStatement *s) {  }
     void visit(SwitchStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(CaseStatement *s)
     {
@@ -149,18 +149,18 @@ public:
     void visit(ContinueStatement *s) {  }
     void visit(SynchronizedStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(WithStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
     }
     void visit(TryCatchStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
         if (s->catches && s->catches->dim)
         {
             for (size_t i = 0; i < s->catches->dim; i++)
@@ -173,8 +173,8 @@ public:
     }
     void visit(TryFinallyStatement *s)
     {
-        if (s->body)
-            visitStmt(s->body);
+        if (s->_body)
+            visitStmt(s->_body);
         if (s->finalbody)
             visitStmt(s->finalbody);
     }
@@ -262,7 +262,7 @@ public:
             ctch->semantic(sc);     // Run semantic to resolve identifier '__o'
             catches->push(ctch);
 
-            Statement *s2 = new TryCatchStatement(Loc(), s->body, catches);
+            Statement *s2 = new TryCatchStatement(Loc(), s->_body, catches);
             replaceCurrent(s2);
             s2->accept(this);
         }
@@ -387,10 +387,10 @@ void FuncDeclaration::semantic(Scope *sc)
     parent = sc->parent;
     Dsymbol *parent = toParent();
 
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     unsigned dprogress_save = Module::dprogress;
@@ -1197,8 +1197,8 @@ Ldone:
     /* Save scope for possible later use (if we need the
      * function internals)
      */
-    scope = sc->copy();
-    scope->setNoFree();
+    _scope = sc->copy();
+    _scope->setNoFree();
 
     static bool printedMain = false;  // semantic might run more than once
     if (global.params.verbose && !printedMain)
@@ -1907,8 +1907,8 @@ void FuncDeclaration::semantic3(Scope *sc)
                     VarDeclaration *v = (*parameters)[i];
                     if (v->storage_class & STCout)
                     {
-                        assert(v->init);
-                        ExpInitializer *ie = v->init->isExpInitializer();
+                        assert(v->_init);
+                        ExpInitializer *ie = v->_init->isExpInitializer();
                         assert(ie);
                         if (ie->exp->op == TOKconstruct)
                             ie->exp->op = TOKassign; // construction occured in parameter processing
@@ -1923,7 +1923,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 #ifdef IN_GCC
                 // Handled in FuncDeclaration::toObjFile
                 v_argptr = argptr;
-                v_argptr->init = new VoidInitializer(loc);
+                v_argptr->_init = new VoidInitializer(loc);
 #else
                 Type *t = argptr->type;
                 if (global.params.is64bit && !global.params.isWindows)
@@ -2014,7 +2014,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                 e = new ConstructExp(Loc(), e1, e);
                 e = e->semantic(sc2);
 
-                _arguments->init = new ExpInitializer(Loc(), e);
+                _arguments->_init = new ExpInitializer(Loc(), e);
                 DeclarationExp *de = new DeclarationExp(Loc(), _arguments);
                 a->push(new ExpStatement(Loc(), de));
             }
@@ -2225,7 +2225,7 @@ void FuncDeclaration::semantic3(Scope *sc)
 
 bool FuncDeclaration::functionSemantic()
 {
-    if (!scope)
+    if (!_scope)
         return true;
 
     if (!originalType)      // semantic not yet run
@@ -2235,7 +2235,7 @@ bool FuncDeclaration::functionSemantic()
         unsigned oldgag = global.gag;
         if (global.gag && !spec)
             global.gag = 0;
-        semantic(scope);
+        semantic(_scope);
         global.gag = oldgag;
         if (spec && global.errors != olderrs)
             spec->errors = (global.errors - olderrs != 0);
@@ -2272,7 +2272,7 @@ bool FuncDeclaration::functionSemantic()
 
 bool FuncDeclaration::functionSemantic3()
 {
-    if (semanticRun < PASSsemantic3 && scope)
+    if (semanticRun < PASSsemantic3 && _scope)
     {
         /* Forward reference - we need to run semantic3 on this function.
          * If errors are gagged, and it's not part of a template instance,
@@ -2283,7 +2283,7 @@ bool FuncDeclaration::functionSemantic3()
         unsigned oldgag = global.gag;
         if (global.gag && !spec)
             global.gag = 0;
-        semantic3(scope);
+        semantic3(_scope);
         global.gag = oldgag;
 
         // If it is a speculatively-instantiated template, and errors occur,
@@ -2470,8 +2470,8 @@ Statement *FuncDeclaration::mergeFrequire(Statement *sf)
          */
         if (fdv->fdrequire && fdv->fdrequire->semanticRun != PASSsemantic3done)
         {
-            assert(fdv->scope);
-            Scope *sc = fdv->scope->push();
+            assert(fdv->_scope);
+            Scope *sc = fdv->_scope->push();
             sc->stc &= ~STCoverride;
             fdv->semantic3(sc);
             sc->pop();
@@ -2526,8 +2526,8 @@ Statement *FuncDeclaration::mergeFensure(Statement *sf, Identifier *oid)
          */
         if (fdv->fdensure && fdv->fdensure->semanticRun != PASSsemantic3done)
         {
-            assert(fdv->scope);
-            Scope *sc = fdv->scope->push();
+            assert(fdv->_scope);
+            Scope *sc = fdv->_scope->push();
             sc->stc &= ~STCoverride;
             fdv->semantic3(sc);
             sc->pop();
@@ -4633,10 +4633,10 @@ void CtorDeclaration::semantic(Scope *sc)
     //printf("CtorDeclaration::semantic() %s\n", toChars());
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;
@@ -4736,10 +4736,10 @@ void PostBlitDeclaration::semantic(Scope *sc)
     //printf("stc = x%llx\n", sc->stc);
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;
@@ -4812,10 +4812,10 @@ void DtorDeclaration::semantic(Scope *sc)
     //printf("ident: %s, %s, %p, %p\n", ident->toChars(), Id::dtor->toChars(), ident, Id::dtor);
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;
@@ -4900,10 +4900,10 @@ void StaticCtorDeclaration::semantic(Scope *sc)
     //printf("StaticCtorDeclaration::semantic()\n");
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;
@@ -5026,10 +5026,10 @@ void StaticDtorDeclaration::semantic(Scope *sc)
 {
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;
@@ -5147,10 +5147,10 @@ void InvariantDeclaration::semantic(Scope *sc)
 {
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;
@@ -5226,10 +5226,10 @@ void UnitTestDeclaration::semantic(Scope *sc)
 {
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     protection = sc->protection;
@@ -5313,10 +5313,10 @@ void NewDeclaration::semantic(Scope *sc)
     //printf("NewDeclaration::semantic()\n");
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;
@@ -5393,10 +5393,10 @@ void DeleteDeclaration::semantic(Scope *sc)
     //printf("DeleteDeclaration::semantic()\n");
     if (semanticRun >= PASSsemanticdone)
         return;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     parent = sc->parent;

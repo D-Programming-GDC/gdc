@@ -197,9 +197,9 @@ void AggregateDeclaration::semantic2(Scope *sc)
     if (!members)
         return;
 
-    if (scope && sizeok == SIZEOKfwd)   // Bugzilla 12531
+    if (_scope && sizeok == SIZEOKfwd)   // Bugzilla 12531
         semantic(NULL);
-    if (scope)
+    if (_scope)
     {
         error("has forward references");
         return;
@@ -283,7 +283,7 @@ void AggregateDeclaration::semantic3(Scope *sc)
         Dsymbol *s = ti->toAlias();
         Expression *e = new DsymbolExp(Loc(), s, 0);
 
-        Scope *sc3 = ti->tempdecl->scope->startCTFE();
+        Scope *sc3 = ti->tempdecl->_scope->startCTFE();
         sc3->tinst = sc->tinst;
         e = e->semantic(sc3);
         sc3->endCTFE();
@@ -301,61 +301,61 @@ void AggregateDeclaration::semantic3(Scope *sc)
 void StructDeclaration::semanticTypeInfoMembers()
 {
     if (xeq &&
-        xeq->scope &&
+        xeq->_scope &&
         xeq->semanticRun < PASSsemantic3done)
     {
         unsigned errors = global.startGagging();
-        xeq->semantic3(xeq->scope);
+        xeq->semantic3(xeq->_scope);
         if (global.endGagging(errors))
             xeq = xerreq;
     }
 
     if (xcmp &&
-        xcmp->scope &&
+        xcmp->_scope &&
         xcmp->semanticRun < PASSsemantic3done)
     {
         unsigned errors = global.startGagging();
-        xcmp->semantic3(xcmp->scope);
+        xcmp->semantic3(xcmp->_scope);
         if (global.endGagging(errors))
             xcmp = xerrcmp;
     }
 
     FuncDeclaration *ftostr = search_toString(this);
     if (ftostr &&
-        ftostr->scope &&
+        ftostr->_scope &&
         ftostr->semanticRun < PASSsemantic3done)
     {
-        ftostr->semantic3(ftostr->scope);
+        ftostr->semantic3(ftostr->_scope);
     }
 
     if (xhash &&
-        xhash->scope &&
+        xhash->_scope &&
         xhash->semanticRun < PASSsemantic3done)
     {
-        xhash->semantic3(xhash->scope);
+        xhash->semantic3(xhash->_scope);
     }
 
     if (postblit &&
-        postblit->scope &&
+        postblit->_scope &&
         postblit->semanticRun < PASSsemantic3done)
     {
-        postblit->semantic3(postblit->scope);
+        postblit->semantic3(postblit->_scope);
     }
 
     if (dtor &&
-        dtor->scope &&
+        dtor->_scope &&
         dtor->semanticRun < PASSsemantic3done)
     {
-        dtor->semantic3(dtor->scope);
+        dtor->semantic3(dtor->_scope);
     }
 }
 
 unsigned AggregateDeclaration::size(Loc loc)
 {
-    //printf("AggregateDeclaration::size() %s, scope = %p\n", toChars(), scope);
+    //printf("AggregateDeclaration::size() %s, scope = %p\n", toChars(), _scope);
     if (loc.linnum == 0)
         loc = this->loc;
-    if (sizeok != SIZEOKdone && scope)
+    if (sizeok != SIZEOKdone && _scope)
     {
         semantic(NULL);
 
@@ -387,7 +387,7 @@ unsigned AggregateDeclaration::size(Loc loc)
                     if (v->storage_class & STCmanifest)
                         return 0;
 
-                    if (v->scope)
+                    if (v->_scope)
                         v->semantic(NULL);
                     if (v->storage_class & (STCstatic | STCextern | STCtls | STCgshared | STCmanifest | STCctfe | STCtemplateparameter))
                         return 0;
@@ -468,7 +468,7 @@ bool AggregateDeclaration::checkOverlappedFields()
     {
         VarDeclaration *vd = fields[i];
         VarDeclaration *vx = vd;
-        if (vd->init && vd->init->isVoidInitializer())
+        if (vd->_init && vd->_init->isVoidInitializer())
             vx = NULL;
 
         // Find overlapped fields with the hole [vd->offset .. vd->offset->size()].
@@ -502,10 +502,10 @@ bool AggregateDeclaration::checkOverlappedFields()
 
             if (!vx)
                 continue;
-            if (v2->init && v2->init->isVoidInitializer())
+            if (v2->_init && v2->_init->isVoidInitializer())
                 continue;
 
-            if (vx->init && v2->init)
+            if (vx->_init && v2->_init)
             {
                 ::error(loc, "overlapping default initialization for field %s and %s", v2->toChars(), vd->toChars());
                 errors = true;
@@ -546,7 +546,7 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
 
         VarDeclaration *vd = fields[i];
         VarDeclaration *vx = vd;
-        if (vd->init && vd->init->isVoidInitializer())
+        if (vd->_init && vd->_init->isVoidInitializer())
             vx = NULL;
 
         // Find overlapped fields with the hole [vd->offset .. vd->offset->size()].
@@ -564,7 +564,7 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
                 vx = NULL;
                 break;
             }
-            if (v2->init && v2->init->isVoidInitializer())
+            if (v2->_init && v2->_init->isVoidInitializer())
                 continue;
 
             if (1)
@@ -578,7 +578,7 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
                     vx = v2;
                     fieldi = j;
                 }
-                else if (v2->init)
+                else if (v2->_init)
                 {
                     ::error(loc, "overlapping initialization for field %s and %s",
                         v2->toChars(), vd->toChars());
@@ -593,7 +593,7 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
                  * union U { int a; int b = 2; }
                  * U u;    // OK (u.b == 2)
                  */
-                if (!vx || !vx->init && v2->init)
+                if (!vx || !vx->_init && v2->_init)
                 {
                     vx = v2;
                     fieldi = j;
@@ -602,13 +602,13 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
                 {
                     // Both vx and v2 fills vd, but vx and v2 does not overlap
                 }
-                else if (vx->init && v2->init)
+                else if (vx->_init && v2->_init)
                 {
                     ::error(loc, "overlapping default initialization for field %s and %s",
                         v2->toChars(), vd->toChars());
                 }
                 else
-                    assert(vx->init || !vx->init && !v2->init);
+                    assert(vx->_init || !vx->_init && !v2->_init);
             }
         }
         if (vx)
@@ -618,9 +618,9 @@ bool AggregateDeclaration::fill(Loc loc, Expressions *elements, bool ctorinit)
             {
                 e = NULL;
             }
-            else if (vx->init)
+            else if (vx->_init)
             {
-                assert(!vx->init->isVoidInitializer());
+                assert(!vx->_init->isVoidInitializer());
                 e = vx->getConstInitializer(false);
             }
             else
@@ -943,11 +943,11 @@ void StructDeclaration::semantic(Scope *sc)
     int errors = global.errors;
 
     Scope *scx = NULL;
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scx = scope;            // save so we don't make redundant copies
-        scope = NULL;
+        sc = _scope;
+        scx = _scope;            // save so we don't make redundant copies
+        _scope = NULL;
     }
 
     if (!parent)
@@ -1059,9 +1059,9 @@ void StructDeclaration::semantic(Scope *sc)
 
         sc2->pop();
 
-        scope = scx ? scx : sc->copy();
-        scope->setNoFree();
-        scope->module->addDeferredSemantic(this);
+        _scope = scx ? scx : sc->copy();
+        _scope->setNoFree();
+        _scope->module->addDeferredSemantic(this);
 
         Module::dprogress = dprogress_save;
         //printf("\tdeferring %s\n", toChars());
@@ -1088,9 +1088,9 @@ LafterSizeok:
 
         sc2->pop();
 
-        scope = scx ? scx : sc->copy();
-        scope->setNoFree();
-        scope->module->addDeferredSemantic(this);
+        _scope = scx ? scx : sc->copy();
+        _scope->setNoFree();
+        _scope->module->addDeferredSemantic(this);
 
         //printf("\tdeferring %s\n", toChars());
         return;
@@ -1192,8 +1192,8 @@ Dsymbol *StructDeclaration::search(Loc loc, Identifier *ident, int flags)
 {
     //printf("%s.StructDeclaration::search('%s')\n", toChars(), ident->toChars());
 
-    if (scope && !symtab)
-        semantic(scope);
+    if (_scope && !symtab)
+        semantic(_scope);
 
     if (!members || !symtab)    // opaque or semantic() is not yet called
     {
@@ -1248,7 +1248,7 @@ void StructDeclaration::finalizeSize(Scope *sc)
         VarDeclaration *vd = fields[i];
         if (!vd->isDataseg())
         {
-            if (vd->init)
+            if (vd->_init)
             {
                 // Should examine init to see if it is really all 0's
                 zeroInit = 0;

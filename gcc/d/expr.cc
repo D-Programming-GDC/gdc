@@ -2036,14 +2036,14 @@ public:
 	tree init = NULL_TREE;
 
 	if (var && (var->isConst() || var->isImmutable())
-	    && e->type->toBasetype()->ty != Tsarray && var->init)
+	    && e->type->toBasetype()->ty != Tsarray && var->_init)
 	  {
 	    if (var->inuse)
 	      e->error("recursive reference %s", e->toChars());
 	    else
 	      {
 		var->inuse++;
-		init = var->init->toDt();
+		init = var->_init->toDt();
 		var->inuse--;
 	      }
 	  }
@@ -2642,7 +2642,7 @@ public:
 	  continue;
 
 	VarDeclaration *field = e->sd->fields[i];
-	if (field->init && field->init->isVoidInitializer())
+	if (field->_init && field->_init->isVoidInitializer())
 	  continue;
 
 	Type *type = exp->type->toBasetype();

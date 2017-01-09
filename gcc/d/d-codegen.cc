@@ -2282,7 +2282,7 @@ build_class_instance (ClassReferenceExp *exp)
 	  if (!value)
 	    continue;
 
-	  if (vfield->init && vfield->init->isVoidInitializer ())
+	  if (vfield->_init && vfield->_init->isVoidInitializer ())
 	    continue;
 
 	  // Use find_aggregate_field to get the overridden field decl,
