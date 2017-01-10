@@ -296,7 +296,7 @@ public:
     unsigned endlinnum;         // the linnumber of the statement after the scope (0 if unknown)
 
 private:
-    Dsymbols *imports;          // imported Dsymbol's
+    Dsymbols *importedScopes;   // imported Dsymbol's
     PROTKIND *prots;            // array of PROTKIND, one for each import
 
 public:
