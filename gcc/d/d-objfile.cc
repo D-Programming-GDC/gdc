@@ -1973,9 +1973,9 @@ Module::genmoduleinfo()
     {
       m->importedFrom = m;
       m->importAll (NULL);
-      m->semantic();
-      m->semantic2();
-      m->semantic3();
+      m->semantic(NULL);
+      m->semantic2(NULL);
+      m->semantic3(NULL);
       mref = m->search(Loc(), Id::Dmodule_ref, IgnoreErrors);
       compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, IgnoreErrors);
       dso_registry_func = m->search(Loc(), Id::dso_registry_func, IgnoreErrors);
