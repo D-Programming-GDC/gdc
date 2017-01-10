@@ -4682,7 +4682,7 @@ void Parser::checkCstyleTypeSyntax(Loc loc, Type *t, int alt, Identifier *ident)
  * Input:
  *      flags   PSxxxx
  * Output:
- *      pEndloc if { ... statements ... }, store location of closing brace
+ *      pEndloc if { ... statements ... }, store location of closing brace, otherwise loc of first token of next statement
  */
 
 Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc)
@@ -4804,7 +4804,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
                 Dsymbols *imports = parseImport();
                 s = new ImportStatement(loc, imports);
                 if (flags & PSscope)
-                    s = new ScopeStatement(loc, s);
+                    s = new ScopeStatement(loc, s, token.loc);
                 break;
             }
             goto Ldeclaration;
@@ -4878,7 +4878,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             else
                 s = new ExpStatement(loc, (Expression *)NULL);
             if (flags & PSscope)
-                s = new ScopeStatement(loc, s);
+                s = new ScopeStatement(loc, s, token.loc);
             break;
         }
 
@@ -4903,7 +4903,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             }
             s = new ExpStatement(loc, d);
             if (flags & PSscope)
-                s = new ScopeStatement(loc, s);
+                s = new ScopeStatement(loc, s, token.loc);
             break;
         }
 
@@ -4927,7 +4927,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             Dsymbol *d = parseMixin();
             s = new ExpStatement(loc, d);
             if (flags & PSscope)
-                s = new ScopeStatement(loc, s);
+                s = new ScopeStatement(loc, s, token.loc);
             break;
         }
 
@@ -4947,10 +4947,13 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             if (endPtr) *endPtr = token.ptr;
             endloc = token.loc;
             if (pEndloc)
+            {
                 *pEndloc = token.loc;
+                pEndloc = NULL; // don't set it again
+            }
             s = new CompoundStatement(loc, statements);
             if (flags & (PSscope | PScurlyscope))
-                s = new ScopeStatement(loc, s);
+                s = new ScopeStatement(loc, s, token.loc);
             check(TOKrcurly, "compound statement");
             lookingForElse = lookingForElseSave;
             break;
@@ -4997,7 +5000,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
                 nextToken();
             else
                 error("terminating ';' required after do-while statement");
-            s = new DoStatement(loc, body, condition);
+            s = new DoStatement(loc, body, condition, token.loc);
             break;
         }
 
@@ -5244,7 +5247,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             else
                 elsebody = NULL;
             if (condition && ifbody)
-                s = new IfStatement(loc, param, condition, ifbody, elsebody);
+                s = new IfStatement(loc, param, condition, ifbody, elsebody, token.loc);
             else
                 s = NULL;               // don't propagate parsing errors
             break;
@@ -5319,7 +5322,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             }
             s = new ConditionalStatement(loc, cond, ifbody, elsebody);
             if (flags & PSscope)
-                s = new ScopeStatement(loc, s);
+                s = new ScopeStatement(loc, s, token.loc);
             break;
 
         case TOKpragma:
@@ -5405,7 +5408,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             }
             else
                 s = parseStatement(PSsemi | PScurlyscope);
-            s = new ScopeStatement(loc, s);
+            s = new ScopeStatement(loc, s, token.loc);
 
             if (last)
             {
@@ -5442,7 +5445,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             }
             else
                 s = parseStatement(PSsemi | PScurlyscope);
-            s = new ScopeStatement(loc, s);
+            s = new ScopeStatement(loc, s, token.loc);
             s = new DefaultStatement(loc, s);
             break;
         }
@@ -5557,7 +5560,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             exp = parseExpression();
             check(TOKrparen);
             body = parseStatement(PSscope);
-            s = new WithStatement(loc, exp, body);
+            s = new WithStatement(loc, exp, body, token.loc);
             break;
         }
 
@@ -5749,7 +5752,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             Dsymbols *imports = parseImport();
             s = new ImportStatement(loc, imports);
             if (flags & PSscope)
-                s = new ScopeStatement(loc, s);
+                s = new ScopeStatement(loc, s, token.loc);
             break;
         }
 
@@ -5774,7 +5777,8 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
             s = NULL;
             break;
     }
-
+    if (pEndloc)
+        *pEndloc = token.loc;
     return s;
 }
 

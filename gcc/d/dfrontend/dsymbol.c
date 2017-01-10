@@ -867,6 +867,7 @@ ScopeDsymbol::ScopeDsymbol()
 {
     members = NULL;
     symtab = NULL;
+    endlinnum = 0;
     imports = NULL;
     prots = NULL;
 }
@@ -885,6 +886,7 @@ Dsymbol *ScopeDsymbol::syntaxCopy(Dsymbol *s)
     //printf("ScopeDsymbol::syntaxCopy('%s')\n", toChars());
     ScopeDsymbol *sds = s ? (ScopeDsymbol *)s : new ScopeDsymbol(ident);
     sds->members = arraySyntaxCopy(members);
+    sds->endlinnum = endlinnum;
     return sds;
 }
 
