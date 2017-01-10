@@ -907,7 +907,7 @@ genTypeInfo (Type *type, Scope *sc)
 	    t->vtinfo = TypeInfoClassDeclaration::create (type);
 	}
       else
-        t->vtinfo = TypeInfoDeclaration::create (type, 0);
+        t->vtinfo = TypeInfoDeclaration::create (type);
 
       gcc_assert (t->vtinfo);
 
