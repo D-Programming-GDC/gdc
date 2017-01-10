@@ -7714,7 +7714,7 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
         return e;
     }
 
-    if (e->op == TOKdotexp)
+    if (e->op == TOKdot)
     {
         DotExp *de = (DotExp *)e;
         if (de->e1->op == TOKimport)
@@ -8207,7 +8207,7 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
     printf("TypeClass::dotExp(e='%s', ident='%s')\n", e->toChars(), ident->toChars());
 #endif
 
-    if (e->op == TOKdotexp)
+    if (e->op == TOKdot)
     {
         DotExp *de = (DotExp *)e;
         if (de->e1->op == TOKimport)
