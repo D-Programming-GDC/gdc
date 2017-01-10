@@ -3594,7 +3594,7 @@ Expression *ThisExp::semantic(Scope *sc)
     var = fd->vthis;
     assert(var->parent);
     type = var->type;
-    if (var->isVarDeclaration()->checkNestedReference(sc, loc))
+    if (var->checkNestedReference(sc, loc))
         return new ErrorExp();
     if (!sc->intypeof)
         sc->callSuper |= CSXthis;
@@ -3705,7 +3705,7 @@ Expression *SuperExp::semantic(Scope *sc)
         type = type->castMod(var->type->mod);
     }
 
-    if (var->isVarDeclaration()->checkNestedReference(sc, loc))
+    if (var->checkNestedReference(sc, loc))
         return new ErrorExp();
 
     if (!sc->intypeof)
