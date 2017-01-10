@@ -2085,13 +2085,9 @@ void FuncDeclaration::semantic3(Scope *sc)
                     if (v->storage_class & (STCref | STCout | STClazy))
                         continue;
 
-                    if (v->noscope)
-                        continue;
-
-                    Expression *e = v->edtor;
-                    if (e)
+                    if (v->needsScopeDtor())
                     {
-                        Statement *s = new ExpStatement(Loc(), e);
+                        Statement *s = new ExpStatement(Loc(), v->edtor);
                         s = s->semantic(sc2);
                         unsigned int nothrowErrors = global.errors;
                         bool isnothrow = f->isnothrow & !(flags & FUNCFLAGnothrowInprocess);
@@ -2402,7 +2398,7 @@ void FuncDeclaration::buildResultVar(Scope *sc, Type *tret)
          * fbody->semantic() running, vresult->type might be modified.
          */
         vresult = new VarDeclaration(loc, tret, outId ? outId : Id::result, NULL);
-        vresult->noscope = true;
+        vresult->storage_class |= STCnodtor;
 
         if (outId == Id::result)
             vresult->storage_class |= STCtemp;
