@@ -7186,7 +7186,7 @@ Expression *Parser::parsePrimaryExp()
             check(TOKlparen, "import");
             e = parseAssignExp();
             check(TOKrparen);
-            e = new FileExp(loc, e);
+            e = new ImportExp(loc, e);
             break;
         }
 
