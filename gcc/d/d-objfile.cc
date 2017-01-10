@@ -371,7 +371,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
       BaseClass *b = (*vtblInterfaces)[i];
       if (b == bc)
 	return csymoffset;
-      csymoffset += b->base->vtbl.dim * Target::ptrsize;
+      csymoffset += b->sym->vtbl.dim * Target::ptrsize;
     }
 
   // Put out the overriding interface vtbl[]s.
@@ -384,7 +384,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
 	    {
 	      if (bc == bs)
 		return csymoffset;
-	      csymoffset += bs->base->vtbl.dim * Target::ptrsize;
+	      csymoffset += bs->sym->vtbl.dim * Target::ptrsize;
 	    }
 	}
     }

@@ -922,7 +922,7 @@ void FuncDeclaration::semantic(Scope *sc)
         for (size_t i = 0; i < cd->interfaces_dim; i++)
         {
             BaseClass *b = cd->interfaces[i];
-            vi = findVtblIndex((Dsymbols *)&b->base->vtbl, (int)b->base->vtbl.dim);
+            vi = findVtblIndex((Dsymbols *)&b->sym->vtbl, (int)b->sym->vtbl.dim);
             switch (vi)
             {
                 case -1:
@@ -935,7 +935,7 @@ void FuncDeclaration::semantic(Scope *sc)
 
                 default:
                 {
-                    FuncDeclaration *fdv = (FuncDeclaration *)b->base->vtbl[vi];
+                    FuncDeclaration *fdv = (FuncDeclaration *)b->sym->vtbl[vi];
                     Type *ti = NULL;
 
                     /* Remember which functions this overrides
@@ -996,7 +996,7 @@ void FuncDeclaration::semantic(Scope *sc)
             Dsymbol *s = NULL;
             for (size_t i = 0; i < cd->baseclasses->dim; i++)
             {
-                s = (*cd->baseclasses)[i]->base->search_correct(ident);
+                s = (*cd->baseclasses)[i]->sym->search_correct(ident);
                 if (s) break;
             }
 
@@ -1014,9 +1014,9 @@ void FuncDeclaration::semantic(Scope *sc)
         for (size_t i = 0; i < cd->interfaces_dim; i++)
         {
             BaseClass *b = cd->interfaces[i];
-            if (b->base)
+            if (b->sym)
             {
-                Dsymbol *s = search_function(b->base, ident);
+                Dsymbol *s = search_function(b->sym, ident);
                 if (s)
                 {
                     FuncDeclaration *f2 = s->isFuncDeclaration();
@@ -1024,7 +1024,7 @@ void FuncDeclaration::semantic(Scope *sc)
                     {
                         f2 = f2->overloadExactMatch(type);
                         if (f2 && f2->isFinalFunc() && f2->prot().kind != PROTprivate)
-                            error("cannot override final function %s.%s", b->base->toChars(), f2->toPrettyChars());
+                            error("cannot override final function %s.%s", b->sym->toChars(), f2->toPrettyChars());
                     }
                 }
             }

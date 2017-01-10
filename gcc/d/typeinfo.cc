@@ -103,7 +103,7 @@ class TypeInfoVisitor : public Visitor
     for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
       {
 	BaseClass *b = (*cd->vtblInterfaces)[i];
-	ClassDeclaration *id = b->base;
+	ClassDeclaration *id = b->sym;
 	vec<constructor_elt, va_gc> *v = NULL;
 	tree field;
 
@@ -159,7 +159,7 @@ class TypeInfoVisitor : public Visitor
 			   size_t index)
   {
     BaseClass *bs = (*bcd->vtblInterfaces)[index];
-    ClassDeclaration *id = bs->base;
+    ClassDeclaration *id = bs->sym;
     size_t voffset = cd->baseVtblOffset (bs);
     vec<constructor_elt, va_gc> *elms = NULL;
     FuncDeclarations bvtbl;

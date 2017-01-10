@@ -415,7 +415,7 @@ void ClassDeclaration::semantic(Scope *sc)
              * we need to set baseClass field for class covariance check.
              */
             baseClass = tc->sym;
-            b->base = baseClass;
+            b->sym = baseClass;
 
             if (tc->sym->_scope && tc->sym->baseok < BASEOKdone)
                 tc->sym->semantic(NULL);    // Try to resolve forward reference
@@ -448,9 +448,9 @@ void ClassDeclaration::semantic(Scope *sc)
             for (size_t j = (baseClass ? 1 : 0); j < i; j++)
             {
                 BaseClass *b2 = (*baseclasses)[j];
-                if (b2->base == tc->sym)
+                if (b2->sym == tc->sym)
                 {
-                    error("inherits from duplicate interface %s", b2->base->toChars());
+                    error("inherits from duplicate interface %s", b2->sym->toChars());
                     baseclasses->remove(i);
                     continue;
                 }
@@ -467,7 +467,7 @@ void ClassDeclaration::semantic(Scope *sc)
                 }
             }
 
-            b->base = tc->sym;
+            b->sym = tc->sym;
 
             if (tc->sym->_scope && tc->sym->baseok < BASEOKdone)
                 tc->sym->semantic(NULL);    // Try to resolve forward reference
@@ -510,7 +510,7 @@ void ClassDeclaration::semantic(Scope *sc)
 
             baseClass = tc->sym;
             assert(!baseClass->isInterfaceDeclaration());
-            b->base = baseClass;
+            b->sym = baseClass;
         }
         if (baseClass)
         {
@@ -536,11 +536,11 @@ void ClassDeclaration::semantic(Scope *sc)
             BaseClass *b = interfaces[i];
             // If this is an interface, and it derives from a COM interface,
             // then this is a COM interface too.
-            if (b->base->isCOMinterface())
+            if (b->sym->isCOMinterface())
                 com = true;
-            if (cpp && !b->base->isCPPinterface())
+            if (cpp && !b->sym->isCPPinterface())
             {
-                ::error(loc, "C++ class '%s' cannot implement D interface '%s'", toPrettyChars(), b->base->toPrettyChars());
+                ::error(loc, "C++ class '%s' cannot implement D interface '%s'", toPrettyChars(), b->sym->toPrettyChars());
             }
         }
 
@@ -871,7 +871,7 @@ bool ClassDeclaration::isBaseOf2(ClassDeclaration *cd)
     for (size_t i = 0; i < cd->baseclasses->dim; i++)
     {
         BaseClass *b = (*cd->baseclasses)[i];
-        if (b->base == this || isBaseOf2(b->base))
+        if (b->sym == this || isBaseOf2(b->sym))
             return true;
     }
     return false;
@@ -947,13 +947,13 @@ Dsymbol *ClassDeclaration::search(Loc loc, Identifier *ident, int flags)
         {
             BaseClass *b = (*baseclasses)[i];
 
-            if (b->base)
+            if (b->sym)
             {
-                if (!b->base->symtab)
-                    error("base %s is forward referenced", b->base->ident->toChars());
+                if (!b->sym->symtab)
+                    error("base %s is forward referenced", b->sym->ident->toChars());
                 else
                 {
-                    s = b->base->search(loc, ident, flags);
+                    s = b->sym->search(loc, ident, flags);
                     if (s == this)      // happens if s is nested in this and derives from this
                         s = NULL;
                     else if (s)
@@ -1431,9 +1431,9 @@ void InterfaceDeclaration::semantic(Scope *sc)
             for (size_t j = 0; j < i; j++)
             {
                 BaseClass *b2 = (*baseclasses)[j];
-                if (b2->base == tc->sym)
+                if (b2->sym == tc->sym)
                 {
-                    error("inherits from duplicate interface %s", b2->base->toChars());
+                    error("inherits from duplicate interface %s", b2->sym->toChars());
                     baseclasses->remove(i);
                     continue;
                 }
@@ -1457,7 +1457,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
                 }
             }
 
-            b->base = tc->sym;
+            b->sym = tc->sym;
 
             if (tc->sym->_scope && tc->sym->baseok < BASEOKdone)
                 tc->sym->semantic(NULL);    // Try to resolve forward reference
@@ -1488,9 +1488,9 @@ void InterfaceDeclaration::semantic(Scope *sc)
             BaseClass *b = interfaces[i];
             // If this is an interface, and it derives from a COM interface,
             // then this is a COM interface too.
-            if (b->base->isCOMinterface())
+            if (b->sym->isCOMinterface())
                 com = true;
-            if (b->base->isCPPinterface())
+            if (b->sym->isCPPinterface())
                 cpp = true;
         }
 
@@ -1546,19 +1546,19 @@ Lancestorsdone:
             }
 
             // Copy vtbl[] from base class
-            if (b->base->vtblOffset())
+            if (b->sym->vtblOffset())
             {
-                size_t d = b->base->vtbl.dim;
+                size_t d = b->sym->vtbl.dim;
                 if (d > 1)
                 {
                     vtbl.reserve(d - 1);
                     for (size_t j = 1; j < d; j++)
-                        vtbl.push(b->base->vtbl[j]);
+                        vtbl.push(b->sym->vtbl[j]);
                 }
             }
             else
             {
-                vtbl.append(&b->base->vtbl);
+                vtbl.append(&b->sym->vtbl);
             }
 
           Lcontinue:
@@ -1656,8 +1656,8 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
     {
         BaseClass *b = cd->interfaces[j];
 
-        //printf("\tbase %s\n", b->base->toChars());
-        if (this == b->base)
+        //printf("\tbase %s\n", b->sym->toChars());
+        if (this == b->sym)
         {
             //printf("\tfound at offset %d\n", b->offset);
             if (poffset)
@@ -1687,24 +1687,24 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
 
 bool InterfaceDeclaration::isBaseOf(BaseClass *bc, int *poffset)
 {
-    //printf("%s.InterfaceDeclaration::isBaseOf(bc = '%s')\n", toChars(), bc->base->toChars());
+    //printf("%s.InterfaceDeclaration::isBaseOf(bc = '%s')\n", toChars(), bc->sym->toChars());
     for (size_t j = 0; j < bc->baseInterfaces_dim; j++)
     {
         BaseClass *b = &bc->baseInterfaces[j];
 
-        if (this == b->base)
+        if (this == b->sym)
         {
             if (poffset)
             {
                 *poffset = b->offset;
-                if (j && bc->base->isInterfaceDeclaration())
+                if (j && bc->sym->isInterfaceDeclaration())
                     *poffset = OFFSET_RUNTIME;
             }
             return true;
         }
         if (isBaseOf(b, poffset))
         {
-            if (j && poffset && bc->base->isInterfaceDeclaration())
+            if (j && poffset && bc->sym->isInterfaceDeclaration())
                 *poffset = OFFSET_RUNTIME;
             return true;
         }
@@ -1759,7 +1759,7 @@ BaseClass::BaseClass(Type *type, Prot protection)
     //printf("BaseClass(this = %p, '%s')\n", this, type->toChars());
     this->type = type;
     this->protection = protection;
-    base = NULL;
+    sym = NULL;
     offset = 0;
 
     baseInterfaces_dim = 0;
@@ -1781,14 +1781,14 @@ bool BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newin
 {
     bool result = false;
 
-    //printf("BaseClass::fillVtbl(this='%s', cd='%s')\n", base->toChars(), cd->toChars());
+    //printf("BaseClass::fillVtbl(this='%s', cd='%s')\n", sym->toChars(), cd->toChars());
     if (vtbl)
-        vtbl->setDim(base->vtbl.dim);
+        vtbl->setDim(sym->vtbl.dim);
 
     // first entry is ClassInfo reference
-    for (size_t j = base->vtblOffset(); j < base->vtbl.dim; j++)
+    for (size_t j = sym->vtblOffset(); j < sym->vtbl.dim; j++)
     {
-        FuncDeclaration *ifd = base->vtbl[j]->isFuncDeclaration();
+        FuncDeclaration *ifd = sym->vtbl[j]->isFuncDeclaration();
         FuncDeclaration *fd;
         TypeFunction *tf;
 
@@ -1809,7 +1809,7 @@ bool BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newin
             // Check that it is current
             if (newinstance &&
                 fd->toParent() != cd &&
-                ifd->toParent() == base)
+                ifd->toParent() == sym)
                 cd->error("interface function '%s' is not implemented", ifd->toFullSignature());
 
             if (fd->toParent() == cd)
@@ -1833,18 +1833,18 @@ bool BaseClass::fillVtbl(ClassDeclaration *cd, FuncDeclarations *vtbl, int newin
 
 void BaseClass::copyBaseInterfaces(BaseClasses *vtblInterfaces)
 {
-    //printf("+copyBaseInterfaces(), %s\n", base->toChars());
+    //printf("+copyBaseInterfaces(), %s\n", sym->toChars());
 //    if (baseInterfaces_dim)
 //      return;
 
-    baseInterfaces_dim = base->interfaces_dim;
+    baseInterfaces_dim = sym->interfaces_dim;
     baseInterfaces = (BaseClass *)mem.xcalloc(baseInterfaces_dim, sizeof(BaseClass));
 
-    //printf("%s.copyBaseInterfaces()\n", base->toChars());
+    //printf("%s.copyBaseInterfaces()\n", sym->toChars());
     for (size_t i = 0; i < baseInterfaces_dim; i++)
     {
         BaseClass *b = &baseInterfaces[i];
-        BaseClass *b2 = base->interfaces[i];
+        BaseClass *b2 = sym->interfaces[i];
 
         assert(b2->vtbl.dim == 0);      // should not be filled yet
         memcpy(b, b2, sizeof(BaseClass));
