@@ -312,6 +312,7 @@ FuncDeclaration::FuncDeclaration(Loc loc, Loc endloc, Identifier *id, StorageCla
     vtblIndex = -1;
     hasReturnExp = 0;
     naked = false;
+    generated = false;
     inlineStatusExp = ILSuninitialized;
     inlineStatusStmt = ILSuninitialized;
     inlining = PINLINEdefault;
@@ -4015,7 +4016,7 @@ FuncDeclaration *FuncDeclaration::genCfunc(Parameters *fparams, Type *treturn, I
 
 const char *FuncDeclaration::kind()
 {
-    return "function";
+    return generated ? "generated function" : "function";
 }
 
 /*********************************************
