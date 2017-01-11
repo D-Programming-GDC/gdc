@@ -51,13 +51,28 @@
 #include "id.h"
 
 
+/* Return identifier for the external mangled name of DECL.  */
+
+static const char *
+mangle_decl (Dsymbol *decl)
+{
+  if (decl->isFuncDeclaration ())
+    return mangleExact ((FuncDeclaration *)decl);
+  else
+    {
+      OutBuffer buf;
+      mangleToBuffer (decl, &buf);
+      return buf.extractString();
+    }
+}
+
 /* Generate a mangled identifier using NAME and SUFFIX, prefixed by the
    assembler name for DSYM.  */
 
 tree
 make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
 {
-  const char *prefix = mangle (dsym);
+  const char *prefix = mangle_decl (dsym);
   unsigned namelen = strlen (name);
   unsigned buflen = (2 + strlen (prefix) + namelen + strlen (suffix)) * 2;
   char *buf = (char *) alloca (buflen);
@@ -161,7 +176,7 @@ get_symbol_decl (Declaration *decl)
       if (decl->mangleOverride)
 	mangled_name = get_identifier (decl->mangleOverride);
       else
-	mangled_name = get_identifier (fd ? mangleExact (fd) : mangle (decl));
+	mangled_name = get_identifier (mangle_decl (decl));
 
       mangled_name = targetm.mangle_decl_assembler_name (decl->csym,
 							 mangled_name);
