@@ -18,6 +18,7 @@
 
 #include "dsymbol.h"
 #include "mtype.h"
+#include "objc.h"
 
 class Expression;
 class Statement;
@@ -527,6 +528,7 @@ public:
     DsymbolTable *localsymtab;
     VarDeclaration *vthis;              // 'this' parameter (member and nested)
     VarDeclaration *v_arguments;        // '_arguments' parameter
+    Objc_FuncDeclaration objc;
     VarDeclaration *v_argptr;           // '_argptr' variable
     VarDeclarations *parameters;        // Array of VarDeclaration's for parameters
     DsymbolTable *labtab;               // statement label symbol table

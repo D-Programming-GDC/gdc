@@ -283,6 +283,7 @@ public:
       case LINKc:
       case LINKcpp:
       case LINKd:
+      case LINKobjc:
 	/* [abi/function-calling-conventions]
 
 	  The extern (C) and extern (D) calling convention matches

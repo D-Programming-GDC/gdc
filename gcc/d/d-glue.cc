@@ -337,4 +337,3 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
 
   return e;
 }
-

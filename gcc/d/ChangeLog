@@ -5,6 +5,11 @@
 
 2017-12-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* Make-lang.in (D_DMD_OBJS): Add d/objc.o
+	* types.cc (TypeVisitor::visit(TypeFunction)): Handle ObjC linkage.
+
+2017-12-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-decls.cc (mangle_decl): New function.
 	(make_internal_name): Update.
 	(get_symbol_decl): Update.
