@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/dsymbol.h
+ * https://github.com/dlang/dmd/blob/master/src/dsymbol.h
  */
 
 #ifndef DMD_DSYMBOL_H
@@ -111,9 +111,9 @@ struct Prot
     Prot();
     Prot(PROTKIND kind);
 
-    bool isMoreRestrictiveThan(Prot other);
-    bool operator==(Prot other);
-    bool isSubsetOf(Prot other);
+    bool isMoreRestrictiveThan(const Prot other) const;
+    bool operator==(const Prot& other) const;
+    bool isSubsetOf(const Prot& other) const;
 };
 
 // in hdrgen.c
@@ -167,10 +167,10 @@ public:
     Dsymbol();
     Dsymbol(Identifier *);
     static Dsymbol *create(Identifier *);
-    char *toChars();
-    virtual char *toPrettyCharsHelper(); // helper to print fully qualified (template) arguments
+    const char *toChars();
+    virtual const char *toPrettyCharsHelper(); // helper to print fully qualified (template) arguments
     Loc& getLoc();
-    char *locToChars();
+    const char *locToChars();
     bool equals(RootObject *o);
     bool isAnonymous();
     void error(Loc loc, const char *format, ...);
@@ -380,14 +380,14 @@ public:
     DsymbolTable();
 
     // Look up Identifier. Return Dsymbol if found, NULL if not.
-    Dsymbol *lookup(Identifier *ident);
+    Dsymbol *lookup(Identifier const * const ident);
 
     // Insert Dsymbol in table. Return NULL if already there.
     Dsymbol *insert(Dsymbol *s);
 
     // Look for Dsymbol in table. If there, return it. If not, insert s and return that.
     Dsymbol *update(Dsymbol *s);
-    Dsymbol *insert(Identifier *ident, Dsymbol *s);     // when ident and s are not the same
+    Dsymbol *insert(Identifier const * const ident, Dsymbol *s);     // when ident and s are not the same
 };
 
 #endif /* DMD_DSYMBOL_H */

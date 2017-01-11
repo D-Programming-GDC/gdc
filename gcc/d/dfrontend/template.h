@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/template.h
+ * https://github.com/dlang/dmd/blob/master/src/template.h
  */
 
 #ifndef DMD_TEMPLATE_H
@@ -49,7 +49,7 @@ public:
     // kludge for template.isType()
     int dyncast() { return DYNCAST_TUPLE; }
 
-    char *toChars() { return objects.toChars(); }
+    const char *toChars() { return objects.toChars(); }
 };
 
 struct TemplatePrevious
@@ -91,7 +91,7 @@ public:
     bool overloadInsert(Dsymbol *s);
     bool hasStaticCtorOrDtor();
     const char *kind();
-    char *toChars();
+    const char *toChars();
 
     Prot prot();
 
@@ -334,8 +334,8 @@ public:
     Dsymbol *toAlias();                 // resolve real symbol
     const char *kind();
     bool oneMember(Dsymbol **ps, Identifier *ident);
-    char *toChars();
-    char* toPrettyCharsHelper();
+    const char *toChars();
+    const char* toPrettyCharsHelper();
     void printInstantiationTrace();
     Identifier *getIdent();
     int compare(RootObject *o);
@@ -380,7 +380,7 @@ public:
     int apply(Dsymbol_apply_ft_t fp, void *param);
     bool hasPointers();
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
-    char *toChars();
+    const char *toChars();
 
     bool findTempDecl(Scope *sc);
 

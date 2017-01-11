@@ -376,11 +376,11 @@ get_symbol_decl (Declaration *decl)
     {
       if (global.params.vtls)
 	{
-	  char *p = decl->loc.toChars ();
+	  const char *p = decl->loc.toChars ();
 	  fprintf (global.stdmsg, "%s: %s is thread local\n",
 		   p ? p : "", decl->toChars ());
 	  if (p)
-	    free (p);
+	    free (CONST_CAST (char *, p));
 	}
 
       set_decl_tls_model (decl->csym, decl_default_tls_model (decl->csym));

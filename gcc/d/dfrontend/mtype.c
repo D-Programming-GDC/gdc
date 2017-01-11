@@ -1492,7 +1492,7 @@ char *MODtoChars(MOD mod)
  * For pretty-printing a type.
  */
 
-char *Type::toChars()
+const char *Type::toChars()
 {
     OutBuffer buf;
     buf.reserve(16);
@@ -2116,8 +2116,8 @@ Expression *Type::getProperty(Loc loc, Identifier *ident, int flag)
     }
     else if (ident == Id::stringof)
     {
-        char *s = toChars();
-        e = new StringExp(loc, s, strlen(s));
+        const char *s = toChars();
+        e = new StringExp(loc, (char *)s, strlen(s));
         Scope sc;
         e = e->semantic(&sc);
     }
@@ -2196,8 +2196,8 @@ Expression *Type::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
         /* Bugzilla 3796: this should demangle e->type->deco rather than
          * pretty-printing the type.
          */
-        char *s = e->toChars();
-        e = new StringExp(e->loc, s, strlen(s));
+        const char *s = e->toChars();
+        e = new StringExp(e->loc, (char *)s, strlen(s));
     }
     else
         e = getProperty(e->loc, ident, flag);
@@ -2264,7 +2264,7 @@ Expression *Type::noMember(Scope *sc, Expression *e, Identifier *ident, int flag
                 fd->error("must be a template opDispatch(string s), not a %s", fd->kind());
                 return new ErrorExp();
             }
-            StringExp *se = new StringExp(e->loc, ident->toChars());
+            StringExp *se = new StringExp(e->loc, (char *)ident->toChars());
             Objects *tiargs = new Objects();
             tiargs->push(se);
             DotTemplateInstanceExp *dti = new DotTemplateInstanceExp(e->loc, e, Id::opDispatch, tiargs);
@@ -2364,7 +2364,7 @@ void Type::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol **ps,
  * Return !=0 if the type or any of its subtypes is wild.
  */
 
-int Type::hasWild()
+int Type::hasWild() const
 {
     return mod & MODwild;
 }
@@ -2514,7 +2514,7 @@ void TypeNext::checkDeprecated(Loc loc, Scope *sc)
         next->checkDeprecated(loc, sc);
 }
 
-int TypeNext::hasWild()
+int TypeNext::hasWild() const
 {
     if (ty == Tfunction)
         return 0;
@@ -7473,8 +7473,8 @@ Expression *TypeEnum::getProperty(Loc loc, Identifier *ident, int flag)
     }
     else if (ident == Id::stringof)
     {
-        char *s = toChars();
-        e = new StringExp(loc, s, strlen(s));
+        const char *s = toChars();
+        e = new StringExp(loc, (char *)s, strlen(s));
         Scope sc;
         e = e->semantic(&sc);
     }

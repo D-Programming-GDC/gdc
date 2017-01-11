@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/module.h
+ * https://github.com/dlang/dmd/blob/master/src/module.h
  */
 
 #ifndef DMD_MODULE_H
@@ -46,7 +46,7 @@ public:
 
     Package *isPackage() { return this; }
 
-    bool isAncestorPackageOf(Package *pkg);
+    bool isAncestorPackageOf(const Package * const pkg) const;
 
     void semantic(Scope *) { }
     Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
@@ -92,9 +92,10 @@ public:
     Dsymbol *searchCacheSymbol; // cached value of search
     int searchCacheFlags;       // cached flags
 
-    Module *importedFrom;       // module from command line we're imported from,
-                                // i.e. a module that will be taken all the
-                                // way to an object file
+    // module from command line we're imported from,
+    // i.e. a module that will be taken all the
+    // way to an object file
+    Module *importedFrom;
 
     Dsymbols *decldefs;         // top level declarations for this Module
 
@@ -181,7 +182,7 @@ struct ModuleDeclaration
 
     ModuleDeclaration(Loc loc, Identifiers *packages, Identifier *id);
 
-    char *toChars();
+    const char *toChars();
 };
 
 #endif /* DMD_MODULE_H */

@@ -204,12 +204,12 @@ Identifier *Dsymbol::getIdent()
     return ident;
 }
 
-char *Dsymbol::toChars()
+const char *Dsymbol::toChars()
 {
     return ident ? ident->toChars() : (char *)"__anonymous";
 }
 
-char *Dsymbol::toPrettyCharsHelper()
+const char *Dsymbol::toPrettyCharsHelper()
 {
     return toChars();
 }
@@ -233,7 +233,7 @@ const char *Dsymbol::toPrettyChars(bool QualifyTypes)
     *q = 0;
     for (p = this; p; p = p->parent)
     {
-        char *t = QualifyTypes ? p->toPrettyCharsHelper() : p->toChars();
+        const char *t = QualifyTypes ? p->toPrettyCharsHelper() : p->toChars();
         len = strlen(t);
         q -= len;
         memcpy(q, t, len);
@@ -257,7 +257,7 @@ Loc& Dsymbol::getLoc()
     return loc;
 }
 
-char *Dsymbol::locToChars()
+const char *Dsymbol::locToChars()
 {
     return getLoc().toChars();
 }
@@ -1551,7 +1551,7 @@ DsymbolTable::DsymbolTable()
     tab = NULL;
 }
 
-Dsymbol *DsymbolTable::lookup(Identifier *ident)
+Dsymbol *DsymbolTable::lookup(Identifier const * const ident)
 {
     //printf("DsymbolTable::lookup(%s)\n", (char*)ident->string);
     return (Dsymbol *)dmd_aaGetRvalue(tab, (void *)ident);
@@ -1568,7 +1568,7 @@ Dsymbol *DsymbolTable::insert(Dsymbol *s)
     return s;
 }
 
-Dsymbol *DsymbolTable::insert(Identifier *ident, Dsymbol *s)
+Dsymbol *DsymbolTable::insert(Identifier const * const ident, Dsymbol *s)
 {
     //printf("DsymbolTable::insert()\n");
     Dsymbol **ps = (Dsymbol **)dmd_aaGet(&tab, (void *)ident);
@@ -1604,7 +1604,7 @@ Prot::Prot(PROTKIND kind)
  * Checks if `this` is superset of `other` restrictions.
  * For example, "protected" is more restrictive than "public".
  */
-bool Prot::isMoreRestrictiveThan(Prot other)
+bool Prot::isMoreRestrictiveThan(const Prot other) const
 {
     return this->kind < other.kind;
 }
@@ -1612,7 +1612,7 @@ bool Prot::isMoreRestrictiveThan(Prot other)
 /**
  * Checks if `this` is absolutely identical protection attribute to `other`
  */
-bool Prot::operator==(Prot other)
+bool Prot::operator==(const Prot& other) const
 {
     if (this->kind == other.kind)
     {
@@ -1633,7 +1633,7 @@ bool Prot::operator==(Prot other)
  *  'true' if parent is already more restrictive than this one and thus
  *  no differentiation is needed.
  */
-bool Prot::isSubsetOf(Prot parent)
+bool Prot::isSubsetOf(const Prot& parent) const
 {
     if (this->kind != parent.kind)
         return false;

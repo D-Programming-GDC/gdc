@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/init.h
+ * https://github.com/dlang/dmd/blob/master/src/init.h
  */
 
 #ifndef INIT_H
@@ -51,7 +51,7 @@ public:
     // needInterpret is INITinterpret if must be a manifest constant, 0 if not.
     virtual Initializer *semantic(Scope *sc, Type *t, NeedInterpret needInterpret) = 0;
     virtual Expression *toExpression(Type *t = NULL) = 0;
-    char *toChars();
+    const char *toChars();
 
     virtual ErrorInitializer   *isErrorInitializer() { return NULL; }
     virtual VoidInitializer    *isVoidInitializer() { return NULL; }

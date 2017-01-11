@@ -2058,7 +2058,7 @@ void Expression::print()
     fflush(stderr);
 }
 
-char *Expression::toChars()
+const char *Expression::toChars()
 {
     OutBuffer buf;
     HdrGenState hgs;
@@ -2078,7 +2078,7 @@ void Expression::printAST(int indent)
     printf("%s %s\n", Token::toChars(op), type ? type->toChars() : "");
 }
 
-void Expression::error(const char *format, ...)
+void Expression::error(const char *format, ...) const
 {
     if (type != Type::terror)
     {
@@ -2089,7 +2089,7 @@ void Expression::error(const char *format, ...)
     }
 }
 
-void Expression::warning(const char *format, ...)
+void Expression::warning(const char *format, ...) const
 {
     if (type != Type::terror)
     {
@@ -2100,7 +2100,7 @@ void Expression::warning(const char *format, ...)
     }
 }
 
-void Expression::deprecation(const char *format, ...)
+void Expression::deprecation(const char *format, ...) const
 {
     if (type != Type::terror)
     {
@@ -4063,7 +4063,7 @@ Expression *StringExp::modifiableLvalue(Scope *sc, Expression *e)
     return new ErrorExp();
 }
 
-unsigned StringExp::charAt(uinteger_t i)
+unsigned StringExp::charAt(uinteger_t i) const
 {   unsigned value;
 
     switch (sz)
@@ -5920,7 +5920,7 @@ Expression *FuncExp::semantic(Scope *sc, Expressions *arguments)
     return semantic(sc);
 }
 
-char *FuncExp::toChars()
+const char *FuncExp::toChars()
 {
     return fd->toChars();
 }
@@ -7438,8 +7438,8 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
         }
         else if (ident == Id::stringof)
         {
-            char *p = ie->toChars();
-            e = new StringExp(loc, p, strlen(p));
+            const char *p = ie->toChars();
+            e = new StringExp(loc, (char*)p, strlen(p));
             e = e->semantic(sc);
             return e;
         }

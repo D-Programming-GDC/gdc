@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/aggregate.h
+ * https://github.com/dlang/dmd/blob/master/src/aggregate.h
  */
 
 #ifndef DMD_AGGREGATE_H
@@ -85,13 +85,14 @@ public:
     bool isdeprecated;          // true if deprecated
     bool mutedeprecation;       // true while analysing RTInfo to avoid deprecation message
 
-    Dsymbol *enclosing;         /* !=NULL if is nested
-                                 * pointing to the dsymbol that directly enclosing it.
-                                 * 1. The function that enclosing it (nested struct and class)
-                                 * 2. The class that enclosing it (nested class only)
-                                 * 3. If enclosing aggregate is template, its enclosing dsymbol.
-                                 * See AggregateDeclaraton::makeNested for the details.
-                                 */
+    /* !=NULL if is nested
+     * pointing to the dsymbol that directly enclosing it.
+     * 1. The function that enclosing it (nested struct and class)
+     * 2. The class that enclosing it (nested class only)
+     * 3. If enclosing aggregate is template, its enclosing dsymbol.
+     * See AggregateDeclaraton::makeNested for the details.
+     */
+    Dsymbol *enclosing;
     VarDeclaration *vthis;      // 'this' parameter if this aggregate is nested
     // Special member functions
     FuncDeclarations invs;              // Array of invariants
@@ -100,9 +101,12 @@ public:
     DeleteDeclaration *aggDelete;       // deallocator
 
     Dsymbol *ctor;                      // CtorDeclaration or TemplateDeclaration
-    CtorDeclaration *defaultCtor;       // default constructor - should have no arguments, because
-                                        // it would be stored in TypeInfo_Class.defaultConstructor
-    Dsymbol *aliasthis;                 // forward unresolved lookups to aliasthis
+
+    // default constructor - should have no arguments, because
+    // it would be stored in TypeInfo_Class.defaultConstructor
+    CtorDeclaration *defaultCtor;
+
+    Dsymbol *aliasthis;         // forward unresolved lookups to aliasthis
     bool noDefaultCtor;         // no default construction
 
     FuncDeclarations dtors;     // Array of destructors
@@ -134,7 +138,8 @@ public:
 
     Prot prot();
 
-    Type *handleType() { return type; } // 'this' type
+    // 'this' type
+    Type *handleType() { return type; }
 
     // Back end
     Symbol *stag;               // tag symbol for debug data
@@ -216,8 +221,9 @@ struct BaseClass
 
     ClassDeclaration *sym;
     unsigned offset;                    // 'this' pointer offset
-    FuncDeclarations vtbl;              // for interfaces: Array of FuncDeclaration's
-                                        // making up the vtbl[]
+    // for interfaces: Array of FuncDeclaration's
+    // making up the vtbl[]
+    FuncDeclarations vtbl;
 
     size_t baseInterfaces_dim;
     // if BaseClass is an interface, these
@@ -295,12 +301,12 @@ public:
     bool isFuncHidden(FuncDeclaration *fd);
     FuncDeclaration *findFunc(Identifier *ident, TypeFunction *tf);
     void interfaceSemantic(Scope *sc);
-    bool isCOMclass();
-    virtual bool isCOMinterface();
-    bool isCPPclass();
-    virtual bool isCPPinterface();
+    bool isCOMclass() const;
+    virtual bool isCOMinterface() const;
+    bool isCPPclass() const;
+    virtual bool isCPPinterface() const;
     bool isAbstract();
-    virtual int vtblOffset();
+    virtual int vtblOffset() const;
     const char *kind();
 
     void addLocalClass(ClassDeclarations *);
@@ -327,9 +333,9 @@ public:
     bool isBaseOf(ClassDeclaration *cd, int *poffset);
     bool isBaseOf(BaseClass *bc, int *poffset);
     const char *kind();
-    int vtblOffset();
-    bool isCPPinterface();
-    bool isCOMinterface();
+    int vtblOffset() const;
+    bool isCPPinterface() const;
+    bool isCOMinterface() const;
 
     InterfaceDeclaration *isInterfaceDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
