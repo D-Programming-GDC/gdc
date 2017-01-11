@@ -706,10 +706,6 @@ public:
     Statement *gotoTarget;      // interpret
 
     bool breaks;                // someone did a 'break ident'
-#ifndef IN_GCC
-    block *lblock;              // back end
-    Blocks *fwdrefs;            // forward references to this LabelStatement
-#endif
 
     LabelStatement(Loc loc, Identifier *ident, Statement *statement);
     Statement *syntaxCopy();

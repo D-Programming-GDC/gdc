@@ -84,24 +84,16 @@ Expression *implicitCastTo(Expression *e, Scope *sc, Type *t)
             {
                 if (!t->deco)
                 {
-                    /* Can happen with:
-                     *    enum E { One }
-                     *    class A
-                     *    { static void fork(EDG dg) { dg(E.One); }
-                     *      alias void delegate(E) EDG;
-                     *    }
-                     * Should eventually make it work.
-                     */
                     e->error("forward reference to type %s", t->toChars());
                 }
-                else if (Type *tx = reliesOnTident(t))
-                    e->error("forward reference to type %s", tx->toChars());
-
-                //printf("type %p ty %d deco %p\n", type, type->ty, type->deco);
-                //type = type->semantic(loc, sc);
-                //printf("type %s t %s\n", type->deco, t->deco);
-                e->error("cannot implicitly convert expression (%s) of type %s to %s",
-                    e->toChars(), e->type->toChars(), t->toChars());
+                else
+                {
+                    //printf("type %p ty %d deco %p\n", type, type->ty, type->deco);
+                    //type = type->semantic(loc, sc);
+                    //printf("type %s t %s\n", type->deco, t->deco);
+                    e->error("cannot implicitly convert expression (%s) of type %s to %s",
+                        e->toChars(), e->type->toChars(), t->toChars());
+                }
             }
             result = new ErrorExp();
         }
@@ -2653,11 +2645,11 @@ Lagain:
     t1b = t1->toBasetype();
     t2b = t2->toBasetype();
 
-    TY ty = (TY)Type::impcnvResult[t1b->ty][t2b->ty];
+    TY ty = (TY)impcnvResult[t1b->ty][t2b->ty];
     if (ty != Terror)
     {
-        TY ty1 = (TY)Type::impcnvType1[t1b->ty][t2b->ty];
-        TY ty2 = (TY)Type::impcnvType2[t1b->ty][t2b->ty];
+        TY ty1 = (TY)impcnvType1[t1b->ty][t2b->ty];
+        TY ty2 = (TY)impcnvType2[t1b->ty][t2b->ty];
 
         if (t1b->ty == ty1)     // if no promotions
         {

@@ -127,8 +127,6 @@ public:
         unsigned memsize, unsigned memalignsize, structalign_t memalign,
         unsigned *paggsize, unsigned *paggalignsize, bool isunion);
     Type *getType();
-    int firstFieldInUnion(int indx); // first field in union that includes indx
-    int numFieldsInUnion(int firstIndex); // #fields in union starting at index
     bool isDeprecated();         // is aggregate deprecated?
     bool muteDeprecationMessage(); // disable deprecation message on Dsymbol?
     bool isNested();
