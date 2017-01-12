@@ -3367,8 +3367,13 @@ DsymbolExp::DsymbolExp(Loc loc, Dsymbol *s, bool hasOverloads)
 
 Expression *DsymbolExp::semantic(Scope *sc)
 {
+    return resolve(loc, sc, s, hasOverloads);
+}
+
+Expression *DsymbolExp::resolve(Loc loc, Scope *sc, Dsymbol *s, bool hasOverloads)
+{
 #if LOGSEMANTIC
-    printf("DsymbolExp::semantic(%s %s)\n", s->kind(), s->toChars());
+    printf("DsymbolExp::resolve(%s %s)\n", s->kind(), s->toChars());
 #endif
 
 Lagain:
@@ -3377,12 +3382,12 @@ Lagain:
     //printf("DsymbolExp:: %p '%s' is a symbol\n", this, toChars());
     //printf("s = '%s', s->kind = '%s'\n", s->toChars(), s->kind());
     if (!s->isFuncDeclaration())        // functions are checked after overloading
-        checkDeprecated(sc, s);
+        s->checkDeprecated(loc, sc);
     Dsymbol *olds = s;
     s = s->toAlias();
     //printf("s = '%s', s->kind = '%s', s->needThis() = %p\n", s->toChars(), s->kind(), s->needThis());
     if (s != olds && !s->isFuncDeclaration())
-        checkDeprecated(sc, s);
+        s->checkDeprecated(loc, sc);
 
     if (VarDeclaration *v = s->isVarDeclaration())
     {
@@ -3418,14 +3423,10 @@ Lagain:
     if (VarDeclaration *v = s->isVarDeclaration())
     {
         //printf("Identifier '%s' is a variable, type '%s'\n", toChars(), v->type->toChars());
-        if (!type)
+        if (!v->type)
         {
-            type = v->type;
-            if (!v->type)
-            {
-                error("forward reference of %s %s", s->kind(), s->toChars());
-                return new ErrorExp();
-            }
+            ::error(loc, "forward reference of %s %s", s->kind(), s->toChars());
+            return new ErrorExp();
         }
         if ((v->storage_class & STCmanifest) && v->_init)
         {
@@ -3433,7 +3434,7 @@ Lagain:
             // BUG: The check for speculative gagging is not correct
             if (v->inuse && !global.gag)
             {
-                error("circular initialization of %s", v->toChars());
+                ::error(loc, "circular initialization of %s", v->toChars());
                 return new ErrorExp();
             }
             if (v->_scope)
@@ -3446,7 +3447,7 @@ Lagain:
             e = v->_init->toExpression(v->type);
             if (!e)
             {
-                error("cannot make expression out of initializer for %s", v->toChars());
+                ::error(loc, "cannot make expression out of initializer for %s", v->toChars());
                 return new ErrorExp();
             }
             e = e->copy();
@@ -3457,7 +3458,7 @@ Lagain:
         }
 
         e = new VarExp(loc, v);
-        e->type = type;
+        e->type = v->type;
         e = e->semantic(sc);
         return e->deref();
     }
@@ -3476,7 +3477,7 @@ Lagain:
         if (!f->type->deco)
         {
             const char *trailMsg = f->inferRetType ? "inferred return type of function call " : "";
-            error("forward reference to %s'%s'", trailMsg, toChars());
+            ::error(loc, "forward reference to %s'%s'", trailMsg, f->toChars());
             return new ErrorExp();
         }
         FuncDeclaration *fd = s->isFuncDeclaration();
@@ -3499,7 +3500,7 @@ Lagain:
     {
         if (!imp->pkg)
         {
-            error("forward reference of import %s", imp->toChars());
+            ::error(loc, "forward reference of import %s", imp->toChars());
             return new ErrorExp();
         }
         ScopeExp *ie = new ScopeExp(loc, imp->pkg);
@@ -3563,7 +3564,7 @@ Lagain:
         return e;
     }
 
-    error("%s '%s' is not a variable", s->kind(), s->toChars());
+    ::error(loc, "%s '%s' is not a variable", s->kind(), s->toChars());
     return new ErrorExp();
 }
 
