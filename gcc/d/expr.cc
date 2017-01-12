@@ -2464,7 +2464,7 @@ public:
 
     for (size_t i = 0; i < e->elements->dim; i++)
       {
-	Expression *expr = (*e->elements)[i];
+	Expression *expr = e->getElement(i);
 	tree value = build_expr(expr, this->constp_);
 
 	// Only care about non-zero values, the backend will fill in the rest.
@@ -2769,14 +2769,14 @@ public:
     // First handle array literal expressions.
     if (e->e1->op == TOKarrayliteral)
       {
-	Expressions *elements = ((ArrayLiteralExp *) e->e1)->elements;
+	ArrayLiteralExp *ale = ((ArrayLiteralExp *) e->e1);
 	vec<constructor_elt, va_gc> *elms = NULL;
 	bool constant_p = true;
 
-	vec_safe_reserve(elms, elements->dim);
-	for (size_t i = 0; i < elements->dim; i++)
+	vec_safe_reserve(elms, ale->elements->dim);
+	for (size_t i = 0; i < ale->elements->dim; i++)
 	  {
-	    Expression *expr = (*elements)[i];
+	    Expression *expr = ale->getElement(i);
 	    tree value = d_convert(etype, build_expr(expr, this->constp_));
 	    if (!CONSTANT_CLASS_P (value))
 	      constant_p = false;

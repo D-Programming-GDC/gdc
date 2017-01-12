@@ -3657,7 +3657,7 @@ template component13087(alias vec, char c)
     static assert(is(typeof(f_m( sca1))  == shared(      const int)[]));
     static assert(is(typeof(f_m( sca2))  == shared(      const int)[]));  // <- shared(const(int)[])
     static assert(is(typeof(f_m(swma1))  == shared(inout       int)[]));
-    static assert(is(typeof(f_m(swma2))  == shared(inout       int)[]));  // <- shared(inout(int[])
+    static assert(is(typeof(f_m(swma2))  == shared(inout       int)[]));  // <- shared(inout(int[]))
     static assert(is(typeof(f_m(swca1))  == shared(inout const int)[]));
     static assert(is(typeof(f_m(swca2))  == shared(inout const int)[]));  // <- shared(inout(const(int))[])
     // 9 * 2 - 1
@@ -4618,6 +4618,28 @@ void test14735()
     // Have to work as same as above.
     assert(indexOf14735a(buf[], '\0') == 2);
     assert(indexOf14735b(buf[], '\0') == 2);
+}
+
+/******************************************/
+// 14886
+
+void test14886()
+{
+    alias R = int[100_000];
+
+    auto front(T)(T[] a) {}
+    front(R.init);
+
+    auto bar1(T)(T, T[] a) { return T.init; }
+    auto bar2(T)(T[] a, T) { return T.init; }
+
+    static assert(is(typeof(bar1(1L, R.init)) == long));
+    static assert(is(typeof(bar2(R.init, 1L)) == long));
+    // <-- T should be deduced to int because R.init is rvalue...?
+
+    ubyte x;
+    static assert(is(typeof(bar1(x, R.init)) == int));
+    static assert(is(typeof(bar2(R.init, x)) == int));
 }
 
 /******************************************/
