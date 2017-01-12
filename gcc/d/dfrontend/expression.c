@@ -1640,7 +1640,7 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
             }
             if (p->storageClass & STCref)
             {
-                if (p->storageClass & STCauto &&
+                if (p->storageClass & STCautoref &&
                     (arg->op == TOKthis || arg->op == TOKsuper))
                 {
                     // suppress deprecation message for auto ref parameter
