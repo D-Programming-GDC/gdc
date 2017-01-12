@@ -2636,9 +2636,6 @@ public:
 	  continue;
 
 	VarDeclaration *field = e->sd->fields[i];
-	if (field->_init && field->_init->isVoidInitializer())
-	  continue;
-
 	Type *type = exp->type->toBasetype();
 	Type *ftype = field->type->toBasetype();
 	tree value = NULL_TREE;

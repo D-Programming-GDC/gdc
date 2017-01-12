@@ -2282,9 +2282,6 @@ build_class_instance (ClassReferenceExp *exp)
 	  if (!value)
 	    continue;
 
-	  if (vfield->_init && vfield->_init->isVoidInitializer ())
-	    continue;
-
 	  // Use find_aggregate_field to get the overridden field decl,
 	  // instead of the field associated with the base class.
 	  tree field = get_symbol_decl (bcd->fields[i]);
