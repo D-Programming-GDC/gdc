@@ -1090,6 +1090,8 @@ d_parse_file()
       m->semantic2(NULL);
     }
 
+  Module::runDeferredSemantic2();
+
   if (global.errors)
     goto had_errors;
 
