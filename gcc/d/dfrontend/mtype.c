@@ -2046,6 +2046,7 @@ Type *TypeFunction::substWildTo(unsigned)
     t->isproperty = isproperty;
     t->isref = isref;
     t->isreturn = isreturn;
+    t->isscope = isscope;
     t->iswild = 0;
     t->trust = trust;
     t->fargs = fargs;
@@ -5121,6 +5122,7 @@ TypeFunction::TypeFunction(Parameters *parameters, Type *treturn, int varargs, L
     this->isproperty = false;
     this->isref = false;
     this->isreturn = false;
+    this->isscope = false;
     this->iswild = 0;
     this->fargs = NULL;
 
@@ -5137,6 +5139,8 @@ TypeFunction::TypeFunction(Parameters *parameters, Type *treturn, int varargs, L
         this->isref = true;
     if (stc & STCreturn)
         this->isreturn = true;
+    if (stc & STCscope)
+        this->isscope = true;
 
     this->trust = TRUSTdefault;
     if (stc & STCsafe)
@@ -5169,6 +5173,7 @@ Type *TypeFunction::syntaxCopy()
     t->isproperty = isproperty;
     t->isref = isref;
     t->isreturn = isreturn;
+    t->isscope = isscope;
     t->iswild = iswild;
     t->trust = trust;
     t->fargs = fargs;
@@ -5398,6 +5403,8 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
         tf->isref = true;
     if (sc->stc & STCreturn)
         tf->isreturn = true;
+    if (sc->stc & STCscope)
+        tf->isscope = true;
 
     if (sc->stc & STCsafe)
         tf->trust = TRUSTsafe;
@@ -6135,6 +6142,7 @@ Type *TypeFunction::addStorageClass(StorageClass stc)
         tf->isproperty = t->isproperty;
         tf->isref = t->isref;
         tf->isreturn = t->isreturn;
+        tf->isscope = t->isscope;
         tf->trust = t->trust;
         tf->iswild = t->iswild;
 
@@ -6172,6 +6180,9 @@ int TypeFunction::attributesApply(void *param, int (*fp)(void *, const char *), 
     if (res) return res;
 
     if (isref) res = fp(param, "ref");
+    if (res) return res;
+
+    if (isscope) res = fp(param, "scope");
     if (res) return res;
 
     TRUST trustAttrib = trust;

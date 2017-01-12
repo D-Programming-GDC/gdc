@@ -501,6 +501,7 @@ void FuncDeclaration::semantic(Scope *sc)
         }
 
         if (tf->isref)      sc->stc |= STCref;
+        if (tf->isscope)    sc->stc |= STCscope;
         if (tf->isnothrow)  sc->stc |= STCnothrow;
         if (tf->isnogc)     sc->stc |= STCnogc;
         if (tf->isproperty) sc->stc |= STCproperty;
@@ -616,6 +617,7 @@ void FuncDeclaration::semantic(Scope *sc)
         TypeFunction *tfo = (TypeFunction *)originalType;
         TypeFunction *tfx = (TypeFunction *)type;
         tfo->mod        = tfx->mod;
+        tfo->isscope    = tfx->isscope;
         tfo->isref      = tfx->isref;
         tfo->isnothrow  = tfx->isnothrow;
         tfo->isnogc     = tfx->isnogc;
@@ -631,8 +633,13 @@ void FuncDeclaration::semantic(Scope *sc)
 
     if ((storage_class & STCauto) && !f->isref && !inferRetType)
         error("storage class 'auto' has no effect if return type is not inferred");
-    if (storage_class & STCscope)
+    /* Functions can only be 'scope' if they have a 'this' that is a pointer, not a ref
+     */
+    if (f->isscope && !isNested() &&
+        !(ad && ad->isClassDeclaration()))
+    {
         error("functions cannot be scope");
+    }
 
     if (isAbstract() && !isVirtual())
     {
