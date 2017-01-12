@@ -185,6 +185,10 @@ ftransition=nogc
 D RejectNegative
 List all hidden GC allocations.
 
+ftransition=safe
+D RejectNegative
+Implement enhanced @safe checking
+
 ftransition=tls
 D RejectNegative
 List all variables going into thread local storage.
