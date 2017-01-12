@@ -3,6 +3,11 @@
 	* typeinfo.cc (layout_classinfo): Use placement new to initialize
 	typeinfo class declaration.
 
+2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_init_options): Initialize hdrStripPlainFunctions.
+	(d_post_options): Add post handling of flag.
+
 2017-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_parse_file): Run runDeferredSemantic2 after semantic2.
