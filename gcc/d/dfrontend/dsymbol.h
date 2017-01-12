@@ -304,7 +304,7 @@ public:
     ScopeDsymbol(Identifier *id);
     Dsymbol *syntaxCopy(Dsymbol *s);
     Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
-    OverloadSet *mergeOverloadSet(OverloadSet *os, Dsymbol *s);
+    OverloadSet *mergeOverloadSet(Identifier *ident, OverloadSet *os, Dsymbol *s);
     void importScope(Dsymbol *s, Prot protection);
     bool isforwardRef();
     static void multiplyDefined(Loc loc, Dsymbol *s1, Dsymbol *s2);
@@ -363,7 +363,7 @@ class OverloadSet : public Dsymbol
 public:
     Dsymbols a;         // array of Dsymbols
 
-    OverloadSet(Identifier *ident);
+    OverloadSet(Identifier *ident, OverloadSet *os = NULL);
     void push(Dsymbol *s);
     OverloadSet *isOverloadSet() { return this; }
     const char *kind();

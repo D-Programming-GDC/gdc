@@ -451,7 +451,7 @@ void AliasDeclaration::semantic(Scope *sc)
         {
             if (overnext)
             {
-                FuncAliasDeclaration *fa = new FuncAliasDeclaration(fd);
+                FuncAliasDeclaration *fa = new FuncAliasDeclaration(ident, fd);
                 if (!fa->overloadInsert(overnext))
                     ScopeDsymbol::multiplyDefined(Loc(), overnext, fd);
                 overnext = NULL;
@@ -463,7 +463,7 @@ void AliasDeclaration::semantic(Scope *sc)
         {
             if (overnext)
             {
-                OverDeclaration *od = new OverDeclaration(td);
+                OverDeclaration *od = new OverDeclaration(ident, td);
                 if (!od->overloadInsert(overnext))
                     ScopeDsymbol::multiplyDefined(Loc(), overnext, td);
                 overnext = NULL;
@@ -475,7 +475,7 @@ void AliasDeclaration::semantic(Scope *sc)
         {
             if (overnext)
             {
-                OverDeclaration *od2 = new OverDeclaration(od);
+                OverDeclaration *od2 = new OverDeclaration(ident, od);
                 if (!od2->overloadInsert(overnext))
                     ScopeDsymbol::multiplyDefined(Loc(), overnext, od);
                 overnext = NULL;
@@ -487,6 +487,7 @@ void AliasDeclaration::semantic(Scope *sc)
         {
             if (overnext)
             {
+                os = new OverloadSet(ident, os);
                 os->push(overnext);
                 overnext = NULL;
                 s = os;
@@ -524,13 +525,13 @@ bool AliasDeclaration::overloadInsert(Dsymbol *s)
         Dsymbol *sa = aliassym->toAlias();
         if (FuncDeclaration *fd = sa->isFuncDeclaration())
         {
-            FuncAliasDeclaration *fa = new FuncAliasDeclaration(fd);
+            FuncAliasDeclaration *fa = new FuncAliasDeclaration(ident, fd);
             aliassym = fa;
             return fa->overloadInsert(s);
         }
         if (TemplateDeclaration *td = sa->isTemplateDeclaration())
         {
-            OverDeclaration *od = new OverDeclaration(td);
+            OverDeclaration *od = new OverDeclaration(ident, td);
             aliassym = od;
             return od->overloadInsert(s);
         }
@@ -642,8 +643,8 @@ Dsymbol *AliasDeclaration::toAlias2()
 
 /****************************** OverDeclaration **************************/
 
-OverDeclaration::OverDeclaration(Dsymbol *s, bool hasOverloads)
-    : Declaration(s->ident)
+OverDeclaration::OverDeclaration(Identifier *ident, Dsymbol *s, bool hasOverloads)
+    : Declaration(ident)
 {
     this->overnext = NULL;
     this->aliassym = s;
