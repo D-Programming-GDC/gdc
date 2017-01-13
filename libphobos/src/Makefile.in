@@ -142,13 +142,14 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/algorithm/setops.lo std/algorithm/sorting.lo std/array.lo \
 	std/ascii.lo std/base64.lo std/bigint.lo std/bitmanip.lo \
 	std/compiler.lo std/complex.lo std/concurrency.lo \
-	std/container/array.lo std/container/binaryheap.lo \
-	std/container/dlist.lo std/container/package.lo \
-	std/container/rbtree.lo std/container/slist.lo \
-	std/container/util.lo std/conv.lo std/cstream.lo std/csv.lo \
-	std/datetime.lo std/demangle.lo std/digest/crc.lo \
-	std/digest/digest.lo std/digest/md.lo std/digest/ripemd.lo \
-	std/digest/sha.lo std/encoding.lo std/exception.lo \
+	std/concurrencybase.lo std/container/array.lo \
+	std/container/binaryheap.lo std/container/dlist.lo \
+	std/container/package.lo std/container/rbtree.lo \
+	std/container/slist.lo std/container/util.lo std/conv.lo \
+	std/cstream.lo std/csv.lo std/datetime.lo std/demangle.lo \
+	std/digest/crc.lo std/digest/digest.lo std/digest/hmac.lo \
+	std/digest/md.lo std/digest/ripemd.lo std/digest/sha.lo \
+	std/encoding.lo std/exception.lo \
 	std/experimental/logger/core.lo \
 	std/experimental/logger/filelogger.lo \
 	std/experimental/logger/multilogger.lo \
@@ -532,12 +533,13 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/algorithm/package.d std/algorithm/searching.d \
 	std/algorithm/setops.d std/algorithm/sorting.d std/array.d std/ascii.d \
 	std/base64.d std/bigint.d std/bitmanip.d std/compiler.d std/complex.d \
-	std/concurrency.d std/container/array.d std/container/binaryheap.d \
-	std/container/dlist.d std/container/package.d std/container/rbtree.d \
-	std/container/slist.d std/container/util.d std/conv.d std/cstream.d \
+	std/concurrency.d std/concurrencybase.d std/container/array.d \
+	std/container/binaryheap.d std/container/dlist.d \
+	std/container/package.d std/container/rbtree.d std/container/slist.d \
+	std/container/util.d std/conv.d std/cstream.d \
 	std/csv.d std/datetime.d std/demangle.d std/digest/crc.d \
-	std/digest/digest.d std/digest/md.d std/digest/ripemd.d \
-	std/digest/sha.d std/encoding.d std/exception.d \
+	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
+	std/digest/ripemd.d std/digest/sha.d std/encoding.d std/exception.d \
 	std/experimental/logger/core.d std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
@@ -684,6 +686,7 @@ std/bitmanip.lo: std/$(am__dirstamp)
 std/compiler.lo: std/$(am__dirstamp)
 std/complex.lo: std/$(am__dirstamp)
 std/concurrency.lo: std/$(am__dirstamp)
+std/concurrencybase.lo: std/$(am__dirstamp)
 std/container/$(am__dirstamp):
 	@$(MKDIR_P) std/container
 	@: > std/container/$(am__dirstamp)
@@ -704,6 +707,7 @@ std/digest/$(am__dirstamp):
 	@: > std/digest/$(am__dirstamp)
 std/digest/crc.lo: std/digest/$(am__dirstamp)
 std/digest/digest.lo: std/digest/$(am__dirstamp)
+std/digest/hmac.lo: std/digest/$(am__dirstamp)
 std/digest/md.lo: std/digest/$(am__dirstamp)
 std/digest/ripemd.lo: std/digest/$(am__dirstamp)
 std/digest/sha.lo: std/digest/$(am__dirstamp)
@@ -973,6 +977,8 @@ mostlyclean-compile:
 	-rm -f std/complex.lo
 	-rm -f std/concurrency.$(OBJEXT)
 	-rm -f std/concurrency.lo
+	-rm -f std/concurrencybase.$(OBJEXT)
+	-rm -f std/concurrencybase.lo
 	-rm -f std/container/array.$(OBJEXT)
 	-rm -f std/container/array.lo
 	-rm -f std/container/binaryheap.$(OBJEXT)
@@ -1001,6 +1007,8 @@ mostlyclean-compile:
 	-rm -f std/digest/crc.lo
 	-rm -f std/digest/digest.$(OBJEXT)
 	-rm -f std/digest/digest.lo
+	-rm -f std/digest/hmac.$(OBJEXT)
+	-rm -f std/digest/hmac.lo
 	-rm -f std/digest/md.$(OBJEXT)
 	-rm -f std/digest/md.lo
 	-rm -f std/digest/ripemd.$(OBJEXT)
