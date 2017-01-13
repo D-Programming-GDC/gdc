@@ -325,15 +325,10 @@ version(unittest)
 
         enum ctbytes = toUbyte2(ctval);
 
-      version (GNU)
-      {
         // don't test pad bytes because can be anything
         enum testsize =
             (FloatTraits!TYPE.EXPONENT + FloatTraits!TYPE.MANTISSA + 1)/8;
         assert(rtbytes[0..testsize] == ctbytes[0..testsize]);
-      }
-      else
-        assert(rtbytes[] == ctbytes);
     }
 
     private void testConvert()
@@ -408,7 +403,7 @@ version(unittest)
 
         testNumberConvert!("real.min_normal/2");
         testNumberConvert!("real.min_normal/2UL^^63");
-        //testNumberConvert!("real.min_normal/19"); //XGDC: ct[0] == 0, rt[0] == 27
+        //testNumberConvert!("real.min_normal/19"); // XGDC: ct[0] == 0, rt[0] == 27
         //testNumberConvert!("real.min_normal/17"); // XGDC: ct[0= == 128, rt[0] == 136
 
         /**Test imaginary values: convert algorithm is same with real values*/
