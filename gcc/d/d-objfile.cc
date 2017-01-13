@@ -79,8 +79,8 @@ gcc_attribute_p(Dsymbol *dsym)
 
   if (md && md->packages && md->packages->dim == 1)
     {
-      if (!strcmp((*md->packages)[0]->string, "gcc")
-	  && !strcmp(md->id->string, "attribute"))
+      if (!strcmp((*md->packages)[0]->toChars(), "gcc")
+	  && !strcmp(md->id->toChars(), "attribute"))
 	return true;
     }
 
@@ -126,7 +126,7 @@ Dsymbol::toObjFile()
 
 	      Identifier *alias = imp->aliases[i];
 	      tree name = (alias != NULL)
-		? get_identifier(alias->string) : NULL_TREE;
+		? get_identifier(alias->toChars()) : NULL_TREE;
 
 	      (*debug_hooks->imported_module_or_decl)(decl, name, context, false);
 	    }
@@ -138,7 +138,7 @@ Dsymbol::toObjFile()
 	  set_input_location(imp);
 
 	  tree name = (imp->aliasId != NULL)
-	    ? get_identifier(imp->aliasId->string) : NULL_TREE;
+	    ? get_identifier(imp->aliasId->toChars()) : NULL_TREE;
 
 	  (*debug_hooks->imported_module_or_decl)(decl, name, context, false);
 	}
@@ -572,7 +572,7 @@ VarDeclaration::toObjFile()
 		{
 		  // Zero-length arrays do not have an initializer.
 		  warning (OPT_Wuninitialized, "uninitialized variable '%s'",
-			   ident ? ident->string : "(no name)");
+			   ident ? ident->toChars() : "(no name)");
 		}
 	    }
 	}
@@ -1500,7 +1500,7 @@ build_type_decl (tree type, Dsymbol *dsym)
   gcc_assert(!POINTER_TYPE_P (type));
 
   tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL,
-			 get_identifier(dsym->ident->string), type);
+			 get_identifier(dsym->ident->toChars()), type);
   DECL_ARTIFICIAL (decl) = 1;
 
   DECL_CONTEXT (decl) = d_decl_context(dsym);

@@ -1556,7 +1556,7 @@ public:
         typeToBuffer(tm->tqual, NULL);
         tiargsToBuffer(tm);
 
-        if (tm->ident && memcmp(tm->ident->string, "__mixin", 7) != 0)
+        if (tm->ident && memcmp(tm->ident->toChars(), "__mixin", 7) != 0)
         {
             buf->writeByte(' ');
             buf->writestring(tm->ident->toChars());
@@ -1712,7 +1712,7 @@ public:
     void visit(Nspace *d)
     {
         buf->writestring("extern (C++, ");
-        buf->writestring(d->ident->string);
+        buf->writestring(d->ident->toChars());
         buf->writeByte(')');
         buf->writenl();
         buf->writeByte('{');
@@ -3021,8 +3021,8 @@ public:
                 buf->writestring(p->ident->toChars());
         }
         else if (p->type->ty == Tident &&
-                 ((TypeIdentifier *)p->type)->ident->len > 3 &&
-                 strncmp(((TypeIdentifier *)p->type)->ident->string, "__T", 3) == 0)
+                 strlen(((TypeIdentifier *)p->type)->ident->toChars()) > 3 &&
+                 strncmp(((TypeIdentifier *)p->type)->ident->toChars(), "__T", 3) == 0)
         {
             // print parameter name, instead of undetermined type parameter
             buf->writestring(p->ident->toChars());

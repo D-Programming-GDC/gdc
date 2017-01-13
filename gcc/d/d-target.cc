@@ -267,14 +267,14 @@ Target::loadModule (Module *m)
 
   if (md->packages->dim == 1)
     {
-      if (!strcmp ((*md->packages)[0]->string, "gcc")
-	  && !strcmp (md->id->string, "builtins"))
+      if (!strcmp ((*md->packages)[0]->toChars(), "gcc")
+	  && !strcmp (md->id->toChars(), "builtins"))
 	d_build_builtins_module (m);
     }
   else if (md->packages->dim == 2)
     {
-      if (!strcmp ((*md->packages)[0]->string, "core")
-	  && !strcmp ((*md->packages)[1]->string, "stdc"))
+      if (!strcmp ((*md->packages)[0]->toChars(), "core")
+	  && !strcmp ((*md->packages)[1]->toChars(), "stdc"))
 	builtin_modules.push (m);
     }
 }

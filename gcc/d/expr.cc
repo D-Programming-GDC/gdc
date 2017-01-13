@@ -2014,7 +2014,7 @@ public:
   {
     if (e->var->needThis())
       {
-	error("need 'this' to access member %s", e->var->ident->string);
+	error("need 'this' to access member %s", e->var->ident->toChars());
 	this->result_ = error_mark_node;
       }
     else if (e->var->ident == Id::ctfe)

@@ -1199,10 +1199,10 @@ d_attribute_p (const char* name)
 	  table->_init(n);
 
 	  for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name));
+	    table->insert(p->name, strlen(p->name), NULL);
 
 	  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name));
+	    table->insert(p->name, strlen(p->name), NULL);
 	}
     }
 
@@ -3580,7 +3580,7 @@ maybe_set_intrinsic (FuncDeclaration *decl)
   // Look through all D intrinsics.
   TemplateInstance *ti = decl->isInstantiated();
   TemplateDeclaration *td = ti ? ti->tempdecl->isTemplateDeclaration() : NULL;
-  const char *tname = decl->ident->string;
+  const char *tname = decl->ident->toChars();
   const char *tmodule = m->md->toChars();
   const char *tdeco = decl->type->deco;
 
@@ -3910,7 +3910,7 @@ lookup_label(Statement *s, Identifier *ident)
   if (cfun == NULL)
     {
       error("label %s referenced outside of any function",
-	    ident ? ident->string : "(unnamed)");
+	    ident ? ident->toChars() : "(unnamed)");
       return NULL_TREE;
     }
 
@@ -3923,7 +3923,7 @@ lookup_label(Statement *s, Identifier *ident)
     return ent->label;
   else
     {
-      tree name = ident ? get_identifier(ident->string) : NULL_TREE;
+      tree name = ident ? get_identifier(ident->toChars()) : NULL_TREE;
       tree decl = build_decl(input_location, LABEL_DECL, name, void_type_node);
       DECL_CONTEXT (decl) = current_function_decl;
       DECL_MODE (decl) = VOIDmode;
@@ -4314,7 +4314,7 @@ build_frame_type (tree ffi, FuncDeclaration *func)
       VarDeclaration *v = func->closureVars[i];
       tree s = get_symbol_decl (v);
       tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
-			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
+			       v->ident ? get_identifier (v->ident->toChars()) : NULL_TREE,
 			       declaration_type (v));
       SET_DECL_LANG_FRAME_FIELD (s, field);
       set_decl_location (field, v);
@@ -4608,7 +4608,7 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	  if (var->isField())
 	    {
 	      tree field = create_field_decl(declaration_type(var),
-					     var->ident ? var->ident->string : NULL,
+					     var->ident ? var->ident->toChars() : NULL,
 					     inherited_p, inherited_p);
 	      insert_aggregate_field(var->loc, context, field, var->offset);
 
