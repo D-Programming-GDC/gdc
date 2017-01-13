@@ -1,3 +1,9 @@
+2017-01-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_class_instance): Don't check for void
+	initialized fields.
+	* expr.cc (ExprVisitor::visit(StructLiteralExp)): Likewise.
+
 2017-01-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* typeinfo.cc (layout_classinfo): Use placement new to initialize
