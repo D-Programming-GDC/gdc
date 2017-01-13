@@ -6446,8 +6446,8 @@ void TypeQualified::resolveTupleIndex(Loc loc, Scope *sc, Dsymbol *s,
         if (tindex)
             eindex = new TypeExp(loc, tindex);
         else if (sindex)
-            eindex = new DsymbolExp(loc, sindex);
-        Expression *e = new IndexExp(loc, new DsymbolExp(loc, s), eindex);
+            eindex = DsymbolExp::resolve(loc, sc, sindex, false);
+        Expression *e = new IndexExp(loc, DsymbolExp::resolve(loc, sc, s, false), eindex);
         e = e->semantic(sc);
         if (e->op == TOKerror)
             *pt = Type::terror;
@@ -6462,7 +6462,7 @@ void TypeQualified::resolveTupleIndex(Loc loc, Scope *sc, Dsymbol *s,
     if (tindex)
         tindex->resolve(loc, sc, &eindex, &tindex, &sindex);
     if (sindex)
-        eindex = new DsymbolExp(loc, sindex);
+        eindex = DsymbolExp::resolve(loc, sc, sindex, false);
     if (!eindex)
     {
         ::error(loc, "index is %s not an expression", oindex->toChars());
@@ -6647,7 +6647,7 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
                     VarDeclaration *v = s->isVarDeclaration();
                     FuncDeclaration *f = s->isFuncDeclaration();
                     if (intypeid || !v && !f)
-                        e = new DsymbolExp(loc, s);
+                        e = DsymbolExp::resolve(loc, sc, s, false);
                     else
                         e = new VarExp(loc, s->isDeclaration());
 
@@ -7835,8 +7835,7 @@ L1:
 
     if (s->isImport() || s->isModule() || s->isPackage())
     {
-        e = new DsymbolExp(e->loc, s, 0);
-        e = e->semantic(sc);
+        e = DsymbolExp::resolve(e->loc, sc, s, false);
         return e;
     }
 
@@ -8504,8 +8503,7 @@ L1:
 
     if (s->isImport() || s->isModule() || s->isPackage())
     {
-        e = new DsymbolExp(e->loc, s, 0);
-        e = e->semantic(sc);
+        e = DsymbolExp::resolve(e->loc, sc, s, false);
         return e;
     }
 
