@@ -2466,7 +2466,7 @@ else
         ///
         float   fabsf(float x);
         ///
-        real    fabsl(real x);        
+        real    fabsl(real x);
     }
 
     ///

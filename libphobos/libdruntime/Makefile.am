@@ -150,20 +150,22 @@ DRUNTIME_DSOURCES_GENERATED = gcc/config.d gcc/libbacktrace.d
 # https://www.gnu.org/software/automake/manual/html_node/Wildcards.html
 DRUNTIME_DISOURCES = __entrypoint.di
 
-DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
-	core/cpuid.d core/demangle.d core/exception.d core/internal/convert.d \
-	core/internal/hash.d core/internal/traits.d core/math.d core/memory.d \
-	core/runtime.d core/simd.d core/stdc/complex.d core/stdc/config.d \
-	core/stdc/ctype.d core/stdc/errno.d core/stdc/fenv.d \
-	core/stdc/float_.d core/stdc/inttypes.d core/stdc/limits.d \
-	core/stdc/locale.d core/stdc/math.d core/stdc/signal.d \
-	core/stdc/stdarg.d core/stdc/stddef.d core/stdc/stdint.d \
-	core/stdc/stdio.d core/stdc/stdlib.d core/stdc/string.d \
-	core/stdc/tgmath.d core/stdc/time.d core/stdc/wchar_.d \
-	core/stdc/wctype.d core/sync/barrier.d core/sync/condition.d \
-	core/sync/config.d core/sync/exception.d core/sync/mutex.d \
-	core/sync/rwmutex.d core/sync/semaphore.d core/thread.d core/time.d \
-	core/vararg.d etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d \
+DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
+	core/checkedint.d core/cpuid.d core/demangle.d core/exception.d \
+	core/internal/abort.d core/internal/convert.d core/internal/hash.d \
+	core/internal/string.d core/internal/traits.d \
+	core/math.d core/memory.d core/runtime.d core/simd.d \
+	core/stdc/complex.d core/stdc/config.d core/stdc/ctype.d \
+	core/stdc/errno.d core/stdc/fenv.d core/stdc/float_.d \
+	core/stdc/inttypes.d core/stdc/limits.d core/stdc/locale.d \
+	core/stdc/math.d core/stdc/signal.d core/stdc/stdarg.d \
+	core/stdc/stddef.d core/stdc/stdint.d core/stdc/stdio.d \
+	core/stdc/stdlib.d core/stdc/string.d core/stdc/tgmath.d \
+	core/stdc/time.d core/stdc/wchar_.d core/stdc/wctype.d \
+	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
+	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
+	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
+	etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d \
 	gcc/backtrace.d gcc/builtins.d gcc/deh.d gcc/unwind/arm.d \
 	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
 	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
@@ -172,7 +174,8 @@ DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
 	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
 	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx.d \
 	rt/sections_solaris.d rt/sections_win32.d rt/sections_win64.d \
-	rt/switch_.d rt/tlsgc.d rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d \
+	rt/switch_.d rt/tlsgc.d rt/backtrace/dwarf.d rt/backtrace/elf.d \
+	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d \
 	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
 	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
 	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
@@ -188,7 +191,7 @@ DRUNTIME_DSOURCES = core/atomic.d core/bitop.d core/checkedint.d \
 	rt/typeinfo/ti_void.d rt/typeinfo/ti_wchar.d rt/util/array.d \
 	rt/util/container/array.d rt/util/container/common.d \
 	rt/util/container/hashtab.d rt/util/container/treap.d rt/util/hash.d \
-	rt/util/random.d rt/util/string.d rt/util/typeinfo.d rt/util/utf.d
+	rt/util/random.d rt/util/typeinfo.d rt/util/utf.d
 
 DRUNTIME_DSOURCES_GC = gc/bits.d gc/config.d gc/gc.d gc/os.d \
 	gc/pooltable.d gc/proxy.d gc/stats.d
@@ -248,8 +251,9 @@ DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
 
 DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
-	core/sys/linux/errno.d core/sys/linux/execinfo.d core/sys/linux/link.d \
-	core/sys/linux/stdio.d core/sys/linux/sys/inotify.d \
+	core/sys/linux/errno.d core/sys/linux/execinfo.d \
+	core/sys/linux/fcntl.d core/sys/linux/link.d core/sys/linux/stdio.d \
+	core/sys/linux/sys/inotify.d core/sys/linux/unistd.d \
 	core/sys/linux/sys/mman.d core/sys/linux/sys/signalfd.d \
 	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/xattr.d \
 	core/sys/linux/termios.d core/sys/linux/time.d core/sys/linux/tipc.d
