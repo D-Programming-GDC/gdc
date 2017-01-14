@@ -2016,13 +2016,33 @@ public:
       {
 	error("need 'this' to access member %s", e->var->ident->toChars());
 	this->result_ = error_mark_node;
+	return;
       }
     else if (e->var->ident == Id::ctfe)
       {
 	// __ctfe is always false at runtime
 	this->result_ = integer_zero_node;
+	return;
       }
-    else if (this->constp_)
+
+    // This check is same as is done in FuncExp for lambdas.
+    FuncLiteralDeclaration *fld = e->var->isFuncLiteralDeclaration ();
+    if (fld != NULL)
+      {
+	if (fld->tok == TOKreserved)
+	  {
+	    fld->tok = TOKfunction;
+	    fld->vthis = NULL;
+	  }
+
+	// Emit after current function body has finished.
+	if (cfun != NULL)
+	  cfun->language->deferred_fns.safe_push(fld);
+	else
+	  fld->toObjFile();
+      }
+
+    if (this->constp_)
       {
 	// Want the initializer, not the expression.
 	VarDeclaration *var = e->var->isVarDeclaration();
