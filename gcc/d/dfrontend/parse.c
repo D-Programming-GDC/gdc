@@ -8095,9 +8095,10 @@ void initPrecedence()
 
     precedence[TOKtypeof] = PREC_primary;
     precedence[TOKmixin] = PREC_primary;
+    precedence[TOKimport] = PREC_primary;
 
     precedence[TOKdotvar] = PREC_primary;
-    precedence[TOKimport] = PREC_primary;
+    precedence[TOKscope] = PREC_primary;
     precedence[TOKidentifier] = PREC_primary;
     precedence[TOKthis] = PREC_primary;
     precedence[TOKsuper] = PREC_primary;
