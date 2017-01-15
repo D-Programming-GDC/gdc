@@ -34,6 +34,15 @@
 	(make_internal_name): Update.
 	(get_symbol_decl): Update.
 
+2017-12-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (convert_expr): Allow upcasting C++ classes.
+	(build_class_instance): Generate initial values of vtable interfaces
+	before class fields.
+	(layout_aggregate_type): Layout vtable interfaces before class fields.
+	* d-decls.cc (get_symbol_decl): Build DECL_ARGUMENTS for functions
+	that have no body.
+
 2017-12-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-target.cc (Target::cppExceptions): New variable.

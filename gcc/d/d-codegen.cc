@@ -588,25 +588,6 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	ClassDeclaration *cdto = tbtype->isClassHandle();
 	int offset;
 
-	if (cdfrom->cpp)
-	  {
-	    // Downcasting in C++ is a no-op.
-	    if (cdto->cpp)
-	      break;
-
-	    // Casting from a C++ interface to a class/non-C++ interface
-	    // always results in null as there is no runtime information,
-	    // and no way one can derive from the other.
-	    warning(OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
-	    result = d_convert(build_ctype(totype), null_pointer_node);
-
-	    // Make sure the expression is still evaluated if necessary
-	    if (TREE_SIDE_EFFECTS(exp))
-	      result = compound_expr(exp, result);
-
-	    break;
-	  }
-
 	if (cdto->isBaseOf(cdfrom, &offset) && offset != OFFSET_RUNTIME)
 	  {
 	    // Casting up the inheritance tree: Don't do anything special.
@@ -625,6 +606,25 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	      }
 
 	    // d_convert will make a no-op cast
+	    break;
+	  }
+	else if (cdfrom->cpp)
+	  {
+	    // Downcasting in C++ is a no-op.
+	    if (cdto->cpp)
+	      break;
+
+	    // Casting from a C++ interface to a class/non-C++ interface
+	    // always results in null as there is no runtime information,
+	    // and no way one can derive from the other.
+	    warning (OPT_Wcast_result, "cast to %s will produce null result",
+		     totype->toChars ());
+	    result = d_convert (build_ctype (totype), null_pointer_node);
+
+	    // Make sure the expression is still evaluated if necessary
+	    if (TREE_SIDE_EFFECTS (exp))
+	      result = compound_expr (exp, result);
+
 	    break;
 	  }
 
@@ -2270,31 +2270,9 @@ build_class_instance (ClassReferenceExp *exp)
   // will re-order all values before returning the finished literal.
   for (ClassDeclaration *bcd = cd; bcd != NULL; bcd = bcd->baseClass)
     {
-      // Generate initial values of all fields owned by current class.
-      // Use both the name and offset to find the right field.
-      for (size_t i = 0; i < bcd->fields.dim; i++)
-	{
-	  VarDeclaration *vfield = bcd->fields[i];
-	  int index = exp->findFieldIndexByName (vfield);
-	  gcc_assert (index != -1);
-
-	  Expression *value = (*exp->value->elements)[index];
-	  if (!value)
-	    continue;
-
-	  // Use find_aggregate_field to get the overridden field decl,
-	  // instead of the field associated with the base class.
-	  tree field = get_symbol_decl (bcd->fields[i]);
-	  field = find_aggregate_field (type, DECL_NAME (field),
-					DECL_FIELD_OFFSET (field));
-	  gcc_assert (field != NULL_TREE);
-
-	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
-	}
-
-      // Anonymous vtable interface fields are layed out immediatedly after
-      // the fields of each class.  The interface offset is used to determine
-      // where to put the classinfo offset reference.
+      // Anonymous vtable interface fields are layed out before the fields of
+      // each class.  The interface offset is used to determine where to put
+      // the classinfo offset reference.
       for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *bc = (*bcd->vtblInterfaces)[i];
@@ -2317,6 +2295,28 @@ build_class_instance (ClassReferenceExp *exp)
 		  break;
 		}
 	    }
+	}
+
+      // Generate initial values of all fields owned by current class.
+      // Use both the name and offset to find the right field.
+      for (size_t i = 0; i < bcd->fields.dim; i++)
+	{
+	  VarDeclaration *vfield = bcd->fields[i];
+	  int index = exp->findFieldIndexByName (vfield);
+	  gcc_assert (index != -1);
+
+	  Expression *value = (*exp->value->elements)[index];
+	  if (!value)
+	    continue;
+
+	  // Use find_aggregate_field to get the overridden field decl,
+	  // instead of the field associated with the base class.
+	  tree field = get_symbol_decl (bcd->fields[i]);
+	  field = find_aggregate_field (type, DECL_NAME (field),
+					DECL_FIELD_OFFSET (field));
+	  gcc_assert (field != NULL_TREE);
+
+	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
 	}
     }
 
@@ -4692,8 +4692,8 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
   return fields;
 }
 
-// Write out all fields for aggregate BASE.  For classes, write
-// out base class fields first, and adds all interfaces last.
+// Write out all fields for aggregate BASE.  For classes, write out all
+// interfaces first, then the base class fields.
 
 void
 layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base)
@@ -4725,6 +4725,17 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	}
     }
 
+  if (cd && cd->vtblInterfaces)
+    {
+      for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+	{
+	  BaseClass *bc = (*cd->vtblInterfaces)[i];
+	  tree field = create_field_decl (build_ctype (Type::tvoidptr->pointerTo ()),
+					  NULL, 1, 1);
+	  insert_aggregate_field (decl->loc, type, field, bc->offset);
+	}
+    }
+
   if (base->members)
     {
       size_t fields = layout_aggregate_members(base->members, type, inherited_p);
@@ -4738,17 +4749,6 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	      VarDeclaration *var = base->fields[i];
 	      gcc_assert(var->csym != NULL);
 	    }
-	}
-    }
-
-  if (cd && cd->vtblInterfaces)
-    {
-      for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *bc = (*cd->vtblInterfaces)[i];
-	  tree field = create_field_decl(build_ctype(Type::tvoidptr->pointerTo()),
-					 NULL, 1, 1);
-	  insert_aggregate_field(decl->loc, type, field, bc->offset);
 	}
     }
 }
