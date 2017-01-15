@@ -398,7 +398,7 @@ unsigned AggregateDeclaration::size(Loc loc)
             if (s->apply(&SV::func, &sv))
                 goto L1;
         }
-        finalizeSize(NULL);
+        finalizeSize();
 
       L1: ;
     }
@@ -969,7 +969,7 @@ void StructDeclaration::semantic(Scope *sc)
         Dsymbol *s = (*members)[i];
         s->semantic(sc2);
     }
-    finalizeSize(sc2);
+    finalizeSize();
 
     if (sizeok == SIZEOKfwd)
     {
@@ -1131,7 +1131,7 @@ Dsymbol *StructDeclaration::search(Loc loc, Identifier *ident, int flags)
     return ScopeDsymbol::search(loc, ident, flags);
 }
 
-void StructDeclaration::finalizeSize(Scope *sc)
+void StructDeclaration::finalizeSize()
 {
     //printf("StructDeclaration::finalizeSize() %s\n", toChars());
     if (sizeok != SIZEOKnone)

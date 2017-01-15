@@ -21,6 +21,11 @@
 
 2017-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc (layout_aggregate_type): Adjust layout of D interfaces.
+	Only add a __vptr field if no base interfaces, don't add __monitor.
+
+2017-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_parse_file): Run runDeferredSemantic2 after semantic2.
 
 2017-12-25  Iain Buclaw  <ibuclaw@gdcproject.org>
