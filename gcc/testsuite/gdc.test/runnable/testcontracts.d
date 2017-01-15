@@ -634,6 +634,25 @@ class C10981
 }
 
 /*******************************************/
+// 14779
+
+class C14779
+{
+    final void foo(int v)
+    in  { assert(v == 0); }
+    out { assert(v == 0); }
+    body
+    {
+    }
+}
+
+void test14779()
+{
+    auto c = new C14779();
+    c.foo(0);
+}
+
+/*******************************************/
 
 int main()
 {
@@ -650,6 +669,7 @@ int main()
     test7218();
     test8073();
     test8093();
+    test14779();
 
     printf("Success\n");
     return 0;

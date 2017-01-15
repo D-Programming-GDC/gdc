@@ -2231,14 +2231,20 @@ Expression *Type::noMember(Scope *sc, Expression *e, Identifier *ident, int flag
         ident != Id::init &&
         ident != Id::mangleof &&
         ident != Id::stringof &&
-        ident != Id::offsetof)
+        ident != Id::offsetof &&
+        // Bugzilla 15045: Don't forward special built-in member functions.
+        ident != Id::ctor &&
+        ident != Id::dtor &&
+        ident != Id::__xdtor &&
+        ident != Id::postblit &&
+        ident != Id::__xpostblit)
     {
         /* Look for overloaded opDot() to see if we should forward request
          * to it.
          */
-        Dsymbol *fd = search_function(sym, Id::opDot);
-        if (fd)
-        {   /* Rewrite e.ident as:
+        if (Dsymbol *fd = search_function(sym, Id::opDot))
+        {
+            /* Rewrite e.ident as:
              *  e.opDot().ident
              */
             e = build_overload(e->loc, sc, e, NULL, fd);
@@ -2249,8 +2255,7 @@ Expression *Type::noMember(Scope *sc, Expression *e, Identifier *ident, int flag
         /* Look for overloaded opDispatch to see if we should forward request
          * to it.
          */
-        fd = search_function(sym, Id::opDispatch);
-        if (fd)
+        if (Dsymbol *fd = search_function(sym, Id::opDispatch))
         {
             /* Rewrite e.ident as:
              *  e.opDispatch!("ident")

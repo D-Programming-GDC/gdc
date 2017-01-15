@@ -984,9 +984,11 @@ public:
       }
 
     // Look for reference initializations
-    if (e->op == TOKconstruct && e->e1->op == TOKvar
-	&& !(e->memset & referenceInit))
+    if (e->memset & referenceInit)
       {
+	gcc_assert (e->op == TOKconstruct || e->op == TOKblit);
+	gcc_assert (e->e1->op == TOKvar);
+
 	Declaration *decl = ((VarExp *) e->e1)->var;
 	if (decl->storage_class & (STCout | STCref))
 	  {
