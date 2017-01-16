@@ -182,6 +182,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 	case OPT_g:
 	  saw_debug_flag = true;
+	  break;
 
 	case OPT_v:
 	  /* If they only gave us `-v', don't try to link in libphobos.  */
