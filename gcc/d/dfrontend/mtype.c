@@ -48,9 +48,6 @@
 #define LOGDOTEXP       0       // log ::dotExp()
 #define LOGDEFAULTINIT  0       // log ::defaultInit()
 
-// Allow implicit conversion of T[] to T*  --> Removed in 2.063
-#define IMPLICIT_ARRAY_TO_PTR   0
-
 bool symbolIsVisible(Scope *sc, Dsymbol *s);
 
 int Tsize_t = Tuns32;
@@ -2087,7 +2084,7 @@ Expression *Type::getProperty(Loc loc, Identifier *ident, int flag)
     {
         e = new IntegerExp(loc, alignsize(), Type::tsize_t);
     }
-    else if (ident == Id::init)
+    else if (ident == Id::_init)
     {
         Type *tb = toBasetype();
         e = defaultInitLiteral(loc);
@@ -2097,7 +2094,7 @@ Expression *Type::getProperty(Loc loc, Identifier *ident, int flag)
             se->useStaticInit = true;
         }
     }
-    else if (ident == Id::mangleof)
+    else if (ident == Id::_mangleof)
     {
         if (!deco)
         {
@@ -2176,7 +2173,7 @@ Expression *Type::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
                 return e;
             }
         }
-        else if (ident == Id::init)
+        else if (ident == Id::_init)
         {
             Type *tb = toBasetype();
             e = defaultInitLiteral(e->loc);
@@ -2228,8 +2225,8 @@ Expression *Type::noMember(Scope *sc, Expression *e, Identifier *ident, int flag
 
     if (ident != Id::__sizeof &&
         ident != Id::__xalignof &&
-        ident != Id::init &&
-        ident != Id::mangleof &&
+        ident != Id::_init &&
+        ident != Id::_mangleof &&
         ident != Id::stringof &&
         ident != Id::offsetof &&
         // Bugzilla 15045: Don't forward special built-in member functions.
@@ -3677,7 +3674,7 @@ Expression *TypeVector::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
         e->type = basetype;
         return e;
     }
-    if (ident == Id::init || ident == Id::offsetof || ident == Id::stringof)
+    if (ident == Id::_init || ident == Id::offsetof || ident == Id::stringof)
     {
         // init should return a new VectorExp (Bugzilla 12776)
         // offsetof does not work on a cast expression, so use e directly
@@ -4131,11 +4128,23 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         if (dim->op == TOKerror)
             goto Lerror;
 
-        bool overflow = false;
         if (d1 != d2)
-            goto Loverflow;
+        {
+        Loverflow:
+            error(loc, "%s size %llu * %llu exceeds 16MiB size limit for static array",
+                toChars(), (unsigned long long)tbn->size(loc), (unsigned long long)d1);
+            goto Lerror;
+        }
 
-        if (tbn->isintegral() ||
+        Type *tbx = tbn->baseElemOf();
+        if (tbx->ty == Tstruct && !((TypeStruct *)tbx)->sym->members ||
+            tbx->ty == Tenum && !((TypeEnum *)tbx)->sym->members)
+        {
+            /* To avoid meaningess error message, skip the total size limit check
+             * when the bottom of element type is opaque.
+             */
+        }
+        else if (tbn->isintegral() ||
                  tbn->isfloating() ||
                  tbn->ty == Tpointer ||
                  tbn->ty == Tarray ||
@@ -4147,12 +4156,9 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
             /* Only do this for types that don't need to have semantic()
              * run on them for the size, since they may be forward referenced.
              */
+            bool overflow = false;
             if (mulu(tbn->size(loc), d2, overflow) >= 0x1000000 || overflow) // put a 'reasonable' limit on it
-            {
-              Loverflow:
-                error(loc, "index %llu overflow for static array", (unsigned long long)d1);
-                goto Lerror;
-            }
+                goto Loverflow;
         }
     }
     switch (tbn->ty)
@@ -4250,20 +4256,6 @@ MATCH TypeSArray::implicitConvTo(Type *to)
 {
     //printf("TypeSArray::implicitConvTo(to = %s) this = %s\n", to->toChars(), toChars());
 
-    // Allow implicit conversion of static array to pointer or dynamic array
-    if (IMPLICIT_ARRAY_TO_PTR && to->ty == Tpointer)
-    {
-        TypePointer *tp = (TypePointer *)to;
-
-        if (!MODimplicitConv(next->mod, tp->next->mod))
-            return MATCHnomatch;
-
-        if (tp->next->ty == Tvoid || next->constConv(tp->next) > MATCHnomatch)
-        {
-            return MATCHconvert;
-        }
-        return MATCHnomatch;
-    }
     if (to->ty == Tarray)
     {
         TypeDArray *ta = (TypeDArray *)to;
@@ -4529,22 +4521,6 @@ MATCH TypeDArray::implicitConvTo(Type *to)
     //printf("TypeDArray::implicitConvTo(to = %s) this = %s\n", to->toChars(), toChars());
     if (equals(to))
         return MATCHexact;
-
-    // Allow implicit conversion of array to pointer
-    if (IMPLICIT_ARRAY_TO_PTR && to->ty == Tpointer)
-    {
-        TypePointer *tp = (TypePointer *)to;
-
-        /* Allow conversion to void*
-         */
-        if (tp->next->ty == Tvoid &&
-            MODimplicitConv(next->mod, tp->next->mod))
-        {
-            return MATCHconvert;
-        }
-
-        return next->constConv(tp->next) ? MATCHconvert : MATCHnomatch;
-    }
 
     if (to->ty == Tarray)
     {
@@ -5581,10 +5557,11 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
                 errors = true;
             }
             else if (!(fparam->storageClass & (STCref | STCout)) &&
-                     (t->ty == Tstruct || t->ty == Tsarray))
+                     (t->ty == Tstruct || t->ty == Tsarray || t->ty == Tenum))
             {
                 Type *tb2 = t->baseElemOf();
-                if (tb2->ty == Tstruct && !((TypeStruct *)tb2)->sym->members)
+                if (tb2->ty == Tstruct && !((TypeStruct *)tb2)->sym->members ||
+                    tb2->ty == Tenum && !((TypeEnum *)tb2)->sym->memtype)
                 {
                     error(loc, "cannot have parameter of opaque type %s by value", fparam->type->toChars());
                     errors = true;
@@ -6283,6 +6260,9 @@ int TypeFunction::attributesApply(void *param, int (*fp)(void *, const char *), 
     if (isref) res = fp(param, "ref");
     if (res) return res;
 
+    if (isreturn) res = fp(param, "return");
+    if (res) return res;
+
     if (isscope) res = fp(param, "scope");
     if (res) return res;
 
@@ -6882,7 +6862,7 @@ void TypeIdentifier::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsy
 {
     //printf("TypeIdentifier::resolve(sc = %p, idents = '%s')\n", sc, toChars());
 
-    if ((ident->equals(Id::super) || ident->equals(Id::This)) && !hasThis(sc))
+    if ((ident->equals(Id::_super) || ident->equals(Id::This)) && !hasThis(sc))
     {
         AggregateDeclaration *ad = sc->getStructClassScope();
         if (ad)
@@ -6892,7 +6872,7 @@ void TypeIdentifier::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsy
             {
                 if (ident->equals(Id::This))
                     ident = cd->ident;
-                else if (cd->baseClass && ident->equals(Id::super))
+                else if (cd->baseClass && ident->equals(Id::_super))
                     ident = cd->baseClass->ident;
             }
             else
@@ -7388,7 +7368,7 @@ Expression *TypeEnum::dotExp(Scope *sc, Expression *e, Identifier *ident, int fl
     printf("TypeEnum::dotExp(e = '%s', ident = '%s') '%s'\n", e->toChars(), ident->toChars(), toChars());
 #endif
     // Bugzilla 14010
-    if (ident == Id::mangleof)
+    if (ident == Id::_mangleof)
         return getProperty(e->loc, ident, flag);
 
     if (sym->_scope)
@@ -7410,7 +7390,7 @@ Expression *TypeEnum::dotExp(Scope *sc, Expression *e, Identifier *ident, int fl
     {
         if (ident == Id::max ||
             ident == Id::min ||
-            ident == Id::init)
+            ident == Id::_init)
         {
             return getProperty(e->loc, ident, flag);
         }
@@ -7427,7 +7407,7 @@ Expression *TypeEnum::getProperty(Loc loc, Identifier *ident, int flag)
     {
         return sym->getMaxMinValue(loc, ident);
     }
-    else if (ident == Id::init)
+    else if (ident == Id::_init)
     {
         e = defaultInitLiteral(loc);
     }
@@ -7438,7 +7418,7 @@ Expression *TypeEnum::getProperty(Loc loc, Identifier *ident, int flag)
         Scope sc;
         e = e->semantic(&sc);
     }
-    else if (ident == Id::mangleof)
+    else if (ident == Id::_mangleof)
     {
         e = Type::getProperty(loc, ident, flag);
     }
@@ -7652,7 +7632,7 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
     printf("TypeStruct::dotExp(e = '%s', ident = '%s')\n", e->toChars(), ident->toChars());
 #endif
     // Bugzilla 14010
-    if (ident == Id::mangleof)
+    if (ident == Id::_mangleof)
         return getProperty(e->loc, ident, flag);
 
     if (!sym->members)
@@ -7663,7 +7643,7 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
 
     /* If e.tupleof
      */
-    if (ident == Id::tupleof)
+    if (ident == Id::_tupleof)
     {
         /* Create a TupleExp out of the fields of the struct e:
          * (e.field0, e.field1, e.field2, ...)
@@ -8267,12 +8247,12 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
     }
 
     // Bugzilla 12543
-    if (ident == Id::__sizeof || ident == Id::__xalignof || ident == Id::mangleof)
+    if (ident == Id::__sizeof || ident == Id::__xalignof || ident == Id::_mangleof)
     {
         return Type::getProperty(e->loc, ident, 0);
     }
 
-    if (ident == Id::tupleof)
+    if (ident == Id::_tupleof)
     {
         /* Create a TupleExp
          */
@@ -8928,7 +8908,7 @@ Expression *TypeTuple::getProperty(Loc loc, Identifier *ident, int flag)
     {
         e = new IntegerExp(loc, arguments->dim, Type::tsize_t);
     }
-    else if (ident == Id::init)
+    else if (ident == Id::_init)
     {
         e = defaultInitLiteral(loc);
     }

@@ -30,6 +30,7 @@
 #include "parse.h"
 #include "rmem.h"
 #include "visitor.h"
+#include "objc.h"
 
 Expression *addInvariant(Loc loc, Scope *sc, AggregateDeclaration *ad, VarDeclaration *vthis, bool direct);
 bool checkEscape(Scope *sc, Expression *e, bool gag);

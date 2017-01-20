@@ -306,9 +306,9 @@ void AggregateDeclaration::semantic3(Scope *sc)
         if (isDeprecated())
             sc3->stc |= STCdeprecated;
 
-        ti->semantic(sc);
-        ti->semantic2(sc);
-        ti->semantic3(sc);
+        ti->semantic(sc3);
+        ti->semantic2(sc3);
+        ti->semantic3(sc3);
         Expression *e = DsymbolExp::resolve(Loc(), sc3, ti->toAlias(), false);
 
         sc3->endCTFE();

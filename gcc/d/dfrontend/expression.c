@@ -2857,7 +2857,7 @@ Lagain:
         /* Don't really need to check for opCast first, but by doing so we
          * get better error messages if it isn't there.
          */
-        Dsymbol *fd = search_function(ad, Id::cast);
+        Dsymbol *fd = search_function(ad, Id::_cast);
         if (fd)
         {
             e = new CastExp(loc, e, Type::tbool);
@@ -3470,6 +3470,7 @@ Lagain:
         if (s != olds && !s->isFuncDeclaration())
             s->checkDeprecated(loc, sc);
     }
+
 
     if (VarDeclaration *v = s->isVarDeclaration())
     {
@@ -4641,9 +4642,6 @@ Expression *StructLiteralExp::semantic(Scope *sc)
     if (!sd->fit(loc, sc, elements, stype))
         return new ErrorExp();
 
-    if (checkFrameAccess(loc, sc, sd, elements->dim))
-        return new ErrorExp();
-
     /* Fill out remainder of elements[] with default initializers for fields[]
      */
     if (!sd->fill(loc, elements, false))
@@ -4655,6 +4653,10 @@ Expression *StructLiteralExp::semantic(Scope *sc)
         global.increaseErrorCount();
         return new ErrorExp();
     }
+
+    if (checkFrameAccess(loc, sc, sd, elements->dim))
+        return new ErrorExp();
+
     type = stype ? stype : sd->type;
     return this;
 }
@@ -5404,6 +5406,9 @@ Lagain:
 
             member = f->isCtorDeclaration();
             assert(member);
+
+            if (checkFrameAccess(loc, sc, sd, sd->fields.dim))
+                return new ErrorExp();
         }
         else
         {
@@ -5412,8 +5417,9 @@ Lagain:
 
             if (!sd->fit(loc, sc, arguments, tb))
                 return new ErrorExp();
-
             if (!sd->fill(loc, arguments, false))
+                return new ErrorExp();
+            if (checkFrameAccess(loc, sc, sd, arguments ? arguments->dim : 0))
                 return new ErrorExp();
         }
 
@@ -7492,7 +7498,7 @@ Expression *DotIdExp::semanticX(Scope *sc)
     if (Expression *ex = unaSemantic(sc))
         return ex;
 
-    if (ident == Id::mangleof)
+    if (ident == Id::_mangleof)
     {
         // symbol.mangleof
         Dsymbol *ds;
@@ -7817,9 +7823,9 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
         return new ErrorExp();
     }
     else if (t1b->ty == Tpointer && e1->type->ty != Tenum &&
-             ident != Id::init && ident != Id::__sizeof &&
+             ident != Id::_init && ident != Id::__sizeof &&
              ident != Id::__xalignof && ident != Id::offsetof &&
-             ident != Id::mangleof && ident != Id::stringof)
+             ident != Id::_mangleof && ident != Id::stringof)
     {
         Type *t1bn = t1b->nextOf();
         if (flag)
@@ -8855,6 +8861,8 @@ Lagain:
 
                 StructLiteralExp *sle = new StructLiteralExp(loc, sd, NULL, e1->type);
                 if (!sd->fill(loc, sle->elements, true))
+                    return new ErrorExp();
+                if (checkFrameAccess(loc, sc, sd, sle->elements->dim))
                     return new ErrorExp();
                 // Bugzilla 14556: Set concrete type to avoid further redundant semantic().
                 sle->type = e1->type;

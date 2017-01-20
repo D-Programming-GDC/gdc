@@ -4101,7 +4101,8 @@ get_frame_for_symbol (Dsymbol *sym)
 	  if (!ad->isNested() || !ad->vthis)
 	    {
 	    Lnoframe:
-	      func->error ("cannot get frame pointer to %s", sym->toChars());
+	      func->error ("cannot get frame pointer to %s",
+			   sym->toPrettyChars());
 	      return null_pointer_node;
 	    }
 
@@ -4247,14 +4248,14 @@ build_vthis(AggregateDeclaration *decl)
 }
 
 static tree
-build_frame_type (tree ffi, FuncDeclaration *func)
+build_frame_type (tree ffi, FuncDeclaration *fd)
 {
   if (FRAMEINFO_TYPE (ffi))
     return FRAMEINFO_TYPE (ffi);
 
   tree frame_rec_type = make_node (RECORD_TYPE);
   char *name = concat (FRAMEINFO_IS_CLOSURE (ffi) ? "CLOSURE." : "FRAME.",
-		       func->toPrettyChars(), NULL);
+		       fd->toPrettyChars(), NULL);
   TYPE_NAME (frame_rec_type) = get_identifier (name);
   free (name);
 
@@ -4265,50 +4266,52 @@ build_frame_type (tree ffi, FuncDeclaration *func)
 
   tree fields = chainon (NULL_TREE, ptr_field);
 
-  if (!FRAMEINFO_IS_CLOSURE (ffi))
+  /* The __ensure and __require are called directly, so never make the outer
+     functions closure, but nevertheless could still be referencing parameters
+     of the calling function non-locally.  So we add all parameters with nested
+     refs to the function frame, this should also mean overriding methods will
+     have the same frame layout when inheriting a contract.  */
+  if ((global.params.useIn && fd->frequire)
+      || (global.params.useOut && fd->fensure))
     {
-      // __ensure and __require never becomes a closure, but could still be referencing
-      // parameters of the calling function.  So we add all parameters as nested refs.
-      // This is written as such so that all parameters appear at the front of the frame
-      // so that overriding methods match the same layout when inheriting a contract.
-      if ((global.params.useIn && func->frequire) || (global.params.useOut && func->fensure))
+      if (fd->parameters)
 	{
-	  for (size_t i = 0; func->parameters && i < func->parameters->dim; i++)
+	  for (size_t i = 0; fd->parameters && i < fd->parameters->dim; i++)
 	    {
-	      VarDeclaration *v = (*func->parameters)[i];
+	      VarDeclaration *v = (*fd->parameters)[i];
 	      // Remove if already in closureVars so can push to front.
-	      for (size_t j = i; j < func->closureVars.dim; j++)
+	      for (size_t j = i; j < fd->closureVars.dim; j++)
 		{
-		  Dsymbol *s = func->closureVars[j];
+		  Dsymbol *s = fd->closureVars[j];
 		  if (s == v)
 		    {
-		      func->closureVars.remove (j);
+		      fd->closureVars.remove (j);
 		      break;
 		    }
 		}
-	      func->closureVars.insert (i, v);
+	      fd->closureVars.insert (i, v);
 	    }
+	}
 
-	  // Also add hidden 'this' to outer context.
-	  if (func->vthis)
+      // Also add hidden 'this' to outer context.
+      if (fd->vthis)
+	{
+	  for (size_t i = 0; i < fd->closureVars.dim; i++)
 	    {
-	      for (size_t i = 0; i < func->closureVars.dim; i++)
+	      Dsymbol *s = fd->closureVars[i];
+	      if (s == fd->vthis)
 		{
-		  Dsymbol *s = func->closureVars[i];
-		  if (s == func->vthis)
-		    {
-		      func->closureVars.remove (i);
-		      break;
-		    }
+		  fd->closureVars.remove (i);
+		  break;
 		}
-	      func->closureVars.insert (0, func->vthis);
 	    }
+	  fd->closureVars.insert (0, fd->vthis);
 	}
     }
 
-  for (size_t i = 0; i < func->closureVars.dim; i++)
+  for (size_t i = 0; i < fd->closureVars.dim; i++)
     {
-      VarDeclaration *v = func->closureVars[i];
+      VarDeclaration *v = fd->closureVars[i];
       tree s = get_symbol_decl (v);
       tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->toChars()) : NULL_TREE,
@@ -4320,8 +4323,8 @@ build_frame_type (tree ffi, FuncDeclaration *func)
       TREE_USED (s) = 1;
 
       // Can't do nrvo if the variable is put in a frame.
-      if (func->nrvo_can && func->nrvo_var == v)
-	func->nrvo_can = 0;
+      if (fd->nrvo_can && fd->nrvo_var == v)
+	fd->nrvo_can = 0;
 
       // Because the value needs to survive the end of the scope.
       if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsScopeDtor())
@@ -4423,6 +4426,13 @@ get_frameinfo(FuncDeclaration *fd)
   // a static frame for local variables to be referenced from.
   if (fd->hasNestedFrameRefs()
       || (fd->vthis && fd->vthis->type == Type::tvoidptr))
+    FRAMEINFO_CREATES_FRAME (ffi) = 1;
+
+  /* In checkNestedReference, references from contracts are not added to the
+     closureVars array, so assume all parameters referenced.  Even if they
+     aren't the 'this' parameter may still be needed for the static chain.  */
+  if ((global.params.useIn && fd->frequire)
+      || (global.params.useOut && fd->fensure))
     FRAMEINFO_CREATES_FRAME (ffi) = 1;
 
   // D2 maybe setup closure instead.
