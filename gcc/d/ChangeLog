@@ -15,6 +15,10 @@
 
 2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* expr.cc (ExprVisitor::visit(VarExp)): Remove type forced conversion.
+
+2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_handle_option): Handle -ftransition=safe.
 	* lang.opt (ftransition=safe): Add compiler option.
 
@@ -31,6 +35,12 @@
 2017-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_parse_file): Run runDeferredSemantic2 after semantic2.
+
+2017-12-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(ArrayLiteralExp)): Use getElement to
+	index elements array.
+	(ExprVisitor::visit(VectorExp)): Likewise.
 
 2017-12-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
