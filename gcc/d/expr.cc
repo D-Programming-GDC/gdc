@@ -199,7 +199,8 @@ public:
 	//    e1.length == e2.length && memcmp(e1.ptr, e2.ptr, size) == 0;
 	// Or when generating a NE expression:
 	//    e1.length != e2.length || memcmp(e1.ptr, e2.ptr, size) != 0;
-	if ((t1elem->isintegral() || t1elem->ty == Tvoid || t1elem->ty == Tstruct)
+	if ((t1elem->isintegral() || t1elem->ty == Tvoid
+	     || (t1elem->ty == Tstruct && !((TypeStruct *)t1elem)->sym->xeq))
 	    && t1elem->ty == t2elem->ty)
 	  {
 	    tree t1 = d_array_convert(e->e1);

@@ -1102,6 +1102,25 @@ void test248()
 
 /******************************************/
 
+// Bug 250
+
+void test250()
+{
+    struct S
+    {
+        string data;
+    }
+
+    auto a = S("hello");
+    auto b = S("hello".dup);
+
+    assert(a.data == b.data);
+    assert(a == b);
+    assert([a] == [b]);
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -1127,6 +1146,7 @@ void main()
     test198();
     test210();
     test248();
+    test250();
 
     printf("Success!\n");
 }
