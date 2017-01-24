@@ -364,8 +364,8 @@ public:
 		if (member == NULL)
 		  continue;
 
-		tree ident = get_identifier (member->ident->toChars());
-		tree value = build_integer_cst (member->value->toInteger (),
+		tree ident = get_identifier (member->ident->toChars ());
+		tree value = build_integer_cst (member->value ()->toInteger (),
 						basetype);
 
 		/* Build a identifier for the enumeration constant.  */
