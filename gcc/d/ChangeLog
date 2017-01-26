@@ -1,3 +1,11 @@
+2017-01-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* imports.cc (ImportVisitor::visit(EnumDeclaration)): New function.
+	(ImportVisitor::visit(AggregateDeclaration)): New function.
+	(ImportVisitor::visit(ClassDeclaration)): New function.
+	(ImportVisitor::make_import): New function.
+	(ImportVisitor::visit(AliasDeclaration)): Get decl for type alias.
+
 2017-01-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(EqualExp)): Don't use memcmp on arrays
