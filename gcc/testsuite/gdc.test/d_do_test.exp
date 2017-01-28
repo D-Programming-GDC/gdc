@@ -74,6 +74,9 @@ proc gdc-convert-args { args } {
         } elseif [string match "-release" $arg] {
             lappend out "-frelease"
 
+        } elseif [string match "-transition=import" $arg] {
+            lappend out "-ftransition=import"
+
         } elseif [string match "-unittest" $arg] {
             lappend out "-funittest"
 

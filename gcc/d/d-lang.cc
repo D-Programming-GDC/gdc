@@ -518,6 +518,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.vfield = value;
       break;
 
+    case OPT_ftransition_import:
+      global.params.bug10378 = value;
+      break;
+
     case OPT_ftransition_nogc:
       global.params.vgc = value;
       break;

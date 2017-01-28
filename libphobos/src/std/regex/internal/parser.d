@@ -1437,6 +1437,7 @@ struct Parser(R)
 +/
 @trusted void lightPostprocess(Char)(ref Regex!Char zis)
 {//@@@BUG@@@ write is @system
+    import std.regex.internal.kickstart;
     with(zis)
     {
         struct FixedStack(T)

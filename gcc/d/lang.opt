@@ -181,6 +181,10 @@ ftransition=field
 D RejectNegative
 List all non-mutable fields which occupy an object instance.
 
+ftransition=import
+D RejectNegative
+Revert to single phase name lookup.
+
 ftransition=nogc
 D RejectNegative
 List all hidden GC allocations.
