@@ -1,3 +1,8 @@
+2017-01-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -ftransition=checkimports.
+	* lang.opt (ftransition=checkimports): Add compiler option.
+
 2017-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_handle_option): Handle -ftransition=import.

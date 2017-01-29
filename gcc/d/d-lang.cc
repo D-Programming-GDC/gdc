@@ -510,6 +510,11 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useSwitchError = !value;
       break;
 
+    case OPT_ftransition_checkimports:
+      global.params.check10378 = value;
+      global.params.bug10378 = !value;
+      break;
+
     case OPT_ftransition_complex:
       global.params.vcomplex = value;
       break;
@@ -520,6 +525,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_ftransition_import:
       global.params.bug10378 = value;
+      global.params.check10378 = !value;
       break;
 
     case OPT_ftransition_nogc:

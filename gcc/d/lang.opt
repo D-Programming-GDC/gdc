@@ -173,6 +173,10 @@ frelease
 D
 Compile release version.
 
+ftransition=checkimports
+D RejectNegative
+Give deprecation messages about -ftransition=import anomalies
+
 ftransition=complex
 D RejectNegative
 List all usages of complex or imaginary types.
