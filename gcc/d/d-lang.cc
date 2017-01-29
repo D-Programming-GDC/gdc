@@ -510,12 +510,32 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useSwitchError = !value;
       break;
 
+    case OPT_ftransition_all:
+      global.params.vtls = value;
+      global.params.vfield = value;
+      global.params.vcomplex = value;
+      break;
+
+    case OPT_ftransition_checkimports:
+      global.params.check10378 = value;
+      global.params.bug10378 = !value;
+      break;
+
     case OPT_ftransition_complex:
       global.params.vcomplex = value;
       break;
 
+    case OPT_ftransition_dip25:
+      global.params.useDIP25 = value;
+      break;
+
     case OPT_ftransition_field:
       global.params.vfield = value;
+      break;
+
+    case OPT_ftransition_import:
+      global.params.bug10378 = value;
+      global.params.check10378 = !value;
       break;
 
     case OPT_ftransition_nogc:
@@ -528,10 +548,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_ftransition_tls:
       global.params.vtls = value;
-      break;
-
-    case OPT_ftransition_dip25:
-      global.params.useDIP25 = value;
       break;
 
     case OPT_funittest:

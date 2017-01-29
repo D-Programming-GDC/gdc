@@ -74,6 +74,9 @@ proc gdc-convert-args { args } {
         } elseif [string match "-release" $arg] {
             lappend out "-frelease"
 
+        } elseif [regexp -- {^-transition=(\w+)} $arg pattern value] {
+            lappend out "-ftransition=$value"
+
         } elseif [string match "-unittest" $arg] {
             lappend out "-funittest"
 
