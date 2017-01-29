@@ -173,6 +173,10 @@ frelease
 D
 Compile release version.
 
+ftransition=all
+D RejectNegative
+List information on all language changes
+
 ftransition=checkimports
 D RejectNegative
 Give deprecation messages about -ftransition=import anomalies
@@ -180,6 +184,10 @@ Give deprecation messages about -ftransition=import anomalies
 ftransition=complex
 D RejectNegative
 List all usages of complex or imaginary types.
+
+ftransition=dip25
+D RejectNegative
+Implement http://wiki.dlang.org/DIP25 (experimental)
 
 ftransition=field
 D RejectNegative
@@ -200,10 +208,6 @@ Implement enhanced @safe checking
 ftransition=tls
 D RejectNegative
 List all variables going into thread local storage.
-
-ftransition=dip25
-D RejectNegative
-Implement http://wiki.dlang.org/DIP25 (experimental)
 
 funittest
 D
