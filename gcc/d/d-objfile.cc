@@ -1976,9 +1976,12 @@ Module::genmoduleinfo()
       m->semantic(NULL);
       m->semantic2(NULL);
       m->semantic3(NULL);
-      mref = m->search(Loc(), Id::Dmodule_ref, IgnoreErrors);
-      compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, IgnoreErrors);
-      dso_registry_func = m->search(Loc(), Id::dso_registry_func, IgnoreErrors);
+      // These symbols are normally private to the module they're declared in,
+      // but for internal compiler lookups, their visibility is discarded.
+      int sflags = IgnoreErrors | IgnoreSymbolVisibility;
+      mref = m->search(Loc(), Id::Dmodule_ref, sflags);
+      compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, sflags);
+      dso_registry_func = m->search(Loc(), Id::dso_registry_func, sflags);
     }
 
   // Prefer _d_dso_registry model if available
