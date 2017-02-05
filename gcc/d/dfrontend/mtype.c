@@ -51,7 +51,7 @@
 // Allow implicit conversion of T[] to T*  --> Removed in 2.063
 #define IMPLICIT_ARRAY_TO_PTR   0
 
-bool symbolIsVisible(Module *mod, Dsymbol *s);
+bool symbolIsVisible(Scope *sc, Dsymbol *s);
 
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
@@ -6666,6 +6666,11 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
             Type *t = s->getType();     // type symbol, type alias, or type tuple?
             unsigned errorsave = global.errors;
             Dsymbol *sm = s->searchX(loc, sc, id);
+            if (sm && !symbolIsVisible(sc, sm))
+            {
+                ::deprecation(loc, "%s is not visible from module %s", sm->toPrettyChars(), sc->module->toChars());
+                // sm = NULL;
+            }
             if (global.errors != errorsave)
             {
                 *pt = Type::terror;
@@ -7690,9 +7695,9 @@ L1:
         if (!s)
             return noMember(sc, e, ident, flag);
     }
-    if (!symbolIsVisible(sc->module, s))
+    if (!symbolIsVisible(sc, s))
     {
-        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
+        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toPrettyChars());
         // return noMember(sc, e, ident, flag);
     }
     if (!s->isFuncDeclaration())        // because of overloading
@@ -8364,7 +8369,7 @@ L1:
             return noMember(sc, e, ident, flag);
         }
     }
-    if (!symbolIsVisible(sc->module, s))
+    if (!symbolIsVisible(sc, s))
     {
         ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
         // return noMember(sc, e, ident, flag);
