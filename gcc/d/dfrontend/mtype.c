@@ -6666,7 +6666,7 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
             Type *t = s->getType();     // type symbol, type alias, or type tuple?
             unsigned errorsave = global.errors;
             Dsymbol *sm = s->searchX(loc, sc, id);
-            if (sm && !symbolIsVisible(sc, sm))
+            if (sm && !(sc->flags & SCOPEignoresymbolvisibility) && !symbolIsVisible(sc, sm))
             {
                 ::deprecation(loc, "%s is not visible from module %s", sm->toPrettyChars(), sc->module->toChars());
                 // sm = NULL;
@@ -7616,9 +7616,9 @@ Dsymbol *TypeStruct::toDsymbol(Scope *sc)
     return sym;
 }
 
-static Dsymbol *searchSymStruct(Dsymbol *sym, Expression *e, Identifier *ident)
+static Dsymbol *searchSymStruct(Scope *sc, Dsymbol *sym, Expression *e, Identifier *ident)
 {
-    int flags = 0;
+    int flags = sc->flags & SCOPEignoresymbolvisibility ? IgnoreSymbolVisibility : 0;
     Dsymbol *sold = NULL;
     if (global.params.bug10378 || global.params.check10378)
     {
@@ -7715,19 +7715,19 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
         }
     }
 
-    s = searchSymStruct(sym, e, ident);
+    s = searchSymStruct(sc, sym, e, ident);
 L1:
     if (!s)
     {
         if (sym->_scope)                 // it's a fwd ref, maybe we can resolve it
         {
             sym->semantic(NULL);
-            s = searchSymStruct(sym, e, ident);
+            s = searchSymStruct(sc, sym, e, ident);
         }
         if (!s)
             return noMember(sc, e, ident, flag);
     }
-    if (!symbolIsVisible(sc, s))
+    if (!(sc->flags & SCOPEignoresymbolvisibility) && !symbolIsVisible(sc, s))
     {
         ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toPrettyChars());
         // return noMember(sc, e, ident, flag);
@@ -8212,9 +8212,9 @@ Dsymbol *TypeClass::toDsymbol(Scope *sc)
     return sym;
 }
 
-static Dsymbol *searchSymClass(Dsymbol *sym, Expression *e, Identifier *ident)
+static Dsymbol *searchSymClass(Scope *sc, Dsymbol *sym, Expression *e, Identifier *ident)
 {
-    int flags = 0;
+    int flags = sc->flags & SCOPEignoresymbolvisibility ? IgnoreSymbolVisibility : 0;
     Dsymbol *sold = NULL;
     if (global.params.bug10378 || global.params.check10378)
     {
@@ -8224,7 +8224,7 @@ static Dsymbol *searchSymClass(Dsymbol *sym, Expression *e, Identifier *ident)
     }
 
     Dsymbol *s = sym->search(e->loc, ident, flags | SearchLocalsOnly);
-    if (!s)
+    if (!s && !(flags & IgnoreSymbolVisibility))
     {
         s = sym->search(e->loc, ident, flags | SearchLocalsOnly | IgnoreSymbolVisibility);
         if (s && !(flags & IgnoreErrors))
@@ -8323,7 +8323,7 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         return e;
     }
 
-    s = searchSymClass(sym, e, ident);
+    s = searchSymClass(sc, sym, e, ident);
 L1:
     if (!s)
     {
@@ -8430,7 +8430,7 @@ L1:
             return noMember(sc, e, ident, flag);
         }
     }
-    if (!symbolIsVisible(sc, s))
+    if (!(sc->flags & SCOPEignoresymbolvisibility) && !symbolIsVisible(sc, s))
     {
         ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
         // return noMember(sc, e, ident, flag);
