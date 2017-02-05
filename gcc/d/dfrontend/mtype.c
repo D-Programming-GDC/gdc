@@ -51,7 +51,7 @@
 // Allow implicit conversion of T[] to T*  --> Removed in 2.063
 #define IMPLICIT_ARRAY_TO_PTR   0
 
-bool symbolIsVisible(Module *mod, Dsymbol *s);
+bool symbolIsVisible(Scope *sc, Dsymbol *s);
 
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
@@ -6666,6 +6666,11 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
             Type *t = s->getType();     // type symbol, type alias, or type tuple?
             unsigned errorsave = global.errors;
             Dsymbol *sm = s->searchX(loc, sc, id);
+            if (sm && !symbolIsVisible(sc, sm))
+            {
+                ::deprecation(loc, "%s is not visible from module %s", sm->toPrettyChars(), sc->module->toChars());
+                // sm = NULL;
+            }
             if (global.errors != errorsave)
             {
                 *pt = Type::terror;
@@ -7602,6 +7607,29 @@ Dsymbol *TypeStruct::toDsymbol(Scope *sc)
     return sym;
 }
 
+static Dsymbol *searchSym(Dsymbol *sym, Expression *e, Identifier *ident)
+{
+    int flags = 0;
+    Dsymbol *sold;
+    if (global.params.bug10378 || global.params.check10378)
+    {
+        sold = sym->search(e->loc, ident, flags);
+        if (!global.params.check10378)
+            return sold;
+    }
+
+    auto s = sym->search(e->loc, ident, flags | SearchLocalsOnly);
+    if (global.params.check10378)
+    {
+        Dsymbol *snew = s;
+        if (sold != snew)
+            Scope::deprecation10378(e->loc, sold, snew);
+        if (global.params.bug10378)
+            s = sold;
+    }
+    return s;
+}
+
 Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int flag)
 {
     Dsymbol *s;
@@ -7678,21 +7706,21 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
         }
     }
 
-    s = sym->search(e->loc, ident);
+    s = searchSym(sym, e, ident);
 L1:
     if (!s)
     {
         if (sym->_scope)                 // it's a fwd ref, maybe we can resolve it
         {
             sym->semantic(NULL);
-            s = sym->search(e->loc, ident);
+            s = searchSym(sym, e, ident);
         }
         if (!s)
             return noMember(sc, e, ident, flag);
     }
-    if (!symbolIsVisible(sc->module, s))
+    if (!symbolIsVisible(sc, s))
     {
-        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
+        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toPrettyChars());
         // return noMember(sc, e, ident, flag);
     }
     if (!s->isFuncDeclaration())        // because of overloading
@@ -8257,7 +8285,7 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         return e;
     }
 
-    s = sym->search(e->loc, ident);
+    s = searchSym(sym, e, ident);
 L1:
     if (!s)
     {
@@ -8364,7 +8392,7 @@ L1:
             return noMember(sc, e, ident, flag);
         }
     }
-    if (!symbolIsVisible(sc->module, s))
+    if (!symbolIsVisible(sc, s))
     {
         ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
         // return noMember(sc, e, ident, flag);
