@@ -635,7 +635,9 @@ Dsymbol *AliasDeclaration::toAlias2()
 
 bool AliasDeclaration::isOverloadable()
 {
-    return aliassym && aliassym->isOverloadable();
+    // assume overloadable until alias is resolved
+    return semanticRun < PASSsemanticdone ||
+        aliassym && aliassym->isOverloadable();
 }
 
 /****************************** OverDeclaration **************************/
