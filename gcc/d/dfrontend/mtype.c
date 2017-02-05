@@ -51,6 +51,8 @@
 // Allow implicit conversion of T[] to T*  --> Removed in 2.063
 #define IMPLICIT_ARRAY_TO_PTR   0
 
+bool symbolIsVisible(Module *mod, Dsymbol *s);
+
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
 
@@ -7688,6 +7690,11 @@ L1:
         if (!s)
             return noMember(sc, e, ident, flag);
     }
+    if (!symbolIsVisible(sc->module, s))
+    {
+        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
+        // return noMember(sc, e, ident, flag);
+    }
     if (!s->isFuncDeclaration())        // because of overloading
         s->checkDeprecated(e->loc, sc);
     s = s->toAlias();
@@ -8356,6 +8363,11 @@ L1:
         {
             return noMember(sc, e, ident, flag);
         }
+    }
+    if (!symbolIsVisible(sc->module, s))
+    {
+        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
+        // return noMember(sc, e, ident, flag);
     }
     if (!s->isFuncDeclaration())        // because of overloading
         s->checkDeprecated(e->loc, sc);

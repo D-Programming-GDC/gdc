@@ -1,3 +1,8 @@
+2017-02-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (Module::genmoduleinfo): Ignore symbol visibility when
+	looking up module DSO symbols.
+
 2017-01-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_handle_option): Handle -ftransition=all.
