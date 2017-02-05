@@ -6130,9 +6130,7 @@ Lerror:
         Dsymbol *s;
         if (Dsymbol::oneMembers(members, &s, tempdecl->ident) && s)
         {
-            //printf("s->kind = '%s'\n", s->kind());
-            //s->print();
-            //printf("'%s', '%s'\n", s->ident->toChars(), tempdecl->ident->toChars());
+            //printf("tempdecl->ident = %s, s = '%s'\n", tempdecl->ident->toChars(), s->kind(), s->toPrettyChars());
             //printf("setting aliasdecl\n");
             aliasdecl = s;
         }
@@ -6179,9 +6177,7 @@ Lerror:
         {
             if (!aliasdecl || aliasdecl != s)
             {
-                //printf("s->kind = '%s'\n", s->kind());
-                //s->print();
-                //printf("'%s', '%s'\n", s->ident->toChars(), tempdecl->ident->toChars());
+                //printf("tempdecl->ident = %s, s = '%s'\n", tempdecl->ident->toChars(), s->kind(), s->toPrettyChars());
                 //printf("setting aliasdecl 2\n");
                 aliasdecl = s;
             }
