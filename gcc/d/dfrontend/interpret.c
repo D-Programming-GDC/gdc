@@ -1540,7 +1540,7 @@ public:
                 return;
             }
 
-            e = interpret(s->increment, istate);    // TODO: ctfeNeedNothing is better?
+            e = interpret(s->increment, istate, ctfeNeedNothing);
             if (exceptionOrCant(e))
                 return;
         }
@@ -3452,8 +3452,8 @@ public:
         //      Deal with reference assignment
         // ---------------------------------------
         // If it is a construction of a ref variable, it is a ref assignment
-        if (e->op == TOKconstruct && e1->op == TOKvar &&
-            (((VarExp *)e1)->var->storage_class & STCref) != 0)
+        if ((e->op == TOKconstruct || e->op == TOKblit) &&
+            (((AssignExp *)e)->memset & referenceInit))
         {
             assert(!fp);
 
@@ -5658,9 +5658,9 @@ public:
         if (exceptionOrCant(e1))
             return;
         // If the expression has been cast to void, do nothing.
-        if (e->to->ty == Tvoid && goal == ctfeNeedNothing)
+        if (e->to->ty == Tvoid)
         {
-            result = e1;
+            result = CTFEExp::voidexp;
             return;
         }
         if (e->to->ty == Tpointer && e1->op != TOKnull)

@@ -1856,13 +1856,8 @@ void FuncDeclaration::semantic3(Scope *sc)
                     if (vresult)
                     {
                         // Create: return vresult = exp;
-                        VarExp *ve = new VarExp(Loc(), vresult);
-                        ve->type = vresult->type;
-                        if (f->isref)
-                            exp = new ConstructExp(rs->loc, ve, exp);
-                        else
-                            exp = new BlitExp(rs->loc, ve, exp);
-                        exp->type = ve->type;
+                        exp = new BlitExp(rs->loc, vresult, exp);
+                        exp->type = vresult->type;
 
                         if (rs->caseDim)
                             exp = Expression::combine(exp, new IntegerExp(rs->caseDim));
@@ -1982,8 +1977,7 @@ void FuncDeclaration::semantic3(Scope *sc)
                  */
                 Expression *e = new VarExp(Loc(), v_arguments);
                 e = new DotIdExp(Loc(), e, Id::elements);
-                Expression *e1 = new VarExp(Loc(), _arguments);
-                e = new ConstructExp(Loc(), e1, e);
+                e = new ConstructExp(Loc(), _arguments, e);
                 e = e->semantic(sc2);
 
                 _arguments->_init = new ExpInitializer(Loc(), e);
@@ -4036,10 +4030,9 @@ Expression *addInvariant(Loc loc, Scope *sc, AggregateDeclaration *ad, VarDeclar
         v->type = vthis->type;
         if (ad->isStructDeclaration())
             v = v->addressOf();
-        Expression *se = new StringExp(Loc(), (char *)"null this");
-        se = se->semantic(sc);
-        se->type = Type::tchar->arrayOf();
-        e = new AssertExp(loc, v, se);
+        e = new StringExp(Loc(), (char *)"null this");
+        e = new AssertExp(loc, v, e);
+        e = e->semantic(sc);
     }
     return e;
 }
@@ -4433,14 +4426,14 @@ bool FuncDeclaration::hasNestedFrameRefs()
     if (closureVars.dim)
         return true;
 
-    /* If a virtual method has contracts, assume its variables are referenced
+    /* If a virtual function has contracts, assume its variables are referenced
      * by those contracts, even if they aren't. Because they might be referenced
      * by the overridden or overriding function's contracts.
      * This can happen because frequire and fensure are implemented as nested functions,
      * and they can be called directly by an overriding function and the overriding function's
-     * context had better match, or Bugzilla 7337 will bite.
+     * context had better match, or Bugzilla 7335 will bite.
      */
-    if ((fdrequire || fdensure) && isVirtualMethod())
+    if (fdrequire || fdensure)
         return true;
 
     if (foverrides.dim && isVirtualMethod())
