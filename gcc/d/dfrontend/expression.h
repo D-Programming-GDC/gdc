@@ -63,6 +63,7 @@ void initPrecedence();
 Expression *resolveProperties(Scope *sc, Expression *e);
 Expression *resolvePropertiesOnly(Scope *sc, Expression *e1);
 bool checkAccess(Loc loc, Scope *sc, Expression *e, Declaration *d);
+bool checkAccess(Loc loc, Scope *sc, Package *p);
 Expression *build_overload(Loc loc, Scope *sc, Expression *ethis, Expression *earg, Dsymbol *d);
 Dsymbol *search_function(ScopeDsymbol *ad, Identifier *funcid);
 void expandTuples(Expressions *exps);
@@ -143,7 +144,7 @@ public:
     Expression *trySemantic(Scope *sc);
 
     // kludge for template.isExpression()
-    int dyncast() { return DYNCAST_EXPRESSION; }
+    int dyncast() const { return DYNCAST_EXPRESSION; }
 
     void print();
     const char *toChars();
@@ -692,10 +693,6 @@ public:
     Expression *syntaxCopy();
     Expression *semantic(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    elem *toElem();
-    dt_t **toDt(dt_t **pdt);
-#endif
 };
 
 class TraitsExp : public Expression
@@ -1122,7 +1119,7 @@ public:
 class CommaExp : public BinExp
 {
 public:
-    const bool isGenerated;
+    bool isGenerated;
     bool allowCommaExp;
 
     CommaExp(Loc loc, Expression *e1, Expression *e2, bool generated = true);
