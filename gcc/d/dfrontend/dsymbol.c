@@ -961,9 +961,6 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
     //printf("%s->ScopeDsymbol::search(ident='%s', flags=x%x)\n", toChars(), ident->toChars(), flags);
     //if (strcmp(ident->toChars(),"c") == 0) *(char*)0=0;
 
-    if (global.params.bug10378)
-        flags &= ~(SearchImportsOnly | SearchLocalsOnly);
-
     // Look in symbols declared in this module
     if (symtab && !(flags & SearchImportsOnly))
     {
@@ -999,15 +996,7 @@ Dsymbol *ScopeDsymbol::search(Loc loc, Identifier *ident, int flags)
             if (ss->isModule())
             {
                 if (flags & SearchLocalsOnly)
-                {
-                    if (global.params.check10378 && !(flags & SearchCheckImports))
-                    {
-                        Dsymbol *s3 = ss->search(loc, ident, sflags | IgnorePrivateImports);
-                        if (s3)
-                            deprecation("%s %s found in local import", s3->kind(), s3->toPrettyChars());
-                    }
                     continue;
-                }
             }
             else
             {
@@ -1221,18 +1210,30 @@ static void bitArrayLength(BitArray *array, size_t len)
     array->len = len;
 }
 
-void ScopeDsymbol::addAccessiblePackage(Package *p)
+void ScopeDsymbol::addAccessiblePackage(Package *p, Prot protection)
 {
-    BitArray *pary = &accessiblePackages;
+    BitArray *pary = protection.kind == PROTprivate ? &privateAccessiblePackages : &accessiblePackages;
     if (pary->len <= p->tag)
         bitArrayLength(pary, p->tag + 1);
     bitArraySet(pary, p->tag);
 }
 
-bool ScopeDsymbol::isPackageAccessible(Package *p)
+bool ScopeDsymbol::isPackageAccessible(Package *p, Prot protection, int flags)
 {
-    if (p->tag < accessiblePackages.len && bitArrayGet(&accessiblePackages, p->tag))
+    if ((p->tag < accessiblePackages.len && bitArrayGet(&accessiblePackages, p->tag)) ||
+        (protection.kind == PROTprivate && p->tag < privateAccessiblePackages.len && bitArrayGet(&privateAccessiblePackages, p->tag)))
         return true;
+    if (importedScopes)
+    {
+        for (size_t i = 0; i < importedScopes->dim; i++)
+        {
+            // only search visible scopes && imported modules should ignore private imports
+            Dsymbol *ss = (*importedScopes)[i];
+            if (protection.kind <= prots[i] &&
+                ss->isScopeDsymbol()->isPackageAccessible(p, protection, IgnorePrivateImports))
+                return true;
+        }
+    }
     return false;
 }
 

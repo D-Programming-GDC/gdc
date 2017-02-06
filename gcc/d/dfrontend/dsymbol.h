@@ -150,7 +150,6 @@ enum
                                     // meaning don't search imports in that scope,
                                     // because qualified module searches search
                                     // their imports
-    SearchCheckImports      = 0x40, // unqualified search with transition=checkimports switch
     IgnoreSymbolVisibility  = 0x80, // also find private and package protected symbols
 };
 
@@ -306,7 +305,7 @@ private:
     Dsymbols *importedScopes;   // imported Dsymbol's
     PROTKIND *prots;            // array of PROTKIND, one for each import
 
-    BitArray accessiblePackages;
+    BitArray accessiblePackages, privateAccessiblePackages;
 
 public:
     ScopeDsymbol();
@@ -315,8 +314,8 @@ public:
     Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);
     OverloadSet *mergeOverloadSet(Identifier *ident, OverloadSet *os, Dsymbol *s);
     void importScope(Dsymbol *s, Prot protection);
-    void addAccessiblePackage(Package *p);
-    bool isPackageAccessible(Package *p);
+    void addAccessiblePackage(Package *p, Prot protection);
+    virtual bool isPackageAccessible(Package *p, Prot protection, int flags = 0);
     bool isforwardRef();
     static void multiplyDefined(Loc loc, Dsymbol *s1, Dsymbol *s2);
     const char *kind();
