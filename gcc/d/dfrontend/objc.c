@@ -9,9 +9,16 @@
  * https://github.com/D-Programming-Language/dmd/blob/master/src/objc_stubs.c
  */
 
-#include "aggregate.h"
 #include "objc.h"
+#include "arraytypes.h"
+#include "aggregate.h"
+#include "mars.h"
+#include "outbuffer.h"
+#include "parse.h"
 #include "scope.h"
+
+class FuncDeclaration;
+class Identifier;
 
 // MARK: ObjcSelector
 
@@ -66,7 +73,7 @@ bool Objc_ClassDeclaration::isInterface()
 
 Objc_FuncDeclaration::Objc_FuncDeclaration()
 {
-    this->fdecl = fdecl;
+    this->fdecl = NULL;
     selector = NULL;
 }
 

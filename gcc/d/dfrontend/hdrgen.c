@@ -934,9 +934,6 @@ public:
         }
         t->attributesApply(&pas, &PrePostAppendStrings::fp);
 
-        if (t->isreturn)
-            buf->writestring(" return");
-
         t->inuse--;
     }
     void visitFuncIdentWithPrefix(TypeFunction *t, Identifier *ident, TemplateDeclaration *td, bool isPostfixStyle)
@@ -996,9 +993,6 @@ public:
             buf->writeByte(')');
         }
         parametersToBuffer(t->parameters, t->varargs);
-
-        if (t->isreturn)
-            buf->writestring("return ");
 
         t->inuse--;
     }

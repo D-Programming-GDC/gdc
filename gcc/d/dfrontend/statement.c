@@ -308,7 +308,9 @@ int Statement::blockExit(FuncDeclaration *func, bool mustNotThrow)
                 if (s)
                 {
                     int r = s->blockExit(func, mustNotThrow);
-                    result |= r & ~(BEbreak | BEcontinue);
+                    result |= r & ~(BEbreak | BEcontinue | BEfallthru);
+                    if ((r & (BEfallthru | BEcontinue | BEbreak)) == 0)
+                        result &= ~BEfallthru;
                 }
             }
         }
@@ -1506,9 +1508,6 @@ CaseStatement::CaseStatement(Loc loc, Expression *exp, Statement *s)
     this->exp = exp;
     this->statement = s;
     index = 0;
-#ifndef IN_GCC
-    cblock = NULL;
-#endif
 }
 
 Statement *CaseStatement::syntaxCopy()
@@ -1951,10 +1950,6 @@ LabelStatement::LabelStatement(Loc loc, Identifier *ident, Statement *statement)
     this->lastVar = NULL;
     this->gotoTarget = NULL;
     this->breaks = false;
-#ifndef IN_GCC
-    this->lblock = NULL;
-    this->fwdrefs = NULL;
-#endif
 }
 
 Statement *LabelStatement::syntaxCopy()

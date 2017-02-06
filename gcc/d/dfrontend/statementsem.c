@@ -473,6 +473,25 @@ public:
         if (fs->func->fes)
             fs->func = fs->func->fes->func;
 
+        VarDeclaration *vinit = NULL;
+        fs->aggr = fs->aggr->semantic(sc);
+        fs->aggr = resolveProperties(sc, fs->aggr);
+        fs->aggr = fs->aggr->optimize(WANTvalue);
+        if (fs->aggr->op == TOKerror)
+            return setError();
+
+        Expression *oaggr = fs->aggr;
+        if (fs->aggr->type && fs->aggr->type->toBasetype()->ty == Tstruct &&
+            fs->aggr->op != TOKtype && !fs->aggr->isLvalue())
+        {
+            // Bugzilla 14653: Extend the life of rvalue aggregate till the end of foreach.
+            vinit = new VarDeclaration(loc, fs->aggr->type,
+                Identifier::generateId("__aggr"), new ExpInitializer(loc, fs->aggr));
+            vinit->storage_class |= STCtemp;
+            vinit->semantic(sc);
+            fs->aggr = new VarExp(fs->aggr->loc, vinit);
+        }
+
         if (!inferAggregate(fs, sc, sapply))
         {
             const char *msg = "";
@@ -480,7 +499,7 @@ public:
             {
                 msg = ", define opApply(), range primitives, or use .tupleof";
             }
-            fs->error("invalid foreach aggregate %s%s", fs->aggr->toChars(), msg);
+            fs->error("invalid foreach aggregate %s%s", oaggr->toChars(), msg);
             return setError();
         }
 
@@ -606,8 +625,7 @@ public:
                     Initializer *ie = new ExpInitializer(Loc(), new IntegerExp(k));
                     VarDeclaration *var = new VarDeclaration(loc, p->type, p->ident, ie);
                     var->storage_class |= STCmanifest;
-                    DeclarationExp *de = new DeclarationExp(loc, var);
-                    st->push(new ExpStatement(loc, de));
+                    st->push(new ExpStatement(loc, var));
                     p = (*fs->parameters)[1];  // value
                 }
                 // Declare value
@@ -689,8 +707,7 @@ public:
                         return setError();
                     }
                 }
-                DeclarationExp *de = new DeclarationExp(loc, var);
-                st->push(new ExpStatement(loc, de));
+                st->push(new ExpStatement(loc, var));
 
                 st->push(fs->_body->syntaxCopy());
                 s = new CompoundStatement(loc, st);
@@ -702,8 +719,9 @@ public:
             if (LabelStatement *ls = checkLabeledLoop(sc, fs))
                 ls->gotoTarget = s;
             if (te && te->e0)
-                s = new CompoundStatement(loc,
-                                          new ExpStatement(te->e0->loc, te->e0), s);
+                s = new CompoundStatement(loc, new ExpStatement(te->e0->loc, te->e0), s);
+            if (vinit)
+                s = new CompoundStatement(loc, new ExpStatement(loc, vinit), s);
             s = semantic(s, sc);
             result = s;
             return;
@@ -836,7 +854,7 @@ public:
                      *   for (T[] tmp = a[], size_t key = tmp.length; key--; )
                      *   { T value = tmp[k]; body }
                      */
-                    Identifier *id = Identifier::generateId("__aggr");
+                    Identifier *id = Identifier::generateId("__r");
                     ExpInitializer *ie = new ExpInitializer(loc, new SliceExp(loc, fs->aggr, NULL, NULL));
                     VarDeclaration *tmp;
                     if (fs->aggr->op == TOKarrayliteral &&
@@ -868,6 +886,8 @@ public:
                         fs->key->_init = new ExpInitializer(loc, new IntegerExp(loc, 0, fs->key->type));
 
                     Statements *cs = new Statements();
+                    if (vinit)
+                        cs->push(new ExpStatement(loc, vinit));
                     cs->push(new ExpStatement(loc, tmp));
                     cs->push(new ExpStatement(loc, fs->key));
                     Statement *forinit = new CompoundDeclarationStatement(loc, cs);
@@ -956,7 +976,7 @@ public:
                      * .empty, .popFront, .popBack, .front and .back
                      *    foreach (e; aggr) { ... }
                      * translates to:
-                     *    for (auto __r = aggr[]; !__r.empty; __r.popFront) {
+                     *    for (auto __r = aggr[]; !__r.empty; __r.popFront()) {
                      *        auto e = __r.front;
                      *        ...
                      *    }
@@ -982,17 +1002,29 @@ public:
 
                     /* Generate a temporary __r and initialize it with the aggregate.
                     */
-                    Identifier *rid = Identifier::generateId("__r");
-                    VarDeclaration *r = new VarDeclaration(loc, NULL, rid, new ExpInitializer(loc, fs->aggr));
-                    r->storage_class |= STCtemp;
-                    Statement *init = new ExpStatement(loc, r);
+                    VarDeclaration *r;
+                    Statement *init;
+                    if (vinit && fs->aggr->op == TOKvar && ((VarExp *)fs->aggr)->var == vinit)
+                    {
+                        r = vinit;
+                        init = new ExpStatement(loc, vinit);
+                    }
+                    else
+                    {
+                        Identifier *rid = Identifier::generateId("__r");
+                        r = new VarDeclaration(loc, NULL, rid, new ExpInitializer(loc, fs->aggr));
+                        r->storage_class |= STCtemp;
+                        init = new ExpStatement(loc, r);
+                        if (vinit)
+                            init = new CompoundStatement(loc, new ExpStatement(loc, vinit), init);
+                    }
 
                     // !__r.empty
                     Expression *e = new VarExp(loc, r);
                     e = new DotIdExp(loc, e, Id::Fempty);
                     Expression *condition = new NotExp(loc, e);
 
-                    // __r.next
+                    // __r.idpopFront()
                     e = new VarExp(loc, r);
                     Expression *increment = new CallExp(loc, new DotIdExp(loc, e, idpopFront));
 
@@ -1009,8 +1041,7 @@ public:
                         ve->storage_class |= STCforeach;
                         ve->storage_class |= p->storageClass & (STCin | STCout | STCref | STC_TYPECTOR);
 
-                        DeclarationExp *de = new DeclarationExp(loc, ve);
-                        makeargs = new ExpStatement(loc, de);
+                        makeargs = new ExpStatement(loc, ve);
                     }
                     else
                     {
@@ -1019,7 +1050,7 @@ public:
                         VarDeclaration *vd = new VarDeclaration(loc, NULL, id, ei);
                         vd->storage_class |= STCtemp | STCctfe | STCref | STCforeach;
 
-                        makeargs = new ExpStatement(loc, new DeclarationExp(loc, vd));
+                        makeargs = new ExpStatement(loc, vd);
 
                         Declaration *d = sfront->isDeclaration();
                         if (FuncDeclaration *f = d->isFuncDeclaration())
@@ -1071,8 +1102,7 @@ public:
 
                             VarDeclaration *var = new VarDeclaration(loc, p->type, p->ident, new ExpInitializer(loc, exp));
                             var->storage_class |= STCctfe | STCref | STCforeach;
-                            DeclarationExp *de = new DeclarationExp(loc, var);
-                            makeargs = new CompoundStatement(loc, makeargs, new ExpStatement(loc, de));
+                            makeargs = new CompoundStatement(loc, makeargs, new ExpStatement(loc, var));
                         }
 
                     }
@@ -1101,9 +1131,6 @@ public:
                     fs->deprecation("cannot use foreach_reverse with a delegate");
             Lapply:
                 {
-                    Expression *ec;
-                    Expression *e;
-
                     if (fs->checkForArgTypes())
                     {
                         fs->_body = semanticNoScope(fs->_body, sc);
@@ -1212,6 +1239,16 @@ public:
                         }
                     }
 
+                    Expression *e = NULL;
+                    Expression *ec;
+                    if (vinit)
+                    {
+                        e = new DeclarationExp(loc, vinit);
+                        e = e->semantic(sc);
+                        if (e->op == TOKerror)
+                            goto Lerror2;
+                    }
+
                     if (taa)
                     {
                         // Check types
@@ -1251,7 +1288,7 @@ public:
                         unsigned char i = (dim == 2 ? 1 : 0);
                         if (!fdapply[i])
                         {
-                            params = new Parameters;
+                            params = new Parameters();
                             params->push(new Parameter(0, Type::tvoid->pointerTo(), NULL, NULL));
                             params->push(new Parameter(STCin, Type::tsize_t, NULL, NULL));
                             Parameters* dgparams = new Parameters;
@@ -1263,7 +1300,6 @@ public:
                             fdapply[i] = FuncDeclaration::genCfunc(params, Type::tint32, name[i]);
                         }
 
-                        ec = new VarExp(Loc(), fdapply[i], false);
                         Expressions *exps = new Expressions();
                         exps->push(fs->aggr);
                         size_t keysize = (size_t)taa->index->size();
@@ -1276,8 +1312,10 @@ public:
                         }
                         exps->push(new IntegerExp(Loc(), keysize, Type::tsize_t));
                         exps->push(flde);
-                        e = new CallExp(loc, ec, exps);
-                        e->type = Type::tint32; // don't run semantic() on e
+
+                        ec = new VarExp(Loc(), fdapply[i], false);
+                        ec = new CallExp(loc, ec, exps);
+                        ec->type = Type::tint32; // don't run semantic() on ec
                     }
                     else if (tab->ty == Tarray || tab->ty == Tsarray)
                     {
@@ -1313,7 +1351,7 @@ public:
 
                         FuncDeclaration *fdapply;
                         TypeDelegate *dgty;
-                        params = new Parameters;
+                        params = new Parameters();
                         params->push(new Parameter(STCin, tn->arrayOf(), NULL, NULL));
                         Parameters* dgparams = new Parameters;
                         dgparams->push(new Parameter(0, Type::tvoidptr, NULL, NULL));
@@ -1323,39 +1361,35 @@ public:
                         params->push(new Parameter(0, dgty, NULL, NULL));
                         fdapply = FuncDeclaration::genCfunc(params, Type::tint32, fdname);
 
-                        ec = new VarExp(Loc(), fdapply, false);
-                        Expressions *exps = new Expressions();
                         if (tab->ty == Tsarray)
                             fs->aggr = fs->aggr->castTo(sc, tn->arrayOf());
-                        exps->push(fs->aggr);
+
                         // paint delegate argument to the type runtime expects
                         if (!dgty->equals(flde->type)) {
                             flde = new CastExp(loc, flde, flde->type);
                             flde->type = dgty;
                         }
-                        exps->push(flde);
-                        e = new CallExp(loc, ec, exps);
-                        e->type = Type::tint32; // don't run semantic() on e
+
+                        ec = new VarExp(Loc(), fdapply, false);
+                        ec = new CallExp(loc, ec, fs->aggr, flde);
+                        ec->type = Type::tint32; // don't run semantic() on ec
                     }
                     else if (tab->ty == Tdelegate)
                     {
                         /* Call:
                          *      aggr(flde)
                          */
-                        Expressions *exps = new Expressions();
-                        exps->push(flde);
                         if (fs->aggr->op == TOKdelegate &&
                             ((DelegateExp *)fs->aggr)->func->isNested())
                         {
                             // See Bugzilla 3560
-                            e = new CallExp(loc, ((DelegateExp *)fs->aggr)->e1, exps);
+                            fs->aggr = ((DelegateExp *)fs->aggr)->e1;
                         }
-                        else
-                            e = new CallExp(loc, fs->aggr, exps);
-                        e = e->semantic(sc);
-                        if (e->op == TOKerror)
+                        ec = new CallExp(loc, fs->aggr, flde);
+                        ec = ec->semantic(sc);
+                        if (ec->op == TOKerror)
                             goto Lerror2;
-                        if (e->type != Type::tint32)
+                        if (ec->type != Type::tint32)
                         {
                             fs->error("opApply() function for %s must return an int", tab->toChars());
                             goto Lerror2;
@@ -1364,23 +1398,22 @@ public:
                     else
                     {
                         assert(tab->ty == Tstruct || tab->ty == Tclass);
-                        Expressions *exps = new Expressions();
                         assert(sapply);
                         /* Call:
                          *  aggr.apply(flde)
                          */
                         ec = new DotIdExp(loc, fs->aggr, sapply->ident);
-                        exps->push(flde);
-                        e = new CallExp(loc, ec, exps);
-                        e = e->semantic(sc);
-                        if (e->op == TOKerror)
+                        ec = new CallExp(loc, ec, flde);
+                        ec = ec->semantic(sc);
+                        if (ec->op == TOKerror)
                             goto Lerror2;
-                        if (e->type != Type::tint32)
+                        if (ec->type != Type::tint32)
                         {
                             fs->error("opApply() function for %s must return an int", tab->toChars());
                             goto Lerror2;
                         }
                     }
+                    e = Expression::combine(e, ec);
 
                     if (!fs->cases->dim)
                     {
@@ -2980,7 +3013,7 @@ public:
                     init = new ExpInitializer(ws->loc, ws->exp);
                     ws->wthis = new VarDeclaration(ws->loc, ws->exp->type, Identifier::generateId("__withtmp"), init);
                     ws->wthis->storage_class |= STCtemp;
-                    ExpStatement *es = new ExpStatement(ws->loc, new DeclarationExp(ws->loc, ws->wthis));
+                    ExpStatement *es = new ExpStatement(ws->loc, ws->wthis);
                     ws->exp = new VarExp(ws->loc, ws->wthis);
                     Statement *ss = new ScopeStatement(ws->loc, new CompoundStatement(ws->loc, es, ws), ws->endloc);
                     result = semantic(ss, sc);

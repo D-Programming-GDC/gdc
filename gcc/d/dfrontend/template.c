@@ -2114,9 +2114,11 @@ RootObject *TemplateDeclaration::declareParameter(Scope *sc, TemplateParameter *
         if (sa->isDeprecated())
             d->storage_class |= STCdeprecated;
     }
+
     if (!sc->insert(d))
         error("declaration %s is already defined", tp->ident->toChars());
     d->semantic(sc);
+
     /* So the caller's o gets updated with the result of semantic() being run on o
      */
     if (v)

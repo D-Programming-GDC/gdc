@@ -46,6 +46,18 @@
 	* typeinfo.cc (layout_classinfo): Use placement new to initialize
 	typeinfo class declaration.
 
+2017-01-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen,cc (get_frame_for_symbol): Use fully qualified name in
+	error message.
+	(build_frame_type): Always add parameters to closure vars if the
+	function has a contract function.
+	(get_frameinfo): Likewise, always create a frame.
+	* expr.cc (ExprVisitor::needs_dtor): New function.
+	(ExprVisitor::lvalue_p): New function.
+	(ExprVisitor::visit(AssignExp)): Check for dtor in array assignments.
+	(ExprVisitor::visit(TypeidExp)): Cast result to expression type.
+
 2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(VarExp)): Remove type forced conversion.

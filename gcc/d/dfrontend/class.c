@@ -76,7 +76,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
     {
         // Look for special class names
 
-        if (id == Id::__sizeof || id == Id::__xalignof || id == Id::mangleof)
+        if (id == Id::__sizeof || id == Id::__xalignof || id == Id::_mangleof)
             error("illegal class name");
 
         // BUG: What if this is the wrong TypeInfo, i.e. it is nested?
@@ -1748,6 +1748,12 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
                 *poffset = b->offset;
                 if (j && cd->isInterfaceDeclaration())
                     *poffset = OFFSET_RUNTIME;
+
+                /* TODO: Even though it's an interface to base interface upcast,
+                 * I think we can avoid runtime offset determination ultimately.
+                 * (I doubt that it was just a workaround for the bug in the
+                 * inferface to Object downcast)
+                 */
             }
             return true;
         }
@@ -1841,11 +1847,11 @@ BaseClass::BaseClass(Type *type)
 {
     //printf("BaseClass(this = %p, '%s')\n", this, type->toChars());
     this->type = type;
-    sym = NULL;
-    offset = 0;
+    this->sym = NULL;
+    this->offset = 0;
 
-    baseInterfaces.length = 0;
-    baseInterfaces.ptr = NULL;
+    this->baseInterfaces.length = 0;
+    this->baseInterfaces.ptr = NULL;
 }
 
 /****************************************

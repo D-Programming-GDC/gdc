@@ -1948,7 +1948,7 @@ public:
 	if (((TypeClass *) type)->sym->isInterfaceDeclaration())
 	  ci = indirect_ref(ptr_type_node, ci);
 
-	this->result_ = build_nop(build_ctype(tid->type), ci);
+	this->result_ = build_nop(build_ctype(e->type), ci);
       }
     else
       gcc_unreachable();
