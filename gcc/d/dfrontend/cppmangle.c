@@ -28,6 +28,9 @@
 #include "aggregate.h"
 #include "target.h"
 
+typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
+int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *pn = NULL);
+
 /* Do mangling for C++ linkage.
  * No attempt is made to support mangling of templates, operator
  * overloading, or special functions.
@@ -541,7 +544,7 @@ class CppMangleVisitor : public Visitor
     void argsCppMangle(Parameters *parameters, int varargs)
     {
         if (parameters)
-            Parameter::foreach(parameters, &paramsCppMangleDg, (void*)this);
+            Parameter_foreach(parameters, &paramsCppMangleDg, (void*)this);
 
         if (varargs)
             buf.writestring("z");
@@ -1921,7 +1924,7 @@ private:
         }
         else
         {
-            Parameter::foreach(type->parameters, &mangleParameterDg, (void*)&tmp);
+            Parameter_foreach(type->parameters, &mangleParameterDg, (void*)&tmp);
             if (type->varargs == 1)
             {
                 tmp.buf.writeByte('Z');
