@@ -1933,6 +1933,13 @@ static Expression *expandInline(FuncDeclaration *fd, FuncDeclaration *parent,
     if (ps)
         as = new Statements();
 
+    if (fd->isNested())
+    {
+        if (!parent->inlinedNestedCallees)
+            parent->inlinedNestedCallees = new FuncDeclarations();
+        parent->inlinedNestedCallees->push(fd);
+    }
+
     VarDeclaration *vret = NULL;
     if (eret)
     {
