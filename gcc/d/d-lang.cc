@@ -1078,9 +1078,6 @@ d_parse_file()
       m->semantic(NULL);
     }
 
-  if (global.errors)
-    goto had_errors;
-
   // Do deferred semantic analysis
   Module::dprogress = 1;
   Module::runDeferredSemantic();
@@ -1092,7 +1089,6 @@ d_parse_file()
 	  Dsymbol *sd = Module::deferred[i];
 	  sd->error("unable to resolve forward reference in definition");
 	}
-      goto had_errors;
     }
 
   // Process all built-in modules or functions now for CTFE.
