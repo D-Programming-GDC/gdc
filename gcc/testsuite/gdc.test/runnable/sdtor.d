@@ -4295,6 +4295,35 @@ static assert(test14838());
 
 /**********************************/
 
+struct S63
+{
+    private long p = 87;
+
+    this(int x)
+    {
+        assert(p == 87);
+        p += x;
+    }
+
+    ~this() { }
+
+    this(this) { }
+
+    void funky() { assert(p == 90); }
+
+    static void tester()
+    {
+        S63(3).funky();
+    }
+}
+
+void test63()
+{
+    S63.tester();
+}
+
+/**********************************/
+
 struct X64
 {
     static int dtor;
@@ -4317,6 +4346,46 @@ void test64()
 {
     auto s = foo64();
     assert(X64.dtor == 1);
+}
+
+/**********************************/
+// 15661
+
+struct X15661
+{
+    ~this() {}
+}
+
+X15661 createX15661() { return X15661(); }
+
+struct Y15661
+{
+    static int dtor;
+
+    @disable this();
+    @disable this(this);
+    this(X15661 a1, X15661 a2) {}
+    ~this() { ++dtor; }
+}
+
+struct Z15661
+{
+    this(int)
+    {
+        b = Y15661(createX15661(), createX15661());
+        assert(Y15661.dtor == 0);
+    }
+
+    private Y15661 b;
+}
+
+void test15661()
+{
+    {
+        auto v = Z15661(5);
+        assert(Y15661.dtor == 0);
+    }
+    assert(Y15661.dtor == 1);
 }
 
 /**********************************/
@@ -4444,7 +4513,9 @@ int main()
     test14860();
     test14696();
     test14838();
+    test63();
     test64();
+    test15661();
 
     printf("Success\n");
     return 0;
