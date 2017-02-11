@@ -312,7 +312,7 @@ List all hidden GC allocations.
 
 ftransition=safe
 D RejectNegative
-Implement enhanced @safe checking
+Shows places with hidden change in semantics needed for better @safe guarantees
 
 ftransition=tls
 D RejectNegative

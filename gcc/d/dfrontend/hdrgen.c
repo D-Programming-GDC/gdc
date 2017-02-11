@@ -3133,6 +3133,8 @@ void toCBuffer(Initializer *iz, OutBuffer *buf, HdrGenState *hgs)
 bool stcToBuffer(OutBuffer *buf, StorageClass stc)
 {
     bool result = false;
+    if ((stc & (STCreturn | STCscope)) == (STCreturn | STCscope))
+        stc &= ~STCscope;
     while (stc)
     {
         if (!result)
