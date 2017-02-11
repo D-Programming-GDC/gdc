@@ -518,7 +518,14 @@ VarDeclaration::toObjFile()
 	  mi->tlsVars.safe_push (this);
 	}
 
-      size_t sz = type->size();
+      /* How big a symbol can be should depend on backend.  */
+      tree size = build_integer_cst (this->type->size (this->loc),
+				      build_ctype (Type::tsize_t));
+      if (!valid_constant_size_p (size))
+	{
+	  this->error("size is too large");
+	  return;
+	}
 
       if (this->_init && !this->_init->isVoidInitializer())
 	{
@@ -547,7 +554,7 @@ VarDeclaration::toObjFile()
 	}
 
       // Frontend should have already caught this.
-      gcc_assert (sz || type->toBasetype()->ty == Tsarray);
+      gcc_assert (!integer_zerop (size) || type->toBasetype()->ty == Tsarray);
       d_finish_symbol (s);
     }
   else
