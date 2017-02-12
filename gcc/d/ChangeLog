@@ -1,3 +1,9 @@
+2017-03-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -ftransition=dip1000
+	* lang.opt (ftransition=dip1000): Declare.
+	(ftransition=safe): Make alias for -ftransition=dip1000
+
 2017-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (get_decl_tree): Handle chaining over many levels of

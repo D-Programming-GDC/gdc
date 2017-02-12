@@ -672,6 +672,11 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.vcomplex = value;
       break;
 
+    case OPT_ftransition_dip1000:
+      global.params.vsafe = value;
+      global.params.useDIP25 = value;
+      break;
+
     case OPT_ftransition_dip25:
       global.params.useDIP25 = value;
       break;
@@ -686,10 +691,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_ftransition_nogc:
       global.params.vgc = value;
-      break;
-
-    case OPT_ftransition_safe:
-      global.params.vsafe = value;
       break;
 
     case OPT_ftransition_tls:

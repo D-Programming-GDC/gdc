@@ -294,6 +294,10 @@ ftransition=complex
 D RejectNegative
 List all usages of complex or imaginary types.
 
+ftransition=dip1000
+D RejectNegative
+Implement http://wiki.dlang.org/DIP1000 (experimental)
+
 ftransition=dip25
 D RejectNegative
 Implement http://wiki.dlang.org/DIP25 (experimental)
@@ -311,8 +315,8 @@ D RejectNegative
 List all hidden GC allocations.
 
 ftransition=safe
-D RejectNegative
-Shows places with hidden change in semantics needed for better @safe guarantees
+D Alias(ftransition=dip1000)
+; Deprecated in favor of -ftransition=dip1000
 
 ftransition=tls
 D RejectNegative
