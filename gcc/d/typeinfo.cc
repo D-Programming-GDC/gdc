@@ -935,7 +935,7 @@ genTypeInfo (Type *type, Scope *sc)
 	  if (sc)
 	    {
 	      /* Find module that will go all the way to an object file.  */
-	      Module *m = sc->module->importedFrom;
+	      Module *m = sc->_module->importedFrom;
 	      m->members->push (t->vtinfo);
 	    }
 	  else

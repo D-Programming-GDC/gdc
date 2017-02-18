@@ -1,5 +1,17 @@
 2017-03-06  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-glue.cc (verror): Update to handle -Wspeculative.
+	(verrorSupplemental): Likewise.
+	* d-lang.cc (d_init_options): Initialize module alias array.
+	(d_init_options): Handle -fmodule-filepath= and -Wspeculative.
+	* d-port.cc (Port::stricmp): Remove function.
+	(Port::writelongLE): New function.
+	(Port::writelongBE): New function.
+	* lang.opt (Wspeculative): Declare.
+	(fmodule-filepath=): Declare.
+
+2017-03-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_handle_option): Handle -ftransition=dip1000
 	* lang.opt (ftransition=dip1000): Declare.
 	(ftransition=safe): Make alias for -ftransition=dip1000
