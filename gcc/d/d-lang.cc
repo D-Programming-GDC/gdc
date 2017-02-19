@@ -845,35 +845,6 @@ genCmain (Scope *sc)
   rootmodule = sc->module;
 }
 
-static bool
-is_system_module (Module *m)
-{
-  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
-  ModuleDeclaration *md = m->md;
-
-  if (!md)
-    return false;
-
-  if (md->packages)
-    {
-      if (strcmp ((*md->packages)[0]->toChars (), "core") == 0)
-        return true;
-      if (strcmp ((*md->packages)[0]->toChars (), "std") == 0)
-        return true;
-      if (strcmp ((*md->packages)[0]->toChars (), "gcc") == 0)
-        return true;
-    }
-  else if (md->id && md->packages == NULL)
-    {
-      if (strcmp (md->id->toChars (), "object") == 0)
-        return true;
-      if (strcmp (md->id->toChars (), "__entrypoint") == 0)
-        return true;
-    }
-
-  return false;
-}
-
 /* Write out all dependencies of a given MODULE to the specified BUFFER.
    COLMAX is the number of columns to word-wrap at (0 means don't wrap).  */
 
@@ -901,12 +872,6 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
   {
     Module* depmod = modlist.pop ();
 
-    if (d_option.deps_skip_system)
-      {
-	if (is_system_module (depmod))
-	  continue;
-      }
-
     str = depmod->srcfile->name->str;
     size = strlen (str);
 
@@ -931,7 +896,32 @@ deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 
     /* Search all imports of the written dependency.  */
     for (size_t i = 0; i < depmod->aimports.dim; i++)
-      modlist.push (depmod->aimports[i]);
+      {
+	Module *m = depmod->aimports[i];
+
+	/* Ignore compiler-generated modules.  */
+	if (m->ident == Id::entrypoint && m->parent == NULL)
+	  continue;
+
+	/* Don't search system installed modules, this includes
+	   object, core.*, std.*, and gcc.* packages.  */
+	if (d_option.deps_skip_system)
+	  {
+	    if (m->ident == Id::object && m->parent == NULL)
+	      continue;
+
+	    if (m->md && m->md->packages)
+	      {
+		Identifier *package = (*m->md->packages)[0];
+
+		if (package == Id::core || package == Id::std
+		    || package == Identifier::idPool ("gcc"))
+		  continue;
+	      }
+	  }
+
+	modlist.push (m);
+      }
   }
 
   buffer->writenl ();
