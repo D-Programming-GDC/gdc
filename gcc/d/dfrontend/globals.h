@@ -133,13 +133,6 @@ struct Param
     const char *moduleDepsFile; // filename for deps output
     OutBuffer *moduleDeps;      // contents to be written to deps file
 
-#ifdef IN_GCC
-    const char *makeDepsFile;   // filename for make deps output
-    OutBuffer *makeDeps;        // contents to be written to make deps file
-    char makeDepsStyle;         // 0: include system header files
-                                // 1: ignore system header files
-#endif
-
     // Hidden debug switches
     bool debugb;
     bool debugc;
