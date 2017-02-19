@@ -70,7 +70,7 @@ These official OS versions are not implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/darwin.h
 +++ b/gcc/config/darwin.h
-@@ -972,4 +972,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
+@@ -968,4 +968,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
  #define DEF_LD64 LD64_VERSION
  #endif
  

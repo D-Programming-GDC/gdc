@@ -97,26 +97,22 @@ unsigned
 Target::fieldalign (Type *type)
 {
   /* Work out the correct alignment for the field decl.  */
-  tree field = make_node (FIELD_DECL);
-  SET_DECL_ALIGN (field, type->alignsize () * BITS_PER_UNIT);
+  unsigned int align = type->alignsize () * BITS_PER_UNIT;
 
 #ifdef BIGGEST_FIELD_ALIGNMENT
-  SET_DECL_ALIGN (field, MIN (DECL_ALIGN (field),
-			    (unsigned) BIGGEST_FIELD_ALIGNMENT));
+  align = MIN (align, (unsigned) BIGGEST_FIELD_ALIGNMENT);
 #endif
+
 #ifdef ADJUST_FIELD_ALIGN
   if (type->isTypeBasic ())
-    {
-      TREE_TYPE (field) = build_ctype (type);
-      SET_DECL_ALIGN (field, ADJUST_FIELD_ALIGN (field, DECL_ALIGN (field)));
-    }
+    align = ADJUST_FIELD_ALIGN (NULL_TREE, build_ctype (type), align);
 #endif
 
   /* Also controlled by -fpack-struct=  */
   if (maximum_field_alignment)
-    SET_DECL_ALIGN (field, MIN (DECL_ALIGN (field), maximum_field_alignment));
+    align = MIN (align, maximum_field_alignment);
 
-  return DECL_ALIGN_UNIT (field);
+  return align / BITS_PER_UNIT;
 }
 
 /* Return size of OS critical section.
