@@ -58,9 +58,6 @@
 #include "d-dmd-gcc.h"
 #include "id.h"
 
-static const char *iprefix_dir = NULL;
-static const char *imultilib_dir = NULL;
-
 static char lang_name[6] = "GNU D";
 
 /* Lang Hooks */
@@ -136,16 +133,26 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_TYPE_PROMOTES_TO		d_type_promotes_to
 
 
-static const char *fonly_arg;
+/* Options handled by the compiler that are separate from the frontend.  */
+struct d_option_data
+{
+  const char *fonly;            /* -fonly=<arg>  */
+  const char *multilib;         /* -imultilib <dir>  */
+  const char *prefix;           /* -iprefix <dir>  */
+
+  bool deps;                    /* -fmake-deps  */
+  bool deps_skip_system;        /* -fmake-mdeps  */
+  const char *deps_filename;    /* -fmake-[m]deps=  */
+
+  bool stdinc;                  /* -nostdinc  */
+}
+d_option;
 
 /* List of modules being compiled.  */
 Modules builtin_modules;
 
 static Module *entrypoint = NULL;
 static Module *rootmodule = NULL;
-
-/* Zero disables all standard directories for headers.  */
-static bool std_inc = true;
 
 /* The current and global binding level in effect.  */
 struct binding_level *current_binding_level;
@@ -190,7 +197,15 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.imppath = new Strings();
   global.params.fileImppath = new Strings();
 
-  // extra D-specific options
+  /* Extra GDC-specific options.  */
+  d_option.fonly = NULL;
+  d_option.multilib = NULL;
+  d_option.prefix = NULL;
+  d_option.deps = false;
+  d_option.deps_skip_system = false;
+  d_option.deps_filename = NULL;
+  d_option.stdinc = true;
+
   flag_emit_templates = 1;
 }
 
@@ -338,7 +353,7 @@ d_init()
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_import_paths(iprefix_dir, imultilib_dir, std_inc);
+  add_import_paths(d_option.prefix, d_option.multilib, d_option.stdinc);
 
   return 1;
 }
@@ -461,28 +476,21 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
-    case OPT_fmake_deps:
-      global.params.makeDeps = new OutBuffer;
-      break;
-
-    case OPT_fmake_deps_:
-      global.params.makeDeps = new OutBuffer;
-      global.params.makeDepsStyle = 1;
-      global.params.makeDepsFile = arg;
-      if (!global.params.makeDepsFile[0])
-	error ("bad argument for -fmake-deps");
-      break;
-
     case OPT_fmake_mdeps:
-      global.params.makeDeps = new OutBuffer;
+      d_option.deps_skip_system = true;
+      /* fall through */
+
+    case OPT_fmake_deps:
+      d_option.deps = true;
       break;
 
     case OPT_fmake_mdeps_:
-      global.params.makeDeps = new OutBuffer;
-      global.params.makeDepsStyle = 2;
-      global.params.makeDepsFile = arg;
-      if (!global.params.makeDepsFile[0])
-	error ("bad argument for -fmake-deps");
+      d_option.deps_skip_system = true;
+      /* fall through */
+
+    case OPT_fmake_deps_:
+      d_option.deps = true;
+      d_option.deps_filename = arg;
       break;
 
     case OPT_fmoduleinfo:
@@ -490,7 +498,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_fonly_:
-      fonly_arg = arg;
+      d_option.fonly = arg;
       break;
 
     case OPT_fout:
@@ -578,11 +586,11 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_imultilib:
-      imultilib_dir = arg;
+      d_option.multilib = arg;
       break;
 
     case OPT_iprefix:
-      iprefix_dir = arg;
+      d_option.prefix = arg;
       break;
 
     case OPT_I:
@@ -594,7 +602,7 @@ d_handle_option (size_t scode, const char *arg, int value,
       break;
 
     case OPT_nostdinc:
-      std_inc = false;
+      d_option.stdinc = false;
       break;
 
     case OPT_v:
@@ -838,28 +846,28 @@ genCmain (Scope *sc)
 }
 
 static bool
-is_system_module(Module *m)
+is_system_module (Module *m)
 {
   // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
   ModuleDeclaration *md = m->md;
 
-  if(!md)
+  if (!md)
     return false;
 
   if (md->packages)
     {
-      if (strcmp ((*md->packages)[0]->toChars(), "core") == 0)
+      if (strcmp ((*md->packages)[0]->toChars (), "core") == 0)
         return true;
-      if (strcmp ((*md->packages)[0]->toChars(), "std") == 0)
+      if (strcmp ((*md->packages)[0]->toChars (), "std") == 0)
         return true;
-      if (strcmp ((*md->packages)[0]->toChars(), "gcc") == 0)
+      if (strcmp ((*md->packages)[0]->toChars (), "gcc") == 0)
         return true;
     }
   else if (md->id && md->packages == NULL)
     {
-      if (strcmp (md->id->toChars(), "object") == 0)
+      if (strcmp (md->id->toChars (), "object") == 0)
         return true;
-      if (strcmp (md->id->toChars(), "__entrypoint") == 0)
+      if (strcmp (md->id->toChars (), "__entrypoint") == 0)
         return true;
     }
 
@@ -867,7 +875,7 @@ is_system_module(Module *m)
 }
 
 static void
-write_one_dep(char const* fn, OutBuffer* ob)
+write_one_dep (char const* fn, OutBuffer* ob)
 {
   ob->writestring ("  ");
   ob->writestring (fn);
@@ -875,40 +883,38 @@ write_one_dep(char const* fn, OutBuffer* ob)
 }
 
 static void
-deps_write (Module *m)
+deps_write (Module *m, OutBuffer *ob)
 {
-  OutBuffer *ob = global.params.makeDeps;
-
-  // Write out object name.
+  /* Write out object name.  */
   FileName *fn = m->objfile->name;
   ob->writestring (fn->str);
   ob->writestring (":");
 
   StringTable dependencies;
-  dependencies._init();
+  dependencies._init ();
 
   Modules to_explore;
-  to_explore.push(m);
+  to_explore.push (m);
   while (to_explore.dim)
   {
-    Module* depmod = to_explore.pop();
+    Module* depmod = to_explore.pop ();
 
-    if (global.params.makeDepsStyle == 2)
-      if (is_system_module(depmod))
+    if (d_option.deps_skip_system)
+      if (is_system_module (depmod))
         continue;
 
     const char* str = depmod->srcfile->name->str;
 
-    if (!dependencies.insert(str, strlen(str), NULL))
+    if (!dependencies.insert (str, strlen (str), NULL))
       continue;
 
     for (size_t i = 0; i < depmod->aimports.dim; i++)
-      to_explore.push(depmod->aimports[i]);
+      to_explore.push (depmod->aimports[i]);
 
-    write_one_dep(str, ob);
+    write_one_dep (str, ob);
   }
 
-  ob->writenl();
+  ob->writenl ();
 }
 
 void
@@ -942,7 +948,7 @@ d_parse_file()
 
   // In this mode, the first file name is supposed to be a duplicate
   // of one of the input files.
-  if (fonly_arg && strcmp(fonly_arg, in_fnames[0]))
+  if (d_option.fonly && strcmp(d_option.fonly, in_fnames[0]))
     error("-fonly= argument is different from first input file name");
 
   for (size_t i = 0; i < num_in_fnames; i++)
@@ -1040,7 +1046,7 @@ d_parse_file()
       for (size_t i = 0; i < modules.dim; i++)
 	{
 	  Module *m = modules[i];
-	  if (fonly_arg && m != Module::rootModule)
+	  if (d_option.fonly && m != Module::rootModule)
 	    continue;
 
 	  if (global.params.verbose)
@@ -1144,33 +1150,34 @@ d_parse_file()
 
       if (global.params.moduleDepsFile)
 	{
-	  File deps(global.params.moduleDepsFile);
-	  deps.setbuffer((void *) ob->data, ob->offset);
-	  deps.ref = 1;
-	  writeFile(Loc(), &deps);
+	  File fdeps(global.params.moduleDepsFile);
+	  fdeps.setbuffer((void *) ob->data, ob->offset);
+	  fdeps.ref = 1;
+	  writeFile(Loc(), &fdeps);
 	}
       else
 	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
     }
 
-  if (global.params.makeDeps)
+  if (d_option.deps)
     {
+      OutBuffer ob;
+
       for (size_t i = 0; i < modules.dim; i++)
 	{
 	  Module *m = modules[i];
-	  deps_write(m);
+	  deps_write (m, &ob);
 	}
 
-      OutBuffer *ob = global.params.makeDeps;
-      if (global.params.makeDepsFile)
+      if (d_option.deps_filename != NULL)
 	{
-	  File deps(global.params.makeDepsFile);
-	  deps.setbuffer((void *) ob->data, ob->offset);
-	  deps.ref = 1;
-	  writeFile(Loc(), &deps);
+	  File fdeps (d_option.deps_filename);
+	  fdeps.setbuffer ((void *) ob.data, ob.offset);
+	  fdeps.ref = 1;
+	  writeFile (Loc (), &fdeps);
 	}
       else
-	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
+	fprintf (global.stdmsg, "%.*s", (int) ob.offset, (char *) ob.data);
     }
 
   // Generate output files
@@ -1222,7 +1229,7 @@ d_parse_file()
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
-      if (fonly_arg && m != Module::rootModule)
+      if (d_option.fonly && m != Module::rootModule)
 	continue;
 
       if (global.params.verbose)
