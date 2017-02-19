@@ -1,5 +1,10 @@
 2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (write_one_dep): Remove.
+	(deps_write): Update signature.
+
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (iprefix_dir): Remove.
 	(imultilib_dir): Remove.
 	(std_inc): Remove.

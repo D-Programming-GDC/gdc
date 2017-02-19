@@ -874,47 +874,67 @@ is_system_module (Module *m)
   return false;
 }
 
-static void
-write_one_dep (char const* fn, OutBuffer* ob)
-{
-  ob->writestring ("  ");
-  ob->writestring (fn);
-  ob->writestring ("\\\n");
-}
+/* Write out all dependencies of a given MODULE to the specified BUFFER.
+   COLMAX is the number of columns to word-wrap at (0 means don't wrap).  */
 
 static void
-deps_write (Module *m, OutBuffer *ob)
+deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
 {
-  /* Write out object name.  */
-  FileName *fn = m->objfile->name;
-  ob->writestring (fn->str);
-  ob->writestring (":");
-
   StringTable dependencies;
   dependencies._init ();
 
-  Modules to_explore;
-  to_explore.push (m);
-  while (to_explore.dim)
+  Modules modlist;
+  modlist.push (module);
+
+  /* Write out make target module name.  */
+  const char *str = module->objfile->name->str;
+  unsigned size = strlen (str);
+  unsigned column = 0;
+
+  buffer->writestring (str);
+  column = size;
+  buffer->writestring (":");
+  column++;
+
+  /* Write out all make dependencies.  */
+  while (modlist.dim > 0)
   {
-    Module* depmod = to_explore.pop ();
+    Module* depmod = modlist.pop ();
 
     if (d_option.deps_skip_system)
-      if (is_system_module (depmod))
-        continue;
+      {
+	if (is_system_module (depmod))
+	  continue;
+      }
 
-    const char* str = depmod->srcfile->name->str;
+    str = depmod->srcfile->name->str;
+    size = strlen (str);
 
-    if (!dependencies.insert (str, strlen (str), NULL))
+    /* Skip dependencies that have already been written.  */
+    if (!dependencies.insert (str, size, NULL))
       continue;
 
-    for (size_t i = 0; i < depmod->aimports.dim; i++)
-      to_explore.push (depmod->aimports[i]);
+    column += size;
 
-    write_one_dep (str, ob);
+    if (colmax && column > colmax)
+      {
+	buffer->writestring (" \\\n ");
+	column = size + 1;
+      }
+    else
+      {
+	buffer->writestring (" ");
+	column++;
+      }
+
+    buffer->writestring (str);
+
+    /* Search all imports of the written dependency.  */
+    for (size_t i = 0; i < depmod->aimports.dim; i++)
+      modlist.push (depmod->aimports[i]);
   }
 
-  ob->writenl ();
+  buffer->writenl ();
 }
 
 void
@@ -1164,10 +1184,7 @@ d_parse_file()
       OutBuffer ob;
 
       for (size_t i = 0; i < modules.dim; i++)
-	{
-	  Module *m = modules[i];
-	  deps_write (m, &ob);
-	}
+	deps_write (modules[i], &ob);
 
       if (d_option.deps_filename != NULL)
 	{
