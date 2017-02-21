@@ -23,6 +23,62 @@ D
 Variable
 int flag_emit_templates
 
+-dependencies
+D Alias(M)
+; Documented in C
+
+-print-missing-file-dependencies
+D Alias(MG)
+; Documented in C
+
+-user-dependencies
+D Alias(MM)
+; Documented in C
+
+-write-dependencies
+D NoDriverArg Separate Alias(MD)
+; Documented in C
+
+-write-user-dependencies
+D NoDriverArg Separate Alias(MMD)
+; Documented in C
+
+M
+D
+; Documented in C
+
+MD
+D Separate NoDriverArg
+; Documented in C
+
+MF
+D Joined Separate
+; Documented in C
+
+MG
+D
+; Documented in C
+
+MM
+D
+; Documented in C
+
+MMD
+D Separate NoDriverArg
+; Documented in C
+
+MP
+D
+; Documented in C
+
+MT
+D Joined Separate
+; Documented in C
+
+MQ
+D Joined Separate
+; Documented in C
+
 debuglib=
 Driver Joined
 Debug library to use instead of phobos.
@@ -138,20 +194,20 @@ D
 Generate runtime code for invariant()'s.
 
 fmake-deps
-D
-Print information about module makefile dependencies.
+D Alias(M)
+; Deprecated in favor of -M
 
 fmake-deps=
 D Joined RejectNegative
--fmake-deps=<file>	Write makefile dependency output to the given file.
+Deprecated in favor of -MD
 
 fmake-mdeps
-D
-Like -fmake-deps but ignore system modules.
+D Alias(MM)
+; Deprecated in favor of -MM
 
 fmake-mdeps=
 D Joined RejectNegative
-Like -fmake-deps=<file> but ignore system modules.
+Deprecated in favor of -MMD
 
 fmoduleinfo
 D

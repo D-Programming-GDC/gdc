@@ -136,15 +136,18 @@ static char lang_name[6] = "GNU D";
 /* Options handled by the compiler that are separate from the frontend.  */
 struct d_option_data
 {
-  const char *fonly;            /* -fonly=<arg>  */
-  const char *multilib;         /* -imultilib <dir>  */
-  const char *prefix;           /* -iprefix <dir>  */
+  const char *fonly;                /* -fonly=<arg>  */
+  const char *multilib;             /* -imultilib <dir>  */
+  const char *prefix;               /* -iprefix <dir>  */
 
-  bool deps;                    /* -fmake-deps  */
-  bool deps_skip_system;        /* -fmake-mdeps  */
-  const char *deps_filename;    /* -fmake-[m]deps=  */
+  bool deps;                        /* -M  */
+  bool deps_skip_system;            /* -MM  */
+  const char *deps_filename;        /* -M[M]D  */
+  const char *deps_filename_user;   /* -MF <arg>  */
+  OutBuffer *deps_target;           /* -M[QT] <arg> */
+  bool deps_phony;                  /* -MP  */
 
-  bool stdinc;                  /* -nostdinc  */
+  bool stdinc;                      /* -nostdinc  */
 }
 d_option;
 
@@ -163,6 +166,161 @@ static GTY(()) tree global_context;
 
 /* Array of all global declarations to pass back to the middle-end.  */
 static GTY(()) vec<tree, va_gc> *global_declarations;
+
+
+/* Adds TARGET to the make dependencies target buffer.
+   QUOTED is true if the string should be quoted.  */
+static void
+deps_add_target (const char *target, bool quoted)
+{
+  if (!d_option.deps_target)
+    d_option.deps_target = new OutBuffer ();
+  else
+    d_option.deps_target->writeByte (' ');
+
+  d_option.deps_target->reserve (strlen (target));
+
+  if (!quoted)
+    {
+      d_option.deps_target->writestring (target);
+      return;
+    }
+
+  /* Quote characters in target which are significant to Make.  */
+  for (const char *p = target; *p != '\0'; p++)
+    {
+      switch (*p)
+        {
+        case ' ':
+        case '\t':
+          for (const char *q = p - 1; target <= q && *q == '\\';  q--)
+	    d_option.deps_target->writeByte ('\\');
+	  d_option.deps_target->writeByte ('\\');
+          break;
+
+        case '$':
+	  d_option.deps_target->writeByte ('$');
+          break;
+
+        case '#':
+	  d_option.deps_target->writeByte ('\\');
+          break;
+
+        default:
+          break;
+        }
+
+      d_option.deps_target->writeByte (*p);
+    }
+}
+
+/* Write out all dependencies of a given MODULE to the specified BUFFER.
+   COLMAX is the number of columns to word-wrap at (0 means don't wrap).  */
+static void
+deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
+{
+  StringTable dependencies;
+  dependencies._init ();
+
+  Modules modlist;
+  modlist.push (module);
+
+  Modules phonylist;
+
+  const char *str;
+  unsigned size;
+  unsigned column = 0;
+
+  /* Write out make target module name.  */
+  if (d_option.deps_target)
+    {
+      size = d_option.deps_target->offset;
+      str = d_option.deps_target->extractString ();
+    }
+  else
+    {
+      str = module->objfile->name->str;
+      size = strlen (str);
+    }
+
+  buffer->writestring (str);
+  column = size;
+  buffer->writestring (":");
+  column++;
+
+  /* Write out all make dependencies.  */
+  while (modlist.dim > 0)
+  {
+    Module *depmod = modlist.pop ();
+
+    str = depmod->srcfile->name->str;
+    size = strlen (str);
+
+    /* Skip dependencies that have already been written.  */
+    if (!dependencies.insert (str, size, NULL))
+      continue;
+
+    column += size;
+
+    if (colmax && column > colmax)
+      {
+	buffer->writestring (" \\\n ");
+	column = size + 1;
+      }
+    else
+      {
+	buffer->writestring (" ");
+	column++;
+      }
+
+    buffer->writestring (str);
+
+    /* Add to list of phony targets if is not being compile.  */
+    if (d_option.deps_phony && !depmod->isRoot ())
+      phonylist.push (depmod);
+
+    /* Search all imports of the written dependency.  */
+    for (size_t i = 0; i < depmod->aimports.dim; i++)
+      {
+	Module *m = depmod->aimports[i];
+
+	/* Ignore compiler-generated modules.  */
+	if (m->ident == Id::entrypoint && m->parent == NULL)
+	  continue;
+
+	/* Don't search system installed modules, this includes
+	   object, core.*, std.*, and gcc.* packages.  */
+	if (d_option.deps_skip_system)
+	  {
+	    if (m->ident == Id::object && m->parent == NULL)
+	      continue;
+
+	    if (m->md && m->md->packages)
+	      {
+		Identifier *package = (*m->md->packages)[0];
+
+		if (package == Id::core || package == Id::std
+		    || package == Identifier::idPool ("gcc"))
+		  continue;
+	      }
+	  }
+
+	modlist.push (m);
+      }
+  }
+
+  buffer->writenl ();
+
+  /* Write out all phony targets.  */
+  for (size_t i = 0; i < phonylist.dim; i++)
+    {
+      Module *m = phonylist[i];
+
+      buffer->writenl ();
+      buffer->writestring (m->srcfile->name->str);
+      buffer->writestring (":\n");
+    }
+}
 
 /* Common initialization before calling option handlers.  */
 static void
@@ -204,6 +362,9 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   d_option.deps = false;
   d_option.deps_skip_system = false;
   d_option.deps_filename = NULL;
+  d_option.deps_filename_user = NULL;
+  d_option.deps_target = NULL;
+  d_option.deps_phony = false;
   d_option.stdinc = true;
 
   flag_emit_templates = 1;
@@ -476,23 +637,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
-    case OPT_fmake_mdeps:
-      d_option.deps_skip_system = true;
-      /* fall through */
-
-    case OPT_fmake_deps:
-      d_option.deps = true;
-      break;
-
-    case OPT_fmake_mdeps_:
-      d_option.deps_skip_system = true;
-      /* fall through */
-
-    case OPT_fmake_deps_:
-      d_option.deps = true;
-      d_option.deps_filename = arg;
-      break;
-
     case OPT_fmoduleinfo:
       global.params.betterC = !value;
       break;
@@ -599,6 +743,42 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_J:
       global.params.fileImppath->push(arg);
+      break;
+
+    case OPT_MM:
+      d_option.deps_skip_system = true;
+      /* fall through */
+
+    case OPT_M:
+      d_option.deps = true;
+      break;
+
+    case OPT_MMD:
+    case OPT_fmake_mdeps_:
+      d_option.deps_skip_system = true;
+      /* fall through */
+
+    case OPT_MD:
+    case OPT_fmake_deps_:
+      d_option.deps = true;
+      d_option.deps_filename = arg;
+      break;
+
+    case OPT_MF:
+      /* If specified multiple times, last one wins.  */
+      d_option.deps_filename_user = arg;
+      break;
+
+    case OPT_MP:
+      d_option.deps_phony = true;
+      break;
+
+    case OPT_MQ:
+      deps_add_target (arg, true);
+      break;
+
+    case OPT_MT:
+      deps_add_target (arg, false);
       break;
 
     case OPT_nostdinc:
@@ -843,78 +1023,6 @@ genCmain (Scope *sc)
   // We are emitting this straight to object file.
   entrypoint = m;
   rootmodule = sc->module;
-}
-
-static bool
-is_system_module (Module *m)
-{
-  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
-  ModuleDeclaration *md = m->md;
-
-  if (!md)
-    return false;
-
-  if (md->packages)
-    {
-      if (strcmp ((*md->packages)[0]->toChars (), "core") == 0)
-        return true;
-      if (strcmp ((*md->packages)[0]->toChars (), "std") == 0)
-        return true;
-      if (strcmp ((*md->packages)[0]->toChars (), "gcc") == 0)
-        return true;
-    }
-  else if (md->id && md->packages == NULL)
-    {
-      if (strcmp (md->id->toChars (), "object") == 0)
-        return true;
-      if (strcmp (md->id->toChars (), "__entrypoint") == 0)
-        return true;
-    }
-
-  return false;
-}
-
-static void
-write_one_dep (char const* fn, OutBuffer* ob)
-{
-  ob->writestring ("  ");
-  ob->writestring (fn);
-  ob->writestring ("\\\n");
-}
-
-static void
-deps_write (Module *m, OutBuffer *ob)
-{
-  /* Write out object name.  */
-  FileName *fn = m->objfile->name;
-  ob->writestring (fn->str);
-  ob->writestring (":");
-
-  StringTable dependencies;
-  dependencies._init ();
-
-  Modules to_explore;
-  to_explore.push (m);
-  while (to_explore.dim)
-  {
-    Module* depmod = to_explore.pop ();
-
-    if (d_option.deps_skip_system)
-      if (is_system_module (depmod))
-        continue;
-
-    const char* str = depmod->srcfile->name->str;
-
-    if (!dependencies.insert (str, strlen (str), NULL))
-      continue;
-
-    for (size_t i = 0; i < depmod->aimports.dim; i++)
-      to_explore.push (depmod->aimports[i]);
-
-    write_one_dep (str, ob);
-  }
-
-  ob->writenl ();
 }
 
 void
@@ -1164,12 +1272,13 @@ d_parse_file()
       OutBuffer ob;
 
       for (size_t i = 0; i < modules.dim; i++)
-	{
-	  Module *m = modules[i];
-	  deps_write (m, &ob);
-	}
+	deps_write (modules[i], &ob);
 
-      if (d_option.deps_filename != NULL)
+      /* -MF <arg> overrides -M[M]D.  */
+      if (d_option.deps_filename_user)
+	d_option.deps_filename = d_option.deps_filename_user;
+
+      if (d_option.deps_filename)
 	{
 	  File fdeps (d_option.deps_filename);
 	  fdeps.setbuffer ((void *) ob.data, ob.offset);
