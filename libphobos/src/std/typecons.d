@@ -6665,8 +6665,8 @@ template ReplaceType(From, To, T...)
         }
         else static if (is(T[0] == function))
         {
-            static assert(0, "Function types not supported," ~
-                " use a function pointer type instead of " ~ T[0].stringof);
+            static assert(0, "Function types not supported,"
+                " use a function pointer type instead of "~T[0].stringof);
         }
         else static if (is(T[0] : U!V, alias U, V...))
         {
@@ -6694,12 +6694,12 @@ template ReplaceType(From, To, T...)
     }
     else static if (T.length > 1)
     {
-        alias ReplaceType = TypeTuple!(ReplaceType!(From, To, T[0]),
+        alias ReplaceType = AliasSeq!(ReplaceType!(From, To, T[0]),
             ReplaceType!(From, To, T[1 .. $]));
     }
     else
     {
-        alias ReplaceType = TypeTuple!();
+        alias ReplaceType = AliasSeq!();
     }
 }
 
@@ -6717,7 +6717,7 @@ unittest
 
 private template replaceTypeInFunctionType(From, To, fun)
 {
-   alias RX = ReplaceType!(From, To, ReturnType!fun);
+    alias RX = ReplaceType!(From, To, ReturnType!fun);
     alias PX = AliasSeq!(ReplaceType!(From, To, Parameters!fun));
     // Wrapping with AliasSeq is neccesary because ReplaceType doesn't return
     // tuple if Parameters!fun.length == 1
@@ -6886,4 +6886,3 @@ unittest
         ubyte, ubyte, T3, T3,
     );
 }
-

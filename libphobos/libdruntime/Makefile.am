@@ -148,40 +148,41 @@ DRUNTIME_DSOURCES_GENERATED = gcc/config.d gcc/libbacktrace.d
 # https://gist.github.com/jpf91/8ad1dbc9902d6ad876313f134c6527d1
 # Can't use wildcards here:
 # https://www.gnu.org/software/automake/manual/html_node/Wildcards.html
-DRUNTIME_DISOURCES = __entrypoint.di
+DRUNTIME_SSOURCES = core/threadasm.S
+
+DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
 
 DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/checkedint.d core/cpuid.d core/demangle.d core/exception.d \
 	core/internal/abort.d core/internal/convert.d core/internal/hash.d \
-	core/internal/string.d core/internal/traits.d \
-	core/math.d core/memory.d core/runtime.d core/simd.d \
-	core/stdc/complex.d core/stdc/config.d core/stdc/ctype.d \
-	core/stdc/errno.d core/stdc/fenv.d core/stdc/float_.d \
-	core/stdc/inttypes.d core/stdc/limits.d core/stdc/locale.d \
-	core/stdc/math.d core/stdc/signal.d core/stdc/stdarg.d \
-	core/stdc/stddef.d core/stdc/stdint.d core/stdc/stdio.d \
-	core/stdc/stdlib.d core/stdc/string.d core/stdc/tgmath.d \
-	core/stdc/time.d core/stdc/wchar_.d core/stdc/wctype.d \
-	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
-	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
-	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d \
-	gcc/backtrace.d gcc/builtins.d gcc/deh.d gcc/unwind/arm.d \
-	gcc/unwind/generic.d gcc/unwind/package.d gcc/unwind/pe.d object.d \
-	rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d rt/arrayassign.d \
-	rt/arraycast.d rt/arraycat.d rt/cast_.d rt/config.d rt/critical_.d \
-	rt/deh.d rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d \
-	rt/minfo.d rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d \
-	rt/sections_android.d rt/sections_elf_shared.d rt/sections_osx.d \
-	rt/sections_solaris.d rt/sections_win32.d rt/sections_win64.d \
-	rt/switch_.d rt/tlsgc.d rt/backtrace/dwarf.d rt/backtrace/elf.d \
-	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d \
-	rt/typeinfo/ti_Acfloat.d rt/typeinfo/ti_Acreal.d \
-	rt/typeinfo/ti_Adouble.d rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d \
-	rt/typeinfo/ti_Aint.d rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d \
-	rt/typeinfo/ti_Ashort.d rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d \
-	rt/typeinfo/ti_cdouble.d rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d \
-	rt/typeinfo/ti_char.d rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
+	core/internal/string.d core/internal/traits.d core/math.d \
+	core/memory.d core/runtime.d core/simd.d core/stdc/complex.d \
+	core/stdc/config.d core/stdc/ctype.d core/stdc/errno.d \
+	core/stdc/fenv.d core/stdc/float_.d core/stdc/inttypes.d \
+	core/stdc/limits.d core/stdc/locale.d core/stdc/math.d \
+	core/stdc/signal.d core/stdc/stdarg.d core/stdc/stddef.d \
+	core/stdc/stdint.d core/stdc/stdio.d core/stdc/stdlib.d \
+	core/stdc/string.d core/stdc/tgmath.d core/stdc/time.d \
+	core/stdc/wchar_.d core/stdc/wctype.d core/sync/barrier.d \
+	core/sync/condition.d core/sync/config.d core/sync/exception.d \
+	core/sync/mutex.d core/sync/rwmutex.d core/sync/semaphore.d \
+	core/thread.d core/time.d core/vararg.d etc/linux/memoryerror.d \
+	gcc/atomics.d gcc/attribute.d gcc/backtrace.d gcc/builtins.d gcc/deh.d \
+	gcc/unwind/arm.d gcc/unwind/generic.d gcc/unwind/package.d \
+	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
+	rt/arrayassign.d rt/arraycast.d rt/arraycat.d rt/backtrace/dwarf.d \
+	rt/backtrace/elf.d rt/cast_.d rt/config.d rt/critical_.d rt/deh.d \
+	rt/dmain2.d rt/invariant.d rt/lifetime.d rt/memory.d rt/minfo.d \
+	rt/monitor_.d rt/obj.d rt/qsort.d rt/sections.d rt/sections_android.d \
+	rt/sections_elf_shared.d rt/sections_osx.d rt/sections_solaris.d \
+	rt/sections_win32.d rt/sections_win64.d rt/switch_.d rt/tlsgc.d \
+	rt/typeinfo/ti_AC.d rt/typeinfo/ti_Acdouble.d rt/typeinfo/ti_Acfloat.d \
+	rt/typeinfo/ti_Acreal.d rt/typeinfo/ti_Adouble.d \
+	rt/typeinfo/ti_Afloat.d rt/typeinfo/ti_Ag.d rt/typeinfo/ti_Aint.d \
+	rt/typeinfo/ti_Along.d rt/typeinfo/ti_Areal.d rt/typeinfo/ti_Ashort.d \
+	rt/typeinfo/ti_C.d rt/typeinfo/ti_byte.d rt/typeinfo/ti_cdouble.d \
+	rt/typeinfo/ti_cent.d rt/typeinfo/ti_cfloat.d rt/typeinfo/ti_char.d \
+	rt/typeinfo/ti_creal.d rt/typeinfo/ti_dchar.d \
 	rt/typeinfo/ti_delegate.d rt/typeinfo/ti_double.d \
 	rt/typeinfo/ti_float.d rt/typeinfo/ti_idouble.d \
 	rt/typeinfo/ti_ifloat.d rt/typeinfo/ti_int.d rt/typeinfo/ti_ireal.d \
@@ -198,11 +199,30 @@ DRUNTIME_DSOURCES_GC = gc/bits.d gc/config.d gc/gc.d gc/os.d \
 
 DRUNTIME_DSOURCES_GCSTUB = gcstub/gc.d
 
-DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/com.d \
-	core/sys/windows/dbghelp.d core/sys/windows/dll.d \
-	core/sys/windows/stacktrace.d core/sys/windows/stat.d \
-	core/sys/windows/threadaux.d core/sys/windows/windows.d \
-	core/sys/windows/winsock2.d
+DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
+	core/sys/freebsd/execinfo.d core/sys/freebsd/sys/cdefs.d \
+	core/sys/freebsd/sys/elf.d core/sys/freebsd/sys/elf32.d \
+	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
+	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
+	core/sys/freebsd/sys/mman.d core/sys/freebsd/time.d
+
+DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
+	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
+	core/sys/linux/errno.d core/sys/linux/execinfo.d \
+	core/sys/linux/fcntl.d core/sys/linux/link.d core/sys/linux/stdio.d \
+	core/sys/linux/sys/inotify.d core/sys/linux/sys/mman.d \
+	core/sys/linux/sys/signalfd.d core/sys/linux/sys/sysinfo.d \
+	core/sys/linux/sys/xattr.d core/sys/linux/termios.d \
+	core/sys/linux/time.d core/sys/linux/timerfd.d core/sys/linux/tipc.d \
+	core/sys/linux/unistd.d
+
+DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
+	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
+	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
+	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
+	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
+	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
+	core/sys/osx/sys/mman.d
 
 DRUNTIME_DSOURCES_POSIX = core/sys/posix/arpa/inet.d \
 	core/sys/posix/config.d core/sys/posix/dirent.d core/sys/posix/dlfcn.d \
@@ -225,13 +245,6 @@ DRUNTIME_DSOURCES_POSIX = core/sys/posix/arpa/inet.d \
 	core/sys/posix/ucontext.d core/sys/posix/unistd.d \
 	core/sys/posix/utime.d
 
-DRUNTIME_DSOURCES_FREEBSD = core/sys/freebsd/dlfcn.d \
-	core/sys/freebsd/execinfo.d core/sys/freebsd/sys/cdefs.d \
-	core/sys/freebsd/sys/elf.d core/sys/freebsd/sys/elf32.d \
-	core/sys/freebsd/sys/elf64.d core/sys/freebsd/sys/elf_common.d \
-	core/sys/freebsd/sys/event.d core/sys/freebsd/sys/link_elf.d \
-	core/sys/freebsd/sys/mman.d core/sys/freebsd/time.d
-
 DRUNTIME_DSOURCES_SOLARIS = core/sys/solaris/dlfcn.d \
 	core/sys/solaris/elf.d core/sys/solaris/execinfo.d \
 	core/sys/solaris/libelf.d core/sys/solaris/link.d \
@@ -241,23 +254,10 @@ DRUNTIME_DSOURCES_SOLARIS = core/sys/solaris/dlfcn.d \
 	core/sys/solaris/sys/link.d core/sys/solaris/sys/priocntl.d \
 	core/sys/solaris/sys/procset.d core/sys/solaris/sys/types.d
 
-DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
-	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
-	core/sys/osx/mach/kern_return.d core/sys/osx/mach/loader.d \
-	core/sys/osx/mach/port.d core/sys/osx/mach/semaphore.d \
-	core/sys/osx/mach/thread_act.d core/sys/osx/pthread.d \
-	core/sys/osx/sys/cdefs.d core/sys/osx/sys/event.d \
-	core/sys/osx/sys/mman.d
+DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/com.d \
+	core/sys/windows/dbghelp.d core/sys/windows/dll.d \
+	core/sys/windows/stacktrace.d core/sys/windows/stat.d \
+	core/sys/windows/threadaux.d core/sys/windows/windows.d \
+	core/sys/windows/winsock2.d
 
-DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
-	core/sys/linux/dlfcn.d core/sys/linux/elf.d core/sys/linux/epoll.d \
-	core/sys/linux/errno.d core/sys/linux/execinfo.d \
-	core/sys/linux/fcntl.d core/sys/linux/link.d core/sys/linux/stdio.d \
-	core/sys/linux/sys/inotify.d core/sys/linux/unistd.d \
-	core/sys/linux/sys/mman.d core/sys/linux/sys/signalfd.d \
-	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/xattr.d \
-	core/sys/linux/termios.d core/sys/linux/time.d core/sys/linux/tipc.d
-
-DRUNTIME_SSOURCES = core/threadasm.S
-
-DRUNTIME_CSOURCES = core/stdc/errno_.c rt/bss_section.c
+DRUNTIME_DISOURCES = __entrypoint.di

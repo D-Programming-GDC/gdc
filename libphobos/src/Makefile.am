@@ -150,11 +150,33 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/concurrency.d std/concurrencybase.d std/container/array.d \
 	std/container/binaryheap.d std/container/dlist.d \
 	std/container/package.d std/container/rbtree.d std/container/slist.d \
-	std/container/util.d std/conv.d std/cstream.d \
-	std/csv.d std/datetime.d std/demangle.d std/digest/crc.d \
-	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
-	std/digest/ripemd.d std/digest/sha.d std/encoding.d std/exception.d \
-	std/experimental/logger/core.d std/experimental/logger/filelogger.d \
+	std/container/util.d std/conv.d std/cstream.d std/csv.d std/datetime.d \
+	std/demangle.d std/digest/crc.d std/digest/digest.d std/digest/hmac.d \
+	std/digest/md.d std/digest/ripemd.d std/digest/sha.d std/encoding.d \
+	std/exception.d \
+	std/experimental/allocator/building_blocks/affix_allocator.d \
+	std/experimental/allocator/building_blocks/allocator_list.d \
+	std/experimental/allocator/building_blocks/bitmapped_block.d \
+	std/experimental/allocator/building_blocks/bucketizer.d \
+	std/experimental/allocator/building_blocks/fallback_allocator.d \
+	std/experimental/allocator/building_blocks/free_list.d \
+	std/experimental/allocator/building_blocks/free_tree.d \
+	std/experimental/allocator/building_blocks/kernighan_ritchie.d \
+	std/experimental/allocator/building_blocks/null_allocator.d \
+	std/experimental/allocator/building_blocks/package.d \
+	std/experimental/allocator/building_blocks/quantizer.d \
+	std/experimental/allocator/building_blocks/region.d \
+	std/experimental/allocator/building_blocks/scoped_allocator.d \
+	std/experimental/allocator/building_blocks/segregator.d \
+	std/experimental/allocator/building_blocks/stats_collector.d \
+	std/experimental/allocator/common.d \
+	std/experimental/allocator/gc_allocator.d \
+	std/experimental/allocator/mallocator.d \
+	std/experimental/allocator/mmap_allocator.d \
+	std/experimental/allocator/package.d \
+	std/experimental/allocator/showcase.d \
+	std/experimental/allocator/typed.d std/experimental/logger/core.d \
+	std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
 	std/file.d std/format.d std/functional.d std/getopt.d \
@@ -181,17 +203,17 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
 	std/xml.d std/zip.d std/zlib.d
 
-PHOBOS_DSOURCES_STDC = std/c/fenv.d std/c/locale.d std/c/math.d \
-	std/c/process.d std/c/stdarg.d std/c/stddef.d std/c/stdio.d \
-	std/c/stdlib.d std/c/string.d std/c/time.d std/c/wcharh.d
-
 PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
-
-PHOBOS_DSOURCES_OSX = std/c/osx/socket.d
-
-PHOBOS_DSOURCES_WINDOWS = std/c/windows/com.d std/c/windows/stat.d \
-	std/c/windows/windows.d std/c/windows/winsock.d
 
 PHOBOS_DSOURCES_LINUX = std/c/linux/linux.d std/c/linux/linuxextern.d \
 	std/c/linux/pthread.d std/c/linux/socket.d std/c/linux/termios.d \
 	std/c/linux/tipc.d
+
+PHOBOS_DSOURCES_OSX = std/c/osx/socket.d
+
+PHOBOS_DSOURCES_STDC = std/c/fenv.d std/c/locale.d std/c/math.d \
+	std/c/process.d std/c/stdarg.d std/c/stddef.d std/c/stdio.d \
+	std/c/stdlib.d std/c/string.d std/c/time.d std/c/wcharh.d
+
+PHOBOS_DSOURCES_WINDOWS = std/c/windows/com.d std/c/windows/stat.d \
+	std/c/windows/windows.d std/c/windows/winsock.d

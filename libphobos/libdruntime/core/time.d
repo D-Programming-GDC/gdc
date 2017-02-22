@@ -519,13 +519,14 @@ public:
 
 
     /++
-        Adds or subtracts two durations.
+        Adds, subtracts or calculates the modulo of two durations.
 
         The legal types of arithmetic for $(D Duration) using this operator are
 
         $(TABLE
         $(TR $(TD Duration) $(TD +) $(TD Duration) $(TD -->) $(TD Duration))
         $(TR $(TD Duration) $(TD -) $(TD Duration) $(TD -->) $(TD Duration))
+        $(TR $(TD Duration) $(TD %) $(TD Duration) $(TD -->) $(TD Duration))
         $(TR $(TD Duration) $(TD +) $(TD TickDuration) $(TD -->) $(TD Duration))
         $(TR $(TD Duration) $(TD -) $(TD TickDuration) $(TD -->) $(TD Duration))
         )
@@ -534,9 +535,8 @@ public:
             rhs = The duration to add to or subtract from this $(D Duration).
       +/
     Duration opBinary(string op, D)(D rhs) const nothrow @nogc
-        if((op == "+" || op == "-") &&
-           (is(_Unqual!D == Duration) ||
-            is(_Unqual!D == TickDuration)))
+        if(((op == "+" || op == "-" || op == "%") && is(_Unqual!D == Duration)) ||
+           ((op == "+" || op == "-") && is(_Unqual!D == TickDuration)))
     {
         static if(is(_Unqual!D == Duration))
             return Duration(mixin("_hnsecs " ~ op ~ " rhs._hnsecs"));
@@ -552,23 +552,31 @@ public:
             {
                 assert((cast(D)Duration(5)) + (cast(E)Duration(7)) == Duration(12));
                 assert((cast(D)Duration(5)) - (cast(E)Duration(7)) == Duration(-2));
+                assert((cast(D)Duration(5)) % (cast(E)Duration(7)) == Duration(5));
                 assert((cast(D)Duration(7)) + (cast(E)Duration(5)) == Duration(12));
                 assert((cast(D)Duration(7)) - (cast(E)Duration(5)) == Duration(2));
+                assert((cast(D)Duration(7)) % (cast(E)Duration(5)) == Duration(2));
 
                 assert((cast(D)Duration(5)) + (cast(E)Duration(-7)) == Duration(-2));
                 assert((cast(D)Duration(5)) - (cast(E)Duration(-7)) == Duration(12));
+                assert((cast(D)Duration(5)) % (cast(E)Duration(-7)) == Duration(5));
                 assert((cast(D)Duration(7)) + (cast(E)Duration(-5)) == Duration(2));
                 assert((cast(D)Duration(7)) - (cast(E)Duration(-5)) == Duration(12));
+                assert((cast(D)Duration(7)) % (cast(E)Duration(-5)) == Duration(2));
 
                 assert((cast(D)Duration(-5)) + (cast(E)Duration(7)) == Duration(2));
                 assert((cast(D)Duration(-5)) - (cast(E)Duration(7)) == Duration(-12));
+                assert((cast(D)Duration(-5)) % (cast(E)Duration(7)) == Duration(-5));
                 assert((cast(D)Duration(-7)) + (cast(E)Duration(5)) == Duration(-2));
                 assert((cast(D)Duration(-7)) - (cast(E)Duration(5)) == Duration(-12));
+                assert((cast(D)Duration(-7)) % (cast(E)Duration(5)) == Duration(-2));
 
                 assert((cast(D)Duration(-5)) + (cast(E)Duration(-7)) == Duration(-12));
                 assert((cast(D)Duration(-5)) - (cast(E)Duration(-7)) == Duration(2));
+                assert((cast(D)Duration(-5)) % (cast(E)Duration(7)) == Duration(-5));
                 assert((cast(D)Duration(-7)) + (cast(E)Duration(-5)) == Duration(-12));
                 assert((cast(D)Duration(-7)) - (cast(E)Duration(-5)) == Duration(-2));
+                assert((cast(D)Duration(-7)) % (cast(E)Duration(5)) == Duration(-2));
             }
 
             foreach(T; _TypeTuple!(TickDuration, const TickDuration, immutable TickDuration))
@@ -649,14 +657,15 @@ public:
 
 
     /++
-        Adds or subtracts two durations as well as assigning the result to this
-        $(D Duration).
+        Adds, subtracts or calculates the modulo of two durations as well as
+        assigning the result to this $(D Duration).
 
         The legal types of arithmetic for $(D Duration) using this operator are
 
         $(TABLE
         $(TR $(TD Duration) $(TD +) $(TD Duration) $(TD -->) $(TD Duration))
         $(TR $(TD Duration) $(TD -) $(TD Duration) $(TD -->) $(TD Duration))
+        $(TR $(TD Duration) $(TD %) $(TD Duration) $(TD -->) $(TD Duration))
         $(TR $(TD Duration) $(TD +) $(TD TickDuration) $(TD -->) $(TD Duration))
         $(TR $(TD Duration) $(TD -) $(TD TickDuration) $(TD -->) $(TD Duration))
         )
@@ -665,9 +674,8 @@ public:
             rhs = The duration to add to or subtract from this $(D Duration).
       +/
     ref Duration opOpAssign(string op, D)(in D rhs) nothrow @nogc
-        if((op == "+" || op == "-") &&
-           (is(_Unqual!D == Duration) ||
-            is(_Unqual!D == TickDuration)))
+        if(((op == "+" || op == "-" || op == "%") && is(_Unqual!D == Duration)) ||
+           ((op == "+" || op == "-") && is(_Unqual!D == TickDuration)))
     {
         static if(is(_Unqual!D == Duration))
             mixin("_hnsecs " ~ op ~ "= rhs._hnsecs;");
@@ -699,23 +707,31 @@ public:
         {
             test1!"+="(Duration(5), (cast(E)Duration(7)), Duration(12));
             test1!"-="(Duration(5), (cast(E)Duration(7)), Duration(-2));
+            test1!"%="(Duration(5), (cast(E)Duration(7)), Duration(5));
             test1!"+="(Duration(7), (cast(E)Duration(5)), Duration(12));
             test1!"-="(Duration(7), (cast(E)Duration(5)), Duration(2));
+            test1!"%="(Duration(7), (cast(E)Duration(5)), Duration(2));
 
             test1!"+="(Duration(5), (cast(E)Duration(-7)), Duration(-2));
             test1!"-="(Duration(5), (cast(E)Duration(-7)), Duration(12));
+            test1!"%="(Duration(5), (cast(E)Duration(-7)), Duration(5));
             test1!"+="(Duration(7), (cast(E)Duration(-5)), Duration(2));
             test1!"-="(Duration(7), (cast(E)Duration(-5)), Duration(12));
+            test1!"%="(Duration(7), (cast(E)Duration(-5)), Duration(2));
 
             test1!"+="(Duration(-5), (cast(E)Duration(7)), Duration(2));
             test1!"-="(Duration(-5), (cast(E)Duration(7)), Duration(-12));
+            test1!"%="(Duration(-5), (cast(E)Duration(7)), Duration(-5));
             test1!"+="(Duration(-7), (cast(E)Duration(5)), Duration(-2));
             test1!"-="(Duration(-7), (cast(E)Duration(5)), Duration(-12));
+            test1!"%="(Duration(-7), (cast(E)Duration(5)), Duration(-2));
 
             test1!"+="(Duration(-5), (cast(E)Duration(-7)), Duration(-12));
             test1!"-="(Duration(-5), (cast(E)Duration(-7)), Duration(2));
+            test1!"%="(Duration(-5), (cast(E)Duration(-7)), Duration(-5));
             test1!"+="(Duration(-7), (cast(E)Duration(-5)), Duration(-12));
             test1!"-="(Duration(-7), (cast(E)Duration(-5)), Duration(-2));
+            test1!"%="(Duration(-7), (cast(E)Duration(-5)), Duration(-2));
         }
 
         foreach(T; _TypeTuple!(TickDuration, const TickDuration, immutable TickDuration))
@@ -754,7 +770,12 @@ public:
     }
 
 
+    // Note: opBinary!"*" and opBinary!"/" have to be implemented separately
+    // because opBinary!"/" may throw TimeException, and opBinary!"*" is nothrow
+
     /++
+        Multiplies the duration by an integer value.
+
         The legal types of arithmetic for $(D Duration) using this operator
         overload are
 
@@ -794,6 +815,9 @@ public:
 
 
     /++
+        Multiplies the duration by an integer value as well as
+        assigning the result to this $(D Duration).
+
         The legal types of arithmetic for $(D Duration) using this operator
         overload are
 
@@ -846,6 +870,8 @@ public:
 
 
     /++
+        Divides the duration by an integer value.
+
         The legal types of arithmetic for $(D Duration) using this operator
         overload are
 
@@ -897,6 +923,9 @@ public:
 
 
     /++
+        Divides the duration by an integer value as well as
+        assigning the result to this $(D Duration).
+
         The legal types of arithmetic for $(D Duration) using this operator
         overload are
 
@@ -951,6 +980,44 @@ public:
         immutable idur = Duration(12);
         static assert(!__traits(compiles, cdur /= 12));
         static assert(!__traits(compiles, idur /= 12));
+    }
+
+
+    /++
+        Divides two durations.
+
+        The legal types of arithmetic for $(D Duration) using this operator are
+
+        $(TABLE
+        $(TR $(TD Duration) $(TD /) $(TD Duration) $(TD -->) $(TD long))
+        )
+
+        Params:
+            rhs = The duration to divide this $(D Duration) by.
+      +/
+    long opBinary(string op)(Duration rhs) const nothrow @nogc
+        if(op == "/")
+    {
+        return _hnsecs / rhs._hnsecs;
+    }
+
+    unittest
+    {
+        assert(Duration(5) / Duration(7) == 0);
+        assert(Duration(7) / Duration(5) == 1);
+        assert(Duration(8) / Duration(4) == 2);
+
+        assert(Duration(5) / Duration(-7) == 0);
+        assert(Duration(7) / Duration(-5) == -1);
+        assert(Duration(8) / Duration(-4) == -2);
+
+        assert(Duration(-5) / Duration(7) == 0);
+        assert(Duration(-7) / Duration(5) == -1);
+        assert(Duration(-8) / Duration(4) == -2);
+
+        assert(Duration(-5) / Duration(-7) == 0);
+        assert(Duration(-7) / Duration(-5) == 1);
+        assert(Duration(-8) / Duration(-4) == 2);
     }
 
 
@@ -2615,18 +2682,14 @@ extern(C) void _d_initMonoTime()
     }
     else version(OSX)
     {
-        mach_timebase_info_data_t info;
-        if(mach_timebase_info(&info) == 0)
+        immutable long ticksPerSecond = machTicksPerSecond();
+        foreach(i, typeStr; __traits(allMembers, ClockType))
         {
-            long ticksPerSecond = 1_000_000_000L * info.numer / info.denom;
-            foreach(i, typeStr; __traits(allMembers, ClockType))
-            {
-                // ensure we are only writing immutable data once
-                if(tps[i] != 0)
-                    // should only be called once
-                    assert(0);
-                tps[i] = ticksPerSecond;
-            }
+            // ensure we are only writing immutable data once
+            if(tps[i] != 0)
+                // should only be called once
+                assert(0);
+            tps[i] = ticksPerSecond;
         }
     }
     else version(Posix)
@@ -2926,17 +2989,7 @@ struct TickDuration
         }
         else version(OSX)
         {
-            static if(is(typeof(mach_absolute_time)))
-            {
-                mach_timebase_info_data_t info;
-
-                if(mach_timebase_info(&info))
-                    ticksPerSec = 0;
-                else
-                    ticksPerSec = (1_000_000_000L * info.denom) / info.numer;
-            }
-            else
-                ticksPerSec = 1_000_000;
+            ticksPerSec = machTicksPerSecond();
         }
         else version(Posix)
         {
@@ -4665,6 +4718,21 @@ unittest
     static assert(!__traits(compiles, nextLargerTimeUnits!"years"));
 }
 
+version(OSX)
+long machTicksPerSecond()
+{
+    // Be optimistic that ticksPerSecond (1e9*denom/numer) is integral. So far
+    // so good on Darwin based platforms OS X, iOS.
+    import core.internal.abort : abort;
+    mach_timebase_info_data_t info;
+    if(mach_timebase_info(&info) != 0)
+        abort("Failed in mach_timebase_info().");
+
+    long scaledDenom = 1_000_000_000L * info.denom;
+    if(scaledDenom % info.numer != 0)
+        abort("Non integral ticksPerSecond from mach_timebase_info.");
+    return scaledDenom / info.numer;
+}
 
 /+
     Local version of abs, since std.math.abs is in Phobos, not druntime.
