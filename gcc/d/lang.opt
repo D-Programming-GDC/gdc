@@ -345,7 +345,3 @@ Link the standard D library dynamically in the compilation.
 v
 D
 ; Documented in C
-
-fmax-error-messages=
-D Joined RejectNegative
-Limit the number of error messages (0 means unlimited)

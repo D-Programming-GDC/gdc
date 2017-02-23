@@ -61,7 +61,7 @@ Global::init()
   this->stdmsg = stdout;
   this->main_d = "__main.d";
 
-  this->errorLimit = 20;
+  this->errorLimit = flag_max_errors;
 
   memset(&this->params, 0, sizeof(Param));
 }
@@ -165,10 +165,6 @@ verror(const Loc& loc, const char *format, va_list ap,
 
 	  error_at(location, "%s", msg);
 	}
-
-      // Moderate blizzard of cascading messages
-      if (global.errors >= 20)
-	fatal();
     }
   else
     global.gaggedErrors++;

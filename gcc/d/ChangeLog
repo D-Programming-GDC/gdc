@@ -43,6 +43,13 @@
 
 2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-glue.cc (Global::init): Initialize errorLimit to flag_max_errors.
+	(verror): Don't halt program after invocation limit.
+	* d-lang.cc (d_handle_option): Remove handling -fmax-error-messages.
+	* lang.opt (fmax-error-messages): Remove option.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-decls.cc (get_symbol_decl): Handle -Wtemplates.
 	* d-lang.cc (d_init_options): Remove setting flag_emit_templates.
 	(d_handle_option): Replace handling -femit-templates with

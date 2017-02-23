@@ -800,16 +800,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 	global.params.warnings = 1;
       break;
 
-    case OPT_fmax_error_messages_:
-      {
-	int limit = integral_argument(arg);
-	if (limit == -1)
-	  error ("bad argument for -fmax-error-messages '%s'", arg);
-	else
-	  global.errorLimit = limit;
-	break;
-      }
-
     default:
       break;
     }
@@ -849,7 +839,7 @@ d_post_options (const char ** fn)
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
     global.params.useDeprecated = 0;
 
-  // Make -fmax-errors visible to gdc's diagnostic machinery.
+  // Make -fmax-errors visible to frontend's diagnostic machinery.
   if (global_options_set.x_flag_max_errors)
     global.errorLimit = flag_max_errors;
 
