@@ -176,7 +176,12 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/experimental/logger/filelogger.lo \
 	std/experimental/logger/multilogger.lo \
 	std/experimental/logger/nulllogger.lo \
-	std/experimental/logger/package.lo std/file.lo std/format.lo \
+	std/experimental/logger/package.lo \
+	std/experimental/ndslice/internal.lo \
+	std/experimental/ndslice/iteration.lo \
+	std/experimental/ndslice/package.lo \
+	std/experimental/ndslice/selection.lo \
+	std/experimental/ndslice/slice.lo std/file.lo std/format.lo \
 	std/functional.lo std/getopt.lo std/internal/cstring.lo \
 	std/internal/digest/sha_SSSE3.lo \
 	std/internal/math/biguintcore.lo \
@@ -185,7 +190,8 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/internal/math/errorfunction.lo \
 	std/internal/math/gammafunction.lo std/internal/processinit.lo \
 	std/internal/scopebuffer.lo std/internal/test/dummyrange.lo \
-	std/internal/unicode_comp.lo std/internal/unicode_decomp.lo \
+	std/internal/test/uda.lo std/internal/unicode_comp.lo \
+	std/internal/unicode_decomp.lo \
 	std/internal/unicode_grapheme.lo std/internal/unicode_norm.lo \
 	std/internal/unicode_tables.lo \
 	std/internal/windows/advapi32.lo std/json.lo std/math.lo \
@@ -587,19 +593,24 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
+	std/experimental/ndslice/internal.d \
+	std/experimental/ndslice/iteration.d \
+	std/experimental/ndslice/package.d \
+	std/experimental/ndslice/selection.d std/experimental/ndslice/slice.d \
 	std/file.d std/format.d std/functional.d std/getopt.d \
 	std/internal/cstring.d std/internal/digest/sha_SSSE3.d \
 	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
 	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
 	std/internal/math/gammafunction.d std/internal/processinit.d \
 	std/internal/scopebuffer.d std/internal/test/dummyrange.d \
-	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
-	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
-	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
-	std/json.d std/math.d std/mathspecial.d std/meta.d std/mmfile.d \
-	std/net/curl.d std/net/isemail.d std/numeric.d std/outbuffer.d \
-	std/parallelism.d std/path.d std/process.d std/random.d \
-	std/range/interfaces.d std/range/package.d std/range/primitives.d \
+	std/internal/test/uda.d std/internal/unicode_comp.d \
+	std/internal/unicode_decomp.d std/internal/unicode_grapheme.d \
+	std/internal/unicode_norm.d std/internal/unicode_tables.d \
+	std/internal/windows/advapi32.d std/json.d std/math.d \
+	std/mathspecial.d std/meta.d std/mmfile.d std/net/curl.d \
+	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
+	std/path.d std/process.d std/random.d std/range/interfaces.d \
+	std/range/package.d std/range/primitives.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
@@ -820,6 +831,19 @@ std/experimental/logger/nulllogger.lo:  \
 	std/experimental/logger/$(am__dirstamp)
 std/experimental/logger/package.lo:  \
 	std/experimental/logger/$(am__dirstamp)
+std/experimental/ndslice/$(am__dirstamp):
+	@$(MKDIR_P) std/experimental/ndslice
+	@: > std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/internal.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/iteration.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/package.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/selection.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/slice.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
 std/file.lo: std/$(am__dirstamp)
 std/format.lo: std/$(am__dirstamp)
 std/functional.lo: std/$(am__dirstamp)
@@ -846,6 +870,7 @@ std/internal/test/$(am__dirstamp):
 	@$(MKDIR_P) std/internal/test
 	@: > std/internal/test/$(am__dirstamp)
 std/internal/test/dummyrange.lo: std/internal/test/$(am__dirstamp)
+std/internal/test/uda.lo: std/internal/test/$(am__dirstamp)
 std/internal/unicode_comp.lo: std/internal/$(am__dirstamp)
 std/internal/unicode_decomp.lo: std/internal/$(am__dirstamp)
 std/internal/unicode_grapheme.lo: std/internal/$(am__dirstamp)
@@ -1167,6 +1192,16 @@ mostlyclean-compile:
 	-rm -f std/experimental/logger/nulllogger.lo
 	-rm -f std/experimental/logger/package.$(OBJEXT)
 	-rm -f std/experimental/logger/package.lo
+	-rm -f std/experimental/ndslice/internal.$(OBJEXT)
+	-rm -f std/experimental/ndslice/internal.lo
+	-rm -f std/experimental/ndslice/iteration.$(OBJEXT)
+	-rm -f std/experimental/ndslice/iteration.lo
+	-rm -f std/experimental/ndslice/package.$(OBJEXT)
+	-rm -f std/experimental/ndslice/package.lo
+	-rm -f std/experimental/ndslice/selection.$(OBJEXT)
+	-rm -f std/experimental/ndslice/selection.lo
+	-rm -f std/experimental/ndslice/slice.$(OBJEXT)
+	-rm -f std/experimental/ndslice/slice.lo
 	-rm -f std/file.$(OBJEXT)
 	-rm -f std/file.lo
 	-rm -f std/format.$(OBJEXT)
@@ -1195,6 +1230,8 @@ mostlyclean-compile:
 	-rm -f std/internal/scopebuffer.lo
 	-rm -f std/internal/test/dummyrange.$(OBJEXT)
 	-rm -f std/internal/test/dummyrange.lo
+	-rm -f std/internal/test/uda.$(OBJEXT)
+	-rm -f std/internal/test/uda.lo
 	-rm -f std/internal/unicode_comp.$(OBJEXT)
 	-rm -f std/internal/unicode_comp.lo
 	-rm -f std/internal/unicode_decomp.$(OBJEXT)
@@ -1518,6 +1555,7 @@ clean-libtool:
 	-rm -rf std/experimental/allocator/.libs std/experimental/allocator/_libs
 	-rm -rf std/experimental/allocator/building_blocks/.libs std/experimental/allocator/building_blocks/_libs
 	-rm -rf std/experimental/logger/.libs std/experimental/logger/_libs
+	-rm -rf std/experimental/ndslice/.libs std/experimental/ndslice/_libs
 	-rm -rf std/internal/.libs std/internal/_libs
 	-rm -rf std/internal/digest/.libs std/internal/digest/_libs
 	-rm -rf std/internal/math/.libs std/internal/math/_libs
@@ -1650,6 +1688,7 @@ distclean-generic:
 	-rm -f std/experimental/allocator/$(am__dirstamp)
 	-rm -f std/experimental/allocator/building_blocks/$(am__dirstamp)
 	-rm -f std/experimental/logger/$(am__dirstamp)
+	-rm -f std/experimental/ndslice/$(am__dirstamp)
 	-rm -f std/internal/$(am__dirstamp)
 	-rm -f std/internal/digest/$(am__dirstamp)
 	-rm -f std/internal/math/$(am__dirstamp)

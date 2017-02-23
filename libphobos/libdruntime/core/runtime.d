@@ -51,7 +51,7 @@ private
     extern (C) void* thread_stackBottom();
 
     extern (C) string[] rt_args();
-    extern (C) CArgs rt_cArgs();
+    extern (C) CArgs rt_cArgs() @nogc;
 }
 
 
@@ -160,7 +160,7 @@ struct Runtime
      * }
      * ---
      */
-    static @property CArgs cArgs()
+    static @property CArgs cArgs() @nogc
     {
         return rt_cArgs();
     }

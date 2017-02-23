@@ -211,10 +211,10 @@ DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/errno.d core/sys/linux/execinfo.d \
 	core/sys/linux/fcntl.d core/sys/linux/link.d core/sys/linux/stdio.d \
 	core/sys/linux/sys/inotify.d core/sys/linux/sys/mman.d \
-	core/sys/linux/sys/signalfd.d core/sys/linux/sys/sysinfo.d \
-	core/sys/linux/sys/xattr.d core/sys/linux/termios.d \
-	core/sys/linux/time.d core/sys/linux/timerfd.d core/sys/linux/tipc.d \
-	core/sys/linux/unistd.d
+	core/sys/linux/sys/signalfd.d core/sys/linux/sys/socket.d \
+	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/xattr.d \
+	core/sys/linux/termios.d core/sys/linux/time.d \
+	core/sys/linux/timerfd.d core/sys/linux/tipc.d core/sys/linux/unistd.d
 
 DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
 	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
@@ -252,12 +252,91 @@ DRUNTIME_DSOURCES_SOLARIS = core/sys/solaris/dlfcn.d \
 	core/sys/solaris/sys/elf_SPARC.d core/sys/solaris/sys/elf_amd64.d \
 	core/sys/solaris/sys/elf_notes.d core/sys/solaris/sys/elftypes.d \
 	core/sys/solaris/sys/link.d core/sys/solaris/sys/priocntl.d \
-	core/sys/solaris/sys/procset.d core/sys/solaris/sys/types.d
+	core/sys/solaris/sys/procset.d core/sys/solaris/sys/types.d \
+	core/sys/solaris/time.d
 
-DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/com.d \
-	core/sys/windows/dbghelp.d core/sys/windows/dll.d \
-	core/sys/windows/stacktrace.d core/sys/windows/stat.d \
-	core/sys/windows/threadaux.d core/sys/windows/windows.d \
-	core/sys/windows/winsock2.d
+DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/accctrl.d \
+	core/sys/windows/aclapi.d core/sys/windows/aclui.d \
+	core/sys/windows/basetsd.d core/sys/windows/basetyps.d \
+	core/sys/windows/cderr.d core/sys/windows/cguid.d \
+	core/sys/windows/com.d core/sys/windows/comcat.d \
+	core/sys/windows/commctrl.d core/sys/windows/commdlg.d \
+	core/sys/windows/core.d core/sys/windows/cpl.d \
+	core/sys/windows/cplext.d core/sys/windows/custcntl.d \
+	core/sys/windows/dbghelp.d core/sys/windows/dbghelp_types.d \
+	core/sys/windows/dbt.d core/sys/windows/dde.d core/sys/windows/ddeml.d \
+	core/sys/windows/dhcpcsdk.d core/sys/windows/dlgs.d \
+	core/sys/windows/dll.d core/sys/windows/docobj.d \
+	core/sys/windows/errorrep.d core/sys/windows/exdisp.d \
+	core/sys/windows/exdispid.d core/sys/windows/httpext.d \
+	core/sys/windows/idispids.d core/sys/windows/imagehlp.d \
+	core/sys/windows/imm.d core/sys/windows/intshcut.d \
+	core/sys/windows/ipexport.d core/sys/windows/iphlpapi.d \
+	core/sys/windows/ipifcons.d core/sys/windows/iprtrmib.d \
+	core/sys/windows/iptypes.d core/sys/windows/isguids.d \
+	core/sys/windows/lm.d core/sys/windows/lmaccess.d \
+	core/sys/windows/lmalert.d core/sys/windows/lmapibuf.d \
+	core/sys/windows/lmat.d core/sys/windows/lmaudit.d \
+	core/sys/windows/lmbrowsr.d core/sys/windows/lmchdev.d \
+	core/sys/windows/lmconfig.d core/sys/windows/lmcons.d \
+	core/sys/windows/lmerr.d core/sys/windows/lmerrlog.d \
+	core/sys/windows/lmmsg.d core/sys/windows/lmremutl.d \
+	core/sys/windows/lmrepl.d core/sys/windows/lmserver.d \
+	core/sys/windows/lmshare.d core/sys/windows/lmsname.d \
+	core/sys/windows/lmstats.d core/sys/windows/lmsvc.d \
+	core/sys/windows/lmuse.d core/sys/windows/lmuseflg.d \
+	core/sys/windows/lmwksta.d core/sys/windows/lzexpand.d \
+	core/sys/windows/mapi.d core/sys/windows/mciavi.d \
+	core/sys/windows/mcx.d core/sys/windows/mgmtapi.d \
+	core/sys/windows/mmsystem.d core/sys/windows/msacm.d \
+	core/sys/windows/mshtml.d core/sys/windows/mswsock.d \
+	core/sys/windows/nb30.d core/sys/windows/nddeapi.d \
+	core/sys/windows/nspapi.d core/sys/windows/ntdef.d \
+	core/sys/windows/ntdll.d core/sys/windows/ntldap.d \
+	core/sys/windows/ntsecapi.d core/sys/windows/ntsecpkg.d \
+	core/sys/windows/oaidl.d core/sys/windows/objbase.d \
+	core/sys/windows/objfwd.d core/sys/windows/objidl.d \
+	core/sys/windows/objsafe.d core/sys/windows/ocidl.d \
+	core/sys/windows/odbcinst.d core/sys/windows/ole.d \
+	core/sys/windows/ole2.d core/sys/windows/ole2ver.d \
+	core/sys/windows/oleacc.d core/sys/windows/oleauto.d \
+	core/sys/windows/olectl.d core/sys/windows/olectlid.d \
+	core/sys/windows/oledlg.d core/sys/windows/oleidl.d \
+	core/sys/windows/pbt.d core/sys/windows/powrprof.d \
+	core/sys/windows/prsht.d core/sys/windows/psapi.d \
+	core/sys/windows/rapi.d core/sys/windows/ras.d \
+	core/sys/windows/rasdlg.d core/sys/windows/raserror.d \
+	core/sys/windows/rassapi.d core/sys/windows/reason.d \
+	core/sys/windows/regstr.d core/sys/windows/richedit.d \
+	core/sys/windows/richole.d core/sys/windows/rpc.d \
+	core/sys/windows/rpcdce.d core/sys/windows/rpcdce2.d \
+	core/sys/windows/rpcdcep.d core/sys/windows/rpcndr.d \
+	core/sys/windows/rpcnsi.d core/sys/windows/rpcnsip.d \
+	core/sys/windows/rpcnterr.d core/sys/windows/schannel.d \
+	core/sys/windows/secext.d core/sys/windows/security.d \
+	core/sys/windows/servprov.d core/sys/windows/setupapi.d \
+	core/sys/windows/shellapi.d core/sys/windows/shldisp.d \
+	core/sys/windows/shlguid.d core/sys/windows/shlobj.d \
+	core/sys/windows/shlwapi.d core/sys/windows/snmp.d \
+	core/sys/windows/sql.d core/sys/windows/sqlext.d \
+	core/sys/windows/sqltypes.d core/sys/windows/sqlucode.d \
+	core/sys/windows/sspi.d core/sys/windows/stacktrace.d \
+	core/sys/windows/stat.d core/sys/windows/subauth.d \
+	core/sys/windows/threadaux.d core/sys/windows/tlhelp32.d \
+	core/sys/windows/tmschema.d core/sys/windows/unknwn.d \
+	core/sys/windows/uuid.d core/sys/windows/vfw.d \
+	core/sys/windows/w32api.d core/sys/windows/winbase.d \
+	core/sys/windows/winber.d core/sys/windows/wincon.d \
+	core/sys/windows/wincrypt.d core/sys/windows/windef.d \
+	core/sys/windows/windows.d core/sys/windows/winerror.d \
+	core/sys/windows/wingdi.d core/sys/windows/winhttp.d \
+	core/sys/windows/wininet.d core/sys/windows/winioctl.d \
+	core/sys/windows/winldap.d core/sys/windows/winnetwk.d \
+	core/sys/windows/winnls.d core/sys/windows/winnt.d \
+	core/sys/windows/winperf.d core/sys/windows/winreg.d \
+	core/sys/windows/winsock2.d core/sys/windows/winspool.d \
+	core/sys/windows/winsvc.d core/sys/windows/winuser.d \
+	core/sys/windows/winver.d core/sys/windows/wtsapi32.d \
+	core/sys/windows/wtypes.d
 
 DRUNTIME_DISOURCES = __entrypoint.di
