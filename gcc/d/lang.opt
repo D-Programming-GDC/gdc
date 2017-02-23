@@ -185,19 +185,19 @@ D Joined RejectNegative
 
 fd-vgc
 D Alias(ftransition=nogc)
-Deprecated in favor of -ftransition=nogc
+; Deprecated in favor of -ftransition=nogc
 
 fd-verbose
 D Alias(v)
-Deprecated in favor of --verbose
+; Deprecated in favor of --verbose
 
 fd-vtls
 D Alias(ftransition=tls)
-Deprecated in favor of -ftransition=tls.
+; Deprecated in favor of -ftransition=tls.
 
 femit-moduleinfo
 D Alias(fmoduleinfo)
-Deprecated in favor of -fmoduleinfo.
+; Deprecated in favor of -fmoduleinfo.
 
 femit-templates
 D Alias(fall-instantiations)
