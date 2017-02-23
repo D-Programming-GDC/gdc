@@ -135,6 +135,28 @@ public:
       }
   }
 
+  /* Visit the underlying alias symbol of overloadable aliases.  */
+  void visit (OverDeclaration *d)
+  {
+    if (d->aliassym != NULL)
+      {
+	d->aliassym->accept (this);
+	d->isym = d->aliassym->isym;
+      }
+  }
+
+  /* Function aliases are the same as alias symbols.  */
+  void visit (FuncAliasDeclaration *d)
+  {
+    FuncDeclaration *fd = d->toAliasFunc ();
+
+    if (fd != NULL)
+      {
+	fd->accept (this);
+	d->isym = fd->isym;
+      }
+  }
+
   /* Skip over importing templates and tuples.  */
   void visit (TemplateDeclaration *)
   {
