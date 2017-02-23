@@ -157,7 +157,7 @@ Compile in debug code.
 
 fdebug=
 D Joined RejectNegative
--fdebug,-fdebug=<level>,-fdebug=<ident>	Compile in debug code, code <= 'level', or code identified by 'ident'.
+-fdebug=<level|ident>	Compile in debug code, code <= <level>, or code identified by <ident>.
 
 fdeps
 D
@@ -165,7 +165,7 @@ Print information about module dependencies.
 
 fdeps=
 D Joined RejectNegative
--fdeps=<filename>	Write module dependencies to 'filename'.
+-fdeps=<file>	Write module dependencies to <file>.
 
 fdoc
 D
@@ -173,15 +173,15 @@ Generate documentation.
 
 fdoc-dir=
 D Joined RejectNegative
--fdoc-dir=<docdir>	Write documentation file to 'docdir' directory.
+-fdoc-dir=<dir>	Write documentation file to directory <dir>.
 
 fdoc-file=
 D Joined RejectNegative
--fdoc-file=<filename>	Write documentation file to 'filename'.
+-fdoc-file=<file>	Write documentation to <file>.
 
 fdoc-inc=
 D Joined RejectNegative
--fdoc-inc=<filename>	Include a Ddoc macro file.
+-fdoc-inc=<file>	Include a Ddoc macro <file>.
 
 fd-vgc
 D Alias(ftransition=nogc)
@@ -216,11 +216,11 @@ Generate D interface files.
 
 fintfc-dir=
 D Joined RejectNegative
--fintfc-dir=<dir>	Write D interface files to directory 'dir'.
+-fintfc-dir=<dir>	Write D interface files to directory <dir>.
 
 fintfc-file=
 D Joined RejectNegative
--fintfc-file=<filename>	Write D interface file to 'filename'.
+-fintfc-file=<file>	Write D interface to <file>.
 
 finvariants
 D
@@ -304,11 +304,11 @@ Compile in unittest code.
 
 fversion=
 D Joined RejectNegative
--fversion=<level|ident>	Compile in version code >= 'level' or identified by 'ident'.
+-fversion=<level|ident>	Compile in version code >= <level> or identified by <ident>.
 
 fXf=
 D Joined RejectNegative
--fXf=<filename>	Write JSON file to 'filename'.
+-fXf=<file>	Write JSON file to <file>.
 
 imultilib
 D Joined Separate
