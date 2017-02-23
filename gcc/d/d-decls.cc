@@ -384,10 +384,18 @@ get_symbol_decl (Declaration *decl)
       if (ti)
 	{
 	  D_DECL_ONE_ONLY (decl->csym) = 1;
-	  D_DECL_IS_TEMPLATE (decl->csym) = 1;
 
 	  if (!DECL_EXTERNAL (decl->csym) && ti->needsCodegen ())
-	    TREE_STATIC (decl->csym) = 1;
+	    {
+	      /* Warn about templates instantiated in this compilation.  */
+	      if (ti == decl->parent)
+		{
+		  warning (OPT_Wtemplates, "%s %s instantiated",
+			   ti->kind (), ti->toPrettyChars (false));
+		}
+
+	      TREE_STATIC (decl->csym) = 1;
+	    }
 	  else
 	    DECL_EXTERNAL (decl->csym) = 1;
 	}

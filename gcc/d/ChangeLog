@@ -3,6 +3,22 @@
 	* imports.cc (ImportVisitor::visit(OverDeclaration)): New function.
 	(ImportVisitor::visit(FuncAliasDeclaration)): New function.
 
+2017-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -X and -Xf options.
+	(d_parse_file): Update.
+	* lang-specs.h: Add rules for -X style options.
+	* lang.opt (X): Declare.
+	(Xf): Declare.
+	(fXf=): Make alias for -Xf.
+
+2017-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fd-vgc): Comment out help test.
+	(fd-verbose): Likewise.
+	(fd-vtls): Likewise.
+	(femit-modules): Likewise.
+
 2017-02-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-target.cc (Target::fieldalign): Adjust.
@@ -40,6 +56,56 @@
 	(d_handle_option): Likewise.
 	(d_parse_file): Likewise.
 	(deps_write): Update signature.
+
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Call D_handle_option_auto.
+	* lang.opt (Wunknown-pragmas): Turn on warning with -Wall.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Replace -fin with -fpreconditions;
+	-fout with -fpostconditions.  Handle -fswitch-errors.
+	(d_post_options): Move setting of release code flags here.
+	* lang.opt (fassert): Declare flag_assert.
+	(fin): Make alias for -fpreconditions.
+	(finvariants): Declare flag_invariants.
+	(fout): Make alias for -fpostconditions.
+	(fpostconditions): Declare.
+	(fpreconditions): Declare.
+	(fswitch-errors): Declare.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (PragmaDeclaration::toObjFile): Warn about unknown
+	pragmas only if -Wunknown-pragmas.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-glue.cc (Global::init): Initialize errorLimit to flag_max_errors.
+	(verror): Don't halt program after invocation limit.
+	* d-lang.cc (d_handle_option): Remove handling -fmax-error-messages.
+	* lang.opt (fmax-error-messages): Remove option.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_symbol_decl): Handle -Wtemplates.
+	* d-lang.cc (d_init_options): Remove setting flag_emit_templates.
+	(d_handle_option): Replace handling -femit-templates with
+	-fall-instantiations.
+	(d_pushdecl): Remove checking for flag_emit_templates.
+	* d-tree.h (D_DECL_IS_TEMPLATE): Remove macro.
+	* lang.opt (flag_emit_templates): Remove variable.
+	(fall-instantiations): Declare.
+	(femit-templates): Make alias for -fall-instantiations.
+	(Wtemplates): Declare.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fassert): Update help text.
+	(fin): Likewise.
+	(finvariants): Likewise.
+	(fout): Likewise.
 
 2017-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 

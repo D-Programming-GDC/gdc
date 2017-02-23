@@ -366,8 +366,6 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   d_option.deps_target = NULL;
   d_option.deps_phony = false;
   d_option.stdinc = true;
-
-  flag_emit_templates = 1;
 }
 
 /* Initialize options structure OPTS.  */
@@ -539,6 +537,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
   switch (code)
     {
+    case OPT_fall_instantiations:
+      global.params.allInst = value;
+      break;
+
     case OPT_fassert:
       global.params.useAssert = value;
       break;
@@ -606,17 +608,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ddocfiles->push (arg);
       break;
 
-    case OPT_femit_templates:
-      flag_emit_templates = value ? 1 : 0;
-      global.params.allInst = value;
-      break;
-
     case OPT_fignore_unknown_pragmas:
       global.params.ignoreUnsupportedPragmas = value;
-      break;
-
-    case OPT_fin:
-      global.params.useIn = value;
       break;
 
     case OPT_fintfc:
@@ -645,8 +638,12 @@ d_handle_option (size_t scode, const char *arg, int value,
       d_option.fonly = arg;
       break;
 
-    case OPT_fout:
+    case OPT_fpostconditions:
       global.params.useOut = value;
+      break;
+
+    case OPT_fpreconditions:
+      global.params.useIn = value;
       break;
 
     case OPT_fproperty:
@@ -655,11 +652,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_frelease:
       global.params.release = value;
-      global.params.useInvariants = !value;
-      global.params.useIn = !value;
-      global.params.useOut = !value;
-      global.params.useAssert = !value;
-      global.params.useSwitchError = !value;
+      break;
+
+    case OPT_fswitch_errors:
+      global.params.useSwitchError = value;
       break;
 
     case OPT_ftransition_all:
@@ -722,11 +718,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 	}
 
       error ("bad argument for -fversion '%s'", arg);
-      break;
-
-    case OPT_fXf_:
-      global.params.doJsonGeneration = true;
-      global.params.jsonfilename = arg;
       break;
 
     case OPT_imultilib:
@@ -803,19 +794,22 @@ d_handle_option (size_t scode, const char *arg, int value,
 	global.params.warnings = 1;
       break;
 
-    case OPT_fmax_error_messages_:
-      {
-	int limit = integral_argument(arg);
-	if (limit == -1)
-	  error ("bad argument for -fmax-error-messages '%s'", arg);
-	else
-	  global.errorLimit = limit;
-	break;
-      }
+    case OPT_Xf:
+      global.params.jsonfilename = arg;
+      /* fall through */
+
+    case OPT_X:
+      global.params.doJsonGeneration = true;
+      break;
 
     default:
       break;
     }
+
+  D_handle_option_auto (&global_options, &global_options_set,
+			scode, arg, value,
+			d_option_lang_mask (), kind,
+			loc, handlers, global_dc);
 
   return result;
 }
@@ -848,11 +842,29 @@ d_post_options (const char ** fn)
       flag_bounds_check = !global.params.release;
     }
 
+  if (global.params.release)
+    {
+      if (!global_options_set.x_flag_invariants)
+	global.params.useInvariants = false;
+
+      if (!global_options_set.x_flag_preconditions)
+	global.params.useIn = false;
+
+      if (!global_options_set.x_flag_postconditions)
+	global.params.useOut = false;
+
+      if (!global_options_set.x_flag_assert)
+	global.params.useAssert = false;
+
+      if (!global_options_set.x_flag_switch_errors)
+	global.params.useSwitchError = false;
+    }
+
   // Error about use of deprecated features.
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
     global.params.useDeprecated = 0;
 
-  // Make -fmax-errors visible to gdc's diagnostic machinery.
+  // Make -fmax-errors visible to frontend's diagnostic machinery.
   if (global_options_set.x_flag_max_errors)
     global.errorLimit = flag_max_errors;
 
@@ -1252,27 +1264,31 @@ d_parse_file()
   if (global.errors || global.warnings)
     goto had_errors;
 
+  /* Generate output files.  */
+
+  /* Module dependencies (imports, file, version, debug, lib).  */
   if (global.params.moduleDeps)
     {
-      OutBuffer *ob = global.params.moduleDeps;
+      OutBuffer *buf = global.params.moduleDeps;
 
       if (global.params.moduleDepsFile)
 	{
 	  File fdeps(global.params.moduleDepsFile);
-	  fdeps.setbuffer((void *) ob->data, ob->offset);
+	  fdeps.setbuffer((void *) buf->data, buf->offset);
 	  fdeps.ref = 1;
 	  writeFile(Loc(), &fdeps);
 	}
       else
-	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
+	fprintf(global.stdmsg, "%.*s", (int) buf->offset, (char *) buf->data);
     }
 
+  /* Make dependencies.  */
   if (d_option.deps)
     {
-      OutBuffer ob;
+      OutBuffer buf;
 
       for (size_t i = 0; i < modules.dim; i++)
-	deps_write (modules[i], &ob);
+	deps_write (modules[i], &buf);
 
       /* -MF <arg> overrides -M[M]D.  */
       if (d_option.deps_filename_user)
@@ -1281,51 +1297,34 @@ d_parse_file()
       if (d_option.deps_filename)
 	{
 	  File fdeps (d_option.deps_filename);
-	  fdeps.setbuffer ((void *) ob.data, ob.offset);
+	  fdeps.setbuffer ((void *) buf.data, buf.offset);
 	  fdeps.ref = 1;
 	  writeFile (Loc (), &fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) ob.offset, (char *) ob.data);
+	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
     }
 
-  // Generate output files
+  /* Generate JSON files.  */
   if (global.params.doJsonGeneration)
     {
       OutBuffer buf;
       json_generate(&buf, &modules);
 
-      // Write buf to file
       const char *name = global.params.jsonfilename;
 
-      if (name && name[0] == '-' && name[1] == 0)
+      if (name && (name[0] != '-' || name[1] != '\0'))
 	{
-	  size_t n = fwrite(buf.data, 1, buf.offset, global.stdmsg);
-	  gcc_assert(n == buf.offset);
+	  File fjson (FileName::defaultExt (name, global.json_ext));
+	  fjson.setbuffer ((void *) buf.data, buf.offset);
+	  fjson.ref = 1;
+	  writeFile(Loc(), &fjson);
 	}
       else
-	{
-	  const char *jsonfilename;
-	  File *jsonfile;
-
-	  if (name && *name)
-	    jsonfilename = FileName::defaultExt(name, global.json_ext);
-	  else
-	    {
-	      // Generate json file name from first obj name
-	      const char *n = (*global.params.objfiles)[0];
-	      n = FileName::name(n);
-	      jsonfilename = FileName::forceExt(n, global.json_ext);
-	    }
-
-	  ensurePathToNameExists(Loc(), jsonfilename);
-	  jsonfile = File::create (jsonfilename);
-	  jsonfile->setbuffer(buf.data, buf.offset);
-	  jsonfile->ref = 1;
-	  writeFile(Loc(), jsonfile);
-	}
+	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
     }
 
+  /* Generate Ddoc files.  */
   if (global.params.doDocComments && !global.errors && !errorcount)
     {
       for (size_t i = 0; i < modules.dim; i++)
@@ -1540,10 +1539,6 @@ d_pushdecl (tree decl)
       else
 	DECL_CONTEXT (decl) = get_global_context ();
     }
-
-  /* If template is not needed, don't send it to backend.  */
-  if (D_DECL_IS_TEMPLATE (decl) && !flag_emit_templates)
-    return decl;
 
   /* Put decls on list in reverse order.  */
   if (TREE_STATIC (decl) || d_global_bindings_p ())

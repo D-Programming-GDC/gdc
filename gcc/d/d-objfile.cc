@@ -183,10 +183,11 @@ PragmaDeclaration::toObjFile()
 {
   if (!global.params.ignoreUnsupportedPragmas)
     {
-      if (ident == Id::lib)
-	warning (loc, "pragma(lib) not implemented");
-       else if (ident == Id::startaddress)
-	 warning (loc, "pragma(startaddress) not implemented");
+      if (ident == Id::lib || ident == Id::startaddress)
+	{
+	  warning_at (get_linemap (this->loc), OPT_Wunknown_pragmas,
+		      "pragma(%s) not implemented", ident->toChars ());
+	}
     }
 
   AttribDeclaration::toObjFile();
