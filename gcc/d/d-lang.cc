@@ -366,8 +366,6 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   d_option.deps_target = NULL;
   d_option.deps_phony = false;
   d_option.stdinc = true;
-
-  flag_emit_templates = 1;
 }
 
 /* Initialize options structure OPTS.  */
@@ -539,6 +537,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
   switch (code)
     {
+    case OPT_fall_instantiations:
+      global.params.allInst = value;
+      break;
+
     case OPT_fassert:
       global.params.useAssert = value;
       break;
@@ -604,11 +606,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdoc_inc_:
       global.params.ddocfiles->push (arg);
-      break;
-
-    case OPT_femit_templates:
-      flag_emit_templates = value ? 1 : 0;
-      global.params.allInst = value;
       break;
 
     case OPT_fignore_unknown_pragmas:
@@ -1540,10 +1537,6 @@ d_pushdecl (tree decl)
       else
 	DECL_CONTEXT (decl) = get_global_context ();
     }
-
-  /* If template is not needed, don't send it to backend.  */
-  if (D_DECL_IS_TEMPLATE (decl) && !flag_emit_templates)
-    return decl;
 
   /* Put decls on list in reverse order.  */
   if (TREE_STATIC (decl) || d_global_bindings_p ())

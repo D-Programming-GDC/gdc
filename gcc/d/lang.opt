@@ -20,9 +20,6 @@
 Language
 D
 
-Variable
-int flag_emit_templates
-
 -dependencies
 D Alias(M)
 ; Documented in C
@@ -89,6 +86,10 @@ Default library to use instead of phobos.
 
 -verbose
 D Alias(v)
+
+fall-instantiations
+D
+Generate code for all template instantiations.
 
 fassert
 D
@@ -167,8 +168,8 @@ D Alias(fmoduleinfo)
 Deprecated in favor of -fmoduleinfo.
 
 femit-templates
-D
-Generate code for all template instantiations.
+D Alias(fall-instantiations)
+; Deprecated in favor of -fall-instantiations.
 
 fignore-unknown-pragmas
 D
@@ -336,6 +337,10 @@ D
 Werror
 D
 ; Documented in common.opt
+
+Wtemplates
+D
+; Documented in C
 
 Wunknown-pragmas
 D

@@ -43,6 +43,19 @@
 
 2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-decls.cc (get_symbol_decl): Handle -Wtemplates.
+	* d-lang.cc (d_init_options): Remove setting flag_emit_templates.
+	(d_handle_option): Replace handling -femit-templates with
+	-fall-instantiations.
+	(d_pushdecl): Remove checking for flag_emit_templates.
+	* d-tree.h (D_DECL_IS_TEMPLATE): Remove macro.
+	* lang.opt (flag_emit_templates): Remove variable.
+	(fall-instantiations): Declare.
+	(femit-templates): Make alias for -fall-instantiations.
+	(Wtemplates): Declare.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* lang.opt (fassert): Update help text.
 	(fin): Likewise.
 	(finvariants): Likewise.
