@@ -124,7 +124,7 @@ D
 Generate code for all template instantiations.
 
 fassert
-D
+D Var(flag_assert)
 Generate code for assert contracts.
 
 fbounds-check
@@ -208,8 +208,8 @@ D
 Ignore unsupported pragmas.
 
 fin
-D
-Generate code for precondition contracts.
+D Alias(fpreconditions)
+; Deprecated in favor of -fpreconditions.
 
 fintfc
 Generate D interface files.
@@ -223,7 +223,7 @@ D Joined RejectNegative
 -fintfc-file=<file>	Write D interface to <file>.
 
 finvariants
-D
+D Var(flag_invariants)
 Generate code for class invariant contracts.
 
 fmake-deps
@@ -251,8 +251,16 @@ D Joined RejectNegative
 Process all modules specified on the command line, but only generate code for the module specified by the argument.
 
 fout
-D
+D Alias(fpostconditions)
+; Deprecated in favor of -fpostconditions.
+
+fpostconditions
+D Var(flag_postconditions)
 Generate code for postcondition contracts.
+
+fpreconditions
+D Var(flag_preconditions)
+Generate code for precondition contracts.
 
 fproperty
 D
@@ -261,6 +269,10 @@ Enforce property syntax.
 frelease
 D
 Compile release version.
+
+fswitch-errors
+D Var(flag_switch_errors)
+Generate code for switches without a default case.
 
 ftransition=all
 D RejectNegative

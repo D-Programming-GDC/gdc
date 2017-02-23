@@ -612,10 +612,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ignoreUnsupportedPragmas = value;
       break;
 
-    case OPT_fin:
-      global.params.useIn = value;
-      break;
-
     case OPT_fintfc:
       global.params.doHdrGeneration = value;
       break;
@@ -642,8 +638,12 @@ d_handle_option (size_t scode, const char *arg, int value,
       d_option.fonly = arg;
       break;
 
-    case OPT_fout:
+    case OPT_fpostconditions:
       global.params.useOut = value;
+      break;
+
+    case OPT_fpreconditions:
+      global.params.useIn = value;
       break;
 
     case OPT_fproperty:
@@ -652,11 +652,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_frelease:
       global.params.release = value;
-      global.params.useInvariants = !value;
-      global.params.useIn = !value;
-      global.params.useOut = !value;
-      global.params.useAssert = !value;
-      global.params.useSwitchError = !value;
+      break;
+
+    case OPT_fswitch_errors:
+      global.params.useSwitchError = value;
       break;
 
     case OPT_ftransition_all:
@@ -833,6 +832,24 @@ d_post_options (const char ** fn)
       global.params.useArrayBounds = global.params.release
 	? BOUNDSCHECKsafeonly : BOUNDSCHECKon;
       flag_bounds_check = !global.params.release;
+    }
+
+  if (global.params.release)
+    {
+      if (!global_options_set.x_flag_invariants)
+	global.params.useInvariants = false;
+
+      if (!global_options_set.x_flag_preconditions)
+	global.params.useIn = false;
+
+      if (!global_options_set.x_flag_postconditions)
+	global.params.useOut = false;
+
+      if (!global_options_set.x_flag_assert)
+	global.params.useAssert = false;
+
+      if (!global_options_set.x_flag_switch_errors)
+	global.params.useSwitchError = false;
     }
 
   // Error about use of deprecated features.
