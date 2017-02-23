@@ -40,6 +40,14 @@ D NoDriverArg Separate Alias(MD)
 D NoDriverArg Separate Alias(MMD)
 ; Documented in C
 
+I
+D Joined Separate
+; Documented in C
+
+J
+D Joined Separate
+; Different from documented use in Fortran.
+
 M
 D
 ; Documented in C
@@ -74,6 +82,30 @@ D Joined Separate
 
 MQ
 D Joined Separate
+; Documented in C
+
+Wall
+D
+; Documented in C
+
+Wcast-result
+D Warning Var(warn_cast_result)
+Warn about casts that will produce a null result.
+
+Wdeprecated
+D
+; Documented in C
+
+Werror
+D
+; Documented in common.opt
+
+Wtemplates
+D
+; Documented in C
+
+Wunknown-pragmas
+D
 ; Documented in C
 
 debuglib=
@@ -294,14 +326,6 @@ isystem
 D Joined Separate
 ; Documented in C
 
-I
-D Joined Separate
-; Documented in C
-
-J
-D Joined Separate
-; Different from documented use in Fortran.
-
 nophoboslib
 Driver
 Do not link the standard D library in the compilation.
@@ -319,30 +343,6 @@ Driver
 Link the standard D library dynamically in the compilation.
 
 v
-D
-; Documented in C
-
-Wall
-D
-; Documented in C
-
-Wcast-result
-D Warning Var(warn_cast_result)
-Warn about casts that will produce a null result.
-
-Wdeprecated
-D
-; Documented in C
-
-Werror
-D
-; Documented in common.opt
-
-Wtemplates
-D
-; Documented in C
-
-Wunknown-pragmas
 D
 ; Documented in C
 
