@@ -43,6 +43,11 @@
 
 2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-objfile.cc (PragmaDeclaration::toObjFile): Warn about unknown
+	pragmas only if -Wunknown-pragmas.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-glue.cc (Global::init): Initialize errorLimit to flag_max_errors.
 	(verror): Don't halt program after invocation limit.
 	* d-lang.cc (d_handle_option): Remove handling -fmax-error-messages.
