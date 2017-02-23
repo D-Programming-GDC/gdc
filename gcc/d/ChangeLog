@@ -5,6 +5,15 @@
 
 2017-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_handle_option): Handle -X and -Xf options.
+	(d_parse_file): Update.
+	* lang-specs.h: Add rules for -X style options.
+	* lang.opt (X): Declare.
+	(Xf): Declare.
+	(fXf=): Make alias for -Xf.
+
+2017-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* lang.opt (fd-vgc): Comment out help test.
 	(fd-verbose): Likewise.
 	(fd-vtls): Likewise.

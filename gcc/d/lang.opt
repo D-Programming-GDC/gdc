@@ -108,6 +108,14 @@ Wunknown-pragmas
 D LangEnabledBy(D, Wall)
 ; Documented in C
 
+X
+D
+Generate JSON file.
+
+Xf
+D Joined Separate
+-Xf <file>	Write JSON output to the given <file>.
+
 debuglib=
 Driver Joined
 Debug library to use instead of phobos.
@@ -319,8 +327,8 @@ D Joined RejectNegative
 -fversion=<level|ident>	Compile in version code >= <level> or identified by <ident>.
 
 fXf=
-D Joined RejectNegative
--fXf=<file>	Write JSON file to <file>.
+D Joined RejectNegative Alias(Xf)
+; Deprecated in favor of -Xf
 
 imultilib
 D Joined Separate

@@ -720,11 +720,6 @@ d_handle_option (size_t scode, const char *arg, int value,
       error ("bad argument for -fversion '%s'", arg);
       break;
 
-    case OPT_fXf_:
-      global.params.doJsonGeneration = true;
-      global.params.jsonfilename = arg;
-      break;
-
     case OPT_imultilib:
       d_option.multilib = arg;
       break;
@@ -797,6 +792,14 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_Werror:
       if (value)
 	global.params.warnings = 1;
+      break;
+
+    case OPT_Xf:
+      global.params.jsonfilename = arg;
+      /* fall through */
+
+    case OPT_X:
+      global.params.doJsonGeneration = true;
       break;
 
     default:
@@ -1261,27 +1264,31 @@ d_parse_file()
   if (global.errors || global.warnings)
     goto had_errors;
 
+  /* Generate output files.  */
+
+  /* Module dependencies (imports, file, version, debug, lib).  */
   if (global.params.moduleDeps)
     {
-      OutBuffer *ob = global.params.moduleDeps;
+      OutBuffer *buf = global.params.moduleDeps;
 
       if (global.params.moduleDepsFile)
 	{
 	  File fdeps(global.params.moduleDepsFile);
-	  fdeps.setbuffer((void *) ob->data, ob->offset);
+	  fdeps.setbuffer((void *) buf->data, buf->offset);
 	  fdeps.ref = 1;
 	  writeFile(Loc(), &fdeps);
 	}
       else
-	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
+	fprintf(global.stdmsg, "%.*s", (int) buf->offset, (char *) buf->data);
     }
 
+  /* Make dependencies.  */
   if (d_option.deps)
     {
-      OutBuffer ob;
+      OutBuffer buf;
 
       for (size_t i = 0; i < modules.dim; i++)
-	deps_write (modules[i], &ob);
+	deps_write (modules[i], &buf);
 
       /* -MF <arg> overrides -M[M]D.  */
       if (d_option.deps_filename_user)
@@ -1290,51 +1297,34 @@ d_parse_file()
       if (d_option.deps_filename)
 	{
 	  File fdeps (d_option.deps_filename);
-	  fdeps.setbuffer ((void *) ob.data, ob.offset);
+	  fdeps.setbuffer ((void *) buf.data, buf.offset);
 	  fdeps.ref = 1;
 	  writeFile (Loc (), &fdeps);
 	}
       else
-	fprintf (global.stdmsg, "%.*s", (int) ob.offset, (char *) ob.data);
+	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
     }
 
-  // Generate output files
+  /* Generate JSON files.  */
   if (global.params.doJsonGeneration)
     {
       OutBuffer buf;
       json_generate(&buf, &modules);
 
-      // Write buf to file
       const char *name = global.params.jsonfilename;
 
-      if (name && name[0] == '-' && name[1] == 0)
+      if (name && (name[0] != '-' || name[1] != '\0'))
 	{
-	  size_t n = fwrite(buf.data, 1, buf.offset, global.stdmsg);
-	  gcc_assert(n == buf.offset);
+	  File fjson (FileName::defaultExt (name, global.json_ext));
+	  fjson.setbuffer ((void *) buf.data, buf.offset);
+	  fjson.ref = 1;
+	  writeFile(Loc(), &fjson);
 	}
       else
-	{
-	  const char *jsonfilename;
-	  File *jsonfile;
-
-	  if (name && *name)
-	    jsonfilename = FileName::defaultExt(name, global.json_ext);
-	  else
-	    {
-	      // Generate json file name from first obj name
-	      const char *n = (*global.params.objfiles)[0];
-	      n = FileName::name(n);
-	      jsonfilename = FileName::forceExt(n, global.json_ext);
-	    }
-
-	  ensurePathToNameExists(Loc(), jsonfilename);
-	  jsonfile = File::create (jsonfilename);
-	  jsonfile->setbuffer(buf.data, buf.offset);
-	  jsonfile->ref = 1;
-	  writeFile(Loc(), jsonfile);
-	}
+	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
     }
 
+  /* Generate Ddoc files.  */
   if (global.params.doDocComments && !global.errors && !errorcount)
     {
       for (size_t i = 0; i < modules.dim; i++)
