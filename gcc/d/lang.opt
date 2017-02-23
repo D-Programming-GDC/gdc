@@ -92,7 +92,7 @@ D Alias(v)
 
 fassert
 D
-; Documented in Java
+Generate code for assert contracts.
 
 fbounds-check
 D
@@ -176,7 +176,7 @@ Ignore unsupported pragmas.
 
 fin
 D
-Generate runtime code for in() contracts.
+Generate code for precondition contracts.
 
 fintfc
 Generate D interface files.
@@ -191,7 +191,7 @@ D Joined RejectNegative
 
 finvariants
 D
-Generate runtime code for invariant()'s.
+Generate code for class invariant contracts.
 
 fmake-deps
 D Alias(M)
@@ -219,7 +219,7 @@ Process all modules specified on the command line, but only generate code for th
 
 fout
 D
-Generate runtime code for out() contracts.
+Generate code for postcondition contracts.
 
 fproperty
 D
