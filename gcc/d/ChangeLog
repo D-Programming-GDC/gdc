@@ -41,6 +41,11 @@
 	(d_parse_file): Likewise.
 	(deps_write): Update signature.
 
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Call D_handle_option_auto.
+	* lang.opt (Wunknown-pragmas): Turn on warning with -Wall.
+
 2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_handle_option): Replace -fin with -fpreconditions;

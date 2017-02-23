@@ -105,7 +105,7 @@ D
 ; Documented in C
 
 Wunknown-pragmas
-D
+D LangEnabledBy(D, Wall)
 ; Documented in C
 
 debuglib=
