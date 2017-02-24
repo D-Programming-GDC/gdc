@@ -231,7 +231,13 @@ class OutOfMemoryError : Error
 
     override string toString() const @trusted
     {
-        return msg.length ? (cast()super).toString() : "Memory allocation failed";
+        return msg.length ? (cast()this).superToString() : "Memory allocation failed";
+    }
+
+    // kludge to call non-const super.toString
+    private string superToString() @trusted
+    {
+        return super.toString();
     }
 }
 
@@ -243,6 +249,7 @@ unittest
         assert(oome.line == __LINE__ - 2);
         assert(oome.next is null);
         assert(oome.msg == "Memory allocation failed");
+        assert(oome.toString.length);
     }
 
     {
@@ -273,7 +280,13 @@ class InvalidMemoryOperationError : Error
 
     override string toString() const @trusted
     {
-        return msg.length ? (cast()super).toString() : "Invalid memory operation";
+        return msg.length ? (cast()this).superToString() : "Invalid memory operation";
+    }
+
+    // kludge to call non-const super.toString
+    private string superToString() @trusted
+    {
+        return super.toString();
     }
 }
 
@@ -285,6 +298,7 @@ unittest
         assert(oome.line == __LINE__ - 2);
         assert(oome.next is null);
         assert(oome.msg == "Invalid memory operation");
+        assert(oome.toString.length);
     }
 
     {
