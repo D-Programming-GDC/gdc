@@ -239,15 +239,94 @@ am__objects_12 = core/sys/linux/config.lo core/sys/linux/dlfcn.lo \
 	core/sys/linux/fcntl.lo core/sys/linux/link.lo \
 	core/sys/linux/stdio.lo core/sys/linux/sys/inotify.lo \
 	core/sys/linux/sys/mman.lo core/sys/linux/sys/signalfd.lo \
-	core/sys/linux/sys/sysinfo.lo core/sys/linux/sys/xattr.lo \
-	core/sys/linux/termios.lo core/sys/linux/time.lo \
-	core/sys/linux/timerfd.lo core/sys/linux/tipc.lo \
-	core/sys/linux/unistd.lo
+	core/sys/linux/sys/socket.lo core/sys/linux/sys/sysinfo.lo \
+	core/sys/linux/sys/xattr.lo core/sys/linux/termios.lo \
+	core/sys/linux/time.lo core/sys/linux/timerfd.lo \
+	core/sys/linux/tipc.lo core/sys/linux/unistd.lo
 @DRUNTIME_OS_LINUX_TRUE@am__objects_13 = $(am__objects_12)
-am__objects_14 = core/sys/windows/com.lo core/sys/windows/dbghelp.lo \
-	core/sys/windows/dll.lo core/sys/windows/stacktrace.lo \
-	core/sys/windows/stat.lo core/sys/windows/threadaux.lo \
-	core/sys/windows/windows.lo core/sys/windows/winsock2.lo
+am__objects_14 = core/sys/windows/accctrl.lo \
+	core/sys/windows/aclapi.lo core/sys/windows/aclui.lo \
+	core/sys/windows/basetsd.lo core/sys/windows/basetyps.lo \
+	core/sys/windows/cderr.lo core/sys/windows/cguid.lo \
+	core/sys/windows/com.lo core/sys/windows/comcat.lo \
+	core/sys/windows/commctrl.lo core/sys/windows/commdlg.lo \
+	core/sys/windows/core.lo core/sys/windows/cpl.lo \
+	core/sys/windows/cplext.lo core/sys/windows/custcntl.lo \
+	core/sys/windows/dbghelp.lo core/sys/windows/dbghelp_types.lo \
+	core/sys/windows/dbt.lo core/sys/windows/dde.lo \
+	core/sys/windows/ddeml.lo core/sys/windows/dhcpcsdk.lo \
+	core/sys/windows/dlgs.lo core/sys/windows/dll.lo \
+	core/sys/windows/docobj.lo core/sys/windows/errorrep.lo \
+	core/sys/windows/exdisp.lo core/sys/windows/exdispid.lo \
+	core/sys/windows/httpext.lo core/sys/windows/idispids.lo \
+	core/sys/windows/imagehlp.lo core/sys/windows/imm.lo \
+	core/sys/windows/intshcut.lo core/sys/windows/ipexport.lo \
+	core/sys/windows/iphlpapi.lo core/sys/windows/ipifcons.lo \
+	core/sys/windows/iprtrmib.lo core/sys/windows/iptypes.lo \
+	core/sys/windows/isguids.lo core/sys/windows/lm.lo \
+	core/sys/windows/lmaccess.lo core/sys/windows/lmalert.lo \
+	core/sys/windows/lmapibuf.lo core/sys/windows/lmat.lo \
+	core/sys/windows/lmaudit.lo core/sys/windows/lmbrowsr.lo \
+	core/sys/windows/lmchdev.lo core/sys/windows/lmconfig.lo \
+	core/sys/windows/lmcons.lo core/sys/windows/lmerr.lo \
+	core/sys/windows/lmerrlog.lo core/sys/windows/lmmsg.lo \
+	core/sys/windows/lmremutl.lo core/sys/windows/lmrepl.lo \
+	core/sys/windows/lmserver.lo core/sys/windows/lmshare.lo \
+	core/sys/windows/lmsname.lo core/sys/windows/lmstats.lo \
+	core/sys/windows/lmsvc.lo core/sys/windows/lmuse.lo \
+	core/sys/windows/lmuseflg.lo core/sys/windows/lmwksta.lo \
+	core/sys/windows/lzexpand.lo core/sys/windows/mapi.lo \
+	core/sys/windows/mciavi.lo core/sys/windows/mcx.lo \
+	core/sys/windows/mgmtapi.lo core/sys/windows/mmsystem.lo \
+	core/sys/windows/msacm.lo core/sys/windows/mshtml.lo \
+	core/sys/windows/mswsock.lo core/sys/windows/nb30.lo \
+	core/sys/windows/nddeapi.lo core/sys/windows/nspapi.lo \
+	core/sys/windows/ntdef.lo core/sys/windows/ntdll.lo \
+	core/sys/windows/ntldap.lo core/sys/windows/ntsecapi.lo \
+	core/sys/windows/ntsecpkg.lo core/sys/windows/oaidl.lo \
+	core/sys/windows/objbase.lo core/sys/windows/objfwd.lo \
+	core/sys/windows/objidl.lo core/sys/windows/objsafe.lo \
+	core/sys/windows/ocidl.lo core/sys/windows/odbcinst.lo \
+	core/sys/windows/ole.lo core/sys/windows/ole2.lo \
+	core/sys/windows/ole2ver.lo core/sys/windows/oleacc.lo \
+	core/sys/windows/oleauto.lo core/sys/windows/olectl.lo \
+	core/sys/windows/olectlid.lo core/sys/windows/oledlg.lo \
+	core/sys/windows/oleidl.lo core/sys/windows/pbt.lo \
+	core/sys/windows/powrprof.lo core/sys/windows/prsht.lo \
+	core/sys/windows/psapi.lo core/sys/windows/rapi.lo \
+	core/sys/windows/ras.lo core/sys/windows/rasdlg.lo \
+	core/sys/windows/raserror.lo core/sys/windows/rassapi.lo \
+	core/sys/windows/reason.lo core/sys/windows/regstr.lo \
+	core/sys/windows/richedit.lo core/sys/windows/richole.lo \
+	core/sys/windows/rpc.lo core/sys/windows/rpcdce.lo \
+	core/sys/windows/rpcdce2.lo core/sys/windows/rpcdcep.lo \
+	core/sys/windows/rpcndr.lo core/sys/windows/rpcnsi.lo \
+	core/sys/windows/rpcnsip.lo core/sys/windows/rpcnterr.lo \
+	core/sys/windows/schannel.lo core/sys/windows/secext.lo \
+	core/sys/windows/security.lo core/sys/windows/servprov.lo \
+	core/sys/windows/setupapi.lo core/sys/windows/shellapi.lo \
+	core/sys/windows/shldisp.lo core/sys/windows/shlguid.lo \
+	core/sys/windows/shlobj.lo core/sys/windows/shlwapi.lo \
+	core/sys/windows/snmp.lo core/sys/windows/sql.lo \
+	core/sys/windows/sqlext.lo core/sys/windows/sqltypes.lo \
+	core/sys/windows/sqlucode.lo core/sys/windows/sspi.lo \
+	core/sys/windows/stacktrace.lo core/sys/windows/stat.lo \
+	core/sys/windows/subauth.lo core/sys/windows/threadaux.lo \
+	core/sys/windows/tlhelp32.lo core/sys/windows/tmschema.lo \
+	core/sys/windows/unknwn.lo core/sys/windows/uuid.lo \
+	core/sys/windows/vfw.lo core/sys/windows/w32api.lo \
+	core/sys/windows/winbase.lo core/sys/windows/winber.lo \
+	core/sys/windows/wincon.lo core/sys/windows/wincrypt.lo \
+	core/sys/windows/windef.lo core/sys/windows/windows.lo \
+	core/sys/windows/winerror.lo core/sys/windows/wingdi.lo \
+	core/sys/windows/winhttp.lo core/sys/windows/wininet.lo \
+	core/sys/windows/winioctl.lo core/sys/windows/winldap.lo \
+	core/sys/windows/winnetwk.lo core/sys/windows/winnls.lo \
+	core/sys/windows/winnt.lo core/sys/windows/winperf.lo \
+	core/sys/windows/winreg.lo core/sys/windows/winsock2.lo \
+	core/sys/windows/winspool.lo core/sys/windows/winsvc.lo \
+	core/sys/windows/winuser.lo core/sys/windows/winver.lo \
+	core/sys/windows/wtsapi32.lo core/sys/windows/wtypes.lo
 @DRUNTIME_OS_MINGW_TRUE@am__objects_15 = $(am__objects_14)
 am__objects_16 = core/sys/solaris/dlfcn.lo core/sys/solaris/elf.lo \
 	core/sys/solaris/execinfo.lo core/sys/solaris/libelf.lo \
@@ -258,7 +337,8 @@ am__objects_16 = core/sys/solaris/dlfcn.lo core/sys/solaris/elf.lo \
 	core/sys/solaris/sys/elf_notes.lo \
 	core/sys/solaris/sys/elftypes.lo core/sys/solaris/sys/link.lo \
 	core/sys/solaris/sys/priocntl.lo \
-	core/sys/solaris/sys/procset.lo core/sys/solaris/sys/types.lo
+	core/sys/solaris/sys/procset.lo core/sys/solaris/sys/types.lo \
+	core/sys/solaris/time.lo
 @DRUNTIME_OS_SOLARIS_TRUE@am__objects_17 = $(am__objects_16)
 am__objects_18 = gcc/config.lo gcc/libbacktrace.lo
 am__objects_19 = $(am__objects_1) $(am__objects_3) $(am__objects_5) \
@@ -629,10 +709,10 @@ DRUNTIME_DSOURCES_LINUX = core/sys/linux/config.d \
 	core/sys/linux/errno.d core/sys/linux/execinfo.d \
 	core/sys/linux/fcntl.d core/sys/linux/link.d core/sys/linux/stdio.d \
 	core/sys/linux/sys/inotify.d core/sys/linux/sys/mman.d \
-	core/sys/linux/sys/signalfd.d core/sys/linux/sys/sysinfo.d \
-	core/sys/linux/sys/xattr.d core/sys/linux/termios.d \
-	core/sys/linux/time.d core/sys/linux/timerfd.d core/sys/linux/tipc.d \
-	core/sys/linux/unistd.d
+	core/sys/linux/sys/signalfd.d core/sys/linux/sys/socket.d \
+	core/sys/linux/sys/sysinfo.d core/sys/linux/sys/xattr.d \
+	core/sys/linux/termios.d core/sys/linux/time.d \
+	core/sys/linux/timerfd.d core/sys/linux/tipc.d core/sys/linux/unistd.d
 
 DRUNTIME_DSOURCES_OSX = core/sys/osx/execinfo.d \
 	core/sys/osx/mach/dyld.d core/sys/osx/mach/getsect.d \
@@ -670,13 +750,92 @@ DRUNTIME_DSOURCES_SOLARIS = core/sys/solaris/dlfcn.d \
 	core/sys/solaris/sys/elf_SPARC.d core/sys/solaris/sys/elf_amd64.d \
 	core/sys/solaris/sys/elf_notes.d core/sys/solaris/sys/elftypes.d \
 	core/sys/solaris/sys/link.d core/sys/solaris/sys/priocntl.d \
-	core/sys/solaris/sys/procset.d core/sys/solaris/sys/types.d
+	core/sys/solaris/sys/procset.d core/sys/solaris/sys/types.d \
+	core/sys/solaris/time.d
 
-DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/com.d \
-	core/sys/windows/dbghelp.d core/sys/windows/dll.d \
-	core/sys/windows/stacktrace.d core/sys/windows/stat.d \
-	core/sys/windows/threadaux.d core/sys/windows/windows.d \
-	core/sys/windows/winsock2.d
+DRUNTIME_DSOURCES_WINDOWS = core/sys/windows/accctrl.d \
+	core/sys/windows/aclapi.d core/sys/windows/aclui.d \
+	core/sys/windows/basetsd.d core/sys/windows/basetyps.d \
+	core/sys/windows/cderr.d core/sys/windows/cguid.d \
+	core/sys/windows/com.d core/sys/windows/comcat.d \
+	core/sys/windows/commctrl.d core/sys/windows/commdlg.d \
+	core/sys/windows/core.d core/sys/windows/cpl.d \
+	core/sys/windows/cplext.d core/sys/windows/custcntl.d \
+	core/sys/windows/dbghelp.d core/sys/windows/dbghelp_types.d \
+	core/sys/windows/dbt.d core/sys/windows/dde.d core/sys/windows/ddeml.d \
+	core/sys/windows/dhcpcsdk.d core/sys/windows/dlgs.d \
+	core/sys/windows/dll.d core/sys/windows/docobj.d \
+	core/sys/windows/errorrep.d core/sys/windows/exdisp.d \
+	core/sys/windows/exdispid.d core/sys/windows/httpext.d \
+	core/sys/windows/idispids.d core/sys/windows/imagehlp.d \
+	core/sys/windows/imm.d core/sys/windows/intshcut.d \
+	core/sys/windows/ipexport.d core/sys/windows/iphlpapi.d \
+	core/sys/windows/ipifcons.d core/sys/windows/iprtrmib.d \
+	core/sys/windows/iptypes.d core/sys/windows/isguids.d \
+	core/sys/windows/lm.d core/sys/windows/lmaccess.d \
+	core/sys/windows/lmalert.d core/sys/windows/lmapibuf.d \
+	core/sys/windows/lmat.d core/sys/windows/lmaudit.d \
+	core/sys/windows/lmbrowsr.d core/sys/windows/lmchdev.d \
+	core/sys/windows/lmconfig.d core/sys/windows/lmcons.d \
+	core/sys/windows/lmerr.d core/sys/windows/lmerrlog.d \
+	core/sys/windows/lmmsg.d core/sys/windows/lmremutl.d \
+	core/sys/windows/lmrepl.d core/sys/windows/lmserver.d \
+	core/sys/windows/lmshare.d core/sys/windows/lmsname.d \
+	core/sys/windows/lmstats.d core/sys/windows/lmsvc.d \
+	core/sys/windows/lmuse.d core/sys/windows/lmuseflg.d \
+	core/sys/windows/lmwksta.d core/sys/windows/lzexpand.d \
+	core/sys/windows/mapi.d core/sys/windows/mciavi.d \
+	core/sys/windows/mcx.d core/sys/windows/mgmtapi.d \
+	core/sys/windows/mmsystem.d core/sys/windows/msacm.d \
+	core/sys/windows/mshtml.d core/sys/windows/mswsock.d \
+	core/sys/windows/nb30.d core/sys/windows/nddeapi.d \
+	core/sys/windows/nspapi.d core/sys/windows/ntdef.d \
+	core/sys/windows/ntdll.d core/sys/windows/ntldap.d \
+	core/sys/windows/ntsecapi.d core/sys/windows/ntsecpkg.d \
+	core/sys/windows/oaidl.d core/sys/windows/objbase.d \
+	core/sys/windows/objfwd.d core/sys/windows/objidl.d \
+	core/sys/windows/objsafe.d core/sys/windows/ocidl.d \
+	core/sys/windows/odbcinst.d core/sys/windows/ole.d \
+	core/sys/windows/ole2.d core/sys/windows/ole2ver.d \
+	core/sys/windows/oleacc.d core/sys/windows/oleauto.d \
+	core/sys/windows/olectl.d core/sys/windows/olectlid.d \
+	core/sys/windows/oledlg.d core/sys/windows/oleidl.d \
+	core/sys/windows/pbt.d core/sys/windows/powrprof.d \
+	core/sys/windows/prsht.d core/sys/windows/psapi.d \
+	core/sys/windows/rapi.d core/sys/windows/ras.d \
+	core/sys/windows/rasdlg.d core/sys/windows/raserror.d \
+	core/sys/windows/rassapi.d core/sys/windows/reason.d \
+	core/sys/windows/regstr.d core/sys/windows/richedit.d \
+	core/sys/windows/richole.d core/sys/windows/rpc.d \
+	core/sys/windows/rpcdce.d core/sys/windows/rpcdce2.d \
+	core/sys/windows/rpcdcep.d core/sys/windows/rpcndr.d \
+	core/sys/windows/rpcnsi.d core/sys/windows/rpcnsip.d \
+	core/sys/windows/rpcnterr.d core/sys/windows/schannel.d \
+	core/sys/windows/secext.d core/sys/windows/security.d \
+	core/sys/windows/servprov.d core/sys/windows/setupapi.d \
+	core/sys/windows/shellapi.d core/sys/windows/shldisp.d \
+	core/sys/windows/shlguid.d core/sys/windows/shlobj.d \
+	core/sys/windows/shlwapi.d core/sys/windows/snmp.d \
+	core/sys/windows/sql.d core/sys/windows/sqlext.d \
+	core/sys/windows/sqltypes.d core/sys/windows/sqlucode.d \
+	core/sys/windows/sspi.d core/sys/windows/stacktrace.d \
+	core/sys/windows/stat.d core/sys/windows/subauth.d \
+	core/sys/windows/threadaux.d core/sys/windows/tlhelp32.d \
+	core/sys/windows/tmschema.d core/sys/windows/unknwn.d \
+	core/sys/windows/uuid.d core/sys/windows/vfw.d \
+	core/sys/windows/w32api.d core/sys/windows/winbase.d \
+	core/sys/windows/winber.d core/sys/windows/wincon.d \
+	core/sys/windows/wincrypt.d core/sys/windows/windef.d \
+	core/sys/windows/windows.d core/sys/windows/winerror.d \
+	core/sys/windows/wingdi.d core/sys/windows/winhttp.d \
+	core/sys/windows/wininet.d core/sys/windows/winioctl.d \
+	core/sys/windows/winldap.d core/sys/windows/winnetwk.d \
+	core/sys/windows/winnls.d core/sys/windows/winnt.d \
+	core/sys/windows/winperf.d core/sys/windows/winreg.d \
+	core/sys/windows/winsock2.d core/sys/windows/winspool.d \
+	core/sys/windows/winsvc.d core/sys/windows/winuser.d \
+	core/sys/windows/winver.d core/sys/windows/wtsapi32.d \
+	core/sys/windows/wtypes.d
 
 DRUNTIME_DISOURCES = __entrypoint.di
 all: all-am
@@ -1053,6 +1212,7 @@ core/sys/linux/sys/$(am__dirstamp):
 core/sys/linux/sys/inotify.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/mman.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/signalfd.lo: core/sys/linux/sys/$(am__dirstamp)
+core/sys/linux/sys/socket.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/sysinfo.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/sys/xattr.lo: core/sys/linux/sys/$(am__dirstamp)
 core/sys/linux/termios.lo: core/sys/linux/$(am__dirstamp)
@@ -1063,14 +1223,171 @@ core/sys/linux/unistd.lo: core/sys/linux/$(am__dirstamp)
 core/sys/windows/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/windows
 	@: > core/sys/windows/$(am__dirstamp)
+core/sys/windows/accctrl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/aclapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/aclui.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/basetsd.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/basetyps.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/cderr.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/cguid.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/com.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/comcat.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/commctrl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/commdlg.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/core.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/cpl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/cplext.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/custcntl.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/dbghelp.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/dbghelp_types.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/dbt.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/dde.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ddeml.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/dhcpcsdk.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/dlgs.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/dll.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/docobj.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/errorrep.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/exdisp.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/exdispid.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/httpext.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/idispids.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/imagehlp.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/imm.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/intshcut.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ipexport.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/iphlpapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ipifcons.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/iprtrmib.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/iptypes.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/isguids.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lm.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmaccess.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmalert.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmapibuf.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmat.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmaudit.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmbrowsr.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmchdev.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmconfig.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmcons.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmerr.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmerrlog.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmmsg.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmremutl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmrepl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmserver.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmshare.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmsname.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmstats.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmsvc.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmuse.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmuseflg.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lmwksta.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/lzexpand.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/mapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/mciavi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/mcx.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/mgmtapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/mmsystem.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/msacm.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/mshtml.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/mswsock.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/nb30.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/nddeapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/nspapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ntdef.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ntdll.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ntldap.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ntsecapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ntsecpkg.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/oaidl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/objbase.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/objfwd.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/objidl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/objsafe.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ocidl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/odbcinst.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ole.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ole2.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ole2ver.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/oleacc.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/oleauto.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/olectl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/olectlid.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/oledlg.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/oleidl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/pbt.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/powrprof.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/prsht.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/psapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/ras.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rasdlg.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/raserror.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rassapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/reason.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/regstr.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/richedit.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/richole.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpc.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpcdce.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpcdce2.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpcdcep.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpcndr.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpcnsi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpcnsip.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/rpcnterr.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/schannel.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/secext.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/security.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/servprov.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/setupapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/shellapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/shldisp.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/shlguid.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/shlobj.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/shlwapi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/snmp.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/sql.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/sqlext.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/sqltypes.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/sqlucode.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/sspi.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/stacktrace.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/stat.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/subauth.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/threadaux.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/tlhelp32.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/tmschema.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/unknwn.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/uuid.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/vfw.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/w32api.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winbase.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winber.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/wincon.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/wincrypt.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/windef.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/windows.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winerror.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/wingdi.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winhttp.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/wininet.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winioctl.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winldap.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winnetwk.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winnls.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winnt.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winperf.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winreg.lo: core/sys/windows/$(am__dirstamp)
 core/sys/windows/winsock2.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winspool.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winsvc.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winuser.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/winver.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/wtsapi32.lo: core/sys/windows/$(am__dirstamp)
+core/sys/windows/wtypes.lo: core/sys/windows/$(am__dirstamp)
 core/sys/solaris/$(am__dirstamp):
 	@$(MKDIR_P) core/sys/solaris
 	@: > core/sys/solaris/$(am__dirstamp)
@@ -1097,6 +1414,7 @@ core/sys/solaris/sys/priocntl.lo:  \
 	core/sys/solaris/sys/$(am__dirstamp)
 core/sys/solaris/sys/procset.lo: core/sys/solaris/sys/$(am__dirstamp)
 core/sys/solaris/sys/types.lo: core/sys/solaris/sys/$(am__dirstamp)
+core/sys/solaris/time.lo: core/sys/solaris/$(am__dirstamp)
 gcc/config.lo: gcc/$(am__dirstamp)
 gcc/libbacktrace.lo: gcc/$(am__dirstamp)
 libgdruntime.la: $(libgdruntime_la_OBJECTS) $(libgdruntime_la_DEPENDENCIES) $(EXTRA_libgdruntime_la_DEPENDENCIES) 
@@ -1255,6 +1573,8 @@ mostlyclean-compile:
 	-rm -f core/sys/linux/sys/mman.lo
 	-rm -f core/sys/linux/sys/signalfd.$(OBJEXT)
 	-rm -f core/sys/linux/sys/signalfd.lo
+	-rm -f core/sys/linux/sys/socket.$(OBJEXT)
+	-rm -f core/sys/linux/sys/socket.lo
 	-rm -f core/sys/linux/sys/sysinfo.$(OBJEXT)
 	-rm -f core/sys/linux/sys/sysinfo.lo
 	-rm -f core/sys/linux/sys/xattr.$(OBJEXT)
@@ -1407,22 +1727,338 @@ mostlyclean-compile:
 	-rm -f core/sys/solaris/sys/procset.lo
 	-rm -f core/sys/solaris/sys/types.$(OBJEXT)
 	-rm -f core/sys/solaris/sys/types.lo
+	-rm -f core/sys/solaris/time.$(OBJEXT)
+	-rm -f core/sys/solaris/time.lo
+	-rm -f core/sys/windows/accctrl.$(OBJEXT)
+	-rm -f core/sys/windows/accctrl.lo
+	-rm -f core/sys/windows/aclapi.$(OBJEXT)
+	-rm -f core/sys/windows/aclapi.lo
+	-rm -f core/sys/windows/aclui.$(OBJEXT)
+	-rm -f core/sys/windows/aclui.lo
+	-rm -f core/sys/windows/basetsd.$(OBJEXT)
+	-rm -f core/sys/windows/basetsd.lo
+	-rm -f core/sys/windows/basetyps.$(OBJEXT)
+	-rm -f core/sys/windows/basetyps.lo
+	-rm -f core/sys/windows/cderr.$(OBJEXT)
+	-rm -f core/sys/windows/cderr.lo
+	-rm -f core/sys/windows/cguid.$(OBJEXT)
+	-rm -f core/sys/windows/cguid.lo
 	-rm -f core/sys/windows/com.$(OBJEXT)
 	-rm -f core/sys/windows/com.lo
+	-rm -f core/sys/windows/comcat.$(OBJEXT)
+	-rm -f core/sys/windows/comcat.lo
+	-rm -f core/sys/windows/commctrl.$(OBJEXT)
+	-rm -f core/sys/windows/commctrl.lo
+	-rm -f core/sys/windows/commdlg.$(OBJEXT)
+	-rm -f core/sys/windows/commdlg.lo
+	-rm -f core/sys/windows/core.$(OBJEXT)
+	-rm -f core/sys/windows/core.lo
+	-rm -f core/sys/windows/cpl.$(OBJEXT)
+	-rm -f core/sys/windows/cpl.lo
+	-rm -f core/sys/windows/cplext.$(OBJEXT)
+	-rm -f core/sys/windows/cplext.lo
+	-rm -f core/sys/windows/custcntl.$(OBJEXT)
+	-rm -f core/sys/windows/custcntl.lo
 	-rm -f core/sys/windows/dbghelp.$(OBJEXT)
 	-rm -f core/sys/windows/dbghelp.lo
+	-rm -f core/sys/windows/dbghelp_types.$(OBJEXT)
+	-rm -f core/sys/windows/dbghelp_types.lo
+	-rm -f core/sys/windows/dbt.$(OBJEXT)
+	-rm -f core/sys/windows/dbt.lo
+	-rm -f core/sys/windows/dde.$(OBJEXT)
+	-rm -f core/sys/windows/dde.lo
+	-rm -f core/sys/windows/ddeml.$(OBJEXT)
+	-rm -f core/sys/windows/ddeml.lo
+	-rm -f core/sys/windows/dhcpcsdk.$(OBJEXT)
+	-rm -f core/sys/windows/dhcpcsdk.lo
+	-rm -f core/sys/windows/dlgs.$(OBJEXT)
+	-rm -f core/sys/windows/dlgs.lo
 	-rm -f core/sys/windows/dll.$(OBJEXT)
 	-rm -f core/sys/windows/dll.lo
+	-rm -f core/sys/windows/docobj.$(OBJEXT)
+	-rm -f core/sys/windows/docobj.lo
+	-rm -f core/sys/windows/errorrep.$(OBJEXT)
+	-rm -f core/sys/windows/errorrep.lo
+	-rm -f core/sys/windows/exdisp.$(OBJEXT)
+	-rm -f core/sys/windows/exdisp.lo
+	-rm -f core/sys/windows/exdispid.$(OBJEXT)
+	-rm -f core/sys/windows/exdispid.lo
+	-rm -f core/sys/windows/httpext.$(OBJEXT)
+	-rm -f core/sys/windows/httpext.lo
+	-rm -f core/sys/windows/idispids.$(OBJEXT)
+	-rm -f core/sys/windows/idispids.lo
+	-rm -f core/sys/windows/imagehlp.$(OBJEXT)
+	-rm -f core/sys/windows/imagehlp.lo
+	-rm -f core/sys/windows/imm.$(OBJEXT)
+	-rm -f core/sys/windows/imm.lo
+	-rm -f core/sys/windows/intshcut.$(OBJEXT)
+	-rm -f core/sys/windows/intshcut.lo
+	-rm -f core/sys/windows/ipexport.$(OBJEXT)
+	-rm -f core/sys/windows/ipexport.lo
+	-rm -f core/sys/windows/iphlpapi.$(OBJEXT)
+	-rm -f core/sys/windows/iphlpapi.lo
+	-rm -f core/sys/windows/ipifcons.$(OBJEXT)
+	-rm -f core/sys/windows/ipifcons.lo
+	-rm -f core/sys/windows/iprtrmib.$(OBJEXT)
+	-rm -f core/sys/windows/iprtrmib.lo
+	-rm -f core/sys/windows/iptypes.$(OBJEXT)
+	-rm -f core/sys/windows/iptypes.lo
+	-rm -f core/sys/windows/isguids.$(OBJEXT)
+	-rm -f core/sys/windows/isguids.lo
+	-rm -f core/sys/windows/lm.$(OBJEXT)
+	-rm -f core/sys/windows/lm.lo
+	-rm -f core/sys/windows/lmaccess.$(OBJEXT)
+	-rm -f core/sys/windows/lmaccess.lo
+	-rm -f core/sys/windows/lmalert.$(OBJEXT)
+	-rm -f core/sys/windows/lmalert.lo
+	-rm -f core/sys/windows/lmapibuf.$(OBJEXT)
+	-rm -f core/sys/windows/lmapibuf.lo
+	-rm -f core/sys/windows/lmat.$(OBJEXT)
+	-rm -f core/sys/windows/lmat.lo
+	-rm -f core/sys/windows/lmaudit.$(OBJEXT)
+	-rm -f core/sys/windows/lmaudit.lo
+	-rm -f core/sys/windows/lmbrowsr.$(OBJEXT)
+	-rm -f core/sys/windows/lmbrowsr.lo
+	-rm -f core/sys/windows/lmchdev.$(OBJEXT)
+	-rm -f core/sys/windows/lmchdev.lo
+	-rm -f core/sys/windows/lmconfig.$(OBJEXT)
+	-rm -f core/sys/windows/lmconfig.lo
+	-rm -f core/sys/windows/lmcons.$(OBJEXT)
+	-rm -f core/sys/windows/lmcons.lo
+	-rm -f core/sys/windows/lmerr.$(OBJEXT)
+	-rm -f core/sys/windows/lmerr.lo
+	-rm -f core/sys/windows/lmerrlog.$(OBJEXT)
+	-rm -f core/sys/windows/lmerrlog.lo
+	-rm -f core/sys/windows/lmmsg.$(OBJEXT)
+	-rm -f core/sys/windows/lmmsg.lo
+	-rm -f core/sys/windows/lmremutl.$(OBJEXT)
+	-rm -f core/sys/windows/lmremutl.lo
+	-rm -f core/sys/windows/lmrepl.$(OBJEXT)
+	-rm -f core/sys/windows/lmrepl.lo
+	-rm -f core/sys/windows/lmserver.$(OBJEXT)
+	-rm -f core/sys/windows/lmserver.lo
+	-rm -f core/sys/windows/lmshare.$(OBJEXT)
+	-rm -f core/sys/windows/lmshare.lo
+	-rm -f core/sys/windows/lmsname.$(OBJEXT)
+	-rm -f core/sys/windows/lmsname.lo
+	-rm -f core/sys/windows/lmstats.$(OBJEXT)
+	-rm -f core/sys/windows/lmstats.lo
+	-rm -f core/sys/windows/lmsvc.$(OBJEXT)
+	-rm -f core/sys/windows/lmsvc.lo
+	-rm -f core/sys/windows/lmuse.$(OBJEXT)
+	-rm -f core/sys/windows/lmuse.lo
+	-rm -f core/sys/windows/lmuseflg.$(OBJEXT)
+	-rm -f core/sys/windows/lmuseflg.lo
+	-rm -f core/sys/windows/lmwksta.$(OBJEXT)
+	-rm -f core/sys/windows/lmwksta.lo
+	-rm -f core/sys/windows/lzexpand.$(OBJEXT)
+	-rm -f core/sys/windows/lzexpand.lo
+	-rm -f core/sys/windows/mapi.$(OBJEXT)
+	-rm -f core/sys/windows/mapi.lo
+	-rm -f core/sys/windows/mciavi.$(OBJEXT)
+	-rm -f core/sys/windows/mciavi.lo
+	-rm -f core/sys/windows/mcx.$(OBJEXT)
+	-rm -f core/sys/windows/mcx.lo
+	-rm -f core/sys/windows/mgmtapi.$(OBJEXT)
+	-rm -f core/sys/windows/mgmtapi.lo
+	-rm -f core/sys/windows/mmsystem.$(OBJEXT)
+	-rm -f core/sys/windows/mmsystem.lo
+	-rm -f core/sys/windows/msacm.$(OBJEXT)
+	-rm -f core/sys/windows/msacm.lo
+	-rm -f core/sys/windows/mshtml.$(OBJEXT)
+	-rm -f core/sys/windows/mshtml.lo
+	-rm -f core/sys/windows/mswsock.$(OBJEXT)
+	-rm -f core/sys/windows/mswsock.lo
+	-rm -f core/sys/windows/nb30.$(OBJEXT)
+	-rm -f core/sys/windows/nb30.lo
+	-rm -f core/sys/windows/nddeapi.$(OBJEXT)
+	-rm -f core/sys/windows/nddeapi.lo
+	-rm -f core/sys/windows/nspapi.$(OBJEXT)
+	-rm -f core/sys/windows/nspapi.lo
+	-rm -f core/sys/windows/ntdef.$(OBJEXT)
+	-rm -f core/sys/windows/ntdef.lo
+	-rm -f core/sys/windows/ntdll.$(OBJEXT)
+	-rm -f core/sys/windows/ntdll.lo
+	-rm -f core/sys/windows/ntldap.$(OBJEXT)
+	-rm -f core/sys/windows/ntldap.lo
+	-rm -f core/sys/windows/ntsecapi.$(OBJEXT)
+	-rm -f core/sys/windows/ntsecapi.lo
+	-rm -f core/sys/windows/ntsecpkg.$(OBJEXT)
+	-rm -f core/sys/windows/ntsecpkg.lo
+	-rm -f core/sys/windows/oaidl.$(OBJEXT)
+	-rm -f core/sys/windows/oaidl.lo
+	-rm -f core/sys/windows/objbase.$(OBJEXT)
+	-rm -f core/sys/windows/objbase.lo
+	-rm -f core/sys/windows/objfwd.$(OBJEXT)
+	-rm -f core/sys/windows/objfwd.lo
+	-rm -f core/sys/windows/objidl.$(OBJEXT)
+	-rm -f core/sys/windows/objidl.lo
+	-rm -f core/sys/windows/objsafe.$(OBJEXT)
+	-rm -f core/sys/windows/objsafe.lo
+	-rm -f core/sys/windows/ocidl.$(OBJEXT)
+	-rm -f core/sys/windows/ocidl.lo
+	-rm -f core/sys/windows/odbcinst.$(OBJEXT)
+	-rm -f core/sys/windows/odbcinst.lo
+	-rm -f core/sys/windows/ole.$(OBJEXT)
+	-rm -f core/sys/windows/ole.lo
+	-rm -f core/sys/windows/ole2.$(OBJEXT)
+	-rm -f core/sys/windows/ole2.lo
+	-rm -f core/sys/windows/ole2ver.$(OBJEXT)
+	-rm -f core/sys/windows/ole2ver.lo
+	-rm -f core/sys/windows/oleacc.$(OBJEXT)
+	-rm -f core/sys/windows/oleacc.lo
+	-rm -f core/sys/windows/oleauto.$(OBJEXT)
+	-rm -f core/sys/windows/oleauto.lo
+	-rm -f core/sys/windows/olectl.$(OBJEXT)
+	-rm -f core/sys/windows/olectl.lo
+	-rm -f core/sys/windows/olectlid.$(OBJEXT)
+	-rm -f core/sys/windows/olectlid.lo
+	-rm -f core/sys/windows/oledlg.$(OBJEXT)
+	-rm -f core/sys/windows/oledlg.lo
+	-rm -f core/sys/windows/oleidl.$(OBJEXT)
+	-rm -f core/sys/windows/oleidl.lo
+	-rm -f core/sys/windows/pbt.$(OBJEXT)
+	-rm -f core/sys/windows/pbt.lo
+	-rm -f core/sys/windows/powrprof.$(OBJEXT)
+	-rm -f core/sys/windows/powrprof.lo
+	-rm -f core/sys/windows/prsht.$(OBJEXT)
+	-rm -f core/sys/windows/prsht.lo
+	-rm -f core/sys/windows/psapi.$(OBJEXT)
+	-rm -f core/sys/windows/psapi.lo
+	-rm -f core/sys/windows/rapi.$(OBJEXT)
+	-rm -f core/sys/windows/rapi.lo
+	-rm -f core/sys/windows/ras.$(OBJEXT)
+	-rm -f core/sys/windows/ras.lo
+	-rm -f core/sys/windows/rasdlg.$(OBJEXT)
+	-rm -f core/sys/windows/rasdlg.lo
+	-rm -f core/sys/windows/raserror.$(OBJEXT)
+	-rm -f core/sys/windows/raserror.lo
+	-rm -f core/sys/windows/rassapi.$(OBJEXT)
+	-rm -f core/sys/windows/rassapi.lo
+	-rm -f core/sys/windows/reason.$(OBJEXT)
+	-rm -f core/sys/windows/reason.lo
+	-rm -f core/sys/windows/regstr.$(OBJEXT)
+	-rm -f core/sys/windows/regstr.lo
+	-rm -f core/sys/windows/richedit.$(OBJEXT)
+	-rm -f core/sys/windows/richedit.lo
+	-rm -f core/sys/windows/richole.$(OBJEXT)
+	-rm -f core/sys/windows/richole.lo
+	-rm -f core/sys/windows/rpc.$(OBJEXT)
+	-rm -f core/sys/windows/rpc.lo
+	-rm -f core/sys/windows/rpcdce.$(OBJEXT)
+	-rm -f core/sys/windows/rpcdce.lo
+	-rm -f core/sys/windows/rpcdce2.$(OBJEXT)
+	-rm -f core/sys/windows/rpcdce2.lo
+	-rm -f core/sys/windows/rpcdcep.$(OBJEXT)
+	-rm -f core/sys/windows/rpcdcep.lo
+	-rm -f core/sys/windows/rpcndr.$(OBJEXT)
+	-rm -f core/sys/windows/rpcndr.lo
+	-rm -f core/sys/windows/rpcnsi.$(OBJEXT)
+	-rm -f core/sys/windows/rpcnsi.lo
+	-rm -f core/sys/windows/rpcnsip.$(OBJEXT)
+	-rm -f core/sys/windows/rpcnsip.lo
+	-rm -f core/sys/windows/rpcnterr.$(OBJEXT)
+	-rm -f core/sys/windows/rpcnterr.lo
+	-rm -f core/sys/windows/schannel.$(OBJEXT)
+	-rm -f core/sys/windows/schannel.lo
+	-rm -f core/sys/windows/secext.$(OBJEXT)
+	-rm -f core/sys/windows/secext.lo
+	-rm -f core/sys/windows/security.$(OBJEXT)
+	-rm -f core/sys/windows/security.lo
+	-rm -f core/sys/windows/servprov.$(OBJEXT)
+	-rm -f core/sys/windows/servprov.lo
+	-rm -f core/sys/windows/setupapi.$(OBJEXT)
+	-rm -f core/sys/windows/setupapi.lo
+	-rm -f core/sys/windows/shellapi.$(OBJEXT)
+	-rm -f core/sys/windows/shellapi.lo
+	-rm -f core/sys/windows/shldisp.$(OBJEXT)
+	-rm -f core/sys/windows/shldisp.lo
+	-rm -f core/sys/windows/shlguid.$(OBJEXT)
+	-rm -f core/sys/windows/shlguid.lo
+	-rm -f core/sys/windows/shlobj.$(OBJEXT)
+	-rm -f core/sys/windows/shlobj.lo
+	-rm -f core/sys/windows/shlwapi.$(OBJEXT)
+	-rm -f core/sys/windows/shlwapi.lo
+	-rm -f core/sys/windows/snmp.$(OBJEXT)
+	-rm -f core/sys/windows/snmp.lo
+	-rm -f core/sys/windows/sql.$(OBJEXT)
+	-rm -f core/sys/windows/sql.lo
+	-rm -f core/sys/windows/sqlext.$(OBJEXT)
+	-rm -f core/sys/windows/sqlext.lo
+	-rm -f core/sys/windows/sqltypes.$(OBJEXT)
+	-rm -f core/sys/windows/sqltypes.lo
+	-rm -f core/sys/windows/sqlucode.$(OBJEXT)
+	-rm -f core/sys/windows/sqlucode.lo
+	-rm -f core/sys/windows/sspi.$(OBJEXT)
+	-rm -f core/sys/windows/sspi.lo
 	-rm -f core/sys/windows/stacktrace.$(OBJEXT)
 	-rm -f core/sys/windows/stacktrace.lo
 	-rm -f core/sys/windows/stat.$(OBJEXT)
 	-rm -f core/sys/windows/stat.lo
+	-rm -f core/sys/windows/subauth.$(OBJEXT)
+	-rm -f core/sys/windows/subauth.lo
 	-rm -f core/sys/windows/threadaux.$(OBJEXT)
 	-rm -f core/sys/windows/threadaux.lo
+	-rm -f core/sys/windows/tlhelp32.$(OBJEXT)
+	-rm -f core/sys/windows/tlhelp32.lo
+	-rm -f core/sys/windows/tmschema.$(OBJEXT)
+	-rm -f core/sys/windows/tmschema.lo
+	-rm -f core/sys/windows/unknwn.$(OBJEXT)
+	-rm -f core/sys/windows/unknwn.lo
+	-rm -f core/sys/windows/uuid.$(OBJEXT)
+	-rm -f core/sys/windows/uuid.lo
+	-rm -f core/sys/windows/vfw.$(OBJEXT)
+	-rm -f core/sys/windows/vfw.lo
+	-rm -f core/sys/windows/w32api.$(OBJEXT)
+	-rm -f core/sys/windows/w32api.lo
+	-rm -f core/sys/windows/winbase.$(OBJEXT)
+	-rm -f core/sys/windows/winbase.lo
+	-rm -f core/sys/windows/winber.$(OBJEXT)
+	-rm -f core/sys/windows/winber.lo
+	-rm -f core/sys/windows/wincon.$(OBJEXT)
+	-rm -f core/sys/windows/wincon.lo
+	-rm -f core/sys/windows/wincrypt.$(OBJEXT)
+	-rm -f core/sys/windows/wincrypt.lo
+	-rm -f core/sys/windows/windef.$(OBJEXT)
+	-rm -f core/sys/windows/windef.lo
 	-rm -f core/sys/windows/windows.$(OBJEXT)
 	-rm -f core/sys/windows/windows.lo
+	-rm -f core/sys/windows/winerror.$(OBJEXT)
+	-rm -f core/sys/windows/winerror.lo
+	-rm -f core/sys/windows/wingdi.$(OBJEXT)
+	-rm -f core/sys/windows/wingdi.lo
+	-rm -f core/sys/windows/winhttp.$(OBJEXT)
+	-rm -f core/sys/windows/winhttp.lo
+	-rm -f core/sys/windows/wininet.$(OBJEXT)
+	-rm -f core/sys/windows/wininet.lo
+	-rm -f core/sys/windows/winioctl.$(OBJEXT)
+	-rm -f core/sys/windows/winioctl.lo
+	-rm -f core/sys/windows/winldap.$(OBJEXT)
+	-rm -f core/sys/windows/winldap.lo
+	-rm -f core/sys/windows/winnetwk.$(OBJEXT)
+	-rm -f core/sys/windows/winnetwk.lo
+	-rm -f core/sys/windows/winnls.$(OBJEXT)
+	-rm -f core/sys/windows/winnls.lo
+	-rm -f core/sys/windows/winnt.$(OBJEXT)
+	-rm -f core/sys/windows/winnt.lo
+	-rm -f core/sys/windows/winperf.$(OBJEXT)
+	-rm -f core/sys/windows/winperf.lo
+	-rm -f core/sys/windows/winreg.$(OBJEXT)
+	-rm -f core/sys/windows/winreg.lo
 	-rm -f core/sys/windows/winsock2.$(OBJEXT)
 	-rm -f core/sys/windows/winsock2.lo
+	-rm -f core/sys/windows/winspool.$(OBJEXT)
+	-rm -f core/sys/windows/winspool.lo
+	-rm -f core/sys/windows/winsvc.$(OBJEXT)
+	-rm -f core/sys/windows/winsvc.lo
+	-rm -f core/sys/windows/winuser.$(OBJEXT)
+	-rm -f core/sys/windows/winuser.lo
+	-rm -f core/sys/windows/winver.$(OBJEXT)
+	-rm -f core/sys/windows/winver.lo
+	-rm -f core/sys/windows/wtsapi32.$(OBJEXT)
+	-rm -f core/sys/windows/wtsapi32.lo
+	-rm -f core/sys/windows/wtypes.$(OBJEXT)
+	-rm -f core/sys/windows/wtypes.lo
 	-rm -f core/thread.$(OBJEXT)
 	-rm -f core/thread.lo
 	-rm -f core/time.$(OBJEXT)
