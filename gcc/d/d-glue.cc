@@ -225,6 +225,31 @@ vwarning(const Loc& loc, const char *format, va_list ap)
     }
 }
 
+// Print supplementary message about the last warning.
+// Doesn't increase warning count.
+
+void
+warningSupplemental(const Loc& loc, const char *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  vwarningSupplemental(loc, format, ap);
+  va_end(ap);
+}
+
+void
+vwarningSupplemental(const Loc& loc, const char *format, va_list ap)
+{
+  if (global.params.warnings && !global.gag)
+    {
+      location_t location = get_linemap(loc);
+      char *msg;
+
+      if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
+	inform(location, "%s", msg);
+    }
+}
+
 // Print a deprecation message.
 
 void
@@ -256,6 +281,32 @@ vdeprecation(const Loc& loc, const char *format, va_list ap,
 
       if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
 	warning_at(location, OPT_Wdeprecated, "%s", msg);
+    }
+}
+
+// Print supplementary message about the last deprecation.
+
+void
+deprecationSupplemental(const Loc& loc, const char *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  vdeprecationSupplemental(loc, format, ap);
+  va_end(ap);
+}
+
+void
+vdeprecationSupplemental(const Loc& loc, const char *format, va_list ap)
+{
+  if (global.params.useDeprecated == 0)
+    verrorSupplemental(loc, format, ap);
+  else if (global.params.useDeprecated == 2 && !global.gag)
+    {
+      location_t location = get_linemap(loc);
+      char *msg;
+
+      if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
+	inform(location, "%s", msg);
     }
 }
 

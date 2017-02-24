@@ -4859,12 +4859,12 @@ bool TypeExp::checkValue()
 
 // Mainly just a placeholder
 
-ScopeExp::ScopeExp(Loc loc, ScopeDsymbol *pkg)
+ScopeExp::ScopeExp(Loc loc, ScopeDsymbol *sds)
     : Expression(loc, TOKscope, sizeof(ScopeExp))
 {
-    //printf("ScopeExp::ScopeExp(pkg = '%s')\n", pkg->toChars());
+    //printf("ScopeExp::ScopeExp(sds = '%s')\n", sds->toChars());
     //static int count; if (++count == 38) *(char*)0=0;
-    this->sds = pkg;
+    this->sds = sds;
 }
 
 Expression *ScopeExp::syntaxCopy()
@@ -4877,8 +4877,8 @@ Expression *ScopeExp::semantic(Scope *sc)
 #if LOGSEMANTIC
     printf("+ScopeExp::semantic(%p '%s')\n", this, toChars());
 #endif
-    //if (type == Type::tvoid)
-    //    return this;
+    if (type)
+        return this;
 
     ScopeDsymbol *sds2 = sds;
     TemplateInstance *ti = sds2->isTemplateInstance();
@@ -4920,6 +4920,9 @@ Expression *ScopeExp::semantic(Scope *sc)
                     return e->semantic(sc);
                 }
             }
+            // ti is an instance which requires IFTI.
+            sds = ti;
+            type = Type::tvoid;
             return this;
         }
         ti->semantic(sc);
@@ -8654,7 +8657,7 @@ Expression *CallExp::semantic(Scope *sc)
     /* This recognizes:
      *  foo!(tiargs)(funcargs)
      */
-    if (e1->op == TOKscope && !e1->type)
+    if (e1->op == TOKscope)
     {
         ScopeExp *se = (ScopeExp *)e1;
         TemplateInstance *ti = se->sds->isTemplateInstance();
