@@ -4728,6 +4728,29 @@ void test15152()
 }
 
 /******************************************/
+// 15781
+
+void test15781()
+{
+    static struct S
+    {
+        int value;
+    }
+
+    T foo(T)(T a, T b)
+    {
+        return T();
+    }
+
+    const S cs;
+          S ms;
+    static assert(is(typeof(foo(ms, ms)) ==       S));
+    static assert(is(typeof(foo(ms, cs)) == const S));
+    static assert(is(typeof(foo(cs, ms)) == const S));
+    static assert(is(typeof(foo(cs, cs)) == const S));
+}
+
+/******************************************/
 
 int main()
 {

@@ -3193,6 +3193,30 @@ bool test9023()
 static assert(test9023());
 
 /************************************************/
+// 15817
+
+S[] split15817(S)(S s)
+{
+    size_t istart;
+    S[] result;
+
+    foreach (i, c ; s)
+        result ~= s[istart .. i];
+    return result;
+}
+
+int test15817()
+{
+    auto targets = `a1`.split15817;
+    uint[string] counts;
+    foreach (a; targets)
+        counts[a]++;
+    assert(counts == ["":1u, "a":1]);
+    return 1;
+}
+static assert(test15817());
+
+/************************************************/
 
 interface IBug9954
 {
@@ -3514,6 +3538,7 @@ int main()
     test6504();
     test8818();
     test9023();
+    test15817();
     test9954();
     test14140();
     test15681();

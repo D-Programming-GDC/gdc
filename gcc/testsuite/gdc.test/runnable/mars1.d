@@ -1422,6 +1422,36 @@ void test15272()
     *buckets = calloc15272(count)[0 .. count];
 }
 
+/*****************************************
+ * https://issues.dlang.org/show_bug.cgi?id=15861
+ */
+
+void test15861()
+{
+    double val = 4286853117.;
+
+    (){
+        assert(val == 4286853117.);
+    }();
+}
+
+////////////////////////////////////////////////////////////////////////
+
+// https://issues.dlang.org/show_bug.cgi?id=15629 comment 3
+// -O
+
+void test15629()
+{
+    int[] a = [3];
+    int value = a[0] >= 0 ? a[0] : -a[0];
+    assert(a[0] == 3);
+    writeln(value, a);
+}
+
+void writeln(int v, int[] a)
+{
+}
+
 ////////////////////////////////////////////////////////////////////////
  
 int main()
@@ -1472,6 +1502,8 @@ int main()
     test14987();
     test3();
     test15272();
+    test15861();
+    test15629();
     printf("Success\n");
     return 0;
 }
