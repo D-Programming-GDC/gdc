@@ -915,3 +915,11 @@ void test14388()
      * and the second instantiation had created the AST duplication.
      */
 }
+
+/**************************************************
+    3438
+**************************************************/
+import core.vararg;
+struct S3438_1 { this(int x, int y = 1) { } }
+struct S3438_2 { this(int x, ...) { } }
+struct S3438_3 { this(int x, int[] arr...) { } }

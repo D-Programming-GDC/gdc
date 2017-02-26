@@ -22,7 +22,7 @@ bool isConsoleColorSupported();
 
 #ifdef IN_GCC
 __attribute__((format (gnu_printf, 2, 3))) void warning(const Loc& loc, const char *format, ...);
-__attribute__((format (gnu_printf, 2, 3))) void warningSupplementa(const Loc& loc, const char *format, ...);
+__attribute__((format (gnu_printf, 2, 3))) void warningSupplemental(const Loc& loc, const char *format, ...);
 __attribute__((format (gnu_printf, 2, 3))) void deprecation(const Loc& loc, const char *format, ...);
 __attribute__((format (gnu_printf, 2, 3))) void deprecationSupplemental(const Loc& loc, const char *format, ...);
 __attribute__((format (gnu_printf, 2, 3))) void error(const Loc& loc, const char *format, ...);

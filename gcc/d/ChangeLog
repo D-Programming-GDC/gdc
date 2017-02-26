@@ -1,3 +1,10 @@
+2017-02-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-glue.cc (warningSupplemental): New function.
+	(vwarningSupplemental): New function.
+	(deprecationSupplemental): New function.
+	(vdeprecationSupplemental): New function.
+
 2017-02-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* imports.cc (ImportVisitor::visit(OverDeclaration)): New function.
