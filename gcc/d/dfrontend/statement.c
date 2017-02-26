@@ -1479,12 +1479,12 @@ static bool checkVar(SwitchStatement *s, VarDeclaration *vd)
     }
     else if (vd->ident == Id::withSym)
     {
-        s->error("'switch' skips declaration of 'with' temporary at %s", vd->loc.toChars());
+        s->deprecation("'switch' skips declaration of 'with' temporary at %s", vd->loc.toChars());
         return true;
     }
     else
     {
-        s->error("'switch' skips declaration of variable %s at %s", vd->toPrettyChars(), vd->loc.toChars());
+        s->deprecation("'switch' skips declaration of variable %s at %s", vd->toPrettyChars(), vd->loc.toChars());
         return true;
     }
 
@@ -1493,16 +1493,18 @@ static bool checkVar(SwitchStatement *s, VarDeclaration *vd)
 
 bool SwitchStatement::checkLabel()
 {
+    const bool error = true;
+
     if (sdefault && checkVar(this, sdefault->lastVar))
-        return true;
+        return !error; // return error once fully deprecated
 
     for (size_t i = 0; i < cases->dim; i++)
     {
         CaseStatement *scase = (*cases)[i];
         if (scase && checkVar(this, scase->lastVar))
-            return true;
+            return !error; // return error once fully deprecated
     }
-    return false;
+    return !error;
 }
 
 /******************************** CaseStatement ***************************/
