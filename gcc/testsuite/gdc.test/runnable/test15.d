@@ -49,7 +49,7 @@ void test7()
     assert(s == "hello\"there'you");
     ubyte[] b = cast(ubyte[])x"8B 7D f4 0d";
     for (int i = 0; i < b.length; i++)
-	printf("b[%d] = x%02x\n", i, b[i]);
+        printf("b[%d] = x%02x\n", i, b[i]);
     assert(b.length == 4);
     assert(b[0] == 0x8B);
     assert(b[1] == 0x7D);
@@ -98,8 +98,8 @@ struct Pair
    {
        Pair result;
 
-	result.a = a + other.a;
-	result.b = b + other.b;
+        result.a = a + other.a;
+        result.b = b + other.b;
        return result;
    }
 }
@@ -201,8 +201,8 @@ class A15
 {
     void foo()
     {
-	List1.rehash;
-	List2.rehash;
+        List1.rehash;
+        List2.rehash;
     }
   private:
     int delegate(in int arg1) List1[char[]];
@@ -221,7 +221,7 @@ void test16()
     char[] a=new char[0];
     uint c = 200000;
     while (c--)
-	a ~= 'x';
+        a ~= 'x';
     //printf("a = '%.*s'\n", a.length, a.ptr);
 }
 
@@ -348,7 +348,7 @@ abstract class bar25 {
 class subbar25 : bar25 {
 
   this() {}
-  
+
 }
 
 void test25()
@@ -365,12 +365,12 @@ void test26()
 
     foreach(ref string instr; instructions)
     {
-	std.string.strip(instr);
+        std.string.strip(instr);
     }
 
     foreach(string instr; instructions)
     {
-	printf("%.*s\n", instr.length, instr.ptr);
+        printf("%.*s\n", instr.length, instr.ptr);
     }
 }
 
@@ -387,8 +387,8 @@ class B27 : A27
 {
     static this()
     {
-	foo27(B27.classinfo);
-	foo27(A27.classinfo);
+        foo27(B27.classinfo);
+        foo27(A27.classinfo);
     }
 }
 
@@ -406,12 +406,12 @@ void foo28(ClassInfo ci)
     static int i;
     switch (i++)
     {
-	case 0:
-	case 2:	assert(ci.name == "test15.A28");
-		break;
-	case 1:	assert(ci.name == "test15.B28");
-		break;
-	default: assert(0);
+        case 0:
+        case 2: assert(ci.name == "test15.A28");
+                break;
+        case 1: assert(ci.name == "test15.B28");
+                break;
+        default: assert(0);
     }
 }
 
@@ -425,11 +425,11 @@ class A28
 class B28 : A28
 {
     static this() {
-	foo28(B28.classinfo );
-	(new B28()).bodge_it();
+        foo28(B28.classinfo );
+        (new B28()).bodge_it();
     }
     void bodge_it() {
-	foo28(A28.classinfo );
+        foo28(A28.classinfo );
     }
 }
 
@@ -520,13 +520,13 @@ class foo32
 {
     static void getMemberBar()
     {
-	//foo32 f = new foo32(); new A32( &(f.bar) );
-	new A32( &((new foo32()).bar) );
+        //foo32 f = new foo32(); new A32( &(f.bar) );
+        new A32( &((new foo32()).bar) );
     }
 
     int bar()
     {
-	return 0;
+        return 0;
     }
 }
 
@@ -559,14 +559,14 @@ void test34()
 {
     version (D_Bits)
     {
-	bool[8] a8;
-	assert(a8.sizeof == 4);
-	bool[16] a16;
-	assert(a16.sizeof == 4);
-	bool[32] a32;
-	assert(a32.sizeof == 4);
-	bool[256] a256;
-	assert(a256.sizeof == 32);
+        bool[8] a8;
+        assert(a8.sizeof == 4);
+        bool[16] a16;
+        assert(a16.sizeof == 4);
+        bool[32] a32;
+        assert(a32.sizeof == 4);
+        bool[256] a256;
+        assert(a256.sizeof == 32);
     }
 }
 
@@ -593,7 +593,7 @@ void test36x()
 {
     version (Win32)
     {
-//	stdin.getch();
+//      stdin.getch();
     }
 }
 
@@ -609,19 +609,19 @@ struct T37
     char x;
 
     T37 create()
-    {	T37 t;
-	t.x = 3;
-	return t;
+    {   T37 t;
+        t.x = 3;
+        return t;
     }
 
     bool test1()
     {
-	return create() == this;
+        return create() == this;
     }
 
     bool test2()
     {
-	return this == create();
+        return this == create();
     }
 }
 
@@ -709,11 +709,11 @@ class Bar41 : Foo41
 {
     void test()
     {
-	void printFoo41()
-	{
-	    super.print();      // DMD crashes here
-	}
-	printFoo41();
+        void printFoo41()
+        {
+            super.print();      // DMD crashes here
+        }
+        printFoo41();
     }
 }
 
@@ -843,7 +843,7 @@ class Bug47
 
     static void bar()
     {
-	foo(1);
+        foo(1);
     }
 }
 
@@ -937,12 +937,12 @@ deprecated class Qwert
 
     int twiceYuiop()
     {
-	return 2 * yuiop;
+        return 2 * yuiop;
     }
 
     invariant()
     {
-	assert (yuiop < 100);
+        assert (yuiop < 100);
     }
 }
 
@@ -1069,8 +1069,8 @@ void test58()
 {   int y, x;
 
     with ( new A58 )
-    {	y = foo58(0,1);
-	x = foo58();
+    {   y = foo58(0,1);
+        x = foo58();
     }
     assert(y == 2);
     assert(x == 3);
@@ -1083,8 +1083,8 @@ void test59()
 {
     struct data
     {
-	int b1=-1;
-	int b2=2;
+        int b1=-1;
+        int b2=2;
     }
 
     data d;
@@ -1232,7 +1232,7 @@ class FuBar
         void foo ()
         {
                 printf ("should never get here\n");
-		assert(0);
+                assert(0);
         }
 
         const(void)[] get ()
@@ -1292,11 +1292,11 @@ void test68()
 
 class ConduitStyle
 {
-        
-//	static ConduitStyle     Read;
-//	static ConduitStyle     ReadWrite;
 
-	static ConduitStyle     Read, ReadWrite;
+//      static ConduitStyle     Read;
+//      static ConduitStyle     ReadWrite;
+
+        static ConduitStyle     Read, ReadWrite;
 }
 
 void test69()

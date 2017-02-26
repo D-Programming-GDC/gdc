@@ -641,7 +641,7 @@ interface ICov19 {
 }
 
 class Child19 : ICov19, IFoo19 {
-    Child19 covfunc() { 
+    Child19 covfunc() {
         printf("in Child19.covfunc()\n");
         return this;
     }

@@ -1036,9 +1036,9 @@ void testshrshl()
 
 ////////////////////////////////////////////////////////////////////////
 
-struct S1 
-{ 
-    cdouble val; 
+struct S1
+{
+    cdouble val;
 }
 
 void formatTest(S1 s, double re, double im)
@@ -1253,7 +1253,7 @@ void test12057()
 
 
 ////////////////////////////////////////////////////////////////////////
- 
+
 long modulo24 (long ticks)
 {
     ticks %= 864000000000;
@@ -1453,7 +1453,7 @@ void writeln(int v, int[] a)
 }
 
 ////////////////////////////////////////////////////////////////////////
- 
+
 int main()
 {
     testgoto();
