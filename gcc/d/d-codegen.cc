@@ -4326,9 +4326,13 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
       if (fd->nrvo_can && fd->nrvo_var == v)
 	fd->nrvo_can = 0;
 
-      // Because the value needs to survive the end of the scope.
-      if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsScopeDtor())
-	v->error("has scoped destruction, cannot build closure");
+      if (FRAMEINFO_IS_CLOSURE (ffi))
+	{
+	  // Because the value needs to survive the end of the scope.
+	  if ((v->edtor && (v->storage_class & STCparameter))
+	      || v->needsScopeDtor())
+	    v->error("has scoped destruction, cannot build closure");
+	}
     }
 
   TYPE_FIELDS (frame_rec_type) = fields;

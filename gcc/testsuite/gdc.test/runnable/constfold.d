@@ -413,7 +413,7 @@ void test3()
 
      // should print "11111"
      writeln(signbit(n), signbit(m),
-	signbit(c.re), signbit(d.re), signbit(e.re));
+        signbit(c.re), signbit(d.re), signbit(e.re));
 
      assert(signbit(n) == 1);
      assert(signbit(m) == 1);

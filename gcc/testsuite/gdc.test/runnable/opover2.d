@@ -1363,7 +1363,7 @@ void test9453()
 
 struct S9496
 {
-	static S9496* ptr;
+    static S9496* ptr;
 
     size_t opDollar()
     {

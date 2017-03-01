@@ -1613,29 +1613,31 @@ public:
 	  {
 	    // Get the correct callee from the DotVarExp object.
 	    tree fndecl = get_symbol_decl (fd);
+	    AggregateDeclaration *ad = fd->isThis ();
 
 	    // Static method; ignore the object instance.
-	    if (!fd->isThis())
-	      callee = build_address(fndecl);
+	    if (!ad)
+	      callee = build_address (fndecl);
 	    else
 	      {
-		tree thisexp = build_expr(dve->e1);
+		tree thisexp = build_expr (dve->e1);
 
 		// Want reference to 'this' object.
 		if (!POINTER_TYPE_P (TREE_TYPE (thisexp)))
-		  thisexp = build_address(thisexp);
+		  thisexp = build_address (thisexp);
 
 		// Make the callee a virtual call.
-		if (fd->isVirtual() && !fd->isFinalFunc() && !e->directcall)
+		if (fd->isVirtual () && !fd->isFinalFunc () && !e->directcall)
 		  {
-		    tree fntype = build_pointer_type(TREE_TYPE (fndecl));
-		    thisexp = d_save_expr(thisexp);
-		    fndecl = build_vindex_ref(thisexp, fntype, fd->vtblIndex);
+		    tree fntype = build_pointer_type (TREE_TYPE (fndecl));
+		    tree thistype = build_ctype (ad->handleType ());
+		    thisexp = build_nop (thistype, d_save_expr (thisexp));
+		    fndecl = build_vindex_ref (thisexp, fntype, fd->vtblIndex);
 		  }
 		else
-		  fndecl = build_address(fndecl);
+		  fndecl = build_address (fndecl);
 
-		callee = build_method_call(fndecl, thisexp, fd->type);
+		callee = build_method_call (fndecl, thisexp, fd->type);
 	      }
 	  }
       }

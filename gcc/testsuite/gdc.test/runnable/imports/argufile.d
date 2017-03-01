@@ -10,18 +10,18 @@ import std.utf;
 dstring formatstring(TypeInfo[] arguments, va_list argptr)
 {
 
-	dstring message = null; 
+	dstring message = null;
 
 	void putc(dchar c)
 	{
-		message ~= c; 
+		message ~= c;
 	}
 
 
 	std.format.doFormat(&putc, arguments, argptr);
 
-	
-	return message; 
+
+	return message;
 }
 
 string arguments(...) // turns a bunch of arguments into a formatted char[] string
@@ -31,8 +31,8 @@ string arguments(...) // turns a bunch of arguments into a formatted char[] stri
 
 void useargs(...)
 {
-	string crashage = arguments("why is 8 scared of 7? because", 7,8,9); 
-	
-	//printf("%.*s\n", crashage); 
-	writefln(crashage); 
+	string crashage = arguments("why is 8 scared of 7? because", 7,8,9);
+
+	//printf("%.*s\n", crashage);
+	writefln(crashage);
 }

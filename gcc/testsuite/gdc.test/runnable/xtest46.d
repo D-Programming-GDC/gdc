@@ -7614,6 +7614,16 @@ struct Grapheme15961
 }
 
 /***************************************************/
+// 16022
+
+bool test16022()
+{
+    enum Type { Colon, Comma }
+    Type type;
+    return type == Type.Colon, type == Type.Comma;
+}
+
+/***************************************************/
 // 15369
 
 struct MsgTable15369

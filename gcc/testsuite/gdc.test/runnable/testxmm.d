@@ -1394,7 +1394,7 @@ void foo13988(double[] arr)
 {
     static ulong repr(double d) { return *cast(ulong*)&d; }
     foreach (x; arr)
-	assert(repr(arr[0]) == *cast(ulong*)&(arr[0]));
+        assert(repr(arr[0]) == *cast(ulong*)&(arr[0]));
 }
 
 
