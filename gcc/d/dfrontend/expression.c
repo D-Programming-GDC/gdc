@@ -10328,7 +10328,7 @@ Expression *VectorExp::semantic(Scope *sc)
             result |= checkVectorElem(this, ((ArrayLiteralExp *)e1)->getElement(i));
         }
     }
-    else
+    else if (e1->type->ty == Tvoid)
         result = checkVectorElem(this, e1);
 
     Expression *e = this;
@@ -10457,6 +10457,14 @@ Expression *SliceExp::semantic(Scope *sc)
             error("need upper and lower bound to slice tuple");
             return new ErrorExp();
         }
+    }
+    else if (t1b->ty == Tvector)
+    {
+        // Convert e1 to corresponding static array
+        TypeVector *tv1 = (TypeVector *)t1b;
+        t1b = tv1->basetype;
+        t1b = t1b->castMod(tv1->mod);
+        e1->type = t1b;
     }
     else
     {
@@ -11048,6 +11056,15 @@ Expression *IndexExp::semantic(Scope *sc)
     // Note that unlike C we do not implement the int[ptr]
 
     Type *t1b = e1->type->toBasetype();
+
+    if (t1b->ty == Tvector)
+    {
+        // Convert e1 to corresponding static array
+        TypeVector *tv1 = (TypeVector *)t1b;
+        t1b = tv1->basetype;
+        t1b = t1b->castMod(tv1->mod);
+        e1->type = t1b;
+    }
 
     /* Run semantic on e2
      */

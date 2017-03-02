@@ -1,13 +1,61 @@
 // REQUIRED_ARGS:
 
-version (D_SIMD)
-{
-
 import core.simd;
 import core.stdc.string;
 import std.stdio;
 
 alias TypeTuple(T...) = T;
+
+/*****************************************/
+// https://issues.dlang.org/show_bug.cgi?id=16087
+
+static assert(void16.alignof == 16);
+static assert(double2.alignof == 16);
+static assert(float4.alignof == 16);
+static assert(byte16.alignof == 16);
+static assert(ubyte16.alignof == 16);
+static assert(short8.alignof == 16);
+static assert(ushort8.alignof == 16);
+static assert(int4.alignof == 16);
+static assert(uint4.alignof == 16);
+static assert(long2.alignof == 16);
+static assert(ulong2.alignof == 16);
+
+static assert(void16.sizeof == 16);
+static assert(double2.sizeof == 16);
+static assert(float4.sizeof == 16);
+static assert(byte16.sizeof == 16);
+static assert(ubyte16.sizeof == 16);
+static assert(short8.sizeof == 16);
+static assert(ushort8.sizeof == 16);
+static assert(int4.sizeof == 16);
+static assert(uint4.sizeof == 16);
+static assert(long2.sizeof == 16);
+static assert(ulong2.sizeof == 16);
+
+static assert(void32.alignof == 32);
+static assert(double4.alignof == 32);
+static assert(float8.alignof == 32);
+static assert(byte32.alignof == 32);
+static assert(ubyte32.alignof == 32);
+static assert(short16.alignof == 32);
+static assert(ushort16.alignof == 32);
+static assert(int8.alignof == 32);
+static assert(uint8.alignof == 32);
+static assert(long4.alignof == 32);
+static assert(ulong4.alignof == 32);
+
+static assert(void32.sizeof == 32);
+static assert(double4.sizeof == 32);
+static assert(float8.sizeof == 32);
+static assert(byte32.sizeof == 32);
+static assert(ubyte32.sizeof == 32);
+static assert(short16.sizeof == 32);
+static assert(ushort16.sizeof == 32);
+static assert(int8.sizeof == 32);
+static assert(uint8.sizeof == 32);
+static assert(long4.sizeof == 32);
+static assert(ulong4.sizeof == 32);
 
 /*****************************************/
 
@@ -238,6 +286,7 @@ void test2c()
     static assert(!__traits(compiles, v1 <<= 1));
     static assert(!__traits(compiles, v1 >>= 1));
     static assert(!__traits(compiles, v1 >>>= 1));
+    v1 = v1 * 3;
 
     //  A cast from vector to non-vector is allowed only when the target is same size Tsarray.
     static assert(!__traits(compiles, cast(byte)v1));       // 1byte
@@ -673,15 +722,6 @@ void test2j()
 
 /*****************************************/
 
-float4 test3()
-{
-    float4 a;
-    a = __simd(XMM.PXOR, a, a);
-    return a;
-}
-
-/*****************************************/
-
 void test4()
 {
     int4 c = 7;
@@ -727,23 +767,6 @@ void test7951_2()
     f1.array = v1;
     f2.array = v2;
     f3 = f1 + f2;
-}
-
-/*****************************************/
-
-void test7949()
-{
-    int[4] o = [1,2,3,4];
-    int4 v1;
-    v1.array = o;
-    int4 v2;
-    v2.array = o;
-
-
-
-    auto r = __simd(XMM.ADDPS, v1,v2);
-
-    writeln(r.array);
 }
 
 /*****************************************/
@@ -988,247 +1011,6 @@ float bug8060(float x) {
 }
 
 /*****************************************/
-
-float4 test5(float4 a, float4 b)
-{
-    a = __simd(XMM.ADDPD, a, b);
-    a = __simd(XMM.ADDSS, a, b);
-    a = __simd(XMM.ADDSD, a, b);
-    a = __simd(XMM.ADDPS, a, b);
-    a = __simd(XMM.PADDB, a, b);
-    a = __simd(XMM.PADDW, a, b);
-    a = __simd(XMM.PADDD, a, b);
-    a = __simd(XMM.PADDQ, a, b);
-
-    a = __simd(XMM.SUBPD, a, b);
-    a = __simd(XMM.SUBSS, a, b);
-    a = __simd(XMM.SUBSD, a, b);
-    a = __simd(XMM.SUBPS, a, b);
-    a = __simd(XMM.PSUBB, a, b);
-    a = __simd(XMM.PSUBW, a, b);
-    a = __simd(XMM.PSUBD, a, b);
-    a = __simd(XMM.PSUBQ, a, b);
-
-    a = __simd(XMM.MULPD, a, b);
-    a = __simd(XMM.MULSS, a, b);
-    a = __simd(XMM.MULSD, a, b);
-    a = __simd(XMM.MULPS, a, b);
-    a = __simd(XMM.PMULLW, a, b);
-
-    a = __simd(XMM.DIVPD, a, b);
-    a = __simd(XMM.DIVSS, a, b);
-    a = __simd(XMM.DIVSD, a, b);
-    a = __simd(XMM.DIVPS, a, b);
-
-    a = __simd(XMM.PAND, a, b);
-    a = __simd(XMM.POR, a, b);
-
-    a = __simd(XMM.UCOMISS, a, b);
-    a = __simd(XMM.UCOMISD, a, b);
-
-    a = __simd(XMM.XORPS, a, b);
-    a = __simd(XMM.XORPD, a, b);
-
-    a = __simd_sto(XMM.STOSS, a, b);
-    a = __simd_sto(XMM.STOSD, a, b);
-    a = __simd_sto(XMM.STOAPS, a, b);
-    a = __simd_sto(XMM.STOAPD, a, b);
-    a = __simd_sto(XMM.STODQA, a, b);
-    //a = __simd_sto(XMM.STOD, a, b);
-    a = __simd_sto(XMM.STOQ, a, b);
-
-    a = __simd(XMM.LODSS, a);
-    a = __simd(XMM.LODSD, a);
-    a = __simd(XMM.LODAPS, a);
-    a = __simd(XMM.LODAPD, a);
-    a = __simd(XMM.LODDQA, a);
-    //a = __simd(XMM.LODD, a);
-    a = __simd(XMM.LODQ, a);
-
-    a = __simd(XMM.LODDQU, a);
-    a = __simd_sto(XMM.STODQU, a, b);
-    //MOVDQ2Q  = 0xF20FD6,        // MOVDQ2Q mmx, xmm          F2 0F D6 /r
-/+
-    LODHPD   = 0x660F16,        // MOVHPD xmm, mem64         66 0F 16 /r
-    STOHPD   = 0x660F17,        // MOVHPD mem64, xmm         66 0F 17 /r
-    LODHPS   = 0x0F16,          // MOVHPS xmm, mem64         0F 16 /r
-    STOHPS   = 0x0F17,          // MOVHPS mem64, xmm         0F 17 /r
-    MOVLHPS  = 0x0F16,          // MOVLHPS xmm1, xmm2        0F 16 /r
-    LODLPD   = 0x660F12,        // MOVLPD xmm, mem64         66 0F 12 /r
-    STOLPD   = 0x660F13,        // MOVLPD mem64, xmm         66 0F 13 /r
-    a = __simd(XMM.LODLPS, a, b);
-    STOLPS   = 0x0F13,          // MOVLPS mem64, xmm         0F 13 /r
-    MOVMSKPD = 0x660F50,        // MOVMSKPD reg32, xmm 66 0F 50 /r
-    MOVMSKPS = 0x0F50,          // MOVMSKPS reg32, xmm 0F 50 /r
-    MOVNTDQ  = 0x660FE7,        // MOVNTDQ mem128, xmm 66 0F E7 /r
-    MOVNTI   = 0x0FC3,          // MOVNTI m32,r32 0F C3 /r
-                                // MOVNTI m64,r64 0F C3 /r
-    MOVNTPD  = 0x660F2B,        // MOVNTPD mem128, xmm 66 0F 2B /r
-    MOVNTPS  = 0x0F2B,          // MOVNTPS mem128, xmm 0F 2B /r
-    //MOVNTQ   = 0x0FE7,          // MOVNTQ m64, mmx 0F E7 /r
-    //MOVQ2DQ  = 0xF30FD6,        // MOVQ2DQ xmm, mmx F3 0F D6 /r
- +/
-    a = __simd(XMM.LODUPD, a, b);
-    a = __simd_sto(XMM.STOUPD, a, b);
-    a = __simd(XMM.LODUPS, a, b);
-    a = __simd_sto(XMM.STOUPS, a, b);
-
-    a = __simd(XMM.PACKSSDW, a, b);
-    a = __simd(XMM.PACKSSWB, a, b);
-    a = __simd(XMM.PACKUSWB, a, b);
-    a = __simd(XMM.PADDSB, a, b);
-    a = __simd(XMM.PADDSW, a, b);
-    a = __simd(XMM.PADDUSB, a, b);
-    a = __simd(XMM.PADDUSW, a, b);
-    a = __simd(XMM.PANDN, a, b);
-    a = __simd(XMM.PCMPEQB, a, b);
-    a = __simd(XMM.PCMPEQD, a, b);
-    a = __simd(XMM.PCMPEQW, a, b);
-    a = __simd(XMM.PCMPGTB, a, b);
-    a = __simd(XMM.PCMPGTD, a, b);
-    a = __simd(XMM.PCMPGTW, a, b);
-    a = __simd(XMM.PMADDWD, a, b);
-    a = __simd(XMM.PSLLW, a, b);
-    a = __simd_ib(XMM.PSLLW, a, cast(ubyte)0x7A);
-    a = __simd(XMM.PSLLD, a, b);
-    a = __simd_ib(XMM.PSLLD, a, cast(ubyte)0x7A);
-    a = __simd(XMM.PSLLQ, a, b);
-    a = __simd_ib(XMM.PSLLQ, a, cast(ubyte)0x7A);
-    a = __simd(XMM.PSRAW, a, b);
-    a = __simd_ib(XMM.PSRAW, a, cast(ubyte)0x7A);
-    a = __simd(XMM.PSRAD, a, b);
-    a = __simd_ib(XMM.PSRAD, a, cast(ubyte)0x7A);
-    a = __simd(XMM.PSRLW, a, b);
-    a = __simd_ib(XMM.PSRLW, a, cast(ubyte)0x7A);
-    a = __simd(XMM.PSRLD, a, b);
-    a = __simd_ib(XMM.PSRLD, a, cast(ubyte)0x7A);
-    a = __simd(XMM.PSRLQ, a, b);
-    a = __simd_ib(XMM.PSRLQ, a, cast(ubyte)0x7A);
-
-    a = __simd(XMM.PSUBSB, a, b);
-    a = __simd(XMM.PSUBSW, a, b);
-    a = __simd(XMM.PSUBUSB, a, b);
-    a = __simd(XMM.PSUBUSW, a, b);
-
-    a = __simd(XMM.PUNPCKHBW, a, b);
-    a = __simd(XMM.PUNPCKHDQ, a, b);
-    a = __simd(XMM.PUNPCKHWD, a, b);
-    a = __simd(XMM.PUNPCKLBW, a, b);
-    a = __simd(XMM.PUNPCKLDQ, a, b);
-    a = __simd(XMM.PUNPCKLWD, a, b);
-
-    a = __simd(XMM.PXOR, a, b);
-    a = __simd(XMM.ANDPD, a, b);
-    a = __simd(XMM.ANDPS, a, b);
-    a = __simd(XMM.ANDNPD, a, b);
-    a = __simd(XMM.ANDNPS, a, b);
-
-    a = __simd(XMM.CMPPD, a, b, 0x7A);
-    a = __simd(XMM.CMPSS, a, b, 0x7A);
-    a = __simd(XMM.CMPSD, a, b, 0x7A);
-    a = __simd(XMM.CMPPS, a, b, 0x7A);
-
-    a = __simd(XMM.CVTDQ2PD, a, b);
-    a = __simd(XMM.CVTDQ2PS, a, b);
-    a = __simd(XMM.CVTPD2DQ, a, b);
-    //a = __simd(XMM.CVTPD2PI, a, b);
-    a = __simd(XMM.CVTPD2PS, a, b);
-    a = __simd(XMM.CVTPI2PD, a, b);
-    a = __simd(XMM.CVTPI2PS, a, b);
-    a = __simd(XMM.CVTPS2DQ, a, b);
-    a = __simd(XMM.CVTPS2PD, a, b);
-    //a = __simd(XMM.CVTPS2PI, a, b);
-    //a = __simd(XMM.CVTSD2SI, a, b);
-    //a = __simd(XMM.CVTSD2SI, a, b);
-
-    a = __simd(XMM.CVTSD2SS, a, b);
-    //a = __simd(XMM.CVTSI2SD, a, b);
-    //a = __simd(XMM.CVTSI2SD, a, b);
-    //a = __simd(XMM.CVTSI2SS, a, b);
-    //a = __simd(XMM.CVTSI2SS, a, b);
-    a = __simd(XMM.CVTSS2SD, a, b);
-    //a = __simd(XMM.CVTSS2SI, a, b);
-    //a = __simd(XMM.CVTSS2SI, a, b);
-    //a = __simd(XMM.CVTTPD2PI, a, b);
-    a = __simd(XMM.CVTTPD2DQ, a, b);
-    a = __simd(XMM.CVTTPS2DQ, a, b);
-    //a = __simd(XMM.CVTTPS2PI, a, b);
-    //a = __simd(XMM.CVTTSD2SI, a, b);
-    //a = __simd(XMM.CVTTSD2SI, a, b);
-    //a = __simd(XMM.CVTTSS2SI, a, b);
-    //a = __simd(XMM.CVTTSS2SI, a, b);
-
-    a = __simd(XMM.MASKMOVDQU, a, b);
-    //a = __simd(XMM.MASKMOVQ, a, b);
-
-    a = __simd(XMM.MAXPD, a, b);
-    a = __simd(XMM.MAXPS, a, b);
-    a = __simd(XMM.MAXSD, a, b);
-    a = __simd(XMM.MAXSS, a, b);
-
-    a = __simd(XMM.MINPD, a, b);
-    a = __simd(XMM.MINPS, a, b);
-    a = __simd(XMM.MINSD, a, b);
-    a = __simd(XMM.MINSS, a, b);
-
-    a = __simd(XMM.ORPD, a, b);
-    a = __simd(XMM.ORPS, a, b);
-    a = __simd(XMM.PAVGB, a, b);
-    a = __simd(XMM.PAVGW, a, b);
-    a = __simd(XMM.PMAXSW, a, b);
-    //a = __simd(XMM.PINSRW, a, b);
-    a = __simd(XMM.PMAXUB, a, b);
-    a = __simd(XMM.PMINSB, a, b);
-    a = __simd(XMM.PMINUB, a, b);
-    //a = __simd(XMM.PMOVMSKB, a, b);
-    a = __simd(XMM.PMULHUW, a, b);
-    a = __simd(XMM.PMULHW, a, b);
-    a = __simd(XMM.PMULUDQ, a, b);
-    a = __simd(XMM.PSADBW, a, b);
-    a = __simd(XMM.PUNPCKHQDQ, a, b);
-    a = __simd(XMM.PUNPCKLQDQ, a, b);
-    a = __simd(XMM.RCPPS, a, b);
-    a = __simd(XMM.RCPSS, a, b);
-    a = __simd(XMM.RSQRTPS, a, b);
-    a = __simd(XMM.RSQRTSS, a, b);
-    a = __simd(XMM.SQRTPD, a, b);
-    a = __simd(XMM.SHUFPD, a, b, 0xA7);
-    a = __simd(XMM.SHUFPS, a, b, 0x7A);
-    a = __simd(XMM.SQRTPS, a, b);
-    a = __simd(XMM.SQRTSD, a, b);
-    a = __simd(XMM.SQRTSS, a, b);
-    a = __simd(XMM.UNPCKHPD, a, b);
-    a = __simd(XMM.UNPCKHPS, a, b);
-    a = __simd(XMM.UNPCKLPD, a, b);
-    a = __simd(XMM.UNPCKLPS, a, b);
-
-    a = __simd(XMM.PSHUFD, a, b, 0x7A);
-    a = __simd(XMM.PSHUFHW, a, b, 0x7A);
-    a = __simd(XMM.PSHUFLW, a, b, 0x7A);
-    //a = __simd(XMM.PSHUFW, a, b, 0x7A);
-    a = __simd_ib(XMM.PSLLDQ, a, cast(ubyte)0x7A);
-    a = __simd_ib(XMM.PSRLDQ, a, cast(ubyte)0x7A);
-
-/**/
-
-    a = __simd(XMM.BLENDPD, a, b, 0x7A);
-    a = __simd(XMM.BLENDPS, a, b, 0x7A);
-
-    a = __simd(XMM.DPPD, a, b, 0x7A);
-    a = __simd(XMM.DPPS, a, b, 0x7A);
-
-    a = __simd(XMM.MPSADBW, a, b, 0x7A);
-    a = __simd(XMM.PBLENDW, a, b, 0x7A);
-
-    a = __simd(XMM.ROUNDPD, a, b, 0x7A);
-    a = __simd(XMM.ROUNDPS, a, b, 0x7A);
-    a = __simd(XMM.ROUNDSD, a, b, 0x7A);
-    a = __simd(XMM.ROUNDSS, a, b, 0x7A);
-
-    return a;
-}
-
-/*****************************************/
 /+
 // 9200
 
@@ -1311,7 +1093,7 @@ void test12852()
 
 void test9449()
 {
-    ubyte16 table[1];
+    ubyte16[1] table;
 }
 
 /*****************************************/
@@ -1380,15 +1162,6 @@ void test12776()
 }
 
 /*****************************************/
-// https://issues.dlang.org/show_bug.cgi?id=13927
-
-void test13927(ulong2 a)
-{
-    ulong2 b = [long.min, long.min];
-    auto tmp = a - b;
-}
-
-/*****************************************/
 
 void foo13988(double[] arr)
 {
@@ -1419,6 +1192,25 @@ void test15123()
 }
 
 /*****************************************/
+// https://issues.dlang.org/show_bug.cgi?id=15144
+
+void test15144()
+{
+        enum      ubyte16 csXMM1 = ['a','b','c',0,0,0,0,0];
+        __gshared ubyte16 csXMM2 = ['a','b','c',0,0,0,0,0];
+        immutable ubyte16 csXMM3 = ['a','b','c',0,0,0,0,0];
+}
+
+/*****************************************/
+// https://issues.dlang.org/show_bug.cgi?id=13927
+
+void test13927(ulong2 a)
+{
+    ulong2 b = [long.min, long.min];
+    auto tmp = a - b;
+}
+
+/*****************************************/
 
 // https://issues.dlang.org/show_bug.cgi?id=16488
 
@@ -1443,7 +1235,7 @@ void foo_short8(short t, short s)
 {
     short8 f = s;
     auto p = cast(short*)&f;
-    foreach (i; 0 .. 4)
+    foreach (i; 0 .. 8)
         assert(p[i] == s);
 }
 
@@ -1451,7 +1243,7 @@ void foo_ushort8(ushort t, ushort s)
 {
     ushort8 f = s;
     auto p = cast(ushort*)&f;
-    foreach (i; 0 .. 4)
+    foreach (i; 0 .. 8)
         assert(p[i] == s);
 }
 
@@ -1471,6 +1263,7 @@ void foo_uint4(uint t, uint s, uint u)
     foreach (i; 0 .. 4)
         assert(p[i] == s);
 }
+
 
 void foo_long2(long t, long s, long u)
 {
@@ -1525,6 +1318,203 @@ void test16448()
 
 /*****************************************/
 
+void foo_byte32(byte t, byte s)
+{
+    byte32 f = s;
+    auto p = cast(byte*)&f;
+    foreach (i; 0 .. 32)
+        assert(p[i] == s);
+}
+
+void foo_ubyte32(ubyte t, ubyte s)
+{
+    ubyte32 f = s;
+    auto p = cast(ubyte*)&f;
+    foreach (i; 0 .. 32)
+        assert(p[i] == s);
+}
+
+void foo_short16(short t, short s)
+{
+    short16 f = s;
+    auto p = cast(short*)&f;
+    foreach (i; 0 .. 16)
+        assert(p[i] == s);
+}
+
+void foo_ushort16(ushort t, ushort s)
+{
+    ushort16 f = s;
+    auto p = cast(ushort*)&f;
+    foreach (i; 0 .. 16)
+        assert(p[i] == s);
+}
+
+void foo_int8(int t, int s)
+{
+    int8 f = s;
+    auto p = cast(int*)&f;
+    foreach (i; 0 .. 8)
+        assert(p[i] == s);
+}
+
+void foo_uint8(uint t, uint s, uint u)
+{
+    uint8 f = s;
+    auto p = cast(uint*)&f;
+    foreach (i; 0 .. 8)
+        assert(p[i] == s);
+}
+
+void foo_long4(long t, long s, long u)
+{
+    long4 f = s;
+    auto p = cast(long*)&f;
+    foreach (i; 0 .. 4)
+        assert(p[i] == s);
+}
+
+void foo_ulong4(ulong t, ulong s)
+{
+    ulong4 f = s;
+    auto p = cast(ulong*)&f;
+    foreach (i; 0 .. 4)
+        assert(p[i] == s);
+}
+
+void foo_float8(float t, float s)
+{
+    float8 f = s;
+    auto p = cast(float*)&f;
+    foreach (i; 0 .. 8)
+        assert(p[i] == s);
+}
+
+void foo_double4(double t, double s, double u)
+{
+    double4 f = s;
+    auto p = cast(double*)&f;
+    foreach (i; 0 .. 4)
+        assert(p[i] == s);
+}
+
+void test16448_32()
+{
+    import core.cpuid;
+    if (!core.cpuid.avx)
+        return;
+
+    foo_byte32(5, -10);
+    foo_ubyte32(5, 11);
+
+    foo_short16(5, -6);
+    foo_short16(5, 7);
+
+    foo_int8(5, -6);
+    foo_uint8(5, 0x12345678, 22);
+
+    foo_long4(5, -6, 1);
+    foo_ulong4(5, 0x12345678_87654321L);
+
+    foo_float8(5, -6);
+    foo_double4(5, -6, 2);
+}
+
+
+/*****************************************/
+// https://issues.dlang.org/show_bug.cgi?id=16703
+
+float index(float4 f4, size_t i)
+{
+    return f4[i];
+    //return (*cast(float[4]*)&f4)[2];
+}
+
+float[4] slice(float4 f4)
+{
+    return f4[];
+}
+
+float slice2(float4 f4, size_t lwr, size_t upr, size_t i)
+{
+    float[] fa = f4[lwr .. upr];
+    return fa[i];
+}
+
+void test16703()
+{
+    float4 f4 = [1,2,3,4];
+    assert(index(f4, 0) == 1);
+    assert(index(f4, 1) == 2);
+    assert(index(f4, 2) == 3);
+    assert(index(f4, 3) == 4);
+
+    float[4] fsa = slice(f4);
+    assert(fsa == [1.0f,2,3,4]);
+
+    assert(slice2(f4, 1, 3, 0) == 2);
+    assert(slice2(f4, 1, 3, 1) == 3);
+}
+
+/*****************************************/
+
+struct Sunsto
+{
+  align (1): // make sure f4 is misaligned
+    byte b;
+    union
+    {
+        float4 f4;
+        ubyte[16] a;
+    }
+}
+
+ubyte[16] foounsto()
+{
+    float4 vf = 6;
+    Sunsto s;
+    s.f4 = vf * 2;
+    vf = s.f4;
+
+    return s.a;
+}
+
+void testOPvecunsto()
+{
+    auto a = foounsto();
+    assert(a == [0, 0, 64, 65, 0, 0, 64, 65, 0, 0, 64, 65, 0, 0, 64, 65]);
+}
+
+/*****************************************/
+// https://issues.dlang.org/show_bug.cgi?id=10447
+
+void test10447()
+{
+    immutable __vector(double[2]) a = [1.0, 2.0];
+    __vector(double[2]) r;
+    r += a;
+    r = r * a;
+}
+
+/*****************************************/
+// https://issues.dlang.org/show_bug.cgi?id=17237
+
+struct S17237
+{
+    bool a;
+    struct
+    {
+        bool b;
+        int8 c;
+    }
+}
+
+static assert(S17237.a.offsetof == 0);
+static assert(S17237.b.offsetof == 32);
+static assert(S17237.c.offsetof == 64);
+
+/*****************************************/
+
 int main()
 {
     test1();
@@ -1539,13 +1529,11 @@ int main()
     test2i();
     test2j();
 
-    test3();
     test4();
     test7411();
 
     test7951();
     test7951_2();
-    test7949();
     test7414();
     test7413();
     test7413_2();
@@ -1557,15 +1545,10 @@ int main()
     test9449_2();
     test13988();
     test16448();
+    test16448_32();
+    test16703();
+    testOPvecunsto();
+    test10447();
 
     return 0;
 }
-
-}
-else
-{
-
-int main() { return 0; }
-
-}
-
