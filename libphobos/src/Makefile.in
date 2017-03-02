@@ -205,10 +205,10 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/regex/internal/tests.lo std/regex/internal/thompson.lo \
 	std/regex/package.lo std/signals.lo std/socket.lo \
 	std/socketstream.lo std/stdint.lo std/stdio.lo \
-	std/stdiobase.lo std/stream.lo std/string.lo std/syserror.lo \
-	std/system.lo std/traits.lo std/typecons.lo std/typelist.lo \
-	std/typetuple.lo std/uni.lo std/uri.lo std/utf.lo std/uuid.lo \
-	std/variant.lo std/windows/charset.lo std/windows/iunknown.lo \
+	std/stdiobase.lo std/stream.lo std/string.lo std/system.lo \
+	std/traits.lo std/typecons.lo std/typetuple.lo std/uni.lo \
+	std/uri.lo std/utf.lo std/uuid.lo std/variant.lo \
+	std/windows/charset.lo std/windows/iunknown.lo \
 	std/windows/registry.lo std/windows/syserror.lo std/xml.lo \
 	std/zip.lo std/zlib.lo
 am__objects_2 = std/c/fenv.lo std/c/locale.lo std/c/math.lo \
@@ -616,11 +616,11 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
 	std/regex/internal/thompson.d std/regex/package.d std/signals.d \
 	std/socket.d std/socketstream.d std/stdint.d std/stdio.d \
-	std/stdiobase.d std/stream.d std/string.d std/syserror.d std/system.d \
-	std/traits.d std/typecons.d std/typelist.d std/typetuple.d std/uni.d \
-	std/uri.d std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
-	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
-	std/xml.d std/zip.d std/zlib.d
+	std/stdiobase.d std/stream.d std/string.d std/system.d std/traits.d \
+	std/typecons.d std/typetuple.d std/uni.d std/uri.d std/utf.d \
+	std/uuid.d std/variant.d std/windows/charset.d std/windows/iunknown.d \
+	std/windows/registry.d std/windows/syserror.d std/xml.d std/zip.d \
+	std/zlib.d
 
 PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
 PHOBOS_DSOURCES_LINUX = std/c/linux/linux.d std/c/linux/linuxextern.d \
@@ -926,11 +926,9 @@ std/stdio.lo: std/$(am__dirstamp)
 std/stdiobase.lo: std/$(am__dirstamp)
 std/stream.lo: std/$(am__dirstamp)
 std/string.lo: std/$(am__dirstamp)
-std/syserror.lo: std/$(am__dirstamp)
 std/system.lo: std/$(am__dirstamp)
 std/traits.lo: std/$(am__dirstamp)
 std/typecons.lo: std/$(am__dirstamp)
-std/typelist.lo: std/$(am__dirstamp)
 std/typetuple.lo: std/$(am__dirstamp)
 std/uni.lo: std/$(am__dirstamp)
 std/uri.lo: std/$(am__dirstamp)
@@ -1308,16 +1306,12 @@ mostlyclean-compile:
 	-rm -f std/stream.lo
 	-rm -f std/string.$(OBJEXT)
 	-rm -f std/string.lo
-	-rm -f std/syserror.$(OBJEXT)
-	-rm -f std/syserror.lo
 	-rm -f std/system.$(OBJEXT)
 	-rm -f std/system.lo
 	-rm -f std/traits.$(OBJEXT)
 	-rm -f std/traits.lo
 	-rm -f std/typecons.$(OBJEXT)
 	-rm -f std/typecons.lo
-	-rm -f std/typelist.$(OBJEXT)
-	-rm -f std/typelist.lo
 	-rm -f std/typetuple.$(OBJEXT)
 	-rm -f std/typetuple.lo
 	-rm -f std/uni.$(OBJEXT)

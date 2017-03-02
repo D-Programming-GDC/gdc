@@ -7,6 +7,7 @@ module std.regex.internal.parser;
 import std.regex.internal.ir;
 import std.algorithm, std.range, std.uni, std.meta,
     std.traits, std.typecons, std.exception;
+static import std.ascii;
 
 // package relevant info from parser into a regex object
 auto makeRegex(S)(Parser!S p)
@@ -1406,7 +1407,6 @@ struct Parser(R)
 +/
 @trusted void lightPostprocess(Char)(ref Regex!Char zis)
 {//@@@BUG@@@ write is @system
-    import std.regex.internal.kickstart;
     with(zis)
     {
         struct FixedStack(T)
