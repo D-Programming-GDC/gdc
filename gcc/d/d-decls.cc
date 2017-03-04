@@ -657,7 +657,14 @@ tree
 make_thunk (FuncDeclaration *decl, int offset)
 {
   get_symbol_decl (decl);
+
+  /* Compile the function body before generating the thunk, this is done even
+     if the decl is external to the current module.  */
   decl->toObjFile ();
+
+  /* Don't build the thunk if the compilation step failed.  */
+  if (global.errors)
+    return error_mark_node;
 
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there
