@@ -1,5 +1,12 @@
 2017-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-decls.cc (get_symbol_decl): Move generation of DECL_ARGUMENTS for
+	empty body declarations to ...
+	(make_thunk): ... here.  Also set-up DECL_RESULT.
+	(finish_thunk): Mark DECL_UNINLINEABLE on external functions.
+
+2017-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-decls.cc (make_thunk): Don't build thunks for functions that
 	failed to compile.
 

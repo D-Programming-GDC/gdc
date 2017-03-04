@@ -319,26 +319,6 @@ get_symbol_decl (Declaration *decl)
       if (decl->storage_class & STCfinal)
 	DECL_FINAL_P (decl->csym) = 1;
 
-      /* Declare stub parameters for functions that have no body.  */
-      if (!fd->fbody)
-	{
-	  tree param_list = NULL_TREE;
-	  fntype = TREE_TYPE (decl->csym);
-
-	  for (tree t = TYPE_ARG_TYPES (fntype); t; t = TREE_CHAIN (t))
-	    {
-	      if (t == void_list_node)
-		break;
-
-	      tree param = build_decl (DECL_SOURCE_LOCATION (decl->csym),
-				       PARM_DECL, NULL_TREE, TREE_VALUE (t));
-	      DECL_ARG_TYPE (param) = TREE_TYPE (param);
-	      param_list = chainon (param_list, param);
-	    }
-
-	  DECL_ARGUMENTS (decl->csym) = param_list;
-	}
-
       /* Check whether this function is expanded by the frontend.  */
       maybe_set_intrinsic (fd);
     }
@@ -645,6 +625,11 @@ finish_thunk (tree thunk, tree function)
 	  thunk_node->create_edge (funcn, NULL, 0, CGRAPH_FREQ_BASE);
 	  thunk_node->expand_thunk (false, true);
 	}
+
+      /* Tell the backend to not bother inlining the function, this is
+	 assumed not to work as it could be referencing symbols outside
+	 of the current compilation unit.  */
+      DECL_UNINLINABLE (function) = 1;
     }
 }
 
@@ -658,9 +643,46 @@ make_thunk (FuncDeclaration *decl, int offset)
 {
   get_symbol_decl (decl);
 
-  /* Compile the function body before generating the thunk, this is done even
-     if the decl is external to the current module.  */
-  decl->toObjFile ();
+  if (!DECL_ARGUMENTS (decl->csym) || !DECL_RESULT (decl->csym))
+    {
+      /* Compile the function body before generating the thunk, this is done
+	 even if the decl is external to the current module.  */
+      if (decl->fbody)
+	decl->toObjFile ();
+      else
+	{
+	  /* Build parameters for functions that are not being compiled,
+	     so that they can be correctly cloned in finish_thunk.  */
+	  tree fntype = TREE_TYPE (decl->csym);
+	  tree params = NULL_TREE;
+
+	  for (tree t = TYPE_ARG_TYPES (fntype); t; t = TREE_CHAIN (t))
+	    {
+	      if (t == void_list_node)
+		break;
+
+	      tree param = build_decl (DECL_SOURCE_LOCATION (decl->csym),
+				       PARM_DECL, NULL_TREE, TREE_VALUE (t));
+	      DECL_ARG_TYPE (param) = TREE_TYPE (param);
+	      DECL_ARTIFICIAL (param) = 1;
+	      DECL_IGNORED_P (param) = 1;
+	      DECL_CONTEXT (param) = decl->csym;
+	      params = chainon (params, param);
+	    }
+
+	  DECL_ARGUMENTS (decl->csym) = params;
+
+	  /* Also build the result decl, which is needed when force creating
+	     the thunk in gimple inside cgraph_node::expand_thunk.  */
+	  tree resdecl = build_decl (DECL_SOURCE_LOCATION (decl->csym),
+				     RESULT_DECL, NULL_TREE,
+				     TREE_TYPE (fntype));
+	  DECL_ARTIFICIAL (resdecl) = 1;
+	  DECL_IGNORED_P (resdecl) = 1;
+	  DECL_CONTEXT (resdecl) = decl->csym;
+	  DECL_RESULT (decl->csym) = resdecl;
+	}
+    }
 
   /* Don't build the thunk if the compilation step failed.  */
   if (global.errors)
