@@ -641,9 +641,9 @@ finish_thunk (tree thunk, tree function)
 tree
 make_thunk (FuncDeclaration *decl, int offset)
 {
-  get_symbol_decl (decl);
+  tree function = get_symbol_decl (decl);
 
-  if (!DECL_ARGUMENTS (decl->csym) || !DECL_RESULT (decl->csym))
+  if (!DECL_ARGUMENTS (function) || !DECL_RESULT (function))
     {
       /* Compile the function body before generating the thunk, this is done
 	 even if the decl is external to the current module.  */
@@ -653,7 +653,7 @@ make_thunk (FuncDeclaration *decl, int offset)
 	{
 	  /* Build parameters for functions that are not being compiled,
 	     so that they can be correctly cloned in finish_thunk.  */
-	  tree fntype = TREE_TYPE (decl->csym);
+	  tree fntype = TREE_TYPE (function);
 	  tree params = NULL_TREE;
 
 	  for (tree t = TYPE_ARG_TYPES (fntype); t; t = TREE_CHAIN (t))
@@ -661,26 +661,26 @@ make_thunk (FuncDeclaration *decl, int offset)
 	      if (t == void_list_node)
 		break;
 
-	      tree param = build_decl (DECL_SOURCE_LOCATION (decl->csym),
+	      tree param = build_decl (DECL_SOURCE_LOCATION (function),
 				       PARM_DECL, NULL_TREE, TREE_VALUE (t));
 	      DECL_ARG_TYPE (param) = TREE_TYPE (param);
 	      DECL_ARTIFICIAL (param) = 1;
 	      DECL_IGNORED_P (param) = 1;
-	      DECL_CONTEXT (param) = decl->csym;
+	      DECL_CONTEXT (param) = function;
 	      params = chainon (params, param);
 	    }
 
-	  DECL_ARGUMENTS (decl->csym) = params;
+	  DECL_ARGUMENTS (function) = params;
 
 	  /* Also build the result decl, which is needed when force creating
 	     the thunk in gimple inside cgraph_node::expand_thunk.  */
-	  tree resdecl = build_decl (DECL_SOURCE_LOCATION (decl->csym),
+	  tree resdecl = build_decl (DECL_SOURCE_LOCATION (function),
 				     RESULT_DECL, NULL_TREE,
 				     TREE_TYPE (fntype));
 	  DECL_ARTIFICIAL (resdecl) = 1;
 	  DECL_IGNORED_P (resdecl) = 1;
-	  DECL_CONTEXT (resdecl) = decl->csym;
-	  DECL_RESULT (decl->csym) = resdecl;
+	  DECL_CONTEXT (resdecl) = function;
+	  DECL_RESULT (function) = resdecl;
 	}
     }
 
@@ -691,28 +691,26 @@ make_thunk (FuncDeclaration *decl, int offset)
   /* If the thunk is to be static (that is, it is being emitted in this
      module, there can only be one FUNCTION_DECL for it.   Thus, there
      is a list of all thunks for a given function. */
-  tree thunk;
-
-  for (thunk = DECL_LANG_THUNKS (decl->csym); thunk; thunk = DECL_CHAIN (thunk))
+  for (tree t = DECL_LANG_THUNKS (function); t; t = DECL_CHAIN (t))
     {
-      if (THUNK_LANG_OFFSET (thunk) == offset)
-	return thunk;
+      if (THUNK_LANG_OFFSET (t) == offset)
+	return t;
     }
 
-  thunk = build_decl (DECL_SOURCE_LOCATION (decl->csym),
-		      FUNCTION_DECL, NULL_TREE, TREE_TYPE (decl->csym));
-  DECL_LANG_SPECIFIC (thunk) = DECL_LANG_SPECIFIC (decl->csym);
+  tree thunk = build_decl (DECL_SOURCE_LOCATION (function),
+			   FUNCTION_DECL, NULL_TREE, TREE_TYPE (function));
+  DECL_LANG_SPECIFIC (thunk) = DECL_LANG_SPECIFIC (function);
   lang_hooks.dup_lang_specific_decl (thunk);
   THUNK_LANG_OFFSET (thunk) = offset;
 
-  TREE_READONLY (thunk) = TREE_READONLY (decl->csym);
-  TREE_THIS_VOLATILE (thunk) = TREE_THIS_VOLATILE (decl->csym);
-  TREE_NOTHROW (thunk) = TREE_NOTHROW (decl->csym);
+  TREE_READONLY (thunk) = TREE_READONLY (function);
+  TREE_THIS_VOLATILE (thunk) = TREE_THIS_VOLATILE (function);
+  TREE_NOTHROW (thunk) = TREE_NOTHROW (function);
 
   DECL_CONTEXT (thunk) = d_decl_context (decl);
 
   /* Thunks inherit the public access of the function they are targetting.  */
-  TREE_PUBLIC (thunk) = TREE_PUBLIC (decl->csym);
+  TREE_PUBLIC (thunk) = TREE_PUBLIC (function);
   DECL_EXTERNAL (thunk) = 0;
 
   /* Thunks are always addressable.  */
@@ -721,13 +719,13 @@ make_thunk (FuncDeclaration *decl, int offset)
   DECL_ARTIFICIAL (thunk) = 1;
   DECL_DECLARED_INLINE_P (thunk) = 0;
 
-  DECL_VISIBILITY (thunk) = DECL_VISIBILITY (decl->csym);
+  DECL_VISIBILITY (thunk) = DECL_VISIBILITY (function);
   /* Needed on some targets to avoid "causes a section type conflict".  */
-  D_DECL_ONE_ONLY (thunk) = D_DECL_ONE_ONLY (decl->csym);
-  DECL_COMDAT (thunk) = DECL_COMDAT (decl->csym);
-  DECL_WEAK (thunk) = DECL_WEAK (decl->csym);
+  D_DECL_ONE_ONLY (thunk) = D_DECL_ONE_ONLY (function);
+  DECL_COMDAT (thunk) = DECL_COMDAT (function);
+  DECL_WEAK (thunk) = DECL_WEAK (function);
 
-  tree target_name = DECL_ASSEMBLER_NAME (decl->csym);
+  tree target_name = DECL_ASSEMBLER_NAME (function);
   unsigned identlen = IDENTIFIER_LENGTH (target_name) + 14;
   const char *ident = XNEWVEC (const char, identlen);
   snprintf (CONST_CAST (char *, ident), identlen,
@@ -738,12 +736,12 @@ make_thunk (FuncDeclaration *decl, int offset)
 
   d_keep (thunk);
 
-  finish_thunk (thunk, decl->csym);
+  finish_thunk (thunk, function);
 
   /* Add it to the list of thunks associated with the function.  */
   DECL_LANG_THUNKS (thunk) = NULL_TREE;
-  DECL_CHAIN (thunk) = DECL_LANG_THUNKS (decl->csym);
-  DECL_LANG_THUNKS (decl->csym) = thunk;
+  DECL_CHAIN (thunk) = DECL_LANG_THUNKS (function);
+  DECL_LANG_THUNKS (function) = thunk;
 
   return thunk;
 }
