@@ -10,7 +10,8 @@ module core.sys.windows.shlobj;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "shell32");
+version (GNU) {}
+else pragma(lib, "shell32");
 
 // TODO: fix bitfields
 // TODO: CMIC_VALID_SEE_FLAGS
@@ -407,8 +408,9 @@ struct ITEMIDLIST {
 alias ITEMIDLIST*        LPITEMIDLIST;
 alias const(ITEMIDLIST)* LPCITEMIDLIST;
 
-alias int function(HWND, UINT, LPARAM, LPARAM) BFFCALLBACK;
+extern (Windows) alias int function(HWND, UINT, LPARAM, LPARAM) BFFCALLBACK;
 
+align (8) {
 struct BROWSEINFOA {
     HWND          hwndOwner;
     LPCITEMIDLIST pidlRoot;
@@ -432,6 +434,7 @@ struct BROWSEINFOW {
     int           iImage;
 }
 alias BROWSEINFOW* PBROWSEINFOW, LPBROWSEINFOW;
+} // align (8)
 
 struct CMINVOKECOMMANDINFO {
     DWORD cbSize = this.sizeof;
@@ -473,7 +476,7 @@ enum SHCONTF {
     SHCONTF_STORAGE            = 2048
 }
 
-struct STRRET {
+align(8) struct STRRET {
     UINT uType;
     union {
         LPWSTR pOleStr;
@@ -683,7 +686,7 @@ interface IObjMgr : IUnknown {
 interface IContextMenu : IUnknown {
     HRESULT QueryContextMenu(HMENU, UINT, UINT, UINT, UINT);
     HRESULT InvokeCommand(LPCMINVOKECOMMANDINFO);
-    HRESULT GetCommandString(UINT, UINT, PUINT, LPSTR, UINT);
+    HRESULT GetCommandString(UINT_PTR, UINT, PUINT, LPSTR, UINT);
 }
 alias IContextMenu LPCONTEXTMENU;
 
@@ -717,6 +720,7 @@ enum MAX_COLUMN_NAME_LEN = 80;
 enum MAX_COLUMN_DESC_LEN = 128;
 
     align(1) struct SHCOLUMNINFO {
+        align(1):
         SHCOLUMNID scid;
         VARTYPE vt;
         DWORD fmt;

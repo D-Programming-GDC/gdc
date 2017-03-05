@@ -10,7 +10,8 @@ module core.sys.windows.imm;
 version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "imm32");
+version (GNU) {}
+else pragma(lib, "imm32");
 
 import core.sys.windows.windef, core.sys.windows.wingdi;
 import core.sys.windows.winuser; // for the MFS_xxx enums.
@@ -356,8 +357,10 @@ struct IMEMENUITEMINFOW{
 }
 alias IMEMENUITEMINFOW* PIMEMENUITEMINFOW, LPIMEMENUITEMINFOW;
 
+extern (Windows) {
 alias int function (LPCSTR, DWORD, LPCSTR, LPVOID)  REGISTERWORDENUMPROCA;
 alias int function (LPCWSTR, DWORD, LPCWSTR, LPVOID) REGISTERWORDENUMPROCW;
+}
 
 version(Unicode) {
     alias REGISTERWORDENUMPROCW REGISTERWORDENUMPROC;

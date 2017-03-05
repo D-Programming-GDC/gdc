@@ -9,7 +9,8 @@
  */
 module core.sys.windows.wincrypt;
 version (Windows):
-pragma(lib, "advapi32");
+version (GNU) {}
+else pragma(lib, "advapi32");
 
 version (ANSI) {} else version = Unicode;
 
@@ -501,7 +502,7 @@ enum {
 
 
 alias UINT ALG_ID;
-alias ULONG HCRYPTPROV, HCRYPTKEY, HCRYPTHASH;
+alias ULONG_PTR HCRYPTPROV, HCRYPTKEY, HCRYPTHASH;
 alias PVOID HCERTSTORE, HCRYPTMSG, HCERTCHAINENGINE;
 
 struct VTableProvStruc {
@@ -844,7 +845,7 @@ const(void)*, PCCERT_CHAIN_CONTEXT);
     BOOL CryptAcquireContextA(HCRYPTPROV*, LPCSTR, LPCSTR, DWORD, DWORD);
     BOOL CryptAcquireContextW(HCRYPTPROV*, LPCWSTR, LPCWSTR, DWORD, DWORD);
      BOOL CryptContextAddRef(HCRYPTPROV, DWORD*, DWORD);
-    BOOL CryptReleaseContext(HCRYPTPROV, DWORD);
+    BOOL CryptReleaseContext(HCRYPTPROV, ULONG_PTR);
     BOOL CryptGenKey(HCRYPTPROV, ALG_ID, DWORD, HCRYPTKEY*);
     BOOL CryptDeriveKey(HCRYPTPROV, ALG_ID, HCRYPTHASH, DWORD, HCRYPTKEY*);
     BOOL CryptDestroyKey(HCRYPTKEY);
