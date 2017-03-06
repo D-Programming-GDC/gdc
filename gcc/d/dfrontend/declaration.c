@@ -825,6 +825,8 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     mynew = false;
     canassign = 0;
     overlapped = false;
+    overlapUnsafe = false;
+    isdataseg = 0;
     lastVar = NULL;
     endlinnum = 0;
     ctfeAdrOnStack = -1;
