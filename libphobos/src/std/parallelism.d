@@ -75,7 +75,6 @@ License:    $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module std.parallelism;
 
 import core.atomic;
-import core.cpuid;
 import core.exception;
 import core.memory;
 import core.sync.condition;
@@ -86,10 +85,10 @@ import std.conv;
 import std.exception;
 import std.functional;
 import std.math;
+import std.meta;
 import std.range;
 import std.traits;
 import std.typecons;
-import std.typetuple;
 
 version(OSX)
 {
@@ -99,39 +98,19 @@ else version(FreeBSD)
 {
     version = useSysctlbyname;
 }
+else version(NetBSD)
+{
+    version = useSysctlbyname;
+}
+
 
 version(Windows)
 {
     // BUGS:  Only works on Windows 2000 and above.
-
-    import core.sys.windows.windows;
-
-    struct SYSTEM_INFO
-    {
-        union
-        {
-            DWORD  dwOemId;
-            struct
-            {
-                WORD wProcessorArchitecture;
-                WORD wReserved;
-            }
-        }
-        DWORD     dwPageSize;
-        LPVOID    lpMinimumApplicationAddress;
-        LPVOID    lpMaximumApplicationAddress;
-        LPVOID    dwActiveProcessorMask;
-        DWORD     dwNumberOfProcessors;
-        DWORD     dwProcessorType;
-        DWORD     dwAllocationGranularity;
-        WORD      wProcessorLevel;
-        WORD      wProcessorRevision;
-    }
-
-    private extern(Windows) void GetSystemInfo(void*);
-
     shared static this()
     {
+        import core.sys.windows.windows;
+
         SYSTEM_INFO si;
         GetSystemInfo(&si);
         totalCPUs = max(1, cast(uint) si.dwNumberOfProcessors);
@@ -172,6 +151,10 @@ else version(useSysctlbyname)
         {
             auto nameStr = "hw.ncpu\0".ptr;
         }
+        else version(NetBSD)
+        {
+            auto nameStr = "hw.ncpu\0".ptr;
+        }
 
         uint ans;
         size_t len = uint.sizeof;
@@ -184,6 +167,23 @@ else
 {
     static assert(0, "Don't know how to get N CPUs on this OS.");
 }
+
+immutable size_t cacheLineSize;
+shared static this()
+{
+    import core.cpuid : datacache;
+    size_t lineSize = 0;
+    foreach (cachelevel; datacache)
+    {
+        if (cachelevel.lineSize > lineSize && cachelevel.lineSize < uint.max)
+        {
+            lineSize = cachelevel.lineSize;
+        }
+    }
+
+    cacheLineSize = lineSize;
+}
+
 
 /* Atomics code.  These forward to core.atomic, but are written like this
    for two reasons:
@@ -245,7 +245,7 @@ private template isSafeTask(F)
         (functionAttributes!F & (FunctionAttribute.safe | FunctionAttribute.trusted)) != 0 &&
         (functionAttributes!F & FunctionAttribute.ref_) == 0 &&
         (isFunctionPointer!F || !hasUnsharedAliasing!F) &&
-        allSatisfy!(noUnsharedAliasing, ParameterTypeTuple!F);
+        allSatisfy!(noUnsharedAliasing, Parameters!F);
 }
 
 unittest
@@ -291,12 +291,6 @@ private template isSafeReturn(T)
 private template randAssignable(R)
 {
     enum randAssignable = isRandomAccessRange!R && hasAssignableElements!R;
-}
-
-// Work around syntactic ambiguity w.r.t. address of function return vals.
-private T* addressOf(T)(ref T val) pure nothrow
-{
-    return &val;
 }
 
 private enum TaskStatus : ubyte
@@ -447,6 +441,8 @@ struct Task(alias fun, Args...)
 
     private static void impl(void* myTask)
     {
+        import std.algorithm.internal : addressOf;
+
         Task* myCastedTask = cast(typeof(this)*) myTask;
         static if(is(ReturnType == void))
         {
@@ -780,7 +776,7 @@ $(D TaskPool) is provided by $(XREF parallelism, taskPool).
 
 Returns:  A pointer to the $(D Task).
 
-Examples:
+Example:
 ---
 // Read two files into memory at the same time.
 import std.file;
@@ -847,7 +843,7 @@ auto task(alias fun, Args...)(Args args)
 Creates a $(D Task) on the GC heap that calls a function pointer, delegate, or
 class/struct with overloaded opCall.
 
-Examples:
+Example:
 ---
 // Read two files in at the same time again,
 // but this time use a function pointer instead
@@ -1474,7 +1470,7 @@ public:
     $(D workUnitSize) should  be 1.  An overload that chooses a default work
     unit size is also available.
 
-    Examples:
+    Example:
     ---
     // Find the logarithm of every number from 1 to
     // 10_000_000 in parallel.
@@ -1798,7 +1794,7 @@ public:
         current call to $(D map) will be ignored and the size of the buffer
         will be the buffer size of $(D source).
 
-        Examples:
+        Example:
         ---
         // Pipeline reading a file, converting each line
         // to a number, taking the logarithms of the numbers,
@@ -2100,7 +2096,7 @@ public:
     $(D asyncBuf) is useful, for example, when performing expensive operations
     on the elements of ranges that represent data on a disk or network.
 
-    Examples:
+    Example:
     ---
     import std.conv, std.stdio;
 
@@ -2296,7 +2292,7 @@ public:
 
     nBuffers = The number of buffers to cycle through when calling $(D next).
 
-    Examples:
+    Example:
     ---
     // Fetch lines of a file in a background
     // thread while processing previously fetched
@@ -2335,9 +2331,9 @@ public:
     */
     auto asyncBuf(C1, C2)(C1 next, C2 empty, size_t initialBufSize = 0, size_t nBuffers = 100)
     if(is(typeof(C2.init()) : bool) &&
-        ParameterTypeTuple!C1.length == 1 &&
-        ParameterTypeTuple!C2.length == 0 &&
-        isArray!(ParameterTypeTuple!C1[0])
+        Parameters!C1.length == 1 &&
+        Parameters!C2.length == 0 &&
+        isArray!(Parameters!C1[0])
     ) {
         auto roundRobin = RoundRobinBuffer!(C1, C2)(next, empty, initialBufSize, nBuffers);
         return asyncBuf(roundRobin, nBuffers / 2);
@@ -2505,7 +2501,7 @@ public:
                 // since we're assuming functions are associative anyhow.
 
                 // This is so that loops can be unrolled automatically.
-                enum ilpTuple = TypeTuple!(0, 1, 2, 3, 4, 5);
+                enum ilpTuple = AliasSeq!(0, 1, 2, 3, 4, 5);
                 enum nILP = ilpTuple.length;
                 immutable subSize = (upperBound - lowerBound) / nILP;
 
@@ -2633,13 +2629,15 @@ public:
                 }
             }
 
-            tasks[] = RTask.init;
+            foreach (ref t; tasks[])
+                emplaceRef(t, RTask());
 
             // Hack to take the address of a nested function w/o
             // making a closure.
             static auto scopedAddress(D)(scope D del)
             {
-                return del;
+                auto tmp = del;
+                return tmp;
             }
 
             size_t curPos = 0;
@@ -2729,7 +2727,7 @@ public:
 
     This function is useful for maintaining worker-local resources.
 
-    Examples:
+    Example:
     ---
     // Execute a loop that computes the greatest common
     // divisor of every number from 0 through 999 with
@@ -2790,7 +2788,7 @@ public:
 
     2.  Recycling temporary buffers across iterations of a parallel foreach loop.
 
-    Examples:
+    Example:
     ---
     // Calculate pi as in our synopsis example, but
     // use an imperative instead of a functional style.
@@ -2819,23 +2817,8 @@ public:
         TaskPool pool;
         size_t size;
 
-        static immutable size_t cacheLineSize;
         size_t elemSize;
         bool* stillThreadLocal;
-
-        shared static this()
-        {
-            size_t lineSize = 0;
-            foreach(cachelevel; datacache)
-            {
-                if(cachelevel.lineSize > lineSize && cachelevel.lineSize < uint.max)
-                {
-                    lineSize = cachelevel.lineSize;
-                }
-            }
-
-            cacheLineSize = lineSize;
-        }
 
         static size_t roundToLine(size_t num) pure nothrow
         {
@@ -3273,24 +3256,13 @@ terminating the main thread.
 */
 @property TaskPool taskPool() @trusted
 {
-    static bool initialized;
-    __gshared static TaskPool pool;
-
-    if(!initialized)
-    {
-        synchronized(typeid(TaskPool))
-        {
-            if(!pool)
-            {
-                pool = new TaskPool(defaultPoolThreads);
-                pool.isDaemon = true;
-            }
-        }
-
-        initialized = true;
-    }
-
-    return pool;
+    import std.concurrency : initOnce;
+    __gshared TaskPool pool;
+    return initOnce!pool({
+        auto p = new TaskPool(defaultPoolThreads);
+        p.isDaemon = true;
+        return p;
+    }());
 }
 
 private shared uint _defaultPoolThreads;
@@ -3404,10 +3376,12 @@ private void submitAndExecute(
 
     foreach(ref t; tasks)
     {
+        import core.stdc.string : memcpy;
+
         // This silly looking code is necessary to prevent d'tors from being
         // called on uninitialized objects.
         auto temp = scopedTask(doIt);
-        core.stdc.string.memcpy(&t, &temp, PTask.sizeof);
+        memcpy(&t, &temp, PTask.sizeof);
 
         // This has to be done to t after copying, not temp before copying.
         // Otherwise, temp's destructor will sit here and wait for the
@@ -3487,7 +3461,7 @@ int doSizeZeroCase(R, Delegate)(ref ParallelForeach!R p, Delegate dg)
         {
             foreach(ref ElementType!R elem; range)
             {
-                static if(ParameterTypeTuple!dg.length == 2)
+                static if(Parameters!dg.length == 2)
                 {
                     res = dg(index, elem);
                 }
@@ -3503,7 +3477,7 @@ int doSizeZeroCase(R, Delegate)(ref ParallelForeach!R p, Delegate dg)
         {
             foreach(ElementType!R elem; range)
             {
-                static if(ParameterTypeTuple!dg.length == 2)
+                static if(Parameters!dg.length == 2)
                 {
                     res = dg(index, elem);
                 }
@@ -3527,7 +3501,7 @@ private enum string parallelApplyMixinRandomAccess = q{
     }
 
     // Whether iteration is with or without an index variable.
-    enum withIndex = ParameterTypeTuple!(typeof(dg)).length == 2;
+    enum withIndex = Parameters!(typeof(dg)).length == 2;
 
     shared size_t workUnitIndex = size_t.max;  // Effectively -1:  chunkIndex + 1 == 0
     immutable len = range.length;
@@ -3582,7 +3556,7 @@ enum string parallelApplyMixinInputRange = q{
     }
 
     // Whether iteration is with or without an index variable.
-    enum withIndex = ParameterTypeTuple!(typeof(dg)).length == 2;
+    enum withIndex = Parameters!(typeof(dg)).length == 2;
 
     // This protects the range while copying it.
     auto rangeMutex = new Mutex();
@@ -3633,6 +3607,8 @@ enum string parallelApplyMixinInputRange = q{
             // Returns:  The previous value of nPopped.
             size_t makeTemp()
             {
+                import std.algorithm.internal : addressOf;
+
                 if(temp is null)
                 {
                     temp = uninitializedArray!Temp(workUnitSize);
@@ -3839,7 +3815,7 @@ private struct RoundRobinBuffer(C1, C2)
 {
     // No need for constraints because they're already checked for in asyncBuf.
 
-    alias Array = ParameterTypeTuple!(C1.init)[0];
+    alias Array = Parameters!(C1.init)[0];
     alias T = typeof(Array.init[0]);
 
     T[][] bufs;
@@ -4174,7 +4150,7 @@ unittest
     {
         import std.file : deleteme;
 
-        string temp_file = std.file.deleteme ~ "-tempDelMe.txt";
+        string temp_file = deleteme ~ "-tempDelMe.txt";
         auto file = File(temp_file, "wb");
         scope(exit)
         {

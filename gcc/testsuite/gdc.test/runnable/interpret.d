@@ -3193,6 +3193,30 @@ bool test9023()
 static assert(test9023());
 
 /************************************************/
+// 15817
+
+S[] split15817(S)(S s)
+{
+    size_t istart;
+    S[] result;
+
+    foreach (i, c ; s)
+        result ~= s[istart .. i];
+    return result;
+}
+
+int test15817()
+{
+    auto targets = `a1`.split15817;
+    uint[string] counts;
+    foreach (a; targets)
+        counts[a]++;
+    assert(counts == ["":1u, "a":1]);
+    return 1;
+}
+static assert(test15817());
+
+/************************************************/
 
 interface IBug9954
 {
@@ -3367,6 +3391,35 @@ void test14140()
 }
 
 /************************************************/
+// 15681
+
+void test15681()
+{
+    static struct A { float value; }
+
+    static struct S
+    {
+        A[2] values;
+
+        this(float)
+        {
+            values[0].value = 0;
+            values[1].value = 1;
+        }
+    }
+
+    auto s1 = S(1.0f);
+    assert(s1.values[0].value == 0);        // OK
+    assert(s1.values[1].value == 1);        // OK
+
+    enum s2 = S(1.0f);
+    static assert(s2.values[0].value == 0); // OK <- NG
+    static assert(s2.values[1].value == 1); // OK
+    assert(s2.values[0].value == 0);        // OK <- NG
+    assert(s2.values[1].value == 1);        // OK
+}
+
+/************************************************/
 
 int main()
 {
@@ -3485,8 +3538,10 @@ int main()
     test6504();
     test8818();
     test9023();
+    test15817();
     test9954();
     test14140();
+    test15681();
 
     printf("Success\n");
     return 0;

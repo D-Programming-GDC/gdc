@@ -18,7 +18,6 @@ private
 {
     import rt.memory;
     import rt.sections;
-    import rt.util.string;
     import core.atomic;
     import core.stdc.stddef;
     import core.stdc.stdlib;
@@ -60,6 +59,11 @@ version (OSX)
 {
     // The bottom of the stack
     extern (C) __gshared void* __osx_stack_end = cast(void*)0xC0000000;
+}
+
+version(CRuntime_Microsoft)
+{
+    extern(C) void init_msvc();
 }
 
 /***********************************
@@ -163,6 +167,9 @@ extern (C) int rt_init()
        shared druntime. Also we need to attach any thread that calls
        rt_init. */
     if (atomicOp!"+="(_initCount, 1) > 1) return 1;
+
+    version (CRuntime_Microsoft)
+        init_msvc();
 
     _d_monitor_staticctor();
     _d_critical_init();
@@ -279,7 +286,7 @@ struct CArgs
 
 __gshared CArgs _cArgs;
 
-extern (C) CArgs rt_cArgs()
+extern (C) CArgs rt_cArgs() @nogc
 {
     return _cArgs;
 }
@@ -325,14 +332,6 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     }
     version (CRuntime_Microsoft)
     {
-        auto fp = __iob_func();
-        stdin = &fp[0];
-        stdout = &fp[1];
-        stderr = &fp[2];
-
-        // ensure that sprintf generates only 2 digit exponent when writing floating point values
-        _set_output_format(_TWO_DIGIT_EXPONENT);
-
         // enable full precision for reals
         version(Win64)
             asm
@@ -527,7 +526,10 @@ extern (C) void _d_print_throwable(Throwable t)
     // Show a message box instead.
     version (Windows)
     {
-        if (!GetConsoleWindow())
+        // ensure the exception is shown at the beginning of the line, while also
+        // checking whether stderr is a valid file
+        int written = fprintf(stderr, "\n");
+        if (written <= 0)
         {
             static struct WSink
             {

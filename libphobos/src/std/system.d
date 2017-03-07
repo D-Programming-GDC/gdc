@@ -25,7 +25,7 @@ immutable
             $(D version(linux)), etc.
 
         See_Also:
-            <a href="../version.html#PredefinedVersions">Predefined Versions</a>
+            $(DDSUBLINK spec/version,PredefinedVersions, Predefined Versions)
       +/
     enum OS
     {
@@ -34,6 +34,7 @@ immutable
         linux,     /// All Linux Systems
         osx,       /// Mac OS X
         freeBSD,   /// FreeBSD
+        netBSD,    /// NetBSD
         solaris,   /// Solaris
         android,   /// Android
         otherPosix /// Other Posix Systems
@@ -46,6 +47,7 @@ immutable
     else version(linux)   OS os = OS.linux;
     else version(OSX)     OS os = OS.osx;
     else version(FreeBSD) OS os = OS.freeBSD;
+    else version(NetBSD)  OS os = OS.netBSD;
     else version(Posix)   OS os = OS.otherPosix;
     else static assert(0, "Unknown OS.");
 
@@ -60,7 +62,7 @@ immutable
             $(D version(LittleEndian)).
 
         See_Also:
-            <a href="../version.html#PredefinedVersions">Predefined Versions</a>
+            $(DDSUBLINK spec/version,PredefinedVersions, Predefined Versions)
       +/
     enum Endian
     {

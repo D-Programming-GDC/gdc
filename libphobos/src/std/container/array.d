@@ -30,7 +30,7 @@ public import std.container.util;
 private struct RangeT(A)
 {
     /* Workaround for Issue 13629 at https://issues.dlang.org/show_bug.cgi?id=13629
-       See also: http://forum.dlang.org/thread/vbmwhzvawhnkoxrhbnyb@forum.dlang.org?page=1
+       See also: http://forum.dlang.org/post/vbmwhzvawhnkoxrhbnyb@forum.dlang.org
     */
     private A[1] _outer_;
     private @property ref inout(A) _outer() inout { return _outer_[0]; }
@@ -637,9 +637,7 @@ stuff)
     {
         // TODO: optimize
         Array result;
-        // @@@BUG@@ result ~= this[] doesn't work
-        auto r = this[];
-        result ~= r;
+        result ~= this[];
         assert(result.length == length);
         result ~= stuff[];
         return result;
@@ -1003,9 +1001,9 @@ unittest
     auto a = Array!int(1, 2, 3);
     auto b = Array!int(11, 12, 13);
     auto c = a ~ b;
-    //foreach (e; c) writeln(e);
     assert(c == Array!int(1, 2, 3, 11, 12, 13));
-    //assert(a ~ b[] == Array!int(1, 2, 3, 11, 12, 13));
+    assert(a ~ b[] == Array!int(1, 2, 3, 11, 12, 13));
+    assert(a ~ [4,5] == Array!int(1,2,3,4,5));
 }
 
 unittest
@@ -1930,11 +1928,11 @@ if (is(Unqual!T == bool))
             // Fits within the current array
             if (stuff)
             {
-                data[$ - 1] |= (1u << rem);
+                data[$ - 1] |= (cast(size_t)1 << rem);
             }
             else
             {
-                data[$ - 1] &= ~(1u << rem);
+                data[$ - 1] &= ~(cast(size_t)1 << rem);
             }
         }
         else
@@ -1960,6 +1958,15 @@ if (is(Unqual!T == bool))
     }
     /// ditto
     alias stableInsertBack = insertBack;
+
+    unittest
+    {
+        Array!bool a;
+        for (int i = 0; i < 100; ++i)
+            a.insertBack(true);
+        foreach (e; a)
+            assert(e);
+    }
 
     /**
        Removes the value at the front or back of the container. The

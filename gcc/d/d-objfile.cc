@@ -65,8 +65,8 @@ gcc_attribute_p(Dsymbol *dsym)
 
   if (md && md->packages && md->packages->dim == 1)
     {
-      if (!strcmp((*md->packages)[0]->string, "gcc")
-	  && !strcmp(md->id->string, "attribute"))
+      if (!strcmp((*md->packages)[0]->toChars(), "gcc")
+	  && !strcmp(md->id->toChars(), "attribute"))
 	return true;
     }
 
@@ -112,7 +112,7 @@ Dsymbol::toObjFile()
 
 	      Identifier *alias = imp->aliases[i];
 	      tree name = (alias != NULL)
-		? get_identifier(alias->string) : NULL_TREE;
+		? get_identifier(alias->toChars()) : NULL_TREE;
 
 	      (*debug_hooks->imported_module_or_decl)(decl, name, context, false);
 	    }
@@ -124,7 +124,7 @@ Dsymbol::toObjFile()
 	  set_input_location(imp);
 
 	  tree name = (imp->aliasId != NULL)
-	    ? get_identifier(imp->aliasId->string) : NULL_TREE;
+	    ? get_identifier(imp->aliasId->toChars()) : NULL_TREE;
 
 	  (*debug_hooks->imported_module_or_decl)(decl, name, context, false);
 	}
@@ -169,10 +169,11 @@ PragmaDeclaration::toObjFile()
 {
   if (!global.params.ignoreUnsupportedPragmas)
     {
-      if (ident == Id::lib)
-	warning (loc, "pragma(lib) not implemented");
-       else if (ident == Id::startaddress)
-	 warning (loc, "pragma(startaddress) not implemented");
+      if (ident == Id::lib || ident == Id::startaddress)
+	{
+	  warning_at (get_linemap (this->loc), OPT_Wunknown_pragmas,
+		      "pragma(%s) not implemented", ident->toChars ());
+	}
     }
 
   AttribDeclaration::toObjFile();
@@ -278,244 +279,7 @@ ClassDeclaration::toObjFile()
 
   // Put out the TypeInfo
   genTypeInfo(type, NULL);
-
-  // must be ClassInfo.size
-  size_t offset = Target::classinfosize;
-  if (Type::typeinfoclass->structsize != offset)
-    {
-      error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
-      gcc_unreachable();
-    }
-
-  /* Put out the ClassInfo.
-   * The layout is:
-   *  void **vptr;
-   *  monitor_t monitor;
-   *  byte[] initializer;         // static initialisation data
-   *  char[] name;                // class name
-   *  void *[] vtbl;
-   *  Interface[] interfaces;
-   *  Object *base;               // base class
-   *  void *destructor;
-   *  void *invariant;            // class invariant
-   *  ClassFlags flags;
-   *  void *deallocator;
-   *  OffsetTypeInfo[] offTi;
-   *  void *defaultConstructor;
-   *  void* xgetRTInfo;
-   */
-  tree dt = NULL_TREE;
-
-  build_vptr_monitor (&dt, Type::typeinfoclass);
-
-  // initializer[]
-  gcc_assert (structsize >= 8 || (cpp && structsize >= 4));
-  dt_cons (&dt, d_array_value (build_ctype(Type::tint8->arrayOf()),
-			       size_int (structsize),
-			       build_address (sinit)));
-  // name[]
-  const char *name = ident->toChars();
-  if (!(strlen (name) > 9 && memcmp (name, "TypeInfo_", 9) == 0))
-    name = toPrettyChars();
-  dt_cons (&dt, d_array_string (name));
-
-  // vtbl[]
-  dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
-			       size_int (vtbl.dim),
-			       build_address (vtblsym)));
-  // (*vtblInterfaces)[]
-  dt_cons (&dt, size_int (vtblInterfaces->dim));
-
-  if (vtblInterfaces->dim)
-    {
-      // Put out offset to where (*vtblInterfaces)[] is put out
-      // after the other data members.
-      dt_cons (&dt, build_offset (build_address (csym),
-				  size_int (offset)));
-    }
-  else
-    dt_cons (&dt, null_pointer_node);
-
-  // base*
-  if (baseClass)
-    dt_cons (&dt, build_address (get_classinfo_decl (baseClass)));
-  else
-    dt_cons (&dt, null_pointer_node);
-
-  // dtor*
-  if (dtor)
-    dt_cons (&dt, build_address (get_symbol_decl (dtor)));
-  else
-    dt_cons (&dt, null_pointer_node);
-
-  // invariant*
-  if (inv)
-    dt_cons (&dt, build_address (get_symbol_decl (inv)));
-  else
-    dt_cons (&dt, null_pointer_node);
-
-  // flags
-  ClassFlags::Type flags = ClassFlags::hasOffTi;
-
-  if (isCOMclass())
-    flags |= ClassFlags::isCOMclass;
-
-  if (isCPPclass())
-    flags |= ClassFlags::isCPPclass;
-
-  flags |= ClassFlags::hasGetMembers;
-  flags |= ClassFlags::hasTypeInfo;
-
-  if (ctor)
-    flags |= ClassFlags::hasCtor;
-
-  for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
-    {
-      if (cd->dtor)
-	{
-	  flags |= ClassFlags::hasDtor;
-	  break;
-	}
-    }
-
-  if (isabstract)
-    flags |= ClassFlags::isAbstract;
-
-  for (ClassDeclaration *cd = this; cd; cd = cd->baseClass)
-    {
-      if (!cd->members)
-	continue;
-
-      for (size_t i = 0; i < cd->members->dim; i++)
-	{
-	  Dsymbol *sm = (*cd->members)[i];
-	  if (sm->hasPointers())
-	    goto Lhaspointers;
-	}
-    }
-
-  flags |= ClassFlags::noPointers;
-
-Lhaspointers:
-  dt_cons (&dt, size_int (flags));
-
-  // deallocator*
-  if (aggDelete)
-    dt_cons (&dt, build_address (get_symbol_decl (aggDelete)));
-  else
-    dt_cons (&dt, null_pointer_node);
-
-  // offTi[]
-  dt_cons (&dt, d_array_value (build_ctype(Type::tuns8->arrayOf()),
-			       size_int (0), null_pointer_node));
-
-  // defaultConstructor*
-  if (defaultCtor && !(defaultCtor->storage_class & STCdisable))
-    dt_cons (&dt, build_address (get_symbol_decl (defaultCtor)));
-  else
-    dt_cons (&dt, null_pointer_node);
-
-  // xgetRTInfo*
-  if (getRTInfo)
-    dt_cons (&dt, build_expr(getRTInfo, true));
-  else
-    {
-      // If class has no pointers.
-      if (flags & ClassFlags::noPointers)
-	dt_cons (&dt, size_int (0));
-      else
-	dt_cons (&dt, size_int (1));
-    }
-
-  /* Put out (*vtblInterfaces)[]. Must immediately follow csym.
-   * The layout is:
-   *  TypeInfo_Class typeinfo;
-   *  void*[] vtbl;
-   *  size_t offset;
-   */
-  offset += vtblInterfaces->dim * (4 * Target::ptrsize);
-  for (size_t i = 0; i < vtblInterfaces->dim; i++)
-    {
-      BaseClass *b = (*vtblInterfaces)[i];
-      ClassDeclaration *id = b->base;
-
-      // Fill in vtbl[]
-      b->fillVtbl(this, &b->vtbl, 1);
-
-      // ClassInfo
-      dt_cons (&dt, build_address (get_classinfo_decl (id)));
-
-      // vtbl[]
-      dt_cons (&dt, size_int (id->vtbl.dim));
-      dt_cons (&dt, build_offset (build_address (csym),
-				     size_int (offset)));
-      // 'this' offset.
-      dt_cons (&dt, size_int (b->offset));
-
-      offset += id->vtbl.dim * Target::ptrsize;
-    }
-
-  // Put out the (*vtblInterfaces)[].vtbl[]
-  // This must be mirrored with ClassDeclaration::baseVtblOffset()
-  for (size_t i = 0; i < vtblInterfaces->dim; i++)
-    {
-      BaseClass *b = (*vtblInterfaces)[i];
-      ClassDeclaration *id = b->base;
-
-      // First entry is struct Interface reference.
-      if (id->vtblOffset())
-	{
-	  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
-	  dt_cons (&dt, build_offset (build_address (csym), size));
-	}
-
-      gcc_assert (id->vtbl.dim == b->vtbl.dim);
-      for (size_t j = id->vtblOffset() ? 1 : 0; j < id->vtbl.dim; j++)
-	{
-	  gcc_assert (j < b->vtbl.dim);
-	  FuncDeclaration *fd = b->vtbl[j];
-	  if (fd)
-	    dt_cons (&dt, build_address (make_thunk (fd, b->offset)));
-	  else
-	    dt_cons (&dt, null_pointer_node);
-	}
-    }
-
-  // Put out the overriding interface vtbl[]s.
-  // This must be mirrored with ClassDeclaration::baseVtblOffset()
-  ClassDeclaration *cd;
-
-  for (cd = this->baseClass; cd; cd = cd->baseClass)
-    {
-      for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *bs = (*cd->vtblInterfaces)[i];
-	  FuncDeclarations bvtbl;
-
-	  if (bs->fillVtbl (this, &bvtbl, 0))
-	    {
-	      ClassDeclaration *id = bs->base;
-	      // First entry is struct Interface reference.
-	      if (id->vtblOffset())
-		{
-		  tree size = size_int (Target::classinfosize + i * (4 * Target::ptrsize));
-		  dt_cons (&dt, build_offset (build_address (get_classinfo_decl (cd)), size));
-		}
-
-	      for (size_t j = id->vtblOffset() ? 1 : 0; j < id->vtbl.dim; j++)
-		{
-		  gcc_assert (j < bvtbl.dim);
-		  FuncDeclaration *fd = bvtbl[j];
-		  if (fd)
-		    dt_cons (&dt, build_address (make_thunk (fd, bs->offset)));
-		  else
-		    dt_cons (&dt, null_pointer_node);
-		}
-	    }
-	}
-    }
-
-  DECL_LANG_INITIAL (csym) = dt;
+  DECL_INITIAL (csym) = layout_classinfo (this);
   d_finish_symbol (csym);
 
   // Put out the vtbl[]
@@ -594,7 +358,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
       BaseClass *b = (*vtblInterfaces)[i];
       if (b == bc)
 	return csymoffset;
-      csymoffset += b->base->vtbl.dim * Target::ptrsize;
+      csymoffset += b->sym->vtbl.dim * Target::ptrsize;
     }
 
   // Put out the overriding interface vtbl[]s.
@@ -607,7 +371,7 @@ ClassDeclaration::baseVtblOffset (BaseClass *bc)
 	    {
 	      if (bc == bs)
 		return csymoffset;
-	      csymoffset += bs->base->vtbl.dim * Target::ptrsize;
+	      csymoffset += bs->sym->vtbl.dim * Target::ptrsize;
 	    }
 	}
     }
@@ -640,110 +404,7 @@ InterfaceDeclaration::toObjFile()
   // Put out the TypeInfo
   genTypeInfo(type, NULL);
   type->vtinfo->toObjFile();
-
-  /* Put out the ClassInfo.
-   * The layout is:
-   *  void **vptr;
-   *  monitor_t monitor;
-   *  byte[] initializer;         // static initialisation data
-   *  char[] name;                // class name
-   *  void *[] vtbl;
-   *  Interface[] interfaces;
-   *  Object *base;               // base class
-   *  void *destructor;
-   *  void *invariant;            // class invariant
-   *  uint flags;
-   *  void *deallocator;
-   *  OffsetTypeInfo[] offTi;
-   *  void *defaultConstructor;
-   *  void* xgetRTInfo;
-   */
-  tree dt = NULL_TREE;
-
-  build_vptr_monitor (&dt, Type::typeinfoclass);
-
-  // initializer[]
-  dt_cons (&dt, d_array_value (build_ctype(Type::tint8->arrayOf()),
-			       size_int (0), null_pointer_node));
-  // name[]
-  dt_cons (&dt, d_array_string (toPrettyChars()));
-
-  // vtbl[]
-  dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
-			       size_int (0), null_pointer_node));
-  // (*vtblInterfaces)[]
-  dt_cons (&dt, size_int (vtblInterfaces->dim));
-
-  if (vtblInterfaces->dim)
-    {
-      // must be ClassInfo.size
-      size_t offset = Target::classinfosize;
-      if (Type::typeinfoclass->structsize != offset)
-	{
-	  error ("mismatch between compiler and object.d or object.di found. Check installation and import paths.");
-	  gcc_unreachable();
-	}
-      // Put out offset to where (*vtblInterfaces)[] is put out
-      // after the other data members.
-      dt_cons (&dt, build_offset (build_address (csym),
-				  size_int (offset)));
-    }
-  else
-    dt_cons (&dt, null_pointer_node);
-
-  // base*, dtor*, invariant*
-  gcc_assert (!baseClass);
-  dt_cons (&dt, null_pointer_node);
-  dt_cons (&dt, null_pointer_node);
-  dt_cons (&dt, null_pointer_node);
-
-  // flags
-  ClassFlags::Type flags = ClassFlags::hasOffTi;
-  flags |= ClassFlags::hasTypeInfo;
-
-  if (isCOMinterface())
-    flags |= ClassFlags::isCOMclass;
-
-  dt_cons (&dt, size_int (flags));
-
-  // deallocator*
-  dt_cons (&dt, null_pointer_node);
-
-  // offTi[]
-  dt_cons (&dt, d_array_value (build_ctype(Type::tuns8->arrayOf()),
-			       size_int (0), null_pointer_node));
-
-  // defaultConstructor*
-  dt_cons (&dt, null_pointer_node);
-
-  // xgetRTInfo*
-  if (getRTInfo)
-    dt_cons (&dt, build_expr(getRTInfo, true));
-  else
-    dt_cons (&dt, size_int (0));
-
-  /* Put out (*vtblInterfaces)[]. Must immediately follow csym.
-   * The layout is:
-   *  TypeInfo_Class typeinfo;
-   *  void*[] vtbl;
-   *  size_t offset;
-   */
-  for (size_t i = 0; i < vtblInterfaces->dim; i++)
-    {
-      BaseClass *b = (*vtblInterfaces)[i];
-      ClassDeclaration *id = b->base;
-
-      // ClassInfo
-      dt_cons (&dt, build_address (get_classinfo_decl (id)));
-
-      // vtbl[]
-      dt_cons (&dt, d_array_value (build_ctype(Type::tvoidptr->arrayOf()),
-				   size_int (0), null_pointer_node));
-      // 'this' offset.
-      dt_cons (&dt, size_int (b->offset));
-    }
-
-  DECL_LANG_INITIAL (csym) = dt;
+  DECL_INITIAL (csym) = layout_classinfo (this);
   d_finish_symbol (csym);
 
   /* Add this decl to the current binding level.  */
@@ -811,8 +472,8 @@ VarDeclaration::toObjFile()
 	return;
 
       tree decl = get_symbol_decl (this);
-      gcc_assert (init && !init->isVoidInitializer());
-      Expression *ie = init->toExpression();
+      gcc_assert (this->_init && !this->_init->isVoidInitializer());
+      Expression *ie = this->_init->toExpression();
 
       // CONST_DECL was initially intended for enumerals and may be used for
       // scalars in general, but not for aggregates.  Here a non-constant value
@@ -844,13 +505,20 @@ VarDeclaration::toObjFile()
 	  mi->tlsVars.safe_push (this);
 	}
 
-      size_t sz = type->size();
+      /* How big a symbol can be should depend on backend.  */
+      tree size = build_integer_cst (this->type->size (this->loc),
+				      build_ctype (Type::tsize_t));
+      if (!valid_constant_size_p (size))
+	{
+	  this->error("size is too large");
+	  return;
+	}
 
-      if (init && !init->isVoidInitializer())
+      if (this->_init && !this->_init->isVoidInitializer())
 	{
 	  // Look for static array that is block initialised.
 	  Type *tb = type->toBasetype();
-	  ExpInitializer *ie = init->isExpInitializer();
+	  ExpInitializer *ie = this->_init->isExpInitializer();
 
 	  if (ie != NULL && tb->ty == Tsarray
 	      && !d_types_same(tb, ie->exp->type))
@@ -859,7 +527,7 @@ VarDeclaration::toObjFile()
 	      dt_cons (&DECL_LANG_INITIAL (s), build_array_from_val (tb, val));
 	    }
 	  else
-	    DECL_LANG_INITIAL (s) = init->toDt();
+	    DECL_LANG_INITIAL (s) = this->_init->toDt();
 	}
       else
 	{
@@ -873,7 +541,7 @@ VarDeclaration::toObjFile()
 	}
 
       // Frontend should have already caught this.
-      gcc_assert (sz || type->toBasetype()->ty == Tsarray);
+      gcc_assert (!integer_zerop (size) || type->toBasetype()->ty == Tsarray);
       d_finish_symbol (s);
     }
   else
@@ -885,11 +553,11 @@ VarDeclaration::toObjFile()
 	{
 	  build_local_var (this);
 
-	  if (init)
+	  if (this->_init)
 	    {
-	      if (!init->isVoidInitializer())
+	      if (!this->_init->isVoidInitializer())
 		{
-		  ExpInitializer *vinit = init->isExpInitializer();
+		  ExpInitializer *vinit = this->_init->isExpInitializer();
 		  Expression *ie = vinit->toExpression();
 		  tree exp = build_expr(ie);
 		  add_stmt(exp);
@@ -898,7 +566,7 @@ VarDeclaration::toObjFile()
 		{
 		  // Zero-length arrays do not have an initializer.
 		  warning (OPT_Wuninitialized, "uninitialized variable '%s'",
-			   ident ? ident->string : "(no name)");
+			   ident ? ident->toChars() : "(no name)");
 		}
 	    }
 	}
@@ -1836,7 +1504,7 @@ build_type_decl (tree type, Dsymbol *dsym)
   gcc_assert(!POINTER_TYPE_P (type));
 
   tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL,
-			 get_identifier(dsym->ident->string), type);
+			 get_identifier(dsym->ident->toChars()), type);
   DECL_ARTIFICIAL (decl) = 1;
 
   DECL_CONTEXT (decl) = d_decl_context(dsym);
@@ -1978,7 +1646,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
   func->parent = mod;
   func->protection = PROTprivate;
 
-  func->semantic (mod->scope);
+  func->semantic (mod->_scope);
   Statements *body = new Statements();
   for (size_t i = 0; i < tlsVars.length(); i++)
     {
@@ -1993,7 +1661,7 @@ build_emutls_function (vec<VarDeclaration *> tlsVars)
       body->push (ExpStatement::create (mod->loc, call));
     }
   func->fbody = new CompoundStatement (mod->loc, body);
-  func->semantic3 (mod->scope);
+  func->semantic3 (mod->_scope);
   func->toObjFile();
 
   return get_symbol_decl (func);
@@ -2228,6 +1896,7 @@ emit_dso_registry_hooks(tree sym, Dsymbol *compiler_dso_type, Dsymbol *dso_regis
   set_decl_location(decl, current_module_decl);
   TREE_PUBLIC (decl) = 1;
   TREE_STATIC (decl) = 1;
+  DECL_PRESERVE_P (decl) = 1;
   DECL_INITIAL (decl) = build_address(sym);
   TREE_STATIC (DECL_INITIAL (decl)) = 1;
 
@@ -2309,12 +1978,15 @@ Module::genmoduleinfo()
     {
       m->importedFrom = m;
       m->importAll (NULL);
-      m->semantic();
-      m->semantic2();
-      m->semantic3();
-      mref = m->search(Loc(), Id::Dmodule_ref, IgnoreErrors);
-      compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, IgnoreErrors);
-      dso_registry_func = m->search(Loc(), Id::dso_registry_func, IgnoreErrors);
+      m->semantic(NULL);
+      m->semantic2(NULL);
+      m->semantic3(NULL);
+      // These symbols are normally private to the module they're declared in,
+      // but for internal compiler lookups, their visibility is discarded.
+      int sflags = IgnoreErrors | IgnoreSymbolVisibility;
+      mref = m->search(Loc(), Id::Dmodule_ref, sflags);
+      compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, sflags);
+      dso_registry_func = m->search(Loc(), Id::dso_registry_func, sflags);
     }
 
   // Prefer _d_dso_registry model if available

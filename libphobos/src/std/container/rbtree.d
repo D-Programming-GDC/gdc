@@ -19,7 +19,48 @@ Authors: Steven Schveighoffer, $(WEB erdani.com, Andrei Alexandrescu)
 */
 module std.container.rbtree;
 
+///
+unittest
+{
+    import std.container.rbtree;
+    import std.algorithm: equal;
+
+    auto rbt = redBlackTree(3, 1, 4, 2, 5);
+    assert(rbt.front == 1);
+    assert(equal(rbt[], [1, 2, 3, 4, 5]));
+
+    rbt.removeKey(1, 4);
+    assert(equal(rbt[], [2, 3, 5]));
+
+    rbt.removeFront();
+    assert(equal(rbt[], [3, 5]));
+
+    rbt.insert([1, 2, 4]);
+    assert(equal(rbt[], [1, 2, 3, 4, 5]));
+
+    // Query bounds in O(log(n))
+    assert(rbt.lowerBound(3).equal([1, 2]));
+    assert(rbt.equalRange(3).equal([3]));
+    assert(rbt.upperBound(3).equal([4, 5]));
+
+    // A Red Black tree with the highest element at front:
+    import std.range: iota;
+    auto maxTree = redBlackTree!"a > b"(iota(5));
+    assert(equal(maxTree[], [4, 3, 2, 1, 0]));
+
+    // adding duplicates will not add them, but return 0
+    auto rbt2 = redBlackTree(1, 3);
+    assert(rbt2.insert(1) == 0);
+    assert(equal(rbt2[], [1, 3]));
+    assert(rbt2.insert(2) == 1);
+
+    // however you can allow duplicates
+    auto ubt = redBlackTree!true([0, 1, 0, 1]);
+    assert(equal(ubt[], [0, 0, 1, 1]));
+}
+
 import std.functional : binaryFun;
+import std.format;
 
 public import std.container.util;
 
@@ -610,6 +651,73 @@ unittest
     static assert(is(typeof(n.prev)));
 }
 
+private struct RBRange(N)
+{
+    alias Node = N;
+    alias Elem = typeof(Node.value);
+
+    private Node _begin;
+    private Node _end;
+
+    private this(Node b, Node e)
+    {
+        _begin = b;
+        _end = e;
+    }
+
+    /**
+     * Returns $(D true) if the range is _empty
+     */
+    @property bool empty() const
+    {
+        return _begin is _end;
+    }
+
+    /**
+     * Returns the first element in the range
+     */
+    @property Elem front()
+    {
+        return _begin.value;
+    }
+
+    /**
+     * Returns the last element in the range
+     */
+    @property Elem back()
+    {
+        return _end.prev.value;
+    }
+
+    /**
+     * pop the front element from the range
+     *
+     * complexity: amortized $(BIGOH 1)
+     */
+    void popFront()
+    {
+        _begin = _begin.next;
+    }
+
+    /**
+     * pop the back element from the range
+     *
+     * complexity: amortized $(BIGOH 1)
+     */
+    void popBack()
+    {
+        _end = _end.prev;
+    }
+
+    /**
+     * Trivial _save implementation, needed for $(D isForwardRange).
+     */
+    @property RBRange save()
+    {
+        return this;
+    }
+}
+
 /**
  * Implementation of a $(LUCKY red-black tree) container.
  *
@@ -633,9 +741,9 @@ unittest
 final class RedBlackTree(T, alias less = "a < b", bool allowDuplicates = false)
     if(is(typeof(binaryFun!less(T.init, T.init))))
 {
+    import std.meta : allSatisfy;
     import std.range.primitives;
     import std.range : Take;
-    import std.typetuple : allSatisfy;
     import std.traits;
 
     alias _less = binaryFun!less;
@@ -701,71 +809,11 @@ final class RedBlackTree(T, alias less = "a < b", bool allowDuplicates = false)
     }
 
     /**
-     * The range type for $(D RedBlackTree)
+     * The range types for $(D RedBlackTree)
      */
-    struct Range
-    {
-        private Node _begin;
-        private Node _end;
-
-        private this(Node b, Node e)
-        {
-            _begin = b;
-            _end = e;
-        }
-
-        /**
-         * Returns $(D true) if the range is _empty
-         */
-        @property bool empty() const
-        {
-            return _begin is _end;
-        }
-
-        /**
-         * Returns the first element in the range
-         */
-        @property Elem front()
-        {
-            return _begin.value;
-        }
-
-        /**
-         * Returns the last element in the range
-         */
-        @property Elem back()
-        {
-            return _end.prev.value;
-        }
-
-        /**
-         * pop the front element from the range
-         *
-         * complexity: amortized $(BIGOH 1)
-         */
-        void popFront()
-        {
-            _begin = _begin.next;
-        }
-
-        /**
-         * pop the back element from the range
-         *
-         * complexity: amortized $(BIGOH 1)
-         */
-        void popBack()
-        {
-            _end = _end.prev;
-        }
-
-        /**
-         * Trivial _save implementation, needed for $(D isForwardRange).
-         */
-        @property Range save()
-        {
-            return this;
-        }
-    }
+    alias Range = RBRange!(RBNode*);
+    alias ConstRange = RBRange!(const(RBNode)*); /// Ditto
+    alias ImmutableRange = RBRange!(immutable(RBNode)*); /// Ditto
 
     static if(doUnittest) unittest
     {
@@ -963,6 +1011,18 @@ final class RedBlackTree(T, alias less = "a < b", bool allowDuplicates = false)
     Range opSlice()
     {
         return Range(_begin, _end);
+    }
+
+    /// Ditto
+    ConstRange opSlice() const
+    {
+        return ConstRange(_begin, _end);
+    }
+
+    /// Ditto
+    ImmutableRange opSlice() immutable
+    {
+        return ImmutableRange(_begin, _end);
     }
 
     /**
@@ -1328,7 +1388,7 @@ final class RedBlackTree(T, alias less = "a < b", bool allowDuplicates = false)
 
        Complexity: $(BIGOH m log(n)) (where m is the number of elements to remove)
 
-       Examples:
+       Example:
 --------------------
 auto rbt = redBlackTree!true(0, 1, 1, 1, 4, 5, 7);
 rbt.removeKey(1, 4, 7);
@@ -1434,11 +1494,11 @@ assert(equal(rbt[], [5]));
     }
 
     // find the first node where the value is > e
-    private Node _firstGreater(Elem e)
+    private inout(RBNode)* _firstGreater(Elem e) inout
     {
         // can't use _find, because we cannot return null
         auto cur = _end.left;
-        auto result = _end;
+        inout(RBNode)* result = _end;
         while(cur)
         {
             if(_less(e, cur.value))
@@ -1453,11 +1513,11 @@ assert(equal(rbt[], [5]));
     }
 
     // find the first node where the value is >= e
-    private Node _firstGreaterEqual(Elem e)
+    private inout(RBNode)* _firstGreaterEqual(Elem e) inout
     {
         // can't use _find, because we cannot return null.
         auto cur = _end.left;
-        auto result = _end;
+        inout(RBNode)* result = _end;
         while(cur)
         {
             if(_less(cur.value, e))
@@ -1483,6 +1543,18 @@ assert(equal(rbt[], [5]));
         return Range(_firstGreater(e), _end);
     }
 
+    /// Ditto
+    ConstRange upperBound(Elem e) const
+    {
+        return ConstRange(_firstGreater(e), _end);
+    }
+
+    /// Ditto
+    ImmutableRange upperBound(Elem e) immutable
+    {
+        return ImmutableRange(_firstGreater(e), _end);
+    }
+
     /**
      * Get a range from the container with all elements that are < e according
      * to the less comparator
@@ -1494,27 +1566,40 @@ assert(equal(rbt[], [5]));
         return Range(_begin, _firstGreaterEqual(e));
     }
 
+    /// Ditto
+    ConstRange lowerBound(Elem e) const
+    {
+        return ConstRange(_begin, _firstGreaterEqual(e));
+    }
+
+    /// Ditto
+    ImmutableRange lowerBound(Elem e) immutable
+    {
+        return ImmutableRange(_begin, _firstGreaterEqual(e));
+    }
+
     /**
      * Get a range from the container with all elements that are == e according
      * to the less comparator
      *
      * Complexity: $(BIGOH log(n))
      */
-    Range equalRange(Elem e)
+    auto equalRange(this This)(Elem e)
     {
         auto beg = _firstGreaterEqual(e);
+        alias RangeType = RBRange!(typeof(beg));
         if(beg is _end || _less(e, beg.value))
             // no values are equal
-            return Range(beg, beg);
+            return RangeType(beg, beg);
         static if(allowDuplicates)
         {
-            return Range(beg, _firstGreater(e));
+            return RangeType(beg, _firstGreater(e));
         }
         else
         {
             // no sense in doing a full search, no duplicates are allowed,
             // so we just get the next node.
-            return Range(beg, beg.next);
+            return RangeType(beg, beg.next);
         }
     }
 
@@ -1626,6 +1711,21 @@ assert(equal(rbt[], [5]));
     }
 
     /**
+      Formats the RedBlackTree into a sink function. For more info see $(D
+      std.format.formatValue). Note that this only is available when the
+      element type can be formatted. Otherwise, the default toString from
+      Object is used.
+     */
+    static if(is(typeof((){FormatSpec!(char) fmt; formatValue((const(char)[]) {}, ConstRange.init, fmt);})))
+    {
+        void toString(scope void delegate(const(char)[]) sink, FormatSpec!char fmt) const {
+            sink("RedBlackTree(");
+            sink.formatValue(this[], fmt);
+            sink(")");
+        }
+    }
+
+    /**
      * Constructor. Pass in an array of elements, or individual elements to
      * initialize the tree with.
      */
@@ -1723,6 +1823,12 @@ pure unittest
 /++
     Convenience function for creating a $(D RedBlackTree!E) from a list of
     values.
+
+    Params:
+        allowDuplicates =  Whether duplicates should be allowed (optional, default: false)
+        less = predicate to sort by (optional)
+        elems = elements to insert into the rbtree (variadic arguments)
+        range = range elements to insert into the rbtree (alternative to elems)
   +/
 auto redBlackTree(E)(E[] elems...)
 {
@@ -1737,6 +1843,7 @@ auto redBlackTree(bool allowDuplicates, E)(E[] elems...)
 
 /++ Ditto +/
 auto redBlackTree(alias less, E)(E[] elems...)
+    if(is(typeof(binaryFun!less(E.init, E.init))))
 {
     return new RedBlackTree!(E, less)(elems);
 }
@@ -1751,14 +1858,59 @@ auto redBlackTree(alias less, bool allowDuplicates, E)(E[] elems...)
     return new RedBlackTree!(E, binaryFun!less, allowDuplicates)(elems);
 }
 
+
+import std.range.primitives: isInputRange, isSomeString, ElementType;
+import std.traits: isArray;
+
+/++ Ditto +/
+auto redBlackTree(Stuff)(Stuff range)
+if (isInputRange!Stuff && !isArray!(Stuff))
+{
+    return new RedBlackTree!(ElementType!Stuff)(range);
+}
+
+/++ Ditto +/
+auto redBlackTree(bool allowDuplicates, Stuff)(Stuff range)
+if (isInputRange!Stuff && !isArray!(Stuff))
+{
+    return new RedBlackTree!(ElementType!Stuff, "a < b", allowDuplicates)(range);
+}
+
+/++ Ditto +/
+auto redBlackTree(alias less, Stuff)(Stuff range)
+if( is(typeof(binaryFun!less((ElementType!Stuff).init, (ElementType!Stuff).init)))
+    && isInputRange!Stuff && !isArray!(Stuff))
+{
+    return new RedBlackTree!(ElementType!Stuff, less)(range);
+}
+
+/++ Ditto +/
+auto redBlackTree(alias less, bool allowDuplicates, Stuff)(Stuff range)
+    if( is(typeof(binaryFun!less((ElementType!Stuff).init, (ElementType!Stuff).init)))
+         && isInputRange!Stuff && !isArray!(Stuff))
+{
+    //We shouldn't need to instantiate less here, but for some reason,
+    //dmd can't handle it if we don't (even though the template which
+    //takes less but not allowDuplicates works just fine).
+    return new RedBlackTree!(ElementType!Stuff, binaryFun!less, allowDuplicates)(range);
+}
+
 ///
 pure unittest
 {
+    import std.range : iota;
+
     auto rbt1 = redBlackTree(0, 1, 5, 7);
     auto rbt2 = redBlackTree!string("hello", "world");
     auto rbt3 = redBlackTree!true(0, 1, 5, 7, 5);
     auto rbt4 = redBlackTree!"a > b"(0, 1, 5, 7);
     auto rbt5 = redBlackTree!("a > b", true)(0.1, 1.3, 5.9, 7.2, 5.9);
+
+    // also works with ranges
+    auto rbt6 = redBlackTree(iota(3));
+    auto rbt7 = redBlackTree!true(iota(3));
+    auto rbt8 = redBlackTree!"a > b"(iota(3));
+    auto rbt9 = redBlackTree!("a > b", true)(iota(3));
 }
 
 //Combinations not in examples.
@@ -1778,9 +1930,66 @@ pure unittest
     assert(equal(rbt[], [4, 3, 2, 1, 0]));
 }
 
+
+// construction with arrays
+pure unittest
+{
+    import std.algorithm : equal;
+
+    auto rbt = redBlackTree!"a > b"([0, 1, 2, 3, 4]);
+    assert(equal(rbt[], [4, 3, 2, 1, 0]));
+
+    auto rbt2 = redBlackTree!"a > b"(["a", "b"]);
+    assert(equal(rbt2[], ["b", "a"]));
+
+    auto rbt3 = redBlackTree!"a > b"([1, 2]);
+    assert(equal(rbt3[], [2, 1]));
+
+    auto rbt4 = redBlackTree([0, 1, 7, 5]);
+    assert(equal(rbt4[], [0, 1, 5, 7]));
+
+    auto rbt5 = redBlackTree(["hello", "world"]);
+    assert(equal(rbt5[], ["hello", "world"]));
+
+    auto rbt6 = redBlackTree!true([0, 1, 5, 7, 5]);
+    assert(equal(rbt6[], [0, 1, 5, 5, 7]));
+
+    auto rbt7 = redBlackTree!"a > b"([0, 1, 5, 7]);
+    assert(equal(rbt7[], [7, 5, 1, 0]));
+
+    auto rbt8 = redBlackTree!("a > b", true)([0.1, 1.3, 5.9, 7.2, 5.9]);
+    assert(equal(rbt8[], [7.2, 5.9, 5.9, 1.3, 0.1]));
+}
+
+// convenience wrapper range construction
+pure unittest
+{
+    import std.algorithm : equal;
+    import std.range : chain, iota;
+
+    auto rbt = redBlackTree(iota(3));
+    assert(equal(rbt[], [0, 1, 2]));
+
+    auto rbt2 = redBlackTree!"a > b"(iota(2));
+    assert(equal(rbt2[], [1, 0]));
+
+    auto rbt3 = redBlackTree(chain([0, 1], [7, 5]));
+    assert(equal(rbt3[], [0, 1, 5, 7]));
+
+    auto rbt4 = redBlackTree(chain(["hello"], ["world"]));
+    assert(equal(rbt4[], ["hello", "world"]));
+
+    auto rbt5 = redBlackTree!true(chain([0, 1], [5, 7, 5]));
+    assert(equal(rbt5[], [0, 1, 5, 5, 7]));
+
+    auto rbt6 = redBlackTree!("a > b", true)(chain([0.1, 1.3], [5.9, 7.2, 5.9]));
+    assert(equal(rbt6[], [7.2, 5.9, 5.9, 1.3, 0.1]));
+}
+
 pure unittest
 {
     import std.array : array;
+
     auto rt1 = redBlackTree(5, 4, 3, 2, 1);
     assert(rt1.length == 5);
     assert(array(rt1[]) == [1, 2, 3, 4, 5]);
@@ -1798,10 +2007,52 @@ pure unittest
     assert(array(rt4[]) == ["hello"]);
 }
 
+unittest {
+    import std.conv : to;
+
+    auto rt1 = redBlackTree!string();
+    assert(rt1.to!string == "RedBlackTree([])");
+
+    auto rt2 = redBlackTree!string("hello");
+    assert(rt2.to!string == "RedBlackTree([\"hello\"])");
+
+    auto rt3 = redBlackTree!string("hello", "world", "!");
+    assert(rt3.to!string == "RedBlackTree([\"!\", \"hello\", \"world\"])");
+
+    // type deduction can be done automatically
+    auto rt4 = redBlackTree(["hello"]);
+    assert(rt4.to!string == "RedBlackTree([\"hello\"])");
+}
+
 //constness checks
 unittest
 {
     const rt1 = redBlackTree(5,4,3,2,1);
     static assert(is(typeof(rt1.length)));
     static assert(is(typeof(5 in rt1)));
+
+    static assert(is(typeof(rt1.upperBound(3).front) == const(int)));
+    import std.algorithm : equal;
+    assert(rt1.upperBound(3).equal([4, 5]));
+    assert(rt1.lowerBound(3).equal([1, 2]));
+    assert(rt1.equalRange(3).equal([3]));
+    assert(rt1[].equal([1, 2, 3, 4, 5]));
+}
+
+//immutable checks
+unittest
+{
+    immutable rt1 = redBlackTree(5,4,3,2,1);
+    static assert(is(typeof(rt1.length)));
+
+    static assert(is(typeof(rt1.upperBound(3).front) == immutable(int)));
+    import std.algorithm : equal;
+    assert(rt1.upperBound(2).equal([3, 4, 5]));
+}
+
+// issue 15941
+unittest
+{
+    class C {}
+    RedBlackTree!(C, "cast(void*)a < cast(void*)b") tree;
 }

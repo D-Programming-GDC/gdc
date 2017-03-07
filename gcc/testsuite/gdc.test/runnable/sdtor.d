@@ -1294,9 +1294,9 @@ void test51()
   A51_a = 0; { if (0) while(1) A51 a;               } assert(A51_a == 0);
   A51_a = 0; { try A51 a; catch(Error e) {}         } assert(A51_a == 1);
   A51_a = 0; { if (0) final switch(1) A51 a;        } assert(A51_a == 0); // should fail to build
-  A51_a = 0; { if (0) switch(1) { A51 a; default: } } assert(A51_a == 0);
+//  A51_a = 0; { if (0) switch(1) { A51 a; default: } } assert(A51_a == 0);
   A51_a = 0; { if (0) switch(1) { default: A51 a; } } assert(A51_a == 0);
-  A51_a = 0; { if (1) switch(1) { A51 a; default: } } assert(A51_a == 1); // should be 0, right?
+//  A51_a = 0; { if (1) switch(1) { A51 a; default: } } assert(A51_a == 1); // should be 0, right?
   A51_a = 0; { if (1) switch(1) { default: A51 a; } } assert(A51_a == 1);
 //  A51_a = 0; { final switch(0) A51 a;               } assert(A51_a == 0);
   A51_a = 0; { A51 a; with(a) A51 b;                } assert(A51_a == 2);
@@ -2151,6 +2151,129 @@ void test7506()
 }
 
 /**********************************/
+// 7516
+
+struct S7516
+{
+    int val;
+
+    this(int n) { val = n; }
+    this(this) { val *= 3; }
+}
+
+// CondExp on return statement
+void test7516a()
+{
+    alias S = S7516;
+    S s1 = S(1);
+    S s2 = S(2);
+
+    S foo(bool f) { return f ?  s1  :  s2;  }
+    S hoo(bool f) { return f ? S(1) : S(2); }
+    S bar(bool f) { return f ?  s1  : S(2); }
+    S baz(bool f) { return f ? S(1) :  s2;  }
+
+    auto r1 = foo(true);    assert(r1.val == 3);
+    auto r2 = foo(false);   assert(r2.val == 6);
+    auto r3 = hoo(true);    assert(r3.val == 1);
+    auto r4 = hoo(false);   assert(r4.val == 2);
+    auto r5 = bar(true);    assert(r5.val == 3);
+    auto r6 = bar(false);   assert(r6.val == 2);
+    auto r7 = baz(true);    assert(r7.val == 1);
+    auto r8 = baz(false);   assert(r8.val == 6);
+}
+
+// CondExp on function argument
+void test7516b()
+{
+    alias S = S7516;
+    S s1 = S(1);
+    S s2 = S(2);
+    S func(S s) { return s; }
+
+    S foo(bool f) { return func(f ?  s1  :  s2 ); }
+    S hoo(bool f) { return func(f ? S(1) : S(2)); }
+    S bar(bool f) { return func(f ?  s1  : S(2)); }
+    S baz(bool f) { return func(f ? S(1) :  s2 ); }
+
+    auto r1 = foo(true);    assert(r1.val == 3 * 3);
+    auto r2 = foo(false);   assert(r2.val == 6 * 3);
+    auto r3 = hoo(true);    assert(r3.val == 1 * 3);
+    auto r4 = hoo(false);   assert(r4.val == 2 * 3);
+    auto r5 = bar(true);    assert(r5.val == 3 * 3);
+    auto r6 = bar(false);   assert(r6.val == 2 * 3);
+    auto r7 = baz(true);    assert(r7.val == 1 * 3);
+    auto r8 = baz(false);   assert(r8.val == 6 * 3);
+}
+
+// CondExp on array literal
+void test7516c()
+{
+    alias S = S7516;
+    S s1 = S(1);
+    S s2 = S(2);
+
+    S[] foo(bool f) { return [f ?  s1  :  s2 ]; }
+    S[] hoo(bool f) { return [f ? S(1) : S(2)]; }
+    S[] bar(bool f) { return [f ?  s1  : S(2)]; }
+    S[] baz(bool f) { return [f ? S(1) :  s2 ]; }
+
+    auto r1 = foo(true);    assert(r1[0].val == 3);
+    auto r2 = foo(false);   assert(r2[0].val == 6);
+    auto r3 = hoo(true);    assert(r3[0].val == 1);
+    auto r4 = hoo(false);   assert(r4[0].val == 2);
+    auto r5 = bar(true);    assert(r5[0].val == 3);
+    auto r6 = bar(false);   assert(r6[0].val == 2);
+    auto r7 = baz(true);    assert(r7[0].val == 1);
+    auto r8 = baz(false);   assert(r8[0].val == 6);
+}
+
+// CondExp on rhs of cat assign
+void test7516d()
+{
+    alias S = S7516;
+    S s1 = S(1);
+    S s2 = S(2);
+
+    S[] foo(bool f) { S[] a; a ~= f ?  s1  :  s2 ; return a; }
+    S[] hoo(bool f) { S[] a; a ~= f ? S(1) : S(2); return a; }
+    S[] bar(bool f) { S[] a; a ~= f ?  s1  : S(2); return a; }
+    S[] baz(bool f) { S[] a; a ~= f ? S(1) :  s2 ; return a; }
+
+    auto r1 = foo(true);    assert(r1[0].val == 3);
+    auto r2 = foo(false);   assert(r2[0].val == 6);
+    auto r3 = hoo(true);    assert(r3[0].val == 1);
+    auto r4 = hoo(false);   assert(r4[0].val == 2);
+    auto r5 = bar(true);    assert(r5[0].val == 3);
+    auto r6 = bar(false);   assert(r6[0].val == 2);
+    auto r7 = baz(true);    assert(r7[0].val == 1);
+    auto r8 = baz(false);   assert(r8[0].val == 6);
+}
+
+// CondExp on struct literal element
+void test7516e()
+{
+    alias S = S7516;
+    S s1 = S(1);
+    S s2 = S(2);
+    struct X { S s; }
+
+    X foo(bool f) { return X(f ?  s1  :  s2 ); }
+    X hoo(bool f) { return X(f ? S(1) : S(2)); }
+    X bar(bool f) { return X(f ?  s1  : S(2)); }
+    X baz(bool f) { return X(f ? S(1) :  s2 ); }
+
+    auto r1 = foo(true);    assert(r1.s.val == 3);
+    auto r2 = foo(false);   assert(r2.s.val == 6);
+    auto r3 = hoo(true);    assert(r3.s.val == 1);
+    auto r4 = hoo(false);   assert(r4.s.val == 2);
+    auto r5 = bar(true);    assert(r5.s.val == 3);
+    auto r6 = bar(false);   assert(r6.s.val == 2);
+    auto r7 = baz(true);    assert(r7.s.val == 1);
+    auto r8 = baz(false);   assert(r8.s.val == 6);
+}
+
+/**********************************/
 // 7530
 
 void test7530()
@@ -2659,7 +2782,7 @@ struct S9985
 
     static void* ptr;
 }
-auto ref makeS9985()
+auto ref makeS9985() @system
 {
     S9985 s;
     s.b = s.buf.ptr;
@@ -3943,6 +4066,72 @@ void test14264()
 }
 
 /**********************************/
+// 14815
+
+int test14815()
+{
+    uint dtorCount;
+
+    struct S
+    {
+        uint x;
+        ~this() { ++dtorCount; }
+    }
+
+    S[2] sa1;
+    sa1[0].x = 42;
+    sa1 = (S[2]).init;      // S[2] <- rvalue
+    assert(sa1[0].x == 0);
+    assert(dtorCount == 2);
+
+    S[2] sa2;
+    sa2[0].x = 42;
+    S[] da2 = sa2[];
+    da2[] = (S[2]).init[];  // S[] <- rvalue slice
+    assert(sa2[0].x == 0);
+    assert(dtorCount == 4);
+
+    S[2] sa3;
+    S[2] sa4;
+    sa3[0].x = 42;
+    sa3 = sa4;              // S[2] <- lvalue
+    assert(sa3[0].x == 0);
+    assert(dtorCount == 6);
+
+    S[2] sa5;
+    S[] da4 = sa4[];
+    da4[] = sa5[];          // S[] <- lvalue slice
+    assert(sa4[0].x == 0);
+    assert(dtorCount == 8);
+
+    return 1;
+}
+static assert(test14815());
+
+/**********************************/
+// 14860
+
+int test14860()
+{
+    uint dtorCount;
+
+    struct S
+    {
+        uint x;
+        ~this() { ++dtorCount; }
+    }
+
+    S[] a = [S(42)];
+    a[] = S();
+
+    assert(a[0].x == 0);
+    assert(dtorCount == 1);
+
+    return 1;
+}
+static assert(test14860());
+
+/**********************************/
 // 14696
 
 void test14696(int len = 2)
@@ -4054,6 +4243,7 @@ void test14696(int len = 2)
     check({ foo(len != 2 ? makeS(1).get(len != 2 ? makeS(2).get() : null) : null); }, "foo.");
 }
 
+/**********************************/
 // 14838
 
 int test14838() pure nothrow @safe
@@ -4105,6 +4295,101 @@ int test14838() pure nothrow @safe
     return 1;
 }
 static assert(test14838());
+
+/**********************************/
+
+struct S63
+{
+    private long p = 87;
+
+    this(int x)
+    {
+        assert(p == 87);
+        p += x;
+    }
+
+    ~this() { }
+
+    this(this) { }
+
+    void funky() { assert(p == 90); }
+
+    static void tester()
+    {
+        S63(3).funky();
+    }
+}
+
+void test63()
+{
+    S63.tester();
+}
+
+/**********************************/
+
+struct X64
+{
+    static int dtor;
+
+    ~this() { ++dtor; }
+}
+
+struct S64
+{
+    int n;
+    long[10] dummy;     // S64 needs to be passed by stack
+}
+
+S64 foo64()
+{
+    return S64((X64(), 1));
+}
+
+void test64()
+{
+    auto s = foo64();
+    assert(X64.dtor == 1);
+}
+
+/**********************************/
+// 15661
+
+struct X15661
+{
+    ~this() {}
+}
+
+X15661 createX15661() { return X15661(); }
+
+struct Y15661
+{
+    static int dtor;
+
+    @disable this();
+    @disable this(this);
+    this(X15661 a1, X15661 a2) {}
+    ~this() { ++dtor; }
+}
+
+struct Z15661
+{
+    this(int)
+    {
+        b = Y15661(createX15661(), createX15661());
+        assert(Y15661.dtor == 0);
+    }
+
+    private Y15661 b;
+}
+
+void test15661()
+{
+    {
+        auto v = Z15661(5);
+        assert(Y15661.dtor == 0);
+    }
+    assert(Y15661.dtor == 1);
+}
 
 /**********************************/
 
@@ -4184,6 +4469,11 @@ int main()
     test61();
     test7506();
     test7530();
+    test7516a();
+    test7516b();
+    test7516c();
+    test7516d();
+    test7516e();
     test62();
     test7579a();
     test7579b();
@@ -4222,8 +4512,13 @@ int main()
     test13669();
     test13095();
     test14264();
+    test14815();
+    test14860();
     test14696();
     test14838();
+    test63();
+    test64();
+    test15661();
 
     printf("Success\n");
     return 0;

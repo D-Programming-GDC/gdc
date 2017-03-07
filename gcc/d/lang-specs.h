@@ -27,5 +27,8 @@
 {".DI", "@d", 0, 1, 0 },
 {"@d",
   "%{!E:cc1d %i %(cc1_options) %(cc1d) %I %{nostdinc*} %{+e*} %{I*} %{J*}\
-    %{M} %{MM} %{v} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },
+    %{MD:-MD %b.deps} %{MMD:-MMD %b.deps}\
+    %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*}\
+    %{X:-Xf %b.json} %{Xf*}\
+    %{v} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },
 

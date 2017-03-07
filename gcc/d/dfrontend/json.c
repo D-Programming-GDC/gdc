@@ -30,6 +30,7 @@
 #include "init.h"
 #include "import.h"
 #include "id.h"
+#include "hdrgen.h"
 
 class ToJsonVisitor : public Visitor
 {
@@ -343,21 +344,9 @@ public:
 
             while (stc)
             {
-                const size_t BUFFER_LEN = 20;
-                char tmp[BUFFER_LEN];
-                const char *p = StorageClassDeclaration::stcToChars(tmp, stc);
+                const char *p = stcToChars(stc);
                 assert(p);
-                assert(strlen(p) < BUFFER_LEN);
-                if (p[0] == '@')
-                {
-                    indent();
-                    stringStart();
-                    buf->writestring(p);
-                    stringEnd();
-                    comma();
-                }
-                else
-                    item(p);
+                item(p);
             }
 
             arrayEnd();
@@ -655,14 +644,14 @@ public:
             {
                 property("base", cd->baseClass->toPrettyChars(true));
             }
-            if (cd->interfaces_dim)
+            if (cd->interfaces.length)
             {
                 propertyStart("interfaces");
                 arrayStart();
-                for (size_t i = 0; i < cd->interfaces_dim; i++)
+                for (size_t i = 0; i < cd->interfaces.length; i++)
                 {
-                    BaseClass *b = cd->interfaces[i];
-                    item(b->base->toPrettyChars(true));
+                    BaseClass *b = cd->interfaces.ptr[i];
+                    item(b->sym->toPrettyChars(true));
                 }
                 arrayEnd();
             }
@@ -848,9 +837,9 @@ public:
     {
         objectStart();
 
-        jsonProperties(s);
+        jsonProperties((Dsymbol*)s);
 
-        property("type", "deco", s->type);
+        property("type", "deco", s->origType);
 
         objectEnd();
     }
@@ -861,8 +850,8 @@ public:
 
         jsonProperties(d);
 
-        if (d->init)
-            property("init", d->init->toChars());
+        if (d->_init)
+            property("init", d->_init->toChars());
 
         if (d->isField())
             property("offset", d->offset);

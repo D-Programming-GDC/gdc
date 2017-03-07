@@ -5,8 +5,9 @@
 module std.regex.internal.parser;
 
 import std.regex.internal.ir;
-import std.algorithm, std.range, std.uni, std.typetuple,
+import std.algorithm, std.range, std.uni, std.meta,
     std.traits, std.typecons, std.exception;
+static import std.ascii;
 
 // package relevant info from parser into a regex object
 auto makeRegex(S)(Parser!S p)
@@ -155,7 +156,7 @@ unittest
 }
 
 
-alias Escapables = TypeTuple!('[', ']', '\\', '^', '$', '.', '|', '?', ',', '-',
+alias Escapables = AliasSeq!('[', ']', '\\', '^', '$', '.', '|', '?', ',', '-',
     ';', ':', '#', '&', '%', '/', '<', '>', '`',  '*', '+', '(', ')', '{', '}',  '~');
 
 //test if a given string starts with hex number of maxDigit that's a valid codepoint
@@ -921,9 +922,10 @@ struct Parser(R)
                     op = Operator.Union;
                     goto case;
                 case ']':
-                    set |= last;
+                    addWithFlags(set, last, re_flags);
                     break L_CharTermLoop;
                 default:
+                    state = State.Char;
                     addWithFlags(set, last, re_flags);
                     last = current;
                 }
@@ -937,39 +939,7 @@ struct Parser(R)
                     next();//skip second twin char
                     break L_CharTermLoop;
                 }
-                //~~~WORKAROUND~~~
-                //It's a copy of State.Char, should be goto case but see @@@BUG12603
-                switch(current)
-                {
-                case '|':
-                case '~':
-                case '&':
-                    // then last is treated as normal char and added as implicit union
-                    state = State.PotentialTwinSymbolOperator;
-                    addWithFlags(set, last, re_flags);
-                    last = current;
-                    break;
-                case '-': // still need more info
-                    state = State.CharDash;
-                    break;
-                case '\\':
-                    set |= last;
-                    state = State.Escape;
-                    break;
-                case '[':
-                    op = Operator.Union;
-                    goto case;
-                case ']':
-                    set |= last;
-                    break L_CharTermLoop;
-                default:
-                    addWithFlags(set, last, re_flags);
-                    state = State.Char;
-                    last = current;
-                }
-                break;
-                //~~~END OF WORKAROUND~~~
-                //goto case State.Char;// it's not a twin lets re-run normal logic
+                goto case State.Char;
             case State.Escape:
                 // xxx \ current xxx
                 switch(current)
@@ -1391,7 +1361,7 @@ struct Parser(R)
         enum MAX_PROPERTY = 128;
         char[MAX_PROPERTY] result;
         uint k = 0;
-        enforce(next());
+        enforce(next(), "eof parsing unicode property spec");
         if(current == '{')
         {
             while(k < MAX_PROPERTY && next() && current !='}' && current !=':')

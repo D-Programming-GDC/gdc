@@ -88,6 +88,9 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
   case "$druntime_cv_target_os" in
       aix*)    druntime_target_os_parsed="aix"
                ;;
+      *android*)
+               druntime_target_os_parsed="android"
+               ;;
       darwin*) druntime_target_os_parsed="darwin"
                ;;
       freebsd*|k*bsd*-gnu)
@@ -100,6 +103,7 @@ AC_DEFUN([DRUNTIME_OS_SOURCES],
       *solaris*) druntime_target_os_parsed="solaris"
   esac
   AM_CONDITIONAL([DRUNTIME_OS_AIX], [test "$druntime_target_os_parsed" = "aix"])
+  AM_CONDITIONAL([DRUNTIME_OS_ANDROID], [test "$druntime_target_os_parsed" = "android"])
   AM_CONDITIONAL([DRUNTIME_OS_DARWIN], [test "$druntime_target_os_parsed" = "darwin"])
   AM_CONDITIONAL([DRUNTIME_OS_BSD], [test "$druntime_target_os_parsed" = "bsd"])
   AM_CONDITIONAL([DRUNTIME_OS_LINUX], [test "$druntime_target_os_parsed" = "linux"])

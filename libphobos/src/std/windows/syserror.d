@@ -7,8 +7,8 @@
  * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   $(WEB digitalmars.com, Walter Bright)
  * Credits:   Based on code written by Regan Heath
- *
- *          Copyright Digital Mars 2006 - 2013.
+ */
+/*          Copyright Digital Mars 2006 - 2013.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -24,9 +24,10 @@ version (StdDdoc)
         enum LANG_NEUTRAL = 0, SUBLANG_DEFAULT = 1;
     }
 
-    /// Query the text for a Windows error code (as returned by $(LINK2
-    /// http://msdn.microsoft.com/en-us/library/windows/desktop/ms679360.aspx,
-    /// $(D GetLastError))) as a D string.
+    /** Query the text for a Windows error code, as returned by
+        $(LINK2 http://msdn.microsoft.com/en-us/library/windows/desktop/ms679360.aspx,
+        $(D GetLastError)), as a D string.
+     */
     string sysErrorString(
         DWORD errCode,
         // MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) is the user's default language
@@ -34,9 +35,9 @@ version (StdDdoc)
         int subLangId = SUBLANG_DEFAULT) @trusted;
 
     /*********************
-     * Thrown if errors that set $(LINK2
-     * http://msdn.microsoft.com/en-us/library/windows/desktop/ms679360.aspx,
-     * $(D GetLastError)) occur.
+       Thrown if errors that set
+       $(LINK2 http://msdn.microsoft.com/en-us/library/windows/desktop/ms679360.aspx,
+       $(D GetLastError)) occur.
      */
     class WindowsException : Exception
     {
@@ -151,6 +152,28 @@ T wenforce(T, S)(T value, lazy S msg = null,
     if (!value)
         throw new WindowsException(GetLastError(), to!string(msg), file, line);
     return value;
+}
+
+T wenforce(T)(T condition, const(char)[] name, const(wchar)* namez, string file = __FILE__, size_t line = __LINE__)
+{
+    if (condition)
+        return condition;
+    string names;
+    if (!name)
+    {
+        static string trustedToString(const(wchar)* stringz) @trusted
+        {
+            import std.conv : to;
+            import core.stdc.wchar_ : wcslen;
+            auto len = wcslen(stringz);
+            return to!string(stringz[0 .. len]);
+        }
+
+        names = trustedToString(namez);
+    }
+    else
+        names = to!string(name);
+    throw new WindowsException(GetLastError(), names, file, line);
 }
 
 version(Windows)

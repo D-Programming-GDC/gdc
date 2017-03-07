@@ -273,6 +273,7 @@ public:
       case LINKc:
       case LINKcpp:
       case LINKd:
+      case LINKobjc:
 	/* [abi/function-calling-conventions]
 
 	  The extern (C) and extern (D) calling convention matches
@@ -353,8 +354,8 @@ public:
 		if (member == NULL)
 		  continue;
 
-		tree ident = get_identifier (member->ident->string);
-		tree value = build_integer_cst (member->value->toInteger (),
+		tree ident = get_identifier (member->ident->toChars ());
+		tree value = build_integer_cst (member->value ()->toInteger (),
 						basetype);
 
 		/* Build a identifier for the enumeration constant.  */

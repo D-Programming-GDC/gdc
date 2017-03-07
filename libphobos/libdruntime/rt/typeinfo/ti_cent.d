@@ -52,6 +52,11 @@ class TypeInfo_zi : TypeInfo
         return cent.sizeof;
     }
 
+    override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. cent.sizeof];
+    }
+
     override void swap(void *p1, void *p2)
     {
         cent t;

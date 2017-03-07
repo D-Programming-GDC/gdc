@@ -525,6 +525,66 @@ version( CRuntime_Glibc )
         else
             static assert(stat_t.sizeof == 128);
     }
+    else version (SystemZ)
+    {
+        private
+        {
+            alias __dev_t = ulong;
+            alias __ino_t = c_ulong;
+            alias __ino64_t = ulong;
+            alias __mode_t = uint;
+            alias __nlink_t = uint;
+            alias __uid_t = uint;
+            alias __gid_t = uint;
+            alias __off_t = c_long;
+            alias __off64_t = long;
+            alias __blksize_t = int;
+            alias __blkcnt_t = c_long;
+            alias __blkcnt64_t = long;
+            alias __timespec = timespec;
+            alias __time_t = time_t;
+        }
+        struct stat_t
+        {
+            __dev_t st_dev;
+            __ino_t st_ino;
+            __nlink_t st_nlink;
+            __mode_t st_mode;
+            __uid_t st_uid;
+            __gid_t st_gid;
+            int __glibc_reserved0;
+            __dev_t st_rdev;
+            __off_t st_size;
+            static if (__USE_XOPEN2K8)
+            {
+                __timespec st_atim;
+                __timespec st_mtim;
+                __timespec st_ctim;
+                extern(D)
+                {
+                    @property ref time_t st_atime() { return st_atim.tv_sec; }
+                    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+                    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+                }
+            }
+            else
+            {
+                __time_t st_atime;
+                c_ulong st_atimensec;
+                __time_t st_mtime;
+                c_ulong st_mtimensec;
+                __time_t st_ctime;
+                c_ulong st_ctimensec;
+            }
+            __blksize_t st_blksize;
+            __blkcnt_t st_blocks;
+            c_long[3] __glibc_reserved;
+        }
+        static if(__USE_XOPEN2K8)
+            static assert(stat_t.sizeof == 144);
+        else
+            static assert(stat_t.sizeof == 144);
+    }
     else
         static assert(0, "unimplemented");
 
@@ -572,40 +632,39 @@ version( CRuntime_Glibc )
 }
 else version( OSX )
 {
+    // _DARWIN_FEATURE_64_BIT_INODE stat is default for Mac OSX >10.5 and is
+    // only meaningful type for other OS X/Darwin variants (e.g. iOS).
+    // man stat(2) gives details.
     struct stat_t
     {
-      version ( DARWIN_USE_64_BIT_INODE )
-      {
         dev_t       st_dev;
         mode_t      st_mode;
         nlink_t     st_nlink;
         ino_t       st_ino;
-      }
-      else
-      {
-        dev_t       st_dev;
-        ino_t       st_ino;
-        mode_t      st_mode;
-        nlink_t     st_nlink;
-      }
         uid_t       st_uid;
         gid_t       st_gid;
         dev_t       st_rdev;
-      static if( false /*!_POSIX_C_SOURCE || _DARWIN_C_SOURCE*/ )
-      {
-          timespec  st_atimespec;
-          timespec  st_mtimespec;
-          timespec  st_ctimespec;
-      }
-      else
-      {
-        time_t      st_atime;
-        c_long      st_atimensec;
-        time_t      st_mtime;
-        c_long      st_mtimensec;
-        time_t      st_ctime;
-        c_long      st_ctimensec;
-      }
+        union
+        {
+            struct
+            {
+                timespec  st_atimespec;
+                timespec  st_mtimespec;
+                timespec  st_ctimespec;
+                timespec  st_birthtimespec;
+            }
+            struct
+            {
+                time_t      st_atime;
+                c_long      st_atimensec;
+                time_t      st_mtime;
+                c_long      st_mtimensec;
+                time_t      st_ctime;
+                c_long      st_ctimensec;
+                time_t      st_birthtime;
+                c_long      st_birthtimensec;
+            }
+        }
         off_t       st_size;
         blkcnt_t    st_blocks;
         blksize_t   st_blksize;
@@ -1035,9 +1094,11 @@ else version (Solaris)
 }
 else version( OSX )
 {
-    int   fstat(int, stat_t*);
-    int   lstat(in char*, stat_t*);
-    int   stat(in char*, stat_t*);
+    // OS X maintains backwards compatibility with older binaries using 32-bit
+    // inode functions by appending $INODE64 to newer 64-bit inode functions.
+    pragma(mangle, "fstat$INODE64") int fstat(int, stat_t*);
+    pragma(mangle, "lstat$INODE64") int lstat(in char*, stat_t*);
+    pragma(mangle, "stat$INODE64")  int stat(in char*, stat_t*);
 }
 else version( FreeBSD )
 {

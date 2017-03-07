@@ -1,10 +1,10 @@
 
-/* Copyright (c) 1999-2014 by Digital Mars
+/* Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved, written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
- * https://github.com/D-Programming-Language/dmd/blob/master/src/root/port.h
+ * https://github.com/dlang/dmd/blob/master/src/root/port.h
  */
 
 #ifndef PORT_H
@@ -64,6 +64,7 @@ struct Port
     static unsigned readlongBE(void* buffer);
     static unsigned readwordLE(void* buffer);
     static unsigned readwordBE(void* buffer);
+    static void valcpy(void *dst, uint64_t val, size_t size);
 };
 
 #endif

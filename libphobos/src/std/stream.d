@@ -1,9 +1,8 @@
 // Written in the D programming language
 
 /**
- * $(RED Warning: This module is considered out-dated and not up to Phobos'
- *       current standards. It will remain until we have a suitable replacement,
- *       but be aware that it will not remain long term.)
+ * $(RED Deprecated: This module is considered out-dated and not up to Phobos'
+ *       current standards. It will be remove in October 2016.)
  *
  * Source:    $(PHOBOSSRC std/_stream.d)
  * Macros:
@@ -26,8 +25,8 @@
  * the suitability of this software for any purpose. It is provided
  * "as is" without express or implied warranty.
  */
-
-module std.stream;
+deprecated("It will be removed from Phobos in October 2016. If you still need it, go to https://github.com/DigitalMars/undeaD") module std.stream;
+// @@@DEPRECATED_2016-10@@@
 
 
 import std.internal.cstring;
@@ -1434,11 +1433,11 @@ class Stream : InputStream, OutputStream {
   unittest { // unit test for Issue 3363
     import std.stdio;
     immutable fileName = std.file.deleteme ~ "-issue3363.txt";
-    auto w = File(fileName, "w");
+    auto w = std.stdio.File(fileName, "w");
     scope (exit) remove(fileName.ptr);
     w.write("one two three");
     w.close();
-    auto r = File(fileName, "r");
+    auto r = std.stdio.File(fileName, "r");
     const(char)[] constChar;
     string str;
     char[] chars;
@@ -2137,8 +2136,6 @@ class File: Stream {
 
   // run a few tests
   unittest {
-    import std.internal.cstring : tempCString;
-
     File file = new File;
     int i = 666;
     auto stream_file = std.file.deleteme ~ "-stream.$$$";
@@ -2209,7 +2206,7 @@ class File: Stream {
     assert( lines[2] == "");
     assert( lines[3] == "That was blank");
     file.close();
-    remove(stream_file.tempCString());
+    std.file.remove(stream_file);
   }
 }
 
@@ -2257,8 +2254,6 @@ class BufferedFile: BufferedStream {
 
   // run a few tests same as File
   unittest {
-    import std.internal.cstring : tempCString;
-
     BufferedFile file = new BufferedFile;
     int i = 666;
     auto stream_file = std.file.deleteme ~ "-stream.$$$";
@@ -2304,7 +2299,7 @@ class BufferedFile: BufferedStream {
     // we must be at the end of file
     assert(file.eof);
     file.close();
-    remove(stream_file.tempCString());
+    std.file.remove(stream_file);
   }
 
 }

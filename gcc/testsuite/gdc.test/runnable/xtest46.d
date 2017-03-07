@@ -7516,6 +7516,195 @@ void test14853()
     auto b1 = new Queue14853!uint;
 }
 
+/********************************************************/
+// 15045
+
+void test15045()
+{
+    void testName(T, bool r, string name)()
+    {
+        T t;
+
+        static assert(r ==          is(typeof(mixin("T."~name))));
+        static assert(r ==          is(typeof(mixin("t."~name))));
+        static assert(r == __traits(compiles, mixin("T."~name)));
+        static assert(r == __traits(compiles, mixin("t."~name)));
+        static assert(r == mixin("__traits(compiles, T."~name~")"));
+        static assert(r == mixin("__traits(compiles, t."~name~")"));
+
+        static assert(r ==                       __traits(hasMember, T, name) );
+        static assert(r ==                       __traits(hasMember, t, name) );
+        static assert(r == __traits(compiles,    __traits(getMember, T, name) ));
+        static assert(r == __traits(compiles,    __traits(getMember, t, name) ));
+        static assert(r == __traits(compiles, __traits(getOverloads, T, name) ));
+        static assert(r == __traits(compiles, __traits(getOverloads, t, name) ));
+    }
+    void test(T, bool r)()
+    {
+        testName!(T, r, "__ctor")();
+        testName!(T, r, "__dtor")();
+        testName!(T, r, "__xdtor")();
+        testName!(T, r, "__postblit")();
+        testName!(T, r, "__xpostblit")();
+    }
+
+    static struct X
+    {
+        this(int) {}
+        this(this) {}
+        ~this() {}
+    }
+
+    static struct S1
+    {
+        auto opDispatch(string name, A...)(A args) { }
+    }
+    static struct S2
+    {
+        X get() { return X(); };
+        alias get this;
+    }
+    static struct S3
+    {
+        X opDot() { return X(); };
+    }
+
+    test!(X, true)();
+    test!(S1, false)();
+    test!(S2, false)();
+    test!(S3, false)();
+}
+
+/***************************************************/
+// 15116
+
+alias TypeTuple15116(T...) = T;
+
+template Mix15116()
+{
+    TypeTuple15116!(int, int) tup;
+}
+
+struct S15116
+{
+    mixin Mix15116 mix;
+}
+
+void test15116()
+{
+    S15116 s;
+    auto x1 = s.tup;        // OK
+    auto x2 = s.mix.tup;    // OK <- NG
+}
+
+/***************************************************/
+// 15117
+
+template Mix15117()
+{
+    int y = { typeof(this)* s; return s ? s.mix.y : 0; }();
+}
+
+struct S15117
+{
+    int x = { typeof(this)* s; return s ? s.x : 0; }(); // OK
+
+    mixin Mix15117 mix;     // OK <- NG
+}
+
+/***************************************************/
+// 15126
+
+struct Json15126
+{
+    ubyte[16] m_data;
+    int opDispatch(string prop)() const { return 0; }
+    int opDispatch(string prop)() { return 0; }
+}
+
+template isCustomSerializable15126(T)
+{
+    enum isCustomSerializable15126 = T.init.toRepresentation();
+}
+
+alias bug15126 = isCustomSerializable15126!Json15126;
+
+/***************************************************/
+// 15369
+
+struct MsgTable15369
+{
+    const(char)[] ident;
+    const(char)* name;
+};
+
+MsgTable15369[] msgTable15369 =
+[
+    { "empty", "" },
+];
+
+void test15369()
+{
+    auto id = msgTable15369[0].ident;
+    auto p = msgTable15369[0].name;
+
+    // a string literal "" should be zero-terminated
+    assert(*p == '\0');
+}
+
+/***************************************************/
+// 15961
+
+struct SliceOverIndexed15961(T)
+{
+    enum assignableIndex = T.init;
+}
+
+struct Grapheme15961
+{
+    SliceOverIndexed15961!Grapheme15961 opSlice()
+    {
+        assert(0);
+    }
+
+    struct
+    {
+        ubyte* ptr_;
+    }
+}
+
+/***************************************************/
+// 16022
+
+bool test16022()
+{
+    enum Type { Colon, Comma }
+    Type type;
+    return type == Type.Colon, type == Type.Comma;
+}
+
+/***************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=16233
+
+enum valueConvertible(T1, T2) = blah;
+
+struct Checked(T, Hook)
+{
+    bool opEquals(U)(Checked!(U, Hook) rhs)
+    {
+        alias R = typeof(payload + rhs.payload);
+        static if (valueConvertible!(T, R))
+        {
+        }
+        return false;
+    }
+}
+
+void test16233()
+{
+    Checked!(Checked!(int, void), void) x1;
+}
+
 /***************************************************/
 
 int main()
@@ -7827,6 +8016,8 @@ int main()
     test13952();
     test13985();
     test14211();
+    test15369();
+    test16233();
 
     printf("Success\n");
     return 0;

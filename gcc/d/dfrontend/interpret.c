@@ -237,7 +237,7 @@ void CtfeStack::popAll(size_t stackpointer)
 
 void CtfeStack::saveGlobalConstant(VarDeclaration *v, Expression *e)
 {
-     assert(v->init && (v->isConst() || v->isImmutable() || v->storage_class & STCmanifest) && !v->isCTFE());
+     assert(v->_init && (v->isConst() || v->isImmutable() || v->storage_class & STCmanifest) && !v->isCTFE());
      v->ctfeAdrOnStack = (int)globalValues.dim;
      globalValues.push(e);
 }
@@ -356,9 +356,9 @@ struct CompiledCtfeFunction
                 else if (!(v->isDataseg() || v->storage_class & STCmanifest) || v->isCTFE())
                     ccf->onDeclaration(v);
                 Dsymbol *s = v->toAlias();
-                if (s == v && !v->isStatic() && v->init)
+                if (s == v && !v->isStatic() && v->_init)
                 {
-                    ExpInitializer *ie = v->init->isExpInitializer();
+                    ExpInitializer *ie = v->_init->isExpInitializer();
                     if (ie)
                         ccf->onExpression(ie->exp);
                 }
@@ -472,8 +472,8 @@ public:
         printf("%s DoStatement::ctfeCompile\n", s->loc.toChars());
     #endif
         ccf->onExpression(s->condition);
-        if (s->body)
-            ctfeCompile(s->body);
+        if (s->_body)
+            ctfeCompile(s->_body);
     }
 
     void visit(WhileStatement *s)
@@ -491,14 +491,14 @@ public:
         printf("%s ForStatement::ctfeCompile\n", s->loc.toChars());
     #endif
 
-        if (s->init)
-            ctfeCompile(s->init);
+        if (s->_init)
+            ctfeCompile(s->_init);
         if (s->condition)
             ccf->onExpression(s->condition);
         if (s->increment)
             ccf->onExpression(s->increment);
-        if (s->body)
-            ctfeCompile(s->body);
+        if (s->_body)
+            ctfeCompile(s->_body);
     }
 
     void visit(ForeachStatement *s)
@@ -522,8 +522,8 @@ public:
         {
             ccf->onExpression((*s->cases)[i]->exp);
         }
-        if (s->body)
-            ctfeCompile(s->body);
+        if (s->_body)
+            ctfeCompile(s->_body);
     }
 
     void visit(CaseStatement *s)
@@ -594,7 +594,7 @@ public:
         printf("%s WithStatement::ctfeCompile\n", s->loc.toChars());
     #endif
         // If it is with(Enum) {...}, just execute the body.
-        if (s->exp->op == TOKimport || s->exp->op == TOKtype)
+        if (s->exp->op == TOKscope || s->exp->op == TOKtype)
         {
         }
         else
@@ -602,8 +602,8 @@ public:
             ccf->onDeclaration(s->wthis);
             ccf->onExpression(s->exp);
         }
-        if (s->body)
-            ctfeCompile(s->body);
+        if (s->_body)
+            ctfeCompile(s->_body);
     }
 
     void visit(TryCatchStatement *s)
@@ -611,8 +611,8 @@ public:
     #if LOGCOMPILE
         printf("%s TryCatchStatement::ctfeCompile\n", s->loc.toChars());
     #endif
-        if (s->body)
-            ctfeCompile(s->body);
+        if (s->_body)
+            ctfeCompile(s->_body);
         for (size_t i = 0; i < s->catches->dim; i++)
         {
             Catch *ca = (*s->catches)[i];
@@ -628,8 +628,8 @@ public:
     #if LOGCOMPILE
         printf("%s TryFinallyStatement::ctfeCompile\n", s->loc.toChars());
     #endif
-        if (s->body)
-            ctfeCompile(s->body);
+        if (s->_body)
+            ctfeCompile(s->_body);
         if (s->finalbody)
             ctfeCompile(s->finalbody);
     }
@@ -730,9 +730,13 @@ void ctfeCompile(FuncDeclaration *fd)
 }
 
 /*************************************
- *
  * Entry point for CTFE.
- * A compile-time result is required. Give an error if not possible
+ * A compile-time result is required. Give an error if not possible.
+ *
+ * `e` must be semantically valid expression. In other words, it should not
+ * contain any `ErrorExp`s in it. But, CTFE interpretation will cross over
+ * functions and may invoke a function that contains `ErrorStatement` in its body.
+ * If that, the "CTFE failed because of previous errors" error is raised.
  */
 Expression *ctfeInterpret(Expression *e)
 {
@@ -742,8 +746,6 @@ Expression *ctfeInterpret(Expression *e)
     //assert(e->type->ty != Terror);    // FIXME
     if (e->type->ty == Terror)
         return new ErrorExp();
-
-    unsigned olderrors = global.errors;
 
     // This code is outside a function, but still needs to be compiled
     // (there are compiler-generated temporary variables such as __dollar).
@@ -756,10 +758,7 @@ Expression *ctfeInterpret(Expression *e)
     if (!CTFEExp::isCantExp(result))
         result = scrubReturnValue(e->loc, result);
     if (CTFEExp::isCantExp(result))
-    {
-        assert(global.errors != olderrors);
         result = new ErrorExp();
-    }
     return result;
 }
 
@@ -1435,7 +1434,7 @@ public:
 
         while (1)
         {
-            Expression *e = interpret(s->body, istate);
+            Expression *e = interpret(s->_body, istate);
             if (!e && istate->start)    // goto target was not found
                 return;
             assert(!istate->start);
@@ -1491,7 +1490,7 @@ public:
         if (istate->start == s)
             istate->start = NULL;
 
-        Expression *ei = interpret(s->init, istate);
+        Expression *ei = interpret(s->_init, istate);
         if (exceptionOrCant(ei))
             return;
         assert(!ei); // s->init never returns from function, or jumps out from it
@@ -1508,7 +1507,7 @@ public:
                 assert(isTrueBool(e));
             }
 
-            Expression *e = interpret(s->body, istate);
+            Expression *e = interpret(s->_body, istate);
             if (!e && istate->start)    // goto target was not found
                 return;
             assert(!istate->start);
@@ -1541,7 +1540,7 @@ public:
                 return;
             }
 
-            e = interpret(s->increment, istate);    // TODO: ctfeNeedNothing is better?
+            e = interpret(s->increment, istate, ctfeNeedNothing);
             if (exceptionOrCant(e))
                 return;
         }
@@ -1567,7 +1566,7 @@ public:
             istate->start = NULL;
         if (istate->start)
         {
-            Expression *e = interpret(s->body, istate);
+            Expression *e = interpret(s->_body, istate);
             if (istate->start)      // goto target was not found
                 return;
             if (exceptionOrCant(e))
@@ -1616,7 +1615,7 @@ public:
         /* Jump to scase
          */
         istate->start = scase;
-        Expression *e = interpret(s->body, istate);
+        Expression *e = interpret(s->_body, istate);
         assert(!istate->start); // jump must not fail
         if (e && e->op == TOKbreak)
         {
@@ -1725,7 +1724,7 @@ public:
         if (istate->start)
         {
             Expression *e = NULL;
-            e = interpret(s->body, istate);
+            e = interpret(s->_body, istate);
             for (size_t i = 0; i < s->catches->dim; i++)
             {
                 if (e || !istate->start)    // goto target was found
@@ -1737,7 +1736,7 @@ public:
             return;
         }
 
-        Expression *e = interpret(s->body, istate);
+        Expression *e = interpret(s->_body, istate);
 
         // An exception was thrown
         if (e && e->op == TOKthrownexception)
@@ -1824,14 +1823,14 @@ public:
         if (istate->start)
         {
             Expression *e = NULL;
-            e = interpret(s->body, istate);
+            e = interpret(s->_body, istate);
             // Jump into/out from finalbody is disabled in semantic analysis.
             // and jump inside will be handled by the ScopeStatement == finalbody.
             result = e;
             return;
         }
 
-        Expression *ex = interpret(s->body, istate);
+        Expression *ex = interpret(s->_body, istate);
         if (CTFEExp::isCantExp(ex))
         {
             result = ex;
@@ -1844,7 +1843,7 @@ public:
             InterState istatex = *istate;
             istatex.start = istate->gotoTarget; // set starting statement
             istatex.gotoTarget = NULL;
-            Expression *bex = interpret(s->body, &istatex);
+            Expression *bex = interpret(s->_body, &istatex);
             if (istatex.start)
             {
               // The goto target is outside the current scope.
@@ -1910,14 +1909,14 @@ public:
             istate->start = NULL;
         if (istate->start)
         {
-            result = s->body ? interpret(s->body, istate) : NULL;
+            result = s->_body ? interpret(s->_body, istate) : NULL;
             return;
         }
 
         // If it is with(Enum) {...}, just execute the body.
-        if (s->exp->op == TOKimport || s->exp->op == TOKtype)
+        if (s->exp->op == TOKscope || s->exp->op == TOKtype)
         {
-            result = interpret(s->body, istate);
+            result = interpret(s->_body, istate);
             return;
         }
 
@@ -1932,7 +1931,7 @@ public:
         }
         ctfeStack.push(s->wthis);
         setValue(s->wthis, e);
-        e = interpret(s->body, istate);
+        e = interpret(s->_body, istate);
         if (CTFEExp::isGotoExp(e))
         {
             /* This is an optimization that relies on the locality of the jump target.
@@ -1944,7 +1943,7 @@ public:
             InterState istatex = *istate;
             istatex.start = istate->gotoTarget; // set starting statement
             istatex.gotoTarget = NULL;
-            Expression *ex = interpret(s->body, &istatex);
+            Expression *ex = interpret(s->_body, &istatex);
             if (!istatex.start)
             {
                 istate->gotoTarget = NULL;
@@ -2272,7 +2271,7 @@ public:
         }
         else
         {
-            result = new DelegateExp(e->loc, result, e->func);
+            result = new DelegateExp(e->loc, result, e->func, false);
             result->type = e->type;
         }
     }
@@ -2287,29 +2286,29 @@ public:
             if (v->ident == Id::ctfe)
                 return new IntegerExp(loc, 1, Type::tbool);
 
-            if (!v->originalType && v->scope)   // semantic() not yet run
+            if (!v->originalType && v->_scope)   // semantic() not yet run
             {
-                v->semantic (v->scope);
+                v->semantic (v->_scope);
                 if (v->type->ty == Terror)
                     return CTFEExp::cantexp;
             }
 
             if ((v->isConst() || v->isImmutable() || v->storage_class & STCmanifest) &&
                 !hasValue(v) &&
-                v->init && !v->isCTFE())
+                v->_init && !v->isCTFE())
             {
                 if (v->inuse)
                 {
                     error(loc, "circular initialization of %s", v->toChars());
                     return CTFEExp::cantexp;
                 }
-                if (v->scope)
+                if (v->_scope)
                 {
                     v->inuse++;
-                    v->init = v->init->semantic(v->scope, v->type, INITinterpret); // might not be run on aggregate members
+                    v->_init = v->_init->semantic(v->_scope, v->type, INITinterpret); // might not be run on aggregate members
                     v->inuse--;
                 }
-                e = v->init->toExpression(v->type);
+                e = v->_init->toExpression(v->type);
                 if (!e)
                     return CTFEExp::cantexp;
                 assert(e->type);
@@ -2345,16 +2344,16 @@ public:
             }
             else if (v->isCTFE() && !hasValue(v))
             {
-                if (v->init && v->type->size() != 0)
+                if (v->_init && v->type->size() != 0)
                 {
-                    if (v->init->isVoidInitializer())
+                    if (v->_init->isVoidInitializer())
                     {
                         // var should have been initialized when it was created
                         error(loc, "CTFE internal error: trying to access uninitialized var");
                         assert(0);
                         return CTFEExp::cantexp;
                     }
-                    e = v->init->toExpression();
+                    e = v->_init->toExpression();
                 }
                 else
                     e = v->type->defaultInitLiteral(e->loc);
@@ -2376,7 +2375,7 @@ public:
                 }
                 if (!e)
                 {
-                    assert(!(v->init && v->init->isVoidInitializer()));
+                    assert(!(v->_init && v->_init->isVoidInitializer()));
                     // CTFE initiated from inside a function
                     error(loc, "variable %s cannot be read at compile time", v->toChars());
                     return CTFEExp::cantexp;
@@ -2500,16 +2499,16 @@ public:
                         continue;
 
                     ctfeStack.push(v2);
-                    if (v2->init)
+                    if (v2->_init)
                     {
                         Expression *einit;
-                        if (ExpInitializer *ie = v2->init->isExpInitializer())
+                        if (ExpInitializer *ie = v2->_init->isExpInitializer())
                         {
                             einit = interpret(ie->exp, istate, goal);
                             if (exceptionOrCant(einit))
                                 return;
                         }
-                        else if (v2->init->isVoidInitializer())
+                        else if (v2->_init->isVoidInitializer())
                         {
                             einit = voidInitLiteral(v2->type, v2).copy();
                         }
@@ -2532,13 +2531,13 @@ public:
             }
             if (!(v->isDataseg() || v->storage_class & STCmanifest) || v->isCTFE())
                 ctfeStack.push(v);
-            if (v->init)
+            if (v->_init)
             {
-                if (ExpInitializer *ie = v->init->isExpInitializer())
+                if (ExpInitializer *ie = v->_init->isExpInitializer())
                 {
                     result = interpret(ie->exp, istate, goal);
                 }
-                else if (v->init->isVoidInitializer())
+                else if (v->_init->isVoidInitializer())
                 {
                     result = voidInitLiteral(v->type, v).copy();
                     // There is no AssignExp for void initializers,
@@ -2702,15 +2701,26 @@ public:
         Type *tn = e->type->toBasetype()->nextOf()->toBasetype();
         bool wantCopy = (tn->ty == Tsarray || tn->ty == Tstruct);
 
+        Expression *basis = interpret(e->basis, istate);
+        if (exceptionOrCant(basis))
+            return;
+
         Expressions *expsx = NULL;
         size_t dim = e->elements ? e->elements->dim : 0;
         for (size_t i = 0; i < dim; i++)
         {
             Expression *exp = (*e->elements)[i];
+            Expression *ex;
+            if (!exp)
+            {
+                ex = copyLiteral(basis).copy();
+                goto Lcow;
+            }
 
-            if (exp->op == TOKindex)  // segfault bug 6250
-                assert(((IndexExp *)exp)->e1 != e);
-            Expression *ex = interpret(exp, istate);
+            // segfault bug 6250
+            assert(exp->op != TOKindex || ((IndexExp *)exp)->e1 != e);
+
+            ex = interpret(exp, istate);
             if (exceptionOrCant(ex))
                 return;
 
@@ -2721,22 +2731,26 @@ public:
             if (wantCopy || ex == exp && expsx)
                 ex = copyLiteral(ex).copy();
 
+            if (ex == exp && !expsx)
+                continue;
+
             /* If any changes, do Copy On Write
              */
-            if (ex != exp)
+        Lcow:
+            if (!expsx)
             {
-                if (!expsx)
+                expsx = new Expressions();
+                ++CtfeStatus::numArrayAllocs;
+                expsx->setDim(dim);
+                for (size_t j = 0; j < i; j++)
                 {
-                    expsx = new Expressions();
-                    ++CtfeStatus::numArrayAllocs;
-                    expsx->setDim(dim);
-                    for (size_t j = 0; j < i; j++)
-                    {
-                        (*expsx)[j] = copyLiteral((*e->elements)[j]).copy();
-                    }
+                    Expression *el = (*e->elements)[j];
+                    if (!el)
+                        el = e->basis;
+                    (*expsx)[j] = copyLiteral(el).copy();
                 }
-                (*expsx)[i] = ex;
             }
+            (*expsx)[i] = ex;
         }
         if (expsx)
         {
@@ -2748,7 +2762,7 @@ public:
                 result = CTFEExp::cantexp;
                 return;
             }
-            ArrayLiteralExp *ae = new ArrayLiteralExp(e->loc, expsx);
+            ArrayLiteralExp *ae = new ArrayLiteralExp(e->loc, basis, expsx);
             ae->type = e->type;
             ae->ownedByCtfe = OWNEDctfe;
             result = ae;
@@ -2971,12 +2985,15 @@ public:
         assert(argnum == arguments->dim - 1);
         if (elemType->ty == Tchar || elemType->ty == Twchar || elemType->ty == Tdchar)
         {
-            return createBlockDuplicatedStringLiteral(loc, newtype,
-                (unsigned)(elemType->defaultInitLiteral(loc)->toInteger()),
-                len, (unsigned char)elemType->size());
+            const unsigned ch = (unsigned)elemType->defaultInitLiteral(loc)->toInteger();
+            const unsigned char sz = (unsigned char)elemType->size();
+            return createBlockDuplicatedStringLiteral(loc, newtype, ch, len, sz);
         }
-        return createBlockDuplicatedArrayLiteral(loc, newtype,
-            elemType->defaultInitLiteral(loc), len);
+        else
+        {
+            Expression *el = interpret(elemType->defaultInitLiteral(loc), istate);
+            return createBlockDuplicatedArrayLiteral(loc, newtype, el, len);
+        }
     }
 
     void visit(NewExp *e)
@@ -3066,9 +3083,9 @@ public:
                         return;
                     }
                     Expression *m;
-                    if (v->init)
+                    if (v->_init)
                     {
-                        if (v->init->isVoidInitializer())
+                        if (v->_init->isVoidInitializer())
                             m = voidInitLiteral(v->type, v).copy();
                         else
                             m = v->getConstInitializer(true);
@@ -3158,7 +3175,6 @@ public:
             case TOKneg:    ue = Neg(e->type, e1);  break;
             case TOKtilde:  ue = Com(e->type, e1);  break;
             case TOKnot:    ue = Not(e->type, e1);  break;
-            case TOKtobool: ue = Bool(e->type, e1); break;
             case TOKvector: result = e;             return; // do nothing
             default:        assert(0);
         }
@@ -3181,6 +3197,24 @@ public:
             result = e->copy();
             ((DotTypeExp *)result)->e1 = e1;
         }
+    }
+
+    bool evalOperand(Expression *e, Expression *ex, Expression *&er)
+    {
+        er = interpret(ex, istate);
+        if (exceptionOrCant(er))
+            return false;
+        if (er->isConst() != 1)
+        {
+            if (er->op == TOKarrayliteral)
+                // Until we get it to work, issue a reasonable error message
+                e->error("cannot interpret array literal expression %s at compile time", e->toChars());
+            else
+                e->error("CTFE internal error: non-constant value %s", ex->toChars());
+            result = CTFEExp::cantexp;
+            return false;
+        }
+        return true;
     }
 
     void interpretCommon(BinExp *e, fp_t fp)
@@ -3228,25 +3262,12 @@ public:
             return;
         }
 
-        Expression *e1 = interpret(e->e1, istate);
-        if (exceptionOrCant(e1))
+        Expression *e1;
+        if (!evalOperand(e, e->e1, e1))
             return;
-        if (e1->isConst() != 1)
-        {
-            e->error("CTFE internal error: non-constant value %s", e->e1->toChars());
-            result = CTFEExp::cantexp;
+        Expression *e2;
+        if (!evalOperand(e, e->e2, e2))
             return;
-        }
-
-        Expression *e2 = interpret(e->e2, istate);
-        if (exceptionOrCant(e2))
-            return;
-        if (e2->isConst() != 1)
-        {
-            e->error("CTFE internal error: non-constant value %s", e->e2->toChars());
-            result = CTFEExp::cantexp;
-            return;
-        }
 
         if (e->op == TOKshr || e->op == TOKshl || e->op == TOKushr)
         {
@@ -3434,8 +3455,8 @@ public:
         //      Deal with reference assignment
         // ---------------------------------------
         // If it is a construction of a ref variable, it is a ref assignment
-        if (e->op == TOKconstruct && e1->op == TOKvar &&
-            (((VarExp *)e1)->var->storage_class & STCref) != 0)
+        if ((e->op == TOKconstruct || e->op == TOKblit) &&
+            (((AssignExp *)e)->memset & referenceInit))
         {
             assert(!fp);
 
@@ -3541,7 +3562,11 @@ public:
                 }
 
                 if (fp)
+                {
                     oldval = findKeyInAA(e->loc, existingAA, lastIndex);
+                    if (!oldval)
+                        oldval = copyLiteral(e->e1->type->defaultInitLiteral(e->loc)).copy();
+                }
             }
             else
             {
@@ -4250,11 +4275,11 @@ public:
                 Expression *aggr2 = se->e1;
                 dinteger_t srclower = se->lwr->toInteger();
                 dinteger_t srcupper = se->upr->toInteger();
-                bool wantCopy = (newval->type->toBasetype()->baseElemOf()->ty == Tstruct);
+                bool wantCopy = (newval->type->toBasetype()->nextOf()->baseElemOf()->ty == Tstruct);
 
-                //printf("oldval = %p %s[%d..%u]\nnewval = %p %s[%llu..%llu]\n",
+                //printf("oldval = %p %s[%d..%u]\nnewval = %p %s[%llu..%llu] wantCopy = %d\n",
                 //    aggregate, aggregate->toChars(), lowerbound, upperbound,
-                //    aggr2, aggr2->toChars(), srclower, srcupper);
+                //    aggr2, aggr2->toChars(), srclower, srcupper, wantCopy);
                 if (wantCopy)
                 {
                     // Currently overlapping for struct array is allowed.
@@ -4284,7 +4309,7 @@ public:
                             }
                             if (Expression *x = evaluateDtor(istate, oldelem))
                                 return x;
-                            (*oldelems)[i] = newelem;
+                            (*oldelems)[lowerbound + i] = newelem;
                         }
                     }
                     else
@@ -4303,7 +4328,7 @@ public:
                             }
                             if (Expression *x = evaluateDtor(istate, oldelem))
                                 return x;
-                            (*oldelems)[i] = newelem;
+                            (*oldelems)[lowerbound + i] = newelem;
                         }
                     }
 
@@ -4363,42 +4388,85 @@ public:
              *  x may be a multidimensional static array. (Note that this
              *  only happens with array literals, never with strings).
              */
-            Expressions *w = existingAE->elements;
-            assert(existingAE->type->ty == Tsarray ||
-                   existingAE->type->ty == Tarray);
-            Type *dsttype = ((TypeArray *)existingAE->type)->next->toBasetype()->castMod(0);
-            bool directblk = (e->e2->type->toBasetype()->castMod(0))->equals(dsttype);
-            bool cow = !(newval->op == TOKstructliteral ||
-                         newval->op == TOKarrayliteral ||
-                         newval->op == TOKstring);
+            struct RecursiveBlock
+            {
+                InterState *istate;
+                Expression *newval;
+                bool refCopy;
+                bool needsPostblit;
+                bool needsDtor;
+
+                Expression *assignTo(ArrayLiteralExp *ae)
+                {
+                    return assignTo(ae, 0, ae->elements->dim);
+                }
+
+                Expression *assignTo(ArrayLiteralExp *ae, size_t lwr, size_t upr)
+                {
+                    Expressions *w = ae->elements;
+
+                    assert(ae->type->ty == Tsarray ||
+                           ae->type->ty == Tarray);
+                    bool directblk = ((TypeArray *)ae->type)->next->equivalent(newval->type);
+
+                    for (size_t k = lwr; k < upr; k++)
+                    {
+                        if (!directblk && (*w)[k]->op == TOKarrayliteral)
+                        {
+                            // Multidimensional array block assign
+                            if (Expression *ex = assignTo((ArrayLiteralExp *)(*w)[k]))
+                                return ex;
+                        }
+                        else if (refCopy)
+                        {
+                            (*w)[k] = newval;
+                        }
+                        else if (!needsPostblit && !needsDtor)
+                        {
+                            assignInPlace((*w)[k], newval);
+                        }
+                        else
+                        {
+                            Expression *oldelem = (*w)[k];
+                            Expression *tmpelem = needsDtor ? copyLiteral(oldelem).copy() : NULL;
+
+                            assignInPlace(oldelem, newval);
+
+                            if (needsPostblit)
+                            {
+                                if (Expression *ex = evaluatePostblit(istate, oldelem))
+                                    return ex;
+                            }
+                            if (needsDtor)
+                            {
+                                // Bugzilla 14860
+                                if (Expression *ex = evaluateDtor(istate, tmpelem))
+                                    return ex;
+                            }
+                        }
+                    }
+                    return NULL;
+                }
+            };
+
             Type *tn = newval->type->toBasetype();
             bool wantRef = (tn->ty == Tarray || isAssocArray(tn) ||tn->ty == Tclass);
-            for (size_t j = 0; j < upperbound - lowerbound; j++)
-            {
-                if (!directblk)
-                {
-                    // Multidimensional array block assign
-                    recursiveBlockAssign((ArrayLiteralExp *)(*w)[(size_t)(j + firstIndex)], newval, wantRef);
-                }
-                else
-                {
-                    if (wantRef || cow)
-                        (*existingAE->elements)[(size_t)(j + firstIndex)] = newval;
-                    else
-                        assignInPlace((*existingAE->elements)[(size_t)(j + firstIndex)], newval);
-                }
-            }
-            if (!(wantRef || cow) && e->op != TOKblit && e->e2->isLvalue())
-            {
-                size_t lwr = (size_t)(firstIndex);
-                size_t upr = (size_t)(firstIndex + upperbound - lowerbound);
-                for (size_t i = lwr; i < upr; i++)
-                {
-                    Expression *ex = evaluatePostblit(istate, (*existingAE->elements)[i]);
-                    if (exceptionOrCantInterpret(ex))
-                        return ex;
-                }
-            }
+            bool cow = newval->op != TOKstructliteral &&
+                       newval->op != TOKarrayliteral &&
+                       newval->op != TOKstring;
+            Type *tb = tn->baseElemOf();
+            StructDeclaration *sd = (tb->ty == Tstruct ? ((TypeStruct *)tb)->sym : NULL);
+
+            RecursiveBlock rb;
+            rb.istate = istate;
+            rb.newval = newval;
+            rb.refCopy = wantRef || cow;
+            rb.needsPostblit = sd && sd->postblit && e->op != TOKblit && e->e2->isLvalue();
+            rb.needsDtor = sd && sd->dtor && e->op == TOKassign;
+
+            if (Expression *ex = rb.assignTo(existingAE, lowerbound, upperbound))
+                return ex;
+
             if (goal == ctfeNeedNothing)
                 return NULL; // avoid creating an unused literal
             SliceExp *retslice = new SliceExp(e->loc, existingAE,
@@ -4992,13 +5060,13 @@ public:
             VarExp *ve = (VarExp *)e->e2;
             VarDeclaration *v = ve->var->isVarDeclaration();
             ctfeStack.push(v);
-            if (!v->init && !getValue(v))
+            if (!v->_init && !getValue(v))
             {
                 setValue(v, copyLiteral(v->type->defaultInitLiteral(e->loc)).copy());
             }
             if (!getValue(v))
             {
-                Expression *newval = v->init->toExpression();
+                Expression *newval = v->_init->toExpression();
                 // Bug 4027. Copy constructors are a weird case where the
                 // initializer is a void function (the variable is modified
                 // through a reference parameter instead).
@@ -5597,9 +5665,9 @@ public:
         if (exceptionOrCant(e1))
             return;
         // If the expression has been cast to void, do nothing.
-        if (e->to->ty == Tvoid && goal == ctfeNeedNothing)
+        if (e->to->ty == Tvoid)
         {
-            result = e1;
+            result = CTFEExp::voidexp;
             return;
         }
         if (e->to->ty == Tpointer && e1->op != TOKnull)
@@ -5956,7 +6024,7 @@ public:
                 result = e; // optimize: reuse this CTFE reference
             else
             {
-                result = new DotVarExp(e->loc, ex, f);
+                result = new DotVarExp(e->loc, ex, f, false);
                 result->type = e->type;
             }
             return;
@@ -6767,19 +6835,20 @@ Expression *evaluateIfBuiltin(InterState *istate, Loc loc,
         if (firstarg && firstarg->type->toBasetype()->ty == Taarray)
         {
             TypeAArray *firstAAtype = (TypeAArray *)firstarg->type;
+            const char *id = fd->ident->toChars();
             if (nargs == 1 && fd->ident == Id::aaLen)
                 return interpret_length(istate, firstarg);
-            if (nargs == 3 && !strcmp(fd->ident->string, "_aaApply"))
+            if (nargs == 3 && !strcmp(id, "_aaApply"))
                 return interpret_aaApply(istate, firstarg, (Expression *)(arguments->data[2]));
-            if (nargs == 3 && !strcmp(fd->ident->string, "_aaApply2"))
+            if (nargs == 3 && !strcmp(id, "_aaApply2"))
                 return interpret_aaApply(istate, firstarg, (Expression *)(arguments->data[2]));
-            if (nargs == 1 && !strcmp(fd->ident->string, "keys") && !strcmp(fd->toParent2()->ident->string, "object"))
+            if (nargs == 1 && !strcmp(id, "keys") && !strcmp(fd->toParent2()->ident->toChars(), "object"))
                 return interpret_keys(istate, firstarg, firstAAtype->index->arrayOf());
-            if (nargs == 1 && !strcmp(fd->ident->string, "values") && !strcmp(fd->toParent2()->ident->string, "object"))
+            if (nargs == 1 && !strcmp(id, "values") && !strcmp(fd->toParent2()->ident->toChars(), "object"))
                 return interpret_values(istate, firstarg, firstAAtype->nextOf()->arrayOf());
-            if (nargs == 1 && !strcmp(fd->ident->string, "rehash") && !strcmp(fd->toParent2()->ident->string, "object"))
+            if (nargs == 1 && !strcmp(id, "rehash") && !strcmp(fd->toParent2()->ident->toChars(), "object"))
                 return interpret(firstarg, istate);
-            if (nargs == 1 && !strcmp(fd->ident->string, "dup") && !strcmp(fd->toParent2()->ident->string, "object"))
+            if (nargs == 1 && !strcmp(id, "dup") && !strcmp(fd->toParent2()->ident->toChars(), "object"))
                 return interpret_dup(istate, firstarg);
         }
     }
@@ -6809,15 +6878,16 @@ Expression *evaluateIfBuiltin(InterState *istate, Loc loc,
     }
     if (!pthis)
     {
-        size_t idlen = strlen(fd->ident->string);
+        const char *id = fd->ident->toChars();
+        size_t idlen = strlen(id);
         if (nargs == 2 && (idlen == 10 || idlen == 11) &&
-            !strncmp(fd->ident->string, "_aApply", 7))
+            !strncmp(id, "_aApply", 7))
         {
             // Functions from aApply.d and aApplyR.d in the runtime
             bool rvs = (idlen == 11);   // true if foreach_reverse
-            char c = fd->ident->string[idlen-3]; // char width: 'c', 'w', or 'd'
-            char s = fd->ident->string[idlen-2]; // string width: 'c', 'w', or 'd'
-            char n = fd->ident->string[idlen-1]; // numParams: 1 or 2.
+            char c = id[idlen-3]; // char width: 'c', 'w', or 'd'
+            char s = id[idlen-2]; // string width: 'c', 'w', or 'd'
+            char n = id[idlen-1]; // numParams: 1 or 2.
             // There are 12 combinations
             if ((n == '1' || n == '2') &&
                 (c == 'c' || c == 'w' || c == 'd') &&

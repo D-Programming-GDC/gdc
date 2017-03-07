@@ -312,7 +312,7 @@ UnionExp Mul(Type *type, Expression *e1, Expression *e2)
     if (type->isfloating())
     {
         complex_t c;
-        d_float80 r;
+        real_t r;
 
         if (e1->type->isreal())
         {
@@ -365,7 +365,7 @@ UnionExp Div(Type *type, Expression *e1, Expression *e2)
     if (type->isfloating())
     {
         complex_t c;
-        d_float80 r;
+        real_t r;
 
         //e1->type->print();
         //e2->type->print();
@@ -798,9 +798,8 @@ UnionExp Equal(TOK op, Type *type, Expression *e1, Expression *e2)
         {
             for (size_t i = 0; i < es1->elements->dim; i++)
             {
-                Expression *ee1 = (*es1->elements)[i];
-                Expression *ee2 = (*es2->elements)[i];
-
+                Expression *ee1 = es1->getElement(i);
+                Expression *ee2 = es2->getElement(i);
                 ue = Equal(TOKequal, Type::tint32, ee1, ee2);
                 if (CTFEExp::isCantExp(ue.exp()))
                     return ue;
@@ -833,7 +832,7 @@ UnionExp Equal(TOK op, Type *type, Expression *e1, Expression *e2)
             for (size_t i = 0; i < dim1; i++)
             {
                 uinteger_t c = es1->charAt(i);
-                Expression *ee2 = (*es2->elements)[i];
+                Expression *ee2 = es2->getElement(i);
                 if (ee2->isConst() != 1)
                 {
                     new(&ue) CTFEExp(TOKcantexp);
@@ -1001,29 +1000,10 @@ UnionExp Cmp(TOK op, Type *type, Expression *e1, Expression *e2)
         if (es2->len < len)
             len = es2->len;
 
-        int cmp = memcmp(es1->string, es2->string, sz * len);
-        if (cmp == 0)
-            cmp = (int)(es1->len - es2->len);
-
-        switch (op)
-        {
-            case TOKlt: n = cmp <  0;   break;
-            case TOKle: n = cmp <= 0;   break;
-            case TOKgt: n = cmp >  0;   break;
-            case TOKge: n = cmp >= 0;   break;
-
-            case TOKleg:   n = 1;               break;
-            case TOKlg:    n = cmp != 0;        break;
-            case TOKunord: n = 0;               break;
-            case TOKue:    n = cmp == 0;        break;
-            case TOKug:    n = cmp >  0;        break;
-            case TOKuge:   n = cmp >= 0;        break;
-            case TOKul:    n = cmp <  0;        break;
-            case TOKule:   n = cmp <= 0;        break;
-
-            default:
-                assert(0);
-        }
+        int rawCmp = memcmp(es1->string, es2->string, sz * len);
+        if (rawCmp == 0)
+            rawCmp = (int)(es1->len - es2->len);
+        n = specificCmp(op, rawCmp);
     }
     else if (e1->isConst() != 1 || e2->isConst() != 1)
     {
@@ -1041,52 +1021,7 @@ UnionExp Cmp(TOK op, Type *type, Expression *e1, Expression *e2)
         r1 = e1->toImaginary();
         r2 = e2->toImaginary();
      L1:
-        // Don't rely on compiler, handle NAN arguments separately
-        // (DMC does do it correctly)
-        if (Port::isNan(r1) || Port::isNan(r2)) // if unordered
-        {
-            switch (op)
-            {
-                case TOKlt:     n = 0;  break;
-                case TOKle:     n = 0;  break;
-                case TOKgt:     n = 0;  break;
-                case TOKge:     n = 0;  break;
-
-                case TOKleg:    n = 0;  break;
-                case TOKlg:     n = 0;  break;
-                case TOKunord:  n = 1;  break;
-                case TOKue:     n = 1;  break;
-                case TOKug:     n = 1;  break;
-                case TOKuge:    n = 1;  break;
-                case TOKul:     n = 1;  break;
-                case TOKule:    n = 1;  break;
-
-                default:
-                    assert(0);
-            }
-        }
-        else
-        {
-            switch (op)
-            {
-                case TOKlt:     n = r1 <  r2;   break;
-                case TOKle:     n = r1 <= r2;   break;
-                case TOKgt:     n = r1 >  r2;   break;
-                case TOKge:     n = r1 >= r2;   break;
-
-                case TOKleg:    n = 1;          break;
-                case TOKlg:     n = r1 != r2;   break;
-                case TOKunord:  n = 0;          break;
-                case TOKue:     n = r1 == r2;   break;
-                case TOKug:     n = r1 >  r2;   break;
-                case TOKuge:    n = r1 >= r2;   break;
-                case TOKul:     n = r1 <  r2;   break;
-                case TOKule:    n = r1 <= r2;   break;
-
-                default:
-                    assert(0);
-            }
-        }
+        n = realCmp(op, r1, r2);
     }
     else if (e1->type->iscomplex())
     {
@@ -1100,49 +1035,9 @@ UnionExp Cmp(TOK op, Type *type, Expression *e1, Expression *e2)
         n1 = e1->toInteger();
         n2 = e2->toInteger();
         if (e1->type->isunsigned() || e2->type->isunsigned())
-        {
-            switch (op)
-            {
-                case TOKlt:     n = ((dinteger_t) n1) <  ((dinteger_t) n2);   break;
-                case TOKle:     n = ((dinteger_t) n1) <= ((dinteger_t) n2);   break;
-                case TOKgt:     n = ((dinteger_t) n1) >  ((dinteger_t) n2);   break;
-                case TOKge:     n = ((dinteger_t) n1) >= ((dinteger_t) n2);   break;
-
-                case TOKleg:    n = 1;                                        break;
-                case TOKlg:     n = ((dinteger_t) n1) != ((dinteger_t) n2);   break;
-                case TOKunord:  n = 0;                                        break;
-                case TOKue:     n = ((dinteger_t) n1) == ((dinteger_t) n2);   break;
-                case TOKug:     n = ((dinteger_t) n1) >  ((dinteger_t) n2);   break;
-                case TOKuge:    n = ((dinteger_t) n1) >= ((dinteger_t) n2);   break;
-                case TOKul:     n = ((dinteger_t) n1) <  ((dinteger_t) n2);   break;
-                case TOKule:    n = ((dinteger_t) n1) <= ((dinteger_t) n2);   break;
-
-                default:
-                    assert(0);
-            }
-        }
+            n = intUnsignedCmp(op, n1, n2);
         else
-        {
-            switch (op)
-            {
-                case TOKlt:     n = n1 <  n2;   break;
-                case TOKle:     n = n1 <= n2;   break;
-                case TOKgt:     n = n1 >  n2;   break;
-                case TOKge:     n = n1 >= n2;   break;
-
-                case TOKleg:    n = 1;          break;
-                case TOKlg:     n = n1 != n2;   break;
-                case TOKunord:  n = 0;          break;
-                case TOKue:     n = n1 == n2;   break;
-                case TOKug:     n = n1 >  n2;   break;
-                case TOKuge:    n = n1 >= n2;   break;
-                case TOKul:     n = n1 <  n2;   break;
-                case TOKule:    n = n1 <= n2;   break;
-
-                default:
-                    assert(0);
-            }
-        }
+            n = intSignedCmp(op, n1, n2);
     }
     new(&ue) IntegerExp(loc, n, type);
     return ue;
@@ -1381,7 +1276,7 @@ UnionExp Index(Type *type, Expression *e1, Expression *e2)
         else if (e1->op == TOKarrayliteral)
         {
             ArrayLiteralExp *ale = (ArrayLiteralExp *)e1;
-            Expression *e = (*ale->elements)[(size_t)i];
+            Expression *e = ale->getElement((size_t)i);
             e->type = type;
             e->loc = loc;
             if (hasSideEffect(e))
@@ -1406,7 +1301,7 @@ UnionExp Index(Type *type, Expression *e1, Expression *e2)
             }
             else
             {
-                Expression *e = (*ale->elements)[(size_t)i];
+                Expression *e = ale->getElement((size_t)i);
                 e->type = type;
                 e->loc = loc;
                 if (hasSideEffect(e))
@@ -1554,7 +1449,7 @@ void sliceAssignStringFromArrayLiteral(StringExp *existingSE, ArrayLiteralExp *n
     void *s = existingSE->string;
     for (size_t j = 0; j < newae->elements->dim; j++)
     {
-        unsigned val = (unsigned)((*newae->elements)[j]->toInteger());
+        unsigned val = (unsigned)newae->getElement(j)->toInteger();
         switch (existingSE->sz)
         {
             case 1:     (( utf8_t *)s)[j + firstIndex] = ( utf8_t)val;  break;
@@ -1598,7 +1493,7 @@ int sliceCmpStringWithArray(StringExp *se1, ArrayLiteralExp *ae2, size_t lo1, si
 
     for (size_t j = 0; j < len; j++)
     {
-        unsigned val2 = (unsigned)((*ae2->elements)[j + lo2]->toInteger());
+        unsigned val2 = (unsigned)ae2->getElement(j + lo2)->toInteger();
         unsigned val1;
         switch (sz)
         {
@@ -1652,7 +1547,7 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
             size_t len = (t->ty == tn->ty) ? 1 : utf_codeLength(sz, (dchar_t)v);
             void *s = mem.xmalloc((len + 1) * sz);
             if (t->ty == tn->ty)
-                memcpy(s, &v, sz);
+                Port::valcpy(s, v, sz);
             else
                 utf_encode(sz, s, (dchar_t)v);
 
@@ -1748,7 +1643,7 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
         elems->setDim(len);
         for (size_t i= 0; i < ea->elements->dim; ++i)
         {
-            (*elems)[i] = (*ea->elements)[i];
+            (*elems)[i] = ea->getElement(i);
         }
         new(&ue) ArrayLiteralExp(e1->loc, elems);
         ArrayLiteralExp *dest = (ArrayLiteralExp *)ue.exp();
@@ -1768,7 +1663,7 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
         elems->setDim(len);
         for (size_t i= 0; i < ea->elements->dim; ++i)
         {
-            (*elems)[es->len + i] = (*ea->elements)[i];
+            (*elems)[es->len + i] = ea->getElement(i);
         }
         new(&ue) ArrayLiteralExp(e1->loc, elems);
         ArrayLiteralExp *dest = (ArrayLiteralExp *)ue.exp();
@@ -1794,9 +1689,9 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
         void *s = mem.xmalloc((len + 1) * sz);
         memcpy(s, es1->string, es1->len * sz);
         if (homoConcat)
-             memcpy((char *)s + (sz * es1->len), &v, sz);
+            Port::valcpy((char *)s + (sz * es1->len), v, sz);
         else
-             utf_encode(sz, (char *)s + (sz * es1->len), (dchar_t)v);
+            utf_encode(sz, (char *)s + (sz * es1->len), (dchar_t)v);
 
         // Add terminating 0
         memset((char *)s + len * sz, 0, sz);
@@ -1836,17 +1731,14 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
         t1->nextOf()->equals(t2->nextOf()))
     {
         // Concatenate the arrays
-        ArrayLiteralExp *es1 = (ArrayLiteralExp *)e1;
-        ArrayLiteralExp *es2 = (ArrayLiteralExp *)e2;
+        Expressions *elems = ArrayLiteralExp::copyElements(e1, e2);
 
-        new(&ue) ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
-        es1 = (ArrayLiteralExp *)ue.exp();
-        es1->elements->insert(es1->elements->dim, es2->elements);
-        e = es1;
+        new(&ue) ArrayLiteralExp(e1->loc, elems);
 
+        e = ue.exp();
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = t1->nextOf()->sarrayOf(es1->elements->dim);
+            e->type = t1->nextOf()->sarrayOf(elems->dim);
         }
         else
             e->type = type;
@@ -1865,15 +1757,14 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
         e = e2;
      L3:
         // Concatenate the array with null
-        ArrayLiteralExp *es = (ArrayLiteralExp *)e;
+        Expressions *elems = ArrayLiteralExp::copyElements(e);
 
-        new(&ue) ArrayLiteralExp(es->loc, (Expressions *)es->elements->copy());
-        es = (ArrayLiteralExp *)ue.exp();
-        e = es;
+        new(&ue) ArrayLiteralExp(e->loc, elems);
 
+        e = ue.exp();
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = t1->nextOf()->sarrayOf(es->elements->dim);
+            e->type = t1->nextOf()->sarrayOf(elems->dim);
         }
         else
             e->type = type;
@@ -1884,24 +1775,16 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
         e1->type->toBasetype()->nextOf() &&
         e1->type->toBasetype()->nextOf()->equals(e2->type))
     {
-        ArrayLiteralExp *es1;
-        if (e1->op == TOKarrayliteral)
-        {
-            es1 = (ArrayLiteralExp *)e1;
-            new(&ue) ArrayLiteralExp(es1->loc, (Expressions *)es1->elements->copy());
-            es1 = (ArrayLiteralExp *)ue.exp();
-            es1->elements->push(e2);
-        }
-        else
-        {
-            new(&ue) ArrayLiteralExp(e1->loc, e2);
-            es1 = (ArrayLiteralExp *)ue.exp();
-        }
-        e = es1;
+        Expressions *elems = (e1->op == TOKarrayliteral)
+            ? ArrayLiteralExp::copyElements(e1) : new Expressions();
+        elems->push(e2);
 
+        new(&ue) ArrayLiteralExp(e1->loc, elems);
+
+        e = ue.exp();
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = e2->type->sarrayOf(es1->elements->dim);
+            e->type = e2->type->sarrayOf(elems->dim);
         }
         else
             e->type = type;
@@ -1911,16 +1794,14 @@ UnionExp Cat(Type *type, Expression *e1, Expression *e2)
     else if (e2->op == TOKarrayliteral &&
         e2->type->toBasetype()->nextOf()->equals(e1->type))
     {
-        ArrayLiteralExp *es2 = (ArrayLiteralExp *)e2;
+        Expressions *elems = ArrayLiteralExp::copyElements(e1, e2);
 
-        new(&ue) ArrayLiteralExp(es2->loc, (Expressions *)es2->elements->copy());
-        es2 = (ArrayLiteralExp *)ue.exp();
-        es2->elements->shift(e1);
-        e = es2;
+        new(&ue) ArrayLiteralExp(e2->loc, elems);
 
+        e = ue.exp();
         if (type->toBasetype()->ty == Tsarray)
         {
-            e->type = e1->type->sarrayOf(es2->elements->dim);
+            e->type = e1->type->sarrayOf(elems->dim);
         }
         else
             e->type = type;

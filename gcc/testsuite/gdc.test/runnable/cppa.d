@@ -441,14 +441,14 @@ version (linux)
 {
     extern(C++, __gnu_cxx)
     {
-	struct new_allocator(T)
-	{
-	    alias size_type = size_t;
-	    static if (is(T : char))
-		void deallocate(T*, size_type) { }
-	    else
-		void deallocate(T*, size_type);
-	}
+        struct new_allocator(T)
+        {
+            alias size_type = size_t;
+            static if (is(T : char))
+                void deallocate(T*, size_type) { }
+            else
+                void deallocate(T*, size_type);
+        }
     }
 }
 
@@ -456,53 +456,53 @@ extern (C++, std)
 {
     struct allocator(T)
     {
-	version (linux)
-	{
-	    alias size_type = size_t;
-	    void deallocate(T* p, size_type sz)
-	    {   (cast(__gnu_cxx.new_allocator!T*)&this).deallocate(p, sz); }
-	}
+        version (linux)
+        {
+            alias size_type = size_t;
+            void deallocate(T* p, size_type sz)
+            {   (cast(__gnu_cxx.new_allocator!T*)&this).deallocate(p, sz); }
+        }
     }
 
     version (linux)
     {
-	class vector(T, A = allocator!T)
-	{
-	    final void push_back(ref const T);
-	}
+        class vector(T, A = allocator!T)
+        {
+            final void push_back(ref const T);
+        }
 
-	struct char_traits(T)
-	{
-	}
+        struct char_traits(T)
+        {
+        }
 
-	// https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
-	version (none)
-	{
-	    extern (C++, __cxx11)
-	    {
-		struct basic_string(T, C = char_traits!T, A = allocator!T)
-		{
-		}
-	    }
-	}
-	else
-	{
-	    struct basic_string(T, C = char_traits!T, A = allocator!T)
-	    {
-	    }
-	}
+        // https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
+        version (none)
+        {
+            extern (C++, __cxx11)
+            {
+                struct basic_string(T, C = char_traits!T, A = allocator!T)
+                {
+                }
+            }
+        }
+        else
+        {
+            struct basic_string(T, C = char_traits!T, A = allocator!T)
+            {
+            }
+        }
 
-	struct basic_istream(T, C = char_traits!T)
-	{
-	}
+        struct basic_istream(T, C = char_traits!T)
+        {
+        }
 
-	struct basic_ostream(T, C = char_traits!T)
-	{
-	}
+        struct basic_ostream(T, C = char_traits!T)
+        {
+        }
 
-	struct basic_iostream(T, C = char_traits!T)
-	{
-	}
+        struct basic_iostream(T, C = char_traits!T)
+        {
+        }
     }
 }
 
@@ -517,7 +517,7 @@ extern (C++)
         void foo14d(std.basic_ostream!(char) *p);
         void foo14e(std.basic_iostream!(char) *p);
 
-	void foo14f(std.char_traits!char* x, std.basic_string!char* p, std.basic_string!char* q);
+        void foo14f(std.char_traits!char* x, std.basic_string!char* p, std.basic_string!char* q);
     }
 }
 
@@ -528,12 +528,12 @@ void test14()
         std.vector!int p;
         foo14(p);
 
-	foo14a(null);
-	foo14b(null);
-	foo14c(null);
-	foo14d(null);
-	foo14e(null);
-	foo14f(null, null, null);
+        foo14a(null);
+        foo14b(null);
+        foo14c(null);
+        foo14d(null);
+        foo14e(null);
+        foo14f(null, null, null);
     }
 }
 
@@ -605,9 +605,9 @@ version (CRuntime_Microsoft)
 {
     struct __c_long_double
     {
-	this(double d) { ld = d; }
-	double ld;
-	alias ld this;
+        this(double d) { ld = d; }
+        double ld;
+        alias ld this;
     }
 
     alias __c_long_double myld;
@@ -764,6 +764,142 @@ void test14200()
 }
 
 /****************************************/
+// 15579
+
+extern (C++)
+{
+    class Base
+    {
+        //~this() {}
+        void based() { }
+        ubyte x = 4;
+    }
+
+    interface Interface
+    {
+        int MethodCPP();
+        int MethodD();
+    }
+
+    class Derived : Base, Interface
+    {
+        short y = 5;
+        int MethodCPP();
+        int MethodD() {
+            printf("Derived.MethodD(): this = %p, x = %d, y = %d\n", this, x, y);
+            Derived p = this;
+            //p = cast(Derived)(cast(void*)p - 16);
+            assert(p.x == 4 || p.x == 7);
+            assert(p.y == 5 || p.y == 8);
+            return 3;
+        }
+        int Method() { return 6; }
+    }
+
+    Derived cppfoo(Derived);
+    Interface cppfooi(Interface);
+}
+
+void test15579()
+{
+    Derived d = new Derived();
+    printf("d = %p\n", d);
+    assert(d.x == 4);
+    assert(d.y == 5);
+    assert((cast(Interface)d).MethodCPP() == 30);
+    assert((cast(Interface)d).MethodD() == 3);
+    assert(d.MethodCPP() == 30);
+    assert(d.MethodD() == 3);
+    assert(d.Method() == 6);
+
+    d = cppfoo(d);
+    assert(d.x == 7);
+    assert(d.y == 8);
+
+    printf("d2 = %p\n", d);
+    assert((cast(Interface)d).MethodD() == 3);
+    assert((cast(Interface)d).MethodCPP() == 30);
+    assert(d.Method() == 6);
+
+    printf("d = %p, i = %p\n", d, cast(Interface)d);
+    Interface i = cppfooi(d);
+    printf("i2: %p\n", i);
+    assert(i.MethodD() == 3);
+    assert(i.MethodCPP() == 30);
+}
+
+/****************************************/
+// 15610
+
+extern(C++) class Base2
+{
+    int i;
+//    void baser() { }
+}
+
+extern(C++) interface Interface2 { abstract void f(); }
+
+extern(C++) class Derived2 : Base2, Interface2
+{
+    final
+        override void f();
+}
+
+
+void test15610()
+{
+    auto c = new Derived2();
+    printf("test15610(): c = %p\n", c);
+    c.i = 3;
+    c.f();
+}
+
+/******************************************/
+// 15455
+
+struct X6
+{
+    ushort a;
+    ushort b;
+    ubyte c;
+    ubyte d;
+}
+
+static assert(X6.sizeof == 6);
+
+struct X8
+{
+    ushort a;
+    X6 b;
+}
+
+static assert(X8.sizeof == 8);
+
+void test15455a(X8 s)
+{
+    assert(s.a == 1);
+    assert(s.b.a == 2);
+    assert(s.b.b == 3);
+    assert(s.b.c == 4);
+    assert(s.b.d == 5);
+}
+
+extern (C++) void test15455b(X8 s);
+
+void test15455()
+{
+    X8 s;
+
+    s.a = 1;
+    s.b.a = 2;
+    s.b.b = 3;
+    s.b.c = 4;
+    s.b.d = 5;
+    test15455a(s);
+    test15455b(s);
+}
+
+/****************************************/
 
 void main()
 {
@@ -794,6 +930,9 @@ void main()
     foo13337(S13337());
     test14195();
     test14200();
+    test15579();
+    test15610();
+    test15455();
 
     printf("Success\n");
 }
