@@ -147,12 +147,13 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/algorithm/package.d std/algorithm/searching.d \
 	std/algorithm/setops.d std/algorithm/sorting.d std/array.d std/ascii.d \
 	std/base64.d std/bigint.d std/bitmanip.d std/compiler.d std/complex.d \
-	std/concurrency.d std/container/array.d std/container/binaryheap.d \
-	std/container/dlist.d std/container/package.d std/container/rbtree.d \
-	std/container/slist.d std/container/util.d std/conv.d std/cstream.d \
+	std/concurrency.d std/concurrencybase.d std/container/array.d \
+	std/container/binaryheap.d std/container/dlist.d \
+	std/container/package.d std/container/rbtree.d std/container/slist.d \
+	std/container/util.d std/conv.d std/cstream.d \
 	std/csv.d std/datetime.d std/demangle.d std/digest/crc.d \
-	std/digest/digest.d std/digest/md.d std/digest/ripemd.d \
-	std/digest/sha.d std/encoding.d std/exception.d \
+	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
+	std/digest/ripemd.d std/digest/sha.d std/encoding.d std/exception.d \
 	std/experimental/logger/core.d std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \

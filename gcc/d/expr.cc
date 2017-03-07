@@ -53,7 +53,7 @@ class ExprVisitor : public Visitor
   tree result_;
   bool constp_;
 
-  // Determine if type is an array of structs that need a postblit.
+  // Determine if type is a struct that has a postblit.
   bool needs_postblit(Type *t)
   {
     t = t->baseElemOf();
@@ -66,6 +66,29 @@ class ExprVisitor : public Visitor
       }
 
     return false;
+  }
+
+  // Determine if type is a struct that has a destructor.
+  bool needs_dtor(Type *t)
+  {
+    t = t->baseElemOf();
+
+    if (t->ty == Tstruct)
+      {
+	StructDeclaration *sd = ((TypeStruct *) t)->sym;
+	if (sd->dtor)
+	  return true;
+      }
+
+    return false;
+  }
+
+  // Determine if expression is suitable lvalue.
+  bool lvalue_p(Expression *e)
+  {
+    return ((e->op != TOKslice && e->isLvalue())
+	    || (e->op == TOKslice && ((UnaExp *) e)->e1->isLvalue())
+	    || (e->op == TOKcast && ((UnaExp *) e)->e1->isLvalue()));
   }
 
 public:
@@ -176,7 +199,8 @@ public:
 	//    e1.length == e2.length && memcmp(e1.ptr, e2.ptr, size) == 0;
 	// Or when generating a NE expression:
 	//    e1.length != e2.length || memcmp(e1.ptr, e2.ptr, size) != 0;
-	if ((t1elem->isintegral() || t1elem->ty == Tvoid || t1elem->ty == Tstruct)
+	if ((t1elem->isintegral() || t1elem->ty == Tvoid
+	     || (t1elem->ty == Tstruct && !((TypeStruct *)t1elem)->sym->xeq))
 	    && t1elem->ty == t2elem->ty)
 	  {
 	    tree t1 = d_array_convert(e->e1);
@@ -869,22 +893,17 @@ public:
 	Type *etype = stype->nextOf()->toBasetype();
 
 	// Determine if we need to run postblit or dtor.
-	bool postblit = false;
+	bool postblit = this->needs_postblit(etype) && this->lvalue_p(e->e2);
+	bool destructor = this->needs_dtor(etype);
 
-	if (this->needs_postblit(etype)
-	    && ((e->e2->op != TOKslice && e->e2->isLvalue())
-		|| (e->e2->op == TOKslice && ((UnaExp *) e->e2)->e1->isLvalue())
-		|| (e->e2->op == TOKcast && ((UnaExp *) e->e2)->e1->isLvalue())))
-	  postblit = true;
-
-	if (e->ismemset & 1)
+	if (e->memset & blockAssign)
 	  {
 	    // Set a range of elements to one value.
 	    tree t1 = d_save_expr(build_expr(e->e1));
 	    tree t2 = build_expr(e->e2);
 	    tree result;
 
-	    if (postblit && e->op != TOKblit)
+	    if ((postblit || destructor) && e->op != TOKblit)
 	      {
 		tree args[4];
 
@@ -920,7 +939,7 @@ public:
 	    // Perform a memcpy operation.
 	    gcc_assert(e->e2->type->ty != Tpointer);
 
-	    if (!postblit && !array_bounds_check())
+	    if (!postblit && !destructor && !array_bounds_check())
 	      {
 		tree t1 = d_save_expr(d_array_convert(e->e1));
 		tree t2 = d_array_convert(e->e2);
@@ -931,7 +950,7 @@ public:
 						d_array_ptr(t1), d_array_ptr(t2), size);
 		this->result_ = compound_expr(result, t1);
 	      }
-	    else if (postblit && e->op != TOKblit)
+	    else if ((postblit || destructor) && e->op != TOKblit)
 	      {
 		// Generate:
 		//  _d_arrayassign(ti, from, to) or _d_arrayctor(ti, from, to)
@@ -965,8 +984,11 @@ public:
       }
 
     // Look for reference initializations
-    if (e->op == TOKconstruct && e->e1->op == TOKvar && !(e->ismemset & 2))
+    if (e->memset & referenceInit)
       {
+	gcc_assert (e->op == TOKconstruct || e->op == TOKblit);
+	gcc_assert (e->e1->op == TOKvar);
+
 	Declaration *decl = ((VarExp *) e->e1)->var;
 	if (decl->storage_class & (STCout | STCref))
 	  {
@@ -1028,16 +1050,12 @@ public:
 
 	// Determine if we need to run postblit.
 	bool postblit = this->needs_postblit(etype);
-	bool lvalue_p = false;
-
-	if ((e->e2->op != TOKslice && e->e2->isLvalue())
-	    || (e->e2->op == TOKslice && ((UnaExp *) e->e2)->e1->isLvalue())
-	    || (e->e2->op == TOKcast && ((UnaExp *) e->e2)->e1->isLvalue()))
-	  lvalue_p = true;
+	bool destructor = this->needs_dtor(etype);
+	bool lvalue_p = this->lvalue_p(e->e2);
 
 	// Even if the elements in rhs are all rvalues and don't have to call
 	// postblits, this assignment should call dtors on old assigned elements.
-	if (!postblit
+	if ((!postblit && !destructor)
 	    || (e->op == TOKconstruct && !lvalue_p && postblit)
 	    || (e->op == TOKblit || e->e1->type->size() == 0))
 	  {
@@ -1337,13 +1355,6 @@ public:
       this->result_ = build_nop(build_ctype(tbtype), result);
     else
       this->result_ = convert_expr(result, ebtype, tbtype);
-  }
-
-  //
-  void visit(BoolExp *e)
-  {
-    // Check, should we instead do truthvalue conversion?
-    this->result_ = d_convert(build_ctype(e->type), build_expr(e->e1));
   }
 
   //
@@ -1903,7 +1914,7 @@ public:
 	if (!vd->isStatic() && !(vd->storage_class & STCmanifest)
 	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
 	  {
-	    if (vd->edtor && !vd->noscope)
+	    if (vd->needsScopeDtor ())
 	      cfun->language->vars_in_scope.safe_push(vd);
 	  }
       }
@@ -1937,7 +1948,7 @@ public:
 	if (((TypeClass *) type)->sym->isInterfaceDeclaration())
 	  ci = indirect_ref(ptr_type_node, ci);
 
-	this->result_ = build_nop(build_ctype(tid->type), ci);
+	this->result_ = build_nop(build_ctype(e->type), ci);
       }
     else
       gcc_unreachable();
@@ -2020,15 +2031,35 @@ public:
   {
     if (e->var->needThis())
       {
-	error("need 'this' to access member %s", e->var->ident->string);
+	error("need 'this' to access member %s", e->var->ident->toChars());
 	this->result_ = error_mark_node;
+	return;
       }
     else if (e->var->ident == Id::ctfe)
       {
 	// __ctfe is always false at runtime
 	this->result_ = integer_zero_node;
+	return;
       }
-    else if (this->constp_)
+
+    // This check is same as is done in FuncExp for lambdas.
+    FuncLiteralDeclaration *fld = e->var->isFuncLiteralDeclaration ();
+    if (fld != NULL)
+      {
+	if (fld->tok == TOKreserved)
+	  {
+	    fld->tok = TOKfunction;
+	    fld->vthis = NULL;
+	  }
+
+	// Emit after current function body has finished.
+	if (cfun != NULL)
+	  cfun->language->deferred_fns.safe_push(fld);
+	else
+	  fld->toObjFile();
+      }
+
+    if (this->constp_)
       {
 	// Want the initializer, not the expression.
 	VarDeclaration *var = e->var->isVarDeclaration();
@@ -2036,14 +2067,14 @@ public:
 	tree init = NULL_TREE;
 
 	if (var && (var->isConst() || var->isImmutable())
-	    && e->type->toBasetype()->ty != Tsarray && var->init)
+	    && e->type->toBasetype()->ty != Tsarray && var->_init)
 	  {
 	    if (var->inuse)
 	      e->error("recursive reference %s", e->toChars());
 	    else
 	      {
 		var->inuse++;
-		init = var->init->toDt();
+		init = var->_init->toDt();
 		var->inuse--;
 	      }
 	  }
@@ -2067,14 +2098,6 @@ public:
 	// we want what it refers to.
 	if (declaration_reference_p(e->var))
 	  result = indirect_ref(build_ctype(e->var->type), result);
-
-	// The frontend sometimes emits different types for the expression
-	// and var declaration.  So we must force convert to the expressions
-	// type, but don't convert FuncDeclaration as underlying ctype
-	// sometimes isn't the correct type for functions!
-	if (!e->var->isFuncDeclaration()
-	    && !d_types_same(e->var->type, e->type))
-	  result = build1(VIEW_CONVERT_EXPR, build_ctype(e->type), result);
 
 	this->result_ = result;
       }
@@ -2470,7 +2493,7 @@ public:
 
     for (size_t i = 0; i < e->elements->dim; i++)
       {
-	Expression *expr = (*e->elements)[i];
+	Expression *expr = e->getElement(i);
 	tree value = build_expr(expr, this->constp_);
 
 	// Only care about non-zero values, the backend will fill in the rest.
@@ -2642,9 +2665,6 @@ public:
 	  continue;
 
 	VarDeclaration *field = e->sd->fields[i];
-	if (field->init && field->init->isVoidInitializer())
-	  continue;
-
 	Type *type = exp->type->toBasetype();
 	Type *ftype = field->type->toBasetype();
 	tree value = NULL_TREE;
@@ -2753,10 +2773,7 @@ public:
     tree result = NULL_TREE;
 
     if (e->var)
-      {
-	gcc_assert(e->var->isVarDeclaration());
-	result = get_decl_tree(e->var);
-      }
+      result = get_decl_tree(e->var);
     else
       {
 	gcc_assert(fd && fd->vthis);
@@ -2778,14 +2795,14 @@ public:
     // First handle array literal expressions.
     if (e->e1->op == TOKarrayliteral)
       {
-	Expressions *elements = ((ArrayLiteralExp *) e->e1)->elements;
+	ArrayLiteralExp *ale = ((ArrayLiteralExp *) e->e1);
 	vec<constructor_elt, va_gc> *elms = NULL;
 	bool constant_p = true;
 
-	vec_safe_reserve(elms, elements->dim);
-	for (size_t i = 0; i < elements->dim; i++)
+	vec_safe_reserve(elms, ale->elements->dim);
+	for (size_t i = 0; i < ale->elements->dim; i++)
 	  {
-	    Expression *expr = (*elements)[i];
+	    Expression *expr = ale->getElement(i);
 	    tree value = d_convert(etype, build_expr(expr, this->constp_));
 	    if (!CONSTANT_CLASS_P (value))
 	      constant_p = false;

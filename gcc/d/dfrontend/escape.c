@@ -15,6 +15,9 @@
 #include "declaration.h"
 #include "module.h"
 
+bool checkEscape(Scope *sc, Expression *e, bool gag);
+bool checkEscapeRef(Scope *sc, Expression *e, bool gag);
+
 /************************************
  * Detect cases where pointers to the stack can 'escape' the
  * lifetime of the stack frame.
@@ -87,7 +90,7 @@ bool checkEscape(Scope *sc, Expression *e, bool gag)
                      */
                     if (tb->ty == Tarray || tb->ty == Tsarray || tb->ty == Tclass || tb->ty == Tdelegate)
                     {
-                        if ((!v->noscope || tb->ty == Tclass))
+                        if (v->needsScopeDtor() || tb->ty == Tclass)
                         {
                             error(e->loc, "escaping reference to scope local %s", v);
                             return;
@@ -115,9 +118,14 @@ bool checkEscape(Scope *sc, Expression *e, bool gag)
             Type *tb = e->type->toBasetype();
             if (tb->ty == Tsarray || tb->ty == Tarray)
             {
+                if (e->basis)
+                    e->basis->accept(this);
                 for (size_t i = 0; i < e->elements->dim; i++)
                 {
-                    (*e->elements)[i]->accept(this);
+                    Expression *el = (*e->elements)[i];
+                    if (!el)
+                        continue;
+                    el->accept(this);
                 }
             }
         }
@@ -294,10 +302,10 @@ bool checkEscapeRef(Scope *sc, Expression *e, bool gag)
 
                 if (v->storage_class & STCref &&
                     v->storage_class & (STCforeach | STCtemp) &&
-                    v->init)
+                    v->_init)
                 {
                     // (ref v = ex; ex)
-                    if (ExpInitializer *ez = v->init->isExpInitializer())
+                    if (ExpInitializer *ez = v->_init->isExpInitializer())
                     {
                         assert(ez->exp && ez->exp->op == TOKconstruct);
                         Expression *ex = ((ConstructExp *)ez->exp)->e2;

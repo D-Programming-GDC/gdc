@@ -1412,7 +1412,7 @@ unittest
 
 // used by both Rebindable and UnqualRef
 private mixin template RebindableCommon(T, U, alias This)
-    if (is(T == class) || is(T == interface))
+    if (is(T == class) || is(T == interface) || isAssociativeArray!T)
 {
     private union
     {
@@ -1459,8 +1459,7 @@ private mixin template RebindableCommon(T, U, alias This)
 $(D Rebindable!(T)) is a simple, efficient wrapper that behaves just
 like an object of type $(D T), except that you can reassign it to
 refer to another object. For completeness, $(D Rebindable!(T)) aliases
-itself away to $(D T) if $(D T) is a non-const object type. However,
-$(D Rebindable!(T)) does not compile if $(D T) is a non-class type.
+itself away to $(D T) if $(D T) is a non-const object type.
 
 You may want to use $(D Rebindable) when you want to have mutable
 storage referring to $(D const) objects, for example an array of
@@ -1469,9 +1468,10 @@ break the soundness of D's type system and does not incur any of the
 risks usually associated with $(D cast).
 
 Params:
-    T = An object, interface, or array slice type.
+    T = An object, interface, array slice type, or associative array type.
  */
-template Rebindable(T) if (is(T == class) || is(T == interface) || isDynamicArray!T)
+template Rebindable(T)
+    if (is(T == class) || is(T == interface) || isDynamicArray!T || isAssociativeArray!T)
 {
     static if (is(T == const U, U) || is(T == immutable U, U))
     {
@@ -1528,14 +1528,14 @@ Convenience function for creating a $(D Rebindable) using automatic type
 inference.
 
 Params:
-    obj = A reference to an object or interface, or an array slice
+    obj = A reference to an object, interface, associative array, or an array slice
           to initialize the `Rebindable` with.
 
 Returns:
     A newly constructed `Rebindable` initialized with the given reference.
 */
 Rebindable!T rebindable(T)(T obj)
-if (is(T == class) || is(T == interface) || isDynamicArray!T)
+    if (is(T == class) || is(T == interface) || isDynamicArray!T || isAssociativeArray!T)
 {
     typeof(return) ret;
     ret = obj;
@@ -1639,6 +1639,14 @@ unittest
     // Issue 12046
     static assert(!__traits(compiles, Rebindable!(int[1])));
     static assert(!__traits(compiles, Rebindable!(const int[1])));
+
+    // Pull request 3341
+    Rebindable!(immutable int[int]) pr3341 = [123:345];
+    assert(pr3341[123] == 345);
+    immutable int[int] pr3341_aa = [321:543];
+    pr3341 = pr3341_aa;
+    assert(pr3341[321] == 543);
+    assert(rebindable(pr3341_aa)[321] == 543);
 }
 
 /**
@@ -1806,6 +1814,19 @@ Params:
                 sink.formatValue(_value, fmt);
             }
         }
+
+        // Issue 14940
+        void toString()(scope void delegate(const(char)[]) @safe sink, FormatSpec!char fmt)
+        {
+            if (isNull)
+            {
+                sink.formatValue("Nullable.null", fmt);
+            }
+            else
+            {
+                sink.formatValue(_value, fmt);
+            }
+        }
     }
 
 /**
@@ -1827,6 +1848,18 @@ unittest
 
     ni = 0;
     assert(!ni.isNull);
+}
+
+// Issue 14940
+@safe unittest
+{
+    import std.array : appender;
+    import std.format : formattedWrite;
+
+    auto app = appender!string();
+    Nullable!int a = 1;
+    formattedWrite(app, "%s", a);
+    assert(app.data == "1");
 }
 
 /**
@@ -3352,7 +3385,8 @@ unittest
 version(unittest)
 {
     // Issue 10647
-    private string generateDoNothing(C, alias fun)() @property
+    // Add prefix "issue10647_" as a workaround for issue 1238
+    private string issue10647_generateDoNothing(C, alias fun)() @property
     {
         string stmt;
 
@@ -3366,25 +3400,25 @@ version(unittest)
         return stmt;
     }
 
-    private template isAlwaysTrue(alias fun)
+    private template issue10647_isAlwaysTrue(alias fun)
     {
-        enum isAlwaysTrue = true;
+        enum issue10647_isAlwaysTrue = true;
     }
 
     // Do nothing template
-    private template DoNothing(Base)
+    private template issue10647_DoNothing(Base)
     {
-        alias DoNothing = AutoImplement!(Base, generateDoNothing, isAlwaysTrue);
+        alias issue10647_DoNothing = AutoImplement!(Base, issue10647_generateDoNothing, issue10647_isAlwaysTrue);
     }
 
     // A class to be overridden
-    private class Foo{
+    private class issue10647_Foo{
         void bar(int a) { }
     }
 }
 unittest
 {
-    auto foo = new DoNothing!Foo();
+    auto foo = new issue10647_DoNothing!issue10647_Foo();
     foo.bar(13);
 }
 
@@ -4922,7 +4956,7 @@ mixin template Proxy(alias a)
 {
     private alias ValueType = typeof({ return a; }());
     private enum bool accessibleFrom(T) =
-        is(typeof((ref T self){ cast(void)mixin("self." ~ a.stringof); }));
+        is(typeof((ref T self){ cast(void)mixin("self."~__traits(identifier, a)); }));
 
     static if (is(typeof(this) == class))
     {
@@ -4930,9 +4964,7 @@ mixin template Proxy(alias a)
         {
             if (auto b = cast(typeof(this))o)
             {
-                import std.algorithm : startsWith;
-                static assert(startsWith(a.stringof, "this."));
-                return a == mixin("b."~a.stringof[5..$]); // remove "this."
+                return a == mixin("b."~__traits(identifier, a));
             }
             return false;
         }
@@ -4952,10 +4984,8 @@ mixin template Proxy(alias a)
         {
             if (auto b = cast(typeof(this))o)
             {
-                import std.algorithm : startsWith;
-                static assert(startsWith(a.stringof, "this."));  // remove "this."
-                return a < mixin("b."~a.stringof[5..$]) ? -1
-                     : a > mixin("b."~a.stringof[5..$]) ? +1 : 0;
+                return a < mixin("b."~__traits(identifier, a)) ? -1
+                     : a > mixin("b."~__traits(identifier, a)) ? +1 : 0;
             }
             static if (is(ValueType == class))
                 return a.opCmp(o);
@@ -4992,9 +5022,7 @@ mixin template Proxy(alias a)
         {
             static if (is(immutable B == immutable typeof(this)))
             {
-                import std.algorithm : startsWith;
-                static assert(startsWith(a.stringof, "this."));
-                return a == mixin("b."~a.stringof[5..$]);   // remove "this."
+                return a == mixin("b."~__traits(identifier, a));
             }
             else
                 return a == b;
@@ -5051,7 +5079,7 @@ mixin template Proxy(alias a)
         {
             auto ref opAssign(this X)(auto ref typeof(this) v)
             {
-                a = mixin("v."~a.stringof[5..$]);   // remove "this."
+                a = mixin("v."~__traits(identifier, a));
                 return this;
             }
         }
@@ -6362,7 +6390,7 @@ template isBitFlagEnum(E)
 }
 
 /**
-A typesafe structure for storing combination of enum values.
+A typesafe structure for storing combinations of enum values.
 
 This template defines a simple struct to represent bitwise OR combinations of
 enum values. It can be used if all the enum values are integral constants with
@@ -6616,7 +6644,8 @@ template ReplaceType(From, To, T...)
 {
     static if (T.length == 1)
     {
-        static if (is(T[0] == From)) alias ReplaceType = To;
+        static if (is(T[0] == From))
+            alias ReplaceType = To;
         else static if (is(T[0] == const(U), U))
             alias ReplaceType = const(ReplaceType!(From, To, U));
         else static if (is(T[0] == immutable(U), U))
@@ -6625,26 +6654,34 @@ template ReplaceType(From, To, T...)
             alias ReplaceType = shared(ReplaceType!(From, To, U));
         else static if (is(T[0] == U*, U))
         {
-            static if (is(U == function) || is(U == delegate))
-            {
-                mixin("alias ReplaceType = "
-                    ~replaceTypeInFunctionType!(From, To, T[0])~";");
-            }
+            static if (is(U == function))
+                alias ReplaceType = replaceTypeInFunctionType!(From, To, T[0]);
             else
-            {
                 alias ReplaceType = ReplaceType!(From, To, U)*;
-            }
         }
         else static if (is(T[0] == delegate))
         {
-            mixin("alias ReplaceType = "
-                ~replaceTypeInFunctionType!(From, To, T[0])~";");
+            alias ReplaceType = replaceTypeInFunctionType!(From, To, T[0]);
         }
         else static if (is(T[0] == function))
         {
-            static assert(0, "Function types not supported,"
-                " use a function pointer type instead of "~T[0].stringof);
+            static assert(0, "Function types not supported," ~
+                " use a function pointer type instead of " ~ T[0].stringof);
         }
+        else static if (is(T[0] : U!V, alias U, V...))
+        {
+            template replaceTemplateArgs(T...)
+            {
+                static if (is(typeof(T[0])))    // template argument is value or symbol
+                    enum replaceTemplateArgs = T[0];
+                else
+                    alias replaceTemplateArgs = ReplaceType!(From, To, T[0]);
+            }
+            alias ReplaceType = U!(staticMap!(replaceTemplateArgs, V));
+        }
+        else static if (is(T[0] == struct))
+            // don't match with alias this struct below (Issue 15168)
+            alias ReplaceType = T[0];
         else static if (is(T[0] == U[], U))
             alias ReplaceType = ReplaceType!(From, To, U)[];
         else static if (is(T[0] == U[n], U, size_t n))
@@ -6652,9 +6689,8 @@ template ReplaceType(From, To, T...)
         else static if (is(T[0] == U[V], U, V))
             alias ReplaceType =
                 ReplaceType!(From, To, U)[ReplaceType!(From, To, V)];
-        else static if (is(T[0] : U!V, alias U, V...))
-            alias ReplaceType = U!(ReplaceType!(From, To, V));
-        else alias ReplaceType = T[0];
+        else
+            alias ReplaceType = T[0];
     }
     else static if (T.length > 1)
     {
@@ -6679,67 +6715,88 @@ unittest
     );
 }
 
-private string replaceTypeInFunctionType(X, Y, fun)()
+private template replaceTypeInFunctionType(From, To, fun)
 {
-    alias storageClasses = ParameterStorageClassTuple!fun;
-    string result;
-    result ~= "extern(" ~ functionLinkage!fun ~ ") ";
-    static if (functionAttributes!fun & FunctionAttribute.ref_)
+   alias RX = ReplaceType!(From, To, ReturnType!fun);
+    alias PX = AliasSeq!(ReplaceType!(From, To, Parameters!fun));
+    // Wrapping with AliasSeq is neccesary because ReplaceType doesn't return
+    // tuple if Parameters!fun.length == 1
+
+    string gen()
     {
-        result ~= "ref ";
-    }
-    result ~= (ReplaceType!(X, Y, ReturnType!fun)).stringof;
-    static if (is(fun == delegate))
-        result ~= " delegate";
-    else
-        result ~= " function";
-    result ~= "(";
-    foreach (i, T; Parameters!fun)
-    {
-        if (i) result ~= ", ";
-        if (storageClasses[i] & ParameterStorageClass.scope_)
-            result ~= "scope ";
-        if (storageClasses[i] & ParameterStorageClass.out_)
-            result ~= "out ";
-        if (storageClasses[i] & ParameterStorageClass.ref_)
+        enum  linkage = functionLinkage!fun;
+        alias attributes = functionAttributes!fun;
+        enum  variadicStyle = variadicFunctionStyle!fun;
+        alias storageClasses = ParameterStorageClassTuple!fun;
+
+        string result;
+
+        result ~= "extern(" ~ linkage ~ ") ";
+        static if (attributes & FunctionAttribute.ref_)
+        {
             result ~= "ref ";
-        if (storageClasses[i] & ParameterStorageClass.lazy_)
-            result ~= "lazy ";
-        if (storageClasses[i] & ParameterStorageClass.return_)
-            result ~= "return ";
-        result ~= ReplaceType!(X, Y, T).stringof;
+        }
+
+        result ~= "RX";
+        static if (is(fun == delegate))
+            result ~= " delegate";
+        else
+            result ~= " function";
+
+        result ~= "(";
+        foreach (i, _; PX)
+        {
+            if (i)
+                result ~= ", ";
+            if (storageClasses[i] & ParameterStorageClass.scope_)
+                result ~= "scope ";
+            if (storageClasses[i] & ParameterStorageClass.out_)
+                result ~= "out ";
+            if (storageClasses[i] & ParameterStorageClass.ref_)
+                result ~= "ref ";
+            if (storageClasses[i] & ParameterStorageClass.lazy_)
+                result ~= "lazy ";
+            if (storageClasses[i] & ParameterStorageClass.return_)
+                result ~= "return ";
+
+            result ~= "PX[" ~ i.stringof ~ "]";
+        }
+        static if (variadicStyle == Variadic.typesafe)
+            result ~= " ...";
+        else static if (variadicStyle != Variadic.no)
+            result ~= ", ...";
+        result ~= ")";
+
+        static if (attributes & FunctionAttribute.pure_)
+            result ~= " pure";
+        static if (attributes & FunctionAttribute.nothrow_)
+            result ~= " nothrow";
+        static if (attributes & FunctionAttribute.property)
+            result ~= " @property";
+        static if (attributes & FunctionAttribute.trusted)
+            result ~= " @trusted";
+        static if (attributes & FunctionAttribute.safe)
+            result ~= " @safe";
+        static if (attributes & FunctionAttribute.nogc)
+            result ~= " @nogc";
+        static if (attributes & FunctionAttribute.system)
+            result ~= " @system";
+        static if (attributes & FunctionAttribute.const_)
+            result ~= " @const";
+        static if (attributes & FunctionAttribute.immutable_)
+            result ~= " immutable";
+        static if (attributes & FunctionAttribute.inout_)
+            result ~= " inout";
+        static if (attributes & FunctionAttribute.shared_)
+            result ~= " shared";
+        static if (attributes & FunctionAttribute.return_)
+            result ~= " return";
+
+        return result;
     }
-    static if (variadicFunctionStyle!fun != Variadic.no)
-    {
-        result ~= ", ...";
-    }
-    result ~= ")";
-    alias attributes = functionAttributes!fun;
-    static if (attributes & FunctionAttribute.pure_)
-        result ~= " pure";
-    static if (attributes & FunctionAttribute.nothrow_)
-        result ~= " nothrow";
-    static if (attributes & FunctionAttribute.property)
-        result ~= " @property";
-    static if (attributes & FunctionAttribute.trusted)
-        result ~= " @trusted";
-    static if (attributes & FunctionAttribute.safe)
-        result ~= " @safe";
-    static if (attributes & FunctionAttribute.nogc)
-        result ~= " @nogc";
-    static if (attributes & FunctionAttribute.system)
-        result ~= " @system";
-    static if (attributes & FunctionAttribute.const_)
-        result ~= " @const";
-    static if (attributes & FunctionAttribute.immutable_)
-        result ~= " immutable";
-    static if (attributes & FunctionAttribute.inout_)
-        result ~= " inout";
-    static if (attributes & FunctionAttribute.shared_)
-        result ~= " shared";
-    static if (attributes & FunctionAttribute.return_)
-        result ~= " return";
-    return result;
+    //pragma(msg, "gen ==> ", gen());
+
+    mixin("alias replaceTypeInFunctionType = " ~ gen() ~ ";");
 }
 
 unittest
@@ -6765,6 +6822,10 @@ unittest
     extern(C) int printf(const char*, ...) nothrow @nogc @system;
     extern(C) float floatPrintf(const char*, ...) nothrow @nogc @system;
     int func(float);
+
+    int x;
+    struct S1 { void foo() { x = 1; } }
+    struct S2 { void bar() { x = 2; } }
 
     alias Pass = Test!(
         int, float, typeof(&func), float delegate(float),
@@ -6807,6 +6868,22 @@ unittest
         int, float, Unique!int, Unique!float,
         int, float, Tuple!(float, int), Tuple!(float, float),
         int, float, RefFun1, RefFun2,
+        S1, S2,
+            S1[1][][S1]* function(),
+            S2[1][][S2]* function(),
+        int, string,
+               int[3] function(   int[] arr,    int[2] ...) pure @trusted,
+            string[3] function(string[] arr, string[2] ...) pure @trusted,
+    );
+
+    // Bugzilla 15168
+    static struct T1 { string s; alias s this; }
+    static struct T2 { char[10] s; alias s this; }
+    static struct T3 { string[string] s; alias s this; }
+    alias Pass2 = Test!(
+        ubyte, ubyte, T1, T1,
+        ubyte, ubyte, T2, T2,
+        ubyte, ubyte, T3, T3,
     );
 }
 

@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <math.h>
 
+#include "checkedint.h"
 #include "lexer.h"
 #include "mtype.h"
 #include "expression.h"
@@ -34,8 +35,8 @@ Expression *expandVar(int result, VarDeclaration *v)
     Expression *e = NULL;
     if (!v)
         return e;
-    if (!v->originalType && v->scope)   // semantic() not yet run
-        v->semantic (v->scope);
+    if (!v->originalType && v->_scope)   // semantic() not yet run
+        v->semantic (v->_scope);
 
     if (v->isConst() || v->isImmutable() || v->storage_class & STCmanifest)
     {
@@ -49,7 +50,7 @@ Expression *expandVar(int result, VarDeclaration *v)
             ((result & WANTexpand) && (tb->ty != Tsarray && tb->ty != Tstruct))
            )
         {
-            if (v->init)
+            if (v->_init)
             {
                 if (v->inuse)
                 {
@@ -65,7 +66,7 @@ Expression *expandVar(int result, VarDeclaration *v)
                 {
                     if (v->storage_class & STCmanifest)
                     {
-                        v->error("enum cannot be initialized with %s", v->init->toChars());
+                        v->error("enum cannot be initialized with %s", v->_init->toChars());
                         goto Lerror;
                     }
                     goto L1;
@@ -74,7 +75,18 @@ Expression *expandVar(int result, VarDeclaration *v)
                 {
                     AssignExp *ae = (AssignExp *)ei;
                     ei = ae->e2;
-                    if (ei->isConst() != 1 && ei->op != TOKstring)
+                    if (ei->isConst() == 1)
+                    {
+                    }
+                    else if (ei->op == TOKstring)
+                    {
+                        // Bugzilla 14459: We should not constfold the string literal
+                        // if it's typed as a C string, because the value expansion
+                        // will drop the pointer identity.
+                        if (!(result & WANTexpand) && ei->type->toBasetype()->ty == Tpointer)
+                            goto L1;
+                    }
+                    else
                         goto L1;
 
                     if (ei->type == v->type)
@@ -184,6 +196,11 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
         {
         }
 
+        void error()
+        {
+            ret = new ErrorExp();
+        }
+
         bool expOptimize(Expression *&e, int flags, bool keepLvalue = false)
         {
             if (!e)
@@ -242,6 +259,7 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
         {
             if (e->elements)
             {
+                expOptimize(e->basis, result & WANTexpand);
                 for (size_t i = 0; i < e->elements->dim; i++)
                 {
                     expOptimize((*e->elements)[i], result & WANTexpand);
@@ -314,17 +332,6 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             }
         }
 
-        void visit(BoolExp *e)
-        {
-            if (unaOptimize(e, result))
-                return;
-
-            if (e->e1->isConst() == 1)
-            {
-                ret = Bool(e->type, e->e1).copy();
-            }
-        }
-
         void visit(SymOffExp *e)
         {
             assert(e->var);
@@ -392,10 +399,18 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
                         if (index < 0 || index >= dim)
                         {
                             e->error("array index %lld is out of bounds [0..%lld]", index, dim);
-                            ret = new ErrorExp();
-                            return;
+                            return error();
                         }
-                        ret = new SymOffExp(e->loc, ve->var, index * ts->nextOf()->size());
+
+                        bool overflow = false;
+                        const d_uns64 offset = mulu(index, ts->nextOf()->size(e->loc), overflow);
+                        if (overflow)
+                        {
+                            e->error("array offset overflow");
+                            return error();
+                        }
+
+                        ret = new SymOffExp(e->loc, ve->var, offset);
                         ret->type = e->type;
                         return;
                     }
@@ -558,17 +573,24 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             }
 
             if ((e->e1->op == TOKstring || e->e1->op == TOKarrayliteral) &&
-                (e->type->ty == Tpointer || e->type->ty == Tarray) &&
-                e->e1->type->toBasetype()->nextOf()->size() == e->type->nextOf()->size())
+                (e->type->ty == Tpointer || e->type->ty == Tarray))
             {
-                // Bugzilla 12937: If target type is void array, trying to paint
-                // e->e1 with that type will cause infinite recursive optimization.
-                if (e->type->nextOf()->ty == Tvoid)
-                    return;
+                const d_uns64 esz = e->type->nextOf()->size(e->loc);
+                const d_uns64 e1sz = e->e1->type->toBasetype()->nextOf()->size(e->e1->loc);
+                if (esz == SIZE_INVALID || e1sz == SIZE_INVALID)
+                    return error();
 
-                ret = e->e1->castTo(NULL, e->type);
-                //printf(" returning1 %s\n", ret->toChars());
-                return;
+                if (e1sz == esz)
+                {
+                    // Bugzilla 12937: If target type is void array, trying to paint
+                    // e->e1 with that type will cause infinite recursive optimization.
+                    if (e->type->nextOf()->ty == Tvoid)
+                        return;
+
+                    ret = e->e1->castTo(NULL, e->type);
+                    //printf(" returning1 %s\n", ret->toChars());
+                    return;
+                }
             }
 
             if (e->e1->op == TOKstructliteral &&
@@ -619,10 +641,16 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             {
                 if (e->e1->op == TOKsymoff)
                 {
-                    if (e->type->size() == e->e1->type->size() &&
-                        e->type->toBasetype()->ty != Tsarray)
+                    if (e->type->toBasetype()->ty != Tsarray)
                     {
-                        goto L1;
+                        const d_uns64 esz = e->type->size(e->loc);
+                        const d_uns64 e1sz = e->e1->type->size(e->e1->loc);
+                        if (esz == SIZE_INVALID ||
+                            e1sz == SIZE_INVALID)
+                            return error();
+
+                        if (esz == e1sz)
+                            goto L1;
                     }
                     return;
                 }
@@ -650,12 +678,13 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
                 if (e->e2->isConst() == 1)
                 {
                     sinteger_t i2 = e->e2->toInteger();
-                    d_uns64 sz = e->e1->type->size() * 8;
+                    d_uns64 sz = e->e1->type->size(e->e1->loc);
+                    assert(sz != SIZE_INVALID);
+                    sz *= 8;
                     if (i2 < 0 || i2 >= sz)
                     {
                         e->error("shift assign by %lld is outside the range 0..%llu", i2, (ulonglong)sz - 1);
-                        ret = new ErrorExp();
-                        return;
+                        return error();
                     }
                 }
             }
@@ -734,12 +763,13 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             if (e->e2->isConst() == 1)
             {
                 sinteger_t i2 = e->e2->toInteger();
-                d_uns64 sz = e->e1->type->size() * 8;
+                d_uns64 sz = e->e1->type->size();
+                assert(sz != SIZE_INVALID);
+                sz *= 8;
                 if (i2 < 0 || i2 >= sz)
                 {
                     e->error("shift by %lld is outside the range 0..%llu", i2, (ulonglong)sz - 1);
-                    ret = new ErrorExp();
-                    return;
+                    return error();
                 }
                 if (e->e1->isConst() == 1)
                     ret = (*shift)(e->type, e->e1, e->e2).copy();
@@ -846,8 +876,7 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             {
                 e->error("cannot raise %s to a negative integer power. Did you mean (cast(real)%s)^^%s ?",
                       e->e1->type->toBasetype()->toChars(), e->e1->toChars(), e->e2->toChars());
-                ret = new ErrorExp();
-                return;
+                return error();
             }
 
             // If e2 *could* have been an integer, make it one.
@@ -917,7 +946,7 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             if (e->e1->op == TOKvar)
             {
                 VarDeclaration *v = ((VarExp *)e->e1)->var->isVarDeclaration();
-                if (v && (v->storage_class & STCstatic) && (v->storage_class & STCimmutable) && v->init)
+                if (v && (v->storage_class & STCstatic) && (v->storage_class & STCimmutable) && v->_init)
                 {
                     if (Expression *ci = v->getConstInitializer())
                         e->e1 = ci;
@@ -980,7 +1009,7 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
         {
             if (!lengthVar)
                 return;
-            if (lengthVar->init && !lengthVar->init->isVoidInitializer())
+            if (lengthVar->_init && !lengthVar->_init->isVoidInitializer())
                 return; // we have previously calculated the length
             size_t len;
             if (arr->op == TOKstring)
@@ -997,7 +1026,7 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
             }
 
             Expression *dollar = new IntegerExp(Loc(), len, Type::tsize_t);
-            lengthVar->init = new ExpInitializer(Loc(), dollar);
+            lengthVar->_init = new ExpInitializer(Loc(), dollar);
             lengthVar->storage_class |= STCstatic | STCconst;
         }
 
@@ -1100,7 +1129,10 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
                     if (e->type->toBasetype()->ty == Tvoid)
                         ret = e->e2;
                     else
-                        ret = new BoolExp(e->loc, e->e2, e->type);
+                    {
+                        ret = new CastExp(e->loc, e->e2, e->type);
+                        ret->type = e->type;
+                    }
                 }
             }
         }
@@ -1141,7 +1173,10 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
                     if (e->type->toBasetype()->ty == Tvoid)
                         ret = e->e2;
                     else
-                        ret = new BoolExp(e->loc, e->e2, e->type);
+                    {
+                        ret = new CastExp(e->loc, e->e2, e->type);
+                        ret->type = e->type;
+                    }
                 }
             }
         }

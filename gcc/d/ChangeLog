@@ -1,3 +1,176 @@
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_option_data): Add fields to support other -M options.
+	(d_init_options): Initialize them.
+	(deps_add_target): New function.
+	(deps_write): Support multiple targets and phony rules.
+	(d_handle_option): Handle gcc -M style options.
+	(d_parse_file): Likewise.
+	* lang-specs.h: Add rules for -M style options.
+	* lang.opt: Declare -M style options.
+
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (is_system_module): Remove.
+	(deps_write): Always ignore entrypoint module.
+
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (write_one_dep): Remove.
+	(deps_write): Update signature.
+
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (iprefix_dir): Remove.
+	(imultilib_dir): Remove.
+	(std_inc): Remove.
+	(d_option_data): New struct.
+	(d_option): Declare.
+	(d_init_options): Initialize d_option.
+	(d_init): Update to use d_option.
+	(d_handle_option): Likewise.
+	(d_parse_file): Likewise.
+	(deps_write): Update signature.
+
+2017-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (VarDeclaration::toObjFile): Error if a variable covers
+	more than half the address space.
+
+2017-02-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (Module::genmoduleinfo): Ignore symbol visibility when
+	looking up module DSO symbols.
+
+2017-01-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -ftransition=all.
+	* lang.opt (ftransition=all): Add compiler option.
+
+2017-01-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -ftransition=checkimports.
+	* lang.opt (ftransition=checkimports): Add compiler option.
+
+2017-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -ftransition=import.
+	* lang.opt (ftransition=import): Add compiler option.
+
+2017-01-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* imports.cc (ImportVisitor::visit(EnumDeclaration)): New function.
+	(ImportVisitor::visit(AggregateDeclaration)): New function.
+	(ImportVisitor::visit(ClassDeclaration)): New function.
+	(ImportVisitor::make_import): New function.
+	(ImportVisitor::visit(AliasDeclaration)): Get decl for type alias.
+
+2017-01-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(EqualExp)): Don't use memcmp on arrays
+	of structs that define xopEquals.
+
+2017-01-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-spec.cc (lang_specific_driver): Add missing break.
+
+2017-01-13  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_class_instance): Don't check for void
+	initialized fields.
+	* expr.cc (ExprVisitor::visit(StructLiteralExp)): Likewise.
+
+2017-01-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* typeinfo.cc (layout_classinfo): Use placement new to initialize
+	typeinfo class declaration.
+
+2017-01-02  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen,cc (get_frame_for_symbol): Use fully qualified name in
+	error message.
+	(build_frame_type): Always add parameters to closure vars if the
+	function has a contract function.
+	(get_frameinfo): Likewise, always create a frame.
+	* expr.cc (ExprVisitor::needs_dtor): New function.
+	(ExprVisitor::lvalue_p): New function.
+	(ExprVisitor::visit(AssignExp)): Check for dtor in array assignments.
+	(ExprVisitor::visit(TypeidExp)): Cast result to expression type.
+
+2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(VarExp)): Remove type forced conversion.
+
+2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -ftransition=safe.
+	* lang.opt (ftransition=safe): Add compiler option.
+
+2017-12-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_init_options): Initialize hdrStripPlainFunctions.
+	(d_post_options): Add post option handling of flag.
+
+2017-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (layout_aggregate_type): Adjust layout of D interfaces.
+	Only add a __vptr field if no base interfaces, don't add __monitor.
+
+2017-12-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_parse_file): Run runDeferredSemantic2 after semantic2.
+
+2017-12-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(ArrayLiteralExp)): Use getElement to
+	index elements array.
+	(ExprVisitor::visit(VectorExp)): Likewise.
+
+2017-12-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_DMD_OBJS): Add d/objc.o
+	* types.cc (TypeVisitor::visit(TypeFunction)): Handle ObjC linkage.
+
+2017-12-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (mangle_decl): New function.
+	(make_internal_name): Update.
+	(get_symbol_decl): Update.
+
+2017-12-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::needs_dtor): New function.
+	(ExprVisitor::lvalue_p): New function.
+	(ExprVisitor::visit(AssignExp)): Check both for postblit and dtors
+	when generating array assignments.
+
+2017-12-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (convert_expr): Allow upcasting C++ classes.
+	(build_class_instance): Generate initial values of vtable interfaces
+	before class fields.
+	(layout_aggregate_type): Layout vtable interfaces before class fields.
+	* d-decls.cc (get_symbol_decl): Build DECL_ARGUMENTS for functions
+	that have no body.
+
+2017-12-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc (Target::cppExceptions): New variable.
+	(Target::init): Initialize it.
+	(Target::prefixName): New function.
+
+2016-12-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (ClassDeclaration::toObjFile): Use layout_classinfo to
+	generate TypeInfo for classes.
+	(InterfaceDeclaration::toObjFile): Likewise.
+	* d-todt.cc (build_vptr_monitor): Remove function.
+	* typeinfo.cc (TypeInfoVisitor::set_field): New function.
+	(TypeInfoVisitor::layout_interfaces): New function.
+	(TypeInfoVisitor::layout_interface_vtables): New function.
+	(TypeInfoVisitor::visit(TypeInfoClassDeclaration)): Implement.
+	(layout_classinfo): New function.
+
 2016-12-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* typeinfo.cc (TypeInfoVisitor): Use build_typeinfo instead of

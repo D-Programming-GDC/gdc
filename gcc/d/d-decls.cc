@@ -51,13 +51,28 @@
 #include "id.h"
 
 
+/* Return identifier for the external mangled name of DECL.  */
+
+static const char *
+mangle_decl (Dsymbol *decl)
+{
+  if (decl->isFuncDeclaration ())
+    return mangleExact ((FuncDeclaration *)decl);
+  else
+    {
+      OutBuffer buf;
+      mangleToBuffer (decl, &buf);
+      return buf.extractString();
+    }
+}
+
 /* Generate a mangled identifier using NAME and SUFFIX, prefixed by the
    assembler name for DSYM.  */
 
 tree
 make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
 {
-  const char *prefix = mangle (dsym);
+  const char *prefix = mangle_decl (dsym);
   unsigned namelen = strlen (name);
   unsigned buflen = (2 + strlen (prefix) + namelen + strlen (suffix)) * 2;
   char *buf = (char *) alloca (buflen);
@@ -121,7 +136,8 @@ get_symbol_decl (Declaration *decl)
 	}
 
       decl->csym = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
-			      get_identifier (decl->ident->string), NULL_TREE);
+			      get_identifier (decl->ident->toChars ()),
+			      NULL_TREE);
 
       /* Set function type afterwards as there could be self references.  */
       TREE_TYPE (decl->csym) = build_ctype (fd->type);
@@ -139,7 +155,7 @@ get_symbol_decl (Declaration *decl)
 	: !vd->canTakeAddressOf () ? CONST_DECL
 	: VAR_DECL;
       decl->csym = build_decl (UNKNOWN_LOCATION, code,
-			      get_identifier (decl->ident->string),
+			      get_identifier (decl->ident->toChars ()),
 			      declaration_type (vd));
 
       /* If any alignment was set on the declaration.  */
@@ -161,7 +177,7 @@ get_symbol_decl (Declaration *decl)
       if (decl->mangleOverride)
 	mangled_name = get_identifier (decl->mangleOverride);
       else
-	mangled_name = get_identifier (fd ? mangleExact (fd) : mangle (decl));
+	mangled_name = get_identifier (mangle_decl (decl));
 
       mangled_name = targetm.mangle_decl_assembler_name (decl->csym,
 							 mangled_name);
@@ -303,6 +319,27 @@ get_symbol_decl (Declaration *decl)
       if (decl->storage_class & STCfinal)
 	DECL_FINAL_P (decl->csym) = 1;
 
+      /* Declare stub parameters for functions that have no body.  */
+      if (!fd->fbody)
+	{
+	  tree param_list = NULL_TREE;
+	  fntype = TREE_TYPE (decl->csym);
+
+	  for (tree t = TYPE_ARG_TYPES (fntype); t; t = TREE_CHAIN (t))
+	    {
+	      if (t == void_list_node)
+		break;
+
+	      tree param = build_decl (DECL_SOURCE_LOCATION (decl->csym),
+				       PARM_DECL, NULL_TREE, TREE_VALUE (t));
+	      DECL_ARG_TYPE (param) = TREE_TYPE (param);
+	      param_list = chainon (param_list, param);
+	    }
+
+	  DECL_ARGUMENTS (decl->csym) = param_list;
+	}
+
+      /* Check whether this function is expanded by the frontend.  */
       maybe_set_intrinsic (fd);
     }
 
@@ -376,11 +413,11 @@ get_symbol_decl (Declaration *decl)
     {
       if (global.params.vtls)
 	{
-	  char *p = decl->loc.toChars ();
+	  const char *p = decl->loc.toChars ();
 	  fprintf (global.stdmsg, "%s: %s is thread local\n",
 		   p ? p : "", decl->toChars ());
 	  if (p)
-	    free (p);
+	    free (CONST_CAST (char *, p));
 	}
 
       set_decl_tls_model (decl->csym, decl_default_tls_model (decl->csym));
@@ -411,7 +448,7 @@ public:
 
   void visit (TypeInfoDeclaration *tid)
   {
-    tree ident = get_identifier (tid->ident->string);
+    tree ident = get_identifier (tid->ident->toChars ());
 
     tid->csym = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident,
 			    TREE_TYPE (build_ctype (tid->type)));
@@ -839,7 +876,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
       for (size_t i = 0; i < decl->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *b = (*decl->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->base;
+	  ClassDeclaration *id = b->sym;
 	  unsigned offset = decl->baseVtblOffset (b);
 
 	  if (id->vtbl.dim && offset != ~0u)
@@ -859,7 +896,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
       for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *b = (*bcd->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->base;
+	  ClassDeclaration *id = b->sym;
 	  unsigned offset = decl->baseVtblOffset (b);
 
 	  if (id->vtbl.dim && offset != ~0u)

@@ -440,6 +440,7 @@ extern tree build_import_decl (Dsymbol *);
 /* In typeinfo.cc.  */
 extern tree build_typeinfo (Type *);
 extern tree layout_typeinfo (TypeInfoDeclaration *);
+extern tree layout_classinfo (ClassDeclaration *);
 
 /* In toir.cc.  */
 extern void build_ir (FuncDeclaration *);

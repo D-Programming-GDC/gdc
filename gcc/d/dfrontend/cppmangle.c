@@ -28,6 +28,9 @@
 #include "aggregate.h"
 #include "target.h"
 
+typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
+int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *pn = NULL);
+
 /* Do mangling for C++ linkage.
  * No attempt is made to support mangling of templates, operator
  * overloading, or special functions.
@@ -406,11 +409,7 @@ class CppMangleVisitor : public Visitor
         Dsymbol *p = d->toParent();
         if (p && !p->isModule()) //for example: char Namespace1::beta[6] should be mangled as "_ZN10Namespace14betaE"
         {
-#ifdef IN_GCC
             buf.writestring("_ZN");
-#else
-            buf.writestring(global.params.isOSX ? "__ZN" : "_ZN");      // "__Z" for OSX, "_Z" for other
-#endif
             prefix_name(p);
             source_name(d);
             buf.writeByte('E');
@@ -419,19 +418,11 @@ class CppMangleVisitor : public Visitor
         {
             if (!is_temp_arg_ref)
             {
-#ifndef IN_GCC
-                if (global.params.isOSX)
-                    buf.writeByte('_');
-#endif
                 buf.writestring(d->ident->toChars());
             }
             else
             {
-#ifdef IN_GCC
                 buf.writestring("_Z");
-#else
-                buf.writestring(global.params.isOSX ? "__Z" : "_Z");
-#endif
                 source_name(d);
             }
         }
@@ -448,11 +439,7 @@ class CppMangleVisitor : public Visitor
          */
         TypeFunction *tf = (TypeFunction *)d->type;
 
-#ifdef IN_GCC
         buf.writestring("_Z");
-#else
-        buf.writestring(global.params.isOSX ? "__Z" : "_Z");      // "__Z" for OSX, "_Z" for other
-#endif
         Dsymbol *p = d->toParent();
         if (p && !p->isModule() && tf->linkage == LINKcpp)
         {
@@ -531,6 +518,15 @@ class CppMangleVisitor : public Visitor
                 t = tb->castMod(t->mod);
             }
         }
+#else
+        if (t->ty == Tsarray)
+        {
+            // Mangle static arrays as pointers
+            t->error(Loc(), "Internal Compiler Error: unable to pass static array to extern(C++) function.");
+            t->error(Loc(), "Use pointer instead.");
+            assert(0);
+            //t = t->nextOf()->pointerTo();
+        }
 #endif
 
         /* If it is a basic, enum or struct type,
@@ -548,7 +544,7 @@ class CppMangleVisitor : public Visitor
     void argsCppMangle(Parameters *parameters, int varargs)
     {
         if (parameters)
-            Parameter::foreach(parameters, &paramsCppMangleDg, (void*)this);
+            Parameter_foreach(parameters, &paramsCppMangleDg, (void*)this);
 
         if (varargs)
             buf.writestring("z");
@@ -578,11 +574,13 @@ public:
         {
             assert(0);
         }
+        Target::prefixName(&buf, LINKcpp);
         return buf.extractString();
     }
 
     void visit(Type *t)
     {
+#ifdef IN_GCC
         /* Make this the 'vendor extended type' when there is no
          * C++ analog.
          * u <source-name>
@@ -592,6 +590,17 @@ public:
         assert(t->deco);
         buf.printf("u%d%s", strlen(t->deco), t->deco);
         store(t);
+#else
+        if (t->isImmutable() || t->isShared())
+        {
+            t->error(Loc(), "Internal Compiler Error: shared or immutable types can not be mapped to C++ (%s)", t->toChars());
+        }
+        else
+        {
+            t->error(Loc(), "Internal Compiler Error: unsupported type %s\n", t->toChars());
+        }
+        assert(0); //Assert, because this error should be handled in frontend
+#endif
     }
 
     void visit(TypeBasic *t)
@@ -1006,6 +1015,8 @@ public:
             case Tfloat32:  buf.writeByte('M');        break;
             case Tint64:    buf.writestring("_J");     break;
             case Tuns64:    buf.writestring("_K");     break;
+            case Tint128:   buf.writestring("_L");     break;
+            case Tuns128:   buf.writestring("_M");     break;
             case Tfloat64:  buf.writeByte('N');        break;
             case Tbool:     buf.writestring("_N");     break;
             case Tchar:     buf.writeByte('D');        break;
@@ -1223,7 +1234,7 @@ public:
             if (type->sym->isUnionDeclaration())
                 buf.writeByte('T');
             else
-                buf.writeByte('U');
+                buf.writeByte(type->cppmangle == CPPMANGLEclass ? 'V' : 'U');
             mangleIdent(type->sym);
         }
         flags &= ~IS_NOT_TOP_TYPE;
@@ -1296,7 +1307,7 @@ public:
         flags |= IS_NOT_TOP_TYPE;
         mangleModifier(type);
 
-        buf.writeByte('V');
+        buf.writeByte(type->cppmangle == CPPMANGLEstruct ? 'U' : 'V');
 
         mangleIdent(type->sym);
         flags &= ~IS_NOT_TOP_TYPE;
@@ -1333,7 +1344,7 @@ private:
         if (d->needThis()) // <flags> ::= <virtual/protection flag> <const/volatile flag> <calling convention flag>
         {
             // Pivate methods always non-virtual in D and it should be mangled as non-virtual in C++
-            if (d->isVirtual() && d->vtblIndex != -1)
+            if (d->isVirtual() && (d->vtblIndex != -1 || d.interfaceVirtual))
             {
                 switch (d->protection.kind)
                 {
@@ -1626,7 +1637,12 @@ private:
             name = sym->ident->toChars();
         }
         assert(name);
-        if (!is_dmc_template)
+        if (is_dmc_template)
+        {
+            if (checkAndSaveIdent(name))
+                return;
+        }
+        else
         {
             if (dont_use_back_reference)
             {
@@ -1908,7 +1924,7 @@ private:
         }
         else
         {
-            Parameter::foreach(type->parameters, &mangleParameterDg, (void*)&tmp);
+            Parameter_foreach(type->parameters, &mangleParameterDg, (void*)&tmp);
             if (type->varargs == 1)
             {
                 tmp.buf.writeByte('Z');

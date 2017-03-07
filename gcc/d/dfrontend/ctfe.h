@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2014 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/ctfe.h
+ * https://github.com/dlang/dmd/blob/master/src/ctfe.h
  */
 
 #ifndef DMD_CTFE_H
@@ -25,9 +25,10 @@
 struct CtfeStatus
 {
     static int callDepth; // current number of recursive calls
-    static int stackTraceCallsToSuppress; /* When printing a stack trace,
-                                           * suppress this number of calls
-                                           */
+    /* When printing a stack trace,
+     * suppress this number of calls
+     */
+    static int stackTraceCallsToSuppress;
     static int maxCallDepth; // highest number of recursive calls
     static int numArrayAllocs; // Number of allocated arrays
     static int numAssignments; // total number of assignments executed
@@ -43,7 +44,6 @@ public:
     StructLiteralExp *value;
     ClassReferenceExp(Loc loc, StructLiteralExp *lit, Type *type);
     ClassDeclaration *originalClass();
-    VarDeclaration *getFieldAt(unsigned index);
 
     /// Return index of the field, or -1 if not found
     int getFieldIndex(Type *fieldtype, unsigned fieldoffset);
@@ -73,7 +73,7 @@ public:
     VarDeclaration *var;
 
     VoidInitExp(VarDeclaration *var, Type *type);
-    char *toChars();
+    const char *toChars();
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -88,7 +88,7 @@ class ThrownExceptionExp : public Expression
 public:
     ClassReferenceExp *thrown; // the thing being tossed
     ThrownExceptionExp(Loc loc, ClassReferenceExp *victim);
-    char *toChars();
+    const char *toChars();
     /// Generate an error message when this exception is not caught
     void generateUncaughtError();
     void accept(Visitor *v) { v->visit(this); }
@@ -103,7 +103,7 @@ class CTFEExp : public Expression
 public:
     CTFEExp(TOK tok);
 
-    char *toChars();
+    const char *toChars();
 
     // Handy instances to share
     static CTFEExp *cantexp;
@@ -163,10 +163,6 @@ StringExp *createBlockDuplicatedStringLiteral(Loc loc, Type *type,
  * assignment.
  */
 void assignInPlace(Expression *dest, Expression *src);
-
-/// Set all elements of 'ae' to 'val'. ae may be a multidimensional array.
-/// If 'wantRef', all elements of ae will hold references to the same val.
-void recursiveBlockAssign(ArrayLiteralExp *ae, Expression *val, bool wantRef);
 
 /// Duplicate the elements array, then set field 'indexToChange' = newelem.
 Expressions *changeOneElement(Expressions *oldelems, size_t indexToChange, Expression *newelem);
@@ -238,16 +234,6 @@ Expression *findKeyInAA(Loc loc, AssocArrayLiteralExp *ae, Expression *e2);
 /// True if type is TypeInfo_Class
 bool isTypeInfo_Class(Type *type);
 
-/***********************************************
-      In-place integer operations
-***********************************************/
-
-/// e = OP e
-void intUnary(TOK op, IntegerExp *e);
-
-/// dest = e1 OP e2;
-void intBinary(TOK op, IntegerExp *dest, Type *type, IntegerExp *e1, IntegerExp *e2);
-
 
 /***********************************************
       COW const-folding operations
@@ -262,6 +248,18 @@ int ctfeEqual(Loc loc, TOK op, Expression *e1, Expression *e2);
 
 /// Evaluate is, !is.  Resolves slices before comparing. Returns 0 or 1
 int ctfeIdentity(Loc loc, TOK op, Expression *e1, Expression *e2);
+
+/// Returns rawCmp OP 0; where OP is ==, !=, <, >=, etc. Result is 0 or 1
+int specificCmp(TOK op, int rawCmp);
+
+/// Returns e1 OP e2; where OP is ==, !=, <, >=, etc. Result is 0 or 1
+int intUnsignedCmp(TOK op, dinteger_t n1, dinteger_t n2);
+
+/// Returns e1 OP e2; where OP is ==, !=, <, >=, etc. Result is 0 or 1
+int intSignedCmp(TOK op, sinteger_t n1, sinteger_t n2);
+
+/// Returns e1 OP e2; where OP is ==, !=, <, >=, etc. Result is 0 or 1
+int realCmp(TOK op, real_t r1, real_t r2);
 
 /// Evaluate >,<=, etc. Resolves slices before comparing. Returns 0 or 1
 int ctfeCmp(Loc loc, TOK op, Expression *e1, Expression *e2);

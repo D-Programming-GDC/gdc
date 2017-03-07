@@ -168,16 +168,17 @@ private string parentOf(string mod)
 /* This function formates a $(D SysTime) into an $(D OutputRange).
 
 The $(D SysTime) is formatted similar to
-$(LREF std.datatime.DateTime.toISOExtString) expect the fractional second part.
-The sub second part is the upper three digest of the microsecond.
+$(LREF std.datatime.DateTime.toISOExtString) except the fractional second part.
+The fractional second part is in milliseconds and is always 3 digits.
 */
 void systimeToISOString(OutputRange)(OutputRange o, const ref SysTime time)
     if (isOutputRange!(OutputRange,string))
 {
-    auto fsec = time.fracSec.usecs / 1000;
+    const auto dt = cast(DateTime)time;
+    const auto fsec = time.fracSecs.total!"msecs";
 
     formattedWrite(o, "%04d-%02d-%02dT%02d:%02d:%02d.%03d",
-        time.year, time.month, time.day, time.hour, time.minute, time.second,
+        dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second,
         fsec);
 }
 
@@ -1797,11 +1798,14 @@ functions.
 /// Ditto
 unittest
 {
+    import std.file : deleteme, remove;
     Logger l = stdThreadLocalLog;
-    stdThreadLocalLog = new FileLogger("someFile.log");
-    scope(exit) remove("someFile.log");
+    stdThreadLocalLog = new FileLogger(deleteme ~ "-someFile.log");
+    scope(exit) remove(deleteme ~ "-someFile.log");
 
+    auto tempLog = stdThreadLocalLog;
     stdThreadLocalLog = l;
+    destroy(tempLog);
 }
 
 @safe unittest
@@ -2072,9 +2076,9 @@ version(unittest) private void testFuncNames(Logger logger) @safe
 
 unittest // default logger
 {
-    import std.file : exists, remove;
+    import std.file : deleteme, exists, remove;
 
-    string filename = __FUNCTION__ ~ ".tempLogFile";
+    string filename = deleteme ~ __FUNCTION__ ~ ".tempLogFile";
     FileLogger l = new FileLogger(filename);
     auto oldunspecificLogger = sharedLog;
     sharedLog = l;
@@ -2110,9 +2114,9 @@ unittest // default logger
 
 unittest
 {
-    import std.file : remove;
+    import std.file : deleteme, remove;
     import core.memory : destroy;
-    string filename = __FUNCTION__ ~ ".tempLogFile";
+    string filename = deleteme ~ __FUNCTION__ ~ ".tempLogFile";
     auto oldunspecificLogger = sharedLog;
 
     scope(exit)
@@ -3036,4 +3040,15 @@ unittest
     auto tl = cast(StdForwardLogger)stdThreadLocalLog;
     assert(tl !is null);
     stdThreadLocalLog.logLevel = LogLevel.all;
+}
+
+// Issue 14940
+@safe unittest
+{
+    import std.typecons : Nullable;
+
+    Nullable!int a = 1;
+    auto l = new TestLogger();
+    l.infof("log: %s", a);
+    assert(l.msg == "log: 1");
 }

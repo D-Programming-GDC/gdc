@@ -6,7 +6,7 @@
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/arraytypes.h
+ * https://github.com/dlang/dmd/blob/master/src/arraytypes.h
  */
 
 #ifndef DMD_ARRAYTYPES_H
@@ -67,15 +67,5 @@ typedef Array<class ReturnStatement *> ReturnStatements;
 typedef Array<class GotoStatement *> GotoStatements;
 
 typedef Array<class TemplateInstance *> TemplateInstances;
-
-#ifndef IN_GCC
-typedef Array<struct block *> Blocks;
-
-typedef Array<struct Symbol *> Symbols;
-#endif
-
-#ifdef IN_GCC
-typedef Array<union tree_node *> Dts;
-#endif
 
 #endif

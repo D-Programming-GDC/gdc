@@ -37,7 +37,7 @@ Msgtable msgtable[] =
     { "max" },
     { "min" },
     { "This", "this" },
-    { "super" },
+    { "_super", "super" },
     { "ctor", "__ctor" },
     { "dtor", "__dtor" },
     { "__xdtor", "__xdtor" },
@@ -51,12 +51,12 @@ Msgtable msgtable[] =
     { "unitTest", "__unitTest" },
     { "require", "__require" },
     { "ensure", "__ensure" },
-    { "init" },
+    { "_init", "init" },
     { "__sizeof", "sizeof" },
     { "__xalignof", "alignof" },
-    { "mangleof" },
+    { "_mangleof", "mangleof" },
     { "stringof" },
-    { "tupleof" },
+    { "_tupleof", "tupleof" },
     { "length" },
     { "remove" },
     { "ptr" },
@@ -146,6 +146,7 @@ Msgtable msgtable[] =
     { "Windows" },
     { "Pascal" },
     { "System" },
+    { "Objective" },
 
     { "exit" },
     { "success" },
@@ -222,7 +223,7 @@ Msgtable msgtable[] =
     { "slice",   "opSlice" },
     { "sliceass", "opSliceAssign" },
     { "call",    "opCall" },
-    { "cast",    "opCast" },
+    { "_cast",    "opCast" },
     { "opIn" },
     { "opIn_r" },
     { "opStar" },
@@ -291,13 +292,12 @@ Msgtable msgtable[] =
     { "entrypoint", "__entrypoint" },
 
     // varargs implementation
-    { "va_argsave_t", "__va_argsave_t" },
-    { "va_argsave", "__va_argsave" },
     { "va_start" },
 
     // Builtin functions
     { "std" },
     { "core" },
+    { "attribute" },
     { "math" },
     { "sin" },
     { "cos" },
@@ -366,6 +366,9 @@ Msgtable msgtable[] =
     { "basic_ostream" },
     { "basic_iostream" },
     { "char_traits" },
+
+    // Compiler recognized UDA's
+    { "udaSelector", "selector" },
 
     // For ModuleInfo generation
     { "sectionsModule", "rt/sections" },
