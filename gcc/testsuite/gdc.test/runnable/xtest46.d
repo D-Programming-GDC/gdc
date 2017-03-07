@@ -7593,6 +7593,29 @@ template isCustomSerializable15126(T)
 alias bug15126 = isCustomSerializable15126!Json15126;
 
 /***************************************************/
+// 15369
+
+struct MsgTable15369
+{
+    const(char)[] ident;
+    const(char)* name;
+};
+
+MsgTable15369[] msgTable15369 =
+[
+    { "empty", "" },
+];
+
+void test15369()
+{
+    auto id = msgTable15369[0].ident;
+    auto p = msgTable15369[0].name;
+
+    // a string literal "" should be zero-terminated
+    assert(*p == '\0');
+}
+
+/***************************************************/
 // 15961
 
 struct SliceOverIndexed15961(T)
@@ -7624,26 +7647,25 @@ bool test16022()
 }
 
 /***************************************************/
-// 15369
+// https://issues.dlang.org/show_bug.cgi?id=16233
 
-struct MsgTable15369
+enum valueConvertible(T1, T2) = blah;
+
+struct Checked(T, Hook)
 {
-    const(char)[] ident;
-    const(char)* name;
-};
+    bool opEquals(U)(Checked!(U, Hook) rhs)
+    {
+        alias R = typeof(payload + rhs.payload);
+        static if (valueConvertible!(T, R))
+        {
+        }
+        return false;
+    }
+}
 
-MsgTable15369[] msgTable15369 =
-[
-    { "empty", "" },
-];
-
-void test15369()
+void test16233()
 {
-    auto id = msgTable15369[0].ident;
-    auto p = msgTable15369[0].name;
-
-    // a string literal "" should be zero-terminated
-    assert(*p == '\0');
+    Checked!(Checked!(int, void), void) x1;
 }
 
 /***************************************************/
@@ -7958,6 +7980,7 @@ int main()
     test13985();
     test14211();
     test15369();
+    test16233();
 
     printf("Success\n");
     return 0;

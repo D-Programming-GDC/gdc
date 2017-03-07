@@ -57,6 +57,12 @@ proc gdc-convert-args { args } {
         } elseif [string match "-debug" $arg] {
             lappend out "-fdebug"
 
+        } elseif [string match "-dip1000" $arg] {
+            lappend out "-ftransition=safe"
+
+        } elseif [string match "-dip25" $arg] {
+            lappend out "-ftransition=dip25"
+
         } elseif [string match "-dw" $arg] {
             lappend out "-Wdeprecated"
             lappend out "-Wno-error"

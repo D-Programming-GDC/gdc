@@ -540,6 +540,40 @@ void test12231()
 
 /***************************************************/
 
+int test2a(scope int a) { return a; }
+
+static assert(test2a.mangleof == "_D6mangle6test2aFiZi");
+
+/***************************************************/
+
+class CC
+{
+    int* p;
+
+    int* member() scope
+    {
+        return p;
+    }
+}
+
+static assert(CC.member.mangleof == "_D6mangle2CC6memberMFNlZPi");
+
+/***************************************************/
+
+void fooA(void delegate (scope void delegate()) dg)
+{
+}
+void fooB(void delegate (void delegate()) scope dg)
+{
+}
+
+//pragma(msg, fooA.mangleof);
+//pragma(msg, fooB.mangleof);
+static assert(typeof(fooA).mangleof != typeof(fooB).mangleof);
+
+
+/***************************************************/
+
 void main()
 {
     test10077h();

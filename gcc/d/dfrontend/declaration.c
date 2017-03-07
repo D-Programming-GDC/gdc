@@ -826,6 +826,7 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     canassign = 0;
     overlapped = false;
     overlapUnsafe = false;
+    doNotInferScope = false;
     isdataseg = 0;
     lastVar = NULL;
     endlinnum = 0;
@@ -833,6 +834,9 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     rundtor = NULL;
     edtor = NULL;
     range = NULL;
+
+    static unsigned nextSequenceNumber = 0;
+    this->sequenceNumber = ++nextSequenceNumber;
 }
 
 Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
@@ -1189,6 +1193,25 @@ Lnomatch:
             error("cannot be %s", buf.peekString());
         }
         storage_class &= ~stc;  // strip off
+    }
+
+    if (storage_class & STCscope)
+    {
+        StorageClass stc = storage_class & (STCstatic | STCextern | STCmanifest | STCtls | STCgshared);
+        if (stc)
+        {
+            OutBuffer buf;
+            stcToBuffer(&buf, stc);
+            error("cannot be 'scope' and '%s'", buf.peekString());
+        }
+        else if (isMember())
+        {
+            error("field cannot be 'scope'");
+        }
+        else if (!type->hasPointers())
+        {
+            storage_class &= ~STCscope;     // silently ignore; may occur in generic code
+        }
     }
 
     if (storage_class & (STCstatic | STCextern | STCmanifest | STCtemplateparameter | STCtls | STCgshared | STCctfe))
@@ -2116,7 +2139,7 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
     }
 
     // Destructors for classes
-    if (storage_class & (STCauto | STCscope))
+    if (storage_class & (STCauto | STCscope) && !(storage_class & STCparameter))
     {
         for (ClassDeclaration *cd = type->isClassHandle();
              cd;
@@ -2147,6 +2170,19 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
         }
     }
     return e;
+}
+
+/**********************************
+ * Determine if `this` has a lifetime that lasts past
+ * the destruction of `v`
+ * Params:
+ *  v = variable to test against
+ * Returns:
+ *  true if it does
+ */
+bool VarDeclaration::enclosesLifetimeOf(VarDeclaration *v) const
+{
+    return sequenceNumber < v->sequenceNumber;
 }
 
 /******************************************
