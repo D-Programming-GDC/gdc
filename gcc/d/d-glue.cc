@@ -57,7 +57,7 @@ Global::init()
   this->stdmsg = stdout;
   this->main_d = "__main.d";
 
-  this->errorLimit = 20;
+  this->errorLimit = flag_max_errors;
 
   memset(&this->params, 0, sizeof(Param));
 }
@@ -92,8 +92,8 @@ Global::increaseErrorCount()
   this->errors++;
 }
 
-char *
-Loc::toChars()
+const char *
+Loc::toChars() const
 {
   OutBuffer buf;
 
@@ -133,7 +133,7 @@ Loc::equals(const Loc& loc)
 // Print a hard error message.
 
 void
-error(Loc loc, const char *format, ...)
+error(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -142,7 +142,7 @@ error(Loc loc, const char *format, ...)
 }
 
 void
-verror(Loc loc, const char *format, va_list ap,
+verror(const Loc& loc, const char *format, va_list ap,
        const char *p1, const char *p2, const char *)
 {
   if (!global.gag)
@@ -161,10 +161,6 @@ verror(Loc loc, const char *format, va_list ap,
 
 	  error_at(location, "%s", msg);
 	}
-
-      // Moderate blizzard of cascading messages
-      if (global.errors >= 20)
-	fatal();
     }
   else
     global.gaggedErrors++;
@@ -176,7 +172,7 @@ verror(Loc loc, const char *format, va_list ap,
 // Doesn't increase error count.
 
 void
-errorSupplemental(Loc loc, const char *format, ...)
+errorSupplemental(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -185,7 +181,7 @@ errorSupplemental(Loc loc, const char *format, ...)
 }
 
 void
-verrorSupplemental(Loc loc, const char *format, va_list ap)
+verrorSupplemental(const Loc& loc, const char *format, va_list ap)
 {
   if (!global.gag)
     {
@@ -200,7 +196,7 @@ verrorSupplemental(Loc loc, const char *format, va_list ap)
 // Print a warning message.
 
 void
-warning(Loc loc, const char *format, ...)
+warning(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -209,7 +205,7 @@ warning(Loc loc, const char *format, ...)
 }
 
 void
-vwarning(Loc loc, const char *format, va_list ap)
+vwarning(const Loc& loc, const char *format, va_list ap)
 {
   if (global.params.warnings && !global.gag)
     {
@@ -225,10 +221,35 @@ vwarning(Loc loc, const char *format, va_list ap)
     }
 }
 
+// Print supplementary message about the last warning.
+// Doesn't increase warning count.
+
+void
+warningSupplemental(const Loc& loc, const char *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  vwarningSupplemental(loc, format, ap);
+  va_end(ap);
+}
+
+void
+vwarningSupplemental(const Loc& loc, const char *format, va_list ap)
+{
+  if (global.params.warnings && !global.gag)
+    {
+      location_t location = get_linemap(loc);
+      char *msg;
+
+      if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
+	inform(location, "%s", msg);
+    }
+}
+
 // Print a deprecation message.
 
 void
-deprecation(Loc loc, const char *format, ...)
+deprecation(const Loc& loc, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
@@ -237,7 +258,7 @@ deprecation(Loc loc, const char *format, ...)
 }
 
 void
-vdeprecation(Loc loc, const char *format, va_list ap,
+vdeprecation(const Loc& loc, const char *format, va_list ap,
 	      const char *p1, const char *p2)
 {
   if (global.params.useDeprecated == 0)
@@ -256,6 +277,32 @@ vdeprecation(Loc loc, const char *format, va_list ap,
 
       if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
 	warning_at(location, OPT_Wdeprecated, "%s", msg);
+    }
+}
+
+// Print supplementary message about the last deprecation.
+
+void
+deprecationSupplemental(const Loc& loc, const char *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  vdeprecationSupplemental(loc, format, ap);
+  va_end(ap);
+}
+
+void
+vdeprecationSupplemental(const Loc& loc, const char *format, va_list ap)
+{
+  if (global.params.useDeprecated == 0)
+    verrorSupplemental(loc, format, ap);
+  else if (global.params.useDeprecated == 2 && !global.gag)
+    {
+      location_t location = get_linemap(loc);
+      char *msg;
+
+      if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
+	inform(location, "%s", msg);
     }
 }
 
@@ -333,4 +380,3 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
 
   return e;
 }
-

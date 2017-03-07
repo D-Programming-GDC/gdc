@@ -245,13 +245,13 @@ class C15
 
     private void callback(int i)
     {
-	x = i + 3;
+        x = i + 3;
     }
 
     void foo()
     {
-	bar15(&callback);
-	assert(x == 10);
+        bar15(&callback);
+        assert(x == 10);
     }
 }
 
@@ -345,20 +345,20 @@ void test21()
 
 void bar22(alias T)()
 {
-	assert(3 == T);
+        assert(3 == T);
 }
 
 class Test22
 {
-	int a;
-	mixin bar22!(a);
+        int a;
+        mixin bar22!(a);
 }
 
 void test22()
 {
-	Test22 t = new Test22();
-	t.a = 3;
-	t.bar22();
+        Test22 t = new Test22();
+        t.a = 3;
+        t.bar22();
 }
 
 /***************************************************/
@@ -741,10 +741,10 @@ class Ap50
 
     void update(ubyte input, int i)
     {
-	valuex =
-	    (((size + i) & 1) == 0) ?
-		    0 :
-		    input;
+        valuex =
+            (((size + i) & 1) == 0) ?
+                    0 :
+                    input;
     }
 }
 
@@ -809,10 +809,10 @@ void test54()
     string[] k=["adf","AsdfadSF","dfdsfassdf"];
     foreach(d;k)
     {
-	printf("%.*s\n", d.length, d.ptr);
-	string foo() {assert(d!="");return d;}
-	func54(&foo);
-	func54(delegate string() {assert(d!="");return d;});
+        printf("%.*s\n", d.length, d.ptr);
+        string foo() {assert(d!="");return d;}
+        func54(&foo);
+        func54(delegate string() {assert(d!="");return d;});
     }
 }
 
@@ -950,7 +950,7 @@ struct S63
     int a;
     static int foo()
     {
-	return a.sizeof;
+        return a.sizeof;
     }
 }
 
@@ -1130,7 +1130,7 @@ templates, which a lot of debuggers have serious problems with anyway, so..
 I would set it up as a method of last resort. It wouldn't be used unless the
 symbol can't be used any other way.
 "
-	).b.length;
+        ).b.length;
 }
 
 /***************************************************/
@@ -1159,7 +1159,7 @@ template Foo73()
 
     static if (x == 3)
     {
-	pragma(msg, "success");
+        pragma(msg, "success");
     }
 }
 
@@ -1311,8 +1311,8 @@ void test79()
     assert(c.__monitor == null);
     synchronized (c)
     {
-	writeln(c.__monitor);
-	assert(c.__monitor !is null);
+        writeln(c.__monitor);
+        assert(c.__monitor !is null);
     }
 }
 
@@ -1398,7 +1398,7 @@ class myid
     string buf;
     this(string str )
     {
-	    buf = str;
+            buf = str;
     }
 }
 struct Lex
@@ -1406,7 +1406,7 @@ struct Lex
     static myid myidinst;
     static void Init()
     {
-	    myidinst = new myid("abc");
+            myidinst = new myid("abc");
     }
 }
 
@@ -1475,9 +1475,9 @@ int function() wrap88(void function()) { return null; }
 
 void test88()
 {
-	printf("test88\n");
-	if (0)
-	    wrap88(&test88)();
+        printf("test88\n");
+        if (0)
+            wrap88(&test88)();
 }
 
 /***************************************************/
@@ -1496,7 +1496,7 @@ void bar89(float f) { assert(f == 3); }
 
 void test89()
 {
-	printf("test89\n");
+        printf("test89\n");
         bar89(S89.z[0]);
         bar89(S89.z[1]);
         bar89(C89.z[0]);
@@ -1587,7 +1587,7 @@ template foo96(alias bar)
 {
     pragma(msg, bar.stringof ~ " " ~ typeof(bar).stringof);
     static assert((bar.stringof ~ " " ~ typeof(bar).stringof) == "myInt int" ||
-	(bar.stringof ~ " " ~ typeof(bar).stringof) == "myBool bool");
+        (bar.stringof ~ " " ~ typeof(bar).stringof) == "myBool bool");
     void foo96() {}
 }
 
@@ -1622,10 +1622,10 @@ class Foo98
 
     void bar()
     {
-	printf("%c\n", foo[i]);
-	i++;
-	printf("%c\n", foo[i]);
-	assert(foo[i] == 'b');
+        printf("%c\n", foo[i]);
+        i++;
+        printf("%c\n", foo[i]);
+        assert(foo[i] == 'b');
     }
 }
 
@@ -1704,18 +1704,18 @@ class C103
 {
     void method ()
     {
-	void internal (int a, ...)
-	{
-	    va_list ap;
-	    va_start(ap, a);
+        void internal (int a, ...)
+        {
+            va_list ap;
+            va_start(ap, a);
         auto internal = va_arg!int(ap);
-	    printf("internal: %d\n", internal);
-	    x103 = internal;
-	    va_end(ap);
-	}
+            printf("internal: %d\n", internal);
+            x103 = internal;
+            va_end(ap);
+        }
 
-	internal (0, 43);
-	assert(x103 == 43);
+        internal (0, 43);
+        assert(x103 == 43);
     }
 }
 
@@ -1740,14 +1740,14 @@ class C103
 {
     void method ()
     {
-	void internal (...)
-	{
-	    printf("internal: %d\n", *cast (int *)_argptr);
-	    x103 = *cast (int *) _argptr;
-	}
+        void internal (...)
+        {
+            printf("internal: %d\n", *cast (int *)_argptr);
+            x103 = *cast (int *) _argptr;
+        }
 
-	internal (43);
-	assert(x103 == 43);
+        internal (43);
+        assert(x103 == 43);
     }
 }
 
@@ -1819,7 +1819,7 @@ struct Foo108
 {
     char[] byLine()()
     {
-	return null;
+        return null;
     }
 }
 
@@ -1844,7 +1844,7 @@ void test109()
 void test110()
 {
     struct C {
-	int[0] b;
+        int[0] b;
     }
     static C g_c2_ = {  };
 }
@@ -1897,7 +1897,7 @@ struct VariantN
     void foo()
     {
         VariantN v;
-	v.bar(42, 5);
+        v.bar(42, 5);
     }
 
     void bar(int value, int i)
@@ -1953,8 +1953,8 @@ void test118()
 {
     int foo(real x)
     {
-	real y = -x*-x;
-	return cast(int)y;
+        real y = -x*-x;
+        return cast(int)y;
     }
 
     auto i = foo(4.0);
@@ -2046,9 +2046,9 @@ int foo125(int x)
 {
     while (1)
     {
-	if (x)
-	    return 3;
-	x++;
+        if (x)
+            return 3;
+        x++;
     }
 }
 
@@ -2063,9 +2063,9 @@ int foo126(int x)
 {
     while (1)
     {
-	if (x)
-	    return 3;
-	x++;
+        if (x)
+            return 3;
+        x++;
     }
     assert(0);
 }
@@ -2445,7 +2445,7 @@ void test148()
     b ~= "\U00091234";
 
     if (a != b) {
-	    assert(0);
+            assert(0);
     }
 }
 
@@ -2821,8 +2821,8 @@ void test173()
 {
     switch(`Hi`.dup) {
         case ENUM_NAME[1]:
-	default:
-		break;
+        default:
+                break;
     }
 }
 
@@ -2897,7 +2897,7 @@ struct S178 {
     int x;
 
     template T(int val) {
-	enum S178 T = { val };
+        enum S178 T = { val };
     }
 }
 
@@ -2967,19 +2967,19 @@ struct Main {
 void fooa181(int x, int y, int[0] a, int z, int t)
 {
     if (!(x == 2 && y == 4 && z == 6 && t == 8))
-	assert(0);
+        assert(0);
 }
 
 void foob181(int x, int y, int[0] a)
 {
     if (!(x == 2 && y == 4))
-	assert(0);
+        assert(0);
 }
 
 void fooc181(int[0] a, int x, int y)
 {
     if (!(x == 2 && y == 4))
-	assert(0);
+        assert(0);
 }
 
 void food181(int[0] a)
@@ -3029,7 +3029,7 @@ interface IQGraphicsItem
 }
 
 abstract
-	class QGraphicsObject : IQGraphicsItem
+        class QGraphicsObject : IQGraphicsItem
 {
 }
 
@@ -3103,7 +3103,7 @@ void test188()
     int[3] t = [1,3,4];
     auto i = foo188(t);
     if (i != 8)
-	assert(0);
+        assert(0);
 }
 
 /***************************************************/
@@ -3120,13 +3120,13 @@ void a189()(T1189 x) {
 
 class T1189 {
     void foo() {
-	printf("T1.foo()\n");
+        printf("T1.foo()\n");
     }
 }
 
 class T2189 : T1189 {
     void bla() {
-	printf("T2.blah()\n");
+        printf("T2.blah()\n");
         assert(false); //line 19
     }
 }
@@ -3186,7 +3186,7 @@ void test193()
 {
     enum Shapes
     {
-	Circle, Square
+        Circle, Square
     }
 
     int i;
@@ -3254,7 +3254,7 @@ void test197()
 
 /***************************************************/
 
-void test198()	// Bugzilla 4506
+void test198()  // Bugzilla 4506
 {
     int c = 1;
     for (int k = 0; k < 2; k++) {
@@ -3333,7 +3333,7 @@ int bug2931_2()
     for (int j = 0; j < 3; j++)
     {
         assert(w.val[j][i] == 68);
-	assert(v.p.val[j][i] == 67);
+        assert(v.p.val[j][i] == 67);
     }
   }
   assert(v.scale == 4);
@@ -3358,7 +3358,7 @@ void foo202(int x, ...) {
     for (int i = 0; i < _arguments.length; i++) {
         int j = va_arg!(int)(_argptr);
         printf("\t%d\n", j);
-	assert(j == i + 2);
+        assert(j == i + 2);
     }
 }
 
@@ -3367,7 +3367,7 @@ void fooRef202(ref int x, ...) {
     for (int i = 0; i < _arguments.length; i++) {
         int j = va_arg!(int)(_argptr);
         printf("\t%d\n", j);
-	assert(j == i + 2);
+        assert(j == i + 2);
     }
 }
 
@@ -3434,7 +3434,7 @@ TaskStatus test206(char[] s){
     char[] t="TaskStatus".dup;
     if (s.length>t.length && s[0..t.length]==t){
         long res=0;
-        if (s[t.length]=='-') res= -res;	// <= OPnegass
+        if (s[t.length]=='-') res= -res;        // <= OPnegass
         return cast(TaskStatus)cast(int)res;
     }
     assert(0);
@@ -3842,8 +3842,8 @@ void test224()
 
 public final class A3681 {
     private this() {
-	int i =0;
-	int j = i + 1;
+        int i =0;
+        int j = i + 1;
  i = j * 15; j = i * 59; i = j * 15; j = i * 59; i = j * 15; j = i * 59; i = j * 15; j = i * 59;
  i = j * 15; j = i * 59; i = j * 15; j = i * 59; i = j * 15; j = i * 59; i = j * 15; j = i * 59;
  i = j * 15; j = i * 59; i = j * 15; j = i * 59; i = j * 15; j = i * 59; i = j * 15; j = i * 59;
@@ -4057,10 +4057,10 @@ void test229() {
 
 static immutable real negtab[14] =
     [ 1e-4096L,1e-2048L,1e-1024L,1e-512L,1e-256L,1e-128L,1e-64L,1e-32L,
-	    1e-16L,1e-8L,1e-4L,1e-2L,1e-1L,1.0L ];
+            1e-16L,1e-8L,1e-4L,1e-2L,1e-1L,1.0L ];
 static immutable real postab[13] =
     [ 1e+4096L,1e+2048L,1e+1024L,1e+512L,1e+256L,1e+128L,1e+64L,1e+32L,
-	    1e+16L,1e+8L,1e+4L,1e+2L,1e+1L ];
+            1e+16L,1e+8L,1e+4L,1e+2L,1e+1L ];
 
 float parse(ref string p)
 {
@@ -4370,7 +4370,7 @@ void test237()
 
 void foo238(long a, long b)
 {
-  while (1)		// prevent inlining
+  while (1)             // prevent inlining
   {
     long x = a / b;
     long y = a % b;
@@ -4386,7 +4386,7 @@ void test238()
     a = 10;
     b = 3;
     long x = a / b;
-    long y = a % b;	// evaluate at compile time
+    long y = a % b;     // evaluate at compile time
     assert(x == 3);
     assert(y == 1);
 
@@ -4500,8 +4500,8 @@ void test6665()
 double entropy(double[] probs) {
     double result = 0;
     foreach (p; probs) {
-	if (!p) continue;
-	result -= p;
+        if (!p) continue;
+        result -= p;
     }
     return result;
 }
@@ -4606,7 +4606,7 @@ ubyte foo7026(uint n) {
 
 void test7026() {
     if (foo7026(3) != 3)
-	assert(0);
+        assert(0);
 }
 
 
@@ -4744,10 +4744,10 @@ void test6504()
     for (int i=0; i<3; ++i)
     {
 /+
-	char[] x2 = "xxx" ~ ['c'];
-	if (i == 0)
-	    assert(x2[1] == 'x');
-	x2[1] = 'q';
+        char[] x2 = "xxx" ~ ['c'];
+        if (i == 0)
+            assert(x2[1] == 'x');
+        x2[1] = 'q';
 +/
     }
 }
@@ -4815,7 +4815,7 @@ void test7424()
 
 struct Logger {
     static bool info()() {
-	return false;
+        return false;
     }
 }
 
@@ -4884,7 +4884,7 @@ struct Array243(T) if (is(T == bool))
     {
         Array243!bool _outer;
         ulong _a, _b, _c;
-	ulong _d;
+        ulong _d;
     }
 
     Range opSlice()
@@ -4993,19 +4993,19 @@ struct Test244 {
 int noswap245(ubyte *data)
 {
     return
-	(data[0]<<  0) |
-	(data[1]<<  8) |
-	(data[2]<< 16) |
-	(data[3]<< 24);
+        (data[0]<<  0) |
+        (data[1]<<  8) |
+        (data[2]<< 16) |
+        (data[3]<< 24);
 }
 
 int bswap245(ubyte *data)
 {
     return
-	(data[0]<< 24) |
-	(data[1]<< 16) |
-	(data[2]<< 8 ) |
-	(data[3]<< 0 );
+        (data[0]<< 24) |
+        (data[1]<< 16) |
+        (data[2]<< 8 ) |
+        (data[3]<< 0 );
 }
 
 void test245()
@@ -5271,7 +5271,7 @@ public:
                                              3;
         import std.stdio;
         writeln(size);
-	assert(size == 2);
+        assert(size == 2);
     }
 }
 
@@ -5432,7 +5432,7 @@ void test8987(){
         d = 3;
 
         while (x / d)
-	    d += 2;
+            d += 2;
 
         if (x & d) {
             last = x;
@@ -5471,11 +5471,11 @@ ulong bitcomb9171(ulong v)
         if(v & 1)
         {
             auto r = bitcomb9171(v >> 1);
-	    printf("r=%016llx\n", r);
+            printf("r=%016llx\n", r);
 
             auto z = ((r & (r-1) ^ r));
-	    check9171("str", z>>1);
-//	    printf("z=%016llx\n", z>>1);
+            check9171("str", z>>1);
+//          printf("z=%016llx\n", z>>1);
             return r;
         }
         else
@@ -5831,10 +5831,10 @@ struct S251 { int a,b,c,d; }
 S251 foo251(S251 s)
 {
     S251 a = s;
-    S251 b = a;	// copy propagation
+    S251 b = a; // copy propagation
     S251 c = b;
     S251 d = c;
-    S251 e = d;	// dead assignment
+    S251 e = d; // dead assignment
     return d;
 }
 
@@ -5913,7 +5913,7 @@ void test4414() {
   {
     auto x = bytes4414()[0..4];
     if (x[0] != 7 || x[1] != 8 || x[2] != 9 || x[3] != 10)
-	assert(0);
+        assert(0);
   }
 }
 
@@ -5975,7 +5975,7 @@ void test11265()
 
 struct TimeOfDay
 {
-    void roll(int value) 
+    void roll(int value)
     {
         value %= 60;
         auto newVal = _seconds + value;
@@ -6098,6 +6098,20 @@ void test14510()
 {
     Vector14510 vec;
     fun14510(vec);
+}
+
+/***************************************************/
+// https://issues.dlang.org/show_bug.cgi?id=16027
+
+void test16027()
+{
+    double value = 1.0;
+    value *= -1.0;
+    assert(value == -1.0);    // fails, value is +1.0
+
+    value = 1.0;
+    value = value * -1.0;
+    assert(value == -1.0);
 }
 
 /***************************************************/
@@ -6396,6 +6410,7 @@ int main()
     test12138();
     test14430();
     test14510();
+    test16027();
 
     writefln("Success");
     return 0;

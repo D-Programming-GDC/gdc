@@ -37,7 +37,6 @@ enum ModuleInfoFlags
 typedef tree_node dt_t;
 
 extern dt_t **dt_cons (dt_t **pdt, tree val);
-extern dt_t **build_vptr_monitor (dt_t **pdt, ClassDeclaration *cd);
 
 extern tree dtvector_to_tree (dt_t *dt);
 

@@ -148,6 +148,8 @@ static Dsymbol *getEponymousMember(TemplateDeclaration *td)
         return ad;
     if (FuncDeclaration *fd = td->onemember->isFuncDeclaration())
         return fd;
+    if (EnumMember *em = td->onemember->isEnumMember())
+        return NULL;    // Keep backward compatibility. See compilable/ddoc9.d
     if (VarDeclaration *vd = td->onemember->isVarDeclaration())
         return td->constraint ? NULL : vd;
 
@@ -329,10 +331,10 @@ void gendocfile(Module *m)
         Macro::define(&m->macrotable, (utf8_t *)"YEAR", 4, (utf8_t *)p + 20, 4);
     }
 
-    char *srcfilename = m->srcfile->toChars();
+    const char *srcfilename = m->srcfile->toChars();
     Macro::define(&m->macrotable, (utf8_t *)"SRCFILENAME", 11, (utf8_t *)srcfilename, strlen(srcfilename));
 
-    char *docfilename = m->docfile->toChars();
+    const char *docfilename = m->docfile->toChars();
     Macro::define(&m->macrotable, (utf8_t *)"DOCFILENAME", 11, (utf8_t *)docfilename, strlen(docfilename));
 
     if (dc->copyright)
@@ -607,7 +609,7 @@ static void emitAnchor(OutBuffer *buf, Dsymbol *s, Scope *sc)
     sc->prevAnchor = ident;
 
     buf->writestring("$(DDOC_ANCHOR ");
-    buf->writestring(ident->string);
+    buf->writestring(ident->toChars());
     // only append count once there's a duplicate
     if (*count != 1)
         buf->printf(".%u", *count);
@@ -1203,9 +1205,7 @@ void toDocBuffer(Dsymbol *s, OutBuffer *buf, Scope *sc)
             {
                 BaseClass *bc = (*cd->baseclasses)[i];
 
-                if (bc->protection.kind == PROTprivate)
-                    continue;
-                if (bc->base && bc->base->ident == Id::Object)
+                if (bc->sym && bc->sym->ident == Id::Object)
                     continue;
 
                 if (any)
@@ -1215,10 +1215,10 @@ void toDocBuffer(Dsymbol *s, OutBuffer *buf, Scope *sc)
                     buf->writestring(": ");
                     any = 1;
                 }
-                emitProtection(buf, bc->protection);
-                if (bc->base)
+                emitProtection(buf, Prot(PROTpublic));
+                if (bc->sym)
                 {
-                    buf->printf("$(DDOC_PSUPER_SYMBOL %s)", bc->base->toPrettyChars());
+                    buf->printf("$(DDOC_PSUPER_SYMBOL %s)", bc->sym->toPrettyChars());
                 }
                 else
                 {
@@ -2184,8 +2184,7 @@ bool isReservedName(utf8_t *str, size_t len)
         "__returnLabel", "__vptr", "__monitor", "__gate", "__xopEquals", "__xopCmp",
         "__LINE__", "__FILE__", "__MODULE__", "__FUNCTION__", "__PRETTY_FUNCTION__",
         "__DATE__", "__TIME__", "__TIMESTAMP__", "__VENDOR__", "__VERSION__",
-        "__EOF__", "__LOCAL_SIZE", "___tls_get_addr", "__entrypoint", "__va_argsave_t",
-        "__va_argsave", NULL };
+        "__EOF__", "__LOCAL_SIZE", "___tls_get_addr", "__entrypoint", NULL };
 
     for (int i = 0; table[i]; i++)
     {
@@ -2519,7 +2518,7 @@ void highlightText(Scope *sc, Dsymbols *a, OutBuffer *buf, size_t offset)
                     // leading '_' means no highlight unless it's a reserved symbol name
                     if (c == '_' &&
                         (i == 0 || !isdigit(*(start - 1))) &&
-                        (i == buf->size - 1 || !isReservedName(start, len)))
+                        (i == buf->offset - 1 || !isReservedName(start, len)))
                     {
                         buf->remove(i, 1);
                         i = j - 1;

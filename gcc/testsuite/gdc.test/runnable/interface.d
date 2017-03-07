@@ -66,7 +66,7 @@ interface J3 : I3, K3 {}
 
 class A3 : J3 {
     void f(){ }
-    void h(){ } 
+    void h(){ }
 }
 
 void test3()

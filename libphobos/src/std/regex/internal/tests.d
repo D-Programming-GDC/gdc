@@ -5,8 +5,8 @@ module std.regex.internal.tests;
 
 package(std.regex):
 
-import std.algorithm, std.conv, std.exception, std.range, std.typecons,
-    std.typetuple, std.regex;
+import std.algorithm, std.conv, std.exception, std.meta, std.range,
+    std.typecons, std.regex;
 
 import std.regex.internal.parser : Escapables; // characters that need escaping
 
@@ -249,6 +249,10 @@ unittest
         TestVectors(  "[0-9a-f~~0-5a-z]{2}",         "g0a58x",    "y",   "$&",     "8x"),
         TestVectors(  "[abc[pq]xyz[rs]]{4}",         "cqxr",      "y",   "$&",     "cqxr"),
         TestVectors(  "[abcdf--[ab&&[bcd]][acd]]",   "abcdefgh",  "y",   "$&",     "f"),
+        TestVectors(  "[a-c||d-f]+",    "abcdef", "y", "$&", "abcdef"),
+        TestVectors(  "[a-f--a-c]+",    "abcdef", "y", "$&", "def"),
+        TestVectors(  "[a-c&&b-f]+",    "abcdef", "y", "$&", "bc"),
+        TestVectors(  "[a-c~~b-f]+",    "abcdef", "y", "$&", "a"),
 //unicode blocks & properties:
         TestVectors(  `\P{Inlatin1suppl ement}`, "\u00c2!", "y", "$&", "!"),
         TestVectors(  `\p{InLatin-1 Supplement}\p{in-mathematical-operators}\P{Inlatin1suppl ement}`, "\u00c2\u2200\u00c3\u2203.", "y", "$&", "\u00c3\u2203."),
@@ -343,7 +347,7 @@ unittest
     void run_tests(alias matchFn)()
     {
         int i;
-        foreach(Char; TypeTuple!( char, wchar, dchar))
+        foreach(Char; AliasSeq!( char, wchar, dchar))
         (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
             alias String = immutable(Char)[];
             String produceExpected(M,Range)(auto ref M m, Range fmt)
@@ -413,7 +417,7 @@ unittest
             alias Tests = Sequence!(220, tv.length);
         }
         else
-            alias Tests = TypeTuple!(Sequence!(0, 30), Sequence!(235, tv.length-5));
+            alias Tests = AliasSeq!(Sequence!(0, 30), Sequence!(235, tv.length-5));
         foreach(a, v; Tests)
         (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
             enum tvd = tv[v];
@@ -666,7 +670,7 @@ unittest
     {
         import std.uni : toUpper;
 
-        foreach(i, v; TypeTuple!(string, wstring, dstring))
+        foreach(i, v; AliasSeq!(string, wstring, dstring))
         {
             auto baz(Cap)(Cap m)
             if (is(Cap == Captures!(Cap.String)))
@@ -749,7 +753,7 @@ unittest
 }
 unittest
 {// bugzilla 7679
-    foreach(S; TypeTuple!(string, wstring, dstring))
+    foreach(S; AliasSeq!(string, wstring, dstring))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         enum re = ctRegex!(to!S(r"\."));
         auto str = to!S("a.b");
@@ -955,3 +959,12 @@ unittest
     assertThrown(regex(`^(x(\1))`));
     assertThrown(regex(`^((x)(?=\1))`));
 }
+
+// bugzilla 14529
+unittest
+{
+    auto ctPat2 = regex(r"^[CDF]$", "i");
+    foreach(v; ["C", "c", "D", "d", "F", "f"])
+        assert(matchAll(v, ctPat2).front.hit == v);
+}
+

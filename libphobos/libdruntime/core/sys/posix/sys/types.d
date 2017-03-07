@@ -107,11 +107,7 @@ else version( OSX )
     alias int       blksize_t;
     alias int       dev_t;
     alias uint      gid_t;
-    version( DARWIN_USE_64_BIT_INODE ) {
-        alias ulong ino_t;
-    } else {
-        alias uint  ino_t;
-    }
+    alias ulong     ino_t;
     alias ushort    mode_t;
     alias ushort    nlink_t;
     alias long      off_t;
@@ -462,7 +458,7 @@ version (CRuntime_Glibc)
         enum __SIZEOF_PTHREAD_BARRIER_T = 20;
         enum __SIZEOF_PTHREAD_BARRIERATTR_T = 4;
     }
-    else version (S390X)
+    else version (SystemZ)
     {
         enum __SIZEOF_PTHREAD_ATTR_T = 56;
         enum __SIZEOF_PTHREAD_MUTEX_T = 40;
@@ -695,7 +691,7 @@ else version (Solaris)
             ubyte __pthread_mutex_flag2;
             ubyte __pthread_mutex_ceiling;
             ushort __pthread_mutex_type;
-            ushort __pthread_mutex_magic; 
+            ushort __pthread_mutex_magic;
         }
 
         ___pthread_mutex_flags __pthread_mutex_flags;
@@ -821,7 +817,7 @@ else version (Solaris)
         ulong __pthread_barrier_cycle;
         ulong __pthread_barrier_reserved;
         pthread_mutex_t __pthread_barrier_lock;
-        pthread_cond_t __pthread_barrier_cond; 
+        pthread_cond_t __pthread_barrier_cond;
     }
 
     struct pthread_barrierattr_t

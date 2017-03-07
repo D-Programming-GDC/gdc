@@ -20,23 +20,120 @@
 Language
 D
 
-Variable
-int flag_emit_templates
+-dependencies
+D Alias(M)
+; Documented in C
+
+-print-missing-file-dependencies
+D Alias(MG)
+; Documented in C
+
+-user-dependencies
+D Alias(MM)
+; Documented in C
+
+-write-dependencies
+D NoDriverArg Separate Alias(MD)
+; Documented in C
+
+-write-user-dependencies
+D NoDriverArg Separate Alias(MMD)
+; Documented in C
+
+I
+D Joined Separate
+; Documented in C
+
+J
+D Joined Separate
+; Different from documented use in Fortran.
+
+M
+D
+; Documented in C
+
+MD
+D Separate NoDriverArg
+; Documented in C
+
+MF
+D Joined Separate
+; Documented in C
+
+MG
+D
+; Documented in C
+
+MM
+D
+; Documented in C
+
+MMD
+D Separate NoDriverArg
+; Documented in C
+
+MP
+D
+; Documented in C
+
+MT
+D Joined Separate
+; Documented in C
+
+MQ
+D Joined Separate
+; Documented in C
+
+Wall
+D
+; Documented in C
+
+Wcast-result
+D Warning Var(warn_cast_result)
+Warn about casts that will produce a null result.
+
+Wdeprecated
+D
+; Documented in C
+
+Werror
+D
+; Documented in common.opt
+
+Wtemplates
+D Var(warn_templates) Warning
+Warn on primary template declaration.
+
+Wunknown-pragmas
+D LangEnabledBy(D, Wall)
+; Documented in C
+
+X
+D
+Generate JSON file.
+
+Xf
+D Joined Separate
+-Xf <file>	Write JSON output to the given <file>.
 
 debuglib=
 Driver Joined
-Debug library to use instead of phobos
+Debug library to use instead of phobos.
 
 defaultlib=
 Driver Joined
-Default library to use instead of phobos
+Default library to use instead of phobos.
 
 -verbose
 D Alias(v)
 
-fassert
+fall-instantiations
 D
-Permit the use of the assert keyword
+Generate code for all template instantiations.
+
+fassert
+D Var(flag_assert)
+; Documented in Java
 
 fbounds-check
 D
@@ -64,182 +161,206 @@ Recognize built-in functions
 
 fdebug
 D
-Compile in debug code
+Compile in debug code.
 
 fdebug=
 D Joined RejectNegative
--fdebug,-fdebug=<level>,-fdebug=<ident> Compile in debug code, code <= level, or code identified by ident
+-fdebug=<level|ident>	Compile in debug code, code <= <level>, or code identified by <ident>.
 
 fdeps
 D
-Print information about module dependencies
+Print information about module dependencies.
 
 fdeps=
 D Joined RejectNegative
--fdeps=<filename> Write module dependencies to filename
+-fdeps=<file>	Write module dependencies to <file>.
 
 fdoc
 D
-Generate documentation
+Generate documentation.
 
 fdoc-dir=
 D Joined RejectNegative
--fdoc-dir=<docdir> Write documentation file to docdir directory
+-fdoc-dir=<dir>	Write documentation file to directory <dir>.
 
 fdoc-file=
 D Joined RejectNegative
--fdoc-file=<filename> Write documentation file to filename
+-fdoc-file=<file>	Write documentation to <file>.
 
 fdoc-inc=
 D Joined RejectNegative
--fdoc-inc=<filename> Include a Ddoc macro file
+-fdoc-inc=<file>	Include a Ddoc macro <file>.
 
 fd-vgc
 D Alias(ftransition=nogc)
-Deprecated in favor of -ftransition=nogc
+; Deprecated in favor of -ftransition=nogc
 
 fd-verbose
 D Alias(v)
-Deprecated in favor of --verbose
+; Deprecated in favor of --verbose
 
 fd-vtls
 D Alias(ftransition=tls)
-Deprecated in favor of -ftransition=tls.
+; Deprecated in favor of -ftransition=tls.
 
 femit-moduleinfo
 D Alias(fmoduleinfo)
-Deprecated in favor of -fmoduleinfo.
+; Deprecated in favor of -fmoduleinfo.
 
 femit-templates
-D
-Generate code for all template instantiations
+D Alias(fall-instantiations)
+; Deprecated in favor of -fall-instantiations.
 
 fignore-unknown-pragmas
 D
-Ignore unsupported pragmas
+Ignore unsupported pragmas.
 
 fin
-D
-Generate runtime code for in() contracts
+D Alias(fpreconditions)
+; Deprecated in favor of -fpreconditions.
 
 fintfc
-Generate D interface files
+Generate D interface files.
 
 fintfc-dir=
 D Joined RejectNegative
--fintfc-dir=<dir> Write D interface files to directory <dir>
+-fintfc-dir=<dir>	Write D interface files to directory <dir>.
 
 fintfc-file=
 D Joined RejectNegative
--fintfc-file=<filename> Write D interface file to <filename>
+-fintfc-file=<file>	Write D interface to <file>.
 
 finvariants
-D
-Generate runtime code for invariant()'s
+D Var(flag_invariants)
+Generate code for class invariant contracts.
 
 fmake-deps
-D
-Print information about module makefile dependencies
+D Alias(M)
+; Deprecated in favor of -M
 
 fmake-deps=
 D Joined RejectNegative
--fmake-deps=<file> Write makefile dependency output to the given file
+Deprecated in favor of -MD
 
 fmake-mdeps
-D
-Like -fmake-deps but ignore system modules
+D Alias(MM)
+; Deprecated in favor of -MM
 
 fmake-mdeps=
 D Joined RejectNegative
-Like -fmake-deps=<file> but ignore system modules
+Deprecated in favor of -MMD
 
 fmoduleinfo
 D
-Generate ModuleInfo struct for output module
+Generate ModuleInfo struct for output module.
 
 fonly=
 D Joined RejectNegative
-Process all modules specified on the command line, but only generate code for the module specified by the argument
+Process all modules specified on the command line, but only generate code for the module specified by the argument.
 
 fout
-D
-Generate runtime code for out() contracts
+D Alias(fpostconditions)
+; Deprecated in favor of -fpostconditions.
+
+fpostconditions
+D Var(flag_postconditions)
+Generate code for postcondition contracts.
+
+fpreconditions
+D Var(flag_preconditions)
+Generate code for precondition contracts.
 
 fproperty
 D
-Enforce property syntax
+Enforce property syntax.
 
 frelease
 D
-Compile release version
+Compile release version.
+
+fswitch-errors
+D Var(flag_switch_errors)
+Generate code for switches without a default case.
+
+ftransition=all
+D RejectNegative
+List information on all language changes
+
+ftransition=checkimports
+D RejectNegative
+Give deprecation messages about -ftransition=import anomalies
 
 ftransition=complex
 D RejectNegative
 List all usages of complex or imaginary types.
 
-ftransition=field
+ftransition=dip1000
 D RejectNegative
-List all non-mutable fields which occupy an object instance.
-
-ftransition=nogc
-D RejectNegative
-List all hidden GC allocations.
-
-ftransition=tls
-D RejectNegative
-List all variables going into thread local storage.
+Implement http://wiki.dlang.org/DIP1000 (experimental)
 
 ftransition=dip25
 D RejectNegative
 Implement http://wiki.dlang.org/DIP25 (experimental)
 
+ftransition=field
+D RejectNegative
+List all non-mutable fields which occupy an object instance.
+
+ftransition=import
+D RejectNegative
+Revert to single phase name lookup.
+
+ftransition=nogc
+D RejectNegative
+List all hidden GC allocations.
+
+ftransition=safe
+D Alias(ftransition=dip1000)
+; Deprecated in favor of -ftransition=dip1000
+
+ftransition=tls
+D RejectNegative
+List all variables going into thread local storage.
+
 funittest
 D
-Compile in unittest code
+Compile in unittest code.
 
 fversion=
 D Joined RejectNegative
--fversion=<level|ident> Compile in version code >= <level> or identified by <ident>
+-fversion=<level|ident>	Compile in version code >= <level> or identified by <ident>.
 
 fXf=
-D Joined RejectNegative
--fXf=<filename> Write JSON file to <filename>
+D Joined RejectNegative Alias(Xf)
+; Deprecated in favor of -Xf
 
 imultilib
 D Joined Separate
--imultilib <dir>	Set <dir> to be the multilib include subdirectory
+; Documented in C
 
 iprefix
 D Joined Separate
--iprefix <path>	Specify <path> as a prefix for next two options
+; Documented in C
 
 isysroot
 D Joined Separate
--isysroot <dir>	Set <dir> to be the system root directory
+; Documented in C
 
 isystem
 D Joined Separate
--isystem <dir>	Add <dir> to the start of the system include path
-
-I
-D Joined Separate
--I <dir>	Add <dir> to the end of the main include path
-
-J
-D Joined Separate
-; Different from documented use in Fortran.
+; Documented in C
 
 nophoboslib
 Driver
-Do not link the standard D library in the compilation
+Do not link the standard D library in the compilation.
 
 nostdinc
 D
-Do not search standard system include directories (those specified with -isystem will still be used)
+; Documented in C
 
 static-libphobos
 Driver
-Link the standard D library statically in the compilation
+Link the standard D library statically in the compilation.
 
 shared-libphobos
 Driver
@@ -248,27 +369,3 @@ Link the standard D library dynamically in the compilation.
 v
 D
 ; Documented in C
-
-Wall
-D
-; Documented in c.opt
-
-Wcast-result
-D Warning Var(warn_cast_result)
-Warn about casts that will produce a null or nil result
-
-Wdeprecated
-D
-; Documented in c.opt
-
-Werror
-D
-; Documented in common.opt
-
-Wunknown-pragmas
-D
-; Documented in c.opt
-
-fmax-error-messages=
-D Joined RejectNegative
-Limit the number of error messages (0 means unlimited)

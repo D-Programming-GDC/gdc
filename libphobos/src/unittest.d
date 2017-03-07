@@ -42,7 +42,6 @@ public import std.stdint;
 public import std.stdio;
 public import std.stream;
 public import std.string;
-public import std.syserror;
 public import std.system;
 public import std.traits;
 public import std.typetuple;
@@ -59,6 +58,7 @@ public import std.digest.digest;
 public import std.digest.crc;
 public import std.digest.sha;
 public import std.digest.md;
+public import std.digest.hmac;
 
 int main(string[] args)
 {

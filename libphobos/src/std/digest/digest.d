@@ -10,6 +10,7 @@ $(BOOKTABLE ,
 $(TR $(TH Category) $(TH Functions)
 )
 $(TR $(TDNW Template API) $(TD $(MYREF isDigest) $(MYREF DigestType) $(MYREF hasPeek)
+  $(MYREF hasBlockSize)
   $(MYREF ExampleDigest) $(MYREF _digest) $(MYREF hexDigest) $(MYREF makeDigest)
 )
 )
@@ -62,8 +63,8 @@ $(TR $(TDNW Implementation helpers) $(TD $(MYREF digestLength) $(MYREF WrapperDi
  */
 module std.digest.digest;
 
+import std.meta : allSatisfy;
 import std.traits;
-import std.typetuple : allSatisfy;
 public import std.ascii : LetterCase;
 
 
@@ -207,7 +208,7 @@ version(ExampleDigest)
              * interface for $(D ubyte) and $(D const(ubyte)[]).
              * The following usages of $(D put) must work for any type which
              * passes $(LREF isDigest):
-             * Examples:
+             * Example:
              * ----
              * ExampleDigest dig;
              * dig.put(cast(ubyte)0); //single ubyte
@@ -385,7 +386,26 @@ unittest
     myFunction!CRC32();
 }
 
-private template isDigestibleRange(Range)
+/**
+ * Checks whether the digest has a $(D blockSize) member, which contains the
+ * digest's internal block size in bits. It is primarily used by $(XREF digest.hmac, HMAC).
+ */
+
+template hasBlockSize(T)
+if (isDigest!T)
+{
+    enum bool hasBlockSize = __traits(compiles, { size_t blockSize = T.blockSize; });
+}
+
+///
+unittest
+{
+    import std.digest.md, std.digest.hmac;
+    static assert(hasBlockSize!MD5        && MD5.blockSize      == 512);
+    static assert(hasBlockSize!(HMAC!MD5) && HMAC!MD5.blockSize == 512);
+}
+
+package template isDigestibleRange(Range)
 {
     import std.digest.md;
     import std.range : isInputRange, ElementType;
@@ -545,7 +565,7 @@ interface Digest
          * Also implements the $(XREF_PACK range,primitives,isOutputRange)
          * interface for $(D ubyte) and $(D const(ubyte)[]).
          *
-         * Examples:
+         * Example:
          * ----
          * void test(Digest dig)
          * {
@@ -578,7 +598,7 @@ interface Digest
          */
         @trusted nothrow ubyte[] finish();
         ///ditto
-        nothrow ubyte[] finish(scope ubyte[] buf);
+        nothrow ubyte[] finish(ubyte[] buf);
         //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=6549
         /*in
         {
@@ -671,6 +691,11 @@ enum Order : bool
  * The additional letterCase parameter can be used to specify the case of the output data.
  * By default the output is in upper case. To change it to the lower case
  * pass LetterCase.lower as a parameter.
+ *
+ * Note:
+ * The function overloads returning a string allocate their return values
+ * using the GC. The versions returning static arrays use pass-by-value for
+ * the return value, effectively avoiding dynamic allocation.
  */
 char[num*2] toHexString(Order order = Order.increasing, size_t num, LetterCase letterCase = LetterCase.upper)
 (in ubyte[num] digest)
@@ -710,7 +735,7 @@ char[num*2] toHexString(Order order = Order.increasing, size_t num, LetterCase l
 }
 
 ///ditto
-auto toHexString(LetterCase letterCase, Order order = Order.increasing, size_t num)(in ubyte[num] digest)
+char[num*2] toHexString(LetterCase letterCase, Order order = Order.increasing, size_t num)(in ubyte[num] digest)
 {
     return toHexString!(order, num, letterCase)(digest);
 }
@@ -753,7 +778,7 @@ string toHexString(Order order = Order.increasing, LetterCase letterCase = Lette
 }
 
 ///ditto
-auto toHexString(LetterCase letterCase, Order order = Order.increasing)(in ubyte[] digest)
+string toHexString(LetterCase letterCase, Order order = Order.increasing)(in ubyte[] digest)
 {
     return toHexString!(order, letterCase)(digest);
 }
@@ -871,7 +896,7 @@ class WrapperDigest(T) if(isDigest!T) : Digest
          * The finish function returns the hash value. It takes an optional buffer to copy the data
          * into. If a buffer is passed, it must have a length at least $(LREF length) bytes.
          *
-         * Examples:
+         * Example:
          * --------
          *
          * import std.digest.md;
@@ -884,7 +909,7 @@ class WrapperDigest(T) if(isDigest!T) : Digest
          * //length
          * --------
          */
-        nothrow ubyte[] finish(scope ubyte[] buf)
+        nothrow ubyte[] finish(ubyte[] buf)
         in
         {
             assert(buf.length >= this.length);
@@ -914,13 +939,13 @@ class WrapperDigest(T) if(isDigest!T) : Digest
              *
              * These functions are only available if $(D hasPeek!T) is true.
              */
-            @trusted ubyte[] peek(scope ubyte[] buf) const;
+            @trusted ubyte[] peek(ubyte[] buf) const;
             ///ditto
             @trusted ubyte[] peek() const;
         }
         else static if(hasPeek!T)
         {
-            @trusted ubyte[] peek(scope ubyte[] buf) const
+            @trusted ubyte[] peek(ubyte[] buf) const
             in
             {
                 assert(buf.length >= this.length);

@@ -503,7 +503,7 @@ version( CRuntime_Glibc )
             SO_TYPE         = 3
         }
     }
-    else version (AArch64)
+    else version (SystemZ)
     {
         enum
         {

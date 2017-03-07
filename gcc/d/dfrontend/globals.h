@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2015 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/mars.h
+ * https://github.com/dlang/dmd/blob/master/src/mars.h
  */
 
 #ifndef DMD_GLOBALS_H
@@ -15,6 +15,8 @@
 #ifdef __DMC__
 #pragma once
 #endif
+
+#include <stdint.h>
 
 #include "longdouble.h"
 #include "outbuffer.h"
@@ -62,10 +64,12 @@ struct Param
     bool isFreeBSD;     // generate code for FreeBSD
     bool isOpenBSD;     // generate code for OpenBSD
     bool isSolaris;     // generate code for Solaris
+    bool hasObjectiveC; // target supports Objective-C
     bool mscoff;        // for Win32: write COFF object files instead of OMF
-    char useDeprecated; // 0: don't allow use of deprecated features
-                        // 1: silently allow use of deprecated features
-                        // 2: warn about the use of deprecated features
+    // 0: don't allow use of deprecated features
+    // 1: silently allow use of deprecated features
+    // 2: warn about the use of deprecated features
+    char useDeprecated;
     bool useAssert;     // generate runtime code for assert()'s
     bool useInvariants; // generate class invariant checks
     bool useIn;         // generate precondition checks
@@ -77,9 +81,10 @@ struct Param
     bool useDIP25;      // implement http://wiki.dlang.org/DIP25
     bool release;       // build release version
     bool preservePaths; // true means don't strip path from source file
-    char warnings;      // 0: disable warnings
-                        // 1: warnings as errors
-                        // 2: informational warnings (no errors)
+    // 0: disable warnings
+    // 1: warnings as errors
+    // 2: informational warnings (no errors)
+    char warnings;
     bool pic;           // generate position-independent-code for shared libs
     bool color;         // use ANSI colors in console output
     bool cov;           // generate code coverage data
@@ -90,6 +95,9 @@ struct Param
     bool betterC;       // be a "better C" compiler; no dependency on D runtime
     bool addMain;       // add a default main() function
     bool allInst;       // generate code for all template instantiations
+    bool check10378;    // check for issues transitioning to 10738
+    bool bug10378;      // use pre-bugzilla 10378 search strategy
+    bool vsafe;         // use enhanced @safe checking
 
     BOUNDSCHECK useArrayBounds;
 
@@ -108,6 +116,7 @@ struct Param
     bool doHdrGeneration;  // process embedded documentation comments
     const char *hdrdir;    // write 'header' file to docdir directory
     const char *hdrname;   // write 'header' file to docname
+    bool hdrStripPlainFunctions; // strip the bodies of plain (non-template) functions
 
     bool doJsonGeneration;    // write JSON file
     const char *jsonfilename; // write JSON file to jsonfilename
@@ -123,13 +132,6 @@ struct Param
 
     const char *moduleDepsFile; // filename for deps output
     OutBuffer *moduleDeps;      // contents to be written to deps file
-
-#ifdef IN_GCC
-    const char *makeDepsFile;   // filename for make deps output
-    OutBuffer *makeDeps;        // contents to be written to make deps file
-    char makeDepsStyle;         // 0: include system header files
-                                // 1: ignore system header files
-#endif
 
     // Hidden debug switches
     bool debugb;
@@ -159,8 +161,9 @@ struct Compiler
 };
 
 typedef unsigned structalign_t;
-#define STRUCTALIGN_DEFAULT ((structalign_t) ~0)  // magic value means "match whatever the underlying C compiler does"
+// magic value means "match whatever the underlying C compiler does"
 // other values are all powers of 2
+#define STRUCTALIGN_DEFAULT ((structalign_t) ~0)
 
 struct Global
 {
@@ -240,15 +243,15 @@ typedef uint32_t                d_uns32;
 typedef int64_t                 d_int64;
 typedef uint64_t                d_uns64;
 
-typedef float                   d_float32;
-typedef double                  d_float64;
-typedef longdouble              d_float80;
-
-typedef d_uns8                  d_char;
-typedef d_uns16                 d_wchar;
-typedef d_uns32                 d_dchar;
-
 typedef longdouble real_t;
+
+// Represents a D [ ] array
+template<typename T>
+struct DArray
+{
+    size_t length;
+    T *ptr;
+};
 
 // file location
 struct Loc
@@ -266,7 +269,7 @@ struct Loc
 
     Loc(const char *filename, unsigned linnum, unsigned charnum);
 
-    char *toChars();
+    const char *toChars() const;
     bool equals(const Loc& loc);
 };
 
@@ -278,17 +281,14 @@ enum LINK
     LINKcpp,
     LINKwindows,
     LINKpascal,
+    LINKobjc,
 };
 
-enum DYNCAST
+enum CPPMANGLE
 {
-    DYNCAST_OBJECT,
-    DYNCAST_EXPRESSION,
-    DYNCAST_DSYMBOL,
-    DYNCAST_TYPE,
-    DYNCAST_IDENTIFIER,
-    DYNCAST_TUPLE,
-    DYNCAST_PARAMETER,
+    CPPMANGLEdefault,
+    CPPMANGLEstruct,
+    CPPMANGLEclass,
 };
 
 enum MATCH

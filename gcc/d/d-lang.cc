@@ -35,8 +35,8 @@
 #include "dfrontend/root.h"
 #include "dfrontend/target.h"
 
-#include "d-system.h"
 #include "options.h"
+#include "d-system.h"
 #include "cppdefault.h"
 #include "debug.h"
 
@@ -46,9 +46,6 @@
 #include "d-objfile.h"
 #include "d-dmd-gcc.h"
 #include "id.h"
-
-static const char *iprefix_dir = NULL;
-static const char *imultilib_dir = NULL;
 
 static char lang_name[6] = "GNU D";
 
@@ -127,16 +124,29 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_TYPE_PROMOTES_TO		d_type_promotes_to
 
 
-static const char *fonly_arg;
+/* Options handled by the compiler that are separate from the frontend.  */
+struct d_option_data
+{
+  const char *fonly;                /* -fonly=<arg>  */
+  const char *multilib;             /* -imultilib <dir>  */
+  const char *prefix;               /* -iprefix <dir>  */
+
+  bool deps;                        /* -M  */
+  bool deps_skip_system;            /* -MM  */
+  const char *deps_filename;        /* -M[M]D  */
+  const char *deps_filename_user;   /* -MF <arg>  */
+  OutBuffer *deps_target;           /* -M[QT] <arg> */
+  bool deps_phony;                  /* -MP  */
+
+  bool stdinc;                      /* -nostdinc  */
+}
+d_option;
 
 /* List of modules being compiled.  */
 Modules builtin_modules;
 
 static Module *entrypoint = NULL;
 static Module *rootmodule = NULL;
-
-/* Zero disables all standard directories for headers.  */
-static bool std_inc = true;
 
 /* The current and global binding level in effect.  */
 struct binding_level *current_binding_level;
@@ -147,6 +157,161 @@ tree global_context;
 
 /* Array of all global declarations to pass back to the middle-end.  */
 vec<tree, va_gc> *global_declarations;
+
+
+/* Adds TARGET to the make dependencies target buffer.
+   QUOTED is true if the string should be quoted.  */
+static void
+deps_add_target (const char *target, bool quoted)
+{
+  if (!d_option.deps_target)
+    d_option.deps_target = new OutBuffer ();
+  else
+    d_option.deps_target->writeByte (' ');
+
+  d_option.deps_target->reserve (strlen (target));
+
+  if (!quoted)
+    {
+      d_option.deps_target->writestring (target);
+      return;
+    }
+
+  /* Quote characters in target which are significant to Make.  */
+  for (const char *p = target; *p != '\0'; p++)
+    {
+      switch (*p)
+        {
+        case ' ':
+        case '\t':
+          for (const char *q = p - 1; target <= q && *q == '\\';  q--)
+	    d_option.deps_target->writeByte ('\\');
+	  d_option.deps_target->writeByte ('\\');
+          break;
+
+        case '$':
+	  d_option.deps_target->writeByte ('$');
+          break;
+
+        case '#':
+	  d_option.deps_target->writeByte ('\\');
+          break;
+
+        default:
+          break;
+        }
+
+      d_option.deps_target->writeByte (*p);
+    }
+}
+
+/* Write out all dependencies of a given MODULE to the specified BUFFER.
+   COLMAX is the number of columns to word-wrap at (0 means don't wrap).  */
+static void
+deps_write (Module *module, OutBuffer *buffer, unsigned colmax = 72)
+{
+  StringTable dependencies;
+  dependencies._init ();
+
+  Modules modlist;
+  modlist.push (module);
+
+  Modules phonylist;
+
+  const char *str;
+  unsigned size;
+  unsigned column = 0;
+
+  /* Write out make target module name.  */
+  if (d_option.deps_target)
+    {
+      size = d_option.deps_target->offset;
+      str = d_option.deps_target->extractString ();
+    }
+  else
+    {
+      str = module->objfile->name->str;
+      size = strlen (str);
+    }
+
+  buffer->writestring (str);
+  column = size;
+  buffer->writestring (":");
+  column++;
+
+  /* Write out all make dependencies.  */
+  while (modlist.dim > 0)
+  {
+    Module *depmod = modlist.pop ();
+
+    str = depmod->srcfile->name->str;
+    size = strlen (str);
+
+    /* Skip dependencies that have already been written.  */
+    if (!dependencies.insert (str, size, NULL))
+      continue;
+
+    column += size;
+
+    if (colmax && column > colmax)
+      {
+	buffer->writestring (" \\\n ");
+	column = size + 1;
+      }
+    else
+      {
+	buffer->writestring (" ");
+	column++;
+      }
+
+    buffer->writestring (str);
+
+    /* Add to list of phony targets if is not being compile.  */
+    if (d_option.deps_phony && !depmod->isRoot ())
+      phonylist.push (depmod);
+
+    /* Search all imports of the written dependency.  */
+    for (size_t i = 0; i < depmod->aimports.dim; i++)
+      {
+	Module *m = depmod->aimports[i];
+
+	/* Ignore compiler-generated modules.  */
+	if (m->ident == Id::entrypoint && m->parent == NULL)
+	  continue;
+
+	/* Don't search system installed modules, this includes
+	   object, core.*, std.*, and gcc.* packages.  */
+	if (d_option.deps_skip_system)
+	  {
+	    if (m->ident == Id::object && m->parent == NULL)
+	      continue;
+
+	    if (m->md && m->md->packages)
+	      {
+		Identifier *package = (*m->md->packages)[0];
+
+		if (package == Id::core || package == Id::std
+		    || package == Identifier::idPool ("gcc"))
+		  continue;
+	      }
+	  }
+
+	modlist.push (m);
+      }
+  }
+
+  buffer->writenl ();
+
+  /* Write out all phony targets.  */
+  for (size_t i = 0; i < phonylist.dim; i++)
+    {
+      Module *m = phonylist[i];
+
+      buffer->writenl ();
+      buffer->writestring (m->srcfile->name->str);
+      buffer->writestring (":\n");
+    }
+}
 
 /* Common initialization before calling option handlers.  */
 static void
@@ -169,6 +334,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.warnings = 0;
   global.params.obj = true;
   global.params.useDeprecated = 1;
+  global.params.hdrStripPlainFunctions = true;
   global.params.betterC = false;
   global.params.allInst = false;
 
@@ -180,8 +346,17 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
   global.params.imppath = new Strings();
   global.params.fileImppath = new Strings();
 
-  // extra D-specific options
-  flag_emit_templates = 1;
+  /* Extra GDC-specific options.  */
+  d_option.fonly = NULL;
+  d_option.multilib = NULL;
+  d_option.prefix = NULL;
+  d_option.deps = false;
+  d_option.deps_skip_system = false;
+  d_option.deps_filename = NULL;
+  d_option.deps_filename_user = NULL;
+  d_option.deps_target = NULL;
+  d_option.deps_phony = false;
+  d_option.stdinc = true;
 }
 
 /* Initialize options structure OPTS.  */
@@ -328,7 +503,7 @@ d_init()
   VersionCondition::addPredefinedGlobalIdent ("all");
 
   /* Insert all library-configured identifiers and import paths.  */
-  add_import_paths(iprefix_dir, imultilib_dir, std_inc);
+  add_import_paths(d_option.prefix, d_option.multilib, d_option.stdinc);
 
   return 1;
 }
@@ -353,6 +528,10 @@ d_handle_option (size_t scode, const char *arg, int value,
 
   switch (code)
     {
+    case OPT_fall_instantiations:
+      global.params.allInst = value;
+      break;
+
     case OPT_fassert:
       global.params.useAssert = value;
       break;
@@ -382,7 +561,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	    }
 	}
 
-      if (Lexer::isValidIdentifier(CONST_CAST (char *, arg)))
+      if (Identifier::isValidIdentifier(CONST_CAST (char *, arg)))
 	{
 	  DebugCondition::addGlobalIdent(arg);
 	  break;
@@ -420,17 +599,8 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ddocfiles->push (arg);
       break;
 
-    case OPT_femit_templates:
-      flag_emit_templates = value ? 1 : 0;
-      global.params.allInst = value;
-      break;
-
     case OPT_fignore_unknown_pragmas:
       global.params.ignoreUnsupportedPragmas = value;
-      break;
-
-    case OPT_fin:
-      global.params.useIn = value;
       break;
 
     case OPT_fintfc:
@@ -451,40 +621,20 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
-    case OPT_fmake_deps:
-      global.params.makeDeps = new OutBuffer;
-      break;
-
-    case OPT_fmake_deps_:
-      global.params.makeDeps = new OutBuffer;
-      global.params.makeDepsStyle = 1;
-      global.params.makeDepsFile = arg;
-      if (!global.params.makeDepsFile[0])
-	error ("bad argument for -fmake-deps");
-      break;
-
-    case OPT_fmake_mdeps:
-      global.params.makeDeps = new OutBuffer;
-      break;
-
-    case OPT_fmake_mdeps_:
-      global.params.makeDeps = new OutBuffer;
-      global.params.makeDepsStyle = 2;
-      global.params.makeDepsFile = arg;
-      if (!global.params.makeDepsFile[0])
-	error ("bad argument for -fmake-deps");
-      break;
-
     case OPT_fmoduleinfo:
       global.params.betterC = !value;
       break;
 
     case OPT_fonly_:
-      fonly_arg = arg;
+      d_option.fonly = arg;
       break;
 
-    case OPT_fout:
+    case OPT_fpostconditions:
       global.params.useOut = value;
+      break;
+
+    case OPT_fpreconditions:
+      global.params.useIn = value;
       break;
 
     case OPT_fproperty:
@@ -493,19 +643,41 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_frelease:
       global.params.release = value;
-      global.params.useInvariants = !value;
-      global.params.useIn = !value;
-      global.params.useOut = !value;
-      global.params.useAssert = !value;
-      global.params.useSwitchError = !value;
+      break;
+
+    case OPT_fswitch_errors:
+      global.params.useSwitchError = value;
+      break;
+
+    case OPT_ftransition_all:
+      global.params.vtls = value;
+      global.params.vfield = value;
+      global.params.vcomplex = value;
+      break;
+
+    case OPT_ftransition_checkimports:
+      global.params.check10378 = value;
       break;
 
     case OPT_ftransition_complex:
       global.params.vcomplex = value;
       break;
 
+    case OPT_ftransition_dip1000:
+      global.params.vsafe = value;
+      global.params.useDIP25 = value;
+      break;
+
+    case OPT_ftransition_dip25:
+      global.params.useDIP25 = value;
+      break;
+
     case OPT_ftransition_field:
       global.params.vfield = value;
+      break;
+
+    case OPT_ftransition_import:
+      global.params.bug10378 = value;
       break;
 
     case OPT_ftransition_nogc:
@@ -514,10 +686,6 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_ftransition_tls:
       global.params.vtls = value;
-      break;
-
-    case OPT_ftransition_dip25:
-      global.params.useDIP25 = value;
       break;
 
     case OPT_funittest:
@@ -535,7 +703,7 @@ d_handle_option (size_t scode, const char *arg, int value,
 	    }
 	}
 
-      if (Lexer::isValidIdentifier (CONST_CAST (char *, arg)))
+      if (Identifier::isValidIdentifier (CONST_CAST (char *, arg)))
 	{
 	  VersionCondition::addGlobalIdent (arg);
 	  break;
@@ -544,17 +712,12 @@ d_handle_option (size_t scode, const char *arg, int value,
       error ("bad argument for -fversion '%s'", arg);
       break;
 
-    case OPT_fXf_:
-      global.params.doJsonGeneration = true;
-      global.params.jsonfilename = arg;
-      break;
-
     case OPT_imultilib:
-      imultilib_dir = arg;
+      d_option.multilib = arg;
       break;
 
     case OPT_iprefix:
-      iprefix_dir = arg;
+      d_option.prefix = arg;
       break;
 
     case OPT_I:
@@ -565,8 +728,44 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.fileImppath->push(arg);
       break;
 
+    case OPT_MM:
+      d_option.deps_skip_system = true;
+      /* fall through */
+
+    case OPT_M:
+      d_option.deps = true;
+      break;
+
+    case OPT_MMD:
+    case OPT_fmake_mdeps_:
+      d_option.deps_skip_system = true;
+      /* fall through */
+
+    case OPT_MD:
+    case OPT_fmake_deps_:
+      d_option.deps = true;
+      d_option.deps_filename = arg;
+      break;
+
+    case OPT_MF:
+      /* If specified multiple times, last one wins.  */
+      d_option.deps_filename_user = arg;
+      break;
+
+    case OPT_MP:
+      d_option.deps_phony = true;
+      break;
+
+    case OPT_MQ:
+      deps_add_target (arg, true);
+      break;
+
+    case OPT_MT:
+      deps_add_target (arg, false);
+      break;
+
     case OPT_nostdinc:
-      std_inc = false;
+      d_option.stdinc = false;
       break;
 
     case OPT_v:
@@ -587,19 +786,22 @@ d_handle_option (size_t scode, const char *arg, int value,
 	global.params.warnings = 1;
       break;
 
-    case OPT_fmax_error_messages_:
-      {
-	int limit = integral_argument(arg);
-	if (limit == -1)
-	  error ("bad argument for -fmax-error-messages '%s'", arg);
-	else
-	  global.errorLimit = limit;
-	break;
-      }
+    case OPT_Xf:
+      global.params.jsonfilename = arg;
+      /* fall through */
+
+    case OPT_X:
+      global.params.doJsonGeneration = true;
+      break;
 
     default:
       break;
     }
+
+  D_handle_option_auto (&global_options, &global_options_set,
+			scode, arg, value,
+			d_option_lang_mask (), kind,
+			loc, handlers, global_dc);
 
   return result;
 }
@@ -632,11 +834,29 @@ d_post_options (const char ** fn)
       flag_bounds_check = !global.params.release;
     }
 
+  if (global.params.release)
+    {
+      if (!global_options_set.x_flag_invariants)
+	global.params.useInvariants = false;
+
+      if (!global_options_set.x_flag_preconditions)
+	global.params.useIn = false;
+
+      if (!global_options_set.x_flag_postconditions)
+	global.params.useOut = false;
+
+      if (!global_options_set.x_flag_assert)
+	global.params.useAssert = false;
+
+      if (!global_options_set.x_flag_switch_errors)
+	global.params.useSwitchError = false;
+    }
+
   // Error about use of deprecated features.
   if (global.params.useDeprecated == 2 && global.params.warnings == 1)
     global.params.useDeprecated = 0;
 
-  // Make -fmax-errors visible to gdc's diagnostic machinery.
+  // Make -fmax-errors visible to frontend's diagnostic machinery.
   if (global_options_set.x_flag_max_errors)
     global.errorLimit = flag_max_errors;
 
@@ -648,6 +868,10 @@ d_post_options (const char ** fn)
 
   global.params.symdebug = write_symbols != NO_DEBUG;
   global.params.useInline = flag_inline_functions;
+
+  if (global.params.useInline)
+    global.params.hdrStripPlainFunctions = false;
+
   global.params.obj = !flag_syntax_only;
   // Has no effect yet.
   global.params.pic = flag_pic != 0;
@@ -796,87 +1020,13 @@ genCmain (Scope *sc)
   Module *m = Module::load (Loc(), NULL, Id::entrypoint);
   m->importedFrom = m;
   m->importAll (NULL);
-  m->semantic();
-  m->semantic2();
-  m->semantic3();
+  m->semantic(NULL);
+  m->semantic2(NULL);
+  m->semantic3(NULL);
 
   // We are emitting this straight to object file.
   entrypoint = m;
   rootmodule = sc->module;
-}
-
-static bool
-is_system_module(Module *m)
-{
-  // Don't emit system modules. This includes core.*, std.*, gcc.* and object.
-  ModuleDeclaration *md = m->md;
-
-  if(!md)
-    return false;
-
-  if (md->packages)
-    {
-      if (strcmp ((*md->packages)[0]->string, "core") == 0)
-        return true;
-      if (strcmp ((*md->packages)[0]->string, "std") == 0)
-        return true;
-      if (strcmp ((*md->packages)[0]->string, "gcc") == 0)
-        return true;
-    }
-  else if (md->id && md->packages == NULL)
-    {
-      if (strcmp (md->id->string, "object") == 0)
-        return true;
-      if (strcmp (md->id->string, "__entrypoint") == 0)
-        return true;
-    }
-
-  return false;
-}
-
-static void
-write_one_dep(char const* fn, OutBuffer* ob)
-{
-  ob->writestring ("  ");
-  ob->writestring (fn);
-  ob->writestring ("\\\n");
-}
-
-static void
-deps_write (Module *m)
-{
-  OutBuffer *ob = global.params.makeDeps;
-
-  // Write out object name.
-  FileName *fn = m->objfile->name;
-  ob->writestring (fn->str);
-  ob->writestring (":");
-
-  StringTable dependencies;
-  dependencies._init();
-
-  Modules to_explore;
-  to_explore.push(m);
-  while (to_explore.dim)
-  {
-    Module* depmod = to_explore.pop();
-
-    if (global.params.makeDepsStyle == 2)
-      if (is_system_module(depmod))
-        continue;
-
-    const char* str = depmod->srcfile->name->str;
-
-    if (!dependencies.insert(str, strlen(str)))
-      continue;
-
-    for (size_t i = 0; i < depmod->aimports.dim; i++)
-      to_explore.push(depmod->aimports[i]);
-
-    write_one_dep(str, ob);
-  }
-
-  ob->writenl();
 }
 
 // Write out globals.
@@ -921,7 +1071,7 @@ d_parse_file()
 
   // In this mode, the first file name is supposed to be a duplicate
   // of one of the input files.
-  if (fonly_arg && strcmp(fonly_arg, in_fnames[0]))
+  if (d_option.fonly && strcmp(d_option.fonly, in_fnames[0]))
     error("-fonly= argument is different from first input file name");
 
   for (size_t i = 0; i < num_in_fnames; i++)
@@ -1019,7 +1169,7 @@ d_parse_file()
       for (size_t i = 0; i < modules.dim; i++)
 	{
 	  Module *m = modules[i];
-	  if (fonly_arg && m != Module::rootModule)
+	  if (d_option.fonly && m != Module::rootModule)
 	    continue;
 
 	  if (global.params.verbose)
@@ -1054,11 +1204,8 @@ d_parse_file()
       if (global.params.verbose)
 	fprintf(global.stdmsg, "semantic  %s\n", m->toChars());
 
-      m->semantic();
+      m->semantic(NULL);
     }
-
-  if (global.errors)
-    goto had_errors;
 
   // Do deferred semantic analysis
   Module::dprogress = 1;
@@ -1071,7 +1218,6 @@ d_parse_file()
 	  Dsymbol *sd = Module::deferred[i];
 	  sd->error("unable to resolve forward reference in definition");
 	}
-      goto had_errors;
     }
 
   // Process all built-in modules or functions now for CTFE.
@@ -1089,8 +1235,10 @@ d_parse_file()
       if (global.params.verbose)
 	fprintf(global.stdmsg, "semantic2 %s\n", m->toChars());
 
-      m->semantic2();
+      m->semantic2(NULL);
     }
+
+  Module::runDeferredSemantic2();
 
   if (global.errors)
     goto had_errors;
@@ -1103,7 +1251,7 @@ d_parse_file()
       if (global.params.verbose)
 	fprintf(global.stdmsg, "semantic3 %s\n", m->toChars());
 
-      m->semantic3();
+      m->semantic3(NULL);
     }
 
   Module::runDeferredSemantic3();
@@ -1119,78 +1267,67 @@ d_parse_file()
   if (global.errors || global.warnings)
     goto had_errors;
 
+  /* Generate output files.  */
+
+  /* Module dependencies (imports, file, version, debug, lib).  */
   if (global.params.moduleDeps)
     {
-      OutBuffer *ob = global.params.moduleDeps;
+      OutBuffer *buf = global.params.moduleDeps;
 
       if (global.params.moduleDepsFile)
 	{
-	  File deps(global.params.moduleDepsFile);
-	  deps.setbuffer((void *) ob->data, ob->offset);
-	  deps.ref = 1;
-	  writeFile(Loc(), &deps);
+	  File fdeps(global.params.moduleDepsFile);
+	  fdeps.setbuffer((void *) buf->data, buf->offset);
+	  fdeps.ref = 1;
+	  writeFile(Loc(), &fdeps);
 	}
       else
-	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
+	fprintf(global.stdmsg, "%.*s", (int) buf->offset, (char *) buf->data);
     }
 
-  if (global.params.makeDeps)
+  /* Make dependencies.  */
+  if (d_option.deps)
     {
-      for (size_t i = 0; i < modules.dim; i++)
-	{
-	  Module *m = modules[i];
-	  deps_write(m);
-	}
+      OutBuffer buf;
 
-      OutBuffer *ob = global.params.makeDeps;
-      if (global.params.makeDepsFile)
+      for (size_t i = 0; i < modules.dim; i++)
+	deps_write (modules[i], &buf);
+
+      /* -MF <arg> overrides -M[M]D.  */
+      if (d_option.deps_filename_user)
+	d_option.deps_filename = d_option.deps_filename_user;
+
+      if (d_option.deps_filename)
 	{
-	  File deps(global.params.makeDepsFile);
-	  deps.setbuffer((void *) ob->data, ob->offset);
-	  deps.ref = 1;
-	  writeFile(Loc(), &deps);
+	  File fdeps (d_option.deps_filename);
+	  fdeps.setbuffer ((void *) buf.data, buf.offset);
+	  fdeps.ref = 1;
+	  writeFile (Loc (), &fdeps);
 	}
       else
-	fprintf(global.stdmsg, "%.*s", (int) ob->offset, (char *) ob->data);
+	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
     }
 
-  // Generate output files
+  /* Generate JSON files.  */
   if (global.params.doJsonGeneration)
     {
       OutBuffer buf;
       json_generate(&buf, &modules);
 
-      // Write buf to file
       const char *name = global.params.jsonfilename;
 
-      if (name && name[0] == '-' && name[1] == 0)
+      if (name && (name[0] != '-' || name[1] != '\0'))
 	{
-	  size_t n = fwrite(buf.data, 1, buf.offset, global.stdmsg);
-	  gcc_assert(n == buf.offset);
+	  File fjson (FileName::defaultExt (name, global.json_ext));
+	  fjson.setbuffer ((void *) buf.data, buf.offset);
+	  fjson.ref = 1;
+	  writeFile(Loc(), &fjson);
 	}
       else
-	{
-	  const char *jsonfilename;
-	  File *jsonfile;
-
-	  if (name && *name)
-	    jsonfilename = FileName::defaultExt(name, global.json_ext);
-	  else
-	    {
-	      // Generate json file name from first obj name
-	      const char *n = (*global.params.objfiles)[0];
-	      n = FileName::name(n);
-	      jsonfilename = FileName::forceExt(n, global.json_ext);
-	    }
-
-	  ensurePathToNameExists(Loc(), jsonfilename);
-	  jsonfile = File::create (jsonfilename);
-	  jsonfile->setbuffer(buf.data, buf.offset);
-	  jsonfile->ref = 1;
-	  writeFile(Loc(), jsonfile);
-	}
+	fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
     }
 
+  /* Generate Ddoc files.  */
   if (global.params.doDocComments && !global.errors && !errorcount)
     {
       for (size_t i = 0; i < modules.dim; i++)
@@ -1203,7 +1340,7 @@ d_parse_file()
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
-      if (fonly_arg && m != Module::rootModule)
+      if (d_option.fonly && m != Module::rootModule)
 	continue;
 
       if (global.params.verbose)
@@ -1399,10 +1536,6 @@ d_pushdecl (tree decl)
       else
 	DECL_CONTEXT (decl) = get_global_context ();
     }
-
-  /* If template is not needed, don't send it to backend.  */
-  if (D_DECL_IS_TEMPLATE (decl) && !flag_emit_templates)
-    return decl;
 
   /* Put decls on list in reverse order.  */
   if (TREE_STATIC (decl) || d_global_bindings_p ())

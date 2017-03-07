@@ -2710,11 +2710,11 @@ void test12524(inout(int))
 /************************************/
 // 6941
 
-static assert((const(shared(int[])[])).stringof == "const(shared(int[])[])");	// fail
+static assert((const(shared(int[])[])).stringof == "const(shared(int[])[])");   // fail
 static assert((const(shared(int[])[])).stringof != "const(shared(const(int[]))[])"); // fail
 
-static assert((inout(shared(int[])[])).stringof == "inout(shared(int[])[])");	// fail
-static assert((inout(shared(int[])[])).stringof != "inout(shared(inout(int[]))[])");	// fail
+static assert((inout(shared(int[])[])).stringof == "inout(shared(int[])[])");   // fail
+static assert((inout(shared(int[])[])).stringof != "inout(shared(inout(int[]))[])");    // fail
 
 /************************************/
 // 6872

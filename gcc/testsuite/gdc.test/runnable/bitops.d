@@ -6,7 +6,7 @@ import core.bitop;
 /*****************************************************/
 
 void test1()
-{   
+{
     size_t array[2];
     uint x;
 version (D_LP64)
@@ -47,12 +47,12 @@ else
     printf("array = [0]:x%x, [1]:x%x\n", array[0], array[1]);
     assert(x != 0);
     assert(array[0] == 2 && array[1] == 0x100);
-} 
+}
 
 /*****************************************************/
 
 void test2()
-{   
+{
     uint v;
     int x;
 
@@ -64,7 +64,7 @@ void test2()
     x = bsr(v);
     printf("bsr(x%x) = %d\n", v, x);
     assert(x == 5);
-} 
+}
 
 /*****************************************************/
 
@@ -92,9 +92,9 @@ void test4()
 }
 
 /*****************************************************/
-	
+
 void test5()
-{   
+{
     size_t array[2];
 
     array[0] = 2;
@@ -114,7 +114,7 @@ void test5()
 
     printf("bt(array, 1) = %d\n", bt(array.ptr, 1));
     printf("array = [0]:x%x, [1]:x%x\n", array[0], array[1]);
-} 
+}
 
 
 /*****************************************************/
@@ -135,7 +135,7 @@ void test6()
 /*****************************************************/
 
 int main()
-{   
+{
     test1();
     test2();
     //test3();

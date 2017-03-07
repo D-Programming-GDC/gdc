@@ -189,7 +189,7 @@ Port::strtold(const char *buffer, char **)
 unsigned
 Port::readwordLE(void *buffer)
 {
-  unsigned char *p = (unsigned char*)buffer;
+  unsigned char *p = (unsigned char*) buffer;
 
   return ((unsigned) p[1] << 8) | (unsigned) p[0];
 }
@@ -199,7 +199,7 @@ Port::readwordLE(void *buffer)
 unsigned
 Port::readwordBE(void *buffer)
 {
-  unsigned char *p = (unsigned char*)buffer;
+  unsigned char *p = (unsigned char*) buffer;
 
   return ((unsigned) p[0] << 8) | (unsigned) p[1];
 }
@@ -209,7 +209,7 @@ Port::readwordBE(void *buffer)
 unsigned
 Port::readlongLE(void *buffer)
 {
-  unsigned char *p = (unsigned char*)buffer;
+  unsigned char *p = (unsigned char*) buffer;
 
   return (((unsigned) p[3] << 24)
           | ((unsigned) p[2] << 16)
@@ -222,7 +222,7 @@ Port::readlongLE(void *buffer)
 unsigned
 Port::readlongBE(void *buffer)
 {
-  unsigned char *p = (unsigned char*)buffer;
+  unsigned char *p = (unsigned char*) buffer;
 
   return (((unsigned) p[0] << 24)
           | ((unsigned) p[1] << 16)
@@ -230,3 +230,28 @@ Port::readlongBE(void *buffer)
           | (unsigned) p[3]);
 }
 
+void
+Port::valcpy(void *dst, uint64_t val, size_t size)
+{
+  switch (size)
+    {
+    case 1:
+      *(uint8_t *) dst = (uint8_t) val;
+      break;
+
+    case 2:
+      *(uint16_t *) dst = (uint16_t) val;
+      break;
+
+    case 4:
+      *(uint32_t *) dst = (uint32_t) val;
+      break;
+
+    case 8:
+      *(uint64_t *) dst = (uint64_t) val;
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+}
