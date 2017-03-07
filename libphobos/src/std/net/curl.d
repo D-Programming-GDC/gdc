@@ -165,12 +165,12 @@ import std.conv;
 import std.datetime;
 import std.encoding;
 import std.exception;
+import std.meta;
 import std.regex;
 import std.socket : InternetAddress;
 import std.string;
 import std.traits;
 import std.typecons;
-import std.typetuple;
 
 import std.internal.cstring;
 
@@ -183,7 +183,7 @@ version(unittest)
     import std.stdio;
     import std.range;
     import std.process : environment;
-    import std.file : tempDir;
+    import std.file : deleteme;
     import std.path : buildPath;
 
     import std.socket : Address, INADDR_LOOPBACK, Socket, TcpSocket;
@@ -419,13 +419,14 @@ void download(Conn = AutoProtocol)(const(char)[] url, string saveToPath, Conn co
 
 unittest
 {
+    static import std.file;
     foreach (host; [testServer.addr, "http://"~testServer.addr])
     {
         testServer.handle((s) {
             assert(s.recvReq.hdrs.canFind("GET /"));
             s.send(httpOK("Hello world"));
         });
-        auto fn = buildPath(tempDir(), "downloaded-http-file");
+        auto fn = std.file.deleteme;
         scope (exit) std.file.remove(fn);
         download(host, fn);
         assert(std.file.readText(fn) == "Hello world");
@@ -470,6 +471,7 @@ void upload(Conn = AutoProtocol)(string loadFromPath, const(char)[] url, Conn co
 
     static if (is(Conn : HTTP) || is(Conn : FTP))
     {
+        import std.stdio : File;
         auto f = File(loadFromPath, "rb");
         conn.onSend = buf => f.rawRead(buf).length;
         auto sz = f.size;
@@ -481,9 +483,10 @@ void upload(Conn = AutoProtocol)(string loadFromPath, const(char)[] url, Conn co
 
 unittest
 {
+    static import std.file;
     foreach (host; [testServer.addr, "http://"~testServer.addr])
     {
-        auto fn = buildPath(tempDir(), "downloaded-http-file");
+        auto fn = std.file.deleteme;
         scope (exit) std.file.remove(fn);
         std.file.write(fn, "upload data\n");
         testServer.handle((s) {
@@ -781,6 +784,7 @@ T[] options(T = char)(const(char)[] url, HTTP conn = HTTP())
     return _basicHTTP!(T)(url, null, conn);
 }
 
+// Explicitly undocumented. It will be removed in February 2017. @@@DEPRECATED_2017-02@@@
 deprecated("options does not send any data")
 T[] options(T = char, OptionsUnit)(const(char)[] url,
                                    const(OptionsUnit)[] optionsData = null,
@@ -954,7 +958,8 @@ private auto _basicHTTP(T)(const(char)[] url, const(void)[] sendData, HTTP clien
     }
     client.url = url;
     HTTP.StatusLine statusLine;
-    ubyte[] content;
+    import std.array : appender;
+    auto content = appender!(ubyte[])();
     string[string] headers;
     client.onReceive = (ubyte[] data)
     {
@@ -992,6 +997,10 @@ private auto _basicHTTP(T)(const(char)[] url, const(void)[] sendData, HTTP clien
     client.onReceiveHeader = (in char[] key,
                               in char[] value)
     {
+        if (key == "content-length") {
+            import std.conv : to;
+            content.reserve(value.to!size_t);
+        }
         if (auto v = key in headers)
         {
             *v ~= ", ";
@@ -1017,7 +1026,7 @@ private auto _basicHTTP(T)(const(char)[] url, const(void)[] sendData, HTTP clien
         }
     }
 
-    return _decodeContent!T(content, charset);
+    return _decodeContent!T(content.data, charset);
 }
 
 unittest
@@ -3063,7 +3072,7 @@ struct HTTP
         }
     }
 
-    /** <a name="HTTP.Method"/ >The standard HTTP methods :
+    /** <a name="HTTP.Method"/>The standard HTTP methods :
      *  $(WEB www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.1, _RFC2616 Section 5.1.1)
      */
     enum Method
@@ -3885,12 +3894,12 @@ private struct CurlAPI
             enforce!CurlException(handle !is null, "Failed to load curl, tried %(%s, %).".format(names));
         }
 
-        foreach (mem; __traits(allMembers, API))
+        foreach (i, FP; typeof(API.tupleof))
         {
-            void* p = loadSym(handle, "curl_"~mem);
-
-            __traits(getMember, _api, mem) = cast(typeof(__traits(getMember, _api, mem)))
-                enforce!CurlException(p, "Couldn't load curl_"~mem~" from libcurl.");
+            enum name = __traits(identifier, _api.tupleof[i]);
+            auto p = enforce!CurlException(loadSym(handle, "curl_"~name),
+                                           "Couldn't load curl_"~name~" from libcurl.");
+            _api.tupleof[i] = cast(FP) p;
         }
 
         enforce!CurlException(!_api.global_init(CurlGlobal.all),
@@ -3938,7 +3947,7 @@ struct Curl
     alias InData = ubyte[];
     bool stopped;
 
-    private static auto ref curl() @property { return CurlAPI.instance(); }
+    private static auto ref curl() @property { return CurlAPI.instance; }
 
     // A handle should not be used by two threads simultaneously
     private CURL* handle;
@@ -3982,7 +3991,7 @@ struct Curl
         copy.stopped = false;
 
         with (CurlOption) {
-            auto tt = TypeTuple!(file, writefunction, writeheader,
+            auto tt = AliasSeq!(file, writefunction, writeheader,
                 headerfunction, infile, readfunction, ioctldata, ioctlfunction,
                 seekdata, seekfunction, sockoptdata, sockoptfunction,
                 opensocketdata, opensocketfunction, progressdata,
@@ -4040,7 +4049,7 @@ struct Curl
 
         auto msgZ = curl.easy_strerror(code);
         // doing the following (instead of just using std.conv.to!string) avoids 1 allocation
-        return format("%s on handle %s", msgZ[0 .. core.stdc.string.strlen(msgZ)], handle);
+        return format("%s on handle %s", msgZ[0 .. strlen(msgZ)], handle);
     }
 
     private void throwOnStopped(string message = null)
@@ -4148,13 +4157,6 @@ struct Curl
         if (throwOnError)
             _check(code);
         return code;
-    }
-
-    // Explicitly undocumented. It will be removed in November 2015.
-    deprecated("Pass ThrowOnError.yes or .no instead of a boolean.")
-    CurlCode perform(bool throwOnError)
-    {
-        return perform(cast(ThrowOnError)throwOnError);
     }
 
     /**

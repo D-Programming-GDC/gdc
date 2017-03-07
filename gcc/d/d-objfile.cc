@@ -183,10 +183,11 @@ PragmaDeclaration::toObjFile()
 {
   if (!global.params.ignoreUnsupportedPragmas)
     {
-      if (ident == Id::lib)
-	warning (loc, "pragma(lib) not implemented");
-       else if (ident == Id::startaddress)
-	 warning (loc, "pragma(startaddress) not implemented");
+      if (ident == Id::lib || ident == Id::startaddress)
+	{
+	  warning_at (get_linemap (this->loc), OPT_Wunknown_pragmas,
+		      "pragma(%s) not implemented", ident->toChars ());
+	}
     }
 
   AttribDeclaration::toObjFile();
@@ -1899,6 +1900,7 @@ emit_dso_registry_hooks(tree sym, Dsymbol *compiler_dso_type, Dsymbol *dso_regis
   set_decl_location(decl, current_module_decl);
   TREE_PUBLIC (decl) = 1;
   TREE_STATIC (decl) = 1;
+  DECL_PRESERVE_P (decl) = 1;
   DECL_INITIAL (decl) = build_address(sym);
   TREE_STATIC (DECL_INITIAL (decl)) = 1;
 

@@ -649,7 +649,7 @@ CLUSTER = $(S_LINK Grapheme cluster, grapheme cluster)
 module std.uni;
 
 import core.stdc.stdlib;
-import std.traits, std.typetuple;
+import std.meta, std.traits;
 import std.range.primitives;
 
 
@@ -658,6 +658,34 @@ import std.range.primitives;
 debug(std_uni) import std.stdio;
 
 private:
+
+version (unittest)
+{
+private:
+    struct TestAliasedString
+    {
+        string get() @safe @nogc pure nothrow { return _s; }
+        alias get this;
+        @disable this(this);
+        string _s;
+    }
+
+    bool testAliasedString(alias func, Args...)(string s, Args args)
+    {
+        import std.algorithm.comparison : equal;
+        auto a = func(TestAliasedString(s), args);
+        auto b = func(s, args);
+        static if (is(typeof(equal(a, b))))
+        {
+            // For ranges, compare contents instead of object identity.
+            return equal(a, b);
+        }
+        else
+        {
+            return a == b;
+        }
+    }
+}
 
 version(std_uni_bootstrap){}
 else
@@ -796,7 +824,7 @@ size_t replicateBits(size_t times, size_t bits)(size_t val) @safe pure nothrow @
     import std.range : iota;
     size_t m = 0b111;
     size_t m2 = 0b01;
-    foreach(i; TypeTuple!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+    foreach(i; AliasSeq!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
     {
         assert(replicateBits!(i, 3)(m)+1 == (1<<(3*i)));
         assert(replicateBits!(i, 2)(m2) == iota(0, i).map!"2^^(2*a)"().sum());
@@ -3330,7 +3358,7 @@ private:
         assert(u24 != u24_2);
     }
 
-    foreach(Policy; TypeTuple!(GcPolicy, ReallocPolicy))
+    foreach(Policy; AliasSeq!(GcPolicy, ReallocPolicy))
     {
         alias Range = typeof(CowArray!Policy.init[]);
         alias U24A = CowArray!Policy;
@@ -3368,7 +3396,7 @@ private:
 
 version(unittest)
 {
-    private alias AllSets = TypeTuple!(InversionList!GcPolicy, InversionList!ReallocPolicy);
+    private alias AllSets = AliasSeq!(InversionList!GcPolicy, InversionList!ReallocPolicy);
 }
 
 @safe unittest// core set primitives test
@@ -3607,7 +3635,7 @@ version(unittest)
 {
     import std.conv;
     import std.typecons;
-    foreach(CodeList; TypeTuple!(InversionList!(ReallocPolicy)))
+    foreach(CodeList; AliasSeq!(InversionList!(ReallocPolicy)))
     {
         auto arr = "ABCDEFGHIJKLMabcdefghijklm"d;
         auto a = CodeList('A','N','a', 'n');
@@ -4069,10 +4097,10 @@ template GetBitSlicing(size_t top, sizes...)
 {
     static if(sizes.length > 0)
         alias GetBitSlicing =
-            TypeTuple!(sliceBits!(top - sizes[0], top),
-                       GetBitSlicing!(top - sizes[0], sizes[1..$]));
+            AliasSeq!(sliceBits!(top - sizes[0], top),
+                      GetBitSlicing!(top - sizes[0], sizes[1..$]));
     else
-        alias GetBitSlicing = TypeTuple!();
+        alias GetBitSlicing = AliasSeq!();
 }
 
 template callableWith(T)
@@ -4313,9 +4341,9 @@ public template buildTrie(Value, Key, Args...)
     {
         static if(n > 0)
             alias GetComparators =
-                TypeTuple!(GetComparators!(n-1), cmpK0!(Prefix[n-1]));
+                AliasSeq!(GetComparators!(n-1), cmpK0!(Prefix[n-1]));
         else
-            alias GetComparators = TypeTuple!();
+            alias GetComparators = AliasSeq!();
     }
 
     /*
@@ -4590,22 +4618,22 @@ template Utf8Matcher()
     }
 
     //for 1-stage ASCII
-    alias AsciiSpec = TypeTuple!(bool, char, clamp!7);
+    alias AsciiSpec = AliasSeq!(bool, char, clamp!7);
     //for 2-stage lookup of 2 byte UTF-8 sequences
-    alias Utf8Spec2 = TypeTuple!(bool, char[2],
+    alias Utf8Spec2 = AliasSeq!(bool, char[2],
         clampIdx!(0, 5), clampIdx!(1, 6));
     //ditto for 3 byte
-    alias Utf8Spec3 = TypeTuple!(bool, char[3],
+    alias Utf8Spec3 = AliasSeq!(bool, char[3],
         clampIdx!(0, 4),
         clampIdx!(1, 6),
         clampIdx!(2, 6)
     );
     //ditto for 4 byte
-    alias Utf8Spec4 = TypeTuple!(bool, char[4],
+    alias Utf8Spec4 = AliasSeq!(bool, char[4],
         clampIdx!(0, 3), clampIdx!(1, 6),
         clampIdx!(2, 6), clampIdx!(3, 6)
     );
-    alias Tables = TypeTuple!(
+    alias Tables = AliasSeq!(
         typeof(TrieBuilder!(AsciiSpec)(false).build()),
         typeof(TrieBuilder!(Utf8Spec2)(false).build()),
         typeof(TrieBuilder!(Utf8Spec3)(false).build()),
@@ -4869,15 +4897,14 @@ template Utf16Matcher()
         throw new UTFException("Invalid UTF-16 sequence");
     }
 
-    alias Seq = TypeTuple;
     // 1-stage ASCII
-    alias AsciiSpec = Seq!(bool, wchar, clamp!7);
+    alias AsciiSpec = AliasSeq!(bool, wchar, clamp!7);
     //2-stage BMP
-    alias BmpSpec = Seq!(bool, wchar, sliceBits!(7, 16), sliceBits!(0, 7));
+    alias BmpSpec = AliasSeq!(bool, wchar, sliceBits!(7, 16), sliceBits!(0, 7));
     //4-stage - full Unicode
     //assume that 0xD800 & 0xDC00 bits are cleared
     //thus leaving 10 bit per wchar to worry about
-    alias UniSpec = Seq!(bool, wchar[2],
+    alias UniSpec = AliasSeq!(bool, wchar[2],
         assumeSize!(x=>x[0]>>4, 6), assumeSize!(x=>x[0]&0xf, 4),
         assumeSize!(x=>x[1]>>6, 4), assumeSize!(x=>x[1]&0x3f, 6),
     );
@@ -4891,7 +4918,7 @@ template Utf16Matcher()
         assert(ch <= 0xF_FFFF);
         wchar[2] ret;
         //do not put surrogate bits, they are sliced off
-        ret[0] = (ch>>10);
+        ret[0] = cast(wchar)(ch>>10);
         ret[1] = (ch & 0xFFF);
         return ret;
     }
@@ -5277,8 +5304,8 @@ package auto units(C)(C[] s) @safe pure nothrow @nogc
         import std.utf : encode;
         char[4] buf;
         wchar[2] buf16;
-        auto len = std.utf.encode(buf, ch);
-        auto len16 = std.utf.encode(buf16, ch);
+        auto len = encode(buf, ch);
+        auto len16 = encode(buf16, ch);
         auto c8 = buf[0..len].decoder;
         auto c16 = buf16[0..len16].decoder;
         assert(testAll(utf16, c16));
@@ -5304,7 +5331,7 @@ unittest
     auto utf16 = utfMatcher!wchar(unicode.L);
     auto utf8 = utfMatcher!char(unicode.L);
     //decode failure cases UTF-8
-    alias fails8 = TypeTuple!("\xC1", "\x80\x00","\xC0\x00", "\xCF\x79",
+    alias fails8 = AliasSeq!("\xC1", "\x80\x00","\xC0\x00", "\xCF\x79",
         "\xFF\x00\0x00\0x00\x00", "\xC0\0x80\0x80\x80", "\x80\0x00\0x00\x00",
         "\xCF\x00\0x00\0x00\x00");
     foreach(msg; fails8){
@@ -5317,7 +5344,7 @@ unittest
         }()), format("%( %2x %)", cast(ubyte[])msg));
     }
     //decode failure cases UTF-16
-    alias fails16 = TypeTuple!([0xD811], [0xDC02]);
+    alias fails16 = AliasSeq!([0xD811], [0xDC02]);
     foreach(msg; fails16){
         assert(collectException((){
             auto s = msg.map!(x => cast(wchar)x);
@@ -5499,9 +5526,9 @@ static assert(bitSizeOf!(BitPacked!(uint, 2)) == 2);
 template Sequence(size_t start, size_t end)
 {
     static if(start < end)
-        alias Sequence = TypeTuple!(start, Sequence!(start+1, end));
+        alias Sequence = AliasSeq!(start, Sequence!(start+1, end));
     else
-        alias Sequence = TypeTuple!();
+        alias Sequence = AliasSeq!();
 }
 
 //---- TRIE TESTS ----
@@ -5631,7 +5658,7 @@ template idxTypes(Key, size_t fullBits, Prefix...)
 {
     static if(Prefix.length == 1)
     {// the last level is value level, so no index once reduced to 1-level
-        alias idxTypes = TypeTuple!();
+        alias idxTypes = AliasSeq!();
     }
     else
     {
@@ -5641,7 +5668,7 @@ template idxTypes(Key, size_t fullBits, Prefix...)
         // thus it's size in pages is full_bit_width - size_of_last_prefix
         // Recourse on this notion
         alias idxTypes =
-            TypeTuple!(
+            AliasSeq!(
                 idxTypes!(Key, fullBits - bitSizeOf!(Prefix[$-1]), Prefix[0..$-1]),
                 BitPacked!(typeof(Prefix[$-2](Key.init)), fullBits - bitSizeOf!(Prefix[$-1]))
             );
@@ -6454,7 +6481,7 @@ unittest
     auto gReverse = reverse.byGrapheme;
     assert(gReverse.walkLength == 4);
 
-    foreach(text; TypeTuple!("noe\u0308l"c, "noe\u0308l"w, "noe\u0308l"d))
+    foreach(text; AliasSeq!("noe\u0308l"c, "noe\u0308l"w, "noe\u0308l"d))
     {
         assert(text.walkLength == 5);
         static assert(isForwardRange!(typeof(text)));
@@ -6678,7 +6705,8 @@ public:
             if(len_ + 1 > cap_)
             {
                 cap_ += grow;
-                ptr_ = cast(ubyte*)enforce(realloc(ptr_, 3*(cap_+1)));
+                ptr_ = cast(ubyte*)enforce(realloc(ptr_, 3*(cap_+1)),
+                    "realloc failed");
             }
             write24(ptr_, ch, len_++);
             return this;
@@ -6738,7 +6766,7 @@ public:
         if(isBig)
         {// dup it
             auto raw_cap = 3*(cap_+1);
-            auto p = cast(ubyte*)enforce(malloc(raw_cap));
+            auto p = cast(ubyte*)enforce(malloc(raw_cap), "malloc failed");
             p[0..raw_cap] = ptr_[0..raw_cap];
             ptr_ = p;
         }
@@ -6780,7 +6808,7 @@ private:
     void convertToBig()
     {
         size_t k = smallLength;
-        ubyte* p = cast(ubyte*)enforce(malloc(3*(grow+1)));
+        ubyte* p = cast(ubyte*)enforce(malloc(3*(grow+1)), "malloc failed");
         for(int i=0; i<k; i++)
             write24(p, read24(small_.ptr, i), i);
         // now we can overwrite small array data
@@ -6924,15 +6952,14 @@ int sicmp(S1, S2)(S1 str1, S2 str2)
     if(isForwardRange!S1 && is(Unqual!(ElementType!S1) == dchar)
     && isForwardRange!S2 && is(Unqual!(ElementType!S2) == dchar))
 {
-    import std.utf : decode;
-
     alias sTable = simpleCaseTable;
     size_t ridx=0;
     foreach(dchar lhs; str1)
     {
         if(ridx == str2.length)
             return 1;
-        dchar rhs = std.utf.decode(str2, ridx);
+        import std.utf : decode;
+        dchar rhs = decode(str2, ridx);
         int diff = lhs - rhs;
         if(!diff)
             continue;
@@ -7091,10 +7118,10 @@ unittest
     import std.algorithm;
     assertCTFEable!(
     {
-    foreach(cfunc; TypeTuple!(icmp, sicmp))
+    foreach(cfunc; AliasSeq!(icmp, sicmp))
     {
-        foreach(S1; TypeTuple!(string, wstring, dstring))
-        foreach(S2; TypeTuple!(string, wstring, dstring))
+        foreach(S1; AliasSeq!(string, wstring, dstring))
+        foreach(S2; AliasSeq!(string, wstring, dstring))
         (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
             assert(cfunc("".to!S1(), "".to!S2()) == 0);
             assert(cfunc("A".to!S1(), "".to!S2()) > 0);
@@ -7784,7 +7811,7 @@ private auto seekStable(NormalizationForm norm, C)(size_t idx, in C[] input)
         dchar ch = br.back;
         if(combiningClass(ch) == 0 && allowedIn!norm(ch))
         {
-            region_start = br.length - std.utf.codeLength!C(ch);
+            region_start = br.length - codeLength!C(ch);
             break;
         }
         br.popFront();
@@ -7962,33 +7989,6 @@ bool isUpper(dchar c)
 }
 
 
-/++
-    If $(D c) is a Unicode uppercase $(CHARACTER), then its lowercase equivalent
-    is returned. Otherwise $(D c) is returned.
-
-    Warning: certain alphabets like German and Greek have no 1:1
-    upper-lower mapping. Use overload of toLower which takes full string instead.
-+/
-@safe pure nothrow @nogc
-dchar toLower(dchar c)
-{
-     // optimize ASCII case
-    if(c < 0xAA)
-    {
-        if(c < 'A')
-            return c;
-        if(c <= 'Z')
-            return c + 32;
-        return c;
-    }
-    size_t idx = toLowerSimpleIndex(c);
-    if(idx != ushort.max)
-    {
-        return toLowerTab(idx);
-    }
-    return c;
-}
-
 //TODO: Hidden for now, needs better API.
 //Other transforms could use better API as well, but this one is a new primitive.
 @safe pure nothrow @nogc
@@ -8011,8 +8011,8 @@ private dchar toTitlecase(dchar c)
     return c;
 }
 
-private alias UpperTriple = TypeTuple!(toUpperIndex, MAX_SIMPLE_UPPER, toUpperTab);
-private alias LowerTriple = TypeTuple!(toLowerIndex, MAX_SIMPLE_LOWER, toLowerTab);
+private alias UpperTriple = AliasSeq!(toUpperIndex, MAX_SIMPLE_UPPER, toUpperTab);
+private alias LowerTriple = AliasSeq!(toLowerIndex, MAX_SIMPLE_LOWER, toLowerTab);
 
 // generic toUpper/toLower on whole string, creates new or returns as is
 private S toCase(alias indexFn, uint maxIdx, alias tableFn, S)(S s) @trusted pure
@@ -8113,7 +8113,7 @@ private auto toCaser(alias indexFn, uint maxIdx, alias tableFn, Range)(Range str
         void popFront()
         {
             if (!nLeft)
-                front();
+                front;
             assert(nLeft);
             --nLeft;
             if (!nLeft)
@@ -8157,7 +8157,8 @@ private auto toCaser(alias indexFn, uint maxIdx, alias tableFn, Range)(Range str
  */
 
 auto asLowerCase(Range)(Range str)
-    if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range))
+    if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range) &&
+        !isConvertibleToString!Range)
 {
     static if (ElementEncodingType!Range.sizeof < dchar.sizeof)
     {
@@ -8174,7 +8175,8 @@ auto asLowerCase(Range)(Range str)
 
 /// ditto
 auto asUpperCase(Range)(Range str)
-    if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range))
+    if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range) &&
+        !isConvertibleToString!Range)
 {
     static if (ElementEncodingType!Range.sizeof < dchar.sizeof)
     {
@@ -8195,6 +8197,24 @@ auto asUpperCase(Range)(Range str)
     import std.algorithm.comparison : equal;
 
     assert("hEllo".asUpperCase.equal("HELLO"));
+}
+
+auto asLowerCase(Range)(auto ref Range str)
+    if (isConvertibleToString!Range)
+{
+    return asLowerCase!(StringTypeOf!Range)(str);
+}
+
+auto asUpperCase(Range)(auto ref Range str)
+    if (isConvertibleToString!Range)
+{
+    return asUpperCase!(StringTypeOf!Range)(str);
+}
+
+unittest
+{
+    assert(testAliasedString!asLowerCase("hEllo"));
+    assert(testAliasedString!asUpperCase("hEllo"));
 }
 
 unittest
@@ -8294,7 +8314,7 @@ private auto toCapitalizer(alias indexFnUpper, uint maxIdxUpper, alias tableFnUp
             else
             {
                 if (!nLeft)
-                    front();
+                    front;
                 assert(nLeft);
                 --nLeft;
                 if (!nLeft)
@@ -8348,7 +8368,8 @@ private auto toCapitalizer(alias indexFnUpper, uint maxIdxUpper, alias tableFnUp
  */
 
 auto asCapitalized(Range)(Range str)
-    if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range))
+    if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range) &&
+        !isConvertibleToString!Range)
 {
     static if (ElementEncodingType!Range.sizeof < dchar.sizeof)
     {
@@ -8369,6 +8390,17 @@ auto asCapitalized(Range)(Range str)
     import std.algorithm.comparison : equal;
 
     assert("hEllo".asCapitalized.equal("Hello"));
+}
+
+auto asCapitalized(Range)(auto ref Range str)
+    if (isConvertibleToString!Range)
+{
+    return asCapitalized!(StringTypeOf!Range)(str);
+}
+
+unittest
+{
+    assert(testAliasedString!asCapitalized("hEllo"));
 }
 
 @safe pure nothrow @nogc unittest
@@ -8716,6 +8748,33 @@ void toUpperInPlace(C)(ref C[] s) @trusted pure
 }
 
 /++
+    If $(D c) is a Unicode uppercase $(CHARACTER), then its lowercase equivalent
+    is returned. Otherwise $(D c) is returned.
+
+    Warning: certain alphabets like German and Greek have no 1:1
+    upper-lower mapping. Use overload of toLower which takes full string instead.
++/
+@safe pure nothrow @nogc
+dchar toLower(dchar c)
+{
+     // optimize ASCII case
+    if(c < 0xAA)
+    {
+        if(c < 'A')
+            return c;
+        if(c <= 'Z')
+            return c + 32;
+        return c;
+    }
+    size_t idx = toLowerSimpleIndex(c);
+    if(idx != ushort.max)
+    {
+        return toLowerTab(idx);
+    }
+    return c;
+}
+
+/++
     Returns a string which is identical to $(D s) except that all of its
     characters are converted to lowercase (by preforming Unicode lowercase mapping).
     If none of $(D s) characters were affected, then $(D s) itself is returned.
@@ -8740,6 +8799,7 @@ S toLower(S)(S s) @trusted pure
 @trusted unittest //@@@BUG std.format is not @safe
 {
     import std.format : format;
+    static import std.ascii;
     foreach(ch; 0..0x80)
         assert(std.ascii.toLower(ch) == toLower(ch));
     assert(toLower('Я') == 'я');
@@ -8865,6 +8925,7 @@ unittest
 @trusted unittest
 {
     import std.format : format;
+    static import std.ascii;
     foreach(ch; 0..0x80)
         assert(std.ascii.toUpper(ch) == toUpper(ch));
     assert(toUpper('я') == 'Я');
@@ -8945,7 +9006,7 @@ unittest
         assert(upInp == trueUp,
             format(diff, cast(ubyte[])s, cast(ubyte[])upInp, cast(ubyte[])trueUp));
     }
-    foreach(S; TypeTuple!(dstring, wstring, string))
+    foreach(S; AliasSeq!(dstring, wstring, string))
     {
 
         S easy = "123";
@@ -8956,7 +9017,7 @@ unittest
         S[] lower = ["123", "abcфеж", "\u0131\u023f\u03c9", "i\u0307\u1Fe2"];
         S[] upper = ["123", "ABCФЕЖ", "I\u2c7e\u2126", "\u0130\u03A5\u0308\u0300"];
 
-        foreach(val; TypeTuple!(easy, good))
+        foreach(val; AliasSeq!(easy, good))
         {
             auto e = val.dup;
             auto g = e;

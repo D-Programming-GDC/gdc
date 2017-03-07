@@ -108,13 +108,24 @@ union sigval
 version( Solaris )
 {
     import core.sys.posix.unistd;
-    private int _sigrtmin() { return cast(int) sysconf(_SC_SIGRT_MIN); }
-    private int _sigrtmax() { return cast(int) sysconf(_SC_SIGRT_MAX); }
 
-    alias _sigrtmin SIGRTMIN;
-    alias _sigrtmax SIGRTMAX;
+    @property int SIGRTMIN() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = cast(int)sysconf(_SC_SIGRT_MIN);
+        }
+        return sig;
+    }
+
+    @property int SIGRTMAX() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = cast(int)sysconf(_SC_SIGRT_MAX);
+        }
+        return sig;
+    }
 }
-else version( Posix )
+else version( CRuntime_Glibc )
 {
     private extern (C) nothrow @nogc
     {
@@ -122,9 +133,28 @@ else version( Posix )
         int __libc_current_sigrtmax();
     }
 
-    alias __libc_current_sigrtmin SIGRTMIN;
-    alias __libc_current_sigrtmax SIGRTMAX;
+    @property int SIGRTMIN() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = __libc_current_sigrtmin();
+        }
+        return sig;
+    }
+
+    @property int SIGRTMAX() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = __libc_current_sigrtmax();
+        }
+        return sig;
+    }
 }
+else version (FreeBSD) {
+    // https://github.com/freebsd/freebsd/blob/e79c62ff68fc74d88cb6f479859f6fae9baa5101/sys/sys/signal.h#L117
+    enum SIGRTMIN = 65;
+    enum SIGRTMAX = 126;
+}
+// Note: it appears that FreeBSD (prior to 7) and OSX do not support realtime signals
 
 version( linux )
 {
@@ -2082,7 +2112,7 @@ int pthread_kill(pthread_t, int);
 int pthread_sigmask(int, in sigset_t*, sigset_t*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);
@@ -2102,7 +2132,7 @@ else version (Solaris)
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);

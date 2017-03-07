@@ -247,13 +247,16 @@ else version( FreeBSD )
 }
 else version (Solaris)
 {
+    enum CLOCK_PROCESS_CPUTIME_ID = 5; // <sys/time_impl.h>
+    enum CLOCK_THREAD_CPUTIME_ID  = 2; // <sys/time_impl.h>
+
     struct itimerspec
     {
         timespec it_interval;
         timespec it_value;
     }
 
-    enum CLOCK_REALTIME = 0; // <sys/time_impl.h>
+    enum CLOCK_REALTIME = 3; // <sys/time_impl.h>
     enum TIMER_ABSOLUTE = 0x1;
 
     alias int clockid_t;
@@ -314,7 +317,7 @@ tm*   gmtime_r(in time_t*, tm*);
 tm*   localtime_r(in time_t*, tm*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
@@ -342,7 +345,7 @@ else version (Solaris)
     tm* gmtime_r(in time_t*, tm*);
     tm* localtime_r(in time_t*, tm*);
 }
-else version (Android)
+else version (CRuntime_Bionic)
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);

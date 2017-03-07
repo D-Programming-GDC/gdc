@@ -51,7 +51,7 @@ private
     extern (C) void* thread_stackBottom();
 
     extern (C) string[] rt_args();
-    extern (C) CArgs rt_cArgs();
+    extern (C) CArgs rt_cArgs() @nogc;
 }
 
 
@@ -160,7 +160,7 @@ struct Runtime
      * }
      * ---
      */
-    static @property CArgs cArgs()
+    static @property CArgs cArgs() @nogc
     {
         return rt_cArgs();
     }
@@ -544,6 +544,11 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
     else version( Solaris )
         import core.sys.solaris.execinfo;
 
+    // avoid recursive GC calls in finalizer, trace handlers should be made @nogc instead
+    import core.memory : gc_inFinalizer;
+    if (gc_inFinalizer)
+        return null;
+
     //printf("runtime.defaultTraceHandler()\n");
     static if( __traits( compiles, new LibBacktrace(0) ) )
     {
@@ -634,7 +639,11 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                     enum FIRSTFRAME = 0;
                 }
 
-                version(linux)
+                version(linux) enum enableDwarf = true;
+                else version(FreeBSD) enum enableDwarf = true;
+                else enum enableDwarf = false;
+
+                static if (enableDwarf)
                 {
                     import core.internal.traits : externDFunc;
 

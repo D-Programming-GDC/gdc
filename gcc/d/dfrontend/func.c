@@ -640,12 +640,19 @@ void FuncDeclaration::semantic(Scope *sc)
 
     if ((storage_class & STCauto) && !f->isref && !inferRetType)
         error("storage class 'auto' has no effect if return type is not inferred");
-    /* Functions can only be 'scope' if they have a 'this' that is a pointer, not a ref
+    /* Functions can only be 'scope' if they have a 'this'
      */
-    if (f->isscope && !isNested() &&
-        !(ad && ad->isClassDeclaration()))
+    if (f->isscope && !isNested() && !ad)
     {
         error("functions cannot be scope");
+    }
+
+    if (f->isreturn && !needThis() && !isNested())
+    {
+        /* Non-static nested functions have a hidden 'this' pointer to which
+         * the 'return' applies
+         */
+        error("static member has no 'this' to which 'return' can apply");
     }
 
     if (isAbstract() && !isVirtual())
@@ -803,6 +810,23 @@ void FuncDeclaration::semantic(Scope *sc)
                     }
                 }
 
+                /* These quirky conditions mimic what VC++ appears to do
+                 */
+                if (global.params.mscoff && cd->cpp &&
+                    cd->baseClass && cd->baseClass->vtbl.dim)
+                {
+                    /* if overriding an interface function, then this is not
+                     * introducing and don't put it in the class vtbl[]
+                     */
+                    interfaceVirtual = overrideInterface();
+                    if (interfaceVirtual)
+                    {
+                        //printf("\tinterface function %s\n", toChars());
+                        cd->vtblFinal.push(this);
+                        goto Linterfaces;
+                    }
+                }
+
                 if (isFinalFunc())
                 {
                     // Don't check here, as it may override an interface function
@@ -812,25 +836,6 @@ void FuncDeclaration::semantic(Scope *sc)
                 }
                 else
                 {
-                    if (global.params.mscoff && cd->cpp)
-                    {
-                        /* if overriding an interface function, then this is not
-                         * introducing and don't put it in the class vtbl[]
-                         */
-                        for (size_t i = 0; i < cd->interfaces.length; i++)
-                        {
-                            BaseClass* b = cd->interfaces.ptr[i];
-                            int v = findVtblIndex((Dsymbols*)&b->sym->vtbl, (int)b->sym->vtbl.dim);
-                            if (v >= 0)
-                            {
-                                //printf("\tinterface function %s\n", toChars());
-                                cd->vtblFinal.push(this);
-                                interfaceVirtual = b;
-                                goto Linterfaces;
-                            }
-                        }
-                    }
-
                     //printf("\tintroducing function %s\n", toChars());
                     introducing = 1;
                     if (cd->cpp && Target::reverseCppOverloads)
@@ -1211,6 +1216,10 @@ Ldone:
 
         if (!isVirtual() || introducing)
             flags |= FUNCFLAGreturnInprocess;
+
+        // Initialize for inferring STCscope
+        if (global.params.vsafe)
+            flags |= FUNCFLAGinferScope;
     }
 
     Module::dprogress++;
@@ -1348,7 +1357,15 @@ void FuncDeclaration::semantic3(Scope *sc)
 
         // Establish function scope
         ScopeDsymbol *ss = new ScopeDsymbol();
-        ss->parent = sc->scopesym;
+        // find enclosing scope symbol, might skip symbol-less CTFE and/or FuncExp scopes
+        for (Scope *scx = sc; ; scx = scx->enclosing)
+        {
+            if (scx->scopesym)
+            {
+                ss->parent = scx->scopesym;
+                break;
+            }
+        }
         ss->loc = loc;
         ss->endlinnum = endloc.linnum;
         Scope *sc2 = sc->push(ss);
@@ -1481,7 +1498,9 @@ void FuncDeclaration::semantic3(Scope *sc)
                 stc |= STCparameter;
                 if (f->varargs == 2 && i + 1 == nparams)
                     stc |= STCvariadic;
-                stc |= fparam->storageClass & (STCin | STCout | STCref | STCreturn | STClazy | STCfinal | STC_TYPECTOR | STCnodtor);
+                if (flags & FUNCFLAGinferScope)
+                    stc |= STCmaybescope;
+                stc |= fparam->storageClass & (STCin | STCout | STCref | STCreturn | STCscope | STClazy | STCfinal | STC_TYPECTOR | STCnodtor);
                 v->storage_class = stc;
                 v->semantic(sc2);
                 if (!sc2->insert(v))
@@ -2036,8 +2055,12 @@ void FuncDeclaration::semantic3(Scope *sc)
 
                     if (v->needsScopeDtor())
                     {
-                        Statement *s = new ExpStatement(Loc(), v->edtor);
+                        // same with ExpStatement.scopeCode()
+                        Statement *s = new DtorExpStatement(Loc(), v->edtor, v);
+                        v->storage_class |= STCnodtor;
+
                         s = ::semantic(s, sc2);
+
                         unsigned int nothrowErrors = global.errors;
                         bool isnothrow = f->isnothrow & !(flags & FUNCFLAGnothrowInprocess);
                         int blockexit = s->blockExit(this, isnothrow);
@@ -2145,7 +2168,38 @@ void FuncDeclaration::semantic3(Scope *sc)
         f->isnogc = true;
     }
 
-    flags &= ~FUNCFLAGreturnInprocess;
+    if (flags & FUNCFLAGreturnInprocess)
+    {
+        flags &= ~FUNCFLAGreturnInprocess;
+        if (storage_class & STCreturn)
+        {
+            if (type == f)
+                f = (TypeFunction *)f->copy();
+            f->isreturn = true;
+        }
+    }
+
+    flags &= ~FUNCFLAGinferScope;
+
+    // Infer STCscope
+    if (parameters)
+    {
+        size_t nfparams = Parameter::dim(f->parameters);
+        assert(nfparams == parameters->dim);
+        for (size_t u = 0; u < parameters->dim; u++)
+        {
+            VarDeclaration *v = (*parameters)[u];
+            if (v->storage_class & STCmaybescope)
+            {
+                //printf("Inferring scope for %s\n", v->toChars());
+                Parameter *p = Parameter::getNth(f->parameters, u);
+                v->storage_class &= ~STCmaybescope;
+                v->storage_class |= STCscope;
+                p->storageClass |= STCscope;
+                assert(!(p->storageClass & STCmaybescope));
+            }
+        }
+    }
 
     // reset deco to apply inference result to mangled name
     if (f != type)
@@ -2155,6 +2209,8 @@ void FuncDeclaration::semantic3(Scope *sc)
     if (!f->deco && ident != Id::xopEquals && ident != Id::xopCmp)
     {
         sc = sc->push();
+        if (isCtorDeclaration()) // Bugzilla #15665
+            sc->flags |= SCOPEctor;
         sc->stc = 0;
         sc->linkage = linkage;  // Bugzilla 8496
         type = f->semantic(loc, sc);
@@ -2259,6 +2315,29 @@ bool FuncDeclaration::functionSemantic3()
     return !errors && !semantic3Errors;
 }
 
+/****************************************************
+ * Check that this function type is properly resolved.
+ * If not, report "forward reference error" and return true.
+ */
+bool FuncDeclaration::checkForwardRef(Loc loc)
+{
+    if (!functionSemantic())
+        return true;
+
+    /* No deco means the functionSemantic() call could not resolve
+     * forward referenes in the type of this function.
+     */
+    if (!type->deco)
+    {
+        bool inSemantic3 = (inferRetType && semanticRun >= PASSsemantic3);
+        ::error(loc, "forward reference to %s'%s'",
+            (inSemantic3 ? "inferred return type of function " : ""),
+            toChars());
+        return true;
+    }
+    return false;
+}
+
 VarDeclaration *FuncDeclaration::declareThis(Scope *sc, AggregateDeclaration *ad)
 {
     if (ad)
@@ -2279,8 +2358,14 @@ VarDeclaration *FuncDeclaration::declareThis(Scope *sc, AggregateDeclaration *ad
                 if (type->ty == Tfunction && ((TypeFunction *)type)->iswild & 2)
                     v->storage_class |= STCreturn;
             }
-            if (type->ty == Tfunction && ((TypeFunction *)type)->isreturn)
-                v->storage_class |= STCreturn;
+            if (type->ty == Tfunction)
+            {
+                TypeFunction *tf = (TypeFunction *)type;
+                if (tf->isreturn)
+                    v->storage_class |= STCreturn;
+                if (tf->isscope)
+                    v->storage_class |= STCscope;
+            }
 
             v->semantic(sc);
             if (!sc->insert(v))
@@ -2635,6 +2720,27 @@ int FuncDeclaration::findVtblIndex(Dsymbols *vtbl, int dim)
     return bestvi;
 }
 
+/*********************************
+ * If function a function in a base class,
+ * return that base class.
+ * Params:
+ *  cd = class that function is in
+ * Returns:
+ *  base class if overriding, NULL if not
+ */
+BaseClass *FuncDeclaration::overrideInterface()
+{
+    ClassDeclaration *cd = parent->isClassDeclaration();
+    for (size_t i = 0; i < cd->interfaces.length; i++)
+    {
+        BaseClass *b = cd->interfaces.ptr[i];
+        int v = findVtblIndex((Dsymbols *)&b->sym->vtbl, (int)b->sym->vtbl.dim);
+        if (v >= 0)
+            return b;
+    }
+    return NULL;
+}
+
 /****************************************************
  * Overload this FuncDeclaration with the new one f.
  * Return true if successful; i.e. no conflict.
@@ -2895,20 +3001,20 @@ static void MODMatchToBuffer(OutBuffer *buf, unsigned char lhsMod, unsigned char
  * There's four result types.
  *
  * 1. If the 'tthis' matches only one candidate, it's an "exact match".
- *    Returns the function and 't' is set to its type.
+ *    Returns the function and 'hasOverloads' is set to false.
  *      eg. If 'tthis" is mutable and there's only one mutable method.
  * 2. If there's two or more match candidates, but a candidate function will be
  *    a "better match".
- *    Returns NULL but 't' is set to the candidate type.
+ *    Returns the better match function but 'hasOverloads' is set to true.
  *      eg. If 'tthis' is mutable, and there's both mutable and const methods,
  *          the mutable method will be a better match.
  * 3. If there's two or more match candidates, but there's no better match,
- *    Returns NULL and 't' is set to NULL to represent "ambiguous match".
+ *    Returns NULL and 'hasOverloads' is set to true to represent "ambiguous match".
  *      eg. If 'tthis' is mutable, and there's two or more mutable methods.
  * 4. If there's no candidates, it's "no match" and returns NULL with error report.
  *      e.g. If 'tthis' is const but there's no const methods.
  */
-FuncDeclaration *FuncDeclaration::overloadModMatch(Loc loc, Type *tthis, Type *&t)
+FuncDeclaration *FuncDeclaration::overloadModMatch(Loc loc, Type *tthis, bool &hasOverloads)
 {
     //printf("FuncDeclaration::overloadModMatch('%s')\n", toChars());
     Match m;
@@ -2968,6 +3074,7 @@ FuncDeclaration *FuncDeclaration::overloadModMatch(Loc loc, Type *tthis, Type *&
 
         LlastIsBetter:
             //printf("\tlastbetter\n");
+            m->count++; // count up
             return 0;
 
         LfIsBetter:
@@ -2993,19 +3100,15 @@ FuncDeclaration *FuncDeclaration::overloadModMatch(Loc loc, Type *tthis, Type *&
 
     if (m.count == 1)       // exact match
     {
-        t = m.lastf->type;
+        hasOverloads = false;
     }
-    else if (m.count > 1)
+    else if (m.count > 1)   // better or ambiguous match
     {
-        if (!m.nextf)       // better match
-            t = m.lastf->type;
-        else                // ambiguous match
-            t = NULL;
-        m.lastf = NULL;
+        hasOverloads = true;
     }
     else                    // no match
     {
-        t = NULL;
+        hasOverloads = true;
         TypeFunction *tf = (TypeFunction *)this->type;
         assert(tthis);
         assert(!MODimplicitConv(tthis->mod, tf->mod));  // modifier mismatch
@@ -3247,10 +3350,7 @@ struct FuncCandidateWalker
  */
 
 FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
-        Objects *tiargs,
-        Type *tthis,
-        Expressions *fargs,
-        int flags)
+        Objects *tiargs, Type *tthis, Expressions *fargs, int flags)
 {
     if (!s)
         return NULL;                    // no match
@@ -3310,6 +3410,7 @@ FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
     }
 
     FuncDeclaration *fd = s->isFuncDeclaration();
+    OverDeclaration *od = s->isOverDeclaration();
     TemplateDeclaration *td = s->isTemplateDeclaration();
     if (td && td->funcroot)
         s = fd = td->funcroot;
@@ -3340,6 +3441,11 @@ FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
             tcw.numToDisplay = numOverloadsDisplay;
             overloadApply(td, &tcw, &TemplateCandidateWalker::fp);
         }
+        else if (od)
+        {
+            ::error(loc, "none of the overloads of '%s' are callable using argument types !(%s)%s",
+                od->ident->toChars(), tiargsBuf.peekString(), fargsBuf.peekString());
+        }
         else
         {
             assert(fd);
@@ -3352,7 +3458,7 @@ FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
                 MODMatchToBuffer(&thisBuf, tthis->mod, tf->mod);
                 MODMatchToBuffer(&funcBuf, tf->mod, tthis->mod);
                 if (hasOverloads)
-                    ::error(loc, "None of the overloads of '%s' are callable using a %sobject, candidates are:",
+                    ::error(loc, "none of the overloads of '%s' are callable using a %sobject, candidates are:",
                         fd->ident->toChars(), thisBuf.peekString());
                 else
                     ::error(loc, "%smethod %s is not callable using a %sobject",
@@ -3362,7 +3468,7 @@ FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
             {
                 //printf("tf = %s, args = %s\n", tf->deco, (*fargs)[0]->type->deco);
                 if (hasOverloads)
-                    ::error(loc, "None of the overloads of '%s' are callable using argument types %s, candidates are:",
+                    ::error(loc, "none of the overloads of '%s' are callable using argument types %s, candidates are:",
                             fd->ident->toChars(), fargsBuf.peekString());
                 else
                     fd->error(loc, "%s%s is not callable using argument types %s",
@@ -4116,45 +4222,41 @@ bool FuncDeclaration::checkNestedReference(Scope *sc, Loc loc)
     if (isNested())
     {
         // The function that this function is in
-        FuncDeclaration *fdv2 = p->isFuncDeclaration();
+        FuncDeclaration *fdv = p->isFuncDeclaration();
+        if (!fdv)
+            return false;
+        if (fdv == fdthis)
+            return false;
 
         //printf("this = %s in [%s]\n", this->toChars(), this->loc.toChars());
-        //printf("fdv2 = %s in [%s]\n", fdv2->toChars(), fdv2->loc.toChars());
+        //printf("fdv = %s in [%s]\n", fdv->toChars(), fdv->loc.toChars());
         //printf("fdthis = %s in [%s]\n", fdthis->toChars(), fdthis->loc.toChars());
 
-        if (fdv2 && fdv2 != fdthis)
+        // Add this function to the list of those which called us
+        if (fdthis != this)
         {
-            // Add this function to the list of those which called us
-            if (fdthis != this)
+            bool found = false;
+            for (size_t i = 0; i < siblingCallers.dim; ++i)
             {
-                bool found = false;
-                for (size_t i = 0; i < siblingCallers.dim; ++i)
-                {
-                    if (siblingCallers[i] == fdthis)
-                        found = true;
-                }
-                if (!found)
-                {
-                    //printf("\tadding sibling %s\n", fdthis->toPrettyChars());
-                    if (!sc->intypeof && !(sc->flags & SCOPEcompile))
-                        siblingCallers.push(fdthis);
-                }
+                if (siblingCallers[i] == fdthis)
+                    found = true;
+            }
+            if (!found)
+            {
+                //printf("\tadding sibling %s\n", fdthis->toPrettyChars());
+                if (!sc->intypeof && !(sc->flags & SCOPEcompile))
+                    siblingCallers.push(fdthis);
             }
         }
 
-        FuncDeclaration *fdv = p->isFuncDeclaration();
-        if (fdv && fdthis && fdv != fdthis)
-        {
-            int lv = fdthis->getLevel(loc, sc, fdv);
-            if (lv == -2)
-                return true;    // error
-            if (lv == -1)
-                return false;   // downlevel call
-            if (lv == 0)
-                return false;   // same level call
-
-            // Uplevel call
-        }
+        int lv = fdthis->getLevel(loc, sc, fdv);
+        if (lv == -2)
+            return true;    // error
+        if (lv == -1)
+            return false;   // downlevel call
+        if (lv == 0)
+            return false;   // same level call
+        // Uplevel call
     }
     return false;
 }
@@ -4671,21 +4773,42 @@ void CtorDeclaration::semantic(Scope *sc)
     /* See if it's the default constructor
      * But, template constructor should not become a default constructor.
      */
-    if (ad && tf->varargs == 0 && Parameter::dim(tf->parameters) == 0 &&
-        (!parent->isTemplateInstance() || parent->isTemplateMixin()))
+    if (ad && (!parent->isTemplateInstance() || parent->isTemplateMixin()))
     {
-        StructDeclaration *sd = ad->isStructDeclaration();
-        if (sd)
+        const size_t dim = Parameter::dim(tf->parameters);
+
+        if (StructDeclaration *sd = ad->isStructDeclaration())
         {
-            if (fbody || !(storage_class & STCdisable))
+            if (dim == 0 && tf->varargs == 0) // empty default ctor w/o any varargs
             {
-                error("default constructor for structs only allowed with @disable and no body");
-                storage_class |= STCdisable;
-                fbody = NULL;
+                if (fbody || !(storage_class & STCdisable) || dim)
+                {
+                    error("default constructor for structs only allowed "
+                        "with @disable, no body, and no parameters");
+                    storage_class |= STCdisable;
+                    fbody = NULL;
+                }
+                sd->noDefaultCtor = true;
             }
-            sd->noDefaultCtor = true;
+            else if (dim == 0 && tf->varargs) // allow varargs only ctor
+            {
+            }
+            else if (dim && Parameter::getNth(tf->parameters, 0)->defaultArg)
+            {
+                // if the first parameter has a default argument, then the rest does as well
+                if (storage_class & STCdisable)
+                {
+                    deprecation("@disable'd constructor cannot have default "
+                                "arguments for all parameters.");
+                    deprecationSupplemental(loc, "Use @disable this(); if you want to disable default initialization.");
+                }
+                else
+                    deprecation("all parameters have default arguments, "
+                                "but structs cannot have default constructors.");
+            }
+
         }
-        else
+        else if (dim == 0 && tf->varargs == 0)
         {
             ad->defaultCtor = this;
         }
@@ -5167,7 +5290,10 @@ void InvariantDeclaration::semantic(Scope *sc)
         errors = true;
         return;
     }
-    if (ident != Id::classInvariant && semanticRun < PASSsemantic)
+    if (ident != Id::classInvariant &&
+        semanticRun < PASSsemantic &&
+        !ad->isUnionDeclaration()           // users are on their own with union fields
+       )
         ad->invs.push(this);
     if (!type)
         type = new TypeFunction(NULL, Type::tvoid, false, LINKd, storage_class);

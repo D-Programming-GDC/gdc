@@ -85,10 +85,10 @@ import std.conv;
 import std.exception;
 import std.functional;
 import std.math;
+import std.meta;
 import std.range;
 import std.traits;
 import std.typecons;
-import std.typetuple;
 
 version(OSX)
 {
@@ -98,6 +98,11 @@ else version(FreeBSD)
 {
     version = useSysctlbyname;
 }
+else version(NetBSD)
+{
+    version = useSysctlbyname;
+}
+
 
 version(Windows)
 {
@@ -143,6 +148,10 @@ else version(useSysctlbyname)
             auto nameStr = "machdep.cpu.core_count\0".ptr;
         }
         else version(FreeBSD)
+        {
+            auto nameStr = "hw.ncpu\0".ptr;
+        }
+        else version(NetBSD)
         {
             auto nameStr = "hw.ncpu\0".ptr;
         }
@@ -236,7 +245,7 @@ private template isSafeTask(F)
         (functionAttributes!F & (FunctionAttribute.safe | FunctionAttribute.trusted)) != 0 &&
         (functionAttributes!F & FunctionAttribute.ref_) == 0 &&
         (isFunctionPointer!F || !hasUnsharedAliasing!F) &&
-        allSatisfy!(noUnsharedAliasing, ParameterTypeTuple!F);
+        allSatisfy!(noUnsharedAliasing, Parameters!F);
 }
 
 unittest
@@ -282,12 +291,6 @@ private template isSafeReturn(T)
 private template randAssignable(R)
 {
     enum randAssignable = isRandomAccessRange!R && hasAssignableElements!R;
-}
-
-// Work around syntactic ambiguity w.r.t. address of function return vals.
-private T* addressOf(T)(ref T val) pure nothrow
-{
-    return &val;
 }
 
 private enum TaskStatus : ubyte
@@ -438,6 +441,8 @@ struct Task(alias fun, Args...)
 
     private static void impl(void* myTask)
     {
+        import std.algorithm.internal : addressOf;
+
         Task* myCastedTask = cast(typeof(this)*) myTask;
         static if(is(ReturnType == void))
         {
@@ -771,7 +776,7 @@ $(D TaskPool) is provided by $(XREF parallelism, taskPool).
 
 Returns:  A pointer to the $(D Task).
 
-Examples:
+Example:
 ---
 // Read two files into memory at the same time.
 import std.file;
@@ -838,7 +843,7 @@ auto task(alias fun, Args...)(Args args)
 Creates a $(D Task) on the GC heap that calls a function pointer, delegate, or
 class/struct with overloaded opCall.
 
-Examples:
+Example:
 ---
 // Read two files in at the same time again,
 // but this time use a function pointer instead
@@ -1465,7 +1470,7 @@ public:
     $(D workUnitSize) should  be 1.  An overload that chooses a default work
     unit size is also available.
 
-    Examples:
+    Example:
     ---
     // Find the logarithm of every number from 1 to
     // 10_000_000 in parallel.
@@ -1789,7 +1794,7 @@ public:
         current call to $(D map) will be ignored and the size of the buffer
         will be the buffer size of $(D source).
 
-        Examples:
+        Example:
         ---
         // Pipeline reading a file, converting each line
         // to a number, taking the logarithms of the numbers,
@@ -2091,7 +2096,7 @@ public:
     $(D asyncBuf) is useful, for example, when performing expensive operations
     on the elements of ranges that represent data on a disk or network.
 
-    Examples:
+    Example:
     ---
     import std.conv, std.stdio;
 
@@ -2287,7 +2292,7 @@ public:
 
     nBuffers = The number of buffers to cycle through when calling $(D next).
 
-    Examples:
+    Example:
     ---
     // Fetch lines of a file in a background
     // thread while processing previously fetched
@@ -2326,9 +2331,9 @@ public:
     */
     auto asyncBuf(C1, C2)(C1 next, C2 empty, size_t initialBufSize = 0, size_t nBuffers = 100)
     if(is(typeof(C2.init()) : bool) &&
-        ParameterTypeTuple!C1.length == 1 &&
-        ParameterTypeTuple!C2.length == 0 &&
-        isArray!(ParameterTypeTuple!C1[0])
+        Parameters!C1.length == 1 &&
+        Parameters!C2.length == 0 &&
+        isArray!(Parameters!C1[0])
     ) {
         auto roundRobin = RoundRobinBuffer!(C1, C2)(next, empty, initialBufSize, nBuffers);
         return asyncBuf(roundRobin, nBuffers / 2);
@@ -2496,7 +2501,7 @@ public:
                 // since we're assuming functions are associative anyhow.
 
                 // This is so that loops can be unrolled automatically.
-                enum ilpTuple = TypeTuple!(0, 1, 2, 3, 4, 5);
+                enum ilpTuple = AliasSeq!(0, 1, 2, 3, 4, 5);
                 enum nILP = ilpTuple.length;
                 immutable subSize = (upperBound - lowerBound) / nILP;
 
@@ -2631,7 +2636,8 @@ public:
             // making a closure.
             static auto scopedAddress(D)(scope D del)
             {
-                return del;
+                auto tmp = del;
+                return tmp;
             }
 
             size_t curPos = 0;
@@ -2721,7 +2727,7 @@ public:
 
     This function is useful for maintaining worker-local resources.
 
-    Examples:
+    Example:
     ---
     // Execute a loop that computes the greatest common
     // divisor of every number from 0 through 999 with
@@ -2782,7 +2788,7 @@ public:
 
     2.  Recycling temporary buffers across iterations of a parallel foreach loop.
 
-    Examples:
+    Example:
     ---
     // Calculate pi as in our synopsis example, but
     // use an imperative instead of a functional style.
@@ -3370,10 +3376,12 @@ private void submitAndExecute(
 
     foreach(ref t; tasks)
     {
+        import core.stdc.string : memcpy;
+
         // This silly looking code is necessary to prevent d'tors from being
         // called on uninitialized objects.
         auto temp = scopedTask(doIt);
-        core.stdc.string.memcpy(&t, &temp, PTask.sizeof);
+        memcpy(&t, &temp, PTask.sizeof);
 
         // This has to be done to t after copying, not temp before copying.
         // Otherwise, temp's destructor will sit here and wait for the
@@ -3453,7 +3461,7 @@ int doSizeZeroCase(R, Delegate)(ref ParallelForeach!R p, Delegate dg)
         {
             foreach(ref ElementType!R elem; range)
             {
-                static if(ParameterTypeTuple!dg.length == 2)
+                static if(Parameters!dg.length == 2)
                 {
                     res = dg(index, elem);
                 }
@@ -3469,7 +3477,7 @@ int doSizeZeroCase(R, Delegate)(ref ParallelForeach!R p, Delegate dg)
         {
             foreach(ElementType!R elem; range)
             {
-                static if(ParameterTypeTuple!dg.length == 2)
+                static if(Parameters!dg.length == 2)
                 {
                     res = dg(index, elem);
                 }
@@ -3493,7 +3501,7 @@ private enum string parallelApplyMixinRandomAccess = q{
     }
 
     // Whether iteration is with or without an index variable.
-    enum withIndex = ParameterTypeTuple!(typeof(dg)).length == 2;
+    enum withIndex = Parameters!(typeof(dg)).length == 2;
 
     shared size_t workUnitIndex = size_t.max;  // Effectively -1:  chunkIndex + 1 == 0
     immutable len = range.length;
@@ -3548,7 +3556,7 @@ enum string parallelApplyMixinInputRange = q{
     }
 
     // Whether iteration is with or without an index variable.
-    enum withIndex = ParameterTypeTuple!(typeof(dg)).length == 2;
+    enum withIndex = Parameters!(typeof(dg)).length == 2;
 
     // This protects the range while copying it.
     auto rangeMutex = new Mutex();
@@ -3599,6 +3607,8 @@ enum string parallelApplyMixinInputRange = q{
             // Returns:  The previous value of nPopped.
             size_t makeTemp()
             {
+                import std.algorithm.internal : addressOf;
+
                 if(temp is null)
                 {
                     temp = uninitializedArray!Temp(workUnitSize);
@@ -3805,7 +3815,7 @@ private struct RoundRobinBuffer(C1, C2)
 {
     // No need for constraints because they're already checked for in asyncBuf.
 
-    alias Array = ParameterTypeTuple!(C1.init)[0];
+    alias Array = Parameters!(C1.init)[0];
     alias T = typeof(Array.init[0]);
 
     T[][] bufs;
@@ -4140,7 +4150,7 @@ unittest
     {
         import std.file : deleteme;
 
-        string temp_file = std.file.deleteme ~ "-tempDelMe.txt";
+        string temp_file = deleteme ~ "-tempDelMe.txt";
         auto file = File(temp_file, "wb");
         scope(exit)
         {

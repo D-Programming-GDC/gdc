@@ -30,7 +30,7 @@ public import std.container.util;
 private struct RangeT(A)
 {
     /* Workaround for Issue 13629 at https://issues.dlang.org/show_bug.cgi?id=13629
-       See also: http://forum.dlang.org/thread/vbmwhzvawhnkoxrhbnyb@forum.dlang.org?page=1
+       See also: http://forum.dlang.org/post/vbmwhzvawhnkoxrhbnyb@forum.dlang.org
     */
     private A[1] _outer_;
     private @property ref inout(A) _outer() inout { return _outer_[0]; }
@@ -1928,11 +1928,11 @@ if (is(Unqual!T == bool))
             // Fits within the current array
             if (stuff)
             {
-                data[$ - 1] |= (1u << rem);
+                data[$ - 1] |= (cast(size_t)1 << rem);
             }
             else
             {
-                data[$ - 1] &= ~(1u << rem);
+                data[$ - 1] &= ~(cast(size_t)1 << rem);
             }
         }
         else
@@ -1958,6 +1958,15 @@ if (is(Unqual!T == bool))
     }
     /// ditto
     alias stableInsertBack = insertBack;
+
+    unittest
+    {
+        Array!bool a;
+        for (int i = 0; i < 100; ++i)
+            a.insertBack(true);
+        foreach (e; a)
+            assert(e);
+    }
 
     /**
        Removes the value at the front or back of the container. The

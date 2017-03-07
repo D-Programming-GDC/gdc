@@ -150,11 +150,38 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/digest/crc.lo std/digest/digest.lo std/digest/hmac.lo \
 	std/digest/md.lo std/digest/ripemd.lo std/digest/sha.lo \
 	std/encoding.lo std/exception.lo \
+	std/experimental/allocator/building_blocks/affix_allocator.lo \
+	std/experimental/allocator/building_blocks/allocator_list.lo \
+	std/experimental/allocator/building_blocks/bitmapped_block.lo \
+	std/experimental/allocator/building_blocks/bucketizer.lo \
+	std/experimental/allocator/building_blocks/fallback_allocator.lo \
+	std/experimental/allocator/building_blocks/free_list.lo \
+	std/experimental/allocator/building_blocks/free_tree.lo \
+	std/experimental/allocator/building_blocks/kernighan_ritchie.lo \
+	std/experimental/allocator/building_blocks/null_allocator.lo \
+	std/experimental/allocator/building_blocks/package.lo \
+	std/experimental/allocator/building_blocks/quantizer.lo \
+	std/experimental/allocator/building_blocks/region.lo \
+	std/experimental/allocator/building_blocks/scoped_allocator.lo \
+	std/experimental/allocator/building_blocks/segregator.lo \
+	std/experimental/allocator/building_blocks/stats_collector.lo \
+	std/experimental/allocator/common.lo \
+	std/experimental/allocator/gc_allocator.lo \
+	std/experimental/allocator/mallocator.lo \
+	std/experimental/allocator/mmap_allocator.lo \
+	std/experimental/allocator/package.lo \
+	std/experimental/allocator/showcase.lo \
+	std/experimental/allocator/typed.lo \
 	std/experimental/logger/core.lo \
 	std/experimental/logger/filelogger.lo \
 	std/experimental/logger/multilogger.lo \
 	std/experimental/logger/nulllogger.lo \
-	std/experimental/logger/package.lo std/file.lo std/format.lo \
+	std/experimental/logger/package.lo \
+	std/experimental/ndslice/internal.lo \
+	std/experimental/ndslice/iteration.lo \
+	std/experimental/ndslice/package.lo \
+	std/experimental/ndslice/selection.lo \
+	std/experimental/ndslice/slice.lo std/file.lo std/format.lo \
 	std/functional.lo std/getopt.lo std/internal/cstring.lo \
 	std/internal/digest/sha_SSSE3.lo \
 	std/internal/math/biguintcore.lo \
@@ -163,7 +190,8 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/internal/math/errorfunction.lo \
 	std/internal/math/gammafunction.lo std/internal/processinit.lo \
 	std/internal/scopebuffer.lo std/internal/test/dummyrange.lo \
-	std/internal/unicode_comp.lo std/internal/unicode_decomp.lo \
+	std/internal/test/uda.lo std/internal/unicode_comp.lo \
+	std/internal/unicode_decomp.lo \
 	std/internal/unicode_grapheme.lo std/internal/unicode_norm.lo \
 	std/internal/unicode_tables.lo \
 	std/internal/windows/advapi32.lo std/json.lo std/math.lo \
@@ -177,10 +205,10 @@ am__objects_1 = etc/c/curl.lo etc/c/sqlite3.lo etc/c/zlib.lo \
 	std/regex/internal/tests.lo std/regex/internal/thompson.lo \
 	std/regex/package.lo std/signals.lo std/socket.lo \
 	std/socketstream.lo std/stdint.lo std/stdio.lo \
-	std/stdiobase.lo std/stream.lo std/string.lo std/syserror.lo \
-	std/system.lo std/traits.lo std/typecons.lo std/typelist.lo \
-	std/typetuple.lo std/uni.lo std/uri.lo std/utf.lo std/uuid.lo \
-	std/variant.lo std/windows/charset.lo std/windows/iunknown.lo \
+	std/stdiobase.lo std/stream.lo std/string.lo std/system.lo \
+	std/traits.lo std/typecons.lo std/typetuple.lo std/uni.lo \
+	std/uri.lo std/utf.lo std/uuid.lo std/variant.lo \
+	std/windows/charset.lo std/windows/iunknown.lo \
 	std/windows/registry.lo std/windows/syserror.lo std/xml.lo \
 	std/zip.lo std/zlib.lo
 am__objects_2 = std/c/fenv.lo std/c/locale.lo std/c/math.lo \
@@ -536,49 +564,76 @@ PHOBOS_DSOURCES = etc/c/curl.d etc/c/sqlite3.d etc/c/zlib.d \
 	std/concurrency.d std/concurrencybase.d std/container/array.d \
 	std/container/binaryheap.d std/container/dlist.d \
 	std/container/package.d std/container/rbtree.d std/container/slist.d \
-	std/container/util.d std/conv.d std/cstream.d \
-	std/csv.d std/datetime.d std/demangle.d std/digest/crc.d \
-	std/digest/digest.d std/digest/hmac.d std/digest/md.d \
-	std/digest/ripemd.d std/digest/sha.d std/encoding.d std/exception.d \
-	std/experimental/logger/core.d std/experimental/logger/filelogger.d \
+	std/container/util.d std/conv.d std/cstream.d std/csv.d std/datetime.d \
+	std/demangle.d std/digest/crc.d std/digest/digest.d std/digest/hmac.d \
+	std/digest/md.d std/digest/ripemd.d std/digest/sha.d std/encoding.d \
+	std/exception.d \
+	std/experimental/allocator/building_blocks/affix_allocator.d \
+	std/experimental/allocator/building_blocks/allocator_list.d \
+	std/experimental/allocator/building_blocks/bitmapped_block.d \
+	std/experimental/allocator/building_blocks/bucketizer.d \
+	std/experimental/allocator/building_blocks/fallback_allocator.d \
+	std/experimental/allocator/building_blocks/free_list.d \
+	std/experimental/allocator/building_blocks/free_tree.d \
+	std/experimental/allocator/building_blocks/kernighan_ritchie.d \
+	std/experimental/allocator/building_blocks/null_allocator.d \
+	std/experimental/allocator/building_blocks/package.d \
+	std/experimental/allocator/building_blocks/quantizer.d \
+	std/experimental/allocator/building_blocks/region.d \
+	std/experimental/allocator/building_blocks/scoped_allocator.d \
+	std/experimental/allocator/building_blocks/segregator.d \
+	std/experimental/allocator/building_blocks/stats_collector.d \
+	std/experimental/allocator/common.d \
+	std/experimental/allocator/gc_allocator.d \
+	std/experimental/allocator/mallocator.d \
+	std/experimental/allocator/mmap_allocator.d \
+	std/experimental/allocator/package.d \
+	std/experimental/allocator/showcase.d \
+	std/experimental/allocator/typed.d std/experimental/logger/core.d \
+	std/experimental/logger/filelogger.d \
 	std/experimental/logger/multilogger.d \
 	std/experimental/logger/nulllogger.d std/experimental/logger/package.d \
+	std/experimental/ndslice/internal.d \
+	std/experimental/ndslice/iteration.d \
+	std/experimental/ndslice/package.d \
+	std/experimental/ndslice/selection.d std/experimental/ndslice/slice.d \
 	std/file.d std/format.d std/functional.d std/getopt.d \
 	std/internal/cstring.d std/internal/digest/sha_SSSE3.d \
 	std/internal/math/biguintcore.d std/internal/math/biguintnoasm.d \
 	std/internal/math/biguintx86.d std/internal/math/errorfunction.d \
 	std/internal/math/gammafunction.d std/internal/processinit.d \
 	std/internal/scopebuffer.d std/internal/test/dummyrange.d \
-	std/internal/unicode_comp.d std/internal/unicode_decomp.d \
-	std/internal/unicode_grapheme.d std/internal/unicode_norm.d \
-	std/internal/unicode_tables.d std/internal/windows/advapi32.d \
-	std/json.d std/math.d std/mathspecial.d std/meta.d std/mmfile.d \
-	std/net/curl.d std/net/isemail.d std/numeric.d std/outbuffer.d \
-	std/parallelism.d std/path.d std/process.d std/random.d \
-	std/range/interfaces.d std/range/package.d std/range/primitives.d \
+	std/internal/test/uda.d std/internal/unicode_comp.d \
+	std/internal/unicode_decomp.d std/internal/unicode_grapheme.d \
+	std/internal/unicode_norm.d std/internal/unicode_tables.d \
+	std/internal/windows/advapi32.d std/json.d std/math.d \
+	std/mathspecial.d std/meta.d std/mmfile.d std/net/curl.d \
+	std/net/isemail.d std/numeric.d std/outbuffer.d std/parallelism.d \
+	std/path.d std/process.d std/random.d std/range/interfaces.d \
+	std/range/package.d std/range/primitives.d \
 	std/regex/internal/backtracking.d std/regex/internal/generator.d \
 	std/regex/internal/ir.d std/regex/internal/kickstart.d \
 	std/regex/internal/parser.d std/regex/internal/tests.d \
 	std/regex/internal/thompson.d std/regex/package.d std/signals.d \
 	std/socket.d std/socketstream.d std/stdint.d std/stdio.d \
-	std/stdiobase.d std/stream.d std/string.d std/syserror.d std/system.d \
-	std/traits.d std/typecons.d std/typelist.d std/typetuple.d std/uni.d \
-	std/uri.d std/utf.d std/uuid.d std/variant.d std/windows/charset.d \
-	std/windows/iunknown.d std/windows/registry.d std/windows/syserror.d \
-	std/xml.d std/zip.d std/zlib.d
+	std/stdiobase.d std/stream.d std/string.d std/system.d std/traits.d \
+	std/typecons.d std/typetuple.d std/uni.d std/uri.d std/utf.d \
+	std/uuid.d std/variant.d std/windows/charset.d std/windows/iunknown.d \
+	std/windows/registry.d std/windows/syserror.d std/xml.d std/zip.d \
+	std/zlib.d
 
+PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
+PHOBOS_DSOURCES_LINUX = std/c/linux/linux.d std/c/linux/linuxextern.d \
+	std/c/linux/pthread.d std/c/linux/socket.d std/c/linux/termios.d \
+	std/c/linux/tipc.d
+
+PHOBOS_DSOURCES_OSX = std/c/osx/socket.d
 PHOBOS_DSOURCES_STDC = std/c/fenv.d std/c/locale.d std/c/math.d \
 	std/c/process.d std/c/stdarg.d std/c/stddef.d std/c/stdio.d \
 	std/c/stdlib.d std/c/string.d std/c/time.d std/c/wcharh.d
 
-PHOBOS_DSOURCES_FREEBSD = std/c/freebsd/socket.d
-PHOBOS_DSOURCES_OSX = std/c/osx/socket.d
 PHOBOS_DSOURCES_WINDOWS = std/c/windows/com.d std/c/windows/stat.d \
 	std/c/windows/windows.d std/c/windows/winsock.d
-
-PHOBOS_DSOURCES_LINUX = std/c/linux/linux.d std/c/linux/linuxextern.d \
-	std/c/linux/pthread.d std/c/linux/socket.d std/c/linux/termios.d \
-	std/c/linux/tipc.d
 
 all: all-am
 
@@ -713,6 +768,56 @@ std/digest/ripemd.lo: std/digest/$(am__dirstamp)
 std/digest/sha.lo: std/digest/$(am__dirstamp)
 std/encoding.lo: std/$(am__dirstamp)
 std/exception.lo: std/$(am__dirstamp)
+std/experimental/allocator/building_blocks/$(am__dirstamp):
+	@$(MKDIR_P) std/experimental/allocator/building_blocks
+	@: > std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/affix_allocator.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/allocator_list.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/bitmapped_block.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/bucketizer.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/fallback_allocator.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/free_list.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/free_tree.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/kernighan_ritchie.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/null_allocator.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/package.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/quantizer.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/region.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/scoped_allocator.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/segregator.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/building_blocks/stats_collector.lo:  \
+	std/experimental/allocator/building_blocks/$(am__dirstamp)
+std/experimental/allocator/$(am__dirstamp):
+	@$(MKDIR_P) std/experimental/allocator
+	@: > std/experimental/allocator/$(am__dirstamp)
+std/experimental/allocator/common.lo:  \
+	std/experimental/allocator/$(am__dirstamp)
+std/experimental/allocator/gc_allocator.lo:  \
+	std/experimental/allocator/$(am__dirstamp)
+std/experimental/allocator/mallocator.lo:  \
+	std/experimental/allocator/$(am__dirstamp)
+std/experimental/allocator/mmap_allocator.lo:  \
+	std/experimental/allocator/$(am__dirstamp)
+std/experimental/allocator/package.lo:  \
+	std/experimental/allocator/$(am__dirstamp)
+std/experimental/allocator/showcase.lo:  \
+	std/experimental/allocator/$(am__dirstamp)
+std/experimental/allocator/typed.lo:  \
+	std/experimental/allocator/$(am__dirstamp)
 std/experimental/logger/$(am__dirstamp):
 	@$(MKDIR_P) std/experimental/logger
 	@: > std/experimental/logger/$(am__dirstamp)
@@ -726,6 +831,19 @@ std/experimental/logger/nulllogger.lo:  \
 	std/experimental/logger/$(am__dirstamp)
 std/experimental/logger/package.lo:  \
 	std/experimental/logger/$(am__dirstamp)
+std/experimental/ndslice/$(am__dirstamp):
+	@$(MKDIR_P) std/experimental/ndslice
+	@: > std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/internal.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/iteration.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/package.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/selection.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
+std/experimental/ndslice/slice.lo:  \
+	std/experimental/ndslice/$(am__dirstamp)
 std/file.lo: std/$(am__dirstamp)
 std/format.lo: std/$(am__dirstamp)
 std/functional.lo: std/$(am__dirstamp)
@@ -752,6 +870,7 @@ std/internal/test/$(am__dirstamp):
 	@$(MKDIR_P) std/internal/test
 	@: > std/internal/test/$(am__dirstamp)
 std/internal/test/dummyrange.lo: std/internal/test/$(am__dirstamp)
+std/internal/test/uda.lo: std/internal/test/$(am__dirstamp)
 std/internal/unicode_comp.lo: std/internal/$(am__dirstamp)
 std/internal/unicode_decomp.lo: std/internal/$(am__dirstamp)
 std/internal/unicode_grapheme.lo: std/internal/$(am__dirstamp)
@@ -807,11 +926,9 @@ std/stdio.lo: std/$(am__dirstamp)
 std/stdiobase.lo: std/$(am__dirstamp)
 std/stream.lo: std/$(am__dirstamp)
 std/string.lo: std/$(am__dirstamp)
-std/syserror.lo: std/$(am__dirstamp)
 std/system.lo: std/$(am__dirstamp)
 std/traits.lo: std/$(am__dirstamp)
 std/typecons.lo: std/$(am__dirstamp)
-std/typelist.lo: std/$(am__dirstamp)
 std/typetuple.lo: std/$(am__dirstamp)
 std/uni.lo: std/$(am__dirstamp)
 std/uri.lo: std/$(am__dirstamp)
@@ -1019,6 +1136,50 @@ mostlyclean-compile:
 	-rm -f std/encoding.lo
 	-rm -f std/exception.$(OBJEXT)
 	-rm -f std/exception.lo
+	-rm -f std/experimental/allocator/building_blocks/affix_allocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/affix_allocator.lo
+	-rm -f std/experimental/allocator/building_blocks/allocator_list.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/allocator_list.lo
+	-rm -f std/experimental/allocator/building_blocks/bitmapped_block.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/bitmapped_block.lo
+	-rm -f std/experimental/allocator/building_blocks/bucketizer.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/bucketizer.lo
+	-rm -f std/experimental/allocator/building_blocks/fallback_allocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/fallback_allocator.lo
+	-rm -f std/experimental/allocator/building_blocks/free_list.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/free_list.lo
+	-rm -f std/experimental/allocator/building_blocks/free_tree.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/free_tree.lo
+	-rm -f std/experimental/allocator/building_blocks/kernighan_ritchie.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/kernighan_ritchie.lo
+	-rm -f std/experimental/allocator/building_blocks/null_allocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/null_allocator.lo
+	-rm -f std/experimental/allocator/building_blocks/package.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/package.lo
+	-rm -f std/experimental/allocator/building_blocks/quantizer.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/quantizer.lo
+	-rm -f std/experimental/allocator/building_blocks/region.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/region.lo
+	-rm -f std/experimental/allocator/building_blocks/scoped_allocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/scoped_allocator.lo
+	-rm -f std/experimental/allocator/building_blocks/segregator.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/segregator.lo
+	-rm -f std/experimental/allocator/building_blocks/stats_collector.$(OBJEXT)
+	-rm -f std/experimental/allocator/building_blocks/stats_collector.lo
+	-rm -f std/experimental/allocator/common.$(OBJEXT)
+	-rm -f std/experimental/allocator/common.lo
+	-rm -f std/experimental/allocator/gc_allocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/gc_allocator.lo
+	-rm -f std/experimental/allocator/mallocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/mallocator.lo
+	-rm -f std/experimental/allocator/mmap_allocator.$(OBJEXT)
+	-rm -f std/experimental/allocator/mmap_allocator.lo
+	-rm -f std/experimental/allocator/package.$(OBJEXT)
+	-rm -f std/experimental/allocator/package.lo
+	-rm -f std/experimental/allocator/showcase.$(OBJEXT)
+	-rm -f std/experimental/allocator/showcase.lo
+	-rm -f std/experimental/allocator/typed.$(OBJEXT)
+	-rm -f std/experimental/allocator/typed.lo
 	-rm -f std/experimental/logger/core.$(OBJEXT)
 	-rm -f std/experimental/logger/core.lo
 	-rm -f std/experimental/logger/filelogger.$(OBJEXT)
@@ -1029,6 +1190,16 @@ mostlyclean-compile:
 	-rm -f std/experimental/logger/nulllogger.lo
 	-rm -f std/experimental/logger/package.$(OBJEXT)
 	-rm -f std/experimental/logger/package.lo
+	-rm -f std/experimental/ndslice/internal.$(OBJEXT)
+	-rm -f std/experimental/ndslice/internal.lo
+	-rm -f std/experimental/ndslice/iteration.$(OBJEXT)
+	-rm -f std/experimental/ndslice/iteration.lo
+	-rm -f std/experimental/ndslice/package.$(OBJEXT)
+	-rm -f std/experimental/ndslice/package.lo
+	-rm -f std/experimental/ndslice/selection.$(OBJEXT)
+	-rm -f std/experimental/ndslice/selection.lo
+	-rm -f std/experimental/ndslice/slice.$(OBJEXT)
+	-rm -f std/experimental/ndslice/slice.lo
 	-rm -f std/file.$(OBJEXT)
 	-rm -f std/file.lo
 	-rm -f std/format.$(OBJEXT)
@@ -1057,6 +1228,8 @@ mostlyclean-compile:
 	-rm -f std/internal/scopebuffer.lo
 	-rm -f std/internal/test/dummyrange.$(OBJEXT)
 	-rm -f std/internal/test/dummyrange.lo
+	-rm -f std/internal/test/uda.$(OBJEXT)
+	-rm -f std/internal/test/uda.lo
 	-rm -f std/internal/unicode_comp.$(OBJEXT)
 	-rm -f std/internal/unicode_comp.lo
 	-rm -f std/internal/unicode_decomp.$(OBJEXT)
@@ -1133,16 +1306,12 @@ mostlyclean-compile:
 	-rm -f std/stream.lo
 	-rm -f std/string.$(OBJEXT)
 	-rm -f std/string.lo
-	-rm -f std/syserror.$(OBJEXT)
-	-rm -f std/syserror.lo
 	-rm -f std/system.$(OBJEXT)
 	-rm -f std/system.lo
 	-rm -f std/traits.$(OBJEXT)
 	-rm -f std/traits.lo
 	-rm -f std/typecons.$(OBJEXT)
 	-rm -f std/typecons.lo
-	-rm -f std/typelist.$(OBJEXT)
-	-rm -f std/typelist.lo
 	-rm -f std/typetuple.$(OBJEXT)
 	-rm -f std/typetuple.lo
 	-rm -f std/uni.$(OBJEXT)
@@ -1377,7 +1546,10 @@ clean-libtool:
 	-rm -rf std/c/windows/.libs std/c/windows/_libs
 	-rm -rf std/container/.libs std/container/_libs
 	-rm -rf std/digest/.libs std/digest/_libs
+	-rm -rf std/experimental/allocator/.libs std/experimental/allocator/_libs
+	-rm -rf std/experimental/allocator/building_blocks/.libs std/experimental/allocator/building_blocks/_libs
 	-rm -rf std/experimental/logger/.libs std/experimental/logger/_libs
+	-rm -rf std/experimental/ndslice/.libs std/experimental/ndslice/_libs
 	-rm -rf std/internal/.libs std/internal/_libs
 	-rm -rf std/internal/digest/.libs std/internal/digest/_libs
 	-rm -rf std/internal/math/.libs std/internal/math/_libs
@@ -1507,7 +1679,10 @@ distclean-generic:
 	-rm -f std/c/windows/$(am__dirstamp)
 	-rm -f std/container/$(am__dirstamp)
 	-rm -f std/digest/$(am__dirstamp)
+	-rm -f std/experimental/allocator/$(am__dirstamp)
+	-rm -f std/experimental/allocator/building_blocks/$(am__dirstamp)
 	-rm -f std/experimental/logger/$(am__dirstamp)
+	-rm -f std/experimental/ndslice/$(am__dirstamp)
 	-rm -f std/internal/$(am__dirstamp)
 	-rm -f std/internal/digest/$(am__dirstamp)
 	-rm -f std/internal/math/$(am__dirstamp)

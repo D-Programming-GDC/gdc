@@ -47,6 +47,8 @@ bool isArrayOpValid(Expression *e);
 Expression *expandVar(int result, VarDeclaration *v);
 bool walkPostorder(Expression *e, StoppableVisitor *v);
 TypeTuple *toArgTypes(Type *t);
+bool checkAssignEscape(Scope *sc, Expression *e, bool gag);
+bool checkParamArgumentEscape(Scope *sc, FuncDeclaration *fdc, Identifier *par, Expression *arg, bool gag);
 bool checkAccess(AggregateDeclaration *ad, Loc loc, Scope *sc, Dsymbol *smember);
 bool symbolIsVisible(Module *mod, Dsymbol *s);
 bool checkFrameAccess(Loc loc, Scope *sc, AggregateDeclaration *ad, size_t istart = 0);
@@ -58,6 +60,70 @@ bool MODimplicitConv(MOD modfrom, MOD modto);
 MOD MODmerge(MOD mod1, MOD mod2);
 
 #define LOGSEMANTIC     0
+
+/*************************************************************
+ * Check for unsafe access in @safe code:
+ * 1. read overlapped pointers
+ * 2. write misaligned pointers
+ * 3. write overlapped storage classes
+ * Print error if unsafe.
+ * Params:
+ *      sc = scope
+ *      e = expression to check
+ *      readonly = if access is read-only
+ *      printmsg = print error message if true
+ * Returns:
+ *      true if error
+ */
+
+static bool checkUnsafeAccess(Scope *sc, Expression *e, bool readonly, bool printmsg)
+{
+    if (e->op != TOKdotvar)
+        return false;
+    DotVarExp *dve = (DotVarExp *)e;
+    if (VarDeclaration *v = dve->var->isVarDeclaration())
+    {
+        if (sc->intypeof || !sc->func || !sc->func->isSafeBypassingInference())
+            return false;
+
+        AggregateDeclaration *ad = v->toParent2()->isAggregateDeclaration();
+        if (!ad)
+            return false;
+
+        if (v->overlapped && v->type->hasPointers() && sc->func->setUnsafe())
+        {
+            if (printmsg)
+                e->error("field %s.%s cannot access pointers in @safe code that overlap other fields",
+                    ad->toChars(), v->toChars());
+            return true;
+        }
+
+        if (readonly || !e->type->isMutable())
+            return false;
+
+        if (v->type->hasPointers() && v->type->toBasetype()->ty != Tstruct)
+        {
+            if ((ad->type->alignment() < Target::ptrsize ||
+                 (v->offset & (Target::ptrsize - 1))) &&
+                sc->func->setUnsafe())
+            {
+                if (printmsg)
+                    e->error("field %s.%s cannot modify misaligned pointers in @safe code",
+                        ad->toChars(), v->toChars());
+                return true;
+            }
+        }
+
+        if (v->overlapUnsafe && sc->func->setUnsafe())
+        {
+            if (printmsg)
+                e->error("field %s.%s cannot modify fields in @safe code that overlap fields with other storage classes",
+                    ad->toChars(), v->toChars());
+            return true;
+        }
+    }
+    return false;
+}
 
 /*************************************************************
  * Given var, we need to get the
@@ -484,24 +550,20 @@ Expression *resolvePropertiesX(Scope *sc, Expression *e1, Expression *e2 = NULL)
         else if (e1->op == TOKdotvar)
         {
             // Check for reading overlapped pointer field in @safe code.
-            VarDeclaration *v = ((DotVarExp *)e1)->var->isVarDeclaration();
-            if (v && v->overlapped &&
-                sc->func && !sc->intypeof)
-            {
-                AggregateDeclaration *ad = v->toParent2()->isAggregateDeclaration();
-                if (ad && e1->type->hasPointers() &&
-                    sc->func->setUnsafe())
-                {
-                    e1->error("field %s.%s cannot be accessed in @safe code because it overlaps with a pointer",
-                        ad->toChars(), v->toChars());
-                    return new ErrorExp();
-                }
-            }
+            if (checkUnsafeAccess(sc, e1, true, true))
+                return new ErrorExp();
         }
         else if (e1->op == TOKdot)
         {
             e1->error("expression has no value");
             return new ErrorExp();
+        }
+        else if (e1->op == TOKcall)
+        {
+            CallExp *ce = (CallExp *)e1;
+            // Check for reading overlapped pointer field in @safe code.
+            if (checkUnsafeAccess(sc, ce->e1, true, true))
+                return new ErrorExp();
         }
     }
 
@@ -1717,6 +1779,9 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
                 }
                 else
                     arg = arg->toLvalue(sc, arg);
+
+                // Look for mutable misaligned pointer, etc., in @safe mode
+                err |= checkUnsafeAccess(sc, arg, false, true);
             }
             else if (p->storageClass & STCout)
             {
@@ -1727,7 +1792,11 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
                     err = true;
                 }
                 else
+                {
+                    // Look for misaligned pointer, etc., in @safe mode
+                    err |= checkUnsafeAccess(sc, arg, false, true);
                     err |= checkDefCtor(arg->loc, t);   // t must be default constructible
+                }
                 arg = arg->toLvalue(sc, arg);
             }
             else if (p->storageClass & STClazy)
@@ -1741,11 +1810,18 @@ bool functionParameters(Loc loc, Scope *sc, TypeFunction *tf,
 
             //printf("arg: %s\n", arg->toChars());
             //printf("type: %s\n", arg->type->toChars());
-            /* Look for arguments that cannot 'escape' from the called
-             * function.
-             */
-            if (!tf->parameterEscapes(p))
+            if (tf->parameterEscapes(p))
             {
+                /* Argument value can escape from the called function.
+                 * Check arg to see if it matters.
+                 */
+                if (global.params.vsafe)
+                    err |= checkParamArgumentEscape(sc, fd, p->ident, arg, false);
+            }
+            else
+            {
+                /* Argument value cannot escape from the called function.
+                 */
                 Expression *a = arg;
                 if (a->op == TOKcast)
                     a = ((CastExp *)a)->e1;
@@ -3468,38 +3544,13 @@ Lagain:
     {
         if (!s->isFuncDeclaration())        // functions are checked after overloading
             s->checkDeprecated(loc, sc);
+
+        // Bugzilla 12023: if 's' is a tuple variable, the tuple is returned.
         s = s->toAlias();
+
         //printf("s = '%s', s->kind = '%s', s->needThis() = %p\n", s->toChars(), s->kind(), s->needThis());
         if (s != olds && !s->isFuncDeclaration())
             s->checkDeprecated(loc, sc);
-    }
-
-
-    if (VarDeclaration *v = s->isVarDeclaration())
-    {
-        /* Bugzilla 12023: forward reference should be resolved
-         * before 's->needThis()' is called.
-         */
-        if ((!v->type || !v->type->deco) && v->_scope)
-        {
-            v->semantic(v->_scope);
-            s = v->toAlias();   // Need this if 'v' is a tuple variable
-        }
-
-        // Change the ancestor lambdas to delegate before hasThis(sc) call.
-        if (v->checkNestedReference(sc, loc))
-            return new ErrorExp();
-    }
-    if (s->needThis() && hasThis(sc))
-    {
-        // For functions, this should happen after overload resolution
-        if (!s->isFuncDeclaration())
-        {
-            // Supply an implicit 'this', as in
-            //    this.ident
-            DotVarExp *de = new DotVarExp(loc, new ThisExp(loc), s->isDeclaration());
-            return de->semantic(sc);
-        }
     }
 
     if (EnumMember *em = s->isEnumMember())
@@ -3521,32 +3572,24 @@ Lagain:
                 ::error(loc, "circular initialization of %s", v->toChars());
                 return new ErrorExp();
             }
-            if (v->_scope)
-            {
-                v->inuse++;
-                v->_init = v->_init->semantic(v->_scope, v->type, INITinterpret);
-                v->_scope = NULL;
-                v->inuse--;
-            }
-            e = v->_init->toExpression(v->type);
-            if (!e)
-            {
-                ::error(loc, "cannot make expression out of initializer for %s", v->toChars());
-                return new ErrorExp();
-            }
-            e = e->copy();
-            e->loc = loc;   // for better error message
 
+            e = v->expandInitializer(loc);
             v->inuse++;
             e = e->semantic(sc);
             v->inuse--;
             return e;
         }
 
-        e = new VarExp(loc, v);
-        e->type = v->type;
+        // Change the ancestor lambdas to delegate before hasThis(sc) call.
+        if (v->checkNestedReference(sc, loc))
+            return new ErrorExp();
+
+        if (v->needThis() && hasThis(sc))
+            e = new DotVarExp(loc, new ThisExp(loc), v);
+        else
+            e = new VarExp(loc, v);
         e = e->semantic(sc);
-        return e->deref();
+        return e;
     }
     if (FuncLiteralDeclaration *fld = s->isFuncLiteralDeclaration())
     {
@@ -3560,12 +3603,9 @@ Lagain:
         if (!f->functionSemantic())
             return new ErrorExp();
 
-        if (!f->type->deco)
-        {
-            const char *trailMsg = f->inferRetType ? "inferred return type of function call " : "";
-            ::error(loc, "forward reference to %s'%s'", trailMsg, f->toChars());
+        if (!hasOverloads && f->checkForwardRef(loc))
             return new ErrorExp();
-        }
+
         FuncDeclaration *fd = s->isFuncDeclaration();
         fd->type = f->type;
         return new VarExp(loc, fd, hasOverloads);
@@ -3617,7 +3657,10 @@ Lagain:
 
     if (TupleDeclaration *tup = s->isTupleDeclaration())
     {
-        e = new TupleExp(loc, tup);
+        if (tup->needThis() && hasThis(sc))
+            e = new DotVarExp(loc, new ThisExp(loc), tup);
+        else
+            e = new TupleExp(loc, tup);
         e = e->semantic(sc);
         return e;
     }
@@ -4859,12 +4902,12 @@ bool TypeExp::checkValue()
 
 // Mainly just a placeholder
 
-ScopeExp::ScopeExp(Loc loc, ScopeDsymbol *pkg)
+ScopeExp::ScopeExp(Loc loc, ScopeDsymbol *sds)
     : Expression(loc, TOKscope, sizeof(ScopeExp))
 {
-    //printf("ScopeExp::ScopeExp(pkg = '%s')\n", pkg->toChars());
+    //printf("ScopeExp::ScopeExp(sds = '%s')\n", sds->toChars());
     //static int count; if (++count == 38) *(char*)0=0;
-    this->sds = pkg;
+    this->sds = sds;
 }
 
 Expression *ScopeExp::syntaxCopy()
@@ -4877,8 +4920,8 @@ Expression *ScopeExp::semantic(Scope *sc)
 #if LOGSEMANTIC
     printf("+ScopeExp::semantic(%p '%s')\n", this, toChars());
 #endif
-    //if (type == Type::tvoid)
-    //    return this;
+    if (type)
+        return this;
 
     ScopeDsymbol *sds2 = sds;
     TemplateInstance *ti = sds2->isTemplateInstance();
@@ -4920,6 +4963,9 @@ Expression *ScopeExp::semantic(Scope *sc)
                     return e->semantic(sc);
                 }
             }
+            // ti is an instance which requires IFTI.
+            sds = ti;
+            type = Type::tvoid;
             return this;
         }
         ti->semantic(sc);
@@ -4943,9 +4989,6 @@ Expression *ScopeExp::semantic(Scope *sc)
 
         if (VarDeclaration *v = s->isVarDeclaration())
         {
-            if ((!v->type || !v->type->deco) && v->_scope)
-                v->semantic(v->_scope);
-
             if (!v->type)
             {
                 error("forward reference of %s %s", v->kind(), v->toChars());
@@ -4972,28 +5015,8 @@ Expression *ScopeExp::semantic(Scope *sc)
                     error("recursive expansion of %s '%s'", ti->kind(), ti->toPrettyChars());
                     return new ErrorExp();
                 }
-                //if (v->inuse)  // This is the point.
-                //{
-                //    ::error(loc, "circular initialization of %s", v->toChars());
-                //    return new ErrorExp();
-                //}
-                if (v->_scope)
-                {
-                    v->inuse++;
-                    v->_init = v->_init->semantic(v->_scope, v->type, INITinterpret);
-                    v->_scope = NULL;
-                    v->inuse--;
-                }
 
-                Expression *e = v->_init->toExpression(v->type);
-                if (!e)
-                {
-                    error("cannot make expression out of initializer for %s", v->toChars());
-                    return new ErrorExp();
-                }
-                e = e->copy();
-                e->loc = loc; // for better error message
-
+                Expression *e = v->expandInitializer(loc);
                 ti->inuse++;
                 e = e->semantic(sc);
                 ti->inuse--;
@@ -6983,7 +7006,9 @@ Expression *BinExp::checkOpAssignTypes(Scope *sc)
     // T opAssign floating yields a floating. Prevent truncating conversions (float to int).
     // See issue 3841.
     // Should we also prevent double to float (type->isfloating() && type->size() < t2 ->size()) ?
-    if (op == TOKmulass || op == TOKdivass || op == TOKmodass || TOKaddass || op == TOKminass || op == TOKpowass)
+    if (op == TOKaddass || op == TOKminass ||
+        op == TOKmulass || op == TOKdivass || op == TOKmodass ||
+        op == TOKpowass)
     {
         if ((type->isintegral() && t2->isfloating()))
         {
@@ -7533,11 +7558,8 @@ Expression *DotIdExp::semanticX(Scope *sc)
                 assert(ds);
                 if (FuncDeclaration *f = ds->isFuncDeclaration())
                 {
-                    if (!f->type->deco)
-                    {
-                        error("forward reference to %s", f->toChars());
+                    if (f->checkForwardRef(loc))
                         return new ErrorExp();
-                    }
                 }
                 OutBuffer buf;
                 mangleToBuffer(ds, &buf);
@@ -7686,7 +7708,9 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
             if (Package *p = s->isPackage())
                 checkAccess(loc, sc, p);
 
+            // if 's' is a tuple variable, the tuple is returned.
             s = s->toAlias();
+
             checkDeprecated(sc, s);
 
             EnumMember *em = s->isEnumMember();
@@ -7699,12 +7723,14 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
             if (v)
             {
                 //printf("DotIdExp:: Identifier '%s' is a variable, type '%s'\n", toChars(), v->type->toChars());
-                if (v->inuse)
+                if (!v->type)
                 {
-                    error("circular reference to '%s'", v->toChars());
+                    if (v->inuse)
+                        error("circular reference to '%s'", v->toChars());
+                    else
+                        error("forward reference of %s %s", s->kind(), s->toChars());
                     return new ErrorExp();
                 }
-                type = v->type;
                 if (v->needThis())
                 {
                     if (!eleft)
@@ -7773,8 +7799,10 @@ Expression *DotIdExp::semanticY(Scope *sc, int flag)
             if (tup)
             {
                 if (eleft)
-                {   error("cannot have e.tuple");
-                    return new ErrorExp();
+                {
+                    e = new DotVarExp(loc, eleft, tup);
+                    e = e->semantic(sc);
+                    return e;
                 }
                 e = new TupleExp(loc, tup);
                 e = e->semantic(sc);
@@ -8072,13 +8100,15 @@ int modifyFieldVar(Loc loc, Scope *sc, VarDeclaration *var, Expression *e1)
             (!e1 || e1->op == TOKthis)
            )
         {
-            var->ctorinit = 1;
+            bool result = true;
+
+            var->ctorinit = true;
             //printf("setting ctorinit\n");
-            int result = true;
+
             if (var->isField() && sc->fieldinit && !sc->intypeof)
             {
                 assert(e1);
-                bool mustInit = (var->storage_class & STCnodefaultctor ||
+                bool mustInit = ((var->storage_class & STCnodefaultctor) != 0 ||
                                  var->type->needsNested());
 
                 size_t dim = sc->fieldinit_dim;
@@ -8092,6 +8122,7 @@ int modifyFieldVar(Loc loc, Scope *sc, VarDeclaration *var, Expression *e1)
                 }
                 assert(i < dim);
                 unsigned fi = sc->fieldinit[i];
+
                 if (fi & CSXthis_ctor)
                 {
                     if (var->type->isMutable() && e1->type->isMutable())
@@ -8102,7 +8133,7 @@ int modifyFieldVar(Loc loc, Scope *sc, VarDeclaration *var, Expression *e1)
                         ::error(loc, "%s field '%s' initialized multiple times", modStr, var->toChars());
                     }
                 }
-                else if (sc->noctor || fi & CSXlabel)
+                else if (sc->noctor || (fi & CSXlabel))
                 {
                     if (!mustInit && var->type->isMutable() && e1->type->isMutable())
                         result = false;
@@ -8113,6 +8144,17 @@ int modifyFieldVar(Loc loc, Scope *sc, VarDeclaration *var, Expression *e1)
                     }
                 }
                 sc->fieldinit[i] |= CSXthis_ctor;
+                if (var->overlapped) // Bugzilla 15258
+                {
+                    for (size_t j = 0; j < ad->fields.dim; j++)
+                    {
+                        VarDeclaration *v = ad->fields[j];
+                        if (v == var || !var->isOverlappedWith(v))
+                            continue;
+                        v->ctorinit = true;
+                        sc->fieldinit[j] = CSXthis_ctor;
+                    }
+                }
             }
             else if (fd != sc->func)
             {
@@ -8149,6 +8191,9 @@ int modifyFieldVar(Loc loc, Scope *sc, VarDeclaration *var, Expression *e1)
 int DotVarExp::checkModifiable(Scope *sc, int flag)
 {
     //printf("DotVarExp::checkModifiable %s %s\n", toChars(), type->toChars());
+    if (checkUnsafeAccess(sc, this, false, !flag))
+        return 2;
+
     if (e1->op == TOKthis)
         return var->checkModify(loc, sc, type, e1, flag);
 
@@ -8654,7 +8699,7 @@ Expression *CallExp::semantic(Scope *sc)
     /* This recognizes:
      *  foo!(tiargs)(funcargs)
      */
-    if (e1->op == TOKscope && !e1->type)
+    if (e1->op == TOKscope)
     {
         ScopeExp *se = (ScopeExp *)e1;
         TemplateInstance *ti = se->sds->isTemplateInstance();
@@ -9015,6 +9060,11 @@ Lagain:
                 return ue->e1;
             ethis = ue->e1;
             tthis = ue->e1->type;
+            if (!f->type->isscope())
+            {
+                if (global.params.vsafe && checkParamArgumentEscape(sc, f, Id::This, ethis, false))
+                    return new ErrorExp();
+            }
         }
 
         /* Cannot call public functions from inside invariant
@@ -9427,7 +9477,7 @@ Lagain:
     if (!type)
     {
         e1 = e1org;     // Bugzilla 10922, avoid recursive expression printing
-        error("forward reference to inferred return type of function call %s", toChars());
+        error("forward reference to inferred return type of function call '%s'", toChars());
         return new ErrorExp();
     }
 
@@ -9513,6 +9563,79 @@ Expression *CallExp::addDtorHook(Scope *sc)
     return this;
 }
 
+FuncDeclaration *isFuncAddress(Expression *e, bool *hasOverloads = NULL)
+{
+    if (e->op == TOKaddress)
+    {
+        Expression *ae1 = ((AddrExp *)e)->e1;
+        if (ae1->op == TOKvar)
+        {
+            VarExp *ve = (VarExp *)ae1;
+            if (hasOverloads)
+                *hasOverloads = ve->hasOverloads;
+            return ve->var->isFuncDeclaration();
+        }
+        if (ae1->op == TOKdotvar)
+        {
+            DotVarExp *dve = (DotVarExp *)ae1;
+            if (hasOverloads)
+                *hasOverloads = dve->hasOverloads;
+            return dve->var->isFuncDeclaration();
+        }
+    }
+    else
+    {
+        if (e->op == TOKsymoff)
+        {
+            SymOffExp *soe = (SymOffExp *)e;
+            if (hasOverloads)
+                *hasOverloads = soe->hasOverloads;
+            return soe->var->isFuncDeclaration();
+        }
+        if (e->op == TOKdelegate)
+        {
+            DelegateExp *dge = (DelegateExp *)e;
+            if (hasOverloads)
+                *hasOverloads = dge->hasOverloads;
+            return dge->func->isFuncDeclaration();
+        }
+    }
+    return NULL;
+}
+
+static bool checkAddressVar(Scope *sc, AddrExp *e, VarDeclaration *v)
+{
+    if (v)
+    {
+        if (!v->canTakeAddressOf())
+        {
+            e->error("cannot take address of %s", e->e1->toChars());
+            return false;
+        }
+        if (sc->func && !sc->intypeof && !v->isDataseg())
+        {
+            const char *p = v->isParameter() ? "parameter" : "local";
+            if (global.params.vsafe)
+            {
+                // Taking the address of v means it cannot be set to 'scope' later
+                v->storage_class &= ~STCmaybescope;
+                v->doNotInferScope = true;
+                if (v->storage_class & STCscope && sc->func->setUnsafe())
+                {
+                    e->error("cannot take address of scope %s %s in @safe function %s", p, v->toChars(), sc->func->toChars());
+                    return false;
+                }
+            }
+            else if (sc->func->setUnsafe())
+            {
+                e->error("cannot take address of %s %s in @safe function %s", p, v->toChars(), sc->func->toChars());
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 /************************************************************/
 
 AddrExp::AddrExp(Loc loc, Expression *e)
@@ -9575,15 +9698,15 @@ Expression *AddrExp::semantic(Scope *sc)
         error("cannot take address of %s", e1->toChars());
         return new ErrorExp();
     }
-    if (!e1->type->deco)
-    {
-        /* No deco means semantic() was not run on the type.
-         * We have to run semantic() on the symbol to get the right type:
-         *  auto x = &bar;
-         *  pure: int bar() { return 1;}
-         * otherwise the 'pure' is missing from the type assigned to x.
-         */
 
+    bool hasOverloads = false;
+    if (FuncDeclaration *f = isFuncAddress(this, &hasOverloads))
+    {
+        if (!hasOverloads && f->checkForwardRef(loc))
+            return new ErrorExp();
+    }
+    else if (!e1->type->deco)
+    {
         if (e1->op == TOKvar)
         {
             VarExp *ve = (VarExp *)e1;
@@ -9616,6 +9739,31 @@ Expression *AddrExp::semantic(Scope *sc)
             e = e->semantic(sc);
             return e;
         }
+
+        // Look for misaligned pointer in @safe mode
+        if (checkUnsafeAccess(sc, dve, !type->isMutable(), true))
+            return new ErrorExp();
+
+        if (dve->e1->op == TOKvar && global.params.vsafe)
+        {
+            VarExp *ve = (VarExp *)dve->e1;
+            VarDeclaration *v = ve->var->isVarDeclaration();
+            if (v)
+            {
+                if (!checkAddressVar(sc, this, v))
+                    return new ErrorExp();
+            }
+        }
+        else if ((dve->e1->op == TOKthis || dve->e1->op == TOKsuper) && global.params.vsafe)
+        {
+            ThisExp *ve = (ThisExp *)dve->e1;
+            VarDeclaration *v = ve->var->isVarDeclaration();
+            if (v && v->storage_class & STCref)
+            {
+                if (!checkAddressVar(sc, this, v))
+                    return new ErrorExp();
+            }
+        }
     }
     else if (e1->op == TOKvar)
     {
@@ -9624,23 +9772,8 @@ Expression *AddrExp::semantic(Scope *sc)
         VarDeclaration *v = ve->var->isVarDeclaration();
         if (v)
         {
-            if (!v->canTakeAddressOf())
-            {
-                error("cannot take address of %s", e1->toChars());
+            if (!checkAddressVar(sc, this, v))
                 return new ErrorExp();
-            }
-
-            if (sc->func && !sc->intypeof && !v->isDataseg())
-            {
-                if (sc->func->setUnsafe())
-                {
-                    const char *p = v->isParameter() ? "parameter" : "local";
-                    error("cannot take address of %s %s in @safe function %s",
-                        p,
-                        v->toChars(),
-                        sc->func->toChars());
-                }
-            }
 
             ve->checkPurity(sc, v);
         }
@@ -9680,6 +9813,51 @@ Expression *AddrExp::semantic(Scope *sc)
                 Expression *e = new DelegateExp(loc, ethis, f, ve->hasOverloads);
                 e = e->semantic(sc);
                 return e;
+            }
+        }
+    }
+    else if ((e1->op == TOKthis || e1->op == TOKsuper) && global.params.vsafe)
+    {
+        ThisExp *ve = (ThisExp *)e1;
+        VarDeclaration *v = ve->var->isVarDeclaration();
+        if (v)
+        {
+            if (!checkAddressVar(sc, this, v))
+                return new ErrorExp();
+        }
+    }
+    else if (e1->op == TOKcall)
+    {
+        CallExp *ce = (CallExp *)e1;
+        if (ce->e1->type->ty == Tfunction)
+        {
+            TypeFunction *tf = (TypeFunction *)ce->e1->type;
+            if (tf->isref && sc->func && !sc->intypeof && sc->func->setUnsafe())
+            {
+                error("cannot take address of ref return of %s() in @safe function %s",
+                    ce->e1->toChars(), sc->func->toChars());
+            }
+        }
+    }
+    else if (e1->op == TOKindex)
+    {
+        /* For:
+         *   int[3] a;
+         *   &a[i]
+         * check 'a' the same as for a regular variable
+         */
+        IndexExp *ei = (IndexExp *)e1;
+        Type *tyi = ei->e1->type->toBasetype();
+        if (tyi->ty == Tsarray && ei->e1->op == TOKvar)
+        {
+            VarExp *ve = (VarExp *)ei->e1;
+            VarDeclaration *v = ve->var->isVarDeclaration();
+            if (v)
+            {
+                if (!checkAddressVar(sc, this, v))
+                    return new ErrorExp();
+
+                ve->checkPurity(sc, v);
             }
         }
     }
@@ -10291,7 +10469,7 @@ Expression *VectorExp::semantic(Scope *sc)
             result |= checkVectorElem(this, ((ArrayLiteralExp *)e1)->getElement(i));
         }
     }
-    else
+    else if (e1->type->ty == Tvoid)
         result = checkVectorElem(this, e1);
 
     Expression *e = this;
@@ -10420,6 +10598,14 @@ Expression *SliceExp::semantic(Scope *sc)
             error("need upper and lower bound to slice tuple");
             return new ErrorExp();
         }
+    }
+    else if (t1b->ty == Tvector)
+    {
+        // Convert e1 to corresponding static array
+        TypeVector *tv1 = (TypeVector *)t1b;
+        t1b = tv1->basetype;
+        t1b = t1b->castMod(tv1->mod);
+        e1->type = t1b;
     }
     else
     {
@@ -10763,6 +10949,16 @@ Expression *DelegatePtrExp::toLvalue(Scope *sc, Expression *e)
     return this;
 }
 
+Expression *DelegatePtrExp::modifiableLvalue(Scope *sc, Expression *e)
+{
+    if (sc->func->setUnsafe())
+    {
+        error("cannot modify delegate pointer in @safe code %s", toChars());
+        return new ErrorExp();
+    }
+    return Expression::modifiableLvalue(sc, e);
+}
+
 /********************** DelegateFuncptrExp **************************************/
 
 DelegateFuncptrExp::DelegateFuncptrExp(Loc loc, Expression *e1)
@@ -10796,6 +10992,16 @@ Expression *DelegateFuncptrExp::toLvalue(Scope *sc, Expression *e)
 {
     e1 = e1->toLvalue(sc, e);
     return this;
+}
+
+Expression *DelegateFuncptrExp::modifiableLvalue(Scope *sc, Expression *e)
+{
+    if (sc->func->setUnsafe())
+    {
+        error("cannot modify delegate function pointer in @safe code %s", toChars());
+        return new ErrorExp();
+    }
+    return Expression::modifiableLvalue(sc, e);
 }
 
 /*********************** ArrayExp *************************************/
@@ -11011,6 +11217,15 @@ Expression *IndexExp::semantic(Scope *sc)
     // Note that unlike C we do not implement the int[ptr]
 
     Type *t1b = e1->type->toBasetype();
+
+    if (t1b->ty == Tvector)
+    {
+        // Convert e1 to corresponding static array
+        TypeVector *tv1 = (TypeVector *)t1b;
+        t1b = tv1->basetype;
+        t1b = t1b->castMod(tv1->mod);
+        e1->type = t1b;
+    }
 
     /* Run semantic on e2
      */
@@ -11711,12 +11926,10 @@ Expression *AssignExp::semantic(Scope *sc)
                 while (e2y->op == TOKcomma)
                     e2y = ((CommaExp *)e2y)->e2;
 
-                CallExp *ce;
-                DotVarExp *dve;
-                if (sd->ctor &&
-                    e2y->op == TOKcall &&
-                    (ce = (CallExp *)e2y, ce->e1->op == TOKdotvar) &&
-                    (dve = (DotVarExp *)ce->e1, dve->var->isCtorDeclaration()) &&
+                CallExp *ce = (e2y->op == TOKcall) ? (CallExp *)e2y : NULL;
+                DotVarExp *dve = (ce && ce->e1->op == TOKdotvar)
+                    ? (DotVarExp *)ce->e1 : NULL;
+                if (sd->ctor && ce && dve && dve->var->isCtorDeclaration() &&
                     e2y->type->implicitConvTo(t1))
                 {
                     /* Look for form of constructor call which is:
@@ -12239,7 +12452,18 @@ Expression *AssignExp::semantic(Scope *sc)
                 e2x = e2x->castTo(sc, e1->type->constOf());
         }
         else
-            e2x = e2x->implicitCastTo(sc, e1->type);
+        {
+            /* Bugzilla 15778: A string literal has an array type of immutable
+             * elements by default, and normally it cannot be convertible to
+             * array type of mutable elements. But for element-wise assignment,
+             * elements need to be const at best. So we should give a chance
+             * to change code unit size for polysemous string literal.
+             */
+            if (e2x->op == TOKstring)
+                e2x = e2x->implicitCastTo(sc, e1->type->constOf());
+            else
+                e2x = e2x->implicitCastTo(sc, e1->type);
+        }
     }
     else
     {
@@ -12309,7 +12533,9 @@ Expression *AssignExp::semantic(Scope *sc)
 
     type = e1->type;
     assert(type);
-    return op == TOKassign ? reorderSettingAAElem(sc) : this;
+    Expression *result = op == TOKassign ? reorderSettingAAElem(sc) : this;
+    checkAssignEscape(sc, result, false);
+    return result;
 }
 
 bool AssignExp::isLvalue()

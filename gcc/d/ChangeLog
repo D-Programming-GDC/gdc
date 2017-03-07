@@ -1,3 +1,66 @@
+2017-03-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -ftransition=dip1000
+	* lang.opt (ftransition=dip1000): Declare.
+	(ftransition=safe): Make alias for -ftransition=dip1000
+
+2017-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (get_decl_tree): Handle chaining over many levels of
+	nesting functions to get to the right parent for the 'this' field.
+
+2017-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_symbol_decl): Move generation of DECL_ARGUMENTS for
+	empty body declarations to ...
+	(make_thunk): ... here.  Also set-up DECL_RESULT.
+	(finish_thunk): Mark DECL_UNINLINEABLE on external functions.
+
+2017-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (make_thunk): Don't build thunks for functions that
+	failed to compile.
+
+2017-03-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (emit_dso_registry_hooks): Set DECL_PRESERVE_P.
+
+2017-02-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (build_frame_type): Update condition for scope
+	destruction error.
+	* d-port.cc (Port::valcpy): New function.
+	* expr.cc (ExprVisitor::visit(CallExp)): Generate cast of 'this'
+	object to the right handle type before indexing.
+
+2017-02-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-glue.cc (warningSupplemental): New function.
+	(vwarningSupplemental): New function.
+	(deprecationSupplemental): New function.
+	(vdeprecationSupplemental): New function.
+
+2017-02-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* imports.cc (ImportVisitor::visit(OverDeclaration)): New function.
+	(ImportVisitor::visit(FuncAliasDeclaration)): New function.
+
+2017-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Handle -X and -Xf options.
+	(d_parse_file): Update.
+	* lang-specs.h: Add rules for -X style options.
+	* lang.opt (X): Declare.
+	(Xf): Declare.
+	(fXf=): Make alias for -Xf.
+
+2017-02-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fd-vgc): Comment out help test.
+	(fd-verbose): Likewise.
+	(fd-vtls): Likewise.
+	(femit-modules): Likewise.
+
 2017-02-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-target.cc (Target::fieldalign): Adjust.
@@ -35,6 +98,56 @@
 	(d_handle_option): Likewise.
 	(d_parse_file): Likewise.
 	(deps_write): Update signature.
+
+2017-02-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Call D_handle_option_auto.
+	* lang.opt (Wunknown-pragmas): Turn on warning with -Wall.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_handle_option): Replace -fin with -fpreconditions;
+	-fout with -fpostconditions.  Handle -fswitch-errors.
+	(d_post_options): Move setting of release code flags here.
+	* lang.opt (fassert): Declare flag_assert.
+	(fin): Make alias for -fpreconditions.
+	(finvariants): Declare flag_invariants.
+	(fout): Make alias for -fpostconditions.
+	(fpostconditions): Declare.
+	(fpreconditions): Declare.
+	(fswitch-errors): Declare.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (PragmaDeclaration::toObjFile): Warn about unknown
+	pragmas only if -Wunknown-pragmas.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-glue.cc (Global::init): Initialize errorLimit to flag_max_errors.
+	(verror): Don't halt program after invocation limit.
+	* d-lang.cc (d_handle_option): Remove handling -fmax-error-messages.
+	* lang.opt (fmax-error-messages): Remove option.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_symbol_decl): Handle -Wtemplates.
+	* d-lang.cc (d_init_options): Remove setting flag_emit_templates.
+	(d_handle_option): Replace handling -femit-templates with
+	-fall-instantiations.
+	(d_pushdecl): Remove checking for flag_emit_templates.
+	* d-tree.h (D_DECL_IS_TEMPLATE): Remove macro.
+	* lang.opt (flag_emit_templates): Remove variable.
+	(fall-instantiations): Declare.
+	(femit-templates): Make alias for -fall-instantiations.
+	(Wtemplates): Declare.
+
+2017-02-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang.opt (fassert): Update help text.
+	(fin): Likewise.
+	(finvariants): Likewise.
+	(fout): Likewise.
 
 2017-02-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 

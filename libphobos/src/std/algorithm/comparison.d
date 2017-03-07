@@ -17,6 +17,9 @@ $(T2 clamp,
 $(T2 cmp,
         $(D cmp("abc", "abcd")) is $(D -1), $(D cmp("abc", "aba")) is $(D 1),
         and $(D cmp("abc", "abc")) is $(D 0).)
+$(T2 either,
+        Return first parameter $(D p) that passes an $(D if (p)) test, e.g.
+        $(D either(0, 42, 43)) returns $(D 42).)
 $(T2 equal,
         Compares ranges for element-by-element equality, e.g.
         $(D equal([1, 2, 3], [1.0, 2.0, 3.0])) returns $(D true).)
@@ -60,6 +63,7 @@ import std.range;
 import std.traits;
 // FIXME
 import std.typecons; // : tuple, Tuple, Flag;
+import std.meta : allSatisfy;
 
 /**
 Find $(D value) _among $(D values), returning the 1-based index
@@ -136,7 +140,7 @@ efficient search, but one that only supports matching on equality:
 
 @safe unittest
 {
-    import std.typetuple : TypeTuple;
+    import std.meta : AliasSeq;
 
     if (auto pos = 3.among(1, 2, 3))
         assert(pos == 3);
@@ -148,7 +152,7 @@ efficient search, but one that only supports matching on equality:
     assert(position);
     assert(position == 1);
 
-    alias values = TypeTuple!("foo", "bar", "baz");
+    alias values = AliasSeq!("foo", "bar", "baz");
     auto arr = [values];
     assert(arr[0 .. "foo".among(values)] == ["foo"]);
     assert(arr[0 .. "bar".among(values)] == ["foo", "bar"]);
@@ -173,8 +177,8 @@ efficient search, but one that only supports matching on equality:
 // in a tuple.
 private template indexOfFirstOvershadowingChoiceOnLast(choices...)
 {
-    alias firstParameterTypes = ParameterTypeTuple!(choices[0]);
-    alias lastParameterTypes = ParameterTypeTuple!(choices[$ - 1]);
+    alias firstParameterTypes = Parameters!(choices[0]);
+    alias lastParameterTypes = Parameters!(choices[$ - 1]);
 
     static if (lastParameterTypes.length == 0)
     {
@@ -256,7 +260,7 @@ auto castSwitch(choices...)(Object switchObject)
             static assert(isCallable!choice,
                     "A choice handler must be callable");
 
-            alias choiceParameterTypes = ParameterTypeTuple!choice;
+            alias choiceParameterTypes = Parameters!choice;
             static assert(choiceParameterTypes.length <= 1,
                     "A choice handler can not have more than one argument.");
 
@@ -272,7 +276,7 @@ auto castSwitch(choices...)(Object switchObject)
                 static assert(indexOfOvershadowingChoice == index,
                         "choice number %d(type %s) is overshadowed by choice number %d(type %s)".format(
                             index + 1, CastClass.stringof, indexOfOvershadowingChoice + 1,
-                            ParameterTypeTuple!(choices[indexOfOvershadowingChoice])[0].stringof));
+                            Parameters!(choices[indexOfOvershadowingChoice])[0].stringof));
 
                 if (classInfo == typeid(CastClass))
                 {
@@ -299,7 +303,7 @@ auto castSwitch(choices...)(Object switchObject)
         // Checking for derived matches:
         foreach (choice; choices)
         {
-            alias choiceParameterTypes = ParameterTypeTuple!choice;
+            alias choiceParameterTypes = Parameters!choice;
             static if (choiceParameterTypes.length == 1)
             {
                 if (auto castedObject = cast(choiceParameterTypes[0]) switchObject)
@@ -329,7 +333,7 @@ auto castSwitch(choices...)(Object switchObject)
         // Checking for null matches:
         foreach (index, choice; choices)
         {
-            static if (ParameterTypeTuple!(choice).length == 0)
+            static if (Parameters!(choice).length == 0)
             {
                 immutable indexOfOvershadowingChoice =
                     indexOfFirstOvershadowingChoiceOnLast!(choices[0..index + 1]);
@@ -659,8 +663,8 @@ int cmp(alias pred = "a < b", R1, R2)(R1 r1, R2 r2) if (isSomeString!R1 && isSom
         {
             if (i1 == r1.length) return threeWay(i2, r2.length);
             if (i2 == r2.length) return threeWay(r1.length, i1);
-            immutable c1 = std.utf.decode(r1, i1),
-                c2 = std.utf.decode(r2, i2);
+            immutable c1 = decode(r1, i1),
+                c2 = decode(r2, i2);
             if (c1 != c2) return threeWayInt(cast(int) c1, cast(int) c2);
         }
     }
@@ -1153,7 +1157,7 @@ size_t levenshteinDistance(alias equals = (a,b) => a == b, Range1, Range2)
     assert(levenshteinDistance("abcde", "abcde") == 0);
     assert(levenshteinDistance("abcde", "abCde") == 1);
     assert(levenshteinDistance("kitten", "sitting") == 3);
-    assert(levenshteinDistance!((a, b) => std.uni.toUpper(a) == std.uni.toUpper(b))
+    assert(levenshteinDistance!((a, b) => toUpper(a) == toUpper(b))
         ("parks", "SPARK") == 2);
     assert(levenshteinDistance("parks".filter!"true", "spark".filter!"true") == 2);
     assert(levenshteinDistance("ID", "I♥D") == 1);
@@ -1162,6 +1166,32 @@ size_t levenshteinDistance(alias equals = (a,b) => a == b, Range1, Range2)
 @safe @nogc nothrow unittest
 {
     assert(levenshteinDistance("cat"d, "rat"d) == 1);
+}
+
+// compat overload for alias this strings
+size_t levenshteinDistance(alias equals = (a,b) => a == b, Range1, Range2)
+    (auto ref Range1 s, auto ref Range2 t)
+    if (isConvertibleToString!Range1 || isConvertibleToString!Range2)
+{
+    import std.meta : staticMap;
+    alias Types = staticMap!(convertToString, Range1, Range2);
+    return levenshteinDistance!(equals, Types)(s, t);
+}
+
+@safe unittest
+{
+    static struct S { string s; alias s this; }
+    assert(levenshteinDistance(S("cat"), S("rat")) == 1);
+    assert(levenshteinDistance("cat", S("rat")) == 1);
+    assert(levenshteinDistance(S("cat"), "rat") == 1);
+}
+
+@safe @nogc nothrow unittest
+{
+    static struct S { dstring s; alias s this; }
+    assert(levenshteinDistance(S("cat"d), S("rat"d)) == 1);
+    assert(levenshteinDistance("cat"d, S("rat"d)) == 1);
+    assert(levenshteinDistance(S("cat"d), "rat"d) == 1);
 }
 
 /**
@@ -1180,7 +1210,7 @@ Returns:
 Allocates GC memory for the returned EditOp[] array.
 */
 Tuple!(size_t, EditOp[])
-levenshteinDistanceAndPath(alias equals = "a == b", Range1, Range2)
+levenshteinDistanceAndPath(alias equals = (a,b) => a == b, Range1, Range2)
     (Range1 s, Range2 t)
     if (isForwardRange!(Range1) && isForwardRange!(Range2))
 {
@@ -1208,6 +1238,25 @@ levenshteinDistanceAndPath(alias equals = "a == b", Range1, Range2)
     assert(levenshteinDistance("aa", "abc") == 2);
     assert(levenshteinDistance("Saturday", "Sunday") == 3);
     assert(levenshteinDistance("kitten", "sitting") == 3);
+}
+
+// compat overload for alias this strings
+Tuple!(size_t, EditOp[])
+levenshteinDistanceAndPath(alias equals = (a,b) => a == b, Range1, Range2)
+    (auto ref Range1 s, auto ref Range2 t)
+    if (isConvertibleToString!Range1 || isConvertibleToString!Range2)
+{
+    import std.meta : staticMap;
+    alias Types = staticMap!(convertToString, Range1, Range2);
+    return levenshteinDistanceAndPath!(equals, Types)(s, t);
+}
+
+@safe unittest
+{
+    static struct S { string s; alias s this; }
+    assert(levenshteinDistanceAndPath(S("cat"), S("rat"))[0] == 1);
+    assert(levenshteinDistanceAndPath("cat", S("rat"))[0] == 1);
+    assert(levenshteinDistanceAndPath(S("cat"), "rat")[0] == 1);
 }
 
 // max
@@ -1705,7 +1754,7 @@ bool isSameLength(Range1, Range2)(Range1 r1, Range2 r2)
 }
 
 /// For convenience
-alias AllocateGC = Flag!"AllocateGC";
+alias AllocateGC = Flag!"allocateGC";
 
 /**
 Checks if both ranges are permutations of each other.
@@ -1724,7 +1773,7 @@ Allocating forward range option: amortized $(BIGOH r1.length) + $(BIGOH r2.lengt
 
 Params:
     pred = an optional parameter to change how equality is defined
-    allocate_gc = A $(D std.typecons.Flag!"AllocateGC") instance
+    allocate_gc = AllocateGC.yes/no
     r1 = A finite forward range
     r2 = A finite forward range
 
@@ -1910,4 +1959,87 @@ bool isPermutation(alias pred = "a == b", Range1, Range2)
         [mytuple(1, 4), mytuple(2, 5)],
         [mytuple(2, 3), mytuple(1, 2)]
     ));
+}
+
+/**
+Get the _first argument `a` that passes an `if (unaryFun!pred(a))` test.  If
+no argument passes the test, return the last argument.
+
+Similar to behaviour of the `or` operator in dynamic languages such as Lisp's
+`(or ...)` and Python's `a or b or ...` except that the last argument is
+returned upon no match.
+
+Simplifies logic, for instance, in parsing rules where a set of alternative
+matchers are tried. The _first one that matches returns it match result,
+typically as an abstract syntax tree (AST).
+
+Bugs:
+Lazy parameters are currently, too restrictively, inferred by DMD to
+always throw even though they don't need to be. This makes it impossible to
+currently mark `either` as `nothrow`. See issue at $(BUGZILLA 12647).
+
+Returns:
+    The _first argument that passes the test `pred`.
+*/
+CommonType!(T, Ts) either(alias pred = a => a, T, Ts...)(T first, lazy Ts alternatives)
+    if (alternatives.length >= 1 &&
+        !is(CommonType!(T, Ts) == void) &&
+        allSatisfy!(ifTestable, T, Ts))
+{
+    alias predFun = unaryFun!pred;
+
+    if (predFun(first)) return first;
+
+    foreach (e; alternatives[0 .. $ - 1])
+        if (predFun(e)) return e;
+
+    return alternatives[$ - 1];
+}
+
+///
+@safe pure unittest
+{
+    const a = 1;
+    const b = 2;
+    auto ab = either(a, b);
+    static assert(is(typeof(ab) == const(int)));
+    assert(ab == a);
+
+    auto c = 2;
+    const d = 3;
+    auto cd = either!(a => a == 3)(c, d); // use predicate
+    static assert(is(typeof(cd) == int));
+    assert(cd == d);
+
+    auto e = 0;
+    const f = 2;
+    auto ef = either(e, f);
+    static assert(is(typeof(ef) == int));
+    assert(ef == f);
+
+    immutable p = 1;
+    immutable q = 2;
+    auto pq = either(p, q);
+    static assert(is(typeof(pq) == immutable(int)));
+    assert(pq == p);
+
+    assert(either(3, 4) == 3);
+    assert(either(0, 4) == 4);
+    assert(either(0, 0) == 0);
+    assert(either("", "a") == "");
+
+    string r = null;
+    assert(either(r, "a") == "a");
+    assert(either("a", "") == "a");
+
+    immutable s = [1, 2];
+    assert(either(s, s) == s);
+
+    assert(either([0, 1], [1, 2]) == [0, 1]);
+    assert(either([0, 1], [1]) == [0, 1]);
+    assert(either("a", "b") == "a");
+
+    static assert(!__traits(compiles, either(1, "a")));
+    static assert(!__traits(compiles, either(1.0, "a")));
+    static assert(!__traits(compiles, either('a', "a")));
 }

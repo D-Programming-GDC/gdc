@@ -635,6 +635,8 @@ DRUNTIME_OS_BSD_FALSE
 DRUNTIME_OS_BSD_TRUE
 DRUNTIME_OS_DARWIN_FALSE
 DRUNTIME_OS_DARWIN_TRUE
+DRUNTIME_OS_ANDROID_FALSE
+DRUNTIME_OS_ANDROID_TRUE
 DRUNTIME_OS_AIX_FALSE
 DRUNTIME_OS_AIX_TRUE
 DRUNTIME_OS_UNIX_FALSE
@@ -11245,7 +11247,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11248 "configure"
+#line 11250 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11351,7 +11353,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11354 "configure"
+#line 11356 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13866,6 +13868,9 @@ fi
   case "$druntime_cv_target_os" in
       aix*)    druntime_target_os_parsed="aix"
                ;;
+      *android*)
+               druntime_target_os_parsed="android"
+               ;;
       darwin*) druntime_target_os_parsed="darwin"
                ;;
       freebsd*|k*bsd*-gnu)
@@ -13883,6 +13888,14 @@ fi
 else
   DRUNTIME_OS_AIX_TRUE='#'
   DRUNTIME_OS_AIX_FALSE=
+fi
+
+   if test "$druntime_target_os_parsed" = "android"; then
+  DRUNTIME_OS_ANDROID_TRUE=
+  DRUNTIME_OS_ANDROID_FALSE='#'
+else
+  DRUNTIME_OS_ANDROID_TRUE='#'
+  DRUNTIME_OS_ANDROID_FALSE=
 fi
 
    if test "$druntime_target_os_parsed" = "darwin"; then
@@ -14669,8 +14682,8 @@ SPEC_PHOBOS_DEPS="$LIBS"
 
 
 # Libdruntime / phobos soname version
-DRUNTIME_SOVERSION="68:2:0"
-PHOBOS_SOVERSION="68:2:0"
+DRUNTIME_SOVERSION="71:2:0"
+PHOBOS_SOVERSION="71:2:0"
 
 
 
@@ -14847,6 +14860,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${DRUNTIME_OS_AIX_TRUE}" && test -z "${DRUNTIME_OS_AIX_FALSE}"; then
   as_fn_error "conditional \"DRUNTIME_OS_AIX\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DRUNTIME_OS_ANDROID_TRUE}" && test -z "${DRUNTIME_OS_ANDROID_FALSE}"; then
+  as_fn_error "conditional \"DRUNTIME_OS_ANDROID\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${DRUNTIME_OS_DARWIN_TRUE}" && test -z "${DRUNTIME_OS_DARWIN_FALSE}"; then

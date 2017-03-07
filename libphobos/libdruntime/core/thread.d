@@ -122,6 +122,50 @@ private
      *         is switched in for the first time.
      */
     extern(C) void* _d_eh_swapContext(void* newContext) nothrow;
+
+    version (DigitalMars)
+    {
+        version (Windows)
+            alias _d_eh_swapContext swapContext;
+        else
+        {
+            extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow;
+
+            void* swapContext(void* newContext) nothrow
+            {
+                /* Detect at runtime which scheme is being used.
+                 * Eventually, determine it statically.
+                 */
+                static int which = 0;
+                final switch (which)
+                {
+                    case 0:
+                    {
+                        assert(newContext == null);
+                        auto p = _d_eh_swapContext(newContext);
+                        auto pdwarf = _d_eh_swapContextDwarf(newContext);
+                        if (p)
+                        {
+                            which = 1;
+                            return p;
+                        }
+                        else if (pdwarf)
+                        {
+                            which = 2;
+                            return pdwarf;
+                        }
+                        return null;
+                    }
+                    case 1:
+                        return _d_eh_swapContext(newContext);
+                    case 2:
+                        return _d_eh_swapContextDwarf(newContext);
+                }
+            }
+        }
+    }
+    else
+        alias _d_eh_swapContext swapContext;
 }
 
 
@@ -139,9 +183,6 @@ version( Windows )
         import core.sys.windows.windows;
         import core.sys.windows.threadaux;   // for OpenThreadHandle
 
-        const DWORD TLS_OUT_OF_INDEXES  = 0xFFFFFFFF;
-        const CREATE_SUSPENDED = 0x00000004;
-
         extern (Windows) alias uint function(void*) btex_fptr;
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow;
 
@@ -158,13 +199,13 @@ version( Windows )
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt_tlsgc_init();
 
-            Thread.setThis( obj );
-            //Thread.add( obj );
-            scope( exit )
+            Thread.setThis(obj);
+            Thread.add(obj);
+            scope (exit)
             {
-                Thread.remove( obj );
+                Thread.remove(obj);
             }
-            Thread.add( &obj.m_main );
+            Thread.add(&obj.m_main);
 
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
@@ -268,23 +309,24 @@ else version( Posix )
             }
             assert( obj );
 
+            // loadedLibraries need to be inherited from parent thread
+            // before initilizing GC for TLS (rt_tlsgc_init)
+            version (Shared) inheritLoadedLibraries(loadedLibraries);
+
             assert( obj.m_curr is &obj.m_main );
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt_tlsgc_init();
 
             atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
-            Thread.setThis( obj );
-            //Thread.add( obj );
-            scope( exit )
+            Thread.setThis(obj); // allocates lazy TLS (see Issue 11981)
+            Thread.add(obj);     // can only receive signals from here on
+            scope (exit)
             {
-                // NOTE: isRunning should be set to false after the thread is
-                //       removed or a double-removal could occur between this
-                //       function and thread_suspendAll.
-                Thread.remove( obj );
-                atomicStore!(MemoryOrder.raw)(obj.m_isRunning,false);
+                Thread.remove(obj);
+                atomicStore!(MemoryOrder.raw)(obj.m_isRunning, false);
             }
-            Thread.add( &obj.m_main );
+            Thread.add(&obj.m_main);
 
             static extern (C) void thread_cleanupHandler( void* arg ) nothrow
             {
@@ -344,7 +386,6 @@ else version( Posix )
 
             try
             {
-                version (Shared) inheritLoadedLibraries(loadedLibraries);
                 rt_moduleTlsCtor();
                 try
                 {
@@ -395,15 +436,10 @@ else version( Posix )
                 // NOTE: Since registers are being pushed and popped from the
                 //       stack, any other stack data used by this function should
                 //       be gone before the stack cleanup code is called below.
-                Thread  obj = Thread.getThis();
+                Thread obj = Thread.getThis();
+                assert(obj !is null);
 
-                // NOTE: The thread reference returned by getThis is set within
-                //       the thread startup code, so it is possible that this
-                //       handler may be called before the reference is set.  In
-                //       this case it is safe to simply suspend and not worry
-                //       about the stack pointers as the thread will not have
-                //       any references to GC-managed data.
-                if( obj && !obj.m_lock )
+                if( !obj.m_lock )
                 {
                     obj.m_curr.tstack = getStackTop();
                 }
@@ -417,13 +453,13 @@ else version( Posix )
                 status = sigdelset( &sigres, resumeSignalNumber );
                 assert( status == 0 );
 
-                version (FreeBSD) Thread.sm_suspendagain = false;
+                version (FreeBSD) obj.m_suspendagain = false;
                 status = sem_post( &suspendCount );
                 assert( status == 0 );
 
                 sigsuspend( &sigres );
 
-                if( obj && !obj.m_lock )
+                if( !obj.m_lock )
                 {
                     obj.m_curr.tstack = obj.m_curr.bstack;
                 }
@@ -432,9 +468,10 @@ else version( Posix )
             // avoid deadlocks on FreeBSD, see Issue 13416
             version (FreeBSD)
             {
-                if (THR_IN_CRITICAL(pthread_self()))
+                auto obj = Thread.getThis();
+                if (THR_IN_CRITICAL(obj.m_addr))
                 {
-                    Thread.sm_suspendagain = true;
+                    obj.m_suspendagain = true;
                     if (sem_post(&suspendCount)) assert(0);
                     return;
                 }
@@ -646,15 +683,12 @@ class Thread
                 onThreadError( "Error creating thread" );
         }
 
-        // NOTE: The starting thread must be added to the global thread list
-        //       here rather than within thread_entryPoint to prevent a race
-        //       with the main thread, which could finish and terminat the
-        //       app without ever knowing that it should have waited for this
-        //       starting thread.  In effect, not doing the add here risks
-        //       having thread being treated like a daemon thread.
         slock.lock_nothrow();
         scope(exit) slock.unlock_nothrow();
         {
+            ++nAboutToStart;
+            pAboutToStart = cast(Thread*)realloc(pAboutToStart, Thread.sizeof * nAboutToStart);
+            pAboutToStart[nAboutToStart - 1] = this;
             version( Windows )
             {
                 if( ResumeThread( m_hndl ) == -1 )
@@ -696,17 +730,6 @@ class Thread
                     onThreadError( "Error creating thread" );
             }
 
-            // NOTE: when creating threads from inside a DLL, DllMain(THREAD_ATTACH)
-            //       might be called before ResumeThread returns, but the dll
-            //       helper functions need to know whether the thread is created
-            //       from the runtime itself or from another DLL or the application
-            //       to just attach to it
-            //       as a consequence, the new Thread object is added before actual
-            //       creation of the thread. There should be no problem with the GC
-            //       calling thread_suspendAll, because of the slock synchronization
-            //
-            // VERIFY: does this actually also apply to other platforms?
-            add( this );
             return this;
         }
     }
@@ -763,6 +786,25 @@ class Thread
     ///////////////////////////////////////////////////////////////////////////
     // General Properties
     ///////////////////////////////////////////////////////////////////////////
+
+
+    /**
+     * Gets the OS identifier for this thread.
+     *
+     * Returns:
+     *  If the thread hasn't been started yet, returns $(LREF ThreadID)$(D.init).
+     *  Otherwise, returns the result of $(D GetCurrentThreadId) on Windows,
+     *  and $(D pthread_self) on POSIX.
+     *
+     *  The value is unique for the current process.
+     */
+    final @property ThreadID id()
+    {
+        synchronized( this )
+        {
+            return m_addr;
+        }
+    }
 
 
     /**
@@ -1056,7 +1098,7 @@ class Thread
      *
      * ------------------------------------------------------------------------
      */
-    static void sleep( Duration val ) nothrow
+    static void sleep( Duration val ) @nogc nothrow
     in
     {
         assert( !val.isNegative );
@@ -1099,7 +1141,7 @@ class Thread
                 if( !nanosleep( &tin, &tout ) )
                     return;
                 if( errno != EINTR )
-                    throw new ThreadError( "Unable to sleep for the specified duration" );
+                    assert(0, "Unable to sleep for the specified duration");
                 tin = tout;
             }
         }
@@ -1109,7 +1151,7 @@ class Thread
     /**
      * Forces a context switch to occur away from the calling thread.
      */
-    static void yield() nothrow
+    static void yield() @nogc nothrow
     {
         version( Windows )
             SwitchToThread();
@@ -1135,24 +1177,14 @@ class Thread
         // NOTE: This function may not be called until thread_init has
         //       completed.  See thread_suspendAll for more information
         //       on why this might occur.
-        version( OSX )
-        {
-            return sm_this;
-        }
-        else version( Posix )
-        {
-            auto t = cast(Thread) pthread_getspecific( sm_this );
-            return t;
-        }
-        else
-        {
-            return sm_this;
-        }
+        return sm_this;
     }
 
 
     /**
      * Provides a list of all threads currently being tracked by the system.
+     * Note that threads in the returned array might no longer run (see
+     * $(D Thread.)$(LREF isRunning)).
      *
      * Returns:
      *  An array containing references to all threads currently being
@@ -1161,23 +1193,19 @@ class Thread
      */
     static Thread[] getAll()
     {
-        synchronized( slock )
+        static void resize(ref Thread[] buf, size_t nlen)
         {
-            size_t   pos = 0;
-            Thread[] buf = new Thread[sm_tlen];
-
-            foreach( Thread t; Thread )
-            {
-                buf[pos++] = t;
-            }
-            return buf;
+            buf.length = nlen;
         }
+        return getAllImpl!resize();
     }
 
 
     /**
      * Operates on all threads currently being tracked by the system.  The
      * result of deleting any Thread object is undefined.
+     * Note that threads passed to the callback might no longer run (see
+     * $(D Thread.)$(LREF isRunning)).
      *
      * Params:
      *  dg = The supplied code as a delegate.
@@ -1185,22 +1213,61 @@ class Thread
      * Returns:
      *  Zero if all elemented are visited, nonzero if not.
      */
-    static int opApply( scope int delegate( ref Thread ) dg )
+    static int opApply(scope int delegate(ref Thread) dg)
     {
-        synchronized( slock )
-        {
-            int ret = 0;
+        import core.stdc.stdlib : free, realloc;
 
-            for( Thread t = sm_tbeg; t; t = t.next )
-            {
-                ret = dg( t );
-                if( ret )
-                    break;
-            }
-            return ret;
+        static void resize(ref Thread[] buf, size_t nlen)
+        {
+            buf = (cast(Thread*)realloc(buf.ptr, nlen * Thread.sizeof))[0 .. nlen];
         }
+        auto buf = getAllImpl!resize;
+        scope(exit) if (buf.ptr) free(buf.ptr);
+
+        foreach (t; buf)
+        {
+            if (auto res = dg(t))
+                return res;
+        }
+        return 0;
     }
 
+    unittest
+    {
+        auto t1 = new Thread({
+            foreach (_; 0 .. 20)
+                Thread.getAll;
+        }).start;
+        auto t2 = new Thread({
+            foreach (_; 0 .. 20)
+                GC.collect;
+        }).start;
+        t1.join();
+        t2.join();
+    }
+
+    private static Thread[] getAllImpl(alias resize)()
+    {
+        import core.atomic;
+
+        Thread[] buf;
+        while (true)
+        {
+            immutable len = atomicLoad!(MemoryOrder.raw)(*cast(shared)&sm_tlen);
+            resize(buf, len);
+            assert(buf.length == len);
+            synchronized (slock)
+            {
+                if (len == sm_tlen)
+                {
+                    size_t pos;
+                    for (Thread t = sm_tbeg; t; t = t.next)
+                        buf[pos++] = t;
+                    return buf;
+                }
+            }
+        }
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Static Initalizer
@@ -1359,34 +1426,17 @@ private:
     version( Windows )
     {
         alias uint TLSKey;
-        alias uint ThreadAddr;
     }
     else version( Posix )
     {
         alias pthread_key_t TLSKey;
-        alias pthread_t     ThreadAddr;
     }
 
 
     //
     // Local storage
     //
-    version( OSX )
-    {
-        static Thread       sm_this;
-    }
-    else version( Posix )
-    {
-        // On Posix (excluding OSX), pthread_key_t is explicitly used to
-        // store and access thread reference. This is needed
-        // to avoid TLS access in signal handlers (malloc deadlock)
-        // when using shared libraries, see issue 11981.
-        __gshared pthread_key_t sm_this;
-    }
-    else
-    {
-        static Thread       sm_this;
-    }
+    static Thread       sm_this;
 
 
     //
@@ -1397,7 +1447,7 @@ private:
     version (FreeBSD)
     {
         // set when suspend failed and should be retried, see Issue 13416
-        static shared bool sm_suspendagain;
+        shared bool m_suspendagain;
     }
 
 
@@ -1412,7 +1462,7 @@ private:
     {
         mach_port_t     m_tmach;
     }
-    ThreadAddr          m_addr;
+    ThreadID            m_addr;
     Call                m_call;
     string              m_name;
     union
@@ -1445,18 +1495,7 @@ private:
     //
     static void setThis( Thread t )
     {
-        version( OSX )
-        {
-            sm_this = t;
-        }
-        else version( Posix )
-        {
-            pthread_setspecific( sm_this, cast(void*) t );
-        }
-        else
-        {
-            sm_this = t;
-        }
+        sm_this = t;
     }
 
 
@@ -1473,7 +1512,7 @@ private:
     }
     body
     {
-        m_curr.ehContext = _d_eh_swapContext(c.ehContext);
+        m_curr.ehContext = swapContext(c.ehContext);
         c.within = m_curr;
         m_curr = c;
     }
@@ -1488,7 +1527,7 @@ private:
     {
         Context* c = m_curr;
         m_curr = c.within;
-        c.ehContext = _d_eh_swapContext(m_curr.ehContext);
+        c.ehContext = swapContext(m_curr.ehContext);
         c.within = null;
     }
 
@@ -1596,8 +1635,11 @@ private:
 
 
     //
-    // All use of the global lists should synchronize on this lock.
+    // All use of the global thread lists/array should synchronize on this lock.
     //
+    // Careful as the GC acquires this lock after the GC lock to suspend all
+    // threads any GC usage with slock held can result in a deadlock through
+    // lock order inversion.
     @property static Mutex slock() nothrow
     {
         return cast(Mutex)_locks[0].ptr;
@@ -1614,7 +1656,7 @@ private:
     {
         foreach (ref lock; _locks)
         {
-            lock[] = typeid(Mutex).init[];
+            lock[] = typeid(Mutex).initializer[];
             (cast(Mutex)lock.ptr).__ctor();
         }
     }
@@ -1629,6 +1671,10 @@ private:
 
     __gshared Thread    sm_tbeg;
     __gshared size_t    sm_tlen;
+
+    // can't use rt.util.array in public code
+    __gshared Thread* pAboutToStart;
+    __gshared size_t nAboutToStart;
 
     //
     // Used for ordering threads in the global thread list.
@@ -1653,31 +1699,16 @@ private:
     }
     body
     {
-        // NOTE: This loop is necessary to avoid a race between newly created
-        //       threads and the GC.  If a collection starts between the time
-        //       Thread.start is called and the new thread calls Thread.add,
-        //       the thread will have its stack scanned without first having
-        //       been properly suspended.  Testing has shown this to sometimes
-        //       cause a deadlock.
+        slock.lock_nothrow();
+        scope(exit) slock.unlock_nothrow();
+        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
 
-        while( true )
+        if (sm_cbeg)
         {
-            slock.lock_nothrow();
-            scope(exit) slock.unlock_nothrow();
-            {
-                if( !suspendDepth )
-                {
-                    if( sm_cbeg )
-                    {
-                        c.next = sm_cbeg;
-                        sm_cbeg.prev = c;
-                    }
-                    sm_cbeg = c;
-                   return;
-                }
-            }
-            yield();
+            c.next = sm_cbeg;
+            sm_cbeg.prev = c;
         }
+        sm_cbeg = c;
     }
 
 
@@ -1717,59 +1748,44 @@ private:
     //
     // Add a thread to the global thread list.
     //
-    static void add( Thread t ) nothrow
+    static void add( Thread t, bool rmAboutToStart = true ) nothrow
     in
     {
         assert( t );
         assert( !t.next && !t.prev );
-        assert( t.isRunning );
     }
     body
     {
-        // NOTE: This loop is necessary to avoid a race between newly created
-        //       threads and the GC.  If a collection starts between the time
-        //       Thread.start is called and the new thread calls Thread.add,
-        //       the thread could manipulate global state while the collection
-        //       is running, and by being added to the thread list it could be
-        //       resumed by the GC when it was never suspended, which would
-        //       result in an exception thrown by the GC code.
-        //
-        //       An alternative would be to have Thread.start call Thread.add
-        //       for the new thread, but this may introduce its own problems,
-        //       since the thread object isn't entirely ready to be operated
-        //       on by the GC.  This could be fixed by tracking thread startup
-        //       status, but it's far easier to simply have Thread.add wait
-        //       for any running collection to stop before altering the thread
-        //       list.
-        //
-        //       After further testing, having add wait for a collect to end
-        //       proved to have its own problems (explained in Thread.start),
-        //       so add(Thread) is now being done in Thread.start.  This
-        //       reintroduced the deadlock issue mentioned in bugzilla 4890,
-        //       which appears to have been solved by doing this same wait
-        //       procedure in add(Context).  These comments will remain in
-        //       case other issues surface that require the startup state
-        //       tracking described above.
+        slock.lock_nothrow();
+        scope(exit) slock.unlock_nothrow();
+        assert(t.isRunning); // check this with slock to ensure pthread_create already returned
+        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
 
-        while( true )
+        if (rmAboutToStart)
         {
-            slock.lock_nothrow();
-            scope(exit) slock.unlock_nothrow();
+            size_t idx = -1;
+            foreach (i, thr; pAboutToStart[0 .. nAboutToStart])
             {
-                if( !suspendDepth )
+                if (thr is t)
                 {
-                    if( sm_tbeg )
-                    {
-                        t.next = sm_tbeg;
-                        sm_tbeg.prev = t;
-                    }
-                    sm_tbeg = t;
-                    ++sm_tlen;
-                    return;
+                    idx = i;
+                    break;
                 }
             }
-            yield();
+            assert(idx != -1);
+            import core.stdc.string : memmove;
+            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, Thread.sizeof * (nAboutToStart - idx - 1));
+            pAboutToStart =
+                cast(Thread*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
         }
+
+        if (sm_tbeg)
+        {
+            t.next = sm_tbeg;
+            sm_tbeg.prev = t;
+        }
+        sm_tbeg = t;
+        ++sm_tlen;
     }
 
 
@@ -1780,10 +1796,12 @@ private:
     in
     {
         assert( t );
-        assert( t.next || t.prev );
     }
     body
     {
+        // Thread was already removed earlier, might happen b/c of thread_detachInstance
+        if (!t.next && !t.prev)
+            return;
         slock.lock_nothrow();
         {
             // NOTE: When a thread is removed from the global thread list its
@@ -1803,6 +1821,7 @@ private:
                 t.next.prev = t.prev;
             if( sm_tbeg is t )
                 sm_tbeg = t.next;
+            t.prev = t.next = null;
             --sm_tlen;
         }
         // NOTE: Don't null out t.next or t.prev because opApply currently
@@ -1840,6 +1859,9 @@ unittest
     // create and start instances of each type
     auto derived = new DerivedThread().start();
     auto composed = new Thread(&threadFunc).start();
+    new Thread({
+        // Codes to run in the newly created thread.
+    }).start();
 }
 
 unittest
@@ -1988,9 +2010,6 @@ extern (C) void thread_init()
 
         status = sem_init( &suspendCount, 0, 0 );
         assert( status == 0 );
-
-        status = pthread_key_create( &Thread.sm_this, null );
-        assert( status == 0 );
     }
     Thread.sm_main = thread_attachThis();
 }
@@ -2002,15 +2021,14 @@ extern (C) void thread_init()
  */
 extern (C) void thread_term()
 {
+    assert(Thread.sm_tbeg && Thread.sm_tlen == 1);
+    assert(!Thread.nAboutToStart);
+    if (Thread.pAboutToStart) // in case realloc(p, 0) doesn't return null
+    {
+        free(Thread.pAboutToStart);
+        Thread.pAboutToStart = null;
+    }
     Thread.termLocks();
-
-    version( OSX )
-    {
-    }
-    else version( Posix )
-    {
-        pthread_key_delete( Thread.sm_this );
-    }
 }
 
 
@@ -2069,7 +2087,7 @@ extern (C) Thread thread_attachThis()
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    Thread.add( thisThread );
+    Thread.add( thisThread, false );
     Thread.add( thisContext );
     if( Thread.sm_main !is null )
         multiThreadedFlag = true;
@@ -2090,14 +2108,14 @@ version( Windows )
     //       that only does the TLS lookup without the fancy fallback stuff.
 
     /// ditto
-    extern (C) Thread thread_attachByAddr( Thread.ThreadAddr addr )
+    extern (C) Thread thread_attachByAddr( ThreadID addr )
     {
         return thread_attachByAddrB( addr, getThreadStackBottom( addr ) );
     }
 
 
     /// ditto
-    extern (C) Thread thread_attachByAddrB( Thread.ThreadAddr addr, void* bstack )
+    extern (C) Thread thread_attachByAddrB( ThreadID addr, void* bstack )
     {
         GC.disable(); scope(exit) GC.enable();
 
@@ -2130,7 +2148,7 @@ version( Windows )
             });
         }
 
-        Thread.add( thisThread );
+        Thread.add( thisThread, false );
         Thread.add( thisContext );
         if( Thread.sm_main !is null )
             multiThreadedFlag = true;
@@ -2168,7 +2186,7 @@ extern (C) void thread_detachThis() nothrow
  *
  *       $(D extern(C) void rt_moduleTlsDtor();)
  */
-extern (C) void thread_detachByAddr( Thread.ThreadAddr addr )
+extern (C) void thread_detachByAddr( ThreadID addr )
 {
     if( auto t = thread_findByAddr( addr ) )
         Thread.remove( t );
@@ -2209,17 +2227,21 @@ unittest
  * Returns:
  *  The thread object associated with the thread identifier, null if not found.
  */
-static Thread thread_findByAddr( Thread.ThreadAddr addr )
+static Thread thread_findByAddr( ThreadID addr )
 {
     Thread.slock.lock_nothrow();
     scope(exit) Thread.slock.unlock_nothrow();
-    {
-        foreach( t; Thread )
-        {
-                if( t.m_addr == addr )
-                    return t;
-        }
-    }
+
+    // also return just spawned thread so that
+    // DLL_THREAD_ATTACH knows it's a D thread
+    foreach (t; Thread.pAboutToStart[0 .. Thread.nAboutToStart])
+        if (t.m_addr == addr)
+            return t;
+
+    foreach (t; Thread)
+        if (t.m_addr == addr)
+            return t;
+
     return null;
 }
 
@@ -2247,28 +2269,38 @@ extern (C) void thread_setThis(Thread t)
  */
 extern (C) void thread_joinAll()
 {
-
-    while( true )
+ Lagain:
+    Thread.slock.lock_nothrow();
+    // wait for just spawned threads
+    if (Thread.nAboutToStart)
     {
-        Thread nonDaemon = null;
-
-        foreach( t; Thread )
-        {
-            if( !t.isRunning )
-            {
-                Thread.remove( t );
-                continue;
-            }
-            if( !t.isDaemon )
-            {
-                nonDaemon = t;
-                break;
-            }
-        }
-        if( nonDaemon is null )
-            return;
-        nonDaemon.join();
+        Thread.slock.unlock_nothrow();
+        Thread.yield();
+        goto Lagain;
     }
+
+    // join all non-daemon threads, the main thread is also a daemon
+    auto t = Thread.sm_tbeg;
+    while (t)
+    {
+        if (!t.isRunning)
+        {
+            auto tn = t.next;
+            Thread.remove(t);
+            t = tn;
+        }
+        else if (t.isDaemon)
+        {
+            t = t.next;
+        }
+        else
+        {
+            Thread.slock.unlock_nothrow();
+            t.join(); // might rethrow
+            goto Lagain; // must restart iteration b/c of unlock
+        }
+    }
+    Thread.slock.unlock_nothrow();
 }
 
 
@@ -2280,11 +2312,13 @@ shared static ~this()
     // NOTE: The functionality related to garbage collection must be minimally
     //       operable after this dtor completes.  Therefore, only minimal
     //       cleanup may occur.
-
-    for( Thread t = Thread.sm_tbeg; t; t = t.next )
+    auto t = Thread.sm_tbeg;
+    while (t)
     {
-        if( !t.isRunning )
-            Thread.remove( t );
+        auto tn = t.next;
+        if (!t.isRunning)
+            Thread.remove(t);
+        t = tn;
     }
 }
 
@@ -2397,9 +2431,27 @@ private __gshared uint suspendDepth = 0;
  *
  * Throws:
  *  ThreadError if the suspend operation fails for a running thread.
+ * Returns:
+ *  Whether the thread is now suspended (true) or terminated (false).
  */
-private void suspend( Thread t ) nothrow
+private bool suspend( Thread t ) nothrow
 {
+    Duration waittime = dur!"usecs"(10);
+ Lagain:
+    if (!t.isRunning)
+    {
+        Thread.remove(t);
+        return false;
+    }
+    else if (t.m_isInCriticalRegion)
+    {
+        Thread.criticalRegionLock.unlock_nothrow();
+        Thread.sleep(waittime);
+        if (waittime < dur!"msecs"(10)) waittime *= 2;
+        Thread.criticalRegionLock.lock_nothrow();
+        goto Lagain;
+    }
+
     version( Windows )
     {
         if( t.m_addr != GetCurrentThreadId() && SuspendThread( t.m_hndl ) == 0xFFFFFFFF )
@@ -2407,7 +2459,7 @@ private void suspend( Thread t ) nothrow
             if( !t.isRunning )
             {
                 Thread.remove( t );
-                return;
+                return false;
             }
             onThreadError( "Unable to suspend thread" );
         }
@@ -2466,7 +2518,7 @@ private void suspend( Thread t ) nothrow
             if( !t.isRunning )
             {
                 Thread.remove( t );
-                return;
+                return false;
             }
             onThreadError( "Unable to suspend thread" );
         }
@@ -2527,26 +2579,14 @@ private void suspend( Thread t ) nothrow
     {
         if( t.m_addr != pthread_self() )
         {
-        Lagain:
             if( pthread_kill( t.m_addr, suspendSignalNumber ) != 0 )
             {
                 if( !t.isRunning )
                 {
                     Thread.remove( t );
-                    return;
+                    return false;
                 }
                 onThreadError( "Unable to suspend thread" );
-            }
-            while (sem_wait(&suspendCount) != 0)
-            {
-                if (errno != EINTR)
-                    onThreadError( "Unable to wait for semaphore" );
-                errno = 0;
-            }
-            version (FreeBSD)
-            {
-                // avoid deadlocks, see Issue 13416
-                if (Thread.sm_suspendagain) goto Lagain;
             }
         }
         else if( !t.m_lock )
@@ -2554,6 +2594,7 @@ private void suspend( Thread t ) nothrow
             t.m_curr.tstack = getStackTop();
         }
     }
+    return true;
 }
 
 /**
@@ -2593,37 +2634,51 @@ extern (C) void thread_suspendAll() nothrow
         if( ++suspendDepth > 1 )
             return;
 
-        // NOTE: I'd really prefer not to check isRunning within this loop but
-        //       not doing so could be problematic if threads are terminated
-        //       abnormally and a new thread is created with the same thread
-        //       address before the next GC run.  This situation might cause
-        //       the same thread to be suspended twice, which would likely
-        //       cause the second suspend to fail, the garbage collection to
-        //       abort, and Bad Things to occur.
-
         Thread.criticalRegionLock.lock_nothrow();
-        for (Thread t = Thread.sm_tbeg; t !is null; t = t.next)
+        scope (exit) Thread.criticalRegionLock.unlock_nothrow();
+        size_t cnt;
+        auto t = Thread.sm_tbeg;
+        while (t)
         {
-            Duration waittime = dur!"usecs"(10);
-        Lagain:
-            if (!t.isRunning)
-            {
-                Thread.remove(t);
-            }
-            else if (t.m_isInCriticalRegion)
-            {
-                Thread.criticalRegionLock.unlock_nothrow();
-                Thread.sleep(waittime);
-                if (waittime < dur!"msecs"(10)) waittime *= 2;
-                Thread.criticalRegionLock.lock_nothrow();
-                goto Lagain;
-            }
-            else
-            {
-                suspend(t);
-            }
+            auto tn = t.next;
+            if (suspend(t))
+                ++cnt;
+            t = tn;
         }
-        Thread.criticalRegionLock.unlock_nothrow();
+
+        version (OSX)
+        {}
+        else version (Posix)
+        {
+            // subtract own thread
+            assert(cnt >= 1);
+            --cnt;
+        Lagain:
+            // wait for semaphore notifications
+            for (; cnt; --cnt)
+            {
+                while (sem_wait(&suspendCount) != 0)
+                {
+                    if (errno != EINTR)
+                        onThreadError("Unable to wait for semaphore");
+                    errno = 0;
+                }
+            }
+            version (FreeBSD)
+            {
+                // avoid deadlocks, see Issue 13416
+                t = Thread.sm_tbeg;
+                while (t)
+                {
+                    auto tn = t.next;
+                    if (t.m_suspendagain && suspend(t))
+                        ++cnt;
+                    t = tn;
+                }
+                if (cnt)
+                    goto Lagain;
+             }
+        }
     }
 }
 
@@ -2798,6 +2853,9 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
     // NOTE: Synchronizing on Thread.slock is not needed because this
     //       function may only be called after all other threads have
     //       been suspended from within the same lock.
+    if (Thread.nAboutToStart)
+        scan(ScanType.stack, Thread.pAboutToStart, Thread.pAboutToStart + Thread.nAboutToStart);
+
     for( Thread.Context* c = Thread.sm_cbeg; c; c = c.next )
     {
         version( StackGrowsDown )
@@ -2926,6 +2984,8 @@ private void onThreadError(string msg = null, Throwable next = null) nothrow
     __gshared ThreadError error = new ThreadError(null);
     error.msg = msg;
     error.next = next;
+    import core.exception : SuppressTraceInfo;
+    error.info = SuppressTraceInfo.instance;
     throw error;
 }
 
@@ -4563,16 +4623,22 @@ private:
                 finalHandler = reg.handler;
             }
 
-            pstack -= EXCEPTION_REGISTRATION.sizeof;
+            // When linking with /safeseh (supported by LDC, but not DMD)
+            // the exception chain must not extend to the very top
+            // of the stack, otherwise the exception chain is also considered
+            // invalid. Reserving additional 4 bytes at the top of the stack will
+            // keep the EXCEPTION_REGISTRATION below that limit
+            size_t reserve = EXCEPTION_REGISTRATION.sizeof + 4;
+            pstack -= reserve;
             *(cast(EXCEPTION_REGISTRATION*)pstack) =
                 EXCEPTION_REGISTRATION( sehChainEnd, finalHandler );
 
             push( cast(size_t) &fiber_entryPoint );                 // EIP
-            push( cast(size_t) m_ctxt.bstack - EXCEPTION_REGISTRATION.sizeof ); // EBP
+            push( cast(size_t) m_ctxt.bstack - reserve );           // EBP
             push( 0x00000000 );                                     // EDI
             push( 0x00000000 );                                     // ESI
             push( 0x00000000 );                                     // EBX
-            push( cast(size_t) m_ctxt.bstack - EXCEPTION_REGISTRATION.sizeof ); // FS:[0]
+            push( cast(size_t) m_ctxt.bstack - reserve );           // FS:[0]
             push( cast(size_t) m_ctxt.bstack );                     // FS:[4]
             push( cast(size_t) m_ctxt.bstack - m_size );            // FS:[8]
             push( 0x00000000 );                                     // EAX
@@ -5375,3 +5441,13 @@ unittest
     auto thr = new Thread(function{}, 4096 + 1).start();
     thr.join();
 }
+
+/**
+ * Represents the ID of a thread, as returned by $(D Thread.)$(LREF id).
+ * The exact type varies from platform to platform.
+ */
+version (Windows)
+    alias ThreadID = uint;
+else
+version (Posix)
+    alias ThreadID = pthread_t;

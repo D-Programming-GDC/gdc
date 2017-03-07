@@ -337,6 +337,36 @@ void test14944()
 }
 
 /***************************************************/
+// 15258 - a field initialization affects other overlapped fields
+
+class C15258
+{
+    this(const char* result)
+    {
+        this.result = result;
+    }
+
+    union
+    {
+        const char** results;
+        const char* result;
+    }
+}
+
+/***************************************************/
+// 15665
+
+scope class C15665 (V)
+{
+    this () {}
+}
+
+void test15665()
+{
+    scope foo = new C15665!int;
+}
+
+/***************************************************/
 
 int main()
 {
@@ -345,6 +375,7 @@ int main()
     test11246();
     test13515();
     test14944();
+    test15665();
 
     printf("Success\n");
     return 0;

@@ -24,10 +24,10 @@
 #include <malloc.h>
 #endif
 
+#include "checkedint.h"
 #include "rmem.h"
 #include "port.h"
 #include "target.h"
-#include "checkedint.h"
 
 #include "dsymbol.h"
 #include "mtype.h"
@@ -51,6 +51,7 @@
 bool symbolIsVisible(Scope *sc, Dsymbol *s);
 typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
 int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *pn = NULL);
+FuncDeclaration *isFuncAddress(Expression *e, bool *hasOverloads = NULL);
 
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
@@ -3680,7 +3681,7 @@ Expression *TypeVector::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
         e->type = basetype;
         return e;
     }
-    if (ident == Id::_init || ident == Id::offsetof || ident == Id::stringof)
+    if (ident == Id::_init || ident == Id::offsetof || ident == Id::stringof || ident == Id::__xalignof)
     {
         // init should return a new VectorExp (Bugzilla 12776)
         // offsetof does not work on a cast expression, so use e directly
@@ -4698,6 +4699,7 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
             sd->semantic(NULL);
 
         // duplicate a part of StructDeclaration::semanticTypeInfoMembers
+        //printf("AA = %s, key: xeq = %p, xerreq = %p xhash = %p\n", toChars(), sd->xeq, sd->xerreq, sd->xhash);
         if (sd->xeq &&
             sd->xeq->_scope &&
             sd->xeq->semanticRun < PASSsemantic3done)
@@ -4708,7 +4710,6 @@ printf("index->ito->ito = x%x\n", index->ito->ito);
                 sd->xeq = sd->xerreq;
         }
 
-        //printf("AA = %s, key: xeq = %p, xhash = %p\n", toChars(), sd->xeq, sd->xhash);
         const char *s = (index->toBasetype()->ty != Tstruct) ? "bottom of " : "";
         if (!sd->xeq)
         {
@@ -5312,15 +5313,7 @@ int Type::covariant(Type *t, StorageClass *pstc)
             {
                 goto Ldistinct;
             }
-            const StorageClass sc = STCref | STCin | STCout | STClazy;
-            if ((fparam1->storageClass & sc) != (fparam2->storageClass & sc))
-                inoutmismatch = 1;
-            // We can add scope, but not subtract it
-            if (!(fparam1->storageClass & STCscope) && (fparam2->storageClass & STCscope))
-                inoutmismatch = 1;
-            // We can subtract return, but not add it
-            if ((fparam1->storageClass & STCreturn) && !(fparam2->storageClass & STCreturn))
-                inoutmismatch = 1;
+            inoutmismatch = !fparam1->isCovariant(fparam2);
         }
     }
     else if (t1->parameters != t2->parameters)
@@ -5481,12 +5474,18 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
     if (sc->stc & STCscope)
         tf->isscope = true;
 
-    if (sc->stc & STCsafe)
-        tf->trust = TRUSTsafe;
-    if (sc->stc & STCsystem)
-        tf->trust = TRUSTsystem;
-    if (sc->stc & STCtrusted)
-        tf->trust = TRUSTtrusted;
+    if ((sc->stc & (STCreturn | STCref)) == STCreturn)
+        tf->isscope = true;                                 // return by itself means 'return scope'
+
+    if (tf->trust == TRUSTdefault)
+    {
+        if (sc->stc & STCsafe)
+            tf->trust = TRUSTsafe;
+        if (sc->stc & STCsystem)
+            tf->trust = TRUSTsystem;
+        if (sc->stc & STCtrusted)
+            tf->trust = TRUSTtrusted;
+    }
 
     if (sc->stc & STCproperty)
         tf->isproperty = true;
@@ -5524,6 +5523,11 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
         }
         if (tf->next->hasWild())
             wildreturn = true;
+
+        if (tf->isreturn && !tf->isref && !tf->next->hasPointers())
+        {
+            error(loc, "function has 'return' but does not return any indirections");
+        }
     }
 
     unsigned char wildparams = 0;
@@ -5588,11 +5592,34 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
                 fparam->storageClass |= STCreturn;
             }
 
-            if (fparam->storageClass & STCreturn &&
-                !(fparam->storageClass & (STCref | STCout)))
+            if (fparam->storageClass & STCreturn)
             {
-                error(loc, "'return' can only be used with 'ref' or 'out'");
-                errors = true;
+                if (fparam->storageClass & (STCref | STCout))
+                {
+                    // Disabled for the moment awaiting improvement to allow return by ref
+                    // to be transformed into return by scope.
+                    if (0 && !tf->isref)
+                    {
+                        StorageClass stc = fparam->storageClass & (STCref | STCout);
+                        error(loc, "parameter %s is 'return %s' but function does not return by ref",
+                            fparam->ident ? fparam->ident->toChars() : "",
+                            stcToChars(stc));
+                        errors = true;
+                    }
+                }
+                else
+                {
+                    fparam->storageClass |= STCscope;        // 'return' implies 'scope'
+                    if (tf->isref)
+                    {
+                    }
+                    else if (!tf->isref && tf->next && !tf->next->hasPointers())
+                    {
+                        error(loc, "parameter %s is 'return' but function does not return any indirections",
+                            fparam->ident ? fparam->ident->toChars() : "");
+                        errors = true;
+                    }
+                }
             }
 
             if (fparam->storageClass & (STCref | STClazy))
@@ -5617,6 +5644,13 @@ Type *TypeFunction::semantic(Loc loc, Scope *sc)
                         errors = true;
                     }
                 }
+            }
+
+            if (fparam->storageClass & STCscope && !fparam->type->hasPointers())
+            {
+                fparam->storageClass &= ~STCscope;
+                if (!(fparam->storageClass & STCref))
+                    fparam->storageClass &= ~STCreturn;
             }
 
             if (t->hasWild())
@@ -5978,89 +6012,83 @@ MATCH TypeFunction::callMatch(Type *tthis, Expressions *args, int flag)
             goto L1;        // try typesafe variadics
         }
         {
-        Expression *arg = (*args)[u];
-        assert(arg);
-        //printf("arg: %s, type: %s\n", arg->toChars(), arg->type->toChars());
+            Expression *arg = (*args)[u];
+            assert(arg);
+            //printf("arg: %s, type: %s\n", arg->toChars(), arg->type->toChars());
 
-        Type *targ = arg->type;
-        Type *tprm = wildmatch ? p->type->substWildTo(wildmatch) : p->type;
+            Type *targ = arg->type;
+            Type *tprm = wildmatch ? p->type->substWildTo(wildmatch) : p->type;
 
-        if (p->storageClass & STClazy && tprm->ty == Tvoid && targ->ty != Tvoid)
-            m = MATCHconvert;
-        else
-        {
-            //printf("%s of type %s implicitConvTo %s\n", arg->toChars(), targ->toChars(), tprm->toChars());
-            if (flag)
-            {
-                // for partial ordering, value is an irrelevant mockup, just look at the type
-                m = targ->implicitConvTo(tprm);
-            }
+            if (p->storageClass & STClazy && tprm->ty == Tvoid && targ->ty != Tvoid)
+                m = MATCHconvert;
             else
-                m = arg->implicitConvTo(tprm);
-            //printf("match %d\n", m);
-        }
-
-        // Non-lvalues do not match ref or out parameters
-        if (p->storageClass & STCref)
-        {
-            // Bugzilla 13783: Don't use toBasetype() to handle enum types.
-            Type *ta = targ;
-            Type *tp = tprm;
-            //printf("fparam[%d] ta = %s, tp = %s\n", u, ta->toChars(), tp->toChars());
-
-            if (m && !arg->isLvalue())
             {
-                if (arg->op == TOKstring && tp->ty == Tsarray)
+                //printf("%s of type %s implicitConvTo %s\n", arg->toChars(), targ->toChars(), tprm->toChars());
+                if (flag)
                 {
-                    if (ta->ty != Tsarray)
-                    {
-                        Type *tn = tp->nextOf()->castMod(ta->nextOf()->mod);
-                        dinteger_t dim = ((StringExp *)arg)->len;
-                        ta = tn->sarrayOf(dim);
-                    }
-                }
-                else if (arg->op == TOKslice && tp->ty == Tsarray)
-                {
-                    // Allow conversion from T[lwr .. upr] to ref T[upr-lwr]
-                    if (ta->ty != Tsarray)
-                    {
-                        Type *tn = ta->nextOf();
-                        dinteger_t dim = ((TypeSArray *)tp)->dim->toUInteger();
-                        ta = tn->sarrayOf(dim);
-                    }
+                    // for partial ordering, value is an irrelevant mockup, just look at the type
+                    m = targ->implicitConvTo(tprm);
                 }
                 else
+                    m = arg->implicitConvTo(tprm);
+                //printf("match %d\n", m);
+            }
+
+            // Non-lvalues do not match ref or out parameters
+            if (p->storageClass & (STCref | STCout))
+            {
+                // Bugzilla 13783: Don't use toBasetype() to handle enum types.
+                Type *ta = targ;
+                Type *tp = tprm;
+                //printf("fparam[%d] ta = %s, tp = %s\n", u, ta->toChars(), tp->toChars());
+
+                if (m && !arg->isLvalue())
+                {
+                    if (p->storageClass & STCout)
+                        goto Nomatch;
+
+                    if (arg->op == TOKstring && tp->ty == Tsarray)
+                    {
+                        if (ta->ty != Tsarray)
+                        {
+                            Type *tn = tp->nextOf()->castMod(ta->nextOf()->mod);
+                            dinteger_t dim = ((StringExp *)arg)->len;
+                            ta = tn->sarrayOf(dim);
+                        }
+                    }
+                    else if (arg->op == TOKslice && tp->ty == Tsarray)
+                    {
+                        // Allow conversion from T[lwr .. upr] to ref T[upr-lwr]
+                        if (ta->ty != Tsarray)
+                        {
+                            Type *tn = ta->nextOf();
+                            dinteger_t dim = ((TypeSArray *)tp)->dim->toUInteger();
+                            ta = tn->sarrayOf(dim);
+                        }
+                    }
+                    else
+                        goto Nomatch;
+                }
+
+                /* Find most derived alias this type being matched.
+                 * Bugzilla 15674: Allow on both ref and out parameters.
+                 */
+                while (1)
+                {
+                    Type *tat = ta->toBasetype()->aliasthisOf();
+                    if (!tat || !tat->implicitConvTo(tprm))
+                        break;
+                    ta = tat;
+                }
+
+                /* A ref variable should work like a head-const reference.
+                 * e.g. disallows:
+                 *  ref T      <- an lvalue of const(T) argument
+                 *  ref T[dim] <- an lvalue of const(T[dim]) argument
+                 */
+                if (!ta->constConv(tp))
                     goto Nomatch;
             }
-
-            /* find most derived alias this type being matched.
-             */
-            while (1)
-            {
-                Type *tat = ta->toBasetype()->aliasthisOf();
-                if (!tat || !tat->implicitConvTo(tprm))
-                    break;
-                ta = tat;
-            }
-
-            /* A ref variable should work like a head-const reference.
-             * e.g. disallows:
-             *  ref T      <- an lvalue of const(T) argument
-             *  ref T[dim] <- an lvalue of const(T[dim]) argument
-             */
-            if (!ta->constConv(tp))
-                goto Nomatch;
-        }
-        else if (p->storageClass & STCout)
-        {
-            if (m && !arg->isLvalue())
-                goto Nomatch;
-
-            Type *targb = targ->toBasetype();
-            Type *tprmb = tprm->toBasetype();
-            if (!targb->constConv(tprmb))
-                goto Nomatch;
-        }
         }
 
         /* prefer matching the element type rather than the array
@@ -6162,47 +6190,92 @@ bool TypeFunction::hasLazyParameters()
 
 /***************************
  * Examine function signature for parameter p and see if
- * p can 'escape' the scope of the function.
+ * the value of p can 'escape' the scope of the function.
+ * This is useful to minimize the needed annotations for the parameters.
+ * Params:
+ *  p = parameter to this function
+ * Returns:
+ *  true if escapes via assignment to global or through a parameter
  */
 
 bool TypeFunction::parameterEscapes(Parameter *p)
 {
-    purityLevel();
-
     /* Scope parameters do not escape.
      * Allow 'lazy' to imply 'scope' -
      * lazy parameters can be passed along
      * as lazy parameters to the next function, but that isn't
      * escaping.
      */
-    if (p->storageClass & (STCscope | STClazy))
+    if (parameterStorageClass(p) & (STCscope | STClazy))
         return false;
-    if (p->storageClass & STCreturn)
-        return true;
+    return true;
+}
 
-    /* If haven't inferred the return type yet, assume it escapes
+/************************************
+ * Take the specified storage class for p,
+ * and use the function signature to infer whether
+ * STCscope and STCreturn should be OR'd in.
+ * (This will not affect the name mangling.)
+ * Params:
+ *  p = one of the parameters to 'this'
+ * Returns:
+ *  storage class with STCscope or STCreturn OR'd in
+ */
+StorageClass TypeFunction::parameterStorageClass(Parameter *p)
+{
+    StorageClass stc = p->storageClass;
+    if (!global.params.vsafe)
+        return stc;
+
+    if (stc & (STCscope | STCreturn | STClazy) || purity == PUREimpure)
+        return stc;
+
+    /* If haven't inferred the return type yet, can't infer storage classes
      */
     if (!nextOf())
-        return true;
+        return stc;
 
-    if (purity > PUREweak)
+    purityLevel();
+
+    // See if p can escape via any of the other parameters
+    if (purity == PUREweak)
     {
-        /* With pure functions, we need only be concerned if p escapes
-         * via any return statement.
-         */
-        Type* tret = nextOf()->toBasetype();
-        if (!isref && !tret->hasPointers())
+        const size_t dim = Parameter::dim(parameters);
+        for (size_t i = 0; i < dim; i++)
         {
-            /* The result has no references, so p could not be escaping
-             * that way.
-             */
-            return false;
+            Parameter *fparam = Parameter::getNth(parameters, i);
+            Type *t = fparam->type;
+            if (!t)
+                continue;
+            t = t->baseElemOf();
+            if (t->isMutable() && t->hasPointers())
+            {
+                if (fparam->storageClass & (STCref | STCout))
+                {
+                }
+                else if (t->ty == Tarray || t->ty == Tpointer)
+                {
+                    Type *tn = t->nextOf()->toBasetype();
+                    if (!(tn->isMutable() && tn->hasPointers()))
+                        continue;
+                }
+                return stc;
+            }
         }
     }
 
-    /* Assume it escapes in the absence of better information.
-     */
-    return true;
+    stc |= STCscope;
+
+    Type *tret = nextOf()->toBasetype();
+    if (isref || tret->hasPointers())
+    {
+        /* The result has references, so p could be escaping
+         * that way.
+         */
+        stc |= STCreturn;
+    }
+
+    return stc;
 }
 
 Expression *TypeFunction::defaultInit(Loc loc)
@@ -7166,6 +7239,18 @@ void TypeTypeof::resolve(Loc loc, Scope *sc, Expression **pe, Type **pt, Dsymbol
              * template functions.
              */
         }
+        if (FuncDeclaration *f = exp->op == TOKvar    ? ((   VarExp *)exp)->var->isFuncDeclaration()
+                               : exp->op == TOKdotvar ? ((DotVarExp *)exp)->var->isFuncDeclaration() : NULL)
+        {
+            if (f->checkForwardRef(loc))
+                goto Lerr;
+        }
+        if (FuncDeclaration *f = isFuncAddress(exp))
+        {
+            if (f->checkForwardRef(loc))
+                goto Lerr;
+        }
+
         t = exp->type;
         if (!t)
         {
@@ -8414,10 +8499,43 @@ L1:
             if (sym->vthis->_scope)
                 sym->vthis->semantic(NULL);
 
-            ClassDeclaration *cdp = sym->toParent2()->isClassDeclaration();
-            DotVarExp *de = new DotVarExp(e->loc, e, sym->vthis);
-            de->type = (cdp ? cdp->type : sym->vthis->type)->addMod(e->type->mod);
-            return de;
+            if (ClassDeclaration *cdp = sym->toParent2()->isClassDeclaration())
+            {
+                DotVarExp *dve = new DotVarExp(e->loc, e, sym->vthis);
+                dve->type = cdp->type->addMod(e->type->mod);
+                return dve;
+            }
+
+            /* Bugzilla 15839: Find closest parent class through nested functions.
+             */
+            for (Dsymbol *p = sym->toParent2(); p; p = p->toParent2())
+            {
+                FuncDeclaration *fd = p->isFuncDeclaration();
+                if (!fd)
+                    break;
+                if (fd->isNested())
+                    continue;
+                AggregateDeclaration *ad = fd->isThis();
+                if (!ad)
+                    break;
+                if (ClassDeclaration *cdp = ad->isClassDeclaration())
+                {
+                    ThisExp *ve = new ThisExp(e->loc);
+
+                    ve->var = fd->vthis;
+                    const bool nestedError = fd->vthis->checkNestedReference(sc, e->loc);
+                    assert(!nestedError);
+
+                    ve->type = fd->vthis->type->addMod(e->type->mod);
+                    return ve;
+                }
+                break;
+            }
+
+            // Continue to show enclosing function's frame (stack or closure).
+            DotVarExp *dve = new DotVarExp(e->loc, e, sym->vthis);
+            dve->type = sym->vthis->type->addMod(e->type->mod);
+            return dve;
         }
         else
         {
@@ -9296,4 +9414,31 @@ int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *p
     if (pn)
         *pn = n; // update index
     return result;
+}
+
+
+const char *Parameter::toChars()
+{
+    return ident ? ident->toChars() : "__anonymous_param";
+}
+
+/*********************************
+ * Compute covariance of parameters `this` and `p`
+ * as determined by the storage classes of both.
+ * Params:
+ *  p = Parameter to compare with
+ * Returns:
+ *  true = `this` can be used in place of `p`
+ *  false = nope
+ */
+bool Parameter::isCovariant(const Parameter *p) const
+{
+    const StorageClass stc = STCref | STCin | STCout | STClazy;
+    return !((this->storageClass & stc) != (p->storageClass & stc) ||
+
+            // We can add scope, but not subtract it
+            (!(this->storageClass & STCscope) && (p->storageClass & STCscope)) ||
+
+            // We can subtract return, but not add it
+            ((this->storageClass & STCreturn) && !(p->storageClass & STCreturn)));
 }

@@ -89,7 +89,8 @@ auto restoredTime = SysTime.fromISOExtString(timeString);
         $(LREF DateTimeException)).
 
     See_Also:
-        <a href="../intro-to-datetime.html">Introduction to std&#46;_datetime </a><br>
+        $(DDLINK intro-to-_datetime, Introduction to std.datetime,
+                 Introduction to std&#46;_datetime)<br>
         $(WEB en.wikipedia.org/wiki/ISO_8601, ISO 8601)<br>
         $(WEB en.wikipedia.org/wiki/Tz_database,
               Wikipedia entry on TZ Database)<br>
@@ -121,6 +122,12 @@ version(Windows)
     import core.sys.windows.windows;
     import core.sys.windows.winsock2;
     import std.windows.registry;
+
+    // Uncomment and run unittests to print missing Windows TZ translations.
+    // Please subscribe to Microsoft Daylight Saving Time & Time Zone Blog
+    // (https://blogs.technet.microsoft.com/dst2007/) if you feel responsible
+    // for updating the translations.
+    // version = UpdateWindowsTZTranslations;
 }
 else version(Posix)
 {
@@ -347,8 +354,8 @@ public:
         assert(norm1 <= norm2, format("%s %s", norm1, norm2));
         assert(abs(norm1 - norm2) <= seconds(2));
 
-        import std.typetuple;
-        foreach(ct; TypeTuple!(ClockType.coarse, ClockType.precise, ClockType.second))
+        import std.meta : AliasSeq;
+        foreach(ct; AliasSeq!(ClockType.coarse, ClockType.precise, ClockType.second))
         {
             scope(failure) writefln("ClockType.%s", ct);
             auto value1 = Clock.currTime!ct;
@@ -451,6 +458,39 @@ public:
                        ts.tv_nsec / 100 +
                        hnsecsToUnixEpoch;
             }
+            else version(NetBSD)
+            {
+                static if(clockType == ClockType.second)
+                    return unixTimeToStdTime(core.stdc.time.time(null));
+                else
+                {
+                    timeval tv;
+                    if(gettimeofday(&tv, null) != 0)
+                        throw new TimeException("Call to gettimeofday() failed");
+                    return convert!("seconds", "hnsecs")(tv.tv_sec) +
+                           convert!("usecs", "hnsecs")(tv.tv_usec) +
+                           hnsecsToUnixEpoch;
+                }
+            }
+            else version(Solaris)
+            {
+                static if(clockType == ClockType.second)
+                    return unixTimeToStdTime(core.stdc.time.time(null));
+                else
+                {
+                    import core.sys.solaris.time;
+                    static if(clockType == ClockType.coarse)       alias clockArg = CLOCK_REALTIME;
+                    else static if(clockType == ClockType.normal)  alias clockArg = CLOCK_REALTIME;
+                    else static if(clockType == ClockType.precise) alias clockArg = CLOCK_REALTIME;
+                    else static assert(0, "Previous static if is wrong.");
+                    timespec ts;
+                    if(clock_gettime(clockArg, &ts) != 0)
+                        throw new TimeException("Call to clock_gettime() failed");
+                    return convert!("seconds", "hnsecs")(ts.tv_sec) +
+                           ts.tv_nsec / 100 +
+                           hnsecsToUnixEpoch;
+                }
+            }
             else static assert(0, "Unsupported OS");
         }
         else static assert(0, "Unsupported OS");
@@ -467,8 +507,8 @@ public:
         assert(norm1 <= norm2, format("%s %s", norm1, norm2));
         assert(abs(norm1 - norm2) <= limit);
 
-        import std.typetuple;
-        foreach(ct; TypeTuple!(ClockType.coarse, ClockType.precise, ClockType.second))
+        import std.meta : AliasSeq;
+        foreach(ct; AliasSeq!(ClockType.coarse, ClockType.precise, ClockType.second))
         {
             scope(failure) writefln("ClockType.%s", ct);
             auto value1 = Clock.currStdTime!ct;
@@ -479,7 +519,12 @@ public:
     }
 
 
+    // @@@DEPRECATED_2017-01@@@
     /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime). Use $(D MonoTime.currTime)
+              instead. currSystemTick will be removed in January 2017.)
+
         The current system tick. The number of ticks per second varies from
         system to system. currSystemTick uses a monotonic clock, so it's
         intended for precision timing by comparing relative time values, not
@@ -495,17 +540,39 @@ public:
         Throws:
             $(LREF DateTimeException) if it fails to get the time.
       +/
+    deprecated("Use core.time.MonoTime.currTime instead")
     static @property TickDuration currSystemTick() @safe nothrow
     {
         return TickDuration.currSystemTick;
     }
 
-    unittest
+    deprecated unittest
     {
         assert(Clock.currSystemTick.length > 0);
     }
 
+    // @@@DEPRECATED_2017-01@@@
     /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime). To duplicate the behavior
+              of currAppTick with $(D MonoTime), store the value of
+              $(D MonoTime.currTime) when the program starts, and then subtract
+              it from the current value of $(D MonoTime.currTime) in order to
+              determine how long the program has been running. currAppTick will
+              be removed in January 2017.)
+
+        --------------------
+        immutable MonoTime startupTime;
+        shared static this()
+        {
+            startupTime = MonoTime.currTime;
+        }
+        Duration timeSinceProgramStarted()
+        {
+            return MonoTime.currTime - startupTime;
+        }
+        --------------------
+
         The current number of system ticks since the application started.
         The number of ticks per second varies from system to system.
         This uses a monotonic clock.
@@ -520,12 +587,13 @@ public:
         Throws:
             $(LREF DateTimeException) if it fails to get the time.
       +/
+    deprecated("Use core.time.MonoTime instead. See currAppTick's documentation for details.")
     static @property TickDuration currAppTick() @safe
     {
         return currSystemTick - TickDuration.appOrigin;
     }
 
-    unittest
+    deprecated unittest
     {
         auto a = Clock.currSystemTick;
         auto b = Clock.currAppTick;
@@ -689,7 +757,7 @@ public:
     /++
         $(RED Deprecated. Please use the overload which takes a
               $(CXREF time, Duration) for the fractional seconds. This overload
-              will be removed in August 2016).
+              will be removed in August 2016.)
 
         Params:
             dateTime = The $(LREF DateTime) to use to set this $(LREF SysTime)'s
@@ -908,15 +976,15 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
-        static assert(__traits(compiles, st == st));
-        static assert(__traits(compiles, st == cst));
-        //static assert(__traits(compiles, st == ist));
-        static assert(__traits(compiles, cst == st));
-        static assert(__traits(compiles, cst == cst));
-        //static assert(__traits(compiles, cst == ist));
-        //static assert(__traits(compiles, ist == st));
-        //static assert(__traits(compiles, ist == cst));
-        //static assert(__traits(compiles, ist == ist));
+        assert(st == st);
+        assert(st == cst);
+        //assert(st == ist);
+        assert(cst == st);
+        assert(cst == cst);
+        //assert(cst == ist);
+        //assert(ist == st);
+        //assert(ist == cst);
+        //assert(ist == ist);
     }
 
     /++
@@ -989,15 +1057,15 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 33, 30));
-        static assert(__traits(compiles, st.opCmp(st)));
-        static assert(__traits(compiles, st.opCmp(cst)));
-        //static assert(__traits(compiles, st.opCmp(ist)));
-        static assert(__traits(compiles, cst.opCmp(st)));
-        static assert(__traits(compiles, cst.opCmp(cst)));
-        //static assert(__traits(compiles, cst.opCmp(ist)));
-        //static assert(__traits(compiles, ist.opCmp(st)));
-        //static assert(__traits(compiles, ist.opCmp(cst)));
-        //static assert(__traits(compiles, ist.opCmp(ist)));
+        assert(st.opCmp(st) == 0);
+        assert(st.opCmp(cst) == 0);
+        //assert(st.opCmp(ist) == 0);
+        assert(cst.opCmp(st) == 0);
+        assert(cst.opCmp(cst) == 0);
+        //assert(cst.opCmp(ist) == 0);
+        //assert(ist.opCmp(st) == 0);
+        //assert(ist.opCmp(cst) == 0);
+        //assert(ist.opCmp(ist) == 0);
     }
 
     /++
@@ -1042,8 +1110,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.year));
-        //static assert(__traits(compiles, ist.year));
+        assert(cst.year == 1999);
+        //assert(ist.year == 1999);
     }
 
     /++
@@ -1166,7 +1234,8 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.year = 12));
+        st.year = 12;
+        assert(st.year == 12);
         static assert(!__traits(compiles, cst.year = 12));
         //static assert(!__traits(compiles, ist.year = 12));
     }
@@ -1262,7 +1331,8 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.yearBC = 12));
+        st.yearBC = 12;
+        assert(st.yearBC == 12);
         static assert(!__traits(compiles, cst.yearBC = 12));
         //static assert(!__traits(compiles, ist.yearBC = 12));
     }
@@ -1316,8 +1386,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.month));
-        //static assert(__traits(compiles, ist.month));
+        assert(cst.month == 7);
+        //assert(ist.month == 7);
     }
 
 
@@ -1477,8 +1547,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.day));
-        //static assert(__traits(compiles, ist.day));
+         assert(cst.day == 6);
+        //assert(ist.day == 6);
     }
 
 
@@ -1640,8 +1710,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.hour));
-        //static assert(__traits(compiles, ist.hour));
+        assert(cst.hour == 12);
+        //assert(ist.hour == 12);
     }
 
 
@@ -1765,8 +1835,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.minute));
-        //static assert(__traits(compiles, ist.minute));
+        assert(cst.minute == 30);
+        //assert(ist.minute == 30);
     }
 
 
@@ -1894,8 +1964,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.second));
-        //static assert(__traits(compiles, ist.second));
+        assert(cst.second == 33);
+        //assert(ist.second == 33);
     }
 
 
@@ -2023,8 +2093,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.fracSecs));
-        //static assert(__traits(compiles, ist.fracSecs));
+        assert(cst.fracSecs == Duration.zero);
+        //assert(ist.fracSecs == Duration.zero);
     }
 
 
@@ -2113,7 +2183,7 @@ public:
         $(RED Deprecated. Please use $(LREF fracSecs) instead of fracSec. It
               uses a $(CXREF time, Duration) to represent the fractional seconds
               instead of a $(CXREF time, FracSec). This overload will be removed
-              in August 2016).
+              in August 2016.)
 
         Fractional seconds past the second.
      +/
@@ -2176,8 +2246,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.fracSec));
-        //static assert(__traits(compiles, ist.fracSec));
+        assert(cst.fracSec == FracSec.zero);
+        //assert(ist.fracSec == FracSec.zero);
     }
 
 
@@ -2186,7 +2256,7 @@ public:
         $(RED Deprecated. Please use $(LREF fracSecs) instead of fracSec. It
               uses a $(CXREF time, Duration) to represent the fractional seconds
               instead of a $(CXREF time, FracSec). This overload will be removed
-              in August 2016).
+              in August 2016.)
 
         Fractional seconds past the second.
 
@@ -2266,13 +2336,13 @@ public:
         assert(SysTime(0).stdTime == 0);
         assert(SysTime(1).stdTime == 1);
         assert(SysTime(-1).stdTime == -1);
-        assert(SysTime(DateTime(1, 1, 1, 0, 0, 33), hnsecs(502), UTC()).stdTime == 330000502L);
-        assert(SysTime(DateTime(1970, 1, 1, 0, 0, 0), UTC()).stdTime == 621355968000000000L);
+        assert(SysTime(DateTime(1, 1, 1, 0, 0, 33), hnsecs(502), UTC()).stdTime == 330_000_502L);
+        assert(SysTime(DateTime(1970, 1, 1, 0, 0, 0), UTC()).stdTime == 621_355_968_000_000_000L);
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.stdTime));
-        //static assert(__traits(compiles, ist.stdTime));
+        assert(cst.stdTime > 0);
+        //assert(ist.stdTime > 0);
     }
 
 
@@ -2489,8 +2559,8 @@ public:
     unittest
     {
         assert(SysTime(DateTime(1970, 1, 1), UTC()).toUnixTime() == 0);
-        import std.typetuple : TypeTuple;
-        foreach(units; TypeTuple!("hnsecs", "usecs", "msecs"))
+        import std.meta : AliasSeq;
+        foreach(units; AliasSeq!("hnsecs", "usecs", "msecs"))
             assert(SysTime(DateTime(1970, 1, 1, 0, 0, 0), dur!units(1), UTC()).toUnixTime() == 0);
         assert(SysTime(DateTime(1970, 1, 1, 0, 0, 1), UTC()).toUnixTime() == 1);
         assert(SysTime(DateTime(1969, 12, 31, 23, 59, 59), hnsecs(9_999_999), UTC()).toUnixTime() == 0);
@@ -3907,7 +3977,7 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.roll!"years"(4)));
+        st.roll!"years"(4);
         static assert(!__traits(compiles, cst.roll!"years"(4)));
         //static assert(!__traits(compiles, ist.roll!"years"(4)));
     }
@@ -6140,36 +6210,44 @@ public:
 
 
     /++
-        Gives the result of adding or subtracting a duration from this
-        $(LREF SysTime).
+        Gives the result of adding or subtracting a $(CXREF time, Duration) from
+        this $(LREF SysTime).
 
-        The legal types of arithmetic for $(LREF SysTime) using this operator are
+        The legal types of arithmetic for $(LREF SysTime) using this operator
+        are
 
         $(BOOKTABLE,
-        $(TR $(TD SysTime) $(TD +) $(TD duration) $(TD -->) $(TD SysTime))
-        $(TR $(TD SysTime) $(TD -) $(TD duration) $(TD -->) $(TD SysTime))
+        $(TR $(TD SysTime) $(TD +) $(TD Duration) $(TD -->) $(TD SysTime))
+        $(TR $(TD SysTime) $(TD -) $(TD Duration) $(TD -->) $(TD SysTime))
         )
 
         Params:
-            duration = The duration to add to or subtract from this
-                       $(LREF SysTime).
+            duration = The $(CXREF time, Duration) to add to or subtract from
+                       this $(LREF SysTime).
       +/
-    SysTime opBinary(string op, D)(in D duration) @safe const pure nothrow
-        if((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    SysTime opBinary(string op)(Duration duration) @safe const pure nothrow
+        if(op == "+" || op == "-")
     {
-        import std.format : format;
-
         SysTime retval = SysTime(this._stdTime, this._timezone);
-
-        static if(is(Unqual!D == Duration))
-            immutable hnsecs = duration.total!"hnsecs";
-        else static if(is(Unqual!D == TickDuration))
-            immutable hnsecs = duration.hnsecs;
-
-        mixin(format("retval._stdTime %s= hnsecs;", op));
+        immutable hnsecs = duration.total!"hnsecs";
+        mixin("retval._stdTime " ~ op ~ "= hnsecs;");
         return retval;
+    }
+
+    ///
+    unittest
+    {
+        assert(SysTime(DateTime(2015, 12, 31, 23, 59, 59)) + seconds(1) ==
+               SysTime(DateTime(2016, 1, 1, 0, 0, 0)));
+
+        assert(SysTime(DateTime(2015, 12, 31, 23, 59, 59)) + hours(1) ==
+               SysTime(DateTime(2016, 1, 1, 0, 59, 59)));
+
+        assert(SysTime(DateTime(2016, 1, 1, 0, 0, 0)) - seconds(1) ==
+               SysTime(DateTime(2015, 12, 31, 23, 59, 59)));
+
+        assert(SysTime(DateTime(2016, 1, 1, 0, 59, 59)) - hours(1) ==
+               SysTime(DateTime(2015, 12, 31, 23, 59, 59)));
     }
 
     unittest
@@ -6193,14 +6271,6 @@ public:
         assert(st + dur!"hnsecs"(7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_685)));
         assert(st + dur!"hnsecs"(-7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_671)));
 
-        //This probably only runs in cases where gettimeofday() is used, but it's
-        //hard to do this test correctly with variable ticksPerSec.
-        if(TickDuration.ticksPerSec == 1_000_000)
-        {
-            assert(st + TickDuration.from!"usecs"(7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_748)));
-            assert(st + TickDuration.from!"usecs"(-7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_608)));
-        }
-
         assert(st - dur!"weeks"(-7) == SysTime(DateTime(1999, 8, 24, 12, 30, 33), hnsecs(2_345_678)));
         assert(st - dur!"weeks"(7) == SysTime(DateTime(1999, 5, 18, 12, 30, 33), hnsecs(2_345_678)));
         assert(st - dur!"days"(-7) == SysTime(DateTime(1999, 7, 13, 12, 30, 33), hnsecs(2_345_678)));
@@ -6217,14 +6287,6 @@ public:
         assert(st - dur!"usecs"(7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_608)));
         assert(st - dur!"hnsecs"(-7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_685)));
         assert(st - dur!"hnsecs"(7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_671)));
-
-        //This probably only runs in cases where gettimeofday() is used, but it's
-        //hard to do this test correctly with variable ticksPerSec.
-        if(TickDuration.ticksPerSec == 1_000_000)
-        {
-            assert(st - TickDuration.from!"usecs"(-7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_748)));
-            assert(st - TickDuration.from!"usecs"(7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_608)));
-        }
 
         static void testST(in SysTime orig, long hnsecs, in SysTime expected, size_t line = __LINE__)
         {
@@ -6352,41 +6414,69 @@ public:
         auto duration = dur!"seconds"(12);
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst + duration));
-        //static assert(__traits(compiles, ist + duration));
-        static assert(__traits(compiles, cst - duration));
-        //static assert(__traits(compiles, ist - duration));
+        assert(cst + duration == SysTime(DateTime(1999, 7, 6, 12, 30, 45)));
+        //assert(ist + duration == SysTime(DateTime(1999, 7, 6, 12, 30, 45)));
+        assert(cst - duration == SysTime(DateTime(1999, 7, 6, 12, 30, 21)));
+        //assert(ist - duration == SysTime(DateTime(1999, 7, 6, 12, 30, 21)));
+    }
+
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines + and - with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    SysTime opBinary(string op)(TickDuration td) @safe const pure nothrow
+        if(op == "+" || op == "-")
+    {
+        SysTime retval = SysTime(this._stdTime, this._timezone);
+        immutable hnsecs = td.hnsecs;
+        mixin("retval._stdTime " ~ op ~ "= hnsecs;");
+        return retval;
+    }
+
+    deprecated unittest
+    {
+        //This probably only runs in cases where gettimeofday() is used, but it's
+        //hard to do this test correctly with variable ticksPerSec.
+        if(TickDuration.ticksPerSec == 1_000_000)
+        {
+            auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_678));
+
+            assert(st + TickDuration.from!"usecs"(7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_748)));
+            assert(st + TickDuration.from!"usecs"(-7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_608)));
+
+            assert(st - TickDuration.from!"usecs"(-7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_748)));
+            assert(st - TickDuration.from!"usecs"(7) == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_608)));
+        }
     }
 
 
     /++
-        Gives the result of adding or subtracting a duration from this
-        $(LREF SysTime), as well as assigning the result to this $(LREF SysTime).
+        Gives the result of adding or subtracting a $(CXREF time, Duration) from
+        this $(LREF SysTime), as well as assigning the result to this
+        $(LREF SysTime).
 
         The legal types of arithmetic for $(LREF SysTime) using this operator are
 
         $(BOOKTABLE,
-        $(TR $(TD SysTime) $(TD +) $(TD duration) $(TD -->) $(TD SysTime))
-        $(TR $(TD SysTime) $(TD -) $(TD duration) $(TD -->) $(TD SysTime))
+        $(TR $(TD SysTime) $(TD +) $(TD Duration) $(TD -->) $(TD SysTime))
+        $(TR $(TD SysTime) $(TD -) $(TD Duration) $(TD -->) $(TD SysTime))
         )
 
         Params:
-            duration = The duration to add to or subtract from this
-                       $(LREF SysTime).
+            duration = The $(CXREF time, Duration) to add to or subtract from
+                       this $(LREF SysTime).
       +/
-    ref SysTime opOpAssign(string op, D)(in D duration) @safe pure nothrow
-        if((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    ref SysTime opOpAssign(string op)(Duration duration) @safe pure nothrow
+        if(op == "+" || op == "-")
     {
-        import std.format : format;
-
-        static if(is(Unqual!D == Duration))
-            auto hnsecs = duration.total!"hnsecs";
-        else static if(is(Unqual!D == TickDuration))
-            auto hnsecs = duration.hnsecs;
-
-        mixin(format("_stdTime %s= hnsecs;", op));
+        immutable hnsecs = duration.total!"hnsecs";
+        mixin("_stdTime " ~ op ~ "= hnsecs;");
         return this;
     }
 
@@ -6570,6 +6660,54 @@ public:
         //static assert(!__traits(compiles, ist -= duration));
     }
 
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines += and -= with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    ref SysTime opOpAssign(string op)(TickDuration td) @safe pure nothrow
+        if(op == "+" || op == "-")
+    {
+        immutable hnsecs = td.hnsecs;
+        mixin("_stdTime " ~ op ~ "= hnsecs;");
+        return this;
+    }
+
+    deprecated unittest
+    {
+        //This probably only runs in cases where gettimeofday() is used, but it's
+        //hard to do this test correctly with variable ticksPerSec.
+        if(TickDuration.ticksPerSec == 1_000_000)
+        {
+            {
+                auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_678));
+                st += TickDuration.from!"usecs"(7);
+                assert(st == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_748)));
+            }
+            {
+                auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_678));
+                st += TickDuration.from!"usecs"(-7);
+                assert(st == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_608)));
+            }
+
+            {
+                auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_678));
+                st -= TickDuration.from!"usecs"(-7);
+                assert(st == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_748)));
+            }
+            {
+                auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_678));
+                st -= TickDuration.from!"usecs"(7);
+                assert(st == SysTime(DateTime(1999, 7, 6, 12, 30, 33), hnsecs(2_345_608)));
+            }
+        }
+    }
+
 
     /++
         Gives the difference between two $(LREF SysTime)s.
@@ -6653,17 +6791,17 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st - st));
-        static assert(__traits(compiles, cst - st));
-        //static assert(__traits(compiles, ist - st));
+        assert(st - st == Duration.zero);
+        assert(cst - st == Duration.zero);
+        //assert(ist - st == Duration.zero);
 
-        static assert(__traits(compiles, st - cst));
-        static assert(__traits(compiles, cst - cst));
-        //static assert(__traits(compiles, ist - cst));
+        assert(st - cst == Duration.zero);
+        assert(cst - cst == Duration.zero);
+        //assert(ist - cst == Duration.zero);
 
-        //static assert(__traits(compiles, st - ist));
-        //static assert(__traits(compiles, cst - ist));
-        //static assert(__traits(compiles, ist - ist));
+        //assert(st - ist == Duration.zero);
+        //assert(cst - ist == Duration.zero);
+        //assert(ist - ist == Duration.zero);
     }
 
 
@@ -6714,17 +6852,17 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.diffMonths(st)));
-        static assert(__traits(compiles, cst.diffMonths(st)));
-        //static assert(__traits(compiles, ist.diffMonths(st)));
+        assert(st.diffMonths(st) == 0);
+        assert(cst.diffMonths(st) == 0);
+        //assert(ist.diffMonths(st) == 0);
 
-        static assert(__traits(compiles, st.diffMonths(cst)));
-        static assert(__traits(compiles, cst.diffMonths(cst)));
-        //static assert(__traits(compiles, ist.diffMonths(cst)));
+        assert(st.diffMonths(cst) == 0);
+        assert(cst.diffMonths(cst) == 0);
+        //assert(ist.diffMonths(cst) == 0);
 
-        //static assert(__traits(compiles, st.diffMonths(ist)));
-        //static assert(__traits(compiles, cst.diffMonths(ist)));
-        //static assert(__traits(compiles, ist.diffMonths(ist)));
+        //assert(st.diffMonths(ist) == 0);
+        //assert(cst.diffMonths(ist) == 0);
+        //assert(ist.diffMonths(ist) == 0);
     }
 
 
@@ -6741,9 +6879,9 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.isLeapYear));
-        static assert(__traits(compiles, cst.isLeapYear));
-        //static assert(__traits(compiles, ist.isLeapYear));
+        assert(!st.isLeapYear);
+        assert(!cst.isLeapYear);
+        //assert(!ist.isLeapYear);
     }
 
 
@@ -6760,9 +6898,9 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.dayOfWeek));
-        static assert(__traits(compiles, cst.dayOfWeek));
-        //static assert(__traits(compiles, ist.dayOfWeek));
+        assert(st.dayOfWeek == DayOfWeek.tue);
+        assert(cst.dayOfWeek == DayOfWeek.tue);
+        //assert(ist.dayOfWeek == DayOfWeek.tue);
     }
 
 
@@ -6787,9 +6925,9 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.dayOfYear));
-        static assert(__traits(compiles, cst.dayOfYear));
-        //static assert(__traits(compiles, ist.dayOfYear));
+        assert(st.dayOfYear == 187);
+        assert(cst.dayOfYear == 187);
+        //assert(ist.dayOfYear == 187);
     }
 
 
@@ -6819,7 +6957,8 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.dayOfYear = 12));
+        st.dayOfYear = 12;
+        assert(st.dayOfYear == 12);
         static assert(!__traits(compiles, cst.dayOfYear = 12));
         //static assert(!__traits(compiles, ist.dayOfYear = 12));
     }
@@ -7023,8 +7162,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.dayOfGregorianCal));
-        //static assert(__traits(compiles, ist.dayOfGregorianCal));
+        assert(cst.dayOfGregorianCal == 729_941);
+        //assert(ist.dayOfGregorianCal == 729_941);
     }
 
 
@@ -7467,9 +7606,9 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.isoWeek));
-        static assert(__traits(compiles, cst.isoWeek));
-        //static assert(__traits(compiles, ist.isoWeek));
+        assert(st.isoWeek == 27);
+        assert(cst.isoWeek == 27);
+        //assert(ist.isoWeek == 27);
     }
 
 
@@ -7562,8 +7701,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.endOfMonth));
-        //static assert(__traits(compiles, ist.endOfMonth));
+        assert(cst.endOfMonth == SysTime(DateTime(1999, 7, 31, 23, 59, 59), hnsecs(9_999_999)));
+        //assert(ist.endOfMonth == SysTime(DateTime(1999, 7, 31, 23, 59, 59), hnsecs(9_999_999)));
     }
 
 
@@ -7618,8 +7757,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.daysInMonth));
-        //static assert(__traits(compiles, ist.daysInMonth));
+        assert(cst.daysInMonth == 31);
+        //assert(ist.daysInMonth == 31);
     }
 
 
@@ -7651,8 +7790,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.isAD));
-        //static assert(__traits(compiles, ist.isAD));
+        assert(cst.isAD);
+        //assert(ist.isAD);
     }
 
 
@@ -7698,8 +7837,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.julianDay));
-        //static assert(__traits(compiles, ist.julianDay));
+        assert(cst.julianDay == 2_451_366);
+        //assert(ist.julianDay == 2_451_366);
     }
 
 
@@ -7722,8 +7861,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cst.modJulianDay));
-        //static assert(__traits(compiles, ist.modJulianDay));
+        assert(cst.modJulianDay == 51_365);
+        //assert(ist.modJulianDay == 51_365);
     }
 
 
@@ -7756,8 +7895,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cast(Date)cst));
-        //static assert(__traits(compiles, cast(Date)ist));
+        assert(cast(Date)cst != Date.init);
+        //assert(cast(Date)ist != Date.init);
     }
 
 
@@ -7815,8 +7954,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cast(DateTime)cst));
-        //static assert(__traits(compiles, cast(DateTime)ist));
+        assert(cast(DateTime)cst != DateTime.init);
+        //assert(cast(DateTime)ist != DateTime.init);
     }
 
 
@@ -7864,8 +8003,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cast(TimeOfDay)cst));
-        //static assert(__traits(compiles, cast(TimeOfDay)ist));
+        assert(cast(TimeOfDay)cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
     }
 
 
@@ -7894,10 +8033,20 @@ public:
 
         If this $(LREF SysTime)'s time zone is $(LREF LocalTime), then TZ is empty.
         If its time zone is $(D UTC), then it is "Z". Otherwise, it is the
-        offset from UTC (e.g. +1:00 or -7:00). Note that the offset from UTC
+        offset from UTC (e.g. +0100 or -0700). Note that the offset from UTC
         is $(I not) enough to uniquely identify the time zone.
 
-        Time zone offsets will be in the form +HH:MM or -HH:MM.
+        Time zone offsets will be in the form +HHMM or -HHMM.
+
+        $(RED Warning:
+            Previously, toISOString did the same as $(LREF toISOExtString) and
+            generated +HH:MM or -HH:MM for the time zone when it was not
+            $(LREF LocalTime) or $(LREF UTC), which is not in conformance with
+            ISO 9601 for the non-extended string format. This has now been
+            fixed. However, for now, fromISOString will continue to accept the
+            extended format for the time zone so that any code which has been
+            writing out the result of toISOString to read in later will continue
+            to work.)
       +/
     string toISOString() @safe const nothrow
     {
@@ -7933,7 +8082,7 @@ public:
             return format("%s%s%s",
                           dateTime.toISOString(),
                           fracSecsToISOString(cast(int)hnsecs),
-                          SimpleTimeZone.toISOString(utcOffset));
+                          SimpleTimeZone.toISOExtString(utcOffset));
         }
         catch(Exception e)
             assert(0, "format() threw.");
@@ -8005,8 +8154,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cast(TimeOfDay)cst));
-        //static assert(__traits(compiles, cast(TimeOfDay)ist));
+        assert(cast(TimeOfDay)cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
     }
 
 
@@ -8024,7 +8173,7 @@ public:
 
         If this $(LREF SysTime)'s time zone is $(LREF LocalTime), then TZ is empty. If
         its time zone is $(D UTC), then it is "Z". Otherwise, it is the offset
-        from UTC (e.g. +1:00 or -7:00). Note that the offset from UTC is
+        from UTC (e.g. +01:00 or -07:00). Note that the offset from UTC is
         $(I not) enough to uniquely identify the time zone.
 
         Time zone offsets will be in the form +HH:MM or -HH:MM.
@@ -8063,7 +8212,7 @@ public:
             return format("%s%s%s",
                           dateTime.toISOExtString(),
                           fracSecsToISOString(cast(int)hnsecs),
-                          SimpleTimeZone.toISOString(utcOffset));
+                          SimpleTimeZone.toISOExtString(utcOffset));
         }
         catch(Exception e)
             assert(0, "format() threw.");
@@ -8141,8 +8290,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cast(TimeOfDay)cst));
-        //static assert(__traits(compiles, cast(TimeOfDay)ist));
+        assert(cast(TimeOfDay)cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
     }
 
     /++
@@ -8158,7 +8307,7 @@ public:
 
         If this $(LREF SysTime)'s time zone is $(LREF LocalTime), then TZ is empty. If
         its time zone is $(D UTC), then it is "Z". Otherwise, it is the offset
-        from UTC (e.g. +1:00 or -7:00). Note that the offset from UTC is
+        from UTC (e.g. +01:00 or -07:00). Note that the offset from UTC is
         $(I not) enough to uniquely identify the time zone.
 
         Time zone offsets will be in the form +HH:MM or -HH:MM.
@@ -8197,7 +8346,7 @@ public:
             return format("%s%s%s",
                           dateTime.toSimpleString(),
                           fracSecsToISOString(cast(int)hnsecs),
-                          SimpleTimeZone.toISOString(utcOffset));
+                          SimpleTimeZone.toISOExtString(utcOffset));
         }
         catch(Exception e)
             assert(0, "format() threw.");
@@ -8276,8 +8425,8 @@ public:
 
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, cast(TimeOfDay)cst));
-        //static assert(__traits(compiles, cast(TimeOfDay)ist));
+        assert(cast(TimeOfDay)cst != TimeOfDay.init);
+        //assert(cast(TimeOfDay)ist != TimeOfDay.init);
     }
 
 
@@ -8294,9 +8443,9 @@ public:
         auto st = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         const cst = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
         //immutable ist = SysTime(DateTime(1999, 7, 6, 12, 30, 33));
-        static assert(__traits(compiles, st.toString()));
-        static assert(__traits(compiles, cst.toString()));
-        //static assert(__traits(compiles, ist.toString()));
+        assert(st.toString());
+        assert(cst.toString());
+        //assert(ist.toString());
     }
 
 
@@ -8310,16 +8459,26 @@ public:
         all zeroes. However, a decimal point with nothing following it is
         invalid.
 
-        If there is no time zone in the string, then $(LREF LocalTime) is used. If
-        the time zone is "Z", then $(D UTC) is used. Otherwise, a
+        If there is no time zone in the string, then $(LREF LocalTime) is used.
+        If the time zone is "Z", then $(D UTC) is used. Otherwise, a
         $(LREF SimpleTimeZone) which corresponds to the given offset from UTC is
         used. To get the returned $(LREF SysTime) to be a particular time
         zone, pass in that time zone and the $(LREF SysTime) to be returned
         will be converted to that time zone (though it will still be read in as
         whatever time zone is in its string).
 
-        The accepted formats for time zone offsets
-        are +H, -H, +HH, -HH, +H:MM, -H:MM, +HH:MM, and -HH:MM.
+        The accepted formats for time zone offsets are +HH, -HH, +HHMM, and
+        -HHMM.
+
+        $(RED Warning:
+            Previously, $(LREF toISOString) did the same as
+            $(LREF toISOExtString) and generated +HH:MM or -HH:MM for the time
+            zone when it was not $(LREF LocalTime) or $(LREF UTC), which is not
+            in conformance with ISO 9601 for the non-extended string format.
+            This has now been fixed. However, for now, fromISOString will
+            continue to accept the extended format for the time zone so that any
+            code which has been writing out the result of toISOString to read in
+            later will continue to work.)
 
         Params:
             isoString = A string formatted in the ISO format for dates and times.
@@ -8327,8 +8486,8 @@ public:
                         conversion occurs if null).
 
         Throws:
-            $(LREF DateTimeException) if the given string is not in the ISO format
-            or if the resulting $(LREF SysTime) would not be valid.
+            $(LREF DateTimeException) if the given string is not in the ISO
+            format or if the resulting $(LREF SysTime) would not be valid.
       +/
     static SysTime fromISOString(S)(in S isoString, immutable TimeZone tz = null) @safe
         if(isSomeString!S)
@@ -8376,7 +8535,12 @@ public:
             else if(zoneStr == "Z")
                 parsedZone = UTC();
             else
-                parsedZone = SimpleTimeZone.fromISOString(zoneStr);
+            {
+                try
+                    parsedZone = SimpleTimeZone.fromISOString(zoneStr);
+                catch(DateTimeException dte)
+                    parsedZone = SimpleTimeZone.fromISOExtString(zoneStr);
+            }
 
             auto retval = SysTime(dateTime, fracSec, parsedZone);
 
@@ -8394,129 +8558,142 @@ public:
     {
         assert(SysTime.fromISOString("20100704T070612") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12)));
+
         assert(SysTime.fromISOString("19981225T021500.007") ==
                SysTime(DateTime(1998, 12, 25, 2, 15, 0), msecs(7)));
+
         assert(SysTime.fromISOString("00000105T230959.00002") ==
                SysTime(DateTime(0, 1, 5, 23, 9, 59), usecs(20)));
+
         assert(SysTime.fromISOString("-00040105T000002") ==
                SysTime(DateTime(-4, 1, 5, 0, 0, 2)));
+
         assert(SysTime.fromISOString(" 20100704T070612 ") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12)));
 
         assert(SysTime.fromISOString("20100704T070612Z") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12), UTC()));
-        assert(SysTime.fromISOString("20100704T070612-8:00") ==
+
+        assert(SysTime.fromISOString("20100704T070612-0800") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12),
-                       new immutable SimpleTimeZone(dur!"hours"(-8))));
-        assert(SysTime.fromISOString("20100704T070612+8:00") ==
+                       new immutable SimpleTimeZone(hours(-8))));
+
+        assert(SysTime.fromISOString("20100704T070612+0800") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12),
-                       new immutable SimpleTimeZone(dur!"hours"(8))));
+                       new immutable SimpleTimeZone(hours(8))));
     }
 
     unittest
     {
-        assertThrown!DateTimeException(SysTime.fromISOString(""));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704000000"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704 000000"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704t000000"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000."));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000.A"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000.Z"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000.00000000"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000.00000000"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000+"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000-"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000:"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000-:"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000+:"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000-1:"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000+1:"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000+1:0"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000-24.00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("20100704T000000+24.00"));
+        import std.format: format;
 
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-07-0400:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-07-04 00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-07-04t00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-07-04T00:00:00."));
+        foreach(str; ["", "20100704000000", "20100704 000000", "20100704t000000",
+                      "20100704T000000.", "20100704T000000.A", "20100704T000000.Z",
+                      "20100704T000000.00000000", "20100704T000000.00000000",
+                      "20100704T000000+", "20100704T000000-", "20100704T000000:",
+                      "20100704T000000-:", "20100704T000000+:", "20100704T000000-1:",
+                      "20100704T000000+1:", "20100704T000000+1:0",
+                      "20100704T000000-12.00", "20100704T000000+12.00",
+                      "20100704T000000-8", "20100704T000000+8",
+                      "20100704T000000-800", "20100704T000000+800",
+                      "20100704T000000-080", "20100704T000000+080",
+                      "20100704T000000-2400", "20100704T000000+2400",
+                      "20100704T000000-1260", "20100704T000000+1260",
+                      "20100704T000000.0-8", "20100704T000000.0+8",
+                      "20100704T000000.0-800", "20100704T000000.0+800",
+                      "20100704T000000.0-080", "20100704T000000.0+080",
+                      "20100704T000000.0-2400", "20100704T000000.0+2400",
+                      "20100704T000000.0-1260", "20100704T000000.0+1260",
+                      "20100704T000000-8:00", "20100704T000000+8:00",
+                      "20100704T000000-08:0", "20100704T000000+08:0",
+                      "20100704T000000-24:00", "20100704T000000+24:00",
+                      "20100704T000000-12:60", "20100704T000000+12:60",
+                      "20100704T000000.0-8:00", "20100704T000000.0+8:00",
+                      "20100704T000000.0-08:0", "20100704T000000.0+08:0",
+                      "20100704T000000.0-24:00", "20100704T000000.0+24:00",
+                      "20100704T000000.0-12:60", "20100704T000000.0+12:60",
+                      "2010-07-0400:00:00", "2010-07-04 00:00:00",
+                      "2010-07-04t00:00:00", "2010-07-04T00:00:00.",
+                      "2010-Jul-0400:00:00", "2010-Jul-04 00:00:00", "2010-Jul-04t00:00:00",
+                      "2010-Jul-04T00:00:00", "2010-Jul-04 00:00:00.",
+                      "2010-12-22T172201", "2010-Dec-22 17:22:01"])
+        {
+            assertThrown!DateTimeException(SysTime.fromISOString(str), format("[%s]", str));
+        }
 
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-Jul-0400:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-Jul-04 00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-Jul-04t00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-Jul-04T00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-Jul-04 00:00:00."));
+        static void test(string str, SysTime st, size_t line = __LINE__)
+        {
+            if(SysTime.fromISOString(str) != st)
+                throw new AssertError("unittest failure", __FILE__, line);
+        }
 
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-12-22T172201"));
-        assertThrown!DateTimeException(SysTime.fromISOString("2010-Dec-22 17:22:01"));
+        test("20101222T172201", SysTime(DateTime(2010, 12, 22, 17, 22, 01)));
+        test("19990706T123033", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("-19990706T123033", SysTime(DateTime(-1999, 7, 6, 12, 30, 33)));
+        test("+019990706T123033", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("19990706T123033 ", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test(" 19990706T123033", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test(" 19990706T123033 ", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
 
-        assert(SysTime.fromISOString("20101222T172201") == SysTime(DateTime(2010, 12, 22, 17, 22, 01)));
-        assert(SysTime.fromISOString("19990706T123033") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOString("-19990706T123033") == SysTime(DateTime(-1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOString("+019990706T123033") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOString("19990706T123033 ") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOString(" 19990706T123033") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOString(" 19990706T123033 ") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("19070707T121212.0", SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
+        test("19070707T121212.0000000", SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
+        test("19070707T121212.0000001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), hnsecs(1)));
+        test("19070707T121212.000001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
+        test("19070707T121212.0000010", SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
+        test("19070707T121212.001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
+        test("19070707T121212.0010000", SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
 
-        assert(SysTime.fromISOString("19070707T121212.0") == SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
-        assert(SysTime.fromISOString("19070707T121212.0000000") == SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
-        assert(SysTime.fromISOString("19070707T121212.0000001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), hnsecs(1)));
-        assert(SysTime.fromISOString("19070707T121212.000001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
-        assert(SysTime.fromISOString("19070707T121212.0000010") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
-        assert(SysTime.fromISOString("19070707T121212.001") == SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
-        assert(SysTime.fromISOString("19070707T121212.0010000") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
+        auto west60 = new immutable SimpleTimeZone(hours(-1));
+        auto west90 = new immutable SimpleTimeZone(minutes(-90));
+        auto west480 = new immutable SimpleTimeZone(hours(-8));
+        auto east60 = new immutable SimpleTimeZone(hours(1));
+        auto east90 = new immutable SimpleTimeZone(minutes(90));
+        auto east480 = new immutable SimpleTimeZone(hours(8));
 
-        assert(SysTime.fromISOString("20101222T172201Z") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), UTC()));
-        assert(SysTime.fromISOString("20101222T172201-1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOString("20101222T172201-1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOString("20101222T172201-1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-90))));
-        assert(SysTime.fromISOString("20101222T172201-8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-480))));
-        assert(SysTime.fromISOString("20101222T172201+1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOString("20101222T172201+1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOString("20101222T172201+1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(90))));
-        assert(SysTime.fromISOString("20101222T172201+8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(480))));
+        test("20101222T172201Z", SysTime(DateTime(2010, 12, 22, 17, 22, 01), UTC()));
+        test("20101222T172201-0100", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west60));
+        test("20101222T172201-01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west60));
+        test("20101222T172201-0130", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west90));
+        test("20101222T172201-0800", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west480));
+        test("20101222T172201+0100", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("20101222T172201+01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("20101222T172201+0130", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("20101222T172201+0800", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east480));
 
-        assert(SysTime.fromISOString("20101103T065106.57159Z") ==
-               SysTime(DateTime(2010, 11, 3, 6, 51, 6), hnsecs(5715900), UTC()));
+        test("20101103T065106.57159Z", SysTime(DateTime(2010, 11, 3, 6, 51, 6), hnsecs(5715900), UTC()));
+        test("20101222T172201.23412Z", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_341_200), UTC()));
+        test("20101222T172201.23112-0100", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_311_200), west60));
+        test("20101222T172201.45-01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000), west60));
+        test("20101222T172201.1-0130", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_000_000), west90));
+        test("20101222T172201.55-0800", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(5_500_000), west480));
+        test("20101222T172201.1234567+0100", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_234_567), east60));
+        test("20101222T172201.0+01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("20101222T172201.0000000+0130", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("20101222T172201.45+0800", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000), east480));
 
-        assert(SysTime.fromISOString("20101222T172201.23412Z") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_341_200), UTC()));
-        assert(SysTime.fromISOString("20101222T172201.23112-1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_311_200),
-                       new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOString("20101222T172201.45-1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOString("20101222T172201.1-1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_000_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-90))));
-        assert(SysTime.fromISOString("20101222T172201.55-8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(5_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-480))));
-        assert(SysTime.fromISOString("20101222T172201.1234567+1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_234_567),
-                       new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOString("20101222T172201.0+1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01),
-                       new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOString("20101222T172201.0000000+1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01),
-                       new immutable SimpleTimeZone(dur!"minutes"(90))));
-        assert(SysTime.fromISOString("20101222T172201.45+8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(480))));
+        // @@@DEPRECATED_2017-07@@@
+        // This isn't deprecated per se, but that text will make it so that it
+        // pops up when deprecations are moved along around July 2017. At that
+        // time, the notice on the documentation should be removed, and we may
+        // or may not change the behavior of fromISOString to no longer accept
+        // ISO extended time zones (the concern being that programs will have
+        // written out strings somewhere to read in again that they'll still be
+        // reading in for years to come and may not be able to fix, even if the
+        // code is fixed). If/when we do change the behavior, these tests will
+        // start failing and will need to be updated accordingly.
+        test("20101222T172201-01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west60));
+        test("20101222T172201-01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west90));
+        test("20101222T172201-08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west480));
+        test("20101222T172201+01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("20101222T172201+01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("20101222T172201+08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east480));
+
+        test("20101222T172201.23112-01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_311_200), west60));
+        test("20101222T172201.1-01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_000_000), west90));
+        test("20101222T172201.55-08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(5_500_000), west480));
+        test("20101222T172201.1234567+01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_234_567), east60));
+        test("20101222T172201.0000000+01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("20101222T172201.45+08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000), east480));
     }
 
 
@@ -8530,26 +8707,26 @@ public:
         seconds with all zeroes. However, a decimal point with nothing following
         it is invalid.
 
-        If there is no time zone in the string, then $(LREF LocalTime) is used. If
-        the time zone is "Z", then $(D UTC) is used. Otherwise, a
+        If there is no time zone in the string, then $(LREF LocalTime) is used.
+        If the time zone is "Z", then $(D UTC) is used. Otherwise, a
         $(LREF SimpleTimeZone) which corresponds to the given offset from UTC is
         used. To get the returned $(LREF SysTime) to be a particular time
         zone, pass in that time zone and the $(LREF SysTime) to be returned
         will be converted to that time zone (though it will still be read in as
         whatever time zone is in its string).
 
-        The accepted formats for time zone offsets
-        are +H, -H, +HH, -HH, +H:MM, -H:MM, +HH:MM, and -HH:MM.
+        The accepted formats for time zone offsets are +HH, -HH, +HH:MM, and
+        -HH:MM.
 
         Params:
-            isoExtString = A string formatted in the ISO Extended format for dates
-                           and times.
+            isoExtString = A string formatted in the ISO Extended format for
+                           dates and times.
             tz           = The time zone to convert the given time to (no
                            conversion occurs if null).
 
         Throws:
-            $(LREF DateTimeException) if the given string is not in the ISO format
-            or if the resulting $(LREF SysTime) would not be valid.
+            $(LREF DateTimeException) if the given string is not in the ISO
+            format or if the resulting $(LREF SysTime) would not be valid.
       +/
     static SysTime fromISOExtString(S)(in S isoExtString, immutable TimeZone tz = null) @safe
         if(isSomeString!(S))
@@ -8599,7 +8776,7 @@ public:
             else if(zoneStr == "Z")
                 parsedZone = UTC();
             else
-                parsedZone = SimpleTimeZone.fromISOString(zoneStr);
+                parsedZone = SimpleTimeZone.fromISOExtString(zoneStr);
 
             auto retval = SysTime(dateTime, fracSec, parsedZone);
 
@@ -8617,131 +8794,119 @@ public:
     {
         assert(SysTime.fromISOExtString("2010-07-04T07:06:12") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12)));
+
         assert(SysTime.fromISOExtString("1998-12-25T02:15:00.007") ==
                SysTime(DateTime(1998, 12, 25, 2, 15, 0), msecs(7)));
+
         assert(SysTime.fromISOExtString("0000-01-05T23:09:59.00002") ==
                SysTime(DateTime(0, 1, 5, 23, 9, 59), usecs(20)));
+
         assert(SysTime.fromISOExtString("-0004-01-05T00:00:02") ==
                SysTime(DateTime(-4, 1, 5, 0, 0, 2)));
+
         assert(SysTime.fromISOExtString(" 2010-07-04T07:06:12 ") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12)));
 
         assert(SysTime.fromISOExtString("2010-07-04T07:06:12Z") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12), UTC()));
-        assert(SysTime.fromISOExtString("2010-07-04T07:06:12-8:00") ==
+
+        assert(SysTime.fromISOExtString("2010-07-04T07:06:12-08:00") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12),
-                       new immutable SimpleTimeZone(dur!"hours"(-8))));
-        assert(SysTime.fromISOExtString("2010-07-04T07:06:12+8:00") ==
+                       new immutable SimpleTimeZone(hours(-8))));
+        assert(SysTime.fromISOExtString("2010-07-04T07:06:12+08:00") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12),
-                       new immutable SimpleTimeZone(dur!"hours"(8))));
+                       new immutable SimpleTimeZone(hours(8))));
     }
 
     unittest
     {
-        assertThrown!DateTimeException(SysTime.fromISOExtString(""));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("20100704000000"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("20100704 000000"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("20100704t000000"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("20100704T000000."));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("20100704T000000.0"));
+        import std.format : format;
 
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07:0400:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04 00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04 00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04t00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00."));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00.A"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00.Z"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00.00000000"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00.00000000"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00+"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00-"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00:"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00-:"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00+:"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00-1:"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00+1:"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00+1:0"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00-24.00"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-07-04T00:00:00+24.00"));
+        foreach(str; ["", "20100704000000", "20100704 000000",
+                      "20100704t000000", "20100704T000000.", "20100704T000000.0",
+                      "2010-07:0400:00:00", "2010-07-04 00:00:00",
+                      "2010-07-04 00:00:00", "2010-07-04t00:00:00",
+                      "2010-07-04T00:00:00.", "2010-07-04T00:00:00.A", "2010-07-04T00:00:00.Z",
+                      "2010-07-04T00:00:00.00000000", "2010-07-04T00:00:00.00000000",
+                      "2010-07-04T00:00:00+", "2010-07-04T00:00:00-",
+                      "2010-07-04T00:00:00:", "2010-07-04T00:00:00-:", "2010-07-04T00:00:00+:",
+                      "2010-07-04T00:00:00-1:", "2010-07-04T00:00:00+1:", "2010-07-04T00:00:00+1:0",
+                      "2010-07-04T00:00:00-12.00", "2010-07-04T00:00:00+12.00",
+                      "2010-07-04T00:00:00-8", "2010-07-04T00:00:00+8",
+                      "20100704T000000-800", "20100704T000000+800",
+                      "20100704T000000-080", "20100704T000000+080",
+                      "20100704T000000-2400", "20100704T000000+2400",
+                      "20100704T000000-1260", "20100704T000000+1260",
+                      "20100704T000000.0-800", "20100704T000000.0+800",
+                      "20100704T000000.0-8", "20100704T000000.0+8",
+                      "20100704T000000.0-080", "20100704T000000.0+080",
+                      "20100704T000000.0-2400", "20100704T000000.0+2400",
+                      "20100704T000000.0-1260", "20100704T000000.0+1260",
+                      "2010-07-04T00:00:00-8:00", "2010-07-04T00:00:00+8:00",
+                      "2010-07-04T00:00:00-24:00", "2010-07-04T00:00:00+24:00",
+                      "2010-07-04T00:00:00-12:60", "2010-07-04T00:00:00+12:60",
+                      "2010-07-04T00:00:00.0-8:00", "2010-07-04T00:00:00.0+8:00",
+                      "2010-07-04T00:00:00.0-8", "2010-07-04T00:00:00.0+8",
+                      "2010-07-04T00:00:00.0-24:00", "2010-07-04T00:00:00.0+24:00",
+                      "2010-07-04T00:00:00.0-12:60", "2010-07-04T00:00:00.0+12:60",
+                      "2010-Jul-0400:00:00", "2010-Jul-04t00:00:00",
+                      "2010-Jul-04 00:00:00.", "2010-Jul-04 00:00:00.0",
+                      "20101222T172201", "2010-Dec-22 17:22:01"])
+        {
+            assertThrown!DateTimeException(SysTime.fromISOExtString(str), format("[%s]", str));
+        }
 
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-Jul-0400:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-Jul-04t00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-Jul-04 00:00:00."));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-Jul-04 00:00:00.0"));
+        static void test(string str, SysTime st, size_t line = __LINE__)
+        {
+            if(SysTime.fromISOExtString(str) != st)
+                throw new AssertError("unittest failure", __FILE__, line);
+        }
 
-        assertThrown!DateTimeException(SysTime.fromISOExtString("20101222T172201"));
-        assertThrown!DateTimeException(SysTime.fromISOExtString("2010-Dec-22 17:22:01"));
+        test("2010-12-22T17:22:01", SysTime(DateTime(2010, 12, 22, 17, 22, 01)));
+        test("1999-07-06T12:30:33", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("-1999-07-06T12:30:33", SysTime(DateTime(-1999, 7, 6, 12, 30, 33)));
+        test("+01999-07-06T12:30:33", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("1999-07-06T12:30:33 ", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test(" 1999-07-06T12:30:33", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test(" 1999-07-06T12:30:33 ", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
 
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01") == SysTime(DateTime(2010, 12, 22, 17, 22, 01)));
-        assert(SysTime.fromISOExtString("1999-07-06T12:30:33") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOExtString("-1999-07-06T12:30:33") == SysTime(DateTime(-1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOExtString("+01999-07-06T12:30:33") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOExtString("1999-07-06T12:30:33 ") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOExtString(" 1999-07-06T12:30:33") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromISOExtString(" 1999-07-06T12:30:33 ") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("1907-07-07T12:12:12.0", SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
+        test("1907-07-07T12:12:12.0000000", SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
+        test("1907-07-07T12:12:12.0000001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), hnsecs(1)));
+        test("1907-07-07T12:12:12.000001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
+        test("1907-07-07T12:12:12.0000010", SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
+        test("1907-07-07T12:12:12.001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
+        test("1907-07-07T12:12:12.0010000", SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
 
-        assert(SysTime.fromISOExtString("1907-07-07T12:12:12.0") == SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
-        assert(SysTime.fromISOExtString("1907-07-07T12:12:12.0000000") == SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
-        assert(SysTime.fromISOExtString("1907-07-07T12:12:12.0000001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), hnsecs(1)));
-        assert(SysTime.fromISOExtString("1907-07-07T12:12:12.000001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
-        assert(SysTime.fromISOExtString("1907-07-07T12:12:12.0000010") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
-        assert(SysTime.fromISOExtString("1907-07-07T12:12:12.001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
-        assert(SysTime.fromISOExtString("1907-07-07T12:12:12.0010000") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
+        auto west60 = new immutable SimpleTimeZone(hours(-1));
+        auto west90 = new immutable SimpleTimeZone(minutes(-90));
+        auto west480 = new immutable SimpleTimeZone(hours(-8));
+        auto east60 = new immutable SimpleTimeZone(hours(1));
+        auto east90 = new immutable SimpleTimeZone(minutes(90));
+        auto east480 = new immutable SimpleTimeZone(hours(8));
 
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01Z") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), UTC()));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01-1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01-1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01-1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-90))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01-8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-480))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01+1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01+1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01+1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(90))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01+8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(480))));
+        test("2010-12-22T17:22:01Z", SysTime(DateTime(2010, 12, 22, 17, 22, 01), UTC()));
+        test("2010-12-22T17:22:01-01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west60));
+        test("2010-12-22T17:22:01-01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west60));
+        test("2010-12-22T17:22:01-01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west90));
+        test("2010-12-22T17:22:01-08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west480));
+        test("2010-12-22T17:22:01+01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("2010-12-22T17:22:01+01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("2010-12-22T17:22:01+01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("2010-12-22T17:22:01+08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east480));
 
-        assert(SysTime.fromISOExtString("2010-11-03T06:51:06.57159Z") ==
-               SysTime(DateTime(2010, 11, 3, 6, 51, 6), hnsecs(5715900), UTC()));
-
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.23412Z") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_341_200), UTC()));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.23112-1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_311_200),
-                       new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.45-1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.1-1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_000_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-90))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.55-8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(5_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-480))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.1234567+1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_234_567),
-                       new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.0+1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01),
-                       new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.0000000+1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01),
-                       new immutable SimpleTimeZone(dur!"minutes"(90))));
-        assert(SysTime.fromISOExtString("2010-12-22T17:22:01.45+8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(480))));
+        test("2010-11-03T06:51:06.57159Z", SysTime(DateTime(2010, 11, 3, 6, 51, 6), hnsecs(5715900), UTC()));
+        test("2010-12-22T17:22:01.23412Z", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_341_200), UTC()));
+        test("2010-12-22T17:22:01.23112-01:00",
+             SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_311_200), west60));
+        test("2010-12-22T17:22:01.45-01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000), west60));
+        test("2010-12-22T17:22:01.1-01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_000_000), west90));
+        test("2010-12-22T17:22:01.55-08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(5_500_000), west480));
+        test("2010-12-22T17:22:01.1234567+01:00",
+             SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_234_567), east60));
+        test("2010-12-22T17:22:01.0+01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("2010-12-22T17:22:01.0000000+01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("2010-12-22T17:22:01.45+08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000), east480));
     }
 
 
@@ -8763,9 +8928,8 @@ public:
         will be converted to that time zone (though it will still be read in as
         whatever time zone is in its string).
 
-        The accepted formats for time zone offsets
-        are +H, -H, +HH, -HH, +H:MM, -H:MM, +HH:MM, and -HH:MM.
-
+        The accepted formats for time zone offsets are +HH, -HH, +HH:MM, and
+        -HH:MM.
 
         Params:
             simpleString = A string formatted in the way that
@@ -8825,7 +8989,7 @@ public:
             else if(zoneStr == "Z")
                 parsedZone = UTC();
             else
-                parsedZone = SimpleTimeZone.fromISOString(zoneStr);
+                parsedZone = SimpleTimeZone.fromISOExtString(zoneStr);
 
             auto retval = SysTime(dateTime, fracSec, parsedZone);
 
@@ -8843,131 +9007,122 @@ public:
     {
         assert(SysTime.fromSimpleString("2010-Jul-04 07:06:12") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12)));
+
         assert(SysTime.fromSimpleString("1998-Dec-25 02:15:00.007") ==
                SysTime(DateTime(1998, 12, 25, 2, 15, 0), msecs(7)));
+
         assert(SysTime.fromSimpleString("0000-Jan-05 23:09:59.00002") ==
                SysTime(DateTime(0, 1, 5, 23, 9, 59), usecs(20)));
+
         assert(SysTime.fromSimpleString("-0004-Jan-05 00:00:02") ==
                SysTime(DateTime(-4, 1, 5, 0, 0, 2)));
+
         assert(SysTime.fromSimpleString(" 2010-Jul-04 07:06:12 ") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12)));
 
         assert(SysTime.fromSimpleString("2010-Jul-04 07:06:12Z") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12), UTC()));
-        assert(SysTime.fromSimpleString("2010-Jul-04 07:06:12-8:00") ==
+
+        assert(SysTime.fromSimpleString("2010-Jul-04 07:06:12-08:00") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12),
-                       new immutable SimpleTimeZone(dur!"hours"(-8))));
-        assert(SysTime.fromSimpleString("2010-Jul-04 07:06:12+8:00") ==
+                       new immutable SimpleTimeZone(hours(-8))));
+
+        assert(SysTime.fromSimpleString("2010-Jul-04 07:06:12+08:00") ==
                SysTime(DateTime(2010, 7, 4, 7, 6, 12),
-                       new immutable SimpleTimeZone(dur!"hours"(8))));
+                       new immutable SimpleTimeZone(hours(8))));
     }
 
     unittest
     {
-        assertThrown!DateTimeException(SysTime.fromSimpleString(""));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("20100704000000"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("20100704 000000"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("20100704t000000"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("20100704T000000."));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("20100704T000000.0"));
+        import std.format : format;
 
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-07-0400:00:00"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-07-04 00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-07-04t00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-07-04T00:00:00."));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-07-04T00:00:00.0"));
+        foreach(str; ["", "20100704000000", "20100704 000000",
+                      "20100704t000000", "20100704T000000.", "20100704T000000.0",
+                      "2010-07-0400:00:00", "2010-07-04 00:00:00", "2010-07-04t00:00:00",
+                      "2010-07-04T00:00:00.", "2010-07-04T00:00:00.0",
+                      "2010-Jul-0400:00:00", "2010-Jul-04t00:00:00", "2010-Jul-04T00:00:00",
+                      "2010-Jul-04 00:00:00.", "2010-Jul-04 00:00:00.A", "2010-Jul-04 00:00:00.Z",
+                      "2010-Jul-04 00:00:00.00000000", "2010-Jul-04 00:00:00.00000000",
+                      "2010-Jul-04 00:00:00+", "2010-Jul-04 00:00:00-",
+                      "2010-Jul-04 00:00:00:", "2010-Jul-04 00:00:00-:",
+                      "2010-Jul-04 00:00:00+:", "2010-Jul-04 00:00:00-1:",
+                      "2010-Jul-04 00:00:00+1:", "2010-Jul-04 00:00:00+1:0",
+                      "2010-Jul-04 00:00:00-12.00", "2010-Jul-04 00:00:00+12.00",
+                      "2010-Jul-04 00:00:00-8", "2010-Jul-04 00:00:00+8",
+                      "20100704T000000-800", "20100704T000000+800",
+                      "20100704T000000-080", "20100704T000000+080",
+                      "20100704T000000-2400", "20100704T000000+2400",
+                      "20100704T000000-1260", "20100704T000000+1260",
+                      "20100704T000000.0-800", "20100704T000000.0+800",
+                      "20100704T000000.0-8", "20100704T000000.0+8",
+                      "20100704T000000.0-080", "20100704T000000.0+080",
+                      "20100704T000000.0-2400", "20100704T000000.0+2400",
+                      "20100704T000000.0-1260", "20100704T000000.0+1260",
+                      "2010-Jul-04 00:00:00-8:00", "2010-Jul-04 00:00:00+8:00",
+                      "2010-Jul-04 00:00:00-08:0", "2010-Jul-04 00:00:00+08:0",
+                      "2010-Jul-04 00:00:00-24:00", "2010-Jul-04 00:00:00+24:00",
+                      "2010-Jul-04 00:00:00-12:60", "2010-Jul-04 00:00:00+24:60",
+                      "2010-Jul-04 00:00:00.0-8:00", "2010-Jul-04 00:00:00+8:00",
+                      "2010-Jul-04 00:00:00.0-8", "2010-Jul-04 00:00:00.0+8",
+                      "2010-Jul-04 00:00:00.0-08:0", "2010-Jul-04 00:00:00.0+08:0",
+                      "2010-Jul-04 00:00:00.0-24:00", "2010-Jul-04 00:00:00.0+24:00",
+                      "2010-Jul-04 00:00:00.0-12:60", "2010-Jul-04 00:00:00.0+24:60",
+                      "20101222T172201", "2010-12-22T172201"])
+        {
+            assertThrown!DateTimeException(SysTime.fromSimpleString(str), format("[%s]", str));
+        }
 
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-0400:00:00"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04t00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04T00:00:00"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00."));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00.A"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00.Z"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00.00000000"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00.00000000"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00+"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00-"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00:"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00-:"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00+:"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00-1:"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00+1:"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00+1:0"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00-24.00"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-Jul-04 00:00:00+24.00"));
+        static void test(string str, SysTime st, size_t line = __LINE__)
+        {
+            if(SysTime.fromSimpleString(str) != st)
+                throw new AssertError("unittest failure", __FILE__, line);
+        }
 
-        assertThrown!DateTimeException(SysTime.fromSimpleString("20101222T172201"));
-        assertThrown!DateTimeException(SysTime.fromSimpleString("2010-12-22T172201"));
+        test("2010-Dec-22 17:22:01", SysTime(DateTime(2010, 12, 22, 17, 22, 01)));
+        test("1999-Jul-06 12:30:33", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("-1999-Jul-06 12:30:33", SysTime(DateTime(-1999, 7, 6, 12, 30, 33)));
+        test("+01999-Jul-06 12:30:33", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("1999-Jul-06 12:30:33 ", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test(" 1999-Jul-06 12:30:33", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test(" 1999-Jul-06 12:30:33 ", SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
 
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01") == SysTime(DateTime(2010, 12, 22, 17, 22, 01)));
-        assert(SysTime.fromSimpleString("1999-Jul-06 12:30:33") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromSimpleString("-1999-Jul-06 12:30:33") == SysTime(DateTime(-1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromSimpleString("+01999-Jul-06 12:30:33") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromSimpleString("1999-Jul-06 12:30:33 ") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromSimpleString(" 1999-Jul-06 12:30:33") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
-        assert(SysTime.fromSimpleString(" 1999-Jul-06 12:30:33 ") == SysTime(DateTime(1999, 7, 6, 12, 30, 33)));
+        test("1907-Jul-07 12:12:12.0", SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
+        test("1907-Jul-07 12:12:12.0000000", SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
+        test("1907-Jul-07 12:12:12.0000001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), hnsecs(1)));
+        test("1907-Jul-07 12:12:12.000001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
+        test("1907-Jul-07 12:12:12.0000010", SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
+        test("1907-Jul-07 12:12:12.001", SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
+        test("1907-Jul-07 12:12:12.0010000", SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
 
-        assert(SysTime.fromSimpleString("1907-Jul-07 12:12:12.0") == SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
-        assert(SysTime.fromSimpleString("1907-Jul-07 12:12:12.0000000") == SysTime(DateTime(1907, 07, 07, 12, 12, 12)));
-        assert(SysTime.fromSimpleString("1907-Jul-07 12:12:12.0000001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), hnsecs(1)));
-        assert(SysTime.fromSimpleString("1907-Jul-07 12:12:12.000001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
-        assert(SysTime.fromSimpleString("1907-Jul-07 12:12:12.0000010") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), usecs(1)));
-        assert(SysTime.fromSimpleString("1907-Jul-07 12:12:12.001") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
-        assert(SysTime.fromSimpleString("1907-Jul-07 12:12:12.0010000") ==
-               SysTime(DateTime(1907, 07, 07, 12, 12, 12), msecs(1)));
+        auto west60 = new immutable SimpleTimeZone(hours(-1));
+        auto west90 = new immutable SimpleTimeZone(minutes(-90));
+        auto west480 = new immutable SimpleTimeZone(hours(-8));
+        auto east60 = new immutable SimpleTimeZone(hours(1));
+        auto east90 = new immutable SimpleTimeZone(minutes(90));
+        auto east480 = new immutable SimpleTimeZone(hours(8));
 
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01Z") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), UTC()));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01-1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01-1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01-1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-90))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01-8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(-480))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01+1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01+1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01+1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(90))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01+8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), new immutable SimpleTimeZone(dur!"minutes"(480))));
+        test("2010-Dec-22 17:22:01Z", SysTime(DateTime(2010, 12, 22, 17, 22, 01), UTC()));
+        test("2010-Dec-22 17:22:01-01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west60));
+        test("2010-Dec-22 17:22:01-01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west60));
+        test("2010-Dec-22 17:22:01-01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west90));
+        test("2010-Dec-22 17:22:01-08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), west480));
+        test("2010-Dec-22 17:22:01+01:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("2010-Dec-22 17:22:01+01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("2010-Dec-22 17:22:01+01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("2010-Dec-22 17:22:01+08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east480));
 
-        assert(SysTime.fromSimpleString("2010-Nov-03 06:51:06.57159Z") ==
-               SysTime(DateTime(2010, 11, 3, 6, 51, 6), hnsecs(5715900), UTC()));
-
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.23412Z") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_341_200), UTC()));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.23112-1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_311_200),
-                       new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.45-1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.1-1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_000_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-90))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.55-8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(5_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(-480))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.1234567+1:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_234_567),
-                       new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.0+1") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01),
-                       new immutable SimpleTimeZone(dur!"minutes"(60))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.0000000+1:30") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01),
-                       new immutable SimpleTimeZone(dur!"minutes"(90))));
-        assert(SysTime.fromSimpleString("2010-Dec-22 17:22:01.45+8:00") ==
-               SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000),
-                       new immutable SimpleTimeZone(dur!"minutes"(480))));
+        test("2010-Nov-03 06:51:06.57159Z", SysTime(DateTime(2010, 11, 3, 6, 51, 6), hnsecs(5715900), UTC()));
+        test("2010-Dec-22 17:22:01.23412Z", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_341_200), UTC()));
+        test("2010-Dec-22 17:22:01.23112-01:00",
+             SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(2_311_200), west60));
+        test("2010-Dec-22 17:22:01.45-01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000), west60));
+        test("2010-Dec-22 17:22:01.1-01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_000_000), west90));
+        test("2010-Dec-22 17:22:01.55-08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(5_500_000), west480));
+        test("2010-Dec-22 17:22:01.1234567+01:00",
+            SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(1_234_567), east60));
+        test("2010-Dec-22 17:22:01.0+01", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east60));
+        test("2010-Dec-22 17:22:01.0000000+01:30", SysTime(DateTime(2010, 12, 22, 17, 22, 01), east90));
+        test("2010-Dec-22 17:22:01.45+08:00", SysTime(DateTime(2010, 12, 22, 17, 22, 01), hnsecs(4_500_000), east480));
     }
 
 
@@ -9384,15 +9539,15 @@ public:
         auto date = Date(1999, 7, 6);
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date.opCmp(date)));
-        static assert(__traits(compiles, date.opCmp(cdate)));
-        static assert(__traits(compiles, date.opCmp(idate)));
-        static assert(__traits(compiles, cdate.opCmp(date)));
-        static assert(__traits(compiles, cdate.opCmp(cdate)));
-        static assert(__traits(compiles, cdate.opCmp(idate)));
-        static assert(__traits(compiles, idate.opCmp(date)));
-        static assert(__traits(compiles, idate.opCmp(cdate)));
-        static assert(__traits(compiles, idate.opCmp(idate)));
+        assert(date.opCmp(date) == 0);
+        assert(date.opCmp(cdate) == 0);
+        assert(date.opCmp(idate) == 0);
+        assert(cdate.opCmp(date) == 0);
+        assert(cdate.opCmp(cdate) == 0);
+        assert(cdate.opCmp(idate) == 0);
+        assert(idate.opCmp(date) == 0);
+        assert(idate.opCmp(cdate) == 0);
+        assert(idate.opCmp(idate) == 0);
     }
 
 
@@ -9421,8 +9576,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.year == 1999));
-        static assert(__traits(compiles, idate.year == 1999));
+        assert(cdate.year == 1999);
+        assert(idate.year == 1999);
     }
 
     /++
@@ -9506,9 +9661,9 @@ public:
         auto date = Date(0, 7, 6);
         const cdate = Date(0, 7, 6);
         immutable idate = Date(0, 7, 6);
-        static assert(__traits(compiles, date.yearBC));
-        static assert(__traits(compiles, cdate.yearBC));
-        static assert(__traits(compiles, idate.yearBC));
+        assert(date.yearBC == 1);
+        assert(cdate.yearBC == 1);
+        assert(idate.yearBC == 1);
     }
 
 
@@ -9547,7 +9702,8 @@ public:
         auto date = Date(0, 7, 6);
         const cdate = Date(0, 7, 6);
         immutable idate = Date(0, 7, 6);
-        static assert(__traits(compiles, date.yearBC = 7));
+        date.yearBC = 7;
+        assert(date.yearBC == 7);
         static assert(!__traits(compiles, cdate.yearBC = 7));
         static assert(!__traits(compiles, idate.yearBC = 7));
     }
@@ -9577,8 +9733,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.month == 7));
-        static assert(__traits(compiles, idate.month == 7));
+        assert(cdate.month == 7);
+        assert(idate.month == 7);
     }
 
     /++
@@ -9657,8 +9813,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.day == 6));
-        static assert(__traits(compiles, idate.day == 6));
+        assert(cdate.day == 6);
+        assert(idate.day == 6);
     }
 
     /++
@@ -11426,34 +11582,36 @@ public:
 
 
     /++
-        Gives the result of adding or subtracting a duration from this
-        $(LREF Date).
+        Gives the result of adding or subtracting a $(CXREF tiem, Duration) from
+        this $(LREF Date).
 
-        The legal types of arithmetic for Date using this operator are
+        The legal types of arithmetic for $(LREF Date) using this operator are
 
         $(BOOKTABLE,
-        $(TR $(TD Date) $(TD +) $(TD duration) $(TD -->) $(TD Date))
-        $(TR $(TD Date) $(TD -) $(TD duration) $(TD -->) $(TD Date))
+        $(TR $(TD Date) $(TD +) $(TD Duration) $(TD -->) $(TD Date))
+        $(TR $(TD Date) $(TD -) $(TD Duration) $(TD -->) $(TD Date))
         )
 
         Params:
-            duration = The duration to add to or subtract from this $(LREF Date).
+            duration = The $(CXREF time, Duration) to add to or subtract from
+                       this $(LREF Date).
       +/
-    Date opBinary(string op, D)(in D duration) @safe const pure nothrow
-        if((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    Date opBinary(string op)(Duration duration) @safe const pure nothrow
+        if(op == "+" || op == "-")
     {
-        import std.format : format;
-
         Date retval = this;
+        immutable days = duration.total!"days";
+        mixin("return retval._addDays(" ~ op ~ "days);");
+    }
 
-        static if(is(Unqual!D == Duration))
-            immutable days = duration.total!"days";
-        else static if(is(Unqual!D == TickDuration))
-            immutable days = convert!("hnsecs", "days")(duration.hnsecs);
+    ///
+    unittest
+    {
+        assert(Date(2015, 12, 31) + days(1) == Date(2016, 1, 1));
+        assert(Date(2004, 2, 26) + days(4) == Date(2004, 3, 1));
 
-        mixin(format("return retval._addDays(%sdays);", op));
+        assert(Date(2016, 1, 1) - days(1) == Date(2015, 12, 31));
+        assert(Date(2004, 3, 1) - days(4) == Date(2004, 2, 26));
     }
 
     unittest
@@ -11478,14 +11636,6 @@ public:
         assert(date + dur!"hnsecs"(864_000_000_000) == Date(1999, 7, 7));
         assert(date + dur!"hnsecs"(-864_000_000_000) == Date(1999, 7, 5));
 
-        //This probably only runs in cases where gettimeofday() is used, but it's
-        //hard to do this test correctly with variable ticksPerSec.
-        if(TickDuration.ticksPerSec == 1_000_000)
-        {
-            assert(date + TickDuration.from!"usecs"(86_400_000_000) == Date(1999, 7, 7));
-            assert(date + TickDuration.from!"usecs"(-86_400_000_000) == Date(1999, 7, 5));
-        }
-
         assert(date - dur!"weeks"(-7) == Date(1999, 8, 24));
         assert(date - dur!"weeks"(7) == Date(1999, 5, 18));
         assert(date - dur!"days"(-7) == Date(1999, 7, 13));
@@ -11504,54 +11654,73 @@ public:
         assert(date - dur!"hnsecs"(-864_000_000_000) == Date(1999, 7, 7));
         assert(date - dur!"hnsecs"(864_000_000_000) == Date(1999, 7, 5));
 
+        auto duration = dur!"days"(12);
+        const cdate = Date(1999, 7, 6);
+        immutable idate = Date(1999, 7, 6);
+        assert(date + duration == Date(1999, 7, 18));
+        assert(cdate + duration == Date(1999, 7, 18));
+        assert(idate + duration == Date(1999, 7, 18));
+
+        assert(date - duration == Date(1999, 6, 24));
+        assert(cdate - duration == Date(1999, 6, 24));
+        assert(idate - duration == Date(1999, 6, 24));
+    }
+
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines + and - with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    Date opBinary(string op)(TickDuration td) @safe const pure nothrow
+        if(op == "+" || op == "-")
+    {
+        Date retval = this;
+        immutable days = convert!("hnsecs", "days")(td.hnsecs);
+        mixin("return retval._addDays(" ~ op ~ "days);");
+    }
+
+    deprecated unittest
+    {
         //This probably only runs in cases where gettimeofday() is used, but it's
         //hard to do this test correctly with variable ticksPerSec.
         if(TickDuration.ticksPerSec == 1_000_000)
         {
+            auto date = Date(1999, 7, 6);
+
+            assert(date + TickDuration.from!"usecs"(86_400_000_000) == Date(1999, 7, 7));
+            assert(date + TickDuration.from!"usecs"(-86_400_000_000) == Date(1999, 7, 5));
+
             assert(date - TickDuration.from!"usecs"(-86_400_000_000) == Date(1999, 7, 7));
             assert(date - TickDuration.from!"usecs"(86_400_000_000) == Date(1999, 7, 5));
         }
-
-        auto duration = dur!"days"(12);
-        const cdate = Date(1999, 7, 6);
-        immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date + duration));
-        static assert(__traits(compiles, cdate + duration));
-        static assert(__traits(compiles, idate + duration));
-
-        static assert(__traits(compiles, date - duration));
-        static assert(__traits(compiles, cdate - duration));
-        static assert(__traits(compiles, idate - duration));
     }
 
 
     /++
-        Gives the result of adding or subtracting a duration from this
-        $(LREF Date), as well as assigning the result to this $(LREF Date).
+        Gives the result of adding or subtracting a $(CXREF time, Duration) from
+        this $(LREF Date), as well as assigning the result to this $(LREF Date).
 
         The legal types of arithmetic for $(LREF Date) using this operator are
 
         $(BOOKTABLE,
-        $(TR $(TD Date) $(TD +) $(TD duration) $(TD -->) $(TD Date))
-        $(TR $(TD Date) $(TD -) $(TD duration) $(TD -->) $(TD Date))
+        $(TR $(TD Date) $(TD +) $(TD Duration) $(TD -->) $(TD Date))
+        $(TR $(TD Date) $(TD -) $(TD Duration) $(TD -->) $(TD Date))
         )
 
         Params:
-            duration = The duration to add to or subtract from this $(LREF Date).
+            duration = The $(CXREF time, Duration) to add to or subtract from
+                       this $(LREF Date).
       +/
-    ref Date opOpAssign(string op, D)(in D duration) @safe pure nothrow
-        if((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    ref Date opOpAssign(string op)(Duration duration) @safe pure nothrow
+        if(op == "+" || op == "-")
     {
-        import std.format : format;
-
-        static if(is(Unqual!D == Duration))
-            immutable days = duration.total!"days";
-        else static if(is(Unqual!D == TickDuration))
-            immutable days = convert!("hnsecs", "days")(duration.hnsecs);
-
-        mixin(format("return _addDays(%sdays);", op));
+        immutable days = duration.total!"days";
+        mixin("return _addDays(" ~ op ~ "days);");
     }
 
     unittest
@@ -11602,20 +11771,69 @@ public:
         auto date = Date(1999, 7, 6);
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date += duration));
+        date += duration;
         static assert(!__traits(compiles, cdate += duration));
         static assert(!__traits(compiles, idate += duration));
 
-        static assert(__traits(compiles, date -= duration));
+        date -= duration;
         static assert(!__traits(compiles, cdate -= duration));
         static assert(!__traits(compiles, idate -= duration));
+    }
+
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines += and -= with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    ref Date opOpAssign(string op)(TickDuration td) @safe pure nothrow
+        if(op == "+" || op == "-")
+    {
+        immutable days = convert!("seconds", "days")(td.seconds);
+        mixin("return _addDays(" ~ op ~ "days);");
+    }
+
+    deprecated unittest
+    {
+        //This probably only runs in cases where gettimeofday() is used, but it's
+        //hard to do this test correctly with variable ticksPerSec.
+        if(TickDuration.ticksPerSec == 1_000_000)
+        {
+            {
+                auto date = Date(1999, 7, 6);
+                date += TickDuration.from!"usecs"(86_400_000_000);
+                assert(date == Date(1999, 7, 7));
+            }
+
+            {
+                auto date = Date(1999, 7, 6);
+                date += TickDuration.from!"usecs"(-86_400_000_000);
+                assert(date == Date(1999, 7, 5));
+            }
+
+            {
+                auto date = Date(1999, 7, 6);
+                date -= TickDuration.from!"usecs"(-86_400_000_000);
+                assert(date == Date(1999, 7, 7));
+            }
+
+            {
+                auto date = Date(1999, 7, 6);
+                date -= TickDuration.from!"usecs"(86_400_000_000);
+                assert(date == Date(1999, 7, 5));
+            }
+        }
     }
 
 
     /++
         Gives the difference between two $(LREF Date)s.
 
-        The legal types of arithmetic for Date using this operator are
+        The legal types of arithmetic for $(LREF Date) using this operator are
 
         $(BOOKTABLE,
         $(TR $(TD Date) $(TD -) $(TD Date) $(TD -->) $(TD duration))
@@ -11640,17 +11858,17 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date - date));
-        static assert(__traits(compiles, cdate - date));
-        static assert(__traits(compiles, idate - date));
+        assert(date - date == Duration.zero);
+        assert(cdate - date == Duration.zero);
+        assert(idate - date == Duration.zero);
 
-        static assert(__traits(compiles, date - cdate));
-        static assert(__traits(compiles, cdate - cdate));
-        static assert(__traits(compiles, idate - cdate));
+        assert(date - cdate == Duration.zero);
+        assert(cdate - cdate == Duration.zero);
+        assert(idate - cdate == Duration.zero);
 
-        static assert(__traits(compiles, date - idate));
-        static assert(__traits(compiles, cdate - idate));
-        static assert(__traits(compiles, idate - idate));
+        assert(date - idate == Duration.zero);
+        assert(cdate - idate == Duration.zero);
+        assert(idate - idate == Duration.zero);
     }
 
 
@@ -11896,17 +12114,17 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date.diffMonths(date)));
-        static assert(__traits(compiles, cdate.diffMonths(date)));
-        static assert(__traits(compiles, idate.diffMonths(date)));
+        assert(date.diffMonths(date) == 0);
+        assert(cdate.diffMonths(date) == 0);
+        assert(idate.diffMonths(date) == 0);
 
-        static assert(__traits(compiles, date.diffMonths(cdate)));
-        static assert(__traits(compiles, cdate.diffMonths(cdate)));
-        static assert(__traits(compiles, idate.diffMonths(cdate)));
+        assert(date.diffMonths(cdate) == 0);
+        assert(cdate.diffMonths(cdate) == 0);
+        assert(idate.diffMonths(cdate) == 0);
 
-        static assert(__traits(compiles, date.diffMonths(idate)));
-        static assert(__traits(compiles, cdate.diffMonths(idate)));
-        static assert(__traits(compiles, idate.diffMonths(idate)));
+        assert(date.diffMonths(idate) == 0);
+        assert(cdate.diffMonths(idate) == 0);
+        assert(idate.diffMonths(idate) == 0);
     }
 
 
@@ -11941,9 +12159,9 @@ public:
     {
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.dayOfWeek == DayOfWeek.sun));
+        assert(cdate.dayOfWeek == DayOfWeek.tue);
         static assert(!__traits(compiles, cdate.dayOfWeek = DayOfWeek.sun));
-        static assert(__traits(compiles, idate.dayOfWeek == DayOfWeek.sun));
+        assert(idate.dayOfWeek == DayOfWeek.tue);
         static assert(!__traits(compiles, idate.dayOfWeek = DayOfWeek.sun));
     }
 
@@ -11997,8 +12215,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.dayOfYear == 187));
-        static assert(__traits(compiles, idate.dayOfYear == 187));
+        assert(cdate.dayOfYear == 187);
+        assert(idate.dayOfYear == 187);
     }
 
     /++
@@ -12140,9 +12358,9 @@ public:
         auto date = Date(1999, 7, 6);
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date.dayOfGregorianCal));
-        static assert(__traits(compiles, cdate.dayOfGregorianCal));
-        static assert(__traits(compiles, idate.dayOfGregorianCal));
+        assert(date.dayOfGregorianCal == 729_941);
+        assert(cdate.dayOfGregorianCal == 729_941);
+        assert(idate.dayOfGregorianCal == 729_941);
     }
 
     /++
@@ -12190,7 +12408,8 @@ public:
         auto date = Date(1999, 7, 6);
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date.dayOfGregorianCal = 187));
+        date.dayOfGregorianCal = 187;
+        assert(date.dayOfGregorianCal == 187);
         static assert(!__traits(compiles, cdate.dayOfGregorianCal = 187));
         static assert(!__traits(compiles, idate.dayOfGregorianCal = 187));
     }
@@ -12291,9 +12510,9 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.isoWeek == 3));
+        assert(cdate.isoWeek == 27);
         static assert(!__traits(compiles, cdate.isoWeek = 3));
-        static assert(__traits(compiles, idate.isoWeek == 3));
+        assert(idate.isoWeek == 27);
         static assert(!__traits(compiles, idate.isoWeek = 3));
     }
 
@@ -12440,8 +12659,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.isAD));
-        static assert(__traits(compiles, idate.isAD));
+        assert(cdate.isAD);
+        assert(idate.isAD);
     }
 
 
@@ -12467,8 +12686,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.julianDay));
-        static assert(__traits(compiles, idate.julianDay));
+        assert(cdate.julianDay == 2_451_366);
+        assert(idate.julianDay == 2_451_366);
     }
 
 
@@ -12488,8 +12707,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.modJulianDay));
-        static assert(__traits(compiles, idate.modJulianDay));
+        assert(cdate.modJulianDay == 51_365);
+        assert(idate.modJulianDay == 51_365);
     }
 
 
@@ -12545,8 +12764,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.toISOString()));
-        static assert(__traits(compiles, idate.toISOString()));
+        assert(cdate.toISOString() == "19990706");
+        assert(idate.toISOString() == "19990706");
     }
 
     /++
@@ -12601,8 +12820,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.toISOExtString()));
-        static assert(__traits(compiles, idate.toISOExtString()));
+        assert(cdate.toISOExtString() == "1999-07-06");
+        assert(idate.toISOExtString() == "1999-07-06");
     }
 
     /++
@@ -12657,8 +12876,8 @@ public:
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, cdate.toSimpleString()));
-        static assert(__traits(compiles, idate.toSimpleString()));
+        assert(cdate.toSimpleString() == "1999-Jul-06");
+        assert(idate.toSimpleString() == "1999-Jul-06");
     }
 
 
@@ -12675,9 +12894,9 @@ public:
         auto date = Date(1999, 7, 6);
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        static assert(__traits(compiles, date.toString()));
-        static assert(__traits(compiles, cdate.toString()));
-        static assert(__traits(compiles, idate.toString()));
+        assert(date.toString());
+        assert(cdate.toString());
+        assert(idate.toString());
     }
 
 
@@ -13433,8 +13652,8 @@ public:
 
         const ctod = TimeOfDay(12, 30, 33);
         immutable itod = TimeOfDay(12, 30, 33);
-        static assert(__traits(compiles, ctod.opCmp(itod)));
-        static assert(__traits(compiles, itod.opCmp(ctod)));
+        assert(ctod.opCmp(itod) == 0);
+        assert(itod.opCmp(ctod) == 0);
     }
 
 
@@ -13453,8 +13672,8 @@ public:
 
         const ctod = TimeOfDay(12, 0, 0);
         immutable itod = TimeOfDay(12, 0, 0);
-        static assert(__traits(compiles, ctod.hour == 12));
-        static assert(__traits(compiles, itod.hour == 12));
+        assert(ctod.hour == 12);
+        assert(itod.hour == 12);
     }
 
 
@@ -13504,8 +13723,8 @@ public:
 
         const ctod = TimeOfDay(0, 30, 0);
         immutable itod = TimeOfDay(0, 30, 0);
-        static assert(__traits(compiles, ctod.minute == 30));
-        static assert(__traits(compiles, itod.minute == 30));
+        assert(ctod.minute == 30);
+        assert(itod.minute == 30);
     }
 
 
@@ -13555,8 +13774,8 @@ public:
 
         const ctod = TimeOfDay(0, 0, 33);
         immutable itod = TimeOfDay(0, 0, 33);
-        static assert(__traits(compiles, ctod.second == 33));
-        static assert(__traits(compiles, itod.second == 33));
+        assert(ctod.second == 33);
+        assert(itod.second == 33);
     }
 
 
@@ -13836,35 +14055,41 @@ public:
 
 
     /++
-        Gives the result of adding or subtracting a duration from this
-        $(LREF TimeOfDay).
+        Gives the result of adding or subtracting a $(CXREF time, Duration) from
+        this $(LREF TimeOfDay).
 
-        The legal types of arithmetic for $(LREF TimeOfDay) using this operator are
+        The legal types of arithmetic for $(LREF TimeOfDay) using this operator
+        are
 
         $(BOOKTABLE,
-        $(TR $(TD TimeOfDay) $(TD +) $(TD duration) $(TD -->) $(TD TimeOfDay))
-        $(TR $(TD TimeOfDay) $(TD -) $(TD duration) $(TD -->) $(TD TimeOfDay))
+        $(TR $(TD TimeOfDay) $(TD +) $(TD Duration) $(TD -->) $(TD TimeOfDay))
+        $(TR $(TD TimeOfDay) $(TD -) $(TD Duration) $(TD -->) $(TD TimeOfDay))
         )
 
         Params:
-            duration = The duration to add to or subtract from this
-                       $(LREF TimeOfDay).
+            duration = The $(CXREF time, Duration) to add to or subtract from
+                       this $(LREF TimeOfDay).
       +/
-    TimeOfDay opBinary(string op, D)(in D duration) @safe const pure nothrow
-        if((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    TimeOfDay opBinary(string op)(Duration duration) @safe const pure nothrow
+        if(op == "+" || op == "-")
     {
-        import std.format : format;
-
         TimeOfDay retval = this;
+        immutable seconds = duration.total!"seconds";
+        mixin("return retval._addSeconds(" ~ op ~ "seconds);");
+    }
 
-        static if(is(Unqual!D == Duration))
-            immutable hnsecs = duration.total!"hnsecs";
-        else static if(is(Unqual!D == TickDuration))
-            immutable hnsecs = duration.hnsecs;
+    ///
+    unittest
+    {
+        assert(TimeOfDay(12, 12, 12) + seconds(1) == TimeOfDay(12, 12, 13));
+        assert(TimeOfDay(12, 12, 12) + minutes(1) == TimeOfDay(12, 13, 12));
+        assert(TimeOfDay(12, 12, 12) + hours(1) == TimeOfDay(13, 12, 12));
+        assert(TimeOfDay(23, 59, 59) + seconds(1) == TimeOfDay(0, 0, 0));
 
-        mixin(format(`return retval._addSeconds(convert!("hnsecs", "seconds")(%shnsecs));`, op));
+        assert(TimeOfDay(12, 12, 12) - seconds(1) == TimeOfDay(12, 12, 11));
+        assert(TimeOfDay(12, 12, 12) - minutes(1) == TimeOfDay(12, 11, 12));
+        assert(TimeOfDay(12, 12, 12) - hours(1) == TimeOfDay(11, 12, 12));
+        assert(TimeOfDay(0, 0, 0) - seconds(1) == TimeOfDay(23, 59, 59));
     }
 
     unittest
@@ -13885,14 +14110,6 @@ public:
         assert(tod + dur!"hnsecs"(70_000_000) == TimeOfDay(12, 30, 40));
         assert(tod + dur!"hnsecs"(-70_000_000) == TimeOfDay(12, 30, 26));
 
-        //This probably only runs in cases where gettimeofday() is used, but it's
-        //hard to do this test correctly with variable ticksPerSec.
-        if(TickDuration.ticksPerSec == 1_000_000)
-        {
-            assert(tod + TickDuration.from!"usecs"(7_000_000) == TimeOfDay(12, 30, 40));
-            assert(tod + TickDuration.from!"usecs"(-7_000_000) == TimeOfDay(12, 30, 26));
-        }
-
         assert(tod - dur!"hours"(-7) == TimeOfDay(19, 30, 33));
         assert(tod - dur!"hours"(7) == TimeOfDay(5, 30, 33));
         assert(tod - dur!"minutes"(-7) == TimeOfDay(12, 37, 33));
@@ -13907,55 +14124,75 @@ public:
         assert(tod - dur!"hnsecs"(-70_000_000) == TimeOfDay(12, 30, 40));
         assert(tod - dur!"hnsecs"(70_000_000) == TimeOfDay(12, 30, 26));
 
+        auto duration = dur!"hours"(11);
+        const ctod = TimeOfDay(12, 30, 33);
+        immutable itod = TimeOfDay(12, 30, 33);
+        assert(tod + duration == TimeOfDay(23, 30, 33));
+        assert(ctod + duration == TimeOfDay(23, 30, 33));
+        assert(itod + duration == TimeOfDay(23, 30, 33));
+
+        assert(tod - duration == TimeOfDay(1, 30, 33));
+        assert(ctod - duration == TimeOfDay(1, 30, 33));
+        assert(itod - duration == TimeOfDay(1, 30, 33));
+    }
+
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines + and - with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    TimeOfDay opBinary(string op)(TickDuration td) @safe const pure nothrow
+        if(op == "+" || op == "-")
+    {
+        TimeOfDay retval = this;
+        immutable seconds = td.seconds;
+        mixin("return retval._addSeconds(" ~ op ~ "seconds);");
+    }
+
+    deprecated unittest
+    {
         //This probably only runs in cases where gettimeofday() is used, but it's
         //hard to do this test correctly with variable ticksPerSec.
         if(TickDuration.ticksPerSec == 1_000_000)
         {
+            auto tod = TimeOfDay(12, 30, 33);
+
+            assert(tod + TickDuration.from!"usecs"(7_000_000) == TimeOfDay(12, 30, 40));
+            assert(tod + TickDuration.from!"usecs"(-7_000_000) == TimeOfDay(12, 30, 26));
+
             assert(tod - TickDuration.from!"usecs"(-7_000_000) == TimeOfDay(12, 30, 40));
             assert(tod - TickDuration.from!"usecs"(7_000_000) == TimeOfDay(12, 30, 26));
         }
-
-        auto duration = dur!"hours"(11);
-        const ctod = TimeOfDay(12, 33, 30);
-        immutable itod = TimeOfDay(12, 33, 30);
-        static assert(__traits(compiles, tod + duration));
-        static assert(__traits(compiles, ctod + duration));
-        static assert(__traits(compiles, itod + duration));
-
-        static assert(__traits(compiles, tod - duration));
-        static assert(__traits(compiles, ctod - duration));
-        static assert(__traits(compiles, itod - duration));
     }
 
 
     /++
-        Gives the result of adding or subtracting a duration from this
-        $(LREF TimeOfDay), as well as assigning the result to this
+        Gives the result of adding or subtracting a $(CXREF time, Duration) from
+        this $(LREF TimeOfDay), as well as assigning the result to this
         $(LREF TimeOfDay).
 
-        The legal types of arithmetic for $(LREF TimeOfDay) using this operator are
+        The legal types of arithmetic for $(LREF TimeOfDay) using this operator
+        are
 
         $(BOOKTABLE,
-        $(TR $(TD TimeOfDay) $(TD +) $(TD duration) $(TD -->) $(TD TimeOfDay))
-        $(TR $(TD TimeOfDay) $(TD -) $(TD duration) $(TD -->) $(TD TimeOfDay))
+        $(TR $(TD TimeOfDay) $(TD +) $(TD Duration) $(TD -->) $(TD TimeOfDay))
+        $(TR $(TD TimeOfDay) $(TD -) $(TD Duration) $(TD -->) $(TD TimeOfDay))
         )
 
         Params:
-            duration = The duration to add to or subtract from this
-                       $(LREF TimeOfDay).
+            duration = The $(CXREF time, Duration) to add to or subtract from
+                       this $(LREF TimeOfDay).
       +/
-    ref TimeOfDay opOpAssign(string op, D)(in D duration) @safe pure nothrow
-        if((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    ref TimeOfDay opOpAssign(string op)(Duration duration) @safe pure nothrow
+        if(op == "+" || op == "-")
     {
-        import std.format : format;
-        static if(is(Unqual!D == Duration))
-            immutable hnsecs = duration.total!"hnsecs";
-        else static if(is(Unqual!D == TickDuration))
-            immutable hnsecs = duration.hnsecs;
-
-        mixin(format(`return _addSeconds(convert!("hnsecs", "seconds")(%shnsecs));`, op));
+        immutable seconds = duration.total!"seconds";
+        mixin("return _addSeconds(" ~ op ~ "seconds);");
     }
 
     unittest
@@ -14002,6 +14239,55 @@ public:
         static assert(!__traits(compiles, itod -= duration));
     }
 
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines += and -= with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    ref TimeOfDay opOpAssign(string op)(TickDuration td) @safe pure nothrow
+        if(op == "+" || op == "-")
+    {
+        immutable seconds = td.seconds;
+        mixin("return _addSeconds(" ~ op ~ "seconds);");
+    }
+
+    deprecated unittest
+    {
+        //This probably only runs in cases where gettimeofday() is used, but it's
+        //hard to do this test correctly with variable ticksPerSec.
+        if(TickDuration.ticksPerSec == 1_000_000)
+        {
+            {
+                auto tod = TimeOfDay(12, 30, 33);
+                tod += TickDuration.from!"usecs"(7_000_000);
+                assert(tod == TimeOfDay(12, 30, 40));
+            }
+
+            {
+                auto tod = TimeOfDay(12, 30, 33);
+                tod += TickDuration.from!"usecs"(-7_000_000);
+                assert(tod == TimeOfDay(12, 30, 26));
+            }
+
+            {
+                auto tod = TimeOfDay(12, 30, 33);
+                tod -= TickDuration.from!"usecs"(-7_000_000);
+                assert(tod == TimeOfDay(12, 30, 40));
+            }
+
+            {
+                auto tod = TimeOfDay(12, 30, 33);
+                tod -= TickDuration.from!"usecs"(7_000_000);
+                assert(tod == TimeOfDay(12, 30, 26));
+            }
+        }
+    }
+
 
     /++
         Gives the difference between two $(LREF TimeOfDay)s.
@@ -14039,17 +14325,17 @@ public:
 
         const ctod = TimeOfDay(12, 30, 33);
         immutable itod = TimeOfDay(12, 30, 33);
-        static assert(__traits(compiles, tod - tod));
-        static assert(__traits(compiles, ctod - tod));
-        static assert(__traits(compiles, itod - tod));
+        assert(tod - tod == Duration.zero);
+        assert(ctod - tod == Duration.zero);
+        assert(itod - tod == Duration.zero);
 
-        static assert(__traits(compiles, tod - ctod));
-        static assert(__traits(compiles, ctod - ctod));
-        static assert(__traits(compiles, itod - ctod));
+        assert(tod - ctod == Duration.zero);
+        assert(ctod - ctod == Duration.zero);
+        assert(itod - ctod == Duration.zero);
 
-        static assert(__traits(compiles, tod - itod));
-        static assert(__traits(compiles, ctod - itod));
-        static assert(__traits(compiles, itod - itod));
+        assert(tod - itod == Duration.zero);
+        assert(ctod - itod == Duration.zero);
+        assert(itod - itod == Duration.zero);
     }
 
 
@@ -14077,9 +14363,9 @@ public:
         auto tod = TimeOfDay(12, 30, 33);
         const ctod = TimeOfDay(12, 30, 33);
         immutable itod = TimeOfDay(12, 30, 33);
-        static assert(__traits(compiles, tod.toISOString()));
-        static assert(__traits(compiles, ctod.toISOString()));
-        static assert(__traits(compiles, itod.toISOString()));
+        assert(tod.toISOString() == "123033");
+        assert(ctod.toISOString() == "123033");
+        assert(itod.toISOString() == "123033");
     }
 
 
@@ -14107,9 +14393,9 @@ public:
         auto tod = TimeOfDay(12, 30, 33);
         const ctod = TimeOfDay(12, 30, 33);
         immutable itod = TimeOfDay(12, 30, 33);
-        static assert(__traits(compiles, tod.toISOExtString()));
-        static assert(__traits(compiles, ctod.toISOExtString()));
-        static assert(__traits(compiles, itod.toISOExtString()));
+        assert(tod.toISOExtString() == "12:30:33");
+        assert(ctod.toISOExtString() == "12:30:33");
+        assert(itod.toISOExtString() == "12:30:33");
     }
 
 
@@ -14126,9 +14412,9 @@ public:
         auto tod = TimeOfDay(12, 30, 33);
         const ctod = TimeOfDay(12, 30, 33);
         immutable itod = TimeOfDay(12, 30, 33);
-        static assert(__traits(compiles, tod.toString()));
-        static assert(__traits(compiles, ctod.toString()));
-        static assert(__traits(compiles, itod.toString()));
+        assert(tod.toString());
+        assert(ctod.toString());
+        assert(itod.toString());
     }
 
 
@@ -14811,15 +15097,15 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 33, 30));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 33, 30));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 33, 30));
-        static assert(__traits(compiles, dt.opCmp(dt)));
-        static assert(__traits(compiles, dt.opCmp(cdt)));
-        static assert(__traits(compiles, dt.opCmp(idt)));
-        static assert(__traits(compiles, cdt.opCmp(dt)));
-        static assert(__traits(compiles, cdt.opCmp(cdt)));
-        static assert(__traits(compiles, cdt.opCmp(idt)));
-        static assert(__traits(compiles, idt.opCmp(dt)));
-        static assert(__traits(compiles, idt.opCmp(cdt)));
-        static assert(__traits(compiles, idt.opCmp(idt)));
+        assert(dt.opCmp(dt) == 0);
+        assert(dt.opCmp(cdt) == 0);
+        assert(dt.opCmp(idt) == 0);
+        assert(cdt.opCmp(dt) == 0);
+        assert(cdt.opCmp(cdt) == 0);
+        assert(cdt.opCmp(idt) == 0);
+        assert(idt.opCmp(dt) == 0);
+        assert(idt.opCmp(cdt) == 0);
+        assert(idt.opCmp(idt) == 0);
     }
 
 
@@ -14845,8 +15131,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6);
         immutable idt = DateTime(1999, 7, 6);
-        static assert(__traits(compiles, cdt.date == Date(2010, 1, 1)));
-        static assert(__traits(compiles, idt.date == Date(2010, 1, 1)));
+        assert(cdt.date == Date(1999, 7, 6));
+        assert(idt.date == Date(1999, 7, 6));
     }
 
 
@@ -14897,8 +15183,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.timeOfDay == TimeOfDay(12, 30, 33)));
-        static assert(__traits(compiles, idt.timeOfDay == TimeOfDay(12, 30, 33)));
+        assert(cdt.timeOfDay == TimeOfDay(12, 30, 33));
+        assert(idt.timeOfDay == TimeOfDay(12, 30, 33));
     }
 
 
@@ -14945,8 +15231,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, idt.year));
-        static assert(__traits(compiles, idt.year));
+        assert(idt.year == 1999);
+        assert(idt.year == 1999);
     }
 
 
@@ -15019,7 +15305,8 @@ public:
         auto dt = DateTime(1999, 7, 6, 12, 30, 33);
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, dt.yearBC = 12));
+        dt.yearBC = 12;
+        assert(dt.yearBC == 12);
         static assert(!__traits(compiles, cdt.yearBC = 12));
         static assert(!__traits(compiles, idt.yearBC = 12));
     }
@@ -15057,7 +15344,8 @@ public:
         auto dt = DateTime(1999, 7, 6, 12, 30, 33);
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, dt.yearBC = 12));
+        dt.yearBC = 12;
+        assert(dt.yearBC == 12);
         static assert(!__traits(compiles, cdt.yearBC = 12));
         static assert(!__traits(compiles, idt.yearBC = 12));
     }
@@ -15087,8 +15375,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.month));
-        static assert(__traits(compiles, idt.month));
+        assert(cdt.month == 7);
+        assert(idt.month == 7);
     }
 
 
@@ -15165,8 +15453,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.day));
-        static assert(__traits(compiles, idt.day));
+        assert(cdt.day == 6);
+        assert(idt.day == 6);
     }
 
 
@@ -15284,8 +15572,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.hour));
-        static assert(__traits(compiles, idt.hour));
+        assert(cdt.hour == 12);
+        assert(idt.hour == 12);
     }
 
 
@@ -15334,8 +15622,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.minute));
-        static assert(__traits(compiles, idt.minute));
+        assert(cdt.minute == 30);
+        assert(idt.minute == 30);
     }
 
 
@@ -15384,8 +15672,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.second));
-        static assert(__traits(compiles, idt.second));
+        assert(cdt.second == 33);
+        assert(idt.second == 33);
     }
 
 
@@ -16113,35 +16401,43 @@ public:
 
 
     /++
-        Gives the result of adding or subtracting a duration from this
-        $(LREF DateTime).
+        Gives the result of adding or subtracting a $(CXREF time, Duration) from
+        this $(LREF DateTime).
 
-        The legal types of arithmetic for $(LREF DateTime) using this operator are
+        The legal types of arithmetic for $(LREF DateTime) using this operator
+        are
 
         $(BOOKTABLE,
-        $(TR $(TD DateTime) $(TD +) $(TD duration) $(TD -->) $(TD DateTime))
-        $(TR $(TD DateTime) $(TD -) $(TD duration) $(TD -->) $(TD DateTime))
+        $(TR $(TD DateTime) $(TD +) $(TD Duration) $(TD -->) $(TD DateTime))
+        $(TR $(TD DateTime) $(TD -) $(TD Duration) $(TD -->) $(TD DateTime))
         )
 
         Params:
-            duration = The duration to add to or subtract from this
-                       $(LREF DateTime).
+            duration = The $(CXREF time, Duration) to add to or subtract from
+                       this $(LREF DateTime).
       +/
-    DateTime opBinary(string op, D)(in D duration) @safe const pure nothrow
-        if((op == "+" || op == "-") &&
-           (is(Unqual!D == Duration) ||
-            is(Unqual!D == TickDuration)))
+    DateTime opBinary(string op)(Duration duration) @safe const pure nothrow
+        if(op == "+" || op == "-")
     {
-        import std.format : format;
-
         DateTime retval = this;
+        immutable seconds = duration.total!"seconds";
+        mixin("return retval._addSeconds(" ~ op ~ "seconds);");
+    }
 
-        static if(is(Unqual!D == Duration))
-            immutable hnsecs = duration.total!"hnsecs";
-        else static if(is(Unqual!D == TickDuration))
-            immutable hnsecs = duration.hnsecs;
+    ///
+    unittest
+    {
+        assert(DateTime(2015, 12, 31, 23, 59, 59) + seconds(1) ==
+               DateTime(2016, 1, 1, 0, 0, 0));
 
-        mixin(format(`return retval._addSeconds(convert!("hnsecs", "seconds")(%shnsecs));`, op));
+        assert(DateTime(2015, 12, 31, 23, 59, 59) + hours(1) ==
+               DateTime(2016, 1, 1, 0, 59, 59));
+
+        assert(DateTime(2016, 1, 1, 0, 0, 0) - seconds(1) ==
+               DateTime(2015, 12, 31, 23, 59, 59));
+
+        assert(DateTime(2016, 1, 1, 0, 59, 59) - hours(1) ==
+               DateTime(2015, 12, 31, 23, 59, 59));
     }
 
     unittest
@@ -16166,14 +16462,6 @@ public:
         assert(dt + dur!"hnsecs"(70_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
         assert(dt + dur!"hnsecs"(-70_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
 
-        //This probably only runs in cases where gettimeofday() is used, but it's
-        //hard to do this test correctly with variable ticksPerSec.
-        if(TickDuration.ticksPerSec == 1_000_000)
-        {
-            assert(dt + TickDuration.from!"usecs"(7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
-            assert(dt + TickDuration.from!"usecs"(-7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
-        }
-
         assert(dt - dur!"weeks"(-7) == DateTime(Date(1999, 8, 24), TimeOfDay(12, 30, 33)));
         assert(dt - dur!"weeks"(7) == DateTime(Date(1999, 5, 18), TimeOfDay(12, 30, 33)));
         assert(dt - dur!"days"(-7) == DateTime(Date(1999, 7, 13), TimeOfDay(12, 30, 33)));
@@ -16192,21 +16480,47 @@ public:
         assert(dt - dur!"hnsecs"(-70_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
         assert(dt - dur!"hnsecs"(70_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
 
+        auto duration = dur!"seconds"(12);
+        const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
+        immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
+        assert(cdt + duration == DateTime(1999, 7, 6, 12, 30, 45));
+        assert(idt + duration == DateTime(1999, 7, 6, 12, 30, 45));
+        assert(cdt - duration == DateTime(1999, 7, 6, 12, 30, 21));
+        assert(idt - duration == DateTime(1999, 7, 6, 12, 30, 21));
+    }
+
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines + and - with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    DateTime opBinary(string op)(in TickDuration td) @safe const pure nothrow
+        if(op == "+" || op == "-")
+    {
+        DateTime retval = this;
+        immutable seconds = td.seconds;
+        mixin("return retval._addSeconds(" ~ op ~ "seconds);");
+    }
+
+    deprecated unittest
+    {
         //This probably only runs in cases where gettimeofday() is used, but it's
         //hard to do this test correctly with variable ticksPerSec.
         if(TickDuration.ticksPerSec == 1_000_000)
         {
+            auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
+
+            assert(dt + TickDuration.from!"usecs"(7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
+            assert(dt + TickDuration.from!"usecs"(-7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
+
             assert(dt - TickDuration.from!"usecs"(-7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
             assert(dt - TickDuration.from!"usecs"(7_000_000) == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
         }
-
-        auto duration = dur!"seconds"(12);
-        const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, cdt + duration));
-        static assert(__traits(compiles, idt + duration));
-        static assert(__traits(compiles, cdt - duration));
-        static assert(__traits(compiles, idt - duration));
     }
 
 
@@ -16293,6 +16607,56 @@ public:
         static assert(!__traits(compiles, idt -= duration));
     }
 
+    // @@@DEPRECATED_2017-01@@@
+    /++
+        $(RED Deprecated. $(CXREF time, TickDuration) is going to be deprecated
+              in favor of $(CXREF time, MonoTime) and $(CXREF time, Duration).
+              Use $(D Duration) instead. This overload will be removed in
+              January 2017.)
+
+        Defines += and -= with $(CXREF time, TickDuration).
+      +/
+    deprecated("Use Duration instead of TickDuration.")
+    ref DateTime opOpAssign(string op)(TickDuration td) @safe pure nothrow
+        if(op == "+" || op == "-")
+    {
+        DateTime retval = this;
+        immutable seconds = td.seconds;
+        mixin("return _addSeconds(" ~ op ~ "seconds);");
+    }
+
+    deprecated unittest
+    {
+        //This probably only runs in cases where gettimeofday() is used, but it's
+        //hard to do this test correctly with variable ticksPerSec.
+        if(TickDuration.ticksPerSec == 1_000_000)
+        {
+            {
+                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
+                dt += TickDuration.from!"usecs"(7_000_000);
+                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
+            }
+
+            {
+                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
+                dt += TickDuration.from!"usecs"(-7_000_000);
+                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
+            }
+
+            {
+                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
+                dt -= TickDuration.from!"usecs"(-7_000_000);
+                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 40)));
+            }
+
+            {
+                auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
+                dt -= TickDuration.from!"usecs"(7_000_000);
+                assert(dt == DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 26)));
+            }
+        }
+    }
+
 
     /++
         Gives the difference between two $(LREF DateTime)s.
@@ -16365,17 +16729,17 @@ public:
 
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt - dt));
-        static assert(__traits(compiles, cdt - dt));
-        static assert(__traits(compiles, idt - dt));
+        assert(dt - dt == Duration.zero);
+        assert(cdt - dt == Duration.zero);
+        assert(idt - dt == Duration.zero);
 
-        static assert(__traits(compiles, dt - cdt));
-        static assert(__traits(compiles, cdt - cdt));
-        static assert(__traits(compiles, idt - cdt));
+        assert(dt - cdt == Duration.zero);
+        assert(cdt - cdt == Duration.zero);
+        assert(idt - cdt == Duration.zero);
 
-        static assert(__traits(compiles, dt - idt));
-        static assert(__traits(compiles, cdt - idt));
-        static assert(__traits(compiles, idt - idt));
+        assert(dt - idt == Duration.zero);
+        assert(cdt - idt == Duration.zero);
+        assert(idt - idt == Duration.zero);
     }
 
 
@@ -16426,17 +16790,17 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt.diffMonths(dt)));
-        static assert(__traits(compiles, cdt.diffMonths(dt)));
-        static assert(__traits(compiles, idt.diffMonths(dt)));
+        assert(dt.diffMonths(dt) == 0);
+        assert(cdt.diffMonths(dt) == 0);
+        assert(idt.diffMonths(dt) == 0);
 
-        static assert(__traits(compiles, dt.diffMonths(cdt)));
-        static assert(__traits(compiles, cdt.diffMonths(cdt)));
-        static assert(__traits(compiles, idt.diffMonths(cdt)));
+        assert(dt.diffMonths(cdt) == 0);
+        assert(cdt.diffMonths(cdt) == 0);
+        assert(idt.diffMonths(cdt) == 0);
 
-        static assert(__traits(compiles, dt.diffMonths(idt)));
-        static assert(__traits(compiles, cdt.diffMonths(idt)));
-        static assert(__traits(compiles, idt.diffMonths(idt)));
+        assert(dt.diffMonths(idt) == 0);
+        assert(cdt.diffMonths(idt) == 0);
+        assert(idt.diffMonths(idt) == 0);
     }
 
 
@@ -16453,9 +16817,9 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt.isLeapYear));
-        static assert(__traits(compiles, cdt.isLeapYear));
-        static assert(__traits(compiles, idt.isLeapYear));
+        assert(!dt.isLeapYear);
+        assert(!cdt.isLeapYear);
+        assert(!idt.isLeapYear);
     }
 
 
@@ -16472,9 +16836,9 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt.dayOfWeek));
-        static assert(__traits(compiles, cdt.dayOfWeek));
-        static assert(__traits(compiles, idt.dayOfWeek));
+        assert(dt.dayOfWeek == DayOfWeek.tue);
+        assert(cdt.dayOfWeek == DayOfWeek.tue);
+        assert(idt.dayOfWeek == DayOfWeek.tue);
     }
 
 
@@ -16499,9 +16863,9 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt.dayOfYear));
-        static assert(__traits(compiles, cdt.dayOfYear));
-        static assert(__traits(compiles, idt.dayOfYear));
+        assert(dt.dayOfYear == 187);
+        assert(cdt.dayOfYear == 187);
+        assert(idt.dayOfYear == 187);
     }
 
 
@@ -16522,7 +16886,8 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt.dayOfYear = 12));
+        dt.dayOfYear = 12;
+        assert(dt.dayOfYear == 12);
         static assert(!__traits(compiles, cdt.dayOfYear = 12));
         static assert(!__traits(compiles, idt.dayOfYear = 12));
     }
@@ -16555,8 +16920,8 @@ public:
     {
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, cdt.dayOfGregorianCal));
-        static assert(__traits(compiles, idt.dayOfGregorianCal));
+        assert(cdt.dayOfGregorianCal == 729_941);
+        assert(idt.dayOfGregorianCal == 729_941);
     }
 
 
@@ -16628,9 +16993,9 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt.isoWeek));
-        static assert(__traits(compiles, cdt.isoWeek));
-        static assert(__traits(compiles, idt.isoWeek));
+        assert(dt.isoWeek == 27);
+        assert(cdt.isoWeek == 27);
+        assert(idt.isoWeek == 27);
     }
 
 
@@ -16696,8 +17061,8 @@ public:
 
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, cdt.endOfMonth));
-        static assert(__traits(compiles, idt.endOfMonth));
+        assert(cdt.endOfMonth == DateTime(1999, 7, 31, 23, 59, 59));
+        assert(idt.endOfMonth == DateTime(1999, 7, 31, 23, 59, 59));
     }
 
 
@@ -16722,8 +17087,8 @@ public:
     {
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, cdt.daysInMonth));
-        static assert(__traits(compiles, idt.daysInMonth));
+        assert(cdt.daysInMonth == 31);
+        assert(idt.daysInMonth == 31);
     }
 
 
@@ -16748,8 +17113,8 @@ public:
     {
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, cdt.isAD));
-        static assert(__traits(compiles, idt.isAD));
+        assert(cdt.isAD);
+        assert(idt.isAD);
     }
 
 
@@ -16796,8 +17161,8 @@ public:
 
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, cdt.julianDay));
-        static assert(__traits(compiles, idt.julianDay));
+        assert(cdt.julianDay == 2_451_366);
+        assert(idt.julianDay == 2_451_366);
     }
 
 
@@ -16820,8 +17185,8 @@ public:
 
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, cdt.modJulianDay));
-        static assert(__traits(compiles, idt.modJulianDay));
+        assert(cdt.modJulianDay == 51_365);
+        assert(idt.modJulianDay == 51_365);
     }
 
 
@@ -16872,8 +17237,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.toISOString()));
-        static assert(__traits(compiles, idt.toISOString()));
+        assert(cdt.toISOString() == "19990706T123033");
+        assert(idt.toISOString() == "19990706T123033");
     }
 
 
@@ -16925,8 +17290,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.toISOExtString()));
-        static assert(__traits(compiles, idt.toISOExtString()));
+        assert(cdt.toISOExtString() == "1999-07-06T12:30:33");
+        assert(idt.toISOExtString() == "1999-07-06T12:30:33");
     }
 
     /++
@@ -16977,8 +17342,8 @@ public:
 
         const cdt = DateTime(1999, 7, 6, 12, 30, 33);
         immutable idt = DateTime(1999, 7, 6, 12, 30, 33);
-        static assert(__traits(compiles, cdt.toSimpleString()));
-        static assert(__traits(compiles, idt.toSimpleString()));
+        assert(cdt.toSimpleString() == "1999-Jul-06 12:30:33");
+        assert(idt.toSimpleString() == "1999-Jul-06 12:30:33");
     }
 
 
@@ -16995,9 +17360,9 @@ public:
         auto dt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         const cdt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
         immutable idt = DateTime(Date(1999, 7, 6), TimeOfDay(12, 30, 33));
-        static assert(__traits(compiles, dt.toString()));
-        static assert(__traits(compiles, cdt.toString()));
-        static assert(__traits(compiles, idt.toString()));
+        assert(dt.toString());
+        assert(cdt.toString());
+        assert(idt.toString());
     }
 
 
@@ -17564,7 +17929,7 @@ public:
         Throws:
             $(LREF DateTimeException) if $(D_PARAM end) is before $(D_PARAM begin).
 
-        Examples:
+        Example:
 --------------------
 Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
 --------------------
@@ -17589,10 +17954,10 @@ Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
             $(LREF DateTimeException) if the resulting $(D end) is before
             $(D begin).
 
-        Examples:
+        Example:
 --------------------
-assert(Interval!Date(Date(1996, 1, 2), dur!"years"(3)) ==
-       Interval!Date(Date(1996, 1, 2), Date(1999, 1, 2)));
+assert(Interval!Date(Date(1996, 1, 2), dur!"days"(3)) ==
+       Interval!Date(Date(1996, 1, 2), Date(1996, 1, 5)));
 --------------------
       +/
     this(D)(in TP begin, in D duration) pure
@@ -17633,7 +17998,7 @@ assert(Interval!Date(Date(1996, 1, 2), dur!"years"(3)) ==
     /++
         The starting point of the interval. It is included in the interval.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).begin ==
        Date(1996, 1, 2));
@@ -17666,7 +18031,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).begin ==
     /++
         The end point of the interval. It is excluded from the interval.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).end ==
        Date(2012, 3, 1));
@@ -17699,7 +18064,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).end ==
     /++
         Returns the duration between $(D begin) and $(D end).
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).length ==
        dur!"days"(5903));
@@ -17714,7 +18079,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).length ==
     /++
         Whether the interval's length is 0, that is, whether $(D begin == end).
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(1996, 1, 2)).empty);
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).empty);
@@ -17735,7 +18100,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).empty);
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
             Date(1994, 12, 24)));
@@ -17763,7 +18128,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
         Throws:
             $(LREF DateTimeException) if either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -17799,7 +18164,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -17826,7 +18191,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -17850,7 +18215,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
             Date(1994, 12, 24)));
@@ -17880,7 +18245,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
         Throws:
             $(LREF DateTimeException) if either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -17911,7 +18276,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -17941,7 +18306,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -17965,7 +18330,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
             Date(1994, 12, 24)));
@@ -17995,7 +18360,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
         Throws:
             $(LREF DateTimeException) if either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -18029,7 +18394,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -18053,7 +18418,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
             NegInfInterval!Date(Date(1996, 1, 2))));
@@ -18076,7 +18441,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(
         Throws:
             $(LREF DateTimeException) if either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersects(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -18106,7 +18471,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersects(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersects(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -18132,7 +18497,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersects(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersects(
             NegInfInterval!Date(Date(1996, 1, 2))));
@@ -18159,7 +18524,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersects(
             $(LREF DateTimeException) if the two intervals do not intersect or if
             either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersection(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) ==
@@ -18193,7 +18558,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersection(
             $(LREF DateTimeException) if the two intervals do not intersect or if
             this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersection(
             PosInfInterval!Date(Date(1990, 7, 6))) ==
@@ -18224,7 +18589,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersection(
             $(LREF DateTimeException) if the two intervals do not intersect or if
             this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersection(
             NegInfInterval!Date(Date(1999, 7, 6))) ==
@@ -18255,7 +18620,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersection(
         Throws:
             $(LREF DateTimeException) if either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAdjacent(
             Interval!Date(Date(1990, 7, 6), Date(1996, 1, 2))));
@@ -18286,7 +18651,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAdjacent(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAdjacent(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -18313,7 +18678,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAdjacent(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAdjacent(
             NegInfInterval!Date(Date(1996, 1, 2))));
@@ -18340,7 +18705,7 @@ assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAdjacent(
             $(LREF DateTimeException) if the two intervals do not intersect and are
             not adjacent or if either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).merge(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) ==
@@ -18375,7 +18740,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).merge(
             $(LREF DateTimeException) if the two intervals do not intersect and are
             not adjacent or if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).merge(
             PosInfInterval!Date(Date(1990, 7, 6))) ==
@@ -18407,7 +18772,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).merge(
             $(LREF DateTimeException) if the two intervals do not intersect and are not
             adjacent or if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).merge(
             NegInfInterval!Date(Date(1996, 1, 2))) ==
@@ -18440,7 +18805,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).merge(
         Throws:
             $(LREF DateTimeException) if either interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).span(
             Interval!Date(Date(1990, 7, 6), Date(1991, 1, 8))) ==
@@ -18474,7 +18839,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).span(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).span(
             PosInfInterval!Date(Date(1990, 7, 6))) ==
@@ -18504,7 +18869,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).span(
         Throws:
             $(LREF DateTimeException) if this interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).span(
             NegInfInterval!Date(Date(1602, 5, 21))) ==
@@ -18536,7 +18901,7 @@ assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).span(
             $(LREF DateTimeException) this interval is empty or if the resulting
             interval would be invalid.
 
-        Examples:
+        Example:
 --------------------
 auto interval1 = Interval!Date(Date(1996, 1, 2), Date(2012, 4, 5));
 auto interval2 = Interval!Date(Date(1996, 1, 2), Date(2012, 4, 5));
@@ -18586,7 +18951,7 @@ assert(interval2 == Interval!Date(Date(1995, 11, 13), Date(2012, 2, 15)));
                 $(LREF DateTimeException) if this interval is empty or if the
                 resulting interval would be invalid.
 
-            Examples:
+            Example:
 --------------------
 auto interval1 = Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
 auto interval2 = Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
@@ -18633,7 +18998,7 @@ assert(interval2 == Interval!Date(Date(1994, 1, 2), Date(2010, 3, 1)));
             $(LREF DateTimeException) this interval is empty or if the resulting
             interval would be invalid.
 
-        Examples:
+        Example:
 --------------------
 auto interval1 = Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
 auto interval2 = Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
@@ -18711,7 +19076,7 @@ assert(interval2 == Interval!Date(Date(1998, 1, 2), Date(2010, 3, 1)));
                 $(LREF DateTimeException) if this interval is empty or if the
                 resulting interval would be invalid.
 
-            Examples:
+            Example:
 --------------------
 auto interval1 = Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
 auto interval2 = Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1));
@@ -18826,10 +19191,10 @@ assert(interval2 == Interval!Date(Date(1998, 1, 2), Date(2010, 3, 1)));
             Of course, none of the functions in this module have this problem,
             so it's only relevant if when creating a custom delegate.
 
-        Examples:
+        Example:
 --------------------
 auto interval = Interval!Date(Date(2010, 9, 1), Date(2010, 9, 9));
-auto func = (in Date date) //For iterating over even-numbered days.
+auto func = delegate (in Date date) //For iterating over even-numbered days.
             {
                 if((date.day & 1) == 0)
                     return date + dur!"days"(2);
@@ -18919,10 +19284,10 @@ assert(range.empty);
             Of course, none of the functions in this module have this problem,
             so it's only relevant for custom delegates.
 
-        Examples:
+        Example:
 --------------------
 auto interval = Interval!Date(Date(2010, 9, 1), Date(2010, 9, 9));
-auto func = (in Date date) //For iterating over even-numbered days.
+auto func = delegate (in Date date) //For iterating over even-numbered days.
             {
                 if((date.day & 1) == 0)
                     return date - dur!"days"(2);
@@ -19068,8 +19433,8 @@ unittest
 
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cInterval.begin));
-    static assert(__traits(compiles, iInterval.begin));
+    assert(cInterval.begin == Date(2010, 7, 4));
+    assert(iInterval.begin == Date(2010, 7, 4));
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).begin == Date(1996, 1, 2));
@@ -19084,8 +19449,8 @@ unittest
 
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cInterval.end));
-    static assert(__traits(compiles, iInterval.end));
+    assert(cInterval.end == Date(2012, 1, 7));
+    assert(iInterval.end == Date(2012, 1, 7));
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).end == Date(2012, 3, 1));
@@ -19102,8 +19467,8 @@ unittest
 
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cInterval.length));
-    static assert(__traits(compiles, iInterval.length));
+    assert(cInterval.length != Duration.zero);
+    assert(iInterval.length != Duration.zero);
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).length == dur!"days"(5903));
@@ -19120,8 +19485,8 @@ unittest
 
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cInterval.empty));
-    static assert(__traits(compiles, iInterval.empty));
+    assert(!cInterval.empty);
+    assert(!iInterval.empty);
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(1996, 1, 2)).empty);
@@ -19148,9 +19513,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.contains(cdate)));
-    static assert(__traits(compiles, cInterval.contains(cdate)));
-    static assert(__traits(compiles, iInterval.contains(cdate)));
+    assert(interval.contains(cdate));
+    assert(cInterval.contains(cdate));
+    assert(iInterval.contains(cdate));
 
     //Verify Examples.
     assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(Date(1994, 12, 24)));
@@ -19216,33 +19581,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.contains(interval)));
-    static assert(__traits(compiles, interval.contains(cInterval)));
-    static assert(__traits(compiles, interval.contains(iInterval)));
-    static assert(__traits(compiles, interval.contains(posInfInterval)));
-    static assert(__traits(compiles, interval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, interval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, interval.contains(negInfInterval)));
-    static assert(__traits(compiles, interval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, interval.contains(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.contains(interval)));
-    static assert(__traits(compiles, cInterval.contains(cInterval)));
-    static assert(__traits(compiles, cInterval.contains(iInterval)));
-    static assert(__traits(compiles, cInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, cInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, cInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.contains(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.contains(interval)));
-    static assert(__traits(compiles, iInterval.contains(cInterval)));
-    static assert(__traits(compiles, iInterval.contains(iInterval)));
-    static assert(__traits(compiles, iInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, iInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, iInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.contains(iNegInfInterval)));
+    assert(interval.contains(interval));
+    assert(interval.contains(cInterval));
+    assert(interval.contains(iInterval));
+    assert(!interval.contains(posInfInterval));
+    assert(!interval.contains(cPosInfInterval));
+    assert(!interval.contains(iPosInfInterval));
+    assert(!interval.contains(negInfInterval));
+    assert(!interval.contains(cNegInfInterval));
+    assert(!interval.contains(iNegInfInterval));
+    assert(cInterval.contains(interval));
+    assert(cInterval.contains(cInterval));
+    assert(cInterval.contains(iInterval));
+    assert(!cInterval.contains(posInfInterval));
+    assert(!cInterval.contains(cPosInfInterval));
+    assert(!cInterval.contains(iPosInfInterval));
+    assert(!cInterval.contains(negInfInterval));
+    assert(!cInterval.contains(cNegInfInterval));
+    assert(!cInterval.contains(iNegInfInterval));
+    assert(iInterval.contains(interval));
+    assert(iInterval.contains(cInterval));
+    assert(iInterval.contains(iInterval));
+    assert(!iInterval.contains(posInfInterval));
+    assert(!iInterval.contains(cPosInfInterval));
+    assert(!iInterval.contains(iPosInfInterval));
+    assert(!iInterval.contains(negInfInterval));
+    assert(!iInterval.contains(cNegInfInterval));
+    assert(!iInterval.contains(iNegInfInterval));
 
     //Verify Examples.
     assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).contains(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -19274,9 +19639,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.isBefore(cdate)));
-    static assert(__traits(compiles, cInterval.isBefore(cdate)));
-    static assert(__traits(compiles, iInterval.isBefore(cdate)));
+    assert(!interval.isBefore(cdate));
+    assert(!cInterval.isBefore(cdate));
+    assert(!iInterval.isBefore(cdate));
 
     //Verify Examples.
     assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(Date(1994, 12, 24)));
@@ -19342,33 +19707,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.isBefore(interval)));
-    static assert(__traits(compiles, interval.isBefore(cInterval)));
-    static assert(__traits(compiles, interval.isBefore(iInterval)));
-    static assert(__traits(compiles, interval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, interval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, interval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, interval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, interval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, interval.isBefore(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(interval)));
-    static assert(__traits(compiles, cInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.isBefore(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(interval)));
-    static assert(__traits(compiles, iInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.isBefore(iNegInfInterval)));
+    assert(!interval.isBefore(interval));
+    assert(!interval.isBefore(cInterval));
+    assert(!interval.isBefore(iInterval));
+    assert(!interval.isBefore(posInfInterval));
+    assert(!interval.isBefore(cPosInfInterval));
+    assert(!interval.isBefore(iPosInfInterval));
+    assert(!interval.isBefore(negInfInterval));
+    assert(!interval.isBefore(cNegInfInterval));
+    assert(!interval.isBefore(iNegInfInterval));
+    assert(!cInterval.isBefore(interval));
+    assert(!cInterval.isBefore(cInterval));
+    assert(!cInterval.isBefore(iInterval));
+    assert(!cInterval.isBefore(posInfInterval));
+    assert(!cInterval.isBefore(cPosInfInterval));
+    assert(!cInterval.isBefore(iPosInfInterval));
+    assert(!cInterval.isBefore(negInfInterval));
+    assert(!cInterval.isBefore(cNegInfInterval));
+    assert(!cInterval.isBefore(iNegInfInterval));
+    assert(!iInterval.isBefore(interval));
+    assert(!iInterval.isBefore(cInterval));
+    assert(!iInterval.isBefore(iInterval));
+    assert(!iInterval.isBefore(posInfInterval));
+    assert(!iInterval.isBefore(cPosInfInterval));
+    assert(!iInterval.isBefore(iPosInfInterval));
+    assert(!iInterval.isBefore(negInfInterval));
+    assert(!iInterval.isBefore(cNegInfInterval));
+    assert(!iInterval.isBefore(iNegInfInterval));
 
     //Verify Examples.
     assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isBefore(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -19401,9 +19766,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.isAfter(cdate)));
-    static assert(__traits(compiles, cInterval.isAfter(cdate)));
-    static assert(__traits(compiles, iInterval.isAfter(cdate)));
+    assert(!interval.isAfter(cdate));
+    assert(!cInterval.isAfter(cdate));
+    assert(!iInterval.isAfter(cdate));
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(Date(1994, 12, 24)));
@@ -19469,33 +19834,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.isAfter(interval)));
-    static assert(__traits(compiles, interval.isAfter(cInterval)));
-    static assert(__traits(compiles, interval.isAfter(iInterval)));
-    static assert(__traits(compiles, interval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, interval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, interval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, interval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, interval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, interval.isAfter(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(interval)));
-    static assert(__traits(compiles, cInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.isAfter(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(interval)));
-    static assert(__traits(compiles, iInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.isAfter(iNegInfInterval)));
+    assert(!interval.isAfter(interval));
+    assert(!interval.isAfter(cInterval));
+    assert(!interval.isAfter(iInterval));
+    assert(!interval.isAfter(posInfInterval));
+    assert(!interval.isAfter(cPosInfInterval));
+    assert(!interval.isAfter(iPosInfInterval));
+    assert(!interval.isAfter(negInfInterval));
+    assert(!interval.isAfter(cNegInfInterval));
+    assert(!interval.isAfter(iNegInfInterval));
+    assert(!cInterval.isAfter(interval));
+    assert(!cInterval.isAfter(cInterval));
+    assert(!cInterval.isAfter(iInterval));
+    assert(!cInterval.isAfter(posInfInterval));
+    assert(!cInterval.isAfter(cPosInfInterval));
+    assert(!cInterval.isAfter(iPosInfInterval));
+    assert(!cInterval.isAfter(negInfInterval));
+    assert(!cInterval.isAfter(cNegInfInterval));
+    assert(!cInterval.isAfter(iNegInfInterval));
+    assert(!iInterval.isAfter(interval));
+    assert(!iInterval.isAfter(cInterval));
+    assert(!iInterval.isAfter(iInterval));
+    assert(!iInterval.isAfter(posInfInterval));
+    assert(!iInterval.isAfter(cPosInfInterval));
+    assert(!iInterval.isAfter(iPosInfInterval));
+    assert(!iInterval.isAfter(negInfInterval));
+    assert(!iInterval.isAfter(cNegInfInterval));
+    assert(!iInterval.isAfter(iNegInfInterval));
 
     //Verify Examples.
     assert(!Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAfter(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -19565,33 +19930,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.intersects(interval)));
-    static assert(__traits(compiles, interval.intersects(cInterval)));
-    static assert(__traits(compiles, interval.intersects(iInterval)));
-    static assert(__traits(compiles, interval.intersects(posInfInterval)));
-    static assert(__traits(compiles, interval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, interval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, interval.intersects(negInfInterval)));
-    static assert(__traits(compiles, interval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, interval.intersects(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.intersects(interval)));
-    static assert(__traits(compiles, cInterval.intersects(cInterval)));
-    static assert(__traits(compiles, cInterval.intersects(iInterval)));
-    static assert(__traits(compiles, cInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, cInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, cInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.intersects(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.intersects(interval)));
-    static assert(__traits(compiles, iInterval.intersects(cInterval)));
-    static assert(__traits(compiles, iInterval.intersects(iInterval)));
-    static assert(__traits(compiles, iInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, iInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, iInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.intersects(iNegInfInterval)));
+    assert(interval.intersects(interval));
+    assert(interval.intersects(cInterval));
+    assert(interval.intersects(iInterval));
+    assert(interval.intersects(posInfInterval));
+    assert(interval.intersects(cPosInfInterval));
+    assert(interval.intersects(iPosInfInterval));
+    assert(interval.intersects(negInfInterval));
+    assert(interval.intersects(cNegInfInterval));
+    assert(interval.intersects(iNegInfInterval));
+    assert(cInterval.intersects(interval));
+    assert(cInterval.intersects(cInterval));
+    assert(cInterval.intersects(iInterval));
+    assert(cInterval.intersects(posInfInterval));
+    assert(cInterval.intersects(cPosInfInterval));
+    assert(cInterval.intersects(iPosInfInterval));
+    assert(cInterval.intersects(negInfInterval));
+    assert(cInterval.intersects(cNegInfInterval));
+    assert(cInterval.intersects(iNegInfInterval));
+    assert(iInterval.intersects(interval));
+    assert(iInterval.intersects(cInterval));
+    assert(iInterval.intersects(iInterval));
+    assert(iInterval.intersects(posInfInterval));
+    assert(iInterval.intersects(cPosInfInterval));
+    assert(iInterval.intersects(iPosInfInterval));
+    assert(iInterval.intersects(negInfInterval));
+    assert(iInterval.intersects(cNegInfInterval));
+    assert(iInterval.intersects(iNegInfInterval));
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersects(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -19691,33 +20056,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.intersection(interval)));
-    static assert(__traits(compiles, interval.intersection(cInterval)));
-    static assert(__traits(compiles, interval.intersection(iInterval)));
-    static assert(__traits(compiles, interval.intersection(posInfInterval)));
-    static assert(__traits(compiles, interval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, interval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, interval.intersection(negInfInterval)));
-    static assert(__traits(compiles, interval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, interval.intersection(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.intersection(interval)));
-    static assert(__traits(compiles, cInterval.intersection(cInterval)));
-    static assert(__traits(compiles, cInterval.intersection(iInterval)));
-    static assert(__traits(compiles, cInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, cInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, cInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.intersection(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.intersection(interval)));
-    static assert(__traits(compiles, iInterval.intersection(cInterval)));
-    static assert(__traits(compiles, iInterval.intersection(iInterval)));
-    static assert(__traits(compiles, iInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, iInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, iInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.intersection(iNegInfInterval)));
+    assert(!interval.intersection(interval).empty);
+    assert(!interval.intersection(cInterval).empty);
+    assert(!interval.intersection(iInterval).empty);
+    assert(!interval.intersection(posInfInterval).empty);
+    assert(!interval.intersection(cPosInfInterval).empty);
+    assert(!interval.intersection(iPosInfInterval).empty);
+    assert(!interval.intersection(negInfInterval).empty);
+    assert(!interval.intersection(cNegInfInterval).empty);
+    assert(!interval.intersection(iNegInfInterval).empty);
+    assert(!cInterval.intersection(interval).empty);
+    assert(!cInterval.intersection(cInterval).empty);
+    assert(!cInterval.intersection(iInterval).empty);
+    assert(!cInterval.intersection(posInfInterval).empty);
+    assert(!cInterval.intersection(cPosInfInterval).empty);
+    assert(!cInterval.intersection(iPosInfInterval).empty);
+    assert(!cInterval.intersection(negInfInterval).empty);
+    assert(!cInterval.intersection(cNegInfInterval).empty);
+    assert(!cInterval.intersection(iNegInfInterval).empty);
+    assert(!iInterval.intersection(interval).empty);
+    assert(!iInterval.intersection(cInterval).empty);
+    assert(!iInterval.intersection(iInterval).empty);
+    assert(!iInterval.intersection(posInfInterval).empty);
+    assert(!iInterval.intersection(cPosInfInterval).empty);
+    assert(!iInterval.intersection(iPosInfInterval).empty);
+    assert(!iInterval.intersection(negInfInterval).empty);
+    assert(!iInterval.intersection(cNegInfInterval).empty);
+    assert(!iInterval.intersection(iNegInfInterval).empty);
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).intersection(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) == Interval!Date(Date(1996, 1 , 2), Date(2000, 8, 2)));
@@ -19793,33 +20158,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.isAdjacent(interval)));
-    static assert(__traits(compiles, interval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, interval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, interval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, interval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, interval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, interval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, interval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, interval.isAdjacent(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.isAdjacent(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.isAdjacent(iNegInfInterval)));
+    assert(!interval.isAdjacent(interval));
+    assert(!interval.isAdjacent(cInterval));
+    assert(!interval.isAdjacent(iInterval));
+    assert(!interval.isAdjacent(posInfInterval));
+    assert(!interval.isAdjacent(cPosInfInterval));
+    assert(!interval.isAdjacent(iPosInfInterval));
+    assert(!interval.isAdjacent(negInfInterval));
+    assert(!interval.isAdjacent(cNegInfInterval));
+    assert(!interval.isAdjacent(iNegInfInterval));
+    assert(!cInterval.isAdjacent(interval));
+    assert(!cInterval.isAdjacent(cInterval));
+    assert(!cInterval.isAdjacent(iInterval));
+    assert(!cInterval.isAdjacent(posInfInterval));
+    assert(!cInterval.isAdjacent(cPosInfInterval));
+    assert(!cInterval.isAdjacent(iPosInfInterval));
+    assert(!cInterval.isAdjacent(negInfInterval));
+    assert(!cInterval.isAdjacent(cNegInfInterval));
+    assert(!cInterval.isAdjacent(iNegInfInterval));
+    assert(!iInterval.isAdjacent(interval));
+    assert(!iInterval.isAdjacent(cInterval));
+    assert(!iInterval.isAdjacent(iInterval));
+    assert(!iInterval.isAdjacent(posInfInterval));
+    assert(!iInterval.isAdjacent(cPosInfInterval));
+    assert(!iInterval.isAdjacent(iPosInfInterval));
+    assert(!iInterval.isAdjacent(negInfInterval));
+    assert(!iInterval.isAdjacent(cNegInfInterval));
+    assert(!iInterval.isAdjacent(iNegInfInterval));
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).isAdjacent(Interval!Date(Date(1990, 7, 6), Date(1996, 1, 2))));
@@ -19930,33 +20295,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.merge(interval)));
-    static assert(__traits(compiles, interval.merge(cInterval)));
-    static assert(__traits(compiles, interval.merge(iInterval)));
-    static assert(__traits(compiles, interval.merge(posInfInterval)));
-    static assert(__traits(compiles, interval.merge(cPosInfInterval)));
-    static assert(__traits(compiles, interval.merge(iPosInfInterval)));
-    static assert(__traits(compiles, interval.merge(negInfInterval)));
-    static assert(__traits(compiles, interval.merge(cNegInfInterval)));
-    static assert(__traits(compiles, interval.merge(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.merge(interval)));
-    static assert(__traits(compiles, cInterval.merge(cInterval)));
-    static assert(__traits(compiles, cInterval.merge(iInterval)));
-    static assert(__traits(compiles, cInterval.merge(posInfInterval)));
-    static assert(__traits(compiles, cInterval.merge(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.merge(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.merge(negInfInterval)));
-    static assert(__traits(compiles, cInterval.merge(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.merge(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.merge(interval)));
-    static assert(__traits(compiles, iInterval.merge(cInterval)));
-    static assert(__traits(compiles, iInterval.merge(iInterval)));
-    static assert(__traits(compiles, iInterval.merge(posInfInterval)));
-    static assert(__traits(compiles, iInterval.merge(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.merge(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.merge(negInfInterval)));
-    static assert(__traits(compiles, iInterval.merge(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.merge(iNegInfInterval)));
+    assert(!interval.merge(interval).empty);
+    assert(!interval.merge(cInterval).empty);
+    assert(!interval.merge(iInterval).empty);
+    assert(!interval.merge(posInfInterval).empty);
+    assert(!interval.merge(cPosInfInterval).empty);
+    assert(!interval.merge(iPosInfInterval).empty);
+    assert(!interval.merge(negInfInterval).empty);
+    assert(!interval.merge(cNegInfInterval).empty);
+    assert(!interval.merge(iNegInfInterval).empty);
+    assert(!cInterval.merge(interval).empty);
+    assert(!cInterval.merge(cInterval).empty);
+    assert(!cInterval.merge(iInterval).empty);
+    assert(!cInterval.merge(posInfInterval).empty);
+    assert(!cInterval.merge(cPosInfInterval).empty);
+    assert(!cInterval.merge(iPosInfInterval).empty);
+    assert(!cInterval.merge(negInfInterval).empty);
+    assert(!cInterval.merge(cNegInfInterval).empty);
+    assert(!cInterval.merge(iNegInfInterval).empty);
+    assert(!iInterval.merge(interval).empty);
+    assert(!iInterval.merge(cInterval).empty);
+    assert(!iInterval.merge(iInterval).empty);
+    assert(!iInterval.merge(posInfInterval).empty);
+    assert(!iInterval.merge(cPosInfInterval).empty);
+    assert(!iInterval.merge(iPosInfInterval).empty);
+    assert(!iInterval.merge(negInfInterval).empty);
+    assert(!iInterval.merge(cNegInfInterval).empty);
+    assert(!iInterval.merge(iNegInfInterval).empty);
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).merge(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) == Interval!Date(Date(1990, 7 , 6), Date(2012, 3, 1)));
@@ -20068,33 +20433,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, interval.span(interval)));
-    static assert(__traits(compiles, interval.span(cInterval)));
-    static assert(__traits(compiles, interval.span(iInterval)));
-    static assert(__traits(compiles, interval.span(posInfInterval)));
-    static assert(__traits(compiles, interval.span(cPosInfInterval)));
-    static assert(__traits(compiles, interval.span(iPosInfInterval)));
-    static assert(__traits(compiles, interval.span(negInfInterval)));
-    static assert(__traits(compiles, interval.span(cNegInfInterval)));
-    static assert(__traits(compiles, interval.span(iNegInfInterval)));
-    static assert(__traits(compiles, cInterval.span(interval)));
-    static assert(__traits(compiles, cInterval.span(cInterval)));
-    static assert(__traits(compiles, cInterval.span(iInterval)));
-    static assert(__traits(compiles, cInterval.span(posInfInterval)));
-    static assert(__traits(compiles, cInterval.span(cPosInfInterval)));
-    static assert(__traits(compiles, cInterval.span(iPosInfInterval)));
-    static assert(__traits(compiles, cInterval.span(negInfInterval)));
-    static assert(__traits(compiles, cInterval.span(cNegInfInterval)));
-    static assert(__traits(compiles, cInterval.span(iNegInfInterval)));
-    static assert(__traits(compiles, iInterval.span(interval)));
-    static assert(__traits(compiles, iInterval.span(cInterval)));
-    static assert(__traits(compiles, iInterval.span(iInterval)));
-    static assert(__traits(compiles, iInterval.span(posInfInterval)));
-    static assert(__traits(compiles, iInterval.span(cPosInfInterval)));
-    static assert(__traits(compiles, iInterval.span(iPosInfInterval)));
-    static assert(__traits(compiles, iInterval.span(negInfInterval)));
-    static assert(__traits(compiles, iInterval.span(cNegInfInterval)));
-    static assert(__traits(compiles, iInterval.span(iNegInfInterval)));
+    assert(!interval.span(interval).empty);
+    assert(!interval.span(cInterval).empty);
+    assert(!interval.span(iInterval).empty);
+    assert(!interval.span(posInfInterval).empty);
+    assert(!interval.span(cPosInfInterval).empty);
+    assert(!interval.span(iPosInfInterval).empty);
+    assert(!interval.span(negInfInterval).empty);
+    assert(!interval.span(cNegInfInterval).empty);
+    assert(!interval.span(iNegInfInterval).empty);
+    assert(!cInterval.span(interval).empty);
+    assert(!cInterval.span(cInterval).empty);
+    assert(!cInterval.span(iInterval).empty);
+    assert(!cInterval.span(posInfInterval).empty);
+    assert(!cInterval.span(cPosInfInterval).empty);
+    assert(!cInterval.span(iPosInfInterval).empty);
+    assert(!cInterval.span(negInfInterval).empty);
+    assert(!cInterval.span(cNegInfInterval).empty);
+    assert(!cInterval.span(iNegInfInterval).empty);
+    assert(!iInterval.span(interval).empty);
+    assert(!iInterval.span(cInterval).empty);
+    assert(!iInterval.span(iInterval).empty);
+    assert(!iInterval.span(posInfInterval).empty);
+    assert(!iInterval.span(cPosInfInterval).empty);
+    assert(!iInterval.span(iPosInfInterval).empty);
+    assert(!iInterval.span(negInfInterval).empty);
+    assert(!iInterval.span(cNegInfInterval).empty);
+    assert(!iInterval.span(iNegInfInterval).empty);
 
     //Verify Examples.
     assert(Interval!Date(Date(1996, 1, 2), Date(2012, 3, 1)).span(Interval!Date(Date(1990, 7, 6), Date(1991, 1, 8))) == Interval!Date(Date(1990, 7 , 6), Date(2012, 3, 1)));
@@ -20373,8 +20738,8 @@ unittest
 
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri))));
-    static assert(__traits(compiles, iInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri))));
+    assert(!cInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri)).empty);
+    assert(!iInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri)).empty);
 }
 
 //Test Interval's bwdRange.
@@ -20439,8 +20804,8 @@ unittest
 
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cInterval.bwdRange(everyDayOfWeek!Date(DayOfWeek.fri))));
-    static assert(__traits(compiles, iInterval.bwdRange(everyDayOfWeek!Date(DayOfWeek.fri))));
+    assert(!cInterval.bwdRange(everyDayOfWeek!Date(DayOfWeek.fri)).empty);
+    assert(!iInterval.bwdRange(everyDayOfWeek!Date(DayOfWeek.fri)).empty);
 }
 
 //Test Interval's toString().
@@ -20450,8 +20815,8 @@ unittest
 
     const cInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cInterval.toString()));
-    static assert(__traits(compiles, iInterval.toString()));
+    assert(cInterval.toString());
+    assert(iInterval.toString());
 }
 
 
@@ -20470,7 +20835,7 @@ public:
         Params:
             begin = The time point which begins the interval.
 
-        Examples:
+        Example:
 --------------------
 auto interval = PosInfInterval!Date(Date(1996, 1, 2));
 --------------------
@@ -20506,7 +20871,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
     /++
         The starting point of the interval. It is included in the interval.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).begin == Date(1996, 1, 2));
 --------------------
@@ -20532,7 +20897,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).begin == Date(1996, 1, 2));
     /++
         Whether the interval's length is 0. Always returns false.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).empty);
 --------------------
@@ -20549,7 +20914,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).empty);
         Params:
             timePoint = The time point to check for inclusion in this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).contains(Date(1994, 12, 24)));
 assert(PosInfInterval!Date(Date(1996, 1, 2)).contains(Date(2000, 1, 5)));
@@ -20570,7 +20935,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).contains(Date(2000, 1, 5)));
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).contains(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -20596,7 +20961,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).contains(
         Params:
             interval = The interval to check for inclusion in this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).contains(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -20620,7 +20985,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).contains(
         Params:
             interval = The interval to check for inclusion in this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).contains(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -20642,7 +21007,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).contains(
             timePoint = The time point to check whether this interval is before
                         it.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(Date(1994, 12, 24)));
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(Date(2000, 1, 5)));
@@ -20668,7 +21033,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(Date(2000, 1, 5)));
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -20695,7 +21060,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(
         Params:
             interval = The interval to check for against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(
             PosInfInterval!Date(Date(1992, 5, 4))));
@@ -20720,7 +21085,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(
         Params:
             interval = The interval to check for against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -20739,7 +21104,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(
             timePoint = The time point to check whether this interval is after
                         it.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).isAfter(Date(1994, 12, 24)));
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAfter(Date(2000, 1, 5)));
@@ -20761,7 +21126,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAfter(Date(2000, 1, 5)));
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAfter(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -20791,7 +21156,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).isAfter(
         Params:
             interval = The interval to check against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAfter(
             PosInfInterval!Date(Date(1990, 1, 7))));
@@ -20813,7 +21178,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAfter(
         Params:
             interval = The interval to check against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).isAfter(
             NegInfInterval!Date(Date(1996, 1, 2))));
@@ -20837,7 +21202,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAfter(
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).intersects(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -20867,7 +21232,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).intersects(
             interval = The interval to check for intersection with this
                        interval.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).intersects(
             PosInfInterval!Date(Date(1990, 1, 7))));
@@ -20889,7 +21254,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).intersects(
             interval = The interval to check for intersection with this
                        interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).intersects(
             NegInfInterval!Date(Date(1996, 1, 2))));
@@ -20914,7 +21279,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).intersects(
             $(LREF DateTimeException) if the two intervals do not intersect or if
             the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).intersection(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) ==
@@ -20943,7 +21308,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).intersection(
         Params:
             interval = The interval to intersect with this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).intersection(
             PosInfInterval!Date(Date(1990, 7, 6))) ==
@@ -20969,7 +21334,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).intersection(
         Throws:
             $(LREF DateTimeException) if the two intervals do not intersect.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).intersection(
             NegInfInterval!Date(Date(1999, 7, 6))) ==
@@ -21000,7 +21365,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).intersection(
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).isAdjacent(
             Interval!Date(Date(1989, 3, 1), Date(1996, 1, 2))));
@@ -21027,7 +21392,7 @@ assert(!PosInfInterval!Date(Date(1999, 1, 12)).isAdjacent(
             interval = The interval to check whether its adjecent to this
                        interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAdjacent(
             PosInfInterval!Date(Date(1990, 1, 7))));
@@ -21049,7 +21414,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAdjacent(
             interval = The interval to check whether its adjecent to this
                        interval.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).isAdjacent(
             NegInfInterval!Date(Date(1996, 1, 2))));
@@ -21080,7 +21445,7 @@ assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAdjacent(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).merge(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) ==
@@ -21114,7 +21479,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).merge(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).merge(
             PosInfInterval!Date(Date(1990, 7, 6))) ==
@@ -21149,7 +21514,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).merge(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).span(
             Interval!Date(Date(500, 8, 9), Date(1602, 1, 31))) ==
@@ -21187,7 +21552,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).span(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(PosInfInterval!Date(Date(1996, 1, 2)).span(
             PosInfInterval!Date(Date(1990, 7, 6))) ==
@@ -21213,7 +21578,7 @@ assert(PosInfInterval!Date(Date(1996, 1, 2)).span(
         Params:
             duration = The duration to shift the interval by.
 
-        Examples:
+        Example:
 --------------------
 auto interval1 = PosInfInterval!Date(Date(1996, 1, 2));
 auto interval2 = PosInfInterval!Date(Date(1996, 1, 2));
@@ -21254,7 +21619,7 @@ assert(interval2 == PosInfInterval!Date(Date(1995, 11, 13)));
                 $(LREF DateTimeException) if this interval is empty or if the
                 resulting interval would be invalid.
 
-            Examples:
+            Example:
 --------------------
 auto interval1 = PosInfInterval!Date(Date(1996, 1, 2));
 auto interval2 = PosInfInterval!Date(Date(1996, 1, 2));
@@ -21286,7 +21651,7 @@ assert(interval2 == PosInfInterval!Date(Date(1995, 11, 13)));
         Params:
             duration = The duration to expand the interval by.
 
-        Examples:
+        Example:
 --------------------
 auto interval1 = PosInfInterval!Date(Date(1996, 1, 2));
 auto interval2 = PosInfInterval!Date(Date(1996, 1, 2));
@@ -21322,7 +21687,7 @@ assert(interval2 == PosInfInterval!Date(Date(1996, 1, 4)));
                 $(LREF DateTimeException) if this interval is empty or if the
                 resulting interval would be invalid.
 
-            Examples:
+            Example:
 --------------------
 auto interval1 = PosInfInterval!Date(Date(1996, 1, 2));
 auto interval2 = PosInfInterval!Date(Date(1996, 1, 2));
@@ -21396,10 +21761,10 @@ assert(interval2 == PosInfInterval!Date(Date(1998, 1, 2)));
             Of course, none of the functions in this module have this problem,
             so it's only relevant for custom delegates.
 
-        Examples:
+        Example:
 --------------------
 auto interval = PosInfInterval!Date(Date(2010, 9, 1));
-auto func = (in Date date) //For iterating over even-numbered days.
+auto func = delegate (in Date date) //For iterating over even-numbered days.
             {
                 if((date.day & 1) == 0)
                     return date + dur!"days"(2);
@@ -21501,8 +21866,8 @@ unittest
 
     const cPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
-    static assert(__traits(compiles, cPosInfInterval.begin));
-    static assert(__traits(compiles, iPosInfInterval.begin));
+    assert(cPosInfInterval.begin != Date.init);
+    assert(iPosInfInterval.begin != Date.init);
 
     //Verify Examples.
     assert(PosInfInterval!Date(Date(1996, 1, 2)).begin == Date(1996, 1, 2));
@@ -21518,8 +21883,8 @@ unittest
 
     const cPosInfInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
     immutable iPosInfInterval = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7));
-    static assert(__traits(compiles, cPosInfInterval.empty));
-    static assert(__traits(compiles, iPosInfInterval.empty));
+    assert(!cPosInfInterval.empty);
+    assert(!iPosInfInterval.empty);
 
     //Verify Examples.
     assert(!PosInfInterval!Date(Date(1996, 1, 2)).empty);
@@ -21543,9 +21908,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
-    static assert(__traits(compiles, posInfInterval.contains(cdate)));
-    static assert(__traits(compiles, cPosInfInterval.contains(cdate)));
-    static assert(__traits(compiles, iPosInfInterval.contains(cdate)));
+    assert(posInfInterval.contains(cdate));
+    assert(cPosInfInterval.contains(cdate));
+    assert(iPosInfInterval.contains(cdate));
 
     //Verify Examples.
     assert(!PosInfInterval!Date(Date(1996, 1, 2)).contains(Date(1994, 12, 24)));
@@ -21607,33 +21972,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.contains(interval)));
-    static assert(__traits(compiles, posInfInterval.contains(cInterval)));
-    static assert(__traits(compiles, posInfInterval.contains(iInterval)));
-    static assert(__traits(compiles, posInfInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, posInfInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, posInfInterval.contains(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(interval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.contains(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(interval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.contains(iNegInfInterval)));
+    assert(posInfInterval.contains(interval));
+    assert(posInfInterval.contains(cInterval));
+    assert(posInfInterval.contains(iInterval));
+    assert(posInfInterval.contains(posInfInterval));
+    assert(posInfInterval.contains(cPosInfInterval));
+    assert(posInfInterval.contains(iPosInfInterval));
+    assert(!posInfInterval.contains(negInfInterval));
+    assert(!posInfInterval.contains(cNegInfInterval));
+    assert(!posInfInterval.contains(iNegInfInterval));
+    assert(cPosInfInterval.contains(interval));
+    assert(cPosInfInterval.contains(cInterval));
+    assert(cPosInfInterval.contains(iInterval));
+    assert(cPosInfInterval.contains(posInfInterval));
+    assert(cPosInfInterval.contains(cPosInfInterval));
+    assert(cPosInfInterval.contains(iPosInfInterval));
+    assert(!cPosInfInterval.contains(negInfInterval));
+    assert(!cPosInfInterval.contains(cNegInfInterval));
+    assert(!cPosInfInterval.contains(iNegInfInterval));
+    assert(iPosInfInterval.contains(interval));
+    assert(iPosInfInterval.contains(cInterval));
+    assert(iPosInfInterval.contains(iInterval));
+    assert(iPosInfInterval.contains(posInfInterval));
+    assert(iPosInfInterval.contains(cPosInfInterval));
+    assert(iPosInfInterval.contains(iPosInfInterval));
+    assert(!iPosInfInterval.contains(negInfInterval));
+    assert(!iPosInfInterval.contains(cNegInfInterval));
+    assert(!iPosInfInterval.contains(iNegInfInterval));
 
     //Verify Examples.
     assert(!PosInfInterval!Date(Date(1996, 1, 2)).contains(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -21664,9 +22029,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
-    static assert(__traits(compiles, posInfInterval.isBefore(cdate)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(cdate)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(cdate)));
+    assert(!posInfInterval.isBefore(cdate));
+    assert(!cPosInfInterval.isBefore(cdate));
+    assert(!iPosInfInterval.isBefore(cdate));
 
     //Verify Examples.
     assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(Date(1994, 12, 24)));
@@ -21728,33 +22093,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.isBefore(interval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isBefore(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(interval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isBefore(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(interval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isBefore(iNegInfInterval)));
+    assert(!posInfInterval.isBefore(interval));
+    assert(!posInfInterval.isBefore(cInterval));
+    assert(!posInfInterval.isBefore(iInterval));
+    assert(!posInfInterval.isBefore(posInfInterval));
+    assert(!posInfInterval.isBefore(cPosInfInterval));
+    assert(!posInfInterval.isBefore(iPosInfInterval));
+    assert(!posInfInterval.isBefore(negInfInterval));
+    assert(!posInfInterval.isBefore(cNegInfInterval));
+    assert(!posInfInterval.isBefore(iNegInfInterval));
+    assert(!cPosInfInterval.isBefore(interval));
+    assert(!cPosInfInterval.isBefore(cInterval));
+    assert(!cPosInfInterval.isBefore(iInterval));
+    assert(!cPosInfInterval.isBefore(posInfInterval));
+    assert(!cPosInfInterval.isBefore(cPosInfInterval));
+    assert(!cPosInfInterval.isBefore(iPosInfInterval));
+    assert(!cPosInfInterval.isBefore(negInfInterval));
+    assert(!cPosInfInterval.isBefore(cNegInfInterval));
+    assert(!cPosInfInterval.isBefore(iNegInfInterval));
+    assert(!iPosInfInterval.isBefore(interval));
+    assert(!iPosInfInterval.isBefore(cInterval));
+    assert(!iPosInfInterval.isBefore(iInterval));
+    assert(!iPosInfInterval.isBefore(posInfInterval));
+    assert(!iPosInfInterval.isBefore(cPosInfInterval));
+    assert(!iPosInfInterval.isBefore(iPosInfInterval));
+    assert(!iPosInfInterval.isBefore(negInfInterval));
+    assert(!iPosInfInterval.isBefore(cNegInfInterval));
+    assert(!iPosInfInterval.isBefore(iNegInfInterval));
 
     //Verify Examples.
     assert(!PosInfInterval!Date(Date(1996, 1, 2)).isBefore(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -21784,9 +22149,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
-    static assert(__traits(compiles, posInfInterval.isAfter(cdate)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(cdate)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(cdate)));
+    assert(!posInfInterval.isAfter(cdate));
+    assert(!cPosInfInterval.isAfter(cdate));
+    assert(!iPosInfInterval.isAfter(cdate));
 
     //Verify Examples.
     assert(PosInfInterval!Date(Date(1996, 1, 2)).isAfter(Date(1994, 12, 24)));
@@ -21848,33 +22213,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.isAfter(interval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAfter(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(interval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAfter(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(interval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAfter(iNegInfInterval)));
+    assert(!posInfInterval.isAfter(interval));
+    assert(!posInfInterval.isAfter(cInterval));
+    assert(!posInfInterval.isAfter(iInterval));
+    assert(!posInfInterval.isAfter(posInfInterval));
+    assert(!posInfInterval.isAfter(cPosInfInterval));
+    assert(!posInfInterval.isAfter(iPosInfInterval));
+    assert(!posInfInterval.isAfter(negInfInterval));
+    assert(!posInfInterval.isAfter(cNegInfInterval));
+    assert(!posInfInterval.isAfter(iNegInfInterval));
+    assert(!cPosInfInterval.isAfter(interval));
+    assert(!cPosInfInterval.isAfter(cInterval));
+    assert(!cPosInfInterval.isAfter(iInterval));
+    assert(!cPosInfInterval.isAfter(posInfInterval));
+    assert(!cPosInfInterval.isAfter(cPosInfInterval));
+    assert(!cPosInfInterval.isAfter(iPosInfInterval));
+    assert(!cPosInfInterval.isAfter(negInfInterval));
+    assert(!cPosInfInterval.isAfter(cNegInfInterval));
+    assert(!cPosInfInterval.isAfter(iNegInfInterval));
+    assert(!iPosInfInterval.isAfter(interval));
+    assert(!iPosInfInterval.isAfter(cInterval));
+    assert(!iPosInfInterval.isAfter(iInterval));
+    assert(!iPosInfInterval.isAfter(posInfInterval));
+    assert(!iPosInfInterval.isAfter(cPosInfInterval));
+    assert(!iPosInfInterval.isAfter(iPosInfInterval));
+    assert(!iPosInfInterval.isAfter(negInfInterval));
+    assert(!iPosInfInterval.isAfter(cNegInfInterval));
+    assert(!iPosInfInterval.isAfter(iNegInfInterval));
 
     //Verify Examples.
     assert(!PosInfInterval!Date(Date(1996, 1, 2)).isAfter(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -21943,33 +22308,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.intersects(interval)));
-    static assert(__traits(compiles, posInfInterval.intersects(cInterval)));
-    static assert(__traits(compiles, posInfInterval.intersects(iInterval)));
-    static assert(__traits(compiles, posInfInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersects(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(interval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersects(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(interval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersects(iNegInfInterval)));
+    assert(posInfInterval.intersects(interval));
+    assert(posInfInterval.intersects(cInterval));
+    assert(posInfInterval.intersects(iInterval));
+    assert(posInfInterval.intersects(posInfInterval));
+    assert(posInfInterval.intersects(cPosInfInterval));
+    assert(posInfInterval.intersects(iPosInfInterval));
+    assert(posInfInterval.intersects(negInfInterval));
+    assert(posInfInterval.intersects(cNegInfInterval));
+    assert(posInfInterval.intersects(iNegInfInterval));
+    assert(cPosInfInterval.intersects(interval));
+    assert(cPosInfInterval.intersects(cInterval));
+    assert(cPosInfInterval.intersects(iInterval));
+    assert(cPosInfInterval.intersects(posInfInterval));
+    assert(cPosInfInterval.intersects(cPosInfInterval));
+    assert(cPosInfInterval.intersects(iPosInfInterval));
+    assert(cPosInfInterval.intersects(negInfInterval));
+    assert(cPosInfInterval.intersects(cNegInfInterval));
+    assert(cPosInfInterval.intersects(iNegInfInterval));
+    assert(iPosInfInterval.intersects(interval));
+    assert(iPosInfInterval.intersects(cInterval));
+    assert(iPosInfInterval.intersects(iInterval));
+    assert(iPosInfInterval.intersects(posInfInterval));
+    assert(iPosInfInterval.intersects(cPosInfInterval));
+    assert(iPosInfInterval.intersects(iPosInfInterval));
+    assert(iPosInfInterval.intersects(negInfInterval));
+    assert(iPosInfInterval.intersects(cNegInfInterval));
+    assert(iPosInfInterval.intersects(iNegInfInterval));
 
     //Verify Examples.
     assert(PosInfInterval!Date(Date(1996, 1, 2)).intersects(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -22067,33 +22432,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.intersection(interval)));
-    static assert(__traits(compiles, posInfInterval.intersection(cInterval)));
-    static assert(__traits(compiles, posInfInterval.intersection(iInterval)));
-    static assert(__traits(compiles, posInfInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, posInfInterval.intersection(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(interval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.intersection(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(interval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.intersection(iNegInfInterval)));
+    assert(!posInfInterval.intersection(interval).empty);
+    assert(!posInfInterval.intersection(cInterval).empty);
+    assert(!posInfInterval.intersection(iInterval).empty);
+    assert(!posInfInterval.intersection(posInfInterval).empty);
+    assert(!posInfInterval.intersection(cPosInfInterval).empty);
+    assert(!posInfInterval.intersection(iPosInfInterval).empty);
+    assert(!posInfInterval.intersection(negInfInterval).empty);
+    assert(!posInfInterval.intersection(cNegInfInterval).empty);
+    assert(!posInfInterval.intersection(iNegInfInterval).empty);
+    assert(!cPosInfInterval.intersection(interval).empty);
+    assert(!cPosInfInterval.intersection(cInterval).empty);
+    assert(!cPosInfInterval.intersection(iInterval).empty);
+    assert(!cPosInfInterval.intersection(posInfInterval).empty);
+    assert(!cPosInfInterval.intersection(cPosInfInterval).empty);
+    assert(!cPosInfInterval.intersection(iPosInfInterval).empty);
+    assert(!cPosInfInterval.intersection(negInfInterval).empty);
+    assert(!cPosInfInterval.intersection(cNegInfInterval).empty);
+    assert(!cPosInfInterval.intersection(iNegInfInterval).empty);
+    assert(!iPosInfInterval.intersection(interval).empty);
+    assert(!iPosInfInterval.intersection(cInterval).empty);
+    assert(!iPosInfInterval.intersection(iInterval).empty);
+    assert(!iPosInfInterval.intersection(posInfInterval).empty);
+    assert(!iPosInfInterval.intersection(cPosInfInterval).empty);
+    assert(!iPosInfInterval.intersection(iPosInfInterval).empty);
+    assert(!iPosInfInterval.intersection(negInfInterval).empty);
+    assert(!iPosInfInterval.intersection(cNegInfInterval).empty);
+    assert(!iPosInfInterval.intersection(iNegInfInterval).empty);
 
     //Verify Examples.
     assert(PosInfInterval!Date(Date(1996, 1, 2)).intersection(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) == Interval!Date(Date(1996, 1 , 2), Date(2000, 8, 2)));
@@ -22161,33 +22526,33 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, posInfInterval.isAdjacent(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.isAdjacent(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.isAdjacent(iNegInfInterval)));
+    assert(!posInfInterval.isAdjacent(interval));
+    assert(!posInfInterval.isAdjacent(cInterval));
+    assert(!posInfInterval.isAdjacent(iInterval));
+    assert(!posInfInterval.isAdjacent(posInfInterval));
+    assert(!posInfInterval.isAdjacent(cPosInfInterval));
+    assert(!posInfInterval.isAdjacent(iPosInfInterval));
+    assert(!posInfInterval.isAdjacent(negInfInterval));
+    assert(!posInfInterval.isAdjacent(cNegInfInterval));
+    assert(!posInfInterval.isAdjacent(iNegInfInterval));
+    assert(!cPosInfInterval.isAdjacent(interval));
+    assert(!cPosInfInterval.isAdjacent(cInterval));
+    assert(!cPosInfInterval.isAdjacent(iInterval));
+    assert(!cPosInfInterval.isAdjacent(posInfInterval));
+    assert(!cPosInfInterval.isAdjacent(cPosInfInterval));
+    assert(!cPosInfInterval.isAdjacent(iPosInfInterval));
+    assert(!cPosInfInterval.isAdjacent(negInfInterval));
+    assert(!cPosInfInterval.isAdjacent(cNegInfInterval));
+    assert(!cPosInfInterval.isAdjacent(iNegInfInterval));
+    assert(!iPosInfInterval.isAdjacent(interval));
+    assert(!iPosInfInterval.isAdjacent(cInterval));
+    assert(!iPosInfInterval.isAdjacent(iInterval));
+    assert(!iPosInfInterval.isAdjacent(posInfInterval));
+    assert(!iPosInfInterval.isAdjacent(cPosInfInterval));
+    assert(!iPosInfInterval.isAdjacent(iPosInfInterval));
+    assert(!iPosInfInterval.isAdjacent(negInfInterval));
+    assert(!iPosInfInterval.isAdjacent(cNegInfInterval));
+    assert(!iPosInfInterval.isAdjacent(iNegInfInterval));
 
     //Verify Examples.
     assert(PosInfInterval!Date(Date(1996, 1, 2)).isAdjacent(Interval!Date(Date(1989, 3, 1), Date(1996, 1, 2))));
@@ -22280,30 +22645,30 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.merge(interval)));
-    static assert(__traits(compiles, posInfInterval.merge(cInterval)));
-    static assert(__traits(compiles, posInfInterval.merge(iInterval)));
-    static assert(__traits(compiles, posInfInterval.merge(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.merge(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.merge(iPosInfInterval)));
+    assert(!posInfInterval.merge(interval).empty);
+    assert(!posInfInterval.merge(cInterval).empty);
+    assert(!posInfInterval.merge(iInterval).empty);
+    assert(!posInfInterval.merge(posInfInterval).empty);
+    assert(!posInfInterval.merge(cPosInfInterval).empty);
+    assert(!posInfInterval.merge(iPosInfInterval).empty);
     static assert(!__traits(compiles, posInfInterval.merge(negInfInterval)));
     static assert(!__traits(compiles, posInfInterval.merge(cNegInfInterval)));
     static assert(!__traits(compiles, posInfInterval.merge(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.merge(interval)));
-    static assert(__traits(compiles, cPosInfInterval.merge(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.merge(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.merge(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.merge(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.merge(iPosInfInterval)));
+    assert(!cPosInfInterval.merge(interval).empty);
+    assert(!cPosInfInterval.merge(cInterval).empty);
+    assert(!cPosInfInterval.merge(iInterval).empty);
+    assert(!cPosInfInterval.merge(posInfInterval).empty);
+    assert(!cPosInfInterval.merge(cPosInfInterval).empty);
+    assert(!cPosInfInterval.merge(iPosInfInterval).empty);
     static assert(!__traits(compiles, cPosInfInterval.merge(negInfInterval)));
     static assert(!__traits(compiles, cPosInfInterval.merge(cNegInfInterval)));
     static assert(!__traits(compiles, cPosInfInterval.merge(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.merge(interval)));
-    static assert(__traits(compiles, iPosInfInterval.merge(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.merge(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.merge(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.merge(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.merge(iPosInfInterval)));
+    assert(!iPosInfInterval.merge(interval).empty);
+    assert(!iPosInfInterval.merge(cInterval).empty);
+    assert(!iPosInfInterval.merge(iInterval).empty);
+    assert(!iPosInfInterval.merge(posInfInterval).empty);
+    assert(!iPosInfInterval.merge(cPosInfInterval).empty);
+    assert(!iPosInfInterval.merge(iPosInfInterval).empty);
     static assert(!__traits(compiles, iPosInfInterval.merge(negInfInterval)));
     static assert(!__traits(compiles, iPosInfInterval.merge(cNegInfInterval)));
     static assert(!__traits(compiles, iPosInfInterval.merge(iNegInfInterval)));
@@ -22396,30 +22761,30 @@ unittest
     auto negInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, posInfInterval.span(interval)));
-    static assert(__traits(compiles, posInfInterval.span(cInterval)));
-    static assert(__traits(compiles, posInfInterval.span(iInterval)));
-    static assert(__traits(compiles, posInfInterval.span(posInfInterval)));
-    static assert(__traits(compiles, posInfInterval.span(cPosInfInterval)));
-    static assert(__traits(compiles, posInfInterval.span(iPosInfInterval)));
+    assert(!posInfInterval.span(interval).empty);
+    assert(!posInfInterval.span(cInterval).empty);
+    assert(!posInfInterval.span(iInterval).empty);
+    assert(!posInfInterval.span(posInfInterval).empty);
+    assert(!posInfInterval.span(cPosInfInterval).empty);
+    assert(!posInfInterval.span(iPosInfInterval).empty);
     static assert(!__traits(compiles, posInfInterval.span(negInfInterval)));
     static assert(!__traits(compiles, posInfInterval.span(cNegInfInterval)));
     static assert(!__traits(compiles, posInfInterval.span(iNegInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.span(interval)));
-    static assert(__traits(compiles, cPosInfInterval.span(cInterval)));
-    static assert(__traits(compiles, cPosInfInterval.span(iInterval)));
-    static assert(__traits(compiles, cPosInfInterval.span(posInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.span(cPosInfInterval)));
-    static assert(__traits(compiles, cPosInfInterval.span(iPosInfInterval)));
+    assert(!cPosInfInterval.span(interval).empty);
+    assert(!cPosInfInterval.span(cInterval).empty);
+    assert(!cPosInfInterval.span(iInterval).empty);
+    assert(!cPosInfInterval.span(posInfInterval).empty);
+    assert(!cPosInfInterval.span(cPosInfInterval).empty);
+    assert(!cPosInfInterval.span(iPosInfInterval).empty);
     static assert(!__traits(compiles, cPosInfInterval.span(negInfInterval)));
     static assert(!__traits(compiles, cPosInfInterval.span(cNegInfInterval)));
     static assert(!__traits(compiles, cPosInfInterval.span(iNegInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.span(interval)));
-    static assert(__traits(compiles, iPosInfInterval.span(cInterval)));
-    static assert(__traits(compiles, iPosInfInterval.span(iInterval)));
-    static assert(__traits(compiles, iPosInfInterval.span(posInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.span(cPosInfInterval)));
-    static assert(__traits(compiles, iPosInfInterval.span(iPosInfInterval)));
+    assert(!iPosInfInterval.span(interval).empty);
+    assert(!iPosInfInterval.span(cInterval).empty);
+    assert(!iPosInfInterval.span(iInterval).empty);
+    assert(!iPosInfInterval.span(posInfInterval).empty);
+    assert(!iPosInfInterval.span(cPosInfInterval).empty);
+    assert(!iPosInfInterval.span(iPosInfInterval).empty);
     static assert(!__traits(compiles, iPosInfInterval.span(negInfInterval)));
     static assert(!__traits(compiles, iPosInfInterval.span(cNegInfInterval)));
     static assert(!__traits(compiles, iPosInfInterval.span(iNegInfInterval)));
@@ -22629,8 +22994,8 @@ unittest
 
     const cPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
-    static assert(__traits(compiles, cPosInfInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri))));
-    static assert(__traits(compiles, iPosInfInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri))));
+    assert(!cPosInfInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri)).empty);
+    assert(!iPosInfInterval.fwdRange(everyDayOfWeek!Date(DayOfWeek.fri)).empty);
 }
 
 //Test PosInfInterval's toString().
@@ -22640,8 +23005,8 @@ unittest
 
     const cPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
-    static assert(__traits(compiles, cPosInfInterval.toString()));
-    static assert(__traits(compiles, iPosInfInterval.toString()));
+    assert(cPosInfInterval.toString());
+    assert(iPosInfInterval.toString());
 }
 
 
@@ -22662,7 +23027,7 @@ public:
         Params:
             end = The time point which ends the interval.
 
-        Examples:
+        Example:
 --------------------
 auto interval = PosInfInterval!Date(Date(1996, 1, 2));
 --------------------
@@ -22698,7 +23063,7 @@ auto interval = PosInfInterval!Date(Date(1996, 1, 2));
     /++
         The end point of the interval. It is excluded from the interval.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).end == Date(2012, 3, 1));
 --------------------
@@ -22724,7 +23089,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).end == Date(2012, 3, 1));
     /++
         Whether the interval's length is 0. Always returns false.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(1996, 1, 2)).empty);
 --------------------
@@ -22741,7 +23106,7 @@ assert(!NegInfInterval!Date(Date(1996, 1, 2)).empty);
         Params:
             timePoint = The time point to check for inclusion in this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).contains(Date(1994, 12, 24)));
 assert(NegInfInterval!Date(Date(2012, 3, 1)).contains(Date(2000, 1, 5)));
@@ -22763,7 +23128,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).contains(Date(2012, 3, 1)));
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).contains(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -22792,7 +23157,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).contains(
         Params:
             interval = The interval to check for inclusion in this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).contains(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -22810,7 +23175,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).contains(
         Params:
             interval = The interval to check for inclusion in this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).contains(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -22832,7 +23197,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).contains(
             timePoint = The time point to check whether this interval is
                         before it.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(Date(1994, 12, 24)));
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(Date(2000, 1, 5)));
@@ -22855,7 +23220,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).isBefore(Date(2012, 3, 1)));
         Throws:
             $(LREF DateTimeException) if the given interval is empty
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -22882,7 +23247,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).isBefore(
         Params:
             interval = The interval to check for against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -22908,7 +23273,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).isBefore(
         Params:
             interval = The interval to check for against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -22933,7 +23298,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(
             timePoint = The time point to check whether this interval is after
                         it.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(Date(1994, 12, 24)));
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(Date(2000, 1, 5)));
@@ -22960,7 +23325,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(Date(2012, 3, 1)));
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -22990,7 +23355,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(
         Params:
             interval = The interval to check against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -23015,7 +23380,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(
         Params:
             interval = The interval to check against this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -23039,7 +23404,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).intersects(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -23066,7 +23431,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).intersects(
             interval = The interval to check for intersection with this
                        interval.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).intersects(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -23090,7 +23455,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).intersects(
         Params:
             interval = The interval to check for intersection with this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).intersects(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -23115,7 +23480,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).intersects(
             $(LREF DateTimeException) if the two intervals do not intersect or if
             the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).intersection(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) ==
@@ -23147,7 +23512,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).intersection(
         Throws:
             $(LREF DateTimeException) if the two intervals do not intersect.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).intersection(
             PosInfInterval!Date(Date(1990, 7, 6))) ==
@@ -23174,7 +23539,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).intersection(
         Params:
             interval = The interval to intersect with this interval.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).intersection(
             NegInfInterval!Date(Date(1999, 7, 6))) ==
@@ -23201,7 +23566,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).intersection(
         Throws:
             $(LREF DateTimeException) if the given interval is empty.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAdjacent(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -23231,7 +23596,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAdjacent(
             interval = The interval to check whether its adjecent to this
                        interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAdjacent(
             PosInfInterval!Date(Date(1999, 5, 4))));
@@ -23256,7 +23621,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).isAdjacent(
             interval = The interval to check whether its adjecent to this
                        interval.
 
-        Examples:
+        Example:
 --------------------
 assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAdjacent(
             NegInfInterval!Date(Date(1996, 5, 4))));
@@ -23287,7 +23652,7 @@ assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAdjacent(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).merge(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) ==
@@ -23321,7 +23686,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).merge(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).merge(
             NegInfInterval!Date(Date(1999, 7, 6))) ==
@@ -23356,7 +23721,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).merge(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).span(
             Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) ==
@@ -23394,7 +23759,7 @@ assert(NegInfInterval!Date(Date(1600, 1, 7)).span(
             going from negative infinity to positive infinity
             is not possible.
 
-        Examples:
+        Example:
 --------------------
 assert(NegInfInterval!Date(Date(2012, 3, 1)).span(
             NegInfInterval!Date(Date(1999, 7, 6))) ==
@@ -23420,7 +23785,7 @@ assert(NegInfInterval!Date(Date(2012, 3, 1)).span(
         Params:
             duration = The duration to shift the interval by.
 
-        Examples:
+        Example:
 --------------------
 auto interval1 = NegInfInterval!Date(Date(2012, 4, 5));
 auto interval2 = NegInfInterval!Date(Date(2012, 4, 5));
@@ -23460,7 +23825,7 @@ assert(interval2 == NegInfInterval!Date( Date(2012, 2, 15)));
                 $(LREF DateTimeException) if empty is true or if the resulting
                 interval would be invalid.
 
-            Examples:
+            Example:
 --------------------
 auto interval1 = NegInfInterval!Date(Date(2012, 3, 1));
 auto interval2 = NegInfInterval!Date(Date(2012, 3, 1));
@@ -23492,7 +23857,7 @@ assert(interval2 == NegInfInterval!Date(Date(2010, 3, 1)));
         Params:
             duration = The duration to expand the interval by.
 
-        Examples:
+        Example:
 --------------------
 auto interval1 = NegInfInterval!Date(Date(2012, 3, 1));
 auto interval2 = NegInfInterval!Date(Date(2012, 3, 1));
@@ -23528,7 +23893,7 @@ assert(interval2 == NegInfInterval!Date(Date(2012, 2, 28)));
                 $(LREF DateTimeException) if empty is true or if the resulting
                 interval would be invalid.
 
-            Examples:
+            Example:
 --------------------
 auto interval1 = NegInfInterval!Date(Date(2012, 3, 1));
 auto interval2 = NegInfInterval!Date(Date(2012, 3, 1));
@@ -23602,10 +23967,10 @@ assert(interval2 == NegInfInterval!Date(Date(2010, 3, 1)));
             Of course, none of the functions in this module have this problem,
             so it's only relevant for custom delegates.
 
-        Examples:
+        Example:
 --------------------
 auto interval = NegInfInterval!Date(Date(2010, 9, 9));
-auto func = (in Date date) //For iterating over even-numbered days.
+auto func = delegate (in Date date) //For iterating over even-numbered days.
             {
                 if((date.day & 1) == 0)
                     return date - dur!"days"(2);
@@ -23703,8 +24068,8 @@ unittest
 
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, cNegInfInterval.end));
-    static assert(__traits(compiles, iNegInfInterval.end));
+    assert(cNegInfInterval.end != Date.init);
+    assert(iNegInfInterval.end != Date.init);
 
     //Verify Examples.
     assert(NegInfInterval!Date(Date(2012, 3, 1)).end == Date(2012, 3, 1));
@@ -23720,8 +24085,8 @@ unittest
 
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, cNegInfInterval.empty));
-    static assert(__traits(compiles, iNegInfInterval.empty));
+    assert(!cNegInfInterval.empty);
+    assert(!iNegInfInterval.empty);
 
     //Verify Examples.
     assert(!NegInfInterval!Date(Date(1996, 1, 2)).empty);
@@ -23745,9 +24110,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.contains(cdate)));
-    static assert(__traits(compiles, cNegInfInterval.contains(cdate)));
-    static assert(__traits(compiles, iNegInfInterval.contains(cdate)));
+    assert(negInfInterval.contains(cdate));
+    assert(cNegInfInterval.contains(cdate));
+    assert(iNegInfInterval.contains(cdate));
 
     //Verify Examples.
     assert(NegInfInterval!Date(Date(2012, 3, 1)).contains(Date(1994, 12, 24)));
@@ -23810,33 +24175,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.contains(interval)));
-    static assert(__traits(compiles, negInfInterval.contains(cInterval)));
-    static assert(__traits(compiles, negInfInterval.contains(iInterval)));
-    static assert(__traits(compiles, negInfInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, negInfInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.contains(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(interval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(iInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.contains(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(interval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(iInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(posInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(cPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.contains(iNegInfInterval)));
+    assert(negInfInterval.contains(interval));
+    assert(negInfInterval.contains(cInterval));
+    assert(negInfInterval.contains(iInterval));
+    assert(!negInfInterval.contains(posInfInterval));
+    assert(!negInfInterval.contains(cPosInfInterval));
+    assert(!negInfInterval.contains(iPosInfInterval));
+    assert(negInfInterval.contains(negInfInterval));
+    assert(negInfInterval.contains(cNegInfInterval));
+    assert(negInfInterval.contains(iNegInfInterval));
+    assert(cNegInfInterval.contains(interval));
+    assert(cNegInfInterval.contains(cInterval));
+    assert(cNegInfInterval.contains(iInterval));
+    assert(!cNegInfInterval.contains(posInfInterval));
+    assert(!cNegInfInterval.contains(cPosInfInterval));
+    assert(!cNegInfInterval.contains(iPosInfInterval));
+    assert(cNegInfInterval.contains(negInfInterval));
+    assert(cNegInfInterval.contains(cNegInfInterval));
+    assert(cNegInfInterval.contains(iNegInfInterval));
+    assert(iNegInfInterval.contains(interval));
+    assert(iNegInfInterval.contains(cInterval));
+    assert(iNegInfInterval.contains(iInterval));
+    assert(!iNegInfInterval.contains(posInfInterval));
+    assert(!iNegInfInterval.contains(cPosInfInterval));
+    assert(!iNegInfInterval.contains(iPosInfInterval));
+    assert(iNegInfInterval.contains(negInfInterval));
+    assert(iNegInfInterval.contains(cNegInfInterval));
+    assert(iNegInfInterval.contains(iNegInfInterval));
 
     //Verify Examples.
     assert(NegInfInterval!Date(Date(2012, 3, 1)).contains(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -23867,9 +24232,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.isBefore(cdate)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(cdate)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(cdate)));
+    assert(!negInfInterval.isBefore(cdate));
+    assert(!cNegInfInterval.isBefore(cdate));
+    assert(!iNegInfInterval.isBefore(cdate));
 
     //Verify Examples.
     assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(Date(1994, 12, 24)));
@@ -23932,33 +24297,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.isBefore(interval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isBefore(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(interval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isBefore(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(interval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(iInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(posInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(cPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isBefore(iNegInfInterval)));
+    assert(!negInfInterval.isBefore(interval));
+    assert(!negInfInterval.isBefore(cInterval));
+    assert(!negInfInterval.isBefore(iInterval));
+    assert(!negInfInterval.isBefore(posInfInterval));
+    assert(!negInfInterval.isBefore(cPosInfInterval));
+    assert(!negInfInterval.isBefore(iPosInfInterval));
+    assert(!negInfInterval.isBefore(negInfInterval));
+    assert(!negInfInterval.isBefore(cNegInfInterval));
+    assert(!negInfInterval.isBefore(iNegInfInterval));
+    assert(!cNegInfInterval.isBefore(interval));
+    assert(!cNegInfInterval.isBefore(cInterval));
+    assert(!cNegInfInterval.isBefore(iInterval));
+    assert(!cNegInfInterval.isBefore(posInfInterval));
+    assert(!cNegInfInterval.isBefore(cPosInfInterval));
+    assert(!cNegInfInterval.isBefore(iPosInfInterval));
+    assert(!cNegInfInterval.isBefore(negInfInterval));
+    assert(!cNegInfInterval.isBefore(cNegInfInterval));
+    assert(!cNegInfInterval.isBefore(iNegInfInterval));
+    assert(!iNegInfInterval.isBefore(interval));
+    assert(!iNegInfInterval.isBefore(cInterval));
+    assert(!iNegInfInterval.isBefore(iInterval));
+    assert(!iNegInfInterval.isBefore(posInfInterval));
+    assert(!iNegInfInterval.isBefore(cPosInfInterval));
+    assert(!iNegInfInterval.isBefore(iPosInfInterval));
+    assert(!iNegInfInterval.isBefore(negInfInterval));
+    assert(!iNegInfInterval.isBefore(cNegInfInterval));
+    assert(!iNegInfInterval.isBefore(iNegInfInterval));
 
     //Verify Examples.
     assert(!NegInfInterval!Date(Date(2012, 3, 1)).isBefore(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -23990,9 +24355,9 @@ unittest
     const cdate = Date(2010, 7, 6);
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.isAfter(cdate)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(cdate)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(cdate)));
+    assert(!negInfInterval.isAfter(cdate));
+    assert(!cNegInfInterval.isAfter(cdate));
+    assert(!iNegInfInterval.isAfter(cdate));
 }
 
 //Test NegInfInterval's isAfter(Interval).
@@ -24050,33 +24415,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.isAfter(interval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAfter(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(interval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAfter(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(interval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(iInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(posInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(cPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAfter(iNegInfInterval)));
+    assert(!negInfInterval.isAfter(interval));
+    assert(!negInfInterval.isAfter(cInterval));
+    assert(!negInfInterval.isAfter(iInterval));
+    assert(!negInfInterval.isAfter(posInfInterval));
+    assert(!negInfInterval.isAfter(cPosInfInterval));
+    assert(!negInfInterval.isAfter(iPosInfInterval));
+    assert(!negInfInterval.isAfter(negInfInterval));
+    assert(!negInfInterval.isAfter(cNegInfInterval));
+    assert(!negInfInterval.isAfter(iNegInfInterval));
+    assert(!cNegInfInterval.isAfter(interval));
+    assert(!cNegInfInterval.isAfter(cInterval));
+    assert(!cNegInfInterval.isAfter(iInterval));
+    assert(!cNegInfInterval.isAfter(posInfInterval));
+    assert(!cNegInfInterval.isAfter(cPosInfInterval));
+    assert(!cNegInfInterval.isAfter(iPosInfInterval));
+    assert(!cNegInfInterval.isAfter(negInfInterval));
+    assert(!cNegInfInterval.isAfter(cNegInfInterval));
+    assert(!cNegInfInterval.isAfter(iNegInfInterval));
+    assert(!iNegInfInterval.isAfter(interval));
+    assert(!iNegInfInterval.isAfter(cInterval));
+    assert(!iNegInfInterval.isAfter(iInterval));
+    assert(!iNegInfInterval.isAfter(posInfInterval));
+    assert(!iNegInfInterval.isAfter(cPosInfInterval));
+    assert(!iNegInfInterval.isAfter(iPosInfInterval));
+    assert(!iNegInfInterval.isAfter(negInfInterval));
+    assert(!iNegInfInterval.isAfter(cNegInfInterval));
+    assert(!iNegInfInterval.isAfter(iNegInfInterval));
 
     //Verify Examples.
     assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAfter(Date(1994, 12, 24)));
@@ -24149,33 +24514,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.intersects(interval)));
-    static assert(__traits(compiles, negInfInterval.intersects(cInterval)));
-    static assert(__traits(compiles, negInfInterval.intersects(iInterval)));
-    static assert(__traits(compiles, negInfInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersects(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(interval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(iInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersects(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(interval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(iInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(posInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(cPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersects(iNegInfInterval)));
+    assert(negInfInterval.intersects(interval));
+    assert(negInfInterval.intersects(cInterval));
+    assert(negInfInterval.intersects(iInterval));
+    assert(negInfInterval.intersects(posInfInterval));
+    assert(negInfInterval.intersects(cPosInfInterval));
+    assert(negInfInterval.intersects(iPosInfInterval));
+    assert(negInfInterval.intersects(negInfInterval));
+    assert(negInfInterval.intersects(cNegInfInterval));
+    assert(negInfInterval.intersects(iNegInfInterval));
+    assert(cNegInfInterval.intersects(interval));
+    assert(cNegInfInterval.intersects(cInterval));
+    assert(cNegInfInterval.intersects(iInterval));
+    assert(cNegInfInterval.intersects(posInfInterval));
+    assert(cNegInfInterval.intersects(cPosInfInterval));
+    assert(cNegInfInterval.intersects(iPosInfInterval));
+    assert(cNegInfInterval.intersects(negInfInterval));
+    assert(cNegInfInterval.intersects(cNegInfInterval));
+    assert(cNegInfInterval.intersects(iNegInfInterval));
+    assert(iNegInfInterval.intersects(interval));
+    assert(iNegInfInterval.intersects(cInterval));
+    assert(iNegInfInterval.intersects(iInterval));
+    assert(iNegInfInterval.intersects(posInfInterval));
+    assert(iNegInfInterval.intersects(cPosInfInterval));
+    assert(iNegInfInterval.intersects(iPosInfInterval));
+    assert(iNegInfInterval.intersects(negInfInterval));
+    assert(iNegInfInterval.intersects(cNegInfInterval));
+    assert(iNegInfInterval.intersects(iNegInfInterval));
 
     //Verify Examples.
     assert(NegInfInterval!Date(Date(2012, 3, 1)).intersects(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -24273,33 +24638,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.intersection(interval)));
-    static assert(__traits(compiles, negInfInterval.intersection(cInterval)));
-    static assert(__traits(compiles, negInfInterval.intersection(iInterval)));
-    static assert(__traits(compiles, negInfInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.intersection(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(interval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(iInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.intersection(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(interval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(iInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(posInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(cPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.intersection(iNegInfInterval)));
+    assert(!negInfInterval.intersection(interval).empty);
+    assert(!negInfInterval.intersection(cInterval).empty);
+    assert(!negInfInterval.intersection(iInterval).empty);
+    assert(!negInfInterval.intersection(posInfInterval).empty);
+    assert(!negInfInterval.intersection(cPosInfInterval).empty);
+    assert(!negInfInterval.intersection(iPosInfInterval).empty);
+    assert(!negInfInterval.intersection(negInfInterval).empty);
+    assert(!negInfInterval.intersection(cNegInfInterval).empty);
+    assert(!negInfInterval.intersection(iNegInfInterval).empty);
+    assert(!cNegInfInterval.intersection(interval).empty);
+    assert(!cNegInfInterval.intersection(cInterval).empty);
+    assert(!cNegInfInterval.intersection(iInterval).empty);
+    assert(!cNegInfInterval.intersection(posInfInterval).empty);
+    assert(!cNegInfInterval.intersection(cPosInfInterval).empty);
+    assert(!cNegInfInterval.intersection(iPosInfInterval).empty);
+    assert(!cNegInfInterval.intersection(negInfInterval).empty);
+    assert(!cNegInfInterval.intersection(cNegInfInterval).empty);
+    assert(!cNegInfInterval.intersection(iNegInfInterval).empty);
+    assert(!iNegInfInterval.intersection(interval).empty);
+    assert(!iNegInfInterval.intersection(cInterval).empty);
+    assert(!iNegInfInterval.intersection(iInterval).empty);
+    assert(!iNegInfInterval.intersection(posInfInterval).empty);
+    assert(!iNegInfInterval.intersection(cPosInfInterval).empty);
+    assert(!iNegInfInterval.intersection(iPosInfInterval).empty);
+    assert(!iNegInfInterval.intersection(negInfInterval).empty);
+    assert(!iNegInfInterval.intersection(cNegInfInterval).empty);
+    assert(!iNegInfInterval.intersection(iNegInfInterval).empty);
 
     //Verify Examples.
     assert(NegInfInterval!Date(Date(2012, 3, 1)).intersection(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) == Interval!Date(Date(1990, 7 , 6), Date(2000, 8, 2)));
@@ -24367,33 +24732,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.isAdjacent(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.isAdjacent(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(interval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(iInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(posInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(cPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.isAdjacent(iNegInfInterval)));
+    assert(!negInfInterval.isAdjacent(interval));
+    assert(!negInfInterval.isAdjacent(cInterval));
+    assert(!negInfInterval.isAdjacent(iInterval));
+    assert(!negInfInterval.isAdjacent(posInfInterval));
+    assert(!negInfInterval.isAdjacent(cPosInfInterval));
+    assert(!negInfInterval.isAdjacent(iPosInfInterval));
+    assert(!negInfInterval.isAdjacent(negInfInterval));
+    assert(!negInfInterval.isAdjacent(cNegInfInterval));
+    assert(!negInfInterval.isAdjacent(iNegInfInterval));
+    assert(!cNegInfInterval.isAdjacent(interval));
+    assert(!cNegInfInterval.isAdjacent(cInterval));
+    assert(!cNegInfInterval.isAdjacent(iInterval));
+    assert(!cNegInfInterval.isAdjacent(posInfInterval));
+    assert(!cNegInfInterval.isAdjacent(cPosInfInterval));
+    assert(!cNegInfInterval.isAdjacent(iPosInfInterval));
+    assert(!cNegInfInterval.isAdjacent(negInfInterval));
+    assert(!cNegInfInterval.isAdjacent(cNegInfInterval));
+    assert(!cNegInfInterval.isAdjacent(iNegInfInterval));
+    assert(!iNegInfInterval.isAdjacent(interval));
+    assert(!iNegInfInterval.isAdjacent(cInterval));
+    assert(!iNegInfInterval.isAdjacent(iInterval));
+    assert(!iNegInfInterval.isAdjacent(posInfInterval));
+    assert(!iNegInfInterval.isAdjacent(cPosInfInterval));
+    assert(!iNegInfInterval.isAdjacent(iPosInfInterval));
+    assert(!iNegInfInterval.isAdjacent(negInfInterval));
+    assert(!iNegInfInterval.isAdjacent(cNegInfInterval));
+    assert(!iNegInfInterval.isAdjacent(iNegInfInterval));
 
     //Verify Examples.
     assert(!NegInfInterval!Date(Date(2012, 3, 1)).isAdjacent(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))));
@@ -24488,33 +24853,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.merge(interval)));
-    static assert(__traits(compiles, negInfInterval.merge(cInterval)));
-    static assert(__traits(compiles, negInfInterval.merge(iInterval)));
+    assert(!negInfInterval.merge(interval).empty);
+    assert(!negInfInterval.merge(cInterval).empty);
+    assert(!negInfInterval.merge(iInterval).empty);
     static assert(!__traits(compiles, negInfInterval.merge(posInfInterval)));
     static assert(!__traits(compiles, negInfInterval.merge(cPosInfInterval)));
     static assert(!__traits(compiles, negInfInterval.merge(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.merge(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.merge(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.merge(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.merge(interval)));
-    static assert(__traits(compiles, cNegInfInterval.merge(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.merge(iInterval)));
+    assert(!negInfInterval.merge(negInfInterval).empty);
+    assert(!negInfInterval.merge(cNegInfInterval).empty);
+    assert(!negInfInterval.merge(iNegInfInterval).empty);
+    assert(!cNegInfInterval.merge(interval).empty);
+    assert(!cNegInfInterval.merge(cInterval).empty);
+    assert(!cNegInfInterval.merge(iInterval).empty);
     static assert(!__traits(compiles, cNegInfInterval.merge(posInfInterval)));
     static assert(!__traits(compiles, cNegInfInterval.merge(cPosInfInterval)));
     static assert(!__traits(compiles, cNegInfInterval.merge(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.merge(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.merge(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.merge(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.merge(interval)));
-    static assert(__traits(compiles, iNegInfInterval.merge(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.merge(iInterval)));
+    assert(!cNegInfInterval.merge(negInfInterval).empty);
+    assert(!cNegInfInterval.merge(cNegInfInterval).empty);
+    assert(!cNegInfInterval.merge(iNegInfInterval).empty);
+    assert(!iNegInfInterval.merge(interval).empty);
+    assert(!iNegInfInterval.merge(cInterval).empty);
+    assert(!iNegInfInterval.merge(iInterval).empty);
     static assert(!__traits(compiles, iNegInfInterval.merge(posInfInterval)));
     static assert(!__traits(compiles, iNegInfInterval.merge(cPosInfInterval)));
     static assert(!__traits(compiles, iNegInfInterval.merge(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.merge(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.merge(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.merge(iNegInfInterval)));
+    assert(!iNegInfInterval.merge(negInfInterval).empty);
+    assert(!iNegInfInterval.merge(cNegInfInterval).empty);
+    assert(!iNegInfInterval.merge(iNegInfInterval).empty);
 
     //Verify Examples.
     assert(NegInfInterval!Date(Date(2012, 3, 1)).merge(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) == NegInfInterval!Date(Date(2012, 3 , 1)));
@@ -24604,33 +24969,33 @@ unittest
     immutable iPosInfInterval = PosInfInterval!Date(Date(2010, 7, 4));
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, negInfInterval.span(interval)));
-    static assert(__traits(compiles, negInfInterval.span(cInterval)));
-    static assert(__traits(compiles, negInfInterval.span(iInterval)));
+    assert(!negInfInterval.span(interval).empty);
+    assert(!negInfInterval.span(cInterval).empty);
+    assert(!negInfInterval.span(iInterval).empty);
     static assert(!__traits(compiles, negInfInterval.span(posInfInterval)));
     static assert(!__traits(compiles, negInfInterval.span(cPosInfInterval)));
     static assert(!__traits(compiles, negInfInterval.span(iPosInfInterval)));
-    static assert(__traits(compiles, negInfInterval.span(negInfInterval)));
-    static assert(__traits(compiles, negInfInterval.span(cNegInfInterval)));
-    static assert(__traits(compiles, negInfInterval.span(iNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.span(interval)));
-    static assert(__traits(compiles, cNegInfInterval.span(cInterval)));
-    static assert(__traits(compiles, cNegInfInterval.span(iInterval)));
+    assert(!negInfInterval.span(negInfInterval).empty);
+    assert(!negInfInterval.span(cNegInfInterval).empty);
+    assert(!negInfInterval.span(iNegInfInterval).empty);
+    assert(!cNegInfInterval.span(interval).empty);
+    assert(!cNegInfInterval.span(cInterval).empty);
+    assert(!cNegInfInterval.span(iInterval).empty);
     static assert(!__traits(compiles, cNegInfInterval.span(posInfInterval)));
     static assert(!__traits(compiles, cNegInfInterval.span(cPosInfInterval)));
     static assert(!__traits(compiles, cNegInfInterval.span(iPosInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.span(negInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.span(cNegInfInterval)));
-    static assert(__traits(compiles, cNegInfInterval.span(iNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.span(interval)));
-    static assert(__traits(compiles, iNegInfInterval.span(cInterval)));
-    static assert(__traits(compiles, iNegInfInterval.span(iInterval)));
+    assert(!cNegInfInterval.span(negInfInterval).empty);
+    assert(!cNegInfInterval.span(cNegInfInterval).empty);
+    assert(!cNegInfInterval.span(iNegInfInterval).empty);
+    assert(!iNegInfInterval.span(interval).empty);
+    assert(!iNegInfInterval.span(cInterval).empty);
+    assert(!iNegInfInterval.span(iInterval).empty);
     static assert(!__traits(compiles, iNegInfInterval.span(posInfInterval)));
     static assert(!__traits(compiles, iNegInfInterval.span(cPosInfInterval)));
     static assert(!__traits(compiles, iNegInfInterval.span(iPosInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.span(negInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.span(cNegInfInterval)));
-    static assert(__traits(compiles, iNegInfInterval.span(iNegInfInterval)));
+    assert(!iNegInfInterval.span(negInfInterval).empty);
+    assert(!iNegInfInterval.span(cNegInfInterval).empty);
+    assert(!iNegInfInterval.span(iNegInfInterval).empty);
 
     //Verify Examples.
     assert(NegInfInterval!Date(Date(2012, 3, 1)).span(Interval!Date(Date(1990, 7, 6), Date(2000, 8, 2))) == NegInfInterval!Date(Date(2012, 3 , 1)));
@@ -24843,8 +25208,8 @@ unittest
 
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, cNegInfInterval.bwdRange(everyDayOfWeek!(Date, Direction.bwd)(DayOfWeek.fri))));
-    static assert(__traits(compiles, iNegInfInterval.bwdRange(everyDayOfWeek!(Date, Direction.bwd)(DayOfWeek.fri))));
+    assert(!cNegInfInterval.bwdRange(everyDayOfWeek!(Date, Direction.bwd)(DayOfWeek.fri)).empty);
+    assert(!iNegInfInterval.bwdRange(everyDayOfWeek!(Date, Direction.bwd)(DayOfWeek.fri)).empty);
 }
 
 //Test NegInfInterval's toString().
@@ -24854,8 +25219,8 @@ unittest
 
     const cNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
     immutable iNegInfInterval = NegInfInterval!Date(Date(2012, 1, 7));
-    static assert(__traits(compiles, cNegInfInterval.toString()));
-    static assert(__traits(compiles, iNegInfInterval.toString()));
+    assert(cNegInfInterval.toString());
+    assert(iNegInfInterval.toString());
 }
 
 
@@ -24952,8 +25317,8 @@ unittest
     assert(funcBwd(Date(2010, 9, 7)) == Date(2010, 9, 6));
 
     static assert(!__traits(compiles, everyDayOfWeek!(TimeOfDay)(DayOfWeek.mon)));
-    static assert(__traits(compiles, everyDayOfWeek!(DateTime)(DayOfWeek.mon)));
-    static assert(__traits(compiles, everyDayOfWeek!(SysTime)(DayOfWeek.mon)));
+    assert(everyDayOfWeek!(DateTime)(DayOfWeek.mon) !is null);
+    assert(everyDayOfWeek!(SysTime)(DayOfWeek.mon) !is null);
 }
 
 
@@ -25080,8 +25445,8 @@ unittest
     assert(funcBwd(Date(2011, 7, 30)) == Date(2011, 6, 30));
 
     static assert(!__traits(compiles, everyMonth!(TimeOfDay)(Month.jan)));
-    static assert(__traits(compiles, everyMonth!(DateTime)(Month.jan)));
-    static assert(__traits(compiles, everyMonth!(SysTime)(Month.jan)));
+    assert(everyMonth!(DateTime)(Month.jan) !is null);
+    assert(everyMonth!(SysTime)(Month.jan) !is null);
 }
 
 
@@ -25158,10 +25523,10 @@ unittest
     assert(funcBwd(Date(2010, 1, 23)) == Date(2009, 12, 27));
     assert(funcBwd(Date(2010, 1, 24)) == Date(2009, 12, 28));
 
-    static assert(__traits(compiles, everyDuration!Date(dur!"hnsecs"(1))));
-    static assert(__traits(compiles, everyDuration!TimeOfDay(dur!"hnsecs"(1))));
-    static assert(__traits(compiles, everyDuration!DateTime(dur!"hnsecs"(1))));
-    static assert(__traits(compiles, everyDuration!SysTime(dur!"hnsecs"(1))));
+    assert(everyDuration!Date(dur!"hnsecs"(1)) !is null);
+    assert(everyDuration!TimeOfDay(dur!"hnsecs"(1)) !is null);
+    assert(everyDuration!DateTime(dur!"hnsecs"(1)) !is null);
+    assert(everyDuration!SysTime(dur!"hnsecs"(1)) !is null);
 }
 
 
@@ -25298,10 +25663,10 @@ unittest
         assert(funcBwd(Date(2011, 3, 4)) == Date(2010, 1, 1));
     }
 
-    static assert(__traits(compiles, everyDuration!Date(1, 2, AllowDayOverflow.yes, dur!"hnsecs"(1))));
+    assert(everyDuration!Date(1, 2, AllowDayOverflow.yes, dur!"hnsecs"(1)) !is null);
     static assert(!__traits(compiles, everyDuration!TimeOfDay(1, 2, AllowDayOverflow.yes, dur!"hnsecs"(1))));
-    static assert(__traits(compiles, everyDuration!DateTime(1, 2, AllowDayOverflow.yes, dur!"hnsecs"(1))));
-    static assert(__traits(compiles, everyDuration!SysTime(1, 2, AllowDayOverflow.yes, dur!"hnsecs"(1))));
+    assert(everyDuration!DateTime(1, 2, AllowDayOverflow.yes, dur!"hnsecs"(1)) !is null);
+    assert(everyDuration!SysTime(1, 2, AllowDayOverflow.yes, dur!"hnsecs"(1)) !is null);
 }
 
 
@@ -25634,7 +25999,7 @@ unittest
         assert(range.empty);
 
         const cRange = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7)).fwdRange(everyDayOfWeek!Date(DayOfWeek.fri));
-        static assert(__traits(compiles, cRange.empty));
+        assert(!cRange.empty);
 
         //Apparently, creating an immutable IntervalRange!Date doesn't work, so we can't test if
         //empty works with it. However, since an immutable range is pretty useless, it's no great loss.
@@ -25649,7 +26014,7 @@ unittest
         assert(range.empty);
 
         const cRange = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7)).bwdRange(everyDayOfWeek!(Date, Direction.bwd)(DayOfWeek.fri));
-        static assert(__traits(compiles, cRange.empty));
+        assert(!cRange.empty);
 
         //Apparently, creating an immutable IntervalRange!Date doesn't work, so we can't test if
         //empty works with it. However, since an immutable range is pretty useless, it's no great loss.
@@ -25671,7 +26036,7 @@ unittest
         assert(poppedRange.front == Date(2010, 7, 7));
 
         const cRange = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7)).fwdRange(everyDayOfWeek!Date(DayOfWeek.fri));
-        static assert(__traits(compiles, cRange.front));
+        assert(cRange.front != Date.init);
     }
 
     //bwd
@@ -25686,7 +26051,7 @@ unittest
         assert(poppedRange.front == Date(2012, 1, 4));
 
         const cRange = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7)).bwdRange(everyDayOfWeek!(Date, Direction.bwd)(DayOfWeek.fri));
-        static assert(__traits(compiles, cRange.front));
+        assert(cRange.front != Date.init);
     }
 }
 
@@ -25710,7 +26075,7 @@ unittest
         assert(walkLength(range) == 79);
 
         const cRange = Interval!Date(Date(2010, 7, 4), Date(2012, 1, 7)).fwdRange(everyDayOfWeek!Date(DayOfWeek.fri));
-        static assert(__traits(compiles, cRange.front));
+        assert(cRange.front != Date.init);
     }
 
     //bwd
@@ -25768,7 +26133,7 @@ unittest
         assert(range.interval == interval);
 
         const cRange = range;
-        static assert(__traits(compiles, cRange.interval));
+        assert(!cRange.interval.empty);
     }
 
     //bwd
@@ -25780,7 +26145,7 @@ unittest
         assert(range.interval == interval);
 
         const cRange = range;
-        static assert(__traits(compiles, cRange.interval));
+        assert(!cRange.interval.empty);
     }
 }
 
@@ -25818,7 +26183,7 @@ unittest
         assert(range.direction == Direction.fwd);
 
         const cRange = range;
-        static assert(__traits(compiles, cRange.direction));
+        assert(cRange.direction == Direction.fwd);
     }
 
     //bwd
@@ -25830,7 +26195,7 @@ unittest
         assert(range.direction == Direction.bwd);
 
         const cRange = range;
-        static assert(__traits(compiles, cRange.direction));
+        assert(cRange.direction == Direction.bwd);
     }
 }
 
@@ -26060,7 +26425,7 @@ unittest
     assert(poppedRange.front == Date(2010, 7, 7));
 
     const cRange = PosInfInterval!Date(Date(2010, 7, 4)).fwdRange(everyDayOfWeek!Date(DayOfWeek.fri));
-    static assert(__traits(compiles, cRange.front));
+    assert(cRange.front != Date.init);
 }
 
 //Test PosInfIntervalRange's popFront().
@@ -26100,7 +26465,7 @@ unittest
     assert(range.interval == interval);
 
     const cRange = range;
-    static assert(__traits(compiles, cRange.interval));
+    assert(!cRange.interval.empty);
 }
 
 //Test PosInfIntervalRange's func.
@@ -26347,7 +26712,7 @@ unittest
     assert(poppedRange.front == Date(2012, 1, 4));
 
     const cRange = NegInfInterval!Date(Date(2012, 1, 7)).bwdRange(everyDayOfWeek!(Date, Direction.bwd)(DayOfWeek.fri));
-    static assert(__traits(compiles, cRange.front));
+    assert(cRange.front != Date.init);
 }
 
 //Test NegInfIntervalRange's popFront().
@@ -26388,7 +26753,7 @@ unittest
     assert(range.interval == interval);
 
     const cRange = range;
-    static assert(__traits(compiles, cRange.interval));
+    assert(!cRange.interval.empty);
 }
 
 //Test NegInfIntervalRange's func.
@@ -26514,6 +26879,13 @@ public:
 
 
     /++
+        $(RED Please use either PosixTimeZone.getTimeZone or
+              WindowsTimeZone.getTimeZone ($(LREF parseTZConversions) can be
+              used to convert time zone names if necessary). This function will
+              be deprecated in 2.072, because Microsoft changes their time zones
+              too often for us to compile the conversions into Phobos and have
+              them be properly up-to-date.)
+
         Returns a $(LREF2 .TimeZone, TimeZone) with the give name per the TZ Database.
 
         This returns a $(LREF PosixTimeZone) on Posix systems and a
@@ -26713,6 +27085,7 @@ public:
         version(Posix)
         {
             version(FreeBSD)      enum utcZone = "Etc/UTC";
+            else version(NetBSD)  enum utcZone = "UTC";
             else version(linux)   enum utcZone = "UTC";
             else version(OSX)     enum utcZone = "UTC";
             else static assert(0, "The location of the UTC timezone file on this Posix platform must be set.");
@@ -26903,7 +27276,6 @@ public:
         {
             import std.array : appender;
             import std.algorithm : startsWith, sort;
-            import std.format : format;
 
             auto windowsNames = WindowsTimeZone.getInstalledTZNames();
             auto retval = appender!(string[])();
@@ -26911,13 +27283,6 @@ public:
             foreach(winName; windowsNames)
             {
                 auto tzName = windowsTZNameToTZDatabaseName(winName);
-
-                version(unittest)
-                {
-                    import std.string;
-                    assert(tzName !is null, format("TZName which is missing: %s", winName));
-                }
-
                 if(tzName !is null && tzName.startsWith(subName))
                     retval.put(tzName);
             }
@@ -27038,21 +27403,21 @@ public:
         }
         else version(Windows)
         {
+            TIME_ZONE_INFORMATION tzInfo;
+            GetTimeZoneInformation(&tzInfo);
+
+            //Cannot use to!string() like this should, probably due to bug http://d.puremagic.com/issues/show_bug.cgi?id=5016
+            //return to!string(tzInfo.StandardName);
+
+            wchar[32] str;
+
+            foreach(i, ref wchar c; str)
+                c = tzInfo.StandardName[i];
+
+            string retval;
+
             try
             {
-                TIME_ZONE_INFORMATION tzInfo;
-                GetTimeZoneInformation(&tzInfo);
-
-                //Cannot use to!string() like this should, probably due to bug http://d.puremagic.com/issues/show_bug.cgi?id=5016
-                //return to!string(tzInfo.StandardName);
-
-                wchar[32] str;
-
-                foreach(i, ref wchar c; str)
-                    c = tzInfo.StandardName[i];
-
-                string retval;
-
                 foreach(dchar c; str)
                 {
                     if(c == '\0')
@@ -27064,7 +27429,7 @@ public:
                 return retval;
             }
             catch(Exception e)
-                assert(0, "GetTimeZoneInformation() threw.");
+                assert(0, "GetTimeZoneInformation() returned invalid UTF-16.");
         }
     }
 
@@ -27109,21 +27474,21 @@ public:
         }
         else version(Windows)
         {
+            TIME_ZONE_INFORMATION tzInfo;
+            GetTimeZoneInformation(&tzInfo);
+
+            //Cannot use to!string() like this should, probably due to bug http://d.puremagic.com/issues/show_bug.cgi?id=5016
+            //return to!string(tzInfo.DaylightName);
+
+            wchar[32] str;
+
+            foreach(i, ref wchar c; str)
+                c = tzInfo.DaylightName[i];
+
+            string retval;
+
             try
             {
-                TIME_ZONE_INFORMATION tzInfo;
-                GetTimeZoneInformation(&tzInfo);
-
-                //Cannot use to!string() like this should, probably due to bug http://d.puremagic.com/issues/show_bug.cgi?id=5016
-                //return to!string(tzInfo.DaylightName);
-
-                wchar[32] str;
-
-                foreach(i, ref wchar c; str)
-                    c = tzInfo.DaylightName[i];
-
-                string retval;
-
                 foreach(dchar c; str)
                 {
                     if(c == '\0')
@@ -27135,7 +27500,7 @@ public:
                 return retval;
             }
             catch(Exception e)
-                assert(0, "GetTimeZoneInformation() threw.");
+                assert(0, "GetTimeZoneInformation() returned invalid UTF-16.");
         }
     }
 
@@ -27151,6 +27516,10 @@ public:
             {
                 // A bug on FreeBSD 9+ makes it so that this test fails.
                 // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=168862
+            }
+            else version(NetBSD)
+            {
+                // The same bug on NetBSD 7+
             }
             else
             {
@@ -27194,15 +27563,10 @@ public:
         }
         else version(Windows)
         {
-            try
-            {
-                TIME_ZONE_INFORMATION tzInfo;
-                GetTimeZoneInformation(&tzInfo);
+            TIME_ZONE_INFORMATION tzInfo;
+            GetTimeZoneInformation(&tzInfo);
 
-                return tzInfo.DaylightDate.wMonth != 0;
-            }
-            catch(Exception e)
-                assert(0, "GetTimeZoneInformation() threw.");
+            return tzInfo.DaylightDate.wMonth != 0;
         }
     }
 
@@ -27257,11 +27621,7 @@ public:
             }
 
             TIME_ZONE_INFORMATION tzInfo;
-
-            try
-                GetTimeZoneInformation(&tzInfo);
-            catch(Exception e)
-                assert(0, "The impossible happened. GetTimeZoneInformation() threw.");
+            GetTimeZoneInformation(&tzInfo);
 
             return WindowsTimeZone._dstInEffect(&tzInfo, stdTime);
         }
@@ -27298,11 +27658,7 @@ public:
         else version(Windows)
         {
             TIME_ZONE_INFORMATION tzInfo;
-
-            try
-                GetTimeZoneInformation(&tzInfo);
-            catch(Exception e)
-                assert(0, "GetTimeZoneInformation() threw.");
+            GetTimeZoneInformation(&tzInfo);
 
             return WindowsTimeZone._utcToTZ(&tzInfo, stdTime, hasDST);
         }
@@ -27354,11 +27710,7 @@ public:
         else version(Windows)
         {
             TIME_ZONE_INFORMATION tzInfo;
-
-            try
-                GetTimeZoneInformation(&tzInfo);
-            catch(Exception e)
-                assert(0, "GetTimeZoneInformation() threw.");
+            GetTimeZoneInformation(&tzInfo);
 
             return WindowsTimeZone._tzToUTC(&tzInfo, adjTime, hasDST);
         }
@@ -27708,8 +28060,7 @@ public:
         assert(west.utcToTZ(54_321_234_567_890L) == 54_033_234_567_890L);
 
         const cstz = west;
-        static assert(__traits(compiles, west.utcToTZ(50002)));
-        static assert(__traits(compiles, cstz.utcToTZ(50002)));
+        assert(cstz.utcToTZ(50002) == west.utcToTZ(50002));
     }
 
 
@@ -27736,8 +28087,7 @@ public:
         assert(west.tzToUTC(54_033_234_567_890L) == 54_321_234_567_890L);
 
         const cstz = west;
-        static assert(__traits(compiles, west.tzToUTC(20005)));
-        static assert(__traits(compiles, cstz.tzToUTC(20005)));
+        assert(cstz.tzToUTC(20005) == west.tzToUTC(20005));
     }
 
 
@@ -27802,7 +28152,7 @@ private:
     /+
         Returns a time zone as a string with an offset from UTC.
 
-        Time zone offsets will be in the form +HH:MM or -HH:MM.
+        Time zone offsets will be in the form +HHMM or -HHMM.
 
         Params:
             utcOffset = The number of minutes offset from UTC (negative means
@@ -27811,14 +28161,13 @@ private:
     static string toISOString(Duration utcOffset) @safe pure
     {
         import std.format : format;
-
         immutable absOffset = abs(utcOffset);
         enforce!DateTimeException(absOffset < dur!"minutes"(1440),
-                                    "Offset from UTC must be within range (-24:00 - 24:00).");
+                                  "Offset from UTC must be within range (-24:00 - 24:00).");
         int hours;
         int minutes;
         absOffset.split!("hours", "minutes")(hours, minutes);
-        return format(utcOffset < Duration.zero ? "-%02d:%02d" : "+%02d:%02d", hours, minutes);
+        return format(utcOffset < Duration.zero ? "-%02d%02d" : "+%02d%02d", hours, minutes);
     }
 
     unittest
@@ -27831,24 +28180,77 @@ private:
         assertThrown!DateTimeException(testSTZInvalid(dur!"minutes"(1440)));
         assertThrown!DateTimeException(testSTZInvalid(dur!"minutes"(-1440)));
 
-        assert(toISOString(dur!"minutes"(0)) == "+00:00");
-        assert(toISOString(dur!"minutes"(1)) == "+00:01");
-        assert(toISOString(dur!"minutes"(10)) == "+00:10");
-        assert(toISOString(dur!"minutes"(59)) == "+00:59");
-        assert(toISOString(dur!"minutes"(60)) == "+01:00");
-        assert(toISOString(dur!"minutes"(90)) == "+01:30");
-        assert(toISOString(dur!"minutes"(120)) == "+02:00");
-        assert(toISOString(dur!"minutes"(480)) == "+08:00");
-        assert(toISOString(dur!"minutes"(1439)) == "+23:59");
+        assert(toISOString(dur!"minutes"(0)) == "+0000");
+        assert(toISOString(dur!"minutes"(1)) == "+0001");
+        assert(toISOString(dur!"minutes"(10)) == "+0010");
+        assert(toISOString(dur!"minutes"(59)) == "+0059");
+        assert(toISOString(dur!"minutes"(60)) == "+0100");
+        assert(toISOString(dur!"minutes"(90)) == "+0130");
+        assert(toISOString(dur!"minutes"(120)) == "+0200");
+        assert(toISOString(dur!"minutes"(480)) == "+0800");
+        assert(toISOString(dur!"minutes"(1439)) == "+2359");
 
-        assert(toISOString(dur!"minutes"(-1)) == "-00:01");
-        assert(toISOString(dur!"minutes"(-10)) == "-00:10");
-        assert(toISOString(dur!"minutes"(-59)) == "-00:59");
-        assert(toISOString(dur!"minutes"(-60)) == "-01:00");
-        assert(toISOString(dur!"minutes"(-90)) == "-01:30");
-        assert(toISOString(dur!"minutes"(-120)) == "-02:00");
-        assert(toISOString(dur!"minutes"(-480)) == "-08:00");
-        assert(toISOString(dur!"minutes"(-1439)) == "-23:59");
+        assert(toISOString(dur!"minutes"(-1)) == "-0001");
+        assert(toISOString(dur!"minutes"(-10)) == "-0010");
+        assert(toISOString(dur!"minutes"(-59)) == "-0059");
+        assert(toISOString(dur!"minutes"(-60)) == "-0100");
+        assert(toISOString(dur!"minutes"(-90)) == "-0130");
+        assert(toISOString(dur!"minutes"(-120)) == "-0200");
+        assert(toISOString(dur!"minutes"(-480)) == "-0800");
+        assert(toISOString(dur!"minutes"(-1439)) == "-2359");
+    }
+
+
+    /+
+        Returns a time zone as a string with an offset from UTC.
+
+        Time zone offsets will be in the form +HH:MM or -HH:MM.
+
+        Params:
+            utcOffset = The number of minutes offset from UTC (negative means
+                        west).
+      +/
+    static string toISOExtString(Duration utcOffset) @safe pure
+    {
+        import std.format : format;
+
+        immutable absOffset = abs(utcOffset);
+        enforce!DateTimeException(absOffset < dur!"minutes"(1440),
+                                  "Offset from UTC must be within range (-24:00 - 24:00).");
+        int hours;
+        int minutes;
+        absOffset.split!("hours", "minutes")(hours, minutes);
+        return format(utcOffset < Duration.zero ? "-%02d:%02d" : "+%02d:%02d", hours, minutes);
+    }
+
+    unittest
+    {
+        static string testSTZInvalid(Duration offset)
+        {
+            return SimpleTimeZone.toISOExtString(offset);
+        }
+
+        assertThrown!DateTimeException(testSTZInvalid(dur!"minutes"(1440)));
+        assertThrown!DateTimeException(testSTZInvalid(dur!"minutes"(-1440)));
+
+        assert(toISOExtString(dur!"minutes"(0)) == "+00:00");
+        assert(toISOExtString(dur!"minutes"(1)) == "+00:01");
+        assert(toISOExtString(dur!"minutes"(10)) == "+00:10");
+        assert(toISOExtString(dur!"minutes"(59)) == "+00:59");
+        assert(toISOExtString(dur!"minutes"(60)) == "+01:00");
+        assert(toISOExtString(dur!"minutes"(90)) == "+01:30");
+        assert(toISOExtString(dur!"minutes"(120)) == "+02:00");
+        assert(toISOExtString(dur!"minutes"(480)) == "+08:00");
+        assert(toISOExtString(dur!"minutes"(1439)) == "+23:59");
+
+        assert(toISOExtString(dur!"minutes"(-1)) == "-00:01");
+        assert(toISOExtString(dur!"minutes"(-10)) == "-00:10");
+        assert(toISOExtString(dur!"minutes"(-59)) == "-00:59");
+        assert(toISOExtString(dur!"minutes"(-60)) == "-01:00");
+        assert(toISOExtString(dur!"minutes"(-90)) == "-01:30");
+        assert(toISOExtString(dur!"minutes"(-120)) == "-02:00");
+        assert(toISOExtString(dur!"minutes"(-480)) == "-08:00");
+        assert(toISOExtString(dur!"minutes"(-1439)) == "-23:59");
     }
 
 
@@ -27856,8 +28258,8 @@ private:
         Takes a time zone as a string with an offset from UTC and returns a
         $(LREF SimpleTimeZone) which matches.
 
-        The accepted formats for time zone offsets
-        are +H, -H, +HH, -HH, +H:MM, -H:MM, +HH:MM, and -HH:MM.
+        The accepted formats for time zone offsets are +HH, -HH, +HHMM, and
+        -HHMM.
 
         Params:
             isoString = A string which represents a time zone in the ISO format.
@@ -27866,19 +28268,163 @@ private:
         if(isSomeString!S)
     {
         import std.ascii : isDigit;
-        import std.string : strip;
         import std.conv : to;
         import std.algorithm : startsWith, countUntil, all;
         import std.format : format;
 
-        auto dstr = to!dstring(strip(isoString));
+        auto dstr = to!dstring(isoString);
 
-        enforce(dstr.startsWith('-', '+'), new DateTimeException("Invalid ISO String"));
+        enforce!DateTimeException(dstr.startsWith('-', '+'), "Invalid ISO String");
 
         auto sign = dstr.startsWith('-') ? -1 : 1;
 
         dstr.popFront();
-        enforce(!dstr.empty, new DateTimeException("Invalid ISO String"));
+        enforce!DateTimeException(all!isDigit(dstr), format("Invalid ISO String: %s", dstr));
+
+        int hours;
+        int minutes;
+
+        if(dstr.length == 2)
+            hours = to!int(dstr);
+        else if(dstr.length == 4)
+        {
+            hours = to!int(dstr[0 .. 2]);
+            minutes = to!int(dstr[2 .. 4]);
+        }
+        else
+            throw new DateTimeException(format("Invalid ISO String: %s", dstr));
+
+        enforce!DateTimeException(hours < 24 && minutes < 60, format("Invalid ISO String: %s", dstr));
+
+        return new immutable SimpleTimeZone(sign * (dur!"hours"(hours) + dur!"minutes"(minutes)));
+    }
+
+    unittest
+    {
+        import std.format : format;
+
+        foreach(str; ["", "Z", "-", "+", "-:", "+:", "-1:", "+1:", "+1", "-1",
+                      "-24:00", "+24:00", "-24", "+24", "-2400", "+2400",
+                      "1", "+1", "-1", "+9", "-9",
+                      "+1:0", "+01:0", "+1:00", "+01:000", "+01:60",
+                      "-1:0", "-01:0", "-1:00", "-01:000", "-01:60",
+                      "000", "00000", "0160", "-0160",
+                      " +08:00", "+ 08:00", "+08 :00", "+08: 00", "+08:00 ",
+                      " -08:00", "- 08:00", "-08 :00", "-08: 00", "-08:00 ",
+                      " +0800", "+ 0800", "+08 00", "+08 00", "+0800 ",
+                      " -0800", "- 0800", "-08 00", "-08 00", "-0800 ",
+                      "+ab:cd", "+abcd", "+0Z:00", "+Z", "+00Z",
+                      "-ab:cd", "+abcd", "-0Z:00", "-Z", "-00Z",
+                      "01:00", "12:00", "23:59"])
+        {
+            assertThrown!DateTimeException(SimpleTimeZone.fromISOString(str), format("[%s]", str));
+        }
+
+        static void test(string str, Duration utcOffset, size_t line = __LINE__)
+        {
+            if(SimpleTimeZone.fromISOString(str).utcOffset !=
+               (new immutable SimpleTimeZone(utcOffset)).utcOffset)
+            {
+                throw new AssertError("unittest failure", __FILE__, line);
+            }
+        }
+
+        test("+0000", Duration.zero);
+        test("+0001", minutes(1));
+        test("+0010", minutes(10));
+        test("+0059", minutes(59));
+        test("+0100", hours(1));
+        test("+0130", hours(1) + minutes(30));
+        test("+0200", hours(2));
+        test("+0800", hours(8));
+        test("+2359", hours(23) + minutes(59));
+
+        test("-0001", minutes(-1));
+        test("-0010", minutes(-10));
+        test("-0059", minutes(-59));
+        test("-0100", hours(-1));
+        test("-0130", hours(-1) - minutes(30));
+        test("-0200", hours(-2));
+        test("-0800", hours(-8));
+        test("-2359", hours(-23) - minutes(59));
+
+        test("+00", Duration.zero);
+        test("+01", hours(1));
+        test("+02", hours(2));
+        test("+12", hours(12));
+        test("+23", hours(23));
+
+        test("-00", Duration.zero);
+        test("-01", hours(-1));
+        test("-02", hours(-2));
+        test("-12", hours(-12));
+        test("-23", hours(-23));
+    }
+
+    unittest
+    {
+        import std.format : format;
+
+        static void test(in string isoString, int expectedOffset, size_t line = __LINE__)
+        {
+            auto stz = SimpleTimeZone.fromISOExtString(isoString);
+            if(stz.utcOffset != dur!"minutes"(expectedOffset))
+                throw new AssertError(format("unittest failure: wrong offset [%s]", stz.utcOffset), __FILE__, line);
+
+            auto result = SimpleTimeZone.toISOExtString(stz.utcOffset);
+            if(result != isoString)
+                throw new AssertError(format("unittest failure: [%s] != [%s]", result, isoString), __FILE__, line);
+        }
+
+        test("+00:00", 0);
+        test("+00:01", 1);
+        test("+00:10", 10);
+        test("+00:59", 59);
+        test("+01:00", 60);
+        test("+01:30", 90);
+        test("+02:00", 120);
+        test("+08:00", 480);
+        test("+08:00", 480);
+        test("+23:59", 1439);
+
+        test("-00:01", -1);
+        test("-00:10", -10);
+        test("-00:59", -59);
+        test("-01:00", -60);
+        test("-01:30", -90);
+        test("-02:00", -120);
+        test("-08:00", -480);
+        test("-08:00", -480);
+        test("-23:59", -1439);
+    }
+
+
+    /+
+        Takes a time zone as a string with an offset from UTC and returns a
+        $(LREF SimpleTimeZone) which matches.
+
+        The accepted formats for time zone offsets are +HH, -HH, +HH:MM, and
+        -HH:MM.
+
+        Params:
+            isoExtString = A string which represents a time zone in the ISO format.
+      +/
+    static immutable(SimpleTimeZone) fromISOExtString(S)(S isoExtString) @safe pure
+        if(isSomeString!S)
+    {
+        import std.ascii : isDigit;
+        import std.conv : to;
+        import std.algorithm : startsWith, countUntil, all;
+        import std.format : format;
+
+        auto dstr = to!dstring(isoExtString);
+
+        enforce!DateTimeException(dstr.startsWith('-', '+'), "Invalid ISO String");
+
+        auto sign = dstr.startsWith('-') ? -1 : 1;
+
+        dstr.popFront();
+        enforce!DateTimeException(!dstr.empty, "Invalid ISO String");
 
         immutable colon = dstr.countUntil(':');
 
@@ -27889,141 +28435,119 @@ private:
         {
             hoursStr = dstr[0 .. colon];
             minutesStr = dstr[colon + 1 .. $];
-            enforce(minutesStr.length == 2, new DateTimeException(format("Invalid ISO String: %s", dstr)));
+            enforce!DateTimeException(minutesStr.length == 2, format("Invalid ISO String: %s", dstr));
         }
         else
             hoursStr = dstr;
 
-        enforce(all!isDigit(hoursStr), new DateTimeException(format("Invalid ISO String: %s", dstr)));
-        enforce(all!isDigit(minutesStr), new DateTimeException(format("Invalid ISO String: %s", dstr)));
+        enforce!DateTimeException(hoursStr.length == 2, format("Invalid ISO String: %s", dstr));
+        enforce!DateTimeException(all!isDigit(hoursStr), format("Invalid ISO String: %s", dstr));
+        enforce!DateTimeException(all!isDigit(minutesStr), format("Invalid ISO String: %s", dstr));
 
         immutable hours = to!int(hoursStr);
         immutable minutes = minutesStr.empty ? 0 : to!int(minutesStr);
+        enforce!DateTimeException(hours < 24 && minutes < 60, format("Invalid ISO String: %s", dstr));
 
         return new immutable SimpleTimeZone(sign * (dur!"hours"(hours) + dur!"minutes"(minutes)));
     }
 
     unittest
     {
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString(""));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("Z"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("-"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("+"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("-:"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("+:"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("-1:"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("+1:"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("1"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("-24:00"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("+24:00"));
-        assertThrown!DateTimeException(SimpleTimeZone.fromISOString("+1:0"));
+        import std.format : format;
 
-        assert(SimpleTimeZone.fromISOString("+00:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(0))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+00:01").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(1))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+00:10").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(10))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+00:59").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(59))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+01:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(60))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+01:30").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(90))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+02:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(120))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+08:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(480))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+23:59").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(1439))).utcOffset);
-
-        assert(SimpleTimeZone.fromISOString("-00:01").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-1))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-00:10").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-10))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-00:59").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-59))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-01:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-60))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-01:30").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-90))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-02:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-120))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-08:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-480))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-23:59").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-1439))).utcOffset);
-
-        assert(SimpleTimeZone.fromISOString("+0").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(0))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+1").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(60))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+2").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(120))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+23").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(1380))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+2").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(120))).utcOffset);
-
-        assert(SimpleTimeZone.fromISOString("+0").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(0))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+1").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(60))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+2").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(120))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+23").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(1380))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+1:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(60))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("+1:01").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(61))).utcOffset);
-
-        assert(SimpleTimeZone.fromISOString("-0").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(0))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-1").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-60))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-2").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-120))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-23").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-1380))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-1:00").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-60))).utcOffset);
-        assert(SimpleTimeZone.fromISOString("-1:01").utcOffset ==
-               (new immutable SimpleTimeZone(dur!"minutes"(-61))).utcOffset);
-    }
-
-    //Test that converting from an ISO string to a SimpleTimeZone to an ISO String works properly.
-    unittest
-    {
-        static void testSTZ(in string isoString, int expectedOffset, size_t line = __LINE__)
+        foreach(str; ["", "Z", "-", "+", "-:", "+:", "-1:", "+1:", "+1", "-1",
+                      "-24:00", "+24:00", "-24", "+24", "-2400", "-2400",
+                      "1", "+1", "-1", "+9", "-9",
+                      "+1:0", "+01:0", "+1:00", "+01:000", "+01:60",
+                      "-1:0", "-01:0", "-1:00", "-01:000", "-01:60",
+                      "000", "00000", "0160", "-0160",
+                      " +08:00", "+ 08:00", "+08 :00", "+08: 00", "+08:00 ",
+                      " -08:00", "- 08:00", "-08 :00", "-08: 00", "-08:00 ",
+                      " +0800", "+ 0800", "+08 00", "+08 00", "+0800 ",
+                      " -0800", "- 0800", "-08 00", "-08 00", "-0800 ",
+                      "+ab:cd", "abcd", "+0Z:00", "+Z", "+00Z",
+                      "-ab:cd", "abcd", "-0Z:00", "-Z", "-00Z",
+                      "0100", "1200", "2359"])
         {
-            auto stz = SimpleTimeZone.fromISOString(isoString);
-            assert(stz.utcOffset == dur!"minutes"(expectedOffset));
-
-            auto result = SimpleTimeZone.toISOString(stz.utcOffset);
-            assert(result == isoString);
+            assertThrown!DateTimeException(SimpleTimeZone.fromISOExtString(str), format("[%s]", str));
         }
 
-        testSTZ("+00:00", 0);
-        testSTZ("+00:01", 1);
-        testSTZ("+00:10", 10);
-        testSTZ("+00:59", 59);
-        testSTZ("+01:00", 60);
-        testSTZ("+01:30", 90);
-        testSTZ("+02:00", 120);
-        testSTZ("+08:00", 480);
-        testSTZ("+08:00", 480);
-        testSTZ("+23:59", 1439);
+        static void test(string str, Duration utcOffset, size_t line = __LINE__)
+        {
+            if(SimpleTimeZone.fromISOExtString(str).utcOffset !=
+               (new immutable SimpleTimeZone(utcOffset)).utcOffset)
+            {
+                throw new AssertError("unittest failure", __FILE__, line);
+            }
+        }
 
-        testSTZ("-00:01", -1);
-        testSTZ("-00:10", -10);
-        testSTZ("-00:59", -59);
-        testSTZ("-01:00", -60);
-        testSTZ("-01:30", -90);
-        testSTZ("-02:00", -120);
-        testSTZ("-08:00", -480);
-        testSTZ("-08:00", -480);
-        testSTZ("-23:59", -1439);
+        test("+00:00", Duration.zero);
+        test("+00:01", minutes(1));
+        test("+00:10", minutes(10));
+        test("+00:59", minutes(59));
+        test("+01:00", hours(1));
+        test("+01:30", hours(1) + minutes(30));
+        test("+02:00", hours(2));
+        test("+08:00", hours(8));
+        test("+23:59", hours(23) + minutes(59));
+
+        test("-00:01", minutes(-1));
+        test("-00:10", minutes(-10));
+        test("-00:59", minutes(-59));
+        test("-01:00", hours(-1));
+        test("-01:30", hours(-1) - minutes(30));
+        test("-02:00", hours(-2));
+        test("-08:00", hours(-8));
+        test("-23:59", hours(-23) - minutes(59));
+
+        test("+00", Duration.zero);
+        test("+01", hours(1));
+        test("+02", hours(2));
+        test("+12", hours(12));
+        test("+23", hours(23));
+
+        test("-00", Duration.zero);
+        test("-01", hours(-1));
+        test("-02", hours(-2));
+        test("-12", hours(-12));
+        test("-23", hours(-23));
+    }
+
+    unittest
+    {
+        import std.format : format;
+
+        static void test(in string isoExtString, int expectedOffset, size_t line = __LINE__)
+        {
+            auto stz = SimpleTimeZone.fromISOExtString(isoExtString);
+            if(stz.utcOffset != dur!"minutes"(expectedOffset))
+                throw new AssertError(format("unittest failure: wrong offset [%s]", stz.utcOffset), __FILE__, line);
+
+            auto result = SimpleTimeZone.toISOExtString(stz.utcOffset);
+            if(result != isoExtString)
+                throw new AssertError(format("unittest failure: [%s] != [%s]", result, isoExtString), __FILE__, line);
+        }
+
+        test("+00:00", 0);
+        test("+00:01", 1);
+        test("+00:10", 10);
+        test("+00:59", 59);
+        test("+01:00", 60);
+        test("+01:30", 90);
+        test("+02:00", 120);
+        test("+08:00", 480);
+        test("+08:00", 480);
+        test("+23:59", 1439);
+
+        test("-00:01", -1);
+        test("-00:10", -10);
+        test("-00:59", -59);
+        test("-01:00", -60);
+        test("-01:30", -90);
+        test("-02:00", -120);
+        test("-08:00", -480);
+        test("-08:00", -480);
+        test("-23:59", -1439);
     }
 
 
@@ -28047,9 +28571,9 @@ private:
     Note:
         Unless your system's local time zone deals with leap seconds (which is
         highly unlikely), then the only way to get a time zone which
-        takes leap seconds into account is to use $(LREF PosixTimeZone) with a
+        takes leap seconds into account is to use $(D PosixTimeZone) with a
         time zone whose name starts with "right/". Those time zone files do
-        include leap seconds, and $(LREF PosixTimeZone) will take them into account
+        include leap seconds, and $(D PosixTimeZone) will take them into account
         (though posix systems which use a "right/" time zone as their local time
         zone will $(I not) take leap seconds into account even though they're
         in the file).
@@ -28177,7 +28701,12 @@ public:
     }
 
 
-    version(Posix)
+    version(Android)
+    {
+        // Android concatenates all time zone data into a single file and stores it here.
+        enum defaultTZDatabaseDir = "/system/usr/share/zoneinfo/";
+    }
+    else version(Posix)
     {
         /++
             The default directory where the TZ Database files are. It's empty
@@ -28232,13 +28761,22 @@ public:
         enforce(tzDatabaseDir.exists(), new DateTimeException(format("Directory %s does not exist.", tzDatabaseDir)));
         enforce(tzDatabaseDir.isDir, new DateTimeException(format("%s is not a directory.", tzDatabaseDir)));
 
-        const file = asNormalizedPath(chainPath(tzDatabaseDir, name)).to!string;
+        version(Android)
+        {
+            auto tzfileOffset = name in tzdataIndex(tzDatabaseDir);
+            enforce(tzfileOffset, new DateTimeException(format("The time zone %s is not listed.", name)));
+            string tzFilename = separate_index ? "zoneinfo.dat" : "tzdata";
+            const file = asNormalizedPath(chainPath(tzDatabaseDir, tzFilename)).to!string;
+        }
+        else
+            const file = asNormalizedPath(chainPath(tzDatabaseDir, name)).to!string;
 
         enforce(file.exists(), new DateTimeException(format("File %s does not exist.", file)));
         enforce(file.isFile, new DateTimeException(format("%s is not a file.", file)));
 
         auto tzFile = File(file);
-        immutable gmtZone = file.representation().canFind("GMT");
+        version(Android) tzFile.seek(*tzfileOffset);
+        immutable gmtZone = name.representation().canFind("GMT");
 
         try
         {
@@ -28422,8 +28960,16 @@ public:
 
             auto posixEnvStr = tzFile.readln().strip();
 
-            _enforceValidTZFile(tzFile.readln().strip().empty);
-            _enforceValidTZFile(tzFile.eof);
+            version(Android)
+            {
+                // Android uses a single file for all timezone data, so the file
+                // doesn't end here.
+            }
+            else
+            {
+                _enforceValidTZFile(tzFile.readln().strip().empty);
+                _enforceValidTZFile(tzFile.eof);
+            }
 
 
             auto transitionTypes = new TransitionType*[](tempTTInfos.length);
@@ -28572,20 +29118,32 @@ public:
 
         auto timezones = appender!(string[])();
 
-        foreach(DirEntry dentry; dirEntries(tzDatabaseDir, SpanMode.depth))
+        version(Android)
         {
-            if(dentry.isFile)
+            import std.algorithm : copy, filter;
+            tzdataIndex(tzDatabaseDir)
+            .byKey
+            .filter!(a => a.startsWith(subName))
+            .copy(timezones);
+        }
+        else
+        {
+            foreach(DirEntry dentry; dirEntries(tzDatabaseDir, SpanMode.depth))
             {
-                auto tzName = dentry.name[tzDatabaseDir.length .. $];
-
-                if(!tzName.extension().empty ||
-                   !tzName.startsWith(subName) ||
-                   tzName == "+VERSION")
+                if(dentry.isFile)
                 {
-                    continue;
-                }
+                    auto tzName = dentry.name[tzDatabaseDir.length .. $];
 
-                timezones.put(tzName);
+                    if(!tzName.extension().empty ||
+                       !tzName.startsWith(subName) ||
+                       tzName == "leapseconds" ||
+                       tzName == "+VERSION")
+                    {
+                        continue;
+                    }
+
+                    timezones.put(tzName);
+                }
             }
         }
 
@@ -28615,6 +29173,8 @@ public:
         foreach(tzName; tzNames)
             assertNotThrown!DateTimeException(testPTZSuccess(tzName));
 
+        // No timezone directories on Android, just a single tzdata file
+        version(Android) {} else
         foreach(DirEntry dentry; dirEntries(defaultTZDatabaseDir, SpanMode.depth))
         {
             if(dentry.isFile)
@@ -28844,6 +29404,77 @@ private:
         _hasDST = hasDST;
     }
 
+    // Android concatenates the usual timezone directories into a single file,
+    // tzdata, along with an index to jump to each timezone's offset.  In older
+    // versions of Android, the index was stored in a separate file, zoneinfo.idx,
+    // whereas now it's stored at the beginning of tzdata.
+    version(Android)
+    {
+        // Keep track of whether there's a separate index, zoneinfo.idx.  Only
+        // check this after calling tzdataIndex, as it's initialized there.
+        static shared bool separate_index;
+
+        // Extracts the name of each time zone and the offset where its data is
+        // located in the tzdata file from the index and caches it for later.
+        static const(uint[string]) tzdataIndex(string tzDir)
+        {
+            import std.concurrency : initOnce;
+
+            static __gshared uint[string] _tzIndex;
+
+            // _tzIndex is initialized once and then shared across all threads.
+            initOnce!_tzIndex(
+            {
+                import std.conv : to;
+                import std.format : format;
+                import std.path : asNormalizedPath, chainPath;
+
+                enum indexEntrySize = 52;
+                const combinedFile = asNormalizedPath(chainPath(tzDir, "tzdata")).to!string;
+                const indexFile = asNormalizedPath(chainPath(tzDir, "zoneinfo.idx")).to!string;
+                File tzFile;
+                uint indexEntries, dataOffset;
+                uint[string] initIndex;
+
+                // Check for the combined file tzdata, which stores the index
+                // and the time zone data together.
+                if(combinedFile.exists() && combinedFile.isFile)
+                {
+                    tzFile = File(combinedFile);
+                    _enforceValidTZFile(readVal!(char[])(tzFile, 6) == "tzdata");
+                    auto tzDataVersion = readVal!(char[])(tzFile, 6);
+                    _enforceValidTZFile(tzDataVersion[5] == '\0');
+
+                    uint indexOffset = readVal!uint(tzFile);
+                    dataOffset = readVal!uint(tzFile);
+                    readVal!uint(tzFile);
+
+                    indexEntries = (dataOffset - indexOffset)/indexEntrySize;
+                    separate_index = false;
+                }
+                else if(indexFile.exists() && indexFile.isFile)
+                {
+                    tzFile = File(indexFile);
+                    indexEntries = to!(uint)(tzFile.size/indexEntrySize);
+                    separate_index = true;
+                }
+                else
+                    throw new DateTimeException(format("Both timezone files %s and %s do not exist.",
+                        combinedFile, indexFile));
+
+                foreach(Unused; 0 .. indexEntries) {
+                    string tzName = to!string(readVal!(char[])(tzFile, 40).ptr);
+                    uint tzOffset = readVal!uint(tzFile);
+                    readVal!(uint[])(tzFile, 2);
+                    initIndex[tzName] = dataOffset + tzOffset;
+                }
+                initIndex.rehash;
+                return initIndex;
+            }());
+            return _tzIndex;
+        }
+    }
+
     /// List of times when the utc offset changes.
     immutable Transition[] _transitions;
 
@@ -28872,17 +29503,17 @@ version(StdDdoc)
         occur (especially for historical dates). Also, the TZ Database files
         include far more time zones than Windows does. So, for accurate
         time zone information, use the TZ Database files with
-        $(LREF PosixTimeZone) rather than $(LREF WindowsTimeZone). However, because
-        $(LREF WindowsTimeZone) uses Windows system calls to deal with the time,
+        $(LREF PosixTimeZone) rather than $(D WindowsTimeZone). However, because
+        $(D WindowsTimeZone) uses Windows system calls to deal with the time,
         it's far more likely to match the behavior of other Windows programs.
         Be aware of the differences when selecting a method.
 
-        $(LREF WindowsTimeZone) does not exist on Posix systems.
+        $(D WindowsTimeZone) does not exist on Posix systems.
 
-        To get a $(LREF WindowsTimeZone), either call
+        To get a $(D WindowsTimeZone), either call
         $(D WindowsTimeZone.getTimeZone) or call $(D TimeZone.getTimeZone)
         (which will give a $(LREF PosixTimeZone) on Posix systems and a
-         $(LREF WindowsTimeZone) on Windows systems).
+         $(D WindowsTimeZone) on Windows systems).
 
         See_Also:
             $(WEB www.iana.org/time-zones, Home of the TZ Database files)
@@ -28954,7 +29585,7 @@ version(StdDdoc)
                 $(LREF DateTimeException) if the given time zone could not be
                 found.
 
-            Examples:
+            Example:
     --------------------
     auto tz = TimeZone.getTimeZone("America/Los_Angeles");
     --------------------
@@ -29338,7 +29969,10 @@ else version(Posix)
         import core.sys.posix.stdlib : setenv;
         import core.sys.posix.time : tzset;
 
-        auto value = asNormalizedPath(chainPath(PosixTimeZone.defaultTZDatabaseDir, tzDatabaseName));
+        version(Android)
+            auto value = asNormalizedPath(tzDatabaseName);
+        else
+            auto value = asNormalizedPath(chainPath(PosixTimeZone.defaultTZDatabaseDir, tzDatabaseName));
         setenv("TZ", value.tempCString(), 1);
         tzset();
     }
@@ -29356,6 +29990,210 @@ else version(Posix)
 
 
 /++
+    Provides the conversions between the IANA time zone database time zone names
+    (which POSIX systems use) and the time zone names that Windows uses.
+
+    Windows uses a different set of time zone names than the IANA time zone
+    database does, and how they correspond to one another changes over time
+    (particularly when Microsoft updates Windows).
+    $(WEB http://unicode.org/cldr/data/common/supplemental/windowsZones.xml, windowsZones.xml)
+    provides the current conversions (which may or may not match up with what's
+    on a particular Windows box depending on how up-to-date it is), and
+    parseTZConversions reads in those conversions from windowsZones.xml so that
+    a D program can use those conversions.
+
+    However, it should be noted that the time zone information on Windows is
+    frequently less accurate than that in the IANA time zone database, and if
+    someone really wants accurate time zone information, they should use the
+    IANA time zone database files with $(LREF PosixTimeZone) on Windows rather
+    than $(LREF WindowsTimeZone), whereas $(LREF WindowsTimeZone) makes more
+    sense when trying to match what Windows will think the time is in a specific
+    time zone.
+
+    Also, the IANA time zone database has a lot more time zones than Windows
+    does.
+
+    Params:
+        windowsZonesXMLFileText The text from
+        $(WEB http://unicode.org/cldr/data/common/supplemental/windowsZones.xml, windowsZones.xml)
+
+    Throws:
+        Exception if there is an error while parsing the given XML.
+
+--------------------
+    // Parse the conversions from a local file.
+    auto text = std.file.readText("path/to/windowsZones.xml");
+    auto conversions = parseTZConversions(text);
+
+    // Alternatively, grab the XML file from the web at runtime
+    // and parse it so that it's guaranteed to be up-to-date, though
+    // that has the downside that the code needs to worry about the
+    // site being down or unicode.org changing the URL.
+    auto url = "http://unicode.org/cldr/data/common/supplemental/windowsZones.xml";
+    auto conversions2 = parseTZConversions(std.net.curl.get(url));
+--------------------
+  +/
+struct TZConversions
+{
+    /++
+        The key is the Windows time zone name, and the value is a list of
+        IANA TZ database names which are close (currently only ever one, but
+        it allows for multiple in case it's ever necessary).
+      +/
+    string[][string] toWindows;
+
+    /++
+        The key is the IANA time zone database name, and the value is a list of
+        Windows time zone names which are close (usually only one, but it could
+        be multiple).
+      +/
+    string[][string] fromWindows;
+}
+
+/++ ditto +/
+TZConversions parseTZConversions(string windowsZonesXMLText) @safe pure
+{
+    // This is a bit hacky, since it doesn't properly read XML, but it avoids
+    // needing to pull in std.xml (which we're theoretically replacing at some
+    // point anyway.
+    import std.algorithm : find, sort, uniq;
+    import std.array : array, split;
+    import std.string : lineSplitter;
+
+    string[][string] win2Nix;
+    string[][string] nix2Win;
+
+    immutable f1 = `<mapZone other="`;
+    immutable f2 = `type="`;
+
+    foreach(line; windowsZonesXMLText.lineSplitter())
+    {
+        // Sample line:
+        // <mapZone other="Canada Central Standard Time" territory="CA" type="America/Regina America/Swift_Current"/>
+
+        line = line.find(f1);
+        if(line.empty)
+            continue;
+        line = line[f1.length .. $];
+        auto next = line.find('"');
+        enforce(!next.empty, "Error parsing. Text does not appear to be from windowsZones.xml");
+        auto win = line[0 .. $ - next.length];
+        line = next.find(f2);
+        enforce(!line.empty, "Error parsing. Text does not appear to be from windowsZones.xml");
+        line = line[f2.length .. $];
+        next = line.find('"');
+        enforce(!next.empty, "Error parsing. Text does not appear to be from windowsZones.xml");
+        auto nixes = line[0 .. $ - next.length].split();
+
+        if(auto n = win in win2Nix)
+            *n ~= nixes;
+        else
+            win2Nix[win] = nixes;
+
+        foreach(nix; nixes)
+        {
+            if(auto w = nix in nix2Win)
+                *w ~= win;
+            else
+                nix2Win[nix] = [win];
+        }
+    }
+
+    foreach(key, ref value; nix2Win)
+        value = value.sort().uniq().array();
+    foreach(key, ref value; win2Nix)
+        value = value.sort().uniq().array();
+
+    return TZConversions(nix2Win, win2Nix);
+}
+
+unittest
+{
+    import std.algorithm;
+
+    // Reduced text from http://unicode.org/cldr/data/common/supplemental/windowsZones.xml
+    auto sampleFileText =
+`<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE supplementalData SYSTEM "../../common/dtd/ldmlSupplemental.dtd">
+<!--
+Copyright © 1991-2013 Unicode, Inc.
+CLDR data files are interpreted according to the LDML specification (http://unicode.org/reports/tr35/)
+For terms of use, see http://www.unicode.org/copyright.html
+-->
+
+<supplementalData>
+    <version number="$Revision$"/>
+
+    <windowsZones>
+        <mapTimezones otherVersion="7df0005" typeVersion="2015g">
+
+            <!-- (UTC-12:00) International Date Line West -->
+            <mapZone other="Dateline Standard Time" territory="001" type="Etc/GMT+12"/>
+            <mapZone other="Dateline Standard Time" territory="ZZ" type="Etc/GMT+12"/>
+
+            <!-- (UTC-11:00) Coordinated Universal Time-11 -->
+            <mapZone other="UTC-11" territory="001" type="Etc/GMT+11"/>
+            <mapZone other="UTC-11" territory="AS" type="Pacific/Pago_Pago"/>
+            <mapZone other="UTC-11" territory="NU" type="Pacific/Niue"/>
+            <mapZone other="UTC-11" territory="UM" type="Pacific/Midway"/>
+            <mapZone other="UTC-11" territory="ZZ" type="Etc/GMT+11"/>
+
+            <!-- (UTC-10:00) Hawaii -->
+            <mapZone other="Hawaiian Standard Time" territory="001" type="Pacific/Honolulu"/>
+            <mapZone other="Hawaiian Standard Time" territory="CK" type="Pacific/Rarotonga"/>
+            <mapZone other="Hawaiian Standard Time" territory="PF" type="Pacific/Tahiti"/>
+            <mapZone other="Hawaiian Standard Time" territory="UM" type="Pacific/Johnston"/>
+            <mapZone other="Hawaiian Standard Time" territory="US" type="Pacific/Honolulu"/>
+            <mapZone other="Hawaiian Standard Time" territory="ZZ" type="Etc/GMT+10"/>
+
+            <!-- (UTC-09:00) Alaska -->
+            <mapZone other="Alaskan Standard Time" territory="001" type="America/Anchorage"/>
+            <mapZone other="Alaskan Standard Time" territory="US" type="America/Anchorage America/Juneau America/Nome America/Sitka America/Yakutat"/>
+        </mapTimezones>
+    </windowsZones>
+</supplementalData>`;
+
+    auto tzConversions = parseTZConversions(sampleFileText);
+    assert(tzConversions.toWindows.length == 15);
+    assert(tzConversions.toWindows["America/Anchorage"] == ["Alaskan Standard Time"]);
+    assert(tzConversions.toWindows["America/Juneau"] == ["Alaskan Standard Time"]);
+    assert(tzConversions.toWindows["America/Nome"] == ["Alaskan Standard Time"]);
+    assert(tzConversions.toWindows["America/Sitka"] == ["Alaskan Standard Time"]);
+    assert(tzConversions.toWindows["America/Yakutat"] == ["Alaskan Standard Time"]);
+    assert(tzConversions.toWindows["Etc/GMT+10"] == ["Hawaiian Standard Time"]);
+    assert(tzConversions.toWindows["Etc/GMT+11"] == ["UTC-11"]);
+    assert(tzConversions.toWindows["Etc/GMT+12"] == ["Dateline Standard Time"]);
+    assert(tzConversions.toWindows["Pacific/Honolulu"] == ["Hawaiian Standard Time"]);
+    assert(tzConversions.toWindows["Pacific/Johnston"] == ["Hawaiian Standard Time"]);
+    assert(tzConversions.toWindows["Pacific/Midway"] == ["UTC-11"]);
+    assert(tzConversions.toWindows["Pacific/Niue"] == ["UTC-11"]);
+    assert(tzConversions.toWindows["Pacific/Pago_Pago"] == ["UTC-11"]);
+    assert(tzConversions.toWindows["Pacific/Rarotonga"] == ["Hawaiian Standard Time"]);
+    assert(tzConversions.toWindows["Pacific/Tahiti"] == ["Hawaiian Standard Time"]);
+
+    assert(tzConversions.fromWindows.length == 4);
+    assert(tzConversions.fromWindows["Alaskan Standard Time"] ==
+           ["America/Anchorage", "America/Juneau", "America/Nome", "America/Sitka", "America/Yakutat"]);
+    assert(tzConversions.fromWindows["Dateline Standard Time"] == ["Etc/GMT+12"]);
+    assert(tzConversions.fromWindows["Hawaiian Standard Time"] ==
+           ["Etc/GMT+10", "Pacific/Honolulu", "Pacific/Johnston", "Pacific/Rarotonga", "Pacific/Tahiti"]);
+    assert(tzConversions.fromWindows["UTC-11"] ==
+           ["Etc/GMT+11", "Pacific/Midway", "Pacific/Niue", "Pacific/Pago_Pago"]);
+
+    foreach(key, value; tzConversions.fromWindows)
+    {
+        assert(value.isSorted, key);
+        assert(equal(value.uniq(), value), key);
+    }
+}
+
+
+/++
+    $(RED Please use $(LREF parseTZConversions) instead. This function will be
+          deprecated in 2.072, because Microsoft changes their time zones too
+          often for us to compile the conversions into Phobos and have them be
+          properly up-to-date.)
+
     Converts the given TZ Database name to the corresponding Windows time zone
     name.
 
@@ -29542,7 +30380,7 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "America/Pangnirtung": return "Eastern Standard Time";
         case "America/Paramaribo": return "SA Eastern Standard Time";
         case "America/Phoenix": return "US Mountain Standard Time";
-        case "America/Port-au-Prince": return "Eastern Standard Time";
+        case "America/Port-au-Prince": return "Haiti Standard Time";
         case "America/Port_of_Spain": return "SA Western Standard Time";
         case "America/Porto_Velho": return "SA Western Standard Time";
         case "America/Puerto_Rico": return "SA Western Standard Time";
@@ -29599,11 +30437,12 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "Asia/Bahrain": return "Arab Standard Time";
         case "Asia/Baku": return "Azerbaijan Standard Time";
         case "Asia/Bangkok": return "SE Asia Standard Time";
+        case "Asia/Barnaul": return "Altai Standard Time";
         case "Asia/Beirut": return "Middle East Standard Time";
         case "Asia/Bishkek": return "Central Asia Standard Time";
         case "Asia/Brunei": return "Singapore Standard Time";
         case "Asia/Calcutta": return "India Standard Time";
-        case "Asia/Chita": return "North Asia East Standard Time";
+        case "Asia/Chita": return "Transbaikal Standard Time";
         case "Asia/Choibalsan": return "Ulaanbaatar Standard Time";
         case "Asia/Colombo": return "Sri Lanka Standard Time";
         case "Asia/Damascus": return "Syria Standard Time";
@@ -29638,12 +30477,13 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "Asia/Oral": return "West Asia Standard Time";
         case "Asia/Phnom_Penh": return "SE Asia Standard Time";
         case "Asia/Pontianak": return "SE Asia Standard Time";
+        case "Asia/Pyongyang": return "North Korea Standard Time";
         case "Asia/Qatar": return "Arab Standard Time";
         case "Asia/Qyzylorda": return "Central Asia Standard Time";
         case "Asia/Rangoon": return "Myanmar Standard Time";
         case "Asia/Riyadh": return "Arab Standard Time";
         case "Asia/Saigon": return "SE Asia Standard Time";
-        case "Asia/Sakhalin": return "Vladivostok Standard Time";
+        case "Asia/Sakhalin": return "Sakhalin Standard Time";
         case "Asia/Samarkand": return "West Asia Standard Time";
         case "Asia/Seoul": return "Korea Standard Time";
         case "Asia/Shanghai": return "China Standard Time";
@@ -29712,6 +30552,7 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "Etc/GMT-9": return "Tokyo Standard Time";
         case "Europe/Amsterdam": return "W. Europe Standard Time";
         case "Europe/Andorra": return "W. Europe Standard Time";
+        case "Europe/Astrakhan": return "Astrakhan Standard Time";
         case "Europe/Athens": return "GTB Standard Time";
         case "Europe/Belgrade": return "Central Europe Standard Time";
         case "Europe/Berlin": return "W. Europe Standard Time";
@@ -29782,6 +30623,7 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "Pacific/Apia": return "Samoa Standard Time";
         case "Pacific/Auckland": return "New Zealand Standard Time";
         case "Pacific/Bougainville": return "Central Pacific Standard Time";
+        case "Pacific/Easter": return "Easter Island Standard Time";
         case "Pacific/Efate": return "Central Pacific Standard Time";
         case "Pacific/Enderbury": return "Tonga Standard Time";
         case "Pacific/Fakaofo": return "Tonga Standard Time";
@@ -29816,15 +30658,24 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
     }
 }
 
-version(Windows) unittest
+version(Windows) version(UpdateWindowsTZTranslations) unittest
 {
-    import std.format : format;
+    import std.stdio : stderr;
+
     foreach(tzName; TimeZone.getInstalledTZNames())
-        assert(tzDatabaseNameToWindowsTZName(tzName) !is null, format("TZName which failed: %s", tzName));
+    {
+        if (tzDatabaseNameToWindowsTZName(tzName) is null)
+            stderr.writeln("Missing TZName to Windows translation: ", tzName);
+    }
 }
 
 
 /++
+    $(RED Please use $(LREF parseTZConversions) instead. This function will be
+          deprecated in 2.072, because Microsoft changes their time zones too
+          often for us to compile the conversions into Phobos and have them be
+          properly up-to-date.)
+
     Converts the given Windows time zone name to a corresponding TZ Database
     name.
 
@@ -29844,11 +30695,14 @@ string windowsTZNameToTZDatabaseName(string tzName) @safe pure nothrow @nogc
         case "AUS Central Standard Time": return "Australia/Darwin";
         case "AUS Eastern Standard Time": return "Australia/Sydney";
         case "Afghanistan Standard Time": return "Asia/Kabul";
+        case "Haiti Standard Time": return "America/Port-au-Prince";
         case "Alaskan Standard Time": return "America/Anchorage";
+        case "Altai Standard Time": return "Asia/Barnaul";
         case "Arab Standard Time": return "Asia/Riyadh";
         case "Arabian Standard Time": return "Asia/Dubai";
         case "Arabic Standard Time": return "Asia/Baghdad";
         case "Argentina Standard Time": return "America/Buenos_Aires";
+        case "Astrakhan Standard Time": return "Europe/Astrakhan";
         case "Atlantic Standard Time": return "America/Halifax";
         case "Azerbaijan Standard Time": return "Asia/Baku";
         case "Azores Standard Time": return "Atlantic/Azores";
@@ -29876,6 +30730,7 @@ string windowsTZNameToTZDatabaseName(string tzName) @safe pure nothrow @nogc
         // updated recently enough).
         case "E. Europe Standard Time": return "Europe/Minsk";
         case "E. South America Standard Time": return "America/Sao_Paulo";
+        case "Easter Island Standard Time": return "Pacific/Easter";
         case "Eastern Standard Time": return "America/New_York";
         case "Eastern Standard Time (Mexico)": return "America/Cancun";
         case "Egypt Standard Time": return "Africa/Cairo";
@@ -29919,6 +30774,7 @@ string windowsTZNameToTZDatabaseName(string tzName) @safe pure nothrow @nogc
         case "Newfoundland Standard Time": return "America/St_Johns";
         case "North Asia East Standard Time": return "Asia/Irkutsk";
         case "North Asia Standard Time": return "Asia/Krasnoyarsk";
+        case "North Korea Standard Time": return "Asia/Pyongyang";
         case "Pacific SA Standard Time": return "America/Santiago";
         case "Pacific Standard Time": return "America/Los_Angeles";
         case "Pacific Standard Time (Mexico)": return "America/Santa_Isabel";
@@ -29933,6 +30789,7 @@ string windowsTZNameToTZDatabaseName(string tzName) @safe pure nothrow @nogc
         case "SA Pacific Standard Time": return "America/Bogota";
         case "SA Western Standard Time": return "America/La_Paz";
         case "SE Asia Standard Time": return "Asia/Bangkok";
+        case "Sakhalin Standard Time": return "Asia/Sakhalin";
         case "Samoa Standard Time": return "Pacific/Apia";
         case "Singapore Standard Time": return "Asia/Singapore";
         case "South Africa Standard Time": return "Africa/Johannesburg";
@@ -29942,6 +30799,7 @@ string windowsTZNameToTZDatabaseName(string tzName) @safe pure nothrow @nogc
         case "Tasmania Standard Time": return "Australia/Hobart";
         case "Tokyo Standard Time": return "Asia/Tokyo";
         case "Tonga Standard Time": return "Pacific/Tongatapu";
+        case "Transbaikal Standard Time": return "Asia/Chita";
         case "Turkey Standard Time": return "Europe/Istanbul";
         case "US Eastern Standard Time": return "America/Indianapolis";
         case "US Mountain Standard Time": return "America/Phoenix";
@@ -29962,11 +30820,15 @@ string windowsTZNameToTZDatabaseName(string tzName) @safe pure nothrow @nogc
     }
 }
 
-version(Windows) unittest
+version(Windows) version(UpdateWindowsTZTranslations) unittest
 {
-    import std.format : format;
-    foreach(tzName; WindowsTimeZone.getInstalledTZNames())
-        assert(windowsTZNameToTZDatabaseName(tzName) !is null, format("TZName which failed: %s", tzName));
+    import std.stdio : stderr;
+
+    foreach(winName; WindowsTimeZone.getInstalledTZNames())
+    {
+        if (windowsTZNameToTZDatabaseName(winName) is null)
+            stderr.writeln("Missing Windows to TZName translation: ", winName);
+    }
 }
 
 
@@ -30029,7 +30891,7 @@ public:
         if(_flagStarted)
         {
             // Set current system time if StopWatch is measuring.
-            _timeStart = Clock.currSystemTick;
+            _timeStart = TickDuration.currSystemTick;
         }
         else
         {
@@ -30058,7 +30920,7 @@ public:
     {
         assert(!_flagStarted);
         _flagStarted = true;
-        _timeStart = Clock.currSystemTick;
+        _timeStart = TickDuration.currSystemTick;
     }
 
     @trusted unittest
@@ -30084,7 +30946,7 @@ public:
     {
         assert(_flagStarted);
         _flagStarted = false;
-        _timeMeasured += Clock.currSystemTick - _timeStart;
+        _timeMeasured += TickDuration.currSystemTick - _timeStart;
     }
 
     @trusted unittest
@@ -30110,7 +30972,7 @@ public:
     TickDuration peek() const
     {
         if(_flagStarted)
-            return Clock.currSystemTick - _timeStart + _timeMeasured;
+            return TickDuration.currSystemTick - _timeStart + _timeMeasured;
 
         return _timeMeasured;
     }
@@ -30380,31 +31242,91 @@ unittest
 /++
     Whether the given type defines all of the necessary functions for it to
     function as a time point.
+
+    1. $(D T) must define a static property named $(D min) which is the smallest
+       value of $(D T) as $(Unqual!T).
+
+    2. $(D T) must define a static property named $(D max) which is the largest
+       value of $(D T) as $(Unqual!T).
+
+    3. $(D T) must define an $(D opBinary) for addition and subtraction that
+       accepts $(CXREF time, Duration) and returns $(D Unqual!T).
+
+    4. $(D T) must define an $(D opOpAssign) for addition and subtraction that
+       accepts $(CXREF time, Duration) and returns $(D ref Unqual!T).
+
+    5. $(D T) must define a $(D opBinary) for subtraction which accepts $(D T)
+       and returns returns $(CXREF time, Duration).
   +/
 template isTimePoint(T)
 {
-    enum isTimePoint = hasMin!T &&
-                       hasMax!T &&
-                       hasOverloadedOpBinaryWithDuration!T &&
-                       hasOverloadedOpAssignWithDuration!T &&
-                       hasOverloadedOpBinaryWithSelf!T;
+    enum isTimePoint = hasMin &&
+                       hasMax &&
+                       hasOverloadedOpBinaryWithDuration &&
+                       hasOverloadedOpAssignWithDuration &&
+                       hasOverloadedOpBinaryWithSelf &&
+                       !is(U == Duration);
+
+private:
+
+    alias U = Unqual!T;
+
+    enum hasMin = __traits(hasMember, T, "min") &&
+                  is(typeof(T.min) == U) &&
+                  is(typeof({static assert(__traits(isStaticFunction, T.min));}));
+
+    enum hasMax = __traits(hasMember, T, "max") &&
+                  is(typeof(T.max) == U) &&
+                  is(typeof({static assert(__traits(isStaticFunction, T.max));}));
+
+    enum hasOverloadedOpBinaryWithDuration = is(typeof(T.init + Duration.init) == U) &&
+                                             is(typeof(T.init - Duration.init) == U);
+
+    enum hasOverloadedOpAssignWithDuration = is(typeof(U.init += Duration.init) == U) &&
+                                             is(typeof(U.init -= Duration.init) == U) &&
+                                             is(typeof(
+                                             {
+                                                 // Until the overload with TickDuration is removed, this is ambiguous.
+                                                 //alias add = U.opOpAssign!"+";
+                                                 //alias sub = U.opOpAssign!"-";
+                                                 U u;
+                                                 auto ref add() { return u += Duration.init; }
+                                                 auto ref sub() { return u -= Duration.init; }
+                                                 alias FA = FunctionAttribute;
+                                                 static assert((functionAttributes!add & FA.ref_) != 0);
+                                                 static assert((functionAttributes!sub & FA.ref_) != 0);
+                                             }));
+
+    enum hasOverloadedOpBinaryWithSelf = is(typeof(T.init - T.init) == Duration);
+}
+
+///
+unittest
+{
+    static assert(isTimePoint!Date);
+    static assert(isTimePoint!DateTime);
+    static assert(isTimePoint!SysTime);
+    static assert(isTimePoint!TimeOfDay);
+
+    static assert(!isTimePoint!int);
+    static assert(!isTimePoint!Duration);
+    static assert(!isTimePoint!(Interval!SysTime));
 }
 
 unittest
 {
-    static assert(isTimePoint!(Date));
-    static assert(isTimePoint!(DateTime));
-    static assert(isTimePoint!(TimeOfDay));
-    static assert(isTimePoint!(SysTime));
-    static assert(isTimePoint!(const Date));
-    static assert(isTimePoint!(const DateTime));
-    static assert(isTimePoint!(const TimeOfDay));
-    static assert(isTimePoint!(const SysTime));
-    static assert(isTimePoint!(immutable Date));
-    static assert(isTimePoint!(immutable DateTime));
-    static assert(isTimePoint!(immutable TimeOfDay));
-    static assert(isTimePoint!(immutable SysTime));
+    import std.meta : AliasSeq;
+
+    foreach(TP; AliasSeq!(Date, DateTime, SysTime, TimeOfDay))
+    {
+        static assert(isTimePoint!(const TP), TP.stringof);
+        static assert(isTimePoint!(immutable TP), TP.stringof);
+    }
+
+    foreach(T; AliasSeq!(float, string, Duration, Interval!Date, PosInfInterval!Date, NegInfInterval!Date))
+        static assert(!isTimePoint!T, T.stringof);
 }
+
 
 /++
     Whether the given Gregorian Year is a leap year.
@@ -31041,7 +31963,7 @@ SysTime parseRFC822DateTime(R)(R value) @safe
        (is(Unqual!(ElementType!R) == char) || is(Unqual!(ElementType!R) == ubyte)))
 {
     import std.functional : not;
-    import std.ascii : isDigit;
+    import std.ascii : isDigit, isAlpha, isPrintable;
     import std.typecons : Rebindable;
     import std.string : capitalize, format;
     import std.conv : to;
@@ -31075,7 +31997,7 @@ SysTime parseRFC822DateTime(R)(R value) @safe
     }
 
     // day-of-week
-    if(std.ascii.isAlpha(value[0]))
+    if(isAlpha(value[0]))
     {
         auto dowStr = sliceAsString(value[0 .. 3]);
         switch(dowStr)
@@ -31095,7 +32017,7 @@ afterDoW: stripAndCheckLen(value[3 .. value.length], ",7Dec1200:00A".length);
     }
 
     // day
-    immutable digits = std.ascii.isDigit(value[1]) ? 2 : 1;
+    immutable digits = isDigit(value[1]) ? 2 : 1;
     immutable day = _convDigits!short(value[0 .. digits]);
     if(day == -1)
         throw new DateTimeException("Invalid day");
@@ -31229,7 +32151,7 @@ afterMon: stripAndCheckLen(value[3 .. value.length], "1200:00A".length);
     // that if the next character is printable (and not part of CFWS), then it
     // might be part of the timezone and thus affect what the timezone was
     // supposed to be, so we'll throw, but otherwise, we'll just ignore it.
-    if(!value.empty && std.ascii.isPrintable(value[0]) && value[0] != ' ' && value[0] != '(')
+    if(!value.empty && isPrintable(value[0]) && value[0] != ' ' && value[0] != '(')
         throw new DateTimeException("Invalid timezone");
 
     try
@@ -31276,10 +32198,10 @@ unittest
     import std.algorithm;
     import std.ascii;
     import std.format : format;
+    import std.meta;
     import std.range;
     import std.string;
     import std.typecons;
-    import std.typetuple;
 
     static struct Rand3Letters
     {
@@ -31294,10 +32216,10 @@ unittest
         static auto start() { Rand3Letters retval; retval.popFront(); return retval; }
     }
 
-    foreach(cr; TypeTuple!(function(string a){return cast(char[])a;},
-                           function(string a){return cast(ubyte[])a;},
-                           function(string a){return a;},
-                           function(string a){return map!(b => cast(char)b)(a.representation);}))
+    foreach(cr; AliasSeq!(function(string a){return cast(char[])a;},
+                          function(string a){return cast(ubyte[])a;},
+                          function(string a){return a;},
+                          function(string a){return map!(b => cast(char)b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
         alias test = testParse822!cr;
@@ -31545,10 +32467,10 @@ unittest
     import std.algorithm;
     import std.ascii;
     import std.format : format;
+    import std.meta;
     import std.range;
     import std.string;
     import std.typecons;
-    import std.typetuple;
 
     auto std1 = SysTime(DateTime(2012, 12, 21, 13, 14, 15), UTC());
     auto std2 = SysTime(DateTime(2012, 12, 21, 13, 14, 0), UTC());
@@ -31559,10 +32481,10 @@ unittest
     auto tooLate1 = SysTime(Date(10_000, 1, 1), UTC());
     auto tooLate2 = SysTime(DateTime(12_007, 12, 31, 12, 22, 19), UTC());
 
-    foreach(cr; TypeTuple!(function(string a){return cast(char[])a;},
-                           function(string a){return cast(ubyte[])a;},
-                           function(string a){return a;},
-                           function(string a){return map!(b => cast(char)b)(a.representation);}))
+    foreach(cr; AliasSeq!(function(string a){return cast(char[])a;},
+                          function(string a){return cast(ubyte[])a;},
+                          function(string a){return a;},
+                          function(string a){return map!(b => cast(char)b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
         alias test = testParse822!cr;
@@ -31872,9 +32794,9 @@ private int cmpTimeUnitsCTFE(string lhs, string rhs) @safe pure nothrow
 unittest
 {
     import std.format : format;
+    import std.meta;
     import std.string;
     import std.typecons;
-    import std.typetuple;
 
     static string genTest(size_t index)
     {
@@ -31891,7 +32813,7 @@ unittest
     }
 
     static assert(timeStrings.length == 10);
-    foreach(n; TypeTuple!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+    foreach(n; AliasSeq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
         mixin(genTest(n));
 }
 
@@ -32180,7 +33102,7 @@ version(StdDdoc)
         $(D func) will run. $(D func) is a unary function that takes a
         $(CXREF time, TickDuration).
 
-        Examples:
+        Example:
 --------------------
 {
     auto mt = measureTime!((TickDuration a)
@@ -33000,12 +33922,12 @@ R _stripCFWS(R)(R range)
 unittest
 {
     import std.algorithm;
+    import std.meta;
     import std.string;
     import std.typecons;
-    import std.typetuple;
 
-    foreach(cr; TypeTuple!(function(string a){return cast(ubyte[])a;},
-                           function(string a){return map!(b => cast(char)b)(a.representation);}))
+    foreach(cr; AliasSeq!(function(string a){return cast(ubyte[])a;},
+                          function(string a){return map!(b => cast(char)b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
 
@@ -33111,7 +34033,7 @@ T _convDigits(T, R)(R str)
     {
         if(i != 0)
             num *= 10;
-        if(!std.ascii.isDigit(str[i]))
+        if(!isDigit(str[i]))
             return -1;
         num += str[i] - '0';
     }
@@ -33132,170 +34054,6 @@ unittest
         scope(failure) writeln(str);
         assert(_convDigits!int(str) == -1);
     }
-}
-
-
-/+
-    Whether the given type defines the static property min which returns the
-    minimum value for the type.
-  +/
-template hasMin(T)
-{
-    enum hasMin = __traits(hasMember, T, "min") &&
-                  __traits(isStaticFunction, T.min) &&
-                  is(typeof(T.min) == Unqual!T);
-}
-
-unittest
-{
-    static assert(hasMin!(Date));
-    static assert(hasMin!(TimeOfDay));
-    static assert(hasMin!(DateTime));
-    static assert(hasMin!(SysTime));
-    static assert(hasMin!(const Date));
-    static assert(hasMin!(const TimeOfDay));
-    static assert(hasMin!(const DateTime));
-    static assert(hasMin!(const SysTime));
-    static assert(hasMin!(immutable Date));
-    static assert(hasMin!(immutable TimeOfDay));
-    static assert(hasMin!(immutable SysTime));
-}
-
-
-/+
-    Whether the given type defines the static property max which returns the
-    maximum value for the type.
-  +/
-template hasMax(T)
-{
-    enum hasMax = __traits(hasMember, T, "max") &&
-                  __traits(isStaticFunction, T.max) &&
-                  is(typeof(T.max) == Unqual!T);
-}
-
-unittest
-{
-    static assert(hasMax!(Date));
-    static assert(hasMax!(TimeOfDay));
-    static assert(hasMax!(DateTime));
-    static assert(hasMax!(SysTime));
-    static assert(hasMax!(const Date));
-    static assert(hasMax!(const TimeOfDay));
-    static assert(hasMax!(const DateTime));
-    static assert(hasMax!(const SysTime));
-    static assert(hasMax!(immutable Date));
-    static assert(hasMax!(immutable TimeOfDay));
-    static assert(hasMax!(immutable DateTime));
-    static assert(hasMax!(immutable SysTime));
-}
-
-
-/+
-    Whether the given type defines the overloaded opBinary operators that a time
-    point is supposed to define which work with time durations. Namely:
-
-    $(BOOKTABLE,
-    $(TR $(TD TimePoint opBinary"+"(duration)))
-    $(TR $(TD TimePoint opBinary"-"(duration)))
-    )
-  +/
-template hasOverloadedOpBinaryWithDuration(T)
-{
-    enum hasOverloadedOpBinaryWithDuration = __traits(compiles, T.init + dur!"days"(5)) &&
-                                             is(typeof(T.init + dur!"days"(5)) == Unqual!T) &&
-                                             __traits(compiles, T.init - dur!"days"(5)) &&
-                                             is(typeof(T.init - dur!"days"(5)) == Unqual!T) &&
-                                             __traits(compiles, T.init + TickDuration.from!"hnsecs"(5)) &&
-                                             is(typeof(T.init + TickDuration.from!"hnsecs"(5)) == Unqual!T) &&
-                                             __traits(compiles, T.init - TickDuration.from!"hnsecs"(5)) &&
-                                             is(typeof(T.init - TickDuration.from!"hnsecs"(5)) == Unqual!T);
-}
-
-unittest
-{
-    static assert(hasOverloadedOpBinaryWithDuration!(Date));
-    static assert(hasOverloadedOpBinaryWithDuration!(TimeOfDay));
-    static assert(hasOverloadedOpBinaryWithDuration!(DateTime));
-    static assert(hasOverloadedOpBinaryWithDuration!(SysTime));
-    static assert(hasOverloadedOpBinaryWithDuration!(const Date));
-    static assert(hasOverloadedOpBinaryWithDuration!(const TimeOfDay));
-    static assert(hasOverloadedOpBinaryWithDuration!(const DateTime));
-    static assert(hasOverloadedOpBinaryWithDuration!(const SysTime));
-    static assert(hasOverloadedOpBinaryWithDuration!(immutable Date));
-    static assert(hasOverloadedOpBinaryWithDuration!(immutable TimeOfDay));
-    static assert(hasOverloadedOpBinaryWithDuration!(immutable DateTime));
-    static assert(hasOverloadedOpBinaryWithDuration!(immutable SysTime));
-}
-
-
-/+
-    Whether the given type defines the overloaded opOpAssign operators that a time point is supposed
-    to define. Namely:
-
-    $(BOOKTABLE,
-    $(TR $(TD TimePoint opOpAssign"+"(duration)))
-    $(TR $(TD TimePoint opOpAssign"-"(duration)))
-    )
-  +/
-template hasOverloadedOpAssignWithDuration(T)
-{
-    enum hasOverloadedOpAssignWithDuration = is(typeof(
-    {
-        auto  d = dur!"days"(5);
-        auto td = TickDuration.from!"hnsecs"(5);
-        alias U = Unqual!T;
-        static assert(is(typeof(U.init +=  d) == U));
-        static assert(is(typeof(U.init -=  d) == U));
-        static assert(is(typeof(U.init += td) == U));
-        static assert(is(typeof(U.init -= td) == U));
-    }));
-}
-
-unittest
-{
-    static assert(hasOverloadedOpAssignWithDuration!(Date));
-    static assert(hasOverloadedOpAssignWithDuration!(TimeOfDay));
-    static assert(hasOverloadedOpAssignWithDuration!(DateTime));
-    static assert(hasOverloadedOpAssignWithDuration!(SysTime));
-    static assert(hasOverloadedOpAssignWithDuration!(const Date));
-    static assert(hasOverloadedOpAssignWithDuration!(const TimeOfDay));
-    static assert(hasOverloadedOpAssignWithDuration!(const DateTime));
-    static assert(hasOverloadedOpAssignWithDuration!(const SysTime));
-    static assert(hasOverloadedOpAssignWithDuration!(immutable Date));
-    static assert(hasOverloadedOpAssignWithDuration!(immutable TimeOfDay));
-    static assert(hasOverloadedOpAssignWithDuration!(immutable DateTime));
-    static assert(hasOverloadedOpAssignWithDuration!(immutable SysTime));
-}
-
-
-/+
-    Whether the given type defines the overloaded opBinary operator that a time point is supposed
-    to define which works with itself. Namely:
-
-    $(BOOKTABLE,
-    $(TR $(TD duration opBinary"-"(Date)))
-    )
-  +/
-template hasOverloadedOpBinaryWithSelf(T)
-{
-    enum hasOverloadedOpBinaryWithSelf = __traits(compiles, T.init - T.init) &&
-                                         is(Unqual!(typeof(T.init - T.init)) == Duration);
-}
-
-unittest
-{
-    static assert(hasOverloadedOpBinaryWithSelf!(Date));
-    static assert(hasOverloadedOpBinaryWithSelf!(TimeOfDay));
-    static assert(hasOverloadedOpBinaryWithSelf!(DateTime));
-    static assert(hasOverloadedOpBinaryWithSelf!(SysTime));
-    static assert(hasOverloadedOpBinaryWithSelf!(const Date));
-    static assert(hasOverloadedOpBinaryWithSelf!(const TimeOfDay));
-    static assert(hasOverloadedOpBinaryWithSelf!(const DateTime));
-    static assert(hasOverloadedOpBinaryWithSelf!(const SysTime));
-    static assert(hasOverloadedOpBinaryWithSelf!(immutable Date));
-    static assert(hasOverloadedOpBinaryWithSelf!(immutable TimeOfDay));
-    static assert(hasOverloadedOpBinaryWithSelf!(immutable DateTime));
-    static assert(hasOverloadedOpBinaryWithSelf!(immutable SysTime));
 }
 
 

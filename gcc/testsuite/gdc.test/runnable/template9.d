@@ -2599,8 +2599,8 @@ void test9885()
     }
     W!(int,int[]).woo(1,2,3);
     W!(int,int[2]).woo(1,2,3);
-    static assert(!__traits(compiles, W!(int,int,int).woo(1,2,3)));	// int... <- 2
-    static assert(!__traits(compiles, W!(int,int).woo(1,2)));		// int... <- 2
+    static assert(!__traits(compiles, W!(int,int,int).woo(1,2,3)));     // int... <- 2
+    static assert(!__traits(compiles, W!(int,int).woo(1,2)));           // int... <- 2
     static assert(!__traits(compiles, W!(int,int[2]).woo(1,2)));    // int[2]... <- 2
 
     R!().roo(1, "", []);
@@ -4725,6 +4725,29 @@ void test15152()
 
     enum s = S.init;
     func!(s.name);
+}
+
+/******************************************/
+// 15781
+
+void test15781()
+{
+    static struct S
+    {
+        int value;
+    }
+
+    T foo(T)(T a, T b)
+    {
+        return T();
+    }
+
+    const S cs;
+          S ms;
+    static assert(is(typeof(foo(ms, ms)) ==       S));
+    static assert(is(typeof(foo(ms, cs)) == const S));
+    static assert(is(typeof(foo(cs, ms)) == const S));
+    static assert(is(typeof(foo(cs, cs)) == const S));
 }
 
 /******************************************/

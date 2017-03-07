@@ -343,6 +343,28 @@ void AliasDeclaration::aliasSemantic(Scope *sc)
     //printf("AliasDeclaration::semantic() %s\n", toChars());
     if (aliassym)
     {
+        FuncDeclaration *fd = aliassym->isFuncLiteralDeclaration();
+        TemplateDeclaration *td = aliassym->isTemplateDeclaration();
+        if (fd || td && td->literal)
+        {
+            if (fd && fd->semanticRun >= PASSsemanticdone)
+                return;
+
+            Expression *e = new FuncExp(loc, aliassym);
+            e = e->semantic(sc);
+            if (e->op == TOKfunction)
+            {
+                FuncExp *fe = (FuncExp *)e;
+                aliassym = fe->td ? (Dsymbol *)fe->td : fe->fd;
+            }
+            else
+            {
+                aliassym = NULL;
+                type = Type::terror;
+            }
+            return;
+        }
+
         if (aliassym->isTemplateInstance())
             aliassym->semantic(sc);
         return;
@@ -387,7 +409,7 @@ void AliasDeclaration::aliasSemantic(Scope *sc)
         s = NULL;
         type = Type::terror;
     }
-    if (!s || !((s->getType() && type->equals(s->getType())) || s->isEnumMember()))
+    if (!s || !s->isEnumMember())
     {
         Type *t;
         Expression *e;
@@ -803,12 +825,18 @@ VarDeclaration::VarDeclaration(Loc loc, Type *type, Identifier *id, Initializer 
     mynew = false;
     canassign = 0;
     overlapped = false;
+    overlapUnsafe = false;
+    doNotInferScope = false;
+    isdataseg = 0;
     lastVar = NULL;
     endlinnum = 0;
     ctfeAdrOnStack = -1;
     rundtor = NULL;
     edtor = NULL;
     range = NULL;
+
+    static unsigned nextSequenceNumber = 0;
+    this->sequenceNumber = ++nextSequenceNumber;
 }
 
 Dsymbol *VarDeclaration::syntaxCopy(Dsymbol *s)
@@ -1165,6 +1193,25 @@ Lnomatch:
             error("cannot be %s", buf.peekString());
         }
         storage_class &= ~stc;  // strip off
+    }
+
+    if (storage_class & STCscope)
+    {
+        StorageClass stc = storage_class & (STCstatic | STCextern | STCmanifest | STCtls | STCgshared);
+        if (stc)
+        {
+            OutBuffer buf;
+            stcToBuffer(&buf, stc);
+            error("cannot be 'scope' and '%s'", buf.peekString());
+        }
+        else if (isMember())
+        {
+            error("field cannot be 'scope'");
+        }
+        else if (!type->hasPointers())
+        {
+            storage_class &= ~STCscope;     // silently ignore; may occur in generic code
+        }
     }
 
     if (storage_class & (STCstatic | STCextern | STCmanifest | STCtemplateparameter | STCtls | STCgshared | STCctfe))
@@ -1751,6 +1798,9 @@ const char *VarDeclaration::kind()
 Dsymbol *VarDeclaration::toAlias()
 {
     //printf("VarDeclaration::toAlias('%s', this = %p, aliassym = %p)\n", toChars(), this, aliassym);
+    if ((!type || !type->deco) && _scope)
+        semantic(_scope);
+
     assert(this != aliassym);
     Dsymbol *s = aliassym ? aliassym->toAlias() : this;
     return s;
@@ -1793,6 +1843,25 @@ bool VarDeclaration::isImportedSymbol()
     return false;
 }
 
+/*******************************************
+ * Helper function for the expansion of manifest constant.
+ */
+Expression *VarDeclaration::expandInitializer(Loc loc)
+{
+    assert((storage_class & STCmanifest) && _init);
+
+    Expression *e = getConstInitializer();
+    if (!e)
+    {
+        ::error(loc, "cannot make expression out of initializer for %s", toChars());
+        return new ErrorExp();
+    }
+
+    e = e->copy();
+    e->loc = loc;    // for better error message
+    return e;
+}
+
 void VarDeclaration::checkCtorConstInit()
 {
 #if 0 /* doesn't work if more than one static ctor */
@@ -1828,75 +1897,70 @@ bool VarDeclaration::checkNestedReference(Scope *sc, Loc loc)
     // Function literals from fdthis to p must be delegates
     checkNestedRef(fdthis, p);
 
-    if (1)
+    // The function that this variable is in
+    FuncDeclaration *fdv = p->isFuncDeclaration();
+    if (!fdv || fdv == fdthis)
+        return false;
+
+    // Add fdthis to nestedrefs[] if not already there
+    for (size_t i = 0; 1; i++)
     {
-        // The function that this variable is in
-        FuncDeclaration *fdv = p->isFuncDeclaration();
-
-        if (fdv && fdv != fdthis)
+        if (i == nestedrefs.dim)
         {
-            // Add fdthis to nestedrefs[] if not already there
-            for (size_t i = 0; 1; i++)
-            {
-                if (i == nestedrefs.dim)
-                {
-                    nestedrefs.push(fdthis);
-                    break;
-                }
-                if (nestedrefs[i] == fdthis)
-                    break;
-            }
-
-            if (fdthis->ident != Id::require && fdthis->ident != Id::ensure)
-            {
-                /* __require and __ensure will always get called directly,
-                 * so they never make outer functions closure.
-                 */
-
-                //printf("\tfdv = %s\n", fdv->toChars());
-                //printf("\tfdthis = %s\n", fdthis->toChars());
-
-                if (loc.filename)
-                {
-                    int lv = fdthis->getLevel(loc, sc, fdv);
-                    if (lv == -2)   // error
-                        return true;
-                }
-
-                // Add this to fdv->closureVars[] if not already there
-                for (size_t i = 0; 1; i++)
-                {
-                    if (i == fdv->closureVars.dim)
-                    {
-                        if (!sc->intypeof && !(sc->flags & SCOPEcompile))
-                            fdv->closureVars.push(this);
-                        break;
-                    }
-                    if (fdv->closureVars[i] == this)
-                        break;
-                }
-
-                //printf("fdthis is %s\n", fdthis->toChars());
-                //printf("var %s in function %s is nested ref\n", toChars(), fdv->toChars());
-                // __dollar creates problems because it isn't a real variable Bugzilla 3326
-                if (ident == Id::dollar)
-                {
-                    ::error(loc, "cannnot use $ inside a function literal");
-                    return true;
-                }
-
-                if (ident == Id::withSym)       // Bugzilla 1759
-                {
-                    ExpInitializer *ez = _init->isExpInitializer();
-                    assert(ez);
-                    Expression *e = ez->exp;
-                    if (e->op == TOKconstruct || e->op == TOKblit)
-                        e = ((AssignExp *)e)->e2;
-                    return lambdaCheckForNestedRef(e, sc);
-                }
-            }
+            nestedrefs.push(fdthis);
+            break;
         }
+        if (nestedrefs[i] == fdthis)
+            break;
     }
+
+    /* __require and __ensure will always get called directly,
+     * so they never make outer functions closure.
+     */
+    if (fdthis->ident == Id::require && fdthis->ident == Id::ensure)
+        return false;
+
+    //printf("\tfdv = %s\n", fdv->toChars());
+    //printf("\tfdthis = %s\n", fdthis->toChars());
+    if (loc.filename)
+    {
+        int lv = fdthis->getLevel(loc, sc, fdv);
+        if (lv == -2)   // error
+            return true;
+    }
+
+    // Add this to fdv->closureVars[] if not already there
+    for (size_t i = 0; 1; i++)
+    {
+        if (i == fdv->closureVars.dim)
+        {
+            if (!sc->intypeof && !(sc->flags & SCOPEcompile))
+                fdv->closureVars.push(this);
+            break;
+        }
+        if (fdv->closureVars[i] == this)
+            break;
+    }
+
+    //printf("fdthis is %s\n", fdthis->toChars());
+    //printf("var %s in function %s is nested ref\n", toChars(), fdv->toChars());
+    // __dollar creates problems because it isn't a real variable Bugzilla 3326
+    if (ident == Id::dollar)
+    {
+        ::error(loc, "cannnot use $ inside a function literal");
+        return true;
+    }
+
+    if (ident == Id::withSym)       // Bugzilla 1759
+    {
+        ExpInitializer *ez = _init->isExpInitializer();
+        assert(ez);
+        Expression *e = ez->exp;
+        if (e->op == TOKconstruct || e->op == TOKblit)
+            e = ((AssignExp *)e)->e2;
+        return lambdaCheckForNestedRef(e, sc);
+    }
+
     return false;
 }
 
@@ -2097,7 +2161,7 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
     }
 
     // Destructors for classes
-    if (storage_class & (STCauto | STCscope))
+    if (storage_class & (STCauto | STCscope) && !(storage_class & STCparameter))
     {
         for (ClassDeclaration *cd = type->isClassHandle();
              cd;
@@ -2128,6 +2192,19 @@ Expression *VarDeclaration::callScopeDtor(Scope *sc)
         }
     }
     return e;
+}
+
+/**********************************
+ * Determine if `this` has a lifetime that lasts past
+ * the destruction of `v`
+ * Params:
+ *  v = variable to test against
+ * Returns:
+ *  true if it does
+ */
+bool VarDeclaration::enclosesLifetimeOf(VarDeclaration *v) const
+{
+    return sequenceNumber < v->sequenceNumber;
 }
 
 /******************************************

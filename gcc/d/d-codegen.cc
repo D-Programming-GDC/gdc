@@ -457,48 +457,57 @@ get_decl_tree (Declaration *decl)
 	  return component_ref (build_deref (frame_ref),
 				DECL_LANG_FRAME_FIELD (vsym));
 	}
-      else if (vd->parent != func && vd->isThisDeclaration() && func->isThis())
+      else if (vd->parent != func && vd->isThisDeclaration ())
 	{
 	  // Get the non-local 'this' value by going through parent link
 	  // of nested classes, this routine pretty much undoes what
 	  // getRightThis in the frontend removes from codegen.
-	  AggregateDeclaration *ad = func->isThis();
-	  tree this_tree = get_symbol_decl (func->vthis);
-
-	  while (true)
+	  AggregateDeclaration *ad = func->isThis ();
+	  if (ad != NULL)
 	    {
-	      Dsymbol *outer = ad->toParent2();
-	      // Get the this->this parent link.
-	      tree vthis_field = get_symbol_decl (ad->vthis);
-	      this_tree = component_ref (build_deref (this_tree), vthis_field);
+	      tree this_tree = get_symbol_decl (func->vthis);
+	      Dsymbol *outer = func;
 
-	      ad = outer->isAggregateDeclaration();
-	      if (ad != NULL)
-		continue;
-
-	      FuncDeclaration *fd = outer->isFuncDeclaration();
-	      if (fd != NULL)
-		ad = fd->isThis();
-
-	      if (fd && ad)
+	      while (outer != vd->parent)
 		{
-		  // If outer function creates a closure, then the 'this' value
-		  // would be the closure pointer, and the real 'this' the first
-		  // field of that closure.
-		  tree ff = get_frameinfo (fd);
-		  if (FRAMEINFO_CREATES_FRAME (ff))
+		  gcc_assert (ad != NULL);
+		  outer = ad->toParent2 ();
+
+		  // Get the this->this parent link.
+		  tree vthis_field = get_symbol_decl (ad->vthis);
+		  this_tree = component_ref (build_deref (this_tree),
+					     vthis_field);
+
+		  ad = outer->isAggregateDeclaration ();
+		  if (ad != NULL)
+		    continue;
+
+		  FuncDeclaration *fd = outer->isFuncDeclaration ();
+		  while (fd != NULL)
 		    {
-		      this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
-					     this_tree);
-		      this_tree = indirect_ref (build_ctype(ad->type), this_tree);
+		      // If outer function creates a closure, then the 'this'
+		      // value would be the closure pointer, and the real
+		      // 'this' the first field of that closure.
+		      tree ff = get_frameinfo (fd);
+		      if (FRAMEINFO_CREATES_FRAME (ff))
+			{
+			  this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
+						 this_tree);
+			  this_tree = indirect_ref (build_ctype (fd->vthis->type),
+						    this_tree);
+			}
+
+		      if (fd == vd->parent)
+			break;
+
+		      // Continue looking for the right 'this'
+		      outer = outer->toParent2 ();
+		      fd = outer->isFuncDeclaration ();
 		    }
 
-		  // Continue looking for the right 'this'
-		  if (fd != vd->parent)
-		    continue;
+		  ad = outer->isAggregateDeclaration ();
 		}
 
-	      gcc_assert (outer == vd->parent);
 	      return this_tree;
 	    }
 	}
@@ -4326,9 +4335,13 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
       if (fd->nrvo_can && fd->nrvo_var == v)
 	fd->nrvo_can = 0;
 
-      // Because the value needs to survive the end of the scope.
-      if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsScopeDtor())
-	v->error("has scoped destruction, cannot build closure");
+      if (FRAMEINFO_IS_CLOSURE (ffi))
+	{
+	  // Because the value needs to survive the end of the scope.
+	  if ((v->edtor && (v->storage_class & STCparameter))
+	      || v->needsScopeDtor())
+	    v->error("has scoped destruction, cannot build closure");
+	}
     }
 
   TYPE_FIELDS (frame_rec_type) = fields;

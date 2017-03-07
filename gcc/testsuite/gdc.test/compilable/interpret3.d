@@ -897,13 +897,6 @@ int staticdynamic()
 }
 static assert(staticdynamic() == 0);
 
-int[] crashing()
-{
-    int[12] cra;
-    return (cra[2 .. $] = 3);
-}
-static assert(crashing()[9] == 3);
-
 int chainassign()
 {
     int[4] x = 6;
@@ -4255,7 +4248,7 @@ static assert({ bug6851(); return true; }());
     7876
 **************************************************/
 
-int* bug7876(int n)
+int* bug7876(int n) @system
 {
     int x;
     auto ptr = &x;
@@ -4269,7 +4262,7 @@ struct S7876
     int* p;
 }
 
-S7876 bug7876b(int n)
+S7876 bug7876b(int n) @system
 {
     int x;
     S7876 s;
@@ -6708,7 +6701,7 @@ static assert(test11510());
 
 struct MultiArray11534
 {
-    this(size_t[] sizes...)
+    void set(size_t[] sizes...)
     {
         storage = new size_t[5];
     }
@@ -6721,7 +6714,8 @@ struct MultiArray11534
 }
 
 enum test11534 = () {
-    auto m = MultiArray11534(3,2,1);
+    auto m = MultiArray11534();
+    m.set(3,2,1);
     auto start = m.raw_ptr;   //this trigger the bug
     //auto start = m.storage.ptr + 1; //this obviously works
     return 0;
@@ -7666,3 +7660,20 @@ int test15251()
     return 1;
 }
 static assert(test15251());
+
+/**************************************************
+    15998 - Sagfault caused by memory corruption
+**************************************************/
+
+immutable string[2] foo15998 = ["",""];
+immutable string[2][] bar15998a = foo15998 ~ baz15998;
+immutable string[2][] bar15998b = baz15998 ~ foo15998;
+
+auto baz15998()
+{
+    immutable(string[2])[] r;
+    return r;
+}
+
+static assert(bar15998a == [["", ""]]);
+static assert(bar15998b == [["", ""]]);

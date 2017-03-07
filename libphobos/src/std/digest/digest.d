@@ -63,8 +63,8 @@ $(TR $(TDNW Implementation helpers) $(TD $(MYREF digestLength) $(MYREF WrapperDi
  */
 module std.digest.digest;
 
+import std.meta : allSatisfy;
 import std.traits;
-import std.typetuple : allSatisfy;
 public import std.ascii : LetterCase;
 
 
@@ -208,7 +208,7 @@ version(ExampleDigest)
              * interface for $(D ubyte) and $(D const(ubyte)[]).
              * The following usages of $(D put) must work for any type which
              * passes $(LREF isDigest):
-             * Examples:
+             * Example:
              * ----
              * ExampleDigest dig;
              * dig.put(cast(ubyte)0); //single ubyte
@@ -565,7 +565,7 @@ interface Digest
          * Also implements the $(XREF_PACK range,primitives,isOutputRange)
          * interface for $(D ubyte) and $(D const(ubyte)[]).
          *
-         * Examples:
+         * Example:
          * ----
          * void test(Digest dig)
          * {
@@ -598,7 +598,7 @@ interface Digest
          */
         @trusted nothrow ubyte[] finish();
         ///ditto
-        nothrow ubyte[] finish(scope ubyte[] buf);
+        nothrow ubyte[] finish(ubyte[] buf);
         //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=6549
         /*in
         {
@@ -896,7 +896,7 @@ class WrapperDigest(T) if(isDigest!T) : Digest
          * The finish function returns the hash value. It takes an optional buffer to copy the data
          * into. If a buffer is passed, it must have a length at least $(LREF length) bytes.
          *
-         * Examples:
+         * Example:
          * --------
          *
          * import std.digest.md;
@@ -909,7 +909,7 @@ class WrapperDigest(T) if(isDigest!T) : Digest
          * //length
          * --------
          */
-        nothrow ubyte[] finish(scope ubyte[] buf)
+        nothrow ubyte[] finish(ubyte[] buf)
         in
         {
             assert(buf.length >= this.length);
@@ -939,13 +939,13 @@ class WrapperDigest(T) if(isDigest!T) : Digest
              *
              * These functions are only available if $(D hasPeek!T) is true.
              */
-            @trusted ubyte[] peek(scope ubyte[] buf) const;
+            @trusted ubyte[] peek(ubyte[] buf) const;
             ///ditto
             @trusted ubyte[] peek() const;
         }
         else static if(hasPeek!T)
         {
-            @trusted ubyte[] peek(scope ubyte[] buf) const
+            @trusted ubyte[] peek(ubyte[] buf) const
             in
             {
                 assert(buf.length >= this.length);

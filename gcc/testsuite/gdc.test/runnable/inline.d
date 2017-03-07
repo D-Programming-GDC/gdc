@@ -78,10 +78,10 @@ void func(void function () v)
 void test4()
 {
    static void f1() { }
-   
+
    func(&f1);
-   //func(f1);  
-} 
+   //func(f1);
+}
 
 
 /************************************/
@@ -116,7 +116,7 @@ struct Struct
     void bar(out Struct Q)
     {
         if (foo() < 0)
-            Q = this; 
+            Q = this;
     }
 }
 

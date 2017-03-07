@@ -26,6 +26,7 @@
 #include "init.h"
 #include "tokens.h"
 
+FuncDeclaration *isFuncAddress(Expression *e, bool *hasOverloads = NULL);
 bool isCommutative(TOK op);
 MOD MODmerge(MOD mod1, MOD mod2);
 
@@ -732,14 +733,23 @@ MATCH implicitConvTo(Expression *e, Type *t)
                 TypeVector *tv = (TypeVector *)tb;
                 TypeSArray *tbase = (TypeSArray *)tv->basetype;
                 assert(tbase->ty == Tsarray);
-                if (e->elements->dim != tbase->dim->toInteger())
+                const size_t edim = e->elements->dim;
+                const size_t tbasedim = tbase->dim->toInteger();
+                if (edim > tbasedim)
                 {
                     result = MATCHnomatch;
                     return;
                 }
 
                 Type *telement = tv->elementType();
-                for (size_t i = 0; i < e->elements->dim; i++)
+                if (edim < tbasedim)
+                {
+                    Expression *el = typeb->nextOf()->defaultInitLiteral(e->loc);
+                    MATCH m = el->implicitConvTo(telement);
+                    if (m < result)
+                        result = m; // remember worst match
+                }
+                for (size_t i = 0; i < edim; i++)
                 {
                     Expression *el = (*e->elements)[i];
                     MATCH m = el->implicitConvTo(telement);
@@ -2018,6 +2028,16 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                         }
                     }
                 }
+
+                if (FuncDeclaration *f = isFuncAddress(e))
+                {
+                    if (f->checkForwardRef(e->loc))
+                    {
+                        result = new ErrorExp();
+                        return;
+                    }
+                }
+
                 visit((Expression *)e);
             }
             result->type = t;
@@ -2121,16 +2141,26 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                 TypeVector *tv = (TypeVector *)tb;
                 TypeSArray *tbase = (TypeSArray *)tv->basetype;
                 assert(tbase->ty == Tsarray);
-                if (e->elements->dim != tbase->dim->toInteger())
+                const size_t edim = e->elements->dim;
+                const size_t tbasedim = tbase->dim->toInteger();
+                if (edim > tbasedim)
                     goto L1;
 
                 ae = (ArrayLiteralExp *)e->copy();
                 ae->type = tbase;   // Bugzilla 12642
                 ae->elements = e->elements->copy();
                 Type *telement = tv->elementType();
-                for (size_t i = 0; i < e->elements->dim; i++)
+                for (size_t i = 0; i < edim; i++)
                 {
                     Expression *ex = (*e->elements)[i];
+                    ex = ex->castTo(sc, telement);
+                    (*ae->elements)[i] = ex;
+                }
+                // Fill in the rest with the default initializer
+                ae->elements->setDim(tbasedim);
+                for (size_t i = edim; i < tbasedim; i++)
+                {
+                    Expression *ex = typeb->nextOf()->defaultInitLiteral(e->loc);
                     ex = ex->castTo(sc, telement);
                     (*ae->elements)[i] = ex;
                 }
@@ -2241,6 +2271,16 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                     return;
                 }
             }
+
+            if (FuncDeclaration *f = isFuncAddress(e))
+            {
+                if (f->checkForwardRef(e->loc))
+                {
+                    result = new ErrorExp();
+                    return;
+                }
+            }
+
             visit((Expression *)e);
         }
 
@@ -2277,6 +2317,16 @@ Expression *castTo(Expression *e, Scope *sc, Type *t)
                             e->error("%s", msg);
                     }
                 }
+
+                if (FuncDeclaration *f = isFuncAddress(e))
+                {
+                    if (f->checkForwardRef(e->loc))
+                    {
+                        result = new ErrorExp();
+                        return;
+                    }
+                }
+
                 visit((Expression *)e);
             }
             else
@@ -2611,23 +2661,22 @@ bool isVoidArrayLiteral(Expression *e, Type *other)
 // used by deduceType()
 Type *rawTypeMerge(Type *t1, Type *t2)
 {
+    if (t1->equals(t2))
+        return t1;
+    if (t1->equivalent(t2))
+        return t1->castMod(MODmerge(t1->mod, t2->mod));
+
     Type *t1b = t1->toBasetype();
     Type *t2b = t2->toBasetype();
-
-    if (t1->equals(t2))
-    {
-        return t1;
-    }
-    else if (t1b->equals(t2b))
-    {
+    if (t1b->equals(t2b))
         return t1b;
-    }
-    else
-    {
-        TY ty = (TY)impcnvResult[t1b->ty][t2b->ty];
-        if (ty != Terror)
-            return Type::basic[ty];
-    }
+    if (t1b->equivalent(t2b))
+        return t1b->castMod(MODmerge(t1b->mod, t2b->mod));
+
+    TY ty = (TY)impcnvResult[t1b->ty][t2b->ty];
+    if (ty != Terror)
+        return Type::basic[ty];
+
     return NULL;
 }
 
@@ -3142,7 +3191,12 @@ Lcc:
     {
         // Bugzilla 13841, all vector types should have no common types between
         // different vectors, even though their sizes are same.
-        goto Lincompatible;
+        TypeVector *tv1 = (TypeVector *)t1;
+        TypeVector *tv2 = (TypeVector *)t2;
+        if (!tv1->basetype->equals(tv2->basetype))
+            goto Lincompatible;
+
+        goto LmodCompare;
     }
     else if (t1->ty == Tvector && t2->ty != Tvector &&
              e2->implicitConvTo(t1))
@@ -3173,6 +3227,7 @@ Lcc:
             goto Lagain;
         }
         assert(t1->ty == t2->ty);
+LmodCompare:
         if (!t1->isImmutable() && !t2->isImmutable() && t1->isShared() != t2->isShared())
             goto Lincompatible;
         unsigned char mod = MODmerge(t1->mod, t2->mod);

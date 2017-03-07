@@ -437,6 +437,7 @@ Expression *op_overload(Expression *e, Scope *sc)
                         t1b->ty == Tarray ||
                         t1b->ty == Taarray ||
                         t1b->ty == Ttuple ||
+                        t1b->ty == Tvector ||
                         ae->e1->op == TOKtype)
                     {
                         // Convert to SliceExp
@@ -1054,10 +1055,15 @@ Expression *op_overload(Expression *e, Scope *sc)
                     return;
                 }
 
-                /* Rewrite:
+                /* Do memberwise equality.
+                 * Rewrite:
                  *      e1 == e2
                  * as:
                  *      e1.tupleof == e2.tupleof
+                 *
+                 * If sd is a nested struct, and if it's nested in a class, it will
+                 * also compare the parent class's equality. Otherwise, compares
+                 * the identity of parent context through void*.
                  */
                 if (e->att1 && t1 == e->att1)
                     return;
@@ -1619,6 +1625,7 @@ Dsymbol *search_function(ScopeDsymbol *ad, Identifier *funcid)
 
 bool inferAggregate(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply)
 {
+    //printf("inferAggregate(%s)\n", fes->aggr->toChars());
     Identifier *idapply = (fes->op == TOKforeach) ? Id::apply : Id::applyReverse;
     Identifier *idfront = (fes->op == TOKforeach) ? Id::Ffront : Id::Fback;
     int sliced = 0;
@@ -1629,7 +1636,10 @@ bool inferAggregate(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply)
 
     while (1)
     {
-        if (!aggr->type)
+        aggr = aggr->semantic(sc);
+        aggr = resolveProperties(sc, aggr);
+        aggr = aggr->optimize(WANTvalue);
+        if (!aggr->type || aggr->op == TOKerror)
             goto Lerr;
 
         tab = aggr->type->toBasetype();
