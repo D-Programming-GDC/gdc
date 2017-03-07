@@ -22,6 +22,7 @@
 #include "declaration.h"
 #include "id.h"
 #include "attrib.h"
+#include "hdrgen.h"
 
 /********************************* Import ****************************/
 
@@ -47,7 +48,7 @@ Import::Import(Loc loc, Identifiers *packages, Identifier *id, Identifier *alias
     this->id = id;
     this->aliasId = aliasId;
     this->isstatic = isstatic;
-    this->protection = PROTprivate; // default to private
+    this->protection = Prot(PROTprivate); // default to private
     this->pkg = NULL;
     this->mod = NULL;
 
@@ -88,7 +89,7 @@ const char *Import::kind()
 
 Prot Import::prot()
 {
-    return Prot(protection);
+    return protection;
 }
 
 Dsymbol *Import::syntaxCopy(Dsymbol *s)
@@ -142,6 +143,8 @@ void Import::load(Scope *sc)
                     {
                         // mod is a package.d, or a normal module which conflicts with the package name.
                         assert(mod->isPackageFile == (p->isPkgMod == PKGmodule));
+                        if (mod->isPackageFile)
+                            mod->tag = p->tag; // reuse the same package tag
                     }
                 }
                 else
@@ -203,11 +206,11 @@ void Import::importAll(Scope *sc)
 
             mod->importAll(NULL);
 
+            if (sc->explicitProtection)
+                protection = sc->protection;
             if (!isstatic && !aliasId && !names.dim)
             {
-                if (sc->explicitProtection)
-                    protection = sc->protection.kind;
-                sc->scopesym->importScope(mod, Prot(protection));
+                sc->scopesym->importScope(mod, protection);
             }
         }
     }
@@ -215,12 +218,12 @@ void Import::importAll(Scope *sc)
 
 void Import::semantic(Scope *sc)
 {
-    //printf("Import::semantic('%s')\n", toPrettyChars());
+    //printf("Import::semantic('%s') %s\n", toPrettyChars(), id->toChars());
 
-    if (scope)
+    if (_scope)
     {
-        sc = scope;
-        scope = NULL;
+        sc = _scope;
+        _scope = NULL;
     }
 
     // Load if not already done so
@@ -237,21 +240,46 @@ void Import::semantic(Scope *sc)
         //printf("%s imports %s\n", sc->module->toChars(), mod->toChars());
         sc->module->aimports.push(mod);
 
-        if (!isstatic && !aliasId && !names.dim)
+        if (sc->explicitProtection)
+            protection = sc->protection;
+
+        if (!aliasId && !names.dim) // neither a selective nor a renamed import
         {
+            ScopeDsymbol *scopesym = NULL;
             if (sc->explicitProtection)
                 protection = sc->protection.kind;
             for (Scope *scd = sc; scd; scd = scd->enclosing)
             {
-                if (scd->scopesym)
+                if (!scd->scopesym)
+                    continue;
+                scopesym = scd->scopesym;
+                break;
+            }
+
+            if (!isstatic)
+            {
+                scopesym->importScope(mod, protection);
+            }
+
+            // Mark the imported packages as accessible from the current
+            // scope. This access check is necessary when using FQN b/c
+            // we're using a single global package tree. See Bugzilla 313.
+            if (packages)
+            {
+                // import a.b.c.d;
+                Package *p = pkg; // a
+                scopesym->addAccessiblePackage(p, protection);
+                for (size_t i = 1; i < packages->dim; i++) // [b, c]
                 {
-                    scd->scopesym->importScope(mod, Prot(protection));
-                    break;
+                    Identifier *id = (*packages)[i];
+                    p = (Package *) p->symtab->lookup(id);
+                    scopesym->addAccessiblePackage(p, protection);
                 }
             }
+            scopesym->addAccessiblePackage(mod, protection); // d
         }
 
-        mod->semantic();
+        mod->semantic(NULL);
 
         if (mod->needmoduleinfo)
         {
@@ -260,21 +288,17 @@ void Import::semantic(Scope *sc)
         }
 
         sc = sc->push(mod);
-        /* BUG: Protection checks can't be enabled yet. The issue is
-         * that Dsymbol::search errors before overload resolution.
-         */
-#if 0
         sc->protection = protection;
-#else
-        sc->protection = Prot(PROTpublic);
-#endif
         for (size_t i = 0; i < aliasdecls.dim; i++)
         {
             AliasDeclaration *ad = aliasdecls[i];
-            //printf("\tImport alias semantic('%s')\n", ad->toChars());
+            //printf("\tImport %s alias %s = %s, scope = %p\n", toPrettyChars(), aliases[i]->toChars(), names[i]->toChars(), ad->_scope);
             if (mod->search(loc, names[i]))
             {
                 ad->semantic(sc);
+                // If the import declaration is in non-root module,
+                // analysis of the aliased symbol is deferred.
+                // Therefore, don't see the ad->aliassym or ad->type here.
             }
             else
             {
@@ -294,7 +318,7 @@ void Import::semantic(Scope *sc)
     if (global.params.moduleDeps != NULL &&
         !(id == Id::object && sc->module->ident == Id::object) &&
         sc->module->ident != Id::entrypoint &&
-        strcmp(sc->module->ident->string, "__main") != 0)
+        strcmp(sc->module->ident->toChars(), "__main") != 0)
     {
         /* The grammar of the file is:
          *      ImportDeclaration
@@ -320,10 +344,13 @@ void Import::semantic(Scope *sc)
 
         // use protection instead of sc->protection because it couldn't be
         // resolved yet, see the comment above
-        protectionToBuffer(ob, Prot(protection));
+        protectionToBuffer(ob, protection);
         ob->writeByte(' ');
         if (isstatic)
-            StorageClassDeclaration::stcToCBuffer(ob, STCstatic);
+        {
+            stcToBuffer(ob, STCstatic);
+            ob->writeByte(' ');
+        }
         ob->writestring(": ");
 
         if (packages)
@@ -376,11 +403,12 @@ void Import::semantic2(Scope *sc)
     //printf("Import::semantic2('%s')\n", toChars());
     if (mod)
     {
-        mod->semantic2();
+        mod->semantic2(NULL);
         if (mod->needmoduleinfo)
         {
             //printf("module5 %s because of %s\n", sc->module->toChars(), mod->toChars());
-            sc->module->needmoduleinfo = 1;
+            if (sc)
+                sc->module->needmoduleinfo = 1;
         }
     }
 }
@@ -398,6 +426,7 @@ Dsymbol *Import::toAlias()
 
 void Import::addMember(Scope *sc, ScopeDsymbol *sd)
 {
+    //printf("Import::addMember(this=%s, sd=%s, sc=%p)\n", toChars(), sd->toChars(), sc);
     if (names.dim == 0)
         return Dsymbol::addMember(sc, sd);
 
@@ -417,10 +446,29 @@ void Import::addMember(Scope *sc, ScopeDsymbol *sd)
 
         TypeIdentifier *tname = new TypeIdentifier(loc, name);
         AliasDeclaration *ad = new AliasDeclaration(loc, alias, tname);
-        ad->import = this;
+        ad->_import = this;
         ad->addMember(sc, sd);
 
         aliasdecls.push(ad);
+    }
+}
+
+void Import::setScope(Scope *sc)
+{
+    Dsymbol::setScope(sc);
+    if (aliasdecls.dim)
+    {
+        if (!mod)
+            importAll(sc);
+
+        sc = sc->push(mod);
+        sc->protection = protection;
+        for (size_t i = 0; i < aliasdecls.dim; i++)
+        {
+            AliasDeclaration *ad = aliasdecls[i];
+            ad->setScope(sc);
+        }
+        sc = sc->pop();
     }
 }
 
@@ -432,7 +480,7 @@ Dsymbol *Import::search(Loc loc, Identifier *ident, int flags)
     {
         load(NULL);
         mod->importAll(NULL);
-        mod->semantic();
+        mod->semantic(NULL);
     }
 
     // Forward it to the package/module

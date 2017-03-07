@@ -1,12 +1,12 @@
 
 /* Compiler implementation of the D programming language
- * Copyright (c) 1999-2015 by Digital Mars
+ * Copyright (c) 1999-2016 by Digital Mars
  * All Rights Reserved
  * written by Walter Bright
  * http://www.digitalmars.com
  * Distributed under the Boost Software License, Version 1.0.
  * http://www.boost.org/LICENSE_1_0.txt
- * https://github.com/D-Programming-Language/dmd/blob/master/src/declaration.h
+ * https://github.com/dlang/dmd/blob/master/src/declaration.h
  */
 
 #ifndef DMD_DECLARATION_H
@@ -18,6 +18,7 @@
 
 #include "dsymbol.h"
 #include "mtype.h"
+#include "objc.h"
 
 class Expression;
 class Statement;
@@ -53,7 +54,7 @@ enum PINLINE;
 #define STCout          0x1000LL        // out parameter
 #define STClazy         0x2000LL        // lazy parameter
 #define STCforeach      0x4000LL        // variable for foreach loop
-#define STCvariadic     0x10000LL       // variadic function argument
+#define STCvariadic     0x10000LL       // the 'variadic' parameter in: T foo(T a, U b, V variadic...)
 #define STCctorinit     0x20000LL       // can only be set inside constructor
 #define STCtemplateparameter  0x40000LL // template parameter
 #define STCscope        0x80000LL
@@ -67,8 +68,9 @@ enum PINLINE;
 #define STCtls          0x8000000LL     // thread local
 #define STCalias        0x10000000LL    // alias parameter
 #define STCshared       0x20000000LL    // accessible from multiple threads
-#define STCgshared      0x40000000LL    // accessible from multiple threads
-                                        // but not typed as "shared"
+// accessible from multiple threads
+// but not typed as "shared"
+#define STCgshared      0x40000000LL
 #define STCwild         0x80000000LL    // for "wild" type constructor
 #define STC_TYPECTOR    (STCconst | STCimmutable | STCshared | STCwild)
 #define STC_FUNCATTR    (STCref | STCnothrow | STCnogc | STCpure | STCproperty | STCsafe | STCtrusted | STCsystem)
@@ -85,8 +87,10 @@ enum PINLINE;
 #define STCrvalue        0x20000000000LL // force rvalue for variables
 #define STCnogc          0x40000000000LL // @nogc
 #define STCvolatile      0x80000000000LL // destined for volatile in the back end
-#define STCreturn        0x100000000000LL // 'return ref' for function parameters
-#define STCinference     0x200000000000LL // do attribute inference
+#define STCreturn        0x100000000000LL // 'return ref' or 'return scope' for function parameters
+#define STCautoref       0x200000000000LL // Mark for the already deduced 'auto ref' parameter
+#define STCinference     0x400000000000LL // do attribute inference
+#define STCmaybescope    0x1000000000000LL // parameter might be 'scope'
 
 const StorageClass STCStorageClass = (STCauto | STCscope | STCstatic | STCextern | STCconst | STCfinal |
     STCabstract | STCsynchronized | STCdeprecated | STCoverride | STClazy | STCalias |
@@ -108,14 +112,6 @@ int overloadApply(Dsymbol *fstart, void *param, int (*fp)(void *, Dsymbol *));
 
 void ObjectNotFound(Identifier *id);
 
-enum Semantic
-{
-    SemanticStart,      // semantic has not been run
-    SemanticIn,         // semantic() is in progress
-    SemanticDone,       // semantic() has been run
-    Semantic2Done,      // semantic2() has been run
-};
-
 /**************************************************************/
 
 class Declaration : public Dsymbol
@@ -128,15 +124,14 @@ public:
     LINK linkage;
     int inuse;                  // used to detect cycles
     const char *mangleOverride;      // overridden symbol with pragma(mangle, "...")
-    Semantic sem;
 
     Declaration(Identifier *id);
     void semantic(Scope *sc);
     const char *kind();
-    unsigned size(Loc loc);
+    d_uns64 size(Loc loc);
     int checkModify(Loc loc, Scope *sc, Type *t, Expression *e1, int flag);
 
-    Dsymbol *search(Loc loc, Identifier *ident, int flags = IgnoreNone);
+    Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);
 
     bool isStatic() { return (storage_class & STCstatic) != 0; }
     virtual bool isDelete();
@@ -196,17 +191,19 @@ class AliasDeclaration : public Declaration
 public:
     Dsymbol *aliassym;
     Dsymbol *overnext;          // next in overload list
-    Dsymbol *import;            // !=NULL if unresolved internal alias for selective import
+    Dsymbol *_import;           // !=NULL if unresolved internal alias for selective import
 
     AliasDeclaration(Loc loc, Identifier *ident, Type *type);
     AliasDeclaration(Loc loc, Identifier *ident, Dsymbol *s);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
+    void aliasSemantic(Scope *sc);
     bool overloadInsert(Dsymbol *s);
     const char *kind();
     Type *getType();
     Dsymbol *toAlias();
     Dsymbol *toAlias2();
+    bool isOverloadable();
 
     AliasDeclaration *isAliasDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -221,7 +218,7 @@ public:
     Dsymbol *aliassym;
     bool hasOverloads;
 
-    OverDeclaration(Dsymbol *s, bool hasOverloads = true);
+    OverDeclaration(Identifier *ident, Dsymbol *s, bool hasOverloads = true);
     const char *kind();
     void semantic(Scope *sc);
     bool equals(RootObject *o);
@@ -229,6 +226,7 @@ public:
 
     Dsymbol *toAlias();
     Dsymbol *isUnique();
+    bool isOverloadable();
 
     OverDeclaration *isOverDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -239,27 +237,31 @@ public:
 class VarDeclaration : public Declaration
 {
 public:
-    Initializer *init;
+    Initializer *_init;
     unsigned offset;
-    bool noscope;                // no auto semantics
+    unsigned sequenceNumber;     // order the variables are declared
     FuncDeclarations nestedrefs; // referenced by these lexically nested functions
     bool isargptr;              // if parameter that _argptr points to
     structalign_t alignment;
     bool ctorinit;              // it has been initialized in a ctor
-    short onstack;              // 1: it has been allocated on the stack
-                                // 2: on stack, run destructor anyway
+    bool onstack;               // it is a class that was allocated on the stack
+    bool mynew;                 // it is a class new'd with custom operator new
     int canassign;              // it can be assigned to
     bool overlapped;            // if it is a field and has overlapping
+    bool overlapUnsafe;         // if it is an overlapping field and the overlaps are unsafe
+    bool doNotInferScope;       // do not infer 'scope' for this variable
+    unsigned char isdataseg;    // private data for isDataseg
     Dsymbol *aliassym;          // if redone as alias to another symbol
     VarDeclaration *lastVar;    // Linked list of variables for goto-skips-init detection
+    unsigned endlinnum;         // line number of end of scope that this var lives in
 
     // When interpreting, these point to the value (NULL if value not determinable)
     // The index of this variable on the CTFE stack, -1 if not allocated
     int ctfeAdrOnStack;
-
-    VarDeclaration *rundtor;    // if !NULL, rundtor is tested at runtime to see
-                                // if the destructor should be run. Used to prevent
-                                // dtor calls on postblitted vars
+    // if !NULL, rundtor is tested at runtime to see
+    // if the destructor should be run. Used to prevent
+    // dtor calls on postblitted vars
+    VarDeclaration *rundtor;
     Expression *edtor;          // if !=NULL, does the destruction of the variable
     IntRange *range;            // if !NULL, the variable is known to be within the range
 
@@ -279,16 +281,17 @@ public:
     bool isOverlappedWith(VarDeclaration *v);
     bool hasPointers();
     bool canTakeAddressOf();
-    bool needsAutoDtor();
+    bool needsScopeDtor();
     Expression *callScopeDtor(Scope *sc);
-    ExpInitializer *getExpInitializer();
     Expression *getConstInitializer(bool needFullType = true);
+    Expression *expandInitializer(Loc loc);
     void checkCtorConstInit();
     bool checkNestedReference(Scope *sc, Loc loc);
     Dsymbol *toAlias();
     // Eliminate need for dynamic_cast
     VarDeclaration *isVarDeclaration() { return (VarDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
+    bool enclosesLifetimeOf(VarDeclaration *v) const;
 #ifdef IN_GCC
     void toObjFile();                       // compile to .obj file
 #endif
@@ -315,11 +318,11 @@ class TypeInfoDeclaration : public VarDeclaration
 public:
     Type *tinfo;
 
-    TypeInfoDeclaration(Type *tinfo, int internal);
-    static TypeInfoDeclaration *create(Type *tinfo, int internal);
+    TypeInfoDeclaration(Type *tinfo);
+    static TypeInfoDeclaration *create(Type *tinfo);
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
-    char *toChars();
+    const char *toChars();
 
     TypeInfoDeclaration *isTypeInfoDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
@@ -511,6 +514,8 @@ void builtin_init();
 #define FUNCFLAGnothrowInprocess   4    // working on determining nothrow
 #define FUNCFLAGnogcInprocess      8    // working on determining @nogc
 #define FUNCFLAGreturnInprocess 0x10    // working on inferring 'return' for parameters
+#define FUNCFLAGinlineScanned   0x20    // function has been scanned for inline possibilities
+#define FUNCFLAGinferScope      0x40    // infer 'scope' for parameters
 
 class FuncDeclaration : public Declaration
 {
@@ -530,14 +535,13 @@ public:
     VarDeclaration *vresult;            // variable corresponding to outId
     LabelDsymbol *returnLabel;          // where the return goes
 
-    DsymbolTable *localsymtab;          // used to prevent symbols in different
-                                        // scopes from having the same name
+    // used to prevent symbols in different
+    // scopes from having the same name
+    DsymbolTable *localsymtab;
     VarDeclaration *vthis;              // 'this' parameter (member and nested)
     VarDeclaration *v_arguments;        // '_arguments' parameter
-#ifdef IN_GCC
+    Objc_FuncDeclaration objc;
     VarDeclaration *v_argptr;           // '_argptr' variable
-#endif
-    VarDeclaration *v_argsave;          // save area for args passed in registers for variadic functions
     VarDeclarations *parameters;        // Array of VarDeclaration's for parameters
     DsymbolTable *labtab;               // statement label symbol table
     Dsymbol *overnext;                  // next in overload list
@@ -545,6 +549,8 @@ public:
     Loc endloc;                         // location of closing curly bracket
     int vtblIndex;                      // for member functions, index into vtbl[]
     bool naked;                         // true if naked
+    bool generated;                     // true if function was generated by the compiler rather than
+                                        // supplied by the user
     ILS inlineStatusStmt;
     ILS inlineStatusExp;
     PINLINE inlining;
@@ -552,21 +558,25 @@ public:
     CompiledCtfeFunction *ctfeCode;     // Compiled code for interpreter
     int inlineNest;                     // !=0 if nested inline
     bool isArrayOp;                     // true if array operation
-    bool semantic3Errors;               // true if errors in semantic3
-                                        // this function's frame ptr
+    // true if errors in semantic3 this function's frame ptr
+    bool semantic3Errors;
     ForeachStatement *fes;              // if foreach body, this is the foreach
+    BaseClass* interfaceVirtual;        // if virtual, but only appears in interface vtbl[]
     bool introducing;                   // true if 'introducing' function
-    Type *tintro;                       // if !=NULL, then this is the type
-                                        // of the 'introducing' function
-                                        // this one is overriding
+    // if !=NULL, then this is the type
+    // of the 'introducing' function
+    // this one is overriding
+    Type *tintro;
     bool inferRetType;                  // true if return type is to be inferred
     StorageClass storage_class2;        // storage class for template onemember's
 
     // Things that should really go into Scope
-    int hasReturnExp;                   // 1 if there's a return exp; statement
-                                        // 2 if there's a throw statement
-                                        // 4 if there's an assert(0)
-                                        // 8 if there's inline asm
+
+    // 1 if there's a return exp; statement
+    // 2 if there's a throw statement
+    // 4 if there's an assert(0)
+    // 8 if there's inline asm
+    int hasReturnExp;
 
     // Support for NRVO (named return value optimization)
     bool nrvo_can;                      // true means we can do it
@@ -577,18 +587,17 @@ public:
 
     GotoStatements *gotos;              // Gotos with forward references
 
-    BUILTIN builtin;                    // set if this is a known, builtin
-                                        // function we can evaluate at compile
-                                        // time
+    // set if this is a known, builtin function we can evaluate at compile time
+    BUILTIN builtin;
 
-    int tookAddressOf;                  // set if someone took the address of
-                                        // this function
+    // set if someone took the address of this function
+    int tookAddressOf;
     bool requiresClosure;               // this function needs a closure
-    VarDeclarations closureVars;        // local variables in this function
-                                        // which are referenced by nested
-                                        // functions
-    FuncDeclarations siblingCallers;    // Sibling nested functions which
-                                        // called this one
+
+    // local variables in this function which are referenced by nested functions
+    VarDeclarations closureVars;
+    // Sibling nested functions which called this one
+    FuncDeclarations siblingCallers;
 
     unsigned flags;                     // FUNCFLAGxxxxx
 
@@ -599,21 +608,21 @@ public:
     void semantic3(Scope *sc);
     bool functionSemantic();
     bool functionSemantic3();
+    bool checkForwardRef(Loc loc);
     // called from semantic3
     VarDeclaration *declareThis(Scope *sc, AggregateDeclaration *ad);
     bool equals(RootObject *o);
 
     int overrides(FuncDeclaration *fd);
     int findVtblIndex(Dsymbols *vtbl, int dim);
+    BaseClass *overrideInterface();
     bool overloadInsert(Dsymbol *s);
     FuncDeclaration *overloadExactMatch(Type *t);
-    FuncDeclaration *overloadModMatch(Loc loc, Type *tthis, Type *&t);
+    FuncDeclaration *overloadModMatch(Loc loc, Type *tthis, bool &hasOverloads);
     TemplateDeclaration *findTemplateDeclRoot();
     bool inUnittest();
     MATCH leastAsSpecialized(FuncDeclaration *g);
     LabelDsymbol *searchLabel(Identifier *ident);
-    AggregateDeclaration *isThis();
-    AggregateDeclaration *isMember2();
     int getLevel(Loc loc, Scope *sc, FuncDeclaration *fd); // lexical nesting level difference
     const char *toPrettyChars(bool QualifyTypes = false);
     const char *toFullSignature();  // for diagnostics, e.g. 'int foo(int x, int y) pure'
@@ -625,7 +634,6 @@ public:
     bool isImportedSymbol();
     bool isCodeseg();
     bool isOverloadable();
-    bool hasOverloads();
     PURE isPure();
     PURE isPureBypassingInference();
     bool setImpure();
@@ -642,6 +650,7 @@ public:
     bool isolateReturn();
     bool parametersIntersect(Type *t);
     virtual bool isNested();
+    AggregateDeclaration *isThis();
     bool needThis();
     bool isVirtualMethod();
     virtual bool isVirtual();
@@ -652,6 +661,7 @@ public:
     FuncDeclaration *isUnique();
     bool checkNestedReference(Scope *sc, Loc loc);
     bool needsClosure();
+    bool checkClosure();
     bool hasNestedFrameRefs();
     void buildResultVar(Scope *sc, Type *tret);
     Statement *mergeFrequire(Statement *);
@@ -682,7 +692,7 @@ public:
     FuncDeclaration *funcalias;
     bool hasOverloads;
 
-    FuncAliasDeclaration(FuncDeclaration *funcalias, bool hasOverloads = true);
+    FuncAliasDeclaration(Identifier *ident, FuncDeclaration *funcalias, bool hasOverloads = true);
 
     FuncAliasDeclaration *isFuncAliasDeclaration() { return this; }
     const char *kind();
@@ -697,10 +707,14 @@ public:
     TOK tok;                       // TOKfunction or TOKdelegate
     Type *treq;                         // target of return type inference
 
+    // backend
+    bool deferToObj;
+
     FuncLiteralDeclaration(Loc loc, Loc endloc, Type *type, TOK tok,
         ForeachStatement *fes, Identifier *id = NULL);
     Dsymbol *syntaxCopy(Dsymbol *);
     bool isNested();
+    AggregateDeclaration *isThis();
     bool isVirtual();
     bool addPreInvariant();
     bool addPostInvariant();
@@ -720,7 +734,7 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     const char *kind();
-    char *toChars();
+    const char *toChars();
     bool isVirtual();
     bool addPreInvariant();
     bool addPostInvariant();
@@ -752,7 +766,7 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *);
     void semantic(Scope *sc);
     const char *kind();
-    char *toChars();
+    const char *toChars();
     bool isVirtual();
     bool addPreInvariant();
     bool addPostInvariant();

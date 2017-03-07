@@ -78,10 +78,10 @@ void func(void function () v)
 void test4()
 {
    static void f1() { }
-   
+
    func(&f1);
-   //func(f1);  
-} 
+   //func(f1);
+}
 
 
 /************************************/
@@ -116,7 +116,7 @@ struct Struct
     void bar(out Struct Q)
     {
         if (foo() < 0)
-            Q = this; 
+            Q = this;
     }
 }
 
@@ -709,6 +709,218 @@ pragma(inline)
 void test14753(string) { }
 
 /**********************************/
+// 15210
+
+struct BigInt15210 {}
+
+struct Tuple15210(Types...)
+{
+    Types field;
+
+    void opAssign(R)(R rhs)
+    {
+        field = rhs.field;
+    }
+}
+
+void test15210()
+{
+    alias X = Tuple15210!BigInt15210;
+
+    X[BigInt15210] cache;
+
+    auto x = X();
+
+    cache[BigInt15210()] = x;
+}
+
+/**********************************/
+// 15207
+
+struct Vec15207
+{
+    float x, y, z;
+
+    this(float x_, float y_, float z_)
+    {
+        x = x_;
+        y = y_;
+        z = z_;
+    }
+
+    Vec15207 clone()
+    {
+        // When the variable 'res' is replaced with a STCref temporary,
+        // this line was accidentally changed to reference initialization.
+        Vec15207 res = this;
+
+        return res;
+    }
+}
+
+class C15207
+{
+    Vec15207 a;
+
+    this()
+    {
+        a = Vec15207(1, 2, 3).clone();
+
+        assert(a.x == 1);
+        assert(a.y == 2);
+        assert(a.z == 3);
+        printf("%f %f %f\n", a.x, a.y, a.z);
+    }
+}
+
+void test15207()
+{
+    auto c = new C15207();
+}
+
+/**********************************/
+// 15253
+
+struct MessageType15253
+{
+    MessageType15253[] messageTypes;
+
+    const void toString1(scope void delegate(const(char)[]) sink)
+    {
+        messageTypes[0].toString1(sink);
+    }
+}
+
+struct ProtoPackage15253
+{
+    MessageType15253[] messageTypes;
+
+    const void toString1(scope void delegate(const(char)[]) sink)
+    {
+        messageTypes[0].toString1(sink);
+    }
+}
+
+/**********************************/
+// 15296
+
+static int x15296;
+
+struct S15296
+{
+    // Can be expanded only as statements.
+    pragma(inline, true)
+    void bar(size_t , size_t )
+    {
+        for (size_t w = 0; w < 2; w++) { ++x15296; }
+    }
+
+    pragma(inline, true)
+    void foo(size_t a, size_t b)
+    {
+        bar(a, b);
+    }
+}
+
+pragma(inline, true)
+static void voidCall15296()
+{
+    for (size_t w = 0; w < 3; w++) { ++x15296; }
+}
+
+void test15296()
+{
+    bool cond = true;
+
+    S15296 s;
+
+    // CallExp at the top of ExpStatement
+    x15296 = 0;
+    s.foo(0, 0);
+    assert(x15296 == 2);
+
+    // CondExp at the top of ExpStatement
+    x15296 = 0;
+    (cond ? s.foo(0, 0) : voidCall15296());
+    assert(x15296 == 2);
+    (cond ? voidCall15296() : s.foo(0, 0));
+    assert(x15296 == 2 + 3);
+
+    // CommaExp at the top of ExpStatement
+    x15296 = 0;
+    (s.foo(0, 0), voidCall15296());
+    assert(x15296 == 3 + 2);
+}
+
+// ----
+
+struct File15296
+{
+    struct Impl {}
+    Impl* _p;
+
+    pragma(inline, true)
+    ~this() { _p = null; }
+
+    struct LockingTextWriter
+    {
+        pragma(inline, true)
+        this(ref File15296 f)
+        {
+            assert(f._p, "Attempting to write to closed File");
+        }
+    }
+
+    pragma(inline, true)
+    auto lockingTextWriter() { return LockingTextWriter(this); }
+
+    pragma(inline, true)
+    void write() { auto w = lockingTextWriter(); }
+
+    //pragma(inline, true)
+    static uint formattedWrite(Writer)(Writer w) { return 0; }
+
+    pragma(inline, true)
+    void writef() { formattedWrite(lockingTextWriter()); }
+}
+
+__gshared File15296 stdout15296 = {new File15296.Impl()};
+
+pragma(inline, true)
+@property File15296 trustedStdout15296() { return stdout15296; }
+
+// ----
+// reduced case from runnable/test34.d test34()
+
+void test15296b()
+{
+    // trustedStdout() returns a temporary File object. Its dtor call
+    // should be deferred till the end of expanded writef body statements.
+    trustedStdout15296().writef();
+}
+
+// ----
+// reduced case from runnable/xtest46.d test136()
+
+struct Perm15296c
+{
+    this(byte[] input)
+    {
+        foreach (elem; input)
+        {
+            // if vthis.isDataseg() is true in expandInline,
+            // its edtor should not be called.
+            stdout15296.write();
+        }
+    }
+}
+
+void test15296c()
+{
+    auto perm2 = Perm15296c([0, 1, 2]);
+}
+
+/**********************************/
 
 int main()
 {
@@ -733,6 +945,11 @@ int main()
     test14306();
     test14754();
     test14606();
+    test15210();
+    test15207();
+    test15296();
+    test15296b();
+    test15296c();
 
     printf("Success\n");
     return 0;

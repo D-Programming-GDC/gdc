@@ -49,6 +49,14 @@ $(TR $(TH Function Name) $(TH Description)
     $(TR $(TD $(D $(LREF replicate)))
         $(TD Creates a new _array out of several copies of an input _array or range.
     ))
+    $(TR $(TD $(D $(LREF sameHead)))
+        $(TD Checks if the initial segments of two arrays refer to the same
+        place in memory.
+    ))
+    $(TR $(TD $(D $(LREF sameTail)))
+        $(TD Checks if the final segments of two arrays refer to the same place
+        in memory.
+    ))
     $(TR $(TD $(D $(LREF split)))
         $(TD Eagerly split a range or string into an _array.
     ))
@@ -67,8 +75,8 @@ Source: $(PHOBOSSRC std/_array.d)
 */
 module std.array;
 
+import std.meta;
 import std.traits;
-import std.typetuple;
 import std.functional;
 static import std.algorithm; // FIXME, remove with alias of splitter
 
@@ -275,7 +283,7 @@ unittest
         int i;
     }
 
-    foreach(T; TypeTuple!(S, const S, immutable S))
+    foreach(T; AliasSeq!(S, const S, immutable S))
     {
         auto arr = [T(1), T(2), T(3), T(4)];
         assert(array(arr) == arr);
@@ -327,7 +335,10 @@ unittest
 Returns a newly allocated associative _array from a range of key/value tuples.
 Params: r = An input range of tuples of keys and values.
 Returns: A newly allocated associative array out of elements of the input
-range, which must be a range of tuples (Key, Value).
+range, which must be a range of tuples (Key, Value). Returns a null associative
+array reference when given an empty range.
+Duplicates: Associative arrays have unique keys. If r contains duplicate keys,
+then the result will contain the value of the last pair for that key in r.
 See_Also: $(XREF typecons, Tuple)
  */
 
@@ -369,7 +380,7 @@ unittest
     import std.typecons;
     static assert(!__traits(compiles, [ tuple("foo", "bar", "baz") ].assocArray()));
     static assert(!__traits(compiles, [ tuple("foo") ].assocArray()));
-    static assert( __traits(compiles, [ tuple("foo", "bar") ].assocArray()));
+    assert([ tuple("foo", "bar") ].assocArray() == ["foo": "bar"]);
 }
 
 // Issue 13909
@@ -378,7 +389,7 @@ unittest
     import std.typecons;
     auto a = [tuple!(const string, string)("foo", "bar")];
     auto b = [tuple!(string, const string)("foo", "bar")];
-    static assert( __traits(compiles, assocArray(a)));
+    assert(assocArray(a) == [cast(const(string)) "foo": "bar"]);
     static assert(!__traits(compiles, assocArray(b)));
 }
 
@@ -778,121 +789,6 @@ inout(T)[] overlap(T)(inout(T)[] r1, inout(T)[] r2) @trusted pure nothrow
     static assert(isRandomAccessRange!Wrapper);
 }
 
-/+
-Commented out until the insert which has been deprecated has been removed.
-I'd love to just remove it in favor of insertInPlace, but then code would then
-use this version of insert and silently break. So, it's here so that it can
-be used once insert has not only been deprecated but removed, but until then,
-it's commented out.
-
-/++
-    Creates a new array which is a copy of $(D array) with $(D stuff) (which
-    must be an input range or a single item) inserted at position $(D pos).
-
-    Examples:
-    --------------------
-    int[] a = [ 1, 2, 3, 4 ];
-    auto b = a.insert(2, [ 1, 2 ]);
-    assert(a == [ 1, 2, 3, 4 ]);
-    assert(b == [ 1, 2, 1, 2, 3, 4 ]);
-    --------------------
- +/
-T[] insert(T, Range)(T[] array, size_t pos, Range stuff)
-    if(isInputRange!Range &&
-       (is(ElementType!Range : T) ||
-        isSomeString!(T[]) && is(ElementType!Range : dchar)))
-{
-    static if(hasLength!Range && is(ElementEncodingType!Range : T))
-    {
-        import std.algorithm : copy;
-        auto retval = new Unqual!(T)[](array.length + stuff.length);
-        retval[0 .. pos] = array[0 .. pos];
-        copy(stuff, retval[pos .. pos + stuff.length]);
-        retval[pos + stuff.length .. $] = array[pos .. $];
-        return cast(T[])retval;
-    }
-    else
-    {
-        auto app = appender!(T[])();
-        app.put(array[0 .. pos]);
-        app.put(stuff);
-        app.put(array[pos .. $]);
-        return app.data;
-    }
-}
-
-/++ Ditto +/
-T[] insert(T)(T[] array, size_t pos, T stuff)
-{
-    auto retval = new T[](array.length + 1);
-    retval[0 .. pos] = array[0 .. pos];
-    retval[pos] = stuff;
-    retval[pos + 1 .. $] = array[pos .. $];
-    return retval;
-}
-
-//Verify Example.
-unittest
-{
-    int[] a = [ 1, 2, 3, 4 ];
-    auto b = a.insert(2, [ 1, 2 ]);
-    assert(a == [ 1, 2, 3, 4 ]);
-    assert(b == [ 1, 2, 1, 2, 3, 4 ]);
-}
-
-unittest
-{
-    import core.exception;
-    import std.conv : to;
-    import std.exception;
-    import std.algorithm;
-
-    auto a = [1, 2, 3, 4];
-    assert(a.insert(0, [6, 7]) == [6, 7, 1, 2, 3, 4]);
-    assert(a.insert(2, [6, 7]) == [1, 2, 6, 7, 3, 4]);
-    assert(a.insert(a.length, [6, 7]) == [1, 2, 3, 4, 6, 7]);
-
-    assert(a.insert(0, filter!"true"([6, 7])) == [6, 7, 1, 2, 3, 4]);
-    assert(a.insert(2, filter!"true"([6, 7])) == [1, 2, 6, 7, 3, 4]);
-    assert(a.insert(a.length, filter!"true"([6, 7])) == [1, 2, 3, 4, 6, 7]);
-
-    assert(a.insert(0, 22) == [22, 1, 2, 3, 4]);
-    assert(a.insert(2, 22) == [1, 2, 22, 3, 4]);
-    assert(a.insert(a.length, 22) == [1, 2, 3, 4, 22]);
-    assert(a == [1, 2, 3, 4]);
-
-    auto testStr(T, U)(string file = __FILE__, size_t line = __LINE__)
-    {
-
-        auto l = to!T("hello");
-        auto r = to!U(" world");
-
-        enforce(insert(l, 0, r) == " worldhello",
-                new AssertError("testStr failure 1", file, line));
-        enforce(insert(l, 3, r) == "hel worldlo",
-                new AssertError("testStr failure 2", file, line));
-        enforce(insert(l, l.length, r) == "hello world",
-                new AssertError("testStr failure 3", file, line));
-        enforce(insert(l, 0, filter!"true"(r)) == " worldhello",
-                new AssertError("testStr failure 4", file, line));
-        enforce(insert(l, 3, filter!"true"(r)) == "hel worldlo",
-                new AssertError("testStr failure 5", file, line));
-        enforce(insert(l, l.length, filter!"true"(r)) == "hello world",
-                new AssertError("testStr failure 6", file, line));
-    }
-
-    testStr!(string, string)();
-    testStr!(string, wstring)();
-    testStr!(string, dstring)();
-    testStr!(wstring, string)();
-    testStr!(wstring, wstring)();
-    testStr!(wstring, dstring)();
-    testStr!(dstring, string)();
-    testStr!(dstring, wstring)();
-    testStr!(dstring, dstring)();
-}
-+/
-
 private void copyBackwards(T)(T[] src, T[] dest)
 {
     import core.stdc.string;
@@ -1163,10 +1059,10 @@ unittest
                 new AssertError("testStr failure 3", file, line));
     }
 
-    foreach (T; TypeTuple!(char, wchar, dchar,
+    foreach (T; AliasSeq!(char, wchar, dchar,
         immutable(char), immutable(wchar), immutable(dchar)))
     {
-        foreach (U; TypeTuple!(char, wchar, dchar,
+        foreach (U; AliasSeq!(char, wchar, dchar,
             immutable(char), immutable(wchar), immutable(dchar)))
         {
             testStr!(T[], U[])();
@@ -1322,7 +1218,7 @@ pure nothrow bool sameTail(T)(in T[] lhs, in T[] rhs)
 
 @safe pure nothrow unittest
 {
-    foreach(T; TypeTuple!(int[], const(int)[], immutable(int)[], const int[], immutable int[]))
+    foreach(T; AliasSeq!(int[], const(int)[], immutable(int)[], const int[], immutable int[]))
     {
         T a = [1, 2, 3, 4, 5];
         T b = a;
@@ -1409,7 +1305,7 @@ unittest
 
     debug(std_array) printf("array.replicate.unittest\n");
 
-    foreach (S; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[]))
+    foreach (S; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[]))
     {
         S s;
         immutable S t = "abc";
@@ -1478,7 +1374,7 @@ unittest
     static auto makeEntry(S)(string l, string[] r)
     {return tuple(l.to!S(), r.to!(S[])());}
 
-    foreach (S; TypeTuple!(string, wstring, dstring,))
+    foreach (S; AliasSeq!(string, wstring, dstring,))
     {
         auto entries =
         [
@@ -1523,8 +1419,12 @@ unittest
     assert(a == [[1], [4, 5, 1], [4, 5]]);
 }
 
+// @@@DEPRECATED_2017-01@@@
 /++
-Alias for $(XREF_PACK algorithm,iteration,_splitter).
+    $(RED Deprecated. Use $(XREF_PACK algorithm,iteration,_splitter) instead.
+          This will be removed in January 2017.)
+
+    Alias for $(XREF_PACK algorithm,iteration,_splitter).
  +/
 deprecated("Please use std.algorithm.iteration.splitter instead.")
 alias splitter = std.algorithm.iteration.splitter;
@@ -1537,7 +1437,7 @@ alias splitter = std.algorithm.iteration.splitter;
     The separator can be a value of the same type as the elements in $(D range)
     or it can be another forward _range.
 
-    Examples:
+    Example:
         If $(D range) is a $(D string), $(D sep) can be a $(D char) or another
         $(D string). The return type will be an array of strings. If $(D range) is
         an $(D int) array, $(D sep) can be an $(D int) or another $(D int) array.
@@ -1582,7 +1482,7 @@ unittest
     import std.algorithm : cmp;
 
     debug(std_array) printf("array.split\n");
-    foreach (S; TypeTuple!(string, wstring, dstring,
+    foreach (S; AliasSeq!(string, wstring, dstring,
                     immutable(string), immutable(wstring), immutable(dstring),
                     char[], wchar[], dchar[],
                     const(char)[], const(wchar)[], const(dchar)[],
@@ -1796,6 +1696,20 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR, E)(RoR ror, E sep)
     }
 }
 
+unittest // Issue 10895
+{
+    class A
+    {
+        string name;
+        alias name this;
+        this(string name) { this.name = name; }
+    }
+    auto a = [new A(`foo`)];
+    assert(a[0].length == 3);
+    auto temp = join(a, " ");
+    assert(a[0].length == 3);
+}
+
 unittest // Issue 14230
 {
    string[] ary = ["","aa","bb","cc"];
@@ -1856,18 +1770,18 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
 {
     import std.conv : to;
 
-    foreach (T; TypeTuple!(string,wstring,dstring))
+    foreach (T; AliasSeq!(string,wstring,dstring))
     {
         auto arr2 = "Здравствуй Мир Unicode".to!(T);
         auto arr = ["Здравствуй", "Мир", "Unicode"].to!(T[]);
         assert(join(arr) == "ЗдравствуйМирUnicode");
-        foreach (S; TypeTuple!(char,wchar,dchar))
+        foreach (S; AliasSeq!(char,wchar,dchar))
         {
             auto jarr = arr.join(to!S(' '));
             static assert(is(typeof(jarr) == T));
             assert(jarr == arr2);
         }
-        foreach (S; TypeTuple!(string,wstring,dstring))
+        foreach (S; AliasSeq!(string,wstring,dstring))
         {
             auto jarr = arr.join(to!S(" "));
             static assert(is(typeof(jarr) == T));
@@ -1875,11 +1789,11 @@ ElementEncodingType!(ElementType!RoR)[] join(RoR)(RoR ror)
         }
     }
 
-    foreach (T; TypeTuple!(string,wstring,dstring))
+    foreach (T; AliasSeq!(string,wstring,dstring))
     {
         auto arr2 = "Здравствуй\u047CМир\u047CUnicode".to!(T);
         auto arr = ["Здравствуй", "Мир", "Unicode"].to!(T[]);
-        foreach (S; TypeTuple!(wchar,dchar))
+        foreach (S; AliasSeq!(wchar,dchar))
         {
             auto jarr = arr.join(to!S('\u047C'));
             static assert(is(typeof(jarr) == T));
@@ -1899,7 +1813,7 @@ unittest
 
     debug(std_array) printf("array.join.unittest\n");
 
-    foreach(R; TypeTuple!(string, wstring, dstring))
+    foreach(R; AliasSeq!(string, wstring, dstring))
     {
         R word1 = "日本語";
         R word2 = "paul";
@@ -1916,7 +1830,7 @@ unittest
         auto filteredLenWordsArr = [filteredLenWord1, filteredLenWord2, filteredLenWord3];
         auto filteredWords    = filter!"true"(filteredWordsArr);
 
-        foreach(S; TypeTuple!(string, wstring, dstring))
+        foreach(S; AliasSeq!(string, wstring, dstring))
         (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
             assert(join(filteredWords, to!S(", ")) == "日本語, paul, jerry");
             assert(join(filteredWords, to!(ElementType!S)(',')) == "日本語,paul,jerry");
@@ -2107,9 +2021,9 @@ unittest
 
     debug(std_array) printf("array.replace.unittest\n");
 
-    foreach (S; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[]))
+    foreach (S; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[]))
     {
-        foreach (T; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[]))
+        foreach (T; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[]))
         (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
             auto s = to!S("This is a foo foo list");
             auto from = to!T("foo");
@@ -2144,7 +2058,7 @@ unittest
         this(C[] arr){ desired = arr; }
         void put(C[] part){ assert(skipOver(desired, part)); }
     }
-    foreach (S; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[]))
+    foreach (S; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[]))
     {
         alias Char = ElementEncodingType!S;
         S s = to!S("yet another dummy text, yet another ...");
@@ -2277,46 +2191,43 @@ unittest
     shrinks the array as needed.
  +/
 void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
-    if(isDynamicArray!Range &&
-       is(ElementEncodingType!Range : T) &&
-       !is(T == const T) &&
-       !is(T == immutable T))
+    if(is(typeof(replace(array, from, to, stuff))))
 {
-    import std.algorithm : remove;
-    import std.typecons : tuple;
+    static if(isDynamicArray!Range &&
+              is(Unqual!(ElementEncodingType!Range) == T) &&
+              !isNarrowString!(T[]))
+    {
+        // optimized for homogeneous arrays that can be overwritten.
+        import std.algorithm : remove;
+        import std.typecons : tuple;
 
-    if (overlap(array, stuff).length)
-    {
-        // use slower/conservative method
-        array = array[0 .. from] ~ stuff ~ array[to .. $];
-    }
-    else if (stuff.length <= to - from)
-    {
-        // replacement reduces length
-        immutable stuffEnd = from + stuff.length;
-        array[from .. stuffEnd] = stuff[];
-        if (stuffEnd < to)
-            array = remove(array, tuple(stuffEnd, to));
+        if (overlap(array, stuff).length)
+        {
+            // use slower/conservative method
+            array = array[0 .. from] ~ stuff ~ array[to .. $];
+        }
+        else if (stuff.length <= to - from)
+        {
+            // replacement reduces length
+            immutable stuffEnd = from + stuff.length;
+            array[from .. stuffEnd] = stuff[];
+            if (stuffEnd < to)
+                array = remove(array, tuple(stuffEnd, to));
+        }
+        else
+        {
+            // replacement increases length
+            // @@@TODO@@@: optimize this
+            immutable replaceLen = to - from;
+            array[from .. to] = stuff[0 .. replaceLen];
+            insertInPlace(array, to, stuff[replaceLen .. $]);
+        }
     }
     else
     {
-        // replacement increases length
-        // @@@TODO@@@: optimize this
-        immutable replaceLen = to - from;
-        array[from .. to] = stuff[0 .. replaceLen];
-        insertInPlace(array, to, stuff[replaceLen .. $]);
+        // default implementation, just do what replace does.
+        array = replace(array, from, to, stuff);
     }
-}
-
-/// Ditto
-void replaceInPlace(T, Range)(ref T[] array, size_t from, size_t to, Range stuff)
-    if(isInputRange!Range &&
-       ((!isDynamicArray!Range && is(ElementType!Range : T)) ||
-        (isDynamicArray!Range && is(ElementType!Range : T) &&
-             (is(T == const T) || is(T == immutable T))) ||
-        isSomeString!(T[]) && is(ElementType!Range : dchar)))
-{
-    array = replace(array, from, to, stuff);
 }
 
 ///
@@ -2338,6 +2249,66 @@ unittest
     int[1][] stuff = [[0], [1]];
     replaceInPlace(arr, 4, 6, stuff);
     assert(arr == [[0], [1], [2], [3], [0], [1], [6]]);
+}
+
+unittest
+{
+    // Bug# 14925
+    char[] a = "mon texte 1".dup;
+    char[] b = "abc".dup;
+    replaceInPlace(a, 4, 9, b);
+    assert(a == "mon abc 1");
+
+    // ensure we can replace in place with different encodings
+    string unicoded = "\U00010437";
+    string unicodedLong = "\U00010437aaaaa";
+    string base = "abcXXXxyz";
+    string result = "abc\U00010437xyz";
+    string resultLong = "abc\U00010437aaaaaxyz";
+    size_t repstart = 3;
+    size_t repend = 3 + 3;
+
+    void testStringReplaceInPlace(T, U)()
+    {
+        import std.conv;
+        import std.algorithm : equal;
+        auto a = unicoded.to!(U[]);
+        auto b = unicodedLong.to!(U[]);
+
+        auto test = base.to!(T[]);
+
+        test.replaceInPlace(repstart, repend, a);
+        assert(equal(test, result), "Failed for types " ~ T.stringof ~ " and " ~ U.stringof);
+
+        test = base.to!(T[]);
+
+        test.replaceInPlace(repstart, repend, b);
+        assert(equal(test, resultLong), "Failed for types " ~ T.stringof ~ " and " ~ U.stringof);
+    }
+
+    import std.meta : AliasSeq;
+    alias allChars = AliasSeq!(char, immutable(char), const(char),
+                         wchar, immutable(wchar), const(wchar),
+                         dchar, immutable(dchar), const(dchar));
+    foreach(T; allChars)
+        foreach(U; allChars)
+            testStringReplaceInPlace!(T, U)();
+
+    void testInout(inout(int)[] a)
+    {
+        // will be transferred to the 'replace' function
+        replaceInPlace(a, 1, 2, [1,2,3]);
+    }
+}
+
+unittest
+{
+    // the constraint for the first overload used to match this, which wouldn't compile.
+    import std.algorithm : equal;
+    long[] a = [1L, 2, 3];
+    int[] b = [4, 5, 6];
+    a.replaceInPlace(1, 2, b);
+    assert(equal(a, [1L, 4, 5, 6, 3]));
 }
 
 unittest
@@ -2473,10 +2444,10 @@ unittest
 
     debug(std_array) printf("array.replaceFirst.unittest\n");
 
-    foreach (S; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[],
+    foreach (S; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[],
                           const(char[]), immutable(char[])))
     {
-        foreach (T; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[],
+        foreach (T; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[],
                               const(char[]), immutable(char[])))
         (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
             auto s = to!S("This is a foo foo list");
@@ -2581,10 +2552,10 @@ unittest
 
     debug(std_array) printf("array.replaceLast.unittest\n");
 
-    foreach (S; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[],
+    foreach (S; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[],
                           const(char[]), immutable(char[])))
     {
-        foreach (T; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[],
+        foreach (T; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[],
                               const(char[]), immutable(char[])))
         (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
             auto s = to!S("This is a foo foo list");
@@ -2709,6 +2680,7 @@ if (isDynamicArray!A)
     //Broken function. To be removed.
     static if (is(T == immutable))
     {
+        // Explicitly undocumented. It will be removed in March 2016. @@@DEPRECATED_2016-03@@@
         deprecated ("Using this constructor will break the type system. Please fix your code to use `Appender!(T[]).this(T[] arr)' directly.")
         this(Unqual!T[] arr) pure nothrow
         {
@@ -2990,11 +2962,11 @@ if (isDynamicArray!A)
             import std.exception : enforce;
             if (_data)
             {
-                enforce(newlength <= _data.arr.length);
+                enforce(newlength <= _data.arr.length, "Attempting to shrink Appender with newlength > length");
                 _data.arr = _data.arr.ptr[0 .. newlength];
             }
             else
-                enforce(newlength == 0);
+                enforce(newlength == 0, "Attempting to shrink empty Appender with non-zero newlength");
         }
     }
 
@@ -3209,7 +3181,7 @@ Appender!(E[]) appender(A : E[], E)(auto ref A array)
     catch (Exception) assert(0);
 
     // Issue 5663 & 9725 tests
-    foreach (S; TypeTuple!(char[], const(char)[], string))
+    foreach (S; AliasSeq!(char[], const(char)[], string))
     {
         {
             Appender!S app5663i;
@@ -3571,6 +3543,12 @@ unittest
     const app3 = app2;
     assert(app3.capacity >= 3);
     assert(app3.data == [1, 2, 3]);
+}
+
+unittest // issue 14605
+{
+    static assert(isOutputRange!(Appender!(int[]), int));
+    static assert(isOutputRange!(RefAppender!(int[]), int));
 }
 
 unittest

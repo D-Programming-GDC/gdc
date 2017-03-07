@@ -237,6 +237,8 @@ struct RIPEMD160
 
             version(BigEndian)
             {
+                import std.bitmanip : littleEndianToNative;
+
                 for(size_t i = 0; i < 16; i++)
                 {
                     x[i] = littleEndianToNative!uint(*cast(ubyte[4]*)&(*block)[i*4]);
@@ -440,12 +442,14 @@ struct RIPEMD160
         }
 
     public:
+        enum blockSize = 512;
+
         /**
          * Use this to feed the digest with data.
          * Also implements the $(XREF_PACK range,primitives,isOutputRange)
          * interface for $(D ubyte) and $(D const(ubyte)[]).
          *
-         * Examples:
+         * Example:
          * ----
          * RIPEMD160 dig;
          * dig.put(cast(ubyte)0); //single ubyte
@@ -499,7 +503,7 @@ struct RIPEMD160
          *
          * Generic code which deals with different Digest types should always call start though.
          *
-         * Examples:
+         * Example:
          * --------
          * RIPEMD160 digest;
          * //digest.start(); //Not necessary
@@ -515,7 +519,7 @@ struct RIPEMD160
          * Returns the finished RIPEMD160 hash. This also calls $(LREF start) to
          * reset the internal state.
          *
-         * Examples:
+         * Example:
          * --------
          * //Simple example
          * RIPEMD160 hash;

@@ -117,20 +117,6 @@ dtvector_to_tree(dt_t *dt)
   return dt_container(dt);
 }
 
-// Put out __vptr and __monitor of class CD into PDT.
-
-dt_t **
-build_vptr_monitor(dt_t **pdt, ClassDeclaration *cd)
-{
-  gcc_assert(cd != NULL);
-  dt_cons(pdt, build_address(get_vtable_decl (cd)));
-
-  if (!cd->cpp)
-    dt_cons(pdt, size_int(0));
-
-  return pdt;
-}
-
 /* ================================================================ */
 
 // Build constructors for front-end Initialisers to be written to data segment.

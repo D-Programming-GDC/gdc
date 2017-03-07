@@ -46,8 +46,7 @@ class TypeFunction;
 
    Usage of DECL_LANG_FLAG_?:
    0: D_DECL_ONE_ONLY
-   1: D_DECL_IS_TEMPLATE
-   2: LABEL_VARIABLE_CASE (in LABEL_DECL).  */
+   1: LABEL_VARIABLE_CASE (in LABEL_DECL).  */
 
 /* The kinds of scopes we recognise.  */
 
@@ -328,15 +327,9 @@ lang_tree_node
 #define D_DECL_ONE_ONLY(NODE) \
   (DECL_LANG_FLAG_0 (NODE))
 
-/* True if the symbol is a template member.  Need to distinguish between
-   templates and other shared static data so that the latter is not affected
-   by -femit-templates.  */
-#define D_DECL_IS_TEMPLATE(NODE) \
-  (DECL_LANG_FLAG_1 (NODE))
-
 /* True if the decl is a variable case label decl.  */
 #define LABEL_VARIABLE_CASE(NODE) \
-  (DECL_LANG_FLAG_2 (LABEL_DECL_CHECK (NODE)))
+  (DECL_LANG_FLAG_1 (LABEL_DECL_CHECK (NODE)))
 
 enum d_tree_index
 {
@@ -440,6 +433,7 @@ extern tree build_import_decl (Dsymbol *);
 /* In typeinfo.cc.  */
 extern tree build_typeinfo (Type *);
 extern tree layout_typeinfo (TypeInfoDeclaration *);
+extern tree layout_classinfo (ClassDeclaration *);
 
 /* In toir.cc.  */
 extern void build_ir (FuncDeclaration *);

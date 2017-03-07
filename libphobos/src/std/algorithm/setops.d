@@ -47,7 +47,7 @@ import std.range.primitives;
 import std.functional; // : unaryFun, binaryFun;
 import std.traits;
 // FIXME
-import std.typetuple; // : TypeTuple, staticMap, allSatisfy, anySatisfy;
+import std.meta; // : AliasSeq, staticMap, allSatisfy, anySatisfy;
 
 // cartesianProduct
 /**
@@ -66,6 +66,16 @@ If both ranges are infinite, then both must be forward ranges.
 
 When there are more than two ranges, the above conditions apply to each
 adjacent pair of ranges.
+
+Params:
+    range1 = The first range
+    range2 = The second range
+    ranges = Two or more non-infinite forward ranges
+    otherRanges = Zero or more non-infinite forward ranges
+
+Returns:
+    A forward range of $(XREF typecons,Tuple) representing elements of the
+    cartesian product of the given ranges.
 */
 auto cartesianProduct(R1, R2)(R1 range1, R2 range2)
     if (!allSatisfy!(isForwardRange, R1, R2) ||
@@ -541,30 +551,11 @@ the elements that are common to most ranges, along with their number
 of occurrences. All ranges in $(D ror) are assumed to be sorted by $(D
 less). Only the most frequent $(D tgt.length) elements are returned.
 
-Example:
-----
-// Figure which number can be found in most arrays of the set of
-// arrays below.
-double[][] a =
-[
-    [ 1, 4, 7, 8 ],
-    [ 1, 7 ],
-    [ 1, 7, 8],
-    [ 4 ],
-    [ 7 ],
-];
-auto b = new Tuple!(double, uint)[1];
-largestPartialIntersection(a, b);
-// First member is the item, second is the occurrence count
-assert(b[0] == tuple(7.0, 4u));
-----
-
-$(D 7.0) is the correct answer because it occurs in $(D 4) out of the
-$(D 5) inputs, more than any other number. The second member of the
-resulting tuple is indeed $(D 4) (recording the number of occurrences
-of $(D 7.0)). If more of the top-frequent numbers are needed, just
-create a larger $(D tgt) range. In the example above, creating $(D b)
-with length $(D 2) yields $(D tuple(1.0, 3u)) in the second position.
+Params:
+    less = The predicate the ranges are sorted by.
+    ror = A range of forward ranges sorted by `less`.
+    tgt = The target range to copy common elements to.
+    sorted = Whether the elements copied should be in sorted order.
 
 The function $(D largestPartialIntersection) is useful for
 e.g. searching an $(LUCKY inverted index) for the documents most
@@ -595,6 +586,36 @@ void largestPartialIntersection
             sorted);
 }
 
+///
+unittest
+{
+    import std.typecons : tuple, Tuple;
+
+    // Figure which number can be found in most arrays of the set of
+    // arrays below.
+    double[][] a =
+    [
+        [ 1, 4, 7, 8 ],
+        [ 1, 7 ],
+        [ 1, 7, 8],
+        [ 4 ],
+        [ 7 ],
+    ];
+    auto b = new Tuple!(double, uint)[1];
+    // it will modify the input range, hence we need to create a duplicate
+    largestPartialIntersection(a.dup, b);
+    // First member is the item, second is the occurrence count
+    assert(b[0] == tuple(7.0, 4u));
+    // 7.0 occurs in 4 out of 5 inputs, more than any other number
+
+    // If more of the top-frequent numbers are needed, just create a larger
+    // tgt range
+    auto c = new Tuple!(double, uint)[2];
+    largestPartialIntersection(a, c);
+    assert(c[0] == tuple(1.0, 3u));
+    // 1.0 occurs in 3 inputs
+}
+
 import std.algorithm.sorting : SortOutput; // FIXME
 
 // largestPartialIntersectionWeighted
@@ -602,30 +623,14 @@ import std.algorithm.sorting : SortOutput; // FIXME
 Similar to $(D largestPartialIntersection), but associates a weight
 with each distinct element in the intersection.
 
-Example:
-----
-// Figure which number can be found in most arrays of the set of
-// arrays below, with specific per-element weights
-double[][] a =
-[
-    [ 1, 4, 7, 8 ],
-    [ 1, 7 ],
-    [ 1, 7, 8],
-    [ 4 ],
-    [ 7 ],
-];
-auto b = new Tuple!(double, uint)[1];
-double[double] weights = [ 1:1.2, 4:2.3, 7:1.1, 8:1.1 ];
-largestPartialIntersectionWeighted(a, b, weights);
-// First member is the item, second is the occurrence count
-assert(b[0] == tuple(4.0, 2u));
-----
+Params:
+    less = The predicate the ranges are sorted by.
+    ror = A range of forward ranges sorted by `less`.
+    tgt = The target range to copy common elements to.
+    weights = An associative array mapping elements to weights.
+    sorted = Whether the elements copied should be in sorted order.
 
-The correct answer in this case is $(D 4.0), which, although only
-appears two times, has a total weight $(D 4.6) (three times its weight
-$(D 2.3)). The value $(D 7) is weighted with $(D 1.1) and occurs four
-times for a total weight $(D 4.4).
- */
+*/
 void largestPartialIntersectionWeighted
 (alias less = "a < b", RangeOfRanges, Range, WeightsAA)
 (RangeOfRanges ror, Range tgt, WeightsAA weights, SortOutput sorted = SortOutput.no)
@@ -640,6 +645,30 @@ void largestPartialIntersectionWeighted
         return weights[a[0]] * a[1] > weights[b[0]] * b[1];
     }
     topNCopy!heapComp(group(nWayUnion!less(ror)), tgt, sorted);
+}
+
+///
+unittest
+{
+    import std.typecons : tuple, Tuple;
+
+    // Figure which number can be found in most arrays of the set of
+    // arrays below, with specific per-element weights
+    double[][] a =
+    [
+        [ 1, 4, 7, 8 ],
+        [ 1, 7 ],
+        [ 1, 7, 8],
+        [ 4 ],
+        [ 7 ],
+    ];
+    auto b = new Tuple!(double, uint)[1];
+    double[double] weights = [ 1:1.2, 4:2.3, 7:1.1, 8:1.1 ];
+    largestPartialIntersectionWeighted(a, b, weights);
+    // First member is the item, second is the occurrence count
+    assert(b[0] == tuple(4.0, 2u));
+    // 4.0 occurs 2 times -> 4.6 (2 * 2.3)
+    // 7.0 occurs 3 times -> 4.4 (3 * 1.1)
 }
 
 unittest
@@ -738,6 +767,13 @@ NWayUnion) is $(BIGOH n * ror.length * log(ror.length)), i.e., $(D
 log(ror.length)) times worse than just spanning all ranges in
 turn. The output comes sorted (unstably) by $(D less).
 
+Params:
+    less = Predicate the given ranges are sorted by.
+    ror = A range of ranges sorted by `less` to compute the union for.
+
+Returns:
+    A range of the union of the ranges in `ror`.
+
 Warning: Because $(D NWayUnion) does not allocate extra memory, it
 will leave $(D ror) modified. Namely, $(D NWayUnion) assumes ownership
 of $(D ror) and discretionarily swaps and advances elements of it. If
@@ -826,6 +862,16 @@ unittest
 Lazily computes the difference of $(D r1) and $(D r2). The two ranges
 are assumed to be sorted by $(D less). The element types of the two
 ranges must have a common type.
+
+Params:
+    less = Predicate the given ranges are sorted by.
+    r1 = The first range.
+    r2 = The range to subtract from `r1`.
+
+Returns:
+    A range of the difference of `r1` and `r2`.
+
+See_also: $(LREF setSymmetricDifference)
  */
 struct SetDifference(alias less = "a < b", R1, R2)
     if (isInputRange!(R1) && isInputRange!(R2))
@@ -921,6 +967,13 @@ SetDifference!(less, R1, R2) setDifference(alias less = "a < b", R1, R2)
 Lazily computes the intersection of two or more input ranges $(D
 ranges). The ranges are assumed to be sorted by $(D less). The element
 types of the ranges must have a common type.
+
+Params:
+    less = Predicate the given ranges are sorted by.
+    ranges = The ranges to compute the intersection for.
+
+Returns:
+    A range containing the intersection of the given ranges.
  */
 struct SetIntersection(alias less = "a < b", Rs...)
     if (Rs.length >= 2 && allSatisfy!(isInputRange, Rs) &&
@@ -1070,6 +1123,16 @@ ranges must have a common type.
 If both arguments are ranges of L-values of the same type then
 $(D SetSymmetricDifference) will also be a range of L-values of
 that type.
+
+Params:
+    less = Predicate the given ranges are sorted by.
+    r1 = The first range.
+    r2 = The second range.
+
+Returns:
+    A range of the symmetric difference between `r1` and `r2`.
+
+See_also: $(LREF setDifference)
  */
 struct SetSymmetricDifference(alias less = "a < b", R1, R2)
     if (isInputRange!(R1) && isInputRange!(R2))
@@ -1188,6 +1251,13 @@ are assumed to be sorted by $(D less). Elements in the output are not
 unique; the length of the output is the sum of the lengths of the
 inputs. (The $(D length) member is offered if all ranges also have
 length.) The element types of all ranges must have a common type.
+
+Params:
+    less = Predicate the given ranges are sorted by.
+    rs = The ranges to compute the union for.
+
+Returns:
+    A range containing the union of the given ranges.
  */
 struct SetUnion(alias less = "a < b", Rs...) if (allSatisfy!(isInputRange, Rs))
 {

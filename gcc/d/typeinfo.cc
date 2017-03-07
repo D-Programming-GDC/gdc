@@ -48,6 +48,7 @@ class TypeInfoVisitor : public Visitor
   vec<constructor_elt, va_gc> *init_;
 
   /* Find the field identified by NAME and add its VALUE to the constructor.  */
+
   void set_field (const char *name, tree value)
   {
     tree field = find_aggregate_field (this->type_, get_identifier (name));
@@ -56,18 +57,146 @@ class TypeInfoVisitor : public Visitor
       CONSTRUCTOR_APPEND_ELT (this->init_, field, value);
   }
 
+  /* Find the field at OFFSET and add its VALUE to the constructor.  */
+
+  void set_field (size_t offset, tree value)
+  {
+    tree field = find_aggregate_field (this->type_, NULL_TREE,
+				       size_int (offset));
+    if (field != NULL_TREE)
+      CONSTRUCTOR_APPEND_ELT (this->init_, field, value);
+  }
+
   /* Write out the __vptr field of class CD.  */
+
   void layout_vtable (ClassDeclaration *cd)
   {
     if (cd != NULL)
       this->set_field ("__vptr", build_address (get_vtable_decl (cd)));
   }
 
+  /* Write out the interfaces field of class CD.  */
+
+  void layout_interfaces (ClassDeclaration *cd)
+  {
+    Type *tinterface = Type::typeinterface->type;
+    tree type = build_ctype (tinterface);
+    size_t offset = Type::typeinfoclass->structsize;
+    tree csym = build_address (get_classinfo_decl (cd));
+
+    /* Put out the offset to where vtblInterfaces are written.  */
+    tree value = d_array_value (build_ctype (tinterface->arrayOf ()),
+				size_int (cd->vtblInterfaces->dim),
+				build_offset (csym, size_int (offset)));
+    this->set_field ("interfaces", value);
+
+    /* Layout of Interface is:
+       TypeInfo_Class classinfo;
+       void*[] vtbl;
+       size_t offset;  */
+    vec<constructor_elt, va_gc> *elms = NULL;;
+
+    for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+      {
+	BaseClass *b = (*cd->vtblInterfaces)[i];
+	ClassDeclaration *id = b->sym;
+	vec<constructor_elt, va_gc> *v = NULL;
+	tree field;
+
+	/* Fill in the vtbl[].  */
+	b->fillVtbl (cd, &b->vtbl, 1);
+
+	/* ClassInfo for the interface.  */
+	field = find_aggregate_field (type, get_identifier ("classinfo"));
+	if (field)
+	  {
+	    value = build_address (get_classinfo_decl (id));
+	    CONSTRUCTOR_APPEND_ELT (v, field, value);
+	  }
+
+	if (!cd->isInterfaceDeclaration ())
+	  {
+	    /* The vtable of the interface.  */
+	    field = find_aggregate_field (type, get_identifier ("vtbl"));
+	    if (field)
+	      {
+		size_t voffset = cd->baseVtblOffset (b);
+		value = d_array_value (build_ctype (Type::tvoidptr->arrayOf ()),
+				       size_int (id->vtbl.dim),
+				       build_offset (csym, size_int (voffset)));
+		CONSTRUCTOR_APPEND_ELT (v, field, value);
+	      }
+	  }
+
+	/* The 'this' offset.  */
+	field = find_aggregate_field (type, get_identifier ("offset"));
+	if (field)
+	  {
+	    value = size_int (b->offset);
+	    CONSTRUCTOR_APPEND_ELT (v, field, value);
+	  }
+
+	CONSTRUCTOR_APPEND_ELT(elms, size_int (i), build_constructor (type, v));
+      }
+
+    /* Put out array of Interfaces.  */
+    size_t dim = cd->vtblInterfaces->dim;
+    value = build_constructor (d_array_type (tinterface, dim), elms);
+    this->set_field (offset, value);
+  }
+
+  /* Write out the interfacing vtable[] of base class BCD that will be accessed
+     from the overriding class CD.  If both are the same class, then this will
+     be it's own vtable.  INDEX is the offset in the interfaces array of the
+     base class where the Interface reference can be found.
+     This must be mirrored with ClassDeclaration::baseVtblOffset().  */
+
+  void layout_base_vtable (ClassDeclaration *cd, ClassDeclaration *bcd,
+			   size_t index)
+  {
+    BaseClass *bs = (*bcd->vtblInterfaces)[index];
+    ClassDeclaration *id = bs->sym;
+    size_t voffset = cd->baseVtblOffset (bs);
+    vec<constructor_elt, va_gc> *elms = NULL;
+    FuncDeclarations bvtbl;
+
+    if (id->vtbl.dim == 0 || voffset == ~0u)
+      return;
+
+    /* Fill bvtbl with the functions we want to put out.  */
+    if (cd != bcd && !bs->fillVtbl (cd, &bvtbl, 0))
+      return;
+
+    /* First entry is struct Interface reference.  */
+    if (id->vtblOffset () && Type::typeinterface)
+      {
+	size_t offset = Type::typeinfoclass->structsize;
+	offset += (index * Type::typeinterface->structsize);
+	tree value = build_offset (build_address (get_classinfo_decl (bcd)),
+				   size_int (offset));
+	CONSTRUCTOR_APPEND_ELT (elms, size_zero_node, value);
+      }
+
+    for (size_t i = id->vtblOffset() ? 1 : 0; i < id->vtbl.dim; i++)
+      {
+	FuncDeclaration *fd = (cd == bcd) ? bs->vtbl[i] : bvtbl[i];
+	if (fd != NULL)
+	  {
+	    tree value = build_address (make_thunk (fd, bs->offset));
+	    CONSTRUCTOR_APPEND_ELT (elms, size_int (i), value);
+	  }
+      }
+
+    tree value = build_constructor (d_array_type (Type::tvoidptr, id->vtbl.dim),
+				    elms);
+    this->set_field (voffset, value);
+  }
+
+
 public:
   TypeInfoVisitor (tree type)
   {
-    gcc_assert (POINTER_TYPE_P (type));
-    this->type_ = TREE_TYPE (type);
+    this->type_ = type;
     this->init_ = NULL;
   }
 
@@ -324,11 +453,178 @@ public:
     this->set_field ("deco", d_array_string (d->tinfo->deco));
   }
 
-  /* Generation of ClassInfo is done in ClassDeclaration::toObjFile.  */
+  /* Layout of ClassInfo/TypeInfo_Class is:
+	void **__vptr;
+	void *__monitor;
+	byte[] m_init;
+	string name;
+	void*[] vtbl;
+	Interface[] interfaces;
+	TypeInfo_Class base;
+	void *destructor;
+	void function(Object) classInvariant;
+	ClassFlags m_flags;
+	void *deallocator;
+	OffsetTypeInfo[] m_offTi;
+	void function(Object) defaultConstructor;
+	immutable(void)* m_RTInfo;
 
-  void visit (TypeInfoClassDeclaration *)
+     Information relating to interfaces, and their vtables are layed out
+     immediately after the named fields, if there is anything to write.  */
+
+  void visit (TypeInfoClassDeclaration *d)
   {
-    gcc_unreachable ();
+    gcc_assert (d->tinfo->ty == Tclass);
+    TypeClass *ti = (TypeClass *) d->tinfo;
+    ClassDeclaration *cd = ti->sym;
+
+    /* The vtable for ClassInfo.  */
+    this->layout_vtable (Type::typeinfoclass);
+
+    if (!cd->members)
+      return;
+
+    if (!cd->isInterfaceDeclaration ())
+      {
+	/* Default initialiser for class.  */
+	tree value = d_array_value (build_ctype (Type::tint8->arrayOf ()),
+				    size_int (cd->structsize),
+				    build_address (aggregate_initializer (cd)));
+	this->set_field ("m_init", value);
+
+	/* Name of the class declaration.  */
+	const char *name = cd->ident->toChars ();
+	if (!(strlen (name) > 9 && memcmp (name, "TypeInfo_", 9) == 0))
+	  name = cd->toPrettyChars ();
+	this->set_field ("name", d_array_string (name));
+
+	/* The vtable of the class declaration.  */
+	value = d_array_value (build_ctype (Type::tvoidptr->arrayOf ()),
+			       size_int (cd->vtbl.dim),
+			       build_address (get_vtable_decl (cd)));
+	this->set_field ("vtbl", value);
+
+	/* Array of base interfaces that have their own vtable.  */
+	if (cd->vtblInterfaces->dim && Type::typeinterface)
+	  this->layout_interfaces (cd);
+
+	/* TypeInfo_Class base;  */
+	if (cd->baseClass)
+	  {
+	    tree base = get_classinfo_decl (cd->baseClass);
+	    this->set_field ("base", build_address (base));
+	  }
+
+	/* void *destructor;  */
+	if (cd->dtor)
+	  {
+	    tree dtor = get_symbol_decl (cd->dtor);
+	    this->set_field ("destructor", build_address (dtor));
+	  }
+
+	/* void function(Object) classInvariant;  */
+	if (cd->inv)
+	  {
+	    tree inv = get_symbol_decl (cd->inv);
+	    this->set_field ("classInvariant", build_address (inv));
+	  }
+
+	/* ClassFlags m_flags;  */
+	ClassFlags::Type flags = ClassFlags::hasOffTi;
+	if (cd->isCOMclass ())
+	  flags |= ClassFlags::isCOMclass;
+
+	if (cd->isCPPclass ())
+	  flags |= ClassFlags::isCPPclass;
+
+	flags |= ClassFlags::hasGetMembers;
+	flags |= ClassFlags::hasTypeInfo;
+
+	if (cd->ctor)
+	  flags |= ClassFlags::hasCtor;
+
+	for (ClassDeclaration *bcd = cd; bcd; bcd = bcd->baseClass)
+	  {
+	    if (bcd->dtor)
+	      {
+		flags |= ClassFlags::hasDtor;
+		break;
+	      }
+	  }
+
+	if (cd->isabstract)
+	  flags |= ClassFlags::isAbstract;
+
+	for (ClassDeclaration *bcd = cd; bcd; bcd = bcd->baseClass)
+	  {
+	    if (!bcd->members)
+	      continue;
+
+	    for (size_t i = 0; i < cd->members->dim; i++)
+	      {
+		Dsymbol *sm = (*cd->members)[i];
+		if (sm->hasPointers ())
+		  goto Lhaspointers;
+	      }
+	  }
+
+	flags |= ClassFlags::noPointers;
+
+    Lhaspointers:
+	this->set_field ("m_flags", size_int (flags));
+
+	/* void *deallocator;  */
+	if (cd->aggDelete)
+	  {
+	    tree ddtor = get_symbol_decl (cd->aggDelete);
+	    this->set_field ("deallocator", build_address (ddtor));
+	  }
+
+	/* void function(Object) defaultConstructor;  */
+	if (cd->defaultCtor && !(cd->defaultCtor->storage_class & STCdisable))
+	  {
+	    tree dctor = get_symbol_decl (cd->defaultCtor);
+	    this->set_field ("defaultConstructor", build_address (dctor));
+	  }
+
+	/* immutable(void)* m_RTInfo;  */
+	if (cd->getRTInfo)
+	  this->set_field ("m_RTInfo", build_expr (cd->getRTInfo, true));
+	else if (!(flags & ClassFlags::noPointers))
+	  this->set_field ("m_RTInfo", size_one_node);
+      }
+    else
+      {
+	/* Name of the interface declaration.  */
+	this->set_field ("name", d_array_string (cd->toPrettyChars ()));
+
+	/* Array of base interfaces that have their own vtable.  */
+	if (cd->vtblInterfaces->dim && Type::typeinterface)
+	  this->layout_interfaces (cd);
+
+	/* ClassFlags m_flags;  */
+	ClassFlags::Type flags = ClassFlags::hasOffTi;
+	flags |= ClassFlags::hasTypeInfo;
+	if (cd->isCOMinterface ())
+	  flags |= ClassFlags::isCOMclass;
+
+	this->set_field ("m_flags", size_int (flags));
+
+	/* immutable(void)* m_RTInfo;  */
+	if (cd->getRTInfo)
+	  this->set_field ("m_RTInfo", build_expr (cd->getRTInfo, true));
+      }
+
+    /* Put out this class' interface vtables[].  */
+    for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+      this->layout_base_vtable (cd, cd, i);
+
+    /* Put out the overriding interface vtables[].  */
+    for (ClassDeclaration *bcd = cd->baseClass; bcd; bcd = bcd->baseClass)
+      {
+	for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
+	  this->layout_base_vtable (cd, bcd, i);
+      }
   }
 
   /* Layout of TypeInfo_Interface is:
@@ -521,7 +817,28 @@ public:
 tree
 layout_typeinfo (TypeInfoDeclaration *d)
 {
-  TypeInfoVisitor v = TypeInfoVisitor (build_ctype (d->type));
+  tree type = build_ctype (d->type);
+  gcc_assert (POINTER_TYPE_P (type));
+
+  TypeInfoVisitor v = TypeInfoVisitor (TREE_TYPE (type));
+  d->accept (&v);
+  return v.result ();
+}
+
+/* Like layout_typeinfo, but generates the TypeInfo_Class for
+   the class or interface declaration CD.  */
+
+tree
+layout_classinfo (ClassDeclaration *cd)
+{
+  tree type = TREE_TYPE (get_classinfo_decl (cd));
+  /* The classinfo decl initialized here to accomodate both class and interfaces
+     is thrown away immediately after exiting.  So the use of placement new is
+     deliberate to avoid making more heap allocations than necessary.  */
+  char buf[sizeof (TypeInfoClassDeclaration)];
+  TypeInfoClassDeclaration *d = new (buf) TypeInfoClassDeclaration (cd->type);
+
+  TypeInfoVisitor v = TypeInfoVisitor (type);
   d->accept (&v);
   return v.result ();
 }
@@ -590,7 +907,7 @@ genTypeInfo (Type *type, Scope *sc)
 	    t->vtinfo = TypeInfoClassDeclaration::create (type);
 	}
       else
-        t->vtinfo = TypeInfoDeclaration::create (type, 0);
+        t->vtinfo = TypeInfoDeclaration::create (type);
 
       gcc_assert (t->vtinfo);
 

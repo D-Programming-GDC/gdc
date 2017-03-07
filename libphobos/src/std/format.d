@@ -62,9 +62,9 @@ module std.format;
 
 import core.vararg;
 import std.exception;
+import std.meta;
 import std.range.primitives;
 import std.traits;
-import std.typetuple;
 
 version(CRuntime_DigitalMars)
 {
@@ -218,68 +218,68 @@ $(I FormatChar):
     $(TR $(TD $(B ' ')) $(TD numeric) $(TD Prefix positive
     numbers in a signed conversion with a space.)))
 
-    <dl>
-        <dt>$(I Width)
-        <dd>
+    $(DL
+        $(DT $(I Width))
+        $(DD
         Specifies the minimum field width.
         If the width is a $(B *), an additional argument of type $(B int),
         preceding the actual argument, is taken as the width.
         If the width is negative, it is as if the $(B -) was given
-        as a $(I Flags) character.
+        as a $(I Flags) character.)
 
-        <dt>$(I Precision)
-        <dd> Gives the precision for numeric conversions.
+        $(DT $(I Precision))
+        $(DD Gives the precision for numeric conversions.
         If the precision is a $(B *), an additional argument of type $(B int),
         preceding the actual argument, is taken as the precision.
-        If it is negative, it is as if there was no $(I Precision) specifier.
+        If it is negative, it is as if there was no $(I Precision) specifier.)
 
-        <dt>$(I FormatChar)
-        <dd>
-        <dl>
-            <dt>$(B 's')
-            <dd>The corresponding argument is formatted in a manner consistent
+        $(DT $(I FormatChar))
+        $(DD
+        $(DL
+            $(DT $(B 's'))
+            $(DD The corresponding argument is formatted in a manner consistent
             with its type:
-            <dl>
-                <dt>$(B bool)
-                <dd>The result is <tt>'true'</tt> or <tt>'false'</tt>.
-                <dt>integral types
-                <dd>The $(B %d) format is used.
-                <dt>floating point types
-                <dd>The $(B %g) format is used.
-                <dt>string types
-                <dd>The result is the string converted to UTF-8.
+            $(DL
+                $(DT $(B bool))
+                $(DD The result is $(D "true") or $(D "false").)
+                $(DT integral types)
+                $(DD The $(B %d) format is used.)
+                $(DT floating point types)
+                $(DD The $(B %g) format is used.)
+                $(DT string types)
+                $(DD The result is the string converted to UTF-8.
                 A $(I Precision) specifies the maximum number of characters
-                to use in the result.
-                <dt>structs
-                <dd>If the struct defines a $(B toString()) method the result is
+                to use in the result.)
+                $(DT structs)
+                $(DD If the struct defines a $(B toString()) method the result is
                 the string returned from this function. Otherwise the result is
                 StructName(field<sub>0</sub>, field<sub>1</sub>, ...) where
                 field<sub>n</sub> is the nth element formatted with the default
-                format.
-                <dt>classes derived from $(B Object)
-                <dd>The result is the string returned from the class instance's
+                format.)
+                $(DT classes derived from $(B Object))
+                $(DD The result is the string returned from the class instance's
                 $(B .toString()) method.
                 A $(I Precision) specifies the maximum number of characters
-                to use in the result.
-                <dt>unions
-                <dd>If the union defines a $(B toString()) method the result is
+                to use in the result.)
+                $(DT unions)
+                $(DD If the union defines a $(B toString()) method the result is
                 the string returned from this function. Otherwise the result is
-                the name of the union, without its contents.
-                <dt>non-string static and dynamic arrays
-                <dd>The result is [s<sub>0</sub>, s<sub>1</sub>, ...]
+                the name of the union, without its contents.)
+                $(DT non-string static and dynamic arrays)
+                $(DD The result is [s<sub>0</sub>, s<sub>1</sub>, ...]
                 where s<sub>n</sub> is the nth element
-                formatted with the default format.
-                <dt>associative arrays
-                <dd>The result is the equivalent of what the initializer
+                formatted with the default format.)
+                $(DT associative arrays)
+                $(DD The result is the equivalent of what the initializer
                 would look like for the contents of the associative array,
-                e.g.: ["red" : 10, "blue" : 20].
-            </dl>
+                e.g.: ["red" : 10, "blue" : 20].)
+            ))
 
-            <dt>$(B 'c')
-            <dd>The corresponding argument must be a character type.
+            $(DT $(B 'c'))
+            $(DD The corresponding argument must be a character type.)
 
-            <dt>$(B 'b','d','o','x','X')
-            <dd> The corresponding argument must be an integral type
+            $(DT $(B 'b','d','o','x','X'))
+            $(DD The corresponding argument must be an integral type
             and is formatted as an integer. If the argument is a signed type
             and the $(I FormatChar) is $(B d) it is converted to
             a signed string of characters, otherwise it is treated as
@@ -291,26 +291,26 @@ $(I FormatChar):
             If there are fewer resulting digits than the $(I Precision),
             leading zeros are used as necessary.
             If the $(I Precision) is 0 and the number is 0, no digits
-            result.
+            result.)
 
-            <dt>$(B 'e','E')
-            <dd> A floating point number is formatted as one digit before
+            $(DT $(B 'e','E'))
+            $(DD A floating point number is formatted as one digit before
             the decimal point, $(I Precision) digits after, the $(I FormatChar),
             &plusmn;, followed by at least a two digit exponent:
             $(I d.dddddd)e$(I &plusmn;dd).
             If there is no $(I Precision), six
             digits are generated after the decimal point.
-            If the $(I Precision) is 0, no decimal point is generated.
+            If the $(I Precision) is 0, no decimal point is generated.)
 
-            <dt>$(B 'f','F')
-            <dd> A floating point number is formatted in decimal notation.
+            $(DT $(B 'f','F'))
+            $(DD A floating point number is formatted in decimal notation.
             The $(I Precision) specifies the number of digits generated
             after the decimal point. It defaults to six. At least one digit
             is generated before the decimal point. If the $(I Precision)
-            is zero, no decimal point is generated.
+            is zero, no decimal point is generated.)
 
-            <dt>$(B 'g','G')
-            <dd> A floating point number is formatted in either $(B e) or
+            $(DT $(B 'g','G'))
+            $(DD A floating point number is formatted in either $(B e) or
             $(B f) format for $(B g); $(B E) or $(B F) format for
             $(B G).
             The $(B f) format is used if the exponent for an $(B e) format
@@ -318,10 +318,10 @@ $(I FormatChar):
             The $(I Precision) specifies the number of significant
             digits, and defaults to six.
             Trailing zeros are elided after the decimal point, if the fractional
-            part is zero then no decimal point is generated.
+            part is zero then no decimal point is generated.)
 
-            <dt>$(B 'a','A')
-            <dd> A floating point number is formatted in hexadecimal
+            $(DT $(B 'a','A'))
+            $(DD A floating point number is formatted in hexadecimal
             exponential notation 0x$(I h.hhhhhh)p$(I &plusmn;d).
             There is one hexadecimal digit before the decimal point, and as
             many after as specified by the $(I Precision).
@@ -333,9 +333,9 @@ $(I FormatChar):
             $(I h.hhhhhh)*2<sup>$(I &plusmn;d)</sup>.
             The exponent for zero is zero.
             The hexadecimal digits, x and p are in upper case if the
-            $(I FormatChar) is upper case.
-        </dl>
-    </dl>
+            $(I FormatChar) is upper case.)
+        ))
+    )
 
     Floating point NaN's are formatted as $(B nan) if the
     $(I FormatChar) is lower case, or $(B NAN) if upper.
@@ -343,22 +343,19 @@ $(I FormatChar):
     $(B infinity) if the
     $(I FormatChar) is lower case, or $(B INF) or $(B INFINITY) if upper.
 
-    Examples:
-    -------------------------
-    import std.array;
-    import std.format;
+    Example:
+    -----------------
+    import std.array : appender;
+    import std.format : formattedWrite;
 
-    void main()
-    {
-        auto writer = appender!string();
-        formattedWrite(writer, "%s is the ultimate %s.", 42, "answer");
-        assert(writer.data == "42 is the ultimate answer.");
-        // Clear the writer
-        writer = appender!string();
-        formattedWrite(writer, "Date: %2$s %1$s", "October", 5);
-        assert(writer.data == "Date: 5 October");
-    }
-    ------------------------
+    auto writer = appender!string();
+    formattedWrite(writer, "%s is the ultimate %s.", 42, "answer");
+    assert(writer.data == "42 is the ultimate answer.");
+    // Clear the writer
+    writer = appender!string();
+    formattedWrite(writer, "Date: %2$s %1$s", "October", 5);
+    assert(writer.data == "Date: 5 October");
+    -----------------
 
     The positional and non-positional styles can be mixed in the same
     format string. (POSIX leaves this behavior undefined.) The internal
@@ -376,10 +373,10 @@ $(I FormatChar):
     }
     -------------------------
     The output is:
-<pre class=console>
+$(CONSOLE
 My items are 1 2 3.
 My items are 1, 2, 3.
-</pre>
+)
 
     The trailing end of the sub-format string following the specifier for each
     item is interpreted as the array delimiter, and is therefore omitted
@@ -395,9 +392,9 @@ My items are 1, 2, 3.
     }
     -------------------------
     which gives the output:
-<pre class=console>
+$(CONSOLE
 My items are -1-, -2-, -3-.
-</pre>
+)
 
     These compound format specifiers may be nested in the case of a nested
     array argument:
@@ -419,7 +416,7 @@ My items are -1-, -2-, -3-.
     }
     -------------------------
     The output is:
-<pre class=console>
+$(CONSOLE
 1 2 3
 4 5 6
 7 8 9
@@ -431,7 +428,7 @@ My items are -1-, -2-, -3-.
 [[1 2 3]
  [4 5 6]
  [7 8 9]]
-</pre>
+)
 
     Inside a compound format specifier, strings and characters are escaped
     automatically. To avoid this behavior, add $(B '-') flag to
@@ -447,11 +444,11 @@ My items are -1-, -2-, -3-.
     }
     -------------------------
    which gives the output:
-<pre class=console>
+$(CONSOLE
 My friends are ["John", "Nancy"].
 My friends are "John", "Nancy".
 My friends are John, Nancy.
-</pre>
+)
  */
 uint formattedWrite(Writer, Char, A...)(Writer w, in Char[] fmt, A args)
 {
@@ -538,13 +535,18 @@ uint formattedWrite(Writer, Char, A...)(Writer w, in Char[] fmt, A args)
         if (spec.indexStart > 0)
         {
             // using positional parameters!
-            foreach (i; spec.indexStart - 1 .. spec.indexEnd)
+
+            // Make the conditional compilation of this loop explicit, to avoid "statement not reachable" warnings.
+            static if(A.length > 0)
             {
-                if (funs.length <= i) break;
-                if (__ctfe)
-                    formatNth(w, spec, i, args);
-                else
-                    funs[i](w, argsAddresses[i], spec);
+                foreach (i; spec.indexStart - 1 .. spec.indexEnd)
+                {
+                    if (funs.length <= i) break;
+                    if (__ctfe)
+                        formatNth(w, spec, i, args);
+                    else
+                        funs[i](w, argsAddresses[i], spec);
+                }
             }
             if (currentArg < spec.indexEnd) currentArg = spec.indexEnd;
         }
@@ -591,7 +593,7 @@ uint formattedRead(R, Char, S...)(ref R r, const(Char)[] fmt, S args)
     static if (!S.length)
     {
         spec.readUpToNextSpec(r);
-        enforce(spec.trailing.empty);
+        enforce(spec.trailing.empty, "Trailing characters in formattedRead format string");
         return 0;
     }
     else
@@ -1072,7 +1074,8 @@ struct FormatSpec(Char)
     //--------------------------------------------------------------------------
     private bool readUpToNextSpec(R)(ref R r)
     {
-        import std.ascii : isLower;
+        import std.ascii : isLower, isWhite;
+        import std.utf : stride;
 
         // Reset content
         if (__ctfe)
@@ -1118,8 +1121,8 @@ struct FormatSpec(Char)
             {
                 if (trailing.ptr[0] == ' ')
                 {
-                    while (!r.empty && std.ascii.isWhite(r.front)) r.popFront();
-                    //r = std.algorithm.find!(not!(std.ascii.isWhite))(r);
+                    while (!r.empty && isWhite(r.front)) r.popFront();
+                    //r = std.algorithm.find!(not!(isWhite))(r);
                 }
                 else
                 {
@@ -1129,7 +1132,7 @@ struct FormatSpec(Char)
                     if (r.front != trailing.front) break;
                     r.popFront();
                 }
-                trailing = trailing[std.utf.stride(trailing, 0) .. $];
+                trailing = trailing[stride(trailing, 0) .. $];
             }
         }
         return false;
@@ -1249,10 +1252,10 @@ unittest
     import std.array : appender;
     auto a = appender!(string)();
 
-    auto f = FormatSpec!char("%-(%s%");
+    auto f = FormatSpec!char("%-(%s%"); // %)")
     assertThrown(f.writeUpToNextSpec(a));
 
-    f = FormatSpec!char("%(%-");
+    f = FormatSpec!char("%(%-"); // %)")
     assertThrown(f.writeUpToNextSpec(a));
 }
 
@@ -1433,7 +1436,6 @@ Params:
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
 if (is(IntegralTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
-    import std.system : Endian;
     alias U = IntegralTypeOf!T;
     U val = obj;    // Extracting alias this may be impure/system/may-throw
 
@@ -1443,10 +1445,8 @@ if (is(IntegralTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
         auto raw = (ref val)@trusted{
             return (cast(const char*) &val)[0 .. val.sizeof];
         }(val);
-        if (std.system.endian == Endian.littleEndian && f.flPlus
-            || std.system.endian == Endian.bigEndian && f.flDash)
+        if (needToSwapEndianess(f))
         {
-            // must swap bytes
             foreach_reverse (c; raw)
                 put(w, c);
         }
@@ -1489,9 +1489,8 @@ unittest
     assert(w.data == "1337");
 }
 
-private void formatIntegral(Writer, T, Char)(Writer w, const(T) val, ref FormatSpec!Char f, uint base, ulong mask)
+private void formatIntegral(Writer, T, Char)(Writer w, const(T) val, const ref FormatSpec!Char fs, uint base, ulong mask)
 {
-    FormatSpec!Char fs = f; // fs is copy for change its values.
     T arg = val;
 
     bool negative = (base == 10 && arg < 0);
@@ -1507,105 +1506,94 @@ private void formatIntegral(Writer, T, Char)(Writer w, const(T) val, ref FormatS
         formatUnsigned(w, (cast(ulong) arg) & mask, fs, base, negative);
 }
 
-private void formatUnsigned(Writer, T, Char)(Writer w, T arg, ref FormatSpec!Char fs, uint base, bool negative)
+private void formatUnsigned(Writer, T, Char)(Writer w, T arg, const ref FormatSpec!Char fs, uint base, bool negative)
 {
-    if (fs.precision == fs.UNSPECIFIED)
-    {
-        // default precision for integrals is 1
-        fs.precision = 1;
-    }
-    else
-    {
-        // if a precision is specified, the '0' flag is ignored.
-        fs.flZero = false;
-    }
+    /* Write string:
+     *    leftpad prefix1 prefix2 zerofill digits rightpad
+     */
 
-    char leftPad = void;
-    if (!fs.flDash && !fs.flZero)
-        leftPad = ' ';
-    else if (!fs.flDash && fs.flZero)
-        leftPad = '0';
-    else
-        leftPad = 0;
-
-    // figure out sign and continue in unsigned mode
-    char forcedPrefix = void;
-    if (fs.flPlus) forcedPrefix = '+';
-    else if (fs.flSpace) forcedPrefix = ' ';
-    else forcedPrefix = 0;
-    if (base != 10)
-    {
-        // non-10 bases are always unsigned
-        forcedPrefix = 0;
-    }
-    else if (negative)
-    {
-        // argument is signed
-        forcedPrefix = '-';
-    }
-    // fill the digits
-    char[64] buffer; // 64 bits in base 2 at most
+    /* Convert arg to digits[].
+     * Note that 0 becomes an empty digits[]
+     */
+    char[64] buffer = void; // 64 bits in base 2 at most
     char[] digits;
     {
-        uint i = buffer.length;
-        auto n = arg;
-        do
+        size_t i = buffer.length;
+        while (arg)
         {
             --i;
-            buffer[i] = cast(char) (n % base);
-            n /= base;
-            if (buffer[i] < 10) buffer[i] += '0';
-            else buffer[i] += (fs.spec == 'x' ? 'a' : 'A') - 10;
-        } while (n);
+            char c = cast(char) (arg % base);
+            arg /= base;
+            if (c < 10)
+                buffer[i] = cast(char)(c + '0');
+            else
+                buffer[i] = cast(char)(c + (fs.spec == 'x' ? 'a' - 10 : 'A' - 10));
+        }
         digits = buffer[i .. $]; // got the digits without the sign
     }
-    // adjust precision to print a '0' for octal if alternate format is on
-    if (base == 8 && fs.flHash
-        && (fs.precision <= digits.length)) // too low precision
+
+
+    int precision = (fs.precision == fs.UNSPECIFIED) ? 1 : fs.precision;
+
+    char padChar = 0;
+    if (!fs.flDash)
     {
-        //fs.precision = digits.length + (arg != 0);
-        forcedPrefix = '0';
+        padChar = (fs.flZero && fs.precision == fs.UNSPECIFIED) ? '0' : ' ';
     }
-    // write left pad; write sign; write 0x or 0X; write digits;
-    //   write right pad
-    // Writing left pad
-    ptrdiff_t spacesToPrint =
-        fs.width // start with the minimum width
-        - digits.length  // take away digits to print
-        - (forcedPrefix != 0) // take away the sign if any
-        - (base == 16 && fs.flHash && arg ? 2 : 0); // 0x or 0X
-    const ptrdiff_t delta = fs.precision - digits.length;
-    if (delta > 0) spacesToPrint -= delta;
+
+    // Compute prefix1 and prefix2
+    char prefix1 = 0;
+    char prefix2 = 0;
+    if (base == 10)
+    {
+        if (negative)
+            prefix1 = '-';
+        else if (fs.flPlus)
+            prefix1 = '+';
+        else if (fs.flSpace)
+            prefix1 = ' ';
+    }
+    else if (base == 16 && fs.flHash && digits.length)
+    {
+        prefix1 = '0';
+        prefix2 = fs.spec == 'x' ? 'x' : 'X';
+    }
+    // adjust precision to print a '0' for octal if alternate format is on
+    else if (base == 8 && fs.flHash &&
+             (precision <= 1 || precision <= digits.length) && // too low precision
+             digits.length > 0)
+        prefix1 = '0';
+
+    size_t zerofill = precision > digits.length ? precision - digits.length : 0;
+    size_t leftpad = 0;
+    size_t rightpad = 0;
+
+    ptrdiff_t spacesToPrint = fs.width - ((prefix1 != 0) + (prefix2 != 0) + zerofill + digits.length);
     if (spacesToPrint > 0) // need to do some padding
     {
-        if (leftPad == '0')
-        {
-            // pad with zeros
+        if (padChar == '0')
+            zerofill += spacesToPrint;
+        else if (padChar)
+            leftpad = spacesToPrint;
+        else
+            rightpad = spacesToPrint;
+    }
 
-            fs.precision =
-                cast(typeof(fs.precision)) (spacesToPrint + digits.length);
-                //to!(typeof(fs.precision))(spacesToPrint + digits.length);
-        }
-        else if (leftPad) foreach (i ; 0 .. spacesToPrint) put(w, ' ');
-    }
-    // write sign
-    if (forcedPrefix) put(w, forcedPrefix);
-    // write 0x or 0X
-    if (base == 16 && fs.flHash && arg) {
-        // @@@ overcome bug in dmd;
-        //w.write(fs.spec == 'x' ? "0x" : "0X"); //crashes the compiler
+    /**** Print ****/
+
+    foreach (i ; 0 .. leftpad)
+        put(w, ' ');
+
+    if (prefix1) put(w, prefix1);
+    if (prefix2) put(w, prefix2);
+
+    foreach (i ; 0 .. zerofill)
         put(w, '0');
-        put(w, fs.spec == 'x' ? 'x' : 'X'); // x or X
-    }
-    // write the digits
-    if (arg || fs.precision)
-    {
-        ptrdiff_t zerosToPrint = fs.precision - digits.length;
-        foreach (i ; 0 .. zerosToPrint) put(w, '0');
-        put(w, digits);
-    }
-    // write the spaces to the right if left-align
-    if (!leftPad) foreach (i ; 0 .. spacesToPrint) put(w, ' ');
+
+    put(w, digits);
+
+    foreach (i ; 0 .. rightpad)
+        put(w, ' ');
 }
 
 @safe pure unittest
@@ -1685,7 +1673,6 @@ void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
 if (is(FloatingPointTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     import core.stdc.stdio : snprintf;
-    import std.system : Endian;
     import std.algorithm : find, min;
     FormatSpec!Char fs = f; // fs is copy for change its values.
     FloatingPointTypeOf!T val = obj;
@@ -1696,10 +1683,8 @@ if (is(FloatingPointTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
         auto raw = (ref val)@trusted{
             return (cast(const char*) &val)[0 .. val.sizeof];
         }(val);
-        if (std.system.endian == Endian.littleEndian && f.flPlus
-            || std.system.endian == Endian.bigEndian && f.flDash)
+        if (needToSwapEndianess(f))
         {
-            // must swap bytes
             foreach_reverse (c; raw)
                 put(w, c);
         }
@@ -1711,7 +1696,7 @@ if (is(FloatingPointTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
         return;
     }
     enforceFmt(find("fgFGaAeEs", fs.spec).length,
-        "floating");
+        "incompatible format character for floating point type");
 
     version (CRuntime_Microsoft)
     {
@@ -1768,7 +1753,7 @@ if (is(FloatingPointTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
     sprintfSpec[i++] = fs.spec;
     sprintfSpec[i] = 0;
     //printf("format: '%s'; geeba: %g\n", sprintfSpec.ptr, val);
-    char[512] buf;
+    char[512] buf = void;
 
     immutable n = ()@trusted{
         return snprintf(buf.ptr, buf.length,
@@ -1798,15 +1783,13 @@ unittest
 @safe /*pure*/ unittest     // formatting floating point values is now impure
 {
     import std.conv : to;
-    foreach (T; TypeTuple!(float, double, real))
+    foreach (T; AliasSeq!(float, double, real))
     {
         formatTest( to!(          T)(5.5), "5.5" );
         formatTest( to!(    const T)(5.5), "5.5" );
         formatTest( to!(immutable T)(5.5), "5.5" );
 
-        // bionic doesn't support lower-case string formatting of nan yet
-        version(CRuntime_Bionic) { formatTest( T.nan, "NaN" ); }
-        else { formatTest( T.nan, "nan" ); }
+        formatTest( T.nan, "nan" );
     }
 }
 
@@ -1852,13 +1835,13 @@ if (is(Unqual!T : creal) && !is(T == enum) && !hasToString!(T, Char))
 @safe /*pure*/ unittest     // formatting floating point values is now impure
 {
     import std.conv : to;
-    foreach (T; TypeTuple!(cfloat, cdouble, creal))
+    foreach (T; AliasSeq!(cfloat, cdouble, creal))
     {
         formatTest( to!(          T)(1 + 1i), "1+1i" );
         formatTest( to!(    const T)(1 + 1i), "1+1i" );
         formatTest( to!(immutable T)(1 + 1i), "1+1i" );
     }
-    foreach (T; TypeTuple!(cfloat, cdouble, creal))
+    foreach (T; AliasSeq!(cfloat, cdouble, creal))
     {
         formatTest( to!(          T)(0 - 3i), "0-3i" );
         formatTest( to!(    const T)(0 - 3i), "0-3i" );
@@ -1903,7 +1886,7 @@ if (is(Unqual!T : ireal) && !is(T == enum) && !hasToString!(T, Char))
 @safe /*pure*/ unittest     // formatting floating point values is now impure
 {
     import std.conv : to;
-    foreach (T; TypeTuple!(ifloat, idouble, ireal))
+    foreach (T; AliasSeq!(ifloat, idouble, ireal))
     {
         formatTest( to!(          T)(1i), "1i" );
         formatTest( to!(    const T)(1i), "1i" );
@@ -1949,7 +1932,7 @@ if (is(CharTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
     }
     else
     {
-        alias U = TypeTuple!(ubyte, ushort, uint)[CharTypeOf!T.sizeof/2];
+        alias U = AliasSeq!(ubyte, ushort, uint)[CharTypeOf!T.sizeof/2];
         formatValue(w, cast(U) val, f);
     }
 }
@@ -2275,7 +2258,7 @@ unittest
 unittest
 {
     // string literal from valid UTF sequence is encoding free.
-    foreach (StrType; TypeTuple!(string, wstring, dstring))
+    foreach (StrType; AliasSeq!(string, wstring, dstring))
     {
         // Valid and printable (ASCII)
         formatTest( [cast(StrType)"hello"],
@@ -2511,37 +2494,36 @@ private void formatChar(Writer)(Writer w, in dchar c, in char quote)
 {
     import std.uni : isGraphical;
 
-    if (std.uni.isGraphical(c))
+    string fmt;
+    if (isGraphical(c))
     {
         if (c == quote || c == '\\')
-        {
             put(w, '\\');
-            put(w, c);
-        }
-        else
-            put(w, c);
+        put(w, c);
+        return;
     }
     else if (c <= 0xFF)
     {
-        put(w, '\\');
-        switch (c)
+        if (c < 0x20)
         {
-        case '\0':  put(w, '0');  break;
-        case '\a':  put(w, 'a');  break;
-        case '\b':  put(w, 'b');  break;
-        case '\f':  put(w, 'f');  break;
-        case '\n':  put(w, 'n');  break;
-        case '\r':  put(w, 'r');  break;
-        case '\t':  put(w, 't');  break;
-        case '\v':  put(w, 'v');  break;
-        default:
-            formattedWrite(w, "x%02X", cast(uint)c);
+            foreach (i, k; "\n\r\t\a\b\f\v\0")
+            {
+                if (c == k)
+                {
+                    put(w, '\\');
+                    put(w, "nrtabfv0"[i]);
+                    return;
+                }
+            }
         }
+        fmt = "\\x%02X";
     }
     else if (c <= 0xFFFF)
-        formattedWrite(w, "\\u%04X", cast(uint)c);
+        fmt = "\\u%04X";
     else
-        formattedWrite(w, "\\U%08X", cast(uint)c);
+        fmt = "\\U%08X";
+
+    formattedWrite(w, fmt, cast(uint)c);
 }
 
 // undocumented because of deprecation
@@ -2563,7 +2545,9 @@ if (is(StringTypeOf!T) && !is(T == enum))
             put(app, '\"');
             for (size_t i = 0; i < str.length; )
             {
-                auto c = std.utf.decode(str, i);
+                import std.utf : decode;
+
+                auto c = decode(str, i);
                 // \uFFFE and \uFFFF are considered valid by isValidDchar,
                 // so need checking for interchange.
                 if (c == 0xFFFE || c == 0xFFFF)
@@ -3691,7 +3675,9 @@ pure unittest
 unittest
 {
     import std.conv : text, octal;
-    import std.array;
+    import std.array : appender;
+    import std.c.stdio : snprintf;
+    import core.stdc.string : strlen;
 
     debug(format) printf("std.format.format.unittest\n");
 
@@ -3732,13 +3718,6 @@ unittest
             || stream.data == "1.67 -0X1.47AE147AE147BP+0 nan", // MSVCRT 14+ (VS 2015)
                 stream.data);
     }
-    else version (CRuntime_Bionic)
-    {
-        // bionic doesn't support hex formatting of floating point numbers
-        // or lower-case string formatting of nan yet, but it was committed
-        // recently (April 2014):
-        // https://code.google.com/p/android/issues/detail?id=64886
-    }
     else
     {
         assert(stream.data == "1.67 -0X1.47AE147AE147BP+0 nan",
@@ -3767,12 +3746,6 @@ unittest
     version (CRuntime_Microsoft)
         assert(stream.data == "0x1.51eb85p+0 0X1.B1EB86P+2"
             || stream.data == "0x1.51eb851eb851fp+0 0X1.B1EB860000000P+2"); // MSVCRT 14+ (VS 2015)
-    else version (CRuntime_Bionic)
-    {
-        // bionic doesn't support hex formatting of floating point numbers,
-        // but it was committed recently (April 2014):
-        // https://code.google.com/p/android/issues/detail?id=64886
-    }
     else
         assert(stream.data == "0x1.51eb851eb851fp+0 0X1.B1EB86P+2");
     stream.clear();
@@ -4054,110 +4027,6 @@ here:
 
     stream.clear(); formattedWrite(stream, "%.-3d", 7);
     assert(stream.data == "7", ">" ~ stream.data ~ "<");
-
-
-    // systematic test
-    const string[] flags = [ "-", "+", "#", "0", " ", "" ];
-    const string[] widths = [ "", "0", "4", "20" ];
-    const string[] precs = [ "", ".", ".0", ".4", ".20" ];
-    const string formats = "sdoxXeEfFgGaA";
-  /+
-  foreach (flag1; flags)
-      foreach (flag2; flags)
-          foreach (flag3; flags)
-              foreach (flag4; flags)
-                  foreach (flag5; flags)
-                      foreach (width; widths)
-                          foreach (prec; precs)
-                              foreach (format; formats)
-                              {
-                                  stream.clear();
-                                  auto fmt = "%" ~ flag1 ~ flag2  ~ flag3
-                                      ~ flag4 ~ flag5 ~ width ~ prec ~ format
-                                      ~ '\0';
-                                  fmt = fmt[0 .. $ - 1]; // keep it zero-term
-                                  char buf[256];
-                                  buf[0] = 0;
-                                  switch (format)
-                                  {
-                                  case 's':
-                                      formattedWrite(stream, fmt, "wyda");
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          "wyda\0".ptr);
-                                      break;
-                                  case 'd':
-                                      formattedWrite(stream, fmt, 456);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                               456);
-                                      break;
-                                  case 'o':
-                                      formattedWrite(stream, fmt, 345);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                               345);
-                                      break;
-                                  case 'x':
-                                      formattedWrite(stream, fmt, 63546);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          63546);
-                                      break;
-                                  case 'X':
-                                      formattedWrite(stream, fmt, 12566);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          12566);
-                                      break;
-                                  case 'e':
-                                      formattedWrite(stream, fmt, 3245.345234);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          3245.345234);
-                                      break;
-                                  case 'E':
-                                      formattedWrite(stream, fmt, 3245.2345234);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          3245.2345234);
-                                      break;
-                                  case 'f':
-                                      formattedWrite(stream, fmt, 3245234.645675);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          3245234.645675);
-                                      break;
-                                  case 'F':
-                                      formattedWrite(stream, fmt, 213412.43);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          213412.43);
-                                      break;
-                                  case 'g':
-                                      formattedWrite(stream, fmt, 234134.34);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                          234134.34);
-                                      break;
-                                  case 'G':
-                                      formattedWrite(stream, fmt, 23141234.4321);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                               23141234.4321);
-                                      break;
-                                  case 'a':
-                                      formattedWrite(stream, fmt, 21341234.2134123);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                               21341234.2134123);
-                                      break;
-                                  case 'A':
-                                      formattedWrite(stream, fmt, 1092384098.45234);
-                                      snprintf(buf.ptr, buf.length, fmt.ptr,
-                                               1092384098.45234);
-                                      break;
-                                  default:
-                                      break;
-                                  }
-                                  auto exp = buf[0 .. strlen(buf.ptr)];
-                                  if (stream.data != exp)
-                                  {
-                                      writeln("Format: \"", fmt, '"');
-                                      writeln("Expected: >", exp, "<");
-                                      writeln("Actual:   >", stream.data,
-                                              "<");
-                                      assert(false);
-                                  }
-                              }+/
 }
 
 unittest
@@ -4166,28 +4035,13 @@ unittest
     import std.stdio;
 
     immutable(char[5])[int] aa = ([3:"hello", 4:"betty"]);
-    if (false) writeln(aa.keys);
     assert(aa[3] == "hello");
     assert(aa[4] == "betty");
-    // if (false)
-    // {
-    //     writeln(aa.values[0]);
-    //     writeln(aa.values[1]);
-    //     writefln("%s", typeid(typeof(aa.values)));
-    //     writefln("%s", aa[3]);
-    //     writefln("%s", aa[4]);
-    //     writefln("%s", aa.values);
-    //     //writefln("%s", aa);
-    //     wstring a = "abcd";
-    //     writefln(a);
-    //     dstring b = "abcd";
-    //     writefln(b);
-    // }
 
     auto stream = appender!(char[])();
     alias AllNumerics =
-        TypeTuple!(byte, ubyte, short, ushort, int, uint, long, ulong,
-                   float, double, real);
+        AliasSeq!(byte, ubyte, short, ushort, int, uint, long, ulong,
+                  float, double, real);
     foreach (T; AllNumerics)
     {
         T value = 1;
@@ -4196,11 +4050,8 @@ unittest
         assert(stream.data == "1");
     }
 
-    //auto r = format("%s", aa.values);
-    stream.clear(); formattedWrite(stream, "%s", aa);
-    //assert(stream.data == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]", stream.data);
-    //r = format("%s", aa);
-    //assert(r == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]");
+    stream.clear();
+    formattedWrite(stream, "%s", aa);
 }
 
 unittest
@@ -4233,21 +4084,21 @@ void formatReflectTest(T)(ref T val, string fmt, string formatted, string fn = _
     {
         alias aa1 = val;
         alias aa2 = val2;
-        //assert(aa1 == aa2);
+        assert(aa1 == aa2);
 
         assert(aa1.length == aa2.length);
 
         assert(aa1.keys == aa2.keys);
 
-        //assert(aa1.values == aa2.values);
+        assert(aa1.values == aa2.values);
         assert(aa1.values.length == aa2.values.length);
         foreach (i; 0 .. aa1.values.length)
             assert(aa1.values[i] == aa2.values[i]);
 
-        //foreach (i, key; aa1.keys)
-        //    assert(aa1.values[i] == aa1[key]);
-        //foreach (i, key; aa2.keys)
-        //    assert(aa2.values[i] == aa2[key]);
+        foreach (i, key; aa1.keys)
+            assert(aa1.values[i] == aa1[key]);
+        foreach (i, key; aa2.keys)
+            assert(aa2.values[i] == aa2[key]);
         return;
     }
     enforce!AssertError(
@@ -4282,21 +4133,21 @@ void formatReflectTest(T)(ref T val, string fmt, string[] formatted, string fn =
     {
         alias aa1 = val;
         alias aa2 = val2;
-        //assert(aa1 == aa2);
+        assert(aa1 == aa2);
 
         assert(aa1.length == aa2.length);
 
         assert(aa1.keys == aa2.keys);
 
-        //assert(aa1.values == aa2.values);
+        assert(aa1.values == aa2.values);
         assert(aa1.values.length == aa2.values.length);
         foreach (i; 0 .. aa1.values.length)
             assert(aa1.values[i] == aa2.values[i]);
 
-        //foreach (i, key; aa1.keys)
-        //    assert(aa1.values[i] == aa1[key]);
-        //foreach (i, key; aa2.keys)
-        //    assert(aa2.values[i] == aa2[key]);
+        foreach (i, key; aa1.keys)
+            assert(aa1.values[i] == aa1[key]);
+        foreach (i, key; aa2.keys)
+            assert(aa2.values[i] == aa2[key]);
         return;
     }
     enforce!AssertError(
@@ -4510,7 +4361,7 @@ T unformatValue(T, Range, Char)(ref Range input, ref FormatSpec!Char spec)
     enforce(find(acceptedSpecs!T, spec.spec).length,
             text("Wrong unformat specifier '%", spec.spec , "' for ", T.stringof));
 
-    enforce(spec.width == 0);   // TODO
+    enforce(spec.width == 0, "Parsing integers with a width specification is not implemented");   // TODO
 
     uint base =
         spec.spec == 'x' || spec.spec == 'X' ? 16 :
@@ -4533,7 +4384,7 @@ T unformatValue(T, Range, Char)(ref Range input, ref FormatSpec!Char spec)
     {
         // raw read
         //enforce(input.length >= T.sizeof);
-        enforce(isSomeString!Range || ElementType!(Range).sizeof == 1);
+        enforce(isSomeString!Range || ElementType!(Range).sizeof == 1, "Cannot parse input of type %s".format(Range.stringof));
         union X
         {
             ubyte[T.sizeof] raw;
@@ -4892,7 +4743,7 @@ body
         {
             auto fmt = FormatSpec!Char(spec.nested);
             fmt.readUpToNextSpec(input);
-            enforce(!input.empty);
+            enforce(!input.empty, "Unexpected end of input when parsing range");
 
             debug (unformatRange) printf("\t) spec = %c, front = %c ", fmt.spec, input.front);
             static if (isStaticArray!T)
@@ -4918,7 +4769,7 @@ body
             static if (isStaticArray!T)
             {
                 debug (unformatRange) printf("i = %u < %u\n", i, T.length);
-                enforce(i <= T.length);
+                enforce(i <= T.length, "Too many format specifiers for static array of length %d".format(T.length));
             }
 
             if (spec.sep != null)
@@ -4937,8 +4788,8 @@ body
             {
                 while (!sep.empty)
                 {
-                    enforce(!input.empty);
-                    enforce(input.front == sep.front);
+                    enforce(!input.empty, "Unexpected end of input when parsing range separator");
+                    enforce(input.front == sep.front, "Unexpected character when parsing range separator");
                     input.popFront();
                     sep.popFront();
                 }
@@ -4948,7 +4799,7 @@ body
     }
     static if (isStaticArray!T)
     {
-        enforce(i == T.length);
+        enforce(i == T.length, "Too few (%d) format specifiers for static array of length %d".format(i, T.length));
     }
     return result;
 }
@@ -5097,7 +4948,7 @@ private TypeInfo primitiveTypeInfo(Mangle m)
  *        A $(I format specification) starts with a '%' character,
  *        and has the following grammar:
 
-<pre>
+$(CONSOLE
 $(I FormatSpecification):
     $(B '%%')
     $(B '%') $(I Flags) $(I Width) $(I Precision) $(I FormatChar)
@@ -5152,88 +5003,88 @@ $(I FormatChar):
     $(B 'G')
     $(B 'a')
     $(B 'A')
-</pre>
-    <dl>
-    <dt>$(I Flags)
-    <dl>
-        <dt>$(B '-')
-        <dd>
+)
+    $(DL
+    $(DT $(I Flags))
+    $(DL
+        $(DT $(B '-'))
+        $(DD
         Left justify the result in the field.
-        It overrides any $(B 0) flag.
+        It overrides any $(B 0) flag.)
 
-        <dt>$(B '+')
-        <dd>Prefix positive numbers in a signed conversion with a $(B +).
-        It overrides any $(I space) flag.
+        $(DT $(B '+'))
+        $(DD Prefix positive numbers in a signed conversion with a $(B +).
+        It overrides any $(I space) flag.)
 
-        <dt>$(B '#')
-        <dd>Use alternative formatting:
-        <dl>
-            <dt>For $(B 'o'):
-            <dd> Add to precision as necessary so that the first digit
+        $(DT $(B '#'))
+        $(DD Use alternative formatting:
+        $(DL
+            $(DT For $(B 'o'):)
+            $(DD Add to precision as necessary so that the first digit
             of the octal formatting is a '0', even if both the argument
-            and the $(I Precision) are zero.
-            <dt> For $(B 'x') ($(B 'X')):
-            <dd> If non-zero, prefix result with $(B 0x) ($(B 0X)).
-            <dt> For floating point formatting:
-            <dd> Always insert the decimal point.
-            <dt> For $(B 'g') ($(B 'G')):
-            <dd> Do not elide trailing zeros.
-        </dl>
+            and the $(I Precision) are zero.)
+            $(DT For $(B 'x') ($(B 'X')):)
+            $(DD If non-zero, prefix result with $(B 0x) ($(B 0X)).)
+            $(DT For floating point formatting:)
+            $(DD Always insert the decimal point.)
+            $(DT For $(B 'g') ($(B 'G')):)
+            $(DD Do not elide trailing zeros.)
+        ))
 
-        <dt>$(B '0')
-        <dd> For integer and floating point formatting when not nan or
+        $(DT $(B '0'))
+        $(DD For integer and floating point formatting when not nan or
         infinity, use leading zeros
         to pad rather than spaces.
-        Ignore if there's a $(I Precision).
+        Ignore if there's a $(I Precision).)
 
-        <dt>$(B ' ')
-        <dd>Prefix positive numbers in a signed conversion with a space.
-    </dl>
+        $(DT $(B ' '))
+        $(DD Prefix positive numbers in a signed conversion with a space.)
+    )
 
-    <dt>$(I Width)
-    <dd>
+    $(DT $(I Width))
+    $(DD
     Specifies the minimum field width.
     If the width is a $(B *), the next argument, which must be
     of type $(B int), is taken as the width.
     If the width is negative, it is as if the $(B -) was given
-    as a $(I Flags) character.
+    as a $(I Flags) character.)
 
-    <dt>$(I Precision)
-    <dd> Gives the precision for numeric conversions.
+    $(DT $(I Precision))
+    $(DD Gives the precision for numeric conversions.
     If the precision is a $(B *), the next argument, which must be
     of type $(B int), is taken as the precision. If it is negative,
-    it is as if there was no $(I Precision).
+    it is as if there was no $(I Precision).)
 
-    <dt>$(I FormatChar)
-    <dd>
-    <dl>
-        <dt>$(B 's')
-        <dd>The corresponding argument is formatted in a manner consistent
+    $(DT $(I FormatChar))
+    $(DD
+    $(DL
+        $(DT $(B 's'))
+        $(DD The corresponding argument is formatted in a manner consistent
         with its type:
-        <dl>
-            <dt>$(B bool)
-            <dd>The result is <tt>'true'</tt> or <tt>'false'</tt>.
-            <dt>integral types
-            <dd>The $(B %d) format is used.
-            <dt>floating point types
-            <dd>The $(B %g) format is used.
-            <dt>string types
-            <dd>The result is the string converted to UTF-8.
+        $(DL
+            $(DT $(B bool))
+            $(DD The result is <tt>'true'</tt> or <tt>'false'</tt>.)
+            $(DT integral types)
+            $(DD The $(B %d) format is used.)
+            $(DT floating point types)
+            $(DD The $(B %g) format is used.)
+            $(DT string types)
+            $(DD The result is the string converted to UTF-8.)
             A $(I Precision) specifies the maximum number of characters
             to use in the result.
-            <dt>classes derived from $(B Object)
-            <dd>The result is the string returned from the class instance's
+            $(DT classes derived from $(B Object))
+            $(DD The result is the string returned from the class instance's
             $(B .toString()) method.
             A $(I Precision) specifies the maximum number of characters
-            to use in the result.
-            <dt>non-string static and dynamic arrays
-            <dd>The result is [s<sub>0</sub>, s<sub>1</sub>, ...]
+            to use in the result.)
+            $(DT non-string static and dynamic arrays)
+            $(DD The result is [s<sub>0</sub>, s<sub>1</sub>, ...]
             where s<sub>k</sub> is the kth element
-            formatted with the default format.
-        </dl>
+            formatted with the default format.)
+        ))
 
-        <dt>$(B 'b','d','o','x','X')
-        <dd> The corresponding argument must be an integral type
+        $(DT $(B 'b','d','o','x','X'))
+        $(DD The corresponding argument must be an integral type
         and is formatted as an integer. If the argument is a signed type
         and the $(I FormatChar) is $(B d) it is converted to
         a signed string of characters, otherwise it is treated as
@@ -5245,25 +5096,25 @@ $(I FormatChar):
         If there are fewer resulting digits than the $(I Precision),
         leading zeros are used as necessary.
         If the $(I Precision) is 0 and the number is 0, no digits
-        result.
+        result.)
 
-        <dt>$(B 'e','E')
-        <dd> A floating point number is formatted as one digit before
+        $(DT $(B 'e','E'))
+        $(DD A floating point number is formatted as one digit before
         the decimal point, $(I Precision) digits after, the $(I FormatChar),
         &plusmn;, followed by at least a two digit exponent: $(I d.dddddd)e$(I &plusmn;dd).
         If there is no $(I Precision), six
         digits are generated after the decimal point.
-        If the $(I Precision) is 0, no decimal point is generated.
+        If the $(I Precision) is 0, no decimal point is generated.)
 
-        <dt>$(B 'f','F')
-        <dd> A floating point number is formatted in decimal notation.
+        $(DT $(B 'f','F'))
+        $(DD A floating point number is formatted in decimal notation.
         The $(I Precision) specifies the number of digits generated
         after the decimal point. It defaults to six. At least one digit
         is generated before the decimal point. If the $(I Precision)
-        is zero, no decimal point is generated.
+        is zero, no decimal point is generated.)
 
-        <dt>$(B 'g','G')
-        <dd> A floating point number is formatted in either $(B e) or
+        $(DT $(B 'g','G'))
+        $(DD A floating point number is formatted in either $(B e) or
         $(B f) format for $(B g); $(B E) or $(B F) format for
         $(B G).
         The $(B f) format is used if the exponent for an $(B e) format
@@ -5271,10 +5122,10 @@ $(I FormatChar):
         The $(I Precision) specifies the number of significant
         digits, and defaults to six.
         Trailing zeros are elided after the decimal point, if the fractional
-        part is zero then no decimal point is generated.
+        part is zero then no decimal point is generated.)
 
-        <dt>$(B 'a','A')
-        <dd> A floating point number is formatted in hexadecimal
+        $(DT $(B 'a','A'))
+        $(DD A floating point number is formatted in hexadecimal
         exponential notation 0x$(I h.hhhhhh)p$(I &plusmn;d).
         There is one hexadecimal digit before the decimal point, and as
         many after as specified by the $(I Precision).
@@ -5286,15 +5137,15 @@ $(I FormatChar):
         $(I h.hhhhhh)*2<sup>$(I &plusmn;d)</sup>.
         The exponent for zero is zero.
         The hexadecimal digits, x and p are in upper case if the
-        $(I FormatChar) is upper case.
-    </dl>
+        $(I FormatChar) is upper case.)
+    )
 
     Floating point NaN's are formatted as $(B nan) if the
     $(I FormatChar) is lower case, or $(B NAN) if upper.
     Floating point infinities are formatted as $(B inf) or
     $(B infinity) if the
     $(I FormatChar) is lower case, or $(B INF) or $(B INFINITY) if upper.
-    </dl>
+    ))
 
 Example:
 
@@ -5473,7 +5324,7 @@ void doFormat()(scope void delegate(dchar) putc, TypeInfo[] arguments, va_list a
                 default:
                     //printf("fc = '%c'\n", fc);
                 Lerror:
-                    throw new FormatException("floating");
+                    throw new FormatException("incompatible format character for floating point type");
             }
             version (DigitalMarsC)
             {
@@ -6125,7 +5976,8 @@ void doFormat()(scope void delegate(dchar) putc, TypeInfo[] arguments, va_list a
                     if (c > 0x7F)        // if UTF sequence
                     {
                         i--;                // back up and decode UTF sequence
-                        c = std.utf.decode(fmt, i);
+                        import std.utf : decode;
+                        c = decode(fmt, i);
                     }
                   Lputc:
                     putc(c);
@@ -6221,6 +6073,15 @@ void doFormat()(scope void delegate(dchar) putc, TypeInfo[] arguments, va_list a
     throw new FormatException();
 }
 
+
+private bool needToSwapEndianess(Char)(ref FormatSpec!Char f)
+{
+    import std.system : endian, Endian;
+
+    return endian == Endian.littleEndian && f.flPlus
+        || endian == Endian.bigEndian && f.flDash;
+}
+
 /* ======================== Unit Tests ====================================== */
 
 unittest
@@ -6250,13 +6111,6 @@ unittest
     else version (CRuntime_Microsoft)
         assert(s == "1.67 -0X1.47AE14P+0 nan"
             || s == "1.67 -0X1.47AE147AE147BP+0 nan", s); // MSVCRT 14+ (VS 2015)
-    else version (CRuntime_Bionic)
-    {
-        // bionic doesn't support hex formatting of floating point numbers
-        // or lower-case string formatting of nan yet, but it was committed
-        // recently (April 2014):
-        // https://code.google.com/p/android/issues/detail?id=64886
-    }
     else
         assert(s == "1.67 -0X1.47AE147AE147BP+0 nan", s);
 
@@ -6417,10 +6271,15 @@ unittest
 
     r = format("abc"c);
     assert(r == "abc");
-    r = format("def"w);
-    assert(r == "def");
-    r = format("ghi"d);
-    assert(r == "ghi");
+
+    //format() returns the same type as inputted.
+    wstring wr;
+    wr = format("def"w);
+    assert(wr == "def"w);
+
+    dstring dr;
+    dr = format("ghi"d);
+    assert(dr == "ghi"d);
 
     void* p = cast(void*)0xDEADBEEF;
     r = format("%s", p);
@@ -6435,6 +6294,8 @@ unittest
     assert(r == "012345");
     r = format("%o", 9);
     assert(r == "11");
+    r = format("%#o", 0);   // issue 15663
+    assert(r == "0");
 
     r = format("%+d", 123);
     assert(r == "+123");
@@ -6554,11 +6415,11 @@ unittest
  * Params: fmt  = Format string. For detailed specification, see $(XREF _format,formattedWrite).
  *         args = Variadic list of arguments to format into returned string.
  */
-string format(Char, Args...)(in Char[] fmt, Args args)
+immutable(Char)[] format(Char, Args...)(in Char[] fmt, Args args) if (isSomeChar!Char)
 {
     import std.format : formattedWrite, FormatException;
     import std.array : appender;
-    auto w = appender!string();
+    auto w = appender!(immutable(Char)[]);
     auto n = formattedWrite(w, fmt, args);
     version (all)
     {
@@ -6594,29 +6455,16 @@ unittest
     assert(format("hel%slo%s%s%s", "world", -138, 'c', true) ==
                   "helworldlo-138ctrue");
     });
+
+    assert(is(typeof(format("happy")) == string));
+    assert(is(typeof(format("happy"w)) == wstring));
+    assert(is(typeof(format("happy"d)) == dstring));
 }
 
 /*****************************************************
  * Format arguments into buffer $(I buf) which must be large
  * enough to hold the result. Throws RangeError if it is not.
  * Returns: The slice of $(D buf) containing the formatted string.
- *
- *  $(RED sformat's current implementation has been replaced with $(LREF xsformat)'s
- *        implementation in November 2012.
- *        This is seamless for most code, but it makes it so that the only
- *        argument that can be a format string is the first one, so any
- *        code which used multiple format strings has broken. Please change
- *        your calls to sformat accordingly.
- *
- *        e.g.:
- *        ----
- *        sformat(buf, "key = %s", key, ", value = %s", value)
- *        ----
- *        needs to be rewritten as:
- *        ----
- *        sformat(buf, "key = %s, value = %s", key, value)
- *        ----
- *   )
  */
 char[] sformat(Char, Args...)(char[] buf, in Char[] fmt, Args args)
 {

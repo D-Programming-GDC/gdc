@@ -512,3 +512,134 @@ void test14200a(int a) {};
 void test14200b(float a, int b, double c) {};
 
 /******************************************/
+// 15579
+
+class Base
+{
+public:
+    //virtual ~Base() {}
+    virtual void base();
+    unsigned char x;
+};
+
+class Interface
+{
+public:
+    virtual int MethodCPP() = 0;
+    virtual int MethodD() = 0;
+};
+
+class Derived : public Base, public Interface
+{
+public:
+    Derived();
+    short y;
+    int MethodCPP();
+#if _WIN32 || _WIN64
+    int MethodD();
+    virtual int Method();
+#else
+    int MethodD() { return 3; }  // need def or vtbl[] is not generated
+    virtual int Method()  { return 6; }  // need def or vtbl[] is not generated
+#endif
+};
+
+void Base::base() { }
+int Derived::MethodCPP() {
+    printf("Derived::MethodCPP() this = %p, x = %d, y = %d\n", this, x, y);
+    assert(x == 4 || x == 7);
+    assert(y == 5 || y == 8);
+    return 30;
+}
+Derived::Derived() { }
+
+
+Derived *cppfoo(Derived *d)
+{
+    printf("cppfoo(): d = %p\n", d);
+    assert(d->x == 4);
+    assert(d->y == 5);
+    assert(d->MethodD() == 3);
+    assert(d->MethodCPP() == 30);
+    assert(d->Method() == 6);
+
+    d = new Derived();
+    d->x = 7;
+    d->y = 8;
+    assert(d->MethodD() == 3);
+    assert(d->MethodCPP() == 30);
+    assert(d->Method() == 6);
+    printf("d1 = %p\n", d);
+    return d;
+}
+
+Interface *cppfooi(Interface *i)
+{
+    printf("cppfooi(): i = %p\n", i);
+    assert(i->MethodD() == 3);
+    assert(i->MethodCPP() == 30);
+
+    Derived *d = new Derived();
+    d->x = 7;
+    d->y = 8;
+    printf("d = %p, i = %p\n", d, (Interface *)d);
+    return d;
+}
+
+/******************************************/
+// 15610
+
+class Base2
+{
+  public:
+    int i;
+//    virtual void baser();
+};
+
+class Interface2
+{
+  public:
+    virtual void f() = 0;
+};
+
+class Derived2 : public Base2, public Interface2
+{
+  public:
+    void f();
+};
+
+void Derived2::f()
+{
+    printf("Derived2::f() this = %p i = %d\n", this, i);
+    assert(i == 3);
+}
+
+/******************************************/
+// 15455
+
+struct X6
+{
+    unsigned short a;
+    unsigned short b;
+    unsigned char c;
+    unsigned char d;
+};
+
+struct X8
+{
+    unsigned short a;
+    X6 b;
+};
+
+void test15455b(X8 s)
+{
+    assert(sizeof(X6) == 6);
+    assert(sizeof(X8) == 8);
+    assert(s.a == 1);
+    assert(s.b.a == 2);
+    assert(s.b.b == 3);
+    assert(s.b.c == 4);
+    assert(s.b.d == 5);
+}
+
+/******************************************/

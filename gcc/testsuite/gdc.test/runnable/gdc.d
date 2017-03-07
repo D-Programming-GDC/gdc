@@ -690,7 +690,7 @@ void test122()
     import std.range : iota;
 
     immutable n = 10000;
-    immutable delta = 1.0 / n;
+    enum delta = 1.0 / n;       // XBUG: was 'immutable delta' https://issues.dlang.org/show_bug.cgi?id=17092
     immutable pi = 4.0 * delta * taskPool.reduce!"a + b"(
         map!((int i) { immutable x = (i - 0.5) * delta; return 1.0 / (1.0 + x * x); })(iota(n)));
 }
@@ -1102,6 +1102,42 @@ void test248()
 
 /******************************************/
 
+// Bug 250
+
+void test250()
+{
+    struct S
+    {
+        string data;
+    }
+
+    auto a = S("hello");
+    auto b = S("hello".dup);
+
+    assert(a.data == b.data);
+    assert(a == b);
+    assert([a] == [b]);
+}
+
+/******************************************/
+
+// Bug 253
+
+interface A253
+{
+    void test253(int[int]);
+}
+
+interface C253 : A253
+{
+}
+
+class D253 : B253, C253
+{
+}
+
+/******************************************/
+
 void main()
 {
     test2();
@@ -1127,6 +1163,7 @@ void main()
     test198();
     test210();
     test248();
+    test250();
 
     printf("Success!\n");
 }

@@ -232,10 +232,10 @@ public:
     tree lbreak = this->push_break_label(s);
 
     this->start_scope(level_loop);
-    if (s->body)
+    if (s->_body)
       {
 	tree lcontinue = this->push_continue_label(s);
-	s->body->accept(this);
+	s->_body->accept(this);
 	this->pop_continue_label(lcontinue);
       }
 
@@ -262,8 +262,8 @@ public:
     tree lbreak = this->push_break_label(s);
     this->start_scope(level_loop);
 
-    if (s->init)
-      s->init->accept(this);
+    if (s->_init)
+      s->_init->accept(this);
 
     if (s->condition)
       {
@@ -275,10 +275,10 @@ public:
 	TREE_USED (lbreak) = 1;
       }
 
-    if (s->body)
+    if (s->_body)
       {
 	tree lcontinue = this->push_continue_label(s);
-	s->body->accept(this);
+	s->_body->accept(this);
 	this->pop_continue_label(lcontinue);
       }
 
@@ -509,8 +509,8 @@ public:
 
     // Switch body goes in its own statement list.
     push_stmt_list();
-    if (s->body)
-      s->body->accept(this);
+    if (s->_body)
+      s->_body->accept(this);
 
     tree casebody = pop_stmt_list();
 
@@ -712,7 +712,7 @@ public:
     if (s->wthis)
       {
 	// Perform initialisation of the 'with' handle.
-	ExpInitializer *ie = s->wthis->init->isExpInitializer();
+	ExpInitializer *ie = s->wthis->_init->isExpInitializer();
 	gcc_assert(ie != NULL);
 
 	build_local_var(s->wthis);
@@ -720,8 +720,8 @@ public:
 	add_stmt(init);
       }
 
-    if (s->body)
-      s->body->accept(this);
+    if (s->_body)
+      s->_body->accept(this);
 
     this->finish_scope();
   }
@@ -762,8 +762,8 @@ public:
     set_input_location(s->loc);
 
     this->start_scope(level_try);
-    if (s->body)
-      s->body->accept(this);
+    if (s->_body)
+      s->_body->accept(this);
 
     tree trybody = this->end_scope();
 
@@ -832,8 +832,8 @@ public:
   {
     set_input_location(s->loc);
     this->start_scope(level_try);
-    if (s->body)
-      s->body->accept(this);
+    if (s->_body)
+      s->_body->accept(this);
 
     tree trybody = this->end_scope();
 
@@ -887,7 +887,8 @@ public:
 	    StringExp *constr = (StringExp *)(*s->constraints)[i];
 	    Expression *arg = (*s->args)[i];
 
-	    tree id = name ? build_string(name->len, name->string) : NULL_TREE;
+	    const char *sname = name ? name->toChars() : NULL;
+	    tree id = name ? build_string(strlen(sname), sname) : NULL_TREE;
 	    tree str = build_string(constr->len, (char *)constr->string);
 	    tree val = build_expr(arg);
 
@@ -927,7 +928,8 @@ public:
 	    gcc_assert(gs->label->statement != NULL);
 	    gcc_assert(gs->tf == gs->label->statement->tf);
 
-	    tree name = build_string(ident->len, ident->string);
+	    const char *sident = ident->toChars();
+	    tree name = build_string(strlen(sident), sident);
 	    tree label = lookup_label(gs->label->statement, gs->label->ident);
 	    TREE_USED (label) = 1;
 

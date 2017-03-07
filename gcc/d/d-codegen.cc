@@ -446,48 +446,57 @@ get_decl_tree (Declaration *decl)
 	  return component_ref (build_deref (frame_ref),
 				DECL_LANG_FRAME_FIELD (vsym));
 	}
-      else if (vd->parent != func && vd->isThisDeclaration() && func->isThis())
+      else if (vd->parent != func && vd->isThisDeclaration ())
 	{
 	  // Get the non-local 'this' value by going through parent link
 	  // of nested classes, this routine pretty much undoes what
 	  // getRightThis in the frontend removes from codegen.
-	  AggregateDeclaration *ad = func->isThis();
-	  tree this_tree = get_symbol_decl (func->vthis);
-
-	  while (true)
+	  AggregateDeclaration *ad = func->isThis ();
+	  if (ad != NULL)
 	    {
-	      Dsymbol *outer = ad->toParent2();
-	      // Get the this->this parent link.
-	      tree vthis_field = get_symbol_decl (ad->vthis);
-	      this_tree = component_ref (build_deref (this_tree), vthis_field);
+	      tree this_tree = get_symbol_decl (func->vthis);
+	      Dsymbol *outer = func;
 
-	      ad = outer->isAggregateDeclaration();
-	      if (ad != NULL)
-		continue;
-
-	      FuncDeclaration *fd = outer->isFuncDeclaration();
-	      if (fd != NULL)
-		ad = fd->isThis();
-
-	      if (fd && ad)
+	      while (outer != vd->parent)
 		{
-		  // If outer function creates a closure, then the 'this' value
-		  // would be the closure pointer, and the real 'this' the first
-		  // field of that closure.
-		  tree ff = get_frameinfo (fd);
-		  if (FRAMEINFO_CREATES_FRAME (ff))
+		  gcc_assert (ad != NULL);
+		  outer = ad->toParent2 ();
+
+		  // Get the this->this parent link.
+		  tree vthis_field = get_symbol_decl (ad->vthis);
+		  this_tree = component_ref (build_deref (this_tree),
+					     vthis_field);
+
+		  ad = outer->isAggregateDeclaration ();
+		  if (ad != NULL)
+		    continue;
+
+		  FuncDeclaration *fd = outer->isFuncDeclaration ();
+		  while (fd != NULL)
 		    {
-		      this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
-					     this_tree);
-		      this_tree = indirect_ref (build_ctype(ad->type), this_tree);
+		      // If outer function creates a closure, then the 'this'
+		      // value would be the closure pointer, and the real
+		      // 'this' the first field of that closure.
+		      tree ff = get_frameinfo (fd);
+		      if (FRAMEINFO_CREATES_FRAME (ff))
+			{
+			  this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
+						 this_tree);
+			  this_tree = indirect_ref (build_ctype (fd->vthis->type),
+						    this_tree);
+			}
+
+		      if (fd == vd->parent)
+			break;
+
+		      // Continue looking for the right 'this'
+		      outer = outer->toParent2 ();
+		      fd = outer->isFuncDeclaration ();
 		    }
 
-		  // Continue looking for the right 'this'
-		  if (fd != vd->parent)
-		    continue;
+		  ad = outer->isAggregateDeclaration ();
 		}
 
-	      gcc_assert (outer == vd->parent);
 	      return this_tree;
 	    }
 	}
@@ -577,25 +586,6 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	ClassDeclaration *cdto = tbtype->isClassHandle();
 	int offset;
 
-	if (cdfrom->cpp)
-	  {
-	    // Downcasting in C++ is a no-op.
-	    if (cdto->cpp)
-	      break;
-
-	    // Casting from a C++ interface to a class/non-C++ interface
-	    // always results in null as there is no runtime information,
-	    // and no way one can derive from the other.
-	    warning(OPT_Wcast_result, "cast to %s will produce null result", totype->toChars());
-	    result = d_convert(build_ctype(totype), null_pointer_node);
-
-	    // Make sure the expression is still evaluated if necessary
-	    if (TREE_SIDE_EFFECTS(exp))
-	      result = compound_expr(exp, result);
-
-	    break;
-	  }
-
 	if (cdto->isBaseOf(cdfrom, &offset) && offset != OFFSET_RUNTIME)
 	  {
 	    // Casting up the inheritance tree: Don't do anything special.
@@ -614,6 +604,25 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	      }
 
 	    // d_convert will make a no-op cast
+	    break;
+	  }
+	else if (cdfrom->cpp)
+	  {
+	    // Downcasting in C++ is a no-op.
+	    if (cdto->cpp)
+	      break;
+
+	    // Casting from a C++ interface to a class/non-C++ interface
+	    // always results in null as there is no runtime information,
+	    // and no way one can derive from the other.
+	    warning (OPT_Wcast_result, "cast to %s will produce null result",
+		     totype->toChars ());
+	    result = d_convert (build_ctype (totype), null_pointer_node);
+
+	    // Make sure the expression is still evaluated if necessary
+	    if (TREE_SIDE_EFFECTS (exp))
+	      result = compound_expr (exp, result);
+
 	    break;
 	  }
 
@@ -1188,10 +1197,10 @@ d_attribute_p (const char* name)
 	  table->_init(n);
 
 	  for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name));
+	    table->insert(p->name, strlen(p->name), NULL);
 
 	  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name));
+	    table->insert(p->name, strlen(p->name), NULL);
 	}
     }
 
@@ -1474,7 +1483,7 @@ build_interface_binfo (tree super, ClassDeclaration *cd, unsigned& offset)
   for (size_t i = 0; i < cd->baseclasses->dim; i++, offset++)
     {
       BaseClass *bc = (*cd->baseclasses)[i];
-      BINFO_BASE_APPEND (binfo, build_interface_binfo (binfo, bc->base, offset));
+      BINFO_BASE_APPEND (binfo, build_interface_binfo (binfo, bc->sym, offset));
     }
 
   return binfo;
@@ -2259,34 +2268,9 @@ build_class_instance (ClassReferenceExp *exp)
   // will re-order all values before returning the finished literal.
   for (ClassDeclaration *bcd = cd; bcd != NULL; bcd = bcd->baseClass)
     {
-      // Generate initial values of all fields owned by current class.
-      // Use both the name and offset to find the right field.
-      for (size_t i = 0; i < bcd->fields.dim; i++)
-	{
-	  VarDeclaration *vfield = bcd->fields[i];
-	  int index = exp->findFieldIndexByName (vfield);
-	  gcc_assert (index != -1);
-
-	  Expression *value = (*exp->value->elements)[index];
-	  if (!value)
-	    continue;
-
-	  if (vfield->init && vfield->init->isVoidInitializer ())
-	    continue;
-
-	  // Use find_aggregate_field to get the overridden field decl,
-	  // instead of the field associated with the base class.
-	  tree field = get_symbol_decl (bcd->fields[i]);
-	  field = find_aggregate_field (type, DECL_NAME (field),
-					DECL_FIELD_OFFSET (field));
-	  gcc_assert (field != NULL_TREE);
-
-	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
-	}
-
-      // Anonymous vtable interface fields are layed out immediatedly after
-      // the fields of each class.  The interface offset is used to determine
-      // where to put the classinfo offset reference.
+      // Anonymous vtable interface fields are layed out before the fields of
+      // each class.  The interface offset is used to determine where to put
+      // the classinfo offset reference.
       for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
 	{
 	  BaseClass *bc = (*bcd->vtblInterfaces)[i];
@@ -2309,6 +2293,28 @@ build_class_instance (ClassReferenceExp *exp)
 		  break;
 		}
 	    }
+	}
+
+      // Generate initial values of all fields owned by current class.
+      // Use both the name and offset to find the right field.
+      for (size_t i = 0; i < bcd->fields.dim; i++)
+	{
+	  VarDeclaration *vfield = bcd->fields[i];
+	  int index = exp->findFieldIndexByName (vfield);
+	  gcc_assert (index != -1);
+
+	  Expression *value = (*exp->value->elements)[index];
+	  if (!value)
+	    continue;
+
+	  // Use find_aggregate_field to get the overridden field decl,
+	  // instead of the field associated with the base class.
+	  tree field = get_symbol_decl (bcd->fields[i]);
+	  field = find_aggregate_field (type, DECL_NAME (field),
+					DECL_FIELD_OFFSET (field));
+	  gcc_assert (field != NULL_TREE);
+
+	  CONSTRUCTOR_APPEND_ELT (ve, field, build_expr (value, true));
 	}
     }
 
@@ -3574,7 +3580,7 @@ maybe_set_intrinsic (FuncDeclaration *decl)
   // Look through all D intrinsics.
   TemplateInstance *ti = decl->isInstantiated();
   TemplateDeclaration *td = ti ? ti->tempdecl->isTemplateDeclaration() : NULL;
-  const char *tname = decl->ident->string;
+  const char *tname = decl->ident->toChars();
   const char *tmodule = m->md->toChars();
   const char *tdeco = decl->type->deco;
 
@@ -3904,7 +3910,7 @@ lookup_label(Statement *s, Identifier *ident)
   if (cfun == NULL)
     {
       error("label %s referenced outside of any function",
-	    ident ? ident->string : "(unnamed)");
+	    ident ? ident->toChars() : "(unnamed)");
       return NULL_TREE;
     }
 
@@ -3917,7 +3923,7 @@ lookup_label(Statement *s, Identifier *ident)
     return ent->label;
   else
     {
-      tree name = ident ? get_identifier(ident->string) : NULL_TREE;
+      tree name = ident ? get_identifier(ident->toChars()) : NULL_TREE;
       tree decl = build_decl(input_location, LABEL_DECL, name, void_type_node);
       DECL_CONTEXT (decl) = current_function_decl;
       DECL_MODE (decl) = VOIDmode;
@@ -4076,7 +4082,8 @@ get_frame_for_symbol (Dsymbol *sym)
 	  if (!ad->isNested() || !ad->vthis)
 	    {
 	    Lnoframe:
-	      func->error ("cannot get frame pointer to %s", sym->toChars());
+	      func->error ("cannot get frame pointer to %s",
+			   sym->toPrettyChars());
 	      return null_pointer_node;
 	    }
 
@@ -4222,14 +4229,14 @@ build_vthis(AggregateDeclaration *decl)
 }
 
 static tree
-build_frame_type (tree ffi, FuncDeclaration *func)
+build_frame_type (tree ffi, FuncDeclaration *fd)
 {
   if (FRAMEINFO_TYPE (ffi))
     return FRAMEINFO_TYPE (ffi);
 
   tree frame_rec_type = make_node (RECORD_TYPE);
   char *name = concat (FRAMEINFO_IS_CLOSURE (ffi) ? "CLOSURE." : "FRAME.",
-		       func->toPrettyChars(), NULL);
+		       fd->toPrettyChars(), NULL);
   TYPE_NAME (frame_rec_type) = get_identifier (name);
   free (name);
 
@@ -4240,53 +4247,55 @@ build_frame_type (tree ffi, FuncDeclaration *func)
 
   tree fields = chainon (NULL_TREE, ptr_field);
 
-  if (!FRAMEINFO_IS_CLOSURE (ffi))
+  /* The __ensure and __require are called directly, so never make the outer
+     functions closure, but nevertheless could still be referencing parameters
+     of the calling function non-locally.  So we add all parameters with nested
+     refs to the function frame, this should also mean overriding methods will
+     have the same frame layout when inheriting a contract.  */
+  if ((global.params.useIn && fd->frequire)
+      || (global.params.useOut && fd->fensure))
     {
-      // __ensure and __require never becomes a closure, but could still be referencing
-      // parameters of the calling function.  So we add all parameters as nested refs.
-      // This is written as such so that all parameters appear at the front of the frame
-      // so that overriding methods match the same layout when inheriting a contract.
-      if ((global.params.useIn && func->frequire) || (global.params.useOut && func->fensure))
+      if (fd->parameters)
 	{
-	  for (size_t i = 0; func->parameters && i < func->parameters->dim; i++)
+	  for (size_t i = 0; fd->parameters && i < fd->parameters->dim; i++)
 	    {
-	      VarDeclaration *v = (*func->parameters)[i];
+	      VarDeclaration *v = (*fd->parameters)[i];
 	      // Remove if already in closureVars so can push to front.
-	      for (size_t j = i; j < func->closureVars.dim; j++)
+	      for (size_t j = i; j < fd->closureVars.dim; j++)
 		{
-		  Dsymbol *s = func->closureVars[j];
+		  Dsymbol *s = fd->closureVars[j];
 		  if (s == v)
 		    {
-		      func->closureVars.remove (j);
+		      fd->closureVars.remove (j);
 		      break;
 		    }
 		}
-	      func->closureVars.insert (i, v);
+	      fd->closureVars.insert (i, v);
 	    }
+	}
 
-	  // Also add hidden 'this' to outer context.
-	  if (func->vthis)
+      // Also add hidden 'this' to outer context.
+      if (fd->vthis)
+	{
+	  for (size_t i = 0; i < fd->closureVars.dim; i++)
 	    {
-	      for (size_t i = 0; i < func->closureVars.dim; i++)
+	      Dsymbol *s = fd->closureVars[i];
+	      if (s == fd->vthis)
 		{
-		  Dsymbol *s = func->closureVars[i];
-		  if (s == func->vthis)
-		    {
-		      func->closureVars.remove (i);
-		      break;
-		    }
+		  fd->closureVars.remove (i);
+		  break;
 		}
-	      func->closureVars.insert (0, func->vthis);
 	    }
+	  fd->closureVars.insert (0, fd->vthis);
 	}
     }
 
-  for (size_t i = 0; i < func->closureVars.dim; i++)
+  for (size_t i = 0; i < fd->closureVars.dim; i++)
     {
-      VarDeclaration *v = func->closureVars[i];
+      VarDeclaration *v = fd->closureVars[i];
       tree s = get_symbol_decl (v);
       tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
-			       v->ident ? get_identifier (v->ident->string) : NULL_TREE,
+			       v->ident ? get_identifier (v->ident->toChars()) : NULL_TREE,
 			       declaration_type (v));
       SET_DECL_LANG_FRAME_FIELD (s, field);
       set_decl_location (field, v);
@@ -4295,12 +4304,16 @@ build_frame_type (tree ffi, FuncDeclaration *func)
       TREE_USED (s) = 1;
 
       // Can't do nrvo if the variable is put in a frame.
-      if (func->nrvo_can && func->nrvo_var == v)
-	func->nrvo_can = 0;
+      if (fd->nrvo_can && fd->nrvo_var == v)
+	fd->nrvo_can = 0;
 
-      // Because the value needs to survive the end of the scope.
-      if (FRAMEINFO_IS_CLOSURE (ffi) && v->needsAutoDtor())
-	v->error("has scoped destruction, cannot build closure");
+      if (FRAMEINFO_IS_CLOSURE (ffi))
+	{
+	  // Because the value needs to survive the end of the scope.
+	  if ((v->edtor && (v->storage_class & STCparameter))
+	      || v->needsScopeDtor())
+	    v->error("has scoped destruction, cannot build closure");
+	}
     }
 
   TYPE_FIELDS (frame_rec_type) = fields;
@@ -4398,6 +4411,13 @@ get_frameinfo(FuncDeclaration *fd)
   // a static frame for local variables to be referenced from.
   if (fd->hasNestedFrameRefs()
       || (fd->vthis && fd->vthis->type == Type::tvoidptr))
+    FRAMEINFO_CREATES_FRAME (ffi) = 1;
+
+  /* In checkNestedReference, references from contracts are not added to the
+     closureVars array, so assume all parameters referenced.  Even if they
+     aren't the 'this' parameter may still be needed for the static chain.  */
+  if ((global.params.useIn && fd->frequire)
+      || (global.params.useOut && fd->fensure))
     FRAMEINFO_CREATES_FRAME (ffi) = 1;
 
   // D2 maybe setup closure instead.
@@ -4580,7 +4600,7 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
 	  if (var->isField())
 	    {
 	      tree field = create_field_decl(declaration_type(var),
-					     var->ident ? var->ident->string : NULL,
+					     var->ident ? var->ident->toChars() : NULL,
 					     inherited_p, inherited_p);
 	      insert_aggregate_field(var->loc, context, field, var->offset);
 
@@ -4667,8 +4687,8 @@ layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
   return fields;
 }
 
-// Write out all fields for aggregate BASE.  For classes, write
-// out base class fields first, and adds all interfaces last.
+// Write out all fields for aggregate BASE.  For classes, write out all
+// interfaces first, then the base class fields.
 
 void
 layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base)
@@ -4686,16 +4706,32 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	  tree objtype = TREE_TYPE (build_ctype(cd->type));
 
 	  // Add the virtual table pointer, and optionally the monitor fields.
-	  tree field = create_field_decl(vtbl_ptr_type_node, "__vptr", 1, inherited_p);
-	  DECL_VIRTUAL_P (field) = 1;
-	  TYPE_VFIELD (type) = field;
-	  DECL_FCONTEXT (field) = objtype;
-	  insert_aggregate_field(decl->loc, type, field, 0);
-
-	  if (!cd->cpp)
+	  InterfaceDeclaration *id = cd->isInterfaceDeclaration ();
+	  if (!id || id->vtblInterfaces->dim == 0)
 	    {
-	      field = create_field_decl(ptr_type_node, "__monitor", 1, inherited_p);
-	      insert_aggregate_field(decl->loc, type, field, Target::ptrsize);
+	      tree field = create_field_decl (vtbl_ptr_type_node, "__vptr", 1,
+					      inherited_p);
+	      DECL_VIRTUAL_P (field) = 1;
+	      TYPE_VFIELD (type) = field;
+	      DECL_FCONTEXT (field) = objtype;
+	      insert_aggregate_field (decl->loc, type, field, 0);
+	    }
+
+	  if (!id && !cd->cpp)
+	    {
+	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
+					      inherited_p);
+	      insert_aggregate_field (decl->loc, type, field, Target::ptrsize);
+	    }
+	}
+
+      if (cd->vtblInterfaces)
+	{
+	  for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+	    {
+	      BaseClass *bc = (*cd->vtblInterfaces)[i];
+	      tree field = create_field_decl (vtbl_ptr_type_node, NULL, 1, 1);
+	      insert_aggregate_field (decl->loc, type, field, bc->offset);
 	    }
 	}
     }
@@ -4713,17 +4749,6 @@ layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaratio
 	      VarDeclaration *var = base->fields[i];
 	      gcc_assert(var->csym != NULL);
 	    }
-	}
-    }
-
-  if (cd && cd->vtblInterfaces)
-    {
-      for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *bc = (*cd->vtblInterfaces)[i];
-	  tree field = create_field_decl(build_ctype(Type::tvoidptr->pointerTo()),
-					 NULL, 1, 1);
-	  insert_aggregate_field(decl->loc, type, field, bc->offset);
 	}
     }
 }

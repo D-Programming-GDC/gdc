@@ -2,9 +2,9 @@
 
 int magicVariable()
 {
-  if (__ctfe) 
+  if (__ctfe)
    return 3;
-  
+
   version(GNU)
   {
     version(X86)
@@ -35,7 +35,7 @@ void main()
 
 import std.math;
 // Test float ^^ int
-static assert( 27.0 ^^ 5 == 27.0 * 27.0 * 27.0 * 27.0 * 27.0); 
+static assert( 27.0 ^^ 5 == 27.0 * 27.0 * 27.0 * 27.0 * 27.0);
 static assert( 2.0 ^^ 3 == 8.0);
 
 static assert( 2.0 ^^ 4 == 16.0);
@@ -78,7 +78,7 @@ static assert(4.0 ^^ 7.0 == 4.0*4.0*4.0*4.0*4.0*4.0*4.0);
 
 // ^^ has higher precedence than multiply
 static assert( 2 * 2 ^^ 3 + 1 == 17);
-static assert( 2 ^^ 3 * 2 + 1 == 17); 
+static assert( 2 ^^ 3 * 2 + 1 == 17);
 // ^^ has higher precedence than negate
 static assert( -2 ^^ 3 * 2 - 1 == -17);
 
@@ -137,7 +137,7 @@ int containsAsm() {
        return 0;
     }
 
-enum A = StructWithCtor(1);  
+enum A = StructWithCtor(1);
 enum B = StructWithCtor(7, 2.3);
 
 static assert(A.n == 1);
@@ -155,7 +155,7 @@ int bazra(int x)
 static assert(bazra(14)==64);
 
 void moreCommaTests()
-{   
+{
    auto k = (containsAsm(), containsAsm());
    for (int i=0; i< k^^2; i+=StructWithCtor(1).n) {}
 }
@@ -176,8 +176,8 @@ struct CopyTest2
 
 
 const CopyTest z = CopyTest(5.3);
-/+ 
-// TODO: This is not yet supported. But it  
+/+
+// TODO: This is not yet supported. But it
 // generates an error message instead of wrong-code.
 const CopyTest w = z;
 static assert(z.x==55.0);

@@ -108,13 +108,24 @@ union sigval
 version( Solaris )
 {
     import core.sys.posix.unistd;
-    private int _sigrtmin() { return cast(int) sysconf(_SC_SIGRT_MIN); }
-    private int _sigrtmax() { return cast(int) sysconf(_SC_SIGRT_MAX); }
 
-    alias _sigrtmin SIGRTMIN;
-    alias _sigrtmax SIGRTMAX;
+    @property int SIGRTMIN() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = cast(int)sysconf(_SC_SIGRT_MIN);
+        }
+        return sig;
+    }
+
+    @property int SIGRTMAX() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = cast(int)sysconf(_SC_SIGRT_MAX);
+        }
+        return sig;
+    }
 }
-else version( Posix )
+else version( CRuntime_Glibc )
 {
     private extern (C) nothrow @nogc
     {
@@ -122,9 +133,28 @@ else version( Posix )
         int __libc_current_sigrtmax();
     }
 
-    alias __libc_current_sigrtmin SIGRTMIN;
-    alias __libc_current_sigrtmax SIGRTMAX;
+    @property int SIGRTMIN() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = __libc_current_sigrtmin();
+        }
+        return sig;
+    }
+
+    @property int SIGRTMAX() nothrow @nogc {
+        __gshared static int sig = -1;
+        if (sig == -1) {
+            sig = __libc_current_sigrtmax();
+        }
+        return sig;
+    }
 }
+else version (FreeBSD) {
+    // https://github.com/freebsd/freebsd/blob/e79c62ff68fc74d88cb6f479859f6fae9baa5101/sys/sys/signal.h#L117
+    enum SIGRTMIN = 65;
+    enum SIGRTMAX = 126;
+}
+// Note: it appears that FreeBSD (prior to 7) and OSX do not support realtime signals
 
 version( linux )
 {
@@ -297,6 +327,30 @@ version( linux )
         enum SIGURG     = 23;
     }
     else version (AArch64)
+    {
+        //SIGABRT (defined in core.stdc.signal)
+        enum SIGALRM    = 14;
+        enum SIGBUS     = 7;
+        enum SIGCHLD    = 17;
+        enum SIGCONT    = 18;
+        //SIGFPE (defined in core.stdc.signal)
+        enum SIGHUP     = 1;
+        //SIGILL (defined in core.stdc.signal)
+        //SIGINT (defined in core.stdc.signal)
+        enum SIGKILL    = 9;
+        enum SIGPIPE    = 13;
+        enum SIGQUIT    = 3;
+        //SIGSEGV (defined in core.stdc.signal)
+        enum SIGSTOP    = 19;
+        //SIGTERM (defined in core.stdc.signal)
+        enum SIGTSTP    = 20;
+        enum SIGTTIN    = 21;
+        enum SIGTTOU    = 22;
+        enum SIGUSR1    = 10;
+        enum SIGUSR2    = 12;
+        enum SIGURG     = 23;
+    }
+    else version (SystemZ)
     {
         //SIGABRT (defined in core.stdc.signal)
         enum SIGALRM    = 14;
@@ -1249,6 +1303,16 @@ version( CRuntime_Glibc )
         enum SIGXCPU    = 24;
         enum SIGXFSZ    = 25;
     }
+    else version (SystemZ)
+    {
+        enum SIGPOLL    = 29;
+        enum SIGPROF    = 27;
+        enum SIGSYS     = 31;
+        enum SIGTRAP    = 5;
+        enum SIGVTALRM  = 26;
+        enum SIGXCPU    = 24;
+        enum SIGXFSZ    = 25;
+    }
     else
         static assert(0, "unimplemented");
 
@@ -2048,7 +2112,7 @@ int pthread_kill(pthread_t, int);
 int pthread_sigmask(int, in sigset_t*, sigset_t*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);
@@ -2068,7 +2132,7 @@ else version (Solaris)
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     int pthread_kill(pthread_t, int);
     int pthread_sigmask(int, in sigset_t*, sigset_t*);

@@ -2,7 +2,7 @@
   $(LUCKY Regular expressions) are a commonly used method of pattern matching
   on strings, with $(I regex) being a catchy word for a pattern in this domain
   specific language. Typical problems usually solved by regular expressions
-  include validation of user input and the ubiquitous find & replace
+  include validation of user input and the ubiquitous find $(AMP) replace
   in text processing utilities.
 
   $(SECTION Synopsis)
@@ -117,21 +117,21 @@
     $(REG_ROW +?, Matches previous character/subexpression 1 or more times.
       Lazy version  - stops as early as possible.)
     $(REG_ROW {n}, Matches previous character/subexpression exactly n times. )
-    $(REG_ROW {n&#44}, Matches previous character/subexpression n times or more.
+    $(REG_ROW {n$(COMMA)}, Matches previous character/subexpression n times or more.
       Greedy version - tries as many times as possible. )
-    $(REG_ROW {n&#44}?, Matches previous character/subexpression n times or more.
+    $(REG_ROW {n$(COMMA)}?, Matches previous character/subexpression n times or more.
       Lazy version - stops as early as possible.)
-    $(REG_ROW {n&#44m}, Matches previous character/subexpression n to m times.
+    $(REG_ROW {n$(COMMA)m}, Matches previous character/subexpression n to m times.
       Greedy version - tries as many times as possible, but no more than m times. )
-    $(REG_ROW {n&#44m}?, Matches previous character/subexpression n to m times.
+    $(REG_ROW {n$(COMMA)m}?, Matches previous character/subexpression n to m times.
       Lazy version - stops as early as possible, but no less then n times.)
-    $(REG_TITLE Other, Subexpressions & alternations )
+    $(REG_TITLE Other, Subexpressions $(AMP) alternations )
     $(REG_ROW (regex),  Matches subexpression regex,
       saving matched portion of text for later retrieval. )
     $(REG_ROW (?:regex), Matches subexpression regex,
       $(U not) saving matched portion of text. Useful to speed up matching. )
     $(REG_ROW A|B, Matches subexpression A, or failing that, matches B. )
-    $(REG_ROW (?P&lt;name&gt;regex), Matches named subexpression
+    $(REG_ROW (?P$(LT)name$(GT)regex), Matches named subexpression
         regex labeling it with name 'name'.
         When referring to a matched portion of text,
         names work like aliases in addition to direct numbers.
@@ -164,8 +164,9 @@
     $(REG_TITLE Pattern element, Semantics )
     $(REG_ROW Any atom, Has the same meaning as outside of a character class.)
     $(REG_ROW a-z, Includes characters a, b, c, ..., z. )
-    $(REG_ROW [a||b]&#44 [a--b]&#44 [a~~b]&#44 [a&&b], Where a, b are arbitrary classes,
-     means union, set difference, symmetric set difference, and intersection respectively.
+    $(REG_ROW [a||b]$(COMMA) [a--b]$(COMMA) [a~~b]$(COMMA) [a$(AMP)$(AMP)b],
+     Where a, b are arbitrary classes, means union, set difference,
+     symmetric set difference, and intersection respectively.
      $(I Any sequence of character class elements implicitly forms a union.) )
   )
 
@@ -209,13 +210,13 @@
     The format string can reference parts of match using the following notation.
     $(REG_TABLE
         $(REG_TITLE Format specifier, Replaced by )
-        $(REG_ROW $&amp;, the whole match. )
+        $(REG_ROW $$(AMP), the whole match. )
         $(REG_ROW $(DOLLAR)$(BACKTICK), part of input $(I preceding) the match. )
         $(REG_ROW $', part of input $(I following) the match. )
         $(REG_ROW $$, '$' character. )
-        $(REG_ROW \c &#44 where c is any character, the character c itself. )
+        $(REG_ROW \c $(COMMA) where c is any character, the character c itself. )
         $(REG_ROW \\, '\' character. )
-        $(REG_ROW &#36;1 .. &#36;99, submatch number 1 to 99 respectively. )
+        $(REG_ROW $(DOLLAR)1 .. $(DOLLAR)99, submatch number 1 to 99 respectively. )
     )
 
   $(SECTION Slicing and zero memory allocations orientation)
@@ -237,7 +238,7 @@
     API and utility constructs are modeled after the original $(D std.regex)
   by Walter Bright and Andrei Alexandrescu.
 
-  Source: $(PHOBOSSRC std/regex/_package.d)
+  Source: $(PHOBOSSRC std/_regex/_package.d)
 
 Macros:
     REG_ROW = $(TR $(TD $(I $1 )) $(TD $+) )
@@ -260,7 +261,7 @@ import std.exception, std.traits, std.range;
     This is an intended form for caching and storage of frequently
     used regular expressions.
 
-    Examples:
+    Example:
 
     Test if this object doesn't contain any compiled pattern.
     ---
@@ -562,7 +563,7 @@ private:
     {
         _input = input;
         immutable size = EngineType.initialMemory(prog)+size_t.sizeof;
-        _memory = (enforce(malloc(size))[0..size]);
+        _memory = (enforce(malloc(size), "malloc failed")[0..size]);
         scope(failure) free(_memory.ptr);
         *cast(size_t*)_memory.ptr = 1;
         _engine = EngineType(prog, Input!Char(input), _memory[size_t.sizeof..$]);
@@ -638,7 +639,7 @@ public:
         {//do cow magic first
             counter--;//we abandon this reference
             immutable size = EngineType.initialMemory(_engine.re)+size_t.sizeof;
-            _memory = (enforce(malloc(size))[0..size]);
+            _memory = (enforce(malloc(size), "malloc failed")[0..size]);
             _engine = _engine.dupTo(_memory[size_t.sizeof..size]);
             counter = 1;//points to new chunk
         }
@@ -668,7 +669,7 @@ private @trusted auto matchOnce(alias Engine, RegEx, R)(R input, RegEx re)
     alias EngineType = Engine!Char;
 
     size_t size = EngineType.initialMemory(re);
-    void[] memory = enforce(malloc(size))[0..size];
+    void[] memory = enforce(malloc(size), "malloc failed")[0..size];
     scope(exit) free(memory.ptr);
     auto captures = Captures!(R, EngineType.DataIndex)(input, re.ngroup, re.dict);
     auto engine = EngineType(re, Input!Char(input), memory);
@@ -884,7 +885,7 @@ public auto matchAll(R, RegEx)(R input, RegEx re)
     import std.conv : to;
     import std.algorithm : map, equal;
 
-    foreach(String; TypeTuple!(string, wstring, const(dchar)[]))
+    foreach(String; AliasSeq!(string, wstring, const(dchar)[]))
     {
         auto str1 = "blah-bleh".to!String();
         auto pat1 = "bl[ae]h".to!String();
@@ -965,6 +966,7 @@ package void replaceFmt(R, Capt, OutR)
         isOutputRange!(OutR, ElementEncodingType!(Capt.String)[]))
 {
     import std.algorithm, std.conv;
+    import std.ascii: isDigit, isAlpha;
     enum State { Normal, Dollar }
     auto state = State.Normal;
     size_t offset;
@@ -987,7 +989,7 @@ L_Replace_Loop:
             format = format[offset .. $];
             break;
         case State.Dollar:
-            if(std.ascii.isDigit(format[0]))
+            if(isDigit(format[0]))
             {
                 uint digit = parse!uint(format);
                 enforce(ignoreBadSubs || digit < captures.length, text("invalid submatch number ", digit));
@@ -996,7 +998,7 @@ L_Replace_Loop:
             }
             else if(format[0] == '{')
             {
-                auto x = find!(a => !std.ascii.isAlpha(a))(format[1..$]);
+                auto x = find!(a => !isAlpha(a))(format[1..$]);
                 enforce(!x.empty && x[0] == '}', "no matching '}' in replacement format");
                 auto name = format[1 .. $ - x.length];
                 format = x[1..$];
@@ -1044,16 +1046,17 @@ L_Replace_Loop:
     Returns:
     A string of the same type with the first match (if any) replaced.
     If no match is found returns the input string itself.
-
-    Example:
-    ---
-    assert(replaceFirst("noon", regex("n"), "[$&]") == "[n]oon");
-    ---
 +/
 public R replaceFirst(R, C, RegEx)(R input, RegEx re, const(C)[] format)
     if(isSomeString!R && is(C : dchar) && isRegexFor!(RegEx, R))
 {
     return replaceFirstWith!((m, sink) => replaceFmt(format, m, sink))(input, re);
+}
+
+///
+unittest
+{
+    assert(replaceFirst("noon", regex("n"), "[$&]") == "[n]oon");
 }
 
 /++
@@ -1070,19 +1073,21 @@ public R replaceFirst(R, C, RegEx)(R input, RegEx re, const(C)[] format)
     A new string of the same type as $(D input) with all matches
     replaced by return values of $(D fun). If no matches found
     returns the $(D input) itself.
-
-    Example:
-    ---
-    string list = "#21 out of 46";
-    string newList = replaceFirst!(cap => to!string(to!int(cap.hit)+1))
-        (list, regex(`[0-9]+`));
-    assert(newList == "#22 out of 46");
-    ---
 +/
 public R replaceFirst(alias fun, R, RegEx)(R input, RegEx re)
   if(isSomeString!R && isRegexFor!(RegEx, R))
 {
     return replaceFirstWith!((m, sink) => sink.put(fun(m)))(input, re);
+}
+
+///
+unittest
+{
+    import std.conv: to;
+    string list = "#21 out of 46";
+    string newList = replaceFirst!(cap => to!string(to!int(cap.hit)+1))
+        (list, regex(`[0-9]+`));
+    assert(newList == "#22 out of 46");
 }
 
 /++
@@ -1093,18 +1098,6 @@ public R replaceFirst(alias fun, R, RegEx)(R input, RegEx re)
     Like in $(LREF replaceFirst) family of functions there is an overload
     for the substitution guided by the $(D format) string
     and the one with the user defined callback.
-
-    Example:
-    ---
-    import std.array;
-    string m1 = "first message\n";
-    string m2 = "second message\n";
-    auto result = appender!string();
-    replaceFirstInto(result, m1, regex(`([a-z]+) message`), "$1");
-    //equivalent of the above with user-defined callback
-    replaceFirstInto!(cap=>cap[1])(result, m2, regex(`([a-z]+) message`));
-    assert(result.data == "first\nsecond\n");
-    ---
 +/
 public @trusted void replaceFirstInto(Sink, R, C, RegEx)
         (ref Sink sink, R input, RegEx re, const(C)[] format)
@@ -1121,6 +1114,19 @@ public @trusted void replaceFirstInto(alias fun, Sink, R, RegEx)
     if(isOutputRange!(Sink, dchar) && isSomeString!R && isRegexFor!(RegEx, R))
 {
     replaceCapturesInto!fun(sink, input, matchFirst(input, re));
+}
+
+///
+unittest
+{
+    import std.array;
+    string m1 = "first message\n";
+    string m2 = "second message\n";
+    auto result = appender!string();
+    replaceFirstInto(result, m1, regex(`([a-z]+) message`), "$1");
+    //equivalent of the above with user-defined callback
+    replaceFirstInto!(cap=>cap[1])(result, m2, regex(`([a-z]+) message`));
+    assert(result.data == "first\nsecond\n");
 }
 
 //examples for replaceFirst
@@ -1158,18 +1164,19 @@ public @trusted void replaceFirstInto(alias fun, Sink, R, RegEx)
     A string of the same type as $(D input) with the all
     of the matches (if any) replaced.
     If no match is found returns the input string itself.
-
-    Example:
-    ---
-    // Comify a number
-    auto com = regex(r"(?<=\d)(?=(\d\d\d)+\b)","g");
-    assert(replaceAll("12000 + 42100 = 54100", com, ",") == "12,000 + 42,100 = 54,100");
-    ---
 +/
 public @trusted R replaceAll(R, C, RegEx)(R input, RegEx re, const(C)[] format)
     if(isSomeString!R && is(C : dchar) && isRegexFor!(RegEx, R))
 {
     return replaceAllWith!((m, sink) => replaceFmt(format, m, sink))(input, re);
+}
+
+///
+unittest
+{
+    // insert comma as thousands delimiter
+    auto re = regex(r"(?<=\d)(?=(\d\d\d)+\b)","g");
+    assert(replaceAll("12000 + 42100 = 54100", re, ",") == "12,000 + 42,100 = 54,100");
 }
 
 /++
@@ -1191,23 +1198,24 @@ public @trusted R replaceAll(R, C, RegEx)(R input, RegEx re, const(C)[] format)
     input = string to search
     re = compiled regular expression
     fun = delegate to use
-
-    Example:
-    Capitalize the letters 'a' and 'r':
-    ---
-    string baz(Captures!(string) m)
-    {
-        return std.string.toUpper(m.hit);
-    }
-    auto s = replaceAll!(baz)("Strap a rocket engine on a chicken.",
-            regex("[ar]"));
-    assert(s == "StRAp A Rocket engine on A chicken.");
-    ---
 +/
 public @trusted R replaceAll(alias fun, R, RegEx)(R input, RegEx re)
     if(isSomeString!R && isRegexFor!(RegEx, R))
 {
     return replaceAllWith!((m, sink) => sink.put(fun(m)))(input, re);
+}
+
+///
+unittest
+{
+    string baz(Captures!(string) m)
+    {
+        return std.string.toUpper(m.hit);
+    }
+    // Capitalize the letters 'a' and 'r':
+    auto s = replaceAll!(baz)("Strap a rocket engine on a chicken.",
+            regex("[ar]"));
+    assert(s == "StRAp A Rocket engine on A chicken.");
 }
 
 /++
@@ -1217,19 +1225,6 @@ public @trusted R replaceAll(alias fun, R, RegEx)(R input, RegEx re)
 
     As with $(LREF replaceAll) there are 2 overloads - one with a format string,
     the other one with a user defined functor.
-
-    Example:
-    ---
-    //swap all 3 letter words and bring it back
-    string text = "How are you doing?";
-    auto sink = appender!(char[])();
-    replaceAllInto!(cap => retro(cap[0]))(sink, text, regex(`\b\w{3}\b`));
-    auto swapped = sink.data.dup; // make a copy explicitly
-    assert(swapped == "woH era uoy doing?");
-    sink.clear();
-    replaceAllInto!(cap => retro(cap[0]))(sink, swapped, regex(`\b\w{3}\b`));
-    assert(sink.data == text);
-    ---
 +/
 public @trusted void replaceAllInto(Sink, R, C, RegEx)
         (Sink sink, R input, RegEx re, const(C)[] format)
@@ -1248,18 +1243,21 @@ public @trusted void replaceAllInto(alias fun, Sink, R, RegEx)
     replaceMatchesInto!fun(sink, input, matchAll(input, re));
 }
 
-// a bit of examples
+///
 @system unittest
 {
-    //swap all 3 letter words and bring it back
-    string text = "How are you doing?";
-    auto sink = appender!(char[])();
-    replaceAllInto!(cap => retro(cap[0]))(sink, text, regex(`\b\w{3}\b`));
-    auto swapped = sink.data.dup; // make a copy explicitly
-    assert(swapped == "woH era uoy doing?");
-    sink.clear();
-    replaceAllInto!(cap => retro(cap[0]))(sink, swapped, regex(`\b\w{3}\b`));
-    assert(sink.data == text);
+    // insert comma as thousands delimiter in fifty randomly produced big numbers
+    import std.array, std.random, std.conv, std.range;
+    static re = regex(`(?<=\d)(?=(\d\d\d)+\b)`, "g");
+    auto sink = appender!(char [])();
+    enum ulong min = 10UL ^^ 10, max = 10UL ^^ 19;
+    foreach (i; 0 .. 50)
+    {
+        sink.clear();
+        replaceAllInto(sink, text(uniform(min, max)), re, ",");
+        foreach (pos; iota(sink.data.length - 4, 0, -4))
+            assert(sink.data[pos] == ',');
+    }
 }
 
 // exercise all of the replace APIs
@@ -1267,7 +1265,7 @@ public @trusted void replaceAllInto(alias fun, Sink, R, RegEx)
 {
     import std.conv;
     // try and check first/all simple substitution
-    foreach(S; TypeTuple!(string, wstring, dstring, char[], wchar[], dchar[]))
+    foreach(S; AliasSeq!(string, wstring, dstring, char[], wchar[], dchar[]))
     {
         S s1 = "curt trial".to!S();
         S s2 = "round dome".to!S();
@@ -1326,13 +1324,6 @@ public R replace(alias fun, R, RegEx)(R input, RegEx re)
 /++
 Range that splits a string using a regular expression as a
 separator.
-
-Example:
-----
-auto s1 = ", abc, de,  fg, hi, ";
-assert(equal(splitter(s1, regex(", *")),
-    ["", "abc", "de", "fg", "hi", ""]));
-----
 +/
 public struct Splitter(Range, alias RegEx = Regex)
     if(isSomeString!Range && isRegexFor!(RegEx, Range))
@@ -1412,6 +1403,15 @@ public Splitter!(Range, RegEx) splitter(Range, RegEx)(Range r, RegEx pat)
     if(is(BasicElementOf!Range : dchar) && isRegexFor!(RegEx, Range))
 {
     return Splitter!(Range, RegEx)(r, pat);
+}
+
+///
+unittest
+{
+    import std.algorithm: equal;
+    auto s1 = ", abc, de,  fg, hi, ";
+    assert(equal(splitter(s1, regex(", *")),
+        ["", "abc", "de", "fg", "hi", ""]));
 }
 
 ///An eager version of $(D splitter) that creates an array with splitted slices of $(D input).

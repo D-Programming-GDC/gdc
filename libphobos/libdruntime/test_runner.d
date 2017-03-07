@@ -76,4 +76,3 @@ shared static this()
 void main()
 {
 }
-

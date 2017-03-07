@@ -150,7 +150,17 @@ private struct globalExceptions
   d_exception_header *firstFreeException;
 }
 
-globalExceptions __globalExceptions;
+static globalExceptions __globalExceptions;
+
+// Called when fibers switch contexts.
+extern(C) void *
+_d_eh_swapContext(void* newContext) nothrow
+{
+    auto old = __globalExceptions.thrownExceptions;
+    __globalExceptions.thrownExceptions = cast(d_exception_header *) newContext;
+    return old;
+}
+
 
 // Called before starting a catch.  Returns the exception object.
 
