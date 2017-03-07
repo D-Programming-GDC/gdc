@@ -133,7 +133,7 @@ Generate code for all template instantiations.
 
 fassert
 D Var(flag_assert)
-Generate code for assert contracts.
+; Documented in Java
 
 fbounds-check
 D
