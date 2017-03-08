@@ -766,6 +766,7 @@ void test14200()
 /****************************************/
 // 15579
 
+/+
 extern (C++)
 {
     class Base
@@ -798,10 +799,12 @@ extern (C++)
 
     Derived cppfoo(Derived);
     Interface cppfooi(Interface);
-}
+}+/
 
 void test15579()
 {
+    pragma(msg, "Disabled test for GDC <= 4.9, see GDC bug 27\n");
+    /+
     Derived d = new Derived();
     printf("d = %p\n", d);
     assert(d.x == 4);
@@ -825,12 +828,12 @@ void test15579()
     Interface i = cppfooi(d);
     printf("i2: %p\n", i);
     assert(i.MethodD() == 3);
-    assert(i.MethodCPP() == 30);
+    assert(i.MethodCPP() == 30);+/
 }
 
 /****************************************/
 // 15610
-
+/+
 extern(C++) class Base2
 {
     int i;
@@ -844,14 +847,17 @@ extern(C++) class Derived2 : Base2, Interface2
     final
         override void f();
 }
-
++/
 
 void test15610()
 {
+    pragma(msg, "Disabled test for GDC <= 4.9, see GDC bug 27\n");
+    /+
     auto c = new Derived2();
     printf("test15610(): c = %p\n", c);
     c.i = 3;
     c.f();
+    +/
 }
 
 /******************************************/
