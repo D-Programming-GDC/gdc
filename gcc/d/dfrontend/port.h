@@ -51,19 +51,19 @@ struct Port
     static longdouble fmodl(longdouble x, longdouble y);
     static int fequal(longdouble x, longdouble y);
 
-    static char *strupr(char *);
-
     static int memicmp(const char *s1, const char *s2, int n);
-    static int stricmp(const char *s1, const char *s2);
+    static char *strupr(char *s);
 
     static longdouble strtof(const char *p, char **endp);
     static longdouble strtod(const char *p, char **endp);
     static longdouble strtold(const char *p, char **endp);
 
-    static unsigned readlongLE(void* buffer);
-    static unsigned readlongBE(void* buffer);
-    static unsigned readwordLE(void* buffer);
-    static unsigned readwordBE(void* buffer);
+    static void writelongLE(unsigned value, void *buffer);
+    static unsigned readlongLE(void *buffer);
+    static void writelongBE(unsigned value, void *buffer);
+    static unsigned readlongBE(void *buffer);
+    static unsigned readwordLE(void *buffer);
+    static unsigned readwordBE(void *buffer);
     static void valcpy(void *dst, uint64_t val, size_t size);
 };
 

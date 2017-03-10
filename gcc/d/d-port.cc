@@ -82,20 +82,6 @@ Port::fequal(longdouble x, longdouble y)
     || real_identical(&x.rv(), &y.rv());
 }
 
-char *
-Port::strupr(char *s)
-{
-  char *t = s;
-
-  while (*s)
-    {
-      *s = TOUPPER (*s);
-      s++;
-    }
-
-  return t;
-}
-
 int
 Port::memicmp(const char *s1, const char *s2, int n)
 {
@@ -118,30 +104,18 @@ Port::memicmp(const char *s1, const char *s2, int n)
   return result;
 }
 
-int
-Port::stricmp(const char *s1, const char *s2)
+char *
+Port::strupr(char *s)
 {
-  int result = 0;
+  char *t = s;
 
-  for (;;)
+  while (*s)
     {
-      char c1 = *s1;
-      char c2 = *s2;
-
-      result = c1 - c2;
-      if (result)
-	{
-	  result = TOUPPER (c1) - TOUPPER (c2);
-	  if (result)
-	    break;
-	}
-      if (!c1)
-	break;
-      s1++;
-      s2++;
+      *s = TOUPPER (*s);
+      s++;
     }
 
-  return result;
+  return t;
 }
 
 // Return a longdouble value from string BUFFER rounded to float mode.
@@ -204,6 +178,19 @@ Port::readwordBE(void *buffer)
   return ((unsigned) p[0] << 8) | (unsigned) p[1];
 }
 
+// Write a little-endian 32-bit value.
+
+void
+Port::writelongLE(unsigned value, void *buffer)
+{
+    unsigned char *p = (unsigned char*) buffer;
+
+    p[0] = (unsigned) value;
+    p[1] = (unsigned) value >> 8;
+    p[2] = (unsigned) value >> 16;
+    p[3] = (unsigned) value >> 24;
+}
+
 // Fetch a little-endian 32-bit value.
 
 unsigned
@@ -215,6 +202,19 @@ Port::readlongLE(void *buffer)
           | ((unsigned) p[2] << 16)
           | ((unsigned) p[1] << 8)
           | (unsigned) p[0]);
+}
+
+// Write a big-endian 32-bit value.
+
+void
+Port::writelongBE(unsigned value, void *buffer)
+{
+    unsigned char *p = (unsigned char*) buffer;
+
+    p[0] = (unsigned) value >> 24;
+    p[1] = (unsigned) value >> 16;
+    p[2] = (unsigned) value >> 8;
+    p[3] = (unsigned) value;
 }
 
 // Fetch a big-endian 32-bit value.

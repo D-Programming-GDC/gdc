@@ -77,6 +77,9 @@ proc gdc-convert-args { args } {
         } elseif [string match "-inline" $arg] {
             lappend out "-finline-functions"
 
+        } elseif [regexp -- {^-mv=([\w+=./-]+)} $arg pattern value] {
+            lappend out "-fmodule-filepath=$value"
+
         } elseif [string match "-O" $arg] {
             lappend out "-O2"
 
@@ -91,6 +94,9 @@ proc gdc-convert-args { args } {
 
         } elseif [string match "-unittest" $arg] {
             lappend out "-funittest"
+
+        } elseif [string match "-verrors=spec" $arg] {
+            lappend out "-Wspeculative"
 
         } elseif [regexp -- {^-verrors=(\d+)} $arg pattern num] {
             lappend out "-fmax-errors=$num"

@@ -354,6 +354,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
 
   global.params.imppath = new Strings();
   global.params.fileImppath = new Strings();
+  global.params.modFileAliasStrings = new Strings ();
 
   /* Extra GDC-specific options.  */
   d_option.fonly = NULL;
@@ -630,6 +631,12 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.useInvariants = value;
       break;
 
+    case OPT_fmodule_filepath_:
+      global.params.modFileAliasStrings->push (arg);
+      if (!strchr (arg, '='))
+	error ("bad argument for -fmodule-filepath");
+      break;
+
     case OPT_fmoduleinfo:
       global.params.betterC = !value;
       break;
@@ -793,6 +800,11 @@ d_handle_option (size_t scode, const char *arg, int value,
     case OPT_Werror:
       if (value)
 	global.params.warnings = 1;
+      break;
+
+    case OPT_Wspeculative:
+      if (value)
+	global.params.showGaggedErrors = 1;
       break;
 
     case OPT_Xf:
@@ -1035,7 +1047,7 @@ genCmain (Scope *sc)
 
   // We are emitting this straight to object file.
   entrypoint = m;
-  rootmodule = sc->module;
+  rootmodule = sc->_module;
 }
 
 void

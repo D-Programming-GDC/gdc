@@ -100,6 +100,10 @@ Werror
 D
 ; Documented in common.opt
 
+Wspeculative
+D
+Warn from speculative compiles such as __traits(compiles).
+
 Wtemplates
 D
 ; Documented in C
@@ -249,6 +253,10 @@ D Alias(MM)
 fmake-mdeps=
 D Joined RejectNegative
 Deprecated in favor of -MMD
+
+fmodule-filepath=
+D Joined RejectNegative
+-fmodule-filepath=<package.module>=<filespec>	use <filespec> as source file for <package.module>
 
 fmoduleinfo
 D
