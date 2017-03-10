@@ -405,3 +405,72 @@ longdouble::dump()
   fprintf(global.stdmsg, "%s\n", buf);
 }
 
+/* Compile-time floating-pointer helper functions.  */
+
+real_t
+CTFloat::fabs (real_t r)
+{
+  real_value x = real_value_abs (&r.rv ());
+  return ldouble (x);
+}
+
+/* Returns TRUE if longdouble value X is identical to Y.  */
+
+bool
+CTFloat::isIdentical (real_t x, real_t y)
+{
+  real_value rx = x.rv ();
+  real_value ry = y.rv ();
+  return (REAL_VALUE_ISNAN (rx) && REAL_VALUE_ISNAN (ry))
+    || real_identical (&rx, &ry);
+}
+
+/* Returns TRUE if real_t value R is NaN.  */
+
+bool
+CTFloat::isNaN (real_t r)
+{
+  return REAL_VALUE_ISNAN (r.rv ());
+}
+
+/* Same as isNaN, but also check if is signalling.  */
+
+bool
+CTFloat::isSNaN (real_t r)
+{
+  return REAL_VALUE_ISSIGNALING_NAN (r.rv ());
+}
+
+/* Returns TRUE if real_t value is +Inf.  */
+
+bool
+CTFloat::isInfinity (real_t r)
+{
+  return REAL_VALUE_ISINF (r.rv ());
+}
+
+/* Return a real_t value from string BUFFER rounded to long double mode.  */
+
+real_t
+CTFloat::parse(const char *buffer, bool *overflow)
+{
+  real_t r;
+  real_from_string3(&r.rv(), buffer, TYPE_MODE (long_double_type_node));
+
+  /* Front-end checks overflow to see if the value is representable.  */
+  if (overflow && r == Port::ldbl_infinity)
+    *overflow = true;
+
+  return r;
+}
+
+/* Format the real_t value X to string BUFFER based on FMT.  */
+
+int
+CTFloat::sprint (char *buffer, char fmt, real_t x)
+{
+  if (fmt == 'a' || fmt == 'A')
+    return x.formatHex (fmt, buffer, 32);
+
+  return x.format (buffer, 32);
+}

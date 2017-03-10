@@ -473,13 +473,13 @@ UnionExp Mod(Type *type, Expression *e1, Expression *e2)
         {
             real_t r2 = e2->toReal();
 
-            c = complex_t(Port::fmodl(e1->toReal(), r2), Port::fmodl(e1->toImaginary(), r2));
+            c = complex_t(e1->toReal() % r2, e1->toImaginary() % r2);
         }
         else if (e2->type->isimaginary())
         {
             real_t i2 = e2->toImaginary();
 
-            c = complex_t(Port::fmodl(e1->toReal(), i2), Port::fmodl(e1->toImaginary(), i2));
+            c = complex_t(e1->toReal() % i2, e1->toImaginary() % i2);
         }
         else
             assert(0);
@@ -936,7 +936,7 @@ UnionExp Equal(TOK op, Type *type, Expression *e1, Expression *e2)
         r1 = e1->toImaginary();
         r2 = e2->toImaginary();
      L1:
-        if (Port::isNan(r1) || Port::isNan(r2)) // if unordered
+        if (CTFloat::isNaN(r1) || CTFloat::isNaN(r2)) // if unordered
         {
             cmp = 0;
         }

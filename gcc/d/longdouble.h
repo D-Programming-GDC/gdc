@@ -152,16 +152,6 @@ template<typename T> inline bool operator == (T x, longdouble ld) { return ldoub
 template<typename T> inline bool operator != (T x, longdouble ld) { return ldouble (x) != ld; }
 
 
-inline size_t
-ld_sprint (char* str, char fmt, longdouble x)
-{
-  if (fmt == 'a' || fmt == 'A')
-    return x.formatHex (fmt, str, 32);
-
-  return x.format (str, 32);
-}
-
-
 // List of values for .max, .min, etc, for floats in D.
 
 struct real_properties
