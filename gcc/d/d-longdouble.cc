@@ -34,6 +34,13 @@
 #include "longdouble.h"
 
 
+/* Constant real values 0, 1, -1 and 0.5.  */
+real_t CTFloat::zero;
+real_t CTFloat::one;
+real_t CTFloat::minusone;
+real_t CTFloat::half;
+
+
 // Return the hidden real_value from the longdouble type.
 
 const real_value &
@@ -104,38 +111,6 @@ longdouble::operator
 real_value&()
 {
   return rv();
-}
-
-// Conversion routines between longdouble and host float types.
-
-void
-longdouble::set(float d)
-{
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%f", d);
-  real_from_string3(&rv(), buf, TYPE_MODE (double_type_node));
-}
-
-void
-longdouble::set(double d)
-{
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%lf", d);
-  real_from_string3(&rv(), buf, TYPE_MODE (long_double_type_node));
-}
-
-// These functions should never be called.
-
-longdouble::operator
-float()
-{
-  gcc_unreachable();
-}
-
-longdouble::operator
-double()
-{
-  gcc_unreachable();
 }
 
 // For conversion between boolean, only need to check if is zero.

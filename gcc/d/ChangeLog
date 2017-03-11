@@ -1,5 +1,16 @@
 2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-longdouble.cc (CTFloat::zero): New variable.
+	(CTFloat::one): New variable.
+	(CTFloat::minusone): New variable.
+	(CTFloat::half): New variable.
+	(longdouble::set): Remove float and double overloads.
+	(longdouble::operator float): Remove function.
+	(longdouble::operator double): Remove function.
+	* d-target.cc (Target::_init): Initialize floating point constants.
+
+2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_init): Replace calls to init with _init.
 	* d-glue.cc (Global::init): Renamed to Global::_init.
 	* d-target.cc (Target::init): Renamed to Target::_init.

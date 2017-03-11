@@ -32,8 +32,6 @@ struct longdouble
   { set (x); return *this;}
 
   // We need to list all basic types to avoid ambiguities
-  void set (float d);
-  void set (double d);
   void set (real_value& rv);
 
   void set (int8_t d);
@@ -49,8 +47,6 @@ struct longdouble
   void set (bool d);
 
   // Rvalue operators.
-  operator float();
-  operator double();
   operator real_value&();
 
   operator int8_t();

@@ -174,6 +174,12 @@ Target::_init (void)
   define_float_constants <Target::FloatProperties> (float_type_node);
   define_float_constants <Target::DoubleProperties> (double_type_node);
   define_float_constants <Target::RealProperties> (long_double_type_node);
+
+  /* Commonly used floating point constants.  */
+  CTFloat::zero = dconst0;
+  CTFloat::one = dconst1;
+  CTFloat::minusone = dconstm1;
+  CTFloat::half = dconsthalf;
 }
 
 /* Return GCC memory alignment size for type TYPE.  */
