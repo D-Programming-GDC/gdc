@@ -16,8 +16,6 @@
 #include <stdlib.h> // for alloca
 #include <stdint.h>
 
-#include "longdouble.h"
-
 #if _MSC_VER
 #include <alloca.h>
 typedef __int64 longlong;
@@ -31,13 +29,6 @@ typedef unsigned char utf8_t;
 
 struct Port
 {
-    static longdouble ldbl_nan;
-    static longdouble snan;
-    static longdouble ldbl_infinity;
-    static longdouble ldbl_max;
-
-    static void init();
-
     static int memicmp(const char *s1, const char *s2, int n);
     static char *strupr(char *s);
 

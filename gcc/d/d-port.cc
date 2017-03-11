@@ -20,28 +20,10 @@
 #include "coretypes.h"
 
 #include "dfrontend/port.h"
+#include "dfrontend/target.h"
 
 #include "tree.h"
 #include "stor-layout.h"
-
-longdouble Port::ldbl_nan;
-longdouble Port::snan;
-longdouble Port::ldbl_infinity;
-longdouble Port::ldbl_max;
-
-void
-Port::init()
-{
-  char buf[128];
-  machine_mode mode = TYPE_MODE (long_double_type_node);
-
-  real_nan(&ldbl_nan.rv(), "", 1, mode);
-  real_nan(&snan.rv(), "", 0, mode);
-  real_inf(&ldbl_infinity.rv());
-
-  get_max_float(REAL_MODE_FORMAT (mode), buf, sizeof(buf));
-  real_from_string(&ldbl_max.rv(), buf);
-}
 
 int
 Port::memicmp(const char *s1, const char *s2, int n)
@@ -85,11 +67,11 @@ Port::strupr(char *s)
 bool
 Port::isFloat32LiteralOutOfRange (const char *buffer)
 {
-  longdouble r;
+  real_t r;
 
   real_from_string3(&r.rv (), buffer, TYPE_MODE (float_type_node));
 
-  return r == ldbl_infinity;
+  return r == Target::RealProperties::infinity;
 }
 
 // Return true a if the real_t value from string BUFFER overflows
@@ -98,11 +80,11 @@ Port::isFloat32LiteralOutOfRange (const char *buffer)
 bool
 Port::isFloat64LiteralOutOfRange (const char *buffer)
 {
-  longdouble r;
+  real_t r;
 
   real_from_string3(&r.rv (), buffer, TYPE_MODE (double_type_node));
 
-  return r == ldbl_infinity;
+  return r == Target::RealProperties::infinity;
 }
 
 // Fetch a little-endian 16-bit value.

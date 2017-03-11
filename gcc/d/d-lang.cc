@@ -447,9 +447,7 @@ d_init()
   // This is the C main, not the D main.
   main_identifier_node = get_identifier ("main");
 
-  longdouble::init();
   Target::init();
-  Port::init();
 
 #ifndef TARGET_CPU_D_BUILTINS
 # define TARGET_CPU_D_BUILTINS()
