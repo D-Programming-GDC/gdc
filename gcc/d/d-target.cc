@@ -135,7 +135,7 @@ define_float_constants (tree type)
 
 /* */
 void
-Target::init (void)
+Target::_init (void)
 {
   /* Map D frontend type and sizes to GCC backend types.  */
   Target::realsize = int_size_in_bytes (long_double_type_node);

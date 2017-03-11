@@ -1,5 +1,11 @@
 2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_init): Replace calls to init with _init.
+	* d-glue.cc (Global::init): Renamed to Global::_init.
+	* d-target.cc (Target::init): Renamed to Target::_init.
+
+2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-longdouble.cc (longdouble::format): Remove function.
 	(longdouble::formatHex): Remove function.
 	(longdouble::dump): Remove function.

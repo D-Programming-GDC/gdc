@@ -190,7 +190,7 @@ bool Type::equivalent(Type *t)
     return immutableOf()->equals(t->immutableOf());
 }
 
-void Type::init()
+void Type::_init()
 {
     stringtable._init(14000);
 

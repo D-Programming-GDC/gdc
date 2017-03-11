@@ -327,7 +327,7 @@ static void
 d_init_options(unsigned int, cl_decoded_option *decoded_options)
 {
   // Set default values
-  global.init();
+  global._init();
 
   global.compiler.vendor = lang_name;
 
@@ -422,10 +422,10 @@ static bool
 d_init()
 {
   Lexer::initLexer();
-  Type::init();
+  Type::_init();
   Id::initialize();
-  Module::init();
-  Expression::init();
+  Module::_init();
+  Expression::_init();
   initPrecedence();
   initTraitsStringTable();
 
@@ -447,7 +447,7 @@ d_init()
   // This is the C main, not the D main.
   main_identifier_node = get_identifier ("main");
 
-  Target::init();
+  Target::_init();
 
 #ifndef TARGET_CPU_D_BUILTINS
 # define TARGET_CPU_D_BUILTINS()
