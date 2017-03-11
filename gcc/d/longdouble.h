@@ -82,12 +82,6 @@ struct longdouble
   bool operator == (const longdouble& r);
   bool operator != (const longdouble& r);
 
-  int format (char *buf, unsigned buf_size) const;
-  int formatHex (char fmt, char *buf, unsigned buf_size) const;
-
-  // for debugging:
-  void dump();
-
  private:
   longdouble from_int (Type *type, int64_t d);
   longdouble from_uint (Type *type, uint64_t d);

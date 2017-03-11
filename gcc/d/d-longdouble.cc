@@ -280,52 +280,6 @@ longdouble::operator != (const longdouble& r)
   return real_compare(NE_EXPR, &rv(), &r.rv());
 }
 
-// Format longdouble value into decimal string BUF of size BUF_SIZE.
-
-int
-longdouble::format(char *buf, unsigned buf_size) const
-{
-  // %% Restricting the precision of significant digits to 18.
-  real_to_decimal(buf, &rv(), buf_size, 18, 1);
-  return strlen(buf);
-}
-
-// Format longdouble value into hex string BUF of size BUF_SIZE,
-// converting the result to uppercase if FMT requests it.
-
-int
-longdouble::formatHex(char fmt, char *buf, unsigned buf_size) const
-{
-  real_to_hexadecimal(buf, &rv(), buf_size, 0, 1);
-  int buflen;
-
-  switch (fmt)
-    {
-    case 'A':
-      buflen = strlen(buf);
-      for (int i = 0; i < buflen; i++)
-	buf[i] = TOUPPER(buf[i]);
-
-      return buflen;
-
-    case 'a':
-      return strlen(buf);
-
-    default:
-      gcc_unreachable();
-    }
-}
-
-// Dump value of longdouble for debugging purposes.
-
-void
-longdouble::dump()
-{
-  char buf[128];
-  format(buf, sizeof(buf));
-  fprintf(global.stdmsg, "%s\n", buf);
-}
-
 /* Compile-time floating-pointer helper functions.  */
 
 real_t
@@ -385,13 +339,38 @@ CTFloat::parse(const char *buffer, bool *overflow)
   return r;
 }
 
-/* Format the real_t value X to string BUFFER based on FMT.  */
+/* Format the real_t value R to string BUFFER as a decimal or hexadecimal,
+   converting the result to uppercase if FMT requests it.  */
 
 int
-CTFloat::sprint (char *buffer, char fmt, real_t x)
+CTFloat::sprint (char *buffer, char fmt, real_t r)
 {
   if (fmt == 'a' || fmt == 'A')
-    return x.formatHex (fmt, buffer, 32);
+    {
+      /* Converting to a hexadecimal string.  */
+      real_to_hexadecimal (buffer, &r.rv (), 32, 0, 1);
+      int buflen;
 
-  return x.format (buffer, 32);
+      switch (fmt)
+	{
+	case 'A':
+	  buflen = strlen (buffer);
+	  for (int i = 0; i < buflen; i++)
+	    buffer[i] = TOUPPER (buffer[i]);
+
+	  return buflen;
+
+	case 'a':
+	  return strlen (buffer);
+
+	default:
+	  gcc_unreachable ();
+	}
+    }
+  else
+    {
+      /* Note: restricting the precision of significant digits to 18.  */
+      real_to_decimal (buffer, &r.rv (), 32, 18, 1);
+      return strlen (buffer);
+    }
 }
