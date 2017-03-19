@@ -1717,6 +1717,7 @@ Catch::Catch(Loc loc, Type *t, Identifier *id, Statement *handler)
     this->ident = id;
     this->handler = handler;
     var = NULL;
+    errors = false;
     internalCatch = false;
 }
 

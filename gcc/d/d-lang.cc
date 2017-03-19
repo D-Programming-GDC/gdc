@@ -1771,15 +1771,20 @@ static tree
 d_build_eh_type_type (tree type)
 {
   Type *dtype = TYPE_LANG_FRONTEND (type);
-  tree sym;
 
   if (dtype)
-    dtype = dtype->toBasetype();
+    dtype = dtype->toBasetype ();
 
   gcc_assert (dtype && dtype->ty == Tclass);
-  sym = get_classinfo_decl (((TypeClass *) dtype)->sym);
+  ClassDeclaration *cd = ((TypeClass *) dtype)->sym;
+  tree decl;
 
-  return convert (ptr_type_node, build_address (sym));
+  if (cd->cpp)
+    decl = get_cpp_typeinfo_decl (cd);
+  else
+    decl = get_classinfo_decl (cd);
+
+  return convert (ptr_type_node, build_address (decl));
 }
 
 

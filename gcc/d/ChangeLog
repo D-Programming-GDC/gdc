@@ -1,5 +1,16 @@
 2017-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-decls.cc (get_cpp_typeinfo_decl): New function.
+	* d-lang.cc (d_build_eh_type_type): Return classinfo for
+	__cpp_type_info_ptr when generating catch for C++ classes.
+	* runtime.def (CXA_BEGIN_CATCH): Define.
+	(CXA_END_CATCH): Define.
+	* toir.cc (IRVisitor::visit(TryCatchStatement)): Support catching
+	classes thrown from C++.
+	* typeinfo.cc (layout_cpp_typeinfo): New function.
+
+2017-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-builtins.cc (d_build_builtins_module): Always mark gcc builtins as
 	nothrow functions.
 

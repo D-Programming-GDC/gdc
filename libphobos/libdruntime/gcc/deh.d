@@ -50,23 +50,40 @@ version(GNU_SEH_Exceptions)
         _Unwind_Personality_Fn gcc_per);
 }
 
-// This is the primary exception class we report -- "GNUCD__\0".
+// Declare all known and handled exception classes.
+// D exceptions -- "GNUCD__\0".
+// C++ exceptions -- "GNUCC++\0"
+// C++ dependent exceptions -- "GNUCC++\x01"
 static if (GNU_ARM_EABI_Unwinder)
 {
-  const _Unwind_Exception_Class __gdc_exception_class
-    = ['G', 'N', 'U', 'C', 'D', '_', '_', '\0'];
+  const _Unwind_Exception_Class __gdc_exception_class = "GNUCD__\0";
+  const _Unwind_Exception_Class __gxx_exception_class = "GNUCC++\0";
+  const _Unwind_Exception_Class __gxx_dependent_exception_class = "GNUCC++\x01";
 }
 else
 {
-  const _Unwind_Exception_Class __gdc_exception_class
-    = (((((((cast(_Unwind_Exception_Class) 'G'
-	     << 8 | cast(_Unwind_Exception_Class) 'N')
-	    << 8 | cast(_Unwind_Exception_Class) 'U')
-	   << 8 | cast(_Unwind_Exception_Class) 'C')
-	  << 8 | cast(_Unwind_Exception_Class) 'D')
-	 << 8 | cast(_Unwind_Exception_Class) '_')
-	<< 8 | cast(_Unwind_Exception_Class) '_')
-       << 8 | cast(_Unwind_Exception_Class) '\0');
+  const _Unwind_Exception_Class __gdc_exception_class =
+    (cast(_Unwind_Exception_Class)'G' << 56) |
+    (cast(_Unwind_Exception_Class)'N' << 48) |
+    (cast(_Unwind_Exception_Class)'U' << 40) |
+    (cast(_Unwind_Exception_Class)'C' << 32) |
+    (cast(_Unwind_Exception_Class)'D' << 24) |
+    (cast(_Unwind_Exception_Class)'_' << 16) |
+    (cast(_Unwind_Exception_Class)'_' <<  8) |
+    (cast(_Unwind_Exception_Class)0 <<  0);
+
+  const _Unwind_Exception_Class __gxx_exception_class =
+    (cast(_Unwind_Exception_Class)'G' << 56) |
+    (cast(_Unwind_Exception_Class)'N' << 48) |
+    (cast(_Unwind_Exception_Class)'U' << 40) |
+    (cast(_Unwind_Exception_Class)'C' << 32) |
+    (cast(_Unwind_Exception_Class)'C' << 24) |
+    (cast(_Unwind_Exception_Class)'+' << 16) |
+    (cast(_Unwind_Exception_Class)'+' <<  8) |
+    (cast(_Unwind_Exception_Class)0 <<  0);
+
+  const _Unwind_Exception_Class __gxx_dependent_exception_class =
+    __gxx_exception_class + 1;
 }
 
 
@@ -114,6 +131,87 @@ get_exception_header_from_ue(_Unwind_Exception *exc)
 {
   return cast(d_exception_header *)
     (cast(void *) exc - d_exception_header.unwindHeader.offsetof);
+}
+
+// Structure of a C++ exception, represented as a C structure.
+// See unwind-cxx.h for the full definition.
+struct cxx_exception_header
+{
+  union
+  {
+    cxx_type_info exceptionType;
+    void *primaryException;
+  }
+  void function(void *) exceptionDestructor;
+  void function() unexpectedHandler;
+  void function() terminateHandler;
+  cxx_exception_header *nextException;
+  int handlerCount;
+
+  static if (GNU_ARM_EABI_Unwinder)
+  {
+    cxx_exception_header* nextPropagatingException;
+    int propagationCount;
+  }
+  else
+  {
+    int handlerSwitchValue;
+    const ubyte *actionRecord;
+    const ubyte *languageSpecificData;
+    _Unwind_Ptr catchTemp;
+    void *adjustedPtr;
+  }
+
+  _Unwind_Exception unwindHeader;
+}
+
+// Map to C++ std::type_info's virtual functions from D,
+// being careful to not require linking with libstdc++.
+// So it is given a different name.
+extern (C++) interface cxx_type_info
+{
+  void dtor1();
+  void dtor2();
+  bool __is_pointer_p() const;
+  bool __is_function_p() const;
+  bool __do_catch(const cxx_type_info, void**, uint) const;
+  bool __do_upcast(const void*, void**) const;
+}
+
+// Get pointer to the thrown object if the thrown object type is implicitly
+// convertible to the catch type.
+
+private void *
+cxx_get_adjusted_ptr(_Unwind_Exception *exc, cxx_type_info catch_type)
+{
+  void *thrown_ptr;
+
+  static if (GNU_ARM_EABI_Unwinder)
+    const is_dependent_exception = (exc.exception_class[7] == '\x01');
+  else
+    const is_dependent_exception = (exc.exception_class & 1);
+
+  // A dependent C++ exceptions is just a wrapper around the unwind header.
+  // A primary C++ exception has the thrown object located immediately after it.
+  if (is_dependent_exception)
+    thrown_ptr = cast(cxx_exception_header *)(exc + 1) - 1;
+  else
+    thrown_ptr = cast(void *)(exc + 1);
+
+  // Pointer types need to adjust the actual pointer, not the pointer that is
+  // the exception object.  This also has the effect of passing pointer types
+  // "by value" through the __cxa_begin_catch return value.
+  const throw_type = (cast(cxx_exception_header *)thrown_ptr - 1).exceptionType;
+
+  if (throw_type.__is_pointer_p ())
+    thrown_ptr = *cast(void **) thrown_ptr;
+
+  // Pointer adjustment may be necessary due to multiple inheritance
+  if (catch_type is throw_type
+      || catch_type.__do_catch (throw_type, &thrown_ptr, 1))
+    return thrown_ptr;
+
+  return null;
 }
 
 // D doesn't define these, so they are private for now.
@@ -634,26 +732,54 @@ __gdc_personality_impl(int iversion,
 	      // Zero filter values are cleanups.
 	      saw_cleanup = true;
 	    }
-	  else if ((actions & _UA_FORCE_UNWIND) || foreign_exception)
-	    {
-	      // During forced unwinding, we only run cleanups.  With a
-	      // foreign exception class, we have no class info to match.
-	      // ??? What to do about GNU Java and GNU Ada exceptions.
-	    }
 	  else if (ar_filter > 0)
 	    {
 	      // Positive filter values are handlers.
-	      ClassInfo catch_type = get_classinfo_entry (&info, ar_filter);
+	      ClassInfo ci = get_classinfo_entry (&info, ar_filter);
 
-	      // Null catch type is a catch-all handler; we can catch foreign
-	      // exceptions with this.  Otherwise we must match types.
-	      // D Note: will be performing dynamic cast twice, potentially
-	      // Once here and once at the landing pad .. unless we cached
-	      // here and had a begin_catch call.
-	      if (catch_type is null || _d_isbaseof (xh.object.classinfo, catch_type))
+	      // D does not have catch-all handlers, and so the following
+	      // assumes that we will never handle a null value.
+	      assert(ci !is null);
+
+	      if (ci.classinfo is __cpp_type_info_ptr.classinfo)
 		{
-		  saw_handler = true;
-		  break;
+		  // catch_type is the catch clause type_info.
+		  auto catch_type =
+		    cast(cxx_type_info)((cast(__cpp_type_info_ptr)cast(void *)ci).ptr);
+		  auto thrown_ptr = cxx_get_adjusted_ptr (ue_header,
+							  catch_type);
+
+		  if (thrown_ptr)
+		    {
+		      auto cxh = cast(cxx_exception_header *)(ue_header + 1) - 1;
+		      // There's no saving between phases, so cache pointer.
+		      // __cxa_begin_catch expects this to be set.
+		      if (actions & _UA_SEARCH_PHASE)
+			{
+			  static if (GNU_ARM_EABI_Unwinder)
+			    ue_header.barrier_cache.bitpattern[0] = cast(_uw) thrown_ptr;
+			  else
+			    cxh.adjustedPtr = thrown_ptr;
+			}
+
+		      saw_handler = true;
+		      break;
+		    }
+		}
+	      else if (!foreign_exception)
+		{
+		  // D Note: will be performing dynamic cast twice, potentially
+		  // Once here and once at the landing pad .. unless we cached
+		  // here and had a begin_catch call.
+		  if (_d_isbaseof (xh.object.classinfo, ci))
+		    {
+		      saw_handler = true;
+		      break;
+		    }
+		}
+	      else
+		{
+		  // ??? What to do about other GNU language exceptions.
 		}
 	    }
 	  else
@@ -709,7 +835,7 @@ __gdc_personality_impl(int iversion,
   // We can't use any of the deh routines with foreign exceptions,
   // because they all expect ue_header to be an d_exception_header.
   // So in that case, call terminate or unexpected directly.
-  if ((actions & _UA_FORCE_UNWIND) || foreign_exception)
+  if (actions & _UA_FORCE_UNWIND)
     {
       if (found_type == Found.terminate || handler_switch_value < 0)
 	__gdc_terminate();

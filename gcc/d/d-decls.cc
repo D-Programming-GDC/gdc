@@ -987,7 +987,7 @@ get_classinfo_decl (ClassDeclaration *decl)
   TREE_READONLY (decl->csym) = 0;
   TREE_PUBLIC (decl->csym) = 1;
 
-  /* The moduleinfo decl has not been defined -- yet.  */
+  /* The classinfo decl has not been defined -- yet.  */
   DECL_EXTERNAL (decl->csym) = 1;
 
   /* Could move setting comdat linkage to the caller, who knows whether
@@ -1042,6 +1042,49 @@ get_vtable_decl (ClassDeclaration *decl)
     d_comdat_linkage (decl->vtblsym);
 
   return decl->vtblsym;
+}
+
+/* Get the VAR_DECL of the __cpp_type_info_ptr for DECL.  If this does not yet
+   exist, create it.  The __cpp_type_info_ptr decl is then initialized with a
+   pointer to the C++ typeinfo for the given class.  */
+
+tree
+get_cpp_typeinfo_decl (ClassDeclaration *decl)
+{
+  gcc_assert (decl->isCPPclass ());
+
+  if (decl->cpp_type_info_ptr_sym)
+    return decl->cpp_type_info_ptr_sym;
+
+  ClassDeclaration *cd = ClassDeclaration::cpp_type_info_ptr;
+  tree ident = make_internal_name (decl, "_cpp_type_info_ptr", "");
+
+  tree type = TREE_TYPE (build_ctype (cd->type));
+
+  decl->cpp_type_info_ptr_sym
+    = build_decl (BUILTINS_LOCATION, VAR_DECL,
+		  IDENTIFIER_PRETTY_NAME (ident), type);
+
+  set_decl_location (decl->cpp_type_info_ptr_sym, decl);
+  DECL_LANG_SPECIFIC (decl->cpp_type_info_ptr_sym) = build_lang_decl (NULL);
+  SET_DECL_ASSEMBLER_NAME (decl->cpp_type_info_ptr_sym, ident);
+
+  d_keep (decl->cpp_type_info_ptr_sym);
+
+  /* Class is a reference, want the record type.  */
+  DECL_CONTEXT (decl->cpp_type_info_ptr_sym)
+    = TREE_TYPE (build_ctype (decl->type));
+  DECL_ARTIFICIAL (decl->cpp_type_info_ptr_sym) = 1;
+  TREE_STATIC (decl->cpp_type_info_ptr_sym) = 1;
+  TREE_READONLY (decl->cpp_type_info_ptr_sym) = 1;
+  TREE_PUBLIC (decl->cpp_type_info_ptr_sym) = 1;
+
+  d_comdat_linkage (decl->cpp_type_info_ptr_sym);
+
+  /* Layout the initializer and emit the symbol.  */
+  layout_cpp_typeinfo (decl);
+
+  return decl->cpp_type_info_ptr_sym;
 }
 
 /* Get the VAR_DECL of a class instance representing EXPR as static data.

@@ -406,6 +406,7 @@ extern tree get_moduleinfo_decl (Module *);
 extern tree get_typeinfo_decl (TypeInfoDeclaration *);
 extern tree get_classinfo_decl (ClassDeclaration *);
 extern tree get_vtable_decl (ClassDeclaration *);
+extern tree get_cpp_typeinfo_decl (ClassDeclaration *);
 extern tree build_new_class_expr (ClassReferenceExp *expr);
 extern tree aggregate_initializer (AggregateDeclaration *);
 extern tree enum_initializer (EnumDeclaration *);
@@ -434,6 +435,7 @@ extern tree build_import_decl (Dsymbol *);
 extern tree build_typeinfo (Type *);
 extern tree layout_typeinfo (TypeInfoDeclaration *);
 extern tree layout_classinfo (ClassDeclaration *);
+extern void layout_cpp_typeinfo (ClassDeclaration *);
 
 /* In toir.cc.  */
 extern void build_ir (FuncDeclaration *);

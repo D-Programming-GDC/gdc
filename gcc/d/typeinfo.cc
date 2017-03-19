@@ -847,6 +847,40 @@ layout_classinfo (ClassDeclaration *cd)
   return v.result ();
 }
 
+void
+layout_cpp_typeinfo (ClassDeclaration *cd)
+{
+  gcc_assert (cd->isCPPclass ());
+
+  tree decl = get_cpp_typeinfo_decl (cd);
+  tree type = TREE_TYPE (decl);
+
+  vec<constructor_elt, va_gc> *init = NULL;
+  tree f_vptr = TYPE_FIELDS (type);
+  tree f_typeinfo = DECL_CHAIN (DECL_CHAIN (f_vptr));
+
+  /* Use the vtable of __cpp_type_info_ptr, the EH personality routine
+     expects this, as it uses .classinfo identity comparison to test for
+     C++ catch handlers.  */
+  tree vptr = get_vtable_decl (ClassDeclaration::cpp_type_info_ptr);
+  CONSTRUCTOR_APPEND_ELT (init, f_vptr, build_address (vptr));
+
+  /* Let C++ do the RTTI generation, and just reference the symbol as
+     extern, the knowing the underlying type is not required.  */
+  const char *ident = cppTypeInfoMangle (cd);
+  tree typeinfo = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			      get_identifier (ident), unknown_type_node);
+  DECL_EXTERNAL (typeinfo) = 1;
+  DECL_ARTIFICIAL (typeinfo) = 1;
+  TREE_READONLY (typeinfo) = 1;
+  CONSTRUCTOR_APPEND_ELT (init, f_typeinfo, build_address (typeinfo));
+
+  /* Build the initializer and emit.  */
+  DECL_INITIAL (decl) = build_constructor (type, init);
+  d_pushdecl (decl);
+  rest_of_decl_compilation (decl, 1, 0);
+}
+
 /* Returns typeinfo reference for TYPE.  */
 
 tree
