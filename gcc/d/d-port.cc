@@ -20,67 +20,10 @@
 #include "coretypes.h"
 
 #include "dfrontend/port.h"
+#include "dfrontend/target.h"
 
 #include "tree.h"
 #include "stor-layout.h"
-
-longdouble Port::ldbl_nan;
-longdouble Port::snan;
-longdouble Port::ldbl_infinity;
-longdouble Port::ldbl_max;
-
-void
-Port::init()
-{
-  char buf[128];
-  machine_mode mode = TYPE_MODE (long_double_type_node);
-
-  real_nan(&ldbl_nan.rv(), "", 1, mode);
-  real_nan(&snan.rv(), "", 0, mode);
-  real_inf(&ldbl_infinity.rv());
-
-  get_max_float(REAL_MODE_FORMAT (mode), buf, sizeof(buf));
-  real_from_string(&ldbl_max.rv(), buf);
-}
-
-// Returns TRUE if longdouble value R is NaN.
-
-int
-Port::isNan(longdouble r)
-{
-  return REAL_VALUE_ISNAN (r.rv());
-}
-
-// Same as isNan, but also check if is signalling.
-
-int
-Port::isSignallingNan(longdouble r)
-{
-  return REAL_VALUE_ISSIGNALING_NAN (r.rv());
-}
-
-// Returns TRUE if longdouble value is +Inf.
-
-int
-Port::isInfinity(longdouble r)
-{
-  return REAL_VALUE_ISINF (r.rv());
-}
-
-longdouble
-Port::fmodl(longdouble x, longdouble y)
-{
-  return x % y;
-}
-
-// Returns TRUE if longdouble value X is identical to Y.
-
-int
-Port::fequal(longdouble x, longdouble y)
-{
-  return (Port::isNan(x) && Port::isNan(y))
-    || real_identical(&x.rv(), &y.rv());
-}
 
 int
 Port::memicmp(const char *s1, const char *s2, int n)
@@ -118,44 +61,30 @@ Port::strupr(char *s)
   return t;
 }
 
-// Return a longdouble value from string BUFFER rounded to float mode.
+// Return true a if the real_t value from string BUFFER overflows
+// as a result of rounding down to float mode.
 
-longdouble
-Port::strtof(const char *buffer, char **)
+bool
+Port::isFloat32LiteralOutOfRange (const char *buffer)
 {
-  longdouble r;
-  real_from_string3(&r.rv(), buffer, TYPE_MODE (float_type_node));
+  real_t r;
 
-  // Front-end checks errno to see if the value is representable.
-  if (r == ldbl_infinity)
-    errno = ERANGE;
+  real_from_string3(&r.rv (), buffer, TYPE_MODE (float_type_node));
 
-  return r;
+  return r == Target::RealProperties::infinity;
 }
 
-// Return a longdouble value from string BUFFER rounded to double mode.
+// Return true a if the real_t value from string BUFFER overflows
+// as a result of rounding down to double mode.
 
-longdouble
-Port::strtod(const char *buffer, char **)
+bool
+Port::isFloat64LiteralOutOfRange (const char *buffer)
 {
-  longdouble r;
-  real_from_string3(&r.rv(), buffer, TYPE_MODE (double_type_node));
+  real_t r;
 
-  // Front-end checks errno to see if the value is representable.
-  if (r == ldbl_infinity)
-    errno = ERANGE;
+  real_from_string3(&r.rv (), buffer, TYPE_MODE (double_type_node));
 
-  return r;
-}
-
-// Return a longdouble value from string BUFFER rounded to long double mode.
-
-longdouble
-Port::strtold(const char *buffer, char **)
-{
-  longdouble r;
-  real_from_string3(&r.rv(), buffer, TYPE_MODE (long_double_type_node));
-  return r;
+  return r == Target::RealProperties::infinity;
 }
 
 // Fetch a little-endian 16-bit value.

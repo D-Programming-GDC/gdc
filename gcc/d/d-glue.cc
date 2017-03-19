@@ -39,7 +39,7 @@
 Global global;
 
 void
-Global::init()
+Global::_init()
 {
   this->mars_ext = "d";
   this->hdr_ext  = "di";

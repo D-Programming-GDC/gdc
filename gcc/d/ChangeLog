@@ -1,3 +1,78 @@
+2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-longdouble.cc (CTFloat::zero): New variable.
+	(CTFloat::one): New variable.
+	(CTFloat::minusone): New variable.
+	(CTFloat::half): New variable.
+	(longdouble::set): Remove float and double overloads.
+	(longdouble::operator float): Remove function.
+	(longdouble::operator double): Remove function.
+	* d-target.cc (Target::_init): Initialize floating point constants.
+
+2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_init): Replace calls to init with _init.
+	* d-glue.cc (Global::init): Renamed to Global::_init.
+	* d-target.cc (Target::init): Renamed to Target::_init.
+
+2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-longdouble.cc (longdouble::format): Remove function.
+	(longdouble::formatHex): Remove function.
+	(longdouble::dump): Remove function.
+	(CTFloat::sprint): Inline implementation of format and formatHex here.
+
+2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_init): Remove calls to Port::init and longdouble::init.
+	* d-longdouble.cc (real_limits): Remove variable.
+	(longdouble::init): Remove function.
+	(CTFloat::parse): Update to use Target::RealProperties.
+	* d-port.cc (Port::ldbl_nan): Remove variable.
+	(Port::snan): Remove variable.
+	(Port::ldbl_infinity): Remove variable.
+	(Port::ldbl_max): Remove variable.
+	(Port::init): Remove function.
+	(Port::isFloat32LiteralOutOfRange): Update to use
+	Target::RealProperties.
+	(Port::isFloat64LiteralOutOfRange): Likewise.
+	* d-target.cc (Target::FPTypeProperties<T>::max): Define.
+	(Target::FPTypeProperties<T>::min_normal): Define.
+	(Target::FPTypeProperties<T>::nan): Define.
+	(Target::FPTypeProperties<T>::snan): Define.
+	(Target::FPTypeProperties<T>::infinity): Define.
+	(Target::FPTypeProperties<T>::epsilon): Define.
+	(Target::FPTypeProperties<T>::dig): Define.
+	(Target::FPTypeProperties<T>::mant_dig): Define.
+	(Target::FPTypeProperties<T>::max_exp): Define.
+	(Target::FPTypeProperties<T>::min_exp): Define.
+	(Target::FPTypeProperties<T>::max_10_exp): Define.
+	(Target::FPTypeProperties<T>::min_10_exp): Define.
+	(define_float_constants): New function.
+	(Target::init): Initialize compile-time floating point properties.
+	* longdouble.h (Mode): Remove type declaration.
+	(real_properties): Remove type declaration.
+
+2017-03-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-longdouble.cc (CTFloat::fabs): New function.
+	(CTFloat::isIdentical): New function.
+	(CTFloat::isNaN): New function.
+	(CTFloat::isSNaN): New function.
+	(CTFloat::isInfinity): New function.
+	(CTFloat::parse): New function.
+	(CTFloat::sprint): New function.
+	* d-port.cc (Port::isNan): Remove function.
+	(Port::isSignallingNan): Remove function.
+	(Port::isInfinity): Remove function.
+	(Port::fequal): Remove function.
+	(Port::strtof): Remove function.
+	(Port::strtod): Remove function.
+	(Port::strtold): Remove function.
+	(Port::isFloat32LiteralOutOfRange): New function.
+	(Port::isFloat64LiteralOutOfRange): New function.
+	* longdouble.h (ld_sprint): Remove function.
+
 2017-03-06  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-glue.cc (verror): Update to handle -Wspeculative.

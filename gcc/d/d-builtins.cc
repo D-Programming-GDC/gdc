@@ -302,9 +302,9 @@ build_expression(tree cst)
       tree_code code = TREE_CODE (cst);
       if (code == COMPLEX_CST)
 	{
-	  complex_t value;
-	  value.re = TREE_REAL_CST (TREE_REALPART (cst));
-	  value.im = TREE_REAL_CST (TREE_IMAGPART (cst));
+	  real_value re = TREE_REAL_CST (TREE_REALPART (cst));
+	  real_value im = TREE_REAL_CST (TREE_IMAGPART (cst));
+	  complex_t value = complex_t (ldouble (re), ldouble (im));
 	  return new ComplexExp (Loc(), value, type);
 	}
       else if (code == INTEGER_CST)
