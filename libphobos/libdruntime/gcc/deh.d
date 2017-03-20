@@ -27,7 +27,7 @@ import gcc.config;
 extern(C)
 {
     int _d_isbaseof(ClassInfo, ClassInfo);
-    void _d_createTrace(Object*, void*);
+    void _d_createTrace(Object, void*);
 }
 
 // Declare all known and handled exception classes.
@@ -234,9 +234,8 @@ extern(C) void* _d_eh_swapContext(void* newContext) nothrow
 
 // Called before starting a catch.  Returns the exception object.
 
-extern(C) void* __gdc_begin_catch(void* exc_ptr)
+extern(C) void* __gdc_begin_catch(_Unwind_Exception* exceptionObject)
 {
-    _Unwind_Exception* exceptionObject = cast(_Unwind_Exception*)exc_ptr;
     d_exception_header* header = get_exception_header_from_ue(exceptionObject);
     globalExceptions* globals = &__globalExceptions;
 
@@ -259,14 +258,9 @@ extern(C) void* __gdc_begin_catch(void* exc_ptr)
 
 // Perform a throw, D style. Throw will unwind through this call,
 // so there better not be any handlers or exception thrown here.
-extern(C) void _d_throw(Object o)
+extern(C) void _d_throw(Throwable object)
 {
     globalExceptions* globals = &__globalExceptions;
-    Throwable object = cast(Throwable)o;
-
-    // Did not receive a Throwable object.
-    if (object is null)
-        __gdc_terminate();
 
     // If possible, avoid always allocating new memory for exception headers.
     d_exception_header* xh = void;
@@ -298,7 +292,7 @@ extern(C) void _d_throw(Object o)
     xh.unwindHeader.exception_cleanup = & __gdc_exception_cleanup;
 
     // Runtime now expects us to do this first before unwinding.
-    _d_createTrace(cast(Object*)xh.object, null);
+    _d_createTrace(xh.object, null);
 
     // We're happy with setjmp/longjmp exceptions or region-based
     // exception handlers: entry points are provided here for both.
@@ -406,9 +400,9 @@ private void save_caught_exception(_Unwind_Exception* ue_header,
 }
 
 private void restore_caught_exception(_Unwind_Exception* ue_header,
-                                      ref int handler_switch_value,
-                                      ref ubyte* language_specific_data,
-                                      ref _Unwind_Ptr landing_pad)
+                                      out int handler_switch_value,
+                                      out ubyte* language_specific_data,
+                                      out _Unwind_Ptr landing_pad)
 {
     static if (GNU_ARM_EABI_Unwinder)
     {
