@@ -28,6 +28,27 @@ import gcc.builtins;
 
 extern (C):
 
+// Placed outside @nogc in order to not constrain what the callback does.
+// ??? Does this really need to be extern(C) alias?
+extern(C) alias _Unwind_Exception_Cleanup_Fn
+    = void function(_Unwind_Reason_Code, _Unwind_Exception*);
+
+extern(C) alias personality_routine
+    = _Unwind_Reason_Code function(_Unwind_State,
+                                   _Unwind_Control_Block*,
+                                   _Unwind_Context*);
+
+extern(C) alias _Unwind_Stop_Fn
+    =_Unwind_Reason_Code function(int, _Unwind_Action,
+                                  _Unwind_Exception_Class,
+                                  _Unwind_Control_Block*,
+                                  _Unwind_Context*, void*);
+
+extern(C) alias _Unwind_Trace_Fn
+    = _Unwind_Reason_Code function(_Unwind_Context*, void*);
+
+@nogc:
+
 alias _Unwind_Word = __builtin_machine_uint;
 alias _Unwind_Sword = __builtin_machine_int;
 alias _Unwind_Ptr = __builtin_pointer_uint;
@@ -74,9 +95,6 @@ enum : _Unwind_Action
 
 struct _Unwind_Context;
 alias _Unwind_EHT_Header = _uw;
-
-extern(C) alias _Unwind_Exception_Cleanup_Fn
-    = void function(_Unwind_Reason_Code, _Unwind_Exception*);
 
 struct _Unwind_Control_Block
 {
@@ -156,11 +174,6 @@ struct __gnu_unwind_state
     _uw8 words_left;    // The number of words pointed to by ptr.
 }
 
-extern(C) alias personality_routine
-    = _Unwind_Reason_Code function(_Unwind_State,
-                                   _Unwind_Control_Block*,
-                                   _Unwind_Context*);
-
 _Unwind_VRS_Result _Unwind_VRS_Set(_Unwind_Context*, _Unwind_VRS_RegClass,
                                    _uw, _Unwind_VRS_DataRepresentation,
                                    void*);
@@ -189,21 +202,12 @@ _Unwind_Reason_Code _Unwind_RaiseException(_Unwind_Control_Block*);
 void _Unwind_Resume(_Unwind_Control_Block*);
 _Unwind_Reason_Code _Unwind_Resume_or_Rethrow(_Unwind_Control_Block*);
 
-extern(C) alias _Unwind_Stop_Fn
-    =_Unwind_Reason_Code function(int, _Unwind_Action,
-                                  _Unwind_Exception_Class,
-                                  _Unwind_Control_Block*,
-                                  _Unwind_Context*, void*);
-
 _Unwind_Reason_Code _Unwind_ForcedUnwind(_Unwind_Control_Block*,
                                          _Unwind_Stop_Fn, void*);
 
 // @@@ Use unwind data to perform a stack backtrace.  The trace callback
 // is called for every stack frame in the call chain, but no cleanup
 // actions are performed.
-extern(C) alias _Unwind_Trace_Fn
-    = _Unwind_Reason_Code function(_Unwind_Context*, void*);
-
 _Unwind_Reason_Code _Unwind_Backtrace(_Unwind_Trace_Fn, void*);
 
 _Unwind_Word _Unwind_GetCFA(_Unwind_Context*);

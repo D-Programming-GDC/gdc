@@ -28,6 +28,7 @@ static if (GNU_ARM_EABI_Unwinder):
 public import gcc.unwind.arm_common;
 
 extern (C):
+@nogc:
 
 enum int UNWIND_STACK_REG = 31;
 // Use A0 as a scratch register within the personality routine.

@@ -23,6 +23,8 @@ module gcc.unwind.pe;
 import gcc.unwind;
 import gcc.builtins;
 
+@nogc:
+
 // Pointer encodings, from dwarf2.h.
 enum
 {

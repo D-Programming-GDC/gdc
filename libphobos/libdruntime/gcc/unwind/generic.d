@@ -31,6 +31,43 @@ import gcc.builtins;
 
 extern (C):
 
+// Placed outside @nogc in order to not constrain what the callback does.
+// ??? Does this really need to be extern(C) alias?
+
+extern(C) alias _Unwind_Exception_Cleanup_Fn
+    = void function(_Unwind_Reason_Code, _Unwind_Exception*);
+
+extern(C) alias _Unwind_Stop_Fn
+    = _Unwind_Reason_Code function(int, _Unwind_Action,
+                                   _Unwind_Exception_Class,
+                                   _Unwind_Exception*,
+                                   _Unwind_Context*, void*);
+
+extern(C) alias _Unwind_Trace_Fn
+    = _Unwind_Reason_Code function(_Unwind_Context*, void*);
+
+// The personality routine is the function in the C++ (or other language)
+// runtime library which serves as an interface between the system unwind
+// library and language-specific exception handling semantics.  It is
+// specific to the code fragment described by an unwind info block, and
+// it is always referenced via the pointer in the unwind info block, and
+// hence it has no ABI-specified name.
+
+// Note that this implies that two different C++ implementations can
+// use different names, and have different contents in the language
+// specific data area.  Moreover, that the language specific data
+// area contains no version info because name of the function invoked
+// provides more effective versioning by detecting at link time the
+// lack of code to handle the different data format.
+
+extern(C) alias _Unwind_Personality_Fn
+    = _Unwind_Reason_Code function(int, _Unwind_Action,
+                                   _Unwind_Exception_Class,
+                                   _Unwind_Exception*,
+                                   _Unwind_Context*);
+
+@nogc:
+
 // Level 1: Base ABI
 
 // @@@ The IA-64 ABI uses uint64 throughout.
@@ -78,9 +115,6 @@ enum : _Unwind_Reason_Code
 // implementation-specific, but it will be prefixed by a header
 // understood by the unwind interface.
 
-extern(C) alias _Unwind_Exception_Cleanup_Fn
-    = void function(_Unwind_Reason_Code, _Unwind_Exception*);
-
 // @@@ The IA-64 ABI says that this structure must be double-word aligned.
 // Taking that literally does not make much sense generically.  Instead we
 // provide the maximum alignment required by any type for the machine.
@@ -114,13 +148,6 @@ struct _Unwind_Context;
 _Unwind_Reason_Code _Unwind_RaiseException(_Unwind_Exception*);
 
 // Raise an exception for forced unwinding.
-
-extern(C) alias _Unwind_Stop_Fn
-    = _Unwind_Reason_Code function(int, _Unwind_Action,
-                                   _Unwind_Exception_Class,
-                                   _Unwind_Exception*,
-                                   _Unwind_Context*, void*);
-
 _Unwind_Reason_Code _Unwind_ForcedUnwind(_Unwind_Exception*, _Unwind_Stop_Fn, void*);
 
 // Helper to invoke the exception_cleanup routine.
@@ -137,9 +164,6 @@ _Unwind_Reason_Code _Unwind_Resume_or_Rethrow(_Unwind_Exception*);
 // @@@ Use unwind data to perform a stack backtrace.  The trace callback
 // is called for every stack frame in the call chain, but no cleanup
 // actions are performed.
-extern(C) alias _Unwind_Trace_Fn
-    = _Unwind_Reason_Code function(_Unwind_Context*, void*);
-
 _Unwind_Reason_Code _Unwind_Backtrace(_Unwind_Trace_Fn, void*);
 
 // These functions are used for communicating information about the unwind
@@ -161,26 +185,6 @@ void* _Unwind_GetLanguageSpecificData(_Unwind_Context*);
 
 _Unwind_Ptr _Unwind_GetRegionStart(_Unwind_Context*);
 
-
-// The personality routine is the function in the C++ (or other language)
-// runtime library which serves as an interface between the system unwind
-// library and language-specific exception handling semantics.  It is
-// specific to the code fragment described by an unwind info block, and
-// it is always referenced via the pointer in the unwind info block, and
-// hence it has no ABI-specified name.
-
-// Note that this implies that two different C++ implementations can
-// use different names, and have different contents in the language
-// specific data area.  Moreover, that the language specific data
-// area contains no version info because name of the function invoked
-// provides more effective versioning by detecting at link time the
-// lack of code to handle the different data format.
-
-extern(C) alias _Unwind_Personality_Fn
-    = _Unwind_Reason_Code function(int, _Unwind_Action,
-                                   _Unwind_Exception_Class,
-                                   _Unwind_Exception*,
-                                   _Unwind_Context*);
 
 // @@@ The following alternate entry points are for setjmp/longjmp
 // based unwinding.
