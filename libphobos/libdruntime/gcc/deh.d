@@ -487,94 +487,79 @@ private void restore_caught_exception(_Unwind_Exception* ue_header,
 
 // Using a different personality function name causes link failures
 // when trying to mix code using different exception handling models.
-// extern(C) alias __gdc_personality_impl ...; would be nice
 version (GNU_SEH_Exceptions)
 {
+    enum PERSONALITY_FUNCTION = "__gdc_personality_imp";
+
     extern(C) EXCEPTION_DISPOSITION __gdc_personality_seh0(void* ms_exc, void* this_frame,
                                                            void* ms_orig_context, void* ms_disp)
     {
         return _GCC_specific_handler(ms_exc, this_frame, ms_orig_context,
                                      ms_disp, &__gdc_personality_imp);
     }
-
-    extern(C) _Unwind_Reason_Code __gdc_personality_imp(int iversion,
-                                                        _Unwind_Action actions,
-                                                        _Unwind_Exception_Class exception_class,
-                                                        _Unwind_Exception* ue_header,
-                                                        _Unwind_Context* context)
-    {
-        return __gdc_personality_impl(iversion, actions,
-                                      !ExceptionHeader.isGdcExceptionClass(exception_class),
-                                      ue_header, context);
-    }
 }
 else version (GNU_SjLj_Exceptions)
 {
-    extern(C) _Unwind_Reason_Code __gdc_personality_sj0(int iversion,
-                                                        _Unwind_Action actions,
-                                                        _Unwind_Exception_Class exception_class,
-                                                        _Unwind_Exception* ue_header,
-                                                        _Unwind_Context* context)
-    {
-        return __gdc_personality_impl(iversion, actions,
-                                      !ExceptionHeader.isGdcExceptionClass(exception_class),
-                                      ue_header, context);
-    }
+    enum PERSONALITY_FUNCTION = "__gdc_personality_sj0";
 
     private int __builtin_eh_return_data_regno(int x) { return x; }
 }
 else
 {
-    static if (GNU_ARM_EABI_Unwinder)
+    enum PERSONALITY_FUNCTION = "__gdc_personality_v0";
+}
+
+static if (GNU_ARM_EABI_Unwinder)
+{
+    pragma(mangle, PERSONALITY_FUNCTION)
+    extern(C) _Unwind_Reason_Code gdc_personality(_Unwind_State state,
+                                                  _Unwind_Exception* ue_header,
+                                                  _Unwind_Context* context)
     {
-        extern(C) _Unwind_Reason_Code __gdc_personality_v0(_Unwind_State state,
-                                                           _Unwind_Exception* ue_header,
-                                                           _Unwind_Context* context)
+        _Unwind_Action actions;
+
+        switch (state & _US_ACTION_MASK)
         {
-            _Unwind_Action actions;
+            case _US_VIRTUAL_UNWIND_FRAME:
+                actions = _UA_SEARCH_PHASE;
+                break;
 
-            switch (state & _US_ACTION_MASK)
-            {
-                case _US_VIRTUAL_UNWIND_FRAME:
-                    actions = _UA_SEARCH_PHASE;
-                    break;
+            case _US_UNWIND_FRAME_STARTING:
+                actions = _UA_CLEANUP_PHASE;
+                if (!(state & _US_FORCE_UNWIND)
+                    && ue_header.barrier_cache.sp == _Unwind_GetGR(context, UNWIND_STACK_REG))
+                    actions |= _UA_HANDLER_FRAME;
+                break;
 
-                case _US_UNWIND_FRAME_STARTING:
-                    actions = _UA_CLEANUP_PHASE;
-                    if (!(state & _US_FORCE_UNWIND)
-                        && ue_header.barrier_cache.sp == _Unwind_GetGR(context, UNWIND_STACK_REG))
-                        actions |= _UA_HANDLER_FRAME;
-                    break;
+            case _US_UNWIND_FRAME_RESUME:
+                if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
+                    return _URC_FAILURE;
+                return _URC_CONTINUE_UNWIND;
 
-                case _US_UNWIND_FRAME_RESUME:
-                    if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
-                        return _URC_FAILURE;
-                    return _URC_CONTINUE_UNWIND;
-
-                default:
-                    __builtin_trap();
-            }
-            actions |= state & _US_FORCE_UNWIND;
-
-            // We don't know which runtime we're working with, so can't check this.
-            // However the ABI routines hide this from us, and we don't actually need to knowa
-            bool foreign_exception = false;
-
-            return __gdc_personality_impl(1, actions, foreign_exception, ue_header, context);
+            default:
+                __builtin_trap();
         }
+        actions |= state & _US_FORCE_UNWIND;
+
+        // We don't know which runtime we're working with, so can't check this.
+        // However the ABI routines hide this from us, and we don't actually need to knowa
+        bool foreign_exception = false;
+
+        return __gdc_personality_impl(1, actions, foreign_exception, ue_header, context);
     }
-    else
+}
+else
+{
+    pragma(mangle, PERSONALITY_FUNCTION)
+    extern(C) _Unwind_Reason_Code gdc_personality(int iversion,
+                                                  _Unwind_Action actions,
+                                                  _Unwind_Exception_Class exception_class,
+                                                  _Unwind_Exception* ue_header,
+                                                  _Unwind_Context* context)
     {
-        extern(C) _Unwind_Reason_Code __gdc_personality_v0(int iversion,
-                                                           _Unwind_Action actions,
-                                                           _Unwind_Exception_Class exception_class,
-                                                           _Unwind_Exception* ue_header,
-                                                           _Unwind_Context* context)
-        {
-            return __gdc_personality_impl(iversion, actions,
-                                          !ExceptionHeader.isGdcExceptionClass(exception_class),
-                                          ue_header, context);
-        }
+        return __gdc_personality_impl(iversion, actions,
+                                      !ExceptionHeader.isGdcExceptionClass(exception_class),
+                                      ue_header, context);
     }
 }
 
