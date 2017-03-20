@@ -20,6 +20,13 @@ module gcc.unwind;
 import gcc.config;
 
 static if (GNU_ARM_EABI_Unwinder)
-    public import gcc.unwind.arm;
+{
+    version (ARM)
+        public import gcc.unwind.arm;
+    else version (TIC6X)
+        public import gcc.unwind.c6x;
+    else
+        static assert(false, "Unsupported target for ARM_EABI_UNWINDER");
+}
 else
     public import gcc.unwind.generic;

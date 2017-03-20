@@ -15,37 +15,27 @@
 // along with GCC; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-// extern(C) interface for the ARM EABI unwinder library.
-// This corresponds to unwind-arm.h
+// extern(C) interface for the C6X EABI unwinder library.
+// This corresponds to unwind-c6x.h
 
-module gcc.unwind.arm;
+module gcc.unwind.c6x;
 
 import gcc.config;
 
 static if (GNU_ARM_EABI_Unwinder):
 
+// Not really the ARM EABI, but pretty close.
 public import gcc.unwind.arm_common;
 
 extern (C):
 
-enum int UNWIND_STACK_REG = 13;
-// Use IP as a scratch register within the personality routine.
-enum int UNWIND_POINTER_REG = 12;
+enum int UNWIND_STACK_REG = 31;
+// Use A0 as a scratch register within the personality routine.
+enum int UNWIND_POINTER_REG = 0;
 
-version (linux)
-    enum _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
-else version (NetBSD)
-    enum _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
-else version (FreeBSD)
-    enum _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
-else version (symbian) // TODO: name
-    enum _TTYPE_ENCODING = (DW_EH_PE_absptr);
-else version (uclinux) // TODO: name
-    enum _TTYPE_ENCODING = (DW_EH_PE_absptr);
-else
-    enum _TTYPE_ENCODING = (DW_EH_PE_pcrel);
+_Unwind_Reason_Code __gnu_unwind_24bit(_Unwind_Context*, _uw, int);
 
-// Decode an R_ARM_TARGET2 relocation.
+// Decode an EH table reference to a typeinfo object.
 _Unwind_Word _Unwind_decode_typeinfo_ptr(_Unwind_Word base, _Unwind_Word ptr)
 {
     _Unwind_Word tmp;
@@ -55,38 +45,22 @@ _Unwind_Word _Unwind_decode_typeinfo_ptr(_Unwind_Word base, _Unwind_Word ptr)
     if (!tmp)
         return 0;
 
-    if (_TTYPE_ENCODING == (DW_EH_PE_pcrel | DW_EH_PE_indirect))
-    {
-        // Pc-relative indirect.
-        tmp += ptr;
-        tmp = *cast(_Unwind_Word*) tmp;
-    }
-    else if (_TTYPE_ENCODING == DW_EH_PE_absptr)
-    {
-        // Absolute pointer.  Nothing more to do.
-    }
-    else
-    {
-        // Pc-relative pointer.
-        tmp += ptr;
-    }
+    // SB-relative indirect.  Propagate the bottom 2 bits, which can
+    // contain referenceness information in gnu unwinding tables.
+    tmp += base;
+    tmp = *cast(_Unwind_Word*)(tmp & ~cast(_Unwind_Word)3) | (tmp & 3);
     return tmp;
-}
-
-_Unwind_Reason_Code __gnu_unwind_24bit(_Unwind_Context* context, _uw data, int compact)
-{
-    return _URC_FAILURE;
 }
 
 // Return the address of the instruction, not the actual IP value.
 _Unwind_Word _Unwind_GetIP(_Unwind_Context* context)
 {
-    return _Unwind_GetGR(context, 15) & ~ cast(_Unwind_Word) 1;
+    return _Unwind_GetGR(context, 33);
 }
 
 // The dwarf unwinder doesn't understand arm/thumb state.  We assume the
 // landing pad uses the same instruction set as the call site.
 void _Unwind_SetIP(_Unwind_Context* context, _Unwind_Word val)
 {
-    return _Unwind_SetGR(context, 15, val | (_Unwind_GetGR(context, 15) & 1));
+    return _Unwind_SetGR(context, 33, val);
 }
