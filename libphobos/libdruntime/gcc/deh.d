@@ -301,21 +301,6 @@ private void __gdc_terminate() @nogc
     __builtin_trap();
 }
 
-// This is called by the unwinder.
-extern(C) private void __gdc_exception_cleanup(_Unwind_Reason_Code code, _Unwind_Exception* exc)
-{
-    // If we haven't been caught by a foreign handler, then this is
-    // some sort of unwind error.  In that case just die immediately.
-    // _Unwind_DeleteException in the HP-UX IA64 libunwind library
-    //  returns _URC_NO_REASON and not _URC_FOREIGN_EXCEPTION_CAUGHT
-    // like the GCC _Unwind_DeleteException function does.
-    if (code != _URC_FOREIGN_EXCEPTION_CAUGHT && code != _URC_NO_REASON)
-        __gdc_terminate();
-
-    ExceptionHeader* p = ExceptionHeader.toExceptionHeader(exc);
-    ExceptionHeader.free(p);
-}
-
 // Called when fibers switch contexts.
 extern(C) void* _d_eh_swapContext(void* newContext) nothrow
 {
@@ -352,7 +337,22 @@ extern(C) void _d_throw(Throwable object)
     // Add to thrown exception stack.
     xh.push();
 
-    xh.unwindHeader.exception_cleanup = &__gdc_exception_cleanup;
+    // Called by unwinder when exception object needs destruction by other than our code.
+    extern(C) void exception_cleanup(_Unwind_Reason_Code code, _Unwind_Exception* exc)
+    {
+        // If we haven't been caught by a foreign handler, then this is
+        // some sort of unwind error.  In that case just die immediately.
+        // _Unwind_DeleteException in the HP-UX IA64 libunwind library
+        //  returns _URC_NO_REASON and not _URC_FOREIGN_EXCEPTION_CAUGHT
+        // like the GCC _Unwind_DeleteException function does.
+        if (code != _URC_FOREIGN_EXCEPTION_CAUGHT && code != _URC_NO_REASON)
+            __gdc_terminate();
+
+        auto eh = ExceptionHeader.toExceptionHeader(exc);
+        ExceptionHeader.free(eh);
+    }
+
+    xh.unwindHeader.exception_cleanup = &exception_cleanup;
 
     // Runtime now expects us to do this first before unwinding.
     _d_createTrace(xh.object, null);
