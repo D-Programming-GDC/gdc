@@ -122,7 +122,7 @@ struct ExceptionHeader
             eh = cast(ExceptionHeader*) __builtin_calloc(ExceptionHeader.sizeof, 1);
             // Out of memory while throwing - not much else can be done.
             if (!eh)
-                __gdc_terminate();
+                terminate(__LINE__);
         }
         eh.object = o;
 
@@ -293,11 +293,11 @@ struct CxaExceptionHeader
     }
 }
 
-// D doesn't define these, so they are private for now.
+// Replaces std::terminate and terminating with a specific handler
 
-private void __gdc_terminate() @nogc
+private void terminate(uint line) @nogc
 {
-    // Replaces std::terminate and terminating with a specific handler
+    __builtin_printf("deh(%u) fatal error\n", line);
     __builtin_trap();
 }
 
@@ -319,7 +319,7 @@ extern(C) void* __gdc_begin_catch(_Unwind_Exception* exceptionObject)
 
     // Something went wrong when stacking up chained headers...
     if (header != ExceptionHeader.pop())
-        __gdc_terminate();
+        terminate(__LINE__);
 
     // Handling for this exception is complete.
     _Unwind_DeleteException(&header.unwindHeader);
@@ -346,7 +346,7 @@ extern(C) void _d_throw(Throwable object)
         //  returns _URC_NO_REASON and not _URC_FOREIGN_EXCEPTION_CAUGHT
         // like the GCC _Unwind_DeleteException function does.
         if (code != _URC_FOREIGN_EXCEPTION_CAUGHT && code != _URC_NO_REASON)
-            __gdc_terminate();
+            terminate(__LINE__);
 
         auto eh = ExceptionHeader.toExceptionHeader(exc);
         ExceptionHeader.free(eh);
@@ -359,19 +359,23 @@ extern(C) void _d_throw(Throwable object)
 
     // We're happy with setjmp/longjmp exceptions or region-based
     // exception handlers: entry points are provided here for both.
-    version (GNU_SjLj_Exceptions)
-        _Unwind_SjLj_RaiseException(&xh.unwindHeader);
-    else
-        _Unwind_RaiseException(&xh.unwindHeader);
+    _Unwind_Reason_Code r = void;
 
-    // If code == _URC_END_OF_STACK, then we reached top of stack without
-    // finding a handler for the exception.  Since each thread is run in
-    // a try/catch, this oughtn't happen.  If code is something else, we
-    // encountered some sort of heinous lossage from which we could not
-    // recover.  As is the way of such things, almost certainly we will have
-    // crashed before now, rather than actually being able to diagnose the
-    // problem.
-    __gdc_terminate();
+    version (GNU_SjLj_Exceptions)
+        r = _Unwind_SjLj_RaiseException(&xh.unwindHeader);
+    else
+        r = _Unwind_RaiseException(&xh.unwindHeader);
+
+    // If code == _URC_END_OF_STACK, then we reached top of stack without finding
+    // a handler for the exception.  Since each thread is run in a try/catch,
+    // this oughtn't happen.  If code is something else, we encountered some sort
+    // of heinous lossage from which we could not recover.  As is the way of such
+    // things, almost certainly we will have crashed before now, rather than
+    // actually being able to diagnose the problem.
+    if (r == _URC_END_OF_STACK)
+        __builtin_printf("uncaught exception\n");
+
+    terminate(__LINE__);
 }
 
 
@@ -852,12 +856,12 @@ install_context:
     if ((actions & _UA_FORCE_UNWIND) || foreign_exception)
     {
         if (found_type == Found.terminate || handler_switch_value < 0)
-            __gdc_terminate();
+            terminate(__LINE__);
     }
     else
     {
         if (found_type == Found.terminate)
-            __gdc_terminate();
+            terminate(__LINE__);
 
         // Cache the TType base value for unexpected calls, as we won't
         // have an _Unwind_Context then.
