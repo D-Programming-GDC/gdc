@@ -366,15 +366,15 @@ d_build_builtins_module(Module *m)
       if (!dtf)
 	continue;
 
-      // D2 @safe/pure/nothrow functions.
+      // A note on D2 attributes applied to functions:
       // It is assumed that builtins solely provided by the compiler are
-      // considered @safe, pure and nothrow.  Builtins that correspond to
-      // functions in the standard library that don't throw are considered
-      // @trusted.  The purity of a builtin can vary depending on compiler
-      // flags set upon initialisation, or by the -foptions passed, such as
-      // flag_unsafe_math_optimizations.
-      // Builtins never use the GC and are always marked as @nogc.
-      dtf->isnothrow = TREE_NOTHROW (decl) || !DECL_ASSEMBLER_NAME_SET_P (decl);
+      // considered @safe and pure.  Builtins that correspond to extern(C)
+      // functions in the standard library that have __attribute__(nothrow)
+      // are considered @trusted.  The purity of a built-in can vary depending
+      // on compiler flags set upon initialization, or by the -foptions passed,
+      // such as flag_unsafe_math_optimizations.
+      // Builtins never use the GC or raise a D exception, and so are always
+      // marked as nothrow and @nogc.
       dtf->purity = DECL_PURE_P (decl) ?   PUREstrong :
 	TREE_READONLY (decl) ? PUREconst :
 	DECL_IS_NOVOPS (decl) ? PUREweak :
@@ -383,6 +383,7 @@ d_build_builtins_module(Module *m)
       dtf->trust = !DECL_ASSEMBLER_NAME_SET_P (decl) ? TRUSTsafe :
 	TREE_NOTHROW (decl) ? TRUSTtrusted :
 	TRUSTsystem;
+      dtf->isnothrow = true;
       dtf->isnogc = true;
 
       FuncDeclaration *func = new FuncDeclaration(Loc(), Loc(),
