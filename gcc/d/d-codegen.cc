@@ -603,6 +603,9 @@ convert_expr(tree exp, Type *etype, Type *totype)
 	    // Cast to an implemented interface: Handle at compile time.
 	    if (offset)
 	      {
+		// Forward references should not leak from the frontend.
+		gcc_assert (offset != OFFSET_FWDREF);
+
 		tree type = build_ctype(totype);
 		exp = d_save_expr(exp);
 
