@@ -102,7 +102,7 @@ _Unwind_Ptr base_of_encoded_value(ubyte encoding, _Unwind_Context* context)
 // P incremented past the value.  We assume that a word is large enough to
 // hold any value so encoded; if it is smaller than a pointer on some target,
 // pointers should not be leb128 encoded on that target.
-ubyte* read_uleb128(ubyte* p, _uleb128_t* val)
+const(ubyte)* read_uleb128(const(ubyte)* p, _uleb128_t* val)
 {
     uint shift = 0;
     ubyte a_byte;
@@ -122,7 +122,7 @@ ubyte* read_uleb128(ubyte* p, _uleb128_t* val)
 }
 
 // Similar, but read a signed leb128 value.
-ubyte* read_sleb128(ubyte* p, _sleb128_t* val)
+const(ubyte)* read_sleb128(const(ubyte)* p, _sleb128_t* val)
 {
     uint shift = 0;
     ubyte a_byte;
@@ -148,8 +148,8 @@ ubyte* read_sleb128(ubyte* p, _sleb128_t* val)
 // Load an encoded value from memory at P.  The value is returned in VAL;
 // The function returns P incremented past the value.  BASE is as given
 // by base_of_encoded_value for this encoding in the appropriate context.
-ubyte* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
-                                    ubyte* p, _Unwind_Ptr* val)
+const(ubyte)* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
+                                    const(ubyte)* p, _Unwind_Ptr* val)
 {
     union unaligned
     {
@@ -243,8 +243,8 @@ ubyte* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
 
 // Like read_encoded_value_with_base, but get the base from the context
 // rather than providing it directly.
-ubyte* read_encoded_value(_Unwind_Context* context, ubyte encoding,
-                          ubyte* p, _Unwind_Ptr* val)
+const(ubyte)* read_encoded_value(_Unwind_Context* context, ubyte encoding,
+                          const(ubyte)* p, _Unwind_Ptr* val)
 {
     return read_encoded_value_with_base(encoding,
                                         base_of_encoded_value(encoding, context),

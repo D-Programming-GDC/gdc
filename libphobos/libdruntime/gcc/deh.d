@@ -95,7 +95,7 @@ struct ExceptionHeader
         int handler;
 
         // Language Specific Data Area for function enclosing the handler.
-        ubyte* languageSpecificData;
+        const(ubyte)* languageSpecificData;
 
         // Pointer to catch code.
         _Unwind_Ptr landingPad;
@@ -218,8 +218,8 @@ struct CxaExceptionHeader
     else
     {
         int handlerSwitchValue;
-        const ubyte* actionRecord;
-        const ubyte* languageSpecificData;
+        const(ubyte)* actionRecord;
+        const(ubyte)* languageSpecificData;
         _Unwind_Ptr catchTemp;
         void* adjustedPtr;
     }
@@ -384,14 +384,14 @@ struct lsda_header_info
     _Unwind_Ptr Start;
     _Unwind_Ptr LPStart;
     _Unwind_Ptr ttype_base;
-    ubyte* TType;
-    ubyte* action_table;
+    const(ubyte)* TType;
+    const(ubyte)* action_table;
     ubyte ttype_encoding;
     ubyte call_site_encoding;
 }
 
-private ubyte* parse_lsda_header(_Unwind_Context* context, ubyte* p,
-                                 lsda_header_info* info)
+private const(ubyte)* parse_lsda_header(_Unwind_Context* context,
+                                        const(ubyte)* p, lsda_header_info* info)
 {
     _uleb128_t tmp;
     ubyte lpstart_encoding;
@@ -444,7 +444,7 @@ private ClassInfo get_classinfo_entry(lsda_header_info* info, _uleb128_t i)
 private void save_caught_exception(_Unwind_Exception* ue_header,
                                    _Unwind_Context* context,
                                    int handler_switch_value,
-                                   ubyte* language_specific_data,
+                                   const(ubyte)* language_specific_data,
                                    _Unwind_Ptr landing_pad)
 {
     static if (GNU_ARM_EABI_Unwinder)
@@ -466,7 +466,7 @@ private void save_caught_exception(_Unwind_Exception* ue_header,
 
 private void restore_caught_exception(_Unwind_Exception* ue_header,
                                       out int handler_switch_value,
-                                      out ubyte* language_specific_data,
+                                      out const(ubyte)* language_specific_data,
                                       out _Unwind_Ptr landing_pad)
 {
     static if (GNU_ARM_EABI_Unwinder)
@@ -594,9 +594,9 @@ private _Unwind_Reason_Code __gdc_personality_impl(int iversion,
 
     Found found_type;
     lsda_header_info info;
-    ubyte* language_specific_data;
-    ubyte* action_record;
-    ubyte* p;
+    const(ubyte)* language_specific_data;
+    const(ubyte)* action_record;
+    const(ubyte)* p;
     _Unwind_Ptr landing_pad, ip;
     int handler_switch_value;
     int ip_before_insn = 0;
@@ -882,7 +882,7 @@ install_context:
         {
             ExceptionHeader* ph = xh.next;
 
-            ubyte* ph_language_specific_data;
+            const(ubyte)* ph_language_specific_data;
             int ph_handler_switch_value;
             _Unwind_Ptr ph_landing_pad;
             restore_caught_exception(&ph.unwindHeader, ph_handler_switch_value,
