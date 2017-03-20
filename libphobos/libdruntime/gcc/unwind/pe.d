@@ -98,72 +98,60 @@ _Unwind_Ptr base_of_encoded_value(ubyte encoding, _Unwind_Context* context)
     assert(0);
 }
 
-// Read an unsigned leb128 value from P, store the value in VAL, return
-// P incremented past the value.  We assume that a word is large enough to
-// hold any value so encoded; if it is smaller than a pointer on some target,
-// pointers should not be leb128 encoded on that target.
-const(ubyte)* read_uleb128(const(ubyte)* p, _uleb128_t* val)
+// Read an unsigned leb128 value from P, *P is incremented past the value.
+// We assume that a word is large enough to hold any value so encoded;
+// if it is smaller than a pointer on some target, pointers should not be
+// leb128 encoded on that target.
+_uleb128_t read_uleb128(const(ubyte)** p)
 {
+    auto q = *p;
+    _uleb128_t result = 0;
     uint shift = 0;
-    ubyte a_byte;
-    _uleb128_t result;
 
-    result = cast(_uleb128_t) 0;
-    do
+    while (1)
     {
-        a_byte = *p++;
-        result |= (cast(_uleb128_t)a_byte & 0x7f) << shift;
+        ubyte b = *q++;
+        result |= cast(_uleb128_t)(b & 0x7F) << shift;
+        if ((b & 0x80) == 0)
+            break;
         shift += 7;
     }
-    while (a_byte & 0x80);
 
-    *val = result;
-    return p;
+    *p = q;
+    return result;
 }
 
 // Similar, but read a signed leb128 value.
-const(ubyte)* read_sleb128(const(ubyte)* p, _sleb128_t* val)
+_sleb128_t read_sleb128(const(ubyte)** p)
 {
+    auto q = *p;
+    _sleb128_t result = 0;
     uint shift = 0;
-    ubyte a_byte;
-    _uleb128_t result;
+    ubyte b = void;
 
-    result = cast(_uleb128_t) 0;
-    do
+    while (1)
     {
-        a_byte = *p++;
-        result |= (cast(_uleb128_t)a_byte & 0x7f) << shift;
+        b = *q++;
+        result |= cast(_sleb128_t)(b & 0x7F) << shift;
         shift += 7;
+        if ((b & 0x80) == 0)
+            break;
     }
-    while (a_byte & 0x80);
 
-    /* Sign-extend a negative value.  */
-    if (shift < 8 * result.sizeof && (a_byte & 0x40) != 0)
-        result |= -((cast(_uleb128_t)1L) << shift);
+    // Sign-extend a negative value.
+    if (shift < result.sizeof * 8 && (b & 0x40))
+        result |= -(cast(_sleb128_t)1 << shift);
 
-    *val = cast(_sleb128_t)result;
-    return p;
+    *p = q;
+    return result;
 }
 
 // Load an encoded value from memory at P.  The value is returned in VAL;
 // The function returns P incremented past the value.  BASE is as given
 // by base_of_encoded_value for this encoding in the appropriate context.
 const(ubyte)* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
-                                    const(ubyte)* p, _Unwind_Ptr* val)
+                                           const(ubyte)* p, _Unwind_Ptr* val)
 {
-    union unaligned
-    {
-    align(1):
-        void* ptr;
-        ushort u2;
-        uint u4;
-        ulong u8;
-        short s2;
-        int s4;
-        long s8;
-    }
-
-    unaligned* u = cast(unaligned*)p;
     _Unwind_Internal_Ptr result;
 
     if (encoding == DW_EH_PE_aligned)
@@ -175,63 +163,58 @@ const(ubyte)* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
     }
     else
     {
+        auto q = p;
+
         switch (encoding & 0x0f)
         {
-            case DW_EH_PE_absptr:
-                result = cast(_Unwind_Internal_Ptr)u.ptr;
-                p += (void*).sizeof;
-                break;
-
             case DW_EH_PE_uleb128:
-                {
-                    _uleb128_t tmp;
-                    p = read_uleb128(p, &tmp);
-                    result = cast(_Unwind_Internal_Ptr)tmp;
-                }
+                result = cast(_Unwind_Internal_Ptr)read_uleb128(&p);
                 break;
 
             case DW_EH_PE_sleb128:
-                {
-                    _sleb128_t tmp;
-                    p = read_sleb128(p, &tmp);
-                    result = cast(_Unwind_Internal_Ptr)tmp;
-                }
+                result = cast(_Unwind_Internal_Ptr)read_sleb128(&p);
                 break;
 
             case DW_EH_PE_udata2:
-                result = cast(_Unwind_Internal_Ptr)u.u2;
+                result = cast(_Unwind_Internal_Ptr) *cast(ushort*)p;
                 p += 2;
                 break;
             case DW_EH_PE_udata4:
-                result = cast(_Unwind_Internal_Ptr)u.u4;
+                result = cast(_Unwind_Internal_Ptr) *cast(uint*)p;
                 p += 4;
                 break;
             case DW_EH_PE_udata8:
-                result = cast(_Unwind_Internal_Ptr)u.u8;
+                result = cast(_Unwind_Internal_Ptr) *cast(ulong*)p;
                 p += 8;
                 break;
 
             case DW_EH_PE_sdata2:
-                result = cast(_Unwind_Internal_Ptr)u.s2;
+                result = cast(_Unwind_Internal_Ptr) *cast(short*)p;
                 p += 2;
                 break;
             case DW_EH_PE_sdata4:
-                result = cast(_Unwind_Internal_Ptr)u.s4;
+                result = cast(_Unwind_Internal_Ptr) *cast(int*)p;
                 p += 4;
                 break;
             case DW_EH_PE_sdata8:
-                result = cast(_Unwind_Internal_Ptr)u.s8;
+                result = cast(_Unwind_Internal_Ptr) *cast(long*)p;
                 p += 8;
                 break;
 
+            case DW_EH_PE_absptr:
+                if (size_t.sizeof == 8)
+                    goto case DW_EH_PE_udata8;
+                else
+                    goto case DW_EH_PE_udata4;
+
             default:
-                __builtin_trap();
+                __builtin_abort();
         }
 
         if (result != 0)
         {
             result += ((encoding & 0x70) == DW_EH_PE_pcrel
-                       ? cast(_Unwind_Internal_Ptr)u : base);
+                       ? cast(_Unwind_Internal_Ptr)q : base);
             if (encoding & DW_EH_PE_indirect)
                 result = *cast(_Unwind_Internal_Ptr*)result;
         }
@@ -244,7 +227,7 @@ const(ubyte)* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
 // Like read_encoded_value_with_base, but get the base from the context
 // rather than providing it directly.
 const(ubyte)* read_encoded_value(_Unwind_Context* context, ubyte encoding,
-                          const(ubyte)* p, _Unwind_Ptr* val)
+                                 const(ubyte)* p, _Unwind_Ptr* val)
 {
     return read_encoded_value_with_base(encoding,
                                         base_of_encoded_value(encoding, context),

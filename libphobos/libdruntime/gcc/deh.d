@@ -415,7 +415,7 @@ private const(ubyte)* parse_lsda_header(_Unwind_Context* context,
             // hardcoded OS-specific format.
             info.ttype_encoding = _TTYPE_ENCODING;
         }
-        p = read_uleb128(p, &tmp);
+        tmp = read_uleb128(&p);
         info.TType = p + tmp;
     }
     else
@@ -424,7 +424,7 @@ private const(ubyte)* parse_lsda_header(_Unwind_Context* context,
     // The encoding and length of the call-site table; the action table
     // immediately follows.
     info.call_site_encoding = *p++;
-    p = read_uleb128(p, &tmp);
+    tmp = read_uleb128(&p);
     info.action_table = p + tmp;
 
     return p;
@@ -672,8 +672,8 @@ private _Unwind_Reason_Code __gdc_personality_impl(int iversion,
             _uleb128_t cs_lp, cs_action;
             do
             {
-                p = read_uleb128(p, &cs_lp);
-                p = read_uleb128(p, &cs_action);
+                cs_lp = read_uleb128(&p);
+                cs_action = read_uleb128(&p);
             }
             while (--ip);
 
@@ -697,7 +697,7 @@ private _Unwind_Reason_Code __gdc_personality_impl(int iversion,
             p = read_encoded_value(null, info.call_site_encoding, p, &cs_start);
             p = read_encoded_value(null, info.call_site_encoding, p, &cs_len);
             p = read_encoded_value(null, info.call_site_encoding, p, &cs_lp);
-            p = read_uleb128(p, &cs_action);
+            cs_action = read_uleb128(&p);
 
             // The table is sorted, so if we've passed the ip, stop.
             if (ip < info.Start + cs_start)
@@ -743,8 +743,9 @@ found_something:
         while (1)
         {
             p = action_record;
-            p = read_sleb128(p, &ar_filter);
-            read_sleb128(p, &ar_disp);
+            ar_filter = read_sleb128(&p);
+            auto pn = p;
+            ar_disp = read_sleb128(&p);
 
             if (ar_filter == 0)
             {
@@ -809,7 +810,7 @@ found_something:
 
             if (ar_disp == 0)
                 break;
-            action_record = p + ar_disp;
+            action_record = pn + ar_disp;
         }
 
         if (saw_handler)
