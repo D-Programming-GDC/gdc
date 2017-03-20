@@ -36,23 +36,20 @@ extern(C)
 // C++ dependent exceptions -- "GNUCC++\x01"
 static if (GNU_ARM_EABI_Unwinder)
 {
-    const _Unwind_Exception_Class __gdc_exception_class = "GNUCD__\0";
-    const _Unwind_Exception_Class __gxx_exception_class = "GNUCC++\0";
-    const _Unwind_Exception_Class __gxx_dependent_exception_class = "GNUCC++\x01";
+    enum _Unwind_Exception_Class gdcExceptionClass = "GNUCD\0\0\0";
+    enum _Unwind_Exception_Class gxxExceptionClass = "GNUCC++\0";
+    enum _Unwind_Exception_Class gxxDependentExceptionClass = "GNUCC++\x01";
 }
 else
 {
-    const _Unwind_Exception_Class __gdc_exception_class =
+    enum _Unwind_Exception_Class gdcExceptionClass =
         (cast(_Unwind_Exception_Class)'G' << 56) |
         (cast(_Unwind_Exception_Class)'N' << 48) |
         (cast(_Unwind_Exception_Class)'U' << 40) |
         (cast(_Unwind_Exception_Class)'C' << 32) |
-        (cast(_Unwind_Exception_Class)'D' << 24) |
-        (cast(_Unwind_Exception_Class)'_' << 16) |
-        (cast(_Unwind_Exception_Class)'_' <<  8) |
-        (cast(_Unwind_Exception_Class)0 <<  0);
+        (cast(_Unwind_Exception_Class)'D' << 24);
 
-    const _Unwind_Exception_Class __gxx_exception_class =
+    enum _Unwind_Exception_Class gxxExceptionClass =
         (cast(_Unwind_Exception_Class)'G' << 56) |
         (cast(_Unwind_Exception_Class)'N' << 48) |
         (cast(_Unwind_Exception_Class)'U' << 40) |
@@ -62,8 +59,8 @@ else
         (cast(_Unwind_Exception_Class)'+' <<  8) |
         (cast(_Unwind_Exception_Class)0 <<  0);
 
-    const _Unwind_Exception_Class __gxx_dependent_exception_class =
-        __gxx_exception_class + 1;
+    enum _Unwind_Exception_Class gxxDependentExceptionClass =
+        gxxExceptionClass + 1;
 }
 
 
@@ -71,17 +68,15 @@ else
 // around an unwind object header with additional D specific
 // information, prefixed by the exception object itself.
 
-struct d_exception_header
+struct ExceptionHeader
 {
-    // The object being thrown.  Like GCJ, the compiled code expects this to
-    // be immediately before the generic exception header.
-    enum UNWIND_PAD = (Throwable.alignof < _Unwind_Exception.alignof)
-        ? _Unwind_Exception.alignof - Throwable.alignof : 0;
-
     // Because of a lack of __aligned__ style attribute, our object
     // and the unwind object are the first two fields.
-    ubyte[UNWIND_PAD] pad;
+    static if (Throwable.alignof < _Unwind_Exception.alignof)
+        ubyte[_Unwind_Exception.alignof - Throwable.alignof] pad;
 
+    // The object being thrown.  The compiled code expects this to
+    // be immediately before the generic exception header.
     Throwable object;
 
     // The generic exception header.
@@ -89,47 +84,135 @@ struct d_exception_header
 
     static assert(unwindHeader.offsetof - object.offsetof == object.sizeof);
 
+    // Cache handler details between Phase 1 and Phase 2.
     static if (GNU_ARM_EABI_Unwinder)
     {
         // Nothing here yet.
     }
     else
     {
-        // Cache handler details between Phase 1 and Phase 2.
-        int handlerSwitchValue;
-        ubyte* actionRecord;
+        // Which catch was found.
+        int handler;
+
+        // Language Specific Data Area for function enclosing the handler.
         ubyte* languageSpecificData;
-        _Unwind_Ptr catchTemp;
+
+        // Pointer to catch code.
+        _Unwind_Ptr landingPad;
     }
 
     // Stack other thrown exceptions in current thread through here.
-    d_exception_header* nextException;
+    ExceptionHeader* next;
+
+    // Thread local stack of chained exceptions.
+    static ExceptionHeader* stack;
+
+    // Pre-allocate storage for 1 instance per thread.
+    // Use calloc/free for multiple exceptions in flight.
+    static ExceptionHeader ehstorage;
+
+    // Allocate and initialize an ExceptionHeader.
+    static ExceptionHeader* create(Throwable o) @nogc
+    {
+        auto eh = &ehstorage;
+
+        // Check exception object in use.
+        if (eh.object)
+        {
+            eh = cast(ExceptionHeader*) __builtin_calloc(ExceptionHeader.sizeof, 1);
+            // Out of memory while throwing - not much else can be done.
+            if (!eh)
+                __gdc_terminate();
+        }
+        eh.object = o;
+
+        eh.unwindHeader.exception_class = gdcExceptionClass;
+
+        return eh;
+    }
+
+    // Free ExceptionHeader that was created by create().
+    static void free(ExceptionHeader* eh) @nogc
+    {
+        *eh = ExceptionHeader.init;
+        if (eh != &ehstorage)
+            __builtin_free(eh);
+    }
+
+    // Push this onto stack of chained exceptions.
+    void push() @nogc
+    {
+        next = stack;
+        stack = &this;
+    }
+
+    // Pop and return top of chained exception stack.
+    static ExceptionHeader* pop() @nogc
+    {
+        auto eh = stack;
+        stack = eh.next;
+        return eh;
+    }
+
+    // Checks for GDC exception class.
+    static bool isGdcExceptionClass(_Unwind_Exception_Class c) @nogc
+    {
+        static if (GNU_ARM_EABI_Unwinder)
+        {
+            return c[0] == gdcExceptionClass[0]
+                && c[1] == gdcExceptionClass[1]
+                && c[2] == gdcExceptionClass[2]
+                && c[3] == gdcExceptionClass[3]
+                && c[4] == gdcExceptionClass[4]
+                && c[5] == gdcExceptionClass[5]
+                && c[6] == gdcExceptionClass[6]
+                && c[7] == gdcExceptionClass[7];
+        }
+        else
+        {
+            return c == gdcExceptionClass;
+        }
+    }
+
+    // Convert from pointer to unwindHeader to pointer to ExceptionHeader
+    // that it is embedded inside of.
+    static ExceptionHeader* toExceptionHeader(_Unwind_Exception* exc) @nogc
+    {
+        return cast(ExceptionHeader*)(cast(void*)exc - ExceptionHeader.unwindHeader.offsetof);
+    }
 }
 
-private d_exception_header* get_exception_header_from_ue(_Unwind_Exception* exc)
+// Map to C++ std::type_info's virtual functions from D,
+// being careful to not require linking with libstdc++.
+// So it is given a different name.
+extern(C++) interface CxxTypeInfo
 {
-    return cast(d_exception_header*)
-        (cast(void*)exc - d_exception_header.unwindHeader.offsetof);
+    void dtor1();
+    void dtor2();
+    bool __is_pointer_p() const;
+    bool __is_function_p() const;
+    bool __do_catch(const CxxTypeInfo, void**, uint) const;
+    bool __do_upcast(const void*, void**) const;
 }
 
 // Structure of a C++ exception, represented as a C structure.
 // See unwind-cxx.h for the full definition.
-struct cxx_exception_header
+struct CxaExceptionHeader
 {
     union
     {
-        cxx_type_info exceptionType;
+        CxxTypeInfo exceptionType;
         void* primaryException;
     }
     void function(void*) exceptionDestructor;
     void function() unexpectedHandler;
     void function() terminateHandler;
-    cxx_exception_header* nextException;
+    CxaExceptionHeader* nextException;
     int handlerCount;
 
     static if (GNU_ARM_EABI_Unwinder)
     {
-        cxx_exception_header* nextPropagatingException;
+        CxaExceptionHeader* nextPropagatingException;
         int propagationCount;
     }
     else
@@ -142,58 +225,77 @@ struct cxx_exception_header
     }
 
     _Unwind_Exception unwindHeader;
-}
 
-// Map to C++ std::type_info's virtual functions from D,
-// being careful to not require linking with libstdc++.
-// So it is given a different name.
-extern(C++) interface cxx_type_info
-{
-    void dtor1();
-    void dtor2();
-    bool __is_pointer_p() const;
-    bool __is_function_p() const;
-    bool __do_catch(const cxx_type_info, void**, uint) const;
-    bool __do_upcast(const void*, void**) const;
-}
+    // Checks for any C++ exception class.
+    static bool isGxxExceptionClass(_Unwind_Exception_Class c) @nogc
+    {
+        static if (GNU_ARM_EABI_Unwinder)
+        {
+            return c[0] == gxxExceptionClass[0]
+                && c[1] == gxxExceptionClass[1]
+                && c[2] == gxxExceptionClass[2]
+                && c[3] == gxxExceptionClass[3]
+                && c[4] == gxxExceptionClass[4]
+                && c[5] == gxxExceptionClass[5]
+                && c[6] == gxxExceptionClass[6]
+                && (c[7] == '\0' || c[7] == '\x01');
+        }
+        else
+        {
+            return c == gxxExceptionClass
+                || c == gxxDependentExceptionClass;
+        }
+    }
 
-// Get pointer to the thrown object if the thrown object type is implicitly
-// convertible to the catch type.
-private void* cxx_get_adjusted_ptr(_Unwind_Exception* exc, cxx_type_info catch_type)
-{
-    void* thrown_ptr;
+    // Checks for primary or dependent, but not that it is a C++ exception.
+    static bool isDependentException(_Unwind_Exception_Class c) @nogc
+    {
+        static if (GNU_ARM_EABI_Unwinder)
+            return (c[7] == '\x01');
+        else
+            return (c & 1);
+    }
 
-    static if (GNU_ARM_EABI_Unwinder)
-        const is_dependent_exception = (exc.exception_class[7] == '\x01');
-    else
-        const is_dependent_exception = (exc.exception_class & 1);
+    // Get pointer to the thrown object if the thrown object type behind the
+    // exception is implicitly convertible to the catch type.
+    static void* getAdjustedPtr(_Unwind_Exception* exc, CxxTypeInfo catch_type)
+    {
+        void* thrown_ptr;
 
-    // A dependent C++ exceptions is just a wrapper around the unwind header.
-    // A primary C++ exception has the thrown object located immediately after it.
-    if (is_dependent_exception)
-        thrown_ptr = cast(cxx_exception_header*)(exc + 1) - 1;
-    else
-        thrown_ptr = cast(void*)(exc + 1);
+        // A dependent C++ exceptions is just a wrapper around the unwind header.
+        // A primary C++ exception has the thrown object located immediately after it.
+        if (isDependentException(exc.exception_class))
+            thrown_ptr = toExceptionHeader(exc).primaryException;
+        else
+            thrown_ptr = cast(void*)(exc + 1);
 
-    // Pointer types need to adjust the actual pointer, not the pointer that is
-    // the exception object.  This also has the effect of passing pointer types
-    // "by value" through the __cxa_begin_catch return value.
-    const throw_type = (cast(cxx_exception_header*)thrown_ptr - 1).exceptionType;
+        // Pointer types need to adjust the actual pointer, not the pointer that is
+        // the exception object.  This also has the effect of passing pointer types
+        // "by value" through the __cxa_begin_catch return value.
+        const throw_type = (cast(CxaExceptionHeader*)thrown_ptr - 1).exceptionType;
 
-    if (throw_type.__is_pointer_p())
-        thrown_ptr = *cast(void**)thrown_ptr;
+        if (throw_type.__is_pointer_p())
+            thrown_ptr = *cast(void**)thrown_ptr;
 
-    // Pointer adjustment may be necessary due to multiple inheritance
-    if (catch_type is throw_type
-        || catch_type.__do_catch(throw_type, &thrown_ptr, 1))
-        return thrown_ptr;
+        // Pointer adjustment may be necessary due to multiple inheritance
+        if (catch_type is throw_type
+            || catch_type.__do_catch(throw_type, &thrown_ptr, 1))
+            return thrown_ptr;
 
-    return null;
+        return null;
+    }
+
+    // Convert from pointer to unwindHeader to pointer to CxaExceptionHeader
+    // that it is embedded inside of.
+    static CxaExceptionHeader* toExceptionHeader(_Unwind_Exception* exc) @nogc
+    {
+        return cast(CxaExceptionHeader*)(exc + 1) - 1;
+    }
 }
 
 // D doesn't define these, so they are private for now.
 
-private void __gdc_terminate()
+private void __gdc_terminate() @nogc
 {
     // Replaces std::terminate and terminating with a specific handler
     __builtin_trap();
@@ -210,25 +312,15 @@ extern(C) private void __gdc_exception_cleanup(_Unwind_Reason_Code code, _Unwind
     if (code != _URC_FOREIGN_EXCEPTION_CAUGHT && code != _URC_NO_REASON)
         __gdc_terminate();
 
-    d_exception_header* p = get_exception_header_from_ue(exc);
-    destroy(p);
+    ExceptionHeader* p = ExceptionHeader.toExceptionHeader(exc);
+    ExceptionHeader.free(p);
 }
-
-// Each thread in a D program has access to a globalExceptions object.
-
-private struct globalExceptions
-{
-    d_exception_header* thrownExceptions;
-    d_exception_header* firstFreeException;
-}
-
-static globalExceptions __globalExceptions;
 
 // Called when fibers switch contexts.
 extern(C) void* _d_eh_swapContext(void* newContext) nothrow
 {
-    auto old = __globalExceptions.thrownExceptions;
-    __globalExceptions.thrownExceptions = cast(d_exception_header*)newContext;
+    auto old = ExceptionHeader.stack;
+    ExceptionHeader.stack = cast(ExceptionHeader*)newContext;
     return old;
 }
 
@@ -236,22 +328,16 @@ extern(C) void* _d_eh_swapContext(void* newContext) nothrow
 
 extern(C) void* __gdc_begin_catch(_Unwind_Exception* exceptionObject)
 {
-    d_exception_header* header = get_exception_header_from_ue(exceptionObject);
-    globalExceptions* globals = &__globalExceptions;
-
-    // Something went wrong when stacking up chained headers...
-    if (header != globals.thrownExceptions)
-        __gdc_terminate();
+    ExceptionHeader* header = ExceptionHeader.toExceptionHeader(exceptionObject);
 
     void* objectp = cast(void*)header.object;
 
-    // Handling for this exception is complete.
-    globals.thrownExceptions = header.nextException;
-    _Unwind_DeleteException(&header.unwindHeader);
+    // Something went wrong when stacking up chained headers...
+    if (header != ExceptionHeader.pop())
+        __gdc_terminate();
 
-    // Now put the header in our freelist.
-    header.nextException = globals.firstFreeException;
-    globals.firstFreeException = header;
+    // Handling for this exception is complete.
+    _Unwind_DeleteException(&header.unwindHeader);
 
     return objectp;
 }
@@ -260,36 +346,13 @@ extern(C) void* __gdc_begin_catch(_Unwind_Exception* exceptionObject)
 // so there better not be any handlers or exception thrown here.
 extern(C) void _d_throw(Throwable object)
 {
-    globalExceptions* globals = &__globalExceptions;
-
     // If possible, avoid always allocating new memory for exception headers.
-    d_exception_header* xh = void;
+    ExceptionHeader *xh = ExceptionHeader.create(object);
 
-    if (!globals.firstFreeException)
-    {
-        // If this causes OOM, exception will be thrown recursively, so perhaps
-        // there should be an emergency pool in this event.
-        xh = new d_exception_header();
-    }
-    else
-    {
-        xh = globals.firstFreeException;
-        globals.firstFreeException = xh.nextException;
-        *xh = d_exception_header.init;
-    }
+    // Add to thrown exception stack.
+    xh.push();
 
-    // Stack up our thrown exceptions in reverse.
-    xh.nextException = globals.thrownExceptions;
-    globals.thrownExceptions = xh;
-
-    xh.object = object;
-
-    static if (is(typeof(xh.unwindHeader.exception_class = __gdc_exception_class)))
-        xh.unwindHeader.exception_class = __gdc_exception_class;
-    else
-        xh.unwindHeader.exception_class[] = __gdc_exception_class[];
-
-    xh.unwindHeader.exception_cleanup = & __gdc_exception_cleanup;
+    xh.unwindHeader.exception_cleanup = &__gdc_exception_cleanup;
 
     // Runtime now expects us to do this first before unwinding.
     _d_createTrace(xh.object, null);
@@ -369,7 +432,7 @@ private ClassInfo get_classinfo_entry(lsda_header_info* info, _uleb128_t i)
 
     i *= size_of_encoded_value(info.ttype_encoding);
     read_encoded_value_with_base(info.ttype_encoding, info.ttype_base,
-                                  info.TType - i, &ptr);
+                                 info.TType - i, &ptr);
 
     return cast(ClassInfo)cast(void*)(ptr);
 }
@@ -378,8 +441,7 @@ private void save_caught_exception(_Unwind_Exception* ue_header,
                                    _Unwind_Context* context,
                                    int handler_switch_value,
                                    ubyte* language_specific_data,
-                                   _Unwind_Ptr landing_pad,
-                                   ubyte* action_record)
+                                   _Unwind_Ptr landing_pad)
 {
     static if (GNU_ARM_EABI_Unwinder)
     {
@@ -390,12 +452,11 @@ private void save_caught_exception(_Unwind_Exception* ue_header,
     }
     else
     {
-        d_exception_header* xh = get_exception_header_from_ue(ue_header);
+        ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
 
-        xh.handlerSwitchValue = handler_switch_value;
-        xh.actionRecord = action_record;
+        xh.handler = handler_switch_value;
         xh.languageSpecificData = language_specific_data;
-        xh.catchTemp = landing_pad;
+        xh.landingPad = landing_pad;
     }
 }
 
@@ -412,11 +473,11 @@ private void restore_caught_exception(_Unwind_Exception* ue_header,
     }
     else
     {
-        d_exception_header* xh = get_exception_header_from_ue(ue_header);
+        ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
 
-        handler_switch_value = xh.handlerSwitchValue;
+        handler_switch_value = xh.handler;
         language_specific_data = xh.languageSpecificData;
-        landing_pad = cast(_Unwind_Ptr)xh.catchTemp;
+        landing_pad = cast(_Unwind_Ptr)xh.landingPad;
     }
 }
 
@@ -439,7 +500,7 @@ version (GNU_SEH_Exceptions)
                                                         _Unwind_Context* context)
     {
         return __gdc_personality_impl(iversion, actions,
-                                      exception_class != __gdc_exception_class,
+                                      !ExceptionHeader.isGdcExceptionClass(exception_class),
                                       ue_header, context);
     }
 }
@@ -452,7 +513,7 @@ else version (GNU_SjLj_Exceptions)
                                                         _Unwind_Context* context)
     {
         return __gdc_personality_impl(iversion, actions,
-                                      exception_class != __gdc_exception_class,
+                                      !ExceptionHeader.isGdcExceptionClass(exception_class),
                                       ue_header, context);
     }
 
@@ -507,7 +568,7 @@ else
                                                            _Unwind_Context* context)
         {
             return __gdc_personality_impl(iversion, actions,
-                                          exception_class != __gdc_exception_class,
+                                          !ExceptionHeader.isGdcExceptionClass(exception_class),
                                           ue_header, context);
         }
     }
@@ -552,7 +613,7 @@ private _Unwind_Reason_Code __gdc_personality_impl(int iversion,
             return _URC_FATAL_PHASE1_ERROR;
     }
 
-    d_exception_header* xh = get_exception_header_from_ue(ue_header);
+    ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
@@ -699,13 +760,13 @@ found_something:
                 {
                     // catch_type is the catch clause type_info.
                     auto catch_type =
-                        cast(cxx_type_info)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
-                    auto thrown_ptr = cxx_get_adjusted_ptr(ue_header,
-                                                           catch_type);
+                        cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
+                    auto thrown_ptr =
+                        CxaExceptionHeader.getAdjustedPtr(ue_header, catch_type);
 
                     if (thrown_ptr)
                     {
-                        auto cxh = cast(cxx_exception_header*)(ue_header + 1) - 1;
+                        auto cxh = cast(CxaExceptionHeader*)(ue_header + 1) - 1;
                         // There's no saving between phases, so cache pointer.
                         // __cxa_begin_catch expects this to be set.
                         if (actions & _UA_SEARCH_PHASE)
@@ -779,17 +840,16 @@ do_something:
         if (! foreign_exception)
         {
             save_caught_exception(ue_header, context, handler_switch_value,
-                                  language_specific_data, landing_pad,
-                                  action_record);
+                                  language_specific_data, landing_pad);
         }
         return _URC_HANDLER_FOUND;
     }
 
 install_context:
     // We can't use any of the deh routines with foreign exceptions,
-    // because they all expect ue_header to be an d_exception_header.
+    // because they all expect ue_header to be an ExceptionHeader.
     // So in that case, call terminate or unexpected directly.
-    if (actions & _UA_FORCE_UNWIND)
+    if ((actions & _UA_FORCE_UNWIND) || foreign_exception)
     {
         if (found_type == Found.terminate || handler_switch_value < 0)
             __gdc_terminate();
@@ -809,14 +869,14 @@ install_context:
             static if (GNU_ARM_EABI_Unwinder)
                 ue_header.barrier_cache.bitpattern[1] = info.ttype_base;
             else
-                xh.catchTemp = info.ttype_base;
+                xh.landingPad = info.ttype_base;
         }
 
         // D Note: If there are any in-flight exceptions being thrown,
         // chain our current object onto the end of the prevous object.
-        while (xh.nextException)
+        while (xh.next)
         {
-            d_exception_header* ph = xh.nextException;
+            ExceptionHeader* ph = xh.next;
 
             ubyte* ph_language_specific_data;
             int ph_handler_switch_value;
@@ -849,18 +909,12 @@ install_context:
                     handler_switch_value = ph_handler_switch_value;
 
                     save_caught_exception(ue_header, context, handler_switch_value,
-                                          language_specific_data, landing_pad,
-                                          action_record);
+                                          language_specific_data, landing_pad);
                 }
             }
             // Exceptions chained, can now throw away the previous header.
-            xh.nextException = ph.nextException;
+            xh.next = ph.next;
             _Unwind_DeleteException(&ph.unwindHeader);
-
-            // Now put the header in our freelist.
-            globalExceptions* globals = &__globalExceptions;
-            ph.nextException = globals.firstFreeException;
-            globals.firstFreeException = ph;
         }
     }
 
