@@ -38,45 +38,12 @@ else version (NetBSD)
     enum _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
 else version (FreeBSD)
     enum _TTYPE_ENCODING = (DW_EH_PE_pcrel | DW_EH_PE_indirect);
-else version (symbian) // TODO: name
+else version (Symbian)
     enum _TTYPE_ENCODING = (DW_EH_PE_absptr);
-else version (uclinux) // TODO: name
+else version (uClinux)
     enum _TTYPE_ENCODING = (DW_EH_PE_absptr);
 else
     enum _TTYPE_ENCODING = (DW_EH_PE_pcrel);
-
-// Decode an R_ARM_TARGET2 relocation.
-_Unwind_Word _Unwind_decode_typeinfo_ptr(_Unwind_Word base, _Unwind_Word ptr)
-{
-    _Unwind_Word tmp;
-
-    tmp = *cast(_Unwind_Word*) ptr;
-    // Zero values are always NULL.
-    if (!tmp)
-        return 0;
-
-    if (_TTYPE_ENCODING == (DW_EH_PE_pcrel | DW_EH_PE_indirect))
-    {
-        // Pc-relative indirect.
-        tmp += ptr;
-        tmp = *cast(_Unwind_Word*) tmp;
-    }
-    else if (_TTYPE_ENCODING == DW_EH_PE_absptr)
-    {
-        // Absolute pointer.  Nothing more to do.
-    }
-    else
-    {
-        // Pc-relative pointer.
-        tmp += ptr;
-    }
-    return tmp;
-}
-
-_Unwind_Reason_Code __gnu_unwind_24bit(_Unwind_Context* context, _uw data, int compact)
-{
-    return _URC_FAILURE;
-}
 
 // Return the address of the instruction, not the actual IP value.
 _Unwind_Word _Unwind_GetIP(_Unwind_Context* context)
@@ -84,9 +51,13 @@ _Unwind_Word _Unwind_GetIP(_Unwind_Context* context)
     return _Unwind_GetGR(context, 15) & ~ cast(_Unwind_Word) 1;
 }
 
-// The dwarf unwinder doesn't understand arm/thumb state.  We assume the
-// landing pad uses the same instruction set as the call site.
 void _Unwind_SetIP(_Unwind_Context* context, _Unwind_Word val)
 {
     return _Unwind_SetGR(context, 15, val | (_Unwind_GetGR(context, 15) & 1));
+}
+
+_Unwind_Word _Unwind_GetIPInfo(_Unwind_Context* context, int* ip_before_insn)
+{
+    *ip_before_insn = 0;
+    return _Unwind_GetIP(context);
 }

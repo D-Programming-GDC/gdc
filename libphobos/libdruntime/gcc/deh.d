@@ -30,26 +30,6 @@ extern(C)
     void _d_createTrace(Object*, void*);
 }
 
-version (GNU_SEH_Exceptions)
-{
-    enum EXCEPTION_DISPOSITION
-    {
-        ExceptionContinueExecution,
-        ExceptionContinueSearch,
-        ExceptionNestedException,
-        ExceptionCollidedUnwind
-    }
-
-    // Pointer types. We're lazy, exact definition in MinGW/winnt.h
-    alias PEXCEPTION_RECORD = void*;
-    alias PCONTEXT = void*;
-    alias PDISPATCHER_CONTEXT = void*;
-
-    extern(C) EXCEPTION_DISPOSITION _GCC_specific_handler(PEXCEPTION_RECORD, void*,
-                                                          PCONTEXT, PDISPATCHER_CONTEXT,
-                                                          _Unwind_Personality_Fn);
-}
-
 // Declare all known and handled exception classes.
 // D exceptions -- "GNUCD__\0".
 // C++ exceptions -- "GNUCC++\0"
@@ -368,7 +348,7 @@ private ubyte* parse_lsda_header(_Unwind_Context* context, ubyte* p,
     info.ttype_encoding = *p++;
     if (info.ttype_encoding != DW_EH_PE_omit)
     {
-        static if (GNU_ARM_EABI_Unwinder)
+        static if (__traits(compiles, _TTYPE_ENCODING))
         {
             // Older ARM EABI toolchains set this value incorrectly, so use a
             // hardcoded OS-specific format.
@@ -451,8 +431,8 @@ private void restore_caught_exception(_Unwind_Exception* ue_header,
 // extern(C) alias __gdc_personality_impl ...; would be nice
 version (GNU_SEH_Exceptions)
 {
-    extern(C) EXCEPTION_DISPOSITION __gdc_personality_seh0(PEXCEPTION_RECORD ms_exc, void* this_frame,
-                                                           PCONTEXT ms_orig_context, PDISPATCHER_CONTEXT ms_disp)
+    extern(C) EXCEPTION_DISPOSITION __gdc_personality_seh0(void* ms_exc, void* this_frame,
+                                                           void* ms_orig_context, void* ms_disp)
     {
         return _GCC_specific_handler(ms_exc, this_frame, ms_orig_context,
                                      ms_disp, &__gdc_personality_imp);

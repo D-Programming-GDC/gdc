@@ -25,7 +25,6 @@ import gcc.config;
 static if (GNU_ARM_EABI_Unwinder):
 
 import gcc.builtins;
-import gcc.unwind.pe;
 
 extern (C):
 
@@ -221,12 +220,6 @@ _Unwind_Word _Unwind_GetGR(_Unwind_Context* context, int regno)
     _uw val;
     _Unwind_VRS_Get(context, _UVRSC_CORE, regno, _UVRSD_UINT32, &val);
     return val;
-}
-
-_Unwind_Word _Unwind_GetIPInfo(_Unwind_Context* context, int* ip_before_insn)
-{
-    *ip_before_insn = 0;
-    return _Unwind_GetIP(context);
 }
 
 void _Unwind_SetGR(_Unwind_Context* context, int regno, _Unwind_Word val)

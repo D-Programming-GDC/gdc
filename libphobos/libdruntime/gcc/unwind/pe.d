@@ -48,60 +48,52 @@ enum
     DW_EH_PE_indirect = 0x80
 }
 
-version (NO_SIZE_OF_ENCODED_VALUE) {}
-else
+// Given an encoding, return the number of bytes the format occupies.
+// This is only defined for fixed-size encodings, and so does not
+// include leb128.
+uint size_of_encoded_value(ubyte encoding)
 {
-    // Given an encoding, return the number of bytes the format occupies.
-    // This is only defined for fixed-size encodings, and so does not
-    // include leb128.
-    uint size_of_encoded_value(ubyte encoding)
-    {
-        if (encoding == DW_EH_PE_omit)
-            return 0;
+    if (encoding == DW_EH_PE_omit)
+        return 0;
 
-        final switch (encoding & 0x07)
-        {
-            case DW_EH_PE_absptr:
-                return (void*).sizeof;
-            case DW_EH_PE_udata2:
-                return 2;
-            case DW_EH_PE_udata4:
-                return 4;
-            case DW_EH_PE_udata8:
-                return 8;
-        }
-        assert(0);
+    final switch (encoding & 0x07)
+    {
+        case DW_EH_PE_absptr:
+            return (void*).sizeof;
+        case DW_EH_PE_udata2:
+            return 2;
+        case DW_EH_PE_udata4:
+            return 4;
+        case DW_EH_PE_udata8:
+            return 8;
     }
+    assert(0);
 }
 
-version (NO_BASE_OF_ENCODED_VALUE) {}
-else
+// Given an encoding and an _Unwind_Context, return the base to which
+// the encoding is relative.  This base may then be passed to
+// read_encoded_value_with_base for use when the _Unwind_Context is
+// not available.
+_Unwind_Ptr base_of_encoded_value(ubyte encoding, _Unwind_Context* context)
 {
-    // Given an encoding and an _Unwind_Context, return the base to which
-    // the encoding is relative.  This base may then be passed to
-    // read_encoded_value_with_base for use when the _Unwind_Context is
-    // not available.
-    _Unwind_Ptr base_of_encoded_value(ubyte encoding, _Unwind_Context* context)
+    if (encoding == DW_EH_PE_omit)
+        return cast(_Unwind_Ptr) 0;
+
+    final switch (encoding & 0x70)
     {
-        if (encoding == DW_EH_PE_omit)
+        case DW_EH_PE_absptr:
+        case DW_EH_PE_pcrel:
+        case DW_EH_PE_aligned:
             return cast(_Unwind_Ptr) 0;
 
-        final switch (encoding & 0x70)
-        {
-            case DW_EH_PE_absptr:
-            case DW_EH_PE_pcrel:
-            case DW_EH_PE_aligned:
-                return cast(_Unwind_Ptr) 0;
-
-            case DW_EH_PE_textrel:
-                return _Unwind_GetTextRelBase(context);
-            case DW_EH_PE_datarel:
-                return _Unwind_GetDataRelBase(context);
-            case DW_EH_PE_funcrel:
-                return _Unwind_GetRegionStart(context);
-        }
-        assert(0);
+        case DW_EH_PE_textrel:
+            return _Unwind_GetTextRelBase(context);
+        case DW_EH_PE_datarel:
+            return _Unwind_GetDataRelBase(context);
+        case DW_EH_PE_funcrel:
+            return _Unwind_GetRegionStart(context);
     }
+    assert(0);
 }
 
 // Read an unsigned leb128 value from P, store the value in VAL, return
@@ -247,17 +239,12 @@ ubyte* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
     return p;
 }
 
-version (NO_BASE_OF_ENCODED_VALUE) {}
-else
+// Like read_encoded_value_with_base, but get the base from the context
+// rather than providing it directly.
+ubyte* read_encoded_value(_Unwind_Context* context, ubyte encoding,
+                          ubyte* p, _Unwind_Ptr* val)
 {
-    // Like read_encoded_value_with_base, but get the base from the context
-    // rather than providing it directly.
-    ubyte* read_encoded_value(_Unwind_Context* context, ubyte encoding,
-                              ubyte* p, _Unwind_Ptr* val)
-    {
-        return read_encoded_value_with_base(encoding,
-                                            base_of_encoded_value(encoding, context),
-                                            p, val);
-    }
+    return read_encoded_value_with_base(encoding,
+                                        base_of_encoded_value(encoding, context),
+                                        p, val);
 }
-

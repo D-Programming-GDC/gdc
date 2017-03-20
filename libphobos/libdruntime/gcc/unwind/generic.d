@@ -24,7 +24,7 @@ import gcc.config;
 
 static if (!GNU_ARM_EABI_Unwinder):
 
-private import gcc.builtins;
+import gcc.builtins;
 
 // This is derived from the C++ ABI for IA-64.  Where we diverge
 // for cross-architecture compatibility are noted with "@@@".
@@ -247,4 +247,19 @@ else static if (long.sizeof >= (void*).sizeof)
 else
 {
     static assert(false, "What type shall we use for _sleb128_t?");
+}
+
+version (GNU_SEH_Exceptions)
+{
+    // We're lazy, exact definition in MinGW/winnt.h
+    enum EXCEPTION_DISPOSITION
+    {
+        ExceptionContinueExecution,
+        ExceptionContinueSearch,
+        ExceptionNestedException,
+        ExceptionCollidedUnwind
+    }
+
+    extern(C) EXCEPTION_DISPOSITION _GCC_specific_handler(void*, void*, void*,
+                                                          _Unwind_Personality_Fn);
 }
