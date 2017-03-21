@@ -537,15 +537,17 @@ static if (GNU_ARM_EABI_Unwinder)
                 return _URC_CONTINUE_UNWIND;
 
             default:
-                __builtin_trap();
+                __builtin_abort();
         }
         actions |= state & _US_FORCE_UNWIND;
 
-        // We don't know which runtime we're working with, so can't check this.
-        // However the ABI routines hide this from us, and we don't actually need to knowa
-        bool foreign_exception = false;
+        // The dwarf unwinder assumes the context structure holds things like
+        // the function and LSDA pointers.  The ARM implementation caches these
+        // in the exception header (UCB).  To avoid rewriting everything we make
+        // the virtual IP register point at the UCB.
+        _Unwind_SetGR(context, UNWIND_POINTER_REG, cast(_Unwind_Ptr)ue_header);
 
-        return __gdc_personality_impl(1, actions, foreign_exception, ue_header, context);
+        return __gdc_personality(actions, ue_header, context);
     }
 }
 else
@@ -557,17 +559,17 @@ else
                                                   _Unwind_Exception* ue_header,
                                                   _Unwind_Context* context)
     {
-        return __gdc_personality_impl(iversion, actions,
-                                      !ExceptionHeader.isGdcExceptionClass(exception_class),
-                                      ue_header, context);
+        // Interface version check.
+        if (iversion != 1)
+            return _URC_FATAL_PHASE1_ERROR;
+
+        return __gdc_personality(actions, ue_header, context);
     }
 }
 
-private _Unwind_Reason_Code __gdc_personality_impl(int iversion,
-                                                   _Unwind_Action actions,
-                                                   bool foreign_exception,
-                                                   _Unwind_Exception* ue_header,
-                                                   _Unwind_Context* context)
+private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
+                                              _Unwind_Exception* ue_header,
+                                              _Unwind_Context* context)
 {
     enum Found
     {
@@ -586,23 +588,8 @@ private _Unwind_Reason_Code __gdc_personality_impl(int iversion,
     int handler_switch_value;
     int ip_before_insn = 0;
 
-    static if (GNU_ARM_EABI_Unwinder)
-    {
-        // The dwarf unwinder assumes the context structure holds things like the
-        // function and LSDA pointers.  The ARM implementation caches these in
-        // the exception header (UCB).  To avoid rewriting everything we make the
-        // virtual IP register point at the UCB.
-        ip = cast(_Unwind_Ptr)ue_header;
-        _Unwind_SetGR(context, UNWIND_POINTER_REG, ip);
-    }
-    else
-    {
-        // Interface version check.
-        if (iversion != 1)
-            return _URC_FATAL_PHASE1_ERROR;
-    }
-
     ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
+    bool foreign_exception = !ExceptionHeader.isGdcExceptionClass(ue_header.exception_class);
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
