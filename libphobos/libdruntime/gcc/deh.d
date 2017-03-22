@@ -63,6 +63,56 @@ else
         gxxExceptionClass + 1;
 }
 
+// Checks for GDC exception class.
+bool isGdcExceptionClass(_Unwind_Exception_Class c) @nogc
+{
+    static if (GNU_ARM_EABI_Unwinder)
+    {
+        return c[0] == gdcExceptionClass[0]
+            && c[1] == gdcExceptionClass[1]
+            && c[2] == gdcExceptionClass[2]
+            && c[3] == gdcExceptionClass[3]
+            && c[4] == gdcExceptionClass[4]
+            && c[5] == gdcExceptionClass[5]
+            && c[6] == gdcExceptionClass[6]
+            && c[7] == gdcExceptionClass[7];
+    }
+    else
+    {
+        return c == gdcExceptionClass;
+    }
+}
+
+// Checks for any C++ exception class.
+bool isGxxExceptionClass(_Unwind_Exception_Class c) @nogc
+{
+    static if (GNU_ARM_EABI_Unwinder)
+    {
+        return c[0] == gxxExceptionClass[0]
+            && c[1] == gxxExceptionClass[1]
+            && c[2] == gxxExceptionClass[2]
+            && c[3] == gxxExceptionClass[3]
+            && c[4] == gxxExceptionClass[4]
+            && c[5] == gxxExceptionClass[5]
+            && c[6] == gxxExceptionClass[6]
+            && (c[7] == gxxExceptionClass[7]
+                || c[7] == gxxDependentExceptionClass[7]);
+    }
+    else
+    {
+        return c == gxxExceptionClass
+            || c == gxxDependentExceptionClass;
+    }
+}
+
+// Checks for primary or dependent, but not that it is a C++ exception.
+bool isDependentException(_Unwind_Exception_Class c) @nogc
+{
+    static if (GNU_ARM_EABI_Unwinder)
+        return (c[7] == '\x01');
+    else
+        return (c & 1);
+}
 
 // A D exception object consists of a header, which is a wrapper
 // around an unwind object header with additional D specific
@@ -154,26 +204,6 @@ struct ExceptionHeader
         return eh;
     }
 
-    // Checks for GDC exception class.
-    static bool isGdcExceptionClass(_Unwind_Exception_Class c) @nogc
-    {
-        static if (GNU_ARM_EABI_Unwinder)
-        {
-            return c[0] == gdcExceptionClass[0]
-                && c[1] == gdcExceptionClass[1]
-                && c[2] == gdcExceptionClass[2]
-                && c[3] == gdcExceptionClass[3]
-                && c[4] == gdcExceptionClass[4]
-                && c[5] == gdcExceptionClass[5]
-                && c[6] == gdcExceptionClass[6]
-                && c[7] == gdcExceptionClass[7];
-        }
-        else
-        {
-            return c == gdcExceptionClass;
-        }
-    }
-
     // Convert from pointer to unwindHeader to pointer to ExceptionHeader
     // that it is embedded inside of.
     static ExceptionHeader* toExceptionHeader(_Unwind_Exception* exc) @nogc
@@ -225,36 +255,6 @@ struct CxaExceptionHeader
     }
 
     _Unwind_Exception unwindHeader;
-
-    // Checks for any C++ exception class.
-    static bool isGxxExceptionClass(_Unwind_Exception_Class c) @nogc
-    {
-        static if (GNU_ARM_EABI_Unwinder)
-        {
-            return c[0] == gxxExceptionClass[0]
-                && c[1] == gxxExceptionClass[1]
-                && c[2] == gxxExceptionClass[2]
-                && c[3] == gxxExceptionClass[3]
-                && c[4] == gxxExceptionClass[4]
-                && c[5] == gxxExceptionClass[5]
-                && c[6] == gxxExceptionClass[6]
-                && (c[7] == '\0' || c[7] == '\x01');
-        }
-        else
-        {
-            return c == gxxExceptionClass
-                || c == gxxDependentExceptionClass;
-        }
-    }
-
-    // Checks for primary or dependent, but not that it is a C++ exception.
-    static bool isDependentException(_Unwind_Exception_Class c) @nogc
-    {
-        static if (GNU_ARM_EABI_Unwinder)
-            return (c[7] == '\x01');
-        else
-            return (c & 1);
-    }
 
     // Get pointer to the thrown object if the thrown object type behind the
     // exception is implicitly convertible to the catch type.
@@ -563,7 +563,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     _Unwind_Ptr landing_pad;
     int handler;
 
-    bool foreign_exception = !ExceptionHeader.isGdcExceptionClass(unwindHeader.exception_class);
+    bool foreign_exception = !isGdcExceptionClass(unwindHeader.exception_class);
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
@@ -741,7 +741,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 
                         if (thrown_ptr)
                         {
-                            auto cxh = cast(CxaExceptionHeader*)(unwindHeader + 1) - 1;
+                            auto cxh = CxaExceptionHeader.toExceptionHeader(unwindHeader);
                             // There's no saving between phases, so only cache pointer.
                             // __cxa_begin_catch expects this to be set.
                             if (actions & _UA_SEARCH_PHASE)
