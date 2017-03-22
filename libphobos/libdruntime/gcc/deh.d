@@ -441,47 +441,25 @@ private ClassInfo get_classinfo_entry(lsda_header_info* info, _uleb128_t i)
     return cast(ClassInfo)cast(void*)(ptr);
 }
 
-private void save_caught_exception(_Unwind_Exception* ue_header,
-                                   _Unwind_Context* context,
-                                   int handler_switch_value,
+private void save_caught_exception(_Unwind_Exception* unwindHeader,
+                                   _Unwind_Context* context, int handler,
                                    const(ubyte)* language_specific_data,
                                    _Unwind_Ptr landing_pad)
 {
     static if (GNU_ARM_EABI_Unwinder)
     {
-        ue_header.barrier_cache.sp = _Unwind_GetGR(context, UNWIND_STACK_REG);
-        ue_header.barrier_cache.bitpattern[1] = cast(_uw)handler_switch_value;
-        ue_header.barrier_cache.bitpattern[2] = cast(_uw)language_specific_data;
-        ue_header.barrier_cache.bitpattern[3] = cast(_uw)landing_pad;
+        unwindHeader.barrier_cache.sp = _Unwind_GetGR(context, UNWIND_STACK_REG);
+        unwindHeader.barrier_cache.bitpattern[1] = cast(_uw)handler;
+        unwindHeader.barrier_cache.bitpattern[2] = cast(_uw)language_specific_data;
+        unwindHeader.barrier_cache.bitpattern[3] = cast(_uw)landing_pad;
     }
     else
     {
-        ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
+        ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(unwindHeader);
 
-        xh.handler = handler_switch_value;
+        xh.handler = handler;
         xh.languageSpecificData = language_specific_data;
         xh.landingPad = landing_pad;
-    }
-}
-
-private void restore_caught_exception(_Unwind_Exception* ue_header,
-                                      out int handler_switch_value,
-                                      out const(ubyte)* language_specific_data,
-                                      out _Unwind_Ptr landing_pad)
-{
-    static if (GNU_ARM_EABI_Unwinder)
-    {
-        handler_switch_value = cast(int)ue_header.barrier_cache.bitpattern[1];
-        language_specific_data = cast(ubyte*)ue_header.barrier_cache.bitpattern[2];
-        landing_pad = cast(_Unwind_Ptr)ue_header.barrier_cache.bitpattern[3];
-    }
-    else
-    {
-        ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
-
-        handler_switch_value = xh.handler;
-        language_specific_data = xh.languageSpecificData;
-        landing_pad = cast(_Unwind_Ptr)xh.landingPad;
     }
 }
 
@@ -588,15 +566,25 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     int handler;
     int ip_before_insn = 0;
 
-    ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(unwindHeader);
     bool foreign_exception = !ExceptionHeader.isGdcExceptionClass(unwindHeader.exception_class);
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
         && ! foreign_exception)
     {
-        restore_caught_exception(unwindHeader, handler,
-                                 language_specific_data, landing_pad);
+        static if (GNU_ARM_EABI_Unwinder)
+        {
+            handler = cast(int)unwindHeader.barrier_cache.bitpattern[1];
+            language_specific_data = cast(ubyte*)unwindHeader.barrier_cache.bitpattern[2];
+            landing_pad = cast(_Unwind_Ptr)unwindHeader.barrier_cache.bitpattern[3];
+        }
+        else
+        {
+            ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
+            handler = eh.handler;
+            language_specific_data = eh.languageSpecificData;
+            landing_pad = cast(_Unwind_Ptr)eh.landingPad;
+        }
         found_type = (landing_pad == 0 ? Found.terminate : Found.handler);
         goto install_context;
     }
@@ -727,6 +715,7 @@ found_something:
             else if (ar_filter > 0)
             {
                 // Positive filter values are handlers.
+                ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(unwindHeader);
                 ClassInfo ci = get_classinfo_entry(&info, ar_filter);
 
                 // D does not have catch-all handlers, and so the following
@@ -744,7 +733,7 @@ found_something:
                     if (thrown_ptr)
                     {
                         auto cxh = cast(CxaExceptionHeader*)(unwindHeader + 1) - 1;
-                        // There's no saving between phases, so cache pointer.
+                        // There's no saving between phases, so only cache pointer.
                         // __cxa_begin_catch expects this to be set.
                         if (actions & _UA_SEARCH_PHASE)
                         {
@@ -753,7 +742,6 @@ found_something:
                             else
                                 cxh.adjustedPtr = thrown_ptr;
                         }
-
                         saw_handler = true;
                         break;
                     }
