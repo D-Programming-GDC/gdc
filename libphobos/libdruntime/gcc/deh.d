@@ -525,7 +525,8 @@ static if (GNU_ARM_EABI_Unwinder)
         // the virtual IP register point at the UCB.
         _Unwind_SetGR(context, UNWIND_POINTER_REG, cast(_Unwind_Ptr)unwindHeader);
 
-        return __gdc_personality(actions, unwindHeader, context);
+        return __gdc_personality(actions, unwindHeader.exception_class,
+                                 unwindHeader, context);
     }
 }
 else
@@ -533,7 +534,7 @@ else
     pragma(mangle, PERSONALITY_FUNCTION)
     extern(C) _Unwind_Reason_Code gdc_personality(int iversion,
                                                   _Unwind_Action actions,
-                                                  _Unwind_Exception_Class exception_class,
+                                                  _Unwind_Exception_Class exceptionClass,
                                                   _Unwind_Exception* unwindHeader,
                                                   _Unwind_Context* context)
     {
@@ -541,11 +542,12 @@ else
         if (iversion != 1)
             return _URC_FATAL_PHASE1_ERROR;
 
-        return __gdc_personality(actions, unwindHeader, context);
+        return __gdc_personality(actions, exceptionClass, unwindHeader, context);
     }
 }
 
 private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
+                                              _Unwind_Exception_Class exceptionClass,
                                               _Unwind_Exception* unwindHeader,
                                               _Unwind_Context* context)
 {
@@ -563,7 +565,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     _Unwind_Ptr landing_pad;
     int handler;
 
-    bool foreign_exception = !isGdcExceptionClass(unwindHeader.exception_class);
+    bool foreign_exception = !isGdcExceptionClass(exceptionClass);
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
