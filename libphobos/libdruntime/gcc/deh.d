@@ -558,13 +558,10 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     }
 
     Found found_type;
-    lsda_header_info info;
     const(ubyte)* language_specific_data;
     const(ubyte)* action_record;
-    const(ubyte)* p;
-    _Unwind_Ptr landing_pad, ip;
+    _Unwind_Ptr landing_pad;
     int handler;
-    int ip_before_insn;
 
     bool foreign_exception = !ExceptionHeader.isGdcExceptionClass(unwindHeader.exception_class);
 
@@ -586,226 +583,13 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
             landing_pad = cast(_Unwind_Ptr)eh.landingPad;
         }
         found_type = (landing_pad == 0 ? Found.terminate : Found.handler);
-        goto install_context;
-    }
-
-    language_specific_data = cast(ubyte*)_Unwind_GetLanguageSpecificData(context);
-
-    // If no LSDA, then there are no handlers or cleanups.
-    if (! language_specific_data)
-    {
-        static if (GNU_ARM_EABI_Unwinder)
-        {
-            if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
-                return _URC_FAILURE;
-        }
-        return _URC_CONTINUE_UNWIND;
-    }
-
-    // Parse the LSDA header
-    p = parse_lsda_header(context, language_specific_data, &info);
-    info.ttype_base = base_of_encoded_value(info.ttype_encoding, context);
-
-    // Get instruction pointer (ip) at start of instruction that threw
-    version (CRuntime_Glibc)
-    {
-        ip = _Unwind_GetIPInfo(context, &ip_before_insn);
-        if (!ip_before_insn)
-            --ip;
     }
     else
     {
-        ip = _Unwind_GetIP(context);
-        --ip;
-    }
+        language_specific_data = cast(ubyte*)_Unwind_GetLanguageSpecificData(context);
 
-    landing_pad = 0;
-    action_record = null;
-    handler = 0;
-
-    version (GNU_SjLj_Exceptions)
-    {
-        // The given "IP" is an index into the call-site table, with two
-        // exceptions -- -1 means no-action, and 0 means terminate.
-        // But since we're using uleb128 values, we've not got random
-        // access to the array.
-        if (cast(int) ip < 0)
-        {
-            return _URC_CONTINUE_UNWIND;
-        }
-        else if (ip == 0)
-        {
-            // Fall through to set Found.terminate.
-        }
-        else
-        {
-            _uleb128_t cs_lp, cs_action;
-            do
-            {
-                cs_lp = read_uleb128(&p);
-                cs_action = read_uleb128(&p);
-            }
-            while (--ip);
-
-            // Can never have null landing pad for sjlj -- that would have
-            // been indicated by a -1 call site index.
-            landing_pad = cs_lp + 1;
-            if (cs_action)
-                action_record = info.action_table + cs_action - 1;
-            goto found_something;
-        }
-    }
-    else
-    {
-        // Search the call-site table for the action associated with this IP.
-        while (p < info.action_table)
-        {
-            _Unwind_Ptr cs_start, cs_len, cs_lp;
-            _uleb128_t cs_action;
-
-            // Note that all call-site encodings are "absolute" displacements.
-            p = read_encoded_value(null, info.call_site_encoding, p, &cs_start);
-            p = read_encoded_value(null, info.call_site_encoding, p, &cs_len);
-            p = read_encoded_value(null, info.call_site_encoding, p, &cs_lp);
-            cs_action = read_uleb128(&p);
-
-            // The table is sorted, so if we've passed the ip, stop.
-            if (ip < info.Start + cs_start)
-                p = info.action_table;
-            else if (ip < info.Start + cs_start + cs_len)
-            {
-                if (cs_lp)
-                    landing_pad = info.LPStart + cs_lp;
-                if (cs_action)
-                    action_record = info.action_table + cs_action - 1;
-                goto found_something;
-            }
-        }
-    }
-
-    // If ip is not present in the table, C++ would call terminate.
-    // This is for a destructor inside a cleanup, or a library routine
-    // the compiler was not expecting to throw.
-    found_type = Found.terminate;
-    goto do_something;
-
-found_something:
-    if (landing_pad == 0)
-    {
-        // If ip is present, and has a null landing pad, there are
-        // no cleanups or handlers to be run.
-        found_type = Found.nothing;
-    }
-    else if (action_record == null)
-    {
-        // If ip is present, has a non-null landing pad, and a null
-        // action table offset, then there are only cleanups present.
-        // Cleanups use a zero switch value, as set above.
-        found_type = Found.cleanup;
-    }
-    else
-    {
-        // Otherwise we have a catch handler or exception specification.
-        _sleb128_t ar_filter, ar_disp;
-        bool saw_cleanup = false;
-        bool saw_handler = false;
-
-        while (1)
-        {
-            p = action_record;
-            ar_filter = read_sleb128(&p);
-            auto pn = p;
-            ar_disp = read_sleb128(&p);
-
-            if (ar_filter == 0)
-            {
-                // Zero filter values are cleanups.
-                saw_cleanup = true;
-            }
-            else if (ar_filter > 0)
-            {
-                // Positive filter values are handlers.
-                ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(unwindHeader);
-                ClassInfo ci = get_classinfo_entry(&info, ar_filter);
-
-                // D does not have catch-all handlers, and so the following
-                // assumes that we will never handle a null value.
-                assert(ci !is null);
-
-                if (ci.classinfo is __cpp_type_info_ptr.classinfo)
-                {
-                    // catch_type is the catch clause type_info.
-                    auto catch_type =
-                        cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
-                    auto thrown_ptr =
-                        CxaExceptionHeader.getAdjustedPtr(unwindHeader, catch_type);
-
-                    if (thrown_ptr)
-                    {
-                        auto cxh = cast(CxaExceptionHeader*)(unwindHeader + 1) - 1;
-                        // There's no saving between phases, so only cache pointer.
-                        // __cxa_begin_catch expects this to be set.
-                        if (actions & _UA_SEARCH_PHASE)
-                        {
-                            static if (GNU_ARM_EABI_Unwinder)
-                                unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrown_ptr;
-                            else
-                                cxh.adjustedPtr = thrown_ptr;
-                        }
-                        saw_handler = true;
-                        break;
-                    }
-                }
-                else if (!foreign_exception)
-                {
-                    // D Note: will be performing dynamic cast twice, potentially
-                    // Once here and once at the landing pad .. unless we cached
-                    // here and had a begin_catch call.
-                    if (_d_isbaseof(xh.object.classinfo, ci))
-                    {
-                        saw_handler = true;
-                        break;
-                    }
-                }
-                else
-                {
-                    // ??? What to do about other GNU language exceptions.
-                }
-            }
-            else
-            {
-                // D Note: we don't have these...
-                break;
-            }
-
-            if (ar_disp == 0)
-                break;
-            action_record = pn + ar_disp;
-        }
-
-        if (saw_handler)
-        {
-            handler = cast(int)ar_filter;
-            found_type = Found.handler;
-        }
-        else
-            found_type = (saw_cleanup ? Found.cleanup : Found.nothing);
-    }
-
-do_something:
-    if (found_type == Found.nothing)
-    {
-        static if (GNU_ARM_EABI_Unwinder)
-        {
-            if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
-                return _URC_FAILURE;
-        }
-        return _URC_CONTINUE_UNWIND;
-    }
-
-    if (actions & _UA_SEARCH_PHASE)
-    {
-        if (found_type == Found.cleanup)
+        // If no LSDA, then there are no handlers or cleanups.
+        if (! language_specific_data)
         {
             static if (GNU_ARM_EABI_Unwinder)
             {
@@ -815,16 +599,231 @@ do_something:
             return _URC_CONTINUE_UNWIND;
         }
 
-        // For domestic exceptions, we cache data from phase 1 for phase 2.
-        if (! foreign_exception)
+        // Parse the LSDA header
+        lsda_header_info info;
+        auto p = parse_lsda_header(context, language_specific_data, &info);
+        info.ttype_base = base_of_encoded_value(info.ttype_encoding, context);
+
+        // Get instruction pointer (ip) at start of instruction that threw.
+        version (CRuntime_Glibc)
         {
-            save_caught_exception(unwindHeader, context, handler,
-                                  language_specific_data, landing_pad);
+            int ip_before_insn;
+            auto ip = _Unwind_GetIPInfo(context, &ip_before_insn);
+            if (!ip_before_insn)
+                --ip;
         }
-        return _URC_HANDLER_FOUND;
+        else
+        {
+            auto ip = _Unwind_GetIP(context);
+            --ip;
+        }
+
+        landing_pad = 0;
+        action_record = null;
+        handler = 0;
+
+        version (GNU_SjLj_Exceptions)
+        {
+            // The given "IP" is an index into the call-site table, with two
+            // exceptions -- -1 means no-action, and 0 means terminate.
+            // But since we're using uleb128 values, we've not got random
+            // access to the array.
+            if (cast(int) ip < 0)
+            {
+                return _URC_CONTINUE_UNWIND;
+            }
+            else if (ip == 0)
+            {
+                // Fall through to set Found.terminate.
+            }
+            else
+            {
+                _uleb128_t cs_lp, cs_action;
+                do
+                {
+                    cs_lp = read_uleb128(&p);
+                    cs_action = read_uleb128(&p);
+                }
+                while (--ip);
+
+                // Can never have null landing pad for sjlj -- that would have
+                // been indicated by a -1 call site index.
+                landing_pad = cs_lp + 1;
+                if (cs_action)
+                    action_record = info.action_table + cs_action - 1;
+                goto found_something;
+            }
+        }
+        else
+        {
+            // Search the call-site table for the action associated with this IP.
+            while (p < info.action_table)
+            {
+                _Unwind_Ptr cs_start, cs_len, cs_lp;
+                _uleb128_t cs_action;
+
+                // Note that all call-site encodings are "absolute" displacements.
+                p = read_encoded_value(null, info.call_site_encoding, p, &cs_start);
+                p = read_encoded_value(null, info.call_site_encoding, p, &cs_len);
+                p = read_encoded_value(null, info.call_site_encoding, p, &cs_lp);
+                cs_action = read_uleb128(&p);
+
+                // The table is sorted, so if we've passed the ip, stop.
+                if (ip < info.Start + cs_start)
+                    p = info.action_table;
+                else if (ip < info.Start + cs_start + cs_len)
+                {
+                    if (cs_lp)
+                        landing_pad = info.LPStart + cs_lp;
+                    if (cs_action)
+                        action_record = info.action_table + cs_action - 1;
+                    goto found_something;
+                }
+            }
+        }
+
+        // If ip is not present in the table, C++ would call terminate.
+        // This is for a destructor inside a cleanup, or a library routine
+        // the compiler was not expecting to throw.
+        found_type = Found.terminate;
+        goto do_something;
+
+    found_something:
+        if (landing_pad == 0)
+        {
+            // If ip is present, and has a null landing pad, there are
+            // no cleanups or handlers to be run.
+            found_type = Found.nothing;
+        }
+        else if (action_record == null)
+        {
+            // If ip is present, has a non-null landing pad, and a null
+            // action table offset, then there are only cleanups present.
+            // Cleanups use a zero switch value, as set above.
+            found_type = Found.cleanup;
+        }
+        else
+        {
+            // Otherwise we have a catch handler or exception specification.
+            _sleb128_t ar_filter, ar_disp;
+            bool saw_cleanup = false;
+            bool saw_handler = false;
+
+            while (1)
+            {
+                p = action_record;
+                ar_filter = read_sleb128(&p);
+                auto pn = p;
+                ar_disp = read_sleb128(&p);
+
+                if (ar_filter == 0)
+                {
+                    // Zero filter values are cleanups.
+                    saw_cleanup = true;
+                }
+                else if (ar_filter > 0)
+                {
+                    // Positive filter values are handlers.
+                    ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(unwindHeader);
+                    ClassInfo ci = get_classinfo_entry(&info, ar_filter);
+
+                    // D does not have catch-all handlers, and so the following
+                    // assumes that we will never handle a null value.
+                    assert(ci !is null);
+
+                    if (ci.classinfo is __cpp_type_info_ptr.classinfo)
+                    {
+                        // catch_type is the catch clause type_info.
+                        auto catch_type =
+                            cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
+                        auto thrown_ptr =
+                            CxaExceptionHeader.getAdjustedPtr(unwindHeader, catch_type);
+
+                        if (thrown_ptr)
+                        {
+                            auto cxh = cast(CxaExceptionHeader*)(unwindHeader + 1) - 1;
+                            // There's no saving between phases, so only cache pointer.
+                            // __cxa_begin_catch expects this to be set.
+                            if (actions & _UA_SEARCH_PHASE)
+                            {
+                                static if (GNU_ARM_EABI_Unwinder)
+                                    unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrown_ptr;
+                                else
+                                    cxh.adjustedPtr = thrown_ptr;
+                            }
+                            saw_handler = true;
+                            break;
+                        }
+                    }
+                    else if (!foreign_exception)
+                    {
+                        // D Note: will be performing dynamic cast twice, potentially
+                        // Once here and once at the landing pad .. unless we cached
+                        // here and had a begin_catch call.
+                        if (_d_isbaseof(xh.object.classinfo, ci))
+                        {
+                            saw_handler = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        // ??? What to do about other GNU language exceptions.
+                    }
+                }
+                else
+                {
+                    // D Note: we don't have these...
+                    break;
+                }
+
+                if (ar_disp == 0)
+                    break;
+                action_record = pn + ar_disp;
+            }
+
+            if (saw_handler)
+            {
+                handler = cast(int)ar_filter;
+                found_type = Found.handler;
+            }
+            else
+                found_type = (saw_cleanup ? Found.cleanup : Found.nothing);
+        }
+
+    do_something:
+        if (found_type == Found.nothing)
+        {
+            static if (GNU_ARM_EABI_Unwinder)
+            {
+                if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
+                    return _URC_FAILURE;
+            }
+            return _URC_CONTINUE_UNWIND;
+        }
+
+        if (actions & _UA_SEARCH_PHASE)
+        {
+            if (found_type == Found.cleanup)
+            {
+                static if (GNU_ARM_EABI_Unwinder)
+                {
+                    if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
+                        return _URC_FAILURE;
+                }
+                return _URC_CONTINUE_UNWIND;
+            }
+
+            // For domestic exceptions, we cache data from phase 1 for phase 2.
+            if (! foreign_exception)
+            {
+                save_caught_exception(unwindHeader, context, handler,
+                                      language_specific_data, landing_pad);
+            }
+            return _URC_HANDLER_FOUND;
+        }
     }
 
-install_context:
     // Unexpected terminate or negative handler.
     if (found_type == Found.terminate || handler < 0)
         terminate(__LINE__);
