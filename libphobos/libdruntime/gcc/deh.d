@@ -551,21 +551,14 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
                                               _Unwind_Exception* unwindHeader,
                                               _Unwind_Context* context)
 {
-    enum Found
-    {
-        nothing,
-        terminate,
-        cleanup,
-        handler
-    }
-
-    Found found_type;
     const(ubyte)* language_specific_data;
     const(ubyte)* action_record;
     _Unwind_Ptr landing_pad;
     int handler;
 
     bool foreign_exception = !isGdcExceptionClass(exceptionClass);
+    bool saw_cleanup = false;
+    bool saw_handler = false;
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
@@ -584,7 +577,12 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
             language_specific_data = eh.languageSpecificData;
             landing_pad = cast(_Unwind_Ptr)eh.landingPad;
         }
-        found_type = (landing_pad == 0 ? Found.terminate : Found.handler);
+
+        // Shouldn't have cached a null landing pad in phase 1.
+        if (landing_pad == 0)
+            terminate(__LINE__);
+
+        saw_handler = true;
     }
     else
     {
@@ -687,7 +685,6 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         // If ip is not present in the table, C++ would call terminate.
         // This is for a destructor inside a cleanup, or a library routine
         // the compiler was not expecting to throw.
-        found_type = Found.terminate;
         goto do_something;
 
     found_something:
@@ -695,21 +692,18 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         {
             // If ip is present, and has a null landing pad, there are
             // no cleanups or handlers to be run.
-            found_type = Found.nothing;
         }
         else if (action_record == null)
         {
             // If ip is present, has a non-null landing pad, and a null
             // action table offset, then there are only cleanups present.
             // Cleanups use a zero switch value, as set above.
-            found_type = Found.cleanup;
+            saw_cleanup = true;
         }
         else
         {
             // Otherwise we have a catch handler or exception specification.
             _sleb128_t ar_filter, ar_disp;
-            bool saw_cleanup = false;
-            bool saw_handler = false;
 
             while (1)
             {
@@ -785,16 +779,11 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
             }
 
             if (saw_handler)
-            {
                 handler = cast(int)ar_filter;
-                found_type = Found.handler;
-            }
-            else
-                found_type = (saw_cleanup ? Found.cleanup : Found.nothing);
         }
 
     do_something:
-        if (found_type == Found.nothing)
+        if (!saw_handler && !saw_cleanup)
         {
             static if (GNU_ARM_EABI_Unwinder)
             {
@@ -806,7 +795,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 
         if (actions & _UA_SEARCH_PHASE)
         {
-            if (found_type == Found.cleanup)
+            if (!saw_handler)
             {
                 static if (GNU_ARM_EABI_Unwinder)
                 {
@@ -826,8 +815,8 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         }
     }
 
-    // Unexpected terminate or negative handler.
-    if (found_type == Found.terminate || handler < 0)
+    // Unexpected negative handler, call terminate directly.
+    if (handler < 0)
         terminate(__LINE__);
 
     // We can't use any of the deh routines with foreign exceptions,
