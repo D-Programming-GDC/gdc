@@ -585,7 +585,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     const(ubyte)* action_record;
     const(ubyte)* p;
     _Unwind_Ptr landing_pad, ip;
-    int handler_switch_value;
+    int handler;
     int ip_before_insn = 0;
 
     ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
@@ -595,7 +595,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
         && ! foreign_exception)
     {
-        restore_caught_exception(ue_header, handler_switch_value,
+        restore_caught_exception(ue_header, handler,
                                  language_specific_data, landing_pad);
         found_type = (landing_pad == 0 ? Found.terminate : Found.handler);
         goto install_context;
@@ -625,7 +625,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         --ip;
     landing_pad = 0;
     action_record = null;
-    handler_switch_value = 0;
+    handler = 0;
 
     version (GNU_SjLj_Exceptions)
     {
@@ -787,7 +787,7 @@ found_something:
 
         if (saw_handler)
         {
-            handler_switch_value = cast(int)ar_filter;
+            handler = cast(int)ar_filter;
             found_type = Found.handler;
         }
         else
@@ -816,39 +816,21 @@ do_something:
         // For domestic exceptions, we cache data from phase 1 for phase 2.
         if (! foreign_exception)
         {
-            save_caught_exception(ue_header, context, handler_switch_value,
+            save_caught_exception(ue_header, context, handler,
                                   language_specific_data, landing_pad);
         }
         return _URC_HANDLER_FOUND;
     }
 
 install_context:
+    // Unexpected terminate or negative handler.
+    if (found_type == Found.terminate || handler < 0)
+        terminate(__LINE__);
+
     // We can't use any of the deh routines with foreign exceptions,
     // because they all expect ue_header to be an ExceptionHeader.
-    // So in that case, call terminate or unexpected directly.
-    if ((actions & _UA_FORCE_UNWIND) || foreign_exception)
+    if (!(actions & _UA_FORCE_UNWIND) && !foreign_exception)
     {
-        if (found_type == Found.terminate || handler_switch_value < 0)
-            terminate(__LINE__);
-    }
-    else
-    {
-        if (found_type == Found.terminate)
-            terminate(__LINE__);
-
-        // Cache the TType base value for unexpected calls, as we won't
-        // have an _Unwind_Context then.
-        if (handler_switch_value < 0)
-        {
-            parse_lsda_header(context, language_specific_data, &info);
-            info.ttype_base = base_of_encoded_value(info.ttype_encoding, context);
-
-            static if (GNU_ARM_EABI_Unwinder)
-                ue_header.barrier_cache.bitpattern[1] = info.ttype_base;
-            else
-                xh.landingPad = info.ttype_base;
-        }
-
         // D Note: If there are any in-flight exceptions being thrown,
         // chain our current object onto the end of the prevous object.
         while (xh.next)
@@ -856,9 +838,9 @@ install_context:
             ExceptionHeader* ph = xh.next;
 
             const(ubyte)* ph_language_specific_data;
-            int ph_handler_switch_value;
+            int ph_handler;
             _Unwind_Ptr ph_landing_pad;
-            restore_caught_exception(&ph.unwindHeader, ph_handler_switch_value,
+            restore_caught_exception(&ph.unwindHeader, ph_handler,
                                      ph_language_specific_data, ph_landing_pad);
 
             // Stop if thrown exceptions are unrelated.
@@ -881,11 +863,11 @@ install_context:
 
                 // Update our exception object.
                 xh.object = ph.object;
-                if (ph_handler_switch_value != handler_switch_value)
+                if (ph_handler != handler)
                 {
-                    handler_switch_value = ph_handler_switch_value;
+                    handler = ph_handler;
 
-                    save_caught_exception(ue_header, context, handler_switch_value,
+                    save_caught_exception(ue_header, context, handler,
                                           language_specific_data, landing_pad);
                 }
             }
@@ -899,8 +881,7 @@ install_context:
     // pointer, and this extension is target dependent.
     _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
                   cast(_Unwind_Ptr)ue_header);
-    _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
-                  handler_switch_value);
+    _Unwind_SetGR(context, __builtin_eh_return_data_regno(1), handler);
     _Unwind_SetIP(context, landing_pad);
 
     return _URC_INSTALL_CONTEXT;
