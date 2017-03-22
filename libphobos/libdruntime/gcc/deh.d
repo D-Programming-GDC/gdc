@@ -545,6 +545,17 @@ private void save_caught_exception(_Unwind_Exception* unwindHeader,
     }
 }
 
+// Called when the personality function has found neither a cleanup or handler.
+_Unwind_Reason_Code CONTINUE_UNWINDING()
+{
+    static if (GNU_ARM_EABI_Unwinder)
+    {
+        if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
+            return _URC_FAILURE;
+    }
+    return _URC_CONTINUE_UNWIND;
+}
+
 // Using a different personality function name causes link failures
 // when trying to mix code using different exception handling models.
 version (GNU_SEH_Exceptions)
@@ -581,6 +592,11 @@ static if (GNU_ARM_EABI_Unwinder)
         switch (state & _US_ACTION_MASK)
         {
             case _US_VIRTUAL_UNWIND_FRAME:
+                // If the unwind state pattern is (_US_VIRTUAL_UNWIND_FRAME | _US_FORCE_UNWIND)
+                // then we don't need to search for any handler as it is not a real exception.
+                // Just unwind the stack.
+                if (state & _US_FORCE_UNWIND)
+                    return CONTINUE_UNWINDING;
                 actions = _UA_SEARCH_PHASE;
                 break;
 
@@ -592,9 +608,7 @@ static if (GNU_ARM_EABI_Unwinder)
                 break;
 
             case _US_UNWIND_FRAME_RESUME:
-                if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
-                    return _URC_FAILURE;
-                return _URC_CONTINUE_UNWIND;
+                return CONTINUE_UNWINDING;
 
             default:
                 __builtin_abort();
@@ -672,14 +686,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 
         // If no LSDA, then there are no handlers or cleanups.
         if (! language_specific_data)
-        {
-            static if (GNU_ARM_EABI_Unwinder)
-            {
-                if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
-                    return _URC_FAILURE;
-            }
-            return _URC_CONTINUE_UNWIND;
-        }
+            return CONTINUE_UNWINDING;
 
         // Parse the LSDA header
         lsda_header_info info;
@@ -787,26 +794,12 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         // This is for a destructor inside a cleanup, or a library routine
         // the compiler was not expecting to throw.
         if (!saw_handler && !saw_cleanup)
-        {
-            static if (GNU_ARM_EABI_Unwinder)
-            {
-                if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
-                    return _URC_FAILURE;
-            }
-            return _URC_CONTINUE_UNWIND;
-        }
+            return CONTINUE_UNWINDING;
 
         if (actions & _UA_SEARCH_PHASE)
         {
             if (!saw_handler)
-            {
-                static if (GNU_ARM_EABI_Unwinder)
-                {
-                    if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
-                        return _URC_FAILURE;
-                }
-                return _URC_CONTINUE_UNWIND;
-            }
+                return CONTINUE_UNWINDING;
 
             // For domestic exceptions, we cache data from phase 1 for phase 2.
             if (! foreign_exception)
