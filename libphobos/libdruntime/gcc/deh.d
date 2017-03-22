@@ -430,6 +430,88 @@ private const(ubyte)* parse_lsda_header(_Unwind_Context* context,
     return p;
 }
 
+// Look up and return the handler index of the classType in Action Table.
+int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
+                      const(ubyte)* pActionTable, bool foreign_exception,
+                      lsda_header_info* info,
+                      out bool saw_handler, out bool saw_cleanup)
+{
+    while (1)
+    {
+        auto ap = pActionTable;
+        auto TypeFilter = read_sleb128(&ap);
+        auto apn = ap;
+        auto NextRecordPtr = read_sleb128(&ap);
+
+        if (TypeFilter == 0)
+        {
+            // Zero filter values are cleanups.
+            saw_cleanup = true;
+        }
+        else if (TypeFilter > 0)
+        {
+            // Positive filter values are handlers.
+            ClassInfo ci = get_classinfo_entry(info, TypeFilter);
+
+            // D does not have catch-all handlers, and so the following
+            // assumes that we will never handle a null value.
+            assert(ci !is null);
+
+            if (ci.classinfo is __cpp_type_info_ptr.classinfo)
+            {
+                // catch_type is the catch clause type_info.
+                auto catch_type =
+                    cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
+                auto thrown_ptr =
+                    CxaExceptionHeader.getAdjustedPtr(unwindHeader, catch_type);
+
+                if (thrown_ptr)
+                {
+                    auto cxh = CxaExceptionHeader.toExceptionHeader(unwindHeader);
+                    // There's no saving between phases, so only cache pointer.
+                    // __cxa_begin_catch expects this to be set.
+                    if (actions & _UA_SEARCH_PHASE)
+                    {
+                        static if (GNU_ARM_EABI_Unwinder)
+                            unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrown_ptr;
+                        else
+                            cxh.adjustedPtr = thrown_ptr;
+                    }
+                    saw_handler = true;
+                    return cast(int)TypeFilter;
+                }
+            }
+            else if (!foreign_exception)
+            {
+                // D Note: will be performing dynamic cast twice, potentially
+                // Once here and once at the landing pad .. unless we cached
+                // here and had a begin_catch call.
+                ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
+                if (_d_isbaseof(eh.object.classinfo, ci))
+                {
+                    saw_handler = true;
+                    return cast(int)TypeFilter;
+                }
+            }
+            else
+            {
+                // ??? What to do about other GNU language exceptions.
+            }
+        }
+        else
+        {
+            // D Note: we don't have these...
+            break;
+        }
+
+        if (NextRecordPtr == 0)
+            break;
+        pActionTable = apn + NextRecordPtr;
+    }
+
+    return 0;
+}
+
 private ClassInfo get_classinfo_entry(lsda_header_info* info, _uleb128_t i)
 {
     _Unwind_Ptr ptr;
@@ -651,7 +733,6 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
                 landing_pad = cs_lp + 1;
                 if (cs_action)
                     action_record = info.action_table + cs_action - 1;
-                goto found_something;
             }
         }
         else
@@ -677,17 +758,11 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
                         landing_pad = info.LPStart + cs_lp;
                     if (cs_action)
                         action_record = info.action_table + cs_action - 1;
-                    goto found_something;
+                    break;
                 }
             }
         }
 
-        // If ip is not present in the table, C++ would call terminate.
-        // This is for a destructor inside a cleanup, or a library routine
-        // the compiler was not expecting to throw.
-        goto do_something;
-
-    found_something:
         if (landing_pad == 0)
         {
             // If ip is present, and has a null landing pad, there are
@@ -703,86 +778,14 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         else
         {
             // Otherwise we have a catch handler or exception specification.
-            _sleb128_t ar_filter, ar_disp;
-
-            while (1)
-            {
-                p = action_record;
-                ar_filter = read_sleb128(&p);
-                auto pn = p;
-                ar_disp = read_sleb128(&p);
-
-                if (ar_filter == 0)
-                {
-                    // Zero filter values are cleanups.
-                    saw_cleanup = true;
-                }
-                else if (ar_filter > 0)
-                {
-                    // Positive filter values are handlers.
-                    ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(unwindHeader);
-                    ClassInfo ci = get_classinfo_entry(&info, ar_filter);
-
-                    // D does not have catch-all handlers, and so the following
-                    // assumes that we will never handle a null value.
-                    assert(ci !is null);
-
-                    if (ci.classinfo is __cpp_type_info_ptr.classinfo)
-                    {
-                        // catch_type is the catch clause type_info.
-                        auto catch_type =
-                            cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
-                        auto thrown_ptr =
-                            CxaExceptionHeader.getAdjustedPtr(unwindHeader, catch_type);
-
-                        if (thrown_ptr)
-                        {
-                            auto cxh = CxaExceptionHeader.toExceptionHeader(unwindHeader);
-                            // There's no saving between phases, so only cache pointer.
-                            // __cxa_begin_catch expects this to be set.
-                            if (actions & _UA_SEARCH_PHASE)
-                            {
-                                static if (GNU_ARM_EABI_Unwinder)
-                                    unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrown_ptr;
-                                else
-                                    cxh.adjustedPtr = thrown_ptr;
-                            }
-                            saw_handler = true;
-                            break;
-                        }
-                    }
-                    else if (!foreign_exception)
-                    {
-                        // D Note: will be performing dynamic cast twice, potentially
-                        // Once here and once at the landing pad .. unless we cached
-                        // here and had a begin_catch call.
-                        if (_d_isbaseof(xh.object.classinfo, ci))
-                        {
-                            saw_handler = true;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        // ??? What to do about other GNU language exceptions.
-                    }
-                }
-                else
-                {
-                    // D Note: we don't have these...
-                    break;
-                }
-
-                if (ar_disp == 0)
-                    break;
-                action_record = pn + ar_disp;
-            }
-
-            if (saw_handler)
-                handler = cast(int)ar_filter;
+            handler = actionTableLookup(actions, unwindHeader, action_record,
+                                        foreign_exception, &info,
+                                        saw_handler, saw_cleanup);
         }
 
-    do_something:
+        // If ip is not present in the table, C++ would call terminate.
+        // This is for a destructor inside a cleanup, or a library routine
+        // the compiler was not expecting to throw.
         if (!saw_handler && !saw_cleanup)
         {
             static if (GNU_ARM_EABI_Unwinder)
