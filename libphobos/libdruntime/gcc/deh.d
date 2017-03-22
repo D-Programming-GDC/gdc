@@ -513,7 +513,7 @@ static if (GNU_ARM_EABI_Unwinder)
 {
     pragma(mangle, PERSONALITY_FUNCTION)
     extern(C) _Unwind_Reason_Code gdc_personality(_Unwind_State state,
-                                                  _Unwind_Exception* ue_header,
+                                                  _Unwind_Exception* unwindHeader,
                                                   _Unwind_Context* context)
     {
         _Unwind_Action actions;
@@ -527,12 +527,12 @@ static if (GNU_ARM_EABI_Unwinder)
             case _US_UNWIND_FRAME_STARTING:
                 actions = _UA_CLEANUP_PHASE;
                 if (!(state & _US_FORCE_UNWIND)
-                    && ue_header.barrier_cache.sp == _Unwind_GetGR(context, UNWIND_STACK_REG))
+                    && unwindHeader.barrier_cache.sp == _Unwind_GetGR(context, UNWIND_STACK_REG))
                     actions |= _UA_HANDLER_FRAME;
                 break;
 
             case _US_UNWIND_FRAME_RESUME:
-                if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
+                if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
                     return _URC_FAILURE;
                 return _URC_CONTINUE_UNWIND;
 
@@ -545,9 +545,9 @@ static if (GNU_ARM_EABI_Unwinder)
         // the function and LSDA pointers.  The ARM implementation caches these
         // in the exception header (UCB).  To avoid rewriting everything we make
         // the virtual IP register point at the UCB.
-        _Unwind_SetGR(context, UNWIND_POINTER_REG, cast(_Unwind_Ptr)ue_header);
+        _Unwind_SetGR(context, UNWIND_POINTER_REG, cast(_Unwind_Ptr)unwindHeader);
 
-        return __gdc_personality(actions, ue_header, context);
+        return __gdc_personality(actions, unwindHeader, context);
     }
 }
 else
@@ -556,19 +556,19 @@ else
     extern(C) _Unwind_Reason_Code gdc_personality(int iversion,
                                                   _Unwind_Action actions,
                                                   _Unwind_Exception_Class exception_class,
-                                                  _Unwind_Exception* ue_header,
+                                                  _Unwind_Exception* unwindHeader,
                                                   _Unwind_Context* context)
     {
         // Interface version check.
         if (iversion != 1)
             return _URC_FATAL_PHASE1_ERROR;
 
-        return __gdc_personality(actions, ue_header, context);
+        return __gdc_personality(actions, unwindHeader, context);
     }
 }
 
 private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
-                                              _Unwind_Exception* ue_header,
+                                              _Unwind_Exception* unwindHeader,
                                               _Unwind_Context* context)
 {
     enum Found
@@ -588,14 +588,14 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     int handler;
     int ip_before_insn = 0;
 
-    ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(ue_header);
-    bool foreign_exception = !ExceptionHeader.isGdcExceptionClass(ue_header.exception_class);
+    ExceptionHeader* xh = ExceptionHeader.toExceptionHeader(unwindHeader);
+    bool foreign_exception = !ExceptionHeader.isGdcExceptionClass(unwindHeader.exception_class);
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
         && ! foreign_exception)
     {
-        restore_caught_exception(ue_header, handler,
+        restore_caught_exception(unwindHeader, handler,
                                  language_specific_data, landing_pad);
         found_type = (landing_pad == 0 ? Found.terminate : Found.handler);
         goto install_context;
@@ -611,7 +611,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     if (! language_specific_data)
     {
         static if (GNU_ARM_EABI_Unwinder)
-            if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
+            if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
                 return _URC_FAILURE;
         return _URC_CONTINUE_UNWIND;
     }
@@ -739,17 +739,17 @@ found_something:
                     auto catch_type =
                         cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
                     auto thrown_ptr =
-                        CxaExceptionHeader.getAdjustedPtr(ue_header, catch_type);
+                        CxaExceptionHeader.getAdjustedPtr(unwindHeader, catch_type);
 
                     if (thrown_ptr)
                     {
-                        auto cxh = cast(CxaExceptionHeader*)(ue_header + 1) - 1;
+                        auto cxh = cast(CxaExceptionHeader*)(unwindHeader + 1) - 1;
                         // There's no saving between phases, so cache pointer.
                         // __cxa_begin_catch expects this to be set.
                         if (actions & _UA_SEARCH_PHASE)
                         {
                             static if (GNU_ARM_EABI_Unwinder)
-                                ue_header.barrier_cache.bitpattern[0] = cast(_uw) thrown_ptr;
+                                unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrown_ptr;
                             else
                                 cxh.adjustedPtr = thrown_ptr;
                         }
@@ -798,7 +798,7 @@ do_something:
     if (found_type == Found.nothing)
     {
         static if (GNU_ARM_EABI_Unwinder)
-            if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
+            if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
                 return _URC_FAILURE;
         return _URC_CONTINUE_UNWIND;
     }
@@ -808,7 +808,7 @@ do_something:
         if (found_type == Found.cleanup)
         {
             static if (GNU_ARM_EABI_Unwinder)
-                if (__gnu_unwind_frame(ue_header, context) != _URC_OK)
+                if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
                     return _URC_FAILURE;
             return _URC_CONTINUE_UNWIND;
         }
@@ -816,7 +816,7 @@ do_something:
         // For domestic exceptions, we cache data from phase 1 for phase 2.
         if (! foreign_exception)
         {
-            save_caught_exception(ue_header, context, handler,
+            save_caught_exception(unwindHeader, context, handler,
                                   language_specific_data, landing_pad);
         }
         return _URC_HANDLER_FOUND;
@@ -828,59 +828,69 @@ install_context:
         terminate(__LINE__);
 
     // We can't use any of the deh routines with foreign exceptions,
-    // because they all expect ue_header to be an ExceptionHeader.
+    // because they all expect unwindHeader to be an ExceptionHeader.
     if (!(actions & _UA_FORCE_UNWIND) && !foreign_exception)
     {
         // D Note: If there are any in-flight exceptions being thrown,
         // chain our current object onto the end of the prevous object.
-        while (xh.next)
+        ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
+        auto currentLsd = language_specific_data;
+        bool bypassed = false;
+
+        while (eh.next)
         {
-            ExceptionHeader* ph = xh.next;
+            ExceptionHeader* ehn = eh.next;
 
-            const(ubyte)* ph_language_specific_data;
-            int ph_handler;
-            _Unwind_Ptr ph_landing_pad;
-            restore_caught_exception(&ph.unwindHeader, ph_handler,
-                                     ph_language_specific_data, ph_landing_pad);
-
-            // Stop if thrown exceptions are unrelated.
-            if (language_specific_data != ph_language_specific_data)
-                break;
-
-            Error e = cast(Error)xh.object;
-            if (e !is null && (cast(Error)ph.object) is null)
+            Error e = cast(Error)eh.object;
+            if (e !is null && !cast(Error)ehn.object)
             {
                 // We found an Error, bypass the exception chain.
-                e.bypassedException = ph.object;
+                currentLsd = ehn.languageSpecificData;
+                eh = ehn;
+                bypassed = true;
+                continue;
             }
-            else
+
+            // Don't combine when the exceptions are from different functions.
+            if (currentLsd != ehn.languageSpecificData)
+                break;
+
+            // Add our object onto the end of the existing chain.
+            Throwable n = ehn.object;
+            while (n.next)
+                n = n.next;
+            n.next = eh.object;
+
+            // Replace our exception object with in-flight one
+            eh.object = ehn.object;
+            if (ehn.handler != handler && !bypassed)
             {
-                // Add our object onto the end of the existing chain.
-                Throwable n = ph.object;
-                while (n.next)
-                    n = n.next;
-                n.next = xh.object;
+                handler = ehn.handler;
 
-                // Update our exception object.
-                xh.object = ph.object;
-                if (ph_handler != handler)
-                {
-                    handler = ph_handler;
-
-                    save_caught_exception(ue_header, context, handler,
-                                          language_specific_data, landing_pad);
-                }
+                save_caught_exception(unwindHeader, context, handler,
+                                      language_specific_data, landing_pad);
             }
+
             // Exceptions chained, can now throw away the previous header.
-            xh.next = ph.next;
-            _Unwind_DeleteException(&ph.unwindHeader);
+            eh.next = ehn.next;
+            _Unwind_DeleteException(&ehn.unwindHeader);
+        }
+
+        if (bypassed)
+        {
+            eh = ExceptionHeader.toExceptionHeader(unwindHeader);
+            Error e = cast(Error)eh.object;
+            auto ehn = eh.next;
+            e.bypassedException = ehn.object;
+            eh.next = ehn.next;
+            _Unwind_DeleteException(&ehn.unwindHeader);
         }
     }
 
     // For targets with pointers smaller than the word size, we must extend the
     // pointer, and this extension is target dependent.
     _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
-                  cast(_Unwind_Ptr)ue_header);
+                  cast(_Unwind_Ptr)unwindHeader);
     _Unwind_SetGR(context, __builtin_eh_return_data_regno(1), handler);
     _Unwind_SetIP(context, landing_pad);
 
