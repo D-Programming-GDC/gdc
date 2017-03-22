@@ -1,3 +1,8 @@
+2017-03-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (d_build_builtins_module): Always mark gcc builtins as
+	nothrow functions.
+
 2017-03-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-longdouble.cc (CTFloat::zero): New variable.
