@@ -564,7 +564,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     const(ubyte)* p;
     _Unwind_Ptr landing_pad, ip;
     int handler;
-    int ip_before_insn = 0;
+    int ip_before_insn;
 
     bool foreign_exception = !ExceptionHeader.isGdcExceptionClass(unwindHeader.exception_class);
 
@@ -589,28 +589,36 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         goto install_context;
     }
 
-    // NOTE: In Phase 1, record _Unwind_GetIPInfo in xh.object as a part of
-    // the stack trace for this exception.  This will only collect D frames,
-    // but perhaps that is acceptable.
-    language_specific_data = cast(ubyte*)
-        _Unwind_GetLanguageSpecificData(context);
+    language_specific_data = cast(ubyte*)_Unwind_GetLanguageSpecificData(context);
 
     // If no LSDA, then there are no handlers or cleanups.
     if (! language_specific_data)
     {
         static if (GNU_ARM_EABI_Unwinder)
+        {
             if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
                 return _URC_FAILURE;
+        }
         return _URC_CONTINUE_UNWIND;
     }
 
     // Parse the LSDA header
     p = parse_lsda_header(context, language_specific_data, &info);
     info.ttype_base = base_of_encoded_value(info.ttype_encoding, context);
-    ip = _Unwind_GetIPInfo(context, &ip_before_insn);
 
-    if (! ip_before_insn)
+    // Get instruction pointer (ip) at start of instruction that threw
+    version (CRuntime_Glibc)
+    {
+        ip = _Unwind_GetIPInfo(context, &ip_before_insn);
+        if (!ip_before_insn)
+            --ip;
+    }
+    else
+    {
+        ip = _Unwind_GetIP(context);
         --ip;
+    }
+
     landing_pad = 0;
     action_record = null;
     handler = 0;
@@ -618,11 +626,13 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     version (GNU_SjLj_Exceptions)
     {
         // The given "IP" is an index into the call-site table, with two
-        // exceptions -- -1 means no-action, and 0 means terminate.  But
-        // since we're using uleb128 values, we've not got random access
-        // to the array.
-        if (cast(int)ip < 0)
+        // exceptions -- -1 means no-action, and 0 means terminate.
+        // But since we're using uleb128 values, we've not got random
+        // access to the array.
+        if (cast(int) ip < 0)
+        {
             return _URC_CONTINUE_UNWIND;
+        }
         else if (ip == 0)
         {
             // Fall through to set Found.terminate.
@@ -786,8 +796,10 @@ do_something:
     if (found_type == Found.nothing)
     {
         static if (GNU_ARM_EABI_Unwinder)
+        {
             if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
                 return _URC_FAILURE;
+        }
         return _URC_CONTINUE_UNWIND;
     }
 
@@ -796,8 +808,10 @@ do_something:
         if (found_type == Found.cleanup)
         {
             static if (GNU_ARM_EABI_Unwinder)
+            {
                 if (__gnu_unwind_frame(unwindHeader, context) != _URC_OK)
                     return _URC_FAILURE;
+            }
             return _URC_CONTINUE_UNWIND;
         }
 
