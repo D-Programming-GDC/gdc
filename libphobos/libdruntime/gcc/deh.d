@@ -390,6 +390,144 @@ struct lsda_header_info
     ubyte call_site_encoding;
 }
 
+// Read and extract information from the LSDA (.gcc_except_table section).
+_Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool foreign_exception,
+                             _Unwind_Action actions,
+                             _Unwind_Exception* unwindHeader,
+                             _Unwind_Context* context,
+                             out _Unwind_Ptr landingPad, out int handler)
+{
+    // If no LSDA, then there are no handlers or cleanups.
+    if (! lsda)
+        return CONTINUE_UNWINDING;
+
+    // Parse the LSDA header
+    lsda_header_info info;
+    auto p = parse_lsda_header(context, lsda, &info);
+    info.ttype_base = base_of_encoded_value(info.ttype_encoding, context);
+
+    // Get instruction pointer (ip) at start of instruction that threw.
+    version (CRuntime_Glibc)
+    {
+        int ip_before_insn;
+        auto ip = _Unwind_GetIPInfo(context, &ip_before_insn);
+        if (!ip_before_insn)
+            --ip;
+    }
+    else
+    {
+        auto ip = _Unwind_GetIP(context);
+        --ip;
+    }
+
+    bool saw_cleanup = false;
+    bool saw_handler = false;
+    const(ubyte)* pActionTable = null;
+
+    landingPad = 0;
+    handler = 0;
+
+    version (GNU_SjLj_Exceptions)
+    {
+        // The given "IP" is an index into the call-site table, with two
+        // exceptions -- -1 means no-action, and 0 means terminate.
+        // But since we're using uleb128 values, we've not got random
+        // access to the array.
+        if (cast(int) ip < 0)
+        {
+            return _URC_CONTINUE_UNWIND;
+        }
+        else if (ip == 0)
+        {
+            // Fall through to set Found.terminate.
+        }
+        else
+        {
+            _uleb128_t cs_lp, cs_action;
+            do
+            {
+                cs_lp = read_uleb128(&p);
+                cs_action = read_uleb128(&p);
+            }
+            while (--ip);
+
+            // Can never have null landing pad for sjlj -- that would have
+            // been indicated by a -1 call site index.
+            landingPad = cs_lp + 1;
+            if (cs_action)
+                pActionTable = info.action_table + cs_action - 1;
+        }
+    }
+    else
+    {
+        // Search the call-site table for the action associated with this IP.
+        while (p < info.action_table)
+        {
+            _Unwind_Ptr cs_start, cs_len, cs_lp;
+            _uleb128_t cs_action;
+
+            // Note that all call-site encodings are "absolute" displacements.
+            p = read_encoded_value(null, info.call_site_encoding, p, &cs_start);
+            p = read_encoded_value(null, info.call_site_encoding, p, &cs_len);
+            p = read_encoded_value(null, info.call_site_encoding, p, &cs_lp);
+            cs_action = read_uleb128(&p);
+
+            // The table is sorted, so if we've passed the ip, stop.
+            if (ip < info.Start + cs_start)
+                p = info.action_table;
+            else if (ip < info.Start + cs_start + cs_len)
+            {
+                if (cs_lp)
+                    landingPad = info.LPStart + cs_lp;
+                if (cs_action)
+                    pActionTable = info.action_table + cs_action - 1;
+                break;
+            }
+        }
+    }
+
+    if (landingPad == 0)
+    {
+        // If ip is present, and has a null landing pad, there are
+        // no cleanups or handlers to be run.
+    }
+    else if (pActionTable == null)
+    {
+        // If ip is present, has a non-null landing pad, and a null
+        // action table offset, then there are only cleanups present.
+        // Cleanups use a zero switch value, as set above.
+        saw_cleanup = true;
+    }
+    else
+    {
+        // Otherwise we have a catch handler or exception specification.
+        handler = actionTableLookup(actions, unwindHeader, pActionTable,
+                                    foreign_exception, &info,
+                                    saw_handler, saw_cleanup);
+    }
+
+    // If ip is not present in the table, C++ would call terminate.
+    // This is for a destructor inside a cleanup, or a library routine
+    // the compiler was not expecting to throw.
+    if (!saw_handler && !saw_cleanup)
+        return CONTINUE_UNWINDING;
+
+    if (actions & _UA_SEARCH_PHASE)
+    {
+        if (!saw_handler)
+            return CONTINUE_UNWINDING;
+
+        // For domestic exceptions, we cache data from phase 1 for phase 2.
+        if (! foreign_exception)
+        {
+            save_caught_exception(unwindHeader, context, handler, lsda, landingPad);
+        }
+        return _URC_HANDLER_FOUND;
+    }
+
+    return 0;
+}
+
 private const(ubyte)* parse_lsda_header(_Unwind_Context* context,
                                         const(ubyte)* p, lsda_header_info* info)
 {
@@ -648,13 +786,10 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
                                               _Unwind_Context* context)
 {
     const(ubyte)* language_specific_data;
-    const(ubyte)* action_record;
     _Unwind_Ptr landing_pad;
     int handler;
 
     bool foreign_exception = !isGdcExceptionClass(exceptionClass);
-    bool saw_cleanup = false;
-    bool saw_handler = false;
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
@@ -677,138 +812,17 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         // Shouldn't have cached a null landing pad in phase 1.
         if (landing_pad == 0)
             terminate(__LINE__);
-
-        saw_handler = true;
     }
     else
     {
         language_specific_data = cast(ubyte*)_Unwind_GetLanguageSpecificData(context);
 
-        // If no LSDA, then there are no handlers or cleanups.
-        if (! language_specific_data)
-            return CONTINUE_UNWINDING;
+        auto result = scanLSDA(language_specific_data, foreign_exception, actions,
+                               unwindHeader, context, landing_pad, handler);
 
-        // Parse the LSDA header
-        lsda_header_info info;
-        auto p = parse_lsda_header(context, language_specific_data, &info);
-        info.ttype_base = base_of_encoded_value(info.ttype_encoding, context);
-
-        // Get instruction pointer (ip) at start of instruction that threw.
-        version (CRuntime_Glibc)
-        {
-            int ip_before_insn;
-            auto ip = _Unwind_GetIPInfo(context, &ip_before_insn);
-            if (!ip_before_insn)
-                --ip;
-        }
-        else
-        {
-            auto ip = _Unwind_GetIP(context);
-            --ip;
-        }
-
-        landing_pad = 0;
-        action_record = null;
-        handler = 0;
-
-        version (GNU_SjLj_Exceptions)
-        {
-            // The given "IP" is an index into the call-site table, with two
-            // exceptions -- -1 means no-action, and 0 means terminate.
-            // But since we're using uleb128 values, we've not got random
-            // access to the array.
-            if (cast(int) ip < 0)
-            {
-                return _URC_CONTINUE_UNWIND;
-            }
-            else if (ip == 0)
-            {
-                // Fall through to set Found.terminate.
-            }
-            else
-            {
-                _uleb128_t cs_lp, cs_action;
-                do
-                {
-                    cs_lp = read_uleb128(&p);
-                    cs_action = read_uleb128(&p);
-                }
-                while (--ip);
-
-                // Can never have null landing pad for sjlj -- that would have
-                // been indicated by a -1 call site index.
-                landing_pad = cs_lp + 1;
-                if (cs_action)
-                    action_record = info.action_table + cs_action - 1;
-            }
-        }
-        else
-        {
-            // Search the call-site table for the action associated with this IP.
-            while (p < info.action_table)
-            {
-                _Unwind_Ptr cs_start, cs_len, cs_lp;
-                _uleb128_t cs_action;
-
-                // Note that all call-site encodings are "absolute" displacements.
-                p = read_encoded_value(null, info.call_site_encoding, p, &cs_start);
-                p = read_encoded_value(null, info.call_site_encoding, p, &cs_len);
-                p = read_encoded_value(null, info.call_site_encoding, p, &cs_lp);
-                cs_action = read_uleb128(&p);
-
-                // The table is sorted, so if we've passed the ip, stop.
-                if (ip < info.Start + cs_start)
-                    p = info.action_table;
-                else if (ip < info.Start + cs_start + cs_len)
-                {
-                    if (cs_lp)
-                        landing_pad = info.LPStart + cs_lp;
-                    if (cs_action)
-                        action_record = info.action_table + cs_action - 1;
-                    break;
-                }
-            }
-        }
-
-        if (landing_pad == 0)
-        {
-            // If ip is present, and has a null landing pad, there are
-            // no cleanups or handlers to be run.
-        }
-        else if (action_record == null)
-        {
-            // If ip is present, has a non-null landing pad, and a null
-            // action table offset, then there are only cleanups present.
-            // Cleanups use a zero switch value, as set above.
-            saw_cleanup = true;
-        }
-        else
-        {
-            // Otherwise we have a catch handler or exception specification.
-            handler = actionTableLookup(actions, unwindHeader, action_record,
-                                        foreign_exception, &info,
-                                        saw_handler, saw_cleanup);
-        }
-
-        // If ip is not present in the table, C++ would call terminate.
-        // This is for a destructor inside a cleanup, or a library routine
-        // the compiler was not expecting to throw.
-        if (!saw_handler && !saw_cleanup)
-            return CONTINUE_UNWINDING;
-
-        if (actions & _UA_SEARCH_PHASE)
-        {
-            if (!saw_handler)
-                return CONTINUE_UNWINDING;
-
-            // For domestic exceptions, we cache data from phase 1 for phase 2.
-            if (! foreign_exception)
-            {
-                save_caught_exception(unwindHeader, context, handler,
-                                      language_specific_data, landing_pad);
-            }
-            return _URC_HANDLER_FOUND;
-        }
+        // Positive on handler found in phase 1, continue unwinding, or failure.
+        if (result)
+            return result;
     }
 
     // Unexpected negative handler, call terminate directly.
