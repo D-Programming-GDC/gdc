@@ -486,22 +486,15 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool is_foreign,
     bool saw_handler = false;
     const(ubyte)* actionRecord = null;
 
-    landingPad = 0;
-    handler = 0;
-
     version (GNU_SjLj_Exceptions)
     {
         // The given "IP" is an index into the call-site table, with two
         // exceptions -- -1 means no-action, and 0 means terminate.
         // But since we're using uleb128 values, we've not got random
         // access to the array.
-        if (cast(int) ip < 0)
+        if (cast(int) ip <= 0)
         {
             return _URC_CONTINUE_UNWIND;
-        }
-        else if (ip == 0)
-        {
-            // Fall through to set Found.terminate.
         }
         else
         {
@@ -608,6 +601,10 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
         {
             // Zero filter values are cleanups.
             saw_cleanup = true;
+        }
+        else if (actions & _UA_FORCE_UNWIND)
+        {
+            // During forced unwinding, we only run cleanups.
         }
         else if (ARFilter > 0)
         {
@@ -858,7 +855,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 
     // We can't use any of the deh routines with foreign exceptions,
     // because they all expect unwindHeader to be an ExceptionHeader.
-    if (!(actions & _UA_FORCE_UNWIND) && !is_foreign)
+    if (!is_foreign)
     {
         // If there are any in-flight exceptions being thrown, chain our
         // current object onto the end of the prevous object.
