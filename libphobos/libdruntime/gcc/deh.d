@@ -427,7 +427,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool is_foreign,
                              out _Unwind_Ptr landingPad, out int handler)
 {
     // If no LSDA, then there are no handlers or cleanups.
-    if (!lsda)
+    if (lsda is null)
         return CONTINUE_UNWINDING;
 
     // Parse the LSDA header
@@ -545,7 +545,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool is_foreign,
         // IP is present, but has a null landing pad.
         // No cleanups or handlers to be run.
     }
-    else if (actionRecord == null)
+    else if (actionRecord is null)
     {
         // If ip is present, has a non-null landing pad, and a null
         // action table offset, then there are only cleanups present.
@@ -628,7 +628,7 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
                 auto catchType = cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
                 auto thrownPtr = CxaExceptionHeader.getAdjustedPtr(unwindHeader, catchType);
 
-                if (thrownPtr)
+                if (thrownPtr !is null)
                 {
                     // There's no saving between phases, so only cache pointer.
                     // __cxa_begin_catch expects this to be set.
