@@ -420,9 +420,8 @@ extern(C) void _d_throw(Throwable object)
 /**
  * Read and extract information from the LSDA (.gcc_except_table section).
  */
-_Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool is_foreign,
-                             _Unwind_Action actions,
-                             _Unwind_Exception* unwindHeader,
+_Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class exceptionClass,
+                             _Unwind_Action actions, _Unwind_Exception* unwindHeader,
                              _Unwind_Context* context,
                              out _Unwind_Ptr landingPad, out int handler)
 {
@@ -556,7 +555,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool is_foreign,
     {
         // Otherwise we have a catch handler or exception specification.
         handler = actionTableLookup(actions, unwindHeader, actionRecord,
-                                    is_foreign, TTypeBase,
+                                    exceptionClass, TTypeBase,
                                     TType, TTypeEncoding,
                                     saw_handler, saw_cleanup);
     }
@@ -571,7 +570,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool is_foreign,
             return CONTINUE_UNWINDING;
 
         // For domestic exceptions, we cache data from phase 1 for phase 2.
-        if (!is_foreign)
+        if (isGdcExceptionClass(exceptionClass))
         {
             save_caught_exception(unwindHeader, context, handler, lsda, landingPad);
         }
@@ -585,7 +584,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool is_foreign,
  * Look up and return the handler index of the classType in Action Table.
  */
 int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
-                      const(ubyte)* actionRecord, bool is_foreign,
+                      const(ubyte)* actionRecord, _Unwind_Exception_Class exceptionClass,
                       _Unwind_Ptr TTypeBase, const(ubyte)* TType,
                       ubyte TTypeEncoding,
                       out bool saw_handler, out bool saw_cleanup)
@@ -622,7 +621,8 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
             // assumes that we will never handle a null value.
             assert(ci !is null);
 
-            if (ci.classinfo is __cpp_type_info_ptr.classinfo)
+            if (ci.classinfo is __cpp_type_info_ptr.classinfo
+                && isGxxExceptionClass(exceptionClass))
             {
                 // catchType is the catch clause type_info.
                 auto catchType = cast(CxxTypeInfo)((cast(__cpp_type_info_ptr)cast(void*)ci).ptr);
@@ -646,7 +646,7 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
                     return cast(int)ARFilter;
                 }
             }
-            else if (!is_foreign)
+            else if (isGdcExceptionClass(exceptionClass))
             {
                 // D Note: will be performing dynamic cast twice, potentially
                 // Once here and once at the landing pad .. unless we cached
@@ -813,11 +813,9 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     _Unwind_Ptr landingPad;
     int handler;
 
-    bool is_foreign = !isGdcExceptionClass(exceptionClass);
-
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
-        && !is_foreign)
+        && isGdcExceptionClass(exceptionClass))
     {
         static if (GNU_ARM_EABI_Unwinder)
         {
@@ -841,7 +839,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     {
         lsda = cast(ubyte*)_Unwind_GetLanguageSpecificData(context);
 
-        auto result = scanLSDA(lsda, is_foreign, actions, unwindHeader,
+        auto result = scanLSDA(lsda, exceptionClass, actions, unwindHeader,
                                context, landingPad, handler);
 
         // Positive on handler found in phase 1, continue unwinding, or failure.
@@ -855,7 +853,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 
     // We can't use any of the deh routines with foreign exceptions,
     // because they all expect unwindHeader to be an ExceptionHeader.
-    if (!is_foreign)
+    if (isGdcExceptionClass(exceptionClass))
     {
         // If there are any in-flight exceptions being thrown, chain our
         // current object onto the end of the prevous object.
