@@ -379,17 +379,6 @@ extern(C) void _d_throw(Throwable object)
 }
 
 
-struct lsda_header_info
-{
-    _Unwind_Ptr Start;
-    _Unwind_Ptr LPStart;
-    _Unwind_Ptr ttype_base;
-    const(ubyte)* TType;
-    const(ubyte)* action_table;
-    ubyte ttype_encoding;
-    ubyte call_site_encoding;
-}
-
 // Read and extract information from the LSDA (.gcc_except_table section).
 _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool foreign_exception,
                              _Unwind_Action actions,
@@ -402,9 +391,42 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool foreign_exception,
         return CONTINUE_UNWINDING;
 
     // Parse the LSDA header
-    lsda_header_info info;
-    auto p = parse_lsda_header(context, lsda, &info);
-    info.ttype_base = base_of_encoded_value(info.ttype_encoding, context);
+    auto p = lsda;
+
+    auto Start = (context ? _Unwind_GetRegionStart(context) : 0);
+
+    // Find @LPStart, the base to which landing pad offsets are relative.
+    ubyte lpstart_encoding = *p++;
+    _Unwind_Ptr LPStart = 0;
+
+    if (lpstart_encoding != DW_EH_PE_omit)
+        p = read_encoded_value(context, lpstart_encoding, p, &LPStart);
+    else
+        LPStart = Start;
+
+    // Find @TType, the base of the handler and exception spec type data.
+    ubyte ttype_encoding = *p++;
+    const(ubyte)* TType = null;
+
+    if (ttype_encoding != DW_EH_PE_omit)
+    {
+        static if (__traits(compiles, _TTYPE_ENCODING))
+        {
+            // Older ARM EABI toolchains set this value incorrectly, so use a
+            // hardcoded OS-specific format.
+            ttype_encoding = _TTYPE_ENCODING;
+        }
+        auto tmp = read_uleb128(&p);
+        TType = p + tmp;
+    }
+
+    // The encoding and length of the call-site table; the action table
+    // immediately follows.
+    ubyte call_site_encoding = *p++;
+    auto tmp = read_uleb128(&p);
+    const(ubyte)* action_table = p + tmp;
+
+    auto ttype_base = base_of_encoded_value(ttype_encoding, context);
 
     // Get instruction pointer (ip) at start of instruction that threw.
     version (CRuntime_Glibc)
@@ -455,32 +477,32 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool foreign_exception,
             // been indicated by a -1 call site index.
             landingPad = cs_lp + 1;
             if (cs_action)
-                pActionTable = info.action_table + cs_action - 1;
+                pActionTable = action_table + cs_action - 1;
         }
     }
     else
     {
         // Search the call-site table for the action associated with this IP.
-        while (p < info.action_table)
+        while (p < action_table)
         {
             _Unwind_Ptr cs_start, cs_len, cs_lp;
             _uleb128_t cs_action;
 
             // Note that all call-site encodings are "absolute" displacements.
-            p = read_encoded_value(null, info.call_site_encoding, p, &cs_start);
-            p = read_encoded_value(null, info.call_site_encoding, p, &cs_len);
-            p = read_encoded_value(null, info.call_site_encoding, p, &cs_lp);
+            p = read_encoded_value(null, call_site_encoding, p, &cs_start);
+            p = read_encoded_value(null, call_site_encoding, p, &cs_len);
+            p = read_encoded_value(null, call_site_encoding, p, &cs_lp);
             cs_action = read_uleb128(&p);
 
             // The table is sorted, so if we've passed the ip, stop.
-            if (ip < info.Start + cs_start)
-                p = info.action_table;
-            else if (ip < info.Start + cs_start + cs_len)
+            if (ip < Start + cs_start)
+                p = action_table;
+            else if (ip < Start + cs_start + cs_len)
             {
                 if (cs_lp)
-                    landingPad = info.LPStart + cs_lp;
+                    landingPad = LPStart + cs_lp;
                 if (cs_action)
-                    pActionTable = info.action_table + cs_action - 1;
+                    pActionTable = action_table + cs_action - 1;
                 break;
             }
         }
@@ -502,7 +524,8 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool foreign_exception,
     {
         // Otherwise we have a catch handler or exception specification.
         handler = actionTableLookup(actions, unwindHeader, pActionTable,
-                                    foreign_exception, &info,
+                                    foreign_exception, ttype_base,
+                                    TType, ttype_encoding,
                                     saw_handler, saw_cleanup);
     }
 
@@ -528,50 +551,11 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, bool foreign_exception,
     return 0;
 }
 
-private const(ubyte)* parse_lsda_header(_Unwind_Context* context,
-                                        const(ubyte)* p, lsda_header_info* info)
-{
-    _uleb128_t tmp;
-    ubyte lpstart_encoding;
-
-    info.Start = (context ? _Unwind_GetRegionStart(context) : 0);
-
-    // Find @LPStart, the base to which landing pad offsets are relative.
-    lpstart_encoding = *p++;
-    if (lpstart_encoding != DW_EH_PE_omit)
-        p = read_encoded_value(context, lpstart_encoding, p, &info.LPStart);
-    else
-        info.LPStart = info.Start;
-
-    // Find @TType, the base of the handler and exception spec type data.
-    info.ttype_encoding = *p++;
-    if (info.ttype_encoding != DW_EH_PE_omit)
-    {
-        static if (__traits(compiles, _TTYPE_ENCODING))
-        {
-            // Older ARM EABI toolchains set this value incorrectly, so use a
-            // hardcoded OS-specific format.
-            info.ttype_encoding = _TTYPE_ENCODING;
-        }
-        tmp = read_uleb128(&p);
-        info.TType = p + tmp;
-    }
-    else
-        info.TType = null;
-
-    // The encoding and length of the call-site table; the action table
-    // immediately follows.
-    info.call_site_encoding = *p++;
-    tmp = read_uleb128(&p);
-    info.action_table = p + tmp;
-
-    return p;
-}
-
 // Look up and return the handler index of the classType in Action Table.
 int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
                       const(ubyte)* pActionTable, bool foreign_exception,
-                      lsda_header_info* info,
+                      _Unwind_Ptr ttype_base, const(ubyte)* TType,
+                      ubyte ttype_encoding,
                       out bool saw_handler, out bool saw_cleanup)
 {
     while (1)
@@ -589,7 +573,14 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
         else if (TypeFilter > 0)
         {
             // Positive filter values are handlers.
-            ClassInfo ci = get_classinfo_entry(info, TypeFilter);
+            _Unwind_Ptr entry;
+
+            // TypeFilter is the negative index from TType, which is where
+            // the ClassInfo is stored.
+            auto i = TypeFilter * size_of_encoded_value(ttype_encoding);
+            read_encoded_value_with_base(ttype_encoding, ttype_base,
+                                         TType - i, &entry);
+            ClassInfo ci = cast(ClassInfo)cast(void*)(entry);
 
             // D does not have catch-all handlers, and so the following
             // assumes that we will never handle a null value.
@@ -648,17 +639,6 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
     }
 
     return 0;
-}
-
-private ClassInfo get_classinfo_entry(lsda_header_info* info, _uleb128_t i)
-{
-    _Unwind_Ptr ptr;
-
-    i *= size_of_encoded_value(info.ttype_encoding);
-    read_encoded_value_with_base(info.ttype_encoding, info.ttype_base,
-                                 info.TType - i, &ptr);
-
-    return cast(ClassInfo)cast(void*)(ptr);
 }
 
 private void save_caught_exception(_Unwind_Exception* unwindHeader,
