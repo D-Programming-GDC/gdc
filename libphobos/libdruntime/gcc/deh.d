@@ -227,6 +227,50 @@ struct ExceptionHeader
     }
 
     /**
+     * Save stage1 handler information in the exception object.
+     */
+    static void save(_Unwind_Exception* unwindHeader,
+                     _Unwind_Context* context, int handler,
+                     const(ubyte)* lsda, _Unwind_Ptr landingPad) @nogc
+    {
+        static if (GNU_ARM_EABI_Unwinder)
+        {
+            unwindHeader.barrier_cache.sp = _Unwind_GetGR(context, UNWIND_STACK_REG);
+            unwindHeader.barrier_cache.bitpattern[1] = cast(_uw)handler;
+            unwindHeader.barrier_cache.bitpattern[2] = cast(_uw)lsda;
+            unwindHeader.barrier_cache.bitpattern[3] = cast(_uw)landingPad;
+        }
+        else
+        {
+            ExceptionHeader* eh = toExceptionHeader(unwindHeader);
+            eh.handler = handler;
+            eh.languageSpecificData = lsda;
+            eh.landingPad = landingPad;
+        }
+    }
+
+    /**
+     * Restore the catch handler data saved during phase1.
+     */
+    static void restore(_Unwind_Exception* unwindHeader, out int handler,
+                        out const(ubyte)* lsda, out _Unwind_Ptr landingPad) @nogc
+    {
+        static if (GNU_ARM_EABI_Unwinder)
+        {
+            handler = cast(int)unwindHeader.barrier_cache.bitpattern[1];
+            lsda = cast(ubyte*)unwindHeader.barrier_cache.bitpattern[2];
+            landingPad = cast(_Unwind_Ptr)unwindHeader.barrier_cache.bitpattern[3];
+        }
+        else
+        {
+            ExceptionHeader* eh = toExceptionHeader(unwindHeader);
+            handler = eh.handler;
+            lsda = eh.languageSpecificData;
+            landingPad = cast(_Unwind_Ptr)eh.landingPad;
+        }
+    }
+
+    /**
      * Look at the chain of inflight exceptions and pick the class type that'll
      * be looked for in catch clauses.
      */
@@ -303,6 +347,21 @@ struct CxaExceptionHeader
     }
 
     _Unwind_Exception unwindHeader;
+
+    /**
+     * There's no saving between phases, so only cache pointer.
+     * __cxa_begin_catch expects this to be set.
+     */
+    static void save(_Unwind_Exception* unwindHeader, void* thrownPtr) @nogc
+    {
+        static if (GNU_ARM_EABI_Unwinder)
+            unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrownPtr;
+        else
+        {
+            auto eh = toExceptionHeader(unwindHeader);
+            eh.adjustedPtr = thrownPtr;
+        }
+    }
 
     /**
      * Get pointer to the thrown object if the thrown object type behind the
@@ -591,9 +650,8 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class excepti
 
         // For domestic exceptions, we cache data from phase 1 for phase 2.
         if (isGdcExceptionClass(exceptionClass))
-        {
-            save_caught_exception(unwindHeader, context, handler, lsda, landingPad);
-        }
+            ExceptionHeader.save(unwindHeader, context, handler, lsda, landingPad);
+
         return _URC_HANDLER_FOUND;
     }
 
@@ -656,18 +714,8 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
 
                 if (thrownPtr !is null)
                 {
-                    // There's no saving between phases, so only cache pointer.
-                    // __cxa_begin_catch expects this to be set.
                     if (actions & _UA_SEARCH_PHASE)
-                    {
-                        static if (GNU_ARM_EABI_Unwinder)
-                            unwindHeader.barrier_cache.bitpattern[0] = cast(_uw) thrownPtr;
-                        else
-                        {
-                            auto eh = CxaExceptionHeader.toExceptionHeader(unwindHeader);
-                            eh.adjustedPtr = thrownPtr;
-                        }
-                    }
+                        CxaExceptionHeader.save(unwindHeader, thrownPtr);
                     saw_handler = true;
                     return cast(int)ARFilter;
                 }
@@ -696,27 +744,6 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
     }
 
     return 0;
-}
-
-private void save_caught_exception(_Unwind_Exception* unwindHeader,
-                                   _Unwind_Context* context, int handler,
-                                   const(ubyte)* lsda, _Unwind_Ptr landingPad)
-{
-    static if (GNU_ARM_EABI_Unwinder)
-    {
-        unwindHeader.barrier_cache.sp = _Unwind_GetGR(context, UNWIND_STACK_REG);
-        unwindHeader.barrier_cache.bitpattern[1] = cast(_uw)handler;
-        unwindHeader.barrier_cache.bitpattern[2] = cast(_uw)lsda;
-        unwindHeader.barrier_cache.bitpattern[3] = cast(_uw)landingPad;
-    }
-    else
-    {
-        ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
-
-        eh.handler = handler;
-        eh.languageSpecificData = lsda;
-        eh.landingPad = landingPad;
-    }
 }
 
 /**
@@ -837,20 +864,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
         && isGdcExceptionClass(exceptionClass))
     {
-        static if (GNU_ARM_EABI_Unwinder)
-        {
-            handler = cast(int)unwindHeader.barrier_cache.bitpattern[1];
-            lsda = cast(ubyte*)unwindHeader.barrier_cache.bitpattern[2];
-            landingPad = cast(_Unwind_Ptr)unwindHeader.barrier_cache.bitpattern[3];
-        }
-        else
-        {
-            ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
-            handler = eh.handler;
-            lsda = eh.languageSpecificData;
-            landingPad = cast(_Unwind_Ptr)eh.landingPad;
-        }
-
+        ExceptionHeader.restore(unwindHeader, handler, lsda, landingPad);
         // Shouldn't have cached a null landing pad in phase 1.
         if (landingPad == 0)
             terminate(__LINE__);
@@ -910,9 +924,8 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
             if (ehn.handler != handler && !bypassed)
             {
                 handler = ehn.handler;
-
-                save_caught_exception(unwindHeader, context,
-                                      handler, lsda, landingPad);
+                ExceptionHeader.save(unwindHeader, context, handler,
+                                     lsda, landingPad);
             }
 
             // Exceptions chained, can now throw away the previous header.
