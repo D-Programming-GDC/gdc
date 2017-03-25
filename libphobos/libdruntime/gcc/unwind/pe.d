@@ -149,56 +149,55 @@ _sleb128_t read_sleb128(const(ubyte)** p)
 // Load an encoded value from memory at P.  The value is returned in VAL;
 // The function returns P incremented past the value.  BASE is as given
 // by base_of_encoded_value for this encoding in the appropriate context.
-const(ubyte)* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
-                                           const(ubyte)* p, _Unwind_Ptr* val)
+_Unwind_Ptr read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
+                                         const(ubyte)** p)
 {
+    auto q = *p;
     _Unwind_Internal_Ptr result;
 
     if (encoding == DW_EH_PE_aligned)
     {
-        _Unwind_Internal_Ptr a = cast(_Unwind_Internal_Ptr)p;
+        _Unwind_Internal_Ptr a = cast(_Unwind_Internal_Ptr)q;
         a = cast(_Unwind_Internal_Ptr)((a + (void*).sizeof - 1) & - (void*).sizeof);
         result = *cast(_Unwind_Internal_Ptr*)a;
-        p = cast(ubyte*) cast(_Unwind_Internal_Ptr)(a + (void*).sizeof);
+        q = cast(ubyte*) cast(_Unwind_Internal_Ptr)(a + (void*).sizeof);
     }
     else
     {
-        auto q = p;
-
         switch (encoding & 0x0f)
         {
             case DW_EH_PE_uleb128:
-                result = cast(_Unwind_Internal_Ptr)read_uleb128(&p);
+                result = cast(_Unwind_Internal_Ptr)read_uleb128(&q);
                 break;
 
             case DW_EH_PE_sleb128:
-                result = cast(_Unwind_Internal_Ptr)read_sleb128(&p);
+                result = cast(_Unwind_Internal_Ptr)read_sleb128(&q);
                 break;
 
             case DW_EH_PE_udata2:
-                result = cast(_Unwind_Internal_Ptr) *cast(ushort*)p;
-                p += 2;
+                result = cast(_Unwind_Internal_Ptr) *cast(ushort*)q;
+                q += 2;
                 break;
             case DW_EH_PE_udata4:
-                result = cast(_Unwind_Internal_Ptr) *cast(uint*)p;
-                p += 4;
+                result = cast(_Unwind_Internal_Ptr) *cast(uint*)q;
+                q += 4;
                 break;
             case DW_EH_PE_udata8:
-                result = cast(_Unwind_Internal_Ptr) *cast(ulong*)p;
-                p += 8;
+                result = cast(_Unwind_Internal_Ptr) *cast(ulong*)q;
+                q += 8;
                 break;
 
             case DW_EH_PE_sdata2:
-                result = cast(_Unwind_Internal_Ptr) *cast(short*)p;
-                p += 2;
+                result = cast(_Unwind_Internal_Ptr) *cast(short*)q;
+                q += 2;
                 break;
             case DW_EH_PE_sdata4:
-                result = cast(_Unwind_Internal_Ptr) *cast(int*)p;
-                p += 4;
+                result = cast(_Unwind_Internal_Ptr) *cast(int*)q;
+                q += 4;
                 break;
             case DW_EH_PE_sdata8:
-                result = cast(_Unwind_Internal_Ptr) *cast(long*)p;
-                p += 8;
+                result = cast(_Unwind_Internal_Ptr) *cast(long*)q;
+                q += 8;
                 break;
 
             case DW_EH_PE_absptr:
@@ -214,22 +213,21 @@ const(ubyte)* read_encoded_value_with_base(ubyte encoding, _Unwind_Ptr base,
         if (result != 0)
         {
             result += ((encoding & 0x70) == DW_EH_PE_pcrel
-                       ? cast(_Unwind_Internal_Ptr)q : base);
+                       ? cast(_Unwind_Internal_Ptr)*p : base);
             if (encoding & DW_EH_PE_indirect)
                 result = *cast(_Unwind_Internal_Ptr*)result;
         }
     }
 
-    *val = result;
-    return p;
+    *p = q;
+    return result;
 }
 
 // Like read_encoded_value_with_base, but get the base from the context
 // rather than providing it directly.
-const(ubyte)* read_encoded_value(_Unwind_Context* context, ubyte encoding,
-                                 const(ubyte)* p, _Unwind_Ptr* val)
+_Unwind_Ptr read_encoded_value(_Unwind_Context* context, ubyte encoding,
+                               const(ubyte)** p)
 {
-    return read_encoded_value_with_base(encoding,
-                                        base_of_encoded_value(encoding, context),
-                                        p, val);
+    auto base = base_of_encoded_value(encoding, context);
+    return read_encoded_value_with_base(encoding, base, p);
 }

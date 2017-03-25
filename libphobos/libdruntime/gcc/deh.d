@@ -518,7 +518,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class excepti
     _Unwind_Ptr LPStart = 0;
 
     if (LPStartEncoding != DW_EH_PE_omit)
-        p = read_encoded_value(context, LPStartEncoding, p, &LPStart);
+        LPStart = read_encoded_value(context, LPStartEncoding, &p);
     else
         LPStart = Start;
 
@@ -596,12 +596,10 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class excepti
         // Search the call-site table for the action associated with this IP.
         while (p < actionTable)
         {
-            _Unwind_Ptr CSStart, CSLen, CSLandingPad;
-
             // Note that all call-site encodings are "absolute" displacements.
-            p = read_encoded_value(null, CSEncoding, p, &CSStart);
-            p = read_encoded_value(null, CSEncoding, p, &CSLen);
-            p = read_encoded_value(null, CSEncoding, p, &CSLandingPad);
+            auto CSStart = read_encoded_value(null, CSEncoding, &p);
+            auto CSLen = read_encoded_value(null, CSEncoding, &p);
+            auto CSLandingPad = read_encoded_value(null, CSEncoding, &p);
             auto CSAction = read_uleb128(&p);
 
             // The table is sorted, so if we've passed the ip, stop.
@@ -692,13 +690,13 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
         else if (ARFilter > 0)
         {
             // Positive filter values are handlers.
-            _Unwind_Ptr entry;
+            auto encodedSize = size_of_encoded_value(TTypeEncoding);
 
             // ARFilter is the negative index from TType, which is where
             // the ClassInfo is stored.
-            auto i = ARFilter * size_of_encoded_value(TTypeEncoding);
-            read_encoded_value_with_base(TTypeEncoding, TTypeBase,
-                                         TType - i, &entry);
+            const(ubyte)* tp = TType - ARFilter * encodedSize;
+
+            auto entry = read_encoded_value_with_base(TTypeEncoding, TTypeBase, &tp);
             ClassInfo ci = cast(ClassInfo)cast(void*)(entry);
 
             // D does not have catch-all handlers, and so the following
