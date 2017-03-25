@@ -227,6 +227,26 @@ struct ExceptionHeader
     }
 
     /**
+     * Look at the chain of inflight exceptions and pick the class type that'll
+     * be looked for in catch clauses.
+     */
+    static getClassInfo(_Unwind_Exception* unwindHeader) @nogc
+    {
+        ExceptionHeader* eh = toExceptionHeader(unwindHeader);
+        // The first thrown Exception at the top of the stack takes precedence
+        // over others that are inflight, unless an Error was thrown, in which
+        // case, we search for error handlers instead.
+        Throwable ehobject = eh.object;
+        for (ExceptionHeader* ehn = eh.next; ehn; ehn = ehn.next)
+        {
+            Error e = cast(Error)ehobject;
+            if (e is null || (cast(Error)ehn.object) !is null)
+                ehobject = ehn.object;
+        }
+        return ehobject.classinfo;
+    }
+
+    /**
      * Convert from pointer to unwindHeader to pointer to ExceptionHeader
      * that it is embedded inside of.
      */
@@ -589,6 +609,12 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
                       ubyte TTypeEncoding,
                       out bool saw_handler, out bool saw_cleanup)
 {
+    ClassInfo thrownType;
+    if (isGdcExceptionClass(exceptionClass))
+    {
+        thrownType = ExceptionHeader.getClassInfo(unwindHeader);
+    }
+
     while (1)
     {
         auto ap = actionRecord;
@@ -646,17 +672,11 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
                     return cast(int)ARFilter;
                 }
             }
-            else if (isGdcExceptionClass(exceptionClass))
+            else if (isGdcExceptionClass(exceptionClass)
+                     && _d_isbaseof(thrownType, ci))
             {
-                // D Note: will be performing dynamic cast twice, potentially
-                // Once here and once at the landing pad .. unless we cached
-                // here and had a begin_catch call.
-                ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
-                if (_d_isbaseof(eh.object.classinfo, ci))
-                {
-                    saw_handler = true;
-                    return cast(int)ARFilter;
-                }
+                saw_handler = true;
+                return cast(int)ARFilter;
             }
             else
             {
