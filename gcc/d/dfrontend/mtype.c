@@ -3128,7 +3128,7 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident, int flag)
             goto Lfvalue;
         case Tcomplex80:
         case Timaginary80:
-	case Tfloat80:
+        case Tfloat80:
             fvalue = Target::RealProperties::max;
             goto Lfvalue;
         }
@@ -7758,7 +7758,16 @@ Type *TypeStruct::semantic(Loc loc, Scope *sc)
 {
     //printf("TypeStruct::semantic('%s')\n", sym->toChars());
     if (deco)
+    {
+        if (sc && sc->cppmangle != CPPMANGLEdefault)
+        {
+            if (this->cppmangle == CPPMANGLEdefault)
+                this->cppmangle = sc->cppmangle;
+            else
+                assert(this->cppmangle == sc->cppmangle);
+        }
         return this;
+    }
 
     /* Don't semantic for sym because it should be deferred until
      * sizeof needed or its members accessed.
@@ -7768,7 +7777,8 @@ Type *TypeStruct::semantic(Loc loc, Scope *sc)
 
     if (sym->type->ty == Terror)
         return Type::terror;
-    this->cppmangle = sc->cppmangle;
+    if (sc)
+        this->cppmangle = sc->cppmangle;
     return merge();
 }
 
@@ -8353,7 +8363,16 @@ Type *TypeClass::semantic(Loc loc, Scope *sc)
 {
     //printf("TypeClass::semantic(%s)\n", sym->toChars());
     if (deco)
+    {
+        if (sc && sc->cppmangle != CPPMANGLEdefault)
+        {
+            if (this->cppmangle == CPPMANGLEdefault)
+                this->cppmangle = sc->cppmangle;
+            else
+                assert(this->cppmangle == sc->cppmangle);
+        }
         return this;
+    }
 
     /* Don't semantic for sym because it should be deferred until
      * sizeof needed or its members accessed.
@@ -8363,7 +8382,8 @@ Type *TypeClass::semantic(Loc loc, Scope *sc)
 
     if (sym->type->ty == Terror)
         return Type::terror;
-    this->cppmangle = sc->cppmangle;
+    if (sc)
+        this->cppmangle = sc->cppmangle;
     return merge();
 }
 

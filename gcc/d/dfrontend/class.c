@@ -41,6 +41,7 @@ ClassDeclaration *ClassDeclaration::object;
 ClassDeclaration *ClassDeclaration::throwable;
 ClassDeclaration *ClassDeclaration::exception;
 ClassDeclaration *ClassDeclaration::errorException;
+ClassDeclaration *ClassDeclaration::cpp_type_info_ptr;
 
 ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses, bool inObject)
     : AggregateDeclaration(loc, id)
@@ -229,6 +230,13 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
                 error("%s", msg);
             errorException = this;
         }
+
+        if (id == Id::cpp_type_info_ptr)
+        {
+            if (!inObject)
+                error("%s", msg);
+            cpp_type_info_ptr = this;
+        }
     }
 
     com = false;
@@ -238,6 +246,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
     inuse = 0;
     baseok = BASEOKnone;
     objc.objc = false;
+    cpp_type_info_ptr_sym = NULL;
 }
 
 Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
@@ -663,6 +672,11 @@ Lancestorsdone:
         // initialize vtbl
         if (baseClass)
         {
+            if (cpp && baseClass->vtbl.dim == 0)
+            {
+                error("C++ base class %s needs at least one virtual function", baseClass->toChars());
+            }
+
             // Copy vtbl[] from base class
             vtbl.setDim(baseClass->vtbl.dim);
             memcpy(vtbl.tdata(), baseClass->vtbl.tdata(), sizeof(void *) * vtbl.dim);
@@ -1732,30 +1746,16 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
         //printf("\tX base %s\n", b->sym->toChars());
         if (this == b->sym)
         {
-            //printf("\tfound at offset %d\n", b->offset);
             if (poffset)
             {
-                *poffset = b->offset;
-                if (j && cd->isInterfaceDeclaration())
-                    *poffset = OFFSET_RUNTIME;
-
-                /* TODO: Even though it's an interface to base interface upcast,
-                 * I think we can avoid runtime offset determination ultimately.
-                 * (I doubt that it was just a workaround for the bug in the
-                 * inferface to Object downcast)
-                 */
+                // don't return incorrect offsets https://issues.dlang.org/show_bug.cgi?id=16980
+                *poffset = cd->sizeok == SIZEOKdone ? b->offset : OFFSET_FWDREF;
             }
+            //printf("\tfound at offset %d\n", b->offset);
             return true;
         }
         if (isBaseOf(b, poffset))
-        {
-            if (poffset)
-            {
-                if (j && cd->isInterfaceDeclaration())
-                    *poffset = OFFSET_RUNTIME;
-            }
             return true;
-        }
     }
 
     if (cd->baseClass && isBaseOf(cd->baseClass, poffset))
