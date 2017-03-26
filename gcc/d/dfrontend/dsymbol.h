@@ -287,9 +287,6 @@ public:
     virtual AnonDeclaration *isAnonDeclaration() { return NULL; }
     virtual OverloadSet *isOverloadSet() { return NULL; }
     virtual void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    virtual void toObjFile();                   // compile to .obj file
-#endif
 };
 
 // Dsymbol that generates a scope

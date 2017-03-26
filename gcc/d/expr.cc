@@ -1898,7 +1898,7 @@ public:
   {
     // Compile the declaration.
     push_stmt_list();
-    e->declaration->toObjFile();
+    build_decl_tree (e->declaration);
     tree result = pop_stmt_list();
 
     // Construction of an array for typesafe-variadic function arguments
@@ -1972,7 +1972,7 @@ public:
     if (cfun != NULL)
       cfun->language->deferred_fns.safe_push(e->fd);
     else
-      e->fd->toObjFile();
+      build_decl_tree (e->fd);
 
     // If nested, this will be a trampoline...
     if (e->fd->isNested())
@@ -2058,7 +2058,7 @@ public:
 	if (cfun != NULL)
 	  cfun->language->deferred_fns.safe_push(fld);
 	else
-	  fld->toObjFile();
+	  build_decl_tree (fld);
       }
 
     if (this->constp_)

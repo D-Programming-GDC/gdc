@@ -293,9 +293,6 @@ public:
     // Eliminate need for dynamic_cast
     VarDeclaration *isVarDeclaration() { return (VarDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 /**************************************************************/
@@ -327,9 +324,6 @@ public:
 
     TypeInfoDeclaration *isTypeInfoDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 class TypeInfoStructDeclaration : public TypeInfoDeclaration
@@ -677,9 +671,6 @@ public:
 
     virtual FuncDeclaration *toAliasFunc() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 FuncDeclaration *resolveFuncCall(Loc loc, Scope *sc, Dsymbol *s,
