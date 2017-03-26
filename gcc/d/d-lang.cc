@@ -1357,9 +1357,9 @@ d_parse_file()
       if (!flag_syntax_only)
 	{
 	  if ((entrypoint != NULL) && (m == rootmodule))
-	    entrypoint->genobjfile(false);
+	    build_decl_tree (entrypoint);
 
-	  m->genobjfile(false);
+	  build_decl_tree (m);
 	}
     }
 

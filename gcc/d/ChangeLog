@@ -1,3 +1,9 @@
+2017-03-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (DeclVisitor::visit(Module)): New function.
+	(Module::genobjfile): Remove function.
+	Updated all callers to use build_decl_tree.
+
 2017-03-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (base_vtable_offset): New function.

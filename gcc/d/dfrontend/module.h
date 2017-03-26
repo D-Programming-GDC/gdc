@@ -173,7 +173,6 @@ public:
     Module *isModule() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    void genobjfile(bool multiobj);
     void genmoduleinfo();
 #endif
 };

@@ -105,6 +105,62 @@ public:
   {
   }
 
+  /* Compile a D module, and all members of it.  */
+
+  void visit (Module *d)
+  {
+    if (d->semanticRun >= PASSobj)
+      return;
+
+    /* There may be more than one module per object file, but should only
+       ever compile them one at a time.  */
+    assert (!current_module_info && !current_module_decl);
+
+    ModuleInfo mi = ModuleInfo ();
+
+    current_module_info = &mi;
+    current_module_decl = d;
+
+    if (d->members)
+      {
+	for (size_t i = 0; i < d->members->dim; i++)
+	  {
+	    Dsymbol *s = (*d->members)[i];
+	    s->accept (this);
+	  }
+      }
+
+    /* Default behaviour is to always generate module info because of templates.
+       Can be switched off for not compiling against runtime library.  */
+    if (!global.params.betterC && d->ident != Id::entrypoint)
+      {
+	if (!mi.ctors.is_empty () || !mi.ctorgates.is_empty ())
+	  d->sctor = build_ctor_function ("*__modctor", mi.ctors, mi.ctorgates);
+
+	if (!mi.dtors.is_empty ())
+	  d->sdtor = build_dtor_function ("*__moddtor", mi.dtors);
+
+	if (!mi.sharedctors.is_empty () || !mi.sharedctorgates.is_empty ())
+	  d->ssharedctor = build_ctor_function ("*__modsharedctor",
+						mi.sharedctors,
+						mi.sharedctorgates);
+
+	if (!mi.shareddtors.is_empty ())
+	  d->sshareddtor = build_dtor_function ("*__modshareddtor",
+						mi.shareddtors);
+
+	if (!mi.unitTests.is_empty ())
+	  d->stest = build_unittest_function ("*__modtest", mi.unitTests);
+
+	d->genmoduleinfo ();
+      }
+
+    current_module_info = NULL;
+    current_module_decl = NULL;
+
+    d->semanticRun = PASSobj;
+  }
+
   /* Write imported symbol D to debug.  */
 
   void visit (Import *d)
@@ -1151,53 +1207,6 @@ build_moduleinfo_symbol(Module *m)
   d_finish_symbol (msym);
 
   return msym;
-}
-
-//
-
-void
-Module::genobjfile(bool)
-{
-  // Normally would create an ObjFile here, but gcc is limited to one object
-  // file per pass and there may be more than one module per object file.
-  current_module_info = new ModuleInfo;
-  current_module_decl = this;
-
-  if (members)
-    {
-      for (size_t i = 0; i < members->dim; i++)
-	{
-	  Dsymbol *dsym = (*members)[i];
-	  build_decl_tree (dsym);
-	}
-    }
-
-  // Default behaviour is to always generate module info because of templates.
-  // Can be switched off for not compiling against runtime library.
-  if (!global.params.betterC && ident != Id::entrypoint)
-    {
-      ModuleInfo *mi = current_module_info;
-
-      if (!mi->ctors.is_empty() || !mi->ctorgates.is_empty())
-	sctor = build_ctor_function ("*__modctor", mi->ctors, mi->ctorgates);
-
-      if (!mi->dtors.is_empty())
-	sdtor = build_dtor_function ("*__moddtor", mi->dtors);
-
-      if (!mi->sharedctors.is_empty() || !mi->sharedctorgates.is_empty())
-	ssharedctor = build_ctor_function ("*__modsharedctor", mi->sharedctors, mi->sharedctorgates);
-
-      if (!mi->shareddtors.is_empty())
-	sshareddtor = build_dtor_function ("*__modshareddtor", mi->shareddtors);
-
-      if (!mi->unitTests.is_empty())
-	stest = build_unittest_function ("*__modtest", mi->unitTests);
-
-      genmoduleinfo();
-    }
-
-  current_module_info = NULL;
-  current_module_decl = NULL;
 }
 
 void
