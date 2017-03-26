@@ -34,6 +34,7 @@ class Module;
 class Statement;
 class Type;
 class TypeFunction;
+struct BaseClass;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
@@ -430,6 +431,7 @@ extern void d_keep (tree);
 
 /* In d-objfile.cc.  */
 extern void build_decl_tree (Dsymbol *);
+extern unsigned base_vtable_offset (ClassDeclaration *, BaseClass *);
 
 /* In imports.cc.  */
 extern tree build_import_decl (Dsymbol *);

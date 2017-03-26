@@ -1,5 +1,11 @@
 2017-03-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-objfile.cc (base_vtable_offset): New function.
+	(ClassDeclaration::baseVtblOffset): Remove function.
+	Updated all callers to use base_vtable_offset.
+
+2017-03-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-objfile.cc (DeclVisitor): New visitor interface to supercede the
 	toObjFile methods.
 	(build_decl_tree): New function.

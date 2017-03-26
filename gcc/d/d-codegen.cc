@@ -2293,7 +2293,7 @@ build_class_instance (ClassReferenceExp *exp)
 	    {
 	      gcc_assert (cd2 != NULL);
 
-	      unsigned csymoffset = cd2->baseVtblOffset (bc);
+	      unsigned csymoffset = base_vtable_offset (cd2, bc);
 	      if (csymoffset != (unsigned) ~0)
 		{
 		  tree csym = build_address (get_classinfo_decl (cd2));
