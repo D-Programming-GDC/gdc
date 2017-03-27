@@ -79,4 +79,5 @@ make -j$(nproc) all-target-libphobos || exit 1
 
 ## Finally, run the testsuite.
 # This takes around 25 minutes to run with -j2, should we add more parallel jobs?
-make -j2 check-d
+make -j$(nproc) check-target-libphobos
+make -j$(nproc) check-gcc-d
