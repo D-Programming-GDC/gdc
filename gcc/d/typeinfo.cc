@@ -124,7 +124,7 @@ class TypeInfoVisitor : public Visitor
 	    field = find_aggregate_field (type, get_identifier ("vtbl"));
 	    if (field)
 	      {
-		size_t voffset = cd->baseVtblOffset (b);
+		size_t voffset = base_vtable_offset (cd, b);
 		value = d_array_value (build_ctype (Type::tvoidptr->arrayOf ()),
 				       size_int (id->vtbl.dim),
 				       build_offset (csym, size_int (voffset)));
@@ -153,14 +153,14 @@ class TypeInfoVisitor : public Visitor
      from the overriding class CD.  If both are the same class, then this will
      be it's own vtable.  INDEX is the offset in the interfaces array of the
      base class where the Interface reference can be found.
-     This must be mirrored with ClassDeclaration::baseVtblOffset().  */
+     This must be mirrored with base_vtable_offset().  */
 
   void layout_base_vtable (ClassDeclaration *cd, ClassDeclaration *bcd,
 			   size_t index)
   {
     BaseClass *bs = (*bcd->vtblInterfaces)[index];
     ClassDeclaration *id = bs->sym;
-    size_t voffset = cd->baseVtblOffset (bs);
+    size_t voffset = base_vtable_offset (cd, bs);
     vec<constructor_elt, va_gc> *elms = NULL;
     FuncDeclarations bvtbl;
 

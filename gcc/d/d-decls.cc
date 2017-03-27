@@ -880,7 +880,7 @@ get_moduleinfo_decl (Module *decl)
 
 /* Layout fields that immediately come after the classinfo TYPE for DECL if
    there's any interfaces or interface vtables to be added.
-   This must be mirrored with ClassDeclaration::baseVtblOffset().  */
+   This must be mirrored with base_vtable_offset().  */
 
 static tree
 layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
@@ -912,7 +912,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	{
 	  BaseClass *b = (*decl->vtblInterfaces)[i];
 	  ClassDeclaration *id = b->sym;
-	  unsigned offset = decl->baseVtblOffset (b);
+	  unsigned offset = base_vtable_offset (decl, b);
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {
@@ -932,7 +932,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	{
 	  BaseClass *b = (*bcd->vtblInterfaces)[i];
 	  ClassDeclaration *id = b->sym;
-	  unsigned offset = decl->baseVtblOffset (b);
+	  unsigned offset = base_vtable_offset (decl, b);
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {

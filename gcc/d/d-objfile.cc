@@ -973,26 +973,26 @@ build_decl_tree (Dsymbol *d)
 // Get offset of base class's vtbl[] initialiser from start of csym.
 
 unsigned
-ClassDeclaration::baseVtblOffset (BaseClass *bc)
+base_vtable_offset (ClassDeclaration *cd, BaseClass *bc)
 {
   unsigned csymoffset = Target::classinfosize;
-  csymoffset += vtblInterfaces->dim * (4 * Target::ptrsize);
+  csymoffset += cd->vtblInterfaces->dim * (4 * Target::ptrsize);
 
-  for (size_t i = 0; i < vtblInterfaces->dim; i++)
+  for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
     {
-      BaseClass *b = (*vtblInterfaces)[i];
+      BaseClass *b = (*cd->vtblInterfaces)[i];
       if (b == bc)
 	return csymoffset;
       csymoffset += b->sym->vtbl.dim * Target::ptrsize;
     }
 
   // Put out the overriding interface vtbl[]s.
-  for (ClassDeclaration *cd = this->baseClass; cd; cd = cd->baseClass)
+  for (ClassDeclaration *cd2 = cd->baseClass; cd2; cd2 = cd2->baseClass)
     {
-      for (size_t k = 0; k < cd->vtblInterfaces->dim; k++)
+      for (size_t k = 0; k < cd2->vtblInterfaces->dim; k++)
 	{
-	  BaseClass *bs = (*cd->vtblInterfaces)[k];
-	  if (bs->fillVtbl(this, NULL, 0))
+	  BaseClass *bs = (*cd2->vtblInterfaces)[k];
+	  if (bs->fillVtbl(cd, NULL, 0))
 	    {
 	      if (bc == bs)
 		return csymoffset;

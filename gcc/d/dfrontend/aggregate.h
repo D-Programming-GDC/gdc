@@ -324,7 +324,6 @@ public:
     ClassDeclaration *isClassDeclaration() { return (ClassDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    unsigned baseVtblOffset(BaseClass *bc);
     void toDt(dt_t **pdt);
 #endif
 };
