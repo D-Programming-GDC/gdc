@@ -105,6 +105,62 @@ public:
   {
   }
 
+  /* Compile a D module, and all members of it.  */
+
+  void visit (Module *d)
+  {
+    if (d->semanticRun >= PASSobj)
+      return;
+
+    /* There may be more than one module per object file, but should only
+       ever compile them one at a time.  */
+    assert (!current_module_info && !current_module_decl);
+
+    ModuleInfo mi = ModuleInfo ();
+
+    current_module_info = &mi;
+    current_module_decl = d;
+
+    if (d->members)
+      {
+	for (size_t i = 0; i < d->members->dim; i++)
+	  {
+	    Dsymbol *s = (*d->members)[i];
+	    s->accept (this);
+	  }
+      }
+
+    /* Default behaviour is to always generate module info because of templates.
+       Can be switched off for not compiling against runtime library.  */
+    if (!global.params.betterC && d->ident != Id::entrypoint)
+      {
+	if (!mi.ctors.is_empty () || !mi.ctorgates.is_empty ())
+	  d->sctor = build_ctor_function ("*__modctor", mi.ctors, mi.ctorgates);
+
+	if (!mi.dtors.is_empty ())
+	  d->sdtor = build_dtor_function ("*__moddtor", mi.dtors);
+
+	if (!mi.sharedctors.is_empty () || !mi.sharedctorgates.is_empty ())
+	  d->ssharedctor = build_ctor_function ("*__modsharedctor",
+						mi.sharedctors,
+						mi.sharedctorgates);
+
+	if (!mi.shareddtors.is_empty ())
+	  d->sshareddtor = build_dtor_function ("*__modshareddtor",
+						mi.shareddtors);
+
+	if (!mi.unitTests.is_empty ())
+	  d->stest = build_unittest_function ("*__modtest", mi.unitTests);
+
+	layout_moduleinfo (d);
+      }
+
+    current_module_info = NULL;
+    current_module_decl = NULL;
+
+    d->semanticRun = PASSobj;
+  }
+
   /* Write imported symbol D to debug.  */
 
   void visit (Import *d)
@@ -1153,53 +1209,6 @@ build_moduleinfo_symbol(Module *m)
   return msym;
 }
 
-//
-
-void
-Module::genobjfile(bool)
-{
-  // Normally would create an ObjFile here, but gcc is limited to one object
-  // file per pass and there may be more than one module per object file.
-  current_module_info = new ModuleInfo;
-  current_module_decl = this;
-
-  if (members)
-    {
-      for (size_t i = 0; i < members->dim; i++)
-	{
-	  Dsymbol *dsym = (*members)[i];
-	  build_decl_tree (dsym);
-	}
-    }
-
-  // Default behaviour is to always generate module info because of templates.
-  // Can be switched off for not compiling against runtime library.
-  if (!global.params.betterC && ident != Id::entrypoint)
-    {
-      ModuleInfo *mi = current_module_info;
-
-      if (!mi->ctors.is_empty() || !mi->ctorgates.is_empty())
-	sctor = build_ctor_function ("*__modctor", mi->ctors, mi->ctorgates);
-
-      if (!mi->dtors.is_empty())
-	sdtor = build_dtor_function ("*__moddtor", mi->dtors);
-
-      if (!mi->sharedctors.is_empty() || !mi->sharedctorgates.is_empty())
-	ssharedctor = build_ctor_function ("*__modsharedctor", mi->sharedctors, mi->sharedctorgates);
-
-      if (!mi->shareddtors.is_empty())
-	sshareddtor = build_dtor_function ("*__modshareddtor", mi->shareddtors);
-
-      if (!mi->unitTests.is_empty())
-	stest = build_unittest_function ("*__modtest", mi->unitTests);
-
-      genmoduleinfo();
-    }
-
-  current_module_info = NULL;
-  current_module_decl = NULL;
-}
-
 void
 d_finish_module()
 {
@@ -2004,42 +2013,44 @@ emit_modref_hooks(tree sym, Dsymbol *mref)
   build_simple_function ("*__modinit", compound_expr (m1, m2), true);
 }
 
-// Output the ModuleInfo for this module and emit hooks to register it with druntime.
+/* Output the ModuleInfo for module M and register it with druntime.  */
 
 void
-Module::genmoduleinfo()
+layout_moduleinfo (Module *m)
 {
-  // Try to find the required types and functions in druntime
-  Dsymbol *mref = NULL, *compiler_dso_type = NULL, *dso_registry_func = NULL;
-  // Ignore error if the file can not be found and simply don't emit Moduleinfo
-  unsigned errors = global.startGagging();
-  Module *m = Module::load(Loc(), NULL, Id::sectionsModule);
-  global.endGagging(errors);
+  /* Load the rt.sections module and retrieve the internal DSO/ModuleInfo
+     types, ignoring any errors as a result of missing files.  */
+  unsigned errors = global.startGagging ();
+  Module *sections = Module::load (Loc (), NULL, Id::sectionsModule);
+  global.endGagging (errors);
 
-  if (m)
-    {
-      m->importedFrom = m;
-      m->importAll (NULL);
-      m->semantic(NULL);
-      m->semantic2(NULL);
-      m->semantic3(NULL);
-      // These symbols are normally private to the module they're declared in,
-      // but for internal compiler lookups, their visibility is discarded.
-      int sflags = IgnoreErrors | IgnoreSymbolVisibility;
-      mref = m->search(Loc(), Id::Dmodule_ref, sflags);
-      compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, sflags);
-      dso_registry_func = m->search(Loc(), Id::dso_registry_func, sflags);
-    }
+  if (sections == NULL)
+    return;
 
-  // Prefer _d_dso_registry model if available
-  if (compiler_dso_type && dso_registry_func)
+  sections->importedFrom = sections;
+  sections->importAll (NULL);
+  sections->semantic (NULL);
+  sections->semantic2 (NULL);
+  sections->semantic3 (NULL);
+
+  /* These symbols are normally private to the module they're declared in,
+     but for internal compiler lookups, their visibility is discarded.  */
+  int sflags = IgnoreErrors | IgnoreSymbolVisibility;
+
+  /* Try to find the required types and functions in druntime.  */
+  Dsymbol *mref = sections->search (Loc (), Id::Dmodule_ref, sflags);
+  Dsymbol *dso_type = sections->search (Loc (), Id::compiler_dso_type, sflags);
+  Dsymbol *dso_func = sections->search (Loc (), Id::dso_registry_func, sflags);
+
+  /* Prefer _d_dso_registry model if available.  */
+  if (dso_type != NULL && dso_func != NULL)
     {
-      Symbol* sym = build_moduleinfo_symbol(this);
-      emit_dso_registry_hooks(sym, compiler_dso_type, dso_registry_func);
+      Symbol* sym = build_moduleinfo_symbol (m);
+      emit_dso_registry_hooks (sym, dso_type, dso_func);
     }
-  else if (mref)
+  else if (mref != NULL)
     {
-      Symbol* sym = build_moduleinfo_symbol(this);
-      emit_modref_hooks(sym, mref);
+      Symbol* sym = build_moduleinfo_symbol (m);
+      emit_modref_hooks (sym, mref);
     }
 }
