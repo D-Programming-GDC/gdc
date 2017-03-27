@@ -10,22 +10,27 @@ GCC_VERSION=$(cat gcc.version)
 
 if [ "${GCC_VERSION:0:5}" = "gcc-7" ]; then
     GCC_TARBALL="snapshots/${GCC_VERSION:4}/${GCC_VERSION}.tar.bz2"
+    GCC_PREREQS="gmp-6.1.0.tar.bz2 mpfr-3.1.4.tar.bz2 mpc-1.0.3.tar.gz isl-0.16.1.tar.bz2"
     PATCH_VERSION="7"
     HOST_PACKAGE="5"
 elif [ "${GCC_VERSION:0:5}" = "gcc-6" ]; then
     GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.bz2"
+    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz isl-0.15.tar.bz2"
     PATCH_VERSION="6"
     HOST_PACKAGE="5"
 elif [ "${GCC_VERSION:0:5}" = "gcc-5" ]; then
     GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.bz2"
+    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz isl-0.14.tar.bz2"
     PATCH_VERSION="5"
     HOST_PACKAGE="5"
 elif [ "${GCC_VERSION:0:7}" = "gcc-4.9" ]; then
     GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.bz2"
+    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz isl-0.12.2.tar.bz2 cloog-0.18.1.tar.gz"
     PATCH_VERSION="4.9"
     HOST_PACKAGE="4.9"
 elif [ "${GCC_VERSION:0:7}" = "gcc-4.8" ]; then
     GCC_TARBALL="releases/${GCC_VERSION}/${GCC_VERSION}.tar.bz2"
+    GCC_PREREQS="gmp-4.3.2.tar.bz2 mpfr-2.4.2.tar.bz2 mpc-0.8.1.tar.gz"
     PATCH_VERSION="4.8"
     HOST_PACKAGE="4.8"
 else
@@ -48,7 +53,7 @@ export CXX="g++-${HOST_PACKAGE}"
 
 if [ ! -e ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} ]; then
     curl "ftp://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/${GCC_TARBALL}" \
-	--create-dirs -o ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} || exit 1
+        --create-dirs -o ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} || exit 1
 fi
 
 tar --strip-components=1 -jxf ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL}
@@ -59,8 +64,15 @@ for PATCH in toplev gcc versym-cpu versym-os; do
 done
 
 ## And download GCC prerequisites.
-# Would save 30 seconds if these were also cached.
-./contrib/download_prerequisites || exit 1
+# Makes use of local cache to save downloading on every build run.
+for PREREQ in ${GCC_PREREQS}; do
+    if [ ! -e ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ} ]; then
+        curl "ftp://gcc.gnu.org/pub/gcc/infrastructure/${PREREQ}" \
+            --create-dirs -o ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ} || exit 1
+    fi
+    tar -xf ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ}
+    ln -s "${PREREQ%.tar*}" "${PREREQ%-*}"
+done
 
 ## Create the build directory.
 # Build typically takes around 10 minutes, could this be cached across CI runs?
