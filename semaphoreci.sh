@@ -74,9 +74,9 @@ ${SEMAPHORE_PROJECT_DIR}/configure --enable-languages=c++,d,lto --enable-checkin
 
 ## Build the bare-minimum in order to run tests.
 # Note: libstdc++ and libphobos are built separately so that build errors don't mix.
-make -j4 all-gcc all-target-libstdc++-v3 || exit 1
-make -j4 all-target-libphobos || exit 1
+make -j$(nproc) all-gcc all-target-libstdc++-v3 || exit 1
+make -j$(nproc) all-target-libphobos || exit 1
 
 ## Finally, run the testsuite.
-# This takes around 25 minutes to run, should we add more parallel jobs?
+# This takes around 25 minutes to run with -j2, should we add more parallel jobs?
 make -j2 check-d
