@@ -3,6 +3,9 @@
 	* d-objfile.cc (DeclVisitor::visit(Module)): New function.
 	(Module::genobjfile): Remove function.
 	Updated all callers to use build_decl_tree.
+	(layout_moduleinfo): New function.
+	(Module::genmoduleinfo): Remove function.
+	Update all callers to use layout_moduleinfo.
 
 2017-03-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 

@@ -152,7 +152,7 @@ public:
 	if (!mi.unitTests.is_empty ())
 	  d->stest = build_unittest_function ("*__modtest", mi.unitTests);
 
-	d->genmoduleinfo ();
+	layout_moduleinfo (d);
       }
 
     current_module_info = NULL;
@@ -2013,42 +2013,44 @@ emit_modref_hooks(tree sym, Dsymbol *mref)
   build_simple_function ("*__modinit", compound_expr (m1, m2), true);
 }
 
-// Output the ModuleInfo for this module and emit hooks to register it with druntime.
+/* Output the ModuleInfo for module M and register it with druntime.  */
 
 void
-Module::genmoduleinfo()
+layout_moduleinfo (Module *m)
 {
-  // Try to find the required types and functions in druntime
-  Dsymbol *mref = NULL, *compiler_dso_type = NULL, *dso_registry_func = NULL;
-  // Ignore error if the file can not be found and simply don't emit Moduleinfo
-  unsigned errors = global.startGagging();
-  Module *m = Module::load(Loc(), NULL, Id::sectionsModule);
-  global.endGagging(errors);
+  /* Load the rt.sections module and retrieve the internal DSO/ModuleInfo
+     types, ignoring any errors as a result of missing files.  */
+  unsigned errors = global.startGagging ();
+  Module *sections = Module::load (Loc (), NULL, Id::sectionsModule);
+  global.endGagging (errors);
 
-  if (m)
-    {
-      m->importedFrom = m;
-      m->importAll (NULL);
-      m->semantic(NULL);
-      m->semantic2(NULL);
-      m->semantic3(NULL);
-      // These symbols are normally private to the module they're declared in,
-      // but for internal compiler lookups, their visibility is discarded.
-      int sflags = IgnoreErrors | IgnoreSymbolVisibility;
-      mref = m->search(Loc(), Id::Dmodule_ref, sflags);
-      compiler_dso_type = m->search(Loc(), Id::compiler_dso_type, sflags);
-      dso_registry_func = m->search(Loc(), Id::dso_registry_func, sflags);
-    }
+  if (sections == NULL)
+    return;
 
-  // Prefer _d_dso_registry model if available
-  if (compiler_dso_type && dso_registry_func)
+  sections->importedFrom = sections;
+  sections->importAll (NULL);
+  sections->semantic (NULL);
+  sections->semantic2 (NULL);
+  sections->semantic3 (NULL);
+
+  /* These symbols are normally private to the module they're declared in,
+     but for internal compiler lookups, their visibility is discarded.  */
+  int sflags = IgnoreErrors | IgnoreSymbolVisibility;
+
+  /* Try to find the required types and functions in druntime.  */
+  Dsymbol *mref = sections->search (Loc (), Id::Dmodule_ref, sflags);
+  Dsymbol *dso_type = sections->search (Loc (), Id::compiler_dso_type, sflags);
+  Dsymbol *dso_func = sections->search (Loc (), Id::dso_registry_func, sflags);
+
+  /* Prefer _d_dso_registry model if available.  */
+  if (dso_type != NULL && dso_func != NULL)
     {
-      Symbol* sym = build_moduleinfo_symbol(this);
-      emit_dso_registry_hooks(sym, compiler_dso_type, dso_registry_func);
+      Symbol* sym = build_moduleinfo_symbol (m);
+      emit_dso_registry_hooks (sym, dso_type, dso_func);
     }
-  else if (mref)
+  else if (mref != NULL)
     {
-      Symbol* sym = build_moduleinfo_symbol(this);
-      emit_modref_hooks(sym, mref);
+      Symbol* sym = build_moduleinfo_symbol (m);
+      emit_modref_hooks (sym, mref);
     }
 }

@@ -432,6 +432,7 @@ extern void d_keep (tree);
 /* In d-objfile.cc.  */
 extern void build_decl_tree (Dsymbol *);
 extern unsigned base_vtable_offset (ClassDeclaration *, BaseClass *);
+extern void layout_moduleinfo (Module *);
 
 /* In imports.cc.  */
 extern tree build_import_decl (Dsymbol *);
