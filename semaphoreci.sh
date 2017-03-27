@@ -75,7 +75,7 @@ for PREREQ in ${GCC_PREREQS}; do
 done
 
 ## Create the build directory.
-# Build typically takes around 10 minutes, could this be cached across CI runs?
+# Build typically takes around 10 minutes with -j4, could this be cached across CI runs?
 mkdir ${SEMAPHORE_PROJECT_DIR}/build
 cd ${SEMAPHORE_PROJECT_DIR}/build
 
@@ -91,5 +91,8 @@ make -j$(nproc) all-target-libphobos || exit 1
 
 ## Finally, run the testsuite.
 # This takes around 25 minutes to run with -j2, should we add more parallel jobs?
-make -j$(nproc) check-target-libphobos
-make -j$(nproc) check-gcc-d
+make -j$(nproc) check-d
+
+## Print out summaries of testsuite run after finishing.
+# Just omit testsuite PASSes from file.
+grep -v "^PASS" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gdc*/gdc.sum ||:
