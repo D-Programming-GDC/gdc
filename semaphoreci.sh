@@ -38,61 +38,78 @@ else
     exit 1
 fi
 
-## Install build dependencies.
-# Would save 1 minute if these were preinstalled in some docker image.
-# But the network speed is nothing to complain about so far...
-sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-sudo apt-get update -qq
-sudo apt-get install -qq gcc-${HOST_PACKAGE} g++-${HOST_PACKAGE} \
-    autogen autoconf2.64 automake1.11 bison dejagnu flex patch || exit 1
-
-## Download and extract GCC sources.
-# Makes use of local cache to save downloading on every build run.
 export CC="gcc-${HOST_PACKAGE}"
 export CXX="g++-${HOST_PACKAGE}"
 
-if [ ! -e ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} ]; then
-    curl "ftp://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/${GCC_TARBALL}" \
-        --create-dirs -o ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} || exit 1
-fi
+setup() {
+    ## Install build dependencies.
+    # Would save 1 minute if these were preinstalled in some docker image.
+    # But the network speed is nothing to complain about so far...
+    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+    sudo apt-get update -qq
+    sudo apt-get install -qq gcc-${HOST_PACKAGE} g++-${HOST_PACKAGE} \
+        autogen autoconf2.64 automake1.11 bison dejagnu flex patch || exit 1
 
-tar --strip-components=1 -jxf ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL}
-
-## Apply GDC patches to GCC.
-for PATCH in toplev gcc versym-cpu versym-os; do
-    patch -p1 -i ./gcc/d/patches/patch-${PATCH}-${PATCH_VERSION}.x || exit 1
-done
-
-## And download GCC prerequisites.
-# Makes use of local cache to save downloading on every build run.
-for PREREQ in ${GCC_PREREQS}; do
-    if [ ! -e ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ} ]; then
-        curl "ftp://gcc.gnu.org/pub/gcc/infrastructure/${PREREQ}" \
-            --create-dirs -o ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ} || exit 1
+    ## Download and extract GCC sources.
+    # Makes use of local cache to save downloading on every build run.
+    if [ ! -e ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} ]; then
+        curl "ftp://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/${GCC_TARBALL}" \
+            --create-dirs -o ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL} || exit 1
     fi
-    tar -xf ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ}
-    ln -s "${PREREQ%.tar*}" "${PREREQ%-*}"
-done
 
-## Create the build directory.
-# Build typically takes around 10 minutes with -j4, could this be cached across CI runs?
-mkdir ${SEMAPHORE_PROJECT_DIR}/build
-cd ${SEMAPHORE_PROJECT_DIR}/build
+    tar --strip-components=1 -jxf ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL}
 
-## Configure GCC to build a D compiler.
-${SEMAPHORE_PROJECT_DIR}/configure --enable-languages=c++,d,lto --enable-checking \
-    --enable-link-mutex --disable-bootstrap --disable-libgomp --disable-libmudflap \
-    --disable-libquadmath --disable-multilib --with-bugurl="http://bugzilla.gdcproject.org"
+    ## Apply GDC patches to GCC.
+    for PATCH in toplev gcc versym-cpu versym-os; do
+        patch -p1 -i ./gcc/d/patches/patch-${PATCH}-${PATCH_VERSION}.x || exit 1
+    done
 
-## Build the bare-minimum in order to run tests.
-# Note: libstdc++ and libphobos are built separately so that build errors don't mix.
-make -j$(nproc) all-gcc all-target-libstdc++-v3 || exit 1
-make -j$(nproc) all-target-libphobos || exit 1
+    ## And download GCC prerequisites.
+    # Makes use of local cache to save downloading on every build run.
+    for PREREQ in ${GCC_PREREQS}; do
+        if [ ! -e ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ} ]; then
+            curl "ftp://gcc.gnu.org/pub/gcc/infrastructure/${PREREQ}" \
+                --create-dirs -o ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ} || exit 1
+        fi
+        tar -xf ${SEMAPHORE_CACHE_DIR}/infrastructure/${PREREQ}
+        ln -s "${PREREQ%.tar*}" "${PREREQ%-*}"
+    done
 
-## Finally, run the testsuite.
-# This takes around 25 minutes to run with -j2, should we add more parallel jobs?
-make -j$(nproc) check-d
+    ## Create the build directory.
+    # Build typically takes around 10 minutes with -j4, could this be cached across CI runs?
+    mkdir ${SEMAPHORE_PROJECT_DIR}/build
+    cd ${SEMAPHORE_PROJECT_DIR}/build
 
-## Print out summaries of testsuite run after finishing.
-# Just omit testsuite PASSes from file.
-grep -v "^PASS" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gdc*/gdc.sum ||:
+    ## Configure GCC to build a D compiler.
+    ${SEMAPHORE_PROJECT_DIR}/configure --enable-languages=c++,d,lto --enable-checking \
+        --enable-link-mutex --disable-bootstrap --disable-libgomp --disable-libmudflap \
+        --disable-libquadmath --disable-multilib --with-bugurl="http://bugzilla.gdcproject.org"
+}
+
+build() {
+    ## Build the bare-minimum in order to run tests.
+    # Note: libstdc++ and libphobos are built separately so that build errors don't mix.
+    cd ${SEMAPHORE_PROJECT_DIR}/build
+    make -j$(nproc) all-gcc all-target-libstdc++-v3 || exit 1
+    make -j$(nproc) all-target-libphobos || exit 1
+}
+
+testsuite() {
+    ## Finally, run the testsuite.
+    # This takes around 25 minutes to run with -j2, should we add more parallel jobs?
+    cd ${SEMAPHORE_PROJECT_DIR}/build
+    make -j$(nproc) check-d
+
+    ## Print out summaries of testsuite run after finishing.
+    # Just omit testsuite PASSes from file.
+    grep -v "^PASS" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gdc*/gdc.sum ||:
+}
+
+## Run a single build task or all at once.
+if [ "$1" != "" ]; then
+    $1
+else
+    setup
+    build
+    testsuite
+fi
