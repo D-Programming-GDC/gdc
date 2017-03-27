@@ -205,7 +205,6 @@ public:
     StructDeclaration *isStructDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
     void toDt(dt_t **pdt);
 #endif
 };
@@ -325,7 +324,6 @@ public:
     ClassDeclaration *isClassDeclaration() { return (ClassDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
 #ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
     unsigned baseVtblOffset(BaseClass *bc);
     void toDt(dt_t **pdt);
 #endif
@@ -347,9 +345,6 @@ public:
 
     InterfaceDeclaration *isInterfaceDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 #endif /* DMD_AGGREGATE_H */

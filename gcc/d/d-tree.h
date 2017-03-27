@@ -428,6 +428,9 @@ extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);
 extern void d_keep (tree);
 
+/* In d-objfile.cc.  */
+extern void build_decl_tree (Dsymbol *);
+
 /* In imports.cc.  */
 extern tree build_import_decl (Dsymbol *);
 

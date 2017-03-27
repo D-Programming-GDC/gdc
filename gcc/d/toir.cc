@@ -1042,7 +1042,7 @@ public:
 	Dsymbol *dsym = (*s->imports)[i];
 
 	if (dsym != NULL)
-	  dsym->toObjFile();
+	  build_decl_tree (dsym);
       }
   }
 };

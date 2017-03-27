@@ -689,22 +689,22 @@ public:
 	gcc_assert (tinst->minst || sd->requestTypeInfo);
 
 	if (sd->xeq && sd->xeq != StructDeclaration::xerreq)
-	  sd->xeq->toObjFile ();
+	  build_decl_tree (sd->xeq);
 
 	if (sd->xcmp && sd->xcmp != StructDeclaration::xerrcmp)
-	  sd->xcmp->toObjFile ();
+	  build_decl_tree (sd->xcmp);
 
 	if (FuncDeclaration *ftostr = search_toString (sd))
-	  ftostr->toObjFile ();
+	  build_decl_tree (ftostr);
 
 	if (sd->xhash)
-	  sd->xhash->toObjFile ();
+	  build_decl_tree (sd->xhash);
 
 	if (sd->postblit)
-	  sd->postblit->toObjFile ();
+	  build_decl_tree (sd->postblit);
 
 	if (sd->dtor)
-	  sd->dtor->toObjFile ();
+	  build_decl_tree (sd->dtor);
       }
 
     /* Name of the struct declaration.  */
@@ -973,7 +973,7 @@ genTypeInfo (Type *type, Scope *sc)
 	      m->members->push (t->vtinfo);
 	    }
 	  else
-	    t->vtinfo->toObjFile ();
+	    build_decl_tree (t->vtinfo);
 	}
     }
   /* Types aren't merged, but we can share the vtinfo's.  */

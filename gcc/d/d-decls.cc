@@ -648,7 +648,7 @@ make_thunk (FuncDeclaration *decl, int offset)
       /* Compile the function body before generating the thunk, this is done
 	 even if the decl is external to the current module.  */
       if (decl->fbody)
-	decl->toObjFile ();
+	build_decl_tree (decl);
       else
 	{
 	  /* Build parameters for functions that are not being compiled,
