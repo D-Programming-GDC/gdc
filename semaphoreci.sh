@@ -94,8 +94,8 @@ build() {
     make -j$(nproc) all-target-libphobos || exit 1
 }
 
-testsuite() {
-    ## Finally, run the testsuite.
+alltests() {
+    ## Run both the unittests and testsuite in parallel.
     # This takes around 25 minutes to run with -j2, should we add more parallel jobs?
     cd ${SEMAPHORE_PROJECT_DIR}/build
     make -j$(nproc) check-d
@@ -105,11 +105,37 @@ testsuite() {
     grep -v "^PASS" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gdc*/gdc.sum ||:
 }
 
+testsuite() {
+    ## Run just the compiler testsuite.
+    cd ${SEMAPHORE_PROJECT_DIR}/build
+    make -j$(nproc) check-gcc-d
+
+    ## Print out summaries of testsuite run after finishing.
+    # Just omit testsuite PASSes from the summary file.
+    grep -v "^PASS" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gdc*/gdc.sum ||:
+
+    # Test for any failures and return false if any.
+    if grep -q "^\(FAIL\|UNRESOLVED\)" ${SEMAPHORE_PROJECT_DIR}/build/gcc/testsuite/gdc*/gdc.sum; then
+       echo "== Testsuite has failures =="
+       exit 1
+    fi
+}
+
+unittests() {
+    ## Run just the library unittests.
+    cd ${SEMAPHORE_PROJECT_DIR}/build
+    if ! make -j$(nproc) check-target-libphobos; then
+        echo "== Unittest has failures =="
+        exit 1
+    fi
+}
+
+
 ## Run a single build task or all at once.
 if [ "$1" != "" ]; then
     $1
 else
     setup
     build
-    testsuite
+    alltests
 fi
