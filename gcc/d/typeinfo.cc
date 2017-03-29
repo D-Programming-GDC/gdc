@@ -317,7 +317,7 @@ public:
       {
 	tree type = build_ctype (Type::tvoid->arrayOf ());
 	tree length = size_int (ed->type->size ());
-	tree ptr = build_address (enum_initializer (ed));
+	tree ptr = build_address (enum_initializer_decl (ed));
 	this->set_field ("m_init", d_array_value (type, length, ptr));
       }
   }
@@ -493,7 +493,7 @@ public:
 	/* Default initialiser for class.  */
 	tree value = d_array_value (build_ctype (Type::tint8->arrayOf ()),
 				    size_int (cd->structsize),
-				    build_address (aggregate_initializer (cd)));
+				    build_address (aggregate_initializer_decl (cd)));
 	this->set_field ("m_init", value);
 
 	/* Name of the class declaration.  */
@@ -714,7 +714,7 @@ public:
     tree type = build_ctype (Type::tvoid->arrayOf ());
     tree length = size_int (sd->structsize);
     tree ptr = (sd->zeroInit) ? null_pointer_node :
-      build_address (aggregate_initializer (sd));
+      build_address (aggregate_initializer_decl (sd));
     this->set_field ("m_init", d_array_value (type, length, ptr));
 
     /* hash_t function (in void*) xtoHash;  */

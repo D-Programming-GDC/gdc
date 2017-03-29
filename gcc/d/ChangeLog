@@ -1,3 +1,14 @@
+2017-03-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (aggregate_initializer): Renamed to
+	aggregate_initializer_decl.  Updated all callers.
+	(enum_initializer): Renamed to enum_initializer_decl.
+	Updated all callers.
+	(layout_class_initializer): New function.
+	(layout_struct_initializer): New function.
+	* d-todt.cc (ClassDeclaration::toDt): Remove function.
+	(StructDeclaration::toDt): Remove function.
+
 2017-03-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (DeclVisitor::visit(Module)): New function.

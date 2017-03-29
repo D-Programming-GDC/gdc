@@ -26,6 +26,7 @@ class AggregateDeclaration;
 class ClassDeclaration;
 class EnumDeclaration;
 class FuncDeclaration;
+class StructDeclaration;
 class TypeInfoDeclaration;
 class VarDeclaration;
 class Expression;
@@ -409,8 +410,10 @@ extern tree get_classinfo_decl (ClassDeclaration *);
 extern tree get_vtable_decl (ClassDeclaration *);
 extern tree get_cpp_typeinfo_decl (ClassDeclaration *);
 extern tree build_new_class_expr (ClassReferenceExp *expr);
-extern tree aggregate_initializer (AggregateDeclaration *);
-extern tree enum_initializer (EnumDeclaration *);
+extern tree aggregate_initializer_decl (AggregateDeclaration *);
+extern tree layout_struct_initializer (StructDeclaration *);
+extern tree layout_class_initializer (ClassDeclaration *);
+extern tree enum_initializer_decl (EnumDeclaration *);
 
 /* In d-expr.cc.  */
 extern tree build_expr (Expression *, bool = false);

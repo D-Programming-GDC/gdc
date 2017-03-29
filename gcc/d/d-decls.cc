@@ -101,7 +101,7 @@ get_symbol_decl (Declaration *decl)
   SymbolDeclaration *sd = decl->isSymbolDeclaration ();
   if (sd)
     {
-      decl->csym = aggregate_initializer (sd->dsym);
+      decl->csym = aggregate_initializer_decl (sd->dsym);
       return decl->csym;
     }
 
@@ -1124,7 +1124,7 @@ build_new_class_expr (ClassReferenceExp *expr)
    initializing struct literals.  */
 
 tree
-aggregate_initializer (AggregateDeclaration *decl)
+aggregate_initializer_decl (AggregateDeclaration *decl)
 {
   if (decl->sinit)
     return decl->sinit;
@@ -1169,13 +1169,39 @@ aggregate_initializer (AggregateDeclaration *decl)
   return decl->sinit;
 }
 
+/* Generate the data for the static initialiser.  */
+
+tree
+layout_class_initializer (ClassDeclaration *cd)
+{
+  NewExp *ne = new NewExp (cd->loc, NULL, NULL, cd->type, NULL);
+  ne->type = cd->type;
+
+  Expression *e = ne->ctfeInterpret ();
+  gcc_assert (e->op == TOKclassreference);
+
+  return build_class_instance ((ClassReferenceExp *) e);
+}
+
+tree
+layout_struct_initializer (StructDeclaration *sd)
+{
+  StructLiteralExp *sle = StructLiteralExp::create (sd->loc, sd, NULL);
+
+  if (!sd->fill (sd->loc, sle->elements, true))
+    gcc_unreachable ();
+
+  sle->type = sd->type;
+  return build_expr (sle, true);
+}
+
 /* Get the VAR_DECL of the static initializer symbol for the enum DECL.
    If this does not yet exist, create it.  The static initializer data is
    accessible via TypeInfo_Enum, but the field member type is a byte[] that
    requires a pointer to a symbol reference.  */
 
 tree
-enum_initializer (EnumDeclaration *decl)
+enum_initializer_decl (EnumDeclaration *decl)
 {
   if (decl->sinit)
     return decl->sinit;

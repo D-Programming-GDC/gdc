@@ -166,31 +166,3 @@ ExpInitializer::toDt()
   dt_cons(&dt, build_expr(exp, true));
   return dt;
 }
-
-/* ================================================================ */
-
-// Generate the data for the static initialiser.
-
-void
-ClassDeclaration::toDt(dt_t **pdt)
-{
-  NewExp *ne = new NewExp(this->loc, NULL, NULL, this->type, NULL);
-  ne->type = this->type;
-
-  Expression *e = ne->ctfeInterpret();
-  gcc_assert (e->op == TOKclassreference);
-
-  dt_cons(pdt, build_class_instance((ClassReferenceExp *) e));
-}
-
-void
-StructDeclaration::toDt(dt_t **pdt)
-{
-  StructLiteralExp *sle = StructLiteralExp::create (loc, this, NULL);
-
-  if (!fill(loc, sle->elements, true))
-    gcc_unreachable();
-
-  sle->type = type;
-  dt_cons(pdt, build_expr(sle, true));
-}

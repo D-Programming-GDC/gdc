@@ -35,9 +35,6 @@ class DeleteDeclaration;
 class InterfaceDeclaration;
 class TypeInfoClassDeclaration;
 class VarDeclaration;
-#ifdef IN_GCC
-typedef union tree_node dt_t;
-#endif
 
 enum Sizeok
 {
@@ -204,9 +201,6 @@ public:
 
     StructDeclaration *isStructDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class UnionDeclaration : public StructDeclaration
@@ -323,9 +317,6 @@ public:
 
     ClassDeclaration *isClassDeclaration() { return (ClassDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class InterfaceDeclaration : public ClassDeclaration
