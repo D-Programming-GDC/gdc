@@ -335,8 +335,8 @@ public:
     genTypeInfo (d->type, NULL);
 
     /* Generate static initialiser.  */
-    d->sinit = aggregate_initializer (d);
-    d->toDt (&DECL_LANG_INITIAL (d->sinit));
+    d->sinit = aggregate_initializer_decl (d);
+    DECL_INITIAL (d->sinit) = layout_struct_initializer (d);
 
     d_finish_symbol (d->sinit);
 
@@ -382,10 +382,10 @@ public:
     /* Generate C symbols.  */
     d->csym = get_classinfo_decl (d);
     d->vtblsym = get_vtable_decl (d);
-    d->sinit = aggregate_initializer (d);
+    d->sinit = aggregate_initializer_decl (d);
 
     /* Generate static initialiser.  */
-    d->toDt (&DECL_LANG_INITIAL (d->sinit));
+    DECL_INITIAL (d->sinit) = layout_class_initializer (d);
     d_finish_symbol (d->sinit);
 
     /* Put out the TypeInfo.  */
@@ -519,7 +519,7 @@ public:
     if (tc->sym->members && !d->type->isZeroInit ())
       {
 	/* Generate static initialiser.  */
-	d->sinit = enum_initializer (d);
+	d->sinit = enum_initializer_decl (d);
 	DECL_INITIAL (d->sinit) = build_expr (tc->sym->defaultval, true);
 	d_finish_symbol (d->sinit);
 
@@ -618,7 +618,10 @@ public:
 	else
 	  {
 	    if (d->type->ty == Tstruct)
-	      ((TypeStruct *) d->type)->sym->toDt (&DECL_LANG_INITIAL (s));
+	      {
+		StructDeclaration *sd = ((TypeStruct *) d->type)->sym;
+		DECL_INITIAL (s) = layout_struct_initializer (sd);
+	      }
 	    else
 	      {
 		Expression *e = d->type->defaultInitLiteral (d->loc);
