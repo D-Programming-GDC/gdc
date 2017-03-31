@@ -50,11 +50,6 @@ class DefaultStatement;
 class LabelStatement;
 
 // Back end
-#ifdef IN_GCC
-typedef union tree_node block;
-#else
-struct block;
-#endif
 struct code;
 
 bool inferAggregate(ForeachStatement *fes, Scope *sc, Dsymbol *&sapply);

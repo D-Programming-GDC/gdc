@@ -601,19 +601,8 @@ public:
 
 	if (d->_init && !d->_init->isVoidInitializer ())
 	  {
-	    /* Look for static array that is block initialised.  */
-	    Type *tb = d->type->toBasetype ();
-	    ExpInitializer *ie = d->_init->isExpInitializer ();
-
-	    if (ie != NULL && tb->ty == Tsarray
-		&& !d_types_same (tb, ie->exp->type))
-	      {
-		tree val = build_expr (ie->exp, true);
-		dt_cons (&DECL_LANG_INITIAL (s),
-			 build_array_from_val (tb, val));
-	      }
-	    else
-	      DECL_LANG_INITIAL (s) = d->_init->toDt ();
+	    Expression *e = d->_init->toExpression (d->type);
+	    DECL_INITIAL (s) = build_expr (e, true);
 	  }
 	else
 	  {
@@ -625,7 +614,7 @@ public:
 	    else
 	      {
 		Expression *e = d->type->defaultInitLiteral (d->loc);
-		dt_cons (&DECL_LANG_INITIAL (s), build_expr (e, true));
+		DECL_INITIAL (s) = build_expr (e, true);
 	      }
 	  }
 

@@ -2076,7 +2076,7 @@ public:
 	    else
 	      {
 		var->inuse++;
-		init = dtvector_to_tree (var->_init->toDt());
+		init = build_expr (var->_init->toExpression (), true);
 		var->inuse--;
 	      }
 	  }
@@ -2086,7 +2086,7 @@ public:
 	  e->error("non-constant expression %s", e->toChars());
 
 	if (init != NULL_TREE)
-	  this->result_ = dtvector_to_tree(init);
+	  this->result_ = init;
 	else
 	  this->result_ = error_mark_node;
       }
