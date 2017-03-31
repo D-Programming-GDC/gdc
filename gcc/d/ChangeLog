@@ -1,3 +1,13 @@
+2017-04-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_GLUE_OBJS): Remove d-todt.cc.
+	* d-objfile.cc (build_moduleinfo_symbol): Build initializer for
+	ModuleInfo directly from inferred type fields.
+	(d_finish_symbol): Remove handling of DECL_LANG_INITIAL.
+	* d-todt.cc: Remove file.
+	* d-tree.h (lang_decl): Remove initial field.
+	(DECL_LANG_INITIAL): Remove macro.
+
 2017-03-31  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (DeclVisitor::visit(VarDeclaration)): Use build_expr to

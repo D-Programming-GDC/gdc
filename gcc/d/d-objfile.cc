@@ -1055,7 +1055,7 @@ base_vtable_offset (ClassDeclaration *cd, BaseClass *bc)
 // Build the ModuleInfo symbol for Module m
 
 static tree
-build_moduleinfo_symbol(Module *m)
+build_moduleinfo_symbol (Module *m)
 {
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
@@ -1077,7 +1077,7 @@ build_moduleinfo_symbol(Module *m)
 	aimports_dim--;
     }
 
-  sgetmembers = m->findGetMembers();
+  sgetmembers = m->findGetMembers ();
 
   size_t flags = 0;
   if (m->sctor)
@@ -1103,102 +1103,151 @@ build_moduleinfo_symbol(Module *m)
 
   flags |= MIname;
 
-  tree msym = get_moduleinfo_decl (m);
-  TREE_TYPE (msym) = layout_moduleinfo_fields (m, TREE_TYPE (msym));
+  tree decl = get_moduleinfo_decl (m);
+  tree type = layout_moduleinfo_fields (m, TREE_TYPE (decl));
+  tree field = TYPE_FIELDS (type);
 
-  /* Put out:
-   *  uint flags;
-   *  uint index;
-   */
-  tree dt = NULL_TREE;
+  /* Put out the two named fields in a ModuleInfo decl:
+	uint flags;
+	uint index;  */
+  vec<constructor_elt, va_gc> *minit = NULL;
 
-  dt_cons (&dt, build_integer_cst (flags, build_ctype(Type::tuns32)));
-  dt_cons (&dt, build_integer_cst (0, build_ctype(Type::tuns32)));
+  CONSTRUCTOR_APPEND_ELT (minit, field,
+			  build_integer_cst (flags, TREE_TYPE (field)));
+  field = TREE_CHAIN (field);
 
-  /*
-   * emutls scan function
-   */
+  CONSTRUCTOR_APPEND_ELT (minit, field,
+			  build_integer_cst (0, TREE_TYPE (field)));
+  field = TREE_CHAIN (field);
+
+  /* EmuTLS scan function is added for targets that don't have native TLS.  */
   if (!targetm.have_tls)
     {
-      if (current_module_info->tlsVars.is_empty())
-	{
-	  dt_cons (&dt, null_pointer_node);
-	}
+      if (current_module_info->tlsVars.is_empty ())
+	CONSTRUCTOR_APPEND_ELT (minit, field, null_pointer_node);
       else
 	{
 	  tree emutls = build_emutls_function (current_module_info->tlsVars);
-	  dt_cons (&dt, build_address (emutls));
+	  CONSTRUCTOR_APPEND_ELT (minit, field, build_address (emutls));
 	}
+
+      field = TREE_CHAIN (field);
     }
 
-  /* Order of appearance, depending on flags
-   *  void function() tlsctor;
-   *  void function() tlsdtor;
-   *  void* function() xgetMembers;
-   *  void function() ctor;
-   *  void function() dtor;
-   *  void function() ictor;
-   *  void function() unitTest;
-   *  ModuleInfo*[] importedModules;
-   *  TypeInfo_Class[] localClasses;
-   *  char[N] name;
+  /* Order of appearance, depending on flags:
+	void function() tlsctor;
+	void function() tlsdtor;
+	void* function() xgetMembers;
+	void function() ctor;
+	void function() dtor;
+	void function() ictor;
+	void function() unitTest;
+	ModuleInfo*[] importedModules;
+	TypeInfo_Class[] localClasses;
+	char[N] name;
    */
   if (flags & MItlsctor)
-    dt_cons (&dt, build_address (m->sctor));
+    {
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sctor));
+      field = TREE_CHAIN (field);
+    }
 
   if (flags & MItlsdtor)
-    dt_cons (&dt, build_address (m->sdtor));
+    {
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sdtor));
+      field = TREE_CHAIN (field);
+    }
 
   if (flags & MIctor)
-    dt_cons (&dt, build_address (m->ssharedctor));
+    {
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->ssharedctor));
+      field = TREE_CHAIN (field);
+    }
 
   if (flags & MIdtor)
-    dt_cons (&dt, build_address (m->sshareddtor));
+    {
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sshareddtor));
+      field = TREE_CHAIN (field);
+    }
 
   if (flags & MIxgetMembers)
-    dt_cons (&dt, build_address (get_symbol_decl (sgetmembers)));
+    {
+      CONSTRUCTOR_APPEND_ELT (minit, field,
+			      build_address (get_symbol_decl (sgetmembers)));
+      field = TREE_CHAIN (field);
+    }
 
   if (flags & MIictor)
-    dt_cons (&dt, build_address (m->sictor));
+    {
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sictor));
+      field = TREE_CHAIN (field);
+    }
 
   if (flags & MIunitTest)
-    dt_cons (&dt, build_address (m->stest));
+    {
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->stest));
+      field = TREE_CHAIN (field);
+    }
 
   if (flags & MIimportedModules)
     {
-      dt_cons (&dt, size_int (aimports_dim));
+      vec<constructor_elt, va_gc> *elms = NULL;
+      tree satype = d_array_type (Type::tvoidptr, aimports_dim);
+      size_t idx = 0;
+
       for (size_t i = 0; i < m->aimports.dim; i++)
 	{
 	  Module *mi = m->aimports[i];
 	  if (mi->needmoduleinfo)
-	    dt_cons (&dt, build_address (get_moduleinfo_decl (mi)));
+	    {
+	      CONSTRUCTOR_APPEND_ELT (elms, size_int (idx),
+				      build_address (get_moduleinfo_decl (mi)));
+	      idx++;
+	    }
 	}
+
+      CONSTRUCTOR_APPEND_ELT (minit, field, size_int (aimports_dim));
+      field = TREE_CHAIN (field);
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_constructor (satype, elms));
+      field = TREE_CHAIN (field);
     }
 
   if (flags & MIlocalClasses)
     {
-      dt_cons (&dt, size_int (aclasses.dim));
+      vec<constructor_elt, va_gc> *elms = NULL;
+      tree satype = d_array_type (Type::tvoidptr, aclasses.dim);
+
       for (size_t i = 0; i < aclasses.dim; i++)
 	{
 	  ClassDeclaration *cd = aclasses[i];
-	  dt_cons (&dt, build_address (get_classinfo_decl (cd)));
+	  CONSTRUCTOR_APPEND_ELT (elms, size_int (i),
+				  build_address (get_classinfo_decl (cd)));
 	}
+
+      CONSTRUCTOR_APPEND_ELT (minit, field, size_int (aclasses.dim));
+      field = TREE_CHAIN (field);
+      CONSTRUCTOR_APPEND_ELT (minit, field, build_constructor (satype, elms));
+      field = TREE_CHAIN (field);
     }
 
   if (flags & MIname)
     {
       // Put out module name as a 0-terminated C-string, to save bytes
-      const char *name = m->toPrettyChars();
+      const char *name = m->toPrettyChars ();
       size_t namelen = strlen (name) + 1;
       tree strtree = build_string (namelen, name);
       TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
-      dt_cons (&dt, strtree);
+      CONSTRUCTOR_APPEND_ELT (minit, field, strtree);
+      field = TREE_CHAIN (field);
     }
 
-  DECL_LANG_INITIAL (msym) = dt;
-  d_finish_symbol (msym);
+  gcc_assert (field == NULL_TREE);
 
-  return msym;
+  TREE_TYPE (decl) = type;
+  DECL_INITIAL (decl) = build_struct_literal (type, minit);
+  d_finish_symbol (decl);
+
+  return decl;
 }
 
 void
@@ -1402,20 +1451,6 @@ mark_needed (tree decl)
 void
 d_finish_symbol (tree decl)
 {
-  if (DECL_LANG_INITIAL (decl))
-    {
-      if (DECL_INITIAL (decl) == NULL_TREE)
-	{
-	  tree sinit = dtvector_to_tree (DECL_LANG_INITIAL (decl));
-
-	  // No gain setting DECL_INITIAL if the initialiser is all zeros.
-	  // Let the backend put the symbol in bss instead, if supported.
-	  if (!initializer_zerop (sinit))
-	    DECL_INITIAL (decl) = sinit;
-	}
-      gcc_assert (COMPLETE_TYPE_P (TREE_TYPE (decl)));
-    }
-
   gcc_assert (!error_operand_p (decl));
 
   // We are sending this symbol to object file, can't be extern.
