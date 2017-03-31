@@ -1,3 +1,11 @@
+2017-03-31  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (DeclVisitor::visit(VarDeclaration)): Use build_expr to
+	generate the static initializer.
+	* d-todt.cc (Initializer::toDt): Remove function and all overrides.
+	* expr.cc (ExprVisitor::visit(VarExp)): Use build_expr to get the
+	constant initializer of a constant variable.
+
 2017-03-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc (aggregate_initializer): Renamed to

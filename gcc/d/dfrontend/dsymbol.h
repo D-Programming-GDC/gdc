@@ -75,10 +75,8 @@ class OverloadSet;
 struct AA;
 #ifdef IN_GCC
 typedef union tree_node Symbol;
-typedef union tree_node TYPE;
 #else
 struct Symbol;
-struct TYPE;
 #endif
 
 struct Ungag

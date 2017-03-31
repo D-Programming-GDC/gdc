@@ -51,7 +51,6 @@ class SliceExp;
 struct UnionExp;
 
 #ifdef IN_GCC
-typedef union tree_node dt_t;
 typedef union tree_node elem;
 typedef union tree_node Symbol;
 #else
