@@ -220,8 +220,6 @@ struct GTY(()) lang_decl
 {
   Declaration * GTY((skip)) decl;
 
-  tree initial;
-
   /* FIELD_DECL in frame struct that this variable is allocated in.  */
   tree frame_field;
 
@@ -242,9 +240,6 @@ struct GTY(()) lang_decl
 #define DECL_LANG_FRONTEND(NODE) \
   (DECL_LANG_SPECIFIC (NODE) \
    ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
-
-#define DECL_LANG_INITIAL(NODE) \
-  DECL_LANG_SPECIFIC (NODE)->initial
 
 #define SET_DECL_LANG_FRAME_FIELD(NODE, VAL) \
   DECL_LANG_SPECIFIC (NODE)->frame_field = VAL

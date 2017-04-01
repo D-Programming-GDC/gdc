@@ -34,13 +34,6 @@ enum ModuleInfoFlags
   MIname	    = 0x1000,
 };
 
-typedef tree_node dt_t;
-
-extern dt_t **dt_cons (dt_t **pdt, tree val);
-
-extern tree dtvector_to_tree (dt_t *dt);
-
-
 struct ModuleInfo
 {
   auto_vec<ClassDeclaration *> classes;
