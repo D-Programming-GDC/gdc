@@ -1,5 +1,13 @@
 2017-04-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_handle_option): Handle -fdump-d-original.
+	(d_parse_file): Likewise.
+	* d-target.cc (Target::maxStaticDataSize): New variable.
+	(Target::_init): Initialize maxStaticDataSize.
+	* lang.opt (fdump-d-original): Declare.
+
+2017-04-01  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* Make-lang.in (D_GLUE_OBJS): Remove d-todt.cc.
 	* d-objfile.cc (build_moduleinfo_symbol): Build initializer for
 	ModuleInfo directly from inferred type fields.
