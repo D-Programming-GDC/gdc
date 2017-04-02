@@ -230,3 +230,10 @@ void _Unwind_SetGR(_Unwind_Context* context, int regno, _Unwind_Word val)
 {
     _Unwind_VRS_Set(context, _UVRSC_CORE, regno, _UVRSD_UINT32, &val);
 }
+
+// leb128 type numbers have a potentially unlimited size.
+// The target of the following definitions of _sleb128_t and _uleb128_t
+// is to have efficient data types large enough to hold the leb128 type
+// numbers used in the unwind code.
+alias _sleb128_t = __builtin_clong;
+alias _uleb128_t = __builtin_culong;

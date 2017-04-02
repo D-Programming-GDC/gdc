@@ -22,9 +22,11 @@ module gcc.unwind.arm;
 
 import gcc.config;
 
+version(ARM):
 static if (GNU_ARM_EABI_Unwinder):
 
 public import gcc.unwind.arm_common;
+import gcc.unwind.pe;
 
 extern (C):
 @nogc:
