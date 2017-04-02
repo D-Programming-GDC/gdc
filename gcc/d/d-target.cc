@@ -47,6 +47,7 @@ int Target::realalignsize;
 bool Target::reverseCppOverloads;
 bool Target::cppExceptions;
 int Target::classinfosize;
+unsigned long long Target::maxStaticDataSize;
 
 /* Floating point constants for for .max, .min, and other properties.  */
 template <typename T> real_t Target::FPTypeProperties<T>::max;
@@ -144,6 +145,9 @@ Target::_init (void)
   Target::realalignsize = TYPE_ALIGN_UNIT (long_double_type_node);
   Target::reverseCppOverloads = false;
   Target::cppExceptions = true;
+
+  /* Allow data sizes up to half of the address space.  */
+  Target::maxStaticDataSize = tree_to_shwi (TYPE_MAXVAL (ptrdiff_type_node));
 
   /* Define what type to use for size_t, ptrdiff_t.  */
   if (POINTER_SIZE == 64)

@@ -607,6 +607,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ddocfiles->push (arg);
       break;
 
+    case OPT_fdump_d_original:
+      global.params.vcg_ast = value;
+      break;
+
     case OPT_fignore_unknown_pragmas:
       global.params.ignoreUnsupportedPragmas = value;
       break;
@@ -1342,6 +1346,23 @@ d_parse_file()
 	{
 	  Module *m = modules[i];
 	  gendocfile(m);
+	}
+    }
+
+  /* Handle -fdump-d-original.  */
+  if (global.params.vcg_ast)
+    {
+      for (size_t i = 0; i < modules.dim; i++)
+	{
+	  Module *m = modules[i];
+	  OutBuffer buf;
+	  buf.doindent = 1;
+
+	  HdrGenState hgs;
+	  hgs.fullDump = true;
+
+	  toCBuffer (m, &buf, &hgs);
+	  fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
 	}
     }
 

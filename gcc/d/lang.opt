@@ -195,6 +195,10 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<file>	Include a Ddoc macro <file>.
 
+fdump-d-original
+D
+Display the frontend AST after parsing and semantic passes.
+
 fd-vgc
 D Alias(ftransition=nogc)
 ; Deprecated in favor of -ftransition=nogc
