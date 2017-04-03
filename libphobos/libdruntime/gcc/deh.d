@@ -506,7 +506,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class excepti
 {
     // If no LSDA, then there are no handlers or cleanups.
     if (lsda is null)
-        return CONTINUE_UNWINDING;
+        return CONTINUE_UNWINDING(unwindHeader, context);
 
     // Parse the LSDA header
     auto p = lsda;
@@ -639,12 +639,12 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class excepti
 
     // IP is not in table.  No associated cleanups.
     if (!saw_handler && !saw_cleanup)
-        return CONTINUE_UNWINDING;
+        return CONTINUE_UNWINDING(unwindHeader, context);
 
     if (actions & _UA_SEARCH_PHASE)
     {
         if (!saw_handler)
-            return CONTINUE_UNWINDING;
+            return CONTINUE_UNWINDING(unwindHeader, context);
 
         // For domestic exceptions, we cache data from phase 1 for phase 2.
         if (isGdcExceptionClass(exceptionClass))
@@ -748,7 +748,7 @@ int actionTableLookup(_Unwind_Action actions, _Unwind_Exception* unwindHeader,
  * Called when the personality function has found neither a cleanup or handler.
  * To support ARM EABI personality routines, that must also unwind the stack.
  */
-_Unwind_Reason_Code CONTINUE_UNWINDING()
+_Unwind_Reason_Code CONTINUE_UNWINDING(_Unwind_Exception* unwindHeader, _Unwind_Context* context)
 {
     static if (GNU_ARM_EABI_Unwinder)
     {
@@ -803,7 +803,7 @@ static if (GNU_ARM_EABI_Unwinder)
                 // then we don't need to search for any handler as it is not a real exception.
                 // Just unwind the stack.
                 if (state & _US_FORCE_UNWIND)
-                    return CONTINUE_UNWINDING;
+                    return CONTINUE_UNWINDING(unwindHeader, context);
                 actions = _UA_SEARCH_PHASE;
                 break;
 
@@ -815,7 +815,7 @@ static if (GNU_ARM_EABI_Unwinder)
                 break;
 
             case _US_UNWIND_FRAME_RESUME:
-                return CONTINUE_UNWINDING;
+                return CONTINUE_UNWINDING(unwindHeader, context);
 
             default:
                 __builtin_abort();
@@ -896,19 +896,24 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         while (eh.next)
         {
             ExceptionHeader* ehn = eh.next;
+            const(ubyte)* nextLsd;
+            _Unwind_Ptr nextLandingPad;
+            int nextHandler;
+
+            ExceptionHeader.restore(&ehn.unwindHeader, nextHandler, nextLsd, nextLandingPad);
 
             Error e = cast(Error)eh.object;
             if (e !is null && !cast(Error)ehn.object)
             {
                 // We found an Error, bypass the exception chain.
-                currentLsd = ehn.languageSpecificData;
+                currentLsd = nextLsd;
                 eh = ehn;
                 bypassed = true;
                 continue;
             }
 
             // Don't combine when the exceptions are from different functions.
-            if (currentLsd != ehn.languageSpecificData)
+            if (currentLsd != nextLsd)
                 break;
 
             // Add our object onto the end of the existing chain.
@@ -919,9 +924,9 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 
             // Replace our exception object with in-flight one
             eh.object = ehn.object;
-            if (ehn.handler != handler && !bypassed)
+            if (nextHandler != handler && !bypassed)
             {
-                handler = ehn.handler;
+                handler = nextHandler;
                 ExceptionHeader.save(unwindHeader, context, handler,
                                      lsda, landingPad);
             }

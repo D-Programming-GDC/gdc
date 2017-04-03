@@ -22,6 +22,7 @@ module gcc.unwind.c6x;
 
 import gcc.config;
 
+version (TIC6X):
 static if (GNU_ARM_EABI_Unwinder):
 
 // Not really the ARM EABI, but pretty close.
