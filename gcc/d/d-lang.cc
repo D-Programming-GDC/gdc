@@ -133,6 +133,9 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_TYPE_PROMOTES_TO		d_type_promotes_to
 
 
+/* Array of d type/decl nodes.  */
+tree d_global_trees[DTI_MAX];
+
 /* Options handled by the compiler that are separate from the frontend.  */
 struct d_option_data
 {
