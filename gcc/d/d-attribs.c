@@ -1,20 +1,19 @@
-/* d-attribs.c -- D frontend for GCC.
-   Copyright (C) 2015 Free Software Foundation, Inc.
+/* d-attribs.c -- D attributes handling.
+   Copyright (C) 2015-2017 Free Software Foundation, Inc.
 
-   GCC is free software; you can redistribute it and/or modify it under
-   the terms of the GNU General Public License as published by the Free
-   Software Foundation; either version 3, or (at your option) any later
-   version.
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
 
-   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-   WARRANTY; without even the implied warranty of MERCHANTABILITY or
-   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-   for more details.
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with GCC; see the file COPYING3.  If not see
-   <http://www.gnu.org/licenses/>.
-*/
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
 
 /* Implementation of attribute handlers for user defined attributes and
    internal built-in functions.  */
@@ -106,7 +105,7 @@ const attribute_spec d_langhook_common_attribute_table[] =
   { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
-/* Table of language attributes exposed by UDAs.  */
+/* Table of D language attributes exposed by `gcc.attribute' UDAs.  */
 
 const attribute_spec d_langhook_attribute_table[] =
 {
@@ -188,7 +187,7 @@ handle_leaf_attribute (tree *node, tree name,
     }
   if (!TREE_PUBLIC (*node))
     {
-      warning (OPT_Wattributes, "%qE attribute has no effect on unit local functions", name);
+      warning (OPT_Wattributes, "%qE attribute has no effect", name);
       *no_add_attrs = true;
     }
 
@@ -259,7 +258,7 @@ handle_pure_attribute (tree *node, tree ARG_UNUSED (name),
 static tree
 handle_novops_attribute (tree *node, tree ARG_UNUSED (name),
 			 tree ARG_UNUSED (args), int ARG_UNUSED (flags),
-			 bool *ARG_UNUSED (no_add_attrs))
+			 bool * ARG_UNUSED (no_add_attrs))
 {
   gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
   DECL_IS_NOVOPS (*node) = 1;
