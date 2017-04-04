@@ -23,6 +23,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 
 #include "dfrontend/arraytypes.h"
+#include "dfrontend/declaration.h"
 #include "dfrontend/mtype.h"
 
 #include "tree.h"
@@ -30,6 +31,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tm.h"
 #include "cgraph.h"
 #include "toplev.h"
+#include "langhooks.h"
 #include "target.h"
 #include "common/common-target.h"
 #include "stringpool.h"
@@ -145,6 +147,147 @@ const attribute_spec d_langhook_format_attribute_table[] =
   { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
+
+/* Insert the type attribute ATTRNAME with value VALUE into TYPE.  */
+
+tree
+insert_type_attribute (tree type, const char *attrname, tree value)
+{
+  tree ident = get_identifier (attrname);
+
+  if (value)
+    value = tree_cons (NULL_TREE, value, NULL_TREE);
+
+  /* types built by functions in tree.c need to be treated as immutable.  */
+  if (!TYPE_ATTRIBUTES (type))
+    type = build_variant_type_copy (type);
+
+  tree attrib = tree_cons (ident, value, NULL_TREE);
+  TYPE_ATTRIBUTES (type) = merge_attributes (TYPE_ATTRIBUTES (type), attrib);
+
+  return type;
+}
+
+/* Insert the decl attribute ATTRNAME with value VALUE into DECL.  */
+
+void
+insert_decl_attribute (tree decl, const char *attrname, tree value)
+{
+  tree ident = get_identifier (attrname);
+
+  if (value)
+    value = tree_cons (NULL_TREE, value, NULL_TREE);
+
+  tree attrib = tree_cons (ident, value, NULL_TREE);
+  DECL_ATTRIBUTES (decl) = merge_attributes (DECL_ATTRIBUTES (decl), attrib);
+}
+
+static bool
+uda_attribute_p (const char* name)
+{
+  static StringTable* table;
+
+  if(table == NULL)
+    {
+      /* Build the table of attributes exposed to the language.
+	 Common and format attributes are kept internal.  */
+      size_t n = 0;
+      table = new StringTable();
+
+      for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
+	n++;
+
+      for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
+	n++;
+
+      if(n != 0)
+	{
+	  table->_init(n);
+
+	  for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
+	    table->insert(p->name, strlen(p->name), NULL);
+
+	  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
+	    table->insert(p->name, strlen(p->name), NULL);
+	}
+    }
+
+  return table->lookup(name, strlen(name)) != NULL;
+}
+
+/* Return chain of all GCC attributes found in list IN_ATTRS.  */
+
+tree
+build_attributes (Expressions *in_attrs)
+{
+  if (!in_attrs)
+    return NULL_TREE;
+
+  expandTuples(in_attrs);
+
+  tree out_attrs = NULL_TREE;
+
+  for (size_t i = 0; i < in_attrs->dim; i++)
+    {
+      Expression *attr = (*in_attrs)[i];
+      Dsymbol *sym = attr->type->toDsymbol (0);
+
+      if (!sym)
+	continue;
+
+      Dsymbol *mod = (Dsymbol*) sym->getModule();
+      if (!(strcmp(mod->toChars(), "attribute") == 0
+          && mod->parent != NULL
+          && strcmp(mod->parent->toChars(), "gcc") == 0
+          && !mod->parent->parent))
+        continue;
+
+      if (attr->op == TOKcall)
+	attr = attr->ctfeInterpret();
+
+      gcc_assert(attr->op == TOKstructliteral);
+      Expressions *elem = ((StructLiteralExp*) attr)->elements;
+
+      if ((*elem)[0]->op == TOKnull)
+	{
+	  error ("expected string attribute, not null");
+	  return error_mark_node;
+	}
+
+      gcc_assert((*elem)[0]->op == TOKstring);
+      StringExp *nameExp = (StringExp*) (*elem)[0];
+      gcc_assert(nameExp->sz == 1);
+      const char* name = (const char*) nameExp->string;
+
+      if (!uda_attribute_p (name))
+      {
+        error ("unknown attribute %s", name);
+        return error_mark_node;
+      }
+
+      tree args = NULL_TREE;
+
+      for (size_t j = 1; j < elem->dim; j++)
+        {
+	  Expression *ae = (*elem)[j];
+	  tree aet;
+	  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
+	    {
+	      StringExp *s = (StringExp *) ae;
+	      aet = build_string (s->len, (const char *) s->string);
+	    }
+	  else
+	    aet = build_expr(ae);
+
+	  args = chainon (args, build_tree_list (0, aet));
+        }
+
+      tree list = build_tree_list (get_identifier (name), args);
+      out_attrs =  chainon (out_attrs, list);
+    }
+
+  return out_attrs;
+}
 
 /* Built-in attribute handlers.  */
 
