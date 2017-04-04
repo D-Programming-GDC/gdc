@@ -1,3 +1,13 @@
+2017-04-04  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c (insert_type_attribute): Use
+	build_type_attribute_variant.
+	(insert_decl_attribute): Use build_decl_attribute_variant.
+	(uda_attribute_p): Remove string table, use Identifier comparison for
+	looking up table attributes.
+	(build_attributes): Make unknown attribute a warning, use quoted
+	strings in diagnostic messages.
+
 2017-04-01  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-lang.cc (d_handle_option): Handle -fdump-d-original.

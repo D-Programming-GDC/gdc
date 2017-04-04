@@ -31,13 +31,13 @@ along with GCC; see the file COPYING3.  If not see
 #include "tm.h"
 #include "cgraph.h"
 #include "toplev.h"
-#include "langhooks.h"
 #include "target.h"
 #include "common/common-target.h"
 #include "stringpool.h"
 #include "varasm.h"
 
 #include "d-tree.h"
+#include "d-objfile.h"
 
 /* Internal attribute handlers for built-in functions.  */
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);
@@ -148,7 +148,8 @@ const attribute_spec d_langhook_format_attribute_table[] =
 };
 
 
-/* Insert the type attribute ATTRNAME with value VALUE into TYPE.  */
+/* Insert the type attribute ATTRNAME with value VALUE into TYPE.
+   Returns a new variant of the original type declaration.  */
 
 tree
 insert_type_attribute (tree type, const char *attrname, tree value)
@@ -158,19 +159,15 @@ insert_type_attribute (tree type, const char *attrname, tree value)
   if (value)
     value = tree_cons (NULL_TREE, value, NULL_TREE);
 
-  /* types built by functions in tree.c need to be treated as immutable.  */
-  if (!TYPE_ATTRIBUTES (type))
-    type = build_variant_type_copy (type);
+  tree attribs = merge_attributes (TYPE_ATTRIBUTES (type),
+				   tree_cons (ident, value, NULL_TREE));
 
-  tree attrib = tree_cons (ident, value, NULL_TREE);
-  TYPE_ATTRIBUTES (type) = merge_attributes (TYPE_ATTRIBUTES (type), attrib);
-
-  return type;
+  return build_type_attribute_variant (type, attribs);
 }
 
 /* Insert the decl attribute ATTRNAME with value VALUE into DECL.  */
 
-void
+tree
 insert_decl_attribute (tree decl, const char *attrname, tree value)
 {
   tree ident = get_identifier (attrname);
@@ -178,115 +175,129 @@ insert_decl_attribute (tree decl, const char *attrname, tree value)
   if (value)
     value = tree_cons (NULL_TREE, value, NULL_TREE);
 
-  tree attrib = tree_cons (ident, value, NULL_TREE);
-  DECL_ATTRIBUTES (decl) = merge_attributes (DECL_ATTRIBUTES (decl), attrib);
+  tree attribs = merge_attributes (DECL_ATTRIBUTES (decl),
+				   tree_cons (ident, value, NULL_TREE));
+
+  return build_decl_attribute_variant (decl, attribs);
 }
+
+/* Returns TRUE if NAME is an attribute recognized as being handled by
+   the `gcc.attribute' module.  */
 
 static bool
 uda_attribute_p (const char* name)
 {
-  static StringTable* table;
+  Identifier *ident = Identifier::idPool (name);
 
-  if(table == NULL)
+  /* Search both our language, and target attribute tables.
+     Common and format attributes are kept internal.  */
+  for (const attribute_spec *p = d_langhook_attribute_table; p->name; p++)
     {
-      /* Build the table of attributes exposed to the language.
-	 Common and format attributes are kept internal.  */
-      size_t n = 0;
-      table = new StringTable();
-
-      for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
-	n++;
-
-      for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
-	n++;
-
-      if(n != 0)
-	{
-	  table->_init(n);
-
-	  for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name), NULL);
-
-	  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name), NULL);
-	}
+      if (Identifier::idPool (p->name) == ident)
+	return true;
     }
 
-  return table->lookup(name, strlen(name)) != NULL;
+  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
+    {
+      if (Identifier::idPool (p->name) == ident)
+	return true;
+    }
+
+  return false;
 }
 
-/* Return chain of all GCC attributes found in list IN_ATTRS.  */
+/* [attribute/uda]
+
+   User Defined Attributes (UDA) are compile time expressions that can be
+   attached to a declaration.  These attributes can then be queried, extracted,
+   and manipulated at compile time. There is no runtime component to them.
+   
+   Expand and merge all UDAs found in the EATTRS list that are of type
+   `gcc.attribute.Attribute'.  This symbol is internally recognized by the
+   compiler and maps them to their equivalent GCC attribute.  */
 
 tree
-build_attributes (Expressions *in_attrs)
+build_attributes (Expressions *eattrs)
 {
-  if (!in_attrs)
+  if (!eattrs)
     return NULL_TREE;
 
-  expandTuples(in_attrs);
+  expandTuples (eattrs);
 
-  tree out_attrs = NULL_TREE;
+  tree attribs = NULL_TREE;
 
-  for (size_t i = 0; i < in_attrs->dim; i++)
+  for (size_t i = 0; i < eattrs->dim; i++)
     {
-      Expression *attr = (*in_attrs)[i];
+      Expression *attr = (*eattrs)[i];
       Dsymbol *sym = attr->type->toDsymbol (0);
 
       if (!sym)
 	continue;
 
-      Dsymbol *mod = (Dsymbol*) sym->getModule();
-      if (!(strcmp(mod->toChars(), "attribute") == 0
+      /* Attribute symbol must come from the `gcc.attribute' module.  */
+      Dsymbol *mod = (Dsymbol*) sym->getModule ();
+      if (!(strcmp (mod->toChars (), "attribute") == 0
           && mod->parent != NULL
-          && strcmp(mod->parent->toChars(), "gcc") == 0
+          && strcmp (mod->parent->toChars (), "gcc") == 0
           && !mod->parent->parent))
         continue;
 
+      /* Get the result of the attribute if it hasn't already been folded.  */
       if (attr->op == TOKcall)
-	attr = attr->ctfeInterpret();
+	attr = attr->ctfeInterpret ();
 
-      gcc_assert(attr->op == TOKstructliteral);
-      Expressions *elem = ((StructLiteralExp*) attr)->elements;
+      /* Should now have a struct `Attribute("attrib", "value", ... )'
+	 initializer list.  */
+      gcc_assert (attr->op == TOKstructliteral);
+      Expressions *elems = ((StructLiteralExp*) attr)->elements;
+      Expression *e0 = (*elems)[0];
 
-      if ((*elem)[0]->op == TOKnull)
+      if (e0->op != TOKstring)
 	{
-	  error ("expected string attribute, not null");
+	  error ("expected string attribute, not %qs", e0->toChars());
 	  return error_mark_node;
 	}
 
-      gcc_assert((*elem)[0]->op == TOKstring);
-      StringExp *nameExp = (StringExp*) (*elem)[0];
-      gcc_assert(nameExp->sz == 1);
-      const char* name = (const char*) nameExp->string;
+      StringExp *se = (StringExp*) e0;
+      gcc_assert (se->sz == 1);
 
+      /* Empty string attribute, just ignore it.  */
+      if (se->len == 0)
+	continue;
+
+      /* Check if the attribute is recognized and handled.
+	 Done here to report the diagnostic at the right location.  */
+      const char* name = (const char*) se->string;
       if (!uda_attribute_p (name))
-      {
-        error ("unknown attribute %s", name);
-        return error_mark_node;
-      }
+	{
+	  warning_at (get_linemap (e0->loc), OPT_Wattributes,
+		      "unknown attribute %qs", name);
+	  return error_mark_node;
+	}
 
+      /* Chain all attribute arguments together.  */
       tree args = NULL_TREE;
 
-      for (size_t j = 1; j < elem->dim; j++)
-        {
-	  Expression *ae = (*elem)[j];
-	  tree aet;
-	  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
+      for (size_t j = 1; j < elems->dim; j++)
+	{
+	  Expression *e = (*elems)[j];
+	  tree t;
+	  if (e->op == TOKstring && ((StringExp *) e)->sz == 1)
 	    {
-	      StringExp *s = (StringExp *) ae;
-	      aet = build_string (s->len, (const char *) s->string);
+	      StringExp *s = (StringExp *) e;
+	      t = build_string (s->len, (const char *) s->string);
 	    }
 	  else
-	    aet = build_expr(ae);
+	    t = build_expr (e);
 
-	  args = chainon (args, build_tree_list (0, aet));
+	  args = chainon (args, build_tree_list (0, t));
         }
 
       tree list = build_tree_list (get_identifier (name), args);
-      out_attrs =  chainon (out_attrs, list);
+      attribs =  chainon (attribs, list);
     }
 
-  return out_attrs;
+  return attribs;
 }
 
 /* Built-in attribute handlers.  */

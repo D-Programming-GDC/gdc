@@ -384,7 +384,7 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 
 /* In d-attribs.c.  */
 extern tree insert_type_attribute (tree, const char *, tree = NULL_TREE);
-extern void insert_decl_attribute (tree, const char *, tree = NULL_TREE);
+extern tree insert_decl_attribute (tree, const char *, tree = NULL_TREE);
 extern tree build_attributes (Expressions *);
 
 /* In d-builtins.cc.  */
