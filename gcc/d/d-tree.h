@@ -37,6 +37,9 @@ class Type;
 class TypeFunction;
 struct BaseClass;
 
+template <typename TYPE> struct Array;
+typedef Array<Expression *> Expressions;
+
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
 
@@ -378,6 +381,11 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
 #define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+
+/* In d-attribs.c.  */
+extern tree insert_type_attribute (tree, const char *, tree = NULL_TREE);
+extern tree insert_decl_attribute (tree, const char *, tree = NULL_TREE);
+extern tree build_attributes (Expressions *);
 
 /* In d-builtins.cc.  */
 extern const attribute_spec d_langhook_attribute_table[];
