@@ -19,6 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
+#include "dfrontend/expression.h"
+#include "dfrontend/mtype.h"
+
 #include "tree.h"
 #include "fold-const.h"
 #include "diagnostic.h"
@@ -28,6 +32,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
+#include "d-codegen.h"
 
 
 /* Build CODE expression with operands OP0 and OP1.
@@ -319,4 +324,492 @@ convert (tree type, tree expr)
 
   error ("conversion to non-scalar type requested");
   return error_mark_node;
+}
+
+/* Return expression EXP, whose type has been converted to TYPE.  */
+
+tree
+d_convert (tree type, tree exp)
+{
+  /* Check this first before retrieving frontend type.  */
+  if (error_operand_p (type) || error_operand_p (exp))
+    return error_mark_node;
+
+  Type *totype = TYPE_LANG_FRONTEND (type);
+  Type *etype = TYPE_LANG_FRONTEND (TREE_TYPE (exp));
+
+  if (totype && etype)
+    return convert_expr (exp, etype, totype);
+
+  return convert (type, exp);
+}
+
+/* Return expression EXP, whose type has been convert from ETYPE to TOTYPE.  */
+
+tree
+convert_expr (tree exp, Type *etype, Type *totype)
+{
+  tree result = NULL_TREE;
+
+  gcc_assert (etype && totype);
+  Type *ebtype = etype->toBasetype ();
+  Type *tbtype = totype->toBasetype ();
+
+  if (d_types_same (etype, totype))
+    return exp;
+
+  if (error_operand_p (exp))
+    return exp;
+
+  switch (ebtype->ty)
+    {
+    case Tdelegate:
+      if (tbtype->ty == Tdelegate)
+	{
+	  exp = d_save_expr (exp);
+	  return build_delegate_cst (delegate_method (exp),
+				     delegate_object (exp), totype);
+	}
+      else if (tbtype->ty == Tpointer)
+	{
+	  /* The front-end converts <delegate>.ptr to cast (void *)<delegate>.
+	     Maybe should only allow void* ?  */
+	  exp = delegate_object (exp);
+	}
+      else
+	{
+	  error ("can't convert a delegate expression to %qs",
+		 totype->toChars ());
+	  return error_mark_node;
+	}
+      break;
+
+    case Tstruct:
+      if (tbtype->ty == Tstruct)
+	{
+	  if (totype->size () == etype->size ())
+	    {
+	      /* Allowed to cast to structs with same type size.  */
+	      result = build_vconvert (build_ctype (totype), exp);
+	    }
+	  else
+	    {
+	      error ("can't convert struct %qs to %qs",
+		     etype->toChars (), totype->toChars ());
+	      return error_mark_node;
+	    }
+	}
+      /* else, default conversion, which should produce an error.  */
+      break;
+
+    case Tclass:
+      if (tbtype->ty == Tclass)
+	{
+	  ClassDeclaration *cdfrom = ebtype->isClassHandle ();
+	  ClassDeclaration *cdto = tbtype->isClassHandle ();
+	  int offset;
+
+	  if (cdto->isBaseOf (cdfrom, &offset) && offset != OFFSET_RUNTIME)
+	    {
+	      /* Casting up the inheritance tree: Don't do anything special.
+		 Cast to an implemented interface: Handle at compile time.  */
+	      if (offset)
+		{
+		  /* Forward references should not leak from the frontend.  */
+		  gcc_assert (offset != OFFSET_FWDREF);
+
+		  tree type = build_ctype (totype);
+		  exp = d_save_expr (exp);
+
+		  tree cond = build_boolop (NE_EXPR, exp, null_pointer_node);
+		  tree object = build_offset (exp, size_int (offset));
+
+		  return build_condition (build_ctype (totype), cond,
+					  build_nop (type, object),
+					  build_nop (type, null_pointer_node));
+		}
+
+	      /* d_convert will make a no-op cast.  */
+	      break;
+	    }
+	  else if (cdfrom->cpp)
+	    {
+	      /* Downcasting in C++ is a no-op.  */
+	      if (cdto->cpp)
+		break;
+
+	      /* Casting from a C++ interface to a class/non-C++ interface
+		 always results in null as there is no runtime information,
+		 and no way one can derive from the other.  */
+	      warning (OPT_Wcast_result, "cast to %qs will produce null result",
+		       totype->toChars ());
+	      result = d_convert (build_ctype (totype), null_pointer_node);
+
+	      /* Make sure the expression is still evaluated if necessary.  */
+	      if (TREE_SIDE_EFFECTS (exp))
+		result = compound_expr (exp, result);
+
+	      break;
+	    }
+
+	  /* The offset can only be determined at runtime, do dynamic cast.  */
+	  tree args[2];
+	  args[0] = exp;
+	  args[1] = build_address (get_classinfo_decl (cdto));
+
+	  return build_libcall (cdfrom->isInterfaceDeclaration ()
+				? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST,
+				2, args);
+	}
+      /* else default conversion.  */
+      break;
+
+    case Tsarray:
+      if (tbtype->ty == Tpointer)
+	{
+	  result = build_nop (build_ctype (totype), build_address (exp));
+	}
+      else if (tbtype->ty == Tarray)
+	{
+	  dinteger_t dim = ((TypeSArray *) ebtype)->dim->toInteger ();
+	  dinteger_t esize = ebtype->nextOf ()->size ();
+	  dinteger_t tsize = tbtype->nextOf ()->size ();
+
+	  tree ptrtype = build_ctype (tbtype->nextOf ()->pointerTo ());
+
+	  if ((dim * esize) % tsize != 0)
+	    {
+	      error ("cannot cast %qs to %qs since sizes don't line up",
+		     etype->toChars (), totype->toChars ());
+	      return error_mark_node;
+	    }
+	  dim = (dim * esize) / tsize;
+
+	  /* Assumes casting to dynamic array of same type or void.  */
+	  return d_array_value (build_ctype (totype), size_int (dim),
+				build_nop (ptrtype, build_address (exp)));
+	}
+      else if (tbtype->ty == Tsarray)
+	{
+	  /* D allows casting a static array to any static array type.  */
+	  return build_nop (build_ctype (totype), exp);
+	}
+      else if (tbtype->ty == Tstruct)
+	{
+	  /* And allows casting a static array to any struct type too.
+	     Type sizes should have already been checked by the frontend.  */
+	  gcc_assert (totype->size () == etype->size ());
+	  result = build_vconvert (build_ctype (totype), exp);
+	}
+      else
+	{
+	  error ("cannot cast expression of type %qs to type %qs",
+		 etype->toChars (), totype->toChars ());
+	  return error_mark_node;
+	}
+      break;
+
+    case Tarray:
+      if (tbtype->ty == Tpointer)
+	{
+	  return d_convert (build_ctype (totype), d_array_ptr (exp));
+	}
+      else if (tbtype->ty == Tarray)
+	{
+	  /* Assume tvoid->size() == 1.  */
+	  Type *src_elem_type = ebtype->nextOf ()->toBasetype ();
+	  Type *dst_elem_type = tbtype->nextOf ()->toBasetype ();
+	  d_uns64 sz_src = src_elem_type->size ();
+	  d_uns64 sz_dst = dst_elem_type->size ();
+
+	  if (sz_src == sz_dst)
+	    {
+	      /* Convert from void[] or elements are the same size
+		 -- don't change length.  */
+	      return build_vconvert (build_ctype (totype), exp);
+	    }
+	  else
+	    {
+	      unsigned mult = 1;
+	      tree args[3];
+
+	      args[0] = size_int (sz_dst);
+	      args[1] = size_int (sz_src * mult);
+	      args[2] = exp;
+
+	      return build_libcall (LIBCALL_ARRAYCAST, 3, args,
+				    build_ctype (totype));
+	    }
+	}
+      else if (tbtype->ty == Tsarray)
+	{
+	  /* Strings are treated as dynamic arrays D2.  */
+	  if (ebtype->isString () && tbtype->isString ())
+	    return indirect_ref (build_ctype (totype), d_array_ptr (exp));
+	}
+      else
+	{
+	  error ("cannot cast expression of type %qs to %qs",
+		 etype->toChars (), totype->toChars ());
+	  return error_mark_node;
+	}
+      break;
+
+    case Taarray:
+      if (tbtype->ty == Taarray)
+	return build_vconvert (build_ctype (totype), exp);
+      /* Can convert associative arrays to void pointers.  */
+      else if (tbtype->ty == Tpointer && tbtype->nextOf ()->ty == Tvoid)
+	return build_vconvert (build_ctype (totype), exp);
+      /* Else, default conversion, which should product an error.  */
+      break;
+
+    case Tpointer:
+      /* Can convert void pointers to associative arrays too.  */
+      if (tbtype->ty == Taarray && ebtype->nextOf ()->ty == Tvoid)
+	return build_vconvert (build_ctype (totype), exp);
+      break;
+
+    case Tnull:
+      if (tbtype->ty == Tarray)
+	{
+	  tree ptrtype = build_ctype (tbtype->nextOf ()->pointerTo ());
+	  return d_array_value (build_ctype (totype), size_int (0),
+				build_nop (ptrtype, exp));
+	}
+      else if (tbtype->ty == Taarray)
+	return build_constructor (build_ctype (totype), NULL);
+      else if (tbtype->ty == Tdelegate)
+	return build_delegate_cst (exp, null_pointer_node, totype);
+      break;
+
+    case Tvector:
+      if (tbtype->ty == Tsarray)
+	{
+	  if (tbtype->size () == ebtype->size ())
+	    return build_vconvert (build_ctype (totype), exp);
+	}
+      break;
+
+    default:
+      /* All casts between imaginary and non-imaginary result in 0.0,
+	 except for casts between complex and imaginary types.  */
+      if (!ebtype->iscomplex () && !tbtype->iscomplex ()
+	  && (ebtype->isimaginary () != tbtype->isimaginary ()))
+	{
+	  warning (OPT_Wcast_result,
+		   "cast from %qs to %qs will produce zero result",
+		   ebtype->toChars (), tbtype->toChars ());
+
+	  return compound_expr (exp, build_zero_cst (build_ctype (tbtype)));
+	}
+
+      exp = fold_convert (build_ctype (etype), exp);
+      gcc_assert (TREE_CODE (exp) != STRING_CST);
+      break;
+    }
+
+  return result ? result :
+    convert (build_ctype (totype), exp);
+}
+
+
+/* Apply semantics of assignment to a values of type TOTYPE to EXPR
+   (e.g., pointer = array -> pointer = &array[0])
+
+   Return a TREE representation of EXPR implictly converted to TOTYPE
+   for use in assignment expressions MODIFY_EXPR, INIT_EXPR.  */
+
+tree
+convert_for_assignment (tree expr, Type *etype, Type *totype)
+{
+  Type *ebtype = etype->toBasetype ();
+  Type *tbtype = totype->toBasetype ();
+
+  /* Assuming this only has to handle converting a non Tsarray type to
+     arbitrarily dimensioned Tsarrays.  */
+  if (tbtype->ty == Tsarray)
+    {
+      Type *telem = tbtype->nextOf ()->baseElemOf ();
+
+      if (d_types_same (telem, ebtype))
+	{
+	  TypeSArray *sa_type = (TypeSArray *) tbtype;
+	  uinteger_t count = sa_type->dim->toUInteger ();
+
+	  tree ctor = build_constructor (build_ctype (totype), NULL);
+	  if (count)
+	    {
+	      vec<constructor_elt, va_gc> *ce = NULL;
+	      tree index = build2 (RANGE_EXPR, build_ctype (Type::tsize_t),
+				   size_zero_node, size_int (count - 1));
+	      tree value = convert_for_assignment (expr, etype, sa_type->next);
+
+	      /* Can't use VAR_DECLs in CONSTRUCTORS.  */
+	      if (VAR_P (value))
+		{
+		  value = DECL_INITIAL (value);
+		  gcc_assert (value);
+		}
+
+	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
+	      CONSTRUCTOR_ELTS (ctor) = ce;
+	    }
+	  TREE_READONLY (ctor) = 1;
+	  TREE_CONSTANT (ctor) = 1;
+	  return ctor;
+	}
+    }
+
+  /* D Front end uses IntegerExp(0) to mean zero-init a structure.  */
+  if (tbtype->ty == Tstruct && ebtype->isintegral ())
+    {
+      if (!integer_zerop (expr))
+	gcc_unreachable ();
+
+      return expr;
+    }
+
+  return convert_expr (expr, etype, totype);
+}
+
+/* Return a TREE representation of EXPR converted to represent
+   the parameter type ARG.  */
+
+tree
+convert_for_argument (tree expr, Parameter *arg)
+{
+  /* Lazy arguments: expr should already be a delegate.  */
+  if (arg->storageClass & STClazy)
+    return expr;
+
+  if (type_va_array (arg->type))
+    {
+      /* Do nothing if the va_list has already been decayed to a pointer.  */
+      if (!POINTER_TYPE_P (TREE_TYPE (expr)))
+	return build_address (expr);
+    }
+  else if (argument_reference_p (arg))
+    {
+      /* Front-end shouldn't automatically take the address.  */
+      return convert (type_passed_as (arg), build_address (expr));
+    }
+
+  return expr;
+}
+
+/* Perform default promotions for data used in expressions.
+   Arrays and functions are converted to pointers;
+   enumeral types or short or char, to int.
+   In addition, manifest constants symbols are replaced by their values.
+
+   Return truth-value conversion of expression EXPR from value type TYPE.  */
+
+tree
+convert_for_condition (tree expr, Type *type)
+{
+  tree result = NULL_TREE;
+
+  switch (type->toBasetype ()->ty)
+    {
+    case Taarray:
+      /* Checks that aa.ptr !is null.  */
+      result = component_ref (expr, TYPE_FIELDS (TREE_TYPE (expr)));
+      break;
+
+    case Tarray:
+      {
+	/* Checks (arr.length || arr.ptr) (i.e arr !is null).  */
+	expr = d_save_expr (expr);
+	tree len = d_array_length (expr);
+	tree ptr = d_array_ptr (expr);
+	if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
+	  {
+	    result = build2 (BIT_IOR_EXPR, TREE_TYPE (len), len,
+			     d_convert (TREE_TYPE (len), ptr));
+	  }
+	else
+	  {
+	    len = d_truthvalue_conversion (len);
+	    ptr = d_truthvalue_conversion (ptr);
+	    /* Probably not worth using TRUTH_OROR here.  */
+	    result = build2 (TRUTH_OR_EXPR, TREE_TYPE (len), len, ptr);
+	  }
+	break;
+      }
+
+    case Tdelegate:
+      {
+	/* Checks (function || object), but what good is it if there is
+	   a null function pointer?  */
+	tree obj, func;
+	if (METHOD_CALL_EXPR (expr))
+	  extract_from_method_call (expr, obj, func);
+	else
+	  {
+	    expr = d_save_expr (expr);
+	    obj = delegate_object (expr);
+	    func = delegate_method (expr);
+	  }
+
+	obj = d_truthvalue_conversion (obj);
+	func = d_truthvalue_conversion (func);
+	/* Probably not worth using TRUTH_ORIF here.  */
+	result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
+	break;
+      }
+
+    default:
+      result = expr;
+      break;
+    }
+
+  return d_truthvalue_conversion (result);
+}
+
+
+/* Convert EXP to a dynamic array.
+   EXP must be a static array or dynamic array.  */
+
+tree
+d_array_convert (Expression *exp)
+{
+  Type *tb = exp->type->toBasetype ();
+
+  if (tb->ty == Tarray)
+    return build_expr (exp);
+
+  if (tb->ty == Tsarray)
+    {
+      Type *totype = tb->nextOf ()->arrayOf ();
+      return convert_expr (build_expr (exp), exp->type, totype);
+    }
+
+  /* Invalid type passed.  */
+  gcc_unreachable ();
+}
+
+/* Convert EXP to a dynamic array, where ETYPE is the element type.
+   Similar to above, except that EXP is allowed to be an element of an array.
+   Temporary variables that need some kind of BIND_EXPR are pushed to VARS.  */
+
+tree
+d_array_convert (Type *etype, Expression *exp, vec<tree, va_gc> **vars)
+{
+  Type *tb = exp->type->toBasetype ();
+
+  if ((tb->ty != Tarray && tb->ty != Tsarray) || d_types_same (tb, etype))
+    {
+      /* Convert single element to an array.  */
+      tree var = NULL_TREE;
+      tree expr = maybe_temporary_var (build_expr (exp), &var);
+
+      if (var != NULL_TREE)
+	vec_safe_push (*vars, var);
+
+      return d_array_value (build_ctype (exp->type->arrayOf ()),
+			    size_int (1), build_address (expr));
+    }
+  else
+    return d_array_convert (exp);
 }

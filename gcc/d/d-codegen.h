@@ -52,6 +52,7 @@ extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 extern tree build_struct_literal(tree type, vec<constructor_elt, va_gc> *init);
 extern tree build_class_instance(ClassReferenceExp *exp);
 
+bool type_va_array(Type *type);
 
 // Routines to handle variables that are references.
 extern bool declaration_reference_p (Declaration *decl);
@@ -76,17 +77,6 @@ extern tree define_label(Statement *s, Identifier *ident = NULL);
 extern tree lookup_label(Statement *s, Identifier *ident = NULL);
 extern tree lookup_bc_label(Statement *s, bc_kind);
 extern void check_goto(Statement *from, Statement *to);
-
-// Type conversion.
-// 'd_convert' just to give it a different name from the extern "C" convert.
-extern tree d_convert (tree type, tree exp);
-extern tree convert_expr (tree exp, Type *exp_type, Type *target_type);
-
-extern tree convert_for_assignment (tree expr, Type *exp_type, Type *target_type);
-extern tree convert_for_condition (tree expr, Type *type);
-
-extern tree d_array_convert (Expression *exp);
-extern tree d_array_convert (Type *etype, Expression *exp, vec<tree, va_gc> **vars);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = int_type_node);
