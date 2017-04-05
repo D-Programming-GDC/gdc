@@ -397,7 +397,7 @@ extern void d_init_builtins (void);
 extern void d_register_builtin_type (tree, const char *);
 extern void d_build_builtins_module (Module *);
 extern void d_maybe_set_builtin (Module *);
-extern Expression *build_expression (tree);
+extern Expression *d_eval_constant_expression (tree);
 
 /* In d-convert.cc.  */
 extern tree d_truthvalue_conversion (tree);
