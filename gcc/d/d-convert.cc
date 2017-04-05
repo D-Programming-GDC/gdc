@@ -1,23 +1,27 @@
-// d-convert.cc -- D frontend for GCC.
-// Copyright (C) 2011-2015 Free Software Foundation, Inc.
+/* d-convert.cc -- Data type conversion routines.
+   Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
-// GCC is free software; you can redistribute it and/or modify it under
-// the terms of the GNU General Public License as published by the Free
-// Software Foundation; either version 3, or (at your option) any later
-// version.
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
 
-// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or
-// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-// for more details.
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License
-// along with GCC; see the file COPYING3.  If not see
-// <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
+
+#include "dfrontend/aggregate.h"
+#include "dfrontend/expression.h"
+#include "dfrontend/mtype.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -28,10 +32,11 @@
 #include "stor-layout.h"
 
 #include "d-tree.h"
+#include "d-codegen.h"
 
 
-// Build CODE expression with operands OP0 and OP1.
-// Helper function for d_truthvalue_conversion, so assumes bool result.
+/* Build CODE expression with operands OP0 and OP1.
+   Helper function for d_truthvalue_conversion, so assumes bool result.  */
 
 static tree
 d_build_truthvalue_op (tree_code code, tree op0, tree op1)
@@ -43,11 +48,11 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
   type0 = TREE_TYPE (op0);
   type1 = TREE_TYPE (op1);
 
-  // Strip NON_LVALUE_EXPRs, etc., since we aren't using as an lvalue.
+  /* Strip NON_LVALUE_EXPRs, etc., since we aren't using as an lvalue.  */
   STRIP_TYPE_NOPS (op0);
   STRIP_TYPE_NOPS (op1);
 
-  // Also need to convert pointer/int comparison.
+  /* Also need to convert pointer/int comparison.  */
   if (POINTER_TYPE_P (type0) && TREE_CODE (op1) == INTEGER_CST
       && integer_zerop (op1))
     {
@@ -58,8 +63,8 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
     {
       result_type = type1;
     }
-  // If integral, need to convert unsigned/signed comparison.
-  // Will also need to convert if type precisions differ.
+  /* If integral, need to convert unsigned/signed comparison.
+     Will also need to convert if type precisions differ.  */
   else if (INTEGRAL_TYPE_P (type0) && INTEGRAL_TYPE_P (type1))
     {
       if (TYPE_PRECISION (type0) > TYPE_PRECISION (type1))
@@ -82,7 +87,7 @@ d_build_truthvalue_op (tree_code code, tree op0, tree op1)
 }
 
 
-// Convert EXPR to be a truth-value, validating its type for this purpose.
+/* Convert EXPR to be a truth-value, validating its type for this purpose.  */
 
 tree
 d_truthvalue_conversion (tree expr)
@@ -122,98 +127,62 @@ d_truthvalue_conversion (tree expr)
 
     case REAL_CST:
       return real_compare (NE_EXPR, &TREE_REAL_CST (expr), &dconst0)
-	? boolean_true_node
-	: boolean_false_node;
+	     ? boolean_true_node
+	     : boolean_false_node;
 
     case ADDR_EXPR:
-      // If we are taking the address of an external decl, it might be zero
-      // if it is weak, so we cannot optimize.
+      /* If we are taking the address of a decl that can never be null,
+	 then the return result is always true.  */
       if (DECL_P (TREE_OPERAND (expr, 0))
-	  && DECL_EXTERNAL (TREE_OPERAND (expr, 0)))
-	break;
-
-      if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 0)))
-	return build2 (COMPOUND_EXPR, bool_type_node,
-		       TREE_OPERAND (expr, 0), boolean_true_node);
-      else
+	  && (TREE_CODE (TREE_OPERAND (expr, 0)) == PARM_DECL
+	      || TREE_CODE (TREE_OPERAND (expr, 0)) == LABEL_DECL
+	      || !DECL_WEAK (TREE_OPERAND (expr, 0))))
 	return boolean_true_node;
+      break;
 
     case COMPLEX_EXPR:
       return d_build_truthvalue_op ((TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1))
 				     ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-				    d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
-				    d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
+			d_truthvalue_conversion (TREE_OPERAND (expr, 0)),
+			d_truthvalue_conversion (TREE_OPERAND (expr, 1)));
 
     case NEGATE_EXPR:
     case ABS_EXPR:
     case FLOAT_EXPR:
-      // %% there may be other things wrong...
-      // These don't change whether an object is nonzero or zero.
+      /* These don't change whether an object is nonzero or zero.  */
       return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
 
     case LROTATE_EXPR:
     case RROTATE_EXPR:
-      // These don't change whether an object is zero or nonzero, but
-      // we can't ignore them if their second arg has side-effects.
+      /* These don't change whether an object is zero or nonzero, but
+	 we can't ignore them if their second arg has side-effects.  */
       if (TREE_SIDE_EFFECTS (TREE_OPERAND (expr, 1)))
-	return build2 (COMPOUND_EXPR, bool_type_node, TREE_OPERAND (expr, 1),
-		       d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
+	{
+	  return build2 (COMPOUND_EXPR, bool_type_node, TREE_OPERAND (expr, 1),
+			 d_truthvalue_conversion (TREE_OPERAND (expr, 0)));
+	}
       else
 	return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
 
     case COND_EXPR:
-      // Distribute the conversion into the arms of a COND_EXPR.
+      /* Distribute the conversion into the arms of a COND_EXPR.  */
       return fold_build3 (COND_EXPR, bool_type_node, TREE_OPERAND (expr, 0),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 1)),
 			  d_truthvalue_conversion (TREE_OPERAND (expr, 2)));
 
     case CONVERT_EXPR:
-      // Don't cancel the effect of a CONVERT_EXPR from a REFERENCE_TYPE,
-      // since that affects how `default_conversion' will behave.  */
+      /* Don't cancel the effect of a CONVERT_EXPR from a REFERENCE_TYPE,
+	 since that affects how `default_conversion' will behave.  */
       if (TREE_CODE (TREE_TYPE (expr)) == REFERENCE_TYPE
 	  || TREE_CODE (TREE_TYPE (TREE_OPERAND (expr, 0))) == REFERENCE_TYPE)
 	break;
-      // Fall through...
+      /* Fall through.  */
+
     case NOP_EXPR:
-      // If this is widening the argument, we can ignore it.
+      /* If this isn't narrowing the argument, we can ignore it.  */
       if (TYPE_PRECISION (TREE_TYPE (expr))
 	  >= TYPE_PRECISION (TREE_TYPE (TREE_OPERAND (expr, 0))))
 	return d_truthvalue_conversion (TREE_OPERAND (expr, 0));
-      break;
-
-    case MINUS_EXPR:
-      // Perhaps reduce (x - y) != 0 to (x != y).  The expressions
-      // aren't guaranteed to the be same for modes that can represent
-      // infinity, since if x and y are both +infinity, or both
-      // -infinity, then x - y is not a number.
-
-      // Note that this transformation is safe when x or y is NaN.
-      // (x - y) is then NaN, and both (x - y) != 0 and x != y will
-      // be false.
-      if (HONOR_INFINITIES (TYPE_MODE (TREE_TYPE (TREE_OPERAND (expr, 0)))))
-	break;
-      // Fall through...
-    case BIT_XOR_EXPR:
-      // This and MINUS_EXPR can be changed into a comparison of the
-      // two objects.
-      if (TREE_TYPE (TREE_OPERAND (expr, 0))
-	  == TREE_TYPE (TREE_OPERAND (expr, 1)))
-	return fold_build2 (NE_EXPR, bool_type_node,
-			    TREE_OPERAND (expr, 0), TREE_OPERAND (expr, 1));
-      return fold_build2 (NE_EXPR, bool_type_node,
-			  TREE_OPERAND (expr, 0),
-			  fold_convert (TREE_TYPE (TREE_OPERAND (expr, 0)),
-					TREE_OPERAND (expr, 1)));
-
-    case BIT_AND_EXPR:
-      if (integer_onep (TREE_OPERAND (expr, 1))
-	  && TREE_TYPE (expr) != bool_type_node)
-	// Using convert here would cause infinite recursion.
-	return build1 (NOP_EXPR, bool_type_node, expr);
-      break;
-
-    case MODIFY_EXPR:
-      // %% do nothing
       break;
 
     default:
@@ -223,142 +192,123 @@ d_truthvalue_conversion (tree expr)
   if (TREE_CODE (TREE_TYPE (expr)) == COMPLEX_TYPE)
     {
       tree t = save_expr (expr);
-      tree compon_type = TREE_TYPE (TREE_TYPE (expr));
+      tree type = TREE_TYPE (TREE_TYPE (expr));
       return d_build_truthvalue_op ((TREE_SIDE_EFFECTS (expr)
 				     ? TRUTH_OR_EXPR : TRUTH_ORIF_EXPR),
-				    d_truthvalue_conversion (build1 (REALPART_EXPR, compon_type, t)),
-				    d_truthvalue_conversion (build1 (IMAGPART_EXPR, compon_type, t)));
+			d_truthvalue_conversion (build1 (REALPART_EXPR, type, t)),
+			d_truthvalue_conversion (build1 (IMAGPART_EXPR, type, t)));
     }
   else
-    {
-      // First perform default target promotions for data used in expr.
-      tree type = TREE_TYPE (expr);
-
-      // Constants can be used directly unless they're not loadable.
-      if (TREE_CODE (expr) == CONST_DECL)
-	expr = DECL_INITIAL (expr);
-
-      // Strip no-op conversions.
-      tree orig_exp = expr;
-      STRIP_TYPE_NOPS (expr);
-
-      if (TREE_NO_WARNING (orig_exp))
-	TREE_NO_WARNING (expr) = 1;
-
-      tree promoted_type = targetm.promoted_type (type);
-      if (promoted_type)
-	expr = convert (promoted_type, expr);
-
-      return d_build_truthvalue_op (NE_EXPR, expr,
-				    build_zero_cst (TREE_TYPE (expr)));
-    }
+    return d_build_truthvalue_op (NE_EXPR, expr,
+				  build_zero_cst (TREE_TYPE (expr)));
 }
 
 
-// Creates an expression whose value is that of EXPR, converted to type TYPE.
-// This function implements all reasonable scalar conversions.
+/* Creates an expression whose value is that of EXPR, converted to type TYPE.
+   This function implements all reasonable scalar conversions.  */
 
 tree
-convert(tree type, tree expr)
+convert (tree type, tree expr)
 {
   tree e = expr;
-  tree_code code = TREE_CODE(type);
+  tree_code code = TREE_CODE (type);
 
   if (type == error_mark_node
       || expr == error_mark_node
-      || TREE_TYPE(expr) == error_mark_node)
+      || TREE_TYPE (expr) == error_mark_node)
     return error_mark_node;
 
   const char *invalid_conv_diag
-    = targetm.invalid_conversion(TREE_TYPE(expr), type);
+    = targetm.invalid_conversion (TREE_TYPE (expr), type);
 
   if (invalid_conv_diag)
     {
-      error("%s", invalid_conv_diag);
+      error ("%s", invalid_conv_diag);
       return error_mark_node;
     }
 
-  if (type == TREE_TYPE(expr))
+  if (type == TREE_TYPE (expr))
     return expr;
 
-  if (TREE_CODE(type) == ARRAY_TYPE
-      && TREE_CODE(TREE_TYPE(expr)) == ARRAY_TYPE
-      && TYPE_DOMAIN(type) == TYPE_DOMAIN(TREE_TYPE(expr)))
+  if (TREE_CODE (type) == ARRAY_TYPE
+      && TREE_CODE (TREE_TYPE (expr)) == ARRAY_TYPE
+      && TYPE_DOMAIN (type) == TYPE_DOMAIN (TREE_TYPE (expr)))
     return expr;
 
-  tree ret = targetm.convert_to_type(type, expr);
+  tree ret = targetm.convert_to_type (type, expr);
   if (ret)
     return ret;
 
-  STRIP_TYPE_NOPS(e);
-  tree etype = TREE_TYPE(e);
+  STRIP_TYPE_NOPS (e);
+  tree etype = TREE_TYPE (e);
 
-  if (TYPE_MAIN_VARIANT(type) == TYPE_MAIN_VARIANT(TREE_TYPE(expr)))
-    return fold_convert(type, expr);
-  if (TREE_CODE(TREE_TYPE(expr)) == ERROR_MARK)
+  if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (TREE_TYPE (expr)))
+    return fold_convert (type, expr);
+  if (TREE_CODE (TREE_TYPE (expr)) == ERROR_MARK)
     return error_mark_node;
-  if (TREE_CODE(TREE_TYPE(expr)) == VOID_TYPE)
+  if (TREE_CODE (TREE_TYPE (expr)) == VOID_TYPE)
     {
-      error("void value not ignored as it ought to be");
+      error ("void value not ignored as it ought to be");
       return error_mark_node;
     }
 
   switch (code)
     {
     case VOID_TYPE:
-      return fold_convert(type, e);
+      return fold_convert (type, e);
 
     case INTEGER_TYPE:
     case ENUMERAL_TYPE:
-      if (TREE_CODE(etype) == POINTER_TYPE
-	  || TREE_CODE(etype) == REFERENCE_TYPE)
+      if (TREE_CODE (etype) == POINTER_TYPE
+	  || TREE_CODE (etype) == REFERENCE_TYPE)
 	{
-	  if (integer_zerop(e))
-	    return build_int_cst(type, 0);
+	  if (integer_zerop (e))
+	    return build_int_cst (type, 0);
 
-	  // Convert to an unsigned integer of the correct width first, and
-	  // from there widen/truncate to the required type.
-	  tree utype = lang_hooks.types.type_for_size(TYPE_PRECISION(etype), 1);
-	  ret = fold_build1(CONVERT_EXPR, utype, e);
-	  return fold_convert(type, ret);
+	  /* Convert to an unsigned integer of the correct width first, and
+	     from there widen/truncate to the required type.  */
+	  tree utype = lang_hooks.types.type_for_size (TYPE_PRECISION (etype),
+						       1);
+	  ret = fold_build1 (CONVERT_EXPR, utype, e);
+	  return fold_convert (type, ret);
 	}
 
-      ret = convert_to_integer(type, e);
+      ret = convert_to_integer (type, e);
       goto maybe_fold;
 
     case BOOLEAN_TYPE:
-      return fold_convert(type, d_truthvalue_conversion(expr));
+      return fold_convert (type, d_truthvalue_conversion (expr));
 
     case POINTER_TYPE:
     case REFERENCE_TYPE:
-      ret = convert_to_pointer(type, e);
+      ret = convert_to_pointer (type, e);
       goto maybe_fold;
 
     case REAL_TYPE:
       if (TREE_CODE (etype) == COMPLEX_TYPE && TYPE_IMAGINARY_FLOAT (type))
-	e = build1(IMAGPART_EXPR, TREE_TYPE (etype), e);
+	e = build1 (IMAGPART_EXPR, TREE_TYPE (etype), e);
 
-      ret = convert_to_real(type, e);
+      ret = convert_to_real (type, e);
       goto maybe_fold;
 
     case COMPLEX_TYPE:
       if (TREE_CODE (etype) == REAL_TYPE && TYPE_IMAGINARY_FLOAT (etype))
-	ret = build2(COMPLEX_EXPR, type,
-		     build_zero_cst(TREE_TYPE (type)),
-		     convert(TREE_TYPE (type), expr));
+	ret = build2 (COMPLEX_EXPR, type,
+		      build_zero_cst (TREE_TYPE (type)),
+		      convert (TREE_TYPE (type), expr));
       else
-	ret = convert_to_complex(type, e);
+	ret = convert_to_complex (type, e);
       goto maybe_fold;
 
     case VECTOR_TYPE:
-      ret = convert_to_vector(type, e);
+      ret = convert_to_vector (type, e);
       goto maybe_fold;
 
     case RECORD_TYPE:
     case UNION_TYPE:
-      if (lang_hooks.types_compatible_p(type, TREE_TYPE(expr)))
+      if (lang_hooks.types_compatible_p (type, TREE_TYPE (expr)))
 	{
-	  ret = build1(VIEW_CONVERT_EXPR, type, expr);
+	  ret = build1 (VIEW_CONVERT_EXPR, type, expr);
 	  goto maybe_fold;
 	}
       break;
@@ -367,12 +317,499 @@ convert(tree type, tree expr)
       break;
 
     maybe_fold:
-      if (!TREE_CONSTANT(ret))
-	ret = fold(ret);
+      if (!TREE_CONSTANT (ret))
+	ret = fold (ret);
       return ret;
     }
 
-  error("conversion to non-scalar type requested");
+  error ("conversion to non-scalar type requested");
   return error_mark_node;
 }
 
+/* Return expression EXP, whose type has been converted to TYPE.  */
+
+tree
+d_convert (tree type, tree exp)
+{
+  /* Check this first before retrieving frontend type.  */
+  if (error_operand_p (type) || error_operand_p (exp))
+    return error_mark_node;
+
+  Type *totype = TYPE_LANG_FRONTEND (type);
+  Type *etype = TYPE_LANG_FRONTEND (TREE_TYPE (exp));
+
+  if (totype && etype)
+    return convert_expr (exp, etype, totype);
+
+  return convert (type, exp);
+}
+
+/* Return expression EXP, whose type has been convert from ETYPE to TOTYPE.  */
+
+tree
+convert_expr (tree exp, Type *etype, Type *totype)
+{
+  tree result = NULL_TREE;
+
+  gcc_assert (etype && totype);
+  Type *ebtype = etype->toBasetype ();
+  Type *tbtype = totype->toBasetype ();
+
+  if (d_types_same (etype, totype))
+    return exp;
+
+  if (error_operand_p (exp))
+    return exp;
+
+  switch (ebtype->ty)
+    {
+    case Tdelegate:
+      if (tbtype->ty == Tdelegate)
+	{
+	  exp = d_save_expr (exp);
+	  return build_delegate_cst (delegate_method (exp),
+				     delegate_object (exp), totype);
+	}
+      else if (tbtype->ty == Tpointer)
+	{
+	  /* The front-end converts <delegate>.ptr to cast (void *)<delegate>.
+	     Maybe should only allow void* ?  */
+	  exp = delegate_object (exp);
+	}
+      else
+	{
+	  error ("can't convert a delegate expression to %qs",
+		 totype->toChars ());
+	  return error_mark_node;
+	}
+      break;
+
+    case Tstruct:
+      if (tbtype->ty == Tstruct)
+	{
+	  if (totype->size () == etype->size ())
+	    {
+	      /* Allowed to cast to structs with same type size.  */
+	      result = build_vconvert (build_ctype (totype), exp);
+	    }
+	  else
+	    {
+	      error ("can't convert struct %qs to %qs",
+		     etype->toChars (), totype->toChars ());
+	      return error_mark_node;
+	    }
+	}
+      /* else, default conversion, which should produce an error.  */
+      break;
+
+    case Tclass:
+      if (tbtype->ty == Tclass)
+	{
+	  ClassDeclaration *cdfrom = ebtype->isClassHandle ();
+	  ClassDeclaration *cdto = tbtype->isClassHandle ();
+	  int offset;
+
+	  if (cdto->isBaseOf (cdfrom, &offset) && offset != OFFSET_RUNTIME)
+	    {
+	      /* Casting up the inheritance tree: Don't do anything special.
+		 Cast to an implemented interface: Handle at compile time.  */
+	      if (offset)
+		{
+		  /* Forward references should not leak from the frontend.  */
+		  gcc_assert (offset != OFFSET_FWDREF);
+
+		  tree type = build_ctype (totype);
+		  exp = d_save_expr (exp);
+
+		  tree cond = build_boolop (NE_EXPR, exp, null_pointer_node);
+		  tree object = build_offset (exp, size_int (offset));
+
+		  return build_condition (build_ctype (totype), cond,
+					  build_nop (type, object),
+					  build_nop (type, null_pointer_node));
+		}
+
+	      /* d_convert will make a no-op cast.  */
+	      break;
+	    }
+	  else if (cdfrom->cpp)
+	    {
+	      /* Downcasting in C++ is a no-op.  */
+	      if (cdto->cpp)
+		break;
+
+	      /* Casting from a C++ interface to a class/non-C++ interface
+		 always results in null as there is no runtime information,
+		 and no way one can derive from the other.  */
+	      warning (OPT_Wcast_result, "cast to %qs will produce null result",
+		       totype->toChars ());
+	      result = d_convert (build_ctype (totype), null_pointer_node);
+
+	      /* Make sure the expression is still evaluated if necessary.  */
+	      if (TREE_SIDE_EFFECTS (exp))
+		result = compound_expr (exp, result);
+
+	      break;
+	    }
+
+	  /* The offset can only be determined at runtime, do dynamic cast.  */
+	  tree args[2];
+	  args[0] = exp;
+	  args[1] = build_address (get_classinfo_decl (cdto));
+
+	  return build_libcall (cdfrom->isInterfaceDeclaration ()
+				? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST,
+				2, args);
+	}
+      /* else default conversion.  */
+      break;
+
+    case Tsarray:
+      if (tbtype->ty == Tpointer)
+	{
+	  result = build_nop (build_ctype (totype), build_address (exp));
+	}
+      else if (tbtype->ty == Tarray)
+	{
+	  dinteger_t dim = ((TypeSArray *) ebtype)->dim->toInteger ();
+	  dinteger_t esize = ebtype->nextOf ()->size ();
+	  dinteger_t tsize = tbtype->nextOf ()->size ();
+
+	  tree ptrtype = build_ctype (tbtype->nextOf ()->pointerTo ());
+
+	  if ((dim * esize) % tsize != 0)
+	    {
+	      error ("cannot cast %qs to %qs since sizes don't line up",
+		     etype->toChars (), totype->toChars ());
+	      return error_mark_node;
+	    }
+	  dim = (dim * esize) / tsize;
+
+	  /* Assumes casting to dynamic array of same type or void.  */
+	  return d_array_value (build_ctype (totype), size_int (dim),
+				build_nop (ptrtype, build_address (exp)));
+	}
+      else if (tbtype->ty == Tsarray)
+	{
+	  /* D allows casting a static array to any static array type.  */
+	  return build_nop (build_ctype (totype), exp);
+	}
+      else if (tbtype->ty == Tstruct)
+	{
+	  /* And allows casting a static array to any struct type too.
+	     Type sizes should have already been checked by the frontend.  */
+	  gcc_assert (totype->size () == etype->size ());
+	  result = build_vconvert (build_ctype (totype), exp);
+	}
+      else
+	{
+	  error ("cannot cast expression of type %qs to type %qs",
+		 etype->toChars (), totype->toChars ());
+	  return error_mark_node;
+	}
+      break;
+
+    case Tarray:
+      if (tbtype->ty == Tpointer)
+	{
+	  return d_convert (build_ctype (totype), d_array_ptr (exp));
+	}
+      else if (tbtype->ty == Tarray)
+	{
+	  /* Assume tvoid->size() == 1.  */
+	  Type *src_elem_type = ebtype->nextOf ()->toBasetype ();
+	  Type *dst_elem_type = tbtype->nextOf ()->toBasetype ();
+	  d_uns64 sz_src = src_elem_type->size ();
+	  d_uns64 sz_dst = dst_elem_type->size ();
+
+	  if (sz_src == sz_dst)
+	    {
+	      /* Convert from void[] or elements are the same size
+		 -- don't change length.  */
+	      return build_vconvert (build_ctype (totype), exp);
+	    }
+	  else
+	    {
+	      unsigned mult = 1;
+	      tree args[3];
+
+	      args[0] = size_int (sz_dst);
+	      args[1] = size_int (sz_src * mult);
+	      args[2] = exp;
+
+	      return build_libcall (LIBCALL_ARRAYCAST, 3, args,
+				    build_ctype (totype));
+	    }
+	}
+      else if (tbtype->ty == Tsarray)
+	{
+	  /* Strings are treated as dynamic arrays D2.  */
+	  if (ebtype->isString () && tbtype->isString ())
+	    return indirect_ref (build_ctype (totype), d_array_ptr (exp));
+	}
+      else
+	{
+	  error ("cannot cast expression of type %qs to %qs",
+		 etype->toChars (), totype->toChars ());
+	  return error_mark_node;
+	}
+      break;
+
+    case Taarray:
+      if (tbtype->ty == Taarray)
+	return build_vconvert (build_ctype (totype), exp);
+      /* Can convert associative arrays to void pointers.  */
+      else if (tbtype->ty == Tpointer && tbtype->nextOf ()->ty == Tvoid)
+	return build_vconvert (build_ctype (totype), exp);
+      /* Else, default conversion, which should product an error.  */
+      break;
+
+    case Tpointer:
+      /* Can convert void pointers to associative arrays too.  */
+      if (tbtype->ty == Taarray && ebtype->nextOf ()->ty == Tvoid)
+	return build_vconvert (build_ctype (totype), exp);
+      break;
+
+    case Tnull:
+      if (tbtype->ty == Tarray)
+	{
+	  tree ptrtype = build_ctype (tbtype->nextOf ()->pointerTo ());
+	  return d_array_value (build_ctype (totype), size_int (0),
+				build_nop (ptrtype, exp));
+	}
+      else if (tbtype->ty == Taarray)
+	return build_constructor (build_ctype (totype), NULL);
+      else if (tbtype->ty == Tdelegate)
+	return build_delegate_cst (exp, null_pointer_node, totype);
+      break;
+
+    case Tvector:
+      if (tbtype->ty == Tsarray)
+	{
+	  if (tbtype->size () == ebtype->size ())
+	    return build_vconvert (build_ctype (totype), exp);
+	}
+      break;
+
+    default:
+      /* All casts between imaginary and non-imaginary result in 0.0,
+	 except for casts between complex and imaginary types.  */
+      if (!ebtype->iscomplex () && !tbtype->iscomplex ()
+	  && (ebtype->isimaginary () != tbtype->isimaginary ()))
+	{
+	  warning (OPT_Wcast_result,
+		   "cast from %qs to %qs will produce zero result",
+		   ebtype->toChars (), tbtype->toChars ());
+
+	  return compound_expr (exp, build_zero_cst (build_ctype (tbtype)));
+	}
+
+      exp = fold_convert (build_ctype (etype), exp);
+      gcc_assert (TREE_CODE (exp) != STRING_CST);
+      break;
+    }
+
+  return result ? result :
+    convert (build_ctype (totype), exp);
+}
+
+
+/* Apply semantics of assignment to a values of type TOTYPE to EXPR
+   (e.g., pointer = array -> pointer = &array[0])
+
+   Return a TREE representation of EXPR implictly converted to TOTYPE
+   for use in assignment expressions MODIFY_EXPR, INIT_EXPR.  */
+
+tree
+convert_for_assignment (tree expr, Type *etype, Type *totype)
+{
+  Type *ebtype = etype->toBasetype ();
+  Type *tbtype = totype->toBasetype ();
+
+  /* Assuming this only has to handle converting a non Tsarray type to
+     arbitrarily dimensioned Tsarrays.  */
+  if (tbtype->ty == Tsarray)
+    {
+      Type *telem = tbtype->nextOf ()->baseElemOf ();
+
+      if (d_types_same (telem, ebtype))
+	{
+	  TypeSArray *sa_type = (TypeSArray *) tbtype;
+	  uinteger_t count = sa_type->dim->toUInteger ();
+
+	  tree ctor = build_constructor (build_ctype (totype), NULL);
+	  if (count)
+	    {
+	      vec<constructor_elt, va_gc> *ce = NULL;
+	      tree index = build2 (RANGE_EXPR, build_ctype (Type::tsize_t),
+				   size_zero_node, size_int (count - 1));
+	      tree value = convert_for_assignment (expr, etype, sa_type->next);
+
+	      /* Can't use VAR_DECLs in CONSTRUCTORS.  */
+	      if (VAR_P (value))
+		{
+		  value = DECL_INITIAL (value);
+		  gcc_assert (value);
+		}
+
+	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
+	      CONSTRUCTOR_ELTS (ctor) = ce;
+	    }
+	  TREE_READONLY (ctor) = 1;
+	  TREE_CONSTANT (ctor) = 1;
+	  return ctor;
+	}
+    }
+
+  /* D Front end uses IntegerExp(0) to mean zero-init a structure.  */
+  if (tbtype->ty == Tstruct && ebtype->isintegral ())
+    {
+      if (!integer_zerop (expr))
+	gcc_unreachable ();
+
+      return expr;
+    }
+
+  return convert_expr (expr, etype, totype);
+}
+
+/* Return a TREE representation of EXPR converted to represent
+   the parameter type ARG.  */
+
+tree
+convert_for_argument (tree expr, Parameter *arg)
+{
+  /* Lazy arguments: expr should already be a delegate.  */
+  if (arg->storageClass & STClazy)
+    return expr;
+
+  if (type_va_array (arg->type))
+    {
+      /* Do nothing if the va_list has already been decayed to a pointer.  */
+      if (!POINTER_TYPE_P (TREE_TYPE (expr)))
+	return build_address (expr);
+    }
+  else if (argument_reference_p (arg))
+    {
+      /* Front-end shouldn't automatically take the address.  */
+      return convert (type_passed_as (arg), build_address (expr));
+    }
+
+  return expr;
+}
+
+/* Perform default promotions for data used in expressions.
+   Arrays and functions are converted to pointers;
+   enumeral types or short or char, to int.
+   In addition, manifest constants symbols are replaced by their values.
+
+   Return truth-value conversion of expression EXPR from value type TYPE.  */
+
+tree
+convert_for_condition (tree expr, Type *type)
+{
+  tree result = NULL_TREE;
+
+  switch (type->toBasetype ()->ty)
+    {
+    case Taarray:
+      /* Checks that aa.ptr !is null.  */
+      result = component_ref (expr, TYPE_FIELDS (TREE_TYPE (expr)));
+      break;
+
+    case Tarray:
+      {
+	/* Checks (arr.length || arr.ptr) (i.e arr !is null).  */
+	expr = d_save_expr (expr);
+	tree len = d_array_length (expr);
+	tree ptr = d_array_ptr (expr);
+	if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
+	  {
+	    result = build2 (BIT_IOR_EXPR, TREE_TYPE (len), len,
+			     d_convert (TREE_TYPE (len), ptr));
+	  }
+	else
+	  {
+	    len = d_truthvalue_conversion (len);
+	    ptr = d_truthvalue_conversion (ptr);
+	    /* Probably not worth using TRUTH_OROR here.  */
+	    result = build2 (TRUTH_OR_EXPR, TREE_TYPE (len), len, ptr);
+	  }
+	break;
+      }
+
+    case Tdelegate:
+      {
+	/* Checks (function || object), but what good is it if there is
+	   a null function pointer?  */
+	tree obj, func;
+	if (METHOD_CALL_EXPR (expr))
+	  extract_from_method_call (expr, obj, func);
+	else
+	  {
+	    expr = d_save_expr (expr);
+	    obj = delegate_object (expr);
+	    func = delegate_method (expr);
+	  }
+
+	obj = d_truthvalue_conversion (obj);
+	func = d_truthvalue_conversion (func);
+	/* Probably not worth using TRUTH_ORIF here.  */
+	result = build2 (BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
+	break;
+      }
+
+    default:
+      result = expr;
+      break;
+    }
+
+  return d_truthvalue_conversion (result);
+}
+
+
+/* Convert EXP to a dynamic array.
+   EXP must be a static array or dynamic array.  */
+
+tree
+d_array_convert (Expression *exp)
+{
+  Type *tb = exp->type->toBasetype ();
+
+  if (tb->ty == Tarray)
+    return build_expr (exp);
+
+  if (tb->ty == Tsarray)
+    {
+      Type *totype = tb->nextOf ()->arrayOf ();
+      return convert_expr (build_expr (exp), exp->type, totype);
+    }
+
+  /* Invalid type passed.  */
+  gcc_unreachable ();
+}
+
+/* Convert EXP to a dynamic array, where ETYPE is the element type.
+   Similar to above, except that EXP is allowed to be an element of an array.
+   Temporary variables that need some kind of BIND_EXPR are pushed to VARS.  */
+
+tree
+d_array_convert (Type *etype, Expression *exp, vec<tree, va_gc> **vars)
+{
+  Type *tb = exp->type->toBasetype ();
+
+  if ((tb->ty != Tarray && tb->ty != Tsarray) || d_types_same (tb, etype))
+    {
+      /* Convert single element to an array.  */
+      tree var = NULL_TREE;
+      tree expr = maybe_temporary_var (build_expr (exp), &var);
+
+      if (var != NULL_TREE)
+	vec_safe_push (*vars, var);
+
+      return d_array_value (build_ctype (exp->type->arrayOf ()),
+			    size_int (1), build_address (expr));
+    }
+  else
+    return d_array_convert (exp);
+}

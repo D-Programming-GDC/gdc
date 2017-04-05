@@ -401,6 +401,13 @@ extern Expression *d_eval_constant_expression (tree);
 
 /* In d-convert.cc.  */
 extern tree d_truthvalue_conversion (tree);
+extern tree d_convert (tree, tree);
+extern tree convert_expr (tree, Type *, Type *);
+extern tree convert_for_assignment (tree, Type *, Type *);
+extern tree convert_for_argument (tree, Parameter *);
+extern tree convert_for_condition (tree, Type *);
+extern tree d_array_convert (Expression *);
+extern tree d_array_convert (Type *, Expression *, vec<tree, va_gc> **);
 
 /* In d-decls.cc.  */
 extern tree make_internal_name (Dsymbol *, const char *, const char *);

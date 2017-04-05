@@ -1,3 +1,12 @@
+2017-04-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_convert): Move to d-convert.cc.
+	(convert_expr): Likewise.
+	(convert_for_assignment): Likewise.
+	(convert_for_argument): Likewise.
+	(convert_for_condition): Likewise.
+	(d_array_convert): Likewise.
+
 2017-04-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.c (d_global_trees): Move to d-lang.cc.
