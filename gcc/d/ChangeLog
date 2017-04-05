@@ -1,5 +1,12 @@
 2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-incpath.cc (add_env_var_paths): Rename to add_environment_paths.
+	(make_absolute): Remove function.
+	(add_import_path): Rename to add_globalpaths.
+	(add_fileimp_path): Rename to add_filepaths.
+
+2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.h (d_types_same): Renamed to same_type_p.
 	Moved to types.cc.
 	(build_object_type): Renamed to get_object_type.  Moved to types.cc.
