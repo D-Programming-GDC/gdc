@@ -206,9 +206,6 @@ struct GTY(()) language_function
      compiling the function.  */
   vec<tree, va_gc> *stmt_list;
 
-  /* Any nested functions that were deferred during codegen.  */
-  vec<FuncDeclaration *> GTY((skip)) deferred_fns;
-
   /* Variables that are in scope that will need destruction later.  */
   vec<VarDeclaration *> GTY((skip)) vars_in_scope;
 

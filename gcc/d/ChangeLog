@@ -1,5 +1,16 @@
 2017-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-objfile.cc (DeclVisitor::visit(FuncDeclaration)): Use
+	push_function_decl for storing current state when switching to nested
+	functions.  Remove handling of deferred functions.
+	* d-tree.h (language_function): Remove deferred_fns.
+	* expr.cc (ExprVisitor::visit(DelegateExp)): Don't defer compiling
+	the delegate lambda.
+	(ExprVisitor::visit(FuncExp)): Likewise for function literals.
+	(ExprVisitor::visit(VarExp)): Likewise.
+
+2017-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-codegen.cc (start_function): Move to d-objfile.cc, make it static.
 	(end_function): Likewise.  Renamed to finish_function.
 

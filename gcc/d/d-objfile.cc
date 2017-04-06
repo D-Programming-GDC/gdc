@@ -763,16 +763,6 @@ public:
 	    /* Parent failed to compile, but errors were gagged.  */
 	    if (fdp->semantic3Errors)
 	      return;
-
-	    if (UnitTestDeclaration *udp = fdp->isUnitTestDeclaration ())
-	      {
-		/* Defer until outer unittest has been emitted.  */
-		if (udp->semanticRun < PASSobj)
-		  {
-		    udp->deferredNested.push (d);
-		    return;
-		  }
-	      }
 	  }
       }
 
@@ -827,8 +817,9 @@ public:
     if (global.params.verbose)
       fprintf (global.stdmsg, "function  %s\n", d->toPrettyChars ());
 
-    tree old_current_function_decl = current_function_decl;
-    function *old_cfun = cfun;
+    bool nested = current_function_decl != NULL_TREE;
+    if (nested)
+      push_function_context ();
     current_function_decl = fndecl;
 
     tree return_type = TREE_TYPE (TREE_TYPE (fndecl));
@@ -1045,26 +1036,15 @@ public:
     if (!errorcount && !global.errors)
       d_finish_function (d);
 
-    /* Process all deferred nested functions.  */
-    for (size_t i = 0; i < cfun->language->deferred_fns.length (); ++i)
-      {
-	FuncDeclaration *fd = cfun->language->deferred_fns[i];
-	fd->accept (this);
-      }
-
-    if (UnitTestDeclaration *ud = d->isUnitTestDeclaration ())
-      {
-	for (size_t i = 0; i < ud->deferredNested.dim; ++i)
-	  {
-	    FuncDeclaration *fd = ud->deferredNested[i];
-	    fd->accept (this);
-	  }
-      }
-
     finish_function ();
 
-    current_function_decl = old_current_function_decl;
-    set_cfun (old_cfun);
+    if (nested)
+      pop_function_context ();
+    else
+      {
+	set_cfun (NULL);
+	current_function_decl = NULL;
+      }
   }
 };
 
