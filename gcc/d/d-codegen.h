@@ -36,9 +36,6 @@ extern void push_stmt_list();
 extern tree pop_stmt_list();
 extern void add_stmt(tree t);
 
-extern void start_function(FuncDeclaration *decl);
-extern void end_function();
-
 extern tree d_decl_context (Dsymbol *dsym);
 
 extern tree d_mark_addressable (tree exp);

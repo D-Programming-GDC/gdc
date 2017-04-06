@@ -87,6 +87,66 @@ gcc_attribute_p (Dsymbol *dsym)
   return false;
 }
 
+/* Create the FUNCTION_DECL for a function definition.
+   This function creates a binding context for the function body
+   as well as setting up the FUNCTION_DECL in current_function_decl.  */
+
+static void
+start_function (FuncDeclaration *decl)
+{
+  cfun->language = ggc_cleared_alloc<language_function>();
+  cfun->language->function = decl;
+
+  // Default chain value is 'null' unless parent found.
+  cfun->language->static_chain = null_pointer_node;
+
+  // Find module for this function
+  for (Dsymbol *p = decl->parent; p != NULL; p = p->parent)
+    {
+      cfun->language->module = p->isModule ();
+      if (cfun->language->module)
+	break;
+    }
+  gcc_assert (cfun->language->module != NULL);
+
+  // Check if we have a static this or unitest function.
+  ModuleInfo *mi = current_module_info;
+
+  if (decl->isSharedStaticCtorDeclaration ())
+    mi->sharedctors.safe_push (decl);
+  else if (decl->isStaticCtorDeclaration ())
+    mi->ctors.safe_push (decl);
+  else if (decl->isSharedStaticDtorDeclaration ())
+    {
+      VarDeclaration *vgate = ((SharedStaticDtorDeclaration *) decl)->vgate;
+      if (vgate != NULL)
+	mi->sharedctorgates.safe_push (vgate);
+      mi->shareddtors.safe_push (decl);
+    }
+  else if (decl->isStaticDtorDeclaration ())
+    {
+      VarDeclaration *vgate = ((StaticDtorDeclaration *) decl)->vgate;
+      if (vgate != NULL)
+	mi->ctorgates.safe_push (vgate);
+      mi->dtors.safe_push (decl);
+    }
+  else if (decl->isUnitTestDeclaration ())
+    mi->unitTests.safe_push (decl);
+}
+
+/* Finish up a function declaration and compile that function
+   all the way to assembler language output.  The free the storage
+   for the function definition.  */
+
+static void
+finish_function (void)
+{
+  gcc_assert (vec_safe_is_empty (cfun->language->stmt_list));
+
+  ggc_free (cfun->language);
+  cfun->language = NULL;
+}
+
 /* Implements the visitor interface to lower all Declaration AST classes
    emitted from the D Front-end to GCC trees.
    All visit methods accept one parameter D, which holds the frontend AST
@@ -1001,7 +1061,7 @@ public:
 	  }
       }
 
-    end_function ();
+    finish_function ();
 
     current_function_decl = old_current_function_decl;
     set_cfun (old_cfun);
