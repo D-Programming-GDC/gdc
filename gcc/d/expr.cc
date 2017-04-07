@@ -1730,7 +1730,7 @@ public:
 	while (!owner->isTemplateInstance() && owner->toParent())
 	  owner = owner->toParent();
 	if (owner->isTemplateInstance() || owner == cfun->language->module)
-	  cfun->language->deferred_fns.safe_push(e->func);
+	  build_decl_tree (e->func);
       }
 
     tree fndecl;
@@ -1968,13 +1968,10 @@ public:
 	e->fd->vthis = NULL;
       }
 
-    // Emit after current function body has finished.
-    if (cfun != NULL)
-      cfun->language->deferred_fns.safe_push(e->fd);
-    else
-      build_decl_tree (e->fd);
+    // Compile the function literal body.
+    build_decl_tree (e->fd);
 
-    // If nested, this will be a trampoline...
+    // If nested, this will be a trampoline.
     if (e->fd->isNested())
       {
 	if (this->constp_)
@@ -2054,11 +2051,8 @@ public:
 	    fld->vthis = NULL;
 	  }
 
-	// Emit after current function body has finished.
-	if (cfun != NULL)
-	  cfun->language->deferred_fns.safe_push(fld);
-	else
-	  build_decl_tree (fld);
+	// Compiler the function literal body.
+	build_decl_tree (fld);
       }
 
     if (this->constp_)
