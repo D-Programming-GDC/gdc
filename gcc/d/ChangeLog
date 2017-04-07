@@ -1,3 +1,8 @@
+2017-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (start_function): Move to d-objfile.cc, make it static.
+	(end_function): Likewise.  Renamed to finish_function.
+
 2017-04-05  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (d_convert): Move to d-convert.cc.

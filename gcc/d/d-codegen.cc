@@ -229,60 +229,6 @@ add_stmt(tree t)
     }
 }
 
-//
-void
-start_function(FuncDeclaration *decl)
-{
-  cfun->language = ggc_cleared_alloc<language_function>();
-  cfun->language->function = decl;
-
-  // Default chain value is 'null' unless parent found.
-  cfun->language->static_chain = null_pointer_node;
-
-  // Find module for this function
-  for (Dsymbol *p = decl->parent; p != NULL; p = p->parent)
-    {
-      cfun->language->module = p->isModule();
-      if (cfun->language->module)
-	break;
-    }
-  gcc_assert(cfun->language->module != NULL);
-
-  // Check if we have a static this or unitest function.
-  ModuleInfo *mi = current_module_info;
-
-  if (decl->isSharedStaticCtorDeclaration())
-    mi->sharedctors.safe_push(decl);
-  else if (decl->isStaticCtorDeclaration())
-    mi->ctors.safe_push(decl);
-  else if (decl->isSharedStaticDtorDeclaration())
-    {
-      VarDeclaration *vgate = ((SharedStaticDtorDeclaration *) decl)->vgate;
-      if (vgate != NULL)
-	mi->sharedctorgates.safe_push(vgate);
-      mi->shareddtors.safe_push(decl);
-    }
-  else if (decl->isStaticDtorDeclaration())
-    {
-      VarDeclaration *vgate = ((StaticDtorDeclaration *) decl)->vgate;
-      if (vgate != NULL)
-	mi->ctorgates.safe_push(vgate);
-      mi->dtors.safe_push(decl);
-    }
-  else if (decl->isUnitTestDeclaration())
-    mi->unitTests.safe_push(decl);
-}
-
-void
-end_function()
-{
-  gcc_assert(vec_safe_is_empty(cfun->language->stmt_list));
-
-  ggc_free(cfun->language);
-  cfun->language = NULL;
-}
-
-
 // Return the DECL_CONTEXT for symbol DSYM.
 
 tree
