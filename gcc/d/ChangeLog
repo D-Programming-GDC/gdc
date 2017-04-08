@@ -14,6 +14,17 @@
 
 2017-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codgen.h (current_module_decl): Moved to d-objfile.cc.
+	* d-objfile.h (current_module_info): Likewise.
+	(ModuleInfoFlags): Likewise.
+	(ModuleInfo): Likewise.
+	* d-objfile.cc (start_function): Move updating ModuleInfo structure to
+	...
+	(DeclVisitor::visit(FuncDeclaration)): ... here.  Set it after
+	finishing off the function.
+
+2017-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-objfile.cc (DeclVisitor::visit(FuncDeclaration)): Use
 	push_function_decl for storing current state when switching to nested
 	functions.  Remove handling of deferred functions.

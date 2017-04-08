@@ -224,7 +224,6 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 // Globals.
 extern Modules builtin_modules;
-extern Module *current_module_decl;
 
 #endif
 
