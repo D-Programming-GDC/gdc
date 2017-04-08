@@ -63,8 +63,49 @@ static tree build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDe
 static tree build_dtor_function (const char *, vec<FuncDeclaration *>);
 static tree build_unittest_function (const char *, vec<FuncDeclaration *>);
 
-// Module info.  Assuming only one module per run of the compiler.
-ModuleInfo *current_module_info;
+/* Record information about module initialization, termination,
+   unit testing, and thread local storage in the compilation.  */
+
+struct module_info
+{
+  vec<ClassDeclaration *> classes;
+  vec<FuncDeclaration *> ctors;
+  vec<FuncDeclaration *> dtors;
+  vec<VarDeclaration *> ctorgates;
+
+  vec<FuncDeclaration *> sharedctors;
+  vec<FuncDeclaration *> shareddtors;
+  vec<VarDeclaration *> sharedctorgates;
+
+  vec<FuncDeclaration *> unitTests;
+  vec<VarDeclaration *> tlsVars;
+};
+
+/* These must match the values in libdruntime/object_.d.  */
+
+enum module_info_flags
+{
+  MIstandalone	    = 0x4,
+  MItlsctor	    = 0x8,
+  MItlsdtor	    = 0x10,
+  MIctor	    = 0x20,
+  MIdtor	    = 0x40,
+  MIxgetMembers	    = 0x80,
+  MIictor	    = 0x100,
+  MIunitTest	    = 0x200,
+  MIimportedModules = 0x400,
+  MIlocalClasses    = 0x800,
+  MIname	    = 0x1000,
+};
+
+/* The ModuleInfo information structure for the module currently being compiled.
+   Assuming that only ever process one at a time.  */
+
+static module_info *current_module_info;
+
+/* The declaration of the current module being compiled.  */
+
+static Module *current_module_decl;
 
 // static constructors (not D static constructors)
 static vec<FuncDeclaration *> static_ctor_list;
@@ -94,13 +135,13 @@ gcc_attribute_p (Dsymbol *dsym)
 static void
 start_function (FuncDeclaration *decl)
 {
-  cfun->language = ggc_cleared_alloc<language_function>();
+  cfun->language = ggc_cleared_alloc<language_function> ();
   cfun->language->function = decl;
 
-  // Default chain value is 'null' unless parent found.
+  /* Default chain value is 'null' unless parent found.  */
   cfun->language->static_chain = null_pointer_node;
 
-  // Find module for this function
+  /* Find module for this function.  */
   for (Dsymbol *p = decl->parent; p != NULL; p = p->parent)
     {
       cfun->language->module = p->isModule ();
@@ -108,30 +149,6 @@ start_function (FuncDeclaration *decl)
 	break;
     }
   gcc_assert (cfun->language->module != NULL);
-
-  // Check if we have a static this or unitest function.
-  ModuleInfo *mi = current_module_info;
-
-  if (decl->isSharedStaticCtorDeclaration ())
-    mi->sharedctors.safe_push (decl);
-  else if (decl->isStaticCtorDeclaration ())
-    mi->ctors.safe_push (decl);
-  else if (decl->isSharedStaticDtorDeclaration ())
-    {
-      VarDeclaration *vgate = ((SharedStaticDtorDeclaration *) decl)->vgate;
-      if (vgate != NULL)
-	mi->sharedctorgates.safe_push (vgate);
-      mi->shareddtors.safe_push (decl);
-    }
-  else if (decl->isStaticDtorDeclaration ())
-    {
-      VarDeclaration *vgate = ((StaticDtorDeclaration *) decl)->vgate;
-      if (vgate != NULL)
-	mi->ctorgates.safe_push (vgate);
-      mi->dtors.safe_push (decl);
-    }
-  else if (decl->isUnitTestDeclaration ())
-    mi->unitTests.safe_push (decl);
 }
 
 /* Finish up a function declaration and compile that function
@@ -176,7 +193,7 @@ public:
        ever compile them one at a time.  */
     assert (!current_module_info && !current_module_decl);
 
-    ModuleInfo mi = ModuleInfo ();
+    module_info mi = module_info ();
 
     current_module_info = &mi;
     current_module_decl = d;
@@ -645,10 +662,7 @@ public:
 	  return;
 
 	if (d->isThreadlocal ())
-	  {
-	    ModuleInfo *mi = current_module_info;
-	    mi->tlsVars.safe_push (d);
-	  }
+	  current_module_info->tlsVars.safe_push (d);
 
 	/* How big a symbol can be should depend on backend.  */
 	tree size = build_integer_cst (d->type->size (d->loc),
@@ -1037,6 +1051,35 @@ public:
       d_finish_function (d);
 
     finish_function ();
+
+    /* If a static constructor, push into the current ModuleInfo.
+       Checks for `shared' first because it derives from the non-shared
+       constructor type in the front-end.  */
+    if (d->isSharedStaticCtorDeclaration ())
+      current_module_info->sharedctors.safe_push (d);
+    else if (d->isStaticCtorDeclaration ())
+      current_module_info->ctors.safe_push (d);
+
+    /* If a static destructor, do same as with constructors, but also
+       increment the destructor's vgate at construction time.  */
+    if (d->isSharedStaticDtorDeclaration ())
+      {
+	VarDeclaration *vgate = ((SharedStaticDtorDeclaration *) d)->vgate;
+	if (vgate != NULL)
+	  current_module_info->sharedctorgates.safe_push (vgate);
+	current_module_info->shareddtors.safe_push (d);
+      }
+    else if (d->isStaticDtorDeclaration ())
+      {
+	VarDeclaration *vgate = ((StaticDtorDeclaration *) d)->vgate;
+	if (vgate != NULL)
+	  current_module_info->ctorgates.safe_push (vgate);
+	current_module_info->dtors.safe_push (d);
+      }
+
+    /* If a unittest function.  */
+    if (d->isUnitTestDeclaration ())
+      current_module_info->unitTests.safe_push (d);
 
     if (nested)
       pop_function_context ();

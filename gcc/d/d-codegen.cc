@@ -48,9 +48,6 @@
 #include "id.h"
 
 
-Module *current_module_decl;
-
-
 // Update data for defined and undefined labels when leaving a scope.
 
 bool
