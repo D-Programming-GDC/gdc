@@ -1,5 +1,9 @@
 2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_parse_file): Remove invalid file name checks.
+
+2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-glue.cc (Global::_init): Set global.stdmsg to stderr.
 
 2017-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
