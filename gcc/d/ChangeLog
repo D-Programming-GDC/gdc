@@ -1,3 +1,7 @@
+2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-glue.cc (Global::_init): Set global.stdmsg to stderr.
+
 2017-04-07  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (DeclVisitor::visit(FuncDeclaration)): Use
