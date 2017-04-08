@@ -1091,53 +1091,15 @@ d_parse_file()
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
-      char *fname = xstrdup(in_fnames[i]);
+      /* Strip D source file of its path and extension.  */
+      const char *basename = FileName::name (in_fnames[i]);
+      const char *name = FileName::removeExt (basename);
 
-      // Strip path
-      const char *path = FileName::name(fname);
-      const char *ext = FileName::ext(path);
-      char *name;
-      size_t pathlen;
-
-      if (ext)
-	{
-	  // Skip onto '.'
-	  ext--;
-	  gcc_assert(*ext == '.');
-	  pathlen = (ext - path);
-	  name = (char *) xmalloc(pathlen + 1);
-	  memcpy(name, path, pathlen);
-	  // Strip extension
-	  name[pathlen] = '\0';
-
-	  if (name[0] == '\0'
-	      || strcmp(name, "..") == 0
-	      || strcmp(name, ".") == 0)
-	    {
-	      error("invalid file name '%s'", fname);
-	      goto had_errors;
-	    }
-	}
-      else
-	{
-	  pathlen = strlen(path);
-	  name = (char *) xmalloc(pathlen);
-	  memcpy(name, path, pathlen);
-	  name[pathlen] = '\0';
-
-	  if (name[0] == '\0')
-	    {
-	      error("invalid file name '%s'", fname);
-	      goto had_errors;
-	    }
-	}
-
-      // At this point, name is the D source file name stripped of
-      // its path and extension.
-      Identifier *id = Identifier::idPool(name);
-      Module *m = Module::create (fname, id, global.params.doDocComments,
+      Module *m = Module::create (in_fnames[i], Identifier::idPool (name),
+				  global.params.doDocComments,
 				  global.params.doHdrGeneration);
-      modules.push(m);
+      modules.push (m);
+      FileName::free (name);
     }
 
   // Read files
