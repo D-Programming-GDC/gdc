@@ -1,5 +1,10 @@
 2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-objfile.cc (DeclVisitor::visit(FuncDeclaration)): Remove logic
+	that parent needs to be compiled before nested.
+
+2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_post_options): Don't overwrite in_fnames.
 	(d_parse_file): Don't error about not being able to use stdin.
 	Implement support for reading source code from stdin.
