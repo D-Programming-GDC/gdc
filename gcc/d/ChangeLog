@@ -1,5 +1,11 @@
 2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-lang.cc (d_post_options): Don't overwrite in_fnames.
+	(d_parse_file): Don't error about not being able to use stdin.
+	Implement support for reading source code from stdin.
+
+2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_parse_file): Remove invalid file name checks.
 
 2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>

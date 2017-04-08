@@ -835,18 +835,13 @@ d_handle_option (size_t scode, const char *arg, int value,
 bool
 d_post_options (const char ** fn)
 {
-  // Canonicalize the input filename.
-  if (in_fnames == NULL)
-    {
-      in_fnames = XNEWVEC (const char *, 1);
-      in_fnames[0] = "";
-    }
-  else if (strcmp (in_fnames[0], "-") == 0)
-    in_fnames[0] = "";
+  /* Verify the input file name.  */
+  const char *filename = *fn;
+  if (!filename || strcmp (filename, "-") == 0)
+    filename = "";
 
-  // The front end considers the first input file to be the main one.
-  if (num_in_fnames)
-    *fn = in_fnames[0];
+  /* The front end considers the first input file to be the main one.  */
+  *fn = filename;
 
   // If we are given more than one input file, we must use unit-at-a-time mode.
   if (num_in_fnames > 1)
@@ -1078,28 +1073,54 @@ d_parse_file()
   Modules modules;
   modules.reserve(num_in_fnames);
 
-  if (!main_input_filename || !main_input_filename[0])
-    {
-      error("input file name required; cannot use stdin");
-      goto had_errors;
-    }
-
-  // In this mode, the first file name is supposed to be a duplicate
-  // of one of the input files.
-  if (d_option.fonly && strcmp(d_option.fonly, in_fnames[0]))
+  /* In this mode, the first file name is supposed to be a duplicate
+     of one of the input files.  */
+  if (d_option.fonly && strcmp(d_option.fonly, main_input_filename) != 0)
     error("-fonly= argument is different from first input file name");
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
-      /* Strip D source file of its path and extension.  */
-      const char *basename = FileName::name (in_fnames[i]);
-      const char *name = FileName::removeExt (basename);
+      if (strcmp (in_fnames[i], "-") == 0)
+	{
+	  /* Handling stdin, generate a unique name for the module.  */
+	  obstack buffer;
+	  gcc_obstack_init (&buffer);
+	  int c;
 
-      Module *m = Module::create (in_fnames[i], Identifier::idPool (name),
-				  global.params.doDocComments,
-				  global.params.doHdrGeneration);
-      modules.push (m);
-      FileName::free (name);
+	  Module *m = Module::create (in_fnames[i],
+				      Identifier::generateId ("__stdin"),
+				      global.params.doDocComments,
+				      global.params.doHdrGeneration);
+	  modules.push (m);
+
+	  /* Load the entire contents of stdin into memory.  */
+	  while ((c = getc (stdin)) != EOF)
+	    obstack_1grow (&buffer, c);
+
+	  if (!obstack_object_size (&buffer))
+	    obstack_1grow (&buffer, '\0');
+
+	  /* Overwrite the source file for the module, the one created by
+	     Module::create would have a forced a `.d' suffix.  */
+	  m->srcfile = File::create ("<stdin>");
+	  m->srcfile->len = obstack_object_size (&buffer);
+	  m->srcfile->buffer = (unsigned char *) obstack_finish (&buffer);
+
+	  /* Tell the front-end not to free the buffer after parsing.  */
+	  m->srcfile->ref = 1;
+	}
+      else
+	{
+	  /* Handling a D source file, strip off the path and extension.  */
+	  const char *basename = FileName::name (in_fnames[i]);
+	  const char *name = FileName::removeExt (basename);
+
+	  Module *m = Module::create (in_fnames[i], Identifier::idPool (name),
+				      global.params.doDocComments,
+				      global.params.doHdrGeneration);
+	  modules.push (m);
+	  FileName::free (name);
+	}
     }
 
   // Read files
