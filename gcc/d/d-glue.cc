@@ -58,7 +58,7 @@ Global::_init()
     ;
 
   this->compiler.vendor = "GNU D";
-  this->stdmsg = stdout;
+  this->stdmsg = stderr;
   this->main_d = "__main.d";
 
   this->errorLimit = flag_max_errors;
