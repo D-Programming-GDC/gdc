@@ -810,26 +810,19 @@ public:
 	return;
       }
 
+    /* Start generating code for this function.  */
+    gcc_assert (d->semanticRun == PASSsemantic3done);
+    d->semanticRun = PASSobj;
+
+    if (global.params.verbose)
+      fprintf (global.stdmsg, "function  %s\n", d->toPrettyChars ());
+
     /* This function exists in static storage.
        (This does not mean `static' in the C sense!)  */
     TREE_STATIC (fndecl) = 1;
 
     /* Add this decl to the current binding level.  */
     d_pushdecl (fndecl);
-
-    /* Start generating code for this function.  */
-    gcc_assert (d->semanticRun == PASSsemantic3done);
-    d->semanticRun = PASSobj;
-
-    /* Nested functions may not have its body compiled before the outer
-       function is finished.  GCC requires that nested functions be finished
-       first so we need to arrange for build_decl_tree to be called earlier.  */
-    FuncDeclaration *fdp = d->toParent2 ()->isFuncDeclaration ();
-    if (fdp && fdp->semanticRun < PASSobj)
-      fdp->accept (this);
-
-    if (global.params.verbose)
-      fprintf (global.stdmsg, "function  %s\n", d->toPrettyChars ());
 
     bool nested = current_function_decl != NULL_TREE;
     if (nested)
