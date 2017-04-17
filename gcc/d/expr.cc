@@ -165,7 +165,7 @@ public:
 	tree t1 = build_expr(e->e1);
 	tree t2 = build_expr(e->e2);
 
-	gcc_assert(d_types_same(tb1, tb2));
+	gcc_assert (same_type_p (tb1, tb2));
 
 	this->result_ = build_struct_comparison(code, sd, t1, t2);
       }
@@ -292,7 +292,7 @@ public:
 	tree t1 = build_expr(e->e1);
 	tree t2 = build_expr(e->e2);
 
-	gcc_assert(d_types_same(tb1, tb2));
+	gcc_assert (same_type_p (tb1, tb2));
 
 	this->result_ = build_struct_comparison(code, sd, t1, t2);
       }
@@ -654,7 +654,7 @@ public:
 
 	// Store all concatenation args to a temporary byte[][ndims] array.
 	Type *targselem = Type::tint8->arrayOf();
-	tree var = create_temporary_var(d_array_type(targselem, ndims));
+	tree var = create_temporary_var(make_array_type (targselem, ndims));
 	tree init = build_constructor(TREE_TYPE(var), NULL);
 	vec_safe_push(elemvars, var);
 
@@ -776,7 +776,7 @@ public:
     while (e1b->op == TOKcast)
       {
 	CastExp *ce = (CastExp *) e1b;
-	gcc_assert(d_types_same(ce->type, ce->to));
+	gcc_assert (same_type_p (ce->type, ce->to));
 	e1b = ce->e1;
       }
 
@@ -809,7 +809,7 @@ public:
 	gcc_assert(tb1->ty == Tarray || tb2->ty == Tsarray);
 
 	if ((tb2->ty == Tarray || tb2->ty == Tsarray)
-	    && d_types_same(etype, tb2->nextOf()->toBasetype()))
+	    && same_type_p (etype, tb2->nextOf()->toBasetype()))
 	  {
 	    // Append an array
 	    tree args[3];
@@ -821,7 +821,7 @@ public:
 	    this->result_ = build_libcall(LIBCALL_ARRAYAPPENDT, 3, args,
 					  build_ctype(e->type));
 	  }
-	else if (d_types_same(etype, tb2))
+	else if (same_type_p (etype, tb2))
 	  {
 	    // Append an element
 	    tree args[3];
@@ -1527,7 +1527,7 @@ public:
 	  {
 	    VarDeclaration *field = sd->fields[i];
 	    if (field->offset == offset
-		&& d_types_same(field->type, e->type))
+		&& same_type_p (field->type, e->type))
 	      {
 		// Catch errors, backend will ICE otherwise.
 		if (error_operand_p(result))
@@ -1857,7 +1857,7 @@ public:
 	    return;
 	  }
 	else if (cd->isInterfaceDeclaration())
-	  arg = convert_expr(arg, tb1, build_object_type());
+	  arg = convert_expr(arg, tb1, get_object_type ());
 
 	if (global.params.useInvariants && !cd->isCPPclass())
 	  {
@@ -2288,8 +2288,8 @@ public:
 	    // Multidimensional array allocations.
 	    vec<constructor_elt, va_gc> *elms = NULL;
 	    Type *telem = e->newtype->toBasetype();
-	    tree var = create_temporary_var(d_array_type(Type::tsize_t,
-							 e->arguments->dim));
+	    tree var = create_temporary_var(make_array_type (Type::tsize_t,
+							     e->arguments->dim));
 	    tree init = build_constructor(TREE_TYPE (var), NULL);
 	    tree args[2];
 
@@ -2424,7 +2424,7 @@ public:
     else
       {
 	// Array type doesn't match string length if null terminated.
-	TREE_TYPE (value) = d_array_type(tb->nextOf(), e->len);
+	TREE_TYPE (value) = make_array_type (tb->nextOf(), e->len);
 
 	value = build_address(value);
 	if (tb->ty == Tarray)
@@ -2473,7 +2473,7 @@ public:
 	  this->result_ = d_array_value(build_ctype(e->type),
 					size_int(0), null_pointer_node);
 	else
-	  this->result_ = build_constructor(d_array_type(tb->nextOf(), 0), NULL);
+	  this->result_ = build_constructor(make_array_type (tb->nextOf(), 0), NULL);
 
 	return;
       }
@@ -2485,7 +2485,7 @@ public:
     tree saved_elems = NULL_TREE;
 
     Type *etype = tb->nextOf();
-    tree satype = d_array_type(etype, e->elements->dim);
+    tree satype = make_array_type (etype, e->elements->dim);
 
     for (size_t i = 0; i < e->elements->dim; i++)
       {
@@ -2593,7 +2593,7 @@ public:
 	CONSTRUCTOR_APPEND_ELT(ke, size_int(i),
 			       convert_expr(t, key->type, ta->index));
       }
-    tree akeys = build_constructor(d_array_type(ta->index, e->keys->dim), ke);
+    tree akeys = build_constructor(make_array_type (ta->index, e->keys->dim), ke);
 
     vec<constructor_elt, va_gc> *ve = NULL;
     vec_safe_reserve(ve, e->values->dim);
@@ -2604,7 +2604,7 @@ public:
 	CONSTRUCTOR_APPEND_ELT(ve, size_int(i),
 			       convert_expr(t, value->type, ta->next));
       }
-    tree avals = build_constructor(d_array_type(ta->next, e->values->dim), ve);
+    tree avals = build_constructor(make_array_type (ta->next, e->values->dim), ve);
 
     // Call _d_assocarrayliteralTX (ti, keys, vals);
     tree args[3];
@@ -2665,7 +2665,7 @@ public:
 	Type *ftype = field->type->toBasetype();
 	tree value = NULL_TREE;
 
-	if (ftype->ty == Tsarray && !d_types_same(type, ftype))
+	if (ftype->ty == Tsarray && !same_type_p (type, ftype))
 	  {
 	    // Initialize a static array with a single element.
 	    tree elem = build_expr(exp, this->constp_);

@@ -355,7 +355,7 @@ convert_expr (tree exp, Type *etype, Type *totype)
   Type *ebtype = etype->toBasetype ();
   Type *tbtype = totype->toBasetype ();
 
-  if (d_types_same (etype, totype))
+  if (same_type_p (etype, totype))
     return exp;
 
   if (error_operand_p (exp))
@@ -632,7 +632,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
     {
       Type *telem = tbtype->nextOf ()->baseElemOf ();
 
-      if (d_types_same (telem, ebtype))
+      if (same_type_p (telem, ebtype))
 	{
 	  TypeSArray *sa_type = (TypeSArray *) tbtype;
 	  uinteger_t count = sa_type->dim->toUInteger ();
@@ -683,7 +683,7 @@ convert_for_argument (tree expr, Parameter *arg)
   if (arg->storageClass & STClazy)
     return expr;
 
-  if (type_va_array (arg->type))
+  if (valist_array_p (arg->type))
     {
       /* Do nothing if the va_list has already been decayed to a pointer.  */
       if (!POINTER_TYPE_P (TREE_TYPE (expr)))
@@ -798,7 +798,7 @@ d_array_convert (Type *etype, Expression *exp, vec<tree, va_gc> **vars)
 {
   Type *tb = exp->type->toBasetype ();
 
-  if ((tb->ty != Tarray && tb->ty != Tsarray) || d_types_same (tb, etype))
+  if ((tb->ty != Tarray && tb->ty != Tsarray) || same_type_p (tb, etype))
     {
       /* Convert single element to an array.  */
       tree var = NULL_TREE;

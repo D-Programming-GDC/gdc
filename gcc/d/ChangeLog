@@ -1,5 +1,22 @@
 2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.h (d_types_same): Renamed to same_type_p.
+	Moved to types.cc.
+	(build_object_type): Renamed to get_object_type.  Moved to types.cc.
+	* d-codegen.cc (type_va_array): Renamed to valist_array_p.
+	Moved to types.cc.
+	(d_array_type): Renamed to make_array_type.  Moved to types.cc.
+	(insert_type_modifiers): Moved to types.cc.
+	(build_two_field_type): Likewise.
+	(empty_aggregate_p): Likewise.
+	(fixup_anonymous_offset): Likewise.
+	(layout_aggregate_members): Likewise.
+	(layout_aggregate_type): Likewise.
+	(insert_aggregate_field): Likewise.
+	(finish_aggregate_type): Likewise.
+
+2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* Make-lang.in (D_FRONTEND_OBJS): Update to match new source names.
 
 2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
