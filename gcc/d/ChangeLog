@@ -1,3 +1,11 @@
+2017-04-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc: New file.
+	* d-frontend.cc: New file.
+	* d-glue.cc: Remove file.
+	* d-port.cc: Remove file.
+	* d-longdouble.h (template<typename T> operator): Remove operators.
+
 2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-incpath.cc (add_env_var_paths): Rename to add_environment_paths.
