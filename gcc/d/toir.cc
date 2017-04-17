@@ -757,7 +757,7 @@ public:
     else if (cd->com || (id != NULL && id->com))
       s->error("cannot throw COM objects");
     else
-      arg = build_nop(build_ctype(build_object_type()), arg);
+      arg = build_nop(build_ctype(get_object_type ()), arg);
 
     set_input_location(s->loc);
     add_stmt(build_libcall(LIBCALL_THROW, 1, &arg));

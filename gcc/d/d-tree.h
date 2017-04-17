@@ -457,6 +457,16 @@ extern void layout_cpp_typeinfo (ClassDeclaration *);
 extern void build_ir (FuncDeclaration *);
 
 /* In types.cc.  */
+extern bool valist_array_p (Type *);
+extern bool empty_aggregate_p (tree);
+extern bool same_type_p (Type *, Type *);
+extern Type *get_object_type (void);
+extern tree make_array_type (Type *, unsigned HOST_WIDE_INT);
+extern tree make_two_field_type (tree, tree, Type *, const char *, const char *);
+extern tree insert_type_modifiers (tree, unsigned);
+extern void insert_aggregate_field (const Loc&, tree, tree, size_t);
+extern void finish_aggregate_type (unsigned, unsigned, tree,
+				   UserAttributeDeclaration *);
 extern tree build_ctype (Type *);
 
 #endif

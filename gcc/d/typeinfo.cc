@@ -145,7 +145,7 @@ class TypeInfoVisitor : public Visitor
 
     /* Put out array of Interfaces.  */
     size_t dim = cd->vtblInterfaces->dim;
-    value = build_constructor (d_array_type (tinterface, dim), elms);
+    value = build_constructor (make_array_type (tinterface, dim), elms);
     this->set_field (offset, value);
   }
 
@@ -191,7 +191,7 @@ class TypeInfoVisitor : public Visitor
 	  }
       }
 
-    tree value = build_constructor (d_array_type (Type::tvoidptr, id->vtbl.dim),
+    tree value = build_constructor (make_array_type (Type::tvoidptr, id->vtbl.dim),
 				    elms);
     this->set_field (voffset, value);
   }

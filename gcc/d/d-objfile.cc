@@ -1268,7 +1268,7 @@ build_moduleinfo_symbol (Module *m)
   if (flags & MIimportedModules)
     {
       vec<constructor_elt, va_gc> *elms = NULL;
-      tree satype = d_array_type (Type::tvoidptr, aimports_dim);
+      tree satype = make_array_type (Type::tvoidptr, aimports_dim);
       size_t idx = 0;
 
       for (size_t i = 0; i < m->aimports.dim; i++)
@@ -1291,7 +1291,7 @@ build_moduleinfo_symbol (Module *m)
   if (flags & MIlocalClasses)
     {
       vec<constructor_elt, va_gc> *elms = NULL;
-      tree satype = d_array_type (Type::tvoidptr, aclasses.dim);
+      tree satype = make_array_type (Type::tvoidptr, aclasses.dim);
 
       for (size_t i = 0; i < aclasses.dim; i++)
 	{
@@ -1312,7 +1312,7 @@ build_moduleinfo_symbol (Module *m)
       const char *name = m->toPrettyChars ();
       size_t namelen = strlen (name) + 1;
       tree strtree = build_string (namelen, name);
-      TREE_TYPE (strtree) = d_array_type (Type::tchar, namelen);
+      TREE_TYPE (strtree) = make_array_type (Type::tchar, namelen);
       CONSTRUCTOR_APPEND_ELT (minit, field, strtree);
       field = TREE_CHAIN (field);
     }
@@ -2082,8 +2082,8 @@ emit_modref_hooks(tree sym, Dsymbol *mref)
   //  }
 
   // struct ModuleReference in moduleinit.d
-  tree tmodref = build_two_field_type (ptr_type_node, ptr_type_node,
-				       NULL, "next", "mod");
+  tree tmodref = make_two_field_type (ptr_type_node, ptr_type_node,
+				      NULL, "next", "mod");
   tree nextfield = TYPE_FIELDS (tmodref);
   tree modfield = TREE_CHAIN (nextfield);
 

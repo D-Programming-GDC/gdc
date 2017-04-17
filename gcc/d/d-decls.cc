@@ -816,7 +816,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
     {
       Type *tn = Module::moduleinfo->type->pointerTo ();
       add_moduleinfo_field (size_type_node, type, offset);
-      add_moduleinfo_field (d_array_type (tn, aimports_dim), type, offset);
+      add_moduleinfo_field (make_array_type (tn, aimports_dim), type, offset);
     }
 
   /* Array of local ClassInfo decls are layed out in the same way.  */
@@ -831,12 +831,12 @@ layout_moduleinfo_fields (Module *decl, tree type)
     {
       Type *tn = Type::typeinfoclass->type;
       add_moduleinfo_field (size_type_node, type, offset);
-      add_moduleinfo_field (d_array_type (tn, aclasses.dim), type, offset);
+      add_moduleinfo_field (make_array_type (tn, aclasses.dim), type, offset);
     }
 
   /* Lastly, the name of the module is a static char array.  */
   size_t namelen = strlen (decl->toPrettyChars ()) + 1;
-  add_moduleinfo_field (d_array_type (Type::tchar, namelen), type, offset);
+  add_moduleinfo_field (make_array_type (Type::tchar, namelen), type, offset);
 
   finish_aggregate_type (offset, Module::moduleinfo->alignsize, type, NULL);
 
@@ -899,8 +899,8 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	 about the vtables that follow.  */
       if (Type::typeinterface)
 	{
-	  field = create_field_decl (d_array_type (Type::typeinterface->type,
-						   decl->vtblInterfaces->dim),
+	  field = create_field_decl (make_array_type (Type::typeinterface->type,
+						      decl->vtblInterfaces->dim),
 				     NULL, 1, 1);
 	  insert_aggregate_field (decl->loc, type, field,
 				  Type::typeinfoclass->structsize);
@@ -916,8 +916,8 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {
-	      field = create_field_decl (d_array_type (Type::tvoidptr,
-						       id->vtbl.dim),
+	      field = create_field_decl (make_array_type (Type::tvoidptr,
+							  id->vtbl.dim),
 					 NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
@@ -939,8 +939,8 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	      if (type == orig_type)
 		type = copy_struct (type);
 
-	      tree field = create_field_decl (d_array_type (Type::tvoidptr,
-							    id->vtbl.dim),
+	      tree field = create_field_decl (make_array_type (Type::tvoidptr,
+							       id->vtbl.dim),
 					      NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
