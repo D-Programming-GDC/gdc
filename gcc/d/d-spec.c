@@ -1,7 +1,5 @@
 /* d-spec.c -- Specific flags and argument handling of the D front end.
-   Copyright (C) 2011-2016 Free Software Foundation, Inc.
-
-This file is part of GCC.
+   Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
