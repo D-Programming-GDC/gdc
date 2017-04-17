@@ -1,3 +1,7 @@
+2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_FRONTEND_OBJS): Update to match new source names.
+
 2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (DeclVisitor::visit(FuncDeclaration)): Remove logic
