@@ -472,7 +472,7 @@ static bool checkEscapeImpl(Scope *sc, Expression *e, bool refs, bool gag)
             if (v->storage_class & STCreturn)
                 continue;
 
-            if (sc->module && sc->module->isRoot() &&
+            if (sc->_module && sc->_module->isRoot() &&
                 /* This case comes up when the ReturnStatement of a __foreachbody is
                  * checked for escapes by the caller of __foreachbody. Skip it.
                  *
@@ -555,7 +555,7 @@ static bool checkEscapeImpl(Scope *sc, Expression *e, bool refs, bool gag)
                 inferReturn(sc->func, v);        // infer addition of 'return'
             }
             else if (global.params.useDIP25 &&
-                     sc->module && sc->module->isRoot())
+                     sc->_module && sc->_module->isRoot())
             {
                 // Only look for errors if in module listed on command line
 
@@ -701,11 +701,7 @@ static void escapeByValue(Expression *e, EscapeByResults *er)
         void visit(ThisExp *e)
         {
             if (e->var)
-            {
-                VarDeclaration *v = e->var->isVarDeclaration();
-                if (v)
-                    er->byvalue.push(v);
-            }
+                er->byvalue.push(e->var);
         }
 
         void visit(DotVarExp *e)
@@ -985,11 +981,7 @@ static void escapeByRef(Expression *e, EscapeByResults *er)
         void visit(ThisExp *e)
         {
             if (e->var)
-            {
-                VarDeclaration *v = e->var->isVarDeclaration();
-                if (v)
-                    er->byref.push(v);
-            }
+                er->byref.push(e->var);
         }
 
         void visit(PtrExp *e)

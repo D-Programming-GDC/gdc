@@ -35,9 +35,6 @@ class DeleteDeclaration;
 class InterfaceDeclaration;
 class TypeInfoClassDeclaration;
 class VarDeclaration;
-#ifdef IN_GCC
-typedef union tree_node dt_t;
-#endif
 
 enum Sizeok
 {
@@ -204,10 +201,6 @@ public:
 
     StructDeclaration *isStructDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class UnionDeclaration : public StructDeclaration
@@ -265,6 +258,7 @@ public:
     static ClassDeclaration *throwable;
     static ClassDeclaration *exception;
     static ClassDeclaration *errorException;
+    static ClassDeclaration *cpp_type_info_ptr;
 
     ClassDeclaration *baseClass;        // NULL only if this is Object
     FuncDeclaration *staticCtor;
@@ -289,6 +283,7 @@ public:
     int inuse;                          // to prevent recursive attempts
     Baseok baseok;                      // set the progress of base classes resolving
     Objc_ClassDeclaration objc;
+    Symbol *cpp_type_info_ptr_sym;      // cached instance of class Id.cpp_type_info_ptr
 
     ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses, bool inObject = false);
     Dsymbol *syntaxCopy(Dsymbol *s);
@@ -297,6 +292,7 @@ public:
     bool isBaseOf2(ClassDeclaration *cd);
 
     #define OFFSET_RUNTIME 0x76543210
+    #define OFFSET_FWDREF 0x76543211
     virtual bool isBaseOf(ClassDeclaration *cd, int *poffset);
 
     bool isBaseInfoComplete();
@@ -321,11 +317,6 @@ public:
 
     ClassDeclaration *isClassDeclaration() { return (ClassDeclaration *)this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-    unsigned baseVtblOffset(BaseClass *bc);
-    void toDt(dt_t **pdt);
-#endif
 };
 
 class InterfaceDeclaration : public ClassDeclaration
@@ -344,9 +335,6 @@ public:
 
     InterfaceDeclaration *isInterfaceDeclaration() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 #endif /* DMD_AGGREGATE_H */

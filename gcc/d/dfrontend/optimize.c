@@ -622,6 +622,11 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
                 // See if we can remove an unnecessary cast
                 ClassDeclaration *cdfrom = e->e1->type->isClassHandle();
                 ClassDeclaration *cdto = e->type->isClassHandle();
+                // Need to determine correct offset before optimizing away the cast.
+                // https://issues.dlang.org/show_bug.cgi?id=16980
+                cdfrom->size(e->loc);
+                assert(cdfrom->sizeok == SIZEOKdone);
+                //assert(cdto->sizeok == SIZEOKdone || !cdto->isBaseOf(cdto, NULL));
                 int offset;
                 if (cdto->isBaseOf(cdfrom, &offset) && offset == 0)
                 {
@@ -828,7 +833,7 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
 
             // Replace 1 ^^ x or 1.0^^x by (x, 1)
             if ((e->e1->op == TOKint64 && e->e1->toInteger() == 1) ||
-                (e->e1->op == TOKfloat64 && e->e1->toReal() == 1.0))
+                (e->e1->op == TOKfloat64 && e->e1->toReal() == CTFloat::one))
             {
                 ret = new CommaExp(e->loc, e->e2, e->e1);
                 return;
@@ -845,12 +850,12 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
 
             // Replace x ^^ 0 or x^^0.0 by (x, 1)
             if ((e->e2->op == TOKint64 && e->e2->toInteger() == 0) ||
-                (e->e2->op == TOKfloat64 && e->e2->toReal() == 0.0))
+                (e->e2->op == TOKfloat64 && e->e2->toReal() == CTFloat::zero))
             {
                 if (e->e1->type->isintegral())
                     ret = new IntegerExp(e->loc, 1, e->e1->type);
                 else
-                    ret = new RealExp(e->loc, ldouble(1.0), e->e1->type);
+                    ret = new RealExp(e->loc, CTFloat::one, e->e1->type);
 
                 ret = new CommaExp(e->loc, e->e1, ret);
                 return;
@@ -858,16 +863,16 @@ Expression *Expression_optimize(Expression *e, int result, bool keepLvalue)
 
             // Replace x ^^ 1 or x^^1.0 by (x)
             if ((e->e2->op == TOKint64 && e->e2->toInteger() == 1) ||
-                (e->e2->op == TOKfloat64 && e->e2->toReal() == 1.0))
+                (e->e2->op == TOKfloat64 && e->e2->toReal() == CTFloat::one))
             {
                 ret = e->e1;
                 return;
             }
 
             // Replace x ^^ -1.0 by (1.0 / x)
-            if ((e->e2->op == TOKfloat64 && e->e2->toReal() == -1.0))
+            if ((e->e2->op == TOKfloat64 && e->e2->toReal() == CTFloat::minusone))
             {
-                ret = new DivExp(e->loc, new RealExp(e->loc, ldouble(1.0), e->e2->type), e->e1);
+                ret = new DivExp(e->loc, new RealExp(e->loc, CTFloat::one, e->e2->type), e->e1);
                 return;
             }
 

@@ -1,19 +1,21 @@
-; GDC -- D front-end for GCC
-; Copyright (C) 2011-2013 Free Software Foundation, Inc.
+; lang.opt -- Options for the D front end.
+; Copyright (C) 2011-2017 Free Software Foundation, Inc.
 ;
-; This program is free software; you can redistribute it and/or modify
-; it under the terms of the GNU General Public License as published by
-; the Free Software Foundation; either version 2 of the License, or
-; (at your option) any later version.
+; GCC is free software; you can redistribute it and/or modify it under
+; the terms of the GNU General Public License as published by the Free
+; Software Foundation; either version 3, or (at your option) any later
+; version.
 ;
-; This program is distributed in the hope that it will be useful,
-; but WITHOUT ANY WARRANTY; without even the implied warranty of
-; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-; GNU General Public License for more details.
+; GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+; WARRANTY; without even the implied warranty of MERCHANTABILITY or
+; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+; for more details.
 ;
 ; You should have received a copy of the GNU General Public License
 ; along with GCC; see the file COPYING3.  If not see
 ; <http://www.gnu.org/licenses/>.
+
+; See the GCC internals manual for a description of this file's format.
 
 ; Please try to keep this file in ASCII collating order.
 
@@ -99,6 +101,10 @@ D
 Werror
 D
 ; Documented in common.opt
+
+Wspeculative
+D
+Warn from speculative compiles such as __traits(compiles).
 
 Wtemplates
 D
@@ -191,6 +197,10 @@ fdoc-inc=
 D Joined RejectNegative
 -fdoc-inc=<file>	Include a Ddoc macro <file>.
 
+fdump-d-original
+D
+Display the frontend AST after parsing and semantic passes.
+
 fd-vgc
 D Alias(ftransition=nogc)
 ; Deprecated in favor of -ftransition=nogc
@@ -249,6 +259,10 @@ D Alias(MM)
 fmake-mdeps=
 D Joined RejectNegative
 Deprecated in favor of -MMD
+
+fmodule-filepath=
+D Joined RejectNegative
+-fmodule-filepath=<package.module>=<filespec>	use <filespec> as source file for <package.module>
 
 fmoduleinfo
 D

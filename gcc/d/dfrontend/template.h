@@ -362,9 +362,6 @@ public:
 
     TemplateInstance *isTemplateInstance() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 class TemplateMixin : public TemplateInstance
@@ -388,9 +385,6 @@ public:
 
     TemplateMixin *isTemplateMixin() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 Expression *isExpression(RootObject *o);

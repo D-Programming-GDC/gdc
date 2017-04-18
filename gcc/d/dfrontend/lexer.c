@@ -1915,6 +1915,7 @@ TOK Lexer::inreal(Token *t)
 #ifdef DEBUG
     assert(*p == '.' || isdigit(*p));
 #endif
+    bool isWellformedString = true;
     stringbuffer.reset();
     const utf8_t *pstart = p;
     char hex = 0;
@@ -1980,12 +1981,18 @@ TOK Lexer::inreal(Token *t)
                 continue;
             }
             if (!anyexp)
+            {
                 error("missing exponent");
+                isWellformedString = false;
+            }
             break;
         }
     }
     else if (hex)
+    {
         error("exponent required for hex float");
+        isWellformedString = false;
+    }
     --p;
     while (pstart < p)
     {
@@ -1995,27 +2002,24 @@ TOK Lexer::inreal(Token *t)
     }
 
     stringbuffer.writeByte(0);
-
+    const char *sbufptr = (char *)stringbuffer.data;
     TOK result;
-    t->float80value = Port::strtold((char *)stringbuffer.data, NULL);
+    bool isOutOfRange = false;
+    t->floatvalue = (isWellformedString ? CTFloat::parse(sbufptr, &isOutOfRange) : CTFloat::zero);
     errno = 0;
     switch (*p)
     {
         case 'F':
         case 'f':
-            // Only interested in errno return
-            (void)Port::strtof((char *)stringbuffer.data, NULL);
+            if (isWellformedString && !isOutOfRange)
+                isOutOfRange = Port::isFloat32LiteralOutOfRange(sbufptr);
             result = TOKfloat32v;
             p++;
             break;
 
         default:
-            /* Should do our own strtod(), since dmc and linux gcc
-             * accept 2.22507e-308, while apple gcc will only take
-             * 2.22508e-308. Not sure who is right.
-             */
-            // Only interested in errno return
-            (void)Port::strtod((char *)stringbuffer.data, NULL);
+            if (isWellformedString && !isOutOfRange)
+                isOutOfRange = Port::isFloat64LiteralOutOfRange(sbufptr);
             result = TOKfloat64v;
             break;
 
@@ -2045,7 +2049,8 @@ TOK Lexer::inreal(Token *t)
             default: break;
         }
     }
-    if (errno == ERANGE)
+    const bool isLong = (result == TOKfloat80v || result == TOKimaginary80v);
+    if (isOutOfRange && !isLong)
     {
         const char *suffix = (result == TOKfloat32v || result == TOKimaginary32v) ? "f" : "";
         error(scanloc, "number '%s%s' is not representable", (char *)stringbuffer.data, suffix);

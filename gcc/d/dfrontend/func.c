@@ -1020,15 +1020,18 @@ void FuncDeclaration::semantic(Scope *sc)
 
         if (!doesoverride && isOverride() && (type->nextOf() || !may_override))
         {
+            BaseClass *bc = NULL;
             Dsymbol *s = NULL;
             for (size_t i = 0; i < cd->baseclasses->dim; i++)
             {
-                s = (*cd->baseclasses)[i]->sym->search_correct(ident);
+                bc = (*cd->baseclasses)[i];
+                s = bc->sym->search_correct(ident);
                 if (s) break;
             }
 
             if (s)
-                error("does not override any function, did you mean to override '%s'?", s->toPrettyChars());
+                error("does not override any function, did you mean to override '%s%s'?",
+                    bc->sym->isCPPclass() ? "extern (C++) " : "", s->toPrettyChars());
             else
                 error("does not override any function");
         }
@@ -1091,38 +1094,7 @@ void FuncDeclaration::semantic(Scope *sc)
     }
 
     if (isMain())
-    {
-        // Check parameters to see if they are either () or (char[][] args)
-        switch (nparams)
-        {
-            case 0:
-                break;
-
-            case 1:
-            {
-                Parameter *fparam0 = Parameter::getNth(f->parameters, 0);
-                if (fparam0->type->ty != Tarray ||
-                    fparam0->type->nextOf()->ty != Tarray ||
-                    fparam0->type->nextOf()->nextOf()->ty != Tchar ||
-                    fparam0->storageClass & (STCout | STCref | STClazy))
-                    goto Lmainerr;
-                break;
-            }
-
-            default:
-                goto Lmainerr;
-        }
-
-        if (!f->nextOf())
-            error("must return int or void");
-        else if (f->nextOf()->ty != Tint32 && f->nextOf()->ty != Tvoid)
-            error("must return int or void, not %s", f->nextOf()->toChars());
-        if (f->varargs)
-        {
-        Lmainerr:
-            error("parameters must be main() or main(string[] args)");
-        }
-    }
+        checkDmain();       // Check main() parameters and return type
 
     if (isVirtual() && semanticRun != PASSsemanticdone)
     {
@@ -1235,7 +1207,7 @@ Ldone:
     if (global.params.verbose && !printedMain)
     {
         const char *type = isMain() ? "main" : isWinMain() ? "winmain" : isDllMain() ? "dllmain" : (const char *)NULL;
-        Module *mod = sc->module;
+        Module *mod = sc->_module;
 
         if (type && mod)
         {
@@ -1245,7 +1217,7 @@ Ldone:
         }
     }
 
-    if (fbody && isMain() && sc->module->isRoot())
+    if (fbody && isMain() && sc->_module->isRoot())
         genCmain(sc);
 
     assert(type->ty != Terror || errors);
@@ -1617,6 +1589,12 @@ void FuncDeclaration::semantic3(Scope *sc)
             fbody = ::semantic(fbody, sc2);
             if (!fbody)
                 fbody = new CompoundStatement(Loc(), new Statements());
+
+            if (naked)
+            {
+                fpreinv = NULL;         // can't accommodate with no stack frame
+                fpostinv = NULL;
+            }
 
             assert(type == f ||
                    (type->ty == Tfunction &&
@@ -2458,7 +2436,7 @@ void FuncDeclaration::buildResultVar(Scope *sc, Type *tret)
         assert(type->ty == Tfunction);
         TypeFunction *tf = (TypeFunction *)type;
         if (tf->isref)
-            vresult->storage_class |= STCref | STCforeach;
+            vresult->storage_class |= STCref;
         vresult->type = tret;
 
         vresult->semantic(sc);
@@ -4175,6 +4153,36 @@ FuncDeclaration *FuncDeclaration::genCfunc(Parameters *fparams, Type *treturn, I
     return fd;
 }
 
+/******************
+ * Check parameters and return type of D main() function.
+ * Issue error messages.
+ */
+void FuncDeclaration::checkDmain()
+{
+    TypeFunction *tf = (TypeFunction *)type;
+    const size_t nparams = Parameter::dim(tf->parameters);
+    bool argerr = false;
+    if (nparams == 1)
+    {
+        Parameter *fparam0 = Parameter::getNth(tf->parameters, 0);
+        Type *t = fparam0->type->toBasetype();
+        if (t->ty != Tarray ||
+            t->nextOf()->ty != Tarray ||
+            t->nextOf()->nextOf()->ty != Tchar ||
+            fparam0->storageClass & (STCout | STCref | STClazy))
+        {
+            argerr = true;
+        }
+    }
+
+    if (!tf->nextOf())
+        error("must return int or void");
+    else if (tf->nextOf()->ty != Tint32 && tf->nextOf()->ty != Tvoid)
+        error("must return int or void, not %s", tf->nextOf()->toChars());
+    else if (tf->varargs || nparams >= 2 || argerr)
+        error("parameters must be main() or main(string[] args)");
+}
+
 const char *FuncDeclaration::kind()
 {
     return generated ? "generated function" : "function";
@@ -4962,7 +4970,8 @@ void DtorDeclaration::semantic(Scope *sc)
 
     sc = sc->push();
     sc->stc &= ~STCstatic;              // not a static destructor
-    sc->linkage = LINKd;
+    if (sc->linkage != LINKcpp)
+        sc->linkage = LINKd;
 
     FuncDeclaration::semantic(sc);
 
@@ -5078,7 +5087,7 @@ void StaticCtorDeclaration::semantic(Scope *sc)
     // We're going to need ModuleInfo
     Module *m = getModule();
     if (!m)
-        m = sc->module;
+        m = sc->_module;
     if (m)
     {
         m->needmoduleinfo = 1;
@@ -5206,7 +5215,7 @@ void StaticDtorDeclaration::semantic(Scope *sc)
     // We're going to need ModuleInfo
     Module *m = getModule();
     if (!m)
-        m = sc->module;
+        m = sc->_module;
     if (m)
     {
         m->needmoduleinfo = 1;
@@ -5391,7 +5400,7 @@ void UnitTestDeclaration::semantic(Scope *sc)
     // (This doesn't make sense to me?)
     Module *m = getModule();
     if (!m)
-        m = sc->module;
+        m = sc->_module;
     if (m)
     {
         //printf("module3 %s needs moduleinfo\n", m->toChars());

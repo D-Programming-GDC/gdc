@@ -26,6 +26,7 @@ class AggregateDeclaration;
 class ClassDeclaration;
 class EnumDeclaration;
 class FuncDeclaration;
+class StructDeclaration;
 class TypeInfoDeclaration;
 class VarDeclaration;
 class Expression;
@@ -34,6 +35,10 @@ class Module;
 class Statement;
 class Type;
 class TypeFunction;
+struct BaseClass;
+
+template <typename TYPE> struct Array;
+typedef Array<Expression *> Expressions;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR
@@ -201,9 +206,6 @@ struct GTY(()) language_function
      compiling the function.  */
   vec<tree, va_gc> *stmt_list;
 
-  /* Any nested functions that were deferred during codegen.  */
-  vec<FuncDeclaration *> GTY((skip)) deferred_fns;
-
   /* Variables that are in scope that will need destruction later.  */
   vec<VarDeclaration *> GTY((skip)) vars_in_scope;
 
@@ -217,8 +219,6 @@ struct GTY(()) language_function
 struct GTY(()) lang_decl
 {
   Declaration * GTY((skip)) decl;
-
-  tree initial;
 
   /* FIELD_DECL in frame struct that this variable is allocated in.  */
   tree frame_field;
@@ -240,9 +240,6 @@ struct GTY(()) lang_decl
 #define DECL_LANG_FRONTEND(NODE) \
   (DECL_LANG_SPECIFIC (NODE) \
    ? DECL_LANG_SPECIFIC (NODE)->decl : NULL)
-
-#define DECL_LANG_INITIAL(NODE) \
-  DECL_LANG_SPECIFIC (NODE)->initial
 
 #define SET_DECL_LANG_FRAME_FIELD(NODE, VAL) \
   DECL_LANG_SPECIFIC (NODE)->frame_field = VAL
@@ -382,6 +379,11 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
 #define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
 
+/* In d-attribs.c.  */
+extern tree insert_type_attribute (tree, const char *, tree = NULL_TREE);
+extern tree insert_decl_attribute (tree, const char *, tree = NULL_TREE);
+extern tree build_attributes (Expressions *);
+
 /* In d-builtins.cc.  */
 extern const attribute_spec d_langhook_attribute_table[];
 extern const attribute_spec d_langhook_common_attribute_table[];
@@ -392,10 +394,17 @@ extern void d_init_builtins (void);
 extern void d_register_builtin_type (tree, const char *);
 extern void d_build_builtins_module (Module *);
 extern void d_maybe_set_builtin (Module *);
-extern Expression *build_expression (tree);
+extern Expression *d_eval_constant_expression (tree);
 
 /* In d-convert.cc.  */
 extern tree d_truthvalue_conversion (tree);
+extern tree d_convert (tree, tree);
+extern tree convert_expr (tree, Type *, Type *);
+extern tree convert_for_assignment (tree, Type *, Type *);
+extern tree convert_for_argument (tree, Parameter *);
+extern tree convert_for_condition (tree, Type *);
+extern tree d_array_convert (Expression *);
+extern tree d_array_convert (Type *, Expression *, vec<tree, va_gc> **);
 
 /* In d-decls.cc.  */
 extern tree make_internal_name (Dsymbol *, const char *, const char *);
@@ -406,9 +415,12 @@ extern tree get_moduleinfo_decl (Module *);
 extern tree get_typeinfo_decl (TypeInfoDeclaration *);
 extern tree get_classinfo_decl (ClassDeclaration *);
 extern tree get_vtable_decl (ClassDeclaration *);
+extern tree get_cpp_typeinfo_decl (ClassDeclaration *);
 extern tree build_new_class_expr (ClassReferenceExp *expr);
-extern tree aggregate_initializer (AggregateDeclaration *);
-extern tree enum_initializer (EnumDeclaration *);
+extern tree aggregate_initializer_decl (AggregateDeclaration *);
+extern tree layout_struct_initializer (StructDeclaration *);
+extern tree layout_class_initializer (ClassDeclaration *);
+extern tree enum_initializer_decl (EnumDeclaration *);
 
 /* In d-expr.cc.  */
 extern tree build_expr (Expression *, bool = false);
@@ -427,6 +439,11 @@ extern tree d_unsigned_type (tree);
 extern tree d_signed_type (tree);
 extern void d_keep (tree);
 
+/* In d-objfile.cc.  */
+extern void build_decl_tree (Dsymbol *);
+extern unsigned base_vtable_offset (ClassDeclaration *, BaseClass *);
+extern void layout_moduleinfo (Module *);
+
 /* In imports.cc.  */
 extern tree build_import_decl (Dsymbol *);
 
@@ -434,11 +451,22 @@ extern tree build_import_decl (Dsymbol *);
 extern tree build_typeinfo (Type *);
 extern tree layout_typeinfo (TypeInfoDeclaration *);
 extern tree layout_classinfo (ClassDeclaration *);
+extern void layout_cpp_typeinfo (ClassDeclaration *);
 
 /* In toir.cc.  */
 extern void build_ir (FuncDeclaration *);
 
 /* In types.cc.  */
+extern bool valist_array_p (Type *);
+extern bool empty_aggregate_p (tree);
+extern bool same_type_p (Type *, Type *);
+extern Type *get_object_type (void);
+extern tree make_array_type (Type *, unsigned HOST_WIDE_INT);
+extern tree make_two_field_type (tree, tree, Type *, const char *, const char *);
+extern tree insert_type_modifiers (tree, unsigned);
+extern void insert_aggregate_field (const Loc&, tree, tree, size_t);
+extern void finish_aggregate_type (unsigned, unsigned, tree,
+				   UserAttributeDeclaration *);
 extern tree build_ctype (Type *);
 
 #endif

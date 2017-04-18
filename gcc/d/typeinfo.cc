@@ -124,7 +124,7 @@ class TypeInfoVisitor : public Visitor
 	    field = find_aggregate_field (type, get_identifier ("vtbl"));
 	    if (field)
 	      {
-		size_t voffset = cd->baseVtblOffset (b);
+		size_t voffset = base_vtable_offset (cd, b);
 		value = d_array_value (build_ctype (Type::tvoidptr->arrayOf ()),
 				       size_int (id->vtbl.dim),
 				       build_offset (csym, size_int (voffset)));
@@ -145,7 +145,7 @@ class TypeInfoVisitor : public Visitor
 
     /* Put out array of Interfaces.  */
     size_t dim = cd->vtblInterfaces->dim;
-    value = build_constructor (d_array_type (tinterface, dim), elms);
+    value = build_constructor (make_array_type (tinterface, dim), elms);
     this->set_field (offset, value);
   }
 
@@ -153,14 +153,14 @@ class TypeInfoVisitor : public Visitor
      from the overriding class CD.  If both are the same class, then this will
      be it's own vtable.  INDEX is the offset in the interfaces array of the
      base class where the Interface reference can be found.
-     This must be mirrored with ClassDeclaration::baseVtblOffset().  */
+     This must be mirrored with base_vtable_offset().  */
 
   void layout_base_vtable (ClassDeclaration *cd, ClassDeclaration *bcd,
 			   size_t index)
   {
     BaseClass *bs = (*bcd->vtblInterfaces)[index];
     ClassDeclaration *id = bs->sym;
-    size_t voffset = cd->baseVtblOffset (bs);
+    size_t voffset = base_vtable_offset (cd, bs);
     vec<constructor_elt, va_gc> *elms = NULL;
     FuncDeclarations bvtbl;
 
@@ -191,7 +191,7 @@ class TypeInfoVisitor : public Visitor
 	  }
       }
 
-    tree value = build_constructor (d_array_type (Type::tvoidptr, id->vtbl.dim),
+    tree value = build_constructor (make_array_type (Type::tvoidptr, id->vtbl.dim),
 				    elms);
     this->set_field (voffset, value);
   }
@@ -317,7 +317,7 @@ public:
       {
 	tree type = build_ctype (Type::tvoid->arrayOf ());
 	tree length = size_int (ed->type->size ());
-	tree ptr = build_address (enum_initializer (ed));
+	tree ptr = build_address (enum_initializer_decl (ed));
 	this->set_field ("m_init", d_array_value (type, length, ptr));
       }
   }
@@ -493,7 +493,7 @@ public:
 	/* Default initialiser for class.  */
 	tree value = d_array_value (build_ctype (Type::tint8->arrayOf ()),
 				    size_int (cd->structsize),
-				    build_address (aggregate_initializer (cd)));
+				    build_address (aggregate_initializer_decl (cd)));
 	this->set_field ("m_init", value);
 
 	/* Name of the class declaration.  */
@@ -689,22 +689,22 @@ public:
 	gcc_assert (tinst->minst || sd->requestTypeInfo);
 
 	if (sd->xeq && sd->xeq != StructDeclaration::xerreq)
-	  sd->xeq->toObjFile ();
+	  build_decl_tree (sd->xeq);
 
 	if (sd->xcmp && sd->xcmp != StructDeclaration::xerrcmp)
-	  sd->xcmp->toObjFile ();
+	  build_decl_tree (sd->xcmp);
 
 	if (FuncDeclaration *ftostr = search_toString (sd))
-	  ftostr->toObjFile ();
+	  build_decl_tree (ftostr);
 
 	if (sd->xhash)
-	  sd->xhash->toObjFile ();
+	  build_decl_tree (sd->xhash);
 
 	if (sd->postblit)
-	  sd->postblit->toObjFile ();
+	  build_decl_tree (sd->postblit);
 
 	if (sd->dtor)
-	  sd->dtor->toObjFile ();
+	  build_decl_tree (sd->dtor);
       }
 
     /* Name of the struct declaration.  */
@@ -714,7 +714,7 @@ public:
     tree type = build_ctype (Type::tvoid->arrayOf ());
     tree length = size_int (sd->structsize);
     tree ptr = (sd->zeroInit) ? null_pointer_node :
-      build_address (aggregate_initializer (sd));
+      build_address (aggregate_initializer_decl (sd));
     this->set_field ("m_init", d_array_value (type, length, ptr));
 
     /* hash_t function (in void*) xtoHash;  */
@@ -847,6 +847,40 @@ layout_classinfo (ClassDeclaration *cd)
   return v.result ();
 }
 
+void
+layout_cpp_typeinfo (ClassDeclaration *cd)
+{
+  gcc_assert (cd->isCPPclass ());
+
+  tree decl = get_cpp_typeinfo_decl (cd);
+  tree type = TREE_TYPE (decl);
+
+  vec<constructor_elt, va_gc> *init = NULL;
+  tree f_vptr = TYPE_FIELDS (type);
+  tree f_typeinfo = DECL_CHAIN (DECL_CHAIN (f_vptr));
+
+  /* Use the vtable of __cpp_type_info_ptr, the EH personality routine
+     expects this, as it uses .classinfo identity comparison to test for
+     C++ catch handlers.  */
+  tree vptr = get_vtable_decl (ClassDeclaration::cpp_type_info_ptr);
+  CONSTRUCTOR_APPEND_ELT (init, f_vptr, build_address (vptr));
+
+  /* Let C++ do the RTTI generation, and just reference the symbol as
+     extern, the knowing the underlying type is not required.  */
+  const char *ident = cppTypeInfoMangle (cd);
+  tree typeinfo = build_decl (BUILTINS_LOCATION, VAR_DECL,
+			      get_identifier (ident), unknown_type_node);
+  DECL_EXTERNAL (typeinfo) = 1;
+  DECL_ARTIFICIAL (typeinfo) = 1;
+  TREE_READONLY (typeinfo) = 1;
+  CONSTRUCTOR_APPEND_ELT (init, f_typeinfo, build_address (typeinfo));
+
+  /* Build the initializer and emit.  */
+  DECL_INITIAL (decl) = build_constructor (type, init);
+  d_pushdecl (decl);
+  rest_of_decl_compilation (decl, 1, 0);
+}
+
 /* Returns typeinfo reference for TYPE.  */
 
 tree
@@ -935,11 +969,11 @@ genTypeInfo (Type *type, Scope *sc)
 	  if (sc)
 	    {
 	      /* Find module that will go all the way to an object file.  */
-	      Module *m = sc->module->importedFrom;
+	      Module *m = sc->_module->importedFrom;
 	      m->members->push (t->vtinfo);
 	    }
 	  else
-	    t->vtinfo->toObjFile ();
+	    build_decl_tree (t->vtinfo);
 	}
     }
   /* Types aren't merged, but we can share the vtinfo's.  */

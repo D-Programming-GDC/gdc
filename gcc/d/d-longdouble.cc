@@ -22,6 +22,7 @@
 #include "dfrontend/lexer.h"
 #include "dfrontend/mtype.h"
 #include "dfrontend/aggregate.h"
+#include "dfrontend/target.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -33,85 +34,12 @@
 #include "longdouble.h"
 
 
+/* Constant real values 0, 1, -1 and 0.5.  */
+real_t CTFloat::zero;
+real_t CTFloat::one;
+real_t CTFloat::minusone;
+real_t CTFloat::half;
 
-real_properties real_limits[longdouble::NumModes];
-
-#define M_LOG10_2       0.30102999566398119521
-
-// Initialise D floating point property values.
-
-void
-longdouble::init()
-{
-  gcc_assert(sizeof(longdouble) >= sizeof(real_value));
-
-  for (int i = longdouble::Float; i < longdouble::NumModes; i++)
-    {
-      real_properties& p = real_limits[i];
-      char buf[128];
-      const real_format *rf;
-
-      // Get backend real mode format.
-      switch (i)
-	{
-	case longdouble::Float:
-	  rf = REAL_MODE_FORMAT (TYPE_MODE (float_type_node));
-	  break;
-
-	case longdouble::Double:
-	  rf = REAL_MODE_FORMAT (TYPE_MODE (double_type_node));
-	  break;
-
-	case longdouble::LongDouble:
-	  rf = REAL_MODE_FORMAT (TYPE_MODE (long_double_type_node));
-	  break;
-	}
-
-      /* .max:
-	 The largest representable value that's not infinity.  */
-      get_max_float(rf, buf, sizeof(buf));
-      real_from_string(&p.maxval.rv(), buf);
-
-      /* .min, .min_normal:
-	 The smallest representable normalized value that's not 0.  */
-      snprintf(buf, sizeof(buf), "0x1p%d", rf->emin - 1);
-      real_from_string(&p.minval.rv(), buf);
-
-      /* .epsilon:
-	 The smallest increment to the value 1.  */
-      if (rf->pnan < rf->p)
-	snprintf(buf, sizeof(buf), "0x1p%d", rf->emin - rf->p);
-      else
-	snprintf(buf, sizeof(buf), "0x1p%d", 1 - rf->p);
-      real_from_string(&p.epsilonval.rv(), buf);
-
-      /* .dig:
-	 The number of decimal digits of precision.  */
-      p.dig = (rf->p - 1) * M_LOG10_2;
-
-      /* .mant_dig:
-	 The number of bits in mantissa.  */
-      p.mant_dig = rf->p;
-
-      /* .max_10_exp:
-	 The maximum int value such that 10**value is representable.  */
-      p.max_10_exp = rf->emax * M_LOG10_2;
-
-      /* .min_10_exp:
-	 The minimum int value such that 10**value is representable as a
-	 normalized value.  */
-      p.min_10_exp = (rf->emin - 1) * M_LOG10_2;
-
-      /* .max_exp:
-	 The maximum int value such that 2** (value-1) is representable.  */
-      p.max_exp = rf->emax;
-
-      /* .min_exp:
-	 The minimum int value such that 2** (value-1) is representable as a
-	 normalized value.  */
-      p.min_exp = rf->emin;
-    }
-}
 
 // Return the hidden real_value from the longdouble type.
 
@@ -183,38 +111,6 @@ longdouble::operator
 real_value&()
 {
   return rv();
-}
-
-// Conversion routines between longdouble and host float types.
-
-void
-longdouble::set(float d)
-{
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%f", d);
-  real_from_string3(&rv(), buf, TYPE_MODE (double_type_node));
-}
-
-void
-longdouble::set(double d)
-{
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%lf", d);
-  real_from_string3(&rv(), buf, TYPE_MODE (long_double_type_node));
-}
-
-// These functions should never be called.
-
-longdouble::operator
-float()
-{
-  gcc_unreachable();
-}
-
-longdouble::operator
-double()
-{
-  gcc_unreachable();
 }
 
 // For conversion between boolean, only need to check if is zero.
@@ -359,49 +255,97 @@ longdouble::operator != (const longdouble& r)
   return real_compare(NE_EXPR, &rv(), &r.rv());
 }
 
-// Format longdouble value into decimal string BUF of size BUF_SIZE.
+/* Compile-time floating-pointer helper functions.  */
 
-int
-longdouble::format(char *buf, unsigned buf_size) const
+real_t
+CTFloat::fabs (real_t r)
 {
-  // %% Restricting the precision of significant digits to 18.
-  real_to_decimal(buf, &rv(), buf_size, 18, 1);
-  return strlen(buf);
+  real_value x = real_value_abs (&r.rv ());
+  return ldouble (x);
 }
 
-// Format longdouble value into hex string BUF of size BUF_SIZE,
-// converting the result to uppercase if FMT requests it.
+/* Returns TRUE if longdouble value X is identical to Y.  */
+
+bool
+CTFloat::isIdentical (real_t x, real_t y)
+{
+  real_value rx = x.rv ();
+  real_value ry = y.rv ();
+  return (REAL_VALUE_ISNAN (rx) && REAL_VALUE_ISNAN (ry))
+    || real_identical (&rx, &ry);
+}
+
+/* Returns TRUE if real_t value R is NaN.  */
+
+bool
+CTFloat::isNaN (real_t r)
+{
+  return REAL_VALUE_ISNAN (r.rv ());
+}
+
+/* Same as isNaN, but also check if is signalling.  */
+
+bool
+CTFloat::isSNaN (real_t r)
+{
+  return REAL_VALUE_ISSIGNALING_NAN (r.rv ());
+}
+
+/* Returns TRUE if real_t value is +Inf.  */
+
+bool
+CTFloat::isInfinity (real_t r)
+{
+  return REAL_VALUE_ISINF (r.rv ());
+}
+
+/* Return a real_t value from string BUFFER rounded to long double mode.  */
+
+real_t
+CTFloat::parse(const char *buffer, bool *overflow)
+{
+  real_t r;
+  real_from_string3(&r.rv(), buffer, TYPE_MODE (long_double_type_node));
+
+  /* Front-end checks overflow to see if the value is representable.  */
+  if (overflow && r == Target::RealProperties::infinity)
+    *overflow = true;
+
+  return r;
+}
+
+/* Format the real_t value R to string BUFFER as a decimal or hexadecimal,
+   converting the result to uppercase if FMT requests it.  */
 
 int
-longdouble::formatHex(char fmt, char *buf, unsigned buf_size) const
+CTFloat::sprint (char *buffer, char fmt, real_t r)
 {
-  real_to_hexadecimal(buf, &rv(), buf_size, 0, 1);
-  int buflen;
-
-  switch (fmt)
+  if (fmt == 'a' || fmt == 'A')
     {
-    case 'A':
-      buflen = strlen(buf);
-      for (int i = 0; i < buflen; i++)
-	buf[i] = TOUPPER(buf[i]);
+      /* Converting to a hexadecimal string.  */
+      real_to_hexadecimal (buffer, &r.rv (), 32, 0, 1);
+      int buflen;
 
-      return buflen;
+      switch (fmt)
+	{
+	case 'A':
+	  buflen = strlen (buffer);
+	  for (int i = 0; i < buflen; i++)
+	    buffer[i] = TOUPPER (buffer[i]);
 
-    case 'a':
-      return strlen(buf);
+	  return buflen;
 
-    default:
-      gcc_unreachable();
+	case 'a':
+	  return strlen (buffer);
+
+	default:
+	  gcc_unreachable ();
+	}
+    }
+  else
+    {
+      /* Note: restricting the precision of significant digits to 18.  */
+      real_to_decimal (buffer, &r.rv (), 32, 18, 1);
+      return strlen (buffer);
     }
 }
-
-// Dump value of longdouble for debugging purposes.
-
-void
-longdouble::dump()
-{
-  char buf[128];
-  format(buf, sizeof(buf));
-  fprintf(global.stdmsg, "%s\n", buf);
-}
-

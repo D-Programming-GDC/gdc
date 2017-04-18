@@ -1,18 +1,16 @@
-# -*- mode: makefile -*-
+# Make-lang.in -- Top level -*- makefile -*- fragment for the D frontend.
+# Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
-# GDC -- D front-end for GCC
-# Copyright (C) 2011-2015 Free Software Foundation, Inc.
-#
-# This program is free software; you can redistribute it and/or modify
+# GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+
+# GCC is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
+
 # You should have received a copy of the GNU General Public License
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
@@ -33,17 +31,14 @@ d: cc1d$(exeext)
 # Tell GNU make to ignore these if they exist.
 .PHONY: d
 
-# Include the dfrontend and build directories for headers.
-D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
-
 # Create the compiler driver for D.
 CFLAGS-d/d-spec.o += $(DRIVER_DEFINES) $(D_LIBPHOBOS)
 
 GDC_OBJS = $(GCC_OBJS) d/d-spec.o
 gdc$(exeext): $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a $(LIBDEPS)
 	+$(LINKER) $(ALL_LINKERFLAGS) $(LDFLAGS) -o $@ \
-	$(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
-	$(EXTRA_GCC_LIBS) $(LIBS)
+	  $(GDC_OBJS) $(EXTRA_GCC_OBJS) libcommon-target.a \
+	  $(EXTRA_GCC_LIBS) $(LIBS)
 
 # Create a version of the gdc driver which calls the cross-compiler.
 gdc-cross$(exeext): gdc$(exeext)
@@ -59,71 +54,34 @@ DMD_COMPILE = $(subst $(WARN_CXXFLAGS), $(DMD_WARN_CXXFLAGS), $(COMPILE))
 DMDGEN_COMPILE = $(subst $(COMPILER), $(COMPILER_FOR_BUILD), $(DMD_COMPILE))
 
 # D Frontend object files.
-D_DMD_OBJS := \
-    d/argtypes.o d/aav.o d/access.o d/aliasthis.o \
-    d/apply.o d/arrayop.o d/attrib.o \
-    d/canthrow.o d/cast.o d/checkedint.o d/class.o \
-    d/clone.o d/cond.o d/constfold.o d/cppmangle.o \
-    d/ctfeexpr.o d/declaration.o d/delegatize.o d/doc.o \
-    d/dsymbol.o d/entity.o d/enum.o d/escape.o \
-    d/expression.o d/file.o d/filename.o d/func.o \
-    d/hdrgen.o d/identifier.o d/imphint.o d/import.o \
-    d/init.o d/inline.o d/interpret.o d/intrange.o \
-    d/json.o d/lexer.o d/macro.o d/mangle.o \
-    d/mtype.o d/module.o d/nogc.o d/newdelete.o d/nspace.o \
-    d/objc.o d/object.o d/opover.o d/optimize.o d/outbuffer.o \
-    d/parse.o d/rmem.o d/sapply.o d/scope.o \
-    d/sideeffect.o d/speller.o d/statement.o d/statementsem.o \
-    d/staticassert.o d/stringtable.o d/struct.o \
-    d/template.o d/tokens.o d/traits.o d/unittests.o \
-    d/utf.o d/utils.o d/version.o
+D_FRONTEND_OBJS = \
+	d/argtypes.o d/aav.o d/access.o d/aliasthis.o d/apply.o d/arrayop.o \
+	d/attrib.o d/canthrow.o d/checkedint.o d/clone.o d/cond.o \
+	d/constfold.o d/cppmangle.o d/ctfeexpr.o d/dcast.o d/dclass.o \
+	d/declaration.o d/delegatize.o d/denum.o d/dimport.o d/dinterpret.o \
+	d/dmacro.o d/dmangle.o d/dmodule.o d/doc.o d/dscope.o d/dstruct.o \
+	d/dsymbol.o d/dtemplate.o d/dversion.o d/entity.o d/escape.o \
+	d/expression.o d/file.o d/filename.o d/func.o d/hdrgen.o \
+	d/identifier.o d/imphint.o d/init.o d/inline.o d/intrange.o d/json.o \
+	d/lexer.o d/mtype.o d/nogc.o d/newdelete.o d/nspace.o d/objc.o \
+	d/object.o d/opover.o d/optimize.o d/outbuffer.o d/parse.o d/rmem.o \
+	d/sapply.o d/sideeffect.o d/speller.o d/statement.o d/statementsem.o \
+	d/staticassert.o d/stringtable.o d/tokens.o d/traits.o d/unittests.o \
+	d/utf.o d/utils.o
 
 # D Frontend generated files.
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
 D_GENERATED_OBJS = d/id.o d/impcnvtab.o
 
-# D Glue object files.
-D_GLUE_OBJS = d/d-attribs.o d/d-lang.o d/d-decls.o \
-              d/d-codegen.o d/d-objfile.o \
-              d/d-convert.o d/d-todt.o d/d-longdouble.o \
-              d/d-builtins.o d/d-incpath.o d/types.o \
-              d/expr.o d/imports.o d/toir.o d/typeinfo.o \
-              d/d-port.o d/d-target.o d/d-glue.o
-
-# Generated programs.
-d/idgen: d/idgen.dmdgen.o
-	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS)  -o $@ $^
-
-d/impcvgen: d/impcnvgen.dmdgen.o
-	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
-
-# Generated sources.
-d/id.c: d/idgen
-	cd d && ./idgen
-
-# idgen also generates id.h; just verify id.h exists.
-d/id.h: d/id.c
-
-d/impcnvtab.c: d/impcvgen
-	cd d && ./impcvgen
-
-d/verstr.h: d/VERSION
-	cat $^ > $@
-
-# Override build rules for D frontend.
-d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h
-	$(DMD_COMPILE) $(D_INCLUDES) $<
-	$(POSTCOMPILE)
-
-d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
-	$(DMDGEN_COMPILE) $(D_INCLUDES) $<
-	$(POSTCOMPILE)
-
-CFLAGS-d/id.o += $(D_INCLUDES)
-CFLAGS-d/impcnvtab.o += $(D_INCLUDES)
+# Language-specific object files for D.
+D_OBJS = \
+	d/d-attribs.o d/d-lang.o d/d-decls.o d/d-codegen.o d/d-objfile.o \
+	d/d-convert.o d/d-longdouble.o d/d-builtins.o d/d-incpath.o \
+	d/types.o d/expr.o d/imports.o d/toir.o d/typeinfo.o d/d-port.o \
+	d/d-target.o d/d-glue.o
 
 # All language-specific object files for D.
-D_ALL_OBJS = $(D_DMD_OBJS) $(D_GENERATED_OBJS) $(D_GLUE_OBJS)
+D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS)
 
 d_OBJS = $(D_ALL_OBJS) d/d-spec.o
 
@@ -142,8 +100,8 @@ D_TEXI_FILES = \
 
 doc/gdc.info: $(D_TEXI_FILES)
 	if test "x$(BUILD_INFO)" = xinfo; then \
-	    rm -f doc/gdc.info*; \
-	    $(MAKEINFO) $(MAKEINFOFLAGS) -I $(gcc_docdir) \
+	  rm -f doc/gdc.info*; \
+	  $(MAKEINFO) $(MAKEINFOFLAGS) -I $(gcc_docdir) \
 		-I $(gcc_docdir)/include -o $@ $<; \
 	else true; fi
 
@@ -184,7 +142,15 @@ d.tags: force
 
 d.man: doc/gdc.1
 d.srcman: doc/gdc.1
-	cp -p $^ $(srcdir)/doc
+	-cp -p $^ $(srcdir)/doc
+
+# 'make check' in gcc/ looks for check-d, as do all toplevel D-related
+# check targets.  However, our DejaGNU framework requires 'check-gdc' as its
+# entry point.  We feed the former to the latter here.
+check-d: check-gdc
+lang_checks += check-gdc
+lang_checks_parallelized += check-gdc
+check_gdc_parallelize = 10
 
 # Install hooks.
 
@@ -209,28 +175,28 @@ d.install-pdf: doc/gdc.pdf
 	@$(NORMAL_INSTALL)
 	test -z "$(pdfdir)" || $(mkinstalldirs) "$(DESTDIR)$(pdfdir)/gcc"
 	@for p in doc/gdc.pdf; do \
-	    if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	    f=$(pdf__strip_dir) \
-	    echo " $(INSTALL_DATA) '$$d$$p' '$(DESTDIR)$(pdfdir)/gcc/$$f'"; \
-	    $(INSTALL_DATA) "$$d$$p" "$(DESTDIR)$(pdfdir)/gcc/$$f"; \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(pdf__strip_dir) \
+	  echo " $(INSTALL_DATA) '$$d$$p' '$(DESTDIR)$(pdfdir)/gcc/$$f'"; \
+	  $(INSTALL_DATA) "$$d$$p" "$(DESTDIR)$(pdfdir)/gcc/$$f"; \
 	done
 
 d.install-html: $(build_htmldir)/d
 	@$(NORMAL_INSTALL)
 	test -z "$(htmldir)" || $(mkinstalldirs) "$(DESTDIR)$(htmldir)"
 	@for p in $(build_htmldir)/d; do \
-	    if test -f "$$p" || test -d "$$p"; then d=""; else d="$(srcdir)/"; fi; \
-	    f=$(html__strip_dir) \
-	    if test -d "$$d$$p"; then \
-		echo " $(mkinstalldirs) '$(DESTDIR)$(htmldir)/$$f'"; \
-		$(mkinstalldirs) "$(DESTDIR)$(htmldir)/$$f" || exit 1; \
-		echo " $(INSTALL_DATA) '$$d$$p'/* '$(DESTDIR)$(htmldir)/$$f'"; \
-		$(INSTALL_DATA) "$$d$$p"/* "$(DESTDIR)$(htmldir)/$$f"; \
-	    else \
-		echo " $(INSTALL_DATA) '$$d$$p' '$(DESTDIR)$(htmldir)/$$f'"; \
-		$(INSTALL_DATA) "$$d$$p" "$(DESTDIR)$(htmldir)/$$f"; \
-	    fi; \
-        done
+	  if test -f "$$p" || test -d "$$p"; then d=""; else d="$(srcdir)/"; fi; \
+	  f=$(html__strip_dir) \
+	  if test -d "$$d$$p"; then \
+	    echo " $(mkinstalldirs) '$(DESTDIR)$(htmldir)/$$f'"; \
+	    $(mkinstalldirs) "$(DESTDIR)$(htmldir)/$$f" || exit 1; \
+	    echo " $(INSTALL_DATA) '$$d$$p'/* '$(DESTDIR)$(htmldir)/$$f'"; \
+	    $(INSTALL_DATA) "$$d$$p"/* "$(DESTDIR)$(htmldir)/$$f"; \
+	  else \
+	    echo " $(INSTALL_DATA) '$$d$$p' '$(DESTDIR)$(htmldir)/$$f'"; \
+	    $(INSTALL_DATA) "$$d$$p" "$(DESTDIR)$(htmldir)/$$f"; \
+	  fi; \
+	done
 
 d.install-man: $(DESTDIR)$(man1dir)/$(D_INSTALL_NAME)$(man1ext)
 
@@ -272,10 +238,37 @@ d.stageprofile: stageprofile-start
 d.stagefeedback: stagefeedback-start
 	-mv d/*$(objext) stagefeedback/d
 
-# 'make check' in gcc/ looks for check-d, as do all toplevel D-related
-# check targets.  However, our DejaGNU framework requires 'check-gdc' as its
-# entry point.  We feed the former to the latter here.
-check-d: check-gdc
-lang_checks += check-gdc
-lang_checks_parallelized += check-gdc
-check_gdc_parallelize = 10
+# Include the dfrontend and build directories for headers.
+D_INCLUDES = -I$(srcdir)/d -I$(srcdir)/d/dfrontend -Id
+
+CFLAGS-d/id.o += $(D_INCLUDES)
+CFLAGS-d/impcnvtab.o += $(D_INCLUDES)
+
+# Override build rules for D frontend.
+d/%.o: d/dfrontend/%.c $(D_GENERATED_SRCS) d/verstr.h
+	$(DMD_COMPILE) $(D_INCLUDES) $<
+	$(POSTCOMPILE)
+
+# Generated programs.
+d/idgen: d/idgen.dmdgen.o
+	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
+
+d/impcvgen: d/impcnvgen.dmdgen.o
+	+$(LINKER_FOR_BUILD) $(BUILD_LINKER_FLAGS) $(BUILD_LDFLAGS) -o $@ $^
+
+# Generated sources.
+d/id.c: d/idgen
+	cd d && ./idgen
+
+# idgen also generates id.h; just verify it exists.
+d/id.h: d/id.c
+
+d/impcnvtab.c: d/impcvgen
+	cd d && ./impcvgen
+
+d/verstr.h: d/VERSION
+	cat $^ > $@
+
+d/%.dmdgen.o: $(srcdir)/d/dfrontend/%.c
+	$(DMDGEN_COMPILE) $(D_INCLUDES) $<
+	$(POSTCOMPILE)

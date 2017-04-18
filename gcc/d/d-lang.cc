@@ -133,6 +133,9 @@ static char lang_name[6] = "GNU D";
 #define LANG_HOOKS_TYPE_PROMOTES_TO		d_type_promotes_to
 
 
+/* Array of d type/decl nodes.  */
+tree d_global_trees[DTI_MAX];
+
 /* Options handled by the compiler that are separate from the frontend.  */
 struct d_option_data
 {
@@ -327,7 +330,7 @@ static void
 d_init_options(unsigned int, cl_decoded_option *decoded_options)
 {
   // Set default values
-  global.init();
+  global._init();
 
   global.compiler.vendor = lang_name;
 
@@ -354,6 +357,7 @@ d_init_options(unsigned int, cl_decoded_option *decoded_options)
 
   global.params.imppath = new Strings();
   global.params.fileImppath = new Strings();
+  global.params.modFileAliasStrings = new Strings ();
 
   /* Extra GDC-specific options.  */
   d_option.fonly = NULL;
@@ -421,10 +425,10 @@ static bool
 d_init()
 {
   Lexer::initLexer();
-  Type::init();
+  Type::_init();
   Id::initialize();
-  Module::init();
-  Expression::init();
+  Module::_init();
+  Expression::_init();
   initPrecedence();
   initTraitsStringTable();
 
@@ -446,9 +450,7 @@ d_init()
   // This is the C main, not the D main.
   main_identifier_node = get_identifier ("main");
 
-  longdouble::init();
-  Target::init();
-  Port::init();
+  Target::_init();
 
 #ifndef TARGET_CPU_D_BUILTINS
 # define TARGET_CPU_D_BUILTINS()
@@ -608,6 +610,10 @@ d_handle_option (size_t scode, const char *arg, int value,
       global.params.ddocfiles->push (arg);
       break;
 
+    case OPT_fdump_d_original:
+      global.params.vcg_ast = value;
+      break;
+
     case OPT_fignore_unknown_pragmas:
       global.params.ignoreUnsupportedPragmas = value;
       break;
@@ -628,6 +634,12 @@ d_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_finvariants:
       global.params.useInvariants = value;
+      break;
+
+    case OPT_fmodule_filepath_:
+      global.params.modFileAliasStrings->push (arg);
+      if (!strchr (arg, '='))
+	error ("bad argument for -fmodule-filepath");
       break;
 
     case OPT_fmoduleinfo:
@@ -795,6 +807,11 @@ d_handle_option (size_t scode, const char *arg, int value,
 	global.params.warnings = 1;
       break;
 
+    case OPT_Wspeculative:
+      if (value)
+	global.params.showGaggedErrors = 1;
+      break;
+
     case OPT_Xf:
       global.params.jsonfilename = arg;
       /* fall through */
@@ -818,18 +835,13 @@ d_handle_option (size_t scode, const char *arg, int value,
 bool
 d_post_options (const char ** fn)
 {
-  // Canonicalize the input filename.
-  if (in_fnames == NULL)
-    {
-      in_fnames = XNEWVEC (const char *, 1);
-      in_fnames[0] = "";
-    }
-  else if (strcmp (in_fnames[0], "-") == 0)
-    in_fnames[0] = "";
+  /* Verify the input file name.  */
+  const char *filename = *fn;
+  if (!filename || strcmp (filename, "-") == 0)
+    filename = "";
 
-  // The front end considers the first input file to be the main one.
-  if (num_in_fnames)
-    *fn = in_fnames[0];
+  /* The front end considers the first input file to be the main one.  */
+  *fn = filename;
 
   // If we are given more than one input file, we must use unit-at-a-time mode.
   if (num_in_fnames > 1)
@@ -1035,7 +1047,7 @@ genCmain (Scope *sc)
 
   // We are emitting this straight to object file.
   entrypoint = m;
-  rootmodule = sc->module;
+  rootmodule = sc->_module;
 }
 
 void
@@ -1061,66 +1073,54 @@ d_parse_file()
   Modules modules;
   modules.reserve(num_in_fnames);
 
-  if (!main_input_filename || !main_input_filename[0])
-    {
-      error("input file name required; cannot use stdin");
-      goto had_errors;
-    }
-
-  // In this mode, the first file name is supposed to be a duplicate
-  // of one of the input files.
-  if (d_option.fonly && strcmp(d_option.fonly, in_fnames[0]))
+  /* In this mode, the first file name is supposed to be a duplicate
+     of one of the input files.  */
+  if (d_option.fonly && strcmp(d_option.fonly, main_input_filename) != 0)
     error("-fonly= argument is different from first input file name");
 
   for (size_t i = 0; i < num_in_fnames; i++)
     {
-      char *fname = xstrdup(in_fnames[i]);
-
-      // Strip path
-      const char *path = FileName::name(fname);
-      const char *ext = FileName::ext(path);
-      char *name;
-      size_t pathlen;
-
-      if (ext)
+      if (strcmp (in_fnames[i], "-") == 0)
 	{
-	  // Skip onto '.'
-	  ext--;
-	  gcc_assert(*ext == '.');
-	  pathlen = (ext - path);
-	  name = (char *) xmalloc(pathlen + 1);
-	  memcpy(name, path, pathlen);
-	  // Strip extension
-	  name[pathlen] = '\0';
+	  /* Handling stdin, generate a unique name for the module.  */
+	  obstack buffer;
+	  gcc_obstack_init (&buffer);
+	  int c;
 
-	  if (name[0] == '\0'
-	      || strcmp(name, "..") == 0
-	      || strcmp(name, ".") == 0)
-	    {
-	      error("invalid file name '%s'", fname);
-	      goto had_errors;
-	    }
+	  Module *m = Module::create (in_fnames[i],
+				      Identifier::generateId ("__stdin"),
+				      global.params.doDocComments,
+				      global.params.doHdrGeneration);
+	  modules.push (m);
+
+	  /* Load the entire contents of stdin into memory.  */
+	  while ((c = getc (stdin)) != EOF)
+	    obstack_1grow (&buffer, c);
+
+	  if (!obstack_object_size (&buffer))
+	    obstack_1grow (&buffer, '\0');
+
+	  /* Overwrite the source file for the module, the one created by
+	     Module::create would have a forced a `.d' suffix.  */
+	  m->srcfile = File::create ("<stdin>");
+	  m->srcfile->len = obstack_object_size (&buffer);
+	  m->srcfile->buffer = (unsigned char *) obstack_finish (&buffer);
+
+	  /* Tell the front-end not to free the buffer after parsing.  */
+	  m->srcfile->ref = 1;
 	}
       else
 	{
-	  pathlen = strlen(path);
-	  name = (char *) xmalloc(pathlen);
-	  memcpy(name, path, pathlen);
-	  name[pathlen] = '\0';
+	  /* Handling a D source file, strip off the path and extension.  */
+	  const char *basename = FileName::name (in_fnames[i]);
+	  const char *name = FileName::removeExt (basename);
 
-	  if (name[0] == '\0')
-	    {
-	      error("invalid file name '%s'", fname);
-	      goto had_errors;
-	    }
+	  Module *m = Module::create (in_fnames[i], Identifier::idPool (name),
+				      global.params.doDocComments,
+				      global.params.doHdrGeneration);
+	  modules.push (m);
+	  FileName::free (name);
 	}
-
-      // At this point, name is the D source file name stripped of
-      // its path and extension.
-      Identifier *id = Identifier::idPool(name);
-      Module *m = Module::create (fname, id, global.params.doDocComments,
-				  global.params.doHdrGeneration);
-      modules.push(m);
     }
 
   // Read files
@@ -1335,6 +1335,23 @@ d_parse_file()
 	}
     }
 
+  /* Handle -fdump-d-original.  */
+  if (global.params.vcg_ast)
+    {
+      for (size_t i = 0; i < modules.dim; i++)
+	{
+	  Module *m = modules[i];
+	  OutBuffer buf;
+	  buf.doindent = 1;
+
+	  HdrGenState hgs;
+	  hgs.fullDump = true;
+
+	  toCBuffer (m, &buf, &hgs);
+	  fprintf (global.stdmsg, "%.*s", (int) buf.offset, (char *) buf.data);
+	}
+    }
+
   for (size_t i = 0; i < modules.dim; i++)
     {
       Module *m = modules[i];
@@ -1347,9 +1364,9 @@ d_parse_file()
       if (!flag_syntax_only)
 	{
 	  if ((entrypoint != NULL) && (m == rootmodule))
-	    entrypoint->genobjfile(false);
+	    build_decl_tree (entrypoint);
 
-	  m->genobjfile(false);
+	  build_decl_tree (m);
 	}
     }
 
@@ -1761,15 +1778,20 @@ static tree
 d_build_eh_type_type (tree type)
 {
   Type *dtype = TYPE_LANG_FRONTEND (type);
-  tree sym;
 
   if (dtype)
-    dtype = dtype->toBasetype();
+    dtype = dtype->toBasetype ();
 
   gcc_assert (dtype && dtype->ty == Tclass);
-  sym = get_classinfo_decl (((TypeClass *) dtype)->sym);
+  ClassDeclaration *cd = ((TypeClass *) dtype)->sym;
+  tree decl;
 
-  return convert (ptr_type_node, build_address (sym));
+  if (cd->cpp)
+    decl = get_cpp_typeinfo_decl (cd);
+  else
+    decl = get_classinfo_decl (cd);
+
+  return convert (ptr_type_node, build_address (decl));
 }
 
 

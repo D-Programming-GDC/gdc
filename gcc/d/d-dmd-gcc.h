@@ -29,6 +29,9 @@
 // Used in init.cc
 FuncDeclaration *search_toString(StructDeclaration *);
 
+// Used in typeinfo.cc
+const char *cppTypeInfoMangle(Dsymbol *s);
+
 // Used in d-lang.cc
 void initTraitsStringTable();
 

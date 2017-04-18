@@ -51,7 +51,6 @@ class SliceExp;
 struct UnionExp;
 
 #ifdef IN_GCC
-typedef union tree_node dt_t;
 typedef union tree_node elem;
 typedef union tree_node Symbol;
 #else
@@ -80,7 +79,7 @@ Expression *doCopyOrMove(Scope *sc, Expression *e);
 Expression *resolveOpDollar(Scope *sc, ArrayExp *ae, Expression **pe0);
 Expression *resolveOpDollar(Scope *sc, ArrayExp *ae, IntervalExp *ie, Expression **pe0);
 Expression *integralPromotions(Expression *e, Scope *sc);
-void discardValue(Expression *e);
+bool discardValue(Expression *e);
 bool isTrivialExp(Expression *e);
 
 int isConst(Expression *e);
@@ -137,7 +136,7 @@ public:
     unsigned char parens;       // if this is a parenthesized expression
 
     Expression(Loc loc, TOK op, int size);
-    static void init();
+    static void _init();
     Expression *copy();
     virtual Expression *syntaxCopy();
     virtual Expression *semantic(Scope *sc);

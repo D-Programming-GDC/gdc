@@ -757,7 +757,7 @@ public:
     else if (cd->com || (id != NULL && id->com))
       s->error("cannot throw COM objects");
     else
-      arg = build_nop(build_ctype(build_object_type()), arg);
+      arg = build_nop(build_ctype(get_object_type ()), arg);
 
     set_input_location(s->loc);
     add_stmt(build_libcall(LIBCALL_THROW, 1, &arg));
@@ -786,13 +786,22 @@ public:
 	    set_input_location(vcatch->loc);
 	    this->start_scope(level_catch);
 
-	    tree catchtype = build_ctype(vcatch->type);
-
-	    // Get D's internal exception Object, different from the generic
-	    // exception pointer returned from gcc runtime.
 	    tree ehptr = d_build_call_nary(builtin_decl_explicit(BUILT_IN_EH_POINTER),
 					   1, integer_zero_node);
-	    tree object = build_libcall(LIBCALL_BEGIN_CATCH, 1, &ehptr);
+	    tree catchtype = build_ctype(vcatch->type);
+	    tree object = NULL_TREE;
+
+	    // Retrieve the internal exception object, which could be for a
+	    // D or C++ catch handler.  This is different from the generic
+	    // exception pointer returned from gcc runtime.
+	    Type *tcatch = vcatch->type->toBasetype();
+	    ClassDeclaration *cd = tcatch->isClassHandle();
+	    if (cd->cpp)
+	      object = build_libcall(LIBCALL_CXA_BEGIN_CATCH, 1, &ehptr);
+	    else
+	      object = build_libcall(LIBCALL_BEGIN_CATCH, 1, &ehptr);
+
+
 	    if (vcatch->var)
 	      {
 		object = build_nop(build_ctype(vcatch->type), object);
@@ -805,8 +814,8 @@ public:
 	      }
 	    else
 	      {
-		// Still need to emit a call to __gdc_begin_catch() to remove
-		// the object from the uncaught exceptions list.
+		// Still need to emit a call to __gdc_begin_catch() to
+		// remove the object from the uncaught exceptions list.
 		add_stmt(object);
 	      }
 
@@ -814,6 +823,16 @@ public:
 	      vcatch->handler->accept(this);
 
 	    tree catchbody = this->end_scope();
+
+	    // Need to wrap C++ handlers in a try/finally block to signal
+	    // the end catch callback.
+	    if (cd->cpp)
+	      {
+		tree endcatch = build_libcall(LIBCALL_CXA_END_CATCH, 0, NULL);
+		catchbody = build2(TRY_FINALLY_EXPR, void_type_node,
+				   catchbody, endcatch);
+	      }
+
 	    add_stmt(build2(CATCH_EXPR, void_type_node, catchtype, catchbody));
 	  }
       }
@@ -1023,7 +1042,7 @@ public:
 	Dsymbol *dsym = (*s->imports)[i];
 
 	if (dsym != NULL)
-	  dsym->toObjFile();
+	  build_decl_tree (dsym);
       }
   }
 };

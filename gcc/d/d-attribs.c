@@ -1,20 +1,19 @@
-/* d-attribs.c -- D frontend for GCC.
-   Copyright (C) 2015 Free Software Foundation, Inc.
+/* d-attribs.c -- D attributes handling.
+   Copyright (C) 2015-2017 Free Software Foundation, Inc.
 
-   GCC is free software; you can redistribute it and/or modify it under
-   the terms of the GNU General Public License as published by the Free
-   Software Foundation; either version 3, or (at your option) any later
-   version.
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
 
-   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-   WARRANTY; without even the implied warranty of MERCHANTABILITY or
-   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-   for more details.
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with GCC; see the file COPYING3.  If not see
-   <http://www.gnu.org/licenses/>.
-*/
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
 
 /* Implementation of attribute handlers for user defined attributes and
    internal built-in functions.  */
@@ -24,6 +23,7 @@
 #include "coretypes.h"
 
 #include "dfrontend/arraytypes.h"
+#include "dfrontend/declaration.h"
 #include "dfrontend/mtype.h"
 
 #include "tree.h"
@@ -37,6 +37,7 @@
 #include "varasm.h"
 
 #include "d-tree.h"
+#include "d-objfile.h"
 
 /* Internal attribute handlers for built-in functions.  */
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);
@@ -106,7 +107,7 @@ const attribute_spec d_langhook_common_attribute_table[] =
   { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
-/* Table of language attributes exposed by UDAs.  */
+/* Table of D language attributes exposed by `gcc.attribute' UDAs.  */
 
 const attribute_spec d_langhook_attribute_table[] =
 {
@@ -146,6 +147,158 @@ const attribute_spec d_langhook_format_attribute_table[] =
   { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
+
+/* Insert the type attribute ATTRNAME with value VALUE into TYPE.
+   Returns a new variant of the original type declaration.  */
+
+tree
+insert_type_attribute (tree type, const char *attrname, tree value)
+{
+  tree ident = get_identifier (attrname);
+
+  if (value)
+    value = tree_cons (NULL_TREE, value, NULL_TREE);
+
+  tree attribs = merge_attributes (TYPE_ATTRIBUTES (type),
+				   tree_cons (ident, value, NULL_TREE));
+
+  return build_type_attribute_variant (type, attribs);
+}
+
+/* Insert the decl attribute ATTRNAME with value VALUE into DECL.  */
+
+tree
+insert_decl_attribute (tree decl, const char *attrname, tree value)
+{
+  tree ident = get_identifier (attrname);
+
+  if (value)
+    value = tree_cons (NULL_TREE, value, NULL_TREE);
+
+  tree attribs = merge_attributes (DECL_ATTRIBUTES (decl),
+				   tree_cons (ident, value, NULL_TREE));
+
+  return build_decl_attribute_variant (decl, attribs);
+}
+
+/* Returns TRUE if NAME is an attribute recognized as being handled by
+   the `gcc.attribute' module.  */
+
+static bool
+uda_attribute_p (const char* name)
+{
+  Identifier *ident = Identifier::idPool (name);
+
+  /* Search both our language, and target attribute tables.
+     Common and format attributes are kept internal.  */
+  for (const attribute_spec *p = d_langhook_attribute_table; p->name; p++)
+    {
+      if (Identifier::idPool (p->name) == ident)
+	return true;
+    }
+
+  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
+    {
+      if (Identifier::idPool (p->name) == ident)
+	return true;
+    }
+
+  return false;
+}
+
+/* [attribute/uda]
+
+   User Defined Attributes (UDA) are compile time expressions that can be
+   attached to a declaration.  These attributes can then be queried, extracted,
+   and manipulated at compile time. There is no runtime component to them.
+   
+   Expand and merge all UDAs found in the EATTRS list that are of type
+   `gcc.attribute.Attribute'.  This symbol is internally recognized by the
+   compiler and maps them to their equivalent GCC attribute.  */
+
+tree
+build_attributes (Expressions *eattrs)
+{
+  if (!eattrs)
+    return NULL_TREE;
+
+  expandTuples (eattrs);
+
+  tree attribs = NULL_TREE;
+
+  for (size_t i = 0; i < eattrs->dim; i++)
+    {
+      Expression *attr = (*eattrs)[i];
+      Dsymbol *sym = attr->type->toDsymbol (0);
+
+      if (!sym)
+	continue;
+
+      /* Attribute symbol must come from the `gcc.attribute' module.  */
+      Dsymbol *mod = (Dsymbol*) sym->getModule ();
+      if (!(strcmp (mod->toChars (), "attribute") == 0
+          && mod->parent != NULL
+          && strcmp (mod->parent->toChars (), "gcc") == 0
+          && !mod->parent->parent))
+        continue;
+
+      /* Get the result of the attribute if it hasn't already been folded.  */
+      if (attr->op == TOKcall)
+	attr = attr->ctfeInterpret ();
+
+      /* Should now have a struct `Attribute("attrib", "value", ... )'
+	 initializer list.  */
+      gcc_assert (attr->op == TOKstructliteral);
+      Expressions *elems = ((StructLiteralExp*) attr)->elements;
+      Expression *e0 = (*elems)[0];
+
+      if (e0->op != TOKstring)
+	{
+	  error ("expected string attribute, not %qs", e0->toChars());
+	  return error_mark_node;
+	}
+
+      StringExp *se = (StringExp*) e0;
+      gcc_assert (se->sz == 1);
+
+      /* Empty string attribute, just ignore it.  */
+      if (se->len == 0)
+	continue;
+
+      /* Check if the attribute is recognized and handled.
+	 Done here to report the diagnostic at the right location.  */
+      const char* name = (const char*) se->string;
+      if (!uda_attribute_p (name))
+	{
+	  warning_at (get_linemap (e0->loc), OPT_Wattributes,
+		      "unknown attribute %qs", name);
+	  return error_mark_node;
+	}
+
+      /* Chain all attribute arguments together.  */
+      tree args = NULL_TREE;
+
+      for (size_t j = 1; j < elems->dim; j++)
+	{
+	  Expression *e = (*elems)[j];
+	  tree t;
+	  if (e->op == TOKstring && ((StringExp *) e)->sz == 1)
+	    {
+	      StringExp *s = (StringExp *) e;
+	      t = build_string (s->len, (const char *) s->string);
+	    }
+	  else
+	    t = build_expr (e);
+
+	  args = chainon (args, build_tree_list (0, t));
+        }
+
+      tree list = build_tree_list (get_identifier (name), args);
+      attribs =  chainon (attribs, list);
+    }
+
+  return attribs;
+}
 
 /* Built-in attribute handlers.  */
 
@@ -188,7 +341,7 @@ handle_leaf_attribute (tree *node, tree name,
     }
   if (!TREE_PUBLIC (*node))
     {
-      warning (OPT_Wattributes, "%qE attribute has no effect on unit local functions", name);
+      warning (OPT_Wattributes, "%qE attribute has no effect", name);
       *no_add_attrs = true;
     }
 
@@ -259,7 +412,7 @@ handle_pure_attribute (tree *node, tree ARG_UNUSED (name),
 static tree
 handle_novops_attribute (tree *node, tree ARG_UNUSED (name),
 			 tree ARG_UNUSED (args), int ARG_UNUSED (flags),
-			 bool *ARG_UNUSED (no_add_attrs))
+			 bool * ARG_UNUSED (no_add_attrs))
 {
   gcc_assert (TREE_CODE (*node) == FUNCTION_DECL);
   DECL_IS_NOVOPS (*node) = 1;

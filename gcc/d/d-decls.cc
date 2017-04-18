@@ -101,7 +101,7 @@ get_symbol_decl (Declaration *decl)
   SymbolDeclaration *sd = decl->isSymbolDeclaration ();
   if (sd)
     {
-      decl->csym = aggregate_initializer (sd->dsym);
+      decl->csym = aggregate_initializer_decl (sd->dsym);
       return decl->csym;
     }
 
@@ -648,7 +648,7 @@ make_thunk (FuncDeclaration *decl, int offset)
       /* Compile the function body before generating the thunk, this is done
 	 even if the decl is external to the current module.  */
       if (decl->fbody)
-	decl->toObjFile ();
+	build_decl_tree (decl);
       else
 	{
 	  /* Build parameters for functions that are not being compiled,
@@ -816,7 +816,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
     {
       Type *tn = Module::moduleinfo->type->pointerTo ();
       add_moduleinfo_field (size_type_node, type, offset);
-      add_moduleinfo_field (d_array_type (tn, aimports_dim), type, offset);
+      add_moduleinfo_field (make_array_type (tn, aimports_dim), type, offset);
     }
 
   /* Array of local ClassInfo decls are layed out in the same way.  */
@@ -831,12 +831,12 @@ layout_moduleinfo_fields (Module *decl, tree type)
     {
       Type *tn = Type::typeinfoclass->type;
       add_moduleinfo_field (size_type_node, type, offset);
-      add_moduleinfo_field (d_array_type (tn, aclasses.dim), type, offset);
+      add_moduleinfo_field (make_array_type (tn, aclasses.dim), type, offset);
     }
 
   /* Lastly, the name of the module is a static char array.  */
   size_t namelen = strlen (decl->toPrettyChars ()) + 1;
-  add_moduleinfo_field (d_array_type (Type::tchar, namelen), type, offset);
+  add_moduleinfo_field (make_array_type (Type::tchar, namelen), type, offset);
 
   finish_aggregate_type (offset, Module::moduleinfo->alignsize, type, NULL);
 
@@ -880,7 +880,7 @@ get_moduleinfo_decl (Module *decl)
 
 /* Layout fields that immediately come after the classinfo TYPE for DECL if
    there's any interfaces or interface vtables to be added.
-   This must be mirrored with ClassDeclaration::baseVtblOffset().  */
+   This must be mirrored with base_vtable_offset().  */
 
 static tree
 layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
@@ -899,8 +899,8 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	 about the vtables that follow.  */
       if (Type::typeinterface)
 	{
-	  field = create_field_decl (d_array_type (Type::typeinterface->type,
-						   decl->vtblInterfaces->dim),
+	  field = create_field_decl (make_array_type (Type::typeinterface->type,
+						      decl->vtblInterfaces->dim),
 				     NULL, 1, 1);
 	  insert_aggregate_field (decl->loc, type, field,
 				  Type::typeinfoclass->structsize);
@@ -912,12 +912,12 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	{
 	  BaseClass *b = (*decl->vtblInterfaces)[i];
 	  ClassDeclaration *id = b->sym;
-	  unsigned offset = decl->baseVtblOffset (b);
+	  unsigned offset = base_vtable_offset (decl, b);
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {
-	      field = create_field_decl (d_array_type (Type::tvoidptr,
-						       id->vtbl.dim),
+	      field = create_field_decl (make_array_type (Type::tvoidptr,
+							  id->vtbl.dim),
 					 NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
@@ -932,15 +932,15 @@ layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
 	{
 	  BaseClass *b = (*bcd->vtblInterfaces)[i];
 	  ClassDeclaration *id = b->sym;
-	  unsigned offset = decl->baseVtblOffset (b);
+	  unsigned offset = base_vtable_offset (decl, b);
 
 	  if (id->vtbl.dim && offset != ~0u)
 	    {
 	      if (type == orig_type)
 		type = copy_struct (type);
 
-	      tree field = create_field_decl (d_array_type (Type::tvoidptr,
-							    id->vtbl.dim),
+	      tree field = create_field_decl (make_array_type (Type::tvoidptr,
+							       id->vtbl.dim),
 					      NULL, 1, 1);
 	      insert_aggregate_field (decl->loc, type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
@@ -987,7 +987,7 @@ get_classinfo_decl (ClassDeclaration *decl)
   TREE_READONLY (decl->csym) = 0;
   TREE_PUBLIC (decl->csym) = 1;
 
-  /* The moduleinfo decl has not been defined -- yet.  */
+  /* The classinfo decl has not been defined -- yet.  */
   DECL_EXTERNAL (decl->csym) = 1;
 
   /* Could move setting comdat linkage to the caller, who knows whether
@@ -1044,6 +1044,49 @@ get_vtable_decl (ClassDeclaration *decl)
   return decl->vtblsym;
 }
 
+/* Get the VAR_DECL of the __cpp_type_info_ptr for DECL.  If this does not yet
+   exist, create it.  The __cpp_type_info_ptr decl is then initialized with a
+   pointer to the C++ typeinfo for the given class.  */
+
+tree
+get_cpp_typeinfo_decl (ClassDeclaration *decl)
+{
+  gcc_assert (decl->isCPPclass ());
+
+  if (decl->cpp_type_info_ptr_sym)
+    return decl->cpp_type_info_ptr_sym;
+
+  ClassDeclaration *cd = ClassDeclaration::cpp_type_info_ptr;
+  tree ident = make_internal_name (decl, "_cpp_type_info_ptr", "");
+
+  tree type = TREE_TYPE (build_ctype (cd->type));
+
+  decl->cpp_type_info_ptr_sym
+    = build_decl (BUILTINS_LOCATION, VAR_DECL,
+		  IDENTIFIER_PRETTY_NAME (ident), type);
+
+  set_decl_location (decl->cpp_type_info_ptr_sym, decl);
+  DECL_LANG_SPECIFIC (decl->cpp_type_info_ptr_sym) = build_lang_decl (NULL);
+  SET_DECL_ASSEMBLER_NAME (decl->cpp_type_info_ptr_sym, ident);
+
+  d_keep (decl->cpp_type_info_ptr_sym);
+
+  /* Class is a reference, want the record type.  */
+  DECL_CONTEXT (decl->cpp_type_info_ptr_sym)
+    = TREE_TYPE (build_ctype (decl->type));
+  DECL_ARTIFICIAL (decl->cpp_type_info_ptr_sym) = 1;
+  TREE_STATIC (decl->cpp_type_info_ptr_sym) = 1;
+  TREE_READONLY (decl->cpp_type_info_ptr_sym) = 1;
+  TREE_PUBLIC (decl->cpp_type_info_ptr_sym) = 1;
+
+  d_comdat_linkage (decl->cpp_type_info_ptr_sym);
+
+  /* Layout the initializer and emit the symbol.  */
+  layout_cpp_typeinfo (decl);
+
+  return decl->cpp_type_info_ptr_sym;
+}
+
 /* Get the VAR_DECL of a class instance representing EXPR as static data.
    If this does not yet exist, create it.  This is used to support initializing
    a static variable that is of a class type using values known during CTFE.
@@ -1081,7 +1124,7 @@ build_new_class_expr (ClassReferenceExp *expr)
    initializing struct literals.  */
 
 tree
-aggregate_initializer (AggregateDeclaration *decl)
+aggregate_initializer_decl (AggregateDeclaration *decl)
 {
   if (decl->sinit)
     return decl->sinit;
@@ -1126,13 +1169,39 @@ aggregate_initializer (AggregateDeclaration *decl)
   return decl->sinit;
 }
 
+/* Generate the data for the static initialiser.  */
+
+tree
+layout_class_initializer (ClassDeclaration *cd)
+{
+  NewExp *ne = new NewExp (cd->loc, NULL, NULL, cd->type, NULL);
+  ne->type = cd->type;
+
+  Expression *e = ne->ctfeInterpret ();
+  gcc_assert (e->op == TOKclassreference);
+
+  return build_class_instance ((ClassReferenceExp *) e);
+}
+
+tree
+layout_struct_initializer (StructDeclaration *sd)
+{
+  StructLiteralExp *sle = StructLiteralExp::create (sd->loc, sd, NULL);
+
+  if (!sd->fill (sd->loc, sle->elements, true))
+    gcc_unreachable ();
+
+  sle->type = sd->type;
+  return build_expr (sle, true);
+}
+
 /* Get the VAR_DECL of the static initializer symbol for the enum DECL.
    If this does not yet exist, create it.  The static initializer data is
    accessible via TypeInfo_Enum, but the field member type is a byte[] that
    requires a pointer to a symbol reference.  */
 
 tree
-enum_initializer (EnumDeclaration *decl)
+enum_initializer_decl (EnumDeclaration *decl)
 {
   if (decl->sinit)
     return decl->sinit;

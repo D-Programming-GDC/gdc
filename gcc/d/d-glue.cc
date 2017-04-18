@@ -39,7 +39,7 @@
 Global global;
 
 void
-Global::init()
+Global::_init()
 {
   this->mars_ext = "d";
   this->hdr_ext  = "di";
@@ -58,7 +58,7 @@ Global::init()
     ;
 
   this->compiler.vendor = "GNU D";
-  this->stdmsg = stdout;
+  this->stdmsg = stderr;
   this->main_d = "__main.d";
 
   this->errorLimit = flag_max_errors;
@@ -149,7 +149,7 @@ void
 verror(const Loc& loc, const char *format, va_list ap,
        const char *p1, const char *p2, const char *)
 {
-  if (!global.gag)
+  if (!global.gag || global.params.showGaggedErrors)
     {
       location_t location = get_linemap(loc);
       char *msg;
@@ -163,10 +163,15 @@ verror(const Loc& loc, const char *format, va_list ap,
 	  if (p1)
 	    msg = concat(p1, " ", msg, NULL);
 
-	  error_at(location, "%s", msg);
+	  if (global.gag)
+	    emit_diagnostic(DK_ANACHRONISM, location, 0,
+			    "(spec:%d) %s", global.gag, msg);
+	  else
+	    error_at(location, "%s", msg);
 	}
     }
-  else
+
+  if (global.gag)
     global.gaggedErrors++;
 
   global.errors++;
@@ -187,14 +192,14 @@ errorSupplemental(const Loc& loc, const char *format, ...)
 void
 verrorSupplemental(const Loc& loc, const char *format, va_list ap)
 {
-  if (!global.gag)
-    {
-      location_t location = get_linemap(loc);
-      char *msg;
+  if (global.gag && !global.params.showGaggedErrors)
+    return;
 
-      if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
-	inform(location, "%s", msg);
-    }
+  location_t location = get_linemap(loc);
+  char *msg;
+
+  if (vasprintf(&msg, format, ap) >= 0 && msg != NULL)
+    inform(location, "%s", msg);
 }
 
 // Print a warning message.
@@ -380,7 +385,7 @@ eval_builtin(Loc loc, FuncDeclaration *fd, Expressions *arguments)
   // Builtin should be successfully evaluated.
   // Will only return NULL if we can't convert it.
   if (TREE_CONSTANT(result) && TREE_CODE(result) != CALL_EXPR)
-    e = build_expression(result);
+    e = d_eval_constant_expression (result);
 
   return e;
 }

@@ -36,9 +36,6 @@ extern void push_stmt_list();
 extern tree pop_stmt_list();
 extern void add_stmt(tree t);
 
-extern void start_function(FuncDeclaration *decl);
-extern void end_function();
-
 extern tree d_decl_context (Dsymbol *dsym);
 
 extern tree d_mark_addressable (tree exp);
@@ -52,21 +49,11 @@ extern tree build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 extern tree build_struct_literal(tree type, vec<constructor_elt, va_gc> *init);
 extern tree build_class_instance(ClassReferenceExp *exp);
 
-
 // Routines to handle variables that are references.
 extern bool declaration_reference_p (Declaration *decl);
 extern tree declaration_type (Declaration *decl);
 extern bool argument_reference_p (Parameter *arg);
 extern tree type_passed_as (Parameter *arg);
-
-extern tree d_array_type (Type *d_type, uinteger_t size);
-
-extern tree insert_type_attribute (tree type, const char *attrname, tree value = NULL_TREE);
-extern void insert_decl_attribute (tree type, const char *attrname, tree value = NULL_TREE);
-extern tree build_attributes (Expressions *in_attrs);
-extern tree insert_type_modifiers (tree type, unsigned mod);
-
-extern tree build_two_field_type (tree t1, tree t2, Type *type, const char *n1, const char *n2);
 
 extern tree build_float_modulus (tree type, tree t1, tree t2);
 
@@ -79,17 +66,6 @@ extern tree define_label(Statement *s, Identifier *ident = NULL);
 extern tree lookup_label(Statement *s, Identifier *ident = NULL);
 extern tree lookup_bc_label(Statement *s, bc_kind);
 extern void check_goto(Statement *from, Statement *to);
-
-// Type conversion.
-// 'd_convert' just to give it a different name from the extern "C" convert.
-extern tree d_convert (tree type, tree exp);
-extern tree convert_expr (tree exp, Type *exp_type, Type *target_type);
-
-extern tree convert_for_assignment (tree expr, Type *exp_type, Type *target_type);
-extern tree convert_for_condition (tree expr, Type *type);
-
-extern tree d_array_convert (Expression *exp);
-extern tree d_array_convert (Type *etype, Expression *exp, vec<tree, va_gc> **vars);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = int_type_node);
@@ -177,40 +153,8 @@ extern void maybe_set_intrinsic (FuncDeclaration *decl);
 extern tree expand_intrinsic (tree callexp);
 
 // Record layout
-extern void layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base);
-extern void insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset);
-extern void finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type, UserAttributeDeclaration *declattrs);
 extern tree create_field_decl(tree type, const char *name, int artificial, int ignored);
 extern tree find_aggregate_field(tree type, tree ident, tree offset = NULL_TREE);
-
-extern bool empty_aggregate_p(tree type);
-
-// Type management for D frontend types.
-// Returns TRUE if T1 and T2 are mutably the same type.
-inline bool
-d_types_same (Type *t1, Type *t2)
-{
-  if (t1 == t2)
-    return true;
-
-  Type *tb1 = t1->toBasetype();
-  Type *tb2 = t2->toBasetype();
-  if (tb1 == tb2)
-    return true;
-
-  return tb1->immutableOf ()->equals (tb2->immutableOf ());
-}
-
-// Returns D frontend type 'Object' which all classes are derived from.
-inline Type *
-build_object_type()
-{
-  if (ClassDeclaration::object)
-    return ClassDeclaration::object->type;
-
-  ::error ("missing or corrupt object.d");
-  return Type::terror;
-}
 
 // Common codegen helpers.
 extern tree component_ref(tree obj, tree field);
@@ -240,7 +184,6 @@ extern bool call_by_alias_p (FuncDeclaration *caller, FuncDeclaration *callee);
 
 // Globals.
 extern Modules builtin_modules;
-extern Module *current_module_decl;
 
 #endif
 
