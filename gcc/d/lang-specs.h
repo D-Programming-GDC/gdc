@@ -19,11 +19,8 @@ along with GCC; see the file COPYING3.  If not see
    for the D language.  */
 
 {".d", "@d", 0, 1, 0 },
-{".D", "@d", 0, 1, 0 },
 {".dd", "@d", 0, 1, 0 },
-{".DD", "@d", 0, 1, 0 },
 {".di", "@d", 0, 1, 0 },
-{".DI", "@d", 0, 1, 0 },
 {"@d",
   "%{!E:cc1d %i %(cc1_options) %I %{nostdinc*} %{i*} %{I*} %{J*} \
     %{MD:-MD %b.deps} %{MMD:-MMD %b.deps} \
