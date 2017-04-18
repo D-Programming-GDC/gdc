@@ -1,3 +1,7 @@
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang-specs.h: Remove +e handling.
+
 2017-04-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-diagnostic.cc: New file.
