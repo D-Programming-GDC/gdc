@@ -1,5 +1,10 @@
 2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* lang-specs.h: Add rule for forwarding -iprefix and -imultilib to the
+	compiler proper.
+
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* lang-specs.h: Remove cc1d spec.
 
 2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
