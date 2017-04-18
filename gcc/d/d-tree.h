@@ -29,12 +29,14 @@ class FuncDeclaration;
 class StructDeclaration;
 class TypeInfoDeclaration;
 class VarDeclaration;
+class UserAttributeDeclaration;
 class Expression;
 class ClassReferenceExp;
 class Module;
 class Statement;
 class Type;
 class TypeFunction;
+class Parameter;
 struct BaseClass;
 
 template <typename TYPE> struct Array;
