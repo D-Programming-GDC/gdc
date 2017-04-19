@@ -1,3 +1,18 @@
+2017-04-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (pop_binding_label): Move to toir.cc.
+	(pop_label): Likewise.
+	(push_binding_level): Likewise
+	(pop_binding_level): Likewise.
+	(push_stmt_list): Likewise.
+	(add_stmt): Likewise.
+	(check_goto): Move to toir.cc, make it a member of IRVisitor.
+	(check_previous_goto): Likewise.
+	(lookup_label): Likewise.
+	(lookup_bc_label): Likewise.
+	(define_label): Likewise.
+	* toir.cc (build_ir): Rename to build_function_body.
+
 2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-target.cc: Update includes.

@@ -970,7 +970,7 @@ public:
 	  }
       }
 
-    build_ir (d);
+    build_function_body (d);
 
     if (d->v_argptr)
       {

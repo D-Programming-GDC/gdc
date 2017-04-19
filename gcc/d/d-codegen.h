@@ -29,13 +29,6 @@ enum LibCall
 };
 
 // Code generation routines.
-extern void push_binding_level(level_kind kind);
-extern tree pop_binding_level();
-
-extern void push_stmt_list();
-extern tree pop_stmt_list();
-extern void add_stmt(tree t);
-
 extern tree d_decl_context (Dsymbol *dsym);
 
 extern tree d_mark_addressable (tree exp);
@@ -61,11 +54,6 @@ extern tree indirect_ref (tree type, tree exp);
 extern tree build_deref (tree exp);
 
 extern tree bind_expr (tree var_chain, tree body);
-
-extern tree define_label(Statement *s, Identifier *ident = NULL);
-extern tree lookup_label(Statement *s, Identifier *ident = NULL);
-extern tree lookup_bc_label(Statement *s, bc_kind);
-extern void check_goto(Statement *from, Statement *to);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = int_type_node);
