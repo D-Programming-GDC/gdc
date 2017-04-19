@@ -1,5 +1,9 @@
 2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-target.cc: Update includes.
+
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* lang-specs.h: Remove capitalized D source suffixes.
 
 2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>

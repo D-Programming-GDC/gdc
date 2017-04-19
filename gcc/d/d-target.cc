@@ -1,5 +1,5 @@
-/* d-target.cc -- D frontend interface to gcc backend.
-   Copyright (C) 2013-2016 Free Software Foundation, Inc.
+/* d-target.cc -- Target interface for the D frontend.
+   Copyright (C) 2013-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,15 +25,11 @@ along with GCC; see the file COPYING3.  If not see
 #include "dfrontend/target.h"
 
 #include "tree.h"
-#include "memmodel.h"
 #include "fold-const.h"
-#include "stor-layout.h"
-#include "diagnostic.h"
 #include "stor-layout.h"
 #include "tm.h"
 #include "tm_p.h"
 #include "target.h"
-#include "common/common-target.h"
 
 #include "d-tree.h"
 #include "d-codegen.h"
@@ -77,64 +73,53 @@ define_float_constants (tree type)
   const machine_mode mode = TYPE_MODE (type);
   const real_format *fmt = REAL_MODE_FORMAT (mode);
 
-  /* .max:
-     The largest representable value that's not infinity.  */
+  /* The largest representable value that's not infinity.  */
   get_max_float (fmt, buf, sizeof (buf));
   real_from_string (&T::max.rv (), buf);
 
-  /* .min, .min_normal:
-     The smallest representable normalized value that's not 0.  */
+  /* The smallest representable normalized value that's not 0.  */
   snprintf (buf, sizeof (buf), "0x1p%d", fmt->emin - 1);
   real_from_string (&T::min_normal.rv (), buf);
 
-  /* .nan:
-     Floating-point NaN.  */
+  /* Floating-point NaN.  */
   real_nan (&T::nan.rv (), "", 1, mode);
 
-  /* .snan:
-     Signalling floating-point NaN.  */
+  /* Signalling floating-point NaN.  */
   real_nan (&T::snan.rv (), "", 0, mode);
 
-  /* .infinity:
-     Floating-point +Infinity if the target supports infinities.  */
+  /* Floating-point +Infinity if the target supports infinities.  */
   real_inf (&T::infinity.rv ());
 
-  /* .epsilon:
-     The smallest increment to the value 1.  */
+  /* The smallest increment to the value 1.  */
   if (fmt->pnan < fmt->p)
     snprintf (buf, sizeof (buf), "0x1p%d", fmt->emin - fmt->p);
   else
     snprintf (buf, sizeof (buf), "0x1p%d", 1 - fmt->p);
   real_from_string (&T::epsilon.rv (), buf);
 
-  /* .dig:
-     The number of decimal digits of precision.  */
+  /* The number of decimal digits of precision.  */
   T::dig = (fmt->p - 1) * log10_2;
 
-  /* .mant_dig:
-     The number of bits in mantissa.  */
+  /* The number of bits in mantissa.  */
   T::mant_dig = fmt->p;
 
-  /* .max_exp:
-     The maximum int value such that 2** (value-1) is representable.  */
+  /* The maximum int value such that 2** (value-1) is representable.  */
   T::max_exp = fmt->emax;
 
-  /* .min_exp:
-     The minimum int value such that 2** (value-1) is representable as a
+  /* The minimum int value such that 2** (value-1) is representable as a
      normalized value.  */
   T::min_exp = fmt->emin;
 
-  /* .max_10_exp:
-     The maximum int value such that 10**value is representable.  */
+  /* The maximum int value such that 10**value is representable.  */
   T::max_10_exp = fmt->emax * log10_2;
 
-  /* .min_10_exp:
-     The minimum int value such that 10**value is representable as a
+  /* The minimum int value such that 10**value is representable as a
      normalized value.  */
   T::min_10_exp = (fmt->emin - 1) * log10_2;
 }
 
-/* */
+/* Initialize all variables of the Target structure.  */
+
 void
 Target::_init (void)
 {
@@ -368,14 +353,14 @@ Target::loadModule (Module *m)
 
   if (md->packages->dim == 1)
     {
-      if (!strcmp ((*md->packages)[0]->toChars(), "gcc")
-	  && !strcmp (md->id->toChars(), "builtins"))
+      if (!strcmp ((*md->packages)[0]->toChars (), "gcc")
+	  && !strcmp (md->id->toChars (), "builtins"))
 	d_build_builtins_module (m);
     }
   else if (md->packages->dim == 2)
     {
-      if (!strcmp ((*md->packages)[0]->toChars(), "core")
-	  && !strcmp ((*md->packages)[1]->toChars(), "stdc"))
+      if (!strcmp ((*md->packages)[0]->toChars (), "core")
+	  && !strcmp ((*md->packages)[1]->toChars (), "stdc"))
 	builtin_modules.push (m);
     }
 }
