@@ -456,7 +456,12 @@ extern tree layout_classinfo (ClassDeclaration *);
 extern void layout_cpp_typeinfo (ClassDeclaration *);
 
 /* In toir.cc.  */
-extern void build_ir (FuncDeclaration *);
+extern void push_binding_level (level_kind);
+extern tree pop_binding_level (void);
+extern void push_stmt_list (void);
+extern tree pop_stmt_list (void);
+extern void add_stmt (tree);
+extern void build_function_body (FuncDeclaration *);
 
 /* In types.cc.  */
 extern bool valist_array_p (Type *);
