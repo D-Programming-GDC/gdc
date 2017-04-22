@@ -703,7 +703,7 @@ public:
 	/* This is needed for VarDeclarations in mixins that are to be local
 	   variables of a function.  Otherwise, it would be enough to make
 	   a check for isVarDeclaration() in DeclarationExp codegen.  */
-	build_local_var (d);
+	declare_local_var (d);
 
 	if (d->_init)
 	  {
@@ -927,7 +927,7 @@ public:
     build_closure (d);
 
     if (d->vresult)
-      build_local_var (d->vresult);
+      declare_local_var (d->vresult);
 
     if (d->v_argptr)
       push_stmt_list ();
@@ -980,7 +980,7 @@ public:
 
 	tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START),
 					   2, var, parm_decl);
-	build_local_var (d->v_argptr);
+	declare_local_var (d->v_argptr);
 	add_stmt (init_exp);
 
 	tree cleanup = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_END),

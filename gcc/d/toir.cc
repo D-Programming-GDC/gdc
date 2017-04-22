@@ -1108,7 +1108,7 @@ public:
 	ExpInitializer *ie = s->wthis->_init->isExpInitializer ();
 	gcc_assert (ie != NULL);
 
-	build_local_var (s->wthis);
+	declare_local_var (s->wthis);
 	tree init = build_expr_dtor (ie->exp);
 	add_stmt (init);
       }
@@ -1201,7 +1201,7 @@ public:
 		tree var = get_symbol_decl (vcatch->var);
 		tree init = build_assign (INIT_EXPR, var, object);
 
-		build_local_var (vcatch->var);
+		declare_local_var (vcatch->var);
 		add_stmt (init);
 	      }
 	    else

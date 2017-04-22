@@ -95,193 +95,6 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
-// Add local variable VD into the current function body.
-
-void
-build_local_var (VarDeclaration *vd)
-{
-  gcc_assert (!vd->isDataseg() && !vd->isMember());
-  gcc_assert (current_function_decl != NULL_TREE);
-
-  FuncDeclaration *fd = cfun->language->function;
-  tree var = get_symbol_decl (vd);
-
-  gcc_assert (!TREE_STATIC (var));
-
-  set_input_location (vd->loc);
-  d_pushdecl (var);
-  DECL_CONTEXT (var) = current_function_decl;
-
-  // Compiler generated symbols
-  if (vd == fd->vresult || vd == fd->v_argptr)
-    DECL_ARTIFICIAL (var) = 1;
-
-  if (DECL_LANG_FRAME_FIELD (var))
-    {
-      // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var, get_decl_tree (vd));
-      DECL_HAS_VALUE_EXPR_P (var) = 1;
-    }
-}
-
-// Return an unnamed local temporary of type TYPE.
-
-tree
-build_local_temp (tree type)
-{
-  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
-
-  DECL_CONTEXT (decl) = current_function_decl;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_IGNORED_P (decl) = 1;
-  d_pushdecl (decl);
-
-  return decl;
-}
-
-// Return an undeclared local temporary of type TYPE
-// for use with BIND_EXPR.
-
-tree
-create_temporary_var (tree type)
-{
-  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
-  DECL_CONTEXT (decl) = current_function_decl;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_IGNORED_P (decl) = 1;
-  layout_decl (decl, 0);
-  return decl;
-}
-
-// Return an undeclared local temporary OUT_VAR initialised
-// with result of expression EXP.
-
-tree
-maybe_temporary_var (tree exp, tree *out_var)
-{
-  tree t = exp;
-
-  // Get the base component.
-  while (TREE_CODE (t) == COMPONENT_REF)
-    t = TREE_OPERAND (t, 0);
-
-  if (!DECL_P (t) && !REFERENCE_CLASS_P (t))
-    {
-      *out_var = create_temporary_var (TREE_TYPE (exp));
-      DECL_INITIAL (*out_var) = exp;
-      return *out_var;
-    }
-  else
-    {
-      *out_var = NULL_TREE;
-      return exp;
-    }
-}
-
-// Emit an INIT_EXPR for decl DECL.
-
-void
-expand_decl (tree decl)
-{
-  // Nothing, d_pushdecl will add decl to a BIND_EXPR
-  if (DECL_INITIAL (decl))
-    {
-      tree exp = build_assign(INIT_EXPR, decl, DECL_INITIAL (decl));
-      add_stmt(exp);
-      DECL_INITIAL (decl) = NULL_TREE;
-    }
-}
-
-// Return the correct decl to be used for variable DECL accessed from the
-// current function.  Could be a VAR_DECL, or a FIELD_DECL from a closure.
-
-tree
-get_decl_tree (Declaration *decl)
-{
-  if (decl->isTypeInfoDeclaration ())
-    return get_typeinfo_decl ((TypeInfoDeclaration *) decl);
-
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
-  VarDeclaration *vd = decl->isVarDeclaration();
-
-  // If cfun is NULL, then this is a global static.
-  if (func != NULL && vd != NULL)
-    {
-      tree vsym = get_symbol_decl (vd);
-      if (DECL_LANG_NRVO (vsym))
-	{
-	  // Get the named return value.
-	  return DECL_LANG_NRVO (vsym);
-	}
-      else if (DECL_LANG_FRAME_FIELD (vsym))
-	{
-	  // Get the closure holding the var decl.
-	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
-	  tree frame_ref = get_framedecl (func, parent);
-
-	  return component_ref (build_deref (frame_ref),
-				DECL_LANG_FRAME_FIELD (vsym));
-	}
-      else if (vd->parent != func && vd->isThisDeclaration ())
-	{
-	  // Get the non-local 'this' value by going through parent link
-	  // of nested classes, this routine pretty much undoes what
-	  // getRightThis in the frontend removes from codegen.
-	  AggregateDeclaration *ad = func->isThis ();
-	  if (ad != NULL)
-	    {
-	      tree this_tree = get_symbol_decl (func->vthis);
-	      Dsymbol *outer = func;
-
-	      while (outer != vd->parent)
-		{
-		  gcc_assert (ad != NULL);
-		  outer = ad->toParent2 ();
-
-		  // Get the this->this parent link.
-		  tree vthis_field = get_symbol_decl (ad->vthis);
-		  this_tree = component_ref (build_deref (this_tree),
-					     vthis_field);
-
-		  ad = outer->isAggregateDeclaration ();
-		  if (ad != NULL)
-		    continue;
-
-		  FuncDeclaration *fd = outer->isFuncDeclaration ();
-		  while (fd != NULL)
-		    {
-		      // If outer function creates a closure, then the 'this'
-		      // value would be the closure pointer, and the real
-		      // 'this' the first field of that closure.
-		      tree ff = get_frameinfo (fd);
-		      if (FRAMEINFO_CREATES_FRAME (ff))
-			{
-			  this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
-						 this_tree);
-			  this_tree = indirect_ref (build_ctype (fd->vthis->type),
-						    this_tree);
-			}
-
-		      if (fd == vd->parent)
-			break;
-
-		      // Continue looking for the right 'this'
-		      outer = outer->toParent2 ();
-		      fd = outer->isFuncDeclaration ();
-		    }
-
-		  ad = outer->isAggregateDeclaration ();
-		}
-
-	      return this_tree;
-	    }
-	}
-    }
-
-  // Static var or auto var that the back end will handle for us
-  return get_symbol_decl (decl);
-}
-
 // Return TRUE if declaration DECL is a reference type.
 
 bool
@@ -1967,6 +1780,47 @@ array_bounds_check()
     }
 }
 
+/* Return an undeclared local temporary of type TYPE
+   for use with BIND_EXPR.  */
+
+tree
+create_temporary_var (tree type)
+{
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
+
+  DECL_CONTEXT (decl) = current_function_decl;
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  layout_decl (decl, 0);
+
+  return decl;
+}
+
+/* Return an undeclared local temporary OUT_VAR initialised
+   with result of expression EXP.  */
+
+tree
+maybe_temporary_var (tree exp, tree *out_var)
+{
+  tree t = exp;
+
+  /* Get the base component.  */
+  while (TREE_CODE (t) == COMPONENT_REF)
+    t = TREE_OPERAND (t, 0);
+
+  if (!DECL_P (t) && !REFERENCE_CLASS_P (t))
+    {
+      *out_var = create_temporary_var (TREE_TYPE (exp));
+      DECL_INITIAL (*out_var) = exp;
+      return *out_var;
+    }
+  else
+    {
+      *out_var = NULL_TREE;
+      return exp;
+    }
+}
+
 // Builds a BIND_EXPR around BODY for the variables VAR_CHAIN.
 
 tree
@@ -3236,7 +3090,9 @@ build_closure(FuncDeclaration *fd)
       tree arg = convert(build_ctype(Type::tsize_t), TYPE_SIZE_UNIT(type));
       tree init = build_libcall(LIBCALL_ALLOCMEMORY, 1, &arg);
 
-      DECL_INITIAL(decl) = build_nop(TREE_TYPE(decl), init);
+      tree init_exp = build_assign (INIT_EXPR, decl,
+				    build_nop (TREE_TYPE (decl), init));
+      add_stmt (init_exp);
     }
   else
     {
@@ -3246,7 +3102,6 @@ build_closure(FuncDeclaration *fd)
     }
 
   DECL_IGNORED_P(decl) = 0;
-  expand_decl(decl);
 
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));

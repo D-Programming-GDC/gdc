@@ -2247,7 +2247,6 @@ public:
 	       storage class, then the instance is allocated on the stack
 	       rather than the heap or using the class specific allocator.  */
 	    tree var = build_local_temp (rec_type);
-	    expand_decl (var);
 	    new_call = build_address (var);
 	    setup_exp = modify_expr (var, aggregate_initializer_decl (cd));
 	  }
