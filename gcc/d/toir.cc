@@ -86,7 +86,7 @@ pop_label (Statement * const &s, d_label_entry *ent, tree block)
 	}
     }
 
-  cfun->language->labels->remove (s);
+  d_function_chain->labels->remove (s);
 
   return true;
 }
@@ -128,17 +128,17 @@ pop_binding_level (void)
       BLOCK_SUPERCONTEXT (block) = current_function_decl;
 
       /* Pop all the labels declared in the function.  */
-      if (cfun->language->labels)
-	cfun->language->labels->traverse<tree, &pop_label> (block);
+      if (d_function_chain->labels)
+	d_function_chain->labels->traverse<tree, &pop_label> (block);
     }
   else
     {
       /* Any uses of undefined labels, and any defined labels, now operate
          under constraints of next binding contour.  */
-      if (cfun && cfun->language->labels)
+      if (d_function_chain && d_function_chain->labels)
 	{
-	  cfun->language->labels->traverse<binding_level *, &pop_binding_label>
-	    (level);
+	  language_function *f = d_function_chain;
+	  f->labels->traverse<binding_level *, &pop_binding_label> (level);
 	}
 
       current_binding_level->blocks
@@ -155,7 +155,7 @@ void
 push_stmt_list (void)
 {
   tree t = alloc_stmt_list ();
-  vec_safe_push (cfun->language->stmt_list, t);
+  vec_safe_push (d_function_chain->stmt_list, t);
   d_keep (t);
 }
 
@@ -164,7 +164,7 @@ push_stmt_list (void)
 tree
 pop_stmt_list (void)
 {
-  tree t = cfun->language->stmt_list->pop ();
+  tree t = d_function_chain->stmt_list->pop ();
 
   /* If the statement list is completely empty, just return it.  This is just
      as good small as build_empty_stmt, with the advantage that statement
@@ -216,7 +216,7 @@ add_stmt (tree t)
       if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
 	SET_EXPR_LOCATION (t, input_location);
 
-      tree stmt_list = cfun->language->stmt_list->last ();
+      tree stmt_list = d_function_chain->stmt_list->last ();
       append_to_statement_list_force (t, &stmt_list);
     }
 }
@@ -298,7 +298,7 @@ public:
     tree label = this->lookup_label (s, ident);
     gcc_assert (DECL_INITIAL (label) == NULL_TREE);
 
-    d_label_entry *ent = cfun->language->labels->get (s);
+    d_label_entry *ent = d_function_chain->labels->get (s);
     gcc_assert (ent != NULL);
 
     /* Mark label as having been defined.  */
@@ -345,7 +345,7 @@ public:
 
   void check_goto (Statement *from, Statement *to)
   {
-    d_label_entry *ent = cfun->language->labels->get (to);
+    d_label_entry *ent = d_function_chain->labels->get (to);
     gcc_assert (ent != NULL);
 
     /* If the label hasn't been defined yet, defer checking.  */
@@ -406,7 +406,7 @@ public:
   tree lookup_label (Statement *s, Identifier *ident = NULL)
   {
     /* You can't use labels at global scope.  */
-    if (cfun == NULL)
+    if (d_function_chain == NULL)
       {
 	error ("label %s referenced outside of any function",
 	       ident ? ident->toChars () : "(unnamed)");
@@ -414,13 +414,13 @@ public:
       }
 
     /* Create the label htab for the function on demand.  */
-    if (!cfun->language->labels)
+    if (!d_function_chain->labels)
       {
-	cfun->language->labels
+	d_function_chain->labels
 	  = hash_map<Statement *, d_label_entry>::create_ggc (13);
       }
 
-    d_label_entry *ent = cfun->language->labels->get (s);
+    d_label_entry *ent = d_function_chain->labels->get (s);
     if (ent != NULL)
       return ent->label;
     else
@@ -436,7 +436,7 @@ public:
 	ent->statement = s;
 	ent->label = decl;
 
-	bool existed = cfun->language->labels->put (s, *ent);
+	bool existed = d_function_chain->labels->put (s, *ent);
 	gcc_assert (!existed);
 
 	return decl;
@@ -453,7 +453,7 @@ public:
     /* The break and continue labels are put into a TREE_VEC.  */
     if (TREE_CODE (vec) == LABEL_DECL)
       {
-	d_label_entry *ent = cfun->language->labels->get (s);
+	d_label_entry *ent = d_function_chain->labels->get (s);
 	gcc_assert (ent != NULL);
 
 	vec = make_tree_vec (2);
