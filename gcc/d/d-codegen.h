@@ -53,6 +53,8 @@ extern tree build_float_modulus (tree type, tree t1, tree t2);
 extern tree indirect_ref (tree type, tree exp);
 extern tree build_deref (tree exp);
 
+extern tree create_temporary_var(tree);
+extern tree maybe_temporary_var(tree, tree *);
 extern tree bind_expr (tree var_chain, tree body);
 
 // Simple constants
@@ -100,15 +102,6 @@ extern tree build_vthis_type(tree basetype, tree type);
 
 // Static chain for nested functions
 extern tree get_frame_for_symbol(Dsymbol *sym);
-
-// Local variables
-extern void build_local_var(VarDeclaration *vd);
-extern tree build_local_temp(tree type);
-extern tree create_temporary_var(tree type);
-extern tree maybe_temporary_var(tree exp, tree *out_var);
-extern void expand_decl(tree decl);
-
-extern tree get_decl_tree(Declaration *decl);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree d_save_expr (tree t);

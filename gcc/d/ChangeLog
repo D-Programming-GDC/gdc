@@ -1,3 +1,23 @@
+2017-04-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc: Rename to decl.cc.
+	(get_symbol_decl): Handle typeinfo declarations.
+	(declare_extern_var): New function.
+	(declare_local_var): New function.
+	(get_moduleinfo_decl): Call declare_extern_var.
+	(get_classinfo_decl): Likewise.
+	(get_vtable_decl): Likewise.
+	(get_cpp_typeinfo_decl): Likewise.
+	(aggregate_initializer_decl): Likewise.
+	(enum_initializer_decl): Likewise.
+	* Make-lang.in (D_OBJS): Update.
+	* d-codegen.cc (build_local_var): Remove function.
+	Updated all callers to use declare_local_var.
+	(build_local_temp): Move to decl.cc.
+	(get_decl_tree): Likewise.
+	(expand_decl): Remove function.
+	(build_closure): Inline expand_decl here.
+
 2017-04-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (pop_binding_label): Move to toir.cc.
