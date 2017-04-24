@@ -409,7 +409,7 @@ public:
       return;
 
     /* Generate TypeInfo.  */
-    genTypeInfo (d->type, NULL);
+    create_typeinfo (d->type, NULL);
 
     /* Generate static initialiser.  */
     d->sinit = aggregate_initializer_decl (d);
@@ -466,7 +466,7 @@ public:
     d_finish_symbol (d->sinit);
 
     /* Put out the TypeInfo.  */
-    genTypeInfo (d->type, NULL);
+    create_typeinfo (d->type, NULL);
     DECL_INITIAL (d->csym) = layout_classinfo (d);
     d_finish_symbol (d->csym);
 
@@ -562,7 +562,7 @@ public:
     d->csym = get_classinfo_decl (d);
 
     /* Put out the TypeInfo.  */
-    genTypeInfo (d->type, NULL);
+    create_typeinfo (d->type, NULL);
     d->type->vtinfo->accept (this);
     DECL_INITIAL (d->csym) = layout_classinfo (d);
     d_finish_symbol (d->csym);
@@ -590,7 +590,7 @@ public:
       return;
 
     /* Generate TypeInfo.  */
-    genTypeInfo (d->type, NULL);
+    create_typeinfo (d->type, NULL);
 
     TypeEnum *tc = (TypeEnum *) d->type;
     if (tc->sym->members && !d->type->isZeroInit ())
@@ -728,7 +728,7 @@ public:
 
   void visit (TypeInfoDeclaration *d)
   {
-    if (isSpeculativeType (d->tinfo))
+    if (speculative_type_p (d->tinfo))
       return;
 
     tree s = get_typeinfo_decl (d);
@@ -1100,7 +1100,8 @@ unsigned
 base_vtable_offset (ClassDeclaration *cd, BaseClass *bc)
 {
   unsigned csymoffset = Target::classinfosize;
-  csymoffset += cd->vtblInterfaces->dim * (4 * Target::ptrsize);
+  unsigned interfacesize = int_size_in_bytes (vtbl_interface_type_node);
+  csymoffset += cd->vtblInterfaces->dim * interfacesize;
 
   for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
     {

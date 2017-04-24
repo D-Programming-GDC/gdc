@@ -488,3 +488,13 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
 
   return e;
 }
+
+/* Build and return typeinfo type for TYPE.  */
+
+Type *
+getTypeInfoType (Type *type, Scope *sc)
+{
+  gcc_assert (type->ty != Terror);
+  create_typeinfo (type, sc ? sc->_module->importedFrom : NULL);
+  return type->vtinfo->type;
+}
