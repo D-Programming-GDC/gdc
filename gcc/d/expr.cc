@@ -1760,7 +1760,7 @@ public:
 	if (fd->isNested ())
 	  {
 	    /* Maybe re-evaluate symbol storage treating 'fd' as public.  */
-	    if (call_by_alias_p (cfun->language->function, fd))
+	    if (call_by_alias_p (d_function_chain->function, fd))
 	      TREE_PUBLIC (callee) = 1;
 
 	    object = get_frame_for_symbol (fd);
@@ -1806,7 +1806,7 @@ public:
 	Dsymbol *owner = e->func->toParent ();
 	while (!owner->isTemplateInstance () && owner->toParent ())
 	  owner = owner->toParent ();
-	if (owner->isTemplateInstance () || owner == cfun->language->module)
+	if (owner->isTemplateInstance () || owner == d_function_chain->module)
 	  build_decl_tree (e->func);
       }
 
@@ -1909,7 +1909,7 @@ public:
     tree tmsg = NULL_TREE;
     LibCall libcall;
 
-    if (cfun->language->function->isUnitTestDeclaration ())
+    if (d_function_chain->function->isUnitTestDeclaration ())
       {
 	if (e->msg)
 	  {
@@ -2007,7 +2007,7 @@ public:
 	    && !(vd->storage_class & (STCextern | STCtls | STCgshared)))
 	  {
 	    if (vd->needsScopeDtor ())
-	      cfun->language->vars_in_scope.safe_push (vd);
+	      d_function_chain->vars_in_scope.safe_push (vd);
 	  }
       }
 
@@ -2201,7 +2201,7 @@ public:
 
   void visit (ThisExp *e)
   {
-    FuncDeclaration *fd = cfun ? cfun->language->function : NULL;
+    FuncDeclaration *fd = d_function_chain ? d_function_chain->function : NULL;
     tree result = NULL_TREE;
 
     if (e->var)
@@ -3036,10 +3036,10 @@ build_dtor_list (size_t starti, size_t endi)
 
   for (size_t i = starti; i != endi; ++i)
     {
-      VarDeclaration *vd = cfun->language->vars_in_scope[i];
+      VarDeclaration *vd = d_function_chain->vars_in_scope[i];
       if (vd)
 	{
-	  cfun->language->vars_in_scope[i] = NULL;
+	  d_function_chain->vars_in_scope[i] = NULL;
 	  tree t = build_expr (vd->edtor);
 	  dtors = compound_expr (t, dtors);
 	}
@@ -3055,9 +3055,9 @@ build_expr_dtor (Expression *e)
 {
   /* Codegen can be improved by determining if no exceptions can be thrown
      between the ctor and dtor, and eliminating the ctor and dtor.  */
-  size_t starti = cfun->language->vars_in_scope.length ();
+  size_t starti = d_function_chain->vars_in_scope.length ();
   tree result = build_expr (e);
-  size_t endi = cfun->language->vars_in_scope.length ();
+  size_t endi = d_function_chain->vars_in_scope.length ();
 
   tree dtors = build_dtor_list (starti, endi);
 
@@ -3115,9 +3115,9 @@ build_expr_dtor (Expression *e)
 tree
 build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
 {
-  size_t starti = cfun->language->vars_in_scope.length ();
+  size_t starti = d_function_chain->vars_in_scope.length ();
   tree result = build_expr (e);
-  size_t endi = cfun->language->vars_in_scope.length ();
+  size_t endi = d_function_chain->vars_in_scope.length ();
 
   /* Convert for initialising the DECL_RESULT.  */
   result = convert_expr (result, e->type, type);

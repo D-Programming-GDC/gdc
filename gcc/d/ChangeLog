@@ -1,3 +1,8 @@
+2017-04-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (d_function_chain): Declare macro.  Update all uses of
+	`cfun->language' to use it.
+
 2017-04-22  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-decls.cc: Rename to decl.cc.

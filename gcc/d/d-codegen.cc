@@ -1766,7 +1766,7 @@ array_bounds_check()
 
     case BOUNDSCHECKsafeonly:
       // For D2 safe functions only
-      func = cfun->language->function;
+      func = d_function_chain->function;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
@@ -2743,7 +2743,7 @@ build_vthis_type(tree basetype, tree type)
 tree
 get_frame_for_symbol (Dsymbol *sym)
 {
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
+  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
   FuncDeclaration *thisfd = sym->isFuncDeclaration();
   FuncDeclaration *parentfd = NULL;
 
@@ -2875,7 +2875,7 @@ d_nested_struct (StructDeclaration *sd)
 static tree
 find_this_tree(ClassDeclaration *ocd)
 {
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
+  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
 
   while (func)
     {
@@ -3105,7 +3105,7 @@ build_closure(FuncDeclaration *fd)
 
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));
-  tree chain_expr = modify_expr(chain_field, cfun->language->static_chain);
+  tree chain_expr = modify_expr(chain_field, d_function_chain->static_chain);
   add_stmt(chain_expr);
 
   // Copy parameters that are referenced nonlocally.
@@ -3126,7 +3126,7 @@ build_closure(FuncDeclaration *fd)
   if (!FRAMEINFO_IS_CLOSURE (ffi))
     decl = build_address (decl);
 
-  cfun->language->static_chain = decl;
+  d_function_chain->static_chain = decl;
 }
 
 // Return the frame of FD.  This could be a static chain or a closure
@@ -3219,7 +3219,7 @@ get_frameinfo(FuncDeclaration *fd)
 tree
 get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 {
-  tree result = cfun->language->static_chain;
+  tree result = d_function_chain->static_chain;
   FuncDeclaration *fd = inner;
 
   while (fd && fd != outer)

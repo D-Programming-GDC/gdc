@@ -869,7 +869,7 @@ public:
 
 	set_decl_location (parm_decl, d->vthis);
 	param_list = chainon (param_list, parm_decl);
-	cfun->language->static_chain = parm_decl;
+	d_function_chain->static_chain = parm_decl;
       }
 
     /* _arguments parameter.  */

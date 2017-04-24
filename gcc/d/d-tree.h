@@ -238,6 +238,10 @@ struct GTY(()) lang_decl
   tree frame_info;
 };
 
+/* The current D per-function global variables.  */
+
+#define d_function_chain (cfun ? cfun->language : NULL)
+
 /* The D frontend Declaration AST for GCC decl NODE.  */
 #define DECL_LANG_FRONTEND(NODE) \
   (DECL_LANG_SPECIFIC (NODE) \
