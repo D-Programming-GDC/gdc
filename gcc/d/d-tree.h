@@ -38,6 +38,7 @@ class Type;
 class TypeFunction;
 class Parameter;
 struct BaseClass;
+struct Scope;
 
 template <typename TYPE> struct Array;
 typedef Array<Expression *> Expressions;
@@ -336,7 +337,9 @@ lang_tree_node
 
 enum d_tree_index
 {
+  DTI_VTABLE_ENTRY_TYPE,
   DTI_VTBL_PTR_TYPE,
+  DTI_VTBL_INTERFACE_TYPE,
 
   DTI_BOOL_TYPE,
   DTI_CHAR_TYPE,
@@ -360,12 +363,17 @@ enum d_tree_index
 
   DTI_UNKNOWN_TYPE,
 
+  DTI_ARRAY_TYPE,
+  DTI_NULL_ARRAY,
+
   DTI_MAX
 };
 
 extern GTY(()) tree d_global_trees[DTI_MAX];
 
+#define vtable_entry_type		d_global_trees[DTI_VTABLE_ENTRY_TYPE]
 #define vtbl_ptr_type_node		d_global_trees[DTI_VTBL_PTR_TYPE]
+#define vtbl_interface_type_node	d_global_trees[DTI_VTBL_INTERFACE_TYPE]
 #define bool_type_node			d_global_trees[DTI_BOOL_TYPE]
 #define char8_type_node			d_global_trees[DTI_CHAR_TYPE]
 #define char16_type_node		d_global_trees[DTI_DCHAR_TYPE]
@@ -384,6 +392,8 @@ extern GTY(()) tree d_global_trees[DTI_MAX];
 #define idouble_type_node		d_global_trees[DTI_IDOUBLE_TYPE]
 #define ireal_type_node			d_global_trees[DTI_IREAL_TYPE]
 #define unknown_type_node		d_global_trees[DTI_UNKNOWN_TYPE]
+#define array_type_node			d_global_trees[DTI_ARRAY_TYPE]
+#define null_array_node			d_global_trees[DTI_NULL_ARRAY]
 
 /* In d-attribs.c.  */
 extern tree insert_type_attribute (tree, const char *, tree = NULL_TREE);
@@ -439,10 +449,7 @@ extern tree get_decl_tree (Declaration *);
 extern tree make_thunk (FuncDeclaration *, int);
 extern tree layout_moduleinfo_fields (Module *, tree);
 extern tree get_moduleinfo_decl (Module *);
-extern tree get_typeinfo_decl (TypeInfoDeclaration *);
-extern tree get_classinfo_decl (ClassDeclaration *);
 extern tree get_vtable_decl (ClassDeclaration *);
-extern tree get_cpp_typeinfo_decl (ClassDeclaration *);
 extern tree build_new_class_expr (ClassReferenceExp *expr);
 extern tree aggregate_initializer_decl (AggregateDeclaration *);
 extern tree layout_struct_initializer (StructDeclaration *);
@@ -458,10 +465,16 @@ extern tree build_return_dtor (Expression *, Type *, TypeFunction *);
 extern tree build_import_decl (Dsymbol *);
 
 /* In typeinfo.cc.  */
-extern tree build_typeinfo (Type *);
 extern tree layout_typeinfo (TypeInfoDeclaration *);
 extern tree layout_classinfo (ClassDeclaration *);
+extern tree get_typeinfo_decl (TypeInfoDeclaration *);
+extern tree get_classinfo_decl (ClassDeclaration *);
+extern tree build_typeinfo (Type *);
+extern void create_typeinfo (Type *, Module *);
+extern void create_tinfo_types (Module *);
 extern void layout_cpp_typeinfo (ClassDeclaration *);
+extern tree get_cpp_typeinfo_decl (ClassDeclaration *);
+extern bool speculative_type_p (Type *);
 
 /* In toir.cc.  */
 extern void push_binding_level (level_kind);

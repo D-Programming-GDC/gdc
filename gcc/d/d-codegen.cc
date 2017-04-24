@@ -95,6 +95,24 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
+/* Return a copy of record TYPE but safe to modify in any way.  */
+
+tree
+copy_aggregate_type (tree type)
+{
+  tree newtype = build_distinct_type_copy (type);
+  TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
+  TYPE_METHODS (newtype) = copy_list (TYPE_METHODS (type));
+
+  for (tree f = TYPE_FIELDS (newtype); f; f = DECL_CHAIN (f))
+    DECL_FIELD_CONTEXT (f) = newtype;
+
+  for (tree m = TYPE_METHODS (newtype); m; m = DECL_CHAIN (m))
+    DECL_CONTEXT (m) = newtype;
+
+  return newtype;
+}
+
 // Return TRUE if declaration DECL is a reference type.
 
 bool
@@ -1021,7 +1039,10 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 
 	  FOR_EACH_CONSTRUCTOR_ELT (init, idx, index, value)
 	    {
-	      if (index == field)
+	      /* If the index is NULL, then just assign it to the next field.
+		 This is expect of layout_typeinfo(), which generates a flat
+		 list of values that we must shape into the record type.  */
+	      if (index == field || index == NULL_TREE)
 		{
 		  init->ordered_remove(idx);
 		  if (!finished)

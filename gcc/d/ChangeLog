@@ -1,3 +1,40 @@
+2017-04-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (d_tree_index): Add DTI_VTABLE_ENTRY_TYPE,
+	DTI_VTBL_INTERFACE_TYPE, DTI_ARRAY_TYPE, and DTI_NULL_ARRAY.
+	(vtable_entry_type): New macro.
+	(vtbl_interface_type_node): New macro.
+	(array_type_node): New macro.
+	(null_array_node): New macro.
+	* d-builtins.cc (d_build_d_type_nodes): Initialize new trees.
+	* d-codegen.cc (build_struct_literal): Allow NULL index when
+	looking for next field to initialize.
+	(copy_aggregate_type): New function.
+	* d-target.cc (Target::loadModule): Look for object module,
+	call create_tinfo_types.
+	* decl.cc (TypeInfoDeclVisitor): Move to typeinfo.cc.
+	(get_typeinfo_decl): Likewise.
+	(copy_struct): Remove function.  Updated callers to use
+	copy_aggregate_type.
+	(layout_classinfo_interfaces): Move to typeinfo.cc.
+	(get_classinfo_decl): Likewise.
+	(get_cpp_typeinfo_decl): Likewise.
+	* typeinfo.cc (tinfo_kind): New enum.
+	(tinfo_types): New static variable.
+	(get_typeinfo_kind): New function.
+	(make_internal_typeinfo): New function.
+	(make_frontend_typeinfo): New function.
+	(create_tinfo_types): New function.
+	(TypeInfoVisitor::set_field): Remove function.
+	Update all callers to use layout_field.
+	(TypeInfoVisitor::layout_vtable): Remove function.
+	Update all callers to use layout_base.
+	(TypeInfoVisitor::layout_field): New function.
+	(TypeInfoVisitor::layout_base): New function.
+	(builtin_typeinfo_p): New function.
+	(genTypeInfo): Rename to create_typeinfo.
+	(isSpeculativeType): Rename to speculative_type_p.
+
 2017-04-23  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-tree.h (d_function_chain): Declare macro.  Update all uses of

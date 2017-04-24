@@ -34,6 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
+#include "d-codegen.h"
 #include "d-objfile.h"
 #include "id.h"
 
@@ -704,20 +705,33 @@ d_build_d_type_nodes (void)
   /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
   unknown_type_node = make_node (RECORD_TYPE);
 
+  /* Make sure we get a unique function type, so we can give
+     its pointer type a name.  (This wins for gdb).  */
   {
-    /* Make sure we get a unique function type, so we can give
-       its pointer type a name.  (This wins for gdb).  */
-    tree vtable_entry_type;
     tree vfunc_type = make_node (FUNCTION_TYPE);
     TREE_TYPE (vfunc_type) = int_type_node;
     TYPE_ARG_TYPES (vfunc_type) = NULL_TREE;
     layout_type (vfunc_type);
 
     vtable_entry_type = build_pointer_type (vfunc_type);
-
-    vtbl_ptr_type_node = build_pointer_type (vtable_entry_type);
-    layout_type (vtbl_ptr_type_node);
   }
+
+  vtbl_ptr_type_node = build_pointer_type (vtable_entry_type);
+  layout_type (vtbl_ptr_type_node);
+
+  /* When an object is accessed via an interface, this type appears
+     as the first entry in its vtable.  */
+  {
+    tree domain = build_index_type (size_int (3));
+    vtbl_interface_type_node = build_array_type (ptr_type_node, domain);
+  }
+
+  /* Use `void[]' as a generic dynamic array type.  */
+  array_type_node = make_two_field_type (size_type_node, ptr_type_node,
+					 NULL, "length", "ptr");
+
+  null_array_node = d_array_value (array_type_node, size_zero_node,
+				   null_pointer_node);
 }
 
 /* Handle default attributes.  */

@@ -587,57 +587,6 @@ get_decl_tree (Declaration *decl)
   return t;
 }
 
-/* Visitor to create the decl tree for typeinfo decls.  */
-
-class TypeInfoDeclVisitor : public Visitor
-{
-public:
-  TypeInfoDeclVisitor (void) {}
-
-  void visit (TypeInfoDeclaration *tid)
-  {
-    tree ident = get_identifier (tid->ident->toChars ());
-    tree type = TREE_TYPE (build_ctype (tid->type));
-
-    tid->csym = declare_extern_var (ident, type);
-    set_decl_location (tid->csym, tid);
-    DECL_LANG_SPECIFIC (tid->csym) = build_lang_decl (tid);
-
-    DECL_CONTEXT (tid->csym) = d_decl_context (tid);
-    TREE_READONLY (tid->csym) = 1;
-
-    /* Built-in typeinfo will be referenced as one-only.  */
-    gcc_assert (!tid->isInstantiated ());
-    d_comdat_linkage (tid->csym);
-  }
-
-  void visit (TypeInfoClassDeclaration *tid)
-  {
-    gcc_assert (tid->tinfo->ty == Tclass);
-    TypeClass *tc = (TypeClass *) tid->tinfo;
-    tid->csym = get_classinfo_decl (tc->sym);
-  }
-};
-
-/* Get the VAR_DECL of the TypeInfo for DECL.  If this does not yet exist,
-   create it.  The TypeInfo decl provides information about the type of a given
-   expression or object.  */
-
-tree
-get_typeinfo_decl (TypeInfoDeclaration *decl)
-{
-  if (decl->csym)
-    return decl->csym;
-
-  gcc_assert (decl->tinfo->ty != Terror);
-
-  TypeInfoDeclVisitor v = TypeInfoDeclVisitor ();
-  decl->accept (&v);
-  gcc_assert (decl->csym != NULL_TREE);
-
-  return decl->csym;
-}
-
 /* Thunk code is based on g++ */
 
 static int thunk_labelno;
@@ -895,24 +844,6 @@ make_thunk (FuncDeclaration *decl, int offset)
   return thunk;
 }
 
-/* Return a copy of TYPE but safe to modify in any way.  */
-
-static tree
-copy_struct (tree type)
-{
-  tree newtype = build_distinct_type_copy (type);
-  TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
-  TYPE_METHODS (newtype) = copy_list (TYPE_METHODS (type));
-
-  for (tree field = TYPE_FIELDS (newtype); field; field = DECL_CHAIN (field))
-    DECL_FIELD_CONTEXT (field) = newtype;
-
-  for (tree method = TYPE_METHODS (newtype); method; method = DECL_CHAIN (method))
-    DECL_CONTEXT (method) = newtype;
-
-  return newtype;
-}
-
 /* Convenience function for layout_moduleinfo_fields.  Adds a field of TYPE to
    REC_TYPE at OFFSET, incrementing the offset to the next field position.  */
 
@@ -933,7 +864,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
 {
   size_t offset = Module::moduleinfo->structsize;
 
-  type = copy_struct (type);
+  type = copy_aggregate_type (type);
 
   /* First fields added are all the function pointers.  */
   if (decl->sctor)
@@ -1017,117 +948,6 @@ get_moduleinfo_decl (Module *decl)
   return decl->csym;
 }
 
-/* Layout fields that immediately come after the classinfo TYPE for DECL if
-   there's any interfaces or interface vtables to be added.
-   This must be mirrored with base_vtable_offset().  */
-
-static tree
-layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
-{
-  size_t structsize = Type::typeinfoclass->structsize;
-  size_t alignsize = Type::typeinfoclass->alignsize;
-  tree orig_type = type;
-
-  if (decl->vtblInterfaces->dim)
-    {
-      size_t interfacesize = Type::typeinterface->structsize;
-      tree field;
-
-      type = copy_struct (type);
-
-      /* First layout the static array of Interface, which provides information
-	 about the vtables that follow.  */
-      if (Type::typeinterface)
-	{
-	  tree arrtype = make_array_type (Type::typeinterface->type,
-					  decl->vtblInterfaces->dim);
-	  field = create_field_decl (arrtype, NULL, 1, 1);
-	  insert_aggregate_field (decl->loc, type, field,
-				  Type::typeinfoclass->structsize);
-	  structsize += decl->vtblInterfaces->dim * interfacesize;
-	}
-
-      /* For each interface, layout each vtable.  */
-      for (size_t i = 0; i < decl->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *b = (*decl->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->sym;
-	  unsigned offset = base_vtable_offset (decl, b);
-
-	  if (id->vtbl.dim && offset != ~0u)
-	    {
-	      field = create_field_decl (make_array_type (Type::tvoidptr,
-							  id->vtbl.dim),
-					 NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
-	      structsize += id->vtbl.dim * Target::ptrsize;
-	    }
-	}
-    }
-
-  /* Layout the arrays of overriding interface vtables.  */
-  for (ClassDeclaration *bcd = decl->baseClass; bcd; bcd = bcd->baseClass)
-    {
-      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *b = (*bcd->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->sym;
-	  unsigned offset = base_vtable_offset (decl, b);
-
-	  if (id->vtbl.dim && offset != ~0u)
-	    {
-	      if (type == orig_type)
-		type = copy_struct (type);
-
-	      tree field = create_field_decl (make_array_type (Type::tvoidptr,
-							       id->vtbl.dim),
-					      NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
-	      structsize += id->vtbl.dim * Target::ptrsize;
-	    }
-	}
-    }
-
-  /* Update the type size and record mode for the classinfo type.  */
-  if (structsize != Type::typeinfoclass->structsize)
-    finish_aggregate_type (structsize, alignsize, type, NULL);
-
-  return type;
-}
-
-/* Get the VAR_DECL of the ClassInfo for DECL.  If this does not yet exist,
-   create it.  The ClassInfo decl provides information about the dynamic type
-   of a given class type or object.  */
-
-tree
-get_classinfo_decl (ClassDeclaration *decl)
-{
-  if (decl->csym)
-    return decl->csym;
-
-  InterfaceDeclaration *id = decl->isInterfaceDeclaration ();
-  tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
-
-  tree type = TREE_TYPE (build_ctype (Type::typeinfoclass->type));
-  type = layout_classinfo_interfaces (decl, type);
-
-  decl->csym = declare_extern_var (ident, type);
-  set_decl_location (decl->csym, decl);
-  DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
-
-  /* Class is a reference, want the record type.  */
-  DECL_CONTEXT (decl->csym) = TREE_TYPE (build_ctype (decl->type));
-  /* ClassInfo cannot be const data, because we use the monitor on it.  */
-  TREE_READONLY (decl->csym) = 0;
-
-  /* Could move setting comdat linkage to the caller, who knows whether
-     this classinfo is being emitted in this compilation.  */
-  if (decl->isInstantiated ())
-    d_comdat_linkage (decl->csym);
-
-  return decl->csym;
-}
-
 /* Get the VAR_DECL of the vtable symbol for DECL.  If this does not yet exist,
    create it.  The vtable is accessible via ClassInfo, but since it is needed
    frequently (like for rtti comparisons), make it directly accessible.  */
@@ -1161,40 +981,6 @@ get_vtable_decl (ClassDeclaration *decl)
     d_comdat_linkage (decl->vtblsym);
 
   return decl->vtblsym;
-}
-
-/* Get the VAR_DECL of the __cpp_type_info_ptr for DECL.  If this does not yet
-   exist, create it.  The __cpp_type_info_ptr decl is then initialized with a
-   pointer to the C++ typeinfo for the given class.  */
-
-tree
-get_cpp_typeinfo_decl (ClassDeclaration *decl)
-{
-  gcc_assert (decl->isCPPclass ());
-
-  if (decl->cpp_type_info_ptr_sym)
-    return decl->cpp_type_info_ptr_sym;
-
-  ClassDeclaration *cd = ClassDeclaration::cpp_type_info_ptr;
-  tree ident = make_internal_name (decl, "_cpp_type_info_ptr", "");
-  tree type = TREE_TYPE (build_ctype (cd->type));
-
-  decl->cpp_type_info_ptr_sym = declare_extern_var (ident, type);
-  set_decl_location (decl->cpp_type_info_ptr_sym, decl);
-  DECL_LANG_SPECIFIC (decl->cpp_type_info_ptr_sym) = build_lang_decl (NULL);
-
-  /* Class is a reference, want the record type.  */
-  DECL_CONTEXT (decl->cpp_type_info_ptr_sym)
-    = TREE_TYPE (build_ctype (decl->type));
-  TREE_READONLY (decl->cpp_type_info_ptr_sym) = 1;
-  DECL_EXTERNAL (decl->cpp_type_info_ptr_sym) = 0;
-
-  d_comdat_linkage (decl->cpp_type_info_ptr_sym);
-
-  /* Layout the initializer and emit the symbol.  */
-  layout_cpp_typeinfo (decl);
-
-  return decl->cpp_type_info_ptr_sym;
 }
 
 /* Get the VAR_DECL of a class instance representing EXPR as static data.

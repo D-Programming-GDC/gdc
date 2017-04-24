@@ -341,6 +341,7 @@ Target::paintAsType (Expression *expr, Type *type)
 
 /* Check imported module M for any special processing.
    Modules we look out for are:
+    - object: For D runtime type information.
     - gcc.builtins: For all gcc builtins.
     - core.stdc.*: For all gcc library builtins.  */
 
@@ -348,10 +349,15 @@ void
 Target::loadModule (Module *m)
 {
   ModuleDeclaration *md = m->md;
-  if (!md || !md->packages || !md->id)
+  if (!md || !md->id)
     return;
 
-  if (md->packages->dim == 1)
+  if (!md->packages)
+    {
+      if (!strcmp (md->id->toChars (), "object"))
+	create_tinfo_types (m);
+    }
+  else if (md->packages->dim == 1)
     {
       if (!strcmp ((*md->packages)[0]->toChars (), "gcc")
 	  && !strcmp (md->id->toChars (), "builtins"))
