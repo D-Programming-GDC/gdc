@@ -14545,16 +14545,6 @@ Expression *PrettyFuncInitExp::resolveLoc(Loc loc, Scope *sc)
 }
 
 /****************************************************************/
-#ifdef IN_GCC
-
-WrappedExp::WrappedExp(Loc loc, elem *e1, Type *type)
-    : Expression(loc, TOKcomma, sizeof(WrappedExp))
-{
-  this->e1 = e1;
-  this->type = type;
-}
-
-#endif
 
 Expression *extractOpDollarSideEffect(Scope *sc, UnaExp *ue)
 {

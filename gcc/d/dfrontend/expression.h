@@ -51,7 +51,6 @@ class SliceExp;
 struct UnionExp;
 
 #ifdef IN_GCC
-typedef union tree_node elem;
 typedef union tree_node Symbol;
 #else
 struct Symbol;          // back end symbol
@@ -1653,18 +1652,5 @@ void sliceAssignStringFromString(StringExp *existingSE, StringExp *newstr, size_
 int sliceCmpStringWithString(StringExp *se1, StringExp *se2, size_t lo1, size_t lo2, size_t len);
 int sliceCmpStringWithArray(StringExp *se1, ArrayLiteralExp *ae2, size_t lo1, size_t lo2, size_t len);
 
-#ifdef IN_GCC
-/****************************************************************/
-
-class WrappedExp : public Expression
-{
-public:
-    elem *e1;
-
-    WrappedExp(Loc loc, elem *e1, Type *type);
-    void accept(Visitor *v) { v->visit(this); }
-};
-
-#endif
 
 #endif /* DMD_EXPRESSION_H */

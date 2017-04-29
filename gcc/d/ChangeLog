@@ -1,3 +1,17 @@
+2017-04-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (start_function): Update signature.
+	(finish_function): Update signature.
+	(DeclVisitor::visit(FuncDeclaration)): Move function construction to
+	start_function.  Move function finalization to finish_function.
+	(set_function_end_locus): Remove function.
+	(d_finish_function): Remove function.
+	(build_simple_function_decl): Don't set frontend body.
+	(build_simple_function): Update signature.  Use start/finish function
+	to compile the body.
+	(emit_dso_registry_cdtor): Likewise.
+	* expr.cc (ExprVisitor::visit(WrappedExp)): Remove function.
+
 2017-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-diagnostic.cc (verror): Use xvasprintf.

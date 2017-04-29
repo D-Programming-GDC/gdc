@@ -24,12 +24,10 @@ extern void set_input_location (Dsymbol *decl);
 
 extern void set_decl_location (tree t, const Loc& loc);
 extern void set_decl_location (tree t, Dsymbol *decl);
-extern void set_function_end_locus (const Loc& loc);
 
 extern void d_comdat_linkage (tree decl);
 
 extern void d_finish_symbol (tree sym);
-extern void d_finish_function (FuncDeclaration *f);
 extern void d_finish_module();
 extern void d_finish_compilation (tree *vec, int len);
 

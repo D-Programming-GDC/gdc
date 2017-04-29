@@ -57,7 +57,7 @@
 #include "d-dmd-gcc.h"
 #include "id.h"
 
-static FuncDeclaration *build_call_function (const char *, vec<FuncDeclaration *>, bool);
+static tree build_call_function (const char *, vec<FuncDeclaration *>, bool);
 static tree build_emutls_function (vec<VarDeclaration *> tlsVars);
 static tree build_ctor_function (const char *, vec<FuncDeclaration *>, vec<VarDeclaration *>);
 static tree build_dtor_function (const char *, vec<FuncDeclaration *>);
@@ -130,38 +130,164 @@ gcc_attribute_p (Dsymbol *dsym)
 
 /* Create the FUNCTION_DECL for a function definition.
    This function creates a binding context for the function body
-   as well as setting up the FUNCTION_DECL in current_function_decl.  */
+   as well as setting up the FUNCTION_DECL in current_function_decl.
+   Returns the previous function context if it was already set.  */
 
-static void
-start_function (FuncDeclaration *decl)
+static tree
+start_function (FuncDeclaration *fd)
 {
+  tree fndecl = get_symbol_decl (fd);
+
+  /* If we are generating the function, but it's really extern.
+     Such as external inlinable functions or thunk aliases.  */
+  if (!fd->isInstantiated () && fd->getModule ()
+      && !fd->getModule ()->isRoot ())
+    {
+      TREE_STATIC (fndecl) = 0;
+      DECL_EXTERNAL (fndecl) = 1;
+    }
+  else
+    {
+      /* This function exists in static storage.  */
+      TREE_STATIC (fndecl) = 1;
+      DECL_EXTERNAL (fndecl) = 0;
+    }
+
+  if (!targetm.have_ctors_dtors)
+    {
+      if (DECL_STATIC_CONSTRUCTOR (fndecl))
+	static_ctor_list.safe_push (fd);
+      if (DECL_STATIC_DESTRUCTOR (fndecl))
+	static_dtor_list.safe_push (fd);
+    }
+
+  DECL_INITIAL (fndecl) = error_mark_node;
+
+  /* Add this decl to the current binding level.  */
+  d_pushdecl (fndecl);
+
+  /* Save the current function context.  */
+  tree old_context = current_function_decl;
+
+  if (old_context)
+    push_function_context ();
+
+  /* Let GCC know the current scope is this function.  */
+  current_function_decl = fndecl;
+
+  tree restype = TREE_TYPE (TREE_TYPE (fndecl));
+  tree resdecl = build_decl (UNKNOWN_LOCATION, RESULT_DECL, NULL_TREE, restype);
+
+  set_decl_location (resdecl, fd);
+  DECL_RESULT (fndecl) = resdecl;
+  DECL_CONTEXT (resdecl) = fndecl;
+  DECL_ARTIFICIAL (resdecl) = 1;
+  DECL_IGNORED_P (resdecl) = 1;
+
+  /* Initialize the RTL code for the function.  */
+  allocate_struct_function (fndecl, false);
+
+  /* Store the end of the function.  */
+  if (fd->endloc.filename)
+    cfun->function_end_locus = get_linemap (fd->endloc);
+  else
+    cfun->function_end_locus = DECL_SOURCE_LOCATION (fndecl);
+
   cfun->language = ggc_cleared_alloc<language_function> ();
-  cfun->language->function = decl;
+  cfun->language->function = fd;
 
   /* Default chain value is 'null' unless parent found.  */
   cfun->language->static_chain = null_pointer_node;
 
   /* Find module for this function.  */
-  for (Dsymbol *p = decl->parent; p != NULL; p = p->parent)
+  for (Dsymbol *p = fd->parent; p != NULL; p = p->parent)
     {
       cfun->language->module = p->isModule ();
       if (cfun->language->module)
 	break;
     }
   gcc_assert (cfun->language->module != NULL);
+
+  /* Begin the statement tree for this function.  */
+  push_stmt_list ();
+  push_binding_level (level_function);
+
+  return old_context;
 }
 
-/* Finish up a function declaration and compile that function
-   all the way to assembler language output.  The free the storage
-   for the function definition.  */
+/* Finish up a function declaration and compile that function all
+   the way to assembler language output.  The free the storage for
+   the function definition.  Restores the previous function context.  */
 
 static void
-finish_function (void)
+finish_function (tree old_context)
 {
-  gcc_assert (vec_safe_is_empty (cfun->language->stmt_list));
+  tree fndecl = current_function_decl;
 
+  /* Tie off the statement tree for this function.  */
+  tree block = pop_binding_level ();
+  tree body = pop_stmt_list ();
+  tree bind = build3 (BIND_EXPR, void_type_node,
+		      BLOCK_VARS (block), body, block);
+
+  gcc_assert (vec_safe_is_empty (d_function_chain->stmt_list));
+
+  /* Backend expects a statement list to come from somewhere, however
+     pop_stmt_list returns expressions when there is a single statement.
+     So here we create a statement list unconditionally.  */
+  if (TREE_CODE (body) != STATEMENT_LIST)
+    {
+      tree stmtlist = alloc_stmt_list ();
+      append_to_statement_list_force (body, &stmtlist);
+      BIND_EXPR_BODY (bind) = stmtlist;
+    }
+  else if (!STATEMENT_LIST_HEAD (body))
+    {
+      /* For empty functions add a void return.  */
+      append_to_statement_list_force (return_expr (NULL_TREE), &body);
+    }
+
+  DECL_SAVED_TREE (fndecl) = bind;
+
+  if (!errorcount && !global.errors)
+    {
+      /* Dump the D-specific tree IR.  */
+      int local_dump_flags;
+      FILE *dump_file = dump_begin (TDI_original, &local_dump_flags);
+      if (dump_file)
+	{
+	  fprintf (dump_file, "\n;; Function %s",
+		   lang_hooks.decl_printable_name (fndecl, 2));
+	  fprintf (dump_file, " (%s)\n",
+		   (!DECL_ASSEMBLER_NAME_SET_P (fndecl) ? "null"
+		    : IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl))));
+	  fprintf (dump_file, ";; enabled by -%s\n",
+		   dump_flag_name (TDI_original));
+	  fprintf (dump_file, "\n");
+
+	  if (local_dump_flags & TDF_RAW)
+	    dump_node (DECL_SAVED_TREE (fndecl),
+		       TDF_SLIM | local_dump_flags, dump_file);
+	  else
+	    print_generic_expr (dump_file, DECL_SAVED_TREE (fndecl),
+				local_dump_flags);
+	  fprintf (dump_file, "\n");
+
+	  dump_end (TDI_original, dump_file);
+	}
+
+      cgraph_node::finalize_function (fndecl, true);
+    }
+
+  /* We're leaving the context of this function, so free it.  */
   ggc_free (cfun->language);
   cfun->language = NULL;
+  set_cfun (NULL);
+
+  if (old_context)
+    pop_function_context ();
+
+  current_function_decl = old_context;
 }
 
 /* Implements the visitor interface to lower all Declaration AST classes
@@ -810,39 +936,14 @@ public:
 	return;
       }
 
+    if (global.params.verbose)
+      fprintf (global.stdmsg, "function  %s\n", d->toPrettyChars ());
+
     /* Start generating code for this function.  */
     gcc_assert (d->semanticRun == PASSsemantic3done);
     d->semanticRun = PASSobj;
 
-    if (global.params.verbose)
-      fprintf (global.stdmsg, "function  %s\n", d->toPrettyChars ());
-
-    /* This function exists in static storage.
-       (This does not mean `static' in the C sense!)  */
-    TREE_STATIC (fndecl) = 1;
-
-    /* Add this decl to the current binding level.  */
-    d_pushdecl (fndecl);
-
-    bool nested = current_function_decl != NULL_TREE;
-    if (nested)
-      push_function_context ();
-    current_function_decl = fndecl;
-
-    tree return_type = TREE_TYPE (TREE_TYPE (fndecl));
-    tree result_decl = build_decl (UNKNOWN_LOCATION, RESULT_DECL,
-				   NULL_TREE, return_type);
-
-    set_decl_location (result_decl, d);
-    DECL_RESULT (fndecl) = result_decl;
-    DECL_CONTEXT (result_decl) = fndecl;
-    DECL_ARTIFICIAL (result_decl) = 1;
-    DECL_IGNORED_P (result_decl) = 1;
-
-    allocate_struct_function (fndecl, false);
-    set_function_end_locus (d->endloc);
-
-    start_function (d);
+    tree old_context = start_function (d);
 
     tree parm_decl = NULL_TREE;
     tree param_list = NULL_TREE;
@@ -894,10 +995,6 @@ public:
 
     DECL_ARGUMENTS (fndecl) = param_list;
     rest_of_decl_compilation (fndecl, 1, 0);
-    DECL_INITIAL (fndecl) = error_mark_node;
-
-    push_stmt_list ();
-    push_binding_level (level_function);
     set_input_location (d->loc);
 
     /* If this is a member function that nested (possibly indirectly) in another
@@ -938,35 +1035,37 @@ public:
        This is only worth doing for functions that can return in memory.  */
     if (d->nrvo_can)
       {
-	if (!AGGREGATE_TYPE_P (return_type))
+	tree restype = TREE_TYPE (DECL_RESULT (fndecl));
+
+	if (!AGGREGATE_TYPE_P (restype))
 	  d->nrvo_can = 0;
 	else
-	  d->nrvo_can = aggregate_value_p (return_type, fndecl);
+	  d->nrvo_can = aggregate_value_p (restype, fndecl);
       }
 
     if (d->nrvo_can)
       {
-	TREE_TYPE (result_decl)
-	  = build_reference_type (TREE_TYPE (result_decl));
-	DECL_BY_REFERENCE (result_decl) = 1;
-	TREE_ADDRESSABLE (result_decl) = 0;
-	relayout_decl (result_decl);
+	tree resdecl = DECL_RESULT (fndecl);
+
+	TREE_TYPE (resdecl)
+	  = build_reference_type (TREE_TYPE (resdecl));
+	DECL_BY_REFERENCE (resdecl) = 1;
+	TREE_ADDRESSABLE (resdecl) = 0;
+	relayout_decl (resdecl);
 
 	if (d->nrvo_var)
 	  {
 	    tree var = get_symbol_decl (d->nrvo_var);
 
 	    /* Copy name from VAR to RESULT.  */
-	    DECL_NAME (result_decl) = DECL_NAME (var);
+	    DECL_NAME (resdecl) = DECL_NAME (var);
 	    /* Don't forget that we take it's address.  */
 	    TREE_ADDRESSABLE (var) = 1;
+	    resdecl = build_deref (resdecl);
 
-	    result_decl = build_deref (result_decl);
-
-	    SET_DECL_VALUE_EXPR (var, result_decl);
+	    SET_DECL_VALUE_EXPR (var, resdecl);
 	    DECL_HAS_VALUE_EXPR_P (var) = 1;
-
-	    SET_DECL_LANG_NRVO (var, result_decl);
+	    SET_DECL_LANG_NRVO (var, resdecl);
 	  }
       }
 
@@ -988,62 +1087,7 @@ public:
 	add_stmt (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
       }
 
-    /* Backend expects a statement list to come from somewhere, however
-       popStatementList returns expressions when there is a single statement.
-       So here we create a statement list unconditionally.  */
-    tree block = pop_binding_level ();
-    tree body = pop_stmt_list ();
-    tree bind = build3 (BIND_EXPR, void_type_node,
-			BLOCK_VARS (block), body, block);
-
-    if (TREE_CODE (body) != STATEMENT_LIST)
-      {
-	tree stmtlist = alloc_stmt_list ();
-	append_to_statement_list_force (body, &stmtlist);
-	BIND_EXPR_BODY (bind) = stmtlist;
-      }
-    else if (!STATEMENT_LIST_HEAD (body))
-      {
-	/* For empty functions: Without this, there is a segfault when inlined.
-	   Seen on build=ppc-linux but not others (why?).  */
-	tree ret = return_expr (NULL_TREE);
-	append_to_statement_list_force (ret, &body);
-      }
-
-    DECL_SAVED_TREE (fndecl) = bind;
-
-    if (!errorcount && !global.errors)
-      {
-	/* Dump the D-specific tree IR.  */
-	int local_dump_flags;
-	FILE *dump_file = dump_begin (TDI_original, &local_dump_flags);
-	if (dump_file)
-	  {
-	    fprintf (dump_file, "\n;; Function %s",
-		     lang_hooks.decl_printable_name (fndecl, 2));
-	    fprintf (dump_file, " (%s)\n",
-		     (!DECL_ASSEMBLER_NAME_SET_P (fndecl) ? "null"
-		      : IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl))));
-	    fprintf (dump_file, ";; enabled by -%s\n",
-		     dump_flag_name (TDI_original));
-	    fprintf (dump_file, "\n");
-
-	    if (local_dump_flags & TDF_RAW)
-	      dump_node (DECL_SAVED_TREE (fndecl),
-			 TDF_SLIM | local_dump_flags, dump_file);
-	    else
-	      print_generic_expr (dump_file, DECL_SAVED_TREE (fndecl),
-				  local_dump_flags);
-	    fprintf (dump_file, "\n");
-
-	    dump_end (TDI_original, dump_file);
-	  }
-      }
-
-    if (!errorcount && !global.errors)
-      d_finish_function (d);
-
-    finish_function ();
+    finish_function (old_context);
 
     /* If a static constructor, push into the current ModuleInfo.
        Checks for `shared' first because it derives from the non-shared
@@ -1073,14 +1117,6 @@ public:
     /* If a unittest function.  */
     if (d->isUnitTestDeclaration ())
       current_module_info->unitTests.safe_push (d);
-
-    if (nested)
-      pop_function_context ();
-    else
-      {
-	set_cfun (NULL);
-	current_function_decl = NULL;
-      }
   }
 };
 
@@ -1441,15 +1477,6 @@ set_decl_location (tree t, Dsymbol *decl)
   set_decl_location (t, loc);
 }
 
-void
-set_function_end_locus (const Loc& loc)
-{
-  if (loc.filename)
-    cfun->function_end_locus = get_linemap (loc);
-  else
-    cfun->function_end_locus = DECL_SOURCE_LOCATION (cfun->decl);
-}
-
 // Return the COMDAT group into which DECL should be placed.
 
 static tree
@@ -1569,37 +1596,6 @@ d_finish_symbol (tree decl)
   rest_of_decl_compilation (decl, 1, 0);
 }
 
-void
-d_finish_function(FuncDeclaration *fd)
-{
-  tree decl = get_symbol_decl (fd);
-
-  gcc_assert(TREE_CODE (decl) == FUNCTION_DECL);
-
-  // If we generated the function, but it's really extern.
-  // Such as external inlinable functions or thunk aliases.
-  if (!fd->isInstantiated() && fd->getModule() && !fd->getModule()->isRoot())
-    {
-      TREE_STATIC (decl) = 0;
-      DECL_EXTERNAL (decl) = 1;
-    }
-  else if (DECL_SAVED_TREE (decl) != NULL_TREE)
-    {
-      TREE_STATIC (decl) = 1;
-      DECL_EXTERNAL (decl) = 0;
-    }
-
-  if (!targetm.have_ctors_dtors)
-    {
-      if (DECL_STATIC_CONSTRUCTOR (decl))
-	static_ctor_list.safe_push(fd);
-      if (DECL_STATIC_DESTRUCTOR (decl))
-	static_dtor_list.safe_push(fd);
-    }
-
-  cgraph_node::finalize_function(decl, true);
-}
-
 // Wrapup all global declarations and start the final compilation.
 
 void
@@ -1676,10 +1672,10 @@ build_type_decl (tree type, Dsymbol *dsym)
   rest_of_decl_compilation(decl, SCOPE_FILE_SCOPE_P (decl), 0);
 }
 
-// Build but do not emit a function named NAME, whose function body is in EXPR.
+// Build but do not emit a function named NAME.
 
 static FuncDeclaration *
-build_simple_function_decl (const char *name, tree expr)
+build_simple_function_decl (const char *name)
 {
   Module *mod = current_module_decl;
 
@@ -1692,55 +1688,55 @@ build_simple_function_decl (const char *name, tree expr)
       name = IDENTIFIER_POINTER (s);
     }
 
-  TypeFunction *func_type = TypeFunction::create (0, Type::tvoid, 0, LINKc);
-  FuncDeclaration *func = new FuncDeclaration (mod->loc, mod->loc,
-					       Identifier::idPool (name), STCstatic, func_type);
-  func->loc = Loc(mod->srcfile->toChars(), 1, 0);
-  func->linkage = func_type->linkage;
-  func->parent = mod;
-  func->protection = PROTprivate;
-  func->semanticRun = PASSsemantic3done;
+  TypeFunction *tf = TypeFunction::create (0, Type::tvoid, 0, LINKc);
+  FuncDeclaration *fd = new FuncDeclaration (mod->loc, mod->loc,
+					     Identifier::idPool (name),
+					     STCstatic, tf);
+  fd->loc = Loc(mod->srcfile->toChars(), 1, 0);
+  fd->linkage = tf->linkage;
+  fd->parent = mod;
+  fd->protection = PROTprivate;
+  fd->semanticRun = PASSsemantic3done;
 
-  // %% Maybe remove the identifier
-  WrappedExp *body = new WrappedExp (mod->loc, expr, Type::tvoid);
-  func->fbody = ExpStatement::create (mod->loc, body);
-
-  return func;
+  return fd;
 }
 
 // Build and emit a function named NAME, whose function body is in EXPR.
 
-static FuncDeclaration *
+static tree
 build_simple_function (const char *name, tree expr, bool static_ctor)
 {
-  FuncDeclaration *func = build_simple_function_decl (name, expr);
-  tree func_decl = get_symbol_decl (func);
+  FuncDeclaration *fd = build_simple_function_decl (name);
+  tree decl = get_symbol_decl (fd);
 
   if (static_ctor)
-    DECL_STATIC_CONSTRUCTOR (func_decl) = 1;
+    DECL_STATIC_CONSTRUCTOR (decl) = 1;
 
   // D static ctors, dtors, unittests, and the ModuleInfo chain function
   // are always private (see setup_symbol_storage, default case)
-  TREE_PUBLIC (func_decl) = 0;
-  TREE_USED (func_decl) = 1;
+  TREE_PUBLIC (decl) = 0;
+  TREE_USED (decl) = 1;
 
-  build_decl_tree (func);
+  tree old_context = start_function (fd);
+  rest_of_decl_compilation (decl, 1, 0);
+  add_stmt (expr);
+  finish_function (old_context);
 
-  return func;
+  return decl;
 }
 
 // Build and emit a function identified by NAME that calls (in order)
 // the list of functions in FUNCTIONS.  If FORCE_P, create a new function
 // even if there is only one function to call in the list.
 
-static FuncDeclaration *
+static tree
 build_call_function (const char *name, vec<FuncDeclaration *> functions, bool force_p)
 {
   tree expr_list = NULL_TREE;
 
   // If there is only one function, just return that
   if (functions.length() == 1 && !force_p)
-    return functions[0];
+    return get_symbol_decl (functions[0]);
 
   Module *mod = current_module_decl;
   if (!mod)
@@ -1758,7 +1754,7 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   if (expr_list)
     return build_simple_function (name, expr_list, false);
 
-  return NULL;
+  return NULL_TREE;
 }
 
 // Build and emit a function that takes a scope
@@ -1852,10 +1848,7 @@ build_ctor_function (const char *name, vec<FuncDeclaration *> functions, vec<Var
     }
 
   if (expr_list)
-    {
-      FuncDeclaration *fd = build_simple_function (name, expr_list, false);
-      return get_symbol_decl (fd);
-    }
+    return build_simple_function (name, expr_list, false);
 
   return NULL;
 }
@@ -1880,10 +1873,7 @@ build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
     }
 
   if (expr_list)
-    {
-      FuncDeclaration *fd = build_simple_function (name, expr_list, false);
-      return get_symbol_decl (fd);
-    }
+    return build_simple_function (name, expr_list, false);
 
   return NULL;
 }
@@ -1894,8 +1884,7 @@ build_dtor_function (const char *name, vec<FuncDeclaration *> functions)
 static tree
 build_unittest_function (const char *name, vec<FuncDeclaration *> functions)
 {
-  FuncDeclaration *fd = build_call_function (name, functions, false);
-  return get_symbol_decl (fd);
+  return build_call_function (name, functions, false);
 }
 
 // Build a variable used in the dso_registry code. The variable is always
@@ -1948,11 +1937,29 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
   tree stop_minfo = build_dso_registry_var("__stop_minfo", ptr_type_node,
     NULL_TREE, false, true);
 
-  tree dso_type = build_ctype(compiler_dso_type->isStructDeclaration()->type);
-  tree registry_func = get_symbol_decl (dso_registry_func->isFuncDeclaration());
+  // extern(C) void gdc_dso_[c/d]tor() @hidden @weak @[con/de]structor
+  FuncDeclaration *fd = build_simple_function_decl(func_name);
+  tree decl = get_symbol_decl (fd);
+
+  set_decl_location(decl, current_module_decl);
+  TREE_PUBLIC (decl) = 1;
+  DECL_VISIBILITY (decl) = VISIBILITY_HIDDEN;
+  DECL_VISIBILITY_SPECIFIED (decl) = 1;
+
+  if (ctor_p)
+    DECL_STATIC_CONSTRUCTOR (decl) = 1;
+  else
+    DECL_STATIC_DESTRUCTOR (decl) = 1;
+
+  d_comdat_linkage(decl);
+
+  tree old_context = start_function (fd);
+  rest_of_decl_compilation (decl, 1, 0);
 
   // dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
+  tree dso_type = build_ctype(compiler_dso_type->isStructDeclaration()->type);
   vec<constructor_elt, va_gc> *ve = NULL;
+
   CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(dso_type,
 						   get_identifier("_version")),
 			  build_int_cst(size_type_node, 1));
@@ -1965,12 +1972,11 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
   CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field(dso_type,
 						   get_identifier("_minfo_end")),
 			  build_address(stop_minfo));
-  tree dso_data = build_decl(BUILTINS_LOCATION, VAR_DECL,
-			     get_identifier("dso"), dso_type);
-  set_decl_location(dso_data, current_module_decl);
-  tree set_dso_expr = modify_expr (dso_data, build_struct_literal(dso_type, ve));
 
-  rest_of_decl_compilation(dso_data, 1, 0);
+  tree dso_data = build_local_temp (dso_type);
+  set_decl_location(dso_data, current_module_decl);
+
+  tree fbody = modify_expr (dso_data, build_struct_literal(dso_type, ve));
 
   // if (!(gdc_dso_initialized == %init_condition))
   // {
@@ -1980,36 +1986,14 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
   // }
   tree condition = build_boolop(NE_EXPR, dso_initialized, init_condition);
   tree assign_expr = modify_expr(dso_initialized, init_condition);
-  assign_expr = compound_expr (set_dso_expr, assign_expr);
-  tree call_expr = d_build_call_nary(registry_func, 1,
-    build_address(dso_data));
-  tree func_body = build_vcondition(condition, compound_expr(assign_expr,
-    call_expr), void_node);
+  fbody = compound_expr (fbody, assign_expr);
 
-  // extern(C) void gdc_dso_[c/d]tor() @hidden @weak @[con/de]structor
-  FuncDeclaration *func_decl = build_simple_function_decl(func_name, func_body);
-  tree func_tree = get_symbol_decl (func_decl);
+  tree registry_func = get_symbol_decl (dso_registry_func->isFuncDeclaration());
+  tree call_expr = d_build_call_nary(registry_func, 1, build_address(dso_data));
+  fbody = compound_expr(fbody, call_expr);
 
-  // Setup bindings for stack variable dso_data
-  tree block = make_node(BLOCK);
-  BLOCK_VARS (block) = dso_data;
-  TREE_CHAIN (dso_data) = NULL_TREE;
-  DECL_CONTEXT (dso_data) = func_tree;
-  func_body = build3 (BIND_EXPR, void_type_node, BLOCK_VARS (block), func_body, block);
-  ((WrappedExp *)((ExpStatement *)func_decl->fbody)->exp)->e1 = func_body;
-
-  set_decl_location(func_tree, current_module_decl);
-  TREE_PUBLIC (func_tree) = 1;
-  DECL_VISIBILITY (func_tree) = VISIBILITY_HIDDEN;
-  DECL_VISIBILITY_SPECIFIED (func_tree) = 1;
-
-  if (ctor_p)
-    DECL_STATIC_CONSTRUCTOR (func_tree) = 1;
-  else
-    DECL_STATIC_DESTRUCTOR (func_tree) = 1;
-
-  d_comdat_linkage(func_tree);
-  build_decl_tree (func_decl);
+  add_stmt (build_vcondition (condition, fbody, void_node));
+  finish_function (old_context);
 }
 
 // Build and emit the helper functions for the DSO registry code, including
