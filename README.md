@@ -1,4 +1,4 @@
-[![Build Status](https://semaphoreci.com/api/v1/projects/3938c9ef-a0bf-497f-876c-3e722c051ace/464551/badge.svg)](https://semaphoreci.com/d-programming-gdc/gdc)
+[![Build Status](https://semaphoreci.com/api/v1/d-programming-gdc/gdc/branches/master/badge.svg)](https://semaphoreci.com/d-programming-gdc/gdc)
 
 ### What is GDC?
 
@@ -14,8 +14,6 @@ Work is currently under way to merge GDC into a future release of GCC. Any assit
 
 The master branch of this project closely follows [GCC development branch][gcc-devel], which if you intend to use GDC for production applications, is likely not the version of GCC you want to build against.  For versions of GDC compatible with GCC releases, checkout one of the following branches:
 
-* [GCC 4.7.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-4.7)
-* [GCC 4.8.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-4.8)
 * [GCC 4.9.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-4.9)
 * [GCC 5.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-5)
 * [GCC 6.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-6)
