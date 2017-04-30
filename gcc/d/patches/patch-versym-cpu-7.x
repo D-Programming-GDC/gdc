@@ -121,7 +121,7 @@ for all supported architectures. And these where appropriate:
  /* The processor for which instructions should be scheduled.  */
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -668,6 +668,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -669,6 +669,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
  
@@ -244,7 +244,7 @@ for all supported architectures. And these where appropriate:
    do								\
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -821,6 +821,28 @@ extern unsigned char rs6000_recip_bits[];
+@@ -822,6 +822,28 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -275,7 +275,7 @@ for all supported architectures. And these where appropriate:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- a/gcc/config/s390/s390.h
 +++ b/gcc/config/s390/s390.h
-@@ -177,6 +177,22 @@ enum processor_flags
+@@ -194,6 +194,22 @@ enum processor_flags
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() s390_cpu_cpp_builtins (pfile)
  

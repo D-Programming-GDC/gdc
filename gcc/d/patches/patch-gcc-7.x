@@ -4,7 +4,7 @@ relevant documentation about the GDC front end.
 
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -31381,7 +31381,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -31548,7 +31548,8 @@ rs6000_output_function_epilogue (FILE *file,
        if (lang_GNU_C ()
  	  || ! strcmp (language_string, "GNU GIMPLE")
  	  || ! strcmp (language_string, "GNU Go")
@@ -52,7 +52,7 @@ relevant documentation about the GDC front end.
  
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -1346,6 +1346,15 @@ called @dfn{specs}.
+@@ -1350,6 +1350,15 @@ called @dfn{specs}.
  Ada source code file containing a library unit body (a subprogram or
  package body).  Such files are also called @dfn{bodies}.
  
@@ -68,7 +68,7 @@ relevant documentation about the GDC front end.
  @c GCC also knows about some suffixes for languages not yet included:
  @c Pascal:
  @c @var{file}.p
-@@ -1381,6 +1390,7 @@ objective-c  objective-c-header  objective-c-cpp-output
+@@ -1385,6 +1394,7 @@ objective-c  objective-c-header  objective-c-cpp-output
  objective-c++ objective-c++-header objective-c++-cpp-output
  assembler  assembler-with-cpp
  ada
@@ -109,7 +109,7 @@ relevant documentation about the GDC front end.
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
-@@ -5049,6 +5049,16 @@ is_ada (void)
+@@ -5079,6 +5079,16 @@ is_ada (void)
    return lang == DW_LANG_Ada95 || lang == DW_LANG_Ada83;
  }
  
@@ -126,7 +126,7 @@ relevant documentation about the GDC front end.
  /* Remove the specified attribute if present.  Return TRUE if removal
     was successful.  */
  
-@@ -23549,6 +23559,8 @@ gen_compile_unit_die (const char *filename)
+@@ -23594,6 +23604,8 @@ gen_compile_unit_die (const char *filename)
  	language = DW_LANG_ObjC;
        else if (strcmp (language_string, "GNU Objective-C++") == 0)
  	language = DW_LANG_ObjC_plus_plus;
@@ -135,7 +135,7 @@ relevant documentation about the GDC front end.
        else if (dwarf_version >= 5 || !dwarf_strict)
  	{
  	  if (strcmp (language_string, "GNU Go") == 0)
-@@ -25076,7 +25088,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -25158,7 +25170,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
  
    if (ns_context != context_die)
      {
@@ -144,7 +144,7 @@ relevant documentation about the GDC front end.
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, NULL, ns_context);
-@@ -25099,7 +25111,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -25181,7 +25193,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -153,7 +153,7 @@ relevant documentation about the GDC front end.
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -25166,7 +25178,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
+@@ -25248,7 +25260,7 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
        break;
  
      case CONST_DECL:
@@ -162,7 +162,7 @@ relevant documentation about the GDC front end.
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -25711,7 +25723,7 @@ dwarf2out_decl (tree decl)
+@@ -25795,7 +25807,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
