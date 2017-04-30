@@ -76,9 +76,6 @@ ClassDeclaration *Type::typeinfoinvariant;
 ClassDeclaration *Type::typeinfoshared;
 ClassDeclaration *Type::typeinfowild;
 
-#ifdef IN_GCC
-StructDeclaration *Type::typeinterface;
-#endif
 TemplateDeclaration *Type::rtinfo;
 
 Type *Type::tvoid;

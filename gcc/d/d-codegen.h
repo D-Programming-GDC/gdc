@@ -29,14 +29,8 @@ enum LibCall
 };
 
 // Code generation routines.
-extern void push_binding_level(level_kind kind);
-extern tree pop_binding_level();
-
-extern void push_stmt_list();
-extern tree pop_stmt_list();
-extern void add_stmt(tree t);
-
 extern tree d_decl_context (Dsymbol *dsym);
+extern tree copy_aggregate_type (tree);
 
 extern tree d_mark_addressable (tree exp);
 extern tree d_mark_used (tree exp);
@@ -60,12 +54,9 @@ extern tree build_float_modulus (tree type, tree t1, tree t2);
 extern tree indirect_ref (tree type, tree exp);
 extern tree build_deref (tree exp);
 
+extern tree create_temporary_var(tree);
+extern tree maybe_temporary_var(tree, tree *);
 extern tree bind_expr (tree var_chain, tree body);
-
-extern tree define_label(Statement *s, Identifier *ident = NULL);
-extern tree lookup_label(Statement *s, Identifier *ident = NULL);
-extern tree lookup_bc_label(Statement *s, bc_kind);
-extern void check_goto(Statement *from, Statement *to);
 
 // Simple constants
 extern tree build_integer_cst (dinteger_t value, tree type = int_type_node);
@@ -112,15 +103,6 @@ extern tree build_vthis_type(tree basetype, tree type);
 
 // Static chain for nested functions
 extern tree get_frame_for_symbol(Dsymbol *sym);
-
-// Local variables
-extern void build_local_var(VarDeclaration *vd);
-extern tree build_local_temp(tree type);
-extern tree create_temporary_var(tree type);
-extern tree maybe_temporary_var(tree exp, tree *out_var);
-extern void expand_decl(tree decl);
-
-extern tree get_decl_tree(Declaration *decl);
 
 // Temporaries (currently just SAVE_EXPRs)
 extern tree d_save_expr (tree t);

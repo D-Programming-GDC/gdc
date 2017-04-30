@@ -1,3 +1,132 @@
+2017-04-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (start_function): Update signature.
+	(finish_function): Update signature.
+	(DeclVisitor::visit(FuncDeclaration)): Move function construction to
+	start_function.  Move function finalization to finish_function.
+	(set_function_end_locus): Remove function.
+	(d_finish_function): Remove function.
+	(build_simple_function_decl): Don't set frontend body.
+	(build_simple_function): Update signature.  Use start/finish function
+	to compile the body.
+	(emit_dso_registry_cdtor): Likewise.
+	* expr.cc (ExprVisitor::visit(WrappedExp)): Remove function.
+
+2017-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc (verror): Use xvasprintf.
+	(verrorSupplemental): Likewise.
+	(vwarning): Likewise.
+	(vwarningSupplemental): Likewise.
+	(vdeprecation): Likewise.
+	(vdeprecationSupplemental): Likewise.
+
+2017-04-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (d_tree_index): Add DTI_VTABLE_ENTRY_TYPE,
+	DTI_VTBL_INTERFACE_TYPE, DTI_ARRAY_TYPE, and DTI_NULL_ARRAY.
+	(vtable_entry_type): New macro.
+	(vtbl_interface_type_node): New macro.
+	(array_type_node): New macro.
+	(null_array_node): New macro.
+	* d-builtins.cc (d_build_d_type_nodes): Initialize new trees.
+	* d-codegen.cc (build_struct_literal): Allow NULL index when
+	looking for next field to initialize.
+	(copy_aggregate_type): New function.
+	* d-target.cc (Target::loadModule): Look for object module,
+	call create_tinfo_types.
+	* decl.cc (TypeInfoDeclVisitor): Move to typeinfo.cc.
+	(get_typeinfo_decl): Likewise.
+	(copy_struct): Remove function.  Updated callers to use
+	copy_aggregate_type.
+	(layout_classinfo_interfaces): Move to typeinfo.cc.
+	(get_classinfo_decl): Likewise.
+	(get_cpp_typeinfo_decl): Likewise.
+	* typeinfo.cc (tinfo_kind): New enum.
+	(tinfo_types): New static variable.
+	(get_typeinfo_kind): New function.
+	(make_internal_typeinfo): New function.
+	(make_frontend_typeinfo): New function.
+	(create_tinfo_types): New function.
+	(TypeInfoVisitor::set_field): Remove function.
+	Update all callers to use layout_field.
+	(TypeInfoVisitor::layout_vtable): Remove function.
+	Update all callers to use layout_base.
+	(TypeInfoVisitor::layout_field): New function.
+	(TypeInfoVisitor::layout_base): New function.
+	(builtin_typeinfo_p): New function.
+	(genTypeInfo): Rename to create_typeinfo.
+	(isSpeculativeType): Rename to speculative_type_p.
+
+2017-04-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-tree.h (d_function_chain): Declare macro.  Update all uses of
+	`cfun->language' to use it.
+
+2017-04-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc: Rename to decl.cc.
+	(get_symbol_decl): Handle typeinfo declarations.
+	(declare_extern_var): New function.
+	(declare_local_var): New function.
+	(get_moduleinfo_decl): Call declare_extern_var.
+	(get_classinfo_decl): Likewise.
+	(get_vtable_decl): Likewise.
+	(get_cpp_typeinfo_decl): Likewise.
+	(aggregate_initializer_decl): Likewise.
+	(enum_initializer_decl): Likewise.
+	* Make-lang.in (D_OBJS): Update.
+	* d-codegen.cc (build_local_var): Remove function.
+	Updated all callers to use declare_local_var.
+	(build_local_temp): Move to decl.cc.
+	(get_decl_tree): Likewise.
+	(expand_decl): Remove function.
+	(build_closure): Inline expand_decl here.
+
+2017-04-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (pop_binding_label): Move to toir.cc.
+	(pop_label): Likewise.
+	(push_binding_level): Likewise
+	(pop_binding_level): Likewise.
+	(push_stmt_list): Likewise.
+	(add_stmt): Likewise.
+	(check_goto): Move to toir.cc, make it a member of IRVisitor.
+	(check_previous_goto): Likewise.
+	(lookup_label): Likewise.
+	(lookup_bc_label): Likewise.
+	(define_label): Likewise.
+	* toir.cc (build_ir): Rename to build_function_body.
+
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc: Update includes.
+
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang-specs.h: Remove capitalized D source suffixes.
+
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang-specs.h: Add rule for forwarding -iprefix and -imultilib to the
+	compiler proper.
+
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang-specs.h: Remove cc1d spec.
+
+2017-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* lang-specs.h: Remove +e handling.
+
+2017-04-18  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc: New file.
+	* d-frontend.cc: New file.
+	* d-glue.cc: Remove file.
+	* d-port.cc: Remove file.
+	* d-longdouble.h (template<typename T> operator): Remove operators.
+
 2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-incpath.cc (add_env_var_paths): Rename to add_environment_paths.
@@ -25,6 +154,10 @@
 2017-04-17  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_FRONTEND_OBJS): Update to match new source names.
+
+2017-04-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* gdc.texi: Rewrite documentation for manpages.
 
 2017-04-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
