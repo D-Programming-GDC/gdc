@@ -34,9 +34,6 @@ class Nspace : public ScopeDsymbol
     const char *kind();
     Nspace *isNspace() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();
-#endif
 };
 
 #endif /* DMD_NSPACE_H */

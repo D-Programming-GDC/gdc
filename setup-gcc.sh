@@ -1,6 +1,11 @@
 #!/bin/sh
+d_gdcsrc=$(realpath $(dirname $0))
+d_gccsrc=
+d_update_gcc=0
+top=$(pwd)
+
 # -1. Make sure we know where the top-level GCC source directory is
-if test -d gcc && test -d gcc/d && test -d gcc/testsuite/gdc.test; then
+if test -d "$d_gdcsrc/gcc" && test -d "$d_gdcsrc/gcc/d" && test -d "$d_gdcsrc/gcc/testsuite/gdc.test"; then
     if test $# -eq 0; then
         echo "Usage: $0 [OPTION] PATH"
         exit 1
@@ -9,10 +14,6 @@ else
     echo "This script must be run from the top-level D source directory."
     exit 1
 fi
-
-d_gccsrc=
-d_update_gcc=0
-top=`pwd`
 
 # Read command line arguments
 for arg in "$@"; do
@@ -49,7 +50,7 @@ echo "found gcc version $gcc_ver"
 gcc_patch_key=${gcc_ver}.x
 
 # 1. Determine if this version of GCC is supported
-if test ! -f "gcc/d/patches/patch-gcc-$gcc_patch_key"; then
+if test ! -f "$d_gdcsrc/gcc/d/patches/patch-gcc-$gcc_patch_key"; then
     echo "This version of GCC ($gcc_ver) is not supported."
     exit 1
 fi
@@ -74,12 +75,12 @@ fi
 
 
 # 2. Copy sources
-ln -s "$top/gcc/d" "$d_gccsrc/gcc/d"   && \
-  mkdir "$d_gccsrc/libphobos"          && \
-  cd "$d_gccsrc/libphobos"             && \
-  ../symlink-tree "$top/libphobos"     && \
-  cd "../gcc/testsuite"                && \
-  ../../symlink-tree "$top/gcc/testsuite" && \
+ln -s "$d_gdcsrc/gcc/d" "$d_gccsrc/gcc/d"   && \
+  mkdir "$d_gccsrc/libphobos"               && \
+  cd "$d_gccsrc/libphobos"                  && \
+  ../symlink-tree "$d_gdcsrc/libphobos"     && \
+  cd "../gcc/testsuite"                     && \
+  ../../symlink-tree "$d_gdcsrc/gcc/testsuite" && \
   cd $top
 
 

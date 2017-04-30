@@ -1,5 +1,5 @@
-/* d-target.cc -- D frontend interface to gcc backend.
-   Copyright (C) 2013-2016 Free Software Foundation, Inc.
+/* d-target.cc -- Target interface for the D frontend.
+   Copyright (C) 2013-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-tree.h"
 #include "d-codegen.h"
 
+/* Type size information used by frontend.  */
 int Target::ptrsize;
 int Target::c_longsize;
 int Target::realsize;
@@ -37,17 +38,96 @@ int Target::realalignsize;
 bool Target::reverseCppOverloads;
 bool Target::cppExceptions;
 int Target::classinfosize;
+unsigned long long Target::maxStaticDataSize;
 
+/* Floating point constants for for .max, .min, and other properties.  */
+template <typename T> real_t Target::FPTypeProperties<T>::max;
+template <typename T> real_t Target::FPTypeProperties<T>::min_normal;
+template <typename T> real_t Target::FPTypeProperties<T>::nan;
+template <typename T> real_t Target::FPTypeProperties<T>::snan;
+template <typename T> real_t Target::FPTypeProperties<T>::infinity;
+template <typename T> real_t Target::FPTypeProperties<T>::epsilon;
+template <typename T> d_int64 Target::FPTypeProperties<T>::dig;
+template <typename T> d_int64 Target::FPTypeProperties<T>::mant_dig;
+template <typename T> d_int64 Target::FPTypeProperties<T>::max_exp;
+template <typename T> d_int64 Target::FPTypeProperties<T>::min_exp;
+template <typename T> d_int64 Target::FPTypeProperties<T>::max_10_exp;
+template <typename T> d_int64 Target::FPTypeProperties<T>::min_10_exp;
+
+
+/* Initialize the floating point constants for TYPE.  */
+
+template <typename T>
+static void
+define_float_constants (tree type)
+{
+  const double log10_2 = 0.30102999566398119521;
+  char buf[128];
+
+  /* Get backend real mode format.  */
+  const machine_mode mode = TYPE_MODE (type);
+  const real_format *fmt = REAL_MODE_FORMAT (mode);
+
+  /* The largest representable value that's not infinity.  */
+  get_max_float (fmt, buf, sizeof (buf));
+  real_from_string (&T::max.rv (), buf);
+
+  /* The smallest representable normalized value that's not 0.  */
+  snprintf (buf, sizeof (buf), "0x1p%d", fmt->emin - 1);
+  real_from_string (&T::min_normal.rv (), buf);
+
+  /* Floating-point NaN.  */
+  real_nan (&T::nan.rv (), "", 1, mode);
+
+  /* Signalling floating-point NaN.  */
+  real_nan (&T::snan.rv (), "", 0, mode);
+
+  /* Floating-point +Infinity if the target supports infinities.  */
+  real_inf (&T::infinity.rv ());
+
+  /* The smallest increment to the value 1.  */
+  if (fmt->pnan < fmt->p)
+    snprintf (buf, sizeof (buf), "0x1p%d", fmt->emin - fmt->p);
+  else
+    snprintf (buf, sizeof (buf), "0x1p%d", 1 - fmt->p);
+  real_from_string (&T::epsilon.rv (), buf);
+
+  /* The number of decimal digits of precision.  */
+  T::dig = (fmt->p - 1) * log10_2;
+
+  /* The number of bits in mantissa.  */
+  T::mant_dig = fmt->p;
+
+  /* The maximum int value such that 2** (value-1) is representable.  */
+  T::max_exp = fmt->emax;
+
+  /* The minimum int value such that 2** (value-1) is representable as a
+     normalized value.  */
+  T::min_exp = fmt->emin;
+
+  /* The maximum int value such that 10**value is representable.  */
+  T::max_10_exp = fmt->emax * log10_2;
+
+  /* The minimum int value such that 10**value is representable as a
+     normalized value.  */
+  T::min_10_exp = (fmt->emin - 1) * log10_2;
+}
+
+/* Initialize all variables of the Target structure.  */
 
 void
-Target::init (void)
+Target::_init (void)
 {
   /* Map D frontend type and sizes to GCC backend types.  */
-  realsize = int_size_in_bytes (long_double_type_node);
-  realpad = realsize - (TYPE_PRECISION (long_double_type_node) / BITS_PER_UNIT);
-  realalignsize = TYPE_ALIGN_UNIT (long_double_type_node);
-  reverseCppOverloads = false;
-  cppExceptions = true;
+  Target::realsize = int_size_in_bytes (long_double_type_node);
+  Target::realpad = (Target::realsize -
+		     (TYPE_PRECISION (long_double_type_node) / BITS_PER_UNIT));
+  Target::realalignsize = TYPE_ALIGN_UNIT (long_double_type_node);
+  Target::reverseCppOverloads = false;
+  Target::cppExceptions = true;
+
+  /* Allow data sizes up to half of the address space.  */
+  Target::maxStaticDataSize = tree_to_shwi (TYPE_MAXVAL (ptrdiff_type_node));
 
   /* Define what type to use for size_t, ptrdiff_t.  */
   if (POINTER_SIZE == 64)
@@ -66,10 +146,24 @@ Target::init (void)
   Type::tptrdiff_t = Type::basic[Tptrdiff_t];
   Type::thash_t = Type::tsize_t;
 
-  ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
-  c_longsize = int_size_in_bytes (long_integer_type_node);
+  Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
+  Target::c_longsize = int_size_in_bytes (long_integer_type_node);
 
-  classinfosize = 19 * ptrsize;
+  Target::classinfosize = 19 * ptrsize;
+
+  /* Initialize all compile-time properties for floating point types.
+     Should ensure that our real_t type is able to represent real_value.  */
+  gcc_assert (sizeof (real_t) >= sizeof (real_value));
+
+  define_float_constants <Target::FloatProperties> (float_type_node);
+  define_float_constants <Target::DoubleProperties> (double_type_node);
+  define_float_constants <Target::RealProperties> (long_double_type_node);
+
+  /* Commonly used floating point constants.  */
+  CTFloat::zero = dconst0;
+  CTFloat::one = dconst1;
+  CTFloat::minusone = dconstm1;
+  CTFloat::half = dconsthalf;
 }
 
 /* Return GCC memory alignment size for type TYPE.  */
@@ -227,7 +321,7 @@ Target::paintAsType (Expression *expr, Type *type)
 
       cst = native_interpret_expr (vectype, buffer, len);
 
-      Expression *e = build_expression (cst);
+      Expression *e = d_eval_constant_expression (cst);
       gcc_assert (e != NULL && e->op == TOKvector);
 
       return ((VectorExp *) e)->e1;
@@ -237,7 +331,7 @@ Target::paintAsType (Expression *expr, Type *type)
       /* Normal interpret cast.  */
       cst = native_interpret_expr (build_ctype (type), buffer, len);
 
-      Expression *e = build_expression (cst);
+      Expression *e = d_eval_constant_expression (cst);
       gcc_assert (e != NULL);
 
       return e;
@@ -246,6 +340,7 @@ Target::paintAsType (Expression *expr, Type *type)
 
 /* Check imported module M for any special processing.
    Modules we look out for are:
+    - object: For D runtime type information.
     - gcc.builtins: For all gcc builtins.
     - core.stdc.*: For all gcc library builtins.  */
 
@@ -253,19 +348,24 @@ void
 Target::loadModule (Module *m)
 {
   ModuleDeclaration *md = m->md;
-  if (!md || !md->packages || !md->id)
+  if (!md || !md->id)
     return;
 
-  if (md->packages->dim == 1)
+  if (!md->packages)
     {
-      if (!strcmp ((*md->packages)[0]->toChars(), "gcc")
-	  && !strcmp (md->id->toChars(), "builtins"))
+      if (!strcmp (md->id->toChars (), "object"))
+	create_tinfo_types (m);
+    }
+  else if (md->packages->dim == 1)
+    {
+      if (!strcmp ((*md->packages)[0]->toChars (), "gcc")
+	  && !strcmp (md->id->toChars (), "builtins"))
 	d_build_builtins_module (m);
     }
   else if (md->packages->dim == 2)
     {
-      if (!strcmp ((*md->packages)[0]->toChars(), "core")
-	  && !strcmp ((*md->packages)[1]->toChars(), "stdc"))
+      if (!strcmp ((*md->packages)[0]->toChars (), "core")
+	  && !strcmp ((*md->packages)[1]->toChars (), "stdc"))
 	builtin_modules.push (m);
     }
 }

@@ -51,8 +51,6 @@ class SliceExp;
 struct UnionExp;
 
 #ifdef IN_GCC
-typedef union tree_node dt_t;
-typedef union tree_node elem;
 typedef union tree_node Symbol;
 #else
 struct Symbol;          // back end symbol
@@ -80,7 +78,7 @@ Expression *doCopyOrMove(Scope *sc, Expression *e);
 Expression *resolveOpDollar(Scope *sc, ArrayExp *ae, Expression **pe0);
 Expression *resolveOpDollar(Scope *sc, ArrayExp *ae, IntervalExp *ie, Expression **pe0);
 Expression *integralPromotions(Expression *e, Scope *sc);
-void discardValue(Expression *e);
+bool discardValue(Expression *e);
 bool isTrivialExp(Expression *e);
 
 int isConst(Expression *e);
@@ -137,7 +135,7 @@ public:
     unsigned char parens;       // if this is a parenthesized expression
 
     Expression(Loc loc, TOK op, int size);
-    static void init();
+    static void _init();
     Expression *copy();
     virtual Expression *syntaxCopy();
     virtual Expression *semantic(Scope *sc);
@@ -1654,18 +1652,5 @@ void sliceAssignStringFromString(StringExp *existingSE, StringExp *newstr, size_
 int sliceCmpStringWithString(StringExp *se1, StringExp *se2, size_t lo1, size_t lo2, size_t len);
 int sliceCmpStringWithArray(StringExp *se1, ArrayLiteralExp *ae2, size_t lo1, size_t lo2, size_t len);
 
-#ifdef IN_GCC
-/****************************************************************/
-
-class WrappedExp : public Expression
-{
-public:
-    elem *e1;
-
-    WrappedExp(Loc loc, elem *e1, Type *type);
-    void accept(Visitor *v) { v->visit(this); }
-};
-
-#endif
 
 #endif /* DMD_EXPRESSION_H */
