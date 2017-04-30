@@ -43,28 +43,29 @@ error (const Loc& loc, const char *format, ...)
 
 void
 verror (const Loc& loc, const char *format, va_list ap,
-       const char *p1, const char *p2, const char *)
+	const char *p1, const char *p2, const char *)
 {
   if (!global.gag || global.params.showGaggedErrors)
     {
       location_t location = get_linemap (loc);
-      char *msg;
+      char *msg = xvasprintf (format, ap);
+      char *prefix = NULL;
 
       /* Build string and emit.  */
-      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
-	{
-	  if (p2)
-	    msg = concat (p2, " ", msg, NULL);
+      if (p2 != NULL)
+	prefix = xasprintf ("%s %s ", p1, p2);
+      else if (p1 != NULL)
+	prefix = xasprintf ("%s ", p1);
 
-	  if (p1)
-	    msg = concat (p1, " ", msg, NULL);
+      if (global.gag)
+	emit_diagnostic (DK_ANACHRONISM, location, 0, "(spec:%d) %s%s",
+			 global.gag, prefix ? prefix : "", msg);
+      else
+	error_at (location, "%s%s", prefix ? prefix : "", msg);
 
-	  if (global.gag)
-	    emit_diagnostic (DK_ANACHRONISM, location, 0,
-			    "(spec:%d) %s", global.gag, msg);
-	  else
-	    error_at (location, "%s", msg);
-	}
+      if (prefix)
+	free (prefix);
+      free (msg);
     }
 
   if (global.gag)
@@ -92,10 +93,10 @@ verrorSupplemental (const Loc& loc, const char *format, va_list ap)
     return;
 
   location_t location = get_linemap (loc);
-  char *msg;
+  char *msg = xvasprintf (format, ap);
 
-  if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
-    inform (location, "%s", msg);
+  inform (location, "%s", msg);
+  free (msg);
 }
 
 /* Print a warning message.  */
@@ -115,10 +116,10 @@ vwarning (const Loc& loc, const char *format, va_list ap)
   if (global.params.warnings && !global.gag)
     {
       location_t location = get_linemap (loc);
-      char *msg;
+      char *msg = xvasprintf (format, ap);
 
-      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
-	warning_at (location, 0, "%s", msg);
+      warning_at (location, 0, "%s", msg);
+      free (msg);
 
       /* Warnings don't count if gagged.  */
       if (global.params.warnings == 1)
@@ -144,10 +145,10 @@ vwarningSupplemental (const Loc& loc, const char *format, va_list ap)
   if (global.params.warnings && !global.gag)
     {
       location_t location = get_linemap (loc);
-      char *msg;
+      char *msg = xvasprintf (format, ap);
 
-      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
-	inform (location, "%s", msg);
+      inform (location, "%s", msg);
+      free (msg);
     }
 }
 
@@ -171,17 +172,20 @@ vdeprecation (const Loc& loc, const char *format, va_list ap,
   else if (global.params.useDeprecated == 2 && !global.gag)
     {
       location_t location = get_linemap (loc);
-      char *msg;
+      char *msg = xvasprintf (format, ap);
+      char *prefix = NULL;
 
-      /* Build string and emit.  */
-      if (p2)
-	format = concat (p2, " ", format, NULL);
+      /* Build prefix for message.  */
+      if (p2 != NULL)
+	prefix = xasprintf ("%s %s ", p1, p2);
+      else if (p1 != NULL)
+	prefix = xasprintf ("%s ", p1);
 
-      if (p1)
-	format = concat (p1, " ", format, NULL);
+      warning_at (location, OPT_Wdeprecated, "%s%s", prefix ? prefix : "", msg);
 
-      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
-	warning_at (location, OPT_Wdeprecated, "%s", msg);
+      if (prefix)
+	free (prefix);
+      free (msg);
     }
 }
 
@@ -204,10 +208,10 @@ vdeprecationSupplemental (const Loc& loc, const char *format, va_list ap)
   else if (global.params.useDeprecated == 2 && !global.gag)
     {
       location_t location = get_linemap (loc);
-      char *msg;
+      char *msg = xvasprintf (format, ap);
 
-      if (vasprintf (&msg, format, ap) >= 0 && msg != NULL)
-	inform (location, "%s", msg);
+      inform (location, "%s", msg);
+      free (msg);
     }
 }
 

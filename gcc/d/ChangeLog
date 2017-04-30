@@ -1,3 +1,12 @@
+2017-04-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc (verror): Use xvasprintf.
+	(verrorSupplemental): Likewise.
+	(vwarning): Likewise.
+	(vwarningSupplemental): Likewise.
+	(vdeprecation): Likewise.
+	(vdeprecationSupplemental): Likewise.
+
 2017-04-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-tree.h (d_tree_index): Add DTI_VTABLE_ENTRY_TYPE,
