@@ -1,7 +1,5 @@
 /* d-spec.c -- Specific flags and argument handling of the D front end.
-   Copyright (C) 2011-2016 Free Software Foundation, Inc.
-
-This file is part of GCC.
+   Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,7 +26,7 @@ along with GCC; see the file COPYING3.  If not see
 #define DSOURCE		(1<<1)
 /* this bit is set if they did `-lstdc++'.  */
 #define WITHLIBCXX	(1<<2)
-/* This bit is set when the argument should not be passed to gcc or the backend */
+/* Skip this option.  */
 #define SKIPOPT		(1<<3)
 
 #ifndef LIBSTDCXX
@@ -366,7 +364,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
   /* Add `-lgphobos' if we haven't already done so.  */
   if (library > 0 && need_phobos)
     {
-      // Default to static linking
+      /* Default to static linking.  */
       if (library == 1)
         library = 2;
 
@@ -447,7 +445,7 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 
 /* Called before linking.  Returns 0 on success and -1 on failure.  */
 
-int lang_specific_pre_link()
+int lang_specific_pre_link (void)
 {
   if (library > 0 && need_phobos)
     do_spec ("%:include(libgphobos.spec)");

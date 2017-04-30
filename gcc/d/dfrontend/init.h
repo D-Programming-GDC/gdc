@@ -22,9 +22,6 @@ class Identifier;
 class Expression;
 struct Scope;
 class Type;
-#ifdef IN_GCC
-typedef union tree_node dt_t;
-#endif
 class AggregateDeclaration;
 class ErrorInitializer;
 class VoidInitializer;
@@ -59,9 +56,6 @@ public:
     virtual ArrayInitializer   *isArrayInitializer()  { return NULL; }
     virtual ExpInitializer     *isExpInitializer()  { return NULL; }
     virtual void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    virtual dt_t *toDt();
-#endif
 };
 
 class VoidInitializer : public Initializer
@@ -77,9 +71,6 @@ public:
 
     virtual VoidInitializer *isVoidInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t *toDt();
-#endif
 };
 
 class ErrorInitializer : public Initializer
@@ -110,9 +101,6 @@ public:
 
     StructInitializer *isStructInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t *toDt();
-#endif
 };
 
 class ArrayInitializer : public Initializer
@@ -135,9 +123,6 @@ public:
 
     ArrayInitializer *isArrayInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t *toDt();
-#endif
 };
 
 class ExpInitializer : public Initializer
@@ -154,9 +139,6 @@ public:
 
     virtual ExpInitializer *isExpInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    dt_t *toDt();
-#endif
 };
 
 #endif

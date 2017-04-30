@@ -1,20 +1,19 @@
-/* d-builtins.c -- D frontend for GCC.
-   Copyright (C) 2011-2015 Free Software Foundation, Inc.
+/* d-builtins.cc -- GCC builtins support for D.
+   Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
-   GCC is free software; you can redistribute it and/or modify it under
-   the terms of the GNU General Public License as published by the Free
-   Software Foundation; either version 3, or (at your option) any later
-   version.
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
 
-   GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-   WARRANTY; without even the implied warranty of MERCHANTABILITY or
-   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-   for more details.
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with GCC; see the file COPYING3.  If not see
-   <http://www.gnu.org/licenses/>.
-*/
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
 #include "system.h"
@@ -28,41 +27,38 @@
 
 #include "d-system.h"
 #include "d-tree.h"
+#include "d-codegen.h"
 #include "d-objfile.h"
 #include "id.h"
+
 
 static GTY(()) vec<tree, va_gc> *gcc_builtins_functions = NULL;
 static GTY(()) vec<tree, va_gc> *gcc_builtins_libfuncs = NULL;
 static GTY(()) vec<tree, va_gc> *gcc_builtins_types = NULL;
 
+/* Record built-in types and their associated decls for re-use when
+   generating the `gcc.builtins' module.  */
 
-// Record built-in types and their associated decls for re-use in
-// generating the gcc.builtins module.
-
-struct builtin_sym
+struct builtin_data
 {
-  builtin_sym(Type *t, tree c, Dsymbol *d = NULL)
-    : dtype(t), ctype(c), decl(d)
-    { }
-
   Type *dtype;
   tree ctype;
-  Dsymbol *decl;
+  Dsymbol *dsym;
+
+  builtin_data (Type *t, tree c, Dsymbol *d = NULL)
+    : dtype(t), ctype(c), dsym(d) { }
 };
 
-static vec<builtin_sym> builtin_converted_syms;
+static vec<builtin_data> builtin_converted_decls;
 
-// Array of d type/decl nodes.
-tree d_global_trees[DTI_MAX];
-
-// Build D frontend type from tree TYPE type given.
-
-// This will set ctype directly for complex types to save build_ctype() the work.
-// For others, it is not useful or, in the cast of (C char) -> (D char), will
-// cause errors.  This also means char * ...
+/* Build D frontend type from tree TYPE type given.  This will set the backend
+   type symbol directly for complex types to save build_ctype() the work.
+   For other types, it is not useful or will causes errors, such as casting
+   from `C char' to `D char', which also means that `char *` needs to be
+   specially handled.  */
 
 static Type *
-build_dtype(tree type)
+build_frontend_type (tree type)
 {
   Type *dtype;
   MOD mod = 0;
@@ -72,126 +68,140 @@ build_dtype(tree type)
   if (TYPE_VOLATILE (type))
     mod |= MODshared;
 
-  for (size_t i = 0; i < builtin_converted_syms.length(); ++i)
+  /* If we've seen the type before, re-use the converted decl.  */
+  for (size_t i = 0; i < builtin_converted_decls.length (); ++i)
     {
-      tree ti = builtin_converted_syms[i].ctype;
-      if (TYPE_MAIN_VARIANT (ti) == TYPE_MAIN_VARIANT (type))
-	return builtin_converted_syms[i].dtype;
+      tree t = builtin_converted_decls[i].ctype;
+      if (TYPE_MAIN_VARIANT (t) == TYPE_MAIN_VARIANT (type))
+	return builtin_converted_decls[i].dtype;
     }
 
   switch (TREE_CODE (type))
     {
     case POINTER_TYPE:
-      dtype = build_dtype(TREE_TYPE (type));
+      dtype = build_frontend_type (TREE_TYPE (type));
       if (dtype)
 	{
-	  // Check for char * first. Needs to be done for chars/string.
+	  /* Check for char * first. Needs to be done for chars/string.  */
 	  if (TYPE_MAIN_VARIANT (TREE_TYPE (type)) == char_type_node)
-	    return Type::tchar->addMod(dtype->mod)->pointerTo()->addMod(mod);
+	    return Type::tchar->addMod (dtype->mod)->pointerTo ()->addMod (mod);
 
 	  if (dtype->ty == Tfunction)
-	    return (new TypePointer(dtype))->addMod(mod);
+	    return (new TypePointer (dtype))->addMod (mod);
 
-	  return dtype->pointerTo()->addMod(mod);
+	  return dtype->pointerTo ()->addMod (mod);
 	}
       break;
 
     case REFERENCE_TYPE:
-      dtype = build_dtype(TREE_TYPE (type));
+      dtype = build_frontend_type (TREE_TYPE (type));
       if (dtype)
 	{
-	  // Want to assign ctype directly so that the REFERENCE_TYPE
-	  // code can be turned into an InOut argument below.  Can't use
-	  // pointerTo(), because that Type is shared.
-	  dtype = (new TypePointer(dtype))->addMod(mod);
+	  /* Want to assign ctype directly so that the REFERENCE_TYPE code
+	     can be turned into as an `inout' argument.  Can't use pointerTo(),
+	     because the returned Type is shared.  */
+	  dtype = (new TypePointer (dtype))->addMod (mod);
 	  dtype->ctype = type;
-	  builtin_converted_syms.safe_push(builtin_sym(dtype, type));
+	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
 	}
       break;
 
     case BOOLEAN_TYPE:
-      // Should be no need for size checking.
-      return Type::tbool->addMod(mod);
+      /* Should be no need for size checking.  */
+      return Type::tbool->addMod (mod);
 
     case INTEGER_TYPE:
     {
-      unsigned tsize = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (type));
+      unsigned size = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (type));
       bool unsignedp = TYPE_UNSIGNED (type);
 
-      // This search assumes that integer types come before char and bit...
-      for (size_t i = 0; i < TMAX; i++)
+      /* For now, skip support for cent/ucent until the frontend
+	 has better support for handling it.  */
+      for (size_t i = Tint8; i <= Tuns64; i++)
 	{
 	  dtype = Type::basic[i];
-	  if (dtype && dtype->isintegral() && dtype->size() == tsize
-	      && (dtype->isunsigned() ? true : false) == unsignedp
-	      && dtype->ty != Tint128 && dtype->ty != Tuns128)
-	    return dtype->addMod(mod);
+
+	  /* Search for type matching size and signedness.  */
+	  if (unsignedp != dtype->isunsigned ()
+	      || size != dtype->size ())
+	    continue;
+
+	  return dtype->addMod (mod);
 	}
       break;
     }
 
     case REAL_TYPE:
     {
-      unsigned tsize = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (type));
-      for (size_t i = 0; i < TMAX; i++)
+      unsigned size = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (type));
+
+      for (size_t i = Tfloat32; i <= Tfloat80; i++)
 	{
 	  dtype = Type::basic[i];
-	  if (dtype && dtype->isreal() && dtype->size() == tsize)
-	    return dtype->addMod(mod);
+
+	  /* Search for type matching size.  */
+	  if (dtype->size () != size)
+	    continue;
+
+	  return dtype->addMod (mod);
 	}
       break;
     }
 
     case COMPLEX_TYPE:
     {
-      unsigned tsize = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (type));
-      for (size_t i = 0; i < TMAX; i++)
+      unsigned size = TREE_INT_CST_LOW (TYPE_SIZE_UNIT (type));
+      for (size_t i = Tcomplex32; i <= Tcomplex80; i++)
 	{
 	  dtype = Type::basic[i];
-	  if (dtype && dtype->iscomplex() && dtype->size() == tsize)
-	    return dtype->addMod(mod);
+
+	  /* Search for type matching size.  */
+	  if (dtype->size () != size)
+	    continue;
+
+	  return dtype->addMod (mod);
 	}
       break;
     }
 
     case VOID_TYPE:
-      return Type::tvoid->addMod(mod);
+      return Type::tvoid->addMod (mod);
 
     case ARRAY_TYPE:
-      dtype = build_dtype(TREE_TYPE (type));
+      dtype = build_frontend_type (TREE_TYPE (type));
       if (dtype)
 	{
 	  tree index = TYPE_DOMAIN (type);
 	  tree ub = TYPE_MAX_VALUE (index);
 	  tree lb = TYPE_MIN_VALUE (index);
 
-	  tree length = fold_build2(MINUS_EXPR, TREE_TYPE (lb), ub, lb);
-	  length = size_binop(PLUS_EXPR, size_one_node,
-			      convert(sizetype, length));
+	  tree length = fold_build2 (MINUS_EXPR, TREE_TYPE (lb), ub, lb);
+	  length = size_binop (PLUS_EXPR, size_one_node,
+			       convert (sizetype, length));
 
-	  dtype = dtype->sarrayOf(TREE_INT_CST_LOW (length))->addMod(mod);
-	  builtin_converted_syms.safe_push(builtin_sym(dtype, type));
+	  dtype = dtype->sarrayOf (TREE_INT_CST_LOW (length))->addMod (mod);
+	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
 	}
       break;
 
     case VECTOR_TYPE:
-      dtype = build_dtype(TREE_TYPE (type));
+      dtype = build_frontend_type (TREE_TYPE (type));
       if (dtype)
 	{
-	  dtype = dtype->sarrayOf(TYPE_VECTOR_SUBPARTS (type))->addMod(mod);
+	  dtype = dtype->sarrayOf (TYPE_VECTOR_SUBPARTS (type))->addMod (mod);
 
-	  if (dtype->nextOf()->isTypeBasic() == NULL)
+	  if (dtype->nextOf ()->isTypeBasic () == NULL)
 	    break;
 
-	  // Support only 64bit, 128bit, and 256bit vectors.
-	  unsigned tsize = dtype->size();
-	  if (tsize != 8 && tsize != 16 && tsize != 32)
+	  /* Support only 64bit, 128bit, and 256bit vectors for now.  */
+	  unsigned size = dtype->size ();
+	  if (size != 8 && size != 16 && size != 32)
 	    break;
 
-	  dtype = (new TypeVector(Loc(), dtype))->addMod(mod);
-	  builtin_converted_syms.safe_push(builtin_sym(dtype, type));
+	  dtype = (new TypeVector (Loc (), dtype))->addMod (mod);
+	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
 	}
       break;
@@ -200,69 +210,72 @@ build_dtype(tree type)
       if (TYPE_NAME (type))
 	{
 	  tree structname = DECL_NAME (TYPE_NAME (type));
-	  Identifier *ident = Identifier::idPool(IDENTIFIER_POINTER (structname));
+	  Identifier *ident
+	    = Identifier::idPool (IDENTIFIER_POINTER (structname));
 
-	  // The object and gcc.builtins module will not exist when this is
-	  // called.  Use a stub 'object' module parent in the meantime.
-	  // If gcc.builtins is later imported, the parent will be overridden.
+	  /* Neither the `object' and `gcc.builtins' modules will not exist when
+	     this is called.  Use a stub 'object' module parent in the meantime.
+	     If `gcc.builtins' is later imported, the parent will be overridden
+	     with the correct module symbol.  */
 	  static Module *stubmod = Module::create ("object.d", Id::object, 0, 0);
 
-	  StructDeclaration *sdecl = new StructDeclaration(Loc(), ident);
+	  StructDeclaration *sdecl = new StructDeclaration (Loc (), ident);
 	  sdecl->parent = stubmod;
-	  sdecl->structsize = int_size_in_bytes(type);
+	  sdecl->structsize = int_size_in_bytes (type);
 	  sdecl->alignsize = TYPE_ALIGN_UNIT (type);
 	  sdecl->sizeok = SIZEOKdone;
-	  sdecl->type = (new TypeStruct(sdecl))->addMod(mod);
+	  sdecl->type = (new TypeStruct (sdecl))->addMod (mod);
 	  sdecl->type->ctype = type;
-	  sdecl->type->merge();
+	  sdecl->type->merge ();
 
-	  // Does not seem necessary to convert fields, but the members field
-	  // must be non-null for the above size setting to stick.
+	  /* Does not seem necessary to convert fields, but the members field
+	     must be non-null for the above size setting to stick.  */
 	  sdecl->members = new Dsymbols;
 	  dtype = sdecl->type;
-	  builtin_converted_syms.safe_push(builtin_sym(dtype, type, sdecl));
+	  builtin_converted_decls.safe_push (builtin_data (dtype, type, sdecl));
 	  return dtype;
 	}
       break;
 
     case FUNCTION_TYPE:
-      dtype = build_dtype(TREE_TYPE (type));
+      dtype = build_frontend_type (TREE_TYPE (type));
       if (dtype)
 	{
 	  tree parms = TYPE_ARG_TYPES (type);
 	  int varargs_p = 1;
 
 	  Parameters *args = new Parameters;
-	  args->reserve(list_length (parms));
+	  args->reserve (list_length (parms));
 
+	  /* Attempt to convert all parameter types.  */
 	  for (tree parm = parms; parm != NULL_TREE; parm = TREE_CHAIN (parm))
 	    {
 	      tree argtype = TREE_VALUE (parm);
-	      if (argtype != void_type_node)
+	      if (argtype == void_type_node)
 		{
-		  Type *targ;
-		  StorageClass sc = 0;
-
-		  if (TREE_CODE (argtype) == REFERENCE_TYPE)
-		    {
-		      argtype = TREE_TYPE (argtype);
-		      sc |= STCref;
-		    }
-
-		  targ = build_dtype(argtype);
-		  if (!targ)
-		    {
-		      delete args;
-		      return NULL;
-		    }
-		  args->push(Parameter::create (sc, targ, NULL, NULL));
+		  varargs_p = 0;
+		  break;
 		}
-	      else
-		varargs_p = 0;
+
+	      StorageClass sc = STCundefined;
+	      if (TREE_CODE (argtype) == REFERENCE_TYPE)
+		{
+		  argtype = TREE_TYPE (argtype);
+		  sc |= STCref;
+		}
+
+	      Type *targ = build_frontend_type (argtype);
+	      if (!targ)
+		{
+		  delete args;
+		  return NULL;
+		}
+
+	      args->push (Parameter::create (sc, targ, NULL, NULL));
 	    }
 
-	  // GCC generic and placeholder builtins are marked as variadic, yet
-	  // have no named parameters, and so can't be represented in D.
+	  /* GCC generic and placeholder builtins are marked as variadic, yet
+	     have no named parameters, and so can't be represented in D.  */
 	  if (args->dim != 0 || !varargs_p)
 	    {
 	      dtype = TypeFunction::create (args, dtype, varargs_p, LINKc);
@@ -278,250 +291,270 @@ build_dtype(tree type)
   return NULL;
 }
 
-// Convert backend evaluated CST to a D Frontend Expression.
-// Typically used for CTFE, returns NULL if it cannot convert CST.
+/* Attempt to convert GCC evaluated CST to a D Frontend Expression.
+   This is used for getting the CTFE value out of a const-folded builtin,
+   returns NULL if it cannot convert CST.  */
 
 Expression *
-build_expression(tree cst)
+d_eval_constant_expression (tree cst)
 {
   STRIP_TYPE_NOPS (cst);
-  Type *type = build_dtype(TREE_TYPE (cst));
+  Type *type = build_frontend_type (TREE_TYPE (cst));
 
   if (type)
     {
-      // Convert our GCC CST tree into a D Expression. This is kinda exper,
-      // as it will only be converted back to a tree again later, but this
-      // satisifies a need to have gcc builtins CTFE'able.
+      /* Convert our GCC CST tree into a D Expression.  This seems like we are
+	 trying too hard, as these will only be converted back to a tree again
+	 later in the codegen pass, but satisfies the need to have GCC builtins
+	 CTFE-able in the frontend.  */
       tree_code code = TREE_CODE (cst);
       if (code == COMPLEX_CST)
 	{
-	  complex_t value;
-	  value.re = TREE_REAL_CST (TREE_REALPART (cst));
-	  value.im = TREE_REAL_CST (TREE_IMAGPART (cst));
-	  return new ComplexExp (Loc(), value, type);
+	  real_value re = TREE_REAL_CST (TREE_REALPART (cst));
+	  real_value im = TREE_REAL_CST (TREE_IMAGPART (cst));
+	  complex_t value = complex_t (ldouble (re), ldouble (im));
+	  return new ComplexExp (Loc (), value, type);
 	}
       else if (code == INTEGER_CST)
 	{
 	  dinteger_t value = TREE_INT_CST_LOW (cst);
-	  return new IntegerExp(Loc(), value, type);
+	  return new IntegerExp (Loc (), value, type);
 	}
       else if (code == REAL_CST)
 	{
 	  real_value value = TREE_REAL_CST (cst);
-	  return new RealExp(Loc(), ldouble(value), type);
+	  return new RealExp (Loc (), ldouble (value), type);
 	}
       else if (code == STRING_CST)
 	{
 	  const void *string = TREE_STRING_POINTER (cst);
 	  size_t len = TREE_STRING_LENGTH (cst);
-	  return new StringExp(Loc(), CONST_CAST (void *, string), len);
+	  return new StringExp (Loc (), CONST_CAST (void *, string), len);
 	}
       else if (code == VECTOR_CST)
 	{
 	  dinteger_t nunits = VECTOR_CST_NELTS (cst);
 	  Expressions *elements = new Expressions;
-	  elements->setDim(nunits);
+	  elements->setDim (nunits);
 
 	  for (size_t i = 0; i < nunits; i++)
 	    {
-	      Expression *elem = build_expression(VECTOR_CST_ELT (cst, i));
+	      Expression *elem
+		= d_eval_constant_expression (VECTOR_CST_ELT (cst, i));
 	      if (elem == NULL)
 		return NULL;
 
 	      (*elements)[i] = elem;
 	    }
 
-	  Expression *e = new ArrayLiteralExp(Loc(), elements);
+	  Expression *e = new ArrayLiteralExp (Loc (), elements);
 	  e->type = ((TypeVector *) type)->basetype;
 
-	  return new VectorExp(Loc(), e, type);
+	  return new VectorExp (Loc (), e, type);
 	}
     }
 
   return NULL;
 }
 
-// Helper function for Target::loadModule.
-// Generates all code for gcc.builtins module M.
+/* A helper for d_build_builtins_module.  Return a new ALIAS for TYPE.
+   Analogous to `alias ALIAS = TYPE' in D code.  */
+
+static AliasDeclaration *
+build_alias_declaration (const char *alias, Type *type)
+{
+  return new AliasDeclaration (Loc (), Identifier::idPool (alias), type);
+}
+
+/* A helper function for Target::loadModule.  Generates all code for the
+   `gcc.builtins' module, whose frontend symbol should be M.  */
 
 void
-d_build_builtins_module(Module *m)
+d_build_builtins_module (Module *m)
 {
-  Dsymbols *funcs = new Dsymbols;
+  Dsymbols *members = new Dsymbols;
   tree decl;
 
-  for (size_t i = 0; vec_safe_iterate(gcc_builtins_functions, i, &decl); ++i)
+  for (size_t i = 0; vec_safe_iterate (gcc_builtins_functions, i, &decl); ++i)
     {
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
-      TypeFunction *dtf = (TypeFunction *) build_dtype(TREE_TYPE (decl));
+      TypeFunction *tf = (TypeFunction *) build_frontend_type (TREE_TYPE (decl));
 
-      // Cannot create built-in function type for DECL
-      if (!dtf)
+      /* Cannot create built-in function type for DECL.  */
+      if (!tf)
 	continue;
 
-      // D2 @safe/pure/nothrow functions.
-      // It is assumed that builtins solely provided by the compiler are
-      // considered @safe, pure and nothrow.  Builtins that correspond to
-      // functions in the standard library that don't throw are considered
-      // @trusted.  The purity of a builtin can vary depending on compiler
-      // flags set upon initialisation, or by the -foptions passed, such as
-      // flag_unsafe_math_optimizations.
-      // Builtins never use the GC and are always marked as @nogc.
-      dtf->isnothrow = TREE_NOTHROW (decl) || !DECL_ASSEMBLER_NAME_SET_P (decl);
-      dtf->purity = DECL_PURE_P (decl) ?   PUREstrong :
+      /* A few notes on D2 attributes applied to builtin functions:
+	 - It is assumed that builtins solely provided by the compiler are
+	   considered @safe and pure.
+	 - Builtins that correspond to `extern(C)' functions in the standard
+	   library that have `__attribute__(nothrow)' are considered `@trusted'.
+	 - The purity of a built-in can vary depending on compiler flags set
+	   upon initialization, or by the `-foptions' passed, such as
+	   flag_unsafe_math_optimizations.
+	 - Builtins never use the GC or raise a D exception, and so are always
+	   marked as `nothrow' and `@nogc'.  */
+      tf->purity = DECL_PURE_P (decl) ?   PUREstrong :
 	TREE_READONLY (decl) ? PUREconst :
 	DECL_IS_NOVOPS (decl) ? PUREweak :
 	!DECL_ASSEMBLER_NAME_SET_P (decl) ? PUREweak :
 	PUREimpure;
-      dtf->trust = !DECL_ASSEMBLER_NAME_SET_P (decl) ? TRUSTsafe :
+      tf->trust = !DECL_ASSEMBLER_NAME_SET_P (decl) ? TRUSTsafe :
 	TREE_NOTHROW (decl) ? TRUSTtrusted :
 	TRUSTsystem;
-      dtf->isnogc = true;
+      tf->isnothrow = true;
+      tf->isnogc = true;
 
-      FuncDeclaration *func = new FuncDeclaration(Loc(), Loc(),
-						  Identifier::idPool(name),
-						  STCextern, dtf);
+      FuncDeclaration *func = new FuncDeclaration (Loc (), Loc (),
+						   Identifier::idPool (name),
+						   STCextern, tf);
       DECL_LANG_SPECIFIC (decl) = build_lang_decl (func);
       func->csym = decl;
       func->builtin = BUILTINyes;
 
-      funcs->push(func);
+      members->push (func);
     }
 
-  for (size_t i = 0; vec_safe_iterate(gcc_builtins_types, i, &decl); ++i)
+  for (size_t i = 0; vec_safe_iterate (gcc_builtins_types, i, &decl); ++i)
     {
-      tree type = TREE_TYPE (decl);
       const char *name = IDENTIFIER_POINTER (DECL_NAME (decl));
-      Type *dt = build_dtype (type);
-      // Cannot create built-in type for DECL.
-      if (!dt)
+      Type *t = build_frontend_type (TREE_TYPE (decl));
+
+      /* Cannot create built-in type for DECL.  */
+      if (!t)
 	continue;
 
-      funcs->push(new AliasDeclaration(Loc(), Identifier::idPool(name), dt));
+      members->push (build_alias_declaration (name, t));
     }
 
-  // Iterate through the target-specific builtin types for va_list.
+  /* Iterate through the target-specific builtin types for va_list.  */
   if (targetm.enum_va_list_p)
     {
       const char *name;
       tree type;
 
-      for (int l = 0; targetm.enum_va_list_p(l, &name, &type); ++l)
+      for (int i = 0; targetm.enum_va_list_p (i, &name, &type); ++i)
 	{
-	  Type *dt = build_dtype(type);
+	  Type *t = build_frontend_type (type);
 	  // Cannot create built-in type.
-	  if (!dt)
+	  if (!t)
 	    continue;
 
-	  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool(name), dt));
+	  members->push (build_alias_declaration (name, t));
 	}
     }
 
-  for (size_t i = 0; i < builtin_converted_syms.length(); ++i)
+  /* Push out declarations for any RECORD_TYPE types encountered when building
+     all builtin functions and types.  */
+  for (size_t i = 0; i < builtin_converted_decls.length (); ++i)
     {
-      // Currently, there is no need to run semantic, but we do
-      // want to output inits, etc.
-      Dsymbol *decl = builtin_converted_syms[i].decl;
-      if (decl != NULL)
+      /* Currently, there is no need to run semantic, but we do want to output
+	 initializers, typeinfo, and others on demand.  */
+      Dsymbol *dsym = builtin_converted_decls[i].dsym;
+      if (dsym != NULL)
 	{
-	  decl->parent = m;
-	  funcs->push(decl);
+	  dsym->parent = m;
+	  members->push (dsym);
 	}
     }
 
-  // va_list should already be built, so no need to convert to D type again.
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_va_list"),
-				   Type::tvalist));
+  /* va_list should already be built, so no need to convert to D type again.  */
+  members->push (build_alias_declaration ("__builtin_va_list", Type::tvalist));
 
-  // Provide access to target-specific integer types.
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_clong"),
-				   build_dtype(long_integer_type_node)));
+  /* Expose target-specific integer types to the builtins module.  */
+  {
+    Type *t = build_frontend_type (long_integer_type_node);
+    members->push (build_alias_declaration ("__builtin_clong", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_culong"),
-				   build_dtype(long_unsigned_type_node)));
+    t = build_frontend_type (long_unsigned_type_node);
+    members->push (build_alias_declaration ("__builtin_culong", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_byte"),
-				   build_dtype(lang_hooks.types.type_for_mode(byte_mode, 0))));
+    t = build_frontend_type (lang_hooks.types.type_for_mode (byte_mode, 0));
+    members->push (build_alias_declaration ("__builtin_machine_byte", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_ubyte"),
-				   build_dtype(lang_hooks.types.type_for_mode(byte_mode, 1))));
+    t = build_frontend_type (lang_hooks.types.type_for_mode (byte_mode, 1));
+    members->push (build_alias_declaration ("__builtin_machine_ubyte", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_int"),
-				   build_dtype(lang_hooks.types.type_for_mode(word_mode, 0))));
+    t = build_frontend_type (lang_hooks.types.type_for_mode (word_mode, 0));
+    members->push (build_alias_declaration ("__builtin_machine_int", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_machine_uint"),
-				   build_dtype(lang_hooks.types.type_for_mode(word_mode, 1))));
+    t = build_frontend_type (lang_hooks.types.type_for_mode (word_mode, 1));
+    members->push (build_alias_declaration ("__builtin_machine_uint", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_pointer_int"),
-				   build_dtype(lang_hooks.types.type_for_mode(ptr_mode, 0))));
+    t = build_frontend_type (lang_hooks.types.type_for_mode (ptr_mode, 0));
+    members->push (build_alias_declaration ("__builtin_pointer_int", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_pointer_uint"),
-				   build_dtype(lang_hooks.types.type_for_mode(ptr_mode, 1))));
+    t = build_frontend_type (lang_hooks.types.type_for_mode (ptr_mode, 1));
+    members->push (build_alias_declaration ("__builtin_pointer_uint", t));
 
-  // _Unwind_Word has it's own target specific mode.
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_unwind_int"),
-				   build_dtype(lang_hooks.types.type_for_mode(targetm.unwind_word_mode(), 0))));
+    /* _Unwind_Word has it's own target specific mode.  */
+    machine_mode mode = targetm.unwind_word_mode ();
+    t = build_frontend_type (lang_hooks.types.type_for_mode (mode, 0));
+    members->push (build_alias_declaration ("__builtin_unwind_int", t));
 
-  funcs->push(new AliasDeclaration(Loc(), Identifier::idPool("__builtin_unwind_uint"),
-				   build_dtype(lang_hooks.types.type_for_mode(targetm.unwind_word_mode(), 1))));
+    t = build_frontend_type (lang_hooks.types.type_for_mode (mode, 1));
+    members->push (build_alias_declaration ("__builtin_unwind_uint", t));
+  }
 
-  m->members->push(new LinkDeclaration(LINKc, funcs));
+  m->members->push (new LinkDeclaration (LINKc, members));
 }
 
-// Find and map extern(C) declarations in member M to GCC library
-// builtins by overriding the backend internal symbol.
+/* Search for any `extern(C)' functions that match any known GCC library builtin
+   function in D and override it's internal backend symbol.  */
 
 static void
-maybe_set_builtin_1(Dsymbol *m)
+maybe_set_builtin_1 (Dsymbol *d)
 {
-  AttribDeclaration *ad = m->isAttribDeclaration();
-  FuncDeclaration *fd = m->isFuncDeclaration();
+  AttribDeclaration *ad = d->isAttribDeclaration ();
+  FuncDeclaration *fd = d->isFuncDeclaration ();
 
   if (ad != NULL)
     {
-      // Recursively search through attribute decls
-      Dsymbols *decl = ad->include(NULL, NULL);
-      if (decl && decl->dim)
+      /* Recursively search through attribute decls.  */
+      Dsymbols *decls = ad->include (NULL, NULL);
+      if (decls && decls->dim)
 	{
-	  for (size_t i = 0; i < decl->dim; i++)
+	  for (size_t i = 0; i < decls->dim; i++)
 	    {
-	      Dsymbol *sym = (*decl)[i];
-	      maybe_set_builtin_1(sym);
+	      Dsymbol *sym = (*decls)[i];
+	      maybe_set_builtin_1 (sym);
 	    }
 	}
     }
   else if (fd && !fd->fbody)
     {
-      tree decl;
+      tree t;
 
-      for (size_t i = 0; vec_safe_iterate(gcc_builtins_libfuncs, i, &decl); ++i)
+      for (size_t i = 0; vec_safe_iterate (gcc_builtins_libfuncs, i, &t); ++i)
 	{
-	  gcc_assert(DECL_ASSEMBLER_NAME_SET_P (decl));
+	  gcc_assert (DECL_ASSEMBLER_NAME_SET_P (t));
 
-	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
-	  if (fd->ident != Identifier::idPool(name))
+	  const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (t));
+	  if (fd->ident != Identifier::idPool (name))
 	    continue;
 
-	  DECL_LANG_SPECIFIC (decl) = build_lang_decl (fd);
-	  fd->csym = decl;
+	  /* Found a match, tell the frontend this is a builtin.  */
+	  DECL_LANG_SPECIFIC (t) = build_lang_decl (fd);
+	  fd->csym = t;
 	  fd->builtin = BUILTINyes;
 	  return;
 	}
     }
 }
 
-// Helper function for Target::loadModule.
-// Map extern(C) declarations in member M to GCC library
-// builtins by overriding the backend internal symbol.
+/* A helper function for Target::loadModule.  Traverse all members in module M
+   to search for any functions that can be mapped to any GCC builtin.  */
 
 void
-d_maybe_set_builtin(Module *m)
+d_maybe_set_builtin (Module *m)
 {
-  Dsymbols *members = m->members;
-  for (size_t i = 0; i < members->dim; i++)
+  if (!m || !m->members)
+    return;
+
+  for (size_t i = 0; i < m->members->dim; i++)
     {
-      Dsymbol *sym = (*members)[i];
-      maybe_set_builtin_1(sym);
+      Dsymbol *sym = (*m->members)[i];
+      maybe_set_builtin_1 (sym);
     }
 }
 
@@ -531,10 +564,195 @@ d_maybe_set_builtin(Module *m)
    get invoked.  */
 
 static tree
-builtin_type_for_size(int size, bool unsignedp)
+builtin_type_for_size (int size, bool unsignedp)
 {
-  tree type = lang_hooks.types.type_for_size(size, unsignedp);
+  tree type = lang_hooks.types.type_for_size (size, unsignedp);
   return type ? type : error_mark_node;
+}
+
+/* Support for DEF_BUILTIN.  */
+
+static void
+do_build_builtin_fn (built_in_function fncode,
+		     const char *name,
+		     built_in_class fnclass,
+		     tree fntype, bool both_p, bool fallback_p,
+		     tree fnattrs, bool implicit_p)
+{
+  tree decl;
+  const char *libname;
+
+  if (fntype == error_mark_node)
+    return;
+
+  gcc_assert ((!both_p && !fallback_p)
+	      || !strncmp (name, "__builtin_",
+			   strlen ("__builtin_")));
+
+  libname = name + strlen ("__builtin_");
+
+  decl = add_builtin_function (name, fntype, fncode, fnclass,
+			       fallback_p ? libname : NULL, fnattrs);
+
+  set_builtin_decl (fncode, decl, implicit_p);
+}
+
+/* Standard data types to be used in builtin argument declarations.  */
+
+static GTY(()) tree string_type_node;
+static GTY(()) tree const_string_type_node;
+static GTY(()) tree wint_type_node;
+static GTY(()) tree intmax_type_node;
+static GTY(()) tree uintmax_type_node;
+static GTY(()) tree signed_size_type_node;
+
+
+/* Build nodes that would have be created by the C front-end; necessary
+   for including builtin-types.def and ultimately builtins.def.  */
+
+static void
+d_build_c_type_nodes (void)
+{
+  void_list_node = build_tree_list (NULL_TREE, void_type_node);
+  string_type_node = build_pointer_type (char_type_node);
+  const_string_type_node
+    = build_pointer_type (build_qualified_type (char_type_node,
+						TYPE_QUAL_CONST));
+
+  if (strcmp (SIZE_TYPE, "unsigned int") == 0)
+    {
+      intmax_type_node = integer_type_node;
+      uintmax_type_node = unsigned_type_node;
+      signed_size_type_node = integer_type_node;
+    }
+  else if (strcmp (SIZE_TYPE, "long unsigned int") == 0)
+    {
+      intmax_type_node = long_integer_type_node;
+      uintmax_type_node = long_unsigned_type_node;
+      signed_size_type_node = long_integer_type_node;
+    }
+  else if (strcmp (SIZE_TYPE, "long long unsigned int") == 0)
+    {
+      intmax_type_node = long_long_integer_type_node;
+      uintmax_type_node = long_long_unsigned_type_node;
+      signed_size_type_node = long_long_integer_type_node;
+    }
+  else
+    gcc_unreachable ();
+
+  wint_type_node = unsigned_type_node;
+  pid_type_node = integer_type_node;
+}
+
+/* Build nodes that are used by the D front-end.
+   These are distinct from C types.  */
+
+static void
+d_build_d_type_nodes (void)
+{
+  void_zero_node = make_node (INTEGER_CST);
+  TREE_TYPE (void_zero_node) = void_type_node;
+
+  /* Integral types.  */
+  byte_type_node = make_signed_type (8);
+  ubyte_type_node = make_unsigned_type (8);
+
+  short_type_node = make_signed_type (16);
+  ushort_type_node = make_unsigned_type (16);
+
+  int_type_node = make_signed_type (32);
+  uint_type_node = make_unsigned_type (32);
+
+  long_type_node = make_signed_type (64);
+  ulong_type_node = make_unsigned_type (64);
+
+  cent_type_node = make_signed_type (128);
+  ucent_type_node = make_unsigned_type (128);
+
+  {
+    /* Re-define size_t as a D type.  */
+    machine_mode type_mode = TYPE_MODE (size_type_node);
+    size_type_node = lang_hooks.types.type_for_mode (type_mode, 1);
+  }
+
+  /* Bool and Character types.  */
+  bool_type_node = make_unsigned_type (1);
+  TREE_SET_CODE (bool_type_node, BOOLEAN_TYPE);
+
+  char8_type_node = make_unsigned_type (8);
+  TYPE_STRING_FLAG (char8_type_node) = 1;
+
+  char16_type_node = make_unsigned_type (16);
+  TYPE_STRING_FLAG (char16_type_node) = 1;
+
+  char32_type_node = make_unsigned_type (32);
+  TYPE_STRING_FLAG (char32_type_node) = 1;
+
+  /* Imaginary types.  */
+  ifloat_type_node = build_distinct_type_copy (float_type_node);
+  TYPE_IMAGINARY_FLOAT (ifloat_type_node) = 1;
+
+  idouble_type_node = build_distinct_type_copy (double_type_node);
+  TYPE_IMAGINARY_FLOAT (idouble_type_node) = 1;
+
+  ireal_type_node = build_distinct_type_copy (long_double_type_node);
+  TYPE_IMAGINARY_FLOAT (ireal_type_node) = 1;
+
+  /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
+  unknown_type_node = make_node (RECORD_TYPE);
+
+  // Need to intialize this for gcc <= 6.x. Backported from gcc-7
+  /* Define what type to use for ptrdiff_t.  */
+  if (strcmp (PTRDIFF_TYPE, "int") == 0)
+    ptrdiff_type_node = integer_type_node;
+  else if (strcmp (PTRDIFF_TYPE, "long int") == 0)
+    ptrdiff_type_node = long_integer_type_node;
+  else if (strcmp (PTRDIFF_TYPE, "long long int") == 0)
+    ptrdiff_type_node = long_long_integer_type_node;
+  else if (strcmp (PTRDIFF_TYPE, "short int") == 0)
+    ptrdiff_type_node = short_integer_type_node;
+  else
+    {
+      ptrdiff_type_node = NULL_TREE;
+      for (int i = 0; i < NUM_INT_N_ENTS; i++)
+	if (int_n_enabled_p[i])
+	  {
+	    char name[50];
+	    sprintf (name, "__int%d", int_n_data[i].bitsize);
+	    if (strcmp (name, PTRDIFF_TYPE) == 0)
+	      ptrdiff_type_node = int_n_trees[i].signed_type;
+	  }
+      if (ptrdiff_type_node == NULL_TREE)
+	gcc_unreachable ();
+    }
+
+  /* Make sure we get a unique function type, so we can give
+     its pointer type a name.  (This wins for gdb).  */
+  {
+    tree vfunc_type = make_node (FUNCTION_TYPE);
+    TREE_TYPE (vfunc_type) = int_type_node;
+    TYPE_ARG_TYPES (vfunc_type) = NULL_TREE;
+    layout_type (vfunc_type);
+
+    vtable_entry_type = build_pointer_type (vfunc_type);
+  }
+
+  vtbl_ptr_type_node = build_pointer_type (vtable_entry_type);
+  layout_type (vtbl_ptr_type_node);
+
+  /* When an object is accessed via an interface, this type appears
+     as the first entry in its vtable.  */
+  {
+    tree domain = build_index_type (size_int (3));
+    vtbl_interface_type_node = build_array_type (ptr_type_node, domain);
+  }
+
+  /* Use `void[]' as a generic dynamic array type.  */
+  array_type_node = make_two_field_type (size_type_node, ptr_type_node,
+					 NULL, "length", "ptr");
+
+  null_array_node = d_array_value (array_type_node, size_zero_node,
+				   null_pointer_node);
 }
 
 /* Handle default attributes.  */
@@ -557,23 +775,25 @@ enum built_in_attribute
 
 static GTY(()) tree built_in_attributes[(int) ATTR_LAST];
 
+/* Initialize the attribute table for all the supported builtins.  */
+
 static void
-d_init_attributes()
+d_init_attributes (void)
 {
   /* Fill in the built_in_attributes array.  */
 #define DEF_ATTR_NULL_TREE(ENUM)                \
   built_in_attributes[(int) ENUM] = NULL_TREE;
 # define DEF_ATTR_INT(ENUM, VALUE)                                           \
-  built_in_attributes[(int) ENUM] = build_int_cst(NULL_TREE, VALUE);
+  built_in_attributes[(int) ENUM] = build_int_cst (NULL_TREE, VALUE);
 #define DEF_ATTR_STRING(ENUM, VALUE)                                         \
-  built_in_attributes[(int) ENUM] = build_string(strlen(VALUE), VALUE);
+  built_in_attributes[(int) ENUM] = build_string (strlen (VALUE), VALUE);
 #define DEF_ATTR_IDENT(ENUM, STRING)                            \
-  built_in_attributes[(int) ENUM] = get_identifier(STRING);
+  built_in_attributes[(int) ENUM] = get_identifier (STRING);
 #define DEF_ATTR_TREE_LIST(ENUM, PURPOSE, VALUE, CHAIN) \
   built_in_attributes[(int) ENUM]                       \
-  = tree_cons(built_in_attributes[(int) PURPOSE],    \
-	      built_in_attributes[(int) VALUE],      \
-	      built_in_attributes[(int) CHAIN]);
+  = tree_cons (built_in_attributes[(int) PURPOSE],    \
+	       built_in_attributes[(int) VALUE],      \
+	       built_in_attributes[(int) CHAIN]);
 #include "builtin-attrs.def"
 #undef DEF_ATTR_NULL_TREE
 #undef DEF_ATTR_INT
@@ -582,31 +802,7 @@ d_init_attributes()
 #undef DEF_ATTR_TREE_LIST
 }
 
-
-static void
-do_build_builtin_fn(built_in_function fncode,
-		    const char *name,
-		    built_in_class fnclass,
-		    tree fntype, bool both_p, bool fallback_p,
-		    tree fnattrs, bool implicit_p)
-{
-  tree decl;
-  const char *libname;
-
-  if (fntype == error_mark_node)
-    return;
-
-  gcc_assert((!both_p && !fallback_p)
-	     || !strncmp(name, "__builtin_",
-			   strlen("__builtin_")));
-
-  libname = name + strlen("__builtin_");
-
-  decl = add_builtin_function(name, fntype, fncode, fnclass,
-			      fallback_p ? libname : NULL, fnattrs);
-
-  set_builtin_decl(fncode, decl, implicit_p);
-}
+/* Builtin types.  */
 
 enum d_builtin_type
 {
@@ -654,16 +850,8 @@ enum d_builtin_type
 
 typedef enum d_builtin_type builtin_type;
 
-// A temporary array for d_init_builtins.
-// Used in communication with def_fn_type.
-static tree builtin_types[(int) BT_LAST + 1];
-
-static GTY(()) tree string_type_node;
-static GTY(()) tree const_string_type_node;
-static GTY(()) tree wint_type_node;
-static GTY(()) tree intmax_type_node;
-static GTY(()) tree uintmax_type_node;
-static GTY(()) tree signed_size_type_node;
+/* A temporary array used in communication with def_fn_type.  */
+static GTY(()) tree builtin_types[(int) BT_LAST + 1];
 
 /* A helper function for d_init_builtins.  Build function type for DEF with
    return type RET and N arguments.  If VAR is true, then the function should
@@ -675,17 +863,17 @@ static GTY(()) tree signed_size_type_node;
    should be error_mark_node.  */
 
 static void
-def_fn_type(builtin_type def, builtin_type ret, bool var, int n, ...)
+def_fn_type (builtin_type def, builtin_type ret, bool var, int n, ...)
 {
   tree t;
   tree *args = XALLOCAVEC (tree, n);
   va_list list;
   int i;
 
-  va_start(list, n);
+  va_start (list, n);
   for (i = 0; i < n; ++i)
     {
-      builtin_type a = (builtin_type) va_arg(list, int);
+      builtin_type a = (builtin_type) va_arg (list, int);
       t = builtin_types[a];
       if (t == error_mark_node)
 	goto egress;
@@ -696,200 +884,68 @@ def_fn_type(builtin_type def, builtin_type ret, bool var, int n, ...)
   if (t == error_mark_node)
     goto egress;
   if (var)
-    t = build_varargs_function_type_array(t, n, args);
+    t = build_varargs_function_type_array (t, n, args);
   else
-    t = build_function_type_array(t, n, args);
+    t = build_function_type_array (t, n, args);
 
  egress:
   builtin_types[def] = t;
-  va_end(list);
+  va_end (list);
 }
 
+/* Create builtin types and functions.  VA_LIST_REF_TYPE_NODE and
+   VA_LIST_ARG_TYPE_NODE are used in builtin-types.def.  */
 
-// Build builtin functions and types for the D language frontend.
-
-void
-d_init_builtins()
+static void
+d_define_builtins (tree va_list_ref_type_node ATTRIBUTE_UNUSED,
+		   tree va_list_arg_type_node ATTRIBUTE_UNUSED)
 {
-  tree va_list_ref_type_node;
-  tree va_list_arg_type_node;
-
-  // The "standard" abi va_list is va_list_type_node.
-  // This assumes va_list_type_node already built
-  Type::tvalist = build_dtype(va_list_type_node);
-  if (!Type::tvalist)
-    {
-      error("cannot represent built in va_list type in D");
-      gcc_unreachable();
-    }
-
-  // Need to avoid errors in gimplification, else, need to not ICE
-  // in targetm.canonical_va_list_type
-  Type::tvalist->ctype = va_list_type_node;
-  TYPE_LANG_SPECIFIC (va_list_type_node) = build_lang_type(Type::tvalist);
-
-
-  if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
-    {
-      // It might seem natural to make the argument type a pointer, but there
-      // is no implicit casting from arrays to pointers in D.
-      va_list_arg_type_node = va_list_type_node;
-      va_list_ref_type_node = va_list_arg_type_node;
-    }
-  else
-    {
-      va_list_arg_type_node = va_list_type_node;
-      va_list_ref_type_node = build_reference_type(va_list_type_node);
-    }
-
-  // Maybe it's better not to support these builtin types, which
-  // inhibits support for a small number of builtin functions.
-  void_list_node = build_tree_list(NULL_TREE, void_type_node);
-  string_type_node = build_pointer_type(char_type_node);
-  const_string_type_node
-    = build_pointer_type(build_qualified_type(char_type_node, TYPE_QUAL_CONST));
-
-  if (strcmp(SIZE_TYPE, "unsigned int") == 0)
-    {
-      intmax_type_node = integer_type_node;
-      uintmax_type_node = unsigned_type_node;
-      signed_size_type_node = integer_type_node;
-    }
-  else if (strcmp(SIZE_TYPE, "long unsigned int") == 0)
-    {
-      intmax_type_node = long_integer_type_node;
-      uintmax_type_node = long_unsigned_type_node;
-      signed_size_type_node = long_integer_type_node;
-    }
-  else if (strcmp(SIZE_TYPE, "long long unsigned int") == 0)
-    {
-      intmax_type_node = long_long_integer_type_node;
-      uintmax_type_node = long_long_unsigned_type_node;
-      signed_size_type_node = long_long_integer_type_node;
-    }
-  else
-    gcc_unreachable();
-
-  wint_type_node = unsigned_type_node;
-  pid_type_node = integer_type_node;
-
-  void_zero_node = make_node (INTEGER_CST);
-  TREE_TYPE (void_zero_node) = void_type_node;
-
-  // D types are distinct from C types.
-
-  // Integral types.
-  byte_type_node = make_signed_type(8);
-  ubyte_type_node = make_unsigned_type(8);
-
-  short_type_node = make_signed_type(16);
-  ushort_type_node = make_unsigned_type(16);
-
-  int_type_node = make_signed_type(32);
-  uint_type_node = make_unsigned_type(32);
-
-  long_type_node = make_signed_type(64);
-  ulong_type_node = make_unsigned_type(64);
-
-  cent_type_node = make_signed_type(128);
-  ucent_type_node = make_unsigned_type(128);
-
-  {
-    // Re-define size_t as a D type.
-    machine_mode type_mode = TYPE_MODE(size_type_node);
-    size_type_node = lang_hooks.types.type_for_mode(type_mode, 1);
-  }
-
-  // Bool and Character types.
-  bool_type_node = make_unsigned_type(1);
-  TREE_SET_CODE (bool_type_node, BOOLEAN_TYPE);
-
-  char8_type_node = make_unsigned_type(8);
-  TYPE_STRING_FLAG (char8_type_node) = 1;
-
-  char16_type_node = make_unsigned_type(16);
-  TYPE_STRING_FLAG (char16_type_node) = 1;
-
-  char32_type_node = make_unsigned_type(32);
-  TYPE_STRING_FLAG (char32_type_node) = 1;
-
-  // Imaginary types.
-  ifloat_type_node = build_distinct_type_copy(float_type_node);
-  TYPE_IMAGINARY_FLOAT (ifloat_type_node) = 1;
-
-  idouble_type_node = build_distinct_type_copy(double_type_node);
-  TYPE_IMAGINARY_FLOAT (idouble_type_node) = 1;
-
-  ireal_type_node = build_distinct_type_copy(long_double_type_node);
-  TYPE_IMAGINARY_FLOAT (ireal_type_node) = 1;
-
-  /* Used for ModuleInfo, ClassInfo, and Interface decls.  */
-  unknown_type_node = make_node(RECORD_TYPE);
-
-  {
-    /* Make sure we get a unique function type, so we can give
-       its pointer type a name.  (This wins for gdb.) */
-    tree vtable_entry_type;
-    tree vfunc_type = make_node(FUNCTION_TYPE);
-    TREE_TYPE (vfunc_type) = int_type_node;
-    TYPE_ARG_TYPES (vfunc_type) = NULL_TREE;
-    layout_type(vfunc_type);
-
-    vtable_entry_type = build_pointer_type(vfunc_type);
-
-    vtbl_ptr_type_node = build_pointer_type(vtable_entry_type);
-    layout_type(vtbl_ptr_type_node);
-  }
-
-  /* Since builtin_types isn't gc'ed, don't export these nodes.  */
-  memset(builtin_types, 0, sizeof(builtin_types));
-
 #define DEF_PRIMITIVE_TYPE(ENUM, VALUE) \
   builtin_types[(int) ENUM] = VALUE;
 #define DEF_FUNCTION_TYPE_0(ENUM, RETURN) \
-  def_fn_type(ENUM, RETURN, 0, 0);
+  def_fn_type (ENUM, RETURN, 0, 0);
 #define DEF_FUNCTION_TYPE_1(ENUM, RETURN, ARG1) \
-  def_fn_type(ENUM, RETURN, 0, 1, ARG1);
+  def_fn_type (ENUM, RETURN, 0, 1, ARG1);
 #define DEF_FUNCTION_TYPE_2(ENUM, RETURN, ARG1, ARG2) \
-  def_fn_type(ENUM, RETURN, 0, 2, ARG1, ARG2);
+  def_fn_type (ENUM, RETURN, 0, 2, ARG1, ARG2);
 #define DEF_FUNCTION_TYPE_3(ENUM, RETURN, ARG1, ARG2, ARG3) \
-  def_fn_type(ENUM, RETURN, 0, 3, ARG1, ARG2, ARG3);
+  def_fn_type (ENUM, RETURN, 0, 3, ARG1, ARG2, ARG3);
 #define DEF_FUNCTION_TYPE_4(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4) \
-  def_fn_type(ENUM, RETURN, 0, 4, ARG1, ARG2, ARG3, ARG4);
+  def_fn_type (ENUM, RETURN, 0, 4, ARG1, ARG2, ARG3, ARG4);
 #define DEF_FUNCTION_TYPE_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
-  def_fn_type(ENUM, RETURN, 0, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
+  def_fn_type (ENUM, RETURN, 0, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_FUNCTION_TYPE_6(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
 			    ARG6)                                       \
-  def_fn_type(ENUM, RETURN, 0, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+  def_fn_type (ENUM, RETURN, 0, 6, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
 #define DEF_FUNCTION_TYPE_7(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
 			    ARG6, ARG7)                                 \
-  def_fn_type(ENUM, RETURN, 0, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
+  def_fn_type (ENUM, RETURN, 0, 7, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 #define DEF_FUNCTION_TYPE_8(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
 			    ARG6, ARG7, ARG8)                           \
-  def_fn_type(ENUM, RETURN, 0, 8, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,  \
+  def_fn_type (ENUM, RETURN, 0, 8, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,  \
 	       ARG7, ARG8);
 #define DEF_FUNCTION_TYPE_VAR_0(ENUM, RETURN) \
-  def_fn_type(ENUM, RETURN, 1, 0);
+  def_fn_type (ENUM, RETURN, 1, 0);
 #define DEF_FUNCTION_TYPE_VAR_1(ENUM, RETURN, ARG1) \
-  def_fn_type(ENUM, RETURN, 1, 1, ARG1);
+  def_fn_type (ENUM, RETURN, 1, 1, ARG1);
 #define DEF_FUNCTION_TYPE_VAR_2(ENUM, RETURN, ARG1, ARG2) \
-  def_fn_type(ENUM, RETURN, 1, 2, ARG1, ARG2);
+  def_fn_type (ENUM, RETURN, 1, 2, ARG1, ARG2);
 #define DEF_FUNCTION_TYPE_VAR_3(ENUM, RETURN, ARG1, ARG2, ARG3) \
-  def_fn_type(ENUM, RETURN, 1, 3, ARG1, ARG2, ARG3);
+  def_fn_type (ENUM, RETURN, 1, 3, ARG1, ARG2, ARG3);
 #define DEF_FUNCTION_TYPE_VAR_4(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4) \
-  def_fn_type(ENUM, RETURN, 1, 4, ARG1, ARG2, ARG3, ARG4);
+  def_fn_type (ENUM, RETURN, 1, 4, ARG1, ARG2, ARG3, ARG4);
 #define DEF_FUNCTION_TYPE_VAR_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) \
-  def_fn_type(ENUM, RETURN, 1, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
+  def_fn_type (ENUM, RETURN, 1, 5, ARG1, ARG2, ARG3, ARG4, ARG5);
 #define DEF_FUNCTION_TYPE_VAR_8(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
 				ARG6, ARG7, ARG8)                           \
-  def_fn_type(ENUM, RETURN, 1, 8, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,      \
+  def_fn_type (ENUM, RETURN, 1, 8, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,      \
 	       ARG7, ARG8);
 #define DEF_FUNCTION_TYPE_VAR_12(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, \
 				 ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12) \
-  def_fn_type(ENUM, RETURN, 1, 12, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,      \
+  def_fn_type (ENUM, RETURN, 1, 12, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6,      \
 	       ARG7, ARG8, ARG9, ARG10, ARG11, ARG12);
 #define DEF_POINTER_TYPE(ENUM, TYPE) \
-  builtin_types[(int) ENUM] = build_pointer_type(builtin_types[(int) TYPE]);
+  builtin_types[(int) ENUM] = build_pointer_type (builtin_types[(int) TYPE]);
 
 #include "builtin-types.def"
 
@@ -913,50 +969,83 @@ d_init_builtins()
 #undef DEF_POINTER_TYPE
   builtin_types[(int) BT_LAST] = NULL_TREE;
 
-  d_init_attributes();
+  d_init_attributes ();
 
 #define DEF_BUILTIN(ENUM, NAME, CLASS, TYPE, LIBTYPE, BOTH_P, FALLBACK_P,   \
 		    NONANSI_P, ATTRS, IMPLICIT, COND)			    \
   if (NAME && COND)							    \
-    do_build_builtin_fn(ENUM, NAME, CLASS,				    \
-			builtin_types[(int) TYPE],			    \
-			BOTH_P, FALLBACK_P,				    \
-			built_in_attributes[(int) ATTRS], IMPLICIT);
+    do_build_builtin_fn (ENUM, NAME, CLASS,				    \
+			 builtin_types[(int) TYPE],			    \
+			 BOTH_P, FALLBACK_P,				    \
+			 built_in_attributes[(int) ATTRS], IMPLICIT);
 #include "builtins.def"
 #undef DEF_BUILTIN
+}
 
-  targetm.init_builtins();
+/* Build builtin functions and types for the D language frontend.  */
 
-  build_common_builtin_nodes();
+void
+d_init_builtins (void)
+{
+  /* Build the "standard" abi va_list.  */
+  Type::tvalist = build_frontend_type (va_list_type_node);
+  if (!Type::tvalist)
+    {
+      error ("cannot represent built in va_list type in D");
+      gcc_unreachable ();
+    }
+
+  /* Map the va_list type to the D frontend Type.  This is to prevent both
+     errors in gimplification or an ICE in targetm.canonical_va_list_type.  */
+  Type::tvalist->ctype = va_list_type_node;
+  TYPE_LANG_SPECIFIC (va_list_type_node) = build_lang_type (Type::tvalist);
+
+  d_build_c_type_nodes ();
+  d_build_d_type_nodes ();
+
+  if (TREE_CODE (va_list_type_node) == ARRAY_TYPE)
+    {
+      /* It might seem natural to make the argument type a pointer, but there
+         is no implicit casting from arrays to pointers in D.  */
+      d_define_builtins (va_list_type_node, va_list_type_node);
+    }
+  else
+    {
+      d_define_builtins (build_reference_type (va_list_type_node),
+			 va_list_type_node);
+    }
+
+  targetm.init_builtins ();
+  build_common_builtin_nodes ();
 }
 
 /* Registration of machine- or os-specific builtin types.
    Add to builtin types list for maybe processing later
-   if gcc.builtins was imported into the current module.  */
+   if `gcc.builtins' was imported into the current module.  */
 
 void
-d_register_builtin_type(tree type, const char *name)
+d_register_builtin_type (tree type, const char *name)
 {
-  tree ident = get_identifier(name);
-  tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, ident, type);
+  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
+			  get_identifier (name), type);
   DECL_ARTIFICIAL (decl) = 1;
 
   if (!TYPE_NAME (type))
     TYPE_NAME (type) = decl;
 
-  vec_safe_push(gcc_builtins_types, decl);
+  vec_safe_push (gcc_builtins_types, decl);
 }
 
 /* Add DECL to builtin functions list for maybe processing later
-   if gcc.builtins was imported into the current module.  */
+   if `gcc.builtins' was imported into the current module.  */
 
 tree
-d_builtin_function(tree decl)
+d_builtin_function (tree decl)
 {
   if (!flag_no_builtin && DECL_ASSEMBLER_NAME_SET_P (decl))
-    vec_safe_push(gcc_builtins_libfuncs, decl);
+    vec_safe_push (gcc_builtins_libfuncs, decl);
 
-  vec_safe_push(gcc_builtins_functions, decl);
+  vec_safe_push (gcc_builtins_functions, decl);
   return decl;
 }
 
