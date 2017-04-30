@@ -19,6 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
+#include "dfrontend/expression.h"
+#include "dfrontend/mtype.h"
+
 #include "d-system.h"
 #include "d-tree.h"
 #include "d-codegen.h"

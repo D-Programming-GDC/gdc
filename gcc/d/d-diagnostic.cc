@@ -22,10 +22,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dfrontend/globals.h"
 #include "dfrontend/errors.h"
 
-#include "tree.h"
-#include "options.h"
-#include "diagnostic.h"
-
+#include "d-system.h"
 #include "d-tree.h"
 #include "d-objfile.h"
 
