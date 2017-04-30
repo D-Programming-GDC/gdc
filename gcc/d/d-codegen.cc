@@ -37,241 +37,6 @@
 #include "id.h"
 
 
-Module *current_module_decl;
-
-
-// Update data for defined and undefined labels when leaving a scope.
-
-bool
-pop_binding_label(Statement * const &, d_label_entry *ent, binding_level *bl)
-{
-  binding_level *obl = bl->level_chain;
-
-  if (ent->level == bl)
-    {
-      if (bl->kind == level_try)
-	ent->in_try_scope = true;
-      else if (bl->kind == level_catch)
-	ent->in_catch_scope = true;
-
-      ent->level = obl;
-    }
-  else if (ent->fwdrefs)
-    {
-      for (d_label_use_entry *ref = ent->fwdrefs; ref; ref = ref->next)
-	ref->level = obl;
-    }
-
-  return true;
-}
-
-// At the end of a function, all labels declared within the function
-// go out of scope.  BLOCK is the top-level block for the function.
-
-bool
-pop_label(Statement * const &s, d_label_entry *ent, tree block)
-{
-  if (!ent->bc_label)
-    {
-      // Put the labels into the "variables" of the top-level block,
-      // so debugger can see them.
-      if (DECL_NAME (ent->label))
-	{
-	  gcc_assert(DECL_INITIAL (ent->label) != NULL_TREE);
-	  DECL_CHAIN (ent->label) = BLOCK_VARS (block);
-	  BLOCK_VARS (block) = ent->label;
-	}
-    }
-
-  cfun->language->labels->remove(s);
-
-  return true;
-}
-
-// The D front-end does not use the 'binding level' system for a symbol table,
-// however it has been the goto structure for tracking code flow.
-// Primarily it is only needed to get debugging information for local variables
-// and otherwise support the backend.
-
-void
-push_binding_level(level_kind kind)
-{
-  // Add it to the front of currently active scopes stack.
-  binding_level *new_level = ggc_cleared_alloc<binding_level>();
-  new_level->level_chain = current_binding_level;
-  new_level->kind = kind;
-
-  current_binding_level = new_level;
-}
-
-tree
-pop_binding_level()
-{
-  binding_level *level = current_binding_level;
-  current_binding_level = level->level_chain;
-
-  tree block = make_node(BLOCK);
-  BLOCK_VARS (block) = level->names;
-  BLOCK_SUBBLOCKS (block) = level->blocks;
-
-  // In each subblock, record that this is its superior.
-  for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
-    BLOCK_SUPERCONTEXT (t) = block;
-
-  if (level->kind == level_function)
-    {
-      // Dispose of the block that we just made inside some higher level.
-      DECL_INITIAL (current_function_decl) = block;
-      BLOCK_SUPERCONTEXT (block) = current_function_decl;
-
-      // Pop all the labels declared in the function.
-      if (cfun->language->labels)
-	cfun->language->labels->traverse<tree, &pop_label>(block);
-    }
-  else
-    {
-      // Any uses of undefined labels, and any defined labels, now operate
-      // under constraints of next binding contour.
-      if (cfun && cfun->language->labels)
-	{
-	  cfun->language->labels->traverse<binding_level *, &pop_binding_label>
-	    (level);
-	}
-
-      current_binding_level->blocks
-	= block_chainon(current_binding_level->blocks, block);
-    }
-
-  TREE_USED (block) = 1;
-  return block;
-}
-
-
-// Create an empty statement tree rooted at T.
-void
-push_stmt_list()
-{
-  tree t = alloc_stmt_list();
-  vec_safe_push(cfun->language->stmt_list, t);
-  d_keep(t);
-}
-
-// Finish the statement tree rooted at T.
-tree
-pop_stmt_list()
-{
-  tree t = cfun->language->stmt_list->pop();
-
-  // If the statement list is completely empty, just return it.  This is
-  // just as good small as build_empty_stmt, with the advantage that
-  // statement lists are merged when they appended to one another.
-  // So using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
-  // statements.
-  if (TREE_SIDE_EFFECTS (t))
-    {
-      // If the statement list contained exactly one statement, then
-      // extract it immediately.
-      tree_stmt_iterator i = tsi_start (t);
-
-      if (tsi_one_before_end_p (i))
-	{
-	  tree u = tsi_stmt (i);
-	  tsi_delink (&i);
-	  free_stmt_list (t);
-	  t = u;
-	}
-    }
-
-  return t;
-}
-
-// T is an expression statement.  Add it to the statement-tree.
-
-void
-add_stmt(tree t)
-{
-  // Ignore (void) 0; expression statements received from the frontend.
-  // Likewise void_node is used when contracts become nops in release code.
-  if (t == void_node || IS_EMPTY_STMT (t))
-    return;
-
-  // At this point, we no longer care about the value of expressions,
-  // so if there's no side-effects, then don't add it.
-  if (!TREE_SIDE_EFFECTS (t))
-    return;
-
-  if (TREE_CODE (t) == COMPOUND_EXPR)
-    {
-      // Push out each comma expressions as separate statements.
-      add_stmt(TREE_OPERAND (t, 0));
-      add_stmt(TREE_OPERAND (t, 1));
-    }
-  else
-    {
-      // Append the expression to the statement list.
-      // Make sure it has a proper location.
-      if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
-	SET_EXPR_LOCATION (t, input_location);
-
-      tree stmt_list = cfun->language->stmt_list->last();
-      append_to_statement_list_force(t, &stmt_list);
-    }
-}
-
-//
-void
-start_function(FuncDeclaration *decl)
-{
-  cfun->language = ggc_cleared_alloc<language_function>();
-  cfun->language->function = decl;
-
-  // Default chain value is 'null' unless parent found.
-  cfun->language->static_chain = null_pointer_node;
-
-  // Find module for this function
-  for (Dsymbol *p = decl->parent; p != NULL; p = p->parent)
-    {
-      cfun->language->module = p->isModule();
-      if (cfun->language->module)
-	break;
-    }
-  gcc_assert(cfun->language->module != NULL);
-
-  // Check if we have a static this or unitest function.
-  ModuleInfo *mi = current_module_info;
-
-  if (decl->isSharedStaticCtorDeclaration())
-    mi->sharedctors.safe_push(decl);
-  else if (decl->isStaticCtorDeclaration())
-    mi->ctors.safe_push(decl);
-  else if (decl->isSharedStaticDtorDeclaration())
-    {
-      VarDeclaration *vgate = ((SharedStaticDtorDeclaration *) decl)->vgate;
-      if (vgate != NULL)
-	mi->sharedctorgates.safe_push(vgate);
-      mi->shareddtors.safe_push(decl);
-    }
-  else if (decl->isStaticDtorDeclaration())
-    {
-      VarDeclaration *vgate = ((StaticDtorDeclaration *) decl)->vgate;
-      if (vgate != NULL)
-	mi->ctorgates.safe_push(vgate);
-      mi->dtors.safe_push(decl);
-    }
-  else if (decl->isUnitTestDeclaration())
-    mi->unitTests.safe_push(decl);
-}
-
-void
-end_function()
-{
-  gcc_assert(vec_safe_is_empty(cfun->language->stmt_list));
-
-  ggc_free(cfun->language);
-  cfun->language = NULL;
-}
-
-
 // Return the DECL_CONTEXT for symbol DSYM.
 
 tree
@@ -319,690 +84,22 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
-// Add local variable VD into the current function body.
-
-void
-build_local_var (VarDeclaration *vd)
-{
-  gcc_assert (!vd->isDataseg() && !vd->isMember());
-  gcc_assert (current_function_decl != NULL_TREE);
-
-  FuncDeclaration *fd = cfun->language->function;
-  tree var = get_symbol_decl (vd);
-
-  gcc_assert (!TREE_STATIC (var));
-
-  set_input_location (vd->loc);
-  d_pushdecl (var);
-  DECL_CONTEXT (var) = current_function_decl;
-
-  // Compiler generated symbols
-  if (vd == fd->vresult || vd == fd->v_argptr)
-    DECL_ARTIFICIAL (var) = 1;
-
-  if (DECL_LANG_FRAME_FIELD (var))
-    {
-      // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var, get_decl_tree (vd));
-      DECL_HAS_VALUE_EXPR_P (var) = 1;
-    }
-}
-
-// Return an unnamed local temporary of type TYPE.
+/* Return a copy of record TYPE but safe to modify in any way.  */
 
 tree
-build_local_temp (tree type)
+copy_aggregate_type (tree type)
 {
-  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
+  tree newtype = build_distinct_type_copy (type);
+  TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
+  TYPE_METHODS (newtype) = copy_list (TYPE_METHODS (type));
 
-  DECL_CONTEXT (decl) = current_function_decl;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_IGNORED_P (decl) = 1;
-  d_pushdecl (decl);
+  for (tree f = TYPE_FIELDS (newtype); f; f = DECL_CHAIN (f))
+    DECL_FIELD_CONTEXT (f) = newtype;
 
-  return decl;
-}
+  for (tree m = TYPE_METHODS (newtype); m; m = DECL_CHAIN (m))
+    DECL_CONTEXT (m) = newtype;
 
-// Return an undeclared local temporary of type TYPE
-// for use with BIND_EXPR.
-
-tree
-create_temporary_var (tree type)
-{
-  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
-  DECL_CONTEXT (decl) = current_function_decl;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_IGNORED_P (decl) = 1;
-  layout_decl (decl, 0);
-  return decl;
-}
-
-// Return an undeclared local temporary OUT_VAR initialised
-// with result of expression EXP.
-
-tree
-maybe_temporary_var (tree exp, tree *out_var)
-{
-  tree t = exp;
-
-  // Get the base component.
-  while (TREE_CODE (t) == COMPONENT_REF)
-    t = TREE_OPERAND (t, 0);
-
-  if (!DECL_P (t) && !REFERENCE_CLASS_P (t))
-    {
-      *out_var = create_temporary_var (TREE_TYPE (exp));
-      DECL_INITIAL (*out_var) = exp;
-      return *out_var;
-    }
-  else
-    {
-      *out_var = NULL_TREE;
-      return exp;
-    }
-}
-
-// Emit an INIT_EXPR for decl DECL.
-
-void
-expand_decl (tree decl)
-{
-  // Nothing, d_pushdecl will add decl to a BIND_EXPR
-  if (DECL_INITIAL (decl))
-    {
-      tree exp = build_assign(INIT_EXPR, decl, DECL_INITIAL (decl));
-      add_stmt(exp);
-      DECL_INITIAL (decl) = NULL_TREE;
-    }
-}
-
-// Return the correct decl to be used for variable DECL accessed from the
-// current function.  Could be a VAR_DECL, or a FIELD_DECL from a closure.
-
-tree
-get_decl_tree (Declaration *decl)
-{
-  if (decl->isTypeInfoDeclaration ())
-    return get_typeinfo_decl ((TypeInfoDeclaration *) decl);
-
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
-  VarDeclaration *vd = decl->isVarDeclaration();
-
-  // If cfun is NULL, then this is a global static.
-  if (func != NULL && vd != NULL)
-    {
-      tree vsym = get_symbol_decl (vd);
-      if (DECL_LANG_NRVO (vsym))
-	{
-	  // Get the named return value.
-	  return DECL_LANG_NRVO (vsym);
-	}
-      else if (DECL_LANG_FRAME_FIELD (vsym))
-	{
-	  // Get the closure holding the var decl.
-	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
-	  tree frame_ref = get_framedecl (func, parent);
-
-	  return component_ref (build_deref (frame_ref),
-				DECL_LANG_FRAME_FIELD (vsym));
-	}
-      else if (vd->parent != func && vd->isThisDeclaration ())
-	{
-	  // Get the non-local 'this' value by going through parent link
-	  // of nested classes, this routine pretty much undoes what
-	  // getRightThis in the frontend removes from codegen.
-	  AggregateDeclaration *ad = func->isThis ();
-	  if (ad != NULL)
-	    {
-	      tree this_tree = get_symbol_decl (func->vthis);
-	      Dsymbol *outer = func;
-
-	      while (outer != vd->parent)
-		{
-		  gcc_assert (ad != NULL);
-		  outer = ad->toParent2 ();
-
-		  // Get the this->this parent link.
-		  tree vthis_field = get_symbol_decl (ad->vthis);
-		  this_tree = component_ref (build_deref (this_tree),
-					     vthis_field);
-
-		  ad = outer->isAggregateDeclaration ();
-		  if (ad != NULL)
-		    continue;
-
-		  FuncDeclaration *fd = outer->isFuncDeclaration ();
-		  while (fd != NULL)
-		    {
-		      // If outer function creates a closure, then the 'this'
-		      // value would be the closure pointer, and the real
-		      // 'this' the first field of that closure.
-		      tree ff = get_frameinfo (fd);
-		      if (FRAMEINFO_CREATES_FRAME (ff))
-			{
-			  this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
-						 this_tree);
-			  this_tree = indirect_ref (build_ctype (fd->vthis->type),
-						    this_tree);
-			}
-
-		      if (fd == vd->parent)
-			break;
-
-		      // Continue looking for the right 'this'
-		      outer = outer->toParent2 ();
-		      fd = outer->isFuncDeclaration ();
-		    }
-
-		  ad = outer->isAggregateDeclaration ();
-		}
-
-	      return this_tree;
-	    }
-	}
-    }
-
-  // Static var or auto var that the back end will handle for us
-  return get_symbol_decl (decl);
-}
-
-// Return expression EXP, whose type has been converted to TYPE.
-
-tree
-d_convert(tree type, tree exp)
-{
-  // Check this first before retrieving frontend type.
-  if (error_operand_p(type) || error_operand_p(exp))
-    return error_mark_node;
-
-  Type *totype = TYPE_LANG_FRONTEND (type);
-  Type *etype = TYPE_LANG_FRONTEND (TREE_TYPE (exp));
-
-  if (totype && etype)
-    return convert_expr(exp, etype, totype);
-
-  return convert(type, exp);
-}
-
-// Return expression EXP, whose type has been convert from ETYPE to TOTYPE.
-
-tree
-convert_expr(tree exp, Type *etype, Type *totype)
-{
-  tree result = NULL_TREE;
-
-  gcc_assert(etype && totype);
-  Type *ebtype = etype->toBasetype();
-  Type *tbtype = totype->toBasetype();
-
-  if (d_types_same(etype, totype))
-    return exp;
-
-  if (error_operand_p(exp))
-    return exp;
-
-  switch (ebtype->ty)
-    {
-    case Tdelegate:
-      if (tbtype->ty == Tdelegate)
-	{
-	  exp = d_save_expr(exp);
-	  return build_delegate_cst(delegate_method(exp), delegate_object(exp), totype);
-	}
-      else if (tbtype->ty == Tpointer)
-	{
-	  // The front-end converts <delegate>.ptr to cast (void *)<delegate>.
-	  // Maybe should only allow void* ?
-	  exp = delegate_object(exp);
-	}
-      else
-	{
-	  error("can't convert a delegate expression to %s", totype->toChars());
-	  return error_mark_node;
-	}
-      break;
-
-    case Tstruct:
-      if (tbtype->ty == Tstruct)
-      {
-	if (totype->size() == etype->size())
-	  {
-	    // Allowed to cast to structs with same type size.
-	    result = build_vconvert(build_ctype(totype), exp);
-	  }
-	else
-	  {
-	    error("can't convert struct %s to %s", etype->toChars(), totype->toChars());
-	    return error_mark_node;
-	  }
-      }
-      // else, default conversion, which should produce an error
-      break;
-
-    case Tclass:
-      if (tbtype->ty == Tclass)
-      {
-	ClassDeclaration *cdfrom = ebtype->isClassHandle();
-	ClassDeclaration *cdto = tbtype->isClassHandle();
-	int offset;
-
-	if (cdto->isBaseOf(cdfrom, &offset) && offset != OFFSET_RUNTIME)
-	  {
-	    // Casting up the inheritance tree: Don't do anything special.
-	    // Cast to an implemented interface: Handle at compile time.
-	    if (offset)
-	      {
-		tree type = build_ctype(totype);
-		exp = d_save_expr(exp);
-
-		tree cond = build_boolop(NE_EXPR, exp, null_pointer_node);
-		tree object = build_offset(exp, size_int(offset));
-
-		return build_condition(build_ctype(totype), cond,
-				       build_nop(type, object),
-				       build_nop(type, null_pointer_node));
-	      }
-
-	    // d_convert will make a no-op cast
-	    break;
-	  }
-	else if (cdfrom->cpp)
-	  {
-	    // Downcasting in C++ is a no-op.
-	    if (cdto->cpp)
-	      break;
-
-	    // Casting from a C++ interface to a class/non-C++ interface
-	    // always results in null as there is no runtime information,
-	    // and no way one can derive from the other.
-	    warning (OPT_Wcast_result, "cast to %s will produce null result",
-		     totype->toChars ());
-	    result = d_convert (build_ctype (totype), null_pointer_node);
-
-	    // Make sure the expression is still evaluated if necessary
-	    if (TREE_SIDE_EFFECTS (exp))
-	      result = compound_expr (exp, result);
-
-	    break;
-	  }
-
-	// The offset can only be determined at runtime, do dynamic cast
-	tree args[2];
-	args[0] = exp;
-	args[1] = build_address(get_classinfo_decl (cdto));
-
-	return build_libcall(cdfrom->isInterfaceDeclaration()
-			     ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST, 2, args);
-      }
-      // else default conversion
-      break;
-
-    case Tsarray:
-      if (tbtype->ty == Tpointer)
-	{
-	  result = build_nop(build_ctype(totype), build_address(exp));
-	}
-      else if (tbtype->ty == Tarray)
-	{
-	  dinteger_t dim = ((TypeSArray *) ebtype)->dim->toInteger();
-	  dinteger_t esize = ebtype->nextOf()->size();
-	  dinteger_t tsize = tbtype->nextOf()->size();
-
-	  tree ptrtype = build_ctype(tbtype->nextOf()->pointerTo());
-
-	  if ((dim * esize) % tsize != 0)
-	    {
-	      error("cannot cast %s to %s since sizes don't line up",
-		    etype->toChars(), totype->toChars());
-	      return error_mark_node;
-	    }
-	  dim = (dim * esize) / tsize;
-
-	  // Assumes casting to dynamic array of same type or void
-	  return d_array_value(build_ctype(totype), size_int(dim),
-			       build_nop(ptrtype, build_address(exp)));
-	}
-      else if (tbtype->ty == Tsarray)
-	{
-	  // D apparently allows casting a static array to any static array type
-	  return build_nop(build_ctype(totype), exp);
-	}
-      else if (tbtype->ty == Tstruct)
-	{
-	  // And allows casting a static array to any struct type too.
-	  // %% type sizes should have already been checked by the frontend.
-	  gcc_assert(totype->size() == etype->size());
-	  result = build_vconvert(build_ctype(totype), exp);
-	}
-      else
-	{
-	  error("cannot cast expression of type %s to type %s",
-		etype->toChars(), totype->toChars());
-	  return error_mark_node;
-	}
-      break;
-
-    case Tarray:
-      if (tbtype->ty == Tpointer)
-	{
-	  return d_convert(build_ctype(totype), d_array_ptr(exp));
-	}
-      else if (tbtype->ty == Tarray)
-	{
-	  // assume tvoid->size() == 1
-	  Type *src_elem_type = ebtype->nextOf()->toBasetype();
-	  Type *dst_elem_type = tbtype->nextOf()->toBasetype();
-	  d_uns64 sz_src = src_elem_type->size();
-	  d_uns64 sz_dst = dst_elem_type->size();
-
-	  if (sz_src == sz_dst)
-	    {
-	      // Convert from void[] or elements are the same size -- don't change length
-	      return build_vconvert(build_ctype(totype), exp);
-	    }
-	  else
-	    {
-	      unsigned mult = 1;
-	      tree args[3];
-
-	      args[0] = size_int(sz_dst);
-	      args[1] = size_int(sz_src * mult);
-	      args[2] = exp;
-
-	      return build_libcall(LIBCALL_ARRAYCAST, 3, args, build_ctype(totype));
-	    }
-	}
-      else if (tbtype->ty == Tsarray)
-	{
-	  // %% Strings are treated as dynamic arrays D2.
-	  if (ebtype->isString() && tbtype->isString())
-	    return indirect_ref(build_ctype(totype), d_array_ptr(exp));
-	}
-      else
-	{
-	  error("cannot cast expression of type %s to %s",
-		etype->toChars(), totype->toChars());
-	  return error_mark_node;
-	}
-      break;
-
-    case Taarray:
-      if (tbtype->ty == Taarray)
-	return build_vconvert(build_ctype(totype), exp);
-      // Can convert associative arrays to void pointers.
-      else if (tbtype->ty == Tpointer && tbtype->nextOf()->ty == Tvoid)
-	return build_vconvert(build_ctype(totype), exp);
-      // else, default conversion, which should product an error
-      break;
-
-    case Tpointer:
-      // Can convert void pointers to associative arrays too...
-      if (tbtype->ty == Taarray && ebtype->nextOf()->ty == Tvoid)
-	return build_vconvert(build_ctype(totype), exp);
-      break;
-
-    case Tnull:
-      if (tbtype->ty == Tarray)
-	{
-	  tree ptrtype = build_ctype(tbtype->nextOf()->pointerTo());
-	  return d_array_value(build_ctype(totype), size_int(0),
-			       build_nop(ptrtype, exp));
-	}
-      else if (tbtype->ty == Taarray)
-	return build_constructor(build_ctype(totype), NULL);
-      else if (tbtype->ty == Tdelegate)
-	return build_delegate_cst(exp, null_pointer_node, totype);
-      break;
-
-    case Tvector:
-      if (tbtype->ty == Tsarray)
-	{
-	  if (tbtype->size() == ebtype->size())
-	    return build_vconvert(build_ctype(totype), exp);
-	}
-      break;
-
-    default:
-      // All casts between imaginary and non-imaginary result in 0.0,
-      // except for casts between complex and imaginary types.
-      if (!ebtype->iscomplex() && !tbtype->iscomplex()
-	  && (ebtype->isimaginary() != tbtype->isimaginary()))
-	{
-	  warning(OPT_Wcast_result, "cast from %s to %s will produce zero result",
-		  ebtype->toChars(), tbtype->toChars());
-
-	  return compound_expr(exp, build_zero_cst(build_ctype(tbtype)));
-	}
-
-      exp = fold_convert(build_ctype(etype), exp);
-      gcc_assert(TREE_CODE (exp) != STRING_CST);
-      break;
-    }
-
-  return result ? result :
-    convert(build_ctype(totype), exp);
-}
-
-
-// Apply semantics of assignment to a values of type TOTYPE to EXPR
-// (e.g., pointer = array -> pointer = &array[0])
-
-// Return a TREE representation of EXPR implictly converted to TOTYPE
-// for use in assignment expressions MODIFY_EXPR, INIT_EXPR...
-
-tree
-convert_for_assignment (tree expr, Type *etype, Type *totype)
-{
-  Type *ebtype = etype->toBasetype();
-  Type *tbtype = totype->toBasetype();
-
-  // Assuming this only has to handle converting a non Tsarray type to
-  // arbitrarily dimensioned Tsarrays.
-  if (tbtype->ty == Tsarray)
-    {
-      Type *telem = tbtype->nextOf()->baseElemOf();
-
-      if (d_types_same (telem, ebtype))
-	{
-	  TypeSArray *sa_type = (TypeSArray *) tbtype;
-	  uinteger_t count = sa_type->dim->toUInteger();
-
-	  tree ctor = build_constructor (build_ctype(totype), NULL);
-	  if (count)
-	    {
-	      vec<constructor_elt, va_gc> *ce = NULL;
-	      tree index = build2 (RANGE_EXPR, build_ctype(Type::tsize_t),
-				   size_zero_node, size_int(count - 1));
-	      tree value = convert_for_assignment (expr, etype, sa_type->next);
-
-	      // Can't use VAR_DECLs in CONSTRUCTORS.
-	      if (VAR_P (value))
-		{
-		  value = DECL_INITIAL (value);
-		  gcc_assert (value);
-		}
-
-	      CONSTRUCTOR_APPEND_ELT (ce, index, value);
-	      CONSTRUCTOR_ELTS (ctor) = ce;
-	    }
-	  TREE_READONLY (ctor) = 1;
-	  TREE_CONSTANT (ctor) = 1;
-	  return ctor;
-	}
-    }
-
-  // D Front end uses IntegerExp (0) to mean zero-init a structure.
-  if (tbtype->ty == Tstruct && ebtype->isintegral())
-    {
-      if (!integer_zerop (expr))
-	gcc_unreachable();
-
-      return expr;
-    }
-
-  return convert_expr (expr, etype, totype);
-}
-
-// Return TRUE if TYPE is a static array va_list.  This is for compatibility
-// with the C ABI, where va_list static arrays are passed by reference.
-// However for ever other case in D, static arrays are passed by value.
-
-static bool
-type_va_array(Type *type)
-{
-  if (Type::tvalist->ty == Tsarray)
-    {
-      Type *tb = type->toBasetype();
-      if (d_types_same(tb, Type::tvalist))
-	return true;
-    }
-
-  return false;
-}
-
-
-// Return a TREE representation of EXPR converted to represent parameter type ARG.
-
-tree
-convert_for_argument(tree exp_tree, Expression *expr, Parameter *arg)
-{
-  // Lazy arguments: expr should already be a delegate
-  if (arg->storageClass & STClazy)
-    return exp_tree;
-
-  if (type_va_array(arg->type))
-    {
-      // Do nothing if the va_list has already been decayed to a pointer.
-      if (!POINTER_TYPE_P (TREE_TYPE (exp_tree)))
-	return build_address(exp_tree);
-    }
-  else if (argument_reference_p(arg))
-    {
-      // Front-end sometimes automatically takes the address.
-      if (expr->op != TOKaddress && expr->op != TOKsymoff && expr->op != TOKadd)
-	exp_tree = build_address(exp_tree);
-
-      return convert(type_passed_as(arg), exp_tree);
-    }
-
-  return exp_tree;
-}
-
-// Perform default promotions for data used in expressions.
-// Arrays and functions are converted to pointers;
-// enumeral types or short or char, to int.
-// In addition, manifest constants symbols are replaced by their values.
-
-// Return truth-value conversion of expression EXPR from value type TYPE.
-
-tree
-convert_for_condition(tree expr, Type *type)
-{
-  tree result = NULL_TREE;
-
-  switch (type->toBasetype()->ty)
-    {
-    case Taarray:
-      // Shouldn't this be...
-      //  result = _aaLen (&expr);
-      result = component_ref(expr, TYPE_FIELDS (TREE_TYPE (expr)));
-      break;
-
-    case Tarray:
-    {
-      // Checks (length || ptr) (i.e ary !is null)
-      expr = d_save_expr(expr);
-      tree len = d_array_length(expr);
-      tree ptr = d_array_ptr(expr);
-      if (TYPE_MODE (TREE_TYPE (len)) == TYPE_MODE (TREE_TYPE (ptr)))
-	{
-	  result = build2(BIT_IOR_EXPR, TREE_TYPE (len), len,
-			  d_convert(TREE_TYPE (len), ptr));
-	}
-      else
-	{
-	  len = d_truthvalue_conversion(len);
-	  ptr = d_truthvalue_conversion(ptr);
-	  // probably not worth using TRUTH_OROR ...
-	  result = build2(TRUTH_OR_EXPR, TREE_TYPE (len), len, ptr);
-	}
-      break;
-    }
-
-    case Tdelegate:
-    {
-      // Checks (function || object), but what good is it
-      // if there is a null function pointer?
-      tree obj, func;
-      if (METHOD_CALL_EXPR (expr))
-	extract_from_method_call(expr, obj, func);
-      else
-	{
-	  expr = d_save_expr(expr);
-	  obj = delegate_object(expr);
-	  func = delegate_method(expr);
-	}
-
-      obj = d_truthvalue_conversion(obj);
-      func = d_truthvalue_conversion(func);
-      // probably not worth using TRUTH_ORIF ...
-      result = build2(BIT_IOR_EXPR, TREE_TYPE (obj), obj, func);
-      break;
-    }
-
-    default:
-      result = expr;
-      break;
-    }
-
-  return d_truthvalue_conversion (result);
-}
-
-
-// Convert EXP to a dynamic array.
-// EXP must be a static array or dynamic array.
-
-tree
-d_array_convert(Expression *exp)
-{
-  Type *tb = exp->type->toBasetype();
-
-  if (tb->ty == Tarray)
-    return build_expr(exp);
-  else if (tb->ty == Tsarray)
-    {
-      Type *totype = tb->nextOf()->arrayOf();
-      return convert_expr(build_expr(exp), exp->type, totype);
-    }
-
-  // Invalid type passed.
-  gcc_unreachable();
-}
-
-// Convert EXP to a dynamic array, where ETYPE is the element type.
-// Similar to above, except that EXP is allowed to be an element of an array.
-// Temporary variables that need some kind of BIND_EXPR are pushed to VARS.
-
-tree
-d_array_convert(Type *etype, Expression *exp, vec<tree, va_gc> **vars)
-{
-  Type *tb = exp->type->toBasetype();
-
-  if ((tb->ty != Tarray && tb->ty != Tsarray)
-      || d_types_same(tb, etype->toBasetype()))
-    {
-      // Convert single element to an array.
-      tree var = NULL_TREE;
-      tree expr = maybe_temporary_var(build_expr(exp), &var);
-
-      if (var != NULL_TREE)
-	vec_safe_push(*vars, var);
-
-      return d_array_value(build_ctype(exp->type->arrayOf()),
-			   size_int(1), build_address(expr));
-    }
-  else
-    return d_array_convert(exp);
+  return newtype;
 }
 
 // Return TRUE if declaration DECL is a reference type.
@@ -1035,7 +132,7 @@ declaration_type(Declaration *decl)
     }
 
   // Static array va_list have array->pointer conversions applied.
-  if (decl->isParameter() && type_va_array(decl->type))
+  if (decl->isParameter() && valist_array_p (decl->type))
     {
       Type *valist = decl->type->nextOf()->pointerTo();
       valist = valist->castMod(decl->type->mod);
@@ -1090,7 +187,7 @@ type_passed_as(Parameter *arg)
     }
 
   // Static array va_list have array->pointer conversions applied.
-  if (type_va_array(arg->type))
+  if (valist_array_p (arg->type))
     {
       Type *valist = arg->type->nextOf()->pointerTo();
       valist = valist->castMod(arg->type->mod);
@@ -1104,223 +201,6 @@ type_passed_as(Parameter *arg)
     return build_reference_type(type);
 
   return type;
-}
-
-// Returns an array of type D_TYPE which has SIZE number of elements.
-
-tree
-d_array_type(Type *d_type, uinteger_t size)
-{
-  tree index_type_node;
-  tree type_node = build_ctype(d_type);
-
-  if (size > 0)
-    {
-      index_type_node = size_int(size - 1);
-      index_type_node = build_index_type(index_type_node);
-    }
-  else
-    {
-      tree type = lang_hooks.types.type_for_size(TYPE_PRECISION (sizetype),
-						 TYPE_UNSIGNED (sizetype));
-
-      index_type_node = build_range_type(type, size_zero_node, NULL_TREE);
-    }
-
-  tree array_type = build_array_type(type_node, index_type_node);
-
-  if (size == 0)
-    {
-      TYPE_SIZE (array_type) = bitsize_zero_node;
-      TYPE_SIZE_UNIT (array_type) = size_zero_node;
-    }
-
-  return array_type;
-}
-
-// Appends the type attribute ATTRNAME with value VALUE onto type TYPE.
-
-tree
-insert_type_attribute (tree type, const char *attrname, tree value)
-{
-  tree attrib;
-  tree ident = get_identifier (attrname);
-
-  if (value)
-    value = tree_cons (NULL_TREE, value, NULL_TREE);
-
-  // types built by functions in tree.c need to be treated as immutabl
-  if (!TYPE_ATTRIBUTES (type))
-    type = build_variant_type_copy (type);
-
-  attrib = tree_cons (ident, value, NULL_TREE);
-  TYPE_ATTRIBUTES (type) = merge_attributes (TYPE_ATTRIBUTES (type), attrib);
-
-  return type;
-}
-
-// Appends the decl attribute ATTRNAME with value VALUE onto decl DECL.
-
-void
-insert_decl_attribute (tree decl, const char *attrname, tree value)
-{
-  tree attrib;
-  tree ident = get_identifier (attrname);
-
-  if (value)
-    value = tree_cons (NULL_TREE, value, NULL_TREE);
-
-  attrib = tree_cons (ident, value, NULL_TREE);
-  DECL_ATTRIBUTES (decl) = merge_attributes (DECL_ATTRIBUTES (decl), attrib);
-}
-
-bool
-d_attribute_p (const char* name)
-{
-  static StringTable* table;
-
-  if(table == NULL)
-    {
-      // Build the table of attributes exposed to the language.
-      // Common and format attributes are kept internal.
-      size_t n = 0;
-      table = new StringTable();
-
-      for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
-	n++;
-
-      for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
-	n++;
-
-      if(n != 0)
-	{
-	  table->_init(n);
-
-	  for (const attribute_spec *p = lang_hooks.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name), NULL);
-
-	  for (const attribute_spec *p = targetm.attribute_table; p->name; p++)
-	    table->insert(p->name, strlen(p->name), NULL);
-	}
-    }
-
-  return table->lookup(name, strlen(name)) != NULL;
-}
-
-// Return chain of all GCC attributes found in list IN_ATTRS.
-
-tree
-build_attributes (Expressions *in_attrs)
-{
-  if (!in_attrs)
-    return NULL_TREE;
-
-  expandTuples(in_attrs);
-
-  tree out_attrs = NULL_TREE;
-
-  for (size_t i = 0; i < in_attrs->dim; i++)
-    {
-      Expression *attr = (*in_attrs)[i];
-      Dsymbol *sym = attr->type->toDsymbol (0);
-
-      if (!sym)
-	continue;
-
-      Dsymbol *mod = (Dsymbol*) sym->getModule();
-      if (!(strcmp(mod->toChars(), "attribute") == 0
-          && mod->parent != NULL
-          && strcmp(mod->parent->toChars(), "gcc") == 0
-          && !mod->parent->parent))
-        continue;
-
-      if (attr->op == TOKcall)
-	attr = attr->ctfeInterpret();
-
-      gcc_assert(attr->op == TOKstructliteral);
-      Expressions *elem = ((StructLiteralExp*) attr)->elements;
-
-      if ((*elem)[0]->op == TOKnull)
-	{
-	  error ("expected string attribute, not null");
-	  return error_mark_node;
-	}
-
-      gcc_assert((*elem)[0]->op == TOKstring);
-      StringExp *nameExp = (StringExp*) (*elem)[0];
-      gcc_assert(nameExp->sz == 1);
-      const char* name = (const char*) nameExp->string;
-
-      if (!d_attribute_p (name))
-      {
-        error ("unknown attribute %s", name);
-        return error_mark_node;
-      }
-
-      tree args = NULL_TREE;
-
-      for (size_t j = 1; j < elem->dim; j++)
-        {
-	  Expression *ae = (*elem)[j];
-	  tree aet;
-	  if (ae->op == TOKstring && ((StringExp *) ae)->sz == 1)
-	    {
-	      StringExp *s = (StringExp *) ae;
-	      aet = build_string (s->len, (const char *) s->string);
-	    }
-	  else
-	    aet = build_expr(ae);
-
-	  args = chainon (args, build_tree_list (0, aet));
-        }
-
-      tree list = build_tree_list (get_identifier (name), args);
-      out_attrs =  chainon (out_attrs, list);
-    }
-
-  return out_attrs;
-}
-
-// Return qualified type variant of TYPE determined by modifier value MOD.
-
-tree
-insert_type_modifiers (tree type, unsigned mod)
-{
-  int quals = 0;
-  gcc_assert (type);
-
-  switch (mod)
-    {
-    case 0:
-      break;
-
-    case MODconst:
-    case MODwild:
-    case MODwildconst:
-    case MODimmutable:
-      quals |= TYPE_QUAL_CONST;
-      break;
-
-    case MODshared:
-      break;
-
-    case MODshared | MODconst:
-    case MODshared | MODwild:
-    case MODshared | MODwildconst:
-      quals |= TYPE_QUAL_CONST;
-      break;
-
-    default:
-      gcc_unreachable();
-    }
-
-  tree qualtype = build_qualified_type (type, quals);
-
-  // Mark whether the type is qualified 'shared'.
-  if (mod & MODshared)
-    TYPE_SHARED (qualtype) = 1;
-
-  return qualtype;
 }
 
 // Build INTEGER_CST of type TYPE with the value VALUE.
@@ -1415,7 +295,7 @@ d_array_string (const char *str)
   // Assumes STR is 0-terminated.
   tree str_tree = build_string (len + 1, str);
 
-  TREE_TYPE (str_tree) = d_array_type (Type::tchar, len);
+  TREE_TYPE (str_tree) = make_array_type (Type::tchar, len);
 
   return d_array_value (build_ctype(Type::tchar->arrayOf()),
 			size_int (len), build_address (str_tree));
@@ -1526,7 +406,7 @@ build_delegate_cst(tree method, tree object, Type *type)
   else
     {
       // Convert a function literal into an anonymous delegate.
-      ctype = build_two_field_type(TREE_TYPE (object), TREE_TYPE (method),
+      ctype = make_two_field_type (TREE_TYPE (object), TREE_TYPE (method),
 				   NULL, "object", "func");
     }
 
@@ -1575,26 +455,6 @@ build_vindex_ref(tree object, tree fntype, size_t index)
   gcc_assert(POINTER_TYPE_P (fntype));
 
   return build_memref(fntype, result, size_int(Target::ptrsize * index));
-}
-
-// Builds a record type from field types T1 and T2.  TYPE is the D frontend
-// type we are building. N1 and N2 are the names of the two fields.
-
-tree
-build_two_field_type(tree t1, tree t2, Type *type, const char *n1, const char *n2)
-{
-  tree rectype = make_node(RECORD_TYPE);
-  tree f0 = build_decl(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n1), t1);
-  tree f1 = build_decl(BUILTINS_LOCATION, FIELD_DECL, get_identifier(n2), t2);
-
-  DECL_FIELD_CONTEXT(f0) = rectype;
-  DECL_FIELD_CONTEXT(f1) = rectype;
-  TYPE_FIELDS(rectype) = chainon(f0, f1);
-  if (type != NULL)
-    TYPE_NAME(rectype) = get_identifier(type->toChars());
-  layout_type(rectype);
-
-  return rectype;
 }
 
 // Return TRUE if EXP is a valid lvalue.  Lvalues references cannot be
@@ -2107,7 +967,7 @@ build_array_struct_comparison(tree_code code, StructDeclaration *sd,
 static tree
 build_alignment_field(HOST_WIDE_INT offset, HOST_WIDE_INT fieldpos)
 {
-  tree type = d_array_type(Type::tuns8, fieldpos - offset);
+  tree type = make_array_type (Type::tuns8, fieldpos - offset);
   tree field = create_field_decl(type, NULL, 1, 1);
 
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (type));
@@ -2168,7 +1028,10 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 
 	  FOR_EACH_CONSTRUCTOR_ELT (init, idx, index, value)
 	    {
-	      if (index == field)
+	      /* If the index is NULL, then just assign it to the next field.
+		 This is expect of layout_typeinfo(), which generates a flat
+		 list of values that we must shape into the record type.  */
+	      if (index == field || index == NULL_TREE)
 		{
 		  init->ordered_remove(idx);
 		  if (!finished)
@@ -2279,7 +1142,7 @@ build_class_instance (ClassReferenceExp *exp)
 	    {
 	      gcc_assert (cd2 != NULL);
 
-	      unsigned csymoffset = cd2->baseVtblOffset (bc);
+	      unsigned csymoffset = base_vtable_offset (cd2, bc);
 	      if (csymoffset != (unsigned) ~0)
 		{
 		  tree csym = build_address (get_classinfo_decl (cd2));
@@ -2425,30 +1288,6 @@ tree
 modify_expr(tree lhs, tree rhs)
 {
   return build_assign(MODIFY_EXPR, lhs, rhs);
-}
-
-// Returns true if TYPE contains no actual data, just various
-// possible combinations of empty aggregates.
-
-bool
-empty_aggregate_p(tree type)
-{
-  if (!AGGREGATE_TYPE_P (type))
-    return false;
-
-  // Want the element type for arrays.
-  if (TREE_CODE (type) == ARRAY_TYPE)
-    return empty_aggregate_p(TREE_TYPE (type));
-
-  // Recursively check all fields.
-  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
-    {
-      if (TREE_CODE (field) == FIELD_DECL
-	  && !empty_aggregate_p(TREE_TYPE (field)))
-	return false;
-    }
-
-  return true;
 }
 
 // Return EXP represented as TYPE.
@@ -2877,7 +1716,7 @@ build_binop_assignment(tree_code code, Expression *e1, Expression *e2)
   while (e1b->op == TOKcast)
     {
       CastExp *ce = (CastExp *) e1b;
-      gcc_assert(d_types_same(ce->type, ce->to));
+      gcc_assert (same_type_p (ce->type, ce->to));
       e1b = ce->e1;
     }
 
@@ -2937,7 +1776,7 @@ array_bounds_check()
 
     case BOUNDSCHECKsafeonly:
       // For D2 safe functions only
-      func = cfun->language->function;
+      func = d_function_chain->function;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
@@ -2948,6 +1787,47 @@ array_bounds_check()
 
     default:
       gcc_unreachable();
+    }
+}
+
+/* Return an undeclared local temporary of type TYPE
+   for use with BIND_EXPR.  */
+
+tree
+create_temporary_var (tree type)
+{
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
+
+  DECL_CONTEXT (decl) = current_function_decl;
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  layout_decl (decl, 0);
+
+  return decl;
+}
+
+/* Return an undeclared local temporary OUT_VAR initialised
+   with result of expression EXP.  */
+
+tree
+maybe_temporary_var (tree exp, tree *out_var)
+{
+  tree t = exp;
+
+  /* Get the base component.  */
+  while (TREE_CODE (t) == COMPONENT_REF)
+    t = TREE_OPERAND (t, 0);
+
+  if (!DECL_P (t) && !REFERENCE_CLASS_P (t))
+    {
+      *out_var = create_temporary_var (TREE_TYPE (exp));
+      DECL_INITIAL (*out_var) = exp;
+      return *out_var;
+    }
+  else
+    {
+      *out_var = NULL_TREE;
+      return exp;
     }
 }
 
@@ -3100,7 +1980,7 @@ d_build_call(TypeFunction *tf, tree callable, tree object, Expressions *argument
 	    {
 	      // Actual arguments for declared formal arguments
 	      Parameter *parg = Parameter::getNth(tf->parameters, i - dvarargs);
-	      targ = convert_for_argument(build_expr(arg), arg, parg);
+	      targ = convert_for_argument(build_expr(arg), parg);
 	    }
 	  else
 	    targ = build_expr(arg);
@@ -3847,158 +2727,6 @@ build_float_modulus (tree type, tree arg0, tree arg1)
   gcc_unreachable();
 }
 
-// Check that a new jump at FROM to a label at TO is OK.
-
-void
-check_goto(Statement *from, Statement *to)
-{
-  d_label_entry *ent = cfun->language->labels->get(to);
-  gcc_assert(ent != NULL);
-
-  // If the label hasn't been defined yet, defer checking.
-  if (! DECL_INITIAL (ent->label))
-    {
-      d_label_use_entry *fwdref = ggc_alloc<d_label_use_entry>();
-      fwdref->level = current_binding_level;
-      fwdref->statement = from;
-      fwdref->next = ent->fwdrefs;
-      ent->fwdrefs = fwdref;
-      return;
-    }
-
-  if (ent->in_try_scope)
-    from->error("cannot goto into try block");
-  else if (ent->in_catch_scope)
-    from->error("cannot goto into catch block");
-}
-
-// Check that a previously seen jumps to a newly defined label is OK.
-
-static void
-check_previous_goto(Statement *s, d_label_use_entry *fwdref)
-{
-  for (binding_level *b = current_binding_level; b ; b = b->level_chain)
-    {
-      if (b == fwdref->level)
-	break;
-
-      if (b->kind == level_try || b->kind == level_catch)
-	{
-	  if (s->isLabelStatement())
-	    {
-	      if (b->kind == level_try)
-		fwdref->statement->error("cannot goto into try block");
-	      else
-		fwdref->statement->error("cannot goto into catch block");
-	    }
-	  else if (s->isCaseStatement())
-	    s->error("case cannot be in different try block level from switch");
-	  else if (s->isDefaultStatement())
-	    s->error("default cannot be in different try block level from switch");
-	  else
-	    gcc_unreachable();
-	}
-    }
-}
-
-// Get or build LABEL_DECL using the IDENT and statement block S given.
-
-tree
-lookup_label(Statement *s, Identifier *ident)
-{
-  // You can't use labels at global scope.
-  if (cfun == NULL)
-    {
-      error("label %s referenced outside of any function",
-	    ident ? ident->toChars() : "(unnamed)");
-      return NULL_TREE;
-    }
-
-  // Create the label htab for the function on demand.
-  if (!cfun->language->labels)
-    cfun->language->labels = hash_map<Statement *, d_label_entry>::create_ggc(13);
-
-  d_label_entry *ent = cfun->language->labels->get(s);
-  if (ent != NULL)
-    return ent->label;
-  else
-    {
-      tree name = ident ? get_identifier(ident->toChars()) : NULL_TREE;
-      tree decl = build_decl(input_location, LABEL_DECL, name, void_type_node);
-      DECL_CONTEXT (decl) = current_function_decl;
-      DECL_MODE (decl) = VOIDmode;
-
-      // Create new empty slot.
-      ent = ggc_cleared_alloc<d_label_entry>();
-      ent->statement = s;
-      ent->label = decl;
-
-      bool existed = cfun->language->labels->put(s, *ent);
-      gcc_assert(!existed);
-
-      return decl;
-    }
-}
-
-// Get the LABEL_DECL to represent a break or continue for the
-// statement S given.  BC indicates which.
-
-tree
-lookup_bc_label(Statement *s, bc_kind bc)
-{
-  tree vec = lookup_label(s);
-
-  // The break and continue labels are put into a TREE_VEC.
-  if (TREE_CODE (vec) == LABEL_DECL)
-    {
-      d_label_entry *ent = cfun->language->labels->get(s);
-      gcc_assert(ent != NULL);
-
-      vec = make_tree_vec(2);
-      TREE_VEC_ELT (vec, bc_break) = ent->label;
-
-      // Build the continue label.
-      tree label = build_decl(input_location, LABEL_DECL,
-			      NULL_TREE, void_type_node);
-      DECL_CONTEXT (label) = current_function_decl;
-      DECL_MODE (label) = VOIDmode;
-      TREE_VEC_ELT (vec, bc_continue) = label;
-
-      ent->label = vec;
-      ent->bc_label = true;
-    }
-
-  return TREE_VEC_ELT (vec, bc);
-}
-
-// Define a label, specifying the location in the source file.
-// Return the LABEL_DECL node for the label.
-
-tree
-define_label(Statement *s, Identifier *ident)
-{
-  tree label = lookup_label(s, ident);
-  gcc_assert(DECL_INITIAL (label) == NULL_TREE);
-
-  d_label_entry *ent = cfun->language->labels->get(s);
-  gcc_assert(ent != NULL);
-
-  // Mark label as having been defined.
-  DECL_INITIAL (label) = error_mark_node;
-
-  // Not setting this doesn't seem to cause problems (unlike VAR_DECLs).
-  if (s->loc.filename)
-    set_decl_location (label, s->loc);
-
-  ent->level = current_binding_level;
-
-  for (d_label_use_entry *ref = ent->fwdrefs; ref ; ref = ref->next)
-    check_previous_goto(ent->statement, ref);
-  ent->fwdrefs = NULL;
-
-  return label;
-}
-
 // If SYM is a nested function, return the static chain to be
 // used when calling that function from the current function.
 
@@ -4008,7 +2736,7 @@ define_label(Statement *s, Identifier *ident)
 tree
 get_frame_for_symbol (Dsymbol *sym)
 {
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
+  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
   FuncDeclaration *thisfd = sym->isFuncDeclaration();
   FuncDeclaration *parentfd = NULL;
 
@@ -4140,7 +2868,7 @@ d_nested_struct (StructDeclaration *sd)
 static tree
 find_this_tree(ClassDeclaration *ocd)
 {
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
+  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
 
   while (func)
     {
@@ -4355,7 +3083,9 @@ build_closure(FuncDeclaration *fd)
       tree arg = convert(build_ctype(Type::tsize_t), TYPE_SIZE_UNIT(type));
       tree init = build_libcall(LIBCALL_ALLOCMEMORY, 1, &arg);
 
-      DECL_INITIAL(decl) = build_nop(TREE_TYPE(decl), init);
+      tree init_exp = build_assign (INIT_EXPR, decl,
+				    build_nop (TREE_TYPE (decl), init));
+      add_stmt (init_exp);
     }
   else
     {
@@ -4365,11 +3095,10 @@ build_closure(FuncDeclaration *fd)
     }
 
   DECL_IGNORED_P(decl) = 0;
-  expand_decl(decl);
 
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));
-  tree chain_expr = modify_expr(chain_field, cfun->language->static_chain);
+  tree chain_expr = modify_expr(chain_field, d_function_chain->static_chain);
   add_stmt(chain_expr);
 
   // Copy parameters that are referenced nonlocally.
@@ -4390,7 +3119,7 @@ build_closure(FuncDeclaration *fd)
   if (!FRAMEINFO_IS_CLOSURE (ffi))
     decl = build_address (decl);
 
-  cfun->language->static_chain = decl;
+  d_function_chain->static_chain = decl;
 }
 
 // Return the frame of FD.  This could be a static chain or a closure
@@ -4483,7 +3212,7 @@ get_frameinfo(FuncDeclaration *fd)
 tree
 get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 {
-  tree result = cfun->language->static_chain;
+  tree result = d_function_chain->static_chain;
   FuncDeclaration *fd = inner;
 
   while (fd && fd != outer)
@@ -4522,292 +3251,6 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
     {
       inner->error ("forward reference to frame of %s", outer->toChars());
       return null_pointer_node;
-    }
-}
-
-
-// For all decls in the FIELDS chain, adjust their field offset by OFFSET.
-// This is done as the frontend puts fields into the outer struct, and so
-// their offset is from the beginning of the aggregate.
-// We want the offset to be from the beginning of the anonymous aggregate.
-
-static void
-fixup_anonymous_offset(tree fields, tree offset)
-{
-  while (fields != NULL_TREE)
-    {
-      // Traverse all nested anonymous aggregates to update their offset.
-      // Set the anonymous decl offset to it's first member.
-      tree ftype = TREE_TYPE (fields);
-      if (TYPE_NAME (ftype) && ANON_AGGRNAME_P(TYPE_IDENTIFIER (ftype)))
-	{
-	  tree vfields = TYPE_FIELDS (ftype);
-	  fixup_anonymous_offset(vfields, offset);
-	  DECL_FIELD_OFFSET (fields) = DECL_FIELD_OFFSET (vfields);
-	}
-      else
-	{
-	  tree voffset = DECL_FIELD_OFFSET (fields);
-	  DECL_FIELD_OFFSET (fields) = size_binop(MINUS_EXPR, voffset, offset);
-	}
-
-      fields = DECL_CHAIN (fields);
-    }
-}
-
-// Iterate over all MEMBERS of an aggregate, and add them as fields to CONTEXT.
-// If INHERITED_P is true, then the members derive from a base class.
-// Returns the number of fields found.
-
-static size_t
-layout_aggregate_members(Dsymbols *members, tree context, bool inherited_p)
-{
-  size_t fields = 0;
-
-  for (size_t i = 0; i < members->dim; i++)
-    {
-      Dsymbol *sym = (*members)[i];
-      VarDeclaration *var = sym->isVarDeclaration();
-      if (var != NULL)
-	{
-	  // Skip fields that have already been added.
-	  if (!inherited_p && var->csym != NULL)
-	    continue;
-
-	  // If this variable was really a tuple, add all tuple fields.
-	  if (var->aliassym)
-	    {
-	      TupleDeclaration *td = var->aliassym->isTupleDeclaration();
-	      Dsymbols tmembers;
-	      // No other way to coerce the underlying type out of the tuple.
-	      // Runtime checks should have already been done by the frontend.
-	      for (size_t j = 0; j < td->objects->dim; j++)
-		{
-		  RootObject *ro = (*td->objects)[j];
-		  gcc_assert(ro->dyncast() == DYNCAST_EXPRESSION);
-		  Expression *e = (Expression *) ro;
-		  gcc_assert(e->op == TOKdsymbol);
-		  DsymbolExp *se = (DsymbolExp *) e;
-
-		  tmembers.push(se->s);
-		}
-
-	      fields += layout_aggregate_members(&tmembers, context, inherited_p);
-	      continue;
-	    }
-
-	  // Insert the field declaration at it's given offset.
-	  if (var->isField())
-	    {
-	      tree field = create_field_decl(declaration_type(var),
-					     var->ident ? var->ident->toChars() : NULL,
-					     inherited_p, inherited_p);
-	      insert_aggregate_field(var->loc, context, field, var->offset);
-
-	      // Because the front-end shares field decls across classes, don't
-	      // create the corresponding backend symbol unless we are adding
-	      // it to the aggregate it is defined in.
-	      if (!inherited_p)
-		{
-		  DECL_LANG_SPECIFIC (field) = build_lang_decl (var);
-		  var->csym = field;
-		}
-
-	      fields += 1;
-	      continue;
-	    }
-	}
-
-      // Anonymous struct/union are treated as flat attributes by the front-end.
-      // However, we need to keep the record layout intact when building the type.
-      AnonDeclaration *ad = sym->isAnonDeclaration();
-      if (ad != NULL)
-	{
-	  // Use a counter to create anonymous type names.
-	  static int anon_cnt = 0;
-	  char buf[32];
-	  sprintf(buf, ANON_AGGRNAME_FORMAT, anon_cnt++);
-
-	  tree ident = get_identifier(buf);
-	  tree type = make_node(ad->isunion ? UNION_TYPE : RECORD_TYPE);
-	  ANON_AGGR_TYPE_P (type) = 1;
-	  d_keep(type);
-
-	  // Build the type declaration.
-	  tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL, ident, type);
-	  DECL_CONTEXT (decl) = context;
-	  DECL_ARTIFICIAL (decl) = 1;
-	  set_decl_location(decl, ad);
-
-	  TYPE_CONTEXT (type) = context;
-	  TYPE_NAME (type) = decl;
-	  TYPE_STUB_DECL (type) = decl;
-
-	  // Recursively iterator over the anonymous members.
-	  fields += layout_aggregate_members(ad->decl, type, inherited_p);
-
-	  // Remove from the anon fields the base offset of this anonymous aggregate.
-	  // Undoes what is set-up in setFieldOffset, but doesn't affect accesses.
-	  tree offset = size_int(ad->anonoffset);
-	  fixup_anonymous_offset(TYPE_FIELDS (type), offset);
-
-	  finish_aggregate_type(ad->anonstructsize, ad->anonalignsize, type, NULL);
-
-	  // And make the corresponding data member.
-	  tree field = create_field_decl(type, NULL, 0, 0);
-	  insert_aggregate_field(ad->loc, context, field, ad->anonoffset);
-	  continue;
-	}
-
-      // Other kinds of attributes don't create a scope.
-      AttribDeclaration *attrib = sym->isAttribDeclaration();
-      if (attrib != NULL)
-	{
-	  Dsymbols *decls = attrib->include(NULL, NULL);
-
-	  if (decls != NULL)
-	    {
-	      fields += layout_aggregate_members(decls, context, inherited_p);
-	      continue;
-	    }
-	}
-
-      // Same with template mixins and namespaces.
-      if (sym->isTemplateMixin() || sym->isNspace())
-	{
-	  ScopeDsymbol *scopesym = sym->isScopeDsymbol();
-	  if (scopesym->members)
-	    {
-	      fields += layout_aggregate_members(scopesym->members, context, inherited_p);
-	      continue;
-	    }
-	}
-    }
-
-  return fields;
-}
-
-// Write out all fields for aggregate BASE.  For classes, write out all
-// interfaces first, then the base class fields.
-
-void
-layout_aggregate_type(AggregateDeclaration *decl, tree type, AggregateDeclaration *base)
-{
-  ClassDeclaration *cd = base->isClassDeclaration();
-  bool inherited_p = (decl != base);
-
-  if (cd != NULL)
-    {
-      if (cd->baseClass)
-	layout_aggregate_type(decl, type, cd->baseClass);
-      else
-	{
-	  // This is the base class (Object) or interface.
-	  tree objtype = TREE_TYPE (build_ctype(cd->type));
-
-	  // Add the virtual table pointer, and optionally the monitor fields.
-	  InterfaceDeclaration *id = cd->isInterfaceDeclaration ();
-	  if (!id || id->vtblInterfaces->dim == 0)
-	    {
-	      tree field = create_field_decl (vtbl_ptr_type_node, "__vptr", 1,
-					      inherited_p);
-	      DECL_VIRTUAL_P (field) = 1;
-	      TYPE_VFIELD (type) = field;
-	      DECL_FCONTEXT (field) = objtype;
-	      insert_aggregate_field (decl->loc, type, field, 0);
-	    }
-
-	  if (!id && !cd->cpp)
-	    {
-	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
-					      inherited_p);
-	      insert_aggregate_field (decl->loc, type, field, Target::ptrsize);
-	    }
-	}
-
-      if (cd->vtblInterfaces)
-	{
-	  for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
-	    {
-	      BaseClass *bc = (*cd->vtblInterfaces)[i];
-	      tree field = create_field_decl (vtbl_ptr_type_node, NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, bc->offset);
-	    }
-	}
-    }
-
-  if (base->members)
-    {
-      size_t fields = layout_aggregate_members(base->members, type, inherited_p);
-      gcc_assert(fields == base->fields.dim);
-
-      // Make sure that all fields have been created.
-      if (!inherited_p)
-	{
-	  for (size_t i = 0; i < base->fields.dim; i++)
-	    {
-	      VarDeclaration *var = base->fields[i];
-	      gcc_assert(var->csym != NULL);
-	    }
-	}
-    }
-}
-
-// Add a compiler generated field FIELD at OFFSET into aggregate.
-
-void
-insert_aggregate_field(const Loc& loc, tree type, tree field, size_t offset)
-{
-  DECL_FIELD_CONTEXT (field) = type;
-  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
-  DECL_FIELD_OFFSET (field) = size_int(offset);
-  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
-
-  // Must set this or we crash with DWARF debugging.
-  set_decl_location(field, loc);
-
-  TREE_ADDRESSABLE (field) = TYPE_SHARED (TREE_TYPE (field));
-
-  layout_decl(field, 0);
-  TYPE_FIELDS (type) = chainon(TYPE_FIELDS (type), field);
-}
-
-// Wrap-up and compute finalised aggregate type.
-
-void
-finish_aggregate_type(unsigned structsize, unsigned alignsize, tree type,
-		      UserAttributeDeclaration *declattrs)
-{
-  TYPE_SIZE (type) = NULL_TREE;
-
-  // Write out any GCC attributes that were applied to the type declaration.
-  if (declattrs)
-    {
-      Expressions *attrs = declattrs->getAttributes();
-      decl_attributes(&type, build_attributes(attrs),
-		      ATTR_FLAG_TYPE_IN_PLACE);
-    }
-
-  // Set size and alignment as requested by frontend.
-  TYPE_SIZE (type) = bitsize_int(structsize * BITS_PER_UNIT);
-  TYPE_SIZE_UNIT (type) = size_int(structsize);
-  TYPE_ALIGN (type) = alignsize * BITS_PER_UNIT;
-  TYPE_PACKED (type) = (alignsize == 1);
-
-  // Set the backend type mode.
-  compute_record_mode(type);
-
-  // Fix up all variants of this aggregate type.
-  for (tree t = TYPE_MAIN_VARIANT (type); t; t = TYPE_NEXT_VARIANT (t))
-    {
-      if (t == type)
-	continue;
-
-      TYPE_FIELDS (t) = TYPE_FIELDS (type);
-      TYPE_LANG_SPECIFIC (t) = TYPE_LANG_SPECIFIC (type);
-      TYPE_ALIGN (t) = TYPE_ALIGN (type);
-      TYPE_USER_ALIGN (t) = TYPE_USER_ALIGN (type);
-      gcc_assert(TYPE_MODE (t) == TYPE_MODE (type));
     }
 }
 

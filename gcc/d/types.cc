@@ -1,5 +1,5 @@
 /* types.cc -- Lower D frontend types to GCC trees.
-   Copyright (C) 2011-2016 Free Software Foundation, Inc.
+   Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,6 +32,459 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-objfile.h"
 
 
+/* Return TRUE if TYPE is a static array va_list.  This is for compatibility
+   with the C ABI, where va_list static arrays are passed by reference.
+   However for every other case in D, static arrays are passed by value.  */
+
+bool
+valist_array_p (Type *type)
+{
+  if (Type::tvalist->ty == Tsarray)
+    {
+      Type *tb = type->toBasetype ();
+      if (same_type_p (tb, Type::tvalist))
+	return true;
+    }
+
+  return false;
+}
+
+/* Returns true if TYPE contains no actual data, just various
+   possible combinations of empty aggregates.  */
+
+bool
+empty_aggregate_p (tree type)
+{
+  if (!AGGREGATE_TYPE_P (type))
+    return false;
+
+  /* Want the element type for arrays.  */
+  if (TREE_CODE (type) == ARRAY_TYPE)
+    return empty_aggregate_p (TREE_TYPE (type));
+
+  /* Recursively check all fields.  */
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    {
+      if (TREE_CODE (field) == FIELD_DECL
+	  && !empty_aggregate_p (TREE_TYPE (field)))
+	return false;
+    }
+
+  return true;
+}
+
+/* Returns true if T1 and T2 are related to each other.  */
+
+bool
+same_type_p (Type *t1, Type *t2)
+{
+  /* Types are equal.  */
+  if (t1 == t2)
+    return true;
+
+  /* Types derive from the same base.  */
+  Type *tb1 = t1->toBasetype ();
+  Type *tb2 = t2->toBasetype ();
+  if (tb1 == tb2)
+    return true;
+
+  /* Types are mutably the same type.  */
+  if (tb1->immutableOf ()->equals (tb2->immutableOf ()))
+    return true;
+
+  return false;
+}
+
+/* Returns 'Object' type which all D classes are derived from.  */
+
+Type *
+get_object_type (void)
+{
+  if (ClassDeclaration::object)
+    return ClassDeclaration::object->type;
+
+  ::error ("missing or corrupt object.d");
+  return Type::terror;
+}
+
+
+/* Returns a static array of TYPE which has SIZE number of elements.  */
+
+tree
+make_array_type (Type *type, unsigned HOST_WIDE_INT size)
+{
+  tree telem = build_ctype (type);
+
+  /* In [arrays/static-arrays], a static array with a dimension of 0 is allowed,
+     but no space is allocated for it.  */
+  if (size == 0)
+    {
+      tree zrange = lang_hooks.types.type_for_size (TYPE_PRECISION (sizetype),
+						    TYPE_UNSIGNED (sizetype));
+      tree zindex = build_range_type (zrange, size_zero_node, NULL_TREE);
+      tree ztype = build_array_type (build_ctype (type), zindex);
+
+      TYPE_SIZE (ztype) = bitsize_zero_node;
+      TYPE_SIZE_UNIT (ztype) = size_zero_node;
+
+      return ztype;
+    }
+
+  return build_array_type (telem, build_index_type (size_int (size - 1)));
+}
+
+/* Builds a record type from field types T1 and T2.  TYPE is the frontend
+   type we are building. N1 and N2 are the names of the two fields.  */
+
+tree
+make_two_field_type (tree t1, tree t2, Type *type,
+		     const char *n1, const char *n2)
+{
+  tree rectype = make_node (RECORD_TYPE);
+  tree f0 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n1), t1);
+  tree f1 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n2), t2);
+
+  DECL_FIELD_CONTEXT (f0) = rectype;
+  DECL_FIELD_CONTEXT (f1) = rectype;
+  TYPE_FIELDS (rectype) = chainon (f0, f1);
+
+  if (type != NULL)
+    TYPE_NAME (rectype) = get_identifier (type->toChars ());
+
+  layout_type (rectype);
+
+  return rectype;
+}
+
+/* Return qualified type variant of TYPE determined by modifier value MOD.  */
+
+tree
+insert_type_modifiers (tree type, unsigned mod)
+{
+  int quals = 0;
+
+  switch (mod)
+    {
+    case MODconst:
+    case MODwild:
+    case MODwildconst:
+    case MODimmutable:
+    case MODshared | MODconst:
+    case MODshared | MODwild:
+    case MODshared | MODwildconst:
+      quals |= TYPE_QUAL_CONST;
+      break;
+
+    case 0:
+    case MODshared:
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+
+  tree qualtype = build_qualified_type (type, quals);
+
+  /* Mark whether the type is qualified 'shared'.  */
+  if (mod & MODshared)
+    TYPE_SHARED (qualtype) = 1;
+
+  return qualtype;
+}
+
+/* Adds FIELD into the aggregate TYPE at OFFSET.  */
+
+void
+insert_aggregate_field (const Loc& loc, tree type, tree field, size_t offset)
+{
+  DECL_FIELD_CONTEXT (field) = type;
+  SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
+  DECL_FIELD_OFFSET (field) = size_int (offset);
+  DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
+
+  /* Must set this or we crash with DWARF debugging.  */
+  set_decl_location (field, loc);
+
+  TREE_ADDRESSABLE (field) = TYPE_SHARED (TREE_TYPE (field));
+
+  layout_decl (field, 0);
+  TYPE_FIELDS (type) = chainon (TYPE_FIELDS (type), field);
+}
+
+/* For all decls in the FIELDS chain, adjust their field offset by OFFSET.
+   This is done as the frontend puts fields into the outer struct, and so
+   their offset is from the beginning of the aggregate.
+   We want the offset to be from the beginning of the anonymous aggregate.  */
+
+static void
+fixup_anonymous_offset (tree fields, tree offset)
+{
+  while (fields != NULL_TREE)
+    {
+      /* Traverse all nested anonymous aggregates to update their offset.
+	 Set the anonymous decl offset to it's first member.  */
+      tree ftype = TREE_TYPE (fields);
+      if (TYPE_NAME (ftype) && ANON_AGGRNAME_P (TYPE_IDENTIFIER (ftype)))
+	{
+	  tree vfields = TYPE_FIELDS (ftype);
+	  fixup_anonymous_offset (vfields, offset);
+	  DECL_FIELD_OFFSET (fields) = DECL_FIELD_OFFSET (vfields);
+	}
+      else
+	{
+	  tree voffset = DECL_FIELD_OFFSET (fields);
+	  DECL_FIELD_OFFSET (fields) = size_binop (MINUS_EXPR, voffset, offset);
+	}
+
+      fields = DECL_CHAIN (fields);
+    }
+}
+
+/* Iterate over all MEMBERS of an aggregate, and add them as fields to CONTEXT.
+   If INHERITED_P is true, then the members derive from a base class.
+   Returns the number of fields found.  */
+
+static size_t
+layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
+{
+  size_t fields = 0;
+
+  for (size_t i = 0; i < members->dim; i++)
+    {
+      Dsymbol *sym = (*members)[i];
+      VarDeclaration *var = sym->isVarDeclaration ();
+      if (var != NULL)
+	{
+	  /* Skip fields that have already been added.  */
+	  if (!inherited_p && var->csym != NULL)
+	    continue;
+
+	  /* If this variable was really a tuple, add all tuple fields.  */
+	  if (var->aliassym)
+	    {
+	      TupleDeclaration *td = var->aliassym->isTupleDeclaration ();
+	      Dsymbols tmembers;
+	      /* No other way to coerce the underlying type out of the tuple.
+		 Frontend should have already validated this.  */
+	      for (size_t j = 0; j < td->objects->dim; j++)
+		{
+		  RootObject *ro = (*td->objects)[j];
+		  gcc_assert (ro->dyncast () == DYNCAST_EXPRESSION);
+		  Expression *e = (Expression *) ro;
+		  gcc_assert (e->op == TOKdsymbol);
+		  DsymbolExp *se = (DsymbolExp *) e;
+
+		  tmembers.push (se->s);
+		}
+
+	      fields += layout_aggregate_members (&tmembers, context,
+						  inherited_p);
+	      continue;
+	    }
+
+	  /* Insert the field declaration at it's given offset.  */
+	  if (var->isField ())
+	    {
+	      const char *ident = var->ident ? var->ident->toChars () : NULL;
+	      tree field = create_field_decl (declaration_type (var), ident,
+					      inherited_p, inherited_p);
+	      insert_aggregate_field (var->loc, context, field, var->offset);
+
+	      /* Because the front-end shares field decls across classes, don't
+		 create the corresponding backend symbol unless we are adding
+		 it to the aggregate it is defined in.  */
+	      if (!inherited_p)
+		{
+		  DECL_LANG_SPECIFIC (field) = build_lang_decl (var);
+		  var->csym = field;
+		}
+
+	      fields += 1;
+	      continue;
+	    }
+	}
+
+      /* Anonymous struct/union are flattened by the frontend.  However, we
+	 want to keep the record layout in-tact when building the type.  */
+      AnonDeclaration *ad = sym->isAnonDeclaration ();
+      if (ad != NULL)
+	{
+	  /* Use a counter to create anonymous type names.  */
+	  static int anon_cnt = 0;
+	  char buf[32];
+	  sprintf (buf, ANON_AGGRNAME_FORMAT, anon_cnt++);
+
+	  tree ident = get_identifier (buf);
+	  tree type = make_node (ad->isunion ? UNION_TYPE : RECORD_TYPE);
+	  ANON_AGGR_TYPE_P (type) = 1;
+	  d_keep (type);
+
+	  /* Build the type declaration.  */
+	  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type);
+	  DECL_CONTEXT (decl) = context;
+	  DECL_ARTIFICIAL (decl) = 1;
+	  set_decl_location (decl, ad);
+
+	  TYPE_CONTEXT (type) = context;
+	  TYPE_NAME (type) = decl;
+	  TYPE_STUB_DECL (type) = decl;
+
+	  /* Recursively iterator over the anonymous members.  */
+	  fields += layout_aggregate_members (ad->decl, type, inherited_p);
+
+	  /* Remove from the anon fields the base offset of this anonymous
+	     aggregate.  Undoes what is set-up in setFieldOffset, but doesn't
+	     affect field accesses.  */
+	  tree offset = size_int (ad->anonoffset);
+	  fixup_anonymous_offset (TYPE_FIELDS (type), offset);
+
+	  finish_aggregate_type (ad->anonstructsize, ad->anonalignsize,
+				 type, NULL);
+
+	  /* And make the corresponding data member.  */
+	  tree field = create_field_decl (type, NULL, 0, 0);
+	  insert_aggregate_field (ad->loc, context, field, ad->anonoffset);
+	  continue;
+	}
+
+      /* Other kinds of attributes don't create a scope.  */
+      AttribDeclaration *attrib = sym->isAttribDeclaration ();
+      if (attrib != NULL)
+	{
+	  Dsymbols *decls = attrib->include (NULL, NULL);
+	  if (decls != NULL)
+	    {
+	      fields += layout_aggregate_members (decls, context, inherited_p);
+	      continue;
+	    }
+	}
+
+      /* Same with template mixins and namespaces.  */
+      if (sym->isTemplateMixin () || sym->isNspace ())
+	{
+	  ScopeDsymbol *scopesym = sym->isScopeDsymbol ();
+	  if (scopesym->members)
+	    {
+	      fields += layout_aggregate_members (scopesym->members, context,
+						  inherited_p);
+	      continue;
+	    }
+	}
+    }
+
+  return fields;
+}
+
+/* Write out all fields for aggregate BASE.  For classes, write out all
+   interfaces first, then the base class fields.  */
+
+static void
+layout_aggregate_type (AggregateDeclaration *decl, tree type,
+		       AggregateDeclaration *base)
+{
+  ClassDeclaration *cd = base->isClassDeclaration ();
+  bool inherited_p = (decl != base);
+
+  if (cd != NULL)
+    {
+      if (cd->baseClass)
+	layout_aggregate_type (decl, type, cd->baseClass);
+      else
+	{
+	  /* This is the base class (Object) or interface.  */
+	  tree objtype = TREE_TYPE (build_ctype (cd->type));
+
+	  /* Add the vtable pointer, and optionally the monitor fields.  */
+	  InterfaceDeclaration *id = cd->isInterfaceDeclaration ();
+	  if (!id || id->vtblInterfaces->dim == 0)
+	    {
+	      tree field = create_field_decl (vtbl_ptr_type_node, "__vptr", 1,
+					      inherited_p);
+	      DECL_VIRTUAL_P (field) = 1;
+	      TYPE_VFIELD (type) = field;
+	      DECL_FCONTEXT (field) = objtype;
+	      insert_aggregate_field (decl->loc, type, field, 0);
+	    }
+
+	  if (!id && !cd->cpp)
+	    {
+	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
+					      inherited_p);
+	      insert_aggregate_field (decl->loc, type, field, Target::ptrsize);
+	    }
+	}
+
+      if (cd->vtblInterfaces)
+	{
+	  for (size_t i = 0; i < cd->vtblInterfaces->dim; i++)
+	    {
+	      BaseClass *bc = (*cd->vtblInterfaces)[i];
+	      tree field = create_field_decl (vtbl_ptr_type_node, NULL, 1, 1);
+	      insert_aggregate_field (decl->loc, type, field, bc->offset);
+	    }
+	}
+    }
+
+  if (base->members)
+    {
+      size_t fields = layout_aggregate_members (base->members, type,
+						inherited_p);
+      gcc_assert (fields == base->fields.dim);
+
+      /* Make sure that all fields have been created.  */
+      if (!inherited_p)
+	{
+	  for (size_t i = 0; i < base->fields.dim; i++)
+	    {
+	      VarDeclaration *var = base->fields[i];
+	      gcc_assert (var->csym != NULL);
+	    }
+	}
+    }
+}
+
+/* Given a record type TYPE, whose size and alignment are determined by
+   STRUCTSIZE and ALIGNSIZE.  Apply any type attributes ATTRS and compute
+   the finalized record mode.  */
+
+void
+finish_aggregate_type (unsigned structsize, unsigned alignsize,
+		       tree type, UserAttributeDeclaration *attrs)
+{
+  TYPE_SIZE (type) = NULL_TREE;
+
+  /* Write out any GCC attributes that were applied to the type declaration.  */
+  if (attrs)
+    {
+      Expressions *eattrs = attrs->getAttributes ();
+      decl_attributes (&type, build_attributes (eattrs),
+		       ATTR_FLAG_TYPE_IN_PLACE);
+    }
+
+  /* Set size and alignment as requested by frontend.  */
+  TYPE_SIZE (type) = bitsize_int (structsize * BITS_PER_UNIT);
+  TYPE_SIZE_UNIT (type) = size_int (structsize);
+  TYPE_ALIGN (type) = alignsize * BITS_PER_UNIT;
+  TYPE_PACKED (type) = (alignsize == 1);
+
+  /* Set the backend type mode.  */
+  compute_record_mode (type);
+
+  /* Fix up all variants of this aggregate type.  */
+  for (tree t = TYPE_MAIN_VARIANT (type); t; t = TYPE_NEXT_VARIANT (t))
+    {
+      if (t == type)
+	continue;
+
+      TYPE_FIELDS (t) = TYPE_FIELDS (type);
+      TYPE_LANG_SPECIFIC (t) = TYPE_LANG_SPECIFIC (type);
+      TYPE_ALIGN (t) = TYPE_ALIGN (type);
+      TYPE_USER_ALIGN (t) = TYPE_USER_ALIGN (type);
+      gcc_assert (TYPE_MODE (t) == TYPE_MODE (type));
+    }
+}
+
+
 /* Implements the visitor interface to build the GCC trees of all
    Type AST classes emitted from the D Front-end, where CTYPE holds
    the cached backend representation to be returned.  */
@@ -39,7 +492,7 @@ along with GCC; see the file COPYING3.  If not see
 class TypeVisitor : public Visitor
 {
 public:
-  TypeVisitor () {}
+  TypeVisitor (void) {}
 
   /* This should be overridden by each type class.  */
 
@@ -144,9 +597,9 @@ public:
         .length	array dimension.
         .ptr	pointer to array data.  */
 
-    t->ctype = build_two_field_type (build_ctype (Type::tsize_t),
-				     build_pointer_type (build_ctype (t->next)),
-				     t, "length", "ptr");
+    t->ctype = make_two_field_type (build_ctype (Type::tsize_t),
+				    build_pointer_type (build_ctype (t->next)),
+				    t, "length", "ptr");
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }
@@ -162,9 +615,9 @@ public:
 	/* In [arrays/void-arrays], void arrays can also be static,
 	   the length is specified in bytes.  */
 	if (t->next->toBasetype ()->ty == Tvoid)
-	  t->ctype = d_array_type (Type::tuns8, size);
+	  t->ctype = make_array_type (Type::tuns8, size);
 	else
-	  t->ctype = d_array_type (t->next, size);
+	  t->ctype = make_array_type (t->next, size);
       }
     else
       {
@@ -301,9 +754,9 @@ public:
     /* In [abi/delegates], delegate layout is:
         .ptr	    context pointer.
         .funcptr    pointer to function.  */
-    t->ctype = build_two_field_type (build_ctype (Type::tvoidptr),
-				     build_pointer_type (dgtype),
-				     t, "ptr", "funcptr");
+    t->ctype = make_two_field_type (build_ctype (Type::tvoidptr),
+				    build_pointer_type (dgtype),
+				    t, "ptr", "funcptr");
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }
@@ -379,8 +832,8 @@ public:
 
     if (t->sym->userAttribDecl)
       {
-	Expressions *attrs = t->sym->userAttribDecl->getAttributes ();
-	decl_attributes (&t->ctype, build_attributes (attrs),
+	Expressions *eattrs = t->sym->userAttribDecl->getAttributes ();
+	decl_attributes (&t->ctype, build_attributes (eattrs),
 			 ATTR_FLAG_TYPE_IN_PLACE);
       }
   }
@@ -501,7 +954,7 @@ build_ctype (Type *t)
       TypeVisitor v;
 
       /* Strip const modifiers from type before building.  This is done
-	 to ensure that backend treats i.e: const(T) as a variant of T,
+	 to ensure that backend treats i.e: const (T) as a variant of T,
 	 and not as two distinct types.  */
       if (t->isNaked ())
 	t->accept (&v);
@@ -516,4 +969,3 @@ build_ctype (Type *t)
 
   return t->ctype;
 }
-
