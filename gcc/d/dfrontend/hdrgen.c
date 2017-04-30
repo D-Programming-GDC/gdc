@@ -3184,13 +3184,6 @@ public:
             s->accept(this);
         }
     }
-
-#ifdef IN_GCC
-    void visit(WrappedExp *e)
-    {
-        buf->writestring("<wrapped expression>");
-    }
-#endif
 };
 
 void toCBuffer(Statement *s, OutBuffer *buf, HdrGenState *hgs)

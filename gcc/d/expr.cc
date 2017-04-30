@@ -2980,13 +2980,6 @@ public:
     this->result_ = var;
   }
 
-  /* Return expression tree for WrappedExp.  */
-
-  void visit (WrappedExp *e)
-  {
-    this->result_ = e->e1;
-  }
-
   /* These expressions are mainly just a placeholders in the frontend.
      We shouldn't see them here.  */
 
