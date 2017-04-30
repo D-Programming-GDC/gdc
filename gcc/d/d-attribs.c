@@ -211,7 +211,7 @@ uda_attribute_p (const char* name)
    User Defined Attributes (UDA) are compile time expressions that can be
    attached to a declaration.  These attributes can then be queried, extracted,
    and manipulated at compile time. There is no runtime component to them.
-   
+
    Expand and merge all UDAs found in the EATTRS list that are of type
    `gcc.attribute.Attribute'.  This symbol is internally recognized by the
    compiler and maps them to their equivalent GCC attribute.  */

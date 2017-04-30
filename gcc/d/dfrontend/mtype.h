@@ -224,9 +224,6 @@ public:
     static ClassDeclaration *typeinfoshared;
     static ClassDeclaration *typeinfowild;
 
-#ifdef IN_GCC
-    static StructDeclaration *typeinterface;
-#endif
     static TemplateDeclaration *rtinfo;
 
     static Type *basic[TMAX];

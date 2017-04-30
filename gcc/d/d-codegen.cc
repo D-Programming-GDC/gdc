@@ -48,184 +48,6 @@
 #include "id.h"
 
 
-// Update data for defined and undefined labels when leaving a scope.
-
-bool
-pop_binding_label(Statement * const &, d_label_entry *ent, binding_level *bl)
-{
-  binding_level *obl = bl->level_chain;
-
-  if (ent->level == bl)
-    {
-      if (bl->kind == level_try)
-	ent->in_try_scope = true;
-      else if (bl->kind == level_catch)
-	ent->in_catch_scope = true;
-
-      ent->level = obl;
-    }
-  else if (ent->fwdrefs)
-    {
-      for (d_label_use_entry *ref = ent->fwdrefs; ref; ref = ref->next)
-	ref->level = obl;
-    }
-
-  return true;
-}
-
-// At the end of a function, all labels declared within the function
-// go out of scope.  BLOCK is the top-level block for the function.
-
-bool
-pop_label(Statement * const &s, d_label_entry *ent, tree block)
-{
-  if (!ent->bc_label)
-    {
-      // Put the labels into the "variables" of the top-level block,
-      // so debugger can see them.
-      if (DECL_NAME (ent->label))
-	{
-	  gcc_assert(DECL_INITIAL (ent->label) != NULL_TREE);
-	  DECL_CHAIN (ent->label) = BLOCK_VARS (block);
-	  BLOCK_VARS (block) = ent->label;
-	}
-    }
-
-  cfun->language->labels->remove(s);
-
-  return true;
-}
-
-// The D front-end does not use the 'binding level' system for a symbol table,
-// however it has been the goto structure for tracking code flow.
-// Primarily it is only needed to get debugging information for local variables
-// and otherwise support the backend.
-
-void
-push_binding_level(level_kind kind)
-{
-  // Add it to the front of currently active scopes stack.
-  binding_level *new_level = ggc_cleared_alloc<binding_level>();
-  new_level->level_chain = current_binding_level;
-  new_level->kind = kind;
-
-  current_binding_level = new_level;
-}
-
-tree
-pop_binding_level()
-{
-  binding_level *level = current_binding_level;
-  current_binding_level = level->level_chain;
-
-  tree block = make_node(BLOCK);
-  BLOCK_VARS (block) = level->names;
-  BLOCK_SUBBLOCKS (block) = level->blocks;
-
-  // In each subblock, record that this is its superior.
-  for (tree t = level->blocks; t; t = BLOCK_CHAIN (t))
-    BLOCK_SUPERCONTEXT (t) = block;
-
-  if (level->kind == level_function)
-    {
-      // Dispose of the block that we just made inside some higher level.
-      DECL_INITIAL (current_function_decl) = block;
-      BLOCK_SUPERCONTEXT (block) = current_function_decl;
-
-      // Pop all the labels declared in the function.
-      if (cfun->language->labels)
-	cfun->language->labels->traverse<tree, &pop_label>(block);
-    }
-  else
-    {
-      // Any uses of undefined labels, and any defined labels, now operate
-      // under constraints of next binding contour.
-      if (cfun && cfun->language->labels)
-	{
-	  cfun->language->labels->traverse<binding_level *, &pop_binding_label>
-	    (level);
-	}
-
-      current_binding_level->blocks
-	= block_chainon(current_binding_level->blocks, block);
-    }
-
-  TREE_USED (block) = 1;
-  return block;
-}
-
-
-// Create an empty statement tree rooted at T.
-void
-push_stmt_list()
-{
-  tree t = alloc_stmt_list();
-  vec_safe_push(cfun->language->stmt_list, t);
-  d_keep(t);
-}
-
-// Finish the statement tree rooted at T.
-tree
-pop_stmt_list()
-{
-  tree t = cfun->language->stmt_list->pop();
-
-  // If the statement list is completely empty, just return it.  This is
-  // just as good small as build_empty_stmt, with the advantage that
-  // statement lists are merged when they appended to one another.
-  // So using the STATEMENT_LIST avoids pathological buildup of EMPTY_STMT_P
-  // statements.
-  if (TREE_SIDE_EFFECTS (t))
-    {
-      // If the statement list contained exactly one statement, then
-      // extract it immediately.
-      tree_stmt_iterator i = tsi_start (t);
-
-      if (tsi_one_before_end_p (i))
-	{
-	  tree u = tsi_stmt (i);
-	  tsi_delink (&i);
-	  free_stmt_list (t);
-	  t = u;
-	}
-    }
-
-  return t;
-}
-
-// T is an expression statement.  Add it to the statement-tree.
-
-void
-add_stmt(tree t)
-{
-  // Ignore (void) 0; expression statements received from the frontend.
-  // Likewise void_node is used when contracts become nops in release code.
-  if (t == void_node || IS_EMPTY_STMT (t))
-    return;
-
-  // At this point, we no longer care about the value of expressions,
-  // so if there's no side-effects, then don't add it.
-  if (!TREE_SIDE_EFFECTS (t))
-    return;
-
-  if (TREE_CODE (t) == COMPOUND_EXPR)
-    {
-      // Push out each comma expressions as separate statements.
-      add_stmt(TREE_OPERAND (t, 0));
-      add_stmt(TREE_OPERAND (t, 1));
-    }
-  else
-    {
-      // Append the expression to the statement list.
-      // Make sure it has a proper location.
-      if (EXPR_P (t) && !EXPR_HAS_LOCATION (t))
-	SET_EXPR_LOCATION (t, input_location);
-
-      tree stmt_list = cfun->language->stmt_list->last();
-      append_to_statement_list_force(t, &stmt_list);
-    }
-}
-
 // Return the DECL_CONTEXT for symbol DSYM.
 
 tree
@@ -273,191 +95,22 @@ d_decl_context (Dsymbol *dsym)
   return NULL_TREE;
 }
 
-// Add local variable VD into the current function body.
-
-void
-build_local_var (VarDeclaration *vd)
-{
-  gcc_assert (!vd->isDataseg() && !vd->isMember());
-  gcc_assert (current_function_decl != NULL_TREE);
-
-  FuncDeclaration *fd = cfun->language->function;
-  tree var = get_symbol_decl (vd);
-
-  gcc_assert (!TREE_STATIC (var));
-
-  set_input_location (vd->loc);
-  d_pushdecl (var);
-  DECL_CONTEXT (var) = current_function_decl;
-
-  // Compiler generated symbols
-  if (vd == fd->vresult || vd == fd->v_argptr)
-    DECL_ARTIFICIAL (var) = 1;
-
-  if (DECL_LANG_FRAME_FIELD (var))
-    {
-      // Fixes debugging local variables.
-      SET_DECL_VALUE_EXPR (var, get_decl_tree (vd));
-      DECL_HAS_VALUE_EXPR_P (var) = 1;
-    }
-}
-
-// Return an unnamed local temporary of type TYPE.
+/* Return a copy of record TYPE but safe to modify in any way.  */
 
 tree
-build_local_temp (tree type)
+copy_aggregate_type (tree type)
 {
-  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
+  tree newtype = build_distinct_type_copy (type);
+  TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
+  TYPE_METHODS (newtype) = copy_list (TYPE_METHODS (type));
 
-  DECL_CONTEXT (decl) = current_function_decl;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_IGNORED_P (decl) = 1;
-  d_pushdecl (decl);
+  for (tree f = TYPE_FIELDS (newtype); f; f = DECL_CHAIN (f))
+    DECL_FIELD_CONTEXT (f) = newtype;
 
-  return decl;
-}
+  for (tree m = TYPE_METHODS (newtype); m; m = DECL_CHAIN (m))
+    DECL_CONTEXT (m) = newtype;
 
-// Return an undeclared local temporary of type TYPE
-// for use with BIND_EXPR.
-
-tree
-create_temporary_var (tree type)
-{
-  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
-  DECL_CONTEXT (decl) = current_function_decl;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_IGNORED_P (decl) = 1;
-  layout_decl (decl, 0);
-  return decl;
-}
-
-// Return an undeclared local temporary OUT_VAR initialised
-// with result of expression EXP.
-
-tree
-maybe_temporary_var (tree exp, tree *out_var)
-{
-  tree t = exp;
-
-  // Get the base component.
-  while (TREE_CODE (t) == COMPONENT_REF)
-    t = TREE_OPERAND (t, 0);
-
-  if (!DECL_P (t) && !REFERENCE_CLASS_P (t))
-    {
-      *out_var = create_temporary_var (TREE_TYPE (exp));
-      DECL_INITIAL (*out_var) = exp;
-      return *out_var;
-    }
-  else
-    {
-      *out_var = NULL_TREE;
-      return exp;
-    }
-}
-
-// Emit an INIT_EXPR for decl DECL.
-
-void
-expand_decl (tree decl)
-{
-  // Nothing, d_pushdecl will add decl to a BIND_EXPR
-  if (DECL_INITIAL (decl))
-    {
-      tree exp = build_assign(INIT_EXPR, decl, DECL_INITIAL (decl));
-      add_stmt(exp);
-      DECL_INITIAL (decl) = NULL_TREE;
-    }
-}
-
-// Return the correct decl to be used for variable DECL accessed from the
-// current function.  Could be a VAR_DECL, or a FIELD_DECL from a closure.
-
-tree
-get_decl_tree (Declaration *decl)
-{
-  if (decl->isTypeInfoDeclaration ())
-    return get_typeinfo_decl ((TypeInfoDeclaration *) decl);
-
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
-  VarDeclaration *vd = decl->isVarDeclaration();
-
-  // If cfun is NULL, then this is a global static.
-  if (func != NULL && vd != NULL)
-    {
-      tree vsym = get_symbol_decl (vd);
-      if (DECL_LANG_NRVO (vsym))
-	{
-	  // Get the named return value.
-	  return DECL_LANG_NRVO (vsym);
-	}
-      else if (DECL_LANG_FRAME_FIELD (vsym))
-	{
-	  // Get the closure holding the var decl.
-	  FuncDeclaration *parent = vd->toParent2()->isFuncDeclaration();
-	  tree frame_ref = get_framedecl (func, parent);
-
-	  return component_ref (build_deref (frame_ref),
-				DECL_LANG_FRAME_FIELD (vsym));
-	}
-      else if (vd->parent != func && vd->isThisDeclaration ())
-	{
-	  // Get the non-local 'this' value by going through parent link
-	  // of nested classes, this routine pretty much undoes what
-	  // getRightThis in the frontend removes from codegen.
-	  AggregateDeclaration *ad = func->isThis ();
-	  if (ad != NULL)
-	    {
-	      tree this_tree = get_symbol_decl (func->vthis);
-	      Dsymbol *outer = func;
-
-	      while (outer != vd->parent)
-		{
-		  gcc_assert (ad != NULL);
-		  outer = ad->toParent2 ();
-
-		  // Get the this->this parent link.
-		  tree vthis_field = get_symbol_decl (ad->vthis);
-		  this_tree = component_ref (build_deref (this_tree),
-					     vthis_field);
-
-		  ad = outer->isAggregateDeclaration ();
-		  if (ad != NULL)
-		    continue;
-
-		  FuncDeclaration *fd = outer->isFuncDeclaration ();
-		  while (fd != NULL)
-		    {
-		      // If outer function creates a closure, then the 'this'
-		      // value would be the closure pointer, and the real
-		      // 'this' the first field of that closure.
-		      tree ff = get_frameinfo (fd);
-		      if (FRAMEINFO_CREATES_FRAME (ff))
-			{
-			  this_tree = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)),
-						 this_tree);
-			  this_tree = indirect_ref (build_ctype (fd->vthis->type),
-						    this_tree);
-			}
-
-		      if (fd == vd->parent)
-			break;
-
-		      // Continue looking for the right 'this'
-		      outer = outer->toParent2 ();
-		      fd = outer->isFuncDeclaration ();
-		    }
-
-		  ad = outer->isAggregateDeclaration ();
-		}
-
-	      return this_tree;
-	    }
-	}
-    }
-
-  // Static var or auto var that the back end will handle for us
-  return get_symbol_decl (decl);
+  return newtype;
 }
 
 // Return TRUE if declaration DECL is a reference type.
@@ -1386,7 +1039,10 @@ build_struct_literal(tree type, vec<constructor_elt, va_gc> *init)
 
 	  FOR_EACH_CONSTRUCTOR_ELT (init, idx, index, value)
 	    {
-	      if (index == field)
+	      /* If the index is NULL, then just assign it to the next field.
+		 This is expect of layout_typeinfo(), which generates a flat
+		 list of values that we must shape into the record type.  */
+	      if (index == field || index == NULL_TREE)
 		{
 		  init->ordered_remove(idx);
 		  if (!finished)
@@ -2131,7 +1787,7 @@ array_bounds_check()
 
     case BOUNDSCHECKsafeonly:
       // For D2 safe functions only
-      func = cfun->language->function;
+      func = d_function_chain->function;
       if (func && func->type->ty == Tfunction)
 	{
 	  TypeFunction *tf = (TypeFunction *) func->type;
@@ -2142,6 +1798,47 @@ array_bounds_check()
 
     default:
       gcc_unreachable();
+    }
+}
+
+/* Return an undeclared local temporary of type TYPE
+   for use with BIND_EXPR.  */
+
+tree
+create_temporary_var (tree type)
+{
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
+
+  DECL_CONTEXT (decl) = current_function_decl;
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  layout_decl (decl, 0);
+
+  return decl;
+}
+
+/* Return an undeclared local temporary OUT_VAR initialised
+   with result of expression EXP.  */
+
+tree
+maybe_temporary_var (tree exp, tree *out_var)
+{
+  tree t = exp;
+
+  /* Get the base component.  */
+  while (TREE_CODE (t) == COMPONENT_REF)
+    t = TREE_OPERAND (t, 0);
+
+  if (!DECL_P (t) && !REFERENCE_CLASS_P (t))
+    {
+      *out_var = create_temporary_var (TREE_TYPE (exp));
+      DECL_INITIAL (*out_var) = exp;
+      return *out_var;
+    }
+  else
+    {
+      *out_var = NULL_TREE;
+      return exp;
     }
 }
 
@@ -3036,158 +2733,6 @@ build_float_modulus (tree type, tree arg0, tree arg1)
   gcc_unreachable();
 }
 
-// Check that a new jump at FROM to a label at TO is OK.
-
-void
-check_goto(Statement *from, Statement *to)
-{
-  d_label_entry *ent = cfun->language->labels->get(to);
-  gcc_assert(ent != NULL);
-
-  // If the label hasn't been defined yet, defer checking.
-  if (! DECL_INITIAL (ent->label))
-    {
-      d_label_use_entry *fwdref = ggc_alloc<d_label_use_entry>();
-      fwdref->level = current_binding_level;
-      fwdref->statement = from;
-      fwdref->next = ent->fwdrefs;
-      ent->fwdrefs = fwdref;
-      return;
-    }
-
-  if (ent->in_try_scope)
-    from->error("cannot goto into try block");
-  else if (ent->in_catch_scope)
-    from->error("cannot goto into catch block");
-}
-
-// Check that a previously seen jumps to a newly defined label is OK.
-
-static void
-check_previous_goto(Statement *s, d_label_use_entry *fwdref)
-{
-  for (binding_level *b = current_binding_level; b ; b = b->level_chain)
-    {
-      if (b == fwdref->level)
-	break;
-
-      if (b->kind == level_try || b->kind == level_catch)
-	{
-	  if (s->isLabelStatement())
-	    {
-	      if (b->kind == level_try)
-		fwdref->statement->error("cannot goto into try block");
-	      else
-		fwdref->statement->error("cannot goto into catch block");
-	    }
-	  else if (s->isCaseStatement())
-	    s->error("case cannot be in different try block level from switch");
-	  else if (s->isDefaultStatement())
-	    s->error("default cannot be in different try block level from switch");
-	  else
-	    gcc_unreachable();
-	}
-    }
-}
-
-// Get or build LABEL_DECL using the IDENT and statement block S given.
-
-tree
-lookup_label(Statement *s, Identifier *ident)
-{
-  // You can't use labels at global scope.
-  if (cfun == NULL)
-    {
-      error("label %s referenced outside of any function",
-	    ident ? ident->toChars() : "(unnamed)");
-      return NULL_TREE;
-    }
-
-  // Create the label htab for the function on demand.
-  if (!cfun->language->labels)
-    cfun->language->labels = hash_map<Statement *, d_label_entry>::create_ggc(13);
-
-  d_label_entry *ent = cfun->language->labels->get(s);
-  if (ent != NULL)
-    return ent->label;
-  else
-    {
-      tree name = ident ? get_identifier(ident->toChars()) : NULL_TREE;
-      tree decl = build_decl(input_location, LABEL_DECL, name, void_type_node);
-      DECL_CONTEXT (decl) = current_function_decl;
-      DECL_MODE (decl) = VOIDmode;
-
-      // Create new empty slot.
-      ent = ggc_cleared_alloc<d_label_entry>();
-      ent->statement = s;
-      ent->label = decl;
-
-      bool existed = cfun->language->labels->put(s, *ent);
-      gcc_assert(!existed);
-
-      return decl;
-    }
-}
-
-// Get the LABEL_DECL to represent a break or continue for the
-// statement S given.  BC indicates which.
-
-tree
-lookup_bc_label(Statement *s, bc_kind bc)
-{
-  tree vec = lookup_label(s);
-
-  // The break and continue labels are put into a TREE_VEC.
-  if (TREE_CODE (vec) == LABEL_DECL)
-    {
-      d_label_entry *ent = cfun->language->labels->get(s);
-      gcc_assert(ent != NULL);
-
-      vec = make_tree_vec(2);
-      TREE_VEC_ELT (vec, bc_break) = ent->label;
-
-      // Build the continue label.
-      tree label = build_decl(input_location, LABEL_DECL,
-			      NULL_TREE, void_type_node);
-      DECL_CONTEXT (label) = current_function_decl;
-      DECL_MODE (label) = VOIDmode;
-      TREE_VEC_ELT (vec, bc_continue) = label;
-
-      ent->label = vec;
-      ent->bc_label = true;
-    }
-
-  return TREE_VEC_ELT (vec, bc);
-}
-
-// Define a label, specifying the location in the source file.
-// Return the LABEL_DECL node for the label.
-
-tree
-define_label(Statement *s, Identifier *ident)
-{
-  tree label = lookup_label(s, ident);
-  gcc_assert(DECL_INITIAL (label) == NULL_TREE);
-
-  d_label_entry *ent = cfun->language->labels->get(s);
-  gcc_assert(ent != NULL);
-
-  // Mark label as having been defined.
-  DECL_INITIAL (label) = error_mark_node;
-
-  // Not setting this doesn't seem to cause problems (unlike VAR_DECLs).
-  if (s->loc.filename)
-    set_decl_location (label, s->loc);
-
-  ent->level = current_binding_level;
-
-  for (d_label_use_entry *ref = ent->fwdrefs; ref ; ref = ref->next)
-    check_previous_goto(ent->statement, ref);
-  ent->fwdrefs = NULL;
-
-  return label;
-}
-
 // Build a function type whose first argument is a pointer to BASETYPE,
 // which is to be used for the 'vthis' parameter for TYPE.
 // The base type may be a record for member functions, or a void for
@@ -3219,7 +2764,7 @@ build_vthis_type(tree basetype, tree type)
 tree
 get_frame_for_symbol (Dsymbol *sym)
 {
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
+  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
   FuncDeclaration *thisfd = sym->isFuncDeclaration();
   FuncDeclaration *parentfd = NULL;
 
@@ -3351,7 +2896,7 @@ d_nested_struct (StructDeclaration *sd)
 static tree
 find_this_tree(ClassDeclaration *ocd)
 {
-  FuncDeclaration *func = cfun ? cfun->language->function : NULL;
+  FuncDeclaration *func = d_function_chain ? d_function_chain->function : NULL;
 
   while (func)
     {
@@ -3566,7 +3111,9 @@ build_closure(FuncDeclaration *fd)
       tree arg = convert(build_ctype(Type::tsize_t), TYPE_SIZE_UNIT(type));
       tree init = build_libcall(LIBCALL_ALLOCMEMORY, 1, &arg);
 
-      DECL_INITIAL(decl) = build_nop(TREE_TYPE(decl), init);
+      tree init_exp = build_assign (INIT_EXPR, decl,
+				    build_nop (TREE_TYPE (decl), init));
+      add_stmt (init_exp);
     }
   else
     {
@@ -3576,11 +3123,10 @@ build_closure(FuncDeclaration *fd)
     }
 
   DECL_IGNORED_P(decl) = 0;
-  expand_decl(decl);
 
   // Set the first entry to the parent closure/frame, if any.
   tree chain_field = component_ref(decl_ref, TYPE_FIELDS(type));
-  tree chain_expr = modify_expr(chain_field, cfun->language->static_chain);
+  tree chain_expr = modify_expr(chain_field, d_function_chain->static_chain);
   add_stmt(chain_expr);
 
   // Copy parameters that are referenced nonlocally.
@@ -3601,7 +3147,7 @@ build_closure(FuncDeclaration *fd)
   if (!FRAMEINFO_IS_CLOSURE (ffi))
     decl = build_address (decl);
 
-  cfun->language->static_chain = decl;
+  d_function_chain->static_chain = decl;
 }
 
 // Return the frame of FD.  This could be a static chain or a closure
@@ -3694,7 +3240,7 @@ get_frameinfo(FuncDeclaration *fd)
 tree
 get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 {
-  tree result = cfun->language->static_chain;
+  tree result = d_function_chain->static_chain;
   FuncDeclaration *fd = inner;
 
   while (fd && fd != outer)
