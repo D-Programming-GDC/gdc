@@ -41,6 +41,7 @@ ClassDeclaration *ClassDeclaration::object;
 ClassDeclaration *ClassDeclaration::throwable;
 ClassDeclaration *ClassDeclaration::exception;
 ClassDeclaration *ClassDeclaration::errorException;
+ClassDeclaration *ClassDeclaration::cpp_type_info_ptr;
 
 ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *baseclasses, bool inObject)
     : AggregateDeclaration(loc, id)
@@ -229,6 +230,13 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
                 error("%s", msg);
             errorException = this;
         }
+
+        if (id == Id::cpp_type_info_ptr)
+        {
+            if (!inObject)
+                error("%s", msg);
+            cpp_type_info_ptr = this;
+        }
     }
 
     com = false;
@@ -238,6 +246,7 @@ ClassDeclaration::ClassDeclaration(Loc loc, Identifier *id, BaseClasses *basecla
     inuse = 0;
     baseok = BASEOKnone;
     objc.objc = false;
+    cpp_type_info_ptr_sym = NULL;
 }
 
 Dsymbol *ClassDeclaration::syntaxCopy(Dsymbol *s)
@@ -474,7 +483,7 @@ void ClassDeclaration::semantic(Scope *sc)
             {
                 //printf("\ttry later, forward reference of base class %s\n", tc->sym->toChars());
                 if (tc->sym->_scope)
-                    tc->sym->_scope->module->addDeferredSemantic(tc->sym);
+                    tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
                 baseok = BASEOKnone;
             }
          L7: ;
@@ -526,7 +535,7 @@ void ClassDeclaration::semantic(Scope *sc)
             {
                 //printf("\ttry later, forward reference of base %s\n", tc->sym->toChars());
                 if (tc->sym->_scope)
-                    tc->sym->_scope->module->addDeferredSemantic(tc->sym);
+                    tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
                 baseok = BASEOKnone;
             }
             i++;
@@ -536,7 +545,7 @@ void ClassDeclaration::semantic(Scope *sc)
             // Forward referencee of one or more bases, try again later
             _scope = scx ? scx : sc->copy();
             _scope->setNoFree();
-            _scope->module->addDeferredSemantic(this);
+            _scope->_module->addDeferredSemantic(this);
             //printf("\tL%d semantic('%s') failed due to forward references\n", __LINE__, toChars());
             return;
         }
@@ -649,8 +658,8 @@ Lancestorsdone:
             _scope = scx ? scx : sc->copy();
             _scope->setNoFree();
             if (tc->sym->_scope)
-                tc->sym->_scope->module->addDeferredSemantic(tc->sym);
-            _scope->module->addDeferredSemantic(this);
+                tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
+            _scope->_module->addDeferredSemantic(this);
             //printf("\tL%d semantic('%s') failed due to forward references\n", __LINE__, toChars());
             return;
         }
@@ -663,6 +672,11 @@ Lancestorsdone:
         // initialize vtbl
         if (baseClass)
         {
+            if (cpp && baseClass->vtbl.dim == 0)
+            {
+                error("C++ base class %s needs at least one virtual function", baseClass->toChars());
+            }
+
             // Copy vtbl[] from base class
             vtbl.setDim(baseClass->vtbl.dim);
             memcpy(vtbl.tdata(), baseClass->vtbl.tdata(), sizeof(void *) * vtbl.dim);
@@ -749,7 +763,7 @@ Lancestorsdone:
 
         _scope = scx ? scx : sc->copy();
         _scope->setNoFree();
-        _scope->module->addDeferredSemantic(this);
+        _scope->_module->addDeferredSemantic(this);
         //printf("\tdeferring %s\n", toChars());
         return;
     }
@@ -1556,7 +1570,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
             {
                 //printf("\ttry later, forward reference of base %s\n", tc->sym->toChars());
                 if (tc->sym->_scope)
-                    tc->sym->_scope->module->addDeferredSemantic(tc->sym);
+                    tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
                 baseok = BASEOKnone;
             }
             i++;
@@ -1566,7 +1580,7 @@ void InterfaceDeclaration::semantic(Scope *sc)
             // Forward referencee of one or more bases, try again later
             _scope = scx ? scx : sc->copy();
             _scope->setNoFree();
-            _scope->module->addDeferredSemantic(this);
+            _scope->_module->addDeferredSemantic(this);
             return;
         }
         baseok = BASEOKdone;
@@ -1610,8 +1624,8 @@ Lancestorsdone:
             _scope = scx ? scx : sc->copy();
             _scope->setNoFree();
             if (tc->sym->_scope)
-                tc->sym->_scope->module->addDeferredSemantic(tc->sym);
-            _scope->module->addDeferredSemantic(this);
+                tc->sym->_scope->_module->addDeferredSemantic(tc->sym);
+            _scope->_module->addDeferredSemantic(this);
             return;
         }
     }
@@ -1732,30 +1746,16 @@ bool InterfaceDeclaration::isBaseOf(ClassDeclaration *cd, int *poffset)
         //printf("\tX base %s\n", b->sym->toChars());
         if (this == b->sym)
         {
-            //printf("\tfound at offset %d\n", b->offset);
             if (poffset)
             {
-                *poffset = b->offset;
-                if (j && cd->isInterfaceDeclaration())
-                    *poffset = OFFSET_RUNTIME;
-
-                /* TODO: Even though it's an interface to base interface upcast,
-                 * I think we can avoid runtime offset determination ultimately.
-                 * (I doubt that it was just a workaround for the bug in the
-                 * inferface to Object downcast)
-                 */
+                // don't return incorrect offsets https://issues.dlang.org/show_bug.cgi?id=16980
+                *poffset = cd->sizeok == SIZEOKdone ? b->offset : OFFSET_FWDREF;
             }
+            //printf("\tfound at offset %d\n", b->offset);
             return true;
         }
         if (isBaseOf(b, poffset))
-        {
-            if (poffset)
-            {
-                if (j && cd->isInterfaceDeclaration())
-                    *poffset = OFFSET_RUNTIME;
-            }
             return true;
-        }
     }
 
     if (cd->baseClass && isBaseOf(cd->baseClass, poffset))

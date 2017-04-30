@@ -180,6 +180,10 @@ DEF_D_RUNTIME(AADELX, "_aaDelX", P3(AA, CONST(TYPEINFO), VOIDPTR), BOOL, ECF_NON
 DEF_D_RUNTIME(THROW, "_d_throw", P1(OBJECT), VOID, ECF_NORETURN)
 DEF_D_RUNTIME(BEGIN_CATCH, "__gdc_begin_catch", P1(VOIDPTR), VOIDPTR, ECF_NONE)
 
+// C++ exception handlers.
+DEF_D_RUNTIME(CXA_BEGIN_CATCH, "__cxa_begin_catch", P1(VOIDPTR), VOIDPTR, ECF_NOTHROW)
+DEF_D_RUNTIME(CXA_END_CATCH, "__cxa_end_catch", P0(), VOID, ECF_NONE)
+
 // When invariant() contracts are turned on, used after testing whether a
 // class != null for validating the state of a class.
 DEF_D_RUNTIME(INVARIANT, "_D9invariant12_d_invariantFC6ObjectZv", P1(OBJECT), VOID, ECF_NONE)

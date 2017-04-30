@@ -283,9 +283,6 @@ class PrettyFuncInitExp;
 class ClassReferenceExp;
 class VoidInitExp;
 class ThrownExceptionExp;
-#ifdef IN_GCC
-class WrappedExp;
-#endif
 
 class TemplateParameter;
 class TemplateTypeParameter;
@@ -575,9 +572,6 @@ public:
     virtual void visit(ClassReferenceExp *e) { visit((Expression *)e); }
     virtual void visit(VoidInitExp *e) { visit((Expression *)e); }
     virtual void visit(ThrownExceptionExp *e) { visit((Expression *)e); }
-#ifdef IN_GCC
-    virtual void visit(WrappedExp *e) { visit((Expression *)e); }
-#endif
 
     virtual void visit(TemplateParameter *) { assert(0); }
     virtual void visit(TemplateTypeParameter *tp) { visit((TemplateParameter *)tp); }

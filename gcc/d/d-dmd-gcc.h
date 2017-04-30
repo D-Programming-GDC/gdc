@@ -29,12 +29,11 @@
 // Used in init.cc
 FuncDeclaration *search_toString(StructDeclaration *);
 
+// Used in typeinfo.cc
+const char *cppTypeInfoMangle(Dsymbol *s);
+
 // Used in d-lang.cc
 void initTraitsStringTable();
-
-// Used in d-objfile.cc
-void genTypeInfo(Type *type, Scope *sc);
-bool isSpeculativeType(Type *t);
 
 #endif /* GCC_SAFE_DMD */
 
