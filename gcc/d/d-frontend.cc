@@ -28,12 +28,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dfrontend/statement.h"
 #include "dfrontend/target.h"
 
-#include "tree.h"
-#include "options.h"
-#include "fold-const.h"
-#include "diagnostic.h"
-#include "stor-layout.h"
-
+#include "d-system.h"
 #include "d-tree.h"
 #include "d-objfile.h"
 #include "d-codegen.h"
@@ -358,7 +353,8 @@ CTFloat::isNaN (real_t r)
 bool
 CTFloat::isSNaN (real_t r)
 {
-  return REAL_VALUE_ISSIGNALING_NAN (r.rv ());
+  return REAL_VALUE_ISNAN (r.rv ())
+    && r.rv ().signalling;
 }
 
 /* Return true if real_t value is +Inf.  */
