@@ -703,28 +703,7 @@ d_build_d_type_nodes (void)
 
   // Need to intialize this for gcc <= 6.x. Backported from gcc-7
   /* Define what type to use for ptrdiff_t.  */
-  if (strcmp (PTRDIFF_TYPE, "int") == 0)
-    ptrdiff_type_node = integer_type_node;
-  else if (strcmp (PTRDIFF_TYPE, "long int") == 0)
-    ptrdiff_type_node = long_integer_type_node;
-  else if (strcmp (PTRDIFF_TYPE, "long long int") == 0)
-    ptrdiff_type_node = long_long_integer_type_node;
-  else if (strcmp (PTRDIFF_TYPE, "short int") == 0)
-    ptrdiff_type_node = short_integer_type_node;
-  else
-    {
-      ptrdiff_type_node = NULL_TREE;
-      for (int i = 0; i < NUM_INT_N_ENTS; i++)
-	if (int_n_enabled_p[i])
-	  {
-	    char name[50];
-	    sprintf (name, "__int%d", int_n_data[i].bitsize);
-	    if (strcmp (name, PTRDIFF_TYPE) == 0)
-	      ptrdiff_type_node = int_n_trees[i].signed_type;
-	  }
-      if (ptrdiff_type_node == NULL_TREE)
-	gcc_unreachable ();
-    }
+  ptrdiff_type_node = integer_type_node;
 
   /* Make sure we get a unique function type, so we can give
      its pointer type a name.  (This wins for gdb).  */

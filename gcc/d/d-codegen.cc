@@ -2378,41 +2378,6 @@ expand_intrinsic_bt (intrinsic_code intrinsic, tree callee, tree arg1, tree arg2
   return compound_expr (exp, compound_expr (arg1, tval));
 }
 
-// Expand a front-end instrinsic call to CODE, which is one of the checkedint
-// intrinsics adds, addu, subs, subu, negs, muls, or mulu.
-// These intrinsics take three arguments, ARG1, ARG2, and OVERFLOW, with
-// exception to negs which takes two arguments, but is re-written as a call
-// to subs(0, ARG2, OVERFLOW).
-// The original call expression is held in CALLEE.
-
-static tree
-expand_intrinsic_arith(built_in_function code, tree callee, tree arg1,
-		       tree arg2, tree overflow)
-{
-  tree result = build_local_temp(TREE_TYPE (callee));
-
-  STRIP_NOPS(overflow);
-  overflow = build_deref(overflow);
-
-  // Expands to a __builtin_{add,sub,mul}_overflow.
-  tree args[3];
-  args[0] = arg1;
-  args[1] = arg2;
-  args[2] = build_address(result);
-
-  tree fn = builtin_decl_explicit(code);
-  tree exp = build_call_array(TREE_TYPE (overflow),
-			      build_address(fn), 3, args);
-
-  // Assign returned result to overflow parameter, however if
-  // overflow is already true, maintain it's value.
-  exp = fold_build2 (BIT_IOR_EXPR, TREE_TYPE (overflow), overflow, exp);
-  overflow = modify_expr(overflow, exp);
-
-  // Return the value of result.
-  return compound_expr(overflow, result);
-}
-
 // Expand a front-end built-in call to va_arg, whose arguments are
 // ARG1 and optionally ARG2.
 // The original call expression is held in CALLEE.

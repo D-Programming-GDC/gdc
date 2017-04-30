@@ -179,7 +179,7 @@ start_function (FuncDeclaration *fd)
   else
     cfun->function_end_locus = DECL_SOURCE_LOCATION (fndecl);
 
-  cfun->language = ggc_cleared_alloc<language_function> ();
+  cfun->language = ggc_alloc_cleared_language_function ();
   cfun->language->function = fd;
 
   /* Default chain value is 'null' unless parent found.  */

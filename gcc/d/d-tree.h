@@ -22,6 +22,7 @@ along with GCC; see the file COPYING3.  If not see
 #define TREE_H_FuncDeclaration_Ptr FuncDeclaration *
 #define TREE_H_VarDeclaration_Ptr VarDeclaration *
 #define TREE_H_Statement_Ptr Statement *
+#define TREE_H_Expression_Ptr Expression *
 
 /* Forward type declarations to avoid including unnecessary headers.  */
 
@@ -46,7 +47,7 @@ struct BaseClass;
 struct Scope;
 
 template <typename TYPE> struct Array;
-typedef Array<Expression *> Expressions;
+typedef Array<TREE_H_Expression_Ptr> Expressions;
 
 /* Usage of TREE_LANG_FLAG_?:
    0: METHOD_CALL_EXPR

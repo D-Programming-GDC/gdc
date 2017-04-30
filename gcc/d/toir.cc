@@ -34,11 +34,49 @@ along with GCC; see the file COPYING3.  If not see
 #include "id.h"
 
 
+/* Hash and equality functions for the d_label_entry table.  */
+
+static hashval_t
+d_label_entry_hash (const void *data)
+{
+  const d_label_entry *label = (const d_label_entry *) data;
+  return (hashval_t) ((intptr_t)label->statement >> 3);
+}
+
+static int
+d_label_entry_equal (const void *a, const void *b)
+{
+  const d_label_entry *label_a = (const d_label_entry *) a;
+  const d_label_entry *label_b = (const d_label_entry *) b;
+  return (label_a->statement == label_b->statement);
+}
+
+/* Helper to find hash slot by Statement  */
+
+static d_label_entry **
+d_label_hash_get_slot (htab_t tab, Statement *s, enum insert_option insert)
+{
+  d_label_entry search;
+  search.statement = s;
+  void **slot = htab_find_slot (tab, &search, insert);
+  return (d_label_entry **) slot;
+}
+
+static d_label_entry *
+d_label_hash_get (htab_t tab, Statement *s)
+{
+  d_label_entry **slot = d_label_hash_get_slot (tab, s, NO_INSERT);
+  gcc_assert (slot != NULL);
+  return *slot;
+}
+
 /* Update data for defined and undefined labels when leaving a scope.  */
 
-bool
-pop_binding_label (Statement * const &, d_label_entry *ent, binding_level *bl)
+int
+pop_binding_label (void **slot, void *arg)
 {
+  d_label_entry *ent = (d_label_entry *) *slot;
+  binding_level *bl = (binding_level *) arg;
   binding_level *obl = bl->level_chain;
 
   if (ent->level == bl)
@@ -56,15 +94,19 @@ pop_binding_label (Statement * const &, d_label_entry *ent, binding_level *bl)
 	ref->level = obl;
     }
 
-  return true;
+  return 1;
 }
 
 /* At the end of a function, all labels declared within the function
    go out of scope.  BLOCK is the top-level block for the function.  */
 
-bool
-pop_label (Statement * const &s, d_label_entry *ent, tree block)
+int
+pop_label (void **slot, void *arg)
 {
+  d_label_entry *ent = (d_label_entry *) *slot;
+  Statement *s = ent->statement;
+  tree block = (tree) arg;
+
   if (!ent->bc_label)
     {
       /* Put the labels into the "variables" of the top-level block,
@@ -77,9 +119,11 @@ pop_label (Statement * const &s, d_label_entry *ent, tree block)
 	}
     }
 
-  d_function_chain->labels->remove (s);
+  d_label_entry search;
+  search.statement = s;
+  htab_remove_elt (cfun->language->labels, &search);
 
-  return true;
+  return 1;
 }
 
 /* The D front-end does not use the 'binding level' system for a symbol table,
@@ -91,7 +135,7 @@ void
 push_binding_level (level_kind kind)
 {
   /* Add it to the front of currently active scopes stack.  */
-  binding_level *new_level = ggc_cleared_alloc<binding_level> ();
+  binding_level *new_level = ggc_alloc_cleared_binding_level ();
   new_level->level_chain = current_binding_level;
   new_level->kind = kind;
 
@@ -120,7 +164,7 @@ pop_binding_level (void)
 
       /* Pop all the labels declared in the function.  */
       if (d_function_chain->labels)
-	d_function_chain->labels->traverse<tree, &pop_label> (block);
+	htab_traverse (d_function_chain->labels, &pop_label, block);
     }
   else
     {
@@ -129,7 +173,7 @@ pop_binding_level (void)
       if (d_function_chain && d_function_chain->labels)
 	{
 	  language_function *f = d_function_chain;
-	  f->labels->traverse<binding_level *, &pop_binding_label> (level);
+	  htab_traverse (f->labels, &pop_binding_label, level);
 	}
 
       current_binding_level->blocks
@@ -290,7 +334,7 @@ public:
     tree label = this->lookup_label (s, ident);
     gcc_assert (DECL_INITIAL (label) == NULL_TREE);
 
-    d_label_entry *ent = d_function_chain->labels->get (s);
+    d_label_entry *ent = d_label_hash_get (d_function_chain->labels, s);
     gcc_assert (ent != NULL);
 
     /* Mark label as having been defined.  */
@@ -337,13 +381,13 @@ public:
 
   void check_goto (Statement *from, Statement *to)
   {
-    d_label_entry *ent = d_function_chain->labels->get (to);
+    d_label_entry *ent = d_label_hash_get (d_function_chain->labels, to);
     gcc_assert (ent != NULL);
 
     /* If the label hasn't been defined yet, defer checking.  */
     if (! DECL_INITIAL (ent->label))
       {
-	d_label_use_entry *fwdref = ggc_alloc<d_label_use_entry> ();
+	d_label_use_entry *fwdref = ggc_alloc_cleared_d_label_use_entry ();
 	fwdref->level = current_binding_level;
 	fwdref->statement = from;
 	fwdref->next = ent->fwdrefs;
@@ -408,13 +452,14 @@ public:
     /* Create the label htab for the function on demand.  */
     if (!d_function_chain->labels)
       {
-	d_function_chain->labels
-	  = hash_map<Statement *, d_label_entry>::create_ggc (13);
+	d_function_chain->labels = htab_create_ggc (13, d_label_entry_hash,
+						    d_label_entry_equal, NULL);
       }
 
-    d_label_entry *ent = d_function_chain->labels->get (s);
-    if (ent != NULL)
-      return ent->label;
+    d_label_entry **slot = d_label_hash_get_slot (cfun->language->labels, s,
+						  NO_INSERT);
+    if (slot != NULL)
+      return (*slot)->label;
     else
       {
 	tree name = ident ? get_identifier (ident->toChars ()) : NULL_TREE;
@@ -424,12 +469,13 @@ public:
 	DECL_MODE (decl) = VOIDmode;
 
 	/* Create new empty slot.  */
-	ent = ggc_cleared_alloc<d_label_entry> ();
+	d_label_entry *ent = ggc_alloc_cleared_d_label_entry ();
 	ent->statement = s;
 	ent->label = decl;
 
-	bool existed = d_function_chain->labels->put (s, *ent);
-	gcc_assert (!existed);
+	slot = d_label_hash_get_slot (cfun->language->labels, s, INSERT);
+	gcc_assert (*slot == NULL);
+	*slot = ent;
 
 	return decl;
       }
@@ -445,7 +491,7 @@ public:
     /* The break and continue labels are put into a TREE_VEC.  */
     if (TREE_CODE (vec) == LABEL_DECL)
       {
-	d_label_entry *ent = d_function_chain->labels->get (s);
+	d_label_entry *ent = d_label_hash_get (d_function_chain->labels, s);
 	gcc_assert (ent != NULL);
 
 	vec = make_tree_vec (2);
