@@ -35,9 +35,6 @@ public:
     bool oneMember(Dsymbol **ps, Identifier *ident);
     const char *kind();
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();
-#endif
 };
 
 #endif

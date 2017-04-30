@@ -56,9 +56,6 @@ public:
     AttribDeclaration *isAttribDeclaration() { return this; }
 
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 class StorageClassDeclaration : public AttribDeclaration
@@ -175,9 +172,6 @@ public:
     void semantic(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
-#ifdef IN_GCC
-    void toObjFile();                       // compile to .obj file
-#endif
 };
 
 class ConditionalDeclaration : public AttribDeclaration

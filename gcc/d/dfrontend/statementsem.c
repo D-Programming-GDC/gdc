@@ -36,6 +36,7 @@ bool checkEscapeRef(Scope *sc, Expression *e, bool gag);
 LabelStatement *checkLabeledLoop(Scope *sc, Statement *statement);
 Identifier *fixupLabelName(Scope *sc, Identifier *ident);
 FuncDeclaration *isFuncAddress(Expression *e, bool *hasOverloads = NULL);
+VarDeclaration *copyToTemp(StorageClass stc, const char *name, Expression *e);
 
 Statement *semantic(Statement *s, Scope *sc);
 void semantic(Catch *c, Scope *sc);
@@ -97,7 +98,8 @@ public:
                 if (f->checkForwardRef(s->exp->loc))
                     s->exp = new ErrorExp();
             }
-            discardValue(s->exp);
+            if (discardValue(s->exp))
+                s->exp = new ErrorExp();
 
             s->exp = s->exp->optimize(WANTvalue);
             s->exp = checkGC(sc, s->exp);
@@ -493,9 +495,7 @@ public:
             fs->aggr->op != TOKtype && !fs->aggr->isLvalue())
         {
             // Bugzilla 14653: Extend the life of rvalue aggregate till the end of foreach.
-            vinit = new VarDeclaration(loc, fs->aggr->type,
-                Identifier::generateId("__aggr"), new ExpInitializer(loc, fs->aggr));
-            vinit->storage_class |= STCtemp;
+            vinit = copyToTemp(STCrvalue, "__aggr", fs->aggr);
             vinit->semantic(sc);
             fs->aggr = new VarExp(fs->aggr->loc, vinit);
         }
@@ -1019,9 +1019,7 @@ public:
                     }
                     else
                     {
-                        Identifier *rid = Identifier::generateId("__r");
-                        r = new VarDeclaration(loc, NULL, rid, new ExpInitializer(loc, fs->aggr));
-                        r->storage_class |= STCtemp;
+                        r = copyToTemp(0, "__r", fs->aggr);
                         init = new ExpStatement(loc, r);
                         if (vinit)
                             init = new CompoundStatement(loc, new ExpStatement(loc, vinit), init);
@@ -1053,11 +1051,7 @@ public:
                     }
                     else
                     {
-                        Identifier *id = Identifier::generateId("__front");
-                        ExpInitializer *ei = new ExpInitializer(loc, einit);
-                        VarDeclaration *vd = new VarDeclaration(loc, NULL, id, ei);
-                        vd->storage_class |= STCtemp | STCctfe | STCref | STCforeach;
-
+                        VarDeclaration *vd = copyToTemp(STCref, "__front", einit);
                         makeargs = new ExpStatement(loc, vd);
 
                         Declaration *d = sfront->isDeclaration();
@@ -2878,10 +2872,7 @@ public:
              *  _d_monitorenter(tmp);
              *  try { body } finally { _d_monitorexit(tmp); }
              */
-            Identifier *id = Identifier::generateId("__sync");
-            ExpInitializer *ie = new ExpInitializer(ss->loc, ss->exp);
-            VarDeclaration *tmp = new VarDeclaration(ss->loc, ss->exp->type, id, ie);
-            tmp->storage_class |= STCtemp;
+            VarDeclaration *tmp = copyToTemp(0, "__sync", ss->exp);
 
             Statements *cs = new Statements();
             cs->push(new ExpStatement(ss->loc, tmp));
@@ -2914,7 +2905,7 @@ public:
              *  try { body } finally { _d_criticalexit(critsec.ptr); }
              */
             Identifier *id = Identifier::generateId("__critsec");
-            Type *t = new TypeSArray(Type::tint8, new IntegerExp(Target::ptrsize + Target::critsecsize()));
+            Type *t = Type::tint8->sarrayOf(Target::ptrsize + Target::critsecsize());
             VarDeclaration *tmp = new VarDeclaration(ss->loc, t, id, NULL);
             tmp->storage_class |= STCtemp | STCgshared | STCstatic;
 
@@ -3029,11 +3020,9 @@ public:
                      *   }
                      * }
                      */
-                    init = new ExpInitializer(ws->loc, ws->exp);
-                    ws->wthis = new VarDeclaration(ws->loc, ws->exp->type, Identifier::generateId("__withtmp"), init);
-                    ws->wthis->storage_class |= STCtemp;
-                    ExpStatement *es = new ExpStatement(ws->loc, ws->wthis);
-                    ws->exp = new VarExp(ws->loc, ws->wthis);
+                    VarDeclaration *tmp = copyToTemp(0, "__withtmp", ws->exp);
+                    ExpStatement *es = new ExpStatement(ws->loc, tmp);
+                    ws->exp = new VarExp(ws->loc, tmp);
                     Statement *ss = new ScopeStatement(ws->loc, new CompoundStatement(ws->loc, es, ws), ws->endloc);
                     result = semantic(ss, sc);
                     return;
@@ -3074,6 +3063,10 @@ public:
 
     void visit(TryCatchStatement *tcs)
     {
+        unsigned flags = 0;
+        const unsigned FLAGcpp = 1;
+        const unsigned FLAGd = 2;
+
         tcs->_body = semanticScope(tcs->_body, sc, NULL, NULL);
         assert(tcs->_body);
 
@@ -3084,11 +3077,13 @@ public:
         {
             Catch *c = (*tcs->catches)[i];
             semantic(c, sc);
-            if (c->type->ty == Terror)
+            if (c->errors)
             {
                 catchErrors = true;
                 continue;
             }
+            ClassDeclaration *cd = c->type->toBasetype()->isClassHandle();
+            flags |= cd->isCPPclass() ? FLAGcpp : FLAGd;
 
             // Determine if current catch 'hides' any previous catches
             for (size_t j = 0; j < i; j++)
@@ -3104,6 +3099,16 @@ public:
                 }
             }
         }
+
+        if (sc->func)
+        {
+            if (flags == (FLAGcpp | FLAGd))
+            {
+                tcs->error("cannot mix catching D and C++ exceptions in the same try-catch");
+                catchErrors = true;
+            }
+        }
+
         if (catchErrors)
             return setError();
 
@@ -3465,6 +3470,7 @@ void semantic(Catch *c, Scope *sc)
     {
         // If enclosing is scope(success) or scope(exit), this will be placed in finally block.
         c->error(c->loc, "cannot put catch statement inside %s", Token::toChars(sc->os->tok));
+        c->errors = true;
     }
     if (sc->tf)
     {
@@ -3475,6 +3481,7 @@ void semantic(Catch *c, Scope *sc)
          * body into a nested function.
          */
         c->error(c->loc, "cannot put catch statement inside finally block");
+        c->errors = true;
     }
 #endif
 
@@ -3491,33 +3498,52 @@ void semantic(Catch *c, Scope *sc)
         c->type = tid;
     }
     c->type = c->type->semantic(c->loc, sc);
-    ClassDeclaration *cd = c->type->toBasetype()->isClassHandle();
-    if (!cd || ((cd != ClassDeclaration::throwable) && !ClassDeclaration::throwable->isBaseOf(cd, NULL)))
+    if (c->type == Type::terror)
+        c->errors = true;
+    else
     {
-        if (c->type != Type::terror)
+        ClassDeclaration *cd = c->type->toBasetype()->isClassHandle();
+        if (!cd)
+        {
+            error(c->loc, "can only catch class objects, not '%s'", c->type->toChars());
+            c->errors = true;
+        }
+        else if (cd->isCPPclass())
+        {
+            if (!Target::cppExceptions)
+            {
+                error(c->loc, "catching C++ class objects not supported for this target");
+                c->errors = true;
+            }
+            if (sc->func && !sc->intypeof && !c->internalCatch && sc->func->setUnsafe())
+            {
+                error(c->loc, "cannot catch C++ class objects in @safe code");
+                c->errors = true;
+            }
+        }
+        else if (cd != ClassDeclaration::throwable && !ClassDeclaration::throwable->isBaseOf(cd, NULL))
         {
             error(c->loc, "can only catch class objects derived from Throwable, not '%s'", c->type->toChars());
-            c->type = Type::terror;
+            c->errors = true;
         }
-    }
-    else if (sc->func &&
-        !sc->intypeof &&
-        !c->internalCatch &&
-        cd != ClassDeclaration::exception &&
-        !ClassDeclaration::exception->isBaseOf(cd, NULL) &&
-        sc->func->setUnsafe())
-    {
-        error(c->loc, "can only catch class objects derived from Exception in @safe code, not '%s'", c->type->toChars());
-        c->type = Type::terror;
-    }
-    else if (c->ident)
-    {
-        c->var = new VarDeclaration(c->loc, c->type, c->ident, NULL);
-        c->var->semantic(sc);
-        sc->insert(c->var);
-    }
-    c->handler = semantic(c->handler, sc);
+        else if (sc->func && !sc->intypeof && !c->internalCatch &&
+                 cd != ClassDeclaration::exception && !ClassDeclaration::exception->isBaseOf(cd, NULL) &&
+                 sc->func->setUnsafe())
+        {
+            error(c->loc, "can only catch class objects derived from Exception in @safe code, not '%s'", c->type->toChars());
+            c->errors = true;
+        }
 
+        if (c->ident)
+        {
+            c->var = new VarDeclaration(c->loc, c->type, c->ident, NULL);
+            c->var->semantic(sc);
+            sc->insert(c->var);
+        }
+        c->handler = semantic(c->handler, sc);
+        if (c->handler && c->handler->isErrorStatement())
+            c->errors = true;
+    }
     sc->pop();
 }
 

@@ -224,9 +224,6 @@ public:
     static ClassDeclaration *typeinfoshared;
     static ClassDeclaration *typeinfowild;
 
-#ifdef IN_GCC
-    static StructDeclaration *typeinterface;
-#endif
     static TemplateDeclaration *rtinfo;
 
     static Type *basic[TMAX];
@@ -244,7 +241,7 @@ public:
     int covariant(Type *t, StorageClass *pstc = NULL);
     const char *toChars();
     char *toPrettyChars(bool QualifyTypes = false);
-    static void init();
+    static void _init();
 
     d_uns64 size();
     virtual d_uns64 size(Loc loc);
