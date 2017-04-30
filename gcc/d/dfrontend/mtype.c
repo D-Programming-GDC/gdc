@@ -26,7 +26,6 @@
 
 #include "checkedint.h"
 #include "rmem.h"
-#include "port.h"
 #include "target.h"
 
 #include "dsymbol.h"
@@ -52,6 +51,7 @@ bool symbolIsVisible(Scope *sc, Dsymbol *s);
 typedef int (*ForeachDg)(void *ctx, size_t paramidx, Parameter *param);
 int Parameter_foreach(Parameters *parameters, ForeachDg dg, void *ctx, size_t *pn = NULL);
 FuncDeclaration *isFuncAddress(Expression *e, bool *hasOverloads = NULL);
+Expression *extractSideEffect(Scope *sc, const char *name, Expression **e0, Expression *e, bool alwaysCopy = false);
 
 int Tsize_t = Tuns32;
 int Tptrdiff_t = Tint32;
@@ -76,9 +76,6 @@ ClassDeclaration *Type::typeinfoinvariant;
 ClassDeclaration *Type::typeinfoshared;
 ClassDeclaration *Type::typeinfowild;
 
-#ifdef IN_GCC
-StructDeclaration *Type::typeinterface;
-#endif
 TemplateDeclaration *Type::rtinfo;
 
 Type *Type::tvoid;
@@ -190,7 +187,7 @@ bool Type::equivalent(Type *t)
     return immutableOf()->equals(t->immutableOf());
 }
 
-void Type::init()
+void Type::_init()
 {
     stringtable._init(14000);
 
@@ -3080,58 +3077,111 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident, int flag)
     {
         switch (ty)
         {
-            case Tint8:         ivalue = 0x7F;          goto Livalue;
-            case Tuns8:         ivalue = 0xFF;          goto Livalue;
-            case Tint16:        ivalue = 0x7FFFUL;      goto Livalue;
-            case Tuns16:        ivalue = 0xFFFFUL;      goto Livalue;
-            case Tint32:        ivalue = 0x7FFFFFFFUL;  goto Livalue;
-            case Tuns32:        ivalue = 0xFFFFFFFFUL;  goto Livalue;
-            case Tint64:        ivalue = 0x7FFFFFFFFFFFFFFFLL;  goto Livalue;
-            case Tuns64:        ivalue = 0xFFFFFFFFFFFFFFFFULL; goto Livalue;
-            case Tbool:         ivalue = 1;             goto Livalue;
-            case Tchar:         ivalue = 0xFF;          goto Livalue;
-            case Twchar:        ivalue = 0xFFFFUL;      goto Livalue;
-            case Tdchar:        ivalue = 0x10FFFFUL;    goto Livalue;
-
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      fvalue = FLT_MAX;       goto Lfvalue;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      fvalue = DBL_MAX;       goto Lfvalue;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      fvalue = Port::ldbl_max; goto Lfvalue;
+        case Tint8:
+            ivalue = 0x7F;
+            goto Livalue;
+        case Tuns8:
+            ivalue = 0xFF;
+            goto Livalue;
+        case Tint16:
+            ivalue = 0x7FFFUL;
+            goto Livalue;
+        case Tuns16:
+            ivalue = 0xFFFFUL;
+            goto Livalue;
+        case Tint32:
+            ivalue = 0x7FFFFFFFUL;
+            goto Livalue;
+        case Tuns32:
+            ivalue = 0xFFFFFFFFUL;
+            goto Livalue;
+        case Tint64:
+            ivalue = 0x7FFFFFFFFFFFFFFFLL;
+            goto Livalue;
+        case Tuns64:
+            ivalue = 0xFFFFFFFFFFFFFFFFULL;
+            goto Livalue;
+        case Tbool:
+            ivalue = 1;
+            goto Livalue;
+        case Tchar:
+            ivalue = 0xFF;
+            goto Livalue;
+        case Twchar:
+            ivalue = 0xFFFFUL;
+            goto Livalue;
+        case Tdchar:
+            ivalue = 0x10FFFFUL;
+            goto Livalue;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            fvalue = Target::FloatProperties::max;
+            goto Lfvalue;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            fvalue = Target::DoubleProperties::max;
+            goto Lfvalue;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            fvalue = Target::RealProperties::max;
+            goto Lfvalue;
         }
     }
     else if (ident == Id::min)
     {
         switch (ty)
         {
-            case Tint8:         ivalue = -128;          goto Livalue;
-            case Tuns8:         ivalue = 0;             goto Livalue;
-            case Tint16:        ivalue = -32768;        goto Livalue;
-            case Tuns16:        ivalue = 0;             goto Livalue;
-            case Tint32:        ivalue = -2147483647L - 1;      goto Livalue;
-            case Tuns32:        ivalue = 0;                     goto Livalue;
-            case Tint64:        ivalue = (-9223372036854775807LL-1LL);  goto Livalue;
-            case Tuns64:        ivalue = 0;             goto Livalue;
-            case Tbool:         ivalue = 0;             goto Livalue;
-            case Tchar:         ivalue = 0;             goto Livalue;
-            case Twchar:        ivalue = 0;             goto Livalue;
-            case Tdchar:        ivalue = 0;             goto Livalue;
+        case Tint8:
+            ivalue = -128;
+            goto Livalue;
+        case Tuns8:
+            ivalue = 0;
+            goto Livalue;
+        case Tint16:
+            ivalue = -32768;
+            goto Livalue;
+        case Tuns16:
+            ivalue = 0;
+            goto Livalue;
+        case Tint32:
+            ivalue = -2147483647L - 1;
+            goto Livalue;
+        case Tuns32:
+            ivalue = 0;
+            goto Livalue;
+        case Tint64:
+            ivalue = (-9223372036854775807LL-1LL);
+            goto Livalue;
+        case Tuns64:
+            ivalue = 0;
+            goto Livalue;
+        case Tbool:
+            ivalue = 0;
+            goto Livalue;
+        case Tchar:
+            ivalue = 0;
+            goto Livalue;
+        case Twchar:
+            ivalue = 0;
+            goto Livalue;
+        case Tdchar:
+            ivalue = 0;
+            goto Livalue;
 
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:
-                error(loc, "use .min_normal property instead of .min");
-                return new ErrorExp();
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            error(loc, "use .min_normal property instead of .min");
+            return new ErrorExp();
         }
     }
     else if (ident == Id::min_normal)
@@ -3139,156 +3189,202 @@ Expression *TypeBasic::getProperty(Loc loc, Identifier *ident, int flag)
       Lmin_normal:
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      fvalue = FLT_MIN;       goto Lfvalue;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      fvalue = DBL_MIN;       goto Lfvalue;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      fvalue = LDBL_MIN;      goto Lfvalue;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            fvalue = Target::FloatProperties::min_normal;
+            goto Lfvalue;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            fvalue = Target::DoubleProperties::min_normal;
+            goto Lfvalue;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            fvalue = Target::RealProperties::min_normal;
+            goto Lfvalue;
         }
     }
     else if (ident == Id::nan)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Tcomplex64:
-            case Tcomplex80:
-            case Timaginary32:
-            case Timaginary64:
-            case Timaginary80:
-            case Tfloat32:
-            case Tfloat64:
-            case Tfloat80:
-            {
-                fvalue = Port::ldbl_nan;
-                goto Lfvalue;
-            }
+        case Tcomplex32:
+        case Tcomplex64:
+        case Tcomplex80:
+        case Timaginary32:
+        case Timaginary64:
+        case Timaginary80:
+        case Tfloat32:
+        case Tfloat64:
+        case Tfloat80:
+            fvalue = Target::RealProperties::nan;
+            goto Lfvalue;
         }
     }
     else if (ident == Id::infinity)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Tcomplex64:
-            case Tcomplex80:
-            case Timaginary32:
-            case Timaginary64:
-            case Timaginary80:
-            case Tfloat32:
-            case Tfloat64:
-            case Tfloat80:
-                fvalue = Port::ldbl_infinity;
-                goto Lfvalue;
+        case Tcomplex32:
+        case Tcomplex64:
+        case Tcomplex80:
+        case Timaginary32:
+        case Timaginary64:
+        case Timaginary80:
+        case Tfloat32:
+        case Tfloat64:
+        case Tfloat80:
+            fvalue = Target::RealProperties::infinity;
+            goto Lfvalue;
         }
     }
     else if (ident == Id::dig)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      ivalue = FLT_DIG;       goto Lint;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      ivalue = DBL_DIG;       goto Lint;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      ivalue = LDBL_DIG;      goto Lint;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            ivalue = Target::FloatProperties::dig;
+            goto Lint;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            ivalue = Target::DoubleProperties::dig;
+            goto Lint;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            ivalue = Target::RealProperties::dig;
+            goto Lint;
         }
     }
     else if (ident == Id::epsilon)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      fvalue = FLT_EPSILON;   goto Lfvalue;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      fvalue = DBL_EPSILON;   goto Lfvalue;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      fvalue = LDBL_EPSILON;  goto Lfvalue;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            fvalue = Target::FloatProperties::epsilon;
+            goto Lfvalue;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            fvalue = Target::DoubleProperties::epsilon;
+            goto Lfvalue;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            fvalue = Target::RealProperties::epsilon;
+            goto Lfvalue;
         }
     }
     else if (ident == Id::mant_dig)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      ivalue = FLT_MANT_DIG;  goto Lint;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      ivalue = DBL_MANT_DIG;  goto Lint;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      ivalue = LDBL_MANT_DIG; goto Lint;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            ivalue = Target::FloatProperties::mant_dig;
+            goto Lint;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            ivalue = Target::DoubleProperties::mant_dig;
+            goto Lint;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            ivalue = Target::RealProperties::mant_dig;
+            goto Lint;
         }
     }
     else if (ident == Id::max_10_exp)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      ivalue = FLT_MAX_10_EXP;        goto Lint;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      ivalue = DBL_MAX_10_EXP;        goto Lint;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      ivalue = LDBL_MAX_10_EXP;       goto Lint;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            ivalue = Target::FloatProperties::max_10_exp;
+            goto Lint;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            ivalue = Target::DoubleProperties::max_10_exp;
+            goto Lint;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            ivalue = Target::RealProperties::max_10_exp;
+            goto Lint;
         }
     }
     else if (ident == Id::max_exp)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      ivalue = FLT_MAX_EXP;   goto Lint;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      ivalue = DBL_MAX_EXP;   goto Lint;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      ivalue = LDBL_MAX_EXP;  goto Lint;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            ivalue = Target::FloatProperties::max_exp;
+            goto Lint;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            ivalue = Target::DoubleProperties::max_exp;
+            goto Lint;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            ivalue = Target::RealProperties::max_exp;
+            goto Lint;
         }
     }
     else if (ident == Id::min_10_exp)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      ivalue = FLT_MIN_10_EXP;        goto Lint;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      ivalue = DBL_MIN_10_EXP;        goto Lint;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      ivalue = LDBL_MIN_10_EXP;       goto Lint;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            ivalue = Target::FloatProperties::min_10_exp;
+            goto Lint;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            ivalue = Target::DoubleProperties::min_10_exp;
+            goto Lint;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            ivalue = Target::RealProperties::min_10_exp;
+            goto Lint;
         }
     }
     else if (ident == Id::min_exp)
     {
         switch (ty)
         {
-            case Tcomplex32:
-            case Timaginary32:
-            case Tfloat32:      ivalue = FLT_MIN_EXP;   goto Lint;
-            case Tcomplex64:
-            case Timaginary64:
-            case Tfloat64:      ivalue = DBL_MIN_EXP;   goto Lint;
-            case Tcomplex80:
-            case Timaginary80:
-            case Tfloat80:      ivalue = LDBL_MIN_EXP;  goto Lint;
+        case Tcomplex32:
+        case Timaginary32:
+        case Tfloat32:
+            ivalue = Target::FloatProperties::min_exp;
+            goto Lint;
+        case Tcomplex64:
+        case Timaginary64:
+        case Tfloat64:
+            ivalue = Target::DoubleProperties::min_exp;
+            goto Lint;
+        case Tcomplex80:
+        case Timaginary80:
+        case Tfloat80:
+            ivalue = Target::RealProperties::min_exp;
+            goto Lint;
         }
     }
 
@@ -3303,11 +3399,7 @@ Lfvalue:
         e = new RealExp(loc, fvalue, this);
     else
     {
-        complex_t cvalue;
-
-        cvalue.re = fvalue;
-        cvalue.im = fvalue;
-
+        complex_t cvalue = complex_t(fvalue, fvalue);
         //for (int i = 0; i < 20; i++)
         //    printf("%02x ", ((unsigned char *)&cvalue)[i]);
         //printf("\n");
@@ -3347,7 +3439,7 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
             case Timaginary64:  t = tfloat64;           goto L2;
             case Timaginary80:  t = tfloat80;           goto L2;
             L2:
-                e = new RealExp(e->loc, ldouble(0.0), t);
+                e = new RealExp(e->loc, CTFloat::zero, t);
                 break;
 
             default:
@@ -3379,7 +3471,7 @@ Expression *TypeBasic::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
             case Tfloat32:
             case Tfloat64:
             case Tfloat80:
-                e = new RealExp(e->loc, ldouble(0.0), this);
+                e = new RealExp(e->loc, CTFloat::zero, this);
                 break;
 
             default:
@@ -3420,15 +3512,13 @@ Expression *TypeBasic::defaultInit(Loc loc)
         case Tfloat32:
         case Tfloat64:
         case Tfloat80:
-            return new RealExp(loc, Port::snan, this);
+            return new RealExp(loc, Target::RealProperties::snan, this);
 
         case Tcomplex32:
         case Tcomplex64:
         case Tcomplex80:
         {   // Can't use fvalue + I*fvalue (the im part becomes a quiet NaN).
-            complex_t cvalue;
-            ((real_t *)&cvalue)[0] = Port::snan;
-            ((real_t *)&cvalue)[1] = Port::snan;
+            complex_t cvalue = complex_t(Target::RealProperties::snan, Target::RealProperties::snan);
             return new ComplexExp(loc, cvalue, this);
         }
 
@@ -4141,8 +4231,8 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         if (d1 != d2)
         {
         Loverflow:
-            error(loc, "%s size %llu * %llu exceeds 16MiB size limit for static array",
-                toChars(), (unsigned long long)tbn->size(loc), (unsigned long long)d1);
+            error(loc, "%s size %llu * %llu exceeds 0x%llx size limit for static array",
+                toChars(), (unsigned long long)tbn->size(loc), (unsigned long long)d1, Target::maxStaticDataSize);
             goto Lerror;
         }
 
@@ -4150,7 +4240,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
         if (tbx->ty == Tstruct && !((TypeStruct *)tbx)->sym->members ||
             tbx->ty == Tenum && !((TypeEnum *)tbx)->sym->members)
         {
-            /* To avoid meaningess error message, skip the total size limit check
+            /* To avoid meaningless error message, skip the total size limit check
              * when the bottom of element type is opaque.
              */
         }
@@ -4167,7 +4257,7 @@ Type *TypeSArray::semantic(Loc loc, Scope *sc)
              * run on them for the size, since they may be forward referenced.
              */
             bool overflow = false;
-            if (mulu(tbn->size(loc), d2, overflow) >= 0x1000000 || overflow) // put a 'reasonable' limit on it
+            if (mulu(tbn->size(loc), d2, overflow) >= Target::maxStaticDataSize || overflow)
                 goto Loverflow;
         }
     }
@@ -6735,7 +6825,7 @@ void TypeQualified::resolveHelper(Loc loc, Scope *sc,
             Dsymbol *sm = s->searchX(loc, sc, id);
             if (sm && !(sc->flags & SCOPEignoresymbolvisibility) && !symbolIsVisible(sc, sm))
             {
-                ::deprecation(loc, "%s is not visible from module %s", sm->toPrettyChars(), sc->module->toChars());
+                ::deprecation(loc, "%s is not visible from module %s", sm->toPrettyChars(), sc->_module->toChars());
                 // sm = NULL;
             }
             if (global.errors != errorsave)
@@ -7665,7 +7755,16 @@ Type *TypeStruct::semantic(Loc loc, Scope *sc)
 {
     //printf("TypeStruct::semantic('%s')\n", sym->toChars());
     if (deco)
+    {
+        if (sc && sc->cppmangle != CPPMANGLEdefault)
+        {
+            if (this->cppmangle == CPPMANGLEdefault)
+                this->cppmangle = sc->cppmangle;
+            else
+                assert(this->cppmangle == sc->cppmangle);
+        }
         return this;
+    }
 
     /* Don't semantic for sym because it should be deferred until
      * sizeof needed or its members accessed.
@@ -7675,7 +7774,8 @@ Type *TypeStruct::semantic(Loc loc, Scope *sc)
 
     if (sym->type->ty == Terror)
         return Type::terror;
-    this->cppmangle = sc->cppmangle;
+    if (sc)
+        this->cppmangle = sc->cppmangle;
     return merge();
 }
 
@@ -7744,21 +7844,14 @@ Expression *TypeStruct::dotExp(Scope *sc, Expression *e, Identifier *ident, int 
          */
         e = e->semantic(sc);    // do this before turning on noaccesscheck
         e->type->size();        // do semantic of type
-        Expressions *exps = new Expressions;
-        exps->reserve(sym->fields.dim);
 
         Expression *e0 = NULL;
         Expression *ev = e->op == TOKtype ? NULL : e;
-        if (sc->func && ev && !isTrivialExp(ev))
-        {
-            Identifier *id = Identifier::generateId("__tup");
-            ExpInitializer *ei = new ExpInitializer(e->loc, ev);
-            VarDeclaration *vd = new VarDeclaration(e->loc, NULL, id, ei);
-            vd->storage_class |= STCtemp | STCctfe
-                              | (ev->isLvalue() ? STCref | STCforeach : STCrvalue);
-            e0 = new DeclarationExp(e->loc, vd);
-            ev = new VarExp(e->loc, vd);
-        }
+        if (ev)
+            ev = extractSideEffect(sc, "__tup", &e0, ev);
+
+        Expressions *exps = new Expressions;
+        exps->reserve(sym->fields.dim);
         for (size_t i = 0; i < sym->fields.dim; i++)
         {
             VarDeclaration *v = sym->fields[i];
@@ -7808,7 +7901,7 @@ L1:
     }
     if (!(sc->flags & SCOPEignoresymbolvisibility) && !symbolIsVisible(sc, s))
     {
-        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toPrettyChars());
+        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->_module->toPrettyChars());
         // return noMember(sc, e, ident, flag);
     }
     if (!s->isFuncDeclaration())        // because of overloading
@@ -8267,7 +8360,16 @@ Type *TypeClass::semantic(Loc loc, Scope *sc)
 {
     //printf("TypeClass::semantic(%s)\n", sym->toChars());
     if (deco)
+    {
+        if (sc && sc->cppmangle != CPPMANGLEdefault)
+        {
+            if (this->cppmangle == CPPMANGLEdefault)
+                this->cppmangle = sc->cppmangle;
+            else
+                assert(this->cppmangle == sc->cppmangle);
+        }
         return this;
+    }
 
     /* Don't semantic for sym because it should be deferred until
      * sizeof needed or its members accessed.
@@ -8277,7 +8379,8 @@ Type *TypeClass::semantic(Loc loc, Scope *sc)
 
     if (sym->type->ty == Terror)
         return Type::terror;
-    this->cppmangle = sc->cppmangle;
+    if (sc)
+        this->cppmangle = sc->cppmangle;
     return merge();
 }
 
@@ -8363,21 +8466,13 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
         // Detect that error, and at least try to run semantic() on it if we can
         sym->size(e->loc);
 
-        Expressions *exps = new Expressions;
-        exps->reserve(sym->fields.dim);
-
         Expression *e0 = NULL;
         Expression *ev = e->op == TOKtype ? NULL : e;
-        if (sc->func && ev && !isTrivialExp(ev))
-        {
-            Identifier *id = Identifier::generateId("__tup");
-            ExpInitializer *ei = new ExpInitializer(e->loc, ev);
-            VarDeclaration *vd = new VarDeclaration(e->loc, NULL, id, ei);
-            vd->storage_class |= STCtemp | STCctfe
-                              | (ev->isLvalue() ? STCref | STCforeach : STCrvalue);
-            e0 = new DeclarationExp(e->loc, vd);
-            ev = new VarExp(e->loc, vd);
-        }
+        if (ev)
+            ev = extractSideEffect(sc, "__tup", &e0, ev);
+
+        Expressions *exps = new Expressions;
+        exps->reserve(sym->fields.dim);
         for (size_t i = 0; i < sym->fields.dim; i++)
         {
             VarDeclaration *v = sym->fields[i];
@@ -8394,6 +8489,7 @@ Expression *TypeClass::dotExp(Scope *sc, Expression *e, Identifier *ident, int f
             }
             exps->push(ex);
         }
+
         e = new TupleExp(e->loc, e0, exps);
         Scope *sc2 = sc->push();
         sc2->flags = sc->flags | SCOPEnoaccesscheck;
@@ -8544,7 +8640,7 @@ L1:
     }
     if (!(sc->flags & SCOPEignoresymbolvisibility) && !symbolIsVisible(sc, s))
     {
-        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->module->toChars());
+        ::deprecation(e->loc, "%s is not visible from module %s", s->toPrettyChars(), sc->_module->toChars());
         // return noMember(sc, e, ident, flag);
     }
     if (!s->isFuncDeclaration())        // because of overloading

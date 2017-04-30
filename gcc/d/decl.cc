@@ -1,20 +1,19 @@
-// d-decls.cc -- D frontend for GCC.
-// Copyright (C) 2011-2016 Free Software Foundation, Inc.
+/* decl.cc -- Lower D frontend declarations to GCC trees.
+   Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
-// GCC is free software; you can redistribute it and/or modify it under
-// the terms of the GNU General Public License as published by the Free
-// Software Foundation; either version 3, or (at your option) any later
-// version.
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
 
-// GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or
-// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-// for more details.
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License
-// along with GCC; see the file COPYING3.  If not see
-// <http://www.gnu.org/licenses/>.
-
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
 #include "system.h"
@@ -50,7 +49,7 @@ mangle_decl (Dsymbol *decl)
     {
       OutBuffer buf;
       mangleToBuffer (decl, &buf);
-      return buf.extractString();
+      return buf.extractString ();
     }
 }
 
@@ -89,9 +88,13 @@ get_symbol_decl (Declaration *decl)
   SymbolDeclaration *sd = decl->isSymbolDeclaration ();
   if (sd)
     {
-      decl->csym = aggregate_initializer (sd->dsym);
+      decl->csym = aggregate_initializer_decl (sd->dsym);
       return decl->csym;
     }
+
+  /* Global static TypeInfo declaration.  */
+  if (decl->isTypeInfoDeclaration ())
+    return get_typeinfo_decl ((TypeInfoDeclaration *) decl);
 
   /* FuncAliasDeclaration is used to import functions from another scope.  */
   FuncAliasDeclaration *fad = decl->isFuncAliasDeclaration ();
@@ -107,8 +110,11 @@ get_symbol_decl (Declaration *decl)
     {
       AggregateDeclaration *ad = decl->toParent ()->isAggregateDeclaration ();
       gcc_assert (ad != NULL);
+
+      /* Finishing off the type should create the associated FIELD_DECL.  */
       build_ctype (ad->type);
       gcc_assert (decl->csym != NULL);
+
       return decl->csym;
     }
 
@@ -275,7 +281,7 @@ get_symbol_decl (Declaration *decl)
 	}
 
       /* Miscellaneous function flags.  */
-      if (fd->isMember2() || fd->isFuncLiteralDeclaration())
+      if (fd->isMember2 () || fd->isFuncLiteralDeclaration ())
 	{
 	  /* See grokmethod in cp/decl.c.  Maybe we shouldn't be setting inline
 	     flags without reason or proper handling.  */
@@ -335,7 +341,7 @@ get_symbol_decl (Declaration *decl)
     TREE_DEPRECATED (decl->csym) = 1;
 
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
-  // Have to test for import first
+  /* Have to test for import first.  */
   if (decl->isImportedSymbol ())
     {
       insert_decl_attribute (decl->csym, "dllimport");
@@ -371,7 +377,7 @@ get_symbol_decl (Declaration *decl)
       else
 	{
 	  if (!DECL_EXTERNAL (decl->csym)
-	      && decl->getModule() && decl->getModule()->isRoot())
+	      && decl->getModule () && decl->getModule ()->isRoot ())
 	    TREE_STATIC (decl->csym) = 1;
 	  else
 	    DECL_EXTERNAL (decl->csym) = 1;
@@ -416,64 +422,157 @@ get_symbol_decl (Declaration *decl)
   return decl->csym;
 }
 
-/* Visitor to create the decl tree for typeinfo decls.  */
-
-class TypeInfoDeclVisitor : public Visitor
-{
-public:
-  TypeInfoDeclVisitor (void) {}
-
-  void visit (TypeInfoDeclaration *tid)
-  {
-    tree ident = get_identifier (tid->ident->toChars ());
-
-    tid->csym = build_decl (UNKNOWN_LOCATION, VAR_DECL, ident,
-			    TREE_TYPE (build_ctype (tid->type)));
-    set_decl_location (tid->csym, tid);
-    DECL_LANG_SPECIFIC (tid->csym) = build_lang_decl (tid);
-    SET_DECL_ASSEMBLER_NAME (tid->csym, ident);
-
-    d_keep (tid->csym);
-
-    DECL_CONTEXT (tid->csym) = d_decl_context (tid);
-    DECL_ARTIFICIAL (tid->csym) = 1;
-    TREE_STATIC (tid->csym) = 1;
-    TREE_READONLY (tid->csym) = 1;
-    TREE_PUBLIC (tid->csym) = 1;
-
-    /* The typeinfo has not been defined -- yet.  */
-    DECL_EXTERNAL (tid->csym) = 1;
-
-    /* Built-in typeinfo will be referenced as one-only.  */
-    gcc_assert (!tid->isInstantiated ());
-    d_comdat_linkage (tid->csym);
-  }
-
-  void visit (TypeInfoClassDeclaration *tid)
-  {
-    gcc_assert (tid->tinfo->ty == Tclass);
-    TypeClass *tc = (TypeClass *) tid->tinfo;
-    tid->csym = get_classinfo_decl (tc->sym);
-  }
-};
-
-/* Get the VAR_DECL of the TypeInfo for DECL.  If this does not yet exist,
-   create it.  The TypeInfo decl provides information about the type of a given
-   expression or object.  */
+/* Returns a declaration for a VAR_DECL.  Used to create compiler-generated
+   global variables.  */
 
 tree
-get_typeinfo_decl (TypeInfoDeclaration *decl)
+declare_extern_var (tree ident, tree type)
 {
-  if (decl->csym)
-    return decl->csym;
+  tree name = IDENTIFIER_PRETTY_NAME (ident)
+    ? IDENTIFIER_PRETTY_NAME (ident) : ident;
+  tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, name, type);
 
-  gcc_assert (decl->tinfo->ty != Terror);
+  d_keep (decl);
 
-  TypeInfoDeclVisitor v = TypeInfoDeclVisitor ();
-  decl->accept (&v);
-  gcc_assert (decl->csym != NULL_TREE);
+  SET_DECL_ASSEMBLER_NAME (decl, ident);
+  DECL_ARTIFICIAL (decl) = 1;
+  TREE_STATIC (decl) = 1;
+  TREE_PUBLIC (decl) = 1;
 
-  return decl->csym;
+  /* The decl has not been defined -- yet.  */
+  DECL_EXTERNAL (decl) = 1;
+
+  return decl;
+}
+
+/* Add local variable VAR into the current function body.  */
+
+void
+declare_local_var (VarDeclaration *var)
+{
+  gcc_assert (!var->isDataseg () && !var->isMember ());
+  gcc_assert (current_function_decl != NULL_TREE);
+
+  FuncDeclaration *fd = cfun->language->function;
+  tree decl = get_symbol_decl (var);
+
+  gcc_assert (!TREE_STATIC (decl));
+
+  set_input_location (var->loc);
+  d_pushdecl (decl);
+  DECL_CONTEXT (decl) = current_function_decl;
+
+  /* Compiler generated symbols.  */
+  if (var == fd->vresult || var == fd->v_argptr)
+    DECL_ARTIFICIAL (decl) = 1;
+
+  if (DECL_LANG_FRAME_FIELD (decl))
+    {
+      /* Fixes debugging local variables.  */
+      SET_DECL_VALUE_EXPR (decl, get_decl_tree (var));
+      DECL_HAS_VALUE_EXPR_P (decl) = 1;
+    }
+}
+
+/* Return an unnamed local temporary of type TYPE.  */
+
+tree
+build_local_temp (tree type)
+{
+  tree decl = build_decl (input_location, VAR_DECL, NULL_TREE, type);
+
+  DECL_CONTEXT (decl) = current_function_decl;
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  d_pushdecl (decl);
+
+  return decl;
+}
+
+/* Return the correct decl to be used for DECL.  For VAR_DECLs, this could
+   instead be a FIELD_DECL from a closure, or a RESULT_DECL from a named return
+   value.  For PARM_DECLs, this could be a FIELD_DECL for a non-local `this'.
+   For all other kinds of decls, this just returns the result of
+   get_symbol_decl().  */
+
+tree
+get_decl_tree (Declaration *decl)
+{
+  tree t = get_symbol_decl (decl);
+  FuncDeclaration *fd = cfun ? cfun->language->function : NULL;
+  VarDeclaration *vd = decl->isVarDeclaration ();
+
+  /* If cfun is NULL, then this is a global static.  */
+  if (vd == NULL || fd == NULL)
+    return t;
+
+  /* Get the named return value.  */
+  if (DECL_LANG_NRVO (t))
+    return DECL_LANG_NRVO (t);
+
+  /* Get the closure holding the var decl.  */
+  if (DECL_LANG_FRAME_FIELD (t))
+    {
+      FuncDeclaration *parent = vd->toParent2 ()->isFuncDeclaration ();
+      tree frame_ref = get_framedecl (fd, parent);
+
+      return component_ref (build_deref (frame_ref),
+			    DECL_LANG_FRAME_FIELD (t));
+    }
+
+  /* Get the non-local 'this' value by going through parent link
+     of nested classes, this routine pretty much undoes what
+     getRightThis in the frontend removes from codegen.  */
+  if (vd->parent != fd && vd->isThisDeclaration ())
+    {
+      AggregateDeclaration *ad = fd->isThis ();
+      gcc_assert (ad != NULL);
+
+      t = get_symbol_decl (fd->vthis);
+      Dsymbol *outer = fd;
+
+      while (outer != vd->parent)
+	{
+	  gcc_assert (ad != NULL);
+	  outer = ad->toParent2 ();
+
+	  /* Get the this->this parent link.  */
+	  tree vfield = get_symbol_decl (ad->vthis);
+	  t = component_ref (build_deref (t), vfield);
+
+	  ad = outer->isAggregateDeclaration ();
+	  if (ad != NULL)
+	    continue;
+
+	  fd = outer->isFuncDeclaration ();
+	  while (fd != NULL)
+	    {
+	      /* If outer function creates a closure, then the 'this'
+		 value would be the closure pointer, and the real
+		 'this' the first field of that closure.  */
+	      tree ff = get_frameinfo (fd);
+	      if (FRAMEINFO_CREATES_FRAME (ff))
+		{
+		  t = build_nop (build_pointer_type (FRAMEINFO_TYPE (ff)), t);
+		  t = indirect_ref (build_ctype (fd->vthis->type), t);
+		}
+
+	      if (fd == vd->parent)
+		break;
+
+	      /* Continue looking for the right `this'.  */
+	      outer = outer->toParent2 ();
+	      fd = outer->isFuncDeclaration ();
+	    }
+
+	  ad = outer->isAggregateDeclaration ();
+	}
+
+      return t;
+    }
+
+  /* Auto variable that the back end will handle for us.  */
+  return t;
 }
 
 /* Thunk code is based on g++ */
@@ -488,7 +587,7 @@ make_alias_for_thunk (tree function)
   tree alias;
   char buf[256];
 
-  // Thunks may reference extern functions which cannot be aliased.
+  /* Thunks may reference extern functions which cannot be aliased.  */
   if (DECL_EXTERNAL (function))
     return function;
 
@@ -524,7 +623,7 @@ make_alias_for_thunk (tree function)
   return alias;
 }
 
-// Emit the definition of a D vtable thunk.
+/* Emit the definition of a D vtable thunk.  */
 
 static void
 finish_thunk (tree thunk, tree function)
@@ -611,7 +710,7 @@ make_thunk (FuncDeclaration *decl, int offset)
       /* Compile the function body before generating the thunk, this is done
 	 even if the decl is external to the current module.  */
       if (decl->fbody)
-	decl->toObjFile ();
+	build_decl_tree (decl);
       else
 	{
 	  /* Build parameters for functions that are not being compiled,
@@ -651,9 +750,7 @@ make_thunk (FuncDeclaration *decl, int offset)
   if (global.errors)
     return error_mark_node;
 
-  /* If the thunk is to be static (that is, it is being emitted in this
-     module, there can only be one FUNCTION_DECL for it.   Thus, there
-     is a list of all thunks for a given function. */
+  /* See if we already have the thunk in question.  */
   for (tree t = DECL_LANG_THUNKS (function); t; t = DECL_CHAIN (t))
     {
       if (THUNK_LANG_OFFSET (t) == offset)
@@ -709,24 +806,6 @@ make_thunk (FuncDeclaration *decl, int offset)
   return thunk;
 }
 
-/* Return a copy of TYPE but safe to modify in any way.  */
-
-static tree
-copy_struct (tree type)
-{
-  tree newtype = build_distinct_type_copy (type);
-  TYPE_FIELDS (newtype) = copy_list (TYPE_FIELDS (type));
-  TYPE_METHODS (newtype) = copy_list (TYPE_METHODS (type));
-
-  for (tree field = TYPE_FIELDS (newtype); field; field = DECL_CHAIN (field))
-    DECL_FIELD_CONTEXT (field) = newtype;
-
-  for (tree method = TYPE_METHODS (newtype); method; method = DECL_CHAIN (method))
-    DECL_CONTEXT (method) = newtype;
-
-  return newtype;
-}
-
 /* Convenience function for layout_moduleinfo_fields.  Adds a field of TYPE to
    REC_TYPE at OFFSET, incrementing the offset to the next field position.  */
 
@@ -747,7 +826,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
 {
   size_t offset = Module::moduleinfo->structsize;
 
-  type = copy_struct (type);
+  type = copy_aggregate_type (type);
 
   /* First fields added are all the function pointers.  */
   if (decl->sctor)
@@ -779,7 +858,7 @@ layout_moduleinfo_fields (Module *decl, tree type)
     {
       Type *tn = Module::moduleinfo->type->pointerTo ();
       add_moduleinfo_field (size_type_node, type, offset);
-      add_moduleinfo_field (d_array_type (tn, aimports_dim), type, offset);
+      add_moduleinfo_field (make_array_type (tn, aimports_dim), type, offset);
     }
 
   /* Array of local ClassInfo decls are layed out in the same way.  */
@@ -794,12 +873,12 @@ layout_moduleinfo_fields (Module *decl, tree type)
     {
       Type *tn = Type::typeinfoclass->type;
       add_moduleinfo_field (size_type_node, type, offset);
-      add_moduleinfo_field (d_array_type (tn, aclasses.dim), type, offset);
+      add_moduleinfo_field (make_array_type (tn, aclasses.dim), type, offset);
     }
 
   /* Lastly, the name of the module is a static char array.  */
   size_t namelen = strlen (decl->toPrettyChars ()) + 1;
-  add_moduleinfo_field (d_array_type (Type::tchar, namelen), type, offset);
+  add_moduleinfo_field (make_array_type (Type::tchar, namelen), type, offset);
 
   finish_aggregate_type (offset, Module::moduleinfo->alignsize, type, NULL);
 
@@ -818,145 +897,15 @@ get_moduleinfo_decl (Module *decl)
     return decl->csym;
 
   tree ident = make_internal_name (decl, "__ModuleInfo", "Z");
+  tree type = build_ctype (Module::moduleinfo->type);
 
-  decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			   IDENTIFIER_PRETTY_NAME (ident),
-			   build_ctype (Module::moduleinfo->type));
+  decl->csym = declare_extern_var (ident, type);
   set_decl_location (decl->csym, decl);
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
-  SET_DECL_ASSEMBLER_NAME (decl->csym, ident);
-
-  d_keep (decl->csym);
 
   DECL_CONTEXT (decl->csym) = build_import_decl (decl);
-  DECL_ARTIFICIAL (decl->csym) = 1;
-  TREE_STATIC (decl->csym) = 1;
   /* Not readonly, moduleinit depends on this.  */
   TREE_READONLY (decl->csym) = 0;
-  TREE_PUBLIC (decl->csym) = 1;
-
-  /* The moduleinfo decl has not been defined -- yet.  */
-  DECL_EXTERNAL (decl->csym) = 1;
-
-  return decl->csym;
-}
-
-/* Layout fields that immediately come after the classinfo TYPE for DECL if
-   there's any interfaces or interface vtables to be added.
-   This must be mirrored with ClassDeclaration::baseVtblOffset().  */
-
-static tree
-layout_classinfo_interfaces (ClassDeclaration *decl, tree type)
-{
-  size_t structsize = Type::typeinfoclass->structsize;
-  size_t alignsize = Type::typeinfoclass->alignsize;
-  tree orig_type = type;
-
-  if (decl->vtblInterfaces->dim)
-    {
-      tree field;
-
-      type = copy_struct (type);
-
-      /* First layout the static array of Interface, which provides information
-	 about the vtables that follow.  */
-      if (Type::typeinterface)
-	{
-	  field = create_field_decl (d_array_type (Type::typeinterface->type,
-						   decl->vtblInterfaces->dim),
-				     NULL, 1, 1);
-	  insert_aggregate_field (decl->loc, type, field,
-				  Type::typeinfoclass->structsize);
-	  structsize += decl->vtblInterfaces->dim * Type::typeinterface->structsize;
-	}
-
-      /* For each interface, layout each vtable.  */
-      for (size_t i = 0; i < decl->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *b = (*decl->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->sym;
-	  unsigned offset = decl->baseVtblOffset (b);
-
-	  if (id->vtbl.dim && offset != ~0u)
-	    {
-	      field = create_field_decl (d_array_type (Type::tvoidptr,
-						       id->vtbl.dim),
-					 NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
-	      structsize += id->vtbl.dim * Target::ptrsize;
-	    }
-	}
-    }
-
-  /* Layout the arrays of overriding interface vtables.  */
-  for (ClassDeclaration *bcd = decl->baseClass; bcd; bcd = bcd->baseClass)
-    {
-      for (size_t i = 0; i < bcd->vtblInterfaces->dim; i++)
-	{
-	  BaseClass *b = (*bcd->vtblInterfaces)[i];
-	  ClassDeclaration *id = b->sym;
-	  unsigned offset = decl->baseVtblOffset (b);
-
-	  if (id->vtbl.dim && offset != ~0u)
-	    {
-	      if (type == orig_type)
-		type = copy_struct (type);
-
-	      tree field = create_field_decl (d_array_type (Type::tvoidptr,
-							    id->vtbl.dim),
-					      NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
-	      structsize += id->vtbl.dim * Target::ptrsize;
-	    }
-	}
-    }
-
-  /* Update the type size and record mode for the classinfo type.  */
-  if (structsize != Type::typeinfoclass->structsize)
-    finish_aggregate_type (structsize, alignsize, type, NULL);
-
-  return type;
-}
-
-/* Get the VAR_DECL of the ClassInfo for DECL.  If this does not yet exist,
-   create it.  The ClassInfo decl provides information about the dynamic type
-   of a given class type or object.  */
-
-tree
-get_classinfo_decl (ClassDeclaration *decl)
-{
-  if (decl->csym)
-    return decl->csym;
-
-  InterfaceDeclaration *id = decl->isInterfaceDeclaration ();
-  tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
-
-  tree type = TREE_TYPE (build_ctype (Type::typeinfoclass->type));
-  type = layout_classinfo_interfaces (decl, type);
-
-  decl->csym = build_decl (BUILTINS_LOCATION, VAR_DECL,
-			   IDENTIFIER_PRETTY_NAME (ident), type);
-  set_decl_location (decl->csym, decl);
-  DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
-  SET_DECL_ASSEMBLER_NAME (decl->csym, ident);
-
-  d_keep (decl->csym);
-
-  /* Class is a reference, want the record type.  */
-  DECL_CONTEXT (decl->csym) = TREE_TYPE (build_ctype (decl->type));
-  DECL_ARTIFICIAL (decl->csym) = 1;
-  TREE_STATIC (decl->csym) = 1;
-  /* ClassInfo cannot be const data, because we use the monitor on it.  */
-  TREE_READONLY (decl->csym) = 0;
-  TREE_PUBLIC (decl->csym) = 1;
-
-  /* The moduleinfo decl has not been defined -- yet.  */
-  DECL_EXTERNAL (decl->csym) = 1;
-
-  /* Could move setting comdat linkage to the caller, who knows whether
-     this classinfo is being emitted in this compilation.  */
-  if (decl->isInstantiated ())
-    d_comdat_linkage (decl->csym);
 
   return decl->csym;
 }
@@ -971,35 +920,24 @@ get_vtable_decl (ClassDeclaration *decl)
   if (decl->vtblsym)
     return decl->vtblsym;
 
+  tree ident = make_internal_name (decl, "__vtbl", "Z");
   /* Note: Using a static array type for the VAR_DECL, the DECL_INITIAL value
      will have a different type.  However the backend seems to accept this.  */
-  Type *vtbltype = Type::tvoidptr->sarrayOf (decl->vtbl.dim);
-  tree ident = make_internal_name (decl, "__vtbl", "Z");
+  tree type = build_ctype (Type::tvoidptr->sarrayOf (decl->vtbl.dim));
 
-  decl->vtblsym = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			      IDENTIFIER_PRETTY_NAME (ident),
-			      build_ctype (vtbltype));
+  decl->vtblsym = declare_extern_var (ident, type);
   set_decl_location (decl->vtblsym, decl);
   DECL_LANG_SPECIFIC (decl->vtblsym) = build_lang_decl (NULL);
-  SET_DECL_ASSEMBLER_NAME (decl->vtblsym, ident);
-
-  d_keep (decl->vtblsym);
 
   /* Class is a reference, want the record type.  */
   DECL_CONTEXT (decl->vtblsym) = TREE_TYPE (build_ctype (decl->type));
-  DECL_ARTIFICIAL (decl->vtblsym) = 1;
-  TREE_STATIC (decl->vtblsym) = 1;
   TREE_READONLY (decl->vtblsym) = 1;
   /* For GCC <= 4.9 use this to avoid checking asserts in ctor_for_folding
      in varasm.c */
   //DECL_VIRTUAL_P (decl->vtblsym) = 1;
-  TREE_PUBLIC (decl->vtblsym) = 1;
 
   DECL_ALIGN (decl->vtblsym) = TARGET_VTABLE_ENTRY_ALIGN;
   DECL_USER_ALIGN (decl->vtblsym) = true;
-
-  /* The vtable has not been defined -- yet.  */
-  DECL_EXTERNAL (decl->vtblsym) = 1;
 
   /* Could move setting comdat linkage to the caller, who knows whether
      this vtable is being emitted in this compilation.  */
@@ -1046,7 +984,7 @@ build_new_class_expr (ClassReferenceExp *expr)
    initializing struct literals.  */
 
 tree
-aggregate_initializer (AggregateDeclaration *decl)
+aggregate_initializer_decl (AggregateDeclaration *decl)
 {
   if (decl->sinit)
     return decl->sinit;
@@ -1059,19 +997,12 @@ aggregate_initializer (AggregateDeclaration *decl)
 
   tree ident = make_internal_name (decl, "__init", "Z");
 
-  decl->sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			    IDENTIFIER_PRETTY_NAME (ident), type);
+  decl->sinit = declare_extern_var (ident, type);
   set_decl_location (decl->sinit, decl);
   DECL_LANG_SPECIFIC (decl->sinit) = build_lang_decl (NULL);
-  SET_DECL_ASSEMBLER_NAME (decl->sinit, ident);
-
-  d_keep (decl->sinit);
 
   DECL_CONTEXT (decl->sinit) = type;
-  DECL_ARTIFICIAL (decl->sinit) = 1;
-  TREE_STATIC (decl->sinit) = 1;
   TREE_READONLY (decl->sinit) = 1;
-  TREE_PUBLIC (decl->sinit) = 1;
 
   /* Honor struct alignment set by user.  */
   if (sd && sd->alignment != STRUCTALIGN_DEFAULT)
@@ -1079,9 +1010,6 @@ aggregate_initializer (AggregateDeclaration *decl)
       DECL_ALIGN (decl->sinit) = sd->alignment * BITS_PER_UNIT;
       DECL_USER_ALIGN (decl->sinit) = true;
     }
-
-  /* The initializer has not been defined -- yet.  */
-  DECL_EXTERNAL (decl->sinit) = 1;
 
   /* Could move setting comdat linkage to the caller, who knows whether
      this initializer is being emitted in this compilation.  */
@@ -1091,13 +1019,39 @@ aggregate_initializer (AggregateDeclaration *decl)
   return decl->sinit;
 }
 
+/* Generate the data for the static initialiser.  */
+
+tree
+layout_class_initializer (ClassDeclaration *cd)
+{
+  NewExp *ne = new NewExp (cd->loc, NULL, NULL, cd->type, NULL);
+  ne->type = cd->type;
+
+  Expression *e = ne->ctfeInterpret ();
+  gcc_assert (e->op == TOKclassreference);
+
+  return build_class_instance ((ClassReferenceExp *) e);
+}
+
+tree
+layout_struct_initializer (StructDeclaration *sd)
+{
+  StructLiteralExp *sle = StructLiteralExp::create (sd->loc, sd, NULL);
+
+  if (!sd->fill (sd->loc, sle->elements, true))
+    gcc_unreachable ();
+
+  sle->type = sd->type;
+  return build_expr (sle, true);
+}
+
 /* Get the VAR_DECL of the static initializer symbol for the enum DECL.
    If this does not yet exist, create it.  The static initializer data is
    accessible via TypeInfo_Enum, but the field member type is a byte[] that
    requires a pointer to a symbol reference.  */
 
 tree
-enum_initializer (EnumDeclaration *decl)
+enum_initializer_decl (EnumDeclaration *decl)
 {
   if (decl->sinit)
     return decl->sinit;
@@ -1110,22 +1064,12 @@ enum_initializer (EnumDeclaration *decl)
   tree ident = make_internal_name (decl, "__init", "Z");
   decl->ident = ident_save;
 
-  decl->sinit = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			    IDENTIFIER_PRETTY_NAME (ident), type);
+  decl->sinit = declare_extern_var (ident, type);
   set_decl_location (decl->sinit, decl);
   DECL_LANG_SPECIFIC (decl->sinit) = build_lang_decl (NULL);
-  SET_DECL_ASSEMBLER_NAME (decl->sinit, ident);
-
-  d_keep (decl->sinit);
 
   DECL_CONTEXT (decl->sinit) = d_decl_context (decl);
-  DECL_ARTIFICIAL (decl->sinit) = 1;
-  TREE_STATIC (decl->sinit) = 1;
   TREE_READONLY (decl->sinit) = 1;
-  TREE_PUBLIC (decl->sinit) = 1;
-
-  /* The initializer has not been defined -- yet.  */
-  DECL_EXTERNAL (decl->sinit) = 1;
 
   /* Could move setting comdat linkage to the caller, who knows whether
      this initializer is being emitted in this compilation.  */
