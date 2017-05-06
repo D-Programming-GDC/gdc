@@ -39,10 +39,10 @@ class ImportVisitor : public Visitor
   /* Build the declaration DECL as an imported symbol.  */
   tree make_import (tree decl)
   {
-    tree import = make_node (IMPORTED_DECL);
-    TREE_TYPE (import) = void_type_node;
-
     gcc_assert (decl != NULL_TREE);
+
+    tree import = build_decl (input_location, IMPORTED_DECL,
+			      DECL_NAME (decl), void_type_node);
     IMPORTED_DECL_ASSOCIATED_DECL (import) = decl;
     d_keep (import);
 
@@ -62,14 +62,13 @@ public:
      of whether there are any parent packages in the module system.  */
   void visit (Module *m)
   {
-    m->isym = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
+    Loc loc = (m->md != NULL) ? m->md->loc
+      : Loc (m->srcfile->toChars (), 1, 0);
+
+    m->isym = build_decl (get_linemap (loc), NAMESPACE_DECL,
 			  get_identifier (m->toPrettyChars ()),
 			  void_type_node);
     d_keep (m->isym);
-
-    Loc loc = (m->md != NULL) ? m->md->loc
-      : Loc (m->srcfile->toChars (), 1, 0);
-    set_decl_location (m->isym, loc);
 
     if (!m->isRoot ())
       DECL_EXTERNAL (m->isym) = 1;

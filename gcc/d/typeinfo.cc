@@ -1119,6 +1119,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 {
   tree type = tinfo_types[TK_CLASSINFO_TYPE];
   size_t structsize = int_size_in_bytes (type);
+  input_location = get_linemap (decl->loc);
 
   if (decl->vtblInterfaces->dim)
     {
@@ -1133,7 +1134,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
       tree arrtype = build_array_type (vtbl_interface_type_node,
 				       build_index_type (domain));
       field = create_field_decl (arrtype, NULL, 1, 1);
-      insert_aggregate_field (decl->loc, type, field, structsize);
+      insert_aggregate_field (type, field, structsize);
       structsize += decl->vtblInterfaces->dim * interfacesize;
 
       /* For each interface, layout each vtable.  */
@@ -1149,7 +1150,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 	      tree vtbltype = build_array_type (vtable_entry_type, vtbldomain);
 
 	      field = create_field_decl (vtbltype, NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
+	      insert_aggregate_field (type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
 	    }
 	}
@@ -1173,7 +1174,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 	      tree vtbltype = build_array_type (vtable_entry_type, vtbldomain);
 
 	      tree field = create_field_decl (vtbltype, NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
+	      insert_aggregate_field (type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
 	    }
 	}
@@ -1205,7 +1206,6 @@ public:
     gcc_assert (type != NULL_TREE);
 
     tid->csym = declare_extern_var (ident, type);
-    set_decl_location (tid->csym, tid);
     DECL_LANG_SPECIFIC (tid->csym) = build_lang_decl (tid);
 
     DECL_CONTEXT (tid->csym) = d_decl_context (tid);
@@ -1258,7 +1258,6 @@ get_classinfo_decl (ClassDeclaration *decl)
   tree type = layout_classinfo_interfaces (decl);
 
   decl->csym = declare_extern_var (ident, type);
-  set_decl_location (decl->csym, decl);
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
 
   /* Class is a reference, want the record type.  */
@@ -1337,7 +1336,6 @@ get_cpp_typeinfo_decl (ClassDeclaration *decl)
   tree type = tinfo_types[TK_CPPTI_TYPE];
 
   decl->cpp_type_info_ptr_sym = declare_extern_var (ident, type);
-  set_decl_location (decl->cpp_type_info_ptr_sym, decl);
   DECL_LANG_SPECIFIC (decl->cpp_type_info_ptr_sym) = build_lang_decl (NULL);
 
   /* Class is a reference, want the record type.  */

@@ -206,15 +206,12 @@ insert_type_modifiers (tree type, unsigned mod)
 /* Adds FIELD into the aggregate TYPE at OFFSET.  */
 
 void
-insert_aggregate_field (const Loc& loc, tree type, tree field, size_t offset)
+insert_aggregate_field (tree type, tree field, size_t offset)
 {
   DECL_FIELD_CONTEXT (field) = type;
   SET_DECL_OFFSET_ALIGN (field, TYPE_ALIGN (TREE_TYPE (field)));
   DECL_FIELD_OFFSET (field) = size_int (offset);
   DECL_FIELD_BIT_OFFSET (field) = bitsize_zero_node;
-
-  /* Must set this or we crash with DWARF debugging.  */
-  set_decl_location (field, loc);
 
   TREE_ADDRESSABLE (field) = TYPE_SHARED (TREE_TYPE (field));
 
@@ -297,9 +294,10 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	  if (var->isField ())
 	    {
 	      const char *ident = var->ident ? var->ident->toChars () : NULL;
+	      input_location = get_linemap (var->loc);
 	      tree field = create_field_decl (declaration_type (var), ident,
 					      inherited_p, inherited_p);
-	      insert_aggregate_field (var->loc, context, field, var->offset);
+	      insert_aggregate_field (context, field, var->offset);
 
 	      /* Because the front-end shares field decls across classes, don't
 		 create the corresponding backend symbol unless we are adding
@@ -329,12 +327,12 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 	  tree type = make_node (ad->isunion ? UNION_TYPE : RECORD_TYPE);
 	  ANON_AGGR_TYPE_P (type) = 1;
 	  d_keep (type);
+	  input_location = get_linemap (ad->loc);
 
 	  /* Build the type declaration.  */
-	  tree decl = build_decl (UNKNOWN_LOCATION, TYPE_DECL, ident, type);
+	  tree decl = build_decl (input_location, TYPE_DECL, ident, type);
 	  DECL_CONTEXT (decl) = context;
 	  DECL_ARTIFICIAL (decl) = 1;
-	  set_decl_location (decl, ad);
 
 	  TYPE_CONTEXT (type) = context;
 	  TYPE_NAME (type) = decl;
@@ -354,7 +352,7 @@ layout_aggregate_members (Dsymbols *members, tree context, bool inherited_p)
 
 	  /* And make the corresponding data member.  */
 	  tree field = create_field_decl (type, NULL, 0, 0);
-	  insert_aggregate_field (ad->loc, context, field, ad->anonoffset);
+	  insert_aggregate_field (context, field, ad->anonoffset);
 	  continue;
 	}
 
@@ -395,6 +393,7 @@ layout_aggregate_type (AggregateDeclaration *decl, tree type,
 {
   ClassDeclaration *cd = base->isClassDeclaration ();
   bool inherited_p = (decl != base);
+  input_location = get_linemap (decl->loc);
 
   if (cd != NULL)
     {
@@ -414,14 +413,14 @@ layout_aggregate_type (AggregateDeclaration *decl, tree type,
 	      DECL_VIRTUAL_P (field) = 1;
 	      TYPE_VFIELD (type) = field;
 	      DECL_FCONTEXT (field) = objtype;
-	      insert_aggregate_field (decl->loc, type, field, 0);
+	      insert_aggregate_field (type, field, 0);
 	    }
 
 	  if (!id && !cd->cpp)
 	    {
 	      tree field = create_field_decl (ptr_type_node, "__monitor", 1,
 					      inherited_p);
-	      insert_aggregate_field (decl->loc, type, field, Target::ptrsize);
+	      insert_aggregate_field (type, field, Target::ptrsize);
 	    }
 	}
 
@@ -431,7 +430,7 @@ layout_aggregate_type (AggregateDeclaration *decl, tree type,
 	    {
 	      BaseClass *bc = (*cd->vtblInterfaces)[i];
 	      tree field = create_field_decl (vtbl_ptr_type_node, NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, bc->offset);
+	      insert_aggregate_field (type, field, bc->offset);
 	    }
 	}
     }
@@ -823,9 +822,8 @@ public:
 						basetype);
 
 		/* Build a identifier for the enumeration constant.  */
-		tree decl = build_decl (UNKNOWN_LOCATION, CONST_DECL,
-					ident, basetype);
-		set_decl_location (decl, member->loc);
+		tree decl = build_decl (get_linemap (member->loc),
+					CONST_DECL, ident, basetype);
 		DECL_CONTEXT (decl) = t->ctype;
 		TREE_CONSTANT (decl) = 1;
 		TREE_READONLY (decl) = 1;

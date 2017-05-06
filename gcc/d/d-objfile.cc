@@ -176,9 +176,9 @@ start_function (FuncDeclaration *fd)
   current_function_decl = fndecl;
 
   tree restype = TREE_TYPE (TREE_TYPE (fndecl));
-  tree resdecl = build_decl (UNKNOWN_LOCATION, RESULT_DECL, NULL_TREE, restype);
+  tree resdecl = build_decl (get_linemap (fd->loc), RESULT_DECL,
+			     NULL_TREE, restype);
 
-  set_decl_location (resdecl, fd);
   DECL_RESULT (fndecl) = resdecl;
   DECL_CONTEXT (resdecl) = fndecl;
   DECL_ARTIFICIAL (resdecl) = 1;
@@ -324,6 +324,12 @@ public:
     current_module_info = &mi;
     current_module_decl = d;
 
+    /* Set input location, empty DECL_SOURCE_FILE can crash debug generator.  */
+    if (d->loc.filename)
+      input_location = get_linemap (d->loc);
+    else
+      input_location = get_linemap (Loc ("<no_file>", 1, 0));
+
     if (d->members)
       {
 	for (size_t i = 0; i < d->members->dim; i++)
@@ -375,6 +381,8 @@ public:
     if (d->isstatic)
       return;
 
+    input_location = get_linemap (d->loc);
+
     /* Get the context of this import, this should never be null.  */
     tree context;
     if (cfun != NULL)
@@ -394,8 +402,6 @@ public:
 	    if (decl == NULL_TREE)
 	      continue;
 
-	    set_decl_location (decl, d);
-
 	    Identifier *alias = d->aliases[i];
 	    tree name = (alias != NULL)
 	      ? get_identifier (alias->toChars ()) : NULL_TREE;
@@ -407,7 +413,6 @@ public:
       {
 	/* Importing the entire module.  */
 	tree decl = build_import_decl (d->mod);
-	set_input_location (d);
 
 	tree name = (d->aliasId != NULL)
 	  ? get_identifier (d->aliasId->toChars ()) : NULL_TREE;
@@ -968,7 +973,6 @@ public:
 	    TREE_TYPE (parm_decl) = build_pointer_type (frame_type);
 	  }
 
-	set_decl_location (parm_decl, d->vthis);
 	param_list = chainon (param_list, parm_decl);
 	d_function_chain->static_chain = parm_decl;
       }
@@ -977,7 +981,6 @@ public:
     if (d->v_arguments)
       {
 	parm_decl = get_symbol_decl (d->v_arguments);
-	set_decl_location (parm_decl, d->v_arguments);
 	param_list = chainon (param_list, parm_decl);
       }
 
@@ -988,14 +991,13 @@ public:
       {
 	VarDeclaration *param = (*d->parameters)[i];
 	parm_decl = get_symbol_decl (param);
-	set_decl_location (parm_decl, (Dsymbol *) param);
 	/* Chain them in the correct order.  */
 	param_list = chainon (param_list, parm_decl);
       }
 
     DECL_ARGUMENTS (fndecl) = param_list;
     rest_of_decl_compilation (fndecl, 1, 0);
-    set_input_location (d->loc);
+    input_location = get_linemap (d->loc);
 
     /* If this is a member function that nested (possibly indirectly) in another
        function, construct an expession for this member function's static chain
@@ -1388,93 +1390,17 @@ d_finish_module()
 location_t
 get_linemap (const Loc& loc)
 {
-  location_t gcc_location;
+  location_t gcc_location = input_location;
 
-  linemap_add (line_table, LC_ENTER, 0, loc.filename, loc.linnum);
-  linemap_line_start (line_table, loc.linnum, 0);
-  gcc_location = linemap_position_for_column (line_table, loc.charnum);
-  linemap_add (line_table, LC_LEAVE, 0, NULL, 0);
+  if (loc.filename)
+    {
+      linemap_add (line_table, LC_ENTER, 0, loc.filename, loc.linnum);
+      linemap_line_start (line_table, loc.linnum, 0);
+      gcc_location = linemap_position_for_column (line_table, loc.charnum);
+      linemap_add (line_table, LC_LEAVE, 0, NULL, 0);
+    }
 
   return gcc_location;
-}
-
-// Update input_location to LOC.
-
-void
-set_input_location (const Loc& loc)
-{
-  if (loc.filename)
-    input_location = get_linemap (loc);
-}
-
-// Some D Declarations don't have the loc set, this searches DECL's parents
-// until a valid loc is found.
-
-void
-set_input_location (Dsymbol *decl)
-{
-  Dsymbol *dsym = decl;
-  while (dsym)
-    {
-      if (dsym->loc.filename)
-	{
-	  set_input_location (dsym->loc);
-	  return;
-	}
-      dsym = dsym->toParent();
-    }
-
-  // Fallback; backend sometimes crashes if not set
-  Module *mod = decl->getModule();
-  Loc loc;
-
-  if (mod && mod->srcfile && mod->srcfile->name)
-    loc.filename = mod->srcfile->name->str;
-  else
-    // Empty string can mess up debug info
-    loc.filename = "<no_file>";
-
-  loc.linnum = 1;
-  set_input_location (loc);
-}
-
-// Like set_input_location, but sets the location on decl T.
-
-void
-set_decl_location (tree t, const Loc& loc)
-{
-  // DWARF2 will often crash if the DECL_SOURCE_FILE is not set.
-  // It's easier the error here.
-  gcc_assert (loc.filename);
-  DECL_SOURCE_LOCATION (t) = get_linemap (loc);
-}
-
-void
-set_decl_location (tree t, Dsymbol *decl)
-{
-  Dsymbol *dsym = decl;
-  while (dsym)
-    {
-      if (dsym->loc.filename)
-	{
-	  set_decl_location (t, dsym->loc);
-	  return;
-	}
-      dsym = dsym->toParent();
-    }
-
-  // Fallback; backend sometimes crashes if not set
-  Module *mod = decl->getModule();
-  Loc loc;
-
-  if (mod && mod->srcfile && mod->srcfile->name)
-    loc.filename = mod->srcfile->name->str;
-  else
-    // Empty string can mess up debug info
-    loc.filename = "<no_file>";
-
-  loc.linnum = 1;
-  set_decl_location (t, loc);
 }
 
 // Return the COMDAT group into which DECL should be placed.
@@ -1654,12 +1580,10 @@ build_type_decl (tree type, Dsymbol *dsym)
 
   gcc_assert(!POINTER_TYPE_P (type));
 
-  tree decl = build_decl(UNKNOWN_LOCATION, TYPE_DECL,
+  tree decl = build_decl(get_linemap (dsym->loc), TYPE_DECL,
 			 get_identifier(dsym->ident->toChars()), type);
   DECL_ARTIFICIAL (decl) = 1;
-
   DECL_CONTEXT (decl) = d_decl_context(dsym);
-  set_decl_location(decl, dsym);
 
   TYPE_CONTEXT (type) = DECL_CONTEXT (decl);
   TYPE_NAME (type) = decl;
@@ -1741,7 +1665,8 @@ build_call_function (const char *name, vec<FuncDeclaration *> functions, bool fo
   Module *mod = current_module_decl;
   if (!mod)
     mod = Module::rootModule;
-  set_input_location(Loc(mod->srcfile->toChars(), 1, 0));
+
+  input_location = get_linemap (Loc(mod->srcfile->toChars(), 1, 0));
 
   // Shouldn't front end build these?
   for (size_t i = 0; i < functions.length(); i++)
@@ -1895,8 +1820,7 @@ static tree
 build_dso_registry_var(const char * name, tree type, tree init, bool comdat_p,
   bool external_p)
 {
-  tree var = build_decl(BUILTINS_LOCATION, VAR_DECL, get_identifier(name), type);
-  set_decl_location(var, current_module_decl);
+  tree var = build_decl(UNKNOWN_LOCATION, VAR_DECL, get_identifier(name), type);
   DECL_VISIBILITY (var) = VISIBILITY_HIDDEN;
   DECL_VISIBILITY_SPECIFIED (var) = 1;
   TREE_PUBLIC (var) = 1;
@@ -1941,7 +1865,6 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
   FuncDeclaration *fd = build_simple_function_decl(func_name);
   tree decl = get_symbol_decl (fd);
 
-  set_decl_location(decl, current_module_decl);
   TREE_PUBLIC (decl) = 1;
   DECL_VISIBILITY (decl) = VISIBILITY_HIDDEN;
   DECL_VISIBILITY_SPECIFIED (decl) = 1;
@@ -1974,7 +1897,6 @@ emit_dso_registry_cdtor(Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
 			  build_address(stop_minfo));
 
   tree dso_data = build_local_temp (dso_type);
-  set_decl_location(dso_data, current_module_decl);
 
   tree fbody = modify_expr (dso_data, build_struct_literal(dso_type, ve));
 
@@ -2030,9 +1952,8 @@ emit_dso_registry_hooks(tree sym, Dsymbol *compiler_dso_type, Dsymbol *dso_regis
   // Do this once for every emitted Module
   // @section("minfo") void* __mod_ref_%s = &ModuleInfo(module);
   const char *name = concat ("__mod_ref_", IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (sym)), NULL);
-  tree decl = build_decl(BUILTINS_LOCATION, VAR_DECL, get_identifier (name), ptr_type_node);
+  tree decl = build_decl(UNKNOWN_LOCATION, VAR_DECL, get_identifier (name), ptr_type_node);
   d_keep(decl);
-  set_decl_location(decl, current_module_decl);
   TREE_PUBLIC (decl) = 1;
   TREE_STATIC (decl) = 1;
   DECL_PRESERVE_P (decl) = 1;
@@ -2077,7 +1998,6 @@ emit_modref_hooks(tree sym, Dsymbol *mref)
 
   // private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };
   tree modref = build_artificial_decl (tmodref, NULL_TREE, "__mod_ref");
-  set_decl_location (modref, current_module_decl);
   d_keep (modref);
 
   vec<constructor_elt, va_gc> *ce = NULL;

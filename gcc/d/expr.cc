@@ -108,7 +108,7 @@ public:
 
   void visit (Expression *e)
   {
-    set_input_location (e->loc);
+    input_location = get_linemap (e->loc);
     gcc_unreachable ();
   }
 
