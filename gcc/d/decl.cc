@@ -142,7 +142,7 @@ get_symbol_decl (Declaration *decl)
 	  return decl->csym;
 	}
 
-      decl->csym = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
+      decl->csym = build_decl (get_linemap (decl->loc), FUNCTION_DECL,
 			      get_identifier (decl->ident->toChars ()),
 			      NULL_TREE);
 
@@ -161,7 +161,7 @@ get_symbol_decl (Declaration *decl)
       tree_code code = vd->isParameter () ? PARM_DECL
 	: !vd->canTakeAddressOf () ? CONST_DECL
 	: VAR_DECL;
-      decl->csym = build_decl (UNKNOWN_LOCATION, code,
+      decl->csym = build_decl (get_linemap (decl->loc), code,
 			      get_identifier (decl->ident->toChars ()),
 			      declaration_type (vd));
 
@@ -214,7 +214,6 @@ get_symbol_decl (Declaration *decl)
 
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (decl);
   DECL_CONTEXT (decl->csym) = d_decl_context (decl);
-  set_decl_location (decl->csym, decl);
 
   if (TREE_CODE (decl->csym) == PARM_DECL)
     {
@@ -442,7 +441,7 @@ declare_extern_var (tree ident, tree type)
 {
   tree name = IDENTIFIER_PRETTY_NAME (ident)
     ? IDENTIFIER_PRETTY_NAME (ident) : ident;
-  tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL, name, type);
+  tree decl = build_decl (input_location, VAR_DECL, name, type);
 
   d_keep (decl);
 
@@ -470,7 +469,7 @@ declare_local_var (VarDeclaration *var)
 
   gcc_assert (!TREE_STATIC (decl));
 
-  set_input_location (var->loc);
+  input_location = get_linemap (var->loc);
   d_pushdecl (decl);
   DECL_CONTEXT (decl) = current_function_decl;
 
@@ -851,7 +850,7 @@ static void
 add_moduleinfo_field (tree type, tree rec_type, size_t& offset)
 {
   tree field = create_field_decl (type, NULL, 1, 1);
-  insert_aggregate_field (Module::moduleinfo->loc, rec_type, field, offset);
+  insert_aggregate_field (rec_type, field, offset);
   offset += int_size_in_bytes (type);
 }
 
@@ -863,6 +862,7 @@ tree
 layout_moduleinfo_fields (Module *decl, tree type)
 {
   size_t offset = Module::moduleinfo->structsize;
+  input_location = get_linemap (Module::moduleinfo->loc);
 
   type = copy_aggregate_type (type);
 
@@ -938,7 +938,6 @@ get_moduleinfo_decl (Module *decl)
   tree type = build_ctype (Module::moduleinfo->type);
 
   decl->csym = declare_extern_var (ident, type);
-  set_decl_location (decl->csym, decl);
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
 
   DECL_CONTEXT (decl->csym) = build_import_decl (decl);
@@ -964,7 +963,6 @@ get_vtable_decl (ClassDeclaration *decl)
   tree type = build_ctype (Type::tvoidptr->sarrayOf (decl->vtbl.dim));
 
   decl->vtblsym = declare_extern_var (ident, type);
-  set_decl_location (decl->vtblsym, decl);
   DECL_LANG_SPECIFIC (decl->vtblsym) = build_lang_decl (NULL);
 
   /* Class is a reference, want the record type.  */
@@ -1005,7 +1003,6 @@ build_new_class_expr (ClassReferenceExp *expr)
   /* Build the reference symbol.  */
   tree type = build_ctype (expr->value->stype);
   expr->value->sym = build_artificial_decl (TREE_TYPE (type), NULL_TREE, "C");
-  set_decl_location (expr->value->sym, expr->loc);
 
   DECL_INITIAL (expr->value->sym) = build_class_instance (expr);
   d_pushdecl (expr->value->sym);
@@ -1034,7 +1031,6 @@ aggregate_initializer_decl (AggregateDeclaration *decl)
   tree ident = make_internal_name (decl, "__init", "Z");
 
   decl->sinit = declare_extern_var (ident, type);
-  set_decl_location (decl->sinit, decl);
   DECL_LANG_SPECIFIC (decl->sinit) = build_lang_decl (NULL);
 
   DECL_CONTEXT (decl->sinit) = type;
@@ -1101,7 +1097,6 @@ enum_initializer_decl (EnumDeclaration *decl)
   decl->ident = ident_save;
 
   decl->sinit = declare_extern_var (ident, type);
-  set_decl_location (decl->sinit, decl);
   DECL_LANG_SPECIFIC (decl->sinit) = build_lang_decl (NULL);
 
   DECL_CONTEXT (decl->sinit) = d_decl_context (decl);

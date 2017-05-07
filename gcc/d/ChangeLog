@@ -1,3 +1,14 @@
+2017-05-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (DeclVisitor::visit(Module)): Set input_location before
+	walking module members.
+	(get_linemap): Return input_location if no filename set.
+	(set_input_location): Remove function.  Update all callers to set
+	input_location directly.
+	(set_decl_location): Remove function.  Update all callers to pass
+	get_linemap to build_decl, or use input_location.
+	* types.cc (insert_aggregate_field): Update signature.
+
 2017-04-30  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (start_function): Update signature.
