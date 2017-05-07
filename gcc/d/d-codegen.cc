@@ -3050,11 +3050,10 @@ build_frame_type (tree ffi, FuncDeclaration *fd)
     {
       VarDeclaration *v = fd->closureVars[i];
       tree s = get_symbol_decl (v);
-      tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+      tree field = build_decl (get_linemap (v->loc), FIELD_DECL,
 			       v->ident ? get_identifier (v->ident->toChars()) : NULL_TREE,
 			       declaration_type (v));
       SET_DECL_LANG_FRAME_FIELD (s, field);
-      set_decl_location (field, v);
       DECL_FIELD_CONTEXT (field) = frame_rec_type;
       fields = chainon (fields, field);
       TREE_USED (s) = 1;
@@ -3289,7 +3288,7 @@ get_framedecl (FuncDeclaration *inner, FuncDeclaration *outer)
 tree
 create_field_decl (tree type, const char *name, int artificial, int ignored)
 {
-  tree decl = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+  tree decl = build_decl (input_location, FIELD_DECL,
 			  name ? get_identifier (name) : NULL_TREE, type);
   DECL_ARTIFICIAL (decl) = artificial;
   DECL_IGNORED_P (decl) = ignored;

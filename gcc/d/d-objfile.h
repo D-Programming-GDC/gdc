@@ -19,11 +19,6 @@
 #define GCC_DCMPLR_OBFILE_H
 
 extern location_t get_linemap (const Loc& loc);
-extern void set_input_location (const Loc& loc);
-extern void set_input_location (Dsymbol *decl);
-
-extern void set_decl_location (tree t, const Loc& loc);
-extern void set_decl_location (tree t, Dsymbol *decl);
 
 extern void d_comdat_linkage (tree decl);
 
