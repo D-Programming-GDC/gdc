@@ -37,7 +37,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-codegen.h"
-#include "d-objfile.h"
 #include "d-dmd-gcc.h"
 #include "id.h"
 
@@ -163,7 +162,7 @@ make_internal_typeinfo (tinfo_kind tk, Identifier *ident, ...)
   va_start (ap, ident);
 
   /* First two fields are from the TypeInfo base class.
-     Note, these are added in reverse order.  */
+     Note, finish_builtin_struct() expects these fields in reverse order.  */
   tree fields = create_field_decl (ptr_type_node, NULL, 1, 1);
   DECL_CHAIN (fields) = create_field_decl (vtbl_ptr_type_node, NULL, 1, 1);
 

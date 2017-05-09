@@ -436,8 +436,7 @@ extern void d_keep (tree);
 
 /* In d-objfile.cc.  */
 extern void build_decl_tree (Dsymbol *);
-extern unsigned base_vtable_offset (ClassDeclaration *, BaseClass *);
-extern void layout_moduleinfo (Module *);
+extern void mark_needed (tree);
 
 /* In decl.cc.  */
 extern tree make_internal_name (Dsymbol *, const char *, const char *);
@@ -446,15 +445,20 @@ extern tree declare_extern_var (tree, tree);
 extern void declare_local_var (VarDeclaration *);
 extern tree build_local_temp (tree);
 extern tree get_decl_tree (Declaration *);
+extern void d_finish_decl (tree);
 extern tree make_thunk (FuncDeclaration *, int);
-extern tree layout_moduleinfo_fields (Module *, tree);
-extern tree get_moduleinfo_decl (Module *);
+extern tree start_function (FuncDeclaration *);
+extern void finish_function (tree);
+extern unsigned base_vtable_offset (ClassDeclaration *, BaseClass *);
 extern tree get_vtable_decl (ClassDeclaration *);
 extern tree build_new_class_expr (ClassReferenceExp *expr);
 extern tree aggregate_initializer_decl (AggregateDeclaration *);
 extern tree layout_struct_initializer (StructDeclaration *);
 extern tree layout_class_initializer (ClassDeclaration *);
 extern tree enum_initializer_decl (EnumDeclaration *);
+extern tree build_artificial_decl (tree, tree, const char * = NULL);
+extern void build_type_decl (tree, Dsymbol *);
+extern void d_comdat_linkage (tree);
 
 /* In expr.cc.  */
 extern tree build_expr (Expression *, bool = false);
@@ -463,6 +467,12 @@ extern tree build_return_dtor (Expression *, Type *, TypeFunction *);
 
 /* In imports.cc.  */
 extern tree build_import_decl (Dsymbol *);
+
+/* In modules.cc.  */
+extern void build_module (Module *);
+extern void d_finish_module(tree *, int);
+extern void register_module_decl (Declaration *);
+extern tree d_module_context (void);
 
 /* In typeinfo.cc.  */
 extern tree layout_typeinfo (TypeInfoDeclaration *);

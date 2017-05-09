@@ -42,11 +42,27 @@
 #include "function.h"
 
 #include "d-tree.h"
-#include "d-objfile.h"
 #include "d-codegen.h"
 #include "d-dmd-gcc.h"
 #include "id.h"
 
+/*  */
+
+location_t
+get_linemap (const Loc& loc)
+{
+  location_t gcc_location = input_location;
+
+  if (loc.filename)
+    {
+      linemap_add (line_table, LC_ENTER, 0, loc.filename, loc.linnum);
+      linemap_line_start (line_table, loc.linnum, 0);
+      gcc_location = linemap_position_for_column (line_table, loc.charnum);
+      linemap_add (line_table, LC_LEAVE, 0, NULL, 0);
+    }
+
+  return gcc_location;
+}
 
 // Return the DECL_CONTEXT for symbol DSYM.
 
