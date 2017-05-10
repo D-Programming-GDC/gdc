@@ -23,6 +23,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dfrontend/arraytypes.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/enum.h"
+#include "dfrontend/import.h"
 #include "dfrontend/module.h"
 
 #include "tree.h"
@@ -75,6 +76,14 @@ public:
 
     TREE_PUBLIC (m->isym) = 1;
     DECL_CONTEXT (m->isym) = NULL_TREE;
+  }
+
+  /* Build an import of another module symbol.  */
+
+  void visit (Import *m)
+  {
+    tree module = build_import_decl (m->mod);
+    m->isym = this->make_import (module);
   }
 
   /* Build an import for any kind of user defined type.
