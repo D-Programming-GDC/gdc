@@ -1253,7 +1253,7 @@ get_classinfo_decl (ClassDeclaration *decl)
     return decl->csym;
 
   InterfaceDeclaration *id = decl->isInterfaceDeclaration ();
-  tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
+  tree ident = mangle_internal_decl (decl, id ? "__Interface" : "__Class", "Z");
   tree type = layout_classinfo_interfaces (decl);
 
   decl->csym = declare_extern_var (ident, type);
@@ -1331,7 +1331,7 @@ get_cpp_typeinfo_decl (ClassDeclaration *decl)
     make_internal_typeinfo (TK_CPPTI_TYPE, Id::cpp_type_info_ptr,
 			    ptr_type_node, NULL);
 
-  tree ident = make_internal_name (decl, "_cpp_type_info_ptr", "");
+  tree ident = mangle_internal_decl (decl, "_cpp_type_info_ptr", "");
   tree type = tinfo_types[TK_CPPTI_TYPE];
 
   decl->cpp_type_info_ptr_sym = declare_extern_var (ident, type);

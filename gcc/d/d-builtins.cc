@@ -442,7 +442,7 @@ d_build_builtins_module (Module *m)
       for (int i = 0; targetm.enum_va_list_p (i, &name, &type); ++i)
 	{
 	  Type *t = build_frontend_type (type);
-	  // Cannot create built-in type.
+	  /* Cannot create built-in type.  */
 	  if (!t)
 	    continue;
 

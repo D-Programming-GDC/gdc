@@ -72,12 +72,34 @@ mangle_decl (Dsymbol *decl)
     }
 }
 
-/* Returns true if DSYM is from the gcc.attribute module.  */
+/* Generate a mangled identifier using NAME and SUFFIX, prefixed by the
+   assembler name for DECL.  */
+
+tree
+mangle_internal_decl (Dsymbol *decl, const char *name, const char *suffix)
+{
+  const char *prefix = mangle_decl (decl);
+  unsigned namelen = strlen (name);
+  unsigned buflen = (2 + strlen (prefix) + namelen + strlen (suffix)) * 2;
+  char *buf = (char *) alloca (buflen);
+
+  snprintf (buf, buflen, "_D%s%u%s%s", prefix, namelen, name, suffix);
+  tree ident = get_identifier (buf);
+
+  /* Symbol is not found in user code, but generate a readable name for it
+     anyway for debug and diagnostic reporting.  */
+  snprintf (buf, buflen, "%s.%s", decl->toPrettyChars (), name);
+  IDENTIFIER_PRETTY_NAME (ident) = get_identifier (buf);
+
+  return ident;
+}
+
+/* Returns true if DECL is from the gcc.attribute module.  */
 
 static bool
-gcc_attribute_p (Dsymbol *dsym)
+gcc_attribute_p (Dsymbol *decl)
 {
-  ModuleDeclaration *md = dsym->getModule ()->md;
+  ModuleDeclaration *md = decl->getModule ()->md;
 
   if (md && md->packages && md->packages->dim == 1)
     {
@@ -120,7 +142,7 @@ public:
     else
       input_location = get_linemap (Loc ("<no_file>", 1, 0));
 
-    build_module (d);
+    build_module_tree (d);
 
     d->semanticRun = PASSobj;
   }
@@ -857,28 +879,6 @@ build_decl_tree (Dsymbol *d)
   d->accept (&v);
 }
 
-/* Generate a mangled identifier using NAME and SUFFIX, prefixed by the
-   assembler name for DSYM.  */
-
-tree
-make_internal_name (Dsymbol *dsym, const char *name, const char *suffix)
-{
-  const char *prefix = mangle_decl (dsym);
-  unsigned namelen = strlen (name);
-  unsigned buflen = (2 + strlen (prefix) + namelen + strlen (suffix)) * 2;
-  char *buf = (char *) alloca (buflen);
-
-  snprintf (buf, buflen, "_D%s%u%s%s", prefix, namelen, name, suffix);
-  tree ident = get_identifier (buf);
-
-  /* Symbol is not found in user code, but generate a readable name for it
-     anyway for debug and diagnostic reporting.  */
-  snprintf (buf, buflen, "%s.%s", dsym->toPrettyChars (), name);
-  IDENTIFIER_PRETTY_NAME (ident) = get_identifier (buf);
-
-  return ident;
-}
-
 /* Return the decl for the symbol, create it if it doesn't already exist.  */
 
 tree
@@ -1385,7 +1385,7 @@ d_finish_decl (tree decl)
 {
   gcc_assert (!error_operand_p (decl));
 
-  // We are sending this symbol to object file, can't be extern.
+  /* We are sending this symbol to object file, can't be extern.  */
   TREE_STATIC (decl) = 1;
   DECL_EXTERNAL (decl) = 0;
   relayout_decl (decl);
@@ -1393,7 +1393,7 @@ d_finish_decl (tree decl)
 #ifdef ENABLE_TREE_CHECKING
   if (DECL_INITIAL (decl) != NULL_TREE)
     {
-      // Initialiser must never be bigger than symbol size.
+      /* Initialiser must never be bigger than symbol size.  */
       dinteger_t tsize = int_size_in_bytes (TREE_TYPE (decl));
       dinteger_t dtsize = int_size_in_bytes (TREE_TYPE (DECL_INITIAL (decl)));
 
@@ -1409,14 +1409,6 @@ d_finish_decl (tree decl)
 	}
     }
 #endif
-
-  // %% FIXME: DECL_COMMON so the symbol goes in .tcommon
-  if (DECL_THREAD_LOCAL_P (decl)
-      && DECL_ASSEMBLER_NAME (decl) == get_identifier ("_tlsend"))
-    {
-      DECL_INITIAL (decl) = NULL_TREE;
-      DECL_COMMON (decl) = 1;
-    }
 
   /* Add this decl to the current binding level.  */
   d_pushdecl (decl);
@@ -1900,7 +1892,7 @@ get_vtable_decl (ClassDeclaration *decl)
   if (decl->vtblsym)
     return decl->vtblsym;
 
-  tree ident = make_internal_name (decl, "__vtbl", "Z");
+  tree ident = mangle_internal_decl (decl, "__vtbl", "Z");
   /* Note: Using a static array type for the VAR_DECL, the DECL_INITIAL value
      will have a different type.  However the backend seems to accept this.  */
   tree type = build_ctype (Type::tvoidptr->sarrayOf (decl->vtbl.dim));
@@ -1971,7 +1963,7 @@ aggregate_initializer_decl (AggregateDeclaration *decl)
   if (!sd)
     type = TREE_TYPE (type);
 
-  tree ident = make_internal_name (decl, "__init", "Z");
+  tree ident = mangle_internal_decl (decl, "__init", "Z");
 
   decl->sinit = declare_extern_var (ident, type);
   DECL_LANG_SPECIFIC (decl->sinit) = build_lang_decl (NULL);
@@ -2036,7 +2028,7 @@ enum_initializer_decl (EnumDeclaration *decl)
   Identifier *ident_save = decl->ident;
   if (!decl->ident)
     decl->ident = Identifier::generateId ("__enum");
-  tree ident = make_internal_name (decl, "__init", "Z");
+  tree ident = mangle_internal_decl (decl, "__init", "Z");
   decl->ident = ident_save;
 
   decl->sinit = declare_extern_var (ident, type);

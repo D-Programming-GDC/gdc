@@ -1378,8 +1378,8 @@ d_parse_file()
   errorcount += (global.errors + global.warnings);
 
   // Write out globals.
-  d_finish_module (vec_safe_address (global_declarations),
-		   vec_safe_length (global_declarations));
+  d_finish_compilation (vec_safe_address (global_declarations),
+			vec_safe_length (global_declarations));
 }
 
 static tree

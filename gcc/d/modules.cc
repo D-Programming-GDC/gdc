@@ -54,8 +54,23 @@ along with GCC; see the file COPYING3.  If not see
    structure, as well as accessors for the variadic fields.  So we only define
    layout compatible POD_structs for ModuleInfo.  */
 
-/* The internally represented ModuleInfo type.  */
-static tree moduleinfo_type_node;
+/* The internally represented ModuleInfo and CompilerDSO types.  */
+static tree moduleinfo_type;
+static tree compiler_dso_type;
+static tree dso_registry_fn;
+
+/* The DSO slot for use by the druntime implementation.  */
+static tree dso_slot_node;
+
+/* For registering and deregistering DSOs with druntime, we have one global
+   constructor and destructor per object that calls _d_dso_registry with the
+   respective DSO record.  To ensure that this is only done once, a
+   `dso_initialized' variable is introduced to guard repeated calls.  */
+static tree dso_initialized_node;
+
+/* The beginning and end of the `minfo' section.  */
+static tree start_minfo_node;
+static tree stop_minfo_node;
 
 /* Record information about module initialization, termination,
    unit testing, and thread local storage in the compilation.  */
@@ -71,7 +86,6 @@ struct module_info
   vec<tree, va_gc> *sharedctorgates;
 
   vec<tree, va_gc> *unitTests;
-  vec<VarDeclaration *> tlsVars;
 };
 
 /* These must match the values in libdruntime/object_.d.  */
@@ -121,7 +135,7 @@ get_internal_fn (tree ident)
 
   if (name[0] == '*')
     {
-      tree s = make_internal_name (mod, name + 1, "FZv");
+      tree s = mangle_internal_decl (mod, name + 1, "FZv");
       name = IDENTIFIER_POINTER (s);
     }
 
@@ -195,69 +209,254 @@ build_funcs_gates_fn (tree ident, vec<tree, va_gc> *functions,
   return NULL_TREE;
 }
 
-/* Build and emit a function that takes a scope delegate parameter and
-   calls it once for every TLS variable in the module.  */
+/* Return the type for ModuleInfo, create it if it doesn't already exist.  */
 
 static tree
-build_emutls_function (vec<VarDeclaration *> tlsVars)
+get_moduleinfo_type (void)
 {
-  Module *mod = current_module_decl;
+  if (moduleinfo_type)
+    return moduleinfo_type;
 
-  if (!mod)
-    mod = Module::rootModule;
+  /* Layout of ModuleInfo is:
+	uint flags;
+	uint index;  */
+  tree fields = create_field_decl (uint_type_node, NULL, 1, 1);
+  DECL_CHAIN (fields) = create_field_decl (uint_type_node, NULL, 1, 1);
 
-  const char *name = "__modtlsscan";
+  moduleinfo_type = make_node (RECORD_TYPE);
+  finish_builtin_struct (moduleinfo_type, "ModuleInfo", fields, NULL_TREE);
 
-  /* void __modtlsscan(scope void delegate(void*, void*) nothrow dg) nothrow
+  return moduleinfo_type;
+}
+
+/* Get the VAR_DECL of the ModuleInfo for DECL.  If this does not yet exist,
+   create it.  The ModuleInfo decl is used to keep track of constructors,
+   destructors, unittests, members, classes, and imports for the given module.
+   This is used by the D runtime for module initialization and termination.  */
+
+static tree
+get_moduleinfo_decl (Module *decl)
+{
+  if (decl->csym)
+    return decl->csym;
+
+  tree ident = mangle_internal_decl (decl, "__ModuleInfo", "Z");
+  tree type = get_moduleinfo_type ();
+
+  decl->csym = declare_extern_var (ident, type);
+  DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
+
+  DECL_CONTEXT (decl->csym) = build_import_decl (decl);
+  /* Not readonly, moduleinit depends on this.  */
+  TREE_READONLY (decl->csym) = 0;
+
+  return decl->csym;
+}
+
+/* Return the type for CompilerDSOData, create it if it doesn't exist.  */
+
+static tree
+get_compiler_dso_type (void)
+{
+  if (compiler_dso_type)
+    return compiler_dso_type;
+
+  /* Layout of CompilerDSOData is:
+	size_t version;
+	void** slot;
+	ModuleInfo** _minfo_beg;
+	ModuleInfo** _minfo_end;
+	FuncTable* _deh_beg;
+	FuncTable* _deh_end;
+
+     Note, finish_builtin_struct() expects these fields in reverse order.  */
+  tree fields = create_field_decl (ptr_type_node, NULL, 1, 1);
+  tree field = create_field_decl (ptr_type_node, NULL, 1, 1);
+  DECL_CHAIN (field) = fields;
+  fields = field;
+
+  field = create_field_decl (build_pointer_type (get_moduleinfo_type ()),
+			     NULL, 1, 1);
+  DECL_CHAIN (field) = fields;
+  fields = field;
+  field = create_field_decl (build_pointer_type (get_moduleinfo_type ()),
+			     NULL, 1, 1);
+  DECL_CHAIN (field) = fields;
+  fields = field;
+
+  field = create_field_decl (build_pointer_type (ptr_type_node), NULL, 1, 1);
+  DECL_CHAIN (field) = fields;
+  fields = field;
+
+  field = create_field_decl (size_type_node, NULL, 1, 1);
+  DECL_CHAIN (field) = fields;
+  fields = field;
+
+  compiler_dso_type = make_node (RECORD_TYPE);
+  finish_builtin_struct (compiler_dso_type, "CompilerDSOData",
+			 fields, NULL_TREE);
+
+  return compiler_dso_type;
+}
+
+/* Returns the _d_dso_registry FUNCTION_DECL.  */
+
+static tree
+get_dso_registry_fn (void)
+{
+  if (dso_registry_fn)
+    return dso_registry_fn;
+
+  tree dso_type = get_compiler_dso_type ();
+  tree fntype = build_function_type_list (void_type_node,
+					  build_pointer_type (dso_type),
+					  NULL_TREE);
+  dso_registry_fn = build_decl (input_location, FUNCTION_DECL,
+				get_identifier ("_d_dso_registry"), fntype);
+  TREE_PUBLIC (dso_registry_fn) = 1;
+  DECL_EXTERNAL (dso_registry_fn) = 1;
+
+  return dso_registry_fn;
+}
+
+/* Depending on CTOR_P, builds and emits eiter a constructor or destructor
+   calling _d_dso_registry if `dso_initialized' is `false' in a constructor
+   or `true' in a destructor.  */
+
+static tree
+build_dso_cdtor_fn (bool ctor_p)
+{
+  const char *name = ctor_p ? GDC_PREFIX ("dso_ctor") : GDC_PREFIX ("dso_dtor");
+  tree condition = ctor_p ? boolean_true_node : boolean_false_node;
+
+  /* Declaration of dso_ctor/dso_dtor is:
+
+     extern(C) void dso_{c,d}tor (void)
      {
-	dg(&$tlsVars[0]$, &$tlsVars[0]$ + $tlsVars[0]$.sizeof);
-	dg(&$tlsVars[1]$, &$tlsVars[1]$ + $tlsVars[0]$.sizeof);
-	...
-     }
-   */
-  Parameters *del_args = new Parameters ();
-  del_args->push (Parameter::create (0, Type::tvoidptr, NULL, NULL));
-  del_args->push (Parameter::create (0, Type::tvoidptr, NULL, NULL));
-
-  TypeFunction *del_func_type = TypeFunction::create (del_args, Type::tvoid, 0,
-						      LINKd, STCnothrow);
-  Parameters *args = new Parameters ();
-  Parameter *dg_arg = Parameter::create (STCscope,
-					 new TypeDelegate (del_func_type),
-					 Identifier::idPool ("dg"), NULL);
-  args->push (dg_arg);
-  TypeFunction *func_type = TypeFunction::create (args, Type::tvoid, 0, LINKd,
-						  STCnothrow);
-  FuncDeclaration *func = new FuncDeclaration (mod->loc, mod->loc,
-					       Identifier::idPool (name),
-					       STCstatic, func_type);
-  func->loc = Loc (mod->srcfile->toChars (), 1, 0);
-  func->linkage = func_type->linkage;
-  func->parent = mod;
-  func->protection = PROTprivate;
-
-  func->semantic (mod->_scope);
-  Statements *body = new Statements ();
-  for (size_t i = 0; i < tlsVars.length (); i++)
-    {
-      VarDeclaration *var = tlsVars[i];
-      Expression *addr = (VarExp::create (mod->loc, var))->addressOf ();
-      Expression *addr2 = new SymOffExp (mod->loc, var, var->type->size ());
-      Expressions* addrs = new Expressions ();
-      addrs->push (addr);
-      addrs->push (addr2);
-
-      Expression *call = CallExp::create (mod->loc,
-					  IdentifierExp::create (Loc (),
-								 dg_arg->ident),
-					  addrs);
-      body->push (ExpStatement::create (mod->loc, call));
+	if (dso_initialized != condition)
+	{
+	    dso_initialized = condition;
+	    CompilerDSOData dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
+	    _d_dso_registry (&dso);
+	}
     }
-  func->fbody = new CompoundStatement (mod->loc, body);
-  func->semantic3 (mod->_scope);
-  build_decl_tree (func);
+   */
+  FuncDeclaration *fd = get_internal_fn (get_identifier (name));
+  tree decl = get_symbol_decl (fd);
 
-  return get_symbol_decl (func);
+  TREE_PUBLIC (decl) = 1;
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_VISIBILITY (decl) = VISIBILITY_HIDDEN;
+  DECL_VISIBILITY_SPECIFIED (decl) = 1;
+
+  d_comdat_linkage (decl);
+
+  /* Start laying out the body.  */
+  tree old_context = start_function (fd);
+  rest_of_decl_compilation (decl, 1, 0);
+
+  /* if (dso_initialized != condition).  */
+  tree if_cond = build_boolop (NE_EXPR, dso_initialized_node, condition);
+
+  /* dso_initialized = condition;  */
+  tree expr_list = modify_expr (dso_initialized_node, condition);
+
+  /* CompilerDSOData dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};  */
+  tree dso_type = get_compiler_dso_type ();
+  tree dso = build_local_temp (dso_type);
+
+  vec<constructor_elt, va_gc> *ve = NULL;
+  CONSTRUCTOR_APPEND_ELT (ve, NULL_TREE, build_integer_cst (1, size_type_node));
+  CONSTRUCTOR_APPEND_ELT (ve, NULL_TREE, build_address (dso_slot_node));
+  CONSTRUCTOR_APPEND_ELT (ve, NULL_TREE, build_address (start_minfo_node));
+  CONSTRUCTOR_APPEND_ELT (ve, NULL_TREE, build_address (stop_minfo_node));
+
+  tree assign_expr = modify_expr (dso, build_struct_literal (dso_type, ve));
+  expr_list = compound_expr (expr_list, assign_expr);
+
+  /* _d_dso_registry (&dso);  */
+  tree call_expr = d_build_call_nary (get_dso_registry_fn (), 1,
+				      build_address (dso));
+  expr_list = compound_expr (expr_list, call_expr);
+
+  add_stmt (build_vcondition (if_cond, expr_list, void_node));
+  finish_function (old_context);
+
+  return decl;
+}
+
+/* Build a variable used in the dso_registry code identified by NAME,
+   and data type TYPE.  The variable always has VISIBILITY_HIDDEN and
+   TREE_PUBLIC flags set.  */
+
+static tree
+build_dso_registry_var (const char * name, tree type)
+{
+  tree var = declare_extern_var (get_identifier (name), type);
+  DECL_VISIBILITY (var) = VISIBILITY_HIDDEN;
+  DECL_VISIBILITY_SPECIFIED (var) = 1;
+  return var;
+}
+
+/* Place a reference to the ModuleInfo symbol MINFO for DECL into the
+   `minfo' section.  Then create the global ctors/dtors to call the
+   _d_dso_registry function if necessary.  */
+
+static void
+register_moduleinfo (Module *decl, tree minfo)
+{
+  gcc_assert (targetm_common.have_named_sections);
+
+  /* Build the ModuleInfo reference, this is done once for every Module.  */
+  tree ident = mangle_internal_decl (decl, "__moduleRef", "Z");
+  tree mref = declare_extern_var (ident, ptr_type_node);
+
+  /* Build the initializer and emit.  Do not start section with a `.' character
+     so that the linker will provide a __start_ and __stop_ symbol to indicate
+     the start and end address of the section respectively.
+     https://sourceware.org/binutils/docs-2.26/ld/Orphan-Sections.html  */
+  DECL_INITIAL (mref) = build_address (minfo);
+  DECL_EXTERNAL (mref) = 0;
+  DECL_PRESERVE_P (mref) = 1;
+
+  set_decl_section_name (mref, "minfo");
+  d_pushdecl (mref);
+  rest_of_decl_compilation (mref, 1, 0);
+
+  /* Only for the first D module being emitted do we need to generate a static
+     constructor and destructor for.  These are only required once per shared
+     library, so it's safe to emit them only once per object file.  */
+  static bool first_module = true;
+  if (!first_module)
+    return;
+
+  start_minfo_node = build_dso_registry_var ("__start_minfo", ptr_type_node);
+  rest_of_decl_compilation (start_minfo_node, 1, 0);
+
+  stop_minfo_node = build_dso_registry_var ("__stop_minfo", ptr_type_node);
+  rest_of_decl_compilation (stop_minfo_node, 1, 0);
+
+  /* Declare dso_slot and dso_initialized.  */
+  dso_slot_node = build_dso_registry_var (GDC_PREFIX ("dso_slot"),
+					  ptr_type_node);
+  DECL_EXTERNAL (dso_slot_node) = 0;
+  d_comdat_linkage (dso_slot_node);
+  rest_of_decl_compilation (dso_slot_node, 1, 0);
+
+  dso_initialized_node = build_dso_registry_var (GDC_PREFIX ("dso_initialized"),
+						 boolean_type_node);
+  DECL_EXTERNAL (dso_initialized_node) = 0;
+  d_comdat_linkage (dso_initialized_node);
+  rest_of_decl_compilation (dso_initialized_node, 1, 0);
+
+  /* Declare dso_ctor() and dso_dtor().  */
+  tree dso_ctor = build_dso_cdtor_fn (true);
+  vec_safe_push (static_ctor_list, dso_ctor);
+
+  tree dso_dtor = build_dso_cdtor_fn (false);
+  vec_safe_push (static_dtor_list, dso_dtor);
+
+  first_module = false;
 }
 
 /* Convenience function for layout_moduleinfo_fields.  Adds a field of TYPE to
@@ -346,138 +545,67 @@ layout_moduleinfo_fields (Module *decl, tree type)
   return type;
 }
 
-/* Return the type for ModuleInfo, create it if it doesn't already exist.  */
+/* Output the ModuleInfo for module DECL and register it with druntime.  */
 
-static tree
-get_moduleinfo_type_node (void)
-{
-  if (moduleinfo_type_node)
-    return moduleinfo_type_node;
-
-  /* Create the ModuleInfo type, the first two fields are the only ones
-     named in ModuleInfo.  */
-  tree fields = create_field_decl (uint_type_node, NULL, 1, 1);
-  DECL_CHAIN (fields) = create_field_decl (uint_type_node, NULL, 1, 1);
-
-  /* An EmuTLS scan function is added for targets to support GC scanning
-     of TLS storage, but don't support it natively.  */
-  if (!targetm.have_tls)
-    {
-      tree field = create_field_decl (ptr_type_node, NULL, 1, 1);
-      DECL_CHAIN (field) = fields;
-      fields = field;
-    }
-
-  moduleinfo_type_node = make_node (RECORD_TYPE);
-  finish_builtin_struct (moduleinfo_type_node, Id::ModuleInfo->toChars (),
-			 fields, NULL_TREE);
-
-  return moduleinfo_type_node;
-}
-
-/* Get the VAR_DECL of the ModuleInfo for DECL.  If this does not yet exist,
-   create it.  The ModuleInfo decl is used to keep track of constructors,
-   destructors, unittests, members, classes, and imports for the given module.
-   This is used by the D runtime for module initialization and termination.  */
-
-static tree
-get_moduleinfo_decl (Module *decl)
-{
-  if (decl->csym)
-    return decl->csym;
-
-  tree ident = make_internal_name (decl, "__ModuleInfo", "Z");
-  tree type = get_moduleinfo_type_node ();
-
-  decl->csym = declare_extern_var (ident, type);
-  DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
-
-  DECL_CONTEXT (decl->csym) = build_import_decl (decl);
-  /* Not readonly, moduleinit depends on this.  */
-  TREE_READONLY (decl->csym) = 0;
-
-  return decl->csym;
-}
-
-/* Build the ModuleInfo symbol for Module M.  */
-
-static tree
-build_moduleinfo (Module *m)
+static void
+layout_moduleinfo (Module *decl)
 {
   ClassDeclarations aclasses;
   FuncDeclaration *sgetmembers;
 
-  for (size_t i = 0; i < m->members->dim; i++)
+  for (size_t i = 0; i < decl->members->dim; i++)
     {
-      Dsymbol *member = (*m->members)[i];
+      Dsymbol *member = (*decl->members)[i];
       member->addLocalClass (&aclasses);
     }
 
-  size_t aimports_dim = m->aimports.dim;
-  for (size_t i = 0; i < m->aimports.dim; i++)
+  size_t aimports_dim = decl->aimports.dim;
+  for (size_t i = 0; i < decl->aimports.dim; i++)
     {
-      Module *mi = m->aimports[i];
+      Module *mi = decl->aimports[i];
       if (!mi->needmoduleinfo)
 	aimports_dim--;
     }
 
-  sgetmembers = m->findGetMembers ();
+  sgetmembers = decl->findGetMembers ();
 
   size_t flags = 0;
-  if (m->sctor)
+  if (decl->sctor)
     flags |= MItlsctor;
-  if (m->sdtor)
+  if (decl->sdtor)
     flags |= MItlsdtor;
-  if (m->ssharedctor)
+  if (decl->ssharedctor)
     flags |= MIctor;
-  if (m->sshareddtor)
+  if (decl->sshareddtor)
     flags |= MIdtor;
   if (sgetmembers)
     flags |= MIxgetMembers;
-  if (m->sictor)
+  if (decl->sictor)
     flags |= MIictor;
-  if (m->stest)
+  if (decl->stest)
     flags |= MIunitTest;
   if (aimports_dim)
     flags |= MIimportedModules;
   if (aclasses.dim)
     flags |= MIlocalClasses;
-  if (!m->needmoduleinfo)
+  if (!decl->needmoduleinfo)
     flags |= MIstandalone;
 
   flags |= MIname;
 
-  tree decl = get_moduleinfo_decl (m);
-  tree type = layout_moduleinfo_fields (m, TREE_TYPE (decl));
-  tree field = TYPE_FIELDS (type);
+  tree minfo = get_moduleinfo_decl (decl);
+  tree type = layout_moduleinfo_fields (decl, TREE_TYPE (minfo));
 
   /* Put out the two named fields in a ModuleInfo decl:
 	uint flags;
 	uint index;  */
   vec<constructor_elt, va_gc> *minit = NULL;
 
-  CONSTRUCTOR_APPEND_ELT (minit, field,
-			  build_integer_cst (flags, TREE_TYPE (field)));
-  field = TREE_CHAIN (field);
+  CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
+			  build_integer_cst (flags, uint_type_node));
 
-  CONSTRUCTOR_APPEND_ELT (minit, field,
-			  build_integer_cst (0, TREE_TYPE (field)));
-  field = TREE_CHAIN (field);
-
-  /* version (GNU_EMUTLS):
-	void function(delegate(void*, void*)) scanTLS;  */
-  if (!targetm.have_tls)
-    {
-      if (current_moduleinfo->tlsVars.is_empty ())
-	CONSTRUCTOR_APPEND_ELT (minit, field, null_pointer_node);
-      else
-	{
-	  tree emutls = build_emutls_function (current_moduleinfo->tlsVars);
-	  CONSTRUCTOR_APPEND_ELT (minit, field, build_address (emutls));
-	}
-
-      field = TREE_CHAIN (field);
-    }
+  CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
+			  build_integer_cst (0, uint_type_node));
 
   /* Order of appearance, depending on flags:
 	void function() tlsctor;
@@ -492,47 +620,28 @@ build_moduleinfo (Module *m)
 	char[N] name;
    */
   if (flags & MItlsctor)
-    {
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sctor));
-      field = TREE_CHAIN (field);
-    }
+    CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE, build_address (decl->sctor));
 
   if (flags & MItlsdtor)
-    {
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sdtor));
-      field = TREE_CHAIN (field);
-    }
+    CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE, build_address (decl->sdtor));
 
   if (flags & MIctor)
-    {
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->ssharedctor));
-      field = TREE_CHAIN (field);
-    }
+    CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
+			    build_address (decl->ssharedctor));
 
   if (flags & MIdtor)
-    {
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sshareddtor));
-      field = TREE_CHAIN (field);
-    }
+    CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
+			    build_address (decl->sshareddtor));
 
   if (flags & MIxgetMembers)
-    {
-      CONSTRUCTOR_APPEND_ELT (minit, field,
-			      build_address (get_symbol_decl (sgetmembers)));
-      field = TREE_CHAIN (field);
-    }
+    CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
+			    build_address (get_symbol_decl (sgetmembers)));
 
   if (flags & MIictor)
-    {
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->sictor));
-      field = TREE_CHAIN (field);
-    }
+    CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE, build_address (decl->sictor));
 
   if (flags & MIunitTest)
-    {
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_address (m->stest));
-      field = TREE_CHAIN (field);
-    }
+    CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE, build_address (decl->stest));
 
   if (flags & MIimportedModules)
     {
@@ -540,9 +649,9 @@ build_moduleinfo (Module *m)
       tree satype = make_array_type (Type::tvoidptr, aimports_dim);
       size_t idx = 0;
 
-      for (size_t i = 0; i < m->aimports.dim; i++)
+      for (size_t i = 0; i < decl->aimports.dim; i++)
 	{
-	  Module *mi = m->aimports[i];
+	  Module *mi = decl->aimports[i];
 	  if (mi->needmoduleinfo)
 	    {
 	      CONSTRUCTOR_APPEND_ELT (elms, size_int (idx),
@@ -551,10 +660,9 @@ build_moduleinfo (Module *m)
 	    }
 	}
 
-      CONSTRUCTOR_APPEND_ELT (minit, field, size_int (aimports_dim));
-      field = TREE_CHAIN (field);
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_constructor (satype, elms));
-      field = TREE_CHAIN (field);
+      CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE, size_int (aimports_dim));
+      CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
+			      build_constructor (satype, elms));
     }
 
   if (flags & MIlocalClasses)
@@ -569,299 +677,88 @@ build_moduleinfo (Module *m)
 				  build_address (get_classinfo_decl (cd)));
 	}
 
-      CONSTRUCTOR_APPEND_ELT (minit, field, size_int (aclasses.dim));
-      field = TREE_CHAIN (field);
-      CONSTRUCTOR_APPEND_ELT (minit, field, build_constructor (satype, elms));
-      field = TREE_CHAIN (field);
+      CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE, size_int (aclasses.dim));
+      CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE,
+			      build_constructor (satype, elms));
     }
 
   if (flags & MIname)
     {
       /* Put out module name as a 0-terminated C-string, to save bytes.  */
-      const char *name = m->toPrettyChars ();
+      const char *name = decl->toPrettyChars ();
       size_t namelen = strlen (name) + 1;
       tree strtree = build_string (namelen, name);
       TREE_TYPE (strtree) = make_array_type (Type::tchar, namelen);
-      CONSTRUCTOR_APPEND_ELT (minit, field, strtree);
-      field = TREE_CHAIN (field);
+      CONSTRUCTOR_APPEND_ELT (minit, NULL_TREE, strtree);
     }
 
-  gcc_assert (field == NULL_TREE);
+  TREE_TYPE (minfo) = type;
+  DECL_INITIAL (minfo) = build_struct_literal (type, minit);
+  d_finish_decl (minfo);
 
-  TREE_TYPE (decl) = type;
-  DECL_INITIAL (decl) = build_struct_literal (type, minit);
-  d_finish_decl (decl);
-
-  return decl;
+  /* Register the module against druntime.  */
+  register_moduleinfo (decl, minfo);
 }
 
-/* Build a variable used in the dso_registry code. The variable is always
-   visibility = hidden and TREE_PUBLIC. Optionally sets an initializer, makes
-   the variable external and/or comdat.  */
+/* Send the Module AST class DECL to GCC backend.  */
 
-static tree
-build_dso_registry_var (const char * name, tree type, tree init, bool comdat_p,
-			bool external_p)
+void
+build_module_tree (Module *decl)
 {
-  tree var = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			 get_identifier (name), type);
-  DECL_VISIBILITY (var) = VISIBILITY_HIDDEN;
-  DECL_VISIBILITY_SPECIFIED (var) = 1;
-  TREE_PUBLIC (var) = 1;
-  DECL_ARTIFICIAL (var) = 1;
+  /* There may be more than one module per object file, but should only
+     ever compile them one at a time.  */
+  assert (!current_moduleinfo && !current_module_decl);
 
-  if (external_p)
-    DECL_EXTERNAL (var) = 1;
-  else
-    TREE_STATIC (var) = 1;
+  module_info mi = module_info ();
 
-  if (init != NULL_TREE)
-    DECL_INITIAL (var) = init;
-  if (comdat_p)
-    d_comdat_linkage (var);
+  current_moduleinfo = &mi;
+  current_module_decl = decl;
 
-  rest_of_decl_compilation (var, 1, 0);
-  return var;
-}
-
-/* Build and emit a constructor or destructor calling dso_registry_func if
-   dso_initialized is (false in a constructor or true in a destructor).  */
-
-static void
-emit_dso_registry_cdtor (Dsymbol *compiler_dso_type, Dsymbol *dso_registry_func,
-  tree dso_initialized, tree dso_slot, bool ctor_p)
-{
-  tree ident = get_identifier (ctor_p ? "gdc_dso_ctor" : "gdc_dso_dtor");
-  tree init_condition = (ctor_p) ? boolean_true_node : boolean_false_node;
-
-  /* extern extern(C) void* __start_minfo @hidden;
-     extern extern(C) void* __stop_minfo @hidden;  */
-  tree start_minfo = build_dso_registry_var ("__start_minfo", ptr_type_node,
-					     NULL_TREE, false, true);
-  tree stop_minfo = build_dso_registry_var ("__stop_minfo", ptr_type_node,
-					    NULL_TREE, false, true);
-
-  /* extern(C) void gdc_dso_[c/d]tor() @hidden @weak @[con/de]structor.  */
-  FuncDeclaration *fd = get_internal_fn (ident);
-  tree decl = get_symbol_decl (fd);
-
-  TREE_PUBLIC (decl) = 1;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_VISIBILITY (decl) = VISIBILITY_HIDDEN;
-  DECL_VISIBILITY_SPECIFIED (decl) = 1;
-
-  if (ctor_p)
-    vec_safe_push (static_ctor_list, decl);
-  else
-    vec_safe_push (static_dtor_list, decl);
-
-  d_comdat_linkage (decl);
-
-  tree old_context = start_function (fd);
-  rest_of_decl_compilation (decl, 1, 0);
-
-  /* dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};  */
-  tree dso_type = build_ctype (compiler_dso_type->isStructDeclaration ()->type);
-  vec<constructor_elt, va_gc> *ve = NULL;
-
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field (dso_type,
-						    get_identifier ("_version")),
-			  build_int_cst (size_type_node, 1));
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field (dso_type,
-						    get_identifier ("_slot")),
-			  build_address (dso_slot));
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field (dso_type,
-						    get_identifier ("_minfo_beg")),
-			  build_address (start_minfo));
-  CONSTRUCTOR_APPEND_ELT (ve, find_aggregate_field (dso_type,
-						    get_identifier ("_minfo_end")),
-			  build_address (stop_minfo));
-
-  tree dso_data = build_local_temp (dso_type);
-
-  tree fbody = modify_expr (dso_data, build_struct_literal (dso_type, ve));
-
-  /* if (!(gdc_dso_initialized == %init_condition))
-     {
-	gdc_dso_initialized = %init_condition;
-	CompilerDSOData dso = {1, &dsoSlot, &__start_minfo, &__stop_minfo};
-	_d_dso_registry(&dso);
-     }
-   */
-  tree condition = build_boolop (NE_EXPR, dso_initialized, init_condition);
-  tree assign_expr = modify_expr (dso_initialized, init_condition);
-  fbody = compound_expr (fbody, assign_expr);
-
-  tree registry_func = get_symbol_decl (dso_registry_func->isFuncDeclaration ());
-  tree call_expr = d_build_call_nary (registry_func, 1,
-				      build_address (dso_data));
-  fbody = compound_expr (fbody, call_expr);
-
-  add_stmt (build_vcondition (condition, fbody, void_node));
-  finish_function (old_context);
-}
-
-/* Build and emit the helper functions for the DSO registry code, including
-   the gdc_dso_slot and gdc_dso_initialized variable and the gdc_dso_ctor
-   and gdc_dso_dtor functions.  */
-
-static void
-emit_dso_registry_helpers (Dsymbol *compiler_dso_type,
-			   Dsymbol *dso_registry_func)
-{
-  /* extern(C) void* gdc_dso_slot @hidden @weak = null;
-     extern(C) bool gdc_dso_initialized @hidden @weak = false;  */
-  tree dso_slot = build_dso_registry_var ("gdc_dso_slot", ptr_type_node,
-    null_pointer_node, true, false);
-  tree dso_initialized = build_dso_registry_var ("gdc_dso_initialized",
-						 boolean_type_node,
-						 boolean_false_node,
-						 true, false);
-
-  /* extern(C) void gdc_dso_ctor() @hidden @weak @ctor
-     extern(C) void gdc_dso_dtor() @hidden @weak @dtor  */
-  emit_dso_registry_cdtor (compiler_dso_type, dso_registry_func,
-			   dso_initialized, dso_slot, true);
-  emit_dso_registry_cdtor (compiler_dso_type, dso_registry_func,
-			   dso_initialized, dso_slot, false);
-}
-
-/* Emit code to place sym into the minfo list. Also emit helpers to call
-   _d_dso_registry if necessary.  */
-
-static void
-emit_dso_registry_hooks (tree sym, Dsymbol *compiler_dso_type,
-			 Dsymbol *dso_registry_func)
-{
-  gcc_assert (targetm_common.have_named_sections);
-
-  /* Step 1: Place the ModuleInfo into the minfo section.
-     Do this once for every emitted Module
-     @section("minfo") void* __mod_ref_%s = &ModuleInfo(module);  */
-  const char *name = concat ("__mod_ref_",
-			     IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (sym)),
-			     NULL);
-  tree decl = build_decl (UNKNOWN_LOCATION, VAR_DECL,
-			  get_identifier (name), ptr_type_node);
-  d_keep (decl);
-  TREE_PUBLIC (decl) = 1;
-  TREE_STATIC (decl) = 1;
-  DECL_ARTIFICIAL (decl) = 1;
-  DECL_PRESERVE_P (decl) = 1;
-  DECL_INITIAL (decl) = build_address (sym);
-  TREE_STATIC (DECL_INITIAL (decl)) = 1;
-
-  /* Do not start section with '.' to use the __start_ feature:
-     https://sourceware.org/binutils/docs-2.26/ld/Orphan-Sections.html  */
-  set_decl_section_name (decl, "minfo");
-  rest_of_decl_compilation (decl, 1, 0);
-
-  /* Step 2: Emit helper functions. These are only required once per
-     shared library, so it's safe to emit them only one per object file.  */
-  static bool emitted = false;
-  if (!emitted)
+  /* Layout module members.  */
+  if (decl->members)
     {
-      emitted = true;
-      emit_dso_registry_helpers (compiler_dso_type, dso_registry_func);
+      for (size_t i = 0; i < decl->members->dim; i++)
+	{
+	  Dsymbol *s = (*decl->members)[i];
+	  build_decl_tree (s);
+	}
     }
+
+  /* Default behaviour is to always generate module info because of templates.
+     Can be switched off for not compiling against runtime library.  */
+  if (!global.params.betterC && decl->ident != Id::entrypoint)
+    {
+      if (mi.ctors || mi.ctorgates)
+	decl->sctor = build_funcs_gates_fn (get_identifier ("*__modctor"),
+					    mi.ctors, mi.ctorgates);
+
+      if (mi.dtors)
+	decl->sdtor = build_funcs_gates_fn (get_identifier ("*__moddtor"),
+					    mi.dtors, NULL);
+
+      if (mi.sharedctors || mi.sharedctorgates)
+	decl->ssharedctor
+	  = build_funcs_gates_fn (get_identifier ("*__modsharedctor"),
+				  mi.sharedctors, mi.sharedctorgates);
+
+      if (mi.shareddtors)
+	decl->sshareddtor
+	  = build_funcs_gates_fn (get_identifier ("*__modshareddtor"),
+				  mi.shareddtors, NULL);
+
+      if (mi.unitTests)
+	decl->stest = build_funcs_gates_fn (get_identifier ("*__modtest"),
+					    mi.unitTests, NULL);
+
+      layout_moduleinfo (decl);
+    }
+
+  current_moduleinfo = NULL;
+  current_module_decl = NULL;
 }
 
-/* Emit code to add sym to the _Dmodule_ref linked list.  */
-
-static void
-emit_modref_hooks (tree sym, Dsymbol *mref)
-{
-  /* Generate:
-      struct ModuleReference
-      {
-	void *next;
-	void* mod;
-      }
-    */
-
-  /* struct ModuleReference in moduleinit.d.  */
-  tree tmodref = make_two_field_type (ptr_type_node, ptr_type_node,
-				      NULL, "next", "mod");
-  tree nextfield = TYPE_FIELDS (tmodref);
-  tree modfield = TREE_CHAIN (nextfield);
-
-  /* extern (C) ModuleReference *_Dmodule_ref;  */
-  tree dmodule_ref = get_symbol_decl (mref->isDeclaration ());
-
-  /* private ModuleReference modref = { next: null, mod: _ModuleInfo_xxx };  */
-  tree modref = build_artificial_decl (tmodref, NULL_TREE, "__mod_ref");
-  d_keep (modref);
-
-  vec<constructor_elt, va_gc> *ce = NULL;
-  CONSTRUCTOR_APPEND_ELT (ce, nextfield, null_pointer_node);
-  CONSTRUCTOR_APPEND_ELT (ce, modfield, build_address (sym));
-
-  DECL_INITIAL (modref) = build_constructor (tmodref, ce);
-  TREE_STATIC (DECL_INITIAL (modref)) = 1;
-  d_pushdecl (modref);
-  rest_of_decl_compilation (modref, 1, 0);
-
-  /* Generate:
-      void ___modinit()  // a static constructor
-      {
-	modref.next = _Dmodule_ref;
-	_Dmodule_ref = &modref;
-      }
-   */
-  tree m1 = modify_expr (component_ref (modref, nextfield), dmodule_ref);
-  tree m2 = modify_expr (dmodule_ref, build_address (modref));
-
-  tree decl = build_internal_fn (get_identifier ("*__modinit"),
-				 compound_expr (m1, m2));
-  vec_safe_push (static_ctor_list, decl);
-}
-
-/* Output the ModuleInfo for module M and register it with druntime.  */
-
-static void
-layout_moduleinfo (Module *m)
-{
-  /* Load the rt.sections module and retrieve the internal DSO/ModuleInfo
-     types, ignoring any errors as a result of missing files.  */
-  unsigned errors = global.startGagging ();
-  Module *sections = Module::load (Loc (), NULL,
-				   Identifier::idPool ("rt/sections"));
-  global.endGagging (errors);
-
-  if (sections == NULL)
-    return;
-
-  sections->importedFrom = sections;
-  sections->importAll (NULL);
-  sections->semantic (NULL);
-  sections->semantic2 (NULL);
-  sections->semantic3 (NULL);
-
-  /* These symbols are normally private to the module they're declared in,
-     but for internal compiler lookups, their visibility is discarded.  */
-  int sflags = IgnoreErrors | IgnoreSymbolVisibility;
-
-  /* Try to find the required types and functions in druntime.  */
-  Dsymbol *mref = sections->search (Loc (),
-				    Identifier::idPool ("_Dmodule_ref"),
-				    sflags);
-  Dsymbol *dso_type = sections->search (Loc (),
-					Identifier::idPool ("CompilerDSOData"),
-					sflags);
-  Dsymbol *dso_func = sections->search (Loc (),
-					Identifier::idPool ("_d_dso_registry"),
-					sflags);
-
-  tree sym = build_moduleinfo (m);
-
-  /* Prefer _d_dso_registry model if available.  */
-  if (dso_type != NULL && dso_func != NULL)
-    emit_dso_registry_hooks (sym, dso_type, dso_func);
-  else if (mref != NULL)
-    emit_modref_hooks (sym, mref);
-}
-
-/* */
+/* Returns the current function or module context for the purpose
+   of imported_module_or_decl.  */
 
 tree
 d_module_context (void)
@@ -873,75 +770,11 @@ d_module_context (void)
   return build_import_decl (current_module_decl);
 }
 
-/* */
-
-void
-build_module (Module *m)
-{
-  /* There may be more than one module per object file, but should only
-     ever compile them one at a time.  */
-  assert (!current_moduleinfo && !current_module_decl);
-
-  module_info mi = module_info ();
-
-  current_moduleinfo = &mi;
-  current_module_decl = m;
-
-  if (m->members)
-    {
-      for (size_t i = 0; i < m->members->dim; i++)
-	{
-	  Dsymbol *s = (*m->members)[i];
-	  build_decl_tree (s);
-	}
-    }
-
-  /* Default behaviour is to always generate module info because of templates.
-     Can be switched off for not compiling against runtime library.  */
-  if (!global.params.betterC && m->ident != Id::entrypoint)
-    {
-      if (mi.ctors || mi.ctorgates)
-	m->sctor = build_funcs_gates_fn (get_identifier ("*__modctor"),
-					 mi.ctors, mi.ctorgates);
-
-      if (mi.dtors)
-	m->sdtor = build_funcs_gates_fn (get_identifier ("*__moddtor"),
-					 mi.dtors, NULL);
-
-      if (mi.sharedctors || mi.sharedctorgates)
-	m->ssharedctor
-	  = build_funcs_gates_fn (get_identifier ("*__modsharedctor"),
-				  mi.sharedctors, mi.sharedctorgates);
-
-      if (mi.shareddtors)
-	m->sshareddtor
-	  = build_funcs_gates_fn (get_identifier ("*__modshareddtor"),
-				  mi.shareddtors, NULL);
-
-      if (mi.unitTests)
-	m->stest = build_funcs_gates_fn (get_identifier ("*__modtest"),
-					 mi.unitTests, NULL);
-
-      layout_moduleinfo (m);
-    }
-
-  current_moduleinfo = NULL;
-  current_module_decl = NULL;
-}
-
-/* */
+/* Maybe record declaration D against our module information structure.  */
 
 void
 register_module_decl (Declaration *d)
 {
-  VarDeclaration *vd = d->isVarDeclaration ();
-  if (vd != NULL)
-    {
-      /* Register TLS variables against ModuleInfo.  */
-      if (vd->isThreadlocal ())
-	current_moduleinfo->tlsVars.safe_push (vd);
-    }
-
   FuncDeclaration *fd = d->isFuncDeclaration ();
   if (fd != NULL)
     {
@@ -987,7 +820,7 @@ register_module_decl (Declaration *d)
 /* Wrapup all global declarations and start the final compilation.  */
 
 void
-d_finish_module (tree *vec, int len)
+d_finish_compilation (tree *vec, int len)
 {
   /* Complete all generated thunks.  */
   symtab->process_same_body_aliases ();
