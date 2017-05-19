@@ -54,7 +54,6 @@
 
 #include "d-tree.h"
 #include "d-codegen.h"
-#include "d-objfile.h"
 #include "d-dmd-gcc.h"
 #include "id.h"
 
@@ -1061,7 +1060,7 @@ d_parse_file()
 
   // Start the main input file, if the debug writer wants it.
   if (debug_hooks->start_end_main_source_file)
-    (*debug_hooks->start_source_file)(0, main_input_filename);
+    debug_hooks->start_source_file (0, main_input_filename);
 
   for (TY ty = (TY) 0; ty < TMAX; ty = (TY) (ty + 1))
     {
@@ -1372,20 +1371,15 @@ d_parse_file()
 
   // And end the main input file, if the debug writer wants it.
   if (debug_hooks->start_end_main_source_file)
-    (*debug_hooks->end_source_file)(0);
+    debug_hooks->end_source_file (0);
 
  had_errors:
   // Add D frontend error count to GCC error count to to exit with error status
   errorcount += (global.errors + global.warnings);
 
-  d_finish_module();
-
   // Write out globals.
-  if (vec_safe_length(global_declarations) != 0)
-    {
-      d_finish_compilation(global_declarations->address(),
-			   global_declarations->length());
-    }
+  d_finish_compilation (vec_safe_address (global_declarations),
+			vec_safe_length (global_declarations));
 }
 
 static tree

@@ -372,12 +372,6 @@ Msgtable msgtable[] =
 
     // Compiler recognized UDA's
     { "udaSelector", "selector" },
-
-    // For ModuleInfo generation
-    { "sectionsModule", "rt/sections" },
-    { "Dmodule_ref", "_Dmodule_ref" },
-    { "compiler_dso_type", "CompilerDSOData" },
-    { "dso_registry_func", "_d_dso_registry" }
 };
 
 

@@ -75,9 +75,9 @@ D_GENERATED_OBJS = d/id.o d/impcnvtab.o
 
 # Language-specific object files for D.
 D_OBJS = \
-	d/d-attribs.o d/d-lang.o d/decl.o d/d-codegen.o d/d-objfile.o \
+	d/d-attribs.o d/d-lang.o d/decl.o d/d-codegen.o \
 	d/d-convert.o d/d-longdouble.o d/d-builtins.o d/d-incpath.o \
-	d/types.o d/expr.o d/imports.o d/toir.o d/typeinfo.o \
+	d/types.o d/expr.o d/imports.o d/modules.o d/toir.o d/typeinfo.o \
 	d/d-target.o d/d-frontend.o d/d-diagnostic.o
 
 # All language-specific object files for D.

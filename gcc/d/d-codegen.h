@@ -18,6 +18,8 @@
 #ifndef GCC_DCMPLR_CODEGEN_H
 #define GCC_DCMPLR_CODEGEN_H
 
+typedef Array<Module *> Modules;
+
 // List of codes for internally recognised D library functions.
 
 enum LibCall
@@ -27,6 +29,8 @@ enum LibCall
 #undef DEF_D_RUNTIME
   LIBCALL_count
 };
+
+extern location_t get_linemap (const Loc& loc);
 
 // Code generation routines.
 extern tree d_decl_context (Dsymbol *dsym);

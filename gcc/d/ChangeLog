@@ -1,3 +1,28 @@
+2017-05-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_OBJS): Remove d-objfile.o.  Add modules.o.
+	* d-codegen.cc (get_linemap): Move function here.
+	* d-objfile.cc: Remove file.
+	* d-objfile.h: Remove header.
+	* d-tree.h (GDC_PREFIX): New macro.
+	* decl.cc (make_internal_name): Rename to mangle_internal_decl.
+	(DeclVisitor): Move class here.
+	(gcc_attribute_p): Move function here.
+	(build_decl_tree): Likewise.
+	(d_finish_decl): Likewise.
+	(start_function): Likewise.
+	(finish_function): Likewise.
+	(mark_needed): Likewise.
+	(base_vtable_offset): Likewise.
+	(build_artificial_decl): Likewise.
+	(build_type_decl): Likewise.
+	(d_comdat_group): Likewise.
+	(d_comdat_linkage): Likewise.
+	(add_moduleinfo_field): Move to modules.cc
+	(layout_moduleinfo_fields): Likewise.
+	(get_moduleinfo_decl): Likewise.
+	* modules.cc: New file.
+
 2017-05-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* imports.cc (ImportVisitor::visit(Import)): New function.

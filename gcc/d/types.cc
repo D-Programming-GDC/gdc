@@ -40,7 +40,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-codegen.h"
-#include "d-objfile.h"
 
 
 /* Return TRUE if TYPE is a static array va_list.  This is for compatibility

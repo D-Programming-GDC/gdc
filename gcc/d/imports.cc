@@ -30,7 +30,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 
 #include "d-tree.h"
-#include "d-objfile.h"
+#include "d-codegen.h"
 
 /* Implements the visitor interface to build debug trees for all
    module and import declarations, where ISYM holds the cached
