@@ -585,6 +585,8 @@ public:
       case Tdchar:	  t->ctype = char32_type_node; break;
       default:		  gcc_unreachable ();
       }
+
+    TYPE_NAME (t->ctype) = get_identifier (t->toChars());
   }
 
 
@@ -648,6 +650,7 @@ public:
       inner = build_ctype (Type::tuns8);
 
     t->ctype = build_vector_type (inner, nunits);
+    TYPE_NAME (t->ctype) = get_identifier (t->toChars());
     layout_type (t->ctype);
   }
 
