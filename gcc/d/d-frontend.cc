@@ -51,21 +51,14 @@ Global::_init (void)
   this->doc_ext  = "html";
   this->ddoc_ext = "ddoc";
   this->json_ext = "json";
-  this->map_ext  = "map";
-
   this->obj_ext = "o";
-  this->lib_ext = "a";
-  this->dll_ext = "so";
 
   this->run_noext = true;
   this->version = "v"
 #include "verstr.h"
     ;
 
-  this->compiler.vendor = "GNU D";
   this->stdmsg = stderr;
-  this->main_d = "__main.d";
-
   this->errorLimit = flag_max_errors;
 
   memset (&this->params, 0, sizeof (Param));

@@ -38,7 +38,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-codegen.h"
-#include "d-dmd-gcc.h"
 #include "id.h"
 
 /* Implements the visitor interface to build the GCC trees of all Expression

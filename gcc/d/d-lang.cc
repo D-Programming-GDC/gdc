@@ -50,7 +50,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-codegen.h"
-#include "d-dmd-gcc.h"
+#include "d-frontend.h"
 #include "id.h"
 
 
