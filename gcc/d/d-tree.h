@@ -412,7 +412,6 @@ extern tree build_attributes (Expressions *);
 /* In d-builtins.cc.  */
 extern const attribute_spec d_langhook_attribute_table[];
 extern const attribute_spec d_langhook_common_attribute_table[];
-extern const attribute_spec d_langhook_format_attribute_table[];
 
 extern tree d_builtin_function (tree);
 extern void d_init_builtins (void);

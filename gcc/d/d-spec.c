@@ -290,9 +290,9 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 #endif
 
   /* Make sure to have room for the trailing NULL argument.
-   * needstdcxx might add -lstdcxx
-   * libphobos adds -Bstatic -lphobos -ldruntime -Bdynamic
-   * only_source adds 1 more arg, also maybe add -o */
+     - needstdcxx might add `-lstdcxx'
+     - libphobos adds `-Bstatic -lphobos -ldruntime -Bdynamic'
+     - only_source adds 1 more arg, also maybe add `-o'.  */
   num_args = argc + need_stdcxx + shared_libgcc + (library > 0) * 4 + 2;
   new_decoded_options = XNEWVEC (cl_decoded_option, num_args);
 

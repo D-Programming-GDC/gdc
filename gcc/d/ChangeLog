@@ -1,3 +1,17 @@
+2017-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c (handle_sentinel_attribute): Remove function.
+	(ignore_attribute): Remove function.
+	(d_langhook_common_attribute_table): Remove sentinel and tm regparm
+	from common attribute table.
+	(d_langhook_format_attribute_table): Remove variable.
+	* d-lang.cc (LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE): Remove macro.
+	(LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE): Remove macro.
+	(d_post_options): Don't set flag_unit_at_a_time.
+	(d_nametype): Remove function.
+	* types.cc (TypeVisitor::visit(TypeBasic)): Set TYPE_NAME.
+	(TypeVisitor::visit(TypeVector)): Likewise.
+
 2017-05-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_OBJS): Remove d-objfile.o.  Add modules.o.
