@@ -43,7 +43,6 @@
 
 #include "d-tree.h"
 #include "d-codegen.h"
-#include "d-dmd-gcc.h"
 #include "id.h"
 
 /*  */
