@@ -1,4 +1,4 @@
-/* lang-specs.h -- gcc driver specs for D frontend.
+/* lang-specs.h -- GCC driver specs for D frontend.
    Copyright (C) 2011-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify it under
@@ -27,4 +27,3 @@ along with GCC; see the file COPYING3.  If not see
     %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*} \
     %{X:-Xf %b.json} %{Xf*} \
     %{v} %{!fsyntax-only:%(invoke_as)}}", 0, 1, 0 },
-

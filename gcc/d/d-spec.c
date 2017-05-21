@@ -383,11 +383,13 @@ lang_specific_driver (cl_decoded_option **in_decoded_options,
 	}
 #endif
 
-      generate_option (OPT_l, saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
+      generate_option (OPT_l,
+		       saw_profile_flag ? LIBPHOBOS_PROFILE : LIBPHOBOS, 1,
 		       CL_DRIVER, &new_decoded_options[j]);
       added_libraries++;
       j++;
-      generate_option (OPT_l, saw_profile_flag ? LIBDRUNTIME_PROFILE : LIBDRUNTIME, 1,
+      generate_option (OPT_l,
+		       saw_profile_flag ? LIBDRUNTIME_PROFILE : LIBDRUNTIME, 1,
 		       CL_DRIVER, &new_decoded_options[j]);
       added_libraries++;
       j++;

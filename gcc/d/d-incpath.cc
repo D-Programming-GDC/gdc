@@ -19,7 +19,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/init.h"
+#include "dfrontend/globals.h"
 
 #include "tree.h"
 #include "diagnostic.h"

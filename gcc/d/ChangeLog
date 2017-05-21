@@ -2,6 +2,33 @@
 
 	* Make-lang.in (D_FRONTEND_OBJS): Rename object.o to rootobject.o.
 
+2017-05-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* config-lang.in (gtfiles): Add typeinfo.cc.
+	* d-codegen.cc (d_build_call_list): Remove function.
+	(d_build_call_nary): Remove function.
+	(build_binary_op): Remove function.
+	(build_binop_assignment): Remove function.
+	(build_vthis_type): Rename to build_vthis_function.
+	(create_field_decl): Move to decl.cc.
+	* d-lang.cc (genCmain): Moved to d-frontend.cc.
+	(builtin_modules): Declare static.
+	(d_add_builtin_module): New function.
+	(d_add_entrypoint_module): New function.
+	* expr.cc (ExprVisitor::binary_op): New function.
+	(ExprVisitor::binop_assignment): New function.
+	* intrinsic.cc (expand_intrinsic): Rename to maybe_expand_intrinsic.
+	* runtime.cc (build_libcall): Updated signature.
+	* types.cc (make_two_field_type): Remove function.
+	(make_struct_type): New function.
+
+2017-05-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_OBJS): Add intrinsics.o and runtime.o.
+	* d-codegen.h: Remove file.
+	* intrinsics.cc: New file.
+	* runtime.cc: New file.
+
 2017-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc: Remove include for d-dmd-gcc.h.

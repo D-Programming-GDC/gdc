@@ -27,7 +27,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "diagnostic.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 
 
 /* Print a hard error message.  */

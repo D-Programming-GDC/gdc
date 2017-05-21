@@ -22,7 +22,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/arraytypes.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/mtype.h"
 
@@ -37,7 +36,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "varasm.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
+
 
 /* Internal attribute handlers for built-in functions.  */
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);
