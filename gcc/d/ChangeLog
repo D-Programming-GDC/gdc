@@ -2,6 +2,11 @@
 
 	* Make-lang.in (D_FRONTEND_OBJS): Rename object.o to rootobject.o.
 
+2017-05-26  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* decl.cc: Remove include for dumpfile.h.
+	(finish_function): Use dump_function to for dumping original ASTs.
+
 2017-05-24  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* config-lang.in (gtfiles): Add typeinfo.cc.
