@@ -64,10 +64,10 @@ D_FRONTEND_OBJS = \
 	d/expression.o d/file.o d/filename.o d/func.o d/hdrgen.o \
 	d/identifier.o d/imphint.o d/init.o d/inline.o d/intrange.o d/json.o \
 	d/lexer.o d/mtype.o d/nogc.o d/newdelete.o d/nspace.o d/objc.o \
-	d/object.o d/opover.o d/optimize.o d/outbuffer.o d/parse.o d/rmem.o \
-	d/sapply.o d/sideeffect.o d/speller.o d/statement.o d/statementsem.o \
-	d/staticassert.o d/stringtable.o d/tokens.o d/traits.o d/unittests.o \
-	d/utf.o d/utils.o
+	d/opover.o d/optimize.o d/outbuffer.o d/parse.o d/rmem.o \
+	d/rootobject.o d/sapply.o d/sideeffect.o d/speller.o d/statement.o \
+	d/statementsem.o d/staticassert.o d/stringtable.o d/tokens.o d/traits.o \
+	d/unittests.o d/utf.o d/utils.o
 
 # D Frontend generated files.
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
