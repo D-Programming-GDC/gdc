@@ -68,12 +68,12 @@ mixin(__sync_op_and!("fetch", "nand"));
  *  { *ptr op= value; return *ptr; }
  *  { *ptr = ~(*ptr & value); return *ptr; }   // nand
  */
-mixin(__sync_op_and!("add", "fetch"));  
-mixin(__sync_op_and!("sub", "fetch"));  
-mixin(__sync_op_and!("or", "fetch"));  
-mixin(__sync_op_and!("and", "fetch"));  
-mixin(__sync_op_and!("xor", "fetch"));  
-mixin(__sync_op_and!("nand", "fetch"));  
+mixin(__sync_op_and!("add", "fetch"));
+mixin(__sync_op_and!("sub", "fetch"));
+mixin(__sync_op_and!("or", "fetch"));
+mixin(__sync_op_and!("and", "fetch"));
+mixin(__sync_op_and!("xor", "fetch"));
+mixin(__sync_op_and!("nand", "fetch"));
 
 
 /**
