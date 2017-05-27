@@ -1,5 +1,5 @@
 # Make-lang.in -- Top level -*- makefile -*- fragment for the D frontend.
-# Copyright (C) 2011-2017 Free Software Foundation, Inc.
+# Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 # GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,10 +75,10 @@ D_GENERATED_OBJS = d/id.o d/impcnvtab.o
 
 # Language-specific object files for D.
 D_OBJS = \
-	d/d-attribs.o d/d-lang.o d/decl.o d/d-codegen.o \
-	d/d-convert.o d/d-longdouble.o d/d-builtins.o d/d-incpath.o \
-	d/types.o d/expr.o d/imports.o d/modules.o d/toir.o d/typeinfo.o \
-	d/d-target.o d/d-frontend.o d/d-diagnostic.o
+	d/d-attribs.o d/d-builtins.o d/d-codegen.o d/d-convert.o \
+	d/d-diagnostic.o d/d-frontend.o d/d-incpath.o d/d-lang.o \
+	d/d-longdouble.o d/d-target.o d/decl.o d/expr.o d/imports.o \
+	d/intrinsics.o d/modules.o d/runtime.o d/toir.o d/typeinfo.o d/types.o
 
 # All language-specific object files for D.
 D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS)

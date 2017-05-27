@@ -1,5 +1,5 @@
 /* decl.cc -- Lower D frontend declarations to GCC trees.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,20 +19,20 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/mars.h"
 #include "dfrontend/aggregate.h"
 #include "dfrontend/attrib.h"
+#include "dfrontend/ctfe.h"
+#include "dfrontend/declaration.h"
 #include "dfrontend/enum.h"
 #include "dfrontend/globals.h"
+#include "dfrontend/hdrgen.h"
+#include "dfrontend/identifier.h"
 #include "dfrontend/import.h"
 #include "dfrontend/init.h"
 #include "dfrontend/module.h"
 #include "dfrontend/nspace.h"
-#include "dfrontend/statement.h"
-#include "dfrontend/template.h"
-#include "dfrontend/ctfe.h"
 #include "dfrontend/target.h"
-#include "dfrontend/hdrgen.h"
+#include "dfrontend/template.h"
 
 #include "tree.h"
 #include "tree-iterator.h"
@@ -53,7 +53,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-pretty-print.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 #include "id.h"
 
 
@@ -147,7 +146,7 @@ public:
     d->semanticRun = PASSobj;
   }
 
-  /* Write imported symbol D to debug.  */
+  /* Write the imported symbol to debug.  */
 
   void visit (Import *d)
   {
@@ -227,7 +226,8 @@ public:
       }
   }
 
-  /* */
+  /* Pragmas are a way to pass special information to the compiler and to add
+     vendor specific extensions to D.  We don't do anything here, yet.  */
 
   void visit (PragmaDeclaration *d)
   {
@@ -288,7 +288,8 @@ public:
       }
   }
 
-  /*  */
+  /* Write out compiler generated TypeInfo, initializer and functions for the
+     given struct declaration, walking over all static members.  */
 
   void visit (StructDeclaration *d)
   {
@@ -341,7 +342,9 @@ public:
       d->xhash->accept (this);
   }
 
-  /*  */
+  /* Write out compiler generated TypeInfo, initializer and vtables for the
+     given class declaration, walking over all static members.  */
+
   void visit (ClassDeclaration *d)
   {
     if (d->type->ty == Terror)
@@ -442,7 +445,8 @@ public:
       d_pushdecl (TYPE_NAME (ctype));
   }
 
-  /*  */
+  /* Write out compiler generated TypeInfo and vtables for the given interface
+     declaration, walking over all static members.  */
 
   void visit (InterfaceDeclaration *d)
   {
@@ -477,7 +481,8 @@ public:
       d_pushdecl (TYPE_NAME (ctype));
   }
 
-  /*  */
+  /* Write out compiler generated TypeInfo and initializer for the given
+     enum declaration.  */
 
   void visit (EnumDeclaration *d)
   {
@@ -513,7 +518,8 @@ public:
     d->semanticRun = PASSobj;
   }
 
-  /*  */
+  /* Finish up a variable declaration and push it into the current scope.
+     This can either be a static, local or manifest constant.  */
 
   void visit (VarDeclaration *d)
   {
@@ -628,7 +634,8 @@ public:
       }
   }
 
-  /*  */
+  /* Generate and compile a static TypeInfo declaration, but only if it is
+     needed in the current compilation.  */
 
   void visit (TypeInfoDeclaration *d)
   {
@@ -852,13 +859,13 @@ public:
 	tree var = get_decl_tree (d->v_argptr);
 	var = build_address (var);
 
-	tree init_exp = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_START),
-					   2, var, parm_decl);
+	tree init = build_call_expr (builtin_decl_explicit (BUILT_IN_VA_START),
+				     2, var, parm_decl);
 	declare_local_var (d->v_argptr);
-	add_stmt (init_exp);
+	add_stmt (init);
 
-	tree cleanup = d_build_call_nary (builtin_decl_explicit (BUILT_IN_VA_END),
-					  1, var);
+	tree cleanup = build_call_expr (builtin_decl_explicit (BUILT_IN_VA_END),
+					1, var);
 	add_stmt (build2 (TRY_FINALLY_EXPR, void_type_node, body, cleanup));
       }
 
@@ -934,8 +941,8 @@ get_symbol_decl (Declaration *decl)
 	}
 
       decl->csym = build_decl (get_linemap (decl->loc), FUNCTION_DECL,
-			      get_identifier (decl->ident->toChars ()),
-			      NULL_TREE);
+			       get_identifier (decl->ident->toChars ()),
+			       NULL_TREE);
 
       /* Set function type afterwards as there could be self references.  */
       TREE_TYPE (decl->csym) = build_ctype (fd->type);
@@ -953,8 +960,8 @@ get_symbol_decl (Declaration *decl)
 	: !vd->canTakeAddressOf () ? CONST_DECL
 	: VAR_DECL;
       decl->csym = build_decl (get_linemap (decl->loc), code,
-			      get_identifier (decl->ident->toChars ()),
-			      declaration_type (vd));
+			       get_identifier (decl->ident->toChars ()),
+			       declaration_type (vd));
 
       /* If any alignment was set on the declaration.  */
       if (vd->alignment != STRUCTALIGN_DEFAULT)
@@ -1040,7 +1047,7 @@ get_symbol_decl (Declaration *decl)
 	{
 	  /* Add an extra argument for the frame/closure pointer, this is also
 	     required to be compatible with D delegates.  */
-	  newfntype = build_vthis_type (void_type_node, fntype);
+	  newfntype = build_vthis_function (void_type_node, fntype);
 	}
       else if (fd->isThis ())
 	{
@@ -1054,7 +1061,7 @@ get_symbol_decl (Declaration *decl)
 	  if (!ad->isStructDeclaration ())
 	    handle = TREE_TYPE (handle);
 
-	  newfntype = build_vthis_type (handle, fntype);
+	  newfntype = build_vthis_function (handle, fntype);
 
 	  /* Set the vindex on virtual functions.  */
 	  if (fd->isVirtual () && fd->vtblIndex != -1)
@@ -2096,6 +2103,20 @@ build_type_decl (tree type, Dsymbol *dsym)
     TYPE_STUB_DECL (type) = decl;
 
   rest_of_decl_compilation (decl, SCOPE_FILE_SCOPE_P (decl), 0);
+}
+
+/* Create a declaration for field NAME of a given TYPE, setting the flags
+   for whether the field is ARTIFICIAL and/or IGNORED.  */
+
+tree
+create_field_decl (tree type, const char *name, int artificial, int ignored)
+{
+  tree decl = build_decl (input_location, FIELD_DECL,
+			  name ? get_identifier (name) : NULL_TREE, type);
+  DECL_ARTIFICIAL (decl) = artificial;
+  DECL_IGNORED_P (decl) = ignored;
+
+  return decl;
 }
 
 /* Return the COMDAT group into which DECL should be placed.  */

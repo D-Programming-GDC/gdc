@@ -1,5 +1,5 @@
 /* d-lang.cc -- Language-dependent hooks for D.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,16 +19,14 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/mars.h"
-#include "dfrontend/mtype.h"
 #include "dfrontend/aggregate.h"
 #include "dfrontend/cond.h"
-#include "dfrontend/hdrgen.h"
 #include "dfrontend/doc.h"
+#include "dfrontend/hdrgen.h"
 #include "dfrontend/json.h"
 #include "dfrontend/lexer.h"
 #include "dfrontend/module.h"
-#include "dfrontend/scope.h"
+#include "dfrontend/mtype.h"
 #include "dfrontend/target.h"
 
 #include "opts.h"
@@ -49,7 +47,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "debug.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 #include "d-frontend.h"
 #include "id.h"
 
@@ -76,10 +73,11 @@ struct d_option_data
 d_option;
 
 /* List of modules being compiled.  */
-Modules builtin_modules;
+static Modules builtin_modules;
 
-static Module *entrypoint = NULL;
-static Module *rootmodule = NULL;
+/* Module where `C main' is defined, compiled in if needed.  */
+static Module *entrypoint_module = NULL;
+static Module *entrypoint_root_module = NULL;
 
 /* The current and global binding level in effect.  */
 struct binding_level *current_binding_level;
@@ -457,7 +455,7 @@ d_init (void)
 
 /* Implements the lang_hooks.init_ts routine for language D.  */
 
-void
+static void
 d_init_ts (void)
 {
   MARK_TS_TYPED (IASM_EXPR);
@@ -776,7 +774,7 @@ d_handle_option (size_t scode, const char *arg, int value,
    Deal with any options that imply the turning on/off of features.
    FN is the main input filename passed on the command line.  */
 
-bool
+static bool
 d_post_options (const char ** fn)
 {
   /* Verify the input file name.  */
@@ -958,28 +956,25 @@ d_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
   return ret;
 }
 
-/* Generate C main() in response to seeing D main().
-   This used to be in libdruntime, but contained a reference to _Dmain which
-   didn't work when druntime was made into a shared library and was linked
-   to a program, such as a C++ program, that didn't have a _Dmain.  */
+/* Add the module M to the list of modules that may declare GCC builtins.
+   These are scanned after first semantic and before codegen passes.
+   See d_maybe_set_builtin() for the implementation.  */
 
 void
-genCmain (Scope *sc)
+d_add_builtin_module (Module *m)
 {
-  if (entrypoint)
-    return;
+  builtin_modules.push (m);
+}
 
-  /* The D code to be generated is provided by __entrypoint.di.  */
-  Module *m = Module::load (Loc (), NULL, Id::entrypoint);
-  m->importedFrom = m;
-  m->importAll (NULL);
-  m->semantic (NULL);
-  m->semantic2 (NULL);
-  m->semantic3 (NULL);
+/* Record the entrypoint module ENTRY which will be compiled in the current
+   compilation.  ROOT is the module scope where this was requested from.  */
 
+void
+d_add_entrypoint_module (Module *entry, Module *root)
+{
   /* We are emitting this straight to object file.  */
-  entrypoint = m;
-  rootmodule = sc->_module;
+  entrypoint_module = entry;
+  entrypoint_root_module = root;
 }
 
 /* Implements the lang_hooks.parse_file routine for language D.  */
@@ -1289,8 +1284,8 @@ d_parse_file (void)
 
       if (!flag_syntax_only)
 	{
-	  if ((entrypoint != NULL) && (m == rootmodule))
-	    build_decl_tree (entrypoint);
+	  if ((entrypoint_module != NULL) && (m == entrypoint_root_module))
+	    build_decl_tree (entrypoint_module);
 
 	  build_decl_tree (m);
 	}

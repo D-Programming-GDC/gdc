@@ -1,5 +1,5 @@
 /* toir.cc -- Lower D frontend statements to GCC trees.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,13 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/enum.h"
-#include "dfrontend/module.h"
-#include "dfrontend/init.h"
 #include "dfrontend/aggregate.h"
-#include "dfrontend/expression.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/init.h"
 #include "dfrontend/statement.h"
-#include "dfrontend/visitor.h"
 
 #include "tree.h"
 #include "tree-iterator.h"
@@ -38,7 +35,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "toplev.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 #include "id.h"
 
 
@@ -774,7 +770,7 @@ public:
     if (s->condition->type->isString ())
       {
 	Type *etype = condtype->nextOf ()->toBasetype ();
-	LibCall libcall;
+	libcall_fn libcall;
 
 	switch (etype->ty)
 	  {
@@ -824,13 +820,12 @@ public:
 	d_pushdecl (decl);
 	rest_of_decl_compilation (decl, 1, 0);
 
-	tree args[2];
-	args[0] = d_array_value (build_ctype (condtype->arrayOf ()),
-				 size_int (s->cases->dim),
-				 build_address (decl));
-	args[1] = condition;
+	/* Pass it as a dynamic array.  */
+	decl = d_array_value (build_ctype (condtype->arrayOf ()),
+			      size_int (s->cases->dim),
+			      build_address (decl));
 
-	condition = build_libcall (libcall, 2, args);
+	condition = build_libcall (libcall, Type::tint32, 2, decl, condition);
       }
     else if (!condtype->isscalar ())
       {
@@ -1149,7 +1144,7 @@ public:
       arg = build_nop (build_ctype (get_object_type ()), arg);
 
     input_location = get_linemap (s->loc);
-    add_stmt (build_libcall (LIBCALL_THROW, 1, &arg));
+    add_stmt (build_libcall (LIBCALL_THROW, Type::tvoid, 1, arg));
   }
 
   /* Build a try-catch statement, one of the building blocks for exception
@@ -1182,23 +1177,20 @@ public:
 	    tree catchtype = build_ctype (vcatch->type);
 	    tree object = NULL_TREE;
 
-	    ehptr = d_build_call_nary (ehptr, 1, integer_zero_node);
+	    ehptr = build_call_expr (ehptr, 1, integer_zero_node);
 
 	    /* Retrieve the internal exception object, which could be for a
 	       D or C++ catch handler.  This is different from the generic
 	       exception pointer returned from gcc runtime.  */
 	    Type *tcatch = vcatch->type->toBasetype ();
 	    ClassDeclaration *cd = tcatch->isClassHandle ();
-	    if (cd->cpp)
-	      object = build_libcall (LIBCALL_CXA_BEGIN_CATCH, 1, &ehptr);
-	    else
-	      object = build_libcall (LIBCALL_BEGIN_CATCH, 1, &ehptr);
 
+	    libcall_fn libcall = (cd->cpp) ? LIBCALL_CXA_BEGIN_CATCH
+	      : LIBCALL_BEGIN_CATCH;
+	    object = build_libcall (libcall, vcatch->type, 1, ehptr);
 
 	    if (vcatch->var)
 	      {
-		object = build_nop (build_ctype (vcatch->type), object);
-
 		tree var = get_symbol_decl (vcatch->var);
 		tree init = build_assign (INIT_EXPR, var, object);
 
@@ -1221,7 +1213,8 @@ public:
 	       the end catch callback.  */
 	    if (cd->cpp)
 	      {
-		tree endcatch = build_libcall (LIBCALL_CXA_END_CATCH, 0, NULL);
+		tree endcatch = build_libcall (LIBCALL_CXA_END_CATCH,
+					       Type::tvoid, 0);
 		catchbody = build2 (TRY_FINALLY_EXPR, void_type_node,
 				    catchbody, endcatch);
 	      }

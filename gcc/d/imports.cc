@@ -1,5 +1,5 @@
 /* imports.cc -- Build imported modules/declarations.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 
 #include "dfrontend/aggregate.h"
-#include "dfrontend/arraytypes.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/enum.h"
 #include "dfrontend/import.h"
@@ -30,7 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
+
 
 /* Implements the visitor interface to build debug trees for all
    module and import declarations, where ISYM holds the cached

@@ -1,5 +1,5 @@
 /* modules.cc -- D module initialization and termination.
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2013-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,9 +19,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
+#include "dfrontend/declaration.h"
 #include "dfrontend/module.h"
-#include "dfrontend/statement.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -35,7 +34,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stringpool.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 #include "id.h"
 
 
@@ -198,8 +196,7 @@ build_funcs_gates_fn (tree ident, vec<tree, va_gc> *functions,
   for (size_t i = 0; i < vec_safe_length (functions); i++)
     {
       tree decl = (*functions)[i];
-      tree call_expr = d_build_call_list (void_type_node,
-					  build_address (decl), NULL_TREE);
+      tree call_expr = build_call_expr (decl, 0);
       expr_list = compound_expr (expr_list, call_expr);
     }
 
@@ -375,8 +372,8 @@ build_dso_cdtor_fn (bool ctor_p)
   expr_list = compound_expr (expr_list, assign_expr);
 
   /* _d_dso_registry (&dso);  */
-  tree call_expr = d_build_call_nary (get_dso_registry_fn (), 1,
-				      build_address (dso));
+  tree call_expr = build_call_expr (get_dso_registry_fn (), 1,
+				    build_address (dso));
   expr_list = compound_expr (expr_list, call_expr);
 
   add_stmt (build_vcondition (if_cond, expr_list, void_node));
