@@ -48,7 +48,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 #include "attribs.h"
 #include "function.h"
-#include "dumpfile.h"
 #include "debug.h"
 #include "tree-pretty-print.h"
 
@@ -1796,29 +1795,7 @@ finish_function (tree old_context)
   if (!errorcount && !global.errors)
     {
       /* Dump the D-specific tree IR.  */
-      int local_dump_flags;
-      FILE *dump_file = dump_begin (TDI_original, &local_dump_flags);
-      if (dump_file)
-	{
-	  fprintf (dump_file, "\n;; Function %s",
-		   lang_hooks.decl_printable_name (fndecl, 2));
-	  fprintf (dump_file, " (%s)\n",
-		   (!DECL_ASSEMBLER_NAME_SET_P (fndecl) ? "null"
-		    : IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fndecl))));
-	  fprintf (dump_file, ";; enabled by -%s\n",
-		   dump_flag_name (TDI_original));
-	  fprintf (dump_file, "\n");
-
-	  if (local_dump_flags & TDF_RAW)
-	    dump_node (DECL_SAVED_TREE (fndecl),
-		       TDF_SLIM | local_dump_flags, dump_file);
-	  else
-	    print_generic_expr (dump_file, DECL_SAVED_TREE (fndecl),
-				local_dump_flags);
-	  fprintf (dump_file, "\n");
-
-	  dump_end (TDI_original, dump_file);
-	}
+      dump_function (TDI_original, fndecl);
 
       cgraph_node::finalize_function (fndecl, true);
     }
