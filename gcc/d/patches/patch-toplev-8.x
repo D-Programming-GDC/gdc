@@ -884,7 +884,7 @@ This implements building of libphobos library in GCC.
 +GDC="$GDC"])])dnl
 --- a/configure
 +++ b/configure
-@@ -581,6 +581,7 @@ LD_FOR_TARGET
+@@ -580,6 +580,7 @@ LD_FOR_TARGET
  DLLTOOL_FOR_TARGET
  AS_FOR_TARGET
  AR_FOR_TARGET
@@ -892,7 +892,7 @@ This implements building of libphobos library in GCC.
  GOC_FOR_TARGET
  GFORTRAN_FOR_TARGET
  GCC_FOR_TARGET
-@@ -613,6 +614,7 @@ RANLIB_FOR_BUILD
+@@ -612,6 +613,7 @@ RANLIB_FOR_BUILD
  NM_FOR_BUILD
  LD_FOR_BUILD
  LDFLAGS_FOR_BUILD
@@ -943,7 +943,7 @@ This implements building of libphobos library in GCC.
    DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
    LD_FOR_BUILD="\$(LD)"
    NM_FOR_BUILD="\$(NM)"
-@@ -7631,6 +7639,7 @@ done
+@@ -7688,6 +7696,7 @@ done
  
  
  
@@ -951,7 +951,7 @@ This implements building of libphobos library in GCC.
  # Generate default definitions for YACC, M4, LEX and other programs that run
  # on the build machine.  These are used if the Makefile can't locate these
  # programs in objdir.
-@@ -10685,6 +10694,167 @@ fi
+@@ -10742,6 +10751,167 @@ fi
  
  
  
@@ -1119,7 +1119,7 @@ This implements building of libphobos library in GCC.
  cat > conftest.c << \EOF
  #ifdef __GNUC__
    gcc_yay;
-@@ -14081,6 +14251,51 @@ $as_echo "pre-installed" >&6; }
+@@ -14138,6 +14308,51 @@ $as_echo "pre-installed" >&6; }
    fi
  fi
  
@@ -1199,7 +1199,7 @@ This implements building of libphobos library in GCC.
    DLLTOOL_FOR_BUILD="\$(DLLTOOL)"
    LD_FOR_BUILD="\$(LD)"
    NM_FOR_BUILD="\$(NM)"
-@@ -3217,6 +3220,7 @@ AC_SUBST(CXX_FOR_BUILD)
+@@ -3267,6 +3270,7 @@ AC_SUBST(CXX_FOR_BUILD)
  AC_SUBST(DLLTOOL_FOR_BUILD)
  AC_SUBST(GFORTRAN_FOR_BUILD)
  AC_SUBST(GOC_FOR_BUILD)
@@ -1207,7 +1207,7 @@ This implements building of libphobos library in GCC.
  AC_SUBST(LDFLAGS_FOR_BUILD)
  AC_SUBST(LD_FOR_BUILD)
  AC_SUBST(NM_FOR_BUILD)
-@@ -3326,6 +3330,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(CXX_FOR_TARGET, c++ g++ cxx gxx)
+@@ -3376,6 +3380,7 @@ NCN_STRICT_CHECK_TARGET_TOOLS(CXX_FOR_TARGET, c++ g++ cxx gxx)
  NCN_STRICT_CHECK_TARGET_TOOLS(GCC_FOR_TARGET, gcc, ${CC_FOR_TARGET})
  NCN_STRICT_CHECK_TARGET_TOOLS(GFORTRAN_FOR_TARGET, gfortran)
  NCN_STRICT_CHECK_TARGET_TOOLS(GOC_FOR_TARGET, gccgo)
@@ -1215,7 +1215,7 @@ This implements building of libphobos library in GCC.
  
  ACX_CHECK_INSTALLED_TARGET_TOOL(AR_FOR_TARGET, ar)
  ACX_CHECK_INSTALLED_TARGET_TOOL(AS_FOR_TARGET, as)
-@@ -3359,6 +3364,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_TARGET, GFORTRAN,
+@@ -3409,6 +3414,8 @@ GCC_TARGET_TOOL(gfortran, GFORTRAN_FOR_TARGET, GFORTRAN,
  		[gcc/gfortran -B$$r/$(HOST_SUBDIR)/gcc/], fortran)
  GCC_TARGET_TOOL(gccgo, GOC_FOR_TARGET, GOC,
  		[gcc/gccgo -B$$r/$(HOST_SUBDIR)/gcc/], go)

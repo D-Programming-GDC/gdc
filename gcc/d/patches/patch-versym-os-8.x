@@ -6,34 +6,36 @@ This patch implements the following official versions:
 ** MinGW
 * linux
 * OSX
+** darwin (deprecated)
 * FreeBSD
 * OpenBSD
 * NetBSD
+* DragonFlyBSD
 * Solaris
 * Posix
 * AIX
 * Hurd
 * Android
-
-These gdc specific versions are also implemented:
-* GNU_MinGW64 (for mingw-w64)
-* GNU_OpenSolaris (for opensolaris)
-* GNU_GLibc (implemented for linux & bsd & opensolaris)
-* GNU_UCLibc (implemented for linux) (not on rs6000, alpha)
-* GNU_Bionic (implemented for linux) (not on rs6000, alpha)
+* CRuntime_Bionic
+* CRuntime_Glibc
+* CRuntime_Musl
+* CRuntime_UClibc
 
 These official OS versions are not implemented:
-* DragonFlyBSD
 * BSD (other BSDs)
 * Haiku
+* PlayStation
+* PlayStation4
 * SkyOS
 * SysV3
 * SysV4
+* CRuntime_DigitalMars
+* CRuntime_Microsoft
 ---
 
 --- a/gcc/config/alpha/linux.h
 +++ b/gcc/config/alpha/linux.h
-@@ -33,6 +33,16 @@ along with GCC; see the file COPYING3.  If not see
+@@ -33,6 +33,22 @@ along with GCC; see the file COPYING3.  If not see
  	  builtin_define ("_GNU_SOURCE");			\
      } while (0)
  
@@ -41,7 +43,13 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS()					\
 +    do {							\
 +	if (OPTION_GLIBC)					\
-+	  builtin_define ("GNU_GLibc");				\
++	  builtin_define ("CRuntime_Glibc");			\
++	else if (OPTION_UCLIBC)					\
++	  builtin_define ("CRuntime_UClibc");			\
++	else if (OPTION_BIONIC)					\
++	  builtin_define ("CRuntime_Bionic");			\
++	else if (OPTION_MUSL)					\
++	  builtin_define ("CRuntime_Musl");			\
 +								\
 +	builtin_define ("linux");				\
 +	builtin_define ("Posix");				\
@@ -60,7 +68,7 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS() 			\
 +  do 						\
 +    {						\
-+      TARGET_GENERIC_LINUX_OS_D_BUILTINS();	\
++      GNU_USER_TARGET_OS_D_BUILTINS();		\
 +      ANDROID_TARGET_OS_D_BUILTINS();		\
 +    }						\
 +  while (false)
@@ -70,17 +78,36 @@ These official OS versions are not implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/darwin.h
 +++ b/gcc/config/darwin.h
-@@ -968,4 +968,10 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
+@@ -968,4 +968,11 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
  #define DEF_LD64 LD64_VERSION
  #endif
  
 +#define TARGET_OS_D_BUILTINS()					\
 +    do {							\
 +	builtin_define ("OSX");					\
++	builtin_define ("darwin");				\
 +	builtin_define ("Posix");				\
 +    } while (0)
 +
  #endif /* CONFIG_DARWIN_H */
+--- a/gcc/config/dragonfly.h
++++ b/gcc/config/dragonfly.h
+@@ -35,6 +35,15 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+     }                                       \
+   while (0)
+ 
++#undef  TARGET_OS_D_BUILTINS
++#define TARGET_OS_D_BUILTINS()		    \
++  do					    \
++    {					    \
++       builtin_define ("DragonFlyBSD");	    \
++       builtin_define ("Posix");	    \
++    }                                       \
++  while (0)
++
+ #undef  CPP_SPEC
+ #define CPP_SPEC \
+  "%(cpp_cpu) %(cpp_arch) %{posix:-D_POSIX_SOURCE}"
 --- a/gcc/config/freebsd.h
 +++ b/gcc/config/freebsd.h
 @@ -32,6 +32,13 @@ along with GCC; see the file COPYING3.  If not see
@@ -137,7 +164,7 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS() 			\
 +  do 						\
 +    {						\
-+      TARGET_GENERIC_LINUX_OS_D_BUILTINS();	\
++      GNU_USER_TARGET_OS_D_BUILTINS();		\
 +      ANDROID_TARGET_OS_D_BUILTINS();		\
 +    }						\
 +  while (0)
@@ -145,19 +172,6 @@ These official OS versions are not implemented:
  #undef CC1_SPEC
  #define CC1_SPEC \
    LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC, \
---- a/gcc/config/i386/mingw-w64.h
-+++ b/gcc/config/i386/mingw-w64.h
-@@ -89,3 +89,10 @@ along with GCC; see the file COPYING3.  If not see
-   %{static:-Bstatic} %{!static:-Bdynamic} \
-   %{shared|mdll: " SUB_LINK_ENTRY " --enable-auto-image-base} \
-   %(shared_libgcc_undefs)"
-+
-+#undef TARGET_OS_D_BUILTINS
-+#define TARGET_OS_D_BUILTINS()					\
-+    do {							\
-+      TARGET_GENERIC_MINGW_OS_D_BUILTINS();			\
-+      builtin_define ("GNU_MinGW64");				\
-+    } while (0)
 --- a/gcc/config/i386/mingw32.h
 +++ b/gcc/config/i386/mingw32.h
 @@ -53,6 +53,18 @@ along with GCC; see the file COPYING3.  If not see
@@ -190,7 +204,7 @@ These official OS versions are not implemented:
 +    do {							\
 +	builtin_define ("FreeBSD");				\
 +	builtin_define ("Posix");				\
-+	builtin_define ("GNU_GLibc");				\
++	builtin_define ("CRuntime_Glibc");			\
 +    } while (0)
 +
  #define GNU_USER_DYNAMIC_LINKER        GLIBC_DYNAMIC_LINKER
@@ -198,7 +212,7 @@ These official OS versions are not implemented:
  #define GNU_USER_DYNAMIC_LINKER64      GLIBC_DYNAMIC_LINKER64
 --- a/gcc/config/kopensolaris-gnu.h
 +++ b/gcc/config/kopensolaris-gnu.h
-@@ -30,5 +30,15 @@ along with GCC; see the file COPYING3.  If not see
+@@ -30,5 +30,14 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
  
@@ -207,8 +221,7 @@ These official OS versions are not implemented:
 +    {							\
 +	builtin_define ("Solaris");			\
 +	builtin_define ("Posix");			\
-+	builtin_define ("GNU_OpenSolaris");		\
-+	builtin_define ("GNU_GLibc");			\
++	builtin_define ("CRuntime_Glibc");		\
 +    }							\
 +  while (0)
 +
@@ -231,27 +244,21 @@ These official OS versions are not implemented:
  #else
 --- a/gcc/config/linux.h
 +++ b/gcc/config/linux.h
-@@ -53,6 +53,28 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+@@ -53,6 +53,22 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
  	builtin_assert ("system=posix");			\
      } while (0)
  
-+#define TARGET_OS_D_BUILTINS() TARGET_GENERIC_LINUX_OS_D_BUILTINS()
-+#define TARGET_GENERIC_LINUX_OS_D_BUILTINS()			\
++#define TARGET_OS_D_BUILTINS() GNU_USER_TARGET_OS_D_BUILTINS()
++#define GNU_USER_TARGET_OS_D_BUILTINS()				\
 +    do {							\
 +	if (OPTION_GLIBC)					\
-+	  {							\
-+	    builtin_define ("GNU_GLibc");			\
-+	    builtin_define ("CRuntime_Glibc");			\
-+	  }							\
++	  builtin_define ("CRuntime_Glibc");			\
 +	else if (OPTION_UCLIBC)					\
-+	  {							\
-+	    builtin_define ("GNU_UCLibc");			\
-+	  }							\
++	  builtin_define ("CRuntime_UClibc");			\
 +	else if (OPTION_BIONIC)					\
-+	  {							\
-+	    builtin_define ("GNU_Bionic");			\
-+	    builtin_define ("CRuntime_Bionic");			\
-+	  }							\
++	  builtin_define ("CRuntime_Bionic");			\
++	else if (OPTION_MUSL)					\
++	  builtin_define ("CRuntime_Musl");			\
 +								\
 +	builtin_define ("linux");				\
 +	builtin_define ("Posix");				\
@@ -270,7 +277,7 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS() 			\
 +  do 						\
 +    {						\
-+      TARGET_GENERIC_LINUX_OS_D_BUILTINS();	\
++      GNU_USER_TARGET_OS_D_BUILTINS();		\
 +      ANDROID_TARGET_OS_D_BUILTINS();		\
 +    }						\
 +  while (0)
@@ -312,25 +319,26 @@ These official OS versions are not implemented:
  /* TARGET_OS_CPP_BUILTINS() common to all OpenBSD ELF targets.  */
  #define OPENBSD_OS_CPP_BUILTINS_ELF()		\
    do						\
---- a/gcc/config/rs6000/aix.h
-+++ b/gcc/config/rs6000/aix.h
-@@ -164,6 +164,13 @@
+--- a/gcc/config/powerpcspe/aix.h
++++ b/gcc/config/powerpcspe/aix.h
+@@ -164,6 +164,14 @@
      }						\
    while (0)
  
-+#define TARGET_OS_D_BUILTINS()					\
-+    do {							\
-+								\
-+	builtin_define ("AIX");					\
-+	builtin_define ("Posix");				\
-+    } while (0)
++#define TARGET_OS_D_BUILTINS()			\
++    do						\
++      {						\
++	builtin_define ("AIX");			\
++	builtin_define ("Posix");		\
++      }						\
++    while (0)
 +
  /* Define appropriate architecture macros for preprocessor depending on
     target switches.  */
  
---- a/gcc/config/rs6000/linux.h
-+++ b/gcc/config/rs6000/linux.h
-@@ -57,6 +57,17 @@
+--- a/gcc/config/powerpcspe/linux.h
++++ b/gcc/config/powerpcspe/linux.h
+@@ -57,6 +57,24 @@
      }						\
    while (0)
  
@@ -338,10 +346,61 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS()			\
 +  do						\
 +    {						\
++      if (OPTION_GLIBC)				\
++	  builtin_define ("CRuntime_Glibc");	\
++	else if (OPTION_UCLIBC)			\
++	  builtin_define ("CRuntime_UClibc");	\
++	else if (OPTION_BIONIC)			\
++	  builtin_define ("CRuntime_Bionic");	\
++	else if (OPTION_MUSL)			\
++	  builtin_define ("CRuntime_Musl");	\
++						\
 +      builtin_define ("linux");			\
 +      builtin_define ("Posix");			\
++    }						\
++  while (0)
++
+ #undef	CPP_OS_DEFAULT_SPEC
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
+ 
+--- a/gcc/config/rs6000/aix.h
++++ b/gcc/config/rs6000/aix.h
+@@ -164,6 +164,14 @@
+     }						\
+   while (0)
+ 
++#define TARGET_OS_D_BUILTINS()			\
++    do						\
++      {						\
++	builtin_define ("AIX");			\
++	builtin_define ("Posix");		\
++      }						\
++    while (0)
++
+ /* Define appropriate architecture macros for preprocessor depending on
+    target switches.  */
+ 
+--- a/gcc/config/rs6000/linux.h
++++ b/gcc/config/rs6000/linux.h
+@@ -57,6 +57,24 @@
+     }						\
+   while (0)
+ 
++#undef  TARGET_OS_D_BUILTINS
++#define TARGET_OS_D_BUILTINS()			\
++  do						\
++    {						\
 +      if (OPTION_GLIBC)				\
-+	builtin_define ("GNU_GLibc");		\
++	  builtin_define ("CRuntime_Glibc");	\
++	else if (OPTION_UCLIBC)			\
++	  builtin_define ("CRuntime_UClibc");	\
++	else if (OPTION_BIONIC)			\
++	  builtin_define ("CRuntime_Bionic");	\
++	else if (OPTION_MUSL)			\
++	  builtin_define ("CRuntime_Musl");	\
++						\
++      builtin_define ("linux");			\
++      builtin_define ("Posix");			\
 +    }						\
 +  while (0)
 +
@@ -350,7 +409,7 @@ These official OS versions are not implemented:
  
 --- a/gcc/config/rs6000/linux64.h
 +++ b/gcc/config/rs6000/linux64.h
-@@ -391,6 +391,17 @@ extern int dot_symbols;
+@@ -391,6 +391,24 @@ extern int dot_symbols;
      }							\
    while (0)
  
@@ -358,10 +417,17 @@ These official OS versions are not implemented:
 +#define TARGET_OS_D_BUILTINS()				\
 +  do							\
 +    {							\
++      if (OPTION_GLIBC)					\
++	  builtin_define ("CRuntime_Glibc");		\
++	else if (OPTION_UCLIBC)				\
++	  builtin_define ("CRuntime_UClibc");		\
++	else if (OPTION_BIONIC)				\
++	  builtin_define ("CRuntime_Bionic");		\
++	else if (OPTION_MUSL)				\
++	  builtin_define ("CRuntime_Musl");		\
++							\
 +      builtin_define ("linux");				\
 +      builtin_define ("Posix");				\
-+      if (OPTION_GLIBC)					\
-+	builtin_define ("GNU_GLibc");			\
 +    }							\
 +  while (0)
 +

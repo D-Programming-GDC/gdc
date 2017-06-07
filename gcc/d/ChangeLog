@@ -15,6 +15,11 @@
 
 2017-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-attribs.c (d_handle_weak_attribute): Use quoted string format.
+	* decls.cc (finish_thunk): Update call to create_edge for new API.
+
+2017-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* expr.cc (ExprVisitor::visit(StringExp)): Create string type that is
 	same length as string value literal.
 

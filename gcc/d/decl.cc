@@ -1557,7 +1557,8 @@ finish_thunk (tree thunk, tree function)
 	{
 	  /* Put generic thunk into COMDAT.  */
 	  d_comdat_linkage (thunk);
-	  thunk_node->create_edge (funcn, NULL, 0, CGRAPH_FREQ_BASE);
+	  thunk_node->create_edge (funcn, NULL, thunk_node->count,
+				   CGRAPH_FREQ_BASE);
 	  thunk_node->expand_thunk (false, true);
 	}
 
