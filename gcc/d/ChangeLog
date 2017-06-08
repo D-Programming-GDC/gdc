@@ -8,6 +8,11 @@
 	* d-codegen.cc (d_decl_context): Use origin template declaration as
 	context for instantiated type symbols.
 
+2017-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(StringExp)): Create string type that is
+	same length as string value literal.
+
 2017-05-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_FRONTEND_OBJS): Rename object.o to rootobject.o.
