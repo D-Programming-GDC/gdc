@@ -866,7 +866,8 @@ public:
 	   the context or laying out fields as those types may make
 	   recursive references to this type.  */
 	unsigned structsize = t->sym->structsize;
-	unsigned alignsize = t->sym->alignsize;
+	unsigned alignsize = (t->sym->alignment != STRUCTALIGN_DEFAULT) ?
+	  t->sym->alignment : t->sym->alignsize;
 
 	TYPE_SIZE (t->ctype) = bitsize_int (structsize * BITS_PER_UNIT);
 	TYPE_SIZE_UNIT (t->ctype) = size_int (structsize);
