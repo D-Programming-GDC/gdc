@@ -863,6 +863,61 @@ void test183()
 
 /******************************************/
 
+// Bug 186
+
+struct S186
+{
+    union
+    {
+        struct
+        {
+            ubyte fieldA;
+            byte  fieldB = -1;
+            byte fieldC = -1;
+        }
+        size_t _complete;
+    }
+
+    this(size_t complete)
+    {
+        this._complete = complete;
+    }
+}
+
+void check186(in S186 obj, byte fieldB)
+{
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+    assert(fieldB == 0);
+}
+
+void test186a(size_t val)
+{
+    S186 obj = S186(val);
+    check186(obj, obj.fieldB);
+
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+
+    obj = S186(val);
+    check186(obj, obj.fieldB);
+
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+}
+
+void test186()
+{
+    test186a(2);
+}
+/******************************************/
+
 // Bug 187
 
 align(1) struct S187b
@@ -1200,6 +1255,7 @@ void main()
     test133();
     test141();
     test179();
+    test186();
     test187();
     test196();
     test198();
