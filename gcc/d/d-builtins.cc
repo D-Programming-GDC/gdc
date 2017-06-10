@@ -200,11 +200,6 @@ build_frontend_type (tree type)
 	  if (dtype->nextOf ()->isTypeBasic () == NULL)
 	    break;
 
-	  /* Support only 64bit, 128bit, and 256bit vectors for now.  */
-	  unsigned size = dtype->size ();
-	  if (size != 8 && size != 16 && size != 32)
-	    break;
-
 	  dtype = (new TypeVector (Loc (), dtype))->addMod (mod);
 	  builtin_converted_decls.safe_push (builtin_data (dtype, type));
 	  return dtype;
