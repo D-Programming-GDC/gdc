@@ -2589,10 +2589,10 @@ public:
       TREE_TYPE (value) = type;
     else
       {
-	/* Array type doesn't match string length if null terminated.  */
-	TREE_TYPE (value) = make_array_type (tb->nextOf (), e->len);
-
+	/* Array type string length includes the null terminator.  */
+	TREE_TYPE (value) = make_array_type (tb->nextOf (), length);
 	value = build_address (value);
+
 	if (tb->ty == Tarray)
 	  value = d_array_value (type, size_int (e->len), value);
       }
