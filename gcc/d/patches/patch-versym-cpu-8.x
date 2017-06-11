@@ -4,6 +4,7 @@ This implements the following versions:
 
 for all supported architectures. And these where appropriate:
 * ARM
+** Thumb (deprecated)
 ** ARM_Thumb
 ** ARM_HardFloat
 ** ARM_SoftFloat
@@ -12,6 +13,7 @@ for all supported architectures. And these where appropriate:
 * Alpha
 ** Alpha_SoftFloat
 ** Alpha_HardFloat
+* Epiphany
 * X86
 * X86_64
 ** D_X32
@@ -25,14 +27,19 @@ for all supported architectures. And these where appropriate:
 ** MIPS_EABI
 ** MIPS_HardFloat
 ** MIPS_SoftFloat
+* NVPTX
+* NVPTX64
 * HPPA
 * HPPA64
+* RISCV32
+* RISCV64
 * PPC
 * PPC64
 ** PPC_HardFloat
 ** PPC_SoftFloat
 * S390
-* S390X
+* S390X (deprecated)
+* SystemZ
 * SH
 * SPARC
 * SPARC64
@@ -86,7 +93,7 @@ for all supported architectures. And these where appropriate:
    do							\
 --- a/gcc/config/arm/arm.h
 +++ b/gcc/config/arm/arm.h
-@@ -47,6 +47,31 @@ extern char arm_arch_name[];
+@@ -47,6 +47,34 @@ extern char arm_arch_name[];
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() arm_cpu_cpp_builtins (pfile)
  
@@ -97,27 +104,47 @@ for all supported architectures. And these where appropriate:
 +	builtin_define ("ARM");				\
 +							\
 +	if (TARGET_THUMB || TARGET_THUMB2)		\
-+	  builtin_define ("ARM_Thumb");			\
++	  {						\
++	    builtin_define ("Thumb");			\
++	    builtin_define ("ARM_Thumb");		\
++	  }						\
 +							\
 +	if (TARGET_HARD_FLOAT_ABI)			\
 +	  builtin_define ("ARM_HardFloat");		\
 +	else						\
 +	  {						\
-+	    if(TARGET_SOFT_FLOAT)			\
++	    if (TARGET_SOFT_FLOAT)			\
 +	      builtin_define ("ARM_SoftFloat");		\
-+	    else if(TARGET_HARD_FLOAT)			\
++	    else if (TARGET_HARD_FLOAT)			\
 +	      builtin_define ("ARM_SoftFP");		\
 +	  }						\
 +							\
-+	if(TARGET_SOFT_FLOAT)				\
++	if (TARGET_SOFT_FLOAT)				\
 +	  builtin_define ("D_SoftFloat");		\
-+	else if(TARGET_HARD_FLOAT)			\
++	else if (TARGET_HARD_FLOAT)			\
 +	  builtin_define ("D_HardFloat");		\
 +    } while (0)
 +
  #include "config/arm/arm-opts.h"
  
  /* The processor for which instructions should be scheduled.  */
+--- a/gcc/config/epiphany/epiphany.h
++++ b/gcc/config/epiphany/epiphany.h
+@@ -41,6 +41,14 @@ along with GCC; see the file COPYING3.  If not see
+ 	builtin_assert ("machine=epiphany");	\
+     } while (0)
+ 
++/* Target CPU builtins for D.  */
++#define TARGET_CPU_D_BUILTINS()				\
++  do							\
++    {							\
++      builtin_define ("Epiphany");			\
++      builtin_define ("D_HardFloat");			\
++    } while (0)
++
+ /* Pick up the libgloss library. One day we may do this by linker script, but
+    for now its static.
+    libgloss might use errno/__errno, which might not have been needed when we
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
 @@ -669,6 +669,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
@@ -163,7 +190,7 @@ for all supported architectures. And these where appropriate:
  #endif
 --- a/gcc/config/mips/mips.h
 +++ b/gcc/config/mips/mips.h
-@@ -644,6 +644,54 @@ struct mips_cpu_info {
+@@ -644,6 +644,39 @@ struct mips_cpu_info {
      }									\
    while (0)
  
@@ -176,31 +203,16 @@ for all supported architectures. And these where appropriate:
 +    else								\
 +      builtin_define("MIPS32");						\
 +									\
-+    switch (mips_abi)							\
-+    {									\
-+      case ABI_32:							\
-+	builtin_define("MIPS_O32");					\
-+	break;								\
-+									\
-+      case ABI_O64:							\
-+	builtin_define("MIPS_O64");					\
-+	break;								\
-+									\
-+      case ABI_N32:							\
-+	builtin_define("MIPS_N32");					\
-+	break;								\
-+									\
-+      case ABI_64:							\
-+	builtin_define("MIPS_N64");					\
-+	break;								\
-+									\
-+      case ABI_EABI:							\
-+	builtin_define("MIPS_EABI");					\
-+	break;								\
-+									\
-+      default:								\
-+	gcc_unreachable();						\
-+    }									\
++    if (mips_abi == ABI_32)						\
++      builtin_define("MIPS_O32");					\
++    else if (mips_abi == ABI_EABI)					\
++      builtin_define("MIPS_EABI");					\
++    else if (mips_abi == ABI_N32)					\
++      builtin_define("MIPS_N32");					\
++    else if (mips_abi == ABI_64)					\
++      builtin_define("MIPS_N64");					\
++    else if (mips_abi == ABI_O64)					\
++      builtin_define("MIPS_O64");					\
 +									\
 +    if (TARGET_HARD_FLOAT_ABI)						\
 +    {									\
@@ -218,6 +230,25 @@ for all supported architectures. And these where appropriate:
  /* Default target_flags if no switches are specified  */
  
  #ifndef TARGET_DEFAULT
+--- a/gcc/config/nvptx/nvptx.h
++++ b/gcc/config/nvptx/nvptx.h
+@@ -37,6 +37,16 @@
+         builtin_define ("__nvptx_unisimt__");	\
+     } while (0)
+ 
++/* Target CPU builtins for D.  */
++#define TARGET_CPU_D_BUILTINS()			\
++  do						\
++    {						\
++      if (TARGET_ABI64)				\
++        builtin_define ("NVPTX64");		\
++      else					\
++        builtin_define ("NVPTX");		\
++    } while (0)
++
+ /* Avoid the default in ../../gcc.c, which adds "-pthread", which is not
+    supported for nvptx.  */
+ #define GOMP_SELF_SPECS ""
 --- a/gcc/config/pa/pa.h
 +++ b/gcc/config/pa/pa.h
 @@ -179,6 +179,20 @@ do {								\
@@ -227,12 +258,12 @@ for all supported architectures. And these where appropriate:
 +/* Target CPU builtins for D.  */
 +#define TARGET_CPU_D_BUILTINS()					\
 +do {								\
-+     if(TARGET_64BIT)						\
++     if (TARGET_64BIT)						\
 +       builtin_define("HPPA64");				\
 +     else							\
 +       builtin_define("HPPA");					\
 +								\
-+     if(TARGET_SOFT_FLOAT)					\
++     if (TARGET_SOFT_FLOAT)					\
 +       builtin_define ("D_SoftFloat");				\
 +     else							\
 +       builtin_define ("D_HardFloat");				\
@@ -241,6 +272,30 @@ for all supported architectures. And these where appropriate:
  /* An old set of OS defines for various BSD-like systems.  */
  #define TARGET_OS_CPP_BUILTINS()				\
    do								\
+--- a/gcc/config/riscv/riscv.h
++++ b/gcc/config/riscv/riscv.h
+@@ -27,6 +27,21 @@ along with GCC; see the file COPYING3.  If not see
+ /* Target CPU builtins.  */
+ #define TARGET_CPU_CPP_BUILTINS() riscv_cpu_cpp_builtins (pfile)
+ 
++/* Target CPU builtins for D.  */
++#define TARGET_CPU_D_BUILTINS()				\
++  do							\
++    {							\
++      if (TARGET_64BIT)					\
++        builtin_define ("RISCV64");			\
++      else						\
++        builtin_define ("RISCV32");			\
++							\
++      if (TARGET_HARDFLOAT)				\
++        builtin_define ("D_HardFloat");			\
++      else						\
++        builtin_define ("D_SoftFloat");			\
++    } while (0)
++
+ /* Default target_flags if no switches are specified  */
+ 
+ #ifndef TARGET_DEFAULT
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
 @@ -822,6 +822,28 @@ extern unsigned char rs6000_recip_bits[];
@@ -274,7 +329,7 @@ for all supported architectures. And these where appropriate:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- a/gcc/config/s390/s390.h
 +++ b/gcc/config/s390/s390.h
-@@ -194,6 +194,22 @@ enum processor_flags
+@@ -194,6 +194,24 @@ enum processor_flags
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() s390_cpu_cpp_builtins (pfile)
  
@@ -282,14 +337,16 @@ for all supported architectures. And these where appropriate:
 +#define TARGET_CPU_D_BUILTINS()				\
 +  do							\
 +    {							\
-+      if (TARGET_64BIT)					\
++      if (TARGET_ZARCH)					\
++        builtin_define ("SystemZ");			\
++      else if (TARGET_64BIT)				\
 +        builtin_define ("S390X");			\
 +      else						\
 +        builtin_define ("S390");			\
 +							\
-+      if(TARGET_SOFT_FLOAT)				\
++      if (TARGET_SOFT_FLOAT)				\
 +        builtin_define ("D_SoftFloat");			\
-+      else if(TARGET_HARD_FLOAT)			\
++      else if (TARGET_HARD_FLOAT)			\
 +        builtin_define ("D_HardFloat");			\
 +    }							\
 +  while (0)
@@ -334,10 +391,10 @@ for all supported architectures. And these where appropriate:
 +      else					\
 +	builtin_define ("SPARC");		\
 +						\
-+      if(TARGET_V8PLUS)				\
++      if (TARGET_V8PLUS)			\
 +	builtin_define ("SPARC_V8Plus");	\
 +						\
-+      if(TARGET_FPU)				\
++      if (TARGET_FPU)				\
 +	{					\
 +	  builtin_define ("D_HardFloat");	\
 +	  builtin_define ("SPARC_HardFloat");	\

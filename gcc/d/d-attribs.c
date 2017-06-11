@@ -815,7 +815,7 @@ d_handle_weak_attribute (tree *node, tree name,
     {
       struct symtab_node *n = symtab_node::get (*node);
       if (n && n->refuse_visibility_changes)
-	error ("%+D declared weak after being used", *node);
+	error ("%q+D declared weak after being used", *node);
       declare_weak (*node);
     }
   else
