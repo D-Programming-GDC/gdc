@@ -1,3 +1,8 @@
+2017-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_decl_tree): Find the first parent member function
+	before constructing non-local `this' decl.
+
 2017-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-builtins.cc (build_frontend_type): Allow all vector types to be
