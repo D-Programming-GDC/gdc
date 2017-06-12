@@ -1875,9 +1875,14 @@ public:
 
 	object = build_expr (e->e1);
 
-	/* Want reference to 'this' object.  */
+	/* Want reference to `this' object.     */
 	if (e->e1->type->ty != Tclass && e->e1->type->ty != Tpointer)
 	  object = build_address (object);
+
+	/* Object reference could be the outer `this' field of a class or
+	   closure of type `void*'.  Cast it to the right type.  */
+	if (e->e1->type->ty == Tclass)
+	  object = d_convert (build_ctype (e->e1->type), object);
 
 	fndecl = get_symbol_decl (e->func);
 

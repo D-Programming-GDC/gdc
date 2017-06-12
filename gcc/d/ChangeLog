@@ -1,5 +1,10 @@
 2017-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* expr.cc (ExprVisitor::visit(DelegateExp)): Convert object to right
+	type before using it.
+
+2017-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-decls.cc (get_decl_tree): Find the first parent member function
 	before constructing non-local `this' decl.
 
