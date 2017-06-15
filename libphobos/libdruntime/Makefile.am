@@ -171,7 +171,7 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
 	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
 	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d gcc/backtrace.d \
+	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
 	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
 	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
 	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
