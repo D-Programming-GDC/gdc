@@ -1978,55 +1978,40 @@ public:
       }
 
     tree assert_call = d_assert_call (e->loc, libcall, tmsg);
+    tree inv_call = void_node;
+    tree arg = build_expr (e->e1);
 
     /* Build condition that we are asserting in this contract.  */
-    if (tb1->ty == Tclass)
+    if (global.params.useInvariants)
       {
-	ClassDeclaration *cd = tb1->isClassHandle ();
-	tree arg = build_expr (e->e1);
-	tree invc = void_node;
-
-	if (cd->isCOMclass ())
+	/* If the condition is a D class or struct object with an invariant,
+	   call it if the condition result is true.  */
+	if (tb1->ty == Tclass)
 	  {
-	    tree cond = build_boolop (NE_EXPR, arg, null_pointer_node);
-	    this->result_ = build_vcondition (cond, void_node, assert_call);
-	    return;
+	    ClassDeclaration *cd = tb1->isClassHandle ();
+	    if (!cd->isInterfaceDeclaration () && !cd->isCPPclass ())
+	      {
+		arg = d_save_expr (arg);
+		inv_call = build_libcall (LIBCALL_INVARIANT,
+					  Type::tvoid, 1, arg);
+	      }
 	  }
-	else if (cd->isInterfaceDeclaration ())
-	  arg = convert_expr (arg, tb1, get_object_type ());
-
-	if (global.params.useInvariants && !cd->isCPPclass ())
-	  {
-	    arg = d_save_expr (arg);
-	    invc = build_libcall (LIBCALL_INVARIANT, Type::tvoid, 1, arg);
-	  }
-
-	/* This does a null pointer check before calling _d_invariant().  */
-	tree cond = build_boolop (NE_EXPR, arg, null_pointer_node);
-	this->result_ = build_vcondition (cond, invc, assert_call);
-      }
-    else
-      {
-	/* Generate: ((bool) e1  ? (void)0 : _d_assert (...))
-		 or: (e1 != null ? e1._invariant() : _d_assert (...))  */
-	tree t1 = build_expr (e->e1);
-	tree invc = void_node;
-
-	if (global.params.useInvariants
-	    && tb1->ty == Tpointer && tb1->nextOf ()->ty == Tstruct)
+	else if (tb1->ty == Tpointer && tb1->nextOf ()->ty == Tstruct)
 	  {
 	    FuncDeclaration *inv = ((TypeStruct *) tb1->nextOf ())->sym->inv;
 	    if (inv != NULL)
 	      {
 		Expressions args;
-		t1 = d_save_expr (t1);
-		invc = d_build_call_expr (inv, t1, &args);
+		arg = d_save_expr (arg);
+		inv_call = d_build_call_expr (inv, arg, &args);
 	      }
 	  }
-
-	tree cond = convert_for_condition (t1, e->e1->type);
-	this->result_ = build_vcondition (cond, invc, assert_call);
       }
+
+    /* Generate: ((bool) e1  ? (void)0 : _d_assert (...))
+	     or: (e1 != null ? e1._invariant() : _d_assert (...))  */
+    tree cond = convert_for_condition (arg, e->e1->type);
+    this->result_ = build_vcondition (cond, inv_call, assert_call);
   }
 
   /* Build a declaration expression.  */
