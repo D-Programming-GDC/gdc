@@ -1,5 +1,3 @@
-// EXTRA_FILES: imports/gdc170a.d
-
 import imports.gdc170a;
 
 void main()

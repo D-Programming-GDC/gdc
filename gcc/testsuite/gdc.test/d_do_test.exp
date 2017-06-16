@@ -22,16 +22,16 @@ load_lib gdc-dg.exp
 # Convert DMD arguments to GDC equivalent
 #
 
-proc gdc-convert-args { args } {
+proc gdc-convert-args { base args } {
     set out ""
 
     foreach arg [split [lindex $args 0] " "] {
         # List of switches kept in ASCII collated order.
         if { [regexp -- {^-I([\w+/-]+)} $arg pattern path] } {
-            lappend out "-I$path"
+            lappend out "-I$base/$path"
 
         } elseif { [regexp -- {^-J([\w+/-]+)} $arg pattern path] } {
-            lappend out "-J$path"
+            lappend out "-J$base/$path"
 
         } elseif [string match "-allinst" $arg] {
             lappend out "-femit-templates"
@@ -154,7 +154,7 @@ proc gdc-copy-extra { base extra } {
 #   EXECUTE_ARGS:       Parameters to add to the execution of the test.
 #   EXTRA_SOURCES:      List of extra sources to build and link along with
 #                       the test.
-#   EXTRA_FILES:        List of extra files to copy for the test.
+#   EXTRA_FILES:        List of extra files to copy for the test runs.
 #   PERMUTE_ARGS:       The set of arguments to permute in multiple compiler
 #                       invocations.  An empty set means only one permutation
 #                       with no arguments.
@@ -201,7 +201,7 @@ proc dmd2dg { base test } {
 
         } elseif [regexp -- {PERMUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
             # PERMUTE_ARGS is handled by gdc-do-test.
-            set PERMUTE_ARGS [gdc-convert-args $args]
+            set PERMUTE_ARGS [gdc-convert-args $base $args]
             regsub -- {PERMUTE_ARGS.*$} $copy_line "" out_line
 
         } elseif [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
@@ -213,7 +213,7 @@ proc dmd2dg { base test } {
 
         } elseif [regexp -- {REQUIRED_ARGS\s*:\s*(.*)} $copy_line match args] {
             # Convert all listed arguments to from dmd to gdc-style.
-            set new_option "{ dg-additional-options \"[gdc-convert-args $args]\" }"
+            set new_option "{ dg-additional-options \"[gdc-convert-args $base $args]\" }"
             regsub -- {REQUIRED_ARGS.*$} $copy_line $new_option out_line
 
         } elseif [regexp -- {EXTRA_SOURCES\s*:\s*(.*)} $copy_line match sources] {
@@ -337,10 +337,8 @@ proc gdc-do-test { } {
         if { [lsearch "d" $ext] == -1 } {
             continue
         }
-
         # Convert to DG test.
-        set imports [file dirname $test]
-        set imports [format "-I%s -I%s/imports" $imports $imports]
+        set imports [format "-I%s/%s" $base $dir]
         set filename [dmd2dg $base $dir/$name.$ext]
 
         if { $dir == "runnable" } {
