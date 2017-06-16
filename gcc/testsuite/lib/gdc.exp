@@ -17,6 +17,7 @@
 #
 # gdc support library routines
 #
+
 load_lib prune.exp
 load_lib gcc-defs.exp
 load_lib timeout.exp
@@ -25,7 +26,6 @@ load_lib target-libpath.exp
 #
 # GDC_UNDER_TEST is the compiler under test.
 #
-
 
 set gdc_compile_options ""
 

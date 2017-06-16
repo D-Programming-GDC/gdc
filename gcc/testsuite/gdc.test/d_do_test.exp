@@ -18,7 +18,10 @@
 # Load support procs.
 load_lib gdc-dg.exp
 
+#
 # Convert DMD arguments to GDC equivalent
+#
+
 proc gdc-convert-args { args } {
     set out ""
 
@@ -34,7 +37,7 @@ proc gdc-convert-args { args } {
             lappend out "-femit-templates"
 
         } elseif { [string match "-boundscheck" $arg]
-                 || [ string match "-boundscheck=on" $arg] } {
+                 || [string match "-boundscheck=on" $arg] } {
             lappend out "-fbounds-check"
 
         } elseif { [string match "-boundscheck=off" $arg]
@@ -122,18 +125,17 @@ proc gdc-convert-args { args } {
 
 proc gdc-copy-extra { base extra } {
     # Split base, folder/file.
-    set type [file dirname $extra ]
+    set type [file dirname $extra]
 
     # print "Filename: $base - $extra"
 
     set fdin [open $base/$extra r]
     fconfigure $fdin -encoding binary
 
-    file mkdir [file dirname $extra ]
-    set fdout [ open $extra w]
+    file mkdir $type
+    set fdout [open $extra w]
     fconfigure $fdout -encoding binary
 
-    # print "[file dirname $test ]"
     while { [gets $fdin copy_line] >= 0 } {
         set out_line $copy_line
         puts $fdout $out_line
@@ -145,8 +147,23 @@ proc gdc-copy-extra { base extra } {
     return $extra
 }
 
-
+#
 # Translate DMD test directives to dejagnu equivalent.
+#
+#   COMPILE_SEPARATELY: Not handled.
+#   EXECUTE_ARGS:       Parameters to add to the execution of the test.
+#   EXTRA_SOURCES:      List of extra sources to build and link along with
+#                       the test.
+#   EXTRA_FILES:        List of extra files to copy for the test.
+#   PERMUTE_ARGS:       The set of arguments to permute in multiple compiler
+#                       invocations.  An empty set means only one permutation
+#                       with no arguments.
+#   TEST_OUTPUT:        The output expected from the compilation.
+#   POST_SCRIPT:        Not handled.
+#   REQUIRED_ARGS:      Arguments to add to the compiler command line.
+#   DISABLED:           Not handled.
+#
+
 proc dmd2dg { base test } {
     global DEFAULT_DFLAGS
     global PERMUTE_ARGS
@@ -163,27 +180,24 @@ proc dmd2dg { base test } {
     set fdin [open $base/$test r]
     #fconfigure $fdin -encoding binary
 
-    file mkdir [file dirname $test]
-    set fdout [ open $test w]
+    file mkdir $type
+    set fdout [open $test w]
     #fconfigure $fdout -encoding binary
-
-    # print "[file dirname $test ]"
 
     # Add specific options for test type
 
-    # DMD's testsuite is exteremly verbose.
-    #  dg-prune-ouput generates pass.
+    # DMD's testsuite is extremely verbose, compiler messages from constructs
+    # such as pragma(msg, ...) would otherwise cause tests to fail.
     set out_line "// { dg-prune-output .* }"
     puts $fdout $out_line
 
-    # Since GCC 6-20160131 blank lines are not allowed in the
-    # output by default.
+    # Since GCC 6-20160131 blank lines are not allowed in the output by default.
     dg-allow-blank-lines-in-output { 1 }
 
     # Compilable files are successful if an output is generated.
     # Fail compilable are successful if an output is not generated.
     # Runnable must compile, link, and return 0 to be successful by default.
-    switch [ file dirname $test ] {
+    switch [file dirname $test] {
         compilable {
             set out_line "// { dg-final { output-exists } }"
             puts $fdout $out_line
@@ -193,7 +207,6 @@ proc dmd2dg { base test } {
             set out_line "// { dg-final { output-exists-not } }"
             puts $fdout $out_line
         }
-
     }
 
     while { [gets $fdin copy_line] >= 0 } {
@@ -318,12 +331,12 @@ proc gdc-do-test { } {
         regexp -- "(.*)/(.+)/(.+)\.(.+)$" $test match base dir name ext
 
         # Skip invalid test directory
-        if {[lsearch "runnable compilable fail_compilation" $dir] == -1} {
+        if { [lsearch "runnable compilable fail_compilation" $dir] == -1 } {
             continue
         }
 
         # Skip invalid test extensions
-        if {[lsearch "d" $ext] == -1} {
+        if { [lsearch "d" $ext] == -1 } {
             continue
         }
 
@@ -332,7 +345,7 @@ proc gdc-do-test { } {
         set imports [format "-I%s -I%s/imports" $imports $imports]
         set filename [dmd2dg $base $dir/$name.$ext]
 
-        if {$dir == "runnable"} {
+        if { $dir == "runnable" } {
             append PERMUTE_ARGS " $SHARED_OPTION"
         }
         set options [gdc-permute-options $PERMUTE_ARGS]
