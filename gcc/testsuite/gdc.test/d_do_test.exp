@@ -184,31 +184,6 @@ proc dmd2dg { base test } {
     set fdout [open $test w]
     #fconfigure $fdout -encoding binary
 
-    # Add specific options for test type
-
-    # DMD's testsuite is extremely verbose, compiler messages from constructs
-    # such as pragma(msg, ...) would otherwise cause tests to fail.
-    set out_line "// { dg-prune-output .* }"
-    puts $fdout $out_line
-
-    # Since GCC 6-20160131 blank lines are not allowed in the output by default.
-    dg-allow-blank-lines-in-output { 1 }
-
-    # Compilable files are successful if an output is generated.
-    # Fail compilable are successful if an output is not generated.
-    # Runnable must compile, link, and return 0 to be successful by default.
-    switch [file dirname $test] {
-        compilable {
-            set out_line "// { dg-final { output-exists } }"
-            puts $fdout $out_line
-        }
-
-        fail_compilation {
-            set out_line "// { dg-final { output-exists-not } }"
-            puts $fdout $out_line
-        }
-    }
-
     while { [gets $fdin copy_line] >= 0 } {
         set out_line $copy_line
 
@@ -273,6 +248,31 @@ proc dmd2dg { base test } {
             set out_line "// { dg-additional-options \"[gdc-convert-args $args]\" }"
         }
         puts $fdout $out_line
+    }
+
+    # Add specific options for test type
+
+    # DMD's testsuite is extremely verbose, compiler messages from constructs
+    # such as pragma(msg, ...) would otherwise cause tests to fail.
+    set out_line "// { dg-prune-output .* }"
+    puts $fdout $out_line
+
+    # Since GCC 6-20160131 blank lines are not allowed in the output by default.
+    dg-allow-blank-lines-in-output { 1 }
+
+    # Compilable files are successful if an output is generated.
+    # Fail compilable are successful if an output is not generated.
+    # Runnable must compile, link, and return 0 to be successful by default.
+    switch [file dirname $test] {
+        compilable {
+            set out_line "// { dg-final { output-exists } }"
+            puts $fdout $out_line
+        }
+
+        fail_compilation {
+            set out_line "// { dg-final { output-exists-not } }"
+            puts $fdout $out_line
+        }
     }
 
     close $fdin
