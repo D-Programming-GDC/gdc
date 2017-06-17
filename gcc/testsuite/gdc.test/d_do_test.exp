@@ -18,23 +18,26 @@
 # Load support procs.
 load_lib gdc-dg.exp
 
+#
 # Convert DMD arguments to GDC equivalent
-proc gdc-convert-args { args } {
+#
+
+proc gdc-convert-args { base args } {
     set out ""
 
     foreach arg [split [lindex $args 0] " "] {
         # List of switches kept in ASCII collated order.
         if { [regexp -- {^-I([\w+/-]+)} $arg pattern path] } {
-            lappend out "-I$path"
+            lappend out "-I$base/$path"
 
         } elseif { [regexp -- {^-J([\w+/-]+)} $arg pattern path] } {
-            lappend out "-J$path"
+            lappend out "-J$base/$path"
 
         } elseif [string match "-allinst" $arg] {
             lappend out "-femit-templates"
 
         } elseif { [string match "-boundscheck" $arg]
-                 || [ string match "-boundscheck=on" $arg] } {
+                 || [string match "-boundscheck=on" $arg] } {
             lappend out "-fbounds-check"
 
         } elseif { [string match "-boundscheck=off" $arg]
@@ -122,18 +125,17 @@ proc gdc-convert-args { args } {
 
 proc gdc-copy-extra { base extra } {
     # Split base, folder/file.
-    set type [file dirname $extra ]
+    set type [file dirname $extra]
 
     # print "Filename: $base - $extra"
 
     set fdin [open $base/$extra r]
     fconfigure $fdin -encoding binary
 
-    file mkdir [file dirname $extra ]
-    set fdout [ open $extra w]
+    file mkdir $type
+    set fdout [open $extra w]
     fconfigure $fdout -encoding binary
 
-    # print "[file dirname $test ]"
     while { [gets $fdin copy_line] >= 0 } {
         set out_line $copy_line
         puts $fdout $out_line
@@ -145,8 +147,23 @@ proc gdc-copy-extra { base extra } {
     return $extra
 }
 
-
+#
 # Translate DMD test directives to dejagnu equivalent.
+#
+#   COMPILE_SEPARATELY: Not handled.
+#   EXECUTE_ARGS:       Parameters to add to the execution of the test.
+#   EXTRA_SOURCES:      List of extra sources to build and link along with
+#                       the test.
+#   EXTRA_FILES:        List of extra files to copy for the test runs.
+#   PERMUTE_ARGS:       The set of arguments to permute in multiple compiler
+#                       invocations.  An empty set means only one permutation
+#                       with no arguments.
+#   TEST_OUTPUT:        The output expected from the compilation.
+#   POST_SCRIPT:        Not handled.
+#   REQUIRED_ARGS:      Arguments to add to the compiler command line.
+#   DISABLED:           Not handled.
+#
+
 proc dmd2dg { base test } {
     global DEFAULT_DFLAGS
     global PERMUTE_ARGS
@@ -163,27 +180,88 @@ proc dmd2dg { base test } {
     set fdin [open $base/$test r]
     #fconfigure $fdin -encoding binary
 
-    file mkdir [file dirname $test]
-    set fdout [ open $test w]
+    file mkdir $type
+    set fdout [open $test w]
     #fconfigure $fdout -encoding binary
 
-    # print "[file dirname $test ]"
+    while { [gets $fdin copy_line] >= 0 } {
+        set out_line $copy_line
+
+        if [regexp -- {COMPILE_SEPARATELY} $copy_line] {
+            # COMPILE_SEPARATELY is not handled.
+            regsub -- {COMPILE_SEPARATELY.*$} $copy_line "" out_line
+
+        } elseif [regexp -- {DISABLED} $copy_line] {
+            # DISABLED is not handled.
+            regsub -- {DISABLED.*$} $copy_line "" out_line
+
+        } elseif [regexp -- {POST_SCRIPT} $copy_line] {
+            # POST_SCRIPT is not handled
+            regsub -- {POST_SCRIPT.*$} $copy_line "" out_line
+
+        } elseif [regexp -- {PERMUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
+            # PERMUTE_ARGS is handled by gdc-do-test.
+            set PERMUTE_ARGS [gdc-convert-args $base $args]
+            regsub -- {PERMUTE_ARGS.*$} $copy_line "" out_line
+
+        } elseif [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
+            # EXECUTE_ARGS is handled by gdc_load.
+            foreach arg $args {
+                lappend EXECUTE_ARGS $arg
+            }
+            regsub -- {EXECUTE_ARGS.*$} $copy_line "" out_line
+
+        } elseif [regexp -- {REQUIRED_ARGS\s*:\s*(.*)} $copy_line match args] {
+            # Convert all listed arguments to from dmd to gdc-style.
+            set new_option "{ dg-additional-options \"[gdc-convert-args $base $args]\" }"
+            regsub -- {REQUIRED_ARGS.*$} $copy_line $new_option out_line
+
+        } elseif [regexp -- {EXTRA_SOURCES\s*:\s*(.*)} $copy_line match sources] {
+            # Copy all sources to the testsuite build directory.
+            foreach import $sources {
+                # print "Import: $base $type/$import"
+                gdc-copy-extra $base "$type/$import"
+            }
+            set new_option "{ dg-additional-sources \"$sources\" }"
+            regsub -- {EXTRA_SOURCES.*$} $copy_line $new_option out_line
+
+        } elseif [regexp -- {EXTRA_CPP_SOURCES\s*:\s*(.*)} $copy_line match sources] {
+            # Copy all sources to the testsuite build directory.
+            foreach import $sources {
+                # print "Import: $base $type/$import"
+                gdc-copy-extra $base "$type/$import"
+            }
+            set new_option "{ dg-additional-sources \"$sources\" }"
+            regsub -- {EXTRA_CPP_SOURCES.*$} $copy_line $new_option out_line
+
+        } elseif [regexp -- {EXTRA_FILES\s*:\s*(.*)} $copy_line match files] {
+            # Copy all sources to the testsuite build directory.
+            foreach import $files {
+                # print "Import: $base $type/$import"
+                gdc-copy-extra $base "$type/$import"
+            }
+            set new_option "{ dg-additional-files \"$files\" }"
+            regsub -- {EXTRA_FILES.*$} $copy_line $new_option out_line
+
+        }
+
+        puts $fdout $out_line
+    }
 
     # Add specific options for test type
 
-    # DMD's testsuite is exteremly verbose.
-    #  dg-prune-ouput generates pass.
+    # DMD's testsuite is extremely verbose, compiler messages from constructs
+    # such as pragma(msg, ...) would otherwise cause tests to fail.
     set out_line "// { dg-prune-output .* }"
     puts $fdout $out_line
 
-    # Since GCC 6-20160131 blank lines are not allowed in the
-    # output by default.
+    # Since GCC 6-20160131 blank lines are not allowed in the output by default.
     dg-allow-blank-lines-in-output { 1 }
 
     # Compilable files are successful if an output is generated.
     # Fail compilable are successful if an output is not generated.
     # Runnable must compile, link, and return 0 to be successful by default.
-    switch [ file dirname $test ] {
+    switch [file dirname $test] {
         compilable {
             set out_line "// { dg-final { output-exists } }"
             puts $fdout $out_line
@@ -193,73 +271,6 @@ proc dmd2dg { base test } {
             set out_line "// { dg-final { output-exists-not } }"
             puts $fdout $out_line
         }
-
-    }
-
-    while { [gets $fdin copy_line] >= 0 } {
-        set out_line $copy_line
-
-        # PERMUTE_ARGS.  Must be handled separately
-        if [regexp -- {PERMUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
-            set PERMUTE_ARGS [gdc-convert-args $args]
-            continue
-        }
-
-        # COMPILE_SEPARATELY. Not handled.
-        if [regexp -- {COMPILE_SEPARATELY} $copy_line] {
-            continue
-        }
-
-        # POST_SCRIPT. not handled
-        if [regexp -- {POST_SCRIPT} $copy_line] {
-            continue
-        }
-
-        # Can be handled with dg directives.
-
-        # Handle EXECUTE_ARGS option.
-        if [regexp -- {EXECUTE_ARGS\s*:\s*(.*)} $copy_line match args] {
-            foreach arg $args {
-                lappend EXECUTE_ARGS $arg
-            }
-            continue
-        }
-
-        # Handle EXTRA_SOURCES option
-        if [regexp -- {EXTRA_SOURCES\s*:\s*(.*)} $copy_line match sources] {
-            # Iterate imports and convert
-            foreach import $sources {
-                # print "Import: $base $type/$import"
-                gdc-copy-extra $base "$type/$import"
-            }
-            set out_line "// { dg-additional-sources \"$sources\" }"
-        }
-
-        # Handle EXTRA_CPP_SOURCES option
-        if [regexp -- {EXTRA_CPP_SOURCES\s*:\s*(.*)} $copy_line match sources] {
-            # Iterate imports and convert
-            foreach import $sources {
-                # print "Import: $base $type/$import"
-                gdc-copy-extra $base "$type/$import"
-            }
-            set out_line "// { dg-additional-sources \"$sources\" }"
-        }
-
-        # Handle EXTRA_FILES option
-        if [regexp -- {EXTRA_FILES\s*:\s*(.*)} $copy_line match files] {
-            # Iterate imports and convert
-            foreach import $files {
-                # print "Import: $base $type/$import"
-                gdc-copy-extra $base "$type/$import"
-            }
-            set out_line "// { dg-additional-files \"$files\" }"
-        }
-
-        # REQUIRED_ARGS.
-        if [regexp -- {REQUIRED_ARGS\s*:\s*(.*)} $copy_line match args] {
-            set out_line "// { dg-additional-options \"[gdc-convert-args $args]\" }"
-        }
-        puts $fdout $out_line
     }
 
     close $fdin
@@ -318,21 +329,19 @@ proc gdc-do-test { } {
         regexp -- "(.*)/(.+)/(.+)\.(.+)$" $test match base dir name ext
 
         # Skip invalid test directory
-        if {[lsearch "runnable compilable fail_compilation" $dir] == -1} {
+        if { [lsearch "runnable compilable fail_compilation" $dir] == -1 } {
             continue
         }
 
         # Skip invalid test extensions
-        if {[lsearch "d" $ext] == -1} {
+        if { [lsearch "d" $ext] == -1 } {
             continue
         }
-
         # Convert to DG test.
-        set imports [file dirname $test]
-        set imports [format "-I%s -I%s/imports" $imports $imports]
+        set imports [format "-I%s/%s" $base $dir]
         set filename [dmd2dg $base $dir/$name.$ext]
 
-        if {$dir == "runnable"} {
+        if { $dir == "runnable" } {
             append PERMUTE_ARGS " $SHARED_OPTION"
         }
         set options [gdc-permute-options $PERMUTE_ARGS]
