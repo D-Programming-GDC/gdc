@@ -1,3 +1,15 @@
+2017-06-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc (expand_format): New function.
+	(d_diagnostic_report_diagnostic): New function.
+	(error, verror): Update format attributes.  Use function
+	d_diagnostic_report_diagnostic instead of xvasprintf.
+	(errorSupplemental, verrorSupplemental): Likewise.
+	(warning, vwarning): Likewise.
+	(warningSupplemental, vwarningSupplemental): Likewise.
+	(deprecation, vdeprecation): Likewise.
+	(deprecationSupplemental, vdeprecationSupplemental): Likewise.
+
 2017-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(AssertExp)): Don't call invariant on
