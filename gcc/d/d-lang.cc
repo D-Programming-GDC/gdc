@@ -38,7 +38,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "langhooks.h"
 #include "langhooks-def.h"
 #include "target.h"
-#include "common/common-target.h"
 #include "stringpool.h"
 #include "stor-layout.h"
 #include "print-tree.h"
@@ -329,33 +328,6 @@ d_option_lang_mask (void)
   return CL_D;
 }
 
-/* Callback for TARGET_CPU_D_BUILTINS and TARGET_OS_D_BUILTINS.
-   Adds IDENT to the list of predefined version identifiers.  */
-
-static void
-d_add_builtin_version (const char* ident)
-{
-  if (!ident)
-    return;
-
-  /* For now, we need to tell the D frontend what platform is being targetted.
-     This should be removed once the frontend has been fixed.  */
-  if (strcmp (ident, "linux") == 0)
-    global.params.isLinux = true;
-  else if (strcmp (ident, "OSX") == 0)
-    global.params.isOSX = true;
-  else if (strcmp (ident, "Windows") == 0)
-    global.params.isWindows = true;
-  else if (strcmp (ident, "FreeBSD") == 0)
-    global.params.isFreeBSD = true;
-  else if (strcmp (ident, "OpenBSD") == 0)
-    global.params.isOpenBSD = true;
-  else if (strcmp (ident, "Solaris") == 0)
-    global.params.isSolaris = true;
-
-  VersionCondition::addPredefinedGlobalIdent (ident);
-}
-
 /* Implements the lang_hooks.init routine for language D.  */
 
 static bool
@@ -390,59 +362,14 @@ d_init (void)
   Target::_init ();
 
 #ifndef TARGET_OS_D_BUILTINS
-# define TARGET_OS_D_BUILTINS() d_add_builtin_version (0)
+# define TARGET_OS_D_BUILTINS()
 #endif
 
 # define builtin_define(TXT) d_add_builtin_version (TXT)
 
   TARGET_OS_D_BUILTINS ();
 
-  VersionCondition::addPredefinedGlobalIdent ("GNU");
-  VersionCondition::addPredefinedGlobalIdent ("D_Version2");
-
-  if (BYTES_BIG_ENDIAN)
-    VersionCondition::addPredefinedGlobalIdent ("BigEndian");
-  else
-    VersionCondition::addPredefinedGlobalIdent ("LittleEndian");
-
-  if (targetm_common.except_unwind_info (&global_options) == UI_SJLJ)
-    VersionCondition::addPredefinedGlobalIdent ("GNU_SjLj_Exceptions");
-  else if (targetm_common.except_unwind_info (&global_options) == UI_SEH)
-    VersionCondition::addPredefinedGlobalIdent ("GNU_SEH_Exceptions");
-  else if (targetm_common.except_unwind_info (&global_options) == UI_DWARF2)
-    VersionCondition::addPredefinedGlobalIdent ("GNU_DWARF2_Exceptions");
-
-  if (!targetm.have_tls)
-    VersionCondition::addPredefinedGlobalIdent ("GNU_EMUTLS");
-
-#ifdef STACK_GROWS_DOWNWARD
-  VersionCondition::addPredefinedGlobalIdent ("GNU_StackGrowsDown");
-#endif
-
-  /* Should define this anyway to set us apart from the competition. */
-  VersionCondition::addPredefinedGlobalIdent ("GNU_InlineAsm");
-
-  /* LP64 only means 64bit pointers in D. */
-  if (global.params.isLP64)
-    VersionCondition::addPredefinedGlobalIdent ("D_LP64");
-
-  /* Setting `global.params.cov' forces module info generation which is
-     not needed for the GCC coverage implementation.  Instead, just
-     test flag_test_coverage while leaving `global.params.cov' unset. */
-  if (flag_test_coverage)
-    VersionCondition::addPredefinedGlobalIdent ("D_Coverage");
-  if (flag_pic)
-    VersionCondition::addPredefinedGlobalIdent ("D_PIC");
-  if (global.params.doDocComments)
-    VersionCondition::addPredefinedGlobalIdent ("D_Ddoc");
-  if (global.params.useUnitTests)
-    VersionCondition::addPredefinedGlobalIdent ("unittest");
-  if (global.params.useAssert)
-    VersionCondition::addPredefinedGlobalIdent ("assert");
-  if (global.params.useArrayBounds == BOUNDSCHECKoff)
-    VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
-
-  VersionCondition::addPredefinedGlobalIdent ("all");
+  d_init_versions ();
 
   /* Emit all target-specific version identifiers.  */
   targetdm.d_cpu_builtins ();

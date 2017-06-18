@@ -28,4 +28,7 @@
 /* Each target can provide their own.  */
 extern struct gcc_targetdm targetdm;
 
+/* Used by target to add predefined version idenditiers.  */
+extern void d_add_builtin_version (const char *);
+
 #endif /* GCC_D_TARGET_H */

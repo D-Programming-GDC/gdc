@@ -400,7 +400,7 @@ These official OS versions are not implemented:
  	sparc*-*-*)
 --- a/gcc/config/aarch64/aarch64-d.c
 +++ b/gcc/config/aarch64/aarch64-d.c
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the ARM64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -421,11 +421,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -434,8 +429,8 @@ These official OS versions are not implemented:
 +void
 +aarch64_d_target_versions (void)
 +{
-+  VersionCondition::addPredefinedGlobalIdent ("AArch64");
-+  VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++  d_add_builtin_version ("AArch64");
++  d_add_builtin_version ("D_HardFloat");
 +}
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
@@ -464,21 +459,20 @@ These official OS versions are not implemented:
  #define REGISTER_TARGET_PRAGMAS() aarch64_register_pragmas ()
 --- a/gcc/config/aarch64/t-aarch64
 +++ b/gcc/config/aarch64/t-aarch64
-@@ -56,6 +56,11 @@ aarch64-c.o: $(srcdir)/config/aarch64/aarch64-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -56,6 +56,10 @@ aarch64-c.o: $(srcdir)/config/aarch64/aarch64-c.c $(CONFIG_H) $(SYSTEM_H) \
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/aarch64/aarch64-c.c
  
 +aarch64-d.o: $(srcdir)/config/aarch64/aarch64-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-aarch64-d.o += -I$(srcdir)/d
 +
  PASSES_EXTRA += $(srcdir)/config/aarch64/aarch64-passes.def
  
  cortex-a57-fma-steering.o: $(srcdir)/config/aarch64/cortex-a57-fma-steering.c \
 --- a/gcc/config/alpha/alpha-d.c
 +++ b/gcc/config/alpha/alpha-d.c
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,41 @@
 +/* Subroutines for the D front end on the Alpha architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -499,11 +493,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -513,16 +502,16 @@ These official OS versions are not implemented:
 +void
 +alpha_d_target_versions (void)
 +{
-+  VersionCondition::addPredefinedGlobalIdent ("Alpha");
++  d_add_builtin_version ("Alpha");
 +  if (TARGET_SOFT_FP)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("Alpha_SoftFloat");
++      d_add_builtin_version ("D_SoftFloat");
++      d_add_builtin_version ("Alpha_SoftFloat");
 +    }
 +  else
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("Alpha_HardFloat");
++      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("Alpha_HardFloat");
 +    }
 +}
 --- a/gcc/config/alpha/alpha-protos.h
@@ -548,19 +537,18 @@ These official OS versions are not implemented:
  /* Which processor to schedule for. The cpu attribute defines a list that
 --- a/gcc/config/alpha/t-alpha
 +++ b/gcc/config/alpha/t-alpha
-@@ -16,4 +16,9 @@
+@@ -16,4 +16,8 @@
  # along with GCC; see the file COPYING3.  If not see
  # <http://www.gnu.org/licenses/>.
  
 +alpha-d.o: $(srcdir)/config/alpha/alpha-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-alpha-d.o += -I$(srcdir)/d
 +
  PASSES_EXTRA += $(srcdir)/config/alpha/alpha-passes.def
 --- a/gcc/config/arm/arm-d.c
 +++ b/gcc/config/arm/arm-d.c
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,52 @@
 +/* Subroutines for the D front end on the ARM architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -581,11 +569,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -595,28 +578,28 @@ These official OS versions are not implemented:
 +void
 +arm_d_target_versions (void)
 +{
-+  VersionCondition::addPredefinedGlobalIdent ("ARM");
++  d_add_builtin_version ("ARM");
 +
 +  if (TARGET_THUMB || TARGET_THUMB2)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("Thumb");
-+      VersionCondition::addPredefinedGlobalIdent ("ARM_Thumb");
++      d_add_builtin_version ("Thumb");
++      d_add_builtin_version ("ARM_Thumb");
 +    }
 +
 +  if (TARGET_HARD_FLOAT_ABI)
-+    VersionCondition::addPredefinedGlobalIdent ("ARM_HardFloat");
++    d_add_builtin_version ("ARM_HardFloat");
 +  else
 +    {
 +      if (TARGET_SOFT_FLOAT)
-+	VersionCondition::addPredefinedGlobalIdent ("ARM_SoftFloat");
++	d_add_builtin_version ("ARM_SoftFloat");
 +      else if (TARGET_HARD_FLOAT)
-+	VersionCondition::addPredefinedGlobalIdent ("ARM_SoftFP");
++	d_add_builtin_version ("ARM_SoftFP");
 +    }
 +
 +  if (TARGET_SOFT_FLOAT)
-+    VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++    d_add_builtin_version ("D_SoftFloat");
 +  else if (TARGET_HARD_FLOAT)
-+    VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++    d_add_builtin_version ("D_HardFloat");
 +}
 --- a/gcc/config/arm/arm-protos.h
 +++ b/gcc/config/arm/arm-protos.h
@@ -644,14 +627,13 @@ These official OS versions are not implemented:
  /* The processor for which instructions should be scheduled.  */
 --- a/gcc/config/arm/t-arm
 +++ b/gcc/config/arm/t-arm
-@@ -130,4 +130,9 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -130,4 +130,8 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(CONFIG_H) $(SYSTEM_H) \
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/arm/arm-c.c
  
 +arm-d.o: $(srcdir)/config/arm/arm-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-arm-d.o += -I$(srcdir)/d
 +
  arm-common.o: $(srcdir)/config/arm/arm-cpu-cdata.h
 --- a/gcc/config/default-d.c
@@ -684,7 +666,7 @@ These official OS versions are not implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/epiphany/epiphany-d.c
 +++ b/gcc/config/epiphany/epiphany-d.c
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the EPIPHANY architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -705,11 +687,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -718,8 +695,8 @@ These official OS versions are not implemented:
 +void
 +epiphany_d_target_versions (void)
 +{
-+  VersionCondition::addPredefinedGlobalIdent ("Epiphany");
-+  VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++  d_add_builtin_version ("Epiphany");
++  d_add_builtin_version ("D_HardFloat");
 +}
 --- a/gcc/config/epiphany/epiphany-protos.h
 +++ b/gcc/config/epiphany/epiphany-protos.h
@@ -743,7 +720,7 @@ These official OS versions are not implemented:
     libgloss might use errno/__errno, which might not have been needed when we
 --- a/gcc/config/epiphany/t-epiphany
 +++ b/gcc/config/epiphany/t-epiphany
-@@ -36,3 +36,8 @@ specs: specs.install
+@@ -36,3 +36,7 @@ specs: specs.install
  	sed -e 's,epiphany_library_extra_spec,epiphany_library_stub_spec,' \
  	-e 's,epiphany_library_build_spec,epiphany_library_extra_spec,' \
  	  < specs.install > $@ ; \
@@ -751,10 +728,9 @@ These official OS versions are not implemented:
 +epiphany-d.o: $(srcdir)/config/epiphany/epiphany-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-epiphany-d.o += -I$(srcdir)/d
 --- a/gcc/config/i386/i386-d.c
 +++ b/gcc/config/i386/i386-d.c
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,44 @@
 +/* Subroutines for the D front end on the x86 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -775,11 +751,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -791,18 +762,18 @@ These official OS versions are not implemented:
 +{
 +  if (TARGET_64BIT)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("X86_64");
-+      global.params.is64bit = true;
++      d_add_builtin_version ("X86_64");
++
 +      if (TARGET_X32)
-+	VersionCondition::addPredefinedGlobalIdent ("D_X32");
++	d_add_builtin_version ("D_X32");
 +    }
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("X86");
++    d_add_builtin_version ("X86");
 +
 +  if (TARGET_80387)
-+    VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++    d_add_builtin_version ("D_HardFloat");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++    d_add_builtin_version ("D_SoftFloat");
 +}
 --- a/gcc/config/i386/i386-protos.h
 +++ b/gcc/config/i386/i386-protos.h
@@ -830,21 +801,20 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/i386/t-i386
 +++ b/gcc/config/i386/t-i386
-@@ -24,6 +24,11 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c
+@@ -24,6 +24,10 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c
  	  $(COMPILE) $<
  	  $(POSTCOMPILE)
  
 +i386-d.o: $(srcdir)/config/i386/i386-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-i386-d.o += -I$(srcdir)/d
 +
  i386.o: i386-builtin-types.inc
  
  i386-builtin-types.inc: s-i386-bt ; @true
 --- a/gcc/config/ia64/ia64-d.c
 +++ b/gcc/config/ia64/ia64-d.c
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the IA64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -865,11 +835,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -878,8 +843,8 @@ These official OS versions are not implemented:
 +void
 +ia64_d_target_versions (void)
 +{
-+  VersionCondition::addPredefinedGlobalIdent ("IA64");
-+  VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++  d_add_builtin_version ("IA64");
++  d_add_builtin_version ("D_HardFloat");
 +}
 --- a/gcc/config/ia64/ia64-protos.h
 +++ b/gcc/config/ia64/ia64-protos.h
@@ -907,21 +872,20 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/ia64/t-ia64
 +++ b/gcc/config/ia64/t-ia64
-@@ -21,6 +21,11 @@ ia64-c.o: $(srcdir)/config/ia64/ia64-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -21,6 +21,10 @@ ia64-c.o: $(srcdir)/config/ia64/ia64-c.c $(CONFIG_H) $(SYSTEM_H) \
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/ia64/ia64-c.c
  
 +ia64-d.o: $(srcdir)/config/ia64/ia64-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-ia64-d.o += -I$(srcdir)/d
 +
  # genattrtab generates very long string literals.
  insn-attrtab.o-warn = -Wno-error
  
 --- a/gcc/config/mips/mips-d.c
 +++ b/gcc/config/mips/mips-d.c
-@@ -0,0 +1,61 @@
+@@ -0,0 +1,56 @@
 +/* Subroutines for the D front end on the MIPS architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -942,11 +906,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -957,30 +916,30 @@ These official OS versions are not implemented:
 +mips_d_target_versions (void)
 +{
 +  if (TARGET_64BIT)
-+    VersionCondition::addPredefinedGlobalIdent ("MIPS64");
++    d_add_builtin_version ("MIPS64");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("MIPS32");
++    d_add_builtin_version ("MIPS32");
 +
 +  if (mips_abi == ABI_32)
-+    VersionCondition::addPredefinedGlobalIdent ("MIPS_O32");
++    d_add_builtin_version ("MIPS_O32");
 +  else if (mips_abi == ABI_EABI)
-+    VersionCondition::addPredefinedGlobalIdent ("MIPS_EABI");
++    d_add_builtin_version ("MIPS_EABI");
 +  else if (mips_abi == ABI_N32)
-+    VersionCondition::addPredefinedGlobalIdent ("MIPS_N32");
++    d_add_builtin_version ("MIPS_N32");
 +  else if (mips_abi == ABI_64)
-+    VersionCondition::addPredefinedGlobalIdent ("MIPS_N64");
++    d_add_builtin_version ("MIPS_N64");
 +  else if (mips_abi == ABI_O64)
-+    VersionCondition::addPredefinedGlobalIdent ("MIPS_O64");
++    d_add_builtin_version ("MIPS_O64");
 +
 +  if (TARGET_HARD_FLOAT_ABI)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("MIPS_HardFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++      d_add_builtin_version ("MIPS_HardFloat");
++      d_add_builtin_version ("D_HardFloat");
 +    }
 +  else if (TARGET_SOFT_FLOAT_ABI)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("MIPS_SoftFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++      d_add_builtin_version ("MIPS_SoftFloat");
++      d_add_builtin_version ("D_SoftFloat");
 +    }
 +}
 --- a/gcc/config/mips/mips-protos.h
@@ -1007,7 +966,7 @@ These official OS versions are not implemented:
  #ifndef TARGET_DEFAULT
 --- a/gcc/config/mips/t-mips
 +++ b/gcc/config/mips/t-mips
-@@ -24,3 +24,8 @@ $(srcdir)/config/mips/mips-tables.opt: $(srcdir)/config/mips/genopt.sh \
+@@ -24,3 +24,7 @@ $(srcdir)/config/mips/mips-tables.opt: $(srcdir)/config/mips/genopt.sh \
  frame-header-opt.o: $(srcdir)/config/mips/frame-header-opt.c
  	$(COMPILE) $<
  	$(POSTCOMPILE)
@@ -1015,10 +974,9 @@ These official OS versions are not implemented:
 +mips-d.o: $(srcdir)/config/mips/mips-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-mips-d.o += -I$(srcdir)/d
 --- a/gcc/config/nvptx/nvptx-d.c
 +++ b/gcc/config/nvptx/nvptx-d.c
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,34 @@
 +/* Subroutines for the D front end on the NVPTX architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1039,11 +997,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -1054,9 +1007,9 @@ These official OS versions are not implemented:
 +nvptx_d_target_versions (void)
 +{
 +  if (TARGET_ABI64)
-+    VersionCondition::addPredefinedGlobalIdent ("NVPTX64");
++    d_add_builtin_version ("NVPTX64");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("NVPTX");
++    d_add_builtin_version ("NVPTX");
 +}
 --- a/gcc/config/nvptx/nvptx-protos.h
 +++ b/gcc/config/nvptx/nvptx-protos.h
@@ -1084,7 +1037,7 @@ These official OS versions are not implemented:
  #define GOMP_SELF_SPECS ""
 --- a/gcc/config/nvptx/t-nvptx
 +++ b/gcc/config/nvptx/t-nvptx
-@@ -10,3 +10,8 @@ mkoffload$(exeext): mkoffload.o collect-utils.o libcommon-target.a $(LIBIBERTY)
+@@ -10,3 +10,7 @@ mkoffload$(exeext): mkoffload.o collect-utils.o libcommon-target.a $(LIBIBERTY)
  	  mkoffload.o collect-utils.o libcommon-target.a $(LIBIBERTY) $(LIBS)
  
  MULTILIB_OPTIONS = mgomp
@@ -1092,10 +1045,9 @@ These official OS versions are not implemented:
 +nvptx-d.o: $(srcdir)/config/nvptx/nvptx-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-nvptx-d.o += -I$(srcdir)/d
 --- a/gcc/config/pa/pa-d.c
 +++ b/gcc/config/pa/pa-d.c
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,39 @@
 +/* Subroutines for the D front end on the HPPA architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1116,11 +1068,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -1131,14 +1078,14 @@ These official OS versions are not implemented:
 +pa_d_target_versions (void)
 +{
 +  if (TARGET_64BIT)
-+    VersionCondition::addPredefinedGlobalIdent ("HPPA64");
++    d_add_builtin_version ("HPPA64");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent("HPPA");
++    d_add_builtin_version("HPPA");
 +
 +  if (TARGET_SOFT_FLOAT)
-+    VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++    d_add_builtin_version ("D_SoftFloat");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++    d_add_builtin_version ("D_HardFloat");
 +}
 --- a/gcc/config/pa/pa-protos.h
 +++ b/gcc/config/pa/pa-protos.h
@@ -1163,14 +1110,13 @@ These official OS versions are not implemented:
  #define LINK_SPEC "%{mlinker-opt:-O} %{!shared:-u main} %{shared:-b}"
 --- a/gcc/config/pa/t-pa
 +++ b/gcc/config/pa/t-pa
-@@ -0,0 +1,4 @@
+@@ -0,0 +1,3 @@
 +pa-d.o: $(srcdir)/config/pa/pa-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-pa-d.o += -I$(srcdir)/d
 --- a/gcc/config/powerpcspe/powerpcspe-d.c
 +++ b/gcc/config/powerpcspe/powerpcspe-d.c
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,44 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1191,11 +1137,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -1205,19 +1146,19 @@ These official OS versions are not implemented:
 +rs6000_d_target_versions (void)
 +{
 +  if (TARGET_64BIT)
-+    VersionCondition::addPredefinedGlobalIdent ("PPC64");
++    d_add_builtin_version ("PPC64");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("PPC");
++    d_add_builtin_version ("PPC");
 +
 +  if (TARGET_HARD_FLOAT)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("PPC_HardFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++      d_add_builtin_version ("PPC_HardFloat");
++      d_add_builtin_version ("D_HardFloat");
 +    }
 +  else if (TARGET_SOFT_FLOAT)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("PPC_SoftFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++      d_add_builtin_version ("PPC_SoftFloat");
++      d_add_builtin_version ("D_SoftFloat");
 +    }
 +}
 --- a/gcc/config/powerpcspe/powerpcspe-protos.h
@@ -1246,21 +1187,20 @@ These official OS versions are not implemented:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- a/gcc/config/powerpcspe/t-powerpcspe
 +++ b/gcc/config/powerpcspe/t-powerpcspe
-@@ -26,6 +26,11 @@ powerpcspe-c.o: $(srcdir)/config/powerpcspe/powerpcspe-c.c
+@@ -26,6 +26,10 @@ powerpcspe-c.o: $(srcdir)/config/powerpcspe/powerpcspe-c.c
  	$(COMPILE) $<
  	$(POSTCOMPILE)
  
 +powerpcspe-d.o: $(srcdir)/config/powerpcspe/powerpcspe-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-powerpcspe-d.o += -I$(srcdir)/d
 +
  $(srcdir)/config/powerpcspe/powerpcspe-tables.opt: $(srcdir)/config/powerpcspe/genopt.sh \
    $(srcdir)/config/powerpcspe/powerpcspe-cpus.def
  	$(SHELL) $(srcdir)/config/powerpcspe/genopt.sh $(srcdir)/config/powerpcspe > \
 --- a/gcc/config/riscv/riscv-d.c
 +++ b/gcc/config/riscv/riscv-d.c
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,39 @@
 +/* Subroutines for the D front end on the ARM64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1281,11 +1221,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -1296,14 +1231,14 @@ These official OS versions are not implemented:
 +riscv_d_target_versions (void)
 +{
 +  if (TARGET_64BIT)
-+    VersionCondition::addPredefinedGlobalIdent ("RISCV64");
++    d_add_builtin_version ("RISCV64");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("RISCV32");
++    d_add_builtin_version ("RISCV32");
 +
 +  if (TARGET_HARDFLOAT)
-+    VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++    d_add_builtin_version ("D_HardFloat");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++    d_add_builtin_version ("D_SoftFloat");
 +}
 --- a/gcc/config/riscv/riscv-protos.h
 +++ b/gcc/config/riscv/riscv-protos.h
@@ -1331,7 +1266,7 @@ These official OS versions are not implemented:
  #ifndef TARGET_DEFAULT
 --- a/gcc/config/riscv/t-riscv
 +++ b/gcc/config/riscv/t-riscv
-@@ -9,3 +9,8 @@ riscv-c.o: $(srcdir)/config/riscv/riscv-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -9,3 +9,7 @@ riscv-c.o: $(srcdir)/config/riscv/riscv-c.c $(CONFIG_H) $(SYSTEM_H) \
      coretypes.h $(TM_H) $(TREE_H) output.h $(C_COMMON_H) $(TARGET_H)
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/riscv/riscv-c.c
@@ -1339,10 +1274,9 @@ These official OS versions are not implemented:
 +riscv-d.o: $(srcdir)/config/riscv/riscv-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-riscv-d.o += -I$(srcdir)/d
 --- a/gcc/config/rs6000/rs6000-d.c
 +++ b/gcc/config/rs6000/rs6000-d.c
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,45 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1363,11 +1297,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -1378,19 +1307,19 @@ These official OS versions are not implemented:
 +rs6000_d_target_versions (void)
 +{
 +  if (TARGET_64BIT)
-+    VersionCondition::addPredefinedGlobalIdent ("PPC64");
++    d_add_builtin_version ("PPC64");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("PPC");
++    d_add_builtin_version ("PPC");
 +
 +  if (TARGET_HARD_FLOAT)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("PPC_HardFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++      d_add_builtin_version ("PPC_HardFloat");
++      d_add_builtin_version ("D_HardFloat");
 +    }
 +  else if (TARGET_SOFT_FLOAT)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("PPC_SoftFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++      d_add_builtin_version ("PPC_SoftFloat");
++      d_add_builtin_version ("D_SoftFloat");
 +    }
 +}
 --- a/gcc/config/rs6000/rs6000-protos.h
@@ -1419,21 +1348,20 @@ These official OS versions are not implemented:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- a/gcc/config/rs6000/t-rs6000
 +++ b/gcc/config/rs6000/t-rs6000
-@@ -26,6 +26,11 @@ rs6000-c.o: $(srcdir)/config/rs6000/rs6000-c.c
+@@ -26,6 +26,10 @@ rs6000-c.o: $(srcdir)/config/rs6000/rs6000-c.c
  	$(COMPILE) $<
  	$(POSTCOMPILE)
  
 +rs6000-d.o: $(srcdir)/config/rs6000/rs6000-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-rs6000-d.o += -I$(srcdir)/d
 +
  $(srcdir)/config/rs6000/rs6000-tables.opt: $(srcdir)/config/rs6000/genopt.sh \
    $(srcdir)/config/rs6000/rs6000-cpus.def
  	$(SHELL) $(srcdir)/config/rs6000/genopt.sh $(srcdir)/config/rs6000 > \
 --- a/gcc/config/s390/s390-d.c
 +++ b/gcc/config/s390/s390-d.c
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,41 @@
 +/* Subroutines for the D front end on the IBM S/390 and zSeries architectures.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1454,11 +1382,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -1469,16 +1392,16 @@ These official OS versions are not implemented:
 +s390_d_target_versions (void)
 +{
 +  if (TARGET_ZARCH)
-+    VersionCondition::addPredefinedGlobalIdent ("SystemZ");
++    d_add_builtin_version ("SystemZ");
 +  else if (TARGET_64BIT)
-+    VersionCondition::addPredefinedGlobalIdent ("S390X");
++    d_add_builtin_version ("S390X");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("S390");
++    d_add_builtin_version ("S390");
 +
 +  if (TARGET_SOFT_FLOAT)
-+    VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++    d_add_builtin_version ("D_SoftFloat");
 +  else if (TARGET_HARD_FLOAT)
-+    VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++    d_add_builtin_version ("D_HardFloat");
 +}
 --- a/gcc/config/s390/s390-protos.h
 +++ b/gcc/config/s390/s390-protos.h
@@ -1503,7 +1426,7 @@ These official OS versions are not implemented:
                              | MASK_OPT_HTM | MASK_OPT_VX)
 --- a/gcc/config/s390/t-s390
 +++ b/gcc/config/s390/t-s390
-@@ -25,3 +25,8 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c \
+@@ -25,3 +25,7 @@ s390-c.o: $(srcdir)/config/s390/s390-c.c \
    $(TARGET_H) $(TARGET_DEF_H) $(CPPLIB_H) $(C_PRAGMA_H)
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/s390/s390-c.c
@@ -1511,10 +1434,9 @@ These official OS versions are not implemented:
 +s390-d.o: $(srcdir)/config/s390/s390-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-s390-d.o += -I$(srcdir)/d
 --- a/gcc/config/sh/sh-d.c
 +++ b/gcc/config/sh/sh-d.c
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,36 @@
 +/* Subroutines for the D front end on the SuperH architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1535,11 +1457,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -1549,12 +1466,12 @@ These official OS versions are not implemented:
 +void
 +sh_d_target_versions (void)
 +{
-+  VersionCondition::addPredefinedGlobalIdent ("SH");
++  d_add_builtin_version ("SH");
 +
 +  if (TARGET_FPU_ANY)
-+    VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++    d_add_builtin_version ("D_HardFloat");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++    d_add_builtin_version ("D_SoftFloat");
 +}
 --- a/gcc/config/sh/sh-protos.h
 +++ b/gcc/config/sh/sh-protos.h
@@ -1580,21 +1497,20 @@ These official OS versions are not implemented:
     via the stack pointer) in functions that seem suitable.  */
 --- a/gcc/config/sh/t-sh
 +++ b/gcc/config/sh/t-sh
-@@ -25,6 +25,11 @@ sh-c.o: $(srcdir)/config/sh/sh-c.c \
+@@ -25,6 +25,10 @@ sh-c.o: $(srcdir)/config/sh/sh-c.c \
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/sh/sh-c.c
  
 +sh-d.o: $(srcdir)/config/sh/sh-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-sh-d.o += -I$(srcdir)/d
 +
  sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
    $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- a/gcc/config/sparc/sparc-d.c
 +++ b/gcc/config/sparc/sparc-d.c
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,48 @@
 +/* Subroutines for the D front end on the SPARC architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1615,11 +1531,6 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+
-+#include "d/dfrontend/globals.h"
-+#include "d/dfrontend/visitor.h"
-+#include "d/dfrontend/cond.h"
-+
 +#include "target.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
@@ -1630,22 +1541,22 @@ These official OS versions are not implemented:
 +sparc_d_target_versions (void)
 +{
 +  if (TARGET_64BIT)
-+    VersionCondition::addPredefinedGlobalIdent ("SPARC64");
++    d_add_builtin_version ("SPARC64");
 +  else
-+    VersionCondition::addPredefinedGlobalIdent ("SPARC");
++    d_add_builtin_version ("SPARC");
 +
 +  if (TARGET_V8PLUS)
-+    VersionCondition::addPredefinedGlobalIdent ("SPARC_V8Plus");
++    d_add_builtin_version ("SPARC_V8Plus");
 +
 +  if (TARGET_FPU)
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("SPARC_HardFloat");
++      d_add_builtin_version ("D_HardFloat");
++      d_add_builtin_version ("SPARC_HardFloat");
 +    }
 +  else
 +    {
-+      VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
-+      VersionCondition::addPredefinedGlobalIdent ("SPARC_SoftFloat");
++      d_add_builtin_version ("D_SoftFloat");
++      d_add_builtin_version ("SPARC_SoftFloat");
 +    }
 +}
 --- a/gcc/config/sparc/sparc-protos.h
@@ -1672,7 +1583,7 @@ These official OS versions are not implemented:
  
 --- a/gcc/config/sparc/t-sparc
 +++ b/gcc/config/sparc/t-sparc
-@@ -23,3 +23,8 @@ PASSES_EXTRA += $(srcdir)/config/sparc/sparc-passes.def
+@@ -23,3 +23,7 @@ PASSES_EXTRA += $(srcdir)/config/sparc/sparc-passes.def
  sparc-c.o: $(srcdir)/config/sparc/sparc-c.c
  	$(COMPILE) $<
  	$(POSTCOMPILE)
@@ -1680,7 +1591,6 @@ These official OS versions are not implemented:
 +sparc-d.o: $(srcdir)/config/sparc/sparc-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
-+CFLAGS-sparc-d.o += -I$(srcdir)/d
 --- a/gcc/configure
 +++ b/gcc/configure
 @@ -612,6 +612,7 @@ ISLLIBS

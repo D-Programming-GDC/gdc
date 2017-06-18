@@ -33,6 +33,8 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 
+/* Implements the Target interface defined by the front end.
+   Used for retrieving target-specific information.  */
 
 /* Type size information used by frontend.  */
 int Target::ptrsize;
@@ -179,7 +181,6 @@ Target::alignsize (Type *type)
   gcc_assert (type->isTypeBasic ());
   return TYPE_ALIGN_UNIT (build_ctype (type));
 }
-
 
 /* Return GCC field alignment size for type TYPE.  */
 
