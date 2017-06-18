@@ -389,17 +389,12 @@ d_init (void)
 
   Target::_init ();
 
-#ifndef TARGET_CPU_D_BUILTINS
-# define TARGET_CPU_D_BUILTINS() d_add_builtin_version (0)
-#endif
-
 #ifndef TARGET_OS_D_BUILTINS
 # define TARGET_OS_D_BUILTINS() d_add_builtin_version (0)
 #endif
 
 # define builtin_define(TXT) d_add_builtin_version (TXT)
 
-  TARGET_CPU_D_BUILTINS ();
   TARGET_OS_D_BUILTINS ();
 
   VersionCondition::addPredefinedGlobalIdent ("GNU");
