@@ -86,7 +86,24 @@ These official OS versions are not implemented:
 
 --- a/gcc/Makefile.in
 +++ b/gcc/Makefile.in
-@@ -897,9 +897,11 @@ EXCEPT_H = except.h $(HASHTAB_H)
+@@ -546,6 +546,8 @@ tm_include_list=@tm_include_list@
+ tm_defines=@tm_defines@
+ tm_p_file_list=@tm_p_file_list@
+ tm_p_include_list=@tm_p_include_list@
++tm_d_file_list=@tm_d_file_list@
++tm_d_include_list=@tm_d_include_list@
+ build_xm_file_list=@build_xm_file_list@
+ build_xm_include_list=@build_xm_include_list@
+ build_xm_defines=@build_xm_defines@
+@@ -840,6 +842,7 @@ BCONFIG_H = bconfig.h $(build_xm_file_list)
+ CONFIG_H  = config.h  $(host_xm_file_list)
+ TCONFIG_H = tconfig.h $(xm_file_list)
+ TM_P_H    = tm_p.h    $(tm_p_file_list)
++TM_D_H    = tm_d.h    $(tm_d_file_list)
+ GTM_H     = tm.h      $(tm_file_list) insn-constants.h
+ TM_H      = $(GTM_H) insn-flags.h $(OPTIONS_H)
+ 
+@@ -897,9 +900,11 @@ EXCEPT_H = except.h $(HASHTAB_H)
  TARGET_DEF = target.def target-hooks-macros.h target-insns.def
  C_TARGET_DEF = c-family/c-target.def target-hooks-macros.h
  COMMON_TARGET_DEF = common/common-target.def target-hooks-macros.h
@@ -98,7 +115,7 @@ These official OS versions are not implemented:
  MACHMODE_H = machmode.h mode-classes.def insn-modes.h
  HOOKS_H = hooks.h $(MACHMODE_H)
  HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1172,6 +1174,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1172,6 +1177,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -108,7 +125,27 @@ These official OS versions are not implemented:
  # Target specific, Fortran specific object file
  FORTRAN_TARGET_OBJS=@fortran_target_objs@
  
-@@ -2115,6 +2120,12 @@ default-c.o: config/default-c.c
+@@ -1760,6 +1768,7 @@ bconfig.h: cs-bconfig.h ; @true
+ tconfig.h: cs-tconfig.h ; @true
+ tm.h: cs-tm.h ; @true
+ tm_p.h: cs-tm_p.h ; @true
++tm_d.h: cs-tm_d.h ; @true
+ 
+ cs-config.h: Makefile
+ 	TARGET_CPU_DEFAULT="" \
+@@ -1786,6 +1795,11 @@ cs-tm_p.h: Makefile
+ 	HEADERS="$(tm_p_include_list)" DEFINES="" \
+ 	$(SHELL) $(srcdir)/mkconfig.sh tm_p.h
+ 
++cs-tm_d.h: Makefile
++	TARGET_CPU_DEFAULT="" \
++	HEADERS="$(tm_d_include_list)" DEFINES="" \
++	$(SHELL) $(srcdir)/mkconfig.sh tm_d.h
++
+ # Don't automatically run autoconf, since configure.ac might be accidentally
+ # newer than configure.  Also, this writes into the source directory which
+ # might be on a read-only file system.  If configured for maintainer mode
+@@ -2115,6 +2129,12 @@ default-c.o: config/default-c.c
  CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
  prefix.o: $(BASEVER)
  
@@ -121,7 +158,7 @@ These official OS versions are not implemented:
  # Language-independent files.
  
  DRIVER_DEFINES = \
-@@ -2403,6 +2414,15 @@ s-common-target-hooks-def-h: build/genhooks$(build_exeext)
+@@ -2403,6 +2423,15 @@ s-common-target-hooks-def-h: build/genhooks$(build_exeext)
  					     common/common-target-hooks-def.h
  	$(STAMP) s-common-target-hooks-def-h
  
@@ -137,7 +174,7 @@ These official OS versions are not implemented:
  # check if someone mistakenly only changed tm.texi.
  # We use a different pathname here to avoid a circular dependency.
  s-tm-texi: $(srcdir)/doc/../doc/tm.texi
-@@ -2426,6 +2446,7 @@ s-tm-texi: build/genhooks$(build_exeext) $(srcdir)/doc/tm.texi.in
+@@ -2426,6 +2455,7 @@ s-tm-texi: build/genhooks$(build_exeext) $(srcdir)/doc/tm.texi.in
  	  && ( test $(srcdir)/doc/tm.texi -nt $(srcdir)/target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/c-family/c-target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/common/common-target.def \
@@ -145,7 +182,14 @@ These official OS versions are not implemented:
  	  ); then \
  	  echo >&2 ; \
  	  echo You should edit $(srcdir)/doc/tm.texi.in rather than $(srcdir)/doc/tm.texi . >&2 ; \
-@@ -2570,7 +2591,8 @@ generated_files = config.h tm.h $(TM_P_H) $(TM_H) multilib.h \
+@@ -2564,13 +2594,14 @@ s-gtype: build/gengtype$(build_exeext) $(filter-out [%], $(GTFILES)) \
+                     -r gtype.state
+ 	$(STAMP) s-gtype
+ 
+-generated_files = config.h tm.h $(TM_P_H) $(TM_H) multilib.h \
++generated_files = config.h tm.h $(TM_P_H) $(TM_D_H) $(TM_H) multilib.h \
+        $(simple_generated_h) specs.h \
+        tree-check.h genrtl.h insn-modes.h tm-preds.h tm-constrs.h \
         $(ALL_GTFILES_H) gtype-desc.c gtype-desc.h gcov-iov.h \
         options.h target-hooks-def.h insn-opinit.h \
         common/common-target-hooks-def.h pass-instances.def \
@@ -155,7 +199,7 @@ These official OS versions are not implemented:
         cfn-operators.pd
  
  #
-@@ -2712,7 +2734,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE_H) $(BCONFIG_H) $(SYSTEM_H)	\
+@@ -2712,7 +2743,7 @@ build/genrecog.o : genrecog.c $(RTL_BASE_H) $(BCONFIG_H) $(SYSTEM_H)	\
    coretypes.h $(GTM_H) errors.h $(READ_MD_H) $(GENSUPPORT_H)		\
    $(HASH_TABLE_H) inchash.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -166,7 +210,17 @@ These official OS versions are not implemented:
  build/genmatch.o : genmatch.c $(BCONFIG_H) $(SYSTEM_H) \
 --- a/gcc/config.gcc
 +++ b/gcc/config.gcc
-@@ -139,6 +139,9 @@
+@@ -86,6 +86,9 @@
+ #  tm_p_file		Location of file with declarations for functions
+ #			in $out_file.
+ #
++#  tm_d_file		A list of headers with definitions of target hook
++#			macros for the D compiler.
++#
+ #  out_file		The name of the machine description C support
+ #			file, if different from "$cpu_type/$cpu_type.c".
+ #
+@@ -139,6 +142,9 @@
  #  cxx_target_objs	List of extra target-dependent objects that be
  #			linked into the C++ compiler only.
  #
@@ -176,7 +230,7 @@ These official OS versions are not implemented:
  #  fortran_target_objs	List of extra target-dependent objects that be
  #			linked into the fortran compiler only.
  #
-@@ -191,6 +194,9 @@
+@@ -191,6 +197,9 @@
  #
  #  target_has_targetm_common	Set to yes or no depending on whether the
  #			target has its own definition of targetm_common.
@@ -186,7 +240,7 @@ These official OS versions are not implemented:
  
  out_file=
  common_out_file=
-@@ -206,9 +212,11 @@ extra_gcc_objs=
+@@ -206,9 +215,11 @@ extra_gcc_objs=
  extra_options=
  c_target_objs=
  cxx_target_objs=
@@ -198,7 +252,16 @@ These official OS versions are not implemented:
  tm_defines=
  xm_defines=
  # Set this to force installation and use of collect2.
-@@ -3117,6 +3125,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -516,6 +527,8 @@ if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-protos.h
+ then
+ 	tm_p_file=${cpu_type}/${cpu_type}-protos.h
+ fi
++tm_d_file=${cpu_type}/${cpu_type}.h
++
+ extra_modes=
+ if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
+ then
+@@ -3117,6 +3130,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -211,7 +274,7 @@ These official OS versions are not implemented:
  case ${with_cpu} in
 --- /dev/null
 +++ b/gcc/config/default-d.c
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,25 @@
 +/* Default D language target hooks initializer.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -232,15 +295,9 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
++#include "tm_d.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
-+
-+/* Do not include tm.h or tm_p.h here; if it is useful for a target to
-+   define some macros for the initializer in a header without defining
-+   targetdm itself (for example, because of interactions with some
-+   hooks depending on the target OS and others on the target
-+   architecture), create a separate tm_c.h for only the relevant
-+   definitions.  */
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/configure
@@ -253,35 +310,115 @@ These official OS versions are not implemented:
  fortran_target_objs
  cxx_target_objs
  c_target_objs
-@@ -18440,7 +18441,7 @@ else
+@@ -619,6 +620,8 @@ use_gcc_stdint
+ xm_defines
+ xm_include_list
+ xm_file_list
++tm_d_include_list
++tm_d_file_list
+ tm_p_include_list
+ tm_p_file_list
+ tm_defines
+@@ -11802,6 +11805,7 @@ fi
+ 
+ tm_file="${tm_file} defaults.h"
+ tm_p_file="${tm_p_file} tm-preds.h"
++tm_d_file="${tm_d_file} defaults.h"
+ host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
+ build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
+ # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
+@@ -12171,6 +12175,21 @@ for f in $tm_p_file; do
+   esac
+ done
+ 
++tm_d_file_list=
++tm_d_include_list="options.h insn-constants.h"
++for f in $tm_d_file; do
++  case $f in
++    defaults.h )
++       tm_d_file_list="${tm_d_file_list} \$(srcdir)/$f"
++       tm_d_include_list="${tm_d_include_list} $f"
++       ;;
++    * )
++       tm_d_file_list="${tm_d_file_list} \$(srcdir)/config/$f"
++       tm_d_include_list="${tm_d_include_list} config/$f"
++       ;;
++  esac
++done
++
+ xm_file_list=
+ xm_include_list=
+ for f in $xm_file; do
+@@ -18440,7 +18459,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
 -#line 18443 "configure"
-+#line 18444 "configure"
++#line 18462 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18546,7 +18547,7 @@ else
+@@ -18546,7 +18565,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
 -#line 18549 "configure"
-+#line 18550 "configure"
++#line 18568 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -29410,6 +29411,7 @@ fi
+@@ -29410,6 +29429,9 @@ fi
  
  
  
++
++
 +
  # Echo link setup.
  if test x${build} = x${host} ; then
    if test x${host} = x${target} ; then
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
-@@ -6160,6 +6160,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -1724,6 +1724,7 @@ AC_SUBST(build_subdir)
+ 
+ tm_file="${tm_file} defaults.h"
+ tm_p_file="${tm_p_file} tm-preds.h"
++tm_d_file="${tm_d_file} defaults.h"
+ host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
+ build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
+ # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
+@@ -1946,6 +1947,21 @@ for f in $tm_p_file; do
+   esac
+ done
+ 
++tm_d_file_list=
++tm_d_include_list="options.h insn-constants.h"
++for f in $tm_d_file; do
++  case $f in
++    defaults.h )
++       tm_d_file_list="${tm_d_file_list} \$(srcdir)/$f"
++       tm_d_include_list="${tm_d_include_list} $f"
++       ;;
++    * )
++       tm_d_file_list="${tm_d_file_list} \$(srcdir)/config/$f"
++       tm_d_include_list="${tm_d_include_list} config/$f"
++       ;;
++  esac
++done
++
+ xm_file_list=
+ xm_include_list=
+ for f in $xm_file; do
+@@ -6153,6 +6169,8 @@ AC_SUBST(tm_include_list)
+ AC_SUBST(tm_defines)
+ AC_SUBST(tm_p_file_list)
+ AC_SUBST(tm_p_include_list)
++AC_SUBST(tm_d_file_list)
++AC_SUBST(tm_d_include_list)
+ AC_SUBST(xm_file_list)
+ AC_SUBST(xm_include_list)
+ AC_SUBST(xm_defines)
+@@ -6160,6 +6178,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
