@@ -14,9 +14,6 @@ for all supported architectures. And these where appropriate:
 ** Alpha_SoftFloat
 ** Alpha_HardFloat
 * Epiphany
-* X86
-* X86_64
-** D_X32
 * IA64
 * MIPS32
 * MIPS64
@@ -145,33 +142,6 @@ for all supported architectures. And these where appropriate:
  /* Pick up the libgloss library. One day we may do this by linker script, but
     for now its static.
     libgloss might use errno/__errno, which might not have been needed when we
---- a/gcc/config/i386/i386.h
-+++ b/gcc/config/i386/i386.h
-@@ -669,6 +669,24 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
- /* Target CPU builtins.  */
- #define TARGET_CPU_CPP_BUILTINS() ix86_target_macros ()
- 
-+/* Target CPU builtins for D.  */
-+#define TARGET_CPU_D_BUILTINS()			\
-+  do {						\
-+    if (TARGET_64BIT)				\
-+    {						\
-+      builtin_define("X86_64");			\
-+      if (TARGET_X32)				\
-+        builtin_define("D_X32");		\
-+    }						\
-+    else					\
-+      builtin_define("X86");			\
-+						\
-+    if (TARGET_80387)				\
-+      builtin_define("D_HardFloat");		\
-+    else					\
-+      builtin_define("D_SoftFloat");		\
-+  } while (0)
-+
- /* Target Pragmas.  */
- #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
- 
 --- a/gcc/config/ia64/ia64.h
 +++ b/gcc/config/ia64/ia64.h
 @@ -40,6 +40,13 @@ do {						\

@@ -252,16 +252,37 @@ These official OS versions are not implemented:
  tm_defines=
  xm_defines=
  # Set this to force installation and use of collect2.
-@@ -516,6 +527,8 @@ if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-protos.h
+@@ -360,6 +371,7 @@ i[34567]86-*-*)
+ 	cpu_type=i386
+ 	c_target_objs="i386-c.o"
+ 	cxx_target_objs="i386-c.o"
++	d_target_objs="i386-d.o"
+ 	extra_options="${extra_options} fused-madd.opt"
+ 	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
+ 		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
+@@ -383,6 +395,7 @@ x86_64-*-*)
+ 	cpu_type=i386
+ 	c_target_objs="i386-c.o"
+ 	cxx_target_objs="i386-c.o"
++	d_target_objs="i386-d.o"
+ 	extra_options="${extra_options} fused-madd.opt"
+ 	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
+ 		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
+@@ -512,10 +525,13 @@ tilepro*-*-*)
+ esac
+ 
+ tm_file=${cpu_type}/${cpu_type}.h
++tm_d_file=${cpu_type}/${cpu_type}.h
+ if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-protos.h
  then
  	tm_p_file=${cpu_type}/${cpu_type}-protos.h
++	tm_d_file="${tm_d_file} ${cpu_type}/${cpu_type}-protos.h"
  fi
-+tm_d_file=${cpu_type}/${cpu_type}.h
 +
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -3117,6 +3130,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3117,6 +3133,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -272,7 +293,7 @@ These official OS versions are not implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
---- /dev/null
+--- a/gcc/config/default-d.c
 +++ b/gcc/config/default-d.c
 @@ -0,0 +1,25 @@
 +/* Default D language target hooks initializer.
@@ -300,6 +321,94 @@ These official OS versions are not implemented:
 +#include "d/d-target-def.h"
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
+--- a/gcc/config/i386/i386-d.c
++++ b/gcc/config/i386/i386-d.c
+@@ -0,0 +1,47 @@
++/* Subroutines used for predefined version conditions on i386.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 3, or (at your option)
++any later version.
++
++GCC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++
++#include "d/dfrontend/globals.h"
++#include "d/dfrontend/visitor.h"
++#include "d/dfrontend/cond.h"
++
++#include "target.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++void
++ix86_d_target_versions (void)
++{
++  if (TARGET_64BIT)
++    {
++      VersionCondition::addPredefinedGlobalIdent ("X86_64");
++      global.params.is64bit = true;
++      if (TARGET_X32)
++	VersionCondition::addPredefinedGlobalIdent ("D_X32");
++    }
++  else
++    VersionCondition::addPredefinedGlobalIdent ("X86");
++
++  if (TARGET_80387)
++    VersionCondition::addPredefinedGlobalIdent ("D_HardFloat");
++  else
++    VersionCondition::addPredefinedGlobalIdent ("D_SoftFloat");
++}
+--- a/gcc/config/i386/i386-protos.h
++++ b/gcc/config/i386/i386-protos.h
+@@ -246,6 +246,9 @@ extern bool ix86_bnd_prefixed_insn_p (rtx);
+ extern void ix86_target_macros (void);
+ extern void ix86_register_pragmas (void);
+ 
++/* In i386-d.c  */
++extern void ix86_d_target_versions (void);
++
+ /* In winnt.c  */
+ extern void i386_pe_unique_section (tree, int);
+ extern void i386_pe_declare_function_type (FILE *, const char *, int);
+--- a/gcc/config/i386/i386.h
++++ b/gcc/config/i386/i386.h
+@@ -693,6 +693,9 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+ #define EXTRA_SPECS							\
+   { "cc1_cpu",  CC1_CPU_SPEC },						\
+   SUBTARGET_EXTRA_SPECS
++
++/* Target CPU builtins for D.  */
++#define TARGET_D_CPU_BUILTINS ix86_d_target_versions
+ 
+ 
+ /* Whether to allow x87 floating-point arithmetic on MODE (one of
+--- a/gcc/config/i386/t-i386
++++ b/gcc/config/i386/t-i386
+@@ -24,6 +24,11 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c
+ 	  $(COMPILE) $<
+ 	  $(POSTCOMPILE)
+ 
++i386-d.o: $(srcdir)/config/i386/i386-d.c
++	  $(COMPILE) $<
++	  $(POSTCOMPILE)
++CFLAGS-i386-d.o += -I$(srcdir)/d
++
+ i386.o: i386-builtin-types.inc
+ 
+ i386-builtin-types.inc: s-i386-bt ; @true
 --- a/gcc/configure
 +++ b/gcc/configure
 @@ -612,6 +612,7 @@ ISLLIBS

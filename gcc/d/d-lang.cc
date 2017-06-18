@@ -335,6 +335,9 @@ d_option_lang_mask (void)
 static void
 d_add_builtin_version (const char* ident)
 {
+  if (!ident)
+    return;
+
   /* For now, we need to tell the D frontend what platform is being targetted.
      This should be removed once the frontend has been fixed.  */
   if (strcmp (ident, "linux") == 0)
@@ -349,8 +352,6 @@ d_add_builtin_version (const char* ident)
     global.params.isOpenBSD = true;
   else if (strcmp (ident, "Solaris") == 0)
     global.params.isSolaris = true;
-  else if (strcmp (ident, "X86_64") == 0)
-    global.params.is64bit = true;
 
   VersionCondition::addPredefinedGlobalIdent (ident);
 }
@@ -389,11 +390,11 @@ d_init (void)
   Target::_init ();
 
 #ifndef TARGET_CPU_D_BUILTINS
-# define TARGET_CPU_D_BUILTINS()
+# define TARGET_CPU_D_BUILTINS() d_add_builtin_version (0)
 #endif
 
 #ifndef TARGET_OS_D_BUILTINS
-# define TARGET_OS_D_BUILTINS()
+# define TARGET_OS_D_BUILTINS() d_add_builtin_version (0)
 #endif
 
 # define builtin_define(TXT) d_add_builtin_version (TXT)
