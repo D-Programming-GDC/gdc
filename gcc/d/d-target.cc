@@ -1,4 +1,4 @@
-/* d-target.cc -- Target interface for the D frontend.
+/* d-target.cc -- Target interface for the D front end.
    Copyright (C) 2013-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
@@ -154,7 +154,7 @@ Target::_init (void)
   Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
   Target::c_longsize = int_size_in_bytes (long_integer_type_node);
 
-  Target::classinfosize = 19 * ptrsize;
+  Target::classinfosize = 19 * Target::ptrsize;
 
   /* Initialize all compile-time properties for floating point types.
      Should ensure that our real_t type is able to represent real_value.  */

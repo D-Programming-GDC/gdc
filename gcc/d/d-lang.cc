@@ -48,6 +48,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-frontend.h"
+#include "d-target.h"
 #include "id.h"
 
 
@@ -446,6 +447,10 @@ d_init (void)
     VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
+
+  /* Emit all target-specific version identifiers.  */
+  targetdm.d_cpu_builtins ();
+  targetdm.d_os_builtins ();
 
   /* Insert all library-configured identifiers and import paths.  */
   add_import_paths (d_option.prefix, d_option.multilib, d_option.stdinc);

@@ -1,0 +1,53 @@
+/* d-target.def -- Target hook definitions for the D front end.
+   Copyright (C) 2017 Free Software Foundation, Inc.
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 3, or (at your option) any
+   later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; see the file COPYING3.  If not see
+   <http://www.gnu.org/licenses/>.  */
+
+/* See target-hooks-macros.h for details of macros that should be
+   provided by the including file, and how to use them here.  */
+
+#include "target-hooks-macros.h"
+
+#undef HOOK_TYPE
+#define HOOK_TYPE "D Target Hook"
+
+HOOK_VECTOR (TARGETDM_INITIALIZER, gcc_targetdm)
+
+#undef HOOK_PREFIX
+#define HOOK_PREFIX "TARGET_"
+
+/* Environmental version identifiers relating to the target OS.  */
+DEFHOOK
+(d_os_builtins,
+ "Declare predefined version identifiers",
+ void, (void),
+ hook_void_void)
+
+/* Environmental version identifiers relating to the target CPU.  */
+DEFHOOK
+(d_cpu_builtins,
+ "Declare predefined version identifiers",
+ void, (void),
+ hook_void_void)
+
+/* The size of OS CRITICAL_SECTION or pthread_mutex_t.  */
+DEFHOOK
+(d_critsec_size,
+ "Declare size of critical section",
+ unsigned, (void),
+ hook_uint_void_0)
+
+/* Close the 'struct gcc_targetdm' definition.  */
+HOOK_VECTOR_END (C90_EMPTY_HACK)
