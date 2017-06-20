@@ -862,19 +862,17 @@ public:
 	break;
 
       case TOKshrass:
-	code = RSHIFT_EXPR;
-	break;
-
       case TOKushrass:
-	/* The left operand of `>>>=' does not undergo integral promotions
-	   before shifting.  Strip off any just incase.  */
+	/* Use the original lhs type before it was promoted.  The left operand
+	   of `>>>=' does not undergo integral promotions before shifting.
+	   Strip off casts just incase anyway.  */
 	while (e1b->op == TOKcast)
 	  {
 	    CastExp *ce = (CastExp *) e1b;
 	    gcc_assert (same_type_p (ce->type, ce->to));
 	    e1b = ce->e1;
 	  }
-	code = UNSIGNED_RSHIFT_EXPR;
+	code = (e->op == TOKshrass) ? RSHIFT_EXPR : UNSIGNED_RSHIFT_EXPR;
 	break;
 
       default:
