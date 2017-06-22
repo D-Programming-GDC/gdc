@@ -363,7 +363,18 @@ These official OS versions are not implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -3117,6 +3145,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -784,8 +812,10 @@ case ${target} in
+   esac
+   c_target_objs="${c_target_objs} glibc-c.o"
+   cxx_target_objs="${cxx_target_objs} glibc-c.o"
++  d_target_objs="${d_target_objs} glibc-d.o"
+   tmake_file="${tmake_file} t-glibc"
+   target_has_targetcm=yes
++  target_has_targetdm=yes
+   ;;
+ *-*-netbsd*)
+   tmake_file="t-slibgcc"
+@@ -3117,6 +3147,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -374,7 +385,7 @@ These official OS versions are not implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4505,6 +4537,8 @@ case ${target} in
+@@ -4505,6 +4539,8 @@ case ${target} in
  		then
  			target_cpu_default2="MASK_GAS"
  		fi
@@ -383,7 +394,7 @@ These official OS versions are not implemented:
  		;;
  
  	fido*-*-* | m68k*-*-*)
-@@ -4590,12 +4624,14 @@ case ${target} in
+@@ -4590,12 +4626,14 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -728,6 +739,61 @@ These official OS versions are not implemented:
 +epiphany-d.o: $(srcdir)/config/epiphany/epiphany-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
+--- a/gcc/config/glibc-d.c
++++ b/gcc/config/glibc-d.c
+@@ -0,0 +1,52 @@
++/* Default D language target hooks initializer.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "target.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++#include "tm_p.h"
++
++/* Implement TARGET_D_OS_BUILTINS for glibc targets.  */
++
++static void
++glibc_d_os_builtins (void)
++{
++  if (OPTION_GLIBC)
++    d_add_builtin_version ("CRuntime_Glibc");
++  else if (OPTION_UCLIBC)
++    d_add_builtin_version ("CRuntime_UClibc");
++  else if (OPTION_BIONIC)
++    d_add_builtin_version ("CRuntime_Bionic");
++  else if (OPTION_MUSL)
++    d_add_builtin_version ("CRuntime_Musl");
++
++#ifdef TARGET_ANDROID
++  if (TARGET_ANDROID)
++    d_add_builtin_version ("Android");
++#endif
++
++  d_add_builtin_version ("linux");
++  d_add_builtin_version ("Posix");
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS glibc_d_os_builtins
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/i386/i386-d.c
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
@@ -751,7 +817,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -1591,6 +1657,16 @@ These official OS versions are not implemented:
 +sparc-d.o: $(srcdir)/config/sparc/sparc-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
+--- a/gcc/config/t-glibc
++++ b/gcc/config/t-glibc
+@@ -19,3 +19,7 @@
+ glibc-c.o: config/glibc-c.c
+ 	$(COMPILE) $<
+ 	$(POSTCOMPILE)
++
++glibc-d.o: config/glibc-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/configure
 +++ b/gcc/configure
 @@ -612,6 +612,7 @@ ISLLIBS

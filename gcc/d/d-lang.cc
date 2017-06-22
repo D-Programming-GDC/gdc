@@ -360,15 +360,6 @@ d_init (void)
   main_identifier_node = get_identifier ("main");
 
   Target::_init ();
-
-#ifndef TARGET_OS_D_BUILTINS
-# define TARGET_OS_D_BUILTINS()
-#endif
-
-# define builtin_define(TXT) d_add_builtin_version (TXT)
-
-  TARGET_OS_D_BUILTINS ();
-
   d_init_versions ();
 
   /* Emit all target-specific version identifiers.  */
