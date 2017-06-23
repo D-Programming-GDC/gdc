@@ -107,7 +107,6 @@ cd $d_gccsrc && \
 # 4. Patch the gcc subdirectory
 cd $d_gccsrc && \
   patch -p1 -i gcc/d/patches/patch-gcc-$gcc_patch_key && \
-  patch -p1 -i gcc/d/patches/patch-versym-os-$gcc_patch_key && \
   patch -p1 -i gcc/d/patches/patch-targetdm-$gcc_patch_key && \
   cd $top || exit 1
 

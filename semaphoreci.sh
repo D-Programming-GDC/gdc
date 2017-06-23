@@ -65,7 +65,7 @@ setup() {
     tar --strip-components=1 -xf ${SEMAPHORE_CACHE_DIR}/${GCC_TARBALL}
 
     ## Apply GDC patches to GCC.
-    for PATCH in toplev gcc versym-os targetdm; do
+    for PATCH in toplev gcc targetdm; do
         patch -p1 -i ./gcc/d/patches/patch-${PATCH}-${PATCH_VERSION}.x || exit 1
     done
 

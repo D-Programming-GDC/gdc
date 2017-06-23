@@ -64,7 +64,6 @@ The following OS versions are implemented:
 * DragonFlyBSD
 * Solaris
 * Posix
-* AIX
 * Hurd
 * Android
 * CRuntime_Bionic
@@ -73,6 +72,7 @@ The following OS versions are implemented:
 * CRuntime_UClibc
 
 These official OS versions are not implemented:
+* AIX
 * BSD (other BSDs)
 * Haiku
 * PlayStation
@@ -83,7 +83,7 @@ These official OS versions are not implemented:
 * CRuntime_DigitalMars
 * CRuntime_Microsoft
 ---
-
+ 
 --- a/gcc/Makefile.in
 +++ b/gcc/Makefile.in
 @@ -546,6 +546,8 @@ tm_include_list=@tm_include_list@
@@ -363,7 +363,38 @@ These official OS versions are not implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -784,8 +812,10 @@ case ${target} in
+@@ -648,8 +676,10 @@ case ${target} in
+   extra_options="${extra_options} darwin.opt"
+   c_target_objs="${c_target_objs} darwin-c.o"
+   cxx_target_objs="${cxx_target_objs} darwin-c.o"
++  d_target_objs="${d_target_objs} darwin-d.o"
+   fortran_target_objs="darwin-f.o"
+   target_has_targetcm=yes
++  target_has_targetdm=yes
+   extra_objs="darwin.o"
+   extra_gcc_objs="darwin-driver.o"
+   default_use_cxa_atexit=yes
+@@ -674,6 +704,9 @@ case ${target} in
+       exit 1
+       ;;
+   esac
++  d_target_objs="${d_target_objs} dragonfly-d.o"
++  target_has_targetdm=yes
++  tmake_file="${tmake_file} t-dragonfly"
+   extra_options="$extra_options rpath.opt dragonfly.opt"
+   default_use_cxa_atexit=yes
+   use_gcc_stdint=wrap
+@@ -717,6 +750,9 @@ case ${target} in
+       ;;
+   esac
+   fbsd_tm_file="${fbsd_tm_file} freebsd-spec.h freebsd.h freebsd-stdint.h"
++  d_target_objs="${d_target_objs} freebsd-d.o"
++  target_has_targetdm=yes
++  tmake_file="${tmake_file} t-freebsd"
+   extra_options="$extra_options rpath.opt freebsd.opt"
+   case ${target} in
+     *-*-freebsd[345].*)
+@@ -784,14 +820,19 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -374,7 +405,44 @@ These official OS versions are not implemented:
    ;;
  *-*-netbsd*)
    tmake_file="t-slibgcc"
-@@ -3117,6 +3147,10 @@ if [ "$common_out_file" = "" ]; then
+   gas=yes
+   gnu_ld=yes
+   use_gcc_stdint=wrap
++  d_target_objs="${d_target_objs} netbsd-d.o"
++  target_has_targetdm=yes
++  tmake_file="${tmake_file} t-netbsd"
+ 
+   # NetBSD 2.0 and later get POSIX threads enabled by default.
+   # Allow them to be explicitly enabled on any other version.
+@@ -820,6 +861,8 @@ case ${target} in
+   ;;
+ *-*-openbsd*)
+   tmake_file="t-openbsd"
++  d_target_objs="${d_target_objs} netbsd-d.o"
++  target_has_targetdm=yes
+   case ${enable_threads} in
+     yes)
+       thread_file='posix'
+@@ -885,6 +928,8 @@ case ${target} in
+   tmake_file="${tmake_file} t-sol2 t-slibgcc"
+   c_target_objs="${c_target_objs} sol2-c.o"
+   cxx_target_objs="${cxx_target_objs} sol2-c.o sol2-cxx.o"
++  d_target_objs="${d_target_objs} sol2-d.o"
++  target_has_targetdm="yes"
+   extra_objs="sol2.o sol2-stubs.o"
+   extra_options="${extra_options} sol2.opt"
+   case ${enable_threads}:${have_pthread_h}:${have_thread_h} in
+@@ -1721,7 +1766,9 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
+ 	xm_file=i386/xm-mingw32.h
+ 	c_target_objs="${c_target_objs} winnt-c.o"
+ 	cxx_target_objs="${cxx_target_objs} winnt-c.o"
++	d_target_objs="${d_target_objs} winnt-d.o"
+ 	target_has_targetcm="yes"
++	target_has_targetdm="yes"
+ 	case ${target} in
+ 		x86_64-*-* | *-w64-*)
+ 			need_64bit_isa=yes
+@@ -3117,6 +3164,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -385,7 +453,7 @@ These official OS versions are not implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4505,6 +4539,8 @@ case ${target} in
+@@ -4505,6 +4556,8 @@ case ${target} in
  		then
  			target_cpu_default2="MASK_GAS"
  		fi
@@ -394,7 +462,7 @@ These official OS versions are not implemented:
  		;;
  
  	fido*-*-* | m68k*-*-*)
-@@ -4590,12 +4626,14 @@ case ${target} in
+@@ -4590,12 +4643,14 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -636,6 +704,18 @@ These official OS versions are not implemented:
  #include "config/arm/arm-opts.h"
  
  /* The processor for which instructions should be scheduled.  */
+--- a/gcc/config/arm/linux-eabi.h
++++ b/gcc/config/arm/linux-eabi.h
+@@ -30,6 +30,9 @@
+     }						\
+   while (false)
+ 
++#define EXTRA_TARGET_D_OS_BUILTINS()		\
++  ANDROID_TARGET_D_OS_BUILTINS();
++
+ /* We default to a soft-float ABI so that binaries can run on all
+    target hardware.  If you override this to use the hard-float ABI then
+    change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/arm/t-arm
 +++ b/gcc/config/arm/t-arm
 @@ -130,4 +130,8 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(CONFIG_H) $(SYSTEM_H) \
@@ -647,6 +727,47 @@ These official OS versions are not implemented:
 +	  $(POSTCOMPILE)
 +
  arm-common.o: $(srcdir)/config/arm/arm-cpu-cdata.h
+--- a/gcc/config/darwin-d.c
++++ b/gcc/config/darwin-d.c
+@@ -0,0 +1,38 @@
++/* Darwin support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm_d.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++/* Implement TARGET_D_OS_BUILTINS for Darwin targets.  */
++
++static void
++darwin_d_os_builtins (void)
++{
++  d_add_builtin_version ("OSX");
++  d_add_builtin_version ("darwin");
++  d_add_builtin_version ("Posix");
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS darwin_d_os_builtins
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/default-d.c
 +++ b/gcc/config/default-d.c
 @@ -0,0 +1,25 @@
@@ -673,6 +794,46 @@ These official OS versions are not implemented:
 +#include "tm_d.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
+--- a/gcc/config/dragonfly-d.c
++++ b/gcc/config/dragonfly-d.c
+@@ -0,0 +1,37 @@
++/* Dragonfly support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm_d.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++/* Implement TARGET_D_OS_BUILTINS for Dragonfly targets.  */
++
++static void
++dragonfly_d_os_builtins (void)
++{
++  d_add_builtin_version ("DragonFlyBSD");
++  d_add_builtin_version ("Posix");
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS dragonfly_d_os_builtins
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/epiphany/epiphany-d.c
@@ -739,10 +900,50 @@ These official OS versions are not implemented:
 +epiphany-d.o: $(srcdir)/config/epiphany/epiphany-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
+--- a/gcc/config/freebsd-d.c
++++ b/gcc/config/freebsd-d.c
+@@ -0,0 +1,37 @@
++/* FreeBSD support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm_d.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++/* Implement TARGET_D_OS_BUILTINS for FreeBSD targets.  */
++
++static void
++freebsd_d_os_builtins (void)
++{
++  d_add_builtin_version ("FreeBSD");
++  d_add_builtin_version ("Posix");
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS freebsd_d_os_builtins
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/glibc-d.c
 +++ b/gcc/config/glibc-d.c
-@@ -0,0 +1,52 @@
-+/* Default D language target hooks initializer.
+@@ -0,0 +1,59 @@
++/* Glibc support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify it under
@@ -767,7 +968,7 @@ These official OS versions are not implemented:
 +#include "d/d-target-def.h"
 +#include "tm_p.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for glibc targets.  */
++/* Implement TARGET_D_OS_BUILTINS for Glibc targets.  */
 +
 +static void
 +glibc_d_os_builtins (void)
@@ -781,12 +982,19 @@ These official OS versions are not implemented:
 +  else if (OPTION_MUSL)
 +    d_add_builtin_version ("CRuntime_Musl");
 +
-+#ifdef TARGET_ANDROID
-+  if (TARGET_ANDROID)
-+    d_add_builtin_version ("Android");
++#ifndef GNU_USER_TARGET_D_OS_BUILTINS
++# define GNU_USER_TARGET_D_OS_BUILTINS()
 +#endif
 +
-+  d_add_builtin_version ("linux");
++#ifndef EXTRA_TARGET_D_OS_BUILTINS
++# define EXTRA_TARGET_D_OS_BUILTINS()
++#endif
++
++#define builtin_version(TXT) d_add_builtin_version (TXT)
++
++  GNU_USER_TARGET_D_OS_BUILTINS ();
++  EXTRA_TARGET_D_OS_BUILTINS ();
++
 +  d_add_builtin_version ("Posix");
 +}
 +
@@ -794,6 +1002,30 @@ These official OS versions are not implemented:
 +#define TARGET_D_OS_BUILTINS glibc_d_os_builtins
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
+--- a/gcc/config/gnu.h
++++ b/gcc/config/gnu.h
+@@ -31,3 +31,6 @@ along with GCC.  If not, see <http://www.gnu.org/licenses/>.
+ 	builtin_assert ("system=unix");		\
+ 	builtin_assert ("system=posix");	\
+     } while (0)
++
++#define GNU_USER_TARGET_D_OS_BUILTINS()		\
++  builtin_version ("Hurd")
+--- a/gcc/config/i386/cygwin.h
++++ b/gcc/config/i386/cygwin.h
+@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.  If not see
+     }								\
+   while (0)
+ 
++#define EXTRA_TARGET_D_OS_BUILTINS()				\
++    do {							\
++      builtin_version ("Cygwin");				\
++      builtin_version ("Posix");				\
++    } while (0)
++
+ #undef CPP_SPEC
+ #define CPP_SPEC "%(cpp_cpu) %{posix:-D_POSIX_SOURCE} \
+   %{!ansi:-Dunix} \
 --- a/gcc/config/i386/i386-d.c
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
@@ -865,6 +1097,49 @@ These official OS versions are not implemented:
  #ifndef CC1_SPEC
  #define CC1_SPEC "%(cc1_cpu) "
  #endif
+--- a/gcc/config/i386/linux-common.h
++++ b/gcc/config/i386/linux-common.h
+@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.  If not see
+     }                                          \
+   while (0)
+ 
++#define EXTRA_TARGET_D_OS_BUILTINS()	       \
++  ANDROID_TARGET_D_OS_BUILTINS();
++
+ #undef CC1_SPEC
+ #define CC1_SPEC \
+   LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC, \
+--- a/gcc/config/i386/mingw32.h
++++ b/gcc/config/i386/mingw32.h
+@@ -53,6 +53,16 @@ along with GCC; see the file COPYING3.  If not see
+     }								\
+   while (0)
+ 
++#define EXTRA_TARGET_D_OS_BUILTINS()				\
++    do {							\
++      builtin_version ("MinGW");				\
++								\
++      if (TARGET_64BIT && ix86_abi == MS_ABI)			\
++	  builtin_version ("Win64");				\
++      else if (!TARGET_64BIT)					\
++        builtin_version ("Win32");				\
++    } while (0)
++
+ #ifndef TARGET_USE_PTHREAD_BY_DEFAULT
+ #define SPEC_PTHREAD1 "pthread"
+ #define SPEC_PTHREAD2 "!no-pthread"
+--- a/gcc/config/i386/t-cygming
++++ b/gcc/config/i386/t-cygming
+@@ -32,6 +32,9 @@ winnt-cxx.o: $(srcdir)/config/i386/winnt-cxx.c $(CONFIG_H) $(SYSTEM_H) coretypes
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+ 	$(srcdir)/config/i386/winnt-cxx.c
+ 
++winnt-d.o: config/winnt-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
+ 
+ winnt-stubs.o: $(srcdir)/config/i386/winnt-stubs.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
+   $(TM_H) $(RTL_H) $(REGS_H) hard-reg-set.h output.h $(TREE_H) flags.h \
 --- a/gcc/config/i386/t-i386
 +++ b/gcc/config/i386/t-i386
 @@ -24,6 +24,10 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c
@@ -878,8 +1153,54 @@ These official OS versions are not implemented:
  i386.o: i386-builtin-types.inc
  
  i386-builtin-types.inc: s-i386-bt ; @true
---- a/gcc/config/ia64/ia64-d.c
-+++ b/gcc/config/ia64/ia64-d.c
+--- a/gcc/config/i386/winnt-d.c
++++ b/gcc/config/i386/winnt-d.c
+@@ -0,0 +1,45 @@
++/* Windows support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "target.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++#include "tm_p.h"
++
++/* Implement TARGET_D_OS_BUILTINS for darwin targets.  */
++
++static void
++winnt_d_os_builtins (void)
++{
++  d_add_builtin_version ("Windows");
++
++#ifndef EXTRA_TARGET_D_OS_BUILTINS
++# define EXTRA_TARGET_D_OS_BUILTINS()
++#endif
++
++#define builtin_version(TXT) d_add_builtin_version (TXT)
++
++  EXTRA_TARGET_D_OS_BUILTINS ();
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS winnt_d_os_builtins
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 @@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the IA64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
@@ -949,6 +1270,68 @@ These official OS versions are not implemented:
  # genattrtab generates very long string literals.
  insn-attrtab.o-warn = -Wno-error
  
+--- a/gcc/config/kfreebsd-gnu.h
++++ b/gcc/config/kfreebsd-gnu.h
+@@ -29,6 +29,9 @@ along with GCC; see the file COPYING3.  If not see
+     }						\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_OS_BUILTINS()		\
++  builtin_version ("FreeBSD")
++
+ #define GNU_USER_DYNAMIC_LINKER        GLIBC_DYNAMIC_LINKER
+ #define GNU_USER_DYNAMIC_LINKER32      GLIBC_DYNAMIC_LINKER32
+ #define GNU_USER_DYNAMIC_LINKER64      GLIBC_DYNAMIC_LINKER64
+--- a/gcc/config/kopensolaris-gnu.h
++++ b/gcc/config/kopensolaris-gnu.h
+@@ -30,5 +30,8 @@ along with GCC; see the file COPYING3.  If not see
+     }						\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_OS_BUILTINS()		\
++  builtin_version ("Solaris")
++
+ #undef GNU_USER_DYNAMIC_LINKER
+ #define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
+--- a/gcc/config/linux-android.h
++++ b/gcc/config/linux-android.h
+@@ -25,6 +25,12 @@
+ 	  builtin_define ("__ANDROID__");			\
+     } while (0)
+ 
++#define ANDROID_TARGET_D_OS_BUILTINS()				\
++    do {							\
++	if (TARGET_ANDROID)					\
++	  builtin_version ("Android");				\
++    } while (0)
++
+ #if ANDROID_DEFAULT
+ # define NOANDROID "mno-android"
+ #else
+--- a/gcc/config/linux.h
++++ b/gcc/config/linux.h
+@@ -53,6 +53,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ 	builtin_assert ("system=posix");			\
+     } while (0)
+ 
++#define GNU_USER_TARGET_D_OS_BUILTINS()				\
++  builtin_version ("linux")
++
+ /* Determine which dynamic linker to use depending on whether GLIBC or
+    uClibc or Bionic or musl is the default C library and whether
+    -muclibc or -mglibc or -mbionic or -mmusl has been passed to change
+--- a/gcc/config/mips/linux-common.h
++++ b/gcc/config/mips/linux-common.h
+@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.  If not see
+     ANDROID_TARGET_OS_CPP_BUILTINS();				\
+   } while (0)
+ 
++#define EXTRA_TARGET_D_OS_BUILTINS()				\
++  ANDROID_TARGET_D_OS_BUILTINS();
++
+ #undef  LINK_SPEC
+ #define LINK_SPEC							\
+   LINUX_OR_ANDROID_LD (GNU_USER_TARGET_LINK_SPEC,			\
 --- a/gcc/config/mips/mips-d.c
 +++ b/gcc/config/mips/mips-d.c
 @@ -0,0 +1,56 @@
@@ -1040,6 +1423,46 @@ These official OS versions are not implemented:
 +mips-d.o: $(srcdir)/config/mips/mips-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
+--- a/gcc/config/netbsd-d.c
++++ b/gcc/config/netbsd-d.c
+@@ -0,0 +1,37 @@
++/* NetBSD support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm_d.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++/* Implement TARGET_D_OS_BUILTINS for NetBSD targets.  */
++
++static void
++netbsd_d_os_builtins (void)
++{
++  d_add_builtin_version ("NetBSD");
++  d_add_builtin_version ("Posix");
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS netbsd_d_os_builtins
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/nvptx/nvptx-d.c
 +++ b/gcc/config/nvptx/nvptx-d.c
 @@ -0,0 +1,34 @@
@@ -1111,6 +1534,46 @@ These official OS versions are not implemented:
 +nvptx-d.o: $(srcdir)/config/nvptx/nvptx-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
+--- a/gcc/config/openbsd-d.c
++++ b/gcc/config/openbsd-d.c
+@@ -0,0 +1,37 @@
++/* OpenBSD support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm_d.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++/* Implement TARGET_D_OS_BUILTINS for OpenBSD targets.  */
++
++static void
++openbsd_d_os_builtins (void)
++{
++  d_add_builtin_version ("OpenBSD");
++  d_add_builtin_version ("Posix");
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS openbsd_d_os_builtins
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/pa/pa-d.c
 +++ b/gcc/config/pa/pa-d.c
 @@ -0,0 +1,39 @@
@@ -1574,6 +2037,46 @@ These official OS versions are not implemented:
  sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
    $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
+--- a/gcc/config/sol2-d.c
++++ b/gcc/config/sol2-d.c
+@@ -0,0 +1,37 @@
++/* Solaris support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm_d.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++
++/* Implement TARGET_D_OS_BUILTINS for Solaris targets.  */
++
++static void
++solaris_d_os_builtins (void)
++{
++  d_add_builtin_version ("Solaris");
++  d_add_builtin_version ("Posix");
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS solaris_d_os_builtins
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/sparc/sparc-d.c
 +++ b/gcc/config/sparc/sparc-d.c
 @@ -0,0 +1,48 @@
@@ -1657,6 +2160,30 @@ These official OS versions are not implemented:
 +sparc-d.o: $(srcdir)/config/sparc/sparc-d.c
 +	  $(COMPILE) $<
 +	  $(POSTCOMPILE)
+--- a/gcc/config/t-darwin
++++ b/gcc/config/t-darwin
+@@ -26,6 +26,9 @@ darwin-c.o: $(srcdir)/config/darwin-c.c
+ 	$(COMPILE) $(PREPROCESSOR_DEFINES) $<
+ 	$(POSTCOMPILE)
+ 
++darwin-d.o: $(srcdir)/config/darwin-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
+ 
+ darwin-f.o: $(srcdir)/config/darwin-f.c
+ 	$(COMPILE) $<
+--- a/gcc/config/t-dragonfly
++++ b/gcc/config/t-dragonfly
+@@ -0,0 +1,3 @@
++dragonfly-d.o: config/dragonfly-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
+--- a/gcc/config/t-freebsd
++++ b/gcc/config/t-freebsd
+@@ -0,0 +1,3 @@
++freebsd-d.o: config/freebsd-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/t-glibc
 +++ b/gcc/config/t-glibc
 @@ -19,3 +19,7 @@
@@ -1667,6 +2194,35 @@ These official OS versions are not implemented:
 +glibc-d.o: config/glibc-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
+--- a/gcc/config/t-netbsd
++++ b/gcc/config/t-netbsd
+@@ -0,0 +1,3 @@
++netbsd-d.o: config/netbsd-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
+--- a/gcc/config/t-openbsd
++++ b/gcc/config/t-openbsd
+@@ -1,2 +1,6 @@
+ # We don't need GCC's own include files.
+ USER_H = $(EXTRA_HEADERS)
++
++openbsd-d.o: config/openbsd-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
+--- a/gcc/config/t-sol2
++++ b/gcc/config/t-sol2
+@@ -26,6 +26,11 @@ sol2-cxx.o: $(srcdir)/config/sol2-cxx.c
+ 	$(COMPILE) $<
+ 	$(POSTCOMPILE)
+ 
++# Solaris-specific D support.
++sol2-d.o: $(srcdir)/config/sol2-d.c
++	$(COMPILE) $<
++	$(POSTCOMPILE)
++
+ # Corresponding stub routines.
+ sol2-stubs.o: $(srcdir)/config/sol2-stubs.c
+ 	$(COMPILE) $<
 --- a/gcc/configure
 +++ b/gcc/configure
 @@ -612,6 +612,7 @@ ISLLIBS
