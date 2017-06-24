@@ -511,6 +511,17 @@ These official OS versions are not implemented:
 +  d_add_builtin_version ("AArch64");
 +  d_add_builtin_version ("D_HardFloat");
 +}
+--- a/gcc/config/aarch64/aarch64-linux.h
++++ b/gcc/config/aarch64/aarch64-linux.h
+@@ -80,6 +80,8 @@
+     }						\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_CRITSEC_SIZE 48
++
+ #define TARGET_ASM_FILE_END file_end_indicate_exec_stack
+ 
+ /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
 @@ -475,6 +475,9 @@ enum aarch64_parse_opt_result aarch64_parse_extension (const char *,
@@ -729,7 +740,7 @@ These official OS versions are not implemented:
  arm-common.o: $(srcdir)/config/arm/arm-cpu-cdata.h
 --- a/gcc/config/darwin-d.c
 +++ b/gcc/config/darwin-d.c
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,55 @@
 +/* Darwin support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -764,8 +775,25 @@ These official OS versions are not implemented:
 +  d_add_builtin_version ("Posix");
 +}
 +
++/* Implement TARGET_D_CRITSEC_SIZE for Darwin targets.  */
++
++static unsigned
++darwin_d_critsec_size (void)
++{
++  /* This is the sizeof pthread_mutex_t.  */
++  if (TYPE_PRECISION (long_integer_type_node) == 64
++      && POINTER_SIZE == 64
++      && TYPE_PRECISION (integer_type_node) == 32)
++    return 64;
++  else
++    return 44;
++}
++
 +#undef TARGET_D_OS_BUILTINS
 +#define TARGET_D_OS_BUILTINS darwin_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE darwin_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/default-d.c
@@ -798,8 +826,8 @@ These official OS versions are not implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/dragonfly-d.c
 +++ b/gcc/config/dragonfly-d.c
-@@ -0,0 +1,37 @@
-+/* Dragonfly support needed only by D front-end.
+@@ -0,0 +1,49 @@
++/* DragonFly support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify it under
@@ -823,7 +851,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for Dragonfly targets.  */
++/* Implement TARGET_D_OS_BUILTINS for DragonFly targets.  */
 +
 +static void
 +dragonfly_d_os_builtins (void)
@@ -832,8 +860,20 @@ These official OS versions are not implemented:
 +  d_add_builtin_version ("Posix");
 +}
 +
++/* Implement TARGET_D_CRITSEC_SIZE for DragonFly targets.  */
++
++static unsigned
++dragonfly_d_critsec_size (void)
++{
++  /* This is the sizeof pthread_mutex_t, an opaque pointer.  */
++  return POINTER_SIZE_UNITS;
++}
++
 +#undef TARGET_D_OS_BUILTINS
 +#define TARGET_D_OS_BUILTINS dragonfly_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE dragonfly_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/epiphany/epiphany-d.c
@@ -902,7 +942,7 @@ These official OS versions are not implemented:
 +	  $(POSTCOMPILE)
 --- a/gcc/config/freebsd-d.c
 +++ b/gcc/config/freebsd-d.c
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,49 @@
 +/* FreeBSD support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -936,13 +976,25 @@ These official OS versions are not implemented:
 +  d_add_builtin_version ("Posix");
 +}
 +
++/* Implement TARGET_D_CRITSEC_SIZE for FreeBSD targets.  */
++
++static unsigned
++freebsd_d_critsec_size (void)
++{
++  /* This is the sizeof pthread_mutex_t, an opaque pointer.  */
++  return POINTER_SIZE_UNITS;
++}
++
 +#undef TARGET_D_OS_BUILTINS
 +#define TARGET_D_OS_BUILTINS freebsd_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE freebsd_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/glibc-d.c
 +++ b/gcc/config/glibc-d.c
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,72 @@
 +/* Glibc support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -982,24 +1034,37 @@ These official OS versions are not implemented:
 +  else if (OPTION_MUSL)
 +    d_add_builtin_version ("CRuntime_Musl");
 +
-+#ifndef GNU_USER_TARGET_D_OS_BUILTINS
-+# define GNU_USER_TARGET_D_OS_BUILTINS()
-+#endif
-+
-+#ifndef EXTRA_TARGET_D_OS_BUILTINS
-+# define EXTRA_TARGET_D_OS_BUILTINS()
-+#endif
++  d_add_builtin_version ("Posix");
 +
 +#define builtin_version(TXT) d_add_builtin_version (TXT)
 +
++#ifdef GNU_USER_TARGET_D_OS_BUILTINS
 +  GNU_USER_TARGET_D_OS_BUILTINS ();
-+  EXTRA_TARGET_D_OS_BUILTINS ();
++#endif
 +
-+  d_add_builtin_version ("Posix");
++#ifdef EXTRA_TARGET_D_OS_BUILTINS
++  EXTRA_TARGET_D_OS_BUILTINS ();
++#endif
++}
++
++/* Implement TARGET_D_CRITSEC_SIZE for Glibc targets.  */
++
++static unsigned
++glibc_d_critsec_size (void)
++{
++  /* This is the sizeof pthread_mutex_t.  */
++#ifdef GNU_USER_TARGET_D_CRITSEC_SIZE
++  return GNU_USER_TARGET_D_CRITSEC_SIZE;
++#else
++  return (POINTER_SIZE == 64) ? 40 : 24;
++#endif
 +}
 +
 +#undef TARGET_D_OS_BUILTINS
 +#define TARGET_D_OS_BUILTINS glibc_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE glibc_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/gnu.h
@@ -1099,12 +1164,15 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/i386/linux-common.h
 +++ b/gcc/config/i386/linux-common.h
-@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.  If not see
+@@ -27,6 +27,12 @@ along with GCC; see the file COPYING3.  If not see
      }                                          \
    while (0)
  
-+#define EXTRA_TARGET_D_OS_BUILTINS()	       \
++#define EXTRA_TARGET_D_OS_BUILTINS()		\
 +  ANDROID_TARGET_D_OS_BUILTINS();
++
++#define GNU_USER_TARGET_D_CRITSEC_SIZE		\
++  (TARGET_64BIT ? (POINTER_SIZE == 64 ? 40 : 32) : 24)
 +
  #undef CC1_SPEC
  #define CC1_SPEC \
@@ -1153,54 +1221,8 @@ These official OS versions are not implemented:
  i386.o: i386-builtin-types.inc
  
  i386-builtin-types.inc: s-i386-bt ; @true
---- a/gcc/config/i386/winnt-d.c
-+++ b/gcc/config/i386/winnt-d.c
-@@ -0,0 +1,45 @@
-+/* Windows support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "target.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+#include "tm_p.h"
-+
-+/* Implement TARGET_D_OS_BUILTINS for darwin targets.  */
-+
-+static void
-+winnt_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("Windows");
-+
-+#ifndef EXTRA_TARGET_D_OS_BUILTINS
-+# define EXTRA_TARGET_D_OS_BUILTINS()
-+#endif
-+
-+#define builtin_version(TXT) d_add_builtin_version (TXT)
-+
-+  EXTRA_TARGET_D_OS_BUILTINS ();
-+}
-+
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS winnt_d_os_builtins
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
+--- a/gcc/config/ia64/ia64-d.c
++++ b/gcc/config/ia64/ia64-d.c
 @@ -0,0 +1,31 @@
 +/* Subroutines for the D front end on the IA64 architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
@@ -1425,7 +1447,7 @@ These official OS versions are not implemented:
 +	  $(POSTCOMPILE)
 --- a/gcc/config/netbsd-d.c
 +++ b/gcc/config/netbsd-d.c
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,49 @@
 +/* NetBSD support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1459,8 +1481,20 @@ These official OS versions are not implemented:
 +  d_add_builtin_version ("Posix");
 +}
 +
++/* Implement TARGET_D_CRITSEC_SIZE for NetBSD targets.  */
++
++static unsigned
++netbsd_d_critsec_size (void)
++{
++  /* This is the sizeof pthread_mutex_t.  */
++  return 48;
++}
++
 +#undef TARGET_D_OS_BUILTINS
 +#define TARGET_D_OS_BUILTINS netbsd_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE netbsd_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/nvptx/nvptx-d.c
@@ -1536,7 +1570,7 @@ These official OS versions are not implemented:
 +	  $(POSTCOMPILE)
 --- a/gcc/config/openbsd-d.c
 +++ b/gcc/config/openbsd-d.c
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,49 @@
 +/* OpenBSD support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1570,8 +1604,20 @@ These official OS versions are not implemented:
 +  d_add_builtin_version ("Posix");
 +}
 +
++/* Implement TARGET_D_CRITSEC_SIZE for OpenBSD targets.  */
++
++static unsigned
++openbsd_d_critsec_size (void)
++{
++  /* This is the sizeof pthread_mutex_t, an opaque pointer.  */
++  return POINTER_SIZE_UNITS;
++}
++
 +#undef TARGET_D_OS_BUILTINS
 +#define TARGET_D_OS_BUILTINS openbsd_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE openbsd_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/pa/pa-d.c
@@ -1616,6 +1662,17 @@ These official OS versions are not implemented:
 +  else
 +    d_add_builtin_version ("D_HardFloat");
 +}
+--- a/gcc/config/pa/pa-linux.h
++++ b/gcc/config/pa/pa-linux.h
+@@ -27,6 +27,8 @@ along with GCC; see the file COPYING3.  If not see
+     }						\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_CRITSEC_SIZE 48
++
+ #undef CPP_SPEC
+ #define CPP_SPEC "%{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}"
+ 
 --- a/gcc/config/pa/pa-protos.h
 +++ b/gcc/config/pa/pa-protos.h
 @@ -118,3 +118,6 @@ extern bool pa_modes_tieable_p (machine_mode, machine_mode);
@@ -2039,7 +2096,7 @@ These official OS versions are not implemented:
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- a/gcc/config/sol2-d.c
 +++ b/gcc/config/sol2-d.c
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,49 @@
 +/* Solaris support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -2073,8 +2130,20 @@ These official OS versions are not implemented:
 +  d_add_builtin_version ("Posix");
 +}
 +
++/* Implement TARGET_D_CRITSEC_SIZE for Solaris targets.  */
++
++static unsigned
++solaris_d_critsec_size (void)
++{
++  /* This is the sizeof pthread_mutex_t.  */
++  return 24;
++}
++
 +#undef TARGET_D_OS_BUILTINS
 +#define TARGET_D_OS_BUILTINS solaris_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE solaris_d_critsec_size
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/sparc/sparc-d.c
@@ -2223,6 +2292,69 @@ These official OS versions are not implemented:
  # Corresponding stub routines.
  sol2-stubs.o: $(srcdir)/config/sol2-stubs.c
  	$(COMPILE) $<
+--- a/gcc/config/winnt-d.c
++++ b/gcc/config/winnt-d.c
+@@ -0,0 +1,60 @@
++/* Windows support needed only by D front-end.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING3.  If not see
++<http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "target.h"
++#include "d/d-target.h"
++#include "d/d-target-def.h"
++#include "tm_p.h"
++
++/* Implement TARGET_D_OS_BUILTINS for Windows targets.  */
++
++static void
++winnt_d_os_builtins (void)
++{
++  d_add_builtin_version ("Windows");
++
++#define builtin_version(TXT) d_add_builtin_version (TXT)
++
++#ifdef EXTRA_TARGET_D_OS_BUILTINS
++  EXTRA_TARGET_D_OS_BUILTINS ();
++#endif
++}
++
++/* Implement TARGET_D_CRITSEC_SIZE for Windows targets.  */
++
++static unsigned
++winnt_d_critsec_size (void)
++{
++  /* This is the sizeof CRITICAL_SECTION.  */
++  if (TYPE_PRECISION (long_integer_type_node) == 64
++      && POINTER_SIZE == 64
++      && TYPE_PRECISION (integer_type_node) == 32)
++    return 40;
++  else
++    return 24;
++}
++
++#undef TARGET_D_OS_BUILTINS
++#define TARGET_D_OS_BUILTINS winnt_d_os_builtins
++
++#undef TARGET_D_CRITSEC_SIZE
++#define TARGET_D_CRITSEC_SIZE winnt_d_critsec_size
++
++struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/configure
 +++ b/gcc/configure
 @@ -612,6 +612,7 @@ ISLLIBS
