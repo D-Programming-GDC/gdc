@@ -503,7 +503,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for ARM64 targets.  */
 +
 +void
 +aarch64_d_target_versions (void)
@@ -536,13 +536,12 @@ These official OS versions are not implemented:
  #endif /* GCC_AARCH64_PROTOS_H */
 --- a/gcc/config/aarch64/aarch64.h
 +++ b/gcc/config/aarch64/aarch64.h
-@@ -26,6 +26,10 @@
+@@ -26,6 +26,9 @@
  #define TARGET_CPU_CPP_BUILTINS()	\
    aarch64_cpu_cpp_builtins (pfile)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS		\
-+  aarch_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS aarch64_d_target_versions
 +
  
  
@@ -554,8 +553,8 @@ These official OS versions are not implemented:
  		$(srcdir)/config/aarch64/aarch64-c.c
  
 +aarch64-d.o: $(srcdir)/config/aarch64/aarch64-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  PASSES_EXTRA += $(srcdir)/config/aarch64/aarch64-passes.def
  
@@ -587,7 +586,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for Alpha targets.  */
 +
 +void
 +alpha_d_target_versions (void)
@@ -619,8 +618,8 @@ These official OS versions are not implemented:
    while (0)
  #endif
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS alpha_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS alpha_d_target_versions
 +
  /* Run-time compilation parameters selecting different hardware subsets.  */
  
@@ -632,8 +631,8 @@ These official OS versions are not implemented:
  # <http://www.gnu.org/licenses/>.
  
 +alpha-d.o: $(srcdir)/config/alpha/alpha-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  PASSES_EXTRA += $(srcdir)/config/alpha/alpha-passes.def
 --- a/gcc/config/arm/arm-d.c
@@ -663,7 +662,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for ARM targets.  */
 +
 +void
 +arm_d_target_versions (void)
@@ -709,8 +708,8 @@ These official OS versions are not implemented:
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() arm_cpu_cpp_builtins (pfile)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS arm_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS arm_d_target_versions
 +
  #include "config/arm/arm-opts.h"
  
@@ -721,8 +720,8 @@ These official OS versions are not implemented:
      }						\
    while (false)
  
-+#define EXTRA_TARGET_D_OS_BUILTINS()		\
-+  ANDROID_TARGET_D_OS_BUILTINS();
++#define EXTRA_TARGET_D_OS_VERSIONS()		\
++  ANDROID_TARGET_D_OS_VERSIONS();
 +
  /* We default to a soft-float ABI so that binaries can run on all
     target hardware.  If you override this to use the hard-float ABI then
@@ -734,8 +733,8 @@ These official OS versions are not implemented:
  		$(srcdir)/config/arm/arm-c.c
  
 +arm-d.o: $(srcdir)/config/arm/arm-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  arm-common.o: $(srcdir)/config/arm/arm-cpu-cdata.h
 --- a/gcc/config/darwin-d.c
@@ -765,7 +764,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for Darwin targets.  */
++/* Implement TARGET_D_OS_VERSIONS for Darwin targets.  */
 +
 +static void
 +darwin_d_os_builtins (void)
@@ -789,8 +788,8 @@ These official OS versions are not implemented:
 +    return 44;
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS darwin_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS darwin_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE darwin_d_critsec_size
@@ -851,7 +850,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for DragonFly targets.  */
++/* Implement TARGET_D_OS_VERSIONS for DragonFly targets.  */
 +
 +static void
 +dragonfly_d_os_builtins (void)
@@ -869,8 +868,8 @@ These official OS versions are not implemented:
 +  return POINTER_SIZE_UNITS;
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS dragonfly_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS dragonfly_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE dragonfly_d_critsec_size
@@ -902,7 +901,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for EPIPHANY targets.  */
 +
 +void
 +epiphany_d_target_versions (void)
@@ -924,8 +923,8 @@ These official OS versions are not implemented:
  	builtin_assert ("machine=epiphany");	\
      } while (0)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS epiphany_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS epiphany_d_target_versions
 +
  /* Pick up the libgloss library. One day we may do this by linker script, but
     for now its static.
@@ -938,8 +937,8 @@ These official OS versions are not implemented:
  	  < specs.install > $@ ; \
 +
 +epiphany-d.o: $(srcdir)/config/epiphany/epiphany-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/freebsd-d.c
 +++ b/gcc/config/freebsd-d.c
 @@ -0,0 +1,49 @@
@@ -967,7 +966,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for FreeBSD targets.  */
++/* Implement TARGET_D_OS_VERSIONS for FreeBSD targets.  */
 +
 +static void
 +freebsd_d_os_builtins (void)
@@ -985,8 +984,8 @@ These official OS versions are not implemented:
 +  return POINTER_SIZE_UNITS;
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS freebsd_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS freebsd_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE freebsd_d_critsec_size
@@ -1020,7 +1019,7 @@ These official OS versions are not implemented:
 +#include "d/d-target-def.h"
 +#include "tm_p.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for Glibc targets.  */
++/* Implement TARGET_D_OS_VERSIONS for Glibc targets.  */
 +
 +static void
 +glibc_d_os_builtins (void)
@@ -1038,12 +1037,12 @@ These official OS versions are not implemented:
 +
 +#define builtin_version(TXT) d_add_builtin_version (TXT)
 +
-+#ifdef GNU_USER_TARGET_D_OS_BUILTINS
-+  GNU_USER_TARGET_D_OS_BUILTINS ();
++#ifdef GNU_USER_TARGET_D_OS_VERSIONS
++  GNU_USER_TARGET_D_OS_VERSIONS ();
 +#endif
 +
-+#ifdef EXTRA_TARGET_D_OS_BUILTINS
-+  EXTRA_TARGET_D_OS_BUILTINS ();
++#ifdef EXTRA_TARGET_D_OS_VERSIONS
++  EXTRA_TARGET_D_OS_VERSIONS ();
 +#endif
 +}
 +
@@ -1060,8 +1059,8 @@ These official OS versions are not implemented:
 +#endif
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS glibc_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS glibc_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE glibc_d_critsec_size
@@ -1074,7 +1073,7 @@ These official OS versions are not implemented:
  	builtin_assert ("system=posix");	\
      } while (0)
 +
-+#define GNU_USER_TARGET_D_OS_BUILTINS()		\
++#define GNU_USER_TARGET_D_OS_VERSIONS()		\
 +  builtin_version ("Hurd")
 --- a/gcc/config/i386/cygwin.h
 +++ b/gcc/config/i386/cygwin.h
@@ -1082,7 +1081,7 @@ These official OS versions are not implemented:
      }								\
    while (0)
  
-+#define EXTRA_TARGET_D_OS_BUILTINS()				\
++#define EXTRA_TARGET_D_OS_VERSIONS()				\
 +    do {							\
 +      builtin_version ("Cygwin");				\
 +      builtin_version ("Posix");				\
@@ -1118,7 +1117,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for x86 targets.  */
 +
 +void
 +ix86_d_target_versions (void)
@@ -1156,8 +1155,8 @@ These official OS versions are not implemented:
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS ix86_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS ix86_d_target_versions
 +
  #ifndef CC1_SPEC
  #define CC1_SPEC "%(cc1_cpu) "
@@ -1168,8 +1167,8 @@ These official OS versions are not implemented:
      }                                          \
    while (0)
  
-+#define EXTRA_TARGET_D_OS_BUILTINS()		\
-+  ANDROID_TARGET_D_OS_BUILTINS();
++#define EXTRA_TARGET_D_OS_VERSIONS()		\
++  ANDROID_TARGET_D_OS_VERSIONS();
 +
 +#define GNU_USER_TARGET_D_CRITSEC_SIZE		\
 +  (TARGET_64BIT ? (POINTER_SIZE == 64 ? 40 : 32) : 24)
@@ -1183,7 +1182,7 @@ These official OS versions are not implemented:
      }								\
    while (0)
  
-+#define EXTRA_TARGET_D_OS_BUILTINS()				\
++#define EXTRA_TARGET_D_OS_VERSIONS()				\
 +    do {							\
 +      builtin_version ("MinGW");				\
 +								\
@@ -1215,8 +1214,8 @@ These official OS versions are not implemented:
  	  $(POSTCOMPILE)
  
 +i386-d.o: $(srcdir)/config/i386/i386-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  i386.o: i386-builtin-types.inc
  
@@ -1247,7 +1246,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for IA64 targets.  */
 +
 +void
 +ia64_d_target_versions (void)
@@ -1273,8 +1272,8 @@ These official OS versions are not implemented:
  	  builtin_define("__BIG_ENDIAN__");	\
  } while (0)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS ia64_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS ia64_d_target_versions
 +
  #ifndef SUBTARGET_EXTRA_SPECS
  #define SUBTARGET_EXTRA_SPECS
@@ -1286,8 +1285,8 @@ These official OS versions are not implemented:
  		$(srcdir)/config/ia64/ia64-c.c
  
 +ia64-d.o: $(srcdir)/config/ia64/ia64-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  # genattrtab generates very long string literals.
  insn-attrtab.o-warn = -Wno-error
@@ -1298,7 +1297,7 @@ These official OS versions are not implemented:
      }						\
    while (0)
  
-+#define GNU_USER_TARGET_D_OS_BUILTINS()		\
++#define GNU_USER_TARGET_D_OS_VERSIONS()		\
 +  builtin_version ("FreeBSD")
 +
  #define GNU_USER_DYNAMIC_LINKER        GLIBC_DYNAMIC_LINKER
@@ -1310,7 +1309,7 @@ These official OS versions are not implemented:
      }						\
    while (0)
  
-+#define GNU_USER_TARGET_D_OS_BUILTINS()		\
++#define GNU_USER_TARGET_D_OS_VERSIONS()		\
 +  builtin_version ("Solaris")
 +
  #undef GNU_USER_DYNAMIC_LINKER
@@ -1321,7 +1320,7 @@ These official OS versions are not implemented:
  	  builtin_define ("__ANDROID__");			\
      } while (0)
  
-+#define ANDROID_TARGET_D_OS_BUILTINS()				\
++#define ANDROID_TARGET_D_OS_VERSIONS()				\
 +    do {							\
 +	if (TARGET_ANDROID)					\
 +	  builtin_version ("Android");				\
@@ -1336,7 +1335,7 @@ These official OS versions are not implemented:
  	builtin_assert ("system=posix");			\
      } while (0)
  
-+#define GNU_USER_TARGET_D_OS_BUILTINS()				\
++#define GNU_USER_TARGET_D_OS_VERSIONS()				\
 +  builtin_version ("linux")
 +
  /* Determine which dynamic linker to use depending on whether GLIBC or
@@ -1348,8 +1347,8 @@ These official OS versions are not implemented:
      ANDROID_TARGET_OS_CPP_BUILTINS();				\
    } while (0)
  
-+#define EXTRA_TARGET_D_OS_BUILTINS()				\
-+  ANDROID_TARGET_D_OS_BUILTINS();
++#define EXTRA_TARGET_D_OS_VERSIONS()				\
++  ANDROID_TARGET_D_OS_VERSIONS();
 +
  #undef  LINK_SPEC
  #define LINK_SPEC							\
@@ -1381,7 +1380,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for MIPS targets.  */
 +
 +void
 +mips_d_target_versions (void)
@@ -1429,8 +1428,8 @@ These official OS versions are not implemented:
      }									\
    while (0)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS mips_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS mips_d_target_versions
 +
  /* Default target_flags if no switches are specified  */
  
@@ -1443,8 +1442,8 @@ These official OS versions are not implemented:
  	$(POSTCOMPILE)
 +
 +mips-d.o: $(srcdir)/config/mips/mips-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/netbsd-d.c
 +++ b/gcc/config/netbsd-d.c
 @@ -0,0 +1,49 @@
@@ -1472,7 +1471,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for NetBSD targets.  */
++/* Implement TARGET_D_OS_VERSIONS for NetBSD targets.  */
 +
 +static void
 +netbsd_d_os_builtins (void)
@@ -1490,8 +1489,8 @@ These official OS versions are not implemented:
 +  return 48;
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS netbsd_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS netbsd_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE netbsd_d_critsec_size
@@ -1524,7 +1523,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for NVPTX targets.  */
 +
 +void
 +nvptx_d_target_versions (void)
@@ -1552,8 +1551,8 @@ These official OS versions are not implemented:
          builtin_define ("__nvptx_unisimt__");	\
      } while (0)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS nvptx_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS nvptx_d_target_versions
 +
  /* Avoid the default in ../../gcc.c, which adds "-pthread", which is not
     supported for nvptx.  */
@@ -1566,8 +1565,8 @@ These official OS versions are not implemented:
  MULTILIB_OPTIONS = mgomp
 +
 +nvptx-d.o: $(srcdir)/config/nvptx/nvptx-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/openbsd-d.c
 +++ b/gcc/config/openbsd-d.c
 @@ -0,0 +1,49 @@
@@ -1595,7 +1594,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for OpenBSD targets.  */
++/* Implement TARGET_D_OS_VERSIONS for OpenBSD targets.  */
 +
 +static void
 +openbsd_d_os_builtins (void)
@@ -1613,8 +1612,8 @@ These official OS versions are not implemented:
 +  return POINTER_SIZE_UNITS;
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS openbsd_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS openbsd_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE openbsd_d_critsec_size
@@ -1647,7 +1646,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for HPPA targets.  */
 +
 +void
 +pa_d_target_versions (void)
@@ -1688,8 +1687,8 @@ These official OS versions are not implemented:
      }								\
    while (0)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS pa_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS pa_d_target_versions
 +
  #define CC1_SPEC "%{pg:} %{p:}"
  
@@ -1698,8 +1697,8 @@ These official OS versions are not implemented:
 +++ b/gcc/config/pa/t-pa
 @@ -0,0 +1,3 @@
 +pa-d.o: $(srcdir)/config/pa/pa-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/powerpcspe/powerpcspe-d.c
 +++ b/gcc/config/powerpcspe/powerpcspe-d.c
 @@ -0,0 +1,44 @@
@@ -1726,7 +1725,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for PowerPC targets.  */
 +
 +void
 +rs6000_d_target_versions (void)
@@ -1765,8 +1764,8 @@ These official OS versions are not implemented:
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS rs6000_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS rs6000_d_target_versions
 +
  /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
     we're compiling for.  Some configurations may need to override it.  */
@@ -1778,8 +1777,8 @@ These official OS versions are not implemented:
  	$(POSTCOMPILE)
  
 +powerpcspe-d.o: $(srcdir)/config/powerpcspe/powerpcspe-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  $(srcdir)/config/powerpcspe/powerpcspe-tables.opt: $(srcdir)/config/powerpcspe/genopt.sh \
    $(srcdir)/config/powerpcspe/powerpcspe-cpus.def
@@ -1787,7 +1786,7 @@ These official OS versions are not implemented:
 --- a/gcc/config/riscv/riscv-d.c
 +++ b/gcc/config/riscv/riscv-d.c
 @@ -0,0 +1,39 @@
-+/* Subroutines for the D front end on the ARM64 architecture.
++/* Subroutines for the D front end on the RISC-V architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
 +GCC is free software; you can redistribute it and/or modify
@@ -1811,7 +1810,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for RISC-V targets.  */
 +
 +void
 +riscv_d_target_versions (void)
@@ -1844,8 +1843,8 @@ These official OS versions are not implemented:
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() riscv_cpu_cpp_builtins (pfile)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS riscv_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS riscv_d_target_versions
 +
  /* Default target_flags if no switches are specified  */
  
@@ -1858,8 +1857,8 @@ These official OS versions are not implemented:
  		$(srcdir)/config/riscv/riscv-c.c
 +
 +riscv-d.o: $(srcdir)/config/riscv/riscv-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/rs6000/rs6000-d.c
 +++ b/gcc/config/rs6000/rs6000-d.c
 @@ -0,0 +1,45 @@
@@ -1887,7 +1886,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for PowerPC targets.  */
 +
 +void
 +rs6000_d_target_versions (void)
@@ -1926,8 +1925,8 @@ These official OS versions are not implemented:
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS rs6000_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS rs6000_d_target_versions
 +
  /* This is used by rs6000_cpu_cpp_builtins to indicate the byte order
     we're compiling for.  Some configurations may need to override it.  */
@@ -1939,8 +1938,8 @@ These official OS versions are not implemented:
  	$(POSTCOMPILE)
  
 +rs6000-d.o: $(srcdir)/config/rs6000/rs6000-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  $(srcdir)/config/rs6000/rs6000-tables.opt: $(srcdir)/config/rs6000/genopt.sh \
    $(srcdir)/config/rs6000/rs6000-cpus.def
@@ -1972,7 +1971,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for S/390 and zSeries targets.  */
 +
 +void
 +s390_d_target_versions (void)
@@ -2004,8 +2003,8 @@ These official OS versions are not implemented:
  /* Target CPU builtins.  */
  #define TARGET_CPU_CPP_BUILTINS() s390_cpu_cpp_builtins (pfile)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS s390_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS s390_d_target_versions
 +
  #ifdef DEFAULT_TARGET_64BIT
  #define TARGET_DEFAULT     (MASK_64BIT | MASK_ZARCH | MASK_HARD_DFP	\
@@ -2018,8 +2017,8 @@ These official OS versions are not implemented:
  		$(srcdir)/config/s390/s390-c.c
 +
 +s390-d.o: $(srcdir)/config/s390/s390-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/sh/sh-d.c
 +++ b/gcc/config/sh/sh-d.c
 @@ -0,0 +1,36 @@
@@ -2047,7 +2046,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for SuperH targets.  */
 +
 +void
 +sh_d_target_versions (void)
@@ -2075,8 +2074,8 @@ These official OS versions are not implemented:
  
  #define TARGET_CPU_CPP_BUILTINS() sh_cpu_cpp_builtins (pfile)
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS sh_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS sh_d_target_versions
 +
  /* Value should be nonzero if functions must have frame pointers.
     Zero means the frame pointer need not be set up (and parms may be accessed
@@ -2088,8 +2087,8 @@ These official OS versions are not implemented:
  		$(srcdir)/config/sh/sh-c.c
  
 +sh-d.o: $(srcdir)/config/sh/sh-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 +
  sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
    $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
@@ -2121,7 +2120,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for Solaris targets.  */
++/* Implement TARGET_D_OS_VERSIONS for Solaris targets.  */
 +
 +static void
 +solaris_d_os_builtins (void)
@@ -2139,8 +2138,8 @@ These official OS versions are not implemented:
 +  return 24;
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS solaris_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS solaris_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE solaris_d_critsec_size
@@ -2173,7 +2172,7 @@ These official OS versions are not implemented:
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
-+/* Implement TARGET_D_CPU_BUILTINS.  */
++/* Implement TARGET_D_CPU_VERSIONS for SPARC targets.  */
 +
 +void
 +sparc_d_target_versions (void)
@@ -2213,8 +2212,8 @@ These official OS versions are not implemented:
  
  #define TARGET_CPU_CPP_BUILTINS() sparc_target_macros ()
  
-+/* Target CPU builtins for D.  */
-+#define TARGET_D_CPU_BUILTINS sparc_d_target_versions
++/* Target CPU versions for D.  */
++#define TARGET_D_CPU_VERSIONS sparc_d_target_versions
 +
  /* Specify this in a cover file to provide bi-architecture (32/64) support.  */
  /* #define SPARC_BI_ARCH */
@@ -2227,8 +2226,8 @@ These official OS versions are not implemented:
  	$(POSTCOMPILE)
 +
 +sparc-d.o: $(srcdir)/config/sparc/sparc-d.c
-+	  $(COMPILE) $<
-+	  $(POSTCOMPILE)
++	$(COMPILE) $<
++	$(POSTCOMPILE)
 --- a/gcc/config/t-darwin
 +++ b/gcc/config/t-darwin
 @@ -26,6 +26,9 @@ darwin-c.o: $(srcdir)/config/darwin-c.c
@@ -2320,7 +2319,7 @@ These official OS versions are not implemented:
 +#include "d/d-target-def.h"
 +#include "tm_p.h"
 +
-+/* Implement TARGET_D_OS_BUILTINS for Windows targets.  */
++/* Implement TARGET_D_OS_VERSIONS for Windows targets.  */
 +
 +static void
 +winnt_d_os_builtins (void)
@@ -2329,8 +2328,8 @@ These official OS versions are not implemented:
 +
 +#define builtin_version(TXT) d_add_builtin_version (TXT)
 +
-+#ifdef EXTRA_TARGET_D_OS_BUILTINS
-+  EXTRA_TARGET_D_OS_BUILTINS ();
++#ifdef EXTRA_TARGET_D_OS_VERSIONS
++  EXTRA_TARGET_D_OS_VERSIONS ();
 +#endif
 +}
 +
@@ -2348,8 +2347,8 @@ These official OS versions are not implemented:
 +    return 24;
 +}
 +
-+#undef TARGET_D_OS_BUILTINS
-+#define TARGET_D_OS_BUILTINS winnt_d_os_builtins
++#undef TARGET_D_OS_VERSIONS
++#define TARGET_D_OS_VERSIONS winnt_d_os_builtins
 +
 +#undef TARGET_D_CRITSEC_SIZE
 +#define TARGET_D_CRITSEC_SIZE winnt_d_critsec_size
@@ -2483,7 +2482,15 @@ These official OS versions are not implemented:
  AC_SUBST_FILE(language_hooks)
 --- a/gcc/doc/tm.texi
 +++ b/gcc/doc/tm.texi
-@@ -106,6 +106,14 @@ documented as ``Common Target Hook''.  This is declared in
+@@ -52,6 +52,7 @@ through the macros defined in the @file{.h} file.
+ * MIPS Coprocessors::   MIPS coprocessor support and how to customize it.
+ * PCH Target::          Validity checking for precompiled headers.
+ * C++ ABI::             Controlling C++ ABI changes.
++* D Language and ABI::  Controlling D ABI changes.
+ * Named Address Spaces:: Adding support for named address spaces
+ * Misc::                Everything else.
+ @end menu
+@@ -106,6 +107,14 @@ documented as ``Common Target Hook''.  This is declared in
  @code{target_has_targetm_common=yes} in @file{config.gcc}; otherwise a
  default definition is used.
  
@@ -2498,28 +2505,40 @@ These official OS versions are not implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -662,6 +670,18 @@ This variable specifies the initial value of @code{target_flags}.
- Its default setting is 0.
- @end deftypevr
+@@ -10482,6 +10491,22 @@ unloaded. The default is to return false.
+ Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
+ @end deftypefn
  
-+@deftypefn {D Target Hook} void TARGET_D_OS_BUILTINS (void)
-+Declare predefined version identifiers
++@node D Language and ABI
++@section D ABI parameters
++@cindex parameters, d abi
++
++@deftypefn {D Target Hook} void TARGET_D_CPU_VERSIONS (void)
++Declare all environmental version identifiers relating to the target CPU using the function @code{builtin_version}, which takes a string representing the name of the version.  Version identifiers predefined by this hook apply to all modules and being compiled and imported.
 +@end deftypefn
 +
-+@deftypefn {D Target Hook} void TARGET_D_CPU_BUILTINS (void)
-+Declare predefined version identifiers
++@deftypefn {D Target Hook} void TARGET_D_OS_VERSIONS (void)
++Similarly to @code{TARGET_D_CPU_VERSIONS}, but is used for versions relating to the target operating system.
 +@end deftypefn
 +
 +@deftypefn {D Target Hook} unsigned TARGET_D_CRITSEC_SIZE (void)
-+Declare size of critical section
++Returns the size of the data structure used by the targeted operating system for critical sections and monitors.  For example, on Microsoft Windows this would return the @code{sizeof(CRITICAL_SECTION)}, while other platforms that implement pthreads would return @code{sizeof(pthread_mutex_t)}.
 +@end deftypefn
 +
- @cindex optional hardware or system features
- @cindex features, optional, in system conventions
- 
+ @node Named Address Spaces
+ @section Adding support for named address spaces
+ @cindex named address spaces
 --- a/gcc/doc/tm.texi.in
 +++ b/gcc/doc/tm.texi.in
-@@ -106,6 +106,14 @@ documented as ``Common Target Hook''.  This is declared in
+@@ -52,6 +52,7 @@ through the macros defined in the @file{.h} file.
+ * MIPS Coprocessors::   MIPS coprocessor support and how to customize it.
+ * PCH Target::          Validity checking for precompiled headers.
+ * C++ ABI::             Controlling C++ ABI changes.
++* D Language and ABI::  Controlling D ABI changes.
+ * Named Address Spaces:: Adding support for named address spaces
+ * Misc::                Everything else.
+ @end menu
+@@ -106,6 +107,14 @@ documented as ``Common Target Hook''.  This is declared in
  @code{target_has_targetm_common=yes} in @file{config.gcc}; otherwise a
  default definition is used.
  
@@ -2534,19 +2553,23 @@ These official OS versions are not implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -660,6 +668,12 @@ This variable specifies the initial value of @code{target_flags}.
- Its default setting is 0.
- @end deftypevr
+@@ -7473,6 +7482,16 @@ floating-point support; they are not included in this mechanism.
  
-+@hook TARGET_D_OS_BUILTINS
+ @hook TARGET_CXX_DECL_MANGLING_CONTEXT
+ 
++@node D Language and ABI
++@section D ABI parameters
++@cindex parameters, d abi
 +
-+@hook TARGET_D_CPU_BUILTINS
++@hook TARGET_D_CPU_VERSIONS
++
++@hook TARGET_D_OS_VERSIONS
 +
 +@hook TARGET_D_CRITSEC_SIZE
 +
- @cindex optional hardware or system features
- @cindex features, optional, in system conventions
- 
+ @node Named Address Spaces
+ @section Adding support for named address spaces
+ @cindex named address spaces
 --- a/gcc/genhooks.c
 +++ b/gcc/genhooks.c
 @@ -34,6 +34,7 @@ static struct hook_desc hook_array[] = {

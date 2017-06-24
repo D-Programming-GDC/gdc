@@ -36,6 +36,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
+#include "d-target.h"
 #include "id.h"
 
 
@@ -365,7 +366,7 @@ d_eval_constant_expression (tree cst)
 void
 d_add_builtin_version (const char* ident)
 {
-  /* For now, we need to tell the D frontend what platform is being targetted.
+  /* For now, we need to tell the D frontend what platform is being targeted.
      This should be removed once the frontend has been fixed.  */
   if (strcmp (ident, "linux") == 0)
     global.params.isLinux = true;
@@ -436,6 +437,10 @@ d_init_versions (void)
     VersionCondition::addPredefinedGlobalIdent ("D_NoBoundsChecks");
 
   VersionCondition::addPredefinedGlobalIdent ("all");
+
+  /* Emit all target-specific version identifiers.  */
+  targetdm.d_cpu_versions ();
+  targetdm.d_os_versions ();
 }
 
 /* A helper for d_build_builtins_module.  Return a new ALIAS for TYPE.
