@@ -1,3 +1,8 @@
+2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_parse_file): Print all predefined version identifiers
+	if verbose.
+
 2017-06-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(BinAssignExp)): Strip promotions from

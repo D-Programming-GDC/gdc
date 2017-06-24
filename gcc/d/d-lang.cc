@@ -986,6 +986,17 @@ d_parse_file (void)
     {
       fprintf (global.stdmsg, "binary    %s\n", global.params.argv0);
       fprintf (global.stdmsg, "version   %s\n", global.version);
+
+      if (global.params.versionids)
+	{
+	  fprintf (global.stdmsg, "predefs  ");
+	  for (size_t i = 0; i < global.params.versionids->dim; i++)
+	    {
+	      const char *s = (*global.params.versionids)[i];
+	      fprintf (global.stdmsg, " %s", s);
+	    }
+	  fprintf (global.stdmsg, "\n");
+	}
     }
 
   /* Start the main input file, if the debug writer wants it.  */
