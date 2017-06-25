@@ -3,6 +3,10 @@
 	* d-lang.cc (d_parse_file): Print all predefined version identifiers
 	if verbose.
 
+2017-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc (Global::_init): Remove memset for global.params.
+
 2017-06-20  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* expr.cc (ExprVisitor::visit(BinAssignExp)): Strip promotions from
