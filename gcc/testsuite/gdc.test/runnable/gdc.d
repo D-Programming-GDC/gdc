@@ -635,11 +635,12 @@ struct CanonicalHuffman
 
 // Bug 77
 
-void fun (ubyte[3] buf)
+void fun(ubyte[3] buf)
 {
     import std.bitmanip : bigEndianToNative;
     bigEndianToNative!ushort(buf[0..2]);
 }
+
 void test77()
 {
     fun([1,2,3]);
@@ -860,6 +861,101 @@ void test183()
     auto v3 = S183c().get;
 }
 
+/******************************************/
+
+// Bug 186
+
+struct S186
+{
+    union
+    {
+        struct
+        {
+            ubyte fieldA;
+            byte  fieldB = -1;
+            byte fieldC = -1;
+        }
+        size_t _complete;
+    }
+
+    this(size_t complete)
+    {
+        this._complete = complete;
+    }
+}
+
+void check186(in S186 obj, byte fieldB)
+{
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+    assert(fieldB == 0);
+}
+
+void test186a(size_t val)
+{
+    S186 obj = S186(val);
+    check186(obj, obj.fieldB);
+
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+
+    obj = S186(val);
+    check186(obj, obj.fieldB);
+
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+}
+
+void test186()
+{
+    test186a(2);
+}
+/******************************************/
+
+// Bug 187
+
+align(1) struct S187b
+{
+    align(1)
+    {
+        uint unpaddedA;
+        ushort unpaddedB;
+    }
+}
+
+struct S187a
+{
+    S187b[3] unpaddedArray;
+    ubyte wontInitialize = ubyte.init;
+}
+
+struct S187
+{
+    S187a interesting;
+}
+
+
+void prepareStack()
+{
+    byte[255] stackGarbage;
+    foreach(i, ref b; stackGarbage)
+    {
+        b  = cast(byte)(-i);
+    }
+}
+
+void test187()
+{
+    prepareStack();
+    auto a = S187(S187a());
+    assert(a.interesting.wontInitialize == 0);
+}
 
 /******************************************/
 
@@ -1159,6 +1255,8 @@ void main()
     test133();
     test141();
     test179();
+    test186();
+    test187();
     test196();
     test198();
     test210();

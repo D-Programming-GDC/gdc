@@ -1,3 +1,23 @@
+2017-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_frontend_type): Allow all vector types to be
+	included in builtins module.
+
+2017-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (TypeVisitor::visit(TypeStruct)): Let struct alignment
+	override the alignsize.
+
+2017-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_decl_context): Use origin template declaration as
+	context for instantiated type symbols.
+
+2017-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(StringExp)): Create string type that is
+	same length as string value literal.
+
 2017-05-27  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* Make-lang.in (D_FRONTEND_OBJS): Rename object.o to rootobject.o.
