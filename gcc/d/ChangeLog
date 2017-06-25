@@ -1,5 +1,10 @@
 2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* toir.cc (IRVisitor::visit(ExtAsmStatement)): Set ASM_VOLATILE_P only
+	if statement is not marked with pure attribute.
+
+2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* d-lang.cc (d_parse_file): Print all predefined version identifiers
 	if verbose.
 
