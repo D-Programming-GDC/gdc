@@ -29,9 +29,98 @@ along with GCC; see the file COPYING3.  If not see
 #include "d-tree.h"
 
 
-/* Print a hard error message.  */
+/* Rewrite the format string FORMAT to deal with any format extensions not
+   supported by pp_format().  The result should be freed by the caller.  */
 
-void
+static char *
+expand_format (const char *format)
+{
+  OutBuffer buf;
+  bool inbacktick = false;
+
+  for (const char *p = format; *p; )
+    {
+      while (*p != '\0' && *p != '%' && *p != '`')
+	{
+	  buf.writeByte (*p);
+	  p++;
+	}
+
+      if (*p == '\0')
+	break;
+
+      if (*p == '`')
+	{
+	  /* Text enclosed by `...` are translated as a quoted string.  */
+	  if (inbacktick)
+	    {
+	      buf.writestring ("%>");
+	      inbacktick = false;
+	    }
+	  else
+	    {
+	      buf.writestring ("%<");
+	      inbacktick = true;
+	    }
+	  p++;
+	  continue;
+	}
+
+      /* Check the conversion specification for unhandled flags.  */
+      buf.writeByte (*p);
+      p++;
+
+      switch (*p)
+	{
+	case '\0':
+	  /* Malformed format string.  */
+	  gcc_unreachable ();
+
+	case '0':
+	  /* Remove zero padding from format string.  */
+	  while (ISDIGIT (*p))
+	    p++;
+	  continue;
+
+	default:
+	  break;
+	}
+    }
+
+  gcc_assert (!inbacktick);
+  return buf.extractString ();
+}
+
+/* Helper routine for all error routines.  Reports a diagnostic specified by
+   KIND at the explicit location LOC, where the message FORMAT has not yet
+   been translated by the gcc diagnostic routines.  */
+
+static bool ATTRIBUTE_GCC_DIAG(3,0)
+d_diagnostic_report_diagnostic (const Loc& loc, int opt, const char *format,
+				va_list ap, diagnostic_t kind)
+{
+  va_list argp;
+  va_copy (argp, ap);
+
+  rich_location rich_loc (line_table, get_linemap (loc));
+  diagnostic_info diagnostic;
+  char *xformat = expand_format (format);
+
+  diagnostic_set_info (&diagnostic, xformat, &argp, &rich_loc, kind);
+  if (opt != 0)
+    diagnostic.option_index = opt;
+
+  bool ret = diagnostic_report_diagnostic (global_dc, &diagnostic);
+  free (xformat);
+  va_end (argp);
+
+  return ret;
+}
+
+/* Print a hard error message with explicit location LOC, increasing the
+   global or gagged error count.  */
+
+void ATTRIBUTE_GCC_DIAG(2,3)
 error (const Loc& loc, const char *format, ...)
 {
   va_list ap;
@@ -40,31 +129,25 @@ error (const Loc& loc, const char *format, ...)
   va_end (ap);
 }
 
-void
+void ATTRIBUTE_GCC_DIAG(2,0)
 verror (const Loc& loc, const char *format, va_list ap,
 	const char *p1, const char *p2, const char *)
 {
   if (!global.gag || global.params.showGaggedErrors)
     {
-      location_t location = get_linemap (loc);
-      char *msg = xvasprintf (format, ap);
-      char *prefix = NULL;
+      char *xformat;
 
       /* Build string and emit.  */
       if (p2 != NULL)
-	prefix = xasprintf ("%s %s ", p1, p2);
+	xformat = xasprintf ("%s %s %s", p1, p2, format);
       else if (p1 != NULL)
-	prefix = xasprintf ("%s ", p1);
-
-      if (global.gag)
-	emit_diagnostic (DK_ANACHRONISM, location, 0, "(spec:%d) %s%s",
-			 global.gag, prefix ? prefix : "", msg);
+	xformat = xasprintf ("%s %s", p1, format);
       else
-	error_at (location, "%s%s", prefix ? prefix : "", msg);
+	xformat = xasprintf ("%s", format);
 
-      if (prefix)
-	free (prefix);
-      free (msg);
+      d_diagnostic_report_diagnostic (loc, 0, xformat, ap,
+				      global.gag ? DK_ANACHRONISM : DK_ERROR);
+      free (xformat);
     }
 
   if (global.gag)
@@ -73,10 +156,10 @@ verror (const Loc& loc, const char *format, va_list ap,
   global.errors++;
 }
 
-/* Print supplementary message about the last error.
-   Doesn't increase error count.  */
+/* Print supplementary message about the last error with explicit location LOC.
+   This doesn't increase the global error count.  */
 
-void
+void ATTRIBUTE_GCC_DIAG(2,3)
 errorSupplemental (const Loc& loc, const char *format, ...)
 {
   va_list ap;
@@ -85,22 +168,19 @@ errorSupplemental (const Loc& loc, const char *format, ...)
   va_end (ap);
 }
 
-void
+void ATTRIBUTE_GCC_DIAG(2,0)
 verrorSupplemental (const Loc& loc, const char *format, va_list ap)
 {
   if (global.gag && !global.params.showGaggedErrors)
     return;
 
-  location_t location = get_linemap (loc);
-  char *msg = xvasprintf (format, ap);
-
-  inform (location, "%s", msg);
-  free (msg);
+  d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE);
 }
 
-/* Print a warning message.  */
+/* Print a warning message with explicit location LOC, increasing the
+   global warning count.  */
 
-void
+void ATTRIBUTE_GCC_DIAG(2,3)
 warning (const Loc& loc, const char *format, ...)
 {
   va_list ap;
@@ -109,27 +189,23 @@ warning (const Loc& loc, const char *format, ...)
   va_end (ap);
 }
 
-void
+void ATTRIBUTE_GCC_DIAG(2,0)
 vwarning (const Loc& loc, const char *format, va_list ap)
 {
   if (global.params.warnings && !global.gag)
     {
-      location_t location = get_linemap (loc);
-      char *msg = xvasprintf (format, ap);
-
-      warning_at (location, 0, "%s", msg);
-      free (msg);
-
       /* Warnings don't count if gagged.  */
       if (global.params.warnings == 1)
 	global.warnings++;
+
+      d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_WARNING);
     }
 }
 
-/* Print supplementary message about the last warning.
-   Doesn't increase warning count.  */
+/* Print supplementary message about the last warning with explicit location
+   LOC.  This doesn't increase the global warning count.  */
 
-void
+void ATTRIBUTE_GCC_DIAG(2,3)
 warningSupplemental (const Loc& loc, const char *format, ...)
 {
   va_list ap;
@@ -138,22 +214,19 @@ warningSupplemental (const Loc& loc, const char *format, ...)
   va_end (ap);
 }
 
-void
+void ATTRIBUTE_GCC_DIAG(2,0)
 vwarningSupplemental (const Loc& loc, const char *format, va_list ap)
 {
-  if (global.params.warnings && !global.gag)
-    {
-      location_t location = get_linemap (loc);
-      char *msg = xvasprintf (format, ap);
+  if (!global.params.warnings || global.gag)
+    return;
 
-      inform (location, "%s", msg);
-      free (msg);
-    }
+  d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE);
 }
 
-/* Print a deprecation message.  */
+/* Print a deprecation message with explicit location LOC, increasing the
+   global warning or error count depending on how deprecations are treated.  */
 
-void
+void ATTRIBUTE_GCC_DIAG(2,3)
 deprecation (const Loc& loc, const char *format, ...)
 {
   va_list ap;
@@ -162,7 +235,7 @@ deprecation (const Loc& loc, const char *format, ...)
   va_end (ap);
 }
 
-void
+void ATTRIBUTE_GCC_DIAG(2,0)
 vdeprecation (const Loc& loc, const char *format, va_list ap,
 	      const char *p1, const char *p2)
 {
@@ -170,27 +243,26 @@ vdeprecation (const Loc& loc, const char *format, va_list ap,
     verror (loc, format, ap, p1, p2);
   else if (global.params.useDeprecated == 2 && !global.gag)
     {
-      location_t location = get_linemap (loc);
-      char *msg = xvasprintf (format, ap);
-      char *prefix = NULL;
+      char *xformat;
 
-      /* Build prefix for message.  */
+      /* Build string and emit.  */
       if (p2 != NULL)
-	prefix = xasprintf ("%s %s ", p1, p2);
+	xformat = xasprintf ("%s %s %s", p1, p2, format);
       else if (p1 != NULL)
-	prefix = xasprintf ("%s ", p1);
+	xformat = xasprintf ("%s %s", p1, format);
+      else
+	xformat = xasprintf ("%s", format);
 
-      warning_at (location, OPT_Wdeprecated, "%s%s", prefix ? prefix : "", msg);
-
-      if (prefix)
-	free (prefix);
-      free (msg);
+      d_diagnostic_report_diagnostic (loc, OPT_Wdeprecated, xformat, ap,
+				      DK_WARNING);
+      free (xformat);
     }
 }
 
-/* Print supplementary message about the last deprecation.  */
+/* Print supplementary message about the last deprecation with explicit
+   location LOC.  This does not increase the global error count.  */
 
-void
+void ATTRIBUTE_GCC_DIAG(2,3)
 deprecationSupplemental (const Loc& loc, const char *format, ...)
 {
   va_list ap;
@@ -199,19 +271,13 @@ deprecationSupplemental (const Loc& loc, const char *format, ...)
   va_end (ap);
 }
 
-void
+void ATTRIBUTE_GCC_DIAG(2,0)
 vdeprecationSupplemental (const Loc& loc, const char *format, va_list ap)
 {
   if (global.params.useDeprecated == 0)
     verrorSupplemental (loc, format, ap);
   else if (global.params.useDeprecated == 2 && !global.gag)
-    {
-      location_t location = get_linemap (loc);
-      char *msg = xvasprintf (format, ap);
-
-      inform (location, "%s", msg);
-      free (msg);
-    }
+    d_diagnostic_report_diagnostic (loc, 0, format, ap, DK_NOTE);
 }
 
 /* Call this after printing out fatal error messages to clean up and

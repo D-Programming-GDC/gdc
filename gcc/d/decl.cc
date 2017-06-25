@@ -1334,10 +1334,18 @@ get_decl_tree (Declaration *decl)
      getRightThis in the frontend removes from codegen.  */
   if (vd->parent != fd && vd->isThisDeclaration ())
     {
+      /* Find the first parent that is a member function.  */
+      while (!fd->isMember2 ())
+	{
+	  gcc_assert (fd->vthis);
+	  fd = fd->toParent2 ()->isFuncDeclaration ();
+	  gcc_assert (fd != NULL);
+	}
+
       AggregateDeclaration *ad = fd->isThis ();
       gcc_assert (ad != NULL);
 
-      t = get_symbol_decl (fd->vthis);
+      t = get_decl_tree (fd->vthis);
       Dsymbol *outer = fd;
 
       while (outer != vd->parent)

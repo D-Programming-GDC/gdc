@@ -15,22 +15,22 @@
 
 @SET_MAKE@
 
-# GDC -- D front-end for GCC
-# Copyright (C) 2012 Iain Buclaw
+# Makefile for the D runtime library.
+# Copyright (C) 2012-2017 Free Software Foundation, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
+# GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# GCC is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
 
 # This file contains some common rules for D source compilation
 # used for libdruntime and libphobos
@@ -157,9 +157,9 @@ am__objects_1 = core/atomic.lo core/attribute.lo core/bitop.lo \
 	core/sync/condition.lo core/sync/config.lo \
 	core/sync/exception.lo core/sync/mutex.lo core/sync/rwmutex.lo \
 	core/sync/semaphore.lo core/thread.lo core/time.lo \
-	core/vararg.lo etc/linux/memoryerror.lo gcc/atomics.lo \
-	gcc/attribute.lo gcc/backtrace.lo gcc/builtins.lo gcc/deh.lo \
-	gcc/unwind/arm.lo gcc/unwind/arm_common.lo gcc/unwind/c6x.lo \
+	core/vararg.lo etc/linux/memoryerror.lo gcc/attribute.lo \
+	gcc/backtrace.lo gcc/builtins.lo gcc/deh.lo gcc/unwind/arm.lo \
+	gcc/unwind/arm_common.lo gcc/unwind/c6x.lo \
 	gcc/unwind/generic.lo gcc/unwind/package.lo gcc/unwind/pe.lo \
 	object.lo rt/aApply.lo rt/aApplyR.lo rt/aaA.lo rt/adi.lo \
 	rt/arrayassign.lo rt/arraycast.lo rt/arraycat.lo \
@@ -672,7 +672,7 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
 	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
 	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d gcc/backtrace.d \
+	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
 	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
 	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
 	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
@@ -994,7 +994,6 @@ etc/linux/memoryerror.lo: etc/linux/$(am__dirstamp)
 gcc/$(am__dirstamp):
 	@$(MKDIR_P) gcc
 	@: > gcc/$(am__dirstamp)
-gcc/atomics.lo: gcc/$(am__dirstamp)
 gcc/attribute.lo: gcc/$(am__dirstamp)
 gcc/backtrace.lo: gcc/$(am__dirstamp)
 gcc/builtins.lo: gcc/$(am__dirstamp)
@@ -2111,8 +2110,6 @@ mostlyclean-compile:
 	-rm -f gc/proxy.lo
 	-rm -f gc/stats.$(OBJEXT)
 	-rm -f gc/stats.lo
-	-rm -f gcc/atomics.$(OBJEXT)
-	-rm -f gcc/atomics.lo
 	-rm -f gcc/attribute.$(OBJEXT)
 	-rm -f gcc/attribute.lo
 	-rm -f gcc/backtrace.$(OBJEXT)

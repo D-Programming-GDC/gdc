@@ -1,19 +1,19 @@
-# GDC -- D front-end for GCC
-# Copyright (C) 2012 Iain Buclaw
+# Makefile for the D runtime library.
+# Copyright (C) 2012-2017 Free Software Foundation, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
+# GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# GCC is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
 
 # Include D build rules
 include $(top_srcdir)/d_rules.am
@@ -171,7 +171,7 @@ DRUNTIME_DSOURCES = core/atomic.d core/attribute.d core/bitop.d \
 	core/sync/barrier.d core/sync/condition.d core/sync/config.d \
 	core/sync/exception.d core/sync/mutex.d core/sync/rwmutex.d \
 	core/sync/semaphore.d core/thread.d core/time.d core/vararg.d \
-	etc/linux/memoryerror.d gcc/atomics.d gcc/attribute.d gcc/backtrace.d \
+	etc/linux/memoryerror.d gcc/attribute.d gcc/backtrace.d \
 	gcc/builtins.d gcc/deh.d gcc/unwind/arm.d gcc/unwind/arm_common.d \
 	gcc/unwind/c6x.d gcc/unwind/generic.d gcc/unwind/package.d \
 	gcc/unwind/pe.d object.d rt/aApply.d rt/aApplyR.d rt/aaA.d rt/adi.d \
