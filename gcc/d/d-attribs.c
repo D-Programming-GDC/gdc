@@ -22,7 +22,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/arraytypes.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/mtype.h"
 
@@ -37,7 +36,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "varasm.h"
 
 #include "d-tree.h"
-#include "d-objfile.h"
+
 
 /* Internal attribute handlers for built-in functions.  */
 static tree handle_noreturn_attribute (tree *, tree, tree, int, bool *);
@@ -48,13 +47,11 @@ static tree handle_pure_attribute (tree *, tree, tree, int, bool *);
 static tree handle_novops_attribute (tree *, tree, tree, int, bool *);
 static tree handle_nonnull_attribute (tree *, tree, tree, int, bool *);
 static tree handle_nothrow_attribute (tree *, tree, tree, int, bool *);
-static tree handle_sentinel_attribute (tree *, tree, tree, int, bool *);
 static tree handle_type_generic_attribute (tree *, tree, tree, int, bool *);
 static tree handle_transaction_pure_attribute (tree *, tree, tree, int, bool *);
 static tree handle_returns_twice_attribute (tree *, tree, tree, int, bool *);
 static tree handle_fnspec_attribute (tree *, tree, tree, int, bool *);
 static tree handle_weakref_attribute (tree *, tree, tree, int, bool *);
-static tree ignore_attribute (tree *, tree, tree, int, bool *);
 
 /* D attribute handlers for user defined attributes.  */
 static tree d_handle_noinline_attribute (tree *, tree, tree, int, bool *);
@@ -90,8 +87,6 @@ const attribute_spec d_langhook_common_attribute_table[] =
 			      handle_nonnull_attribute, false },
   { "nothrow",                0, 0, true,  false, false,
 			      handle_nothrow_attribute, false },
-  { "sentinel",               0, 1, false, true, true,
-			      handle_sentinel_attribute, false },
   { "transaction_pure",       0, 0, false, true, true,
 			      handle_transaction_pure_attribute, false },
   { "no vops",                0, 0, true,  false, false,
@@ -100,8 +95,6 @@ const attribute_spec d_langhook_common_attribute_table[] =
 			      handle_type_generic_attribute, false },
   { "fn spec",                1, 1, false, true, true,
 			      handle_fnspec_attribute, false },
-  { "*tm regparm",            0, 0, false, true, true,
-			      ignore_attribute, false },
   { "weakref",                0, 1, true,  false, false,
 			      handle_weakref_attribute, false },
   { NULL,                     0, 0, false, false, false, NULL, false }
@@ -130,21 +123,6 @@ const attribute_spec d_langhook_attribute_table[] =
     { "weak",                   0, 0, true,  false, false,
 				d_handle_weak_attribute, false },
     { NULL,                     0, 0, false, false, false, NULL, false }
-};
-
-
-/* Give the specifications for the format attributes, used by C and all
-   descendants.  */
-
-const attribute_spec d_langhook_format_attribute_table[] =
-{
-  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
-       affects_type_identity } */
-  { "format",                 3, 3, false, true,  true,
-			      ignore_attribute, false },
-  { "format_arg",             1, 1, false, true,  true,
-			      ignore_attribute, false },
-  { NULL,                     0, 0, false, false, false, NULL, false }
 };
 
 
@@ -500,26 +478,6 @@ handle_nothrow_attribute (tree *node, tree ARG_UNUSED (name),
   return NULL_TREE;
 }
 
-/* Handle a "sentinel" attribute.  */
-
-static tree
-handle_sentinel_attribute (tree *node, tree ARG_UNUSED (name), tree args,
-			   int ARG_UNUSED (flags),
-			   bool * ARG_UNUSED (no_add_attrs))
-{
-  gcc_assert (stdarg_p (*node));
-
-  if (args)
-    {
-      tree position = TREE_VALUE (args);
-      gcc_assert (TREE_CODE (position) == INTEGER_CST);
-      if (tree_int_cst_lt (position, integer_zero_node))
-	gcc_unreachable ();
-    }
-
-  return NULL_TREE;
-}
-
 /* Handle a "type_generic" attribute.  */
 
 static tree
@@ -595,18 +553,6 @@ handle_weakref_attribute (tree *node, tree ARG_UNUSED (name),
      the list of weak decls, which isn't helpful.  */
   DECL_WEAK (*node) = 1;
 
-  return NULL_TREE;
-}
-
-/* Ignore the given attribute.  Used when this attribute may be usefully
-   overridden by the target, but is not used generically.  */
-
-static tree
-ignore_attribute (tree * ARG_UNUSED (node), tree ARG_UNUSED (name),
-		  tree ARG_UNUSED (args), int ARG_UNUSED (flags),
-		  bool *no_add_attrs)
-{
-  *no_add_attrs = true;
   return NULL_TREE;
 }
 

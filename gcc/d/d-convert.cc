@@ -1,5 +1,5 @@
 /* d-convert.cc -- Data type conversion routines.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
 
 
 /* Build CODE expression with operands OP0 and OP1.
@@ -453,13 +452,11 @@ convert_expr (tree exp, Type *etype, Type *totype)
 	    }
 
 	  /* The offset can only be determined at runtime, do dynamic cast.  */
-	  tree args[2];
-	  args[0] = exp;
-	  args[1] = build_address (get_classinfo_decl (cdto));
+	  libcall_fn libcall = cdfrom->isInterfaceDeclaration ()
+	    ? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST;
 
-	  return build_libcall (cdfrom->isInterfaceDeclaration ()
-				? LIBCALL_INTERFACE_CAST : LIBCALL_DYNAMIC_CAST,
-				2, args);
+	  return build_libcall (libcall, totype, 2, exp,
+				build_address (get_classinfo_decl (cdto)));
 	}
       /* else default conversion.  */
       break;
@@ -517,28 +514,20 @@ convert_expr (tree exp, Type *etype, Type *totype)
       else if (tbtype->ty == Tarray)
 	{
 	  /* Assume tvoid->size() == 1.  */
-	  Type *src_elem_type = ebtype->nextOf ()->toBasetype ();
-	  Type *dst_elem_type = tbtype->nextOf ()->toBasetype ();
-	  d_uns64 sz_src = src_elem_type->size ();
-	  d_uns64 sz_dst = dst_elem_type->size ();
+	  d_uns64 fsize = ebtype->nextOf ()->toBasetype ()->size ();
+	  d_uns64 tsize = tbtype->nextOf ()->toBasetype ()->size ();
 
-	  if (sz_src == sz_dst)
+	  if (fsize != tsize)
+	    {
+	      /* Conversion requires a reinterpret cast of array.  */
+	      return build_libcall (LIBCALL_ARRAYCAST, totype, 3,
+				    size_int (tsize), size_int (fsize), exp);
+	    }
+	  else
 	    {
 	      /* Convert from void[] or elements are the same size
 		 -- don't change length.  */
 	      return build_vconvert (build_ctype (totype), exp);
-	    }
-	  else
-	    {
-	      unsigned mult = 1;
-	      tree args[3];
-
-	      args[0] = size_int (sz_dst);
-	      args[1] = size_int (sz_src * mult);
-	      args[2] = exp;
-
-	      return build_libcall (LIBCALL_ARRAYCAST, 3, args,
-				    build_ctype (totype));
 	    }
 	}
       else if (tbtype->ty == Tsarray)

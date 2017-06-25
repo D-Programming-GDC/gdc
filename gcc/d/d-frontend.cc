@@ -1,5 +1,5 @@
 /* d-frontend.cc -- D frontend interface to the gcc backend.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2013-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,12 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/mars.h"
-#include "dfrontend/errors.h"
-#include "dfrontend/module.h"
-#include "dfrontend/scope.h"
-#include "dfrontend/aggregate.h"
 #include "dfrontend/declaration.h"
+#include "dfrontend/module.h"
+#include "dfrontend/mtype.h"
+#include "dfrontend/scope.h"
 #include "dfrontend/statement.h"
 #include "dfrontend/target.h"
 
@@ -35,8 +33,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "d-objfile.h"
-#include "d-codegen.h"
+#include "id.h"
 
 
 /* Implements the Global interface defined by the frontend.
@@ -52,24 +49,15 @@ Global::_init (void)
   this->doc_ext  = "html";
   this->ddoc_ext = "ddoc";
   this->json_ext = "json";
-  this->map_ext  = "map";
-
   this->obj_ext = "o";
-  this->lib_ext = "a";
-  this->dll_ext = "so";
 
   this->run_noext = true;
   this->version = "v"
 #include "verstr.h"
     ;
 
-  this->compiler.vendor = "GNU D";
   this->stdmsg = stderr;
-  this->main_d = "__main.d";
-
   this->errorLimit = flag_max_errors;
-
-  memset (&this->params, 0, sizeof (Param));
 }
 
 /* Start gagging. Return the current number of gagged errors.  */
@@ -476,7 +464,7 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
 
   TypeFunction *tf = (TypeFunction *) fd->type;
   Expression *e = NULL;
-  set_input_location (loc);
+  input_location = get_linemap (loc);
 
   tree result = d_build_call (tf, decl, NULL, arguments);
   result = fold (result);
@@ -487,6 +475,31 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
     e = d_eval_constant_expression (result);
 
   return e;
+}
+
+/* Generate C main() in response to seeing D main().  This used to be in
+   libdruntime, but contained a reference to _Dmain which didn't work when
+   druntime was made into a shared library and was linked to a program, such
+   as a C++ program, that didn't have a _Dmain.  */
+
+void
+genCmain (Scope *sc)
+{
+  static bool initialized = false;
+
+  if (initialized)
+    return;
+
+  /* The D code to be generated is provided by __entrypoint.di.  */
+  Module *m = Module::load (Loc (), NULL, Id::entrypoint);
+  m->importedFrom = m;
+  m->importAll (NULL);
+  m->semantic (NULL);
+  m->semantic2 (NULL);
+  m->semantic3 (NULL);
+
+  d_add_entrypoint_module (m, sc->_module);
+  initialized = true;
 }
 
 /* Build and return typeinfo type for TYPE.  */

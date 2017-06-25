@@ -1,5 +1,5 @@
 /* typeinfo.cc -- D runtime type identification.
-   Copyright (C) 2011-2016 Free Software Foundation, Inc.
+   Copyright (C) 2013-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,11 +20,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 
 #include "dfrontend/aggregate.h"
-#include "dfrontend/declaration.h"
 #include "dfrontend/enum.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
-#include "dfrontend/scope.h"
 #include "dfrontend/template.h"
 #include "dfrontend/target.h"
 
@@ -36,9 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "stor-layout.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
-#include "d-objfile.h"
-#include "d-dmd-gcc.h"
+#include "d-frontend.h"
 #include "id.h"
 
 
@@ -91,7 +87,7 @@ enum tinfo_kind
    The TypeInfo and ClassInfo types are created early, the
    remainder are generated as needed.  */
 
-static tree tinfo_types[TK_END];
+static GTY(()) tree tinfo_types[TK_END];
 
 /* Return the kind of TypeInfo used to describe TYPE.  */
 
@@ -163,7 +159,7 @@ make_internal_typeinfo (tinfo_kind tk, Identifier *ident, ...)
   va_start (ap, ident);
 
   /* First two fields are from the TypeInfo base class.
-     Note, these are added in reverse order.  */
+     Note, finish_builtin_struct() expects these fields in reverse order.  */
   tree fields = create_field_decl (ptr_type_node, NULL, 1, 1);
   DECL_CHAIN (fields) = create_field_decl (vtbl_ptr_type_node, NULL, 1, 1);
 
@@ -1119,6 +1115,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 {
   tree type = tinfo_types[TK_CLASSINFO_TYPE];
   size_t structsize = int_size_in_bytes (type);
+  input_location = get_linemap (decl->loc);
 
   if (decl->vtblInterfaces->dim)
     {
@@ -1133,7 +1130,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
       tree arrtype = build_array_type (vtbl_interface_type_node,
 				       build_index_type (domain));
       field = create_field_decl (arrtype, NULL, 1, 1);
-      insert_aggregate_field (decl->loc, type, field, structsize);
+      insert_aggregate_field (type, field, structsize);
       structsize += decl->vtblInterfaces->dim * interfacesize;
 
       /* For each interface, layout each vtable.  */
@@ -1149,7 +1146,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 	      tree vtbltype = build_array_type (vtable_entry_type, vtbldomain);
 
 	      field = create_field_decl (vtbltype, NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
+	      insert_aggregate_field (type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
 	    }
 	}
@@ -1173,7 +1170,7 @@ layout_classinfo_interfaces (ClassDeclaration *decl)
 	      tree vtbltype = build_array_type (vtable_entry_type, vtbldomain);
 
 	      tree field = create_field_decl (vtbltype, NULL, 1, 1);
-	      insert_aggregate_field (decl->loc, type, field, offset);
+	      insert_aggregate_field (type, field, offset);
 	      structsize += id->vtbl.dim * Target::ptrsize;
 	    }
 	}
@@ -1205,7 +1202,6 @@ public:
     gcc_assert (type != NULL_TREE);
 
     tid->csym = declare_extern_var (ident, type);
-    set_decl_location (tid->csym, tid);
     DECL_LANG_SPECIFIC (tid->csym) = build_lang_decl (tid);
 
     DECL_CONTEXT (tid->csym) = d_decl_context (tid);
@@ -1254,11 +1250,10 @@ get_classinfo_decl (ClassDeclaration *decl)
     return decl->csym;
 
   InterfaceDeclaration *id = decl->isInterfaceDeclaration ();
-  tree ident = make_internal_name (decl, id ? "__Interface" : "__Class", "Z");
+  tree ident = mangle_internal_decl (decl, id ? "__Interface" : "__Class", "Z");
   tree type = layout_classinfo_interfaces (decl);
 
   decl->csym = declare_extern_var (ident, type);
-  set_decl_location (decl->csym, decl);
   DECL_LANG_SPECIFIC (decl->csym) = build_lang_decl (NULL);
 
   /* Class is a reference, want the record type.  */
@@ -1333,11 +1328,10 @@ get_cpp_typeinfo_decl (ClassDeclaration *decl)
     make_internal_typeinfo (TK_CPPTI_TYPE, Id::cpp_type_info_ptr,
 			    ptr_type_node, NULL);
 
-  tree ident = make_internal_name (decl, "_cpp_type_info_ptr", "");
+  tree ident = mangle_internal_decl (decl, "_cpp_type_info_ptr", "");
   tree type = tinfo_types[TK_CPPTI_TYPE];
 
   decl->cpp_type_info_ptr_sym = declare_extern_var (ident, type);
-  set_decl_location (decl->cpp_type_info_ptr_sym, decl);
   DECL_LANG_SPECIFIC (decl->cpp_type_info_ptr_sym) = build_lang_decl (NULL);
 
   /* Class is a reference, want the record type.  */
@@ -1649,3 +1643,5 @@ speculative_type_p (Type *t)
   t->accept (&v);
   return v.result ();
 }
+
+#include "gt-d-typeinfo.h"

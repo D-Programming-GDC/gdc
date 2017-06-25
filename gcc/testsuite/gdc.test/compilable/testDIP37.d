@@ -1,6 +1,5 @@
 // PERMUTE_ARGS:
 // REQUIRED_ARGS: -c -Icompilable/extra-files
-// EXTRA_FILES: extra-files/pkgDIP37/datetime/common.d extra-files/pkgDIP37/datetime/package.d
 
 void test1()
 {

@@ -1,5 +1,5 @@
 /* toir.cc -- Lower D frontend statements to GCC trees.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,13 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/enum.h"
-#include "dfrontend/module.h"
-#include "dfrontend/init.h"
 #include "dfrontend/aggregate.h"
-#include "dfrontend/expression.h"
+#include "dfrontend/declaration.h"
+#include "dfrontend/init.h"
 #include "dfrontend/statement.h"
-#include "dfrontend/visitor.h"
 
 #include "tree.h"
 #include "tree-iterator.h"
@@ -38,8 +35,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "toplev.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
-#include "d-objfile.h"
 #include "id.h"
 
 
@@ -304,10 +299,6 @@ public:
     /* Mark label as having been defined.  */
     DECL_INITIAL (label) = error_mark_node;
 
-    /* Not setting this doesn't seem to cause problems (unlike VAR_DECLs).  */
-    if (s->loc.filename)
-      set_decl_location (label, s->loc);
-
     ent->level = current_binding_level;
 
     for (d_label_use_entry *ref = ent->fwdrefs; ref ; ref = ref->next)
@@ -334,7 +325,7 @@ public:
   void do_jump (Statement *stmt, tree label)
   {
     if (stmt)
-      set_input_location (stmt->loc);
+      input_location = get_linemap (stmt->loc);
 
     add_stmt (fold_build1 (GOTO_EXPR, void_type_node, label));
     TREE_USED (label) = 1;
@@ -518,7 +509,7 @@ public:
 
   void visit (Statement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -534,7 +525,7 @@ public:
 
   void visit (IfStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     this->start_scope (level_cond);
 
     /* Build the outer 'if' condition, which may produce temporaries
@@ -561,7 +552,7 @@ public:
       }
 
     /* Wrap up our constructed if condition into a COND_EXPR.  */
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     tree cond = build_vcondition (ifcond, ifbody, elsebody);
     add_stmt (cond);
 
@@ -583,7 +574,7 @@ public:
 
   void visit (WhileStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -592,7 +583,7 @@ public:
 
   void visit (DoStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     tree lbreak = this->push_break_label (s);
 
     this->start_scope (level_loop);
@@ -605,7 +596,7 @@ public:
 
     /* Build the outer 'while' condition, which may produce temporaries
        requiring scope destruction.  */
-    set_input_location (s->condition->loc);
+    input_location = get_linemap (s->condition->loc);
     tree exitcond = convert_for_condition (build_expr_dtor (s->condition),
 					   s->condition->type);
     add_stmt (build_vcondition (exitcond, void_node,
@@ -613,7 +604,7 @@ public:
     TREE_USED (lbreak) = 1;
 
     tree body = this->end_scope ();
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     add_stmt (build1 (LOOP_EXPR, void_type_node, body));
 
     this->pop_break_label (lbreak);
@@ -624,7 +615,7 @@ public:
 
   void visit (ForStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     tree lbreak = this->push_break_label (s);
     this->start_scope (level_loop);
 
@@ -633,7 +624,7 @@ public:
 
     if (s->condition)
       {
-	set_input_location (s->condition->loc);
+	input_location = get_linemap (s->condition->loc);
 	tree exitcond = convert_for_condition (build_expr_dtor (s->condition),
 					       s->condition->type);
 	add_stmt (build_vcondition (exitcond, void_node,
@@ -652,12 +643,12 @@ public:
     if (s->increment)
       {
 	/* Force side effects?  */
-	set_input_location (s->increment->loc);
+	input_location = get_linemap (s->increment->loc);
 	add_stmt (build_expr_dtor (s->increment));
       }
 
     tree body = this->end_scope ();
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     add_stmt (build1 (LOOP_EXPR, void_type_node, body));
 
     this->pop_break_label (lbreak);
@@ -669,7 +660,7 @@ public:
 
   void visit (ForeachStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -679,7 +670,7 @@ public:
 
   void visit (ForeachRangeStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -725,8 +716,8 @@ public:
     gcc_assert (s->tf == s->label->statement->tf);
 
     /* This makes the 'undefined label' error show up on the correct line.
-       The extra set_input_location in do_jump shouldn't cause a problem.  */
-    set_input_location (s->loc);
+       The extra get_linemap in do_jump shouldn't cause a problem.  */
+    input_location = get_linemap (s->loc);
 
     /* If no label found, there was an error.  */
     tree label = this->lookup_label (s->label->statement, s->label->ident);
@@ -748,6 +739,8 @@ public:
     else
       sym = this->func_->searchLabel (s->ident);
 
+    input_location = get_linemap (s->loc);
+
     /* If no label found, there was an error.  */
     tree label = this->define_label (sym->statement, sym->ident);
     TREE_USED (label) = 1;
@@ -765,7 +758,7 @@ public:
 
   void visit (SwitchStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     this->start_scope (level_switch);
     tree lbreak = this->push_break_label (s);
 
@@ -777,7 +770,7 @@ public:
     if (s->condition->type->isString ())
       {
 	Type *etype = condtype->nextOf ()->toBasetype ();
-	LibCall libcall;
+	libcall_fn libcall;
 
 	switch (etype->ty)
 	  {
@@ -827,13 +820,12 @@ public:
 	d_pushdecl (decl);
 	rest_of_decl_compilation (decl, 1, 0);
 
-	tree args[2];
-	args[0] = d_array_value (build_ctype (condtype->arrayOf ()),
-				 size_int (s->cases->dim),
-				 build_address (decl));
-	args[1] = condition;
+	/* Pass it as a dynamic array.  */
+	decl = d_array_value (build_ctype (condtype->arrayOf ()),
+			      size_int (s->cases->dim),
+			      build_address (decl));
 
-	condition = build_libcall (libcall, 2, args);
+	condition = build_libcall (libcall, Type::tint32, 2, decl, condition);
       }
     else if (!condtype->isscalar ())
       {
@@ -913,6 +905,8 @@ public:
 
   void visit (CaseStatement *s)
   {
+    input_location = get_linemap (s->loc);
+
     /* Emit the case label.  */
     tree label = this->define_label (s);
 
@@ -939,6 +933,8 @@ public:
 
   void visit (DefaultStatement *s)
   {
+    input_location = get_linemap (s->loc);
+
     /* Emit the default case label.  */
     tree label = this->define_label (s);
 
@@ -978,7 +974,7 @@ public:
 
   void visit (SwitchErrorStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     add_stmt (d_assert_call (s->loc, LIBCALL_SWITCH_ERROR));
   }
 
@@ -987,7 +983,7 @@ public:
 
   void visit (ReturnStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
 
     if (s->exp == NULL || s->exp->type->toBasetype ()->ty == Tvoid)
       {
@@ -1025,7 +1021,7 @@ public:
   {
     if (s->exp)
       {
-	set_input_location (s->loc);
+	input_location = get_linemap (s->loc);
 	/* Expression may produce temporaries requiring scope destruction.  */
 	tree exp = build_expr_dtor (s->exp);
 	add_stmt (exp);
@@ -1075,7 +1071,7 @@ public:
     this->do_jump (NULL, this->break_label_);
 
     tree body = this->end_scope ();
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     add_stmt (build1 (LOOP_EXPR, void_type_node, body));
 
     this->pop_break_label (lbreak);
@@ -1099,7 +1095,7 @@ public:
 
   void visit (WithStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     this->start_scope (level_with);
 
     if (s->wthis)
@@ -1147,8 +1143,8 @@ public:
     else
       arg = build_nop (build_ctype (get_object_type ()), arg);
 
-    set_input_location (s->loc);
-    add_stmt (build_libcall (LIBCALL_THROW, 1, &arg));
+    input_location = get_linemap (s->loc);
+    add_stmt (build_libcall (LIBCALL_THROW, Type::tvoid, 1, arg));
   }
 
   /* Build a try-catch statement, one of the building blocks for exception
@@ -1157,7 +1153,7 @@ public:
 
   void visit (TryCatchStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
 
     this->start_scope (level_try);
     if (s->_body)
@@ -1174,30 +1170,27 @@ public:
 	  {
 	    Catch *vcatch = (*s->catches)[i];
 
-	    set_input_location (vcatch->loc);
+	    input_location = get_linemap (vcatch->loc);
 	    this->start_scope (level_catch);
 
 	    tree ehptr = builtin_decl_explicit (BUILT_IN_EH_POINTER);
 	    tree catchtype = build_ctype (vcatch->type);
 	    tree object = NULL_TREE;
 
-	    ehptr = d_build_call_nary (ehptr, 1, integer_zero_node);
+	    ehptr = build_call_expr (ehptr, 1, integer_zero_node);
 
 	    /* Retrieve the internal exception object, which could be for a
 	       D or C++ catch handler.  This is different from the generic
 	       exception pointer returned from gcc runtime.  */
 	    Type *tcatch = vcatch->type->toBasetype ();
 	    ClassDeclaration *cd = tcatch->isClassHandle ();
-	    if (cd->cpp)
-	      object = build_libcall (LIBCALL_CXA_BEGIN_CATCH, 1, &ehptr);
-	    else
-	      object = build_libcall (LIBCALL_BEGIN_CATCH, 1, &ehptr);
 
+	    libcall_fn libcall = (cd->cpp) ? LIBCALL_CXA_BEGIN_CATCH
+	      : LIBCALL_BEGIN_CATCH;
+	    object = build_libcall (libcall, vcatch->type, 1, ehptr);
 
 	    if (vcatch->var)
 	      {
-		object = build_nop (build_ctype (vcatch->type), object);
-
 		tree var = get_symbol_decl (vcatch->var);
 		tree init = build_assign (INIT_EXPR, var, object);
 
@@ -1220,7 +1213,8 @@ public:
 	       the end catch callback.  */
 	    if (cd->cpp)
 	      {
-		tree endcatch = build_libcall (LIBCALL_CXA_END_CATCH, 0, NULL);
+		tree endcatch = build_libcall (LIBCALL_CXA_END_CATCH,
+					       Type::tvoid, 0);
 		catchbody = build2 (TRY_FINALLY_EXPR, void_type_node,
 				    catchbody, endcatch);
 	      }
@@ -1242,7 +1236,7 @@ public:
         catches = stmt_list;
       }
 
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     add_stmt (build2 (TRY_CATCH_EXPR, void_type_node, trybody, catches));
   }
 
@@ -1252,7 +1246,7 @@ public:
 
   void visit (TryFinallyStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     this->start_scope (level_try);
     if (s->_body)
       s->_body->accept (this);
@@ -1265,7 +1259,7 @@ public:
 
     tree finally = this->end_scope ();
 
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     add_stmt (build2 (TRY_FINALLY_EXPR, void_type_node, trybody, finally));
   }
 
@@ -1276,7 +1270,7 @@ public:
 
   void visit (SynchronizedStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     gcc_unreachable ();
   }
 
@@ -1286,7 +1280,7 @@ public:
 
   void visit (AsmStatement *s)
   {
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
     sorry ("D inline assembler statements are not supported in GDC.");
   }
 
@@ -1301,7 +1295,7 @@ public:
     tree clobbers = NULL_TREE;
     tree labels = NULL_TREE;
 
-    set_input_location (s->loc);
+    input_location = get_linemap (s->loc);
 
     /* Collect all arguments, which may be input or output operands.  */
     if (s->args)
@@ -1425,8 +1419,8 @@ public:
     if (s->args == NULL && s->clobbers == NULL)
       ASM_INPUT_P (exp) = 1;
 
-    /* Asm statements without outputs are treated as volatile.  */
-    ASM_VOLATILE_P (exp) = (s->outputargs == 0);
+    /* Asm statements are treated as volatile unless 'pure'.  */
+    ASM_VOLATILE_P (exp) = !(s->stc & STCpure);
 
     add_stmt (exp);
   }

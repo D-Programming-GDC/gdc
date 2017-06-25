@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Free Software Foundation, Inc.
+# Copyright (C) 2012-2017 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #
 # gdc support library routines
 #
+
 load_lib prune.exp
 load_lib gcc-defs.exp
 load_lib timeout.exp
@@ -25,7 +26,6 @@ load_lib target-libpath.exp
 #
 # GDC_UNDER_TEST is the compiler under test.
 #
-
 
 set gdc_compile_options ""
 

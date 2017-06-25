@@ -129,7 +129,7 @@ public:
     /** endPtr used for documented unittests */
     Statement *parseStatement(int flags, const utf8_t** endPtr = NULL, Loc *pEndloc = NULL);
 #ifdef IN_GCC
-    Statement *parseExtAsm();
+    Statement *parseExtAsm(StorageClass stc);
     int parseExtAsmOperands(Expressions *args, Identifiers *names, Expressions *constraints);
     Expressions *parseExtAsmClobbers();
     Identifiers *parseExtAsmGotoLabels();

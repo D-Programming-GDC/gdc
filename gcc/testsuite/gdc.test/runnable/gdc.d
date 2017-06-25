@@ -635,11 +635,12 @@ struct CanonicalHuffman
 
 // Bug 77
 
-void fun (ubyte[3] buf)
+void fun(ubyte[3] buf)
 {
     import std.bitmanip : bigEndianToNative;
     bigEndianToNative!ushort(buf[0..2]);
 }
+
 void test77()
 {
     fun([1,2,3]);
@@ -769,6 +770,45 @@ void test142()
 
 /******************************************/
 
+// Bug 171
+
+void test171a()
+{
+    int count = 0;
+    short a = -1;
+    while (a != 0)
+    {
+        a >>>= 1;
+        count++;
+        assert(count <= 16);
+    }
+}
+
+void test171b()
+{
+    uint[3] lhs = [99, 201, 300],
+            rhs = [-1, 0, 0];
+    long t = 0;
+
+    for (int i = 0; i < 3; i++)
+    {
+        t += lhs[i];
+        t -= rhs[i];
+        lhs[i] = cast(uint) t;
+        t >>= uint.sizeof * 8;
+    }
+
+    assert(lhs == [100, 200, 300]);
+}
+
+void test171()
+{
+    test171a();
+    test171b();
+}
+
+/******************************************/
+
 // Bug 179
 
 struct S179a
@@ -860,6 +900,304 @@ void test183()
     auto v3 = S183c().get;
 }
 
+/******************************************/
+
+// Bug 186
+
+struct S186
+{
+    union
+    {
+        struct
+        {
+            ubyte fieldA;
+            byte  fieldB = -1;
+            byte fieldC = -1;
+        }
+        size_t _complete;
+    }
+
+    this(size_t complete)
+    {
+        this._complete = complete;
+    }
+}
+
+void check186(in S186 obj, byte fieldB)
+{
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+    assert(fieldB == 0);
+}
+
+void test186a(size_t val)
+{
+    S186 obj = S186(val);
+    check186(obj, obj.fieldB);
+
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+
+    obj = S186(val);
+    check186(obj, obj.fieldB);
+
+    assert(obj.fieldA == 2);
+    assert(obj.fieldB == 0);
+    assert(obj.fieldC == 0);
+    assert(obj._complete == 2);
+}
+
+void test186()
+{
+    test186a(2);
+}
+
+/******************************************/
+
+// Bug 187
+
+align(1) struct S187b
+{
+    align(1)
+    {
+        uint unpaddedA;
+        ushort unpaddedB;
+    }
+}
+
+struct S187a
+{
+    S187b[3] unpaddedArray;
+    ubyte wontInitialize = ubyte.init;
+}
+
+struct S187
+{
+    S187a interesting;
+}
+
+
+void prepareStack()
+{
+    byte[255] stackGarbage;
+    foreach(i, ref b; stackGarbage)
+    {
+        b  = cast(byte)(-i);
+    }
+}
+
+void test187()
+{
+    prepareStack();
+    auto a = S187(S187a());
+    assert(a.interesting.wontInitialize == 0);
+}
+
+/******************************************/
+
+// Bug 191
+
+class C191
+{
+    int count = 0;
+
+    void testA()
+    {
+        class Inner
+        {
+            void test()
+            {
+                void localFunction()
+                {
+                    if (++count != 5)
+                        testA();
+                }
+                localFunction();
+            }
+        }
+        scope ic = new Inner();
+        ic.test();
+    }
+
+    void testB()
+    {
+        class Inner
+        {
+            void test()
+            {
+                void localFunction()
+                {
+                    void anotherLocalFunction()
+                    {
+                        if (++count != 10)
+                            testB();
+                    }
+                    anotherLocalFunction();
+                }
+                localFunction();
+            }
+        }
+        scope ic = new Inner();
+        ic.test();
+    }
+
+    void testC()
+    {
+        class Inner
+        {
+            int a = 1;
+
+            void test()
+            {
+                void localFunction()
+                {
+                    count += a;
+                    if (count != 15)
+                        testC();
+                    assert(a == 1);
+                }
+                localFunction();
+            }
+        }
+        scope ic = new Inner();
+        ic.test();
+    }
+
+    void testD()
+    {
+        class Inner
+        {
+            void test()
+            {
+                int a = 1;
+
+                void localFunction()
+                {
+                    count += a;
+                    if (count != 20)
+                        testD();
+                    assert(a == 1);
+                }
+                localFunction();
+            }
+        }
+        scope ic = new Inner();
+        ic.test();
+    }
+
+    void testE()
+    {
+        class Inner
+        {
+            int a = 1;
+
+            void test()
+            {
+                void localFunction()
+                {
+                    void anotherLocalFunction()
+                    {
+                        count += a;
+                        if (count != 25)
+                            testE();
+                        assert(a == 1);
+                    }
+
+                    anotherLocalFunction();
+                }
+
+                localFunction();
+            }
+        }
+        scope ic = new Inner();
+        ic.test();
+    }
+
+    void testF()
+    {
+        class Inner
+        {
+            void test()
+            {
+                int a = 1;
+
+                void localFunction()
+                {
+                    void anotherLocalFunction()
+                    {
+                        count += a;
+                        if (count != 30)
+                            testF();
+                        assert(a == 1);
+                    }
+
+                    anotherLocalFunction();
+                }
+
+                localFunction();
+            }
+        }
+        scope ic = new Inner();
+        ic.test();
+    }
+
+    void testG()
+    {
+        class Inner
+        {
+            void test()
+            {
+                void localFunction()
+                {
+                    int a = 1;
+
+                    void anotherLocalFunction()
+                    {
+                        count += a;
+                        if (count != 35)
+                            testG();
+                        assert(a == 1);
+                    }
+
+                    anotherLocalFunction();
+                }
+
+                localFunction();
+            }
+        }
+        scope ic = new Inner();
+        ic.test();
+    }
+}
+
+void test191()
+{
+    scope oc = new C191();
+    oc.testA();
+    assert(oc.count == 5);
+
+    oc.testB();
+    assert(oc.count == 10);
+
+    oc.testC();
+    assert(oc.count == 15);
+
+    oc.testD();
+    assert(oc.count == 20);
+
+    oc.testE();
+    assert(oc.count == 25);
+
+    oc.testF();
+    assert(oc.count == 30);
+
+    oc.testG();
+    assert(oc.count == 35);
+}
 
 /******************************************/
 
@@ -1159,6 +1497,9 @@ void main()
     test133();
     test141();
     test179();
+    test186();
+    test187();
+    test191();
     test196();
     test198();
     test210();

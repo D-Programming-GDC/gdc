@@ -1,5 +1,5 @@
 /* imports.cc -- Build imported modules/declarations.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,16 +20,16 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 
 #include "dfrontend/aggregate.h"
-#include "dfrontend/arraytypes.h"
 #include "dfrontend/declaration.h"
 #include "dfrontend/enum.h"
+#include "dfrontend/import.h"
 #include "dfrontend/module.h"
 
 #include "tree.h"
 #include "stringpool.h"
 
 #include "d-tree.h"
-#include "d-objfile.h"
+
 
 /* Implements the visitor interface to build debug trees for all
    module and import declarations, where ISYM holds the cached
@@ -39,10 +39,10 @@ class ImportVisitor : public Visitor
   /* Build the declaration DECL as an imported symbol.  */
   tree make_import (tree decl)
   {
-    tree import = make_node (IMPORTED_DECL);
-    TREE_TYPE (import) = void_type_node;
-
     gcc_assert (decl != NULL_TREE);
+
+    tree import = build_decl (input_location, IMPORTED_DECL,
+			      DECL_NAME (decl), void_type_node);
     IMPORTED_DECL_ASSOCIATED_DECL (import) = decl;
     d_keep (import);
 
@@ -62,20 +62,27 @@ public:
      of whether there are any parent packages in the module system.  */
   void visit (Module *m)
   {
-    m->isym = build_decl (UNKNOWN_LOCATION, NAMESPACE_DECL,
+    Loc loc = (m->md != NULL) ? m->md->loc
+      : Loc (m->srcfile->toChars (), 1, 0);
+
+    m->isym = build_decl (get_linemap (loc), NAMESPACE_DECL,
 			  get_identifier (m->toPrettyChars ()),
 			  void_type_node);
     d_keep (m->isym);
-
-    Loc loc = (m->md != NULL) ? m->md->loc
-      : Loc (m->srcfile->toChars (), 1, 0);
-    set_decl_location (m->isym, loc);
 
     if (!m->isRoot ())
       DECL_EXTERNAL (m->isym) = 1;
 
     TREE_PUBLIC (m->isym) = 1;
     DECL_CONTEXT (m->isym) = NULL_TREE;
+  }
+
+  /* Build an import of another module symbol.  */
+
+  void visit (Import *m)
+  {
+    tree module = build_import_decl (m->mod);
+    m->isym = this->make_import (module);
   }
 
   /* Build an import for any kind of user defined type.
