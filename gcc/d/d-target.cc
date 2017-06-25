@@ -19,7 +19,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/aggregate.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
 #include "dfrontend/target.h"
@@ -33,7 +32,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
+
 
 /* Type size information used by frontend.  */
 int Target::ptrsize;
@@ -368,7 +367,7 @@ Target::loadModule (Module *m)
     {
       if (!strcmp ((*md->packages)[0]->toChars (), "core")
 	  && !strcmp ((*md->packages)[1]->toChars (), "stdc"))
-	builtin_modules.push (m);
+	d_add_builtin_module (m);
     }
 }
 

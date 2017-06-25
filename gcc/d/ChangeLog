@@ -1,3 +1,84 @@
+2017-05-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_FRONTEND_OBJS): Rename object.o to rootobject.o.
+
+2017-05-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* config-lang.in (gtfiles): Add typeinfo.cc.
+	* d-codegen.cc (d_build_call_list): Remove function.
+	(d_build_call_nary): Remove function.
+	(build_binary_op): Remove function.
+	(build_binop_assignment): Remove function.
+	(build_vthis_type): Rename to build_vthis_function.
+	(create_field_decl): Move to decl.cc.
+	* d-lang.cc (genCmain): Moved to d-frontend.cc.
+	(builtin_modules): Declare static.
+	(d_add_builtin_module): New function.
+	(d_add_entrypoint_module): New function.
+	* expr.cc (ExprVisitor::binary_op): New function.
+	(ExprVisitor::binop_assignment): New function.
+	* intrinsic.cc (expand_intrinsic): Rename to maybe_expand_intrinsic.
+	* runtime.cc (build_libcall): Updated signature.
+	* types.cc (make_two_field_type): Remove function.
+	(make_struct_type): New function.
+
+2017-05-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_OBJS): Add intrinsics.o and runtime.o.
+	* d-codegen.h: Remove file.
+	* intrinsics.cc: New file.
+	* runtime.cc: New file.
+
+2017-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc: Remove include for d-dmd-gcc.h.
+	* d-dmd-gcc.h: Rename to d-frontend.h.  Update all includes.
+	* d-frontend.cc (Global::_init): Remove unnecessary initialization.
+	* expr.cc: Remove include for d-dmd-gcc.h.
+
+2017-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c (handle_sentinel_attribute): Remove function.
+	(ignore_attribute): Remove function.
+	(d_langhook_common_attribute_table): Remove sentinel and tm regparm
+	from common attribute table.
+	(d_langhook_format_attribute_table): Remove variable.
+	* d-lang.cc (LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE): Remove macro.
+	(LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE): Remove macro.
+	(d_post_options): Don't set flag_unit_at_a_time.
+	(d_nametype): Remove function.
+	* types.cc (TypeVisitor::visit(TypeBasic)): Set TYPE_NAME.
+	(TypeVisitor::visit(TypeVector)): Likewise.
+
+2017-05-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_OBJS): Remove d-objfile.o.  Add modules.o.
+	* d-codegen.cc (get_linemap): Move function here.
+	* d-objfile.cc: Remove file.
+	* d-objfile.h: Remove header.
+	* d-tree.h (GDC_PREFIX): New macro.
+	* decl.cc (make_internal_name): Rename to mangle_internal_decl.
+	(DeclVisitor): Move class here.
+	(gcc_attribute_p): Move function here.
+	(build_decl_tree): Likewise.
+	(d_finish_decl): Likewise.
+	(start_function): Likewise.
+	(finish_function): Likewise.
+	(mark_needed): Likewise.
+	(base_vtable_offset): Likewise.
+	(build_artificial_decl): Likewise.
+	(build_type_decl): Likewise.
+	(d_comdat_group): Likewise.
+	(d_comdat_linkage): Likewise.
+	(add_moduleinfo_field): Move to modules.cc
+	(layout_moduleinfo_fields): Likewise.
+	(get_moduleinfo_decl): Likewise.
+	* modules.cc: New file.
+
+2017-05-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* imports.cc (ImportVisitor::visit(Import)): New function.
+
 2017-05-06  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (DeclVisitor::visit(Module)): Set input_location before

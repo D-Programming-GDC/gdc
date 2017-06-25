@@ -1,5 +1,5 @@
 /* types.cc -- Lower D frontend types to GCC trees.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "dfrontend/enum.h"
 #include "dfrontend/mtype.h"
 #include "dfrontend/target.h"
-#include "dfrontend/visitor.h"
 
 #include "tree.h"
 #include "fold-const.h"
@@ -39,8 +38,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "attribs.h"
 
 #include "d-tree.h"
-#include "d-codegen.h"
-#include "d-objfile.h"
 
 
 /* Return TRUE if TYPE is a static array va_list.  This is for compatibility
@@ -144,27 +141,32 @@ make_array_type (Type *type, unsigned HOST_WIDE_INT size)
   return build_array_type (telem, build_index_type (size_int (size - 1)));
 }
 
-/* Builds a record type from field types T1 and T2.  TYPE is the frontend
-   type we are building. N1 and N2 are the names of the two fields.  */
+/* Builds a record type whose name is NAME.  NFIELDS is the number of fields,
+   provided as field ident/type pairs.  */
 
 tree
-make_two_field_type (tree t1, tree t2, Type *type,
-		     const char *n1, const char *n2)
+make_struct_type (const char *name, int nfields, ...)
 {
-  tree rectype = make_node (RECORD_TYPE);
-  tree f0 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n1), t1);
-  tree f1 = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier (n2), t2);
+  tree fields = NULL_TREE;
+  va_list ap;
 
-  DECL_FIELD_CONTEXT (f0) = rectype;
-  DECL_FIELD_CONTEXT (f1) = rectype;
-  TYPE_FIELDS (rectype) = chainon (f0, f1);
+  va_start (ap, nfields);
 
-  if (type != NULL)
-    TYPE_NAME (rectype) = get_identifier (type->toChars ());
+  for (int i = 0; i < nfields; i++)
+    {
+      tree ident = va_arg (ap, tree);
+      tree type = va_arg (ap, tree);
+      tree field = build_decl (BUILTINS_LOCATION, FIELD_DECL, ident, type);
+      DECL_CHAIN (field) = fields;
+      fields = field;
+    }
 
-  layout_type (rectype);
+  va_end (ap);
 
-  return rectype;
+  tree type = make_node (RECORD_TYPE);
+  finish_builtin_struct (type, name, fields, NULL_TREE);
+
+  return type;
 }
 
 /* Return qualified type variant of TYPE determined by modifier value MOD.  */
@@ -586,6 +588,8 @@ public:
       case Tdchar:	  t->ctype = char32_type_node; break;
       default:		  gcc_unreachable ();
       }
+
+    TYPE_NAME (t->ctype) = get_identifier (t->toChars());
   }
 
 
@@ -606,10 +610,11 @@ public:
     /* In [abi/arrays], dynamic array layout is:
         .length	array dimension.
         .ptr	pointer to array data.  */
-
-    t->ctype = make_two_field_type (build_ctype (Type::tsize_t),
-				    build_pointer_type (build_ctype (t->next)),
-				    t, "length", "ptr");
+    t->ctype = make_struct_type (t->toChars (), 2,
+				 get_identifier ("length"),
+				 build_ctype (Type::tsize_t),
+				 get_identifier ("ptr"),
+				 build_pointer_type (build_ctype (t->next)));
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }
@@ -649,6 +654,7 @@ public:
       inner = build_ctype (Type::tuns8);
 
     t->ctype = build_vector_type (inner, nunits);
+    TYPE_NAME (t->ctype) = get_identifier (t->toChars());
     layout_type (t->ctype);
   }
 
@@ -659,15 +665,8 @@ public:
   {
     /* In [abi/associative-arrays], associative arrays are a struct that only
        consist of a pointer to an opaque, implementation defined type.  */
-    t->ctype = make_node (RECORD_TYPE);
-    tree ptr = build_decl (BUILTINS_LOCATION, FIELD_DECL,
-			   get_identifier ("ptr"), ptr_type_node);
-
-    DECL_FIELD_CONTEXT (ptr) = t->ctype;
-    TYPE_FIELDS (t->ctype) = ptr;
-    TYPE_NAME (t->ctype) = get_identifier (t->toChars ());
-    layout_type (t->ctype);
-
+    t->ctype = make_struct_type (t->toChars (), 1,
+				 get_identifier ("ptr"), ptr_type_node);
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }
@@ -755,18 +754,20 @@ public:
 
   void visit (TypeDelegate *t)
   {
+    /* In [abi/delegates], delegate layout is:
+        .ptr	    context pointer.
+        .funcptr    pointer to function.  */
     tree fntype = build_ctype (t->next);
-    tree dgtype = build_vthis_type (void_type_node, fntype);
+    tree dgtype = build_vthis_function (void_type_node, fntype);
 
     TYPE_ATTRIBUTES (dgtype) = TYPE_ATTRIBUTES (fntype);
     TYPE_LANG_SPECIFIC (dgtype) = TYPE_LANG_SPECIFIC (fntype);
 
-    /* In [abi/delegates], delegate layout is:
-        .ptr	    context pointer.
-        .funcptr    pointer to function.  */
-    t->ctype = make_two_field_type (build_ctype (Type::tvoidptr),
-				    build_pointer_type (dgtype),
-				    t, "ptr", "funcptr");
+    t->ctype = make_struct_type (t->toChars (), 2,
+				 get_identifier ("ptr"),
+				 build_ctype (Type::tvoidptr),
+				 get_identifier ("funcptr"),
+				 build_pointer_type (dgtype));
     TYPE_LANG_SPECIFIC (t->ctype) = build_lang_type (t);
     d_keep (t->ctype);
   }
