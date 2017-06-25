@@ -739,6 +739,7 @@ public:
 class ExtAsmStatement : public Statement
 {
 public:
+    StorageClass stc;
     Expression *insn;
     Expressions *args;
     Identifiers *names;
@@ -748,9 +749,10 @@ public:
     Identifiers *labels;
     GotoStatements *gotos;
 
-    ExtAsmStatement(Loc loc, Expression *insn, Expressions *args,
-                    Identifiers *names, Expressions *constraints,
-                    int outputargs, Expressions *clobbers, Identifiers *labels);
+    ExtAsmStatement(Loc loc, StorageClass stc, Expression *insn,
+                    Expressions *args, Identifiers *names,
+                    Expressions *constraints, int outputargs,
+                    Expressions *clobbers, Identifiers *labels);
     Statement *syntaxCopy();
 
     void accept(Visitor *v) { v->visit(this); }

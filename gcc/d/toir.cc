@@ -1419,8 +1419,8 @@ public:
     if (s->args == NULL && s->clobbers == NULL)
       ASM_INPUT_P (exp) = 1;
 
-    /* Asm statements without outputs are treated as volatile.  */
-    ASM_VOLATILE_P (exp) = (s->outputargs == 0);
+    /* Asm statements are treated as volatile unless 'pure'.  */
+    ASM_VOLATILE_P (exp) = !(s->stc & STCpure);
 
     add_stmt (exp);
   }
