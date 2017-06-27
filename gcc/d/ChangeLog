@@ -1,3 +1,7 @@
+2017-06-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc (CTFloat::hash): New function.
+
 2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-codegen.cc (d_array_string): Add staticp parameter.
