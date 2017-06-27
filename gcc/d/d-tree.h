@@ -447,7 +447,7 @@ extern tree build_float_cst (const real_t &, Type *);
 extern tree d_array_length (tree);
 extern tree d_array_ptr (tree);
 extern tree d_array_value (tree, tree, tree);
-extern tree d_array_string (const char *);
+extern tree d_array_string (const char *, bool);
 extern tree get_array_length (tree, Type *);
 extern tree build_class_binfo (tree, ClassDeclaration *);
 extern tree build_interface_binfo (tree, ClassDeclaration *, unsigned &);

@@ -530,7 +530,7 @@ public:
     this->layout_field (memtype);
 
     /* Name of the enum declaration.  */
-    this->layout_field (d_array_string (ed->toPrettyChars ()));
+    this->layout_field (d_array_string (ed->toPrettyChars (), true));
 
     /* Default initializer for enum.  */
     if (ed->members && !d->tinfo->isZeroInit ())
@@ -654,7 +654,7 @@ public:
     this->layout_field (build_typeinfo (ti->next));
 
     /* Mangled name of function declaration.  */
-    this->layout_field (d_array_string (d->tinfo->deco));
+    this->layout_field (d_array_string (d->tinfo->deco, true));
   }
 
   /* Layout of TypeInfo_Delegate is:
@@ -675,7 +675,7 @@ public:
     this->layout_field (build_typeinfo (ti->next));
 
     /* Mangled name of delegate declaration.  */
-    this->layout_field (d_array_string (d->tinfo->deco));
+    this->layout_field (d_array_string (d->tinfo->deco, true));
   }
 
   /* Layout of ClassInfo/TypeInfo_Class is:
@@ -723,7 +723,7 @@ public:
 	const char *name = cd->ident->toChars ();
 	if (!(strlen (name) > 9 && memcmp (name, "TypeInfo_", 9) == 0))
 	  name = cd->toPrettyChars ();
-	this->layout_field (d_array_string (name));
+	this->layout_field (d_array_string (name, true));
 
 	/* The vtable of the class declaration.  */
 	value = d_array_value (array_type_node, size_int (cd->vtbl.dim),
@@ -826,7 +826,7 @@ public:
 	this->layout_field (null_array_node);
 
 	/* Name of the interface declaration.  */
-	this->layout_field (d_array_string (cd->toPrettyChars ()));
+	this->layout_field (d_array_string (cd->toPrettyChars (), true));
 
 	/* No vtable for interface declaration.  */
 	this->layout_field (null_array_node);
@@ -959,7 +959,7 @@ public:
       }
 
     /* Name of the struct declaration.  */
-    this->layout_field (d_array_string (sd->toPrettyChars ()));
+    this->layout_field (d_array_string (sd->toPrettyChars (), true));
 
     /* Default initializer for struct.  */
     tree ptr = (sd->zeroInit) ? null_pointer_node :

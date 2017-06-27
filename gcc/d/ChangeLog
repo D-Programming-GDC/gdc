@@ -1,5 +1,13 @@
 2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
+	* d-codegen.cc (d_array_string): Add staticp parameter.
+	(d_assert_call): Update call to d_array_string.
+	* d-tree.h (d_array_string): Updated signature.
+	* typeinfo.cc (TypeInfoVisitor::visit): Update calls to
+	d_array_string.
+
+2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
 	* toir.cc (IRVisitor::visit(ExtAsmStatement)): Set ASM_VOLATILE_P only
 	if statement is not marked with pure attribute.
 
