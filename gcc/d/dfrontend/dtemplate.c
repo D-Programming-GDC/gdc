@@ -18,6 +18,7 @@
 #include "aav.h"
 #include "rmem.h"
 #include "stringtable.h"
+#include "hash.h"
 
 #include "mtype.h"
 #include "template.h"
@@ -40,16 +41,16 @@
 
 #define IDX_NOTFOUND (0x12345678)               // index is not found
 
-size_t templateParameterLookup(Type *tparam, TemplateParameters *parameters);
-int arrayObjectMatch(Objects *oa1, Objects *oa2);
-unsigned char deduceWildHelper(Type *t, Type **at, Type *tparam);
-MATCH deduceTypeHelper(Type *t, Type **at, Type *tparam);
 void mangleToBuffer(Expression *e, OutBuffer *buf);
 Type *rawTypeMerge(Type *t1, Type *t2);
 bool MODimplicitConv(MOD modfrom, MOD modto);
 MATCH MODmethodConv(MOD modfrom, MOD modto);
 MOD MODmerge(MOD mod1, MOD mod2);
 
+static size_t templateParameterLookup(Type *tparam, TemplateParameters *parameters);
+static int arrayObjectMatch(Objects *oa1, Objects *oa2);
+static unsigned char deduceWildHelper(Type *t, Type **at, Type *tparam);
+static MATCH deduceTypeHelper(Type *t, Type **at, Type *tparam);
 static Type *reliesOnTident(Type *t, TemplateParameters *tparams = NULL, size_t iStart = 0);
 
 /********************************************
@@ -186,7 +187,7 @@ Dsymbol *getDsymbol(RootObject *oarg)
  * Try to get value from manifest constant
  */
 
-Expression *getValue(Expression *e)
+static Expression *getValue(Expression *e)
 {
     if (e && e->op == TOKvar)
     {
@@ -198,7 +199,8 @@ Expression *getValue(Expression *e)
     }
     return e;
 }
-Expression *getValue(Dsymbol *&s)
+
+static Expression *getValue(Dsymbol *&s)
 {
     Expression *e = NULL;
     if (s)
@@ -268,23 +270,21 @@ bool definitelyValueParameter(Expression *e)
     return false;
 }
 
+static Expression *getExpression(RootObject *o)
+{
+    Dsymbol *s = isDsymbol(o);
+    return s ? getValue(s) : getValue(isExpression(o));
+}
+
 /******************************
  * If o1 matches o2, return true.
  * Else, return false.
  */
 
-bool match(RootObject *o1, RootObject *o2)
+static bool match(RootObject *o1, RootObject *o2)
 {
-    Type *t1 = isType(o1);
-    Type *t2 = isType(o2);
-    Dsymbol *s1 = isDsymbol(o1);
-    Dsymbol *s2 = isDsymbol(o2);
-    Expression *e1 = s1 ? getValue(s1) : getValue(isExpression(o1));
-    Expression *e2 = s2 ? getValue(s2) : getValue(isExpression(o2));
-    Tuple *u1 = isTuple(o1);
-    Tuple *u2 = isTuple(o2);
-
-    //printf("\t match t1 %p t2 %p, e1 %p e2 %p, s1 %p s2 %p, u1 %p u2 %p\n", t1,t2,e1,e2,s1,s2,u1,u2);
+    //printf("match() o1 = %p %s (%d), o2 = %p %s (%d)\n",
+    //       o1, o1->toChars(), o1->dyncast(), o2, o2->toChars(), o2->dyncast());
 
     /* A proper implementation of the various equals() overrides
      * should make it possible to just do o1->equals(o2), but
@@ -295,56 +295,67 @@ bool match(RootObject *o1, RootObject *o2)
      * at least in template arguments.
      */
 
-    if (t1)
+    if (Type *t1 = isType(o1))
     {
-        //printf("t1 = %s\n", t1->toChars());
-        //printf("t2 = %s\n", t2->toChars());
+        Type *t2 = isType(o2);
         if (!t2)
             goto Lnomatch;
+
+        //printf("\tt1 = %s\n", t1->toChars());
+        //printf("\tt2 = %s\n", t2->toChars());
         if (!t1->equals(t2))
             goto Lnomatch;
+
+        goto Lmatch;
     }
-    else if (e1)
+    if (Expression *e1 = getExpression(o1))
     {
+        Expression *e2 = getExpression(o2);
         if (!e2)
             goto Lnomatch;
-#if 0
-        printf("match %d\n", e1->equals(e2));
-        printf("\te1 = %p %s %s %s\n", e1, e1->type->toChars(), Token::toChars(e1->op), e1->toChars());
-        printf("\te2 = %p %s %s %s\n", e2, e2->type->toChars(), Token::toChars(e2->op), e2->toChars());
-#endif
+
+        //printf("\te1 = %s %s %s\n", e1->type->toChars(), Token::toChars(e1->op), e1->toChars());
+        //printf("\te2 = %s %s %s\n", e2->type->toChars(), Token::toChars(e2->op), e2->toChars());
         if (!e1->equals(e2))
             goto Lnomatch;
+
+        goto Lmatch;
     }
-    else if (s1)
+    if (Dsymbol *s1 = isDsymbol(o1))
     {
-        if (s2)
-        {
-            if (!s1->equals(s2))
-                goto Lnomatch;
-            if (s1->parent != s2->parent &&
-                !s1->isFuncDeclaration() &&
-                !s2->isFuncDeclaration())
-            {
-                goto Lnomatch;
-            }
-        }
-        else
+        Dsymbol *s2 = isDsymbol(o2);
+        if (!s2)
             goto Lnomatch;
+
+        //printf("\ts1 = %s\n", s1->toChars());
+        //printf("\ts2 = %s\n", s2->toChars());
+        if (!s1->equals(s2))
+            goto Lnomatch;
+        if (s1->parent != s2->parent && !s1->isFuncDeclaration() && !s2->isFuncDeclaration())
+            goto Lnomatch;
+
+        goto Lmatch;
     }
-    else if (u1)
+    if (Tuple *u1 = isTuple(o1))
     {
+        Tuple *u2 = isTuple(o2);
         if (!u2)
             goto Lnomatch;
+
+        //printf("\tu1 = %s\n", u1->toChars());
+        //printf("\tu2 = %s\n", u2->toChars());
         if (!arrayObjectMatch(&u1->objects, &u2->objects))
             goto Lnomatch;
+
+        goto Lmatch;
     }
-    //printf("match\n");
-    return true;   // match
+Lmatch:
+    //printf("\t-> match\n");
+    return true;
 
 Lnomatch:
-    //printf("nomatch\n");
-    return false;   // nomatch;
+    //printf("\t-> nomatch\n");
+    return false;
 }
 
 
@@ -371,9 +382,100 @@ int arrayObjectMatch(Objects *oa1, Objects *oa2)
 
 
 /************************************
+ * Computes hash of expression.
+ * Handles all Expression classes and MUST match their equals method,
+ * i.e. e1->equals(e2) implies expressionHash(e1) == expressionHash(e2).
+ */
+static hash_t expressionHash(Expression *e)
+{
+    switch (e->op)
+    {
+    case TOKint64:
+        return (size_t) ((IntegerExp *)e)->getInteger();
+
+    case TOKfloat64:
+        return CTFloat::hash(((RealExp *)e)->value);
+
+    case TOKcomplex80:
+    {
+        ComplexExp *ce = (ComplexExp *)e;
+        return mixHash(CTFloat::hash(ce->toReal()), CTFloat::hash(ce->toImaginary()));
+    }
+
+    case TOKidentifier:
+        return (size_t)(void *) ((IdentifierExp *)e)->ident;
+
+    case TOKnull:
+        return (size_t)(void *) ((NullExp *)e)->type;
+
+    case TOKstring:
+    {
+        StringExp *se = (StringExp *)e;
+        return calcHash((const char *)se->string, se->len * se->sz);
+    }
+
+    case TOKtuple:
+    {
+        TupleExp *te = (TupleExp *)e;
+        size_t hash = 0;
+        hash += te->e0 ? expressionHash(te->e0) : 0;
+        for (size_t i = 0; i < te->exps->dim; i++)
+        {
+            Expression *elem = (*te->exps)[i];
+            hash = mixHash(hash, expressionHash(elem));
+        }
+        return hash;
+    }
+
+    case TOKarrayliteral:
+    {
+        ArrayLiteralExp *ae = (ArrayLiteralExp *)e;
+        size_t hash = 0;
+        for (size_t i = 0; i < ae->elements->dim; i++)
+            hash = mixHash(hash, expressionHash(ae->getElement(i)));
+        return hash;
+    }
+
+    case TOKassocarrayliteral:
+    {
+        AssocArrayLiteralExp *ae = (AssocArrayLiteralExp *)e;
+        size_t hash = 0;
+        for (size_t i = 0; i < ae->keys->dim; i++)
+            // reduction needs associative op as keys are unsorted (use XOR)
+            hash ^= mixHash(expressionHash((*ae->keys)[i]), expressionHash((*ae->values)[i]));
+        return hash;
+    }
+
+    case TOKstructliteral:
+    {
+        StructLiteralExp *se = (StructLiteralExp *)e;
+        size_t hash = 0;
+        for (size_t i = 0; i < se->elements->dim; i++)
+        {
+            Expression *elem = (*se->elements)[i];
+            hash = mixHash(hash, elem ? expressionHash(elem) : 0);
+        }
+        return hash;
+    }
+
+    case TOKvar:
+        return (size_t)(void *) ((VarExp *)e)->var;
+
+    case TOKfunction:
+        return (size_t)(void *) ((FuncExp *)e)->fd;
+
+    default:
+        // no custom equals for this expression
+        // equals based on identity
+        return (size_t)(void *) e;
+    }
+}
+
+
+/************************************
  * Return hash of Objects.
  */
-hash_t arrayObjectHash(Objects *oa1)
+static hash_t arrayObjectHash(Objects *oa1)
 {
     hash_t hash = 0;
     for (size_t j = 0; j < oa1->dim; j++)
@@ -382,29 +484,18 @@ hash_t arrayObjectHash(Objects *oa1)
          */
         RootObject *o1 = (*oa1)[j];
         if (Type *t1 = isType(o1))
-            hash += (size_t)t1->deco;
-        else
+            hash = mixHash(hash, (size_t)t1->deco);
+        else if (Expression *e1 = getExpression(o1))
+            hash = mixHash(hash, expressionHash(e1));
+        else if (Dsymbol *s1 = isDsymbol(o1))
         {
-            Dsymbol *s1 = isDsymbol(o1);
-            Expression *e1 = s1 ? getValue(s1) : getValue(isExpression(o1));
-            if (e1)
-            {
-                if (e1->op == TOKint64)
-                {
-                    IntegerExp *ne = (IntegerExp *)e1;
-                    hash += (size_t)ne->getInteger();
-                }
-            }
-            else if (s1)
-            {
-                FuncAliasDeclaration *fa1 = s1->isFuncAliasDeclaration();
-                if (fa1)
-                    s1 = fa1->toAliasFunc();
-                hash += (size_t)(void *)s1->getIdent() + (size_t)(void *)s1->parent;
-            }
-            else if (Tuple *u1 = isTuple(o1))
-                hash += arrayObjectHash(&u1->objects);
+            FuncAliasDeclaration *fa1 = s1->isFuncAliasDeclaration();
+            if (fa1)
+                s1 = fa1->toAliasFunc();
+            hash = mixHash(hash, mixHash((size_t)(void *)s1->getIdent(), (size_t)(void *)s1->parent));
         }
+        else if (Tuple *u1 = isTuple(o1))
+            hash = mixHash(hash, arrayObjectHash(&u1->objects));
     }
     return hash;
 }
@@ -2880,7 +2971,7 @@ void TemplateDeclaration::removeInstance(TemplateInstance *handle)
  * Return IDX_NOTFOUND if not found.
  */
 
-size_t templateIdentifierLookup(Identifier *id, TemplateParameters *parameters)
+static size_t templateIdentifierLookup(Identifier *id, TemplateParameters *parameters)
 {
     for (size_t i = 0; i < parameters->dim; i++)
     {
@@ -5062,7 +5153,7 @@ bool TemplateAliasParameter::declareParameter(Scope *sc)
     return sc->insert(ad) != NULL;
 }
 
-RootObject *aliasParameterSemantic(Loc loc, Scope *sc, RootObject *o, TemplateParameters *parameters)
+static RootObject *aliasParameterSemantic(Loc loc, Scope *sc, RootObject *o, TemplateParameters *parameters)
 {
     if (o)
     {

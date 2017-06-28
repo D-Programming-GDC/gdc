@@ -408,6 +408,13 @@ CTFloat::sprint (char *buffer, char fmt, real_t r)
     }
 }
 
+/* Return a hash value for real_t value R.  */
+
+size_t
+CTFloat::hash (real_t r)
+{
+    return real_hash (&r.rv ());
+}
 
 /* Implements backend-specific interfaces used by the frontend.  */
 
