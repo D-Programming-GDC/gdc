@@ -51,8 +51,7 @@ setup() {
     # Would save 1 minute if these were preinstalled in some docker image.
     # But the network speed is nothing to complain about so far...
     sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-    sudo apt-get update -qq
-    sudo apt-get install -qq gcc-${HOST_PACKAGE} g++-${HOST_PACKAGE} \
+    install-package -qq gcc-${HOST_PACKAGE} g++-${HOST_PACKAGE} \
         autogen autoconf2.64 automake1.11 bison dejagnu flex patch || exit 1
 
     ## Download and extract GCC sources.
