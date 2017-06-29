@@ -968,11 +968,9 @@ d_add_entrypoint_module (Module *entry, Module *root)
 static void
 d_write_global_declarations()
 {
-  if (vec_safe_length(global_declarations) != 0)
-    {
-      d_finish_compilation (global_declarations->address(),
-			    global_declarations->length());
-    }
+  d_finish_ctor_lists ();
+  d_finish_compilation (vec_safe_address (global_declarations),
+			vec_safe_length (global_declarations));
 }
 
 /* Implements the lang_hooks.parse_file routine for language D.  */

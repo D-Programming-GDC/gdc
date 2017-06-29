@@ -576,6 +576,7 @@ extern tree maybe_expand_intrinsic (tree);
 extern void build_module_tree (Module *);
 extern tree d_module_context (void);
 extern void register_module_decl (Declaration *);
+extern void d_finish_ctor_lists (void);
 extern void d_finish_compilation (tree *, int);
 
 /* In runtime.cc.  */

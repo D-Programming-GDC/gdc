@@ -805,6 +805,36 @@ register_module_decl (Declaration *d)
     }
 }
 
+/* Emit the static_ctor_list and static_dtor_list functions.
+   Keep this as a separate function in GCC < v5 as this will
+   modify the global_declarations array and invalidate the vec pointer
+   when done in d_finish_compilation. */
+
+
+void
+d_finish_ctor_lists (void)
+{
+  /* If the target does not directly support static constructors,
+     static_ctor_list contains a list of all static constructors defined
+     so far.  This routine will create a function to call all of those
+     and is picked up by collect2. */
+  if (static_ctor_list)
+    {
+      tree decl = build_funcs_gates_fn (get_file_function_name ("I"),
+					static_ctor_list, NULL);
+      DECL_STATIC_CONSTRUCTOR (decl) = 1;
+      decl_init_priority_insert (decl, DEFAULT_INIT_PRIORITY);
+    }
+
+  if (static_dtor_list)
+    {
+      tree decl = build_funcs_gates_fn (get_file_function_name ("D"),
+					static_dtor_list, NULL);
+      DECL_STATIC_DESTRUCTOR (decl) = 1;
+      decl_fini_priority_insert (decl, DEFAULT_INIT_PRIORITY);
+    }
+}
+
 /* Wrapup all global declarations and start the final compilation.  */
 
 void
@@ -828,23 +858,14 @@ d_finish_compilation (tree *vec, int len)
 	}
     }
 
-  /* If the target does not directly support static constructors,
-     static_ctor_list contains a list of all static constructors defined
-     so far.  This routine will create a function to call all of those
-     and is picked up by collect2. */
-  if (static_ctor_list)
-    {
-      tree decl = build_funcs_gates_fn (get_file_function_name ("I"),
-					static_ctor_list, NULL);
-      DECL_STATIC_CONSTRUCTOR (decl) = 1;
-      decl_init_priority_insert (decl, DEFAULT_INIT_PRIORITY);
-    }
+  // We're done parsing; proceed to optimize and emit assembly.
+  if (!global.errors && !errorcount)
+    symtab->finalize_compilation_unit();
 
-  if (static_dtor_list)
-    {
-      tree decl = build_funcs_gates_fn (get_file_function_name ("D"),
-					static_dtor_list, NULL);
-      DECL_STATIC_DESTRUCTOR (decl) = 1;
-      decl_fini_priority_insert (decl, DEFAULT_INIT_PRIORITY);
-    }
+  // Now, issue warnings about static, but not defined, functions.
+  check_global_declarations (vec, len);
+
+  // After cgraph has had a chance to emit everything that's going to
+  // be emitted, output debug information for globals.
+  emit_debug_global_declarations (vec, len);
 }
