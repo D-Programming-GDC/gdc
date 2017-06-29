@@ -1,5 +1,5 @@
 /* d-longdouble.cc -- Software floating point emulation for the frontend.
-   Copyright (C) 2015-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,13 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
-#include "dfrontend/lexer.h"
 #include "dfrontend/mtype.h"
-#include "dfrontend/aggregate.h"
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-codegen.h"
 #include "longdouble.h"
 
 

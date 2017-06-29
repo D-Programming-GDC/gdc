@@ -180,3 +180,49 @@ relevant documentation about the GDC front end.
    /* Next come the entries for C.  */
    {".c", "@c", 0, 0, 1},
    {"@c",
+--- a/gcc/po/EXCLUDES
++++ b/gcc/po/EXCLUDES
+@@ -53,3 +53,43 @@ genrecog.c
+ gensupport.c
+ gensupport.h
+ read-md.c
++
++#   These files are part of the front end to D, and have no i18n support.
++d/dfrontend/arrayop.c
++d/dfrontend/attrib.c
++d/dfrontend/canthrow.c
++d/dfrontend/cond.c
++d/dfrontend/constfold.c
++d/dfrontend/cppmangle.c
++d/dfrontend/ctfeexpr.c
++d/dfrontend/dcast.c
++d/dfrontend/dclass.c
++d/dfrontend/declaration.c
++d/dfrontend/denum.c
++d/dfrontend/dimport.c
++d/dfrontend/dinterpret.c
++d/dfrontend/dmangle.c
++d/dfrontend/dmodule.c
++d/dfrontend/doc.c
++d/dfrontend/dscope.c
++d/dfrontend/dstruct.c
++d/dfrontend/dsymbol.c
++d/dfrontend/dtemplate.c
++d/dfrontend/dversion.c
++d/dfrontend/expression.c
++d/dfrontend/func.c
++d/dfrontend/init.c
++d/dfrontend/inline.c
++d/dfrontend/lexer.c
++d/dfrontend/mtype.c
++d/dfrontend/nogc.c
++d/dfrontend/nspace.c
++d/dfrontend/objc.c
++d/dfrontend/opover.c
++d/dfrontend/optimize.c
++d/dfrontend/parse.c
++d/dfrontend/sideeffect.c
++d/dfrontend/statement.c
++d/dfrontend/statementsem.c
++d/dfrontend/staticassert.c
++d/dfrontend/traits.c

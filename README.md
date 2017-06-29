@@ -8,7 +8,7 @@ The GNU D Compiler (GDC) project was originally started by David Friedman in 200
 
 Documentation on GDC is available from [the wiki][wiki]. Any bugs or issues found with using GDC should be reported at [our bugzilla site][bugs]. For help with GDC, the [D.gnu][maillist] mailing list is the place to go with questions or problems.
 
-Work is currently under way to merge GDC into a future release of GCC. Any assitance of any sort during this time would be invaluably appreciated. Feel free to contact via [email][email] or join in at #d.gdc on FreeNode.
+Work is currently under way to merge GDC into a future release of GCC. Assistance of any sort during this time would be invaluably appreciated. Feel free to contact via [email][email] or join in at #d.gdc on FreeNode.
 
 ### Building
 

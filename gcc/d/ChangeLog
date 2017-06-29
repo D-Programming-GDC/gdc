@@ -1,3 +1,161 @@
+2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* toir.cc (IRVisitor::visit(ExtAsmStatement)): Set ASM_VOLATILE_P only
+	if statement is not marked with pure attribute.
+
+2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-lang.cc (d_parse_file): Print all predefined version identifiers
+	if verbose.
+
+2017-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc (Global::_init): Remove memset for global.params.
+
+2017-06-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(BinAssignExp)): Strip promotions from
+	both signed and unsigned rshift assignments.
+
+2017-06-17  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-diagnostic.cc (expand_format): New function.
+	(d_diagnostic_report_diagnostic): New function.
+	(error, verror): Update format attributes.  Use function
+	d_diagnostic_report_diagnostic instead of xvasprintf.
+	(errorSupplemental, verrorSupplemental): Likewise.
+	(warning, vwarning): Likewise.
+	(warningSupplemental, vwarningSupplemental): Likewise.
+	(deprecation, vdeprecation): Likewise.
+	(deprecationSupplemental, vdeprecationSupplemental): Likewise.
+
+2017-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(AssertExp)): Don't call invariant on
+	interface objects.
+
+2017-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(DelegateExp)): Convert object to right
+	type before using it.
+
+2017-06-12  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-decls.cc (get_decl_tree): Find the first parent member function
+	before constructing non-local `this' decl.
+
+2017-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (build_frontend_type): Allow all vector types to be
+	included in builtins module.
+
+2017-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* types.cc (TypeVisitor::visit(TypeStruct)): Let struct alignment
+	override the alignsize.
+
+2017-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_decl_context): Use origin template declaration as
+	context for instantiated type symbols.
+
+2017-06-08  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* expr.cc (ExprVisitor::visit(StringExp)): Create string type that is
+	same length as string value literal.
+
+2017-05-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_FRONTEND_OBJS): Rename object.o to rootobject.o.
+
+2017-05-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* config-lang.in (gtfiles): Add typeinfo.cc.
+	* d-codegen.cc (d_build_call_list): Remove function.
+	(d_build_call_nary): Remove function.
+	(build_binary_op): Remove function.
+	(build_binop_assignment): Remove function.
+	(build_vthis_type): Rename to build_vthis_function.
+	(create_field_decl): Move to decl.cc.
+	* d-lang.cc (genCmain): Moved to d-frontend.cc.
+	(builtin_modules): Declare static.
+	(d_add_builtin_module): New function.
+	(d_add_entrypoint_module): New function.
+	* expr.cc (ExprVisitor::binary_op): New function.
+	(ExprVisitor::binop_assignment): New function.
+	* intrinsic.cc (expand_intrinsic): Rename to maybe_expand_intrinsic.
+	* runtime.cc (build_libcall): Updated signature.
+	* types.cc (make_two_field_type): Remove function.
+	(make_struct_type): New function.
+
+2017-05-22  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_OBJS): Add intrinsics.o and runtime.o.
+	* d-codegen.h: Remove file.
+	* intrinsics.cc: New file.
+	* runtime.cc: New file.
+
+2017-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc: Remove include for d-dmd-gcc.h.
+	* d-dmd-gcc.h: Rename to d-frontend.h.  Update all includes.
+	* d-frontend.cc (Global::_init): Remove unnecessary initialization.
+	* expr.cc: Remove include for d-dmd-gcc.h.
+
+2017-05-21  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-attribs.c (handle_sentinel_attribute): Remove function.
+	(ignore_attribute): Remove function.
+	(d_langhook_common_attribute_table): Remove sentinel and tm regparm
+	from common attribute table.
+	(d_langhook_format_attribute_table): Remove variable.
+	* d-lang.cc (LANG_HOOKS_BUILTIN_FUNCTION_EXT_SCOPE): Remove macro.
+	(LANG_HOOKS_FORMAT_ATTRIBUTE_TABLE): Remove macro.
+	(d_post_options): Don't set flag_unit_at_a_time.
+	(d_nametype): Remove function.
+	* types.cc (TypeVisitor::visit(TypeBasic)): Set TYPE_NAME.
+	(TypeVisitor::visit(TypeVector)): Likewise.
+
+2017-05-20  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* Make-lang.in (D_OBJS): Remove d-objfile.o.  Add modules.o.
+	* d-codegen.cc (get_linemap): Move function here.
+	* d-objfile.cc: Remove file.
+	* d-objfile.h: Remove header.
+	* d-tree.h (GDC_PREFIX): New macro.
+	* decl.cc (make_internal_name): Rename to mangle_internal_decl.
+	(DeclVisitor): Move class here.
+	(gcc_attribute_p): Move function here.
+	(build_decl_tree): Likewise.
+	(d_finish_decl): Likewise.
+	(start_function): Likewise.
+	(finish_function): Likewise.
+	(mark_needed): Likewise.
+	(base_vtable_offset): Likewise.
+	(build_artificial_decl): Likewise.
+	(build_type_decl): Likewise.
+	(d_comdat_group): Likewise.
+	(d_comdat_linkage): Likewise.
+	(add_moduleinfo_field): Move to modules.cc
+	(layout_moduleinfo_fields): Likewise.
+	(get_moduleinfo_decl): Likewise.
+	* modules.cc: New file.
+
+2017-05-10  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* imports.cc (ImportVisitor::visit(Import)): New function.
+
+2017-05-06  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-objfile.cc (DeclVisitor::visit(Module)): Set input_location before
+	walking module members.
+	(get_linemap): Return input_location if no filename set.
+	(set_input_location): Remove function.  Update all callers to set
+	input_location directly.
+	(set_decl_location): Remove function.  Update all callers to pass
+	get_linemap to build_decl, or use input_location.
+	* types.cc (insert_aggregate_field): Update signature.
+
 2017-04-30  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-objfile.cc (start_function): Update signature.
