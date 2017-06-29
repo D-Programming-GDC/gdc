@@ -11926,10 +11926,10 @@ objext=o
 objext_D=$objext
 
 # Code to be used in simple compile tests
-lt_simple_compile_test_code="module mod; extern(C) void* _Dmodule_ref; extern(C) int main() { return 0; }"
+lt_simple_compile_test_code="module mod; extern(C) int main() { return 0; }"
 
 # Code to be used in simple link tests
-lt_simple_link_test_code='module mod; extern(C) void* _Dmodule_ref; extern(C) int main() { return 0; }'
+lt_simple_link_test_code='module mod; extern(C) int main() { return 0; }'
 
 # ltmain only uses $CC for tagged configurations so make sure $CC is set.
 

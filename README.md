@@ -8,14 +8,12 @@ The GNU D Compiler (GDC) project was originally started by David Friedman in 200
 
 Documentation on GDC is available from [the wiki][wiki]. Any bugs or issues found with using GDC should be reported at [our bugzilla site][bugs]. For help with GDC, the [D.gnu][maillist] mailing list is the place to go with questions or problems.
 
-Work is currently under way to merge GDC into a future release of GCC. Any assitance of any sort during this time would be invaluably appreciated. Feel free to contact via [email][email] or join in at #d.gdc on FreeNode.
+Work is currently under way to merge GDC into a future release of GCC. Assistance of any sort during this time would be invaluably appreciated. Feel free to contact via [email][email] or join in at #d.gdc on FreeNode.
 
 ### Building
 
 The master branch of this project closely follows [GCC development branch][gcc-devel], which if you intend to use GDC for production applications, is likely not the version of GCC you want to build against.  For versions of GDC compatible with GCC releases, checkout one of the following branches:
 
-* [GCC 4.7.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-4.7)
-* [GCC 4.8.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-4.8)
 * [GCC 4.9.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-4.9)
 * [GCC 5.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-5)
 * [GCC 6.x](https://github.com/D-Programming-GDC/GDC/tree/gdc-6)

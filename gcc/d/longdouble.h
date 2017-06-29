@@ -101,4 +101,4 @@ ldouble (T x)
   return d;
 }
 
-#endif
+#endif  /* ! GCC_D_LONGDOUBLE_H */

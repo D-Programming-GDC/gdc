@@ -27,7 +27,9 @@ alexrp for standardising the platform identifiers in D.
 History:
 ---------------------
 Release Notes
+
 0.30:
+
   * Support for GCC, 4.5.x and 4.6.x added
   * Removed support for GCC 3.4.x, 4.0.x, 4.1.x
   * Updated D1 to 1.069
@@ -40,6 +42,7 @@ Release Notes
   * Many other Bitbucket issues.
 
 0.25:
+
   * Support for GCC, 4.2.x, 4.3.x, and 4.4.x added
   * Updated D1 to 1.063
   * Updated D2 to 2.020
@@ -49,6 +52,7 @@ Release Notes
   * Fixed Bitbucket issues too numerous to mention. :-)
 
 0.24:
+
   * Removed support for GCC 3.3.x
   * Updated to DMD 1.020
   * Fixed Bugzilla 1037, 1038 (gdc specific), 1043, 1045, 1046,
@@ -57,12 +61,14 @@ Release Notes
   * Fixed SourceForge issues 1689634, 1749622, 1721496, 1721435
 
 0.23:
+
   * Added support for 64-bit targets
   * Added multilib support
   * Updated to DMD 1.007
   * Fixed Bugzilla 984, 1013
 
 0.22:
+
   * Added support for GCC 4.1.x
   * Support for GCC 3.3.x is deprecated
   * Updated to DMD 1.004
@@ -71,12 +77,14 @@ Release Notes
   * Added Rick Mann's -framework patch for gdmd
 
 0.21:
+
   * Updated to DMD 1.00
   * Fixed Bugzilla 695, 696, 737, 738, 739, 742, 743, 745
   * Implemented GCC extended assembler
   * Implemented basic support for GCC attributes
 
 0.20:
+
   * Updated to DMD 0.177
   * Fixes for synchronized code generation
   * Better support for cross-hosted builds
@@ -84,6 +92,7 @@ Release Notes
   * Applied Anders Bjorklund's MacOS X build patches
 
 0.19:
+
   * Fixed D Bugzilla bugs 141(gdc), 157, 162, 164, 171, 174, 175, 192, 229
   * Applied Dave Fladebo's suggestion for -O3 in gdmd
   * Updated to DMD 0.162
@@ -94,6 +103,7 @@ Release Notes
   * Fix parallel builds
 
 0.18:
+
   *  Fixes
     o ICE on assignment arithmetic
     o Problems mixing D and assembler floating point operations
@@ -107,6 +117,7 @@ Release Notes
     o Compiler can be relocated to another directory.
 
 0.17:
+
   *  Fixes
     o Mixed complex/float operations on GCC 4.0 (D.gnu/1485)
     o Applied Thomas Kuhne's HTML line number fix
@@ -117,6 +128,7 @@ Release Notes
     o Updated to DMD 0.140
 
 0.16:
+
   * Fixes
     o Concatenating a array and single element
     o "__arrayArg already defined"
@@ -134,9 +146,11 @@ Release Notes
     o Support compiling multiple sources to a single object with GCC 3.4.x
 
 0.15:
-    * Updated to DMD 0.128
+
+  * Updated to DMD 0.128
 
 0.14:
+
   * Fixes
     o Classes nested in functions actually work now.
     o Fix for newest versions of the GNU assembler.
@@ -144,6 +158,7 @@ Release Notes
     o Updated to DMD 0.127
 
 0.13:
+
   * Fixes
     o Cygwin/MinGW assembler problem
   * Improvements
@@ -153,12 +168,14 @@ Release Notes
       enable runtime checks and unit tests.
 
 0.12.1:
+
   *  Fixes
     o Compilation errors and crashes with -fpic
     o Crashes with interfaces on Cygwin/MinGW
     o Support the -mno-cygwin option
 
 0.12:
+
   * Fixes
     o Various problems building MinGW in MSYS
     o Mango "endless output"
@@ -180,6 +197,7 @@ Release Notes
       + Requires a comma after the "-q" option.
 
 0.11:
+
   * Fixes
     o Reversed structure compare
     o Correct meaning of '-L' option in wrapper script
@@ -192,6 +210,7 @@ Release Notes
       is supported out-of-the-box, however.
 
 0.11pre1:
+
   * Fixes
     o Incorrect/missing thunks
     o Problems when the C char type is unsigned
@@ -221,6 +240,7 @@ Release Notes
       this.
 
 0.10:
+
   * Fixes
     o Complex number comparisons with NAN operands
     o Cleaned up Phobos installation.
@@ -234,6 +254,7 @@ Release Notes
     o Phobos Makefile now supports the DESTDIR variable
 
 0.9:
+
   * Fixes
     o Detect use of non-static methods in a static context
     o Enumerated types are signed by default
@@ -254,6 +275,7 @@ Release Notes
     o Private declarations are now exported from object files
 
 0.8:
+
   *  Fixes
     o std.loader module is now enabled
     o Proper casting from complex and imaginary types
@@ -320,6 +342,7 @@ Status
 ---------------------
 
 Known Issues
+
   * See the DStress (http://svn.kuehne.cn/dstress/www/dstress.html)
     page for known failing cases.
   * Debugging information may have a few problems if you are using
@@ -343,6 +366,7 @@ Known Issues
     floating-point formatting and parsing in a standard way.
 
 Known Differences from DMD
+
   * The type of _argptr in variadic functions is the target-specific
     va_list type.  The only portable way to use _argptr is the
     std.stdarg.va_arg template.  In particular, you cannot construct

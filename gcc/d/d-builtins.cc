@@ -1,5 +1,5 @@
 /* d-builtins.cc -- GCC builtins support for D.
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-system.h"
 #include "d-tree.h"
-#include "d-codegen.h"
-#include "d-objfile.h"
 #include "d-builtins.h"
 #include "id.h"
 
@@ -194,11 +192,6 @@ build_frontend_type (tree type)
 	  dtype = dtype->sarrayOf (TYPE_VECTOR_SUBPARTS (type))->addMod (mod);
 
 	  if (dtype->nextOf ()->isTypeBasic () == NULL)
-	    break;
-
-	  /* Support only 64bit, 128bit, and 256bit vectors for now.  */
-	  unsigned size = dtype->size ();
-	  if (size != 8 && size != 16 && size != 32)
 	    break;
 
 	  dtype = (new TypeVector (Loc (), dtype))->addMod (mod);
@@ -437,7 +430,7 @@ d_build_builtins_module (Module *m)
       for (int i = 0; targetm.enum_va_list_p (i, &name, &type); ++i)
 	{
 	  Type *t = build_frontend_type (type);
-	  // Cannot create built-in type.
+	  /* Cannot create built-in type.  */
 	  if (!t)
 	    continue;
 
@@ -728,8 +721,9 @@ d_build_d_type_nodes (void)
   }
 
   /* Use `void[]' as a generic dynamic array type.  */
-  array_type_node = make_two_field_type (size_type_node, ptr_type_node,
-					 NULL, "length", "ptr");
+  array_type_node = make_struct_type ("__builtin_void[]", 2,
+				      get_identifier ("length"), size_type_node,
+				      get_identifier ("ptr"), ptr_type_node);
 
   null_array_node = d_array_value (array_type_node, size_zero_node,
 				   null_pointer_node);
