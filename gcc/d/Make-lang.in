@@ -1,5 +1,5 @@
 # Make-lang.in -- Top level -*- makefile -*- fragment for the D frontend.
-# Copyright (C) 2011-2017 Free Software Foundation, Inc.
+# Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
 # GCC is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,10 +64,10 @@ D_FRONTEND_OBJS = \
 	d/expression.o d/file.o d/filename.o d/func.o d/hdrgen.o \
 	d/identifier.o d/imphint.o d/init.o d/inline.o d/intrange.o d/json.o \
 	d/lexer.o d/mtype.o d/nogc.o d/newdelete.o d/nspace.o d/objc.o \
-	d/object.o d/opover.o d/optimize.o d/outbuffer.o d/parse.o d/rmem.o \
-	d/sapply.o d/sideeffect.o d/speller.o d/statement.o d/statementsem.o \
-	d/staticassert.o d/stringtable.o d/tokens.o d/traits.o d/unittests.o \
-	d/utf.o d/utils.o
+	d/opover.o d/optimize.o d/outbuffer.o d/parse.o d/rmem.o \
+	d/rootobject.o d/sapply.o d/sideeffect.o d/speller.o d/statement.o \
+	d/statementsem.o d/staticassert.o d/stringtable.o d/tokens.o d/traits.o \
+	d/unittests.o d/utf.o d/utils.o
 
 # D Frontend generated files.
 D_GENERATED_SRCS = d/id.c d/id.h d/impcnvtab.c
@@ -75,10 +75,10 @@ D_GENERATED_OBJS = d/id.o d/impcnvtab.o
 
 # Language-specific object files for D.
 D_OBJS = \
-	d/d-attribs.o d/d-lang.o d/decl.o d/d-codegen.o d/d-objfile.o \
-	d/d-convert.o d/d-longdouble.o d/d-builtins.o d/d-incpath.o \
-	d/types.o d/expr.o d/imports.o d/toir.o d/typeinfo.o \
-	d/d-target.o d/d-frontend.o d/d-diagnostic.o
+	d/d-attribs.o d/d-builtins.o d/d-codegen.o d/d-convert.o \
+	d/d-diagnostic.o d/d-frontend.o d/d-incpath.o d/d-lang.o \
+	d/d-longdouble.o d/d-target.o d/decl.o d/expr.o d/imports.o \
+	d/intrinsics.o d/modules.o d/runtime.o d/toir.o d/typeinfo.o d/types.o
 
 # All language-specific object files for D.
 D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS)

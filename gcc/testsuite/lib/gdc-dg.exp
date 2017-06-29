@@ -1,4 +1,4 @@
-#   Copyright (C) 2009 Free Software Foundation, Inc.
+#   Copyright (C) 2012-2017 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 load_lib gcc-dg.exp
 
-# Define go callbacks for dg.exp.
+# Define gdc callbacks for dg.exp.
 
 proc gdc-dg-test { prog do_what extra_tool_flags } {
     set result \
@@ -34,8 +34,11 @@ proc gdc-dg-prune { system text } {
 
 # Utility routines.
 
+#
 # Modified dg-runtest that can cycle through a list of optimization options
 # as c-torture does.
+#
+
 proc gdc-dg-runtest { testcases default-extra-flags } {
     global runtests
     global TORTURE_OPTIONS

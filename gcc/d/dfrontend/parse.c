@@ -5748,7 +5748,7 @@ Statement *Parser::parseStatement(int flags, const utf8_t** endPtr, Loc *pEndloc
                         // If the first token is a string, parse as extended asm.
                         if (! toklist)
                         {
-                            s = parseExtAsm();
+                            s = parseExtAsm(stc);
                             statements->push(s);
                             continue;
                         }
@@ -5963,7 +5963,7 @@ Lerror:
  *     asm { StringLiterals [ : InputOperands [ : OutputOperands [ : Clobbers [ : GotoLabels ] ] ] ] }
  */
 
-Statement *Parser::parseExtAsm()
+Statement *Parser::parseExtAsm(StorageClass stc)
 {
     Expressions *args = NULL;
     Identifiers *names = NULL;
@@ -6025,7 +6025,7 @@ Statement *Parser::parseExtAsm()
   Ldone:
     check(TOKsemicolon);
 
-    return new ExtAsmStatement(loc, insn, args, names,
+    return new ExtAsmStatement(loc, stc, insn, args, names,
                                constraints, outputargs, clobbers, labels);
 }
 #endif

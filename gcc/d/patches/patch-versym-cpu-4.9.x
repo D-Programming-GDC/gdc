@@ -34,7 +34,6 @@ for all supported architectures. And these where appropriate:
 * S390
 * S390X
 * SH
-* SH64
 * SPARC
 * SPARC64
 * SPARC_V8Plus
@@ -309,7 +308,7 @@ diff --git gcc/config/s390/s390.h gcc/config/s390/s390.h
 diff --git gcc/config/sh/sh.h gcc/config/sh/sh.h
 --- a/gcc/config/sh/sh.h
 +++ b/gcc/config/sh/sh.h
-@@ -31,6 +31,22 @@ extern int code_for_indirect_jump_scratch;
+@@ -31,6 +31,19 @@ extern int code_for_indirect_jump_scratch;
  
  #define TARGET_CPU_CPP_BUILTINS() sh_cpu_cpp_builtins (pfile)
  
@@ -317,10 +316,7 @@ diff --git gcc/config/sh/sh.h gcc/config/sh/sh.h
 +#define TARGET_CPU_D_BUILTINS()			\
 +  do						\
 +    {						\
-+      if (TARGET_SHMEDIA64)			\
-+	builtin_define ("SH64");		\
-+      else					\
-+	builtin_define ("SH");			\
++      builtin_define ("SH");			\
 +						\
 +      if (TARGET_FPU_ANY)			\
 +	builtin_define ("D_HardFloat");		\

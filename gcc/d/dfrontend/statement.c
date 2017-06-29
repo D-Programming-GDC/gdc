@@ -2037,12 +2037,13 @@ Statement *AsmStatement::syntaxCopy()
 #ifdef IN_GCC
 /************************ ExtAsmStatement ***************************************/
 
-ExtAsmStatement::ExtAsmStatement(Loc loc, Expression *insn,
+ExtAsmStatement::ExtAsmStatement(Loc loc, StorageClass stc, Expression *insn,
                                  Expressions *args, Identifiers *names,
                                  Expressions *constraints, int outputargs,
                                  Expressions *clobbers, Identifiers *labels)
         : Statement(loc)
 {
+    this->stc = stc;
     this->insn = insn;
     this->args = args;
     this->names = names;
@@ -2059,7 +2060,7 @@ Statement *ExtAsmStatement::syntaxCopy()
     Expressions *c_constraints = Expression::arraySyntaxCopy(constraints);
     Expressions *c_clobbers = Expression::arraySyntaxCopy(clobbers);
 
-    return new ExtAsmStatement(loc, insn->syntaxCopy(), c_args, names,
+    return new ExtAsmStatement(loc, stc, insn->syntaxCopy(), c_args, names,
                                c_constraints, outputargs, c_clobbers, labels);
 }
 
