@@ -81,7 +81,7 @@ D_OBJS = \
 	d/intrinsics.o d/modules.o d/runtime.o d/toir.o d/typeinfo.o d/types.o
 
 # All language-specific object files for D.
-D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS)
+D_ALL_OBJS = $(D_FRONTEND_OBJS) $(D_GENERATED_OBJS) $(D_OBJS) $(D_TARGET_OBJS)
 
 d_OBJS = $(D_ALL_OBJS) d/d-spec.o
 
