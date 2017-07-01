@@ -83,7 +83,7 @@ These official OS versions are not implemented:
  
 --- a/gcc/Makefile.in
 +++ b/gcc/Makefile.in
-@@ -497,6 +497,8 @@ tm_include_list=@tm_include_list@
+@@ -483,6 +483,8 @@ tm_include_list=@tm_include_list@
  tm_defines=@tm_defines@
  tm_p_file_list=@tm_p_file_list@
  tm_p_include_list=@tm_p_include_list@
@@ -92,7 +92,7 @@ These official OS versions are not implemented:
  build_xm_file_list=@build_xm_file_list@
  build_xm_include_list=@build_xm_include_list@
  build_xm_defines=@build_xm_defines@
-@@ -806,6 +808,7 @@ BCONFIG_H = bconfig.h $(build_xm_file_list)
+@@ -792,6 +794,7 @@ BCONFIG_H = bconfig.h $(build_xm_file_list)
  CONFIG_H  = config.h  $(host_xm_file_list)
  TCONFIG_H = tconfig.h $(xm_file_list)
  TM_P_H    = tm_p.h    $(tm_p_file_list)
@@ -100,19 +100,7 @@ These official OS versions are not implemented:
  GTM_H     = tm.h      $(tm_file_list) insn-constants.h
  TM_H      = $(GTM_H) insn-flags.h $(OPTIONS_H)
  
-@@ -856,9 +859,11 @@ EXCEPT_H = except.h $(HASHTAB_H)
- TARGET_DEF = target.def target-hooks-macros.h
- C_TARGET_DEF = c-family/c-target.def target-hooks-macros.h
- COMMON_TARGET_DEF = common/common-target.def target-hooks-macros.h
-+D_TARGET_DEF = d/d-target.def target-hooks-macros.h
- TARGET_H = $(TM_H) target.h $(TARGET_DEF) insn-modes.h insn-codes.h
- C_TARGET_H = c-family/c-target.h $(C_TARGET_DEF)
- COMMON_TARGET_H = common/common-target.h $(INPUT_H) $(COMMON_TARGET_DEF)
-+D_TARGET_H = d/d-target.h $(D_TARGET_DEF)
- MACHMODE_H = machmode.h mode-classes.def insn-modes.h
- HOOKS_H = hooks.h $(MACHMODE_H)
- HOSTHOOKS_DEF_H = hosthooks-def.h $(HOOKS_H)
-@@ -1124,6 +1129,9 @@ C_TARGET_OBJS=@c_target_objs@
+@@ -1124,6 +1127,9 @@ C_TARGET_OBJS=@c_target_objs@
  # Target specific, C++ specific object file
  CXX_TARGET_OBJS=@cxx_target_objs@
  
@@ -122,7 +110,7 @@ These official OS versions are not implemented:
  # Target specific, Fortran specific object file
  FORTRAN_TARGET_OBJS=@fortran_target_objs@
  
-@@ -1624,6 +1632,7 @@ bconfig.h: cs-bconfig.h ; @true
+@@ -1614,6 +1620,7 @@ bconfig.h: cs-bconfig.h ; @true
  tconfig.h: cs-tconfig.h ; @true
  tm.h: cs-tm.h ; @true
  tm_p.h: cs-tm_p.h ; @true
@@ -130,7 +118,7 @@ These official OS versions are not implemented:
  
  cs-config.h: Makefile
  	TARGET_CPU_DEFAULT="" \
-@@ -1650,6 +1659,11 @@ cs-tm_p.h: Makefile
+@@ -1640,6 +1647,11 @@ cs-tm_p.h: Makefile
  	HEADERS="$(tm_p_include_list)" DEFINES="" \
  	$(SHELL) $(srcdir)/mkconfig.sh tm_p.h
  
@@ -142,20 +130,21 @@ These official OS versions are not implemented:
  # Don't automatically run autoconf, since configure.ac might be accidentally
  # newer than configure.  Also, this writes into the source directory which
  # might be on a read-only file system.  If configured for maintainer mode
-@@ -1927,6 +1941,12 @@ default-c.o: config/default-c.c
- CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
- prefix.o: $(BASEVER)
+@@ -2025,6 +2037,13 @@ CFLAGS-prefix.o += -DPREFIX=\"$(prefix)\" -DBASEVER=$(BASEVER_s)
+ prefix.o: prefix.c $(CONFIG_H) $(SYSTEM_H) coretypes.h prefix.h \
+ 	$(COMMON_TARGET_H) Makefile $(BASEVER)
  
 +# Files used by the D language front end.
 +
-+default-d.o: config/default-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++default-d.o: config/default-d.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
++  $(C_TARGET_H) $(C_TARGET_DEF_H)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
++	  $< $(OUTPUT_OPTION)
 +
  # Language-independent files.
  
  DRIVER_DEFINES = \
-@@ -2193,6 +2213,15 @@ s-common-target-hooks-def-h: build/genhooks$(build_exeext)
+@@ -3670,6 +3689,15 @@ s-common-target-hooks-def-h: build/genhooks$(build_exeext)
  					     common/common-target-hooks-def.h
  	$(STAMP) s-common-target-hooks-def-h
  
@@ -171,7 +160,7 @@ These official OS versions are not implemented:
  # check if someone mistakenly only changed tm.texi.
  # We use a different pathname here to avoid a circular dependency.
  s-tm-texi: $(srcdir)/doc/../doc/tm.texi
-@@ -2216,6 +2245,7 @@ s-tm-texi: build/genhooks$(build_exeext) $(srcdir)/doc/tm.texi.in
+@@ -3693,6 +3721,7 @@ s-tm-texi: build/genhooks$(build_exeext) $(srcdir)/doc/tm.texi.in
  	  && ( test $(srcdir)/doc/tm.texi -nt $(srcdir)/target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/c-family/c-target.def \
  	    || test $(srcdir)/doc/tm.texi -nt $(srcdir)/common/common-target.def \
@@ -179,16 +168,17 @@ These official OS versions are not implemented:
  	  ); then \
  	  echo >&2 ; \
  	  echo You should edit $(srcdir)/doc/tm.texi.in rather than $(srcdir)/doc/tm.texi . >&2 ; \
-@@ -2335,7 +2365,7 @@ generated_files = config.h tm.h $(TM_P_H) $(TM_H) multilib.h \
-        $(ALL_GTFILES_H) gtype-desc.c gtype-desc.h gcov-iov.h \
-        options.h target-hooks-def.h insn-opinit.h \
-        common/common-target-hooks-def.h pass-instances.def \
--       c-family/c-target-hooks-def.h
-+       c-family/c-target-hooks-def.h d/d-target-hooks-def.h
+@@ -3804,7 +3833,8 @@ s-gtype: build/gengtype$(build_exeext) $(filter-out [%], $(GTFILES)) \
+ generated_files = config.h tm.h $(TM_P_H) $(TM_H) multilib.h \
+        $(simple_generated_h) specs.h \
+        tree-check.h genrtl.h insn-modes.h tm-preds.h tm-constrs.h \
+-       $(ALL_GTFILES_H) gtype-desc.c gtype-desc.h gcov-iov.h
++       $(ALL_GTFILES_H) gtype-desc.c gtype-desc.h gcov-iov.h \
++       d/d-target-hooks-def.h
  
- #
- # How to compile object files to run on the build machine.
-@@ -2468,7 +2498,7 @@ build/genpreds.o : genpreds.c $(RTL_BASE_H) $(BCONFIG_H) $(SYSTEM_H)	\
+ # In order for parallel make to really start compiling the expensive
+ # objects from $(OBJS) as early as possible, build all their
+@@ -3942,7 +3972,7 @@ build/genpreds.o : genpreds.c $(RTL_BASE_H) $(BCONFIG_H) $(SYSTEM_H)	\
  build/genrecog.o : genrecog.c $(RTL_BASE_H) $(BCONFIG_H) $(SYSTEM_H)	\
    coretypes.h $(GTM_H) errors.h $(READ_MD_H) gensupport.h
  build/genhooks.o : genhooks.c $(TARGET_DEF) $(C_TARGET_DEF)		\
@@ -241,12 +231,12 @@ These official OS versions are not implemented:
  tm_defines=
  xm_defines=
  # Set this to force installation and use of collect2.
-@@ -313,11 +324,13 @@ aarch64*-*-*)
+@@ -312,11 +323,13 @@ aarch64*-*-*)
  	cpu_type=aarch64
  	need_64bit_hwint=yes
  	extra_headers="arm_neon.h"
 +	d_target_objs="aarch64-d.o"
- 	extra_objs="aarch64-builtins.o aarch-common.o"
+ 	extra_objs="aarch64-builtins.o"
  	target_has_targetm_common=yes
  	;;
  alpha*-*-*)
@@ -255,15 +245,15 @@ These official OS versions are not implemented:
  	need_64bit_hwint=yes
  	extra_options="${extra_options} g.opt"
  	;;
-@@ -333,6 +346,7 @@ arm*-*-*)
- 	extra_headers="mmintrin.h arm_neon.h arm_acle.h"
+@@ -328,6 +341,7 @@ arm*-*-*)
+ 	extra_headers="mmintrin.h arm_neon.h"
  	target_type_format_char='%'
  	c_target_objs="arm-c.o"
 +	d_target_objs="arm-d.o"
  	cxx_target_objs="arm-c.o"
- 	need_64bit_hwint=yes
  	extra_options="${extra_options} arm/arm-tables.opt"
-@@ -349,6 +363,9 @@ bfin*-*)
+ 	;;
+@@ -343,6 +357,9 @@ bfin*-*)
  crisv32-*)
  	cpu_type=cris
  	;;
@@ -273,7 +263,7 @@ These official OS versions are not implemented:
  frv*)	cpu_type=frv
  	extra_options="${extra_options} g.opt"
  	;;
-@@ -382,6 +399,8 @@ x86_64-*-*)
+@@ -374,6 +391,8 @@ x86_64-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -282,7 +272,7 @@ These official OS versions are not implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
  		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
-@@ -397,6 +416,7 @@ x86_64-*-*)
+@@ -387,6 +406,7 @@ x86_64-*-*)
  	need_64bit_hwint=yes
  	;;
  ia64-*-*)
@@ -290,7 +280,7 @@ These official OS versions are not implemented:
  	extra_headers=ia64intrin.h
  	need_64bit_hwint=yes
  	extra_options="${extra_options} g.opt fused-madd.opt"
-@@ -421,6 +441,7 @@ microblaze*-*-*)
+@@ -411,6 +431,7 @@ microblaze*-*-*)
          ;;
  mips*-*-*)
  	cpu_type=mips
@@ -298,7 +288,7 @@ These official OS versions are not implemented:
  	need_64bit_hwint=yes
  	extra_headers="loongson.h"
  	extra_options="${extra_options} g.opt mips/mips-tables.opt"
-@@ -459,6 +480,7 @@ sparc*-*-*)
+@@ -441,6 +462,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -306,7 +296,7 @@ These official OS versions are not implemented:
  	extra_headers="visintrin.h"
  	need_64bit_hwint=yes
  	;;
-@@ -468,6 +490,7 @@ spu*-*-*)
+@@ -450,6 +472,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -314,7 +304,7 @@ These official OS versions are not implemented:
  	need_64bit_hwint=yes
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h"
-@@ -501,10 +524,13 @@ tilepro*-*-*)
+@@ -482,10 +505,13 @@ tilepro-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -328,7 +318,7 @@ These official OS versions are not implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -633,8 +659,10 @@ case ${target} in
+@@ -571,8 +597,10 @@ case ${target} in
    extra_options="${extra_options} darwin.opt"
    c_target_objs="${c_target_objs} darwin-c.o"
    cxx_target_objs="${cxx_target_objs} darwin-c.o"
@@ -339,7 +329,7 @@ These official OS versions are not implemented:
    extra_objs="darwin.o"
    extra_gcc_objs="darwin-driver.o"
    default_use_cxa_atexit=yes
-@@ -677,6 +705,9 @@ case ${target} in
+@@ -615,6 +643,9 @@ case ${target} in
        ;;
    esac
    fbsd_tm_file="${fbsd_tm_file} freebsd-spec.h freebsd.h freebsd-stdint.h"
@@ -349,7 +339,7 @@ These official OS versions are not implemented:
    extra_options="$extra_options rpath.opt freebsd.opt"
    case ${target} in
      *-*-freebsd[345].*)
-@@ -739,13 +770,18 @@ case ${target} in
+@@ -680,13 +711,18 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -368,7 +358,7 @@ These official OS versions are not implemented:
  
    # NetBSD 2.0 and later get POSIX threads enabled by default.
    # Allow them to be explicitly enabled on any other version.
-@@ -774,6 +810,8 @@ case ${target} in
+@@ -715,6 +751,8 @@ case ${target} in
    ;;
  *-*-openbsd*)
    tmake_file="t-openbsd"
@@ -377,7 +367,7 @@ These official OS versions are not implemented:
    case ${enable_threads} in
      yes)
        thread_file='posix'
-@@ -835,6 +873,8 @@ case ${target} in
+@@ -769,6 +807,8 @@ case ${target} in
    tmake_file="${tmake_file} t-sol2 t-slibgcc"
    c_target_objs="${c_target_objs} sol2-c.o"
    cxx_target_objs="${cxx_target_objs} sol2-c.o sol2-cxx.o"
@@ -386,7 +376,7 @@ These official OS versions are not implemented:
    extra_objs="sol2.o sol2-stubs.o"
    extra_options="${extra_options} sol2.opt"
    case ${enable_threads}:${have_pthread_h}:${have_thread_h} in
-@@ -938,27 +978,30 @@ aarch64*-*-linux*)
+@@ -838,27 +878,30 @@ aarch64*-*-linux*)
  	;;
  alpha*-*-linux*)
  	tm_file="elfos.h ${tm_file} alpha/elf.h alpha/linux.h alpha/linux-elf.h glibc-stdint.h"
@@ -417,19 +407,18 @@ These official OS versions are not implemented:
 -	tmake_file="${tmake_file} alpha/t-vms"
 +	tmake_file="${tmake_file} alpha/t-vms alpha/t-alpha"
  	;;
- arc*-*-elf*)
- 	extra_headers="arc-simd.h"
-@@ -1613,7 +1656,9 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
- 	xm_file=i386/xm-mingw32.h
- 	c_target_objs="${c_target_objs} winnt-c.o"
- 	cxx_target_objs="${cxx_target_objs} winnt-c.o"
+ arm-wrs-vxworks)
+ 	tm_file="elfos.h arm/elf.h arm/aout.h ${tm_file} vx-common.h vxworks.h arm/vxworks.h"
+@@ -1467,6 +1510,8 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
+ 		tm_file="${tm_file} i386/mingw-pthread.h"
+ 	fi
+ 	tm_file="${tm_file} i386/mingw32.h"
 +	d_target_objs="${d_target_objs} winnt-d.o"
- 	target_has_targetcm="yes"
 +	target_has_targetdm="yes"
+ 	# This makes the logic if mingw's or the w64 feature set has to be used
  	case ${target} in
- 		x86_64-*-* | *-w64-*)
- 			need_64bit_isa=yes
-@@ -2445,6 +2490,7 @@ s390-*-linux*)
+ 		*-w64-*)
+@@ -2252,6 +2297,7 @@ s390-*-linux*)
  	if test x$enable_targets = xall; then
  		tmake_file="${tmake_file} s390/t-linux64"
  	fi
@@ -437,7 +426,7 @@ These official OS versions are not implemented:
  	;;
  s390x-*-linux*)
  	default_gnu_indirect_function=yes
-@@ -2453,7 +2499,7 @@ s390x-*-linux*)
+@@ -2260,7 +2306,7 @@ s390x-*-linux*)
  	md_file=s390/s390.md
  	extra_modes=s390/s390-modes.def
  	out_file=s390/s390.c
@@ -446,7 +435,7 @@ These official OS versions are not implemented:
  	;;
  s390x-ibm-tpf*)
          tm_file="s390/s390x.h s390/s390.h dbxelf.h elfos.h s390/tpf.h"
-@@ -2463,6 +2509,7 @@ s390x-ibm-tpf*)
+@@ -2270,6 +2316,7 @@ s390x-ibm-tpf*)
          out_file=s390/s390.c
          thread_file='tpf'
  	extra_options="${extra_options} s390/tpf.opt"
@@ -454,7 +443,7 @@ These official OS versions are not implemented:
  	;;
  score-*-elf)
  	gas=yes
-@@ -2916,6 +2963,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -2719,6 +2766,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -465,7 +454,7 @@ These official OS versions are not implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4105,6 +4156,8 @@ case ${target} in
+@@ -3746,6 +3797,8 @@ case ${target} in
  		if [ x"$m68k_arch_family" != x ]; then
  		        tmake_file="m68k/t-$m68k_arch_family $tmake_file"
  		fi
@@ -474,7 +463,7 @@ These official OS versions are not implemented:
  		;;
  
  	i[34567]86-*-darwin* | x86_64-*-darwin*)
-@@ -4152,12 +4205,14 @@ case ${target} in
+@@ -3791,12 +3844,14 @@ case ${target} in
  		out_file=rs6000/rs6000.c
  		c_target_objs="${c_target_objs} rs6000-c.o"
  		cxx_target_objs="${cxx_target_objs} rs6000-c.o"
@@ -525,7 +514,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/aarch64/aarch64-linux.h
 +++ b/gcc/config/aarch64/aarch64-linux.h
-@@ -63,6 +63,8 @@
+@@ -52,6 +52,8 @@
      }						\
    while (0)
  
@@ -536,10 +525,10 @@ These official OS versions are not implemented:
  #endif  /* GCC_AARCH64_LINUX_H */
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -291,4 +291,8 @@ extern bool aarch64_madd_needs_nop (rtx);
- extern void aarch64_final_prescan_insn (rtx);
- extern bool
+@@ -253,4 +253,8 @@ extern bool
  aarch64_expand_vec_perm_const (rtx target, rtx op0, rtx op1, rtx sel);
+ 
+ char* aarch64_output_simd_mov_immediate (rtx *, enum machine_mode, unsigned);
 +
 +/* Defined in aarch64-d.c  */
 +extern void aarch64_d_target_versions (void);
@@ -547,8 +536,8 @@ These official OS versions are not implemented:
  #endif /* GCC_AARCH64_PROTOS_H */
 --- a/gcc/config/aarch64/aarch64.h
 +++ b/gcc/config/aarch64/aarch64.h
-@@ -61,6 +61,9 @@
- 	builtin_define ("__ARM_FEATURE_CRYPTO");	\
+@@ -51,6 +51,9 @@
+ 							\
      } while (0)
  
 +/* Target CPU versions for D.  */
@@ -559,17 +548,13 @@ These official OS versions are not implemented:
  /* Target machine storage layout.  */
 --- a/gcc/config/aarch64/t-aarch64
 +++ b/gcc/config/aarch64/t-aarch64
-@@ -40,6 +40,10 @@ aarch-common.o: $(srcdir)/config/arm/aarch-common.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -34,3 +34,6 @@ aarch64-builtins.o: $(srcdir)/config/aarch64/aarch64-builtins.c $(CONFIG_H) \
+   $(srcdir)/config/aarch64/aarch64-simd-builtins.def
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
- 		$(srcdir)/config/arm/aarch-common.c
- 
-+aarch64-d.o: $(srcdir)/config/aarch64/aarch64-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
+ 		$(srcdir)/config/aarch64/aarch64-builtins.c
 +
- comma=,
- MULTILIB_OPTIONS    = $(subst $(comma),/, $(patsubst %, mabi=%, $(subst $(comma),$(comma)mabi=,$(TM_MULTILIB_CONFIG))))
- MULTILIB_DIRNAMES   = $(subst $(comma), ,$(TM_MULTILIB_CONFIG))
++aarch64-d.o: $(srcdir)/config/aarch64/aarch64-d.c
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/alpha/alpha-d.c
 @@ -0,0 +1,41 @@
@@ -637,7 +622,7 @@ These official OS versions are not implemented:
  /* Which processor to schedule for. The cpu attribute defines a list that
 --- /dev/null
 +++ b/gcc/config/alpha/t-alpha
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,20 @@
 +# Copyright (C) 2016 Free Software Foundation, Inc.
 +#
 +# This file is part of GCC.
@@ -657,8 +642,7 @@ These official OS versions are not implemented:
 +# <http://www.gnu.org/licenses/>.
 +
 +alpha-d.o: $(srcdir)/config/alpha/alpha-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/arm/arm-d.c
 @@ -0,0 +1,52 @@
@@ -716,9 +700,9 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/arm/arm-protos.h
 +++ b/gcc/config/arm/arm-protos.h
-@@ -296,6 +296,9 @@ extern void arm_emit_eabi_attribute (const char *, int, int);
- /* Defined in gcc/common/config/arm-common.c.  */
- extern const char *arm_rewrite_selected_cpu (const char *name);
+@@ -287,6 +287,9 @@ extern bool arm_autoinc_modes_ok_p (enum machine_mode, enum arm_auto_incmodes);
+ 
+ extern void arm_emit_eabi_attribute (const char *, int, int);
  
 +/* Defined in arm-d.c  */
 +extern void arm_d_target_versions (void);
@@ -728,7 +712,7 @@ These official OS versions are not implemented:
  #endif /* ! GCC_ARM_PROTOS_H */
 --- a/gcc/config/arm/arm.h
 +++ b/gcc/config/arm/arm.h
-@@ -169,6 +169,9 @@ extern char arm_arch_name[];
+@@ -158,6 +158,9 @@ extern char arm_arch_name[];
  	  builtin_define ("__ARM_ARCH_EXT_IDIV__");	\
      } while (0)
  
@@ -752,14 +736,13 @@ These official OS versions are not implemented:
     change the setting of GLIBC_DYNAMIC_LINKER_DEFAULT as well.  */
 --- a/gcc/config/arm/t-arm
 +++ b/gcc/config/arm/t-arm
-@@ -98,3 +98,7 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -90,3 +90,6 @@ arm-c.o: $(srcdir)/config/arm/arm-c.c $(CONFIG_H) $(SYSTEM_H) \
      coretypes.h $(TM_H) $(TREE_H) output.h $(C_COMMON_H)
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/arm/arm-c.c
 +
 +arm-d.o: $(srcdir)/config/arm/arm-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/darwin-d.c
 @@ -0,0 +1,55 @@
@@ -902,14 +885,13 @@ These official OS versions are not implemented:
     libgloss might use errno/__errno, which might not have been needed when we
 --- a/gcc/config/epiphany/t-epiphany
 +++ b/gcc/config/epiphany/t-epiphany
-@@ -36,3 +36,7 @@ specs: specs.install
+@@ -36,3 +36,6 @@ specs: specs.install
  	sed -e 's,epiphany_library_extra_spec,epiphany_library_stub_spec,' \
  	-e 's,epiphany_library_build_spec,epiphany_library_extra_spec,' \
  	  < specs.install > $@ ; \
 +
 +epiphany-d.o: $(srcdir)/config/epiphany/epiphany-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/freebsd-d.c
 @@ -0,0 +1,49 @@
@@ -1046,9 +1028,9 @@ These official OS versions are not implemented:
 +  builtin_version ("Hurd")
 --- a/gcc/config/i386/cygwin.h
 +++ b/gcc/config/i386/cygwin.h
-@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.  If not see
-     }								\
-   while (0)
+@@ -20,6 +20,12 @@ along with GCC; see the file COPYING3.  If not see
+ 
+ #define EXTRA_OS_CPP_BUILTINS()  /* Nothing.  */
  
 +#define EXTRA_TARGET_D_OS_VERSIONS()				\
 +    do {							\
@@ -1058,7 +1040,7 @@ These official OS versions are not implemented:
 +
  #undef CPP_SPEC
  #define CPP_SPEC "%(cpp_cpu) %{posix:-D_POSIX_SOURCE} \
-   %{!ansi:-Dunix} \
+   -D__CYGWIN32__ -D__CYGWIN__ %{!ansi:-Dunix} -D__unix__ -D__unix \
 --- /dev/null
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
@@ -1108,7 +1090,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/i386/i386-protos.h
 +++ b/gcc/config/i386/i386-protos.h
-@@ -244,6 +244,9 @@ extern void ix86_expand_sse2_abs (rtx, rtx);
+@@ -239,6 +239,9 @@ extern void ix86_expand_sse2_mulvxdi3 (rtx, rtx, rtx);
  extern void ix86_target_macros (void);
  extern void ix86_register_pragmas (void);
  
@@ -1120,7 +1102,7 @@ These official OS versions are not implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -621,6 +621,9 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -591,6 +591,9 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
@@ -1166,25 +1148,23 @@ These official OS versions are not implemented:
  #define SPEC_PTHREAD2 "!no-pthread"
 --- a/gcc/config/i386/t-cygming
 +++ b/gcc/config/i386/t-cygming
-@@ -32,6 +32,9 @@ winnt-cxx.o: $(srcdir)/config/i386/winnt-cxx.c $(CONFIG_H) $(SYSTEM_H) coretypes
+@@ -32,6 +32,8 @@ winnt-cxx.o: $(srcdir)/config/i386/winnt-cxx.c $(CONFIG_H) $(SYSTEM_H) coretypes
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  	$(srcdir)/config/i386/winnt-cxx.c
  
 +winnt-d.o: config/winnt-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
  
  winnt-stubs.o: $(srcdir)/config/i386/winnt-stubs.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
    $(TM_H) $(RTL_H) $(REGS_H) hard-reg-set.h output.h $(TREE_H) flags.h \
 --- a/gcc/config/i386/t-i386
 +++ b/gcc/config/i386/t-i386
-@@ -23,6 +23,10 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c i386-builtin-types.inc
- 	  $(COMPILE) $<
- 	  $(POSTCOMPILE)
+@@ -34,6 +34,9 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c \
+ 		$(srcdir)/config/i386/i386-c.c
+ 
  
 +i386-d.o: $(srcdir)/config/i386/i386-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 +
  i386-builtin-types.inc: s-i386-bt ; @true
  s-i386-bt: $(srcdir)/config/i386/i386-builtin-types.awk \
@@ -1249,13 +1229,12 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/ia64/t-ia64
 +++ b/gcc/config/ia64/t-ia64
-@@ -21,6 +21,10 @@ ia64-c.o: $(srcdir)/config/ia64/ia64-c.c $(CONFIG_H) $(SYSTEM_H) \
+@@ -21,6 +21,9 @@ ia64-c.o: $(srcdir)/config/ia64/ia64-c.c $(CONFIG_H) $(SYSTEM_H) \
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/ia64/ia64-c.c
  
 +ia64-d.o: $(srcdir)/config/ia64/ia64-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 +
  # genattrtab generates very long string literals.
  insn-attrtab.o-warn = -Wno-error
@@ -1383,7 +1362,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/mips/mips-protos.h
 +++ b/gcc/config/mips/mips-protos.h
-@@ -359,4 +359,7 @@ typedef rtx (*mulsidi3_gen_fn) (rtx, rtx, rtx);
+@@ -363,4 +363,7 @@ typedef rtx (*mulsidi3_gen_fn) (rtx, rtx, rtx);
  extern mulsidi3_gen_fn mips_mulsidi3_gen_fn (enum rtx_code);
  #endif
  
@@ -1393,7 +1372,7 @@ These official OS versions are not implemented:
  #endif /* ! GCC_MIPS_PROTOS_H */
 --- a/gcc/config/mips/mips.h
 +++ b/gcc/config/mips/mips.h
-@@ -574,6 +574,9 @@ struct mips_cpu_info {
+@@ -551,6 +551,9 @@ struct mips_cpu_info {
      }									\
    while (0)
  
@@ -1405,14 +1384,13 @@ These official OS versions are not implemented:
  #ifndef TARGET_DEFAULT
 --- a/gcc/config/mips/t-mips
 +++ b/gcc/config/mips/t-mips
-@@ -20,3 +20,7 @@ $(srcdir)/config/mips/mips-tables.opt: $(srcdir)/config/mips/genopt.sh \
+@@ -20,3 +20,6 @@ $(srcdir)/config/mips/mips-tables.opt: $(srcdir)/config/mips/genopt.sh \
    $(srcdir)/config/mips/mips-cpus.def
  	$(SHELL) $(srcdir)/config/mips/genopt.sh $(srcdir)/config/mips > \
  		$(srcdir)/config/mips/mips-tables.opt
 +
 +mips-d.o: $(srcdir)/config/mips/mips-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/netbsd-d.c
 @@ -0,0 +1,49 @@
@@ -1561,7 +1539,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/pa/pa-linux.h
 +++ b/gcc/config/pa/pa-linux.h
-@@ -30,6 +30,8 @@ along with GCC; see the file COPYING3.  If not see
+@@ -27,6 +27,8 @@ along with GCC; see the file COPYING3.  If not see
      }						\
    while (0)
  
@@ -1572,7 +1550,7 @@ These official OS versions are not implemented:
  
 --- a/gcc/config/pa/pa-protos.h
 +++ b/gcc/config/pa/pa-protos.h
-@@ -121,3 +121,6 @@ extern bool pa_modes_tieable_p (enum machine_mode, enum machine_mode);
+@@ -119,3 +119,6 @@ extern bool pa_modes_tieable_p (enum machine_mode, enum machine_mode);
  extern HOST_WIDE_INT pa_initial_elimination_offset (int, int);
  
  extern const int pa_magic_milli[];
@@ -1593,10 +1571,9 @@ These official OS versions are not implemented:
  #define LINK_SPEC "%{mlinker-opt:-O} %{!shared:-u main} %{shared:-b}"
 --- /dev/null
 +++ b/gcc/config/pa/t-pa
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,2 @@
 +pa-d.o: $(srcdir)/config/pa/pa-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/rs6000/rs6000-d.c
 @@ -0,0 +1,45 @@
@@ -1647,7 +1624,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/rs6000/rs6000-protos.h
 +++ b/gcc/config/rs6000/rs6000-protos.h
-@@ -208,6 +208,9 @@ extern void rs6000_target_modify_macros (bool, HOST_WIDE_INT, HOST_WIDE_INT);
+@@ -206,6 +206,9 @@ extern void rs6000_target_modify_macros (bool, HOST_WIDE_INT, HOST_WIDE_INT);
  extern void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT,
  						HOST_WIDE_INT);
  
@@ -1659,7 +1636,7 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -704,6 +704,9 @@ extern unsigned char rs6000_recip_bits[];
+@@ -702,6 +702,9 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1671,13 +1648,12 @@ These official OS versions are not implemented:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- a/gcc/config/rs6000/t-rs6000
 +++ b/gcc/config/rs6000/t-rs6000
-@@ -24,6 +24,10 @@ rs6000-c.o: $(srcdir)/config/rs6000/rs6000-c.c
- 	$(COMPILE) $<
- 	$(POSTCOMPILE)
+@@ -36,6 +36,9 @@ rs6000-c.o: $(srcdir)/config/rs6000/rs6000-c.c \
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+ 		$(srcdir)/config/rs6000/rs6000-c.c
  
 +rs6000-d.o: $(srcdir)/config/rs6000/rs6000-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 +
  $(srcdir)/config/rs6000/rs6000-tables.opt: $(srcdir)/config/rs6000/genopt.sh \
    $(srcdir)/config/rs6000/rs6000-cpus.def
@@ -1728,7 +1704,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/s390/s390-protos.h
 +++ b/gcc/config/s390/s390-protos.h
-@@ -114,4 +114,7 @@ extern int s390_compare_and_branch_condition_mask (rtx);
+@@ -112,4 +112,7 @@ extern int s390_compare_and_branch_condition_mask (rtx);
  extern bool s390_extzv_shift_ok (int, int, unsigned HOST_WIDE_INT);
  extern void s390_asm_output_function_label (FILE *, const char *, tree);
  
@@ -1750,7 +1726,7 @@ These official OS versions are not implemented:
  #else
 --- /dev/null
 +++ b/gcc/config/s390/t-s390
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,20 @@
 +# Copyright (C) 2015 Free Software Foundation, Inc.
 +#
 +# This file is part of GCC.
@@ -1770,8 +1746,7 @@ These official OS versions are not implemented:
 +# <http://www.gnu.org/licenses/>.
 +
 +s390-d.o: $(srcdir)/config/s390/s390-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/sh/sh-d.c
 @@ -0,0 +1,36 @@
@@ -1813,7 +1788,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/sh/sh-protos.h
 +++ b/gcc/config/sh/sh-protos.h
-@@ -231,4 +231,7 @@ extern bool sh2a_is_function_vector_call (rtx);
+@@ -229,4 +229,7 @@ extern bool sh2a_is_function_vector_call (rtx);
  extern void sh_fix_range (const char *);
  extern bool sh_hard_regno_mode_ok (unsigned int, enum machine_mode);
  extern bool sh_can_use_simple_return_p (void);
@@ -1835,17 +1810,16 @@ These official OS versions are not implemented:
     via the stack pointer) in functions that seem suitable.  */
 --- a/gcc/config/sh/t-sh
 +++ b/gcc/config/sh/t-sh
-@@ -25,6 +25,10 @@ sh-c.o: $(srcdir)/config/sh/sh-c.c \
+@@ -21,6 +21,9 @@ sh-c.o: $(srcdir)/config/sh/sh-c.c \
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
  		$(srcdir)/config/sh/sh-c.c
  
 +sh-d.o: $(srcdir)/config/sh/sh-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 +
- sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
-   $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
+ DEFAULT_ENDIAN = $(word 1,$(TM_ENDIAN_CONFIG))
+ OTHER_ENDIAN = $(word 2,$(TM_ENDIAN_CONFIG))
+ 
 --- /dev/null
 +++ b/gcc/config/sol2-d.c
 @@ -0,0 +1,49 @@
@@ -1951,7 +1925,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/sparc/sparc-protos.h
 +++ b/gcc/config/sparc/sparc-protos.h
-@@ -112,4 +112,7 @@ bool sparc_modes_tieable_p (enum machine_mode, enum machine_mode);
+@@ -111,4 +111,7 @@ bool sparc_modes_tieable_p (enum machine_mode, enum machine_mode);
  
  extern void sparc_emit_membar_for_model (enum memmodel, int, int);
  
@@ -1973,71 +1947,65 @@ These official OS versions are not implemented:
  
 --- a/gcc/config/sparc/t-sparc
 +++ b/gcc/config/sparc/t-sparc
-@@ -21,3 +21,7 @@
- sparc-c.o: $(srcdir)/config/sparc/sparc-c.c
- 	$(COMPILE) $<
- 	$(POSTCOMPILE)
+@@ -34,3 +34,6 @@ sparc-c.o: $(srcdir)/config/sparc/sparc-c.c \
+     $(C_COMMON_H) $(C_PRAGMA_H)
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+ 		$(srcdir)/config/sparc/sparc-c.c
 +
 +sparc-d.o: $(srcdir)/config/sparc/sparc-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- a/gcc/config/t-darwin
 +++ b/gcc/config/t-darwin
-@@ -26,6 +26,9 @@ darwin-c.o: $(srcdir)/config/darwin-c.c
- 	$(COMPILE) $(PREPROCESSOR_DEFINES) $<
- 	$(POSTCOMPILE)
+@@ -36,6 +36,9 @@ darwin-f.o: $(srcdir)/config/darwin-f.c $(CONFIG_H) $(SYSTEM_H) coretypes.h
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+ 	  $(srcdir)/config/darwin-f.c $(PREPROCESSOR_DEFINES)
  
 +darwin-d.o: $(srcdir)/config/darwin-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
- 
- darwin-f.o: $(srcdir)/config/darwin-f.c
- 	$(COMPILE) $<
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
++
+ darwin-driver.o: $(srcdir)/config/darwin-driver.c \
+   $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(GCC_H) opts.h
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 --- /dev/null
 +++ b/gcc/config/t-freebsd
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,2 @@
 +freebsd-d.o: config/freebsd-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- a/gcc/config/t-glibc
 +++ b/gcc/config/t-glibc
-@@ -19,3 +19,7 @@
- glibc-c.o: config/glibc-c.c
- 	$(COMPILE) $<
- 	$(POSTCOMPILE)
+@@ -20,3 +20,6 @@ glibc-c.o: config/glibc-c.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
+   $(C_TARGET_H) $(C_TARGET_DEF_H)
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) \
+ 	  $< $(OUTPUT_OPTION)
 +
 +glibc-d.o: config/glibc-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- /dev/null
 +++ b/gcc/config/t-netbsd
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,2 @@
 +netbsd-d.o: config/netbsd-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- a/gcc/config/t-openbsd
 +++ b/gcc/config/t-openbsd
-@@ -1,2 +1,6 @@
+@@ -1,2 +1,5 @@
  # We don't need GCC's own include files.
  USER_H = $(EXTRA_HEADERS)
 +
 +openbsd-d.o: config/openbsd-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 --- a/gcc/config/t-sol2
 +++ b/gcc/config/t-sol2
-@@ -26,6 +26,11 @@ sol2-cxx.o: $(srcdir)/config/sol2-cxx.c
- 	$(COMPILE) $<
- 	$(POSTCOMPILE)
+@@ -27,6 +27,10 @@ sol2-cxx.o: $(srcdir)/config/sol2-cxx.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
+   tree.h cp/cp-tree.h $(TM_H) $(TM_P_H)
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
  
 +# Solaris-specific D support.
 +sol2-d.o: $(srcdir)/config/sol2-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
++	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
 +
  # Corresponding stub routines.
- sol2-stubs.o: $(srcdir)/config/sol2-stubs.c
- 	$(COMPILE) $<
+ sol2-stubs.o: $(srcdir)/config/sol2-stubs.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
+   tree.h $(TM_H) $(TM_P_H)
 --- /dev/null
 +++ b/gcc/config/winnt-d.c
 @@ -0,0 +1,60 @@
@@ -2103,7 +2071,7 @@ These official OS versions are not implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/configure
 +++ b/gcc/configure
-@@ -611,6 +611,7 @@ ISLLIBS
+@@ -609,6 +609,7 @@ ISLLIBS
  GMPINC
  GMPLIBS
  target_cpu_default
@@ -2111,7 +2079,7 @@ These official OS versions are not implemented:
  fortran_target_objs
  cxx_target_objs
  c_target_objs
-@@ -618,6 +619,8 @@ use_gcc_stdint
+@@ -616,6 +617,8 @@ use_gcc_stdint
  xm_defines
  xm_include_list
  xm_file_list
@@ -2120,7 +2088,7 @@ These official OS versions are not implemented:
  tm_p_include_list
  tm_p_file_list
  tm_defines
-@@ -11331,6 +11334,7 @@ fi
+@@ -11233,6 +11236,7 @@ fi
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -2128,7 +2096,7 @@ These official OS versions are not implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -11670,6 +11674,21 @@ for f in $tm_p_file; do
+@@ -11572,6 +11576,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -2150,43 +2118,25 @@ These official OS versions are not implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -15917,7 +15936,7 @@ _LT_EOF
- 	if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
- 	  export_symbols_cmds='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
- 	else
--	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-+	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
- 	fi
- 	aix_use_runtimelinking=no
- 
-@@ -17945,7 +17964,7 @@ else
+@@ -17847,7 +17866,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 17948 "configure"
-+#line 17967 "configure"
+-#line 17850 "configure"
++#line 17869 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -18051,7 +18070,7 @@ else
+@@ -17953,7 +17972,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
--#line 18054 "configure"
-+#line 18073 "configure"
+-#line 17956 "configure"
++#line 17975 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -20403,7 +20422,7 @@ $as_echo_n "checking whether the $compiler linker ($LD) supports shared librarie
-     if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
-       export_symbols_cmds_CXX='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-     else
--      export_symbols_cmds_CXX='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-+      export_symbols_cmds_CXX='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-     fi
-     ;;
-   pw32*)
-@@ -27945,6 +27964,9 @@ fi
+@@ -27282,6 +27301,9 @@ fi
  
  
  
@@ -2198,7 +2148,7 @@ These official OS versions are not implemented:
    if test x${host} = x${target} ; then
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
-@@ -1555,6 +1555,7 @@ AC_SUBST(build_subdir)
+@@ -1538,6 +1538,7 @@ AC_SUBST(build_subdir)
  
  tm_file="${tm_file} defaults.h"
  tm_p_file="${tm_p_file} tm-preds.h"
@@ -2206,7 +2156,7 @@ These official OS versions are not implemented:
  host_xm_file="auto-host.h ansidecl.h ${host_xm_file}"
  build_xm_file="${build_auto} ansidecl.h ${build_xm_file}"
  # We don't want ansidecl.h in target files, write code there in ISO/GNU C.
-@@ -1764,6 +1765,21 @@ for f in $tm_p_file; do
+@@ -1747,6 +1748,21 @@ for f in $tm_p_file; do
    esac
  done
  
@@ -2228,7 +2178,7 @@ These official OS versions are not implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -5498,6 +5514,8 @@ AC_SUBST(tm_include_list)
+@@ -5172,6 +5188,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -2237,7 +2187,7 @@ These official OS versions are not implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -5505,6 +5523,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -5179,6 +5197,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
@@ -2270,7 +2220,7 @@ These official OS versions are not implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10203,6 +10212,22 @@ unloaded. The default is to return false.
+@@ -10156,6 +10165,22 @@ unloaded. The default is to return false.
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -2318,7 +2268,7 @@ These official OS versions are not implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7622,6 +7631,16 @@ you may want to override in subtargets; it is described below.
+@@ -10006,6 +10015,16 @@ unloaded. The default is to return false.
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
