@@ -539,7 +539,7 @@ These official OS versions are not implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -325,4 +325,8 @@ int aarch64_ccmp_mode_to_code (enum machine_mode mode);
+@@ -329,4 +329,8 @@ int aarch64_ccmp_mode_to_code (enum machine_mode mode);
  bool extract_base_offset_in_addr (rtx mem, rtx *base, rtx *offset);
  bool aarch64_operands_ok_for_ldpstp (rtx *, bool, enum machine_mode);
  bool aarch64_operands_adjust_ok_for_ldpstp (rtx *, bool, enum machine_mode);
@@ -1175,7 +1175,7 @@ These official OS versions are not implemented:
  extern void i386_pe_declare_function_type (FILE *, const char *, int);
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -650,6 +650,9 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+@@ -652,6 +652,9 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
  /* Target Pragmas.  */
  #define REGISTER_TARGET_PRAGMAS() ix86_register_pragmas ()
  
@@ -1785,7 +1785,7 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -703,6 +703,9 @@ extern unsigned char rs6000_recip_bits[];
+@@ -704,6 +704,9 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1854,7 +1854,7 @@ These official OS versions are not implemented:
 +}
 --- a/gcc/config/s390/s390-protos.h
 +++ b/gcc/config/s390/s390-protos.h
-@@ -132,3 +132,6 @@ extern void s390_register_target_pragmas (void);
+@@ -135,3 +135,6 @@ extern void s390_register_target_pragmas (void);
  
  /* Routines for s390-c.c */
  extern bool s390_const_operand_ok (tree, int, int, tree);
@@ -2267,15 +2267,6 @@ These official OS versions are not implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -16134,7 +16153,7 @@ _LT_EOF
- 	if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
- 	  export_symbols_cmds='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
- 	else
--	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-+	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
- 	fi
- 	aix_use_runtimelinking=no
- 
 @@ -18162,7 +18181,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
@@ -2294,16 +2285,7 @@ These official OS versions are not implemented:
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -20620,7 +20639,7 @@ $as_echo_n "checking whether the $compiler linker ($LD) supports shared librarie
-     if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
-       export_symbols_cmds_CXX='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-     else
--      export_symbols_cmds_CXX='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-+      export_symbols_cmds_CXX='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
-     fi
-     ;;
-   pw32*)
-@@ -28274,6 +28293,9 @@ fi
+@@ -28305,6 +28324,9 @@ fi
  
  
  
@@ -2345,7 +2327,7 @@ These official OS versions are not implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -5706,6 +5722,8 @@ AC_SUBST(tm_include_list)
+@@ -5711,6 +5727,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -2354,7 +2336,7 @@ These official OS versions are not implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -5713,6 +5731,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -5718,6 +5736,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
