@@ -168,6 +168,9 @@ struct ExceptionHeader
 
         // Pointer to catch code.
         _Unwind_Ptr landingPad;
+
+        // Canonical Frame Address (CFA) for the enclosing handler.
+        _Unwind_Word canonicalFrameAddress;
     }
 
     // Stack other thrown exceptions in current thread through here.
@@ -235,12 +238,12 @@ struct ExceptionHeader
      * Save stage1 handler information in the exception object.
      */
     static void save(_Unwind_Exception* unwindHeader,
-                     _Unwind_Context* context, int handler,
+                     _Unwind_Word cfa, int handler,
                      const(ubyte)* lsda, _Unwind_Ptr landingPad) @nogc
     {
         static if (GNU_ARM_EABI_Unwinder)
         {
-            unwindHeader.barrier_cache.sp = _Unwind_GetGR(context, UNWIND_STACK_REG);
+            unwindHeader.barrier_cache.sp = cfa;
             unwindHeader.barrier_cache.bitpattern[1] = cast(_uw)handler;
             unwindHeader.barrier_cache.bitpattern[2] = cast(_uw)lsda;
             unwindHeader.barrier_cache.bitpattern[3] = cast(_uw)landingPad;
@@ -248,6 +251,7 @@ struct ExceptionHeader
         else
         {
             ExceptionHeader* eh = toExceptionHeader(unwindHeader);
+            eh.canonicalFrameAddress = cfa;
             eh.handler = handler;
             eh.languageSpecificData = lsda;
             eh.landingPad = landingPad;
@@ -258,10 +262,12 @@ struct ExceptionHeader
      * Restore the catch handler data saved during phase1.
      */
     static void restore(_Unwind_Exception* unwindHeader, out int handler,
-                        out const(ubyte)* lsda, out _Unwind_Ptr landingPad) @nogc
+                        out const(ubyte)* lsda, out _Unwind_Ptr landingPad,
+                        out _Unwind_Word cfa) @nogc
     {
         static if (GNU_ARM_EABI_Unwinder)
         {
+            cfa = unwindHeader.barrier_cache.sp;
             handler = cast(int)unwindHeader.barrier_cache.bitpattern[1];
             lsda = cast(ubyte*)unwindHeader.barrier_cache.bitpattern[2];
             landingPad = cast(_Unwind_Ptr)unwindHeader.barrier_cache.bitpattern[3];
@@ -269,6 +275,7 @@ struct ExceptionHeader
         else
         {
             ExceptionHeader* eh = toExceptionHeader(unwindHeader);
+            cfa = eh.canonicalFrameAddress;
             handler = eh.handler;
             lsda = eh.languageSpecificData;
             landingPad = cast(_Unwind_Ptr)eh.landingPad;
@@ -279,7 +286,7 @@ struct ExceptionHeader
      * Look at the chain of inflight exceptions and pick the class type that'll
      * be looked for in catch clauses.
      */
-    static getClassInfo(_Unwind_Exception* unwindHeader) @nogc
+    static ClassInfo getClassInfo(_Unwind_Exception* unwindHeader) @nogc
     {
         ExceptionHeader* eh = toExceptionHeader(unwindHeader);
         // The first thrown Exception at the top of the stack takes precedence
@@ -506,7 +513,7 @@ extern(C) void _d_throw(Throwable object)
  */
 _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class exceptionClass,
                              _Unwind_Action actions, _Unwind_Exception* unwindHeader,
-                             _Unwind_Context* context,
+                             _Unwind_Context* context, _Unwind_Word cfa,
                              out _Unwind_Ptr landingPad, out int handler)
 {
     // If no LSDA, then there are no handlers or cleanups.
@@ -653,7 +660,7 @@ _Unwind_Reason_Code scanLSDA(const(ubyte)* lsda, _Unwind_Exception_Class excepti
 
         // For domestic exceptions, we cache data from phase 1 for phase 2.
         if (isGdcExceptionClass(exceptionClass))
-            ExceptionHeader.save(unwindHeader, context, handler, lsda, landingPad);
+            ExceptionHeader.save(unwindHeader, cfa, handler, lsda, landingPad);
 
         return _URC_HANDLER_FOUND;
     }
@@ -861,13 +868,14 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
 {
     const(ubyte)* lsda;
     _Unwind_Ptr landingPad;
+    _Unwind_Word cfa;
     int handler;
 
     // Shortcut for phase 2 found handler for domestic exception.
     if (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME)
         && isGdcExceptionClass(exceptionClass))
     {
-        ExceptionHeader.restore(unwindHeader, handler, lsda, landingPad);
+        ExceptionHeader.restore(unwindHeader, handler, lsda, landingPad, cfa);
         // Shouldn't have cached a null landing pad in phase 1.
         if (landingPad == 0)
             terminate(__LINE__);
@@ -876,8 +884,13 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
     {
         lsda = cast(ubyte*)_Unwind_GetLanguageSpecificData(context);
 
+        static if (GNU_ARM_EABI_Unwinder)
+            cfa = _Unwind_GetGR(context, UNWIND_STACK_REG);
+        else
+            cfa = _Unwind_GetCFA(context);
+
         auto result = scanLSDA(lsda, exceptionClass, actions, unwindHeader,
-                               context, landingPad, handler);
+                               context, cfa, landingPad, handler);
 
         // Positive on handler found in phase 1, continue unwinding, or failure.
         if (result)
@@ -896,6 +909,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
         // current object onto the end of the prevous object.
         ExceptionHeader* eh = ExceptionHeader.toExceptionHeader(unwindHeader);
         auto currentLsd = lsda;
+        auto currentCfa = cfa;
         bool bypassed = false;
 
         while (eh.next)
@@ -903,22 +917,24 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
             ExceptionHeader* ehn = eh.next;
             const(ubyte)* nextLsd;
             _Unwind_Ptr nextLandingPad;
+            _Unwind_Word nextCfa;
             int nextHandler;
 
-            ExceptionHeader.restore(&ehn.unwindHeader, nextHandler, nextLsd, nextLandingPad);
+            ExceptionHeader.restore(&ehn.unwindHeader, nextHandler, nextLsd, nextLandingPad, nextCfa);
 
             Error e = cast(Error)eh.object;
             if (e !is null && !cast(Error)ehn.object)
             {
                 // We found an Error, bypass the exception chain.
                 currentLsd = nextLsd;
+                currentCfa = nextCfa;
                 eh = ehn;
                 bypassed = true;
                 continue;
             }
 
             // Don't combine when the exceptions are from different functions.
-            if (currentLsd != nextLsd)
+            if (currentLsd != nextLsd && currentCfa != nextCfa)
                 break;
 
             // Add our object onto the end of the existing chain.
@@ -932,8 +948,7 @@ private _Unwind_Reason_Code __gdc_personality(_Unwind_Action actions,
             if (nextHandler != handler && !bypassed)
             {
                 handler = nextHandler;
-                ExceptionHeader.save(unwindHeader, context, handler,
-                                     lsda, landingPad);
+                ExceptionHeader.save(unwindHeader, cfa, handler, lsda, landingPad);
             }
 
             // Exceptions chained, can now throw away the previous header.
