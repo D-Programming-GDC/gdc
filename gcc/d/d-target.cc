@@ -1,4 +1,4 @@
-/* d-target.cc -- Target interface for the D frontend.
+/* d-target.cc -- Target interface for the D front end.
    Copyright (C) 2013-2017 Free Software Foundation, Inc.
 
 GCC is free software; you can redistribute it and/or modify
@@ -31,7 +31,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 
 #include "d-tree.h"
+#include "d-target.h"
 
+/* Implements the Target interface defined by the front end.
+   Used for retrieving target-specific information.  */
 
 /* Type size information used by frontend.  */
 int Target::ptrsize;
@@ -153,7 +156,7 @@ Target::_init (void)
   Target::ptrsize = (POINTER_SIZE / BITS_PER_UNIT);
   Target::c_longsize = int_size_in_bytes (long_integer_type_node);
 
-  Target::classinfosize = 19 * ptrsize;
+  Target::classinfosize = 19 * Target::ptrsize;
 
   /* Initialize all compile-time properties for floating point types.
      Should ensure that our real_t type is able to represent real_value.  */
@@ -178,7 +181,6 @@ Target::alignsize (Type *type)
   gcc_assert (type->isTypeBasic ());
   return TYPE_ALIGN_UNIT (build_ctype (type));
 }
-
 
 /* Return GCC field alignment size for type TYPE.  */
 
@@ -215,41 +217,7 @@ Target::fieldalign (Type *type)
 unsigned
 Target::critsecsize (void)
 {
-  if (global.params.isWindows)
-    {
-      /* sizeof (CRITICAL_SECTION) for Windows.  */
-      return global.params.isLP64 ? 40 : 24;
-    }
-  else if (global.params.isLinux)
-    {
-      /* sizeof(pthread_mutex_t) for Linux.  */
-      if (global.params.is64bit)
-	return global.params.isLP64 ? 40 : 32;
-      else
-	return global.params.isLP64 ? 40 : 24;
-    }
-  else if (global.params.isFreeBSD)
-    {
-      /* sizeof(pthread_mutex_t) for FreeBSD.  */
-      return global.params.isLP64 ? 8 : 4;
-    }
-  else if (global.params.isOpenBSD)
-    {
-      /* sizeof(pthread_mutex_t) for OpenBSD.  */
-      return global.params.isLP64 ? 8 : 4;
-    }
-  else if (global.params.isOSX)
-    {
-      /* sizeof(pthread_mutex_t) for OSX.  */
-      return global.params.isLP64 ? 64 : 44;
-    }
-  else if (global.params.isSolaris)
-    {
-      /* sizeof(pthread_mutex_t) for Solaris.  */
-      return 24;
-    }
-
-  gcc_unreachable ();
+  return targetdm.d_critsec_size ();
 }
 
 /* Returns a Type for the va_list type of the target.  */
