@@ -297,21 +297,6 @@ d_array_value (tree type, tree len, tree data)
   return build_constructor (type, ce);
 }
 
-/* Builds a D string value from the C string STR.  */
-
-tree
-d_array_string (const char *str)
-{
-  unsigned len = strlen (str);
-  /* Assumes STR is 0-terminated.  */
-  tree str_tree = build_string (len + 1, str);
-
-  TREE_TYPE (str_tree) = make_array_type (Type::tchar, len);
-
-  return d_array_value (build_ctype (Type::tchar->arrayOf ()),
-			size_int (len), build_address (str_tree));
-}
-
 /* Returns value representing the array length of expression EXP.
    TYPE could be a dynamic or static array.  */
 
@@ -2044,8 +2029,21 @@ d_build_call (TypeFunction *tf, tree callable, tree object,
 tree
 d_assert_call (const Loc& loc, libcall_fn libcall, tree msg)
 {
-  tree file = d_array_string (loc.filename ? loc.filename : "");
+  tree file;
   tree line = size_int (loc.linnum);
+
+  /* File location is passed as a D string.  */
+  if (loc.filename)
+    {
+      unsigned len = strlen (loc.filename);
+      tree str = build_string (len + 1, loc.filename);
+      TREE_TYPE (str) = make_array_type (Type::tchar, len);
+
+      file = d_array_value (build_ctype (Type::tchar->arrayOf ()),
+			    size_int (len), build_address (str));
+    }
+  else
+    file = null_array_node;
 
   if (msg != NULL)
     return build_libcall (libcall, Type::tvoid, 3, msg, file, line);

@@ -294,6 +294,30 @@ class TypeInfoVisitor : public Visitor
     CONSTRUCTOR_APPEND_ELT (this->init_, NULL_TREE, value);
   }
 
+  /* Write out STR as a static D string literal.  */
+
+  void layout_string (const char *str)
+  {
+    unsigned len = strlen (str);
+    tree value = build_string (len + 1, str);
+
+    TREE_TYPE (value) = make_array_type (Type::tchar, len);
+    TREE_CONSTANT (value) = 1;
+    TREE_READONLY (value) = 1;
+    TREE_STATIC (value) = 1;
+
+    /* Taking the address, so assign the literal to a static var.  */
+    tree decl = build_artificial_decl (TREE_TYPE (value), value);
+    TREE_READONLY (decl) = 1;
+    DECL_EXTERNAL (decl) = 0;
+    d_pushdecl (decl);
+
+    value = d_array_value (build_ctype (Type::tchar->arrayOf ()),
+			   size_int (len), build_address (decl));
+    this->layout_field (value);
+  }
+
+
   /* Write out the __vptr and __monitor fields of class CD.  */
 
   void layout_base (ClassDeclaration *cd)
@@ -525,7 +549,7 @@ public:
     this->layout_field (memtype);
 
     /* Name of the enum declaration.  */
-    this->layout_field (d_array_string (ed->toPrettyChars ()));
+    this->layout_string (ed->toPrettyChars ());
 
     /* Default initializer for enum.  */
     if (ed->members && !d->tinfo->isZeroInit ())
@@ -649,7 +673,7 @@ public:
     this->layout_field (build_typeinfo (ti->next));
 
     /* Mangled name of function declaration.  */
-    this->layout_field (d_array_string (d->tinfo->deco));
+    this->layout_string (d->tinfo->deco);
   }
 
   /* Layout of TypeInfo_Delegate is:
@@ -670,7 +694,7 @@ public:
     this->layout_field (build_typeinfo (ti->next));
 
     /* Mangled name of delegate declaration.  */
-    this->layout_field (d_array_string (d->tinfo->deco));
+    this->layout_string (d->tinfo->deco);
   }
 
   /* Layout of ClassInfo/TypeInfo_Class is:
@@ -718,7 +742,7 @@ public:
 	const char *name = cd->ident->toChars ();
 	if (!(strlen (name) > 9 && memcmp (name, "TypeInfo_", 9) == 0))
 	  name = cd->toPrettyChars ();
-	this->layout_field (d_array_string (name));
+	this->layout_string (name);
 
 	/* The vtable of the class declaration.  */
 	value = d_array_value (array_type_node, size_int (cd->vtbl.dim),
@@ -821,7 +845,7 @@ public:
 	this->layout_field (null_array_node);
 
 	/* Name of the interface declaration.  */
-	this->layout_field (d_array_string (cd->toPrettyChars ()));
+	this->layout_string (cd->toPrettyChars ());
 
 	/* No vtable for interface declaration.  */
 	this->layout_field (null_array_node);
@@ -954,7 +978,7 @@ public:
       }
 
     /* Name of the struct declaration.  */
-    this->layout_field (d_array_string (sd->toPrettyChars ()));
+    this->layout_string (sd->toPrettyChars ());
 
     /* Default initializer for struct.  */
     tree ptr = (sd->zeroInit) ? null_pointer_node :
