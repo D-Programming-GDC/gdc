@@ -1,3 +1,16 @@
+2017-06-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-frontend.cc (CTFloat::hash): New function.
+
+2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-codegen.cc (d_array_string): Remove function.
+	(d_assert_call): Inline implementation of d_array_string here.
+	* d-tree.h (d_array_string): Remove declaration.
+	* typeinfo.cc (TypeInfoVisitor::layout_string): New function.
+	(TypeInfoVisitor::visit): Update calls to d_array_string to use
+	layout_string instead.
+
 2017-06-25  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* toir.cc (IRVisitor::visit(ExtAsmStatement)): Set ASM_VOLATILE_P only
