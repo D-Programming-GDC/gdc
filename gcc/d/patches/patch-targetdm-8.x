@@ -15,11 +15,9 @@ The following CPU versions are implemented:
 * Alpha
 ** Alpha_SoftFloat
 ** Alpha_HardFloat
-* Epiphany
 * X86
 * X86_64
 ** D_X32
-* IA64
 * MIPS32
 * MIPS64
 ** MIPS_O32
@@ -29,12 +27,8 @@ The following CPU versions are implemented:
 ** MIPS_EABI
 ** MIPS_HardFloat
 ** MIPS_SoftFloat
-* NVPTX
-* NVPTX64
 * HPPA
 * HPPA64
-* RISCV32
-* RISCV64
 * PPC
 * PPC64
 ** PPC_HardFloat
@@ -50,19 +44,7 @@ The following CPU versions are implemented:
 ** SPARC_SoftFloat
 
 The following OS versions are implemented:
-* Windows
-** Win32
-** Win64
-** Cygwin
-** MinGW
 * linux
-* OSX
-** darwin (deprecated)
-* FreeBSD
-* OpenBSD
-* NetBSD
-* DragonFlyBSD
-* Solaris
 * Posix
 * Hurd
 * Android
@@ -70,18 +52,6 @@ The following OS versions are implemented:
 * CRuntime_Glibc
 * CRuntime_Musl
 * CRuntime_UClibc
-
-These official OS versions are not implemented:
-* AIX
-* BSD (other BSDs)
-* Haiku
-* PlayStation
-* PlayStation4
-* SkyOS
-* SysV3
-* SysV4
-* CRuntime_DigitalMars
-* CRuntime_Microsoft
 ---
  
 --- a/gcc/Makefile.in
@@ -275,17 +245,7 @@ These official OS versions are not implemented:
  	extra_options="${extra_options} arm/arm-tables.opt"
  	target_gtfiles="\$(srcdir)/config/arm/arm-builtins.c"
  	;;
-@@ -342,6 +356,9 @@ bfin*-*)
- crisv32-*)
- 	cpu_type=cris
- 	;;
-+epiphany-*-* )
-+	d_target_objs="epiphany-d.o"
-+	;;
- frv*)	cpu_type=frv
- 	extra_options="${extra_options} g.opt"
- 	;;
-@@ -360,6 +377,7 @@ i[34567]86-*-*)
+@@ -360,6 +374,7 @@ i[34567]86-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -293,7 +253,7 @@ These official OS versions are not implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
  		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
-@@ -383,6 +401,7 @@ x86_64-*-*)
+@@ -383,6 +398,7 @@ x86_64-*-*)
  	cpu_type=i386
  	c_target_objs="i386-c.o"
  	cxx_target_objs="i386-c.o"
@@ -301,15 +261,7 @@ These official OS versions are not implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
  		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
-@@ -403,6 +422,7 @@ x86_64-*-*)
- 		       clzerointrin.h pkuintrin.h sgxintrin.h"
- 	;;
- ia64-*-*)
-+	d_target_objs="ia64-d.o"
- 	extra_headers=ia64intrin.h
- 	extra_options="${extra_options} g.opt fused-madd.opt"
- 	;;
-@@ -426,6 +446,7 @@ microblaze*-*-*)
+@@ -426,6 +442,7 @@ microblaze*-*-*)
          ;;
  mips*-*-*)
  	cpu_type=mips
@@ -317,23 +269,7 @@ These official OS versions are not implemented:
  	extra_headers="loongson.h msa.h"
  	extra_objs="frame-header-opt.o"
  	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
-@@ -441,6 +462,7 @@ nios2-*-*)
- 	;;
- nvptx-*-*)
- 	cpu_type=nvptx
-+	d_target_objs="nvptx-d.o"
- 	;;
- powerpc*-*-*spe*)
- 	cpu_type=powerpcspe
-@@ -468,6 +490,7 @@ powerpc*-*-*)
- riscv*)
- 	cpu_type=riscv
- 	extra_objs="riscv-builtins.o riscv-c.o"
-+	d_target_objs="riscv-d.o"
- 	;;
- rs6000*-*-*)
- 	extra_options="${extra_options} g.opt fused-madd.opt rs6000/rs6000-tables.opt"
-@@ -476,6 +499,7 @@ sparc*-*-*)
+@@ -478,6 +495,7 @@ sparc*-*-*)
  	cpu_type=sparc
  	c_target_objs="sparc-c.o"
  	cxx_target_objs="sparc-c.o"
@@ -341,7 +277,7 @@ These official OS versions are not implemented:
  	extra_headers="visintrin.h"
  	;;
  spu*-*-*)
-@@ -483,6 +507,7 @@ spu*-*-*)
+@@ -485,6 +503,7 @@ spu*-*-*)
  	;;
  s390*-*-*)
  	cpu_type=s390
@@ -349,7 +285,7 @@ These official OS versions are not implemented:
  	extra_options="${extra_options} fused-madd.opt"
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
-@@ -512,10 +537,13 @@ tilepro*-*-*)
+@@ -514,10 +533,13 @@ tilepro*-*-*)
  esac
  
  tm_file=${cpu_type}/${cpu_type}.h
@@ -363,38 +299,7 @@ These official OS versions are not implemented:
  extra_modes=
  if test -f ${srcdir}/config/${cpu_type}/${cpu_type}-modes.def
  then
-@@ -648,8 +676,10 @@ case ${target} in
-   extra_options="${extra_options} darwin.opt"
-   c_target_objs="${c_target_objs} darwin-c.o"
-   cxx_target_objs="${cxx_target_objs} darwin-c.o"
-+  d_target_objs="${d_target_objs} darwin-d.o"
-   fortran_target_objs="darwin-f.o"
-   target_has_targetcm=yes
-+  target_has_targetdm=yes
-   extra_objs="darwin.o"
-   extra_gcc_objs="darwin-driver.o"
-   default_use_cxa_atexit=yes
-@@ -674,6 +704,9 @@ case ${target} in
-       exit 1
-       ;;
-   esac
-+  d_target_objs="${d_target_objs} dragonfly-d.o"
-+  target_has_targetdm=yes
-+  tmake_file="${tmake_file} t-dragonfly"
-   extra_options="$extra_options rpath.opt dragonfly.opt"
-   default_use_cxa_atexit=yes
-   use_gcc_stdint=wrap
-@@ -717,6 +750,9 @@ case ${target} in
-       ;;
-   esac
-   fbsd_tm_file="${fbsd_tm_file} freebsd-spec.h freebsd.h freebsd-stdint.h"
-+  d_target_objs="${d_target_objs} freebsd-d.o"
-+  target_has_targetdm=yes
-+  tmake_file="${tmake_file} t-freebsd"
-   extra_options="$extra_options rpath.opt freebsd.opt"
-   case ${target} in
-     *-*-freebsd[345].*)
-@@ -784,14 +820,19 @@ case ${target} in
+@@ -786,8 +808,10 @@ case ${target} in
    esac
    c_target_objs="${c_target_objs} glibc-c.o"
    cxx_target_objs="${cxx_target_objs} glibc-c.o"
@@ -405,44 +310,7 @@ These official OS versions are not implemented:
    ;;
  *-*-netbsd*)
    tmake_file="t-slibgcc"
-   gas=yes
-   gnu_ld=yes
-   use_gcc_stdint=wrap
-+  d_target_objs="${d_target_objs} netbsd-d.o"
-+  target_has_targetdm=yes
-+  tmake_file="${tmake_file} t-netbsd"
- 
-   # NetBSD 2.0 and later get POSIX threads enabled by default.
-   # Allow them to be explicitly enabled on any other version.
-@@ -820,6 +861,8 @@ case ${target} in
-   ;;
- *-*-openbsd*)
-   tmake_file="t-openbsd"
-+  d_target_objs="${d_target_objs} netbsd-d.o"
-+  target_has_targetdm=yes
-   case ${enable_threads} in
-     yes)
-       thread_file='posix'
-@@ -885,6 +928,8 @@ case ${target} in
-   tmake_file="${tmake_file} t-sol2 t-slibgcc"
-   c_target_objs="${c_target_objs} sol2-c.o"
-   cxx_target_objs="${cxx_target_objs} sol2-c.o sol2-cxx.o"
-+  d_target_objs="${d_target_objs} sol2-d.o"
-+  target_has_targetdm="yes"
-   extra_objs="sol2.o sol2-stubs.o"
-   extra_options="${extra_options} sol2.opt"
-   case ${enable_threads}:${have_pthread_h}:${have_thread_h} in
-@@ -1721,7 +1766,9 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
- 	xm_file=i386/xm-mingw32.h
- 	c_target_objs="${c_target_objs} winnt-c.o"
- 	cxx_target_objs="${cxx_target_objs} winnt-c.o"
-+	d_target_objs="${d_target_objs} winnt-d.o"
- 	target_has_targetcm="yes"
-+	target_has_targetdm="yes"
- 	case ${target} in
- 		x86_64-*-* | *-w64-*)
- 			need_64bit_isa=yes
-@@ -3117,6 +3164,10 @@ if [ "$common_out_file" = "" ]; then
+@@ -3121,6 +3145,10 @@ if [ "$common_out_file" = "" ]; then
    fi
  fi
  
@@ -453,7 +321,7 @@ These official OS versions are not implemented:
  # Support for --with-cpu and related options (and a few unrelated options,
  # too).
  case ${with_cpu} in
-@@ -4505,6 +4556,8 @@ case ${target} in
+@@ -4514,6 +4542,8 @@ case ${target} in
  		then
  			target_cpu_default2="MASK_GAS"
  		fi
@@ -462,7 +330,7 @@ These official OS versions are not implemented:
  		;;
  
  	fido*-*-* | m68k*-*-*)
-@@ -4590,12 +4643,14 @@ case ${target} in
+@@ -4599,12 +4629,14 @@ case ${target} in
  		out_file="${cpu_type}/${cpu_type}.c"
  		c_target_objs="${c_target_objs} ${cpu_type}-c.o"
  		cxx_target_objs="${cxx_target_objs} ${cpu_type}-c.o"
@@ -524,7 +392,7 @@ These official OS versions are not implemented:
  /* Uninitialized common symbols in non-PIE executables, even with
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
-@@ -475,6 +475,9 @@ enum aarch64_parse_opt_result aarch64_parse_extension (const char *,
+@@ -486,6 +486,9 @@ enum aarch64_parse_opt_result aarch64_parse_extension (const char *,
  std::string aarch64_get_extension_string_for_isa_flags (unsigned long,
  							unsigned long);
  
@@ -582,7 +450,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -637,7 +505,7 @@ These official OS versions are not implemented:
  PASSES_EXTRA += $(srcdir)/config/alpha/alpha-passes.def
 --- a/gcc/config/arm/arm-d.c
 +++ b/gcc/config/arm/arm-d.c
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,53 @@
 +/* Subroutines for the D front end on the ARM architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -658,7 +526,8 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
++#include "tm_p.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -737,64 +606,6 @@ These official OS versions are not implemented:
 +	$(POSTCOMPILE)
 +
  arm-common.o: $(srcdir)/config/arm/arm-cpu-cdata.h
---- a/gcc/config/darwin-d.c
-+++ b/gcc/config/darwin-d.c
-@@ -0,0 +1,55 @@
-+/* Darwin support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm_d.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_OS_VERSIONS for Darwin targets.  */
-+
-+static void
-+darwin_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("OSX");
-+  d_add_builtin_version ("darwin");
-+  d_add_builtin_version ("Posix");
-+}
-+
-+/* Implement TARGET_D_CRITSEC_SIZE for Darwin targets.  */
-+
-+static unsigned
-+darwin_d_critsec_size (void)
-+{
-+  /* This is the sizeof pthread_mutex_t.  */
-+  if (TYPE_PRECISION (long_integer_type_node) == 64
-+      && POINTER_SIZE == 64
-+      && TYPE_PRECISION (integer_type_node) == 32)
-+    return 64;
-+  else
-+    return 44;
-+}
-+
-+#undef TARGET_D_OS_VERSIONS
-+#define TARGET_D_OS_VERSIONS darwin_d_os_builtins
-+
-+#undef TARGET_D_CRITSEC_SIZE
-+#define TARGET_D_CRITSEC_SIZE darwin_d_critsec_size
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/default-d.c
 +++ b/gcc/config/default-d.c
 @@ -0,0 +1,25 @@
@@ -823,177 +634,9 @@ These official OS versions are not implemented:
 +#include "d/d-target-def.h"
 +
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/dragonfly-d.c
-+++ b/gcc/config/dragonfly-d.c
-@@ -0,0 +1,49 @@
-+/* DragonFly support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm_d.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_OS_VERSIONS for DragonFly targets.  */
-+
-+static void
-+dragonfly_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("DragonFlyBSD");
-+  d_add_builtin_version ("Posix");
-+}
-+
-+/* Implement TARGET_D_CRITSEC_SIZE for DragonFly targets.  */
-+
-+static unsigned
-+dragonfly_d_critsec_size (void)
-+{
-+  /* This is the sizeof pthread_mutex_t, an opaque pointer.  */
-+  return POINTER_SIZE_UNITS;
-+}
-+
-+#undef TARGET_D_OS_VERSIONS
-+#define TARGET_D_OS_VERSIONS dragonfly_d_os_builtins
-+
-+#undef TARGET_D_CRITSEC_SIZE
-+#define TARGET_D_CRITSEC_SIZE dragonfly_d_critsec_size
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/epiphany/epiphany-d.c
-+++ b/gcc/config/epiphany/epiphany-d.c
-@@ -0,0 +1,31 @@
-+/* Subroutines for the D front end on the EPIPHANY architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify
-+it under the terms of the GNU General Public License as published by
-+the Free Software Foundation; either version 3, or (at your option)
-+any later version.
-+
-+GCC is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_CPU_VERSIONS for EPIPHANY targets.  */
-+
-+void
-+epiphany_d_target_versions (void)
-+{
-+  d_add_builtin_version ("Epiphany");
-+  d_add_builtin_version ("D_HardFloat");
-+}
---- a/gcc/config/epiphany/epiphany-protos.h
-+++ b/gcc/config/epiphany/epiphany-protos.h
-@@ -61,3 +61,5 @@ extern bool epiphany_regno_rename_ok (unsigned src, unsigned dst);
-    it uses peephole2 predicates without having all the necessary headers.  */
- extern int get_attr_sched_use_fpu (rtx_insn *);
- 
-+/* Routines implemented in epiphany-d.c  */
-+extern void epiphany_d_target_versions (void);
---- a/gcc/config/epiphany/epiphany.h
-+++ b/gcc/config/epiphany/epiphany.h
-@@ -41,6 +41,9 @@ along with GCC; see the file COPYING3.  If not see
- 	builtin_assert ("machine=epiphany");	\
-     } while (0)
- 
-+/* Target CPU versions for D.  */
-+#define TARGET_D_CPU_VERSIONS epiphany_d_target_versions
-+
- /* Pick up the libgloss library. One day we may do this by linker script, but
-    for now its static.
-    libgloss might use errno/__errno, which might not have been needed when we
---- a/gcc/config/epiphany/t-epiphany
-+++ b/gcc/config/epiphany/t-epiphany
-@@ -36,3 +36,7 @@ specs: specs.install
- 	sed -e 's,epiphany_library_extra_spec,epiphany_library_stub_spec,' \
- 	-e 's,epiphany_library_build_spec,epiphany_library_extra_spec,' \
- 	  < specs.install > $@ ; \
-+
-+epiphany-d.o: $(srcdir)/config/epiphany/epiphany-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
---- a/gcc/config/freebsd-d.c
-+++ b/gcc/config/freebsd-d.c
-@@ -0,0 +1,49 @@
-+/* FreeBSD support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm_d.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_OS_VERSIONS for FreeBSD targets.  */
-+
-+static void
-+freebsd_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("FreeBSD");
-+  d_add_builtin_version ("Posix");
-+}
-+
-+/* Implement TARGET_D_CRITSEC_SIZE for FreeBSD targets.  */
-+
-+static unsigned
-+freebsd_d_critsec_size (void)
-+{
-+  /* This is the sizeof pthread_mutex_t, an opaque pointer.  */
-+  return POINTER_SIZE_UNITS;
-+}
-+
-+#undef TARGET_D_OS_VERSIONS
-+#define TARGET_D_OS_VERSIONS freebsd_d_os_builtins
-+
-+#undef TARGET_D_CRITSEC_SIZE
-+#define TARGET_D_CRITSEC_SIZE freebsd_d_critsec_size
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/glibc-d.c
 +++ b/gcc/config/glibc-d.c
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,73 @@
 +/* Glibc support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1014,10 +657,11 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
++#include "memmodel.h"
++#include "tm_p.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
-+#include "tm_p.h"
 +
 +/* Implement TARGET_D_OS_VERSIONS for Glibc targets.  */
 +
@@ -1075,21 +719,6 @@ These official OS versions are not implemented:
 +
 +#define GNU_USER_TARGET_D_OS_VERSIONS()		\
 +  builtin_version ("Hurd")
---- a/gcc/config/i386/cygwin.h
-+++ b/gcc/config/i386/cygwin.h
-@@ -29,6 +29,12 @@ along with GCC; see the file COPYING3.  If not see
-     }								\
-   while (0)
- 
-+#define EXTRA_TARGET_D_OS_VERSIONS()				\
-+    do {							\
-+      builtin_version ("Cygwin");				\
-+      builtin_version ("Posix");				\
-+    } while (0)
-+
- #undef CPP_SPEC
- #define CPP_SPEC "%(cpp_cpu) %{posix:-D_POSIX_SOURCE} \
-   %{!ansi:-Dunix} \
 --- a/gcc/config/i386/i386-d.c
 +++ b/gcc/config/i386/i386-d.c
 @@ -0,0 +1,44 @@
@@ -1176,37 +805,6 @@ These official OS versions are not implemented:
  #undef CC1_SPEC
  #define CC1_SPEC \
    LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC, \
---- a/gcc/config/i386/mingw32.h
-+++ b/gcc/config/i386/mingw32.h
-@@ -53,6 +53,16 @@ along with GCC; see the file COPYING3.  If not see
-     }								\
-   while (0)
- 
-+#define EXTRA_TARGET_D_OS_VERSIONS()				\
-+    do {							\
-+      builtin_version ("MinGW");				\
-+								\
-+      if (TARGET_64BIT && ix86_abi == MS_ABI)			\
-+	  builtin_version ("Win64");				\
-+      else if (!TARGET_64BIT)					\
-+        builtin_version ("Win32");				\
-+    } while (0)
-+
- #ifndef TARGET_USE_PTHREAD_BY_DEFAULT
- #define SPEC_PTHREAD1 "pthread"
- #define SPEC_PTHREAD2 "!no-pthread"
---- a/gcc/config/i386/t-cygming
-+++ b/gcc/config/i386/t-cygming
-@@ -32,6 +32,9 @@ winnt-cxx.o: $(srcdir)/config/i386/winnt-cxx.c $(CONFIG_H) $(SYSTEM_H) coretypes
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
- 	$(srcdir)/config/i386/winnt-cxx.c
- 
-+winnt-d.o: config/winnt-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
- 
- winnt-stubs.o: $(srcdir)/config/i386/winnt-stubs.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
-   $(TM_H) $(RTL_H) $(REGS_H) hard-reg-set.h output.h $(TREE_H) flags.h \
 --- a/gcc/config/i386/t-i386
 +++ b/gcc/config/i386/t-i386
 @@ -24,6 +24,10 @@ i386-c.o: $(srcdir)/config/i386/i386-c.c
@@ -1220,77 +818,6 @@ These official OS versions are not implemented:
  i386.o: i386-builtin-types.inc
  
  i386-builtin-types.inc: s-i386-bt ; @true
---- a/gcc/config/ia64/ia64-d.c
-+++ b/gcc/config/ia64/ia64-d.c
-@@ -0,0 +1,31 @@
-+/* Subroutines for the D front end on the IA64 architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify
-+it under the terms of the GNU General Public License as published by
-+the Free Software Foundation; either version 3, or (at your option)
-+any later version.
-+
-+GCC is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_CPU_VERSIONS for IA64 targets.  */
-+
-+void
-+ia64_d_target_versions (void)
-+{
-+  d_add_builtin_version ("IA64");
-+  d_add_builtin_version ("D_HardFloat");
-+}
---- a/gcc/config/ia64/ia64-protos.h
-+++ b/gcc/config/ia64/ia64-protos.h
-@@ -98,6 +98,9 @@ extern void ia64_hpux_handle_builtin_pragma (struct cpp_reader *);
- extern void ia64_output_function_profiler (FILE *, int);
- extern void ia64_profile_hook (int);
- 
-+/* Routines implemented in ia64-d.c  */
-+extern void ia64_d_target_versions (void);
-+
- extern void ia64_init_expanders (void);
- 
- extern rtx ia64_dconst_0_5 (void);
---- a/gcc/config/ia64/ia64.h
-+++ b/gcc/config/ia64/ia64.h
-@@ -40,6 +40,9 @@ do {						\
- 	  builtin_define("__BIG_ENDIAN__");	\
- } while (0)
- 
-+/* Target CPU versions for D.  */
-+#define TARGET_D_CPU_VERSIONS ia64_d_target_versions
-+
- #ifndef SUBTARGET_EXTRA_SPECS
- #define SUBTARGET_EXTRA_SPECS
- #endif
---- a/gcc/config/ia64/t-ia64
-+++ b/gcc/config/ia64/t-ia64
-@@ -21,6 +21,10 @@ ia64-c.o: $(srcdir)/config/ia64/ia64-c.c $(CONFIG_H) $(SYSTEM_H) \
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
- 		$(srcdir)/config/ia64/ia64-c.c
- 
-+ia64-d.o: $(srcdir)/config/ia64/ia64-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
-+
- # genattrtab generates very long string literals.
- insn-attrtab.o-warn = -Wno-error
- 
 --- a/gcc/config/kfreebsd-gnu.h
 +++ b/gcc/config/kfreebsd-gnu.h
 @@ -29,6 +29,9 @@ along with GCC; see the file COPYING3.  If not see
@@ -1376,7 +903,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -1444,181 +971,6 @@ These official OS versions are not implemented:
 +mips-d.o: $(srcdir)/config/mips/mips-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/netbsd-d.c
-+++ b/gcc/config/netbsd-d.c
-@@ -0,0 +1,49 @@
-+/* NetBSD support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm_d.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_OS_VERSIONS for NetBSD targets.  */
-+
-+static void
-+netbsd_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("NetBSD");
-+  d_add_builtin_version ("Posix");
-+}
-+
-+/* Implement TARGET_D_CRITSEC_SIZE for NetBSD targets.  */
-+
-+static unsigned
-+netbsd_d_critsec_size (void)
-+{
-+  /* This is the sizeof pthread_mutex_t.  */
-+  return 48;
-+}
-+
-+#undef TARGET_D_OS_VERSIONS
-+#define TARGET_D_OS_VERSIONS netbsd_d_os_builtins
-+
-+#undef TARGET_D_CRITSEC_SIZE
-+#define TARGET_D_CRITSEC_SIZE netbsd_d_critsec_size
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
---- a/gcc/config/nvptx/nvptx-d.c
-+++ b/gcc/config/nvptx/nvptx-d.c
-@@ -0,0 +1,34 @@
-+/* Subroutines for the D front end on the NVPTX architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify
-+it under the terms of the GNU General Public License as published by
-+the Free Software Foundation; either version 3, or (at your option)
-+any later version.
-+
-+GCC is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "target.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_CPU_VERSIONS for NVPTX targets.  */
-+
-+void
-+nvptx_d_target_versions (void)
-+{
-+  if (TARGET_ABI64)
-+    d_add_builtin_version ("NVPTX64");
-+  else
-+    d_add_builtin_version ("NVPTX");
-+}
---- a/gcc/config/nvptx/nvptx-protos.h
-+++ b/gcc/config/nvptx/nvptx-protos.h
-@@ -42,6 +42,9 @@ extern void nvptx_output_skip (FILE *, unsigned HOST_WIDE_INT);
- extern void nvptx_output_ascii (FILE *, const char *, unsigned HOST_WIDE_INT);
- extern void nvptx_register_pragmas (void);
- 
-+/* Routines implemented in nvptx-d.c  */
-+extern void nvptx_d_target_versions (void);
-+
- #ifdef RTX_CODE
- extern void nvptx_expand_oacc_fork (unsigned);
- extern void nvptx_expand_oacc_join (unsigned);
---- a/gcc/config/nvptx/nvptx.h
-+++ b/gcc/config/nvptx/nvptx.h
-@@ -37,6 +37,9 @@
-         builtin_define ("__nvptx_unisimt__");	\
-     } while (0)
- 
-+/* Target CPU versions for D.  */
-+#define TARGET_D_CPU_VERSIONS nvptx_d_target_versions
-+
- /* Avoid the default in ../../gcc.c, which adds "-pthread", which is not
-    supported for nvptx.  */
- #define GOMP_SELF_SPECS ""
---- a/gcc/config/nvptx/t-nvptx
-+++ b/gcc/config/nvptx/t-nvptx
-@@ -10,3 +10,7 @@ mkoffload$(exeext): mkoffload.o collect-utils.o libcommon-target.a $(LIBIBERTY)
- 	  mkoffload.o collect-utils.o libcommon-target.a $(LIBIBERTY) $(LIBS)
- 
- MULTILIB_OPTIONS = mgomp
-+
-+nvptx-d.o: $(srcdir)/config/nvptx/nvptx-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
---- a/gcc/config/openbsd-d.c
-+++ b/gcc/config/openbsd-d.c
-@@ -0,0 +1,49 @@
-+/* OpenBSD support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm_d.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_OS_VERSIONS for OpenBSD targets.  */
-+
-+static void
-+openbsd_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("OpenBSD");
-+  d_add_builtin_version ("Posix");
-+}
-+
-+/* Implement TARGET_D_CRITSEC_SIZE for OpenBSD targets.  */
-+
-+static unsigned
-+openbsd_d_critsec_size (void)
-+{
-+  /* This is the sizeof pthread_mutex_t, an opaque pointer.  */
-+  return POINTER_SIZE_UNITS;
-+}
-+
-+#undef TARGET_D_OS_VERSIONS
-+#define TARGET_D_OS_VERSIONS openbsd_d_os_builtins
-+
-+#undef TARGET_D_CRITSEC_SIZE
-+#define TARGET_D_CRITSEC_SIZE openbsd_d_critsec_size
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/pa/pa-d.c
 +++ b/gcc/config/pa/pa-d.c
 @@ -0,0 +1,39 @@
@@ -1642,7 +994,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -1701,7 +1053,7 @@ These official OS versions are not implemented:
 +	$(POSTCOMPILE)
 --- a/gcc/config/powerpcspe/powerpcspe-d.c
 +++ b/gcc/config/powerpcspe/powerpcspe-d.c
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,45 @@
 +/* Subroutines for the D front end on the PowerPC architecture.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -1722,6 +1074,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -1783,82 +1136,6 @@ These official OS versions are not implemented:
  $(srcdir)/config/powerpcspe/powerpcspe-tables.opt: $(srcdir)/config/powerpcspe/genopt.sh \
    $(srcdir)/config/powerpcspe/powerpcspe-cpus.def
  	$(SHELL) $(srcdir)/config/powerpcspe/genopt.sh $(srcdir)/config/powerpcspe > \
---- a/gcc/config/riscv/riscv-d.c
-+++ b/gcc/config/riscv/riscv-d.c
-@@ -0,0 +1,39 @@
-+/* Subroutines for the D front end on the RISC-V architecture.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify
-+it under the terms of the GNU General Public License as published by
-+the Free Software Foundation; either version 3, or (at your option)
-+any later version.
-+
-+GCC is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "target.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_CPU_VERSIONS for RISC-V targets.  */
-+
-+void
-+riscv_d_target_versions (void)
-+{
-+  if (TARGET_64BIT)
-+    d_add_builtin_version ("RISCV64");
-+  else
-+    d_add_builtin_version ("RISCV32");
-+
-+  if (TARGET_HARDFLOAT)
-+    d_add_builtin_version ("D_HardFloat");
-+  else
-+    d_add_builtin_version ("D_SoftFloat");
-+}
---- a/gcc/config/riscv/riscv-protos.h
-+++ b/gcc/config/riscv/riscv-protos.h
-@@ -74,6 +74,9 @@ extern unsigned int riscv_hard_regno_nregs (int, enum machine_mode);
- /* Routines implemented in riscv-c.c.  */
- void riscv_cpu_cpp_builtins (cpp_reader *);
- 
-+/* Routines implemented in riscv-d.c  */
-+extern void sh_d_target_versions (void);
-+
- /* Routines implemented in riscv-builtins.c.  */
- extern void riscv_atomic_assign_expand_fenv (tree *, tree *, tree *);
- extern rtx riscv_expand_builtin (tree, rtx, rtx, enum machine_mode, int);
---- a/gcc/config/riscv/riscv.h
-+++ b/gcc/config/riscv/riscv.h
-@@ -27,6 +27,9 @@ along with GCC; see the file COPYING3.  If not see
- /* Target CPU builtins.  */
- #define TARGET_CPU_CPP_BUILTINS() riscv_cpu_cpp_builtins (pfile)
- 
-+/* Target CPU versions for D.  */
-+#define TARGET_D_CPU_VERSIONS riscv_d_target_versions
-+
- /* Default target_flags if no switches are specified  */
- 
- #ifndef TARGET_DEFAULT
---- a/gcc/config/riscv/t-riscv
-+++ b/gcc/config/riscv/t-riscv
-@@ -9,3 +9,7 @@ riscv-c.o: $(srcdir)/config/riscv/riscv-c.c $(CONFIG_H) $(SYSTEM_H) \
-     coretypes.h $(TM_H) $(TREE_H) output.h $(C_COMMON_H) $(TARGET_H)
- 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
- 		$(srcdir)/config/riscv/riscv-c.c
-+
-+riscv-d.o: $(srcdir)/config/riscv/riscv-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
 --- a/gcc/config/rs6000/rs6000-d.c
 +++ b/gcc/config/rs6000/rs6000-d.c
 @@ -0,0 +1,45 @@
@@ -1882,7 +1159,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -1921,7 +1198,7 @@ These official OS versions are not implemented:
  #endif
 --- a/gcc/config/rs6000/rs6000.h
 +++ b/gcc/config/rs6000/rs6000.h
-@@ -822,6 +822,9 @@ extern unsigned char rs6000_recip_bits[];
+@@ -801,6 +801,9 @@ extern unsigned char rs6000_recip_bits[];
  #define TARGET_CPU_CPP_BUILTINS() \
    rs6000_cpu_cpp_builtins (pfile)
  
@@ -1933,7 +1210,7 @@ These official OS versions are not implemented:
  #define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
 --- a/gcc/config/rs6000/t-rs6000
 +++ b/gcc/config/rs6000/t-rs6000
-@@ -26,6 +26,10 @@ rs6000-c.o: $(srcdir)/config/rs6000/rs6000-c.c
+@@ -30,6 +30,10 @@ rs6000-string.o: $(srcdir)/config/rs6000/rs6000-string.c
  	$(COMPILE) $<
  	$(POSTCOMPILE)
  
@@ -1967,7 +1244,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -2042,7 +1319,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -2093,58 +1370,6 @@ These official OS versions are not implemented:
  sh_treg_combine.o: $(srcdir)/config/sh/sh_treg_combine.cc \
    $(CONFIG_H) $(SYSTEM_H) $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
  	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
---- a/gcc/config/sol2-d.c
-+++ b/gcc/config/sol2-d.c
-@@ -0,0 +1,49 @@
-+/* Solaris support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "tm_d.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+
-+/* Implement TARGET_D_OS_VERSIONS for Solaris targets.  */
-+
-+static void
-+solaris_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("Solaris");
-+  d_add_builtin_version ("Posix");
-+}
-+
-+/* Implement TARGET_D_CRITSEC_SIZE for Solaris targets.  */
-+
-+static unsigned
-+solaris_d_critsec_size (void)
-+{
-+  /* This is the sizeof pthread_mutex_t.  */
-+  return 24;
-+}
-+
-+#undef TARGET_D_OS_VERSIONS
-+#define TARGET_D_OS_VERSIONS solaris_d_os_builtins
-+
-+#undef TARGET_D_CRITSEC_SIZE
-+#define TARGET_D_CRITSEC_SIZE solaris_d_critsec_size
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/config/sparc/sparc-d.c
 +++ b/gcc/config/sparc/sparc-d.c
 @@ -0,0 +1,48 @@
@@ -2168,7 +1393,7 @@ These official OS versions are not implemented:
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
-+#include "target.h"
++#include "tm.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
 +
@@ -2228,30 +1453,6 @@ These official OS versions are not implemented:
 +sparc-d.o: $(srcdir)/config/sparc/sparc-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/t-darwin
-+++ b/gcc/config/t-darwin
-@@ -26,6 +26,9 @@ darwin-c.o: $(srcdir)/config/darwin-c.c
- 	$(COMPILE) $(PREPROCESSOR_DEFINES) $<
- 	$(POSTCOMPILE)
- 
-+darwin-d.o: $(srcdir)/config/darwin-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
- 
- darwin-f.o: $(srcdir)/config/darwin-f.c
- 	$(COMPILE) $<
---- a/gcc/config/t-dragonfly
-+++ b/gcc/config/t-dragonfly
-@@ -0,0 +1,3 @@
-+dragonfly-d.o: config/dragonfly-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
---- a/gcc/config/t-freebsd
-+++ b/gcc/config/t-freebsd
-@@ -0,0 +1,3 @@
-+freebsd-d.o: config/freebsd-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
 --- a/gcc/config/t-glibc
 +++ b/gcc/config/t-glibc
 @@ -19,3 +19,7 @@
@@ -2262,98 +1463,6 @@ These official OS versions are not implemented:
 +glibc-d.o: config/glibc-d.c
 +	$(COMPILE) $<
 +	$(POSTCOMPILE)
---- a/gcc/config/t-netbsd
-+++ b/gcc/config/t-netbsd
-@@ -0,0 +1,3 @@
-+netbsd-d.o: config/netbsd-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
---- a/gcc/config/t-openbsd
-+++ b/gcc/config/t-openbsd
-@@ -1,2 +1,6 @@
- # We don't need GCC's own include files.
- USER_H = $(EXTRA_HEADERS)
-+
-+openbsd-d.o: config/openbsd-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
---- a/gcc/config/t-sol2
-+++ b/gcc/config/t-sol2
-@@ -26,6 +26,11 @@ sol2-cxx.o: $(srcdir)/config/sol2-cxx.c
- 	$(COMPILE) $<
- 	$(POSTCOMPILE)
- 
-+# Solaris-specific D support.
-+sol2-d.o: $(srcdir)/config/sol2-d.c
-+	$(COMPILE) $<
-+	$(POSTCOMPILE)
-+
- # Corresponding stub routines.
- sol2-stubs.o: $(srcdir)/config/sol2-stubs.c
- 	$(COMPILE) $<
---- a/gcc/config/winnt-d.c
-+++ b/gcc/config/winnt-d.c
-@@ -0,0 +1,60 @@
-+/* Windows support needed only by D front-end.
-+   Copyright (C) 2017 Free Software Foundation, Inc.
-+
-+GCC is free software; you can redistribute it and/or modify it under
-+the terms of the GNU General Public License as published by the Free
-+Software Foundation; either version 3, or (at your option) any later
-+version.
-+
-+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
-+WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with GCC; see the file COPYING3.  If not see
-+<http://www.gnu.org/licenses/>.  */
-+
-+#include "config.h"
-+#include "system.h"
-+#include "coretypes.h"
-+#include "target.h"
-+#include "d/d-target.h"
-+#include "d/d-target-def.h"
-+#include "tm_p.h"
-+
-+/* Implement TARGET_D_OS_VERSIONS for Windows targets.  */
-+
-+static void
-+winnt_d_os_builtins (void)
-+{
-+  d_add_builtin_version ("Windows");
-+
-+#define builtin_version(TXT) d_add_builtin_version (TXT)
-+
-+#ifdef EXTRA_TARGET_D_OS_VERSIONS
-+  EXTRA_TARGET_D_OS_VERSIONS ();
-+#endif
-+}
-+
-+/* Implement TARGET_D_CRITSEC_SIZE for Windows targets.  */
-+
-+static unsigned
-+winnt_d_critsec_size (void)
-+{
-+  /* This is the sizeof CRITICAL_SECTION.  */
-+  if (TYPE_PRECISION (long_integer_type_node) == 64
-+      && POINTER_SIZE == 64
-+      && TYPE_PRECISION (integer_type_node) == 32)
-+    return 40;
-+  else
-+    return 24;
-+}
-+
-+#undef TARGET_D_OS_VERSIONS
-+#define TARGET_D_OS_VERSIONS winnt_d_os_builtins
-+
-+#undef TARGET_D_CRITSEC_SIZE
-+#define TARGET_D_CRITSEC_SIZE winnt_d_critsec_size
-+
-+struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- a/gcc/configure
 +++ b/gcc/configure
 @@ -612,6 +612,7 @@ ISLLIBS
@@ -2421,7 +1530,7 @@ These official OS versions are not implemented:
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -29410,6 +29429,9 @@ fi
+@@ -29465,6 +29484,9 @@ fi
  
  
  
@@ -2463,7 +1572,7 @@ These official OS versions are not implemented:
  xm_file_list=
  xm_include_list=
  for f in $xm_file; do
-@@ -6153,6 +6169,8 @@ AC_SUBST(tm_include_list)
+@@ -6189,6 +6205,8 @@ AC_SUBST(tm_include_list)
  AC_SUBST(tm_defines)
  AC_SUBST(tm_p_file_list)
  AC_SUBST(tm_p_include_list)
@@ -2472,7 +1581,7 @@ These official OS versions are not implemented:
  AC_SUBST(xm_file_list)
  AC_SUBST(xm_include_list)
  AC_SUBST(xm_defines)
-@@ -6160,6 +6178,7 @@ AC_SUBST(use_gcc_stdint)
+@@ -6196,6 +6214,7 @@ AC_SUBST(use_gcc_stdint)
  AC_SUBST(c_target_objs)
  AC_SUBST(cxx_target_objs)
  AC_SUBST(fortran_target_objs)
@@ -2505,7 +1614,7 @@ These official OS versions are not implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -10482,6 +10491,22 @@ unloaded. The default is to return false.
+@@ -10480,6 +10489,22 @@ unloaded. The default is to return false.
  Return target-specific mangling context of @var{decl} or @code{NULL_TREE}.
  @end deftypefn
  
@@ -2553,7 +1662,7 @@ These official OS versions are not implemented:
  @node Driver
  @section Controlling the Compilation Driver, @file{gcc}
  @cindex driver
-@@ -7473,6 +7482,16 @@ floating-point support; they are not included in this mechanism.
+@@ -7471,6 +7480,16 @@ floating-point support; they are not included in this mechanism.
  
  @hook TARGET_CXX_DECL_MANGLING_CONTEXT
  
