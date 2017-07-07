@@ -1351,59 +1351,29 @@ else version( GNU )
     {
         bool res = void;
 
-        static if (__traits(isFloating, T))
+        static if (T.sizeof == byte.sizeof)
         {
-            static if (T.sizeof == int.sizeof)
-            {
-                static assert(is(T : float));
-
-                res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, *cast(int*) &writeThis,
-                                                  false, MemoryOrder.seq, MemoryOrder.seq);
-            }
-            else static if(T.sizeof == long.sizeof)
-            {
-                static assert(is(T : double));
-
-                res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, *cast(long*) &writeThis,
-                                                  false, MemoryOrder.seq, MemoryOrder.seq);
-            }
-            else
-            {
-                static assert(false, "Cannot atomically store 80-bit reals.");
-            }
-        }
-        else static if (is(T P == U*, U) || is(T == class) || is(T == interface))
-        {
-            version (D_LP64)
-                res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, *cast(ulong*) &writeThis,
-                                                  false, MemoryOrder.seq, MemoryOrder.seq);
-            else
-                res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, *cast(uint*) &writeThis,
-                                                  false, MemoryOrder.seq, MemoryOrder.seq);
-        }
-        else static if (T.sizeof == byte.sizeof)
-        {
-            res = __atomic_compare_exchange_1(here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_1(here, cast(void*) &ifThis, *cast(ubyte*) &writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else static if (T.sizeof == short.sizeof)
         {
-            res = __atomic_compare_exchange_2(here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_2(here, cast(void*) &ifThis, *cast(ushort*) &writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
         else static if (T.sizeof == int.sizeof)
         {
-            res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, *cast(uint*) &writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
-        else static if (T.sizeof == long.sizeof)
+        else static if (T.sizeof == long.sizeof && has64BitCAS)
         {
-            res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, writeThis,
+            res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, *cast(ulong*) &writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
-        else static if( T.sizeof == long.sizeof * 2 && HAVE_LIBATOMIC)
+        else static if( T.sizeof == long.sizeof * 2 && has128BitCAS)
         {
-            res = __atomic_compare_exchange(T.sizeof, here, cast(void*)&ifThis, cast(void*)&writeThis,
+            res = __atomic_compare_exchange(T.sizeof, here, cast(void*) &ifThis, cast(void*) &writeThis,
                                             MemoryOrder.seq, MemoryOrder.seq);
         }
         else
