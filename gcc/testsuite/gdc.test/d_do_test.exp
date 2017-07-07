@@ -311,6 +311,11 @@ proc gdc-do-test { } {
         #set DEFAULT_DFLAGS "-O2"
     }
 
+    # Execute the runnable tests where possible.
+    set run_runnable [check_runtime can_execute_runnable {
+        int main() { return 0; }
+    }]
+
     # These are special options to use on testcase, and override DEFAULT_DFLAGS
     global PERMUTE_ARGS
 
@@ -350,7 +355,12 @@ proc gdc-do-test { } {
             runnable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
-                    set dg-do-what-default "run"
+                    if { $run_runnable } {
+                        set dg-do-what-default "run"
+                    } else {
+                        #set dg-do-what-default "compile"
+                        set dg-do-what-default "assemble"
+                    }
                     gdc-dg-runtest $filename $imports
                 }
             }
@@ -358,6 +368,7 @@ proc gdc-do-test { } {
             compilable {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
+                    #set dg-do-what-default "compile"
                     set dg-do-what-default "assemble"
                     gdc-dg-runtest $filename "$imports"
                 }
@@ -367,7 +378,6 @@ proc gdc-do-test { } {
                 for { set i 0 } { $i<[llength $options] } { incr i } {
                     set TORTURE_OPTIONS [lindex $options $i]
                     set dg-do-what-default "assemble"
-                    #set dg-do-what-default "compile"
                     gdc-dg-runtest $filename $imports
                 }
             }
