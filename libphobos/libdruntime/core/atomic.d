@@ -36,8 +36,8 @@ else version( D_InlineAsm_X86_64 )
 else version (GNU)
 {
     import gcc.config;
-    enum has64BitCAS = true;
-    enum has128BitCAS = HAVE_LIBATOMIC;
+    enum has64BitCAS = GNU_Have_64Bit_Atomics;
+    enum has128BitCAS = GNU_Have_LibAtomic;
 }
 else
 {
@@ -1349,6 +1349,7 @@ else version( GNU )
 
     private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) pure nothrow @nogc
     {
+        static assert(GNU_Have_Atomics, "cas() not supported on this architecture");
         bool res = void;
 
         static if (T.sizeof == byte.sizeof)
@@ -1366,12 +1367,12 @@ else version( GNU )
             res = __atomic_compare_exchange_4(here, cast(void*) &ifThis, *cast(uint*) &writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
-        else static if (T.sizeof == long.sizeof && has64BitCAS)
+        else static if (T.sizeof == long.sizeof && GNU_Have_64Bit_Atomics)
         {
             res = __atomic_compare_exchange_8(here, cast(void*) &ifThis, *cast(ulong*) &writeThis,
                                               false, MemoryOrder.seq, MemoryOrder.seq);
         }
-        else static if( T.sizeof == long.sizeof * 2 && has128BitCAS)
+        else static if(T.sizeof == long.sizeof * 2 && GNU_Have_LibAtomic)
         {
             res = __atomic_compare_exchange(T.sizeof, here, cast(void*) &ifThis, cast(void*) &writeThis,
                                             MemoryOrder.seq, MemoryOrder.seq);
@@ -1399,8 +1400,9 @@ else version( GNU )
     HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val )
     if(!__traits(isFloating, T))
     {
-        static assert (ms != MemoryOrder.rel, "Invalid MemoryOrder for atomicLoad");
+        static assert(ms != MemoryOrder.rel, "Invalid MemoryOrder for atomicLoad");
         static assert(__traits(isPOD, T), "argument to atomicLoad() must be POD");
+        static assert(GNU_Have_Atomics, "atomicLoad() not supported on this architecture");
 
         static if (T.sizeof == ubyte.sizeof)
         {
@@ -1417,12 +1419,12 @@ else version( GNU )
             uint value = __atomic_load_4(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
-        else static if (T.sizeof == ulong.sizeof)
+        else static if (T.sizeof == ulong.sizeof && GNU_Have_64Bit_Atomics)
         {
             ulong value = __atomic_load_8(&val, ms);
             return *cast(HeadUnshared!T*) &value;
         }
-        else static if (T.sizeof == ulong.sizeof * 2 && HAVE_LIBATOMIC)
+        else static if (T.sizeof == ulong.sizeof * 2 && GNU_Have_LibAtomic)
         {
             T value;
             __atomic_load(T.sizeof, &val, cast(void*)&value, ms);
@@ -1438,6 +1440,7 @@ else version( GNU )
     {
         static assert(ms != MemoryOrder.acq, "Invalid MemoryOrder for atomicStore");
         static assert(__traits(isPOD, T), "argument to atomicLoad() must be POD");
+        static assert(GNU_Have_Atomics, "atomicStore() not supported on this architecture");
 
         static if (T.sizeof == ubyte.sizeof)
         {
@@ -1451,11 +1454,11 @@ else version( GNU )
         {
             __atomic_store_4(&val, *cast(uint*) &newval, ms);
         }
-        else static if (T.sizeof == ulong.sizeof)
+        else static if (T.sizeof == ulong.sizeof && GNU_Have_64Bit_Atomics)
         {
             __atomic_store_8(&val, *cast(ulong*) &newval, ms);
         }
-        else static if (T.sizeof == ulong.sizeof * 2 && HAVE_LIBATOMIC)
+        else static if (T.sizeof == ulong.sizeof * 2 && GNU_Have_LibAtomic)
         {
             __atomic_store(T.sizeof, &val, cast(void*)&newval, ms);
         }
