@@ -492,6 +492,18 @@ The following OS versions are implemented:
  /* Run-time compilation parameters selecting different hardware subsets.  */
  
  /* Which processor to schedule for. The cpu attribute defines a list that
+--- a/gcc/config/alpha/linux.h
++++ b/gcc/config/alpha/linux.h
+@@ -33,6 +33,9 @@ along with GCC; see the file COPYING3.  If not see
+ 	  builtin_define ("_GNU_SOURCE");			\
+     } while (0)
+ 
++#define GNU_USER_TARGET_D_OS_VERSIONS()				\
++  builtin_version ("linux")
++
+ #undef LIB_SPEC
+ #define LIB_SPEC \
+   "%{pthread:-lpthread} \
 --- a/gcc/config/alpha/t-alpha
 +++ b/gcc/config/alpha/t-alpha
 @@ -16,4 +16,8 @@
@@ -1099,6 +1111,30 @@ The following OS versions are implemented:
 +      d_add_builtin_version ("D_SoftFloat");
 +    }
 +}
+--- a/gcc/config/powerpcspe/linux.h
++++ b/gcc/config/powerpcspe/linux.h
+@@ -57,6 +57,9 @@
+     }						\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_OS_VERSIONS()		\
++  builtin_version ("linux")
++
+ #undef	CPP_OS_DEFAULT_SPEC
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
+ 
+--- a/gcc/config/powerpcspe/linux64.h
++++ b/gcc/config/powerpcspe/linux64.h
+@@ -391,6 +391,9 @@ extern int dot_symbols;
+     }							\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_OS_VERSIONS()			\
++  builtin_version ("linux")
++
+ #undef  CPP_OS_DEFAULT_SPEC
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux) %(include_extra)"
+ 
 --- a/gcc/config/powerpcspe/powerpcspe-protos.h
 +++ b/gcc/config/powerpcspe/powerpcspe-protos.h
 @@ -244,6 +244,9 @@ extern void rs6000_target_modify_macros (bool, HOST_WIDE_INT, HOST_WIDE_INT);
@@ -1184,6 +1220,30 @@ The following OS versions are implemented:
 +      d_add_builtin_version ("D_SoftFloat");
 +    }
 +}
+--- a/gcc/config/rs6000/linux.h
++++ b/gcc/config/rs6000/linux.h
+@@ -57,6 +57,9 @@
+     }						\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_OS_VERSIONS()		\
++  builtin_version ("linux")
++
+ #undef	CPP_OS_DEFAULT_SPEC
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux)"
+ 
+--- a/gcc/config/rs6000/linux64.h
++++ b/gcc/config/rs6000/linux64.h
+@@ -391,6 +391,9 @@ extern int dot_symbols;
+     }							\
+   while (0)
+ 
++#define GNU_USER_TARGET_D_OS_VERSIONS()			\
++  builtin_version ("linux")
++
+ #undef  CPP_OS_DEFAULT_SPEC
+ #define CPP_OS_DEFAULT_SPEC "%(cpp_os_linux) %(include_extra)"
+ 
 --- a/gcc/config/rs6000/rs6000-protos.h
 +++ b/gcc/config/rs6000/rs6000-protos.h
 @@ -244,6 +244,9 @@ extern void rs6000_target_modify_macros (bool, HOST_WIDE_INT, HOST_WIDE_INT);
