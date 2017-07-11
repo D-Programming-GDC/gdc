@@ -1,3 +1,10 @@
+2017-07-11  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-target.cc (Target::loadModule): Check module identifier if a
+	declaration doesn't exist.
+	* typeinfo.cc (make_frontend_typeinfo): Use module location instead if
+	a declaration doesn't exist.
+
 2017-06-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-frontend.cc (CTFloat::hash): New function.

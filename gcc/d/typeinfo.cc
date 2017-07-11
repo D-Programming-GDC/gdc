@@ -192,16 +192,14 @@ make_frontend_typeinfo (Module *mod, Identifier *ident,
   if (!base)
     base = Type::dtypeinfo;
 
-  gcc_assert (mod->md != NULL);
-
   /* Create object module in order to complete the semantic.  */
   if (!mod->_scope)
     mod->importAll (NULL);
 
   /* Assignment of global typeinfo variables is managed by the ClassDeclaration
      constructor, so only need to new the declaration here.  */
-  ClassDeclaration *tinfo = new ClassDeclaration (mod->md->loc, ident,
-						  NULL, true);
+  Loc loc = (mod->md) ? mod->md->loc : mod->loc;
+  ClassDeclaration *tinfo = new ClassDeclaration (loc, ident, NULL, true);
   tinfo->parent = mod;
   tinfo->semantic (mod->_scope);
   tinfo->baseClass = base;

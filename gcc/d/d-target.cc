@@ -317,12 +317,11 @@ void
 Target::loadModule (Module *m)
 {
   ModuleDeclaration *md = m->md;
-  if (!md || !md->id)
-    return;
 
-  if (!md->packages)
+  if (!md || !md->id || !md->packages)
     {
-      if (!strcmp (md->id->toChars (), "object"))
+      Identifier *id = (md && md->id) ? md->id : m->ident;
+      if (!strcmp (id->toChars (), "object"))
 	create_tinfo_types (m);
     }
   else if (md->packages->dim == 1)
