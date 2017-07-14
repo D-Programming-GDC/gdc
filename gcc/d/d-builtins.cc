@@ -809,6 +809,7 @@ d_build_d_type_nodes (void)
   array_type_node = make_struct_type ("__builtin_void[]", 2,
 				      get_identifier ("length"), size_type_node,
 				      get_identifier ("ptr"), ptr_type_node);
+  TYPE_DYNAMIC_ARRAY (array_type_node) = 1;
 
   null_array_node = d_array_value (array_type_node, size_zero_node,
 				   null_pointer_node);

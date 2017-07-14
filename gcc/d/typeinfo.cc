@@ -35,6 +35,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "d-tree.h"
 #include "d-frontend.h"
+#include "d-target.h"
 #include "id.h"
 
 
@@ -1321,7 +1322,7 @@ layout_cpp_typeinfo (ClassDeclaration *cd)
 
   /* Let C++ do the RTTI generation, and just reference the symbol as
      extern, the knowing the underlying type is not required.  */
-  const char *ident = cppTypeInfoMangle (cd);
+  const char *ident = Target::cppTypeInfoMangle (cd);
   tree typeinfo = declare_extern_var (get_identifier (ident),
 				      unknown_type_node);
   TREE_READONLY (typeinfo) = 1;

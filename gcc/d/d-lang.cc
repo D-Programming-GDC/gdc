@@ -1469,17 +1469,30 @@ d_types_compatible_p (tree x, tree y)
   Type *tx = TYPE_LANG_FRONTEND (x);
   Type *ty = TYPE_LANG_FRONTEND (y);
 
-  /* Try validating the types in the frontend first.  */
+  /* Try validating the types in the frontend.  */
   if (tx != NULL && ty != NULL)
     {
+      /* Types are equivalent.  */
+      if (same_type_p (tx, ty))
+	return true;
+
+      /* Type system allows implicit conversion between.  */
       if (tx->implicitConvTo (ty) || ty->implicitConvTo (tx))
 	return true;
     }
 
-  /* Fallback on using type kind and size comparison.  E.g: all dynamic arrays
+  /* Fallback on using type flags for comparison.  E.g: all dynamic arrays
      are distinct types in D, but are VIEW_CONVERT compatible.  */
-  return (TREE_CODE (x) == TREE_CODE (y)
-	  && TYPE_SIZE (x) == TYPE_SIZE (y));
+  if (TYPE_DYNAMIC_ARRAY (x) && TYPE_DYNAMIC_ARRAY (y))
+    return true;
+
+  if (TYPE_DELEGATE (x) && TYPE_DELEGATE (y))
+    return true;
+
+  if (TYPE_ASSOCIATIVE_ARRAY (x) && TYPE_ASSOCIATIVE_ARRAY (y))
+    return true;
+
+  return false;
 }
 
 /* Implements the lang_hooks.finish_incomplete_decl routine for language D.  */
