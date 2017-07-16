@@ -27,6 +27,10 @@ load_gcc_lib timeout-dg.exp
 load_gcc_lib fortran-modules.exp
 load_gcc_lib gcc-dg.exp
 
+set dg-do-what-default run
+
+set libphobos_run_args ""
+
 # Define libphobos callbacks for dg.exp.
 
 proc libphobos-dg-test { prog do_what extra_tool_flags } {
@@ -43,7 +47,6 @@ proc libphobos-dg-prune { system text } {
 # libphobos_load -- wrapper around default libphobos_load to handle tests that
 # require program arguments passed to them.
 #
-set libphobos_run_args ""
 
 if { [info procs libphobos_load] != [list] \
       && [info procs prev_libphobos_load] == [list] } {

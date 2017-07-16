@@ -70,7 +70,6 @@ shared_library "$srcdir/$subdir/plugin.d" "plugin2.so" ""
 
 # Initialize dg.
 dg-init
-set dg-do-what-default run
 
 # Main loop.
 dg-test "$srcdir/$subdir/link.d" "-I$srcdir/$subdir lib.so -shared-libphobos" \
