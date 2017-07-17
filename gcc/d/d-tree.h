@@ -52,6 +52,9 @@ typedef Array<Expression *> Expressions;
    1: TYPE_IMAGINARY_FLOAT (in REAL_TYPE).
       ANON_AGGR_TYPE_P (in RECORD_TYPE, UNION_TYPE).
    2: CLASS_TYPE_P (in RECORD_TYPE).
+   3: TYPE_DYNAMIC_ARRAY (in RECORD_TYPE).
+   4: TYPE_DELEGATE (in RECORD_TYPE).
+   5: TYPE_ASSOCIATIVE_ARRAY (in RECORD_TYPE).
 
    Usage of DECL_LANG_FLAG_?:
    0: D_DECL_ONE_ONLY
@@ -326,6 +329,18 @@ lang_tree_node
 /* True if the type is the underlying record for a class.  */
 #define CLASS_TYPE_P(NODE) \
   (TYPE_LANG_FLAG_2 (RECORD_TYPE_CHECK (NODE)))
+
+/* True if the type is a D dynamic array.  */
+#define TYPE_DYNAMIC_ARRAY(NODE) \
+  (TYPE_LANG_FLAG_3 (RECORD_TYPE_CHECK (NODE)))
+
+/* True if the type is a D delegate.  */
+#define TYPE_DELEGATE(NODE) \
+  (TYPE_LANG_FLAG_4 (RECORD_TYPE_CHECK (NODE)))
+
+/* True if the type is a D associative array.  */
+#define TYPE_ASSOCIATIVE_ARRAY(NODE) \
+  (TYPE_LANG_FLAG_5 (RECORD_TYPE_CHECK (NODE)))
 
 /* True if the symbol should be made "link one only".  This is used to
    defer calling make_decl_one_only() before the decl has been prepared.  */

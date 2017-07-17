@@ -31,12 +31,15 @@ struct OutBuffer;
 
 /* Used in typeinfo.cc.  */
 FuncDeclaration *search_toString (StructDeclaration *);
-const char *cppTypeInfoMangle (Dsymbol *);
 
 /* Used in d-lang.cc.  */
 void initTraitsStringTable (void);
 
 /* Used in intrinsics.cc.  */
-void mangleToBuffer(Type *t, OutBuffer *buf);
+void mangleToBuffer(Type *, OutBuffer *);
+
+/* Used in d-target.cc.  */
+const char *toCppMangleItanium(Dsymbol *);
+const char *cppTypeInfoMangleItanium(Dsymbol *);
 
 #endif  /* ! GCC_D_FRONTEND_H */

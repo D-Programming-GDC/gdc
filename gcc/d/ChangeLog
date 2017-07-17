@@ -1,3 +1,26 @@
+2017-07-15  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* d-builtins.cc (d_build_d_type_nodes): Set TYPE_DYNAMIC_ARRAY on
+	array_type_node.
+	* d-codegen.cc (build_delegate_cst): Set TYPE_DELEGATE on internal
+	delegate constant types.
+	* d-frontend.h (cppTypeInfoMangle): Remove declaration.
+	(toCppMangleItanium): Add declaration.
+	(cppTypeInfoMangleItanium): Add declaration.
+	* d-lang.cc (d_types_compatible_p): Use type flags to determine
+	compatibility.  Return false instead of doing size comparison.
+	* d-target.cc (Target::toCppMangle): New function.
+	(Target::cppTypeInfoMangle): New function.
+	(Target::cppTypeMangle): New function.
+	(Target::systemLinkage): New function.
+	* d-tree.h (TYPE_DYNAMIC_ARRAY): New macro.
+	(TYPE_DELEGATE): New macro.
+	(TYPE_ASSOCIATIVE_ARRAY): New macro.
+	* typeinfo.cc (layout_cpp_typeinfo): Use Target::cppTypeInfoMangle.
+	* types.cc (TypeVisitor::visit(TypeDArray)): Set TYPE_DYNAMIC_ARRAY.
+	(TypeVisitor::visit(TypeAArray)): Set TYPE_ASSOCIATIVE_ARRAY.
+	(TypeVisitor::visit(TypeDelegate)): Set TYPE_DELEGATE.
+
 2017-07-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	* d-target.cc (Target::loadModule): Check module identifier if a

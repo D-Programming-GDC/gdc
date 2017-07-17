@@ -19,6 +19,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 
+#include "dfrontend/aggregate.h"
 #include "dfrontend/module.h"
 #include "dfrontend/mtype.h"
 #include "dfrontend/target.h"
@@ -32,6 +33,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 
 #include "d-tree.h"
+#include "d-frontend.h"
 #include "d-target.h"
 
 /* Implements the Target interface defined by the front end.
@@ -372,4 +374,43 @@ Target::checkVectorType (int sz, Type *type)
 void
 Target::prefixName (OutBuffer *, LINK)
 {
+}
+
+/* Return the symbol mangling of S for C++ linkage. */
+
+const char *
+Target::toCppMangle (Dsymbol *s)
+{
+  return toCppMangleItanium (s);
+}
+
+/* Return the symbol mangling of CD for C++ linkage.  */
+
+const char *
+Target::cppTypeInfoMangle(ClassDeclaration *cd)
+{
+  return cppTypeInfoMangleItanium (cd);
+}
+
+/* For a vendor-specific type, return a string containing the C++ mangling.
+   In all other cases, return NULL.  */
+
+const char *
+Target::cppTypeMangle (Type *type)
+{
+    if (type->isTypeBasic () || type->ty == Tvector || type->ty == Tstruct)
+    {
+        tree ctype = build_ctype (type);
+        return targetm.mangle_type (ctype);
+    }
+
+    return NULL;
+}
+
+/* Return the default system linkage for the target.  */
+
+LINK
+Target::systemLinkage (void)
+{
+  return LINKc;
 }
