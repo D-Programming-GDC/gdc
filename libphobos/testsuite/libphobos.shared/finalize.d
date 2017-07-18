@@ -28,9 +28,10 @@ extern (C) alias SetFinalizeCounter = void function(shared(size_t*));
 
 void main(string[] args)
 {
+    printf("STARTING finalize\n");
     auto name = args[0];
-    assert(name[$-9 .. $] == "/finalize");
-    name = name[0 .. $-8] ~ "lib.so";
+    assert(name[$-13 .. $] == "/finalize.exe");
+    name = name[0 .. $-12] ~ "lib.so";
 
     auto h = Runtime.loadLibrary(name);
     assert(h !is null);
@@ -56,4 +57,5 @@ void main(string[] args)
         assert(0);
     if (nf2._finalizeCounter)
         assert(0);
+    printf("PASS finalize\n");
 }

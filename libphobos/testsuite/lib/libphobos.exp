@@ -1,0 +1,85 @@
+# Copyright (C) 2017 Free Software Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+
+#
+# DejaGnu does not have proper library search paths for load_lib.
+# We have to explicitly load everything that gdc.exp wants to load.
+#
+
+proc load_gcc_lib { filename } {
+    global srcdir loaded_libs
+
+    load_file $srcdir/../../gcc/testsuite/lib/$filename
+    set loaded_libs($filename) ""
+}
+
+load_lib dg.exp
+load_lib libgloss.exp
+
+load_gcc_lib multiline.exp
+load_gcc_lib prune.exp
+load_gcc_lib target-libpath.exp
+load_gcc_lib wrapper.exp
+load_gcc_lib target-supports.exp
+load_gcc_lib target-utils.exp
+load_gcc_lib gcc-defs.exp
+load_gcc_lib timeout.exp
+load_gcc_lib gdc.exp
+
+#
+# GDC_UNDER_TEST is the compiler under test.
+#
+
+set gccdir [lookfor_file $tool_root_dir gcc/libgcc.a]
+if { $gccdir != "" } {
+    set gccdir [file dirname $gccdir]
+}
+
+set exeext ""
+if [info exists env(EXEEXT)] {
+    set exeext $env(EXEEXT)
+}
+
+set GDC_UNDER_TEST "$gccdir/gdc$exeext -B$gccdir/"
+if { [info exists env(GDC_FOR_TARGET)] && $env(GDC_FOR_TARGET) != "" } {
+    set GDC_UNDER_TEST $env(GDC_FOR_TARGET)
+}
+
+set TESTING_IN_BUILD_TREE 1
+
+#
+# Defining gdc_maybe_build_wrapper as its required to re-use gdc.exp.
+#
+
+proc gdc_maybe_build_wrapper { args } {
+    libphobos_maybe_build_wrapper $args
+}
+
+#
+# libphobos_init
+#
+
+proc libphobos_init { args } {
+    gdc_init $args
+}
+
+#
+# libphobos_target_compile -- compile a source file.
+#
+
+proc libphobos_target_compile { source dest type options } {
+    gdc_target_compile $source $dest $type $options
+}
