@@ -1483,14 +1483,17 @@ d_types_compatible_p (tree x, tree y)
 
   /* Fallback on using type flags for comparison.  E.g: all dynamic arrays
      are distinct types in D, but are VIEW_CONVERT compatible.  */
-  if (TYPE_DYNAMIC_ARRAY (x) && TYPE_DYNAMIC_ARRAY (y))
-    return true;
+  if (TREE_CODE (x) == RECORD_TYPE && TREE_CODE (y) == RECORD_TYPE)
+    {
+      if (TYPE_DYNAMIC_ARRAY (x) && TYPE_DYNAMIC_ARRAY (y))
+	return true;
 
-  if (TYPE_DELEGATE (x) && TYPE_DELEGATE (y))
-    return true;
+      if (TYPE_DELEGATE (x) && TYPE_DELEGATE (y))
+	return true;
 
-  if (TYPE_ASSOCIATIVE_ARRAY (x) && TYPE_ASSOCIATIVE_ARRAY (y))
-    return true;
+      if (TYPE_ASSOCIATIVE_ARRAY (x) && TYPE_ASSOCIATIVE_ARRAY (y))
+	return true;
+    }
 
   return false;
 }
