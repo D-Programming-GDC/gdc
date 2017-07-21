@@ -648,7 +648,7 @@ The following OS versions are implemented:
 +struct gcc_targetdm targetdm = TARGETDM_INITIALIZER;
 --- /dev/null
 +++ b/gcc/config/glibc-d.c
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,72 @@
 +/* Glibc support needed only by D front-end.
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +
@@ -670,7 +670,6 @@ The following OS versions are implemented:
 +#include "system.h"
 +#include "coretypes.h"
 +#include "tm.h"
-+#include "memmodel.h"
 +#include "tm_p.h"
 +#include "d/d-target.h"
 +#include "d/d-target-def.h"
