@@ -1,8 +1,6 @@
 This implements building of libphobos library in GCC.
 ---
 
-diff --git a/Makefile.def b/Makefile.def
-index b1e35e3..6ec466b 100644
 --- a/Makefile.def
 +++ b/Makefile.def
 @@ -131,6 +131,7 @@ target_modules = { module= libquadmath; };
@@ -39,8 +37,6 @@ index b1e35e3..6ec466b 100644
  
  // Toplevel bootstrap
  bootstrap_stage = { id=1 ; };
-diff --git a/Makefile.in b/Makefile.in
-index 30a15ef..681e5cc 100644
 --- a/Makefile.in
 +++ b/Makefile.in
 @@ -157,6 +157,7 @@ BUILD_EXPORTS = \
@@ -772,8 +768,6 @@ index 30a15ef..681e5cc 100644
  configure-target-libtermcap: maybe-all-target-newlib maybe-all-target-libgloss
  
  configure-target-winsup: maybe-all-target-newlib maybe-all-target-libgloss
-diff --git a/Makefile.tpl b/Makefile.tpl
-index 3233a78..37327e0 100644
 --- a/Makefile.tpl
 +++ b/Makefile.tpl
 @@ -160,6 +160,7 @@ BUILD_EXPORTS = \
@@ -832,8 +826,6 @@ index 3233a78..37327e0 100644
  	'LD=$(COMPILER_LD_FOR_TARGET)' \
  	'LDFLAGS=$$(LDFLAGS_FOR_TARGET)' \
  	'LIBCFLAGS=$$(LIBCFLAGS_FOR_TARGET)' \
-diff --git a/config-ml.in b/config-ml.in
-index 1198346..9c02692 100644
 --- a/config-ml.in
 +++ b/config-ml.in
 @@ -505,6 +505,7 @@ multi-do:
@@ -880,8 +872,6 @@ index 1198346..9c02692 100644
  	if test "x${LD_LIBRARY_PATH+set}" = xset; then
  	  LD_LIBRARY_PATH_=
  	  for arg in `echo "$LD_LIBRARY_PATH" | tr ':' ' '`; do
-diff --git a/config/multi.m4 b/config/multi.m4
-index 5b62ecc..5303b98 100644
 --- a/config/multi.m4
 +++ b/config/multi.m4
 @@ -65,4 +65,5 @@ CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
@@ -891,8 +881,6 @@ index 5b62ecc..5303b98 100644
 -GCJ="$GCJ"])])dnl
 +GCJ="$GCJ"
 +GDC="$GDC"])])dnl
-diff --git a/configure b/configure
-index ca2e095..615f53a 100755
 --- a/configure
 +++ b/configure
 @@ -579,6 +579,7 @@ LD_FOR_TARGET
@@ -1182,8 +1170,6 @@ index ca2e095..615f53a 100755
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking where to find the target ld" >&5
  $as_echo_n "checking where to find the target ld... " >&6; }
  if test "x${build}" != "x${host}" ; then
-diff --git a/configure.ac b/configure.ac
-index 2000f33..c5da978 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -168,7 +168,8 @@ target_libraries="target-libgcc \

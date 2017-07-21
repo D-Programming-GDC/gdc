@@ -2,10 +2,9 @@ This implements D language support in the GCC back end, and adds
 relevant documentation about the GDC front end.
 ---
 
-diff --git gcc/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -25128,7 +25128,8 @@ rs6000_output_function_epilogue (FILE *file,
+@@ -25305,7 +25305,8 @@ rs6000_output_function_epilogue (FILE *file,
  	 either, so for now use 0.  */
        if (! strcmp (language_string, "GNU C")
  	  || ! strcmp (language_string, "GNU GIMPLE")
@@ -15,7 +14,6 @@ diff --git gcc/config/rs6000/rs6000.c gcc/config/rs6000/rs6000.c
  	i = 0;
        else if (! strcmp (language_string, "GNU F77")
  	       || ! strcmp (language_string, "GNU Fortran"))
-diff --git gcc/doc/frontends.texi gcc/doc/frontends.texi
 --- a/gcc/doc/frontends.texi
 +++ b/gcc/doc/frontends.texi
 @@ -9,6 +9,7 @@
@@ -35,7 +33,6 @@ diff --git gcc/doc/frontends.texi gcc/doc/frontends.texi
  
  The abbreviation @dfn{GCC} has multiple meanings in common use.  The
  current official meaning is ``GNU Compiler Collection'', which refers
-diff --git gcc/doc/install.texi gcc/doc/install.texi
 --- a/gcc/doc/install.texi
 +++ b/gcc/doc/install.texi
 @@ -1350,12 +1350,12 @@ their runtime libraries should be built.  For a list of valid values for
@@ -53,7 +50,6 @@ diff --git gcc/doc/install.texi gcc/doc/install.texi
  
  @item --enable-stage1-languages=@var{lang1},@var{lang2},@dots{}
  Specify that a particular subset of compilers and their runtime
-diff --git gcc/doc/invoke.texi gcc/doc/invoke.texi
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -1172,6 +1172,15 @@ called @dfn{specs}.
@@ -80,7 +76,6 @@ diff --git gcc/doc/invoke.texi gcc/doc/invoke.texi
  f77  f77-cpp-input f95  f95-cpp-input
  go
  java
-diff --git gcc/doc/sourcebuild.texi gcc/doc/sourcebuild.texi
 --- a/gcc/doc/sourcebuild.texi
 +++ b/gcc/doc/sourcebuild.texi
 @@ -113,6 +113,9 @@ The Objective-C and Objective-C++ runtime library.
@@ -93,7 +88,6 @@ diff --git gcc/doc/sourcebuild.texi gcc/doc/sourcebuild.texi
  @item libssp
  The Stack protector runtime library.
  
-diff --git gcc/doc/standards.texi gcc/doc/standards.texi
 --- a/gcc/doc/standards.texi
 +++ b/gcc/doc/standards.texi
 @@ -283,6 +283,16 @@ available online, see @uref{http://gcc.gnu.org/readings.html}
@@ -113,7 +107,6 @@ diff --git gcc/doc/standards.texi gcc/doc/standards.texi
  @section References for other languages
  
  @xref{Top, GNAT Reference Manual, About This Guide, gnat_rm,
-diff --git gcc/dwarf2out.c gcc/dwarf2out.c
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
 @@ -4557,6 +4557,15 @@ is_ada (void)
@@ -132,7 +125,7 @@ diff --git gcc/dwarf2out.c gcc/dwarf2out.c
  /* Remove the specified attribute if present.  */
  
  static void
-@@ -18913,6 +18922,8 @@ gen_compile_unit_die (const char *filename)
+@@ -18916,6 +18925,8 @@ gen_compile_unit_die (const char *filename)
    language = DW_LANG_C89;
    if (strcmp (language_string, "GNU C++") == 0)
      language = DW_LANG_C_plus_plus;
@@ -141,7 +134,7 @@ diff --git gcc/dwarf2out.c gcc/dwarf2out.c
    else if (strcmp (language_string, "GNU F77") == 0)
      language = DW_LANG_Fortran77;
    else if (strcmp (language_string, "GNU Pascal") == 0)
-@@ -19835,7 +19846,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
+@@ -19860,7 +19871,7 @@ declare_in_namespace (tree thing, dw_die_ref context_die)
  
    if (ns_context != context_die)
      {
@@ -150,7 +143,7 @@ diff --git gcc/dwarf2out.c gcc/dwarf2out.c
  	return ns_context;
        if (DECL_P (thing))
  	gen_decl_die (thing, NULL, ns_context);
-@@ -19858,7 +19869,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
+@@ -19883,7 +19894,7 @@ gen_namespace_die (tree decl, dw_die_ref context_die)
      {
        /* Output a real namespace or module.  */
        context_die = setup_namespace_context (decl, comp_unit_die ());
@@ -159,7 +152,7 @@ diff --git gcc/dwarf2out.c gcc/dwarf2out.c
  			       ? DW_TAG_module : DW_TAG_namespace,
  			       context_die, decl);
        /* For Fortran modules defined in different CU don't add src coords.  */
-@@ -19915,7 +19926,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
+@@ -19940,7 +19951,7 @@ gen_decl_die (tree decl, tree origin, dw_die_ref context_die)
        break;
  
      case CONST_DECL:
@@ -168,7 +161,7 @@ diff --git gcc/dwarf2out.c gcc/dwarf2out.c
  	{
  	  /* The individual enumerators of an enum type get output when we output
  	     the Dwarf representation of the relevant enum type itself.  */
-@@ -20338,7 +20349,7 @@ dwarf2out_decl (tree decl)
+@@ -20363,7 +20374,7 @@ dwarf2out_decl (tree decl)
      case CONST_DECL:
        if (debug_info_level <= DINFO_LEVEL_TERSE)
  	return;
@@ -177,7 +170,6 @@ diff --git gcc/dwarf2out.c gcc/dwarf2out.c
  	return;
        if (TREE_STATIC (decl) && decl_function_context (decl))
  	context_die = lookup_decl_die (DECL_CONTEXT (decl));
-diff --git gcc/gcc.c gcc/gcc.c
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
 @@ -1003,6 +1003,7 @@ static const struct compiler default_compilers[] =
